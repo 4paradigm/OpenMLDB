@@ -123,6 +123,31 @@ TEST_F(UdfIRBuilderTest, HexStringUdfTest) {
     CheckUdf<Nullable<StringRef>, Nullable<StringRef>>("hex", nullptr, nullptr);
 }
 
+TEST_F(UdfIRBuilderTest, UnhexTest) {
+    // The following are normal tests.
+    CheckUdf<StringRef, StringRef>("unhex", "Spark SQL", StringRef("537061726B2053514C"));
+    CheckUdf<StringRef, StringRef>("unhex", "OpenMLDB", StringRef("4F70656E4D4C4442"));
+    CheckUdf<StringRef, StringRef>("unhex", "OpenMLDB", StringRef("4f70656e4d4c4442"));
+    // The following are valid character but not string unhex tests and the length of
+    // some tests cases are odd.
+    CheckUdf<StringRef, StringRef>("unhex", "", StringRef("4"));
+    CheckUdf<StringRef, StringRef>("unhex", "{", StringRef("7B"));
+    CheckUdf<StringRef, StringRef>("unhex", "{", StringRef("47B"));
+    CheckUdf<StringRef, StringRef>("unhex", "7&", StringRef("537061726"));
+    CheckUdf<StringRef, StringRef>("unhex", "\x8a", StringRef("8a")); // NOLINT
+    // The following are invalid tests that contain the non-hex characters, the 'NULL' should
+    // be returned.
+    CheckUdf<StringRef, StringRef>("unhex", nullptr, StringRef("Z"));
+    CheckUdf<StringRef, StringRef>("unhex", nullptr, StringRef("Zzzz"));
+    CheckUdf<StringRef, StringRef>("unhex", nullptr, StringRef("zfk"));
+    CheckUdf<StringRef, StringRef>("unhex", nullptr, StringRef("zf"));
+    CheckUdf<StringRef, StringRef>("unhex", nullptr, StringRef("fk"));
+    CheckUdf<StringRef, StringRef>("unhex", nullptr, StringRef("3k"));
+    CheckUdf<StringRef, StringRef>("unhex", nullptr, StringRef("4k"));
+    CheckUdf<StringRef, StringRef>("unhex", nullptr, StringRef("6k"));
+    CheckUdf<Nullable<StringRef>, Nullable<StringRef>>("unhex", nullptr, nullptr);
+}
+
 TEST_F(UdfIRBuilderTest, DayofmonthDateUdfTest) {
     CheckUdf<int32_t, Date>("dayofmonth", 22, Date(2020, 05, 22));
     CheckUdf<Nullable<int32_t>, Nullable<Date>>("dayofmonth", nullptr, nullptr);
@@ -1037,6 +1062,48 @@ TEST_F(UdfIRBuilderTest, IlikeMatch) {
         udf_name, true, StringRef("mi_e"), StringRef("Mi\\_e"), StringRef("\\"));
     CheckUdf<Nullable<bool>, Nullable<StringRef>, Nullable<StringRef>, Nullable<StringRef>>(
         udf_name, true, StringRef("mi\\ke"), StringRef("Mi\\_e"), StringRef(""));
+}
+TEST_F(UdfIRBuilderTest, rlike_match) {
+    auto udf_name = "regexp_like";
+    CheckUdf<Nullable<bool>, Nullable<StringRef>, Nullable<StringRef>, Nullable<StringRef>>(
+        udf_name, true, StringRef("The Lord of the Rings"), StringRef("The Lord .f the Rings"), StringRef(""));
+    CheckUdf<Nullable<bool>, Nullable<StringRef>, Nullable<StringRef>, Nullable<StringRef>>(
+        udf_name, false, StringRef("The Lord of the Rings"), StringRef("the L.rd .f the Rings"), StringRef(""));
+
+    // target is null, return null
+    CheckUdf<Nullable<bool>, Nullable<StringRef>, Nullable<StringRef>, Nullable<StringRef>>(
+        udf_name, nullptr, nullptr, StringRef("The Lord .f the Rings"), StringRef(""));
+    // pattern is null, return null
+    CheckUdf<Nullable<bool>, Nullable<StringRef>, Nullable<StringRef>, Nullable<StringRef>>(
+        udf_name, nullptr, StringRef("The Lord of the Rings"), nullptr, StringRef(""));
+    // flags is null
+    CheckUdf<Nullable<bool>, Nullable<StringRef>, Nullable<StringRef>, Nullable<StringRef>>(
+        udf_name, nullptr, StringRef("The Lord of the Rings"), StringRef("The Lord .f the Rings"), nullptr);
+
+    // single flag
+    CheckUdf<Nullable<bool>, Nullable<StringRef>, Nullable<StringRef>, Nullable<StringRef>>(
+        udf_name, false, StringRef("The Lord of the Rings"), StringRef("the L.rd .f the Rings"), StringRef("c"));
+    CheckUdf<Nullable<bool>, Nullable<StringRef>, Nullable<StringRef>, Nullable<StringRef>>(
+        udf_name, true, StringRef("The Lord of the Rings"), StringRef("the L.rd .f the Rings"), StringRef("i"));
+
+    CheckUdf<Nullable<bool>, Nullable<StringRef>, Nullable<StringRef>, Nullable<StringRef>>(
+        udf_name, false, StringRef("The Lord of the Rings\nJ. R. R. Tolkien"),
+    StringRef("The Lord of the Rings.J\\. R\\. R\\. Tolkien"), StringRef(""));
+    CheckUdf<Nullable<bool>, Nullable<StringRef>, Nullable<StringRef>, Nullable<StringRef>>(
+        udf_name, true, StringRef("The Lord of the Rings\nJ. R. R. Tolkien"),
+    StringRef("The Lord of the Rings.J\\. R\\. R\\. Tolkien"), StringRef("s"));
+
+    CheckUdf<Nullable<bool>, Nullable<StringRef>, Nullable<StringRef>, Nullable<StringRef>>(
+        udf_name, false, StringRef("The Lord of the Rings\nJ. R. R. Tolkien"),
+    StringRef("^The Lord of the Rings$\nJ\\. R\\. R\\. Tolkien"), StringRef(""));
+    CheckUdf<Nullable<bool>, Nullable<StringRef>, Nullable<StringRef>, Nullable<StringRef>>(
+        udf_name, true, StringRef("The Lord of the Rings\nJ. R. R. Tolkien"),
+    StringRef("^The Lord of the Rings$\nJ\\. R\\. R\\. Tolkien"), StringRef("m"));
+
+    // multiple flags
+    CheckUdf<Nullable<bool>, Nullable<StringRef>, Nullable<StringRef>, Nullable<StringRef>>(
+        udf_name, true, StringRef("The Lord of the Rings\nJ. R. R. Tolkien"),
+    StringRef("^the Lord of the Rings$.J\\. R\\. R\\. Tolkien"), StringRef("mis"));
 }
 TEST_F(UdfIRBuilderTest, Reverse) {
     auto udf_name = "reverse";

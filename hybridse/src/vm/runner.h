@@ -264,10 +264,13 @@ class FilterGenerator : public PredicateFun {
     const bool Valid() const {
         return index_seek_gen_.Valid() || condition_gen_.Valid();
     }
-    std::shared_ptr<DataHandler> Filter(std::shared_ptr<TableHandler> table,
-                                         const Row& parameter);
-    std::shared_ptr<DataHandler> Filter(
-        std::shared_ptr<PartitionHandler> table, const Row& parameter);
+
+    std::shared_ptr<DataHandler> Filter(std::shared_ptr<TableHandler> table, const Row& parameter,
+                                        std::optional<int32_t> limit);
+
+    std::shared_ptr<DataHandler> Filter(std::shared_ptr<PartitionHandler> table, const Row& parameter,
+                                        std::optional<int32_t> limit);
+
     bool operator()(const Row& row, const Row& parameter) const override {
         if (!condition_gen_.Valid()) {
             return true;
@@ -413,7 +416,7 @@ class Runner : public node::NodeBase<Runner> {
     explicit Runner(const int32_t id)
         : id_(id),
           type_(kRunnerUnknow),
-          limit_cnt_(0),
+          limit_cnt_(std::nullopt),
           is_lazy_(false),
           need_cache_(false),
           need_batch_cache_(false),
@@ -423,15 +426,15 @@ class Runner : public node::NodeBase<Runner> {
            const vm::SchemasContext* output_schemas)
         : id_(id),
           type_(type),
-          limit_cnt_(0),
+          limit_cnt_(std::nullopt),
           is_lazy_(false),
           need_cache_(false),
           need_batch_cache_(false),
           producers_(),
           output_schemas_(output_schemas),
           row_parser_(std::make_unique<RowParser>(output_schemas)) {}
-    Runner(const int32_t id, const RunnerType type,
-           const vm::SchemasContext* output_schemas, const int32_t limit_cnt)
+    Runner(const int32_t id, const RunnerType type, const vm::SchemasContext* output_schemas,
+           const std::optional<int32_t> limit_cnt)
         : id_(id),
           type_(type),
           limit_cnt_(limit_cnt),
@@ -487,7 +490,7 @@ class Runner : public node::NodeBase<Runner> {
 
     const int32_t id_;
     const RunnerType type_;
-    const int32_t limit_cnt_;
+    const std::optional<int32_t> limit_cnt_;
     virtual std::shared_ptr<DataHandler> Run(
         RunnerContext& ctx,  // NOLINT
         const std::vector<std::shared_ptr<DataHandler>>& inputs) = 0;
@@ -744,7 +747,7 @@ class RequestRunner : public Runner {
 class GroupRunner : public Runner {
  public:
     GroupRunner(const int32_t id, const SchemasContext* schema,
-                const int32_t limit_cnt, const Key& group)
+                const std::optional<int32_t> limit_cnt, const Key& group)
         : Runner(id, kRunnerGroup, schema, limit_cnt), partition_gen_(group) {}
     ~GroupRunner() {}
     std::shared_ptr<DataHandler> Run(
@@ -756,7 +759,7 @@ class GroupRunner : public Runner {
 class FilterRunner : public Runner {
  public:
     FilterRunner(const int32_t id, const SchemasContext* schema,
-                 const int32_t limit_cnt, const Filter& filter)
+                 const std::optional<int32_t> limit_cnt, const Filter& filter)
         : Runner(id, kRunnerFilter, schema, limit_cnt), filter_gen_(filter) {
         is_lazy_ = true;
     }
@@ -771,7 +774,7 @@ class FilterRunner : public Runner {
 class SortRunner : public Runner {
  public:
     SortRunner(const int32_t id, const SchemasContext* schema,
-               const int32_t limit_cnt, const Sort& sort)
+               const std::optional<int32_t> limit_cnt, const Sort& sort)
         : Runner(id, kRunnerOrder, schema, limit_cnt), sort_gen_(sort) {}
     ~SortRunner() {}
     std::shared_ptr<DataHandler> Run(
@@ -783,7 +786,7 @@ class SortRunner : public Runner {
 class ConstProjectRunner : public Runner {
  public:
     ConstProjectRunner(const int32_t id, const SchemasContext* schema,
-                       const int32_t limit_cnt, const FnInfo& fn_info)
+                       const std::optional<int32_t> limit_cnt, const FnInfo& fn_info)
         : Runner(id, kRunnerConstProject, schema, limit_cnt),
           project_gen_(fn_info) {}
     ~ConstProjectRunner() {}
@@ -796,7 +799,8 @@ class ConstProjectRunner : public Runner {
 };
 class TableProjectRunner : public Runner {
  public:
-    TableProjectRunner(const int32_t id, const SchemasContext* schema, const int32_t limit_cnt, const FnInfo& fn_info)
+    TableProjectRunner(const int32_t id, const SchemasContext* schema, const std::optional<int32_t> limit_cnt,
+                       const FnInfo& fn_info)
         : Runner(id, kRunnerTableProject, schema, limit_cnt), project_gen_(fn_info) {}
     ~TableProjectRunner() {}
 
@@ -808,7 +812,8 @@ class TableProjectRunner : public Runner {
 };
 class RowProjectRunner : public Runner {
  public:
-    RowProjectRunner(const int32_t id, const SchemasContext* schema, const int32_t limit_cnt, const FnInfo& fn_info)
+    RowProjectRunner(const int32_t id, const SchemasContext* schema, const std::optional<int32_t> limit_cnt,
+                     const FnInfo& fn_info)
         : Runner(id, kRunnerRowProject, schema, limit_cnt), project_gen_(fn_info) {}
     ~RowProjectRunner() {}
     std::shared_ptr<DataHandler> Run(
@@ -820,14 +825,13 @@ class RowProjectRunner : public Runner {
 
 class SimpleProjectRunner : public Runner {
  public:
-    SimpleProjectRunner(const int32_t id, const SchemasContext* schema,
-                        const int32_t limit_cnt, const FnInfo& fn_info)
-        : Runner(id, kRunnerSimpleProject, schema, limit_cnt),
-          project_gen_(fn_info) {
+    SimpleProjectRunner(const int32_t id, const SchemasContext* schema, const std::optional<int32_t> limit_cnt,
+                        const FnInfo& fn_info)
+        : Runner(id, kRunnerSimpleProject, schema, limit_cnt), project_gen_(fn_info) {
         is_lazy_ = true;
     }
     SimpleProjectRunner(const int32_t id, const SchemasContext* schema,
-                        const int32_t limit_cnt,
+                        const std::optional<int32_t> limit_cnt,
                         const ProjectGenerator& project_gen)
         : Runner(id, kRunnerSimpleProject, schema, limit_cnt),
           project_gen_(project_gen) {
@@ -844,7 +848,7 @@ class SimpleProjectRunner : public Runner {
 class SelectSliceRunner : public Runner {
  public:
     SelectSliceRunner(const int32_t id, const SchemasContext* schema,
-                      const int32_t limit_cnt, size_t slice)
+                      const std::optional<int32_t> limit_cnt, size_t slice)
         : Runner(id, kRunnerSelectSlice, schema, limit_cnt),
           get_slice_fn_(slice) {
         is_lazy_ = true;
@@ -866,7 +870,7 @@ class SelectSliceRunner : public Runner {
 
 class GroupAggRunner : public Runner {
  public:
-    GroupAggRunner(const int32_t id, const SchemasContext* schema, const int32_t limit_cnt,
+    GroupAggRunner(const int32_t id, const SchemasContext* schema, const std::optional<int32_t> limit_cnt,
                    const Key& group, const ConditionFilter& having_condition, const FnInfo& project)
         : Runner(id, kRunnerGroupAgg, schema, limit_cnt),
           group_(group.fn_info()),
@@ -884,7 +888,7 @@ class GroupAggRunner : public Runner {
 class AggRunner : public Runner {
  public:
     AggRunner(const int32_t id, const SchemasContext* schema,
-              const int32_t limit_cnt,
+              const std::optional<int32_t> limit_cnt,
               const ConditionFilter& having_condition,
               const FnInfo& fn_info)
         : Runner(id, kRunnerAgg, schema, limit_cnt),
@@ -901,7 +905,7 @@ class AggRunner : public Runner {
 
 class ReduceRunner : public Runner {
  public:
-    ReduceRunner(const int32_t id, const SchemasContext* schema, const int32_t limit_cnt,
+    ReduceRunner(const int32_t id, const SchemasContext* schema, const std::optional<int32_t> limit_cnt,
                  const ConditionFilter& having_condition, const FnInfo& fn_info)
         : Runner(id, kRunnerReduce, schema, limit_cnt),
           having_condition_(having_condition.fn_info()),
@@ -916,7 +920,7 @@ class ReduceRunner : public Runner {
 class WindowAggRunner : public Runner {
  public:
     WindowAggRunner(int32_t id, const SchemasContext* schema,
-                    int32_t limit_cnt, const WindowOp& window_op,
+                    std::optional<int32_t> limit_cnt, const WindowOp& window_op,
                     const FnInfo& fn_info,
                     bool instance_not_in_window,
                     bool exclude_current_time,
@@ -964,7 +968,7 @@ class WindowAggRunner : public Runner {
 class RequestUnionRunner : public Runner {
  public:
     RequestUnionRunner(const int32_t id, const SchemasContext* schema,
-                       const int32_t limit_cnt, const Range& range,
+                       const std::optional<int32_t> limit_cnt, const Range& range,
                        bool exclude_current_time, bool output_request_row)
         : Runner(id, kRunnerRequestUnion, schema, limit_cnt),
           range_gen_(range),
@@ -992,8 +996,9 @@ class RequestUnionRunner : public Runner {
 
 class RequestAggUnionRunner : public Runner {
  public:
-    RequestAggUnionRunner(const int32_t id, const SchemasContext* schema, const int32_t limit_cnt, const Range& range,
-                          bool exclude_current_time, bool output_request_row, const node::CallExprNode* project)
+    RequestAggUnionRunner(const int32_t id, const SchemasContext* schema, const std::optional<int32_t> limit_cnt,
+                          const Range& range, bool exclude_current_time, bool output_request_row,
+                          const node::CallExprNode* project)
         : Runner(id, kRunnerRequestAggUnion, schema, limit_cnt),
           range_gen_(range),
           exclude_current_time_(exclude_current_time),
@@ -1090,7 +1095,7 @@ class PostRequestUnionRunner : public Runner {
 class LastJoinRunner : public Runner {
  public:
     LastJoinRunner(const int32_t id, const SchemasContext* schema,
-                   const int32_t limit_cnt, const Join& join,
+                   const std::optional<int32_t> limit_cnt, const Join& join,
                    size_t left_slices, size_t right_slices)
         : Runner(id, kRunnerLastJoin, schema, limit_cnt),
           join_gen_(join, left_slices, right_slices) {}
@@ -1105,7 +1110,7 @@ class LastJoinRunner : public Runner {
 class RequestLastJoinRunner : public Runner {
  public:
     RequestLastJoinRunner(const int32_t id, const SchemasContext* schema,
-                          const int32_t limit_cnt, const Join& join,
+                          const std::optional<int32_t> limit_cnt, const Join& join,
                           const size_t left_slices, const size_t right_slices,
                           const bool output_right_only)
         : Runner(id, kRunnerRequestLastJoin, schema, limit_cnt),
@@ -1132,7 +1137,7 @@ class RequestLastJoinRunner : public Runner {
 class ConcatRunner : public Runner {
  public:
     ConcatRunner(const int32_t id, const SchemasContext* schema,
-                 const int32_t limit_cnt)
+                 const std::optional<int32_t> limit_cnt)
         : Runner(id, kRunnerConcat, schema, limit_cnt) {
         is_lazy_ = true;
     }

@@ -29,19 +29,19 @@ import org.testng.annotations.Test;
 public class BatchRequestTest extends OpenMLDBTest {
     @Story("BatchRequest")
     @Test(dataProvider = "getCase")
-    @Yaml(filePaths = "function/test_batch_request.yaml")
+    @Yaml(filePaths = "integration_test/test_batch_request.yaml")
     public void testBatchRequest(SQLCase testCase) {
         ExecutorFactory.build(executor, testCase, SQLCaseType.kBatchRequest).run();
     }
     @Story("SPBatchRequest")
     @Test(dataProvider = "getCase")
-    @Yaml(filePaths = "function/test_batch_request.yaml")
+    @Yaml(filePaths = "integration_test/test_batch_request.yaml")
     public void testSPBatchRequest(SQLCase testCase) {
         ExecutorFactory.build(executor, testCase, SQLCaseType.kBatchRequestWithSp).run();
     }
     @Story("SPBatchRequestAsyn")
     @Test(dataProvider = "getCase")
-    @Yaml(filePaths = "function/test_batch_request.yaml")
+    @Yaml(filePaths = "integration_test/test_batch_request.yaml")
     public void testSPBatchRequestAsyn(SQLCase testCase) {
         ExecutorFactory.build(executor, testCase, SQLCaseType.kBatchRequestWithSpAsync).run();
     }

@@ -1,0 +1,358 @@
+# Copyright 2021 4Paradigm
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+db: test_zw
+debugs: []
+version: 0.5.0
+cases:
+  - id: 0
+    desc: batch request without common column
+    inputs:
+      -
+        columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"a",1,30,1.0,2.0,1590738990000,"2020-05-01","a"]
+          - [3,"a",3,32,1.2,2.2,1590738992000,"2020-05-03","c"]
+          - [5,"a",5,34,1.4,2.4,1590738994000,"2020-05-05","d"]
+          - [6,"a",6,35,1.5,2.5,1590738995000,"2020-05-06","e"]
+    batch_request:
+        columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [2,"a",2,31,1.1,2.1,1590738991000,"2020-05-02","b"]
+          - [4,"a",4,33,1.3,2.3,1590738993000,"2020-05-04","c"]
+          - [7,"a",6,36,1.6,2.6,1590738996000,"2020-05-07","f"]
+    sql: |
+      SELECT id, c1, sum(c3) OVER w1 as m3, sum(c4) OVER w1 as m4, sum(c5) OVER w1 as m5,
+            sum(c6) OVER w1 as m6, max(c7) OVER w1 as m7, max(c8) OVER w1 as m8, min(c9) OVER w1 as m9 FROM {0} WINDOW
+      w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
+    expect:
+      order: id
+      columns: ["id int","c1 string","m3 int","m4 bigint","m5 float","m6 double","m7 timestamp","m8 date","m9 string"]
+      rows:
+        - [2,"a",3,61,2.1,4.1,1590738991000,"2020-05-02","a"]
+        - [4,"a",8,95,3.5,6.5,1590738993000,"2020-05-04","a"]
+        - [7,"a",17,105,4.5,7.5,1590738996000,"2020-05-07","d"]
+
+  - id: 1
+    desc: batch request with all common columns
+    inputs:
+      -
+        columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"a",1,30,1.0,2.0,1590738990000,"2020-05-01","a"]
+          - [3,"a",3,32,1.2,2.2,1590738992000,"2020-05-03","c"]
+          - [5,"a",5,34,1.4,2.4,1590738994000,"2020-05-05","d"]
+          - [6,"a",6,35,1.5,2.5,1590738995000,"2020-05-06","e"]
+    batch_request:
+        columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string"]
+        indexs: ["index1:c1:c7"]
+        common_column_indices: [0,1,2,3,4,5,6,7,8]
+        rows:
+          - [2,"a",2,31,1.1,2.1,1590738991000,"2020-05-02","b"]
+          - [2,"a",2,31,1.1,2.1,1590738991000,"2020-05-02","b"]
+          - [2,"a",2,31,1.1,2.1,1590738991000,"2020-05-02","b"]
+    sql: |
+      SELECT id, c1, sum(c3) OVER w1 as m3, sum(c4) OVER w1 as m4, sum(c5) OVER w1 as m5,
+            sum(c6) OVER w1 as m6, max(c7) OVER w1 as m7, max(c8) OVER w1 as m8, min(c9) OVER w1 as m9 FROM {0} WINDOW
+      w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
+    expect:
+      columns: ["id int","c1 string","m3 int","m4 bigint","m5 float","m6 double","m7 timestamp","m8 date","m9 string"]
+      rows:
+        - [2,"a",3,61,2.1,4.1,1590738991000,"2020-05-02","a"]
+        - [2,"a",3,61,2.1,4.1,1590738991000,"2020-05-02","a"]
+        - [2,"a",3,61,2.1,4.1,1590738991000,"2020-05-02","a"]
+
+  - id: 2
+    desc: batch request with non-trival common columns
+    inputs:
+      -
+        columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp"]
+        indexs: ["index1:c1:c7", "index2:id:c7"]
+        rows:
+          - [1,"a",1,30,1.0,2.0,1590738990000]
+          - [3,"a",3,32,1.2,2.2,1590738992000]
+          - [5,"a",5,34,1.4,2.4,1590738994000]
+          - [6,"a",6,35,1.5,2.5,1590738995000]
+      -
+        columns : ["id int","timecol timestamp","c8 date","c9 string"]
+        indexs: ["index2:id:timecol"]
+        rows:
+          - [1,1590738990000,"2020-05-01","a"]
+          - [2,1590738991000,"2020-05-02","b"]
+          - [3,1590738992000,"2020-05-03","c"]
+          - [4,1590738993000,"2020-05-04","d"]
+          - [5,1590738994000,"2020-05-05","e"]
+          - [6,1590738995000,"2020-05-06","f"]
+          - [7,1590738996000,"2020-05-07","g"]
+    batch_request:
+        indexs: ["index1:c1:c7"]
+        common_column_indices: [1,3,5]
+        columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp"]
+        rows:
+          - [2,"a",2,31,1.1,2.1,1590738991000]
+          - [4,"a",3,31,1.2,2.1,1590738993000]
+          - [7,"a",4,31,1.3,2.1,1590738996000]
+    sql: |
+      SELECT {0}.id, c1, sum(c3) OVER w1 as m3, sum(c4) OVER w1 as m4, sum(c5) OVER w1 as m5,
+            sum(c6) OVER w1 as m6, max(c7) OVER w1 as m7, max(c8) OVER w1 as m8, min(c9) OVER w1 as m9
+      FROM {0} last join {1} order by {1}.timecol on {0}.id={1}.id and {0}.c7={1}.timecol
+      WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
+    expect:
+      order: id
+      columns: ["id int","c1 string","m3 int","m4 bigint","m5 float","m6 double","m7 timestamp","m8 date","m9 string"]
+      rows:
+        - [2,"a",3,61,2.1,4.1,1590738991000,"2020-05-02","a"]
+        - [4,"a",7,93,3.4,6.3,1590738993000,"2020-05-04","a"]
+        - [7,"a",15,100,4.2,7.0,1590738996000,"2020-05-07","e"]
+      common_column_indices: []
+
+  - id: 3
+    desc: batch request with non-trival output common columns, window is common
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 int","c3 bigint","c4 float","c5 double","c6 timestamp"]
+        indexs: ["index1:c1:c6", "index2:id:c6"]
+        rows:
+          - [1,"a",1,30,1.0,2.0,1590738990000]
+          - [3,"a",3,32,1.2,2.2,1590738992000]
+          - [5,"a",5,34,1.4,2.4,1590738994000]
+          - [6,"a",6,35,1.5,2.5,1590738995000]
+      -
+        columns : ["id int","timecol timestamp","c7 date","c8 string"]
+        indexs: ["index2:id:timecol"]
+        rows:
+          - [1,1590738990000,"2020-05-01","a"]
+          - [2,1590738991000,"2020-05-02","b"]
+          - [3,1590738992000,"2020-05-03","c"]
+          - [4,1590738993000,"2020-05-04","d"]
+          - [5,1590738994000,"2020-05-05","e"]
+          - [6,1590738995000,"2020-05-06","f"]
+          - [7,1590738996000,"2020-05-07","g"]
+    batch_request:
+      indexs: ["index1:c1:c6"]
+      common_column_indices: [1,3,6]
+      columns : ["id int","c1 string","c2 int","c3 bigint","c4 float","c5 double","c6 timestamp"]
+      rows:
+        - [2,"a",2,31,1.1,2.1,1590738996000]
+        - [4,"a",3,31,1.2,2.2,1590738996000]
+        - [7,"a",4,31,1.3,2.3,1590738996000]
+    sql: |
+      SELECT {0}.id, c1 as m1, sum(c2) OVER w1 as m2, sum(c3) OVER w1 as m3, sum(c4) OVER w1 as m4,
+            sum(c5) OVER w1 as m5, max(c6) OVER w1 as m6, max(c7) OVER w1 as m7, min(c8) OVER w1 as m8
+      FROM {0} last join {1} order by {1}.timecol on {0}.id={1}.id and {0}.c6={1}.timecol
+      WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c6 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
+    expect:
+      order: id
+      columns: ["id int","m1 string","m2 int","m3 bigint","m4 float","m5 double","m6 timestamp","m7 date","m8 string"]
+      common_column_indices: [1,3,6]
+      rows:
+        - [2,"a",13,100,4.0,7.0,1590738996000,"2020-05-06","e"]
+        - [4,"a",14,100,4.1,7.1,1590738996000,"2020-05-06","e"]
+        - [7,"a",15,100,4.2,7.2,1590738996000,"2020-05-07","e"]
+
+  - id: 4
+    desc: batch request with non-trival output common columns, join is common and window non-common
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 int","c3 bigint","c4 float","c5 double","c6 timestamp"]
+        indexs: ["index1:c1:c6", "index2:id:c6"]
+        rows:
+          - [1,"a",1,30,1.0,2.0,1590738990000]
+          - [3,"a",3,32,1.2,2.2,1590738992000]
+          - [5,"a",5,34,1.4,2.4,1590738994000]
+          - [6,"a",6,35,1.5,2.5,1590738995000]
+      -
+        columns : ["id int","timecol timestamp","c1 string", "c7 date","c8 string"]
+        indexs: ["index2:c1:timecol"]
+        rows:
+          - [1,1590738990000,"a","2020-05-01","a"]
+          - [2,1590738991000,"a","2020-05-02","b"]
+          - [3,1590738992000,"a","2020-05-03","c"]
+          - [4,1590738993000,"a","2020-05-04","d"]
+          - [5,1590738994000,"a","2020-05-05","e"]
+          - [6,1590738995000,"a","2020-05-06","f"]
+          - [7,1590738996000,"a","2020-05-07","g"]
+    batch_request:
+      indexs: ["index1:c1:c6"]
+      common_column_indices: [1,3]
+      columns : ["id int","c1 string","c2 int","c3 bigint","c4 float","c5 double","c6 timestamp"]
+      rows:
+        - [2,"a",2,31,1.1,2.1,1590738996000]
+        - [4,"a",3,31,1.2,2.2,1590738997000]
+        - [7,"a",4,31,1.3,2.3,1590738998000]
+    sql: |
+      SELECT {0}.id, {0}.c1 as m1, sum(c2) OVER w1 as m2, sum(c3) OVER w1 as m3, sum(c4) OVER w1 as m4,
+            sum(c5) OVER w1 as m5, max(c6) OVER w1 as m6, max(c7) OVER w1 as m7, min(c8) OVER w1 as m8
+      FROM {0} last join {1} order by {1}.timecol on {0}.c1={1}.c1
+      WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c6 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
+    expect:
+      order: id
+      columns: ["id int","m1 string","m2 int","m3 bigint","m4 float","m5 double","m6 timestamp","m7 date","m8 string"]
+      common_column_indices: []
+      rows:
+        - [2,"a",13,100,4.0,7.0,1590738996000,"2020-05-07","g"]
+        - [4,"a",14,100,4.1,7.1,1590738997000,"2020-05-07","g"]
+        - [7,"a",15,100,4.2,7.2,1590738998000,"2020-05-07","g"]
+
+  - id: 5
+    desc: batch request with non-trival output common columns, window and join are common
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 int","c3 bigint","c4 float","c5 double","c6 timestamp"]
+        indexs: ["index1:c1:c6", "index2:id:c6"]
+        rows:
+          - [1,"a",1,30,1.0,2.0,1590738990000]
+          - [3,"a",3,32,1.2,2.2,1590738992000]
+          - [5,"a",5,34,1.4,2.4,1590738994000]
+          - [6,"a",6,35,1.5,2.5,1590738995000]
+      -
+        columns : ["id int","timecol timestamp","c1 string", "c7 date","c8 string"]
+        indexs: ["index2:c1:timecol"]
+        rows:
+          - [1,1590738990000,"a","2020-05-01","a"]
+          - [2,1590738991000,"a","2020-05-02","b"]
+          - [3,1590738992000,"a","2020-05-03","c"]
+          - [4,1590738993000,"a","2020-05-04","d"]
+          - [5,1590738994000,"a","2020-05-05","e"]
+          - [6,1590738995000,"a","2020-05-06","f"]
+          - [7,1590738996000,"a","2020-05-07","g"]
+    batch_request:
+      indexs: ["index1:c1:c6"]
+      common_column_indices: [1,3,6]
+      columns : ["id int","c1 string","c2 int","c3 bigint","c4 float","c5 double","c6 timestamp"]
+      rows:
+        - [2,"a",2,31,1.1,2.1,1590738996000]
+        - [4,"a",3,31,1.2,2.2,1590738996000]
+        - [7,"a",4,31,1.3,2.3,1590738996000]
+    sql: |
+      SELECT {0}.id, {0}.c1 as m1, sum(c2) OVER w1 as m2, sum(c3) OVER w1 as m3, sum(c4) OVER w1 as m4,
+            sum(c5) OVER w1 as m5, max(c6) OVER w1 as m6, max(c7) OVER w1 as m7, min(c8) OVER w1 as m8
+      FROM {0} last join {1} order by {1}.timecol on {0}.c1={1}.c1 and {0}.c6={1}.timecol
+      WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c6 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
+    expect:
+      order: id
+      columns: ["id int","m1 string","m2 int","m3 bigint","m4 float","m5 double","m6 timestamp","m7 date","m8 string"]
+      common_column_indices: [1,3,6,7,8]
+      rows:
+        - [2,"a",13,100,4.0,7.0,1590738996000,"2020-05-07","e"]
+        - [4,"a",14,100,4.1,7.1,1590738996000,"2020-05-07","e"]
+        - [7,"a",15,100,4.2,7.2,1590738996000,"2020-05-07","e"]
+  - id: 6
+    desc: batch request with one common window and one non-common window
+    mode: disk-unsupport
+    inputs:
+      -
+        columns: ["id int","k1 bigint","k2 bigint","k3 timestamp", "k4 timestamp",
+                  "c1 double","c2 double","c3 double","c4 double","c5 double","c6 double"]
+        indexs: ["index1:k1:k3", "index2:k2:k4"]
+        repeat: 10
+        rows:
+          - [1,1,2,1590738990000,1590738990000,1.0,1.0,1.0,1.0,1.0,1.0]
+          - [3,1,2,1590738990000,1590738990000,1.0,1.0,1.0,1.0,1.0,1.0]
+          - [5,1,2,1590738990000,1590738990000,1.0,1.0,1.0,1.0,1.0,1.0]
+          - [6,1,2,1590738990000,1590738990000,1.0,1.0,1.0,1.0,1.0,1.0]
+    batch_request:
+      common_column_indices: [1,3,5,6,7]
+      columns : ["id int","k1 bigint","k2 bigint","k3 timestamp", "k4 timestamp",
+                 "c1 double","c2 double","c3 double","c4 double","c5 double","c6 double"]
+      rows:
+        - [2,1,2,1590738991000,1590738991000,1.0,1.0,1.0,1.0,1.0,1.0]
+        - [4,1,2,1590738991000,1590738991000,1.0,1.0,1.0,1.0,1.0,1.0]
+        - [7,1,2,1590738991000,1590738991000,1.0,1.0,1.0,1.0,1.0,1.0]
+    sql: |
+      SELECT {0}.id, sum(c1) over w1 as m1, sum(c2) over w1 as m2, sum(c3) over w1 as m3,
+             sum(c4) over w2 as m4, sum(c5) over w2 as m5, sum(c6) over w2 as m6
+      FROM {0}
+      WINDOW w1 AS (PARTITION BY {0}.k1 ORDER BY {0}.k3 ROWS_RANGE BETWEEN 20s PRECEDING AND CURRENT ROW),
+             w2 AS (PARTITION BY {0}.k2 ORDER BY {0}.k4 ROWS_RANGE BETWEEN 20s PRECEDING AND CURRENT ROW);
+    expect:
+      success: true
+      order: id
+      columns: [ "id int","m1 double","m2 double","m3 double","m4 double","m5 double","m6 double"]
+      common_column_indices: [1,2,3]
+      rows:
+        - [2, 41.0, 41.0, 41.0, 41.0, 41.0, 41.0]
+        - [4, 41.0, 41.0, 41.0, 41.0, 41.0, 41.0]
+        - [7, 41.0, 41.0, 41.0, 41.0, 41.0, 41.0]
+
+  - id: 7
+    desc: batch request with common window and common and non-common aggregations, window is small
+    mode: disk-unsupport
+    inputs:
+      -
+        columns: ["id int","k1 bigint","k2 timestamp",
+                  "c1 double","c2 double","c3 double",
+                  "c4 double","c5 double","c6 double"]
+        indexs: ["index1:k1:k2",]
+        repeat: 10
+        rows:
+          - [1,1,1590738990000,1.0,1.0,1.0,1.0,1.0,1.0]
+    batch_request:
+      common_column_indices: [1,2,3,5,7]
+      columns : ["id int","k1 bigint","k2 timestamp",
+                 "c1 double","c2 double","c3 double",
+                 "c4 double","c5 double","c6 double"]
+      rows:
+        - [2,1,1590738991000,1.0,1.0,1.0,1.0,1.0,1.0]
+        - [4,1,1590738991000,1.0,1.0,1.0,1.0,1.0,1.0]
+        - [7,1,1590738991000,1.0,1.0,1.0,1.0,1.0,1.0]
+    sql: |
+      SELECT {0}.id, sum(c1) over w1 as m1, sum(c2) over w1 as m2, sum(c3) over w1 as m3,
+             sum(c4) over w1 as m4, sum(c5) over w1 as m5, sum(c6) over w1 as m6
+      FROM {0}
+      WINDOW w1 AS (PARTITION BY {0}.k1 ORDER BY {0}.k2 ROWS_RANGE BETWEEN 20s PRECEDING AND CURRENT ROW);
+    expect:
+      success: true
+      order: id
+      common_column_indices: [1,3,5]
+      columns: [ "id int","m1 double","m2 double","m3 double","m4 double","m5 double","m6 double"]
+      rows:
+        - [2, 11.0, 11.0, 11.0, 11.0, 11.0, 11.0]
+        - [4, 11.0, 11.0, 11.0, 11.0, 11.0, 11.0]
+        - [7, 11.0, 11.0, 11.0, 11.0, 11.0, 11.0]
+
+  - id: 8
+    desc: batch request with one common window and one non-common window, current time == history time
+    mode: disk-unsupport
+    inputs:
+      -
+        columns: ["id int","k1 bigint","k2 bigint","k3 timestamp", "k4 timestamp",
+                  "c1 double","c2 double","c3 double","c4 double","c5 double","c6 double"]
+        indexs: ["index1:k1:k3", "index2:k2:k4"]
+        repeat: 10
+        rows:
+          - [1,1,2,1590738990000,1590738990000,1.0,1.0,1.0,1.0,1.0,1.0]
+          - [3,1,2,1590738990000,1590738990000,1.0,1.0,1.0,1.0,1.0,1.0]
+          - [5,1,2,1590738990000,1590738990000,1.0,1.0,1.0,1.0,1.0,1.0]
+          - [6,1,2,1590738990000,1590738990000,1.0,1.0,1.0,1.0,1.0,1.0]
+    batch_request:
+      columns : ["id int","k1 bigint","k2 bigint","k3 timestamp", "k4 timestamp",
+                 "c1 double","c2 double","c3 double","c4 double","c5 double","c6 double"]
+      rows:
+        - [2,1,2,1590738990000,1590738990000,1.0,1.0,1.0,1.0,1.0,1.0]
+    sql: |
+      SELECT {0}.id, sum(c1) over w1 as m1, sum(c2) over w1 as m2, sum(c3) over w1 as m3,
+             sum(c4) over w2 as m4, sum(c5) over w2 as m5, sum(c6) over w2 as m6
+      FROM {0}
+      WINDOW w1 AS (PARTITION BY {0}.k1 ORDER BY {0}.k3 ROWS BETWEEN 10 PRECEDING AND CURRENT ROW),
+             w2 AS (PARTITION BY {0}.k2 ORDER BY {0}.k4 ROWS BETWEEN 20 PRECEDING AND CURRENT ROW);
+    expect:
+      success: true
+      order: id
+      columns: [ "id int","m1 double","m2 double","m3 double","m4 double","m5 double","m6 double"]
+      rows:
+        - [2, 11.0, 11.0, 11.0, 21.0, 21.0, 21.0]

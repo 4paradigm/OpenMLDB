@@ -17,7 +17,6 @@ package com._4paradigm.openmldb.java_sdk_test.executor;
 
 
 import com._4paradigm.openmldb.test_common.bean.OpenMLDBResult;
-import com._4paradigm.openmldb.test_common.common.LogProxy;
 import com._4paradigm.openmldb.test_common.model.SQLCase;
 import com._4paradigm.openmldb.test_common.model.SQLCaseType;
 import lombok.extern.slf4j.Slf4j;
@@ -33,7 +32,7 @@ import java.util.List;
 @Slf4j
 public abstract class BaseExecutor implements IExecutor{
 //    protected static final log log = new LogProxy(log);
-    protected SQLCase fesqlCase;
+    protected SQLCase sqlCase;
     protected SQLCaseType executorType;
     protected String dbName;
     protected List<String> tableNames = Lists.newArrayList();
@@ -43,13 +42,13 @@ public abstract class BaseExecutor implements IExecutor{
     public void run() {
         String className = Thread.currentThread().getStackTrace()[2].getClassName();
         String methodName = Thread.currentThread().getStackTrace()[2].getMethodName();
-        System.out.println(className+"."+methodName+":"+fesqlCase.getCaseFileName()+":"+fesqlCase.getDesc() + " Begin!");
-        log.info(className+"."+methodName+":"+fesqlCase.getDesc() + " Begin!");
+        System.out.println(className+"."+methodName+":"+ sqlCase.getCaseFileName()+":"+ sqlCase.getDesc() + " Begin!");
+        log.info(className+"."+methodName+":"+ sqlCase.getDesc() + " Begin!");
         boolean verify = false;
         try {
             verify = verify();
             if(!verify) return;
-            if (null == fesqlCase) {
+            if (null == sqlCase) {
                 Assert.fail("executor run with null case");
                 return;
             }
@@ -58,13 +57,13 @@ public abstract class BaseExecutor implements IExecutor{
             check();
         } catch (Exception e) {
             e.printStackTrace();
-            System.out.println(className+"."+methodName+":"+fesqlCase.getDesc() + " FAIL!");
+            System.out.println(className+"."+methodName+":"+ sqlCase.getDesc() + " FAIL!");
             Assert.fail("executor run with exception");
         }finally {
             if(verify) {
                 tearDown();
             }
-            System.out.println(className+"."+methodName+":"+fesqlCase.getDesc() + " DONE!");
+            System.out.println(className+"."+methodName+":"+ sqlCase.getDesc() + " DONE!");
         }
     }
 }

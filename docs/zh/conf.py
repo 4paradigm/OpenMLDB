@@ -124,3 +124,19 @@ master_doc = "index"
 html_static_path = []
 
 html_logo = "about/images/openmldb_logo.png"
+
+
+# ================================== #
+# sphinx multiversion configuration  #
+# ================================== #
+
+# Whitelist pattern for tags (set to None to ignore all tags)
+# no tags included
+smv_tag_whitelist = None
+
+# Whitelist pattern for branches (set to None to ignore all branches)
+# include branch that is main or v{X}.{Y}
+smv_branch_whitelist = r"^(main|v\d+\.\d+)$"
+
+# allow remote origin or upstream
+smv_remote_whitelist = r"^(origin|upstream)$"

@@ -34,16 +34,16 @@ public class DDLHandler extends AbstractSQLHandler{
 
     @Override
     public OpenMLDBResult onHandle(OpenMLDBInfo openMLDBInfo, String dbName, String sql) {
-        OpenMLDBResult fesqlResult = new OpenMLDBResult();
+        OpenMLDBResult openMLDBResult = new OpenMLDBResult();
         List<String> result = OpenMLDBCommandFactory.runNoInteractive(openMLDBInfo,dbName,sql);
-        fesqlResult.setMsg(Joiner.on("\n").join(result));
-        fesqlResult.setOk(CommandResultUtil.success(result));
-        fesqlResult.setDbName(dbName);
+        openMLDBResult.setMsg(Joiner.on("\n").join(result));
+        openMLDBResult.setOk(CommandResultUtil.success(result));
+        openMLDBResult.setDbName(dbName);
         if(sql.toLowerCase().startsWith("create index")){
             // TODO 希望有更好的解决方案
             Tool.sleep(10000);
         }
-        return fesqlResult;
+        return openMLDBResult;
     }
 
 }

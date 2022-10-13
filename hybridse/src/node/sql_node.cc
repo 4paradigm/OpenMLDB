@@ -2565,7 +2565,7 @@ void DistributionsNode::Print(std::ostream &output, const std::string &org_tab) 
     SqlNode::Print(output, org_tab);
     const std::string tab = org_tab + INDENT + SPACE_ED;
     output << "\n";
-    PrintSqlVector(output, tab, distribution_list_->GetList(), "distribution_list", true);
+    PrintSqlVector(output, tab, distribution_list_, "distribution_list", true);
 }
 
 void CreateSpStmt::Print(std::ostream &output, const std::string &org_tab) const {

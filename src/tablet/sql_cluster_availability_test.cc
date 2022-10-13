@@ -18,7 +18,7 @@
 #include <gflags/gflags.h>
 #include <unistd.h>
 
-#include "base/glog_wapper.h"
+#include "base/glog_wrapper.h"
 #include "client/ns_client.h"
 #include "common/timer.h"
 #include "gtest/gtest.h"
@@ -35,13 +35,10 @@ DECLARE_string(zk_cluster);
 DECLARE_string(zk_root_path);
 DECLARE_int32(zk_session_timeout);
 DECLARE_int32(request_timeout_ms);
-DECLARE_int32(request_timeout_ms);
-DECLARE_bool(binlog_notify_on_put);
 DECLARE_bool(auto_failover);
 DECLARE_uint32(system_table_replica_num);
 
 using ::openmldb::nameserver::NameServerImpl;
-using ::openmldb::zk::ZkClient;
 
 namespace openmldb {
 namespace tablet {
@@ -49,13 +46,6 @@ namespace tablet {
 inline std::string GenRand() {
     return std::to_string(rand() % 10000000 + 1);  // NOLINT
 }
-
-class MockClosure : public ::google::protobuf::Closure {
- public:
-    MockClosure() {}
-    ~MockClosure() {}
-    void Run() {}
-};
 
 class SqlClusterTest : public ::testing::Test {
  public:

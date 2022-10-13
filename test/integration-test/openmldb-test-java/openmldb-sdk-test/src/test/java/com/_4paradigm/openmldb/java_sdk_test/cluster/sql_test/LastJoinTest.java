@@ -36,25 +36,25 @@ public class LastJoinTest extends OpenMLDBTest {
 
      @Story("batch")
      @Test(dataProvider = "getCase",enabled = false)
-     @Yaml(filePaths = {"function/join/"})
+     @Yaml(filePaths = {"integration_test/join/"})
      public void testLastJoin(SQLCase testCase) throws Exception {
          ExecutorFactory.build(executor,testCase, SQLCaseType.kBatch).run();
      }
     @Story("request")
     @Test(dataProvider = "getCase")
-    @Yaml(filePaths = {"function/join/"})
+    @Yaml(filePaths = {"integration_test/join/"})
     public void testLastJoinRequestMode(SQLCase testCase) throws Exception {
         ExecutorFactory.build(executor,testCase, SQLCaseType.kRequest).run();
     }
     @Story("requestWithSp")
      @Test(dataProvider = "getCase")
-    @Yaml(filePaths = {"function/join/"})
+    @Yaml(filePaths = {"integration_test/join/"})
     public void testLastJoinRequestModeWithSp(SQLCase testCase) throws Exception {
         ExecutorFactory.build(executor,testCase, SQLCaseType.kRequestWithSp).run();
     }
     @Story("requestWithSpAysn")
      @Test(dataProvider = "getCase")
-    @Yaml(filePaths = {"function/join/"})
+    @Yaml(filePaths = {"integration_test/join/"})
     public void testLastJoinRequestModeWithSpAsync(SQLCase testCase) throws Exception {
         ExecutorFactory.build(executor,testCase, SQLCaseType.kRequestWithSpAsync).run();
     }

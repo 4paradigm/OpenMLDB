@@ -36,12 +36,12 @@ public class QueryHandler extends AbstractSQLHandler{
 
     @Override
     public OpenMLDBResult onHandle(OpenMLDBInfo openMLDBInfo, String dbName, String sql) {
-        OpenMLDBResult fesqlResult = new OpenMLDBResult();
+        OpenMLDBResult openMLDBResult = new OpenMLDBResult();
         List<String> result = OpenMLDBCommandFactory.runNoInteractive(openMLDBInfo,dbName,sql);
         boolean ok = CommandResultUtil.success(result);
-        fesqlResult.setMsg(Joiner.on("\n").join(result));
-        fesqlResult.setOk(ok);
-        fesqlResult.setDbName(dbName);
+        openMLDBResult.setMsg(Joiner.on("\n").join(result));
+        openMLDBResult.setOk(ok);
+        openMLDBResult.setDbName(dbName);
         if (ok) {
             int count = 0;
             List<List<Object>> rows = new ArrayList<>();
@@ -52,11 +52,11 @@ public class QueryHandler extends AbstractSQLHandler{
                     List<Object> row = Arrays.asList(result.get(i).split("\\s+"));
                     rows.add(row);
                 }
-                fesqlResult.setColumnNames(columnNames);
+                openMLDBResult.setColumnNames(columnNames);
             }
-            fesqlResult.setCount(count);
-            fesqlResult.setResult(rows);
+            openMLDBResult.setCount(count);
+            openMLDBResult.setResult(rows);
         }
-        return fesqlResult;
+        return openMLDBResult;
     }
 }

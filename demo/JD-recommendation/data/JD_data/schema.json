@@ -1,0 +1,173 @@
+{
+  "tableInfo": {
+    "action": [
+      {
+        "name": "reqId",
+        "type": "string"
+      },
+      {
+        "name": "eventTime",
+        "type": "timestamp"
+      },
+      {
+        "name": "ingestionTime",
+        "type": "timestamp"
+      },
+      {
+        "name": "actionValue",
+        "type": "int"
+      }
+    ],
+    "flattenRequest": [
+      {
+        "name": "reqId",
+        "type": "string"
+      },
+      {
+        "name": "eventTime",
+        "type": "timestamp"
+      },
+      {
+        "name": "main_id",
+        "type": "string"
+      },
+      {
+        "name": "pair_id",
+        "type": "string"
+      },
+      {
+        "name": "user_id",
+        "type": "string"
+      },
+      {
+        "name": "sku_id",
+        "type": "string"
+      },
+      {
+        "name": "time",
+        "type": "bigint"
+      },
+      {
+        "name": "split_id",
+        "type": "int"
+      },
+      {
+        "name": "time1",
+        "type": "string"
+      }
+    ],
+    "bo_user": [
+      {
+        "name": "ingestionTime",
+        "type": "timestamp"
+      },
+      {
+        "name": "user_id",
+        "type": "string"
+      },
+      {
+        "name": "age",
+        "type": "string"
+      },
+      {
+        "name": "sex",
+        "type": "string"
+      },
+      {
+        "name": "user_lv_cd",
+        "type": "string"
+      },
+      {
+        "name": "user_reg_tm",
+        "type": "bigint"
+      }
+    ],
+    "bo_action": [
+      {
+        "name": "ingestionTime",
+        "type": "timestamp"
+      },
+      {
+        "name": "pair_id",
+        "type": "string"
+      },
+      {
+        "name": "time",
+        "type": "bigint"
+      },
+      {
+        "name": "model_id",
+        "type": "string"
+      },
+      {
+        "name": "type",
+        "type": "string"
+      },
+      {
+        "name": "cate",
+        "type": "string"
+      },
+      {
+        "name": "br",
+        "type": "string"
+      }
+    ],
+    "bo_product": [
+      {
+        "name": "ingestionTime",
+        "type": "timestamp"
+      },
+      {
+        "name": "sku_id",
+        "type": "string"
+      },
+      {
+        "name": "a1",
+        "type": "string"
+      },
+      {
+        "name": "a2",
+        "type": "string"
+      },
+      {
+        "name": "a3",
+        "type": "string"
+      },
+      {
+        "name": "cate",
+        "type": "string"
+      },
+      {
+        "name": "br",
+        "type": "string"
+      }
+    ],
+    "bo_comment": [
+      {
+        "name": "ingestionTime",
+        "type": "timestamp"
+      },
+      {
+        "name": "dt",
+        "type": "bigint"
+      },
+      {
+        "name": "sku_id",
+        "type": "string"
+      },
+      {
+        "name": "comment_num",
+        "type": "int"
+      },
+      {
+        "name": "has_bad_comment",
+        "type": "string"
+      },
+      {
+        "name": "bad_comment_rate",
+        "type": "float"
+      }
+    ]
+  }
+}
+

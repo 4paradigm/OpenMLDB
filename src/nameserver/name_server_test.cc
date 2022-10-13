@@ -20,7 +20,7 @@
 #include <unistd.h>
 
 #include "base/file_util.h"
-#include "base/glog_wapper.h"
+#include "base/glog_wrapper.h"
 #include "client/ns_client.h"
 #include "common/timer.h"
 #include "gtest/gtest.h"
@@ -130,7 +130,6 @@ bool CreateDB(::openmldb::RpcClient<::openmldb::nameserver::NameServer_Stub>& na
 TEST_P(NameServerImplTest, MakesnapshotTask) {
     openmldb::common::StorageMode storage_mode = GetParam();
 
-    FLAGS_zk_cluster = "127.0.0.1:6181";
     int32_t old_offset = FLAGS_make_snapshot_threshold_offset;
     FLAGS_make_snapshot_threshold_offset = 0;
     FLAGS_zk_root_path = "/rtidb3" + ::openmldb::test::GenRand();
@@ -297,7 +296,6 @@ TEST_P(NameServerImplTest, MakesnapshotTask) {
 }
 
 TEST_F(NameServerImplTest, ConfigGetAndSet) {
-    FLAGS_zk_cluster = "127.0.0.1:6181";
     FLAGS_zk_root_path = "/rtidb3" + ::openmldb::test::GenRand();
 
     std::string endpoint = "127.0.0.1:9631";
@@ -361,7 +359,6 @@ TEST_F(NameServerImplTest, ConfigGetAndSet) {
 TEST_P(NameServerImplTest, CreateTable) {
     openmldb::common::StorageMode storage_mode = GetParam();
 
-    FLAGS_zk_cluster = "127.0.0.1:6181";
     FLAGS_zk_root_path = "/rtidb3" + ::openmldb::test::GenRand();
 
     FLAGS_endpoint = "127.0.0.1:9632";
@@ -449,7 +446,6 @@ TEST_P(NameServerImplTest, CreateTable) {
 TEST_P(NameServerImplTest, Offline) {
     openmldb::common::StorageMode storage_mode = GetParam();
 
-    FLAGS_zk_cluster = "127.0.0.1:6181";
     FLAGS_zk_root_path = "/rtidb3" + ::openmldb::test::GenRand();
     FLAGS_auto_failover = true;
     FLAGS_endpoint = "127.0.0.1:9633";
@@ -584,7 +580,6 @@ TEST_P(NameServerImplTest, Offline) {
 }
 
 TEST_F(NameServerImplTest, SetTablePartition) {
-    FLAGS_zk_cluster = "127.0.0.1:6181";
     FLAGS_zk_root_path = "/rtidb3" + ::openmldb::test::GenRand();
 
     FLAGS_endpoint = "127.0.0.1:9632";
@@ -702,7 +697,6 @@ TEST_F(NameServerImplTest, SetTablePartition) {
 }
 
 TEST_F(NameServerImplTest, CancelOP) {
-    FLAGS_zk_cluster = "127.0.0.1:6181";
     FLAGS_zk_root_path = "/rtidb3" + ::openmldb::test::GenRand();
 
     FLAGS_endpoint = "127.0.0.1:9632";
@@ -853,7 +847,6 @@ TEST_F(NameServerImplTest, AddAndRemoveReplicaCluster) {
     vector<shared_ptr<TabletImpl>*> tb_vector = {&m1_t1, &m1_t2};
     vector<string*> endpoints = {&m1_ns1_ep, &m1_ns2_ep};
 
-    FLAGS_zk_cluster = "127.0.0.1:6181";
     int port = 9632;
     InitNs(port, svrs, ns_vector, endpoints);
     m1_zkpath = FLAGS_zk_root_path;
@@ -1019,7 +1012,6 @@ TEST_F(NameServerImplTest, SyncTableReplicaCluster) {
     vector<shared_ptr<TabletImpl>*> tb_vector = {&m1_t1, &m1_t2};
     vector<string*> endpoints = {&m1_ns1_ep, &m1_ns2_ep};
 
-    FLAGS_zk_cluster = "127.0.0.1:6181";
     int port = 9642;
     InitNs(port, svrs, ns_vector, endpoints);
     m1_zkpath = FLAGS_zk_root_path;
@@ -1160,7 +1152,6 @@ TEST_F(NameServerImplTest, SyncTableReplicaCluster) {
 }
 
 TEST_F(NameServerImplTest, ShowCatalogVersion) {
-    FLAGS_zk_cluster = "127.0.0.1:6181";
     FLAGS_zk_root_path = "/rtidb3" + ::openmldb::test::GenRand();
 
     brpc::ServerOptions options;
@@ -1255,6 +1246,43 @@ TEST_F(NameServerImplTest, ShowCatalogVersion) {
 INSTANTIATE_TEST_CASE_P(TabletMemAndHDD, NameServerImplTest,
                         ::testing::Values(::openmldb::common::kMemory, ::openmldb::common::kHDD));
 
+TEST_F(NameServerImplTest, AddField) {
+    FLAGS_zk_root_path = "/rtidb3" + ::openmldb::test::GenRand();
+
+    brpc::ServerOptions options;
+    brpc::Server server;
+    ASSERT_TRUE(StartNS("127.0.0.1:9634", &server, &options));
+    auto ns_client = std::make_shared<openmldb::client::NsClient>("127.0.0.1:9634", "127.0.0.1:9634");
+    ns_client->Init();
+
+    brpc::ServerOptions options1;
+    brpc::Server server1;
+    ASSERT_TRUE(StartTablet("127.0.0.1:9535", &server1, &options1));
+
+    std::string db_name = "db1";
+    std::string msg;
+    ASSERT_TRUE(ns_client->CreateDatabase(db_name, msg, true));
+    std::string name = "test" + ::openmldb::test::GenRand();
+    TableInfo table_info;
+    table_info.set_name(name);
+    table_info.set_db(db_name);
+    ::openmldb::test::AddDefaultSchema(0, 0, ::openmldb::type::kAbsoluteTime, &table_info);
+    ASSERT_TRUE(ns_client->CreateTable(table_info, true, msg));
+    ::openmldb::common::ColumnDesc col;
+    col.set_name("add_col");
+    col.set_data_type(::openmldb::type::DataType::kString);
+    ASSERT_TRUE(ns_client->Use(db_name, msg));
+    ASSERT_TRUE(ns_client->AddTableField(name, col, msg));
+    std::vector<::openmldb::nameserver::TableInfo> tables;
+    ASSERT_TRUE(ns_client->ShowTable(name, tables, msg));
+    ASSERT_EQ(tables.size(), 1);
+    const auto& table_info1 = tables[0];
+    ASSERT_EQ(table_info1.added_column_desc_size(), 1);
+    ASSERT_EQ(table_info1.schema_versions_size(), 1);
+    ASSERT_EQ(table_info1.schema_versions(0).id(), 2);
+    ASSERT_EQ(table_info1.schema_versions(0).field_count(), 3);
+}
+
 }  // namespace nameserver
 }  // namespace openmldb
 
@@ -1264,6 +1292,7 @@ int main(int argc, char** argv) {
     srand(time(NULL));
     ::openmldb::base::SetLogLevel(INFO);
     ::google::ParseCommandLineFlags(&argc, &argv, true);
+    FLAGS_zk_cluster = "127.0.0.1:6181";
     FLAGS_db_root_path = "/tmp/" + ::openmldb::test::GenRand();
     FLAGS_ssd_root_path = "/tmp/ssd/" + ::openmldb::test::GenRand();
     FLAGS_hdd_root_path = "/tmp/hdd/" + ::openmldb::test::GenRand();

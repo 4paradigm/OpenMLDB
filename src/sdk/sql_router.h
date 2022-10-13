@@ -38,9 +38,15 @@ namespace openmldb {
 namespace sdk {
 
 struct BasicRouterOptions {
+    virtual ~BasicRouterOptions() = default;
     bool enable_debug = false;
-    uint32_t max_sql_cache_size = 10;
+    uint32_t max_sql_cache_size = 50;
+    // == gflag `request_timeout` default value(no gflags here cuz swig)
     uint32_t request_timeout = 60000;
+    // default 0(INFO), INFO, WARNING, ERROR, and FATAL are 0, 1, 2, and 3
+    int glog_level = 0;
+    // empty means to stderr
+    std::string glog_dir = "";
 };
 
 struct SQLRouterOptions : BasicRouterOptions {
@@ -48,6 +54,8 @@ struct SQLRouterOptions : BasicRouterOptions {
     std::string zk_path;
     uint32_t zk_session_timeout = 2000;
     std::string spark_conf_path;
+    uint32_t zk_log_level = 3;  // PY/JAVA SDK default info log
+    std::string zk_log_file;
 };
 
 struct StandaloneOptions : BasicRouterOptions {
@@ -137,6 +145,10 @@ class SQLRouter {
                                                                  int offline_job_timeout,
                                                                  hybridse::sdk::Status* status) = 0;
 
+    virtual std::shared_ptr<hybridse::sdk::ResultSet> ExecuteSQL(
+        const std::string& db, const std::string& sql, std::shared_ptr<openmldb::sdk::SQLRequestRow> parameter,
+        bool is_online_mode, bool is_sync_job, int offline_job_timeout, hybridse::sdk::Status* status) = 0;
+
     virtual std::shared_ptr<hybridse::sdk::ResultSet> ExecuteSQLParameterized(
         const std::string& db, const std::string& sql, std::shared_ptr<openmldb::sdk::SQLRequestRow> parameter,
         hybridse::sdk::Status* status) = 0;
@@ -180,11 +192,9 @@ class SQLRouter {
     virtual ::openmldb::base::Status ShowJobs(const bool only_unfinished,
                                               std::vector<::openmldb::taskmanager::JobInfo>* job_infos) = 0;
 
-    virtual ::openmldb::base::Status ShowJob(const int id,
-                                             ::openmldb::taskmanager::JobInfo* job_info) = 0;
+    virtual ::openmldb::base::Status ShowJob(const int id, ::openmldb::taskmanager::JobInfo* job_info) = 0;
 
-    virtual ::openmldb::base::Status StopJob(const int id,
-                                             ::openmldb::taskmanager::JobInfo* job_info) = 0;
+    virtual ::openmldb::base::Status StopJob(const int id, ::openmldb::taskmanager::JobInfo* job_info) = 0;
 
     virtual std::shared_ptr<hybridse::sdk::ResultSet> ExecuteOfflineQuery(const std::string& db, const std::string& sql,
                                                                           bool is_sync_job, int job_timeout,
@@ -240,11 +250,20 @@ std::shared_ptr<SQLRouter> NewStandaloneSQLRouter(const StandaloneOptions& optio
  *      ]
  */
 // TODO(hw): support multi db
+// All types should be convertible in swig, so we use vector&pair, not map
 std::vector<std::string> GenDDL(
     const std::string& sql,
     const std::vector<std::pair<std::string, std::vector<std::pair<std::string, hybridse::sdk::DataType>>>>& schemas);
 
 std::shared_ptr<hybridse::sdk::Schema> GenOutputSchema(
+    const std::string& sql,
+    const std::vector<std::pair<std::string, std::vector<std::pair<std::string, hybridse::sdk::DataType>>>>& schemas);
+
+std::vector<std::string> ValidateSQLInBatch(
+    const std::string& sql,
+    const std::vector<std::pair<std::string, std::vector<std::pair<std::string, hybridse::sdk::DataType>>>>& schemas);
+
+std::vector<std::string> ValidateSQLInRequest(
     const std::string& sql,
     const std::vector<std::pair<std::string, std::vector<std::pair<std::string, hybridse::sdk::DataType>>>>& schemas);
 

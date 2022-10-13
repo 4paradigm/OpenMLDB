@@ -26,26 +26,45 @@ namespace catalog {
 
 SDKTableHandler::SDKTableHandler(const ::openmldb::nameserver::TableInfo& meta, const ClientManager& client_manager)
     : meta_(meta),
-      schema_(),
+      schema_map_(),
       name_(meta.name()),
       db_(meta.db()),
       table_client_manager_(std::make_shared<TableClientManager>(meta.table_partition(), client_manager)) {}
 
 bool SDKTableHandler::Init() {
-    bool ok = schema::SchemaAdapter::ConvertSchema(meta_.column_desc(), &schema_);
+    auto schema = std::make_shared<::hybridse::vm::Schema>();
+    bool ok = schema::SchemaAdapter::ConvertSchema(meta_.column_desc(), schema.get());
     if (!ok) {
         LOG(WARNING) << "fail to covert schema to sql schema";
         return false;
     }
+    schema_map_.emplace(1, schema);
+    if (meta_.added_column_desc_size() > 0) {
+        auto added_schema = std::make_shared<::hybridse::vm::Schema>();
+        bool ok = schema::SchemaAdapter::ConvertSchema(meta_.added_column_desc(), added_schema.get());
+        if (!ok) {
+            LOG(WARNING) << "fail to covert schema to sql schema";
+            return false;
+        }
+        for (int idx = 0; idx < meta_.schema_versions_size(); idx++) {
+            auto new_schema = std::make_shared<::hybridse::vm::Schema>(*schema);
+            for (int pos = 0; pos < meta_.schema_versions(idx).field_count() - meta_.column_desc_size(); pos++) {
+                auto new_column = new_schema->Add();
+                new_column->CopyFrom(added_schema->Get(pos));
+            }
+            schema_map_.emplace(meta_.schema_versions(idx).id(), new_schema);
+        }
+    }
 
     // init types var
-    for (int32_t i = 0; i < schema_.size(); i++) {
-        const ::hybridse::type::ColumnDef& column = schema_.Get(i);
+    auto cur_schema = schema_map_.rbegin()->second;
+    for (int32_t i = 0; i < cur_schema->size(); i++) {
+        const ::hybridse::type::ColumnDef& column = cur_schema->Get(i);
         ::hybridse::vm::ColInfo col_info;
         col_info.type = column.type();
         col_info.idx = i;
         col_info.name = column.name();
-        types_.insert(std::make_pair(column.name(), col_info));
+        types_.emplace(column.name(), col_info);
     }
 
     // init index hint

@@ -25,7 +25,7 @@
 7. [使用案例](#7-使用案例)
 8. [OpenMLDB 文档](#8-openmldb-文档)
 9. [Roadmap](#9-roadmap)
-10. [社区开发者](#10-社区开发者)
+10. [社区贡献](#10-社区贡献)
 11. [加入社区](#11-加入社区)
 12. [学术论文](#12-学术论文)
 13. [用户列表](#13-用户列表)
@@ -102,7 +102,11 @@ OpenMLDB 有两种部署模式：集群版（cluster version）和单机版（st
 | [出租车行程时间预测](https://openmldb.ai/docs/zh/main/use_case/taxi_tour_duration_prediction.html) | OpenMLDB, LightGBM                                           | 这是个来自 Kaggle 的挑战，用于预测纽约市的出租车行程时间。你可以从这里阅读更多关于[该应用场景的描述](https://www.kaggle.com/c/nyc-taxi-trip-duration/)。本案例展示使用 OpenMLDB + LightGBM 的开源方案，快速搭建完整的机器学习应用。 |
 | [使用 Pulsar connector 接入实时数据流](https://openmldb.ai/docs/zh/main/use_case/pulsar_openmldb_connector_demo.html) | OpenMLDB, Pulsar, [OpenMLDB-Pulsar connector](https://github.com/apache/pulsar/tree/master/pulsar-io/jdbc/openmldb) | Apache Pulsar 是一个高性能的云原生的消息队列平台，基于  OpenMLDB-Pulsar connector，我们可以高效的将 Pulsar 的数据流作为 OpenMLDB 的在线数据源，实现两者的无缝整合。 |
 | [使用 Kafka connector 接入实时数据流](https://openmldb.ai/docs/zh/main/use_case/kafka_connector_demo.html) | OpenMLDB, Kafka, [OpenMLDB-Kafka connector](https://github.com/4paradigm/OpenMLDB/tree/main/extensions/kafka-connect-jdbc) | Apache Kafka 是一个分布式消息流平台。基于 OpenMLDB-Kafka connector，实时数据流可以被简单的引入到 OpenMLDB 作为在线数据源。 |
-| [构建端到端的机器学习工作流](https://openmldb.ai/docs/zh/main/use_case/dolphinscheduler_task_demo.html) | OpenMLDB, DolphinScheduler, [OpenMLDB task plugin](https://dolphinscheduler.apache.org/zh-cn/docs/dev/user_doc/guide/task/openmldb.html) | 这个案例新演示了基于 OpenMLDB 和 DolphinScheduler（一个开源的工作流任务调度平台）来构建一个完整的机器学习工作流，包括了特征工程、模型训练，以及部署上线。 |
+| [在 DolphinScheduler 中构建端到端的机器学习工作流](https://openmldb.ai/docs/zh/main/use_case/dolphinscheduler_task_demo.html) | OpenMLDB, DolphinScheduler, [OpenMLDB task plugin](https://dolphinscheduler.apache.org/zh-cn/docs/dev/user_doc/guide/task/openmldb.html) | 这个案例新演示了基于 OpenMLDB 和 DolphinScheduler（一个开源的工作流任务调度平台）来构建一个完整的机器学习工作流，包括了特征工程、模型训练，以及部署上线。 |
+| [在线广告点击欺诈检测](https://openmldb.ai/docs/zh/main/use_case/talkingdata_demo.html) | OpenMLDB, XGBoost                                            | 该案例演示了基于 OpenMLDB 以及 XGBoost 去构建一个[在线广告反欺诈的应用](https://www.kaggle.com/c/talkingdata-adtracking-fraud-detection/)。 |
+| [基于 SQL 构建机器学习全流程](https://openmldb.ai/docs/zh/main/use_case/OpenMLDB_Byzer_taxi.html) | OpenMLDB, Byzer, [OpenMLDB Plugin for Byzer](https://github.com/byzer-org/byzer-extension/tree/master/byzer-openmldb) | Byzer 是一门面向 Data 和 AI 的低代码、云原生的开源编程语言。Byzer 已经把 OpenMLDB 整合在内，用来一起构建完整的机器学习应用全流程。 |
+| [在 Airflow 中构建机器学习应用](https://openmldb.ai/docs/zh/main/use_case/airflow_provider_demo.html) | OpenMLDB, Airflow, [Airflow OpenMLDB Provider](https://github.com/4paradigm/OpenMLDB/tree/main/extensions/airflow-provider-openmldb), XGBoost | Airflow 是一个流行的工作流编排和管理软件。该案例展示了如何在 Airflow 内，通过提供的 provder package，来方便的编排基于 OpenMLDB 的机器学习任务。 |
+| [精准营销](https://openmldb.ai/docs/zh/main/use_case/JD_recommendation.html) | OpenMLDB, OneFlow                                            | OneFlow 是一个用户友好、可扩展、高效的深度学习框架。改案例展示了如何使用 OpenMLDB 做特征工程，串联 OneFlow 进行模型训练和预测，来构造一个用于[精准营销的机器学习应用](https://jdata.jd.com/html/detail.html?id=1)。 |
 
 ## 8. OpenMLDB 文档
 
@@ -121,7 +125,7 @@ OpenMLDB 有两种部署模式：集群版（cluster version）和单机版（st
 - 基于异构存储和异构计算资源进行优化
 - 轻量级 edge 版本
 
-## 10. 社区开发者
+## 10. 社区贡献
 
 我们非常感谢来自社区的贡献。
 
@@ -129,12 +133,6 @@ OpenMLDB 有两种部署模式：集群版（cluster version）和单机版（st
 - 如果你是一位新加入的贡献者，你可以从我们的这个 [good first issue](https://github.com/4paradigm/OpenMLDB/issues?q=is%3Aopen+is%3Aissue+label%3A%22good+first+issue%22) 列表开始。
 - 如果你是有一定的开发经验，可以查找 [call-for-contributions](https://github.com/4paradigm/OpenMLDB/issues?q=is%3Aopen+is%3Aissue+label%3Acall-for-contributions) 标签的 issues。
 - 也可以阅读我们[这个文档](https://go005qabor.feishu.cn/docs/doccn7oEU0AlCOGtYz09chIebzd)来了解不同层级的开发任务，参与和开发者讨论
-
-为我们已有的社区贡献者鼓掌表示感谢 :clap: 
-
-<a href="https://github.com/4paradigm/openmldb/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=4paradigm/openmldb" width=600/>
-</a>
 
 ## 11. 加入社区
 

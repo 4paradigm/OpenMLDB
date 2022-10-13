@@ -1,0 +1,172 @@
+# Copyright 2021 4Paradigm
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+db: test_zw
+debugs: []
+version: 0.5.0
+cases:
+  -
+    id: 0
+    desc: 简单rows window
+    inputs:
+      -
+        columns: ["id int", "c1 string","c6 double","c7 timestamp"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1, "aa", 1.0, 1590738990000]
+          - [2, "aa", 2.0, 1590738991000]
+          - [3, "aa", 3.0, 1590738992000]
+          - [4, "aa", 4.0, 1590738993000]
+          - [5, "bb", 5.0, 1590738994000]
+          - [6, "bb", 6.0, 1590738995000]
+          - [7, "bb", 7.0, 1590738996000]
+          - [8, "bb", 8.0, 1590738997000]
+          - [9, "bb", 9.0, 1590738998000]
+          - [10, "cc", 1.0, 1590738993000]
+          - [11, "cc", 2.0, 1590738994000 ]
+          - [12, "cc", 3.0, 1590738995000 ]
+          - [13, "cc", 4.0, 1590738996000 ]
+          - [14, "cc", 5.0, 1590738997000 ]
+          - [15, "dd", 6.0, 1590738998000 ]
+          - [16, "dd", 7.0, 1590738999000 ]
+    sql: |
+      SELECT id, c1, c6, c7,  min(c6) OVER w1 as w1_c6_min, count(id) OVER w1 as w1_cnt FROM {0} WINDOW
+      w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS_RANGE BETWEEN 2s PRECEDING AND CURRENT ROW);
+    expect:
+      order: id
+      columns: ["id int", "c1 string", "c6 double", "c7 timestamp", "w1_c6_min double","w1_cnt bigint"]
+      rows:
+        - [ 1, "aa", 1.0, 1590738990000, 1.0, 1]
+        - [ 2, "aa", 2.0, 1590738991000, 1.0, 2]
+        - [ 3, "aa", 3.0, 1590738992000, 1.0, 3]
+        - [ 4, "aa", 4.0, 1590738993000, 2.0, 3]
+        - [ 5, "bb", 5.0, 1590738994000, 5.0, 1]
+        - [ 6, "bb", 6.0, 1590738995000, 5.0, 2]
+        - [ 7, "bb", 7.0, 1590738996000, 5.0, 3]
+        - [ 8, "bb", 8.0, 1590738997000, 6.0, 3]
+        - [ 9, "bb", 9.0, 1590738998000, 7.0, 3]
+        - [ 10, "cc", 1.0, 1590738993000, 1.0, 1]
+        - [ 11, "cc", 2.0, 1590738994000, 1.0, 2]
+        - [ 12, "cc", 3.0, 1590738995000, 1.0, 3]
+        - [ 13, "cc", 4.0, 1590738996000, 2.0, 3]
+        - [ 14, "cc", 5.0, 1590738997000, 3.0, 3]
+        - [ 15, "dd", 6.0, 1590738998000, 6.0, 1]
+        - [ 16, "dd", 7.0, 1590738999000, 6.0, 2]
+  -
+    id: 1
+    desc: 简单rows window, union副表, 主表进入窗口
+    mode: cluster-unsupport
+    inputs:
+      - columns: [ "id int", "c1 string","c6 double","c7 timestamp" ]
+        indexs: [ "index1:c1:c7" ]
+        rows:
+          - [ 1, "aa", 1.0, 1590738990000 ]
+          - [ 2, "aa", 4.0, 1590738993000 ]
+          - [ 3, "bb", 5.0, 1590738994000 ]
+          - [ 4, "bb", 9.0, 1590738998000 ]
+          - [ 5, "cc", 1.0, 1590738993000 ]
+          - [ 6, "cc", 5.0, 1590738997000 ]
+          - [ 7, "dd", 7.0, 1590738999000 ]
+      -
+        columns: ["x1 string","x6 double","x7 timestamp"]
+        indexs: ["index1:x1:x7"]
+        rows:
+          - ["aa", 2.0, 1590738991000]
+          - ["aa", 3.0, 1590738992000]
+          - ["bb", 6.0, 1590738995000]
+          - ["bb", 7.0, 1590738996000]
+          - ["bb", 8.0, 1590738997000]
+          - ["cc", 2.0, 1590738994000 ]
+          - ["cc", 3.0, 1590738995000 ]
+          - ["cc", 4.0, 1590738996000 ]
+          - ["dd", 6.0, 1590738998000 ]
+    sql: |
+      SELECT id, c1, c6, c7,  min(c6) OVER w1 as w1_c6_min, count(id) OVER w1 as w1_cnt FROM {0} WINDOW
+      w1 AS (UNION (select 0 as id, x1 as c1, x6 as c6, x7 as c7 from {1}) as t2 PARTITION BY c1 ORDER BY c7 ROWS_RANGE
+      BETWEEN 2s PRECEDING AND CURRENT ROW);
+    expect:
+      order: id
+      columns: ["id int", "c1 string", "c6 double", "c7 timestamp", "w1_c6_min double","w1_cnt bigint"]
+      rows:
+        - [ 1, "aa", 1.0, 1590738990000, 1.0, 1]
+        - [ 2, "aa", 4.0, 1590738993000, 2.0, 3]
+        - [ 3, "bb", 5.0, 1590738994000, 5.0, 1]
+        - [ 4, "bb", 9.0, 1590738998000, 7.0, 3]
+        - [ 5, "cc", 1.0, 1590738993000, 1.0, 1]
+        - [ 6, "cc", 5.0, 1590738997000, 3.0, 3]
+        - [ 7, "dd", 7.0, 1590738999000, 6.0, 2]
+  -
+    id: 2
+    desc: 2 window,pk不同
+    inputs:
+      -
+        columns : ["id int","c1 string","c3 int","c4 bigint","c7 timestamp"]
+        indexs: ["index1:c1:c7", "index3:c3:c7"]
+        rows:
+          - [1,"aa",20,30,1590738990000]
+          - [2,"aa",20,31,1590738991000]
+          - [3,"bb",20,32,1590738992000]
+          - [4,"bb",20,33,1590738993000]
+          - [5,"cc",21,34,1590738994000]
+          - [6,"aa",21,35,1590738995000]
+          - [7,"aa",21,36,1590738996000]
+    sql: |
+      SELECT id, c1, c3, sum(c4) OVER w1 as w1_c4_sum, count(c4) OVER w2 as w2_c4_count FROM {0} WINDOW
+      w1 AS (PARTITION BY c3 ORDER BY c7 ROWS_RANGE BETWEEN 2s PRECEDING AND CURRENT ROW),
+      w2 AS (PARTITION BY c1 ORDER BY c7 ROWS_RANGE BETWEEN 2s PRECEDING AND CURRENT ROW);
+    expect:
+      order: id
+      columns: ["id int","c1 string","c3 int","w1_c4_sum bigint","w2_c4_count bigint"]
+      rows:
+        - [1,"aa",20,30,1]
+        - [2,"aa",20,61,2]
+        - [3,"bb",20,93,1]
+        - [4,"bb",20,96,2]
+        - [5,"cc",21,34,1]
+        - [6,"aa",21,69,1]
+        - [7,"aa",21,105,2]
+  -
+    id: 3
+    desc: 3 window,pk不同
+    inputs:
+      -
+        columns : ["id int","c1 string", "c2 string", "c3 int","c4 bigint","c7 timestamp"]
+        indexs: ["index1:c1:c7", "index2:c2:c7", "index3:c3:c7"]
+        rows:
+          - [1,"aa", "1", 20,30,1590738990000]
+          - [2,"aa", "2", 20,31,1590738991000]
+          - [3,"bb", "1", 20,32,1590738992000]
+          - [4,"bb", "2", 20,33,1590738993000]
+          - [5,"cc", "1", 21,34,1590738994000]
+          - [6,"aa", "1", 21,35,1590738995000]
+          - [7,"aa", "1", 21,36,1590738996000]
+    sql: |
+      SELECT id, c1, c2, c3,
+      count(id) OVER w1 as w1_count,
+      count(id) OVER w2 as w2_count,
+      sum(c4) OVER w3 as w3_c4_sum
+      FROM {0} WINDOW
+      w1 AS (PARTITION BY c1 ORDER BY c7 ROWS_RANGE BETWEEN 2s PRECEDING AND CURRENT ROW),
+      w2 AS (PARTITION BY c2 ORDER BY c7 ROWS_RANGE BETWEEN 3s PRECEDING AND CURRENT ROW),
+      w3 AS (PARTITION BY c3 ORDER BY c7 ROWS_RANGE BETWEEN 2s PRECEDING AND CURRENT ROW);
+    expect:
+      order: id
+      columns: ["id int","c1 string", "c2 string", "c3 int","w1_count bigint","w2_count bigint", "w3_c4_sum bigint"]
+      rows:
+        - [1,"aa", "1", 20, 1, 1, 30]
+        - [2,"aa", "2", 20, 2, 1, 61]
+        - [3,"bb", "1", 20, 1, 2, 93]
+        - [4,"bb", "2", 20, 2, 2, 96]
+        - [5,"cc", "1", 21, 1, 2, 34]
+        - [6,"aa", "1", 21, 1, 3, 69]
+        - [7,"aa", "1", 21, 2, 3, 105]

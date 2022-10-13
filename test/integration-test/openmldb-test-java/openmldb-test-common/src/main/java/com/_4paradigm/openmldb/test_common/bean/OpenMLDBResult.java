@@ -31,6 +31,7 @@ import java.util.List;
 public class OpenMLDBResult {
     private String dbName;
     private List<String> tableNames;
+    private String spName;
     private String sql;
     private boolean haveResult;
     private boolean ok;

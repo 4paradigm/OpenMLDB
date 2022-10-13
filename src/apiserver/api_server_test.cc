@@ -173,12 +173,131 @@ TEST_F(APIServerTest, query) {
             ASSERT_TRUE(false) << "response parse failed with code " << document.GetParseError()
                                << ", raw resp: " << cntl.response_attachment().to_string();
         }
+
+        /*
+        {
+            "code": 0,
+            "msg": "ok",
+            "data": {
+                "schema": ["Int32", "String"],
+                "data": [[1, "bb"]]
+            }
+        }
+        */
         ASSERT_EQ(0, document["code"].GetInt());
         ASSERT_STREQ("ok", document["msg"].GetString());
-        ASSERT_EQ(1, document["data"].Size());
-        ASSERT_EQ(2, document["data"][0].Size());
-        ASSERT_EQ(1, document["data"][0][0].GetInt());
-        ASSERT_STREQ("bb", document["data"][0][1].GetString());
+        ASSERT_EQ(2, document["data"]["schema"].Size());
+        ASSERT_STREQ("Int32", document["data"]["schema"][0].GetString());
+        ASSERT_STREQ("String", document["data"]["schema"][1].GetString());
+        ASSERT_EQ(1, document["data"]["data"].Size());
+        ASSERT_EQ(2, document["data"]["data"][0].Size());
+        ASSERT_EQ(1, document["data"]["data"][0][0].GetInt());
+        ASSERT_STREQ("bb", document["data"]["data"][0][1].GetString());
+    }
+
+    ASSERT_TRUE(env->cluster_remote->ExecuteDDL(env->db, "drop table demo;", &status));
+}
+
+TEST_F(APIServerTest, parameterizedQuery) {
+    const auto env = APIServerTestEnv::Instance();
+
+    std::string ddl = "create table demo (c1 int, c2 string);";
+    hybridse::sdk::Status status;
+    ASSERT_TRUE(env->cluster_remote->ExecuteDDL(env->db, ddl, &status)) << "fail to create table";
+
+    std::string insert_sql = "insert into demo values (1, \"bb\");";
+    ASSERT_TRUE(env->cluster_sdk->Refresh());
+    ASSERT_TRUE(env->cluster_remote->ExecuteInsert(env->db, insert_sql, &status));
+    insert_sql = "insert into demo values (2, \"bb\");";
+    ASSERT_TRUE(env->cluster_sdk->Refresh());
+    ASSERT_TRUE(env->cluster_remote->ExecuteInsert(env->db, insert_sql, &status));
+
+    {
+        brpc::Controller cntl;
+        cntl.http_request().set_method(brpc::HTTP_METHOD_POST);
+        cntl.http_request().uri() = "http://127.0.0.1:8010/dbs/" + env->db;
+        cntl.request_attachment().append(R"({
+            "sql": "select c1, c2 from demo where c2 = ?;",
+            "mode": "online", 
+            "input": {
+                "schema": ["STRING"],
+                "data": ["bb"]
+            }
+        })");
+        env->http_channel.CallMethod(NULL, &cntl, NULL, NULL, NULL);
+        ASSERT_FALSE(cntl.Failed()) << cntl.ErrorText();
+
+        LOG(INFO) << "exec query resp:\n" << cntl.response_attachment().to_string();
+
+        butil::rapidjson::Document document;
+        if (document.Parse(cntl.response_attachment().to_string().c_str()).HasParseError()) {
+            ASSERT_TRUE(false) << "response parse failed with code " << document.GetParseError()
+                               << ", raw resp: " << cntl.response_attachment().to_string();
+        }
+        /*
+        {
+            "code": 0,
+            "msg": "ok",
+            "data": {
+                "schema": ["Int32", "String"],
+                "data": [[1, "bb"], [2, "bb"]]
+            }
+        }
+        */
+        ASSERT_EQ(0, document["code"].GetInt());
+        ASSERT_STREQ("ok", document["msg"].GetString());
+        ASSERT_EQ(2, document["data"]["schema"].Size());
+        ASSERT_STREQ("Int32", document["data"]["schema"][0].GetString());
+        ASSERT_STREQ("String", document["data"]["schema"][1].GetString());
+        ASSERT_EQ(2, document["data"]["data"].Size());
+        ASSERT_EQ(2, document["data"]["data"][0].Size());
+        ASSERT_EQ(1, document["data"]["data"][0][0].GetInt());
+        ASSERT_STREQ("bb", document["data"]["data"][0][1].GetString());
+        ASSERT_EQ(2, document["data"]["data"][1].Size());
+        ASSERT_EQ(2, document["data"]["data"][1][0].GetInt());
+        ASSERT_STREQ("bb", document["data"]["data"][1][1].GetString());
+    }
+    {
+        brpc::Controller cntl;
+        cntl.http_request().set_method(brpc::HTTP_METHOD_POST);
+        cntl.http_request().uri() = "http://127.0.0.1:8010/dbs/" + env->db;
+        cntl.request_attachment().append(R"({
+            "sql": "select c1, c2 from demo where c2 = ? and c1 = ?;",
+            "mode": "online",
+            "input": {
+                "schema": ["STRING", "INT"],
+                "data": ["bb", 1]
+            }
+        })");
+        env->http_channel.CallMethod(NULL, &cntl, NULL, NULL, NULL);
+        ASSERT_FALSE(cntl.Failed()) << cntl.ErrorText();
+
+        LOG(INFO) << "exec query resp:\n" << cntl.response_attachment().to_string();
+
+        butil::rapidjson::Document document;
+        if (document.Parse(cntl.response_attachment().to_string().c_str()).HasParseError()) {
+            ASSERT_TRUE(false) << "response parse failed with code " << document.GetParseError()
+                               << ", raw resp: " << cntl.response_attachment().to_string();
+        }
+        /*
+        {
+            "code": 0,
+            "msg": "ok",
+            "data": {
+                "schema": ["Int32", "String"],
+                "data": [[1, "bb"]]
+            }
+        }
+        */
+        ASSERT_EQ(0, document["code"].GetInt());
+        ASSERT_STREQ("ok", document["msg"].GetString());
+        ASSERT_EQ(2, document["data"]["schema"].Size());
+        ASSERT_STREQ("Int32", document["data"]["schema"][0].GetString());
+        ASSERT_STREQ("String", document["data"]["schema"][1].GetString());
+        ASSERT_EQ(1, document["data"]["data"].Size());
+        ASSERT_EQ(2, document["data"]["data"][0].Size());
+        ASSERT_EQ(1, document["data"]["data"][0][0].GetInt());
+        ASSERT_STREQ("bb", document["data"]["data"][0][1].GetString());
     }
 
     ASSERT_TRUE(env->cluster_remote->ExecuteDDL(env->db, "drop table demo;", &status));

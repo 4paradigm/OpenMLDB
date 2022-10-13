@@ -37,26 +37,26 @@ public class SelectTest extends OpenMLDBTest {
 
     @Story("batch")
     @Test(dataProvider = "getCase",enabled = false)
-    @Yaml(filePaths = {"function/select/","query/const_query.yaml"})
+    @Yaml(filePaths = {"integration_test/select/","query/const_query.yaml"})
     @Step("{testCase.desc}")
     public void testSelect(SQLCase testCase) throws Exception {
         ExecutorFactory.build(executor, testCase, SQLCaseType.kBatch).run();
     }
     @Story("request")
     @Test(dataProvider = "getCase")
-    @Yaml(filePaths = {"function/select/","query/const_query.yaml"})
+    @Yaml(filePaths = {"integration_test/select/","query/const_query.yaml"})
     public void testSelectRequestMode(SQLCase testCase) throws Exception {
         ExecutorFactory.build(executor, testCase, SQLCaseType.kRequest).run();
     }
     @Story("requestWithSp")
     @Test(dataProvider = "getCase")
-    @Yaml(filePaths = {"function/select/","query/const_query.yaml"})
+    @Yaml(filePaths = {"integration_test/select/","query/const_query.yaml"})
     public void testSelectRequestModeWithSp(SQLCase testCase) throws Exception {
         ExecutorFactory.build(executor, testCase, SQLCaseType.kRequestWithSp).run();
     }
     @Story("requestWithSpAysn")
     @Test(dataProvider = "getCase")
-    @Yaml(filePaths = {"function/select/","query/const_query.yaml"})
+    @Yaml(filePaths = {"integration_test/select/","query/const_query.yaml"})
     public void testSelectRequestModeWithSpAysn(SQLCase testCase) throws Exception {
         ExecutorFactory.build(executor, testCase, SQLCaseType.kRequestWithSpAsync).run();
     }

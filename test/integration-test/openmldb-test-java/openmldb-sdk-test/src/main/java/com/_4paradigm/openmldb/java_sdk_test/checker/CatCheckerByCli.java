@@ -2,7 +2,6 @@ package com._4paradigm.openmldb.java_sdk_test.checker;
 
 import com._4paradigm.openmldb.test_common.command.CommandUtil;
 import com._4paradigm.openmldb.test_common.bean.OpenMLDBResult;
-import com._4paradigm.openmldb.test_common.util.SDKUtil;
 import com._4paradigm.openmldb.test_common.model.CatFile;
 import com._4paradigm.openmldb.test_common.model.ExpectDesc;
 import com._4paradigm.openmldb.test_common.util.SQLUtil;
@@ -22,7 +21,7 @@ public class CatCheckerByCli extends BaseChecker{
         log.info("cat check");
         CatFile expectCat = expect.getCat();
         String path = expectCat.getPath();
-        path = SQLUtil.formatSql(path, fesqlResult.getTableNames());
+        path = SQLUtil.formatSql(path, openMLDBResult.getTableNames());
         String command = "cat "+path;
         List<String> actualList = CommandUtil.run(command);
         List<String> expectList = expectCat.getLines();

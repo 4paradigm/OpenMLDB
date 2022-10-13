@@ -1,0 +1,685 @@
+# Copyright 2021 4Paradigm
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+db: test_zw
+debugs: []
+version: 0.5.0
+sqlDialect: ["HybridSQL"]
+cases:
+  - id: 0
+    desc: "smallint_[%/MOD/*]_整型_正确"
+    inputs:
+      -
+        columns : ["id bigint","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:id:c7"]
+        rows:
+          - [1,"aa",30,30,30,30.0,30.0,1590738989000,"2020-05-01",false]
+      -
+        columns : ["id bigint","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:id:c7"]
+        rows:
+          - [1,"bb",0,20,30,11.1,12.1,1590738989001,"2020-05-02",true]
+    dataProvider:
+      - ["%","MOD","*","-","/"]
+    sql: select {0}.c2 d[0] {1}.c2 as b2,{0}.c2 d[0] {1}.c3 as b3,{0}.c2 d[0] {1}.c4 as b4,{0}.c2 d[0] {1}.c5 as b5,{0}.c2 d[0] {1}.c6 as b6,{0}.c2 d[0] {1}.c9 as b9 from {0} last join {1} ORDER BY {1}.c7 on {0}.id={1}.id;
+    expect:
+      columns: ["b2 smallint","b3 int","b4 bigint","b5 float","b6 double","b9 smallint"]
+    expectProvider:
+      0:
+        rows:
+          - [NULL,10,0,7.8,5.8,0]
+      1:
+        rows:
+          - [NULL,10,0,7.8,5.8,0]
+      2:
+        rows:
+          - [0,600,900,333,363,30]
+      3:
+        rows:
+          - [30,10,0,18.9,17.9,29]
+      4:
+        columns: ["b2 double","b3 double","b4 double","b5 double","b6 double","b9 double"]
+        rows:
+          - [NULL,1.5,1.0,2.7027026098198896,2.479338842975207,30.0]
+  - id: 1
+    desc: "int_算术运算_整型_正确"
+    inputs:
+      -
+        columns : ["id bigint","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:id:c7"]
+        rows:
+          - [1,"aa",30,30,30,30.0,30.0,1590738989000,"2020-05-01",false]
+      -
+        columns : ["id bigint","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:id:c7"]
+        rows:
+          - [1,"bb",0,20,30,11.1,12.1,1590738989001,"2020-05-02",true]
+    dataProvider:
+      - ["%","MOD","*","-","/"]
+    sql: select {0}.c3 d[0] {1}.c2 as b2,{0}.c3 d[0] {1}.c3 as b3,{0}.c3 d[0] {1}.c4 as b4,{0}.c3 d[0] {1}.c5 as b5,{0}.c3 d[0] {1}.c6 as b6,{0}.c3 d[0] {1}.c9 as b9 from {0} last join {1} ORDER BY {1}.c7 on {0}.id={1}.id;
+    expect:
+      columns: ["b2 int","b3 int","b4 bigint","b5 float","b6 double","b9 int"]
+    expectProvider:
+      0:
+        rows:
+          - [NULL,10,0,7.8,5.8,0]
+      1:
+        rows:
+          - [NULL,10,0,7.8,5.8,0]
+      2:
+        rows:
+          - [0,600,900,333,363,30]
+      3:
+        rows:
+          - [30,10,0,18.9,17.9,29]
+      4:
+        columns: ["b2 double","b3 double","b4 double","b5 double","b6 double","b9 double"]
+        rows:
+          - [NULL,1.5,1.0,2.7027026098198896,2.479338842975207,30.0]
+  - id: 2
+    desc: "bigint_算术运算_整型_正确"
+    inputs:
+      -
+        columns : ["id bigint","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:id:c7"]
+        rows:
+          - [1,"aa",30,30,30,30.0,30.0,1590738989000,"2020-05-01",false]
+      -
+        columns : ["id bigint","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:id:c7"]
+        rows:
+          - [1,"bb",0,20,30,11.1,12.1,1590738989001,"2020-05-02",true]
+    dataProvider:
+      - ["%","MOD","*","-","/"]
+    sql: select {0}.c4 d[0] {1}.c2 as b2,{0}.c4 d[0] {1}.c3 as b3,{0}.c4 d[0] {1}.c4 as b4,{0}.c4 d[0] {1}.c5 as b5,{0}.c4 d[0] {1}.c6 as b6,{0}.c4 d[0] {1}.c9 as b9 from {0} last join {1} ORDER BY {1}.c7 on {0}.id={1}.id;
+    expect:
+      columns: ["b2 bigint","b3 bigint","b4 bigint","b5 float","b6 double","b9 bigint"]
+    expectProvider:
+      0:
+        rows:
+          - [NULL,10,0,7.8,5.8,0]
+      1:
+        rows:
+          - [NULL,10,0,7.8,5.8,0]
+      2:
+        rows:
+          - [0,600,900,333,363,30]
+      3:
+        rows:
+          - [30,10,0,18.9,17.9,29]
+      4:
+        columns: ["b2 double","b3 double","b4 double","b5 double","b6 double","b9 double"]
+        rows:
+          - [NULL,1.5,1.0,2.7027026098198896,2.479338842975207,30.0]
+  - id: 3
+    desc: "float_算术运算_整型_正确"
+    inputs:
+      -
+        columns : ["id bigint","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:id:c7"]
+        rows:
+          - [1,"aa",30,30,30,30.0,30.0,1590738989000,"2020-05-01",false]
+      -
+        columns : ["id bigint","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:id:c7"]
+        rows:
+          - [1,"bb",0,20,30,11.1,12.1,1590738989001,"2020-05-02",true]
+    dataProvider:
+      - ["%","MOD","*","-","/"]
+    sql: select {0}.c5 d[0] {1}.c2 as b2,{0}.c5 d[0] {1}.c3 as b3,{0}.c5 d[0] {1}.c4 as b4,{0}.c5 d[0] {1}.c5 as b5,{0}.c5 d[0] {1}.c6 as b6,{0}.c5 d[0] {1}.c9 as b9 from {0} last join {1} ORDER BY {1}.c7 on {0}.id={1}.id;
+    expect:
+      columns: ["b2 float","b3 float","b4 float","b5 float","b6 double","b9 float"]
+    expectProvider:
+      0:
+        rows:
+          - [NULL,10,0,7.8,5.8,0]
+      1:
+        rows:
+          - [NULL,10,0,7.8,5.8,0]
+      2:
+        rows:
+          - [0,600,900,333,363,30]
+      3:
+        rows:
+          - [30,10,0,18.9,17.9,29]
+      4:
+        columns: ["b2 double","b3 double","b4 double","b5 double","b6 double","b9 double"]
+        rows:
+          - [NULL,1.5,1.0,2.7027026098198896,2.479338842975207,30.0]
+  - id: 4
+    desc: "double_算术运算_整型_正确"
+    inputs:
+      -
+        columns : ["id bigint","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:id:c7"]
+        rows:
+          - [1,"aa",30,30,30,30.0,30.0,1590738989000,"2020-05-01",false]
+      -
+        columns : ["id bigint","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:id:c7"]
+        rows:
+          - [1,"bb",0,20,30,11.1,12.1,1590738989001,"2020-05-02",true]
+    dataProvider:
+      - ["%","MOD","*","-","/"]
+    sql: select {0}.c6 d[0] {1}.c2 as b2,{0}.c6 d[0] {1}.c3 as b3,{0}.c6 d[0] {1}.c4 as b4,{0}.c6 d[0] {1}.c5 as b5,{0}.c6 d[0] {1}.c6 as b6,{0}.c6 d[0] {1}.c9 as b9 from {0} last join {1} ORDER BY {1}.c7 on {0}.id={1}.id;
+    expect:
+      columns: ["b2 double","b3 double","b4 double","b5 double","b6 double","b9 double"]
+    expectProvider:
+      0:
+        rows:
+          - [NULL,10,0,7.7999992370605469,5.8,0]
+      1:
+        rows:
+          - [NULL,10,0,7.7999992370605469,5.8,0]
+      2:
+        rows:
+          - [0,600,900,333.0000114440918,363,30]
+      3:
+        rows:
+          - [30,10,0,18.899999618530273,17.9,29]
+      4:
+        columns: ["b2 double","b3 double","b4 double","b5 double","b6 double","b9 double"]
+        rows:
+          - [NULL,1.5,1.0,2.7027026098198896,2.479338842975207,30.0]
+  - id: 5
+    desc: "+_正确"
+    inputs:
+      -
+        columns : ["id bigint","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:id:c7"]
+        rows:
+          - [1,"aa",30,30,30,30.0,30.0,1590738989000,"2020-05-01",false]
+      -
+        columns : ["id bigint","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:id:c7"]
+        rows:
+          - [1,"bb",0,20,30,11.1,12.1,1590738989001,"2020-05-02",true]
+    dataProvider:
+      - ["{0}.c2","{0}.c3","{0}.c4","{0}.c9"]
+    sql: select d[0] + {1}.c2 as b2,d[0] + {1}.c3 as b3,d[0] + {1}.c4 as b4,d[0] + {1}.c5 as b5,d[0] + {1}.c6 as b6,d[0] + {1}.c7 as b7,d[0] + {1}.c9 as b9 from {0} last join {1} ORDER BY {1}.c7 on {0}.id={1}.id;
+    expectProvider:
+      0:
+        columns: ["b2 smallint","b3 int","b4 bigint","b5 float","b6 double","b7 timestamp","b9 smallint"]
+        rows:
+          - [30,50,60,41.1,42.1,1590738989031,31]
+      1:
+        columns: ["b2 int","b3 int","b4 bigint","b5 float","b6 double","b7 timestamp","b9 int"]
+        rows:
+          - [30,50,60,41.1,42.1,1590738989031,31]
+      2:
+        columns: ["b2 bigint","b3 bigint","b4 bigint","b5 float","b6 double","b7 timestamp","b9 bigint"]
+        rows:
+          - [30,50,60,41.1,42.1,1590738989031,31]
+      3:
+        columns: ["b2 smallint","b3 int","b4 bigint","b5 float","b6 double","b7 timestamp","b9 bool"]
+        rows:
+          - [0,20,30,11.1,12.1,1590738989001,true]
+  - id: 6
+    desc: "浮点型+_正确"
+    inputs:
+      -
+        columns : ["id bigint","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:id:c7"]
+        rows:
+          - [1,"aa",30,30,30,30.0,30.0,1590738989000,"2020-05-01",false]
+      -
+        columns : ["id bigint","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:id:c7"]
+        rows:
+          - [1,"bb",0,20,30,11.1,12.1,1590738989001,"2020-05-02",true]
+    dataProvider:
+      - ["{0}.c5","{0}.c6"]
+    sql: select d[0] + {1}.c2 as b2,d[0] + {1}.c3 as b3,d[0] + {1}.c4 as b4,d[0] + {1}.c5 as b5,d[0] + {1}.c6 as b6,d[0] + {1}.c9 as b9 from {0} last join {1} ORDER BY {1}.c7 on {0}.id={1}.id;
+    expectProvider:
+      0:
+        columns: ["b2 float","b3 float","b4 float","b5 float","b6 double","b9 float"]
+        rows:
+          - [30,50,60,41.100000381469727,42.1,31]
+      1:
+        columns: ["b2 double","b3 double","b4 double","b5 double","b6 double","b9 double"]
+        rows:
+          - [30,50,60,41.100000381469727,42.1,31]
+  - id: 7
+    desc: "timestamp+_正确"
+    inputs:
+      -
+        columns : ["id bigint","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:id:c7"]
+        rows:
+          - [1,"aa",30,30,30,30.0,30.0,1590738989000,"2020-05-01",false]
+      -
+        columns : ["id bigint","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:id:c7"]
+        rows:
+          - [1,"bb",0,20,30,11.1,12.1,1590738989001,"2020-05-02",true]
+    dataProvider:
+      - ["{0}.c7"]
+    sql: select d[0] + {1}.c2 as b2,d[0] + {1}.c3 as b3,d[0] + {1}.c4 as b4,d[0] + {1}.c7 as b7,d[0] + {1}.c9 as b9 from {0} last join {1} ORDER BY {1}.c7 on {0}.id={1}.id;
+    expectProvider:
+      0:
+        columns: ["b2 timestamp","b3 timestamp","b4 timestamp","b7 timestamp","b9 timestamp"]
+        rows:
+          - [1590738989000,1590738989020,1590738989030,3181477978001,1590738989001]
+  - id: 8
+    desc: "timestamp_-_正确"
+    inputs:
+      -
+        columns : ["id bigint","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:id:c7"]
+        rows:
+          - [1,"aa",30,30,30,30.0,30.0,1590738989000,"2020-05-01",false]
+      -
+        columns : ["id bigint","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:id:c7"]
+        rows:
+          - [1,"bb",0,20,30,11.1,12.1,1590738989001,"2020-05-02",true]
+    dataProvider:
+      - ["-"]
+    sql: select {0}.c7 d[0] {1}.c2 as b2,{0}.c7 d[0] {1}.c3 as b3,{0}.c7 d[0] {1}.c4 as b4,{0}.c7 d[0] {1}.c9 as b9 from {0} last join {1} ORDER BY {1}.c7 on {0}.id={1}.id;
+    expectProvider:
+      0:
+        columns: ["b2 timestamp","b3 timestamp","b4 timestamp","b9 timestamp"]
+        rows:
+          - [1590738989000,1590738988980,1590738988970,1590738988999]
+  - id: 9
+    desc: "整型_[%MOD*-/]_各种类型_错误"
+    level: 5
+    inputs:
+      -
+        columns : ["id bigint","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:id:c7"]
+        rows:
+          - [1,"aa",10,10,10,10.0,10.0,1590738989000,"2020-05-01",false]
+      -
+        columns : ["id bigint","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:id:c7"]
+        rows:
+          - [1,"bb",10,20,30,11.1,12.1,1590738989001,"2020-05-02",true]
+    dataProvider:
+      - ["%","MOD","*","-","/"]
+      - ["{0}.c2","{0}.c3","{0}.c4","{0}.c5","{0}.c6","{0}.c9"]
+      - ["{1}.c7","{1}.c8","{1}.c1"]
+    sql: select d[1] d[0] d[2] as b1 from {0} last join {1} ORDER BY {1}.c7 on {0}.id={1}.id;
+    expect:
+      success: false
+  - id: 10
+    desc: "整型_+_各种类型_错误"
+    level: 5
+    inputs:
+      -
+        columns : ["id bigint","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:id:c7"]
+        rows:
+          - [1,"aa",10,10,10,10.0,10.0,1590738989000,"2020-05-01",false]
+      -
+        columns : ["id bigint","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:id:c7"]
+        rows:
+          - [1,"bb",10,20,30,11.1,12.1,1590738989001,"2020-05-02",true]
+    dataProvider:
+      - ["+"]
+      - ["{0}.c2","{0}.c3","{0}.c4","{0}.c5","{0}.c6","{0}.c9"]
+      - ["{1}.c8","{1}.c1"]
+    sql: select d[1] d[0] d[2] as b1 from {0} last join {1} ORDER BY {1}.c7 on {0}.id={1}.id;
+    expect:
+      success: false
+  - id: 11
+    desc: "各种类型_[%MOD*/]_各种类型_错误"
+    level: 5
+    inputs:
+      -
+        columns : ["id bigint","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:id:c7"]
+        rows:
+          - [1,"aa",10,10,10,10.0,10.0,1590738989000,"2020-05-01",false]
+      -
+        columns : ["id bigint","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:id:c7"]
+        rows:
+          - [1,"bb",10,20,30,11.1,12.1,1590738989001,"2020-05-02",true]
+    dataProvider:
+      - ["%","MOD","*","/"]
+      - ["{0}.c7","{0}.c8","{0}.c1"]
+      - ["{1}.c1","{1}.c2","{1}.c3","{1}.c4","{1}.c5","{1}.c6","{1}.c7","{1}.c8","{1}.c9"]
+    sql: select d[1] d[0] d[2] as b1 from {0} last join {1} ORDER BY {1}.c7 on {0}.id={1}.id;
+    expect:
+      success: false
+  - id: 12
+    desc: "timetamp_-_各种类型_错误"
+    level: 5
+    inputs:
+      -
+        columns : ["id bigint","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:id:c7"]
+        rows:
+          - [1,"aa",10,10,10,10.0,10.0,1590738989000,"2020-05-01",false]
+      -
+        columns : ["id bigint","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:id:c7"]
+        rows:
+          - [1,"bb",10,20,30,11.1,12.1,1590738989001,"2020-05-02",true]
+    dataProvider:
+      - ["-"]
+      - ["{0}.c7"]
+      - ["{1}.c1","{1}.c7","{1}.c8"]
+    sql: select d[1] d[0] d[2] as b1 from {0} last join {1} ORDER BY {1}.c7 on {0}.id={1}.id;
+    expect:
+      success: false
+  - id: 13
+    desc: "timetamp_+_各种类型_错误"
+    level: 5
+    inputs:
+      -
+        columns : ["id bigint","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:id:c7"]
+        rows:
+          - [1,"aa",10,10,10,10.0,10.0,1590738989000,"2020-05-01",false]
+      -
+        columns : ["id bigint","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:id:c7"]
+        rows:
+          - [1,"bb",10,20,30,11.1,12.1,1590738989001,"2020-05-02",true]
+    dataProvider:
+      - ["+"]
+      - ["{0}.c7"]
+      - ["{1}.c1","{1}.c8"]
+    sql: select d[1] d[0] d[2] as b1 from {0} last join {1} ORDER BY {1}.c7 on {0}.id={1}.id;
+    expect:
+      success: false
+  - id: 14
+    desc: "date/string_[+-]_各种类型_错误"
+    level: 5
+    inputs:
+      -
+        columns : ["id bigint","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:id:c7"]
+        rows:
+          - [1,"aa",10,10,10,10.0,10.0,1590738989000,"2020-05-01",false]
+      -
+        columns : ["id bigint","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:id:c7"]
+        rows:
+          - [1,"bb",10,20,30,11.1,12.1,1590738989001,"2020-05-02",true]
+    dataProvider:
+      - ["+","-"]
+      - ["{0}.c8","{0}.c1"]
+      - ["{1}.c1","{1}.c2","{1}.c3","{1}.c4","{1}.c5","{1}.c6","{1}.c7","{1}.c8","{1}.c9"]
+    sql: select d[1] d[0] d[2] as b1 from {0} last join {1} ORDER BY {1}.c7 on {0}.id={1}.id;
+    expect:
+      success: false
+  - id: 15
+    desc: "-_整型_正确"
+    inputs:
+      -
+        columns : ["id bigint","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:id:c7"]
+        rows:
+          - [1,"aa",30,-30,30,30.0,30.0,1590738989000,"2020-05-01",true]
+          - [2,"aa",30,-30,30,30.0,30.0,1590738989000,"2020-05-01",false]
+    sql: select id, - {0}.c2 as b2,- {0}.c3 as b3,- {0}.c4 as b4,- {0}.c5 as b5,- {0}.c6 as b6,- {0}.c9 as b9 from {0};
+    expect:
+      order: id
+      columns: ["id bigint", "b2 smallint","b3 int","b4 bigint","b5 float","b6 double","b9 bool"]
+      rows:
+        - [1,-30,30,-30,-30,-30,true]
+        - [2,-30,30,-30,-30,-30,false]
+  - id: 16
+    desc: "-_其他类型_错误"
+    level: 5
+    inputs:
+      -
+        columns : ["id bigint","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:id:c7"]
+        rows:
+          - [1,"aa",30,-30,30,30.0,30.0,1590738989000,"2020-05-01",true]
+          - [1,"aa",30,-30,30,30.0,30.0,1590738989000,"2020-05-01",false]
+    sql: select - d[0] as b2 from {0};
+    dataProvider:
+      - ["{0}.c7","{0}.c8","{0}.c1"]
+    expect:
+      success: false
+  - id: 17
+    desc: "int_DIV_int_正确"
+    inputs:
+      -
+        columns : ["id bigint","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:id:c7"]
+        rows:
+          - [1,"aa",30,30,30,30.0,30.0,1590738989000,"2020-05-01",false]
+      -
+        columns : ["id bigint","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:id:c7"]
+        rows:
+          - [1,"bb",0,20,30,11.1,12.1,1590738989001,"2020-05-02",false]
+    dataProvider:
+      - ["{0}.c2","{0}.c3","{0}.c4","{0}.c9"]
+    sql: select d[0] DIV {1}.c2 as b2,d[0] DIV {1}.c3 as b3,d[0] DIV {1}.c4 as b4,d[0] DIV {1}.c9 as b9 from {0} last join {1} ORDER BY {1}.c7 on {0}.id={1}.id;
+    expectProvider:
+      0:
+        columns: ["b2 smallint","b3 int","b4 bigint","b9 smallint"]
+        rows:
+          - [null,1,1,null]
+      1:
+        columns: ["b2 int","b3 int","b4 bigint","b9 int"]
+        rows:
+          - [null,1,1,null]
+      2:
+        columns: ["b2 bigint","b3 bigint","b4 bigint","b9 bigint"]
+        rows:
+          - [null,1,1,null]
+      3:
+        columns: ["b2 smallint","b3 int","b4 bigint","b9 bool"]
+        rows:
+          - [null,0,0,null]
+  - id: 18
+    desc: "int_DIV_各种类型_错误"
+    level: 5
+    inputs:
+      -
+        columns : ["id bigint","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:id:c7"]
+        rows:
+          - [1,"aa",10,10,10,10.0,10.0,1590738989000,"2020-05-01",false]
+      -
+        columns : ["id bigint","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:id:c7"]
+        rows:
+          - [1,"bb",10,20,30,11.1,12.1,1590738989001,"2020-05-02",true]
+    dataProvider:
+      - ["DIV"]
+      - ["{0}.c2","{0}.c3","{0}.c4","{0}.c9"]
+      - ["{1}.c1","{1}.c5","{1}.c6","{1}.c7","{1}.c8"]
+    sql: select d[1] d[0] d[2] as b1 from {0} last join {1} ORDER BY {1}.c7 on {0}.id={1}.id;
+    expect:
+      success: false
+  - id: 19
+    desc: "各种类型_DIV_各种类型_错误"
+    level: 5
+    inputs:
+      -
+        columns : ["id bigint","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:id:c7"]
+        rows:
+          - [1,"aa",10,10,10,10.0,10.0,1590738989000,"2020-05-01",false]
+      -
+        columns : ["id bigint","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:id:c7"]
+        rows:
+          - [1,"bb",10,20,30,11.1,12.1,1590738989001,"2020-05-02",true]
+    dataProvider:
+      - ["DIV"]
+      - ["{1}.c1","{1}.c5","{1}.c6","{1}.c7","{1}.c8"]
+      - ["{1}.c1","{1}.c2","{1}.c3","{1}.c4","{1}.c5","{1}.c6","{1}.c7","{1}.c8","{1}.c9"]
+    sql: select d[1] d[0] d[2] as b1 from {0} last join {1} ORDER BY {1}.c7 on {0}.id={1}.id;
+    expect:
+      success: false
+
+  - id: 19
+    desc: 算数表达式操作数为null时返回null
+    inputs:
+      - columns: ["c1 int16","c2 int32","c3 bigint",
+                  "c4 float","c5 double", "c6 timestamp", "c7 bool", "nullcol int32"]
+        indexs: ["index1:c3:c6"]
+        rows:
+          - [1, 911, 1024, 3.14, 0.99, 1590738989000, true, NULL]
+    sql: select
+      c1 + nullcol as r1, c1 - nullcol as r2, c1 * nullcol as r3, c1 / nullcol as r4, c1 % nullcol as r5, c1 DIV nullcol as r6,
+      c2 + nullcol as r7, c2 - nullcol as r8, c2 * nullcol as r9, c2 / nullcol as r10, c2 % nullcol as r11, c2 DIV nullcol as r12,
+      c3 + nullcol as r13, c3 - nullcol as r14, c3 * nullcol as r15, c3 / nullcol as r16, c3 % nullcol as r17, c3 DIV nullcol as r18,
+      c4 + nullcol as r19, c4 - nullcol as r20, c4 * nullcol as r21, c4 / nullcol as r22, c4 % nullcol as r23,
+      c5 + nullcol as r25, c5 - nullcol as r26, c5 * nullcol as r27, c5 / nullcol as r28, c5 % nullcol as r29,
+      year(c6) + nullcol as r31, year(c6) - nullcol as r32, year(c6) * nullcol as r33, year(c6) / nullcol as r34, year(c6) % nullcol as r35, year(c6) DIV nullcol as r36,
+      -nullcol as r37,
+      c7 + nullcol as r38, c7 - nullcol as r39, c7 * nullcol as r40, c7 / nullcol as r41, c7 % nullcol as r42
+      from {0};
+    expect:
+      columns: ["r1 int32", "r2 int32", "r3 int32", "r4 double", "r5 int32", "r6 int32",
+                "r7 int32", "r8 int32", "r9 int32", "r10 double", "r11 int32", "r12 int32",
+                "r13 bigint", "r14 bigint", "r15 bigint", "r16 double", "r17 bigint", "r18 bigint",
+                "r19 float", "r20 float", "r21 float", "r22 double", "r23 float",
+                "r25 double", "r26 double", "r27 double", "r28 double", "r29 double",
+                "r31 int32", "r32 int32", "r33 int32", "r34 double", "r35 int32", "r36 int32", "r37 int32",
+                "r38 int32", "r39 int32", "r40 int32","r41 double","r42 int32"]
+      rows:
+        - [NULL, NULL, NULL, NULL, NULL, NULL,
+           NULL, NULL, NULL, NULL, NULL, NULL,
+           NULL, NULL, NULL, NULL, NULL, NULL,
+           NULL, NULL, NULL, NULL, NULL,
+           NULL, NULL, NULL, NULL, NULL,
+           NULL, NULL, NULL, NULL, NULL, NULL, NULL,
+           NULL, NULL, NULL, NULL, NULL]
+  - id: 20
+    desc: 算数表达式操作数为const null时返回null-left
+    inputs:
+      - columns: ["c1 int16","c2 int32","c3 bigint",
+                  "c4 float","c5 double", "c6 timestamp", "c7 bool", "colnull int32"]
+        indexs: ["index1:c3:c6"]
+        rows:
+          - [1, 911, 1024, 3.14, 0.99, 1590738989000, true, NULL]
+    sql: select
+      NULL + c1 as r1, NULL - c1 as r2, NULL * c1 as r3, NULL / c1 as r4, NULL % c1 as r5, NULL DIV c1 as r6,
+      NULL + c2 as r7, NULL - c2 as r8, NULL * c2 as r9, NULL / c2 as r10, NULL % c2 as r11, NULL DIV c2 as r12,
+      NULL + c3 as r13, NULL - c3 as r14, NULL * c3 as r15, NULL / c3 as r16, NULL % c3 as r17, NULL DIV c3 as r18,
+      NULL + c4 as r19, NULL - c4 as r20, NULL * c4 as r21, NULL / c4 as r22, NULL % c4 as r23,
+      NULL + c5 as r25, NULL - c5 as r26, NULL * c5 as r27, NULL / c5 as r28, NULL % c5 as r29,
+      year(c6) + NULL as r31, year(c6) - NULL as r32, year(c6) * NULL as r33, year(c6) / NULL as r34, year(c6) % NULL as r35, year(c6) DIV NULL as r36,
+      NULL as r37,
+      c7 + NULL as r38, c7 - NULL as r39, c7 * NULL as r40, c7 / NULL as r41, c7 % NULL as r42
+      from {0};
+    expect:
+      columns: ["r1 int16", "r2 int16", "r3 int16", "r4 double", "r5 int16", "r6 int16",
+                "r7 int32", "r8 int32", "r9 int32", "r10 double", "r11 int32", "r12 int32",
+                "r13 bigint", "r14 bigint", "r15 bigint", "r16 double", "r17 bigint", "r18 bigint",
+                "r19 float", "r20 float", "r21 float", "r22 double", "r23 float",
+                "r25 double", "r26 double", "r27 double", "r28 double", "r29 double",
+                "r31 int32", "r32 int32", "r33 int32", "r34 double", "r35 int32", "r36 int32", "r37 bool",
+                "r38 bool", "r39 bool", "r40 bool","r41 double","r42 bool"]
+      rows:
+        - [NULL, NULL, NULL, NULL, NULL, NULL,
+           NULL, NULL, NULL, NULL, NULL, NULL,
+           NULL, NULL, NULL, NULL, NULL, NULL,
+           NULL, NULL, NULL, NULL, NULL,
+           NULL, NULL, NULL, NULL, NULL,
+           NULL, NULL, NULL, NULL, NULL, NULL, NULL,
+           NULL, NULL, NULL, NULL, NULL]
+  - id: bitwise_operators
+    desc: bitwise and/or/xor
+    inputs:
+      - columns: ["c1 int16","c2 int32","c3 bigint", "c6 timestamp"]
+        indexs: ["index1:c3:c6"]
+        rows:
+          - [3, 6, 12, 1590738989000]
+    dataProvider:
+      - ['&', '|', '^']
+    sql: |
+      select c1 d[0] c1 as r11, c1 d[0] c2 as r12, c1 d[0] c3 as r13, c2 d[0] c2 as r22, c2 d[0] c3 as r23, c3 d[0] c3 as r33 from {0};
+    expect:
+      columns: [ 'r11 int16', 'r12 int32', 'r13 bigint', 'r22 int32', 'r23 bigint', 'r33 bigint' ]
+    expectProvider:
+      0:
+        rows:
+          - [ 3, 2, 0, 6, 4, 12 ]
+      1:
+        rows:
+          - [ 3, 7, 15, 6, 14, 12 ]
+      2:
+        rows:
+          - [ 0, 5, 15, 0, 10, 0 ]
+  - id: bitwise_operators_fail
+    desc: bitwise and/or/xor, fail on non-integral operands
+    inputs:
+      - columns: [ "c0 int", "c1 bool", "c2 float", "c3 double", "c4 string", "c5 date", "c6 timestamp" ]
+        indexs: ["index1:c0:c6"]
+        rows:
+          - [1, true, 1.0, 2.0, "abc", "2012-8-11", 1590738989000]
+    sql: |
+      select d[1] d[0] 10 as r1 from {0};
+    dataProvider:
+      - ['&', '|', '^']
+      - [ '{0}.c1', '{0}.c2', '{0}.c3', '{0}.c4', '{0}.c5', '{0}.c6' ]
+    expect:
+      success: false
+  - id: bitwise_operators_not
+    desc: bitwise not
+    inputs:
+      - columns: ["c1 int16","c2 int32","c3 bigint", "c6 timestamp"]
+        indexs: ["index1:c3:c6"]
+        rows:
+          - [3, 6, 12, 1590738989000]
+    sql: |
+      select ~c1 as r1, ~c2 as r2, ~c3 as r3 from {0};
+    expect:
+      columns: [ 'r1 int16', 'r2 int32', 'r3 bigint']
+      rows:
+        - [ -4, -7, -13 ]
+  - id: bitwise_not_fail
+    desc: bitwise not, fail on non-integral operand
+    inputs:
+      - columns: [ "c0 int", "c1 bool", "c2 float", "c3 double", "c4 string", "c5 date", "c6 timestamp" ]
+        indexs: ["index1:c0:c6"]
+        rows:
+          - [1, true, 1.0, 2.0, "abc", "2012-8-11", 1590738989000]
+    sql: |
+      select d[0] d[1] as r1 from {0};
+    dataProvider:
+      - ['~']
+      - [ '{0}.c1', '{0}.c2', '{0}.c3', '{0}.c4', '{0}.c5', '{0}.c6' ]
+    expect:
+      success: false
+  - id: bitwise_null_operands
+    desc: bitwise operation return null if any of operands is null
+    inputs:
+      - columns: ["c1 int16","c2 int32","c3 bigint", "c4 int16", "c6 timestamp"]
+        indexs: ["index1:c3:c6"]
+        rows:
+          - [3, 6, 12, NULL, 1590738989000]
+    sql: |
+      select {0}.c1 & {0}.c4 as r1, {0}.c2 | {0}.c4 as r2, {0}.c3 ^ {0}.c4 as r3, ~ {0}.c4 as r4 from {0};
+    expect:
+      columns: [ 'r1 int16', 'r2 int32', 'r3 int64', 'r4 int16' ]
+      rows:
+        - [ NULL, NULL, NULL, NULL ]
+  - id: bitwise_const_null_operands
+    desc: bitwise operation return null if any of operands is null
+    inputs:
+      - columns: ["c1 int16","c2 int32","c3 bigint", "c4 int", "c6 timestamp"]
+        indexs: ["index1:c3:c6"]
+        rows:
+          - [3, 6, 12, NULL, 1590738989000]
+    sql: |
+      select {0}.c1 & NULL as r1, {0}.c2 | NULL as r2, {0}.c3 ^ NULL as r3, ~ NULL as r4 from {0};
+    expect:
+      columns: [ 'r1 int16', 'r2 int32', 'r3 int64', 'r4 bool' ]
+      rows:
+        - [ NULL, NULL, NULL, NULL ]
