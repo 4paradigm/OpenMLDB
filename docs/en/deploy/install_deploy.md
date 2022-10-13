@@ -349,8 +349,8 @@ bash bin/start.sh start apiserver
 #### 1. Download the OpenMLDB Spark Distribution that is Optimized for Feature Engineering
 
 ```
-wget https://github.com/4paradigm/spark/releases/download/v3.0.0-openmldb0.6.2/spark-3.0.0-bin-openmldbspark.tgz
-tar -zxvf spark-3.0.0-bin-openmldbspark.tgz
+wget https://github.com/4paradigm/spark/releases/download/v3.2.1-openmldb0.6.2/spark-3.2.1-bin-openmldbspark.tgz
+tar -zxvf spark-3.2.1-bin-openmldbspark.tgz
 wget https://github.com/4paradigm/OpenMLDB/releases/download/v0.6.2/openmldb-0.6.2-linux.tar.gz
 tar -zxvf openmldb-0.6.2-linux.tar.gz
 mv openmldb-0.6.2-linux openmldb-taskmanager-0.6.2

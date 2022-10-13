@@ -142,7 +142,7 @@ make CMAKE_BUILD_TYPE=Debug
 1. Downloading the pre-built OpenMLDB Spark distribution:
 
 ```bash
-wget https://github.com/4paradigm/spark/releases/download/v3.0.0-openmldb0.6.2/spark-3.0.0-bin-openmldbspark.tgz
+wget https://github.com/4paradigm/spark/releases/download/v3.2.1-openmldb0.6.2/spark-3.2.1-bin-openmldbspark.tgz
 ```
 
 Alternatively, you can also download the source code and compile from scratch:
@@ -156,8 +156,8 @@ cd ./spark/
 2. Setting up the environment variable `SPARK_HOME` to make the OpenMLDB Spark distribution for OpenMLDB or other Spark applications
 
 ```bash
-tar xzvf ./spark-3.0.0-bin-openmldbspark.tgz
-cd spark-3.0.0-bin-openmldbspark/
+tar xzvf ./spark-3.2.1-bin-openmldbspark.tgz
+cd spark-3.2.1-bin-openmldbspark/
 export SPARK_HOME=`pwd`
 ```
 
