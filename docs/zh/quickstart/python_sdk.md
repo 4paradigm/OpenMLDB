@@ -206,6 +206,14 @@ openmldb.sql_magic.register(db)
 
 ![](./images/openmldb_magic_function.png)
 
+## 5. Option详解
+
+连接集群版必填`zk`和`zkPath`两个选项。
+
+连接单机版必填`host`和`port`两个选项。
+
+无论是dbapi还是url启动Python客户端，可选配置项与JAVA客户端的配置项基本一致，请参考[JAVA SDK Option详解](./java_sdk.md#5-sdk-option详解)。
+
 ## Q&A
 Q: 使用sqlalchemy出现`ImportError: dlopen(.._sql_router_sdk.so, 2): initializer function 0xnnnn not in mapped image for `，怎么办？
 A: 这个问题通常出现在，除了import openmldb外，还import了其他第三方库，可能导致加载的顺序产生混乱。

@@ -104,3 +104,10 @@ sdk日志（glog日志）：
 
 - `glog_level`(int, 默认=0, 即INFO):
 打印这个等级及**以上**等级的日志。 INFO, WARNING, ERROR, and FATAL日志分别对应 0, 1, 2, and 3。
+
+
+### 6. 插入错误，日志显示`please use getInsertRow with ... first`
+
+在JAVA client使用InsertPreparedStatement进行插入，或在Python中使用sql和parameter进行插入时，client底层实际有cache影响，第一步`getInsertRow`生成sql cache并返回sql还需要补充的parameter信息，第二步才会真正执行insert，而执行insert需要使用第一步缓存的sql cache。所以，当多线程使用同一个client时，可能因为插入和查询频繁更新cache表，将你想要执行的insert sql cache淘汰掉了，所以会出现好像第一步`getInsertRow`并未执行的样子。
+
+目前可以通过调大`maxSqlCacheSize`这一配置项来避免错误。仅JAVA/Python SDK支持配置。
