@@ -72,13 +72,13 @@ Wed Aug 22 16:33:50 CST 2018
 
 由于linux平台的多样性，发布包可能在你的机器上不兼容，请先通过简单的运行测试。
 ```
-wget https://github.com/4paradigm/OpenMLDB/releases/download/v0.6.2/openmldb-0.6.2-linux.tar.gz
-tar -zxvf openmldb-0.6.2-linux.tar.gz
-./openmldb-0.6.2-linux/bin/openmldb --version
+wget https://github.com/4paradigm/OpenMLDB/releases/download/v0.6.3/openmldb-0.6.3-linux.tar.gz
+tar -zxvf openmldb-0.6.3-linux.tar.gz
+./openmldb-0.6.3-linux/bin/openmldb --version
 ```
 结果应显示该程序的版本号，类似
 ```
-openmldb version 0.6.2-69a7085
+openmldb version 0.6.3-xxxx
 Debug build (NDEBUG not #defined)
 ```
 
@@ -282,12 +282,12 @@ Start tablet success
 
 在另一台机器启动下一个tablet只需在该机器上重复以上步骤。如果是在同一个机器上启动下一个tablet，请保证是在另一个目录中，不要重复使用已经启动过tablet的目录。
 
-比如，可以再次解压压缩包（不要cp已经启动过tablet的目录，启动后的生成文件会造成影响），并命名目录为`openmldb-tablet-0.6.2-2`。
+比如，可以再次解压压缩包（不要cp已经启动过tablet的目录，启动后的生成文件会造成影响），并命名目录为`openmldb-tablet-0.6.3-2`。
 
 ```
-tar -zxvf openmldb-0.6.2-linux.tar.gz
-mv openmldb-0.6.2-linux openmldb-tablet-0.6.2-2
-cd openmldb-tablet-0.6.2-2
+tar -zxvf openmldb-0.6.3-linux.tar.gz
+mv openmldb-0.6.3-linux openmldb-tablet-0.6.3-2
+cd openmldb-tablet-0.6.3-2
 ```
 
 再修改配置并启动。注意，tablet如果都在同一台机器上，请使用不同端口号，否则日志(logs/tablet.WARNING)中将会有"Fail to listen"信息。
@@ -338,12 +338,12 @@ nameserver 可以只存在一台，如果你需要高可用性，可以部署多
 
 在另一台机器启动下一个 nameserver 只需在该机器上重复以上步骤。如果是在同一个机器上启动下一个 nameserver，请保证是在另一个目录中，不要重复使用已经启动过 namserver 的目录。
 
-比如，可以再次解压压缩包（不要cp已经启动过 namserver 的目录，启动后的生成文件会造成影响），并命名目录为`openmldb-ns-0.6.2-2`。
+比如，可以再次解压压缩包（不要cp已经启动过 namserver 的目录，启动后的生成文件会造成影响），并命名目录为`openmldb-ns-0.6.3-2`。
 
 ```
-tar -zxvf openmldb-0.6.2-linux.tar.gz
-mv openmldb-0.6.2-linux openmldb-ns-0.6.2-2
-cd openmldb-ns-0.6.2-2
+tar -zxvf openmldb-0.6.3-linux.tar.gz
+mv openmldb-0.6.3-linux openmldb-ns-0.6.3-2
+cd openmldb-ns-0.6.3-2
 ```
 然后再修改配置并启动。
 
@@ -434,13 +434,6 @@ Spark发行版：
 wget https://github.com/4paradigm/spark/releases/download/v3.2.1-openmldb0.6.3/spark-3.2.1-bin-openmldbspark.tgz 
 tar -zxvf spark-3.2.1-bin-openmldbspark.tgz 
 export SPARK_HOME=`pwd`/spark-3.2.1-bin-openmldbspark/
-```
-
-如果你的环境是yarn3.1.1，请下载yarn3.1.1适配的Spark发行版：
-```
-wget https://openmldb.ai/download/spark-3.0.0-bin-openmldbspark-v062.tgz
-tar -zxvf spark-3.0.0-bin-openmldbspark-v062.tgz
-export SPARK_HOME=`pwd`/spark-3.0.0-bin-openmldbspark/
 ```
 
 OpenMLDB部署包：
