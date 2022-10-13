@@ -229,17 +229,17 @@ class RowFormat {
 class MultiSlicesRowFormat : public RowFormat {
  public:
     explicit MultiSlicesRowFormat(const Schema* schema) {
-        slice_formats_.emplace_back(schema);
+        slice_formats_.emplace_back(SliceFormat(schema));
+    }
+
+    ~MultiSlicesRowFormat() {
+        slice_formats_.clear();
     }
 
     explicit MultiSlicesRowFormat(const std::vector<const Schema*>& schemas) {
         for (auto schema : schemas) {
-            slice_formats_.emplace_back(schema);
+            slice_formats_.emplace_back(SliceFormat(schema));
         }
-    }
-
-    ~MultiSlicesRowFormat() override {
-        slice_formats_.clear();
     }
 
     bool GetStringColumnInfo(size_t schema_idx, size_t idx, StringColInfo* res) const override {
@@ -265,6 +265,13 @@ class SingleSliceRowFormat : public RowFormat {
         offsets_.emplace_back(0);
     }
 
+    ~SingleSliceRowFormat() {
+        offsets_.clear();
+        if (slice_format_) {
+            delete slice_format_;
+        }
+    }
+
     explicit SingleSliceRowFormat(const std::vector<const Schema*>& schemas) {
         int offset = 0;
         for (auto schema : schemas) {
@@ -275,13 +282,6 @@ class SingleSliceRowFormat : public RowFormat {
         }
 
         slice_format_ = new SliceFormat(&merged_schema_);
-    }
-
-    ~SingleSliceRowFormat() override {
-        offsets_.clear();
-        if (slice_format_) {
-            delete slice_format_;
-        }
     }
 
     bool GetStringColumnInfo(size_t schema_idx, size_t idx, StringColInfo* res) const override {

@@ -1013,13 +1013,16 @@ Row Runner::WindowProject(const int8_t* fn, const uint64_t row_key,
     if (append_slices > 0) {
         if (FLAGS_enable_spark_unsaferow_format) {
             // For UnsafeRowOpt, do not merge input row and return the single slice output row only
-            return Row(base::RefCountedSlice::CreateManaged(out_buf, RowView::GetSize(out_buf)));
+            return Row(base::RefCountedSlice::CreateManaged(
+                out_buf, RowView::GetSize(out_buf)));
         } else {
-            return Row(append_slices - 1, row, 1,
-                       Row(base::RefCountedSlice::CreateManaged(out_buf, RowView::GetSize(out_buf))));
+            return Row(base::RefCountedSlice::CreateManaged(
+                           out_buf, RowView::GetSize(out_buf)),
+                       append_slices, row);
         }
     } else {
-        return Row(base::RefCountedSlice::CreateManaged(out_buf, RowView::GetSize(out_buf)));
+        return Row(base::RefCountedSlice::CreateManaged(
+            out_buf, RowView::GetSize(out_buf)));
     }
 }
 

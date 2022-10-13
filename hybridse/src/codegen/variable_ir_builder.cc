@@ -15,10 +15,9 @@
  */
 
 #include "codegen/variable_ir_builder.h"
-
+#include <glog/logging.h>
 #include "codegen/ir_base_builder.h"
 #include "codegen/struct_ir_builder.h"
-#include "glog/logging.h"
 
 using ::hybridse::common::kCodegenError;
 
@@ -124,7 +123,7 @@ bool hybridse::codegen::VariableIRBuilder::StoreValue(
 }
 
 bool hybridse::codegen::VariableIRBuilder::LoadValue(
-    const std::string& name, NativeValue* output, hybridse::base::Status& status) {
+    std::string name, NativeValue* output, hybridse::base::Status& status) {
     NativeValue value;
     if (!sv_->FindVar(name, &value)) {
         status.msg = "fail to get value " + name + ": value is null";
@@ -173,7 +172,8 @@ bool hybridse::codegen::VariableIRBuilder::LoadColumnRef(
     const std::string& frame_str, ::llvm::Value** output,
     hybridse::base::Status& status) {
     NativeValue col_ref;
-    bool ok = LoadValue(absl::StrCat("@col.", relation_name, ".", name, (frame_str.empty() ? "" : ("." + frame_str))),
+    bool ok = LoadValue("@col." + relation_name + "." + name +
+                            (frame_str.empty() ? "" : ("." + frame_str)),
                         &col_ref, status);
     *output = col_ref.GetRaw();
     return ok;

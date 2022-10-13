@@ -931,13 +931,16 @@ SliceFormat::SliceFormat(const hybridse::codec::Schema* schema)
         const ::hybridse::type::ColumnDef& column = schema_->Get(i);
         if (column.type() == ::hybridse::type::kVarchar) {
             if (FLAGS_enable_spark_unsaferow_format) {
-                infos_.emplace_back(column.name(), column.type(), i, offset);
+                infos_.push_back(
+                    ColInfo(column.name(), column.type(), i, offset));
             } else {
-                infos_.emplace_back(column.name(), column.type(), i, string_field_cnt);
+                infos_.push_back(
+                    ColInfo(column.name(), column.type(), i, string_field_cnt));
             }
 
             infos_dict_[column.name()] = i;
-            next_str_pos_.emplace(string_field_cnt, string_field_cnt);
+            next_str_pos_.insert(
+                std::make_pair(string_field_cnt, string_field_cnt));
             string_field_cnt += 1;
 
             if (FLAGS_enable_spark_unsaferow_format) {
@@ -951,7 +954,8 @@ SliceFormat::SliceFormat(const hybridse::codec::Schema* schema)
                 LOG(WARNING) << "fail to find column type "
                              << ::hybridse::type::Type_Name(column.type());
             } else {
-                infos_.emplace_back(column.name(), column.type(), i, offset);
+                infos_.push_back(
+                    ColInfo(column.name(), column.type(), i, offset));
                 infos_dict_[column.name()] = i;
                 offset += it->second;
             }
