@@ -66,6 +66,36 @@ TEST_F(SegmentTest, PutAndGet) {
     ASSERT_EQ(e, t);
 }
 
+TEST_F(SegmentTest, PutAndGCUsingTimeSeriesPool){
+    Segment segment;
+    Slice pk("test1");
+    std::string value = "test0";
+    segment.Put(pk, 9527, value.c_str(), value.size());
+    segment.Put(pk, 9528, value.c_str(), value.size());
+    segment.Put(pk, 9530, value.c_str(), value.size());
+    segment.Put(pk, 9531, value.c_str(), value.size());
+    ASSERT_EQ(4, segment.pool_.GetBucketNum());
+
+    segment.Gc4TTL(9529);
+    ASSERT_EQ(2, segment.pool_.GetBucketNum());
+}
+
+TEST_F(SegmentTest, BulkLoadUsingTimeSeriesPool){
+    Segment segment;
+    Slice pk("test1");
+    std::string value = "test0";
+    DataBlock* db = new DataBlock(1, "test1", 5, 9530, &segment.pool_);
+    segment.BulkLoadPut(0, pk, 9530, db);
+    DataBlock* db = new DataBlock(1, "test2", 5, 9531, &segment.pool_);
+    segment.BulkLoadPut(0, pk, 9531, db);
+    DataBlock* db = new DataBlock(1, "test3", 5, 9532, &segment.pool_);
+    segment.BulkLoadPut(0, pk, 9532, db);
+    DataBlock* db = new DataBlock(1, "test4", 5, 9533, &segment.pool_);
+    segment.BulkLoadPut(0, pk, 9533, db);
+    ASSERT_EQ(4, segment.pool_.GetBucketNum());
+    
+}
+
 TEST_F(SegmentTest, PutAndScan) {
     Segment segment;
     Slice pk("test1");

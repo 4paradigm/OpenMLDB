@@ -166,7 +166,7 @@ void Segment::Put(const Slice& key, uint64_t time, const char* data, uint32_t si
     if (ts_cnt_ > 1) {
         return;
     }
-    auto* db = new DataBlock(1, data, size);
+    auto* db = new DataBlock(1, data, size, time, &pool_);
     Put(key, time, db);
 }
 
