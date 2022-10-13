@@ -1252,9 +1252,6 @@ bool DiskTable::AddIndex(const ::openmldb::common::ColumnKey& column_key) {
         }
 
         rocksdb::ColumnFamilyHandle* handle;
-        cf_ds_.push_back(rocksdb::ColumnFamilyDescriptor(index_def->GetName(), cfo));
-        DEBUGLOG("add cf_name %s. tid %u pid %u", index_def->GetName().c_str(), id_, pid_);
-
         rocksdb::Status s = db_->CreateColumnFamily(cfo, index_def->GetName(), &handle);
         if (!s.ok()) {
             PDLOG(WARNING, "rocksdb failed to create ColumnFamily. tid %u pid %u error %s",
@@ -1264,10 +1261,14 @@ bool DiskTable::AddIndex(const ::openmldb::common::ColumnKey& column_key) {
 
         {
             std::lock_guard<std::mutex> guard(cf_hs_mutex_);
+
+            cf_ds_.push_back(rocksdb::ColumnFamilyDescriptor(index_def->GetName(), cfo));
             auto new_cf_hs_ = std::make_shared<std::vector<rocksdb::ColumnFamilyHandle*>>(CloneCf());
             new_cf_hs_->push_back(handle);
             std::atomic_store_explicit(&cf_hs_, new_cf_hs_, std::memory_order_release);
         }
+
+        DEBUGLOG("add cf_name %s. tid %u pid %u", index_def->GetName().c_str(), id_, pid_);
     }
     index_def->SetStatus(IndexStatus::kReady);
     std::atomic_store_explicit(&table_meta_, new_table_meta, std::memory_order_release);
