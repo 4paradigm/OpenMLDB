@@ -51,7 +51,10 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <scala.version>2.12.8</scala.version>
         <scala.binary.version>2.12</scala.binary.version>
-        <spark.version>3.0.0</spark.version>
+        <spark.version>3.2.1</spark.version>
+
+        <hadoop.version>2.7.4</hadoop.version>
+
         <scalaCompatVersion>${scala.binary.version}</scalaCompatVersion>
         <scalatest.skip>false</scalatest.skip>
         <spark.dependencyScope>provided</spark.dependencyScope>
@@ -61,7 +64,7 @@
         <maven.compiler.target>1.8</maven.compiler.target>
 
         <!-- the version for hybridse-native & openmldb-native
-             override this to publish a variant release e.g macos variant
+             override this to publish a variant release e.g. macOS variant
              checkout java/prepare_release.sh how to prepare a variant release -->
         <variant.native.version>0.6.0-SNAPSHOT</variant.native.version>
 
@@ -318,7 +321,7 @@
                             </goals>
                             <configuration>
                                 <!-- <useAgent>true</useAgent> -->
-                                <!-- uncomment this if want to specify gpg sign key -->
+                                <!-- uncomment this if you want to specify gpg sign key -->
                                 <!-- <keyname>${gpg.keyname}</keyname> -->
 
                                 <passphraseServerId>gpg.passphrase</passphraseServerId>

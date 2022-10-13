@@ -25,7 +25,7 @@
 #include <vector>
 
 #include "base/file_util.h"
-#include "base/glog_wapper.h"
+#include "base/glog_wrapper.h"
 #include "brpc/server.h"
 #include "client/ns_client.h"
 #include "common/timer.h"

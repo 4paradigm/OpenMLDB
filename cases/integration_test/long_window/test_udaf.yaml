@@ -1,0 +1,788 @@
+# Copyright 2021 4Paradigm
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+db: test_zw
+debugs: []
+version: 0.5.0
+cases:
+  -
+    id: 0
+    desc: 长窗口count/avg/sum/max/min，date类型
+    longWindow: w1:2
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        index: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1,1,30,1.1,2.1,1590738990000,"2020-05-01",true]
+          - [2,"aa",2,2,31,1.2,2.2,1590738991000,"2020-05-02",true]
+          - [3,"aa",3,3,32,1.3,2.3,1590738992000,"2020-05-03",true]
+          - [4,"aa",4,4,33,1.4,2.4,1590738993000,"2020-05-04",true]
+          - [5,"aa",5,5,34,1.5,2.5,1590738994000,"2020-05-05",false]
+    sql: |
+      SELECT id, c1, d[0](c8) OVER w1 as w1_udaf FROM {0} WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS_RANGE BETWEEN 2s PRECEDING AND CURRENT ROW);
+    dataProvider:
+      - ["min","max","sum","avg","count"]
+    expectProvider:
+      0:
+        order: id
+        columns: [ "id int","c1 string","w1_udaf date" ]
+        rows:
+          - [1,"aa","2020-05-01"]
+          - [2,"aa","2020-05-01"]
+          - [3,"aa","2020-05-01"]
+          - [4,"aa","2020-05-02"]
+          - [5,"aa","2020-05-03"]
+        preAgg:
+          name: pre_{db_name}_{sp_name}_w1_min_c8
+          type: date
+          rows:
+            - ["aa",1590738990000,1590738991000,2,"2020-05-01",null]
+            - ["aa",1590738992000,1590738993000,2,"2020-05-03",null]
+      1:
+        order: id
+        columns: [ "id int","c1 string","w1_udaf date" ]
+        rows:
+          - [1,"aa","2020-05-01"]
+          - [2,"aa","2020-05-02"]
+          - [3,"aa","2020-05-03"]
+          - [4,"aa","2020-05-04"]
+          - [5,"aa","2020-05-05"]
+        preAgg:
+          name: pre_{db_name}_{sp_name}_w1_max_c8
+          type: date
+          rows:
+            - ["aa",1590738990000,1590738991000,2,"2020-05-02",null]
+            - ["aa",1590738992000,1590738993000,2,"2020-05-04",null]
+      2:
+        success: false
+        msg: fail
+      3:
+        success: false
+        msg: fail
+      4:
+        order: id
+        columns: ["id int","c1 string","w1_udaf bigint"]
+        rows:
+          - [1,"aa",1]
+          - [2,"aa",2]
+          - [3,"aa",3]
+          - [4,"aa",3]
+          - [5,"aa",3]
+        preAgg:
+          name: pre_{db_name}_{sp_name}_w1_count_c8
+          type: bigint
+          rows:
+            - ["aa",1590738990000,1590738991000,2,2,null]
+            - ["aa",1590738992000,1590738993000,2,2,null]
+  -
+    id: 1
+    desc: 长窗口count/avg/sum/max/min，smallint类型
+    longWindow: w1:2
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        index: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1,20,30,1.1,2.1,1590738990000,"2020-05-01",true]
+          - [2,"aa",2,21,31,1.2,2.2,1590738991000,"2020-05-02",true]
+          - [3,"aa",3,22,32,1.3,2.3,1590738992000,"2020-05-03",true]
+          - [4,"aa",4,23,33,1.4,2.4,1590738993000,"2020-05-04",true]
+          - [5,"aa",5,24,34,1.5,2.5,1590738994000,"2020-05-05",false]
+    dataProvider:
+      - ["min","max","sum","avg","count"]
+    sql: |
+      SELECT id, c1, d[0](c2) OVER w1 as w1_udaf FROM {0} WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS_RANGE BETWEEN 2s PRECEDING AND CURRENT ROW);
+    expect:
+      order: id
+      columns: ["id int","c1 string","w1_udaf smallint"]
+    expectProvider:
+      0:
+        rows:
+          - [1,"aa",1]
+          - [2,"aa",1]
+          - [3,"aa",1]
+          - [4,"aa",2]
+          - [5,"aa",3]
+        preAgg:
+          name: pre_{db_name}_{sp_name}_w1_min_c2
+          type: smallint
+          rows:
+            - ["aa",1590738990000,1590738991000,2,1,null]
+            - ["aa",1590738992000,1590738993000,2,3,null]
+      1:
+        rows:
+          - [1,"aa",1]
+          - [2,"aa",2]
+          - [3,"aa",3]
+          - [4,"aa",4]
+          - [5,"aa",5]
+        preAgg:
+          name: pre_{db_name}_{sp_name}_w1_max_c2
+          type: smallint
+          rows:
+            - ["aa",1590738990000,1590738991000,2,2,null]
+            - ["aa",1590738992000,1590738993000,2,4,null]
+      2:
+        rows:
+          - [1,"aa",1]
+          - [2,"aa",3]
+          - [3,"aa",6]
+          - [4,"aa",9]
+          - [5,"aa",12]
+        preAgg:
+          name: pre_{db_name}_{sp_name}_w1_sum_c2
+          type: smallint
+          rows:
+            - ["aa",1590738990000,1590738991000,2,3,null]
+            - ["aa",1590738992000,1590738993000,2,7,null]
+      3:
+        columns: ["id int","c1 string","w1_udaf double"]
+        rows:
+          - [1,"aa",1]
+          - [2,"aa",1.5]
+          - [3,"aa",2]
+          - [4,"aa",3]
+          - [5,"aa",4]
+      4:
+        columns: ["id int","c1 string","w1_udaf bigint"]
+        rows:
+          - [1,"aa",1]
+          - [2,"aa",2]
+          - [3,"aa",3]
+          - [4,"aa",3]
+          - [5,"aa",3]
+        preAgg:
+          name: pre_{db_name}_{sp_name}_w1_count_c2
+          type: bigint
+          rows:
+            - ["aa",1590738990000,1590738991000,2,2,null]
+            - ["aa",1590738992000,1590738993000,2,2,null]
+  -
+    id: 2
+    desc: 长窗口count/avg/sum/max/min，int类型   # pre_{db_name}_{table_name}_{window_name}_{function_name}_{column_name};
+    longWindow: w1:2s
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        index: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1,20,30,1.1,2.1,1590738990000,"2020-05-01",true]
+          - [2,"aa",2,21,31,1.2,2.2,1590738991000,"2020-05-02",true]
+          - [3,"aa",3,22,32,1.3,2.3,1590738992000,"2020-05-03",true]
+          - [4,"aa",4,23,33,1.4,2.4,1590738993000,"2020-05-04",true]
+          - [5,"aa",5,24,34,1.5,2.5,1590738994000,"2020-05-05",false]
+    dataProvider:
+      - ["min","max","sum","avg","count"]
+    sql: |
+      SELECT id, c1, d[0](c3) OVER w1 as w1_udaf FROM {0} WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS_RANGE BETWEEN 2s PRECEDING AND CURRENT ROW);
+    expect:
+      order: id
+      columns: ["id int","c1 string","w1_udaf int"]
+    expectProvider:
+      0:
+        rows:
+          - [1,"aa",20]
+          - [2,"aa",20]
+          - [3,"aa",20]
+          - [4,"aa",21]
+          - [5,"aa",22]
+        preAgg:
+          name: pre_{db_name}_{sp_name}_w1_min_c3
+          type: int
+          rows:
+            - ["aa",1590738990000,1590738991999,2,20,null]
+            - ["aa",1590738992000,1590738993999,2,22,null]
+      1:
+        rows:
+          - [1,"aa",20]
+          - [2,"aa",21]
+          - [3,"aa",22]
+          - [4,"aa",23]
+          - [5,"aa",24]
+        preAgg:
+          name: pre_{db_name}_{sp_name}_w1_max_c3
+          type: int
+          rows:
+            - ["aa",1590738990000,1590738991999,2,21,null]
+            - ["aa",1590738992000,1590738993999,2,23,null]
+      2:
+        rows:
+          - [1,"aa",20]
+          - [2,"aa",41]
+          - [3,"aa",63]
+          - [4,"aa",66]
+          - [5,"aa",69]
+        preAgg:
+          name: pre_{db_name}_{sp_name}_w1_sum_c3
+          type: bigint
+          rows:
+            - ["aa",1590738990000,1590738991999,2,41,null]
+            - ["aa",1590738992000,1590738993999,2,45,null]
+      3:
+        columns: ["id int","c1 string","w1_udaf double"]
+        rows:
+          - [1,"aa",20]
+          - [2,"aa",20.5]
+          - [3,"aa",21]
+          - [4,"aa",22]
+          - [5,"aa",23]
+#        preAgg:
+#          name: pre_{db_name}_{sp_name}_w1_avg_c3;
+#          rows:
+#            - ["aa",1590738990000,1590738991999,2,20.5,null]
+#            - ["aa",1590738992000,1590738993999,2,22.5,null]
+      4:
+        columns: ["id int","c1 string","w1_udaf bigint"]
+        rows:
+          - [1,"aa",1]
+          - [2,"aa",2]
+          - [3,"aa",3]
+          - [4,"aa",3]
+          - [5,"aa",3]
+        preAgg:
+          name: pre_{db_name}_{sp_name}_w1_count_c3
+          type: bigint
+          rows:
+            - ["aa",1590738990000,1590738991999,2,2,null]
+            - ["aa",1590738992000,1590738993999,2,2,null]
+  -
+    id: 3
+    desc: 长窗口count/avg/sum/max/min，bigint类型
+    longWindow: w1:2s
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        index: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1,20,30,1.1,2.1,1590738990000,"2020-05-01",true]
+          - [2,"aa",2,21,31,1.2,2.2,1590738991000,"2020-05-02",true]
+          - [3,"aa",3,22,32,1.3,2.3,1590738992000,"2020-05-03",true]
+          - [4,"aa",4,23,33,1.4,2.4,1590738993000,"2020-05-04",true]
+          - [5,"aa",5,24,34,1.5,2.5,1590738994000,"2020-05-05",false]
+    dataProvider:
+      - ["min","max","sum","avg","count"]
+    sql: |
+      SELECT id, c1, d[0](c4) OVER w1 as w1_udaf FROM {0} WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS_RANGE BETWEEN 2s PRECEDING AND CURRENT ROW);
+    expect:
+      order: id
+      columns: ["id int","c1 string","w1_udaf bigint"]
+    expectProvider:
+      0:
+        rows:
+          - [1,"aa",30]
+          - [2,"aa",30]
+          - [3,"aa",30]
+          - [4,"aa",31]
+          - [5,"aa",32]
+        preAgg:
+          name: pre_{db_name}_{sp_name}_w1_min_c4
+          type: bigint
+          rows:
+            - ["aa",1590738990000,1590738991999,2,30,null]
+            - ["aa",1590738992000,1590738993999,2,32,null]
+      1:
+        rows:
+          - [1,"aa",30]
+          - [2,"aa",31]
+          - [3,"aa",32]
+          - [4,"aa",33]
+          - [5,"aa",34]
+        preAgg:
+          name: pre_{db_name}_{sp_name}_w1_max_c4
+          type: bigint
+          rows:
+            - ["aa",1590738990000,1590738991999,2,31,null]
+            - ["aa",1590738992000,1590738993999,2,33,null]
+      2:
+        rows:
+          - [1,"aa",30]
+          - [2,"aa",61]
+          - [3,"aa",93]
+          - [4,"aa",96]
+          - [5,"aa",99]
+        preAgg:
+          name: pre_{db_name}_{sp_name}_w1_sum_c4;
+          type: bigint
+          rows:
+            - ["aa",1590738990000,1590738991999,2,61,null]
+            - ["aa",1590738992000,1590738993999,2,65,null]
+      3:
+        columns: ["id int","c1 string","w1_udaf double"]
+        rows:
+          - [1,"aa",30]
+          - [2,"aa",30.5]
+          - [3,"aa",31]
+          - [4,"aa",32]
+          - [5,"aa",33]
+      4:
+        columns: ["id int","c1 string","w1_udaf bigint"]
+        rows:
+          - [1,"aa",1]
+          - [2,"aa",2]
+          - [3,"aa",3]
+          - [4,"aa",3]
+          - [5,"aa",3]
+        preAgg:
+          name: pre_{db_name}_{sp_name}_w1_count_c4
+          type: bigint
+          rows:
+            - ["aa",1590738990000,1590738991999,2,2,null]
+            - ["aa",1590738992000,1590738993999,2,2,null]
+  -
+    id: 4
+    desc: 长窗口count/avg/sum/max/min，string类型
+    longWindow: w1:2s
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 string","c9 bool"]
+        index: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1,20,30,1.1,2.1,1590738990000,"2020-05-01",true]
+          - [2,"aa",2,21,31,1.2,2.2,1590738991000,"2020-05-02",true]
+          - [3,"aa",3,22,32,1.3,2.3,1590738992000,"2020-05-03",true]
+          - [4,"aa",4,23,33,1.4,2.4,1590738993000,"2020-05-04",true]
+          - [5,"aa",5,24,34,1.5,2.5,1590738994000,"2020-05-05",false]
+    dataProvider:
+      - ["min","max","sum","avg","count"]
+    sql: |
+      SELECT id, c1, d[0](c8) OVER w1 as w1_udaf FROM {0} WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS_RANGE BETWEEN 2s PRECEDING AND CURRENT ROW);
+    expectProvider:
+      0:
+        order: id
+        columns: [ "id int","c1 string","w1_udaf string" ]
+        rows:
+          - [1,"aa","2020-05-01"]
+          - [2,"aa","2020-05-01"]
+          - [3,"aa","2020-05-01"]
+          - [4,"aa","2020-05-02"]
+          - [5,"aa","2020-05-03"]
+        preAgg:
+          name: pre_{db_name}_{sp_name}_w1_min_c8
+          type: string
+          rows:
+            - ["aa",1590738990000,1590738991999,2,"2020-05-01",null]
+            - ["aa",1590738992000,1590738993999,2,"2020-05-03",null]
+      1:
+        order: id
+        columns: [ "id int","c1 string","w1_udaf string" ]
+        rows:
+          - [1,"aa","2020-05-01"]
+          - [2,"aa","2020-05-02"]
+          - [3,"aa","2020-05-03"]
+          - [4,"aa","2020-05-04"]
+          - [5,"aa","2020-05-05"]
+        preAgg:
+          name: pre_{db_name}_{sp_name}_w1_max_c8
+          type: string
+          rows:
+            - ["aa",1590738990000,1590738991999,2,"2020-05-02",null]
+            - ["aa",1590738992000,1590738993999,2,"2020-05-04",null]
+      2:
+        success: false
+        msg: fail
+      3:
+        success: false
+        msg: fail
+      4:
+        order: id
+        columns: ["id int","c1 string","w1_udaf bigint"]
+        rows:
+          - [1,"aa",1]
+          - [2,"aa",2]
+          - [3,"aa",3]
+          - [4,"aa",3]
+          - [5,"aa",3]
+        preAgg:
+          name: pre_{db_name}_{sp_name}_w1_count_c8
+          type: bigint
+          rows:
+            - ["aa",1590738990000,1590738991999,2,2,null]
+            - ["aa",1590738992000,1590738993999,2,2,null]
+  -
+    id: 5
+    desc: 长窗口count/avg/sum/max/min，timestamp类型
+    longWindow: w1:2s
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        index: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1,20,30,1.1,2.1,1590738990000,"2020-05-01",true]
+          - [2,"aa",2,21,31,1.2,2.2,1590738991000,"2020-05-02",true]
+          - [3,"aa",3,22,32,1.3,2.3,1590738992000,"2020-05-03",true]
+          - [4,"aa",4,23,33,1.4,2.4,1590738993000,"2020-05-04",true]
+          - [5,"aa",5,24,34,1.5,2.5,1590738994000,"2020-05-05",false]
+    dataProvider:
+      - ["min","max","sum","avg","count"]
+    sql: |
+      SELECT id, c1, d[0](c7) OVER w1 as w1_udaf FROM {0} WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS_RANGE BETWEEN 2s PRECEDING AND CURRENT ROW);
+    expectProvider:
+      0:
+        order: id
+        columns: [ "id int","c1 string","w1_udaf timestamp" ]
+        rows:
+          - [1,"aa",1590738990000]
+          - [2,"aa",1590738990000]
+          - [3,"aa",1590738990000]
+          - [4,"aa",1590738991000]
+          - [5,"aa",1590738992000]
+#        preAgg:
+#          name: pre_{db_name}_{sp_name}_w1_min_c7
+#          type: timestamp
+#          rows:
+#            - ["aa",1590738990000,1590738991999,2,1590738990000,null]  # 101110010 01011111 01101110 10110011 10110000
+#            - ["aa",1590738992000,1590738993999,2,1590738992000,null]
+      1:
+        order: id
+        columns: [ "id int","c1 string","w1_udaf timestamp" ]
+        rows:
+          - [1,"aa",1590738990000]
+          - [2,"aa",1590738991000]
+          - [3,"aa",1590738992000]
+          - [4,"aa",1590738993000]
+          - [5,"aa",1590738994000]
+#        preAgg:
+#          name: pre_{db_name}_{sp_name}_w1_max_c7
+#          type: timestamp
+#          rows:
+#            - ["aa",1590738990000,1590738991999,2,1590738993000,null]
+#            - ["aa",1590738992000,1590738993999,2,1590738994000,null]
+      2:
+        order: id
+        columns: [ "id int","c1 string","w1_udaf timestamp" ]
+        rows:
+          - [1,"aa",1590738990000]
+          - [2,"aa",3181477981000]
+          - [3,"aa",4772216973000]
+          - [4,"aa",4772216976000]
+          - [5,"aa",4772216979000]
+#        preAgg:
+#          name: pre_{db_name}_{sp_name}_w1_sum_c7
+#          type: bigtimestampint
+#          rows:
+#            - ["aa",1590738990000,1590738991999,2,3181477981000,null]
+#            - ["aa",1590738992000,1590738993999,2,3181477985000,null]
+      3:
+        success: false
+        msg: fail
+      4:
+        order: id
+        columns: ["id int","c1 string","w1_udaf bigint"]
+        rows:
+          - [1,"aa",1]
+          - [2,"aa",2]
+          - [3,"aa",3]
+          - [4,"aa",3]
+          - [5,"aa",3]
+        preAgg:
+          name: pre_{db_name}_{sp_name}_w1_count_c7
+          type: bigint
+          rows:
+            - ["aa",1590738990000,1590738991999,2,2,null]
+            - ["aa",1590738992000,1590738993999,2,2,null]
+  -
+    id: 6
+    desc: 长窗口count/avg/sum/max/min，row类型
+    longWindow: w1:2s
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        index: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1,20,30,1.1,2.1,1590738990000,"2020-05-01",true]
+          - [2,"aa",2,21,31,1.2,2.2,1590738991000,"2020-05-02",true]
+          - [3,"aa",3,22,32,1.3,2.3,1590738992000,"2020-05-03",true]
+          - [4,"aa",4,23,33,1.4,2.4,1590738993000,"2020-05-04",true]
+          - [5,"aa",5,24,34,1.5,2.5,1590738994000,"2020-05-05",false]
+    dataProvider:
+      - ["min","max","sum","avg","count"]
+    sql: |
+      SELECT id, c1, d[0](*) OVER w1 as w1_udaf FROM {0} WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS_RANGE BETWEEN 2s PRECEDING AND CURRENT ROW);
+    expectProvider:
+      0:
+        success: false
+        msg: fail
+      1:
+        success: false
+        msg: fail
+      2:
+        success: false
+        msg: fail
+      3:
+        success: false
+        msg: fail
+      4:
+        order: id
+        columns: ["id int","c1 string","w1_udaf bigint"]
+        rows:
+          - [1,"aa",1]
+          - [2,"aa",2]
+          - [3,"aa",3]
+          - [4,"aa",3]
+          - [5,"aa",3]
+        preAgg:
+          name: pre_{db_name}_{sp_name}_w1_count_
+          type: bigint
+          rows:
+            - ["aa",1590738990000,1590738991999,2,2,null]
+            - ["aa",1590738992000,1590738993999,2,2,null]
+  -
+    id: 7
+    desc: 长窗口count/avg/sum/max/min，bool类型
+    longWindow: w1:2s
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        index: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1,20,30,1.1,2.1,1590738990000,"2020-05-01",true]
+          - [2,"aa",2,21,31,1.2,2.2,1590738991000,"2020-05-02",true]
+          - [3,"aa",3,22,32,1.3,2.3,1590738992000,"2020-05-03",true]
+          - [4,"aa",4,23,33,1.4,2.4,1590738993000,"2020-05-04",true]
+          - [5,"aa",5,24,34,1.5,2.5,1590738994000,"2020-05-05",false]
+    sql: |
+      SELECT id, c1, d[0](c9) OVER w1 as w1_udaf FROM {0} WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS_RANGE BETWEEN 2s PRECEDING AND CURRENT ROW);
+    dataProvider:
+      - ["min","max","sum","avg","count"]
+    expectProvider:
+      0:
+        success: false
+        msg: fail
+      1:
+        success: false
+        msg: fail
+      2:
+        success: false
+        msg: fail
+      3:
+        success: false
+        msg: fail
+      4:
+        order: id
+        columns: ["id int","c1 string","w1_udaf bigint"]
+        rows:
+          - [1,"aa",1]
+          - [2,"aa",2]
+          - [3,"aa",3]
+          - [4,"aa",3]
+          - [5,"aa",3]
+        preAgg:
+          name: pre_{db_name}_{sp_name}_w1_count_c9;
+          type: bigint
+          rows:
+            - ["aa",1590738990000,1590738991999,2,2,null]
+            - ["aa",1590738992000,1590738993999,2,2,null]
+  -
+    id: 8
+    desc: 长窗口count/avg/sum/max/min，float类型
+    longWindow: w1:2s
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        index: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1,20,30,1.1,2.1,1590738990000,"2020-05-01",true]
+          - [2,"aa",2,21,31,1.2,2.2,1590738991000,"2020-05-02",true]
+          - [3,"aa",3,22,32,1.3,2.3,1590738992000,"2020-05-03",true]
+          - [4,"aa",4,23,33,1.4,2.4,1590738993000,"2020-05-04",true]
+          - [5,"aa",5,24,34,1.5,2.5,1590738994000,"2020-05-05",false]
+    sql: |
+      SELECT id, c1, d[0](c5) OVER w1 as w1_udaf FROM {0} WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS_RANGE BETWEEN 2s PRECEDING AND CURRENT ROW);
+    dataProvider:
+      - ["min","max","sum","avg","count"]
+    expect:
+      order: id
+      columns: ["id int","c1 string","w1_udaf float"]
+    expectProvider:
+      0:
+        rows:
+          - [1,"aa",1.1]
+          - [2,"aa",1.1]
+          - [3,"aa",1.1]
+          - [4,"aa",1.2]
+          - [5,"aa",1.3]
+#        preAgg:
+#          name: pre_{db_name}_{sp_name}_w1_min_c5;
+#          type: float
+#          rows:
+#            - ["aa",1590738990000,1590738991999,2,1.1,null]
+#            - ["aa",1590738992000,1590738993999,2,1.3,null]
+      1:
+        rows:
+          - [1,"aa",1.1]
+          - [2,"aa",1.2]
+          - [3,"aa",1.3]
+          - [4,"aa",1.4]
+          - [5,"aa",1.5]
+      2:
+        rows:
+          - [1,"aa",1.1]
+          - [2,"aa",2.3]
+          - [3,"aa",3.6]
+          - [4,"aa",3.9]
+          - [5,"aa",4.2]
+      3:
+        columns: ["id int","c1 string","w1_udaf double"]
+        rows:
+          - [1,"aa",1.1]
+          - [2,"aa",1.15]
+          - [3,"aa",1.2]
+          - [4,"aa",1.3]
+          - [5,"aa",1.4]
+      4:
+        columns: ["id int","c1 string","w1_udaf bigint"]
+        rows:
+          - [1,"aa",1]
+          - [2,"aa",2]
+          - [3,"aa",3]
+          - [4,"aa",3]
+          - [5,"aa",3]
+        preAgg:
+          name: pre_{db_name}_{sp_name}_w1_count_c5;
+          type: bigint
+          rows:
+            - ["aa",1590738990000,1590738991999,2,2,null]
+            - ["aa",1590738992000,1590738993999,2,2,null]
+  -
+    id: 9
+    desc: 长窗口count/avg/sum/max/min，double类型
+    longWindow: w1:2s
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        index: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1,20,30,1.1,2.1,1590738990000,"2020-05-01",true]
+          - [2,"aa",2,21,31,1.2,2.2,1590738991000,"2020-05-02",true]
+          - [3,"aa",3,22,32,1.3,2.3,1590738992000,"2020-05-03",true]
+          - [4,"aa",4,23,33,1.4,2.4,1590738993000,"2020-05-04",true]
+          - [5,"aa",5,24,34,1.5,2.5,1590738994000,"2020-05-05",false]
+    sql: |
+      SELECT id, c1, d[0](c6) OVER w1 as w1_udaf FROM {0} WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS_RANGE BETWEEN 2s PRECEDING AND CURRENT ROW);
+    dataProvider:
+      - ["min","max","sum","avg","count"]
+    expect:
+      order: id
+      columns: ["id int","c1 string","w1_udaf double"]
+    expectProvider:
+      0:
+        rows:
+          - [1,"aa",2.1]
+          - [2,"aa",2.1]
+          - [3,"aa",2.1]
+          - [4,"aa",2.2]
+          - [5,"aa",2.3]
+      1:
+        rows:
+          - [1,"aa",2.1]
+          - [2,"aa",2.2]
+          - [3,"aa",2.3]
+          - [4,"aa",2.4]
+          - [5,"aa",2.5]
+      2:
+        rows:
+          - [1,"aa",2.1]
+          - [2,"aa",4.3]
+          - [3,"aa",6.6]
+          - [4,"aa",6.9]
+          - [5,"aa",7.2]
+      3:
+        columns: ["id int","c1 string","w1_udaf double"]
+        rows:
+          - [1,"aa",2.1]
+          - [2,"aa",2.15]
+          - [3,"aa",2.2]
+          - [4,"aa",2.3]
+          - [5,"aa",2.4]
+      4:
+        columns: ["id int","c1 string","w1_udaf bigint"]
+        rows:
+          - [1,"aa",1]
+          - [2,"aa",2]
+          - [3,"aa",3]
+          - [4,"aa",3]
+          - [5,"aa",3]
+        preAgg:
+          name: pre_{db_name}_{sp_name}_w1_count_c6;
+          type: bigint
+          rows:
+            - ["aa",1590738990000,1590738991999,2,2,null]
+            - ["aa",1590738992000,1590738993999,2,2,null]
+  -
+    id: 10
+    desc: 长窗口count/avg/sum/max/min，rows
+    longWindow: w1:2s
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        index: ["index1:c1:c7:0:latest"]
+        rows:
+          - [1,"aa",1,20,30,1.1,2.1,1590738990000,"2020-05-01",true]
+          - [2,"aa",2,21,31,1.2,2.2,1590738991000,"2020-05-02",true]
+          - [3,"aa",3,22,32,1.3,2.3,1590738992000,"2020-05-03",true]
+          - [4,"aa",4,23,33,1.4,2.4,1590738993000,"2020-05-04",true]
+          - [5,"aa",5,24,34,1.5,2.5,1590738994000,"2020-05-05",false]
+    sql: |
+      SELECT id, c1, d[0](c3) OVER w1 as w1_udaf FROM {0} WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
+    dataProvider:
+      - ["min","max","sum","avg","count"]
+    expect:
+      order: id
+      columns: ["id int","c1 string","w1_udaf int"]
+    expectProvider:
+      0:
+        rows:
+          - [1,"aa",20]
+          - [2,"aa",20]
+          - [3,"aa",20]
+          - [4,"aa",21]
+          - [5,"aa",22]
+      1:
+        rows:
+          - [1,"aa",20]
+          - [2,"aa",21]
+          - [3,"aa",22]
+          - [4,"aa",23]
+          - [5,"aa",24]
+      2:
+        rows:
+          - [1,"aa",20]
+          - [2,"aa",41]
+          - [3,"aa",63]
+          - [4,"aa",66]
+          - [5,"aa",69]
+      3:
+        columns: ["id int","c1 string","w1_udaf double"]
+        rows:
+          - [1,"aa",20]
+          - [2,"aa",20.5]
+          - [3,"aa",21]
+          - [4,"aa",22]
+          - [5,"aa",23]
+      4:
+        columns: ["id int","c1 string","w1_udaf bigint"]
+        rows:
+          - [1,"aa",1]
+          - [2,"aa",2]
+          - [3,"aa",3]
+          - [4,"aa",3]
+          - [5,"aa",3]
+        preAgg:
+          name: pre_{db_name}_{sp_name}_w1_count_c3;
+          type: bigint
+          rows:
+            - ["aa",1590738990000,1590738991999,2,2,null]
+            - ["aa",1590738992000,1590738993999,2,2,null]
+

@@ -17,7 +17,7 @@
 #include "tablet/file_receiver.h"
 
 #include "base/file_util.h"
-#include "base/glog_wapper.h"
+#include "base/glog_wrapper.h"
 #include "base/strings.h"
 
 namespace openmldb {

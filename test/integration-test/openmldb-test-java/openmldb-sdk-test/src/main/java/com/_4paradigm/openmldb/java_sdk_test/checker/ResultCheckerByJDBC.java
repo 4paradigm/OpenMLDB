@@ -17,7 +17,6 @@ package com._4paradigm.openmldb.java_sdk_test.checker;
 
 import com._4paradigm.openmldb.test_common.bean.OpenMLDBResult;
 import com._4paradigm.openmldb.test_common.util.DataUtil;
-import com._4paradigm.openmldb.test_common.util.SDKUtil;
 import com._4paradigm.openmldb.test_common.model.ExpectDesc;
 import com._4paradigm.openmldb.test_common.model.Table;
 import com._4paradigm.openmldb.test_common.util.SchemaUtil;
@@ -48,11 +47,11 @@ public class ResultCheckerByJDBC extends BaseChecker {
         }
         List<List<Object>> expectRows = DataUtil.convertRows(expect.getRows(),
                 expect.getColumns());
-        List<List<Object>> actual = fesqlResult.getResult();
+        List<List<Object>> actual = openMLDBResult.getResult();
 
         String orderName = expect.getOrder();
         if (StringUtils.isNotEmpty(orderName)) {
-            int index = SchemaUtil.getIndexByColumnName(fesqlResult.getColumnNames(),orderName);
+            int index = SchemaUtil.getIndexByColumnName(openMLDBResult.getColumnNames(),orderName);
             Collections.sort(expectRows, new RowsSort(index));
             Collections.sort(actual, new RowsSort(index));
         }
@@ -81,7 +80,7 @@ public class ResultCheckerByJDBC extends BaseChecker {
                             "ResultChecker fail: row=%d column=%d expect=%s real=%s\nexpect %s\nreal %s",
                             i, j, expect_val, actual_val,
                             Table.getTableString(expect.getColumns(), expectRows),
-                            fesqlResult.toString()));
+                            openMLDBResult.toString()));
                 }else if (actual_val != null && actual_val instanceof Double) {
                     // Assert.assertTrue(expect_val != null && expect_val instanceof Double);
                     if(expect_val instanceof Float){
@@ -96,7 +95,7 @@ public class ResultCheckerByJDBC extends BaseChecker {
                             String.format("ResultChecker fail: row=%d column=%d expect=%s real=%s\nexpect %s\nreal %s",
                                     i, j, expect_val, actual_val,
                                     Table.getTableString(expect.getColumns(), expectRows),
-                                    fesqlResult.toString())
+                                    openMLDBResult.toString())
                     );
 
                 } else if(expect_val != null && expect_val instanceof Timestamp){
@@ -105,13 +104,13 @@ public class ResultCheckerByJDBC extends BaseChecker {
                             "ResultChecker fail: row=%d column=%d expect=%s real=%s\nexpect %s\nreal %s",
                             i, j, expect_val, actual_val,
                             Table.getTableString(expect.getColumns(), expectRows),
-                            fesqlResult.toString()));
+                            openMLDBResult.toString()));
                 } else{
                     Assert.assertEquals(String.valueOf(actual_val), String.valueOf(expect_val), String.format(
                             "ResultChecker fail: row=%d column=%d expect=%s real=%s\nexpect %s\nreal %s",
                             i, j, expect_val, actual_val,
                             Table.getTableString(expect.getColumns(), expectRows),
-                            fesqlResult.toString()));
+                            openMLDBResult.toString()));
 
                 }
             }

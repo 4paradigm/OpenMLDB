@@ -163,7 +163,7 @@ public class ResultUtil {
             obj = rs.getLong(index + 1);
         } else if (columnType == Types.VARCHAR) {
             obj = rs.getString(index + 1);
-            log.info("conver string data {}", obj);
+//            log.info("convert string data {}", obj);
         } else if (columnType == Types.TIMESTAMP) {
             obj = rs.getTimestamp(index + 1);
         }

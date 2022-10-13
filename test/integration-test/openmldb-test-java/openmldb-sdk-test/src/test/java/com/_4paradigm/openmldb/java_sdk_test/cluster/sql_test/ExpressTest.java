@@ -37,7 +37,7 @@ public class ExpressTest extends OpenMLDBTest {
     @Story("batch")
     @Test(dataProvider = "getCase",enabled = false)
     @Yaml(filePaths = {
-            "function/expression/"
+            "integration_test/expression/"
     })
     public void testExpress(SQLCase testCase) throws Exception {
         ExecutorFactory.build(executor, testCase, SQLCaseType.kBatch).run();
@@ -45,7 +45,7 @@ public class ExpressTest extends OpenMLDBTest {
     @Story("request")
     @Test(dataProvider = "getCase")
     @Yaml(filePaths = {
-            "function/expression/"
+            "integration_test/expression/"
     })
     public void testExpressRequestMode(SQLCase testCase) throws Exception {
         ExecutorFactory.build(executor, testCase, SQLCaseType.kRequest).run();
@@ -53,7 +53,7 @@ public class ExpressTest extends OpenMLDBTest {
     @Story("requestWithSp")
     @Test(dataProvider = "getCase")
     @Yaml(filePaths = {
-            "function/expression/"
+            "integration_test/expression/"
     })
     public void testExpressRequestModeWithSp(SQLCase testCase) throws Exception {
         ExecutorFactory.build(executor, testCase, SQLCaseType.kRequestWithSp).run();
@@ -61,7 +61,7 @@ public class ExpressTest extends OpenMLDBTest {
     @Story("requestWithSpAysn")
     @Test(dataProvider = "getCase")
     @Yaml(filePaths = {
-            "function/expression/"
+            "integration_test/expression/"
     })
     public void testExpressRequestModeWithSpAysn(SQLCase testCase) throws Exception {
         ExecutorFactory.build(executor, testCase, SQLCaseType.kRequestWithSpAsync).run();

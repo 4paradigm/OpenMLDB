@@ -22,7 +22,7 @@
 #include "absl/strings/match.h"
 #include "absl/strings/str_cat.h"
 #include "base/file_util.h"
-#include "base/glog_wapper.h"
+#include "base/glog_wrapper.h"
 #include "base/slice.h"
 #include "base/strings.h"
 #include "boost/algorithm/string.hpp"
@@ -165,7 +165,8 @@ bool Aggregator::Update(const std::string& key, const std::string& row, const ui
         if (recover) {
             return true;
         } else {
-            PDLOG(ERROR, "logical error: current offset is smaller than binlog offset");
+            PDLOG(ERROR, "logical error: current offset %lu is smaller than binlog offset %lu",
+                  offset, aggr_buffer.binlog_offset_);
             return false;
         }
     }
@@ -282,15 +283,17 @@ bool Aggregator::Init(std::shared_ptr<LogReplicator> base_replicator) {
     status_.store(AggrStat::kRecovering, std::memory_order_relaxed);
     auto log_parts = base_replicator->GetLogPart();
 
-    // TODO(nauta): support base table that existing data to init aggregator when deploy
-    if (aggr_table_->GetRecordCnt() == 0 && log_parts->IsEmpty()) {
+    auto it = aggr_table_->NewTraverseIterator(0);
+    it->SeekToFirst();
+    uint64_t recovery_offset = 0;
+    uint64_t aggr_latest_offset = 0;
+
+    bool aggr_empty = !it->Valid();
+    if (aggr_empty && log_parts->IsEmpty()) {
+        PDLOG(WARNING, "aggregator recovery skipped");
         status_.store(AggrStat::kInited, std::memory_order_relaxed);
         return true;
     }
-    auto it = aggr_table_->NewTraverseIterator(0);
-    it->SeekToFirst();
-    uint64_t recovery_offset = UINT64_MAX;
-    uint64_t aggr_latest_offset = 0;
     while (it->Valid()) {
         auto data_ptr = reinterpret_cast<const int8_t*>(it->GetValue().data());
         std::string pk, filter_key;
@@ -320,12 +323,15 @@ bool Aggregator::Init(std::shared_ptr<LogReplicator> base_replicator) {
         }
         it->NextPK();
     }
-    if (aggr_table_->GetRecordCnt() == 0) {
-        recovery_offset = 0;
-    }
 
+    // TODO(zhanghaohit): support the cases where there is already data in the base table before deploy
+    // for now, only recover the data of latest binlog file
     ::openmldb::log::LogReader log_reader(log_parts, base_replicator->GetLogPath(), false);
-    log_reader.SetOffset(recovery_offset);
+    if (!log_reader.SetOffset(recovery_offset)) {
+        PDLOG(WARNING, "create log_reader with smaller recovery_offset=%lu", recovery_offset);
+        recovery_offset = log_reader.GetMinOffset();
+        log_reader.SetOffset(recovery_offset);
+    }
     ::openmldb::api::LogEntry entry;
     uint64_t cur_offset = recovery_offset;
     std::string buffer;
@@ -523,7 +529,7 @@ bool Aggregator::UpdateFlushedBuffer(const std::string& key, const std::string& 
             return false;
         }
         tmp_buffer.aggr_cnt_ += 1;
-        tmp_buffer.binlog_offset_ = offset;
+        tmp_buffer.binlog_offset_ = std::max(tmp_buffer.binlog_offset_, offset);
         break;
     }
 

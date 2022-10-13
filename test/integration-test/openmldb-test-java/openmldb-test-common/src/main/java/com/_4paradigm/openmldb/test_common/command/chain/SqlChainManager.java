@@ -32,11 +32,15 @@ public class SqlChainManager {
         DescHandler descHandler = new DescHandler();
         ShowDeploymentHandler showDeploymentHandler = new ShowDeploymentHandler();
         ShowDeploymentsHandler showDeploymentsHandler = new ShowDeploymentsHandler();
+        ShowTableStatusHandler showTableStatusHandler = new ShowTableStatusHandler();
+        DefaultHandler defaultHandler = new DefaultHandler();
         queryHandler.setNextHandler(dmlHandler);
         dmlHandler.setNextHandler(ddlHandler);
         ddlHandler.setNextHandler(descHandler);
         descHandler.setNextHandler(showDeploymentHandler);
         showDeploymentHandler.setNextHandler(showDeploymentsHandler);
+        showDeploymentsHandler.setNextHandler(showTableStatusHandler);
+        showTableStatusHandler.setNextHandler(defaultHandler);
         return queryHandler;
     }
 
@@ -48,7 +52,7 @@ public class SqlChainManager {
         return ClassHolder.holder;
     }
     public OpenMLDBResult sql(OpenMLDBInfo openMLDBInfo, String dbName, String sql){
-        OpenMLDBResult fesqlResult = sqlHandler.doHandle(openMLDBInfo, dbName, sql);
-        return fesqlResult;
+        OpenMLDBResult openMLDBResult = sqlHandler.doHandle(openMLDBInfo, dbName, sql);
+        return openMLDBResult;
     }
 }

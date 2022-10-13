@@ -79,7 +79,7 @@ __attribute__((unused)) static void PrintSchema(
 
     for (int i = 0; i < added_column_desc.size(); i++) {
         const auto& column = added_column_desc.Get(i);
-        t.add(std::to_string(i + 1));
+        t.add(std::to_string(column_desc.size() + i + 1));
         t.add(column.name());
         // kXXX discard k
         t.add(DataType_Name(column.data_type()).substr(1));
@@ -479,49 +479,6 @@ __attribute__((unused)) static void PrintTableOptions(
     stream << t << std::endl;
 }
 
-__attribute__((unused)) static void PrintTableIndex(const ::hybridse::vm::IndexList& index_list,
-        std::ostream& stream) {
-    ::hybridse::base::TextTable t('-', ' ', ' ');
-    t.add("#");
-    t.add("name");
-    t.add("keys");
-    t.add("ts");
-    t.add("ttl");
-    t.add("ttl_type");
-    t.end_of_row();
-    for (int i = 0; i < index_list.size(); i++) {
-        const ::hybridse::type::IndexDef& index = index_list.Get(i);
-        t.add(std::to_string(i + 1));
-        t.add(index.name());
-        t.add(index.first_keys(0));
-        const std::string& ts_name = index.second_key();
-        if (ts_name.empty()) {
-            t.add("-");
-        } else {
-            t.add(index.second_key());
-        }
-        std::ostringstream oss;
-        for (int ttl_idx = 0; ttl_idx < index.ttl_size(); ttl_idx++) {
-            oss << index.ttl(ttl_idx);
-            if (ttl_idx != index.ttl_size() - 1) {
-                oss << "m,";
-            }
-        }
-        t.add(oss.str());
-        if (index.ttl_type() == ::hybridse::type::kTTLTimeLive) {
-            t.add("kAbsolute");
-        } else if (index.ttl_type() == ::hybridse::type::kTTLCountLive) {
-            t.add("kLatest");
-        } else if (index.ttl_type() == ::hybridse::type::kTTLTimeLiveAndCountLive) {
-            t.add("kAbsAndLat");
-        } else {
-            t.add("kAbsOrLat");
-        }
-        t.end_of_row();
-    }
-    stream << t;
-}
-
 __attribute__((unused)) static void PrintTableSchema(const ::hybridse::vm::Schema& schema,
         std::ostream& stream) {
     if (schema.empty()) {
@@ -611,7 +568,7 @@ __attribute__((unused)) static void PrintProcedureSchema(const std::string& head
             const auto& column = schema.Get(i);
             t.add(std::to_string(i + 1));
             t.add(column.name());
-            t.add(::hybridse::type::Type_Name(column.type()));
+            t.add(::hybridse::type::Type_Name(column.type()).substr(1));
             t.add(column.is_constant() ? "YES" : "NO");
             t.end_of_row();
         }

@@ -15,6 +15,26 @@ public class SQLUtil {
     private static String reg = "\\{(\\d+)\\}";
     private static Pattern pattern = Pattern.compile(reg);
 
+    public static String replaceDBNameAndTableName(String dbName,List<String> tableNames,String str){
+        Matcher matcher = pattern.matcher(str);
+        while (matcher.find()) {
+            int index = Integer.parseInt(matcher.group(1));
+            str = str.replace("{" + index + "}", tableNames.get(index));
+        }
+        str = str.replace("{db_name}",dbName);
+        return str;
+    }
+    public static String replaceDBNameAndSpName(String dbName,String spName,String str){
+        str = str.replace("{sp_name}",spName);
+        str = str.replace("{db_name}",dbName);
+        return str;
+    }
+
+    public static String getLongWindowDeploySQL(String name,String longWindow,String sql){
+        String deploySql = String.format("deploy %s options(long_windows='%s') %s",name,longWindow,sql);
+        return deploySql;
+    }
+
     public static String genInsertSQL(String tableName, List<List<Object>> dataList) {
         if (CollectionUtils.isEmpty(dataList)) {
             return "";
@@ -65,13 +85,13 @@ public class SQLUtil {
         return builder.toString();
     }
 
-    public static String formatSql(String sql, List<String> tableNames, OpenMLDBInfo fedbInfo) {
+    public static String formatSql(String sql, List<String> tableNames, OpenMLDBInfo openMLDBInfo) {
         Matcher matcher = pattern.matcher(sql);
         while (matcher.find()) {
             int index = Integer.parseInt(matcher.group(1));
             sql = sql.replace("{" + index + "}", tableNames.get(index));
         }
-        sql = formatSql(sql,fedbInfo);
+        sql = formatSql(sql,openMLDBInfo);
         return sql;
     }
 

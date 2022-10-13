@@ -2,8 +2,8 @@ name: INTEGRATION-TEST-SRC
 
 on:
 #  pull_request:
-  schedule:
-    - cron:  '0 1 * * *'
+#  schedule:
+#    - cron:  '0 1 * * *'
   workflow_dispatch:
     inputs:
       EXEC_TEST_TYPE:
@@ -86,9 +86,25 @@ jobs:
         uses: EnricoMi/publish-unit-test-result-action@v1
         with:
           files: test/integration-test/openmldb-test-java/openmldb-sdk-test/target/surefire-reports/TEST-*.xml
-          comment_mode: "create new"
           check_name: "SRC java-sdk-cluster-memory-0 Report"
           comment_title: "SRC java-sdk-cluster-memory-0 Report"
+      - name: tar test report
+        if: ${{ failure() }}
+        run: tar -zcvf allure-results.tar.gz test/integration-test/openmldb-test-java/openmldb-sdk-test/target/allure-results
+      - name: Send Email
+        if: ${{ failure() }}
+        uses: dawidd6/action-send-mail@master
+        with:
+          server_address: smtp.partner.outlook.cn
+          server_port: 587
+          username: ${{ secrets.MAIL_USERNAME }}
+          password: ${{ secrets.MAIL_PASSWORD }}
+          subject: OpenMLDB Memory Test
+          body: OpenMLDB Memory Test Failed
+          to: ${{ secrets.MAIL_TO }}
+          from: GitHub Actions
+          content_type: text/plain
+          attachments: allure-results.tar.gz
 
   java-sdk-cluster-memory-1:
     if: ${{ github.event.inputs.EXEC_TEST_TYPE == 'all' || github.event.inputs.EXEC_TEST_TYPE == 'java' }}
@@ -115,6 +131,23 @@ jobs:
           files: test/integration-test/openmldb-test-java/openmldb-sdk-test/target/surefire-reports/TEST-*.xml
           check_name: SRC java-sdk-cluster-memory-1 Report
           comment_title: SRC java-sdk-cluster-memory-1 Report
+      - name: tar test report
+        if: ${{ failure() }}
+        run: tar -zcvf allure-results.tar.gz test/integration-test/openmldb-test-java/openmldb-sdk-test/target/allure-results
+      - name: Send Email
+        if: ${{ failure() }}
+        uses: dawidd6/action-send-mail@master
+        with:
+          server_address: smtp.partner.outlook.cn
+          server_port: 587
+          username: ${{ secrets.MAIL_USERNAME }}
+          password: ${{ secrets.MAIL_PASSWORD }}
+          subject: OpenMLDB Memory 1 Test
+          body: OpenMLDB Memory 1 Test Failed
+          to: ${{ secrets.MAIL_TO }}
+          from: GitHub Actions
+          content_type: text/plain
+          attachments: allure-results.tar.gz
 
   java-sdk-cluster-ssd-0:
     if: ${{ github.event.inputs.EXEC_TEST_TYPE == 'all' || github.event.inputs.EXEC_TEST_TYPE == 'java' }}
@@ -139,9 +172,25 @@ jobs:
         uses: EnricoMi/publish-unit-test-result-action@v1
         with:
           files: test/integration-test/openmldb-test-java/openmldb-sdk-test/target/surefire-reports/TEST-*.xml
-          comment_mode: "create new"
           check_name: "SRC java-sdk-cluster-ssd-0 Report"
           comment_title: "SRC java-sdk-cluster-ssd-0 Report"
+      - name: tar test report
+        if: ${{ failure() }}
+        run: tar -zcvf allure-results.tar.gz test/integration-test/openmldb-test-java/openmldb-sdk-test/target/allure-results
+      - name: Send Email
+        if: ${{ failure() }}
+        uses: dawidd6/action-send-mail@master
+        with:
+          server_address: smtp.partner.outlook.cn
+          server_port: 587
+          username: ${{ secrets.MAIL_USERNAME }}
+          password: ${{ secrets.MAIL_PASSWORD }}
+          subject: OpenMLDB SSD Test
+          body: OpenMLDB SSD Test Failed
+          to: ${{ secrets.MAIL_TO }}
+          from: GitHub Actions
+          content_type: text/plain
+          attachments: allure-results.tar.gz
 
   java-sdk-cluster-hdd-0:
     if: ${{ github.event.inputs.EXEC_TEST_TYPE == 'all' || github.event.inputs.EXEC_TEST_TYPE == 'java' }}
@@ -166,9 +215,25 @@ jobs:
         uses: EnricoMi/publish-unit-test-result-action@v1
         with:
           files: test/integration-test/openmldb-test-java/openmldb-sdk-test/target/surefire-reports/TEST-*.xml
-          comment_mode: "create new"
           check_name: "SRC java-sdk-cluster-hdd-0 Report"
           comment_title: "SRC java-sdk-cluster-hdd-0 Report"
+      - name: tar test report
+        if: ${{ failure() }}
+        run: tar -zcvf allure-results.tar.gz test/integration-test/openmldb-test-java/openmldb-sdk-test/target/allure-results
+      - name: Send Email
+        if: ${{ failure() }}
+        uses: dawidd6/action-send-mail@master
+        with:
+          server_address: smtp.partner.outlook.cn
+          server_port: 587
+          username: ${{ secrets.MAIL_USERNAME }}
+          password: ${{ secrets.MAIL_PASSWORD }}
+          subject: OpenMLDB HDD Test
+          body: OpenMLDB HDD Test Failed
+          to: ${{ secrets.MAIL_TO }}
+          from: GitHub Actions
+          content_type: text/plain
+          attachments: allure-results.tar.gz
 
 #  standalone-cli-test-0:
 #    if: ${{ github.event.inputs.EXEC_TEST_TYPE == 'all' || github.event.inputs.EXEC_TEST_TYPE == 'standalone-cli' || github.event.inputs.EXEC_TEST_TYPE == 'cli' }}

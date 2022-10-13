@@ -14,7 +14,7 @@ public class LocalExecutor implements CommandExecutor {
     public LocalExecutor(){
         starts.add("wget");
         starts.add("tar");
-        contains.add("--role=ns_client");
+//        contains.add("--role=ns_client");
     }
     public boolean isUseExec(String command){
         for(String start:starts){

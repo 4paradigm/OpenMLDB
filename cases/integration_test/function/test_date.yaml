@@ -1,0 +1,144 @@
+# Copyright 2021 4Paradigm
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+db: test_zw
+debugs: []
+sqlDialect: ["HybridSQL"]
+version: 0.5.0
+cases:
+  - id: 0
+    desc: date_format-normal
+    mode: cli-unsupport
+    inputs:
+      -
+        columns : ["id bigint","ts1 bigint","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:id:ts1"]
+        rows:
+          - [1,1,"aa",30,-30,30,30.0,30.0,1590738989000,"2020-05-01",true]
+          - [2,2,"aa",30,-30,30,30.0,30.0,NULL,NULL,true]
+    sql: select id as id,date_format(c7,"%Y-%m-%d %H:%M:%S") as e1,date_format(c8,"%Y-%m-%d %H:%M:%S") as e2 from {0};
+    expect:
+      order: id
+      columns: ["id bigint", "e1 string","e2 string"]
+      rows:
+        - [1, "2020-05-29 15:56:29","2020-05-01 00:00:00"]
+        - [2, NULL,NULL]
+  - id: 1
+    desc: date_format-fail
+    level: 5
+    inputs:
+      -
+        columns : ["id bigint","ts1 bigint","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:id:ts1"]
+        rows:
+          - [1,1,"aa",30,-30,30,30.0,30.0,1590738989000,"2020-05-01",true]
+          - [2,2,"aa",30,-30,30,30.0,30.0,NULL,NULL,true]
+    dataProvider:
+      - ["{0}.c1","{0}.c2","{0}.c3","{0}.c4","{0}.c5","{0}.c6","{0}.c9"]
+    sql: select id as id,date_format(d[0],"%Y-%m-%d %H:%M:%S") as e1 from {0};
+    expect:
+      success: false
+  - id: 2
+    desc: 日期函数-normal
+    inputs:
+      -
+        columns : ["id bigint","ts1 bigint","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:id:ts1"]
+        rows:
+          - [1,1,"aa",30,-30,30,30.0,30.0,1590738989000,"2020-05-02",true]
+          - [2,2,"aa",30,-30,NULL,30.0,30.0,NULL,NULL,true]
+    dataProvider:
+      - ["{0}.c4","{0}.c7","{0}.c8"]
+    sql: |
+      select id as id,
+        day(d[0]) as e1,
+        dayofmonth(d[0]) as e2,
+        dayofweek(d[0]) as e3,
+        month(d[0]) as e4,
+        week(d[0]) as e5,
+        weekofyear(d[0]) as e6,
+        year(d[0]) as e7
+        from {0};
+    expect:
+      order: id
+      columns: ["id bigint", "e1 int","e2 int","e3 int","e4 int","e5 int","e6 int","e7 int"]
+    expectProvider:
+      0:
+        rows:
+          - [1,1,1,5,1,1,1,1970]
+          - [2,null,null,null,null,null,null,null]
+      1:
+        rows:
+          - [1,29,29,6,5,22,22,2020]
+          - [2,null,null,null,null,null,null,null]
+      2:
+        rows:
+          - [1,2,2,7,5,18,18,2020]
+          - [2,null,null,null,null,null,null,null]
+  - id: 3
+    desc: 一些时间函数-fail
+    level: 5
+    inputs:
+      -
+        columns : ["id bigint","ts1 bigint","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:id:ts1"]
+        rows:
+          - [1,1,"aa",30,-30,30,30.0,30.0,1590738989000,"2020-05-02",true]
+          - [2,2,"aa",30,-30,NULL,30.0,30.0,NULL,NULL,true]
+    dataProvider:
+      - ["day","dayofmonth","dayofweek","week","weekofyear","year","month"]
+      - ["{0}.c1","{0}.c2","{0}.c3","{0}.c5","{0}.c6","{0}.c9"]
+    sql: select id as id,d[0](d[1]) as e1 from {0};
+    expect:
+      success: false
+  - id: 4
+    desc: hour-minute-normal
+    inputs:
+      -
+        columns : ["id bigint","ts1 bigint","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:id:ts1"]
+        rows:
+          - [1,1,"aa",30,-30,30,30.0,30.0,1590738989000,"2020-05-02",true]
+          - [2,2,"aa",30,-30,NULL,30.0,30.0,NULL,NULL,true]
+    dataProvider:
+      - ["{0}.c4","{0}.c7"]
+    sql: select id as id,hour(d[0]) as e1,minute(d[0]) as e2 from {0};
+    expect:
+      order: id
+      columns: ["id bigint", "e1 int","e2 int"]
+    expectProvider:
+      0:
+        rows:
+          - [1,8,0]
+          - [2,null,null]
+      1:
+        rows:
+          - [1,15,56]
+          - [2,null,null]
+  - id: 5
+    desc: hour-minute-fail
+    level: 5
+    inputs:
+      -
+        columns : ["id bigint","ts1 bigint","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:id:ts1"]
+        rows:
+          - [1,1,"aa",30,-30,30,30.0,30.0,1590738989000,"2020-05-02",true]
+          - [2,2,"aa",30,-30,NULL,30.0,30.0,NULL,NULL,true]
+    dataProvider:
+      - ["hour","minute"]
+      - ["{0}.c1","{0}.c2","{0}.c3","{0}.c5","{0}.c6","{0}.c8","{0}.c9"]
+    sql: select id as id,d[0](d[1]) as e1 from {0};
+    expect:
+      success: false

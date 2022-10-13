@@ -104,6 +104,7 @@ public class SDKClient {
     }
     public void insert(String tableName,List<Object> list){
         List<List<Object>> dataList = new ArrayList<>();
+        dataList.add(list);
         insertList(tableName,dataList);
     }
     public void insertList(String tableName,List<List<Object>> dataList){

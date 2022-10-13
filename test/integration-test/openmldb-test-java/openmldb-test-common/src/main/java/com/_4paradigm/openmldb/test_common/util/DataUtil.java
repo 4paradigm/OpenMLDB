@@ -2,7 +2,9 @@ package com._4paradigm.openmldb.test_common.util;
 
 import com._4paradigm.openmldb.jdbc.SQLResultSet;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 
+import java.math.BigInteger;
 import java.sql.*;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -10,6 +12,46 @@ import java.util.ArrayList;
 import java.util.List;
 @Slf4j
 public class DataUtil {
+
+    public static String parseBinary(String str,String type){
+        int length = str.length();
+//        System.out.println("length = " + length);
+        String binaryStr = BinaryUtil.strToBinaryStr(str);
+        switch (type){
+            case "smallint":
+                return String.valueOf(Short.parseShort(binaryStr, 2));
+            case "int":
+                return String.valueOf(Integer.parseInt(binaryStr, 2));
+            case "bigint":
+                return String.valueOf(Long.parseLong(binaryStr, 2));
+            case "timestamp":
+                String binary = "";
+                for (int i = 0; i < length; i++) {
+                    String s = Integer.toBinaryString(str.charAt(i));
+                    System.out.println("s = " + s);
+                    s = StringUtils.leftPad(s, 16, "0");
+                    System.out.println("AAAAA s = " + s);
+                    binary += s;
+                }
+                System.out.println("binary = " + binary);
+                return String.valueOf(Long.parseLong(binary, 2));
+            case "float":
+//                return String.valueOf(Float.intBitsToFloat(new BigInteger(binaryStr, 2).intValue()));
+                return BinaryUtil.strToStr(str);
+            case "double":
+                return String.valueOf(Double.longBitsToDouble(new BigInteger(binaryStr, 2).longValue()));
+            case "date":
+                int year = (int)(str.charAt(2))+1900;
+                int month = (int)(str.charAt(1))+1;
+                int day = str.charAt(0);
+                return year+"-"+(month<10?"0"+month:month)+"-"+(day<10?"0"+day:day);
+            case "string":
+                return str;
+            default:
+                throw new IllegalArgumentException("parse binary not support type:"+type);
+        }
+
+    }
 
     public static Object parseTime(Object data){
         String dataStr = String.valueOf(data);

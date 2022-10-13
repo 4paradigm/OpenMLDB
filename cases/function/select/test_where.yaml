@@ -250,3 +250,4 @@ cases:
       order: sum_col1
       rows: 
         - [3, 2, 2, 1, 1.5]
+

@@ -37,26 +37,26 @@ public class MultiDBTest extends OpenMLDBTest {
 
     @Story("batch")
     @Test(dataProvider = "getCase",enabled = false)
-    @Yaml(filePaths = {"function/multiple_databases/"})
+    @Yaml(filePaths = {"integration_test/multiple_databases/"})
     @Step("{testCase.desc}")
     public void testMultiDB(SQLCase testCase) throws Exception {
         ExecutorFactory.build(executor, testCase, SQLCaseType.kBatch).run();
     }
     @Story("request")
     @Test(dataProvider = "getCase")
-    @Yaml(filePaths = {"function/multiple_databases/"})
+    @Yaml(filePaths = {"integration_test/multiple_databases/"})
     public void testMultiDBRequestMode(SQLCase testCase) throws Exception {
         ExecutorFactory.build(executor, testCase, SQLCaseType.kRequest).run();
     }
     @Story("requestWithSp")
     @Test(dataProvider = "getCase")
-    @Yaml(filePaths = {"function/multiple_databases/"})
+    @Yaml(filePaths = {"integration_test/multiple_databases/"})
     public void testMultiDBRequestModeWithSp(SQLCase testCase) throws Exception {
         ExecutorFactory.build(executor, testCase, SQLCaseType.kRequestWithSp).run();
     }
     @Story("requestWithSpAysn")
     @Test(dataProvider = "getCase")
-    @Yaml(filePaths = {"function/multiple_databases/"})
+    @Yaml(filePaths = {"integration_test/multiple_databases/"})
     public void testMultiDBRequestModeWithSpAysn(SQLCase testCase) throws Exception {
         ExecutorFactory.build(executor, testCase, SQLCaseType.kRequestWithSpAsync).run();
     }

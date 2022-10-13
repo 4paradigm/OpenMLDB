@@ -262,8 +262,8 @@ void DefaultUdfLibrary::initMaxByCateUdaFs() {
     RegisterUdafTemplate<TopKMaxCateWhereDef>("top_n_key_max_cate_where")
         .doc(R"(
             @brief Compute maximum of values matching specified condition grouped by
-    category key. Output string for top N keys in descend order. Each group is
-    represented as 'K:V' and separated by comma.
+    category key. Output string for top N category keys in descend order. Each group is
+    represented as 'K:V' and separated by comma(,). Empty string returned if no rows selected.
 
             @param catagory  Specify catagory column to group by.
             @param value  Specify value column to aggregate on.

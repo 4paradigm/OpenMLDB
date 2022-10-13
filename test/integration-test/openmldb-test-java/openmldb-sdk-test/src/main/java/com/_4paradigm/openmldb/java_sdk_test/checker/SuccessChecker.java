@@ -35,7 +35,7 @@ public class SuccessChecker extends BaseChecker {
     public void check() throws Exception {
         log.info("success check");
         boolean success =  expect.getSuccess();
-        boolean actual = fesqlResult.isOk();
+        boolean actual = openMLDBResult.isOk();
         Assert.assertEquals(actual,success,"success验证失败");
     }
 }

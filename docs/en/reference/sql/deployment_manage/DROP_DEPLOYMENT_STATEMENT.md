@@ -1,10 +1,10 @@
 # Delete DEPLOYMENT
+The `DROP DEPLOYMENT` statement is used to drop a deployment under Online Request mode.
 
 ```SQL
 DROP DEPLOYMENT deployment_name
 ```
 
-The `DROP DEPLOYMENT` statement is used to drop an OnlineServing deployment.
 
 ## Example:
 
@@ -12,24 +12,23 @@ Create a database and set it as the current database:
 
 ```sql
 CREATE DATABASE db1;
--- SUCCEED: Create database successfully
+-- SUCCEED
 USE db1;
 -- SUCCEED: Database changed
 ```
 
 Create a table `t1`:
 
-```
+```sql
 CREATE TABLE t1(col0 STRING);
--- SUCCEED: Create successfully
-
+-- SUCCEED
 ```
 
-Deploy the query statement of table t1 to OnlineServing:
+Deploy the query statement of table t1 under Online Request mode:
 
 ```sql
 > DEPLOY demo_deploy select col0 from t1;
-SUCCEED: deploy successfully
+SUCCEED
 ```
 
 View all deployments in the current database:
@@ -51,7 +50,7 @@ Delete the specified deployment:
 DROP DEPLOYMENT demo_deploy;
 -- Drop deployment demo_deploy? yes/no
 -- yes
--- SUCCEED: Drop successfully
+-- SUCCEED
 
 ```
 
@@ -59,7 +58,11 @@ After deletion, check the deployments under the database again, it should be an 
 
 ```sql
 SHOW DEPLOYMENTS;
-Empty set
+ ---- ------------
+  DB   Deployment
+ ---- ------------
+
+0 rows in set
 ```
 
 

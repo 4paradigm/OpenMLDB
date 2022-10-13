@@ -16,7 +16,6 @@
 package com._4paradigm.openmldb.java_sdk_test.executor;
 
 
-import com._4paradigm.openmldb.test_common.common.LogProxy;
 import com._4paradigm.openmldb.test_common.model.SQLCase;
 import com._4paradigm.openmldb.test_common.model.SQLCaseType;
 import com._4paradigm.qa.openmldb_deploy.bean.OpenMLDBInfo;
@@ -36,12 +35,12 @@ public class ClusterCliExecutor extends CommandExecutor{
 
     @Override
     public boolean verify() {
-        if (null != fesqlCase.getMode() && fesqlCase.getMode().contains("cluster-cli-unsupport")) {
-            log.info("skip case in cli mode: {}", fesqlCase.getDesc());
+        if (null != sqlCase.getMode() && sqlCase.getMode().contains("cluster-cli-unsupport")) {
+            log.info("skip case in cli mode: {}", sqlCase.getDesc());
             return false;
         }
-        if (null != fesqlCase.getMode() && fesqlCase.getMode().contains("cluster-unsupport")) {
-            log.info("skip case , mode: {}", fesqlCase.getDesc());
+        if (null != sqlCase.getMode() && sqlCase.getMode().contains("cluster-unsupport")) {
+            log.info("skip case , mode: {}", sqlCase.getDesc());
             return false;
         }
         return super.verify();

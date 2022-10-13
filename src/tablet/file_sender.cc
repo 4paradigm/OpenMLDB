@@ -20,7 +20,7 @@
 #include <vector>
 
 #include "base/file_util.h"
-#include "base/glog_wapper.h"
+#include "base/glog_wrapper.h"
 #include "boost/algorithm/string/predicate.hpp"
 #include "common/timer.h"
 #include "gflags/gflags.h"
