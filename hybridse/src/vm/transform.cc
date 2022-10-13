@@ -1132,7 +1132,6 @@ Status BatchModeTransformer::CreatePhysicalProjectNode(
         primary_frame = project_list->GetW()->frame_node();
     }
 
-    node::PlanNodeList new_projects;
     bool has_all_project = false;
 
     for (auto iter = projects.cbegin(); iter != projects.cend(); iter++) {
@@ -1165,9 +1164,22 @@ Status BatchModeTransformer::CreatePhysicalProjectNode(
 
     // Create project function and infer output schema
     ColumnProjects column_projects;
-    CHECK_STATUS(ExtractProjectInfos(projects, primary_frame,
-                                     depend->schemas_ctx(), node_manager_,
-                                     &column_projects));
+    if (depend->GetOpType() == kPhysicalOpRequestJoin &&
+        dynamic_cast<PhysicalRequestJoinNode*>(depend)->join().join_type() == node::kJoinTypeConcat) {
+        // simply inherit schema from depends
+        auto* schemas_ctx = depend->schemas_ctx();
+        for (size_t slice = 0; slice < schemas_ctx->GetSchemaSourceSize(); ++slice) {
+            auto schema_source = schemas_ctx->GetSchemaSource(slice);
+            for (size_t k = 0; k < schema_source->size(); ++k) {
+                auto col_name = schema_source->GetColumnName(k);
+                auto col_ref = node_manager_->MakeColumnRefNode(col_name, schema_source->GetSourceName());
+                column_projects.Add(col_name, col_ref, nullptr);
+            }
+        }
+    } else {
+        CHECK_STATUS(
+            ExtractProjectInfos(projects, primary_frame, depend->schemas_ctx(), node_manager_, &column_projects));
+    }
 
     if (append_input) {
         CHECK_TRUE(project_type == kWindowAggregation, kPlanError,

@@ -756,7 +756,7 @@ class PhysicalSimpleProjectNode : public PhysicalUnaryNode {
     }
 
     virtual ~PhysicalSimpleProjectNode() {}
-    virtual void Print(std::ostream &output, const std::string &tab) const;
+    void Print(std::ostream &output, const std::string &tab) const override;
     static PhysicalSimpleProjectNode *CastFrom(PhysicalOpNode *node);
 
     const ColumnProjects &project() const { return project_; }
@@ -1327,7 +1327,7 @@ class PhysicalRequestJoinNode : public PhysicalBinaryNode {
         fn_infos_.push_back(&join_.right_key_.fn_info());
         fn_infos_.push_back(&join_.index_key_.fn_info());
     }
-    virtual void Print(std::ostream &output, const std::string &tab) const;
+    void Print(std::ostream &output, const std::string &tab) const override;
     const Join &join() const { return join_; }
     const bool output_right_only() const { return output_right_only_; }
     const SchemasContext *joined_schemas_ctx() const {
