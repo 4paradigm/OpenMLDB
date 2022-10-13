@@ -428,33 +428,29 @@ curl http://<apiserver_ip>:<port>/dbs/foo -X POST -d'{"mode":"online","sql":"sho
 ### 部署TaskManager
 
 #### 1 下载 OpenMLDB 部署包和面向特征工程优化的 Spark 发行版
-````
-wget https://github.com/4paradigm/spark/releases/download/v3.0.0-openmldb0.6.2/spark-3.0.0-bin-openmldbspark.tgz 
-tar -zxvf spark-3.0.0-bin-openmldbspark.tgz 
-wget https://github.com/4paradigm/OpenMLDB/releases/download/v0.6.2/openmldb-0.6.2-linux.tar.gz
-tar -zxvf openmldb-0.6.2-linux.tar.gz
-mv openmldb-0.6.2-linux openmldb-taskmanager-0.6.2
-cd openmldb-taskmanager-0.6.2
-````
-OpenMLDB部署包：
-```
-wget https://github.com/4paradigm/OpenMLDB/releases/download/v0.6.2/openmldb-0.6.2-linux.tar.gz
-tar -zxvf openmldb-0.6.2-linux.tar.gz
-mv openmldb-0.6.2-linux openmldb-taskmanager-0.6.2
-cd openmldb-taskmanager-0.6.2
-```
 
 Spark发行版：
 ```
-wget https://github.com/4paradigm/spark/releases/download/v3.0.0-openmldb0.6.2/spark-3.0.0-bin-openmldbspark.tgz 
-tar -zxvf spark-3.0.0-bin-openmldbspark.tgz 
+wget https://github.com/4paradigm/spark/releases/download/v3.2.1-openmldb0.6.3/spark-3.2.1-bin-openmldbspark.tgz 
+tar -zxvf spark-3.2.1-bin-openmldbspark.tgz 
+export SPARK_HOME=`pwd`/spark-3.2.1-bin-openmldbspark/
 ```
 
 如果你的环境是yarn3.1.1，请下载yarn3.1.1适配的Spark发行版：
 ```
 wget https://openmldb.ai/download/spark-3.0.0-bin-openmldbspark-v062.tgz
-tar -zxvf spark-3.0.0-bin-openmldbspark-v062.tgz 
+tar -zxvf spark-3.0.0-bin-openmldbspark-v062.tgz
+export SPARK_HOME=`pwd`/spark-3.0.0-bin-openmldbspark/
 ```
+
+OpenMLDB部署包：
+```
+wget https://github.com/4paradigm/OpenMLDB/releases/download/v0.6.3/openmldb-0.6.3-linux.tar.gz
+tar -zxvf openmldb-0.6.3-linux.tar.gz
+mv openmldb-0.6.3-linux openmldb-taskmanager-0.6.3
+cd openmldb-taskmanager-0.6.3
+```
+
 #### 2 修改配置文件conf/taskmanager.properties
 
 * 修改server.host。host是部署机器的ip/域名。
@@ -464,7 +460,7 @@ tar -zxvf spark-3.0.0-bin-openmldbspark-v062.tgz
 * 修改batchjob.jar.path为BatchJob Jar文件路径，如果设置为空会到上一级lib目录下寻找。如果使用Yarn模式需要修改为对应HDFS路径。
 * 修改offline.data.prefix为离线表存储路径，如果使用Yarn模式需要修改为对应HDFS路径。
 * 修改spark.master为离线任务运行模式，目前支持local和yarn模式。
-* 修改spark.home为Spark环境路径，如果不配置或配置为空则使用SPARK_HOME环境变量的配置。需要设置为第一步解压出来spark优化版包的目录，路径为绝对路径。
+* 修改spark.home为Spark环境路径，如果不配置或配置为空则使用SPARK_HOME环境变量的配置。也可在配置文件中设置，路径为绝对路径。
 
 ```
 server.host=172.27.128.33
