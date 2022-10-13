@@ -1055,7 +1055,7 @@ TEST_F(SQLClusterTest, ClusterOnlineAgg) {
 
 int main(int argc, char** argv) {
     FLAGS_traverse_cnt_limit = 10;
-    FLAGS_max_traverse_cnt = 100;
+    FLAGS_max_traverse_cnt = 5000;
     // init google test first for gtest_xxx flags
     ::testing::InitGoogleTest(&argc, argv);
     ::google::ParseCommandLineFlags(&argc, &argv, true);
