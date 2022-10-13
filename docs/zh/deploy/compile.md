@@ -130,7 +130,7 @@ make CMAKE_BUILD_TYPE=Debug
 1. 下载预编译的OpenMLDB Spark发行版。
 
 ```bash
-wget https://github.com/4paradigm/spark/releases/download/v3.0.0-openmldb0.6.3/spark-3.0.0-bin-openmldbspark.tgz
+wget https://github.com/4paradigm/spark/releases/download/v3.2.1-openmldb0.6.3/spark-3.2.1-bin-openmldbspark.tgz
 ```
 
 或者下载源代码并从头开始编译。
@@ -144,8 +144,8 @@ cd ./spark/
 2. 设置环境变量 `SPARK_HOME` 来使用 OpenMLDB Spark 的发行版本来运行 OpenMLDB 或者其他应用。
 
 ```bash
-tar xzvf ./spark-3.0.0-bin-openmldbspark.tgz
-cd spark-3.0.0-bin-openmldbspark/
+tar xzvf ./spark-3.2.1-bin-openmldbspark.tgz
+cd spark-3.2.1-bin-openmldbspark/
 export SPARK_HOME=`pwd`
 ```
 

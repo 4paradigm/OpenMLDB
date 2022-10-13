@@ -240,7 +240,6 @@ cd openmldb-ns-0.6.3
 --endpoint=172.27.128.31:6527
 --zk_cluster=172.27.128.33:7181,172.27.128.32:7181,172.27.128.31:7181
 --zk_root_path=/openmldb_cluster
---enable_distsql=true
 ```
 **注: endpoint不能用0.0.0.0和127.0.0.1**
 #### 3 启动服务
@@ -303,8 +302,8 @@ bash bin/start.sh start apiserver
 
 #### 1 下载 OpenMLDB 部署包和面向特征工程优化的 Spark 发行版
 ````
-wget https://github.com/4paradigm/spark/releases/download/v3.0.0-openmldb0.6.3/spark-3.0.0-bin-openmldbspark.tgz 
-tar -zxvf spark-3.0.0-bin-openmldbspark.tgz 
+wget https://github.com/4paradigm/spark/releases/download/v3.2.1-openmldb0.6.3/spark-3.2.1-bin-openmldbspark.tgz 
+tar -zxvf spark-3.2.1-bin-openmldbspark.tgz 
 wget https://github.com/4paradigm/OpenMLDB/releases/download/v0.6.3/openmldb-0.6.3-linux.tar.gz
 tar -zxvf openmldb-0.6.3-linux.tar.gz
 mv openmldb-0.6.3-linux openmldb-taskmanager-0.6.3
