@@ -424,7 +424,7 @@ class DiskTable : public Table {
     uint64_t GetRecordByteSize() const override { return 0; }
     uint64_t GetRecordIdxByteSize() override;
 
-    std::vector<rocksdb::ColumnFamilyHandle*> GetCF_DS_() {
+    std::vector<rocksdb::ColumnFamilyHandle*> CloneCf() {
         return *cf_hs_;
     }
 
@@ -435,7 +435,7 @@ class DiskTable : public Table {
     rocksdb::WriteOptions write_opts_;
     std::vector<rocksdb::ColumnFamilyDescriptor> cf_ds_;
     std::shared_ptr<std::vector<rocksdb::ColumnFamilyHandle*>> cf_hs_;
-    std::mutex cf_hs_mutex;
+    std::mutex cf_hs_mutex_;
     rocksdb::Options options_;
     KeyTSComparator cmp_;
     std::atomic<uint64_t> offset_;

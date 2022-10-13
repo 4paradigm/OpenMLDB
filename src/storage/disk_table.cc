@@ -369,7 +369,7 @@ void DiskTable::GcHead() {
                         db_->CreateColumnFamily(cfo, cur_index->GetName(), &handle);
                         // modify element of cf_hs_
                         {
-                            std::lock_guard<std::mutex> guard(cf_hs_mutex);
+                            std::lock_guard<std::mutex> guard(cf_hs_mutex_);
                             cf_hs_->at(idx + 1) = handle;
                         }
                         deleted_num++;
@@ -1258,8 +1258,8 @@ bool DiskTable::AddIndex(const ::openmldb::common::ColumnKey& column_key) {
 
         // may change cf_hs_->data
         {
-            std::lock_guard<std::mutex> guard(cf_hs_mutex);
-            auto new_cf_hs_ = std::make_shared<std::vector<rocksdb::ColumnFamilyHandle*>>(GetCF_DS_());
+            std::lock_guard<std::mutex> guard(cf_hs_mutex_);
+            auto new_cf_hs_ = std::make_shared<std::vector<rocksdb::ColumnFamilyHandle*>>(CloneCf());
             new_cf_hs_->push_back(handle);
             std::atomic_store_explicit(&cf_hs_, new_cf_hs_, std::memory_order_release);
         }
