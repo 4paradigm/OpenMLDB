@@ -1,5 +1,28 @@
 # Changelog
 
+## [0.6.3] - 2022-10-14
+
+### Features
+- Support glog config for clients (#2482 @vagetablechicken)
+- Add sha256sum for release package (#2560 @team-317)
+- Support new build-in functions `unhex` (#2431 @aucker)
+- Display readable timestamp in CLI (#2568 @dl239)
+- Enhance the function of `last join` (#2569 @aceforeverd)
+- Upgrade Spark version to 3.2.1 (#2566 @tobegit3hub)
+- Support setting SQL cache size in sdk (#2605 @vagetablechicken)
+- Add `ValidateSQL` interface to check SQL (#2626 @vagetablechicken)
+- Improve the documents (#2405 #2492 $2562 #2496 #2495 #2436 #2487 #2623 @michelle-qinqin, #2543 @linjing-lab, #2584 @JourneyGo, #2567 #2583 @vagetablechicken, #2643 @dl239)
+- Other minor features (#2504 #2572 #2498 #2598 @aceforeverd, #2555 @tobegit3hub, #2550 @zhanghaohit, #2595 @Elliezza, #2592 @vagetablechicken)
+
+### Bug Fixes
+- Deployment has not recovered if nameserver restarted (#2533 @dl239)
+- Fail to compile & execute multi window union query in batch mode (2561 @aceforeverd)
+- Fail to resolve `count_where` function if the first column is a type of bool (#2570 @aceforeverd)
+- Other minor bug fixes (#2540 #2577 #2625 @dl239, #2585 @snehalsenapati23, #2539 @vagetablechicken)
+
+### Code Refactoring
+#2516 #2520 #2522 #2521 #2542 #2531 #2581 @haseeb-xd, #2525 #2526 #2527 #2528 @kstrifonoff, #2523 @ighmaZ, #2546 #2549 @NevilleMthw, #2559 @marandabui, #2554 @gokullan, #2580 @team-317, #2599 @lbartyczak, #2594 @shivamgupta-sg, #2571 @Jake-00
+
 ## [0.6.2] - 2022-09-20
 
 ### Features
@@ -346,6 +369,7 @@ Removed
 - openmldb-0.2.0-linux.tar.gz targets on x86_64
 - aarch64 artifacts consider experimental
 
+[0.6.3]: https://github.com/4paradigm/OpenMLDB/compare/v0.6.2...v0.6.3
 [0.6.2]: https://github.com/4paradigm/OpenMLDB/compare/v0.6.1...v0.6.2
 [0.6.1]: https://github.com/4paradigm/OpenMLDB/compare/v0.6.0...v0.6.1
 [0.6.0]: https://github.com/4paradigm/OpenMLDB/compare/v0.5.3...v0.6.0
