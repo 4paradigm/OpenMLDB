@@ -16,7 +16,6 @@
 
 ### Bug Fixes
 - Deployment has not recovered if nameserver restarted (#2533 @dl239)
-- Fail to compile & execute multi window union query in batch mode (#2561 @aceforeverd, #2477 @tobegit3hub)
 - Fail to resolve `count_where` function if the first column is a type of bool (#2570 @aceforeverd)
 - Other minor bug fixes (#2540 #2577 #2625 @dl239, #2585 @snehalsenapati23, #2539 @vagetablechicken)
 
