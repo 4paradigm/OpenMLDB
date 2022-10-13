@@ -47,9 +47,8 @@ struct DataBlock {
     uint32_t size;
     char* data;
 
-    DataBlock(uint8_t dim_cnt, const char* input, uint32_t len, uint64_t time, ::openmldb::base::TimeSeriesPool pool) : dim_cnt_down(dim_cnt), size(len), data(NULL) {
-        // data = new char[len];
-        data = (char*)pool.Alloc(len, time);
+    DataBlock(uint8_t dim_cnt, const char* input, uint32_t len) : dim_cnt_down(dim_cnt), size(len), data(NULL) {
+        data = new char[len];
         memcpy(data, input, len);
     }
 
@@ -63,8 +62,24 @@ struct DataBlock {
         }
     }
 
+    DataBlock(uint8_t dim_cnt, const char* input, uint32_t len, uint64_t time, ::openmldb::base::TimeSeriesPool* pool) : dim_cnt_down(dim_cnt), size(len), data(NULL) {
+        // data = new char[len];
+        data = (char*)pool->Alloc(len, time);
+        memcpy(data, input, len);
+    }
+
+    DataBlock(uint8_t dim_cnt, char* input, uint32_t len, bool skip_copy, uint64_t time, ::openmldb::base::TimeSeriesPool* pool)
+        : dim_cnt_down(dim_cnt), size(len), data(NULL) {
+        if (skip_copy) {
+            data = input;
+        } else {
+            data = (char*)pool->Alloc(len, time);
+            memcpy(data, input, len);
+        }
+    }
+
     ~DataBlock() {
-        delete[] data;
+        // delete[] data;
         data = NULL;
     }
 };
@@ -152,7 +167,7 @@ class Segment {
  public:
     Segment();
     explicit Segment(uint8_t height);
-    Segment(uint8_t height, const std::vector<uint32_t>& ts_idx_vec);
+    Segment(uint8_t height, const std::vector<uint32_t>& ts_idx_vec, bool flag);
     ~Segment();
 
     // Put time data
@@ -262,7 +277,8 @@ class Segment {
                    uint64_t& gc_record_byte_size);  // NOLINT
  public:
     ::openmldb::base::TimeSeriesPool pool_;
-    std::vector<::openmldb::base::TimeSeriesPool> pools_;
+    std::vector< ::openmldb::base::TimeSeriesPool * > pools_;
+    bool flag;
  private:
     KeyEntries* entries_;
     // only Put need mutex

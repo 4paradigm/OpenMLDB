@@ -91,7 +91,19 @@ class TimeSeriesPool {
         }
     }
     bool Empty() { return pool_.empty(); }
-
+    void Free4TTL(uint64_t time){
+        auto map_it = pool_.begin();
+        auto save_it = map_it;
+        while(map_it != pool_.end()){
+            if(map_it->first < time){
+                save_it = map_it;
+                map_it++;
+                pool_.erase(save_it);
+                continue;
+            }
+            map_it++;
+        }
+    }
  private:
     // key is the time / (60 * 60 * 1000)
     uint32_t block_size_;

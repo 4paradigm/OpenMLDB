@@ -41,7 +41,7 @@ Segment::Segment()
       ts_cnt_(1),
       gc_version_(0),
       pool_(FLAGS_time_series_pool_block_size),
-      pools_(NULL),
+      flag(false),
       ttl_offset_(FLAGS_gc_safe_offset * 60 * 1000) {
     entries_ = new KeyEntries((uint8_t)FLAGS_skiplist_max_height, 4, scmp);
     key_entry_max_height_ = (uint8_t)FLAGS_skiplist_max_height;
@@ -58,13 +58,13 @@ Segment::Segment(uint8_t height)
       ts_cnt_(1),
       gc_version_(0),
       pool_(FLAGS_time_series_pool_block_size),
-      pools_(NULL),
+      flag(false),
       ttl_offset_(FLAGS_gc_safe_offset * 60 * 1000) {
     entries_ = new KeyEntries((uint8_t)FLAGS_skiplist_max_height, 4, scmp);
     entry_free_list_ = new KeyEntryNodeList(4, 4, tcmp);
 }
 
-Segment::Segment(uint8_t height, const std::vector<uint32_t>& ts_idx_vec)
+Segment::Segment(uint8_t height, const std::vector<uint32_t>& ts_idx_vec, bool flag)
     : entries_(NULL),
       mu_(),
       idx_cnt_(0),
@@ -74,7 +74,7 @@ Segment::Segment(uint8_t height, const std::vector<uint32_t>& ts_idx_vec)
       ts_cnt_(ts_idx_vec.size()),
       gc_version_(0),
       pool_(FLAGS_time_series_pool_block_size),
-      pools_(NULL),
+      flag(flag),
       ttl_offset_(FLAGS_gc_safe_offset * 60 * 1000) {
     entries_ = new KeyEntries((uint8_t)FLAGS_skiplist_max_height, 4, scmp);
     entry_free_list_ = new KeyEntryNodeList(4, 4, tcmp);
@@ -166,7 +166,7 @@ void Segment::Put(const Slice& key, uint64_t time, const char* data, uint32_t si
     if (ts_cnt_ > 1) {
         return;
     }
-    auto* db = new DataBlock(1, data, size, time, this->pool_);
+    auto* db = new DataBlock(1, data, size);
     Put(key, time, db);
 }
 
@@ -183,8 +183,6 @@ void Segment::PutUnlock(const Slice& key, uint64_t time, DataBlock* row) {
     uint32_t byte_size = 0;
     int ret = entries_->Get(key, entry);
     if (ret < 0 || entry == NULL) {
-        // use time series pool
-        // char* pk = pool_.Alloc(key.size(), time);
         char* pk = new char[key.size()];
         memcpy(pk, key.data(), key.size());
         // need to delete memory when free node
@@ -253,35 +251,64 @@ void Segment::Put(const Slice& key, const std::map<int32_t, uint64_t>& ts_map, D
         if (pos == ts_idx_map_.end()) {
             continue;
         }
-        uint8_t heights;
-        if (entry_arr == NULL) {
-            int ret = entries_->Get(key, entry_arr);
-            if (ret < 0 || entry_arr == NULL) {
-                char* pk = new char[key.size()];
-                memcpy(pk, key.data(), key.size());
-                Slice skey(pk, key.size());
-                KeyEntry** entry_arr_tmp = new KeyEntry*[ts_cnt_];
-                for (uint32_t i = 0; i < ts_cnt_; i++) {
-                    if(this->pools_.size() <= i){
-                        ::openmldb::base::TimeSeriesPool pool_tmp = new ::openmldb::base::TimeSeriesPool(FLAGS_time_series_pool_block_size);
-                        this.pools_.push_back(pool_tmp);
+        if(this->flag == false){
+        // not absolute
+            if (entry_arr == NULL) {
+                int ret = entries_->Get(key, entry_arr);
+                if (ret < 0 || entry_arr == NULL) {
+                    char* pk = new char[key.size()];
+                    memcpy(pk, key.data(), key.size());
+                    Slice skey(pk, key.size());
+                    KeyEntry** entry_arr_tmp = new KeyEntry*[ts_cnt_];
+                    for (uint32_t i = 0; i < ts_cnt_; i++) {
+                        entry_arr_tmp[i] = new KeyEntry(key_entry_max_height_);
                     }
-                    DataBlock* block_tmp = new DataBlock(1, row->data, row->size, this->pools_[i]);
-                    uint8_t heights = ((KeyEntry**)entry_arr)[pos->second]->entries.Insert(  // NOLINT
-                    kv.second, block_tmp);
-                    entry_arr_tmp[i] = new KeyEntry(key_entry_max_height_);
+                    entry_arr = (void*)entry_arr_tmp;  // NOLINT
+                    uint8_t height = entries_->Insert(skey, entry_arr);
+                    byte_size += GetRecordPkMultiIdxSize(height, key.size(), key_entry_max_height_, ts_cnt_);
+                    pk_cnt_.fetch_add(1, std::memory_order_relaxed);
                 }
-                entry_arr = (void*)entry_arr_tmp;  // NOLINT
-                uint8_t height = entries_->Insert(skey, entry_arr);
-                byte_size += GetRecordPkMultiIdxSize(height, key.size(), key_entry_max_height_, ts_cnt_);
-                pk_cnt_.fetch_add(1, std::memory_order_relaxed);
             }
+            uint8_t height = ((KeyEntry**)entry_arr)[pos->second]->entries.Insert(  // NOLINT
+                kv.second, row);
+            ((KeyEntry**)entry_arr)[pos->second]->count_.fetch_add(  // NOLINT
+                1, std::memory_order_relaxed);
+            byte_size += GetRecordTsIdxSize(height);
+            idx_byte_size_.fetch_add(byte_size, std::memory_order_relaxed);
+            idx_cnt_vec_[pos->second]->fetch_add(1, std::memory_order_relaxed);
         }
-        ((KeyEntry**)entry_arr)[pos->second]->count_.fetch_add(  // NOLINT
-            1, std::memory_order_relaxed);
-        byte_size += GetRecordTsIdxSize(heights);
-        idx_byte_size_.fetch_add(byte_size, std::memory_order_relaxed);
-        idx_cnt_vec_[pos->second]->fetch_add(1, std::memory_order_relaxed);
+        else{
+            uint8_t heights;
+            if (entry_arr == NULL) {
+                int ret = entries_->Get(key, entry_arr);
+                if (ret < 0 || entry_arr == NULL) {
+                    char* pk = new char[key.size()];
+                    memcpy(pk, key.data(), key.size());
+                    Slice skey(pk, key.size());
+                    KeyEntry** entry_arr_tmp = new KeyEntry*[ts_cnt_];
+                    for (uint32_t i = 0; i < ts_cnt_; i++) {
+                        if(this->pools_.size() <= i){
+                            ::openmldb::base::TimeSeriesPool * pool_tmp = new ::openmldb::base::TimeSeriesPool(FLAGS_time_series_pool_block_size);
+                            this->pools_.push_back(pool_tmp);
+                        }
+                        entry_arr_tmp[i] = new KeyEntry(key_entry_max_height_);
+                        DataBlock* block_tmp = new DataBlock(1, row->data, row->size, kv.second, pools_[i]);
+                        uint8_t heights = entry_arr_tmp[i]->entries.Insert(  // NOLINT
+                        kv.second, block_tmp);
+                    }
+                    entry_arr = (void*)entry_arr_tmp;  // NOLINT
+                    uint8_t height = entries_->Insert(skey, entry_arr);
+                    byte_size += GetRecordPkMultiIdxSize(height, key.size(), key_entry_max_height_, ts_cnt_);
+                    pk_cnt_.fetch_add(1, std::memory_order_relaxed);
+                }
+            }
+            ((KeyEntry**)entry_arr)[pos->second]->count_.fetch_add(  // NOLINT
+                1, std::memory_order_relaxed);
+            byte_size += GetRecordTsIdxSize(heights);
+            idx_byte_size_.fetch_add(byte_size, std::memory_order_relaxed);
+            idx_cnt_vec_[pos->second]->fetch_add(1, std::memory_order_relaxed);
+            delete row;
+        }
     }
 }
 
@@ -327,7 +354,6 @@ bool Segment::Delete(const Slice& key) {
     }
     {
         std::lock_guard<std::mutex> lock(gc_mu_);
-        // gc insert should not use timepool
         entry_free_list_->Insert(gc_version_.load(std::memory_order_relaxed), entry_node);
     }
     return true;
@@ -674,11 +700,11 @@ void Segment::Gc4TTL(const uint64_t time, uint64_t& gc_idx_cnt, uint64_t& gc_rec
                 entry_node = entries_->Remove(key);
             }
         }
-        for (uint32_t i = 0; i < ts_cnt_; i++) {
-            // TODO 这里应该提供一个接口来把所有的小于time的pool给删掉
-            this->pools_[i].Free(time);
+        if(this->flag == true){
+            for (uint32_t i = 0; i < ts_cnt_; i++) {
+                this->pools_[i]->Free4TTL(time);
+            }
         }
-        
         if (entry_node != NULL) {
             std::lock_guard<std::mutex> lock(gc_mu_);
             entry_free_list_->Insert(gc_version_.load(std::memory_order_relaxed), entry_node);

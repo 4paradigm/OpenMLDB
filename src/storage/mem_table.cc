@@ -96,6 +96,9 @@ bool MemTable::Init() {
     auto inner_indexs = table_index_.GetAllInnerIndex();
     for (uint32_t i = 0; i < inner_indexs->size(); i++) {
         const std::vector<uint32_t>& ts_vec = inner_indexs->at(i)->GetTsIdx();
+        TTLType type_temp = (inner_indexs->at(i)->GetIndex())[i]->GetTTLType();
+        bool flag = false;
+        if(type_temp == kAbsoluteTime) flag = true;
         uint32_t cur_key_entry_max_height = 0;
         if (global_key_entry_max_height > 0) {
             cur_key_entry_max_height = global_key_entry_max_height;
@@ -106,7 +109,7 @@ bool MemTable::Init() {
         Segment** seg_arr = new Segment*[seg_cnt_];
         if (!ts_vec.empty()) {
             for (uint32_t j = 0; j < seg_cnt_; j++) {
-                seg_arr[j] = new Segment(cur_key_entry_max_height, ts_vec);
+                seg_arr[j] = new Segment(cur_key_entry_max_height, ts_vec, flag);
                 PDLOG(INFO, "init %u, %u segment. height %u, ts col num %u. tid %u pid %u", i, j,
                       cur_key_entry_max_height, ts_vec.size(), id_, pid_);
             }
@@ -194,7 +197,7 @@ bool MemTable::Put(uint64_t time, const std::string& value, const Dimensions& di
     if (ts_map.empty()) {
         return false;
     }
-    real_ref_cnt = 1；
+    real_ref_cnt = 1;
     auto* block = new DataBlock(real_ref_cnt, value.c_str(), value.length());
     for (const auto& kv : inner_index_key_map) {
         auto inner_index = table_index_.GetInnerIndex(kv.first);
@@ -212,7 +215,7 @@ bool MemTable::Put(uint64_t time, const std::string& value, const Dimensions& di
                 seg_idx = ::openmldb::base::hash(kv.second.data(), kv.second.size(), SEED) % seg_cnt_;
             }
             Segment* segment = segments_[kv.first][seg_idx];
-            segment->Put(::openmldb::base::Slice(kv.second), ts_map, block, segment->pool_);
+            segment->Put(::openmldb::base::Slice(kv.second), ts_map, block);
         }
     }
     record_cnt_.fetch_add(1, std::memory_order_relaxed);
@@ -589,9 +592,12 @@ bool MemTable::AddIndex(const ::openmldb::common::ColumnKey& column_key) {
             ts_vec.push_back(DEFUALT_TS_COL_ID);
         }
         uint32_t inner_id = table_index_.GetAllInnerIndex()->size();
+        TTLType type_temp = (table_index_.GetAllInnerIndex()->at(inner_id)->GetIndex())[inner_id]->GetTTLType();
+        bool flag = false;
+        if(type_temp == kAbsoluteTime) flag = true;
         Segment** seg_arr = new Segment*[seg_cnt_];
         for (uint32_t j = 0; j < seg_cnt_; j++) {
-            seg_arr[j] = new Segment(FLAGS_absolute_default_skiplist_height, ts_vec);
+            seg_arr[j] = new Segment(FLAGS_absolute_default_skiplist_height, ts_vec, flag);
             PDLOG(INFO, "init %u, %u segment. height %u, ts col num %u. tid %u pid %u", inner_id, j,
                   FLAGS_absolute_default_skiplist_height, ts_vec.size(), id_, pid_);
         }
@@ -767,7 +773,10 @@ bool MemTable::BulkLoad(const std::vector<DataBlock*>& data_blocks,
                                 << ", time " << time_entry.time() << ", key_entry_id " << key_entry_id << ", block id "
                                 << time_entry.block_id();
                         block->dim_cnt_down++;
-                        segment->BulkLoadPut(key_entry_id, pk, time_entry.time(), block);
+                        // using pools for bulkload
+                        DataBlock* block_temp = new DataBlock(1, block->data, block->size, segment->pools_[time_idx]);
+                        delete block;
+                        segment->BulkLoadPut(key_entry_id, pk, time_entry.time(), block_temp);
                     }
                 }
             }
