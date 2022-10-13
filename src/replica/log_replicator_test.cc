@@ -27,7 +27,7 @@
 #include <filesystem>
 #include <utility>
 
-#include "base/glog_wapper.h"
+#include "base/glog_wrapper.h"
 #include "base/status.h"
 #include "common/thread_pool.h"
 #include "common/timer.h"

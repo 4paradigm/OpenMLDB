@@ -213,11 +213,17 @@ jobs:
         uses: actions/download-artifact@v2
         with:
           name: release-artifacts
+
+      - name: generate signature
+        run: |
+          sha256sum openmldb-*.tar.gz > SHA256SUM
+
       - name: Release
         if: ${{ startsWith(github.ref, 'refs/tags/v') }}
         uses: softprops/action-gh-release@v1
         with:
           files: |
             openmldb-*.tar.gz
+            SHA256SUM
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

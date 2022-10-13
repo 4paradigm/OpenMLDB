@@ -65,13 +65,8 @@ struct CountCateDef {
             }
             auto& map = ptr->map();
             auto stored_key = ContainerT::to_stored_key(key);
-            auto iter = map.find(stored_key);
-            if (iter == map.end()) {
-                map.insert(iter, {stored_key, 1});
-            } else {
-                auto& single = iter->second;
-                single += 1;
-            }
+            auto iter = map.try_emplace(stored_key, 0);
+            iter.first->second += 1;
             return ptr;
         }
 
@@ -135,6 +130,7 @@ struct TopKCountCateWhereDef {
         helper.library()
             ->RegisterUdafTemplate<Impl>("top_n_key_count_cate_where")
             .doc(helper.GetDoc())
+            // type of value
             .template args_in<int16_t, int32_t, int64_t, float, double>();
     }
 
@@ -149,24 +145,21 @@ struct TopKCountCateWhereDef {
         void operator()(UdafRegistryHelper& helper) {  // NOLINT
             std::string suffix;
 
-            suffix = ".i32_bound_opaque_dict_" + DataTypeTrait<K>::to_string() +
-                     "_" + DataTypeTrait<V>::to_string();
+            suffix = absl::StrCat(".i32_bound_opaque_dict_", DataTypeTrait<K>::to_string(), "_",
+                                  DataTypeTrait<V>::to_string());
             helper
                 .templates<StringRef, Opaque<ContainerT>, Nullable<V>,
                            Nullable<bool>, Nullable<K>, int32_t>()
-                .init("top_n_key_count_cate_where_init" + suffix,
-                      ContainerT::Init)
-                .update("top_n_key_count_cate_where_update" + suffix,
-                        UpdateI32Bound)
+                .init("top_n_key_count_cate_where_init" + suffix, ContainerT::Init)
+                .update("top_n_key_count_cate_where_update" + suffix, UpdateI32Bound)
                 .output("top_n_key_count_cate_where_output" + suffix, Output);
 
-            suffix = ".i64_bound_opaque_dict_" + DataTypeTrait<K>::to_string() +
-                     "_" + DataTypeTrait<V>::to_string();
+            suffix = absl::StrCat(".i64_bound_opaque_dict_", DataTypeTrait<K>::to_string(), "_",
+                                  DataTypeTrait<V>::to_string());
             helper
                 .templates<StringRef, Opaque<ContainerT>, Nullable<V>,
                            Nullable<bool>, Nullable<K>, int64_t>()
-                .init("top_n_key_count_cate_where_init" + suffix,
-                      ContainerT::Init)
+                .init("top_n_key_count_cate_where_init" + suffix, ContainerT::Init)
                 .update("top_n_key_count_cate_where_update" + suffix, Update)
                 .output("top_n_key_count_cate_where_output" + suffix, Output);
         }
@@ -261,8 +254,8 @@ void DefaultUdfLibrary::InitCountByCateUdafs() {
     RegisterUdafTemplate<TopKCountCateWhereDef>("top_n_key_count_cate_where")
         .doc(R"(
             @brief Compute count of values matching specified condition grouped by
-    category key. Output string for top N keys in descend order. Each group is
-    represented as 'K:V' and separated by comma.
+    category key. Output string for top N category keys in descend order. Each group is
+    represented as 'K:V' and separated by comma(,). Empty string returned if no rows selected.
 
             @param catagory  Specify catagory column to group by.
             @param value  Specify value column to aggregate on.
@@ -287,6 +280,7 @@ void DefaultUdfLibrary::InitCountByCateUdafs() {
                 -- output "z:2,y:2"
             @endcode
             )")
+        // type of category
         .args_in<int16_t, int32_t, int64_t, Date, Timestamp, StringRef>();
 }
 

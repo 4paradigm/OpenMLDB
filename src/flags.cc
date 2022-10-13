@@ -17,7 +17,13 @@
 #include <gflags/gflags.h>
 // cluster config
 DEFINE_string(endpoint, "", "ip:port, config the ip and port that openmldb serves for");
-DEFINE_string(openmldb_log_dir, "./logs", "config the log dir");
+DEFINE_string(log_level, "debug", "Set the log level of servers, eg: debug or info, only for macro DEBUGLOG");
+DEFINE_int32(glog_level, 1, "set the glog level of CLI, default is WARN");
+DEFINE_string(glog_dir, "", "set the glog dir of CLI, default is empty, print to stdout");
+DEFINE_string(openmldb_log_dir, "./logs", "config the log dir of glog, for all log macro");
+DEFINE_string(role, "",
+              "Set the openmldb role for start: tablet | nameserver | client | ns_client | sql_client | apiserver");
+DEFINE_string(cmd, "", "Set the command");
 DEFINE_int32(zk_session_timeout, 2000,
              "config the zk session timeout of cli in milliseconds, apiserver, tablet or nameserver");
 DEFINE_uint32(tablet_heartbeat_timeout, 5 * 60 * 1000, "config the heartbeat of tablet offline. unit is milliseconds");

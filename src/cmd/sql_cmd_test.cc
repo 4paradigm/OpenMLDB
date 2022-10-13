@@ -38,7 +38,6 @@
 #include "test/util.h"
 #include "vm/catalog.h"
 
-DEFINE_string(cmd, "", "Set cmd");
 DECLARE_string(host);
 DECLARE_int32(port);
 DECLARE_uint32(traverse_cnt_limit);
@@ -378,6 +377,9 @@ TEST_P(DBSDKTest, Desc) {
         }
         count++;
     }
+    rs = sr->ExecuteSQL(absl::StrCat("desc ", db, ".trans;"), &status);
+    ASSERT_TRUE(status.IsOK()) << status.msg;
+    ASSERT_EQ(3, rs->Size());
     sr->ExecuteSQL("drop table trans;", &status);
     ASSERT_TRUE(status.IsOK()) << status.msg;
     sr->ExecuteSQL("drop database " + db + ";", &status);
@@ -435,6 +437,7 @@ TEST_P(DBSDKTest, Deploy) {
     auto cli = GetParam();
     cs = cli->cs;
     sr = cli->sr;
+    HandleSQL("set @@execute_mode = 'online';");
     HandleSQL("create database test1;");
     HandleSQL("use test1;");
     std::string create_sql =
@@ -450,8 +453,10 @@ TEST_P(DBSDKTest, Deploy) {
         " WINDOW w1 AS (PARTITION BY trans.c1 ORDER BY trans.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);";
 
     hybridse::sdk::Status status;
+
     sr->ExecuteSQL(deploy_sql, &status);
     ASSERT_TRUE(status.IsOK());
+
     std::string deploy_sql1 =
         "deploy demo1 SELECT c1, c3, sum(c4) OVER w1 as w1_c4_sum FROM trans "
         " WINDOW w1 AS (PARTITION BY trans.c1 ORDER BY trans.c7 ROWS BETWEEN 4 PRECEDING AND CURRENT ROW);";
@@ -472,6 +477,7 @@ TEST_P(DBSDKTest, DeployWithSameIndex) {
     auto cli = GetParam();
     cs = cli->cs;
     sr = cli->sr;
+    HandleSQL("set @@execute_mode = 'online';");
     HandleSQL("create database test1;");
     HandleSQL("use test1;");
     std::string create_sql =
@@ -631,20 +637,53 @@ TEST_P(DBSDKTest, DeployLongWindows) {
     HandleSQL(create_sql);
 
     std::string deploy_sql =
-        "deploy demo1 OPTIONS(long_windows='w1:100,w2') SELECT c1, sum(c4) OVER w1 as w1_c4_sum,"
-        " max(c5) over w2 as w2_max_c5 FROM trans"
+        "deploy demo1 OPTIONS(long_windows='w1:1d,w2') SELECT c1, sum(c4) OVER w1 as w1_c4_sum,"
+        " sum(c4) OVER w1 as w1_c4_sum2, max(c5) over w2 as w2_max_c5 FROM trans"
         " WINDOW w1 AS (PARTITION BY trans.c1 ORDER BY trans.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW),"
         " w2 AS (PARTITION BY trans.c1 ORDER BY trans.c4 ROWS BETWEEN 3 PRECEDING AND CURRENT ROW);";
     hybridse::sdk::Status status;
     sr->ExecuteSQL(deploy_sql, &status);
     ASSERT_TRUE(status.IsOK()) << status.msg;
+
+    std::string result_sql = "select * from __INTERNAL_DB.PRE_AGG_META_INFO;";
+    auto rs = sr->ExecuteSQL("", result_sql, &status);
+    ASSERT_EQ(2, rs->Size());
+
+    // deploy another deployment with same long window meta but different bucket
+    // it will not create a new aggregator/pre-aggr table, but re-use the existing one
+    deploy_sql =
+        "deploy demo2 OPTIONS(long_windows='w1:2d,w2') SELECT c1, sum(c4) OVER w1 as w1_c4_sum,"
+        " sum(c4) OVER w1 as w1_c4_sum2, max(c5) over w2 as w2_max_c5 FROM trans"
+        " WINDOW w1 AS (PARTITION BY trans.c1 ORDER BY trans.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW),"
+        " w2 AS (PARTITION BY trans.c1 ORDER BY trans.c4 ROWS BETWEEN 3 PRECEDING AND CURRENT ROW);";
+    sr->ExecuteSQL(deploy_sql, &status);
+    ASSERT_TRUE(status.IsOK()) << status.msg;
+
+    rs = sr->ExecuteSQL("", result_sql, &status);
+    ASSERT_EQ(2, rs->Size());
+
+    // deploy another deployment with different long window meta will create a new aggregator/pre-agg table
+    deploy_sql =
+        "deploy demo3 OPTIONS(long_windows='w1:2d') SELECT c1, count_where(c4, c3=1) over w1,"
+        " count_where(c4, c3=2) over w1 FROM trans"
+        " WINDOW w1 AS (PARTITION BY trans.c1 ORDER BY trans.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);";
+    sr->ExecuteSQL(deploy_sql, &status);
+    ASSERT_TRUE(status.IsOK()) << status.msg;
+
+    rs = sr->ExecuteSQL("", result_sql, &status);
+    ASSERT_EQ(3, rs->Size());
+
     std::string msg;
     auto ok = sr->ExecuteDDL(openmldb::nameserver::PRE_AGG_DB, "drop table pre_test2_demo1_w1_sum_c4;", &status);
     ASSERT_TRUE(ok);
     ok = sr->ExecuteDDL(openmldb::nameserver::PRE_AGG_DB, "drop table pre_test2_demo1_w2_max_c5;", &status);
     ASSERT_TRUE(ok);
+    ok = sr->ExecuteDDL(openmldb::nameserver::PRE_AGG_DB, "drop table pre_test2_demo3_w1_count_where_c4_c3;", &status);
+    ASSERT_TRUE(ok);
     ASSERT_FALSE(cs->GetNsClient()->DropTable("test2", "trans", msg));
     ASSERT_TRUE(cs->GetNsClient()->DropProcedure("test2", "demo1", msg));
+    ASSERT_TRUE(cs->GetNsClient()->DropProcedure("test2", "demo2", msg));
+    ASSERT_TRUE(cs->GetNsClient()->DropProcedure("test2", "demo3", msg));
     ASSERT_TRUE(cs->GetNsClient()->DropTable("test2", "trans", msg));
     ASSERT_TRUE(cs->GetNsClient()->DropDatabase("test2", msg));
 }
@@ -3227,6 +3266,8 @@ int main(int argc, char** argv) {
     ::hybridse::vm::Engine::InitializeGlobalLLVM();
     ::testing::InitGoogleTest(&argc, argv);
     ::google::ParseCommandLineFlags(&argc, &argv, true);
+    ::openmldb::base::SetupGlog(true);
+
     FLAGS_traverse_cnt_limit = 500;
     FLAGS_zk_session_timeout = 100000;
     FLAGS_get_table_status_interval = 1000;

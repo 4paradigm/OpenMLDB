@@ -24,7 +24,7 @@
 #include <vector>
 
 #include "base/file_util.h"
-#include "base/glog_wapper.h"
+#include "base/glog_wrapper.h"
 #include "codec/fe_row_codec.h"
 #include "common/timer.h"
 #include "gflags/gflags.h"
@@ -56,29 +56,24 @@ static std::shared_ptr<SQLRouter> GetNewSQLRouter() {
 }
 
 static bool IsRequestSupportMode(const std::string& mode) {
-    if (mode.find("hybridse-only") != std::string::npos ||
-        mode.find("rtidb-unsupport") != std::string::npos ||
+    if (mode.find("hybridse-only") != std::string::npos || mode.find("rtidb-unsupport") != std::string::npos ||
         mode.find("performance-sensitive-unsupport") != std::string::npos ||
-            mode.find("request-unsupport") != std::string::npos
-        || mode.find("standalone-unsupport") != std::string::npos) {
+        mode.find("request-unsupport") != std::string::npos || mode.find("standalone-unsupport") != std::string::npos) {
         return false;
     }
     return true;
 }
 static bool IsBatchRequestSupportMode(const std::string& mode) {
-    if (mode.find("hybridse-only") != std::string::npos ||
-        mode.find("rtidb-unsupport") != std::string::npos ||
+    if (mode.find("hybridse-only") != std::string::npos || mode.find("rtidb-unsupport") != std::string::npos ||
         mode.find("performance-sensitive-unsupport") != std::string::npos ||
         mode.find("batch-request-unsupport") != std::string::npos ||
-        mode.find("request-unsupport") != std::string::npos
-        || mode.find("standalone-unsupport") != std::string::npos) {
+        mode.find("request-unsupport") != std::string::npos || mode.find("standalone-unsupport") != std::string::npos) {
         return false;
     }
     return true;
 }
 static bool IsBatchSupportMode(const std::string& mode) {
-    if (mode.find("hybridse-only") != std::string::npos ||
-        mode.find("rtidb-unsupport") != std::string::npos ||
+    if (mode.find("hybridse-only") != std::string::npos || mode.find("rtidb-unsupport") != std::string::npos ||
         mode.find("batch-unsupport") != std::string::npos ||
         mode.find("performance-sensitive-unsupport") != std::string::npos ||
         mode.find("standalone-unsupport") != std::string::npos) {
@@ -561,7 +556,6 @@ TEST_F(SQLSDKQueryTest, RequestProcedureTest) {
     ASSERT_TRUE(router->ExecuteDDL(db, "drop table trans;", &status));
 }
 
-
 TEST_F(SQLSDKQueryTest, DropTableWithProcedureTest) {
     // create table trans
     std::string ddl =
@@ -912,15 +906,17 @@ TEST_F(SQLSDKQueryTest, ExecuteWhereWithParameter) {
 }  // namespace openmldb
 
 int main(int argc, char** argv) {
-    ::hybridse::vm::Engine::InitializeGlobalLLVM();
     ::testing::InitGoogleTest(&argc, argv);
+    ::google::ParseCommandLineFlags(&argc, &argv, true);
+    ::hybridse::vm::Engine::InitializeGlobalLLVM();
+    ::openmldb::base::SetupGlog(true);
+
     srand(time(NULL));
     FLAGS_zk_session_timeout = 100000;
     ::openmldb::sdk::MiniCluster mc(6181);
     ::openmldb::sdk::mc_ = &mc;
     int ok = ::openmldb::sdk::mc_->SetUp(3);
     sleep(5);
-    ::google::ParseCommandLineFlags(&argc, &argv, true);
     ::openmldb::sdk::router_ = ::openmldb::sdk::GetNewSQLRouter();
     if (nullptr == ::openmldb::sdk::router_) {
         LOG(ERROR) << "Fail Test with NULL SQL router";

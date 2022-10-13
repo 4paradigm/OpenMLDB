@@ -264,8 +264,8 @@ void DefaultUdfLibrary::InitMinByCateUdafs() {
     RegisterUdafTemplate<TopKMinCateWhereDef>("top_n_key_min_cate_where")
         .doc(R"(
             @brief Compute minimum of values matching specified condition grouped by
-    category key. Output string for top N keys in descend order. Each group is
-    represented as 'K:V' and separated by comma.
+    category key. Output string for top N category keys in descend order. Each group is
+    represented as 'K:V' and separated by comma(,). Empty string returned if no rows selected.
 
             @param catagory  Specify catagory column to group by.
             @param value  Specify value column to aggregate on.
