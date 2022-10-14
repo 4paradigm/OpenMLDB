@@ -2612,7 +2612,7 @@ void DefaultUdfLibrary::InitUdaf() {
             @endcode
             @since 0.1.0
         )")
-        .args_in<int16_t, int32_t, int64_t, float, double, Timestamp, Date,
+        .args_in<bool, int16_t, int32_t, int64_t, float, double, Timestamp, Date,
                  StringRef, LiteralTypedRow<>>();
 
     RegisterUdafTemplate<AvgWhereDef>("avg_where")
