@@ -798,12 +798,11 @@ cases:
         partition by id order by ts rows between 2 preceding and current row),
       w2 as (
         partition by b order by ts rows_range between 2s preceding and current row)
-    # TODO(ace): t1.col -> t1.col is redundant as output name
     cluster_request_plan: |
-      SIMPLE_PROJECT(sources=(id, t1.id -> t1.id, t1.b -> t1.b, t1.ts -> t1.ts, b, cnt1, cnt2))
+      SIMPLE_PROJECT(sources=(id, t1.id, t1.b, t1.ts, b, cnt1, cnt2))
         REQUEST_JOIN(type=kJoinTypeConcat)
           REQUEST_JOIN(type=kJoinTypeConcat)
-            SIMPLE_PROJECT(sources=(id, t1.id -> t1.id, t1.b -> t1.b, t1.ts -> t1.ts, b))
+            SIMPLE_PROJECT(sources=(id, t1.id, t1.b, t1.ts, b))
               DATA_PROVIDER(request=t1)
             PROJECT(type=Aggregation)
               REQUEST_UNION(partition_keys=(), orders=(ASC), rows=(ts, 2 PRECEDING, 0 CURRENT), index_keys=(id))
@@ -814,7 +813,7 @@ cases:
               DATA_PROVIDER(request=t1)
               DATA_PROVIDER(type=Partition, table=t1, index=idx2)
     expect:
-      columns: ["id int32", "t1.id int32", "t1.b int32", "t1.ts int64", "b int32", "cnt1 int64", "cnt2 int64"]
+      columns: ["id int32", "id int32", "b int32", "ts int64", "b int32", "cnt1 int64", "cnt2 int64"]
       order: id
       data: |
           1, 1, 10, 1000, 10, 1, 1
