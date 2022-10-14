@@ -283,11 +283,11 @@ public class TestDataExporter extends OpenMLDBTest {
     }
     @Test
     public void testInsert(){
-        String tableName = "test_data11";
+        String tableName = "test_data12";
         SDKClient sdkClient = SDKClient.of(executor);
         sdkClient.setOnline();
         sdkClient.useDB("test_data");
-        for(int i=0;i<100;i++) {
+        for(int i=0;i<10000;i++) {
             sdkClient.execute(String.format("insert into %s values (1,1590738989000,'aa%d',1,21,31,1.1,2.1,1590738989000,'2020-05-01',true);", tableName,i));
             sdkClient.execute(String.format("insert into %s values (2,1590738990000,'bb%d',2,22,32,1.1,2.1,1590738989000,'2020-05-01',false);", tableName,i));
             sdkClient.execute(String.format("insert into %s values (3,1590738991000,'cc%d',3,23,33,1.1,2.1,1590738989000,'2020-05-01',true);", tableName,i));
