@@ -18,6 +18,8 @@
 
 #include <algorithm>
 #include <set>
+#include <random>
+#include <iterator>
 
 #include "absl/strings/str_cat.h"
 #include "absl/strings/str_split.h"
@@ -2257,8 +2259,8 @@ int NameServerImpl::SetPartitionInfo(TableInfo& table_info) {
             }
         }
     }
-    int index = 0;
-    int pos = 0;
+    size_t index = 0;
+    size_t pos = 0;
     uint64_t min = UINT64_MAX;
     for (const auto& iter : endpoint_pid_bucked) {
         endpoint_vec.push_back(iter.first);
@@ -2268,6 +2270,11 @@ int NameServerImpl::SetPartitionInfo(TableInfo& table_info) {
         }
         index++;
     }
+    std::random_device rd;
+    std::mt19937 g(rd());
+    std::shuffle(endpoint_vec.begin(), endpoint_vec.end(), g);
+    size_t endpoint_vec_size = endpoint_vec.size();
+    pos %= endpoint_vec_size;
     for (uint32_t pid = 0; pid < partition_num; pid++) {
         TablePartition* table_partition = table_info.add_table_partition();
         table_partition->set_pid(pid);
@@ -2275,14 +2282,14 @@ int NameServerImpl::SetPartitionInfo(TableInfo& table_info) {
         PartitionMeta* leader_partition_meta = NULL;
         for (uint32_t idx = 0; idx < replica_num; idx++) {
             PartitionMeta* partition_meta = table_partition->add_partition_meta();
-            std::string endpoint = endpoint_vec[pos % endpoint_vec.size()];
+            std::string endpoint = endpoint_vec[pos];
             partition_meta->set_endpoint(endpoint);
             partition_meta->set_is_leader(false);
             if (endpoint_leader[endpoint] < min_leader_num) {
                 min_leader_num = endpoint_leader[endpoint];
                 leader_partition_meta = partition_meta;
             }
-            pos++;
+            pos = (++pos == endpoint_vec_size) ? 0 : pos;
         }
         if (leader_partition_meta != NULL) {
             leader_partition_meta->set_is_leader(true);
