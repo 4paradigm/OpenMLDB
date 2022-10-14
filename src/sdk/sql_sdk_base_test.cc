@@ -120,11 +120,15 @@ void SQLSDKTest::CreateProcedure(hybridse::sqlcase::SqlCase& sql_case,  // NOLIN
         hybridse::type::TableDef batch_request_schema;
         ASSERT_TRUE(sql_case.ExtractTableDef(sql_case.batch_request().columns_, sql_case.batch_request().indexs_,
                                              batch_request_schema));
-        ASSERT_TRUE(sql_case.BuildCreateSpSqlFromSchema(batch_request_schema, sql,
-                                                        sql_case.batch_request().common_column_indices_, &create_sp));
+        auto s = sql_case.BuildCreateSpSqlFromSchema(batch_request_schema, sql,
+                                                     sql_case.batch_request().common_column_indices_);
+        ASSERT_TRUE(s.ok()) << s.status();
+        create_sp = s.value();
     } else {
         std::set<size_t> common_idx;
-        ASSERT_TRUE(sql_case.BuildCreateSpSqlFromInput(0, sql, common_idx, &create_sp));
+        auto s = sql_case.BuildCreateSpSqlFromInput(0, sql, common_idx);
+        ASSERT_TRUE(s.ok()) << s.status();
+        create_sp = s.value();
     }
 
     for (size_t i = 0; i < sql_case.inputs_.size(); i++) {

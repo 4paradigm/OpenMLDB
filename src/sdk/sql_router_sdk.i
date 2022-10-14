@@ -50,6 +50,7 @@
 %{
 #include "sdk/sql_router.h"
 #include "sdk/result_set.h"
+#include "sdk/base_schema.h"
 #include "sdk/base.h"
 #include "sdk/sql_request_row.h"
 #include "sdk/sql_insert_row.h"
@@ -74,6 +75,7 @@ using openmldb::sdk::TableReader;
 %}
 
 %include "sdk/sql_router.h"
+%include "sdk/base_schema.h"
 %include "sdk/base.h"
 %include "sdk/result_set.h"
 %include "sdk/sql_request_row.h"

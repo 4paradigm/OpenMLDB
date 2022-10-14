@@ -327,6 +327,7 @@ TEST_F(ArithmeticIRBuilderTest, TestIntDivNull) {
     BinaryArithmeticExprCheck<Nullable<int64_t>, Nullable<int64_t>,
                               Nullable<int64_t>>(nullptr, 1, nullptr,
                                                  ::hybridse::node::kFnOpDiv);
+    BinaryArithmeticExprCheck<int64_t, int64_t, Nullable<int64_t>>(10, 0L, nullptr, ::hybridse::node::kFnOpDiv);
 }
 TEST_F(ArithmeticIRBuilderTest, TestFdivNull) {
     BinaryArithmeticExprCheck<Nullable<int16_t>, Nullable<int16_t>,
@@ -970,28 +971,27 @@ TEST_F(ArithmeticIRBuilderTest, TestMultiDoubleXExpr) {
 }
 
 TEST_F(ArithmeticIRBuilderTest, TestFdivZero) {
-    BinaryArithmeticExprCheck<int32_t, int16_t, double>(
+    BinaryArithmeticExprCheck<int32_t, int16_t, Nullable<double>>(
         ::hybridse::node::kInt32, ::hybridse::node::kInt16,
-        ::hybridse::node::kDouble, 2, 0, 2.0 / 0.0,
+        ::hybridse::node::kDouble, 2, 0, nullptr,
         ::hybridse::node::kFnOpFDiv);
-    BinaryArithmeticExprCheck<int32_t, int16_t, double>(
+    BinaryArithmeticExprCheck<int32_t, int16_t, Nullable<double>>(
         ::hybridse::node::kInt32, ::hybridse::node::kInt32,
-        ::hybridse::node::kDouble, 2, 0, 2.0 / 0.0,
+        ::hybridse::node::kDouble, 2, 0, nullptr,
         ::hybridse::node::kFnOpFDiv);
 
-    BinaryArithmeticExprCheck<int64_t, int16_t, double>(
+    BinaryArithmeticExprCheck<int64_t, int16_t, Nullable<double>>(
         ::hybridse::node::kInt64, ::hybridse::node::kInt32,
-        ::hybridse::node::kDouble, 99999999L, 0, 99999999.0 / 0.0,
+        ::hybridse::node::kDouble, 99999999L, 0, nullptr,
         ::hybridse::node::kFnOpFDiv);
-    BinaryArithmeticExprCheck<int32_t, float, double>(
+    BinaryArithmeticExprCheck<int32_t, float, Nullable<double>>(
         ::hybridse::node::kInt32, ::hybridse::node::kFloat,
-        ::hybridse::node::kDouble, 2, 0.0f, 2.0 / 0.0,
+        ::hybridse::node::kDouble, 2, 0.0f, nullptr,
         ::hybridse::node::kFnOpFDiv);
-    BinaryArithmeticExprCheck<int32_t, double, double>(
+    BinaryArithmeticExprCheck<int32_t, double, Nullable<double>>(
         ::hybridse::node::kInt32, ::hybridse::node::kDouble,
-        ::hybridse::node::kDouble, 2, 0.0, 2.0 / 0.0,
+        ::hybridse::node::kDouble, 2, 0.0, nullptr,
         ::hybridse::node::kFnOpFDiv);
-    std::cout << std::to_string(1 / 0.0) << std::endl;
 }
 
 TEST_F(ArithmeticIRBuilderTest, TestFdivInt32XExpr) {
@@ -1041,6 +1041,8 @@ TEST_F(ArithmeticIRBuilderTest, TestModInt32XExpr) {
         ::hybridse::node::kInt32, ::hybridse::node::kDouble,
         ::hybridse::node::kDouble, 12, 5.1, fmod(12.0, 5.1),
         ::hybridse::node::kFnOpMod);
+
+    BinaryArithmeticExprCheck<int32_t, double, Nullable<double>>(12, 0.0, nullptr, ::hybridse::node::kFnOpMod);
 }
 
 TEST_F(ArithmeticIRBuilderTest, TestModFloatXExpr) {
