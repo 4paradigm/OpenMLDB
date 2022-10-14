@@ -291,7 +291,7 @@ public class OpenMLDBDeploy {
                     "sed -i "+sedSeparator+" 's@#--zk_cluster=.*@--zk_cluster="+zk_endpoint+"@' "+testPath+tablet_name+"/conf/tablet.flags",
                     "sed -i "+sedSeparator+" 's@#--zk_root_path=.*@--zk_root_path=/openmldb@' "+testPath+tablet_name+"/conf/tablet.flags",
                     "sed -i "+sedSeparator+" 's@#--make_snapshot_threshold_offset=100000@--make_snapshot_threshold_offset=10@' "+testPath+tablet_name+"/conf/tablet.flags",
-                    "sed -i "+sedSeparator+" 's@#--binlog_single_file_max_size=.*@--binlog_single_file_max_size=1@' "+testPath+tablet_name+"/conf/tablet.flags",
+                    "sed -i "+sedSeparator+" 's@--binlog_single_file_max_size=.*@--binlog_single_file_max_size=1@' "+testPath+tablet_name+"/conf/tablet.flags",
                     "sed -i "+sedSeparator+" 's@--scan_concurrency_limit=16@--scan_concurrency_limit=0@' "+testPath+tablet_name+"/conf/tablet.flags",
                     "sed -i "+sedSeparator+" 's@--put_concurrency_limit=8@--put_concurrency_limit=0@' "+testPath+tablet_name+"/conf/tablet.flags",
                     "sed -i "+sedSeparator+" 's@--get_concurrency_limit=16@--get_concurrency_limit=0@' "+testPath+tablet_name+"/conf/tablet.flags",
