@@ -471,7 +471,8 @@ TableIterator* MemTable::NewIterator(uint32_t index, const std::string& pk, Tick
     return segment->NewIterator(spk, ticket);
 }
 
-uint64_t MemTable::GetCntOfIndex(FUNC GetCnt, uint32_t idx=0) {
+typedef uint64_t (*seg_get_index_func)(void);
+uint64_t MemTable::GetCntOfIndex(seg_get_index_func f, uint32_t idx=0) {
     table_index_.GetAllInnerIndex();
     if (inner_indexs.empty()) {
         return 0;
@@ -489,7 +490,7 @@ uint64_t MemTable::GetCntOfIndex(FUNC GetCnt, uint32_t idx=0) {
 
     uint64_t ret = 0;
     for (uint32_t j = 0; j < seg_cnt_; j++) {
-        ret += segments_[0][j]->*GetCnt;
+        ret += segments_[0][j]->*f;
     }
     return ret;
 }
