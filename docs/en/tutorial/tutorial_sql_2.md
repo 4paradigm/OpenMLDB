@@ -147,7 +147,7 @@ The following SQL extracts the necessary columns from t2 to generate t22.
 (select 0L as id, mid, purchase_time, purchase_amt, purchase_type from t2) as t22
 ```
 
-![img](images/t2_to_t22.png)
+![img](images/t2_to_t22.jpg)
 
 It can be seen that the newly generated t11 and t22 have the same schema, and they can perform logical union operation. However, in OpenMLDB, the WINDOW UNION is not really the same as the UNION operation in the traditional database, but to build the time window on the secondary table t22 for each row in t11. 
 According to the merchant ID `mid`, we obtain the corresponding rows from t22 for each row in t11, and then sort them according to the consumption time (`purchase_time`) to construct the secondary table splicing window. 
