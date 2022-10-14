@@ -602,7 +602,7 @@ class LoadDataPlanNode : public LeafPlanNode {
     const std::string table_;
     // optional options for load data, e.g csv related options
     const std::shared_ptr<OptionsMap> options_;
-    // optinal config option for load data, to config offline job parameters
+    // optional config option for load data, to config offline job parameters
     const std::shared_ptr<OptionsMap> config_options_;
 };
 

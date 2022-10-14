@@ -997,7 +997,7 @@ TEST_F(SQLClusterTest, ClusterSelect) {
 
 TEST_F(SQLClusterTest, ClusterOnlineAgg) {
     SQLRouterOptions sql_opt;
-    sql_opt.enable_debug = true;
+    sql_opt.enable_debug = false;
     sql_opt.zk_cluster = mc_->GetZkCluster();
     sql_opt.zk_path = mc_->GetZkPath();
     sql_opt.zk_session_timeout = 1000000;
@@ -1017,7 +1017,7 @@ TEST_F(SQLClusterTest, ClusterOnlineAgg) {
     ASSERT_TRUE(ok) << status.msg;
     ASSERT_TRUE(router->RefreshCatalog());
 
-    int row_num = 5000;
+    int row_num = 500;
     for (int i = 0; i < row_num; i++) {
         std::string insert = "insert into " + table + " values('key2" + "',20,22,9.2,19.3," + std::to_string(1000 + i) +
                              ",'2021-01-10');";
