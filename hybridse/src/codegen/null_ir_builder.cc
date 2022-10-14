@@ -15,11 +15,12 @@
  */
 
 #include "codegen/null_ir_builder.h"
-
-using ::hybridse::common::kCodegenError;
+#include "codegen/predicate_expr_ir_builder.h"
 
 namespace hybridse {
 namespace codegen {
+
+using ::hybridse::common::kCodegenError;
 
 NullIRBuilder::NullIRBuilder() {}
 NullIRBuilder::~NullIRBuilder() {}
@@ -153,6 +154,29 @@ base::Status NullIRBuilder::CheckAllNull(::llvm::BasicBlock* block,
         }
     }
     return base::Status::OK();
+}
+base::Status NullIRBuilder::SafeNullDivExpr(
+    ::llvm::BasicBlock* block, const NativeValue& left, const NativeValue& right,
+    const std::function<bool(::llvm::BasicBlock*, ::llvm::Value*, ::llvm::Value*, ::llvm::Value**, base::Status&)>
+        expr_func,
+    NativeValue* output) {
+    NativeValue rhs_eq_zero;
+    PredicateIRBuilder predicate_builder(block);
+    CHECK_STATUS(
+        predicate_builder.BuildEqExpr(
+            right, NativeValue::Create(::llvm::ConstantInt::get(::llvm::Type::getInt32Ty(block->getContext()), 0)),
+            &rhs_eq_zero),
+        "failed to build equal expr for rhs of div");
+
+    NativeValue safe_null_value;
+    CHECK_STATUS(NullIRBuilder::SafeNullBinaryExpr(block, left, right, expr_func, &safe_null_value));
+
+    CondSelectIRBuilder select_builder;
+
+    return select_builder.Select(
+        block, rhs_eq_zero,
+        NativeValue::CreateNull(safe_null_value.GetType()),
+        safe_null_value, output);
 }
 }  // namespace codegen
 }  // namespace hybridse
