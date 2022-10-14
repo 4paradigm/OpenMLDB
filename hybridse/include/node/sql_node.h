@@ -1421,8 +1421,8 @@ class AllNode : public ExprNode {
         : ExprNode(kExprAll), relation_name_(relation_name), db_name_(db_name) {}
 
     ~AllNode() {}
-    std::string GetRelationName() const { return relation_name_; }
-    std::string GetDBName() const { return db_name_; }
+    const std::string& GetRelationName() const { return relation_name_; }
+    const std::string& GetDBName() const { return db_name_; }
 
     void SetRelationName(const std::string &relation_name) { relation_name_ = relation_name; }
     const std::string GetExprString() const;

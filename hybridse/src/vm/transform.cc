@@ -349,10 +349,10 @@ Status BatchModeTransformer::TransformProjectPlanOpWithWindowParallel(
         CHECK_STATUS(TransformPlanOp(node->GetChildren()[0], &depend));
     }
 
-    CHECK_STATUS(CompleteProjectList(node, depend));
-
     CHECK_TRUE(!node->project_list_vec_.empty(), kPlanError,
                "Fail transform project op: empty projects");
+
+    CHECK_STATUS(CompleteProjectList(node, depend));
     if (1 == node->project_list_vec_.size()) {
         return TransformProjectOp(dynamic_cast<hybridse::node::ProjectListNode*>(node->project_list_vec_[0]), depend,
                                   false, output);
@@ -480,8 +480,7 @@ Status BatchModeTransformer::TransformProjectPlanOpWindowSerial(
 Status BatchModeTransformer::CompleteProjectList(const node::ProjectPlanNode* project_node,
                                                  PhysicalOpNode* depend) const {
     for (auto ele : project_node->project_list_vec_) {
-        auto projects = dynamic_cast<node::ProjectListNode*>(ele)->GetProjects();
-
+        auto& projects = dynamic_cast<node::ProjectListNode*>(ele)->GetProjects();
         for (auto iter = projects.cbegin(); iter != projects.cend(); iter++) {
             auto project_node = dynamic_cast<node::ProjectNode*>(*iter);
             auto expr = project_node->GetExpression();
@@ -493,10 +492,32 @@ Status BatchModeTransformer::CompleteProjectList(const node::ProjectPlanNode* pr
                 CHECK_TRUE(all_expr->children_.empty(), kPlanError, "all expr already fullfilled children expr");
                 CHECK_TRUE(depend != nullptr, kPlanError,
                            "try to '*' expand all columns from depend but depend is null");
-                // expand all expression if needed
-                for (auto column : *depend->GetOutputSchema()) {
-                    all_expr->children_.push_back(
-                        node_manager_->MakeColumnRefNode(column.name(), all_expr->GetRelationName()));
+                const auto& relation_name = all_expr->GetRelationName();
+                const auto& db_name = all_expr->GetDBName();
+                // expand *
+                auto* schemas_ctx = depend->schemas_ctx();
+                for (size_t slice = 0; slice < schemas_ctx->GetSchemaSourceSize(); slice++) {
+                    // t1.* or db.t1.* only selects columns of one table
+                    auto schema_source = schemas_ctx->GetSchemaSource(slice);
+                    if (!relation_name.empty() && relation_name != schema_source->GetSourceName()) {
+                        continue;
+                    }
+
+                    if (!db_name.empty() && db_name != schema_source->GetSourceDB()) {
+                        continue;
+                    }
+
+                    for (size_t k = 0; k < schema_source->size(); ++k) {
+                        auto col_name = schema_source->GetColumnName(k);
+                        std::string col_db = "";
+                        // db name will omitted if it is equal to default db
+                        if (schema_source->GetSourceDB() != schemas_ctx->GetDefaultDBName()) {
+                            col_db = schema_source->GetSourceDB();
+                        }
+                        auto col_ref =
+                            node_manager_->MakeColumnRefNode(col_name, schema_source->GetSourceName(), col_db);
+                        all_expr->children_.push_back(col_ref);
+                    }
                 }
             }
         }

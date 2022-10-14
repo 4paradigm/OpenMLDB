@@ -714,7 +714,7 @@ cases:
         aaa, bbb, ccc
 
   # =============================================================#
-  # 100-104: Output schema correctness for SQL query that contains All('*')
+  # 100-105: Output schema correctness for SQL query that contains All('*')
   #   refer issue https://github.com/4paradigm/OpenMLDB/issues/2505
   # =============================================================
   - id: 100
@@ -733,7 +733,7 @@ cases:
       window w as (
         partition by id order by ts rows between 2 preceding and current row);
     cluster_request_plan: |
-      SIMPLE_PROJECT(sources=(id, b, ts, cnt))
+      SIMPLE_PROJECT(sources=(t1.id, t1.b, t1.ts, cnt))
         REQUEST_JOIN(type=kJoinTypeConcat)
           DATA_PROVIDER(request=t1)
           PROJECT(type=Aggregation)
@@ -758,14 +758,14 @@ cases:
           1, 10, 1000
           2, 30, 2000
     sql: |
-      select b,  *, count(id) over w as cnt
+      select b, *, count(id) over w as cnt
       from t1
       window w as (
         partition by id order by ts rows between 2 preceding and current row);
     cluster_request_plan: |
-      SIMPLE_PROJECT(sources=(b, id, b, ts, cnt))
+      SIMPLE_PROJECT(sources=(b, t1.id, t1.b, t1.ts, cnt))
         REQUEST_JOIN(type=kJoinTypeConcat)
-          SIMPLE_PROJECT(sources=(b, id, b, ts))
+          SIMPLE_PROJECT(sources=(b, t1.id, t1.b, t1.ts))
             DATA_PROVIDER(request=t1)
           PROJECT(type=Aggregation)
             REQUEST_UNION(partition_keys=(), orders=(ASC), rows=(ts, 2 PRECEDING, 0 CURRENT), index_keys=(id))
@@ -840,10 +840,10 @@ cases:
       w2 as (
         partition by b order by ts rows_range between 2s preceding and current row);
     cluster_request_plan: |
-      SIMPLE_PROJECT(sources=(cnt1, id, id, b, ts, b, cnt2))
+      SIMPLE_PROJECT(sources=(cnt1, id, t1.id, t1.b, t1.ts, b, cnt2))
         REQUEST_JOIN(type=kJoinTypeConcat)
           REQUEST_JOIN(type=kJoinTypeConcat)
-            SIMPLE_PROJECT(sources=(id, id, b, ts, b))
+            SIMPLE_PROJECT(sources=(id, t1.id, t1.b, t1.ts, b))
               DATA_PROVIDER(request=t1)
             PROJECT(type=Aggregation)
               REQUEST_UNION(partition_keys=(), orders=(ASC), rows=(ts, 2 PRECEDING, 0 CURRENT), index_keys=(id))
@@ -885,11 +885,11 @@ cases:
       w3 as (
         partition by b order by ts rows_range between 2s preceding and current row exclude current_row);
     cluster_request_plan: |
-      SIMPLE_PROJECT(sources=(cnt1, id, id, b, ts, cnt2, b, cnt3))
+      SIMPLE_PROJECT(sources=(cnt1, id, t1.id, t1.b, t1.ts, cnt2, b, cnt3))
         REQUEST_JOIN(type=kJoinTypeConcat)
           REQUEST_JOIN(type=kJoinTypeConcat)
             REQUEST_JOIN(type=kJoinTypeConcat)
-              SIMPLE_PROJECT(sources=(id, id, b, ts, b))
+              SIMPLE_PROJECT(sources=(id, t1.id, t1.b, t1.ts, b))
                 DATA_PROVIDER(request=t1)
               PROJECT(type=Aggregation)
                 REQUEST_UNION(partition_keys=(), orders=(ASC), rows=(ts, 2 PRECEDING, 0 CURRENT), index_keys=(id))
@@ -909,3 +909,52 @@ cases:
       data: |
           1, 1, 1, 10, 1000, 1, 10, 0
           1, 2, 2, 30, 2000, 1, 30, 0
+  - id: 105
+    desc: |
+      simple select(*) over last join (multiple input source)
+    inputs:
+      - name: t1
+        columns: ["id int32", "b int32", "ts int64"]
+        indexs: ["idx1:id:ts", "idx2:b:ts"]
+        data: |
+          1, 10, 1000
+          2, 30, 2000
+      - name: t2
+        columns: ["id int32", "b int32", "ts int64"]
+        indexs: ["idx1:id:ts", "idx2:b:ts"]
+        data: |
+          3, 10, 1000
+          4, 30, 2000
+    sql: |
+      select * from t1 last join t2 on t1.b = t2.b;
+    expect:
+      columns: ["id int32", "b int32", "ts int64", "id int32", "b int32", "ts int64"]
+      order: id
+      data: |
+        1, 10, 1000, 3, 10, 1000
+        2, 30, 2000, 4, 30, 2000
+
+  - id: 106
+    desc: |
+      select(t1.*) over last join (multiple input source)
+    inputs:
+      - name: t1
+        columns: ["id int32", "b int32", "ts int64"]
+        indexs: ["idx1:id:ts", "idx2:b:ts"]
+        data: |
+          1, 10, 1000
+          2, 30, 2000
+      - name: t2
+        columns: ["id int32", "b int32", "ts int64"]
+        indexs: ["idx1:id:ts", "idx2:b:ts"]
+        data: |
+          3, 10, 1000
+          4, 30, 2000
+    sql: |
+      select t1.* from t1 last join t2 on t1.b = t2.b;
+    expect:
+      columns: ["id int32", "b int32", "ts int64"]
+      order: id
+      data: |
+        1, 10, 1000
+        2, 30, 2000
