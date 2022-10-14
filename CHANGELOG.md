@@ -17,7 +17,7 @@
 ### Bug Fixes
 - After a nameserver restarting, deployments may not recover. (#2533 @dl239)
 - If the type of first column is `bool`, it fails to resolve the function `count_where`.  (#2570 @aceforeverd)
-- Other minor bug fixes (#2540 #2577 #2625 @dl239, #2585 @snehalsenapati23, #2539 @vagetablechicken)
+- Other minor bug fixes (#2540 #2577 #2625 #2655 @dl239, #2585 @snehalsenapati23, #2539 @vagetablechicken)
 
 ### Code Refactoring
 #2516 #2520 #2522 #2521 #2542 #2531 #2581 @haseeb-xd, #2525 #2526 #2527 #2528 @kstrifonoff, #2523 @ighmaZ, #2546 #2549 @NevilleMthw, #2559 @marandabui, #2554 @gokullan, #2580 @team-317, #2599 @lbartyczak, #2594 @shivamgupta-sg, #2571 @Jake-00
