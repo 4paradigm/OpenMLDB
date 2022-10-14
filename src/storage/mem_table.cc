@@ -471,64 +471,39 @@ TableIterator* MemTable::NewIterator(uint32_t index, const std::string& pk, Tick
     return segment->NewIterator(spk, ticket);
 }
 
-uint64_t MemTable::GetRecordIdxByteSize() {
-    uint64_t record_idx_byte_size = 0;
-    auto inner_indexs = table_index_.GetAllInnerIndex();
-    for (size_t i = 0; i < inner_indexs->size(); i++) {
-        bool is_valid = false;
-        for (const auto& index_def : inner_indexs->at(i)->GetIndex()) {
-            if (index_def && index_def->IsReady()) {
-                is_valid = true;
-                break;
-            }
-        }
-        if (is_valid) {
-            for (uint32_t j = 0; j < seg_cnt_; j++) {
-                record_idx_byte_size += segments_[i][j]->GetIdxByteSize();
-            }
-        }
+uint64_t MemTable::GetCntOfIndex(FUNC GetCnt, uint32_t idx=0) {
+    table_index_.GetAllInnerIndex();
+    if (inner_indexs.empty()) {
+        return 0;
     }
-    return record_idx_byte_size;
+
+    auto index_defs = inner_indexs->at(0)->GetIndex();
+    if (index_defs.size() <= idx) {
+        return 0;
+    }
+
+    auto index_def = index_defs[0];
+    if (!index_def->IsReady()) {
+        return 0;
+    }
+
+    uint64_t ret = 0;
+    for (uint32_t j = 0; j < seg_cnt_; j++) {
+        ret += segments_[0][j]->*GetCnt;
+    }
+    return ret;
 }
 
 uint64_t MemTable::GetRecordIdxCnt() {
-    uint64_t record_idx_cnt = 0;
-    auto inner_indexs = table_index_.GetAllInnerIndex();
-    for (size_t i = 0; i < inner_indexs->size(); i++) {
-        bool is_valid = false;
-        for (const auto& index_def : inner_indexs->at(i)->GetIndex()) {
-            if (index_def && index_def->IsReady()) {
-                is_valid = true;
-                break;
-            }
-        }
-        if (is_valid) {
-            for (uint32_t j = 0; j < seg_cnt_; j++) {
-                record_idx_cnt += segments_[i][j]->GetIdxCnt();
-            }
-        }
-    }
-    return record_idx_cnt;
+    return GetCntOfIndex(Segment::GetIdxCnt);
 }
 
 uint64_t MemTable::GetRecordPkCnt() {
-    uint64_t record_pk_cnt = 0;
-    auto inner_indexs = table_index_.GetAllInnerIndex();
-    for (size_t i = 0; i < inner_indexs->size(); i++) {
-        bool is_valid = false;
-        for (const auto& index_def : inner_indexs->at(i)->GetIndex()) {
-            if (index_def && index_def->IsReady()) {
-                is_valid = true;
-                break;
-            }
-        }
-        if (is_valid) {
-            for (uint32_t j = 0; j < seg_cnt_; j++) {
-                record_pk_cnt += segments_[i][j]->GetPkCnt();
-            }
-        }
-    }
-    return record_pk_cnt;
+    return GetCntOfIndex(Segment::GetPkCnt);
+}
+
+uint64_t MemTable::GetRecordIdxByteSize() {
+    return GetCntOfIndex(Segment::GetIdxByteSize);
 }
 
 bool MemTable::GetRecordIdxCnt(uint32_t idx, uint64_t** stat, uint32_t* size) {
