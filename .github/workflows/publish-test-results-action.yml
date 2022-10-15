@@ -12,6 +12,7 @@ on:
         type: string
 
 jobs:
+  runs-on: ubuntu-latest
   publish-test-results:
     steps:
       - name: Download Artifacts
