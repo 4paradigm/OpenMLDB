@@ -9,12 +9,12 @@
 <dependency>
     <groupId>com.4paradigm.openmldb</groupId>
     <artifactId>openmldb-jdbc</artifactId>
-    <version>0.5.2</version>
+    <version>0.6.3</version>
 </dependency>
 <dependency>
     <groupId>com.4paradigm.openmldb</groupId>
     <artifactId>openmldb-native</artifactId>
-    <version>0.5.2</version>
+    <version>0.6.3</version>
 </dependency>
 ```
 ### Mac下Java SDK包安装
@@ -24,15 +24,15 @@
 <dependency>
     <groupId>com.4paradigm.openmldb</groupId>
     <artifactId>openmldb-jdbc</artifactId>
-    <version>0.5.2</version>
+    <version>0.6.3</version>
 </dependency>
 <dependency>
     <groupId>com.4paradigm.openmldb</groupId>
     <artifactId>openmldb-native</artifactId>
-    <version>0.5.2-macos</version>
+    <version>0.6.3-macos</version>
 </dependency>
 ```
-注意: 由于 openmldb-native 中包含了 OpenMLDB 编译的 C++ 静态库, 默认是 linux 静态库, macOS 上需将上述 openmldb-native 的 version 改成 `0.5.2-macos`, openmldb-jdbc 的版本保持不变。
+注意: 由于 openmldb-native 中包含了 OpenMLDB 编译的 C++ 静态库, 默认是 linux 静态库, macOS 上需将上述 openmldb-native 的 version 改成 `0.6.3-macos`, openmldb-jdbc 的版本保持不变。
 
 ## 2. Java SDK快速上手
 
@@ -173,9 +173,9 @@ execute后，缓存的数据将被清除，无法重试execute。
 
 第三步，使用`PreparedStatement::addBatch()`接口完成一行的填充。
 
-第四步，继续使用`setType`和`addBatch`，填充多行。
+第四步，继续使用`setType(index, value)`和`addBatch()`，填充多行。
 
-第五步，使用`PreparedStatement::addBatch()`接口完成批量插入。
+第五步，使用`PreparedStatement::executeBatch()`接口完成批量插入。
 
 ```java
 String insertSqlWithPlaceHolder = "insert into trans values(\"aa\", ?, 33, ?, 2.4, 1590738993000, \"2020-05-04\");";
@@ -184,7 +184,11 @@ try {
   pstmt = sqlExecutor.getInsertPreparedStmt(db, insertSqlWithPlaceHolder);
   pstmt.setInt(1, 24);
   pstmt.setInt(2, 1.5f);
-  pstmt.execute();
+  pstmt.addBatch();
+  pstmt.setInt(1, 25);
+  pstmt.setInt(2, 1.7f);
+  pstmt.addBatch();
+  pstmt.executeBatch();
 } catch (SQLException e) {
   e.printStackTrace();
   Assert.fail();
@@ -336,7 +340,35 @@ try {
 }
 ```
 
+### 2.9 删除指定索引下某个pk的所有数据
 
+通过java sdk可以有一下两种方式删除:
+
+- 直接执行delete SQL
+- 使用 delete preparestatement
+
+
+```
+java.sql.Statement state = router.getStatement();
+try {
+    String sql = "DELETE FROM t1 WHERE col2 = 'key1';";
+    state.execute(sql);
+    sql = "DELETE FROM t1 WHERE col2 = ?;";
+    java.sql.PreparedStatement p1 = router.getDeletePreparedStmt("test", sql);
+    p1.setString(1, "key2");
+    p1.executeUpdate();
+    p1.close();
+} catch (Exception e) {
+    e.printStackTrace();
+    Assert.fail();
+} finally {
+    try {
+        state.close();
+    } catch (Exception e) {
+        e.printStackTrace();
+    }
+}
+```
 
 ## 3. 完整的Java SDK使用范例
 

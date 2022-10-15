@@ -12,22 +12,22 @@ DBName ::=
 
 **Description**
 
-The `CREATE DATABASE` statement is used to create a new database on OpenMLDB. The database name must be unique. If a database with the same name is created repeatedly, an error will occur.
+The `CREATE DATABASE` statement is used to create a new database on OpenMLDB. The database name must be unique. If a database with the same name already exists, an error will occur.
 
 ## **Example**
 
-Create a database named `db1`. If a database with the same name already exists, an error will be thrown.
+The following SQl command creates a database named `db1`. If a database with the same name already exists, an error will be thrown.
 
 ```sql
 CREATE DATABASE db1;
--- SUCCEED: Create database successfully
+-- SUCCEED
 ```
 
-After creating a database named `db2`:
+Then create a database named `db2`:
 
 ```sql
 CREATE DATABASES db2;
--- SUCCEED: Create database successfully
+-- SUCCEED
 ```
 
 Show database list:
@@ -61,4 +61,4 @@ CREATE DATABASE db1;
 
 [DROP DATABASE](./DROP_DATABASE_STATEMENT.md)
 
-[SHOW DATABASES](../ddl/SHOW_STATEMENT.md#show-databases)
+[SHOW DATABASES](./SHOW_DATABASES_STATEMENT.md)

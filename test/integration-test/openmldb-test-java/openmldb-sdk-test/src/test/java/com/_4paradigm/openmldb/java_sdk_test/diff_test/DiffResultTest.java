@@ -15,8 +15,8 @@
  */
 package com._4paradigm.openmldb.java_sdk_test.diff_test;
 
-import com._4paradigm.openmldb.java_sdk_test.common.FedbTest;
-import com._4paradigm.openmldb.java_sdk_test.entity.FesqlDataProviderList;
+import com._4paradigm.openmldb.java_sdk_test.common.OpenMLDBTest;
+import com._4paradigm.openmldb.test_common.model.OpenMLDBCaseFileList;
 import com._4paradigm.openmldb.java_sdk_test.executor.ExecutorFactory;
 import com._4paradigm.openmldb.test_common.model.SQLCase;
 import com._4paradigm.openmldb.test_common.model.SQLCaseType;
@@ -34,10 +34,10 @@ import java.io.FileNotFoundException;
  */
 @Slf4j
 @Feature("diff sql result")
-public class DiffResultTest extends FedbTest {
+public class DiffResultTest extends OpenMLDBTest {
     @DataProvider()
     public Object[] getCreateData() throws FileNotFoundException {
-        FesqlDataProviderList dp = FesqlDataProviderList
+        OpenMLDBCaseFileList dp = OpenMLDBCaseFileList
                 .dataProviderGenerator(new String[]{"/integration/v1/test_create.yaml"});
         return dp.getCases().toArray();
     }

@@ -37,6 +37,7 @@
 %shared_ptr(openmldb::sdk::SQLRequestRow);
 %shared_ptr(openmldb::sdk::SQLRequestRowBatch);
 %shared_ptr(openmldb::sdk::ColumnIndicesSet);
+%shared_ptr(openmldb::sdk::SQLDeleteRow);
 %shared_ptr(openmldb::sdk::SQLInsertRow);
 %shared_ptr(openmldb::sdk::SQLInsertRows);
 %shared_ptr(openmldb::sdk::ExplainInfo);
@@ -49,9 +50,11 @@
 %{
 #include "sdk/sql_router.h"
 #include "sdk/result_set.h"
+#include "sdk/base_schema.h"
 #include "sdk/base.h"
 #include "sdk/sql_request_row.h"
 #include "sdk/sql_insert_row.h"
+#include "sdk/sql_delete_row.h"
 #include "sdk/table_reader.h"
 
 using hybridse::sdk::Schema;
@@ -62,6 +65,7 @@ using openmldb::sdk::SQLRouterOptions;
 using openmldb::sdk::SQLRequestRow;
 using openmldb::sdk::SQLRequestRowBatch;
 using openmldb::sdk::ColumnIndicesSet;
+using openmldb::sdk::SQLDeleteRow;
 using openmldb::sdk::SQLInsertRow;
 using openmldb::sdk::SQLInsertRows;
 using openmldb::sdk::ExplainInfo;
@@ -71,9 +75,11 @@ using openmldb::sdk::TableReader;
 %}
 
 %include "sdk/sql_router.h"
+%include "sdk/base_schema.h"
 %include "sdk/base.h"
 %include "sdk/result_set.h"
 %include "sdk/sql_request_row.h"
+%include "sdk/sql_delete_row.h"
 %include "sdk/sql_insert_row.h"
 %include "sdk/table_reader.h"
 

@@ -23,7 +23,7 @@
 #include <string>
 
 #include "base/file_util.h"
-#include "base/glog_wapper.h"
+#include "base/glog_wrapper.h"
 #include "base/id_generator.h"
 
 namespace openmldb {

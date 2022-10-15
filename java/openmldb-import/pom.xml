@@ -33,20 +33,22 @@
             <version>4.13.1</version>
             <scope>test</scope>
         </dependency>
-        <dependency>
-          <groupId>com.4paradigm.openmldb</groupId>
-          <artifactId>openmldb-jdbc</artifactId>
-          <version>0.2.0</version>
-        </dependency>
-        <dependency>
-            <groupId>com.google.protobuf</groupId>
-            <artifactId>protobuf-java</artifactId>
-            <version>3.16.1</version>
-        </dependency>
+
         <dependency>
             <groupId>com.4paradigm.openmldb</groupId>
             <artifactId>openmldb-common</artifactId>
-            <version>0.3.2</version>
+            <version>0.6.0</version>
+        </dependency>
+        <dependency>
+          <groupId>com.4paradigm.openmldb</groupId>
+          <artifactId>openmldb-jdbc</artifactId>
+          <version>0.6.0</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.google.protobuf</groupId>
+            <artifactId>protobuf-java</artifactId>
+            <version>3.16.3</version>
         </dependency>
         <dependency>
             <groupId>com.baidu</groupId>
@@ -62,9 +64,8 @@
         <!-- https://mvnrepository.com/artifact/org.apache.curator/apache-curator -->
         <dependency>
             <groupId>org.apache.curator</groupId>
-            <artifactId>apache-curator</artifactId>
-            <version>5.1.0</version>
-            <type>pom</type>
+            <artifactId>curator-client</artifactId>
+            <version>4.2.0</version>
         </dependency>
 
         <!--日志开始-->
@@ -114,7 +115,7 @@
         <dependency>
             <groupId>org.apache.hadoop</groupId>
             <artifactId>hadoop-common</artifactId>
-            <version>3.2.2</version>
+            <version>3.2.4</version>
         </dependency>
 
         <!-- https://mvnrepository.com/artifact/org.apache.hadoop/hadoop-hdfs -->
@@ -235,7 +236,6 @@
     </dependencies>
 
     <build>
-        <finalName>openmldb-import</finalName>
         <resources>
             <resource>
                 <directory>src/main/resources</directory>

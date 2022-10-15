@@ -28,7 +28,7 @@ w2 as (PARTITION BY passenger_count ORDER BY pickup_datetime ROWS_RANGE BETWEEN 
 
 **Start docker**
 ```
-docker run -it 4pdosc/openmldb:0.5.2 bash
+docker run -it 4pdosc/openmldb:0.6.3 bash
 ```
 **Initialize environment**
 ```bash
@@ -138,7 +138,7 @@ python3 predict.py
 **Start docker**
 
 ```bash
-docker run -it 4pdosc/openmldb:0.5.2 bash
+docker run -it 4pdosc/openmldb:0.6.3 bash
 ```
 **Initialize environment**
 

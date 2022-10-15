@@ -38,14 +38,15 @@ import org.testng.annotations.Test;
 public class JDBCDriverTest {
     private Connection connection;
     private final String dbName = "driver_test";
+    String zk = TestConfig.ZK_CLUSTER;
+    String zkPath = TestConfig.ZK_PATH;
 
     @BeforeTest
     public void connection() {
-        String zk = TestConfig.ZK_CLUSTER;
-        String zkPath = TestConfig.ZK_PATH;
         try {
+
             Class.forName("com._4paradigm.openmldb.jdbc.SQLDriver");
-            // No database in jdbcUrl
+            // No database in jdbcUrl, and print zk log
             connection = DriverManager.getConnection(String.format("jdbc:openmldb:///?zk=%s&zkPath=%s", zk, zkPath));
             Statement stmt = connection.createStatement();
             try {
@@ -55,8 +56,9 @@ public class JDBCDriverTest {
             }
 
             connection.close();
-            // Set database in jdbcUrl, so we don't need to execute 'use db'
-            connection = DriverManager.getConnection(String.format("jdbc:openmldb:///%s?zk=%s&zkPath=%s", dbName, zk, zkPath));
+            // Set database in jdbcUrl, so we don't need to execute 'use db', no zk log
+            connection = DriverManager.getConnection(
+                    String.format("jdbc:openmldb:///%s?zk=%s&zkPath=%s&zkLogLevel=0", dbName, zk, zkPath));
         } catch (SQLException | ClassNotFoundException e) {
             e.printStackTrace();
             Assert.fail("jdbc connection failed");
@@ -69,6 +71,16 @@ public class JDBCDriverTest {
             connection.close();
         }
         Assert.assertTrue(connection.isClosed());
+    }
+
+    @Test
+    public void testAllOptionsInUrl() throws Exception {
+        connection = DriverManager.getConnection(String.format(
+                "jdbc:openmldb:///%s?zk=%s&zkPath=%s&zkLogFile=&glogDir=&requestTimeout=100000&maxSqlCacheSize=100", dbName, zk, zkPath));
+
+        log.info("can't see log below");
+        connection = DriverManager.getConnection(String
+                .format("jdbc:openmldb:///%s?zk=%s&zkPath=%s&zkLogLevel=0&glogLevel=1", dbName, zk, zkPath));
     }
 
     @Test
@@ -88,27 +100,27 @@ public class JDBCDriverTest {
         java.sql.DatabaseMetaData metadata = connection.getMetaData();
 
         String catalogName = null, schemaName = null;
-        try (ResultSet rs = metadata.getTables(null, null, tableName, new String[]{"TABLE"})) {
+        try (ResultSet rs = metadata.getTables(null, null, tableName, new String[] { "TABLE" })) {
             if (rs.next()) {
                 catalogName = rs.getString(1);
                 schemaName = rs.getString(2);
                 String gotTableName = rs.getString(3);
-                Assert.assertEquals(gotTableName, tableName, "TableName not match: " + tableName + " Got: " + gotTableName);
+                Assert.assertEquals(gotTableName, tableName,
+                        "TableName not match: " + tableName + " Got: " + gotTableName);
             } else {
                 Assert.fail("Not able to find table: " + tableName);
             }
         }
-        String[][] expected = {{"c1", "INTEGER", "1"}, {"c2", "VARCHAR", "2"}};
+        String[][] expected = { { "c1", "INTEGER", "1" }, { "c2", "VARCHAR", "2" } };
         List<String> columns = new ArrayList<>();
         try (ResultSet rs = connection.getMetaData().getColumns(
                 catalogName,
                 schemaName,
                 tableName,
-                null
-        )) {
+                null)) {
             while (rs.next()) {
                 final String columnName = rs.getString(4);
-//                    final int sqlDataType = rs.getInt(5);
+                // final int sqlDataType = rs.getInt(5);
                 final String typeName = rs.getString(6);
                 final int position = rs.getInt(17);
 
@@ -145,11 +157,13 @@ public class JDBCDriverTest {
             Assert.assertEquals(e.getMessage(), "unsupported sql");
         }
         try {
-            String deleteSQL = "DELETE FROM table ...";
-            connection.prepareStatement(deleteSQL);
-            Assert.fail();
+            String deleteSQL = "DELETE FROM " + tableName + " WHERE c1 = ?";
+            PreparedStatement deleteStatement = connection.prepareStatement(deleteSQL);
+            deleteStatement.setInt(1, 1);
+            deleteStatement.execute();
         } catch (Exception e) {
-            Assert.assertEquals(e.getMessage(), "unsupported sql");
+            e.printStackTrace();
+            Assert.fail();
         }
 
         // useless but won't fail
@@ -208,12 +222,13 @@ public class JDBCDriverTest {
         Assert.assertEquals(pstmt.getMetaData().getColumnType(2), Types.VARCHAR);
         Assert.assertEquals(pstmt.getMetaData().getColumnName(2), "c2");
 
-
         try {
-            stmt = connection.prepareStatement("DELETE FROM " + tableName + " WHERE c1=1");
-            Assert.fail("delete is unsupported");
-        } catch (Exception ignored) {
-
+            PreparedStatement preparedStatement = connection
+                    .prepareStatement("DELETE FROM " + tableName + " WHERE c1=?");
+            preparedStatement.setInt(1, 1);
+        } catch (Exception e) {
+            e.printStackTrace();
+            Assert.fail();
         }
 
         // sink, catalog and schema patterns are always be null
@@ -230,7 +245,7 @@ public class JDBCDriverTest {
 
         // if the arg tableTypes in `getTables` has 'VIEW', no effect
         List<String> tableResults = new ArrayList<>();
-        try (ResultSet rs = metadata.getTables(null, null, "%", new String[]{"TABLE", "VIEW"})) {
+        try (ResultSet rs = metadata.getTables(null, null, "%", new String[] { "TABLE", "VIEW" })) {
             while (rs.next()) {
                 String catalogName = rs.getString(1);
                 String schemaName = rs.getString(2);
@@ -277,8 +292,7 @@ public class JDBCDriverTest {
                 null,
                 null,
                 tableName,
-                null
-        )) {
+                null)) {
             final int rsColumnCount = rs.getMetaData().getColumnCount();
             while (rs.next()) {
                 final String catalogName = rs.getString(1);

@@ -36,6 +36,7 @@ std::ostream& operator<<(std::ostream& os, IndexMap& index_map) {
 class DDLParserTest : public ::testing::Test {
  public:
     void SetUp() override {
+        db.set_name("DDLParserTest");
         ASSERT_TRUE(AddTableToDB(
             &db, "behaviourTable",
             {"itemId",    "string", "reqId",  "string",  "tags",   "string", "instanceKey", "string", "eventTime",
@@ -660,7 +661,7 @@ TEST_F(DDLParserTest, extractLongWindow) {
             "ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);";
 
         std::unordered_map<std::string, std::string> window_map;
-        window_map["w1"] = "1000";
+        window_map["w1"] = "1s";
         openmldb::base::LongWindowInfos window_infos;
         auto extract_status = DDLParser::ExtractLongWindowInfos(query, window_map, &window_infos);
         ASSERT_TRUE(extract_status.IsOK());
@@ -670,7 +671,7 @@ TEST_F(DDLParserTest, extractLongWindow) {
         ASSERT_EQ(window_infos[0].aggr_col_, "c3");
         ASSERT_EQ(window_infos[0].partition_col_, "c1");
         ASSERT_EQ(window_infos[0].order_col_, "c6");
-        ASSERT_EQ(window_infos[0].bucket_size_, "1000");
+        ASSERT_EQ(window_infos[0].bucket_size_, "1s");
         ASSERT_EQ(window_infos[0].filter_col_, "c1");
     }
 
@@ -709,6 +710,42 @@ TEST_F(DDLParserTest, extractLongWindow) {
         auto extract_status = DDLParser::ExtractLongWindowInfos(query, window_map, &window_infos);
         ASSERT_TRUE(!extract_status.IsOK());
     }
+}
+
+TEST_F(DDLParserTest, validateSQL) {
+    std::string query = "SWLECT 1;";
+    auto ret = DDLParser::ValidateSQLInBatch(query, db);
+    ASSERT_FALSE(ret.empty());
+    ASSERT_EQ(ret.size(), 2);
+    LOG(INFO) << ret[0];
+
+    query = "SELECT * from not_exist_table;";
+    ret = DDLParser::ValidateSQLInBatch(query, db);
+    ASSERT_FALSE(ret.empty());
+    ASSERT_EQ(ret.size(), 2);
+    LOG(INFO) << ret[0];
+
+    query = "SELECT foo(col1) from t1;";
+    ret = DDLParser::ValidateSQLInBatch(query, db);
+    ASSERT_FALSE(ret.empty());
+    ASSERT_EQ(ret.size(), 2);
+    LOG(INFO) << ret[0] << "\n" << ret[1];
+
+    query = "SELECT * FROM t1;";
+    ret = DDLParser::ValidateSQLInBatch(query, db);
+    ASSERT_TRUE(ret.empty());
+
+    query = "SELECT foo(col1) from t1;";
+    ret = DDLParser::ValidateSQLInRequest(query, db);
+    ASSERT_FALSE(ret.empty());
+    ASSERT_EQ(ret.size(), 2);
+    LOG(INFO) << ret[0] << "\n" << ret[1];
+
+    query =
+        "SELECT count(col1) over w1 from t1 window w1 as(partition by col0 order by col1 rows between unbounded "
+        "preceding and current row);";
+    ret = DDLParser::ValidateSQLInRequest(query, db);
+    ASSERT_TRUE(ret.empty());
 }
 }  // namespace openmldb::base
 

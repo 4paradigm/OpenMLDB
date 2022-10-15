@@ -35,6 +35,7 @@ class HybridSeJitWrapper;
 
 typedef const int8_t* RawPtrHandle;
 typedef int8_t* ByteArrayPtr;
+typedef unsigned char *NIOBUFFER;
 
 class WindowInterface {
  public:
@@ -139,8 +140,17 @@ class CoreAPI {
         hybridse::vm::ByteArrayPtr inputUnsafeRowBytes,
         const int inputRowSizeInBytes, const bool need_free = false);
 
-    static void CopyRowToUnsafeRowBytes(const hybridse::codec::Row inputRow,
+    static hybridse::codec::Row UnsafeRowProjectDirect(
+            const hybridse::vm::RawPtrHandle fn,
+            hybridse::vm::NIOBUFFER inputUnsafeRowBytes,
+            const int inputRowSizeInBytes, const bool need_free = false);
+
+    static void CopyRowToUnsafeRowBytes(const hybridse::codec::Row& inputRow,
                                         hybridse::vm::ByteArrayPtr outputBytes,
+                                        const int length);
+
+    static void CopyRowToDirectByteBuffer(const hybridse::codec::Row& inputRow,
+                                        hybridse::vm::NIOBUFFER outputBytes,
                                         const int length);
 
     static hybridse::codec::Row WindowProject(
@@ -153,6 +163,18 @@ class CoreAPI {
         hybridse::vm::ByteArrayPtr inputUnsafeRowBytes,
         const int inputRowSizeInBytes, const bool is_instance,
         size_t append_slices, WindowInterface* window);
+
+    static hybridse::codec::Row UnsafeWindowProjectDirect(
+            const hybridse::vm::RawPtrHandle fn, const uint64_t key,
+            hybridse::vm::NIOBUFFER inputUnsafeRowBytes,
+            const int inputRowSizeInBytes, const bool is_instance,
+            size_t append_slices, WindowInterface* window);
+
+    static hybridse::codec::Row UnsafeWindowProjectBytes(
+            const hybridse::vm::RawPtrHandle fn, const uint64_t key,
+            hybridse::vm::ByteArrayPtr unsaferowBytes,
+            const int unsaferowSize, const bool is_instance,
+            size_t append_slices, WindowInterface* window);
 
     static hybridse::codec::Row WindowProject(
         const hybridse::vm::RawPtrHandle fn, const uint64_t key, const Row& row,

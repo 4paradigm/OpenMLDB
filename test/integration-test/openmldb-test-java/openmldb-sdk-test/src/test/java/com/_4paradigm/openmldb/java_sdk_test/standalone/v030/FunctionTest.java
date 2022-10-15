@@ -16,7 +16,6 @@
 
 package com._4paradigm.openmldb.java_sdk_test.standalone.v030;
 
-import com._4paradigm.openmldb.java_sdk_test.common.FedbTest;
 import com._4paradigm.openmldb.java_sdk_test.common.StandaloneTest;
 import com._4paradigm.openmldb.java_sdk_test.executor.ExecutorFactory;
 import com._4paradigm.openmldb.test_common.model.SQLCase;
@@ -40,5 +39,13 @@ public class FunctionTest extends StandaloneTest {
     @Yaml(filePaths = "function/function/")
     public void testFunction(SQLCase testCase) throws Exception {
         ExecutorFactory.build(testCase, SQLCaseType.kStandaloneCLI).run();
+    }
+
+    //pass
+    @Story("batch")
+    @Test(dataProvider = "getCase")
+    @Yaml(filePaths = "function/function/")
+    public void testFunctionSDK(SQLCase testCase) throws Exception {
+        ExecutorFactory.build(executor,testCase, SQLCaseType.kBatch).run();
     }
 }

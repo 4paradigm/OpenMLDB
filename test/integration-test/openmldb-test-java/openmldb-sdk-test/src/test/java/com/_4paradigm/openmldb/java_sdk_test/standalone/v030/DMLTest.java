@@ -17,11 +17,10 @@
 package com._4paradigm.openmldb.java_sdk_test.standalone.v030;
 
 
-import com._4paradigm.openmldb.java_sdk_test.command.OpenMLDBComamndFacade;
-import com._4paradigm.openmldb.java_sdk_test.common.FedbGlobalVar;
-import com._4paradigm.openmldb.java_sdk_test.common.FedbTest;
+import com._4paradigm.openmldb.test_common.command.OpenMLDBCommandFacade;
+import com._4paradigm.openmldb.test_common.openmldb.OpenMLDBGlobalVar;
 import com._4paradigm.openmldb.java_sdk_test.common.StandaloneTest;
-import com._4paradigm.openmldb.java_sdk_test.entity.FesqlResult;
+import com._4paradigm.openmldb.test_common.bean.OpenMLDBResult;
 import com._4paradigm.openmldb.java_sdk_test.executor.ExecutorFactory;
 import com._4paradigm.openmldb.test_common.model.SQLCase;
 import com._4paradigm.openmldb.test_common.model.SQLCaseType;
@@ -68,7 +67,7 @@ public class DMLTest extends StandaloneTest {
                 "          c8 date not null,\n" +
                 "          c9 bool not null,\n" +
                 "          index(key=(c1), ts=c5));";
-        OpenMLDBComamndFacade.sql(FedbGlobalVar.mainInfo,FedbGlobalVar.dbName,createSql);
+        OpenMLDBCommandFacade.sql(OpenMLDBGlobalVar.mainInfo, OpenMLDBGlobalVar.dbName,createSql);
         StringBuilder sb = new StringBuilder("insert into auto_multi_insert_1000 values ");
         int total = 1000;
         for(int i=0;i<total;i++){
@@ -76,9 +75,26 @@ public class DMLTest extends StandaloneTest {
         }
         sb.deleteCharAt(sb.length()-1);
         sb.append(";");
-        OpenMLDBComamndFacade.sql(FedbGlobalVar.mainInfo,FedbGlobalVar.dbName,sb.toString());
+        OpenMLDBCommandFacade.sql(OpenMLDBGlobalVar.mainInfo, OpenMLDBGlobalVar.dbName,sb.toString());
         String query = "select * from auto_multi_insert_1000;";
-        FesqlResult result = OpenMLDBComamndFacade.sql(FedbGlobalVar.mainInfo, FedbGlobalVar.dbName, query);
+        OpenMLDBResult result = OpenMLDBCommandFacade.sql(OpenMLDBGlobalVar.mainInfo, OpenMLDBGlobalVar.dbName, query);
         Assert.assertEquals(total,result.getCount());
     }
+
+    //pass
+    @Test(dataProvider = "getCase")
+    @Yaml(filePaths = "function/dml/test_insert.yaml")
+    @Story("insert")
+    public void testInsertSDK(SQLCase testCase){
+        ExecutorFactory.build(executor,testCase, SQLCaseType.kBatch).run();
+    }
+
+    //pass
+    @Test(dataProvider = "getCase")
+    @Yaml(filePaths = "function/dml/multi_insert.yaml")
+    @Story("insert-multi")
+    public void testInsertMultiSDK(SQLCase testCase){
+        ExecutorFactory.build(executor,testCase, SQLCaseType.kBatch).run();
+    }
+
 }

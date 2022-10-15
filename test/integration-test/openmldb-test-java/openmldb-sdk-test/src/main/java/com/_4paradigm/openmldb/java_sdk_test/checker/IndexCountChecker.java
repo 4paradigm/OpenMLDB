@@ -17,7 +17,7 @@
 package com._4paradigm.openmldb.java_sdk_test.checker;
 
 
-import com._4paradigm.openmldb.java_sdk_test.entity.FesqlResult;
+import com._4paradigm.openmldb.test_common.bean.OpenMLDBResult;
 import com._4paradigm.openmldb.test_common.common.LogProxy;
 import com._4paradigm.openmldb.test_common.model.ExpectDesc;
 import lombok.extern.slf4j.Slf4j;
@@ -32,7 +32,7 @@ import org.testng.Assert;
 @Slf4j
 public class IndexCountChecker extends BaseChecker {
     private static final Logger logger = new LogProxy(log);
-    public IndexCountChecker(ExpectDesc expect, FesqlResult fesqlResult){
+    public IndexCountChecker(ExpectDesc expect, OpenMLDBResult fesqlResult){
         super(expect,fesqlResult);
     }
 
@@ -40,7 +40,7 @@ public class IndexCountChecker extends BaseChecker {
     public void check() throws Exception {
         logger.info("index count check");
         int expectCount = expect.getIndexCount();
-        int actual = fesqlResult.getSchema().getIndexs().size();
+        int actual = openMLDBResult.getSchema().getIndexs().size();
         Assert.assertEquals(actual,expectCount,"index count验证失败");
     }
 

@@ -29,6 +29,7 @@ set -e
 rm -rf /tmp/openmldb_offline_storage/*
 rm -rf /work/openmldb/logs*
 rm -rf /work/openmldb/db*
+rm -rf /work/openmldb/taskmanager/bin/logs
 sleep 2
 echo "Starting openmldb in $MODE mode..."
 if [[ "$MODE" = "standalone" ]]; then

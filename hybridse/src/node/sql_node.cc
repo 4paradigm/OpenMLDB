@@ -921,11 +921,11 @@ void WindowDefNode::Print(std::ostream &output, const std::string &org_tab) cons
 // besides the two windows is the same one, two can also merged when all of those condition meet:
 // - union table equal
 // - exclude current time equal
-// - exclude current row equal
 // - instance not in window equal
 // - order equal
 // - partion equal
 // - window frame can be merged
+// - exclude current row equal (frame type equal must)
 bool WindowDefNode::CanMergeWith(const WindowDefNode *that, const bool enable_window_maxsize_merged) const {
     if (nullptr == that) {
         return false;
@@ -933,12 +933,20 @@ bool WindowDefNode::CanMergeWith(const WindowDefNode *that, const bool enable_wi
     if (Equals(that)) {
         return true;
     }
-    return SqlListEquals(this->union_tables_, that->union_tables_) &&
-           this->exclude_current_time_ == that->exclude_current_time_ &&
-           this->instance_not_in_window_ == that->instance_not_in_window_ &&
-           this->exclude_current_row() == that->exclude_current_row() && ExprEquals(this->orders_, that->orders_) &&
-           ExprEquals(this->partitions_, that->partitions_) && nullptr != frame_ptr_ &&
-           this->frame_ptr_->CanMergeWith(that->frame_ptr_, enable_window_maxsize_merged);
+    bool can_merge = SqlListEquals(this->union_tables_, that->union_tables_) &&
+                     this->exclude_current_time() == that->exclude_current_time() &&
+                     this->exclude_current_row() == that->exclude_current_row() &&
+                     this->instance_not_in_window() == that->instance_not_in_window() &&
+                     ExprEquals(this->orders_, that->orders_) && ExprEquals(this->partitions_, that->partitions_) &&
+                     nullptr != frame_ptr_ &&
+                     this->frame_ptr_->CanMergeWith(that->frame_ptr_, enable_window_maxsize_merged);
+
+    if (this->exclude_current_row() && that->exclude_current_row()) {
+        // two window different frame (rows & rows_range) can merge
+        // only when they do not set exclude_current_row neither
+        can_merge &= this->GetFrame()->frame_type() == that->GetFrame()->frame_type();
+    }
+    return can_merge;
 }
 
 WindowDefNode* WindowDefNode::ShadowCopy(NodeManager *nm) const {
@@ -2557,7 +2565,7 @@ void DistributionsNode::Print(std::ostream &output, const std::string &org_tab) 
     SqlNode::Print(output, org_tab);
     const std::string tab = org_tab + INDENT + SPACE_ED;
     output << "\n";
-    PrintSqlVector(output, tab, distribution_list_->GetList(), "distribution_list", true);
+    PrintSqlVector(output, tab, distribution_list_, "distribution_list", true);
 }
 
 void CreateSpStmt::Print(std::ostream &output, const std::string &org_tab) const {
@@ -2588,13 +2596,22 @@ void DeleteNode::Print(std::ostream &output, const std::string &org_tab) const {
     output << "\n";
     PrintValue(output, tab, GetTargetString(), "target", false);
     output << "\n";
-    PrintValue(output, tab, GetJobId(), "job_id", true);
+    if (target_ == DeleteTarget::JOB) {
+        PrintValue(output, tab, GetJobId(), "job_id", true);
+    } else {
+        PrintValue(output, tab, db_name_.empty() ? table_name_ : db_name_ + "." + table_name_, "table_name", false);
+        output << "\n";
+        PrintSqlNode(output, tab, condition_, "condition", true);
+    }
 }
 
 std::string DeleteTargetString(DeleteTarget target) {
     switch (target) {
         case DeleteTarget::JOB: {
             return "JOB";
+        }
+        case DeleteTarget::TABLE: {
+            return "TABLE";
         }
     }
     return "unknown";

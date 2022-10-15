@@ -20,7 +20,7 @@
 #include <iostream>
 #include <set>
 
-#include "base/glog_wapper.h"
+#include "base/glog_wrapper.h"
 #include "brpc/channel.h"
 #include "codec/codec.h"
 #include "codec/sql_rpc_row_codec.h"
@@ -838,7 +838,7 @@ bool TabletClient::Delete(uint32_t tid, uint32_t pid, const std::string& pk, con
     if (response.has_msg()) {
         msg = response.msg();
     }
-    if (!ok || response.code() != 0) {
+    if (!ok || (response.code() != 0 && response.code() != ::openmldb::base::ReturnCode::kDeleteFailed)) {
         return false;
     }
     return true;

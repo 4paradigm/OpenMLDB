@@ -9,12 +9,12 @@ Configure maven pom
 <dependency>
     <groupId>com.4paradigm.openmldb</groupId>
     <artifactId>openmldb-jdbc</artifactId>
-    <version>0.5.2</version>
+    <version>0.6.3</version>
 </dependency>
 <dependency>
     <groupId>com.4paradigm.openmldb</groupId>
     <artifactId>openmldb-native</artifactId>
-    <version>0.5.2</version>
+    <version>0.6.3</version>
 </dependency>
 ```
 ### Package Installation on Mac
@@ -24,15 +24,15 @@ Configure maven pom
 <dependency>
     <groupId>com.4paradigm.openmldb</groupId>
     <artifactId>openmldb-jdbc</artifactId>
-    <version>0.5.2</version>
+    <version>0.6.3</version>
 </dependency>
 <dependency>
     <groupId>com.4paradigm.openmldb</groupId>
     <artifactId>openmldb-native</artifactId>
-    <version>0.5.2-macos</version>
+    <version>0.6.3-macos</version>
 </dependency>
 ```
-Note that since `openmldb-native` contains the C++ static library compiled by OpenMLDB, by default it is a Linux's static library. On macOS, the version of the above openmldb-native needs to be changed to `0.5.2-macos`, and the version of openmldb-jdbc remains unchanged .
+Note that since `openmldb-native` contains the C++ static library compiled by OpenMLDB, by default it is a Linux's static library. On macOS, the version of the above openmldb-native needs to be changed to `0.6.3-macos`, and the version of openmldb-jdbc remains unchanged .
 
 ## 2. Quickstart
 
@@ -120,6 +120,41 @@ try {
   pstmt.setInt(1, 24);
   pstmt.setInt(2, 1.5f);
   pstmt.execute();
+} catch (SQLException e) {
+  e.printStackTrace();
+  Assert.fail();
+} finally {
+  if (pstmt != null) {
+    try {
+      // PrepareStatement must be closed after it is used up
+      pstmt.close();
+    } catch (SQLException throwables) {
+      throwables.printStackTrace();
+    }
+  }
+}
+```
+
+#### 2.4.2 Use Placeholder to Execute Batch Insert
+
+1. Using the `SqlClusterExecutor::getInsertPreparedStmt(db, insertSqlWithPlaceHolder)` interface to` get the InsertPrepareStatement`.
+2. Calling the `PreparedStatement::setType(index, value)` interface to fill data into `InsertPrepareStatement`.
+3. Using the `PreparedStatement::addBatch()` interface to build current row.
+4. Using the `PreparedStatement::setType(index, value)` and `PreparedStatement::addBatch()` to add new rows.
+5. Using the `PreparedStatement::executeBatch()` to execute batch insert.
+
+```java
+String insertSqlWithPlaceHolder = "insert into trans values(\"aa\", ?, 33, ?, 2.4, 1590738993000, \"2020-05-04\");";
+PreparedStatement pstmt = null;
+try {
+  pstmt = sqlExecutor.getInsertPreparedStmt(db, insertSqlWithPlaceHolder);
+  pstmt.setInt(1, 24);
+  pstmt.setInt(2, 1.5f);
+  pstmt.addBatch();
+  pstmt.setInt(1, 25);
+  pstmt.setInt(2, 1.6f);
+  pstmt.addBatch();
+  pstmt.executeBatch();
 } catch (SQLException e) {
   e.printStackTrace();
   Assert.fail();
@@ -245,6 +280,35 @@ You should use the `SqlClusterExecutor::dropDB(db)` interface to drop a specifie
 
 ```java
 sqlExecutor.dropDB(db);
+```
+
+### 2.9 Delete all data under one key in specific index
+
+There two methods to delete as below:
+
+- use delete sql
+- use delete preparestatement
+
+```
+java.sql.Statement state = router.getStatement();
+try {
+    String sql = "DELETE FROM t1 WHERE col2 = 'key1';";
+    state.execute(sql);
+    sql = "DELETE FROM t1 WHERE col2 = ?;";
+    java.sql.PreparedStatement p1 = router.getDeletePreparedStmt("test", sql);
+    p1.setString(1, "key2");
+    p1.executeUpdate();
+    p1.close();
+} catch (Exception e) {
+    e.printStackTrace();
+    Assert.fail();
+} finally {
+    try {
+        state.close();
+    } catch (Exception e) {
+        e.printStackTrace();
+    }
+}
 ```
 
 ## 3. A Complete Example
@@ -490,7 +554,6 @@ public class Demo {
             }
         }
     }
-
 
     private void setData(PreparedStatement pstmt, ResultSetMetaData metaData) throws SQLException {
         for (int i = 0; i < metaData.getColumnCount(); i++) {

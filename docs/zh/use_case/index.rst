@@ -10,3 +10,6 @@
     kafka_connector_demo
     dolphinscheduler_task_demo
     talkingdata_demo
+    OpenMLDB_Byzer_taxi
+    airflow_provider_demo
+    JD_recommendation

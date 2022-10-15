@@ -18,7 +18,7 @@
 
 #include <algorithm>
 #include <utility>
-#include "base/glog_wapper.h"
+#include "base/glog_wrapper.h"
 #include "boost/bind.hpp"
 #include "common/timer.h"
 #include "gflags/gflags.h"

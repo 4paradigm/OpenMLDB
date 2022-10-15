@@ -13,7 +13,7 @@ Apache Pulsar是一个云原生的，分布式消息流平台。它可以作为O
 
 ### 下载
 
-- 你需要下载本文中所需要的所有文件，请点击[files](https://github.com/vagetablechicken/pulsar-openmldb-connector-demo/releases/download/v0.1/files.tar.gz)下载。文件包括connector包，schema文件，配置文件等等。
+- 你需要下载本文中所需要的所有文件，请点击[files](https://openmldb.ai/download/pulsar-connector/files.tar.gz)下载。文件包括connector包，schema文件，配置文件等等。
 - 如果你只想要下载connector包用于自己的项目，请点击[connector snapshot](https://github.com/4paradigm/OpenMLDB/releases/download/v0.4.4/pulsar-io-jdbc-openmldb-2.11.0-SNAPSHOT.nar)。
 
 ### 流程
@@ -35,7 +35,7 @@ Apache Pulsar是一个云原生的，分布式消息流平台。它可以作为O
 ```
 我们更推荐你使用‘host network’模式运行docker，以及绑定文件目录‘files’，sql脚本在该目录中。
 ```
-docker run -dit --network host -v `pwd`/files:/work/taxi-trip/files --name openmldb 4pdosc/openmldb:0.5.2 bash
+docker run -dit --network host -v `pwd`/files:/work/pulsar_files --name openmldb 4pdosc/openmldb:0.6.3 bash
 docker exec -it openmldb bash
 ```
 
@@ -57,7 +57,7 @@ desc connector_test;
 ```
 执行脚本:
 ```
-../openmldb/bin/openmldb --zk_cluster=127.0.0.1:2181 --zk_root_path=/openmldb --role=sql_client < files/create.sql
+/work/openmldb/bin/openmldb --zk_cluster=127.0.0.1:2181 --zk_root_path=/openmldb --role=sql_client < /work/pulsar_files/create.sql
 ```
 ![table desc](images/table.png)
 
@@ -206,6 +206,6 @@ select *, string(timestamp(pickup_datetime)), string(timestamp(dropoff_datetime)
 ```
 在OpenMLDB容器中执行脚本:
 ```
-../openmldb/bin/openmldb --zk_cluster=127.0.0.1:2181 --zk_root_path=/openmldb --role=sql_client < files/select.sql
+/work/openmldb/bin/openmldb --zk_cluster=127.0.0.1:2181 --zk_root_path=/openmldb --role=sql_client < /work/pulsar_files/select.sql
 ```
 ![openmldb result](images/openmldb_result.png)

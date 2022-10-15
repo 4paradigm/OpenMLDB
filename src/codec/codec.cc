@@ -20,7 +20,7 @@
 #include <array>
 #include <unordered_set>
 
-#include "base/glog_wapper.h"
+#include "base/glog_wrapper.h"
 #include "boost/lexical_cast.hpp"
 
 namespace openmldb {
@@ -170,16 +170,24 @@ bool RowBuilder::SetDate(uint32_t index, uint32_t year, uint32_t month, uint32_t
     return SetDate(buf_, index, year, month, day);
 }
 
-bool RowBuilder::SetDate(int8_t* buf, uint32_t index, uint32_t year, uint32_t month, uint32_t day) {
+bool RowBuilder::ConvertDate(uint32_t year, uint32_t month, uint32_t day, uint32_t* val) {
     if (year < 1900 || year > 9999) return false;
     if (month < 1 || month > 12) return false;
     if (day < 1 || day > 31) return false;
+    *val = (year - 1900) << 16;
+    *val = *val | ((month - 1) << 8);
+    *val = *val | day;
+    return true;
+}
+
+bool RowBuilder::SetDate(int8_t* buf, uint32_t index, uint32_t year, uint32_t month, uint32_t day) {
     if (!Check(index, ::openmldb::type::kDate)) return false;
+    uint32_t date = 0;
+    if (!ConvertDate(year, month, day, &date)) {
+        return false;
+    }
     int8_t* ptr = buf + offset_vec_[index];
-    int32_t data = (year - 1900) << 16;
-    data = data | ((month - 1) << 8);
-    data = data | day;
-    *(reinterpret_cast<int32_t*>(ptr)) = data;
+    *(reinterpret_cast<int32_t*>(ptr)) = date;
     SetField(buf, index);
     return true;
 }

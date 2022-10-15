@@ -16,8 +16,8 @@
 
 package com._4paradigm.openmldb.java_sdk_test.ut;
 
-import com._4paradigm.openmldb.java_sdk_test.common.FedbTest;
-import com._4paradigm.openmldb.java_sdk_test.entity.FesqlDataProviderList;
+import com._4paradigm.openmldb.java_sdk_test.common.OpenMLDBTest;
+import com._4paradigm.openmldb.test_common.model.OpenMLDBCaseFileList;
 import com._4paradigm.openmldb.java_sdk_test.executor.ExecutorFactory;
 import com._4paradigm.openmldb.test_common.model.SQLCase;
 import com._4paradigm.openmldb.test_common.model.SQLCaseType;
@@ -36,11 +36,11 @@ import java.io.FileNotFoundException;
  */
 @Slf4j
 @Feature("UT")
-public class UniqueExpectTest extends FedbTest {
+public class UniqueExpectTest extends OpenMLDBTest {
 
     @DataProvider()
     public Object[] getData() throws FileNotFoundException {
-        FesqlDataProviderList dp = FesqlDataProviderList
+        OpenMLDBCaseFileList dp = OpenMLDBCaseFileList
                 .dataProviderGenerator(new String[]{"/integration/ut_case/test_unique_expect.yaml"});
         return dp.getCases().toArray();
     }

@@ -4,14 +4,17 @@
     <test name="fesql-v1-test">
         <parameter name="env" value="qa"/>
         <parameter name="version" value="tmp"/>
-        <!--<packages>-->
-            <!--<package name="com._4paradigm.openmldb.java_sdk_test.cluster.v230"/>-->
+<!--        <packages>-->
+<!--            <package name="com._4paradigm.openmldb.java_sdk_test.cluster.v230"/>-->
 <!--            <package name="com._4paradigm.openmldb.java_sdk_test.cluster.v030"/>-->
 <!--            <package name="com._4paradigm.openmldb.java_sdk_test.cluster.v040"/>-->
-        <!--</packages>-->
+<!--        </packages>-->
         <classes>
-            <class name="com._4paradigm.openmldb.java_sdk_test.cluster.v230.FunctionTest" />
-            <!--<class name="com._4paradigm.openmldb.java_sdk_test.cluster.v230.ExpressTest" />-->
+            <class name="com._4paradigm.openmldb.java_sdk_test.cluster.sql_test.LongWindowTest">
+                <methods>
+                    <include name="testLongWindow" />
+                </methods>
+            </class>
         </classes>
     </test>
     <listeners>

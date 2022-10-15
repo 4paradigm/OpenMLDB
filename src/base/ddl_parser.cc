@@ -22,6 +22,7 @@
 #include <utility>
 #include <vector>
 
+#include "absl/strings/match.h"
 #include "codec/schema_codec.h"
 #include "common/timer.h"
 #include "node/node_manager.h"
@@ -46,10 +47,10 @@ using hybridse::vm::PhysicalOpType;
 using hybridse::vm::SchemasContext;
 using hybridse::vm::Sort;
 
-constexpr const char* DB_NAME = "ddl_parser_db";
+constexpr const char* DB_NAME = "ddl_parser_single_db";
 
 // Ref hybridse/src/passes/physical/group_and_sort_optimized.cc:651
-// // TODO(hw): hybridse should open this method
+// TODO(hw): hybridse should open this method
 bool ResolveColumnToSourceColumnName(const hybridse::node::ColumnRefNode* col, const SchemasContext* schemas_ctx,
                                      std::string* source_name);
 
@@ -178,8 +179,7 @@ IndexMap DDLParser::ExtractIndexes(
     const std::string& sql,
     const std::map<std::string, ::google::protobuf::RepeatedPtrField<::openmldb::common::ColumnDesc>>& schemas) {
     ::hybridse::type::Database db;
-    std::string tmp_db = "temp_" + std::to_string(::baidu::common::timer::get_micros() / 1000);
-    db.set_name(tmp_db);
+    db.set_name(DB_NAME);
     AddTables(schemas, &db);
     return ExtractIndexes(sql, db);
 }
@@ -187,8 +187,7 @@ IndexMap DDLParser::ExtractIndexes(
 IndexMap DDLParser::ExtractIndexes(const std::string& sql,
                                    const std::map<std::string, std::vector<::openmldb::common::ColumnDesc>>& schemas) {
     ::hybridse::type::Database db;
-    std::string tmp_db = "temp_" + std::to_string(::baidu::common::timer::get_micros() / 1000);
-    db.set_name(tmp_db);
+    db.set_name(DB_NAME);
     AddTables(schemas, &db);
     return ExtractIndexes(sql, db);
 }
@@ -210,8 +209,8 @@ std::string DDLParser::Explain(const std::string& sql, const ::hybridse::type::D
 }
 
 hybridse::sdk::Status DDLParser::ExtractLongWindowInfos(const std::string& sql,
-                                                  const std::unordered_map<std::string, std::string>& window_map,
-                                                  LongWindowInfos* infos) {
+                                                        const std::unordered_map<std::string, std::string>& window_map,
+                                                        LongWindowInfos* infos) {
     hybridse::node::NodeManager node_manager;
     hybridse::base::Status sql_status;
     hybridse::node::PlanNodeList plan_trees;
@@ -219,19 +218,22 @@ hybridse::sdk::Status DDLParser::ExtractLongWindowInfos(const std::string& sql,
 
     if (0 != sql_status.code) {
         DLOG(ERROR) << sql_status.msg;
-        return hybridse::sdk::Status(base::ReturnCode::kError, sql_status.msg);
+        return hybridse::sdk::Status(::hybridse::common::StatusCode::kSyntaxError, sql_status.msg,
+                                     sql_status.GetTraces());
     }
+
     hybridse::node::PlanNode* node = plan_trees[0];
     switch (node->GetType()) {
         case hybridse::node::kPlanTypeQuery: {
+            // TODO(ace): Traverse Node return Status
             if (!TraverseNode(node, window_map, infos)) {
-                return hybridse::sdk::Status(base::ReturnCode::kError, "TraverseNode failed");
+                return hybridse::sdk::Status(::hybridse::common::StatusCode::kUnsupportPlan, "TraverseNode failed");
             }
             break;
         }
         default: {
             DLOG(ERROR) << "only support extract long window infos from query";
-            return hybridse::sdk::Status(base::ReturnCode::kError,
+            return hybridse::sdk::Status(::hybridse::common::StatusCode::kUnsupportPlan,
                                          "only support extract long window infos from query");
         }
     }
@@ -240,8 +242,8 @@ hybridse::sdk::Status DDLParser::ExtractLongWindowInfos(const std::string& sql,
 }
 
 bool DDLParser::TraverseNode(hybridse::node::PlanNode* node,
-                                const std::unordered_map<std::string, std::string>& window_map,
-                                LongWindowInfos* long_window_infos) {
+                             const std::unordered_map<std::string, std::string>& window_map,
+                             LongWindowInfos* long_window_infos) {
     switch (node->GetType()) {
         case hybridse::node::kPlanTypeProject: {
             hybridse::node::ProjectPlanNode* project_plan_node = dynamic_cast<hybridse::node::ProjectPlanNode*>(node);
@@ -268,8 +270,8 @@ bool DDLParser::ExtractInfosFromProjectPlan(hybridse::node::ProjectPlanNode* pro
             DLOG(ERROR) << "extract long window infos from project list failed";
             return false;
         }
-        hybridse::node::ProjectListNode* project_list_node
-            = dynamic_cast<hybridse::node::ProjectListNode*>(project_list);
+        hybridse::node::ProjectListNode* project_list_node =
+            dynamic_cast<hybridse::node::ProjectListNode*>(project_list);
         auto window = project_list_node->GetW();
         if (window == nullptr) {
             continue;
@@ -305,7 +307,7 @@ bool DDLParser::ExtractInfosFromProjectPlan(hybridse::node::ProjectPlanNode* pro
                 return false;
             }
             const hybridse::node::ColumnRefNode* column_node =
-                    reinterpret_cast<const hybridse::node::ColumnRefNode*>(order_col_node);
+                reinterpret_cast<const hybridse::node::ColumnRefNode*>(order_col_node);
             order_by_col += column_node->GetColumnName() + ",";
         }
         if (!order_by_col.empty()) {
@@ -368,8 +370,9 @@ bool DDLParser::ExtractInfosFromProjectPlan(hybridse::node::ProjectPlanNode* pro
                 }
             }
 
-            (*long_window_infos).emplace_back(window_name, aggr_name, aggr_col,
-                                           partition_col, order_by_col, window_map.at(window_name));
+            (*long_window_infos)
+                .emplace_back(window_name, aggr_name, aggr_col, partition_col, order_by_col,
+                              window_map.at(window_name));
             if (!filter_col.empty()) {
                 (*long_window_infos).back().filter_col_ = filter_col;
             }
@@ -407,8 +410,7 @@ std::shared_ptr<hybridse::sdk::Schema> DDLParser::GetOutputSchema(const std::str
 std::shared_ptr<hybridse::sdk::Schema> DDLParser::GetOutputSchema(
     const std::string& sql, const std::map<std::string, std::vector<::openmldb::common::ColumnDesc>>& schemas) {
     ::hybridse::type::Database db;
-    std::string tmp_db = "temp_" + std::to_string(::baidu::common::timer::get_micros() / 1000);
-    db.set_name(tmp_db);
+    db.set_name(DB_NAME);
     AddTables(schemas, &db);
     return GetOutputSchema(sql, db);
 }
@@ -422,7 +424,6 @@ IndexMap DDLParser::ParseIndexes(hybridse::vm::PhysicalOpNode* node) {
 }
 
 bool DDLParser::GetPlan(const std::string& sql, const hybridse::type::Database& db, hybridse::vm::RunSession* session) {
-    // TODO(hw): engine should be the input, do not create in here
     auto catalog = std::make_shared<hybridse::vm::SimpleCatalog>(true);
     catalog->AddDatabase(db);
     ::hybridse::vm::Engine::InitializeGlobalLLVM();
@@ -431,10 +432,28 @@ bool DDLParser::GetPlan(const std::string& sql, const hybridse::type::Database& 
     options.SetCompileOnly(true);
     auto engine = std::make_shared<hybridse::vm::Engine>(catalog, options);
 
+    // TODO(hw): ok and status may not be consistent? why engine always use '!ok || 0 != status.code'?
     ::hybridse::base::Status status;
     auto ok = engine->Get(sql, db.name(), *session, status);
     if (!(ok && status.isOK())) {
         LOG(WARNING) << "hybrid engine compile sql failed, " << status.str();
+        return false;
+    }
+    return true;
+}
+
+bool DDLParser::GetPlan(const std::string& sql, const hybridse::type::Database& db, hybridse::vm::RunSession* session,
+                        hybridse::base::Status* status) {
+    auto catalog = std::make_shared<hybridse::vm::SimpleCatalog>(true);
+    catalog->AddDatabase(db);
+    ::hybridse::vm::Engine::InitializeGlobalLLVM();
+    ::hybridse::vm::EngineOptions options;
+    options.SetKeepIr(true);
+    options.SetCompileOnly(true);
+    auto engine = std::make_shared<hybridse::vm::Engine>(catalog, options);
+    auto ok = engine->Get(sql, db.name(), *session, *status);
+    if (!(ok && status->isOK())) {
+        LOG(WARNING) << "hybrid engine compile sql failed, " << status->str();
         return false;
     }
     return true;
@@ -453,6 +472,42 @@ void DDLParser::AddTables(const T& schema, hybridse::type::Database* db) {
             add->set_type(codec::SchemaCodec::ConvertType(col.data_type()));
         }
     }
+}
+
+std::vector<std::string> DDLParser::ValidateSQLInBatch(const std::string& sql, const hybridse::type::Database& db) {
+    hybridse::vm::BatchRunSession session;
+    hybridse::base::Status status;
+    auto ok = GetPlan(sql, db, &session, &status);
+    if (!ok || !status.isOK()) {
+        return {status.GetMsg(), status.GetTraces()};
+    }
+    return {};
+}
+
+std::vector<std::string> DDLParser::ValidateSQLInBatch(
+    const std::string& sql, const std::map<std::string, std::vector<::openmldb::common::ColumnDesc>>& schemas) {
+    ::hybridse::type::Database db;
+    db.set_name(DB_NAME);
+    AddTables(schemas, &db);
+    return ValidateSQLInBatch(sql, db);
+}
+
+std::vector<std::string> DDLParser::ValidateSQLInRequest(const std::string& sql, const hybridse::type::Database& db) {
+    hybridse::vm::MockRequestRunSession session;
+    hybridse::base::Status status;
+    auto ok = GetPlan(sql, db, &session, &status);
+    if (!ok || !status.isOK()) {
+        return {status.GetMsg(), status.GetTraces()};
+    }
+    return {};
+}
+
+std::vector<std::string> DDLParser::ValidateSQLInRequest(
+    const std::string& sql, const std::map<std::string, std::vector<::openmldb::common::ColumnDesc>>& schemas) {
+    ::hybridse::type::Database db;
+    db.set_name(DB_NAME);
+    AddTables(schemas, &db);
+    return ValidateSQLInRequest(sql, db);
 }
 
 bool IndexMapBuilder::CreateIndex(const std::string& table, const hybridse::node::ExprListNode* keys,
@@ -847,9 +902,7 @@ void GroupAndSortOptimizedParser::TransformParse(PhysicalOpNode* in) {
                 DLOG(INFO) << "ttl won't update by node:\n" << filter_op->GetTreeString();
             }
         }
-        default: {
-            break;
-        }
+        default: { break; }
     }
 }
 

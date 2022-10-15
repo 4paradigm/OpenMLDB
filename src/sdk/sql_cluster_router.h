@@ -32,6 +32,7 @@
 #include "client/tablet_client.h"
 #include "nameserver/system_table.h"
 #include "sdk/db_sdk.h"
+#include "sdk/sql_cache.h"
 #include "sdk/sql_router.h"
 #include "sdk/table_reader_impl.h"
 
@@ -40,80 +41,6 @@ namespace openmldb::sdk {
 typedef ::google::protobuf::RepeatedPtrField<::openmldb::common::ColumnDesc> PBSchema;
 
 constexpr const char* FORMAT_STRING_KEY = "!%$FORMAT_STRING_KEY";
-
-static std::shared_ptr<::hybridse::sdk::Schema> ConvertToSchema(
-    const std::shared_ptr<::openmldb::nameserver::TableInfo>& table_info) {
-    ::hybridse::vm::Schema schema;
-    for (const auto& column_desc : table_info->column_desc()) {
-        ::hybridse::type::ColumnDef* column_def = schema.Add();
-        column_def->set_name(column_desc.name());
-        column_def->set_is_not_null(column_desc.not_null());
-        column_def->set_type(openmldb::codec::SchemaCodec::ConvertType(column_desc.data_type()));
-    }
-    return std::make_shared<::hybridse::sdk::SchemaImpl>(schema);
-}
-
-struct SQLCache {
-    // for insert row
-    SQLCache(const std::shared_ptr<::openmldb::nameserver::TableInfo>& table_info, DefaultValueMap default_map,
-             uint32_t str_length, std::vector<uint32_t> hole_idx_arr, uint32_t limit_cnt = 0)
-        : table_info(table_info),
-          default_map(std::move(default_map)),
-          column_schema(),
-          str_length(str_length),
-          hole_idx_arr(std::move(hole_idx_arr)),
-          limit_cnt(limit_cnt) {
-        column_schema = openmldb::sdk::ConvertToSchema(table_info);
-    }
-
-    SQLCache(std::shared_ptr<::hybridse::sdk::Schema> column_schema, const ::hybridse::vm::Router& input_router,
-             uint32_t limit_cnt = 0)
-        : table_info(),
-          default_map(),
-          column_schema(std::move(column_schema)),
-          parameter_schema(),
-          str_length(0),
-          limit_cnt(limit_cnt),
-          router(input_router) {}
-
-    SQLCache(std::shared_ptr<::hybridse::sdk::Schema> column_schema,
-             std::shared_ptr<::hybridse::sdk::Schema> parameter_schema, const ::hybridse::vm::Router& input_router,
-             uint32_t limit_cnt = 0)
-        : table_info(),
-          default_map(),
-          column_schema(std::move(column_schema)),
-          parameter_schema(std::move(parameter_schema)),
-          str_length(0),
-          limit_cnt(limit_cnt),
-          router(input_router) {}
-
-    bool IsCompatibleCache(const std::shared_ptr<::hybridse::sdk::Schema>& other_parameter_schema) const {
-        if (!parameter_schema && !other_parameter_schema) {
-            return true;
-        }
-        if (!parameter_schema || !other_parameter_schema) {
-            return false;
-        }
-        if (parameter_schema->GetColumnCnt() != other_parameter_schema->GetColumnCnt()) {
-            return false;
-        }
-
-        for (int i = 0; i < parameter_schema->GetColumnCnt(); i++) {
-            if (parameter_schema->GetColumnType(i) != other_parameter_schema->GetColumnType(i)) {
-                return false;
-            }
-        }
-        return true;
-    }
-    std::shared_ptr<::openmldb::nameserver::TableInfo> table_info;
-    DefaultValueMap default_map;
-    std::shared_ptr<::hybridse::sdk::Schema> column_schema;
-    std::shared_ptr<::hybridse::sdk::Schema> parameter_schema;
-    uint32_t str_length;
-    std::vector<uint32_t> hole_idx_arr;
-    uint32_t limit_cnt;
-    ::hybridse::vm::Router router;
-};
 
 class SQLClusterRouter : public SQLRouter {
  public:
@@ -145,6 +72,8 @@ class SQLClusterRouter : public SQLRouter {
     bool ExecuteInsert(const std::string& db, const std::string& sql, std::shared_ptr<SQLInsertRows> rows,
                        hybridse::sdk::Status* status) override;
 
+    bool ExecuteDelete(std::shared_ptr<SQLDeleteRow> row, hybridse::sdk::Status* status) override;
+
     std::shared_ptr<TableReader> GetTableReader() override;
 
     std::shared_ptr<ExplainInfo> Explain(const std::string& db, const std::string& sql,
@@ -161,6 +90,9 @@ class SQLClusterRouter : public SQLRouter {
     std::shared_ptr<SQLInsertRows> GetInsertRows(const std::string& db, const std::string& sql,
                                                  ::hybridse::sdk::Status* status) override;
 
+    std::shared_ptr<SQLDeleteRow> GetDeleteRow(const std::string& db, const std::string& sql,
+                                               ::hybridse::sdk::Status* status) override;
+
     std::shared_ptr<hybridse::sdk::ResultSet> ExecuteSQLRequest(const std::string& db, const std::string& sql,
                                                                 std::shared_ptr<SQLRequestRow> row,
                                                                 hybridse::sdk::Status* status) override;
@@ -173,6 +105,11 @@ class SQLClusterRouter : public SQLRouter {
 
     std::shared_ptr<hybridse::sdk::ResultSet> ExecuteSQL(const std::string& db, const std::string& sql,
                                                          bool is_online_mode, bool is_sync_job, int offline_job_timeout,
+                                                         hybridse::sdk::Status* status) override;
+
+    std::shared_ptr<hybridse::sdk::ResultSet> ExecuteSQL(const std::string& db, const std::string& sql,
+                                                         std::shared_ptr<SQLRequestRow> parameter, bool is_online_mode,
+                                                         bool is_sync_job, int offline_job_timeout,
                                                          hybridse::sdk::Status* status) override;
     /// Execute batch SQL with parameter row
     std::shared_ptr<hybridse::sdk::ResultSet> ExecuteSQLParameterized(const std::string& db, const std::string& sql,
@@ -298,9 +235,7 @@ class SQLClusterRouter : public SQLRouter {
 
     void ReadSparkConfFromFile(std::string conf_file, std::map<std::string, std::string>* config);
 
-    SQLRouterOptions GetSqlRouterOptions() {
-        return options_;
-    }
+    std::shared_ptr<BasicRouterOptions> GetRouterOptions() { return options_; }
 
  private:
     bool IsSyncJob();
@@ -374,6 +309,9 @@ class SQLClusterRouter : public SQLRouter {
 
     hybridse::sdk::Status HandleDeploy(const std::string& db, const hybridse::node::DeployPlanNode* deploy_node);
 
+    hybridse::sdk::Status HandleDelete(const std::string& db, const std::string& table_name,
+                                       const hybridse::node::ExprNode* condition);
+
     hybridse::sdk::Status HandleIndex(const std::string& db,
                                       const std::set<std::pair<std::string, std::string>>& table_pair,
                                       const std::string& select_sql);
@@ -409,8 +347,7 @@ class SQLClusterRouter : public SQLRouter {
                                                                      hybridse::sdk::Status* status);
 
  private:
-    SQLRouterOptions options_;
-    StandaloneOptions standalone_options_;
+    std::shared_ptr<BasicRouterOptions> options_;
     std::string db_;
     std::map<std::string, std::string> session_variables_;
     bool is_cluster_mode_;

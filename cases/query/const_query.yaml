@@ -13,6 +13,7 @@
 # limitations under the License.
 
 debugs: []
+version: 0.5.0
 cases:
   - id: 0
     desc: select const number
@@ -21,7 +22,8 @@ cases:
     sql: |
       select 1 as id, 2 as col1, 3.3 as col2;
     expect:
-      schema: id:int32, col1:int, col2:double
+#      schema: id:int32, col1:int, col2:double
+      columns: ["id int","col1 int","col2 double"]
       order: id
       rows:
         - [1, 2, 3.3]
@@ -32,7 +34,8 @@ cases:
     sql: |
       select 1 as id, "hello_world" as col1;
     expect:
-      schema: id:int32, col1:string
+#      schema: id:int32, col1:string
+      columns: ["id int","col1 string"]
       order: id
       rows:
         - [1, "hello_world"]
@@ -43,7 +46,8 @@ cases:
     sql: |
       select 1 as id, substring("hello_world", 3, 6) as col1;
     expect:
-      schema: id:int32, col1:string
+#      schema: id:int32, col1:string
+      columns: ["id int","col1 string"]
       order: id
       rows:
         - [1, "llo_wo"]
@@ -54,7 +58,8 @@ cases:
     sql: |
       select 1 as id, substring("hello_world", 3) as col1;
     expect:
-      schema: id:int32, col1:string
+#      schema: id:int32, col1:string
+      columns: ["id int","col1 string"]
       order: id
       rows:
         - [1, "llo_world"]
@@ -65,13 +70,14 @@ cases:
     sql: |
       select 1 as id, concat("hello", "world", "abc") as col1;
     expect:
-      schema: id:int32, col1:string
+      columns: ["id int","col1 string"]
       order: id
       rows:
         - [1, "helloworldabc"]
   - id: 5
     desc: cast常量 using CAST operator
     mode: request-unsupport
+    db: db1
     inputs:
       - columns: ["c1 int", "c2 string", "c5 bigint"]
         indexs: ["index1:c1:c5"]
@@ -82,10 +88,11 @@ cases:
     expect:
       columns: ["c1 int", "c2 bigint", "c3 float", "c4 double", "c5 timestamp", "c6 date", "c7 string"]
       rows:
-        - [10, 10, 10.0, 10.0, 1590115460000, 2020-05-20, "10"]
+        - [10, 10, 10.0, 10.0, 1590115460000, '2020-05-20', "10"]
   - id: 6
     desc: cast NULL常量 using CAST operator
     mode: request-unsupport
+    db: db1
     inputs:
       - columns: ["c1 int", "c2 string", "c5 bigint"]
         indexs: ["index1:c1:c5"]
@@ -100,6 +107,7 @@ cases:
   - id: 7
     desc: cast常量 using type() function
     mode: request-unsupport
+    db: db1
     inputs:
       - columns: ["c1 int", "c2 string", "c5 bigint"]
         indexs: ["index1:c1:c5"]
@@ -110,10 +118,11 @@ cases:
     expect:
       columns: ["c1 int", "c2 bigint", "c3 float", "c4 double", "c5 timestamp", "c6 date", "c7 string"]
       rows:
-        - [10, 10, 10.0, 10.0, 1590115460000, 2020-05-20, "10"]
+        - [10, 10, 10.0, 10.0, 1590115460000, '2020-05-20', "10"]
   - id: 8
     desc: cast NULL常量 using type(NULL) function
     mode: request-unsupport
+    db: db1
     inputs:
       - columns: ["c1 int", "c2 string", "c5 bigint"]
         indexs: ["index1:c1:c5"]
@@ -128,6 +137,7 @@ cases:
   - id: 9
     desc: differnt const node type
     mode: request-unsupport
+    db: db1
     sql: |
       select true c1, int16(3) c2, 13 c3, 10.0 c4, 'a string' c5, date(timestamp(1590115420000)) c6, timestamp(1590115420000) c7;
     expect:

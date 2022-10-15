@@ -14,6 +14,7 @@
 
 db: test_zw
 debugs: []
+version: 0.5.0
 cases:
   -
     id: 0
@@ -343,3 +344,17 @@ cases:
     sql: select id,v2,v2 from (select id,c2+1 as v2,c3+1 as v2 from {0});
     expect:
       success: false
+  -
+    id: 15
+    desc: 不指定索引，进行子查询操作
+    tags: ["TODO","CPP ut不支持 id int not null 解析"]
+    inputs:
+      - columns: [ "id int not null","c1 int not null","c2 smallint not null","c3 float not null","c4 double not null","c5 bigint not null","c6 string not null","c7 timestamp not null","c8 date not null","c9 bool not null" ]
+        rows:
+          - [ 1, 1, 2, 3.3, 4.4, 5, "aa", 12345678, "2020-05-21", true ]
+    sql: select c1,c2 from (select id as c1,c1 as c2,c7 as c3 from {0});
+    expect:
+      columns : ["c1 int","c2 int"]
+      order: id
+      rows:
+        - [1,1]

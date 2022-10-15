@@ -116,20 +116,23 @@ class OpenmldbBatchConfig extends Serializable {
   var printPhysicalPlan = false
 
   @ConfigOption(name = "openmldb.enable.native.last.join", doc = "Enable native last join or not")
-  var enableNativeLastJoin = true
+  var enableNativeLastJoin = false
 
   // UnsafeRow optimization
-  @ConfigOption(name = "openmldb.unsaferow.opt", doc = "Enable UnsafeRow optimization or not")
+  @ConfigOption(name = "openmldb.unsaferowopt.enable", doc = "Enable UnsafeRow optimization or not")
   var enableUnsafeRowOptimization = false
 
-  @ConfigOption(name = "openmldb.opt.unsaferow.project", doc = "Enable UnsafeRow optimization for project")
-  var enableUnsafeRowOptForProject = false
+  @ConfigOption(name = "openmldb.unsaferowopt.project", doc = "Enable UnsafeRow optimization for project")
+  var enableUnsafeRowOptForProject = true
 
-  @ConfigOption(name = "openmldb.opt.unsaferow.window", doc = "Enable UnsafeRow optimization for window")
-  var enableUnsafeRowOptForWindow = false
+  @ConfigOption(name = "openmldb.unsaferowopt.window", doc = "Enable UnsafeRow optimization for window")
+  var enableUnsafeRowOptForWindow = true
 
-  @ConfigOption(name = "openmldb.opt.unsaferow.groupby", doc = "Enable UnsafeRow optimization for groupby")
-  var enableUnsafeRowOptForGroupby = false
+  //@ConfigOption(name = "openmldb.opt.unsaferow.groupby", doc = "Enable UnsafeRow optimization for groupby")
+  //var enableUnsafeRowOptForGroupby = false
+
+  @ConfigOption(name = "openmldb.unsaferowopt.copydirectbytebuffer", doc = "Copy row with DirectByteBuffer")
+  var unsaferowoptCopyDirectByteBuffer = false
 
   // Join optimization
   @ConfigOption(name = "openmldb.opt.join.spark_expr", doc = "Enable join with original Spark expression")
