@@ -110,16 +110,16 @@ cases:
           |  |    |    +-column_name: COL1
           |  |    +-name: <nil>
           |  +-1:
-          |     +-node[kResTarget]
-          |       +-val:
-          |       |  +-expr[function]
-          |       |    +-function:
-          |       |    |  [Unresolved](sum)
-          |       |    +-arg[0]:
-          |       |      +-expr[column ref]
-          |       |        +-relation_name: <nil>
-          |       |        +-column_name: COL3
-          |       +-name: col3sum
+          |    +-node[kResTarget]
+          |      +-val:
+          |      |  +-expr[function]
+          |      |    +-function:
+          |      |    |  [Unresolved](sum)
+          |      |    +-arg[0]:
+          |      |      +-expr[column ref]
+          |      |        +-relation_name: <nil>
+          |      |        +-column_name: COL3
+          |      +-name: col3sum
           +-tableref_list[list]:
           |  +-0:
           |    +-node[kTableRef]: kTable
