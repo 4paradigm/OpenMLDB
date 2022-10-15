@@ -41,7 +41,7 @@ OpenMLDB Spark兼容标准的[Spark配置](https://spark.apache.org/docs/latest/
 下载解压后，设置`SPARK_HOME`环境变量，可以直接执行Example Jars中的例子。
 
 ```java
-export SPARK_HOME=`pwd`/spark-3.0.0-bin-openmldbspark/
+export SPARK_HOME=`pwd`/spark-3.2.1-bin-openmldbspark/
 
 $SPARK_HOME/bin/spark-submit \
   --master local \

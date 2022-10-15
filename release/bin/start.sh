@@ -80,7 +80,8 @@ case $OP in
                 COUNT=1
                 while [ $COUNT -lt 12 ]
                 do
-                    if ! curl "http://$ENDPOINT/status" > /dev/null 2>&1; then
+                    if ! curl --show-error --silent -o /dev/null "http://$ENDPOINT/status"; then
+                        echo "curl server status failed, retry later"
                         sleep 1
                         (( COUNT+=1 ))
                     elif kill -0 "$PID" > /dev/null 2>&1; then
