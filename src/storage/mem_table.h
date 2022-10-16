@@ -106,8 +106,6 @@ class MemTable : public Table {
 
     int GetCount(uint32_t index, const std::string& pk, uint64_t& count) override;  // NOLINT
 
-    typedef uint64_t (*seg_get_index_func)(void);
-    uint64_t GetCntOfIndex(seg_get_index_func f, uint32_t idx=0);
     uint64_t GetRecordIdxCnt() override;
     bool GetRecordIdxCnt(uint32_t idx, uint64_t** stat, uint32_t* size) override;
     uint64_t GetRecordIdxByteSize() override;

@@ -471,40 +471,64 @@ TableIterator* MemTable::NewIterator(uint32_t index, const std::string& pk, Tick
     return segment->NewIterator(spk, ticket);
 }
 
-typedef uint64_t (*seg_get_index_func)(void);
-uint64_t MemTable::GetCntOfIndex(seg_get_index_func f, uint32_t idx/*=0*/) {
-    table_index_.GetAllInnerIndex();
-    if (inner_indexs.empty()) {
+uint64_t MemTable::GetRecordIdxCnt() {
+    auto inner_indexs = table_index_.GetAllInnerIndex();
+    if (inner_indexs->empty()) {
         return 0;
     }
-
     auto index_defs = inner_indexs->at(0)->GetIndex();
-    if (index_defs.size() <= idx) {
+    if (index_defs.empty()) {
         return 0;
     }
-
     auto index_def = index_defs[0];
     if (!index_def->IsReady()) {
         return 0;
     }
-
     uint64_t ret = 0;
     for (uint32_t j = 0; j < seg_cnt_; j++) {
-        ret += segments_[0][j]->*f;
+        ret += segments_[0][j]->GetIdxCnt();
     }
     return ret;
 }
 
-uint64_t MemTable::GetRecordIdxCnt() {
-    return GetCntOfIndex(Segment::GetIdxCnt);
-}
-
 uint64_t MemTable::GetRecordPkCnt() {
-    return GetCntOfIndex(Segment::GetPkCnt);
+    auto inner_indexs = table_index_.GetAllInnerIndex();
+    if (inner_indexs->empty()) {
+        return 0;
+    }
+    auto index_defs = inner_indexs->at(0)->GetIndex();
+    if (index_defs.empty()) {
+        return 0;
+    }
+    auto index_def = index_defs[0];
+    if (!index_def->IsReady()) {
+        return 0;
+    }
+    uint64_t ret = 0;
+    for (uint32_t j = 0; j < seg_cnt_; j++) {
+        ret += segments_[0][j]->GetPkCnt();
+    }
+    return ret;
 }
 
 uint64_t MemTable::GetRecordIdxByteSize() {
-    return GetCntOfIndex(Segment::GetIdxByteSize);
+    auto inner_indexs = table_index_.GetAllInnerIndex();
+    if (inner_indexs->empty()) {
+        return 0;
+    }
+    auto index_defs = inner_indexs->at(0)->GetIndex();
+    if (index_defs.empty()) {
+        return 0;
+    }
+    auto index_def = index_defs[0];
+    if (!index_def->IsReady()) {
+        return 0;
+    }
+    uint64_t ret = 0;
+    for (uint32_t j = 0; j < seg_cnt_; j++) {
+        ret += segments_[0][j]->GetIdxByteSize();
+    }
+    return ret;
 }
 
 
