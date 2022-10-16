@@ -76,7 +76,6 @@ if (TESTING_ENABLE AND EXAMPLES_TESTING_ENABLE)
         endif()
         list(APPEND test_list ${TEST_TARGET_NAME})
     endforeach()
-    set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
 endif()
 
 # toy sdk
@@ -87,6 +86,8 @@ add_subdirectory(bm)
 endif()
 
 # toydb bin
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+
 add_executable(toydb cmd/toydb.cc)
 target_link_libraries(toydb toydb_sdk toydb_lib hybridse_sdk hybridse_core hybridse_flags hybridse_test_base)
 # engine execution
