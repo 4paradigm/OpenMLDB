@@ -71,7 +71,6 @@ void PutKey(const std::string& key, std::shared_ptr<openmldb::storage::Table> ta
     codec::SDKCodec codec(*(table->GetTableMeta()));
     for (int j = 0; j < cnt; j++) {
         uint64_t ts = 1 + j;
-        uint64_t ts = now - j * (60 * 1000);
         for (int k = 0; k < same_ts_cnt; k++) {
             std::vector<std::string> row = {key , "mcc", std::to_string(ts)};
             ::openmldb::api::PutRequest request;
