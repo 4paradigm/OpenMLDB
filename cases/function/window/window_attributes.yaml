@@ -587,7 +587,6 @@ cases:
           count(val) over w as cnt,
           max(val) over w as mv,
           min(val) over w as mi,
-          lag(val, 1) over w as l1
        FROM t1 WINDOW w as(
           PARTITION by `g` ORDER by `ts`
           ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW EXCLUDE CURRENT_ROW);
@@ -597,12 +596,11 @@ cases:
         - cnt int64
         - mv int
         - mi int
-        - l1 int
       order: id
       data: |
-         1, 0, NULL, NULL, NULL
-         2, 1, 21, 21, 21
-         3, 2, 22, 21, 22
-         4, 3, 23, 21, 23
-         5, 0, NULL, NULL, NULL
-         6, 1, 56, 56, 56
+         1, 0, NULL, NULL
+         2, 1, 21, 21
+         3, 2, 22, 21
+         4, 3, 23, 21
+         5, 0, NULL, NULL
+         6, 1, 56, 56
