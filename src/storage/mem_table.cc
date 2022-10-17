@@ -893,7 +893,7 @@ void MemTableTraverseIterator::Seek(const std::string& key, uint64_t ts) {
             it_ = ((KeyEntry*)pk_it_->GetValue())         // NOLINT
                       ->entries.NewIterator();
         }
-        if (spk.compare(pk_it_->GetKey()) != 0 || ts == 0) {
+        if (spk.compare(pk_it_->GetKey()) != 0) {
             it_->SeekToFirst();
             traverse_cnt_++;
             record_idx_ = 1;
