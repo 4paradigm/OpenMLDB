@@ -81,7 +81,7 @@ The syntax of creating a secondary table splicing window is defined as:
 window window_name as (UNION other_table PARTITION BY key_col ORDER BY order_col ROWS_RANGE｜ROWS BETWEEN StartFrameBound AND EndFrameBound)
 ```
 
-Among them, the most basic and indispensable elements include:
+Among them, necessary elements include:
 
 - `UNION other_table`: `other_table` refers to the secondary table for WINDOW UNION. The primary and secondary tables' schemas need to keep consistent. In most cases, the schema of the primary table and the secondary table are different. We can ensure the schema consistency of the primary and secondary tables involved in window calculation by column filtering and default column configuration. Column filtering can also remove useless columns and only do WINDOW UNION and aggregation on important columns.
 
@@ -94,19 +94,19 @@ Among them, the most basic and indispensable elements include:
   - `StartFrameBound` represents the upper bound of the window.
 
     - `UNBOUNDED PRECEDING`: There is no upper bound.
-    - `time_expression PRECEDING`: If it is a time interval, you can define a time offset. For example, `30d preceding` means that the upper bound of the window is 30 days before the time of the current line.
+    - `time_expression PRECEDING`: If it is a time interval, you can define a time offset. For example, `30d preceding` means that the upper bound of the window is 30 days before the time of the current row.
 
   - `EndFrameBound` Represents the lower bound of the time window.
 
     - `CURRENT ROW`: The lower bound is current row.
-    - `time_expression PRECEDING`: If it is a time interval, you can define a time offset, such as `1d PRECEDING`. This indicates that the lower bound of the window is 1 day before the time of the current line. 
+    - `time_expression PRECEDING`: If it is a time interval, you can define a time offset, such as `1d PRECEDING`. This indicates that the lower bound of the window is 1 day before the time of the current row. 
 
 - `ROWS BETWEEN StartFrameBound AND EndFrameBound`: Represents the time interval of the secondary table splicing window.
 
   - `StartFrameBound` represents the upper bound of the window.
 
     - `UNBOUNDED PRECEDING`: There is no upper bound.
-    - `number PRECEDING`: If it is a number interval, you can define the number of rows. For example, `100 PRECEDING` indicates that the upper bound is 100 lines before the current line.
+    - `number PRECEDING`: If it is a number interval, you can define the number of rows. For example, `100 PRECEDING` indicates that the upper bound is 100 lines before the current row.
  
   - `EndFrameBound` Represents the lower bound of the window.
 
