@@ -26,6 +26,7 @@
 #include <vector>
 
 #include "absl/strings/string_view.h"
+#include "sdk/base_schema.h"
 
 namespace hybridse {
 namespace sdk {
@@ -41,62 +42,6 @@ struct Status {
     int code;
     std::string msg;
     std::string trace;
-};
-
-enum DataType {
-    kTypeBool = 0,
-    kTypeInt16,
-    kTypeInt32,
-    kTypeInt64,
-    kTypeFloat,
-    kTypeDouble,
-    kTypeString,
-    kTypeDate,
-    kTypeTimestamp,
-    kTypeUnknow
-};
-
-inline const std::string DataTypeName(const DataType& type) {
-    switch (type) {
-        case kTypeBool:
-            return "bool";
-        case kTypeInt16:
-            return "int16";
-        case kTypeInt32:
-            return "int32";
-        case kTypeInt64:
-            return "int64";
-        case kTypeFloat:
-            return "float";
-        case kTypeDouble:
-            return "double";
-        case kTypeString:
-            return "string";
-        case kTypeTimestamp:
-            return "timestamp";
-        case kTypeDate:
-            return "date";
-        default:
-            return "unknownType";
-    }
-}
-
-class Schema {
- public:
-    Schema() : empty() {}
-    virtual ~Schema() {}
-    virtual int32_t GetColumnCnt() const { return 0; }
-    virtual const std::string& GetColumnName(uint32_t index) const {
-        return empty;
-    }
-    virtual const DataType GetColumnType(uint32_t index) const {
-        return kTypeUnknow;
-    }
-    virtual const bool IsColumnNotNull(uint32_t index) const { return false; }
-    virtual const bool IsConstant(uint32_t index) const { return false; }
-
- private:
-    std::string empty;
 };
 
 class Table {

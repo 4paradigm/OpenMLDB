@@ -14,12 +14,22 @@ OneFlow framework leverage on the great computational power from GPU. Therefore 
 Install OneFlow with the following commands：
 ```bash
 conda activate oneflow
-python3 -m pip install --pre oneflow -f https://staging.oneflow.info/branch/support_oneembedding_serving/cu102
+python3 -m pip install -f https://staging.oneflow.info/branch/master/cu112 --pre oneflow
 ```
 In addition, following Python packages need to be installed:
 ```bash
 pip install psutil petastorm pandas sklearn
 ```
+ Pull Oneflow-serving docker image：
+```bash
+docker pull oneflowinc/oneflow-serving:nightly
+```
+```{note}
+Note that we are installing Oneflow nightly versions here. The versions tested in this guide are as follows:
+Oneflow：https://github.com/Oneflow-Inc/oneflow/tree/fcf205cf57989a5ecb7a756633a4be08444d8a28
+Oneflow-serving：https://github.com/Oneflow-Inc/serving/tree/ce5d667468b6b3ba66d3be6986f41f965e52cf16
+```
+
 
 ### 1.2 Pull and Start the OpenMLDB Docker Image
 - Note: Please make sure that the Docker Engine version number is > = 18.03
@@ -34,7 +44,7 @@ docker exec -it demo bash
 
 Since we embed the data pre-processing and invoking of OneFlow serving in the OpenMLDB docker, following dependencies needs to be installed.
 ```bash
-pip install tritonclient xxhash geventhttpclient
+pip install tritonclient[all] xxhash geventhttpclient
 ```
 
 ```{note}
@@ -226,14 +236,16 @@ According to [DeepFM paper](https://arxiv.org/abs/1703.04247), we treat both cat
 Change directory to demo directory and execute the following commands to process the data set.
 ```bash
 cd $demodir/openmldb_process/
-sh process_JD_out_full.sh $demodir/out/1
+bash process_JD_out_full.sh $demodir/out/1
 ```
 The generated dataset will be placed at `$demodir/openmldb_process/out`. After generating parquet dataset, dataset information will also be printed. It contains the information about the number of samples and table size array, which is needed when training.
->train samples = 4007924
->val samples = 504398
->test samples = 530059
->table size array:
->11,42,1105,200,11,1295,1,1,5,3,23,23,7,5042381,3127923,5042381,3649642,28350,105180,7,2,5042381,5,4,4,41,2,2,8,3456,4,5,5042381,10,60,5042381,843,17,1276,101,100
+```
+train samples = 11073
+val samples = 1351
+test samples = 1492
+table size array:
+4,26,16,4,11,809,1,1,5,3,17,16,7,13916,13890,13916,10000,3674,9119,7,2,13916,5,4,4,33,2,2,7,2580,3,5,13916,10,47,13916,365,17,132,32,37
+```
 
 ### 2.4 Launch OneFlow for Model Training
 ```{note}
@@ -419,34 +431,129 @@ Note that the cluster version `LOAD  DATA` is a non-blocking task. You can use t
 ```
 
 ### 3.3 Configure OneFlow Model Serving
-OneFlow model serving requires [OneEmbedding](https://docs.oneflow.org/en/master/cookies/one_embedding.html). The support for OneEmbedding is currently not merged into the main project. If re-compilation is required, you can refer to the guide as specified in Appendix A. The following steps assume that the relevant support is compiled and saved to directory `/home/gtest/work/oneflow_serving/`.
 
 #### 3.3.1 Check Model Path (`$demodir/oneflow_process/model`)
 Check if model files are correctly organized and saved as shown below:
 ```
-$ tree  -L 3 model/
+$ tree  -L 5 model/
 model/
 └── embedding
     ├── 1
     │   └── model
+    │       ├── model.mlir
+    │       ├── module.dnn_layer.linear_layers.0.bias
+    │       │   ├── meta
+    │       │   └── out
+    │       ├── module.dnn_layer.linear_layers.0.weight
+    │       │   ├── meta
+    │       │   └── out
+    │       ├── module.dnn_layer.linear_layers.12.bias
+    │       │   ├── meta
+    │       │   └── out
+    │       ├── module.dnn_layer.linear_layers.12.weight
+    │       │   ├── meta
+    │       │   └── out
+    │       ├── module.dnn_layer.linear_layers.15.bias
+    │       │   ├── meta
+    │       │   └── out
+    │       ├── module.dnn_layer.linear_layers.15.weight
+    │       │   ├── meta
+    │       │   └── out
+    │       ├── module.dnn_layer.linear_layers.3.bias
+    │       │   ├── meta
+    │       │   └── out
+    │       ├── module.dnn_layer.linear_layers.3.weight
+    │       │   ├── meta
+    │       │   └── out
+    │       ├── module.dnn_layer.linear_layers.6.bias
+    │       │   ├── meta
+    │       │   └── out
+    │       ├── module.dnn_layer.linear_layers.6.weight
+    │       │   ├── meta
+    │       │   └── out
+    │       ├── module.dnn_layer.linear_layers.9.bias
+    │       │   ├── meta
+    │       │   └── out
+    │       ├── module.dnn_layer.linear_layers.9.weight
+    │       │   ├── meta
+    │       │   └── out
+    │       ├── module.embedding_layer.one_embedding.shadow
+    │       │   ├── meta
+    │       │   └── out
+    │       └── one_embedding_options.json
     └── config.pbtxt
  ```   
+
 #### 3.3.2 Check `config.pbtxt` configurations.
-#### 3.3.3 Check persistent (`$demodir/oneflow_process/persistent`) path
- 
-### 3.4 Start Serving
-#### 3.4.1 Start OpenMLDB Serving
-```{note}
-Note that the following commands are executed in demo docker.
 ```
-1. If you have not exited the OpenMLDB CLI, use the `quit` command to exit the OpenMLDB CLI.
-2. Start the prediction service from the command line:
-```bash
-cd /root/project/serving/openmldb_serving
-./start_predict_server.sh 0.0.0.0:9080
+name: "embedding"
+backend: "oneflow"
+max_batch_size: 10000
+input [
+  {
+    name: "INPUT_0"
+    data_type: TYPE_INT64
+    dims: [ 41 ]
+  }
+]
+output [
+  {
+    name: "OUTPUT_0"
+    data_type: TYPE_FP32
+    dims: [ 1 ]
+  }
+]
+instance_group [
+  {
+    count: 1
+    kind: KIND_GPU
+    gpus: [ 0 ]
+  }
+]
+ ```
+Field `name` in `config.pbtxt` should be consistent with the name of the folder.
+
+#### 3.3.3 Change persistent path
+change persistent table path in `one_embedding_options.json`. Change `embedding/kv_options/kv_store/persistent_table/path` to persistent table location in docker `/root/demo/persistent`.
+```
+{
+    "embedding": [
+        {
+            "snapshot": "2022-09-29-03-27-44-953674",
+            "kv_options": {
+                "name": "sparse_embedding",
+                "key_type_size": 8,
+                "value_type_size": 4,
+                "value_type": "oneflow.float32",
+                "storage_dim": 51,
+                "kv_store": {
+                    "caches": [
+                        {
+                            "policy": "lru",
+                            "cache_memory_budget_mb": 1024,
+                            "value_memory_kind": "device"
+                        },
+                        {
+                            "policy": "full",
+                            "capacity": 110477,
+                            "value_memory_kind": "host"
+                        }
+                    ],
+                    "persistent_table": {
+                        "path": "/root/demo/persistent",
+                        "physical_block_size": 4096,
+                        "capacity_hint": 110477
+                    }
+                },
+                "parallel_num": 1
+            }
+        }
+    ]
+}
 ```
 
-#### 3.4.2 Start OneFlow Model Serving
+### 3.4 Start Serving
+#### 3.4.1 Start OneFlow Model Serving
 ```{note}
 Note that following commands are executed in the environment as installed in section 1.1.
 ```
@@ -454,12 +561,30 @@ Start OneFlow model serving with the following commands:
 ```bash
 docker run --runtime=nvidia --rm --network=host \
   -v $demodir/oneflow_process/model:/models \
-  -v /home/gtest/work/oneflow_serving/serving/build/libtriton_oneflow.so:/backends/oneflow/libtriton_oneflow.so \
-  -v /home/gtest/work/oneflow_serving/oneflow/build/liboneflow_cpp/lib/:/mylib \
   -v $demodir/oneflow_process/persistent:/root/demo/persistent \
-  registry.cn-beijing.aliyuncs.com/oneflow/triton-devel \
-  bash -c 'LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/mylib /opt/tritonserver/bin/tritonserver \
+  oneflowinc/oneflow-serving:nightly \
+  bash -c '/opt/tritonserver/bin/tritonserver --model-repository=/models'
   --model-repository=/models --backend-directory=/backends'
+```
+If sucessful, the output will look like the following:
+'''
+...
+I0929 07:28:34.281655 1 grpc_server.cc:4117] Started GRPCInferenceService at 0.0.0.0:8001
+I0929 07:28:34.282343 1 http_server.cc:2815] Started HTTPService at 0.0.0.0:8000
+I0929 07:28:34.324662 1 http_server.cc:167] Started Metrics Service at 0.0.0.0:8002
+
+'''
+
+#### 3.4.2 Start OpenMLDB Serving
+```{note}
+Note that the following commands are executed in demo docker.
+```
+OpenMLDB online feature extraction has been deployed, and oneflow model serving is started. This demo connects both services. After receiving real-time requests, OpenMLDB service is firstly enaged for feature extraction. After which the extracted features are passed to oneflow model serving for inference. 
+1. If you have not exited the OpenMLDB CLI, use the `quit` command to exit the OpenMLDB CLI.
+2. Start the prediction service from the command line:
+```bash
+cd /root/project/serving/openmldb_serving
+./start_predict_server.sh 0.0.0.0:9080
 ```
 
 ### 3.5 Send Real-Time Request
@@ -483,81 +608,3 @@ Sample output:
 ---------------predict change of purchase -------------
 [[b'0.006222:0']]
 ```
-
-
-## Appendix A -- OneFlow Compilation
-In this section, we introduce the steps for compilation in order to support OneEmbedding for model serving. This support will be merged into the main branch soon, after which the following steps can be skipped.
-
-
-### A.1 Docker image 
-The following docker has been pre-installed with all the dependencies required for the compilation.
-```
-docker pull registry.cn-beijing.aliyuncs.com/oneflow/triton-devel:latest
-```
-Start the docker container and map the relevant directories (Here we map `/home/work/gtest` to `/root/project`). The following steps are performed within the docker container.
-
-
-### A.2 OneFlow Compilation
-```shell
-cd /root/project
-mkdir oneflow_serving && cd oneflow_serving
-git clone -b support_oneembedding_serving --single-branch https://github.com/Oneflow-Inc/oneflow --depth=1 
-cd oneflow
-mkdir build && cd build
-cmake -C ../cmake/caches/cn/cuda.cmake \
--DBUILD_CPP_API=ON \
--DWITH_MLIR=ON \
--G Ninja \
--DBUILD_SHARED_LIBS=ON \
--DBUILD_HWLOC=OFF \
--DCMAKE_INTERPROCEDURAL_OPTIMIZATION=OFF \
--DCMAKE_EXE_LINKER_FLAGS_INIT="-fuse-ld=lld" \
--DCMAKE_MODULE_LINKER_FLAGS_INIT="-fuse-ld=lld" \
--DCMAKE_SHARED_LINKER_FLAGS_INIT="-fuse-ld=lld" ..
-ninja
-```
-
-### A.3 Serving Compilation
-
-```shell
-git clone -b support_one_embedding --single-branchhttps://github.com/Oneflow-Inc/serving.git
-cd serving
-mkdir build && cd build
-cmake -DCMAKE_PREFIX_PATH=/path/to/liboneflow_cpp/share -DTRITON_RELATED_REPO_TAG=r21.10 \
-  -DTRITON_ENABLE_GPU=ON -G Ninja -DTHIRD_PARTY_MIRROR=aliyun ..
-ninja
-```
-`/path/to/liboneflow_cpp/share` needs to be replaced by the oneflow build directory，which is `${oneflow directory}/build/liboneflow_cpp/share`.
-
-
-### A.4 Test TritonServer
-Copy backend library files to the designated directory:
-```shell
-mkdir /root/project/oneflow_sering/backends && cd /root/project/oneflow_sering/backends
-mkdir oneflow
-cp /roor/prject/oneflow_serving/serving/build/libtriton_oneflow.so oneflow/.
-```
-
-Start TritonServer：
-```shell
-LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/root/project/oneflow_serving/oneflow/build/liboneflow_cpp/lib \
-/opt/tritonserver/bin/tritonserver \
---model-repository=/root/project/oneflow_process/model \
---backend-directory=/root/project/oneflow_serving/backends
-```
-
-Execute the following commands in another command window. If sucessful, sample output will look like as follows:
-```
-python $demodir/serving/client.py 
->>>
-0.045439958572387695
-(1, 1)
-[[b'0.025343:0']]
-```
-Note：
-- If `libunwind.so.8` cannot be found, you need to map the path for `libunwind.so.8` with `-v /lib/x86_64-linux-gnu:/unwind_path`, and then add to `LD_LIBRARY_PATH` by `... bash -c 'LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/mylib:/unwind_path ...`
-- If `libcupti.so`cannot be found, you need to map the path for `libcupti.so` with 
-`-v /usr/local/cuda-11.7/extras/CUPTI/lib64:/cupti_path`, and then add to `LD_LIBRARY_PATH` by `... bash -c 'LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/mylib:/cupti_path ...`. To find the actual cuda directory, you can use `ldd ${oneflow directory}/build/liboneflow.so | grep cupti`
-
-
-
