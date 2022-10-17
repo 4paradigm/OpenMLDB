@@ -71,7 +71,7 @@ Similarly, two steps need to be completed to construct the multi-row aggregation
 - Step 1: Define the secondary table splicing window.
 - Step 2: Construct the multi-row aggregation feature of the secondary table on the window constructed in Step 1.
 
-## 3.1 Step 1: Define the Sub Table Splicing Window
+### 3.1 Step 1: Define the Sub Table Splicing Window
 
 Each row of the main table can splice multiple rows of data from the secondary table according to a certain column, and it is allowed to define the time interval or number interval of spliced data. We use the WINDOW UNION to define the secondary table splicing condition and interval range. To make it easier to understand, we call this kind of windows as secondary table splicing windows.
 
