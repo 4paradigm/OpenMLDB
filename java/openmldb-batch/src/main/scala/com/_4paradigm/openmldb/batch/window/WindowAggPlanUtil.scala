@@ -201,7 +201,7 @@ object WindowAggPlanUtil {
       excludeCurrentTime = node.exclude_current_time(),
       excludeCurrentRow = node.exclude_current_row(),
       needAppendInput = node.need_append_input(),
-      limitCnt = node.GetLimitCnt(),
+      limitCnt = node.GetLimitCntValue(),
       keepIndexColumn = keepIndexColumn,
       isUnsafeRowOpt = ctx.getConf.enableUnsafeRowOptimization
     )

@@ -15,7 +15,7 @@
 # limitations under the License.
 
 import os
-import case_conf
+from .case_conf import OpenMLDB_ZK_CLUSTER, OpenMLDB_ZK_PATH
 import time
 
 # fmt:off
@@ -30,9 +30,8 @@ import pytest
 
 
 def test_sdk_smoke():
-    options = sdk_module.OpenMLDBClusterSdkOptions(
-        case_conf.OpenMLDB_ZK_CLUSTER, case_conf.OpenMLDB_ZK_PATH)
-    sdk = sdk_module.OpenMLDBSdk(options, True)
+    sdk = sdk_module.OpenMLDBSdk(
+        zk=OpenMLDB_ZK_CLUSTER, zkPath=OpenMLDB_ZK_PATH)
     assert sdk.init()
     db_name = "pydb" + str(time.time_ns() % 100000)
     table_name = "pytable" + str(time.time_ns() % 100000)
@@ -91,11 +90,8 @@ def test_sdk_smoke():
     assert rs.Size() == 4
 
     # reset the request timeout
-    options = sdk_module.OpenMLDBClusterSdkOptions(
-        case_conf.OpenMLDB_ZK_CLUSTER,
-        case_conf.OpenMLDB_ZK_PATH,
-        request_timeout=1)
-    sdk = sdk_module.OpenMLDBSdk(options, True)
+    sdk = sdk_module.OpenMLDBSdk(zk=OpenMLDB_ZK_CLUSTER, zkPath=OpenMLDB_ZK_PATH,
+                                 request_timeout=1)
     assert sdk.init()
     select = "select * from " + table_name + "where col1='world';"
     # request timeout 1ms, too fast, sending rpc request will reach timeout

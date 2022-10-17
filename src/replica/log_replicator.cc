@@ -28,7 +28,7 @@
 #include <utility>
 
 #include "base/file_util.h"
-#include "base/glog_wapper.h"
+#include "base/glog_wrapper.h"
 #include "base/strings.h"
 #include "log/log_format.h"
 #include "storage/segment.h"
@@ -433,7 +433,7 @@ bool LogReplicator::DelAllReplicateNode() {
     return true;
 }
 
-bool LogReplicator::AppendEntry(LogEntry& entry) {
+bool LogReplicator::AppendEntry(LogEntry& entry, ::google::protobuf::Closure* done) {
     std::lock_guard<std::mutex> lock(wmu_);
     if (wh_ == NULL || wh_->GetSize() / (1024 * 1024) > (uint32_t)FLAGS_binlog_single_file_max_size) {
         bool ok = RollWLogFile();
@@ -455,6 +455,9 @@ bool LogReplicator::AppendEntry(LogEntry& entry) {
     if (local_endpoints_.empty()) {  // if local replica are dead, leader direct
                                      // sync to remote replica
         follower_offset_.store(cur_offset + 1, std::memory_order_relaxed);
+    }
+    if (done) {
+        done->Run();
     }
     return true;
 }

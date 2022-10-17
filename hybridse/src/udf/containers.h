@@ -307,7 +307,7 @@ class BoundedGroupByDict {
     std::map<StorageK, StorageV>& map() { return map_; }
 
  private:
-    std::map<StorageK, StorageV> map_;
+    std::map<StorageK, StorageV, std::less<StorageK>> map_;
 
     static const size_t MAX_OUTPUT_STR_SIZE = 4096;
 };
