@@ -27,7 +27,7 @@ public class TestDataExporterByStandalone extends StandaloneTest {
         sdkClient.execute("insert into test_smoke values (1,1590738989000,'aa',1,21,31,1.1,2.1,1590738989000,'2020-05-01',true);");
         sdkClient.execute("insert into test_smoke values (2,1590738990000,'bb',1,21,31,1.1,2.1,1590738989000,'2020-05-01',false);");
         sdkClient.execute("insert into test_smoke values (3,1590738991000,'cc',1,21,31,1.1,2.1,1590738989000,'2020-05-01',true);");
-        // ./data_exporter --db_name=test_data --table_name=test_smoke --config_path=test.yaml
+        // ./data_exporter --db_name=test_data --table_name=test_smoke --config_path=test-standalone.yaml
     }
     @Test
     public void testData1(){
@@ -320,6 +320,6 @@ public class TestDataExporterByStandalone extends StandaloneTest {
             sdkClient.execute(String.format("insert into %s values (3,1590738991000,'cc%d',3,23,33,1.1,2.1,1590738989000,'2020-05-01',true);", tableName,i));
         }
         // makesnapshot test_data12 0
-        // ./data_exporter --db_name=test_data --table_name=test_data12 --config_path=test.yaml
+        // ./data_exporter --db_name=test_data --table_name=test_data12 --config_path=test-standalone.yaml
     }
 }

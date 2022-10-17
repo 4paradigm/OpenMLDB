@@ -37,7 +37,7 @@ public class SelectTest extends OpenMLDBTest {
 
     @Story("batch")
     @Test(dataProvider = "getCase")
-    @Yaml(filePaths = {"integration_test/select/test_select_sample.yaml"})
+    @Yaml(filePaths = {"integration_test/select/","query/const_query.yaml"})
     @Step("{testCase.desc}")
     public void testSelect(SQLCase testCase) throws Exception {
         ExecutorFactory.build(executor, testCase, SQLCaseType.kBatch).run();

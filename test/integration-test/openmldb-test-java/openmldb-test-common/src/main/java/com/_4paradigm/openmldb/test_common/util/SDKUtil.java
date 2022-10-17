@@ -26,6 +26,7 @@ import com._4paradigm.openmldb.test_common.model.InputDesc;
 import com._4paradigm.openmldb.test_common.model.OpenmldbDeployment;
 import com._4paradigm.openmldb.test_common.model.SQLCase;
 import com._4paradigm.openmldb.test_common.openmldb.OpenMLDBGlobalVar;
+import com._4paradigm.openmldb.test_common.openmldb.SDKClient;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -141,6 +142,8 @@ public class SDKUtil {
             openMLDBResult = selectInto(executor, dbName, sql);
         }else if(sql.contains("deploy ")){
             openMLDBResult = deploy(executor, sql);
+        }else if(sql.startsWith("set")){
+            openMLDBResult = set(executor, dbName, sql);
         }else {
             openMLDBResult = select(executor, dbName, sql);
         }
@@ -292,10 +295,30 @@ public class SDKUtil {
             return null;
         }
         log.info("insert sql:{}", insertSql);
+
+        useDB(executor,dbName);
         OpenMLDBResult openMLDBResult = new OpenMLDBResult();
-        boolean createOk = executor.executeInsert(dbName, insertSql);
-        openMLDBResult.setOk(createOk);
-        log.info("insert result:{}" + openMLDBResult);
+        Statement statement = executor.getStatement();
+        try {
+            statement.execute(insertSql);
+            openMLDBResult.setOk(true);
+            openMLDBResult.setMsg("success");
+        } catch (Exception e) {
+            e.printStackTrace();
+            openMLDBResult.setOk(false);
+            openMLDBResult.setMsg(e.getMessage());
+        }finally {
+            try {
+                statement.close();
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+        }
+
+//        OpenMLDBResult openMLDBResult = new OpenMLDBResult();
+//        boolean createOk = executor.executeInsert(dbName, insertSql);
+//        openMLDBResult.setOk(createOk);
+//        log.info("insert result:{}" + openMLDBResult);
         return openMLDBResult;
     }
     public static OpenMLDBResult delete(SqlExecutor executor, String dbName, String deleteSql) {
@@ -304,6 +327,27 @@ public class SDKUtil {
         Statement statement = executor.getStatement();
         try {
             statement.execute(deleteSql);
+            openMLDBResult.setOk(true);
+            openMLDBResult.setMsg("success");
+        } catch (Exception e) {
+            e.printStackTrace();
+            openMLDBResult.setOk(false);
+            openMLDBResult.setMsg(e.getMessage());
+        }finally {
+            try {
+                statement.close();
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+        }
+        return openMLDBResult;
+    }
+    public static OpenMLDBResult set(SqlExecutor executor, String dbName, String sql) {
+        useDB(executor,dbName);
+        OpenMLDBResult openMLDBResult = new OpenMLDBResult();
+        Statement statement = executor.getStatement();
+        try {
+            statement.execute(sql);
             openMLDBResult.setOk(true);
             openMLDBResult.setMsg("success");
         } catch (Exception e) {
@@ -357,7 +401,7 @@ public class SDKUtil {
     }
 
     public static OpenMLDBResult insertWithPrepareStatement(SqlExecutor executor, String dbName, String insertSql, List<Object> params) {
-        OpenMLDBResult fesqlResult = new OpenMLDBResult();
+        OpenMLDBResult openMLDBResult = new OpenMLDBResult();
         try {
             if (insertSql.isEmpty()) {
                 return null;
@@ -369,14 +413,14 @@ public class SDKUtil {
                 // preparedStatementSetValue(preparedStmt,i+1,types.get(i).split("\\s+")[1],params.get(i));
             // }
             boolean createOk =preparedStmt.execute();
-            fesqlResult.setOk(createOk);
-            log.info("insert result:{}" + fesqlResult);
+            openMLDBResult.setOk(createOk);
+            log.info("insert result:{}" + openMLDBResult);
         }catch (Exception e){
             e.printStackTrace();
-            fesqlResult.setOk(false);
-            fesqlResult.setMsg(e.getMessage());
+            openMLDBResult.setOk(false);
+            openMLDBResult.setMsg(e.getMessage());
         }
-        return fesqlResult;
+        return openMLDBResult;
     }
 
     public static OpenMLDBResult db(SqlExecutor executor, String ddlSql) {
@@ -402,11 +446,11 @@ public class SDKUtil {
             return null;
         }
         log.info("ddl sql:{}", ddlSql);
-        OpenMLDBResult fesqlResult = new OpenMLDBResult();
+        OpenMLDBResult openMLDBResult = new OpenMLDBResult();
         boolean createOk = executor.executeDDL(dbName, ddlSql);
-        fesqlResult.setOk(createOk);
-        log.info("ddl result:{}", fesqlResult);
-        return fesqlResult;
+        openMLDBResult.setOk(createOk);
+        log.info("ddl result:{}", openMLDBResult);
+        return openMLDBResult;
     }
 
 

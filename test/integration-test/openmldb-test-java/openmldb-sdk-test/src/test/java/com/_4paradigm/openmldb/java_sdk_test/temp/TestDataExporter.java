@@ -321,4 +321,138 @@ public class TestDataExporter extends OpenMLDBTest {
         // makesnapshot test_data12 0
         // ./data_exporter --db_name=test_data --table_name=test_data12 --config_path=test.yaml
     }
+    @Test
+    public void testHaveComma(){
+        String tableName = "test_data13";
+        SDKClient sdkClient = SDKClient.of(executor);
+        sdkClient.setOnline();
+        sdkClient.createAndUseDB("test_data");
+        sdkClient.execute(String.format("create table %s(\n" +
+                "id int,\n" +
+                "ts timestamp,\n" +
+                "c1 string,\n" +
+                "c2 smallint,\n" +
+                "c3 int,\n" +
+                "c4 bigint,\n" +
+                "c5 float,\n" +
+                "c6 double,\n" +
+                "c7 timestamp,\n" +
+                "c8 date,\n" +
+                "c9 bool,\n" +
+                "index(key=(c1),ts=ts)" +
+                ")options(partitionnum=8,replicanum=3);",tableName));
+        sdkClient.execute(String.format("insert into %s values (1,1590738989000,'a,a',1,21,31,1.1,2.1,1590738989000,'2020-05-01',true);", tableName));
+        sdkClient.execute(String.format("insert into %s values (2,1590738990000,'b，b',2,22,32,1.1,2.1,1590738989000,'2020-05-01',false);", tableName));
+        sdkClient.execute(String.format("insert into %s values (3,1590738991000,'c#c',3,23,33,1.1,2.1,1590738989000,'2020-05-01',true);", tableName));
+        sdkClient.execute(String.format("insert into %s values (4,1590738991000,'d\\n\\t\\rd',3,23,33,1.1,2.1,1590738989000,'2020-05-01',true);", tableName));
+        // ./data_exporter --db_name=test_data --table_name=test_data13 --config_path=test.yaml
+    }
+    @Test
+    public void testDataExpiration(){
+        String tableName = "test_data15";
+        SDKClient sdkClient = SDKClient.of(executor);
+        sdkClient.setOnline();
+        sdkClient.createAndUseDB("test_data");
+        sdkClient.execute(String.format("create table %s(\n" +
+                "id int,\n" +
+                "ts timestamp,\n" +
+                "c1 string,\n" +
+                "c2 smallint,\n" +
+                "c3 int,\n" +
+                "c4 bigint,\n" +
+                "c5 float,\n" +
+                "c6 double,\n" +
+                "c7 timestamp,\n" +
+                "c8 date,\n" +
+                "c9 bool,\n" +
+                "index(key=(c1),ts=ts,ttl=100m)" +
+                ")options(partitionnum=1,replicanum=1);",tableName));
+        for(int i=0;i<100;i++) {
+            sdkClient.execute(String.format("insert into %s values (1,1590738989000,'aa%d',1,21,31,1.1,2.1,1590738989000,'2020-05-01',true);", tableName,i));
+            sdkClient.execute(String.format("insert into %s values (2,%d,'bb%d',2,22,32,1.1,2.1,1590738989000,'2020-05-01',false);", tableName,System.currentTimeMillis(), i));
+            sdkClient.execute(String.format("insert into %s values (3,1590738991000,'cc%d',3,23,33,1.1,2.1,1590738989000,'2020-05-01',true);", tableName,i));
+        }
+        // ./data_exporter --db_name=test_data --table_name=test_data15 --config_path=test.yaml
+    }
+    @Test
+    public void testDataExpiration2(){
+        String tableName = "test_data17";
+        SDKClient sdkClient = SDKClient.of(executor);
+        sdkClient.setOnline();
+        sdkClient.createAndUseDB("test_data");
+        sdkClient.execute(String.format("create table %s(\n" +
+                "id int,\n" +
+                "ts timestamp,\n" +
+                "c1 string,\n" +
+                "c2 smallint,\n" +
+                "c3 int,\n" +
+                "c4 bigint,\n" +
+                "c5 float,\n" +
+                "c6 double,\n" +
+                "c7 timestamp,\n" +
+                "c8 date,\n" +
+                "c9 bool,\n" +
+                "index(key=(c1),ts=ts,ttl=0m),index(key=(c2),ts=ts,ttl=100m)" +
+                ")options(partitionnum=1,replicanum=1);",tableName));
+        for(int i=0;i<100;i++) {
+            sdkClient.execute(String.format("insert into %s values (1,1590738989000,'aa%d',1,21,31,1.1,2.1,1590738989000,'2020-05-01',true);", tableName,i));
+            sdkClient.execute(String.format("insert into %s values (2,%d,'bb%d',2,22,32,1.1,2.1,1590738989000,'2020-05-01',false);", tableName,System.currentTimeMillis(), i));
+            sdkClient.execute(String.format("insert into %s values (3,1590738991000,'cc%d',3,23,33,1.1,2.1,1590738989000,'2020-05-01',true);", tableName,i));
+        }
+        // ./data_exporter --db_name=test_data --table_name=test_data17 --config_path=test.yaml
+    }
+    @Test
+    public void testDataExpiration3(){
+        String tableName = "test_data16";
+        SDKClient sdkClient = SDKClient.of(executor);
+        sdkClient.setOnline();
+        sdkClient.createAndUseDB("test_data");
+        sdkClient.execute(String.format("create table %s(\n" +
+                "id int,\n" +
+                "ts timestamp,\n" +
+                "c1 string,\n" +
+                "c2 smallint,\n" +
+                "c3 int,\n" +
+                "c4 bigint,\n" +
+                "c5 float,\n" +
+                "c6 double,\n" +
+                "c7 timestamp,\n" +
+                "c8 date,\n" +
+                "c9 bool,\n" +
+                "index(key=(c1),ts=ts,ttl=0m),index(key=(c2),ts=ts,ttl=100,ttl_type=latest)" +
+                ")options(partitionnum=1,replicanum=1);",tableName));
+        for(int i=0;i<100;i++) {
+            sdkClient.execute(String.format("insert into %s values (1,1590738989000,'aa%d',1,21,31,1.1,2.1,1590738989000,'2020-05-01',true);", tableName,i));
+            sdkClient.execute(String.format("insert into %s values (2,%d,'bb%d',2,22,32,1.1,2.1,1590738989000,'2020-05-01',false);", tableName,System.currentTimeMillis(), i));
+            sdkClient.execute(String.format("insert into %s values (3,1590738991000,'cc%d',3,23,33,1.1,2.1,1590738989000,'2020-05-01',true);", tableName,i));
+        }
+        // ./data_exporter --db_name=test_data --table_name=test_data16 --config_path=test.yaml
+    }
+    @Test
+    public void testDataExpiration4(){
+        String tableName = "test_data18";
+        SDKClient sdkClient = SDKClient.of(executor);
+        sdkClient.setOnline();
+        sdkClient.createAndUseDB("test_data");
+        sdkClient.execute(String.format("create table %s(\n" +
+                "id int,\n" +
+                "ts timestamp,\n" +
+                "c1 string,\n" +
+                "c2 smallint,\n" +
+                "c3 int,\n" +
+                "c4 bigint,\n" +
+                "c5 float,\n" +
+                "c6 double,\n" +
+                "c7 timestamp,\n" +
+                "c8 date,\n" +
+                "c9 bool,\n" +
+                "index(key=(c2),ts=ts,ttl=100,ttl_type=latest)" +
+                ")options(partitionnum=1,replicanum=1);",tableName));
+        for(int i=0;i<100;i++) {
+            sdkClient.execute(String.format("insert into %s values (1,1590738989000,'aa%d',1,21,31,1.1,2.1,1590738989000,'2020-05-01',true);", tableName,i));
+            sdkClient.execute(String.format("insert into %s values (2,%d,'bb%d',2,22,32,1.1,2.1,1590738989000,'2020-05-01',false);", tableName,System.currentTimeMillis(), i));
+            sdkClient.execute(String.format("insert into %s values (3,1590738991000,'cc%d',3,23,33,1.1,2.1,1590738989000,'2020-05-01',true);", tableName,i));
+        }
+        // ./data_exporter --db_name=test_data --table_name=test_data18 --config_path=test.yaml
+    }
 }

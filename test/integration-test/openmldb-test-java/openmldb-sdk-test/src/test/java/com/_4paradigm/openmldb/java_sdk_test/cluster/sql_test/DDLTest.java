@@ -111,4 +111,16 @@ public class DDLTest extends OpenMLDBTest {
     public void testDeleteIndexByCli(SQLCase testCase){
         ExecutorFactory.build(testCase, SQLCaseType.kClusterCLI).run();
     }
+    @Test(dataProvider = "getCase")
+    @Yaml(filePaths = "integration_test/ddl/test_execute_mode.yaml")
+    @Story("create_index")
+    public void testExecuteMode(SQLCase testCase){
+        ExecutorFactory.build(executor,testCase, SQLCaseType.kDDL).run();
+    }
+    @Test(dataProvider = "getCase",enabled = false)
+    @Yaml(filePaths = "integration_test/ddl/test_execute_mode.yaml")
+    @Story("create_index")
+    public void testExecuteModeByCli(SQLCase testCase){
+        ExecutorFactory.build(testCase, SQLCaseType.kClusterCLI).run();
+    }
 }

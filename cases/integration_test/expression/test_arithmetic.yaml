@@ -478,11 +478,11 @@ cases:
       2:
         columns: ["b2 bigint","b3 bigint","b4 bigint","b9 bigint"]
         rows:
-          - [null,0,0,null]
-      3:
-        columns: ["b2 smallint","b3 int","b4 bigint","b9 smallint"]
-        rows:
           - [null,1,1,null]
+      3:
+        columns: ["b2 smallint","b3 int","b4 bigint","b9 bool"]
+        rows:
+          - [null,0,0,null]
   - id: 18
     desc: "int_DIV_各种类型_错误"
     level: 5
