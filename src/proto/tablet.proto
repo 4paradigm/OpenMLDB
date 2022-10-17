@@ -257,7 +257,7 @@ message TraverseRequest {
     optional uint64 ts = 6;
     optional bool enable_remove_duplicated_record = 7 [default = false];
     optional bool skip_current_pk = 8 [default = false];
-    optional uint64 ts_pos = 9;
+    optional uint32 ts_pos = 9;
 }
 
 message TraverseResponse {
