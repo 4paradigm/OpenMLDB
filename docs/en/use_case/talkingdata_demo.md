@@ -1,6 +1,6 @@
 # OpenMLDB + XGBoost: TalkingData Ad Tracking Fraud Detection
 
-We will demonstrate how to use [OpenMLDB](https://github.com/4paradigm/OpenMLDB) together with other open source software to develop a machine learning script in order to complete the TalkingData AD Fraud Detection challenge (see more information on this challenge in [Kaggle](https://www.kaggle.com/c/talkingdata-adtracking-fraud-detection/overview)).
+We will demonstrate how to use [OpenMLDB](https://github.com/4paradigm/OpenMLDB) together with other open source software to develop a machine learning application in order to complete the TalkingData AD Fraud Detection challenge (see more information on this challenge in [Kaggle](https://www.kaggle.com/c/talkingdata-adtracking-fraud-detection/overview)).
 
 ## 1 Preparations
 
@@ -8,7 +8,7 @@ We will demonstrate how to use [OpenMLDB](https://github.com/4paradigm/OpenMLDB)
 
 #### 1.1.1 Run in Docker
 
-It is recommended to run this Demo in Docker. Please make sure that OpenMLDB and its dependencies are installed.
+It is recommended to run this demo in Docker. Please make sure that OpenMLDB and its dependencies are installed.
 
 **Start the OpenMLDB Docker Image**
 
@@ -26,12 +26,12 @@ pip install pandas xgboost==1.4.2 sklearn tornado "openmldb>=0.5.0" requests
 
 ### 1.2 Data Preparation
 
-In this example, only the first 10000 rows in the training set provided by Kaggle will be used, see the data in [train\_sample.csv](https://github.com/4paradigm/OpenMLDB/tree/main/demo/talkingdata-adtracking-fraud-detection).
+In this example, only the first 10,000 rows of the training data set provided by Kaggle will be used, see the data in [train\_sample.csv](https://github.com/4paradigm/OpenMLDB/tree/main/demo/talkingdata-adtracking-fraud-detection).
 To download the complete dataset, please run the command:
 ```
 kaggle competitions download -c talkingdata-adtracking-fraud-detection
 ```
-After download, please extract the data to `demo/talkingdata-adtracking-fraud-detection/data` and call the `cut_data()` function in the [train\_and\_serve.py](https://github.com/4paradigm/OpenMLDB/blob/main/demo/talkingdata-adtracking-fraud-detection/train_and_serve.py) to make new dataset for training.
+After download, please extract the data to `demo/talkingdata-adtracking-fraud-detection/data` and run the `cut_data()` function in the [train\_and\_serve.py](https://github.com/4paradigm/OpenMLDB/blob/main/demo/talkingdata-adtracking-fraud-detection/train_and_serve.py) to make new dataset for training.
 
 
 ### 1.3 Start the OpenMLDB Cluster
@@ -42,7 +42,7 @@ After download, please extract the data to `demo/talkingdata-adtracking-fraud-de
 
 ### 1.4 Start the Prediction Server
 
-Even if you haven't deployed the prediction server, you can start it with the option `--no-init`.
+If you have not deployed the prediction server, you can start it with the option `--no-init`.
 
 ```
 python3 /work/talkingdata/predict_server.py --no-init > predict.log 2>&1 &
@@ -63,11 +63,11 @@ python3 train_and_serve.py
 The python script [train\_and\_serve.py](https://github.com/4paradigm/OpenMLDB/blob/main/demo/talkingdata-adtracking-fraud-detection/train_and_serve.py) uses the OpenMLDB for feature extraction and the XGBoost model for training. 
 The script completes the following tasks:
 
-1. Loading the data into the offline storage.
+1. Loading the data into the offline database.
 2. Extracting the features offline:
-   * Number of clicks of the 'ip-day-hour' group in 1h window.
-   * Number of clicks of the 'ip-app' group in unlimited window.
-   * Number of clicks of the 'ip-app-os' group in unlimited window.
+   * Number of clicks of the 'ip-day-hour' in 1h window.
+   * Number of clicks of the 'ip-app' in unlimited window.
+   * Number of clicks of the 'ip-app-os' in unlimited window.
 3. Training and saving the model.
 4. Deploying the SQL.
 5. Loading the data into the online storage.
@@ -75,7 +75,7 @@ The script completes the following tasks:
 
 ## 3 Prediction
 
-For prediction, send the post request  `<ip>:<port>/predict` to the prediction server, or you can run the python script through the command below:
+For prediction, send the post request  `<ip>:<port>/predict` to the prediction server, or you can run the Python script through the command below:
 ```
 python3 predict.py
 ```
@@ -83,13 +83,13 @@ python3 predict.py
 ## 4 Note
 
 ```{note}
-The pre-installed xgboost python wheel may be incompatible with the openmldb python sdk on your computer, which may lead to the following error:
+The pre-installed XGBoost Python wheel may be incompatible with the OpenMLDB Python SDK on your computer, which may lead to the following error:
 `train\_and\_serve.py core dump at SetGPUAttribute...`
 
 Installing the XGBoost by the source code may resolve the problem. Please switch to the path of the XGBoost source code and execute:
 `cd python-package && python setup.py install`
 
-Another solution is to construct the wheel by:
+There is another solution to construct the wheel by executing:
 `python setup.py bdist_wheel`
 ```
 
