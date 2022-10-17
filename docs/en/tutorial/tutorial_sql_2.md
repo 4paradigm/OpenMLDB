@@ -73,7 +73,7 @@ Similarly, two steps need to be completed to construct the multi-row aggregation
 
 ### 3.1 Step 1: Define the Sub Table Splicing Window
 
-Each row of the main table can splice multiple rows of data from the secondary table according to a certain column, and it is allowed to define the time interval or number interval of spliced data. We use the WINDOW UNION to define the secondary table splicing condition and interval range. To make it easier to understand, we call this kind of windows as secondary table splicing windows.
+Each row of the main table can concat multiple rows from the secondary table according to a certain column, and it is allowed to define the time interval or number interval of the data that can be combined. We use the WINDOW UNION to define the secondary table splicing condition and interval range. To make it easier to understand, we call this kind of windows as secondary table splicing windows.
 
 The syntax of creating a secondary table splicing window is defined as:
 
@@ -83,9 +83,9 @@ window window_name as (UNION other_table PARTITION BY key_col ORDER BY order_col
 
 Among them, necessary elements include:
 
-- `UNION other_table`: `other_table` refers to the secondary table for WINDOW UNION. The primary and secondary tables' schemas need to keep consistent. In most cases, the schema of the primary table and the secondary table are different. We can ensure the schema consistency of the primary and secondary tables involved in window calculation by column filtering and default column configuration. Column filtering can also remove useless columns and only do WINDOW UNION and aggregation on important columns.
+- `UNION other_table`: `other_table` refers to the secondary table for WINDOW UNION. The primary and secondary tables' schemas need to keep consistent. In most cases, the schema of the primary table and the secondary table are different. We can ensure the schema consistency of the primary and secondary tables involved in window calculation by column projection and default column configuration. Column projection can also remove useless columns and only do WINDOW UNION and aggregation on important columns.
 
-- `PARTITION BY key_col`: Indicates that data is spliced by column `key_col` from the secondary table.
+- `PARTITION BY key_col`: Indicates that main table and secondary table are combined according to column `key_col`.
 
 - `ORDER BY order_col`: Indicates that the secondary table is sorted in accordance with`order_col` columns.
 
@@ -151,7 +151,7 @@ The following SQL extracts the necessary columns from t2 to generate t22.
 
 It can be seen that the newly generated t11 and t22 have the same schema, and they can perform logical union operation. However, in OpenMLDB, the WINDOW UNION is not really the same as the UNION operation in the traditional database, but to build the time window on the secondary table t22 for each row in t11. 
 According to the merchant ID `mid`, we obtain the corresponding rows from t22 for each row in t11, and then sort them according to the consumption time (`purchase_time`) to construct the secondary table splicing window. 
-For example, we define a `w_t2_10d` window, which does not include the rows of the main table except the current row, but includes the data spliced according to `mid` from the secondary table within ten days. 
+For example, we define a `w_t2_10d` window, which does not include the rows of the main table except the current row, but includes the data within ten days that is joint according to `mid` from the secondary table. 
 The schematic is shown below. It can be seen that the yellow and blue shaded parts respectively represent the secondary table splicing windows of sample 6 and sample 9.
 
 ![img](images/t11_t22.jpg)
@@ -189,7 +189,7 @@ ROWS_RANGE BETWEEN 10d PRECEDING AND 1 PRECEDING INSTANCE_NOT_IN_WINDOW)
 
 ## 4. Feature Group Construction
 
-Generally speaking, a complete feature extraction script will extract dozens or even hundreds of features. We can divide these features into several groups according to the feature type, the table and window associated with the feature, and then put each group of features into different SQL sub queries. Finally, these sub queries are spliced together according to the main table ID. In this section, we will continue the previous examples to demonstrate how to form a feature wide table splicing various features.
+Generally speaking, a complete feature extraction script will extract dozens or even hundreds of features. We can divide these features into several groups according to the feature type, the table and window associated with the feature, and then put each group of features into different SQL sub queries. Finally, the results of these sub queries are combined according to the main table ID. In this section, we will continue the previous examples to demonstrate how to form a feature wide table splicing various features.
 
 First, we divide the features into 3 groups:
 
@@ -269,7 +269,7 @@ Then, we use OpenMLDB SQL to create the features of the same group in one sub qu
    window w7d_merchant as (UNION (select 0L as id, mid, card, purchase_time, purchase_amt, purchase_type from t2) as t22 PARTITION BY mid ORDER BY purchase_time ROWS_RANGE BETWEEN 30d PRECEDING AND 1 PRECEDING INSTANCE_NOT_IN_WINDOW)
 ```
 
-Finally, the three groups of features are spliced together according to the main table ID:
+Finally, the three groups of features are combined according to the main table ID:
 
 ```sql
 SELECT * FROM 
