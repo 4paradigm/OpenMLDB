@@ -171,6 +171,7 @@ const ::hybridse::codec::Row& FullTableIterator::GetValue() {
         return value_;
     }
 
+    valid_value_ = true;
     if (it_ && it_->Valid()) {
         value_ = ::hybridse::codec::Row(
             ::hybridse::base::RefCountedSlice::Create(it_->GetValue().data(), it_->GetValue().size()));
@@ -410,6 +411,7 @@ const ::hybridse::codec::Row& RemoteWindowIterator::GetValue() {
     auto shared_slice = ::hybridse::base::RefCountedSlice::CreateManaged(copyed_row_data, sz);
     row_.Reset(shared_slice);
     DLOG(INFO) << "get value  pk " << pk_ << " ts_key " << kv_it_->GetKey() << " ts " << ts_;
+    valid_value_ = true;
     return row_;
 }
 
