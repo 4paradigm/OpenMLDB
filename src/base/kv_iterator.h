@@ -83,6 +83,7 @@ class TraverseKvIterator : public KvIterator {
     explicit TraverseKvIterator(const std::shared_ptr<::openmldb::api::TraverseResponse>& response)
         : KvIterator(response),
           last_pk_(response->pk()),
+          ts_pos_(response->ts_pos()),
           last_ts_(response->ts()) {
         buffer_ = reinterpret_cast<char*>(&((*response->mutable_pairs())[0]));
         is_finish_ = response->is_finish();
@@ -102,11 +103,14 @@ class TraverseKvIterator : public KvIterator {
 
     uint64_t GetLastTS() const { return last_ts_; }
 
+    uint32_t GetTSPos() const { return ts_pos_; }
+
  private:
     void Reset();
 
  private:
     std::string last_pk_;
+    uint32_t ts_pos_;
     uint64_t last_ts_;
 };
 

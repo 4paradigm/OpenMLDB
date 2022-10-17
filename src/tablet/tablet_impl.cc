@@ -1388,37 +1388,35 @@ void TabletImpl::Count(RpcController* controller, const ::openmldb::api::CountRe
 void TabletImpl::Traverse(RpcController* controller, const ::openmldb::api::TraverseRequest* request,
                           ::openmldb::api::TraverseResponse* response, Closure* done) {
     brpc::ClosureGuard done_guard(done);
-    std::shared_ptr<Table> table = GetTable(request->tid(), request->pid());
+    uint32_t tid = request->tid();
+    uint32_t pid = request->pid();
+    std::shared_ptr<Table> table = GetTable(tid, pid);
     if (!table) {
-        PDLOG(WARNING, "table is not exist. tid %u, pid %u", request->tid(), request->pid());
+        PDLOG(WARNING, "table is not exist. tid %u, pid %u", tid, pid);
         response->set_code(::openmldb::base::ReturnCode::kTableIsNotExist);
         response->set_msg("table is not exist");
         return;
     }
     if (table->GetTableStat() == ::openmldb::storage::kLoading) {
-        PDLOG(WARNING, "table is loading. tid %u, pid %u", request->tid(), request->pid());
+        PDLOG(WARNING, "table is loading. tid %u, pid %u", tid, pid);
         response->set_code(::openmldb::base::ReturnCode::kTableIsLoading);
         response->set_msg("table is loading");
         return;
     }
-    uint32_t index = 0;
     std::string index_name;
     if (request->has_idx_name() && !request->idx_name().empty()) {
         index_name = request->idx_name();
     } else {
         index_name = table->GetPkIndex()->GetName();
     }
-    std::shared_ptr<IndexDef> index_def;
-    index_def = table->GetIndex(index_name);
+    auto index_def = table->GetIndex(index_name);
     if (!index_def || !index_def->IsReady()) {
-        PDLOG(WARNING, "idx name %s not found in table. tid %u, pid %u", index_name.c_str(), request->tid(),
-              request->pid());
+        PDLOG(WARNING, "idx name %s not found in table. tid %u, pid %u", index_name.c_str(), tid, pid);
         response->set_code(::openmldb::base::ReturnCode::kIdxNameNotFound);
         response->set_msg("idx name not found");
         return;
     }
-    index = index_def->GetId();
-    ::openmldb::storage::TableIterator* it = table->NewTraverseIterator(index);
+    ::openmldb::storage::TableIterator* it = table->NewTraverseIterator(index_def->GetId());
     if (it == NULL) {
         response->set_code(::openmldb::base::ReturnCode::kTsNameNotFound);
         response->set_msg("create iterator failed");
@@ -1426,18 +1424,30 @@ void TabletImpl::Traverse(RpcController* controller, const ::openmldb::api::Trav
     }
     uint64_t last_time = 0;
     std::string last_pk;
+    uint32_t ts_pos = 0;
     if (request->has_pk() && request->pk().size() > 0) {
-        DEBUGLOG("tid %u, pid %u seek pk %s ts %lu", request->tid(), request->pid(), request->pk().c_str(),
-                 request->ts());
+        DEBUGLOG("tid %u, pid %u seek pk %s ts %lu", tid, pid, request->pk().c_str(), request->ts());
         it->Seek(request->pk(), request->ts());
         last_pk = request->pk();
         last_time = request->ts();
+        if (request->has_ts_pos()) {
+            ts_pos = request->ts_pos();
+        }
         auto traverse_it = dynamic_cast<::openmldb::storage::TraverseIterator*>(it);
-        if (traverse_it && traverse_it->Valid() && request->skip_current_pk() && traverse_it->GetPK() == last_pk) {
-            traverse_it->NextPK();
+        if (traverse_it && traverse_it->Valid() && traverse_it->GetPK() == last_pk) {
+            if (request->skip_current_pk()) {
+                traverse_it->NextPK();
+            } else if (traverse_it->GetKey() == last_time) {
+                uint32_t skip_cnt = request->has_ts_pos() ? request->ts_pos() : 1;
+                while (skip_cnt > 0 && traverse_it->Valid() &&
+                        traverse_it->GetPK() == last_pk && traverse_it->GetKey() == last_time) {
+                    traverse_it->Next();
+                    skip_cnt--;
+                }
+            }
         }
     } else {
-        DEBUGLOG("tid %u, pid %u seek to first", request->tid(), request->pid());
+        DEBUGLOG("tid %u, pid %u seek to first", tid, pid);
         it->SeekToFirst();
     }
     std::map<std::string, std::vector<std::pair<uint64_t, openmldb::base::Slice>>> value_map;
@@ -1454,20 +1464,30 @@ void TabletImpl::Traverse(RpcController* controller, const ::openmldb::api::Trav
             break;
         }
         DEBUGLOG("traverse pk %s ts %lu", it->GetPK().c_str(), it->GetKey());
-        // skip duplicate record
-        if (remove_duplicated_record && last_time == it->GetKey() && last_pk == it->GetPK()) {
-            DEBUGLOG("filter duplicate record for key %s with ts %lu", last_pk.c_str(), last_time);
-            continue;
+        if (last_pk != it->GetPK()) {
+            last_pk = it->GetPK();
+            last_time = it->GetKey();
+            ts_pos = 1;
+        } else if (last_time != it->GetKey()) {
+            last_time = it->GetKey();
+            ts_pos = 1;
+        } else {
+            ts_pos++;
+            // skip duplicate record
+            if (remove_duplicated_record) {
+                DEBUGLOG("filter duplicate record for key %s with ts %lu", last_pk.c_str(), last_time);
+                continue;
+            }
         }
-        last_pk = it->GetPK();
-        last_time = it->GetKey();
-        if (value_map.find(last_pk) == value_map.end()) {
-            value_map.insert(std::make_pair(last_pk, std::vector<std::pair<uint64_t, openmldb::base::Slice>>()));
-            value_map[last_pk].reserve(request->limit());
-            key_seq.emplace_back(last_pk);
+        auto map_it = value_map.find(last_pk);
+        if (map_it == value_map.end()) {
+            auto pair = value_map.emplace(last_pk, std::vector<std::pair<uint64_t, openmldb::base::Slice>>());
+            map_it = pair.first;
+            map_it->second.reserve(request->limit());
+            key_seq.emplace_back(map_it->first);
         }
         openmldb::base::Slice value = it->GetValue();
-        value_map[last_pk].push_back(std::make_pair(it->GetKey(), value));
+        map_it->second.emplace_back(it->GetKey(), value);
         total_block_size += last_pk.length() + value.size();
         scount++;
         if (it->GetCount() >= FLAGS_max_traverse_cnt) {
@@ -1516,6 +1536,7 @@ void TabletImpl::Traverse(RpcController* controller, const ::openmldb::api::Trav
     response->set_pk(last_pk);
     response->set_ts(last_time);
     response->set_is_finish(is_finish);
+    response->set_ts_pos(ts_pos);
 }
 
 void TabletImpl::Delete(RpcController* controller, const ::openmldb::api::DeleteRequest* request,
