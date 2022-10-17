@@ -17,18 +17,21 @@
 #ifndef HYBRIDSE_SRC_BASE_NUMERIC_H_
 #define HYBRIDSE_SRC_BASE_NUMERIC_H_
 
-#include <cmath>
 #include <cstdint>
 
 namespace hybridse {
 namespace base {
 
-inline int64_t safe_abs(int64_t v) {
+// get the inverse value of int64 includes INT64_MIN
+//
+// NOTE: this is just a wrapper that handles INT64_MIN, as the ad-hoc fix to window frame overflow
+// It is not recommended to use it elsewhere. Instead, get rid of INT64_MIN
+inline int64_t safe_inverse(int64_t v) {
     if (v == INT64_MIN) {
         return INT64_MAX;
     }
 
-    return std::abs(v);
+    return -1 * v;
 }
 }  // namespace base
 }  // namespace hybridse

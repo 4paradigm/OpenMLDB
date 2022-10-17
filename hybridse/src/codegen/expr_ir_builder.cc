@@ -469,8 +469,8 @@ Status ExprIRBuilder::BuildWindow(NativeValue* output) {  // NOLINT
                                                        frame_->GetHistoryRangeStart(), &window_ptr);
         }
     } else if (frame_->frame_rows() != nullptr) {
-        ok = window_ir_builder.BuildInnerRowsList(list_ptr, ::hybridse::base::safe_abs(frame_->GetHistoryRowsEnd()),
-                                                  ::hybridse::base::safe_abs(frame_->GetHistoryRowsStart()),
+        ok = window_ir_builder.BuildInnerRowsList(list_ptr, ::hybridse::base::safe_inverse(frame_->GetHistoryRowsEnd()),
+                                                  ::hybridse::base::safe_inverse(frame_->GetHistoryRowsStart()),
                                                   &window_ptr);
     }
 
