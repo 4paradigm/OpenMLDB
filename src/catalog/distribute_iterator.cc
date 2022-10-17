@@ -463,8 +463,7 @@ void RemoteWindowIterator::Next() {
         ts_ = kv_it_->GetKey();
     } else {
         auto traverse_it = std::dynamic_pointer_cast<openmldb::base::TraverseKvIterator>(kv_it_);
-        uint32_t ts_pos = traverse_it->GetTSPos();
-        ScanRemote(ts_, ts_pos);
+        ScanRemote(traverse_it->GetLastTS(), traverse_it->GetTSPos());
     }
 }
 
