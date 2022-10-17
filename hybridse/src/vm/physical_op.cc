@@ -19,6 +19,7 @@
 #include <set>
 
 #include "absl/container/flat_hash_map.h"
+#include "absl/strings/substitute.h"
 #include "passes/physical/physical_pass.h"
 
 namespace hybridse {
@@ -121,6 +122,17 @@ bool PhysicalOpNode::IsSameSchema(const vm::Schema& schema, const vm::Schema& ex
         }
     }
     return true;
+}
+
+base::Status PhysicalOpNode::SchemaStartWith(const vm::Schema& lhs, const vm::Schema& rhs) const {
+    CHECK_TRUE(lhs.size() >= rhs.size(), common::kPlanError, "lhs size less than rhs");
+
+    for (int i = 0; i < rhs.size(); ++i) {
+        CHECK_TRUE(lhs.Get(i).name() == rhs.Get(i).name() && lhs.Get(i).type() == rhs.Get(i).type(), common::kPlanError,
+                   absl::Substitute("$0th column inconsistent:\n$1 vs\n$2", i, lhs.Get(i).DebugString(),
+                                    rhs.Get(i).DebugString()));
+    }
+    return base::Status::OK();
 }
 
 void PhysicalOpNode::Print() const { this->Print(std::cout, "    "); }
@@ -270,6 +282,8 @@ void PhysicalProjectNode::Print(std::ostream& output, const std::string& tab) co
  *    - Resolve column id from input schemas context.
  * (2) Else:
  *    - Allocate new column id since it a newly computed column.
+ *
+ *  `schemas_ctx` used to resolve column and `plan_ctx` use to alloc unique id for non-column-reference column
  */
 static Status InitProjectSchemaSource(const ColumnProjects& projects, const SchemasContext* schemas_ctx,
                                       PhysicalPlanContext* plan_ctx, SchemaSource* project_source) {
@@ -768,6 +782,8 @@ void PhysicalWindowAggrerationNode::Print(std::ostream& output, const std::strin
 }
 
 Status PhysicalWindowAggrerationNode::InitSchema(PhysicalPlanContext* ctx) {
+    // output row as 'append row (if need_append_input) + window project rows'
+
     CHECK_STATUS(InitJoinList(ctx));
     auto input = GetProducer(0);
     const vm::SchemasContext* input_schemas_ctx;
@@ -785,13 +801,14 @@ Status PhysicalWindowAggrerationNode::InitSchema(PhysicalPlanContext* ctx) {
     // init output schema
     schemas_ctx_.Clear();
     schemas_ctx_.SetDefaultDBName(ctx->db());
-    auto project_source = schemas_ctx_.AddSource();
-    CHECK_STATUS(InitProjectSchemaSource(project_, input_schemas_ctx, ctx, project_source));
 
     // window agg may inherit input row
     if (need_append_input()) {
         schemas_ctx_.Merge(0, input->schemas_ctx());
     }
+
+    auto project_source = schemas_ctx_.AddSource();
+    CHECK_STATUS(InitProjectSchemaSource(project_, input_schemas_ctx, ctx, project_source));
     return Status::OK();
 }
 
@@ -809,6 +826,43 @@ Status PhysicalWindowAggrerationNode::InitJoinList(PhysicalPlanContext* plan_ctx
         cur = joined;
     }
     return Status::OK();
+}
+
+bool PhysicalWindowAggrerationNode::AddWindowUnion(PhysicalOpNode* node) {
+    if (nullptr == node) {
+        LOG(WARNING) << "Fail to add window union : table is null";
+        return false;
+    }
+    if (producers_.empty() || nullptr == producers_[0]) {
+        LOG(WARNING) << "Fail to add window union : producer is empty or null";
+        return false;
+    }
+
+    // verify producer and union source has the same schema, two situation considered:
+    // 1. producer is window agg node, for batch mode, multiple window ops are serialized, where
+    //    each producer window op outputs its producer row + project row. In this case, it expect
+    //    producer schema starts with union schema
+    // 2. otherwise, always expec producer schema equals union schema
+    if (producers_[0]->GetOpType() == kPhysicalOpProject &&
+        dynamic_cast<PhysicalProjectNode*>(producers_[0])->project_type_ == kWindowAggregation &&
+        dynamic_cast<PhysicalWindowAggrerationNode*>(producers_[0])->need_append_input()) {
+        auto s = SchemaStartWith(*producers_[0]->GetOutputSchema(), *node->GetOutputSchema());
+        if (!s.isOK()) {
+            LOG(WARNING) << s;
+            return false;
+        }
+    } else {
+        if (!IsSameSchema(*node->GetOutputSchema(), *producers_[0]->GetOutputSchema())) {
+            LOG(WARNING) << "Union Table and window input schema aren't consistent";
+            return false;
+        }
+    }
+    window_unions_.AddWindowUnion(node, window_);
+    WindowOp& window_union = window_unions_.window_unions_.back().second;
+    fn_infos_.push_back(&window_union.partition_.fn_info());
+    fn_infos_.push_back(&window_union.sort_.fn_info());
+    fn_infos_.push_back(&window_union.range_.fn_info());
+    return true;
 }
 
 void PhysicalJoinNode::Print(std::ostream& output, const std::string& tab) const {

@@ -8,14 +8,14 @@
 
 * 停止nameserver 
     ```bash
-    sh bin/start.sh stop nameserver
+    bash bin/start.sh stop nameserver
     ```
 * 备份旧版本bin和conf目录
 * 下载新版本bin和conf
 * 对比配置文件diff并修改必要的配置，如endpoint、zk\_cluster等
 * 启动nameserver
     ```bash
-    sh bin/start.sh start nameserver
+    bash bin/start.sh start nameserver
     ```
 * 对剩余nameserver重复以上步骤
 
@@ -23,14 +23,14 @@
 
 * 停止tablet
     ```bash
-    sh bin/start.sh stop tablet
+    bash bin/start.sh stop tablet
     ```
 * 备份旧版本bin和conf目录
 * 下载新版本bin和conf
 * 对比配置文件diff并修改必要的配置，如endpoint、zk\_cluster等
 * 启动tablet
     ```bash
-    sh bin/start.sh start tablet
+    bash bin/start.sh start tablet
     ```
 * 如果auto\_failover关闭时得连上ns client执行如下操作恢复数据。其中**命令后面的endpoint为重启节点的endpoint**
   * offlineendpoint endpoint 
