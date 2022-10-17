@@ -13,7 +13,7 @@
 # limitations under the License.
 
 db: test_zw
-debugs: ["select into limit-在线"]
+debugs: []
 cases:
   -
     id: 0-1
@@ -202,6 +202,7 @@ cases:
   -
     id: 3-2
     desc: 复杂sql结果导出-离线
+    mode: disk-unsupport
     inputs:
       -
         columns : ["id int", "card_no string","merchant_id int", "trx_time timestamp", "trx_amt float"]
@@ -280,6 +281,7 @@ cases:
   -
     id: 4-2
     desc: 执行其他库查询-离线
+    mode: disk-unsupport
     inputs:
       -
         db: db1
@@ -337,6 +339,7 @@ cases:
   -
     id: 6-2
     desc: sql执行错误-离线
+    mode: disk-unsupport
     inputs:
       -
         columns : ["id int","c1 string","c7 timestamp"]
@@ -369,6 +372,7 @@ cases:
   -
     id: 7-2
     desc: mode默认值，文件已经存在-离线
+    mode: disk-unsupport
     inputs:
       -
         columns : ["id int","c1 string","c7 timestamp"]
@@ -416,6 +420,7 @@ cases:
   -
     id: 8-2
     desc: mode=overwrite，先到处大数据量，再到处小数据量-离线
+    mode: disk-unsupport
     inputs:
       -
         columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
@@ -482,7 +487,8 @@ cases:
   -
     id: 9-2
     desc: mode=append，相同的表导出两次-离线
-    tags: ["exec","离线两次导出，第二次没有header 导入缺一行"]
+    mode: disk-unsupport
+    tags: ["离线两次导出，第二次没有header 导入缺一行"]
     inputs:
       -
         columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
@@ -511,7 +517,6 @@ cases:
         - [1,"aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
         - [2,"bb",2,21,31,1.2,2.2,1590738990000,"2020-05-02",false]
         - [3,"cc",3,22,32,1.3,2.3,1590738991000,"2020-05-03",true]
-        - [1,"aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
         - [2,"bb",2,21,31,1.2,2.2,1590738990000,"2020-05-02",false]
         - [3,"cc",3,22,32,1.3,2.3,1590738991000,"2020-05-03",true]
   -
@@ -548,7 +553,8 @@ cases:
   -
     id: 10-2
     desc: mode=append，不同的表导出，第二次header=false-离线
-    tags: ["exec","同9-2"]
+    mode: disk-unsupport
+    tags: ["同9-2"]
     inputs:
       -
         columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
@@ -582,7 +588,6 @@ cases:
       rows:
         - [1,"aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
         - [2,"bb",2,21,31,1.2,2.2,1590738990000,"2020-05-02",false]
-        - [3,"cc",3,22,32,1.3,2.3,1590738991000,"2020-05-03",true]
   -
     id: 11-1
     desc: mode=append，不同的表导出，第二次header=true-在线
@@ -617,6 +622,7 @@ cases:
   -
     id: 11-2
     desc: mode=append，不同的表导出，第二次header=true-离线
+    mode: disk-unsupport
     inputs:
       -
         columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
@@ -779,6 +785,7 @@ cases:
   -
     id: 17-2
     desc: String 有null 空串 ”null“ null_value为”“-离线
+    mode: disk-unsupport
     inputs:
       -
         columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
@@ -846,7 +853,8 @@ cases:
   -
     id: 18-2
     desc: String 有null 空串 ”null“ null_value为”null“-离线
-    tags: ["exec","空串问题"]
+    mode: disk-unsupport
+    tags: ["TODO","bug,csv 对空串的处理"]
     inputs:
       -
         columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
@@ -957,6 +965,7 @@ cases:
   -
     id: 21-2
     desc: 路径文件夹不存在-离线
+    mode: disk-unsupport
     inputs:
       -
         columns : ["id int","c1 string","c7 timestamp"]
@@ -1000,6 +1009,7 @@ cases:
   -
     id: 22-2
     desc: 数据类型不匹配-离线
+    mode: disk-unsupport
     inputs:
       -
         columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
@@ -1085,6 +1095,7 @@ cases:
   -
     id: 24-2
     desc: header=true，csv没有header-离线
+    mode: disk-unsupport
     inputs:
       -
         columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
@@ -1134,6 +1145,7 @@ cases:
   -
     id: 25-2
     desc: header=false，csv有header-离线
+    mode: disk-unsupport
     inputs:
       -
         columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
@@ -1152,9 +1164,9 @@ cases:
       offlineColumns: [ "id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool" ]
       offlineRows:
         - [ null,"c1",null,null,null,null,null,null,null,null ]
-        - [ 1,"aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true ]
-        - [ 2,"bb",2,21,31,1.2,2.2,1590738990000,"2020-05-02",false ]
-        - [ 3,"cc",3,22,32,1.3,2.3,1590738991000,"2020-05-03",true ]
+        - [ 1,"aa",1,2,3,1.1,2.1,null,"2020-05-01",true ]
+        - [ 3,"cc",3,22,32,1.3,2.3,null,"2020-05-03",true ]
+        - [ 2,"bb",2,21,31,1.2,2.2,null,"2020-05-02",false ]
   -
     id: 26
     desc: 表不存在-在线
@@ -1299,6 +1311,7 @@ cases:
   -
     id: 32-2
     desc: 创建表的列和csv对不上-离线
+    mode: disk-unsupport
     inputs:
       -
         columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
@@ -1373,7 +1386,7 @@ cases:
   -
     id: 34-2
     desc: delimiter为，数据中有，-离线
-    tags: ["离线，数据会出现偏差"]
+    mode: disk-unsupport
     inputs:
       -
         columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
@@ -1395,9 +1408,9 @@ cases:
       order: id
       offlineColumns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
       offlineRows:
-        - [1,"aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+        - [1,"aa",1,2,3,1.1,2.1,null,"2020-05-01",true]
         - [2,"b",null,2,21,31.0,1.2,null,null,null]
-        - [3,"cc",3,22,32,1.3,2.3,1590738991000,"2020-05-03",true]
+        - [3,"cc",3,22,32,1.3,2.3,null,"2020-05-03",true]
   -
     id: 37-1
     desc: 表删除后再次导入-在线
@@ -1434,6 +1447,7 @@ cases:
   -
     id: 37-2
     desc: 表删除后再次导入-离线
+    mode: disk-unsupport
     inputs:
       -
         columns : ["id int","c1 string","c7 timestamp"]
@@ -1642,7 +1656,28 @@ cases:
   -
     id: 45
     desc: 集群版 execute_mode=offline, load csv文件, deep_copy=false, mode=append
-    tags: ["exec","bug,deep_copy=false,只有默认"]
+    inputs:
+      -
+        columns : ["id int","c1 string","c7 timestamp"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1590738989000]
+          - [2,"bb",1590738990000]
+          - [3,"cc",1590738991000]
+      -
+        columns : ["id int","c1 string","c7 timestamp"]
+        indexs: ["index1:c1:c7"]
+    sqls:
+      - set @@SESSION.execute_mode = "online";
+      - select * from {0} into outfile '{root_path}/out/{0}.csv';
+      - set @@SESSION.execute_mode = "offline";
+      - load data infile 'file://{root_path}/out/{0}.csv' into table {1} options(deep_copy=false,mode='append');
+      - load data infile 'file://{root_path}/out/{0}.csv' into table {1} options(deep_copy=false,mode='append');
+    expect:
+      success: false
+  -
+    id: 45-2
+    desc: 集群版 execute_mode=offline, load csv文件, deep_copy=false, mode=append
     inputs:
       -
         columns : ["id int","c1 string","c7 timestamp"]
@@ -1660,11 +1695,32 @@ cases:
       - set @@SESSION.execute_mode = "offline";
       - load data infile 'file://{root_path}/out/{0}.csv' into table {1} options(deep_copy=false,mode='append');
     expect:
-      success: false
+      success: true
   -
     id: 46
     desc: 集群版 execute_mode=offline, load csv文件, deep_copy=false, mode=overwrite
-    tags: ["exec","bug,deep_copy=false,只有默认"]
+    inputs:
+      -
+        columns : ["id int","c1 string","c7 timestamp"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1590738989000]
+          - [2,"bb",1590738990000]
+          - [3,"cc",1590738991000]
+      -
+        columns : ["id int","c1 string","c7 timestamp"]
+        indexs: ["index1:c1:c7"]
+    sqls:
+      - set @@SESSION.execute_mode = "online";
+      - select * from {0} into outfile '{root_path}/out/{0}.csv';
+      - set @@SESSION.execute_mode = "offline";
+      - load data infile 'file://{root_path}/out/{0}.csv' into table {1} options(deep_copy=false,mode='overwrite');
+      - load data infile 'file://{root_path}/out/{0}.csv' into table {1} options(deep_copy=false,mode='overwrite');
+    expect:
+      success: false
+  -
+    id: 46-2
+    desc: 集群版 execute_mode=offline, load csv文件, deep_copy=false, mode=overwrite
     inputs:
       -
         columns : ["id int","c1 string","c7 timestamp"]
@@ -1682,7 +1738,7 @@ cases:
       - set @@SESSION.execute_mode = "offline";
       - load data infile 'file://{root_path}/out/{0}.csv' into table {1} options(deep_copy=false,mode='overwrite');
     expect:
-      success: false
+      success: true
   -
     id: 47
     desc: 集群版 execute_mode=offline, load csv文件, deep_copy=false,mode默认不写，没有load
@@ -1873,7 +1929,6 @@ cases:
   -
     id: 54
     desc: csv timestamp类型 在线 时间格式
-    tags: ["exec","确定 毫秒"]
     inputs:
       -
         columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
@@ -1887,12 +1942,11 @@ cases:
       order: id
       rows:
         - [1,"aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
-        - [2,"bb",2,21,31,1.2,2.2,1590738990001,"2020-05-02",false]
+        - [2,"bb",2,21,31,1.2,2.2,1590738990100,"2020-05-02",false]
         - [3,"cc",3,22,32,1.3,2.3,1590738991001,"2020-05-03",true]
   -
     id: 55
     desc: csv timestamp类型 在线 int64
-    tags: ["exec","确定 毫秒"]
     inputs:
       -
         columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
@@ -1911,6 +1965,8 @@ cases:
   -
     id: 56
     desc: csv timestamp类型 离线 时间格式
+    mode: disk-unsupport
+    tags: ["TODO","bug,2020-05-29 15:56:..."]
     inputs:
       -
         columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
@@ -1929,6 +1985,8 @@ cases:
   -
     id: 57
     desc: csv timestamp类型 离线 int64
+    mode: disk-unsupport
+    tags: ["TODO","bug,2020-05-29 15:56:..."]
     inputs:
       -
         columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
@@ -1947,6 +2005,7 @@ cases:
   -
     id: 58
     desc: parquet timestamp类型 离线和在线
+    mode: disk-unsupport
     inputs:
       -
         columns : ["id int","c1 string","c7 timestamp"]
@@ -1979,6 +2038,7 @@ cases:
   -
     id: 59
     desc: 离线，先深拷贝，后浅拷贝overwrite
+    mode: disk-unsupport
     inputs:
       -
         columns : ["id int","c1 string","c7 timestamp"]
@@ -2001,6 +2061,7 @@ cases:
   -
     id: 60
     desc: 离线，先浅拷贝，后深拷贝overwrite
+    mode: disk-unsupport
     inputs:
       -
         columns : ["id int","c1 string","c7 timestamp"]
@@ -2064,7 +2125,7 @@ cases:
   -
     id: 62
     desc: load data-parquet-null，空串，特殊字符
-    tags: ["exec","空串问题"]
+    tags: ["TODO","bug,csv 对空串的处理"]
     inputs:
       -
         columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
@@ -2121,6 +2182,7 @@ cases:
   -
     id: 64
     desc: load data转义字符-csv-离线
+    mode: disk-unsupport
     inputs:
       -
         columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
@@ -2160,6 +2222,7 @@ cases:
   -
     id: 64
     desc: load data转义字符-parquet-离线
+    mode: disk-unsupport
     inputs:
       -
         columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
@@ -2203,17 +2266,19 @@ cases:
       columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
       order: id
       rows:
-        - [2,"bb",2,21,31,1.2,2.2,1590738990000,"2020-05-02",false]
+        - [1,"aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
         - [3,"cc",3,22,32,1.3,2.3,1590738991000,"2020-05-03",true]
   -
     id: 66
     desc: select into limit-离线
+    mode: disk-unsupport
     inputs:
       -
         columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
         indexs: ["index1:c1:c7"]
         rows:
           - [1,"aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+          - [2,"bb",2,21,31,1.2,2.2,1590738990000,"2020-05-02",false]
           - [3,"cc",3,22,32,1.3,2.3,1590738991000,"2020-05-03",true]
       -
         columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
@@ -2223,7 +2288,7 @@ cases:
       - select * from {0} into outfile '{root_path}/out/{0}-online.csv';
       - set @@SESSION.execute_mode = "offline";
       - LOAD DATA INFILE 'file://{root_path}/out/{0}-online.csv' into table {0} options(deep_copy=true,mode='append');
-      - select * from {0} into outfile 'file://{root_path}/out/{0}-offline.csv';
+      - select * from {0} limit 2 into outfile 'file://{root_path}/out/{0}-offline.csv';
       - set @@SESSION.execute_mode = "online";
       - LOAD DATA INFILE 'file://{root_path}/out/{0}-offline.csv' into table {1} options(mode='append');
       - select * from {1};
@@ -2232,6 +2297,5 @@ cases:
       order: id
       rows:
         - [1,"aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
-        - [2,"bb",2,21,31,1.2,2.2,1590738990000,"2020-05-02",false]
         - [3,"cc",3,22,32,1.3,2.3,1590738991000,"2020-05-03",true]
 

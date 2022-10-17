@@ -13,7 +13,7 @@
 # limitations under the License.
 
 db: test_zw
-debugs: ["COUNT_WHERE-fail"]
+debugs: []
 version: 0.5.0
 cases:
   -
@@ -470,7 +470,7 @@ cases:
       success: false
   -
     id: 19
-    desc: COUNT_WHERE-fail
+    desc: COUNT_WHERE-bool类型
     sqlDialect: ["HybridSQL"]
     inputs:
       -

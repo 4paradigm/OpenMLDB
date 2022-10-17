@@ -269,7 +269,7 @@ public class DataUtil {
                 obj = data;
                 break;
             case "timestamp":
-                if(data.matches("\\d{13}")){
+                if(data.matches("^\\d+$")){
                     obj = new Timestamp(Long.parseLong(data));
                 }else{
                     obj = new Timestamp(DateUtil.parseDateToLong(data));

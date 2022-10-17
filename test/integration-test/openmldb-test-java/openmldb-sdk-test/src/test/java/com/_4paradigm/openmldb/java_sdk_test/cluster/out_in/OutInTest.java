@@ -1,4 +1,4 @@
-package com._4paradigm.openmldb.java_sdk_test.cluster.sql_test;
+package com._4paradigm.openmldb.java_sdk_test.cluster.out_in;
 
 import com._4paradigm.openmldb.java_sdk_test.common.OpenMLDBTest;
 import com._4paradigm.openmldb.java_sdk_test.executor.ExecutorFactory;
@@ -17,17 +17,17 @@ public class OutInTest extends OpenMLDBTest {
     @Test(dataProvider = "getCase")
     @Yaml(filePaths = "integration_test/out_in/test_select_into_load_data.yaml")
     @Story("LOAD DATA")
-    public void testOutInByOffline(SQLCase testCase){
+    public void testOutIn(SQLCase testCase){
         System.out.println("testCase = " + testCase);
         ExecutorFactory.build(executor, testCase, SQLCaseType.kJob).run();
     }
 
-
-     @Test(dataProvider = "getCase")
-     @Yaml(filePaths = "function/out_in/test_out_in.yaml")
-     @Story("online")
-     public void testOutInByOnline(SQLCase testCase){
-         ExecutorFactory.build(executor,testCase, SQLCaseType.kBatch).run();
-     }
+    @Test(dataProvider = "getCase",enabled = false)
+    @Yaml(filePaths = "integration_test/out_in/test_job.yaml")
+    @Story("LOAD DATA")
+    public void testJob(SQLCase testCase){
+        System.out.println("testCase = " + testCase);
+        ExecutorFactory.build(executor, testCase, SQLCaseType.kBatch).run();
+    }
 
 }
