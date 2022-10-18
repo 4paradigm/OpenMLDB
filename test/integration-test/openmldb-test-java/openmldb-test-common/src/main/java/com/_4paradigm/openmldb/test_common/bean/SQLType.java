@@ -2,10 +2,7 @@ package com._4paradigm.openmldb.test_common.bean;
 
 import com._4paradigm.openmldb.test_common.openmldb.OpenMLDBGlobalVar;
 import com.google.common.collect.Sets;
-import org.testng.collections.Lists;
 
-import java.util.List;
-import java.util.Locale;
 import java.util.Set;
 
 public enum SQLType {
@@ -25,12 +22,6 @@ public enum SQLType {
     public static final Set<SQLType> RESULT_SET = Sets.newHashSet(SELECT, SHOW, DEPLOY);
 //    public static final List<SQLType> VOID = Lists.newArrayList(CREATE,DROP,USE,INSERT);
     public static SQLType parseSQLType(String sql){
-        if(sql.toLowerCase().startsWith("load data")||sql.toLowerCase().contains("into outfile")){
-            return JOB;
-        }else if(sql.toLowerCase().startsWith("select")){
-            if(OpenMLDBGlobalVar.EXECUTE_MODE.equals("offline")){
-                return OFFLINE_SELECT;
-            }
         if(sql.toLowerCase().startsWith("load data")||sql.toLowerCase().contains("into outfile")){
             return JOB;
         }else if(sql.toLowerCase().startsWith("select")){
