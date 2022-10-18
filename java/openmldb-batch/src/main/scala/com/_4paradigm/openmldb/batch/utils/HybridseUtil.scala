@@ -245,6 +245,7 @@ object HybridseUtil {
         .getNotNull)
     }
     )
+    logger.debug(s"table schema $oriSchema, may use read schema $readSchema")
     (oriSchema, readSchema, tsCols.toList)
   }
 
@@ -293,37 +294,35 @@ object HybridseUtil {
   .List[Common.ColumnDesc]): DataFrame = {
     val format = fmt.toLowerCase
     val reader = spark.read.options(options)
+    // TODO: parquet don't need read schema, but it won't effect?
     val (oriSchema, readSchema, tsCols) = HybridseUtil.extractOriginAndReadSchema(columns)
+    var df = spark.emptyDataFrame
     if (format != "csv") {
-      val df = reader.format(format).load(file)
-      // check the schema
-      require(df.schema == oriSchema, "source schema must == table schema")
-      debugDf(df)
-      df
-    }
-    // csv should auto detect the timestamp format
+      df = reader.format(format).load(file)
+    } else{
+      // csv should auto detect the timestamp format
+      logger.info(s"file format: $format")
+      reader.format(format)
+      // use string to read, then infer the format by the first non-null value of the ts column
+      val longTsCols = HybridseUtil.parseLongTsCols(reader, readSchema, tsCols, file)
+      logger.info(s"read schema: $readSchema, file $file")
+      var df = reader.schema(readSchema).load(file)
+      if (longTsCols.nonEmpty) {
+        // convert long type to timestamp type
+        for (tsCol <- longTsCols) {
+          df = df.withColumn(tsCol, (col(tsCol) / 1000).cast("timestamp"))
+        }
+      }
 
-    logger.info(s"set file format: $format")
-    reader.format(format)
-    // use string to read, then infer the format by the first non-null value of the ts column
-    val longTsCols = HybridseUtil.parseLongTsCols(reader, readSchema, tsCols, file)
-    logger.info(s"read schema: $readSchema, file $file")
-    var df = reader.schema(readSchema).load(file)
-    if (longTsCols.nonEmpty) {
-      // convert long type to timestamp type
-      for (tsCol <- longTsCols) {
-        df = df.withColumn(tsCol, (col(tsCol) / 1000).cast("timestamp"))
+      // if we read non-streaming files, the df schema fields will be set as all nullable.
+      // so we need to set it right
+      logger.info(s"after read schema: ${df.schema}")
+      if (!df.schema.equals(oriSchema)) {
+        df = df.sqlContext.createDataFrame(df.rdd, oriSchema)
       }
     }
 
-    // if we read non-streaming files, the df schema fields will be set as all nullable.
-    // so we need to set it right
-    logger.info(s"after read schema: ${df.schema}")
-    if (!df.schema.equals(oriSchema)) {
-      df = df.sqlContext.createDataFrame(df.rdd, oriSchema)
-    }
-
-    require(df.schema == oriSchema, "csv source schema must == table schema")
+    require(df.schema == oriSchema, "source schema must == table schema")
     debugDf(df)
     df
   }
