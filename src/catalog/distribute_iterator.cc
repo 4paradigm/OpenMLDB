@@ -19,6 +19,7 @@
 
 DECLARE_uint32(traverse_cnt_limit);
 DECLARE_uint32(max_traverse_cnt);
+DECLARE_uint32(max_traverse_pk_cnt);
 
 namespace openmldb {
 namespace catalog {
@@ -45,7 +46,7 @@ void FullTableIterator::Next() {
     ResetValue();
     cnt_++;
     if (cnt_ > FLAGS_max_traverse_cnt) {
-        DEBUGLOG("FullTableIterator exceed the max_traverse_cnt, tid %u, cnt %u, max_traverse_cnt %u", cnt_,
+        PDLOG(WARNING, "FullTableIterator exceed the max_traverse_cnt, tid %u, cnt %u, max_traverse_cnt %u", cnt_,
                  FLAGS_max_traverse_cnt, tid_);
         return;
     }
@@ -198,6 +199,7 @@ void DistributeWindowIterator::Reset() {
     it_.reset();
     kv_it_.reset();
     cur_pid_ = INVALID_PID;
+    pk_cnt_ = 0;
 }
 
 // seek to the pos where key = `key` on success
@@ -296,6 +298,13 @@ DistributeWindowIterator::ItStat DistributeWindowIterator::SeekByKey(const std::
 }
 
 void DistributeWindowIterator::Next() {
+    pk_cnt_++;
+    if (pk_cnt_ >= FLAGS_max_traverse_pk_cnt) {
+        PDLOG(WARNING,
+              "DistributeWindowIterator exceed the max_traverse_pk_cnt, tid %u, cnt %u, max_traverse_pk_cnt %u",
+              pk_cnt_, FLAGS_max_traverse_pk_cnt, tid_);
+        return;
+    }
     if (it_ && it_->Valid()) {
         it_->Next();
         if (it_->Valid()) {
@@ -368,7 +377,7 @@ void DistributeWindowIterator::Next() {
 }
 
 bool DistributeWindowIterator::Valid() {
-    return (it_ && it_->Valid()) || (kv_it_ && kv_it_->Valid());
+    return (pk_cnt_ < FLAGS_max_traverse_cnt) && ((it_ && it_->Valid()) || (kv_it_ && kv_it_->Valid()));
 }
 
 std::unique_ptr<::hybridse::codec::RowIterator> DistributeWindowIterator::GetValue() {

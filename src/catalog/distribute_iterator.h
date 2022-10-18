@@ -189,6 +189,7 @@ class DistributeWindowIterator : public ::hybridse::codec::WindowIterator {
     KV_IT kv_it_;
     // underlaying data pointed by `kv_it_`
     std::vector<std::shared_ptr<::google::protobuf::Message>> response_vec_;
+    int64_t pk_cnt_ = 0;
 };
 
 }  // namespace catalog

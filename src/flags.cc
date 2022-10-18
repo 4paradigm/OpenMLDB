@@ -107,6 +107,7 @@ DEFINE_int32(request_timeout_ms, 20000,
              "rpc request timeout of misc. unit is milliseconds");
 DEFINE_int32(request_sleep_time, 1000, "the sleep time when request error. unit is milliseconds");
 
+DEFINE_uint32(max_traverse_pk_cnt, 5000, "max traverse iter pk cnt");
 DEFINE_uint32(max_traverse_cnt, 50000, "max traverse iter loop cnt");
 DEFINE_uint32(traverse_cnt_limit, 1000, "limit traverse cnt");
 DEFINE_string(ssd_root_path, "", "the root ssd path of db");
