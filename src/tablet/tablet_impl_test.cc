@@ -4819,7 +4819,6 @@ TEST_P(TabletImplTest, AbsOrLat) {
         sr.set_idx_name("ts3");
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
-        int exp = 4;
         ASSERT_EQ(4, (signed)srp.count());
     }
     for (int i = 0; i < 10; ++i) {
