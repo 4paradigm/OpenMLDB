@@ -31,6 +31,8 @@
 13. [The User List](#13-the-user-list)
 
 ### OpenMLDB is an open-source machine learning database that provides a feature platform computing consistent features for training and inference.
+This branch integrates the [streaming engine](stream/), which is optimized for scalable Interval Join.
+For the usage of the streaming engine, please refer to [stream/README](stream/README.md).
 
 ## 1. Our Philosophy
 
