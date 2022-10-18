@@ -560,6 +560,9 @@ bool MemTable::AddIndex(const ::openmldb::common::ColumnKey& column_key) {
             return false;
         }
         new_table_meta->mutable_column_key(index_def->GetId())->CopyFrom(column_key);
+        if (column_key.has_ttl()) {
+            index_def->SetTTL(::openmldb::storage::TTLSt(column_key.ttl()));
+        }
     } else {
         ::openmldb::common::ColumnKey* added_column_key = new_table_meta->add_column_key();
         added_column_key->CopyFrom(column_key);

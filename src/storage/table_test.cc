@@ -1900,9 +1900,11 @@ TEST_P(TableTest, AbsAndLat) {
         std::vector<std::string> row = {
             "test" + std::to_string(i % 10), ts_str, ts_str, ts_str, ts_str, ts_str, ts_str};
         ::openmldb::api::PutRequest request;
-        ::openmldb::api::Dimension* dim = request.add_dimensions();
-        dim->set_idx(0);
-        dim->set_key(row[0]);
+        for (int idx = 0; idx <= 5; idx++) {
+            auto dim = request.add_dimensions();
+            dim->set_idx(idx);
+            dim->set_key(row[0]);
+        }
         std::string value;
         ASSERT_EQ(0, codec.EncodeRow(row, &value));
         table->Put(0, value, request.dimensions());

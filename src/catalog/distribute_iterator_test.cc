@@ -603,10 +603,9 @@ TEST_F(DistributeIteratorTest, IteratorZero) {
                 std::string value;
                 ASSERT_EQ(0, codec.EncodeRow(row, &value));
                 (*tables)[pid]->Put(0, value, request.dimensions());
-                expect ++;
+                expect++;
             }
         } else {
-            //PutKey(key, metas[pid == 1 ? 0 : 1], tablet_clients[pid], 100);
             auto& table_meta = metas[pid == 1 ? 0 : 1];
             codec::SDKCodec codec(table_meta);
             for (int j = 0; j < 20; j++) {
@@ -619,7 +618,7 @@ TEST_F(DistributeIteratorTest, IteratorZero) {
                 ASSERT_EQ(0, codec.EncodeRow(row, &value));
                 std::vector<std::pair<std::string, uint32_t>> dimensions = {{key, 0}};
                 tablet_clients[pid]->Put(table_meta.tid(), table_meta.pid(), 0, value, dimensions);
-                expect ++;
+                expect++;
             }
         }
     }
