@@ -26,24 +26,13 @@
 #include "base/file_util.h"
 #include "base/glog_wrapper.h"
 #include "client/tablet_client.h"
-#include "common/thread_pool.h"
+#include "codec/schema_codec.h"
 #include "common/timer.h"
 #include "proto/tablet.pb.h"
 #include "replica/log_replicator.h"
 #include "replica/replicate_node.h"
-#include "storage/segment.h"
-#include "storage/table.h"
-#include "storage/ticket.h"
 #include "tablet/tablet_impl.h"
 #include "test/util.h"
-
-using ::baidu::common::ThreadPool;
-using ::google::protobuf::Closure;
-using ::google::protobuf::RpcController;
-using ::openmldb::storage::DataBlock;
-using ::openmldb::storage::Table;
-using ::openmldb::storage::Ticket;
-using ::openmldb::tablet::TabletImpl;
 
 DECLARE_string(db_root_path);
 DECLARE_string(ssd_root_path);
@@ -55,6 +44,8 @@ inline std::string GenRand() { return std::to_string(rand() % 10000000 + 1); }  
 
 namespace openmldb {
 namespace replica {
+
+using ::openmldb::codec::SchemaCodec;
 
 class MockClosure : public ::google::protobuf::Closure {
  public:
@@ -573,44 +564,22 @@ TEST_P(SnapshotReplicaTest, LeaderAndFollowerTS) {
     table_meta.set_pid(pid);
     table_meta.set_seg_cnt(8);
     table_meta.set_storage_mode(storage_mode);
-    ::openmldb::common::ColumnDesc* column_desc1 = table_meta.add_column_desc();
-    column_desc1->set_name("card");
-    column_desc1->set_data_type(::openmldb::type::kString);
-    ::openmldb::common::ColumnDesc* column_desc2 = table_meta.add_column_desc();
-    column_desc2->set_name("mcc");
-    column_desc2->set_data_type(::openmldb::type::kString);
-    ::openmldb::common::ColumnDesc* column_desc3 = table_meta.add_column_desc();
-    column_desc3->set_name("amt");
-    column_desc3->set_data_type(::openmldb::type::kDouble);
-    ::openmldb::common::ColumnDesc* column_desc4 = table_meta.add_column_desc();
-    column_desc4->set_name("ts1");
-    column_desc4->set_data_type(::openmldb::type::kBigInt);
-    ::openmldb::common::ColumnDesc* column_desc5 = table_meta.add_column_desc();
-    column_desc5->set_name("ts2");
-    column_desc5->set_data_type(::openmldb::type::kBigInt);
-    auto column_key1 = table_meta.add_column_key();
-    column_key1->set_index_name("card");
-    column_key1->set_ts_name("ts1");
-    auto ttl = column_key1->mutable_ttl();
-    ttl->set_abs_ttl(0);
-    auto column_key2 = table_meta.add_column_key();
-    column_key2->set_index_name("card1");
-    column_key2->add_col_name("card");
-    column_key2->set_ts_name("ts2");
-    ttl = column_key2->mutable_ttl();
-    ttl->set_abs_ttl(0);
-    auto column_key3 = table_meta.add_column_key();
-    column_key3->set_index_name("mcc");
-    column_key3->set_ts_name("ts1");
-    ttl = column_key3->mutable_ttl();
-    ttl->set_abs_ttl(0);
+    SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "card", ::openmldb::type::kString);
+    SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "mcc", ::openmldb::type::kString);
+    SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "amt", ::openmldb::type::kDouble);
+    SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "ts1", ::openmldb::type::kBigInt);
+    SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "ts2", ::openmldb::type::kBigInt);
+    SchemaCodec::SetIndex(table_meta.add_column_key(), "card", "card", "ts1", ::openmldb::type::kAbsoluteTime, 0, 0);
+    SchemaCodec::SetIndex(table_meta.add_column_key(), "card1", "card", "ts2", ::openmldb::type::kAbsoluteTime, 0, 0);
+    SchemaCodec::SetIndex(table_meta.add_column_key(), "mcc", "mcc", "ts2", ::openmldb::type::kAbsoluteTime, 0, 0);
     table_meta.set_mode(::openmldb::api::TableMode::kTableLeader);
     bool ret = client.CreateTable(table_meta);
     ASSERT_TRUE(ret);
     uint64_t cur_time = ::baidu::common::timer::get_micros() / 1000;
     std::vector<std::pair<std::string, uint32_t>> dimensions;
     dimensions.push_back(std::make_pair("card0", 0));
-    dimensions.push_back(std::make_pair("mcc0", 1));
+    dimensions.push_back(std::make_pair("card0", 1));
+    dimensions.push_back(std::make_pair("mcc0", 2));
     ::openmldb::codec::SDKCodec sdk_codec(table_meta);
     std::vector<std::string> row = {"card0", "mcc0", "1.3", std::to_string(cur_time), std::to_string(cur_time - 100)};
     std::string value;
