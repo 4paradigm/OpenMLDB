@@ -1,9 +1,9 @@
 # UDF Function Development Guideline
 ## 1. Background
-Although there already are hundreds of built-in functions, they can not satisfy the needs in some cases. In the past, this could only be done by developing new built-in functions. Built-in function development requires a relatively long cycle because it needs to recompile binary files and wait for new version release.
-In order to help users quickly and flexibly resolve specific feature computing requirements, we develop the mechanism of user dynamic registration function.
+Although there are already hundreds of built-in functions, they can not satisfy the needs in some cases. In the past, this could only be done by developing new built-in functions. Built-in function development requires a relatively long cycle because it needs to recompile binary files and users have to wait for new version release.
+In order to help users to quickly develop computing functions that are not provided by OpenMLDB, we develop the mechanism of user dynamic registration function.
 
-SQL functions can be divided into single-line functions and aggregate functions. At present, only the custom development of single-line functions is supported. An introduction to single-line functions and aggregate functions can be seen [here](./built_in_function_develop_guide.md).
+SQL functions can be categorised into single-line functions and aggregate functions. At present, only single-line UDFs are supported. An introduction to single-line functions and aggregate functions can be seen [here](./built_in_function_develop_guide.md).
 ## 2. Development Procedures
 ### 2.1 Develop UDF functions
 #### 2.1.1 Naming Specification of C++ Built-in Function
