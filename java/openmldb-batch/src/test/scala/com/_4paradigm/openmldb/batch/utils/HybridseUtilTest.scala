@@ -48,10 +48,11 @@ class HybridseUtilTest extends SparkTestSuite with Matchers {
     cols.add(col)
     // but the source col 'ts' is timestamp
     val testFile = "file://" + getClass.getResource("/load_data_test_src/timestamp.parquet").getPath
-    the[IllegalArgumentException] thrownBy {
+    val thrown = the[IllegalArgumentException] thrownBy {
       val df = autoLoad(getSparkSession, testFile, "parquet", Map(("header", "true"), ("nullValue", "null")), cols)
       fail("unreachable")
-    } should have message "requirement failed: source schema must == table schema"
+    }
+    thrown.getMessage should startWith ("requirement failed: source schema")
   }
 
   test("Test AutoLoad Type Timestamp") {
