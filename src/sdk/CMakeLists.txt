@@ -193,6 +193,12 @@ if(SQL_JAVASDK_ENABLE)
             PERMISSIONS OWNER_WRITE OWNER_READ GROUP_READ WORLD_READ)
 endif()
 
+# c++ sdk
+if (APPLE)
+    message(STATUS "skip c++ sdk build on macos")
+    return()
+endif()
+
 add_library(openmldb_api STATIC openmldb_api.cc)
 target_include_directories (
     openmldb_api
