@@ -68,7 +68,6 @@ std::shared_ptr<openmldb::storage::Table> CreateTable(uint32_t tid, uint32_t pid
 
 void PutKey(const std::string& key, std::shared_ptr<openmldb::storage::Table> table,
         int cnt = 10, int same_ts_cnt = 1) {
-    uint64_t now = ::baidu::common::timer::get_micros() / 1000;
     codec::SDKCodec codec(*(table->GetTableMeta()));
     for (int j = 0; j < cnt; j++) {
         uint64_t ts = 1 + j;
@@ -87,7 +86,6 @@ void PutKey(const std::string& key, std::shared_ptr<openmldb::storage::Table> ta
 
 void PutKey(const std::string& key, const ::openmldb::api::TableMeta& table_meta,
         std::shared_ptr<openmldb::client::TabletClient> client, int cnt = 10, int same_ts_cnt = 1) {
-    uint64_t now = ::baidu::common::timer::get_micros() / 1000;
     codec::SDKCodec codec(table_meta);
     for (int j = 0; j < cnt; j++) {
         uint64_t ts = 1 + j;
@@ -228,7 +226,6 @@ TEST_F(DistributeIteratorTest, Hybrid) {
     while (it.Valid()) {
         count++;
         // multiple calls to GetKey/GetValue will get the same and valid result
-        auto key = it.GetKey();
         auto buf = it.GetValue().buf();
         auto size = it.GetValue().size();
         codec::RowView row_view(*table1->GetSchema(), buf, size);
@@ -288,7 +285,6 @@ TEST_F(DistributeIteratorTest, FullTableTraverseLimit) {
     while (it.Valid()) {
         count++;
         // multiple calls to GetKey/GetValue will get the same and valid result
-        auto key = it.GetKey();
         auto buf = it.GetValue().buf();
         auto size = it.GetValue().size();
         codec::RowView row_view(*table1->GetSchema(), buf, size);
@@ -490,7 +486,6 @@ TEST_F(DistributeIteratorTest, RemoteIterator) {
         count++;
 
         // multiple calls to GetKey/GetValue will get the same and valid result
-        auto key = it->GetKey();
         auto buf = it->GetValue().buf();
         auto size = it->GetValue().size();
         codec::RowView row_view(metas[0].column_desc(), buf, size);
@@ -781,7 +776,7 @@ TEST_F(DistributeIteratorTest, TraverseSameTs) {
 }
 
 TEST_F(DistributeIteratorTest, WindowIteratorLimit) {
-    uint32_t old_max_pk_cnt = FLAGS_max_traverse_cnt;
+    uint32_t old_max_pk_cnt = FLAGS_max_traverse_pk_cnt;
     uint32_t tid = 3;
     FLAGS_db_root_path = "/tmp/" + ::openmldb::test::GenRand();
     auto tables = std::make_shared<Tables>();
@@ -812,7 +807,7 @@ TEST_F(DistributeIteratorTest, WindowIteratorLimit) {
         }
     }
 
-    FLAGS_max_traverse_cnt = 10;
+    FLAGS_max_traverse_pk_cnt = 10;
     {
         DistributeWindowIterator w_it(tid, 4, tables, 0, "card", tablet_clients);
         for (int i = 0; i < 20; i++) {
@@ -835,24 +830,24 @@ TEST_F(DistributeIteratorTest, WindowIteratorLimit) {
             count++;
             w_it.Next();
         }
-        ASSERT_EQ(count, FLAGS_max_traverse_cnt);
+        ASSERT_EQ(count, FLAGS_max_traverse_pk_cnt);
         w_it.Seek("card11");
         count = 0;
         while (w_it.Valid()) {
             count++;
             w_it.Next();
         }
-        ASSERT_EQ(count, FLAGS_max_traverse_cnt);
+        ASSERT_EQ(count, FLAGS_max_traverse_pk_cnt);
         w_it.Seek("card15");
         count = 0;
         while (w_it.Valid()) {
             count++;
             w_it.Next();
         }
-        ASSERT_EQ(count, FLAGS_max_traverse_cnt);
+        ASSERT_EQ(count, FLAGS_max_traverse_pk_cnt);
     }
 
-    FLAGS_max_traverse_cnt = 20;
+    FLAGS_max_traverse_pk_cnt = 20;
     {
         DistributeWindowIterator w_it(tid, 4, tables, 0, "card", tablet_clients);
         for (int i = 0; i < 20; i++) {
@@ -875,7 +870,7 @@ TEST_F(DistributeIteratorTest, WindowIteratorLimit) {
             count++;
             w_it.Next();
         }
-        ASSERT_EQ(count, FLAGS_max_traverse_cnt);
+        ASSERT_EQ(count, FLAGS_max_traverse_pk_cnt);
         w_it.Seek("card11");
         count = 0;
         while (w_it.Valid()) {
@@ -892,7 +887,7 @@ TEST_F(DistributeIteratorTest, WindowIteratorLimit) {
         ASSERT_EQ(count, 10);
     }
 
-    FLAGS_max_traverse_cnt = old_max_pk_cnt;
+    FLAGS_max_traverse_pk_cnt = old_max_pk_cnt;
 }
 
 TEST_F(DistributeIteratorTest, IteratorZero) {

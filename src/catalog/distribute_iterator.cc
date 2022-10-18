@@ -46,8 +46,8 @@ void FullTableIterator::Next() {
     ResetValue();
     cnt_++;
     if (cnt_ > FLAGS_max_traverse_cnt) {
-        PDLOG(WARNING, "FullTableIterator exceed the max_traverse_cnt, tid %u, cnt %u, max_traverse_cnt %u", cnt_,
-                 FLAGS_max_traverse_cnt, tid_);
+        PDLOG(WARNING, "FullTableIterator exceed the max_traverse_cnt, tid %u, cnt %lld, max_traverse_cnt %u", tid_,
+              cnt_, FLAGS_max_traverse_cnt);
         return;
     }
 
@@ -302,8 +302,8 @@ void DistributeWindowIterator::Next() {
     pk_cnt_++;
     if (pk_cnt_ >= FLAGS_max_traverse_pk_cnt) {
         PDLOG(WARNING,
-              "DistributeWindowIterator exceed the max_traverse_pk_cnt, tid %u, cnt %u, max_traverse_pk_cnt %u",
-              pk_cnt_, FLAGS_max_traverse_pk_cnt, tid_);
+              "DistributeWindowIterator exceeds the max_traverse_pk_cnt, tid %u, cnt %lld, max_traverse_pk_cnt %u",
+              tid_, pk_cnt_, FLAGS_max_traverse_pk_cnt);
         return;
     }
     if (it_ && it_->Valid()) {
@@ -378,7 +378,7 @@ void DistributeWindowIterator::Next() {
 }
 
 bool DistributeWindowIterator::Valid() {
-    return (pk_cnt_ < FLAGS_max_traverse_cnt) && ((it_ && it_->Valid()) || (kv_it_ && kv_it_->Valid()));
+    return (pk_cnt_ < FLAGS_max_traverse_pk_cnt) && ((it_ && it_->Valid()) || (kv_it_ && kv_it_->Valid()));
 }
 
 std::unique_ptr<::hybridse::codec::RowIterator> DistributeWindowIterator::GetValue() {
