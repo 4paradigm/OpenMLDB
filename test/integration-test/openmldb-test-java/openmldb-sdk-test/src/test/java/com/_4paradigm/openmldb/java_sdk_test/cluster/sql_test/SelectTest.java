@@ -36,7 +36,7 @@ import org.testng.annotations.Test;
 public class SelectTest extends OpenMLDBTest {
 
     @Story("batch")
-    @Test(dataProvider = "getCase",enabled = false)
+    @Test(dataProvider = "getCase")
     @Yaml(filePaths = {"integration_test/select/","query/const_query.yaml"})
     @Step("{testCase.desc}")
     public void testSelect(SQLCase testCase) throws Exception {

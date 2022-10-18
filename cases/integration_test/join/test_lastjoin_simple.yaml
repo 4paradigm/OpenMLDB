@@ -731,26 +731,6 @@ cases:
       rows:
         - [ null,2,3,1590738989000 ]
         - [ "bb",21,31,1590738992000 ]
-  - id: 20
-    desc: 结合limit
-    tags: [ "TODO", "remove @zhaowei" ]
-    inputs:
-      - columns: [ "c1 string","c2 int","c3 bigint","c4 timestamp" ]
-        indexs: [ "index1:c3:c4" ]
-        rows:
-          - [ "aa",2,3,1590738989000 ]
-          - [ "bb",21,31,1590738990000 ]
-      - columns: [ "c1 string","c2 int","c3 bigint","c4 timestamp" ]
-        indexs: [ "index1:c3:c4" ]
-        rows:
-          - [ "aa",2,3,1590738989000 ]
-          - [ "bb",21,31,1590738990000 ]
-          - [ "bb",41,31,1590738992000 ]
-          - [ "bb",41,31,1590738991000 ]
-    sql: select {0}.c1,{0}.c2,{1}.c3,{1}.c4 from {0} last join {1} ORDER BY {1}.c4 on {0}.c3={1}.c3 limit 1;
-    expect:
-      rows:
-        - [ "aa",2,3,1590738989000 ]
   - id: 21
     desc: 三表拼表
     inputs:

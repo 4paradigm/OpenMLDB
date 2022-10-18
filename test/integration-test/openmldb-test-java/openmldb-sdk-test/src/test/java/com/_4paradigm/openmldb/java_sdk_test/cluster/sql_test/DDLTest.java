@@ -99,4 +99,28 @@ public class DDLTest extends OpenMLDBTest {
     public void testCreateNoIndexByCli(SQLCase testCase){
         ExecutorFactory.build(testCase, SQLCaseType.kClusterCLI).run();
     }
+    @Test(dataProvider = "getCase")
+    @Yaml(filePaths = "integration_test/ddl/test_delete_index.yaml")
+    @Story("delete_index")
+    public void testDeleteIndex(SQLCase testCase){
+        ExecutorFactory.build(executor,testCase, SQLCaseType.kDDL).run();
+    }
+    @Test(dataProvider = "getCase",enabled = false)
+    @Yaml(filePaths = "integration_test/ddl/test_delete_index.yaml")
+    @Story("delete_index")
+    public void testDeleteIndexByCli(SQLCase testCase){
+        ExecutorFactory.build(testCase, SQLCaseType.kClusterCLI).run();
+    }
+    @Test(dataProvider = "getCase")
+    @Yaml(filePaths = "integration_test/ddl/test_execute_mode.yaml")
+    @Story("execute_mode")
+    public void testExecuteMode(SQLCase testCase){
+        ExecutorFactory.build(executor,testCase, SQLCaseType.kDDL).run();
+    }
+    @Test(dataProvider = "getCase",enabled = false)
+    @Yaml(filePaths = "integration_test/ddl/test_execute_mode.yaml")
+    @Story("execute_mode")
+    public void testExecuteModeByCli(SQLCase testCase){
+        ExecutorFactory.build(testCase, SQLCaseType.kClusterCLI).run();
+    }
 }

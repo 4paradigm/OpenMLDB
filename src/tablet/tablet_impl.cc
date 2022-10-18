@@ -1426,7 +1426,7 @@ void TabletImpl::Traverse(RpcController* controller, const ::openmldb::api::Trav
     std::string last_pk;
     uint32_t ts_pos = 0;
     if (request->has_pk() && request->pk().size() > 0) {
-        DEBUGLOG("tid %u, pid %u seek pk %s ts %lu", tid, pid, request->pk().c_str(), request->ts());
+        DLOG(INFO) << "tid " << tid << ", pid " << pid << " seek pk " << request->pk() << " ts " << request->ts();
         it->Seek(request->pk(), request->ts());
         last_pk = request->pk();
         last_time = request->ts();
@@ -1523,14 +1523,15 @@ void TabletImpl::Traverse(RpcController* controller, const ::openmldb::api::Trav
             continue;
         }
         for (const auto& pair : iter->second) {
-            DEBUGLOG("encode pk %s ts %lu size %u", key.c_str(), pair.first, pair.second.size());
+            DLOG(INFO) << "encode pk " << key << " ts " << pair.first << " size " << pair.second.size();
             ::openmldb::codec::EncodeFull(key, pair.first, pair.second.data(), pair.second.size(), rbuffer,
                                           offset);
             offset += (4 + 4 + 8 + key.length() + pair.second.size());
         }
     }
     delete it;
-    DEBUGLOG("traverse count %d. last_pk %s last_time %lu", scount, last_pk.c_str(), last_time);
+    DLOG(INFO) << "tid " << tid << " pid " << pid << " traverse count " << scount << " last_pk " << last_pk
+        << " last_time " << last_time << " ts_pos " << ts_pos;
     response->set_code(::openmldb::base::ReturnCode::kOk);
     response->set_count(scount);
     response->set_pk(last_pk);

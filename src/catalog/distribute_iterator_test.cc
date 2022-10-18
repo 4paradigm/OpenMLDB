@@ -895,6 +895,110 @@ TEST_F(DistributeIteratorTest, WindowIteratorLimit) {
     FLAGS_max_traverse_cnt = old_max_pk_cnt;
 }
 
+TEST_F(DistributeIteratorTest, IteratorZero) {
+    uint32_t old_limit = FLAGS_traverse_cnt_limit;
+    FLAGS_traverse_cnt_limit = 7;
+    uint32_t tid = 3;
+    FLAGS_db_root_path = "/tmp/" + ::openmldb::test::GenRand();
+    auto tables = std::make_shared<Tables>();
+    auto table1 = CreateTable(tid, 0);
+    auto table2 = CreateTable(tid, 2);
+    tables->emplace(0, table1);
+    tables->emplace(2, table2);
+    std::vector<std::string> endpoints = {"127.0.0.1:9230", "127.0.0.1:9231"};
+    brpc::Server tablet1;
+    ASSERT_TRUE(::openmldb::test::StartTablet(endpoints[0], &tablet1));
+    brpc::Server tablet2;
+    ASSERT_TRUE(::openmldb::test::StartTablet(endpoints[1], &tablet2));
+    auto client1 = std::make_shared<openmldb::client::TabletClient>(endpoints[0], endpoints[0]);
+    ASSERT_EQ(client1->Init(), 0);
+    auto client2 = std::make_shared<openmldb::client::TabletClient>(endpoints[1], endpoints[1]);
+    ASSERT_EQ(client2->Init(), 0);
+    std::vector<::openmldb::api::TableMeta> metas = {CreateTableMeta(tid, 1), CreateTableMeta(tid, 3)};
+    ASSERT_TRUE(client1->CreateTable(metas[0]));
+    ASSERT_TRUE(client2->CreateTable(metas[1]));
+    std::map<uint32_t, std::shared_ptr<openmldb::client::TabletClient>> tablet_clients = {{1, client1}, {3, client2}};
+    std::map<uint32_t, uint32_t> cout_map = {{0, 0}, {1, 0}, {2, 0}, {3, 0}};
+    int expect = 0;
+    int key_cnt = 50;
+    for (int i = 0; i < key_cnt; i++) {
+        std::string key = "card" + std::to_string(i);
+        uint32_t pid = static_cast<uint32_t>(::openmldb::base::hash64(key)) % 4;
+        DLOG(INFO) << "key " << key << " pid " << pid;
+        cout_map[pid]++;
+        uint64_t now = ::baidu::common::timer::get_micros() / 1000;
+        if (pid % 2 == 0) {
+            codec::SDKCodec codec(*((*tables)[pid]->GetTableMeta()));
+            for (int j = 0; j < 20; j++) {
+                uint64_t ts = now - j * (60 * 1000);
+                if (j % 2 == 0) {
+                    ts = 0;
+                }
+                std::vector<std::string> row = {key , "mcc", std::to_string(ts)};
+                ::openmldb::api::PutRequest request;
+                ::openmldb::api::Dimension* dim = request.add_dimensions();
+                dim->set_idx(0);
+                dim->set_key(key);
+                std::string value;
+                ASSERT_EQ(0, codec.EncodeRow(row, &value));
+                (*tables)[pid]->Put(0, value, request.dimensions());
+                expect++;
+            }
+        } else {
+            auto& table_meta = metas[pid == 1 ? 0 : 1];
+            codec::SDKCodec codec(table_meta);
+            for (int j = 0; j < 20; j++) {
+                uint64_t ts = now - j * (60 * 1000);
+                if (j % 2 == 0) {
+                    ts = 0;
+                }
+                std::vector<std::string> row = {key , "mcc", std::to_string(ts)};
+                std::string value;
+                ASSERT_EQ(0, codec.EncodeRow(row, &value));
+                std::vector<std::pair<std::string, uint32_t>> dimensions = {{key, 0}};
+                tablet_clients[pid]->Put(table_meta.tid(), table_meta.pid(), 0, value, dimensions);
+                expect++;
+            }
+        }
+    }
+    FullTableIterator it(tid, tables, tablet_clients);
+    it.SeekToFirst();
+    int count = 0;
+    while (it.Valid()) {
+        count++;
+        it.Next();
+    }
+    ASSERT_EQ(count, expect);
+
+    DistributeWindowIterator wit(tid, 4, tables, 0, "card", tablet_clients);
+    wit.SeekToFirst();
+    count = 0;
+    while (wit.Valid()) {
+        auto row_it = wit.GetValue();
+        int row_cnt = 0;
+        while (row_it->Valid()) {
+            row_cnt++;
+            row_it->Next();
+        }
+        ASSERT_EQ(row_cnt, 20);
+        count++;
+        wit.Next();
+    }
+    ASSERT_EQ(count, key_cnt);
+    for (int i = 0; i < key_cnt; i++) {
+        std::string key = "card" + std::to_string(i);
+        wit.Seek(key);
+        ASSERT_TRUE(wit.Valid());
+        auto row_it = wit.GetValue();
+        int row_cnt = 0;
+        while (row_it->Valid()) {
+            row_cnt++;
+            row_it->Next();
+        }
+        ASSERT_EQ(row_cnt, 20);
+    }
+    FLAGS_traverse_cnt_limit = old_limit;
+}
 
 }  // namespace catalog
 }  // namespace openmldb

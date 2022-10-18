@@ -269,7 +269,11 @@ public class DataUtil {
                 obj = data;
                 break;
             case "timestamp":
-                obj = new Timestamp(Long.parseLong(data));
+                if(data.matches("^\\d+$")){
+                    obj = new Timestamp(Long.parseLong(data));
+                }else{
+                    obj = new Timestamp(DateUtil.parseDateToLong(data));
+                }
                 break;
             case "date":
                 try {

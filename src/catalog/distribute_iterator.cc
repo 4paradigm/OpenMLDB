@@ -287,9 +287,10 @@ DistributeWindowIterator::ItStat DistributeWindowIterator::SeekByKey(const std::
     DLOG(INFO) << "seeking to key " << key << " from remote. cur_pid " << pid;
     auto client_iter = tablet_clients_.find(pid);
     if (client_iter != tablet_clients_.end()) {
-        std::string msg;
-        auto it = client_iter->second->Scan(tid_, pid, key, index_name_, 0, 0, FLAGS_traverse_cnt_limit, msg);
-        if (it != nullptr && it->Valid()) {
+        uint32_t count = 0;
+        auto it = client_iter->second->Traverse(tid_, pid, index_name_, key, UINT64_MAX,
+                FLAGS_traverse_cnt_limit, false, 0, count);
+        if (it != nullptr && it->Valid() && key == it->GetPK()) {
             return {pid, {}, it};
         }
     }
@@ -431,11 +432,10 @@ RemoteWindowIterator::RemoteWindowIterator(uint32_t tid, uint32_t pid, const std
         const std::shared_ptr<::openmldb::base::KvIterator>& kv_it,
         const std::shared_ptr<openmldb::client::TabletClient>& client)
     : tid_(tid), pid_(pid), index_name_(index_name), kv_it_(kv_it), tablet_client_(client),
-        is_traverse_data_(false), ts_(0), ts_cnt_(0) {
+        is_traverse_data_(false), ts_(0) {
     if (kv_it_ && kv_it_->Valid()) {
         pk_ = kv_it_->GetPK();
         ts_ = kv_it_->GetKey();
-        ts_cnt_ = 1;
         response_vec_.emplace_back(kv_it_->GetResponse());
         auto traverse_it = std::dynamic_pointer_cast<openmldb::base::TraverseKvIterator>(kv_it);
         if (traverse_it) {
@@ -455,24 +455,15 @@ bool RemoteWindowIterator::Valid() const {
     return true;
 }
 
-void RemoteWindowIterator::SetTs() {
-    if (kv_it_->GetKey() == ts_) {
-        ts_cnt_++;
-    } else {
-        ts_ = kv_it_->GetKey();
-        ts_cnt_ = 1;
-    }
-}
-
-void RemoteWindowIterator::ScanRemote(uint64_t key, uint32_t ts_cnt) {
-    std::string msg;
-    kv_it_ = tablet_client_->Scan(tid_, pid_, pk_, index_name_, key, 0,
-                FLAGS_traverse_cnt_limit, ts_cnt, msg);
-    DLOG(INFO) << "scan key " << pk_ << " ts " << key << " from remote. tid "
-        << tid_ << " pid " << pid_ << " ts_cnt " << ts_cnt;
+void RemoteWindowIterator::ScanRemote(uint64_t key, uint32_t ts_pos) {
+    uint32_t count = 0;
+    kv_it_ = tablet_client_->Traverse(tid_, pid_, index_name_, pk_, key,
+                FLAGS_traverse_cnt_limit, false, ts_pos, count);
+    DLOG(INFO) << "traverse key " << pk_ << " ts " << key << " from remote. tid "
+        << tid_ << " pid " << pid_ << " ts_pos " << ts_pos;
     if (kv_it_ && kv_it_->Valid()) {
+        ts_ = kv_it_->GetKey();
         response_vec_.emplace_back(kv_it_->GetResponse());
-        SetTs();
     }
 }
 
@@ -491,10 +482,9 @@ void RemoteWindowIterator::Seek(const uint64_t& key) {
     }
     if (kv_it_->Valid()) {
         ts_ = kv_it_->GetKey();
-    } else if (!kv_it_->IsFinish()) {
+    } else {
         ScanRemote(key, 0);
     }
-    ts_cnt_ = 1;
 }
 
 void RemoteWindowIterator::Next() {
@@ -506,9 +496,10 @@ void RemoteWindowIterator::Next() {
             kv_it_.reset();
             return;
         }
-        SetTs();
-    } else if (!kv_it_->IsFinish()) {
-        ScanRemote(ts_, ts_cnt_);
+        ts_ = kv_it_->GetKey();
+    } else {
+        auto traverse_it = std::dynamic_pointer_cast<openmldb::base::TraverseKvIterator>(kv_it_);
+        ScanRemote(traverse_it->GetLastTS(), traverse_it->GetTSPos());
     }
 }
 
