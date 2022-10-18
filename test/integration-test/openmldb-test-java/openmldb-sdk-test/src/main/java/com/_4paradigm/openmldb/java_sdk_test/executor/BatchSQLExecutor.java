@@ -84,6 +84,7 @@ public class BatchSQLExecutor extends BaseSQLExecutor {
     public void prepare(String version,SqlExecutor executor){
         log.info("version:{} prepare begin",version);
         sdkClient.createAndUseDB(dbName);
+        sdkClient.setOnline();
         boolean useFirstInputAsRequests = false;
         List<InputDesc> inputs = sqlCase.getInputs();
         if (inputs != null && inputs.size() > 0) {
@@ -124,6 +125,7 @@ public class BatchSQLExecutor extends BaseSQLExecutor {
     @Override
     public OpenMLDBResult execute(String version, SqlExecutor executor){
         log.info("version:{} execute begin",version);
+        sdkClient.useDB(dbName);
         OpenMLDBResult openMLDBResult = null;
         List<String> sqls = sqlCase.getSqls();
         if (sqls != null && sqls.size() > 0) {

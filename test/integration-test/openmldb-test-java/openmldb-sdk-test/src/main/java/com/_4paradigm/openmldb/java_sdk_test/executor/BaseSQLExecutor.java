@@ -141,7 +141,7 @@ public abstract class BaseSQLExecutor extends BaseExecutor{
             if(table.isDrop()) {
                 String drop = "drop table " + table.getName() + ";";
                 String tableDBName = table.getDb().isEmpty() ? dbName : table.getDb();
-                SDKUtil.ddl(executor, tableDBName, drop);
+//                SDKUtil.ddl(executor, tableDBName, drop);
             }
         }
     }

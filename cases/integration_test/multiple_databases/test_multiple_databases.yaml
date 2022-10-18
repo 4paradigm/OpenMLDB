@@ -221,6 +221,7 @@ cases:
       success: false
   - id: 9
     desc: 使用子查询查不同库的数据然后lastjoin
+    mode: batch-unsupport
     tags: ["request 模式有问题，@chenjing"]
     db: db
     inputs:
