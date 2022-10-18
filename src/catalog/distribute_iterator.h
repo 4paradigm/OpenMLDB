@@ -109,6 +109,8 @@ class RemoteWindowIterator : public ::hybridse::vm::RowIterator {
     bool IsSeekable() const override { return true; }
 
  private:
+    void ScanRemote(uint64_t key, uint32_t ts_pos);
+
     inline void ResetValue() {
         valid_value_ = false;
     }
