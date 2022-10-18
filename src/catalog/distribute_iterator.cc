@@ -347,7 +347,8 @@ void DistributeWindowIterator::Next() {
             }
             cur_pid_ = iter->first;
             uint32_t count = 0;
-            kv_it_ = iter->second->Traverse(tid_, cur_pid_, index_name_, "", 0, FLAGS_traverse_cnt_limit, false, 0, count);
+            kv_it_ =
+                iter->second->Traverse(tid_, cur_pid_, index_name_, "", 0, FLAGS_traverse_cnt_limit, false, 0, count);
             DLOG(INFO) << "count " << count;
             if (kv_it_ && kv_it_->Valid()) {
                 response_vec_.emplace_back(kv_it_->GetResponse());
