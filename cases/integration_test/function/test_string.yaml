@@ -18,7 +18,7 @@ version: 0.5.0
 cases:
   - id: 0
     desc: "concat_各种类型组合"
-    mode: cli-unsupport
+    mode: cli-unsupport,batch-unsupport
     sqlDialect: ["HybridSQL"]
     inputs:
       -
@@ -114,7 +114,7 @@ cases:
       rows:
         - [1, "aa", "bbb", "aa-bbb-cc"]
   - id: 3
-    mode: cli-unsupport
+    mode: cli-unsupport,batch-unsupport
     desc: "concat_ws-所有类型"
     sqlDialect: ["HybridSQL"]
     inputs:

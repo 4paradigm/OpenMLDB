@@ -19,6 +19,7 @@ sqlDialect: ["HybridSQL"]
 cases:
   - id: 0
     desc: "string_比较运算_各种类型"
+    mode: batch-unsupport
     inputs:
       -
         columns : ["id bigint","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
@@ -62,6 +63,7 @@ cases:
           - [false,true,false,false,false,false,false,false,false]
   - id: 1
     desc: "整型_比较运算_各种类型_正确"
+    mode: batch-unsupport
     inputs:
       -
         columns : ["id bigint","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
@@ -106,6 +108,7 @@ cases:
           - [false,true,false,false,false,false,false]
   - id: 2
     desc: "整型_比较运算_各种类型_错误"
+    mode: batch-unsupport
     level: 5
     inputs:
       -
@@ -127,6 +130,7 @@ cases:
       success: false
   - id: 3
     desc: "时间类型_比较运算_各种类型_正确"
+    mode: batch-unsupport
     inputs:
       -
         columns : ["id bigint","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
@@ -180,6 +184,7 @@ cases:
           - [true,true,false,true]
   - id: 4
     desc: "timestamp_比较运算_各种类型_错误"
+    mode: batch-unsupport
     level: 5
     inputs:
       -
@@ -201,6 +206,7 @@ cases:
       success: false
   - id: 5
     desc: "date_比较运算_各种类型_错误"
+    mode: batch-unsupport
     level: 5
     inputs:
       -
@@ -222,6 +228,7 @@ cases:
       success: false
   - id: 6
     desc: "bool_比较运算_各种类型"
+    mode: batch-unsupport
     inputs:
       -
         columns : ["id bigint","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
@@ -371,6 +378,7 @@ cases:
 
   - id: between_predicate_1
     desc: between predicate, numberic between
+    mode: batch-unsupport
     inputs:
       - columns: [ "id bigint", "name string", "code string", "ctime bigint", "cdate date" ]
         indexs: [ "index1:id:ctime" ]
@@ -394,6 +402,7 @@ cases:
         - [2, Zoey, 100]
   - id: between_predicate_2
     desc: between predicate, string between
+    mode: batch-unsupport
     inputs:
       - columns: [ "id bigint", "name string", "code string", "ctime timestamp", "cdate date" ]
         indexs: [ "index1:id:ctime" ]
@@ -417,6 +426,7 @@ cases:
         - [2, Zoey, BBC, NULL]
   - id: between_predicate_3
     desc: between predicate, timestamp between
+    mode: batch-unsupport
     inputs:
       - columns: [ "id bigint", "name string", "code string", "ctime timestamp", "cdate date" ]
         indexs: [ "index1:id:ctime" ]

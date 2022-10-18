@@ -36,7 +36,7 @@ import org.testng.annotations.Test;
 public class MultiDBTest extends OpenMLDBTest {
 
     @Story("batch")
-    @Test(dataProvider = "getCase",enabled = false)
+    @Test(dataProvider = "getCase")
     @Yaml(filePaths = {"integration_test/multiple_databases/"})
     @Step("{testCase.desc}")
     public void testMultiDB(SQLCase testCase) throws Exception {

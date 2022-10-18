@@ -35,7 +35,7 @@ import org.testng.annotations.Test;
 public class FunctionTest extends OpenMLDBTest {
 
     @Story("batch")
-    @Test(dataProvider = "getCase",enabled = false)
+    @Test(dataProvider = "getCase")
     @Yaml(filePaths = "integration_test/function/")
     public void testFunction(SQLCase testCase) throws Exception {
         ExecutorFactory.build(executor, testCase, SQLCaseType.kBatch).run();
