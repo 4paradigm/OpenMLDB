@@ -631,6 +631,7 @@ cases:
   -
     id: 23-1
     desc: lastjoin结合maxsize
+    mode: batch-unsupport
     inputs:
       -
         columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
