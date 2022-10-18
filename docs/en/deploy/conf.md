@@ -158,6 +158,14 @@
 # The maximum height of the second level skip list
 #--key_entry_max_height=8
 
+# max table traverse iteration
+#--max_traverse_cnt=50000
+# query conf
+# max table traverse iteration（full table scan/aggregation）
+#--max_traverse_cnt=50000
+# max table traverse pk number（batch query）
+#--max_traverse_pk_cnt=5000
+
 # loadtable
 # The number of data bars to submit a task to the thread pool when loading
 #--load_table_batch=30

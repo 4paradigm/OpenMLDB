@@ -29,7 +29,7 @@ OpenMLDB 针对线上线下的特征工程全流程，在不同阶段提供了�
 | 3. 特征方案部署         | 离线模式   | CLI                                   | - `DEPLOY` 命令                                                                                                 |
 | 4. 冷启动在线数据导入   | 在线预览模式 | CLI，导入工具                              | - CLI 使用 `LOAD DATA` 命令<br />- 也可使用独立导入工具 `openmldb-import`                                                   |
 | 5. 实时数据接入         | 在线预览模式 | connector, REST APIs, Java/Python SDK | - 第三方数据源调用 OpenMLDB 的相关数据插入 API(connector)，引入实时数据<br/>- 或使用Java/Python SDK工具，在对请求行的计算完成后，插入主表                 |
-| 6. 在线数据预览（可选） | 在线预览模式 | CLI, Java/Python SDK                  | - 目前仅支持对列进行 `SELECT` 操作、表达式、以及单行处理函数用于数据预览<br />- 不支持 `LAST JOIN`, `GROUP BY`, `HAVING`, `WINDOW` 等复杂计算<br /> |
+| 6. 在线数据预览（可选） | 在线预览模式 | CLI, Java/Python SDK                  | - 目前不支持 `LAST JOIN`, `ORDER BY` |
 | 7. 实时特征计算         | 在线请求模式 | REST APIs, Java/Python SDK            | - 支持 OpenMLDB 所有的 SQL 语法<br />- REST APIs 以及 Java SDK 支持单行或者批请求<br />- Python SDK 仅支持单行请求                     |
 
 从以上的总结表格上可以看到，执行模式分为 `离线模式`，`在线预览模式`，以及`在线请求模式`。后续我们将对这几种模式展开详细介绍。下图总结示意了全流程开发和对应的执行模式。
