@@ -32,8 +32,8 @@ import org.testng.Assert;
 @Slf4j
 public class IndexCountChecker extends BaseChecker {
     private static final Logger logger = new LogProxy(log);
-    public IndexCountChecker(ExpectDesc expect, OpenMLDBResult fesqlResult){
-        super(expect,fesqlResult);
+    public IndexCountChecker(ExpectDesc expect, OpenMLDBResult openMLDBResult){
+        super(expect,openMLDBResult);
     }
 
     @Override

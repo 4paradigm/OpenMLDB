@@ -16,32 +16,6 @@
 db: test_zw
 debugs: []
 cases:
-  -
-    id: 0
-    desc: Load data 集群版，EXECUTE_MODE=online，load parquet文件
-    inputs:
-      -
-        columns: ["id int","job_state string","state string","start_time timestamp","end_time timestamp","parameter string","cluster string","application_id string","error string"]
-        create: |
-          create table {0}(
-              id int,
-              c1_smallint smallint,
-              c2_int int,
-              c3_bigint bigint,
-              c4_float float,
-              c5_double double,
-              c6_string string,
-              c7_timestamp timestamp,
-              c8_date date,
-              c9_bool bool,
-              index(key=c6_string,ts=c7_timestamp,ttl=0m,ttl_type=absolute)
-          )options(partitionnum = 1,replicanum = 1);
-    sqls:
-      - set @@SESSION.execute_mode = "online";
-      - LOAD DATA INFILE 'hdfs://m7-common-cdh02:8022/user/zhaowei/openmldb/load_data/user/zhaowei/openmldb/load_data/parquet' INTO TABLE {0};
-      - SHOW JOBS;
-    expect:
-      columns: ["id int","job_state string","state string","start_time timestamp","end_time timestamp","parameter string","cluster string","application_id string","error string"]
 
   -
     id: 1
@@ -68,88 +42,6 @@ cases:
       - LOAD DATA INFILE 'hdfs://m7-common-cdh02:8022/user/zhaowei/openmldb/load_data/user/zhaowei/openmldb/load_data/parquet' INTO TABLE {0} options(format='parquet',foo='bar',deep_copy=false,header=false,mode='append');
       - SHOW JOBS;
     expect:
-
-
-  -
-    id: 2
-    desc: 集群版，EXECUTE_MODE=online，load csv文件，mode默认不写
-    inputs:
-      -
-        columns: ["id int","c1_smallint smallint","c2_int int","c3_bigint bigint","c4_float float","c5_double double","c6_string string","c7_timestamp bigint","c8_date date","c9_bool bool"]
-        create: |
-          create table {0}(
-              id int,
-              c1_smallint smallint,
-              c2_int int,
-              c3_bigint bigint,
-              c4_float float,
-              c5_double double,
-              c6_string string,
-              c7_timestamp bigint,
-              c8_date date,
-              c9_bool bool,
-              index(key=c6_string,ts=c7_timestamp,ttl=0m,ttl_type=absolute)
-          )options(partitionnum = 1,replicanum = 1);
-    sqls:
-      - set @@SESSION.execute_mode = "online";
-      - load data infile 'hdfs://m7-common-cdh02:8022/user/zhaowei/openmldb/load_data/csv-import-10000-1.csv' into table {0};
-      - SHOW JOBS;
-    expect:
-      columns: ["id int","job_state string","state string","start_time timestamp","end_time timestamp","parameter string","cluster string","application_id string","error string"]
-      rows:
-         - [1,"ImportOfflineData","FINISHED","","","load data infile 'hdfs://m7-common-cdh02:8022/user/zhaowei/openmldb/load_data/csv-import-10000-1.csv' into table test_smoke options(deep_copy=true,mode='append');",
-                "local","local-1640683224470",""]
-  -
-    id: 3
-    desc: 集群版，execute_mode=online, load csv文件,mode=append
-    inputs:
-      -
-        columns: ["id int","c1_smallint smallint","c2_int int","c3_bigint bigint","c4_float float","c5_double double","c6_string string","c7_timestamp bigint","c8_date date","c9_bool bool"]
-        create: |
-          create table {0}(
-              id int,
-              c1_smallint smallint,
-              c2_int int,
-              c3_bigint bigint,
-              c4_float float,
-              c5_double double,
-              c6_string string,
-              c7_timestamp bigint,
-              c8_date date,
-              c9_bool bool,
-              index(key=c6_string,ts=c7_timestamp,ttl=0m,ttl_type=absolute)
-          )options(partitionnum = 1,replicanum = 1);
-    sqls:
-      - set @@SESSION.execute_mode = "online";
-      - load data infile 'hdfs://m7-common-cdh02:8022/user/zhaowei/openmldb/load_data/csv-import-10000-1.csv' into table {0} options(mode='append');
-      - SHOW JOBS;
-    expect:
-
-  -
-    id: 4
-    desc: 集群版，execute_mode=online, load csv文件,mode=overwrite
-    inputs:
-      -
-        columns: ["id int","c1_smallint smallint","c2_int int","c3_bigint bigint","c4_float float","c5_double double","c6_string string","c7_timestamp bigint","c8_date date","c9_bool bool"]
-        create: |
-          create table {0}(
-              id int,
-              c1_smallint smallint,
-              c2_int int,
-              c3_bigint bigint,
-              c4_float float,
-              c5_double double,
-              c6_string string,
-              c7_timestamp bigint,
-              c8_date date,
-              c9_bool bool,
-              index(key=c6_string,ts=c7_timestamp,ttl=0m,ttl_type=absolute)
-          )options(partitionnum = 1,replicanum = 1);
-    sqls:
-      - set @@SESSION.execute_mode = "online";
-      - load data infile 'hdfs://m7-common-cdh02:8022/user/zhaowei/openmldb/load_data/csv-import-10000-1.csv' into table {0} options(mode='overwrite');
-      - SHOW JOBS;
-    expect:
   -
     id: 5
     desc: 集群版，集群版 execute_mode=offline, load csv文件,deep_copy=true, mode默认不写,如果文件不存在
@@ -157,7 +49,7 @@ cases:
       -
         columns: ["id int","c1_smallint smallint","c2_int int","c3_bigint bigint","c4_float float","c5_double double","c6_string string","c7_timestamp bigint","c8_date date","c9_bool bool"]
         create: |
-          create table {0}(
+          create table t1(
               id int,
               c1_smallint smallint,
               c2_int int,
@@ -172,7 +64,7 @@ cases:
           )options(partitionnum = 1,replicanum = 1);
     sqls:
       - set @@SESSION.execute_mode = "offline";
-      - load data infile 'hdfs://m7-common-cdh02:8022/user/zhaowei/openmldb/load_data/csv-import-10000-1.csv' into table {0} options(deep_copy=true);
+      - load data infile 'hdfs://m7-common-cdh02:8022/user/zhaowei/openmldb/load_data/csv-import-10000-1.csv' into table t1 options(deep_copy=true);
       - SHOW JOBS;
     expect:
 

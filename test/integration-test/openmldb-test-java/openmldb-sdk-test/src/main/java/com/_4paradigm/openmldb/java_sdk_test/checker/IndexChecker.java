@@ -38,8 +38,8 @@ import java.util.List;
 @Slf4j
 public class IndexChecker extends BaseChecker {
     private static final Logger logger = new LogProxy(log);
-    public IndexChecker(ExpectDesc expect, OpenMLDBResult fesqlResult){
-        super(expect,fesqlResult);
+    public IndexChecker(ExpectDesc expect, OpenMLDBResult openMLDBResult){
+        super(expect,openMLDBResult);
     }
 
     @Override

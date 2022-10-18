@@ -128,10 +128,6 @@ class MemTable : public Table {
 
     inline bool GetExpireStatus() { return enable_gc_.load(std::memory_order_relaxed); }
 
-    inline void RecordCntIncr() { record_cnt_.fetch_add(1, std::memory_order_relaxed); }
-
-    inline void RecordCntIncr(uint32_t cnt) { record_cnt_.fetch_add(cnt, std::memory_order_relaxed); }
-
     inline uint32_t GetKeyEntryHeight() const { return key_entry_max_height_; }
 
     bool DeleteIndex(const std::string& idx_name) override;
