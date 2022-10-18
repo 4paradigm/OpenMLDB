@@ -1,14 +1,11 @@
 package com._4paradigm.test_tool.command_tool.conf;
-
-
-
-
 import com._4paradigm.test_tool.command_tool.util.PropertiesUtils;
 
 import java.util.Properties;
 
 public class CommandConfig {
     public static String env = "qa";
+    public static final boolean IS_REMOTE;
     public static final String REMOTE_IP;
     public static final String REMOTE_USER;
     public static final String REMOTE_PASSWORD;
@@ -18,6 +15,7 @@ public class CommandConfig {
 
 
     static{
+        IS_REMOTE = Boolean.parseBoolean(CONFIG.getProperty("is_remote","false"));
         String remote_ip = CONFIG.getProperty(env+"_remote_ip");
         String remote_user = CONFIG.getProperty(env+"_remote_user");
         String remote_password = CONFIG.getProperty(env+"_remote_password");

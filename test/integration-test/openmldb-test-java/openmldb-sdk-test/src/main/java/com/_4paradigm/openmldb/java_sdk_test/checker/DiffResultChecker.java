@@ -33,8 +33,8 @@ import java.util.Map;
 public class DiffResultChecker extends BaseChecker{
 
     // private FesqlResult sqlite3Result;
-    public DiffResultChecker(OpenMLDBResult fesqlResult, Map<String, OpenMLDBResult> resultMap){
-        super(fesqlResult,resultMap);
+    public DiffResultChecker(OpenMLDBResult openMLDBResult, Map<String, OpenMLDBResult> resultMap){
+        super(openMLDBResult,resultMap);
         // sqlite3Result = resultMap.get("sqlite3");
     }
 

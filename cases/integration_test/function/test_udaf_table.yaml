@@ -15,7 +15,7 @@
 db: test_zw
 debugs: []
 sqlDialect: ["HybridSQL"]
-version: 0.5.0
+version: 0.4.0
 cases:
   - id: 0
     desc: "count(*)"
@@ -84,7 +84,7 @@ cases:
       order: c1
       columns: ["v1 int","v2 int","v3 int","v4 double","v5 int"]
       rows:
-        - [0,0,0,0,0]
+        - [0,null,null,null,null]
   - id: 4
     desc: "列有null和空串"
     mode: request-unsupport
