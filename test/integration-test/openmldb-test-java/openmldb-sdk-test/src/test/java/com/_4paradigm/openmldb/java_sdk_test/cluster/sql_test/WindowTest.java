@@ -35,7 +35,7 @@ import org.testng.annotations.Test;
 public class WindowTest extends OpenMLDBTest {
 
     @Story("batch")
-    @Test(dataProvider = "getCase")
+    @Test(dataProvider = "getCase",enabled = false)
     @Yaml(filePaths = {"integration_test/window/",
             "integration_test/cluster/",
             "integration_test/test_index_optimized.yaml"})

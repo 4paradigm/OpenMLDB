@@ -11,12 +11,12 @@ import lombok.extern.slf4j.Slf4j;
 import org.testng.annotations.Test;
 
 @Slf4j
-@Feature("Out-In")
+@Feature("Task")
 public class OutInTest extends OpenMLDBTest {
 
     @Test(dataProvider = "getCase")
     @Yaml(filePaths = "integration_test/out_in/test_select_into_load_data.yaml")
-    @Story("LOAD DATA")
+    @Story("Out-In")
     public void testOutIn(SQLCase testCase){
         System.out.println("testCase = " + testCase);
         ExecutorFactory.build(executor, testCase, SQLCaseType.kJob).run();
@@ -24,7 +24,7 @@ public class OutInTest extends OpenMLDBTest {
 
     @Test(dataProvider = "getCase",enabled = false)
     @Yaml(filePaths = "integration_test/out_in/test_job.yaml")
-    @Story("LOAD DATA")
+    @Story("Job")
     public void testJob(SQLCase testCase){
         System.out.println("testCase = " + testCase);
         ExecutorFactory.build(executor, testCase, SQLCaseType.kBatch).run();

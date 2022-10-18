@@ -896,7 +896,7 @@ void MemTableTraverseIterator::Seek(const std::string& key, uint64_t ts) {
             it_ = ((KeyEntry*)pk_it_->GetValue())         // NOLINT
                       ->entries.NewIterator();
         }
-        if (spk.compare(pk_it_->GetKey()) != 0 || ts == 0) {
+        if (spk.compare(pk_it_->GetKey()) != 0) {
             it_->SeekToFirst();
             traverse_cnt_++;
             record_idx_ = 1;
@@ -909,7 +909,7 @@ void MemTableTraverseIterator::Seek(const std::string& key, uint64_t ts) {
                 record_idx_ = 1;
                 while (it_->Valid() && record_idx_ <= expire_value_.lat_ttl) {
                     traverse_cnt_++;
-                    if (it_->GetKey() < ts) {
+                    if (it_->GetKey() <= ts) {
                         return;
                     }
                     it_->Next();
@@ -919,9 +919,6 @@ void MemTableTraverseIterator::Seek(const std::string& key, uint64_t ts) {
             } else {
                 it_->Seek(ts);
                 traverse_cnt_++;
-                if (it_->Valid() && it_->GetKey() == ts) {
-                    it_->Next();
-                }
                 if (!it_->Valid() || expire_value_.IsExpired(it_->GetKey(), record_idx_)) {
                     NextPK();
                 }

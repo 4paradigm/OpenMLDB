@@ -31,6 +31,12 @@ public enum SQLType {
             if(OpenMLDBGlobalVar.EXECUTE_MODE.equals("offline")){
                 return OFFLINE_SELECT;
             }
+        if(sql.toLowerCase().startsWith("load data")||sql.toLowerCase().contains("into outfile")){
+            return JOB;
+        }else if(sql.toLowerCase().startsWith("select")){
+            if(OpenMLDBGlobalVar.EXECUTE_MODE.equals("offline")){
+                return OFFLINE_SELECT;
+            }
             return SELECT;
         }else if (sql.toLowerCase().startsWith("insert into")) {
             return INSERT;

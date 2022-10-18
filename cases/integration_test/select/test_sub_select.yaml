@@ -359,7 +359,8 @@ cases:
         - [1,1]
   - id: 16
     desc: 先子查询后window
-    version: 0.7.0
+    tags: ["TODO","https://github.com/4paradigm/OpenMLDB/issues/2621"]
+    version: 0.6.4
     inputs:
       - columns: [ "c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date" ]
         indexs: [ "index1:c1:c7" ]

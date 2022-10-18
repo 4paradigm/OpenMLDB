@@ -606,7 +606,6 @@ cases:
       from {0}
       last join {1} ORDER BY {1}.c7 on {0}.c1={1}.c1
       ) as t1 last join {2} ORDER BY {2}.c7 on t1.c3={2}.c3
-      
       ;
     expect:
       order: id
@@ -661,6 +660,7 @@ cases:
   - id: 11-3
     desc: (t1 last join t2)+window
     mode: offline-unsupport
+    tags: ["TODO","bug,https://github.com/4paradigm/OpenMLDB/issues/2621"]
     inputs:
       -
         columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
