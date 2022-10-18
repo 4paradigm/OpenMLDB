@@ -158,7 +158,6 @@ jobs:
       - uses: actions/checkout@v2
 
       - name: prepare release
-        if: ${{ startsWith(github.ref, 'refs/tags/v') }}
         run: |
           VERSION="snapshot"
           if [[ ${{ github.ref }} == "refs/tags/v"* ]]; then
@@ -169,12 +168,11 @@ jobs:
           echo "OPENMLDB_PREFIX=openmldb-$VERSION-darwin" >> $GITHUB_ENV
 
       - name: enable java on release
-        if: ${{ github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') }}
+        if: ${{ github.event_name == 'push' }}
         run: |
           echo "SQL_JAVASDK_ENABLE=ON" >> $GITHUB_ENV
 
       - name: configure
-        if: ${{ startsWith(github.ref, 'refs/tags/v') }}
         env:
           SQL_JAVASDK_ENABLE: ${{ env.SQL_JAVASDK_ENABLE }}
         run: |
@@ -188,17 +186,17 @@ jobs:
           # make thirdpartybuild-clean
 
       - name: install
-        if: ${{ github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') }}
+        if: ${{ github.event_name == 'push' }}
         run: |
           make install
 
       - name: package
-        if: ${{ github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') }}
+        if: ${{ github.event_name == 'push' }}
         run: |
           tar czf ${{ env.OPENMLDB_PREFIX }}.tar.gz ${{ env.OPENMLDB_PREFIX }}/
 
       - name: upload artifacts
-        if: ${{ github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') }}
+        if: ${{ github.event_name == 'push' }}
         uses: actions/upload-artifact@v2
         with:
           path: openmldb-*.tar.gz
