@@ -306,7 +306,7 @@ object HybridseUtil {
       // use string to read, then infer the format by the first non-null value of the ts column
       val longTsCols = HybridseUtil.parseLongTsCols(reader, readSchema, tsCols, file)
       logger.info(s"read schema: $readSchema, file $file")
-      var df = reader.schema(readSchema).load(file)
+      df = reader.schema(readSchema).load(file)
       if (longTsCols.nonEmpty) {
         // convert long type to timestamp type
         for (tsCol <- longTsCols) {
@@ -322,7 +322,7 @@ object HybridseUtil {
       }
     }
 
-    require(df.schema == oriSchema, "source schema must == table schema")
+    require(df.schema == oriSchema, s"source schema ${df.schema} != table schema $oriSchema")
     debugDf(df)
     df
   }
