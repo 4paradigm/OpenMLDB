@@ -384,7 +384,7 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
         // we can't execute() again without set new row, so we must clean up here
         clearSQLInsertRowList();
         if (!ok) {
-            logger.error("execute insert fail: {}", status.getMsg());
+            logger.error("getInsertRow fail: {}", status.getMsg());
             status.delete();
             return false;
         }
