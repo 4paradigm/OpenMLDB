@@ -1825,7 +1825,7 @@ TEST_P(TabletImplTest, Scan) {
     }
     tablet.Scan(NULL, &sr, &srp, &closure);
     ASSERT_EQ(0, srp.code());
-    ASSERT_EQ(2, (signed)srp.count());
+    ASSERT_EQ(1, (signed)srp.count());
 }
 
 
@@ -4820,9 +4820,7 @@ TEST_P(TabletImplTest, AbsOrLat) {
         tablet.Scan(NULL, &sr, &srp, &closure);
         ASSERT_EQ(0, srp.code());
         int exp = 4;
-        // for key test9, its rows are [now, now-10, now-20, now-30, now-40]
-        // as et is inclusive
-        ASSERT_EQ(i != 9 ? 4 : 5, (signed)srp.count());
+        ASSERT_EQ(4, (signed)srp.count());
     }
     for (int i = 0; i < 10; ++i) {
         sr.set_tid(id);

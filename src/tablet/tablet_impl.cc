@@ -949,8 +949,7 @@ int32_t TabletImpl::ScanIndex(const ::openmldb::api::ScanRequest* request, const
             continue;
         }
         uint64_t ts = combine_it->GetTs();
-        // et is inclusive
-        if (ts < et) {
+        if (ts <= et) {
             break;
         }
         last_time = ts;
@@ -1037,8 +1036,7 @@ int32_t TabletImpl::ScanIndex(const ::openmldb::api::ScanRequest* request, const
             continue;
         }
         uint64_t ts = combine_it->GetTs();
-        // et is inclusive
-        if (ts < et) {
+        if (ts <= et) {
             break;
         }
         last_time = ts;
