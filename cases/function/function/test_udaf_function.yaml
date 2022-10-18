@@ -1713,7 +1713,8 @@ cases:
           - [4,"aa","b:1","b:1","b:1","b:1","b:1"]
   -
     id: 39
-    desc: "top_n_key_*_cate_where-fail1"
+    desc: |
+      top_n_key_*_cate_where-fail1, float or bool can't be category
     sqlDialect: ["HybridSQL"]
     level: 5
     inputs:
@@ -1746,7 +1747,8 @@ cases:
       success: false
   -
     id: 40
-    desc: "top_n_key_*_cate_where-fail2"
+    desc: |
+      top_n_key_*_cate_where-fail2. Value can not be timestamp, date, string, bool, excepting top_n_key_count_cate_where
     sqlDialect: ["HybridSQL"]
     level: 5
     inputs:
@@ -1767,7 +1769,7 @@ cases:
           - [3,3,2,2,32,1.3,2.3,1590738992000,"2020-05-02","b",false]
           - [4,4,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL]
     dataProvider:
-      - ["top_n_key_count_cate_where","top_n_key_sum_cate_where","top_n_key_avg_cate_where","top_n_key_max_cate_where","top_n_key_min_cate_where"]
+      - ["top_n_key_sum_cate_where","top_n_key_avg_cate_where","top_n_key_max_cate_where","top_n_key_min_cate_where"]
       - ["{0}.c7","{0}.c8","{0}.c9","{0}.c10"]
       - ["{1}.c2","{1}.c3","{1}.c4","{1}.c5","{1}.c6","{1}.c7","{1}.c8","{1}.c9","{1}.c10"]
     sql: |
@@ -2550,3 +2552,47 @@ cases:
         - [2,"aa",2.5,2.5,31.5,1.25,2.25]
         - [3,"aa",1,1,33,1.1000000238418579,2.1]
         - [4,"aa",2.5,2.5,33,1.25,2.25]
+
+  - id: 62
+    desc: |
+      top_n_value_*_cate_where
+    inputs:
+      - name: t1
+        schema: id:int32, col1:int32, col2:int16, col3:string, col4 double, std_ts:timestamp
+        index: index2:col2:std_ts
+        data: |
+          0, 1,    55, g1,   2.0,  1590115420000
+          1, 2,    55, NULL, 2.0,  1590115421000
+          2, 3,    55, g2,   NULL, 1590115422000
+          3, 4,    55, g1,   4.0,  1590115423000
+          4, NULL, 55, g2,   4.0,  1590115424000
+          5, 5,    55, g2,   4.0,  1590115425000
+          6, 5,    55, g2,   1.0,  1590115426000
+    sql: |
+      select id, col1,
+        top_n_value_count_cate_where(col3, col1 != 5, col3, 1) over w as tv1,
+        top_n_value_min_cate_where(col1, char_length(col3) > 1, col3, 1) over w as tv2,
+        top_n_value_max_cate_where(col4, id > 0, col3, 2) over w as tv3,
+        top_n_value_sum_cate_where(col1, id != 6, col2, 1) over w as tv4,
+        top_n_value_avg_cate_where(col4, true, col1, 3) over w as tv5,
+      from t1
+      window w as (
+        partition by col2 order by std_ts rows_range between 10s preceding and current row);
+    expect:
+      order: id
+      columns:
+        - id int32
+        - col1 int32
+        - tv1 string
+        - tv2 string
+        - tv3 string
+        - tv4 string
+        - tv5 string
+      rows:
+        - [0, 1,    "g1:1", "g1:1", "",                        "55:1",              "1:2.000000"]
+        - [1, 2,    "g1:1", "g1:1", "",                        "55:3",              "2:2.000000,1:2.000000"]
+        - [2, 3,    "g2:1", "g2:3", "",                        "55:6",              "2:2.000000,1:2.000000"]
+        - [3, 4,    "g1:2", "g2:3", "g1:4.000000",             "55:10",             "4:4.000000,2:2.000000,1:2.000000"]
+        - [4, NULL, "g1:2", "g2:3", "g2:4.000000,g1:4.000000", "55:10", "4:4.000000,2:2.000000,1:2.000000"]
+        - [5, 5,    "g1:2", "g2:3", "g2:4.000000,g1:4.000000", "55:15", "5:4.000000,4:4.000000,2:2.000000"]
+        - [6, 5,    "g1:2", "g2:3", "g2:4.000000,g1:4.000000", "55:15", "4:4.000000,5:2.500000,2:2.000000"]

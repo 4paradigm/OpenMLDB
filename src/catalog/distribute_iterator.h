@@ -94,8 +94,7 @@ class RemoteWindowIterator : public ::hybridse::vm::RowIterator {
     bool IsSeekable() const override { return true; }
 
  private:
-    void SetTs();
-    void ScanRemote(uint64_t key, uint32_t ts_cnt);
+    void ScanRemote(uint64_t key, uint32_t ts_pos);
 
  private:
     uint32_t tid_;
@@ -108,7 +107,6 @@ class RemoteWindowIterator : public ::hybridse::vm::RowIterator {
     bool is_traverse_data_;
     std::string pk_;
     mutable uint64_t ts_;
-    uint32_t ts_cnt_;
 };
 
 class DistributeWindowIterator : public ::hybridse::codec::WindowIterator {

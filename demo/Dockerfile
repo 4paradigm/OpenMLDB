@@ -13,7 +13,7 @@ COPY predict-taxi-trip-duration/script /work/taxi-trip/
 COPY talkingdata-adtracking-fraud-detection /work/talkingdata/
 
 ENV LANG=en_US.UTF-8
-ENV SPARK_HOME=/work/openmldb/spark-3.0.0-bin-openmldbspark
+ENV SPARK_HOME=/work/openmldb/spark-3.2.1-bin-openmldbspark
 ARG OPENMLDB_VERSION=0.6.3
 
 COPY setup_openmldb.sh /

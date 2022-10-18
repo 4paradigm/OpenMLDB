@@ -1,0 +1,2301 @@
+# Copyright 2021 4Paradigm
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+db: test_zw
+debugs: []
+cases:
+  -
+    id: 0-1
+    desc: 数据里有null、空串、特殊字符,quote='#'
+    tags: ["TODO","bug,csv 对空串的处理"]
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+          - [2,"null",2,21,31,1.2,2.2,1590738990000,"2020-05-02",false]
+          - [3,"",3,22,32,1.3,2.3,1590738991000,"2020-05-03",true]
+          - [4,null,3,22,32,1.3,2.3,1590738991000,"2020-05-03",true]
+          - [5,null,3,22,32,1.3,2.3,1590738991000,"2020-05-03",null]
+          - [6,"~!@$%^#&*()_+<",3,22,32,1.3,2.3,1590738991000,"2020-05-03",null]
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+    sqls:
+      - set @@SESSION.execute_mode = "online";
+      - select * from {0} into outfile '{root_path}/out/{0}-online.csv' options(mode='append',quote='#');
+      - set @@SESSION.execute_mode = "offline";
+      - LOAD DATA INFILE 'file://{root_path}/out/{0}-online.csv' into table {0} options(mode='append',quote='#');
+      - select * from {0} into outfile 'file://{root_path}/out/{0}-offline.csv' options(quote='#');
+      - set @@SESSION.execute_mode = "online";
+      - LOAD DATA INFILE 'file://{root_path}/out/{0}-offline.csv' into table {1} options(mode='append',quote='#');
+      - select * from {1};
+    expect:
+      order: id
+      columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+      rows:
+        - [1,"aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+        - [2,"null",2,21,31,1.2,2.2,1590738990000,"2020-05-02",false]
+        - [3,"",3,22,32,1.3,2.3,1590738991000,"2020-05-03",true]
+        - [4,null,3,22,32,1.3,2.3,1590738991000,"2020-05-03",true]
+        - [5,null,3,22,32,1.3,2.3,1590738991000,"2020-05-03",null]
+        - [6,"~!@#$%^&*()_+<",3,22,32,1.3,2.3,1590738991000,"2020-05-03",null]
+  -
+    id: 0-2
+    desc: 数据里有null、空串、特殊字符
+    tags: ["TODO","bug,csv 对空串的处理"]
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+          - [2,"null",2,21,31,1.2,2.2,1590738990000,"2020-05-02",false]
+          - [3,"",3,22,32,1.3,2.3,1590738991000,"2020-05-03",true]
+          - [4,null,3,22,32,1.3,2.3,1590738991000,"2020-05-03",true]
+          - [5,null,3,22,32,1.3,2.3,1590738991000,"2020-05-03",null]
+          - [6,"~!@#$%^&*()_+<",3,22,32,1.3,2.3,1590738991000,"2020-05-03",null]
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+    sqls:
+      - set @@SESSION.execute_mode = "online";
+      - select * from {0} into outfile '{root_path}/out/{0}-online.csv' options(mode='append');
+      - set @@SESSION.execute_mode = "offline";
+      - LOAD DATA INFILE 'file://{root_path}/out/{0}-online.csv' into table {0} options(mode='append');
+      - select * from {0} into outfile 'file://{root_path}/out/{0}-offline.csv';
+      - set @@SESSION.execute_mode = "online";
+      - LOAD DATA INFILE 'file://{root_path}/out/{0}-offline.csv' into table {1} options(mode='append');
+      - select * from {1};
+    expect:
+      order: id
+      columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+      rows:
+        - [1,"aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+        - [2,null,2,21,31,1.2,2.2,1590738990000,"2020-05-02",false]
+        - [3,"",3,22,32,1.3,2.3,1590738991000,"2020-05-03",true]
+        - [4,null,3,22,32,1.3,2.3,1590738991000,"2020-05-03",true]
+        - [5,null,3,22,32,1.3,2.3,1590738991000,"2020-05-03",null]
+        - [6,"~!@#$%^&*()_+<",3,22,32,1.3,2.3,1590738991000,"2020-05-03",null]
+  -
+    id: 1
+    desc: 数据里有null,指定null_value
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+          - [2,"null",2,21,31,1.2,2.2,1590738990000,"2020-05-02",false]
+          - [4,null,3,22,32,1.3,2.3,1590738991000,"2020-05-03",true]
+          - [5,null,3,22,32,1.3,2.3,1590738991000,"2020-05-03",null]
+          - [6,"~!@#$%^&*()_+<",3,22,32,1.3,2.3,1590738991000,"2020-05-03",null]
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+    sqls:
+      - set @@SESSION.execute_mode = "online";
+      - select * from {0} into outfile '{root_path}/out/{0}-online.csv' options(null_value='@@@');
+      - set @@SESSION.execute_mode = "offline";
+      - LOAD DATA INFILE 'file://{root_path}/out/{0}-online.csv' into table {0} options(mode='append',null_value='@@@');
+      - select * from {0} into outfile 'file://{root_path}/out/{0}-offline.csv' options(null_value='@@@');
+      - set @@SESSION.execute_mode = "online";
+      - LOAD DATA INFILE 'file://{root_path}/out/{0}-offline.csv' into table {1} options(mode='append',null_value='@@@');
+      - select * from {1};
+    expect:
+      order: id
+      columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+      rows:
+        - [1,"aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+        - [2,"null",2,21,31,1.2,2.2,1590738990000,"2020-05-02",false]
+        - [4,null,3,22,32,1.3,2.3,1590738991000,"2020-05-03",true]
+        - [5,null,3,22,32,1.3,2.3,1590738991000,"2020-05-03",null]
+        - [6,"~!@#$%^&*()_+<",3,22,32,1.3,2.3,1590738991000,"2020-05-03",null]
+  -
+    id: 2
+    desc: 全部数据类型测试
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+          - [2,"bb",2,21,31,1.2,2.2,1590738990000,"2020-05-02",false]
+          - [3,"cc",3,22,32,1.3,2.3,1590738991000,"2020-05-03",true]
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+    sqls:
+      - set @@SESSION.execute_mode = "online";
+      - select * from {0} into outfile '{root_path}/out/{0}-online.csv';
+      - set @@SESSION.execute_mode = "offline";
+      - LOAD DATA INFILE 'file://{root_path}/out/{0}-online.csv' into table {0} options(deep_copy=true,mode='append');
+      - select * from {0} into outfile 'file://{root_path}/out/{0}-offline.csv';
+      - set @@SESSION.execute_mode = "online";
+      - LOAD DATA INFILE 'file://{root_path}/out/{0}-offline.csv' into table {1} options(mode='append');
+      - select * from {1};
+    expect:
+      columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+      order: id
+      rows:
+        - [1,"aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+        - [2,"bb",2,21,31,1.2,2.2,1590738990000,"2020-05-02",false]
+        - [3,"cc",3,22,32,1.3,2.3,1590738991000,"2020-05-03",true]
+  -
+    id: 3-1
+    desc: 复杂sql结果导出-在线
+    mode: cluster-unsupport
+    inputs:
+      -
+        columns : ["id int", "card_no string","merchant_id int", "trx_time timestamp", "trx_amt float"]
+        indexs: ["index1:card_no:trx_time"]
+        rows:
+          - [1, "aaaaaaaaaa",1, 1590738989000, 1.1]
+          - [2, "aaaaaaaaaa",1, 1590738990000, 2.2]
+          - [3, "bb",10, 1590738990000, 3.3]
+      -
+        columns : ["crd_lst_isu_dte timestamp", "crd_nbr string"]
+        indexs: ["index2:crd_nbr:crd_lst_isu_dte"]
+        rows:
+          - [1590738988000, "aaaaaaaaaa"]
+          - [1590738990000, "aaaaaaaaaa"]
+          - [1590738989000, "cc"]
+          - [1590738992000, "cc"]
+      -
+        columns: ["id int", "card_no string", "trx_time timestamp", "card_no_prefix string","sum_trx_amt float", "count_merchant_id int64", "crd_lst_isu_dte timestamp","crd_nbr string"]
+    sqls:
+      - set @@SESSION.execute_mode = "online";
+      - select * from
+        (select
+        id,
+        card_no,
+        trx_time,
+        substr(card_no, 1, 6) as card_no_prefix,
+        sum(trx_amt) over w30d as sum_trx_amt,
+        count(merchant_id) over w10d as count_merchant_id
+        from  {0}
+        window w30d as (PARTITION BY {0}.card_no ORDER BY {0}.trx_time ROWS_RANGE BETWEEN 30d PRECEDING AND CURRENT ROW),
+        w10d as (PARTITION BY {0}.card_no ORDER BY {0}.trx_time ROWS_RANGE BETWEEN 10d PRECEDING AND CURRENT ROW)) as trx_fe
+        last join {1} order by {1}.crd_lst_isu_dte on trx_fe.card_no = {1}.crd_nbr and trx_fe.trx_time >= {1}.crd_lst_isu_dte
+        into outfile '{root_path}/out/{0}-online.csv';
+      - LOAD DATA INFILE 'file://{root_path}/out/{0}-online.csv' into table {2} options(mode='append');
+      - select * from {2};
+    expect:
+      columns: ["id int", "card_no string", "trx_time timestamp", "card_no_prefix string","sum_trx_amt float", "count_merchant_id int64", "crd_lst_isu_dte timestamp","crd_nbr string"]
+      order: id
+      rows:
+        - [1, "aaaaaaaaaa", 1590738989000, "aaaaaa", 1.1, 1, 1590738988000, "aaaaaaaaaa"]
+        - [2, "aaaaaaaaaa", 1590738990000, "aaaaaa", 3.3, 2, 1590738990000, "aaaaaaaaaa"]
+        - [3, "bb", 1590738990000, "bb", 3.3, 1, null, null]
+  -
+    id: 3-2
+    desc: 复杂sql结果导出-离线
+    mode: disk-unsupport
+    inputs:
+      -
+        columns : ["id int", "card_no string","merchant_id int", "trx_time timestamp", "trx_amt float"]
+        indexs: ["index1:card_no:trx_time"]
+        rows:
+          - [1, "aaaaaaaaaa",1, 1590738989000, 1.1]
+          - [2, "aaaaaaaaaa",1, 1590738990000, 2.2]
+          - [3, "bb",10, 1590738990000, 3.3]
+      -
+        columns : ["crd_lst_isu_dte timestamp", "crd_nbr string"]
+        indexs: ["index2:crd_nbr:crd_lst_isu_dte"]
+        rows:
+          - [1590738988000, "aaaaaaaaaa"]
+          - [1590738990000, "aaaaaaaaaa"]
+          - [1590738989000, "cc"]
+          - [1590738992000, "cc"]
+      -
+        columns: ["id int", "card_no string", "trx_time timestamp", "card_no_prefix string","sum_trx_amt float", "count_merchant_id int64", "crd_lst_isu_dte timestamp","crd_nbr string"]
+    sqls:
+      - set @@SESSION.execute_mode = "online";
+      - select * from {0} into outfile '{root_path}/out/{0}-online.csv';
+      - select * from {1} into outfile '{root_path}/out/{1}-online.csv';
+      - set @@SESSION.execute_mode = "offline";
+      - LOAD DATA INFILE 'file://{root_path}/out/{0}-online.csv' into table {0} options(mode='append');
+      - LOAD DATA INFILE 'file://{root_path}/out/{1}-online.csv' into table {1} options(mode='append');
+      - select * from
+        (select
+        id,
+        card_no,
+        trx_time,
+        substr(card_no, 1, 6) as card_no_prefix,
+        sum(trx_amt) over w30d as sum_trx_amt,
+        count(merchant_id) over w10d as count_merchant_id
+        from  {0}
+        window w30d as (PARTITION BY {0}.card_no ORDER BY {0}.trx_time ROWS_RANGE BETWEEN 30d PRECEDING AND CURRENT ROW),
+        w10d as (PARTITION BY {0}.card_no ORDER BY {0}.trx_time ROWS_RANGE BETWEEN 10d PRECEDING AND CURRENT ROW)) as trx_fe
+        last join {1} order by {1}.crd_lst_isu_dte on trx_fe.card_no = {1}.crd_nbr and trx_fe.trx_time >= {1}.crd_lst_isu_dte
+        into outfile 'file://{root_path}/out/{2}-offline.csv';
+      - set @@SESSION.execute_mode = "online";
+      - LOAD DATA INFILE 'file://{root_path}/out/{2}-offline.csv' into table {2} options(mode='append');
+      - select * from {2};
+    expect:
+      columns: ["id int", "card_no string", "trx_time timestamp", "card_no_prefix string","sum_trx_amt float", "count_merchant_id int64", "crd_lst_isu_dte timestamp","crd_nbr string"]
+      order: id
+      rows:
+        - [1, "aaaaaaaaaa", 1590738989000, "aaaaaa", 1.1, 1, 1590738988000, "aaaaaaaaaa"]
+        - [2, "aaaaaaaaaa", 1590738990000, "aaaaaa", 3.3, 2, 1590738990000, "aaaaaaaaaa"]
+        - [3, "bb", 1590738990000, "bb", 3.3, 1, null, null]
+  -
+    id: 4-1
+    desc: 执行其他库查询-在线
+    inputs:
+      -
+        db: db1
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+          - [2,"bb",2,21,31,1.2,2.2,1590738990000,"2020-05-02",false]
+          - [3,"cc",3,22,32,1.3,2.3,1590738991000,"2020-05-03",true]
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+    sqls:
+      - set @@SESSION.execute_mode = "online";
+      - select * from db1.{0} into outfile '{root_path}/out/{0}.csv';
+      - load data infile 'file://{root_path}/out/{0}.csv' into table {1} options(mode='append');
+      - select * from {1};
+    expect:
+      columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+      order: id
+      rows:
+        - [1,"aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+        - [2,"bb",2,21,31,1.2,2.2,1590738990000,"2020-05-02",false]
+        - [3,"cc",3,22,32,1.3,2.3,1590738991000,"2020-05-03",true]
+  -
+    id: 4-2
+    desc: 执行其他库查询-离线
+    mode: disk-unsupport
+    inputs:
+      -
+        db: db1
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+          - [2,"bb",2,21,31,1.2,2.2,1590738990000,"2020-05-02",false]
+          - [3,"cc",3,22,32,1.3,2.3,1590738991000,"2020-05-03",true]
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+    sqls:
+      - set @@SESSION.execute_mode = "online";
+      - select * from db1.{0} into outfile '{root_path}/out/{0}.csv';
+      - set @@SESSION.execute_mode = "offline";
+      - load data infile 'file://{root_path}/out/{0}.csv' into table db1.{0} options(mode='append');
+      - select * from db1.{0} into outfile 'file://{root_path}/out/{0}-offline.csv';
+      - set @@SESSION.execute_mode = "online";
+      - load data infile 'file://{root_path}/out/{0}-offline.csv' into table {1} options(mode='append');
+      - select * from {1};
+    expect:
+      columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+      order: id
+      rows:
+        - [1,"aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+        - [2,"bb",2,21,31,1.2,2.2,1590738990000,"2020-05-02",false]
+        - [3,"cc",3,22,32,1.3,2.3,1590738991000,"2020-05-03",true]
+  -
+    id: 5
+    desc: 导出insert结果-在线
+    inputs:
+      -
+        columns : ["id int","c1 string","c7 timestamp"]
+        indexs: ["index1:c1:c7"]
+    sqls:
+      - set @@SESSION.execute_mode = "online";
+      - insert into {0} values (1,"aa",1590738989000) outfile '{root_path}/out/{0}.csv';
+    expect:
+      success: false
+  -
+    id: 6-1
+    desc: sql执行错误-在线
+    inputs:
+      -
+        columns : ["id int","c1 string","c7 timestamp"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1590738989000]
+    sqls:
+      - set @@SESSION.execute_mode = "online";
+      - select * from db1.{0} into outfile '{root_path}/out/{0}.csv';
+    expect:
+      success: false
+  -
+    id: 6-2
+    desc: sql执行错误-离线
+    mode: disk-unsupport
+    inputs:
+      -
+        columns : ["id int","c1 string","c7 timestamp"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1590738989000]
+    sqls:
+      - set @@SESSION.execute_mode = "online";
+      - select * from {0} into outfile '{root_path}/out/{0}.csv';
+      - set @@SESSION.execute_mode = "offline";
+      - load data infile 'file://{root_path}/out/{0}.csv' into table {0} options(mode='append');
+      - select c2 from {0} into outfile 'file://{root_path}/out/{0}.csv';
+    expect:
+      success: false
+  -
+    id: 7-1
+    desc: mode默认值，文件已经存在-在线
+    inputs:
+      -
+        columns : ["id int","c1 string","c7 timestamp"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1590738989000]
+    sqls:
+      - set @@SESSION.execute_mode = "online";
+      - select * from {0} into outfile '{root_path}/out/{0}.csv';
+      - select * from {0} into outfile '{root_path}/out/{0}.csv';
+    expect:
+      success: false
+  -
+    id: 7-2
+    desc: mode默认值，文件已经存在-离线
+    mode: disk-unsupport
+    inputs:
+      -
+        columns : ["id int","c1 string","c7 timestamp"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1590738989000]
+    sqls:
+      - set @@SESSION.execute_mode = "online";
+      - select * from {0} into outfile '{root_path}/out/{0}.csv';
+      - set @@SESSION.execute_mode = "offline";
+      - select * from {0} into outfile 'file://{root_path}/out/{0}.csv';
+      - select * from {0} into outfile 'file://{root_path}/out/{0}.csv';
+    expect:
+      success: false
+  -
+    id: 8-1
+    desc: mode=overwrite，先到处大数据量，再到处小数据量-在线
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+          - [2,"bb",2,21,31,1.2,2.2,1590738990000,"2020-05-02",false]
+          - [3,"cc",3,22,32,1.3,2.3,1590738991000,"2020-05-03",true]
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+    sqls:
+      - set @@SESSION.execute_mode = "online";
+      - select * from {0} into outfile '{root_path}/out/{0}.csv';
+      - select * from {1} into outfile '{root_path}/out/{0}.csv' options(mode='overwrite');
+      - load data infile 'file://{root_path}/out/{0}.csv' into table {2} options(mode='append');
+      - select * from {2};
+    expect:
+      columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+      order: id
+      rows:
+        - [1,"aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+  -
+    id: 8-2
+    desc: mode=overwrite，先到处大数据量，再到处小数据量-离线
+    mode: disk-unsupport
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+          - [2,"bb",2,21,31,1.2,2.2,1590738990000,"2020-05-02",false]
+          - [3,"cc",3,22,32,1.3,2.3,1590738991000,"2020-05-03",true]
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+    sqls:
+      - set @@SESSION.execute_mode = "online";
+      - select * from {0} into outfile '{root_path}/out/{0}-online.csv';
+      - select * from {1} into outfile '{root_path}/out/{1}-online.csv';
+      - set @@SESSION.execute_mode = "offline";
+      - LOAD DATA INFILE 'file://{root_path}/out/{0}-online.csv' into table {0} options(mode='append');
+      - LOAD DATA INFILE 'file://{root_path}/out/{1}-online.csv' into table {1} options(mode='append');
+      - select * from {0} into outfile 'file://{root_path}/out/{0}-offline.csv';
+      - select * from {1} into outfile 'file://{root_path}/out/{0}-offline.csv' options(mode='overwrite');
+      - set @@SESSION.execute_mode = "online";
+      - load data infile 'file://{root_path}/out/{0}-offline.csv' into table {2} options(mode='append');
+      - select * from {2};
+    expect:
+      columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+      order: id
+      rows:
+        - [1,"aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+  -
+    id: 9-1
+    desc: mode=append，相同的表导出两次-在线
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+          - [2,"bb",2,21,31,1.2,2.2,1590738990000,"2020-05-02",false]
+          - [3,"cc",3,22,32,1.3,2.3,1590738991000,"2020-05-03",true]
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+    sqls:
+      - set @@SESSION.execute_mode = "online";
+      - select * from {0} into outfile '{root_path}/out/{0}.csv';
+      - select * from {0} into outfile '{root_path}/out/{0}.csv' options(mode='append',header=false);
+      - load data infile 'file://{root_path}/out/{0}.csv' into table {1} options(mode='append');
+      - select * from {1};
+    expect:
+      columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+      order: id
+      rows:
+        - [1,"aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+        - [2,"bb",2,21,31,1.2,2.2,1590738990000,"2020-05-02",false]
+        - [3,"cc",3,22,32,1.3,2.3,1590738991000,"2020-05-03",true]
+        - [1,"aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+        - [2,"bb",2,21,31,1.2,2.2,1590738990000,"2020-05-02",false]
+        - [3,"cc",3,22,32,1.3,2.3,1590738991000,"2020-05-03",true]
+  -
+    id: 9-2
+    desc: mode=append，相同的表导出两次-离线
+    mode: disk-unsupport
+    tags: ["离线两次导出，第二次没有header 导入缺一行"]
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+          - [2,"bb",2,21,31,1.2,2.2,1590738990000,"2020-05-02",false]
+          - [3,"cc",3,22,32,1.3,2.3,1590738991000,"2020-05-03",true]
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+    sqls:
+      - set @@SESSION.execute_mode = "online";
+      - select * from {0} into outfile '{root_path}/out/{0}-online.csv';
+      - set @@SESSION.execute_mode = "offline";
+      - LOAD DATA INFILE 'file://{root_path}/out/{0}-online.csv' into table {0} options(mode='append');
+      - select * from {0} into outfile 'file://{root_path}/out/{0}-offline.csv';
+      - select * from {0} into outfile 'file://{root_path}/out/{0}-offline.csv' options(mode='append',header=false);
+      - set @@SESSION.execute_mode = "online";
+      - load data infile 'file://{root_path}/out/{0}-offline.csv' into table {1} options(mode='append');
+      - select * from {1};
+    expect:
+      columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+      order: id
+      rows:
+        - [1,"aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+        - [2,"bb",2,21,31,1.2,2.2,1590738990000,"2020-05-02",false]
+        - [3,"cc",3,22,32,1.3,2.3,1590738991000,"2020-05-03",true]
+        - [2,"bb",2,21,31,1.2,2.2,1590738990000,"2020-05-02",false]
+        - [3,"cc",3,22,32,1.3,2.3,1590738991000,"2020-05-03",true]
+  -
+    id: 10-1
+    desc: mode=append，不同的表导出，第二次header=false-在线
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+          - [2,"bb",2,21,31,1.2,2.2,1590738990000,"2020-05-02",false]
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [3,"cc",3,22,32,1.3,2.3,1590738991000,"2020-05-03",true]
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+    sqls:
+      - set @@SESSION.execute_mode = "online";
+      - select * from {0} into outfile '{root_path}/out/{0}.csv';
+      - select * from {1} into outfile '{root_path}/out/{0}.csv' options(mode='append',header=false);
+      - load data infile 'file://{root_path}/out/{0}.csv' into table {2} options(mode='append');
+      - select * from {2};
+    expect:
+      columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+      order: id
+      rows:
+        - [1,"aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+        - [2,"bb",2,21,31,1.2,2.2,1590738990000,"2020-05-02",false]
+        - [3,"cc",3,22,32,1.3,2.3,1590738991000,"2020-05-03",true]
+  -
+    id: 10-2
+    desc: mode=append，不同的表导出，第二次header=false-离线
+    mode: disk-unsupport
+    tags: ["同9-2"]
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+          - [2,"bb",2,21,31,1.2,2.2,1590738990000,"2020-05-02",false]
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [3,"cc",3,22,32,1.3,2.3,1590738991000,"2020-05-03",true]
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+    sqls:
+      - set @@SESSION.execute_mode = "online";
+      - select * from {0} into outfile '{root_path}/out/{0}.csv';
+      - select * from {1} into outfile '{root_path}/out/{1}.csv' options(mode='append');
+      - set @@SESSION.execute_mode = "offline";
+      - load data infile 'file://{root_path}/out/{0}.csv' into table {0} options(mode='append');
+      - load data infile 'file://{root_path}/out/{1}.csv' into table {1} options(mode='append');
+      - select * from {0} into outfile 'file://{root_path}/out/{0}-offline.csv';
+      - select * from {1} into outfile 'file://{root_path}/out/{0}-offline.csv' options(mode='append',header=false);
+      - set @@SESSION.execute_mode = "online";
+      - load data infile 'file://{root_path}/out/{0}-offline.csv' into table {2} options(mode='append');
+      - select * from {2};
+    expect:
+      columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+      order: id
+      rows:
+        - [1,"aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+        - [2,"bb",2,21,31,1.2,2.2,1590738990000,"2020-05-02",false]
+  -
+    id: 11-1
+    desc: mode=append，不同的表导出，第二次header=true-在线
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+          - [2,"bb",2,21,31,1.2,2.2,1590738990000,"2020-05-02",false]
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [3,"cc",3,22,32,1.3,2.3,1590738991000,"2020-05-03",true]
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+    sqls:
+      - set @@SESSION.execute_mode = "online";
+      - select * from {0} into outfile '{root_path}/out/{0}.csv';
+      - select * from {1} into outfile '{root_path}/out/{0}.csv' options(mode='append',header=true);
+    expect:
+      cat:
+        path: "{root_path}/out/{0}.csv"
+        lines:
+          - id,c1,c2,c3,c4,c5,c6,c7,c8,c9
+          - 1,aa,1,2,3,1.100000,2.100000,1590738989000,2020-05-01,true
+          - 2,bb,2,21,31,1.200000,2.200000,1590738990000,2020-05-02,false
+          - id,c1,c2,c3,c4,c5,c6,c7,c8,c9
+          - 3,cc,3,22,32,1.300000,2.300000,1590738991000,2020-05-03,true
+  -
+    id: 11-2
+    desc: mode=append，不同的表导出，第二次header=true-离线
+    mode: disk-unsupport
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+          - [2,"bb",2,21,31,1.2,2.2,1590738990000,"2020-05-02",false]
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [3,"cc",3,22,32,1.3,2.3,1590738991000,"2020-05-03",true]
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+    sqls:
+      - set @@SESSION.execute_mode = "online";
+      - select * from {0} into outfile '{root_path}/out/{0}.csv';
+      - select * from {1} into outfile '{root_path}/out/{1}.csv' options(mode='append');
+      - set @@SESSION.execute_mode = "offline";
+      - load data infile 'file://{root_path}/out/{0}.csv' into table {0} options(mode='append');
+      - load data infile 'file://{root_path}/out/{1}.csv' into table {1} options(mode='append');
+      - select * from {0} into outfile 'file://{root_path}/out/{0}-offline.csv';
+      - select * from {1} into outfile 'file://{root_path}/out/{0}-offline.csv' options(mode='append',header=true);
+    expect:
+      success: true
+#      cat:
+#        path: "{root_path}/out/{0}-offline.csv"
+#        lines:
+#          - id,c1,c2,c3,c4,c5,c6,c7,c8,c9
+#          - 1,aa,1,2,3,1.100000,2.100000,1590738989000,2020-05-01,true
+#          - 2,bb,2,21,31,1.200000,2.200000,1590738990000,2020-05-02,false
+#          - id,c1,c2,c3,c4,c5,c6,c7,c8,c9
+#          - 3,cc,3,22,32,1.300000,2.300000,1590738991000,2020-05-03,true
+  -
+    id: 12
+    desc: option key错误
+    inputs:
+      -
+        columns : ["id int","c1 string","c7 timestamp"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1590738989000]
+    sqls:
+      - set @@SESSION.execute_mode = "online";
+      - select * from {0} into outfile '{root_path}/out/{0}.csv' options(head=true);
+    expect:
+      success: false
+  -
+    id: 13
+    desc: option header 值错误
+    inputs:
+      -
+        columns : ["id int","c1 string","c7 timestamp"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1590738989000]
+    sqls:
+      - set @@SESSION.execute_mode = "online";
+      - select * from {0} into outfile '{root_path}/out/{0}.csv' options(header='true');
+    expect:
+      success: false
+  -
+    id: 14
+    desc: format 其他格式
+    inputs:
+      -
+        columns : ["id int","c1 string","c7 timestamp"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1590738989000]
+    sqls:
+      - set @@SESSION.execute_mode = "online";
+      - select * from {0} into outfile '{root_path}/out/{0}.csv' options(format='txt');
+    expect:
+      success: false
+  -
+    id: 15
+    desc: delimiter为一些特殊字符
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+          - [2,"bb",2,21,31,1.2,2.2,1590738990000,"2020-05-02",false]
+          - [3,"cc",3,22,32,1.3,2.3,1590738991000,"2020-05-03",true]
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+    sqls:
+      - set @@SESSION.execute_mode = "online";
+      - select * from {0} into outfile '{root_path}/out/{0}.csv' options(delimiter='@');
+      - set @@SESSION.execute_mode = "offline";
+      - load data infile 'file://{root_path}/out/{0}.csv' into table {0} options(delimiter='@',mode='append')
+      - select * from {0} into outfile 'file://{root_path}/out/{0}-offline.csv' options(delimiter='@');
+      - set @@SESSION.execute_mode = "online";
+      - load data infile 'file://{root_path}/out/{0}-offline.csv' into table {1} options(delimiter='@',mode='append');
+      - select * from {1};
+    expect:
+      columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+      order: id
+      rows:
+        - [1,"aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+        - [2,"bb",2,21,31,1.2,2.2,1590738990000,"2020-05-02",false]
+        - [3,"cc",3,22,32,1.3,2.3,1590738991000,"2020-05-03",true]
+  -
+    id: 16
+    desc: null_value为特殊字符
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+          - [2,"null",2,21,31,1.2,2.2,1590738990000,"2020-05-02",false]
+          - [3,null,3,22,32,1.3,2.3,1590738991000,"2020-05-03",null]
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+    sqls:
+      - set @@SESSION.execute_mode = "online";
+      - select * from {0} into outfile '{root_path}/out/{0}.csv' options(null_value='~!@#$%^&*()_+');
+      - set @@SESSION.execute_mode = "offline";
+      - load data infile 'file://{root_path}/out/{0}.csv' into table {0} options(mode='append',null_value='~!@#$%^&*()_+');
+      - select * from {0} into outfile 'file://{root_path}/out/{0}-offline.csv' options(null_value='~!@#$%^&*()_+');
+      - set @@SESSION.execute_mode = "online";
+      - load data infile 'file://{root_path}/out/{0}-offline.csv' into table {1} options(mode='append',null_value='~!@#$%^&*()_+');
+      - select * from {1};
+    expect:
+      count: 3
+  -
+    id: 17-1
+    desc: String 有null 空串 ”null“ null_value为”“-在线
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+          - [2,"null",2,21,31,1.2,2.2,1590738990000,"2020-05-02",false]
+          - [3,"",3,22,32,1.3,2.3,1590738991000,"2020-05-03",true]
+          - [4,null,3,22,32,1.3,2.3,1590738991000,"2020-05-03",true]
+          - [5,null,3,22,32,1.3,2.3,1590738991000,"2020-05-03",null]
+          - [6,"~!@#$%^&*()_+<",3,22,32,1.3,2.3,1590738991000,"2020-05-03",null]
+    sqls:
+      - set @@SESSION.execute_mode = "online";
+      - select * from {0} into outfile '{root_path}/out/{0}.csv' options(null_value='');
+    expect:
+      cat:
+        path: "{root_path}/out/{0}.csv"
+        lines:
+          - id,c1,c2,c3,c4,c5,c6,c7,c8,c9
+          - 3,,3,22,32,1.300000,2.300000,1590738991000,2020-05-03,true
+          - 5,,3,22,32,1.300000,2.300000,1590738991000,2020-05-03,
+          - 4,,3,22,32,1.300000,2.300000,1590738991000,2020-05-03,true
+          - 1,aa,1,2,3,1.100000,2.100000,1590738989000,2020-05-01,true
+          - 6,~!@#$%^&*()_+<,3,22,32,1.300000,2.300000,1590738991000,2020-05-03,
+          - 2,null,2,21,31,1.200000,2.200000,1590738990000,2020-05-02,false
+  -
+    id: 17-2
+    desc: String 有null 空串 ”null“ null_value为”“-离线
+    mode: disk-unsupport
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+          - [2,"null",2,21,31,1.2,2.2,1590738990000,"2020-05-02",false]
+          - [3,"",3,22,32,1.3,2.3,1590738991000,"2020-05-03",true]
+          - [4,null,3,22,32,1.3,2.3,1590738991000,"2020-05-03",true]
+          - [5,null,3,22,32,1.3,2.3,1590738991000,"2020-05-03",null]
+          - [6,"~!@#$%^&*()_+<",3,22,32,1.3,2.3,1590738991000,"2020-05-03",null]
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+    sqls:
+      - set @@SESSION.execute_mode = "online";
+      - select * from {0} into outfile '{root_path}/out/{0}.csv' options(null_value='');
+      - set @@SESSION.execute_mode = "offline";
+      - load data infile 'file://{root_path}/out/{0}.csv' into table {0} options(mode='append',null_value='');
+      - select * from {0} into outfile 'file://{root_path}/out/{0}-offline.csv' options(null_value='');
+      - set @@SESSION.execute_mode = "online";
+      - load data infile 'file://{root_path}/out/{0}-offline.csv' into table {1} options(mode='append',null_value='');
+      - select * from {1};
+    expect:
+      order: id
+      columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+      rows:
+        - [1,"aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+        - [2,"null",2,21,31,1.2,2.2,1590738990000,"2020-05-02",false]
+        - [3,null,3,22,32,1.3,2.3,1590738991000,"2020-05-03",true]
+        - [4,null,3,22,32,1.3,2.3,1590738991000,"2020-05-03",true]
+        - [5,null,3,22,32,1.3,2.3,1590738991000,"2020-05-03",null]
+        - [6,"~!@#$%^&*()_+<",3,22,32,1.3,2.3,1590738991000,"2020-05-03",null]
+  -
+    id: 18-1
+    desc: String 有null 空串 ”null“ null_value为”null“-在线
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+          - [2,"null",2,21,31,1.2,2.2,1590738990000,"2020-05-02",false]
+          - [3,"",3,22,32,1.3,2.3,1590738991000,"2020-05-03",true]
+          - [4,null,3,22,32,1.3,2.3,1590738991000,"2020-05-03",true]
+          - [5,null,3,22,32,1.3,2.3,1590738991000,"2020-05-03",null]
+          - [6,"~!@#$%^&*()_+<",3,22,32,1.3,2.3,1590738991000,"2020-05-03",null]
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+    sqls:
+      - set @@SESSION.execute_mode = "online";
+      - select * from {0} into outfile '{root_path}/out/{0}.csv' options(null_value='null');
+    expect:
+      cat:
+        path: "{root_path}/out/{0}.csv"
+        lines:
+          - id,c1,c2,c3,c4,c5,c6,c7,c8,c9
+          - 3,,3,22,32,1.300000,2.300000,1590738991000,2020-05-03,true
+          - 5,null,3,22,32,1.300000,2.300000,1590738991000,2020-05-03,null
+          - 4,null,3,22,32,1.300000,2.300000,1590738991000,2020-05-03,true
+          - 1,aa,1,2,3,1.100000,2.100000,1590738989000,2020-05-01,true
+          - 6,~!@#$%^&*()_+<,3,22,32,1.300000,2.300000,1590738991000,2020-05-03,null
+          - 2,null,2,21,31,1.200000,2.200000,1590738990000,2020-05-02,false
+  -
+    id: 18-2
+    desc: String 有null 空串 ”null“ null_value为”null“-离线
+    mode: disk-unsupport
+    tags: ["TODO","bug,csv 对空串的处理"]
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+          - [2,"null",2,21,31,1.2,2.2,1590738990000,"2020-05-02",false]
+          - [3,"",3,22,32,1.3,2.3,1590738991000,"2020-05-03",true]
+          - [4,null,3,22,32,1.3,2.3,1590738991000,"2020-05-03",true]
+          - [5,null,3,22,32,1.3,2.3,1590738991000,"2020-05-03",null]
+          - [6,"~!@#$%^&*()_+<",3,22,32,1.3,2.3,1590738991000,"2020-05-03",null]
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+    sqls:
+      - set @@SESSION.execute_mode = "online";
+      - select * from {0} into outfile '{root_path}/out/{0}.csv' options(null_value='null');
+      - set @@SESSION.execute_mode = "offline";
+      - load data infile 'file://{root_path}/out/{0}.csv' into table {0} options(mode='append',null_value='null');
+      - select * from {0} into outfile 'file://{root_path}/out/{0}-offline.csv' options(null_value='null');
+      - set @@SESSION.execute_mode = "online";
+      - load data infile 'file://{root_path}/out/{0}-offline.csv' into table {1} options(mode='append',null_value='null');
+      - select * from {1};
+    expect:
+      order: id
+      columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+      rows:
+        - [1,"aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+        - [2,null,2,21,31,1.2,2.2,1590738990000,"2020-05-02",false]
+        - [3,"",3,22,32,1.3,2.3,1590738991000,"2020-05-03",true]
+        - [4,null,3,22,32,1.3,2.3,1590738991000,"2020-05-03",true]
+        - [5,null,3,22,32,1.3,2.3,1590738991000,"2020-05-03",null]
+        - [6,"~!@#$%^&*()_+<",3,22,32,1.3,2.3,1590738991000,"2020-05-03",null]
+  -
+    id: 19
+    desc: header=false导出数据-在线
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+          - [2,"bb",2,21,31,1.2,2.2,1590738990000,"2020-05-02",false]
+          - [3,"cc",3,22,32,1.3,2.3,1590738991000,"2020-05-03",true]
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+    sqls:
+      - set @@SESSION.execute_mode = "online";
+      - select * from {0} into outfile '{root_path}/out/{0}.csv' options(header=false);
+      - set @@SESSION.execute_mode = "offline";
+      - load data infile 'file://{root_path}/out/{0}.csv' into table {0} options(header=false,mode='append');
+      - select * from {0} into outfile 'file://{root_path}/out/{0}-offline.csv' options(header=false);
+      - set @@SESSION.execute_mode = "online";
+      - load data infile 'file://{root_path}/out/{0}-offline.csv' into table {1} options(header=false,mode='append');
+      - select * from {1};
+    expect:
+      columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+      order: id
+      rows:
+        - [1,"aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+        - [2,"bb",2,21,31,1.2,2.2,1590738990000,"2020-05-02",false]
+        - [3,"cc",3,22,32,1.3,2.3,1590738991000,"2020-05-03",true]
+  -
+    id: 20
+    desc: format=csv，导出数据-在线
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+          - [2,"bb",2,21,31,1.2,2.2,1590738990000,"2020-05-02",false]
+          - [3,"cc",3,22,32,1.3,2.3,1590738991000,"2020-05-03",true]
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+    sqls:
+      - set @@SESSION.execute_mode = "online";
+      - select * from {0} into outfile '{root_path}/out/{0}.csv' options(format='csv');
+      - set @@SESSION.execute_mode = "offline";
+      - load data infile 'file://{root_path}/out/{0}.csv' into table {0} options(format='csv',mode='append');
+      - select * from {0} into outfile 'file://{root_path}/out/{0}-offline.csv' options(format='csv');
+      - set @@SESSION.execute_mode = "online";
+      - load data infile 'file://{root_path}/out/{0}-offline.csv' into table {1} options(format='csv',mode='append');
+      - select * from {1};
+    expect:
+      columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+      order: id
+      rows:
+        - [1,"aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+        - [2,"bb",2,21,31,1.2,2.2,1590738990000,"2020-05-02",false]
+        - [3,"cc",3,22,32,1.3,2.3,1590738991000,"2020-05-03",true]
+  -
+    id: 21-1
+    desc: 路径文件夹不存在-在线
+    inputs:
+      -
+        columns : ["id int","c1 string","c7 timestamp"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1590738989000]
+    sqls:
+      - set @@SESSION.execute_mode = "online";
+      - select * from {0} into outfile '{root_path}/out/{0}/{0}.csv';
+    expect:
+      success: false
+  -
+    id: 21-2
+    desc: 路径文件夹不存在-离线
+    mode: disk-unsupport
+    inputs:
+      -
+        columns : ["id int","c1 string","c7 timestamp"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1590738989000]
+    sqls:
+      - set @@SESSION.execute_mode = "online";
+      - select * from {0} into outfile '{root_path}/out/{0}.csv';
+      - set @@SESSION.execute_mode = "offline";
+      - load data infile 'file://{root_path}/out/{0}.csv' into table {0} options(format='csv',mode='append');
+      - select * from {0} into outfile '{root_path}/out/{0}/{0}.csv';
+    expect:
+      success: true
+  -
+    id: 22-1
+    desc: 数据类型不匹配-在线
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+          - [2,"bb",2,21,31,1.2,2.2,1590738990000,"2020-05-02",false]
+          - [3,"cc",3,22,32,1.3,2.3,1590738991000,"2020-05-03",true]
+      -
+        columns : ["id int","c1 int","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+    sqls:
+      - set @@SESSION.execute_mode = "online";
+      - select * from {0} into outfile '{root_path}/out/{0}.csv';
+      - load data infile 'file://{root_path}/out/{0}.csv' into table {1} options(mode='append');
+      - select * from {1};
+    expect:
+      order: id
+      columns : ["id int","c1 int","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+      rows:
+        - [1,null,1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+        - [2,null,2,21,31,1.2,2.2,1590738990000,"2020-05-02",false]
+        - [3,null,3,22,32,1.3,2.3,1590738991000,"2020-05-03",true]
+  -
+    id: 22-2
+    desc: 数据类型不匹配-离线
+    mode: disk-unsupport
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+          - [2,"bb",2,21,31,1.2,2.2,1590738990000,"2020-05-02",false]
+          - [3,"cc",3,22,32,1.3,2.3,1590738991000,"2020-05-03",true]
+      -
+        columns : ["id int","c1 int","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+    sqls:
+      - set @@SESSION.execute_mode = "online";
+      - select * from {0} into outfile '{root_path}/out/{0}.csv';
+      - set @@SESSION.execute_mode = "offline";
+      - load data infile 'file://{root_path}/out/{0}.csv' into table {0} options(mode='append');
+      - select * from {0} into outfile 'file://{root_path}/out/{0}-offline.csv';
+      - set @@SESSION.execute_mode = "online";
+      - load data infile 'file://{root_path}/out/{0}-offline.csv' into table {1} options(mode='append');
+      - select * from {1};
+    expect:
+      order: id
+      columns : ["id int","c1 int","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+      rows:
+        - [1,null,1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+        - [2,null,2,21,31,1.2,2.2,1590738990000,"2020-05-02",false]
+        - [3,null,3,22,32,1.3,2.3,1590738991000,"2020-05-03",true]
+  -
+    id: 23
+    desc: header=true导出数据-在线
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+          - [2,"bb",2,21,31,1.2,2.2,1590738990000,"2020-05-02",false]
+          - [3,"cc",3,22,32,1.3,2.3,1590738991000,"2020-05-03",true]
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+    sqls:
+      - set @@SESSION.execute_mode = "online";
+      - select * from {0} into outfile '{root_path}/out/{0}.csv' options(header=true);
+      - set @@SESSION.execute_mode = "offline";
+      - load data infile 'file://{root_path}/out/{0}.csv' into table {0} options(header=true,mode='append');
+      - select * from {0} into outfile 'file://{root_path}/out/{0}-offline.csv' options(header=true);
+      - set @@SESSION.execute_mode = "online";
+      - load data infile 'file://{root_path}/out/{0}-offline.csv' into table {1} options(header=true,mode='append');
+      - select * from {1};
+    expect:
+      columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+      order: id
+      rows:
+        - [1,"aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+        - [2,"bb",2,21,31,1.2,2.2,1590738990000,"2020-05-02",false]
+        - [3,"cc",3,22,32,1.3,2.3,1590738991000,"2020-05-03",true]
+  -
+    id: 24-1
+    desc: header=true，csv没有header-在线
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+          - [2,"bb",2,21,31,1.2,2.2,1590738990000,"2020-05-02",false]
+          - [3,"cc",3,22,32,1.3,2.3,1590738991000,"2020-05-03",true]
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+    sqls:
+      - set @@SESSION.execute_mode = "online";
+      - select * from {0} into outfile '{root_path}/out/{0}.csv' options(header=false);
+      - load data infile 'file://{root_path}/out/{0}.csv' into table {1} options(header=true,mode='append');
+      - select * from {1};
+    expect:
+      order: id
+      columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+      rows:
+        - [2,"bb",2,21,31,1.2,2.2,1590738990000,"2020-05-02",false]
+        - [3,"cc",3,22,32,1.3,2.3,1590738991000,"2020-05-03",true]
+  -
+    id: 24-2
+    desc: header=true，csv没有header-离线
+    mode: disk-unsupport
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+          - [2,"bb",2,21,31,1.2,2.2,1590738990000,"2020-05-02",false]
+          - [3,"cc",3,22,32,1.3,2.3,1590738991000,"2020-05-03",true]
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+    sqls:
+      - set @@SESSION.execute_mode = "online";
+      - select * from {0} into outfile '{root_path}/out/{0}.csv' options(header=false);
+      - set @@SESSION.execute_mode = "offline";
+      - load data infile 'file://{root_path}/out/{0}.csv' into table {0} options(header=true,mode='append');
+      - select * from {0} into outfile 'file://{root_path}/out/{0}-offline.csv' options(header=true);
+      - set @@SESSION.execute_mode = "online";
+      - load data infile 'file://{root_path}/out/{0}-offline.csv' into table {1} options(header=true,mode='append');
+      - select * from {1};
+    expect:
+      order: id
+      columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+      rows:
+        - [2,"bb",2,21,31,1.2,2.2,1590738990000,"2020-05-02",false]
+        - [3,"cc",3,22,32,1.3,2.3,1590738991000,"2020-05-03",true]
+  -
+    id: 25-1
+    desc: header=false，csv有header-在线
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+          - [2,"bb",2,21,31,1.2,2.2,1590738990000,"2020-05-02",false]
+          - [3,"cc",3,22,32,1.3,2.3,1590738991000,"2020-05-03",true]
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+    sqls:
+      - set @@SESSION.execute_mode = "online";
+      - select * from {0} into outfile '{root_path}/out/{0}.csv' options(header=true);
+      - load data infile 'file://{root_path}/out/{0}.csv' into table {1} options(header=false,mode='append');
+    expect:
+      success: false
+  -
+    id: 25-2
+    desc: header=false，csv有header-离线
+    mode: disk-unsupport
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+          - [2,"bb",2,21,31,1.2,2.2,1590738990000,"2020-05-02",false]
+          - [3,"cc",3,22,32,1.3,2.3,1590738991000,"2020-05-03",true]
+    sqls:
+      - set @@SESSION.execute_mode = "online";
+      - select * from {0} into outfile '{root_path}/out/{0}.csv' options(header=true);
+      - set @@SESSION.execute_mode = "offline";
+      - load data infile 'file://{root_path}/out/{0}.csv' into table {0} options(header=false,mode='append');
+      - select * from {0};
+    expect:
+      offlineColumns: [ "id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool" ]
+      offlineRows:
+        - [ null,"c1",null,null,null,null,null,null,null,null ]
+        - [ 1,"aa",1,2,3,1.1,2.1,null,"2020-05-01",true ]
+        - [ 3,"cc",3,22,32,1.3,2.3,null,"2020-05-03",true ]
+        - [ 2,"bb",2,21,31,1.2,2.2,null,"2020-05-02",false ]
+  -
+    id: 26
+    desc: 表不存在-在线
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+          - [2,"bb",2,21,31,1.2,2.2,1590738990000,"2020-05-02",false]
+          - [3,"cc",3,22,32,1.3,2.3,1590738991000,"2020-05-03",true]
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+    sqls:
+      - set @@SESSION.execute_mode = "online";
+      - select * from {0} into outfile '{root_path}/out/{0}.csv' options(header=true);
+      - load data infile 'file://{root_path}/out/{0}.csv' into table {1}11 options(header=true,mode='append');
+    expect:
+      success: false
+  -
+    id: 27
+    desc: format=csv，csv格式的文件，文件名不是csv结尾-在线
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+          - [2,"bb",2,21,31,1.2,2.2,1590738990000,"2020-05-02",false]
+          - [3,"cc",3,22,32,1.3,2.3,1590738991000,"2020-05-03",true]
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+    sqls:
+      - set @@SESSION.execute_mode = "online";
+      - select * from {0} into outfile '{root_path}/out/{0}.txt';
+      - set @@SESSION.execute_mode = "offline";
+      - load data infile 'file://{root_path}/out/{0}.txt' into table {0} options(format='csv',mode='append');
+      - select * from {0} into outfile 'file://{root_path}/out/{0}-offline.txt';
+      - set @@SESSION.execute_mode = "online";
+      - load data infile 'file://{root_path}/out/{0}-offline.txt' into table {1} options(format='csv',mode='append');
+      - select * from {1};
+    expect:
+      columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+      order: id
+      rows:
+        - [1,"aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+        - [2,"bb",2,21,31,1.2,2.2,1590738990000,"2020-05-02",false]
+        - [3,"cc",3,22,32,1.3,2.3,1590738991000,"2020-05-03",true]
+  -
+    id: 28
+    desc: format=其他值
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+          - [2,"bb",2,21,31,1.2,2.2,1590738990000,"2020-05-02",false]
+          - [3,"cc",3,22,32,1.3,2.3,1590738991000,"2020-05-03",true]
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+    sqls:
+      - set @@SESSION.execute_mode = "online";
+      - select * from {0} into outfile '{root_path}/out/{0}.csv';
+      - load data infile 'file://{root_path}/out/{0}.csv' into table {1} options(format='txt',mode='append');
+    expect:
+      success: false
+  -
+    id: 29
+    desc: 路径错误
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+          - [2,"bb",2,21,31,1.2,2.2,1590738990000,"2020-05-02",false]
+          - [3,"cc",3,22,32,1.3,2.3,1590738991000,"2020-05-03",true]
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+    sqls:
+      - set @@SESSION.execute_mode = "online";
+      - select * from {0} into outfile '{root_path}/out/{0}.csv';
+      - load data infile 'file://{root_path}/out/{0}1.csv' into table {1} options(mode='append');
+    expect:
+      success: false
+  -
+    id: 30
+    desc: 导入其他库的表-在线
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+          - [2,"bb",2,21,31,1.2,2.2,1590738990000,"2020-05-02",false]
+          - [3,"cc",3,22,32,1.3,2.3,1590738991000,"2020-05-03",true]
+      -
+        db: db1
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+    sqls:
+      - set @@SESSION.execute_mode = "online";
+      - select * from {0} into outfile '{root_path}/out/{0}.csv';
+      - set @@SESSION.execute_mode = "offline";
+      - load data infile 'file://{root_path}/out/{0}.csv' into table db1.{1} options(mode='append');
+      - select * from db1.{1} into outfile 'file://{root_path}/out/{1}-offline.csv';
+      - set @@SESSION.execute_mode = "online";
+      - load data infile 'file://{root_path}/out/{1}-offline.csv' into table db1.{1} options(mode='append');
+      - select * from db1.{1};
+    expect:
+      columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+      order: id
+      rows:
+        - [1,"aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+        - [2,"bb",2,21,31,1.2,2.2,1590738990000,"2020-05-02",false]
+        - [3,"cc",3,22,32,1.3,2.3,1590738991000,"2020-05-03",true]
+  -
+    id: 32-1
+    desc: 创建表的列和csv对不上-在线
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+          - [2,"bb",2,21,31,1.2,2.2,1590738990000,"2020-05-02",false]
+          - [3,"cc",3,22,32,1.3,2.3,1590738991000,"2020-05-03",true]
+      -
+        columns : ["id int","c1 string","cc smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+    sqls:
+      - set @@SESSION.execute_mode = "online";
+      - select * from {0} into outfile '{root_path}/out/{0}.csv';
+      - load data infile 'file://{root_path}/out/{0}1.csv' into table {1} options(mode='append');
+    expect:
+      success: false
+  -
+    id: 32-2
+    desc: 创建表的列和csv对不上-离线
+    mode: disk-unsupport
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+          - [2,"bb",2,21,31,1.2,2.2,1590738990000,"2020-05-02",false]
+          - [3,"cc",3,22,32,1.3,2.3,1590738991000,"2020-05-03",true]
+      -
+        columns : ["id int","c1 string","cc smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+    sqls:
+      - set @@SESSION.execute_mode = "online";
+      - select * from {0} into outfile '{root_path}/out/{0}.csv';
+      - set @@SESSION.execute_mode = "offline";
+      - load data infile 'file://{root_path}/out/{0}1.csv' into table {1} options(mode='append');
+    expect:
+      success: false
+  -
+    id: 33
+    desc: 表中已经有数据，然后导入-在线
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+          - [2,"bb",2,21,31,1.2,2.2,1590738990000,"2020-05-02",false]
+          - [3,"cc",3,22,32,1.3,2.3,1590738991000,"2020-05-03",true]
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+          - [2,"bb",2,21,31,1.2,2.2,1590738990000,"2020-05-02",false]
+          - [3,"cc",3,22,32,1.3,2.3,1590738991000,"2020-05-03",true]
+    sqls:
+      - set @@SESSION.execute_mode = "online";
+      - select * from {0} into outfile '{root_path}/out/{0}.csv';
+      - load data infile 'file://{root_path}/out/{0}.csv' into table {1} options(mode='append');
+      - select * from {1};
+    expect:
+      columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+      order: id
+      rows:
+        - [1,"aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+        - [2,"bb",2,21,31,1.2,2.2,1590738990000,"2020-05-02",false]
+        - [3,"cc",3,22,32,1.3,2.3,1590738991000,"2020-05-03",true]
+        - [1,"aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+        - [2,"bb",2,21,31,1.2,2.2,1590738990000,"2020-05-02",false]
+        - [3,"cc",3,22,32,1.3,2.3,1590738991000,"2020-05-03",true]
+  -
+    id: 34-1
+    desc: delimiter为，数据中有，-在线
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+          - [2,"b,b",2,21,31,1.2,2.2,1590738990000,"2020-05-02",false]
+          - [3,"cc",3,22,32,1.3,2.3,1590738991000,"2020-05-03",true]
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+    sqls:
+      - set @@SESSION.execute_mode = "online";
+      - select * from {0} into outfile '{root_path}/out/{0}.csv';
+      - load data infile 'file://{root_path}/out/{0}.csv' into table {1} options(delimiter=',',mode='append');
+    expect:
+      success: false
+  -
+    id: 34-2
+    desc: delimiter为，数据中有，-离线
+    mode: disk-unsupport
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+          - [2,"b,b",2,21,31,1.2,2.2,1590738990000,"2020-05-02",false]
+          - [3,"cc",3,22,32,1.3,2.3,1590738991000,"2020-05-03",true]
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+    sqls:
+      - set @@SESSION.execute_mode = "online";
+      - select * from {0} into outfile '{root_path}/out/{0}.csv';
+      - set @@SESSION.execute_mode = "offline";
+      - load data infile 'file://{root_path}/out/{0}.csv' into table {1} options(delimiter=',',mode='append');
+      - select * from {1};
+    expect:
+      order: id
+      offlineColumns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+      offlineRows:
+        - [1,"aa",1,2,3,1.1,2.1,null,"2020-05-01",true]
+        - [2,"b",null,2,21,31.0,1.2,null,null,null]
+        - [3,"cc",3,22,32,1.3,2.3,null,"2020-05-03",true]
+  -
+    id: 37-1
+    desc: 表删除后再次导入-在线
+    inputs:
+      -
+        columns : ["id int","c1 string","c7 timestamp"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1590738989000]
+          - [2,"bb",1590738990000]
+          - [3,"cc",1590738991000]
+      -
+        columns : ["id int","c1 string","c7 timestamp"]
+        indexs: ["index1:c1:c7"]
+    sqls:
+      - set @@SESSION.execute_mode = "online";
+      - select * from {0} into outfile '{root_path}/out/{0}.csv';
+      - load data infile 'file://{root_path}/out/{0}.csv' into table {1};
+      - drop table {1};
+      - create table {1}(
+        id int,
+        c1 string,
+        c7 timestamp,
+        index(key=(c1),ts=c7))options(partitionnum=1,replicanum=1);
+      - load data infile 'file://{root_path}/out/{0}.csv' into table {1} options(mode='append');
+      - select * from {1};
+    expect:
+      columns : ["id int","c1 string","c7 timestamp"]
+      order: id
+      rows:
+        - [1,"aa",1590738989000]
+        - [2,"bb",1590738990000]
+        - [3,"cc",1590738991000]
+  -
+    id: 37-2
+    desc: 表删除后再次导入-离线
+    mode: disk-unsupport
+    inputs:
+      -
+        columns : ["id int","c1 string","c7 timestamp"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1590738989000]
+          - [2,"bb",1590738990000]
+          - [3,"cc",1590738991000]
+      -
+        columns : ["id int","c1 string","c7 timestamp"]
+        indexs: ["index1:c1:c7"]
+    sqls:
+      - set @@SESSION.execute_mode = "online";
+      - select * from {0} into outfile '{root_path}/out/{0}.csv';
+      - set @@SESSION.execute_mode = "offline";
+      - load data infile 'file://{root_path}/out/{0}.csv' into table {1} options(mode='error_if_exists');
+      - drop table {1};
+      - create table {1}(
+        id int,
+        c1 string,
+        c7 timestamp,
+        index(key=(c1),ts=c7))options(partitionnum=1,replicanum=1);
+      - load data infile 'file://{root_path}/out/{0}.csv' into table {1} options(mode='error_if_exists');
+      - select * from {1} into outfile 'file://{root_path}/out/{1}.csv';
+      - set @@SESSION.execute_mode = "online";
+      - load data infile 'file://{root_path}/out/{1}.csv' into table {1} options(mode='append');
+      - select * from {1};
+    expect:
+      columns : ["id int","c1 string","c7 timestamp"]
+      order: id
+      rows:
+        - [1,"aa",1590738989000]
+        - [2,"bb",1590738990000]
+        - [3,"cc",1590738991000]
+  -
+    id: 38
+    desc: mode 值错误-在线
+    inputs:
+      -
+        columns : ["id int","c1 string","c7 timestamp"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1590738989000]
+    sqls:
+      - set @@SESSION.execute_mode = "online";
+      - select * from {0} into outfile '{root_path}/out/{0}.csv' options(mode='true');
+    expect:
+      success: false
+  -
+    id: 39
+    desc: 集群版，EXECUTE_MODE=online，load csv文件，mode默认不写
+    inputs:
+      -
+        columns : ["id int","c1 string","c7 timestamp"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1590738989000]
+          - [2,"bb",1590738990000]
+          - [3,"cc",1590738991000]
+      -
+        columns : ["id int","c1 string","c7 timestamp"]
+        indexs: ["index1:c1:c7"]
+    sqls:
+      - set @@SESSION.execute_mode = "online";
+      - select * from {0} into outfile '{root_path}/out/{0}.csv';
+      - load data infile 'file://{root_path}/out/{0}.csv' into table {1};
+    expect:
+      success: false
+  -
+    id: 40
+    desc: 集群版，EXECUTE_MODE=overwrite，load csv文件，mode=overwrite
+    inputs:
+      -
+        columns : ["id int","c1 string","c7 timestamp"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1590738989000]
+          - [2,"bb",1590738990000]
+          - [3,"cc",1590738991000]
+      -
+        columns : ["id int","c1 string","c7 timestamp"]
+        indexs: ["index1:c1:c7"]
+    sqls:
+      - set @@SESSION.execute_mode = "online";
+      - select * from {0} into outfile '{root_path}/out/{0}.csv';
+      - load data infile 'file://{root_path}/out/{0}.csv' into table {1} options(mode='overwrite');
+    expect:
+      success: false
+  -
+    id: 41
+    desc: 集群版 execute_mode=offline, load csv文件,deep_copy=true, mode默认不写,如果文件不存在
+    inputs:
+      -
+        columns : ["id int","c1 string","c7 timestamp"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1590738989000]
+          - [2,"bb",1590738990000]
+          - [3,"cc",1590738991000]
+      -
+        columns : ["id int","c1 string","c7 timestamp"]
+        indexs: ["index1:c1:c7"]
+    sqls:
+      - set @@SESSION.execute_mode = "online";
+      - select * from {0} into outfile '{root_path}/out/{0}-online.csv';
+      - set @@SESSION.execute_mode = "offline";
+      - load data infile 'file://{root_path}/out/{0}-online.csv' into table {0} options(deep_copy=true);
+      - select * from {0} into outfile 'file://{root_path}/out/{0}-offline.csv';
+      - set @@SESSION.execute_mode = "online";
+      - load data infile 'file://{root_path}/out/{0}-offline.csv' into table {1} options(mode='append');
+      - select * from {1};
+    expect:
+      order: id
+      columns : ["id int","c1 string","c7 timestamp"]
+      rows:
+        - [1,"aa",1590738989000]
+        - [2,"bb",1590738990000]
+        - [3,"cc",1590738991000]
+  -
+    id: 42
+    desc: 集群版 execute_mode=offline, load csv文件,deep_copy=true, mode默认不写,如果文件存在
+    inputs:
+      -
+        columns : ["id int","c1 string","c7 timestamp"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1590738989000]
+          - [2,"bb",1590738990000]
+          - [3,"cc",1590738991000]
+      -
+        columns : ["id int","c1 string","c7 timestamp"]
+        indexs: ["index1:c1:c7"]
+    sqls:
+      - set @@SESSION.execute_mode = "online";
+      - select * from {0} into outfile '{root_path}/out/{0}.csv';
+      - set @@SESSION.execute_mode = "offline";
+      - load data infile 'file://{root_path}/out/{0}.csv' into table {1} options(deep_copy=true);
+      - load data infile 'file://{root_path}/out/{0}.csv' into table {1} options(deep_copy=true);
+    expect:
+      success: false
+  -
+    id: 43
+    desc: 集群版 execute_mode=offline, load csv文件, deep_copy=true, mode=append
+    inputs:
+      -
+        columns : ["id int","c1 string","c7 timestamp"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1590738989000]
+          - [2,"bb",1590738990000]
+          - [3,"cc",1590738991000]
+      -
+        columns : ["id int","c1 string","c7 timestamp"]
+        indexs: ["index1:c1:c7"]
+    sqls:
+      - set @@SESSION.execute_mode = "online";
+      - select * from {0} into outfile '{root_path}/out/{0}-online.csv';
+      - set @@SESSION.execute_mode = "offline";
+      - load data infile 'file://{root_path}/out/{0}-online.csv' into table {0} options(deep_copy=true);
+      - load data infile 'file://{root_path}/out/{0}-online.csv' into table {0} options(deep_copy=true,mode='append');
+      - select * from {0} into outfile 'file://{root_path}/out/{0}-offline.csv';
+      - set @@SESSION.execute_mode = "online";
+      - load data infile 'file://{root_path}/out/{0}-offline.csv' into table {1} options(mode='append');
+      - select * from {1};
+    expect:
+      order: id
+      columns : ["id int","c1 string","c7 timestamp"]
+      rows:
+        - [1,"aa",1590738989000]
+        - [2,"bb",1590738990000]
+        - [3,"cc",1590738991000]
+        - [1,"aa",1590738989000]
+        - [2,"bb",1590738990000]
+        - [3,"cc",1590738991000]
+  -
+    id: 44
+    desc: 集群版 execute_mode=offline, load csv文件, deep_copy=true, mode=overwrite
+    inputs:
+      -
+        columns : ["id int","c1 string","c7 timestamp"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1590738989000]
+          - [2,"bb",1590738990000]
+          - [3,"cc",1590738991000]
+      -
+        columns : ["id int","c1 string","c7 timestamp"]
+        indexs: ["index1:c1:c7"]
+    sqls:
+      - set @@SESSION.execute_mode = "online";
+      - select * from {0} into outfile '{root_path}/out/{0}-online.csv';
+      - set @@SESSION.execute_mode = "offline";
+      - load data infile 'file://{root_path}/out/{0}-online.csv' into table {0} options(deep_copy=true);
+      - load data infile 'file://{root_path}/out/{0}-online.csv' into table {0} options(deep_copy=true,mode='overwrite');
+      - select * from {0} into outfile 'file://{root_path}/out/{0}-offline.csv';
+      - set @@SESSION.execute_mode = "online";
+      - load data infile 'file://{root_path}/out/{0}-offline.csv' into table {1} options(mode='append');
+      - select * from {1};
+    expect:
+      order: id
+      columns : ["id int","c1 string","c7 timestamp"]
+      rows:
+        - [1,"aa",1590738989000]
+        - [2,"bb",1590738990000]
+        - [3,"cc",1590738991000]
+  -
+    id: 45
+    desc: 集群版 execute_mode=offline, load csv文件, deep_copy=false, mode=append
+    inputs:
+      -
+        columns : ["id int","c1 string","c7 timestamp"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1590738989000]
+          - [2,"bb",1590738990000]
+          - [3,"cc",1590738991000]
+      -
+        columns : ["id int","c1 string","c7 timestamp"]
+        indexs: ["index1:c1:c7"]
+    sqls:
+      - set @@SESSION.execute_mode = "online";
+      - select * from {0} into outfile '{root_path}/out/{0}.csv';
+      - set @@SESSION.execute_mode = "offline";
+      - load data infile 'file://{root_path}/out/{0}.csv' into table {1} options(deep_copy=false,mode='append');
+      - load data infile 'file://{root_path}/out/{0}.csv' into table {1} options(deep_copy=false,mode='append');
+    expect:
+      success: false
+  -
+    id: 45-2
+    desc: 集群版 execute_mode=offline, load csv文件, deep_copy=false, mode=append
+    inputs:
+      -
+        columns : ["id int","c1 string","c7 timestamp"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1590738989000]
+          - [2,"bb",1590738990000]
+          - [3,"cc",1590738991000]
+      -
+        columns : ["id int","c1 string","c7 timestamp"]
+        indexs: ["index1:c1:c7"]
+    sqls:
+      - set @@SESSION.execute_mode = "online";
+      - select * from {0} into outfile '{root_path}/out/{0}.csv';
+      - set @@SESSION.execute_mode = "offline";
+      - load data infile 'file://{root_path}/out/{0}.csv' into table {1} options(deep_copy=false,mode='append');
+    expect:
+      success: true
+  -
+    id: 46
+    desc: 集群版 execute_mode=offline, load csv文件, deep_copy=false, mode=overwrite
+    inputs:
+      -
+        columns : ["id int","c1 string","c7 timestamp"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1590738989000]
+          - [2,"bb",1590738990000]
+          - [3,"cc",1590738991000]
+      -
+        columns : ["id int","c1 string","c7 timestamp"]
+        indexs: ["index1:c1:c7"]
+    sqls:
+      - set @@SESSION.execute_mode = "online";
+      - select * from {0} into outfile '{root_path}/out/{0}.csv';
+      - set @@SESSION.execute_mode = "offline";
+      - load data infile 'file://{root_path}/out/{0}.csv' into table {1} options(deep_copy=false,mode='overwrite');
+      - load data infile 'file://{root_path}/out/{0}.csv' into table {1} options(deep_copy=false,mode='overwrite');
+    expect:
+      success: false
+  -
+    id: 46-2
+    desc: 集群版 execute_mode=offline, load csv文件, deep_copy=false, mode=overwrite
+    inputs:
+      -
+        columns : ["id int","c1 string","c7 timestamp"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1590738989000]
+          - [2,"bb",1590738990000]
+          - [3,"cc",1590738991000]
+      -
+        columns : ["id int","c1 string","c7 timestamp"]
+        indexs: ["index1:c1:c7"]
+    sqls:
+      - set @@SESSION.execute_mode = "online";
+      - select * from {0} into outfile '{root_path}/out/{0}.csv';
+      - set @@SESSION.execute_mode = "offline";
+      - load data infile 'file://{root_path}/out/{0}.csv' into table {1} options(deep_copy=false,mode='overwrite');
+    expect:
+      success: true
+  -
+    id: 47
+    desc: 集群版 execute_mode=offline, load csv文件, deep_copy=false,mode默认不写，没有load
+    inputs:
+      -
+        columns : ["id int","c1 string","c7 timestamp"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1590738989000]
+          - [2,"bb",1590738990000]
+          - [3,"cc",1590738991000]
+      -
+        columns : ["id int","c1 string","c7 timestamp"]
+        indexs: ["index1:c1:c7"]
+    sqls:
+      - set @@SESSION.execute_mode = "online";
+      - select * from {0} into outfile '{root_path}/out/{0}.csv';
+      - set @@SESSION.execute_mode = "offline";
+      - load data infile 'file://{root_path}/out/{0}.csv' into table {1} options(deep_copy=false);
+      - desc {1};
+    expect:
+      offlineInfo:
+        path: file://{root_path}/out/{0}.csv
+  -
+    id: 48
+    desc: 集群版 execute_mode=offline, load csv文件, deep_copy=false,mode默认不写，已经load过
+    inputs:
+      -
+        columns : ["id int","c1 string","c7 timestamp"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1590738989000]
+          - [2,"bb",1590738990000]
+          - [3,"cc",1590738991000]
+      -
+        columns : ["id int","c1 string","c7 timestamp"]
+        indexs: ["index1:c1:c7"]
+    sqls:
+      - set @@SESSION.execute_mode = "online";
+      - select * from {0} into outfile '{root_path}/out/{0}.csv';
+      - set @@SESSION.execute_mode = "offline";
+      - load data infile 'file://{root_path}/out/{0}.csv' into table {1} options(deep_copy=false);
+      - load data infile 'file://{root_path}/out/{0}.csv' into table {1} options(deep_copy=false);
+    expect:
+      success: false
+  -
+    id: 49
+    desc: 集群版，EXECUTE_MODE=online，load parquet文件，deep_copy=true, append
+    inputs:
+      -
+        columns : ["id int","c1 string","c7 timestamp"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1590738989000]
+          - [2,"bb",1590738990000]
+          - [3,"cc",1590738991000]
+      -
+        columns : ["id int","c1 string","c7 timestamp"]
+        indexs: ["index1:c1:c7"]
+    sqls:
+      - set @@SESSION.execute_mode = "online";
+      - select * from {0} into outfile '{root_path}/out/{0}-online.csv';
+      - set @@SESSION.execute_mode = "offline";
+      - load data infile 'file://{root_path}/out/{0}-online.csv' into table {0} options(deep_copy=true);
+      - select * from {0} into outfile 'file://{root_path}/out/{0}-parquet' options(format='parquet');
+      - set @@SESSION.execute_mode = "online";
+      - load data infile 'file://{root_path}/out/{0}-parquet' into table {1} options(mode='append',format='parquet',deep_copy=true);
+      - select * from {1};
+    expect:
+      order: id
+      columns : ["id int","c1 string","c7 timestamp"]
+      rows:
+        - [1,"aa",1590738989000]
+        - [2,"bb",1590738990000]
+        - [3,"cc",1590738991000]
+  -
+    id: 50
+    desc: 集群版，EXECUTE_MODE=online，load parquet文件，deep_copy=false, append
+    inputs:
+      -
+        columns : ["id int","c1 string","c7 timestamp"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1590738989000]
+          - [2,"bb",1590738990000]
+          - [3,"cc",1590738991000]
+      -
+        columns : ["id int","c1 string","c7 timestamp"]
+        indexs: ["index1:c1:c7"]
+    sqls:
+      - set @@SESSION.execute_mode = "online";
+      - select * from {0} into outfile '{root_path}/out/{0}-online.csv';
+      - set @@SESSION.execute_mode = "offline";
+      - load data infile 'file://{root_path}/out/{0}-online.csv' into table {0} options(deep_copy=true);
+      - select * from {0} into outfile 'file://{root_path}/out/{0}-parquet' options(format='parquet');
+      - set @@SESSION.execute_mode = "online";
+      - load data infile 'file://{root_path}/out/{0}-parquet' into table {1} options(mode='append',format='parquet',deep_copy=false);
+    expect:
+      success: false
+  -
+    id: 51
+    desc: 集群版，load parquet文件，options没有写format=‘parquet’
+    inputs:
+      -
+        columns : ["id int","c1 string","c7 timestamp"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1590738989000]
+          - [2,"bb",1590738990000]
+          - [3,"cc",1590738991000]
+      -
+        columns : ["id int","c1 string","c7 timestamp"]
+        indexs: ["index1:c1:c7"]
+    sqls:
+      - set @@SESSION.execute_mode = "online";
+      - select * from {0} into outfile '{root_path}/out/{0}-online.csv';
+      - set @@SESSION.execute_mode = "offline";
+      - load data infile 'file://{root_path}/out/{0}-online.csv' into table {0} options(deep_copy=true);
+      - select * from {0} into outfile 'file://{root_path}/out/{0}-parquet' options(format='parquet');
+      - set @@SESSION.execute_mode = "online";
+      - load data infile 'file://{root_path}/out/{0}-parquet' into table {1} options(mode='append');
+    expect:
+      success: false
+  -
+    id: 52
+    desc: 集群版，EXECUTE_MODE=offline，load parquet文件，deep_copy=true
+    inputs:
+      -
+        columns : ["id int","c1 string","c7 timestamp"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1590738989000]
+          - [2,"bb",1590738990000]
+          - [3,"cc",1590738991000]
+      -
+        columns : ["id int","c1 string","c7 timestamp"]
+        indexs: ["index1:c1:c7"]
+    sqls:
+      - set @@SESSION.execute_mode = "online";
+      - select * from {0} into outfile '{root_path}/out/{0}-online.csv';
+      - set @@SESSION.execute_mode = "offline";
+      - load data infile 'file://{root_path}/out/{0}-online.csv' into table {0} options(deep_copy=true);
+      - select * from {0} into outfile 'file://{root_path}/out/{0}-parquet' options(format='parquet');
+      - load data infile 'file://{root_path}/out/{0}-parquet' into table {1} options(mode='append',format='parquet',deep_copy=true);
+      - select * from {1} into outfile 'file://{root_path}/out/{1}-parquet' options(format='parquet');
+      - set @@SESSION.execute_mode = "online";
+      - load data infile 'file://{root_path}/out/{1}-parquet' into table {1} options(mode='append',format='parquet');
+      - select * from {1};
+    expect:
+      order: id
+      columns : ["id int","c1 string","c7 timestamp"]
+      rows:
+        - [1,"aa",1590738989000]
+        - [2,"bb",1590738990000]
+        - [3,"cc",1590738991000]
+  -
+    id: 53
+    desc: 集群版，EXECUTE_MODE=offline，load parquet文件，deep_copy=false
+    inputs:
+      -
+        columns : ["id int","c1 string","c7 timestamp"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1590738989000]
+          - [2,"bb",1590738990000]
+          - [3,"cc",1590738991000]
+      -
+        columns : ["id int","c1 string","c7 timestamp"]
+        indexs: ["index1:c1:c7"]
+    sqls:
+      - set @@SESSION.execute_mode = "online";
+      - select * from {0} into outfile '{root_path}/out/{0}-online.csv';
+      - set @@SESSION.execute_mode = "offline";
+      - load data infile 'file://{root_path}/out/{0}-online.csv' into table {0} options(deep_copy=true);
+      - select * from {0} into outfile 'file://{root_path}/out/{0}-parquet' options(format='parquet');
+      - load data infile 'file://{root_path}/out/{0}-parquet' into table {1} options(mode='append',format='parquet',deep_copy=false);
+      - select * from {1} into outfile 'file://{root_path}/out/{1}-parquet' options(format='parquet');
+      - set @@SESSION.execute_mode = "online";
+      - load data infile 'file://{root_path}/out/{1}-parquet' into table {1} options(mode='append',format='parquet');
+      - select * from {1};
+    expect:
+      order: id
+      columns : ["id int","c1 string","c7 timestamp"]
+      rows:
+        - [1,"aa",1590738989000]
+        - [2,"bb",1590738990000]
+        - [3,"cc",1590738991000]
+  -
+    id: 54
+    desc: csv timestamp类型 在线 时间格式
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+    sqls:
+      - set @@SESSION.execute_mode = "online";
+      - load data infile 'file://{root_path}/cases/integration_test/out_in/csv/timestamp_date.csv' into table {0} options(mode='append');
+      - select * from {0};
+    expect:
+      columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+      order: id
+      rows:
+        - [1,"aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+        - [2,"bb",2,21,31,1.2,2.2,1590738990100,"2020-05-02",false]
+        - [3,"cc",3,22,32,1.3,2.3,1590738991001,"2020-05-03",true]
+  -
+    id: 55
+    desc: csv timestamp类型 在线 int64
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+    sqls:
+      - set @@SESSION.execute_mode = "online";
+      - load data infile 'file://{root_path}/cases/integration_test/out_in/csv/timestamp_int64.csv' into table {0} options(mode='append');
+      - select * from {0};
+    expect:
+      columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+      order: id
+      rows:
+        - [1,"aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+        - [2,"bb",2,21,31,1.2,2.2,1590738990001,"2020-05-02",false]
+        - [3,"cc",3,22,32,1.3,2.3,1590738991001,"2020-05-03",true]
+  -
+    id: 56
+    desc: csv timestamp类型 离线 时间格式
+    mode: disk-unsupport
+    tags: ["TODO","bug,2020-05-29 15:56:..."]
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+    sqls:
+      - set @@SESSION.execute_mode = "offline";
+      - load data infile 'file://{root_path}/cases/integration_test/out_in/csv/timestamp_date.csv' into table {0} options(mode='append');
+      - select * from {0};
+    expect:
+      offlineColumns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+      order: id
+      offlineRows:
+        - [1,"aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+        - [2,"bb",2,21,31,1.2,2.2,1590738990000,"2020-05-02",false]
+        - [3,"cc",3,22,32,1.3,2.3,1590738991000,"2020-05-03",true]
+  -
+    id: 57
+    desc: csv timestamp类型 离线 int64
+    mode: disk-unsupport
+    tags: ["TODO","bug,2020-05-29 15:56:..."]
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+    sqls:
+      - set @@SESSION.execute_mode = "offline";
+      - load data infile 'file://{root_path}/cases/integration_test/out_in/csv/timestamp_int64.csv' into table {0};
+      - select * from {0};
+    expect:
+      offlineColumns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+      order: id
+      offlineRows:
+        - [1,"aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+        - [2,"bb",2,21,31,1.2,2.2,1590738990000,"2020-05-02",false]
+        - [3,"cc",3,22,32,1.3,2.3,1590738991000,"2020-05-03",true]
+  -
+    id: 58
+    desc: parquet timestamp类型 离线和在线
+    mode: disk-unsupport
+    inputs:
+      -
+        columns : ["id int","c1 string","c7 timestamp"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1590738989000]
+          - [2,"bb",1590738990000]
+          - [3,"cc",1590738991000]
+      -
+        columns : ["id int","c1 string","c7 timestamp"]
+        indexs: ["index1:c1:c7"]
+    sqls:
+      - set @@SESSION.execute_mode = "online";
+      - select * from {0} into outfile '{root_path}/out/{0}-online.csv';
+      - set @@SESSION.execute_mode = "offline";
+      - load data infile 'file://{root_path}/out/{0}-online.csv' into table {0} options(deep_copy=true);
+      - select * from {0} into outfile 'file://{root_path}/out/{0}-parquet' options(format='parquet');
+      - load data infile 'file://{root_path}/out/{0}-parquet' into table {1} options(mode='append',format='parquet',deep_copy=true);
+      - select * from {1} into outfile 'file://{root_path}/out/{1}-parquet' options(format='parquet');
+      - set @@SESSION.execute_mode = "online";
+      - load data infile 'file://{root_path}/out/{1}-parquet' into table {1} options(mode='append',format='parquet');
+      - select * from {1};
+    expect:
+      order: id
+      columns : ["id int","c1 string","c7 timestamp"]
+      rows:
+        - [1,"aa",1590738989000]
+        - [2,"bb",1590738990000]
+        - [3,"cc",1590738991000]
+  -
+    id: 59
+    desc: 离线，先深拷贝，后浅拷贝overwrite
+    mode: disk-unsupport
+    inputs:
+      -
+        columns : ["id int","c1 string","c7 timestamp"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1590738989000]
+          - [2,"bb",1590738990000]
+          - [3,"cc",1590738991000]
+      -
+        columns : ["id int","c1 string","c7 timestamp"]
+        indexs: ["index1:c1:c7"]
+    sqls:
+      - set @@SESSION.execute_mode = "online";
+      - select * from {0} into outfile '{root_path}/out/{0}-online.csv';
+      - set @@SESSION.execute_mode = "offline";
+      - load data infile 'file://{root_path}/out/{0}-online.csv' into table {0} options(deep_copy=true);
+      - load data infile 'file://{root_path}/out/{0}-online.csv' into table {0} options(deep_copy=false,mode='overwrite');
+    expect:
+      success: false
+  -
+    id: 60
+    desc: 离线，先浅拷贝，后深拷贝overwrite
+    mode: disk-unsupport
+    inputs:
+      -
+        columns : ["id int","c1 string","c7 timestamp"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1590738989000]
+          - [2,"bb",1590738990000]
+          - [3,"cc",1590738991000]
+      -
+        columns : ["id int","c1 string","c7 timestamp"]
+        indexs: ["index1:c1:c7"]
+    sqls:
+      - set @@SESSION.execute_mode = "online";
+      - select * from {0} into outfile '{root_path}/out/{0}-online.csv';
+      - set @@SESSION.execute_mode = "offline";
+      - load data infile 'file://{root_path}/out/{0}-online.csv' into table {0} options(deep_copy=false);
+      - load data infile 'file://{root_path}/out/{0}-online.csv' into table {0} options(deep_copy=true,mode='overwrite');
+      - select * from {0} into outfile 'file://{root_path}/out/{0}-offline.csv';
+      - set @@SESSION.execute_mode = "online";
+      - load data infile 'file://{root_path}/out/{0}-offline.csv' into table {1} options(mode='append');
+      - select * from {1};
+    expect:
+      order: id
+      columns : ["id int","c1 string","c7 timestamp"]
+      rows:
+        - [1,"aa",1590738989000]
+        - [2,"bb",1590738990000]
+        - [3,"cc",1590738991000]
+  -
+    id: 61
+    desc: load data-parquet-所有类型
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+          - [2,"bb",2,21,31,1.2,2.2,1590738990000,"2020-05-02",false]
+          - [3,"cc",3,22,32,1.3,2.3,1590738991000,"2020-05-03",true]
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+    sqls:
+      - set @@SESSION.execute_mode = "online";
+      - select * from {0} into outfile '{root_path}/out/{0}-online.csv';
+      - set @@SESSION.execute_mode = "offline";
+      - LOAD DATA INFILE 'file://{root_path}/out/{0}-online.csv' into table {0} options(deep_copy=true,mode='append');
+      - select * from {0} into outfile 'file://{root_path}/out/{0}-offline' options(format='parquet');
+      - LOAD DATA INFILE 'file://{root_path}/out/{0}-offline' into table {1} options(format='parquet',mode='append');
+      - select * from {1} into outfile 'file://{root_path}/out/{1}-offline' options(format='parquet');
+      - set @@SESSION.execute_mode = "online";
+      - LOAD DATA INFILE 'file://{root_path}/out/{1}-offline' into table {1} options(mode='append',format='parquet');
+      - select * from {1};
+    expect:
+      columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+      order: id
+      rows:
+        - [1,"aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+        - [2,"bb",2,21,31,1.2,2.2,1590738990000,"2020-05-02",false]
+        - [3,"cc",3,22,32,1.3,2.3,1590738991000,"2020-05-03",true]
+  -
+    id: 62
+    desc: load data-parquet-null，空串，特殊字符
+    tags: ["TODO","bug,csv 对空串的处理"]
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+          - [2,"null",2,21,31,1.2,2.2,1590738990000,"2020-05-02",false]
+          - [3,"",3,22,32,1.3,2.3,1590738991000,"2020-05-03",true]
+          - [4,null,3,22,32,1.3,2.3,1590738991000,"2020-05-03",true]
+          - [5,null,3,22,32,1.3,2.3,1590738991000,"2020-05-03",null]
+          - [6,"~!@#$%^&*()_+<",3,22,32,1.3,2.3,1590738991000,"2020-05-03",null]
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+    sqls:
+      - set @@SESSION.execute_mode = "online";
+      - select * from {0} into outfile '{root_path}/out/{0}-online.csv';
+      - set @@SESSION.execute_mode = "offline";
+      - LOAD DATA INFILE 'file://{root_path}/out/{0}-online.csv' into table {0} options(deep_copy=true,mode='append');
+      - select * from {0} into outfile 'file://{root_path}/out/{0}-offline' options(format='parquet');
+      - LOAD DATA INFILE 'file://{root_path}/out/{0}-offline' into table {1} options(format='parquet',mode='append');
+      - select * from {1} into outfile 'file://{root_path}/out/{1}-offline' options(format='parquet');
+      - set @@SESSION.execute_mode = "online";
+      - LOAD DATA INFILE 'file://{root_path}/out/{1}-offline' into table {1} options(mode='append',format='parquet');
+      - select * from {1};
+    expect:
+      order: id
+      columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+      rows:
+        - [1,"aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+        - [2,null,2,21,31,1.2,2.2,1590738990000,"2020-05-02",false]
+        - [3,"",3,22,32,1.3,2.3,1590738991000,"2020-05-03",true]
+        - [4,null,3,22,32,1.3,2.3,1590738991000,"2020-05-03",true]
+        - [5,null,3,22,32,1.3,2.3,1590738991000,"2020-05-03",null]
+        - [6,"~!@#$%^&*()_+<",3,22,32,1.3,2.3,1590738991000,"2020-05-03",null]
+  -
+    id: 63
+    desc: load data转义字符-csv-在线
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+    sqls:
+      - set @@SESSION.execute_mode = "online";
+      - load data infile 'file://{root_path}/cases/integration_test/out_in/csv/string_escape.csv' into table {0} options(mode='append');
+      - select * from {0};
+    expect:
+      columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+      order: id
+      rows:
+        - [1,"aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+        - [2,'b\r\t\nb',2,21,31,1.2,2.2,1590738990000,"2020-05-02",false]
+        - [3,"cc",3,22,32,1.3,2.3,1590738991000,"2020-05-03",true]
+  -
+    id: 64
+    desc: load data转义字符-csv-离线
+    mode: disk-unsupport
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+    sqls:
+      - set @@SESSION.execute_mode = "offline";
+      - load data infile 'file://{root_path}/cases/integration_test/out_in/csv/string_escape.csv' into table {0} options(mode='append');
+      - select * from {0};
+    expect:
+      offlineColumns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+      order: id
+      offlineRows:
+        - [1,"aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+        - [2,'b\r\t\nb',2,21,31,1.2,2.2,1590738990000,"2020-05-02",false]
+        - [3,"cc",3,22,32,1.3,2.3,1590738991000,"2020-05-03",true]
+  -
+    id: 65
+    desc: load data转义字符-parquet-在线
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+    sqls:
+      - set @@SESSION.execute_mode = "offline";
+      - load data infile 'file://{root_path}/cases/integration_test/out_in/csv/string_escape.csv' into table {0} options(mode='append');
+      - select * from {0} into outfile 'file://{root_path}/out/{0}-offline' options(format='parquet');
+      - set @@SESSION.execute_mode = "online";
+      - load data infile 'file://{root_path}/out/{0}-offline' into table {0} options(mode='append',format='parquet');
+      - select * from {0};
+    expect:
+      columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+      order: id
+      rows:
+        - [1,"aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+        - [2,'b\r\t\nb',2,21,31,1.2,2.2,1590738990000,"2020-05-02",false]
+        - [3,"cc",3,22,32,1.3,2.3,1590738991000,"2020-05-03",true]
+  -
+    id: 64
+    desc: load data转义字符-parquet-离线
+    mode: disk-unsupport
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+    sqls:
+      - set @@SESSION.execute_mode = "offline";
+      - load data infile 'file://{root_path}/cases/integration_test/out_in/csv/string_escape.csv' into table {0} options(mode='append');
+      - select * from {0} into outfile 'file://{root_path}/out/{0}-offline' options(format='parquet');
+      - load data infile 'file://{root_path}/out/{0}-offline' into table {1} options(mode='append',format='parquet');
+      - select * from {1};
+    expect:
+      offlineColumns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+      order: id
+      offlineRows:
+        - [1,"aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+        - [2,'b\r\t\nb',2,21,31,1.2,2.2,1590738990000,"2020-05-02",false]
+        - [3,"cc",3,22,32,1.3,2.3,1590738991000,"2020-05-03",true]
+  -
+    id: 65
+    desc: select into limit-在线
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+          - [2,"bb",2,21,31,1.2,2.2,1590738990000,"2020-05-02",false]
+          - [3,"cc",3,22,32,1.3,2.3,1590738991000,"2020-05-03",true]
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+    sqls:
+      - set @@SESSION.execute_mode = "online";
+      - select * from {0} limit 2 into outfile '{root_path}/out/{0}.csv';
+      - LOAD DATA INFILE 'file://{root_path}/out/{0}.csv' into table {1} options(mode='append');
+      - select * from {1};
+    expect:
+      columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+      order: id
+      rows:
+        - [1,"aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+        - [3,"cc",3,22,32,1.3,2.3,1590738991000,"2020-05-03",true]
+  -
+    id: 66
+    desc: select into limit-离线
+    mode: disk-unsupport
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+          - [2,"bb",2,21,31,1.2,2.2,1590738990000,"2020-05-02",false]
+          - [3,"cc",3,22,32,1.3,2.3,1590738991000,"2020-05-03",true]
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+    sqls:
+      - set @@SESSION.execute_mode = "online";
+      - select * from {0} into outfile '{root_path}/out/{0}-online.csv';
+      - set @@SESSION.execute_mode = "offline";
+      - LOAD DATA INFILE 'file://{root_path}/out/{0}-online.csv' into table {0} options(deep_copy=true,mode='append');
+      - select * from {0} limit 2 into outfile 'file://{root_path}/out/{0}-offline.csv';
+      - set @@SESSION.execute_mode = "online";
+      - LOAD DATA INFILE 'file://{root_path}/out/{0}-offline.csv' into table {1} options(mode='append');
+      - select * from {1};
+    expect:
+      columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+      order: id
+      rows:
+        - [1,"aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+        - [3,"cc",3,22,32,1.3,2.3,1590738991000,"2020-05-03",true]
+

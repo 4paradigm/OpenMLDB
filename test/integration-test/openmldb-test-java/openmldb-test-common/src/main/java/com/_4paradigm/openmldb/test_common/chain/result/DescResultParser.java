@@ -1,15 +1,10 @@
 package com._4paradigm.openmldb.test_common.chain.result;
 
-import com._4paradigm.openmldb.jdbc.SQLResultSet;
 import com._4paradigm.openmldb.test_common.bean.*;
-import com._4paradigm.openmldb.test_common.util.ResultUtil;
+import org.apache.commons.lang3.StringUtils;
 import org.testng.collections.Lists;
 
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -58,9 +53,27 @@ public class DescResultParser extends AbstractResultHandler {
                 indices.add(openMLDBIndex);
             }
             table.setIndexs(indices);
-            String storageStr = lines.get(2);
-            table.setStorageMode(storageStr.split("\n")[2].trim());
+            String storageStr = null;
+            String offlineStr = null;
+            if(lines.size()==3) {
+                storageStr = lines.get(2);
+            }else if(lines.size()==4){
+                storageStr = lines.get(3);
+                offlineStr = lines.get(2);
+            }
+            table.setStorageMode(storageStr.split("\n")[3].trim());
             openMLDBResult.setSchema(table);
+            if(StringUtils.isNotEmpty(offlineStr)){
+                String[] offlineArray = offlineStr.split("\n")[3].trim().split("\\s+");
+                OfflineInfo offlineInfo = new OfflineInfo();
+                offlineInfo.setPath(offlineArray[0]);
+                offlineInfo.setFormat(offlineArray[1]);
+                offlineInfo.setDeepCopy(Boolean.parseBoolean(offlineArray[2]));
+                if(offlineArray.length>=4){
+                    offlineInfo.setOption(offlineArray[3]);
+                }
+                table.setOfflineInfo(offlineInfo);
+            }
         } catch (Exception e) {
             e.printStackTrace();
             openMLDBResult.setOk(false);

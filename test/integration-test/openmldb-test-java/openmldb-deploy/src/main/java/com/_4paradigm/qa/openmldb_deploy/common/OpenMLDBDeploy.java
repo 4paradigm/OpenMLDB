@@ -24,6 +24,7 @@ import com._4paradigm.qa.openmldb_deploy.util.OpenMLDBCommandUtil;
 import com._4paradigm.qa.openmldb_deploy.util.Tool;
 import com._4paradigm.test_tool.command_tool.common.ExecutorUtil;
 import com._4paradigm.test_tool.command_tool.common.LinuxUtil;
+import com._4paradigm.test_tool.command_tool.conf.CommandConfig;
 import com._4paradigm.test_tool.command_tool.util.OSInfoUtil;
 import com.google.common.collect.Lists;
 import lombok.Setter;
@@ -58,7 +59,11 @@ public class OpenMLDBDeploy {
     public OpenMLDBDeploy(String version){
         this.version = version;
         this.openMLDBUrl = OpenMLDBDeployConfig.getUrl(version);
-        this.sedSeparator = OSInfoUtil.isMac()?"''":"";
+        if(CommandConfig.IS_REMOTE){
+            this.sedSeparator = "";
+        }else {
+            this.sedSeparator = OSInfoUtil.isMac() ? "''" : "";
+        }
     }
     public OpenMLDBInfo deployStandalone(){
         String testPath = DeployUtil.getTestPath(version);
@@ -286,6 +291,7 @@ public class OpenMLDBDeploy {
                     "sed -i "+sedSeparator+" 's@#--zk_cluster=.*@--zk_cluster="+zk_endpoint+"@' "+testPath+tablet_name+"/conf/tablet.flags",
                     "sed -i "+sedSeparator+" 's@#--zk_root_path=.*@--zk_root_path=/openmldb@' "+testPath+tablet_name+"/conf/tablet.flags",
                     "sed -i "+sedSeparator+" 's@#--make_snapshot_threshold_offset=100000@--make_snapshot_threshold_offset=10@' "+testPath+tablet_name+"/conf/tablet.flags",
+                    "sed -i "+sedSeparator+" 's@--binlog_single_file_max_size=.*@--binlog_single_file_max_size=1@' "+testPath+tablet_name+"/conf/tablet.flags",
                     "sed -i "+sedSeparator+" 's@--scan_concurrency_limit=16@--scan_concurrency_limit=0@' "+testPath+tablet_name+"/conf/tablet.flags",
                     "sed -i "+sedSeparator+" 's@--put_concurrency_limit=8@--put_concurrency_limit=0@' "+testPath+tablet_name+"/conf/tablet.flags",
                     "sed -i "+sedSeparator+" 's@--get_concurrency_limit=16@--get_concurrency_limit=0@' "+testPath+tablet_name+"/conf/tablet.flags",
