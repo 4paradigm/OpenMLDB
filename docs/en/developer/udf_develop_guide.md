@@ -28,23 +28,23 @@ The SQL types corresponding to C++ types are shown as follows:
 | DATE      | `Date`      |
 
 
-#### 2.1.3 函数参数和返回值
+#### 2.1.3 Parameters and Return Values
 
 **Return Value**:
 
-* If the output type of the UDF is basic type, it will be processed as return value.
+* If the output type of the UDF is a basic type, it will be processed as a return value.
 * If the output type of the UDF is STRING, TIMESTAMP or DATE, it will return through the last parameter of the function.
 
 **Parameters**: 
 
-* If the parameter is basic type, it will be passed as value. 
+* If the parameter is a basic type, it will be passed by value. 
 * If the output type of the UDF is STRING, TIMESTAMP or DATE, it will be passed by pointer. 
 * The first parameter must be `UDFContext* ctx`. The definition of [UDFContext](../../../include/udf/openmldb_udf.h) is:
 
 ```c++
     struct UDFContext {
-        ByteMemoryPool* pool;  // 用来分配内存
-        void* ptr;             // 用来存储临时变量。目前单行函数用不到
+        ByteMemoryPool* pool;  // Used for memory allocation.
+        void* ptr;             // Used for the storage of temporary variables. Single-line functions don't use it at present.
     };
 ```
 
@@ -69,16 +69,16 @@ The SQL types corresponding to C++ types are shown as follows:
 - Realize the logic of the function.
 
 ```c++
-#include "udf/openmldb_udf.h"  // 必须包含此头文件
+#include "udf/openmldb_udf.h"  // The headfile 
  
-// 实现一个udf，截取字符串的前两个字符
+// Realize a UDF which slices the first 2 characters of a given string. 
 extern "C"
 void cut2(UDFContext* ctx, StringRef* input, StringRef* output) {
     if (input == nullptr || output == nullptr) {
         return;
     }
     uint32_t size = input->size_ <= 2 ? input->size_ : 2;
-    // 在udf函数中申请内存空间需要用ctx->pool
+    //To apply memory space in UDF functions, please use ctx->pool.
     char *buffer = ctx->pool->Alloc(size);
     memcpy(buffer, input->data_, size);
     output->size_ = size;
@@ -99,7 +99,7 @@ g++ -shared -o libtest_udf.so examples/test_udf.cc -I /work/OpenMLDB/include -st
 ```
 
 ### 2.3 Copy the Dynamic Library
-- The compiled dynamic libraries should be copied into the `udf` directory of the path which OpenMLDB `tablet/taskmanager` is deployed. Please create one if this directory does not exist.  
+- The compiled dynamic libraries should be copied into the `udf` directory of the path where OpenMLDB `tablet/taskmanager` is deployed. Please create one if this directory does not exist.  
 - Please note that the `udf` directory of `tablet` is level with the `bin/conf` directory.
 - The `taskmanager` should be placed in `taskmanager/bin/udf`. 
 - If the deployment paths of `tablet` and `taskmanager` are both `/work/openmldb`, the structure of the directory is shown below:
