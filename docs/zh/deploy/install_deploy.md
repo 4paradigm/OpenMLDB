@@ -8,6 +8,7 @@
   * 目前仅支持 x86 架构，暂不支持例如 ARM 等架构。
   * 核数推荐不少于 4 核，如果 Linux 环境下 CPU 不支持 AVX2 指令集，需要从源码重新编译部署包。
 
+* 运行环境：zookeeper和taskmanager部署需要java runtime environment。其他组件无要求。
 
 ## 部署包准备
 本说明文档中默认使用预编译好的 OpenMLDB 部署包（[Linux](https://github.com/4paradigm/OpenMLDB/releases/download/v0.6.3/openmldb-0.6.3-linux.tar.gz), [macOS](https://github.com/4paradigm/OpenMLDB/releases/download/v0.6.3/openmldb-0.6.3-darwin.tar.gz)），所支持的操作系统要求为：CentOS 7, Ubuntu 20.04, macOS >= 10.15。如果用户期望自己编译（如做 OpenMLDB 源代码开发，操作系统或者 CPU 架构不在预编译部署包的支持列表内等原因），用户可以选择在 docker 容器内编译使用或者从源码编译，具体请参照我们的[编译文档](compile.md)。
@@ -176,9 +177,9 @@ bash bin/start.sh start standalone_apiserver
 ```
 
 ## 部署集群版
-OpenMLDB集群版需要部署zookeeper、nameserver、tablet等模块。其中zookeeper用于服务发现和保存元数据信息。nameserver用于管理tablet，实现高可用和failover。tablet用于存储数据和主从同步数据。APIServer是可选的，如果要用http的方式和OpenMLDB交互需要部署此模块
+OpenMLDB集群版需要部署zookeeper、nameserver、tablet等模块。其中zookeeper用于服务发现和保存元数据信息。nameserver用于管理tablet，实现高可用和failover。tablet用于存储数据和主从同步数据。APIServer是可选的，如果要用http的方式和OpenMLDB交互需要部署此模块。taskmanager用于管理离线job。
 
-**注意:** 最好把不同的组件部署在不同的目录里，便于单独升级。如果在同一台机器部署多个tablet也需要部署在不同的目录里
+**注意:** 同一台机器部署多个组件时，一定要部署在不同的目录里，便于单独管理。尤其是部署tablet server，一定不能重复使用目录。
 
 ### 部署zookeeper
 建议部署3.4.14版本。如果已有可用zookeeper集群可略过此步骤。如果想要部署zookeeper集群，参考[这里](https://zookeeper.apache.org/doc/r3.4.14/zookeeperStarted.html#sc_RunningReplicatedZooKeeper)。本步骤只演示部署standalone zookeeper。
@@ -209,6 +210,10 @@ bash bin/zkServer.sh start
 通过`ps f|grep zoo.cfg`也可以看到zookeeper进程正在运行。
 
 ![zk ps](images/zk_ps.png)
+
+```{attention}
+如果发现zookeeper进程启动失败，请查看当前目录的zookeeper.out日志。
+```
 
 #### 4. 记录zookeeper服务地址与连接测试
 
@@ -453,7 +458,7 @@ cd openmldb-taskmanager-0.6.3
 * 修改batchjob.jar.path为BatchJob Jar文件路径，如果设置为空会到上一级lib目录下寻找。如果使用Yarn模式需要修改为对应HDFS路径。
 * 修改offline.data.prefix为离线表存储路径，如果使用Yarn模式需要修改为对应HDFS路径。
 * 修改spark.master为离线任务运行模式，目前支持local和yarn模式。
-* 修改spark.home为Spark环境路径，如果不配置或配置为空则使用SPARK_HOME环境变量的配置。也可在配置文件中设置，路径为绝对路径。
+* 修改spark.home为Spark环境路径，如果不配置或配置为空则使用`SPARK_HOME`环境变量的配置。也可在配置文件中设置，路径为绝对路径。
 
 ```
 server.host=172.27.128.33
@@ -481,6 +486,12 @@ bash bin/start.sh start taskmanager
 
 `ps f|grep taskmanager`应运行正常，`curl http://<taskmanager_ip>:<port>/status`可以查询到taskmanager进程状态。
 
+```{note}
+taskmanager的日志分为taskmanager进程日志和每个离线命令的job日志。默认路径为<启动目录>/taskmanager/bin/logs，其中：
+- taskmanager.log/.out为taskmanager进程日志，如果taskmanager进程退出，请查看这个日志。
+- job_x_error.log为单个job的运行日志，job_x.log为单个job的print日志（如果是异步select，结果将打印在此处）。如果离线任务失败，例如job 10失败，**请到taskmanager所在机器上**找到对应的日志job_10.log和job_10_error.log。
+```
+
 #### 4 检查服务是否启动
 ```bash
 $ ./bin/openmldb --zk_cluster=172.27.128.33:7181  --zk_root_path=/openmldb_cluster --role=sql_client
@@ -497,3 +508,13 @@ $ ./bin/openmldb --zk_cluster=172.27.128.33:7181  --zk_root_path=/openmldb_clust
   172.27.128.33:9902  taskmanager  1665649276766   online   NULL
  ------------------- ------------ --------------- -------- ---------
  ```
+
+在sql client中，可以通过执行以下sql命令，读写简单的表测试一下集群功能是否正常。（为了简单起见，这里只测试在线部分）
+```
+create database simple_test;
+use simple_test;
+create table t1(c1 int, c2 string);
+set @@execute_mode='online';
+Insert into t1 values (1, 'a'),(2,'b');
+select * from t1;
+```

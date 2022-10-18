@@ -692,10 +692,11 @@ Statement stmt = connection.createStatement();
 stmt.execute("SELECT * from t1");
 ```
 
-`PreparedStatement`可支持`SELECT`,`INSERT`两种sql，`INSERT`仅支持插入到在线。
+`PreparedStatement`可支持`SELECT`,`INSERT`和`DELETE`，`INSERT`仅支持插入到在线。
 ```
 PreparedStatement selectStatement = connection.prepareStatement("SELECT * FROM t1 WHERE id=?");
 PreparedStatement insertStatement = connection.prepareStatement("INSERT INTO t1 VALUES (?,?)");
+PreparedStatement insertStatement = connection.prepareStatement("DELETE FROM t1 WHERE id=?");
 ```
 
 ## 5. SDK Option详解
