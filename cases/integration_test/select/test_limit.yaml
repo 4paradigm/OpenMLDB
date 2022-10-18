@@ -14,7 +14,7 @@
 
 db: test_zw
 debugs: []
-version: 0.7.0
+version: 0.6.4
 cases:
   - id: 0
     desc: select limit
