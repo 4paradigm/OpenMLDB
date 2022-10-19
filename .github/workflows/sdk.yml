@@ -399,6 +399,8 @@ jobs:
       - name: Publish Linux UT Results
         uses: ./.github/workflows/publish-test-results-action.yml
         with:
-          files: [linux-ut-result-*/**/*.xml mac-ut-result-*/**/*.xml]
+          files: |
+            linux-ut-result-*/**/*.xml
+            mac-ut-result-*/**/*.xml
           check_name: SDK Test Report
           comment_title: SDK Test Report
