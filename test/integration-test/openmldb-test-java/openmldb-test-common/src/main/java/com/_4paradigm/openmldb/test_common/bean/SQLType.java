@@ -1,5 +1,6 @@
 package com._4paradigm.openmldb.test_common.bean;
 
+import com._4paradigm.openmldb.test_common.openmldb.OpenMLDBGlobalVar;
 import com.google.common.collect.Sets;
 import org.testng.collections.Lists;
 
@@ -17,12 +18,19 @@ public enum SQLType {
     DROP,
     USE,
     SET,
-    DESC
+    DESC,
+    JOB,
+    OFFLINE_SELECT
     ;
     public static final Set<SQLType> RESULT_SET = Sets.newHashSet(SELECT, SHOW, DEPLOY);
 //    public static final List<SQLType> VOID = Lists.newArrayList(CREATE,DROP,USE,INSERT);
     public static SQLType parseSQLType(String sql){
-        if(sql.toLowerCase().startsWith("select ")){
+        if(sql.toLowerCase().startsWith("load data")||sql.toLowerCase().contains("into outfile")){
+            return JOB;
+        }else if(sql.toLowerCase().startsWith("select ")){
+            if(OpenMLDBGlobalVar.EXECUTE_MODE.equals("offline")){
+                return OFFLINE_SELECT;
+            }
             return SELECT;
         }else if (sql.toLowerCase().startsWith("insert into ")) {
             return INSERT;

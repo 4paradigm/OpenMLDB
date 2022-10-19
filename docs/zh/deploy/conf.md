@@ -178,6 +178,11 @@
 # 第二层跳表的最大高度
 #--key_entry_max_height=8
 
+# 查询配置
+# 最大扫描条数（全表扫描/全表聚合）
+#--max_traverse_cnt=50000
+# 最大扫描pk数（批处理）
+#--max_traverse_pk_cnt=5000
 
 # loadtable
 # load时給线程池提交一次任务的数据条数

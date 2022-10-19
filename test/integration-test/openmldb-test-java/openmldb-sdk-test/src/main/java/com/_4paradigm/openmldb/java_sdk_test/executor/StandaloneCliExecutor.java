@@ -25,12 +25,12 @@ import java.util.Map;
 
 @Slf4j
 public class StandaloneCliExecutor extends CommandExecutor{
-    public StandaloneCliExecutor(SQLCase fesqlCase, SQLCaseType executorType) {
-        super(fesqlCase, executorType);
+    public StandaloneCliExecutor(SQLCase sqlCase, SQLCaseType executorType) {
+        super(sqlCase, executorType);
     }
 
-    public StandaloneCliExecutor(SQLCase fesqlCase, Map<String, OpenMLDBInfo> openMLDBInfoMap, SQLCaseType executorType) {
-        super(fesqlCase, openMLDBInfoMap, executorType);
+    public StandaloneCliExecutor(SQLCase sqlCase, Map<String, OpenMLDBInfo> openMLDBInfoMap, SQLCaseType executorType) {
+        super(sqlCase, openMLDBInfoMap, executorType);
     }
 
     @Override

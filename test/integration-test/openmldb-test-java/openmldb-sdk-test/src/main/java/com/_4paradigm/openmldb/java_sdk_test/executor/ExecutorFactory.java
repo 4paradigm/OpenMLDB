@@ -97,6 +97,8 @@ public class ExecutorFactory {
                 return new DiffResultExecutor(executor,sqlCase,type);
             case kLongWindow:
                 return new LongWindowExecutor(executor,sqlCase,false,false,type);
+            case kJob:
+                return new JobExecutor(executor,sqlCase,type);
         }
         return null;
     }

@@ -25,12 +25,12 @@ import java.util.Map;
 
 @Slf4j
 public class ClusterCliExecutor extends CommandExecutor{
-    public ClusterCliExecutor(SQLCase fesqlCase, SQLCaseType executorType) {
-        super(fesqlCase, executorType);
+    public ClusterCliExecutor(SQLCase sqlCase, SQLCaseType executorType) {
+        super(sqlCase, executorType);
     }
 
-    public ClusterCliExecutor(SQLCase fesqlCase, Map<String, OpenMLDBInfo> openMLDBInfoMap, SQLCaseType executorType) {
-        super(fesqlCase, openMLDBInfoMap, executorType);
+    public ClusterCliExecutor(SQLCase sqlCase, Map<String, OpenMLDBInfo> openMLDBInfoMap, SQLCaseType executorType) {
+        super(sqlCase, openMLDBInfoMap, executorType);
     }
 
     @Override

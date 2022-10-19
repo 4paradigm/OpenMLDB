@@ -521,7 +521,7 @@ public class SQLRouterSmokeTest {
                         // j > 0, addBatch has been called
                         Assert.assertEquals(e.getMessage(), "please use executeBatch");
                     } else {
-                        Assert.assertEquals(e.getMessage(), "append failed");
+                        Assert.assertTrue(e.getMessage().contains("append failed"));
                     }
                 }
                 impl.setLong(1, (Long) datas1[j][0]);
@@ -556,7 +556,7 @@ public class SQLRouterSmokeTest {
                     if (j > 0) {
                         Assert.assertEquals(e.getMessage(), "please use executeBatch");
                     } else {
-                        Assert.assertEquals(e.getMessage(), "append failed");
+                        Assert.assertTrue(e.getMessage().contains("append failed"));
                     }
                 }
                 impl2.setLong(1, (Long) datas1[j][0]);

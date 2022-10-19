@@ -26,6 +26,8 @@ void RefCountedSlice::Release() {
         auto& cnt = *this->ref_cnt_;
         cnt -= 1;
         if (cnt == 0) {
+            // memset in case the buf is still used after free
+            memset(buf(), 0, size());
             free(buf());
             delete this->ref_cnt_;
         }

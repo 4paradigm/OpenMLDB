@@ -781,8 +781,8 @@ cases:
   -
     id: 27
     desc: 两个窗口,一个union，一个不union
-    mode: rtidb-batch-unsupport,cluster-unsupport
-    tags: ["cluster-执行失败"]
+    version: 0.0.6.4
+#    mode: rtidb-batch-unsupport,cluster-unsupport
     inputs:
       -
         columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
@@ -820,8 +820,7 @@ cases:
   -
     id: 28
     desc: 两个窗口,一个union一个表，一个union两个表
-    mode: rtidb-batch-unsupport,cluster-unsupport
-    tags: ["cluster-执行失败"]
+    version: 0.6.4
     inputs:
       -
         columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
@@ -863,8 +862,7 @@ cases:
   -
     id: 29
     desc: 两个窗口,一个union，一个INSTANCE_NOT_IN_WINDOW
-    mode: rtidb-batch-unsupport,cluster-unsupport
-    tags: ["cluster-执行失败"]
+    version: 0.6.4
     inputs:
       -
         columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
@@ -896,8 +894,7 @@ cases:
   -
     id: 30
     desc: 两个窗口,一个union一个表，一个union使用子查询
-    mode: rtidb-batch-unsupport,cluster-unsupport
-    tags: ["cluster-执行失败"]
+    version: 0.6.4
     inputs:
       -
         columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
@@ -928,8 +925,7 @@ cases:
   -
     id: 31
     desc: 多个窗口-rows
-    mode: rtidb-batch-unsupport,cluster-unsupport
-    tags: ["cluster-执行失败", "@chenjing batch online fix for multi window with union", "@tobe batch offline fix"]
+    version: 0.6.4
     inputs:
       -
         columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
@@ -960,13 +956,12 @@ cases:
       order: id
       columns: ["id int","c1 string","w1_c4_sum bigint","w2_c4_sum bigint"]
       rows:
-        - [1,"aa",30,0]
+        - [1,"aa",30,null]
         - [5,"aa",160,93]
   -
     id: 32
     desc: 多个窗口包含不同的单位
-    mode: cluster-unsupport
-    tags: ["cluster-执行失败"]
+    version: 0.6.4
     inputs:
       -
         columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
@@ -1219,3 +1214,93 @@ cases:
          1, 0, NULL, NULL, NULL
          2, 1, 21, 21, 21
          3, 1, 22, 22, 22
+  -
+    id: 38
+    desc: 两个窗口相同的pk,相同的ts,不同的时间窗
+    inputs:
+      -
+        columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",20,30,1.1,2.1,1590738990000,"2020-05-01"]
+          - [2,"aa",21,31,1.2,2.2,1590738990001,"2020-05-02"]
+          - [3,"aa",22,32,1.3,2.3,1590738990002,"2020-05-03"]
+          - [4,"aa",23,33,1.4,2.4,1590738990003,"2020-05-04"]
+          - [5,"aa",24,34,1.5,2.5,1590738990004,"2020-05-05"]
+    dataProvider:
+      - ["ROWS","ROWS_RANGE"]
+    sql: |
+      SELECT id, c1, sum(c4) OVER w1 as w1_c4_sum, sum(c4) OVER w2 as w2_c4_sum FROM {0} WINDOW
+      w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 d[0] BETWEEN 2 PRECEDING AND CURRENT ROW),
+      w2 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 d[0] BETWEEN 1 PRECEDING AND CURRENT ROW);
+    expect:
+      order: id
+      columns: ["id int","c1 string","w1_c4_sum bigint","w2_c4_sum bigint"]
+      rows:
+        - [1,"aa",30,30]
+        - [2,"aa",61,61]
+        - [3,"aa",93,63]
+        - [4,"aa",96,65]
+        - [5,"aa",99,67]
+  -
+    id: 39
+    desc: 两个窗口相同的pk,相同的ts,不同的时间窗-2
+    inputs:
+      -
+        columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",20,30,1.1,2.1,1590738990000,"2020-05-01"]
+          - [2,"aa",21,31,1.2,2.2,1590738990001,"2020-05-02"]
+          - [3,"aa",22,32,1.3,2.3,1590738990002,"2020-05-03"]
+          - [4,"aa",23,33,1.4,2.4,1590738990003,"2020-05-04"]
+          - [5,"aa",24,34,1.5,2.5,1590738990004,"2020-05-05"]
+    dataProvider:
+      - ["ROWS","ROWS_RANGE"]
+    sql: |
+      SELECT id, c1, sum(c4) OVER w1 as w1_c4_sum, sum(c4) OVER w2 as w2_c4_sum FROM {0} WINDOW
+      w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 d[0] BETWEEN 2 PRECEDING AND 0 PRECEDING),
+      w2 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 d[0] BETWEEN 2 PRECEDING AND 1 PRECEDING);
+    expect:
+      order: id
+      columns: ["id int","c1 string","w1_c4_sum bigint","w2_c4_sum bigint"]
+      rows:
+        - [1,"aa",30,null]
+        - [2,"aa",61,30]
+        - [3,"aa",93,61]
+        - [4,"aa",96,63]
+        - [5,"aa",99,65]
+  - id: 40
+    desc: 相同window，不同函数
+    inputs:
+      - columns: [ "c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date" ]
+        indexs: [ "index1:c1:c7" ]
+        rows:
+          - [ "aa",20,30,1.1,2.1,1590738990000,"2020-05-01" ]
+          - [ "aa",21,31,1.2,2.2,1590738991000,"2020-05-02" ]
+          - [ "aa",22,32,1.3,2.3,1590738992000,"2020-05-03" ]
+          - [ "aa",23,33,1.4,2.4,1590738993000,"2020-05-04" ]
+          - [ "bb",24,34,1.5,2.5,1590738994000,"2020-05-05" ]
+    sql: |
+      SELECT c1, 
+      sum(c3) OVER w1 as w1_c3_sum, 
+      sum(c4) OVER w1 as w1_c4_sum, 
+      avg(c4) OVER w1 as w1_c4_avg,
+      count(c4) OVER w1 as w1_c4_count,
+      max(c3) OVER w1 as w1_c3_max, 
+      min(c4) OVER w1 as w1_c4_min, 
+      max(c4) OVER w1 as w1_c4_max
+      FROM {0} 
+      WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS_RANGE BETWEEN 2s PRECEDING AND CURRENT ROW);
+    expect:
+      order: c3
+      columns: [ "c1 string","w1_c3_sum int","w1_c4_sum bigint","w1_c4_avg double","w1_c4_count bigint","w1_c3_max int","w1_c4_min bigint","w1_c4_max bigint" ]
+      rows:
+        - [ "aa",20,30,30,1,20,30,30 ]
+        - [ "aa",41,61,30.5,2,21,30,31 ]
+        - [ "aa",63,93,31,3,22,30,32 ]
+        - [ "aa",66,96,32,3,23,31,33 ]
+        - [ "bb",24,34,34 ,1,24,34,34]
+
+
+
