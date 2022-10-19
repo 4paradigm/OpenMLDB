@@ -1729,7 +1729,8 @@ cases:
           - [4,"aa","b:1","b:1","b:1","b:1","b:1"]
   -
     id: 39
-    desc: "top_n_key_*_cate_where-fail1"
+    desc: |
+      top_n_key_*_cate_where-fail1, float or bool can't be category
     sqlDialect: ["HybridSQL"]
     level: 5
     inputs:
@@ -1762,7 +1763,8 @@ cases:
       success: false
   -
     id: 40
-    desc: "top_n_key_*_cate_where-fail2"
+    desc: |
+      top_n_key_*_cate_where-fail2. Value can not be timestamp, date, string, bool, excepting top_n_key_count_cate_where
     sqlDialect: ["HybridSQL"]
     level: 5
     inputs:
@@ -1783,7 +1785,7 @@ cases:
           - [3,3,2,2,32,1.3,2.3,1590738992000,"2020-05-02","b",false]
           - [4,4,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL]
     dataProvider:
-      - ["top_n_key_count_cate_where","top_n_key_sum_cate_where","top_n_key_avg_cate_where","top_n_key_max_cate_where","top_n_key_min_cate_where"]
+      - ["top_n_key_sum_cate_where","top_n_key_avg_cate_where","top_n_key_max_cate_where","top_n_key_min_cate_where"]
       - ["{0}.c7","{0}.c8","{0}.c9","{0}.c10"]
       - ["{1}.c2","{1}.c3","{1}.c4","{1}.c5","{1}.c6","{1}.c7","{1}.c8","{1}.c9","{1}.c10"]
     sql: |

@@ -23,6 +23,7 @@
 #include "udf/containers.h"
 #include "udf/default_udf_library.h"
 #include "udf/udf_registry.h"
+#include "udf/default_defs/containers.h"
 
 using openmldb::base::Date;
 using openmldb::base::StringRef;
@@ -45,6 +46,11 @@ struct SumCateDef {
         using ContainerT = udf::container::BoundedGroupByDict<K, V, V>;
         using InputK = typename ContainerT::InputK;
         using InputV = typename ContainerT::InputV;
+
+        // FormatValueF
+        static uint32_t FormatValueFn(const typename ContainerT::StorageValue& val, char* buf, size_t size) {
+            return v1::format_string(val, buf, size);
+        }
 
         void operator()(UdafRegistryHelper& helper) {  // NOLINT
             std::string suffix = ".opaque_dict_" +
@@ -79,9 +85,7 @@ struct SumCateDef {
 
         static void Output(ContainerT* ptr, codec::StringRef* output) {
             ContainerT::OutputString(
-                ptr, false, output, [](const V& sum, char* buf, size_t size) {
-                    return v1::format_string(sum, buf, size);
-                });
+                ptr, false, output, FormatValueFn);
             ContainerT::Destroy(ptr);
         }
     };
@@ -144,7 +148,7 @@ struct TopKSumCateWhereDef {
         using InputK = typename ContainerT::InputK;
         using InputV = typename ContainerT::InputV;
 
-        using AvgCateImpl = typename SumCateDef<K>::template Impl<V>;
+        using CateImpl = typename SumCateDef<K>::template Impl<V>;
 
         void operator()(UdafRegistryHelper& helper) {  // NOLINT
             std::string suffix;
@@ -176,7 +180,7 @@ struct TopKSumCateWhereDef {
                                   bool is_cond_null, InputK key,
                                   bool is_key_null, int64_t bound) {
             if (cond && !is_cond_null) {
-                AvgCateImpl::Update(ptr, value, is_value_null, key,
+                CateImpl::Update(ptr, value, is_value_null, key,
                                     is_key_null);
                 auto& map = ptr->map();
                 if (bound >= 0 && map.size() > static_cast<size_t>(bound)) {
@@ -202,6 +206,16 @@ struct TopKSumCateWhereDef {
             ContainerT::Destroy(ptr);
         }
     };
+};
+
+template <typename K>
+struct TopNValueSumCateWhereDef {
+    void operator()(UdafRegistryHelper& helper) {  // NOLINT
+        helper.library()
+            ->RegisterUdafTemplate<container::TopNValueImpl<SumCateDef<K>::template Impl>::template Impl>(helper.name())
+            .doc(helper.GetDoc())
+            .template args_in<int16_t, int32_t, int64_t, float, double>();
+    }
 };
 
 void DefaultUdfLibrary::InitSumByCateUdafs() {
@@ -263,9 +277,9 @@ void DefaultUdfLibrary::InitSumByCateUdafs() {
     category key. Output string for top N category keys in descend order. Each group is
     represented as 'K:V' and separated by comma(,). Empty string returned if no rows selected.
 
-            @param catagory  Specify catagory column to group by.
             @param value  Specify value column to aggregate on.
             @param condition  Specify condition column.
+            @param catagory  Specify catagory column to group by.
             @param n  Fetch top n keys.
 
             Example:
@@ -283,6 +297,36 @@ void DefaultUdfLibrary::InitSumByCateUdafs() {
                 SELECT top_n_key_sum_cate_where(value, condition, catagory, 2)
     OVER w;
                 -- output "z:11,y:4"
+            @endcode
+            )")
+        .args_in<int16_t, int32_t, int64_t, Date, Timestamp, StringRef>();
+
+    RegisterUdafTemplate<TopNValueSumCateWhereDef>("top_n_value_sum_cate_where")
+        .doc(R"(
+            @brief Compute sum of values matching specified condition grouped by
+    category key. Output string for top N aggregate values in descend order. Each group is
+    represented as 'K:V' and separated by comma(,). Empty string returned if no rows selected.
+
+            @param value  Specify value column to aggregate on.
+            @param condition  Specify condition column.
+            @param catagory  Specify catagory column to group by.
+            @param n  Top N.
+
+            Example:
+
+            value|condition|catagory
+            --|--|--
+            0|true|x
+            1|true|y
+            2|false|x
+            3|false|y
+            4|true|x
+            5|true|z
+            6|true|z
+            @code{.sql}
+                SELECT top_n_value_sum_cate_where(value, condition, catagory, 2)
+    OVER w;
+                -- output "z:11,x:4"
             @endcode
             )")
         .args_in<int16_t, int32_t, int64_t, Date, Timestamp, StringRef>();

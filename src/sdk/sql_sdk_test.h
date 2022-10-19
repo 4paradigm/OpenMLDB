@@ -164,8 +164,12 @@ INSTANTIATE_TEST_SUITE_P(
 INSTANTIATE_TEST_SUITE_P(
     WindowUnion, SQLSDKQueryTest,
     testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/query/window_with_union_query.yaml")));
-
-
+INSTANTIATE_TEST_SUITE_P(
+    WindowTestCurrentRow, SQLSDKQueryTest,
+    testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/function/window/test_current_row.yaml")));
+INSTANTIATE_TEST_SUITE_P(
+    SQLSDKTestStandaloneBatchGroupQuery, SQLSDKQueryTest,
+    testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/query/group_query.yaml")));
 
 
 INSTANTIATE_TEST_SUITE_P(
@@ -191,6 +195,57 @@ INSTANTIATE_TEST_SUITE_P(
 INSTANTIATE_TEST_SUITE_P(
 SQLSDKTestClusterBatch, SQLSDKClusterOnlineBatchQueryTest,
 testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/function/cluster/test_cluster_batch.yaml")));
+INSTANTIATE_TEST_SUITE_P(
+    SQLSDKTestClusterBatchWindowRow, SQLSDKClusterOnlineBatchQueryTest,
+    testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/function/cluster/test_window_row.yaml")));
+INSTANTIATE_TEST_SUITE_P(
+    SQLSDKTestClusterBatchRowRange, SQLSDKClusterOnlineBatchQueryTest,
+    testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/function/cluster/test_window_row_range.yaml")));
+INSTANTIATE_TEST_SUITE_P(
+    SQLSDKTestClusterBatchWindowRow2, SQLSDKClusterOnlineBatchQueryTest,
+    testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/function/window/test_window_row.yaml")));
+INSTANTIATE_TEST_SUITE_P(
+    SQLSDKTestClusterBatchRowRange2, SQLSDKClusterOnlineBatchQueryTest,
+    testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/function/window/test_window_row_range.yaml")));
+INSTANTIATE_TEST_SUITE_P(
+    SQLSDKTestClusterBatchWindowUnion, SQLSDKClusterOnlineBatchQueryTest,
+    testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/function/window/test_window_union.yaml")));
+INSTANTIATE_TEST_SUITE_P(
+    SQLSDKTestClusterBatchWindowQuery, SQLSDKClusterOnlineBatchQueryTest,
+    testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/query/window_query.yaml")));
+INSTANTIATE_TEST_SUITE_P(
+    SQLSDKTestClusterBatchWindowUnionQuery, SQLSDKClusterOnlineBatchQueryTest,
+    testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/query/window_with_union_query.yaml")));
+INSTANTIATE_TEST_SUITE_P(
+    SQLSDKTestClusterBatchErrorWindow, SQLSDKClusterOnlineBatchQueryTest,
+    testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/function/window/error_window.yaml")));
+INSTANTIATE_TEST_SUITE_P(
+    SQLSDKTestClusterBatchCurrentRow, SQLSDKClusterOnlineBatchQueryTest,
+    testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/function/window/test_current_row.yaml")));
+INSTANTIATE_TEST_SUITE_P(
+    SQLSDKTestClusterBatchMaxSize, SQLSDKClusterOnlineBatchQueryTest,
+    testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/function/window/test_maxsize.yaml")));
+INSTANTIATE_TEST_SUITE_P(
+    SQLSDKTestClusterBatchWindow, SQLSDKClusterOnlineBatchQueryTest,
+    testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/function/window/test_window.yaml")));
+ INSTANTIATE_TEST_SUITE_P(
+    SQLSDKTestClusterBatchWindowExcludeCurrentTime, SQLSDKClusterOnlineBatchQueryTest,
+    testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/function/window/test_window_exclude_current_time.yaml")));
+INSTANTIATE_TEST_SUITE_P(
+    SQLSDKTestClusterBatchWindowAttributes, SQLSDKClusterOnlineBatchQueryTest,
+    testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/function/window/window_attributes.yaml")));
+INSTANTIATE_TEST_SUITE_P(
+    SQLSDKTestClusterBatchGroupQuery, SQLSDKClusterOnlineBatchQueryTest,
+    testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/query/group_query.yaml")));
+INSTANTIATE_TEST_SUITE_P(
+    SQLSDKTestClusterBatchHavingQuery, SQLSDKClusterOnlineBatchQueryTest,
+    testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/query/having_query.yaml")));
+INSTANTIATE_TEST_SUITE_P(
+    SQLSDKTestClusterBatchWhereGroupQuery, SQLSDKClusterOnlineBatchQueryTest,
+    testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/query/where_group_query.yaml")));
+INSTANTIATE_TEST_SUITE_P(
+    SQLSDKTestClusterBatchUdafQuery, SQLSDKClusterOnlineBatchQueryTest,
+    testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/query/udaf_query.yaml")));
 }  // namespace sdk
 }  // namespace openmldb
 #endif  // SRC_SDK_SQL_SDK_TEST_H_
