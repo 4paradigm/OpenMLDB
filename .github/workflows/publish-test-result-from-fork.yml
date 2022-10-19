@@ -16,9 +16,11 @@ jobs:
          github.event.sender.login == 'dependabot[bot]' ||
          github.event.workflow_run.head_repository.full_name != github.repository
       )
-    uses: ./.github/workflows/publish-test-result-from-fork-action.yml
-    with:
-      commit: ${{ github.event.workflow_run.head_sha }}
-      files: artifacts/linux-ut-result-*/**/*.xml
-      check_name: Linux Test Report
-      comment_title: Linux Test Report
+    steps:
+      - name: linux test report
+        uses: ./.github/workflows/publish-test-result-from-fork-action.yml
+        with:
+          commit: ${{ github.event.workflow_run.head_sha }}
+          files: artifacts/linux-ut-result-*/**/*.xml
+          check_name: Linux Test Report
+          comment_title: Linux Test Report

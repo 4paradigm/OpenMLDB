@@ -12,8 +12,8 @@ on:
         type: string
 
 jobs:
-  runs-on: ubuntu-latest
   publish-test-results:
+    runs-on: ubuntu-latest
     steps:
       - name: Download Artifacts
         uses: actions/download-artifact@v2
