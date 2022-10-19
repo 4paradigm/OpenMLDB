@@ -1,0 +1,23 @@
+mode: cluster
+zookeeper:
+  zk_cluster: 172.24.4.55:30000
+  zk_root_path: /openmldb
+nameserver:
+  -
+    endpoint: 172.24.4.55:30004
+    path: /home/zhaowei01/openmldb-auto-test/tmp/openmldb-ns-1
+  -
+    endpoint: 172.24.4.55:30005
+    path: /home/zhaowei01/openmldb-auto-test/tmp/openmldb-ns-2
+tablet:
+  -
+    endpoint: 172.24.4.55:30001
+    path: /home/zhaowei01/openmldb-auto-test/tmp/openmldb-tablet-1
+  -
+    endpoint: 172.24.4.55:30002
+    path: /home/zhaowei01/openmldb-auto-test/tmp/openmldb-tablet-2
+  -
+    endpoint: 172.24.4.55:30003
+    path: /home/zhaowei01/openmldb-auto-test/tmp/openmldb-tablet-3
+
+

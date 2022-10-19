@@ -1701,7 +1701,7 @@ TEST_P(TabletImplTest, TraverseTTLTS) {
     tablet.Traverse(NULL, &sr, srp, &closure);
     ASSERT_EQ(0, srp->code());
     ASSERT_EQ(26, (signed)srp->count());
-    ASSERT_EQ("mcc21009", srp->pk());
+    ASSERT_EQ("mcc21008", srp->pk());
     ASSERT_FALSE(srp->is_finish());
     sr.set_pk(srp->pk());
     sr.set_ts(srp->ts());
@@ -3550,9 +3550,11 @@ TEST_P(TabletImplTest, AbsAndLat) {
     for (int i = 0; i < 100; ++i) {
         ::openmldb::api::PutResponse presponse;
         ::openmldb::api::PutRequest prequest;
-        ::openmldb::api::Dimension* dim = prequest.add_dimensions();
-        dim->set_idx(0);
-        dim->set_key("test" + std::to_string(i % 10));
+        for (int idx = 0; idx < 6; idx++) {
+            auto dim = prequest.add_dimensions();
+            dim->set_idx(idx);
+            dim->set_key("test" + std::to_string(i % 10));
+        }
         uint64_t ts = now - (99 - i) * 60 * 1000;
         std::string ts_str = std::to_string(ts);
         std::vector<std::string> row = {"test" + std::to_string(i % 10), ts_str, ts_str,
@@ -4217,9 +4219,11 @@ TEST_P(TabletImplTest, AbsOrLat) {
     for (int i = 0; i < 100; ++i) {
         ::openmldb::api::PutResponse presponse;
         ::openmldb::api::PutRequest prequest;
-        ::openmldb::api::Dimension* dim = prequest.add_dimensions();
-        dim->set_idx(0);
-        dim->set_key("test" + std::to_string(i % 10));
+        for (int idx = 0; idx < 6; idx++) {
+            auto dim = prequest.add_dimensions();
+            dim->set_idx(idx);
+            dim->set_key("test" + std::to_string(i % 10));
+        }
         std::string ts_str = std::to_string(now - (99 - i) * 60 * 1000);
         std::vector<std::string> row = {"test" + std::to_string(i % 10), ts_str, ts_str,
                 ts_str, ts_str, ts_str, ts_str};

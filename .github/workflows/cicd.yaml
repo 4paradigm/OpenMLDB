@@ -145,7 +145,7 @@ jobs:
 
   macos-cpp:
     runs-on: macos-latest
-    if: github.repository == '4paradigm/OpenMLDB' && startsWith(github.ref, 'refs/tags/v')
+    if: github.repository == '4paradigm/OpenMLDB'
     env:
       OS: darwin
       ARCH: x86_64
@@ -165,7 +165,7 @@ jobs:
           echo "OPENMLDB_PREFIX=openmldb-$VERSION-darwin" >> $GITHUB_ENV
 
       - name: enable java on release
-        if: github.event_name == 'push'
+        if: ${{ github.event_name == 'push' }}
         run: |
           echo "SQL_JAVASDK_ENABLE=ON" >> $GITHUB_ENV
 
@@ -183,17 +183,17 @@ jobs:
           # make thirdpartybuild-clean
 
       - name: install
-        if: ${{ github.event_name == 'push' }}
+        if: ${{ github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') }}
         run: |
           make install
 
       - name: package
-        if: ${{ github.event_name == 'push' }}
+        if: ${{ github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') }}
         run: |
           tar czf ${{ env.OPENMLDB_PREFIX }}.tar.gz ${{ env.OPENMLDB_PREFIX }}/
 
       - name: upload artifacts
-        if: ${{ github.event_name == 'push' }}
+        if: ${{ github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') }}
         uses: actions/upload-artifact@v2
         with:
           path: openmldb-*.tar.gz

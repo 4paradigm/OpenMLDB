@@ -31,8 +31,8 @@ import java.util.List;
  */
 @Slf4j
 public class DeploymentCountCheckerByCli extends BaseChecker {
-    public DeploymentCountCheckerByCli(ExpectDesc expect, OpenMLDBResult fesqlResult) {
-        super(expect, fesqlResult);
+    public DeploymentCountCheckerByCli(ExpectDesc expect, OpenMLDBResult openMLDBResult) {
+        super(expect, openMLDBResult);
     }
 
     @Override

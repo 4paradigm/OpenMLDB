@@ -118,7 +118,6 @@ cases:
         5, 55, 2, 3, 12, 13.2, 55.5, 55, 3, aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
   - id: 4
     desc: 单行+两window+自定义聚合函数，w1和w2命中索引
-    mode: rtidb-batch-unsupport
     sql: |
       SELECT col2, col0, col5, sum(col1) OVER w1 as w1_col1_sum, sum(col3) OVER w1 as w1_col3_sum,
       sum(col4) OVER w2 as w2_col4_sum, sum(col2) OVER w2 as w2_col2_sum, sum(col5) OVER w2 as w2_col5_sum,
@@ -684,6 +683,7 @@ cases:
         8, B, 4, 1590115450000, 5
         9, A, 5, 1590115460000, 7
   - id: 20
+    mode: cluster-unsupport
     desc: lastjoin+window ROWS and ROWS_RANGE merge, 包含纯历史小窗口
     sql: |
       SELECT id, pk1, col1, std_ts,
@@ -752,7 +752,7 @@ cases:
   - id: 21
     desc: window query after last join with a table, index hasn't been optimized
     db: db1
-    mode: performance-sensitive-unsupport
+    mode: performance-sensitive-unsupport, cluster-unsupport
     sql: |
        SELECT sum(t1.col1) over w1 as sum_t1_col1, str1 as t2_str1
        FROM t1

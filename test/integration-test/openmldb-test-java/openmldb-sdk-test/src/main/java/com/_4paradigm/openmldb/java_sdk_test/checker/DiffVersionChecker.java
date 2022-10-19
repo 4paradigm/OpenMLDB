@@ -30,8 +30,8 @@ import java.util.Map;
 @Slf4j
 public class DiffVersionChecker extends BaseChecker{
 
-    public DiffVersionChecker(OpenMLDBResult fesqlResult, Map<String, OpenMLDBResult> resultMap){
-        super(fesqlResult,resultMap);
+    public DiffVersionChecker(OpenMLDBResult openMLDBResult, Map<String, OpenMLDBResult> resultMap){
+        super(openMLDBResult,resultMap);
     }
 
     @Override

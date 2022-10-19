@@ -27,8 +27,8 @@ import org.testng.Assert;
 @Slf4j
 public class MessageChecker extends BaseChecker {
 
-    public MessageChecker(ExpectDesc expect, OpenMLDBResult fesqlResult){
-        super(expect,fesqlResult);
+    public MessageChecker(ExpectDesc expect, OpenMLDBResult openMLDBResult){
+        super(expect,openMLDBResult);
     }
 
     @Override

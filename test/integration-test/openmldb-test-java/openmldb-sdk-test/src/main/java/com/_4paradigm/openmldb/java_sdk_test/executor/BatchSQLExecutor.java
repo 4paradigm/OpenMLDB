@@ -38,11 +38,11 @@ import java.util.Map;
 @Slf4j
 public class BatchSQLExecutor extends BaseSQLExecutor {
 
-    public BatchSQLExecutor(SqlExecutor executor, SQLCase fesqlCase, SQLCaseType executorType) {
-        super(executor, fesqlCase, executorType);
+    public BatchSQLExecutor(SqlExecutor executor, SQLCase sqlCase, SQLCaseType executorType) {
+        super(executor, sqlCase, executorType);
     }
-    public BatchSQLExecutor(SQLCase sqlCase, SqlExecutor executor, Map<String,SqlExecutor> executorMap, Map<String, OpenMLDBInfo> fedbInfoMap, SQLCaseType executorType) {
-        super(sqlCase, executor, executorMap, fedbInfoMap, executorType);
+    public BatchSQLExecutor(SQLCase sqlCase, SqlExecutor executor, Map<String,SqlExecutor> executorMap, Map<String, OpenMLDBInfo> openMLDBInfoMap, SQLCaseType executorType) {
+        super(sqlCase, executor, executorMap, openMLDBInfoMap, executorType);
     }
 
     @Override
