@@ -99,10 +99,11 @@ g++ -shared -o libtest_udf.so examples/test_udf.cc -I /work/OpenMLDB/include -st
 ```
 
 ### 2.3 Copy the Dynamic Library
-- The compiled dynamic libraries should be copied into the `udf` directory of the path where OpenMLDB `tablet/taskmanager` is deployed. Please create one if this directory does not exist.  
-- Please note that the `udf` directory of `tablet` is level with the `bin/conf` directory.
-- The `taskmanager` should be placed in `taskmanager/bin/udf`. 
-- If the deployment paths of `tablet` and `taskmanager` are both `/work/openmldb`, the structure of the directory is shown below:
+The compiled dynamic libraries should be copied into the `udf` directories for both TaskManager and tablets.  
+- The `udf` directory of a tablet is `path_to_tablet/udf`.
+- The `udf` directory of TaskManager is `path_to_taskmanager/taskmanager/bin/udf`. 
+
+For example, if the deployment paths of a tablet and TaskManager are both `/work/openmldb`, the structure of the directory is shown below:
 
 ```
     /work/openmldb/
@@ -119,8 +120,8 @@ g++ -shared -o libtest_udf.so examples/test_udf.cc -I /work/OpenMLDB/include -st
     └── udf
         └── libtest_udf.so
 ```
-- Each tablet's directory needs to be copied.
-- Dynamic libraries in this directory cannot be dropped before the execution of `DROP FUNCTION`.
+
+Note that, for multiple tablets, the library needs to be copied to every one. Moreover, dynamic libraries should not be deleted before the execution of `DROP FUNCTION`.
 
 
 
