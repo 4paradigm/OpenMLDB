@@ -20,16 +20,19 @@ package com._4paradigm.openmldb.java_sdk_test.executor;
 import com._4paradigm.openmldb.java_sdk_test.checker.Checker;
 import com._4paradigm.openmldb.java_sdk_test.checker.CheckerStrategy;
 import com._4paradigm.openmldb.java_sdk_test.checker.DiffVersionChecker;
-import com._4paradigm.openmldb.java_sdk_test.entity.FesqlResult;
-import com._4paradigm.openmldb.java_sdk_test.util.FesqlUtil;
+import com._4paradigm.openmldb.java_sdk_test.common.OpenMLDBConfig;
+import com._4paradigm.openmldb.test_common.bean.OpenMLDBResult;
+import com._4paradigm.openmldb.test_common.util.SDKUtil;
 import com._4paradigm.openmldb.sdk.SqlExecutor;
-import com._4paradigm.openmldb.test_common.bean.FEDBInfo;
 import com._4paradigm.openmldb.test_common.model.InputDesc;
 import com._4paradigm.openmldb.test_common.model.SQLCase;
 import com._4paradigm.openmldb.test_common.model.SQLCaseType;
+import com._4paradigm.openmldb.test_common.util.SQLUtil;
+import com._4paradigm.qa.openmldb_deploy.bean.OpenMLDBInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.collections4.MapUtils;
+import org.apache.commons.lang3.StringUtils;
 
 import java.util.List;
 import java.util.Map;
@@ -44,26 +47,29 @@ import java.util.stream.Collectors;
 public abstract class BaseSQLExecutor extends BaseExecutor{
     protected SqlExecutor executor;
     private Map<String,SqlExecutor> executorMap;
-    protected Map<String, FEDBInfo> fedbInfoMap;
-    private Map<String, FesqlResult> resultMap;
+    protected Map<String, OpenMLDBInfo> openMLDBInfoMap;
+    private Map<String, OpenMLDBResult> resultMap;
 
-    public BaseSQLExecutor(SqlExecutor executor, SQLCase fesqlCase, SQLCaseType executorType) {
+    public BaseSQLExecutor(SqlExecutor executor, SQLCase sqlCase, SQLCaseType executorType) {
         this.executor = executor;
-        this.fesqlCase = fesqlCase;
+        this.sqlCase = sqlCase;
         this.executorType = executorType;
-        dbName = Objects.isNull(fesqlCase.getDb()) ? "" : fesqlCase.getDb();
-        if (!CollectionUtils.isEmpty(fesqlCase.getInputs())) {
-            for (InputDesc inputDesc : fesqlCase.getInputs()) {
+        if (StringUtils.isEmpty(sqlCase.getDb())) {
+            sqlCase.setDb(OpenMLDBConfig.TEST_DB);
+        }
+        dbName = sqlCase.getDb();
+        if (!CollectionUtils.isEmpty(sqlCase.getInputs())) {
+            for (InputDesc inputDesc : sqlCase.getInputs()) {
                 tableNames.add(inputDesc.getName());
             }
         }
     }
 
-    public BaseSQLExecutor(SQLCase fesqlCase, SqlExecutor executor, Map<String,SqlExecutor> executorMap, Map<String, FEDBInfo> fedbInfoMap, SQLCaseType executorType) {
-        this(executor,fesqlCase,executorType);
+    public BaseSQLExecutor(SQLCase sqlCase, SqlExecutor executor, Map<String,SqlExecutor> executorMap, Map<String, OpenMLDBInfo> openMLDBInfoMap, SQLCaseType executorType) {
+        this(executor,sqlCase,executorType);
         this.executor = executor;
         this.executorMap = executorMap;
-        this.fedbInfoMap = fedbInfoMap;
+        this.openMLDBInfoMap = openMLDBInfoMap;
     }
 
     @Override
@@ -89,11 +95,11 @@ public abstract class BaseSQLExecutor extends BaseExecutor{
         }
     }
 
-    protected abstract FesqlResult execute(String version, SqlExecutor executor);
+    protected abstract OpenMLDBResult execute(String version, SqlExecutor executor);
 
     @Override
     public void check() throws Exception {
-        List<Checker> strategyList = CheckerStrategy.build(fesqlCase, mainResult, executorType);
+        List<Checker> strategyList = CheckerStrategy.build(executor, sqlCase, mainResult, executorType);
         if(MapUtils.isNotEmpty(resultMap)) {
             strategyList.add(new DiffVersionChecker(mainResult, resultMap));
         }
@@ -111,20 +117,20 @@ public abstract class BaseSQLExecutor extends BaseExecutor{
 
 
     public void tearDown(String version,SqlExecutor executor) {
-        logger.info("version:{},begin tear down",version);
-        List<String> tearDown = fesqlCase.getTearDown();
+        log.info("version:{},begin tear down",version);
+        List<String> tearDown = sqlCase.getTearDown();
         if(CollectionUtils.isNotEmpty(tearDown)){
             tearDown.forEach(sql->{
-                if(MapUtils.isNotEmpty(fedbInfoMap)) {
-                    sql = FesqlUtil.formatSql(sql, tableNames, fedbInfoMap.get(version));
+                if(MapUtils.isNotEmpty(openMLDBInfoMap)) {
+                    sql = SQLUtil.formatSql(sql, tableNames, openMLDBInfoMap.get(version));
                 }else {
-                    sql = FesqlUtil.formatSql(sql, tableNames);
+                    sql = SQLUtil.formatSql(sql, tableNames);
                 }
-                FesqlUtil.sql(executor, dbName, sql);
+                SDKUtil.sql(executor, dbName, sql);
             });
         }
-        logger.info("version:{},begin drop table",version);
-        List<InputDesc> tables = fesqlCase.getInputs();
+        log.info("version:{},begin drop table",version);
+        List<InputDesc> tables = sqlCase.getInputs();
         if (CollectionUtils.isEmpty(tables)) {
             return;
         }
@@ -132,7 +138,7 @@ public abstract class BaseSQLExecutor extends BaseExecutor{
             if(table.isDrop()) {
                 String drop = "drop table " + table.getName() + ";";
                 String tableDBName = table.getDb().isEmpty() ? dbName : table.getDb();
-                FesqlUtil.ddl(executor, tableDBName, drop);
+                SDKUtil.ddl(executor, tableDBName, drop);
             }
         }
     }

@@ -106,6 +106,11 @@ class SQLClusterRouter : public SQLRouter {
     std::shared_ptr<hybridse::sdk::ResultSet> ExecuteSQL(const std::string& db, const std::string& sql,
                                                          bool is_online_mode, bool is_sync_job, int offline_job_timeout,
                                                          hybridse::sdk::Status* status) override;
+
+    std::shared_ptr<hybridse::sdk::ResultSet> ExecuteSQL(const std::string& db, const std::string& sql,
+                                                         std::shared_ptr<SQLRequestRow> parameter, bool is_online_mode,
+                                                         bool is_sync_job, int offline_job_timeout,
+                                                         hybridse::sdk::Status* status) override;
     /// Execute batch SQL with parameter row
     std::shared_ptr<hybridse::sdk::ResultSet> ExecuteSQLParameterized(const std::string& db, const std::string& sql,
                                                                       std::shared_ptr<SQLRequestRow> parameter,
@@ -230,9 +235,7 @@ class SQLClusterRouter : public SQLRouter {
 
     void ReadSparkConfFromFile(std::string conf_file, std::map<std::string, std::string>* config);
 
-    SQLRouterOptions GetSqlRouterOptions() {
-        return options_;
-    }
+    std::shared_ptr<BasicRouterOptions> GetRouterOptions() { return options_; }
 
  private:
     bool IsSyncJob();
@@ -307,7 +310,7 @@ class SQLClusterRouter : public SQLRouter {
     hybridse::sdk::Status HandleDeploy(const std::string& db, const hybridse::node::DeployPlanNode* deploy_node);
 
     hybridse::sdk::Status HandleDelete(const std::string& db, const std::string& table_name,
-            const hybridse::node::ExprNode* condition);
+                                       const hybridse::node::ExprNode* condition);
 
     hybridse::sdk::Status HandleIndex(const std::string& db,
                                       const std::set<std::pair<std::string, std::string>>& table_pair,
@@ -344,8 +347,7 @@ class SQLClusterRouter : public SQLRouter {
                                                                      hybridse::sdk::Status* status);
 
  private:
-    SQLRouterOptions options_;
-    StandaloneOptions standalone_options_;
+    std::shared_ptr<BasicRouterOptions> options_;
     std::string db_;
     std::map<std::string, std::string> session_variables_;
     bool is_cluster_mode_;

@@ -1,0 +1,176 @@
+# Copyright 2021 4Paradigm
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+db: test_fz
+debugs: []
+cases:
+  - id: 1
+    desc: feature zero split utility functions
+    inputs:
+      - columns: ["id int64", "pk int64", "c1 string"]
+        indexs: ["index1:pk:id"]
+        rows:
+          - [1, 0, "k1:v1,k2:v2"]
+          - [2, 0, "k3:v3"]
+          - [3, 0, "???,,k4:v4"]
+          - [4, 0, NULL]
+          - [5, 0, "k5:v5,k5:v3"]
+    sql: |
+      SELECT id,
+        identity(case when !isnull(lag(c1, 0)) then distinct_count(fz_window_split(c1,  ",")) else null end) over w1 as table_2_kn_0,
+        identity(case when !isnull(lag(c1, 0)) then distinct_count(fz_window_split_by_key(c1,  ",",  ":")) else null end) over w1 as table_2_kn_1,
+        identity(case when !isnull(lag(c1, 0)) then distinct_count(fz_window_split_by_value(c1,  ",",  ":")) else null end) over w1 as table_2_kn_2,
+        fz_join(fz_window_split(c1, ","), " ") OVER w1 AS split_and_join,
+        fz_join(fz_window_split_by_key(c1, ",", ":"), " ") OVER w1 AS split_key_and_join,
+        fz_join(fz_window_split_by_value(c1, ",", ":"), " ") OVER w1 AS split_value_and_join,
+        count(fz_window_split_by_key(c1, ",", ":")) OVER w1 AS split_key_and_count,
+        distinct_count(fz_window_split_by_key(c1, ",", ":")) OVER w1 AS split_key_and_distinct_count
+      FROM {0}
+      WINDOW w1 AS (PARTITION BY {0}.pk ORDER BY {0}.id ROWS BETWEEN 10 PRECEDING AND CURRENT ROW);
+    expect:
+      order: id
+      columns: ["id int64", "table_2_kn_0 int64", "table_2_kn_1 int64", "table_2_kn_2 int64", "split_and_join string", "split_key_and_join string", "split_value_and_join string", "split_key_and_count int64", "split_key_and_distinct_count int64"]
+      rows:
+        - [1, 2, 2, 2, "k1:v1 k2:v2", "k1 k2", "v1 v2", 2, 2]
+        - [2, 3, 3, 3, "k3:v3 k1:v1 k2:v2", "k3 k1 k2", "v3 v1 v2", 3, 3]
+        - [3, 6, 4, 4, "???  k4:v4 k3:v3 k1:v1 k2:v2", "k4 k3 k1 k2", "v4 v3 v1 v2", 4, 4]
+        - [4, NULL, NULL, NULL, "???  k4:v4 k3:v3 k1:v1 k2:v2", "k4 k3 k1 k2", "v4 v3 v1 v2", 4, 4]
+        - [5, 8, 5, 5, "k5:v5 k5:v3 ???  k4:v4 k3:v3 k1:v1 k2:v2", "k5 k5 k4 k3 k1 k2", "v5 v3 v4 v3 v1 v2", 6, 5]
+
+  - id: 2
+    desc: feature zero split utility functions on single row
+    inputs:
+      - name: main
+        columns: ["id int64", "pk int64", "c1 string"]
+        indexs: ["index1:pk:id"]
+        rows:
+          - [1, 0, "k1:v1,k2:v2"]
+          - [2, 0, "k3:v3"]
+          - [3, 0, "???,,k4:v4"]
+          - [4, 0, NULL]
+          - [5, 0, "k5:v5,k3:v3"]
+    sql: |
+      SELECT id,
+        fz_join(fz_split(c1, ","), " ") AS split_and_join,
+        fz_join(fz_split_by_key(c1, ",", ":"), " ") AS split_key_and_join,
+        fz_join(fz_split_by_value(c1, ",", ":"), " ") AS split_value_and_join
+      FROM main;
+    expect:
+      order: id
+      columns: ["id int64", "split_and_join string", "split_key_and_join string", "split_value_and_join string"]
+      rows:
+        - [1, "k1:v1 k2:v2", "k1 k2", "v1 v2"]
+        - [2, "k3:v3", "k3", "v3"]
+        - [3, "???  k4:v4", "k4", "v4"]
+        - [4, "", "", ""]
+        - [5, "k5:v5 k3:v3", "k5 k3", "v5 v3"]
+
+  - id: 3
+    desc: window top1 ratio
+    inputs:
+      -
+        columns : ["id bigint","pk bigint","c1 smallint","c2 int","c3 bigint","c4 float",
+                   "c5 double", "c6 string"]
+        indexs: ["index1:pk:id"]
+        rows:
+          - [1, 1, 1, 1, 1, 1.1, 2.1, "1:1 1:2"]
+          - [2, 1, 2, 2, 1, 1.4, 2.1, "1:1" ]
+          - [3, 1, NULL, 3, 1, 1.3, 2.3, "1:1 1:3"]
+          - [4, 2, NULL, 5, 1, NULL, NULL, "1:3"]
+          - [5, 2, 5, 4, 1, 1.5, 2.5, "1:2 1:3"]
+    sql: |
+      SELECT id, 
+      fz_top1_ratio(c1) OVER w1 as r1,
+      fz_top1_ratio(c2) OVER w1 as r2,
+      fz_top1_ratio(c3) OVER w1 as r3,
+      fz_top1_ratio(c4) OVER w1 as r4,
+      fz_top1_ratio(c5) OVER w1 as r5,
+      fz_top1_ratio(fz_window_split_by_value(c6, " ", ":")) OVER w1 as r6,
+      fz_join(fz_window_split_by_value(c6, " ", ":")," ") OVER w1 as r7
+      FROM {0} 
+      WINDOW w1 AS (PARTITION BY {0}.pk ORDER BY {0}.id ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
+    expect:
+      order: id
+      columns: ["id bigint","r1 double","r2 double","r3 double","r4 double","r5 double","r6 double","r7 string"]
+      rows:
+        - [1, 1.0, 1.0, 1, 1.0, 1.0, 0.5,"1 2"]
+        - [2, 0.5, 0.5, 1, 0.5, 1.0, 0.66666666666666663,"1 1 2"]
+        - [3, 0.5, 0.33333333333333331, 1, 0.33333333333333331, 0.66666666666666663, 0.6,"1 3 1 1 2"]
+        - [4, 0, 1, 1, 0, 0, 1,"3"]
+        - [5, 1, 0.5, 1, 1.0, 1, 0.66666666666666663,"2 3 3"]
+
+  - id: 4
+    desc: Multi Top 3 Frequency
+    inputs:
+      -
+        columns : ["id bigint","pk bigint","c1 string","c2 int","c3 string","c4 float",
+                   "c5 double", "c6 string"]
+        indexs: ["index1:pk:id"]
+        rows:
+          - [1, 1, "1:2 4:3", 1, "1:2 1:3", 1.1, 2.1, "1:1 1:2"]
+          - [2, 1, "4:2 8:3", NULL, "1:7 1:3", 1.4, 2.1, "1:1" ]
+          - [3, 1, NULL, 2, "1:2 1:3", 1.3, 2.3, "1:1 1:3"]
+          - [4, 2, NULL, NULL, "1:8 1:3", NULL, NULL, "1:3"]
+          - [5, 2, "1:2 1:3", 5, "1:8 1:3", 1, 1.5, "1:2 1:3"]
+    sql: |
+      SELECT id, 
+      fz_topn_frequency(fz_window_split_by_key(c1, " ", ":"), 3) OVER w1 as r1,
+      fz_topn_frequency(c2, 3) OVER w1 as r2,
+      fz_topn_frequency(fz_window_split(c3, ","), 3) OVER w1 as r3,
+      fz_topn_frequency(c4, 3) OVER w1 as r4,
+      fz_topn_frequency(c5, 3) OVER w1 as r5,
+      fz_topn_frequency(fz_window_split_by_value(c6, " ", ":"), 3) OVER w1 as r6,
+      fz_join(fz_window_split_by_value(c6, " ", ":")," ") OVER w1 as r7
+      FROM {0} 
+      WINDOW w1 AS (PARTITION BY {0}.pk ORDER BY {0}.id ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
+    expect:
+      order: id
+      columns: ["id bigint","r1 string","r2 string","r3 string","r4 string","r5 string","r6 string","r7 string"]
+      rows:
+        - [1, "1,4,NULL", "1,NULL,NULL", "1:2 1:3,NULL,NULL", "1.100000,NULL,NULL", "2.100000,NULL,NULL", "1,2,NULL", "1 2"]
+        - [2, "4,1,8", "1,NULL,NULL", "1:2 1:3,1:7 1:3,NULL", "1.100000,1.400000,NULL", "2.100000,NULL,NULL", "1,2,NULL","1 1 2"]
+        - [3, "4,1,8", "1,2,NULL","1:2 1:3,1:7 1:3,NULL", "1.100000,1.300000,1.400000", "2.100000,2.300000,NULL", "1,2,3","1 3 1 1 2"]
+        - [4, "", "NULL,NULL,NULL", "1:8 1:3,NULL,NULL", "NULL,NULL,NULL", "NULL,NULL,NULL", "3,NULL,NULL","3"]
+        - [5, "1,NULL,NULL", "5,NULL,NULL", "1:8 1:3,NULL,NULL", "1.000000,NULL,NULL", "1.500000,NULL,NULL", "3,2,NULL","2 3 3"]
+
+  - id: 5
+    desc: feature zero split utility functions on empty separator
+    inputs:
+      - columns: ["id int64", "pk int64", "c1 string"]
+        indexs: ["index1:pk:id"]
+        rows:
+          - [1, 0, "a"]
+          - [2, 0, "b"]
+          - [3, 0, "c"]
+          - [4, 0, NULL]
+          - [5, 0, "e"]
+    sql: |
+      SELECT id,
+        fz_join(fz_split(c1, ""), "") OVER w1 AS r1,
+        fz_join(fz_split_by_key(c1, "", ""), "") OVER w1 AS r2,
+        fz_join(fz_split_by_value(c1, "", ""), "") OVER w1 AS r3,
+        fz_join(fz_window_split(c1, ""), " ") OVER w1 AS r4,
+        fz_join(fz_window_split_by_key(c1, "", ""), " ") OVER w1 AS r5,
+        fz_join(fz_window_split_by_value(c1, "", ""), " ") OVER w1 AS r6
+      FROM {0}
+      WINDOW w1 AS (PARTITION BY {0}.pk ORDER BY {0}.id ROWS BETWEEN 10 PRECEDING AND CURRENT ROW);
+    expect:
+      order: id
+      columns: ["id int64", "r1 string", "r2 string", "r3 string", "r4 string", "r5 string", "r6 string"]
+      rows:
+        - [1, "", "", "", "", "", ""]
+        - [2, "", "", "", "", "", ""]
+        - [3, "", "", "", "", "", ""]
+        - [4, "", "", "", "", "", ""]
+        - [5, "", "", "", "", "", ""]

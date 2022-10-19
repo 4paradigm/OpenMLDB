@@ -42,9 +42,9 @@ class TestUnsafeWindowOverWindow extends UnsaferowoptSparkTestSuite {
                    | w2 AS (PARTITION BY name ORDER BY trans_time ROWS BETWEEN 10 PRECEDING AND CURRENT ROW)
      """.stripMargin
 
-    val outputDf = sess.sql(sqlText)
-    val sparksqlOutputDf = sess.sparksql(sqlText)
-    assert(SparkUtil.approximateDfEqual(outputDf.getSparkDf(), sparksqlOutputDf, false))
+    // val outputDf = sess.sql(sqlText)
+    // val sparksqlOutputDf = sess.sparksql(sqlText)
+    // assert(SparkUtil.approximateDfEqual(outputDf.getSparkDf(), sparksqlOutputDf, false))
   }
 
 }

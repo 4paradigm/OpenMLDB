@@ -575,7 +575,7 @@ TEST_F(PlannerV2Test, CreateTableStmtPlanTest) {
     node::CreatePlanNode *createStmt = (node::CreatePlanNode *)plan_ptr;
     ASSERT_EQ("db1", createStmt->GetDatabase());
     auto table_option_list = createStmt->GetTableOptionList();
-    node::NodePointVector partition_meta_list;
+    node::NodePointVector distribution_list;
     for (auto table_option : table_option_list) {
         switch (table_option->GetType()) {
             case node::kReplicaNum: {
@@ -587,12 +587,7 @@ TEST_F(PlannerV2Test, CreateTableStmtPlanTest) {
                 break;
             }
             case node::kDistributions: {
-                auto d_list = dynamic_cast<node::DistributionsNode *>(table_option)->GetDistributionList();
-                if (d_list != nullptr) {
-                    for (auto meta_ptr : d_list->GetList()) {
-                        partition_meta_list.push_back(meta_ptr);
-                    }
-                }
+                distribution_list = dynamic_cast<node::DistributionsNode *>(table_option)->GetDistributionList();
                 break;
             }
             case hybridse::node::kStorageMode: {
@@ -606,6 +601,9 @@ TEST_F(PlannerV2Test, CreateTableStmtPlanTest) {
             }
         }
     }
+    ASSERT_EQ(1, distribution_list.size());
+    auto partition_mata_nodes = dynamic_cast<hybridse::node::SqlNodeList*>(distribution_list.front());
+    const auto& partition_meta_list = partition_mata_nodes->GetList();
     ASSERT_EQ(3, partition_meta_list.size());
     {
         ASSERT_EQ(node::kPartitionMeta, partition_meta_list[0]->GetType());
@@ -1966,35 +1964,35 @@ TEST_F(PlannerV2ErrorTest, NonSupportOnlineServingSQL) {
 }
 
 
-TEST_F(PlannerV2ErrorTest, NonSupportClusterOnlinexTrainingSQL) {
+TEST_F(PlannerV2ErrorTest, ClusterOnlineTrainingSQL) {
     node::NodeManager node_manager;
     auto expect_converted = [&](const std::string &sql, const int code, const std::string &msg) {
       base::Status status;
       node::PlanNodeList plan_trees;
       // Generate SQL logical plan for online serving
-      ASSERT_FALSE(plan::PlanAPI::CreatePlanTreeFromScript(sql, plan_trees, manager_, status, true, true)) << status;
+      auto ret = plan::PlanAPI::CreatePlanTreeFromScript(sql, plan_trees, manager_, status, true, true);
+      ASSERT_EQ(ret, code == common::kOk);
       ASSERT_EQ(code, status.code) << status;
       ASSERT_EQ(msg, status.msg) << status;
       std::cout << msg << std::endl;
     };
 
-
     expect_converted(
         R"(
         SELECT COL1 from t1 GROUP BY COL1;
         )",
-        common::kPlanError, "Non-support kGroupPlan Op in cluster online training");
+        common::kOk, "ok");
 
     expect_converted(
         R"(
         SELECT SUM(COL2) from t1 HAVING SUM(COL2) >0;
         )",
-        common::kPlanError, "Non-support HAVING Op in cluster online training");
+        common::kOk, "ok");
     expect_converted(
         R"(
         SELECT SUM(COL2) from t1;
         )",
-        common::kPlanError, "Aggregate over a table cannot be supported in cluster online training");
+        common::kOk, "ok");
     expect_converted(
         R"(
         SELECT COL1 FROM t1 order by COL1;
@@ -2006,7 +2004,7 @@ TEST_F(PlannerV2ErrorTest, NonSupportClusterOnlinexTrainingSQL) {
         SELECT SUM(COL2) over w1 FROM t1
         WINDOW w1 AS (PARTITION BY col1 ORDER BY col5 ROWS BETWEEN 3 PRECEDING AND CURRENT ROW);
         )",
-        common::kPlanError, "Non-support WINDOW Op in cluster online training");
+        common::kOk, "ok");
 
     expect_converted(
         R"(
@@ -2014,6 +2012,7 @@ TEST_F(PlannerV2ErrorTest, NonSupportClusterOnlinexTrainingSQL) {
         )",
         common::kPlanError, "Non-support kJoinPlan Op in cluster online training");
 }
+
 TEST_F(PlannerV2Test, ClusterOnlinexTrainingSQLTest) {
     node::NodeManager node_manager;
     auto expect_converted = [&](const std::string &sql) {

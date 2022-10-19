@@ -17,7 +17,7 @@
 package com._4paradigm.openmldb.java_sdk_test.checker;
 
 
-import com._4paradigm.openmldb.java_sdk_test.entity.FesqlResult;
+import com._4paradigm.openmldb.test_common.bean.OpenMLDBResult;
 import lombok.extern.slf4j.Slf4j;
 import org.testng.Assert;
 
@@ -30,18 +30,17 @@ import java.util.Map;
 @Slf4j
 public class DiffVersionChecker extends BaseChecker{
 
-    public DiffVersionChecker(FesqlResult fesqlResult, Map<String,FesqlResult> resultMap){
-        super(fesqlResult,resultMap);
+    public DiffVersionChecker(OpenMLDBResult openMLDBResult, Map<String, OpenMLDBResult> resultMap){
+        super(openMLDBResult,resultMap);
     }
 
     @Override
     public void check() throws Exception {
         log.info("diff version check");
-        reportLog.info("diff version check");
         resultMap.entrySet().stream().forEach(e->{
             String version = e.getKey();
-            FesqlResult result = e.getValue();
-            Assert.assertTrue(fesqlResult.equals(result),"版本结果对比不一致\nmainVersion:\n"+fesqlResult+"\nversion:"+version+"\n"+result);
+            OpenMLDBResult result = e.getValue();
+            Assert.assertTrue(openMLDBResult.equals(result),"版本结果对比不一致\nmainVersion:\n"+ openMLDBResult +"\nversion:"+version+"\n"+result);
         });
     }
 }

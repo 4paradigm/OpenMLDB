@@ -20,13 +20,15 @@ from unittest.mock import patch
 from diagnostic_tool.collector import Collector
 from diagnostic_tool.dist_conf import DistConfReader, ServerInfoMap, ALL_SERVER_ROLES, ServerInfo
 
+logging.basicConfig(level=logging.DEBUG,
+                    format='{%(filename)s:%(lineno)d} %(levelname)s - %(message)s', )
 
-class MyTestCase(unittest.TestCase):
+class TestCollector(unittest.TestCase):
     def mock_path(self):
         self.conns.dist_conf.server_info_map = ServerInfoMap(
             self.conns.dist_conf.map(ALL_SERVER_ROLES,
                                      lambda role, s: ServerInfo(role, s['endpoint'],
-                                                                self.current_path + '/' + s['path'])))
+                                                                self.current_path + '/' + s['path'], s['is_local'] if 'is_local' in s else False)))
 
     def setUp(self) -> None:
         self.current_path = os.path.dirname(__file__)
@@ -38,6 +40,7 @@ class MyTestCase(unittest.TestCase):
         self.mock_path()
 
     def test_ping(self):
+        logging.debug('hw test')
         self.assertTrue(self.conns.ping_all())
 
     def test_pull_config(self):
@@ -47,9 +50,9 @@ class MyTestCase(unittest.TestCase):
         # no logs in tablet1
         with self.assertLogs() as cm:
             self.assertFalse(self.conns.pull_log_files('/tmp/log_copy_to'))
-        self.assertTrue(any(['no file in' in log_str for log_str in cm.output]))
         for log_str in cm.output:
-            print(log_str)
+            logging.info(log_str)
+        self.assertTrue(any(['no file in' in log_str for log_str in cm.output]))
 
     @unittest.skip
     @patch('diagnostic_tool.collector.parse_config_from_properties')
@@ -59,6 +62,5 @@ class MyTestCase(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    logging.basicConfig(level=logging.INFO,
-                        format='{%(filename)s:%(lineno)d} %(levelname)s - %(message)s', )
+
     unittest.main()

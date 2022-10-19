@@ -24,7 +24,7 @@ import logging
 from typing import (Iterable)
 
 from openmldb_exporter.collector import (ConfigStore, Collector, TableStatusCollector, DeployQueryStatCollector,
-                                ComponentStatusCollector)
+                                         ComponentStatusCollector)
 from prometheus_client.twisted import MetricsResource
 from sqlalchemy import engine
 from twisted.internet import reactor, task
@@ -36,8 +36,11 @@ dir_name = os.path.dirname(os.path.realpath(sys.argv[0]))
 
 def collect_task(collectors: Iterable[Collector]):
     for collector in collectors:
-        logging.info("%s collecting", type(collector).__qualname__)
-        collector.collect()
+        try:
+            logging.info("%s collecting", type(collector).__qualname__)
+            collector.collect()
+        except:
+            logging.exception("error in %s", type(collector).__qualname__)
 
 
 def main():
@@ -56,8 +59,7 @@ def main():
         ComponentStatusCollector(conn),
     )
 
-    repeated_task = task.LoopingCall(collect_task, collectors)
-    repeated_task.start(cfg_store.pull_interval)
+    task.LoopingCall(collect_task, collectors).start(cfg_store.pull_interval)
 
     root = Resource()
     # child path must be bytes

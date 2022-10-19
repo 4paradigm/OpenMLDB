@@ -19,7 +19,7 @@ package com._4paradigm.openmldb.java_sdk_test.executor;
 import com._4paradigm.openmldb.java_sdk_test.checker.Checker;
 import com._4paradigm.openmldb.java_sdk_test.checker.CheckerStrategy;
 import com._4paradigm.openmldb.java_sdk_test.checker.DiffResultChecker;
-import com._4paradigm.openmldb.java_sdk_test.entity.FesqlResult;
+import com._4paradigm.openmldb.test_common.bean.OpenMLDBResult;
 import com._4paradigm.openmldb.sdk.SqlExecutor;
 import com._4paradigm.openmldb.test_common.model.DBType;
 import com._4paradigm.openmldb.test_common.model.SQLCase;
@@ -39,18 +39,18 @@ import java.util.Map;
 @Slf4j
 public class DiffResultExecutor extends BatchSQLExecutor{
     private List<BaseExecutor> executors;
-    private Map<String, FesqlResult> resultMap;
-    public DiffResultExecutor(SqlExecutor executor, SQLCase fesqlCase, SQLCaseType executorType) {
-        super(executor, fesqlCase, executorType);
+    private Map<String, OpenMLDBResult> resultMap;
+    public DiffResultExecutor(SqlExecutor executor, SQLCase sqlCase, SQLCaseType executorType) {
+        super(executor, sqlCase, executorType);
         executors = new ArrayList<>();
         resultMap = new HashMap<>();
-        List<String> sqlDialect = fesqlCase.getSqlDialect();
+        List<String> sqlDialect = sqlCase.getSqlDialect();
         if(CollectionUtils.isNotEmpty(sqlDialect)){
             for(String dbType:sqlDialect){
                 if(dbType.equals(DBType.SQLITE3.name())||dbType.equals(DBType.ANSISQL.name())){
-                    executors.add(new Sqlite3Executor(fesqlCase,SQLCaseType.kSQLITE3));
+                    executors.add(new Sqlite3Executor(sqlCase,SQLCaseType.kSQLITE3));
                 }else if(dbType.equals(DBType.MYSQL.name())||dbType.equals(DBType.ANSISQL.name())){
-                    executors.add(new MysqlExecutor(fesqlCase,SQLCaseType.kMYSQL));
+                    executors.add(new MysqlExecutor(sqlCase,SQLCaseType.kMYSQL));
                 }
             }
         }
@@ -89,7 +89,7 @@ public class DiffResultExecutor extends BatchSQLExecutor{
 
     @Override
     public void check() throws Exception {
-        List<Checker> strategyList = CheckerStrategy.build(fesqlCase, mainResult, executorType);
+        List<Checker> strategyList = CheckerStrategy.build(executor,sqlCase, mainResult, executorType);
         strategyList.add(new DiffResultChecker(mainResult, resultMap));
         for (Checker checker : strategyList) {
             checker.check();

@@ -1,4 +1,7 @@
 name: sphinx
+channels:
+  - conda-forge
+  - defaults
 dependencies:
   - alabaster=0.7.12
   - babel=2.9.1
@@ -28,7 +31,7 @@ dependencies:
   - requests=2.27.1
   - setuptools=58.0.4
   - snowballstemmer=2.2.0
-  - sphinx=4.4.0
+  - sphinx=4.5.0
   - sphinxcontrib-applehelp=1.0.2
   - sphinxcontrib-devhelp=1.0.2
   - sphinxcontrib-htmlhelp=2.0.0

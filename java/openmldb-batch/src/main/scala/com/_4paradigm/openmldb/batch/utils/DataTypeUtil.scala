@@ -114,7 +114,6 @@ object DataTypeUtil {
       case com._4paradigm.hybridse.node.DataType.kDouble => DoubleType
       case com._4paradigm.hybridse.node.DataType.kBool => BooleanType
       case com._4paradigm.hybridse.node.DataType.kVarchar => StringType
-      case com._4paradigm.hybridse.node.DataType.kVarchar => StringType
       case com._4paradigm.hybridse.node.DataType.kDate => DateType
       case com._4paradigm.hybridse.node.DataType.kTimestamp => TimestampType
       case _ => throw new IllegalArgumentException(

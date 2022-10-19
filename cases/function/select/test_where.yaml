@@ -13,6 +13,7 @@
 # limitations under the License.
 sqlDialect: ["HybridSQL"]
 debugs: []
+version: 0.5.0
 cases:
   - id: 0
     desc: Where条件命中索引
@@ -21,8 +22,8 @@ cases:
     sql: |
       SELECT col0, col1, col2, col3, col4, col5, col6 FROM {0} where col2=5;
     inputs:
-      - schema: col0:string, col1:int32, col2:int16, col3:float, col4:double, col5:int64, col6:string
-        index: index1:col2:col5
+      - columns: ["col0 string", "col1 int32", "col2 int16", "col3 float", "col4 double", "col5 int64", "col6 string"]
+        indexs: ["index1:col2:col5"]
         data: |
           0, 1, 5, 1.1, 11.1, 1, 1
           0, 2, 5, 2.2, 22.2, 2, 22
@@ -140,8 +141,8 @@ cases:
     sql: |
       SELECT col0, col1, col2, col3, col4, col5, col6 FROM {0} where col2=col3 and col1 < 2;
     inputs:
-      - schema: col0:string, col1:int32, col2:int16, col3:float, col4:double, col5:int64, col6:string
-        index: index1:col2:col5
+      - columns: ["col0 string", "col1 int32", "col2 int16", "col3 float", "col4 double", "col5 int64", "col6 string"]
+        indexs: ["index1:col2:col5"]
         data: |
           0, 1, 5, 1.1, 11.1, 1, 1
           0, 2, 5, 2.2, 22.2, 2, 22
@@ -249,3 +250,4 @@ cases:
       order: sum_col1
       rows: 
         - [3, 2, 2, 1, 1.5]
+

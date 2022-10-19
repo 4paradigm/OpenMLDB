@@ -17,7 +17,7 @@ If you wan to compile and install it by yourself, you can refer to our [installa
 Pull the image (image download size is about 1GB, after decompression is about 1.7 GB) and start the docker container:
 
 ```bash
-docker run -it 4pdosc/openmldb:0.6.0 bash
+docker run -it 4pdosc/openmldb:0.6.3 bash
 ```
 
 ```{important}
@@ -253,6 +253,7 @@ Note that, the `SELECT INTO` command in offline mode is non-blocking, and you ca
 The SQL can be deployed online using the below command:
 
 ```sql
+> SET @@execute_mode='online';
 > DEPLOY demo_data_service SELECT c1, c2, sum(c3) OVER w1 AS w1_c3_sum FROM demo_table1 WINDOW w1 AS (PARTITION BY demo_table1.c1 ORDER BY demo_table1.c6 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
 ```
 
@@ -328,22 +329,22 @@ SELECT c1, c2, sum(c3) OVER w1 AS w1_c3_sum FROM demo_table1 WINDOW w1 AS (PARTI
 The computation is logically done as follows :
 1. According to the request line and the `PARTITION BY` in window clause, filter out the lines whose `c1` is "aaa", and sort them according to `c6` from small to large. So theoretically, the intermediate data table after partition sorting is shown in the following table. Among them, the first row after the request behavior is sorted.
 ```
- ----- ---- ---- ---------- ----------- --------------- - -------------
-  c1 c2 c3 c4 c5 c6 c7
- ----- ---- ---- ---------- ----------- --------------- - -------------
-  aaa 11 22 1.2 1.3 1635247427000 2021-05-20
-  aaa 12 22 2.200000 12.300000 1636097890000 1970-01-01
-  aaa 11 22 1.200000 11.300000 1636097290000 1970-01-01
- ----- ---- ---- ---------- ----------- --------------- - -------------
+ ----- ---- ---- ---------- ----------- --------------- ------------
+  c1    c2   c3   c4         c5          c6              c7
+ ----- ---- ---- ---------- ----------- --------------- ------------
+  aaa   11   22   1.2        1.3         1635247427000   2021-05-20
+  aaa   11   22   1.200000   11.300000   1636097290000   1970-01-01
+  aaa   12   22   2.200000   12.300000   1636097890000   1970-01-01
+ ----- ---- ---- ---------- ----------- --------------- ------------
 ```
 2. The window range is `2 PRECEDING AND CURRENT ROW`, so we cut out the real window in the above table, the request row is the smallest row, the previous 2 rows do not exist, but the window contains the current row, so the window has only one row (the request row).
 3. Window aggregation is performed, to sum `c3` of the data in the window (only one row), and we have the result 22.
 
 The output is:
 ```
- ----- ---- -------------
-  c1 c2 w1_c3_sum
- ----- ---- -------------
-  aaa 11 22
- ----- ---- -------------
+ ----- ---- ----------- 
+  c1    c2   w1_c3_sum   
+ ----- ---- -----------
+  aaa   11      22
+ ----- ---- -----------
 ```

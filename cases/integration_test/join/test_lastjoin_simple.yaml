@@ -1,0 +1,1045 @@
+# Copyright 2021 4Paradigm
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+db: test_zw
+debugs: []
+version: 0.5.0
+cases:
+  - id: 1
+    desc: 正常拼接
+    inputs:
+      - columns: [ "c1 string","c2 int","c3 bigint","c4 timestamp" ]
+        indexs: [ "index1:c1:c4" ]
+        rows:
+          - [ "aa",2,3,1590738989000 ]
+          - [ "bb",21,31,1590738990000 ]
+          - [ "cc",41,51,1590738991000 ]
+      - columns: [ "c1 string","c2 int","c3 bigint","c4 timestamp" ]
+        indexs: [ "index1:c1:c3" ]
+        rows:
+          - [ "aa",2,13,1590738989000 ]
+          - [ "bb",21,131,1590738990000 ]
+          - [ "cc",41,151,1590738992000 ]
+    sql: select {0}.c1,{0}.c2,{1}.c3,{1}.c4 from {0} last join {1} ORDER BY {1}.c3 on {0}.c1={1}.c1;
+    expect:
+      order: c1
+      columns: [ "c1 string","c2 int","c3 bigint","c4 timestamp" ]
+      rows:
+        - [ "aa",2,13,1590738989000 ]
+        - [ "bb",21,131,1590738990000 ]
+        - [ "cc",41,151,1590738992000 ]
+  - id: 2
+    desc: 右表没有匹配
+    inputs:
+      - columns: [ "c1 string","c2 int","c3 bigint","c4 timestamp" ]
+        indexs: [ "index1:c1:c4" ]
+        rows:
+          - [ "aa",2,3,1590738989000 ]
+          - [ "bb",21,31,1590738990000 ]
+          - [ "cc",41,51,1590738991000 ]
+      - columns: [ "c1 string","c2 int","c3 bigint","c4 timestamp" ]
+        indexs: [ "index1:c1:c3" ]
+        rows:
+          - [ "aa",2,13,1590738989000 ]
+          - [ "bb",21,131,1590738990000 ]
+          - [ "dd",41,151,1590738991000 ]
+    sql: select {0}.c1,{0}.c2,{1}.c3,{1}.c4 from {0} last join {1} ORDER BY {1}.c3 on {0}.c1={1}.c1;
+    expect:
+      columns: [ "c1 string","c2 int","c3 bigint","c4 timestamp" ]
+      order: c1
+      rows:
+        - [ "aa",2,13,1590738989000 ]
+        - [ "bb",21,131,1590738990000 ]
+        - [ "cc",41,null,null ]
+  - id: 3
+    desc: 右表匹配了多条-bigint
+    inputs:
+      - columns: [ "c1 string","c2 int","c3 bigint","c4 timestamp" ]
+        indexs: [ "index1:c1:c4" ]
+        rows:
+          - [ "aa",2,3,1590738989000 ]
+          - [ "bb",21,31,1590738990000 ]
+      - columns: [ "c1 string","c2 int","c3 bigint","c4 timestamp" ]
+        indexs: [ "index1:c1:c3" ]
+        rows:
+          - [ "aa",2,13,1590738989000 ]
+          - [ "bb",21,131,1590738990000 ]
+          - [ "bb",41,121,1590738991000 ]
+    sql: select {0}.c1,{0}.c2,{1}.c3,{1}.c4 from {0} last join {1} ORDER BY {1}.c3 on {0}.c1={1}.c1;
+    expect:
+      columns: [ "c1 string","c2 int","c3 bigint","c4 timestamp" ]
+      order: c1
+      rows:
+        - [ "aa",2,13,1590738989000 ]
+        - [ "bb",21,131,1590738990000 ]
+  - id: 4-1
+    desc: Last Join 无order by, 拼表条件命中索引
+    inputs:
+      - columns: [ "c1 string","c2 int","c3 bigint","c4 timestamp" ]
+        indexs: [ "index1:c1" ]
+        rows:
+          - [ "aa",2,3,1590738989000 ]
+          - [ "bb",21,31,1590738990000 ]
+          - [ "dd",41,51,1590738990000 ]
+      - columns: [ "c1 string","c2 int","c3 bigint","c4 timestamp" ]
+        indexs: [ "index1:c1" ]
+        rows:
+          - [ "aa",2,13,1590738989000 ]
+          - [ "bb",21,131,1590738990000 ]
+          - [ "cc",41,121,1590738991000 ]
+    sql: select {0}.c1,{0}.c2,{1}.c3,{1}.c4 from {0} last join {1} on {0}.c1={1}.c1;
+    expect:
+      columns: [ "c1 string","c2 int","c3 bigint","c4 timestamp" ]
+      order: c1
+      rows:
+        - [ "aa",2,13,1590738989000 ]
+        - [ "bb",21,131,1590738990000 ]
+        - [ "dd", 41, NULL, NULL ]
+  - id: 4-2
+    desc: Last Join 无order by, 拼表条件没有命中索引-performance-sensitive环境下编译失败
+    mode: non-performance-sensitive-unsupport, offline-unsupport
+    inputs:
+      - columns: [ "c1 string","c2 int","c3 bigint","c4 timestamp" ]
+        indexs: [ "index1:c1:c4" ]
+        rows:
+          - [ "aa",2,3,1590738989000 ]
+          - [ "bb",21,31,1590738990000 ]
+      - columns: [ "c1 string","c2 int","c3 bigint","c4 timestamp" ]
+        indexs: [ "index1:c2:c4" ]
+        rows:
+          - [ "aa",2,13,1590738989000 ]
+          - [ "bb",21,131,1590738990000 ]
+          - [ "cc",41,121,1590738991000 ]
+    sql: select {0}.c1,{0}.c2,{1}.c3,{1}.c4 from {0} last join {1} on {0}.c1={1}.c1;
+    expect:
+      success: false
+  - id: 4-2
+    desc: Last Join 无order by, 部分拼表条件命中索引
+    inputs:
+      - columns: [ "c1 string","c2 int","c3 bigint","c4 timestamp" ]
+        indexs: [ "index1:c1:c3" ]
+        rows:
+          - [ "aa",2,3,1590738989000 ]
+          - [ "aa",20,30,1590738991000 ]
+          - [ "bb",21,31,1590738990000 ]
+          - [ "dd",41,51,1590738990000 ]
+      - columns: [ "c1 string","c2 int","c3 bigint","c4 timestamp" ]
+        indexs: [ "index1:c1:c3" ]
+        rows:
+          - [ "aa",2,13,1590738989000 ]
+          - [ "aa",3,14,1590738990000 ]
+          - [ "aa",4,15,1590738991000 ]
+          - [ "bb",21,131,1590738990000 ]
+          - [ "cc",41,121,1590738991000 ]
+    sql: select {0}.c1,{0}.c2,{1}.c3,{1}.c4 from {0} last join {1} on {0}.c1={1}.c1 and {0}.c4={1}.c4;
+    expect:
+      columns: [ "c1 string","c2 int","c3 bigint","c4 timestamp" ]
+      order: c2
+      rows:
+        - [ "aa",2,13,1590738989000 ]
+        - [ "aa",20,15,1590738991000 ]
+        - [ "bb",21,131,1590738990000 ]
+        - [ "dd", 41, NULL, NULL ]
+  - id: 4-3
+    desc: Last Join 无order by, 拼表条件命中部分的组合索引(前缀索引), performance-sensitive下失败
+    mode: non-performance-sensitive-unsupport, offline-unsupport
+    inputs:
+      - columns: [ "c1 string","c2 int","c3 bigint","c4 timestamp" ]
+        indexs: [ "index1:c1:c4" ]
+        rows:
+          - [ "aa",2,3,1590738989000 ]
+          - [ "aa",20,30,1590738991000 ]
+          - [ "bb",21,31,1590738990000 ]
+          - [ "dd",41,51,1590738990000 ]
+      - columns: [ "c1 string","c2 int","c3 bigint","c4 timestamp" ]
+        indexs: [ "index1:c1|c2:c4" ]
+        rows:
+          - [ "aa",2,13,1590738989000 ]
+          - [ "aa",3,14,1590738990000 ]
+          - [ "aa",4,15,1590738991000 ]
+          - [ "bb",21,131,1590738990000 ]
+          - [ "cc",41,121,1590738991000 ]
+    sql: select {0}.c1,{0}.c2,{1}.c3,{1}.c4 from {0} last join {1} on {0}.c1={1}.c1 and {0}.c4={1}.c4;
+    expect:
+      success: false
+  - id: 4-4
+    desc: Last Join 无order by, 拼表条件命中部分的组合索引(后缀索引)
+    mode: non-performance-sensitive-unsupport, offline-unsupport
+    inputs:
+      - columns: [ "c1 string","c2 int","c3 bigint","c4 timestamp" ]
+        indexs: [ "index1:c1:c4" ]
+        rows:
+          - [ "aa",2,3,1590738989000 ]
+          - [ "aa",20,30,1590738991000 ]
+          - [ "bb",21,31,1590738990000 ]
+          - [ "dd",41,51,1590738990000 ]
+      - columns: [ "c1 string","c2 int","c3 bigint","c4 timestamp" ]
+        indexs: [ "index1:c2|c1:c4" ]
+        rows:
+          - [ "aa",2,13,1590738989000 ]
+          - [ "aa",3,14,1590738990000 ]
+          - [ "aa",4,15,1590738991000 ]
+          - [ "bb",21,131,1590738990000 ]
+          - [ "cc",41,121,1590738991000 ]
+    sql: select {0}.c1,{0}.c2,{1}.c3,{1}.c4 from {0} last join {1} on {0}.c1={1}.c1 and {0}.c4={1}.c4;
+    expect:
+      success: false
+  - id: 4-5
+    desc: Last Join 无order by, 拼表条件命中索引, 副表多条命中
+    tags: [ "注意offline随机拼接最后一条，改变结果顺序可能导致Spark结果不符合预期" ]
+    inputs:
+      - columns: [ "c1 string","c2 int","c3 bigint","c4 timestamp" ]
+        indexs: [ "index1:c1:c4" ]
+        rows:
+          - [ "aa",2,3,1590738989000 ]
+          - [ "bb",21,31,1590738990000 ]
+          - [ "dd",41,51,1590738990000 ]
+      - columns: [ "c1 string","c2 int","c3 bigint","c4 timestamp" ]
+        indexs: [ "index1:c1:c3" ]
+        rows:
+          - [ "aa",2,13,1590738989000 ]
+          - [ "bb",21,131,1590738990000 ]
+          - [ "bb",51,130,1590738992000 ]
+          - [ "bb",31,132,1590738989000 ]
+          - [ "cc",41,121,1590738991000 ]
+    sql: select {0}.c1,{0}.c2,{1}.c3,{1}.c4 from {0} last join {1} on {0}.c1={1}.c1;
+    expect:
+      columns: [ "c1 string","c2 int","c3 bigint","c4 timestamp" ]
+      order: c1
+      rows:
+        - [ "aa",2,13,1590738989000 ]
+        - [ "bb",21,132,1590738989000 ]
+        - [ "dd", 41, NULL, NULL ]
+  - id: 4-6
+    desc: Last Join 无order by, 拼表条件没有命中索引-离线支持
+    mode: rtidb-unsupport,cli-unsupport
+    inputs:
+      - columns: [ "c1 string","c2 int","c3 bigint","c4 timestamp" ]
+        indexs: [ "index1:c1:c4" ]
+        rows:
+          - [ "aa",2,3,1590738989000 ]
+          - [ "bb",21,31,1590738990000 ]
+      - columns: [ "c1 string","c2 int","c3 bigint","c4 timestamp" ]
+        indexs: [ "index1:c2:c4" ]
+        rows:
+          - [ "aa",2,13,1590738989000 ]
+          - [ "bb",21,131,1590738990000 ]
+          - [ "cc",41,121,1590738991000 ]
+    sql: select {0}.c1,{0}.c2,{1}.c3,{1}.c4 from {0} last join {1} on {0}.c1={1}.c1;
+    expect:
+      columns: [ "c1 string", "c2 int", "c3 bigint", "c4 timestamp" ]
+      rows:
+        - [ "aa", 2, 13, 1590738989000 ]
+        - [ "bb", 21, 131, 1590738990000 ]
+  - id: 4-7
+    desc: Last Join 无order by, 部分拼表条件命中索引(常量条件=右边索引key)
+    inputs:
+      - columns: [ "c1 string","c2 int","c3 bigint","c4 timestamp" ]
+        indexs: [ "index1:c1:c3" ]
+        rows:
+          - [ "aa",2,3,1590738989000 ]
+          - [ "aa",20,30,1590738991000 ]
+          - [ "bb",21,31,1590738990000 ]
+          - [ "dd",41,51,1590738990000 ]
+      - columns: [ "c1 string","c2 int","c3 bigint","c4 timestamp" ]
+        indexs: [ "index1:c1:c3" ]
+        rows:
+          - [ "aa",2,13,1590738989000 ]
+          - [ "aa",3,14,1590738990000 ]
+          - [ "aa",4,15,1590738991000 ]
+          - [ "bb",21,131,1590738990000 ]
+          - [ "cc",41,121,1590738991000 ]
+    sql: select {0}.c1,{0}.c2, {1}.c1 as t2_c1, {1}.c3,{1}.c4 from {0} last join {1} on {1}.c1="aa" and {0}.c4={1}.c4;
+    expect:
+      columns: [ "c1 string","c2 int", "t2_c1 string", "c3 bigint","c4 timestamp" ]
+      order: c2
+      rows:
+        - [ "aa",2, "aa", 13,1590738989000 ]
+        - [ "aa",20,"aa", 15,1590738991000 ]
+        - [ "bb",21, "aa", 14,1590738990000 ]
+        - [ "dd", 41, "aa", 14, 1590738990000 ]
+  - id: 5
+    desc: orderby-timestamp
+    inputs:
+      - columns: [ "c1 string","c2 int","c3 bigint","c4 timestamp" ]
+        indexs: [ "index1:c1:c4" ]
+        rows:
+          - [ "aa",2,3,1590738989000 ]
+          - [ "bb",21,31,1590738990000 ]
+      - columns: [ "c1 string","c2 int","c3 bigint","c4 timestamp" ]
+        indexs: [ "index1:c1:c4" ]
+        rows:
+          - [ "aa",2,13,1590738989000 ]
+          - [ "bb",21,131,1590738990000 ]
+          - [ "bb",41,121,1590738992000 ]
+          - [ "bb",41,141,1590738991000 ]
+    sql: select {0}.c1,{0}.c2,{1}.c3,{1}.c4 from {0} last join {1} ORDER BY {1}.c4 on {0}.c1={1}.c1;
+    expect:
+      columns: [ "c1 string","c2 int","c3 bigint","c4 timestamp" ]
+      order: c1
+      rows:
+        - [ "aa",2,13,1590738989000 ]
+        - [ "bb",21,121,1590738992000 ]
+  - id: 6
+    desc: orderby-int without index optimized, request-unsupport
+    mode: request-unsupport
+    inputs:
+      - columns: [ "c1 string","c2 int","c3 bigint","c4 timestamp" ]
+        indexs: [ "index1:c1:c4" ]
+        rows:
+          - [ "aa",2,3,1590738989000 ]
+          - [ "bb",21,31,1590738990000 ]
+      - columns: [ "c1 string","c2 int","c3 bigint","c4 timestamp" ]
+        indexs: [ "index1:c1:c4" ]
+        rows:
+          - [ "aa",2,13,1590738989000 ]
+          - [ "bb",21,131,1590738990000 ]
+          - [ "bb",41,121,1590738991000 ]
+          - [ "bb",31,141,1590738992000 ]
+    sql: select {0}.c1,{0}.c2,{1}.c3,{1}.c4 from {0} last join {1} ORDER BY {1}.c2 on {0}.c1={1}.c1;
+    expect:
+      success: true
+      columns: [ "c1 string", "c2 int", "c3 bigint", "c4 timestamp" ]
+      rows:
+        - [ aa, 2, 13, 1590738989000 ]
+        - [ bb, 21, 121, 1590738991000 ]
+
+  - id: 6
+    desc: orderby-int-离线支持
+    mode: rtidb-unsupport,cli-unsupport
+    inputs:
+      - columns: [ "c1 string","c2 int","c3 bigint","c4 timestamp" ]
+        indexs: [ "index1:c1:c4" ]
+        rows:
+          - [ "aa",2,3,1590738989000 ]
+          - [ "bb",21,31,1590738990000 ]
+      - columns: [ "c1 string","c2 int","c3 bigint","c4 timestamp" ]
+        indexs: [ "index1:c1:c4" ]
+        rows:
+          - [ "aa",2,13,1590738989000 ]
+          - [ "bb",21,131,1590738990000 ]
+          - [ "bb",41,121,1590738991000 ]
+          - [ "bb",31,141,1590738992000 ]
+    sql: select {0}.c1,{0}.c2,{1}.c3,{1}.c4 from {0} last join {1} ORDER BY {1}.c2 on {0}.c1={1}.c1;
+    expect:
+      columns: [ "c1 string","c2 int","c3 bigint","c4 timestamp" ]
+      order: c1
+      rows:
+        - [ "aa",2,13,1590738989000 ]
+        - [ "bb",21,121,1590738991000 ]
+  - id: 7
+    desc: orderby-float
+    inputs:
+      - columns: [ "c1 string","c2 int","c3 bigint","c4 timestamp" ]
+        indexs: [ "index1:c1:c4" ]
+        rows:
+          - [ "aa",2,3,1590738989000 ]
+          - [ "bb",21,31,1590738990000 ]
+      - columns: [ "c1 string","c2 float","c3 double","c4 timestamp","c5 date","c6 string" ]
+        indexs: [ "index1:c1:c4" ]
+        rows:
+          - [ "aa",2.1,3.1,1590738989000,"2020-05-01","aa" ]
+          - [ "bb",2.2,3.3,1590738990000,"2020-05-03","ab" ]
+          - [ "bb",2.5,3.6,1590738991000,"2020-05-04","bc" ]
+          - [ "bb",2.4,3.1,1590738992000,"2020-05-02","bb" ]
+    sql: select {0}.c1,{0}.c2,{1}.c3,{1}.c4 from {0} last join {1} ORDER BY {1}.c2 on {0}.c1={1}.c1;
+    expect:
+      success: false
+  - id: 8
+    desc: orderby-double
+    inputs:
+      - columns: [ "c1 string","c2 int","c3 bigint","c4 timestamp" ]
+        indexs: [ "index1:c1:c4" ]
+        rows:
+          - [ "aa",2,3,1590738989000 ]
+          - [ "bb",21,31,1590738990000 ]
+      - columns: [ "c1 string","c2 float","c3 double","c4 timestamp","c5 date","c6 string" ]
+        indexs: [ "index1:c1:c4" ]
+        rows:
+          - [ "aa",2.1,3.1,1590738989000,"2020-05-01","aa" ]
+          - [ "bb",2.2,3.3,1590738990000,"2020-05-03","ab" ]
+          - [ "bb",2.5,3.6,1590738991000,"2020-05-04","bc" ]
+          - [ "bb",2.4,3.1,1590738992000,"2020-05-02","bb" ]
+    sql: select {0}.c1,{0}.c2,{1}.c3,{1}.c4 from {0} last join {1} ORDER BY {1}.c3 on {0}.c1={1}.c1;
+    expect:
+      success: false
+  - id: 9
+    desc: orderby-date
+    inputs:
+      - columns: [ "c1 string","c2 int","c3 bigint","c4 timestamp" ]
+        indexs: [ "index1:c1:c4" ]
+        rows:
+          - [ "aa",2,3,1590738989000 ]
+          - [ "bb",21,31,1590738990000 ]
+      - columns: [ "c1 string","c2 float","c3 double","c4 timestamp","c5 date","c6 string" ]
+        indexs: [ "index1:c1:c4" ]
+        rows:
+          - [ "aa",2.1,3.1,1590738989000,"2020-05-01","aa" ]
+          - [ "bb",2.2,3.3,1590738990000,"2020-05-03","ab" ]
+          - [ "bb",2.5,3.6,1590738991000,"2020-05-04","bc" ]
+          - [ "bb",2.4,3.1,1590738992000,"2020-05-02","bb" ]
+    sql: select {0}.c1,{0}.c2,{1}.c3,{1}.c4 from {0} last join {1} ORDER BY {1}.c5 on {0}.c1={1}.c1;
+    expect:
+      success: false
+  - id: 10
+    desc: orderby-string
+    inputs:
+      - columns: [ "c1 string","c2 int","c3 bigint","c4 timestamp" ]
+        indexs: [ "index1:c1:c4" ]
+        rows:
+          - [ "aa",2,3,1590738989000 ]
+          - [ "bb",21,31,1590738990000 ]
+      - columns: [ "c1 string","c2 float","c3 double","c4 timestamp","c5 date","c6 string" ]
+        indexs: [ "index1:c1:c4" ]
+        rows:
+          - [ "aa",2.1,3.1,1590738989000,"2020-05-01","aa" ]
+          - [ "bb",2.2,3.3,1590738990000,"2020-05-03","ab" ]
+          - [ "bb",2.5,3.6,1590738991000,"2020-05-04","bc" ]
+          - [ "bb",2.4,3.1,1590738992000,"2020-05-02","bb" ]
+    sql: select {0}.c1,{0}.c2,{1}.c3,{1}.c4 from {0} last join {1} ORDER BY {1}.c6 on {0}.c1={1}.c1;
+    expect:
+      success: false
+  - id: 11
+    desc: 拼接条件-bigint
+    inputs:
+      - columns: [ "c1 string","c2 int","c3 bigint","c4 timestamp" ]
+        indexs: [ "index1:c3:c4" ]
+        rows:
+          - [ "aa",2,3,1590738989000 ]
+          - [ "bb",21,31,1590738990000 ]
+      - columns: [ "c1 string","c2 int","c3 bigint","c4 timestamp" ]
+        indexs: [ "index1:c3:c4" ]
+        rows:
+          - [ "aa",2,3,1590738989000 ]
+          - [ "bb",21,31,1590738990000 ]
+          - [ "bb",41,31,1590738992000 ]
+          - [ "bb",41,31,1590738991000 ]
+    sql: select {0}.c1,{0}.c2,{1}.c3,{1}.c4 from {0} last join {1} ORDER BY {1}.c4 on {0}.c3={1}.c3;
+    expect:
+      columns: [ "c1 string","c2 int","c3 bigint","c4 timestamp" ]
+      order: c1
+      rows:
+        - [ "aa",2,3,1590738989000 ]
+        - [ "bb",21,31,1590738992000 ]
+  - id: 12
+    desc: 拼接条件-int
+    inputs:
+      - columns: [ "c1 string","c2 int","c3 bigint","c4 timestamp" ]
+        indexs: [ "index1:c2:c4" ]
+        rows:
+          - [ "aa",2,3,1590738989000 ]
+          - [ "bb",21,31,1590738990000 ]
+      - columns: [ "c1 string","c2 int","c3 bigint","c4 timestamp" ]
+        indexs: [ "index1:c2:c4" ]
+        rows:
+          - [ "aa",2,3,1590738989000 ]
+          - [ "bb",21,31,1590738990000 ]
+          - [ "bb",21,31,1590738992000 ]
+          - [ "bb",21,31,1590738991000 ]
+    sql: select {0}.c1,{0}.c2,{1}.c3,{1}.c4 from {0} last join {1} ORDER BY {1}.c4 on {0}.c2={1}.c2;
+    expect:
+      columns: [ "c1 string","c2 int","c3 bigint","c4 timestamp" ]
+      order: c1
+      rows:
+        - [ "aa",2,3,1590738989000 ]
+        - [ "bb",21,31,1590738992000 ]
+  - id: 13
+    desc: 拼接条件-float-未命中索引
+    mode: rtidb-unsupport, performance-sensitive-unsupport
+#    tags: ["TODO", "v0.3.0", "@chenjing, fix join on double/float equal condition"]
+    inputs:
+      - columns: [ "c1 string","c2 float","c3 double","c4 timestamp","c5 date","c6 string" ]
+        indexs: [ "index1:c1:c4" ]
+        rows:
+          - [ "aa",2.1,3.1,1590738989000,"2020-05-01","aa" ]
+          - [ "bb",2.2,3.2,1590738990000,"2020-05-02","aa" ]
+      - columns: [ "c1 string","c2 float","c3 double","c4 timestamp","c5 date","c6 string" ]
+        indexs: [ "index1:c1:c4" ]
+        rows:
+          - [ "aa",2.1,3.1,1590738989000,"2020-05-01","aa" ]
+          - [ "bb",2.2,3.2,1590738990000,"2020-05-03","ab" ]
+          - [ "bb",2.2,3.2,1590738992000,"2020-05-04","bc" ]
+          - [ "bb",2.2,3.2,1590738991000,"2020-05-02","bb" ]
+    sql: select {0}.c1,{0}.c2,{1}.c3,{1}.c4 from {0} last join {1} ORDER BY {1}.c4 on {0}.c2={1}.c2;
+    expect:
+      columns: [ "c1 string","c2 float","c3 double","c4 timestamp" ]
+      order: c1
+      rows:
+        - [ "aa",2.1,3.1,1590738989000 ]
+        - [ "bb",2.2,3.2,1590738992000 ]
+  - id: 13-2
+    desc: 拼接条件-double
+    mode: rtidb-unsupport, performance-sensitive-unsupport
+#    tags: ["TODO", "v0.3.0", "@chenjing, fix join on double/float equal condition"]
+    inputs:
+      - columns: [ "c1 string","c2 float","c3 double","c4 timestamp","c5 date","c6 string" ]
+        indexs: [ "index1:c1:c4" ]
+        rows:
+          - [ "aa",2.1,3.1,1590738989000,"2020-05-01","aa" ]
+          - [ "bb",2.2,3.2,1590738990000,"2020-05-02","aa" ]
+      - columns: [ "c1 string","c2 float","c3 double","c4 timestamp","c5 date","c6 string" ]
+        indexs: [ "index1:c1:c4" ]
+        rows:
+          - [ "aa",2.1,3.1,1590738989000,"2020-05-01","aa" ]
+          - [ "bb",2.2,3.2,1590738990000,"2020-05-03","ab" ]
+          - [ "bb",2.2,3.2,1590738992000,"2020-05-04","bc" ]
+          - [ "bb",2.2,3.2,1590738991000,"2020-05-02","bb" ]
+    sql: select {0}.c1,{0}.c2,{1}.c3,{1}.c4 from {0} last join {1} ORDER BY {1}.c4 on {0}.c3={1}.c3;
+    expect:
+      columns: [ "c1 string","c2 float","c3 double","c4 timestamp" ]
+      order: c1
+      rows:
+        - [ "aa",2.1,3.1,1590738989000 ]
+        - [ "bb",2.2,3.2,1590738992000 ]
+  - id: 14
+    desc: 拼接条件-date
+    inputs:
+      - columns: [ "c1 string","c2 float","c3 double","c4 timestamp","c5 date","c6 string" ]
+        indexs: [ "index1:c5:c4" ]
+        rows:
+          - [ "aa",2.1,3.1,1590738989000,"2020-05-01","aa" ]
+          - [ "bb",2.2,3.2,1590738990000,"2020-05-02","aa" ]
+      - columns: [ "c1 string","c2 float","c3 double","c4 timestamp","c5 date","c6 string" ]
+        indexs: [ "index1:c5:c4" ]
+        rows:
+          - [ "aa",2.1,3.1,1590738989000,"2020-05-01","aa" ]
+          - [ "bb",2.2,3.2,1590738990000,"2020-05-02","ab" ]
+          - [ "bb",2.2,3.2,1590738992000,"2020-05-02","bc" ]
+          - [ "bb",2.2,3.2,1590738991000,"2020-05-02","bb" ]
+    sql: select {0}.c1,{0}.c2,{1}.c3,{1}.c4 from {0} last join {1} ORDER BY {1}.c4 on {0}.c5={1}.c5;
+    expect:
+      columns: [ "c1 string","c2 float","c3 double","c4 timestamp" ]
+      order: c1
+      rows:
+        - [ "aa",2.1,3.1,1590738989000 ]
+        - [ "bb",2.2,3.2,1590738992000 ]
+  - id: 14
+    desc: 拼接条件-timestamp
+    inputs:
+      - columns: [ "c1 string","c2 float","c3 double","c4 timestamp","c5 date","c6 timestamp" ]
+        indexs: [ "index1:c6:c4" ]
+        rows:
+          - [ "aa",2.1,3.1,1590738989000,"2020-05-01",1590738989000 ]
+          - [ "bb",2.2,3.2,1590738990000,"2020-05-02",1590738990000 ]
+      - columns: [ "c1 string","c2 float","c3 double","c4 timestamp","c5 date","c6 timestamp" ]
+        indexs: [ "index1:c6:c4" ]
+        rows:
+          - [ "aa",2.1,3.1,1590738989000,"2020-05-01",1590738989000 ]
+          - [ "bb",2.2,3.2,1590738990000,"2020-05-02",1590738990000 ]
+          - [ "bb",2.2,3.2,1590738992000,"2020-05-02",1590738990000 ]
+          - [ "bb",2.2,3.2,1590738991000,"2020-05-02",1590738990000 ]
+    sql: select {0}.c1,{0}.c2,{1}.c3,{1}.c4 from {0} last join {1} ORDER BY {1}.c4 on {0}.c6={1}.c6;
+    expect:
+      columns: [ "c1 string","c2 float","c3 double","c4 timestamp" ]
+      order: c1
+      rows:
+        - [ "aa",2.1,3.1,1590738989000 ]
+        - [ "bb",2.2,3.2,1590738992000 ]
+  - id: 15
+    desc: 不同类型的列作为拼接条件
+    inputs:
+      - columns: [ "c1 string","c2 int","c3 bigint","c4 timestamp" ]
+        indexs: [ "index1:c2:c4" ]
+        rows:
+          - [ "aa",2,3,1590738989000 ]
+          - [ "bb",21,31,1590738990000 ]
+      - columns: [ "c1 string","c2 int","c3 bigint","c4 timestamp" ]
+        indexs: [ "index1:c3:c4" ]
+        rows:
+          - [ "aa",2,2,1590738989000 ]
+          - [ "bb",21,21,1590738990000 ]
+          - [ "bb",21,21,1590738992000 ]
+          - [ "bb",21,21,1590738991000 ]
+    sql: select {0}.c1,{0}.c2,{1}.c3,{1}.c4 from {0} last join {1} ORDER BY {1}.c4 on {0}.c2={1}.c3;
+    expect:
+      columns: [ "c1 string","c2 int","c3 bigint","c4 timestamp" ]
+      order: c1
+      rows:
+        - [ "aa",2,2,1590738989000 ]
+        - [ "bb",21,21,1590738992000 ]
+  - id: 16
+    desc: 多个拼接条件
+    inputs:
+      - columns: [ "c1 string","c2 int","c3 bigint","c4 timestamp" ]
+        indexs: [ "index1:c2:c4" ]
+        rows:
+          - [ "aa",2,3,1590738989000 ]
+          - [ "bb",21,31,1590738990000 ]
+      - columns: [ "c1 string","c2 int","c3 bigint","c4 timestamp" ]
+        indexs: [ "index1:c2:c4" ]
+        rows:
+          - [ "aa",2,3,1590738989000 ]
+          - [ "bb",21,31,1590738990000 ]
+          - [ "bb",21,32,1590738993000 ]
+          - [ "bb",21,31,1590738992000 ]
+          - [ "bb",21,31,1590738991000 ]
+    sql: select {0}.c1,{0}.c2,{1}.c3,{1}.c4 from {0} last join {1} ORDER BY {1}.c4 on {0}.c2={1}.c2 and {0}.c3={1}.c3;
+    expect:
+      columns: [ "c1 string","c2 int","c3 bigint","c4 timestamp" ]
+      order: c1
+      rows:
+        - [ "aa",2,3,1590738989000 ]
+        - [ "bb",21,31,1590738992000 ]
+  - id: 17
+    desc: 不等值拼接
+    inputs:
+      - columns: [ "c1 string","c2 int","c3 bigint","c4 timestamp" ]
+        indexs: [ "index1:c2:c4" ]
+        rows:
+          - [ "aa",2,3,1590738989000 ]
+          - [ "bb",21,31,1590738990000 ]
+      - columns: [ "c1 string","c2 int","c3 bigint","c4 timestamp" ]
+        indexs: [ "index1:c2:c4" ]
+        rows:
+          - [ "aa",2,3,1590738989000 ]
+          - [ "bb",21,31,1590738990000 ]
+          - [ "bb",21,32,1590738993000 ]
+          - [ "bb",21,31,1590738992000 ]
+          - [ "bb",21,31,1590738991000 ]
+    sql: select {0}.c1,{0}.c2,{1}.c3,{1}.c4 from {0} last join {1} ORDER BY {1}.c4 on {0}.c2 = {1}.c2 and {0}.c3 <= {1}.c3;
+    expect:
+      columns: [ "c1 string","c2 int","c3 bigint","c4 timestamp" ]
+      order: c1
+      rows:
+        - [ "aa",2,3,1590738989000 ]
+        - [ "bb",21,32,1590738993000 ]
+  - id: 17-1
+    desc: 不等值拼接-未命中索引
+    mode: rtidb-unsupport
+    inputs:
+      - columns: [ "c1 string","c2 int","c3 bigint","c4 timestamp" ]
+        indexs: [ "index1:c2:c4" ]
+        rows:
+          - [ "aa",2,3,1590738989000 ]
+          - [ "bb",21,31,1590738990000 ]
+      - columns: [ "c1 string","c2 int","c3 bigint","c4 timestamp" ]
+        indexs: [ "index1:c2:c4" ]
+        rows:
+          - [ "aa",2,3,1590738989000 ]
+          - [ "bb",21,31,1590738990000 ]
+          - [ "bb",21,32,1590738993000 ]
+          - [ "bb",21,31,1590738992000 ]
+          - [ "bb",21,31,1590738991000 ]
+    sql: select {0}.c1,{0}.c2,{1}.c3,{1}.c4 from {0} last join {1} ORDER BY {1}.c4 on {0}.c3<{1}.c3;
+    expect:
+      columns: [ "c1 string","c2 int","c3 bigint","c4 timestamp" ]
+      order: c1
+      rows:
+        - [ "aa",2,32,1590738993000 ]
+        - [ "bb",21,32,1590738993000 ]
+  - id: 17-2
+    desc: order by 限定列的范围-常量
+    inputs:
+      - columns: [ "c1 string","c2 int","c3 bigint","c4 timestamp" ]
+        indexs: [ "index1:c2:c4" ]
+        rows:
+          - [ "aa",2,3,1590738989000 ]
+          - [ "bb",21,31,1590738990000 ]
+      - columns: [ "c1 string","c2 int","c3 bigint","c4 timestamp" ]
+        indexs: [ "index1:c3:c4" ]
+        rows:
+          - [ "aa",2,3,1590738989000 ]
+          - [ "bb",21,31,1590738990000 ]
+          - [ "bb",21,32,1590738993000 ]
+          - [ "bb",21,31,1590738992000 ]
+          - [ "bb",21,31,1590738991000 ]
+    sql: select {0}.c1,{0}.c2,{1}.c3,{1}.c4 from {0} last join {1} ORDER BY {1}.c4 on {0}.c3={1}.c3 and {1}.c3>10;
+    expect:
+      columns: [ "c1 string","c2 int","c3 bigint","c4 timestamp" ]
+      order: c1
+      rows:
+        - [ "aa",2,null,null ]
+        - [ "bb",21,31,1590738992000 ]
+  - id: 18
+    desc: order by 限定列的范围-变量
+    inputs:
+      - columns: [ "c1 string","c2 int","c3 bigint","c4 timestamp" ]
+        indexs: [ "index1:c2:c4" ]
+        rows:
+          - [ "aa",2,3,1590738989000 ]
+          - [ "bb",21,31,1590738990000 ]
+      - columns: [ "c1 string","c2 int","c3 bigint","c4 timestamp" ]
+        indexs: [ "index1:c3:c4" ]
+        rows:
+          - [ "aa",2,3,1590738989000 ]
+          - [ "bb",22,31,1590738990000 ]
+          - [ "bb",21,32,1590738993000 ]
+          - [ "bb",22,31,1590738992000 ]
+          - [ "bb",22,31,1590738991000 ]
+    sql: select {0}.c1,{0}.c2,{1}.c3,{1}.c4 from {0} last join {1} ORDER BY {1}.c4 on {0}.c3={1}.c3 and {0}.c2<{1}.c2;
+    expect:
+      columns: [ "c1 string","c2 int","c3 bigint","c4 timestamp" ]
+      order: c1
+      rows:
+        - [ "aa",2,null,null ]
+        - [ "bb",21,31,1590738992000 ]
+  - id: 19
+    desc: 拼接条件中有空串
+    mode: cli-unsupport
+    inputs:
+      - columns: [ "c1 string","c2 int","c3 bigint","c4 timestamp" ]
+        indexs: [ "index1:c1:c4" ]
+        rows:
+          - [ "",2,3,1590738989000 ]
+          - [ "bb",21,31,1590738990000 ]
+      - columns: [ "c1 string","c2 int","c3 bigint","c4 timestamp" ]
+        indexs: [ "index1:c1:c4" ]
+        rows:
+          - [ "",2,3,1590738989000 ]
+          - [ "bb",22,31,1590738990000 ]
+          - [ "ab",21,32,1590738993000 ]
+          - [ "bb",22,31,1590738992000 ]
+          - [ "bb",22,31,1590738991000 ]
+    sql: select {0}.c1,{0}.c2,{1}.c3,{1}.c4 from {0} last join {1} ORDER BY {1}.c4 on {0}.c1={1}.c1;
+    expect:
+      columns: [ "c1 string","c2 int","c3 bigint","c4 timestamp" ]
+      order: c1
+      rows:
+        - [ "",2,3,1590738989000 ]
+        - [ "bb",21,31,1590738992000 ]
+  - id: 19
+    desc: 拼接条件中有null
+    inputs:
+      - columns: [ "c1 string","c2 int","c3 bigint","c4 timestamp" ]
+        indexs: [ "index1:c1:c4" ]
+        rows:
+          - [ NULL,2,3,1590738989000 ]
+          - [ "bb",21,31,1590738990000 ]
+      - columns: [ "c1 string","c2 int","c3 bigint","c4 timestamp" ]
+        indexs: [ "index1:c1:c4" ]
+        rows:
+          - [ NULL,2,3,1590738989000 ]
+          - [ "bb",22,31,1590738990000 ]
+          - [ "ab",21,32,1590738993000 ]
+          - [ "bb",22,31,1590738992000 ]
+          - [ "bb",22,31,1590738991000 ]
+    sql: select {0}.c1,{0}.c2,{1}.c3,{1}.c4 from {0} last join {1} ORDER BY {1}.c4 on {0}.c1={1}.c1;
+    expect:
+      columns: [ "c1 string","c2 int","c3 bigint","c4 timestamp" ]
+      order: c1
+      rows:
+        - [ null,2,3,1590738989000 ]
+        - [ "bb",21,31,1590738992000 ]
+  - id: 21
+    desc: 三表拼表
+    inputs:
+      - columns: [ "c1 string","c2 int","c3 bigint","c4 timestamp" ]
+        indexs: [ "index1:c1:c4" ]
+        rows:
+          - [ "aa",2,3,1590738989000 ]
+          - [ "bb",21,31,1590738990000 ]
+      - columns: [ "c1 string","c2 int","c3 bigint","c4 timestamp" ]
+        indexs: [ "index1:c1:c4" ]
+        rows:
+          - [ "aa",2,13,1590738989000 ]
+          - [ "bb",21,131,1590738990000 ]
+          - [ "bb",41,121,1590738992000 ]
+          - [ "bb",41,121,1590738991000 ]
+      - columns: [ "c1 string","c2 int","c3 bigint","c4 timestamp" ]
+        indexs: [ "index1:c1:c4" ]
+        rows:
+          - [ "aa",2,13,1590738989000 ]
+          - [ "aa",21,131,1590738992000 ]
+          - [ "aa",41,121,1590738991000 ]
+          - [ "bb",41,121,1590738991000 ]
+    sql: select {0}.c1,{0}.c2,{1}.c4,{2}.c4 from {0} last join {1} ORDER BY {1}.c4 on {0}.c1={1}.c1 last join {2} order by {2}.c4 on {0}.c1={2}.c1;
+    expect:
+      columns: [ "c1 string","c2 int","c4 timestamp","c4 timestamp" ]
+      order: c1
+      rows:
+        - [ "aa",2,1590738989000,1590738992000 ]
+        - [ "bb",21,1590738992000,1590738991000 ]
+  - id: 22
+    desc: 拼接条件不是索引列
+    mode: rtidb-unsupport
+    inputs:
+      - columns: [ "c1 string","c2 int","c3 bigint","c4 timestamp" ]
+        indexs: [ "index1:c1:c4" ]
+        rows:
+          - [ "aa",2,3,1590738989000 ]
+          - [ "bb",21,31,1590738990000 ]
+      - columns: [ "c1 string","c2 int","c3 bigint","c4 timestamp" ]
+        indexs: [ "index1:c1:c4" ]
+        rows:
+          - [ "aa",2,3,1590738989000 ]
+          - [ "bb",21,31,1590738990000 ]
+          - [ "bb",21,31,1590738992000 ]
+          - [ "bb",21,31,1590738991000 ]
+    sql: select {0}.c1,{0}.c2,{1}.c3,{1}.c4 from {0} last join {1} ORDER BY {1}.c4 on {0}.c2={1}.c2;
+    expect:
+      columns: [ "c1 string","c2 int","c3 bigint","c4 timestamp" ]
+      order: c1
+      rows:
+        - [ "aa",2,3,1590738989000 ]
+        - [ "bb",21,31,1590738992000 ]
+  - id: 23
+    desc: 使用表别名
+    inputs:
+      - columns: [ "c1 string","c2 bigint","c3 bigint","c4 timestamp" ]
+        indexs: [ "index1:c1:c4" ]
+        rows:
+          - [ "aa",2,3,1590738989000 ]
+          - [ "bb",21,31,1590738990000 ]
+      - columns: [ "c1 string","c2 bigint","c3 bigint","c4 timestamp" ]
+        indexs: [ "index1:c1:c2" ]
+        rows:
+          - [ "aa",2,13,1590738989000 ]
+          - [ "bb",21,131,1590738990000 ]
+          - [ "bb",41,121,1590738991000 ]
+          - [ "bb",31,141,1590738992000 ]
+    sql: select t1.c1,t1.c2,t2.c3,t2.c4 from {0} as t1 last join {1} as t2 ORDER BY t2.c2 on t1.c1=t2.c1;
+    expect:
+      columns: [ "c1 string","c2 bigint","c3 bigint","c4 timestamp" ]
+      order: c1
+      rows:
+        - [ "aa",2,13,1590738989000 ]
+        - [ "bb",21,121,1590738991000 ]
+  - id: 25
+    desc: LAST JOIN with rename table
+    mode: python-unsupport
+    inputs:
+      - columns: [ "c1 string","c2 int","c3 bigint","c4 timestamp" ]
+        indexs: [ "index1:c2:c4" ]
+        rows:
+          - [ "aa",2,3,1590738989000 ]
+          - [ "bb",21,31,1590738990000 ]
+      - columns: [ "c1 string","c2 int","c3 bigint","c4 timestamp" ]
+        indexs: [ "index1:c2:c4", "index2:c1:c4" ]
+        rows:
+          - [ "aa",2,3,1590738989000 ]
+          - [ "bb",21,31,1590738990000 ]
+          - [ "cc",21,32,1590738993000 ]
+          - [ "cc",21,31,1590738992000 ]
+          - [ "dd",21,31,1590738991000 ]
+    sql: |
+      select
+        {0}.c1, {0}.c2, {0}.c3,
+        t2.c1 as t2_c1, t2.c2 as t2_c2, t2.c3 as t2_c3,t2.c4 as t2_c4,
+        t3.c1 as t3_c1, t3.c4 as t3_c4 from {0}
+        last join {1} as t2 ORDER BY t2.c4 on {0}.c2 = t2.c2 and {0}.c3 <= t2.c3
+        last join {1} as t3 ORDER BY t3.c4 on {0}.c1 = t3.c1 and {0}.c3 <= t3.c3;
+    expect:
+      columns: [ "c1 string","c2 int", "c3 bigint", "t2_c1 string", "t2_c2 int", "t2_c3 bigint","t2_c4 timestamp", "t3_c1 string", "t3_c4 timestamp" ]
+      order: c1
+      rows:
+        - [ "aa",2,3, "aa", 2, 3,1590738989000, "aa", 1590738989000 ]
+        - [ "bb",21, 31, "cc", 21, 32,1590738993000, "bb", 1590738990000 ]
+  - id: 26
+    desc: LAST JOIN subquery with rename table
+    mode: python-unsupport
+    inputs:
+      - columns: [ "c1 string","c2 int","c3 bigint","c4 timestamp" ]
+        indexs: [ "index1:c2:c4" ]
+        rows:
+          - [ "aa",2,3,1590738989000 ]
+          - [ "bb",21,31,1590738990000 ]
+      - columns: [ "col1 string","col2 int","col3 bigint","col4 timestamp" ]
+        indexs: [ "index1:col2:col4", "index2:col1:col4" ]
+        rows:
+          - [ "aa",2,3,1590738989000 ]
+          - [ "bb",21,31,1590738990000 ]
+          - [ "cc",21,32,1590738993000 ]
+          - [ "cc",21,31,1590738992000 ]
+          - [ "dd",21,31,1590738991000 ]
+    sql: |
+      select
+        {0}.c1, {0}.c2, {0}.c3,
+        t2.c1 as t2_c1, t2.c2 as t2_c2, t2.c3 as t2_c3,t2.c4 as t2_c4,
+        t3.c1 as t3_c1, t3.c4 as t3_c4 from {0}
+        last join (select col1 as c1, col2 as c2, col3 as c3, col4 as c4 from {1}) as t2 ORDER BY t2.c4 on {0}.c2 = t2.c2 and {0}.c3 <= t2.c3
+        last join (select col1 as c1, col3 as c3, col4 as c4 from {1}) as t3 ORDER BY t3.c4 on {0}.c1 = t3.c1 and {0}.c3 <= t3.c3;
+    expect:
+      columns: [ "c1 string","c2 int", "c3 bigint", "t2_c1 string", "t2_c2 int", "t2_c3 bigint","t2_c4 timestamp", "t3_c1 string", "t3_c4 timestamp" ]
+      order: c1
+      rows:
+        - [ "aa",2,3, "aa", 2, 3,1590738989000, "aa", 1590738989000 ]
+        - [ "bb",21, 31, "cc", 21, 32,1590738993000, "bb", 1590738990000 ]
+  - id: 27
+    desc: LAST JOIN subquery with rename table 2
+    mode: python-unsupport
+    inputs:
+      - columns: [ "c1 string","c2 int","c3 bigint","c4 timestamp" ]
+        indexs: [ "index1:c2:c4" ]
+        rows:
+          - [ "aa",2,3,1590738989000 ]
+          - [ "bb",21,31,1590738990000 ]
+      - columns: [ "col1 string","col2 int","col3 bigint","col4 timestamp" ]
+        indexs: [ "index1:col2:col4", "index2:col1:col4" ]
+        rows:
+          - [ "aa",2,3,1590738989000 ]
+          - [ "bb",21,31,1590738990000 ]
+          - [ "cc",21,32,1590738993000 ]
+          - [ "cc",21,31,1590738992000 ]
+          - [ "dd",21,31,1590738991000 ]
+    sql: |
+      select
+        {0}.c1, {0}.c2, {0}.c3,
+        t2.c1 as t2_c1, t2.c2 as t2_c2, t2.c3 as t2_c3,t2.c4 as t2_c4,
+        t3.c1 as t3_c1, t3.c4 as t3_c4 from {0}
+        last join (select col1 as c1, col2 as c2, col3 as c3, col4 as c4 from {1}) as t2 ORDER BY t2.c4 on {0}.c2 = t2.c2 and {0}.c3 <= t2.c3
+        last join (select col1 as c1, col2 as c2, col3 as c3, col4 as c4 from {1}) as t3 ORDER BY t3.c4 on {0}.c1 = t3.c1 and {0}.c3 <= t3.c3;
+    expect:
+      columns: [ "c1 string","c2 int", "c3 bigint", "t2_c1 string", "t2_c2 int", "t2_c3 bigint","t2_c4 timestamp", "t3_c1 string", "t3_c4 timestamp" ]
+      order: c1
+      rows:
+        - ["aa",2,3, "aa", 2, 3,1590738989000, "aa", 1590738989000]
+        - ["bb",21, 31, "cc", 21, 32,1590738993000, "bb", 1590738990000]
+
+  - id: 28
+    desc: orderby-smallint
+    inputs:
+      - columns: ["c1 string","c2 int","c3 bigint","c4 timestamp"]
+        indexs: ["index1:c1:c4"]
+        rows:
+          - ["aa",2,3,1590738989000]
+          - ["bb",21,31,1590738990000]
+      - columns: ["c1 string","c2 smallint","c3 double","c4 timestamp","c5 date","c6 string"]
+        indexs: ["index1:c1:c4"]
+        rows:
+          - ["aa",1,3.1,1590738989000,"2020-05-01","aa"]
+          - ["bb",2,3.3,1590738990000,"2020-05-03","ab"]
+          - ["bb",5,3.6,1590738991000,"2020-05-04","bc"]
+          - ["bb",4,3.1,1590738992000,"2020-05-02","bb"]
+    sql: select {0}.c1,{0}.c2,{1}.c3,{1}.c4 from {0} last join {1} ORDER BY {1}.c2 on {0}.c1={1}.c1;
+    expect:
+      success: false
+
+  - id: 29
+    desc: orderby-bool
+    inputs:
+      - columns: ["c1 string","c2 int","c3 bigint","c4 timestamp"]
+        indexs: ["index1:c1:c4"]
+        rows:
+          - ["aa",2,3,1590738989000]
+          - ["bb",21,31,1590738990000]
+      - columns: ["c1 string","c2 bool","c3 double","c4 timestamp","c5 date","c6 string"]
+        indexs: ["index1:c1:c4"]
+        rows:
+          - ["aa",true,3.1,1590738989000,"2020-05-01","aa"]
+          - ["bb",true,3.3,1590738990000,"2020-05-03","ab"]
+          - ["bb",false,3.6,1590738991000,"2020-05-04","bc"]
+          - ["bb",true,3.1,1590738992000,"2020-05-02","bb"]
+    sql: select {0}.c1,{0}.c2,{1}.c3,{1}.c4 from {0} last join {1} ORDER BY {1}.c2 on {0}.c1={1}.c1;
+    expect:
+      success: false
+  - id: 30
+    desc: 拼接条件-smallint
+    inputs:
+      - columns: ["c1 string","c2 smallint","c3 bigint","c4 timestamp"]
+        indexs: ["index1:c2:c4"]
+        rows:
+          - ["aa",2,3,1590738989000]
+          - ["bb",21,31,1590738990000]
+      - columns: ["c1 string","c2 smallint","c3 bigint","c4 timestamp"]
+        indexs: ["index1:c2:c4"]
+        rows:
+          - ["aa",2,3,1590738989000]
+          - ["bb",21,31,1590738990000]
+          - ["bb",21,31,1590738992000]
+          - ["bb",21,31,1590738991000]
+    sql: select {0}.c1,{0}.c2,{1}.c3,{1}.c4 from {0} last join {1} ORDER BY {1}.c4 on {0}.c2={1}.c2;
+    expect:
+      columns: ["c1 string","c2 smallint","c3 bigint","c4 timestamp"]
+      order: c1
+      rows:
+        - ["aa",2,3,1590738989000]
+        - ["bb",21,31,1590738992000]
+  - id: 31
+    desc: 拼接条件-bool
+    inputs:
+      - columns: ["c1 string","c2 bool","c3 bigint","c4 timestamp"]
+        indexs: ["index1:c2:c4"]
+        rows:
+          - ["aa",true,3,1590738989000]
+          - ["bb",false,31,1590738990000]
+      - columns: ["c1 string","c2 bool","c3 bigint","c4 timestamp"]
+        indexs: ["index1:c2:c4"]
+        rows:
+          - ["aa",true,3,1590738989000]
+          - ["bb",false,31,1590738990000]
+          - ["bb",false,31,1590738992000]
+          - ["bb",false,31,1590738991000]
+    sql: select {0}.c1,{0}.c2,{1}.c3,{1}.c4 from {0} last join {1} ORDER BY {1}.c4 on {0}.c2={1}.c2;
+    expect:
+      columns: ["c1 string","c2 bool","c3 bigint","c4 timestamp"]
+      order: c1
+      rows:
+        - ["aa",true,3,1590738989000]
+        - ["bb",false,31,1590738992000]
+  - id: 4-6
+    desc: lastjoin-拼表条件没有命中索引
+    mode: performance-sensitive-unsupport,cli-unsupport
+    inputs:
+      - columns: [ "c1 string","c2 int","c3 bigint","c4 timestamp" ]
+        indexs: [ "index1:c1:c4" ]
+        rows:
+          - [ "aa",2,3,1590738989000 ]
+          - [ "bb",21,31,1590738990000 ]
+      - columns: [ "c1 string","c2 int","c3 bigint","c4 timestamp" ]
+        indexs: [ "index1:c2:c4" ]
+        rows:
+          - [ "aa",2,13,1590738989000 ]
+          - [ "bb",21,131,1590738990000 ]
+          - [ "cc",41,121,1590738991000 ]
+    sql: select {0}.c1,{0}.c2,{1}.c3,{1}.c4 from {0} last join {1} order by {1}.c4 on {0}.c1={1}.c1;
+    expect:
+      columns: [ "c1 string", "c2 int", "c3 bigint", "c4 timestamp" ]
+      order: c1
+      rows:
+        - [ "aa", 2, 13, 1590738989000 ]
+        - [ "bb", 21, 131, 1590738990000 ]
+  -
+    id: 12
+    desc: 不指定索引，进行lastjoin
+    inputs:
+      - columns: [ "c1 string","c2 int","c3 bigint","c4 timestamp" ]
+        rows:
+          - [ "aa",2,3,1590738989000 ]
+          - [ "bb",21,31,1590738990000 ]
+          - [ "dd",41,51,1590738990000 ]
+      - columns: [ "c1 string","c2 int","c3 bigint","c4 timestamp" ]
+        rows:
+          - [ "aa",2,13,1590738989000 ]
+          - [ "bb",21,131,1590738990000 ]
+          - [ "cc",41,121,1590738991000 ]
+    sql: select {0}.c1,{0}.c2,{1}.c3,{1}.c4 from {0} last join {1} on {0}.c1={1}.c1;
+    expect:
+      columns: [ "c1 string","c2 int","c3 bigint","c4 timestamp" ]
+      order: c1
+      rows:
+        - [ "aa",2,13,1590738989000 ]
+        - [ "bb",21,131,1590738990000 ]
+        - [ "dd", 41, NULL, NULL ]
+  -
+    id: 13
+    desc: 不指定索引，进行lastjoin,匹配多行
+    inputs:
+      - columns: [ "c1 string","c2 int","c3 bigint","c4 timestamp" ]
+        rows:
+          - [ "aa",2,3,1590738989000 ]
+          - [ "bb",21,31,1590738990000 ]
+          - [ "dd",41,51,1590738990000 ]
+      - columns: [ "c1 string","c2 int","c3 bigint","c4 timestamp" ]
+        rows:
+          - [ "aa",2,13,1590738989000 ]
+          - [ "aa",21,131,1590738990000 ]
+          - [ "cc",41,121,1590738991000 ]
+    sql: select {0}.c1,{0}.c2,{1}.c3,{1}.c4 from {0} last join {1} on {0}.c1={1}.c1;
+    expect:
+      columns: [ "c1 string","c2 int","c3 bigint","c4 timestamp" ]
+      order: c1
+      rows:
+        - [ "aa",2,131,1590738990000 ]
+        - [ "bb",21,NULL,NULL ]
+        - [ "dd", 41, NULL, NULL ]

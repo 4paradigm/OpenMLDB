@@ -1,0 +1,461 @@
+# SQL limit clause
+# Syntax:
+#   `LIMIT <NUMBER>`
+# <NUMBER> >= 0
+#
+# Supported conjunction with
+# - where clause
+# - window project
+# - last join
+# - group by
+# - having clause
+#
+# limit clause may optimized into its producer node during executing, e.g for
+# - where clause
+# - group by
+#
+# cases:
+# - limit(table) -> 0
+# - limit(filter) -> 1*
+# - limit(window) -> 2*
+# - limit(last join) -> 3*
+# - limit(group by) -> 4*
+# - limit(group by & having) -> 5*
+# - limit query in subquery: not supported
+
+cases:
+  - id: 0-0
+    desc: simple limit over select
+    mode: request-unsupport
+    inputs:
+      - columns:
+          - userId int
+          - itemId int
+          - actionTime timestamp
+        indexs:
+          - index2:itemId:actionTime
+        data: |
+          1, 1, 1000
+          2, 2, 2000
+          3, 3, 3000
+          4, 3, 4000
+    sql: |
+      select * from {0} limit 2
+    expect:
+      order: userId
+      columns:
+        - userId int
+        - itemId int
+        - actionTime timestamp
+      data: |
+        3, 3, 3000
+        4, 3, 4000
+
+  - id: 0-1
+    desc: simple limit over select limit 0
+    mode: request-unsupport
+    inputs:
+      - columns:
+          - userId int
+          - itemId int
+          - actionTime timestamp
+        indexs:
+          - index2:itemId:actionTime
+        data: |
+          1, 1, 1000
+          2, 2, 2000
+          3, 3, 3000
+          4, 3, 4000
+    sql: |
+      select * from {0} limit 0
+    expect:
+      order: userId
+      columns:
+        - userId int
+        - itemId int
+        - actionTime timestamp
+      data: |
+
+  - id: 1-0
+    mode: request-unsupport
+    desc: limit over filter op, without index hit
+    inputs:
+      - name: actions
+        columns:
+          - userId string
+          - itemId int
+          - actionTime timestamp
+        indexs:
+          - index2:itemId:actionTime
+        data: |
+          a, 1, 1000
+          a, 2, 2000
+          b, 3, 3000
+          b, 3, 3000
+    sql: |
+      select * from actions where itemId != 3 limit 1
+    expect:
+      order: itemId
+      columns:
+        - userId string
+        - itemId int
+        - actionTime timestamp
+      data: |
+        a, 1, 1000
+  - id: 1-1
+    mode: request-unsupport
+    desc: limit over filter op, with index hit
+    inputs:
+      - name: actions
+        columns:
+          - userId string
+          - itemId int
+          - actionTime timestamp
+        indexs:
+          - index2:itemId:actionTime
+        data: |
+          a, 1, 1000
+          a, 2, 2000
+          b, 3, 3000
+          b, 3, 4000
+    sql: |
+      select * from actions where itemId = 3 limit 1
+    expect:
+      order: itemId
+      columns:
+        - userId string
+        - itemId int
+        - actionTime timestamp
+      data: |
+        b, 3, 4000
+
+  - id: 1-2
+    mode: request-unsupport
+    desc: limit over filter op, limit 0
+    inputs:
+      - name: actions
+        columns:
+          - userId string
+          - itemId int
+          - actionTime timestamp
+        indexs:
+          - index2:itemId:actionTime
+        data: |
+          a, 1, 1000
+          a, 2, 2000
+          b, 3, 3000
+          b, 3, 4000
+    sql: |
+      select * from actions where itemId = 3 limit 0
+    expect:
+      order: itemId
+      columns:
+        - userId string
+        - itemId int
+        - actionTime timestamp
+      data: |
+
+  - id: 2
+    mode: request-unsupport
+    desc: |
+      limit (window)
+    inputs:
+      - columns:
+          - userId int
+          - itemId int
+          - actionTime timestamp
+        indexs:
+          - index2:itemId:actionTime
+        data: |
+          1, 1, 1000
+          2, 2, 2000
+          3, 3, 3000
+          4, 3, 4000
+    sql: |
+      select userId, itemId, min(actionTime) over w as ma from {0}
+      window w as (
+        partition by itemId order by actionTime
+        rows_range between 1s preceding and current row)
+      limit 2
+    expect:
+      order: userId
+      columns:
+        - userId int
+        - itemId int
+        - ma timestamp
+      data: |
+        3, 3, 3000
+        4, 3, 3000
+  - id: 2-1
+    mode: request-unsupport
+    desc: |
+      limit (window), without index optimization
+    inputs:
+      - columns:
+          - userId int
+          - itemId int
+          - actionTime timestamp
+        indexs:
+          - index2:itemId:actionTime
+        data: |
+          1, 1, 1000
+          2, 2, 2000
+          3, 3, 3000
+          4, 3, 4000
+    sql: |
+      select userId, itemId, min(actionTime) over w as ma from {0}
+      window w as (
+        partition by userId order by actionTime
+        rows_range between 1s preceding and current row)
+      limit 2
+    expect:
+      order: userId
+      columns:
+        - userId int
+        - itemId int
+        - ma timestamp
+      data: |
+        3, 3, 3000
+        4, 3, 4000
+  - id: 2-2
+    mode: request-unsupport
+    desc: |
+      limit (window), limit 0
+    inputs:
+      - columns:
+          - userId int
+          - itemId int
+          - actionTime timestamp
+        indexs:
+          - index2:itemId:actionTime
+        data: |
+          1, 1, 1000
+          2, 2, 2000
+          3, 3, 3000
+          4, 3, 4000
+    sql: |
+      select userId, itemId, min(actionTime) over w as ma from {0}
+      window w as (
+        partition by userId order by actionTime
+        rows_range between 1s preceding and current row)
+      limit 0
+    expect:
+      order: userId
+      columns:
+        - userId int
+        - itemId int
+        - ma timestamp
+      data: |
+
+  - id: 3-0
+    mode: request-unsupport
+    desc: |
+      limit (last join), with index optimization
+    inputs:
+      - columns:
+          - userId int
+          - itemId int
+          - actionTime timestamp
+        indexs:
+          - index2:itemId:actionTime
+        data: |
+          1, 1, 1000
+          2, 2, 2000
+          3, 3, 3000
+          4, 3, 4000
+      - columns:
+          - userId int
+          - val string
+          - createTime timestamp
+        indexs:
+          - idx:userId:createTime
+        data: |
+          1, a, 1000
+          2, b, 1000
+          4, c, 1000
+    sql: |
+      select {0}.userId, {0}.itemId, {1}.val from {0}
+      last join {1} on {0}.userId = {1}.userId
+      limit 2
+    expect:
+      order: userId
+      columns:
+        - userId int
+        - itemId int
+        - val string
+      data: |
+        3, 3, NULL
+        4, 3, c
+  - id: 3-1
+    mode: request-unsupport
+    desc: |
+      limit (last join), without index optimization
+    inputs:
+      - columns:
+          - userId int
+          - itemId int
+          - actionTime timestamp
+        indexs:
+          - index2:itemId:actionTime
+        data: |
+          1, 1, 1000
+          2, 2, 2000
+          3, 3, 3000
+          4, 3, 4000
+      - columns:
+          - id int
+          - userId int
+          - val string
+          - createTime timestamp
+        indexs:
+          - idx:id:createTime
+        data: |
+          1, 1, a, 1000
+          2, 2, b, 1000
+          3, 4, c, 1000
+    sql: |
+      select {0}.userId, {0}.itemId, {1}.val from {0}
+      last join {1} on {0}.userId = {1}.userId
+      limit 2
+    expect:
+      order: userId
+      columns:
+        - userId int
+        - itemId int
+        - val string
+      data: |
+        3, 3, NULL
+        4, 3, c
+  - id: 4-0
+    mode: request-unsupport
+    desc: |
+      limit (group by), with index optimization
+    inputs:
+      - columns:
+          - userId int
+          - itemId int
+          - actionTime timestamp
+        indexs:
+          - index2:itemId:actionTime
+        data: |
+          1, 1, 1000
+          2, 2, 2000
+          3, 3, 3000
+          4, 3, 4000
+    sql: |
+      select itemId, count(userId) as cnt from {0} group by itemId
+      limit 1
+    expect:
+      order: itemId
+      columns:
+        - itemId int
+        - cnt int64
+      data: |
+        3, 2
+  - id: 4-1
+    mode: request-unsupport
+    desc: |
+      limit (group by), without index optimization
+    inputs:
+      - columns:
+          - userId int
+          - itemId int
+          - actionTime timestamp
+        indexs:
+          - index2:itemId:actionTime
+        data: |
+          1, 1, 1000
+          2, 2, 2000
+          3, 3, 3000
+          4, 3, 4000
+    sql: |
+      select userId, count(userId) as cnt from {0} group by userId
+      limit 2
+    expect:
+      order: userId
+      columns:
+        - userId int
+        - cnt int64
+      data: |
+        3, 1
+        4, 1
+  - id: 4-2
+    mode: request-unsupport
+    desc: |
+      limit (group by), limit 0
+    inputs:
+      - columns:
+          - userId int
+          - itemId int
+          - actionTime timestamp
+        indexs:
+          - index2:itemId:actionTime
+        data: |
+          1, 1, 1000
+          2, 2, 2000
+          3, 3, 3000
+          4, 3, 4000
+    sql: |
+      select userId, count(userId) as cnt from {0} group by userId
+      limit 0
+    expect:
+      order: userId
+      columns:
+        - userId int
+        - cnt int64
+      data: |
+
+  - id: 5-0
+    mode: request-unsupport
+    desc: |
+      limit (group by & having), with optimization
+    inputs:
+      - columns:
+          - userId int
+          - itemId int
+          - actionTime timestamp
+        indexs:
+          - index2:itemId:actionTime
+        data: |
+          1, 1, 1000
+          2, 2, 2000
+          3, 3, 3000
+          4, 3, 4000
+    sql: |
+      select itemId, count(userId) as cnt from {0} group by itemId
+      having sum(userId) = 2
+      limit 1
+    expect:
+      order: itemId
+      columns:
+        - itemId int
+        - cnt int64
+      data: |
+        2, 1
+  - id: 5-1
+    mode: request-unsupport
+    desc: |
+      limit (group by & having), without optimization
+    inputs:
+      - columns:
+          - userId int
+          - itemId int
+          - actionTime timestamp
+        indexs:
+          - index2:itemId:actionTime
+        data: |
+          1, 1, 1000
+          2, 2, 2000
+          3, 3, 3000
+          4, 3, 4000
+    sql: |
+      select userId, count(userId) as cnt from {0} group by userId
+      having sum(itemId) <= 2 and sum(itemId) > 1
+      limit 2
+    expect:
+      order: userId
+      columns:
+        - userId int
+        - cnt int64
+      data: |
+        2, 1

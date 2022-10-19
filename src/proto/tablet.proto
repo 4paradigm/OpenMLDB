@@ -234,9 +234,9 @@ message GeneralResponse {
 message ScanRequest {
     // the prefix key
     optional string pk = 1;
-    // the start subfix key
+    // the start subfix key (inclusive)
     optional uint64 st = 2;
-    // the end subfix key
+    // the end subfix key (exclusive)
     optional uint64 et = 3;
     optional uint32 limit = 4;
     optional uint32 tid = 5;
@@ -259,6 +259,7 @@ message TraverseRequest {
     optional uint64 ts = 6;
     optional bool enable_remove_duplicated_record = 7 [default = false];
     optional bool skip_current_pk = 8 [default = false];
+    optional uint32 ts_pos = 9;
 }
 
 message TraverseResponse {
@@ -270,6 +271,7 @@ message TraverseResponse {
     optional uint64 ts = 6;
     optional bool is_finish = 7;
     optional uint64 snapshot_id = 8;
+    optional uint32 ts_pos = 9;
 }
 
 message ScanResponse {

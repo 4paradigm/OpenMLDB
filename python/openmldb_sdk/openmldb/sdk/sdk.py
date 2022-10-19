@@ -32,48 +32,75 @@ logger = logging.getLogger("OpenMLDB_sdk")
 
 
 class OpenMLDBClusterSdkOptions(object):
-    def __init__(self, zk_cluster, zk_path, session_timeout=3000, spark_conf_path=""):
+
+    def __init__(self,
+                 zk_cluster,
+                 zk_path,
+                 session_timeout=None,
+                 spark_conf_path=None,
+                 request_timeout=None,
+                 zk_log_level=None,
+                 zk_log_file=None):
         self.zk_cluster = zk_cluster
         self.zk_path = zk_path
+        # all timeout unit ms
         self.zk_session_timeout = session_timeout
         self.spark_conf_path = spark_conf_path
+        self.request_timeout = request_timeout
+        self.zk_log_level = zk_log_level
+        self.zk_log_file = zk_log_file
 
 
 class OpenMLDBStandaloneSdkOptions(object):
-    def __init__(self, host, port):
+
+    def __init__(self, host, port, request_timeout=None):
         self.host = host
         self.port = port
+        self.request_timeout = int(
+            request_timeout) if request_timeout else 60000
 
 
 class OpenMLDBSdk(object):
-    def __init__(self, options, is_cluster_mode):
-        self.is_cluster_mode = is_cluster_mode
-        self.options = options
+
+    def __init__(self, **options_map):
+        self.options_map = options_map
         self.sdk = None
 
     def init(self):
-        if self.is_cluster_mode:
+        is_cluster_mode = True if 'zkPath' in self.options_map else False
+        if is_cluster_mode:
             options = sql_router_sdk.SQLRouterOptions()
-            options.zk_cluster = self.options.zk_cluster
-            options.zk_path = self.options.zk_path
-            self.sdk = sql_router_sdk.NewClusterSQLRouter(options)
-            if not self.sdk:
-                logger.error("fail to init OpenMLDB sdk with zk cluster %s and zk path %s" % (
-                    options.zk_cluster, options.zk_path))
-                return False
-            logger.info("init OpenMLDB sdk done with zk cluster %s and zk path %s" % (
-                options.zk_cluster, options.zk_path))
+            options.zk_cluster = self.options_map['zk']
+            options.zk_path = self.options_map['zkPath']
+            # optionals
+            if 'zkLogLevel' in self.options_map:
+                options.zk_log_level = int(self.options_map['zkLogLevel'])
+            if 'zkLogFile' in self.options_map:
+                options.zk_log_file = self.options_map['zkLogFile']
         else:
             options = sql_router_sdk.StandaloneOptions()
-            options.host = self.options.host
-            options.port = self.options.port
-            self.sdk = sql_router_sdk.NewStandaloneSQLRouter(options)
-            if not self.sdk:
-                logger.error("fail to init OpenMLDB sdk with host %s and port %s" % (
-                    options.host, options.port))
-                return False
-            logger.info(
-                "init openmldb sdk done with host %s and port %s" % (options.host, options.port))
+            # use host
+            if 'zkPath' not in self.options_map:
+                options.host = self.options_map['host']
+                options.port = int(self.options_map['port'])
+
+        # common options
+        if 'requestTimeout' in self.options_map:
+            options.request_timeout = int(self.options_map['requestTimeout'])
+        if 'glogLevel' in self.options_map:
+            options.glog_level = self.options_map['glogLevel']
+        if 'glogDir' in self.options_map:
+            options.glog_dir = self.options_map['glogDir']
+        if 'maxSqlCacheSize' in self.options_map:
+            options.max_sql_cache_size = int(self.options_map['maxSqlCacheSize'])
+
+        self.sdk = sql_router_sdk.NewClusterSQLRouter(
+            options) if is_cluster_mode else sql_router_sdk.NewStandaloneSQLRouter(options)
+        if not self.sdk:
+            logger.error(
+                "fail to init OpenMLDB sdk with %s, is cluster mode %s" % (self.options_map, is_cluster_mode))
+            return False
+        logger.info("init openmldb sdk done with %s, is cluster mode %s" % (self.options_map, is_cluster_mode))
         status = sql_router_sdk.Status()
         self.sdk.ExecuteSQL("SET @@execute_mode='online'", status)
         return True
@@ -303,7 +330,7 @@ class OpenMLDBSdk(object):
             logging.debug("extract datetime/timestamp with string item")
             try:
                 dt = datetime.fromisoformat(x)
-                return True, int(dt.timestamp()*1000)
+                return True, int(dt.timestamp() * 1000)
             except Exception as e:
                 return False, "fail extract date from string {}".format(e)
         elif isinstance(x, int):
@@ -311,13 +338,14 @@ class OpenMLDBSdk(object):
             return True, x
         elif isinstance(x, datetime):
             logging.debug("extract datetime/timestamp with datetime item")
-            return True, int(x.timestamp()*1000)
+            return True, int(x.timestamp() * 1000)
         elif isinstance(x, date):
             logging.debug("extract datetime/timestamp with date item")
             dt = datetime(x.year, x.month, x.day, 0, 0, 0)
-            return True, int(dt.timestamp()*1000)
+            return True, int(dt.timestamp() * 1000)
         else:
-            return False, "fail extract datetime, invalid type {}".format(type(x))
+            return False, "fail extract datetime, invalid type {}".format(
+                type(x))
 
     def _extract_date(self, x):
         if isinstance(x, str):
@@ -334,19 +362,30 @@ class OpenMLDBSdk(object):
             logging.debug("append date with date item")
             return True, (x.year, x.month, x.day)
         else:
-            return False, "fail to extract date, invallid type {}".format(type(x))
+            return False, "fail to extract date, invallid type {}".format(
+                type(x))
 
     def _append_request_row_with_tuple(self, requestRow, schema, data):
         appendMap = {
-            sql_router_sdk.kTypeBool: requestRow.AppendBool,
-            sql_router_sdk.kTypeInt16: requestRow.AppendInt16,
-            sql_router_sdk.kTypeInt32: requestRow.AppendInt32,
-            sql_router_sdk.kTypeInt64: requestRow.AppendInt64,
-            sql_router_sdk.kTypeFloat: requestRow.AppendFloat,
-            sql_router_sdk.kTypeDouble: requestRow.AppendDouble,
-            sql_router_sdk.kTypeString: requestRow.AppendString,
-            sql_router_sdk.kTypeDate: lambda x: len(x) == 3 and requestRow.AppendDate(x[0], x[1], x[2]),
-            sql_router_sdk.kTypeTimestamp: requestRow.AppendTimestamp
+            sql_router_sdk.kTypeBool:
+                requestRow.AppendBool,
+            sql_router_sdk.kTypeInt16:
+                requestRow.AppendInt16,
+            sql_router_sdk.kTypeInt32:
+                requestRow.AppendInt32,
+            sql_router_sdk.kTypeInt64:
+                requestRow.AppendInt64,
+            sql_router_sdk.kTypeFloat:
+                requestRow.AppendFloat,
+            sql_router_sdk.kTypeDouble:
+                requestRow.AppendDouble,
+            sql_router_sdk.kTypeString:
+                requestRow.AppendString,
+            sql_router_sdk.kTypeDate:
+                lambda x: len(x) == 3 and requestRow.AppendDate(
+                    x[0], x[1], x[2]),
+            sql_router_sdk.kTypeTimestamp:
+                requestRow.AppendTimestamp
         }
         count = schema.GetColumnCnt()
         strSize = 0
@@ -388,15 +427,25 @@ class OpenMLDBSdk(object):
 
     def _append_request_row_with_dict(self, requestRow, schema, data):
         appendMap = {
-            sql_router_sdk.kTypeBool: requestRow.AppendBool,
-            sql_router_sdk.kTypeInt16: requestRow.AppendInt16,
-            sql_router_sdk.kTypeInt32: requestRow.AppendInt32,
-            sql_router_sdk.kTypeInt64: requestRow.AppendInt64,
-            sql_router_sdk.kTypeFloat: requestRow.AppendFloat,
-            sql_router_sdk.kTypeDouble: requestRow.AppendDouble,
-            sql_router_sdk.kTypeString: requestRow.AppendString,
-            sql_router_sdk.kTypeDate: lambda x: len(x) == 3 and requestRow.AppendDate(x[0], x[1], x[2]),
-            sql_router_sdk.kTypeTimestamp: requestRow.AppendTimestamp
+            sql_router_sdk.kTypeBool:
+                requestRow.AppendBool,
+            sql_router_sdk.kTypeInt16:
+                requestRow.AppendInt16,
+            sql_router_sdk.kTypeInt32:
+                requestRow.AppendInt32,
+            sql_router_sdk.kTypeInt64:
+                requestRow.AppendInt64,
+            sql_router_sdk.kTypeFloat:
+                requestRow.AppendFloat,
+            sql_router_sdk.kTypeDouble:
+                requestRow.AppendDouble,
+            sql_router_sdk.kTypeString:
+                requestRow.AppendString,
+            sql_router_sdk.kTypeDate:
+                lambda x: len(x) == 3 and requestRow.AppendDate(
+                    x[0], x[1], x[2]),
+            sql_router_sdk.kTypeTimestamp:
+                requestRow.AppendTimestamp
         }
         count = schema.GetColumnCnt()
         strSize = 0

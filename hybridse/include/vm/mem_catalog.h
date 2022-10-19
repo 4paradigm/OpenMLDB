@@ -21,6 +21,7 @@
 #include <functional>
 #include <map>
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -436,6 +437,11 @@ class HistoryWindow : public Window {
     // if `start_ts_inclusive` is empty, no rows goes out of effective window
     // if `end_ts_inclusive` is empty, no rows goes out of history buffer and into effective window
     void SlideWindow(std::optional<uint64_t> start_ts_inclusive, std::optional<uint64_t> end_ts_inclusive) {
+        // always try to cleanup the stale rows out of effective window
+        if (start_ts_inclusive.has_value()) {
+            Slide(start_ts_inclusive);
+        }
+
         if (!end_ts_inclusive.has_value()) {
             return;
         }
@@ -455,6 +461,10 @@ class HistoryWindow : public Window {
     // if `start_ts` is empty, no rows eliminated from window
     bool BufferEffectiveWindow(uint64_t key, const Row& row, std::optional<uint64_t> start_ts) {
         AddFrontRow(key, row);
+        return Slide(start_ts);
+    }
+
+    bool Slide(std::optional<uint64_t> start_ts) {
         auto cur_size = table_.size();
         while (window_range_.max_size_ > 0 &&
                cur_size > window_range_.max_size_) {

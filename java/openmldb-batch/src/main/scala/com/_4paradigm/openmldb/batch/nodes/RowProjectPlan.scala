@@ -63,9 +63,9 @@ object RowProjectPlan {
     }
 
     // Get Spark DataFrame and limit the number of rows
-    val inputDf = if (node.GetLimitCnt > 0) {
+    val inputDf = if (node.GetLimitCntValue >= 0) {
       inputTable.getDfConsideringIndex(ctx, node.GetNodeId())
-        .limit(node.GetLimitCnt())
+        .limit(node.GetLimitCntValue())
     } else {
       inputTable.getDfConsideringIndex(ctx, node.GetNodeId())
     }
@@ -190,7 +190,6 @@ object RowProjectPlan {
         val outputArr = Array.fill[Any](outputFields)(null)
 
         val resultIter = partitionIter.map(row => {
-
           // Encode the spark row to native row
           val nativeInputRow = encoder.encode(row)
 

@@ -175,6 +175,8 @@ def build(fesqlCase, fesqlResult):
             checkList.append(CountChecker(fesqlCase, fesqlResult))
         elif key == 'columns':
             checkList.append(ColumnsChecker(fesqlCase, fesqlResult))
+        elif key == 'schema':
+            checkList.append(ColumnsChecker(fesqlCase,fesqlResult))
         elif key == 'order':
             pass
         else:

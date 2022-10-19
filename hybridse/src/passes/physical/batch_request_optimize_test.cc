@@ -40,6 +40,9 @@ INSTANTIATE_TEST_SUITE_P(
     BatchRequestUdfQuery, BatchRequestOptimizeTest,
     testing::ValuesIn(sqlcase::InitCases("/cases/query/udf_query.yaml")));
 INSTANTIATE_TEST_SUITE_P(
+    BatchRequestLimitQuery, BatchRequestOptimizeTest,
+    testing::ValuesIn(sqlcase::InitCases("/cases/query/limit.yaml")));
+INSTANTIATE_TEST_SUITE_P(
     BatchRequestOperatorQuery, BatchRequestOptimizeTest,
     testing::ValuesIn(sqlcase::InitCases("/cases/query/operator_query.yaml")));
 INSTANTIATE_TEST_SUITE_P(

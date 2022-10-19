@@ -10,7 +10,7 @@ DROP DATABASE database_name
 
 ## **Example**
 
-创建一个数据库，并设置为当前数据库:
+创建数据库db1和db2:
 
 ```sql
 CREATE DATABASE db1;

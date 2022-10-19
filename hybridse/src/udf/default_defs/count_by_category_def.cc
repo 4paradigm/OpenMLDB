@@ -20,9 +20,11 @@
 #include <utility>
 #include <vector>
 
+#include "absl/strings/string_view.h"
 #include "udf/containers.h"
 #include "udf/default_udf_library.h"
 #include "udf/udf_registry.h"
+#include "udf/default_defs/containers.h"
 
 using openmldb::base::Date;
 using openmldb::base::StringRef;
@@ -57,6 +59,11 @@ struct CountCateDef {
                 .output("count_cate_output" + suffix, Output);
         }
 
+        // FormatValueF
+        static uint32_t FormatValueFn(const typename ContainerT::StorageValue& val, char* buf, size_t size) {
+            return v1::format_string(val, buf, size);
+        }
+
         static ContainerT* Update(ContainerT* ptr, InputV value,
                                   bool is_value_null, InputK key,
                                   bool is_key_null) {
@@ -65,13 +72,8 @@ struct CountCateDef {
             }
             auto& map = ptr->map();
             auto stored_key = ContainerT::to_stored_key(key);
-            auto iter = map.find(stored_key);
-            if (iter == map.end()) {
-                map.insert(iter, {stored_key, 1});
-            } else {
-                auto& single = iter->second;
-                single += 1;
-            }
+            auto iter = map.try_emplace(stored_key, 0);
+            iter.first->second += 1;
             return ptr;
         }
 
@@ -130,12 +132,14 @@ struct CountCateWhereDef {
 };
 
 template <typename K>
-struct TopKCountCateWhereDef {
+struct TopNKeyCountCateWhereDef {
     void operator()(UdafRegistryHelper& helper) {  // NOLINT
         helper.library()
-            ->RegisterUdafTemplate<Impl>("top_n_key_count_cate_where")
+            ->RegisterUdafTemplate<Impl>(helper.name())
             .doc(helper.GetDoc())
-            .template args_in<int16_t, int32_t, int64_t, float, double>();
+            // type of value
+            // TODO(ace): support LiteralTypedRow as value
+            .template args_in<bool, int16_t, int32_t, int64_t, float, double, Timestamp, Date, StringRef>();
     }
 
     template <typename V>
@@ -144,31 +148,25 @@ struct TopKCountCateWhereDef {
         using InputK = typename ContainerT::InputK;
         using InputV = typename ContainerT::InputV;
 
-        using AvgCateImpl = typename CountCateDef<K>::template Impl<V>;
+        using CateImpl = typename CountCateDef<K>::template Impl<V>;
 
         void operator()(UdafRegistryHelper& helper) {  // NOLINT
             std::string suffix;
+            absl::string_view prefix = helper.name();
 
-            suffix = ".i32_bound_opaque_dict_" + DataTypeTrait<K>::to_string() +
-                     "_" + DataTypeTrait<V>::to_string();
-            helper
-                .templates<StringRef, Opaque<ContainerT>, Nullable<V>,
-                           Nullable<bool>, Nullable<K>, int32_t>()
-                .init("top_n_key_count_cate_where_init" + suffix,
-                      ContainerT::Init)
-                .update("top_n_key_count_cate_where_update" + suffix,
-                        UpdateI32Bound)
-                .output("top_n_key_count_cate_where_output" + suffix, Output);
+            suffix = absl::StrCat(".i32_bound_opaque_dict_", DataTypeTrait<K>::to_string(), "_",
+                                  DataTypeTrait<V>::to_string());
+            helper.templates<StringRef, Opaque<ContainerT>, Nullable<V>, Nullable<bool>, Nullable<K>, int32_t>()
+                .init(absl::StrCat(prefix, "_init", suffix), ContainerT::Init)
+                .update(absl::StrCat(prefix, "_update", suffix), UpdateI32Bound)
+                .output(absl::StrCat(prefix, "_output", suffix), Output);
 
-            suffix = ".i64_bound_opaque_dict_" + DataTypeTrait<K>::to_string() +
-                     "_" + DataTypeTrait<V>::to_string();
-            helper
-                .templates<StringRef, Opaque<ContainerT>, Nullable<V>,
-                           Nullable<bool>, Nullable<K>, int64_t>()
-                .init("top_n_key_count_cate_where_init" + suffix,
-                      ContainerT::Init)
-                .update("top_n_key_count_cate_where_update" + suffix, Update)
-                .output("top_n_key_count_cate_where_output" + suffix, Output);
+            suffix = absl::StrCat(".i64_bound_opaque_dict_", DataTypeTrait<K>::to_string(), "_",
+                                  DataTypeTrait<V>::to_string());
+            helper.templates<StringRef, Opaque<ContainerT>, Nullable<V>, Nullable<bool>, Nullable<K>, int64_t>()
+                .init(absl::StrCat(prefix, "_init", suffix), ContainerT::Init)
+                .update(absl::StrCat(prefix, "_update", suffix), Update)
+                .output(absl::StrCat(prefix, "_output", suffix), Output);
         }
 
         static ContainerT* Update(ContainerT* ptr, InputV value,
@@ -176,8 +174,7 @@ struct TopKCountCateWhereDef {
                                   bool is_cond_null, InputK key,
                                   bool is_key_null, int64_t bound) {
             if (cond && !is_cond_null) {
-                AvgCateImpl::Update(ptr, value, is_value_null, key,
-                                    is_key_null);
+                CateImpl::Update(ptr, value, is_value_null, key, is_key_null);
                 auto& map = ptr->map();
                 if (bound >= 0 && map.size() > static_cast<size_t>(bound)) {
                     map.erase(map.begin());
@@ -186,10 +183,8 @@ struct TopKCountCateWhereDef {
             return ptr;
         }
 
-        static ContainerT* UpdateI32Bound(ContainerT* ptr, InputV value,
-                                          bool is_value_null, bool cond,
-                                          bool is_cond_null, InputK key,
-                                          bool is_key_null, int32_t bound) {
+        static ContainerT* UpdateI32Bound(ContainerT* ptr, InputV value, bool is_value_null, bool cond,
+                                          bool is_cond_null, InputK key, bool is_key_null, int32_t bound) {
             return Update(ptr, value, is_value_null, cond, is_cond_null, key,
                           is_key_null, bound);
         }
@@ -203,6 +198,19 @@ struct TopKCountCateWhereDef {
             ContainerT::Destroy(ptr);
         }
     };
+};
+
+template <typename K>
+struct TopNValueCountCateWhereDef {
+    void operator()(UdafRegistryHelper& helper) {  // NOLINT
+        helper.library()
+            ->RegisterUdafTemplate<container::TopNValueImpl<CountCateDef<K>::template Impl>::template Impl>(
+                helper.name())
+            .doc(helper.GetDoc())
+            // type of value
+            // TODO(ace): support LiteralTypedRow as value
+            .template args_in<bool, int16_t, int32_t, int64_t, float, double, Timestamp, Date, StringRef>();
+    }
 };
 
 void DefaultUdfLibrary::InitCountByCateUdafs() {
@@ -258,15 +266,15 @@ void DefaultUdfLibrary::InitCountByCateUdafs() {
             )")
         .args_in<int16_t, int32_t, int64_t, Date, Timestamp, StringRef>();
 
-    RegisterUdafTemplate<TopKCountCateWhereDef>("top_n_key_count_cate_where")
+    RegisterUdafTemplate<TopNKeyCountCateWhereDef>("top_n_key_count_cate_where")
         .doc(R"(
             @brief Compute count of values matching specified condition grouped by
-    category key. Output string for top N keys in descend order. Each group is
-    represented as 'K:V' and separated by comma.
+    category key. Output string for top N category keys in descend order. Each group is
+    represented as 'K:V' and separated by comma(,). Empty string returned if no rows selected.
 
-            @param catagory  Specify catagory column to group by.
             @param value  Specify value column to aggregate on.
             @param condition  Specify condition column.
+            @param catagory  Specify catagory column to group by.
             @param n  Fetch top n keys.
 
             Example:
@@ -287,6 +295,39 @@ void DefaultUdfLibrary::InitCountByCateUdafs() {
                 -- output "z:2,y:2"
             @endcode
             )")
+        // type of category
+        .args_in<int16_t, int32_t, int64_t, Date, Timestamp, StringRef>();
+
+    RegisterUdafTemplate<TopNValueCountCateWhereDef>("top_n_value_count_cate_where")
+        .doc(R"(
+            @brief Compute count of values matching specified condition grouped by
+    category key. Output string for top N aggregate values in descend order. Each group is
+    represented as 'K:V' and separated by comma(,). Empty string returned if no rows selected.
+
+            @param value  Specify value column to aggregate on.
+            @param condition  Specify condition column.
+            @param catagory  Specify catagory column to group by.
+            @param n  Top N.
+
+            Example:
+
+            value|condition|catagory
+            --|--|--
+            0|true|x
+            1|true|y
+            2|true|x
+            3|false|y
+            4|true|x
+            5|true|z
+            6|true|z
+
+            @code{.sql}
+                SELECT top_n_value_count_cate_where(value, condition, catagory, 2)
+    OVER w;
+                -- output "x:3,y:2"
+            @endcode
+            )")
+        // type of category
         .args_in<int16_t, int32_t, int64_t, Date, Timestamp, StringRef>();
 }
 

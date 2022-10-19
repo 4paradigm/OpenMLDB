@@ -26,7 +26,7 @@
 #include <random>
 
 #include "base/file_util.h"
-#include "base/glog_wapper.h"
+#include "base/glog_wrapper.h"
 #include "base/hash.h"
 #include "base/ip.h"
 #include "base/kv_iterator.h"
@@ -66,13 +66,11 @@ DECLARE_string(zk_root_path);
 DECLARE_int32(thread_pool_size);
 DECLARE_int32(put_concurrency_limit);
 DECLARE_int32(get_concurrency_limit);
-DEFINE_string(role, "",
-              "Set the openmldb role for start: tablet | nameserver | client | ns_client | sql_client | apiserver");
-DEFINE_string(cmd, "", "Set the command");
+DECLARE_string(role);
+DECLARE_string(cmd);
 DECLARE_bool(interactive);
 
-DECLARE_string(openmldb_log_dir);
-DEFINE_string(log_level, "debug", "Set the log level, eg: debug or info");
+DECLARE_string(log_level);
 DECLARE_uint32(latest_ttl_max);
 DECLARE_uint32(absolute_ttl_max);
 DECLARE_uint32(skiplist_max_height);
@@ -90,17 +88,13 @@ const std::string OPENMLDB_VERSION = std::to_string(OPENMLDB_VERSION_MAJOR) + ".
 static std::map<std::string, std::string> real_ep_map;
 
 void SetupLog() {
-    // Config log
+    // Config log for server
     if (FLAGS_log_level == "debug") {
         ::openmldb::base::SetLogLevel(DEBUG);
     } else {
         ::openmldb::base::SetLogLevel(INFO);
     }
-    if (!FLAGS_openmldb_log_dir.empty()) {
-        ::openmldb::base::Mkdir(FLAGS_openmldb_log_dir);
-        std::string file = FLAGS_openmldb_log_dir + "/" + FLAGS_role;
-        openmldb::base::SetLogFile(file);
-    }
+    ::openmldb::base::SetupGlog();
 }
 
 void GetRealEndpoint(std::string* real_endpoint) {
@@ -1843,7 +1837,7 @@ void HandleNSPreview(const std::vector<std::string>& parts, ::openmldb::client::
             return;
         }
         uint32_t count = 0;
-        auto it = tb_client->Traverse(tid, pid, "", "", 0, limit, false, count);
+        auto it = tb_client->Traverse(tid, pid, "", "", 0, limit, false, 0, count);
         if (!it) {
             std::cout << "Fail to preview table" << std::endl;
             return;
@@ -3687,7 +3681,8 @@ void StartNsClient() {
     }
     std::shared_ptr<::openmldb::zk::ZkClient> zk_client;
     if (!FLAGS_zk_cluster.empty()) {
-        zk_client = std::make_shared<::openmldb::zk::ZkClient>(FLAGS_zk_cluster, "", 1000, "", FLAGS_zk_root_path);
+        zk_client = std::make_shared<::openmldb::zk::ZkClient>(FLAGS_zk_cluster, "",
+                FLAGS_zk_session_timeout, "", FLAGS_zk_root_path);
         if (!zk_client->Init()) {
             std::cout << "zk client init failed" << std::endl;
             return;

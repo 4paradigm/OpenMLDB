@@ -59,6 +59,10 @@ class NsClient : public Client {
 
     bool CreateDatabase(const std::string& db, std::string& msg, bool if_not_exists = false);  // NOLINT
 
+    base::Status CreateDatabaseRemote(const std::string& db, const ::openmldb::nameserver::ZoneInfo& zone_info);
+
+    base::Status DropDatabaseRemote(const std::string& db, const ::openmldb::nameserver::ZoneInfo& zone_info);
+
     bool ShowDatabase(std::vector<std::string>* dbs,
                       std::string& msg);  // NOLINT
 

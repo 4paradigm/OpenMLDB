@@ -25,7 +25,7 @@
 #include <zlib.h>
 
 #include "base/endianconv.h"
-#include "base/glog_wapper.h"
+#include "base/glog_wrapper.h"
 #include "log/coding.h"
 #include "log/crc32c.h"
 

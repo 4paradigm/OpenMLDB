@@ -348,7 +348,7 @@ class PhysicalOpNode : public node::NodeBase<PhysicalOpNode> {
         : type_(type),
           is_block_(is_block),
           output_type_(kSchemaTypeTable),
-          limit_cnt_(0),
+          limit_cnt_(std::nullopt),
           schemas_ctx_(this) {}
 
     const std::string GetTypeName() const override {
@@ -393,7 +393,7 @@ class PhysicalOpNode : public node::NodeBase<PhysicalOpNode> {
     /**
      * Get all function infos bind to current physical node.
      */
-    const std::vector<const FnInfo *> GetFnInfos() const { return fn_infos_; }
+    const std::vector<const FnInfo *>& GetFnInfos() const { return fn_infos_; }
 
     /**
      * Add component FnInfo to current physical node. The node fn list take
@@ -431,12 +431,23 @@ class PhysicalOpNode : public node::NodeBase<PhysicalOpNode> {
                    : nullptr;
     }
 
-    void SetLimitCnt(int32_t limit_cnt) { limit_cnt_ = limit_cnt; }
+    void SetLimitCnt(std::optional<int32_t> limit_cnt) { limit_cnt_ = limit_cnt; }
 
-    const int32_t GetLimitCnt() const { return limit_cnt_; }
+    std::optional<int32_t> GetLimitCnt() const { return limit_cnt_; }
 
-    bool IsSameSchema(const vm::Schema &schema,
-                      const vm::Schema &exp_schema) const;
+    // get the limit cnt value
+    // if not set, -1 is returned
+    //
+    // limit always >= 0 so it is safe to do that
+    int32_t GetLimitCntValue() const { return limit_cnt_.value_or(-1); }
+
+    bool IsSameSchema(const vm::Schema &schema, const vm::Schema &exp_schema) const;
+
+    // `lhs` schema contains `rhs` and is start with `rhs` schema
+    //
+    // return ok status if true
+    //        error status with msg otherwise
+    base::Status SchemaStartWith(const vm::Schema& lhs, const vm::Schema& rhs) const;
 
     PhysicalSchemaType GetOutputType() const { return output_type_; }
 
@@ -458,7 +469,9 @@ class PhysicalOpNode : public node::NodeBase<PhysicalOpNode> {
     PhysicalSchemaType output_type_;
 
     std::vector<const FnInfo *> fn_infos_;
-    int32_t limit_cnt_;
+
+    // all physical node has limit property, default to empty (not set)
+    std::optional<int32_t> limit_cnt_ = std::nullopt;
     std::vector<PhysicalOpNode *> producers_;
 
     SchemasContext schemas_ctx_;
@@ -1021,7 +1034,7 @@ class WindowUnionList {
     WindowUnionList() : window_unions_() {}
     virtual ~WindowUnionList() {}
     void AddWindowUnion(PhysicalOpNode *node, const WindowOp &window) {
-        window_unions_.push_back(std::make_pair(node, window));
+        window_unions_.emplace_back(node, window);
     }
     const std::string FnDetail() const {
         std::ostringstream oss;
@@ -1110,29 +1123,7 @@ class PhysicalWindowAggrerationNode : public PhysicalProjectNode {
         fn_infos_.push_back(&window_join.condition_.fn_info());
     }
 
-    bool AddWindowUnion(PhysicalOpNode *node) {
-        if (nullptr == node) {
-            LOG(WARNING) << "Fail to add window union : table is null";
-            return false;
-        }
-        if (producers_.empty() || nullptr == producers_[0]) {
-            LOG(WARNING)
-                << "Fail to add window union : producer is empty or null";
-            return false;
-        }
-        if (!IsSameSchema(*node->GetOutputSchema(),
-                          *producers_[0]->GetOutputSchema())) {
-            LOG(WARNING)
-                << "Union Table and window input schema aren't consistent";
-            return false;
-        }
-        window_unions_.AddWindowUnion(node, window_);
-        WindowOp &window_union = window_unions_.window_unions_.back().second;
-        fn_infos_.push_back(&window_union.partition_.fn_info());
-        fn_infos_.push_back(&window_union.sort_.fn_info());
-        fn_infos_.push_back(&window_union.range_.fn_info());
-        return true;
-    }
+    bool AddWindowUnion(PhysicalOpNode *node);
 
     const bool instance_not_in_window() const {
         return instance_not_in_window_;

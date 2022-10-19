@@ -92,10 +92,16 @@ node::ExprNode* BuildAt(UdfResolveContext* ctx, ExprNode* input, ExprNode* idx,
 }
 
 template <typename V>
-void RegisterBaseListAt(UdfLibrary* lib) {
-    lib->RegisterExternal("at")
+void RegisterBaseListLag(UdfLibrary* lib) {
+    lib->RegisterExternal("lag")
         .doc(R"(
-            @brief Returns value evaluated at the row that is offset rows before the current row within the partition. Offset is evaluated with respect to the current row
+            @brief Returns value evaluated at the row that is offset rows before the current row within the partition.
+            Offset is evaluated with respect to the current row
+
+            Note: This function equals the `at()` function.
+
+            The offset in window is `nth_value()`, not `lag()/at()`. The old `at()`(version < 0.5.0) is start
+            from the last row of window(may not be the current row), it's more like `nth_value()`
 
             @param offset The number of rows forwarded from the current row, must not negative
 
@@ -109,7 +115,16 @@ void RegisterBaseListAt(UdfLibrary* lib) {
             |3 | 2|
             |4 | 2|
             @code{.sql}
-                SELECT at(c1, 1) as co OVER w from t1 window (order by c1 partition by c2);
+                SELECT lag(c1, 1) over w as co from t1 window w as(partition by c2 order by c1 rows between unbounded preceding and current row);
+                -- output
+                -- | co |
+                -- |----|
+                -- |NULL|
+                -- |0   |
+                -- |NULL|
+                -- |2   |
+                -- |3   |
+                SELECT at(c1, 1) over w as co from t1 window w as(partition by c2 order by c1 rows between unbounded preceding and current row);
                 -- output
                 -- | co |
                 -- |----|
@@ -119,6 +134,7 @@ void RegisterBaseListAt(UdfLibrary* lib) {
                 -- |2   |
                 -- |3   |
             @endcode
+
         )")
         .args<codec::ListRef<V>, int64_t>(reinterpret_cast<void*>(AtList<V>))
         .return_by_arg(true)
@@ -127,23 +143,23 @@ void RegisterBaseListAt(UdfLibrary* lib) {
 
 void DefaultUdfLibrary::InitWindowFunctions() {
     // basic at impl for <list<V>, int32>
-    RegisterBaseListAt<bool>(this);
-    RegisterBaseListAt<int16_t>(this);
-    RegisterBaseListAt<int32_t>(this);
-    RegisterBaseListAt<int64_t>(this);
-    RegisterBaseListAt<float>(this);
-    RegisterBaseListAt<double>(this);
-    RegisterBaseListAt<Date>(this);
-    RegisterBaseListAt<Timestamp>(this);
-    RegisterBaseListAt<StringRef>(this);
+    RegisterBaseListLag<bool>(this);
+    RegisterBaseListLag<int16_t>(this);
+    RegisterBaseListLag<int32_t>(this);
+    RegisterBaseListLag<int64_t>(this);
+    RegisterBaseListLag<float>(this);
+    RegisterBaseListLag<double>(this);
+    RegisterBaseListLag<Date>(this);
+    RegisterBaseListLag<Timestamp>(this);
+    RegisterBaseListLag<StringRef>(this);
 
-    // general at
-    RegisterExprUdf("at").list_argument_at(0).args<AnyArg, AnyArg>(
+    // general lag
+    RegisterExprUdf("lag").list_argument_at(0).args<AnyArg, AnyArg>(
         [](UdfResolveContext* ctx, ExprNode* input, ExprNode* idx) {
             return BuildAt(ctx, input, idx, nullptr);
         });
 
-    RegisterAlias("lag", "at");
+    RegisterAlias("at", "lag");
     RegisterExprUdf("first_value")
         .list_argument_at(0)
         .args<AnyArg>([](UdfResolveContext* ctx, ExprNode* input) {

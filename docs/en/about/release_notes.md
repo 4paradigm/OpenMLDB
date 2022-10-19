@@ -1,5 +1,68 @@
 # Release Notes
 
+## v0.6.3 Release Notes
+
+### Features
+- Support setting the configuration of `glog` for clients (#2482 @vagetablechicken)
+- Add the checksum of SHA256 for release packages (#2560 @team-317)
+- Support the new build-in function `unhex` (#2431 @aucker)
+- Support the readable date and time format in CLI (#2568 @dl239)
+- Support the `LAST JOIN` with a subquery as a producer of window node in the request mode (#2569 @aceforeverd)
+- Upgrade the Spark version to 3.2.1 (#2566 @tobegit3hub, #2635 @dl239)
+- Support setting the SQL cache size in SDKs (#2605 @vagetablechicken)
+- Add a new interface of `ValidateSQL` to validate the syntax of SQL (#2626 @vagetablechicken)
+- Improve the documents (#2405 #2492 #2562 #2496 #2495 #2436 #2487 #2623 @michelle-qinqin, #2543 @linjing-lab, #2584 @JourneyGo, #2567 #2583 @vagetablechicken, #2643 @dl239)
+- Other minor features (#2504 #2572 #2498 #2598 @aceforeverd, #2555 #2641 @tobegit3hub, #2550 @zhanghaohit, #2595 @Elliezza, #2592 @vagetablechicken)
+
+### Bug Fixes
+- After a nameserver restarting, deployments may not recover. (#2533 @dl239)
+- If the type of first column is `bool`, it fails to resolve the function `count_where`.  (#2570 @aceforeverd)
+- Other minor bug fixes (#2540 #2577 #2625 #2655 @dl239, #2585 @snehalsenapati23, #2539 @vagetablechicken)
+
+### Code Refactoring
+#2516 #2520 #2522 #2521 #2542 #2531 #2581 @haseeb-xd, #2525 #2526 #2527 #2528 @kstrifonoff, #2523 @ighmaZ, #2546 #2549 @NevilleMthw, #2559 @marandabui, #2554 @gokullan, #2580 @team-317, #2599 @lbartyczak, #2594 @shivamgupta-sg, #2571 @Jake-00
+
+## v0.6.2 Release Notes
+
+### Features
+- Support independently executing the OpenMLDB offline engine without the OpenMLDB deployment (#2423 @tobegit3hub)
+- Support the log setting of ZooKeeper and disable ZooKeeper logs in the diagnostic tool (#2451 @vagetablechicken)
+- Support query parameters of the SQL query APIs (#2277 @qsliu2017)
+- Improve the documents (#2406 @aceforeverd, #2408 #2414 @vagetablechicken, #2410 #2402 #2356 #2374 #2396 #2376 #2419 @michelle-qinqin, #2424 #2418 @dl239, #2455 @lumianph, #2458 @tobegit3hub)
+- Other minor features (#2420 @aceforeverd, #2411 @wuyou10206, #2446 #2452 @vagetablechicken, #2475 @tobegit3hub)
+
+### Bug Fixes
+- Table creation succeeds even if `partitionnum` is set to 0, which should report an error. (#2220 @dl239)
+- There are thread races in aggregators if there are concurrent `puts`. (#2472 @zhanghaohit)
+- The `limit` clause dose not work if it is used with the `where` and `group by` clauses. (#2447 @aceforeverd)
+- The `TaskManager` process will terminate if ZooKeeper disconnects. (#2494 @tobegit3hub)
+- The replica cluster dose not create the database if a database is created in the leader cluster (#2488 @dl239)
+- When there is data in base tables, deployment with long windows still can be executed (which should report an error). (#2501 @zhanghaohit)
+- Other minor bug fixes (#2415 @aceforeverd, #2417 #2434 #2435 #2473 @dl239, #2466 @vagetablechicken)
+
+### Code Refactoring
+#2413 @dl239, #2470 #2467 #2468 @vagetablechicken
+
+## v0.6.1 Release Notes
+
+### Features
+- Support new build-in functions `last_day` and `regexp_like` (#2262 @HeZean, #2187 @jiang1997)
+- Support Jupyter Notebook for the TalkingData use case (#2354 @vagetablechicken)
+- Add a new API to disable Saprk logs of the batch engine (#2359 @tobegit3hub)
+- Add the use case of precision marketing based on OneFlow (#2267 @Elliezza @vagetablechicken @siqi)
+- Support the RPC request timeout in CLI and Python SDK (#2371 @vagetablechicken)
+- Improve the documents (#2021 @liuceyim, #2348 #2316 #2324 #2361 #2315 #2323 #2355 #2328 #2360 #2378 #2319 #2350 #2395 #2398 @michelle-qinqin, #2373 @njzyfr, #2370 @tobegit3hub, #2367 #2382 #2375 #2401 @vagetablechicken, #2387 #2394 @dl239, #2379 @aceforeverd, #2403 @lumianph, #2400 gitpod-for-oss @aceforeverd, )
+- Other minor features (#2363 @aceforeverd, #2185 @qsliu2017)
+
+### Bug Fixes
+- `APIServer` will core dump if no `rs` in `QueryResp`. (#2346 @vagetablechicken)
+- Data has not been deleted from `pre-aggr` tables if there are delete operations in a main table. (#2300 @zhanghaohit)
+- Task jobs will core dump when enabling `UnsafeRowOpt` with multiple threads in the Yarn cluster. (#2352 #2364 @tobegit3hub)
+- Other minor bug fixes (#2336 @dl239, #2337 @dl239, #2385 #2372 @aceforeverd, #2383 #2384 @vagetablechicken)
+
+### Code Refactoring
+#2310 @hv789, #2306 #2305 @yeya24, #2311 @Mattt47, #2368 @TBCCC, #2391 @PrajwalBorkar, #2392 @zahyaah, #2405 @wang-jiahua
+
 ## v0.6.0 Release Notes
 
 ### Highlights

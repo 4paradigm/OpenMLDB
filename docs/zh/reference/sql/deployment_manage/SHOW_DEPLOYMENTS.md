@@ -1,38 +1,40 @@
 # 查看 DEPLOYMENTS 列表
 
+`SHOW DEPLOYMENTS`语句用于显示处于在线请求模式的当前数据库下，已经部署的任务列表。
+
+
 ```SQL
 SHOW DEPLOYMENTS;
 ```
 
-`SHOW DEPLOYMENTS`语句用户显示当前数据库下已经部署的Online serving列表。
 
 ## Example
 
-创建一个数据库，并设置为当前数据库:
+创建一个数据库，并设置为当前数据库：
 
 ```sql
 CREATE DATABASE db1;
--- SUCCEED: Create database successfully
+-- SUCCEED
 
 USE db1;
 -- SUCCEED: Database changed
 ```
 
-创建一张表`t1`:
+创建一张表`t1`：
 
 ```sql
 CREATE TABLE t1(col0 STRING);
--- SUCCEED: Create successfully
+-- SUCCEED
 ```
 
-部署表t1的查询语句到OnlineServing:
+部署表t1的查询语句：
 
 ```sql
 DEPLOY demo_deploy select col0 from t1;
--- SUCCEED: deploy successfully
+-- SUCCEED
 ```
 
-查看当前数据库下所有的deployments:
+查看当前数据库下已部署的所有任务：
 
 ```sql
 SHOW DEPLOYMENTS;

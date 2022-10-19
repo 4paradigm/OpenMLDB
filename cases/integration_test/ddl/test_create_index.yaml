@@ -1,0 +1,774 @@
+# Copyright 2021 4Paradigm
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+debugs: []
+version: 0.5.0
+cases:
+  -
+    id: 0
+    desc: 冒烟测试
+    inputs:
+      -
+        columns : ["c1 string","c2 int","c3 timestamp","c4 timestamp"]
+        indexs: ["index1:c1:c4"]
+        rows:
+          - [aa,1,1590738990000,1590738989000]
+    sqls:
+      - CREATE INDEX index1 ON {0} (c2) OPTIONS (ts=c4, ttl=100m, ttl_type=absolute);
+      - desc {0};
+    expect:
+      success: true
+      idxs:
+        -
+          keys: ["c1"]
+          ts: "c4"
+          ttl: 0min
+          ttlType: kAbsoluteTime
+        -
+          keys: ["c2"]
+          ts: "c4"
+          ttl: 100min
+          ttlType: kAbsoluteTime
+  -
+    id: 1
+    desc: 指定多个列
+    tags: ["TODO","bug，会提示标不存在"]
+    inputs:
+      -
+        columns : ["c1 string","c2 int","c3 timestamp","c4 timestamp"]
+        indexs: ["index1:c1:c4"]
+        rows:
+          - [aa,1,1590738990000,1590738989000]
+    sqls:
+      - CREATE INDEX index1 ON {0} (c1,c2) OPTIONS (ts=c4, ttl=100m, ttl_type=absolute);
+      - desc {0};
+    expect:
+      success: true
+      idxs:
+        -
+          keys: ["c1"]
+          ts: "c4"
+          ttl: 0min
+          ttlType: kAbsoluteTime
+        -
+          keys: ["c1","c2"]
+          ts: "c4"
+          ttl: 100min
+          ttlType: kAbsoluteTime
+  -
+    id: 2
+    desc: 不指定ts
+    inputs:
+      -
+        columns : ["c1 string","c2 int","c3 timestamp","c4 timestamp"]
+        indexs: ["index1:c1:c4"]
+        rows:
+          - [aa,1,1590738990000,1590738989000]
+    sqls:
+      - CREATE INDEX index1 ON {0} (c1,c2) OPTIONS (ttl=100m, ttl_type=absolute);
+      - desc {0};
+    expect:
+      success: true
+      idxs:
+        -
+          keys: ["c1"]
+          ts: "c4"
+          ttl: 0min
+          ttlType: kAbsoluteTime
+        -
+          keys: ["c1","c2"]
+          ts: "-"
+          ttl: 100min
+          ttlType: kAbsoluteTime
+  -
+    id: 3
+    desc: 不指定ttl
+    inputs:
+      -
+        columns : ["c1 string","c2 int","c3 timestamp","c4 timestamp"]
+        indexs: ["index1:c1:c4"]
+        rows:
+          - [aa,1,1590738990000,1590738989000]
+    sqls:
+      - CREATE INDEX index1 ON {0} (c2) OPTIONS (ts=c4, ttl_type=absolute);
+      - desc {0};
+    expect:
+      success: true
+      idxs:
+        -
+          keys: ["c1"]
+          ts: "c4"
+          ttl: 0min
+          ttlType: kAbsoluteTime
+        -
+          keys: ["c2"]
+          ts: "c4"
+          ttl: 0min
+          ttlType: kAbsoluteTime
+  -
+    id: 4
+    desc: 不指定ttl_type
+    inputs:
+      -
+        columns : ["c1 string","c2 int","c3 timestamp","c4 timestamp"]
+        indexs: ["index1:c1:c4"]
+        rows:
+          - [aa,1,1590738990000,1590738989000]
+    sqls:
+      - CREATE INDEX index1 ON {0} (c2) OPTIONS (ts=c4, ttl=100m);
+      - desc {0};
+    expect:
+      success: true
+      idxs:
+        -
+          keys: ["c1"]
+          ts: "c4"
+          ttl: 0min
+          ttlType: kAbsoluteTime
+        -
+          keys: ["c2"]
+          ts: "c4"
+          ttl: 100min
+          ttlType: kAbsoluteTime
+  -
+    id: 5
+    desc: ttl_type=latest,ttl=1d
+    inputs:
+      -
+        columns : ["c1 string","c2 int","c3 timestamp","c4 timestamp"]
+        indexs: ["index1:c1:c4"]
+        rows:
+          - [aa,1,1590738990000,1590738989000]
+    sql: CREATE INDEX index1 ON {0} (c2) OPTIONS (ts=c4, ttl=1d, ttl_type=latest);
+    expect:
+      success: false
+  -
+    id: 6
+    desc: ttl_type=absolute,ttl=1d
+    inputs:
+      -
+        columns : ["c1 string","c2 int","c3 timestamp","c4 timestamp"]
+        indexs: ["index1:c1:c4"]
+        rows:
+          - [aa,1,1590738990000,1590738989000]
+    sqls:
+      - CREATE INDEX index1 ON {0} (c2) OPTIONS (ts=c4, ttl=1d, ttl_type=absolute);
+      - desc {0};
+    expect:
+      success: true
+      idxs:
+        -
+          keys: ["c1"]
+          ts: "c4"
+          ttl: 0min
+          ttlType: kAbsoluteTime
+        -
+          keys: ["c2"]
+          ts: "c4"
+          ttl: 1440min
+          ttlType: kAbsoluteTime
+  -
+    id: 7
+    desc: ttl_type=absolute,ttl=1h
+    inputs:
+      -
+        columns : ["c1 string","c2 int","c3 timestamp","c4 timestamp"]
+        indexs: ["index1:c1:c4"]
+        rows:
+          - [aa,1,1590738990000,1590738989000]
+    sqls:
+      - CREATE INDEX index1 ON {0} (c2) OPTIONS (ts=c4, ttl=1h, ttl_type=absolute);
+      - desc {0};
+    expect:
+      success: true
+      idxs:
+        -
+          keys: ["c1"]
+          ts: "c4"
+          ttl: 0min
+          ttlType: kAbsoluteTime
+        -
+          keys: ["c2"]
+          ts: "c4"
+          ttl: 60min
+          ttlType: kAbsoluteTime
+  -
+    id: 8
+    desc: ttl_type=absolute,ttl=1m
+    inputs:
+      -
+        columns : ["c1 string","c2 int","c3 timestamp","c4 timestamp"]
+        indexs: ["index1:c1:c4"]
+        rows:
+          - [aa,1,1590738990000,1590738989000]
+    sqls:
+      - CREATE INDEX index1 ON {0} (c2) OPTIONS (ts=c4, ttl=1m, ttl_type=absolute);
+      - desc {0};
+    expect:
+      success: true
+      idxs:
+        -
+          keys: ["c1"]
+          ts: "c4"
+          ttl: 0min
+          ttlType: kAbsoluteTime
+        -
+          keys: ["c2"]
+          ts: "c4"
+          ttl: 1min
+          ttlType: kAbsoluteTime
+  -
+    id: 9
+    desc: ttl_type=absolute,ttl=1s
+    inputs:
+      -
+        columns : ["c1 string","c2 int","c3 timestamp","c4 timestamp"]
+        indexs: ["index1:c1:c4"]
+        rows:
+          - [aa,1,1590738990000,1590738989000]
+    sqls:
+      - CREATE INDEX index1 ON {0} (c2) OPTIONS (ts=c4, ttl=1s, ttl_type=absolute);
+      - desc {0};
+    expect:
+      success: true
+      idxs:
+        -
+          keys: ["c1"]
+          ts: "c4"
+          ttl: 0min
+          ttlType: kAbsoluteTime
+        -
+          keys: ["c2"]
+          ts: "c4"
+          ttl: 1min
+          ttlType: kAbsoluteTime
+  -
+    id: 10
+    desc: ttl_type=absolute,ttl=1
+    inputs:
+      -
+        columns : ["c1 string","c2 int","c3 timestamp","c4 timestamp"]
+        indexs: ["index1:c1:c4"]
+        rows:
+          - [aa,1,1590738990000,1590738989000]
+    sql: CREATE INDEX index1 ON {0} (c2) OPTIONS (ts=c4, ttl=1, ttl_type=absolute);
+    expect:
+      success: false
+  -
+    id: 11
+    desc: ttl_type=absolute,ttl=0
+    inputs:
+      -
+        columns : ["c1 string","c2 int","c3 timestamp","c4 timestamp"]
+        indexs: ["index1:c1:c4"]
+        rows:
+          - [aa,1,1590738990000,1590738989000]
+    sql: CREATE INDEX index1 ON {0} (c2) OPTIONS (ts=c4, ttl=0, ttl_type=absolute);
+    expect:
+      success: false
+  -
+    id: 12
+    desc: ttl_type=absolute,ttl=0m
+    inputs:
+      -
+        columns : ["c1 string","c2 int","c3 timestamp","c4 timestamp"]
+        indexs: ["index1:c1:c4"]
+        rows:
+          - [aa,1,1590738990000,1590738989000]
+    sqls:
+      - CREATE INDEX index1 ON {0} (c2) OPTIONS (ts=c4, ttl=0m, ttl_type=absolute);
+      - desc {0};
+    expect:
+      success: true
+      idxs:
+        -
+          keys: ["c1"]
+          ts: "c4"
+          ttl: 0min
+          ttlType: kAbsoluteTime
+        -
+          keys: ["c2"]
+          ts: "c4"
+          ttl: 0min
+          ttlType: kAbsoluteTime
+  -
+    id: 13
+    desc: ttl_type=latest,ttl=0
+    inputs:
+      -
+        columns : ["c1 string","c2 int","c3 timestamp","c4 timestamp"]
+        indexs: ["index1:c1:c4"]
+        rows:
+          - [aa,1,1590738990000,1590738989000]
+    sqls:
+      - CREATE INDEX index1 ON {0} (c2) OPTIONS (ts=c4, ttl=0, ttl_type=latest);
+      - desc {0};
+    expect:
+      success: true
+      idxs:
+        -
+          keys: ["c1"]
+          ts: "c4"
+          ttl: 0min
+          ttlType: kAbsoluteTime
+        -
+          keys: ["c2"]
+          ts: "c4"
+          ttl: 0
+          ttlType: kLatestTime
+  -
+    id: 14
+    desc: ttl_type=latest,ttl=100
+    inputs:
+      -
+        columns : ["c1 string","c2 int","c3 timestamp","c4 timestamp"]
+        indexs: ["index1:c1:c4"]
+        rows:
+          - [aa,1,1590738990000,1590738989000]
+    sqls:
+      - CREATE INDEX index1 ON {0} (c2) OPTIONS (ts=c4, ttl=100, ttl_type=latest);
+      - desc {0};
+    expect:
+      success: true
+      idxs:
+        -
+          keys: ["c1"]
+          ts: "c4"
+          ttl: 0min
+          ttlType: kAbsoluteTime
+        -
+          keys: ["c2"]
+          ts: "c4"
+          ttl: 100
+          ttlType: kLatestTime
+  -
+    id: 15
+    desc: ttl_type=absandlat,ttl=(10m,10)
+    inputs:
+      -
+        columns : ["c1 string","c2 int","c3 timestamp","c4 timestamp"]
+        indexs: ["index1:c1:c4"]
+        rows:
+          - [aa,1,1590738990000,1590738989000]
+    sqls:
+      - CREATE INDEX index1 ON {0} (c2) OPTIONS (ts=c4, ttl=(10m,10), ttl_type=absandlat);
+      - desc {0};
+    expect:
+      success: true
+      idxs:
+        -
+          keys: ["c1"]
+          ts: "c4"
+          ttl: 0min
+          ttlType: kAbsoluteTime
+        -
+          keys: ["c2"]
+          ts: "c4"
+          ttl: 10min&&10
+          ttlType: kAbsAndLat
+  -
+    id: 16
+    desc: ttl_type=absorlat,ttl=(10m,10)
+    inputs:
+      -
+        columns : ["c1 string","c2 int","c3 timestamp","c4 timestamp"]
+        indexs: ["index1:c1:c4"]
+        rows:
+          - [aa,1,1590738990000,1590738989000]
+    sqls:
+      - CREATE INDEX index1 ON {0} (c2) OPTIONS (ts=c4, ttl=(10m,10), ttl_type=absorlat);
+      - desc {0};
+    expect:
+      success: true
+      idxs:
+        -
+          keys: ["c1"]
+          ts: "c4"
+          ttl: 0min
+          ttlType: kAbsoluteTime
+        -
+          keys: ["c2"]
+          ts: "c4"
+          ttl: 10min||10
+          ttlType: kAbsOrLat
+  -
+    id: 17
+    desc: ttl_type=absandlat,ttl=(10,10m)
+    inputs:
+      -
+        columns : ["c1 string","c2 int","c3 timestamp","c4 timestamp"]
+        indexs: ["index1:c1:c4"]
+        rows:
+          - [aa,1,1590738990000,1590738989000]
+    sql: CREATE INDEX index1 ON {0} (c2) OPTIONS (ts=c4, ttl=(10,10m), ttl_type=absandlat);
+    expect:
+      success: false
+  -
+    id: 18
+    desc: ttl_type=absorlat,ttl=(10,10m)
+    inputs:
+      -
+        columns : ["c1 string","c2 int","c3 timestamp","c4 timestamp"]
+        indexs: ["index1:c1:c4"]
+        rows:
+          - [aa,1,1590738990000,1590738989000]
+    sql: CREATE INDEX index1 ON {0} (c2) OPTIONS (ts=c4, ttl=(10,10m), ttl_type=absorlat);
+    expect:
+      success: false
+  -
+    id: 19
+    desc: ttl_type为其他字符
+    inputs:
+      -
+        columns : ["c1 string","c2 int","c3 timestamp","c4 timestamp"]
+        indexs: ["index1:c1:c4"]
+        rows:
+          - [aa,1,1590738990000,1590738989000]
+    sql: CREATE INDEX index1 ON {0} (c2) OPTIONS (ts=c4, ttl=1, ttl_type=test);
+    expect:
+      success: false
+  -
+    id: 20
+    desc: ttl为字符
+    inputs:
+      -
+        columns : ["c1 string","c2 int","c3 timestamp","c4 timestamp"]
+        indexs: ["index1:c1:c4"]
+        rows:
+          - [aa,1,1590738990000,1590738989000]
+    sql: CREATE INDEX index1 ON {0} (c2) OPTIONS (ts=c4, ttl=aaa, ttl_type=absolute);
+    expect:
+      success: false
+  -
+    id: 21
+    desc: 指定ttl_type=absolute，数据过期
+    mode: standalone-unsupport
+    tags: ["单机版bug，添加索引后，select结果错误，@denglong，https://github.com/4paradigm/OpenMLDB/issues/708"]
+    inputs:
+      -
+        columns: ["id int","c1 string","c2 int","c3 timestamp", "c4 timestamp"]
+        indexs: ["index1:c1:c4"]
+        rows:
+          - [1,"aa", 1, 1590738990000,"{currentTime}-600001"]
+          - [2,"aa", 1, 1590738990000,"{currentTime}-600001"]
+          - [3,"aa", 3, 1590738990000,"{currentTime}-60"]
+          - [4,"aa", 1, 1590738990000,"{currentTime}"]
+    sqls:
+      - CREATE INDEX index1 ON {0} (c2) OPTIONS (ts=c4, ttl=10m, ttl_type=absolute);
+      - select id,c1,c2,c3 from {0} where c2 = 1;
+    expect:
+      columns: ["id int","c1 string","c2 int","c3 timestamp"]
+      order: id
+      rows:
+        - [4,"aa", 1, 1590738990000]
+  -
+    id: 22
+    desc: 指定ttl_type=latest,部分数据过期
+    inputs:
+      -
+        columns: ["id int","c1 string","c2 int","c3 timestamp", "c4 timestamp"]
+        indexs: ["index1:c1:c4"]
+        rows:
+          - [1,"aa", 1, 1590738990000,1590738990000]
+          - [2,"aa", 1, 1590738990000,1590738991000]
+          - [3,"aa", 3, 1590738990000,1590738992000]
+          - [4,"aa", 1, 1590738990000,1590738993000]
+    sqls:
+      - CREATE INDEX index1 ON {0} (c2) OPTIONS (ts=c4, ttl=2, ttl_type=latest);
+      - select id,c1,c2,c3 from {0} where c2 = 1;
+    expect:
+      columns: ["id int","c1 string","c2 int","c3 timestamp"]
+      order: id
+      rows:
+        - [2,"aa", 1, 1590738990000]
+        - [4,"aa", 1, 1590738990000]
+  -
+    id: 23
+    desc: 指定ttl_type=absandlat,部分数据过期
+    inputs:
+      -
+        columns: ["id int","c1 string","c2 int","c3 timestamp", "c4 timestamp"]
+        indexs: ["index1:c1:c4"]
+        rows:
+          - [1,"aa", 1, 1590738990000,1590738990000]
+          - [2,"aa", 1, 1590738990000,1590738991000]
+          - [3,"aa", 1, 1590738990000,1590738992000]
+    sqls:
+      - CREATE INDEX index1 ON {0} (c2) OPTIONS (ts=c4, ttl=(10m,2), ttl_type=absandlat);
+      - select * from {0} where c2 = 1;
+    expect:
+      columns: ["id int","c1 string","c2 int","c3 timestamp","c4 timestamp"]
+      order: id
+      rows:
+        - [2,"aa", 1, 1590738990000,1590738991000]
+        - [3,"aa", 1, 1590738990000,1590738992000]
+  -
+    id: 24
+    desc: 指定ttl_type=absorlat,部分数据过期
+    inputs:
+      -
+        columns: ["c1 string","c2 int","c3 timestamp", "c4 timestamp"]
+        indexs: ["index1:c1:c4:(10m,2):absorlat"]
+        rows:
+          - ["aa", 1, 1590738990000,1590738990000]
+          - ["aa", 1, 1590738990000,1590738990000]
+          - ["aa", 1, 1590738990000,1590738990000]
+    sqls:
+      - CREATE INDEX index1 ON {0} (c2) OPTIONS (ts=c4, ttl=(10m,2), ttl_type=absorlat);
+      - select * from {0} where c2 = 1;
+    expect:
+      count: 0
+  -
+    id: 25
+    desc: 指定ttl_type=absandlat,部分数据过期-边界
+    inputs:
+      -
+        columns: ["id int","c1 string","c2 int","c3 timestamp", "c4 timestamp"]
+        indexs: ["index1:c1:c4"]
+        rows:
+          - [1,"aa", 1, 1590738990000,"{currentTime}-600001"]
+          - [2,"aa", 1, 1590738990000,"{currentTime}-600001"]
+          - [3,"aa", 1, 1590738990000,"{currentTime}-600001"]
+          - [4,"aa", 1, 1590738990000,"{currentTime}"]
+    sqls:
+      - CREATE INDEX index1 ON {0} (c2) OPTIONS (ts=c4, ttl=(10m,2), ttl_type=absandlat);
+      - select id,c1,c2,c3 from {0} where c2 = 1;
+    expect:
+      columns: ["id int","c1 string","c2 int","c3 timestamp"]
+      order: id
+      rows:
+        - [3,"aa", 1, 1590738990000]
+        - [4,"aa", 1, 1590738990000]
+  -
+    id: 26
+    desc: 指定ttl_type=absandlat,部分数据过期-边界2
+    mode: standalone-unsupport
+    tags: ["单机版bug，添加索引后，select结果错误，@denglong，https://github.com/4paradigm/OpenMLDB/issues/708"]
+    inputs:
+      -
+        columns: ["id int","c1 string","c2 int","c3 timestamp", "c4 timestamp"]
+        indexs: ["index1:c1:c4"]
+        rows:
+          - [1,"aa", 1, 1590738990000,"{currentTime}-600001"]
+          - [2,"aa", 1, 1590738990000,"{currentTime}-500000"]
+          - [3,"aa", 1, 1590738990000,"{currentTime}-500000"]
+          - [4,"aa", 1, 1590738990000,"{currentTime}"]
+    sqls:
+      - CREATE INDEX index1 ON {0} (c2) OPTIONS (ts=c4, ttl=(10m,1), ttl_type=absandlat);
+      - select id,c1,c2,c3 from {0} where c2 = 1;
+    expect:
+      columns: ["id int","c1 string","c2 int","c3 timestamp"]
+      order: id
+      rows:
+        - [2,"aa", 1, 1590738990000]
+        - [3,"aa", 1, 1590738990000]
+        - [4,"aa", 1, 1590738990000]
+  -
+    id: 27
+    desc: 指定ttl_type=absorlat,部分数据过期-边界
+    mode: standalone-unsupport
+    tags: ["单机版bug，添加索引后，select结果错误，@denglong，https://github.com/4paradigm/OpenMLDB/issues/708"]
+    inputs:
+      -
+        columns: ["id int","c1 string","c2 int","c3 timestamp", "c4 timestamp"]
+        indexs: ["index1:c1:c4"]
+        rows:
+          - [1,"aa", 1, 1590738990000,"{currentTime}-600001"]
+          - [2,"aa", 1, 1590738990000,"{currentTime}-600001"]
+          - [3,"aa", 1, 1590738990000,"{currentTime}-500000"]
+    sqls:
+      - CREATE INDEX index1 ON {0} (c2) OPTIONS (ts=c4, ttl=(10m,2), ttl_type=absorlat);
+      - select id,c1,c2,c3 from {0} where c2 = 1;
+    expect:
+      columns: ["id int","c1 string","c2 int","c3 timestamp"]
+      order: id
+      rows:
+        - [3,"aa", 1, 1590738990000]
+  -
+    id: 28
+    desc: 指定ttl_type=absorlat,部分数据过期-边界2
+    inputs:
+      -
+        columns: ["id int","c1 string","c2 int","c3 timestamp", "c4 timestamp"]
+        indexs: ["index1:c1:c4"]
+        rows:
+          - [1,"aa", 1, 1590738990000,"{currentTime}-600001"]
+          - [2,"aa", 1, 1590738990000,"{currentTime}-600001"]
+          - [3,"aa", 1, 1590738990000,"{currentTime}-500000"]
+          - [4,"aa", 1, 1590738990000,"{currentTime}-400000"]
+          - [5,"aa", 1, 1590738990000,"{currentTime}"]
+    sqls:
+      - CREATE INDEX index1 ON {0} (c2) OPTIONS (ts=c4, ttl=(10m,2), ttl_type=absorlat);
+      - select id,c1,c2,c3 from {0} where c2 = 1;
+    expect:
+      columns: ["id int","c1 string","c2 int","c3 timestamp"]
+      order: id
+      rows:
+        - [4,"aa", 1, 1590738990000]
+        - [5,"aa", 1, 1590738990000]
+  -
+    id: 29
+    desc: 先创建索引，在插入数据，测试过期-absolute
+    mode: standalone-unsupport
+    tags: ["单机版bug，添加索引后，select结果错误，@denglong，https://github.com/4paradigm/OpenMLDB/issues/708"]
+    inputs:
+      -
+        columns: ["id int","c1 string","c2 int","c3 timestamp", "c4 timestamp"]
+        indexs: ["index1:c1:c4"]
+        rows:
+          - [1,"aa", 1, 1590738990000,"{currentTime}-600001"]
+          - [2,"aa", 1, 1590738990000,"{currentTime}-600001"]
+          - [3,"aa", 3, 1590738990000,"{currentTime}-60"]
+          - [4,"aa", 1, 1590738990000,"{currentTime}"]
+    sqls:
+      - CREATE INDEX index1 ON {0} (c2) OPTIONS (ts=c4, ttl=10m, ttl_type=absolute);
+      - insert into {0} values (5,'aa',1,1590738990000L,1590738990000L);
+      - select id,c1,c2,c3 from {0} where c2 = 1;
+    expect:
+      columns: ["id int","c1 string","c2 int","c3 timestamp"]
+      order: id
+      rows:
+        - [4,"aa", 1, 1590738990000]
+  -
+    id: 30
+    desc: 先创建索引，在插入数据，测试过期-latest
+    inputs:
+      -
+        columns: ["id int","c1 string","c2 int","c3 timestamp", "c4 timestamp"]
+        indexs: ["index1:c1:c4"]
+        rows:
+          - [1,"aa", 1, 1590738990000,1590738990000]
+          - [2,"aa", 1, 1590738990000,1590738991000]
+          - [3,"aa", 3, 1590738990000,1590738992000]
+          - [4,"aa", 1, 1590738990000,1590738993000]
+    sqls:
+      - CREATE INDEX index1 ON {0} (c2) OPTIONS (ts=c4, ttl=2, ttl_type=latest);
+      - insert into {0} values (5,'aa',1,1590738990000L,1590738994000L);
+      - select id,c1,c2,c3 from {0} where c2 = 1;
+    expect:
+      columns: ["id int","c1 string","c2 int","c3 timestamp"]
+      order: id
+      rows:
+        - [4,"aa", 1, 1590738990000]
+        - [5,"aa", 1, 1590738990000]
+  -
+    id: 31
+    desc: 先创建索引，在插入数据，测试过期-absandlat
+    mode: standalone-unsupport
+    tags: ["单机版bug，添加索引后，select结果错误，@denglong，https://github.com/4paradigm/OpenMLDB/issues/708"]
+    inputs:
+      -
+        columns: ["id int","c1 string","c2 int","c3 timestamp", "c4 timestamp"]
+        indexs: ["index1:c1:c4"]
+        rows:
+          - [1,"aa", 1, 1590738990000,"{currentTime}-600001"]
+          - [2,"aa", 1, 1590738990000,"{currentTime}-500000"]
+          - [3,"aa", 1, 1590738990000,"{currentTime}-500000"]
+          - [4,"aa", 1, 1590738990000,"{currentTime}"]
+    sqls:
+      - CREATE INDEX index1 ON {0} (c2) OPTIONS (ts=c4, ttl=(10m,1), ttl_type=absandlat);
+      - insert into {0} values (5,'aa',1,1590738990000L,1590738994000L);
+      - select id,c1,c2,c3 from {0} where c2 = 1;
+    expect:
+      columns: ["id int","c1 string","c2 int","c3 timestamp"]
+      order: id
+      rows:
+        - [2,"aa", 1, 1590738990000]
+        - [3,"aa", 1, 1590738990000]
+        - [4,"aa", 1, 1590738990000]
+  -
+    id: 32
+    desc: 先创建索引，在插入数据，测试过期-absorlat
+    mode: standalone-unsupport
+    tags: ["单机版bug，添加索引后，select结果错误，@denglong，https://github.com/4paradigm/OpenMLDB/issues/708"]
+    inputs:
+      -
+        columns: ["id int","c1 string","c2 int","c3 timestamp", "c4 timestamp"]
+        indexs: ["index1:c1:c4"]
+        rows:
+          - [1,"aa", 1, 1590738990000,"{currentTime}-600001"]
+          - [2,"aa", 1, 1590738990000,"{currentTime}-600001"]
+          - [3,"aa", 1, 1590738990000,"{currentTime}-500000"]
+    sqls:
+      - CREATE INDEX index1 ON {0} (c2) OPTIONS (ts=c4, ttl=(10m,2), ttl_type=absorlat);
+      - insert into {0} values (5,'aa',1,1590738990000L,1590738994000L);
+      - select id,c1,c2,c3 from {0} where c2 = 1;
+    expect:
+      columns: ["id int","c1 string","c2 int","c3 timestamp"]
+      order: id
+      rows:
+        - [3,"aa", 1, 1590738990000]
+  -
+    id: 33
+    desc: key和ts相同
+    inputs:
+      -
+        columns : ["c1 string","c2 int","c3 timestamp","c4 timestamp"]
+        indexs: ["index1:c1:c4"]
+        rows:
+          - [aa,1,1590738990000,1590738989000]
+    sqls:
+      - CREATE INDEX index1 ON {0} (c1) OPTIONS (ts=c4, ttl=100m, ttl_type=absolute);
+    expect:
+      success: false
+  -
+    id: 34
+    desc: 创建索引，ts为一个新的列
+    inputs:
+      -
+        columns : ["c1 string","c2 int","c3 timestamp","c4 timestamp"]
+        indexs: ["index1:c1:c4"]
+        rows:
+          - [aa,1,1590738990000,1590738989000]
+    sqls:
+      - CREATE INDEX index1 ON {0} (c2) OPTIONS (ts=c3, ttl=100m, ttl_type=absolute);
+      - desc {0};
+    expect:
+      success: true
+      idxs:
+        -
+          keys: ["c1"]
+          ts: "c4"
+          ttl: 0min
+          ttlType: kAbsoluteTime
+        -
+          keys: ["c2"]
+          ts: "c3"
+          ttl: 100min
+          ttlType: kAbsoluteTime
+  -
+    id: 35
+    desc: 创建一个没有ts的索引
+    inputs:
+      -
+        columns : ["c1 string","c2 int","c3 timestamp","c4 timestamp"]
+        indexs: ["index1:c1:c4"]
+        rows:
+          - [aa,1,1590738990000,1590738989000]
+    sqls:
+      - CREATE INDEX index1 ON {0} (c2) OPTIONS (ttl=100m, ttl_type=absolute);
+      - desc {0};
+    expect:
+      success: true
+      idxs:
+        -
+          keys: ["c1"]
+          ts: "c4"
+          ttl: 0min
+          ttlType: kAbsoluteTime
+        -
+          keys: ["c2"]
+          ts: "-"
+          ttl: 100min
+          ttlType: kAbsoluteTime

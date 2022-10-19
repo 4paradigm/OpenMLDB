@@ -1,0 +1,283 @@
+# Copyright 2021 4Paradigm
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+db: test_zw
+debugs: []
+version: 0.5.0
+cases:
+  -
+    id: 0
+    desc: 创建表不指定索引
+    inputs:
+      - columns: [ "id int not null","c1 int not null","c2 smallint not null","c3 float not null","c4 double not null","c5 bigint not null","c6 string not null","c7 timestamp not null","c8 date not null","c9 bool not null" ]
+        rows:
+          - [ 1, 1, 2, 3.3, 4.4, 5, "aa", 12345678, "2020-05-21", true ]
+    sql: desc {0};
+    expect:
+      idxs:
+        -
+          keys: ["id"]
+          ts: "-"
+          ttl: 0min
+          ttlType: kAbsoluteTime
+  -
+    id: 1
+    desc: 第一列为smallint
+    inputs:
+      -
+        create: |
+          create table {0} (
+          c2 smallint not null,
+          c3 float not null,
+          c4 double not null,
+          c5 bigint not null,
+          c6 string not null,
+          c7 timestamp not null,
+          c8 date not null,
+          c9 bool not null
+          );
+    sql: desc {0};
+    expect:
+      idxs:
+        -
+          keys: ["c2"]
+          ts: "-"
+          ttl: 0min
+          ttlType: kAbsoluteTime
+  -
+    id: 2
+    desc: 第一列为int
+    inputs:
+      -
+        create: |
+          create table {0} (
+          c1 int not null,
+          c2 smallint not null,
+          c3 float not null,
+          c4 double not null,
+          c5 bigint not null,
+          c6 string not null,
+          c7 timestamp not null,
+          c8 date not null,
+          c9 bool not null
+          );
+    sql: desc {0};
+    expect:
+      idxs:
+        -
+          keys: ["c1"]
+          ts: "-"
+          ttl: 0min
+          ttlType: kAbsoluteTime
+  -
+    id: 3
+    desc: 第一列为long
+    inputs:
+      -
+        create: |
+          create table {0} (
+          c5 bigint not null,
+          c6 string not null,
+          c7 timestamp not null,
+          c8 date not null,
+          c9 bool not null
+          );
+    sql: desc {0};
+    expect:
+      idxs:
+        -
+          keys: ["c5"]
+          ts: "-"
+          ttl: 0min
+          ttlType: kAbsoluteTime
+  -
+    id: 4
+    desc: 第一列为float
+    inputs:
+      -
+        create: |
+          create table {0} (
+          c3 float not null,
+          c4 double not null,
+          c5 bigint not null,
+          c6 string not null,
+          c7 timestamp not null,
+          c8 date not null,
+          c9 bool not null
+          );
+    sql: desc {0};
+    expect:
+      idxs:
+        -
+          keys: ["c5"]
+          ts: "-"
+          ttl: 0min
+          ttlType: kAbsoluteTime
+  -
+    id: 5
+    desc: 第一列为double
+    inputs:
+      -
+        create: |
+          create table {0} (
+          c4 double not null,
+          c5 bigint not null,
+          c6 string not null,
+          c7 timestamp not null,
+          c8 date not null,
+          c9 bool not null
+          );
+    sql: desc {0};
+    expect:
+      idxs:
+        -
+          keys: ["c5"]
+          ts: "-"
+          ttl: 0min
+          ttlType: kAbsoluteTime
+  -
+    id: 6
+    desc: 第一列为string
+    inputs:
+      -
+        create: |
+          create table {0} (
+          c6 string not null,
+          c7 timestamp not null,
+          c8 date not null,
+          c9 bool not null
+          );
+    sql: desc {0};
+    expect:
+      idxs:
+        -
+          keys: ["c6"]
+          ts: "-"
+          ttl: 0min
+          ttlType: kAbsoluteTime
+  -
+    id: 7
+    desc: 第一列为timestamp
+    inputs:
+      -
+        create: |
+          create table {0} (
+          c7 timestamp not null,
+          c8 date not null,
+          c9 bool not null
+          );
+    sql: desc {0};
+    expect:
+      idxs:
+        -
+          keys: ["c7"]
+          ts: "-"
+          ttl: 0min
+          ttlType: kAbsoluteTime
+  -
+    id: 8
+    desc: 第一列为date
+    inputs:
+      -
+        create: |
+          create table {0} (
+          c8 date not null,
+          c9 bool not null
+          );
+    sql: desc {0};
+    expect:
+      idxs:
+        -
+          keys: ["c8"]
+          ts: "-"
+          ttl: 0min
+          ttlType: kAbsoluteTime
+  -
+    id: 9
+    desc: 第一列为bool
+    inputs:
+      -
+        create: |
+          create table {0} (
+          c9 bool not null
+          );
+    sql: desc {0};
+    expect:
+      idxs:
+        -
+          keys: ["c9"]
+          ts: "-"
+          ttl: 0min
+          ttlType: kAbsoluteTime
+  -
+    id: 10
+    desc: 只有一列
+    inputs:
+      -
+        create: |
+          create table {0} (
+          c7 timestamp
+          );
+    sql: desc {0};
+    expect:
+      idxs:
+        -
+          keys: ["c7"]
+          ts: "-"
+          ttl: 0min
+          ttlType: kAbsoluteTime
+  -
+    id: 11
+    desc: 不指定索引创建表，然后增加索引
+    inputs:
+      -
+        create: |
+          create table {0} (
+          c5 bigint not null,
+          c6 string not null,
+          c7 timestamp not null,
+          c8 date not null,
+          c9 bool not null
+          );
+    sqls:
+      - "CREATE INDEX index1 ON {0} (c6) OPTIONS (ts=c7, ttl=100m, ttl_type=absolute);"
+      - "desc {0};"
+    expect:
+      idxs:
+        -
+          keys: ["c5"]
+          ts: "-"
+          ttl: 0min
+          ttlType: kAbsoluteTime
+        -
+          keys: ["c6"]
+          ts: "c7"
+          ttl: 100min
+          ttlType: kAbsoluteTime
+  -
+    id: 16
+    desc: 创建表指定索引，没有默认索引
+    inputs:
+      - columns: [ "id int not null","c1 int not null","c2 smallint not null","c3 float not null","c4 double not null","c5 bigint not null","c6 string not null","c7 timestamp not null","c8 date not null","c9 bool not null" ]
+        rows:
+          - [ 1, 1, 2, 3.3, 4.4, 5, "aa", 12345678, "2020-05-21", true ]
+        indexs: ["index1:c1:c5"]
+    sql: desc {0};
+    expect:
+      idxs:
+        -
+          keys: ["c1"]
+          ts: "c5"
+          ttl: 0min
+          ttlType: kAbsoluteTime

@@ -1,0 +1,536 @@
+# window query test with OpenMLDB specific window attributes:
+# - EXCLUDE CURRENT_TIME
+# - EXCLUDE CURRENT_ROW
+# - INSTANCE_NOT_IN_WINDOW 
+# - MAXSIZE
+
+debugs: []
+version: 0.6.0
+db: test_java
+cases:
+  - id: 0
+    desc: ROWS_RANGE window with exclude_current_row
+    inputs:
+      - name: t1
+        columns:
+          - id int
+          - ts timestamp
+          - g int
+          - val int
+        indexs:
+          - idx:g:ts
+        data: |
+          0,      0, 111, 0
+          1,      0, 111, 0
+          2,  99000, 111, 21
+          3, 100000, 111, 22
+          4, 101000, 111, 23
+          5, 100000, 114, 56
+    sql: |
+       select
+          id,
+          count(val) over w as cnt,
+          max(val) over w as mv,
+          min(val) over w as mi,
+          lag(val, 1) over w as l1
+       from t1 window w as(
+          partition by `g` order by `ts`
+          ROWS_RANGE between 2s PRECEDING and 0s preceding EXCLUDE CURRENT_ROW);
+    batch_plan: |
+      PROJECT(type=WindowAggregation, EXCLUDE_CURRENT_ROW)
+        +-WINDOW(partition_keys=(g), orders=(ts ASC), range=(ts, 2000 PRECEDING, 0 PRECEDING))
+        PROJECT(type=WindowAggregation, NEED_APPEND_INPUT)
+          +-WINDOW(partition_keys=(), orders=(ASC), rows=(ts, 1 PRECEDING, 0 CURRENT))
+          DATA_PROVIDER(type=Partition, table=t1, index=idx)
+    request_plan: |
+      SIMPLE_PROJECT(sources=(id, cnt, mv, mi, l1))
+        REQUEST_JOIN(type=kJoinTypeConcat)
+          PROJECT(type=Aggregation)
+            REQUEST_UNION(EXCLUDE_CURRENT_ROW, partition_keys=(), orders=(ASC), range=(ts, 2000 PRECEDING, 0 PRECEDING), index_keys=(g))
+              DATA_PROVIDER(request=t1)
+              DATA_PROVIDER(type=Partition, table=t1, index=idx)
+          PROJECT(type=Aggregation)
+            REQUEST_UNION(partition_keys=(), orders=(ASC), rows=(ts, 1 PRECEDING, 0 CURRENT), index_keys=(g))
+              DATA_PROVIDER(request=t1)
+              DATA_PROVIDER(type=Partition, table=t1, index=idx)
+    expect:
+      columns:
+        - id int
+        - cnt int64
+        - mv int
+        - mi int
+        - l1 int
+      order: id
+      rows:
+        - [0, 0, NULL, NULL, NULL]
+        - [1, 1,  0,  0,     0]
+        - [2, 0, NULL, NULL, 0]
+        - [3, 1, 21, 21, 21]
+        - [4, 2, 22, 21, 22]
+        - [5, 0, NULL, NULL, NULL]
+  - id: 1
+    desc: |
+      ROWS window with exclude_current_row, '0 PRECEDING EXCLUDE CURRENT_ROW' actually is the same as '0 OPEN PRECEDING'
+    inputs:
+      - name: t1
+        columns:
+          - id int
+          - ts timestamp
+          - g int
+          - val int
+        indexs:
+          - idx:g:ts
+        data: |
+          1,  99000, 111, 21
+          2, 100000, 111, 22
+          3, 101000, 111, 23
+          4, 100000, 114, 56
+    sql: |
+       select
+          id,
+          count(val) over w as cnt,
+          max(val) over w as mv,
+          min(val) over w as mi,
+          lag(val, 1) over w as l1
+       from t1 window w as(
+          partition by `g` order by `ts`
+          ROWS between 2 PRECEDING and 0 preceding EXCLUDE CURRENT_ROW);
+    expect:
+      columns:
+        - id int
+        - cnt int64
+        - mv int
+        - mi int
+        - l1 int
+      order: id
+      rows:
+        - [1, 0, NULL, NULL, NULL]
+        - [2, 1, 21, 21, 21]
+        - [3, 2, 22, 21, 22]
+        - [4, 0, NULL, NULL, NULL]
+  - id: 2
+    desc: |
+      ROWS_RANGE pure-history window with exclude_current_row
+      whether EXCLUDE CURRENT_ROW is set do not matter
+    inputs:
+      - name: t1
+        columns:
+          - id int
+          - ts timestamp
+          - g int
+          - val int
+        indexs:
+          - idx:g:ts
+        data: |
+          1,  99000, 111, 21
+          2, 100000, 111, 22
+          3, 101000, 111, 23
+          4, 100000, 114, 56
+    sql: |
+       select
+          id,
+          count(val) over w as cnt,
+          max(val) over w as mv,
+          min(val) over w as mi,
+          lag(val, 1) over w as l1
+       FROM t1 WINDOW w as(
+          PARTITION by `g` ORDER by `ts`
+          ROWS_RANGE BETWEEN 2s PRECEDING AND 1s PRECEDING EXCLUDE CURRENT_ROW);
+    batch_plan: |
+      PROJECT(type=WindowAggregation)
+        +-WINDOW(partition_keys=(g), orders=(ts ASC), range=(ts, 2000 PRECEDING, 1000 PRECEDING))
+        PROJECT(type=WindowAggregation, NEED_APPEND_INPUT)
+          +-WINDOW(partition_keys=(), orders=(ASC), rows=(ts, 1 PRECEDING, 0 CURRENT))
+          DATA_PROVIDER(type=Partition, table=t1, index=idx)
+    request_plan: |
+      SIMPLE_PROJECT(sources=(id, cnt, mv, mi, l1))
+        REQUEST_JOIN(type=kJoinTypeConcat)
+          PROJECT(type=Aggregation)
+            REQUEST_UNION(partition_keys=(), orders=(ASC), range=(ts, 2000 PRECEDING, 1000 PRECEDING), index_keys=(g))
+              DATA_PROVIDER(request=t1)
+              DATA_PROVIDER(type=Partition, table=t1, index=idx)
+          PROJECT(type=Aggregation)
+            REQUEST_UNION(partition_keys=(), orders=(ASC), rows=(ts, 1 PRECEDING, 0 CURRENT), index_keys=(g))
+              DATA_PROVIDER(request=t1)
+              DATA_PROVIDER(type=Partition, table=t1, index=idx)
+    expect:
+      columns:
+        - id int
+        - cnt int64
+        - mv int
+        - mi int
+        - l1 int
+      order: id
+      rows:
+        - [1, 0, NULL, NULL, NULL]
+        - [2, 1, 21, 21, 21]
+        - [3, 2, 22, 21, 22]
+        - [4, 0, NULL, NULL, NULL]
+  - id: 3
+    desc: |
+      ROWS pure-history window with exclude_current_row
+      whether EXCLUDE CURRENT_ROW is set do not matter
+    inputs:
+      - name: t1
+        columns:
+          - id int
+          - ts timestamp
+          - g int
+          - val int
+        indexs:
+          - idx:g:ts
+        data: |
+          1,  99000, 111, 21
+          2, 100000, 111, 22
+          3, 101000, 111, 23
+          4, 100000, 114, 56
+    sql: |
+       select
+          id,
+          count(val) over w as cnt,
+          max(val) over w as mv,
+          min(val) over w as mi,
+          lag(val, 1) over w as l1
+       FROM t1 WINDOW w as(
+          PARTITION by `g` ORDER by `ts`
+          ROWS BETWEEN 2 PRECEDING AND 1 PRECEDING EXCLUDE CURRENT_ROW);
+    batch_plan: |
+      PROJECT(type=WindowAggregation)
+        +-WINDOW(partition_keys=(g), orders=(ts ASC), rows=(ts, 2 PRECEDING, 0 OPEN PRECEDING))
+        PROJECT(type=WindowAggregation, NEED_APPEND_INPUT)
+          +-WINDOW(partition_keys=(), orders=(ASC), rows=(ts, 1 PRECEDING, 0 CURRENT))
+          DATA_PROVIDER(type=Partition, table=t1, index=idx)
+    request_plan: |
+      SIMPLE_PROJECT(sources=(id, cnt, mv, mi, l1))
+        REQUEST_JOIN(type=kJoinTypeConcat)
+          PROJECT(type=Aggregation)
+            REQUEST_UNION(partition_keys=(), orders=(ASC), rows=(ts, 2 PRECEDING, 0 OPEN PRECEDING), index_keys=(g))
+              DATA_PROVIDER(request=t1)
+              DATA_PROVIDER(type=Partition, table=t1, index=idx)
+          PROJECT(type=Aggregation)
+            REQUEST_UNION(partition_keys=(), orders=(ASC), rows=(ts, 1 PRECEDING, 0 CURRENT), index_keys=(g))
+              DATA_PROVIDER(request=t1)
+              DATA_PROVIDER(type=Partition, table=t1, index=idx)
+    expect:
+      columns:
+        - id int
+        - cnt int64
+        - mv int
+        - mi int
+        - l1 int
+      order: id
+      rows:
+        - [1, 0, NULL, NULL, NULL]
+        - [2, 1, 21, 21, 21]
+        - [3, 2, 22, 21, 22]
+        - [4, 0, NULL, NULL, NULL]
+
+  - id: 4
+    desc: |
+      rows_range current history window, exclude current_row with maxsize
+    inputs:
+      - name: t1
+        columns:
+          - id int
+          - ts timestamp
+          - g int
+          - val int
+        indexs:
+          - idx:g:ts
+        data: |
+          1,  99000, 111, 21
+          2, 100000, 111, 22
+          3, 101000, 111, 23
+          4, 102000, 111, 44
+          5, 100000, 114, 56
+          6, 102000, 114, 52
+    sql: |
+       select
+          id,
+          count(val) over w as cnt,
+          max(val) over w as mv,
+          min(val) over w as mi,
+          lag(val, 1) over w as l1
+       FROM t1 WINDOW w as(
+          PARTITION by `g` ORDER by `ts`
+          ROWS_RANGE BETWEEN 3s PRECEDING AND 0s PRECEDING MAXSIZE 2 EXCLUDE CURRENT_ROW);
+    expect:
+      columns:
+        - id int
+        - cnt int64
+        - mv int
+        - mi int
+        - l1 int
+      order: id
+      rows:
+        - [1, 0, NULL, NULL, NULL]
+        - [2, 1, 21, 21, 21]
+        - [3, 2, 22, 21, 22]
+        - [4, 2, 23, 22, 23]
+        - [5, 0, NULL, NULL, NULL]
+        - [6, 1, 56, 56, 56]
+
+  - id: 5
+    desc: |
+      ROWS_RANGE window with end frame OPEN, exclude current_row do not matter
+    inputs:
+      - name: t1
+        columns:
+          - id int
+          - ts timestamp
+          - g int
+          - val int
+        indexs:
+          - idx:g:ts
+        data: |
+          1,  99000, 111, 21
+          2, 100000, 111, 22
+          3, 101000, 111, 23
+          4, 102000, 111, 44
+          5, 100000, 114, 56
+          6, 102000, 114, 52
+    sql: |
+       select
+          id,
+          count(val) over w as cnt,
+          max(val) over w as mv,
+          min(val) over w as mi,
+          lag(val, 1) over w as l1
+       FROM t1 WINDOW w as(
+          PARTITION by `g` ORDER by `ts`
+          ROWS_RANGE BETWEEN 3s PRECEDING AND 0s OPEN PRECEDING MAXSIZE 2 EXCLUDE CURRENT_ROW);
+    batch_plan: |
+      PROJECT(type=WindowAggregation)
+        +-WINDOW(partition_keys=(g), orders=(ts ASC), range=(ts, 3000 PRECEDING, 0 OPEN PRECEDING, maxsize=2))
+        PROJECT(type=WindowAggregation, NEED_APPEND_INPUT)
+          +-WINDOW(partition_keys=(), orders=(ASC), rows=(ts, 1 PRECEDING, 0 CURRENT))
+          DATA_PROVIDER(type=Partition, table=t1, index=idx)
+    request_plan: |
+      SIMPLE_PROJECT(sources=(id, cnt, mv, mi, l1))
+        REQUEST_JOIN(type=kJoinTypeConcat)
+          PROJECT(type=Aggregation)
+            REQUEST_UNION(partition_keys=(), orders=(ASC), range=(ts, 3000 PRECEDING, 0 OPEN PRECEDING, maxsize=2), index_keys=(g))
+              DATA_PROVIDER(request=t1)
+              DATA_PROVIDER(type=Partition, table=t1, index=idx)
+          PROJECT(type=Aggregation)
+            REQUEST_UNION(partition_keys=(), orders=(ASC), rows=(ts, 1 PRECEDING, 0 CURRENT), index_keys=(g))
+              DATA_PROVIDER(request=t1)
+              DATA_PROVIDER(type=Partition, table=t1, index=idx)
+    expect:
+      columns:
+        - id int
+        - cnt int64
+        - mv int
+        - mi int
+        - l1 int
+      order: id
+      rows:
+        - [1, 0, NULL, NULL, NULL]
+        - [2, 1, 21, 21, 21]
+        - [3, 2, 22, 21, 22]
+        - [4, 2, 23, 22, 23]
+        - [5, 0, NULL, NULL, NULL]
+        - [6, 1, 56, 56, 56]
+
+  - id: 6
+    desc: |
+      ROWS window with end frame OPEN, exclude current_row do not matter
+    inputs:
+      - name: t1
+        columns:
+          - id int
+          - ts timestamp
+          - g int
+          - val int
+        indexs:
+          - idx:g:ts
+        data: |
+          1,  99000, 111, 21
+          2, 100000, 111, 22
+          3, 101000, 111, 23
+          4, 102000, 111, 44
+          5, 100000, 114, 56
+          6, 102000, 114, 52
+    sql: |
+       select
+          id,
+          count(val) over w as cnt,
+          max(val) over w as mv,
+          min(val) over w as mi,
+          lag(val, 1) over w as l1
+       FROM t1 WINDOW w as(
+          PARTITION by `g` ORDER by `ts`
+          ROWS BETWEEN 3 PRECEDING AND 0 OPEN PRECEDING EXCLUDE CURRENT_ROW);
+    batch_plan: |
+      PROJECT(type=WindowAggregation)
+        +-WINDOW(partition_keys=(g), orders=(ts ASC), rows=(ts, 3 PRECEDING, 0 OPEN PRECEDING))
+        PROJECT(type=WindowAggregation, NEED_APPEND_INPUT)
+          +-WINDOW(partition_keys=(), orders=(ASC), rows=(ts, 1 PRECEDING, 0 CURRENT))
+          DATA_PROVIDER(type=Partition, table=t1, index=idx)
+    request_plan: |
+      SIMPLE_PROJECT(sources=(id, cnt, mv, mi, l1))
+        REQUEST_JOIN(type=kJoinTypeConcat)
+          PROJECT(type=Aggregation)
+            REQUEST_UNION(partition_keys=(), orders=(ASC), rows=(ts, 3 PRECEDING, 0 OPEN PRECEDING), index_keys=(g))
+              DATA_PROVIDER(request=t1)
+              DATA_PROVIDER(type=Partition, table=t1, index=idx)
+          PROJECT(type=Aggregation)
+            REQUEST_UNION(partition_keys=(), orders=(ASC), rows=(ts, 1 PRECEDING, 0 CURRENT), index_keys=(g))
+              DATA_PROVIDER(request=t1)
+              DATA_PROVIDER(type=Partition, table=t1, index=idx)
+    expect:
+      columns:
+        - id int
+        - cnt int64
+        - mv int
+        - mi int
+        - l1 int
+      order: id
+      rows:
+        - [1, 0, NULL, NULL, NULL]
+        - [2, 1, 21, 21, 21]
+        - [3, 2, 22, 21, 22]
+        - [4, 3, 23, 21, 23]
+        - [5, 0, NULL, NULL, NULL]
+        - [6, 1, 56, 56, 56]
+
+  - id: 7
+    desc: |
+      ROWS_RANGE window with end frame 'CURRENT_ROW', exclude current_row
+    inputs:
+      - name: t1
+        columns:
+          - id int
+          - ts timestamp
+          - g int
+          - val int
+        indexs:
+          - idx:g:ts
+        data: |
+          1,  99000, 111, 21
+          2, 100000, 111, 22
+          3, 101000, 111, 23
+          4, 102000, 111, 44
+          5, 100000, 114, 56
+          6, 102000, 114, 52
+    sql: |
+       select
+          id,
+          count(val) over w as cnt,
+          max(val) over w as mv,
+          min(val) over w as mi,
+          lag(val, 1) over w as l1
+       FROM t1 WINDOW w as(
+          PARTITION by `g` ORDER by `ts`
+          ROWS_RANGE BETWEEN 3s PRECEDING AND CURRENT ROW MAXSIZE 2 EXCLUDE CURRENT_ROW);
+    expect:
+      columns:
+        - id int
+        - cnt int64
+        - mv int
+        - mi int
+        - l1 int
+      order: id
+      rows:
+        - [1, 0, NULL, NULL, NULL]
+        - [2, 1, 21, 21, 21]
+        - [3, 2, 22, 21, 22]
+        - [4, 2, 23, 22, 23]
+        - [5, 0, NULL, NULL, NULL]
+        - [6, 1, 56, 56, 56]
+
+  - id: 8
+    desc: |
+      ROWS window with end frame 'CURRENT_ROW', exclude current_row
+    inputs:
+      - name: t1
+        columns:
+          - id int
+          - ts timestamp
+          - g int
+          - val int
+        indexs:
+          - idx:g:ts
+        data: |
+          1,  99000, 111, 21
+          2, 100000, 111, 22
+          3, 101000, 111, 23
+          4, 102000, 111, 44
+          5, 100000, 114, 56
+          6, 102000, 114, 52
+    sql: |
+       select
+          id,
+          count(val) over w as cnt,
+          max(val) over w as mv,
+          min(val) over w as mi,
+          lag(val, 1) over w as l1
+       FROM t1 WINDOW w as(
+          PARTITION by `g` ORDER by `ts`
+          ROWS BETWEEN 3 PRECEDING AND CURRENT ROW EXCLUDE CURRENT_ROW);
+    expect:
+      columns:
+        - id int
+        - cnt int64
+        - mv int
+        - mi int
+        - l1 int
+      order: id
+      data: |
+         1, 0, NULL, NULL, NULL
+         2, 1, 21, 21, 21
+         3, 2, 22, 21, 22
+         4, 3, 23, 21, 23
+         5, 0, NULL, NULL, NULL
+         6, 1, 56, 56, 56
+  - id: 9
+    desc: |
+      ROWS Window with exclude current_time and exclude current_row
+    mode: disk-unsupport
+    inputs:
+      - name: t1
+        columns:
+          - id int
+          - ts timestamp
+          - g int
+          - val int
+        indexs:
+          - idx:g:ts
+        data: |
+          1,  99000, 111, 21
+          2, 100000, 111, 22
+          3, 101000, 111, 23
+          4, 102000, 111, 44
+          5, 0,      114, 0
+          6, 0,      114, 99
+          7, 100000, 114, 56
+          8, 102000, 114, 52
+          9, 104000, 114, 33
+    sql: |
+       select
+          id,
+          count(val) over w as cnt,
+          max(val) over w as mv,
+          min(val) over w as mi,
+          lag(val, 1) over w as l1
+       FROM t1 WINDOW w as(
+          PARTITION by `g` ORDER by `ts`
+          ROWS BETWEEN 3 PRECEDING AND CURRENT ROW EXCLUDE CURRENT_TIME EXCLUDE CURRENT_ROW);
+    expect:
+      columns:
+        - id int
+        - cnt int64
+        - mv int
+        - mi int
+        - l1 int
+      order: id
+      data: |
+         1, 0, NULL, NULL, NULL
+         2, 1, 21, 21, 21
+         3, 2, 22, 21, 22
+         4, 3, 23, 21, 23
+         5, 0, NULL, NULL, NULL
+         6, 0, NULL, NULL, NULL
+         7, 2, 99, 0, 99
+         8, 3, 99, 0, 56
+         9, 3, 99, 52, 52

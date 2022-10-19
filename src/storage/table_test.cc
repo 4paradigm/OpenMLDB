@@ -19,7 +19,7 @@
 #include <iostream>
 #include <utility>
 
-#include "base/glog_wapper.h"
+#include "base/glog_wrapper.h"
 #include "codec/schema_codec.h"
 #include "codec/sdk_codec.h"
 #include "common/timer.h"
@@ -615,7 +615,7 @@ TEST_P(TableTest, TableIteratorRun) {
     ASSERT_EQ(20, (int64_t)it->GetKey());
 
     it->Seek("test", 20);
-    ASSERT_FALSE(it->Valid());
+    ASSERT_TRUE(it->Valid());
 
     delete it;
     delete table;
@@ -639,15 +639,15 @@ TEST_P(TableTest, TableIteratorRun) {
     it1->Seek("pk", 9528);
     ASSERT_TRUE(it1->Valid());
     ASSERT_STREQ("pk", it1->GetPK().c_str());
-    ASSERT_EQ(9527, (int64_t)it1->GetKey());
+    ASSERT_EQ(9528, (int64_t)it1->GetKey());
     it1->Next();
 
     ASSERT_TRUE(it1->Valid());
-    ASSERT_STREQ("pk1", it1->GetPK().c_str());
+    ASSERT_STREQ("pk", it1->GetPK().c_str());
     ASSERT_EQ(9527, (int64_t)it1->GetKey());
     it1->Next();
     ASSERT_STREQ("pk1", it1->GetPK().c_str());
-    ASSERT_EQ(100, (int64_t)it1->GetKey());
+    ASSERT_EQ(9527, (int64_t)it1->GetKey());
 
     delete it1;
     delete table1;
@@ -743,16 +743,13 @@ TEST_P(TableTest, TableIteratorCount) {
     it = table->NewTraverseIterator(0);
     it->Seek("pk500", 9528);
     ASSERT_STREQ("pk500", it->GetPK().c_str());
-    ASSERT_EQ(9527, (int64_t)it->GetKey());
+    ASSERT_EQ(9528, (int64_t)it->GetKey());
     count = 0;
     while (it->Valid()) {
         count++;
         it->Next();
     }
-    // We seek to pk500 9528. The next data is pk500 9527.
-    // Then all these records with pk greater than str(500) and both timestamps are traversed
-    // So here the count is 55551
-    ASSERT_EQ(55551, count);
+    ASSERT_EQ(55552, count);
 
     delete it;
 
@@ -1903,9 +1900,11 @@ TEST_P(TableTest, AbsAndLat) {
         std::vector<std::string> row = {
             "test" + std::to_string(i % 10), ts_str, ts_str, ts_str, ts_str, ts_str, ts_str};
         ::openmldb::api::PutRequest request;
-        ::openmldb::api::Dimension* dim = request.add_dimensions();
-        dim->set_idx(0);
-        dim->set_key(row[0]);
+        for (int idx = 0; idx <= 5; idx++) {
+            auto dim = request.add_dimensions();
+            dim->set_idx(idx);
+            dim->set_key(row[0]);
+        }
         std::string value;
         ASSERT_EQ(0, codec.EncodeRow(row, &value));
         table->Put(0, value, request.dimensions());

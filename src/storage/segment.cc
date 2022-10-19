@@ -18,7 +18,7 @@
 
 #include <gflags/gflags.h>
 
-#include "base/glog_wapper.h"
+#include "base/glog_wrapper.h"
 #include "base/strings.h"
 #include "common/timer.h"
 #include "storage/record.h"
@@ -286,37 +286,6 @@ void Segment::Put(const Slice& key, const std::map<int32_t, uint64_t>& ts_map, D
     }
 }
 
-bool Segment::Get(const Slice& key, const uint64_t time, DataBlock** block) {
-    if (block == NULL || ts_cnt_ > 1) {
-        return false;
-    }
-    void* entry = NULL;
-    if (entries_->Get(key, entry) < 0 || entry == NULL) {
-        return false;
-    }
-    *block = ((KeyEntry*)entry)->entries.Get(time);  // NOLINT
-    return true;
-}
-
-bool Segment::Get(const Slice& key, uint32_t idx, const uint64_t time, DataBlock** block) {
-    if (block == NULL) {
-        return false;
-    }
-    auto pos = ts_idx_map_.find(idx);
-    if (pos == ts_idx_map_.end()) {
-        return false;
-    }
-    if (ts_cnt_ == 1) {
-        return Get(key, time, block);
-    }
-    void* entry = NULL;
-    if (entries_->Get(key, entry) < 0 || entry == NULL) {
-        return false;
-    }
-    *block = ((KeyEntry**)entry)[pos->second]->entries.Get(time);  // NOLINT
-    return true;
-}
-
 bool Segment::Delete(const Slice& key) {
     ::openmldb::base::Node<Slice, void*>* entry_node = NULL;
     {
@@ -329,6 +298,77 @@ bool Segment::Delete(const Slice& key) {
     {
         std::lock_guard<std::mutex> lock(gc_mu_);
         entry_free_list_->Insert(gc_version_.load(std::memory_order_relaxed), entry_node);
+    }
+    return true;
+}
+
+bool Segment::Delete(const Slice& key, uint64_t time) {
+    ::openmldb::base::Node<uint64_t, DataBlock*>* entry_ts_node = NULL;
+    ::openmldb::base::Node<Slice, void*>* entry_node = NULL;
+    {
+        std::lock_guard<std::mutex> lock(mu_);
+        if (ts_cnt_ > 1) {
+            return false;
+        }
+        void* entry = NULL;
+        if (entries_->Get(key, entry) < 0 || entry == NULL) {
+            return false;
+        }
+        entry_ts_node = ((KeyEntry*)entry)->entries.Remove(time);  // NOLINT
+        if (entry_ts_node == NULL) {
+            return false;
+        }
+        if (((KeyEntry*)entry)->entries.IsEmpty()) {
+            entry_node = entries_->Remove(key);
+            if (entry_node == NULL) {
+                return false;
+            }
+        }
+    }
+    {
+        std::lock_guard<std::mutex> lock(gc_mu_);
+        ts_entry_free_list_->Insert(gc_version_.load(std::memory_order_relaxed), entry_ts_node);
+        if (entry_node != NULL) {
+            entry_free_list_->Insert(gc_version_.load(std::memory_order_relaxed), entry_node);
+        }
+    }
+    return true;
+}
+
+bool Segment::Delete(const Slice& key, uint32_t idx, const uint64_t time) {
+    ::openmldb::base::Node<uint64_t, DataBlock*>* entry_ts_node = NULL;
+    ::openmldb::base::Node<Slice, void*>* entry_node = NULL;
+    {
+        auto pos = ts_idx_map_.find(idx);
+        if (pos == ts_idx_map_.end()) {
+            return false;
+        }
+        if (ts_cnt_ == 1) {
+            return Delete(key, time);
+        } else {
+            std::lock_guard<std::mutex> lock(mu_);
+            void* entry = NULL;
+            if (entries_->Get(key, entry) < 0 || entry == NULL) {
+                return false;
+            }
+            entry_ts_node = ((KeyEntry**)entry)[pos->second]->entries.Remove(time);  // NOLINT
+            if (entry_ts_node == NULL) {
+                return false;
+            }
+            if (((KeyEntry*)entry)->entries.IsEmpty()) {
+                entry_node = entries_->Remove(key);
+                if (entry_node == NULL) {
+                    return false;
+                }
+            }
+        }
+    }
+    {
+        std::lock_guard<std::mutex> lock(gc_mu_);
+        ts_entry_free_list_->Insert(gc_version_.load(std::memory_order_relaxed), entry_ts_node);
+        if (entry_node != NULL) {
+            entry_free_list_->Insert(gc_version_.load(std::memory_order_relaxed), entry_node);
+        }
     }
     return true;
 }

@@ -548,9 +548,7 @@ int Planner::GetPlanTreeLimitCount(node::PlanNode *node) {
 }
 
 // Un-support Ops:
-// - GROUP BY
-// - HAVING
-// - WINDOW
+// - Last Join
 //
 // Not Impl:
 // - Order By
@@ -559,20 +557,8 @@ base::Status Planner::ValidateClusterOnlineTrainingOp(node::PlanNode *node) {
         return base::Status::OK();
     }
     switch (node->type_) {
-        case node::kPlanTypeProject: {
-            auto project_node = dynamic_cast<node::ProjectPlanNode *>(node);
-
-            for (auto &each : project_node->project_list_vec_) {
-                node::ProjectListNode *project_list = dynamic_cast<node::ProjectListNode *>(each);
-                CHECK_TRUE(nullptr == project_list->GetW(), common::kPlanError,
-                           "Non-support WINDOW Op in cluster online training");
-                CHECK_TRUE(nullptr == project_list->GetHavingCondition(), common::kPlanError,
-                           "Non-support HAVING Op in cluster online training")
-                CHECK_TRUE(!project_list->HasAggProject(), common::kPlanError,
-                           "Aggregate over a table cannot be supported in cluster online training")
-            }
-            break;
-        }
+        case node::kPlanTypeProject:
+        case node::kPlanTypeGroup:
         case node::kPlanTypeTable:
         case node::kPlanTypeLoadData:
         case node::kPlanTypeRename:

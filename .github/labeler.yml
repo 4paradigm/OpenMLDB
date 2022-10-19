@@ -41,3 +41,10 @@ build:
 
 workflow:
   - '.github/**/*.yml'
+  - '.github/**/*.yaml'
+
+go-sdk:
+  - 'go/**/*'
+
+extensions:
+  - 'extensions/**/*'

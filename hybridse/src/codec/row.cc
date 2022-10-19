@@ -28,8 +28,7 @@ Row::Row(const std::string &str)
 
 Row::Row(const Row &s) : slice_(s.slice_), slices_(s.slices_) {}
 
-Row::Row(size_t major_slices, const Row &major, size_t secondary_slices,
-         const Row &secondary)
+Row::Row(size_t major_slices, const Row &major, size_t secondary_slices, const Row &secondary)
     : slice_(major.slice_), slices_(major_slices + secondary_slices - 1) {
     for (size_t offset = 0; offset < major_slices - 1; ++offset) {
         if (major.slices_.size() > offset) {
@@ -43,8 +42,8 @@ Row::Row(size_t major_slices, const Row &major, size_t secondary_slices,
         }
     }
 }
-Row::Row(const hybridse::base::RefCountedSlice &s, size_t secondary_slices,
-         const Row &secondary)
+
+Row::Row(const hybridse::base::RefCountedSlice &s, size_t secondary_slices, const Row &secondary)
     : slice_(s), slices_(secondary_slices) {
     slices_[0] = secondary.slice_;
     for (size_t offset = 0; offset < secondary_slices - 1; ++offset) {
@@ -53,6 +52,7 @@ Row::Row(const hybridse::base::RefCountedSlice &s, size_t secondary_slices,
         }
     }
 }
+
 Row::Row(const RefCountedSlice &s) : slice_(s) {}
 
 Row::~Row() {}

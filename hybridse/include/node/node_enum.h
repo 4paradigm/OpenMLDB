@@ -177,8 +177,8 @@ enum FnOperator {
     kFnOpAdd,         // "+"
     kFnOpMinus,       // "-"
     kFnOpMulti,       // "*"
-    kFnOpDiv,         // "/"
-    kFnOpFDiv,        // "div", float division
+    kFnOpDiv,         // "DIV", integer division
+    kFnOpFDiv,        // "/", float division
     kFnOpMod,         // "%"
     kFnOpAnd,         // "AND", logical
     kFnOpOr,          // "OR" , logical
@@ -193,7 +193,8 @@ enum FnOperator {
     kFnOpDot,         // "."
     kFnOpAt,          // "[]"
     kFnOpLike,        // "LIKE"
-    kFnOpILike,        // "ILIKE"
+    kFnOpILike,       // "ILIKE"
+    kFnOpRLike,       // "RLIKE"
     kFnOpIn,          // "IN"
     kFnOpBracket,     // "()"
     kFnOpIsNull,      // "is_null"

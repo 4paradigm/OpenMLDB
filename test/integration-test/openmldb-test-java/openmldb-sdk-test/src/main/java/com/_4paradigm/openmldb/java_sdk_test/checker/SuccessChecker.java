@@ -15,7 +15,7 @@
  */
 
 package com._4paradigm.openmldb.java_sdk_test.checker;
-import com._4paradigm.openmldb.java_sdk_test.entity.FesqlResult;
+import com._4paradigm.openmldb.test_common.bean.OpenMLDBResult;
 import com._4paradigm.openmldb.test_common.model.ExpectDesc;
 import lombok.extern.slf4j.Slf4j;
 import org.testng.Assert;
@@ -27,16 +27,15 @@ import org.testng.Assert;
 @Slf4j
 public class SuccessChecker extends BaseChecker {
 
-    public SuccessChecker(ExpectDesc expect, FesqlResult fesqlResult){
-        super(expect,fesqlResult);
+    public SuccessChecker(ExpectDesc expect, OpenMLDBResult openMLDBResult){
+        super(expect,openMLDBResult);
     }
 
     @Override
     public void check() throws Exception {
         log.info("success check");
-        reportLog.info("success check");
         boolean success =  expect.getSuccess();
-        boolean actual = fesqlResult.isOk();
+        boolean actual = openMLDBResult.isOk();
         Assert.assertEquals(actual,success,"success验证失败");
     }
 }

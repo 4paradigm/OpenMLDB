@@ -16,8 +16,8 @@
         <scala.version>2.12.8</scala.version>
         <scala.binary.version>2.12</scala.binary.version>
         <spark.version>3.0.0</spark.version>
-        <openmldb.batch.version>0.4.2</openmldb.batch.version>
-        <openmldb.native.version>0.4.2</openmldb.native.version>
+        <openmldb.batch.version>0.4.3</openmldb.batch.version>
+        <openmldb.native.version>0.4.3-macos</openmldb.native.version>
         <openmldb.test.common.version>0.1.0-SNAPSHOT</openmldb.test.common.version>
         <spark.dependencyScope>provided</spark.dependencyScope>
     </properties>
@@ -79,7 +79,7 @@
         <dependency>
             <groupId>org.yaml</groupId>
             <artifactId>snakeyaml</artifactId>
-            <version>1.26</version>
+            <version>1.31</version>
         </dependency>
 
         <dependency>

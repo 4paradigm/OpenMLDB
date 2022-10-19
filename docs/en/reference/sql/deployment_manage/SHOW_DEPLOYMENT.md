@@ -1,10 +1,12 @@
 # View DEPLOYMENT Details
 
+The `SHOW DEPLOYMENT` statement is used to display the detail of a specific task that has been deployed under Online Request mode.
+
+
 ```SQL
 SHOW DEPLOYMENT deployment_name;
 ```
 
-The `SHOW DEPLOYMENT` statement is used to display the details of an OnlineServing.
 
 ## Example
 
@@ -12,7 +14,7 @@ Create a database and set it as the current database:
 
 ```sql
 CREATE DATABASE db1;
--- SUCCEED: Create database successfully
+-- SUCCEED
 
 USE db1;
 -- SUCCEED: Database changed
@@ -24,24 +26,22 @@ Create a table `t1`:
 
 ```sql
 CREATE TABLE t1(col0 STRING);
--- SUCCEED: Create successfully
+-- SUCCEED
 
 ```
 
-Deploy the query statement of table t1 to OnlineServing:
+Deploy the query statement of table t1:
 
 ```sql
 DEPLOY demo_deploy select col0 from t1;
--- SUCCEED: deploy successfully
+-- SUCCEED
 ```
 
 Check out the newly deployed deployment:
 
 ```sql
 SHOW DEPLOYMENT demo_deploy;
-```
 
-```
  ----- ------------- 
   DB    Deployment   
  ----- ------------- 
@@ -64,16 +64,15 @@ FROM
  --- ------- ---------- ------------ 
   #   Field   Type       IsConstant  
  --- ------- ---------- ------------ 
-  1   col0    kVarchar   NO          
+  1   col0    Varchar   NO          
  --- ------- ---------- ------------ 
 
 # Output Schema
  --- ------- ---------- ------------ 
   #   Field   Type       IsConstant  
  --- ------- ---------- ------------ 
-  1   col0    kVarchar   NO          
- --- ------- ---------- ------------ 
-
+  1   col0    Varchar   NO          
+ --- ------- ---------- ------------
 ```
 
 ## Related Statements

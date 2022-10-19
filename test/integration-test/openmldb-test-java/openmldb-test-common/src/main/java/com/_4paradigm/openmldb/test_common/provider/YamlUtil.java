@@ -22,6 +22,7 @@ import org.yaml.snakeyaml.Yaml;
 
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
+import java.io.PrintWriter;
 
 /**
  * @author zhaowei
@@ -33,7 +34,7 @@ public class YamlUtil {
 
     public static final String FAIL_CASE= "FailCase";
 
-    public static <T> T getObject(String caseFile, Class<T> clazz) throws FileNotFoundException {
+    public static <T> T getObject(String caseFile, Class<T> clazz)  {
         try {
             Yaml yaml = new Yaml();
             FileInputStream testDataStream = new FileInputStream(caseFile);
@@ -43,14 +44,18 @@ public class YamlUtil {
             log.error("fail to load yaml: ", e);
             e.printStackTrace();
             return null;
-//            FesqlDataProvider nullDataProvider = new FesqlDataProvider();
-//            SQLCase failCase = new SQLCase();
-//            failCase.setDesc(FAIL_SQL_CASE);
-//            nullDataProvider.setCases(Lists.newArrayList(failCase));
-//            return nullDataProvider;
         }
     }
 
-
+    public static void writeYamlFile(Object obj,String yamlPath)  {
+        try {
+            Yaml yaml = new Yaml();
+            PrintWriter out = new PrintWriter(yamlPath);
+            yaml.dump(obj,out);
+        } catch (Exception e) {
+            log.error("fail to write yaml: ", e);
+            e.printStackTrace();
+        }
+    }
 }
 

@@ -15,7 +15,7 @@
  */
 
 #include "replica/log_replicator.h"
-
+#include <absl/cleanup/cleanup.h>
 #include <brpc/server.h>
 #include <gtest/gtest.h>
 #include <sched.h>
@@ -24,9 +24,10 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+#include <filesystem>
 #include <utility>
 
-#include "base/glog_wapper.h"
+#include "base/glog_wrapper.h"
 #include "base/status.h"
 #include "common/thread_pool.h"
 #include "common/timer.h"
@@ -45,6 +46,8 @@ using ::openmldb::storage::MemTable;
 using ::openmldb::storage::Table;
 using ::openmldb::storage::TableIterator;
 using ::openmldb::storage::Ticket;
+
+DECLARE_int32(binlog_single_file_max_size);
 
 namespace openmldb {
 namespace replica {
@@ -145,6 +148,78 @@ TEST_F(LogReplicatorTest, BenchMark) {
     entry.set_ts(9527);
     ok = replicator.AppendEntry(entry);
     ASSERT_TRUE(ok);
+}
+
+TEST_F(LogReplicatorTest, LogReader) {
+    // set to 1 MB, every binlog file will be a little larger than 2 MB
+    // as the checking logic is: (wh_->GetSize() / (1024 * 1024)) > (uint32_t)FLAGS_binlog_single_file_max_size
+    FLAGS_binlog_single_file_max_size = 1;
+    std::map<std::string, std::string> map;
+    std::filesystem::path folder = std::filesystem::temp_directory_path() / GenRand();
+    absl::Cleanup clean = [&folder]() { std::filesystem::remove_all(folder); };
+
+    std::map<std::string, uint32_t> mapping;
+    LogReplicator replicator(1, 1, folder, map, kLeaderNode);
+    bool ok = replicator.Init();
+    // in total binlog will be close to 10 MB, 5 binlog files
+    int num = 1024 * 10;
+    // one entry is close to 1 KB
+    std::string key = std::string(450, 'k');
+    std::string value = std::string(450, 'v');
+
+    for (int i = 0; i < num; i++) {
+        ::openmldb::api::LogEntry entry;
+        entry.set_term(1);
+        entry.set_pk(absl::StrCat(key, i));
+        entry.set_value(value);
+        entry.set_ts(9527);
+        ok = replicator.AppendEntry(entry);
+        ASSERT_TRUE(ok);
+    }
+
+    {
+        LogReader reader(replicator.GetLogPart(), replicator.GetLogPath(), false);
+        // offset starts from 1
+        auto min_offset = reader.GetMinOffset();
+        EXPECT_EQ(0, min_offset);
+
+        // set offset >= min_offset will return false
+        EXPECT_TRUE(reader.SetOffset(0));
+        EXPECT_TRUE(reader.SetOffset(10));
+        ::openmldb::api::LogEntry entry;
+        std::string buffer;
+        ::openmldb::base::Slice record;
+        int last_log_index = reader.GetLogIndex();
+        for (int i = 0; i < num;) {
+            buffer.clear();
+            ::openmldb::log::Status status = reader.ReadNextRecord(&record, &buffer);
+            if (status.IsEof()) {
+                if (reader.GetLogIndex() != last_log_index) {
+                    last_log_index = reader.GetLogIndex();
+                    continue;
+                }
+                break;
+            }
+            ASSERT_TRUE(status.ok()) << i << ": " << status.ToString();
+            entry.ParseFromString(record.ToString());
+            ASSERT_EQ(entry.pk(), absl::StrCat(key, i));
+            i++;
+        }
+    }
+
+    // the first log will be deleted
+    replicator.SetSnapshotLogPartIndex(3000);
+    bool deleted;
+    replicator.DeleteBinlog(&deleted);
+    ASSERT_TRUE(deleted);
+    {
+        LogReader reader(replicator.GetLogPart(), replicator.GetLogPath(), false);
+        // offset starts from 1
+        auto min_offset = reader.GetMinOffset();
+        ASSERT_EQ(2265, min_offset);
+        ASSERT_FALSE(reader.SetOffset(1));
+        ASSERT_TRUE(reader.SetOffset(2265));
+    }
 }
 
 TEST_F(LogReplicatorTest, LeaderAndFollowerMulti) {

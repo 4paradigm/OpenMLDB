@@ -20,7 +20,7 @@
 #include <array>
 #include <unordered_set>
 
-#include "base/glog_wapper.h"
+#include "base/glog_wrapper.h"
 #include "boost/lexical_cast.hpp"
 
 namespace openmldb {

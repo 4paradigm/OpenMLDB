@@ -17,6 +17,5 @@
 package com._4paradigm.openmldb.java_sdk_test.checker;
 
 public interface Checker {
-
     void check() throws Exception;
 }

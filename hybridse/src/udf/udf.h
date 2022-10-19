@@ -224,6 +224,10 @@ int32_t weekofyear(int64_t ts);
 int32_t weekofyear(Timestamp *ts);
 int32_t weekofyear(Date *ts);
 
+void last_day(int64_t ts, Date *output, bool *is_null);
+void last_day(const Timestamp *ts, Date *output, bool *is_null);
+void last_day(const Date *ts, Date *output, bool *is_null);
+
 void int_to_char(int32_t, StringRef*);
 int32_t char_length(StringRef *str);
 double degree_to_radius(double degree);
@@ -254,6 +258,9 @@ void like(StringRef *name, StringRef *pattern, bool *out, bool *is_null);
 void ilike(StringRef *name, StringRef *pattern,
         StringRef *escape, bool *out, bool *is_null);
 void ilike(StringRef *name, StringRef *pattern, bool *out, bool *is_null);
+
+void regexp_like(StringRef *name, StringRef *pattern, StringRef *flags, bool *out, bool *is_null);
+void regexp_like(StringRef *name, StringRef *pattern, bool *out, bool *is_null);
 
 void date_to_timestamp(Date *date, Timestamp *output, bool *is_null);
 void string_to_date(StringRef *str, Date *output, bool *is_null);
@@ -334,6 +341,8 @@ struct ToHex {
     }
 };
 void hex(StringRef *str, StringRef *output);
+
+void unhex(StringRef *str, StringRef *output, bool* is_null);
 
 }  // namespace v1
 

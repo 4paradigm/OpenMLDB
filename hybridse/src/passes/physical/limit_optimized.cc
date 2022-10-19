@@ -34,10 +34,10 @@ bool LimitOptimized::Transform(PhysicalOpNode* in, PhysicalOpNode** output) {
     }
 }
 
-bool LimitOptimized::ApplyLimitCnt(PhysicalOpNode* node, int32_t limit_cnt) {
+bool LimitOptimized::ApplyLimitCnt(PhysicalOpNode* node, std::optional<int32_t> limit_cnt) {
     if (vm::kPhysicalOpLimit == node->GetOpType()) {
         auto limit_op = dynamic_cast<vm::PhysicalLimitNode*>(node);
-        if (0 == node->GetLimitCnt() || limit_op->GetLimitCnt() > limit_cnt) {
+        if (!node->GetLimitCnt().has_value() || limit_op->GetLimitCnt() > limit_cnt) {
             if (limit_op->GetLimitOptimized()) {
                 return ApplyLimitCnt(node->producers()[0], limit_cnt);
             } else {
@@ -54,13 +54,13 @@ bool LimitOptimized::ApplyLimitCnt(PhysicalOpNode* node, int32_t limit_cnt) {
         return false;
     }
     if (node->is_block()) {
-        if (0 == node->GetLimitCnt() || node->GetLimitCnt() > limit_cnt) {
+        if (!node->GetLimitCnt().has_value() || node->GetLimitCnt() > limit_cnt) {
             node->SetLimitCnt(limit_cnt);
         }
         return true;
     } else {
         if (!ApplyLimitCnt(node->producers()[0], limit_cnt)) {
-            if (0 == node->GetLimitCnt() || node->GetLimitCnt() > limit_cnt) {
+            if (!node->GetLimitCnt().has_value() || node->GetLimitCnt() > limit_cnt) {
                 node->SetLimitCnt(limit_cnt);
                 return true;
             }

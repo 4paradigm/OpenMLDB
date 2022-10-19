@@ -22,7 +22,7 @@
 #include "absl/strings/match.h"
 #include "absl/strings/str_cat.h"
 #include "base/file_util.h"
-#include "base/glog_wapper.h"
+#include "base/glog_wrapper.h"
 #include "base/slice.h"
 #include "base/strings.h"
 #include "boost/algorithm/string.hpp"
@@ -64,6 +64,7 @@ Aggregator::Aggregator(const ::openmldb::api::TableMeta& base_meta, const ::open
       aggr_replicator_(aggr_replicator),
       status_(AggrStat::kUnInit),
       index_pos_(index_pos),
+      aggr_index_pos_(0),
       aggr_col_(aggr_col),
       aggr_type_(aggr_type),
       ts_col_(ts_col),
@@ -92,8 +93,6 @@ Aggregator::Aggregator(const ::openmldb::api::TableMeta& base_meta, const ::open
     if (ts_col_idx_ == -1) {
         PDLOG(ERROR, "ts_col not found in base table");
     }
-    auto dimension = dimensions_.Add();
-    dimension->set_idx(0);
 }
 
 Aggregator::~Aggregator() {}
@@ -166,7 +165,8 @@ bool Aggregator::Update(const std::string& key, const std::string& row, const ui
         if (recover) {
             return true;
         } else {
-            PDLOG(ERROR, "logical error: current offset is smaller than binlog offset");
+            PDLOG(ERROR, "logical error: current offset %lu is smaller than binlog offset %lu",
+                  offset, aggr_buffer.binlog_offset_);
             return false;
         }
     }
@@ -213,6 +213,39 @@ bool Aggregator::Update(const std::string& key, const std::string& row, const ui
     return true;
 }
 
+bool Aggregator::Delete(const std::string& key) {
+    {
+        std::lock_guard<std::mutex> lock(mu_);
+        // erase from the aggr_buffer_map_
+        aggr_buffer_map_.erase(key);
+    }
+
+    // delete the entries from the pre-aggr table
+    bool ok = aggr_table_->Delete(key, aggr_index_pos_);
+    if (!ok) {
+        PDLOG(ERROR, "Delete key %s from aggr table %s failed", key, aggr_table_->GetName());
+        return false;
+    }
+
+    // add delete entry to binlog
+    ::openmldb::api::LogEntry entry;
+    entry.set_term(aggr_replicator_->GetLeaderTerm());
+    entry.set_method_type(::openmldb::api::MethodType::kDelete);
+    ::openmldb::api::Dimension* dimension = entry.add_dimensions();
+    dimension->set_key(key);
+    dimension->set_idx(aggr_index_pos_);
+    ok = aggr_replicator_->AppendEntry(entry);
+    if (!ok) {
+        PDLOG(ERROR, "Add Delete entry to binlog failed: key %s, aggr table %s", key, aggr_table_->GetName());
+        return false;
+    }
+    if (FLAGS_binlog_notify_on_put) {
+        aggr_replicator_->Notify();
+    }
+
+    return true;
+}
+
 bool Aggregator::FlushAll() {
     // TODO(nauta): optimize the flush process
     std::unique_lock<std::mutex> lock(mu_);
@@ -250,15 +283,17 @@ bool Aggregator::Init(std::shared_ptr<LogReplicator> base_replicator) {
     status_.store(AggrStat::kRecovering, std::memory_order_relaxed);
     auto log_parts = base_replicator->GetLogPart();
 
-    // TODO(nauta): support base table that existing data to init aggregator when deploy
-    if (aggr_table_->GetRecordCnt() == 0 && log_parts->IsEmpty()) {
+    auto it = aggr_table_->NewTraverseIterator(0);
+    it->SeekToFirst();
+    uint64_t recovery_offset = 0;
+    uint64_t aggr_latest_offset = 0;
+
+    bool aggr_empty = !it->Valid();
+    if (aggr_empty && log_parts->IsEmpty()) {
+        PDLOG(WARNING, "aggregator recovery skipped");
         status_.store(AggrStat::kInited, std::memory_order_relaxed);
         return true;
     }
-    auto it = aggr_table_->NewTraverseIterator(0);
-    it->SeekToFirst();
-    uint64_t recovery_offset = UINT64_MAX;
-    uint64_t aggr_latest_offset = 0;
     while (it->Valid()) {
         auto data_ptr = reinterpret_cast<const int8_t*>(it->GetValue().data());
         std::string pk, filter_key;
@@ -288,12 +323,15 @@ bool Aggregator::Init(std::shared_ptr<LogReplicator> base_replicator) {
         }
         it->NextPK();
     }
-    if (aggr_table_->GetRecordCnt() == 0) {
-        recovery_offset = 0;
-    }
 
+    // TODO(zhanghaohit): support the cases where there is already data in the base table before deploy
+    // for now, only recover the data of latest binlog file
     ::openmldb::log::LogReader log_reader(log_parts, base_replicator->GetLogPath(), false);
-    log_reader.SetOffset(recovery_offset);
+    if (!log_reader.SetOffset(recovery_offset)) {
+        PDLOG(WARNING, "create log_reader with smaller recovery_offset=%lu", recovery_offset);
+        recovery_offset = log_reader.GetMinOffset();
+        log_reader.SetOffset(recovery_offset);
+    }
     ::openmldb::api::LogEntry entry;
     uint64_t cur_offset = recovery_offset;
     std::string buffer;
@@ -332,16 +370,14 @@ bool Aggregator::Init(std::shared_ptr<LogReplicator> base_replicator) {
         if (cur_offset >= entry.log_index()) {
             continue;
         }
-
-        // TODO(nauta): When the base table key is deleted, the pre-aggr table needs to be deleted at the same time.
-        if (entry.has_method_type() && entry.method_type() == ::openmldb::api::MethodType::kDelete) {
-            PDLOG(WARNING, "unsupport delete method for pre-aggr table");
-            continue;
-        }
         for (int i = 0; i < entry.dimensions_size(); i++) {
             const auto& dimension = entry.dimensions(i);
             if (dimension.idx() == index_pos_) {
-                Update(dimension.key(), entry.value(), entry.log_index(), true);
+                if (entry.has_method_type() && entry.method_type() == ::openmldb::api::MethodType::kDelete) {
+                    Delete(dimension.key());
+                } else {
+                    Update(dimension.key(), entry.value(), entry.log_index(), true);
+                }
                 break;
             }
         }
@@ -424,8 +460,11 @@ bool Aggregator::FlushAggrBuffer(const std::string& key, const std::string& filt
     }
 
     int64_t time = ::baidu::common::timer::get_micros() / 1000;
-    dimensions_.Mutable(0)->set_key(key);
-    bool ok = aggr_table_->Put(time, encoded_row, dimensions_);
+    Dimensions dimensions;
+    auto dimension = dimensions.Add();
+    dimension->set_idx(aggr_index_pos_);
+    dimension->set_key(key);
+    bool ok = aggr_table_->Put(time, encoded_row, dimensions);
     if (!ok) {
         PDLOG(ERROR, "Aggregator put failed");
         return false;
@@ -435,7 +474,7 @@ bool Aggregator::FlushAggrBuffer(const std::string& key, const std::string& filt
     entry.set_ts(time);
     entry.set_value(encoded_row);
     entry.set_term(aggr_replicator_->GetLeaderTerm());
-    entry.mutable_dimensions()->CopyFrom(dimensions_);
+    entry.mutable_dimensions()->CopyFrom(dimensions);
     aggr_replicator_->AppendEntry(entry);
     if (FLAGS_binlog_notify_on_put) {
         aggr_replicator_->Notify();
@@ -490,7 +529,7 @@ bool Aggregator::UpdateFlushedBuffer(const std::string& key, const std::string& 
             return false;
         }
         tmp_buffer.aggr_cnt_ += 1;
-        tmp_buffer.binlog_offset_ = offset;
+        tmp_buffer.binlog_offset_ = std::max(tmp_buffer.binlog_offset_, offset);
         break;
     }
 

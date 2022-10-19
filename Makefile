@@ -84,7 +84,7 @@ endif
 TEST_TARGET ?=
 TEST_LEVEL ?=
 
-.PHONY: all coverage coverage-cpp coverage-java build test configure clean thirdparty-fast thirdparty openmldb-clean thirdparty-configure thirdparty-clean thirdpartybuild-clean thirdpartysrc-clean
+.PHONY: all coverage coverage-cpp coverage-java build test configure clean thirdparty-fast udf_doc_gen thirdparty openmldb-clean thirdparty-configure thirdparty-clean thirdpartybuild-clean thirdpartysrc-clean
 
 all: build
 
@@ -124,6 +124,10 @@ configure: thirdparty-fast
 openmldb-clean:
 	rm -rf "$(OPENMLDB_BUILD_DIR)"
 	@cd java && ./mvnw clean
+
+udf_doc_gen:
+	$(MAKE) build OPENMLDB_BUILD_TARGET=export_udf_info
+	$(MAKE) -C ./hybridse/tools/documentation/udf_doxygen
 
 THIRD_PARTY_BUILD_DIR ?= $(MAKEFILE_DIR)/.deps
 THIRD_PARTY_SRC_DIR ?= $(MAKEFILE_DIR)/thirdsrc

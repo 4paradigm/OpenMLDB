@@ -1054,7 +1054,7 @@ SqlNode *NodeManager::MakePartitionNumNode(int num) {
     return RegisterNode(node_ptr);
 }
 
-SqlNode *NodeManager::MakeDistributionsNode(SqlNodeList *distribution_list) {
+SqlNode *NodeManager::MakeDistributionsNode(const NodePointVector& distribution_list) {
     DistributionsNode *index_ptr = new DistributionsNode(distribution_list);
     return RegisterNode(index_ptr);
 }

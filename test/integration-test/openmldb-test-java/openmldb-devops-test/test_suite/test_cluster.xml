@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!DOCTYPE suite SYSTEM "http://testng.org/testng-1.0.dtd">
+<suite name="test-devops" parallel="false" thread-count="2">
+    <test name="test-cluster">
+        <parameter name="env" value="cluster"/>
+        <parameter name="version" value="0.6.0"/>
+        <classes>
+            <class name="com._4paradigm.openmldb.devops_test.high_availability.TestCluster">
+                <methods>
+                    <include name="testMoreReplica" />
+                </methods>
+            </class>
+
+        </classes>
+    </test>
+</suite>

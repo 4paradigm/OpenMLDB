@@ -189,17 +189,19 @@ cases:
               +-node[kDistributions]
                 +-distribution_list[list]:
                   +-0:
-                  |  +-node[kPartitionMeta]
-                  |    +-endpoint: leader1
-                  |    +-role_type: leader
-                  +-1:
-                  |  +-node[kPartitionMeta]
-                  |    +-endpoint: fo1
-                  |    +-role_type: follower
-                  +-2:
-                    +-node[kPartitionMeta]
-                      +-endpoint: fo2
-                      +-role_type: follower
+                    +-list[list]:
+                      +-0:
+                      |  +-node[kPartitionMeta]
+                      |    +-endpoint: leader1
+                      |    +-role_type: leader
+                      +-1:
+                      |  +-node[kPartitionMeta]
+                      |    +-endpoint: fo1
+                      |    +-role_type: follower
+                      +-2:
+                        +-node[kPartitionMeta]
+                          +-endpoint: fo2
+                          +-role_type: follower
   - id: 14
     desc: Create table statement (typical 2)
     sql: |
@@ -242,17 +244,19 @@ cases:
               +-node[kDistributions]
                 +-distribution_list[list]:
                   +-0:
-                  |  +-node[kPartitionMeta]
-                  |    +-endpoint: leader1
-                  |    +-role_type: leader
-                  +-1:
-                  |  +-node[kPartitionMeta]
-                  |    +-endpoint: fo1
-                  |    +-role_type: follower
-                  +-2:
-                    +-node[kPartitionMeta]
-                      +-endpoint: fo2
-                      +-role_type: follower
+                    +-list[list]:
+                      +-0:
+                      |  +-node[kPartitionMeta]
+                      |    +-endpoint: leader1
+                      |    +-role_type: leader
+                      +-1:
+                      |  +-node[kPartitionMeta]
+                      |    +-endpoint: fo1
+                      |    +-role_type: follower
+                      +-2:
+                        +-node[kPartitionMeta]
+                          +-endpoint: fo2
+                          +-role_type: follower
 
   - id: 15
     desc: Create table statement (typical 3)
@@ -296,17 +300,19 @@ cases:
               +-node[kDistributions]
                 +-distribution_list[list]:
                   +-0:
-                  |  +-node[kPartitionMeta]
-                  |    +-endpoint: leader1
-                  |    +-role_type: leader
-                  +-1:
-                  |  +-node[kPartitionMeta]
-                  |    +-endpoint: fo1
-                  |    +-role_type: follower
-                  +-2:
-                    +-node[kPartitionMeta]
-                      +-endpoint: fo2
-                      +-role_type: follower
+                    +-list[list]:
+                      +-0:
+                      |  +-node[kPartitionMeta]
+                      |    +-endpoint: leader1
+                      |    +-role_type: leader
+                      +-1:
+                      |  +-node[kPartitionMeta]
+                      |    +-endpoint: fo1
+                      |    +-role_type: follower
+                      +-2:
+                        +-node[kPartitionMeta]
+                          +-endpoint: fo2
+                          +-role_type: follower
 
   - id: 16
     desc: empty create table statement
@@ -915,3 +921,73 @@ cases:
             +-0:
               +-node[kStorageMode]
                 +-storage_mode: hdd
+
+  - id: 31
+    desc: Create table statement (typical 4)
+    sql: |
+      create table if not exists t3 (a int32, b timestamp, index(key=a, ignored_key='seb', ts=b, ttl=1800,
+      ttl_type=absorlat, version=a ) ) options (replicanum = 4, partitionnum = 5, ignored_option = 'abc',
+      distribution = [ ('leader1', ['fo1', 'fo2']), ('leader2', ['fo1', 'fo2'])])
+    expect:
+      node_tree_str: |
+        +-node[CREATE]
+          +-table: t3
+          +-IF NOT EXIST: 1
+          +-column_desc_list[list]:
+          |  +-0:
+          |  |  +-node[kColumnDesc]
+          |  |    +-column_name: a
+          |  |    +-column_type: int32
+          |  |    +-NOT NULL: 0
+          |  +-1:
+          |  |  +-node[kColumnDesc]
+          |  |    +-column_name: b
+          |  |    +-column_type: timestamp
+          |  |    +-NOT NULL: 0
+          |  +-2:
+          |    +-node[kColumnIndex]
+          |      +-keys: [a]
+          |      +-ts_col: b
+          |      +-abs_ttl: -2
+          |      +-lat_ttl: 1800
+          |      +-ttl_type: absorlat
+          |      +-version_column: a
+          |      +-version_count: 1
+          +-table_option_list[list]:
+            +-0:
+            |  +-node[kReplicaNum]
+            |    +-replica_num: 4
+            +-1:
+            |  +-node[kPartitionNum]
+            |    +-partition_num: 5
+            +-2:
+              +-node[kDistributions]
+                +-distribution_list[list]:
+                  +-0:
+                  |  +-list[list]:
+                  |    +-0:
+                  |    |  +-node[kPartitionMeta]
+                  |    |    +-endpoint: leader1
+                  |    |    +-role_type: leader
+                  |    +-1:
+                  |    |  +-node[kPartitionMeta]
+                  |    |    +-endpoint: fo1
+                  |    |    +-role_type: follower
+                  |    +-2:
+                  |      +-node[kPartitionMeta]
+                  |        +-endpoint: fo2
+                  |        +-role_type: follower
+                  +-1:
+                    +-list[list]:
+                      +-0:
+                      |  +-node[kPartitionMeta]
+                      |    +-endpoint: leader2
+                      |    +-role_type: leader
+                      +-1:
+                      |  +-node[kPartitionMeta]
+                      |    +-endpoint: fo1
+                      |    +-role_type: follower
+                      +-2:
+                        +-node[kPartitionMeta]
+                          +-endpoint: fo2
+                          +-role_type: follower

@@ -155,7 +155,8 @@ class ComponentStatusCollector(Collector, SDKConnectable):
     def _get_mem(self, url: str):
         memory_by_application = 0
         memory_acutal_used = 0
-        with request.urlopen(url) as resp:
+        # http request with 1s timeout
+        with request.urlopen(url, timeout=1) as resp:
             for i in resp:
                 line = i.decode().strip()
                 if line.rfind("use by application") > 0:

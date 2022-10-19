@@ -40,7 +40,15 @@ class SDKTableHandler : public ::hybridse::vm::TableHandler {
 
     bool Init();
 
-    const ::hybridse::vm::Schema* GetSchema() override { return &schema_; }
+    const ::hybridse::vm::Schema* GetSchema() override { return schema_map_.rbegin()->second.get(); }
+
+    const ::hybridse::vm::Schema* GetSchema(int version) {
+        auto iter = schema_map_.find(version);
+        if (iter == schema_map_.end()) {
+            return nullptr;
+        }
+        return iter->second.get();
+    }
 
     const std::string& GetName() override { return name_; }
 
@@ -90,7 +98,7 @@ class SDKTableHandler : public ::hybridse::vm::TableHandler {
 
  private:
     ::openmldb::nameserver::TableInfo meta_;
-    ::hybridse::vm::Schema schema_;
+    std::map<int, std::shared_ptr<::hybridse::vm::Schema>> schema_map_;
     std::string name_;
     std::string db_;
     ::hybridse::vm::Types types_;

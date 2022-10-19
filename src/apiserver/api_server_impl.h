@@ -28,6 +28,7 @@
 #include "json2pb/rapidjson.h"  // rapidjson's DOM-style API
 #include "proto/api_server.pb.h"
 #include "sdk/sql_cluster_router.h"
+#include "sdk/sql_request_row.h"
 
 namespace openmldb {
 namespace apiserver {
@@ -84,16 +85,12 @@ class APIServerImpl : public APIServer {
 struct QueryReq {
     std::string mode;
     std::string sql;
+    std::shared_ptr<openmldb::sdk::SQLRequestRow> parameter;
 };
 
-template <typename Archiver>
-Archiver& operator&(Archiver& ar, QueryReq& s) {  // NOLINT
-    ar.StartObject();
-    // mode is not optional
-    ar.Member("mode") & s.mode;
-    ar.Member("sql") & s.sql;
-    return ar.EndObject();
-}
+JsonReader& operator&(JsonReader& ar, QueryReq& s);  // NOLINT
+
+JsonReader& operator&(JsonReader& ar, std::shared_ptr<openmldb::sdk::SQLRequestRow>& parameter);  // NOLINT
 
 struct ExecSPResp {
     ExecSPResp() = default;
@@ -139,7 +136,7 @@ struct QueryResp {
     std::shared_ptr<hybridse::sdk::ResultSet> rs;
 };
 
-JsonWriter& operator&(JsonWriter& ar, QueryResp& s); // NOLINT
+JsonWriter& operator&(JsonWriter& ar, QueryResp& s);  // NOLINT
 
 }  // namespace apiserver
 }  // namespace openmldb

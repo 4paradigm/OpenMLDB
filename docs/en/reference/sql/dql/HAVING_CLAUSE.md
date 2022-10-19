@@ -15,7 +15,7 @@ HavingClause
 SELECT select_expr [,select_expr...] FROM ... GROUP BY ... HAVING having_condition
 ```
 
-## Boundary Description
+## Description
 For the standalone version, `HAVING` is supported in all conditions. For the cluster version, the execution modes, which support this clause, are shown below
 
 | `SELECT` Statement Elements                                | Offline Mode | Online Preview Mode | Online Request Mode | Note                                                                                                                                                               |

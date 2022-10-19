@@ -1,0 +1,778 @@
+# Copyright 2021 4Paradigm
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+db: test_zw
+debugs: []
+version: 0.5.0
+sqlDialect: ["HybridSQL"]
+cases:
+  - id: 0
+    desc: "string_比较运算_各种类型"
+    inputs:
+      -
+        columns : ["id bigint","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:id:c7"]
+        rows:
+          - [1,"10",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+      -
+        columns : ["id bigint","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:id:c7"]
+        rows:
+          - [1,"bb",10,20,30,11.1,12.1,1590738989001,"2020-05-02",false]
+    dataProvider:
+      - [">",">=","<","<=","<>","!=","=","=="]
+    sql: select {0}.c1 d[0] {1}.c1 as b1,{0}.c1 d[0] {1}.c2 as b2,{0}.c1 d[0] {1}.c3 as b3,{0}.c1 d[0] {1}.c4 as b4,{0}.c1 d[0] {1}.c5 as b5,{0}.c1 d[0] {1}.c6 as b6,{0}.c1 d[0] {1}.c7 as b7,{0}.c1 d[0] {1}.c8 as b8,{0}.c1 d[0] {1}.c9 as b9 from {0} last join {1} ORDER BY {1}.c7 on {0}.id={1}.id;
+    expect:
+      columns: ["b1 bool","b2 bool","b3 bool","b4 bool","b5 bool","b6 bool", "b7 bool", "b8 bool", "b9 bool"]
+    expectProvider:
+      0:
+        rows:
+          - [false,false,false,false,false,false,false,false,false]
+      1:
+        rows:
+          - [false,true,false,false,false,false,false,false,false]
+      2:
+        rows:
+          - [true,false,true,true,true,true,true,true,true]
+      3:
+        rows:
+          - [true,true,true,true,true,true,true,true,true]
+      4:
+        rows:
+          - [true,false,true,true,true,true,true,true,true]
+      5:
+        rows:
+          - [true,false,true,true,true,true,true,true,true]
+      6:
+        rows:
+          - [false,true,false,false,false,false,false,false,false]
+      7:
+        rows:
+          - [false,true,false,false,false,false,false,false,false]
+  - id: 1
+    desc: "整型_比较运算_各种类型_正确"
+    inputs:
+      -
+        columns : ["id bigint","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:id:c7"]
+        rows:
+          - [1,"aa",10,10,10,10.0,10.0,1590738989000,"2020-05-01",false]
+      -
+        columns : ["id bigint","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:id:c7"]
+        rows:
+          - [1,"bb",10,20,30,11.1,12.1,1590738989001,"2020-05-02",true]
+    dataProvider:
+      - [">",">=","<","<=","<>","!=","=","=="]
+      - ["{0}.c2","{0}.c3","{0}.c4","{0}.c5","{0}.c6"]
+    sql: select d[1]d[0]{1}.c1 as b1,d[1]d[0]{1}.c2 as b2,d[1]d[0]{1}.c3 as b3,d[1]d[0]{1}.c4 as b4,d[1]d[0]{1}.c5 as b5,d[1]d[0]{1}.c6 as b6,d[1]d[0]{1}.c9 as b9 from {0} last join {1} ORDER BY {1}.c7 on {0}.id={1}.id;
+    expect:
+      columns: ["b1 bool","b2 bool","b3 bool","b4 bool","b5 bool","b6 bool","b9 bool"]
+    expectProvider:
+      0:
+        rows:
+          - [false,false,false,false,false,false,true]
+      1:
+        rows:
+          - [false,true,false,false,false,false,true]
+      2:
+        rows:
+          - [true,false,true,true,true,true,false]
+      3:
+        rows:
+          - [true,true,true,true,true,true,false]
+      4:
+        rows:
+          - [true,false,true,true,true,true,true]
+      5:
+        rows:
+          - [true,false,true,true,true,true,true]
+      6:
+        rows:
+          - [false,true,false,false,false,false,false]
+      7:
+        rows:
+          - [false,true,false,false,false,false,false]
+  - id: 2
+    desc: "整型_比较运算_各种类型_错误"
+    level: 5
+    inputs:
+      -
+        columns : ["id bigint","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:id:c7"]
+        rows:
+          - [1,"aa",10,10,10,10.0,10.0,1590738989000,"2020-05-01",false]
+      -
+        columns : ["id bigint","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:id:c7"]
+        rows:
+          - [1,"bb",10,20,30,11.1,12.1,1590738989001,"2020-05-02",true]
+    dataProvider:
+      - [">",">=","<","<=","<>","!=","=","=="]
+      - ["{0}.c2","{0}.c3","{0}.c4","{0}.c5","{0}.c6","{0}.c9"]
+      - ["{1}.c7","{1}.c8"]
+    sql: select d[1]d[0]d[2] as b1 from {0} last join {1} ORDER BY {1}.c7 on {0}.id={1}.id;
+    expect:
+      success: false
+  - id: 3
+    desc: "时间类型_比较运算_各种类型_正确"
+    inputs:
+      -
+        columns : ["id bigint","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:id:c7"]
+        rows:
+          - [1,"10",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+          - [2,"10",1,2,3,1.1,2.1,1590738989001,"2020-05-02",true]
+      -
+        columns : ["id bigint","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:id:c7"]
+        rows:
+          - [1,"2020-05-29 15:56:29",10,20,30,11.1,12.1,1590738989001,"2020-05-02",false]
+          - [2,"2020-05-02",10,20,30,11.1,12.1,1590738989001,"2020-05-02",false]
+    dataProvider:
+      - [">",">=","<","<=","<>","!=","=","=="]
+    sql: select {0}.c8 d[0] {1}.c1 as b1,{0}.c8 d[0] {1}.c8 as b2,{0}.c7 d[0] {1}.c1 as b3,{0}.c7 d[0] {1}.c7 as b4 from {0} last join {1} ORDER BY {1}.c7 on {0}.id={1}.id;
+    expect:
+      columns: ["b1 bool","b2 bool","b3 bool","b4 bool"]
+    expectProvider:
+      0:
+        rows:
+          - [false,false,false,false]
+          - [false,false,true,false]
+      1:
+        rows:
+          - [false,false,true,false]
+          - [true,true,true,true]
+      2:
+        rows:
+          - [true,true,false,true]
+          - [false,false,false,false]
+      3:
+        rows:
+          - [true,true,true,true]
+          - [true,true,false,true]
+      4:
+        rows:
+          - [true,true,false,true]
+          - [false,false,true,false]
+      5:
+        rows:
+          - [true,true,false,true]
+          - [false,false,true,false]
+      6:
+        rows:
+          - [false,false,true,false]
+          - [true,true,false,true]
+      7:
+        rows:
+          - [false,false,true,false]
+          - [true,true,false,true]
+  - id: 4
+    desc: "timestamp_比较运算_各种类型_错误"
+    level: 5
+    inputs:
+      -
+        columns : ["id bigint","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:id:c7"]
+        rows:
+          - [1,"aa",10,10,10,10.0,10.0,1590738989000,"2020-05-01",false]
+      -
+        columns : ["id bigint","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:id:c7"]
+        rows:
+          - [1,"bb",10,20,30,11.1,12.1,1590738989001,"2020-05-02",true]
+    dataProvider:
+      - [">",">=","<","<=","<>","!=","=","=="]
+      - ["{1}.c7"]
+      - ["{0}.c2","{0}.c3","{0}.c4","{0}.c5","{0}.c6","{0}.c9","{1}.c8"]
+    sql: select d[1]d[0]d[2] as b1 from {0} last join {1} ORDER BY {1}.c7 on {0}.id={1}.id;
+    expect:
+      success: false
+  - id: 5
+    desc: "date_比较运算_各种类型_错误"
+    level: 5
+    inputs:
+      -
+        columns : ["id bigint","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:id:c7"]
+        rows:
+          - [1,"aa",10,10,10,10.0,10.0,1590738989000,"2020-05-01",false]
+      -
+        columns : ["id bigint","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:id:c7"]
+        rows:
+          - [1,"bb",10,20,30,11.1,12.1,1590738989001,"2020-05-02",true]
+    dataProvider:
+      - [">",">=","<","<=","<>","!=","=","=="]
+      - ["{1}.c8"]
+      - ["{0}.c2","{0}.c3","{0}.c4","{0}.c5","{0}.c6","{0}.c9","{1}.c7"]
+    sql: select d[1]d[0]d[2] as b1 from {0} last join {1} ORDER BY {1}.c7 on {0}.id={1}.id;
+    expect:
+      success: false
+  - id: 6
+    desc: "bool_比较运算_各种类型"
+    inputs:
+      -
+        columns : ["id bigint","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:id:c7"]
+        rows:
+          - [1,"10",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+      -
+        columns : ["id bigint","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool","c10 bool"]
+        indexs: ["index1:id:c7"]
+        rows:
+          - [1,"1",1,20,30,11.1,12.1,1590738989001,"2020-05-02",false,true]
+    dataProvider:
+      - [">",">=","<","<=","<>","!=","=","=="]
+    sql: select {0}.c9 d[0] {1}.c1 as b1,{0}.c9 d[0] {1}.c2 as b2,{0}.c9 d[0] {1}.c3 as b3,{0}.c9 d[0] {1}.c4 as b4,{0}.c9 d[0] {1}.c5 as b5,{0}.c9 d[0] {1}.c6 as b6,{0}.c9 d[0] {1}.c9 as b9,{0}.c9 d[0] {1}.c10 as b10 from {0} last join {1} ORDER BY {1}.c7 on {0}.id={1}.id;
+    expect:
+      columns: ["b1 bool","b2 bool","b3 bool","b4 bool","b5 bool","b6 bool", "b9 bool","b10 bool"]
+    expectProvider:
+      0:
+        rows:
+          - [true,false,false,false,false,false,true,false]
+      1:
+        rows:
+          - [true,true,false,false,false,false,true,true]
+      2:
+        rows:
+          - [false,false,true,true,true,true,false,false]
+      3:
+        rows:
+          - [false,true,true,true,true,true,false,true]
+      4:
+        rows:
+          - [true,false,true,true,true,true,true,false]
+      5:
+        rows:
+          - [true,false,true,true,true,true,true,false]
+      6:
+        rows:
+          - [false,true,false,false,false,false,false,true]
+      7:
+        rows:
+          - [false,true,false,false,false,false,false,true]
+  - id: 7
+    desc: "IS_NULL_各种类型"
+    tags: ["TODO","目前不支持"]
+    inputs:
+      -
+        columns : ["id bigint","ts1 bigint","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:id:ts1"]
+        rows:
+          - [1,1,"10",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+          - [2,2,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL]
+    dataProvider:
+      - ["c1","c2","c3","c4","c5","c6","c7","c8","c9"]
+    sql: select * from {0} where d[0] is null;
+    expect:
+      columns: ["id bigint","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+      rows:
+        - [1,"10",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+  - id: 8
+    desc: "ISNULL()"
+    inputs:
+      -
+        columns : ["id bigint","ts1 bigint","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:id:ts1"]
+        rows:
+          - [1,1,"10",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+          - [2,2,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL]
+    sql: select isnull(c1) as b1,isnull(c2) as b2,isnull(c3) as b3,isnull(c4) as b4,isnull(c5) as b5,isnull(c6) as b6,isnull(c7) as b7,isnull(c8) as b8,isnull(c9) as b9 from {0};
+    expect:
+      order: id
+      columns: ["b1 bool","b2 bool","b3 bool","b4 bool","b5 bool","b6 bool", "b7 bool", "b8 bool", "b9 bool"]
+      rows:
+        - [false,false,false,false,false,false,false,false,false]
+        - [true,true,true,true,true,true,true,true,true]
+  - id: 9
+    desc: 直接和NULL比较返回NULL
+    inputs:
+      - columns: ["c1 int16","c2 int32","c3 bigint",
+                  "c4 float","c5 double", "c6 timestamp", "c7 string",
+                  "nullcol int32", "nulltime timestamp", "nullstr string"]
+        indexs: ["index1:c3:c6"]
+        rows:
+          - [1, 911, 1024, 3.14, 0.99, 1590738989000, "str", NULL, NULL, NULL]
+    sql: select
+      c1 > nullcol as r1, c1 >= nullcol as r2, c1 < nullcol as r3, c1 <= nullcol as r4, c1 = nullcol as r5, c1 != nullcol as r6,
+      c2 > nullcol as r7, c2 >= nullcol as r8, c2 < nullcol as r9, c2 <= nullcol as r10, c2 = nullcol as r11, c2 != nullcol as r12,
+      c3 > nullcol as r13, c3 >= nullcol as r14, c3 < nullcol as r15, c3 <= nullcol as r16, c3 = nullcol as r17, c3 != nullcol as r18,
+      c4 > nullcol as r19, c4 >= nullcol as r20, c4 < nullcol as r21, c4 <= nullcol as r22, c4 = nullcol as r23, c4 != nullcol as r24,
+      c5 > nullcol as r25, c5 >= nullcol as r26, c5 < nullcol as r27, c5 <= nullcol as r28, c5 = nullcol as r29, c5 != nullcol as r30,
+      c6 > nulltime as r31, c6 >= nulltime as r32, c6 < nulltime as r33, c6 <= nulltime as r34, c6 = nulltime as r35, c6 != nulltime as r36,
+      c7 > nullstr as r37, c7 >= nullstr as r38, c7 < nullstr as r39, c7 <= nullstr as r40, c7 = nullstr as r41, c7 != nullstr as r42,
+      nullstr > nullstr as r43, nullstr >= nullstr as r44, nullstr < nullstr as r45,
+      nullstr <= nullstr as r46, nullstr = nullstr as r47, nullstr != nullstr as r48
+      from {0};
+    expect:
+      columns: ["r1 bool", "r2 bool", "r3 bool", "r4 bool", "r5 bool", "r6 bool", "r7 bool", "r8 bool",
+                "r9 bool", "r10 bool", "r11 bool", "r12 bool", "r13 bool", "r14 bool", "r15 bool", "r16 bool",
+                "r17 bool", "r18 bool", "r19 bool", "r20 bool", "r21 bool", "r22 bool", "r23 bool", "r24 bool",
+                "r25 bool", "r26 bool", "r27 bool", "r28 bool", "r29 bool", "r30 bool", "r31 bool", "r32 bool",
+                "r33 bool", "r34 bool", "r35 bool", "r36 bool", "r37 bool", "r38 bool", "r39 bool", "r40 bool",
+                "r41 bool", "r42 bool", "r43 bool", "r44 bool", "r45 bool", "r46 bool", "r47 bool", "r48 bool"]
+      rows:
+        - [NULL, NULL, NULL, NULL, NULL, NULL,
+           NULL, NULL, NULL, NULL, NULL, NULL,
+           NULL, NULL, NULL, NULL, NULL, NULL,
+           NULL, NULL, NULL, NULL, NULL, NULL,
+           NULL, NULL, NULL, NULL, NULL, NULL,
+           NULL, NULL, NULL, NULL, NULL, NULL,
+           NULL, NULL, NULL, NULL, NULL, NULL,
+           NULL, NULL, NULL, NULL, NULL, NULL]
+  - id: 10
+    desc: 直接和Const NULL比较返回NULL
+    inputs:
+      - columns: ["c1 int16","c2 int32","c3 bigint",
+                  "c4 float","c5 double", "c6 timestamp", "c7 string",
+                  "nullcol int32", "nulltime timestamp", "nullstr string"]
+        indexs: ["index1:c3:c6"]
+        rows:
+          - [1, 911, 1024, 3.14, 0.99, 1590738989000, "str", NULL, NULL, NULL]
+    sql: select
+      c1 > NULL as r1, c1 >= NULL as r2, c1 < NULL as r3, c1 <= NULL as r4, c1 = NULL as r5, c1 != NULL as r6,
+      c2 > NULL as r7, c2 >= NULL as r8, c2 < NULL as r9, c2 <= NULL as r10, c2 = NULL as r11, c2 != NULL as r12,
+      c3 > NULL as r13, c3 >= NULL as r14, c3 < NULL as r15, c3 <= NULL as r16, c3 = NULL as r17, c3 != NULL as r18,
+      c4 > NULL as r19, c4 >= NULL as r20, c4 < NULL as r21, c4 <= NULL as r22, c4 = NULL as r23, c4 != NULL as r24,
+      c5 > NULL as r25, c5 >= NULL as r26, c5 < NULL as r27, c5 <= NULL as r28, c5 = NULL as r29, c5 != NULL as r30,
+      c6 > NULL as r31, c6 >= NULL as r32, c6 < NULL as r33, c6 <= NULL as r34, c6 = NULL as r35, c6 != NULL as r36,
+      c7 > NULL as r37, c7 >= NULL as r38, c7 < NULL as r39, c7 <= NULL as r40, c7 = NULL as r41, c7 != NULL as r42,
+      NULL > NULL as r43, NULL >= NULL as r44, NULL < NULL as r45,
+      NULL <= NULL as r46, NULL = NULL as r47, NULL != NULL as r48
+      from {0};
+    expect:
+      columns: ["r1 bool", "r2 bool", "r3 bool", "r4 bool", "r5 bool", "r6 bool", "r7 bool", "r8 bool",
+                "r9 bool", "r10 bool", "r11 bool", "r12 bool", "r13 bool", "r14 bool", "r15 bool", "r16 bool",
+                "r17 bool", "r18 bool", "r19 bool", "r20 bool", "r21 bool", "r22 bool", "r23 bool", "r24 bool",
+                "r25 bool", "r26 bool", "r27 bool", "r28 bool", "r29 bool", "r30 bool", "r31 bool", "r32 bool",
+                "r33 bool", "r34 bool", "r35 bool", "r36 bool", "r37 bool", "r38 bool", "r39 bool", "r40 bool",
+                "r41 bool", "r42 bool", "r43 bool", "r44 bool", "r45 bool", "r46 bool", "r47 bool", "r48 bool"]
+      rows:
+        - [NULL, NULL, NULL, NULL, NULL, NULL,
+           NULL, NULL, NULL, NULL, NULL, NULL,
+           NULL, NULL, NULL, NULL, NULL, NULL,
+           NULL, NULL, NULL, NULL, NULL, NULL,
+           NULL, NULL, NULL, NULL, NULL, NULL,
+           NULL, NULL, NULL, NULL, NULL, NULL,
+           NULL, NULL, NULL, NULL, NULL, NULL,
+           NULL, NULL, NULL, NULL, NULL, NULL]
+
+  - id: between_predicate_1
+    desc: between predicate, numberic between
+    inputs:
+      - columns: [ "id bigint", "name string", "code string", "ctime bigint", "cdate date" ]
+        indexs: [ "index1:id:ctime" ]
+        rows:
+          - [1, Lucy,  A, 1609459201000, 2021-1-1]
+          - [2, Zoey,  B, 1609545841000, 2021-1-2]
+      - columns: [ "id bigint", "std_ts bigint", "score int" ]
+        indexs: ["index1:id:std_ts"]
+        rows:
+          - [1, 1609459201000, 10]
+          - [2, 1609459202000, 100]
+          - [3, 1609459203000, 20]
+          - [4, 1609459204000, 30]
+          - [5, 1609459205000, 50]
+    sql: |
+      SELECT {0}.id, {0}.name, {1}.score FROM {0} LAST JOIN {1} ORDER BY {1}.std_ts ON {0}.id = {1}.id AND {0}.id BETWEEN 1 AND 4;
+    expect:
+      columns: ["id bigint", "name string", "score int"]
+      rows:
+        - [1, Lucy, 10]
+        - [2, Zoey, 100]
+  - id: between_predicate_2
+    desc: between predicate, string between
+    inputs:
+      - columns: [ "id bigint", "name string", "code string", "ctime timestamp", "cdate date" ]
+        indexs: [ "index1:id:ctime" ]
+        rows:
+          - [1, Lucy,  ABC, 1609459201000, 2021-1-1]
+          - [2, Zoey,  BBC, 1609545841000, 2021-1-2]
+      - columns: [ "id bigint", "std_ts bigint", "score int" ]
+        indexs: ["index1:id:std_ts"]
+        rows:
+          - [1, 1609459201000, 10]
+          - [2, 1609459202000, 100]
+          - [3, 1609459203000, 20]
+          - [4, 1609459204000, 30]
+          - [5, 1609459205000, 50]
+    sql: |
+      SELECT {0}.id, {0}.name, {0}.code, {1}.score FROM {0} LAST JOIN {1} ORDER BY {1}.std_ts ON {0}.id = {1}.id AND {0}.code NOT BETWEEN 'BBB' AND 'CCC';
+    expect:
+      columns: ["id bigint", "name string", "code string", "score int"]
+      rows:
+        - [1, Lucy, ABC, 10]
+        - [2, Zoey, BBC, NULL]
+  - id: between_predicate_3
+    desc: between predicate, timestamp between
+    inputs:
+      - columns: [ "id bigint", "name string", "code string", "ctime timestamp", "cdate date" ]
+        indexs: [ "index1:id:ctime" ]
+        rows:
+          - [1, Lucy,  A, 1609459201000, 2021-1-1]
+          - [2, Zoey,  B, 1633265330000, 2021-10-3]
+      - columns: [ "id bigint", "std_ts bigint", "score int" ]
+        indexs: ["index1:id:std_ts"]
+        rows:
+          - [1, 1609459201000, 10]
+          - [2, 1609459202000, 100]
+          - [3, 1609459203000, 20]
+          - [4, 1609459204000, 30]
+          - [5, 1609459205000, 50]
+    sql: |
+      SELECT {0}.id, {0}.name, {1}.score FROM {0} LAST JOIN {1} ORDER BY {1}.std_ts
+      ON {0}.id = {1}.id AND {0}.ctime BETWEEN timestamp("2021-01-01") AND timestamp("2021-01-30");
+    expect:
+      columns: ["id bigint", "name string", "score int"]
+      rows:
+        - [1, Lucy, 10]
+        - [2, Zoey, NULL]
+  - id: between_predicate_4
+    desc: between predicate with aggregation function
+    sql: |
+      SELECT id, col1, std_ts,
+      sum(id) OVER w1 BETWEEN 2 AND 6 as w1_id
+      FROM {0}
+      WINDOW w1 AS (PARTITION BY col1 ORDER BY std_ts ROWS BETWEEN 1 PRECEDING AND CURRENT ROW);
+    inputs:
+      - columns: ["id bigint", "col1 int32", "std_ts timestamp"]
+        indexs: ["index1:id:std_ts", "index2:col1:std_ts"]
+        rows:
+          - [1, 1, 1590115420000]
+          - [3, 1, 1590115430000]
+          - [5, 1, 1590115440000]
+          - [7, 1, 1590115450000]
+          - [9, 1, 1590115460000]
+    expect:
+      columns: ["id bigint", "col1 int32", "std_ts timestamp", "w1_id bool"]
+      rows:
+          - [1, 1, 1590115420000, false]
+          - [3, 1, 1590115430000, true]
+          - [5, 1, 1590115440000, false]
+          - [7, 1, 1590115450000, false]
+          - [9, 1, 1590115460000, false]
+  - id: in_predicate_normal
+    desc: normal in predicates
+    mode: hybridse-only
+    sql: |
+      SELECT {0}.id, {0}.name, {0}.code, {1}.score FROM {0} LAST JOIN {1} ORDER BY {1}.std_ts
+      ON {0}.id = {1}.id AND {0}.code d[0] ('A', 'B');
+    inputs:
+      - columns: [ "id bigint", "name string", "code string", "ctime timestamp", "cdate date" ]
+        indexs: [ "index1:id:ctime" ]
+        rows:
+          - [1, Lucy,  A, 1609459201000, 2021-1-1]
+          - [2, Zoey,  B, 1633265330000, 2021-10-3]
+      - columns: [ "id bigint", "std_ts bigint", "score int" ]
+        indexs: ["index1:id:std_ts"]
+        rows:
+          - [1, 1609459201000, 10]
+          - [2, 1609459202000, 100]
+          - [3, 1609459203000, 20]
+          - [4, 1609459204000, 30]
+          - [5, 1609459205000, 50]
+    dataProvider:
+      - ["in", "not in"]
+    expect:
+      columns: ["id:bigint", "name:string", "code:string", "score:int"]
+    expectProvider:
+      0:
+        rows:
+          - [ 1, Lucy, A, 10 ]
+          - [ 2, Zoey, B, 100 ]
+      1:
+        rows:
+          - [ 1, Lucy, A, NULL ]
+          - [ 2, Zoey, B, NULL ]
+  - id: in_predicate_type_conversion
+    desc: type conversion occurred between lhs and in_list
+    mode: hybridse-only
+    sql: |
+      SELECT {0}.id, {0}.name, {0}.code, {1}.score FROM {0} LAST JOIN {1} ORDER BY {1}.std_ts
+      ON {0}.id = {1}.id AND {0}.id d[0] ('1', 3.0);
+    inputs:
+      - columns: [ "id bigint", "name string", "code string", "ctime timestamp", "cdate date" ]
+        indexs: [ "index1:id:ctime" ]
+        rows:
+          - [1, Lucy,  A, 1609459201000, 2021-1-1]
+          - [2, Zoey,  B, 1633265330000, 2021-10-3]
+      - columns: [ "id bigint", "std_ts bigint", "score int" ]
+        indexs: ["index1:id:std_ts"]
+        rows:
+          - [1, 1609459201000, 10]
+          - [2, 1609459202000, 100]
+          - [3, 1609459203000, 20]
+          - [4, 1609459204000, 30]
+          - [5, 1609459205000, 50]
+    dataProvider:
+      - ["in", "not in"]
+    expect:
+      columns: ["id:bigint", "name:string", "code:string", "score:int"]
+    expectProvider:
+      0:
+        rows:
+          - [1, Lucy, A, 10]
+          - [2, Zoey, B, NULL]
+      1:
+        rows:
+          - [1, Lucy, A, NULL]
+          - [2, Zoey, B, 100]
+  - id: in_predicate_subexpr
+    desc: sub expr in in list
+    mode: hybridse-only
+    sql: |
+      SELECT {0}.id, {0}.name, {0}.code, {1}.score FROM {0} LAST JOIN {1} ORDER BY {1}.std_ts
+      ON {0}.id = {1}.id AND {0}.id d[0] ( {1}.score / 10, {1}.score );
+    inputs:
+      - columns: [ "id bigint", "name string", "code string", "ctime timestamp", "cdate date" ]
+        indexs: [ "index1:id:ctime" ]
+        rows:
+          - [1, Lucy,  A, 1609459201000, 2021-1-1]
+          - [2, Zoey,  B, 1633265330000, 2021-10-3]
+      - columns: [ "id bigint", "std_ts bigint", "score int" ]
+        indexs: ["index1:id:std_ts"]
+        rows:
+          - [1, 1609459201000, 10]
+          - [2, 1609459202000, 100]
+          - [3, 1609459203000, 20]
+          - [4, 1609459204000, 30]
+          - [5, 1609459205000, 50]
+    dataProvider:
+      - ["in", "not in"]
+    expect:
+      columns: ["id:bigint", "name:string", "code:string", "score:int"]
+    expectProvider:
+      0:
+        rows:
+          - [1, Lucy, A, 10]
+          - [2, Zoey, B, NULL]
+      1:
+        rows:
+          - [1, Lucy, A, NULL]
+          - [2, Zoey, B, 100]
+  - id: in_predicate_with_window
+    desc: test_expresion refers window
+    mode: hybridse-only
+    sql: |
+      SELECT id, col1, std_ts,
+      sum(id) OVER w1 d[0] ( 4, 8, 12 ) as w1_id
+      FROM {0}
+      WINDOW w1 AS (PARTITION BY col1 ORDER BY std_ts ROWS BETWEEN 1 PRECEDING AND CURRENT ROW);
+    dataProvider:
+      - ["in", "not in"]
+    inputs:
+      - columns: ["id bigint", "col1 int32", "std_ts timestamp"]
+        indexs: ["index1:id:std_ts", "index2:col1:std_ts"]
+        rows:
+          - [1, 1, 1590115420000]
+          - [3, 1, 1590115430000]
+          - [5, 1, 1590115440000]
+          - [7, 1, 1590115450000]
+          - [9, 1, 1590115460000]
+    expect:
+      columns: ["id bigint", "col1 int32", "std_ts timestamp", "w1_id bool"]
+    expectProvider:
+      0:
+        rows:
+          - [1, 1, 1590115420000, false]
+          - [3, 1, 1590115430000, true]
+          - [5, 1, 1590115440000, true]
+          - [7, 1, 1590115450000, true]
+          - [9, 1, 1590115460000, false]
+      1:
+        rows:
+          - [1, 1, 1590115420000, true]
+          - [3, 1, 1590115430000, false]
+          - [5, 1, 1590115440000, false]
+          - [7, 1, 1590115450000, false]
+          - [9, 1, 1590115460000, true]
+#  - id: like_predicate_1
+#    desc: like predicate without escape
+#    inputs:
+#      - columns: ["id int", "std_ts timestamp"]
+#        indexs: ["index1:id:std_ts"]
+#        rows:
+#          - [1, 1590115420000 ]
+#          - [2, 1590115430000 ]
+#          - [3, 1590115440000 ]
+#          - [4, 1590115450000 ]
+#          - [5, 1590115460000 ]
+#          - [6, 1590115470000 ]
+#      - columns: ["id int", "ts timestamp", "col2 string"]
+#        indexs: ["idx:id:ts"]
+#        rows:
+#          - [1, 1590115420000, John]
+#          - [2, 1590115430000, Mary]
+#          - [3, 1590115440000, mike]
+#          - [4, 1590115450000, Dan]
+#          - [5, 1590115460000, Evan_W]
+#          - [6, 1590115470000, M]
+#    dataProvider:
+#      - ["LIKE", "NOT LIKE", "ILIKE", "NOT ILIKE"] # LIKE / NOT LIKE
+#      - ["m%", "M_ry" ] # match pattern
+#    sql: |
+#      select {0}.id, col2 from {0} last join {1} ON {0}.id = {1}.id AND col2 d[0] 'd[1]';
+#    expect:
+#      columns: ["id int", "col2 string"]
+#      order: id
+#    expectProvider:
+#      0:
+#        0:
+#          rows:
+#            - [1, null]
+#            - [2, null]
+#            - [3, mike]
+#            - [4, null]
+#            - [5, null]
+#            - [6, null]
+#        1:
+#          rows:
+#            - [1, null]
+#            - [2, Mary]
+#            - [3, null]
+#            - [4, null]
+#            - [5, null]
+#            - [6, null]
+#      1:
+#        0:
+#          rows:
+#            - [1, John]
+#            - [2, Mary]
+#            - [3, null]
+#            - [4, Dan]
+#            - [5, Evan_W]
+#            - [6, M]
+#        1:
+#          rows:
+#            - [1, John]
+#            - [2, null]
+#            - [3, mike]
+#            - [4, Dan]
+#            - [5, Evan_W]
+#            - [6, M]
+#      2:
+#        0:
+#          rows:
+#            - [1, null]
+#            - [2, Mary]
+#            - [3, mike]
+#            - [4, null]
+#            - [5, null]
+#            - [6, M]
+#        1:
+#          rows:
+#            - [1, null]
+#            - [2, Mary]
+#            - [3, null]
+#            - [4, null]
+#            - [5, null]
+#            - [6, null]
+#      3:
+#        0:
+#          rows:
+#            - [1, John]
+#            - [2, null]
+#            - [3, null]
+#            - [4, Dan]
+#            - [5, Evan_W]
+#            - [6, null]
+#        1:
+#          rows:
+#            - [1, John]
+#            - [2, null]
+#            - [3, mike]
+#            - [4, Dan]
+#            - [5, Evan_W]
+#            - [6, M]
+#  - id: like_predicate_2
+#    desc: like predicate with escape
+#    inputs:
+#      - columns: ["id int", "std_ts timestamp"]
+#        indexs: ["index1:id:std_ts"]
+#        rows:
+#          - [1, 1590115420000 ]
+#          - [2, 1590115430000 ]
+#          - [3, 1590115440000 ]
+#          - [4, 1590115450000 ]
+#          - [5, 1590115460000 ]
+#          - [6, 1590115470000 ]
+#      - columns: ["id int", "ts timestamp", "col2 string"]
+#        indexs: ["idx:id:ts"]
+#        rows:
+#          - [1, 1590115420000, a*_b]
+#          - [2, 1590115430000, a*mb]
+#          - [3, 1590115440000, "%a_%b"]
+#          - [4, 1590115450000, "Ta_sub"]
+#          - [5, 1590115460000, "lamrb"]
+#          - [6, 1590115470000, "%a*_%b"]
+#    dataProvider:
+#      - ["LIKE", "NOT ILIKE"]
+#      - ["%", "*", ""] # escape with % or disable
+#    sql: |
+#      select {0}.id, col2 from {0} last join {1} ON {0}.id = {1}.id AND col2 d[0] '%a*_%b' ESCAPE 'd[1]';
+#    expect:
+#      columns: ["id int", "col2 string"]
+#      order: id
+#    expectProvider:
+#      0:
+#        0:
+#          rows:
+#          - [1, a*_b]
+#          - [2, a*mb]
+#          - [3, null]
+#          - [4, null]
+#          - [5, null]
+#          - [6, null]
+#        1:
+#          rows:
+#          - [1, null]
+#          - [2, null]
+#          - [3, "%a_%b"]
+#          - [4, Ta_sub]
+#          - [5, null]
+#          - [6, null]
+#        2:
+#          rows:
+#          - [1, a*_b]
+#          - [2, a*mb]
+#          - [3, null]
+#          - [4, null]
+#          - [5, null]
+#          - [6, "%a*_%b"]
+#      1:
+#        0:
+#          rows:
+#          - [1, null]
+#          - [2, null]
+#          - [3, "%a_%b"]
+#          - [4, "Ta_sub"]
+#          - [5, "lamrb"]
+#          - [6, "%a*_%b"]
+#        1:
+#          rows:
+#          - [1, a*_b]
+#          - [2, a*mb]
+#          - [3, null]
+#          - [4, null]
+#          - [5, "lamrb"]
+#          - [6, "%a*_%b"]
+#        2:
+#          rows:
+#          - [1, null]
+#          - [2, null]
+#          - [3, "%a_%b"]
+#          - [4, "Ta_sub"]
+#          - [5, "lamrb"]
+#          - [6, null]

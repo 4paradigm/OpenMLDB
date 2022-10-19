@@ -19,9 +19,6 @@
     <maven.compiler.source>1.7</maven.compiler.source>
     <maven.compiler.target>1.7</maven.compiler.target>
 
-    <scala.version>2.12.8</scala.version>
-    <scala.binary.version>2.12</scala.binary.version>
-    <spark.version>3.0.0</spark.version>
     <spark.scope>provided</spark.scope>
   </properties>
 

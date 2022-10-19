@@ -360,7 +360,7 @@ TEST_F(ASTNodeConverterTest, ConvertCreateTableNodeOkTest) {
         EXPECT_STREQ("t1", output->GetTableName().c_str());
         EXPECT_EQ(false, output->GetOpIfNotExist());
         auto table_option_list = output->GetTableOptionList();
-        node::NodePointVector partition_meta_list;
+        node::NodePointVector distribution_list;
         for (auto table_option : table_option_list) {
             switch (table_option->GetType()) {
                 case node::kReplicaNum: {
@@ -372,12 +372,7 @@ TEST_F(ASTNodeConverterTest, ConvertCreateTableNodeOkTest) {
                     break;
                 }
                 case node::kDistributions: {
-                    auto d_list = dynamic_cast<node::DistributionsNode *>(table_option)->GetDistributionList();
-                    if (d_list != nullptr) {
-                        for (auto meta_ptr : d_list->GetList()) {
-                            partition_meta_list.push_back(meta_ptr);
-                        }
-                    }
+                    distribution_list  = dynamic_cast<node::DistributionsNode *>(table_option)->GetDistributionList();
                     break;
                 }
                 default: {
@@ -386,6 +381,9 @@ TEST_F(ASTNodeConverterTest, ConvertCreateTableNodeOkTest) {
                 }
             }
         }
+        ASSERT_EQ(1, distribution_list.size());
+        auto partition_mata_nodes = dynamic_cast<hybridse::node::SqlNodeList*>(distribution_list.front());
+        const auto& partition_meta_list = partition_mata_nodes->GetList();
         ASSERT_EQ(3, partition_meta_list.size());
         {
             ASSERT_EQ(node::kPartitionMeta, partition_meta_list[0]->GetType());
@@ -488,7 +486,7 @@ TEST_F(ASTNodeConverterTest, ConvertCreateTableNodeOkTest) {
         const auto create_stmt = statement->GetAsOrDie<zetasql::ASTCreateTableStatement>();
         node::CreateStmt* output = nullptr;
         auto status = ConvertCreateTableNode(create_stmt, &node_manager, &output);
-        EXPECT_EQ(common::kSqlAstError, status.code);
+        EXPECT_EQ(common::kOk, status.code);
     }
 }
 
@@ -997,7 +995,7 @@ TEST_F(ASTNodeConverterTest, ConvertCreateTableNodeErrorTest) {
         const auto create_stmt = statement->GetAsOrDie<zetasql::ASTCreateTableStatement>();
         node::CreateStmt* output = nullptr;
         auto status = ConvertCreateTableNode(create_stmt, &node_manager, &output);
-        EXPECT_EQ(common::kSqlAstError, status.code);
+        EXPECT_EQ(common::kOk, status.code);
     }
 }
 

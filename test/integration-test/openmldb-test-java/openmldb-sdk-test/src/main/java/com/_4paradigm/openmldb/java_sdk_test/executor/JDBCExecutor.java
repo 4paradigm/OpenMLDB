@@ -34,7 +34,7 @@ import java.util.List;
 public abstract class JDBCExecutor extends BaseExecutor{
 
     public JDBCExecutor(SQLCase fesqlCase, SQLCaseType sqlCaseType) {
-        this.fesqlCase = fesqlCase;
+        this.sqlCase = fesqlCase;
         this.executorType = sqlCaseType;
         dbName = fesqlCase.getDb();
         if (!CollectionUtils.isEmpty(fesqlCase.getInputs())) {
@@ -46,7 +46,7 @@ public abstract class JDBCExecutor extends BaseExecutor{
 
     @Override
     public void check() throws Exception {
-        List<Checker> strategyList = CheckerStrategy.build(fesqlCase, mainResult,executorType);
+        List<Checker> strategyList = CheckerStrategy.build(null,sqlCase, mainResult,executorType);
         for (Checker checker : strategyList) {
             checker.check();
         }

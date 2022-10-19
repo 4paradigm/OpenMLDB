@@ -17,8 +17,7 @@
 package com._4paradigm.openmldb.java_sdk_test.checker;
 
 
-import com._4paradigm.openmldb.java_sdk_test.entity.FesqlResult;
-import com._4paradigm.openmldb.test_common.common.ReportLog;
+import com._4paradigm.openmldb.test_common.bean.OpenMLDBResult;
 import com._4paradigm.openmldb.test_common.model.ExpectDesc;
 
 import java.util.Map;
@@ -28,18 +27,17 @@ import java.util.Map;
  * @date 2020/6/16 3:37 PM
  */
 public abstract class BaseChecker implements Checker {
-    protected FesqlResult fesqlResult;
-    protected Map<String,FesqlResult> resultMap;
+    protected OpenMLDBResult openMLDBResult;
+    protected Map<String, OpenMLDBResult> resultMap;
     protected ExpectDesc expect;
-    protected ReportLog reportLog = ReportLog.of();
 
-    public BaseChecker(ExpectDesc expect, FesqlResult fesqlResult){
+    public BaseChecker(ExpectDesc expect, OpenMLDBResult openMLDBResult){
         this.expect = expect;
-        this.fesqlResult = fesqlResult;
+        this.openMLDBResult = openMLDBResult;
     }
 
-    public BaseChecker(FesqlResult fesqlResult,Map<String,FesqlResult> resultMap){
-        this.fesqlResult = fesqlResult;
+    public BaseChecker(OpenMLDBResult openMLDBResult, Map<String, OpenMLDBResult> resultMap){
+        this.openMLDBResult = openMLDBResult;
         this.resultMap = resultMap;
     }
 }

@@ -28,15 +28,30 @@ In addition to the feature engineering done by OpenMLDB, the prediction also req
 
 ## Demo
 ### Configuration
-The demo can run on MacOS or Linux, or use the OpenMLDB docker image provided by us:
-```
-docker run -it 4pdosc/openmldb:0.6.0 bash
-```
 
+** Use OpenMLDB docker image**
+
+The demo can run on MacOS or Linux, the OpenMLDB docker image is recommended. We'll start OpenMLDB and DolphinScheduler in the same container, expose the DolphinScheduler web port:
+```
+docker run -it -p 12345:12345 4pdosc/openmldb:0.6.3 bash
+```
 
 ```{attention}
 The DolphinScheduler requires a user of the operating system with `sudo` permission. Therefore, it is recommended to download and start the DolphinScheduler in the OpenMLDB container. Otherwise, please prepare the operating system user with sudo permission.
 ```
+
+The docker image doesn't have sudo, but DolphinScheduler needs it in runtime. So install it:
+```
+apt update && apt install sudo
+```
+
+And DolphinScheduler task running uses sh, but the docker image default sh is `dash`. Change it to `bash`:
+```
+dpkg-reconfigure dash
+```
+And eneter `no`.
+
+**Start OpenMLDB Cluster and Predict Server**
 
 In the container, you can directly run the following command to start the OpenMLDB cluster.
 ```
@@ -48,69 +63,89 @@ We will complete a workflow of importing data, offline training, and deploying t
 python3 /work/talkingdata/predict_server.py --no-init > predict.log 2>&1 &
 ```
 
-Note that, DolphinScheduler has not officially released the updated version supporting OpenMLDB Task (only on the `dev` branch), so please download [dolphinscheduler-bin](https://github.com/4paradigm/OpenMLDB/releases/download/v0.5.1/apache-dolphinscheduler-dev-SNAPSHOT-bin.tar.gz) that is prepared by us to have the DolphinScheduler version supporting OpenMLDB Task.
+**Start DolphinScheduler**
+
+Note that, DolphinScheduler has not officially released the updated version supporting OpenMLDB Task (only on the `dev` branch), so please download [dolphinscheduler-bin](http://openmldb.ai/download/dolphinschduler-task/apache-dolphinscheduler-dev-SNAPSHOT-bin.tar.gz) that is prepared by us to have the DolphinScheduler version supporting OpenMLDB Task.
 
 Start the DolphinScheduler standalone version. The steps are as follows. For more information, please refer to [Official Documentation](https://dolphinscheduler.apache.org/en-us/docs/3.0.0/user_doc/guide/installation/standalone.html)。
 ```
 tar -xvzf apache-dolpSchedulerler-*-bin.tar.gz
 cd apache-dolpSchedulerler-*-bin
+sed -i s#/opt/soft/python#/usr/bin/python3#g bin/env/dolphinscheduler_env.sh
 sh ./bin/dolpSchedulerler-daemon.sh start standalone-server
 ```
 
 Now you can login to DolphinScheduler at http://localhost:12345/dolphinscheduler/ui . The default user name and password are: admin/dolphinScheduler123。
 
-The worker server of DolphinScheduler requires the OpenMLDB Python SDK. The worker of DolphinScheduler standalone is the local machine, so you only need to install the OpenMLDB Python SDK on the local machine. The Python SDK is ready in our OpenMLDB image. If you are not running the docker image, install the SDK by:
+We have set the Python environment by modify `PYTHON_HOME` in `bin/env/dolphinscheduler_env.sh`, as shown in the previous code(Python Task needs to explicitly set the python environment, cuz we use Python3). If you have started the DolphinScheduler already, you can also set the environment on the web page after startup. The setting method is as follows. **Note that in this case, it is necessary to confirm that all tasks in the workflow use this environment**
 
-```
-pip3 install openmldb
-```
-
-Workflows can be created manually. In this example, we directly provide JSON workflow files, [Click to Download](https://github.com/4paradigm/OpenMLDB/releases/download/v0.5.1/workflow_openmldb_demo.json), and you can directly import it later into the DolphinScheduler environment and make simple modifications to complete the whole workflow.
-
-Python task needs to explicitly set the python environment. The simplest way is to set the Python environment in bin/env/dolphinscheduler_env.sh to modify `PYTHON_HOME`, and then start the DolphinScheduler. Please fill in the absolute path of Python3 instead of the relative path.
-```{caution}
-Note that before the DolphinScheduler standalone runs, the configured temporary environment variable `PYTHON_HOME` does not affect the environment in the work server.
-```
-If you have started the DolphinScheduler already, you can also set the environment on the web page after startup. The setting method is as follows. **Note that in this case, it is necessary to confirm that all tasks in the workflow use this environment**
 ![ds env setting](images/ds_env_setting.png)
 
 ![set python env](images/set_python_env.png)
+
+```{caution}
+Note that before the DolphinScheduler standalone runs, the configured temporary environment variable `PYTHON_HOME` does not affect the environment in the work server.
+```
+
+```{note}
+The worker server of DolphinScheduler requires the OpenMLDB Python SDK. The worker of DolphinScheduler standalone is the local machine, so you only need to install the OpenMLDB Python SDK on the local machine. The Python SDK is ready in our OpenMLDB image. If you are not running the docker image, install the SDK by `pip3 install openmldb`.
+```
+
+**Download workflow json**
+
+Workflows can be created manually. In this example, we directly provide JSON workflow files, [Click to Download](https://github.com/4paradigm/OpenMLDB/releases/download/v0.5.1/workflow_openmldb_demo.json), and you can directly import it later into the DolphinScheduler environment and make simple modifications to complete the whole workflow.
+
+**Source Data**
+
+The workflow will load data from `/tmp/train_sample.csv`，so prepare it：
+```
+cp /work/talkingdata/train_sample.csv /tmp
+```
 
 ### Demo Steps
 
 #### Step 1. Initialize Configuration
 
-![tenant manage](images/ds_tenant_manage.png)
 You need to first create a tenant in the DolphinScheduler Web, and then enter the tenant management interface, fill in the operating system user with sudo permission, and use the default for the queue. The root user can be used directly in the docker container.
 
+![create tenant](images/ds_create_tenant.png)
+
 Then you need to bind the tenant to the user. For simplicity, we directly bind to the admin user. Enter the user management page and click edit admin user.
+
 ![bind tenant](images/ds_bind_tenant.png)
+
 After binding, the user status is similar to the following figure.
+
 ![bind status](images/ds_bind_status.png)
 
 #### Step 2. Create Workflow
 In the DolphinScheduler, you need to create a project first, and then create a workflow in the project. Therefore, first create a test project, as shown in the following figure. Click create a project and enter the project.
+
 ![create project](images/ds_create_project.png)
+
 ![project](images/ds_project.png)
 
 After entering the project, you can import the [downloaded workflow file](https://github.com/4paradigm/OpenMLDB/releases/download/v0.5.1/workflow_openmldb_demo.json). As shown in the following figure, please click Import workflow in the workflow definition interface.
+
 ![import workflow](images/ds_import_workflow.png)
 
 After the import, the workflow will appear in the workflow list, similar to the following figure.
+
 ![workflow list](images/ds_workflow_list.png)
 
 Then you click the workflow name to view the workflow details, as shown in the following figure.
+
 ![workflow detail](images/ds_workflow_detail.png)
 
 **Note**: This needs to be modified because the task ID will change after importing the workflow. In particular, the upstream and downstream id in the switch task do not exist and need to be manually changed.
 
-![image-20220610163343993](images/ds_switch.png)
+![switch](images/ds_switch.png)
 
 As shown in the above figure, there is a non-existent ID in the settings of the switch task. Please change the successful and failed "branch flow" and "pre-check condition" to the task of the current workflow.
 
 The correct result is shown in the following figure:
 
-![image-20220610163515122](images/ds_switch_right.png)
+![right](images/ds_switch_right.png)
 
 After modification, we save the workflow. Tenant in the imported workflow will be deemed as default in the default mode and also can be run. If you want to specify your tenant, please select a tenant when saving the workflow, as shown in the following figure.
 ![set tenant](images/ds_set_tenant.png)
@@ -118,9 +153,11 @@ After modification, we save the workflow. Tenant in the imported workflow will b
 #### Step 3. Online Operation
 
 After saving the workflow, you need to go online before running. The run button will not light up until it is online. As shown in the following figure.
+
 ![run](images/ds_run.png)
 
 Please click run and wait for the workflow to complete. You can view the workflow running details in the Workflow Instance interface, as shown in the following figure.
+
 ![run status](images/ds_run_status.png)
 
 To demonstrate the process of a successful launch, the validation does not perform actual validation, but directly returns the validation success and flows into the deploy branch. After running the deploy branch, the deploy SQL and subsequent tasks are successful, the predict server receives the latest model.
@@ -136,4 +173,17 @@ curl -X POST 127.0.0.1:8881/predict -d '{"ip": 114904,
        "is_attributed": 0}'
 ```
 The returned results are as follows:
+
 ![predict](images/ds_predict.png)
+
+#### Supplement
+
+If you rerun the workflow, `deploy sql` task may failed cause deployment`demo` is exists. Please delete the deployment in container before rerun the workflow:
+```
+/work/openmldb/bin/openmldb --zk_cluster=127.0.0.1:2181 --zk_root_path=/openmldb --role=sql_client --database=demo_db --interactive=false --cmd="drop deployment demo;"
+```
+
+You can check if deployment is deleted：
+```
+/work/openmldb/bin/openmldb --zk_cluster=127.0.0.1:2181 --zk_root_path=/openmldb --role=sql_client --database=demo_db --interactive=false --cmd="show deployment demo;"
+```

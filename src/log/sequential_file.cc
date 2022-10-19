@@ -23,7 +23,7 @@
 #include <errno.h>
 #include <stdio.h>
 
-#include "base/glog_wapper.h"
+#include "base/glog_wrapper.h"
 #include "base/slice.h"
 #include "log/status.h"
 

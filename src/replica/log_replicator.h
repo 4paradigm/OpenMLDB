@@ -64,7 +64,7 @@ class LogReplicator {
     bool ApplyEntry(const ::openmldb::api::LogEntry& entry);
 
     // the master node append entry
-    bool AppendEntry(::openmldb::api::LogEntry& entry);  // NOLINT
+    bool AppendEntry(::openmldb::api::LogEntry& entry, ::google::protobuf::Closure* done = nullptr);  // NOLINT
 
     //  data to slave nodes
     void Notify();

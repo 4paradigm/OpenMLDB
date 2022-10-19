@@ -21,6 +21,7 @@ import com._4paradigm.openmldb.batch.utils.{DataTypeUtil, VersionCli}
 import com._4paradigm.openmldb.batch.utils.HybridseUtil.autoLoad
 import com._4paradigm.openmldb.batch.{OpenmldbBatchConfig, SparkPlanner}
 import org.apache.commons.io.IOUtils
+import org.apache.log4j.{Level, Logger}
 import org.apache.spark.{SPARK_VERSION, SparkConf}
 import org.apache.spark.sql.catalyst.QueryPlanningTracker
 import org.apache.spark.sql.catalyst.plans.logical.LogicalPlan
@@ -242,6 +243,10 @@ class OpenmldbSession {
     sparkSession.toString
   }
 
+  def disableSparkLogs(): Unit = {
+    Logger.getLogger("org").setLevel(Level.OFF)
+    Logger.getLogger("akka").setLevel(Level.OFF)
+  }
   /**
    * Stop the Spark session.
    */

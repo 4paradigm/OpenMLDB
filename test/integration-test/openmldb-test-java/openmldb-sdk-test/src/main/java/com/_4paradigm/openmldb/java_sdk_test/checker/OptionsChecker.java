@@ -17,12 +17,12 @@
 package com._4paradigm.openmldb.java_sdk_test.checker;
 
 
-import com._4paradigm.openmldb.java_sdk_test.common.FedbGlobalVar;
-import com._4paradigm.openmldb.java_sdk_test.entity.FesqlResult;
-import com._4paradigm.openmldb.java_sdk_test.util.Tool;
+import com._4paradigm.openmldb.test_common.openmldb.OpenMLDBGlobalVar;
+import com._4paradigm.openmldb.test_common.bean.OpenMLDBResult;
 import com._4paradigm.openmldb.test_common.model.ExpectDesc;
 import com._4paradigm.openmldb.test_common.restful.model.HttpResult;
-import com._4paradigm.openmldb.test_common.restful.util.HttpRequest;
+import com._4paradigm.openmldb.test_common.util.HttpRequest;
+import com._4paradigm.openmldb.test_common.util.Tool;
 import com.jayway.jsonpath.JsonPath;
 import lombok.extern.slf4j.Slf4j;
 import org.testng.Assert;
@@ -37,20 +37,19 @@ import java.util.Map;
 public class OptionsChecker extends BaseChecker {
     private static String reg = "\\{(\\d+)\\}";
 
-    public OptionsChecker(ExpectDesc expect, FesqlResult fesqlResult) {
-        super(expect, fesqlResult);
+    public OptionsChecker(ExpectDesc expect, OpenMLDBResult openMLDBResult) {
+        super(expect, openMLDBResult);
     }
 
     @Override
     public void check() throws Exception {
         log.info("options check");
-        reportLog.info("options check");
-        String apiserverEndpoint = FedbGlobalVar.mainInfo.getApiServerEndpoints().get(0);
-        String dbName = fesqlResult.getDbName();
+        String apiserverEndpoint = OpenMLDBGlobalVar.mainInfo.getApiServerEndpoints().get(0);
+        String dbName = openMLDBResult.getDbName();
         String tableName = expect.getName();
         if(tableName.matches(reg)){
             int index = Integer.parseInt(tableName.substring(1,tableName.length()-1));
-            tableName = fesqlResult.getTableNames().get(index);
+            tableName = openMLDBResult.getTableNames().get(index);
         }
         String url = String.format("http://%s/dbs/%s/tables/%s",apiserverEndpoint,dbName,tableName);
         Tool.sleep(3000);
@@ -59,7 +58,7 @@ public class OptionsChecker extends BaseChecker {
         Object partitionNum = JsonPath.read(resultData, "$.table.partition_num");
         Object replicaNum = JsonPath.read(resultData, "$.table.replica_num");
         Map<String, Object> options = expect.getOptions();
-        Assert.assertEquals(options.get("partitionNum"),partitionNum,"partitionNum不一致");
-        Assert.assertEquals(options.get("replicaNum"),replicaNum,"replicaNum不一致");
+        Assert.assertEquals(partitionNum,options.get("partitionNum"),"partitionNum不一致,resultData:"+resultData);
+        Assert.assertEquals(replicaNum,options.get("replicaNum"),"replicaNum不一致,resultData:"+resultData);
     }
 }

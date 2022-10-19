@@ -29,7 +29,7 @@ OpenMLDB 针对线上线下的特征工程全流程，在不同阶段提供了�
 | 3. 特征方案部署         | 离线模式   | CLI                                   | - `DEPLOY` 命令                                                                                                 |
 | 4. 冷启动在线数据导入   | 在线预览模式 | CLI，导入工具                              | - CLI 使用 `LOAD DATA` 命令<br />- 也可使用独立导入工具 `openmldb-import`                                                   |
 | 5. 实时数据接入         | 在线预览模式 | connector, REST APIs, Java/Python SDK | - 第三方数据源调用 OpenMLDB 的相关数据插入 API(connector)，引入实时数据<br/>- 或使用Java/Python SDK工具，在对请求行的计算完成后，插入主表                 |
-| 6. 在线数据预览（可选） | 在线预览模式 | CLI, Java/Python SDK                  | - 目前仅支持对列进行 `SELECT` 操作、表达式、以及单行处理函数用于数据预览<br />- 不支持 `LAST JOIN`, `GROUP BY`, `HAVING`, `WINDOW` 等复杂计算<br /> |
+| 6. 在线数据预览（可选） | 在线预览模式 | CLI, Java/Python SDK                  | - 目前不支持 `LAST JOIN`, `ORDER BY` |
 | 7. 实时特征计算         | 在线请求模式 | REST APIs, Java/Python SDK            | - 支持 OpenMLDB 所有的 SQL 语法<br />- REST APIs 以及 Java SDK 支持单行或者批请求<br />- Python SDK 仅支持单行请求                     |
 
 从以上的总结表格上可以看到，执行模式分为 `离线模式`，`在线预览模式`，以及`在线请求模式`。后续我们将对这几种模式展开详细介绍。下图总结示意了全流程开发和对应的执行模式。
@@ -38,7 +38,7 @@ OpenMLDB 针对线上线下的特征工程全流程，在不同阶段提供了�
 
 ### 1.3 单机版执行模式说明
 
-虽然本文集中讲解集群版，但是有必要也简单介绍单机版的执行模式。单机版的执行模式相对简单，其离线数据和在线数据的存储和计算节点统一，因此单机版并不区分离线模式和在线模式。即我们可以直观的理解为，在 CLI 下，单机版并没有执行模式的概念，绝大多数OpenMLDB支持的 SQL 语法均可以在 CLI 下直接运行（对于部分SQL命令的参数，单机版支持的选项与集群版略有不同，详见[OpenMLDB支持的SQL](https://openmldb.ai/docs/zh/main/reference/sql/index.html)）。因此，单机版特别适合用于快速试用或进行 SQL 实践。但是，在实时特征计算阶段，单机版和集群版一样，依然运行于在线请求模式下。
+虽然本文集中讲解集群版，但是有必要也简单介绍单机版的执行模式。单机版的执行模式相对简单，其离线数据和在线数据的存储和计算节点统一，因此单机版并不区分离线模式和在线模式。即我们可以直观的理解为，在 CLI 下，单机版并没有执行模式的概念，绝大多数OpenMLDB支持的 SQL 语法均可以在 CLI 下直接运行（对于部分SQL命令的参数，单机版支持的选项与集群版略有不同，详见[OpenMLDB支持的SQL](../reference/sql)）。因此，单机版特别适合用于快速试用或进行 SQL 实践。但是，在实时特征计算阶段，单机版和集群版一样，依然运行于在线请求模式下。
 
 :::{note}
 如果仅在非生产环境试用 OpenMLDB或进行SQL学习实践，强烈建议使用单机版，可以获得更快捷方便的部署体验
@@ -46,7 +46,7 @@ OpenMLDB 针对线上线下的特征工程全流程，在不同阶段提供了�
 
 ## 2. 离线模式
 
-如前所述，集群版的离线数据导入、离线特征开发、特征方案部署上线均在离线模式下执行。离线模式的作用是对离线数据进行管理和计算。涉及的计算节点由[针对特征工程优化的 OpenMLDB Spark 发行版](https://openmldb.ai/docs/zh/main/tutorial/openmldbspark_distribution.html)支持，存储节点支持使用 HDFS 等常见存储系统。
+如前所述，集群版的离线数据导入、离线特征开发、特征方案部署上线均在离线模式下执行。离线模式的作用是对离线数据进行管理和计算。涉及的计算节点由[针对特征工程优化的 OpenMLDB Spark 发行版](./openmldbspark_distribution.md)支持，存储节点支持使用 HDFS 等常见存储系统。
 
 离线模式有以下主要特点：
 
@@ -55,10 +55,10 @@ OpenMLDB 针对线上线下的特征工程全流程，在不同阶段提供了�
 - 非阻塞式执行的 SQL 由内部的 TaskManager 进行管理，可以通过 `SHOW JOBS`, `SHOW JOB`, `STOP JOB` 命令进行查看和管理。
 
 :::{tip}
-和很多关系型数据库系统不同，`SELECT`命令在离线模式下默认为异步执行，如需设置为同步执行，见[设置离线模式下命令的同步执行](https://openmldb.ai/docs/zh/main/reference/sql/ddl/SET_STATEMENT.html#id4)因此在离线特征开发阶段，如果使用异步执行，强烈建议使用`SELECT INTO`语句进行开发调试，可以将结果导出到文件，方便查看。
+和很多关系型数据库系统不同，`SELECT`命令在离线模式下默认为异步执行，如需设置为同步执行，见[设置离线模式下命令的同步执行](../reference/sql/ddl/SET_STATEMENT.md#id4)因此在离线特征开发阶段，如果使用异步执行，强烈建议使用`SELECT INTO`语句进行开发调试，可以将结果导出到文件，方便查看。
 :::
 
-用于特征方案部署的命令`DEPLOY`亦在离线模式下执行。其部署规范对于 SQL 还有一定的限制，详细可以参阅 [OpenMLDB SQL上线规范和要求](https://openmldb.ai/docs/zh/main/reference/sql/deployment_manage/ONLINE_SERVING_REQUIREMENTS.html)。
+用于特征方案部署的命令`DEPLOY`亦在离线模式下执行。其部署规范对于 SQL 还有一定的限制，详细可以参阅 [OpenMLDB SQL上线规范和要求](../reference/sql/deployment_manage/ONLINE_REQUEST_REQUIREMENTS.md)。
 
 离线模式可以通过以下方式设置：
 
@@ -97,6 +97,6 @@ OpenMLDB 针对线上线下的特征工程全流程，在不同阶段提供了�
 在线请求模式通过以下形式支持：
 
 - CLI：不支持
-- REST APIs：支持单行或者多行 request rows 的请求，详见：[REST APIs](https://openmldb.ai/docs/zh/main/quickstart/rest_api.html)
-- Java SDK：支持单行或者多行 request rows 的请求，详见：[Java SDK 快速上手](https://openmldb.ai/docs/zh/main/quickstart/java_sdk.html)
-- Python SDK：仅支持单行的 request row 请求，详见：[Python SDK 快速上手](https://openmldb.ai/docs/zh/main/quickstart/python_sdk.html)
+- REST APIs：支持单行或者多行 request rows 的请求，详见：[REST APIs](../quickstart/rest_api.md)
+- Java SDK：支持单行或者多行 request rows 的请求，详见：[Java SDK 快速上手](../quickstart/java_sdk.md)
+- Python SDK：仅支持单行的 request row 请求，详见：[Python SDK 快速上手](../quickstart/python_sdk.md)

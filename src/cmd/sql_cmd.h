@@ -30,6 +30,7 @@
 #include "gflags/gflags.h"
 #include "sdk/db_sdk.h"
 #include "sdk/sql_cluster_router.h"
+#include "sdk/sql_router.h"
 #include "version.h"  // NOLINT
 
 DEFINE_bool(interactive, true, "Set the interactive");
@@ -47,6 +48,11 @@ DECLARE_string(zk_log_file);
 // stand-alone mode
 DECLARE_string(host);
 DECLARE_int32(port);
+
+// rpc request timeout of CLI
+DECLARE_int32(request_timeout);
+
+DECLARE_int32(glog_level);
 
 namespace openmldb::cmd {
 const std::string LOGO =  // NOLINT
@@ -135,6 +141,9 @@ void HandleSQL(const std::string& sql) {
 // cluster mode: if zk_cluster is not empty,
 // standalone mode:
 void Shell() {
+    if (!FLAGS_cmd.empty()) {
+        FLAGS_interactive = false;
+    }
     DCHECK(cs);
     DCHECK(sr);
     if (FLAGS_interactive) {
@@ -227,12 +236,16 @@ bool InitClusterSDK() {
     }
     sr->SetInteractive(FLAGS_interactive);
 
-    sr->GetSqlRouterOptions().spark_conf_path = FLAGS_spark_conf;
+    auto ops = std::dynamic_pointer_cast<sdk::SQLRouterOptions>(sr->GetRouterOptions());
+    ops->spark_conf_path = FLAGS_spark_conf;
+    ops->request_timeout = FLAGS_request_timeout;
 
     return true;
 }
 
 void ClusterSQLClient() {
+    // setup here cuz init xx sdk will print log too
+    base::SetupGlog();
     if (!InitClusterSDK()) {
         return;
     }
@@ -257,10 +270,13 @@ bool InitStandAloneSDK() {
         return false;
     }
     sr->SetInteractive(FLAGS_interactive);
+    auto ops = sr->GetRouterOptions();
+    ops->request_timeout = FLAGS_request_timeout;
     return true;
 }
 
 void StandAloneSQLClient() {
+    base::SetupGlog();
     if (!InitStandAloneSDK()) {
         return;
     }

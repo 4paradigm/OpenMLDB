@@ -1,5 +1,8 @@
 # CREATE INDEX
 
+`CREATE INDEX` 语句用来创建索引。 如果表里有数据，添加索引会发起异步任务来加载数据。
+通过`ns_client`中的`showopstatus`命令可以查看任务状态，详见[运维 CLI](../../../maintain/cli.md#showopstatus)。
+
 ## 语法
 
 ```sql
@@ -37,18 +40,17 @@ OptionEntry ::=
 
 ```
 
-**说明**
 
-`CREATE INDEX` 语句用来在OpenMLDB中创建索引。 如果表里有数据，添加索引会起异步任务来加载数据。通过`ns_client`中的[`showopstatus`](../../../maintain/cli.md)命令可以查看任务状态。
 
 ## **示例**
 ```SQL
 CREATE INDEX index2 ON t5 (col2);
 -- SUCCEED
 ```
-**注**: 如果不指定Options, 创建的索引就没有指定ts列，所以不能用在需要上线的SQL中。
-
-我们可以通过如下格式在创建索引时指定ts列:
+```{note}
+如果不指定Options, 创建的索引就没有指定`TS`列，因此不能用在需要上线的SQL中。
+```
+我们可以通过类似如下命令在创建索引时指定`TS`列:
 ```SQL
 CREATE INDEX index3 ON t5 (col3) OPTIONS (ts=ts1, ttl_type=absolute, ttl=30d);
 -- SUCCEED

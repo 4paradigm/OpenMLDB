@@ -14,6 +14,7 @@
 
 db: test_zw
 debugs: []
+version: 0.5.0
 cases:
   -
     id: 0
@@ -153,6 +154,7 @@ cases:
   -
     id: 10
     desc: 相同时间戳数据
+    mode: disk-unsupport
     inputs:
       -
         columns : ["c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]

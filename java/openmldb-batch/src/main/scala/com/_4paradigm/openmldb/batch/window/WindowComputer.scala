@@ -152,12 +152,17 @@ class WindowComputer(config: WindowAggConfig, jit: HybridSeJitWrapper, keepIndex
     //  CoreAPI.UnsafeWindowProject(fn, key, hybridseRowBytes, hybridseRowBytes.length, true, appendSlices, window)
 
     // Create native method input from Spark InternalRow
-    val hybridseRowBytes = UnsafeRowUtil.internalRowToHybridseByteBuffer(internalRow)
-    val byteBufferSize = UnsafeRowUtil.getHybridseByteBufferSize(internalRow)
+    //val hybridseRowBytes = UnsafeRowUtil.internalRowToHybridseByteBuffer(internalRow)
+    //val byteBufferSize = UnsafeRowUtil.getHybridseByteBufferSize(internalRow)
+    // Call native method to compute which will copy the byte array again
+    //val outputHybridseRow  =
+    //  CoreAPI.UnsafeWindowProjectDirect(fn, key, hybridseRowBytes, byteBufferSize, true, appendSlices, window)
 
-    // Call native method to compute
+    // Pass the UnsafeRow bytes directly and copy bytes in C API
+    val inputRowBytes = inputUnsaferow.getBytes
+    val inputRowSize = inputRowBytes.size
     val outputHybridseRow  =
-      CoreAPI.UnsafeWindowProjectDirect(fn, key, hybridseRowBytes, byteBufferSize, true, appendSlices, window)
+      CoreAPI.UnsafeWindowProjectBytes(fn, key, inputRowBytes, inputRowSize, true, appendSlices, window)
 
     // TODO: Support append slice in JIT function instead of merge in offline
     val outputInternalRowWithAppend =  if (appendSlices > 0 && enableUnsafeRowFormat) {

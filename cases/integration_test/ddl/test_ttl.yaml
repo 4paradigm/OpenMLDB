@@ -1,0 +1,317 @@
+db: test_zw
+debugs: []
+version: 0.5.0
+cases:
+  -
+    id: 0
+    desc: 指定ttl-单位d
+    sql: create table {auto} (c1 string NOT NULL,c2 int,c3 timestamp, c4 timestamp,index(key=(c1),ts=c4,ttl=3650d));
+    expect:
+      success: true
+  -
+    id: 1
+    desc: 指定ttl-单位h
+    sql: create table {auto} (c1 string NOT NULL,c2 int,c3 timestamp, c4 timestamp,index(key=(c1),ts=c4,ttl=3650h));
+    expect:
+      success: true
+  -
+    id: 2
+    desc: 指定ttl-单位m
+    sql: create table {auto} (c1 string NOT NULL,c2 int,c3 timestamp, c4 timestamp,index(key=(c1),ts=c4,ttl=3650m));
+    expect:
+      success: true
+  -
+    id: 3
+    desc: 指定ttl-没有单位
+    sql: create table {auto} (c1 string NOT NULL,c2 int,c3 timestamp, c4 timestamp,index(key=(c1),ts=c4,ttl=3650));
+    expect:
+      success: false
+  -
+    id: 4
+    desc: ttl_type=absolute-没有单位
+    sql: create table {auto} (c1 string NOT NULL,c2 int,c3 timestamp, c4 timestamp,index(key=(c1),ts=c4,ttl=3650,ttl_type=absolute));
+    expect:
+      success: false
+  -
+    id: 5
+    desc: ttl_type=latest-带单位
+    sql: create table {auto} (c1 string NOT NULL,c2 int,c3 timestamp, c4 timestamp,index(key=(c1),ts=c4,ttl=3650m,ttl_type=latest));
+    expect:
+      success: false
+  -
+    id: 6
+    desc: ttl_type=absolute-ttl=(3650m)
+    sql: create table {auto} (c1 string NOT NULL,c2 int,c3 timestamp, c4 timestamp,index(key=(c1),ts=c4,ttl=(3650m),ttl_type=absolute));
+    expect:
+      success: true
+  -
+    id: 7
+    desc: ttl_type=latest-ttl=(3650)
+    sql: create table {auto} (c1 string NOT NULL,c2 int,c3 timestamp, c4 timestamp,index(key=(c1),ts=c4,ttl=(3650),ttl_type=latest));
+    expect:
+      success: false
+  -
+    id: 8
+    desc: ttl=0m
+    inputs:
+      -
+        create: create table {0} (c1 string NOT NULL,c2 int,c3 timestamp, c4 timestamp,index(key=(c1),ts=c4,ttl=0m));
+        insert: insert into {0} values ("aa", 1, 1590738990000, 1590738989000);
+    sql: select * from {0};
+    expect:
+      columns: ["c1 string","c2 int","c3 timestamp","c4 timestamp"]
+      rows:
+        - ["aa",1,1590738990000,1590738989000]
+  -
+    id: 9
+    desc: ttl为字符
+    sql: create table {auto}(c1 string NOT NULL,c2 int,c3 timestamp,c4 timestamp,index(key=(c1),ts=c4,ttl=aa));
+    expect:
+      success: false
+  -
+    id: 10
+    desc: 指定ttl_type=absolute
+    inputs:
+      -
+        create: create table {0} (c1 string NOT NULL,c2 int,c3 timestamp, c4 timestamp,index(key=(c1),ts=c4,ttl=0m, ttl_type=absolute));
+        insert: insert into {0} values ("aa", 1, 1590738990000, 1590738989000);
+    sql: select * from {0};
+    expect:
+      columns: ["c1 string","c2 int","c3 timestamp","c4 timestamp"]
+      rows:
+        - ["aa",1,1590738990000,1590738989000]
+  -
+    id: 11
+    desc: 指定ttl_type=latest
+    inputs:
+      -
+        create: create table {0} (c1 string NOT NULL,c2 int,c3 timestamp, c4 timestamp,index(key=(c1),ts=c4,ttl=0, ttl_type=latest));
+        insert: insert into {0} values ("aa", 1, 1590738990000, 1590738989000);
+    sql: select * from {0};
+    expect:
+      columns: ["c1 string","c2 int","c3 timestamp","c4 timestamp"]
+      rows:
+        - ["aa",1,1590738990000,1590738989000]
+  -
+    id: 12
+    desc: 指定ttl_type为其他字符
+    sql: create table {auto}(c1 string NOT NULL,c2 int,c3 timestamp,c4 timestamp,index(key=(c1),ts=c4,ttl=0,ttl_type=aaa));
+    expect:
+      success: false
+  -
+    id: 13
+    desc: ttl_type=absorlat
+    sql: |
+      create table {auto} (
+      c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, c8 date,
+      index(key=(c4),ts=c7, ttl=(10m,10), ttl_type=absorlat));
+    expect:
+      success: true
+  -
+    id: 14
+    desc: ttl_type=absorlat,ttl=(10,10m)
+    sql: |
+      create table {auto} (
+      c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, c8 date,
+      index(key=(c4),ts=c7, ttl=(10,10m), ttl_type=absandlat));
+    expect:
+      success: false
+  -
+    id: 15
+    desc: ttl_type=absandlat
+    sql: |
+      create table {auto} (
+      c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, c8 date,
+      index(key=(c4),ts=c7, ttl=(10m,10), ttl_type=absandlat));
+    expect:
+      success: true
+  -
+    id: 16
+    desc: ttl_type=absandlat,ttl=(10,10m)
+    sql: |
+      create table {auto} (
+      c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, c8 date,
+      index(key=(c4),ts=c7, ttl=(10,10m), ttl_type=absandlat));
+    expect:
+      success: false
+  -
+    id: 17
+    desc: ttl_type=latest,ttl带单位
+    sql: |
+      create table {auto} (
+      c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, c8 date,
+      index(key=(c4),ts=c7, ttl=10m, ttl_type=latest));
+    expect:
+      success: false
+  -
+    id: 18
+    desc: ttl_type=latest，ttl=(10m,10)
+    sql: |
+      create table {auto} (
+      c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, c8 date,
+      index(key=(c4),ts=c7, ttl=(10m,10), ttl_type=latest));
+    expect:
+      success: false
+  -
+    id: 19
+    desc: ttl_type=absolute，ttl=(10m,10)
+    sql: |
+      create table {auto} (
+      c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, c8 date,
+      index(key=(c4),ts=c7, ttl=(10m,10), ttl_type=absolute));
+    expect:
+      success: false
+  -
+    id: 20
+    desc: 指定ttl_type=absolute，数据过期
+    inputs:
+      -
+        create: create table {0} (c1 string NOT NULL,c2 int,c3 timestamp, c4 timestamp,index(key=(c1),ts=c4,ttl=10m, ttl_type=absolute));
+        insert: insert into {0} values ("aa", 1, 1590738990000, 1614672180000);
+    sql: select * from {0};
+    expect:
+      count: 0
+  -
+    id: 21
+    desc: 指定ttl_type=latest,部分数据过期
+    inputs:
+      -
+        columns: ["c1 string","c2 int","c3 timestamp", "c4 timestamp"]
+        indexs: ["index1:c1:c4:1:latest"]
+        rows:
+          - ["aa", 1, 1590738990000,1590738990000]
+          - ["aa", 2, 1590738990000,1590738990000]
+    sql: select * from {0};
+    expect:
+      columns: ["c1 string","c2 int","c3 timestamp","c4 timestamp"]
+      rows:
+        - ["aa", 2, 1590738990000,1590738990000]
+  -
+    id: 22
+    desc: 指定ttl_type=absandlat,部分数据过期
+    inputs:
+      -
+        columns: ["id int","c1 string","c2 int","c3 timestamp", "c4 timestamp"]
+        indexs: ["index1:c1:c4:(10m,2):absandlat"]
+        rows:
+          - [1,"aa", 1, 1590738990000,1590738990000]
+          - [2,"aa", 2, 1590738990000,1590738991000]
+          - [3,"aa", 3, 1590738990000,1590738992000]
+    sql: select * from {0};
+    expect:
+      columns: ["id int","c1 string","c2 int","c3 timestamp","c4 timestamp"]
+      order: id
+      rows:
+        - [2,"aa", 2, 1590738990000,1590738991000]
+        - [3,"aa", 3, 1590738990000,1590738992000]
+  -
+    id: 23
+    desc: 指定ttl_type=absorlat,部分数据过期
+    inputs:
+      -
+        columns: ["c1 string","c2 int","c3 timestamp", "c4 timestamp"]
+        indexs: ["index1:c1:c4:(10m,2):absorlat"]
+        rows:
+          - ["aa", 1, 1590738990000,1590738990000]
+          - ["aa", 1, 1590738990000,1590738990000]
+          - ["aa", 1, 1590738990000,1590738990000]
+    sql: select * from {0};
+    expect:
+      count: 0
+  -
+    id: 24
+    desc: 指定ttl_type=absolute，部分数据过期
+    inputs:
+      -
+        columns: ["c1 string","c2 int","c3 timestamp", "c4 timestamp"]
+        indexs: ["index1:c1:c4:10m:absolute"]
+        rows:
+          - ["aa", 1, 1590738990000, "{currentTime}-600001"]
+          - ["bb", 1, 1590738990000, "{currentTime}"]
+    sql: select c1,c2,c3 from {0};
+    expect:
+      columns: ["c1 string","c2 int","c3 timestamp"]
+      rows:
+        - ["bb", 1, 1590738990000]
+  -
+    id: 25
+    desc: 指定ttl_type=absandlat,部分数据过期-边界
+    inputs:
+      -
+        columns: ["id int","c1 string","c2 int","c3 timestamp", "c4 timestamp"]
+        indexs: ["index1:c1:c4:(10m,2):absandlat"]
+        rows:
+          - [1,"aa", 1, 1590738990000,"{currentTime}-600001"]
+          - [2,"aa", 2, 1590738990000,"{currentTime}-600001"]
+          - [3,"aa", 3, 1590738990000,"{currentTime}-600001"]
+          - [4,"aa", 4, 1590738990000,"{currentTime}"]
+    sql: select id,c1,c2,c3 from {0};
+    expect:
+      columns: ["id int","c1 string","c2 int","c3 timestamp"]
+      order: id
+      rows:
+        - [3,"aa", 3, 1590738990000]
+        - [4,"aa", 4, 1590738990000]
+  -
+    id: 26
+    desc: 指定ttl_type=absandlat,部分数据过期-边界2
+    inputs:
+      -
+        columns: ["id int","c1 string","c2 int","c3 timestamp", "c4 timestamp"]
+        indexs: ["index1:c1:c4:(10m,2):absandlat"]
+        rows:
+          - [1,"aa", 1, 1590738990000,"{currentTime}-600001"]
+          - [2,"aa", 2, 1590738990000,"{currentTime}-550000"]
+          - [3,"aa", 3, 1590738990000,"{currentTime}-500000"]
+          - [4,"aa", 4, 1590738990000,"{currentTime}"]
+    sql: select id,c1,c2,c3 from {0};
+    expect:
+      columns: ["id int","c1 string","c2 int","c3 timestamp"]
+      order: id
+      rows:
+        - [2,"aa", 2, 1590738990000]
+        - [3,"aa", 3, 1590738990000]
+        - [4,"aa", 4, 1590738990000]
+  -
+    id: 27
+    desc: 指定ttl_type=absorlat,部分数据过期-边界
+    inputs:
+      -
+        columns: ["id int","c1 string","c2 int","c3 timestamp", "c4 timestamp"]
+        indexs: ["index1:c1:c4:(10m,2):absorlat"]
+        rows:
+          - [1,"aa", 1, 1590738990000,"{currentTime}-600001"]
+          - [2,"aa", 2, 1590738990000,"{currentTime}-600001"]
+          - [3,"aa", 3, 1590738990000,"{currentTime}-500000"]
+    sql: select id,c1,c2,c3 from {0};
+    expect:
+      columns: ["id int","c1 string","c2 int","c3 timestamp"]
+      order: id
+      rows:
+        - [3,"aa", 3, 1590738990000]
+  -
+    id: 28
+    desc: 指定ttl_type=absorlat,部分数据过期-边界2
+    inputs:
+      -
+        columns: ["id int","c1 string","c2 int","c3 timestamp", "c4 timestamp"]
+        indexs: ["index1:c1:c4:(10m,2):absorlat"]
+        rows:
+          - [1,"aa", 1, 1590738990000,"{currentTime}-600001"]
+          - [2,"aa", 2, 1590738990000,"{currentTime}-600001"]
+          - [3,"aa", 3, 1590738990000,"{currentTime}-500000"]
+          - [4,"aa", 4, 1590738990000,"{currentTime}-400000"]
+          - [5,"aa", 5, 1590738990000,"{currentTime}"]
+    sql: select id,c1,c2,c3 from {0};
+    expect:
+      columns: ["id int","c1 string","c2 int","c3 timestamp"]
+      order: id
+      rows:
+        - [4,"aa", 4, 1590738990000]
+        - [5,"aa", 5, 1590738990000]
+  -
+    id: 29
+    desc: ttl_type=latest-ttl=(10)
+    sql: create table {auto} (c1 string NOT NULL,c2 int,c3 timestamp, c4 timestamp,index(key=(c1),ts=c4,ttl=(10),ttl_type=latest));
+    expect:
+      success: true

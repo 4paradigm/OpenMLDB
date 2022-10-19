@@ -505,12 +505,12 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                 return fail;
             }
             auto op = dynamic_cast<const PhysicalLimitNode*>(node);
-            if (op->GetLimitCnt() == 0 || op->GetLimitOptimized()) {
+            if (!op->GetLimitCnt().has_value() || op->GetLimitOptimized()) {
                 return RegisterTask(node, cluster_task);
             }
             LimitRunner* runner = nullptr;
-            CreateRunner<LimitRunner>(&runner, id_++, node->schemas_ctx(),
-                                      op->GetLimitCnt());
+            // limit runner always expect limit not empty
+            CreateRunner<LimitRunner>(&runner, id_++, node->schemas_ctx(), op->GetLimitCnt().value());
             return RegisterTask(node, UnaryInheritTask(cluster_task, runner));
         }
         case kPhysicalOpRename: {
@@ -1013,16 +1013,13 @@ Row Runner::WindowProject(const int8_t* fn, const uint64_t row_key,
     if (append_slices > 0) {
         if (FLAGS_enable_spark_unsaferow_format) {
             // For UnsafeRowOpt, do not merge input row and return the single slice output row only
-            return Row(base::RefCountedSlice::CreateManaged(
-                out_buf, RowView::GetSize(out_buf)));
+            return Row(base::RefCountedSlice::CreateManaged(out_buf, RowView::GetSize(out_buf)));
         } else {
-            return Row(base::RefCountedSlice::CreateManaged(
-                           out_buf, RowView::GetSize(out_buf)),
-                       append_slices, row);
+            return Row(append_slices - 1, row, 1,
+                       Row(base::RefCountedSlice::CreateManaged(out_buf, RowView::GetSize(out_buf))));
         }
     } else {
-        return Row(base::RefCountedSlice::CreateManaged(
-            out_buf, RowView::GetSize(out_buf)));
+        return Row(base::RefCountedSlice::CreateManaged(out_buf, RowView::GetSize(out_buf)));
     }
 }
 
@@ -1309,7 +1306,7 @@ std::shared_ptr<DataHandler> TableProjectRunner::Run(
     iter->SeekToFirst();
     int32_t cnt = 0;
     while (iter->Valid()) {
-        if (limit_cnt_ > 0 && cnt++ >= limit_cnt_) {
+        if (limit_cnt_.has_value() && cnt++ >= limit_cnt_) {
             break;
         }
         output_table->AddRow(project_gen_.Gen(iter->GetValue(), parameter));
@@ -1521,7 +1518,7 @@ void WindowAggRunner::RunWindowAggOnKey(
     window.set_exclude_current_row(exclude_current_row_);
 
     while (instance_segment_iter->Valid()) {
-        if (limit_cnt_ > 0 && cnt >= limit_cnt_) {
+        if (limit_cnt_.has_value() && cnt >= limit_cnt_) {
             break;
         }
         const Row& instance_row = instance_segment_iter->GetValue();
@@ -2567,21 +2564,8 @@ std::shared_ptr<DataHandler> LimitRunner::Run(
     }
     switch (input->GetHandlerType()) {
         case kTableHandler: {
-            auto iter =
-                std::dynamic_pointer_cast<TableHandler>(input)->GetIterator();
-            if (!iter) {
-                LOG(WARNING) << "fail to get table it";
-                return fail_ptr;
-            }
-            iter->SeekToFirst();
-            auto output_table = std::shared_ptr<MemTableHandler>(
-                new MemTableHandler(input->GetSchema()));
-            int32_t cnt = 0;
-            while (cnt++ < limit_cnt_ && iter->Valid()) {
-                output_table->AddRow(iter->GetValue());
-                iter->Next();
-            }
-            return output_table;
+            return std::make_shared<LimitTableHandler>(std::dynamic_pointer_cast<TableHandler>(input),
+                                                       limit_cnt_.value());
         }
         case kRowHandler: {
             DLOG(INFO) << "limit row handler";
@@ -2611,12 +2595,10 @@ std::shared_ptr<DataHandler> FilterRunner::Run(
     // build window with start and end offset
     switch (input->GetHandlerType()) {
         case kTableHandler: {
-            return filter_gen_.Filter(
-                std::dynamic_pointer_cast<TableHandler>(input), parameter);
+            return filter_gen_.Filter(std::dynamic_pointer_cast<TableHandler>(input), parameter, limit_cnt_);
         }
         case kPartitionHandler: {
-            return filter_gen_.Filter(
-                std::dynamic_pointer_cast<PartitionHandler>(input), parameter);
+            return filter_gen_.Filter(std::dynamic_pointer_cast<PartitionHandler>(input), parameter, limit_cnt_);
         }
         default: {
             LOG(WARNING) << "fail to filter when input is row";
@@ -2662,9 +2644,6 @@ std::shared_ptr<DataHandler> GroupAggRunner::Run(
         iter->SeekToFirst();
         int32_t cnt = 0;
         while (iter->Valid()) {
-            if (limit_cnt_ > 0 && cnt++ >= limit_cnt_) {
-                break;
-            }
             auto key = iter->GetKey().ToString();
             auto segment = partition->GetSegment(key);
             if (!segment) {
@@ -2672,6 +2651,9 @@ std::shared_ptr<DataHandler> GroupAggRunner::Run(
                 return std::shared_ptr<DataHandler>();
             }
             if (!having_condition_.Valid() || having_condition_.Gen(segment, parameter)) {
+                if (limit_cnt_.has_value() && cnt++ >= limit_cnt_) {
+                    break;
+                }
                 output_table->AddRow(agg_gen_.Gen(parameter, segment));
             }
             iter->Next();
@@ -3043,7 +3025,7 @@ std::shared_ptr<TableHandler> RequestAggUnionRunner::RequestUnionWindow(
         }
 
         if (cond_ == nullptr) {
-            int64_t ts_start = agg_it->GetKey();
+            const uint64_t ts_start = agg_it->GetKey();
             const Row& row = agg_it->GetValue();
             if (prev_ts_start == ts_start) {
                 DLOG(INFO) << "Found duplicate entries in agg table for ts_start = " << ts_start;
@@ -3073,7 +3055,7 @@ std::shared_ptr<TableHandler> RequestAggUnionRunner::RequestUnionWindow(
             start_base = ts_start;
             agg_it->Next();
         } else {
-            const int64_t ts_start = agg_it->GetKey();
+            const uint64_t ts_start = agg_it->GetKey();
 
             // for agg rows has filter_key
             // max_size check should happen after iterate all agg rows for the same key
@@ -3931,6 +3913,10 @@ Row Runner::GroupbyProject(const int8_t* fn, const codec::Row& parameter, TableH
     }
     const auto& row = iter->GetValue();
     const auto& row_key = iter->GetKey();
+
+    // Init current run step runtime
+    JitRuntime::get()->InitRunStep();
+
     auto udf = reinterpret_cast<int32_t (*)(const int64_t, const int8_t*,
                                             const int8_t*, const int8_t*, int8_t**)>(
         const_cast<int8_t*>(fn));
@@ -3944,6 +3930,10 @@ Row Runner::GroupbyProject(const int8_t* fn, const codec::Row& parameter, TableH
     auto window_ptr = reinterpret_cast<const int8_t*>(&window_ref);
 
     uint32_t ret = udf(row_key, row_ptr, window_ptr, parameter_ptr, &buf);
+
+    // Release current run step resources
+    JitRuntime::get()->ReleaseRunStep();
+
     if (ret != 0) {
         LOG(WARNING) << "fail to run udf " << ret;
         return Row();
@@ -4111,34 +4101,44 @@ std::shared_ptr<TableHandler> IndexSeekGenerator::SegmentOfKey(
     }
 }
 
-std::shared_ptr<DataHandler> FilterGenerator::Filter(
-    std::shared_ptr<PartitionHandler> partition, const Row& parameter) {
+std::shared_ptr<DataHandler> FilterGenerator::Filter(std::shared_ptr<PartitionHandler> partition, const Row& parameter,
+                                                     std::optional<int32_t> limit) {
     if (!partition) {
         LOG(WARNING) << "fail to filter table: input is empty";
         return std::shared_ptr<DataHandler>();
     }
     if (index_seek_gen_.Valid()) {
-        return Filter(index_seek_gen_.SegmnetOfConstKey(parameter, partition), parameter);
+        return Filter(index_seek_gen_.SegmnetOfConstKey(parameter, partition), parameter, limit);
     } else {
-        if (!condition_gen_.Valid()) {
+        if (condition_gen_.Valid()) {
+            partition = std::make_shared<PartitionFilterWrapper>(partition, parameter, this);
+        }
+
+        if (!limit.has_value()) {
             return partition;
         }
-        return std::shared_ptr<PartitionHandler>(new PartitionFilterWrapper(partition, parameter, this));
+
+        return std::make_shared<LimitTableHandler>(partition, limit.value());
     }
 }
-std::shared_ptr<DataHandler> FilterGenerator::Filter(
-    std::shared_ptr<TableHandler> table,
-    const Row& parameter) {
+
+std::shared_ptr<DataHandler> FilterGenerator::Filter(std::shared_ptr<TableHandler> table, const Row& parameter,
+                                                     std::optional<int32_t> limit) {
     auto fail_ptr = std::shared_ptr<TableHandler>();
     if (!table) {
         LOG(WARNING) << "fail to filter table: input is empty";
         return fail_ptr;
     }
 
-    if (!condition_gen_.Valid()) {
+    if (condition_gen_.Valid()) {
+        table = std::make_shared<TableFilterWrapper>(table, parameter, this);
+    }
+
+    if (!limit.has_value()) {
         return table;
     }
-    return std::shared_ptr<TableHandler>(new TableFilterWrapper(table, parameter, this));
+
+    return std::make_shared<LimitTableHandler>(table, limit.value());
 }
 
 std::shared_ptr<DataHandlerList> RunnerContext::GetBatchCache(

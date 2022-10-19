@@ -32,7 +32,7 @@
 #--replica_num=3
 #--partition_num=8
 --system_table_replica_num=2
-#--enable_distsql=true
+--enable_distsql=true
 
 # turn this option on to export openmldb metric status
 # --enable_status_service=false

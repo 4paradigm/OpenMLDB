@@ -165,12 +165,11 @@ class Segment {
 
     void Put(const Slice& key, const std::map<int32_t, uint64_t>& ts_map, DataBlock* row);
 
-    // Get time data
-    bool Get(const Slice& key, uint64_t time, DataBlock** block);
-
-    bool Get(const Slice& key, uint32_t idx, uint64_t time, DataBlock** block);
-
     bool Delete(const Slice& key);
+
+    bool Delete(const Slice& key, uint64_t time);
+
+    bool Delete(const Slice& key, uint32_t idx, const uint64_t time);
 
     bool Delete(const Slice& key, uint64_t time);
 

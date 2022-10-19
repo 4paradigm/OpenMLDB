@@ -154,6 +154,7 @@ public class FailoverWatcher implements Watcher {
         System.exit(0);
       } 
       break;
+    /*
     case Disconnected: // be triggered when kill the server or the leader of zk cluster 
       LOG.warn(hostPort.getHostPort() + " received disconnected from ZooKeeper");
 
@@ -162,6 +163,7 @@ public class FailoverWatcher implements Watcher {
         System.exit(0);
       }
       break;
+    */
     case AuthFailed:
       LOG.fatal(hostPort.getHostPort() + " auth fail, exit immediately");
       System.exit(0);

@@ -20,15 +20,15 @@
 #--thread_pool_size=16
 # Configure the number of retry attempts, the default is 3
 #--request_max_retry=3
-# Configure the request timeout, the default is 12 seconds
+# Configure the request timeout in milliseconds, the default is 12 seconds
 #--request_timeout_ms=12000
-# Configure the retry interval when the request is unreachable, generally do not need to be modified
+# Configure the retry interval when the request is unreachable, generally do not need to be modified, in milliseconds
 #--request_sleep_time=1000
 # Configure the zookeeper session timeout in milliseconds
 --zk_session_timeout=10000
 # Configure the zookeeper health check interval, the unit is milliseconds, generally do not need to be modified
 #--zk_keep_alive_check_interval=15000
-# Configure the timeout period for tablet heartbeat detection, the default is 1 minute. If the tablet is still unreachable after this time, the nameserver considers that the tablet is unavailable and will perform the operation of offline the node
+# Configure the timeout period for tablet heartbeat detection in milliseconds, the default is 1 minute. If the tablet is still unreachable after this time, the nameserver considers that the tablet is unavailable and will perform the operation of offline the node
 --tablet_heartbeat_timeout=60000
 # Configure the tablet health check interval, in milliseconds
 #--tablet_offline_check_interval=1000
@@ -39,13 +39,13 @@
 #--name_server_task_concurrency=2
 # The maximum number of concurrent execution of high-availability tasks
 #--name_server_task_max_concurrency=8
-# Check the waiting time of the task when executing the task
+# Check the waiting time of the task when executing the task in milliseconds
 #--name_server_task_wait_time=1000
-# The maximum time to execute the task, if it exceeds, it will log
+# The maximum time to execute the task, if it exceeds, it will log. The unit is milliseconds
 #--name_server_op_execute_timeout=7200000
-# The time interval of receiving the status of the next task
+# The time interval of receiving the status of the next task in milliseconds
 #--get_task_status_interval=2000
-# The time interval of receiving the status of the next table
+# The time interval of receiving the status of the next table in milliseconds
 #--get_table_status_interval=2000
 # Check the minimum difference of binlog synchronization progress, if the master-slave offset is less than this value, the task has been successfully synchronized
 #--check_binlog_sync_progress_delta=100000
@@ -88,9 +88,9 @@
 --openmldb_log_dir=./logs
 
 # binlog conf
-# Binlog wait time when no new data is added
+# Binlog wait time when no new data is added, in milliseconds
 #--binlog_coffee_time=1000
-# Master-slave matching offset waiting time
+# Master-slave matching offset waiting time, in milliseconds
 #--binlog_match_logoffset_interval=1000
 # Whether to notify the follower to synchronize immediately when data is written
 --binlog_notify_on_put=true
@@ -121,9 +121,9 @@
 # snapshot conf
 # Configure the time to do snapshots, the time of day. For example, 23 means taking a snapshot at 23 o'clock every day.
 --make_snapshot_time=23
-# Check interval for snapshots
+# Check interval for snapshots, in milliseconds
 #--make_snapshot_check_interval=600000
-# Set the offset threshold of the snapshot, if the offset difference from the last snapshot is less than this value, no new snapshot will be generated
+# Set the offset threshold of the snapshot, if the offset difference from the last snapshot is less than this value, no new snapshot will be generated, in milliseconds
 #--make_snapshot_threshold_offset=100000
 # snapshot thread pool size
 #--snapshot_pool_size=1
@@ -157,6 +157,14 @@
 #--skiplist_max_height=12
 # The maximum height of the second level skip list
 #--key_entry_max_height=8
+
+# max table traverse iteration
+#--max_traverse_cnt=50000
+# query conf
+# max table traverse iteration（full table scan/aggregation）
+#--max_traverse_cnt=50000
+# max table traverse pk number（batch query）
+#--max_traverse_pk_cnt=5000
 
 # loadtable
 # The number of data bars to submit a task to the thread pool when loading

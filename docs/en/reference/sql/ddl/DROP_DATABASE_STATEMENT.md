@@ -10,19 +10,15 @@ The `DROP DATABASE` statement is used to drop a database.
 
 ## **Example**
 
-Create a database and set it as the current database:
+The following SQL commands create two databases and view all databases.
 
 ```sql
 CREATE DATABASE db1;
--- SUCCEED: Create database successfully
+-- SUCCEED
 
 CREATE DATABASE db2;
--- SUCCEED: Create database successfully
-```
+-- SUCCEED
 
-Check out the database list:
-
-```sql
 SHOW DATABASES;
  ----------- 
   Databases  
@@ -31,22 +27,19 @@ SHOW DATABASES;
   db2        
  ----------- 
 ```
-
-drop database `db1`
+The following SQL command deletes the database `db1` and list the rest of the databases.
 
 ```sql
 DROP DATABASE db1;
-```
 
-Check out the database list again:
-
-```sql
 SHOW DATABASES;
- ----------- 
-  Databases  
- -----------        
-  db2        
- ----------- 
+ -----------
+  Databases
+ -----------
+  db2
+ -----------
+
+1 rows in set
 ```
 
 ## Related Terms
@@ -55,5 +48,6 @@ SHOW DATABASES;
 
 [CREATE DATABASE](./CREATE_DATABASE_STATEMENT.md)
 
-[SHOW DATABASES](../ddl/SHOW_STATEMENT.md#show-databases)
+[SHOW DATABASES](./SHOW_DATABASES_STATEMENT.md)
+
 

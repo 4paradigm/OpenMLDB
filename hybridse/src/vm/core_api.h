@@ -170,6 +170,12 @@ class CoreAPI {
             const int inputRowSizeInBytes, const bool is_instance,
             size_t append_slices, WindowInterface* window);
 
+    static hybridse::codec::Row UnsafeWindowProjectBytes(
+            const hybridse::vm::RawPtrHandle fn, const uint64_t key,
+            hybridse::vm::ByteArrayPtr unsaferowBytes,
+            const int unsaferowSize, const bool is_instance,
+            size_t append_slices, WindowInterface* window);
+
     static hybridse::codec::Row WindowProject(
         const hybridse::vm::RawPtrHandle fn, const uint64_t key, const Row& row,
         WindowInterface* window);

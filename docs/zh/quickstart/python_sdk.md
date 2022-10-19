@@ -18,10 +18,10 @@ pip install openmldb
 import openmldb.dbapi
 
 # 连接集群版OpenMLDB
-db = openmldb.dbapi.connect("db1", "$zkcluster", "$zkpath")
+db = openmldb.dbapi.connect(database="db1", zk="$zkcluster", zkPath="$zkpath")
 
 # 连接单机版OpenMLDB
-# db = openmldb.dbapi.connect("db1", "$host", $port)
+# db = openmldb.dbapi.connect(database="db1", host="$host", port="$port")
 
 cursor = db.cursor()
 ```
@@ -197,7 +197,7 @@ OpenMLDB Python SDK支持了Notebook magic function拓展，使用下面语句�
 ```
 import openmldb
 
-db = openmldb.dbapi.connect('demo_db','0.0.0.0:2181','/openmldb')
+db = openmldb.dbapi.connect(database='demo_db',zk='0.0.0.0:2181',zkPath='/openmldb')
 
 openmldb.sql_magic.register(db)
 ```

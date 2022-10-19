@@ -16,34 +16,31 @@
 package com._4paradigm.openmldb.java_sdk_test.executor;
 
 
-import com._4paradigm.openmldb.test_common.bean.FEDBInfo;
-import com._4paradigm.openmldb.test_common.common.LogProxy;
 import com._4paradigm.openmldb.test_common.model.SQLCase;
 import com._4paradigm.openmldb.test_common.model.SQLCaseType;
+import com._4paradigm.qa.openmldb_deploy.bean.OpenMLDBInfo;
 import lombok.extern.slf4j.Slf4j;
-import org.slf4j.Logger;
 
 import java.util.Map;
 
 @Slf4j
 public class ClusterCliExecutor extends CommandExecutor{
-    private static final Logger logger = new LogProxy(log);
-    public ClusterCliExecutor(SQLCase fesqlCase, SQLCaseType executorType) {
-        super(fesqlCase, executorType);
+    public ClusterCliExecutor(SQLCase sqlCase, SQLCaseType executorType) {
+        super(sqlCase, executorType);
     }
 
-    public ClusterCliExecutor(SQLCase fesqlCase, Map<String, FEDBInfo> fedbInfoMap, SQLCaseType executorType) {
-        super(fesqlCase, fedbInfoMap, executorType);
+    public ClusterCliExecutor(SQLCase sqlCase, Map<String, OpenMLDBInfo> openMLDBInfoMap, SQLCaseType executorType) {
+        super(sqlCase, openMLDBInfoMap, executorType);
     }
 
     @Override
     public boolean verify() {
-        if (null != fesqlCase.getMode() && fesqlCase.getMode().contains("cluster-cli-unsupport")) {
-            logger.info("skip case in cli mode: {}", fesqlCase.getDesc());
+        if (null != sqlCase.getMode() && sqlCase.getMode().contains("cluster-cli-unsupport")) {
+            log.info("skip case in cli mode: {}", sqlCase.getDesc());
             return false;
         }
-        if (null != fesqlCase.getMode() && fesqlCase.getMode().contains("cluster-unsupport")) {
-            logger.info("skip case , mode: {}", fesqlCase.getDesc());
+        if (null != sqlCase.getMode() && sqlCase.getMode().contains("cluster-unsupport")) {
+            log.info("skip case , mode: {}", sqlCase.getDesc());
             return false;
         }
         return super.verify();

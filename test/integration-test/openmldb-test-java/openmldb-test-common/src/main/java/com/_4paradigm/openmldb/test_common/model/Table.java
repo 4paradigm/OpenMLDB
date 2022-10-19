@@ -16,6 +16,7 @@
 
 package com._4paradigm.openmldb.test_common.model;
 
+import com._4paradigm.openmldb.test_common.util.DataUtil;
 import com.google.common.base.Joiner;
 import com.google.common.collect.Lists;
 import lombok.Data;
@@ -48,6 +49,7 @@ public class Table implements Serializable{
     private int repeat = 1;
     private int replicaNum = 1;
     private int partitionNum = 1;
+    private String storage;
     private List<OpenMLDBDistribution> distribution;
 
     private List<String> common_column_indices;
@@ -68,7 +70,7 @@ public class Table implements Serializable{
         if (!StringUtils.isEmpty(create)) {
             return create;
         }
-        return buildCreateSQLFromColumnsIndexs(name, getColumns(), getIndexs(), replicaNum,partitionNum,distribution);
+        return buildCreateSQLFromColumnsIndexs(name, getColumns(), getIndexs(), replicaNum,partitionNum,distribution,storage);
     }
 
     // public String extractCreate() {
@@ -115,8 +117,7 @@ public class Table implements Serializable{
         for (List<Object> row : getRows()) {
             List<List<Object>> rows = Lists.newArrayList();
             rows.add(row);
-            inserts.add(buildInsertSQLFromRows(name, getColumns(),
-                    rows));
+            inserts.add(buildInsertSQLFromRows(name, getColumns(), rows));
         }
         return inserts;
     }
@@ -207,7 +208,11 @@ public class Table implements Serializable{
         for (String row : data.trim().split("\n")) {
             List<Object> each_row = new ArrayList<Object>();
             for (String item : row.trim().split(",")) {
-                each_row.add(item.trim());
+                String data = item.trim();
+                if(data.equalsIgnoreCase("null")){
+                    data = null;
+                }
+                each_row.add(data);
             }
             parserd_rows.add(each_row);
         }
@@ -327,6 +332,12 @@ public class Table implements Serializable{
      * @return
      */
     public static String getColumnType(String column) {
+//        int pos = column.trim().lastIndexOf(' ');
+//        return column.trim().substring(pos).trim();
+        String[] ss = column.split("\\s+");
+        return ss[1];
+    }
+    public static String getColumnTypeByExpect(String column) {
         int pos = column.trim().lastIndexOf(' ');
         return column.trim().substring(pos).trim();
     }
@@ -405,7 +416,7 @@ public class Table implements Serializable{
     }
 
     public static String buildCreateSQLFromColumnsIndexs(String name, List<String> columns, List<String> indexs,
-                                                         int replicaNum,int partitionNum,List<OpenMLDBDistribution> distribution) {
+                                                         int replicaNum,int partitionNum,List<OpenMLDBDistribution> distribution,String storage) {
         if (CollectionUtils.isEmpty(columns)) {
             return "";
         }
@@ -459,7 +470,13 @@ public class Table implements Serializable{
             }
             distributionStr.deleteCharAt(distributionStr.length()-1).append("]");
         }
-        String option = String.format("options(partitionnum=%s,replicanum=%s%s)",partitionNum,replicaNum,distributionStr);
+        String option = null;
+        if(StringUtils.isNotEmpty(storage)){
+            option = String.format("options(partitionnum=%s,replicanum=%s%s,storage_mode=\"%s\")",partitionNum,replicaNum,distributionStr,storage);
+        }else {
+            option = String.format("options(partitionnum=%s,replicanum=%s%s)",partitionNum,replicaNum,distributionStr);
+        }
+        //String option = String.format("options(partitionnum=%s,replicanum=%s%s)",partitionNum,replicaNum,distributionStr);
         sql = sql+option+";";
         // if (replicaNum == 1) {
         //     sql += ");";

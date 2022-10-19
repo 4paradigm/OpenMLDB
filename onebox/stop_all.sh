@@ -1,4 +1,4 @@
-#! /bin/sh
+#!/bin/bash
 
 # Copyright 2021 4Paradigm
 #
@@ -16,5 +16,9 @@
 
 set -x -e
 
-pkill -9 openmldb
+if [[ "$OSTYPE" = "darwin"* ]]; then
+    pkill -9 -x -l openmldb
+else
+    pkill -9 -x -e openmldb
+fi
 

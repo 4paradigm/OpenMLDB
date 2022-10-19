@@ -209,6 +209,10 @@ base::Status ConvertExprNode(const zetasql::ASTExpression* ast_expression, node:
                     op = node::FnOperator::kFnOpILike;
                     break;
                 }
+                case zetasql::ASTBinaryExpression::Op::RLIKE: {
+                    op = node::FnOperator::kFnOpRLike;
+                    break;
+                }
                 case zetasql::ASTBinaryExpression::Op::MOD: {
                     op = node::FnOperator::kFnOpMod;
                     break;
@@ -1668,31 +1672,36 @@ base::Status ConvertTableOption(const zetasql::ASTOptionsEntry* entry, node::Nod
         const auto arry_expr = entry->value()->GetAsOrNull<zetasql::ASTArrayConstructor>();
         CHECK_TRUE(arry_expr != nullptr, common::kSqlAstError, "distribution not and ASTArrayConstructor");
         CHECK_TRUE(!arry_expr->elements().empty(), common::kSqlAstError, "Un-support empty distributions currently")
-        CHECK_TRUE(1 == arry_expr->elements().size(), common::kSqlAstError,
-                   "Un-support multiple distributions currently")
+        node::NodePointVector distribution_list;
         for (const auto e : arry_expr->elements()) {
             const auto ele = e->GetAsOrNull<zetasql::ASTStructConstructorWithParens>();
-            CHECK_TRUE(ele != nullptr, common::kSqlAstError,
-                       "distribution element is not ASTStructConstructorWithParens");
-            CHECK_TRUE(ele->field_expressions().size() == 2, common::kSqlAstError,
-                       "distribution element has size != 2");
-
-            node::SqlNodeList* partition_mata_nodes = node_manager->MakeNodeList();
-            std::string leader;
-            CHECK_STATUS(AstStringLiteralToString(ele->field_expression(0), &leader));
-            partition_mata_nodes->PushBack(node_manager->MakePartitionMetaNode(node::RoleType::kLeader, leader));
-            // FIXME: distribution_list not constructed correctly
-
-            const auto follower_list = ele->field_expression(1)->GetAsOrNull<zetasql::ASTArrayConstructor>();
-            for (const auto fo_node : follower_list->elements()) {
-                std::string follower;
-                CHECK_STATUS(AstStringLiteralToString(fo_node, &follower));
-                partition_mata_nodes->PushBack(
-                    node_manager->MakePartitionMetaNode(node::RoleType::kFollower, follower));
+            if (ele == nullptr) {
+                const auto arg = e->GetAsOrNull<zetasql::ASTStringLiteral>();
+                CHECK_TRUE(arg != nullptr, common::kSqlAstError, "parse distribution failed");
+                node::SqlNodeList* partition_mata_nodes = node_manager->MakeNodeList();
+                partition_mata_nodes->PushBack(node_manager->MakePartitionMetaNode(node::RoleType::kLeader,
+                            arg->string_value()));
+                distribution_list.push_back(partition_mata_nodes);
+            } else {
+                node::SqlNodeList* partition_mata_nodes = node_manager->MakeNodeList();
+                std::string leader;
+                CHECK_STATUS(AstStringLiteralToString(ele->field_expression(0), &leader));
+                partition_mata_nodes->PushBack(node_manager->MakePartitionMetaNode(node::RoleType::kLeader, leader));
+                if (ele->field_expressions().size() > 1) {
+                    const auto follower_list = ele->field_expression(1)->GetAsOrNull<zetasql::ASTArrayConstructor>();
+                    CHECK_TRUE(follower_list != nullptr, common::kSqlAstError,
+                            "follower element is not ASTArrayConstructor");
+                    for (const auto fo_node : follower_list->elements()) {
+                        std::string follower;
+                        CHECK_STATUS(AstStringLiteralToString(fo_node, &follower));
+                        partition_mata_nodes->PushBack(
+                            node_manager->MakePartitionMetaNode(node::RoleType::kFollower, follower));
+                    }
+                }
+                distribution_list.push_back(partition_mata_nodes);
             }
-            *output = node_manager->MakeDistributionsNode(partition_mata_nodes);
-            return base::Status::OK();
         }
+        *output = node_manager->MakeDistributionsNode(distribution_list);
     } else if (boost::equals("storage_mode", identifier)) {
         std::string storage_mode;
         CHECK_STATUS(AstStringLiteralToString(entry->value(), &storage_mode));

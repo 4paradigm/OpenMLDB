@@ -1,0 +1,245 @@
+# Copyright 2021 4Paradigm
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+db: test_zw
+debugs: []
+version: 0.5.0
+cases:
+  - id: 0
+    desc: 查询所有列
+    inputs:
+      - columns: ["id int","ts timestamp","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:ts"]
+        rows:
+          - [1,1590738989000,"aa",1,21,31,1.1,2.1,1590738989000,"2020-05-01",true]
+          - [2,1590738990000,"aa",2,22,32,1.1,2.1,1590738989000,"2020-05-02",false]
+    sql: select id,ts,c1,c2,c3,c4,c5,c6,c7,c8,c9 from {0};
+    expect:
+      order: id
+      columns: ["id int","ts timestamp","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+      rows:
+        - [1,1590738989000,"aa",1,21,31,1.1,2.1,1590738989000,"2020-05-01",true]
+        - [2,1590738990000,"aa",2,22,32,1.1,2.1,1590738989000,"2020-05-02",false]
+  - id: 1
+    desc: 查询部分列
+    inputs:
+      - columns: ["c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - ["aa",2,3,1.1,2.1,1590738989000,"2020-05-01"]
+    sql: select c1,c3,c4 from {0};
+    expect:
+      columns: ["c1 string","c3 int","c4 bigint"]
+      rows:
+        - ["aa",2,3]
+  - id: 2
+    desc: 查询*
+    inputs:
+      - columns: ["c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - ["aa",2,3,1.1,2.1,1590738989000,"2020-05-01"]
+    sql: select * from {0};
+    expect:
+      columns: ["c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
+      rows:
+        - ["aa",2,3,1.1,2.1,1590738989000,"2020-05-01"]
+  - id: 3
+    desc: 查询列中部分重命名
+    inputs:
+      - columns: ["c1 string","c2 int","c3 bigint","c4 timestamp"]
+        indexs: ["index1:c1:c4"]
+        rows:
+          - ["aa",2,3,1590738989000]
+    sql: select c1 as name,c2,c3,c4 from {0};
+    expect:
+      columns: ["name string","c2 int","c3 bigint","c4 timestamp"]
+      rows:
+        - ["aa",2,3,1590738989000]
+  - id: 4
+    desc: 查询列中全部重命名
+    inputs:
+      - columns: ["c1 string","c2 int","c3 bigint","c4 timestamp"]
+        indexs: ["index1:c1:c4"]
+        rows:
+          - ["aa",2,3,1590738989000]
+    sql: select c1 as name,c2 as v2,c3 as v3 ,c4 as v4 from {0};
+    expect:
+      columns: ["name string","v2 int","v3 bigint","v4 timestamp"]
+      rows:
+        - ["aa",2,3,1590738989000]
+  - id: 5
+    desc: 查询的列部分带表名
+    inputs:
+      - columns: ["c1 string","c2 int","c3 bigint","c4 timestamp"]
+        indexs: ["index1:c1:c4"]
+        rows:
+          - ["aa",2,3,1590738989000]
+    sql: select c1 as name,{0}.c2,c3,c4 from {0};
+    expect:
+      columns: ["name string","c2 int","c3 bigint","c4 timestamp"]
+      rows:
+        - ["aa",2,3,1590738989000]
+  - id: 6
+    desc: 查询的表不存在
+    inputs:
+      - columns: ["c1 string","c2 int","c3 bigint","c4 timestamp"]
+        indexs: ["index1:c1:c4"]
+        rows:
+          - ["aa",2,3,1590738989000]
+    sql: select c1,c2,c3,c4 from {0}1;
+    expect:
+      success: false
+  - id: 7
+    desc: 查询的列不存在
+    inputs:
+      - columns: ["c1 string","c2 int","c3 bigint","c4 timestamp"]
+        indexs: ["index1:c1:c4"]
+        rows:
+          - ["aa",2,3,1590738989000]
+    sql: select c1,c2,c3,c5 from {0};
+    expect:
+      success: false
+  - id: 8
+    desc: 查询的数据中有空串
+    mode: cli-unsupport
+    inputs:
+      - columns: ["c1 string","c2 int","c3 string","c4 timestamp"]
+        indexs: ["index1:c1:c4"]
+        rows:
+          - ["",2,"",1590738989000]
+    sql: select c1,c2,c3,c4 from {0};
+    expect:
+      columns: ["c1 string","c2 int","c3 string","c4 timestamp"]
+      rows:
+        - ["",2,"",1590738989000]
+  - id: 9
+    desc: 查询的数据中有null
+    inputs:
+      - columns: ["c1 string","c2 int","c3 string","c4 timestamp"]
+        indexs: ["index1:c1:c4"]
+        rows:
+          - [NULL,2,NULL,1590738989000]
+    sql: select c1,c2,c3,c4 from {0};
+    expect:
+      columns: ["c1 string","c2 int","c3 string","c4 timestamp"]
+      rows:
+        - [NULL,2,NULL,1590738989000]
+  - id: 14
+    desc: 查询常量
+    sqlDialect: ["HybridSQL","SQLITE3"]
+    tags: ["常量fesql和mysql类型不配"]
+    inputs:
+      - columns: ["c1 string","c2 int","c3 bigint","c4 timestamp"]
+        indexs: ["index1:c1:c4"]
+        rows:
+          - ["aa",2,3,1590738989000]
+    sql: select c1 as name,c2,c3,c4,1 from {0};
+    expect:
+      columns: ["name string","c2 int","c3 bigint","c4 timestamp","1 int"]
+      rows:
+        - ["aa",2,3,1590738989000,1]
+  - id: 15
+    desc: 查询的列带表名和别名
+    inputs:
+      - columns: ["c1 string","c2 int","c3 bigint","c4 timestamp"]
+        indexs: ["index1:c1:c4"]
+        rows:
+          - ["aa",2,3,1590738989000]
+    sql: select {0}.c1 as name,{0}.c2 as t_c2,{0}.c3 as t_c3,{0}.c4 as t_c4 from {0};
+    expect:
+      columns: ["name string","t_c2 int","t_c3 bigint","t_c4 timestamp"]
+      rows:
+        - ["aa",2,3,1590738989000]
+  - id: 16
+    desc: 查询表达式使用表名
+    sqlDialect: ["HybridSQL","SQLITE3"]
+    tags: ["表达式计算结果fesql和mysql类型不配"]
+    inputs:
+      - columns: ["c1 string","c2 int","c3 bigint","c4 timestamp"]
+        indexs: ["index1:c1:c4"]
+        rows:
+          - ["aa",2,3,1590738989000]
+    sql: select c1 as name,{0}.c2+1 as t_c2,c3,c4 from {0};
+    expect:
+      columns: ["name string","t_c2 int","c3 bigint","c4 timestamp"]
+      rows:
+        - ["aa",3,3,1590738989000]
+  - id: 17
+    desc: 查询函数表达式使用表名
+    sqlDialect: ["HybridSQL","SQLITE3"]
+    inputs:
+      - columns: ["c1 string","c2 int","c3 bigint","c4 timestamp"]
+        indexs: ["index1:c1:c4"]
+        rows:
+          - ["123456789",2,3,1590738989000]
+    sql: select substr({0}.c1, 3, 6) as name,{0}.c2+1 as t_c2,c3,c4 from {0};
+    expect:
+      columns: ["name string","t_c2 int","c3 bigint","c4 timestamp"]
+      rows:
+        - ["345678",3,3,1590738989000]
+  - id: 18
+    desc: column name prefix with _
+    mode: offline-unsupport
+    sqlDialect: ["HybridSQL"]
+    tags: ["@chendihao, @baoxinqi, support simple project node with column cast"]
+    inputs:
+      - columns: ["_c1 int", "_c2 string", "_c5 bigint"]
+        indexs: ["index1:_c1:_c5"]
+        rows:
+          - [1, "2020-05-22 10:43:40", 1]
+    sql: |
+      select _c1, bigint(_c2) DIV 1000 as _c2_sec from (select _c1, timestamp(_c2) as _c2 from {0});
+    expect:
+      columns: ["_c1 int", "_c2_sec bigint"]
+      rows:
+        - [1, 1590115420]
+  - id: 19
+    desc: 全表聚合
+    mode: rtidb-unsupport,offline-unsupport,cli-unsupport
+    db: db1
+    sqlDialect: ["HybridSQL", "MYSQL"]
+    sql: |
+      SELECT SUM(col1) as sum_col1, COUNT(col1) as cnt_col1, MAX(col1) as max_col1, 
+      MIN(col1) as min_col1, AVG(col1) as avg_col1 FROM {0};
+    inputs:
+      - columns: ["col0 string", "col1 int32", "col2 int16", "col3 float", "col4 double", "col5 int64", "col6 string"]
+        indexs: ["index1:col2:col5"]
+        rows: 
+          - [0, 1, 5, 1.1, 11.1, 1, 1]
+          - [0, 2, 5, 2.2, 22.2, 2, 22]
+          - [1, 3, 55, 3.3, 33.3, 1, 333]
+          - [1, 4, 55, 4.4, 44.4, 2, 4444]
+          - [2, 5, 55, 5.5, 55.5, 3, aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa]
+    batch_plan: |
+      PROJECT(type=Aggregation)
+        DATA_PROVIDER(table=auto_t0)
+    expect:
+      columns: ["sum_col1 int32", "cnt_col1 int64", "max_col1 int32", "min_col1 int32", "avg_col1 double"]
+      order: sum_col1
+      rows: 
+        - [15, 5, 5, 1, 3]
+  -
+    id: 14
+    desc: 不指定索引，插入数据，可查询
+    inputs:
+      - columns: [ "id int not null","c1 int not null","c2 smallint not null","c3 float not null","c4 double not null","c5 bigint not null","c6 string not null","c7 timestamp not null","c8 date not null","c9 bool not null" ]
+        rows:
+          - [ 1, 1, 2, 3.3, 4.4, 5, "aa", 12345678, "2020-05-21", true ]
+    sql: select * from {0};
+    expect:
+      columns : ["id int","c1 int","c2 smallint","c3 float","c4 double","c5 bigint","c6 string","c7 timestamp","c8 date","c9 bool"]
+      order: id
+      rows:
+        - [1,1,2,3.3,4.4,5,"aa",12345678,"2020-05-21",true]

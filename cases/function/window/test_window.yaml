@@ -14,6 +14,7 @@
 
 db: test_zw
 debugs: []
+version: 0.5.0
 cases:
   -
     id: 0
@@ -96,6 +97,7 @@ cases:
   -
     id: 3
     desc: 一个pk所有数据都不在窗口内
+    version: 0.6.0
     inputs:
       -
         columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
@@ -112,9 +114,9 @@ cases:
       order: id
       columns: ["id int","c1 string","w1_c4_sum bigint"]
       rows:
-        - [1,"aa",0]
-        - [2,"aa",0]
-        - [3,"aa",0]
+        - [1,"aa",null]
+        - [2,"aa",null]
+        - [3,"aa",null]
   -
     id: 4
     desc: 窗口只要当前行
@@ -162,6 +164,7 @@ cases:
   -
     id: 6
     desc: 最后一行进入窗口
+    version: 0.6.0
     inputs:
       -
         columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
@@ -178,12 +181,13 @@ cases:
       order: id
       columns: ["id int","c1 string","w1_c4_sum bigint"]
       rows:
-        - [1,"aa",0]
-        - [2,"aa",0]
+        - [1,"aa",null]
+        - [2,"aa",null]
         - [3,"aa",30]
   -
     id: 7
     desc: 纯历史窗口-滑动
+    version: 0.6.0
     inputs:
       -
         columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
@@ -202,7 +206,7 @@ cases:
       order: id
       columns: ["id int","c1 string","w1_c4_sum bigint"]
       rows:
-        - [1,"aa",0]
+        - [1,"aa",null]
         - [2,"aa",30]
         - [3,"aa",61]
         - [4,"aa",63]
@@ -210,6 +214,7 @@ cases:
   -
     id: 8
     desc: 两个pk，一个没有进入窗口，一个滑动
+    version: 0.6.0
     inputs:
       -
         columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
@@ -228,11 +233,11 @@ cases:
       order: id
       columns: ["id int","c1 string","w1_c4_sum bigint"]
       rows:
-        - [1,"aa",0]
+        - [1,"aa",null]
         - [2,"aa",30]
         - [3,"aa",61]
         - [4,"aa",63]
-        - [5,"bb",0]
+        - [5,"bb",null]
   -
     id: 9
     desc: 两个pk，一个全部进入窗口，一个滑动
@@ -348,6 +353,7 @@ cases:
   -
     id: 13
     desc: ts列相同
+    mode: disk-unsupport
     inputs:
       -
         columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
@@ -777,7 +783,6 @@ cases:
   -
     id: 27
     desc: 两个窗口,一个union，一个不union
-    mode: rtidb-batch-unsupport,cluster-unsupport
     tags: ["cluster-执行失败"]
     inputs:
       -
@@ -816,7 +821,6 @@ cases:
   -
     id: 28
     desc: 两个窗口,一个union一个表，一个union两个表
-    mode: rtidb-batch-unsupport,cluster-unsupport
     tags: ["cluster-执行失败"]
     inputs:
       -
@@ -859,7 +863,6 @@ cases:
   -
     id: 29
     desc: 两个窗口,一个union，一个INSTANCE_NOT_IN_WINDOW
-    mode: rtidb-batch-unsupport,cluster-unsupport
     tags: ["cluster-执行失败"]
     inputs:
       -
@@ -892,7 +895,6 @@ cases:
   -
     id: 30
     desc: 两个窗口,一个union一个表，一个union使用子查询
-    mode: rtidb-batch-unsupport,cluster-unsupport
     tags: ["cluster-执行失败"]
     inputs:
       -
@@ -924,8 +926,6 @@ cases:
   -
     id: 31
     desc: 多个窗口-rows
-    mode: rtidb-batch-unsupport,cluster-unsupport
-    tags: ["cluster-执行失败", "@chenjing batch online fix for multi window with union", "@tobe batch offline fix"]
     inputs:
       -
         columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
@@ -961,8 +961,6 @@ cases:
   -
     id: 32
     desc: 多个窗口包含不同的单位
-    mode: cluster-unsupport
-    tags: ["cluster-执行失败"]
     inputs:
       -
         columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
@@ -1050,15 +1048,15 @@ cases:
     expect:
       columns: ["id int", "val1 int", "agg1 int", "agg2 int"]
       order: id
-      data: |
-        1, 1, 1, NULL
-        2, 2, 2, 1
-        3, 3, 3, 2
-        4, 4, 4, 3
-        5, 5, 5, 4
-        6, 4, 4, NULL
-        7, 3, 3, 4
-        8, 2, 2, 3
+      rows:
+        - [1, 1, 1, NULL]
+        - [2, 2, 2, 1]
+        - [3, 3, 3, 2]
+        - [4, 4, 4, 3]
+        - [5, 5, 5, 4]
+        - [6, 4, 4, NULL]
+        - [7, 3, 3, 4]
+        - [8, 2, 2, 3]
 
   - id: 34
     desc: |
@@ -1067,15 +1065,15 @@ cases:
       - columns: [ "id int","ts timestamp","group1 string","val1 int" ]
         indexs: [ "index1:group1:ts" ]
         name: t1
-        data: |
-          1, 1612130400000, g1, 1
-          2, 1612130401000, g1, 2
-          3, 1612130402000, g1, 3
-          4, 1612130403000, g1, 4
-          5, 1612130404000, g1, 5
-          6, 1612130404000, g2, 4
-          7, 1612130405000, g2, 3
-          8, 1612130406000, g2, 2
+        rows:
+          - [1, 1612130400000, g1, 1]
+          - [2, 1612130401000, g1, 2]
+          - [3, 1612130402000, g1, 3]
+          - [4, 1612130403000, g1, 4]
+          - [5, 1612130404000, g1, 5]
+          - [6, 1612130404000, g2, 4]
+          - [7, 1612130405000, g2, 3]
+          - [8, 1612130406000, g2, 2]
     sql: |
       select
       `id`,
@@ -1088,15 +1086,15 @@ cases:
     expect:
       columns: ["id int", "val1 int", "agg1 int", "agg2 int"]
       order: id
-      data: |
-        1, 1, 1, NULL
-        2, 2, 2, 1
-        3, 3, 3, 2
-        4, 4, 4, 3
-        5, 5, 5, 4
-        6, 4, 4, NULL
-        7, 3, 3, 4
-        8, 2, 2, 3
+      rows:
+        - [1, 1, 1, NULL]
+        - [2, 2, 2, 1]
+        - [3, 3, 3, 2]
+        - [4, 4, 4, 3]
+        - [5, 5, 5, 4]
+        - [6, 4, 4, NULL]
+        - [7, 3, 3, 4]
+        - [8, 2, 2, 3]
 
   - id: 35
     desc: |
@@ -1126,17 +1124,18 @@ cases:
     expect:
       columns: ["id int", "val1 int", "agg1 int", "agg2 int"]
       order: id
-      data: |
-        1, 1, 1, NULL
-        2, 2, 2, 1
-        3, 3, 3, 2
-        4, 4, 4, 3
-        5, 5, 5, 4
-        6, 4, 4, NULL
-        7, 3, 3, 4
-        8, 2, 2, 3
+      rows:
+        - [1, 1, 1, NULL]
+        - [2, 2, 2, 1]
+        - [3, 3, 3, 2]
+        - [4, 4, 4, 3]
+        - [5, 5, 5, 4]
+        - [6, 4, 4, NULL]
+        - [7, 3, 3, 4]
+        - [8, 2, 2, 3]
 
   - id: 36
+    version: 0.6.0
     desc: |
       correctness for window functions over window whose border is open
     inputs:
@@ -1176,6 +1175,7 @@ cases:
          3, 2, 22, 21, 22
 
   - id: 37
+    version: 0.6.0
     desc: |
       correctness for rows_range window functions over window whose border is open
     inputs:

@@ -16,6 +16,7 @@
 
 import sqlalchemy as db
 from nb_log import LogManager
+import openmldb
 
 log = LogManager('fedb-sdk-test').get_logger_and_add_handlers()
 
@@ -28,6 +29,10 @@ class FedbClient:
         self.dbName = dbName
 
     def getConnect(self):
-        engine = db.create_engine('openmldb://@/{}?zk={}&zkPath={}'.format(self.dbName, self.zkCluster, self.zkRootPath))
-        connect = engine.connect()
-        return connect
+        # engine = db.create_engine('openmldb://@/{}?zk={}&zkPath={}'.format(self.dbName, self.zkCluster, self.zkRootPath))
+        # connect = engine.connect()
+        # return connect
+
+        db = openmldb.dbapi.connect(database=self.dbName, zk=self.zkCluster, zkPath=self.zkRootPath)
+        cursor = db.cursor()
+        return cursor

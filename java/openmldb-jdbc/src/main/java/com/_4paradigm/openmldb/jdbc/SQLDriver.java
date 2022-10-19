@@ -120,9 +120,10 @@ public class SQLDriver implements Driver {
         }
     }
 
-    // only five options. If more, we should use alias map.
+    // If more, we should use option map <prop name, option name-type>.
     private SdkOption createOptionByProps(Properties properties) {
         SdkOption option = new SdkOption();
+        // requires
         String prop = properties.getProperty("zk");
         if (prop != null) {
             option.setZkCluster(prop);
@@ -135,6 +136,8 @@ public class SQLDriver implements Driver {
         } else {
             throw new IllegalArgumentException("must set param 'zkPath'");
         }
+
+        // optionals
         prop = properties.getProperty("sessionTimeout");
         if (prop != null) {
             option.setSessionTimeout(Long.parseLong(prop));
@@ -146,6 +149,26 @@ public class SQLDriver implements Driver {
         prop = properties.getProperty("requestTimeout");
         if (prop != null) {
             option.setRequestTimeout(Long.parseLong(prop));
+        }
+        prop = properties.getProperty("zkLogLevel");
+        if (prop != null) {
+            option.setZkLogLevel(Integer.parseInt(prop));
+        }
+        prop = properties.getProperty("zkLogFile");
+        if (prop != null) {
+            option.setZkLogFile(prop);
+        }
+        prop = properties.getProperty("glogLevel");
+        if (prop != null) {
+            option.setGlogLevel(Integer.parseInt(prop));
+        }
+        prop = properties.getProperty("glogDir");
+        if (prop != null) {
+            option.setGlogDir(prop);
+        }
+        prop = properties.getProperty("maxSqlCacheSize");
+        if (prop != null) {
+            option.setMaxSqlCacheSize(Integer.parseInt(prop));
         }
         return option;
     }

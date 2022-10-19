@@ -9,7 +9,7 @@
   * The number of cores is recommended to be no less than 4 cores. If the CPU does not support the AVX2 instruction set in the Linux environment, the deployment package needs to be recompiled from the source code.
 
 ## Deployment Package
-The precompiled OpenMLDB deployment package is used by default in this documentation ([Linux](https://github.com/4paradigm/OpenMLDB/releases/download/v0.6.0/openmldb-0.6.0-linux.tar.gz) , [macOS](https://github.com/4paradigm/OpenMLDB/releases/download/v0.6.0/openmldb-0.6.0-darwin.tar.gz)), the supported operating system requirements are: CentOS 7, Ubuntu 20.04, macOS >= 10.15. If the user wishes to compile by himself (for example, for OpenMLDB source code development, the operating system or CPU architecture is not in the support list of the precompiled deployment package, etc.), the user can choose to compile and use in the docker container or compile from the source code. For details, please refer to our [compile documentation](compile.md).
+The precompiled OpenMLDB deployment package is used by default in this documentation ([Linux](https://github.com/4paradigm/OpenMLDB/releases/download/v0.6.3/openmldb-0.6.3-linux.tar.gz) , [macOS](https://github.com/4paradigm/OpenMLDB/releases/download/v0.6.3/openmldb-0.6.3-darwin.tar.gz)), the supported operating system requirements are: CentOS 7, Ubuntu 20.04, macOS >= 10.15. If the user wishes to compile by himself (for example, for OpenMLDB source code development, the operating system or CPU architecture is not in the support list of the precompiled deployment package, etc.), the user can choose to compile and use in the docker container or compile from the source code. For details, please refer to our [compile documentation](compile.md).
 
 ## Configure Environment (Linux)
 
@@ -78,10 +78,10 @@ OpenMLDB standalone version needs to deploy a nameserver and a tablet. The names
 #### 1. Download the OpenMLDB Deployment Package
 
 ```
-wget https://github.com/4paradigm/OpenMLDB/releases/download/v0.6.0/openmldb-0.6.0-linux.tar.gz
-tar -zxvf openmldb-0.6.0-linux.tar.gz
-mv openmldb-0.6.0-linux openmldb-tablet-0.6.0
-cd openmldb-tablet-0.6.0
+wget https://github.com/4paradigm/OpenMLDB/releases/download/v0.6.3/openmldb-0.6.3-linux.tar.gz
+tar -zxvf openmldb-0.6.3-linux.tar.gz
+mv openmldb-0.6.3-linux openmldb-tablet-0.6.3
+cd openmldb-tablet-0.6.3
 ```
 
 #### 2. Modify the Configuration File: conf/standalone_tablet.flags
@@ -100,7 +100,7 @@ cd openmldb-tablet-0.6.0
 #### 3. Start the Service
 
 ```
-sh bin/start.sh start standalone_tablet
+bash bin/start.sh start standalone_tablet
 ```
 
 **Notice**: After the service is started, the standalone_tablet.pid file will be generated in the bin directory, and the process number at startup will be saved in it. If the pid inside the file is running, the startup will fail.
@@ -110,10 +110,10 @@ sh bin/start.sh start standalone_tablet
 #### 1. Download the OpenMLDB Deployment Package
 
 ```
-wget https://github.com/4paradigm/OpenMLDB/releases/download/v0.6.0/openmldb-0.6.0-linux.tar.gz
-tar -zxvf openmldb-0.6.0-linux.tar.gz
-mv openmldb-0.6.0-linux openmldb-ns-0.6.0
-cd openmldb-ns-0.6.0
+wget https://github.com/4paradigm/OpenMLDB/releases/download/v0.6.3/openmldb-0.6.3-linux.tar.gz
+tar -zxvf openmldb-0.6.3-linux.tar.gz
+mv openmldb-0.6.3-linux openmldb-ns-0.6.3
+cd openmldb-ns-0.6.3
 ```
 
 #### 2. Modify the Configuration File: conf/standalone_nameserver.flags
@@ -131,7 +131,7 @@ cd openmldb-ns-0.6.0
 #### 3. Start the Service
 
 ```
-sh bin/start.sh start standalone_nameserver
+bash bin/start.sh start standalone_nameserver
 ```
 
 #### 4. Verify the Running Status of the Service
@@ -153,10 +153,10 @@ Before starting the APIServer, make sure that the OpenMLDB cluster has been star
 #### 1. Download the OpenMLDB Deployment Package
 
 ```
-wget https://github.com/4paradigm/OpenMLDB/releases/download/v0.6.0/openmldb-0.6.0-linux.tar.gz
-tar -zxvf openmldb-0.6.0-linux.tar.gz
-mv openmldb-0.6.0-linux openmldb-apiserver-0.6.0
-cd openmldb-apiserver-0.6.0
+wget https://github.com/4paradigm/OpenMLDB/releases/download/v0.6.3/openmldb-0.6.3-linux.tar.gz
+tar -zxvf openmldb-0.6.3-linux.tar.gz
+mv openmldb-0.6.3-linux openmldb-apiserver-0.6.3
+cd openmldb-apiserver-0.6.3
 ```
 
 #### 2. Modify the Configuration File: conf/standalone_apiserver.flags
@@ -176,7 +176,7 @@ cd openmldb-apiserver-0.6.0
 #### 3. Start the Service
 
 ```
-sh bin/start.sh start standalone_apiserver
+bash bin/start.sh start standalone_apiserver
 ```
 
 ## Deploy Cluster Version
@@ -193,6 +193,7 @@ It is recommended to deploy version 3.4.14. If there is an available zookeeper c
 
 ```
 wget https://archive.apache.org/dist/zookeeper/zookeeper-3.4.14/zookeeper-3.4.14.tar.gz
+tar -zxvf zookeeper-3.4.14.tar.gz
 cd zookeeper-3.4.14
 cp conf/zoo_sample.cfg conf/zoo.cfg
 ```
@@ -209,7 +210,7 @@ clientPort=7181
 #### 3. Start Zookeeper
 
 ```
-sh bin/zkServer.sh start
+bash bin/zkServer.sh start
 ```
 
 Deploy the Zookeeper cluster [refer to here](https://zookeeper.apache.org/doc/r3.4.14/zookeeperStarted.html#sc_RunningReplicatedZooKeeper).
@@ -219,10 +220,10 @@ Deploy the Zookeeper cluster [refer to here](https://zookeeper.apache.org/doc/r3
 #### 1. Download the OpenMLDB Deployment Package
 
 ```
-wget https://github.com/4paradigm/OpenMLDB/releases/download/v0.6.0/openmldb-0.6.0-linux.tar.gz
-tar -zxvf openmldb-0.6.0-linux.tar.gz
-mv openmldb-0.6.0-linux openmldb-tablet-0.6.0
-cd openmldb-tablet-0.6.0
+wget https://github.com/4paradigm/OpenMLDB/releases/download/v0.6.3/openmldb-0.6.3-linux.tar.gz
+tar -zxvf openmldb-0.6.3-linux.tar.gz
+mv openmldb-0.6.3-linux openmldb-tablet-0.6.3
+cd openmldb-tablet-0.6.3
 ```
 
 #### 2. Modify the Configuration File: conf/tablet.flags
@@ -249,7 +250,7 @@ cd openmldb-tablet-0.6.0
 #### 3. Start the Service
 
 ```
-sh bin/start.sh start tablet
+bash bin/start.sh start tablet
 ```
 
 Repeat the above steps to deploy multiple tablets.
@@ -265,10 +266,10 @@ Repeat the above steps to deploy multiple tablets.
 #### 1. Download the OpenMLDB Deployment Package
 
 ```
-wget https://github.com/4paradigm/OpenMLDB/releases/download/v0.6.0/openmldb-0.6.0-linux.tar.gz
-tar -zxvf openmldb-0.6.0-linux.tar.gz
-mv openmldb-0.6.0-linux openmldb-ns-0.6.0
-cd openmldb-ns-0.6.0
+wget https://github.com/4paradigm/OpenMLDB/releases/download/v0.6.3/openmldb-0.6.3-linux.tar.gz
+tar -zxvf openmldb-0.6.3-linux.tar.gz
+mv openmldb-0.6.3-linux openmldb-ns-0.6.3
+cd openmldb-ns-0.6.3
 ```
 
 #### 2. Modify the Configuration File: conf/nameserver.flags
@@ -281,7 +282,6 @@ cd openmldb-ns-0.6.0
 --endpoint=172.27.128.31:6527
 --zk_cluster=172.27.128.33:7181,172.27.128.32:7181,172.27.128.31:7181
 --zk_root_path=/openmldb_cluster
---enable_distsql=true
 ```
 
 **Notice:** The endpoint cannot use 0.0.0.0 and 127.0.0.1.
@@ -289,7 +289,7 @@ cd openmldb-ns-0.6.0
 #### 3. Start the Service
 
 ```
-sh bin/start.sh start nameserver
+bash bin/start.sh start nameserver
 ```
 
 Repeat the above steps to deploy multiple nameservers.
@@ -312,10 +312,10 @@ Before running, make sure that the OpenMLDB cluster has been started, otherwise 
 #### 1. Download the OpenMLDB Deployment Package
 
 ```
-wget https://github.com/4paradigm/OpenMLDB/releases/download/v0.6.0/openmldb-0.6.0-linux.tar.gz
-tar -zxvf openmldb-0.6.0-linux.tar.gz
-mv openmldb-0.6.0-linux openmldb-apiserver-0.6.0
-cd openmldb-apiserver-0.6.0
+wget https://github.com/4paradigm/OpenMLDB/releases/download/v0.6.3/openmldb-0.6.3-linux.tar.gz
+tar -zxvf openmldb-0.6.3-linux.tar.gz
+mv openmldb-0.6.3-linux openmldb-apiserver-0.6.3
+cd openmldb-apiserver-0.6.3
 ```
 
 #### 2. Modify the Configuration File: conf/apiserver.flags
@@ -339,7 +339,7 @@ cd openmldb-apiserver-0.6.0
 #### 3. Start the Service
 
 ```
-sh bin/start.sh start apiserver
+bash bin/start.sh start apiserver
 ```
 
 **Notice:** If the program crashes when starting the nameserver/tablet/apiserver using the OpenMLDB release package, it is very likely that the instruction set is incompatible, and you need to compile OpenMLDB through the source code. For source code compilation, please refer to [here](./compile.md), you need to use method 3 to compile the complete source code.
@@ -349,12 +349,12 @@ sh bin/start.sh start apiserver
 #### 1. Download the OpenMLDB Spark Distribution that is Optimized for Feature Engineering
 
 ```
-wget https://github.com/4paradigm/spark/releases/download/v3.0.0-openmldb0.6.0/spark-3.0.0-bin-openmldbspark.tgz
-tar -zxvf spark-3.0.0-bin-openmldbspark.tgz
-wget https://github.com/4paradigm/OpenMLDB/releases/download/v0.6.0/openmldb-0.6.0-linux.tar.gz
-tar -zxvf openmldb-0.6.0-linux.tar.gz
-mv openmldb-0.6.0-linux openmldb-taskmanager-0.6.0
-cd openmldb-taskmanager-0.6.0
+wget https://github.com/4paradigm/spark/releases/download/v3.2.1-openmldb0.6.3/spark-3.2.1-bin-openmldbspark.tgz
+tar -zxvf spark-3.2.1-bin-openmldbspark.tgz
+wget https://github.com/4paradigm/OpenMLDB/releases/download/v0.6.3/openmldb-0.6.3-linux.tar.gz
+tar -zxvf openmldb-0.6.3-linux.tar.gz
+mv openmldb-0.6.3-linux openmldb-taskmanager-0.6.3
+cd openmldb-taskmanager-0.6.3
 ```
 
 #### 2. Modify the Configuration File conf/taskmanager.properties
@@ -382,7 +382,7 @@ spark.home=
 #### 3. Start the Service
 
 ```bash
-bin/start.sh start taskmanager
+bash bin/start.sh start taskmanager
 ```
 
 #### 4. Verify the Running Status of the Service

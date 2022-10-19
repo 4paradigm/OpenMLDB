@@ -22,7 +22,7 @@
 
 #include <boost/bind.hpp>
 
-#include "base/glog_wapper.h"  // NOLINT
+#include "base/glog_wrapper.h"  // NOLINT
 extern "C" {
 #include "zookeeper/zookeeper.h"
 }

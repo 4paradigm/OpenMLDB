@@ -9,14 +9,21 @@ import java.util.List;
 public class LocalExecutor implements CommandExecutor {
 
     private List<String> starts = new ArrayList<>();
+    private List<String> contains = new ArrayList<>();
 
     public LocalExecutor(){
         starts.add("wget");
         starts.add("tar");
+//        contains.add("--role=ns_client");
     }
     public boolean isUseExec(String command){
         for(String start:starts){
             if(command.startsWith(start)){
+                return true;
+            }
+        }
+        for(String contain:contains){
+            if(command.contains(contain)){
                 return true;
             }
         }
@@ -30,38 +37,6 @@ public class LocalExecutor implements CommandExecutor {
         }else{
             result = CommandUtil.run(command);
         }
-
-//        Scanner input = null;
-//        Process process = null;
-//        try {
-//            process = Runtime.getRuntime().exec(new String[]{"/bin/sh","-c",command});
-//            try {
-//                //等待命令执行完成
-//                process.waitFor(600, TimeUnit.SECONDS);
-//            } catch (InterruptedException e) {
-//                e.printStackTrace();
-//            }
-//            InputStream is = process.getInputStream();
-//            input = new Scanner(is);
-//            while (input.hasNextLine()) {
-//                String line = input.nextLine().trim();
-//                if(line.contains("ZOO_INFO@log_env") || line.contains("src/zk/zk_client.cc")||
-//                        line.startsWith("ns leader:")){
-//                    continue;
-//                }
-//                if(line.length()==0) continue;
-//                list.add(line);
-//            }
-//        }catch (Exception e){
-//            e.printStackTrace();
-//        }finally {
-//            if (input != null) {
-//                input.close();
-//            }
-//            if (process != null) {
-//                process.destroy();
-//            }
-//        }
         return result;
     }
 

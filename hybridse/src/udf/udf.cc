@@ -15,6 +15,7 @@
  */
 
 #include "udf/udf.h"
+#include <absl/time/time.h>
 #include <stdint.h>
 #include <time.h>
 #include <map>
@@ -27,6 +28,7 @@
 #include "boost/date_time.hpp"
 #include "boost/date_time/gregorian/parsers.hpp"
 #include "boost/date_time/posix_time/posix_time.hpp"
+#include "re2/re2.h"
 
 #include "bthread/types.h"
 #include "codec/list_iterator_codec.h"
@@ -62,6 +64,40 @@ void hex(StringRef *str, StringRef *output) {
     output->data_ = buffer;
 }
 
+void unhex(StringRef *str, StringRef *output, bool* is_null) {
+    char *buffer = AllocManagedStringBuf(str->size_ / 2 + str->size_ % 2);
+    for (uint32_t i = 0; i < str->size_; ++i) {
+        if ((str->data_[i] >= 'A' && str->data_[i] <= 'F') ||
+            (str->data_[i] >= 'a' && str->data_[i] <= 'f') ||
+            (str->data_[i] >= '0' && str->data_[i] <= '9')) {
+            continue;
+        } else {
+            *is_null = true;
+            break;
+        }
+    }
+    // use lambda function to convert the char to uint8
+    auto convert = [](char a) {
+        if (a <= 'F' && a >= 'A') { return a - 'A' + 10; }
+        if (a <= 'f' && a >= 'a') { return a - 'a' + 10; }
+        if (a <= '9' && a >= '0') { return a - '0'; }
+    };
+
+    if (!*is_null) {    // every character is valid hex character
+        if (str->size_ % 2 == 0) {
+            for (uint32_t i=0; i < str->size_; i+=2) {
+                buffer[i/2] = static_cast<char>(convert(str->data_[i]) << 4 | convert(str->data_[i+1]));
+            }
+        } else {
+            buffer[0] = static_cast<char>(convert(str->data_[0]));
+            for (uint32_t i=1; i < str->size_; i+=2) {
+                buffer[i/2+1] = static_cast<char>(convert(str->data_[i]) << 4 | convert(str->data_[i+1]));
+            }
+        }
+        output->size_ = str->size_ / 2 + str->size_ % 2;
+        output->data_ = buffer;
+    }
+}
 
 // TODO(chenjing): 时区统一配置
 constexpr int32_t TZ = 8;
@@ -182,6 +218,36 @@ int32_t weekofyear(Date *date) {
     } catch (...) {
         return 0;
     }
+}
+
+void last_day(int64_t ts, Date *output, bool *is_null) {
+    if (ts < 0) {
+        *is_null = true;
+        return;
+    }
+    absl::CivilDay civil_day = absl::ToCivilDay(absl::FromUnixMillis(ts),
+                                                absl::FixedTimeZone(TZ_OFFSET / 1000));
+    absl::CivilMonth next_month = absl::CivilMonth(civil_day) + 1;
+    absl::CivilDay last_day = absl::CivilDay(next_month) - 1;
+    *output = Date(static_cast<int32_t>(last_day.year()), last_day.month(), last_day.day());
+    *is_null = false;
+}
+void last_day(const Timestamp *ts, Date *output, bool *is_null) { last_day(ts->ts_, output, is_null); }
+void last_day(const Date *ts, Date *output, bool *is_null) {
+    int32_t year, month, day;
+    if (!Date::Decode(ts->date_, &year, &month, &day)) {
+        *is_null = true;
+        return;
+    }
+    absl::CivilDay civil_day(year, month, day);
+    if (civil_day.year() != year || civil_day.month() != month || civil_day.day() != day) {
+        *is_null = true;
+        return;
+    }
+    absl::CivilMonth next_month = absl::CivilMonth(civil_day) + 1;
+    absl::CivilDay last_day = absl::CivilDay(next_month) - 1;
+    *output = Date(static_cast<int32_t>(last_day.year()), last_day.month(), last_day.day());
+    *is_null = false;
 }
 
 void int_to_char(int32_t val, StringRef* output) {
@@ -472,6 +538,80 @@ void ilike(StringRef *name, StringRef *pattern, StringRef *escape, bool *out, bo
 void ilike(StringRef* name, StringRef* pattern, bool* out, bool* is_null) {
     static StringRef default_esc(1, "\\");
     ilike(name, pattern, &default_esc,  out, is_null);
+}
+
+
+// The options are (defaults in parentheses):
+//
+//   utf8             (true)  text and pattern are UTF-8; otherwise Latin-1
+//   posix_syntax     (false) restrict regexps to POSIX egrep syntax
+//   longest_match    (false) search for longest match, not first match
+//   log_errors       (true)  log syntax and execution errors to ERROR
+//   max_mem          (see below)  approx. max memory footprint of RE2
+//   literal          (false) interpret string as literal, not regexp
+//   never_nl         (false) never match \n, even if it is in regexp
+//   dot_nl           (false) dot matches everything including new line
+//   never_capture    (false) parse all parens as non-capturing
+//   case_sensitive   (true)  match is case-sensitive (regexp can override
+//                              with (?i) unless in posix_syntax mode)
+//
+// The following options are only consulted when posix_syntax == true.
+// When posix_syntax == false, these features are always enabled and
+// cannot be turned off; to perform multi-line matching in that case,
+// begin the regexp with (?m).
+//   perl_classes     (false) allow Perl's \d \s \w \D \S \W
+//   word_boundary    (false) allow Perl's \b \B (word boundary and not)
+//   one_line         (false) ^ and $ only match beginning and end of text
+void regexp_like(StringRef *name, StringRef *pattern, StringRef *flags, bool *out, bool *is_null) {
+    if (name == nullptr || pattern == nullptr || flags == nullptr) {
+        out = nullptr;
+        *is_null = true;
+        return;
+    }
+
+    std::string_view flags_view(flags->data_, flags->size_);
+    std::string_view pattern_view(pattern->data_, pattern->size_);
+    std::string_view name_view(name->data_, name->size_);
+
+    RE2::Options opts(RE2::POSIX);
+    opts.set_log_errors(false);
+    opts.set_one_line(true);
+
+    for (auto &flag : flags_view) {
+        switch (flag) {
+            case 'c':
+                opts.set_case_sensitive(true);
+            break;
+            case 'i':
+                opts.set_case_sensitive(false);
+            break;
+            case 'm':
+                opts.set_one_line(false);
+            break;
+            case 'e':
+                // ignored here
+            break;
+            case 's':
+                opts.set_dot_nl(true);
+            break;
+            // ignore unknown flag
+        }
+    }
+
+    RE2 re(pattern_view, opts);
+    if (re.error_code() != 0) {
+        LOG(ERROR) << "Error parsing '" << pattern_view << "': " << re.error();
+        out = nullptr;
+        *is_null = true;
+        return;
+    }
+    *is_null = false;
+    *out = RE2::FullMatch(name_view, re);
+}
+
+void regexp_like(StringRef *name, StringRef *pattern, bool *out, bool *is_null) {
+    StringRef flags("c");
+    regexp_like(name, pattern, &flags, out, is_null);
 }
 
 void string_to_bool(StringRef *str, bool *out, bool *is_null_ptr) {

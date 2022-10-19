@@ -30,7 +30,7 @@ namespace sdk {
 
 class NodeAdapter {
  public:
-    static bool TransformToTableDef(::hybridse::node::CreatePlanNode* create_node, bool allow_empty_col_index,
+    static bool TransformToTableDef(::hybridse::node::CreatePlanNode* create_node,
                                     ::openmldb::nameserver::TableInfo* table, uint32_t default_replica_num,
                                     bool is_cluster_mode, hybridse::base::Status* status);
 

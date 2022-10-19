@@ -11,7 +11,7 @@
 - 修改conf/tablet.flags配置文件，zk_cluster和zk_root_path和集群中其他节点保持一致。修改endpoint。
 - 启动tablet
   ```bash
-    sh bin/start.sh start tablet
+    bash bin/start.sh start tablet
   ```
 启动后查看新增节点是否加入集群。如果执行showtablet命令列出了新节点endpoint说明已经加入到集群中
 
@@ -72,10 +72,10 @@ $ ./bin/openmldb --zk_cluster=172.27.128.31:8090,172.27.128.32:8090,172.27.128.3
 ### 3 下线节点
 执行停止命令
 ```bash
-sh bin/start.sh stop tablet
+bash bin/start.sh stop tablet
 ```
 如果该节点部署有nameserver也需要把nameserver停掉
 ```bash
-sh bin/start.sh stop nameserver
+bash bin/start.sh stop nameserver
 ```
 **注**：保持高可用至少需要两个nameserver节点

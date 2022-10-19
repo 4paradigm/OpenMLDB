@@ -13,10 +13,11 @@
 # limitations under the License.
 
 from diagnostic_tool.dist_conf import DistConfReader
-
+import os
 
 def test_read():
-    dist = DistConfReader('cluster_dist.yml').conf()
+    current_path = os.path.dirname(__file__)
+    dist = DistConfReader(current_path+'/cluster_dist.yml').conf()
     assert dist.mode == 'cluster'
-    assert len(dist.nameservers) == 1
-    assert len(dist.tabletservers) == 2
+    assert len(dist.server_info_map.map['nameserver']) == 1
+    assert len(dist.server_info_map.map['tablet']) == 2

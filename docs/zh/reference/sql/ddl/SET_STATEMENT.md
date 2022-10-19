@@ -1,5 +1,8 @@
 # SET STATEMENT
 
+`SET` 语句用于在 OpenMLDB 上设置系统变量。目前OpenMLDB的系统变量包括会话系统变量和全局系统变量。对会话变量的修改，只会影响到当前的会话（也就是当前的数据库连接）。对全局变量的修改会对所有会话生效。
+
+
 ## Syntax
 
 ```sql
@@ -16,17 +19,11 @@ sessionVariableName ::= '@@'Identifier | '@@session.'Identifier | '@@global.'Ide
 'SET' [ GLOBAL | SESSION ] <variableName> '=' <value>
 ```
 
-**Description**
-
-`SET` 语句用于在 OpenMLDB 上设置系统变量。目前OpenMLDB的系统变量包括会话系统变量和全局系统变量。对会话变量的修改，只会影响到当前的会话（也就是当前的数据库连接）。对全局变量的修改会对所有会话生效。
-
-- 会话系统变量一般以`@session前缀`，如`SET @@session.execute_mode = "offline";`。
+- 会话系统变量一般以`@session前缀`，如`SET @@session.execute_mode = "offline";`。会话系统变量也可以选择直接以`@@`为前缀，即`SET @@execute_mode = "offline"`和前面的配置语句是等价的。
 - 全局系统变量以`@global为前缀`，如`SET @@global.enable_trace = true;` 
+- 会话系统变量也可以选择直接以`@@`为前缀，即`SET @@execute_mode = "offline"`和前面的配置语句是等价的。
 - OpenMLDB的SET语句只能用于设置/修改已存在（内置的）的系统变量。
 
-```{Note} 
-会话系统变量也可以选择直接以`@@`为前缀，即`SET @@execute_mode = "offline"`和前面的配置语句是等价的。变量名大小写不敏感。
-```
 
 ## 目前支持的系统变量
 
@@ -121,7 +118,6 @@ USE db1;
 -- SUCCEED: Database changed
 CREATE TABLE t1 (col0 STRING, col1 int, std_time TIMESTAMP, INDEX(KEY=col1, TS=std_time, TTL_TYPE=absolute, TTL=30d));
 --SUCCEED
-
 ```
 
 - 关闭enable_trace时，执行错误的SQL：

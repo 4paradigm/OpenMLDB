@@ -26,7 +26,7 @@
 #include <iostream>
 
 #include "base/file_util.h"
-#include "base/glog_wapper.h"
+#include "base/glog_wrapper.h"
 #include "base/strings.h"
 #include "codec/schema_codec.h"
 #include "common/timer.h"

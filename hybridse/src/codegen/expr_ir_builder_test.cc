@@ -1004,6 +1004,20 @@ TEST_F(ExprIRBuilderTest, LikeExpr) {
     assert_like(false, "Mary", "m%");
 }
 
+TEST_F(ExprIRBuilderTest, RLikeExpr) {
+    auto assert_rlike = [&](const udf::Nullable<bool> &ret, const udf::Nullable<codec::StringRef> &lhs,
+                           const udf::Nullable<codec::StringRef> &rhs) {
+        ExprCheck([](node::NodeManager *nm, node::ExprNode *lhs,
+                     node::ExprNode *rhs) { return nm->MakeBinaryExprNode(lhs, rhs, node::FnOperator::kFnOpRLike); },
+                  ret, lhs, rhs);
+    };
+
+    assert_rlike(true, "The Lord of the Rings", "The Lord .f the Rings");
+    assert_rlike(false, "The Lord of the Rings", "the Lord .f the Rings");
+    assert_rlike(false, "The Lord of the Rings\nJ. R. R. Tolkien", "The Lord of the Rings.J\\. R\\. R\\. Tolkien");
+    assert_rlike(true, "contact@openmldb.ai", "[A-Za-z0-9+_.-]+@[A-Za-z0-9+_.-]+");
+}
+
 }  // namespace codegen
 }  // namespace hybridse
 

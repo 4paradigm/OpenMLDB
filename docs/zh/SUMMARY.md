@@ -76,7 +76,7 @@
       - [删除DEPLOYMENT(DROP DEPLOYMENT)](reference/sql/deployment_manage/DROP_DEPLOYMENT_STATEMENT.md)
       - [查看DEPLOYMENTS列表(SHOW DEPLOYMENTS)](reference/sql/deployment_manage/SHOW_DEPLOYMENTS.md)
       - [查看DEPLOYMENT详情(SHOW DEPLOYMENT)](reference/sql/deployment_manage/SHOW_DEPLOYMENT.md)
-      - [OpenMLDB SQL上线规范和要求](reference/sql/deployment_manage/ONLINE_SERVING_REQUIREMENTS.md)
+      - [OpenMLDB SQL上线规范和要求](reference/sql/deployment_manage/ONLINE_REQUEST_REQUIREMENTS.md)
     - [任务管理](reference/sql/task_manage/reference.md)
       - [查看Job列表(SHOW JOBS)](reference/sql/task_manage/SHOW_JOBS.md)
       - [查看Job详情(SHOW JOB)](reference/sql/task_manage/SHOW_JOB.md)

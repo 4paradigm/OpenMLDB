@@ -26,7 +26,7 @@ SELECT ... FROM table_ref LAST JOIN table_ref ON expression;
 
 | `SELECT` Statement Elements                                | Offline Mode | Online Preview Mode | Online Request Mode | Note                                                                                                                                                                                                                                                                                                         |
 |:-----------------------------------------------------------|--------------|---------------------|---------------------|:-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| JOIN Clause                | **``✓``**    | **``✓``**           | **``✓``**           | The Join clause indicates that the data source comes from multiple joined tables. OpenMLDB currently only supports LAST JOIN. For Online Request Mode, please follow [the specification of LAST JOIN under Online Request Mode](../deployment_manage/ONLINE_SERVING_REQUIREMENTS.md#online-servinglast-join) |
+| JOIN Clause                | **``✓``**    | **``✓``**           | **``✓``**           | The Join clause indicates that the data source comes from multiple joined tables. OpenMLDB currently only supports LAST JOIN. For Online Request Mode, please follow [the specification of LAST JOIN under Online Request Mode](../deployment_manage/ONLINE_REQUEST_REQUIREMENTS.md#the-usage-specification-of-last-join-under-online-serving) |
 
 
 
@@ -45,7 +45,7 @@ The final result is shown in the figure bellow.
 ![Figure 8: last join without order result](../dql/images/last_join_without_order2.png)
 
 ```{note}
-To realize the above JOIN result, please follow [the specification of LAST JOIN under Online Request mode](../deployment_manage/ONLINE_SERVING_REQUIREMENTS.md#online-servinglast-join) like the SQL example bellow, even if you are using offline mode.
+To realize the above JOIN result, please follow [the specification of LAST JOIN under Online Request mode](../deployment_manage/ONLINE_REQUEST_REQUIREMENTS.md#specifications-of-last-join-under-online-request-mode) like the SQL example bellow, even if you are using offline mode.
 Otherwise, you may not obtain the above result because of the uncertainty of the underlying storage order, although the result is correct as well.
 ```
 
@@ -79,7 +79,7 @@ The following SQL commands created the right table t2 as mentioned above and ins
 The storage order of data rows is not necessarily the same as their insert order. And the storage order will influence the matching order when JOIN.
 In this example, we want to realize the storage order of t2 as the above figure displayed, which will lead to a result that is convenient to check. 
 To guarantee the storage order of t2, please create following index, do not set `ts`, and sequentially instert data one by one. 
-Detail explanation is in [columnindex](https://openmldb.ai/docs/en/main/reference/sql/ddl/CREATE_TABLE_STATEMENT.html#columnindex).  
+Detail explanation is in [columnindex](../ddl/CREATE_TABLE_STATEMENT.md#columnindex).  
 ```
 ```sql
 >CREATE TABLE t2 (id INT, col1 string,std_ts TIMESTAMP,INDEX(KEY=col1));
@@ -228,7 +228,7 @@ The result of `SELECT` with `LAST JOIN` is shown below.
 ### LAST JOIN with No Matched Rows
 The following example shows the result of LAST JOIN with no matched rows.
 
-Please insert a new row into t1 (created in [Example of LAST JOIN with ORDER BY](#LAST JOIN with ORDER BY)) as follows, then run `LAST JOIN` command.
+Please insert a new row into t1 (created in [Example of LAST JOIN with ORDER BY](#last-join-with-order-by)) as follows, then run `LAST JOIN` command.
 
 ```sql
 >INSERT INTO t1 values(4,'d',20220707111111);

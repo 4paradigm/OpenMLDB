@@ -26,8 +26,6 @@
 #include "brpc/channel.h"
 #include "rpc/rpc_client.h"
 
-using Schema = ::google::protobuf::RepeatedPtrField<openmldb::common::ColumnDesc>;
-
 namespace openmldb::client {
 
 class Client {

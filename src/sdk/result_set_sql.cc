@@ -22,6 +22,7 @@
 #include <vector>
 
 #include "base/status.h"
+#include "base/time.h"
 #include "catalog/sdk_catalog.h"
 #include "codec/fe_schema_codec.h"
 #include "codec/row_codec.h"
@@ -113,32 +114,75 @@ std::shared_ptr<::hybridse::sdk::ResultSet> ResultSetSQL::MakeResultSet(
 }
 
 std::shared_ptr<::hybridse::sdk::ResultSet> ResultSetSQL::MakeResultSet(
-        const std::vector<std::string>& fields, const std::vector<std::vector<std::string>>& records,
+        const ::openmldb::schema::PBSchema& schema, const std::vector<std::vector<std::string>>& records,
         ::hybridse::sdk::Status* status) {
-    auto com_schema = ::openmldb::schema::SchemaAdapter::BuildSchema(fields);
     auto io_buf = std::make_shared<butil::IOBuf>();
     std::string buf;
     for (const auto& row : records) {
         buf.clear();
-        auto ret = ::openmldb::codec::RowCodec::EncodeRow(row, com_schema, 0, buf);
+        auto ret = ::openmldb::codec::RowCodec::EncodeRow(row, schema, 0, buf);
         if (!ret.OK()) {
             *status = {::hybridse::common::StatusCode::kCmdError, ret.msg};
             return {};
         }
         io_buf->append(buf);
     }
-    ::hybridse::vm::Schema schema;
-    if (!::openmldb::schema::SchemaAdapter::ConvertSchema(com_schema, &schema)) {
+    ::hybridse::vm::Schema vm_schema;
+    if (!::openmldb::schema::SchemaAdapter::ConvertSchema(schema, &vm_schema)) {
         *status = {::hybridse::common::StatusCode::kCmdError, "fail to convert schema"};
         return {};
     }
     *status = {};
-    auto rs = std::make_shared<openmldb::sdk::ResultSetSQL>(schema, records.size(), io_buf);
+    auto rs = std::make_shared<openmldb::sdk::ResultSetSQL>(vm_schema, records.size(), io_buf);
     if (rs->Init()) {
         return rs;
     }
     *status = {::hybridse::common::StatusCode::kCmdError, "fail to init ResultSetSQL"};
     return {};
+}
+
+std::shared_ptr<::hybridse::sdk::ResultSet> ResultSetSQL::MakeResultSet(
+        const std::vector<std::string>& fields, const std::vector<std::vector<std::string>>& records,
+        ::hybridse::sdk::Status* status) {
+    auto schema = ::openmldb::schema::SchemaAdapter::BuildSchema(fields);
+    return MakeResultSet(schema, records, status);
+}
+
+const bool ReadableResultSetSQL::GetAsString(uint32_t idx, std::string& val) {
+    auto data_type = GetSchema()->GetColumnType(idx);
+    switch (data_type) {
+        case hybridse::sdk::kTypeTimestamp: {
+            int64_t ts = 0;
+            if (!GetTime(idx, &ts) || ts < 0) {
+                return false;
+            }
+            val = ::openmldb::base::Convert2FormatTime(ts);
+            break;
+        }
+        case hybridse::sdk::kTypeDate: {
+            int32_t year = 0;
+            int32_t month = 0;
+            int32_t day = 0;
+            if (!GetDate(idx, &year, &month, &day)) {
+                return false;
+            }
+            std::stringstream ss;
+            ss << year << "-";
+            if (month < 10) {
+                ss << "0";
+            }
+            ss << month << "-";
+            if (day < 10) {
+                ss << "0";
+            }
+            ss << day;
+            val = ss.str();
+            break;
+        }
+        default:
+            return ::hybridse::sdk::ResultSet::GetAsString(idx, val);
+    }
+    return true;
 }
 
 }  // namespace sdk

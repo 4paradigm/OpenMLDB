@@ -171,6 +171,7 @@ class Cursor(object):
         self.lastrowid = None
 
     def connected(func):
+
         def func_wrapper(self, *args, **kwargs):
             if self._connected is False:
                 raise CursorClosedException("Cursor object is closed")
@@ -203,18 +204,15 @@ class Cursor(object):
             sql_router_sdk.kTypeDate: self._resultSet.GetAsStringUnsafe,
             sql_router_sdk.kTypeTimestamp: self._resultSet.GetTimeUnsafe
         }
-        self.description = [
-            (
-                self.__schema.GetColumnName(i),
-                fetype_to_py[self.__schema.GetColumnType(i)],
-                None,
-                None,
-                None,
-                None,
-                True,
-            )
-            for i in range(self.__schema.GetColumnCnt())
-        ]
+        self.description = [(
+            self.__schema.GetColumnName(i),
+            fetype_to_py[self.__schema.GetColumnType(i)],
+            None,
+            None,
+            None,
+            None,
+            True,
+        ) for i in range(self.__schema.GetColumnCnt())]
 
     def callproc(self, procname, parameters=()):
         if len(parameters) < 1:
@@ -247,7 +245,8 @@ class Cursor(object):
                         "error at append data seq {}".format(row_idx))
             else:
                 raise DatabaseError(
-                    "error at append data seq {} for unsupported row type".format(row_idx))
+                    "error at append data seq {} for unsupported row type".
+                    format(row_idx))
 
     def execute(self, operation, parameters=()):
         command = operation.strip(' \t\n\r') if operation else None
@@ -266,10 +265,10 @@ class Cursor(object):
                 # holeIdxes is in stmt column order
                 hole_idxes = builder.GetHoleIdx()
                 sorted_holes = build_sorted_holes(hole_idxes)
-                append_map = self.__get_append_map(
-                    builder, parameters, hole_idxes, schema)
-                self.__add_row_to_builder(
-                    parameters, sorted_holes, schema, builder, append_map)
+                append_map = self.__get_append_map(builder, parameters,
+                                                   hole_idxes, schema)
+                self.__add_row_to_builder(parameters, sorted_holes, schema,
+                                          builder, append_map)
                 ok, error = self.connection._sdk.executeInsert(
                     self.db, command, builder)
             else:
@@ -325,45 +324,60 @@ class Cursor(object):
                     raise DatabaseError("{} vale type is not str".format(name))
             else:
                 raise DatabaseError(
-                    "parameters type {} does not support: {}, should be tuple or dict".format(type(row), row))
+                    "parameters type {} does not support: {}, should be tuple or dict"
+                    .format(type(row), row))
         builder.Init(str_size)
         append_map = {
-            sql_router_sdk.kTypeBool: builder.AppendBool,
-            sql_router_sdk.kTypeInt16: builder.AppendInt16,
-            sql_router_sdk.kTypeInt32: builder.AppendInt32,
-            sql_router_sdk.kTypeInt64: builder.AppendInt64,
-            sql_router_sdk.kTypeFloat: builder.AppendFloat,
-            sql_router_sdk.kTypeDouble: builder.AppendDouble,
-            sql_router_sdk.kTypeString: builder.AppendString,
+            sql_router_sdk.kTypeBool:
+                builder.AppendBool,
+            sql_router_sdk.kTypeInt16:
+                builder.AppendInt16,
+            sql_router_sdk.kTypeInt32:
+                builder.AppendInt32,
+            sql_router_sdk.kTypeInt64:
+                builder.AppendInt64,
+            sql_router_sdk.kTypeFloat:
+                builder.AppendFloat,
+            sql_router_sdk.kTypeDouble:
+                builder.AppendDouble,
+            sql_router_sdk.kTypeString:
+                builder.AppendString,
             # TODO: align python and java date process, 1900 problem
-            sql_router_sdk.kTypeDate: lambda x: len(x.split("-")) == 3 and builder.AppendDate(
-                int(x.split("-")[0]), int(x.split("-")[1]), int(x.split("-")[2])),
-            sql_router_sdk.kTypeTimestamp: builder.AppendTimestamp
+            sql_router_sdk.kTypeDate:
+                lambda x: len(x.split("-")) == 3 and builder.AppendDate(
+                    int(x.split("-")[0]), int(x.split("-")[1]),
+                    int(x.split("-")[2])),
+            sql_router_sdk.kTypeTimestamp:
+                builder.AppendTimestamp
         }
         return append_map
 
-    def __insert_rows(self, rows: List[Union[tuple, dict]], hole_idxes, sorted_holes, schema, rows_builder, command):
+    def __insert_rows(self, rows: List[Union[tuple, dict]], hole_idxes,
+                      sorted_holes, schema, rows_builder, command):
         for row in rows:
             tmp_builder = rows_builder.NewRow()
-            append_map = self.__get_append_map(
-                tmp_builder, row, hole_idxes, schema)
-            self.__add_row_to_builder(
-                row, sorted_holes, schema, tmp_builder, append_map)
-        ok, error = self.connection._sdk.executeInsert(
-            self.db, command, rows_builder)
+            append_map = self.__get_append_map(tmp_builder, row, hole_idxes,
+                                               schema)
+            self.__add_row_to_builder(row, sorted_holes, schema, tmp_builder,
+                                      append_map)
+        ok, error = self.connection._sdk.executeInsert(self.db, command,
+                                                       rows_builder)
         if not ok:
             raise DatabaseError(error)
 
     @connected
-    def executemany(self, operation, parameters: Union[List[tuple], List[dict]], batch_number=200):
+    def executemany(self,
+                    operation,
+                    parameters: Union[List[tuple], List[dict]],
+                    batch_number=200):
         parameters_length = len(parameters)
         command = operation.strip(' \t\n\r') if operation else None
         if command is None:
             raise Exception("None operation")
         if command.count("?") == 0:
             logging.warning(
-                "Only {} is valid, params: {} are invalid, maybe not exists mark '?' in sql".format(operation,
-                                                                                                    parameters))
+                "Only {} is valid, params: {} are invalid, maybe not exists mark '?' in sql"
+                .format(operation, parameters))
             return self.execute(operation, parameters)
         if isinstance(parameters, list) and parameters_length == 0:
             return self.execute(operation, parameters)
@@ -373,20 +387,21 @@ class Cursor(object):
             if question_mark_count > 0:
                 # Because the object obtained by getInsertBatchBuilder has no GetSchema method,
                 # use the object obtained by getInsertBatchBuilder
-                ok, builder = self.connection._sdk.getInsertBuilder(self.db, command)
+                ok, builder = self.connection._sdk.getInsertBuilder(
+                    self.db, command)
                 if not ok:
                     raise DatabaseError("get insert builder fail")
                 schema = builder.GetSchema()
                 hole_idxes = builder.GetHoleIdx()
                 hole_pairs = build_sorted_holes(hole_idxes)
                 for i in range(0, parameters_length, batch_number):
-                    rows = parameters[i: i + batch_number]
+                    rows = parameters[i:i + batch_number]
                     ok, batch_builder = self.connection._sdk.getInsertBatchBuilder(
                         self.db, command)
                     if not ok:
                         raise DatabaseError("get insert builder fail")
-                    self.__insert_rows(
-                        rows, hole_idxes, hole_pairs, schema, batch_builder, command)
+                    self.__insert_rows(rows, hole_idxes, hole_pairs, schema,
+                                       batch_builder, command)
             else:
                 ok, rs = self.connection._sdk.executeSQL(self.db, command)
                 if not ok:
@@ -491,8 +506,8 @@ class Cursor(object):
         raise NotSupportedError("Unsupported in OpenMLDB")
 
     def batch_row_request(self, sql, commonCol, parameters):
-        ok, rs = self.connection._sdk.doBatchRowRequest(
-            self.db, sql, commonCol, parameters)
+        ok, rs = self.connection._sdk.doBatchRowRequest(self.db, sql, commonCol,
+                                                        parameters)
         if not ok:
             raise DatabaseError("execute select fail {}".format(rs))
         self._pre_process_result(rs)
@@ -527,22 +542,17 @@ class Cursor(object):
 
 class Connection(object):
 
-    def __init__(self, db, is_cluster_mode, zk_or_host, zkPath_or_port):
-        self._connected = True
-        self._db = db
-        if is_cluster_mode:
-            options = sdk_module.OpenMLDBClusterSdkOptions(
-                zk_or_host, zkPath_or_port)
-        else:
-            options = sdk_module.OpenMLDBStandaloneSdkOptions(
-                zk_or_host, zkPath_or_port)
-        sdk = sdk_module.OpenMLDBSdk(options, is_cluster_mode)
+    def __init__(self, **cparams):
+        self._db = cparams.get('database', None)
+        sdk = sdk_module.OpenMLDBSdk(**cparams)
         ok = sdk.init()
         if not ok:
             raise Exception("init openmldb sdk erred")
         self._sdk = sdk
+        self._connected = True
 
     def connected(func):
+
         def func_wrapper(self, *args, **kwargs):
             if self._connected is False:
                 raise ConnectionClosedException("Connection object is closed")
@@ -582,13 +592,5 @@ class Connection(object):
 
 
 # Constructor for creating connection to db
-def connect(db, zk=None, zkPath=None, host=None, port=None):
-    # standalone
-    if isinstance(zkPath, int):
-        host, port = zk, zkPath
-        return Connection(db, False, host, port)
-    # cluster
-    elif isinstance(zkPath, str):
-        return Connection(db, True, zk, zkPath)
-    elif zkPath is None:
-        return Connection(db, False, host, int(port))
+def connect(*cargs, **cparams):
+    return Connection(**cparams)

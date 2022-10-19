@@ -384,7 +384,7 @@ class NodeManager {
 
     SqlNode *MakePartitionNumNode(int num);
 
-    SqlNode *MakeDistributionsNode(SqlNodeList *distribution_list);
+    SqlNode *MakeDistributionsNode(const NodePointVector& distribution_list);
 
     SqlNode *MakeCreateProcedureNode(const std::string &sp_name,
                                      SqlNodeList *input_parameter_list,

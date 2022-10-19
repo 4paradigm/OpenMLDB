@@ -17,7 +17,7 @@
 package com._4paradigm.openmldb.java_sdk_test.checker;
 
 
-import com._4paradigm.openmldb.java_sdk_test.entity.FesqlResult;
+import com._4paradigm.openmldb.test_common.bean.OpenMLDBResult;
 import com._4paradigm.openmldb.test_common.model.ExpectDesc;
 import lombok.extern.slf4j.Slf4j;
 import org.testng.Assert;
@@ -30,16 +30,15 @@ import org.testng.Assert;
 @Slf4j
 public class CountChecker extends BaseChecker {
 
-    public CountChecker(ExpectDesc expect, FesqlResult fesqlResult){
-        super(expect,fesqlResult);
+    public CountChecker(ExpectDesc expect, OpenMLDBResult openMLDBResult){
+        super(expect,openMLDBResult);
     }
 
     @Override
     public void check() throws Exception {
         log.info("count check");
-        reportLog.info("count check");
         int expectCount = expect.getCount();
-        int actual = fesqlResult.getCount();
+        int actual = openMLDBResult.getCount();
         Assert.assertEquals(actual,expectCount,"count验证失败");
     }
 
