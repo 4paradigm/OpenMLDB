@@ -1931,6 +1931,45 @@ TEST_P(TableTest, AbsAndLat) {
     delete table;
 }
 
+TEST_P(TableTest, SingleTsDelete) {
+    ::openmldb::common::StorageMode storageMode = GetParam();
+    std::map<std::string, uint32_t> mapping;
+    mapping.insert(std::make_pair("idx0", 0));
+    std::string table_path = "";
+    int id = 1, count = 0;
+    if (storageMode == ::openmldb::common::kHDD) {
+        id = ++counter;
+        table_path = GetDBPath(FLAGS_hdd_root_path, id, 1);
+    }
+    Table* table = CreateTable("tx_log", id, 1, 1, mapping, 0, ::openmldb::type::kAbsoluteTime,
+        table_path, storageMode);
+    table->Init();
+
+    table->Put("pk10", 9527, "test10", 5);
+    table->Put("pk10", 9526, "test8", 5);
+    table->Put("pk10", 9525, "test6", 5);
+    table->Put("pk0", 9524, "test4", 5);
+    table->Put("pk0", 9523, "test2", 5);
+    table->Put("pk0", 9522, "test0", 5);
+
+    ASSERT_TRUE(table->Delete("pk0", 0, 9523));
+    TableIterator* it = table->NewTraverseIterator(0);
+    it->Seek("pk0", 9523);
+    ASSERT_TRUE(it->Valid());
+    ASSERT_NE(it->GetKey(), 9523);
+    it = table->NewTraverseIterator(0);
+    it->SeekToFirst();
+    while (it->Valid()) {
+        ++count;
+        it->Next();
+        ASSERT_NE(it->GetKey(), 9523);
+    }
+    ASSERT_EQ(count, 5);
+
+    delete it;
+    delete table;
+}
+
 INSTANTIATE_TEST_CASE_P(TestMemAndHDD, TableTest,
                         ::testing::Values(::openmldb::common::kMemory, ::openmldb::common::kHDD));
 

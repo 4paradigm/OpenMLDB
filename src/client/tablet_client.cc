@@ -844,6 +844,23 @@ bool TabletClient::Delete(uint32_t tid, uint32_t pid, const std::string& pk, con
     return true;
 }
 
+bool TabletClient::Delete(uint32_t tid, uint32_t pid, const std::string& pk, uint32_t idx,
+                          uint64_t ts) {
+    ::openmldb::api::DeleteRequest request;
+    ::openmldb::api::GeneralResponse response;
+    request.set_tid(tid);
+    request.set_pid(pid);
+    request.set_key(pk);
+    request.set_ts(ts);
+    request.set_idx(idx);
+    bool ok = client_.SendRequest(&::openmldb::api::TabletServer_Stub::Delete, &request, &response,
+                                  FLAGS_request_timeout_ms, 1);
+    if (!ok || (response.code() != 0 && response.code() != ::openmldb::base::ReturnCode::kDeleteFailed)) {
+        return false;
+    }
+    return true;
+}
+
 bool TabletClient::ConnectZK() {
     ::openmldb::api::ConnectZKRequest request;
     ::openmldb::api::GeneralResponse response;

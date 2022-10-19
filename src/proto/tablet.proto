@@ -195,6 +195,8 @@ message DeleteRequest {
     optional uint32 pid = 2;
     optional string key = 3;
     optional string idx_name = 4;
+    optional uint64 ts = 5;
+    optional uint32 idx = 6;
 }
 
 message ExecuteGcRequest {

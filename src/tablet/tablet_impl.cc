@@ -1576,8 +1576,10 @@ void TabletImpl::Delete(RpcController* controller, const ::openmldb::api::Delete
             return;
         }
         idx = index_def->GetId();
+    } else if (request->has_idx()) {
+        idx = request->idx();
     }
-    if (table->Delete(request->key(), idx)) {
+    if ((request->has_ts() ? table->Delete(request->key(), idx, request->ts()) : table->Delete(request->key(), idx))) {
         response->set_code(::openmldb::base::ReturnCode::kOk);
         response->set_msg("ok");
         DEBUGLOG("delete ok. tid %u, pid %u, key %s", request->tid(), request->pid(), request->key().c_str());
@@ -1616,6 +1618,9 @@ void TabletImpl::Delete(RpcController* controller, const ::openmldb::api::Delete
         ::openmldb::api::LogEntry entry;
         entry.set_term(replicator->GetLeaderTerm());
         entry.set_method_type(::openmldb::api::MethodType::kDelete);
+        if (request->has_ts()) {
+            entry.set_ts(request->ts());
+        }
         ::openmldb::api::Dimension* dimension = entry.add_dimensions();
         dimension->set_key(request->key());
         dimension->set_idx(idx);
@@ -2253,7 +2258,11 @@ void TabletImpl::AppendEntries(RpcController* controller, const ::openmldb::api:
                 response->set_msg("fail to append entries to replicator");
                 return;
             }
-            table->Delete(entry.dimensions(0).key(), entry.dimensions(0).idx());
+            if (entry.has_ts()) {
+                table->Delete(entry.dimensions(0).key(), entry.dimensions(0).idx(), entry.ts());
+            } else {
+                table->Delete(entry.dimensions(0).key(), entry.dimensions(0).idx());
+            }
         }
         if (!table->Put(entry)) {
             PDLOG(WARNING, "fail to put entry. tid %u pid %u", tid, pid);
@@ -5040,7 +5049,11 @@ void TabletImpl::LoadIndexDataInternal(uint32_t tid, uint32_t pid, uint32_t cur_
         ::openmldb::api::LogEntry entry;
         entry.ParseFromString(std::string(record.data(), record.size()));
         if (entry.has_method_type() && entry.method_type() == ::openmldb::api::MethodType::kDelete) {
-            table->Delete(entry.dimensions(0).key(), entry.dimensions(0).idx());
+            if (entry.has_ts()) {
+                table->Delete(entry.dimensions(0).key(), entry.dimensions(0).idx(), entry.ts());
+            } else {
+                table->Delete(entry.dimensions(0).key(), entry.dimensions(0).idx());
+            }
         } else {
             table->Put(entry);
         }

@@ -241,6 +241,25 @@ bool MemTable::Delete(const std::string& pk, uint32_t idx) {
     return segment->Delete(spk);
 }
 
+bool MemTable::Delete(const std::string& pk, uint32_t idx, uint64_t ts) {
+    std::shared_ptr<IndexDef> index_def = GetIndex(idx);
+    if (!index_def || !index_def->IsReady()) {
+        return false;
+    }
+    Slice spk(pk);
+    uint32_t seg_idx = 0;
+    if (seg_cnt_ > 1) {
+        seg_idx = ::openmldb::base::hash(spk.data(), spk.size(), SEED) % seg_cnt_;
+    }
+    uint32_t real_idx = index_def->GetInnerPos();
+    Segment* segment = segments_[real_idx][seg_idx];
+    auto ts_col = index_def->GetTsColumn();
+    if (ts_col) {
+        return segment->Delete(spk, ts_col->GetId(), ts);
+    }
+    return segment->Delete(spk, ts);
+}
+
 uint64_t MemTable::Release() {
     if (segment_released_) {
         return 0;

@@ -1396,6 +1396,22 @@ bool SQLClusterRouter::PutRow(uint32_t tid, const std::shared_ptr<SQLInsertRow>&
     }
     const auto& dimensions = row->GetDimensions();
     uint64_t cur_ts = ::baidu::common::timer::get_micros() / 1000;
+    auto rollback = [&] (const std::pair<const uint32_t, std::vector<std::pair<std::string, uint32_t>>>& end_kv) {
+        for (const auto& delete_kv : dimensions) {
+            if (end_kv == delete_kv) {
+                break;
+            }
+            uint32_t pid = delete_kv.first;
+            auto tablet = tablets[pid];
+            auto client = tablet->GetClient();
+            for (auto& dimension : delete_kv.second) {
+                bool ret = client->Delete(tid, pid, dimension.first, dimension.second, cur_ts);
+                if (!ret) {
+                    LOG(WARNING) << "rollback tid " << tid << " pid " << pid << "fail";
+                }
+            }
+        }
+    };
     for (const auto& kv : dimensions) {
         uint32_t pid = kv.first;
         if (pid < tablets.size()) {
@@ -1409,6 +1425,7 @@ bool SQLClusterRouter::PutRow(uint32_t tid, const std::shared_ptr<SQLInsertRow>&
                     if (!ret) {
                         status->msg = "fail to make a put request to table. tid " + std::to_string(tid);
                         LOG(WARNING) << status->msg;
+                        rollback(kv);
                         return false;
                     }
                     continue;
@@ -1417,6 +1434,7 @@ bool SQLClusterRouter::PutRow(uint32_t tid, const std::shared_ptr<SQLInsertRow>&
         }
         status->msg = "fail to get tablet client. pid " + std::to_string(pid);
         LOG(WARNING) << status->msg;
+        rollback(kv);
         return false;
     }
     return true;

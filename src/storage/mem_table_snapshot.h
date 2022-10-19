@@ -30,6 +30,7 @@
 #include "log/sequential_file.h"
 #include "proto/tablet.pb.h"
 #include "storage/snapshot.h"
+#include "storage/table.h"
 
 using ::openmldb::api::LogEntry;
 namespace openmldb {
@@ -112,7 +113,8 @@ class MemTableSnapshot : public Snapshot {
                            uint32_t max_idx, uint32_t idx, uint32_t partition_num, ::openmldb::api::LogEntry* entry,
                            uint32_t* index_pid);
 
-    int RemoveDeletedKey(const ::openmldb::api::LogEntry& entry, const std::set<uint32_t>& deleted_index,
+    int RemoveDeletedKey(std::shared_ptr<Table> table, const ::openmldb::api::LogEntry& entry,
+                         const std::set<uint32_t>& deleted_index,
                          std::string* buffer);
 
  private:
@@ -120,7 +122,7 @@ class MemTableSnapshot : public Snapshot {
     void RecoverSingleSnapshot(const std::string& path, std::shared_ptr<Table> table, std::atomic<uint64_t>* g_succ_cnt,
                                std::atomic<uint64_t>* g_failed_cnt);
 
-    uint64_t CollectDeletedKey(uint64_t end_offset);
+    uint64_t CollectDeletedKey(std::shared_ptr<Table> table, uint64_t end_offset);
 
     int DecodeData(std::shared_ptr<Table> table, const openmldb::api::LogEntry& entry, uint32_t maxIdx,
                    std::vector<std::string>& row);  // NOLINT

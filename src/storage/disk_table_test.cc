@@ -56,23 +56,23 @@ class DiskTableTest : public ::testing::Test {
 };
 
 TEST_F(DiskTableTest, ParseKeyAndTs) {
-    std::string combined_key = CombineKeyTs("abcdexxx11", 1552619498000);
+    std::string combine_key = CombineKeyTs("abcdexxx11", 1552619498000);
     std::string key;
     uint64_t ts;
-    ASSERT_EQ(0, ParseKeyAndTs(combined_key, key, ts));
+    ASSERT_EQ(0, ParseKeyAndTs(combine_key, key, ts));
     ASSERT_EQ("abcdexxx11", key);
     ASSERT_EQ(1552619498000, (int64_t)ts);
-    combined_key = CombineKeyTs("abcdexxx11", 1);
-    ASSERT_EQ(0, ParseKeyAndTs(combined_key, key, ts));
+    combine_key = CombineKeyTs("abcdexxx11", 1);
+    ASSERT_EQ(0, ParseKeyAndTs(combine_key, key, ts));
     ASSERT_EQ("abcdexxx11", key);
     ASSERT_EQ(1, (int64_t)ts);
-    combined_key = CombineKeyTs("0", 0);
-    ASSERT_EQ(0, ParseKeyAndTs(combined_key, key, ts));
+    combine_key = CombineKeyTs("0", 0);
+    ASSERT_EQ(0, ParseKeyAndTs(combine_key, key, ts));
     ASSERT_EQ("0", key);
     ASSERT_EQ(0, (int64_t)ts);
     ASSERT_EQ(-1, ParseKeyAndTs("abc", key, ts));
-    combined_key = CombineKeyTs("", 1122);
-    ASSERT_EQ(0, ParseKeyAndTs(combined_key, key, ts));
+    combine_key = CombineKeyTs("", 1122);
+    ASSERT_EQ(0, ParseKeyAndTs(combine_key, key, ts));
     ASSERT_TRUE(key.empty());
     ASSERT_EQ(1122, (int64_t)ts);
 }
@@ -381,6 +381,52 @@ TEST_F(DiskTableTest, Delete) {
     it = table->NewIterator("test6", ticket);
     it->SeekToFirst();
     ASSERT_FALSE(it->Valid());
+    delete it;
+
+    delete table;
+    RemoveData(table_path);
+}
+
+TEST_F(DiskTableTest, TsDelete) {
+    std::map<std::string, uint32_t> mapping;
+    mapping.insert(std::make_pair("idx0", 0));
+    mapping.insert(std::make_pair("idx1", 1));
+    mapping.insert(std::make_pair("idx2", 2));
+    std::string table_path = FLAGS_hdd_root_path + "/4_1";
+    DiskTable* table = new DiskTable("yjtable4", 4, 1, mapping, 10, ::openmldb::type::TTLType::kAbsoluteTime,
+                                     ::openmldb::common::StorageMode::kHDD, table_path);
+    uint64_t base_ts = 9537;
+    ASSERT_TRUE(table->Init());
+    for (int idx = 0; idx < 10; idx++) {
+        std::string key = "test" + std::to_string(idx);
+        for (int k = 0; k < 10; k++) {
+            ASSERT_TRUE(table->Put(key, base_ts + k, "value", 5));
+        }
+    }
+    Ticket ticket;
+    TableIterator* it = table->NewIterator("test6", ticket);
+    it->SeekToFirst();
+    int count = 0;
+    while (it->Valid()) {
+        std::string pk = it->GetPK();
+        ASSERT_EQ("test6", pk);
+        count++;
+        it->Next();
+    }
+    ASSERT_EQ(count, 10);
+    delete it;
+    table->Delete("test6", 0, base_ts);
+    it = table->NewIterator("test6", ticket);
+    it->SeekToFirst();
+    ASSERT_TRUE(it->Valid());
+    count = 0;
+    while (it->Valid()) {
+        std::string pk = it->GetPK();
+        ASSERT_EQ("test6", pk);
+        count++;
+        it->Next();
+    }
+    ASSERT_EQ(count, 9);
     delete it;
 
     delete table;

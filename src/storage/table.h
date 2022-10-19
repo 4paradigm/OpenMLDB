@@ -59,6 +59,8 @@ class Table {
 
     virtual bool Delete(const std::string& pk, uint32_t idx) = 0;
 
+    virtual bool Delete(const std::string& pk, uint32_t idx, uint64_t time) = 0;
+
     virtual TableIterator* NewIterator(const std::string& pk,
                                        Ticket& ticket) = 0;  // NOLINT
 
@@ -159,6 +161,10 @@ class Table {
     std::shared_ptr<IndexDef> GetIndex(uint32_t idx, uint32_t ts_idx) { return table_index_.GetIndex(idx, ts_idx); }
 
     std::shared_ptr<IndexDef> GetPkIndex() { return table_index_.GetPkIndex(); }
+
+    int32_t GetInnerPos(uint32_t idx) { return table_index_.GetInnerIndexPos(idx); }
+
+    std::shared_ptr<InnerIndexSt> GetInnerIndex(int32_t inner_pos) { return table_index_.GetInnerIndex(inner_pos); }
 
     void SetTTL(const ::openmldb::storage::UpdateTTLMeta& ttl_meta);
 
