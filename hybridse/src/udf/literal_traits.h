@@ -67,6 +67,15 @@ struct Nullable {
     bool is_null() const { return is_null_; }
     T* ptr() { return &data_; }
 
+    // teach gtest print values
+    friend std::ostream& operator<<(std::ostream& os, const Nullable<T>& val) {
+        if (val.is_null_) {
+            return os << "Nullable{null, type=" << DataTypeTrait<T>::to_string() << "}";
+        }
+
+        return os << "Nullable{value=" << val.data_ << ", type=" << DataTypeTrait<T>::to_string() << "}";
+    }
+
     T data_;
     bool is_null_;
 };
@@ -80,6 +89,14 @@ struct Nullable<StringRef> {
     const StringRef& value() const { return data_; }
     bool is_null() const { return is_null_; }
     StringRef* ptr() { return &data_; }
+
+    friend std::ostream& operator<<(std::ostream& os, const Nullable<StringRef>& val) {
+        if (val.is_null_) {
+            return os << "Nullable{null, type=StringRef}";
+        }
+
+        return os << "Nullable{value=" << val.data_.DebugString() << ", type=StringRef}";
+    }
 
     StringRef data_;
     bool is_null_;

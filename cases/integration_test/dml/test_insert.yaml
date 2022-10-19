@@ -1,0 +1,232 @@
+# Copyright 2021 4Paradigm
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+db: test_zw
+debugs: []
+version: 0.5.0
+cases:
+  -
+    id: 0
+    desc: 插入所有类型的数据
+    inputs:
+      -
+        columns : ["c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - ["aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01"]
+    sql: select * from {0};
+    expect:
+      columns : ["c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
+      rows:
+        - ["aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01"]
+  -
+    id: 1
+    desc: 插入所有列的数据
+    sqlDialect: ["HybridSQL"]
+    inputs:
+      -
+        create: |
+          create table {0} (c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, c8 date, 
+          index(key=(c1), ts=c7));
+        insert: insert into {0} values('aa',2,3,1.1,2.1,1590738989000L,'2020-05-01');
+    sql: select * from {0};
+    expect:
+      columns : ["c1 string", "c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
+      rows:
+        - ["aa",2,3,1.1,2.1,1590738989000,"2020-05-01"]
+  -
+    id: 2
+    desc: 插入部分列数据
+    sqlDialect: ["HybridSQL"]
+    inputs:
+      -
+        create: |
+          create table {0} (c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, c8 date, 
+          index(key=(c1), ts=c7));
+        insert: insert into {0} (c1,c4,c7) values('aa',2,1590738989000L);
+    sql: select * from {0};
+    expect:
+      columns : ["c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
+      rows:
+        - ["aa",null,2,null,null,1590738989000,null]
+  -
+    id: 3
+    desc: 没有指定NotNull的列插入null
+    sqlDialect: ["HybridSQL"]
+    inputs:
+      -
+        create: |
+          create table {0} (c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, c8 date, 
+          index(key=(c1), ts=c7));
+        insert: insert into {0} (c1,c3,c4,c5,c6,c7,c8) values('aa',2,NULL,NULL,NULL,1590738989000L,NULL);
+    sql: select * from {0};
+    expect:
+      columns : ["c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
+      rows:
+        - ["aa",2,null,null,null,1590738989000,null]
+  -
+    id: 4
+    desc: NotNull的列插入null
+    sqlDialect: ["HybridSQL"]
+    inputs:
+      -
+        create: |
+          create table {0} ( c1 string NOT NULL, c2 timestamp,
+          index(key=(c1), ts=c2));
+    sql: insert into {0} (c1,c2,c3) values(NULL,1590738989000L);
+    expect:
+      success: false
+  -
+    id: 5
+    desc: 字符串类型插入空串
+    mode: cli-unsupport
+    sqlDialect: ["HybridSQL"]
+    inputs:
+      -
+        create: |
+          create table {0} ( c1 string NOT NULL, c2 timestamp,
+          index(key=(c1), ts=c2));
+        insert: insert into {0} (c1,c2) values('',1590738989000L);
+    sql: select * from {0};
+    expect:
+      columns : ["c1 string","c2 timestamp"]
+      rows:
+        - ["",1590738989000]
+  -
+    id: 6
+    desc: 表名不存在
+    sqlDialect: ["HybridSQL"]
+    inputs:
+      -
+        create: |
+          create table {0} ( c1 string NOT NULL, c2 timestamp,
+          index(key=(c1), ts=c2));
+    sql: insert into {0}1 (c1,c2) values('aa',1590738989000L);
+    expect:
+      success: false
+  -
+    id: 7
+    desc: 列名不存在
+    sqlDialect: ["HybridSQL"]
+    inputs:
+      -
+        create: |
+          create table {0} ( c1 string NOT NULL, c2 timestamp,
+          index(key=(c1), ts=c2));
+    sql: insert into {0} (c1,c3) values('aa',1590738989000L);
+    expect:
+      success: false
+  -
+    id: 8
+    desc: 没有指定NotNull的列
+    sqlDialect: ["HybridSQL"]
+    inputs:
+      -
+        create: |
+          create table {0} ( c1 string, c2 timestamp, c3 string NOT NULL, 
+          index(key=(c1), ts=c2));
+    sql: insert into {0} (c1,c2) values('aa',1590738989000L);
+    expect:
+      success: false
+  -
+    id: 9
+    desc: 插入的字符串没有引号
+    sqlDialect: ["HybridSQL"]
+    inputs:
+      -
+        create: |
+          create table {0} ( c1 string, c2 timestamp,
+          index(key=(c1), ts=c2));
+    sql: insert into {0} (c1,c2) values(aa,1590738989000L);
+    expect:
+      success: false
+  -
+    id: 10
+    desc: 相同时间戳数据
+    mode: disk-unsupport
+    inputs:
+      -
+        columns : ["c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - ["aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01"]
+          - ["aa",2,2,3,1.1,2.1,1590738989000,"2020-05-01"]
+          - ["aa",3,2,3,1.1,2.1,1590738989000,"2020-05-01"]
+          - ["aa",4,2,3,1.1,2.1,1590738989000,"2020-05-01"]
+          - ["aa",5,2,3,1.1,2.1,1590738989000,"2020-05-01"]
+          - ["aa",6,2,3,1.1,2.1,1590738989000,"2020-05-01"]
+          - ["aa",7,2,3,1.1,2.1,1590738989000,"2020-05-01"]
+          - ["aa",8,2,3,1.1,2.1,1590738989000,"2020-05-01"]
+          - ["aa",9,2,3,1.1,2.1,1590738989000,"2020-05-01"]
+          - ["aa",10,2,3,1.1,2.1,1590738989000,"2020-05-01"]
+          - ["aa",11,2,3,1.1,2.1,1590738989000,"2020-05-01"]
+          - ["aa",12,2,3,1.1,2.1,1590738989000,"2020-05-01"]
+          - ["aa",13,2,3,1.1,2.1,1590738989000,"2020-05-01"]
+          - ["aa",14,2,3,1.1,2.1,1590738989000,"2020-05-01"]
+          - ["aa",15,2,3,1.1,2.1,1590738989000,"2020-05-01"]
+          - ["aa",16,2,3,1.1,2.1,1590738989000,"2020-05-01"]
+          - ["aa",17,2,3,1.1,2.1,1590738989000,"2020-05-01"]
+          - ["aa",18,2,3,1.1,2.1,1590738989000,"2020-05-01"]
+          - ["aa",19,2,3,1.1,2.1,1590738989000,"2020-05-01"]
+          - ["aa",20,2,3,1.1,2.1,1590738989000,"2020-05-01"]
+    sql: select * from {0};
+    expect:
+      columns : ["c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
+      order: c2
+      rows:
+        - [ "aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01" ]
+        - [ "aa",2,2,3,1.1,2.1,1590738989000,"2020-05-01" ]
+        - [ "aa",3,2,3,1.1,2.1,1590738989000,"2020-05-01" ]
+        - [ "aa",4,2,3,1.1,2.1,1590738989000,"2020-05-01" ]
+        - [ "aa",5,2,3,1.1,2.1,1590738989000,"2020-05-01" ]
+        - [ "aa",6,2,3,1.1,2.1,1590738989000,"2020-05-01" ]
+        - [ "aa",7,2,3,1.1,2.1,1590738989000,"2020-05-01" ]
+        - [ "aa",8,2,3,1.1,2.1,1590738989000,"2020-05-01" ]
+        - [ "aa",9,2,3,1.1,2.1,1590738989000,"2020-05-01" ]
+        - [ "aa",10,2,3,1.1,2.1,1590738989000,"2020-05-01" ]
+        - [ "aa",11,2,3,1.1,2.1,1590738989000,"2020-05-01" ]
+        - [ "aa",12,2,3,1.1,2.1,1590738989000,"2020-05-01" ]
+        - [ "aa",13,2,3,1.1,2.1,1590738989000,"2020-05-01" ]
+        - [ "aa",14,2,3,1.1,2.1,1590738989000,"2020-05-01" ]
+        - [ "aa",15,2,3,1.1,2.1,1590738989000,"2020-05-01" ]
+        - [ "aa",16,2,3,1.1,2.1,1590738989000,"2020-05-01" ]
+        - [ "aa",17,2,3,1.1,2.1,1590738989000,"2020-05-01" ]
+        - [ "aa",18,2,3,1.1,2.1,1590738989000,"2020-05-01" ]
+        - [ "aa",19,2,3,1.1,2.1,1590738989000,"2020-05-01" ]
+        - [ "aa",20,2,3,1.1,2.1,1590738989000,"2020-05-01" ]
+  -
+    id: 11
+    desc: index列为null
+    inputs:
+      -
+        columns : ["c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [ null,1,2,3,1.1,2.1,1590738989000,"2020-05-01" ]
+    sql: select * from {0};
+    expect:
+      columns : ["c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
+      rows:
+        - [null,1,2,3,1.1,2.1,1590738989000,"2020-05-01"]
+  -
+    id: 12
+    desc: ts列为null
+    inputs:
+      -
+        columns : ["c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
+        indexs: ["index1:c1:c7"]
+    sql: insert into {0} values('aa',1,2,3,1.1,2.1,null,'2020-05-01');
+    expect:
+      success: false
+

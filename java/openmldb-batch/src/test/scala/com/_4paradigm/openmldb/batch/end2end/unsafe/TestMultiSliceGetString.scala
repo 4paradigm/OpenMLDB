@@ -16,19 +16,12 @@
 
 package com._4paradigm.openmldb.batch.end2end.unsafe
 
-import com._4paradigm.openmldb.batch.SparkTestSuite
+import com._4paradigm.openmldb.batch.UnsaferowoptSparkTestSuite
 import com._4paradigm.openmldb.batch.api.OpenmldbSession
 import org.apache.spark.sql.types.{DoubleType, StringType, StructField, StructType, TimestampType}
 import org.apache.spark.sql.Row
 
-class TestMultiSliceGetString extends SparkTestSuite {
-
-  override def customizedBefore(): Unit = {
-    val spark = getSparkSession
-    spark.conf.set("spark.openmldb.unsaferow.opt", true)
-    spark.conf.set("spark.openmldb.opt.unsaferow.project", true)
-    spark.conf.set("spark.openmldb.opt.unsaferow.window", true)
-  }
+class TestMultiSliceGetString extends UnsaferowoptSparkTestSuite {
 
   test("Test window over window and get string") {
     val spark = getSparkSession
@@ -62,13 +55,6 @@ class TestMultiSliceGetString extends SparkTestSuite {
 
     val outputDf = sess.sql(sqlText)
     assert(outputDf.count() == 1)
-  }
-
-  override def customizedAfter(): Unit = {
-    val spark = getSparkSession
-    spark.conf.set("spark.openmldb.unsaferow.opt", false)
-    spark.conf.set("spark.openmldb.opt.unsaferow.project", false)
-    spark.conf.set("spark.openmldb.opt.unsaferow.window", false)
   }
 
 }

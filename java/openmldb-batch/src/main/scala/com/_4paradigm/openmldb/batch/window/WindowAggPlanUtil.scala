@@ -115,6 +115,7 @@ object WindowAggPlanUtil {
                              var partIdIdx: Int = 0,
                              instanceNotInWindow: Boolean,
                              excludeCurrentTime: Boolean,
+                             excludeCurrentRow: Boolean,
                              needAppendInput: Boolean,
                              limitCnt: Int,
                              keepIndexColumn: Boolean,
@@ -198,8 +199,9 @@ object WindowAggPlanUtil {
       unionFlagIdx = flagIdx,
       instanceNotInWindow = node.instance_not_in_window(),
       excludeCurrentTime = node.exclude_current_time(),
+      excludeCurrentRow = node.exclude_current_row(),
       needAppendInput = node.need_append_input(),
-      limitCnt = node.GetLimitCnt(),
+      limitCnt = node.GetLimitCntValue(),
       keepIndexColumn = keepIndexColumn,
       isUnsafeRowOpt = ctx.getConf.enableUnsafeRowOptimization
     )

@@ -31,40 +31,18 @@
 #include "proto/name_server.pb.h"
 #include "sdk/base.h"
 
-namespace openmldb {
-namespace sdk {
+namespace openmldb::sdk {
 
 typedef std::shared_ptr<std::map<uint32_t, std::shared_ptr<::hybridse::node::ConstNode>>> DefaultValueMap;
 
-static inline ::hybridse::sdk::DataType ConvertType(::openmldb::type::DataType type) {
-    switch (type) {
-        case openmldb::type::kBool:
-            return ::hybridse::sdk::kTypeBool;
-        case openmldb::type::kSmallInt:
-            return ::hybridse::sdk::kTypeInt16;
-        case openmldb::type::kInt:
-            return ::hybridse::sdk::kTypeInt32;
-        case openmldb::type::kBigInt:
-            return ::hybridse::sdk::kTypeInt64;
-        case openmldb::type::kFloat:
-            return ::hybridse::sdk::kTypeFloat;
-        case openmldb::type::kDouble:
-            return ::hybridse::sdk::kTypeDouble;
-        case openmldb::type::kTimestamp:
-            return ::hybridse::sdk::kTypeTimestamp;
-        case openmldb::type::kString:
-        case openmldb::type::kVarchar:
-            return ::hybridse::sdk::kTypeString;
-        default:
-            return ::hybridse::sdk::kTypeUnknow;
-    }
-}
-
 class SQLInsertRow {
  public:
-    explicit SQLInsertRow(std::shared_ptr<::openmldb::nameserver::TableInfo> table_info,
-                          std::shared_ptr<hybridse::sdk::Schema> schema, DefaultValueMap default_map,
-                          uint32_t default_str_length);
+    SQLInsertRow(std::shared_ptr<::openmldb::nameserver::TableInfo> table_info,
+                 std::shared_ptr<hybridse::sdk::Schema> schema, DefaultValueMap default_map,
+                 uint32_t default_str_length);
+    SQLInsertRow(std::shared_ptr<::openmldb::nameserver::TableInfo> table_info,
+                 std::shared_ptr<hybridse::sdk::Schema> schema, DefaultValueMap default_map,
+                 uint32_t default_str_length, std::vector<uint32_t> hole_idx_arr);
     ~SQLInsertRow() = default;
     bool Init(int str_length);
     bool AppendBool(bool val);
@@ -77,27 +55,33 @@ class SQLInsertRow {
     bool AppendString(const std::string& val);
     bool AppendDate(uint32_t year, uint32_t month, uint32_t day);
     bool AppendDate(int32_t date);
+
+    // If you don't have the value of the column, append null, this method will help you to set:
+    // 1. if the column can be null, set null
+    // 2. if not, it will set to default value(from DefaultValueMap)
     bool AppendNULL();
     bool IsComplete();
-    bool Build();
+    bool Build() const;
     const std::map<uint32_t, std::vector<std::pair<std::string, uint32_t>>>& GetDimensions();
     inline const std::string& GetRow() { return val_; }
     inline const std::shared_ptr<hybridse::sdk::Schema> GetSchema() { return schema_; }
 
-    const std::vector<uint32_t> GetHoleIdx() {
-        std::vector<uint32_t> result;
-        for (uint32_t i = 0; i < (int64_t)schema_->GetColumnCnt(); ++i) {
-            if (default_map_->count(i) == 0) {
-                result.push_back(i);
-            }
-        }
-        return result;
-    }
+    std::vector<uint32_t> GetHoleIdx() { return hole_idx_arr_; }
 
     bool AppendString(const char* string_buffer_var_name, uint32_t length);
 
+    // If the insert sql has columns names, the hole idx array is consistent with insert sql, not the table schema.
+    // e.g. table t1(c1,c2,c3)
+    // insert into t1 (c3,c2,c1) values(?,2,?);
+    // the hole idx array is {2,0}
+    //
+    // If empty(insert stmt has no column names, e.g. insert into t1 values(?,?,?)), the array should be in schema
+    // order.
+    static std::vector<uint32_t> GetHoleIdxArr(const DefaultValueMap& default_map,
+                                               const std::vector<uint32_t>& stmt_column_idx_in_table,
+                                               const std::shared_ptr<::hybridse::sdk::Schema>& schema);
+
  private:
-    bool DateToString(uint32_t year, uint32_t month, uint32_t day, std::string* date);
     bool MakeDefault();
     void PackDimension(const std::string& val);
     inline bool IsDimension() { return raw_dimensions_.find(rb_.GetAppendPos()) != raw_dimensions_.end(); }
@@ -107,6 +91,8 @@ class SQLInsertRow {
     std::shared_ptr<hybridse::sdk::Schema> schema_;
     DefaultValueMap default_map_;
     uint32_t default_string_length_;
+    std::vector<uint32_t> hole_idx_arr_;
+
     std::map<uint32_t, std::vector<uint32_t>> index_map_;
     std::set<uint32_t> ts_set_;
     std::map<uint32_t, std::string> raw_dimensions_;
@@ -119,7 +105,8 @@ class SQLInsertRow {
 class SQLInsertRows {
  public:
     SQLInsertRows(std::shared_ptr<::openmldb::nameserver::TableInfo> table_info,
-                  std::shared_ptr<hybridse::sdk::Schema> schema, DefaultValueMap default_map, uint32_t str_size);
+                  std::shared_ptr<hybridse::sdk::Schema> schema, DefaultValueMap default_map, uint32_t str_size,
+                  const std::vector<uint32_t>& hole_idx_arr);
     ~SQLInsertRows() = default;
     std::shared_ptr<SQLInsertRow> NewRow();
     inline uint32_t GetCnt() { return rows_.size(); }
@@ -130,24 +117,17 @@ class SQLInsertRows {
         return rows_[i];
     }
     inline const std::shared_ptr<hybridse::sdk::Schema> GetSchema() { return schema_; }
-    const std::vector<uint32_t> GetHoleIdx() {
-        std::vector<uint32_t> result;
-        for (uint32_t i = 0; i < (int64_t)schema_->GetColumnCnt(); ++i) {
-            if (default_map_->count(i) == 0) {
-                result.push_back(i);
-            }
-        }
-        return result;
-    }
+    std::vector<uint32_t> GetHoleIdx() { return hole_idx_arr_; }
 
  private:
     std::shared_ptr<::openmldb::nameserver::TableInfo> table_info_;
     std::shared_ptr<hybridse::sdk::Schema> schema_;
     DefaultValueMap default_map_;
     uint32_t default_str_length_;
+    std::vector<uint32_t> hole_idx_arr_;
+
     std::vector<std::shared_ptr<SQLInsertRow>> rows_;
 };
 
-}  // namespace sdk
-}  // namespace openmldb
+}  // namespace openmldb::sdk
 #endif  // SRC_SDK_SQL_INSERT_ROW_H_

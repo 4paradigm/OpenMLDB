@@ -209,6 +209,10 @@ base::Status ConvertExprNode(const zetasql::ASTExpression* ast_expression, node:
                     op = node::FnOperator::kFnOpILike;
                     break;
                 }
+                case zetasql::ASTBinaryExpression::Op::RLIKE: {
+                    op = node::FnOperator::kFnOpRLike;
+                    break;
+                }
                 case zetasql::ASTBinaryExpression::Op::MOD: {
                     op = node::FnOperator::kFnOpMod;
                     break;
@@ -795,20 +799,9 @@ base::Status ConvertStatement(const zetasql::ASTStatement* statement, node::Node
         case zetasql::AST_DELETE_STATEMENT: {
             auto delete_stmt = statement->GetAsOrNull<zetasql::ASTDeleteStatement>();
             CHECK_TRUE(delete_stmt != nullptr, common::kSqlAstError, "not an ASTDeleteStatement");
-            auto id = delete_stmt->GetTargetPathForNonNested().value_or(nullptr);
-            CHECK_TRUE(id != nullptr, common::kSqlAstError,
-                       "unsupported delete statement's target is not path expression");
-            CHECK_TRUE(id->num_names() == 1, common::kSqlAstError,
-                       "unsupported delete statement's target path has size >= 2");
-            auto id_name = id->first_name()->GetAsStringView();
-            if (absl::EqualsIgnoreCase(id_name, "job")) {
-                std::vector<absl::string_view> targets;
-                CHECK_STATUS(ConvertTargetName(delete_stmt->opt_target_name(), targets));
-                CHECK_TRUE(targets.size() == 1, common::kSqlAstError, "unsupported delete job with path name >= 2");
-                *output = node_manager->MakeDeleteNode(node::DeleteTarget::JOB, targets.front());
-            } else {
-                FAIL_STATUS(common::kSqlAstError, "unsupported type for delete statement: ", id_name);
-            }
+            node::DeleteNode* delete_node = nullptr;
+            CHECK_STATUS(ConvertDeleteNode(delete_stmt, node_manager, &delete_node));
+            *output = delete_node;
             break;
         }
         case zetasql::AST_CREATE_FUNCTION_STATEMENT: {
@@ -1011,9 +1004,7 @@ base::Status ConvertWindowSpecification(const zetasql::ASTWindowSpecification* w
     if (nullptr != window_spec->window_frame()) {
         CHECK_STATUS(ConvertFrameNode(window_spec->window_frame(), node_manager, &frame_node))
     }
-    // TODO(chenjing): fill the following flags
-    bool instance_is_not_in_window = window_spec->is_instance_not_in_window();
-    bool exclude_current_time = window_spec->is_exclude_current_time();
+
     node::SqlNodeList* union_tables = nullptr;
 
     if (nullptr != window_spec->union_table_references()) {
@@ -1025,7 +1016,8 @@ base::Status ConvertWindowSpecification(const zetasql::ASTWindowSpecification* w
         }
     }
     *output = dynamic_cast<node::WindowDefNode*>(node_manager->MakeWindowDefNode(
-        union_tables, partition_by, order_by, frame_node, exclude_current_time, instance_is_not_in_window));
+        union_tables, partition_by, order_by, frame_node, window_spec->is_exclude_current_time(),
+        window_spec->is_exclude_current_row(), window_spec->is_instance_not_in_window()));
     if (nullptr != window_spec->base_window_name()) {
         (*output)->SetName(window_spec->base_window_name()->GetAsString());
     }
@@ -1680,31 +1672,36 @@ base::Status ConvertTableOption(const zetasql::ASTOptionsEntry* entry, node::Nod
         const auto arry_expr = entry->value()->GetAsOrNull<zetasql::ASTArrayConstructor>();
         CHECK_TRUE(arry_expr != nullptr, common::kSqlAstError, "distribution not and ASTArrayConstructor");
         CHECK_TRUE(!arry_expr->elements().empty(), common::kSqlAstError, "Un-support empty distributions currently")
-        CHECK_TRUE(1 == arry_expr->elements().size(), common::kSqlAstError,
-                   "Un-support multiple distributions currently")
+        node::NodePointVector distribution_list;
         for (const auto e : arry_expr->elements()) {
             const auto ele = e->GetAsOrNull<zetasql::ASTStructConstructorWithParens>();
-            CHECK_TRUE(ele != nullptr, common::kSqlAstError,
-                       "distribution element is not ASTStructConstructorWithParens");
-            CHECK_TRUE(ele->field_expressions().size() == 2, common::kSqlAstError,
-                       "distribution element has size != 2");
-
-            node::SqlNodeList* partition_mata_nodes = node_manager->MakeNodeList();
-            std::string leader;
-            CHECK_STATUS(AstStringLiteralToString(ele->field_expression(0), &leader));
-            partition_mata_nodes->PushBack(node_manager->MakePartitionMetaNode(node::RoleType::kLeader, leader));
-            // FIXME: distribution_list not constructed correctly
-
-            const auto follower_list = ele->field_expression(1)->GetAsOrNull<zetasql::ASTArrayConstructor>();
-            for (const auto fo_node : follower_list->elements()) {
-                std::string follower;
-                CHECK_STATUS(AstStringLiteralToString(fo_node, &follower));
-                partition_mata_nodes->PushBack(
-                    node_manager->MakePartitionMetaNode(node::RoleType::kFollower, follower));
+            if (ele == nullptr) {
+                const auto arg = e->GetAsOrNull<zetasql::ASTStringLiteral>();
+                CHECK_TRUE(arg != nullptr, common::kSqlAstError, "parse distribution failed");
+                node::SqlNodeList* partition_mata_nodes = node_manager->MakeNodeList();
+                partition_mata_nodes->PushBack(node_manager->MakePartitionMetaNode(node::RoleType::kLeader,
+                            arg->string_value()));
+                distribution_list.push_back(partition_mata_nodes);
+            } else {
+                node::SqlNodeList* partition_mata_nodes = node_manager->MakeNodeList();
+                std::string leader;
+                CHECK_STATUS(AstStringLiteralToString(ele->field_expression(0), &leader));
+                partition_mata_nodes->PushBack(node_manager->MakePartitionMetaNode(node::RoleType::kLeader, leader));
+                if (ele->field_expressions().size() > 1) {
+                    const auto follower_list = ele->field_expression(1)->GetAsOrNull<zetasql::ASTArrayConstructor>();
+                    CHECK_TRUE(follower_list != nullptr, common::kSqlAstError,
+                            "follower element is not ASTArrayConstructor");
+                    for (const auto fo_node : follower_list->elements()) {
+                        std::string follower;
+                        CHECK_STATUS(AstStringLiteralToString(fo_node, &follower));
+                        partition_mata_nodes->PushBack(
+                            node_manager->MakePartitionMetaNode(node::RoleType::kFollower, follower));
+                    }
+                }
+                distribution_list.push_back(partition_mata_nodes);
             }
-            *output = node_manager->MakeDistributionsNode(partition_mata_nodes);
-            return base::Status::OK();
         }
+        *output = node_manager->MakeDistributionsNode(distribution_list);
     } else if (boost::equals("storage_mode", identifier)) {
         std::string storage_mode;
         CHECK_STATUS(AstStringLiteralToString(entry->value(), &storage_mode));
@@ -1848,6 +1845,39 @@ base::Status ASTIntervalLIteralToNum(const zetasql::ASTExpression* ast_expr, int
 
     CHECK_TRUE(!is_null, common::kTypeError, "Invalid interval literal: ", interval_literal->image());
 
+    return base::Status::OK();
+}
+
+base::Status ConvertDeleteNode(const zetasql::ASTDeleteStatement* delete_stmt, node::NodeManager* node_manager,
+                                    node::DeleteNode** output) {
+    auto id = delete_stmt->GetTargetPathForNonNested().value_or(nullptr);
+    CHECK_TRUE(id != nullptr, common::kSqlAstError,
+               "unsupported delete statement's target is not path expression");
+    CHECK_TRUE(id->num_names() == 1 || id->num_names() == 2, common::kSqlAstError,
+               "unsupported delete statement's target path has size > 2");
+    auto id_name = id->first_name()->GetAsStringView();
+    if (delete_stmt->where() != nullptr) {
+        CHECK_TRUE(delete_stmt->GetTargetPathForNonNested().ok(), common::kSqlAstError,
+                   "Un-support delete statement with illegal target table path")
+        std::vector<std::string> names;
+        CHECK_STATUS(AstPathExpressionToStringList(delete_stmt->GetTargetPathForNonNested().value(), names));
+        CHECK_TRUE(!names.empty() && names.size() <= 2, common::kSqlAstError, "illegal name in delete sql");
+        std::string db_name;
+        std::string table_name = names.back();
+        if (names.size() == 2) {
+            db_name = names[0];
+        }
+        node::ExprNode* where_expr = nullptr;
+        CHECK_STATUS(ConvertExprNode(delete_stmt->where(), node_manager, &where_expr));
+        *output = node_manager->MakeDeleteNode(node::DeleteTarget::TABLE, "", db_name, table_name, where_expr);
+    } else if (absl::EqualsIgnoreCase(id_name, "job")) {
+        std::vector<absl::string_view> targets;
+        CHECK_STATUS(ConvertTargetName(delete_stmt->opt_target_name(), targets));
+        CHECK_TRUE(targets.size() == 1, common::kSqlAstError, "unsupported delete sql");
+        *output = node_manager->MakeDeleteNode(node::DeleteTarget::JOB, targets.front(), "", "", nullptr);
+    } else {
+        FAIL_STATUS(common::kSqlAstError, "unsupported delete sql");
+    }
     return base::Status::OK();
 }
 
@@ -1995,12 +2025,14 @@ base::Status ConvertCreateIndexStatement(const zetasql::ASTCreateIndexStatement*
 
     node::SqlNode* index_key_node = node_manager->MakeIndexKeyNode(keys);
     index_node_list->PushBack(index_key_node);
-    for (const auto option : root->options_list()->options_entries()) {
-        node::SqlNode* node = nullptr;
-        CHECK_STATUS(ConvertIndexOption(option, node_manager, &node));
-        if (node != nullptr) {
-            // NOTE: unhandled option will return OK, but node is not set
-            index_node_list->PushBack(node);
+    if (root->options_list() != nullptr) {
+        for (const auto option : root->options_list()->options_entries()) {
+            node::SqlNode* node = nullptr;
+            CHECK_STATUS(ConvertIndexOption(option, node_manager, &node));
+            if (node != nullptr) {
+                // NOTE: unhandled option will return OK, but node is not set
+                index_node_list->PushBack(node);
+            }
         }
     }
     node::ColumnIndexNode* column_index_node =

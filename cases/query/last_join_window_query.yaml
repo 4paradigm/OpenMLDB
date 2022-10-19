@@ -164,3 +164,74 @@ cases:
         3, 55, 1590115420001, 1590115420001, CCC, 3
         4, 55, 1590115420002, 1590115420002, DDDD, 7
         5, 55, 1590115420003, 1590115420002, FFFFFF, 12
+
+  - id: 4
+    desc: |
+      window with a last join subquery
+    inputs:
+      - name: actions
+        columns:
+          - userId int
+          - itemId int
+          - actionTime timestamp
+        indexs:
+          - index2:itemId:actionTime
+        data: |
+          1, 1, 1000
+          2, 2, 2000
+          3, 3, 3000
+          4, 3, 4000
+
+      - name: items
+        columns:
+          - id int
+          - price float
+          - tm timestamp
+        indexs:
+          - idx:id:tm
+        data: |
+          1, 99,  1000
+          1, 599, 4000
+          2, 199, 3000
+          3, 399, 5000
+    # userid, itemid, actionTime, id, price, tm
+    #    1,     1,     1000,       1, 599,   4000
+    #    2,     2,     2000,       2, 199,   3000
+    #    3,     3,     3000,       3, 399,   5000
+    #    4,     3,     4000,       3, 399,   5000
+    sql: |
+      select
+       userId,
+        itemId,
+        count(itemId) over w1 as count_1,
+        sum(price) over w1 as total,
+        actionTime
+      from (
+        select * from actions
+        last join items order by tm
+        on actions.itemId = items.id and actionTime <= tm
+      ) window w1 as (
+        partition by itemId
+        order by actionTime
+        rows_range between 3000 preceding and current row
+      );
+    request_plan: |
+      PROJECT(type=Aggregation)
+        JOIN(type=LastJoin, right_sort=(ASC), condition=actionTime <= tm, left_keys=(), right_keys=(), index_keys=(actions.itemId))
+          REQUEST_UNION(partition_keys=(), orders=(ASC), range=(actionTime, 3000 PRECEDING, 0 CURRENT), index_keys=(itemId))
+            DATA_PROVIDER(request=actions)
+            DATA_PROVIDER(type=Partition, table=actions, index=index2)
+          DATA_PROVIDER(type=Partition, table=items, index=idx)
+    expect:
+      order: userId
+      columns:
+        - userId int
+        - itemId int
+        - count_1 int64
+        - total float
+        - actionTime timestamp
+      data: |
+        1, 1, 1, 599, 1000
+        2, 2, 1, 199, 2000
+        3, 3, 1, 399, 3000
+        4, 3, 2, 798, 4000

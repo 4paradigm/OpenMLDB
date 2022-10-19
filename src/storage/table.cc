@@ -19,7 +19,7 @@
 #include <algorithm>
 #include <utility>
 
-#include "base/glog_wapper.h"
+#include "base/glog_wrapper.h"
 #include "codec/schema_codec.h"
 #include "storage/mem_table.h"
 #include "storage/disk_table.h"

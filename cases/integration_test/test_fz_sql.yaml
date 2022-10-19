@@ -1,0 +1,156 @@
+# Copyright 2021 4Paradigm
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+db: test_fz
+debugs: []
+cases:
+  - id: 0
+    desc: feature zero split utility functions
+    inputs:
+      - columns: ["id int64", "pk int64", "c1 string"]
+        indexs: ["index1:pk:id"]
+        rows:
+          - [1, 0, "k1:v1,k2:v2"]
+          - [2, 0, "k3:v3"]
+          - [3, 0, "???,,k4:v4"]
+          - [4, 0, NULL]
+          - [5, 0, "k5:v5,k5:v3"]
+    sql: |
+      SELECT id,
+        identity(case when !isnull(lag(c1, 0)) then distinct_count(fz_window_split(c1,  ",")) else null end) over w1 as table_2_kn_0,
+        identity(case when !isnull(lag(c1, 0)) then distinct_count(fz_window_split_by_key(c1,  ",",  ":")) else null end) over w1 as table_2_kn_1,
+        identity(case when !isnull(lag(c1, 0)) then distinct_count(fz_window_split_by_value(c1,  ",",  ":")) else null end) over w1 as table_2_kn_2,
+        fz_join(fz_window_split(c1, ","), " ") OVER w1 AS split_and_join,
+        fz_join(fz_window_split_by_key(c1, ",", ":"), " ") OVER w1 AS split_key_and_join,
+        fz_join(fz_window_split_by_value(c1, ",", ":"), " ") OVER w1 AS split_value_and_join,
+        count(fz_window_split_by_key(c1, ",", ":")) OVER w1 AS split_key_and_count,
+        distinct_count(fz_window_split_by_key(c1, ",", ":")) OVER w1 AS split_key_and_distinct_count
+      FROM {0}
+      WINDOW w1 AS (PARTITION BY {0}.pk ORDER BY {0}.id ROWS BETWEEN 10 PRECEDING AND CURRENT ROW);
+    expect:
+      order: id
+      columns: ["id int64", "table_2_kn_0 int64", "table_2_kn_1 int64", "table_2_kn_2 int64", "split_and_join string", "split_key_and_join string", "split_value_and_join string", "split_key_and_count int64", "split_key_and_distinct_count int64"]
+      rows:
+        - [1, 2, 2, 2, "k1:v1 k2:v2", "k1 k2", "v1 v2", 2, 2]
+        - [2, 3, 3, 3, "k3:v3 k1:v1 k2:v2", "k3 k1 k2", "v3 v1 v2", 3, 3]
+        - [3, 6, 4, 4, "???  k4:v4 k3:v3 k1:v1 k2:v2", "k4 k3 k1 k2", "v4 v3 v1 v2", 4, 4]
+        - [4, NULL, NULL, NULL, "???  k4:v4 k3:v3 k1:v1 k2:v2", "k4 k3 k1 k2", "v4 v3 v1 v2", 4, 4]
+        - [5, 8, 5, 5, "k5:v5 k5:v3 ???  k4:v4 k3:v3 k1:v1 k2:v2", "k5 k5 k4 k3 k1 k2", "v5 v3 v4 v3 v1 v2", 6, 5]
+
+  - id: 1
+    desc: feature zero split utility functions on single row
+    inputs:
+      - name: main
+        columns: ["id int64", "pk int64", "c1 string"]
+        indexs: ["index1:pk:id"]
+        rows:
+          - [1, 0, "k1:v1,k2:v2"]
+          - [2, 0, "k3:v3"]
+          - [3, 0, "???,,k4:v4"]
+          - [4, 0, NULL]
+          - [5, 0, "k5:v5,k3:v3"]
+    sql: |
+      SELECT id,
+        fz_join(fz_split(c1, ","), " ") AS split_and_join,
+        fz_join(fz_split_by_key(c1, ",", ":"), " ") AS split_key_and_join,
+        fz_join(fz_split_by_value(c1, ",", ":"), " ") AS split_value_and_join
+      FROM main;
+    expect:
+      order: id
+      columns: ["id int64", "split_and_join string", "split_key_and_join string", "split_value_and_join string"]
+      rows:
+        - [1, "k1:v1 k2:v2", "k1 k2", "v1 v2"]
+        - [2, "k3:v3", "k3", "v3"]
+        - [3, "???  k4:v4", "k4", "v4"]
+        - [4, "", "", ""]
+        - [5, "k5:v5 k3:v3", "k5 k3", "v5 v3"]
+  - id: 2
+    desc: fz case 5 simple version debug
+    mode: rtidb-batch-unsupport
+    inputs:
+      - columns: ["id int64", "reqId string", "eventTime timestamp", "SK_ID_CURR string"]
+        indexs: ["index1:reqId:id"]
+        rows:
+          - [1, "col0", 1607473951299, "col3"]
+      - columns: [ "ingestionTime timestamp","eventTime timestamp",
+                   "SK_ID_PREV string","SK_ID_CURR string",
+                   "NAME_CONTRACT_TYPE string","AMT_ANNUITY double","AMT_APPLICATION double","AMT_CREDIT double","AMT_DOWN_PAYMENT double",
+                   "AMT_GOODS_PRICE double","WEEKDAY_APPR_PROCESS_START string","HOUR_APPR_PROCESS_START int",
+                   "FLAG_LAST_APPL_PER_CONTRACT string","NFLAG_LAST_APPL_IN_DAY int",
+                   "RATE_DOWN_PAYMENT double","RATE_INTEREST_PRIMARY double","RATE_INTEREST_PRIVILEGED double",
+                   "NAME_CASH_LOAN_PURPOSE string","NAME_CONTRACT_STATUS string","DAYS_DECISION int","NAME_PAYMENT_TYPE string",
+                   "CODE_REJECT_REASON string","NAME_TYPE_SUITE string","NAME_CLIENT_TYPE string","NAME_GOODS_CATEGORY string",
+                   "NAME_PORTFOLIO string","NAME_PRODUCT_TYPE string","CHANNEL_TYPE string","SELLERPLACE_AREA int",
+                   "NAME_SELLER_INDUSTRY string","CNT_PAYMENT double","NAME_YIELD_GROUP string","PRODUCT_COMBINATION string",
+                   "DAYS_FIRST_DRAWING double","DAYS_FIRST_DUE double","DAYS_LAST_DUE_1ST_VERSION double",
+                   "DAYS_LAST_DUE double","DAYS_TERMINATION double",
+                   "NFLAG_INSURED_ON_APPROVAL double"]
+        indexs: ["index1:SK_ID_CURR:ingestionTime"]
+        rows:
+          - [1607473951298, 1607473951298,
+             'col2', 'col3', 'col4', 1.4, 1.4, 1.4, 1.4, 1.4, 'col10', 11, 'col12', 13, 1.4, 1.4, 1.4,
+             'col17', 'col18', 19, 'col20', 'col21', 'col22', 'col23', 'col24', 'col25', 'col26',
+             'col27', 28, 'col29', 1.4, 'col31', 'col32', 1.4, 1.4, 1.4, 1.4, 1.4, 1.4]
+    sql: |
+      select reqId_1, reqId_243 from  ( select     reqId as reqId_1 from {0} ) as out0 last join
+      ( select
+      reqId as reqId_243,
+      case when !isnull(lag(NAME_CLIENT_TYPE, 1)) over previous_application_SK_ID_CURR_ingestionTime_0s_32d then count(NAME_CLIENT_TYPE) over previous_application_SK_ID_CURR_ingestionTime_0s_32d else null end as f1,
+      1 as f2,
+      fz_topn_frequency(NAME_CONTRACT_STATUS, 3) over previous_application_SK_ID_CURR_ingestionTime_0s_32d as f3,
+      distinct_count(NAME_CONTRACT_TYPE) over previous_application_SK_ID_CURR_ingestionTime_0s_32d as f4,
+      fz_topn_frequency(NAME_CONTRACT_TYPE, 3) over previous_application_SK_ID_CURR_ingestionTime_0s_32d as f5,
+      fz_topn_frequency(NAME_GOODS_CATEGORY, 3) over previous_application_SK_ID_CURR_ingestionTime_0s_32d as f6,
+      distinct_count(NAME_GOODS_CATEGORY) over previous_application_SK_ID_CURR_ingestionTime_0s_32d as f7,
+      fz_topn_frequency(NAME_PAYMENT_TYPE, 3) over previous_application_SK_ID_CURR_ingestionTime_0s_32d as f8,
+      case when !isnull(lag(NAME_PAYMENT_TYPE, 1)) over previous_application_SK_ID_CURR_ingestionTime_0s_32d then count(NAME_PAYMENT_TYPE) over previous_application_SK_ID_CURR_ingestionTime_0s_32d else null end as f9,
+      distinct_count(NAME_PORTFOLIO) over previous_application_SK_ID_CURR_ingestionTime_0s_32d as f10,
+      fz_topn_frequency(NAME_PORTFOLIO, 3) over previous_application_SK_ID_CURR_ingestionTime_0s_32d as previous_application_NAME_PORTFOLIO_multi_top3frequency_299,
+      distinct_count(NAME_PRODUCT_TYPE) over previous_application_SK_ID_CURR_ingestionTime_0s_32d as previous_application_NAME_PRODUCT_TYPE_multi_unique_count_300,
+      fz_topn_frequency(NAME_PRODUCT_TYPE, 3) over previous_application_SK_ID_CURR_ingestionTime_0s_32d as previous_application_NAME_PRODUCT_TYPE_multi_top3frequency_301,
+      fz_topn_frequency(NAME_SELLER_INDUSTRY, 3) over previous_application_SK_ID_CURR_ingestionTime_0s_32d as previous_application_NAME_SELLER_INDUSTRY_multi_top3frequency_302,
+      case when !isnull(lag(NAME_SELLER_INDUSTRY, 1)) over previous_application_SK_ID_CURR_ingestionTime_0s_32d then count(NAME_SELLER_INDUSTRY) over previous_application_SK_ID_CURR_ingestionTime_0s_32d else null end as previous_application_NAME_SELLER_INDUSTRY_multi_count_303,
+      fz_topn_frequency(NAME_TYPE_SUITE, 3) over previous_application_SK_ID_CURR_ingestionTime_0s_32d as previous_application_NAME_TYPE_SUITE_multi_top3frequency_304,
+      case when !isnull(lag(NAME_TYPE_SUITE, 1)) over previous_application_SK_ID_CURR_ingestionTime_0s_32d then count(NAME_TYPE_SUITE) over previous_application_SK_ID_CURR_ingestionTime_0s_32d else null end as previous_application_NAME_TYPE_SUITE_multi_count_305,
+      fz_topn_frequency(NAME_YIELD_GROUP, 3) over previous_application_SK_ID_CURR_ingestionTime_0s_32d as previous_application_NAME_YIELD_GROUP_multi_top3frequency_306,
+      case when !isnull(lag(NAME_YIELD_GROUP, 1)) over previous_application_SK_ID_CURR_ingestionTime_0s_32d then count(NAME_YIELD_GROUP) over previous_application_SK_ID_CURR_ingestionTime_0s_32d else null end as previous_application_NAME_YIELD_GROUP_multi_count_307,
+      fz_topn_frequency(PRODUCT_COMBINATION, 3) over previous_application_SK_ID_CURR_ingestionTime_0s_32d as previous_application_PRODUCT_COMBINATION_multi_top3frequency_308,
+      case when !isnull(lag(PRODUCT_COMBINATION, 1)) over previous_application_SK_ID_CURR_ingestionTime_0s_32d then count(PRODUCT_COMBINATION) over previous_application_SK_ID_CURR_ingestionTime_0s_32d else null end as previous_application_PRODUCT_COMBINATION_multi_count_309,
+      fz_topn_frequency(SK_ID_PREV, 3) over previous_application_SK_ID_CURR_ingestionTime_0s_32d as previous_application_SK_ID_PREV_multi_top3frequency_310,
+      distinct_count(SK_ID_PREV) over previous_application_SK_ID_CURR_ingestionTime_0s_32d as previous_application_SK_ID_PREV_multi_unique_count_311,
+      fz_topn_frequency(WEEKDAY_APPR_PROCESS_START, 3) over previous_application_SK_ID_CURR_ingestionTime_0s_32d as previous_application_WEEKDAY_APPR_PROCESS_START_multi_top3frequency_312,
+
+      case when !isnull(lag(WEEKDAY_APPR_PROCESS_START, 1)) over previous_application_SK_ID_CURR_ingestionTime_0s_32d then count(WEEKDAY_APPR_PROCESS_START) over previous_application_SK_ID_CURR_ingestionTime_0s_32d else null end as previous_application_WEEKDAY_APPR_PROCESS_START_multi_count_313
+      from
+      (select eventTime as ingestionTime, timestamp('2019-07-18 09:20:20') as eventTime, '' as SK_ID_PREV,
+      SK_ID_CURR as SK_ID_CURR, '' as NAME_CONTRACT_TYPE, double(0) as AMT_ANNUITY, double(0) as AMT_APPLICATION,
+      double(0) as AMT_CREDIT, double(0) as AMT_DOWN_PAYMENT, double(0) as AMT_GOODS_PRICE, '' as WEEKDAY_APPR_PROCESS_START,
+      int(0) as HOUR_APPR_PROCESS_START, '' as FLAG_LAST_APPL_PER_CONTRACT, int(0) as NFLAG_LAST_APPL_IN_DAY, double(0) as RATE_DOWN_PAYMENT,
+      double(0) as RATE_INTEREST_PRIMARY, double(0) as RATE_INTEREST_PRIVILEGED, '' as NAME_CASH_LOAN_PURPOSE, '' as NAME_CONTRACT_STATUS, int(0) as DAYS_DECISION,
+      '' as NAME_PAYMENT_TYPE, '' as CODE_REJECT_REASON, '' as NAME_TYPE_SUITE, '' as NAME_CLIENT_TYPE, '' as NAME_GOODS_CATEGORY, '' as NAME_PORTFOLIO, '' as NAME_PRODUCT_TYPE,
+      '' as CHANNEL_TYPE, int(0) as SELLERPLACE_AREA, '' as NAME_SELLER_INDUSTRY, double(0) as CNT_PAYMENT, '' as NAME_YIELD_GROUP, '' as PRODUCT_COMBINATION,
+      double(0) as DAYS_FIRST_DRAWING, double(0) as DAYS_FIRST_DUE, double(0) as DAYS_LAST_DUE_1ST_VERSION, double(0) as DAYS_LAST_DUE, double(0) as DAYS_TERMINATION,
+      double(0) as NFLAG_INSURED_ON_APPROVAL, reqId from {0})
+      window previous_application_SK_ID_CURR_ingestionTime_0s_32d as ( UNION (select ingestionTime,
+      eventTime, SK_ID_PREV, SK_ID_CURR, NAME_CONTRACT_TYPE, AMT_ANNUITY, AMT_APPLICATION, AMT_CREDIT, AMT_DOWN_PAYMENT, AMT_GOODS_PRICE, WEEKDAY_APPR_PROCESS_START, HOUR_APPR_PROCESS_START,
+      FLAG_LAST_APPL_PER_CONTRACT, NFLAG_LAST_APPL_IN_DAY, RATE_DOWN_PAYMENT, RATE_INTEREST_PRIMARY, RATE_INTEREST_PRIVILEGED, NAME_CASH_LOAN_PURPOSE, NAME_CONTRACT_STATUS,
+      DAYS_DECISION, NAME_PAYMENT_TYPE, CODE_REJECT_REASON, NAME_TYPE_SUITE, NAME_CLIENT_TYPE, NAME_GOODS_CATEGORY, NAME_PORTFOLIO, NAME_PRODUCT_TYPE, CHANNEL_TYPE, SELLERPLACE_AREA,
+      NAME_SELLER_INDUSTRY, CNT_PAYMENT, NAME_YIELD_GROUP, PRODUCT_COMBINATION, DAYS_FIRST_DRAWING, DAYS_FIRST_DUE, DAYS_LAST_DUE_1ST_VERSION, DAYS_LAST_DUE, DAYS_TERMINATION, NFLAG_INSURED_ON_APPROVAL,
+      '' as reqId from {1})
+      partition by SK_ID_CURR order by ingestionTime rows_range between 32d preceding and 0s preceding INSTANCE_NOT_IN_WINDOW)) as out7 on out0.reqId_1 = out7.reqId_243 ;
+    expect:
+      success: true
+      columns: ["reqId_1 string", "reqId_243 string"]
+      rows:
+        - ["col0", "col0"]

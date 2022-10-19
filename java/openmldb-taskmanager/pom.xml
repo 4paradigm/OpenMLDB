@@ -6,7 +6,7 @@
     <parent>
         <artifactId>openmldb-parent</artifactId>
         <groupId>com.4paradigm.openmldb</groupId>
-        <version>0.5.0-SNAPSHOT</version>
+        <version>0.6.0-SNAPSHOT</version>
     </parent>
     <artifactId>openmldb-taskmanager</artifactId>
     <name>openmldb-taskmanager</name>
@@ -18,10 +18,6 @@
         <java.version>1.8</java.version>
         <maven.compiler.source>1.8</maven.compiler.source>
         <maven.compiler.target>1.8</maven.compiler.target>
-        <scala.version>2.12.8</scala.version>
-        <scala.binary.version>2.12</scala.binary.version>
-        <spark.version>3.1.2</spark.version>
-        <hadoop.version>2.10.1</hadoop.version>
     </properties>
 
     <dependencies>
@@ -69,7 +65,7 @@
         <dependency>
             <groupId>com.google.protobuf</groupId>
             <artifactId>protobuf-java</artifactId>
-            <version>3.16.1</version>
+            <version>3.16.3</version>
         </dependency>
         <dependency>
             <groupId>com.google.protobuf</groupId>
@@ -304,6 +300,28 @@
                             <name>taskmanager</name>
                         </program>
                     </programs>
+                </configuration>
+            </plugin>
+
+            <!-- Generate properties file with git info -->
+            <plugin>
+                <groupId>pl.project13.maven</groupId>
+                <artifactId>git-commit-id-plugin</artifactId>
+                <version>2.2.4</version>
+                <executions>
+                    <execution>
+                        <id>get-the-git-infos</id>
+                        <goals>
+                            <goal>revision</goal>
+                        </goals>
+                    </execution>
+                </executions>
+                <configuration>
+                    <generateGitPropertiesFilename>${project.build.outputDirectory}/git.properties</generateGitPropertiesFilename>
+                    <injectAllReactorProjects>true</injectAllReactorProjects>
+                    <dateFormat>yyyy.MM.dd HH:mm:ss</dateFormat>
+                    <verbose>true</verbose>
+                    <generateGitPropertiesFile>true</generateGitPropertiesFile>
                 </configuration>
             </plugin>
         </plugins>

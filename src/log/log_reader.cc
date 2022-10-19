@@ -27,7 +27,7 @@
 #include <zlib.h>
 
 #include "base/endianconv.h"
-#include "base/glog_wapper.h"  // NOLINT
+#include "base/glog_wrapper.h"
 #include "base/strings.h"
 #include "log/coding.h"
 #include "log/crc32c.h"
@@ -437,6 +437,15 @@ LogReader::LogReader(LogParts* logs, const std::string& log_path, bool compresse
     log_part_index_ = -1;
     start_offset_ = 0;
     compressed_ = compressed;
+
+    auto it = logs_->NewIterator();
+    it->SeekToLast();
+    if (it->Valid()) {
+        min_offset_ = it->GetValue();
+    } else {
+        min_offset_ = UINT64_MAX;
+        PDLOG(WARNING, "empty log reader");
+    }
 }
 
 LogReader::~LogReader() {
@@ -444,7 +453,14 @@ LogReader::~LogReader() {
     delete reader_;
 }
 
-void LogReader::SetOffset(uint64_t start_offset) { start_offset_ = start_offset; }
+bool LogReader::SetOffset(uint64_t start_offset) {
+    start_offset_ = start_offset;
+    if (start_offset < min_offset_) {
+        PDLOG(WARNING, "SetOffset %lu is smaller than the minimum offset %lu in the logs", start_offset, min_offset_);
+        return false;
+    }
+    return true;
+}
 
 void LogReader::GoBackToLastBlock() {
     if (sf_ == NULL || reader_ == NULL) {

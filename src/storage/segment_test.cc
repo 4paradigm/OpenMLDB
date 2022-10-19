@@ -19,7 +19,7 @@
 #include <iostream>
 #include <string>
 
-#include "base/glog_wapper.h"  // NOLINT
+#include "base/glog_wrapper.h"
 #include "base/slice.h"
 #include "gtest/gtest.h"
 #include "storage/record.h"
@@ -413,28 +413,6 @@ TEST_F(SegmentTest, GetTsIdx) {
     ASSERT_EQ(-1, segment.GetTsIdx(4, real_idx));
     ASSERT_EQ(0, segment.GetTsIdx(5, real_idx));
     ASSERT_EQ(2, (int64_t)real_idx);
-}
-
-TEST_F(SegmentTest, PutAndGetTS) {
-    std::vector<uint32_t> ts_idx_vec = {1, 3, 5};
-    Segment segment(8, ts_idx_vec);
-    Slice pk("pk");
-    std::map<int32_t, uint64_t> ts_map;
-    for (int i = 0; i < 6; i++) {
-        ts_map.emplace(i, 1100 + i);
-    }
-    DataBlock db(1, "test1", 5);
-    segment.Put(pk, ts_map, &db);
-    DataBlock* result = NULL;
-    bool ret = segment.Get(pk, 0, 1101, &result);
-    ASSERT_FALSE(ret);
-    ret = segment.Get(pk, 1, 1101, &result);
-    ASSERT_TRUE(ret);
-    ASSERT_TRUE(result != NULL);
-    ASSERT_EQ(5, (int64_t)result->size);
-    std::string t(result->data, result->size);
-    std::string e = "test1";
-    ASSERT_EQ(e, t);
 }
 
 }  // namespace storage

@@ -55,7 +55,8 @@ object WindowAggPlan {
     // Check if we should keep the index column
     val isKeepIndexColumn = SparkInstance.keepIndexColumn(ctx, physicalNode.GetNodeId())
     // Check if use UnsafeRow optimizaiton or not
-    val isUnsafeRowOptimization = ctx.getConf.enableUnsafeRowOptForWindow
+    val isUnsafeRowOpt = ctx.getConf.enableUnsafeRowOptimization
+    val isUnsafeRowOptWindow = ctx.getConf.enableUnsafeRowOptForWindow
     // Check if we should keep the index column
     val isWindowSkewOptimization = ctx.getConf.enableWindowSkewOpt
 
@@ -98,7 +99,7 @@ object WindowAggPlan {
     }
 
     // Do window agg with UnsafeRow optimization or not
-    val outputDf = if (isUnsafeRowOptimization) {
+    val outputDf = if (isUnsafeRowOpt && isUnsafeRowOptWindow) {
 
       val internalRowRdd = repartitionDf.queryExecution.toRdd
       val inputSchema = repartitionDf.schema
@@ -165,8 +166,6 @@ object WindowAggPlan {
       }
 
       SparkUtil.rddInternalRowToDf(ctx.getSparkSession, outputInternalRowRdd, outputSchema)
-      // TODO(tobe): Use custom Spark library to avoid Java reflection
-      // ctx.getSparkSession.internalCreateDataFrame(outputInternalRowRdd, outputSchema, false)
 
     } else { // isUnsafeRowOptimization is false
       val outputRdd = if (isWindowWithUnion) {
@@ -389,7 +388,8 @@ object WindowAggPlan {
 
         if (isValidOrder(orderKey)) {
           val outputInternalRow = computer.unsafeCompute(internalRow, orderKey, config.keepIndexColumn,
-            config.unionFlagIdx, outputSchema, sqlConfig.enableUnsafeRowOptimization)
+            config.unionFlagIdx, outputSchema, sqlConfig.enableUnsafeRowOptimization,
+            sqlConfig.unsaferowoptCopyDirectByteBuffer)
 
           // Convert Spark UnsafeRow timestamp values for OpenMLDB Core
           for (colIdx <- outputTimestampColIndexes) {
@@ -466,7 +466,8 @@ object WindowAggPlan {
           None
         } else if (!expandedFlag) {
           val outputInternalRow = computer.unsafeCompute(internalRow, orderKey, config.keepIndexColumn,
-            config.unionFlagIdx, outputSchema, sqlConfig.enableUnsafeRowOptimization)
+            config.unionFlagIdx, outputSchema, sqlConfig.enableUnsafeRowOptimization,
+            sqlConfig.unsaferowoptCopyDirectByteBuffer)
 
           // Convert Spark UnsafeRow timestamp values for OpenMLDB Core
           for (colIdx <- outputTimestampColIndexes) {
@@ -660,7 +661,8 @@ object WindowAggPlan {
         } else if (!expandedFlag) {
           val outputInternalRow = computer.unsafeCompute(internalRow, orderKey, config.keepIndexColumn,
             config.unionFlagIdx, outputSchema,
-            sqlConfig.enableUnsafeRowOptimization)
+            sqlConfig.enableUnsafeRowOptimization,
+            sqlConfig.unsaferowoptCopyDirectByteBuffer)
 
           // Convert Spark UnsafeRow timestamp values for OpenMLDB Core
           for (colIdx <- outputTimestampColIndexes) {
@@ -715,7 +717,8 @@ object WindowAggPlan {
               val expandedFlag = row.getBoolean(config.expandedFlagIdx)
               if (!expandedFlag) {
                 val outputInternalRow = computer.unsafeCompute(internalRow, orderKey, config.keepIndexColumn,
-                  config.unionFlagIdx, outputSchema, sqlConfig.enableUnsafeRowOptimization)
+                  config.unionFlagIdx, outputSchema, sqlConfig.enableUnsafeRowOptimization,
+                  sqlConfig.unsaferowoptCopyDirectByteBuffer)
 
                 // Convert Spark UnsafeRow timestamp values for OpenMLDB Core
                 for (colIdx <- outputTimestampColIndexes) {
@@ -740,7 +743,8 @@ object WindowAggPlan {
               }
             } else {
               val outputInternalRow = computer.unsafeCompute(internalRow, orderKey, config.keepIndexColumn,
-                config.unionFlagIdx, outputSchema, sqlConfig.enableUnsafeRowOptimization)
+                config.unionFlagIdx, outputSchema, sqlConfig.enableUnsafeRowOptimization,
+                sqlConfig.unsaferowoptCopyDirectByteBuffer)
 
               // Convert Spark UnsafeRow timestamp values for OpenMLDB Core
               for (tsColIdx <- outputTimestampColIndexes) {

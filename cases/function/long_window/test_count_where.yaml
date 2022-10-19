@@ -1,0 +1,540 @@
+# Copyright 2021 4Paradigm
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+db: test_zw
+debugs: ["长窗口count_where，date类型","长窗口count_where，rows"]
+cases:
+  -
+    id: 0
+    desc: 长窗口count_where，date类型
+    longWindow: w1:2
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        index: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1,1,30,1.1,2.1,1590738990000,"2020-05-01",true]
+          - [2,"aa",2,2,31,1.2,2.2,1590738990001,"2020-05-02",true]
+          - [3,"aa",3,3,32,1.3,2.3,1590738990002,"2020-05-03",true]
+          - [4,"aa",4,4,33,1.4,2.4,1590738990003,"2020-05-04",true]
+          - [5,"aa",5,5,34,1.5,2.5,1590738990004,"2020-05-05",false]
+    sql: |
+      SELECT id, c1, count_where(c8,c2<4) OVER w1 as w1_count FROM {0} WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS_RANGE BETWEEN 2 PRECEDING AND CURRENT ROW);
+    expect:
+      order: id
+      columns: ["id int","c1 string","w1_count bigint"]
+      rows:
+        - [1,"aa",1]
+        - [2,"aa",2]
+        - [3,"aa",3]
+        - [4,"aa",2]
+        - [5,"aa",1]
+  -
+    id: 0-1
+    desc: 长窗口count_where，rows
+    longWindow: w1:2
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        index: ["index1:c1:c7:0:latest"]
+        rows:
+          - [1,"aa",1,20,30,1.1,2.1,1590738990000,"2020-05-01",true]
+          - [2,"aa",2,21,31,1.2,2.2,1590738990001,"2020-05-02",true]
+          - [3,"aa",3,22,32,1.3,2.3,1590738990002,"2020-05-03",true]
+          - [4,"aa",4,23,33,1.4,2.4,1590738990003,"2020-05-04",true]
+          - [5,"aa",5,24,34,1.5,2.5,1590738990004,"2020-05-05",false]
+    sql: |
+      SELECT id, c1, count_where(c8,c2<4) OVER w1 as w1_count FROM {0} WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
+    expect:
+      order: id
+      columns: ["id int","c1 string","w1_count bigint"]
+      rows:
+        - [1,"aa",1]
+        - [2,"aa",2]
+        - [3,"aa",3]
+        - [4,"aa",2]
+        - [5,"aa",1]
+  -
+    id: 1
+    desc: 长窗口count_where，smallint类型
+    longWindow: w1:2
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        rows:
+          - [1,"aa",1,20,30,1.1,2.1,1590738990000,"2020-05-01",true]
+          - [2,"aa",2,21,31,1.2,2.2,1590738990001,"2020-05-02",true]
+          - [3,"aa",3,22,32,1.3,2.3,1590738990002,"2020-05-03",true]
+          - [4,"aa",4,23,33,1.4,2.4,1590738990003,"2020-05-04",true]
+          - [5,"aa",5,24,34,1.5,2.5,1590738990004,"2020-05-05",false]
+    dataProvider:
+      - ["ROWS","ROWS_RANGE"]
+    sql: |
+      SELECT id, c1, count_where(c2,c2<4) OVER w1 as w1_count FROM {0} WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 d[0] BETWEEN 2 PRECEDING AND CURRENT ROW);
+    expect:
+      order: id
+      columns: ["id int","c1 string","w1_count bigint"]
+      rows:
+        - [1,"aa",1]
+        - [2,"aa",2]
+        - [3,"aa",3]
+        - [4,"aa",2]
+        - [5,"aa",1]
+  -
+    id: 2
+    desc: 长窗口count_where，int类型
+    longWindow: w1:2
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        rows:
+          - [1,"aa",1,20,30,1.1,2.1,1590738990000,"2020-05-01",true]
+          - [2,"aa",2,21,31,1.2,2.2,1590738990001,"2020-05-02",true]
+          - [3,"aa",3,22,32,1.3,2.3,1590738990002,"2020-05-03",true]
+          - [4,"aa",4,23,33,1.4,2.4,1590738990003,"2020-05-04",true]
+          - [5,"aa",5,24,34,1.5,2.5,1590738990004,"2020-05-05",false]
+    dataProvider:
+      - ["ROWS","ROWS_RANGE"]
+    sql: |
+      SELECT id, c1, count_where(c3,c2<4) OVER w1 as w1_count FROM {0} WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 d[0] BETWEEN 2 PRECEDING AND CURRENT ROW);
+    expect:
+      order: id
+      columns: ["id int","c1 string","w1_count bigint"]
+      rows:
+        - [1,"aa",1]
+        - [2,"aa",2]
+        - [3,"aa",3]
+        - [4,"aa",2]
+        - [5,"aa",1]
+  -
+    id: 3
+    desc: 长窗口count_where，bigint类型
+    longWindow: w1:2
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        rows:
+          - [1,"aa",1,20,30,1.1,2.1,1590738990000,"2020-05-01",true]
+          - [2,"aa",2,21,31,1.2,2.2,1590738990001,"2020-05-02",true]
+          - [3,"aa",3,22,32,1.3,2.3,1590738990002,"2020-05-03",true]
+          - [4,"aa",4,23,33,1.4,2.4,1590738990003,"2020-05-04",true]
+          - [5,"aa",5,24,34,1.5,2.5,1590738990004,"2020-05-05",false]
+    dataProvider:
+      - ["ROWS","ROWS_RANGE"]
+    sql: |
+      SELECT id, c1, count_where(c4,c2<4) OVER w1 as w1_count FROM {0} WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 d[0] BETWEEN 2 PRECEDING AND CURRENT ROW);
+    expect:
+      order: id
+      columns: ["id int","c1 string","w1_count bigint"]
+      rows:
+        - [1,"aa",1]
+        - [2,"aa",2]
+        - [3,"aa",3]
+        - [4,"aa",2]
+        - [5,"aa",1]
+  -
+    id: 4
+    desc: 长窗口count_where，string类型
+    longWindow: w1:2
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        rows:
+          - [1,"aa",1,20,30,1.1,2.1,1590738990000,"2020-05-01",true]
+          - [2,"aa",2,21,31,1.2,2.2,1590738990001,"2020-05-02",true]
+          - [3,"aa",3,22,32,1.3,2.3,1590738990002,"2020-05-03",true]
+          - [4,"aa",4,23,33,1.4,2.4,1590738990003,"2020-05-04",true]
+          - [5,"aa",5,24,34,1.5,2.5,1590738990004,"2020-05-05",false]
+    dataProvider:
+      - ["ROWS","ROWS_RANGE"]
+    sql: |
+      SELECT id, c1, count_where(c1,c2<4) OVER w1 as w1_count FROM {0} WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 d[0] BETWEEN 2 PRECEDING AND CURRENT ROW);
+    expect:
+      order: id
+      columns: ["id int","c1 string","w1_count bigint"]
+      rows:
+        - [1,"aa",1]
+        - [2,"aa",2]
+        - [3,"aa",3]
+        - [4,"aa",2]
+        - [5,"aa",1]
+  -
+    id: 5
+    desc: 长窗口count_where，timestamp类型
+    longWindow: w1:2
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        rows:
+          - [1,"aa",1,20,30,1.1,2.1,1590738990000,"2020-05-01",true]
+          - [2,"aa",2,21,31,1.2,2.2,1590738990001,"2020-05-02",true]
+          - [3,"aa",3,22,32,1.3,2.3,1590738990002,"2020-05-03",true]
+          - [4,"aa",4,23,33,1.4,2.4,1590738990003,"2020-05-04",true]
+          - [5,"aa",5,24,34,1.5,2.5,1590738990004,"2020-05-05",false]
+    dataProvider:
+      - ["ROWS","ROWS_RANGE"]
+    sql: |
+      SELECT id, c1, count_where(c7,c2<4) OVER w1 as w1_count FROM {0} WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 d[0] BETWEEN 2 PRECEDING AND CURRENT ROW);
+    expect:
+      order: id
+      columns: ["id int","c1 string","w1_count bigint"]
+      rows:
+        - [1,"aa",1]
+        - [2,"aa",2]
+        - [3,"aa",3]
+        - [4,"aa",2]
+        - [5,"aa",1]
+  -
+    id: 6
+    desc: 长窗口count_where，row类型
+    longWindow: w1:2
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        rows:
+          - [1,"aa",1,20,30,1.1,2.1,1590738990000,"2020-05-01",true]
+          - [2,"aa",2,21,31,1.2,2.2,1590738990001,"2020-05-02",true]
+          - [3,"aa",3,22,32,1.3,2.3,1590738990002,"2020-05-03",true]
+          - [4,"aa",4,23,33,1.4,2.4,1590738990003,"2020-05-04",true]
+          - [5,"aa",5,24,34,1.5,2.5,1590738990004,"2020-05-05",false]
+    dataProvider:
+      - ["ROWS","ROWS_RANGE"]
+    sql: |
+      SELECT id, c1, count_where(*,c2<4) OVER w1 as w1_count FROM {0} WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 d[0] BETWEEN 2 PRECEDING AND CURRENT ROW);
+    expect:
+      order: id
+      columns: ["id int","c1 string","w1_count bigint"]
+      rows:
+        - [1,"aa",1]
+        - [2,"aa",2]
+        - [3,"aa",3]
+        - [4,"aa",2]
+        - [5,"aa",1]
+  -
+    id: 7
+    desc: 长窗口count_where，bool类型
+    longWindow: w1:2
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        rows:
+          - [1,"aa",1,20,30,1.1,2.1,1590738990000,"2020-05-01",true]
+          - [2,"aa",2,21,31,1.2,2.2,1590738990001,"2020-05-02",true]
+          - [3,"aa",3,22,32,1.3,2.3,1590738990002,"2020-05-03",true]
+          - [4,"aa",4,23,33,1.4,2.4,1590738990003,"2020-05-04",true]
+          - [5,"aa",5,24,34,1.5,2.5,1590738990004,"2020-05-05",false]
+    dataProvider:
+      - ["ROWS","ROWS_RANGE"]
+    sql: |
+      SELECT id, c1, count_where(c9,c2<4) OVER w1 as w1_count FROM {0} WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 d[0] BETWEEN 2 PRECEDING AND CURRENT ROW);
+    expect:
+      order: id
+      columns: ["id int","c1 string","w1_count bigint"]
+      rows:
+        - [1,"aa",1]
+        - [2,"aa",2]
+        - [3,"aa",3]
+        - [4,"aa",2]
+        - [5,"aa",1]
+  -
+    id: 8
+    desc: 长窗口count_where，float类型
+    longWindow: w1:2
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        rows:
+          - [1,"aa",1,20,30,1.1,2.1,1590738990000,"2020-05-01",true]
+          - [2,"aa",2,21,31,1.2,2.2,1590738990001,"2020-05-02",true]
+          - [3,"aa",3,22,32,1.3,2.3,1590738990002,"2020-05-03",true]
+          - [4,"aa",4,23,33,1.4,2.4,1590738990003,"2020-05-04",true]
+          - [5,"aa",5,24,34,1.5,2.5,1590738990004,"2020-05-05",false]
+    dataProvider:
+      - ["ROWS","ROWS_RANGE"]
+    sql: |
+      SELECT id, c1, count_where(c5,c2<4) OVER w1 as w1_count FROM {0} WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 d[0] BETWEEN 2 PRECEDING AND CURRENT ROW);
+    expect:
+      order: id
+      columns: ["id int","c1 string","w1_count bigint"]
+      rows:
+        - [1,"aa",1]
+        - [2,"aa",2]
+        - [3,"aa",3]
+        - [4,"aa",2]
+        - [5,"aa",1]
+  -
+    id: 9
+    desc: 长窗口count_where，double类型
+    longWindow: w1:2
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        rows:
+          - [1,"aa",1,20,30,1.1,2.1,1590738990000,"2020-05-01",true]
+          - [2,"aa",2,21,31,1.2,2.2,1590738990001,"2020-05-02",true]
+          - [3,"aa",3,22,32,1.3,2.3,1590738990002,"2020-05-03",true]
+          - [4,"aa",4,23,33,1.4,2.4,1590738990003,"2020-05-04",true]
+          - [5,"aa",5,24,34,1.5,2.5,1590738990004,"2020-05-05",false]
+    dataProvider:
+      - ["ROWS","ROWS_RANGE"]
+    sql: |
+      SELECT id, c1, count_where(c6,c2<4) OVER w1 as w1_count FROM {0} WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 d[0] BETWEEN 2 PRECEDING AND CURRENT ROW);
+    expect:
+      order: id
+      columns: ["id int","c1 string","w1_count bigint"]
+      rows:
+        - [1,"aa",1]
+        - [2,"aa",2]
+        - [3,"aa",3]
+        - [4,"aa",2]
+        - [5,"aa",1]
+  -
+    id: 10
+    desc: 长窗口count_where，第二个参数使用bool列
+    longWindow: w1:2
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        rows:
+          - [1,"aa",1,20,30,1.1,2.1,1590738990000,"2020-05-01",true]
+          - [2,"aa",2,21,31,1.2,2.2,1590738990001,"2020-05-02",true]
+          - [3,"aa",3,22,32,1.3,2.3,1590738990002,"2020-05-03",true]
+          - [4,"aa",4,23,33,1.4,2.4,1590738990003,"2020-05-04",true]
+          - [5,"aa",5,24,34,1.5,2.5,1590738990004,"2020-05-05",false]
+    dataProvider:
+      - ["ROWS","ROWS_RANGE"]
+    sql: |
+      SELECT id, c1, count_where(c8,c9) OVER w1 as w1_count FROM {0} WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 d[0] BETWEEN 2 PRECEDING AND CURRENT ROW);
+    expect:
+      success: false
+      msg: fail
+  -
+    id: 11
+    desc: 长窗口count_where，第二个参数使用=
+    longWindow: w1:2
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        rows:
+          - [1,"aa",1,20,30,1.1,2.1,1590738990000,"2020-05-01",true]
+          - [2,"aa",2,21,31,1.2,2.2,1590738990001,"2020-05-02",true]
+          - [3,"aa",3,22,32,1.3,2.3,1590738990002,"2020-05-03",true]
+          - [4,"aa",4,23,33,1.4,2.4,1590738990003,"2020-05-04",true]
+          - [5,"aa",5,24,34,1.5,2.5,1590738990004,"2020-05-05",false]
+    dataProvider:
+      - ["ROWS","ROWS_RANGE"]
+    sql: |
+      SELECT id, c1, count_where(c8,c2=4) OVER w1 as w1_count FROM {0} WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 d[0] BETWEEN 2 PRECEDING AND CURRENT ROW);
+    expect:
+      order: id
+      columns: ["id int","c1 string","w1_count bigint"]
+      rows:
+        - [1,"aa",0]
+        - [2,"aa",0]
+        - [3,"aa",0]
+        - [4,"aa",1]
+        - [5,"aa",1]
+  -
+    id: 12
+    desc: 长窗口count_where，第二个参数使用!=
+    longWindow: w1:2
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        rows:
+          - [1,"aa",1,20,30,1.1,2.1,1590738990000,"2020-05-01",true]
+          - [2,"aa",2,21,31,1.2,2.2,1590738990001,"2020-05-02",true]
+          - [3,"aa",3,22,32,1.3,2.3,1590738990002,"2020-05-03",true]
+          - [4,"aa",4,23,33,1.4,2.4,1590738990003,"2020-05-04",true]
+          - [5,"aa",5,24,34,1.5,2.5,1590738990004,"2020-05-05",false]
+    dataProvider:
+      - ["ROWS","ROWS_RANGE"]
+    sql: |
+      SELECT id, c1, count_where(c8,c2!=4) OVER w1 as w1_count FROM {0} WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 d[0] BETWEEN 2 PRECEDING AND CURRENT ROW);
+    expect:
+      order: id
+      columns: ["id int","c1 string","w1_count bigint"]
+      rows:
+        - [1,"aa",1]
+        - [2,"aa",2]
+        - [3,"aa",3]
+        - [4,"aa",2]
+        - [5,"aa",2]
+  -
+    id: 13
+    desc: 长窗口count_where，第二个参数使用>=
+    longWindow: w1:2
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        rows:
+          - [1,"aa",1,20,30,1.1,2.1,1590738990000,"2020-05-01",true]
+          - [2,"aa",2,21,31,1.2,2.2,1590738990001,"2020-05-02",true]
+          - [3,"aa",3,22,32,1.3,2.3,1590738990002,"2020-05-03",true]
+          - [4,"aa",4,23,33,1.4,2.4,1590738990003,"2020-05-04",true]
+          - [5,"aa",5,24,34,1.5,2.5,1590738990004,"2020-05-05",false]
+    dataProvider:
+      - ["ROWS","ROWS_RANGE"]
+    sql: |
+      SELECT id, c1, count_where(c8,c2>=2) OVER w1 as w1_count FROM {0} WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 d[0] BETWEEN 2 PRECEDING AND CURRENT ROW);
+    expect:
+      order: id
+      columns: ["id int","c1 string","w1_count bigint"]
+      rows:
+        - [1,"aa",0]
+        - [2,"aa",1]
+        - [3,"aa",2]
+        - [4,"aa",3]
+        - [5,"aa",3]
+  -
+    id: 14
+    desc: 长窗口count_where，第二个参数使用<=
+    longWindow: w1:2
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        rows:
+          - [1,"aa",1,20,30,1.1,2.1,1590738990000,"2020-05-01",true]
+          - [2,"aa",2,21,31,1.2,2.2,1590738990001,"2020-05-02",true]
+          - [3,"aa",3,22,32,1.3,2.3,1590738990002,"2020-05-03",true]
+          - [4,"aa",4,23,33,1.4,2.4,1590738990003,"2020-05-04",true]
+          - [5,"aa",5,24,34,1.5,2.5,1590738990004,"2020-05-05",false]
+    dataProvider:
+      - ["ROWS","ROWS_RANGE"]
+    sql: |
+      SELECT id, c1, count_where(c8,c2<=3) OVER w1 as w1_count FROM {0} WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 d[0] BETWEEN 2 PRECEDING AND CURRENT ROW);
+    expect:
+      order: id
+      columns: ["id int","c1 string","w1_count bigint"]
+      rows:
+        - [1,"aa",1]
+        - [2,"aa",2]
+        - [3,"aa",3]
+        - [4,"aa",2]
+        - [5,"aa",1]
+  -
+    id: 15
+    desc: 长窗口count_where，第二个参数使用>
+    longWindow: w1:2
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        rows:
+          - [1,"aa",1,20,30,1.1,2.1,1590738990000,"2020-05-01",true]
+          - [2,"aa",2,21,31,1.2,2.2,1590738990001,"2020-05-02",true]
+          - [3,"aa",3,22,32,1.3,2.3,1590738990002,"2020-05-03",true]
+          - [4,"aa",4,23,33,1.4,2.4,1590738990003,"2020-05-04",true]
+          - [5,"aa",5,24,34,1.5,2.5,1590738990004,"2020-05-05",false]
+    dataProvider:
+      - ["ROWS","ROWS_RANGE"]
+    sql: |
+      SELECT id, c1, count_where(c8,c2>1) OVER w1 as w1_count FROM {0} WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 d[0] BETWEEN 2 PRECEDING AND CURRENT ROW);
+    expect:
+      order: id
+      columns: ["id int","c1 string","w1_count bigint"]
+      rows:
+        - [1,"aa",0]
+        - [2,"aa",1]
+        - [3,"aa",2]
+        - [4,"aa",3]
+        - [5,"aa",3]
+  -
+    id: 17
+    desc: 长窗口count_where，第二个参数使用and
+    longWindow: w1:2
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        rows:
+          - [1,"aa",1,20,30,1.1,2.1,1590738990000,"2020-05-01",true]
+          - [2,"aa",2,21,31,1.2,2.2,1590738990001,"2020-05-02",true]
+          - [3,"aa",3,22,32,1.3,2.3,1590738990002,"2020-05-03",true]
+          - [4,"aa",4,23,33,1.4,2.4,1590738990003,"2020-05-04",true]
+          - [5,"aa",5,24,34,1.5,2.5,1590738990004,"2020-05-05",false]
+    dataProvider:
+      - ["ROWS","ROWS_RANGE"]
+    sql: |
+      SELECT id, c1, count_where(c8,c2<4 and c2>1) OVER w1 as w1_count FROM {0} WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 d[0] BETWEEN 2 PRECEDING AND CURRENT ROW);
+    expect:
+      success: false
+      msg: fail
+  -
+    id: 18
+    desc: 长窗口count_where，第二个参数使用两个列
+    longWindow: w1:2
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        rows:
+          - [1,"aa",1,20,30,1.1,2.1,1590738990000,"2020-05-01",true]
+          - [2,"aa",2,21,31,1.2,2.2,1590738990001,"2020-05-02",true]
+          - [3,"aa",3,22,32,1.3,2.3,1590738990002,"2020-05-03",true]
+          - [4,"aa",4,23,33,1.4,2.4,1590738990003,"2020-05-04",true]
+          - [5,"aa",5,24,34,1.5,2.5,1590738990004,"2020-05-05",false]
+    dataProvider:
+      - ["ROWS","ROWS_RANGE"]
+    sql: |
+      SELECT id, c1, count_where(c8,c3>c2) OVER w1 as w1_count FROM {0} WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 d[0] BETWEEN 2 PRECEDING AND CURRENT ROW);
+    expect:
+      success: false
+      msg: fail
+  -
+    id: 19
+    desc: 长窗口count_where，第二个参数使用嵌套
+    longWindow: w1:2
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        rows:
+          - [1,"aa",1,20,30,1.1,2.1,1590738990000,"2020-05-01",true]
+          - [2,"aa",2,21,31,1.2,2.2,1590738990001,"2020-05-02",true]
+          - [3,"aa",3,22,32,1.3,2.3,1590738990002,"2020-05-03",true]
+          - [4,"aa",4,23,33,1.4,2.4,1590738990003,"2020-05-04",true]
+          - [5,"aa",5,24,34,1.5,2.5,1590738990004,"2020-05-05",false]
+    dataProvider:
+      - ["ROWS","ROWS_RANGE"]
+    sql: |
+      SELECT id, c1, count_where(c8,if_null(c2,0)>4) OVER w1 as w1_count FROM {0} WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 d[0] BETWEEN 2 PRECEDING AND CURRENT ROW);
+    expect:
+      success: false
+      msg: fail
+  -
+    id: 20
+    desc: 长窗口count_where，第二个参数常量在前
+    longWindow: w1:2
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        rows:
+          - [1,"aa",1,20,30,1.1,2.1,1590738990000,"2020-05-01",true]
+          - [2,"aa",2,21,31,1.2,2.2,1590738990001,"2020-05-02",true]
+          - [3,"aa",3,22,32,1.3,2.3,1590738990002,"2020-05-03",true]
+          - [4,"aa",4,23,33,1.4,2.4,1590738990003,"2020-05-04",true]
+          - [5,"aa",5,24,34,1.5,2.5,1590738990004,"2020-05-05",false]
+    dataProvider:
+      - ["ROWS","ROWS_RANGE"]
+    sql: |
+      SELECT id, c1, count_where(c8,4>c2) OVER w1 as w1_count FROM {0} WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 d[0] BETWEEN 2 PRECEDING AND CURRENT ROW);
+    expect:
+      order: id
+      columns: ["id int","c1 string","w1_count bigint"]
+      rows:
+        - [1,"aa",1]
+        - [2,"aa",2]
+        - [3,"aa",3]
+        - [4,"aa",2]
+        - [5,"aa",1]
+
+
+

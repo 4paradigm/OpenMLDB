@@ -1,0 +1,167 @@
+db: test_zw
+debugs: []
+cases:
+  -
+    id: 0
+    desc: diff-ttgwm
+    inputs:
+      -
+        name: flattenRequest
+        create: |
+          CREATE TABLE IF NOT EXISTS flattenRequest(
+          	reqId string,
+          	eventTime timestamp,
+          	f_index string,
+          	f_action_create_order string,
+          	f_action_create_order_actionTime timestamp,
+          	f_action_create_order_itemType string,
+          	f_action_show string,
+          	f_action_show_actionTime timestamp,
+          	f_action_show_itemType string,
+          	f_action_collect string,
+          	f_action_collect_actionTime timestamp,
+          	f_action_collect_itemType string,
+          	f_requestCount double,
+          	f_requestId string,
+          	f_userId string,
+          	f_userName double,
+          	f_userNickName string,
+          	f_userAge double,
+          	f_userGender string,
+          	f_userFromGroup double,
+          	f_userScore double,
+          	f_userConsultCount double,
+          	f_userHeadType double,
+          	f_userAddress string,
+          	f_userZipcode string,
+          	f_userCommunicatingBuyers double,
+          	f_userMessages double,
+          	f_userLastMessageTime double,
+          	f_userChannelTop double,
+          	f_userBarANDTop double,
+          	f_userLastLoginTime double,
+          	f_userLastOrderTime timestamp,
+          	f_userPhoneType double,
+          	f_userMCC double,
+          	f_userMNC double,
+          	f_userAPPVersion double,
+          	f_userDeviceID double,
+          	f_userDeviceOS double,
+          	f_userNetworkType double,
+          	f_userRegisterMethod double,
+          	f_userRegisterTime timestamp,
+          	f_userPhoneNumber double,
+          	f_userCategoryAddToCartCount double,
+          	f_userHomeAddToCartCount double,
+          	f_userLastBuyItTime double,
+          	f_userOrderCount double,
+          	f_userOrderDeliveryFreeCount double,
+          	f_userOrderMoneyCount double,
+          	f_userOrderMoneyAverage double,
+          	f_userOrderMoneyHighest double,
+          	f_userOrderScoreAverage double,
+          	f_userOrderToPayCount double,
+          	f_userOrderToDeliverCount double,
+          	f_userOrderInDeliveryCount double,
+          	f_userOrderToScoreCount double,
+          	f_userFavoriteItems string,
+          	f_userClickedItems string,
+          	f_userSharedItemID double,
+          	f_userPublishedItemID double,
+          	f_userSearchedqueryCount3Period string,
+          	f_userSearchedqueryCount7Period string,
+          	f_userSearchedqueryCount30Period string,
+          	f_userClickedqueryCount3Period string,
+          	f_userClickedqueryCount7Period string,
+          	f_userClickedqueryCount30Period string,
+          	f_syncTime double,
+          	f_itemId string,
+          	f_itemtipoff string,
+          	f_itemName double,
+          	f_itemTitle string,
+          	f_temDescription string,
+          	f_itemCategoryLevel1 string,
+          	f_itemCategoryLevel2 double,
+          	f_itemCategoryLevel3 double,
+          	f_itemHome double,
+          	f_itemPurchasingPlace double,
+          	f_itemDeadline double,
+          	f_itemExpires double,
+          	f_itemWeight double,
+          	f_itemSpec double,
+          	f_itemModelNumber double,
+          	f_itemAgeRange double,
+          	f_itemFunction double,
+          	f_itemTargetPopulation double,
+          	f_itemPackage double,
+          	f_itemStorage double,
+          	f_itemDiscount double,
+          	f_itemPrice double,
+          	f_itemSold double,
+          	f_itemComments double,
+          	f_itemFavorites double,
+          	f_itemDeliveryFree double,
+          	f_itemDutyFree double,
+          	f_itemChannel string,
+          	f_itemBrAND double,
+          	f_itemPublishtime timestamp,
+          	f_itemPublisherId double,
+          	f_itemPublisherRegtime double,
+          	f_itermPublisherOrders double,
+          	f_itermSizeCount double,
+          	f_itemColorCount double,
+          	f_itemDetailsPhotos double,
+          	f_itemDescribePhotos double,
+          	f_itemExpired string,
+          	f_itemHistoryPrice double,
+          	f_itemCartRatio double,
+          	f_itemshownUserID double,
+          	f_itemClickedUserID double,
+          	f_itemPurchasedUserID double,
+          	f_itemTargetPopulationFemale double,
+          	f_itemTargetPopulationMale double,
+          	f_userOrderDids string,
+          	index(key=(f_itemTitle), ttl=7201m, ttl_type=absolute, ts=`eventTime`),
+          	index(key=(f_requestId), ttl=7201m, ttl_type=absolute, ts=`eventTime`),
+          	index(key=(f_temDescription), ttl=7201m, ttl_type=absolute, ts=`eventTime`)
+          );
+        inserts:
+          - insert into flattenRequest values ('train_195042',1511002870000,'train_195042','0',null,'','1',1511002870000,'disclosure','0',null,'',null,'025606ecb2f078e7931ec90b9a27a826','136646',null,'艺垣',null,'女',null,null,2.0,null,'北京市,市辖区,大兴区,兴华中里社区*号楼*单元*、北京市,市辖区,大兴区,兴华中立、北京市,市辖区,东城区,*、北京市,市辖区,东城区,*、北京市,市辖区,东城区,兴华中里、北京市,市辖区,东城区,斤斤计较、北京市,市辖区,宣武区,不好好、北京市,市辖区,东城区,www、北京市,县,延庆县,*、北京市,市辖区,东城区,星湖、北京市,市辖区,东城区,xihuhu、北京市,市辖区,东城区,ededee、北京市,市辖区,大兴区,兴化中里、北京市,市辖区,大兴区,兴华中里、北京市,县,延庆县,兴华中立、山西省,太原市,市辖区,还定居、北京市,大同市,市辖区,阶段将诶','102600、102600、111111、111111、102600、100000、100000、111111、21212121、111111、111111、3rrrr、102600、102600、123456、345212、234789',null,null,null,null,null,null,1508605149000,null,null,null,null,null,null,null,null,1507546756000,null,null,null,null,43.0,null,5074399.0,118009.27906976744,879900.0,null,null,null,null,null,'31100,31166','30958,30973,31009,31043,31024,31005,31038,31077,31076,31075,31080,31073,31064,30830,31122,30912,31129,31119,31100,31163,31166,30927,31157,31162,30914,31138,31203,31209,30907,31198,31048,31252,31276,31302,31301,31303,31309,31400,31536,31405,31451,31439,31547,31546,31550,31737,31741,31745,31749,32001,32304,32303,32825,32872,32735,32873,32856,32888',null,null,'零食,零食','零食,零食','电脑背包,零食,零食','32856,32872,32888,32873,32735,32825','32856,32872,32888,32873,32001,32735,32304,32303,32825','31547,31048,31203,31073,31064,30912,31400,31100,31077,31076,30927,31166,31166,31119,31009,31745,32856,31122,31198,31209,31138,30907,31198,30973,31303,31076,31076,31080,31162,32872,32888,32873,31749,30914,32001,31309,31302,31252,32735,31100,30914,31075,30958,31024,31024,30958,32304,32303,31405,31303,31301,31737,31741,31166,31309,30830,30912,31129,31536,31276,31276,31301,32825,31439,31451,31546,31550,31043,30912,31157,31745,31276,31276,31439,31163,31024,31043,31005,31038,31276',null,'38282','1',null,'【限地区】东海岸 急冻波士顿龙虾（1只装）450g *2件+苹果2颗','波士顿龙虾应该是龙虾中最便宜的品种之一了（请不要用小龙虾比较），红棕及纯黑色较为常见。波龙产自北大西洋深海，虽然叫波士顿龙虾，但主要产地是加拿大和美国缅因州，波士顿并不产，因是美国最大集散地而得名~学名是美洲鳌龙虾，世界上更普及的叫法是缅因龙虾或加拿大龙虾。  波士顿龙虾属于海螯虾科螯龙虾属，生活于寒冷海域，肉较嫩滑细致，产品具有高蛋白，低脂肪，维生素A、C、D及钙、钠、钾、镁、磷、铁、硫、铜等微量元素丰富，味道鲜美。味道鲜美，营养丰富。此款龙虾中粮我买网自营，品质有保障，产品规格1只，450g。','食品',null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,13600.0,null,null,null,null,null,'中粮我买网',null,1510972014000,null,null,null,null,null,null,null,'1',null,null,null,null,null,1.0,1.0,'');
+          - insert into flattenRequest values ('train_192870',1511002870000,'train_192870','0',null,'','1',1511002870000,'disclosure','0',null,'',null,'025606ecb2f078e7931ec90b9a27a826','136646',null,'艺垣',null,'女',null,null,2.0,null,'北京市,市辖区,大兴区,兴华中里社区*号楼*单元*、北京市,市辖区,大兴区,兴华中立、北京市,市辖区,东城区,*、北京市,市辖区,东城区,*、北京市,市辖区,东城区,兴华中里、北京市,市辖区,东城区,斤斤计较、北京市,市辖区,宣武区,不好好、北京市,市辖区,东城区,www、北京市,县,延庆县,*、北京市,市辖区,东城区,星湖、北京市,市辖区,东城区,xihuhu、北京市,市辖区,东城区,ededee、北京市,市辖区,大兴区,兴化中里、北京市,市辖区,大兴区,兴华中里、北京市,县,延庆县,兴华中立、山西省,太原市,市辖区,还定居、北京市,大同市,市辖区,阶段将诶','102600、102600、111111、111111、102600、100000、100000、111111、21212121、111111、111111、3rrrr、102600、102600、123456、345212、234789',null,null,null,null,null,null,1508605149000,null,null,null,null,null,null,null,null,1507546756000,null,null,null,null,43.0,null,5074399.0,118009.27906976744,879900.0,null,null,null,null,null,'31100,31166','30958,30973,31009,31043,31024,31005,31038,31077,31076,31075,31080,31073,31064,30830,31122,30912,31129,31119,31100,31163,31166,30927,31157,31162,30914,31138,31203,31209,30907,31198,31048,31252,31276,31302,31301,31303,31309,31400,31536,31405,31451,31439,31547,31546,31550,31737,31741,31745,31749,32001,32304,32303,32825,32872,32735,32873,32856,32888',null,null,'零食,零食','零食,零食','电脑背包,零食,零食','32856,32872,32888,32873,32735,32825','32856,32872,32888,32873,32001,32735,32304,32303,32825','31547,31048,31203,31073,31064,30912,31400,31100,31077,31076,30927,31166,31166,31119,31009,31745,32856,31122,31198,31209,31138,30907,31198,30973,31303,31076,31076,31080,31162,32872,32888,32873,31749,30914,32001,31309,31302,31252,32735,31100,30914,31075,30958,31024,31024,30958,32304,32303,31405,31303,31301,31737,31741,31166,31309,30830,30912,31129,31536,31276,31276,31301,32825,31439,31451,31546,31550,31043,30912,31157,31745,31276,31276,31439,31163,31024,31043,31005,31038,31276',null,'38271','1',null,'【新低价,40码起】saucony 圣康尼 RIDE 10 男款缓震跑鞋 2色','saucony（圣康尼）是来自美国的专业跑鞋品牌， 其名称来源于美国宾夕法尼亚州附近一条美丽的河流——Saucony。现其产品线分为专业运动系列和复古休闲系列两大类，为专业跑步运动员及跑步爱好者提供专业、舒适、安全的跑步产品。  这款saucony 圣康尼 RIDE 10 男款缓震跑鞋是索康尼旗下次顶级避震跑鞋，其获得了17年夏季《跑者世界》的最佳升级奖。从外观来看相比9代有了许多变化，鞋面采用工程网眼面料，增加了鞋面的透气性，外层为saucony经典Flex Film支撑材料覆盖，增加鞋面的延展和贴合性。后跟位置特别加强了稳定设计，外层增加了编织技术，增强整个鞋跟的稳定性。  中底采用全掌PWRFoam中底材料，比之前的EVA材质回弹效果更好，上层使用EVERUN鞋垫，辅助增加中底的缓震和回弹性能。大底依旧采用XT-900耐磨碳素橡胶，在前掌区域增加了IBR+发泡橡胶，材质较轻，并且能提高缓震保护。','服饰',null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,53400.0,null,null,null,null,null,'亚马逊中国',null,1510926904000,null,null,null,null,null,null,null,'1',null,null,null,null,null,0.0,1.0,'');
+          - insert into flattenRequest values ('train_197066',1511003784000,'train_197066','0',null,'','1',1511003784000,'disclosure','0',null,'',null,'fe5eb556e3768e49b7919ebc4f9375d0','136646',null,'艺垣',null,'女',null,null,2.0,null,'北京市,市辖区,大兴区,兴华中里社区*号楼*单元*、北京市,市辖区,大兴区,兴华中立、北京市,市辖区,东城区,*、北京市,市辖区,东城区,*、北京市,市辖区,东城区,兴华中里、北京市,市辖区,东城区,斤斤计较、北京市,市辖区,宣武区,不好好、北京市,市辖区,东城区,www、北京市,县,延庆县,*、北京市,市辖区,东城区,星湖、北京市,市辖区,东城区,xihuhu、北京市,市辖区,东城区,ededee、北京市,市辖区,大兴区,兴化中里、北京市,市辖区,大兴区,兴华中里、北京市,县,延庆县,兴华中立、山西省,太原市,市辖区,还定居、北京市,大同市,市辖区,阶段将诶','102600、102600、111111、111111、102600、100000、100000、111111、21212121、111111、111111、3rrrr、102600、102600、123456、345212、234789',null,null,null,null,null,null,1508605149000,null,null,null,null,null,null,null,null,1507546756000,null,null,null,null,43.0,null,5074399.0,118009.27906976744,879900.0,null,null,null,null,null,'31100,31166','30958,30973,31009,31043,31024,31005,31038,31077,31076,31075,31080,31073,31064,30830,31122,30912,31129,31119,31100,31163,31166,30927,31157,31162,30914,31138,31203,31209,30907,31198,31048,31252,31276,31302,31301,31303,31309,31400,31536,31405,31451,31439,31547,31546,31550,31737,31741,31745,31749,32001,32304,32303,32825,32872,32735,32873,32856,32888',null,null,'零食,零食','零食,零食','电脑背包,零食,零食','32856,32872,32888,32873,32735,32825','32856,32872,32888,32873,32001,32735,32304,32303,32825','31547,31048,31203,31073,31064,30912,31400,31100,31077,31076,30927,31166,31166,31119,31009,31745,32856,31122,31198,31209,31138,30907,31198,30973,31303,31076,31076,31080,31162,32872,32888,32873,31749,30914,32001,31309,31302,31252,32735,31100,30914,31075,30958,31024,31024,30958,32304,32303,31405,31303,31301,31737,31741,31166,31309,30830,30912,31129,31536,31276,31276,31301,32825,31439,31451,31546,31550,31043,30912,31157,31745,31276,31276,31439,31163,31024,31043,31005,31038,31276',null,'38293','1',null,'【限地区,新低价,PLUS会员】Panasonic 松下 ES-RF41-N405 电动剃须刀','这款Panasonic松下的ES-RF41-N405电动剃须刀，采用立体浮动4刀头，往复式设计，可较好贴合面部轮廓，剃须更舒适高效。刀片为Nano抛光刀片，提升剃须。5级电量显示，干湿两用，带弹出式修剪器。支持1小时快充，可以全身水洗。配有充电底座和便携收纳小包。','日百',null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,30900.0,null,null,null,null,null,'京东',null,1510974778000,null,null,null,null,null,null,null,'1',null,null,null,null,null,1.0,1.0,'');
+          - insert into flattenRequest values ('train_195043',1511003784000,'train_195043','0',null,'','1',1511003784000,'disclosure','0',null,'',null,'fe5eb556e3768e49b7919ebc4f9375d0','136646',null,'艺垣',null,'女',null,null,2.0,null,'北京市,市辖区,大兴区,兴华中里社区*号楼*单元*、北京市,市辖区,大兴区,兴华中立、北京市,市辖区,东城区,*、北京市,市辖区,东城区,*、北京市,市辖区,东城区,兴华中里、北京市,市辖区,东城区,斤斤计较、北京市,市辖区,宣武区,不好好、北京市,市辖区,东城区,www、北京市,县,延庆县,*、北京市,市辖区,东城区,星湖、北京市,市辖区,东城区,xihuhu、北京市,市辖区,东城区,ededee、北京市,市辖区,大兴区,兴化中里、北京市,市辖区,大兴区,兴华中里、北京市,县,延庆县,兴华中立、山西省,太原市,市辖区,还定居、北京市,大同市,市辖区,阶段将诶','102600、102600、111111、111111、102600、100000、100000、111111、21212121、111111、111111、3rrrr、102600、102600、123456、345212、234789',null,null,null,null,null,null,1508605149000,null,null,null,null,null,null,null,null,1507546756000,null,null,null,null,43.0,null,5074399.0,118009.27906976744,879900.0,null,null,null,null,null,'31100,31166','30958,30973,31009,31043,31024,31005,31038,31077,31076,31075,31080,31073,31064,30830,31122,30912,31129,31119,31100,31163,31166,30927,31157,31162,30914,31138,31203,31209,30907,31198,31048,31252,31276,31302,31301,31303,31309,31400,31536,31405,31451,31439,31547,31546,31550,31737,31741,31745,31749,32001,32304,32303,32825,32872,32735,32873,32856,32888',null,null,'零食,零食','零食,零食','电脑背包,零食,零食','32856,32872,32888,32873,32735,32825','32856,32872,32888,32873,32001,32735,32304,32303,32825','31547,31048,31203,31073,31064,30912,31400,31100,31077,31076,30927,31166,31166,31119,31009,31745,32856,31122,31198,31209,31138,30907,31198,30973,31303,31076,31076,31080,31162,32872,32888,32873,31749,30914,32001,31309,31302,31252,32735,31100,30914,31075,30958,31024,31024,30958,32304,32303,31405,31303,31301,31737,31741,31166,31309,30830,30912,31129,31536,31276,31276,31301,32825,31439,31451,31546,31550,31043,30912,31157,31745,31276,31276,31439,31163,31024,31043,31005,31038,31276',null,'38282','1',null,'【限地区】东海岸 急冻波士顿龙虾（1只装）450g *2件+苹果2颗','波士顿龙虾应该是龙虾中最便宜的品种之一了（请不要用小龙虾比较），红棕及纯黑色较为常见。波龙产自北大西洋深海，虽然叫波士顿龙虾，但主要产地是加拿大和美国缅因州，波士顿并不产，因是美国最大集散地而得名~学名是美洲鳌龙虾，世界上更普及的叫法是缅因龙虾或加拿大龙虾。  波士顿龙虾属于海螯虾科螯龙虾属，生活于寒冷海域，肉较嫩滑细致，产品具有高蛋白，低脂肪，维生素A、C、D及钙、钠、钾、镁、磷、铁、硫、铜等微量元素丰富，味道鲜美。味道鲜美，营养丰富。此款龙虾中粮我买网自营，品质有保障，产品规格1只，450g。','食品',null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,13600.0,null,null,null,null,null,'中粮我买网',null,1510972014000,null,null,null,null,null,null,null,'1',null,null,null,null,null,1.0,1.0,'');
+          - insert into flattenRequest values ('train_68005',1510928344000,'train_68005','0',null,'','1',1510928344000,'disclosure','0',null,'',null,'caae1f9bd2d0b61af2478e32ce881960','136646',null,'艺垣',null,'女',null,null,2.0,null,'北京市,市辖区,大兴区,兴华中里社区*号楼*单元*、北京市,市辖区,大兴区,兴华中立、北京市,市辖区,东城区,*、北京市,市辖区,东城区,*、北京市,市辖区,东城区,兴华中里、北京市,市辖区,东城区,斤斤计较、北京市,市辖区,宣武区,不好好、北京市,市辖区,东城区,www、北京市,县,延庆县,*、北京市,市辖区,东城区,星湖、北京市,市辖区,东城区,xihuhu、北京市,市辖区,东城区,ededee、北京市,市辖区,大兴区,兴化中里、北京市,市辖区,大兴区,兴华中里、北京市,县,延庆县,兴华中立、山西省,太原市,市辖区,还定居、北京市,大同市,市辖区,阶段将诶','102600、102600、111111、111111、102600、100000、100000、111111、21212121、111111、111111、3rrrr、102600、102600、123456、345212、234789',null,null,null,null,null,null,1508605149000,null,null,null,null,null,null,null,null,1507546756000,null,null,null,null,43.0,null,5074399.0,118009.27906976744,879900.0,null,null,null,null,null,'31100,31166','30958,30973,31009,31043,31024,31005,31038,31077,31076,31075,31080,31073,31064,30830,31122,30912,31129,31119,31100,31163,31166,30927,31157,31162,30914,31138,31203,31209,30907,31198,31048,31252,31276,31302,31301,31303,31309,31400,31536,31405,31451,31439,31547,31546,31550,31737,31741,31745,31749,32001,32304,32303,32825,32872,32735,32873,32856,32888',null,null,'零食,零食','零食,零食','电脑背包,零食,零食','32856,32872,32888,32873,32735,32825','32856,32872,32888,32873,32001,32735,32304,32303,32825','31547,31048,31203,31073,31064,30912,31400,31100,31077,31076,30927,31166,31166,31119,31009,31745,32856,31122,31198,31209,31138,30907,31198,30973,31303,31076,31076,31080,31162,32872,32888,32873,31749,30914,32001,31309,31302,31252,32735,31100,30914,31075,30958,31024,31024,30958,32304,32303,31405,31303,31301,31737,31741,31166,31309,30830,30912,31129,31536,31276,31276,31301,32825,31439,31451,31546,31550,31043,30912,31157,31745,31276,31276,31439,31163,31024,31043,31005,31038,31276',null,'38151','1',null,'【历史低价】BRAUN 博朗 Satin Hair 7 HD785 负离子吹风机','BRAUN博朗HD785电吹风机，采用负离子技术，中和正离子并使毛糙秀发恢复妥帖。另外还有INOTEC炫彩护色离子科技，这种先进离子性能在造型过程中可以处理卷结与静电，使秀发更加闪亮顺滑。  最值得一提的是内置新型智能温度传感器，每分钟监控头发温度600次，及时智能调整秀发受热温度，从而避免过热，保护秀发。这款电吹风机拥有双头可以更换，2000W大功率，有速干效果，还拥有4档温度和2档风量。','日百',null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,35900.0,null,null,null,null,null,'丰趣海淘',null,1510890999000,null,null,null,null,null,null,null,'1',null,null,null,null,null,1.0,0.0,'');
+      -
+        name: action
+        create: |
+          CREATE TABLE IF NOT EXISTS action(
+          	reqId string,
+          	eventTime timestamp,
+          	ingestionTime timestamp,
+          	actionValue int,
+          	index(key=(reqId), ttl=0m, ttl_type=absolute)
+          );
+        inserts:
+          - insert into action values ('train_0',1511188285000,1511188285000,0);
+    sql: |
+      select
+          reqId as reqId_1,
+          `reqId` as flattenRequest_reqId_original_0,
+          `eventTime` as flattenRequest_eventTime_original_1,
+          distinct_count(`f_userAddress`) over flattenRequest_f_temDescription_eventTime_0s_172801s_100 as flattenRequest_f_userAddress_window_unique_count_111,
+          distinct_count(`f_userAddress`) over flattenRequest_f_temDescription_eventTime_0s_432001s_100 as flattenRequest_f_userAddress_window_unique_count_112,
+          distinct_count(`f_userAddress`) over flattenRequest_f_itemTitle_eventTime_0s_172801s_100 as flattenRequest_f_userAddress_window_unique_count_113,
+          distinct_count(`f_userAddress`) over flattenRequest_f_itemTitle_eventTime_0s_432001s_100 as flattenRequest_f_userAddress_window_unique_count_114,
+          fz_top1_ratio(`f_itemTitle`) over flattenRequest_f_requestId_eventTime_0s_432001s_100 as flattenRequest_f_itemTitle_window_top1_ratio_126,
+          case when !isnull(at(`f_userGender`, 0)) over flattenRequest_f_requestId_eventTime_0s_432001s_100 then count(`f_userGender`) over flattenRequest_f_requestId_eventTime_0s_432001s_100 else null end as flattenRequest_f_userGender_window_count_127,
+          case when !isnull(at(`f_itemExpired`, 0)) over flattenRequest_f_requestId_eventTime_0s_432001s_100 then count(`f_itemExpired`) over flattenRequest_f_requestId_eventTime_0s_432001s_100 else null end as flattenRequest_f_itemExpired_window_count_128
+      from
+          `flattenRequest`
+          window flattenRequest_f_temDescription_eventTime_0s_172801s_100 as (partition by `f_temDescription` order by `eventTime` rows_range between 172800999 preceding and 0s preceding MAXSIZE 100),
+          flattenRequest_f_temDescription_eventTime_0s_432001s_100 as (partition by `f_temDescription` order by `eventTime` rows_range between 432000999 preceding and 0s preceding MAXSIZE 100),
+          flattenRequest_f_itemTitle_eventTime_0s_172801s_100 as (partition by `f_itemTitle` order by `eventTime` rows_range between 172800999 preceding and 0s preceding MAXSIZE 100),
+          flattenRequest_f_itemTitle_eventTime_0s_432001s_100 as (partition by `f_itemTitle` order by `eventTime` rows_range between 432000999 preceding and 0s preceding MAXSIZE 100),
+          flattenRequest_f_requestId_eventTime_0s_432001s_100 as (partition by `f_requestId` order by `eventTime` rows_range between 432000999 preceding and 0s preceding MAXSIZE 100)
+      ;
+    expect:
+      success: true

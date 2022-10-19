@@ -1,0 +1,252 @@
+# Copyright 2021 4Paradigm
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+sqlDialect: ["HybridSQL"]
+debugs: []
+version: 0.5.0
+cases:
+  - id: 0
+    desc: Where条件命中索引
+    mode: request-unsupport
+    db: db1
+    sql: |
+      SELECT col0, col1, col2, col3, col4, col5, col6 FROM {0} where col2=5;
+    inputs:
+      - columns: ["col0 string", "col1 int32", "col2 int16", "col3 float", "col4 double", "col5 int64", "col6 string"]
+        indexs: ["index1:col2:col5"]
+        data: |
+          0, 1, 5, 1.1, 11.1, 1, 1
+          0, 2, 5, 2.2, 22.2, 2, 22
+          1, 3, 55, 3.3, 33.3, 1, 333
+          1, 4, 55, 4.4, 44.4, 2, 4444
+          2, 5, 55, 5.5, 55.5, 3, aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+    batch_plan: |
+      SIMPLE_PROJECT(sources=(col0, col1, col2, col3, col4, col5, col6))
+        FILTER_BY(condition=, left_keys=(), right_keys=(), index_keys=(5))
+          DATA_PROVIDER(type=Partition, table=auto_t0, index=index1)
+    expect:
+      schema: col0:string, col1:int32, col2:int16, col3:float, col4:double, col5:int64, col6:string
+      order: col1
+      data: |
+        0, 1, 5, 1.1, 11.1, 1, 1
+        0, 2, 5, 2.2, 22.2, 2, 22
+  - id: 1-1
+    desc: Where部分条件命中索引, col1>3条件未命中
+    mode: request-unsupport, offline-unsupport
+    db: db1
+    sql: |
+      SELECT col0, col1, col2, col3, col4, col5, col6 FROM {0} where col2=55 and col1 > 3;
+    inputs:
+      - schema: col0:string, col1:int32, col2:int16, col3:float, col4:double, col5:int64, col6:string
+        index: index1:col2:col5
+        data: |
+          0, 1, 5, 1.1, 11.1, 1, 1
+          0, 2, 5, 2.2, 22.2, 2, 22
+          1, 3, 55, 3.3, 33.3, 1, 333
+          1, 4, 55, 4.4, 44.4, 2, 4444
+          2, 5, 55, 5.5, 55.5, 3, aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+    batch_plan: |
+      SIMPLE_PROJECT(sources=(col0, col1, col2, col3, col4, col5, col6))
+        FILTER_BY(condition=col1 > 3, left_keys=(), right_keys=(), index_keys=(55))
+          DATA_PROVIDER(type=Partition, table=auto_t0, index=index1)
+    expect:
+      schema: col0:string, col1:int32, col2:int16, col3:float, col4:double, col5:int64, col6:string
+      order: col1
+      data: |
+        1, 4, 55, 4.4, 44.4, 2, 4444
+        2, 5, 55, 5.5, 55.5, 3, aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+  - id: 1-1
+    desc: Where部分条件命中索引, col1=3条件未命中
+    mode: request-unsupport, offline-unsupport
+    db: db1
+    sql: |
+      SELECT col0, col1, col2, col3, col4, col5, col6 FROM {0} where col2=55 and col1 = 3;
+    inputs:
+      - schema: col0:string, col1:int32, col2:int16, col3:float, col4:double, col5:int64, col6:string
+        index: index1:col2:col5
+        data: |
+          0, 1, 5, 1.1, 11.1, 1, 1
+          0, 2, 5, 2.2, 22.2, 2, 22
+          1, 3, 55, 3.3, 33.3, 1, 333
+          1, 4, 55, 4.4, 44.4, 2, 4444
+          2, 5, 55, 5.5, 55.5, 3, aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+    batch_plan: |
+      SIMPLE_PROJECT(sources=(col0, col1, col2, col3, col4, col5, col6))
+        FILTER_BY(condition=3 = col1, left_keys=(), right_keys=(), index_keys=(55))
+          DATA_PROVIDER(type=Partition, table=auto_t0, index=index1)
+    expect:
+      schema: col0:string, col1:int32, col2:int16, col3:float, col4:double, col5:int64, col6:string
+      order: col1
+      data: |
+        1, 3, 55, 3.3, 33.3, 1, 333
+  - id: 2-1
+    desc: Where条件未命中索引
+    mode: request-unsupport
+    tags: ["OnlineServing不支持，Training可以支持"]
+    db: db1
+    sql: |
+      SELECT col0, col1, col2, col3, col4, col5, col6 FROM {0} where col2=55 and col1 > 1;
+    inputs:
+      - schema: col0:string, col1:int32, col2:int16, col3:float, col4:double, col5:int64, col6:string
+        index: index1:col6:col5
+        data: |
+          0, 1, 5, 1.1, 11.1, 1, 1
+          0, 2, 5, 2.2, 22.2, 2, 22
+          1, 3, 55, 3.3, 33.3, 1, 333
+          1, 4, 55, 4.4, 44.4, 2, 4444
+          2, 5, 55, 5.5, 55.5, 3, aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+    expect:
+      success: true
+      columns: [ "col0 string", "col1 int", "col2 smallint", "col3 float", "col4 double", "col5 bigint", "col6 string" ]
+      order: col1
+      rows:
+        - [ 1, 3, 55, 3.300000, 33.300000, 1, 333 ]
+        - [ 1, 4, 55, 4.400000, 44.400000, 2, 4444 ]
+        - [ 2, 5, 55, 5.500000, 55.500000, 3, aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa ]
+
+  - id: 2-2
+    desc: Where条件未命中索引-离线支持
+    mode: rtidb-unsupport,cli-unsupport
+    db: db1
+    sql: |
+      SELECT col0, col1, col2, col3, col4, col5, col6 FROM {0} where col2=5 and col1 < 2;
+    inputs:
+      - schema: col0:string, col1:int32, col2:int16, col3:float, col4:double, col5:int64, col6:string
+        index: index1:col6:col5
+        data: |
+          0, 1, 5, 1.1, 11.1, 1, 1
+          0, 2, 5, 2.2, 22.2, 2, 22
+          1, 3, 55, 3.3, 33.3, 1, 333
+          1, 4, 55, 4.4, 44.4, 2, 4444
+          2, 5, 55, 5.5, 55.5, 3, aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+    expect:
+      schema: col0:string, col1:int32, col2:int16, col3:float, col4:double, col5:int64, col6:string
+      order: col1
+      data: |
+        0, 1, 5, 1.1, 11.1, 1, 1
+  - id: 3-1
+    desc: Where条件未命中索引示例2
+    mode: request-unsupport
+    db: db1
+    sql: |
+      SELECT col0, col1, col2, col3, col4, col5, col6 FROM {0} where col2=col3 and col1 < 2;
+    inputs:
+      - columns: ["col0 string", "col1 int32", "col2 int16", "col3 float", "col4 double", "col5 int64", "col6 string"]
+        indexs: ["index1:col2:col5"]
+        data: |
+          0, 1, 5, 1.1, 11.1, 1, 1
+          0, 2, 5, 2.2, 22.2, 2, 22
+          1, 3, 55, 3.3, 33.3, 1, 333
+          1, 4, 55, 4.4, 44.4, 2, 4444
+          2, 5, 55, 5.5, 55.5, 3, aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+    expect:
+      success: true
+      columns: [ "col0 string", "col1 int", "col2 smallint", "col3 float", "col4 double", "col5 bigint", "col6 string" ]
+      rows:
+
+  - id: 3-2
+    desc: Where条件未命中索引示例2
+    mode: rtidb-unsupport,cli-unsupport
+    db: db1
+    sql: |
+      SELECT col0, col1, col2, col3, col4, col5, col6 FROM {0} where col1=col5 and col1 > 1;
+    inputs:
+      - schema: col0:string, col1:int32, col2:int16, col3:float, col4:double, col5:int64, col6:string
+        index: index1:col2:col5
+        data: |
+          0, 1, 5, 1.1, 11.1, 1, 1
+          0, 2, 5, 2.2, 22.2, 2, 22
+          1, 3, 55, 3.3, 33.3, 1, 333
+          1, 4, 55, 4.4, 44.4, 2, 4444
+          2, 5, 55, 5.5, 55.5, 3, aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+    expect:
+      schema: col0:string, col1:int32, col2:int16, col3:float, col4:double, col5:int64, col6:string
+      order: col1
+      data: |
+        0, 2, 5, 2.2, 22.2, 2, 22
+  - id: 4
+    desc: Where条件命中索引,索引穿透简单子查询
+    mode: request-unsupport
+    db: db1
+    sql: |
+      SELECT c0, c1, c2, c3, c4, c5, c6, c1+c4 as c14 FROM
+      (select col0 as c0, col1 as c1, col2 as c2, 0.0f as c3, col4 as c4, col5 as c5, "empty_str" as c6 from {0}) as t1 where t1.c2=5;
+    inputs:
+      - schema: col0:string, col1:int32, col2:int16, col3:float, col4:double, col5:int64, col6:string
+        index: index1:col2:col5
+        data: |
+          0, 1, 5, 1.1, 11.1, 1, 1
+          0, 2, 5, 2.2, 22.2, 2, 22
+          1, 3, 55, 3.3, 33.3, 1, 333
+          1, 4, 55, 4.4, 44.4, 2, 4444
+          2, 5, 55, 5.5, 55.5, 3, aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+    batch_plan: |
+      PROJECT(type=TableProject)
+        FILTER_BY(condition=, left_keys=(), right_keys=(), index_keys=(5))
+          RENAME(name=t1)
+            SIMPLE_PROJECT(sources=(col0 -> c0, col1 -> c1, col2 -> c2, 0.000000 -> c3, col4 -> c4, col5 -> c5, empty_str -> c6))
+              DATA_PROVIDER(type=Partition, table=auto_t0, index=index1)
+    expect:
+      schema: c0:string, c1:int32, c2:int16, c3:float, c4:double, c5:int64, c6:string, c14:double
+      order: c1
+      data: |
+        0, 1, 5, 0.0, 11.1, 1, empty_str, 12.1
+        0, 2, 5, 0.0, 22.2, 2, empty_str, 24.2
+  - id: 5
+    desc: lastjoin+Where,包含重复列名
+    mode: request-unsupport, rtidb-unsupport
+#    tags: ["TODO", "@chenjing", "0.3.0", "fail to compute where condition bug"]
+    db: db1
+    inputs:
+      - columns: ["c1 string","c2 int","c3 bigint","c4 timestamp", "c5 int"]
+        indexs: ["index1:c5:c4"]
+        rows:
+          - ["aa",2,3,1590738989000, 100]
+          - ["bb",21,31,1590738990000, 200]
+      - columns: ["c1 string","c2 int","c3 bigint","c4 timestamp"]
+        indexs: ["index1:c3:c4"]
+        rows:
+          - ["aa",2,3,1590738989000]
+          - ["bb",21,31,1590738990000]
+    sql: select {0}.c1,{1}.c1,{0}.c2,{1}.c3,{1}.c4,{0}.c5 from {0} last join {1} on {0}.c3={1}.c3 where c5 = 100;
+    expect:
+      columns: ["c1 string","c1 string", "c2 int","c3 bigint", "c4 timestamp", "c5 int"]
+      rows:
+        - ["aa","aa",2,3,1590738989000, 100]
+  - id: 6-1
+    desc: Where条件后全表聚合
+#    tags: ["TODO","batch exec failed"]
+    mode: request-unsupport
+    db: db1
+    sql: |
+      SELECT SUM(col1) as sum_col1, COUNT(col1) as cnt_col1, MAX(col1) as max_col1, 
+      MIN(col1) as min_col1, AVG(col1) as avg_col1 FROM {0} where col2=5;
+    inputs:
+      - columns: ["col0 string", "col1 int32", "col2 int16", "col3 float", "col4 double", "col5 int64", "col6 string"]
+        indexs: ["index1:col2:col5"]
+        rows: 
+          - [0, 1, 5, 1.1, 11.1, 1, 1]
+          - [0, 2, 5, 2.2, 22.2, 2, 22]
+          - [1, 3, 55, 3.3, 33.3, 1, 333]
+          - [1, 4, 55, 4.4, 44.4, 2, 4444]
+          - [2, 5, 55, 5.5, 55.5, 3, aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa]
+    batch_plan: |
+      PROJECT(type=Aggregation)
+        FILTER_BY(condition=, left_keys=(), right_keys=(), index_keys=(5))
+          DATA_PROVIDER(type=Partition, table=auto_t0, index=index1)
+
+    expect:
+      columns: ["sum_col1 int32", "cnt_col1 int64", "max_col1 int32", "min_col1 int32", "avg_col1 double"]
+      order: sum_col1
+      rows: 
+        - [3, 2, 2, 1, 1.5]

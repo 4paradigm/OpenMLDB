@@ -63,20 +63,11 @@ public class SqlClusterExecutor implements SqlExecutor {
         initJavaSdkLibrary(libraryPath);
 
         if (option.isClusterMode()) {
-            SQLRouterOptions sqlOpt = new SQLRouterOptions();
-            sqlOpt.setZk_session_timeout(option.getSessionTimeout());
-            sqlOpt.setZk_cluster(option.getZkCluster());
-            sqlOpt.setZk_path(option.getZkPath());
-            sqlOpt.setEnable_debug(option.getEnableDebug());
-            sqlOpt.setRequest_timeout(option.getRequestTimeout());
+            SQLRouterOptions sqlOpt = option.buildSQLRouterOptions();
             this.sqlRouter = sql_router_sdk.NewClusterSQLRouter(sqlOpt);
             sqlOpt.delete();
         } else {
-            StandaloneOptions sqlOpt = new StandaloneOptions();
-            sqlOpt.setEnable_debug(option.getEnableDebug());
-            sqlOpt.setRequest_timeout(option.getRequestTimeout());
-            sqlOpt.setHost(option.getHost());
-            sqlOpt.setPort(option.getPort());
+            StandaloneOptions sqlOpt = option.buildStandaloneOptions();
             this.sqlRouter = sql_router_sdk.NewStandaloneSQLRouter(sqlOpt);
             sqlOpt.delete();
         }
@@ -176,6 +167,11 @@ public class SqlClusterExecutor implements SqlExecutor {
     @Override
     public PreparedStatement getInsertPreparedStmt(String db, String sql) throws SQLException {
         return new InsertPreparedStatementImpl(db, sql, this.sqlRouter);
+    }
+
+    @Override
+    public PreparedStatement getDeletePreparedStmt(String db, String sql) throws SQLException {
+        return new DeletePreparedStatementImpl(db, sql, this.sqlRouter);
     }
 
     @Override
@@ -350,6 +346,45 @@ public class SqlClusterExecutor implements SqlExecutor {
         outputSchema.delete();
         tableColumnDescPairVector.delete();
         return ret;
+    }
+
+    // NOTICE: even tableSchema is <db, <table, schea>>, we'll assume that all tables in one db in sql_router_sdk
+    // returns
+    // 1. empty list: means valid
+    // 2. otherwise a list(len 2):[0] the error msg; [1] the trace
+    public static List<String> validateSQLInBatch(String sql, Map<String, Map<String, Schema>> tableSchema) throws SQLException {
+        SqlClusterExecutor.initJavaSdkLibrary("");
+
+        if (null == tableSchema || tableSchema.isEmpty()) {
+            throw new SQLException("input schema is null or empty");
+        }
+        TableColumnDescPairVector tableColumnDescPairVector = new TableColumnDescPairVector();
+        // TODO(hw): multi db is not supported now, so we add all db-tables here
+        for (Map.Entry<String, Map<String, Schema>> entry : tableSchema.entrySet()) {
+            Map<String, Schema> schemaMap = entry.getValue();
+            tableColumnDescPairVector.addAll(convertSchema(schemaMap));
+        }
+        List<String> err = sql_router_sdk.ValidateSQLInBatch(sql, tableColumnDescPairVector);
+        tableColumnDescPairVector.delete();
+        return err;
+    }
+
+    // return: the same as validateSQLInBatch
+    public static List<String> validateSQLInRequest(String sql, Map<String, Map<String, Schema>> tableSchema) throws SQLException {
+        SqlClusterExecutor.initJavaSdkLibrary("");
+
+        if (null == tableSchema || tableSchema.isEmpty()) {
+            throw new SQLException("input schema is null or empty");
+        }
+        TableColumnDescPairVector tableColumnDescPairVector = new TableColumnDescPairVector();
+        // TODO(hw): multi db is not supported now, so we add all db-tables here
+        for (Map.Entry<String, Map<String, Schema>> entry : tableSchema.entrySet()) {
+            Map<String, Schema> schemaMap = entry.getValue();
+            tableColumnDescPairVector.addAll(convertSchema(schemaMap));
+        }
+        List<String> err = sql_router_sdk.ValidateSQLInRequest(sql, tableColumnDescPairVector);
+        tableColumnDescPairVector.delete();
+        return err;
     }
 
     @Override

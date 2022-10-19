@@ -360,7 +360,7 @@ TEST_F(ASTNodeConverterTest, ConvertCreateTableNodeOkTest) {
         EXPECT_STREQ("t1", output->GetTableName().c_str());
         EXPECT_EQ(false, output->GetOpIfNotExist());
         auto table_option_list = output->GetTableOptionList();
-        node::NodePointVector partition_meta_list;
+        node::NodePointVector distribution_list;
         for (auto table_option : table_option_list) {
             switch (table_option->GetType()) {
                 case node::kReplicaNum: {
@@ -372,12 +372,7 @@ TEST_F(ASTNodeConverterTest, ConvertCreateTableNodeOkTest) {
                     break;
                 }
                 case node::kDistributions: {
-                    auto d_list = dynamic_cast<node::DistributionsNode *>(table_option)->GetDistributionList();
-                    if (d_list != nullptr) {
-                        for (auto meta_ptr : d_list->GetList()) {
-                            partition_meta_list.push_back(meta_ptr);
-                        }
-                    }
+                    distribution_list  = dynamic_cast<node::DistributionsNode *>(table_option)->GetDistributionList();
                     break;
                 }
                 default: {
@@ -386,6 +381,9 @@ TEST_F(ASTNodeConverterTest, ConvertCreateTableNodeOkTest) {
                 }
             }
         }
+        ASSERT_EQ(1, distribution_list.size());
+        auto partition_mata_nodes = dynamic_cast<hybridse::node::SqlNodeList*>(distribution_list.front());
+        const auto& partition_meta_list = partition_mata_nodes->GetList();
         ASSERT_EQ(3, partition_meta_list.size());
         {
             ASSERT_EQ(node::kPartitionMeta, partition_meta_list[0]->GetType());
@@ -488,8 +486,34 @@ TEST_F(ASTNodeConverterTest, ConvertCreateTableNodeOkTest) {
         const auto create_stmt = statement->GetAsOrDie<zetasql::ASTCreateTableStatement>();
         node::CreateStmt* output = nullptr;
         auto status = ConvertCreateTableNode(create_stmt, &node_manager, &output);
-        EXPECT_EQ(common::kSqlAstError, status.code);
+        EXPECT_EQ(common::kOk, status.code);
     }
+}
+
+TEST_F(ASTNodeConverterTest, ConvertDeleteNodeTest) {
+    node::NodeManager node_manager;
+    auto expect_converted = [&](const std::string& sql, bool expect) -> void {
+        std::unique_ptr<zetasql::ParserOutput> parser_output;
+        ZETASQL_ASSERT_OK(zetasql::ParseStatement(sql, zetasql::ParserOptions(), &parser_output));
+        const auto* statement = parser_output->statement();
+        ASSERT_TRUE(statement->Is<zetasql::ASTDeleteStatement>());
+
+        const auto delete_stmt = statement->GetAsOrDie<zetasql::ASTDeleteStatement>();
+        node::SqlNode* delete_node = nullptr;
+        auto s = ConvertStatement(delete_stmt, &node_manager, &delete_node);
+        EXPECT_EQ(expect, s.isOK());
+    };
+    expect_converted("delete from t1", false);
+    expect_converted("delete from job", false);
+    expect_converted("delete from job 111", true);
+    expect_converted("delete job 222", true);
+    expect_converted("delete from t1 where c1 = 'aa'", true);
+    expect_converted("delete from job where c1 = 'aa'", true);
+    expect_converted("delete from db1.t1 where c1 = 'aa'", true);
+    expect_converted("delete from t2 where c1 > 'aa' and c2 = 123", true);
+    expect_converted("delete from t1 where c1 = 'aa' and c2 = ?", true);
+    expect_converted("delete from t1 where c1 = ?", true);
+    expect_converted("delete from t1 where c1 = ? or c2 = ?", true);
 }
 
 TEST_F(ASTNodeConverterTest, ConvertCreateProcedureOKTest) {
@@ -717,6 +741,7 @@ TEST_F(ASTNodeConverterTest, ConvertCreateIndexOKTest) {
         OPTIONS(ts=std_ts, ttl_type=absolute, ttl=30d);
         )sql";
     expect_converted(sql2);
+    expect_converted("CREATE INDEX index1 ON db1.t1 (col1);");
 }
 
 TEST_F(ASTNodeConverterTest, ConvertCreateIndexFailTest) {
@@ -970,7 +995,7 @@ TEST_F(ASTNodeConverterTest, ConvertCreateTableNodeErrorTest) {
         const auto create_stmt = statement->GetAsOrDie<zetasql::ASTCreateTableStatement>();
         node::CreateStmt* output = nullptr;
         auto status = ConvertCreateTableNode(create_stmt, &node_manager, &output);
-        EXPECT_EQ(common::kSqlAstError, status.code);
+        EXPECT_EQ(common::kOk, status.code);
     }
 }
 
@@ -1124,8 +1149,7 @@ TEST_P(ASTNodeConverterTest, SqlNodeTreeEqual) {
     status = ConvertStatement(statement, manager_, &output);
     EXPECT_EQ(common::kOk, status.code) << status;
     if (status.isOK() && !sql_case.expect().node_tree_str_.empty()) {
-        EXPECT_STREQ(sql_case.expect().node_tree_str_.c_str(), output->GetTreeString().c_str())
-            << output->GetTreeString().c_str();
+        EXPECT_EQ(sql_case.expect().node_tree_str_, output->GetTreeString()) << output->GetTreeString();
     }
 }
 const std::vector<std::string> FILTERS({"logical-plan-unsupport", "parser-unsupport", "zetasql-unsupport"});
@@ -1146,6 +1170,8 @@ INSTANTIATE_TEST_SUITE_P(ASTJoinTest, ASTNodeConverterTest,
                          testing::ValuesIn(sqlcase::InitCases("cases/plan/join_query.yaml", FILTERS)));
 INSTANTIATE_TEST_SUITE_P(ASTHavingStatementTest, ASTNodeConverterTest,
                          testing::ValuesIn(sqlcase::InitCases("cases/plan/having_query.yaml", FILTERS)));
+INSTANTIATE_TEST_SUITE_P(ASTHWindowQueryTest, ASTNodeConverterTest,
+                         testing::ValuesIn(sqlcase::InitCases("cases/plan/window_query.yaml", FILTERS)));
 }  // namespace plan
 }  // namespace hybridse
 

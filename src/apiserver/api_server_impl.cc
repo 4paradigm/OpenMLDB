@@ -16,6 +16,7 @@
 
 #include "apiserver/api_server_impl.h"
 
+#include <map>
 #include <memory>
 #include <set>
 #include <string>
@@ -48,6 +49,7 @@ bool APIServerImpl::Init(::openmldb::sdk::DBSDK* cluster) {
         return false;
     }
     sql_router_ = std::move(router);
+    RegisterQuery();
     RegisterPut();
     RegisterExecSP();
     RegisterExecDeployment();
@@ -55,12 +57,12 @@ bool APIServerImpl::Init(::openmldb::sdk::DBSDK* cluster) {
     RegisterGetDeployment();
     RegisterGetDB();
     RegisterGetTable();
+    RegisterRefresh();
     return true;
 }
 
-void APIServerImpl::Refresh(google::protobuf::RpcController* cntl_base, const HttpRequest*, HttpResponse*,
-                            google::protobuf::Closure* done) {
-    brpc::ClosureGuard done_guard(done);
+void APIServerImpl::Refresh() {
+    // brpc::ClosureGuard done_guard(done);
     if (sql_router_) {
         sql_router_->RefreshCatalog();
     }
@@ -81,6 +83,73 @@ void APIServerImpl::Process(google::protobuf::RpcController* cntl_base, const Ht
     provider_.handle(unresolved_path, method, req_body, writer);
 
     cntl->response_attachment().append(writer.GetString());
+}
+
+struct ExecContext {
+ public:
+    bool is_online = false;
+    bool is_sync = true;
+    int job_timeout = 600000;  // ms
+    ExecContext() = default;
+    ExecContext(bool online, bool sync) : is_online(online), is_sync(sync) {}
+
+    std::string ToString() const {
+        std::stringstream ss;
+        ss << (is_online ? "online" : "offline") << "-" << (is_sync ? "sync" : "async") << "-" << job_timeout << "ms";
+        return ss.str();
+    }
+};
+
+std::map<std::string, ExecContext> mode_map{
+    {"offsync", {false, true}}, {"offasync", {false, false}}, {"online", {true, false}}};
+
+void APIServerImpl::RegisterQuery() {
+    provider_.post("/dbs/:db_name", [this](const InterfaceProvider::Params& param, const butil::IOBuf& req_body,
+                                           JsonWriter& writer) {
+        auto resp = GeneralResp();
+        auto db_it = param.find("db_name");
+        if (db_it == param.end()) {
+            writer << resp.Set("url has no db_name");
+            return;
+        }
+        auto db = db_it->second;
+
+        // default mode is offsync
+        QueryReq req;
+        JsonReader query_reader(req_body.to_string().c_str());
+        query_reader >> req;
+        if (!query_reader) {
+            writer << resp.Set("Json parse failed, " + req_body.to_string());
+            return;
+        }
+        auto mode = boost::to_lower_copy(req.mode);
+        auto it = mode_map.find(mode);
+        if (it == mode_map.end()) {
+            writer << resp.Set("Invalid mode " + mode);
+            return;
+        }
+        ExecContext ctx = it->second;
+
+        const auto& sql = req.sql;
+        const auto parameter = req.parameter;
+        VLOG(1) << "post [" << ctx.ToString() << "] query on db [" << db << "], sql: " << sql;
+        // TODO(hw): if api server supports standalone, we should check if cluster mode here
+
+        hybridse::sdk::Status status;
+        // TODO(hw): if sql is not a query, it may be a ddl, we use ExecuteSQL to execute it before we
+        //  supports ddl http api. It's useful for api server tests(We can create table when we only
+        //  connect to the api server).
+        auto rs = sql_router_->ExecuteSQL(db, sql, parameter, ctx.is_online, ctx.is_sync, ctx.job_timeout, &status);
+        if (!status.IsOK()) {
+            writer << resp.Set(status.code, status.msg);
+            LOG(WARNING) << "failed at: code " << status.code << ", msg " << status.msg;
+            return;
+        }
+
+        QueryResp query_resp;
+        query_resp.rs = rs;
+        writer << query_resp;
+    });
 }
 
 bool APIServerImpl::Json2SQLRequestRow(const butil::rapidjson::Value& non_common_cols_v,
@@ -207,11 +276,11 @@ bool APIServerImpl::AppendJsonValue(const butil::rapidjson::Value& v, hybridse::
 void APIServerImpl::RegisterPut() {
     provider_.put("/dbs/:db_name/tables/:table_name", [this](const InterfaceProvider::Params& param,
                                                              const butil::IOBuf& req_body, JsonWriter& writer) {
-        auto err = GeneralError();
+        auto resp = GeneralResp();
         auto db_it = param.find("db_name");
         auto table_it = param.find("table_name");
         if (db_it == param.end() || table_it == param.end()) {
-            writer << err.Set("Invalid path");
+            writer << resp.Set("Invalid path");
             return;
         }
         auto db = db_it->second;
@@ -222,14 +291,14 @@ void APIServerImpl::RegisterPut() {
         if (document.Parse(req_body.to_string().c_str()).HasParseError()) {
             DLOG(INFO) << "rapidjson doc parse [" << req_body.to_string().c_str() << "] failed, code "
                        << document.GetParseError() << ", offset " << document.GetErrorOffset();
-            writer << err.Set("Json parse failed, error code: " + std::to_string(document.GetParseError()));
+            writer << resp.Set("Json parse failed, error code: " + std::to_string(document.GetParseError()));
             return;
         }
 
         const auto& value = document["value"];
         // value should be an array, and multi put is not supported now
         if (!value.IsArray() || value.Empty() || value.Size() > 1 || !value[0].IsArray()) {
-            writer << err.Set("Invalid value in body, only support to put one row");
+            writer << resp.Set("Invalid value in body, only support to put one row");
             return;
         }
         const auto& arr = value[0];
@@ -241,13 +310,13 @@ void APIServerImpl::RegisterPut() {
         std::string insert_placeholder = "insert into " + table + " values(" + holders + ");";
         auto row = sql_router_->GetInsertRow(db, insert_placeholder, &status);
         if (!row) {
-            writer << err.Set(status.msg);
+            writer << resp.Set(status.msg);
             return;
         }
         auto schema = row->GetSchema();
         auto cnt = schema->GetColumnCnt();
         if (cnt != static_cast<int>(arr.Size())) {
-            writer << err.Set("column size != schema size");
+            writer << resp.Set("column size != schema size");
             return;
         }
 
@@ -263,38 +332,35 @@ void APIServerImpl::RegisterPut() {
 
         for (int i = 0; i < cnt; ++i) {
             if (!AppendJsonValue(arr[i], schema->GetColumnType(i), schema->IsColumnNotNull(i), row)) {
-                writer << err.Set("Translate to insert row failed");
+                writer << resp.Set("Translate to insert row failed");
                 return;
             }
         }
 
-        auto ok = sql_router_->ExecuteInsert(db, insert_placeholder, row, &status);
-        if (ok) {
-            PutResp resp;
-            writer << resp;
-        } else {
-            writer << err.Set(status.msg);
-        }
+        sql_router_->ExecuteInsert(db, insert_placeholder, row, &status);
+        writer << resp.Set(status.code, status.msg);
     });
 }
 
 void APIServerImpl::RegisterExecDeployment() {
-    provider_.post("/dbs/:db_name/deployments/:sp_name", std::bind(&APIServerImpl::ExecuteProcedure, this,
-                false, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
+    provider_.post("/dbs/:db_name/deployments/:sp_name",
+                   std::bind(&APIServerImpl::ExecuteProcedure, this, false, std::placeholders::_1,
+                             std::placeholders::_2, std::placeholders::_3));
 }
 
 void APIServerImpl::RegisterExecSP() {
-    provider_.post("/dbs/:db_name/procedures/:sp_name", std::bind(&APIServerImpl::ExecuteProcedure, this,
-                true, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
+    provider_.post("/dbs/:db_name/procedures/:sp_name",
+                   std::bind(&APIServerImpl::ExecuteProcedure, this, true, std::placeholders::_1, std::placeholders::_2,
+                             std::placeholders::_3));
 }
 
 void APIServerImpl::ExecuteProcedure(bool has_common_col, const InterfaceProvider::Params& param,
-        const butil::IOBuf& req_body, JsonWriter& writer) {
-    auto err = GeneralError();
+                                     const butil::IOBuf& req_body, JsonWriter& writer) {
+    auto resp = GeneralResp();
     auto db_it = param.find("db_name");
     auto sp_it = param.find("sp_name");
     if (db_it == param.end() || sp_it == param.end()) {
-        writer << err.Set("Invalid path");
+        writer << resp.Set("Invalid path");
         return;
     }
     auto db = db_it->second;
@@ -302,7 +368,7 @@ void APIServerImpl::ExecuteProcedure(bool has_common_col, const InterfaceProvide
 
     Document document;
     if (document.Parse(req_body.to_string().c_str()).HasParseError()) {
-        writer << err.Set("Json parse failed");
+        writer << resp.Set("Json parse failed");
         return;
     }
 
@@ -312,7 +378,7 @@ void APIServerImpl::ExecuteProcedure(bool has_common_col, const InterfaceProvide
         if (common_cols != document.MemberEnd()) {
             common_cols_v = common_cols->value;  // move
             if (!common_cols_v.IsArray()) {
-                writer << err.Set("common_cols is not array");
+                writer << resp.Set("common_cols is not array");
                 return;
             }
         } else {
@@ -324,7 +390,7 @@ void APIServerImpl::ExecuteProcedure(bool has_common_col, const InterfaceProvide
 
     auto input = document.FindMember("input");
     if (input == document.MemberEnd() || !input->value.IsArray() || input->value.Empty()) {
-        writer << err.Set("Invalid input");
+        writer << resp.Set("Invalid input");
         return;
     }
     const auto& rows = input->value;
@@ -334,7 +400,7 @@ void APIServerImpl::ExecuteProcedure(bool has_common_col, const InterfaceProvide
     // GetRequestRowByProcedure can't do that.
     auto sp_info = sql_router_->ShowProcedure(db, sp, &status);
     if (!sp_info) {
-        writer << err.Set(status.msg);
+        writer << resp.Set(status.msg);
         return;
     }
 
@@ -351,7 +417,7 @@ void APIServerImpl::ExecuteProcedure(bool has_common_col, const InterfaceProvide
             }
         }
         if (common_cols_v.Size() != expected_common_size) {
-            writer << err.Set("Invalid common cols size");
+            writer << resp.Set("Invalid common cols size");
             return;
         }
     }
@@ -362,14 +428,14 @@ void APIServerImpl::ExecuteProcedure(bool has_common_col, const InterfaceProvide
     std::set<std::string> col_set;
     for (decltype(rows.Size()) i = 0; i < rows.Size(); ++i) {
         if (!rows[i].IsArray() || rows[i].Size() != expected_input_size) {
-            writer << err.Set("Invalid input data row");
+            writer << resp.Set("Invalid input data row");
             return;
         }
         auto row = std::make_shared<sdk::SQLRequestRow>(input_schema, col_set);
 
         // sizes have been checked
         if (!Json2SQLRequestRow(rows[i], common_cols_v, row)) {
-            writer << err.Set("Translate to request row failed");
+            writer << resp.Set("Translate to request row failed");
             return;
         }
         row->Build();
@@ -378,30 +444,29 @@ void APIServerImpl::ExecuteProcedure(bool has_common_col, const InterfaceProvide
 
     auto rs = sql_router_->CallSQLBatchRequestProcedure(db, sp, row_batch, &status);
     if (!rs) {
-        writer << err.Set(status.msg);
+        writer << resp.Set(status.msg);
         return;
     }
 
-    ExecSPResp resp;
+    ExecSPResp sp_resp;
     // output schema in sp_info is needed for encoding data, so we need a bool in ExecSPResp to know whether to
     // print schema
-    resp.sp_info = sp_info;
-    if (document.HasMember("need_schema") && document["need_schema"].IsBool() &&
-        document["need_schema"].GetBool()) {
-        resp.need_schema = true;
+    sp_resp.sp_info = sp_info;
+    if (document.HasMember("need_schema") && document["need_schema"].IsBool() && document["need_schema"].GetBool()) {
+        sp_resp.need_schema = true;
     }
-    resp.rs = rs;
-    writer << resp;
+    sp_resp.rs = rs;
+    writer << sp_resp;
 }
 
 void APIServerImpl::RegisterGetSP() {
     provider_.get("/dbs/:db_name/procedures/:sp_name",
                   [this](const InterfaceProvider::Params& param, const butil::IOBuf& req_body, JsonWriter& writer) {
-                      auto err = GeneralError();
+                      auto resp = GeneralResp();
                       auto db_it = param.find("db_name");
                       auto sp_it = param.find("sp_name");
                       if (db_it == param.end() || sp_it == param.end()) {
-                          writer << err.Set("Invalid path");
+                          writer << resp.Set("Invalid path");
                           return;
                       }
                       auto db = db_it->second;
@@ -410,7 +475,7 @@ void APIServerImpl::RegisterGetSP() {
                       hybridse::sdk::Status status;
                       auto sp_info = sql_router_->ShowProcedure(db, sp, &status);
                       if (!sp_info) {
-                          writer << err.Set(status.msg);
+                          writer << resp.Set(status.msg);
                           return;
                       }
                       if (sp_info->GetType() == ::hybridse::sdk::ProcedureType::kReqProcedure) {
@@ -418,7 +483,7 @@ void APIServerImpl::RegisterGetSP() {
                           resp.sp_info = sp_info;
                           writer << resp;
                       } else {
-                          writer << err.Set("procedure not found");
+                          writer << resp.Set("procedure not found");
                       }
                   });
 }
@@ -426,11 +491,11 @@ void APIServerImpl::RegisterGetSP() {
 void APIServerImpl::RegisterGetDeployment() {
     provider_.get("/dbs/:db_name/deployments/:dep_name",
                   [this](const InterfaceProvider::Params& param, const butil::IOBuf& req_body, JsonWriter& writer) {
-                      auto err = GeneralError();
+                      auto resp = GeneralResp();
                       auto db_it = param.find("db_name");
                       auto sp_it = param.find("dep_name");
                       if (db_it == param.end() || sp_it == param.end()) {
-                          writer << err.Set("Invalid path");
+                          writer << resp.Set("Invalid path");
                           return;
                       }
                       auto db = db_it->second;
@@ -439,7 +504,7 @@ void APIServerImpl::RegisterGetDeployment() {
                       hybridse::sdk::Status status;
                       auto sp_info = sql_router_->ShowProcedure(db, sp, &status);
                       if (!sp_info) {
-                          writer << err.Set(status.msg);
+                          writer << resp.Set(status.msg);
                           return;
                       }
                       if (sp_info->GetType() == ::hybridse::sdk::ProcedureType::kReqDeployment) {
@@ -447,7 +512,7 @@ void APIServerImpl::RegisterGetDeployment() {
                           resp.sp_info = sp_info;
                           writer << resp;
                       } else {
-                          writer << err.Set("deployment not found");
+                          writer << resp.Set("deployment not found");
                       }
                   });
 }
@@ -455,12 +520,12 @@ void APIServerImpl::RegisterGetDeployment() {
 void APIServerImpl::RegisterGetDB() {
     provider_.get("/dbs",
                   [this](const InterfaceProvider::Params& param, const butil::IOBuf& req_body, JsonWriter& writer) {
-                      auto err = GeneralError();
+                      auto resp = GeneralResp();
                       std::vector<std::string> dbs;
                       hybridse::sdk::Status status;
                       auto ok = sql_router_->ShowDB(&dbs, &status);
                       if (!ok) {
-                          writer << err.Set(status.msg);
+                          writer << resp.Set(status.msg);
                           return;
                       }
                       writer.StartObject();
@@ -480,23 +545,23 @@ void APIServerImpl::RegisterGetTable() {
     // show all of the tables
     provider_.get("/dbs/:db_name/tables",
                   [this](const InterfaceProvider::Params& param, const butil::IOBuf& req_body, JsonWriter& writer) {
-                      auto err = GeneralError();
+                      auto resp = GeneralResp();
                       auto db_it = param.find("db_name");
                       if (db_it == param.end()) {
-                          writer << err.Set("Invalid path");
+                          writer << resp.Set("Invalid path");
                           return;
                       }
                       std::vector<std::string> dbs;
                       hybridse::sdk::Status status;
                       auto ok = sql_router_->ShowDB(&dbs, &status);
                       if (!ok) {
-                          writer << err.Set(status.msg);
+                          writer << resp.Set(status.msg);
                           return;
                       }
                       auto db = db_it->second;
                       bool db_ok = std::find(dbs.begin(), dbs.end(), db) != dbs.end();
                       if (!db_ok) {
-                          writer << err.Set("DB not found");
+                          writer << resp.Set("DB not found");
                           return;
                       }
                       auto tables = cluster_sdk_->GetTables(db);
@@ -514,31 +579,31 @@ void APIServerImpl::RegisterGetTable() {
     // show a certain table
     provider_.get("/dbs/:db_name/tables/:table_name",
                   [this](const InterfaceProvider::Params& param, const butil::IOBuf& req_body, JsonWriter& writer) {
-                      auto err = GeneralError();
+                      auto resp = GeneralResp();
                       auto db_it = param.find("db_name");
                       auto table_it = param.find("table_name");
                       if (db_it == param.end() || table_it == param.end()) {
-                          writer << err.Set("Invalid path");
+                          writer << resp.Set("Invalid path");
                           return;
                       }
                       std::vector<std::string> dbs;
                       hybridse::sdk::Status status;
                       auto ok = sql_router_->ShowDB(&dbs, &status);
                       if (!ok) {
-                          writer << err.Set(status.msg);
+                          writer << resp.Set(status.msg);
                           return;
                       }
                       auto db = db_it->second;
                       bool db_ok = std::find(dbs.begin(), dbs.end(), db) != dbs.end();
                       if (!db_ok) {
-                          writer << err.Set("DB not found");
+                          writer << resp.Set("DB not found");
                           return;
                       }
                       auto table = table_it->second;
                       auto table_info = cluster_sdk_->GetTableInfo(db, table);
                       // if there is no such db or such table, table_info will be nullptr
                       if (table_info == nullptr) {
-                          writer << err.Set("Table not found");
+                          writer << resp.Set("Table not found");
                           return;
                       } else {
                           writer.StartObject();
@@ -550,6 +615,15 @@ void APIServerImpl::RegisterGetTable() {
                   });
 }
 
+void APIServerImpl::RegisterRefresh() {
+    provider_.post("/refresh",
+                   [this](const InterfaceProvider::Params& param, const butil::IOBuf& req_body, JsonWriter& writer) {
+                       auto resp = GeneralResp();
+                       auto ok = sql_router_->RefreshCatalog();
+                       writer << (ok ? resp : resp.Set("refresh failed"));
+                   });
+}
+
 std::string APIServerImpl::InnerTypeTransform(const std::string& s) {
     std::string out = s;
     if (out.size() > 0 && out.at(0) == 'k') {
@@ -557,6 +631,149 @@ std::string APIServerImpl::InnerTypeTransform(const std::string& s) {
     }
     std::transform(out.begin(), out.end(), out.begin(), [](unsigned char c) { return std::tolower(c); });
     return out;
+}
+
+JsonReader& operator&(JsonReader& ar, QueryReq& s) {  // NOLINT
+    ar.StartObject();
+    // mode is not optional
+    ar.Member("mode") & s.mode;
+    ar.Member("sql") & s.sql;
+    if (ar.HasMember("input")) {
+        ar.Member("input") & s.parameter;
+    }
+    return ar.EndObject();
+}
+
+JsonReader& operator&(JsonReader& ar, std::shared_ptr<openmldb::sdk::SQLRequestRow>& parameter) {  // NOLINT
+    ar.StartObject();
+
+    if (!ar.HasMember("schema") || !ar.HasMember("data")) return ar.EndObject();
+
+    ::hybridse::vm::Schema schema;
+    {
+        ar.Member("schema");
+        size_t size;
+        ar.StartArray(&size);  // start "schema"
+        for (size_t i = 0; i < size; i++) {
+            std::string type;
+            ar& type;
+            // uppercase
+            std::transform(type.begin(), type.end(), type.begin(), [](unsigned char c) { return std::toupper(c); });
+
+            auto col = schema.Add();
+            if (type == "BOOL") {
+                col->set_type(::hybridse::type::kBool);
+            } else if (type == "SMALLINT" || type == "INT16") {
+                col->set_type(::hybridse::type::kInt16);
+            } else if (type == "INT" || type == "INT32") {
+                col->set_type(::hybridse::type::kInt32);
+            } else if (type == "BIGINT" || type == "INT64") {
+                col->set_type(::hybridse::type::kInt64);
+            } else if (type == "FLOAT") {
+                col->set_type(::hybridse::type::kFloat);
+            } else if (type == "DOUBLE") {
+                col->set_type(::hybridse::type::kDouble);
+            } else if (type == "STRING") {
+                col->set_type(::hybridse::type::kVarchar);
+            } else if (type == "DATE") {
+                col->set_type(::hybridse::type::kDate);
+            } else if (type == "TIMESTAMP") {
+                col->set_type(::hybridse::type::kTimestamp);
+            } else {
+                return ar;
+            }
+        }
+        ar.EndArray();  // end "schema"
+    }
+
+    int32_t str_length = 0;
+    {
+        ar.Member("data");
+        size_t size;
+        ar.StartArray(&size);  // start first iter "data"
+        if (static_cast<int>(size) != schema.size()) return ar;
+
+        for (auto col = schema.begin(); col != schema.end(); col++) {
+            if (col->type() == ::hybridse::type::kVarchar) {
+                std::string str;
+                ar& str;
+                str_length += str.length();
+            } else {
+                ar.Next();
+            }
+        }
+        ar.EndArray();  // end first iter "data"
+    }
+    {
+        ::hybridse::sdk::SchemaImpl* schema_impl = new ::hybridse::sdk::SchemaImpl(schema);
+        parameter.reset(new openmldb::sdk::SQLRequestRow(std::shared_ptr<::hybridse::sdk::Schema>(schema_impl),
+                                                         std::set<std::string>({})));
+
+        ar.Member("data");
+        size_t size;
+        ar.StartArray(&size);  // start second iter "data"
+        if (!parameter->Init(str_length)) return ar;
+
+        for (auto col = schema.begin(); col != schema.end(); col++) {
+            bool ok;
+            switch (col->type()) {
+                case ::hybridse::type::kBool: {
+                    bool b;
+                    ar& b;
+                    ok = parameter->AppendBool(b);
+                } break;
+                case ::hybridse::type::kInt16: {
+                    int16_t i;
+                    ar& i;
+                    ok = parameter->AppendInt16(i);
+                } break;
+                case ::hybridse::type::kInt32: {
+                    int32_t i;
+                    ar& i;
+                    ok = parameter->AppendInt32(i);
+                } break;
+                case ::hybridse::type::kInt64: {
+                    int64_t i;
+                    ar& i;
+                    ok = parameter->AppendInt64(i);
+                } break;
+                case ::hybridse::type::kFloat: {
+                    double f;
+                    ar& f;
+                    ok = parameter->AppendFloat(f);
+                } break;
+                case ::hybridse::type::kDouble: {
+                    double d;
+                    ar& d;
+                    ok = parameter->AppendDouble(d);
+                } break;
+                case ::hybridse::type::kVarchar: {
+                    std::string s;
+                    ar& s;
+                    ok = parameter->AppendString(s.c_str(), s.length());
+                } break;
+                case ::hybridse::type::kDate: {
+                    int32_t date;
+                    ar& date;
+                    ok = parameter->AppendDate(date);
+                } break;
+                case ::hybridse::type::kTimestamp: {
+                    int64_t timestamp;
+                    ar& timestamp;
+                    ok = parameter->AppendTimestamp(timestamp);
+                } break;
+                default:
+                    ok = false;
+            }
+            if (!ok) return ar;
+        }
+
+        if (!parameter->Build()) return ar;
+
+        ar.EndArray();  // end second iter "data"
+    }
+
+    return ar.EndObject();
 }
 
 void WriteSchema(JsonWriter& ar, const std::string& name, const hybridse::sdk::Schema& schema,  // NOLINT
@@ -889,6 +1106,75 @@ JsonWriter& operator&(JsonWriter& ar, std::shared_ptr<::openmldb::nameserver::Ta
 
     ar.Member("schema_versions") & info->schema_versions();
 
+    return ar.EndObject();
+}
+
+JsonWriter& operator&(JsonWriter& ar, QueryResp& s) {  // NOLINT
+    ar.StartObject();
+    ar.Member("code") & s.code;
+    ar.Member("msg") & s.msg;
+    if (s.rs) {
+        auto& rs = s.rs;
+        auto& schema = *rs->GetSchema();
+
+        ar.Member("data");
+        ar.StartObject();  // start data
+
+        ar.Member("schema");
+        ar.StartArray();  // start schema
+        rs->Reset();
+        for (auto n = schema.GetColumnCnt(), i = 0; i < n; i++) {
+            std::string type;
+            switch (schema.GetColumnType(i)) {
+                case hybridse::sdk::kTypeBool:
+                    type = "Bool";
+                    break;
+                case hybridse::sdk::kTypeInt16:
+                    type = "Int16";
+                    break;
+                case hybridse::sdk::kTypeInt32:
+                    type = "Int32";
+                    break;
+                case hybridse::sdk::kTypeInt64:
+                    type = "Int64";
+                    break;
+                case hybridse::sdk::kTypeFloat:
+                    type = "Float";
+                    break;
+                case hybridse::sdk::kTypeDouble:
+                    type = "Double";
+                    break;
+                case hybridse::sdk::kTypeString:
+                    type = "String";
+                    break;
+                case hybridse::sdk::kTypeDate:
+                    type = "Date";
+                    break;
+                case hybridse::sdk::kTypeTimestamp:
+                    type = "Timestamp";
+                    break;
+                default:
+                    type = "Unknown";
+                    break;
+            }
+            ar& type;
+        }
+        ar.EndArray();  // end schema
+
+        ar.Member("data");
+        ar.StartArray();  // start data
+        rs->Reset();
+        while (rs->Next()) {
+            ar.StartArray();
+            for (decltype(schema.GetColumnCnt()) i = 0; i < schema.GetColumnCnt(); i++) {
+                WriteValue(ar, rs, i);
+            }
+            ar.EndArray();
+        }
+        ar.EndArray();  // end data
+
+        ar.EndObject();  // end data
+    }
     return ar.EndObject();
 }
 

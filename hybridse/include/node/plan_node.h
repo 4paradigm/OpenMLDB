@@ -250,8 +250,6 @@ class WindowPlanNode : public LeafPlanNode {
     explicit WindowPlanNode(int id)
         : LeafPlanNode(kPlanTypeWindow),
           id_(id),
-          exclude_current_time_(false),
-          instance_not_in_window_(false),
           name_(""),
           keys_(nullptr),
           orders_(nullptr) {}
@@ -275,17 +273,21 @@ class WindowPlanNode : public LeafPlanNode {
     void set_instance_not_in_window(bool instance_not_in_window) { instance_not_in_window_ = instance_not_in_window; }
     const bool exclude_current_time() const { return exclude_current_time_; }
     void set_exclude_current_time(bool exclude_current_time) { exclude_current_time_ = exclude_current_time; }
+    bool exclude_current_row() const { return exclude_current_row_; }
+    void set_exclude_current_row(bool flag) { exclude_current_row_ = flag; }
     virtual bool Equals(const PlanNode *node) const;
 
  private:
     int id_;
-    bool exclude_current_time_;
-    bool instance_not_in_window_;
     std::string name_;
     FrameNode *frame_node_;
     ExprListNode *keys_;
     OrderByNode *orders_;
     PlanNodeList union_tables_;
+
+    bool exclude_current_time_ = false;
+    bool exclude_current_row_ = false;
+    bool instance_not_in_window_ = false;
 };
 
 class ProjectListNode : public LeafPlanNode {
@@ -474,8 +476,10 @@ class CmdPlanNode : public LeafPlanNode {
 
 class DeletePlanNode : public LeafPlanNode {
  public:
-    DeletePlanNode(DeleteTarget target, std::string job_id)
-        : LeafPlanNode(kPlanTypeDelete), target_(target), job_id_(job_id) {}
+    DeletePlanNode(DeleteTarget target, std::string job_id,
+            const std::string& db_name, const std::string& table_name, const node::ExprNode* expression)
+        : LeafPlanNode(kPlanTypeDelete), target_(target), job_id_(job_id),
+        db_name_(db_name), table_name_(table_name), condition_(expression) {}
     ~DeletePlanNode() {}
 
     bool Equals(const PlanNode* that) const override;
@@ -483,10 +487,16 @@ class DeletePlanNode : public LeafPlanNode {
 
     const DeleteTarget GetTarget() const { return target_; }
     const std::string& GetJobId() const { return job_id_; }
+    const std::string& GetDatabase() const { return db_name_; }
+    const std::string& GetTableName() const { return table_name_; }
+    const ExprNode* GetCondition() const { return condition_; }
 
  private:
     const DeleteTarget target_;
     const std::string job_id_;
+    const std::string db_name_;
+    const std::string table_name_;
+    const ExprNode *condition_;
 };
 
 class DeployPlanNode : public LeafPlanNode {
@@ -592,7 +602,7 @@ class LoadDataPlanNode : public LeafPlanNode {
     const std::string table_;
     // optional options for load data, e.g csv related options
     const std::shared_ptr<OptionsMap> options_;
-    // optinal config option for load data, to config offline job parameters
+    // optional config option for load data, to config offline job parameters
     const std::shared_ptr<OptionsMap> config_options_;
 };
 

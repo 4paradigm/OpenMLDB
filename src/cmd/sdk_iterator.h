@@ -27,7 +27,7 @@ namespace cmd {
 
 class SDKIterator {
  public:
-    explicit SDKIterator(std::vector<std::shared_ptr<::openmldb::base::KvIterator>> iter_vec, uint32_t limit)
+    SDKIterator(std::vector<std::shared_ptr<::openmldb::base::KvIterator>> iter_vec, uint32_t limit)
         : iter_vec_(iter_vec), cur_iter_(), limit_(limit), cnt_(0) {
         Next();
     }

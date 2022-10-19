@@ -25,7 +25,7 @@
 #include <vector>
 
 #include "base/file_util.h"
-#include "base/glog_wapper.h"
+#include "base/glog_wrapper.h"
 #include "brpc/server.h"
 #include "client/ns_client.h"
 #include "common/timer.h"
@@ -75,10 +75,6 @@ class MiniCluster {
         if (ns_client_) {
             delete ns_client_;
         }
-
-        for (auto & t : tablets_) {
-            delete t.second;
-        }
         base::RemoveDirRecursive(db_root_path_);
     }
 
@@ -114,11 +110,12 @@ class MiniCluster {
             return false;
         }
         brpc::ServerOptions options;
-        if (ns_.AddService(nameserver, brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
-            LOG(WARNING) << "fail to start ns";
+        if (ns_.AddService(nameserver, brpc::SERVER_OWNS_SERVICE) != 0) {
+            LOG(WARNING) << "fail to add ns";
             return false;
         }
         if (ns_.Start(ns_endpoint.c_str(), &options) != 0) {
+            LOG(WARNING) << "fail to start ns";
             return false;
         }
         sleep(2);
@@ -141,6 +138,7 @@ class MiniCluster {
 
         for (int i = 0; i < tablet_num_; i++) {
             tb_servers_[i].Stop(10);
+            tb_servers_[i].Join();
         }
     }
 
@@ -184,11 +182,12 @@ class MiniCluster {
             return false;
         }
         brpc::ServerOptions ts_opt;
-        if (tb_server->AddService(tablet, brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
-            LOG(WARNING) << "fail to start tablet";
+        if (tb_server->AddService(tablet, brpc::SERVER_OWNS_SERVICE) != 0) {
+            LOG(WARNING) << "fail to add tablet";
             return false;
         }
         if (tb_server->Start(tb_endpoint.c_str(), &ts_opt) != 0) {
+            LOG(WARNING) << "fail to start tablet";
             return false;
         }
         ok = tablet->RegisterZK();
@@ -255,11 +254,12 @@ class StandaloneEnv {
             return false;
         }
         brpc::ServerOptions options;
-        if (ns_.AddService(nameserver, brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
-            LOG(WARNING) << "fail to start ns";
+        if (ns_.AddService(nameserver, brpc::SERVER_OWNS_SERVICE) != 0) {
+            LOG(WARNING) << "fail to add ns";
             return false;
         }
         if (ns_.Start(ns_endpoint.c_str(), &options) != 0) {
+            LOG(WARNING) << "fail to start ns";
             return false;
         }
         sleep(2);
@@ -277,7 +277,9 @@ class StandaloneEnv {
 
     void Close() {
         ns_.Stop(10);
+        ns_.Join();
         tb_server_.Stop(10);
+        tb_server_.Join();
     }
 
     ::openmldb::client::NsClient* GetNsClient() { return ns_client_; }
@@ -302,11 +304,12 @@ class StandaloneEnv {
             return false;
         }
         brpc::ServerOptions ts_opt;
-        if (tb_server->AddService(tablet, brpc::SERVER_DOESNT_OWN_SERVICE) != 0) {
-            LOG(WARNING) << "fail to start tablet";
+        if (tb_server->AddService(tablet, brpc::SERVER_OWNS_SERVICE) != 0) {
+            LOG(WARNING) << "fail to add tablet";
             return false;
         }
         if (tb_server->Start(tb_endpoint.c_str(), &ts_opt) != 0) {
+            LOG(WARNING) << "fail to start tablet";
             return false;
         }
         sleep(2);

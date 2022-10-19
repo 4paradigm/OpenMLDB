@@ -163,19 +163,26 @@ class InterfaceProvider {
     std::unordered_map<int, std::vector<BuiltRequest>> requests_;
 };
 
-struct GeneralError {
-    GeneralError() = default;
-    explicit GeneralError(std::string m) : msg(std::move(m)) {}
-    GeneralError& Set(std::string m) {
+struct GeneralResp {
+    GeneralResp() = default;
+    explicit GeneralResp(std::string m) : msg(std::move(m)) {}
+    // If set err message without code, code will be -1
+    GeneralResp& Set(std::string m) {
         msg = std::move(m);
+        code = -1;
         return *this;
     }
-    int code = -1;
-    std::string msg;
+    GeneralResp& Set(int c, std::string m) {
+        msg = std::move(m);
+        code = c;
+        return *this;
+    }
+    int code = 0;
+    std::string msg = "ok";
 };
 
 template <typename Archiver>
-Archiver& operator&(Archiver& ar, GeneralError& s) {  // NOLINT
+Archiver& operator&(Archiver& ar, GeneralResp& s) {  // NOLINT
     ar.StartObject();
     ar.Member("code") & s.code;
     ar.Member("msg") & s.msg;

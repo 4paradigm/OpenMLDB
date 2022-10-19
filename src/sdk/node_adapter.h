@@ -30,7 +30,7 @@ namespace sdk {
 
 class NodeAdapter {
  public:
-    static bool TransformToTableDef(::hybridse::node::CreatePlanNode* create_node, bool allow_empty_col_index,
+    static bool TransformToTableDef(::hybridse::node::CreatePlanNode* create_node,
                                     ::openmldb::nameserver::TableInfo* table, uint32_t default_replica_num,
                                     bool is_cluster_mode, hybridse::base::Status* status);
 
@@ -45,6 +45,10 @@ class NodeAdapter {
 
     static std::shared_ptr<hybridse::node::ConstNode> StringToData(const std::string& str,
                                                                    openmldb::type::DataType data_type);
+
+    static hybridse::sdk::Status ParseExprNode(const hybridse::node::BinaryExpr* expr_node,
+            const std::map<std::string, openmldb::type::DataType>& col_map,
+            std::map<std::string, std::string>* condition_map, std::map<std::string, int>* parameter_map);
 };
 
 }  // namespace sdk

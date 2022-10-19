@@ -68,7 +68,7 @@ object GroupByAggregationPlan {
     }
 
     // Wrap Spark closure
-    val limitCnt = node.GetLimitCnt
+    val limitCnt = node.GetLimitCntValue
     val projectConfig = ProjectConfig(
       functionName = node.project().fn_info().fn_name(),
       moduleTag = ctx.getTag,
@@ -117,7 +117,7 @@ object GroupByAggregationPlan {
         val grouopNativeRows =  mutable.ArrayBuffer[NativeRow]()
 
         iter.foreach(row => {
-          if (limitCnt <= 0 || currentLimitCnt < limitCnt) { // Do not set limit or not reach the limit
+          if (limitCnt < 0 || currentLimitCnt < limitCnt) { // Do not set limit or not reach the limit
             if (lastRow != null) { // Ignore the first row in partition
               val groupChanged = groupKeyComparator.apply(row, lastRow)
               if (groupChanged) {
@@ -151,7 +151,7 @@ object GroupByAggregationPlan {
         })
 
         // Run group by for the last group
-        if (limitCnt <= 0 || currentLimitCnt < limitCnt) {
+        if (limitCnt < 0 || currentLimitCnt < limitCnt) {
           val outputHybridseRow = CoreAPI.GroupbyProject(fn, groupbyInterface)
           val outputArr = Array.fill[Any](outputFields)(null)
           decoder.decode(outputHybridseRow, outputArr)

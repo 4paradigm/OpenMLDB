@@ -180,7 +180,7 @@ TEST_F(PlanNodeTest, UnaryPlanNodeTest) {
     std::cout << oss.str();
     ASSERT_EQ(
         "+-[kUnknow]\n"
-        "+-[kUnknow]",
+        "  +-[kUnknow]",
         oss.str());
 }
 

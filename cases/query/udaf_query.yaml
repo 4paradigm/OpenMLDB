@@ -138,7 +138,7 @@ cases:
         sum(f1) over w as sum,
         avg(d1) over w as av
       from t1
-          window w as (partition by `key1` order by `ts` rows_range between 5s open preceding and 0s preceding maxsize 10);
+          window w as (partition by `key1` order by `ts` rows_range between 5s open preceding and 0s preceding maxsize 10)
     expect:
       columns:
         - id int

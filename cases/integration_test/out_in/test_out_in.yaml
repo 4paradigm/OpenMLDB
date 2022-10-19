@@ -1,0 +1,868 @@
+# Copyright 2021 4Paradigm
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+db: test_zw
+debugs: ['数据里有null、空串、特殊字符']
+cases:
+  -
+    id: 0
+    desc: 数据里有null、空串、特殊字符
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+          - [2,"null",2,21,31,1.2,2.2,1590738990000,"2020-05-02",false]
+          - [3,"",3,22,32,1.3,2.3,1590738991000,"2020-05-03",true]
+          - [4,null,3,22,32,1.3,2.3,1590738991000,"2020-05-03",true]
+          - [5,null,3,22,32,1.3,2.3,1590738991000,"2020-05-03",null]
+          - [6,"~!@#$%^&*()_+<",3,22,32,1.3,2.3,1590738991000,"2020-05-03",null]
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+    sqls:
+      - select * from {0} into outfile '{0}.csv';
+      - load data infile '{0}.csv' into table {1};
+      - select * from {1};
+    expect:
+      count: 6
+  -
+    id: 1
+    desc: 全部数据类型测试
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+          - [2,"bb",2,21,31,1.2,2.2,1590738990000,"2020-05-02",false]
+          - [3,"cc",3,22,32,1.3,2.3,1590738991000,"2020-05-03",true]
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+    sqls:
+      - select * from {0} into outfile '{0}.csv';
+      - load data infile '{0}.csv' into table {1};
+      - select * from {1};
+    expect:
+      columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+      order: id
+      rows:
+        - [1,"aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+        - [2,"bb",2,21,31,1.2,2.2,1590738990000,"2020-05-02",false]
+        - [3,"cc",3,22,32,1.3,2.3,1590738991000,"2020-05-03",true]
+  -
+    id: 2
+    desc: 复杂sql结果导出
+    inputs:
+      -
+        columns : ["id int", "card_no string","merchant_id int", "trx_time timestamp", "trx_amt float"]
+        indexs: ["index1:card_no:trx_time"]
+        rows:
+          - [1, "aaaaaaaaaa",1, 1590738989000, 1.1]
+          - [2, "aaaaaaaaaa",1, 1590738990000, 2.2]
+          - [3, "bb",10, 1590738990000, 3.3]
+      -
+        columns : ["crd_lst_isu_dte timestamp", "crd_nbr string"]
+        indexs: ["index2:crd_nbr:crd_lst_isu_dte"]
+        rows:
+          - [1590738988000, "aaaaaaaaaa"]
+          - [1590738990000, "aaaaaaaaaa"]
+          - [1590738989000, "cc"]
+          - [1590738992000, "cc"]
+      -
+        columns: ["id int", "card_no string", "trx_time timestamp", "card_no_prefix string","sum_trx_amt float", "count_merchant_id int64", "crd_lst_isu_dte timestamp","crd_nbr string"]
+    sqls:
+      - select * from
+        (select
+        id,
+        card_no,
+        trx_time,
+        substr(card_no, 1, 6) as card_no_prefix,
+        sum(trx_amt) over w30d as sum_trx_amt,
+        count(merchant_id) over w10d as count_merchant_id
+        from  {0}
+        window w30d as (PARTITION BY {0}.card_no ORDER BY {0}.trx_time ROWS_RANGE BETWEEN 30d PRECEDING AND CURRENT ROW),
+        w10d as (PARTITION BY {0}.card_no ORDER BY {0}.trx_time ROWS_RANGE BETWEEN 10d PRECEDING AND CURRENT ROW)) as trx_fe
+        last join {1} order by {1}.crd_lst_isu_dte on trx_fe.card_no = {1}.crd_nbr and trx_fe.trx_time >= {1}.crd_lst_isu_dte
+        into outfile '{0}.csv';
+      - load data infile '{0}.csv' into table {2};
+      - select * from {2};
+    expect:
+      columns: ["id int", "card_no string", "trx_time timestamp", "card_no_prefix string","sum_trx_amt float", "count_merchant_id int64", "crd_lst_isu_dte timestamp","crd_nbr string"]
+      order: id
+      rows:
+        - [1, "aaaaaaaaaa", 1590738989000, "aaaaaa", 1.1, 1, 1590738988000, "aaaaaaaaaa"]
+        - [2, "aaaaaaaaaa", 1590738990000, "aaaaaa", 3.3, 2, 1590738990000, "aaaaaaaaaa"]
+        - [3, "bb", 1590738990000, "bb", 3.3, 1, null, null]
+  -
+    id: 4
+    desc: 执行其他库查询
+    inputs:
+      -
+        db: db1
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+          - [2,"bb",2,21,31,1.2,2.2,1590738990000,"2020-05-02",false]
+          - [3,"cc",3,22,32,1.3,2.3,1590738991000,"2020-05-03",true]
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+    sqls:
+      - select * from db1.{0} into outfile '{0}.csv';
+      - load data infile '{0}.csv' into table {1};
+      - select * from {1};
+    expect:
+      columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+      order: id
+      rows:
+        - [1,"aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+        - [2,"bb",2,21,31,1.2,2.2,1590738990000,"2020-05-02",false]
+        - [3,"cc",3,22,32,1.3,2.3,1590738991000,"2020-05-03",true]
+  -
+    id: 5
+    desc: 导出insert结果
+    inputs:
+      -
+        columns : ["id int","c1 string","c7 timestamp"]
+        indexs: ["index1:c1:c7"]
+    sqls:
+      - insert into {0} values (1,"aa",1590738989000) outfile '{0}.csv';
+    expect:
+      success: false
+  -
+    id: 6
+    desc: sql执行错误
+    inputs:
+      -
+        columns : ["id int","c1 string","c7 timestamp"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1590738989000]
+    sqls:
+      - select * from db1.{0} into outfile '{0}.csv';
+    expect:
+      success: false
+  -
+    id: 7
+    desc: mode默认值，文件已经存在
+    inputs:
+      -
+        columns : ["id int","c1 string","c7 timestamp"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1590738989000]
+    sqls:
+      - select * from {0} into outfile '{0}.csv';
+      - select * from {0} into outfile '{0}.csv';
+    expect:
+      success: false
+  -
+    id: 8
+    desc: mode=overwrite，先到处大数据量，再到处小数据量
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+          - [2,"bb",2,21,31,1.2,2.2,1590738990000,"2020-05-02",false]
+          - [3,"cc",3,22,32,1.3,2.3,1590738991000,"2020-05-03",true]
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+    sqls:
+      - select * from {0} into outfile '{0}.csv';
+      - select * from {1} into outfile '{0}.csv' options(mode='overwrite');
+      - load data infile '{0}.csv' into table {2};
+      - select * from {2};
+    expect:
+      columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+      order: id
+      rows:
+        - [1,"aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+  -
+    id: 9
+    desc: mode=append，相同的表到处两次
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+          - [2,"bb",2,21,31,1.2,2.2,1590738990000,"2020-05-02",false]
+          - [3,"cc",3,22,32,1.3,2.3,1590738991000,"2020-05-03",true]
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+    sqls:
+      - select * from {0} into outfile '{0}.csv';
+      - select * from {0} into outfile '{0}.csv' options(mode='append',header=false);
+      - load data infile '{0}.csv' into table {1};
+      - select * from {1};
+    expect:
+      columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+      order: id
+      rows:
+        - [1,"aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+        - [2,"bb",2,21,31,1.2,2.2,1590738990000,"2020-05-02",false]
+        - [3,"cc",3,22,32,1.3,2.3,1590738991000,"2020-05-03",true]
+        - [1,"aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+        - [2,"bb",2,21,31,1.2,2.2,1590738990000,"2020-05-02",false]
+        - [3,"cc",3,22,32,1.3,2.3,1590738991000,"2020-05-03",true]
+  -
+    id: 10
+    desc: mode=append，不同的表导出，第二次header=false
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+          - [2,"bb",2,21,31,1.2,2.2,1590738990000,"2020-05-02",false]
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [3,"cc",3,22,32,1.3,2.3,1590738991000,"2020-05-03",true]
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+    sqls:
+      - select * from {0} into outfile '{0}.csv';
+      - select * from {1} into outfile '{0}.csv' options(mode='append',header=false);
+      - load data infile '{0}.csv' into table {2};
+      - select * from {2};
+    expect:
+      columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+      order: id
+      rows:
+        - [1,"aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+        - [2,"bb",2,21,31,1.2,2.2,1590738990000,"2020-05-02",false]
+        - [3,"cc",3,22,32,1.3,2.3,1590738991000,"2020-05-03",true]
+  -
+    id: 11
+    desc: mode=append，不同的表导出，第二次header=true
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+          - [2,"bb",2,21,31,1.2,2.2,1590738990000,"2020-05-02",false]
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [3,"cc",3,22,32,1.3,2.3,1590738991000,"2020-05-03",true]
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+    sqls:
+      - select * from {0} into outfile '{0}.csv';
+      - select * from {1} into outfile '{0}.csv' options(mode='append',header=true);
+    expect:
+      cat:
+        path: "{0}.csv"
+        lines:
+          - id,c1,c2,c3,c4,c5,c6,c7,c8,c9
+          - 1,aa,1,2,3,1.100000,2.100000,1590738989000,2020-05-01,true
+          - 2,bb,2,21,31,1.200000,2.200000,1590738990000,2020-05-02,false
+          - id,c1,c2,c3,c4,c5,c6,c7,c8,c9
+          - 3,cc,3,22,32,1.300000,2.300000,1590738991000,2020-05-03,true
+  -
+    id: 12
+    desc: option key错误
+    inputs:
+      -
+        columns : ["id int","c1 string","c7 timestamp"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1590738989000]
+    sqls:
+      - select * from {0} into outfile '{0}.csv' options(head=true);
+    expect:
+      success: false
+  -
+    id: 13
+    desc: option header 值错误
+    inputs:
+      -
+        columns : ["id int","c1 string","c7 timestamp"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1590738989000]
+    sqls:
+      - select * from {0} into outfile '{0}.csv' options(header='true');
+    expect:
+      success: false
+  -
+    id: 14
+    desc: format 其他格式
+    inputs:
+      -
+        columns : ["id int","c1 string","c7 timestamp"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1590738989000]
+    sqls:
+      - select * from {0} into outfile '{0}.csv' options(format='txt');
+    expect:
+      success: false
+  -
+    id: 15
+    desc: delimiter为一些特殊字符
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+          - [2,"bb",2,21,31,1.2,2.2,1590738990000,"2020-05-02",false]
+          - [3,"cc",3,22,32,1.3,2.3,1590738991000,"2020-05-03",true]
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+    sqls:
+      - select * from {0} into outfile '{0}.csv' options(delimiter='@');
+      - load data infile '{0}.csv' into table {1} options(delimiter='@');
+      - select * from {1};
+    expect:
+      columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+      order: id
+      rows:
+        - [1,"aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+        - [2,"bb",2,21,31,1.2,2.2,1590738990000,"2020-05-02",false]
+        - [3,"cc",3,22,32,1.3,2.3,1590738991000,"2020-05-03",true]
+  -
+    id: 16
+    desc: null_value为特殊字符
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+          - [2,"null",2,21,31,1.2,2.2,1590738990000,"2020-05-02",false]
+          - [3,null,3,22,32,1.3,2.3,1590738991000,"2020-05-03",null]
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+    sqls:
+      - select * from {0} into outfile '{0}.csv' options(null_value='~!@#$%^&*()_+');
+      - load data infile '{0}.csv' into table {1} options(null_value='~!@#$%^&*()_+');
+      - select * from {1};
+    expect:
+      count: 3
+  -
+    id: 17
+    desc: String 有null 空串 ”null“ null_value为”“
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+          - [2,"null",2,21,31,1.2,2.2,1590738990000,"2020-05-02",false]
+          - [3,"",3,22,32,1.3,2.3,1590738991000,"2020-05-03",true]
+          - [4,null,3,22,32,1.3,2.3,1590738991000,"2020-05-03",true]
+          - [5,null,3,22,32,1.3,2.3,1590738991000,"2020-05-03",null]
+          - [6,"~!@#$%^&*()_+<",3,22,32,1.3,2.3,1590738991000,"2020-05-03",null]
+    sqls:
+      - select * from {0} into outfile '{0}.csv' options(null_value='');
+    expect:
+      cat:
+        path: "{0}.csv"
+        lines:
+          - id,c1,c2,c3,c4,c5,c6,c7,c8,c9
+          - 3,,3,22,32,1.300000,2.300000,1590738991000,2020-05-03,true
+          - 5,,3,22,32,1.300000,2.300000,1590738991000,2020-05-03,
+          - 4,,3,22,32,1.300000,2.300000,1590738991000,2020-05-03,true
+          - 1,aa,1,2,3,1.100000,2.100000,1590738989000,2020-05-01,true
+          - 6,~!@#$%^&*()_+<,3,22,32,1.300000,2.300000,1590738991000,2020-05-03,
+          - 2,null,2,21,31,1.200000,2.200000,1590738990000,2020-05-02,false
+  -
+    id: 18
+    desc: String 有null 空串 ”null“ null_value为”null“
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+          - [2,"null",2,21,31,1.2,2.2,1590738990000,"2020-05-02",false]
+          - [3,"",3,22,32,1.3,2.3,1590738991000,"2020-05-03",true]
+          - [4,null,3,22,32,1.3,2.3,1590738991000,"2020-05-03",true]
+          - [5,null,3,22,32,1.3,2.3,1590738991000,"2020-05-03",null]
+          - [6,"~!@#$%^&*()_+<",3,22,32,1.3,2.3,1590738991000,"2020-05-03",null]
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+    sqls:
+      - select * from {0} into outfile '{0}.csv' options(null_value='null');
+    expect:
+      cat:
+        path: "{0}.csv"
+        lines:
+          - id,c1,c2,c3,c4,c5,c6,c7,c8,c9
+          - 3,,3,22,32,1.300000,2.300000,1590738991000,2020-05-03,true
+          - 5,null,3,22,32,1.300000,2.300000,1590738991000,2020-05-03,null
+          - 4,null,3,22,32,1.300000,2.300000,1590738991000,2020-05-03,true
+          - 1,aa,1,2,3,1.100000,2.100000,1590738989000,2020-05-01,true
+          - 6,~!@#$%^&*()_+<,3,22,32,1.300000,2.300000,1590738991000,2020-05-03,null
+          - 2,null,2,21,31,1.200000,2.200000,1590738990000,2020-05-02,false
+  -
+    id: 19
+    desc: header=false导出数据
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+          - [2,"bb",2,21,31,1.2,2.2,1590738990000,"2020-05-02",false]
+          - [3,"cc",3,22,32,1.3,2.3,1590738991000,"2020-05-03",true]
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+    sqls:
+      - select * from {0} into outfile '{0}.csv' options(header=false);
+      - load data infile '{0}.csv' into table {1} options(header=false);
+      - select * from {1};
+    expect:
+      columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+      order: id
+      rows:
+        - [1,"aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+        - [2,"bb",2,21,31,1.2,2.2,1590738990000,"2020-05-02",false]
+        - [3,"cc",3,22,32,1.3,2.3,1590738991000,"2020-05-03",true]
+  -
+    id: 20
+    desc: format=csv，导出数据
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+          - [2,"bb",2,21,31,1.2,2.2,1590738990000,"2020-05-02",false]
+          - [3,"cc",3,22,32,1.3,2.3,1590738991000,"2020-05-03",true]
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+    sqls:
+      - select * from {0} into outfile '{0}.csv' options(format='csv');
+      - load data infile '{0}.csv' into table {1} options(format='csv');
+      - select * from {1};
+    expect:
+      columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+      order: id
+      rows:
+        - [1,"aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+        - [2,"bb",2,21,31,1.2,2.2,1590738990000,"2020-05-02",false]
+        - [3,"cc",3,22,32,1.3,2.3,1590738991000,"2020-05-03",true]
+  -
+    id: 21
+    desc: 路径文件夹不存在
+    inputs:
+      -
+        columns : ["id int","c1 string","c7 timestamp"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1590738989000]
+    sqls:
+      - select * from {0} into outfile '/{0}/{0}.csv';
+    expect:
+      success: false
+  -
+    id: 22
+    desc: 数据类型不匹配
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+          - [2,"bb",2,21,31,1.2,2.2,1590738990000,"2020-05-02",false]
+          - [3,"cc",3,22,32,1.3,2.3,1590738991000,"2020-05-03",true]
+      -
+        columns : ["id int","c1 int","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+    sqls:
+      - select * from {0} into outfile '{0}.csv';
+      - load data infile '{0}.csv' into table {1};
+    expect:
+      success: false
+  -
+    id: 23
+    desc: header=true导出数据
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+          - [2,"bb",2,21,31,1.2,2.2,1590738990000,"2020-05-02",false]
+          - [3,"cc",3,22,32,1.3,2.3,1590738991000,"2020-05-03",true]
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+    sqls:
+      - select * from {0} into outfile '{0}.csv' options(header=true);
+      - load data infile '{0}.csv' into table {1} options(header=true);
+      - select * from {1};
+    expect:
+      columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+      order: id
+      rows:
+        - [1,"aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+        - [2,"bb",2,21,31,1.2,2.2,1590738990000,"2020-05-02",false]
+        - [3,"cc",3,22,32,1.3,2.3,1590738991000,"2020-05-03",true]
+  -
+    id: 24
+    desc: header=true，csv没有header
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+          - [2,"bb",2,21,31,1.2,2.2,1590738990000,"2020-05-02",false]
+          - [3,"cc",3,22,32,1.3,2.3,1590738991000,"2020-05-03",true]
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+    sqls:
+      - select * from {0} into outfile '{0}.csv' options(header=false);
+      - load data infile '{0}.csv' into table {1} options(header=true);
+    expect:
+      success: false
+  -
+    id: 25
+    desc: header=false，csv有header
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+          - [2,"bb",2,21,31,1.2,2.2,1590738990000,"2020-05-02",false]
+          - [3,"cc",3,22,32,1.3,2.3,1590738991000,"2020-05-03",true]
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+    sqls:
+      - select * from {0} into outfile '{0}.csv' options(header=true);
+      - load data infile '{0}.csv' into table {1} options(header=false);
+    expect:
+      success: false
+  -
+    id: 26
+    desc: 表不存在
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+          - [2,"bb",2,21,31,1.2,2.2,1590738990000,"2020-05-02",false]
+          - [3,"cc",3,22,32,1.3,2.3,1590738991000,"2020-05-03",true]
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+    sqls:
+      - select * from {0} into outfile '{0}.csv' options(header=true);
+      - load data infile '{0}.csv' into table {1}11 options(header=true);
+    expect:
+      success: false
+  -
+    id: 27
+    desc: format=csv，csv格式的文件，文件名不是csv结尾
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+          - [2,"bb",2,21,31,1.2,2.2,1590738990000,"2020-05-02",false]
+          - [3,"cc",3,22,32,1.3,2.3,1590738991000,"2020-05-03",true]
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+    sqls:
+      - select * from {0} into outfile '{0}.txt' ;
+      - load data infile '{0}.txt' into table {1} options(format='csv');
+      - select * from {1};
+    expect:
+      columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+      order: id
+      rows:
+        - [1,"aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+        - [2,"bb",2,21,31,1.2,2.2,1590738990000,"2020-05-02",false]
+        - [3,"cc",3,22,32,1.3,2.3,1590738991000,"2020-05-03",true]
+  -
+    id: 28
+    desc: format=其他值
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+          - [2,"bb",2,21,31,1.2,2.2,1590738990000,"2020-05-02",false]
+          - [3,"cc",3,22,32,1.3,2.3,1590738991000,"2020-05-03",true]
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+    sqls:
+      - select * from {0} into outfile '{0}.csv';
+      - load data infile '{0}.csv' into table {1} options(format='txt');
+    expect:
+      success: false
+  -
+    id: 29
+    desc: 路径错误
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+          - [2,"bb",2,21,31,1.2,2.2,1590738990000,"2020-05-02",false]
+          - [3,"cc",3,22,32,1.3,2.3,1590738991000,"2020-05-03",true]
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+    sqls:
+      - select * from {0} into outfile '{0}.csv';
+      - load data infile '{0}1.csv' into table {1};
+    expect:
+      success: false
+  -
+    id: 30
+    desc: 导入其他库的表
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+          - [2,"bb",2,21,31,1.2,2.2,1590738990000,"2020-05-02",false]
+          - [3,"cc",3,22,32,1.3,2.3,1590738991000,"2020-05-03",true]
+      -
+        db: db1
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+    sqls:
+      - select * from {0} into outfile '{0}.csv';
+      - load data infile '{0}.csv' into table db1.{1};
+      - select * from db1.{1};
+    expect:
+      columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+      order: id
+      rows:
+        - [1,"aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+        - [2,"bb",2,21,31,1.2,2.2,1590738990000,"2020-05-02",false]
+        - [3,"cc",3,22,32,1.3,2.3,1590738991000,"2020-05-03",true]
+  -
+    id: 31
+    desc: 导出后导入
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+          - [2,"bb",2,21,31,1.2,2.2,1590738990000,"2020-05-02",false]
+          - [3,"cc",3,22,32,1.3,2.3,1590738991000,"2020-05-03",true]
+    sqls:
+      - select * from {0} into outfile '{0}.csv';
+      - load data infile '{0}.csv' into table {0};
+      - select * from {0};
+    expect:
+      columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+      order: id
+      rows:
+        - [1,"aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+        - [2,"bb",2,21,31,1.2,2.2,1590738990000,"2020-05-02",false]
+        - [3,"cc",3,22,32,1.3,2.3,1590738991000,"2020-05-03",true]
+        - [1,"aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+        - [2,"bb",2,21,31,1.2,2.2,1590738990000,"2020-05-02",false]
+        - [3,"cc",3,22,32,1.3,2.3,1590738991000,"2020-05-03",true]
+  -
+    id: 32
+    desc: 创建表的列和csv对不上
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+          - [2,"bb",2,21,31,1.2,2.2,1590738990000,"2020-05-02",false]
+          - [3,"cc",3,22,32,1.3,2.3,1590738991000,"2020-05-03",true]
+      -
+        columns : ["id int","c1 string","cc smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+    sqls:
+      - select * from {0} into outfile '{0}.csv';
+      - load data infile '{0}1.csv' into table {1};
+    expect:
+      success: false
+  -
+    id: 33
+    desc: 表中已经有数据，然后导入
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+          - [2,"bb",2,21,31,1.2,2.2,1590738990000,"2020-05-02",false]
+          - [3,"cc",3,22,32,1.3,2.3,1590738991000,"2020-05-03",true]
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+          - [2,"bb",2,21,31,1.2,2.2,1590738990000,"2020-05-02",false]
+          - [3,"cc",3,22,32,1.3,2.3,1590738991000,"2020-05-03",true]
+    sqls:
+      - select * from {0} into outfile '{0}.csv';
+      - load data infile '{0}.csv' into table {1};
+      - select * from {1};
+    expect:
+      columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+      order: id
+      rows:
+        - [1,"aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+        - [2,"bb",2,21,31,1.2,2.2,1590738990000,"2020-05-02",false]
+        - [3,"cc",3,22,32,1.3,2.3,1590738991000,"2020-05-03",true]
+        - [1,"aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+        - [2,"bb",2,21,31,1.2,2.2,1590738990000,"2020-05-02",false]
+        - [3,"cc",3,22,32,1.3,2.3,1590738991000,"2020-05-03",true]
+  -
+    id: 34
+    desc: delimiter为，数据中有，
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+          - [2,"b,b",2,21,31,1.2,2.2,1590738990000,"2020-05-02",false]
+          - [3,"cc",3,22,32,1.3,2.3,1590738991000,"2020-05-03",true]
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+    sqls:
+      - select * from {0} into outfile '{0}.csv';
+      - load data infile '{0}.csv' into table {1} options(delimiter=',');
+    expect:
+      success: false
+  -
+    id: 35
+    desc: 导入-null_value=null
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+          - [2,"null",2,21,31,1.2,2.2,1590738990000,"2020-05-02",false]
+          - [3,null,3,22,32,1.3,2.3,1590738991000,"2020-05-03",null]
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+    sqls:
+      - select * from {0} into outfile '{0}.csv' options(null_value='null');
+      - load data infile '{0}.csv' into table {1} options(null_value='null');
+      - select * from {1};
+    expect:
+      count: 3
+  -
+    id: 36
+    desc: 导入-null_value=空串
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01",true]
+          - [2,"null",2,21,31,1.2,2.2,1590738990000,"2020-05-02",false]
+          - [3,null,3,22,32,1.3,2.3,1590738991000,"2020-05-03",null]
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:c7"]
+    sqls:
+      - select * from {0} into outfile '{0}.csv' options(null_value='');
+      - load data infile '{0}.csv' into table {1} options(null_value='');
+      - select * from {1};
+    expect:
+      count: 3
+  -
+    id: 37
+    desc: 表删除后再次导入
+    inputs:
+      -
+        columns : ["id int","c1 string","c7 timestamp"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1590738989000]
+          - [2,"bb",1590738990000]
+          - [3,"cc",1590738991000]
+      -
+        columns : ["id int","c1 string","c7 timestamp"]
+        indexs: ["index1:c1:c7"]
+    sqls:
+      - select * from {0} into outfile '{0}.csv';
+      - load data infile '{0}.csv' into table {1};
+      - drop table {1};
+      - create table {1}(
+        id int,
+        c1 string,
+        c7 timestamp,
+        index(key=(c1),ts=c7))options(partitionnum=1,replicanum=1);
+      - load data infile '{0}.csv' into table {1};
+      - select * from {1};
+    expect:
+      columns : ["id int","c1 string","c7 timestamp"]
+      order: id
+      rows:
+        - [1,"aa",1590738989000]
+        - [2,"bb",1590738990000]
+        - [3,"cc",1590738991000]
+  -
+    id: 38
+    desc: mode 值错误
+    inputs:
+      -
+        columns : ["id int","c1 string","c7 timestamp"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1590738989000]
+    sqls:
+      - select * from {0} into outfile '{0}.csv' options(mode='true');
+    expect:
+      success: false
+
+
+

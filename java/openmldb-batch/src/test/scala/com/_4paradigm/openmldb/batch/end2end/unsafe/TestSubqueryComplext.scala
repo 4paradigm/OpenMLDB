@@ -16,20 +16,13 @@
 
 package com._4paradigm.openmldb.batch.end2end.unsafe
 
-import com._4paradigm.openmldb.batch.SparkTestSuite
+import com._4paradigm.openmldb.batch.UnsaferowoptSparkTestSuite
 import com._4paradigm.openmldb.batch.api.OpenmldbSession
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.types.{FloatType, IntegerType, StringType, StructField, StructType, TimestampType}
 import java.sql.Timestamp
 
-class TestSubqueryComplext extends SparkTestSuite {
-
-  override def customizedBefore(): Unit = {
-    val spark = getSparkSession
-    spark.conf.set("spark.openmldb.unsaferow.opt", true)
-    spark.conf.set("spark.openmldb.opt.unsaferow.window", true)
-    spark.conf.set("spark.openmldb.opt.unsaferow.project", true)
-  }
+class TestSubqueryComplext extends UnsaferowoptSparkTestSuite {
 
   test("Test subquery") {
     val spark = getSparkSession
@@ -81,13 +74,6 @@ class TestSubqueryComplext extends SparkTestSuite {
 
     val outputDf = sess.sql(sqlText)
     assert(outputDf.count() == 3)
-  }
-
-  override def customizedAfter(): Unit = {
-    val spark = getSparkSession
-    spark.conf.set("spark.openmldb.unsaferow.opt", false)
-    spark.conf.set("spark.openmldb.opt.unsaferow.window", false)
-    spark.conf.set("spark.openmldb.opt.unsaferow.project", false)
   }
 
 }

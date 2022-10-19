@@ -284,9 +284,20 @@ class TabletImpl : public ::openmldb::api::TabletServer {
                                 ::google::protobuf::Closure* done) override;
 
  private:
+    class UpdateAggrClosure : public Closure {
+     public:
+        explicit UpdateAggrClosure(const std::function<void()>& callback) : callback_(callback) {}
+
+        void Run() override {
+            callback_();
+        }
+
+     private:
+        std::function<void()> callback_;
+    };
+
     bool CreateMultiDir(const std::vector<std::string>& dirs);
     // Get table by table id , no need external synchronization
-    // Get table by table id , and Need external synchronization
     std::shared_ptr<Table> GetTableUnLock(uint32_t tid, uint32_t pid);
 
     std::shared_ptr<LogReplicator> GetReplicator(uint32_t tid, uint32_t pid);

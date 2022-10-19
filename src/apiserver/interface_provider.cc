@@ -159,7 +159,7 @@ void InterfaceProvider::registerRequest(brpc::HttpMethod type, std::string const
 
 bool InterfaceProvider::handle(const std::string& path, const brpc::HttpMethod& method, const butil::IOBuf& req_body,
                                JsonWriter& writer) {
-    auto err = GeneralError();
+    auto err = GeneralResp();
     Url url;
 
     if (!ReducedUrlParser::parse(path, &url)) {

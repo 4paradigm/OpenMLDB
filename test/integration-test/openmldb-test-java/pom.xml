@@ -13,12 +13,28 @@
         <module>openmldb-sdk-test</module>
         <module>openmldb-http-test</module>
         <module>openmldb-tool-test</module>
+        <module>openmldb-deploy</module>
+        <module>openmldb-devops-test</module>
+        <module>openmldb-ecosystem</module>
     </modules>
 
     <properties>
         <maven.compiler.source>8</maven.compiler.source>
         <maven.compiler.target>8</maven.compiler.target>
     </properties>
+
+    <repositories>
+        <repository>
+            <id>s01.oss.sonatype.org-snapshot</id>
+            <url>https://s01.oss.sonatype.org/content/repositories/snapshots</url>
+            <releases>
+                <enabled>false</enabled>
+            </releases>
+            <snapshots>
+                <enabled>true</enabled>
+            </snapshots>
+        </repository>
+    </repositories>
 
     <dependencies>
         <!-- log -->
@@ -80,7 +96,7 @@
         <dependency>
             <groupId>org.yaml</groupId>
             <artifactId>snakeyaml</artifactId>
-            <version>1.26</version>
+            <version>1.31</version>
         </dependency>
     </dependencies>
 

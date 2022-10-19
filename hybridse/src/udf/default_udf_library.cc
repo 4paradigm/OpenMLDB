@@ -553,6 +553,59 @@ struct TopKDef {
 };
 
 void DefaultUdfLibrary::InitStringUdf() {
+    RegisterExternalTemplate<v1::ToHex>("hex")
+        .args_in<int16_t, int32_t, int64_t, float, double>()
+        .return_by_arg(true)
+        .doc(R"(
+            @brief Convert number to hexadecimal. If double, convert to hexadecimal after rounding.
+
+            Example:
+
+            @code{.sql}
+                select hex(17);
+                --output "11"
+                select hex(17.4);
+                --output "11"
+                select hex(17.5);
+                --output "12"
+            @endcode
+            @since 0.6.0)");
+
+    RegisterExternal("hex")
+        .args<StringRef>(static_cast<void (*)(StringRef*, StringRef*)>(udf::v1::hex))
+        .return_by_arg(true)
+        .doc(R"(
+            @brief Convert integer to hexadecimal.
+
+            Example:
+
+            @code{.sql}
+                select hex("Spark SQL");
+                --output "537061726B2053514C"
+            @endcode
+            @since 0.6.0)");
+
+    RegisterExternal("unhex")
+        .args<StringRef>(reinterpret_cast<void*>(static_cast<void (*)(StringRef*, StringRef*, bool*)>(udf::v1::unhex)))
+        .return_by_arg(true)
+        .returns<Nullable<StringRef>>()
+        .doc(R"(
+            @brief Convert hexadecimal to binary string.
+
+            Example:
+
+            @code{.sql}
+                select unhex("537061726B2053514C");
+                --output "Spark SQL"
+
+                select unhex("7B");
+                --output "{"
+
+                select unhex("zfk");
+                --output NULL
+            @endcode
+            @since 0.7.0)");
+
     RegisterExternalTemplate<v1::ToString>("string")
         .args_in<int16_t, int32_t, int64_t, float, double>()
         .return_by_arg(true)
@@ -670,7 +723,7 @@ void DefaultUdfLibrary::InitStringUdf() {
                 Example:
 
                 @code{.sql}
-                    select concat("-", "1", 2, 3, 4, 5.6, 7.8, Timestamp(1590115420000L));
+                    select concat_ws("-", "1", 2, 3, 4, 5.6, 7.8, Timestamp(1590115420000L));
                     -- output "1-2-3-4-5.6-7.8-2020-05-22 10:43:40"
                 @endcode
                 @since 0.1.0)");
@@ -807,6 +860,7 @@ void DefaultUdfLibrary::InitStringUdf() {
                 5. if one or more of target, pattern and escape are null values, then the result is null
 
                 Example:
+
                 @code{.sql}
                     select like_match('Mike', 'Mi_e', '\\')
                     -- output: true
@@ -850,6 +904,7 @@ void DefaultUdfLibrary::InitStringUdf() {
                 5. if one or more of target, pattern then the result is null
 
                 Example:
+
                 @code{.sql}
                     select like_match('Mike', 'Mi_k')
                     -- output: true
@@ -888,6 +943,7 @@ void DefaultUdfLibrary::InitStringUdf() {
 
 
                 Example:
+
                 @code{.sql}
                     select ilike_match('Mike', 'mi_e', '\\')
                     -- output: true
@@ -931,6 +987,7 @@ void DefaultUdfLibrary::InitStringUdf() {
                 5. Return NULL if target or pattern is NULL
 
                 Example:
+
                 @code{.sql}
                     select ilike_match('Mike', 'Mi_k')
                     -- output: true
@@ -944,6 +1001,101 @@ void DefaultUdfLibrary::InitStringUdf() {
                 @param pattern: the glob match pattern
 
                 @since 0.4.0
+        )r");
+    RegisterExternal("regexp_like")
+        .args<StringRef, StringRef, StringRef>(reinterpret_cast<void*>(
+            static_cast<void (*)(StringRef*, StringRef*, StringRef*, bool*, bool*)>(
+                udf::v1::regexp_like)))
+        .return_by_arg(true)
+        .returns<Nullable<bool>>()
+        .doc(R"r(
+                @brief pattern match same as RLIKE predicate (based on RE2)
+
+                Rules:
+                1. Accept standard POSIX (egrep) syntax regular expressions
+                   - dot (.) : matches any single-width ASCII character in an expression, with the exception of line break characters.
+                   - asterisk (*) : matches the preceding token zero or more times.
+                   - plus sign (+) : matches the preceding token one or more times.
+                   - question mark (?) : identifies the preceding character as being optional.
+                   - vertical bar (|) : separates tokens, one of which must be matched, much like a logical OR statement.
+                   - parenthesis ('(' and ')') : groups multiple tokens together to disambiguate or simplify references to them.
+                   - open square bracket ([) and close square bracket (]) : enclose specific characters or a range of characters to be matched. The characters enclosed inside square brackets are known as a character class.
+                   - caret (^) : the caret has two different meanings in a regular expression, depending on where it appears:
+                     As the first character in a character class, a caret negates the characters in that character class.
+                     As the first character in a regular expression, a caret identifies the beginning of a term. In this context, the caret is often referred to as an anchor character.
+                   - dollar sign ($) : as the last character in a regular expression, a dollar sign identifies the end of a term. In this context, the dollar sign is often referred to as an anchor character.
+                   - backslash (\) : used to invoke the actual character value for a metacharacter in a regular expression.
+                2. Default flags parameter: 'c'
+                3. backslash: sql string literal use backslash(\) for escape sequences, write '\\' as backslash itself
+                4. if one or more of target, pattern and flags are null values, then the result is null
+
+                Example:
+
+                @code{.sql}
+                    select regexp_like('Mike', 'Mi.k')
+                    -- output: true
+
+                    select regexp_like('Mi\nke', 'mi.k')
+                    -- output: false
+
+                    select regexp_like('Mi\nke', 'mi.k', 'si')
+                    -- output: true
+
+                    select regexp_like('append', 'ap*end')
+                    -- output: true
+                @endcode
+
+                @param target: string to match
+
+                @param pattern: the regular expression match pattern
+
+                @param flags: specifies the matching behavior of the regular expression function. 'c': case-sensitive matching(default); 'i': case-insensitive matching; 'm': multi-line mode; 'e': Extracts sub-matches(ignored here); 's': Enables the POSIX wildcard character . to match new line.
+
+                @since 0.6.1
+        )r");
+    RegisterExternal("regexp_like")
+        .args<StringRef, StringRef>(reinterpret_cast<void*>(
+            static_cast<void (*)(StringRef*, StringRef*, bool*, bool*)>(
+                udf::v1::regexp_like)))
+        .return_by_arg(true)
+        .returns<Nullable<bool>>()
+        .doc(R"r(
+                @brief pattern match same as RLIKE predicate (based on RE2)
+
+                Rules:
+                1. Accept standard POSIX (egrep) syntax regular expressions
+                   - dot (.) : matches any single-width ASCII character in an expression, with the exception of line break characters.
+                   - asterisk (*) : matches the preceding token zero or more times.
+                   - plus sign (+) : matches the preceding token one or more times.
+                   - question mark (?) : identifies the preceding character as being optional.
+                   - vertical bar (|) : separates tokens, one of which must be matched, much like a logical OR statement.
+                   - parenthesis ('(' and ')') : groups multiple tokens together to disambiguate or simplify references to them.
+                   - open square bracket ([) and close square bracket (]) : enclose specific characters or a range of characters to be matched. The characters enclosed inside square brackets are known as a character class.
+                   - caret (^) : the caret has two different meanings in a regular expression, depending on where it appears:
+                     As the first character in a character class, a caret negates the characters in that character class.
+                     As the first character in a regular expression, a caret identifies the beginning of a term. In this context, the caret is often referred to as an anchor character.
+                   - dollar sign ($) : as the last character in a regular expression, a dollar sign identifies the end of a term. In this context, the dollar sign is often referred to as an anchor character.
+                   - backslash (\) : used to invoke the actual character value for a metacharacter in a regular expression.
+                2. case sensitive
+                3. backslash: sql string literal use backslash(\) for escape sequences, write '\\' as backslash itself
+                4. Return NULL if target or pattern is NULL
+
+                Example:
+
+                @code{.sql}
+                    select regexp_like('Mike', 'Mi.k')
+                    -- output: true
+
+                    select regexp_like('append', 'ap*end')
+                    -- output: true
+
+                @endcode
+
+                @param target: string to match
+
+                @param pattern: the regular expression match pattern
+
+                @since 0.6.1
         )r");
     RegisterExternal("ucase")
         .args<StringRef>(
@@ -1071,7 +1223,7 @@ void DefaultUdfLibrary::InitMathUdf() {
 
             @code{.sql}
 
-                SELECT LOG(1);  
+                SELECT LOG(1);
                 -- output 0.000000
 
                 SELECT LOG(10,100);
@@ -1119,7 +1271,7 @@ void DefaultUdfLibrary::InitMathUdf() {
 
             @code{.sql}
 
-                SELECT LN(1);  
+                SELECT LN(1);
                 -- output 0.000000
 
             @endcode
@@ -1149,7 +1301,7 @@ void DefaultUdfLibrary::InitMathUdf() {
 
             @code{.sql}
 
-                SELECT LOG2(65536);  
+                SELECT LOG2(65536);
                 -- output 16
 
             @endcode
@@ -1179,7 +1331,7 @@ void DefaultUdfLibrary::InitMathUdf() {
 
             @code{.sql}
 
-                SELECT LOG10(100);  
+                SELECT LOG10(100);
                 -- output 2
 
             @endcode
@@ -1270,7 +1422,7 @@ void DefaultUdfLibrary::InitMathUdf() {
 
             @code{.sql}
 
-                SELECT EXP(0);  
+                SELECT EXP(0);
                 -- output 1
 
             @endcode
@@ -1514,7 +1666,7 @@ void DefaultUdfLibrary::InitTrigonometricUdf() {
 
             @code{.sql}
 
-                SELECT ATAN(-0.0);  
+                SELECT ATAN(-0.0);
                 -- output -0.000000
 
                 SELECT ATAN(0, -0);
@@ -1618,7 +1770,7 @@ void DefaultUdfLibrary::InitTrigonometricUdf() {
 
             @code{.sql}
 
-                SELECT COT(1);  
+                SELECT COT(1);
                 -- output 0.6420926159343306
 
             @endcode
@@ -1708,7 +1860,7 @@ void DefaultUdfLibrary::InitLogicalUdf() {
             Example:
 
             @code{.sql}
-                SELECT if_null("hello", "default"), if_null(NULL, "default");
+                SELECT if_null("hello", "default"), if_null(cast(null as string), "default");
                 -- output ["hello", "default"]
             @endcode
 
@@ -1916,6 +2068,7 @@ void DefaultUdfLibrary::InitTimeAndDateUdf() {
             @brief Return the year part of a timestamp or date
 
             Example:
+
             @code{.sql}
                 select year(timestamp(1590115420000));
                 -- output 2020
@@ -1945,6 +2098,7 @@ void DefaultUdfLibrary::InitTimeAndDateUdf() {
             @brief Return the month part of a timestamp or date
 
             Example:
+
             @code{.sql}
                 select month(timestamp(1590115420000));
                 -- output 5
@@ -1976,6 +2130,7 @@ void DefaultUdfLibrary::InitTimeAndDateUdf() {
             Note: This function equals the `day()` function.
 
             Example:
+
             @code{.sql}
                 select dayofmonth(timestamp(1590115420000));
                 -- output 22
@@ -2012,6 +2167,7 @@ void DefaultUdfLibrary::InitTimeAndDateUdf() {
             Note: This function equals the `week()` function.
 
             Example:
+
             @code{.sql}
                 select dayofweek(timestamp(1590115420000));
                 -- output 6
@@ -2019,14 +2175,12 @@ void DefaultUdfLibrary::InitTimeAndDateUdf() {
             @since 0.4.0
         )");
 
-    RegisterExternal("dayofyear")
-        .args<int64_t>(static_cast<int32_t (*)(int64_t)>(v1::dayofyear))
-        .args<Timestamp>(static_cast<int32_t (*)(Timestamp*)>(v1::dayofyear))
-        .args<Date>(static_cast<int32_t (*)(Date*)>(v1::dayofyear))
-        .doc(R"(
+    const std::string dayofyear_doc =
+        R"(
             @brief Return the day of year for a timestamp or date. Returns 0 given an invalid date.
 
             Example:
+
             @code{.sql}
                 select dayofyear(timestamp(1590115420000));
                 -- output 143
@@ -2041,7 +2195,25 @@ void DefaultUdfLibrary::InitTimeAndDateUdf() {
                 -- output 0
             @endcode
             @since 0.1.0
-        )");
+        )";
+
+    RegisterExternal("dayofyear")
+        .args<int64_t>(reinterpret_cast<void*>(static_cast<void (*)(int64_t, int32_t*, bool*)>(v1::dayofyear)))
+        .return_by_arg(true)
+        .returns<Nullable<int32_t>>()
+        .doc(dayofyear_doc);
+
+    RegisterExternal("dayofyear")
+        .args<Timestamp>(reinterpret_cast<void*>(static_cast<void (*)(Timestamp*, int32_t*, bool*)>(v1::dayofyear)))
+        .return_by_arg(true)
+        .returns<Nullable<int32_t>>()
+        .doc(dayofyear_doc);
+
+    RegisterExternal("dayofyear")
+        .args<Date>(reinterpret_cast<void*>(static_cast<void (*)(Date*, int32_t*, bool*)>(v1::dayofyear)))
+        .return_by_arg(true)
+        .returns<Nullable<int32_t>>()
+        .doc(dayofyear_doc);
 
     RegisterExternal("weekofyear")
         .args<int64_t>(static_cast<int32_t (*)(int64_t)>(v1::weekofyear))
@@ -2051,6 +2223,7 @@ void DefaultUdfLibrary::InitTimeAndDateUdf() {
             @brief Return the week of year for a timestamp or date.
 
             Example:
+
             @code{.sql}
                 select weekofyear(timestamp(1590115420000));
                 -- output 21
@@ -2062,12 +2235,48 @@ void DefaultUdfLibrary::InitTimeAndDateUdf() {
 
     RegisterAlias("week", "weekofyear");
 
+    const std::string last_day_doc =
+        R"(
+            @brief Return the last day of the month to which the date belongs to
+
+            Example:
+
+            @code{.sql}
+                select last_day(timestamp("2020-05-22 10:43:40"));
+                -- output 2020-05-31
+                select last_day(timestamp("2020-02-12 10:43:40"));
+                -- output 2020-02-29
+                select last_day(timestamp("2021-02-12"));
+                -- output 2021-02-28
+            @endcode
+            @since 0.6.1
+        )";
+
+    RegisterExternal("last_day")
+        .args<int64_t>(reinterpret_cast<void*>(static_cast<void (*)(int64_t, Date*, bool*)>(v1::last_day)))
+        .return_by_arg(true)
+        .returns<Nullable<Date>>()
+        .doc(last_day_doc);
+
+    RegisterExternal("last_day")
+        .args<Timestamp>(reinterpret_cast<void*>(static_cast<void (*)(const Timestamp*, Date*, bool*)>(v1::last_day)))
+        .return_by_arg(true)
+        .returns<Nullable<Date>>()
+        .doc(last_day_doc);
+
+    RegisterExternal("last_day")
+        .args<Date>(reinterpret_cast<void*>(static_cast<void (*)(const Date*, Date*, bool*)>(v1::last_day)))
+        .return_by_arg(true)
+        .returns<Nullable<Date>>()
+        .doc(last_day_doc);
+
     RegisterExternalTemplate<v1::IncOne>("inc")
         .args_in<int16_t, int32_t, int64_t, float, double>()
         .doc(R"(
             @brief Return expression + 1
 
             Example:
+
             @code{.sql}
                 select inc(1);
                 -- output 2
@@ -2082,6 +2291,7 @@ void DefaultUdfLibrary::InitTimeAndDateUdf() {
             @brief Return the hour for a timestamp
 
             Example:
+
             @code{.sql}
                 select hour(timestamp(1590115420000));
                 -- output 10
@@ -2096,6 +2306,7 @@ void DefaultUdfLibrary::InitTimeAndDateUdf() {
             @brief Return the minute for a timestamp
 
             Example:
+
             @code{.sql}
                 select minute(timestamp(1590115420000));
                 -- output 43
@@ -2110,6 +2321,7 @@ void DefaultUdfLibrary::InitTimeAndDateUdf() {
             @brief Return the second for a timestamp
 
             Example:
+
             @code{.sql}
                 select second(timestamp(1590115420000));
                 -- output 40
@@ -2122,6 +2334,7 @@ void DefaultUdfLibrary::InitTimeAndDateUdf() {
             @brief Return value
 
             Example:
+
             @code{.sql}
                 select identity(1);
                 -- output 1
@@ -2399,7 +2612,7 @@ void DefaultUdfLibrary::InitUdaf() {
             @endcode
             @since 0.1.0
         )")
-        .args_in<int16_t, int32_t, int64_t, float, double, Timestamp, Date,
+        .args_in<bool, int16_t, int32_t, int64_t, float, double, Timestamp, Date,
                  StringRef, LiteralTypedRow<>>();
 
     RegisterUdafTemplate<AvgWhereDef>("avg_where")
@@ -2487,14 +2700,14 @@ void DefaultUdfLibrary::InitUdaf() {
 
             |value|
             |--|
-            |0|
             |1|
             |2|
             |3|
             |4|
+            |4|
             @code{.sql}
                 SELECT top(value, 3) OVER w;
-                -- output "2,3,4"
+                -- output "4,4,3"
             @endcode
             @since 0.1.0
         )")
@@ -2508,7 +2721,7 @@ void DefaultUdfLibrary::InitUdaf() {
             @param value  Specify value column to aggregate on.
 
             Example:
-            
+
             |value|
             |--|
             |1|

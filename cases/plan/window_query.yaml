@@ -276,3 +276,77 @@ cases:
       FROM t1 WINDOW
       w1 AS (PARTITION BY col1 ORDER BY col5 ROWS BETWEEN 10 OPEN PRECEDING AND CURRENT ROW EXCLUDE CURRENT_TIME),
       w2 AS (PARTITION BY col1 ORDER BY col5 ROWS_RANGE BETWEEN 1d OPEN PRECEDING AND CURRENT ROW MAXSIZE 20 EXCLUDE CURRENT_TIME) limit 10;
+  - id: 26
+    desc: |
+      window attributes, exclude current_time exclude current_row instance_not_in_window
+    sql: |
+      SELECT
+      sum(col2) OVER w1 as w1_col2_sum,
+      FROM t1 WINDOW
+      w1 AS (PARTITION BY col1 ORDER BY col5 ROWS BETWEEN 10 OPEN PRECEDING AND CURRENT ROW EXCLUDE CURRENT_TIME INSTANCE_NOT_IN_WINDOW EXCLUDE CURRENT_ROW)
+    expect:
+      node_tree_str: |
+        +-node[kQuery]: kQuerySelect
+          +-distinct_opt: false
+          +-where_expr: null
+          +-group_expr_list: null
+          +-having_expr: null
+          +-order_expr_list: null
+          +-limit: null
+          +-select_list[list]:
+          |  +-0:
+          |    +-node[kResTarget]
+          |      +-val:
+          |      |  +-expr[function]
+          |      |    +-function:
+          |      |    |  [Unresolved](sum)
+          |      |    +-arg[0]:
+          |      |      +-expr[column ref]
+          |      |        +-relation_name: <nil>
+          |      |        +-column_name: col2
+          |      |    +-over:
+          |      |      +-node[kWindowDef]
+          |      |      +-window_name: w1
+          |      |      +-partitions: <nil>
+          |      |      +-orders: <nil>
+          |      |      +-frame: null
+          |      +-name: w1_col2_sum
+          +-tableref_list[list]:
+          |  +-0:
+          |    +-node[kTableRef]: kTable
+          |      +-table: t1
+          |      +-alias: <nil>
+          +-window_list[list]:
+            +-0:
+              +-node[kWindowDef]
+              +-window_name: w1
+              +-partitions: (col1)
+              +-orders: (col5 ASC)
+              +-frame:
+              |  +-node[kFrame]
+              |    +-frame_type: ROWS
+              |    +-frame_rows:
+              |    |  +-node[kFrameExtent]
+              |    |    +-start:
+              |    |    |  +-node[kBound]
+              |    |    |    +-bound: OPEN PRECEDING
+              |    |    |    +-offset: 10
+              |    |    +-end:
+              |    |      +-node[kBound]
+              |    |        +-bound: CURRENT
+              |    |        +-offset: 0
+              +-attributes: exclude_current_time, exclude_current_row, instance_not_in_window
+      plan_tree_str: |
+        +-[kQueryPlan]
+          +-[kProjectPlan]
+            +-table: t1
+            +-project_list_vec[list]:
+              +-[kProjectList]
+                +-[kWindow]
+                +-window_name: w1
+                +-projects on window [list]:
+                  +-[kProjectNode]
+                    +-[0]w1_col2_sum: sum(col2)over w1
+                    +-frame: rows[10 OPEN PRECEDING,0 CURRENT]
+            +-[kTablePlan]
+              +-table: t1

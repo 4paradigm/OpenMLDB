@@ -16,7 +16,7 @@
 
 package com._4paradigm.openmldb.batch.end2end.unsafe
 
-import com._4paradigm.openmldb.batch.SparkTestSuite
+import com._4paradigm.openmldb.batch.UnsaferowoptSparkTestSuite
 import com._4paradigm.openmldb.batch.api.OpenmldbSession
 import com._4paradigm.openmldb.batch.end2end.DataUtil
 import com._4paradigm.openmldb.batch.utils.SparkUtil
@@ -25,14 +25,7 @@ import org.apache.spark.sql.types.{DateType, IntegerType, StructField, StructTyp
 
 import java.sql.Date
 
-class TestDateUdf extends SparkTestSuite {
-
-  override def customizedBefore(): Unit = {
-    val spark = getSparkSession
-    spark.conf.set("spark.openmldb.unsaferow.opt", true)
-    spark.conf.set("spark.openmldb.opt.unsaferow.project", true)
-    spark.conf.set("spark.openmldb.opt.unsaferow.window", true)
-  }
+class TestDateUdf extends UnsaferowoptSparkTestSuite {
 
   test("Test simple project with date columns") {
     val spark = getSparkSession
@@ -123,13 +116,6 @@ class TestDateUdf extends SparkTestSuite {
     val outputDf = sess.sql(sqlText)
     val sparksqlOutputDf = sess.sparksql(sqlText)
     assert(SparkUtil.approximateDfEqual(outputDf.getSparkDf(), sparksqlOutputDf, false))
-  }
-
-  override def customizedAfter(): Unit = {
-    val spark = getSparkSession
-    spark.conf.set("spark.openmldb.unsaferow.opt", false)
-    spark.conf.set("spark.openmldb.opt.unsaferow.project", false)
-    spark.conf.set("spark.openmldb.opt.unsaferow.window", false)
   }
 
 }

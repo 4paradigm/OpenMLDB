@@ -24,6 +24,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "absl/status/statusor.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "boost/algorithm/string.hpp"
@@ -125,6 +126,8 @@ inline const std::string ExprOpTypeName(const FnOperator &op) {
             return "LIKE";
         case kFnOpILike:
             return "ILIKE";
+        case kFnOpRLike:
+            return "RLIKE";
         case kFnOpIn:
             return "IN";
         case kFnOpBracket:
@@ -560,6 +563,9 @@ class ExprNode : public SqlNode {
                                     const TypeNode* high, const TypeNode** output_type);
 
     static Status LikeTypeAccept(node::NodeManager* nm, const TypeNode* lhs, const TypeNode* rhs,
+                                 const TypeNode** output);
+
+    static Status RlikeTypeAccept(node::NodeManager* nm, const TypeNode* lhs, const TypeNode* rhs,
                                  const TypeNode** output);
 
  private:
@@ -1068,9 +1074,38 @@ class ConstNode : public ExprNode {
                 return std::to_string(val_.vdouble);
             case kVarchar:
                 return std::string(val_.vstr);
+            case kBool:
+                return val_.vint == 1 ? "true" : "false";
             default: {
                 return "";
             }
+        }
+    }
+
+    // include 'udf/literal_traits.h' for Nullable lead to recursive include
+    // so `optional` is used for nullable info
+    template <typename T>
+    absl::StatusOr<std::optional<T>> GetAs() const {
+        if (IsNull()) {
+            return std::nullopt;
+        }
+
+        if constexpr (std::is_same_v<T, bool>) {
+            return GetBool();
+        } else if constexpr(std::is_same_v<T, int16_t>) {
+            return GetAsInt16();
+        } else if constexpr (std::is_same_v<T, int32_t>) {
+            return GetAsInt32();
+        } else if constexpr (std::is_same_v<T, int64_t>) {
+            return GetAsInt64();
+        } else if constexpr (std::is_same_v<T, float>) {
+            return GetAsFloat();
+        } else if constexpr (std::is_same_v<T, double>) {
+            return GetAsDouble();
+        } else if constexpr (std::is_same_v<T, std::string>) {
+            return GetAsString();
+        } else {
+            return absl::InvalidArgumentError("can't cast as T");
         }
     }
 
@@ -1123,8 +1158,10 @@ class FrameBound : public SqlNode {
     }
 
     BoundType bound_type() const { return bound_type_; }
+    void set_bound_type(BoundType type) { bound_type_ = type; }
     const bool is_time_offset() const { return is_time_offset_; }
     int64_t GetOffset() const { return offset_; }
+    void SetOffset(int64_t v) { offset_ = v; }
 
 
     /// \brief get the inclusive frame bound offset value that has signed symbol
@@ -1277,22 +1314,7 @@ class FrameNode : public SqlNode {
                                                                              : frame_rows_->GetEndOffset();
         }
     }
-    inline const bool IsHistoryFrame() const {
-        switch (frame_type_) {
-            case kFrameRows:
-                return GetHistoryRowsEnd() < 0;
-            case kFrameRange: {
-                return GetHistoryRangeEnd() < 0;
-            }
-            case kFrameRowsRange: {
-                return GetHistoryRangeEnd() < 0;
-            }
-            case kFrameRowsMergeRowsRange: {
-                return GetHistoryRangeEnd() < 0;
-            }
-        }
-        return false;
-    }
+
     void Print(std::ostream &output, const std::string &org_tab) const;
     virtual bool Equals(const SqlNode *node) const;
     const std::string GetExprString() const;
@@ -1302,6 +1324,10 @@ class FrameNode : public SqlNode {
     }
     inline bool IsRowsRangeLikeMaxSizeFrame() const { return IsRowsRangeLikeFrame() && frame_maxsize_ > 0; }
     bool IsPureHistoryFrame() const {
+        if (exclude_current_row_) {
+            return true;
+        }
+
         switch (frame_type_) {
             case kFrameRows: {
                 return GetHistoryRowsEnd() < 0;
@@ -1321,6 +1347,10 @@ class FrameNode : public SqlNode {
 
     FrameNode* ShadowCopy(node::NodeManager* nm) const override;
 
+    // HACK: kind mess but we only turn this flag to turn for specific condition
+    // in physical plan transformation. In case this flag affect other cases
+    mutable bool exclude_current_row_ = false;
+
  private:
     FrameType frame_type_;
     FrameExtent *frame_range_;
@@ -1331,8 +1361,6 @@ class WindowDefNode : public SqlNode {
  public:
     WindowDefNode()
         : SqlNode(kWindowDef, 0, 0),
-          exclude_current_time_(false),
-          instance_not_in_window_(false),
           window_name_(""),
           frame_ptr_(NULL),
           union_tables_(nullptr),
@@ -1362,6 +1390,9 @@ class WindowDefNode : public SqlNode {
     void set_instance_not_in_window(bool instance_not_in_window) { instance_not_in_window_ = instance_not_in_window; }
     const bool exclude_current_time() const { return exclude_current_time_; }
     void set_exclude_current_time(bool exclude_current_time) { exclude_current_time_ = exclude_current_time; }
+    bool exclude_current_row() const { return exclude_current_row_; }
+    void set_exclude_current_row(bool flag) { exclude_current_row_ = flag; }
+
     void Print(std::ostream &output, const std::string &org_tab) const;
     bool Equals(const SqlNode *that) const override;
     bool CanMergeWith(const WindowDefNode *that, const bool enable_window_maxsize_merged = true) const;
@@ -1370,13 +1401,15 @@ class WindowDefNode : public SqlNode {
     WindowDefNode* ShadowCopy(NodeManager* nm) const override;
 
  private:
-    bool exclude_current_time_;
-    bool instance_not_in_window_;
     std::string window_name_;   /* window's own name */
     FrameNode *frame_ptr_;      /* expression for starting bound, if any */
     SqlNodeList *union_tables_; /* union other table in window */
     ExprListNode *partitions_;  /* PARTITION BY expression list */
     OrderByNode *orders_;       /* ORDER BY (list of SortBy) */
+
+    bool exclude_current_time_ = false;
+    bool exclude_current_row_ = false;
+    bool instance_not_in_window_ = false;
 };
 
 class AllNode : public ExprNode {
@@ -1620,7 +1653,7 @@ class ColumnRefNode : public ExprNode {
 
     void SetRelationName(const std::string &relation_name) { relation_name_ = relation_name; }
 
-    std::string GetColumnName() const { return column_name_; }
+    const std::string &GetColumnName() const { return column_name_; }
 
     void SetColumnName(const std::string &column_name) { column_name_ = column_name; }
 
@@ -2031,31 +2064,40 @@ class CmdNode : public SqlNode {
 };
 
 enum class DeleteTarget {
-    JOB
+    JOB = 1,
+    TABLE = 2,
 };
 std::string DeleteTargetString(DeleteTarget target);
 
 class DeleteNode : public SqlNode {
  public:
-    explicit DeleteNode(DeleteTarget t, std::string job_id)
-    : SqlNode(kDeleteStmt, 0, 0), target_(t), job_id_(job_id) {}
-    ~DeleteNode() {}
+    DeleteNode(DeleteTarget t, std::string job_id,
+            const std::string& db_name, const std::string& table_name, const node::ExprNode* where_expr)
+        : SqlNode(kDeleteStmt, 0, 0), target_(t), job_id_(job_id),
+         db_name_(db_name), table_name_(table_name), condition_(where_expr) {}
+    ~DeleteNode() = default;
 
     void Print(std::ostream &output, const std::string &org_tab) const override;
     std::string GetTargetString() const;
 
     const DeleteTarget GetTarget() const { return target_; }
     const std::string& GetJobId() const { return job_id_; }
+    const std::string& GetTableName() const { return table_name_; }
+    const std::string& GetDbName() const { return db_name_; }
+    const ExprNode* GetCondition() const { return condition_; }
 
  private:
     const DeleteTarget target_;
     const std::string job_id_;
+    const std::string db_name_;
+    const std::string table_name_;
+    const ExprNode *condition_;
 };
 
 class SelectIntoNode : public SqlNode {
  public:
-    explicit SelectIntoNode(const QueryNode *query, const std::string &query_str, const std::string &out,
-                            const std::shared_ptr<OptionsMap>&& options, const std::shared_ptr<OptionsMap>&& op2)
+    SelectIntoNode(const QueryNode *query, const std::string &query_str, const std::string &out,
+                   const std::shared_ptr<OptionsMap>&& options, const std::shared_ptr<OptionsMap>&& op2)
         : SqlNode(kSelectIntoStmt, 0, 0),
           query_(query),
           query_str_(query_str),
@@ -2699,17 +2741,17 @@ class PartitionNumNode : public SqlNode {
 
 class DistributionsNode : public SqlNode {
  public:
-    explicit DistributionsNode(SqlNodeList *distribution_list)
+    explicit DistributionsNode(const NodePointVector& distribution_list)
         : SqlNode(kDistributions, 0, 0), distribution_list_(distribution_list) {}
 
     ~DistributionsNode() {}
 
-    const SqlNodeList *GetDistributionList() const { return distribution_list_; }
+    const NodePointVector& GetDistributionList() const { return distribution_list_; }
 
     void Print(std::ostream &output, const std::string &org_tab) const;
 
  private:
-    SqlNodeList *distribution_list_;
+    NodePointVector distribution_list_;
 };
 
 class CreateSpStmt : public SqlNode {

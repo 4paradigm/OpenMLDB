@@ -1,5 +1,114 @@
 # Changelog
 
+## [0.6.3] - 2022-10-14
+
+### Features
+- Support setting the configuration of `glog` for clients (#2482 @vagetablechicken)
+- Add the checksum of SHA256 for release packages (#2560 @team-317)
+- Support the new build-in function `unhex` (#2431 @aucker)
+- Support the readable date and time format in CLI (#2568 @dl239)
+- Support the `LAST JOIN` with a subquery as a producer of window node in the request mode (#2569 @aceforeverd)
+- Upgrade the Spark version to 3.2.1 (#2566 @tobegit3hub, #2635 @dl239)
+- Support setting the SQL cache size in SDKs (#2605 @vagetablechicken)
+- Add a new interface of `ValidateSQL` to validate the syntax of SQL (#2626 @vagetablechicken)
+- Improve the documents (#2405 #2492 #2562 #2496 #2495 #2436 #2487 #2623 @michelle-qinqin, #2543 @linjing-lab, #2584 @JourneyGo, #2567 #2583 @vagetablechicken, #2643 @dl239)
+- Other minor features (#2504 #2572 #2498 #2598 @aceforeverd, #2555 #2641 @tobegit3hub, #2550 @zhanghaohit, #2595 @Elliezza, #2592 @vagetablechicken)
+
+### Bug Fixes
+- After a nameserver restarting, deployments may not recover. (#2533 @dl239)
+- If the type of first column is `bool`, it fails to resolve the function `count_where`.  (#2570 @aceforeverd)
+- Other minor bug fixes (#2540 #2577 #2625 #2655 @dl239, #2585 @snehalsenapati23, #2539 @vagetablechicken)
+
+### Code Refactoring
+#2516 #2520 #2522 #2521 #2542 #2531 #2581 @haseeb-xd, #2525 #2526 #2527 #2528 @kstrifonoff, #2523 @ighmaZ, #2546 #2549 @NevilleMthw, #2559 @marandabui, #2554 @gokullan, #2580 @team-317, #2599 @lbartyczak, #2594 @shivamgupta-sg, #2571 @Jake-00
+
+## [0.6.2] - 2022-09-20
+
+### Features
+- Support independently executing the OpenMLDB offline engine without the OpenMLDB deployment (#2423 @tobegit3hub)
+- Support the log setting of ZooKeeper and disable ZooKeeper logs in the diagnostic tool (#2451 @vagetablechicken)
+- Support query parameters of the SQL query APIs (#2277 @qsliu2017)
+- Improve the documents (#2406 @aceforeverd, #2408 #2414 @vagetablechicken, #2410 #2402 #2356 #2374 #2396 #2376 #2419 @michelle-qinqin, #2424 #2418 @dl239, #2455 @lumianph, #2458 @tobegit3hub)
+- Other minor features (#2420 @aceforeverd, #2411 @wuyou10206, #2446 #2452 @vagetablechicken, #2475 @tobegit3hub)
+
+### Bug Fixes
+- Table creation succeeds even if `partitionnum` is set to 0, which should report an error. (#2220 @dl239)
+- There are thread races in aggregators if there are concurrent `puts`. (#2472 @zhanghaohit)
+- The `limit` clause dose not work if it is used with the `where` and `group by` clauses. (#2447 @aceforeverd)
+- The `TaskManager` process will terminate if ZooKeeper disconnects. (#2494 @tobegit3hub)
+- The replica cluster dose not create the database if a database is created in the leader cluster (#2488 @dl239)
+- When there is data in base tables, deployment with long windows still can be executed (which should report an error). (#2501 @zhanghaohit)
+- Other minor bug fixes (#2415 @aceforeverd, #2417 #2434 #2435 #2473 @dl239, #2466 @vagetablechicken)
+
+### Code Refactoring
+#2413 @dl239, #2470 #2467 #2468 @vagetablechicken
+
+## [0.6.1] - 2022-08-30
+
+### Features
+- Support new build-in functions `last_day` and `regexp_like` (#2262 @HeZean, #2187 @jiang1997)
+- Support Jupyter Notebook for the TalkingData use case (#2354 @vagetablechicken)
+- Add a new API to disable Saprk logs of the batch engine (#2359 @tobegit3hub)
+- Add the use case of precision marketing based on OneFlow (#2267 @Elliezza @vagetablechicken @siqi)
+- Support the RPC request timeout in CLI and Python SDK (#2371 @vagetablechicken)
+- Improve the documents (#2021 @liuceyim, #2348 #2316 #2324 #2361 #2315 #2323 #2355 #2328 #2360 #2378 #2319 #2350 #2395 #2398 @michelle-qinqin, #2373 @njzyfr, #2370 @tobegit3hub, #2367 #2382 #2375 #2401 @vagetablechicken, #2387 #2394 @dl239, #2379 @aceforeverd, #2403 @lumianph, #2400 gitpod-for-oss @aceforeverd, )
+- Other minor features (#2363 @aceforeverd, #2185 @qsliu2017)
+
+### Bug Fixes
+- `APIServer` will core dump if no `rs` in `QueryResp`. (#2346 @vagetablechicken)
+- Data has not been deleted from `pre-aggr` tables if there are delete operations in a main table. (#2300 @zhanghaohit)
+- Task jobs will core dump when enabling `UnsafeRowOpt` with multiple threads in the Yarn cluster. (#2352 #2364 @tobegit3hub)
+- Other minor bug fixes (#2336 @dl239, #2337 @dl239, #2385 #2372 @aceforeverd, #2383 #2384 @vagetablechicken)
+
+### Code Refactoring
+#2310 @hv789, #2306 #2305 @yeya24, #2311 @Mattt47, #2368 @TBCCC, #2391 @PrajwalBorkar, #2392 @zahyaah, #2405 @wang-jiahua
+
+## [0.6.0] - 2022-08-10
+
+### Highlights
+
+- Add a new toolkit of managing OpenMLDB, currently including a diagnostic tool and a log collector (#2299 #2326 @dl239 @vagetablechicken)
+- Support aggregate functions with suffix `_where` using pre-aggregation (#1821 #1841 #2321 #2255 #2321 @aceforeverd @nautaa @zhanghaohit)
+- Support a new SQL syntax of `EXCLUDE CURRENT_ROW` (#2053 #2165 #2278 @aceforeverd)
+- Add new OpenMLDB ecosystem plugins for DolphinScheduler (#1921 #1955 @vagetablechicken) and Airflow (#2215 @vagetablechicken)
+
+### Other Features
+
+- Support SQL syntax of `DELETE` in SQL and Kafka Connector (#2183 #2257 @dl239)
+- Support customized order in the `insert` statement (#2075 @vagetablechicken)
+- Add a new use case of TalkingData AdTracking Fraud Detection (#2008 @vagetablechicken)
+- Improve the startup script to remove `mon` (#2050 @dl239)
+- Improve the performance of offline batch SQL engine (#1882 #1943 #1973 #2142 #2273 #1773 @tobegit3hub)
+- Support returning version numbers from TaskManager (#2102 @tobegit3hub)
+- Improve the CICD workflow and release procedure (#1873 #2025 #2028 @mangoGoForward)
+- Support GitHub Codespaces (#1922 @nautaa)
+- Support new built-in functions `char(int)`, `char_length`, `character_length`, `radians`, `hex`, `median` (#1896 #1895 #1897 #2159 #2030 @wuxiaobai24 @HGZ-20 @Ivyee17)
+- Support returning result set for a new query API (#2189 @qsliu2017)
+- Improve the documents (#1796 #1817 #1818 #2254 #1948 #2227 #2254  #1824 #1829 #1832 #1840 #1842 #1844 #1845 #1848 #1849 #1851 #1858 #1875  #1923 #1925 #1939 #1942 #1945 #1957 #2031 #2054 #2140 #2195 #2304 #2264 #2260 #2257 #2254 #2247 #2240 #2227 #2115 #2126 #2116 #2154 #2152 #2178 #2147 #2146 #2184 #2138 #2145 #2160 #2197 #2198 #2133 #2224 #2223 #2222 #2209 #2248 #2244 #2242 #2241 #2226 #2225 #2221 #2219 #2201 #2291 # 2231 #2196 #2297 #2206 #2238 #2270 #2296 #2317 #2065 #2048 #2088 #2331 #1831 #1945 #2118 @ZtXavier @pearfl @PrajwalBorkar @tobegit3hub @ZtXavier @zhouxh19 @dl239 @vagetablechicken @tobegit3hub @aceforeverd @jmoldyvan @lumianph @bxiiiiii @michelle-qinqin @yclchuxue @redundan3y)
+
+### Bug Fixes
+
+- The SQL engine may produce incorrect results under certain circumstances. (#1950 #1997 #2024 @aceforeverd)
+- The `genDDL` function generates incorrect DDL if the SQL is partitioned by multiple columns. (#1956 @dl239)
+- The snapshot recovery may fail for disk tables. (#2174 @zhanghaohit)
+- `enable_trace` does not work for some SQL queries. (#2292 @aceforeverd)
+- Tablets cannot save `ttl` when updating the `ttl` of index. (#1935 @dl239)
+- MakeResultSet uses a wrong schema in projection. (#2049 @dl239)
+- A table does not exist when deploying SQL by the APIServer (#2205 @vagetablechicken)
+- The cleanup for ZooKeep does not work properly. (#2191 @mangoGoForward)
+
+Other minor bug fixes (#2052 #1959 #2253 #2273 #2288 #1964 #2175 #1938 #1963 #1956 #2171 #2036 #2170 #2236 #1867 #1869 #1900 #2162 #2161 #2173 #2190 #2084 #2085 #2034 #1972 #1408 #1863 #1862 #1919 #2093 #2167 #2073 #1803 #1998 #2000 #2012 #2055 #2174 #2036 @Xeonacid @CuriousCorrelation @Shigm1026 @jiang1997 @Harshvardhantomar @nautaa @Ivyee17 @frazie @PrajwalBorkar @dl239 @aceforeverd @tobegit3hub @dl239 @vagetablechicken @zhanghaohit @mangoGoForward @SaumyaBhushan @BrokenArrow1404 @harshlancer)
+
+### Code Refactoring
+
+#1884 #1917 #1953 #1965 #2017 #2033 #2044 @mangoGoForward; #2131 #2130 #2112 #2113 #2104 #2107 #2094 #2068 #2071 #2070 #1982 #1878 @PrajwalBorkar; #2158  #2051 #2037 #2015 #1886 #1857 @frazie; #2100 #2096 @KikiDotPy; #2089 @ayushclashroyale; #1994 @fpetrakov; #2079 kayverly; #2062 @WUBBBB; #1843 @1korenn; #2092 @HeZean; #1984 @0sirusD3m0n; #1976 @Jaguar16; #2086 @marc-marcos; #1999 @Albert-Debbarma;
+
+## [0.5.3] - 2022-07-22
+
+### Bug Fixes
+- The SQL file cannot be successfully loaded in the Yarn-Client mode. (#2151 @tobegit3hub)
+- The SQL file cannot be successfully loaded in the Yarn-Cluster mode. (#1993 @tobegit3hub)
+
 ## [0.5.2] - 2022-06-10
 
 ### Features
@@ -259,6 +368,11 @@ Removed
 - openmldb-0.2.0-linux.tar.gz targets on x86_64
 - aarch64 artifacts consider experimental
 
+[0.6.3]: https://github.com/4paradigm/OpenMLDB/compare/v0.6.2...v0.6.3
+[0.6.2]: https://github.com/4paradigm/OpenMLDB/compare/v0.6.1...v0.6.2
+[0.6.1]: https://github.com/4paradigm/OpenMLDB/compare/v0.6.0...v0.6.1
+[0.6.0]: https://github.com/4paradigm/OpenMLDB/compare/v0.5.3...v0.6.0
+[0.5.3]: https://github.com/4paradigm/OpenMLDB/compare/v0.5.2...v0.5.3
 [0.5.2]: https://github.com/4paradigm/OpenMLDB/compare/v0.5.1...v0.5.2
 [0.5.1]: https://github.com/4paradigm/OpenMLDB/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/4paradigm/OpenMLDB/compare/v0.4.4...v0.5.0

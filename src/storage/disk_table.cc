@@ -15,9 +15,10 @@
  */
 
 #include "storage/disk_table.h"
+#include <snappy.h>
 #include <utility>
 #include "base/file_util.h"
-#include "base/glog_wapper.h"  // NOLINT
+#include "base/glog_wrapper.h"
 #include "base/hash.h"
 #include "config.h"  // NOLINT
 
@@ -216,47 +217,47 @@ bool DiskTable::Put(const std::string& pk, uint64_t time, const char* data, uint
 }
 
 bool DiskTable::Put(uint64_t time, const std::string& value, const Dimensions& dimensions) {
+    const int8_t* data = reinterpret_cast<const int8_t*>(value.data());
+    std::string uncompress_data;
+    if (GetCompressType() == openmldb::type::kSnappy) {
+        snappy::Uncompress(value.data(), value.size(), &uncompress_data);
+        data = reinterpret_cast<const int8_t*>(uncompress_data.data());
+    }
+    uint8_t version = codec::RowView::GetSchemaVersion(data);
+    auto decoder = GetVersionDecoder(version);
+    if (decoder == nullptr) {
+        PDLOG(WARNING, "invalid schema version %u, tid %u pid %u", version, id_, pid_);
+        return false;
+    }
     rocksdb::WriteBatch batch;
-    rocksdb::Status s;
-    Dimensions::const_iterator it = dimensions.begin();
-    for (; it != dimensions.end(); ++it) {
-        const int8_t* data = reinterpret_cast<const int8_t*>(value.data());
-        uint8_t version = codec::RowView::GetSchemaVersion(data);
-        auto decoder = GetVersionDecoder(version);
-        if (decoder == nullptr) {
-            PDLOG(WARNING, "invalid schema version %u, tid %u pid %u", version, id_, pid_);
-            return false;
+    for (auto it = dimensions.begin(); it != dimensions.end(); ++it) {
+        auto index_def = table_index_.GetIndex(it->idx());
+        if (!index_def || !index_def->IsReady()) {
+            PDLOG(WARNING, "failed putting key %s to dimension %u in table tid %u pid %u", it->key().c_str(),
+                  it->idx(), id_, pid_);
         }
         int32_t inner_pos = table_index_.GetInnerIndexPos(it->idx());
         auto inner_index = table_index_.GetInnerIndex(inner_pos);
-
-        for (const auto& index_def : inner_index->GetIndex()) {
-            if (!index_def) {
-                PDLOG(WARNING, "failed putting key %s to dimension %u in table tid %u pid %u", it->key().c_str(),
-                      it->idx(), id_, pid_);
+        auto ts_col = index_def->GetTsColumn();
+        std::string combine_key;
+        if (ts_col) {
+            int64_t ts = 0;
+            if (ts_col->IsAutoGenTs()) {
+                ts = time;
+            } else if (decoder->GetInteger(data, ts_col->GetId(), ts_col->GetType(), &ts) != 0) {
+                PDLOG(WARNING, "get ts failed. tid %u pid %u", id_, pid_);
                 return false;
             }
-            auto ts_col = index_def->GetTsColumn();
-            std::string combine_key;
-            if (ts_col) {
-                int64_t ts = 0;
-                if (ts_col->IsAutoGenTs()) {
-                    ts = time;
-                } else if (decoder->GetInteger(data, ts_col->GetId(), ts_col->GetType(), &ts) != 0) {
-                    PDLOG(WARNING, "get ts failed. tid %u pid %u", id_, pid_);
-                    return false;
-                }
-                if (inner_index->GetIndex().size() > 1) {
-                    combine_key = CombineKeyTs(it->key(), ts, ts_col->GetId());
-                } else {
-                    combine_key = CombineKeyTs(it->key(), ts);
-                }
-                rocksdb::Slice spk = rocksdb::Slice(combine_key);
-                batch.Put(cf_hs_[inner_pos + 1], spk, value);
+            if (inner_index->GetIndex().size() > 1) {
+                combine_key = CombineKeyTs(it->key(), ts, ts_col->GetId());
+            } else {
+                combine_key = CombineKeyTs(it->key(), ts);
             }
+            rocksdb::Slice spk = rocksdb::Slice(combine_key);
+            batch.Put(cf_hs_[inner_pos + 1], spk, value);
         }
     }
-    s = db_->Write(write_opts_, &batch);
+    auto s = db_->Write(write_opts_, &batch);
     if (s.ok()) {
         offset_.fetch_add(1, std::memory_order_relaxed);
         return true;
@@ -730,7 +731,7 @@ void DiskTableTraverseIterator::Seek(const std::string& pk, uint64_t time) {
                     NextPK();
                     break;
                 }
-                if (ts_ >= time) {
+                if (ts_ > time) {
                     continue;
                 }
             } else {
@@ -761,7 +762,7 @@ void DiskTableTraverseIterator::Seek(const std::string& pk, uint64_t time) {
                 if (has_ts_idx_ && (cur_ts_idx != ts_idx_)) {
                     continue;
                 }
-                if (ts_ >= time) {
+                if (ts_ > time) {
                     continue;
                 }
                 if (IsExpired()) {
@@ -962,9 +963,8 @@ std::unique_ptr<::hybridse::vm::RowIterator> DiskTableKeyIterator::GetValue() {
     // ro.prefix_same_as_start = true;
     ro.pin_data = true;
     rocksdb::Iterator* it = db_->NewIterator(ro, column_handle_);
-    std::unique_ptr<DiskTableRowIterator> wit(new DiskTableRowIterator(db_, it, snapshot, ttl_type_, expire_time_,
-                                                                       expire_cnt_, pk_, ts_, has_ts_idx_, ts_idx_));
-    return wit;
+    return std::make_unique<DiskTableRowIterator>(db_, it, snapshot, ttl_type_, expire_time_,
+                                                  expire_cnt_, pk_, ts_, has_ts_idx_, ts_idx_);
 }
 
 ::hybridse::vm::RowIterator* DiskTableKeyIterator::GetRawValue() {
@@ -1036,29 +1036,36 @@ const ::hybridse::codec::Row& DiskTableRowIterator::GetValue() {
 }
 
 void DiskTableRowIterator::Seek(const uint64_t& key) {
-    std::string combine;
-    uint64_t tmp_ts = key;
-    if (has_ts_idx_) {
-        combine = CombineKeyTs(row_pk_, tmp_ts, ts_idx_);
-    } else {
-        combine = CombineKeyTs(row_pk_, tmp_ts);
-    }
-    it_->Seek(rocksdb::Slice(combine));
-    for (; it_->Valid(); it_->Next()) {
-        uint32_t cur_ts_idx = UINT32_MAX;
-        ParseKeyAndTs(has_ts_idx_, it_->key(), pk_, ts_, cur_ts_idx);
-        if (pk_ == row_pk_) {
-            if (has_ts_idx_ && (cur_ts_idx != ts_idx_)) {
-                // combineKey is (pk, ts_col, ts). So if cur_ts_idx != ts_idx,
-                // iterator will never get to (pk, ts_idx_) again. Can break here.
-                pk_valid_ = false;
-                break;
-            }
-            pk_valid_ = true;
+    if (expire_value_.ttl_type == TTLType::kAbsoluteTime) {
+        std::string combine;
+        uint64_t tmp_ts = key;
+        if (has_ts_idx_) {
+            combine = CombineKeyTs(row_pk_, tmp_ts, ts_idx_);
         } else {
-            pk_valid_ = false;
+            combine = CombineKeyTs(row_pk_, tmp_ts);
         }
-        break;
+        it_->Seek(rocksdb::Slice(combine));
+        for (; it_->Valid(); it_->Next()) {
+            uint32_t cur_ts_idx = UINT32_MAX;
+            ParseKeyAndTs(has_ts_idx_, it_->key(), pk_, ts_, cur_ts_idx);
+            if (pk_ == row_pk_) {
+                if (has_ts_idx_ && (cur_ts_idx != ts_idx_)) {
+                    // combineKey is (pk, ts_col, ts). So if cur_ts_idx != ts_idx,
+                    // iterator will never get to (pk, ts_idx_) again. Can break here.
+                    pk_valid_ = false;
+                    break;
+                }
+                pk_valid_ = true;
+            } else {
+                pk_valid_ = false;
+            }
+            break;
+        }
+    } else {
+        SeekToFirst();
+        while (Valid() && GetKey() > key) {
+            Next();
+        }
     }
 }
 

@@ -18,18 +18,77 @@ package com._4paradigm.openmldb.sdk;
 
 import lombok.Data;
 
+import com._4paradigm.openmldb.BasicRouterOptions;
+import com._4paradigm.openmldb.SQLRouterOptions;
+import com._4paradigm.openmldb.StandaloneOptions;
 
 @Data
 public class SdkOption {
-//    options for cluster mode
-    private String zkCluster;
-    private String zkPath;
-//    options for standalone mode
-    private String host;
-    private long port;
-
+    // TODO(hw): set isClusterMode automatically
+    private boolean isClusterMode = true;
+    // options for cluster mode
+    private String zkCluster = "";
+    private String zkPath = "";
     private long sessionTimeout = 10000;
+    private String sparkConfPath = "";
+    private int zkLogLevel = 3;
+    private String zkLogFile = "";
+
+    // options for standalone mode
+    private String host = "";
+    private long port = -1;
+
+    // base options
     private Boolean enableDebug = false;
     private long requestTimeout = 60000;
-    private boolean isClusterMode = true;
+    private int glogLevel = 0;
+    private String glogDir = "";
+    private int maxSqlCacheSize = 50;
+
+    private void buildBaseOptions(BasicRouterOptions opt) {
+        opt.setEnable_debug(getEnableDebug());
+        opt.setRequest_timeout(getRequestTimeout());
+        opt.setGlog_level(getGlogLevel());
+        opt.setGlog_dir(getGlogDir());
+        opt.setMax_sql_cache_size(getMaxSqlCacheSize());
+    }
+
+    public SQLRouterOptions buildSQLRouterOptions() throws SqlException {
+        if (!isClusterMode()) {
+            return null;
+        }
+        SQLRouterOptions copt = new SQLRouterOptions();
+        // required
+        if (getZkCluster().isEmpty() || getZkPath().isEmpty()) {
+            throw new SqlException("empty zk cluster or path");
+        }
+        copt.setZk_cluster(getZkCluster());
+        copt.setZk_path(getZkPath());
+
+        // optional
+        copt.setZk_session_timeout(getSessionTimeout());
+        copt.setSpark_conf_path(getSparkConfPath());
+        copt.setZk_log_level(getZkLogLevel());
+        copt.setZk_log_file(getZkLogFile());
+
+        // base
+        buildBaseOptions(copt);
+        return copt;
+    }
+
+    public StandaloneOptions buildStandaloneOptions() throws SqlException {
+        if (isClusterMode()) {
+            return null;
+        }
+        StandaloneOptions sopt = new StandaloneOptions();
+        // required
+        if (getHost().isEmpty() || getPort() == -1) {
+            throw new SqlException("empty host or unset port");
+        }
+        sopt.setHost(getHost());
+        sopt.setPort(getPort());
+
+        buildBaseOptions(sopt);
+        return sopt;
+    } 
 }

@@ -22,7 +22,7 @@
 
 #include <boost/bind.hpp>
 
-#include "base/glog_wapper.h"  // NOLINT
+#include "base/glog_wrapper.h"  // NOLINT
 extern "C" {
 #include "zookeeper/zookeeper.h"
 }
@@ -49,13 +49,13 @@ void WatchCallback(const std::vector<std::string>& endpoints) {
 }
 
 TEST_F(ZkClientTest, BadZk) {
-    ZkClient client("127.0.0.1:13181", "", session_timeout, "127.0.0.1:9527", "/rtidb");
+    ZkClient client("127.0.0.1:13181", "", session_timeout, "127.0.0.1:9527", "/openmldb");
     bool ok = client.Init();
     ASSERT_FALSE(ok);
 }
 
 TEST_F(ZkClientTest, Init) {
-    ZkClient client("127.0.0.1:6181", "", session_timeout, "127.0.0.1:9527", "/rtidb");
+    ZkClient client("127.0.0.1:6181", "", session_timeout, "127.0.0.1:9527", "/openmldb");
     bool ok = client.Init();
     ASSERT_TRUE(ok);
     ok = client.Register();
@@ -71,7 +71,7 @@ TEST_F(ZkClientTest, Init) {
     ok = client.WatchNodes();
     ASSERT_TRUE(ok);
     {
-        ZkClient client2("127.0.0.1:6181", "", session_timeout, "127.0.0.1:9528", "/rtidb");
+        ZkClient client2("127.0.0.1:6181", "", session_timeout, "127.0.0.1:9528", "/openmldb");
         ok = client2.Init();
         client2.Register();
         ASSERT_TRUE(ok);
@@ -83,15 +83,15 @@ TEST_F(ZkClientTest, Init) {
 }
 
 TEST_F(ZkClientTest, CreateNode) {
-    ZkClient client("127.0.0.1:6181", "", 1000, "127.0.0.1:9527", "/rtidb1");
+    ZkClient client("127.0.0.1:6181", "", 1000, "127.0.0.1:9527", "/openmldb1");
     bool ok = client.Init();
     ASSERT_TRUE(ok);
 
     std::string assigned_path;
-    ok = client.CreateNode("/rtidb1/lock/request", "", ZOO_EPHEMERAL | ZOO_SEQUENCE, assigned_path);
+    ok = client.CreateNode("/openmldb1/lock/request", "", ZOO_EPHEMERAL | ZOO_SEQUENCE, assigned_path);
     ASSERT_TRUE(ok);
 
-    std::string node = "/rtidb1/test/node" + GenRand();
+    std::string node = "/openmldb1/test/node" + GenRand();
     int ret = client.IsExistNode(node);
     ASSERT_EQ(ret, 1);
     ok = client.CreateNode(node, "value");
@@ -99,21 +99,21 @@ TEST_F(ZkClientTest, CreateNode) {
     ret = client.IsExistNode(node);
     ASSERT_EQ(ret, 0);
 
-    ZkClient client2("127.0.0.1:6181", "", session_timeout, "127.0.0.1:9527", "/rtidb1");
+    ZkClient client2("127.0.0.1:6181", "", session_timeout, "127.0.0.1:9527", "/openmldb1");
     ok = client2.Init();
     ASSERT_TRUE(ok);
 
     std::string assigned_path1;
-    ok = client2.CreateNode("/rtidb1/lock/request", "", ZOO_EPHEMERAL | ZOO_SEQUENCE, assigned_path1);
+    ok = client2.CreateNode("/openmldb1/lock/request", "", ZOO_EPHEMERAL | ZOO_SEQUENCE, assigned_path1);
     ASSERT_TRUE(ok);
 }
 
 TEST_F(ZkClientTest, ZkNodeChange) {
-    ZkClient client("127.0.0.1:6181", "", session_timeout, "127.0.0.1:9527", "/rtidb1");
+    ZkClient client("127.0.0.1:6181", "", session_timeout, "127.0.0.1:9527", "/openmldb1");
     bool ok = client.Init();
     ASSERT_TRUE(ok);
 
-    std::string node = "/rtidb1/test/node" + GenRand();
+    std::string node = "/openmldb1/test/node" + GenRand();
     int ret = client.IsExistNode(node);
     ASSERT_EQ(ret, 1);
     ok = client.CreateNode(node, "1");
@@ -121,7 +121,7 @@ TEST_F(ZkClientTest, ZkNodeChange) {
     ret = client.IsExistNode(node);
     ASSERT_EQ(ret, 0);
 
-    ZkClient client2("127.0.0.1:6181", "", session_timeout, "127.0.0.1:9527", "/rtidb1");
+    ZkClient client2("127.0.0.1:6181", "", session_timeout, "127.0.0.1:9527", "/openmldb1");
     ok = client2.Init();
     ASSERT_TRUE(ok);
     std::atomic<bool> detect(false);

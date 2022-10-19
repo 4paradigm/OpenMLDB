@@ -157,17 +157,19 @@ cases:
               +-node[kDistributions]
                 +-distribution_list[list]:
                   +-0:
-                  |  +-node[kPartitionMeta]
-                  |    +-endpoint: leader1
-                  |    +-role_type: leader
-                  +-1:
-                  |  +-node[kPartitionMeta]
-                  |    +-endpoint: fo1
-                  |    +-role_type: follower
-                  +-2:
-                    +-node[kPartitionMeta]
-                      +-endpoint: fo2
-                      +-role_type: follower
+                    +-list[list]:
+                      +-0:
+                      |  +-node[kPartitionMeta]
+                      |    +-endpoint: leader1
+                      |    +-role_type: leader
+                      +-1:
+                      |  +-node[kPartitionMeta]
+                      |    +-endpoint: fo1
+                      |    +-role_type: follower
+                      +-2:
+                        +-node[kPartitionMeta]
+                          +-endpoint: fo2
+                          +-role_type: follower
   - id: 23
     desc: create index with back quote item name
     sql: |

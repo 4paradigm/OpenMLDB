@@ -84,12 +84,13 @@ class PredictHandler(tornado.web.RequestHandler):
         # result is a list, even we just do a single request
         for res in get_result(response):
             ins = build_feature(res)
+            logging.info(f"feature: {res}")
             self.write("real-time feature:\n" + str(res) + "\n")
             prediction = bst.predict(ins)
             self.write(
                 "---------------predict whether is attributed -------------\n")
             self.write(f"{str(prediction[0])}")
-            logging.info("feature: %s, prediction: %s", res, prediction)
+            logging.info(f"prediction: {prediction}")
 
 
 class MainHandler(tornado.web.RequestHandler):

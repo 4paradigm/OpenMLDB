@@ -197,7 +197,7 @@ class ArrayListIterator : public ConstIterator<uint64_t, V> {
           iter_(iter_start_),
           key_(0) {}
 
-    explicit ArrayListIterator(const ArrayListIterator<V> &impl)
+    ArrayListIterator(const ArrayListIterator<V> &impl)
         : buffer_(impl.buffer_),
           iter_start_(impl.iter_start_),
           iter_end_(impl.iter_end_),
@@ -260,7 +260,7 @@ class BoolArrayListIterator : public ConstIterator<uint64_t, bool> {
         }
     }
 
-    explicit BoolArrayListIterator(const BoolArrayListIterator &impl)
+    BoolArrayListIterator(const BoolArrayListIterator &impl)
         : buffer_(impl.buffer_),
           iter_start_(impl.iter_start_),
           iter_end_(impl.iter_end_),
@@ -387,6 +387,42 @@ class InnerRowsIterator : public ConstIterator<uint64_t, V> {
 };
 
 template <class V>
+class InnerRowsRangeIterator : public ConstIterator<uint64_t, V> {
+ public:
+    InnerRowsRangeIterator(std::unique_ptr<ConstIterator<uint64_t, V>> &&iter, uint64_t start, uint64_t end)
+        : ConstIterator<uint64_t, V>(), root_(std::move(iter)), pos_(0), start_rows_(start), end_range_(end) {
+        SeekToFirst();
+    }
+    ~InnerRowsRangeIterator() override {}
+
+    bool Valid() const override {
+        return root_->Valid() && pos_ >= start_rows_ && root_->GetKey() >= end_range_;
+    }
+
+    void Next() override {
+        pos_++;
+        return root_->Next();
+    }
+    const uint64_t &GetKey() const override { return root_->GetKey(); }
+    const V &GetValue() override { return root_->GetValue(); }
+    void Seek(const uint64_t &k) override { root_->Seek(k); }
+    void SeekToFirst() override {
+        root_->SeekToFirst();
+        pos_ = 0;
+        while (root_->Valid() && pos_ < start_rows_) {
+            root_->Next();
+            pos_++;
+        }
+    }
+    bool IsSeekable() const { return root_->IsSeekable(); }
+
+    std::unique_ptr<ConstIterator<uint64_t, V>> root_;
+    uint64_t pos_;
+    const uint64_t start_rows_;
+    const uint64_t end_range_;
+};
+
+template <class V>
 class InnerRangeIterator : public ConstIterator<uint64_t, V> {
  public:
     InnerRangeIterator(ListV<V> *list, uint64_t start, uint64_t end)
@@ -427,7 +463,7 @@ class InnerRangeIterator : public ConstIterator<uint64_t, V> {
 template <class V>
 class InnerRangeList : public ListV<V> {
  public:
-    InnerRangeList(ListV<Row> *root, uint64_t start, uint64_t end)
+    InnerRangeList(ListV<V> *root, uint64_t start, uint64_t end)
         : ListV<V>(), root_(root), start_(start), end_(end) {}
     virtual ~InnerRangeList() {}
     // TODO(chenjing): at 数组越界处理
@@ -439,7 +475,7 @@ class InnerRangeList : public ListV<V> {
         return new InnerRangeIterator<V>(root_, start_, end_);
     }
 
-    ListV<Row> *root_;
+    ListV<V> *root_;
     uint64_t start_;
     uint64_t end_;
 };
@@ -447,7 +483,7 @@ class InnerRangeList : public ListV<V> {
 template <class V>
 class InnerRowsList : public ListV<V> {
  public:
-    InnerRowsList(ListV<Row> *root, uint64_t start, uint64_t end)
+    InnerRowsList(ListV<V> *root, uint64_t start, uint64_t end)
         : ListV<V>(), root_(root), start_(start), end_(end) {}
     virtual ~InnerRowsList() {}
     // TODO(chenjing): at 数组越界处理
@@ -459,10 +495,33 @@ class InnerRowsList : public ListV<V> {
         return new InnerRowsIterator<V>(root_, start_, end_);
     }
 
-    ListV<Row> *root_;
+    ListV<V> *root_;
     uint64_t start_;
     uint64_t end_;
 };
+
+// start as ROWS offset, end as RANGE offset
+// |end_range ... start_rows| .. current row|
+// |<--------  iterator goes
+template <class V>
+class InnerRowsRangeList : public ListV<V> {
+ public:
+    InnerRowsRangeList(ListV<V> *root, uint64_t start_rows, uint64_t end_range)
+        : ListV<V>(), root_(root), start_rows_(start_rows), end_range_(end_range) {}
+    ~InnerRowsRangeList() override {}
+
+    std::unique_ptr<ConstIterator<uint64_t, V>> GetIterator() override {
+        return std::make_unique<InnerRowsRangeIterator<V>>(root_->GetIterator(), start_rows_, end_range_);
+    }
+    ConstIterator<uint64_t, V> *GetRawIterator() override {
+        return new InnerRowsRangeIterator<V>(root_->GetIterator(), start_rows_, end_range_);
+    }
+
+    ListV<V> *root_;
+    uint64_t start_rows_;
+    uint64_t end_range_;
+};
+
 template <class V>
 class ColumnIterator : public ConstIterator<uint64_t, V> {
  public:

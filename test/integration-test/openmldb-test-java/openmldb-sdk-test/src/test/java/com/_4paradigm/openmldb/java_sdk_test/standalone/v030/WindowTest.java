@@ -16,7 +16,6 @@
 
 package com._4paradigm.openmldb.java_sdk_test.standalone.v030;
 
-import com._4paradigm.openmldb.java_sdk_test.common.FedbTest;
 import com._4paradigm.openmldb.java_sdk_test.common.StandaloneTest;
 import com._4paradigm.openmldb.java_sdk_test.executor.ExecutorFactory;
 import com._4paradigm.openmldb.test_common.model.SQLCase;
@@ -42,5 +41,15 @@ public class WindowTest extends StandaloneTest {
             "function/test_index_optimized.yaml"})
     public void testWindow(SQLCase testCase) throws Exception {
         ExecutorFactory.build(testCase, SQLCaseType.kStandaloneCLI).run();
+    }
+
+    //pass
+    @Story("batch")
+    @Test(dataProvider = "getCase")
+    @Yaml(filePaths = {"function/window/",
+            "function/cluster/",
+            "function/test_index_optimized.yaml"})
+    public void testWindowSDK(SQLCase testCase) throws Exception {
+        ExecutorFactory.build(executor,testCase, SQLCaseType.kBatch).run();
     }
 }

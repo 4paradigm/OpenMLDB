@@ -6,7 +6,7 @@
     <parent>
         <artifactId>openmldb-parent</artifactId>
         <groupId>com.4paradigm.openmldb</groupId>
-        <version>0.5.0-SNAPSHOT</version>
+        <version>0.6.0-SNAPSHOT</version>
     </parent>
 
     <artifactId>openmldb-spark-connector</artifactId>
@@ -30,35 +30,8 @@
         <java.version>1.8</java.version>
         <maven.compiler.source>1.8</maven.compiler.source>
         <maven.compiler.target>1.8</maven.compiler.target>
-        <scala.version>2.12.8</scala.version>
-        <scala.binary.version>2.12</scala.binary.version>
-        <spark.version>3.0.0</spark.version>
         <spark.dependencyScope>provided</spark.dependencyScope>
-        <default.project.version>0.3.0</default.project.version>
     </properties>
-    <profiles>
-        <profile>
-            <id>default</id>
-            <activation>
-                <activeByDefault>true</activeByDefault>
-            </activation>
-            <properties>
-                <openmldbVersionFromProfile>${default.project.version}</openmldbVersionFromProfile>
-            </properties>
-        </profile>
-        <profile>
-            <id>macos</id>
-            <properties>
-                <openmldbVersionFromProfile>${default.project.version}-macos</openmldbVersionFromProfile>
-            </properties>
-        </profile>
-        <profile>
-            <id>allinone</id>
-            <properties>
-                <openmldbVersionFromProfile>${default.project.version}-allinone</openmldbVersionFromProfile>
-            </properties>
-        </profile>
-    </profiles>
     <dependencies>
         <dependency>
             <groupId>org.scala-lang</groupId>
@@ -85,11 +58,62 @@
             <version>${spark.version}</version>
             <scope>${spark.dependencyScope}</scope>
         </dependency>
+        
         <dependency>
           <groupId>com.4paradigm.openmldb</groupId>
           <artifactId>openmldb-jdbc</artifactId>
-          <version>${openmldbVersionFromProfile}</version>
+          <version>${project.parent.version}</version>
         </dependency>
     </dependencies>
 
+    <build>
+        <resources>
+            <resource>
+                <directory>src/main/resources</directory>
+                <includes>
+                    <include>**/*</include>
+                </includes>
+            </resource>
+            <resource>
+                <directory>src/main/java</directory>
+                <includes>
+                    <include>**/*</include>
+                </includes>
+            </resource>
+        </resources>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+            </plugin>
+            <plugin>
+                <groupId>net.alchim31.maven</groupId>
+                <artifactId>scala-maven-plugin</artifactId>
+            </plugin>
+            <plugin>
+                <groupId>org.scalatest</groupId>
+                <artifactId>scalatest-maven-plugin</artifactId>
+            </plugin>
+            <!-- Build site report -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-site-plugin</artifactId>
+            </plugin>
+
+            <!-- Check Java style -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-checkstyle-plugin</artifactId>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-javadoc-plugin</artifactId>
+            </plugin>
+        </plugins>
+    </build>
 </project>

@@ -28,7 +28,7 @@
 #include <string>
 #include <vector>
 
-#include "base/glog_wapper.h"  // NOLINT
+#include "base/glog_wrapper.h"
 
 namespace openmldb {
 namespace base {
@@ -96,6 +96,26 @@ inline static int GetSubDir(const std::string& path,
         if (strcmp(ptr->d_name, ".") == 0 || strcmp(ptr->d_name, "..") == 0) {
             continue;
         } else if (ptr->d_type == DT_DIR) {
+            sub_dir.push_back(ptr->d_name);
+        }
+    }
+    closedir(dir);
+    return 0;
+}
+
+inline static int GetSubFiles(const std::string& path, std::vector<std::string>& sub_dir) {  // NOLINT
+    if (path.empty()) {
+        return -1;
+    }
+    DIR* dir = opendir(path.c_str());
+    if (dir == NULL) {
+        return -1;
+    }
+    struct dirent* ptr;
+    while ((ptr = readdir(dir)) != NULL) {
+        if (strcmp(ptr->d_name, ".") == 0 || strcmp(ptr->d_name, "..") == 0) {
+            continue;
+        } else if (ptr->d_type == DT_REG) {
             sub_dir.push_back(ptr->d_name);
         }
     }
@@ -285,6 +305,27 @@ __attribute__((unused)) static bool CopyFile(const std::string& src_file, const 
     fclose(f_src);
     fclose(f_desc);
     return has_error == false;
+}
+
+inline static int HardLinkDir(const std::string& src, const std::string& dest) {
+    if (!IsExists(src)) {
+        return -2;
+    }
+
+    if (IsExists(dest)) {
+        RemoveDirRecursive(dest);
+    }
+
+    MkdirRecur(dest);
+    std::vector<std::string> files;
+    GetSubFiles(src, files);
+    for (const auto& file : files) {
+        int ret = link((src + "/" + file).c_str(), (dest + "/" + file).c_str());
+        if (ret) {
+            return ret;
+        }
+    }
+    return 0;
 }
 
 }  // namespace base

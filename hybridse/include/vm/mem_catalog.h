@@ -21,6 +21,7 @@
 #include <functional>
 #include <map>
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -246,16 +247,11 @@ class Window : public MemTimeTableHandler {
         kFrameRowsRange,
         kFrameRowsMergeRowsRange
     };
-    Window()
-        : MemTimeTableHandler(),
-          exclude_current_time_(false),
-          instance_not_in_window_(false) {}
+    Window() : MemTimeTableHandler() {}
     virtual ~Window() {}
 
     std::unique_ptr<RowIterator> GetIterator() override {
-        std::unique_ptr<vm::MemTimeTableIterator> it(
-            new vm::MemTimeTableIterator(&table_, schema_));
-        return std::move(it);
+        return std::make_unique<vm::MemTimeTableIterator>(&table_, schema_);
     }
 
     RowIterator* GetRawIterator() {
@@ -274,21 +270,20 @@ class Window : public MemTimeTableHandler {
         }
     }
     const std::string GetHandlerTypeName() override { return "Window"; }
-    const bool instance_not_in_window() const {
-        return instance_not_in_window_;
-    }
-    void set_instance_not_in_window(const bool flag) {
-        instance_not_in_window_ = flag;
-    }
 
-    const bool exclude_current_time() const { return exclude_current_time_; }
-    void set_exclude_current_time(const bool flag) {
-        exclude_current_time_ = flag;
-    }
+    bool instance_not_in_window() const { return instance_not_in_window_; }
+    void set_instance_not_in_window(bool flag) { instance_not_in_window_ = flag; }
+
+    bool exclude_current_time() const { return exclude_current_time_; }
+    void set_exclude_current_time(bool flag) { exclude_current_time_ = flag; }
+
+    bool exclude_current_row() const { return exclude_current_row_; }
+    void set_exclude_current_row(bool flag) { exclude_current_row_ = flag; }
 
  protected:
-    bool exclude_current_time_;
-    bool instance_not_in_window_;
+    bool exclude_current_time_ = false;
+    bool exclude_current_row_ = false;
+    bool instance_not_in_window_ = false;
 };
 class WindowRange {
  public:
@@ -335,13 +330,13 @@ class WindowRange {
         bool out_of_rows, bool before_window, bool exceed_window) const {
         switch (frame_type_) {
             case Window::WindowFrameType::kFrameRows:
-                return out_of_rows ? kExceedWindow : kInWindow;
+                return out_of_rows ? kExceedWindow : (before_window ? kBeforeWindow : kInWindow);
             case Window::WindowFrameType::kFrameRowsMergeRowsRange: {
                 return out_of_rows
                            ? (before_window
                                   ? kBeforeWindow
                                   : exceed_window ? kExceedWindow : kInWindow)
-                           : kInWindow;
+                           : before_window ? kBeforeWindow : kInWindow;
             }
             case Window::WindowFrameType::kFrameRowsRange:
                 return exceed_window
@@ -370,27 +365,31 @@ class HistoryWindow : public Window {
     explicit HistoryWindow(const WindowRange& window_range)
         : Window(), window_range_(window_range), current_history_buffer_() {}
     ~HistoryWindow() {}
-    virtual void PopFrontData() {
+
+    void PopFrontData() override {
         if (current_history_buffer_.empty()) {
             PopFrontRow();
         } else {
             current_history_buffer_.pop_front();
         }
     }
-    virtual void PopEffectiveData() {
+
+    virtual void PopEffectiveDataIfAny() {
         if (!table_.empty()) {
             PopFrontRow();
         }
     }
-    bool BufferData(uint64_t key, const Row& row) {
+
+    // aad newer row into window
+    bool BufferData(uint64_t key, const Row& row) override {
         if (!table_.empty() && GetFrontRow().first > key) {
             DLOG(WARNING) << "Fail BufferData: buffer key less than latest key";
             return false;
         }
         auto cur_size = table_.size();
         if (cur_size < window_range_.start_row_) {
-            // current row InWindow
-            int64_t sub = (key + window_range_.start_offset_);
+            // current in the ROWS window
+            int64_t sub = key + window_range_.start_offset_;
             uint64_t start_ts = sub < 0 ? 0u : static_cast<uint64_t>(sub);
             if (0 == window_range_.end_offset_) {
                 return BufferCurrentTimeBuffer(key, row, start_ts);
@@ -398,8 +397,8 @@ class HistoryWindow : public Window {
                 return BufferEffectiveWindow(key, row, start_ts);
             }
         } else if (0 == window_range_.end_offset_) {
-            // current InWindow
-            int64_t sub = (key + window_range_.start_offset_);
+            // current in the ROWS_RANGE window
+            int64_t sub = (static_cast<int64_t>(key) + window_range_.start_offset_);
             uint64_t start_ts = sub < 0 ? 0u : static_cast<uint64_t>(sub);
             return BufferCurrentTimeBuffer(key, row, start_ts);
         } else {
@@ -411,25 +410,61 @@ class HistoryWindow : public Window {
     }
 
  protected:
-    bool BufferCurrentHistoryBuffer(uint64_t key, const Row& row,
-                                    uint64_t end_ts) {
+    bool BufferCurrentHistoryBuffer(uint64_t key, const Row& row, uint64_t end_ts) {
         current_history_buffer_.emplace_front(key, row);
-        int64_t sub = (key + window_range_.start_offset_);
+        int64_t sub = (static_cast<int64_t>(key) + window_range_.start_offset_);
         uint64_t start_ts = sub < 0 ? 0u : static_cast<uint64_t>(sub);
-        while (!current_history_buffer_.empty()) {
-            auto& back = current_history_buffer_.back();
-            if (back.first > end_ts) {
-                break;
-            }
-            BufferEffectiveWindow(back.first, back.second, start_ts);
-            current_history_buffer_.pop_back();
-        }
+        SlideWindow(start_ts, end_ts);
         return true;
     }
 
-    bool BufferEffectiveWindow(uint64_t key, const Row& row,
-                               uint64_t start_ts) {
+    // sliding rows data from `current_history_buffer_` into effective window
+    // by giving the new start_ts and end_ts.
+    // Resulting the new effective window data whose bound is [start_ts, end_ts],
+    // NOTE
+    // - window bounds should be greater or equal to 0, < 0 is not supported yet,
+    // - values greater than int64_max is not considered as well
+    // - start_ts_inclusive > end_ts_inclusive is expected for rows window, e.g.
+    //   `(rows between .. and current_row exclude current_time)`.
+    //   Absolutely confusing design though, should refactored later
+    // TODO(ace): note above
+    //
+    // - elements in `current_history_buffer_` that `ele.first <= end_ts` goes out of
+    //   `current_history_buffer_` and pushed into effective window
+    // - elements in effective window where `ele.first < start_ts` goes out of effective window
+    //
+    // `start_ts_inclusive` and `end_ts_inclusive` can be empty, which effectively means less than 0.
+    // if `start_ts_inclusive` is empty, no rows goes out of effective window
+    // if `end_ts_inclusive` is empty, no rows goes out of history buffer and into effective window
+    void SlideWindow(std::optional<uint64_t> start_ts_inclusive, std::optional<uint64_t> end_ts_inclusive) {
+        // always try to cleanup the stale rows out of effective window
+        if (start_ts_inclusive.has_value()) {
+            Slide(start_ts_inclusive);
+        }
+
+        if (!end_ts_inclusive.has_value()) {
+            return;
+        }
+
+        while (!current_history_buffer_.empty() && current_history_buffer_.back().first <= end_ts_inclusive) {
+            auto& back = current_history_buffer_.back();
+
+            BufferEffectiveWindow(back.first, back.second, start_ts_inclusive);
+            current_history_buffer_.pop_back();
+        }
+    }
+
+    // push the row to the start of window
+    // - pop last elements in window if exceed max window size
+    // - also pop last elements in window if there ts less than `start_ts`
+    //
+    // if `start_ts` is empty, no rows eliminated from window
+    bool BufferEffectiveWindow(uint64_t key, const Row& row, std::optional<uint64_t> start_ts) {
         AddFrontRow(key, row);
+        return Slide(start_ts);
+    }
+
+    bool Slide(std::optional<uint64_t> start_ts) {
         auto cur_size = table_.size();
         while (window_range_.max_size_ > 0 &&
                cur_size > window_range_.max_size_) {
@@ -437,35 +472,59 @@ class HistoryWindow : public Window {
             --cur_size;
         }
 
-        // Slide window when window size >= rows_preceding
+        // Slide window if window start bound >= rows/range preceding
         while (cur_size > 0) {
             const auto& pair = GetBackRow();
-            if ((kFrameRows == window_range_.frame_type_ ||
-                 kFrameRowsMergeRowsRange == window_range_.frame_type_) &&
+            if ((kFrameRows == window_range_.frame_type_ || kFrameRowsMergeRowsRange == window_range_.frame_type_) &&
                 cur_size <= window_range_.start_row_ + 1) {
+                // note it is always current rows window
                 break;
             }
             if (kFrameRows == window_range_.frame_type_ ||
                 pair.first < start_ts) {
                 PopBackRow();
                 --cur_size;
-
             } else {
                 break;
             }
         }
         return true;
     }
-    bool BufferCurrentTimeBuffer(uint64_t key, const Row& row,
-                                 uint64_t start_ts) {
-        if (!exclude_current_time_) {
-            return BufferEffectiveWindow(key, row, start_ts);
-        } else {
-            PopEffectiveData();
-            BufferCurrentHistoryBuffer(key, row, key - 1);
-            return BufferEffectiveWindow(key, row, start_ts);
+
+    bool BufferCurrentTimeBuffer(uint64_t key, const Row& row, uint64_t start_ts) {
+        if (exclude_current_row_) {
+            // slide window first so current row kept in `current_history_buffer_`
+            // and will go into window in next action
+            if (exclude_current_time_) {
+                if (key == 0) {
+                    SlideWindow(start_ts, {});
+                } else {
+                    SlideWindow(start_ts, key - 1);
+                }
+            } else {
+                SlideWindow(start_ts, key);
+            }
+            current_history_buffer_.emplace_front(key, row);
+            return true;
         }
+
+        if (exclude_current_time_) {
+            // except `exclude current_row`, the current row is always added to the effective window
+            // but for next buffer action, previous current row already buffered in `current_history_buffer_`
+            // so the previous current row need eliminated for this next buf action
+            PopEffectiveDataIfAny();
+            if (key == 0) {
+                SlideWindow(start_ts, {});
+            } else {
+                SlideWindow(start_ts, key - 1);
+            }
+            current_history_buffer_.emplace_front(key, row);
+        }
+
+        // in queue the current row
+        return BufferEffectiveWindow(key, row, start_ts);
     }
+
     WindowRange window_range_;
     MemTimeTable current_history_buffer_;
 };
@@ -491,7 +550,8 @@ class CurrentHistoryWindow : public HistoryWindow {
                                     max_size)) {}
     ~CurrentHistoryWindow() {}
 
-    virtual void PopFrontData() { PopFrontRow(); }
+    void PopFrontData() override { PopFrontRow(); }
+
     bool BufferData(uint64_t key, const Row& row) {
         if (!table_.empty() && GetFrontRow().first > key) {
             DLOG(WARNING) << "Fail BufferData: buffer key less than latest key";

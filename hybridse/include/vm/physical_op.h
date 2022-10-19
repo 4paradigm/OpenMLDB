@@ -348,7 +348,7 @@ class PhysicalOpNode : public node::NodeBase<PhysicalOpNode> {
         : type_(type),
           is_block_(is_block),
           output_type_(kSchemaTypeTable),
-          limit_cnt_(0),
+          limit_cnt_(std::nullopt),
           schemas_ctx_(this) {}
 
     const std::string GetTypeName() const override {
@@ -393,7 +393,7 @@ class PhysicalOpNode : public node::NodeBase<PhysicalOpNode> {
     /**
      * Get all function infos bind to current physical node.
      */
-    const std::vector<const FnInfo *> GetFnInfos() const { return fn_infos_; }
+    const std::vector<const FnInfo *>& GetFnInfos() const { return fn_infos_; }
 
     /**
      * Add component FnInfo to current physical node. The node fn list take
@@ -431,12 +431,23 @@ class PhysicalOpNode : public node::NodeBase<PhysicalOpNode> {
                    : nullptr;
     }
 
-    void SetLimitCnt(int32_t limit_cnt) { limit_cnt_ = limit_cnt; }
+    void SetLimitCnt(std::optional<int32_t> limit_cnt) { limit_cnt_ = limit_cnt; }
 
-    const int32_t GetLimitCnt() const { return limit_cnt_; }
+    std::optional<int32_t> GetLimitCnt() const { return limit_cnt_; }
 
-    bool IsSameSchema(const vm::Schema &schema,
-                      const vm::Schema &exp_schema) const;
+    // get the limit cnt value
+    // if not set, -1 is returned
+    //
+    // limit always >= 0 so it is safe to do that
+    int32_t GetLimitCntValue() const { return limit_cnt_.value_or(-1); }
+
+    bool IsSameSchema(const vm::Schema &schema, const vm::Schema &exp_schema) const;
+
+    // `lhs` schema contains `rhs` and is start with `rhs` schema
+    //
+    // return ok status if true
+    //        error status with msg otherwise
+    base::Status SchemaStartWith(const vm::Schema& lhs, const vm::Schema& rhs) const;
 
     PhysicalSchemaType GetOutputType() const { return output_type_; }
 
@@ -458,7 +469,9 @@ class PhysicalOpNode : public node::NodeBase<PhysicalOpNode> {
     PhysicalSchemaType output_type_;
 
     std::vector<const FnInfo *> fn_infos_;
-    int32_t limit_cnt_;
+
+    // all physical node has limit property, default to empty (not set)
+    std::optional<int32_t> limit_cnt_ = std::nullopt;
     std::vector<PhysicalOpNode *> producers_;
 
     SchemasContext schemas_ctx_;
@@ -785,7 +798,7 @@ class PhysicalReduceAggregationNode : public PhysicalProjectNode {
     }
     virtual ~PhysicalReduceAggregationNode() {}
     base::Status InitSchema(PhysicalPlanContext *) override;
-    virtual void Print(std::ostream &output, const std::string &tab) const;
+    void Print(std::ostream &output, const std::string &tab) const override;
     ConditionFilter having_condition_;
     const PhysicalAggregationNode* orig_aggr_ = nullptr;
 };
@@ -1021,7 +1034,7 @@ class WindowUnionList {
     WindowUnionList() : window_unions_() {}
     virtual ~WindowUnionList() {}
     void AddWindowUnion(PhysicalOpNode *node, const WindowOp &window) {
-        window_unions_.push_back(std::make_pair(node, window));
+        window_unions_.emplace_back(node, window);
     }
     const std::string FnDetail() const {
         std::ostringstream oss;
@@ -1083,18 +1096,14 @@ class RequestWindowUnionList {
 
 class PhysicalWindowAggrerationNode : public PhysicalProjectNode {
  public:
-    PhysicalWindowAggrerationNode(PhysicalOpNode *node,
-                                  const ColumnProjects &project,
-                                  const WindowOp &window_op,
-                                  bool instance_not_in_window,
-                                  bool need_append_input,
-                                  bool exclude_current_time)
+    PhysicalWindowAggrerationNode(PhysicalOpNode *node, const ColumnProjects &project, const WindowOp &window_op,
+                                  bool instance_not_in_window, bool need_append_input, bool exclude_current_time)
         : PhysicalProjectNode(node, kWindowAggregation, project, true),
-          need_append_input_(need_append_input),
-          exclude_current_time_(exclude_current_time),
-          instance_not_in_window_(instance_not_in_window),
           window_(window_op),
-          window_unions_() {
+          window_unions_(),
+          need_append_input_(need_append_input),
+          instance_not_in_window_(instance_not_in_window),
+          exclude_current_time_(exclude_current_time) {
         output_type_ = kSchemaTypeTable;
         fn_infos_.push_back(&window_.partition_.fn_info());
         fn_infos_.push_back(&window_.sort_.fn_info());
@@ -1114,35 +1123,15 @@ class PhysicalWindowAggrerationNode : public PhysicalProjectNode {
         fn_infos_.push_back(&window_join.condition_.fn_info());
     }
 
-    bool AddWindowUnion(PhysicalOpNode *node) {
-        if (nullptr == node) {
-            LOG(WARNING) << "Fail to add window union : table is null";
-            return false;
-        }
-        if (producers_.empty() || nullptr == producers_[0]) {
-            LOG(WARNING)
-                << "Fail to add window union : producer is empty or null";
-            return false;
-        }
-        if (!IsSameSchema(*node->GetOutputSchema(),
-                          *producers_[0]->GetOutputSchema())) {
-            LOG(WARNING)
-                << "Union Table and window input schema aren't consistent";
-            return false;
-        }
-        window_unions_.AddWindowUnion(node, window_);
-        WindowOp &window_union = window_unions_.window_unions_.back().second;
-        fn_infos_.push_back(&window_union.partition_.fn_info());
-        fn_infos_.push_back(&window_union.sort_.fn_info());
-        fn_infos_.push_back(&window_union.range_.fn_info());
-        return true;
-    }
+    bool AddWindowUnion(PhysicalOpNode *node);
 
     const bool instance_not_in_window() const {
         return instance_not_in_window_;
     }
 
     const bool exclude_current_time() const { return exclude_current_time_; }
+    const bool exclude_current_row() const { return exclude_current_row_; }
+    void set_exclude_current_row(bool flag) { exclude_current_row_ = flag; }
     bool need_append_input() const { return need_append_input_; }
 
     WindowOp &window() { return window_; }
@@ -1154,19 +1143,20 @@ class PhysicalWindowAggrerationNode : public PhysicalProjectNode {
     base::Status WithNewChildren(node::NodeManager *nm,
                                  const std::vector<PhysicalOpNode *> &children,
                                  PhysicalOpNode **out) override;
-
-    const bool need_append_input_;
-    const bool exclude_current_time_;
-    const bool instance_not_in_window_;
-    WindowOp window_;
-    WindowUnionList window_unions_;
-    WindowJoinList window_joins_;
-
     /**
      * Initialize inner state for window joins
      */
     base::Status InitJoinList(PhysicalPlanContext *plan_ctx);
     std::vector<PhysicalOpNode *> joined_op_list_;
+
+    WindowOp window_;
+    WindowUnionList window_unions_;
+    WindowJoinList window_joins_;
+
+    const bool need_append_input_;
+    const bool instance_not_in_window_;
+    const bool exclude_current_time_;
+    bool exclude_current_row_ = false;
 };
 
 class PhysicalJoinNode : public PhysicalBinaryNode {
@@ -1492,6 +1482,8 @@ class PhysicalRequestUnionNode : public PhysicalBinaryNode {
     const bool exclude_current_time_;
     const bool output_request_row_;
     RequestWindowUnionList window_unions_;
+
+    bool exclude_current_row_ = false;
 };
 
 class PhysicalRequestAggUnionNode : public PhysicalOpNode {
@@ -1499,26 +1491,25 @@ class PhysicalRequestAggUnionNode : public PhysicalOpNode {
     PhysicalRequestAggUnionNode(PhysicalOpNode *request, PhysicalOpNode *raw, PhysicalOpNode *aggr,
                                 const RequestWindowOp &window, const RequestWindowOp &aggr_window,
                                 bool instance_not_in_window, bool exclude_current_time, bool output_request_row,
-                                const node::FnDefNode *func, const node::ExprNode* agg_col)
+                                const node::CallExprNode *project)
         : PhysicalOpNode(kPhysicalOpRequestAggUnion, true),
           window_(window),
           agg_window_(aggr_window),
-          func_(func),
-          agg_col_(agg_col),
+          project_(project),
           instance_not_in_window_(instance_not_in_window),
           exclude_current_time_(exclude_current_time),
           output_request_row_(output_request_row) {
         output_type_ = kSchemaTypeTable;
 
-        fn_infos_.push_back(&window_.partition_.fn_info());
-        fn_infos_.push_back(&window_.sort_.fn_info());
-        fn_infos_.push_back(&window_.range_.fn_info());
-        fn_infos_.push_back(&window_.index_key_.fn_info());
+        AddFnInfo(&window_.partition_.fn_info());
+        AddFnInfo(&window_.sort_.fn_info());
+        AddFnInfo(&window_.range_.fn_info());
+        AddFnInfo(&window_.index_key_.fn_info());
 
-        fn_infos_.push_back(&agg_window_.partition_.fn_info());
-        fn_infos_.push_back(&agg_window_.sort_.fn_info());
-        fn_infos_.push_back(&agg_window_.range_.fn_info());
-        fn_infos_.push_back(&agg_window_.index_key_.fn_info());
+        AddFnInfo(&agg_window_.partition_.fn_info());
+        AddFnInfo(&agg_window_.sort_.fn_info());
+        AddFnInfo(&agg_window_.range_.fn_info());
+        AddFnInfo(&agg_window_.index_key_.fn_info());
 
         AddProducers(request, raw, aggr);
     }
@@ -1532,11 +1523,10 @@ class PhysicalRequestAggUnionNode : public PhysicalOpNode {
     const bool Valid() { return true; }
     static PhysicalRequestAggUnionNode *CastFrom(PhysicalOpNode *node);
 
-    const bool instance_not_in_window() const {
-        return instance_not_in_window_;
-    }
+    const bool instance_not_in_window() const { return instance_not_in_window_; }
     const bool exclude_current_time() const { return exclude_current_time_; }
     const bool output_request_row() const { return output_request_row_; }
+    void set_out_request_row(bool flag) { output_request_row_ = flag; }
     const RequestWindowOp &window() const { return window_; }
 
     base::Status WithNewChildren(node::NodeManager *nm,
@@ -1547,20 +1537,28 @@ class PhysicalRequestAggUnionNode : public PhysicalOpNode {
 
     RequestWindowOp window_;
     RequestWindowOp agg_window_;
-    const node::FnDefNode* func_ = nullptr;
-    const node::ExprNode* agg_col_;
+
+    // for long window, each node has only one projection node
+    const node::CallExprNode* project_;
     const SchemasContext* parent_schema_context_ = nullptr;
 
  private:
-    const bool instance_not_in_window_;
-    const bool exclude_current_time_;
-    const bool output_request_row_;
-
     void AddProducers(PhysicalOpNode *request, PhysicalOpNode *raw, PhysicalOpNode *aggr) {
         AddProducer(request);
         AddProducer(raw);
         AddProducer(aggr);
     }
+
+    const bool instance_not_in_window_;
+    const bool exclude_current_time_;
+
+    // Exclude the request row from request union results
+    //
+    // The option is different from `output_request_row_` in `PhysicalRequestUnionNode`.
+    // Here it is only `false` when the SQL Window clause has attribute `EXCLUDE CURRENT_ROW`,
+    // whereas in `PhysicalRequestUnionNode`, it is about common column optimized and not related to
+    // `EXCLUDE CURRENT_ROW`
+    bool output_request_row_;
 
     Schema agg_schema_;
 };

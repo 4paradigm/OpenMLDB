@@ -34,41 +34,6 @@ static const std::map<::openmldb::type::TTLType, ::hybridse::type::TTLType> TTL_
     {::openmldb::type::kAbsAndLat, ::hybridse::type::kTTLTimeLiveAndCountLive},
     {::openmldb::type::kAbsOrLat, ::hybridse::type::kTTLTimeLiveOrCountLive}};
 
-bool IndexUtil::ConvertIndex(const PBIndex& index, ::hybridse::vm::IndexList* output) {
-    if (output == nullptr) {
-        LOG(WARNING) << "output ptr is null";
-        return false;
-    }
-    for (int32_t i = 0; i < index.size(); i++) {
-        const ::openmldb::common::ColumnKey& key = index.Get(i);
-        ::hybridse::type::IndexDef* index_def = output->Add();
-        index_def->set_name(key.index_name());
-        index_def->mutable_first_keys()->CopyFrom(key.col_name());
-        if (key.has_ts_name() && !key.ts_name().empty()) {
-            index_def->set_second_key(key.ts_name());
-            index_def->set_ts_offset(0);
-        }
-        if (key.has_ttl()) {
-            auto ttl_type = key.ttl().ttl_type();
-            auto it = TTL_TYPE_MAP.find(ttl_type);
-            if (it == TTL_TYPE_MAP.end()) {
-                LOG(WARNING) << "not found " << ::openmldb::type::TTLType_Name(ttl_type);
-                return false;
-            }
-            index_def->set_ttl_type(it->second);
-            if (ttl_type == ::openmldb::type::kAbsAndLat || ttl_type == ::openmldb::type::kAbsOrLat) {
-                index_def->add_ttl(key.ttl().abs_ttl());
-                index_def->add_ttl(key.ttl().lat_ttl());
-            } else if (ttl_type == ::openmldb::type::kAbsoluteTime) {
-                index_def->add_ttl(key.ttl().abs_ttl());
-            } else {
-                index_def->add_ttl(key.ttl().lat_ttl());
-            }
-        }
-    }
-    return true;
-}
-
 base::Status IndexUtil::CheckIndex(const std::map<std::string, ::openmldb::common::ColumnDesc>& column_map,
         const PBIndex& index) {
     if (index.size() == 0) {
@@ -216,7 +181,7 @@ base::Status IndexUtil::CheckNewIndex(const ::openmldb::common::ColumnKey& colum
     }
     std::string id_str = GetIDStr(column_key);
     for (const auto& cur_column_key : table_info.column_key()) {
-        if (id_str == GetIDStr(cur_column_key)) {
+        if (id_str == GetIDStr(cur_column_key) && cur_column_key.flag() == 0) {
             return {base::ReturnCode::kError, "duplicated index"};
         }
     }

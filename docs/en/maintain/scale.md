@@ -12,7 +12,7 @@ You need to first start a new tablet node as following steps, please refer to th
 - Modify the configuration file: conf/tablet.flags
 - Start a new tablet
   ```bash
-    sh bin/start.sh start tablet
+    bash bin/start.sh start tablet
   ```
 
 After startup, you need to check whether the new node has joined the cluster. If the `showtablet` command is executed and the new node endpoint is listed, it means that it has joined the cluster
@@ -74,10 +74,10 @@ Scaling in your cluster is to reduce the number of nodes in the cluster.
 ### Step 3. Making the targeted node offline
 - Execute `stop` command
 ```bash
-sh bin/start.sh stop tablet
+bash bin/start.sh stop tablet
 ```
 - If nameserver is deployed on the node, you need to disable the nameserver.
 ```bash
-sh bin/start.sh stop nameserver
+bash bin/start.sh stop nameserver
 ```
 Note that, at least two Nameserver nodes are required to maintain high availability

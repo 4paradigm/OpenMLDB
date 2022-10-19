@@ -20,6 +20,7 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <vector>
 
 #include "base/status.h"
 #include "client/client.h"
@@ -27,9 +28,10 @@
 #include "proto/taskmanager.pb.h"
 #include "rpc/rpc_client.h"
 
-namespace openmldb {
-namespace client {
+namespace openmldb::client {
 
+// We set the job timeout(rpc request timeout) in every function, cuz the taskmanager client may be recreated in
+// DBSDK(SQLClusterRouter class member), but the timeout setting(session variables) is held by SQLClusterRouter.
 class TaskManagerClient : public Client {
  public:
     TaskManagerClient(const std::string& endpoint, const std::string& real_endpoint, bool use_sleep_policy)
@@ -39,51 +41,50 @@ class TaskManagerClient : public Client {
     TaskManagerClient(const std::string& endpoint, const std::string& real_endpoint)
         : Client(endpoint, real_endpoint), client_(real_endpoint.empty() ? endpoint : real_endpoint, true) {}
 
-    ~TaskManagerClient() override {}
+    ~TaskManagerClient() override = default;
 
     int Init() override { return client_.Init(); }
-    void SetRequestTimeout(int time_ms) { request_timeout_ms_ = time_ms; }
 
-    ::openmldb::base::Status ShowJobs(const bool only_unfinished,
-                                      std::vector<::openmldb::taskmanager::JobInfo>& job_infos);  // NOLINT
+    ::openmldb::base::Status ShowJobs(bool only_unfinished, int job_timeout,
+                                      std::vector<::openmldb::taskmanager::JobInfo>* job_infos);
 
-    ::openmldb::base::Status ShowJob(const int id, ::openmldb::taskmanager::JobInfo& job_info);  // NOLINT
+    ::openmldb::base::Status ShowJob(int id, int job_timeout, ::openmldb::taskmanager::JobInfo* job_info);
 
-    ::openmldb::base::Status StopJob(const int id, ::openmldb::taskmanager::JobInfo& job_info);  // NOLINT
+    ::openmldb::base::Status StopJob(int id, int job_timeout, ::openmldb::taskmanager::JobInfo* job_info);
 
     ::openmldb::base::Status RunBatchSql(const std::string& sql, const std::map<std::string, std::string>& config,
-                                             const std::string& default_db, std::string& output); // NOLINT
+                                         const std::string& default_db, int job_timeout,
+                                         std::string* output);
 
     ::openmldb::base::Status RunBatchAndShow(const std::string& sql, const std::map<std::string, std::string>& config,
-                                             const std::string& default_db, bool sync_job,
-                                             ::openmldb::taskmanager::JobInfo& job_info);  // NOLINT
+                                             const std::string& default_db, bool sync_job, int job_timeout,
+                                             ::openmldb::taskmanager::JobInfo* job_info);
 
     ::openmldb::base::Status ImportOnlineData(const std::string& sql, const std::map<std::string, std::string>& config,
-                                              const std::string& default_db, bool sync_job,
-                                              ::openmldb::taskmanager::JobInfo& job_info);  // NOLINT
+                                              const std::string& default_db, bool sync_job, int job_timeout,
+                                              ::openmldb::taskmanager::JobInfo* job_info);
 
     ::openmldb::base::Status ImportOfflineData(const std::string& sql, const std::map<std::string, std::string>& config,
-                                               const std::string& default_db, bool sync_job,
-                                               ::openmldb::taskmanager::JobInfo& job_info);  // NOLINT
+                                               const std::string& default_db, bool sync_job, int job_timeout,
+                                               ::openmldb::taskmanager::JobInfo* job_info);
 
     ::openmldb::base::Status ExportOfflineData(const std::string& sql, const std::map<std::string, std::string>& config,
-                                               const std::string& default_db, bool sync_job,
-                                               ::openmldb::taskmanager::JobInfo& job_info);  // NOLINT
+                                               const std::string& default_db, bool sync_job, int job_timeout,
+                                               ::openmldb::taskmanager::JobInfo* job_info);
 
-    ::openmldb::base::Status DropOfflineTable(const std::string& db, const std::string& table);
+    ::openmldb::base::Status DropOfflineTable(const std::string& db, const std::string& table, int job_timeout);
 
-    ::openmldb::base::Status CreateFunction(const std::shared_ptr<::openmldb::common::ExternalFun>& fun);
+    ::openmldb::base::Status CreateFunction(const std::shared_ptr<::openmldb::common::ExternalFun>& fun,
+                                            int job_timeout);
 
-    ::openmldb::base::Status DropFunction(const std::string& name);
+    ::openmldb::base::Status DropFunction(const std::string& name, int job_timeout);
 
-    std::string GetJobLog(const int id, ::openmldb::base::Status* status);
+    std::string GetJobLog(int id, int job_timeout, ::openmldb::base::Status* status);
 
  private:
     ::openmldb::RpcClient<::openmldb::taskmanager::TaskManagerServer_Stub> client_;
-    int request_timeout_ms_ = 20000;
 };
 
-}  // namespace client
-}  // namespace openmldb
+}  // namespace openmldb::client
 
 #endif  // SRC_CLIENT_TASKMANAGER_CLIENT_H_

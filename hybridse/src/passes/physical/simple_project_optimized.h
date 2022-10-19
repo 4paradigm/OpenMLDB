@@ -21,6 +21,14 @@
 namespace hybridse {
 namespace passes {
 
+// Transform PhysicalSimpleProjectNode
+// Rule 1, merge consecutive simple projects:
+//   SimpleProject(project_list1)
+//     SimpleProject(project_list2)
+//       ...
+//   ->
+//   SimpleProject(merged_prject_list)
+//     ...
 class SimpleProjectOptimized : public TransformUpPysicalPass {
  public:
     explicit SimpleProjectOptimized(PhysicalPlanContext* plan_ctx)

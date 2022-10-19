@@ -28,7 +28,7 @@
 #include <utility>
 
 #include "base/file_util.h"
-#include "base/glog_wapper.h"  // NOLINT
+#include "base/glog_wrapper.h"
 #include "base/strings.h"
 #include "log/log_format.h"
 #include "storage/segment.h"
@@ -433,7 +433,7 @@ bool LogReplicator::DelAllReplicateNode() {
     return true;
 }
 
-bool LogReplicator::AppendEntry(LogEntry& entry) {
+bool LogReplicator::AppendEntry(LogEntry& entry, ::google::protobuf::Closure* done) {
     std::lock_guard<std::mutex> lock(wmu_);
     if (wh_ == NULL || wh_->GetSize() / (1024 * 1024) > (uint32_t)FLAGS_binlog_single_file_max_size) {
         bool ok = RollWLogFile();
@@ -456,6 +456,9 @@ bool LogReplicator::AppendEntry(LogEntry& entry) {
                                      // sync to remote replica
         follower_offset_.store(cur_offset + 1, std::memory_order_relaxed);
     }
+    if (done) {
+        done->Run();
+    }
     return true;
 }
 
@@ -477,7 +480,7 @@ bool LogReplicator::RollWLogFile() {
     uint64_t offset = log_offset_.load(std::memory_order_relaxed);
     logs_->Insert(binlog_index_.load(std::memory_order_relaxed), offset);
     binlog_index_.fetch_add(1, std::memory_order_relaxed);
-    PDLOG(INFO, "roll write log for name %s and start offset %lld", name.c_str(), offset);
+    PDLOG(INFO, "roll write log for name %s and start offset %lld. tid %u pid %u", name.c_str(), offset, tid_, pid_);
     wh_ = new WriteHandle("off", name, fd);
     return true;
 }

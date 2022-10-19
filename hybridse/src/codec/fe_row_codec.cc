@@ -168,18 +168,24 @@ bool RowBuilder::Check(::hybridse::type::Type type) {
 
 void FillNullStringOffset(int8_t* buf, uint32_t start, uint32_t addr_length,
                           uint32_t str_idx, uint32_t str_offset) {
-    auto ptr = buf + start + addr_length * str_idx;
-    if (addr_length == 1) {
-        *(reinterpret_cast<uint8_t*>(ptr)) = (uint8_t)str_offset;
-    } else if (addr_length == 2) {
-        *(reinterpret_cast<uint16_t*>(ptr)) = (uint16_t)str_offset;
-    } else if (addr_length == 3) {
-        *(reinterpret_cast<uint8_t*>(ptr)) = str_offset >> 16;
-        *(reinterpret_cast<uint8_t*>(ptr + 1)) = (str_offset & 0xFF00) >> 8;
-        *(reinterpret_cast<uint8_t*>(ptr + 2)) = str_offset & 0x00FF;
+    if (FLAGS_enable_spark_unsaferow_format) {
+        // Do not update row pointer for UnsafeRowOpt
     } else {
-        *(reinterpret_cast<uint32_t*>(ptr)) = str_offset;
+        auto ptr = buf + start + addr_length * str_idx;
+        if (addr_length == 1) {
+            *(reinterpret_cast<uint8_t*>(ptr)) = (uint8_t)str_offset;
+        } else if (addr_length == 2) {
+            *(reinterpret_cast<uint16_t*>(ptr)) = (uint16_t)str_offset;
+        } else if (addr_length == 3) {
+            *(reinterpret_cast<uint8_t*>(ptr)) = str_offset >> 16;
+            *(reinterpret_cast<uint8_t*>(ptr + 1)) = (str_offset & 0xFF00) >> 8;
+            *(reinterpret_cast<uint8_t*>(ptr + 2)) = str_offset & 0x00FF;
+        } else {
+            *(reinterpret_cast<uint32_t*>(ptr)) = str_offset;
+        }
     }
+
+
 }
 
 bool RowBuilder::AppendNULL() {
@@ -925,16 +931,13 @@ SliceFormat::SliceFormat(const hybridse::codec::Schema* schema)
         const ::hybridse::type::ColumnDef& column = schema_->Get(i);
         if (column.type() == ::hybridse::type::kVarchar) {
             if (FLAGS_enable_spark_unsaferow_format) {
-                infos_.push_back(
-                    ColInfo(column.name(), column.type(), i, offset));
+                infos_.emplace_back(column.name(), column.type(), i, offset);
             } else {
-                infos_.push_back(
-                    ColInfo(column.name(), column.type(), i, string_field_cnt));
+                infos_.emplace_back(column.name(), column.type(), i, string_field_cnt);
             }
 
             infos_dict_[column.name()] = i;
-            next_str_pos_.insert(
-                std::make_pair(string_field_cnt, string_field_cnt));
+            next_str_pos_.emplace(string_field_cnt, string_field_cnt);
             string_field_cnt += 1;
 
             if (FLAGS_enable_spark_unsaferow_format) {
@@ -948,8 +951,7 @@ SliceFormat::SliceFormat(const hybridse::codec::Schema* schema)
                 LOG(WARNING) << "fail to find column type "
                              << ::hybridse::type::Type_Name(column.type());
             } else {
-                infos_.push_back(
-                    ColInfo(column.name(), column.type(), i, offset));
+                infos_.emplace_back(column.name(), column.type(), i, offset);
                 infos_dict_[column.name()] = i;
                 offset += it->second;
             }

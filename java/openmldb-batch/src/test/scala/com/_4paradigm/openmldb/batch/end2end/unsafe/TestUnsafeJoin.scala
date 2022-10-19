@@ -16,7 +16,7 @@
 
 package com._4paradigm.openmldb.batch.end2end.unsafe
 
-import com._4paradigm.openmldb.batch.SparkTestSuite
+import com._4paradigm.openmldb.batch.UnsaferowoptSparkTestSuite
 import com._4paradigm.openmldb.batch.api.OpenmldbSession
 import com._4paradigm.openmldb.batch.end2end.DataUtil
 import com._4paradigm.openmldb.batch.utils.SparkUtil
@@ -24,13 +24,7 @@ import org.apache.spark.sql.Row
 import org.apache.spark.sql.types.{DoubleType, FloatType, IntegerType, LongType, ShortType, StringType, StructField,
   StructType}
 
-class TestUnsafeJoin extends SparkTestSuite {
-
-  override def customizedBefore(): Unit = {
-    val spark = getSparkSession
-    spark.conf.set("spark.openmldb.unsaferow.opt", true)
-    spark.conf.set("spark.openmldb.opt.join.spark_expr", true)
-  }
+class TestUnsafeJoin extends UnsaferowoptSparkTestSuite {
 
   def testSql(sqlText: String) {
     val spark = getSparkSession
@@ -149,11 +143,6 @@ class TestUnsafeJoin extends SparkTestSuite {
       " ON CAST(t1.id AS INT64) + 100 >= t2.id * 100 + 100"
     val outputDf4 = sess.sql(sqlText4)
     assert(outputDf4.count() == t1.count())
-  }
-
-  override def customizedAfter(): Unit = {
-    val spark = getSparkSession
-    spark.conf.set("spark.openmldb.unsaferow.opt", false)
   }
 
 }

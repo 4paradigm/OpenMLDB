@@ -52,6 +52,7 @@ MINOR=${ARR[1]}
 BUG=${ARR[2]}
 
 # version in server
+echo -e "${GREEN}setting native cpp version to $MAJOR.$MINOR.$BUG${NC}"
 sed -i"" -e "s/OPENMLDB_VERSION_MAJOR .*/OPENMLDB_VERSION_MAJOR ${MAJOR})/g" "${cmake_file}"
 sed -i"" -e "s/OPENMLDB_VERSION_MINOR .*/OPENMLDB_VERSION_MINOR ${MINOR})/g" "${cmake_file}"
 sed -i"" -e "s/OPENMLDB_VERSION_BUG .*/OPENMLDB_VERSION_BUG ${BUG})/g" "${cmake_file}"
@@ -71,4 +72,5 @@ fi
 
 # version in python sdk
 echo -e "${GREEN}setting py version to $PY_VERSION${NC}"
-sed -i"" -e "s/version=.*/version='$PY_VERSION',/g" python/setup.py
+sed -i"" -e "s/version=.*/version='$PY_VERSION',/g" python/openmldb_sdk/setup.py
+sed -i"" -e "s/version=.*/version='$PY_VERSION',/g" python/openmldb_tool/setup.py

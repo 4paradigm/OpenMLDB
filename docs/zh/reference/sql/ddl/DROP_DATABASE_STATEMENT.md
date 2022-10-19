@@ -10,26 +10,28 @@ DROP DATABASE database_name
 
 ## **Example**
 
-创建一个数据库，并设置为当前数据库:
+创建数据库db1和db2:
 
 ```sql
 CREATE DATABASE db1;
--- SUCCEED: Create database successfully
+-- SUCCEED
 
 CREATE DATABASE db2;
--- SUCCEED: Create database successfully
+-- SUCCEED
 ```
 
 查看数据库列表：
 
 ```sql
 SHOW DATABASES;
- ----------- 
-  Databases  
- ----------- 
-  db1        
-  db2        
- ----------- 
+ -----------
+  Databases
+ -----------
+  db1
+  db2
+ -----------
+
+2 rows in set
 ```
 
 删除数据库`db1`
@@ -42,11 +44,13 @@ DROP DATABASE db1;
 
 ```sql
 SHOW DATABASES;
- ----------- 
-  Databases  
- -----------        
-  db2        
- ----------- 
+ -----------
+  Databases
+ -----------
+  db2
+ -----------
+
+1 rows in set
 ```
 
 ## 相关语句
@@ -55,5 +59,5 @@ SHOW DATABASES;
 
 [CREATE DATABASE](./CREATE_DATABASE_STATEMENT.md)
 
-[SHOW DATABASES](../ddl/SHOW_STATEMENT.md#show-databases)
+[SHOW DATABASES](./SHOW_DATABASES_STATEMENT.md)
 

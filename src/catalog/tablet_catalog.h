@@ -153,7 +153,7 @@ class TabletTableHandler : public ::hybridse::vm::TableHandler,
 
     const ::hybridse::vm::Types &GetTypes() override { return types_; }
 
-    const ::hybridse::vm::IndexHint &GetIndex() override { return index_hint_; }
+    const ::hybridse::vm::IndexHint &GetIndex() override;
 
     const ::hybridse::codec::Row Get(int32_t pos);
 
@@ -199,8 +199,8 @@ class TabletTableHandler : public ::hybridse::vm::TableHandler,
     ::openmldb::storage::TableSt table_st_;
     std::shared_ptr<Tables> tables_;
     ::hybridse::vm::Types types_;
-    ::hybridse::vm::IndexList index_list_;
-    ::hybridse::vm::IndexHint index_hint_;
+    std::atomic<int32_t> index_pos_;
+    std::vector<::hybridse::vm::IndexHint> index_hint_vec_;
     std::shared_ptr<TableClientManager> table_client_manager_;
     std::shared_ptr<hybridse::vm::Tablet> local_tablet_;
 };
@@ -249,22 +249,17 @@ class TabletCatalog : public ::hybridse::vm::Catalog {
     uint64_t GetVersion() const;
 
     void SetLocalTablet(std::shared_ptr<::hybridse::vm::Tablet> local_tablet) { local_tablet_ = local_tablet; }
-    void SetLocalSpTablet(std::shared_ptr<::hybridse::vm::Tablet> local_sp_tablet) {
-        local_sp_tablet_ = local_sp_tablet;
-    }
 
     std::shared_ptr<::hybridse::sdk::ProcedureInfo> GetProcedureInfo(const std::string &db,
                                                                      const std::string &sp_name) override;
 
     const Procedures &GetProcedures();
 
-    std::vector<::hybridse::vm::AggrTableInfo> GetAggrTables(
-        const std::string& base_db,
-        const std::string& base_table,
-        const std::string& aggr_func,
-        const std::string& aggr_col,
-        const std::string& partition_cols,
-        const std::string& order_col) override;
+    std::vector<::hybridse::vm::AggrTableInfo> GetAggrTables(const std::string &base_db, const std::string &base_table,
+                                                             const std::string &aggr_func, const std::string &aggr_col,
+                                                             const std::string &partition_cols,
+                                                             const std::string &order_col,
+                                                             const std::string &filter_col) override;
 
     void RefreshAggrTables(const std::vector<::hybridse::vm::AggrTableInfo>& entries);
 
@@ -276,12 +271,13 @@ class TabletCatalog : public ::hybridse::vm::Catalog {
         std::string aggr_col;
         std::string partition_cols;
         std::string order_by_col;
+        std::string filter_col;
     };
 
     struct AggrTableKeyHash {
         std::size_t operator()(const AggrTableKey& key) const {
-            return std::hash<std::string>()(key.base_db + key.base_table + key.aggr_func +
-                                            key.aggr_col + key.partition_cols + key.order_by_col);
+            return std::hash<std::string>()(key.base_db + key.base_table + key.aggr_func + key.aggr_col +
+                                            key.partition_cols + key.order_by_col + key.filter_col);
         }
     };
 
@@ -292,7 +288,8 @@ class TabletCatalog : public ::hybridse::vm::Catalog {
                 lhs.aggr_func == rhs.aggr_func &&
                 lhs.aggr_col == rhs.aggr_col &&
                 lhs.partition_cols == rhs.partition_cols &&
-                lhs.order_by_col == rhs.order_by_col;
+                lhs.order_by_col == rhs.order_by_col &&
+                lhs.filter_col == rhs.filter_col;
         }
     };
 
@@ -308,7 +305,6 @@ class TabletCatalog : public ::hybridse::vm::Catalog {
     ClientManager client_manager_;
     std::atomic<uint64_t> version_;
     std::shared_ptr<::hybridse::vm::Tablet> local_tablet_;
-    std::shared_ptr<::hybridse::vm::Tablet> local_sp_tablet_;
     std::shared_ptr<AggrTableMap> aggr_tables_;
 };
 

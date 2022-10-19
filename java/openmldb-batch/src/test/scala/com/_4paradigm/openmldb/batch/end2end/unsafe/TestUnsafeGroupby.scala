@@ -16,17 +16,12 @@
 
 package com._4paradigm.openmldb.batch.end2end.unsafe
 
-import com._4paradigm.openmldb.batch.SparkTestSuite
+import com._4paradigm.openmldb.batch.UnsaferowoptSparkTestSuite
 import com._4paradigm.openmldb.batch.api.OpenmldbSession
 import com._4paradigm.openmldb.batch.end2end.DataUtil
 import com._4paradigm.openmldb.batch.utils.SparkUtil
 
-class TestUnsafeGroupby extends SparkTestSuite {
-
-  override def customizedBefore(): Unit = {
-    val spark = getSparkSession
-    spark.conf.set("spark.openmldb.unsaferow.opt", true)
-  }
+class TestUnsafeGroupby extends UnsaferowoptSparkTestSuite {
 
   test("Test unsafe groupby") {
     val spark = getSparkSession
@@ -41,11 +36,6 @@ class TestUnsafeGroupby extends SparkTestSuite {
     val outputDf = sess.sql(sqlText)
     val sparksqlOutputDf = sess.sparksql(sqlText)
     assert(SparkUtil.approximateDfEqual(outputDf.getSparkDf(), sparksqlOutputDf, false))
-  }
-
-  override def customizedAfter(): Unit = {
-    val spark = getSparkSession
-    spark.conf.set("spark.openmldb.unsaferow.opt", false)
   }
 
 }

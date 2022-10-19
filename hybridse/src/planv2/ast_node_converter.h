@@ -104,6 +104,8 @@ base::Status AstPathExpressionToStringList(const zetasql::ASTPathExpression* ast
 base::Status ASTIntLiteralToNum(const zetasql::ASTExpression* ast_expr, int64_t* val);
 base::Status ASTIntervalLIteralToNum(const zetasql::ASTExpression* ast_expr, int64_t* val, node::DataType* unit);
 
+base::Status ConvertDeleteNode(const zetasql::ASTDeleteStatement* root, node::NodeManager* node_manager,
+                                    node::DeleteNode** output);
 base::Status ConvertInsertStatement(const zetasql::ASTInsertStatement* root, node::NodeManager* node_manager,
                                     node::InsertStmt** output);
 base::Status ConvertDropStatement(const zetasql::ASTDropStatement* root, node::NodeManager* node_manager,

@@ -16,45 +16,27 @@
 package com._4paradigm.openmldb.java_sdk_test.executor;
 
 
-import com._4paradigm.openmldb.java_sdk_test.checker.Checker;
-import com._4paradigm.openmldb.java_sdk_test.checker.CheckerStrategy;
-import com._4paradigm.openmldb.java_sdk_test.checker.DiffVersionChecker;
-import com._4paradigm.openmldb.java_sdk_test.command.OpenMLDBComamndFacade;
-import com._4paradigm.openmldb.java_sdk_test.command.OpenMLDBCommandUtil;
-import com._4paradigm.openmldb.java_sdk_test.command.OpenmlDBCommandFactory;
-import com._4paradigm.openmldb.java_sdk_test.common.FedbGlobalVar;
-import com._4paradigm.openmldb.java_sdk_test.entity.FesqlResult;
-import com._4paradigm.openmldb.java_sdk_test.util.FesqlUtil;
-import com._4paradigm.openmldb.test_common.bean.FEDBInfo;
-import com._4paradigm.openmldb.test_common.common.LogProxy;
-import com._4paradigm.openmldb.test_common.model.InputDesc;
 import com._4paradigm.openmldb.test_common.model.SQLCase;
 import com._4paradigm.openmldb.test_common.model.SQLCaseType;
+import com._4paradigm.qa.openmldb_deploy.bean.OpenMLDBInfo;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.collections4.CollectionUtils;
-import org.apache.commons.collections4.MapUtils;
-import org.apache.commons.lang3.StringUtils;
-import org.slf4j.Logger;
 
-import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 @Slf4j
 public class StandaloneCliExecutor extends CommandExecutor{
-    private static final Logger logger = new LogProxy(log);
-    public StandaloneCliExecutor(SQLCase fesqlCase, SQLCaseType executorType) {
-        super(fesqlCase, executorType);
+    public StandaloneCliExecutor(SQLCase sqlCase, SQLCaseType executorType) {
+        super(sqlCase, executorType);
     }
 
-    public StandaloneCliExecutor(SQLCase fesqlCase, Map<String, FEDBInfo> fedbInfoMap, SQLCaseType executorType) {
-        super(fesqlCase, fedbInfoMap, executorType);
+    public StandaloneCliExecutor(SQLCase sqlCase, Map<String, OpenMLDBInfo> openMLDBInfoMap, SQLCaseType executorType) {
+        super(sqlCase, openMLDBInfoMap, executorType);
     }
 
     @Override
     public boolean verify() {
-        if (null != fesqlCase.getMode() && fesqlCase.getMode().contains("standalone-unsupport")) {
-            logger.info("skip case in cli mode: {}", fesqlCase.getDesc());
+        if (null != sqlCase.getMode() && sqlCase.getMode().contains("standalone-unsupport")) {
+            log.info("skip case in cli mode: {}", sqlCase.getDesc());
             return false;
         }
         return super.verify();

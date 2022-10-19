@@ -42,7 +42,7 @@
 #include "gperftools/malloc_extension.h"
 #endif
 #include "base/file_util.h"
-#include "base/glog_wapper.h"
+#include "base/glog_wrapper.h"
 #include "base/hash.h"
 #include "base/proto_util.h"
 #include "base/status.h"
@@ -331,7 +331,8 @@ void TabletImpl::UpdateTTL(RpcController* ctrl, const ::openmldb::api::UpdateTTL
             if (index->GetTTLType() != ::openmldb::storage::TTLSt::ConvertTTLType(ttl.ttl_type())) {
                 response->set_code(::openmldb::base::ReturnCode::kTtlTypeMismatch);
                 response->set_msg("ttl type mismatch");
-                PDLOG(WARNING, "ttl type mismatch. tid %u, pid %u", tid, pid);
+                PDLOG(WARNING, "ttl type mismatch request type %d current type %d. tid %u, pid %u",
+                        ::openmldb::storage::TTLSt::ConvertTTLType(ttl.ttl_type()), index->GetTTLType(), tid, pid);
                 return;
             }
         }
@@ -766,16 +767,22 @@ void TabletImpl::Put(RpcController* controller, const ::openmldb::api::PutReques
         if (request->ts_dimensions_size() > 0) {
             entry.mutable_ts_dimensions()->CopyFrom(request->ts_dimensions());
         }
-        replicator->AppendEntry(entry);
-    } while (false);
 
-    ok = UpdateAggrs(request->tid(), request->pid(), request->value(),
-                     request->dimensions(), entry.log_index());
-    if (!ok) {
-        response->set_code(::openmldb::base::ReturnCode::kError);
-        response->set_msg("update aggr failed");
-        return;
-    }
+        // Aggregator update assumes that binlog_offset is strictly increasing
+        // so the update should be protected within the replicator lock
+        // in case there will be other Put jump into the middle
+        auto update_aggr = [this, &request, &ok, &entry]() {
+            ok = UpdateAggrs(request->tid(), request->pid(), request->value(),
+                               request->dimensions(), entry.log_index());
+        };
+        UpdateAggrClosure closure(update_aggr);
+        replicator->AppendEntry(entry, &closure);
+        if (!ok) {
+            response->set_code(::openmldb::base::ReturnCode::kError);
+            response->set_msg("update aggr failed");
+            return;
+        }
+    } while (false);
 
     uint64_t end_time = ::baidu::common::timer::get_micros();
     if (start_time + FLAGS_put_slow_log_threshold < end_time) {
@@ -1379,37 +1386,35 @@ void TabletImpl::Count(RpcController* controller, const ::openmldb::api::CountRe
 void TabletImpl::Traverse(RpcController* controller, const ::openmldb::api::TraverseRequest* request,
                           ::openmldb::api::TraverseResponse* response, Closure* done) {
     brpc::ClosureGuard done_guard(done);
-    std::shared_ptr<Table> table = GetTable(request->tid(), request->pid());
+    uint32_t tid = request->tid();
+    uint32_t pid = request->pid();
+    std::shared_ptr<Table> table = GetTable(tid, pid);
     if (!table) {
-        PDLOG(WARNING, "table is not exist. tid %u, pid %u", request->tid(), request->pid());
+        PDLOG(WARNING, "table is not exist. tid %u, pid %u", tid, pid);
         response->set_code(::openmldb::base::ReturnCode::kTableIsNotExist);
         response->set_msg("table is not exist");
         return;
     }
     if (table->GetTableStat() == ::openmldb::storage::kLoading) {
-        PDLOG(WARNING, "table is loading. tid %u, pid %u", request->tid(), request->pid());
+        PDLOG(WARNING, "table is loading. tid %u, pid %u", tid, pid);
         response->set_code(::openmldb::base::ReturnCode::kTableIsLoading);
         response->set_msg("table is loading");
         return;
     }
-    uint32_t index = 0;
     std::string index_name;
     if (request->has_idx_name() && !request->idx_name().empty()) {
         index_name = request->idx_name();
     } else {
         index_name = table->GetPkIndex()->GetName();
     }
-    std::shared_ptr<IndexDef> index_def;
-    index_def = table->GetIndex(index_name);
+    auto index_def = table->GetIndex(index_name);
     if (!index_def || !index_def->IsReady()) {
-        PDLOG(WARNING, "idx name %s not found in table. tid %u, pid %u", index_name.c_str(), request->tid(),
-              request->pid());
+        PDLOG(WARNING, "idx name %s not found in table. tid %u, pid %u", index_name.c_str(), tid, pid);
         response->set_code(::openmldb::base::ReturnCode::kIdxNameNotFound);
         response->set_msg("idx name not found");
         return;
     }
-    index = index_def->GetId();
-    ::openmldb::storage::TableIterator* it = table->NewTraverseIterator(index);
+    ::openmldb::storage::TableIterator* it = table->NewTraverseIterator(index_def->GetId());
     if (it == NULL) {
         response->set_code(::openmldb::base::ReturnCode::kTsNameNotFound);
         response->set_msg("create iterator failed");
@@ -1417,18 +1422,30 @@ void TabletImpl::Traverse(RpcController* controller, const ::openmldb::api::Trav
     }
     uint64_t last_time = 0;
     std::string last_pk;
+    uint32_t ts_pos = 0;
     if (request->has_pk() && request->pk().size() > 0) {
-        DEBUGLOG("tid %u, pid %u seek pk %s ts %lu", request->tid(), request->pid(), request->pk().c_str(),
-                 request->ts());
+        DLOG(INFO) << "tid " << tid << ", pid " << pid << " seek pk " << request->pk() << " ts " << request->ts();
         it->Seek(request->pk(), request->ts());
         last_pk = request->pk();
         last_time = request->ts();
+        if (request->has_ts_pos()) {
+            ts_pos = request->ts_pos();
+        }
         auto traverse_it = dynamic_cast<::openmldb::storage::TraverseIterator*>(it);
-        if (traverse_it && traverse_it->Valid() && request->skip_current_pk() && traverse_it->GetPK() == last_pk) {
-            traverse_it->NextPK();
+        if (traverse_it && traverse_it->Valid() && traverse_it->GetPK() == last_pk) {
+            if (request->skip_current_pk()) {
+                traverse_it->NextPK();
+            } else if (traverse_it->GetKey() == last_time) {
+                uint32_t skip_cnt = request->has_ts_pos() ? request->ts_pos() : 1;
+                while (skip_cnt > 0 && traverse_it->Valid() &&
+                        traverse_it->GetPK() == last_pk && traverse_it->GetKey() == last_time) {
+                    traverse_it->Next();
+                    skip_cnt--;
+                }
+            }
         }
     } else {
-        DEBUGLOG("tid %u, pid %u seek to first", request->tid(), request->pid());
+        DEBUGLOG("tid %u, pid %u seek to first", tid, pid);
         it->SeekToFirst();
     }
     std::map<std::string, std::vector<std::pair<uint64_t, openmldb::base::Slice>>> value_map;
@@ -1445,20 +1462,30 @@ void TabletImpl::Traverse(RpcController* controller, const ::openmldb::api::Trav
             break;
         }
         DEBUGLOG("traverse pk %s ts %lu", it->GetPK().c_str(), it->GetKey());
-        // skip duplicate record
-        if (remove_duplicated_record && last_time == it->GetKey() && last_pk == it->GetPK()) {
-            DEBUGLOG("filter duplicate record for key %s with ts %lu", last_pk.c_str(), last_time);
-            continue;
+        if (last_pk != it->GetPK()) {
+            last_pk = it->GetPK();
+            last_time = it->GetKey();
+            ts_pos = 1;
+        } else if (last_time != it->GetKey()) {
+            last_time = it->GetKey();
+            ts_pos = 1;
+        } else {
+            ts_pos++;
+            // skip duplicate record
+            if (remove_duplicated_record) {
+                DEBUGLOG("filter duplicate record for key %s with ts %lu", last_pk.c_str(), last_time);
+                continue;
+            }
         }
-        last_pk = it->GetPK();
-        last_time = it->GetKey();
-        if (value_map.find(last_pk) == value_map.end()) {
-            value_map.insert(std::make_pair(last_pk, std::vector<std::pair<uint64_t, openmldb::base::Slice>>()));
-            value_map[last_pk].reserve(request->limit());
-            key_seq.emplace_back(last_pk);
+        auto map_it = value_map.find(last_pk);
+        if (map_it == value_map.end()) {
+            auto pair = value_map.emplace(last_pk, std::vector<std::pair<uint64_t, openmldb::base::Slice>>());
+            map_it = pair.first;
+            map_it->second.reserve(request->limit());
+            key_seq.emplace_back(map_it->first);
         }
         openmldb::base::Slice value = it->GetValue();
-        value_map[last_pk].push_back(std::make_pair(it->GetKey(), value));
+        map_it->second.emplace_back(it->GetKey(), value);
         total_block_size += last_pk.length() + value.size();
         scount++;
         if (it->GetCount() >= FLAGS_max_traverse_cnt) {
@@ -1494,19 +1521,21 @@ void TabletImpl::Traverse(RpcController* controller, const ::openmldb::api::Trav
             continue;
         }
         for (const auto& pair : iter->second) {
-            DEBUGLOG("encode pk %s ts %lu size %u", key.c_str(), pair.first, pair.second.size());
+            DLOG(INFO) << "encode pk " << key << " ts " << pair.first << " size " << pair.second.size();
             ::openmldb::codec::EncodeFull(key, pair.first, pair.second.data(), pair.second.size(), rbuffer,
                                           offset);
             offset += (4 + 4 + 8 + key.length() + pair.second.size());
         }
     }
     delete it;
-    DEBUGLOG("traverse count %d. last_pk %s last_time %lu", scount, last_pk.c_str(), last_time);
+    DLOG(INFO) << "tid " << tid << " pid " << pid << " traverse count " << scount << " last_pk " << last_pk
+        << " last_time " << last_time << " ts_pos " << ts_pos;
     response->set_code(::openmldb::base::ReturnCode::kOk);
     response->set_count(scount);
     response->set_pk(last_pk);
     response->set_ts(last_time);
     response->set_is_finish(is_finish);
+    response->set_ts_pos(ts_pos);
 }
 
 void TabletImpl::Delete(RpcController* controller, const ::openmldb::api::DeleteRequest* request,
@@ -1557,6 +1586,26 @@ void TabletImpl::Delete(RpcController* controller, const ::openmldb::api::Delete
         response->set_msg("delete failed");
         return;
     }
+
+    // delete the entries from pre-aggr table
+    auto aggrs = GetAggregators(request->tid(), request->pid());
+    if (aggrs) {
+        for (const auto& aggr : *aggrs) {
+            if (aggr->GetIndexPos() != idx) {
+                continue;
+            }
+            auto ok = aggr->Delete(request->key());
+            if (!ok) {
+                PDLOG(WARNING,
+                      "delete from aggr failed. base table: tid[%u] pid[%u] index[%u] key[%s]. aggr table: tid[%u]",
+                      request->tid(), request->pid(), idx, request->key().c_str(), aggr->GetAggrTid());
+                response->set_code(::openmldb::base::ReturnCode::kDeleteFailed);
+                response->set_msg("delete from associated pre-aggr table failed");
+                return;
+            }
+        }
+    }
+
     std::shared_ptr<LogReplicator> replicator;
     do {
         replicator = GetReplicator(request->tid(), request->pid());
@@ -1650,7 +1699,7 @@ void TabletImpl::ProcessQuery(RpcController* ctrl, const openmldb::api::QueryReq
         uint32_t count = 0;
         for (auto& output_row : output_rows) {
             if (byte_size > FLAGS_scan_max_bytes_size) {
-                LOG(WARNING) << "reach the max byte size truncate result";
+                LOG(WARNING) << "reach the max byte size " << FLAGS_scan_max_bytes_size << " truncate result";
                 response->set_schema(session.GetEncodedSchema());
                 response->set_byte_size(byte_size);
                 response->set_count(count);
@@ -3121,16 +3170,17 @@ int TabletImpl::LoadDiskTableInternal(uint32_t tid, uint32_t pid, const ::openml
         std::string manifest_file = snapshot_path + "MANIFEST";
         if (Snapshot::GetLocalManifest(manifest_file, manifest) == 0) {
             std::string snapshot_dir = snapshot_path + manifest.name();
-            PDLOG(INFO, "rename dir %s to %s. tid %u pid %u", snapshot_dir.c_str(), data_path.c_str(), tid, pid);
-            if (!::openmldb::base::Rename(snapshot_dir, data_path)) {
-                PDLOG(WARNING, "rename dir failed. tid %u pid %u path %s", tid, pid, snapshot_dir.c_str());
-                break;
+            if (::openmldb::base::IsExists(snapshot_dir)) {
+                PDLOG(INFO, "hardlink dir %s to %s (tid %u pid %u)", snapshot_dir.c_str(), data_path.c_str(), tid, pid);
+                if (::openmldb::base::HardLinkDir(snapshot_dir, data_path)) {
+                    PDLOG(WARNING, "hardlink snapshot dir %s to data dir failed (tid %u pid %u)", snapshot_dir.c_str(),
+                          tid, pid);
+                    break;
+                }
+                snapshot_offset = manifest.offset();
+            } else {
+                PDLOG(WARNING, "snapshot_dir %s with tid %u pid %u not exists", snapshot_dir.c_str(), tid, pid);
             }
-            if (unlink(manifest_file.c_str()) < 0) {
-                PDLOG(WARNING, "remove manifest failed. tid %u pid %u path %s", tid, pid, manifest_file.c_str());
-                break;
-            }
-            snapshot_offset = manifest.offset();
         }
         std::string msg;
         if (CreateTableInternal(&table_meta, msg) < 0) {
@@ -3178,7 +3228,6 @@ int TabletImpl::LoadDiskTableInternal(uint32_t tid, uint32_t pid, const ::openml
             task_pool_.DelayTask(FLAGS_binlog_delete_interval,
                                  boost::bind(&TabletImpl::SchedDelBinlog, this, tid, pid));
             PDLOG(INFO, "load table success. tid %u pid %u", tid, pid);
-            MakeSnapshotInternal(tid, pid, 0, std::shared_ptr<::openmldb::api::TaskInfo>());
             std::string old_data_path = table_path + "/old_data";
             if (::openmldb::base::IsExists(old_data_path)) {
                 if (!::openmldb::base::RemoveDir(old_data_path)) {
@@ -3191,6 +3240,8 @@ int TabletImpl::LoadDiskTableInternal(uint32_t tid, uint32_t pid, const ::openml
                 task_ptr->set_status(::openmldb::api::TaskStatus::kDone);
                 return 0;
             }
+            PDLOG(INFO, "Recover table with tid %u and pid %u from binlog offset %u to %u", tid, pid, snapshot_offset,
+                  latest_offset);
         } else {
             DeleteTableInternal(tid, pid, std::shared_ptr<::openmldb::api::TaskInfo>());
         }
@@ -4136,7 +4187,7 @@ bool TabletImpl::UpdateAggrs(uint32_t tid, uint32_t pid, const std::string& valu
         return true;
     }
     for (auto iter = dimensions.begin(); iter != dimensions.end(); ++iter) {
-        for (auto aggr : *aggrs) {
+        for (const auto& aggr : *aggrs) {
             if (aggr->GetIndexPos() != iter->idx()) {
                 continue;
             }
@@ -4384,6 +4435,8 @@ bool TabletImpl::RefreshAggrCatalog() {
         table_info.order_by_col.assign(str, len);
         row_view.GetValue(row.buf(), 8, &str, &len);
         table_info.bucket_size.assign(str, len);
+        row_view.GetValue(row.buf(), 9, &str, &len);
+        table_info.filter_col.assign(str, len);
 
         table_infos.emplace_back(std::move(table_info));
         it->Next();

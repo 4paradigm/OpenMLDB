@@ -25,29 +25,30 @@ class NullIRBuilder {
  public:
     NullIRBuilder();
     ~NullIRBuilder();
-    base::Status CheckAnyNull(::llvm::BasicBlock* block,
-                              const NativeValue& value,
-                              ::llvm::Value** should_ret_null);
-    base::Status CheckAllNull(::llvm::BasicBlock* block,
-                              const NativeValue& value,
-                              ::llvm::Value** should_ret_null);
+
+    base::Status CheckAnyNull(::llvm::BasicBlock* block, const NativeValue& value, ::llvm::Value** should_ret_null);
+
+    base::Status CheckAllNull(::llvm::BasicBlock* block, const NativeValue& value, ::llvm::Value** should_ret_null);
+
     static base::Status SafeNullBinaryExpr(
-        ::llvm::BasicBlock* block, const NativeValue& left,
-        const NativeValue& right,
-        const std::function<bool(::llvm::BasicBlock*, ::llvm::Value*,
-                                 ::llvm::Value*, ::llvm::Value**,
-                                 base::Status&)>,
+        ::llvm::BasicBlock* block, const NativeValue& left, const NativeValue& right,
+        const std::function<bool(::llvm::BasicBlock*, ::llvm::Value*, ::llvm::Value*, ::llvm::Value**, base::Status&)>,
         NativeValue* output);
+
     static base::Status SafeNullUnaryExpr(
         ::llvm::BasicBlock* block, const NativeValue& left,
-        const std::function<bool(::llvm::BasicBlock*, ::llvm::Value*,
-                                 ::llvm::Value**, base::Status&)>,
+        const std::function<bool(::llvm::BasicBlock*, ::llvm::Value*, ::llvm::Value**, base::Status&)>,
         NativeValue* output);
-    static base::Status SafeNullCastExpr(
-        ::llvm::BasicBlock* block, const NativeValue& left, ::llvm::Type* type,
-        const std::function<bool(::llvm::BasicBlock*, ::llvm::Value*,
-                                 ::llvm::Type* type, ::llvm::Value**,
-                                 base::Status&)>,
+
+    static base::Status SafeNullCastExpr(::llvm::BasicBlock* block, const NativeValue& left, ::llvm::Type* type,
+                                         const std::function<bool(::llvm::BasicBlock*, ::llvm::Value*,
+                                                                  ::llvm::Type* type, ::llvm::Value**, base::Status&)>,
+                                         NativeValue* output);
+
+    // Safe null builder for `A DIV B` expr
+    static base::Status SafeNullDivExpr(
+        ::llvm::BasicBlock* block, const NativeValue& left, const NativeValue& right,
+        const std::function<bool(::llvm::BasicBlock*, ::llvm::Value*, ::llvm::Value*, ::llvm::Value**, base::Status&)>,
         NativeValue* output);
 };
 }  // namespace codegen

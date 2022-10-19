@@ -96,12 +96,18 @@ java/hybridse-proto/src
 **/scalastyle-output.xml
 
 # test
-logs
+logs/
+out/
+allure-results/
 
 # python builds
-/python/dist/
-/python/*.egg-info/
-/python/openmldb/native/**
-!/python/openmldb/native/__init__.pyt
-/python/test/*.xml
+/python/openmldb_sdk/dist/
+/python/openmldb_sdk/*.egg-info/
+/python/openmldb_sdk/openmldb/native/**
+!/python/openmldb_sdk/openmldb/native/__init__.pyt
+/python/openmldb_sdk/test/*.xml
+/python/openmldb_tool/dist/
+/python/openmldb_tool/*.egg-info/
 
+# go sdk
+!go.mod

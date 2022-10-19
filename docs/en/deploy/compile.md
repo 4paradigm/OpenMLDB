@@ -7,25 +7,25 @@
 This section describes the steps to compile and use OpenMLDB inside its official docker image [hybridsql](https://hub.docker.com/r/4pdosc/hybridsql).
 The docker image has packed required tools and dependencies, so there is no need to set them up separately. To compile without the official docker image, refer to the section [Detailed Instructions for Build](#detailed-instructions-for-build) below.
 
-Keep in mind that you should always use the same version of both compile image and [OpenMLDB version](https://github.com/4paradigm/OpenMLDB/releases). This section demonstrates compiling for [OpenMLDB v0.5.0](https://github.com/4paradigm/OpenMLDB/releases/tag/v0.5.0) under `hybridsql:0.5.0` ，If you prefer to compile on the latest code in `main` branch, pull `hybridsql:latest` image instead.
+Keep in mind that you should always use the same version of both compile image and [OpenMLDB version](https://github.com/4paradigm/OpenMLDB/releases). This section demonstrates compiling for [OpenMLDB v0.6.3](https://github.com/4paradigm/OpenMLDB/releases/tag/v0.6.3) under `hybridsql:0.6.3` ，If you prefer to compile on the latest code in `main` branch, pull `hybridsql:latest` image instead.
 
 1. Pull the docker image
 
    ```bash
-    docker pull 4pdosc/hybridsql:0.5
+    docker pull 4pdosc/hybridsql:0.6
    ```
 
 2. Create a docker container with the hybridsql docker image
 
    ```bash
-   docker run -it 4pdosc/hybridsql:0.5 bash
+   docker run -it 4pdosc/hybridsql:0.6 bash
    ```
 
-3. Download the OpenMLDB source code inside the docker container, and setting the branch into v0.5.0
+3. Download the OpenMLDB source code inside the docker container, and setting the branch into v0.6.3
 
    ```bash
    cd ~
-   git clone -b v0.5.0 https://github.com/4paradigm/OpenMLDB.git
+   git clone -b v0.6.3 https://github.com/4paradigm/OpenMLDB.git
    ```
 
 4. Compile OpenMLDB
@@ -142,7 +142,7 @@ make CMAKE_BUILD_TYPE=Debug
 1. Downloading the pre-built OpenMLDB Spark distribution:
 
 ```bash
-wget https://github.com/4paradigm/spark/releases/download/v3.0.0-openmldb0.2.3/spark-3.0.0-bin-openmldbspark.tgz
+wget https://github.com/4paradigm/spark/releases/download/v3.2.1-openmldb0.6.3/spark-3.2.1-bin-openmldbspark.tgz
 ```
 
 Alternatively, you can also download the source code and compile from scratch:
@@ -156,8 +156,8 @@ cd ./spark/
 2. Setting up the environment variable `SPARK_HOME` to make the OpenMLDB Spark distribution for OpenMLDB or other Spark applications
 
 ```bash
-tar xzvf ./spark-3.0.0-bin-openmldbspark.tgz
-cd spark-3.0.0-bin-openmldbspark/
+tar xzvf ./spark-3.2.1-bin-openmldbspark.tgz
+cd spark-3.2.1-bin-openmldbspark/
 export SPARK_HOME=`pwd`
 ```
 

@@ -32,8 +32,6 @@ using PBIndex = ::google::protobuf::RepeatedPtrField<::openmldb::common::ColumnK
 
 class IndexUtil {
  public:
-    static bool ConvertIndex(const PBIndex& index, ::hybridse::vm::IndexList* output);
-
     static base::Status CheckIndex(const std::map<std::string, ::openmldb::common::ColumnDesc>& column_map,
             const PBIndex& index);
 

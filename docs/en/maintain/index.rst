@@ -11,3 +11,4 @@ Maintenance
     cli
     faq
     scale
+    diagnose

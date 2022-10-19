@@ -16,7 +16,7 @@
 package com._4paradigm.openmldb.java_sdk_test.checker;
 
 
-import com._4paradigm.openmldb.java_sdk_test.entity.FesqlResult;
+import com._4paradigm.openmldb.test_common.bean.OpenMLDBResult;
 import com._4paradigm.openmldb.test_common.model.SQLCaseType;
 import lombok.extern.slf4j.Slf4j;
 import org.testng.Assert;
@@ -33,8 +33,8 @@ import java.util.Map;
 public class DiffResultChecker extends BaseChecker{
 
     // private FesqlResult sqlite3Result;
-    public DiffResultChecker(FesqlResult fesqlResult, Map<String,FesqlResult> resultMap){
-        super(fesqlResult,resultMap);
+    public DiffResultChecker(OpenMLDBResult openMLDBResult, Map<String, OpenMLDBResult> resultMap){
+        super(openMLDBResult,resultMap);
         // sqlite3Result = resultMap.get("sqlite3");
     }
 
@@ -48,40 +48,34 @@ public class DiffResultChecker extends BaseChecker{
             }
         }
     }
-    public void checkMysql(FesqlResult mysqlResult) throws Exception {
+    public void checkMysql(OpenMLDBResult mysqlResult) throws Exception {
         log.info("diff mysql check");
-        reportLog.info("diff mysql check");
         //验证success
-        boolean fesqlOk = fesqlResult.isOk();
+        boolean fesqlOk = openMLDBResult.isOk();
         boolean sqlite3Ok = mysqlResult.isOk();
         Assert.assertEquals(fesqlOk,sqlite3Ok,"success 不一致，fesql："+fesqlOk+",sqlite3："+sqlite3Ok);
         if(!fesqlOk) return;
         //验证result
-        List<List<Object>> fesqlRows = fesqlResult.getResult();
+        List<List<Object>> fesqlRows = openMLDBResult.getResult();
         List<List<Object>> mysqlRows = mysqlResult.getResult();
         log.info("fesqlRows:{}", fesqlRows);
-        reportLog.info("fesqlRows:{}", fesqlRows);
         log.info("mysqlRows:{}", mysqlRows);
-        reportLog.info("mysqlRows:{}", mysqlRows);
         // Assert.assertEquals(fesqlRows.size(), mysqlRows.size(),
         //         String.format("ResultChecker fail: mysql size %d, fesql size %d", mysqlRows.size(), fesqlRows.size()));
         Assert.assertEquals(fesqlRows,mysqlRows,String.format("ResultChecker fail: mysql: %s, fesql: %s", mysqlRows, fesqlRows));
     }
-    public void checkSqlite3(FesqlResult sqlite3Result) throws Exception {
+    public void checkSqlite3(OpenMLDBResult sqlite3Result) throws Exception {
         log.info("diff sqlite3 check");
-        reportLog.info("diff sqlite3 check");
         //验证success
-        boolean fesqlOk = fesqlResult.isOk();
+        boolean fesqlOk = openMLDBResult.isOk();
         boolean sqlite3Ok = sqlite3Result.isOk();
         Assert.assertEquals(fesqlOk,sqlite3Ok,"success 不一致，fesql："+fesqlOk+",sqlite3："+sqlite3Ok);
         if(!fesqlOk) return;
         //验证result
-        List<List<Object>> fesqlRows = fesqlResult.getResult();
+        List<List<Object>> fesqlRows = openMLDBResult.getResult();
         List<List<Object>> sqlite3Rows = sqlite3Result.getResult();
         log.info("fesqlRows:{}", fesqlRows);
-        reportLog.info("fesqlRows:{}", fesqlRows);
         log.info("sqlite3Rows:{}", sqlite3Rows);
-        reportLog.info("sqlite3Rows:{}", sqlite3Rows);
         Assert.assertEquals(fesqlRows.size(), sqlite3Rows.size(),
                 String.format("ResultChecker fail: sqlite3 size %d, fesql size %d", sqlite3Rows.size(), fesqlRows.size()));
         for (int i = 0; i < fesqlRows.size(); ++i) {
@@ -104,7 +98,7 @@ public class DiffResultChecker extends BaseChecker{
                             "ResultChecker fail: row=%d column=%d sqlite3=%s fesql=%s\nsqlite3 %s\nfesql %s",
                             i, j, sqlite3_val, fesql_val,
                             sqlite3Result.toString(),
-                            fesqlResult.toString()));
+                            openMLDBResult.toString()));
                 }else if (sqlite3_val != null && sqlite3_val instanceof Double) {
                     // Assert.assertTrue(expect_val != null && expect_val instanceof Double);
                     if(fesql_val instanceof Float){
@@ -119,7 +113,7 @@ public class DiffResultChecker extends BaseChecker{
                             String.format("ResultChecker fail: row=%d column=%d sqlite3=%s fesql=%s\nsqlite3 %s\nfesql %s",
                                     i, j, sqlite3_val, fesql_val,
                                     sqlite3Result.toString(),
-                                    fesqlResult.toString())
+                                    openMLDBResult.toString())
                     );
 
                 } else if(fesql_val != null && fesql_val instanceof Timestamp){
@@ -128,13 +122,13 @@ public class DiffResultChecker extends BaseChecker{
                             "ResultChecker fail: row=%d column=%d sqlite3=%s fesql=%s\nsqlite3 %s\nfesql %s",
                             i, j, sqlite3_val, fesql_val,
                             sqlite3Result.toString(),
-                            fesqlResult.toString()));
+                            openMLDBResult.toString()));
                 } else{
                     Assert.assertEquals(String.valueOf(fesql_val), String.valueOf(sqlite3_val), String.format(
                             "ResultChecker fail: row=%d column=%d sqlite3=%s fesql=%s\nsqlite3 %s\nfesql %s",
                             i, j, sqlite3_val, fesql_val,
                             sqlite3Result.toString(),
-                            fesqlResult.toString()));
+                            openMLDBResult.toString()));
                 }
             }
         }

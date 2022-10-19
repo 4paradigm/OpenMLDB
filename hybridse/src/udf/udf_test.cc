@@ -885,6 +885,90 @@ TEST_F(ExternUdfTest, ILikeMatchNullable) {
     check_null(true, false, &name, &pattern, &escape_ref);
 }
 
+TEST_F(ExternUdfTest, RLikeMatchTest) {
+    auto check_rlike = [](bool match, bool is_null, const std::string_view name, const std::string_view pattern,
+                         const std::string_view flags) -> void {
+        codec::StringRef name_ref(name.size(), name.data());
+        codec::StringRef pattern_ref(pattern.size(), pattern.data());
+        codec::StringRef flags_ref(flags.size(), flags.data());
+        bool ret = false;
+        bool ret_null = false;
+        v1::regexp_like(&name_ref, &pattern_ref, &flags_ref, &ret, &ret_null);
+        EXPECT_EQ(match, ret) << "rlike(" << name << ", " << pattern << ", " << flags << ")";
+        EXPECT_EQ(is_null, ret_null) << "rlike(" << name << ", " << pattern << ", " << flags << ")";
+
+        if (flags == "") {
+            // also check regexp_like(x, x)
+            bool ret = false;
+            bool ret_null = false;
+            v1::regexp_like(&name_ref, &pattern_ref, &ret, &ret_null);
+            EXPECT_EQ(match, ret) << "rlike(" << name << ", " << pattern << ")";
+            EXPECT_EQ(is_null, ret_null) << "rlike(" << name << ", " << pattern << ")";
+        }
+    };
+
+    check_rlike(true, false, "The Lord of the Rings", "The Lord of the Rings", "");
+
+    // case sensitive
+    check_rlike(true, false, "The Lord of the Rings", "The L.rd .f the Rings", "");
+    check_rlike(false, false, "The Lord of the Rings", "the L.rd .f the Rings", "");
+
+    // match empty
+    check_rlike(true, false, "", "", "");
+    check_rlike(false, false, "The Lord of the Rings", "", "");
+    check_rlike(false, false, "", "The Lord of the Rings", "");
+
+    // single flag
+    check_rlike(false, false, "The Lord of the Rings", "the L.rd .f the Rings", "c");
+    check_rlike(true, false, "The Lord of the Rings", "the L.rd .f the Rings", "i");
+
+    check_rlike(false, false, "The Lord of the Rings\nJ. R. R. Tolkien",
+                "The Lord of the Rings.J\\. R\\. R\\. Tolkien", "");
+    check_rlike(true, false, "The Lord of the Rings\nJ. R. R. Tolkien",
+                "The Lord of the Rings.J\\. R\\. R\\. Tolkien", "s");
+
+    check_rlike(false, false, "The Lord of the Rings\nJ. R. R. Tolkien",
+                "^The Lord of the Rings$\nJ\\. R\\. R\\. Tolkien", "");
+    check_rlike(true, false, "The Lord of the Rings\nJ. R. R. Tolkien",
+                "^The Lord of the Rings$\nJ\\. R\\. R\\. Tolkien", "m");
+
+    // multiple flags
+    check_rlike(true, false, "The Lord of the Rings\nJ. R. R. Tolkien",
+                "^the Lord of the Rings$.J\\. R\\. R\\. Tolkien", "mis");
+}
+
+TEST_F(ExternUdfTest, RLikeMatchNullable) {
+    auto check_null = [](bool expect, bool is_null, codec::StringRef* name_ref, codec::StringRef* pattern_ref,
+                         codec::StringRef* flags) -> void {
+        bool ret = false;
+        bool ret_null = false;
+        v1::regexp_like(name_ref, pattern_ref, flags, &ret, &ret_null);
+        EXPECT_EQ(is_null, ret_null) << (name_ref ? name_ref->ToString() : "<null>") << " RLIKE "
+                                     << (pattern_ref ? pattern_ref->ToString() : "<null>") << " FLAGS "
+                                     << (flags ? flags->ToString() : "<null>");
+        if (!is_null) {
+            EXPECT_EQ(expect, ret) << (name_ref ? name_ref->ToString() : "<null>") << " RLIKE "
+                                   << (pattern_ref ? pattern_ref->ToString() : "<null>") << " FLAGS "
+                                   << (flags ? flags->ToString() : "<null>");
+        }
+    };
+    char flags[] = "";
+    codec::StringRef flags_ref(flags);
+    codec::StringRef name("The Lord of the Rings");
+    codec::StringRef pattern("The Lord .f the Rings");
+
+    check_null(false, true, nullptr, &pattern, &flags_ref);
+    check_null(false, true, &name, nullptr, &flags_ref);
+    check_null(false, true, nullptr, nullptr, &flags_ref);
+
+    check_null(false, true, nullptr, &pattern, nullptr);
+    check_null(false, true, &name, nullptr, nullptr);
+    check_null(false, true, nullptr, nullptr, nullptr);
+    check_null(false, true, &name, &pattern, nullptr);
+
+    check_null(true, false, &name, &pattern, &flags_ref);
+}
+
 TEST_F(ExternUdfTest, Replace) {
     auto check = [](bool is_null, StringRef expect, StringRef str, StringRef search, StringRef replace) {
         StringRef out;

@@ -1,4 +1,4 @@
-### OpenMLDB + LightGBM: Taxi Trip Duration Prediction
+# OpenMLDB + LightGBM: Taxi Trip Duration Prediction
 
 In this document, we will take [the taxi travel time prediction problem on Kaggle as an example](https://www.kaggle.com/c/nyc-taxi-trip-duration/overview) to demonstrate how to use the OpenMLDB and LightGBM together to build a complete machine learning application. 
 
@@ -13,7 +13,7 @@ Note that: (1) this case is based on the OpenMLDB cluster version for tutorial d
 - Pull the OpenMLDB docker image and run the corresponding container:
 
 ```bash
-`docker run -it 4pdosc/openmldb:0.5.2 bash`
+docker run -it 4pdosc/openmldb:0.6.3 bash
 ```
 
 The image is preinstalled with OpenMLDB and preset with all scripts, third-party libraries, open-source tools and training data required for this case.
@@ -26,6 +26,7 @@ Note that all the commands below run in the docker container by default, and are
 
 ```bash
 ./init.sh
+cd taxi-trip
 ```
 
 We provide the init.sh script in the image that helps users to quickly initialize the environment including:

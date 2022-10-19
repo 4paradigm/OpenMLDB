@@ -1,4 +1,4 @@
-#! /bin/bash
+#!/bin/bash
 
 # Copyright 2021 4Paradigm
 #
@@ -16,11 +16,8 @@
 
 set -e
 
-if [[ $OSTYPE == 'darwin'* ]]; then
-  MON_BINARY='./bin/mon_mac'
-else
-  MON_BINARY='./bin/mon'
-fi
+ulimit -c unlimited
+ulimit -n 655360
 
 export COMPONENTS="tablet tablet2 nameserver apiserver taskmanager standalone_tablet standalone_nameserver standalone_apiserver"
 
@@ -32,6 +29,10 @@ fi
 
 CURDIR=$(pwd)
 cd "$(dirname "$0")"/../ || exit 1
+LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:$(pwd)/udf"
+export LD_LIBRARY_PATH
+RED='\E[1;31m'
+RES='\E[0m'
 
 OP=$1
 COMPONENT=$2
@@ -44,8 +45,8 @@ do
 done
 
 if [ "$HAS_COMPONENT" = "false" ]; then
-    echo "No component named $COMPONENT in [$COMPONENTS]";
-    exit 1;
+    echo "No component named $COMPONENT in [$COMPONENTS]"
+    exit 1
 fi
 
 OPENMLDB_PID_FILE="./bin/$COMPONENT.pid"
@@ -63,18 +64,60 @@ case $OP in
     start)
         echo "Starting $COMPONENT ... "
         if [ -f "$OPENMLDB_PID_FILE" ]; then
-            if tr -d '\0' < "$OPENMLDB_PID_FILE" | xargs kill -0 > /dev/null 2>&1; then
-                echo tablet already running as process "$(tr -d '\0' < "$OPENMLDB_PID_FILE")".
+            PID=$(tr -d '\0' < "$OPENMLDB_PID_FILE")
+            if kill -0 "$PID" > /dev/null 2>&1; then
+                echo -e "${RED}$COMPONENT already running as process $PID ${RES}"
                 exit 0
             fi
         fi
 
-        # Ref https://github.com/tj/mon
         if [ "$COMPONENT" != "taskmanager" ]; then
-            $MON_BINARY "./bin/boot.sh $COMPONENT" -d -s 10 -l "$LOG_DIR"/"$COMPONENT"_mon.log -m "$OPENMLDB_PID_FILE";
-            sleep 1
+            ./bin/openmldb --flagfile=./conf/"$COMPONENT".flags --enable_status_service=true >> "$LOG_DIR"/"$COMPONENT".log 2>&1 &
+            PID=$!
+            if [ -x "$(command -v curl)" ]; then
+                sleep 3
+                ENDPOINT=$(grep '\--endpoint' ./conf/"$COMPONENT".flags | awk -F '=' '{print $2}')
+                COUNT=1
+                while [ $COUNT -lt 12 ]
+                do
+                    if ! curl --show-error --silent -o /dev/null "http://$ENDPOINT/status"; then
+                        echo "curl server status failed, retry later"
+                        sleep 1
+                        (( COUNT+=1 ))
+                    elif kill -0 "$PID" > /dev/null 2>&1; then
+                        echo $PID > "$OPENMLDB_PID_FILE"
+                        echo "Start ${COMPONENT} success"
+                        exit 0
+                    else
+                        break
+                    fi
+                done
+            else
+                echo "no curl, sleep 10s and then check the process running status"
+                sleep 10
+                if kill -0 "$PID" > /dev/null 2>&1; then
+                    echo $PID > "$OPENMLDB_PID_FILE"
+                    echo "Start ${COMPONENT} success"
+                    exit 0
+                fi
+            fi
+            echo -e "${RED}Start ${COMPONENT} failed! Please check log in ${LOG_DIR}/${COMPONENT}.log and ${LOG_DIR}/${COMPONENT}.INFO ${RES}"
         else
-            $MON_BINARY "./bin/boot_taskmanager.sh" -d -s 10 -l "$LOG_DIR"/"$COMPONENT"_mon.log -m "$OPENMLDB_PID_FILE";
+            if [ -f "./conf/taskmanager.properties" ]; then
+                cp ./conf/taskmanager.properties ./taskmanager/conf/taskmanager.properties
+            fi
+            pushd ./taskmanager/bin/ > /dev/null
+            mkdir -p logs
+            sh ./taskmanager.sh > logs/taskmanager.out 2>&1 &
+            PID=$!
+            popd > /dev/null 
+            sleep 10
+            if kill -0 $PID > /dev/null 2>&1; then
+                /bin/echo $PID > "$OPENMLDB_PID_FILE"
+                echo "Start ${COMPONENT} success"
+                exit 0
+            fi
+            echo -e "${RED}Start ${COMPONENT} failed!${RES}"
         fi
         ;;
     stop)
@@ -88,14 +131,14 @@ case $OP in
                 kill "$PID"
             fi
             rm "$OPENMLDB_PID_FILE"
-            echo STOPPED
+            echo "Stop ${COMPONENT} success"
         fi
         ;;
     restart)
         shift
         cd "$CURDIR" || exit 1
         sh "$0" stop "${@}"
-        sleep 5
+        sleep 15
         sh "$0" start "${@}"
         ;;
     *)

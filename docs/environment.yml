@@ -1,54 +1,51 @@
 name: sphinx
 channels:
+  - conda-forge
   - defaults
 dependencies:
-  - alabaster=0.7.12=pyhd3eb1b0_0
-  - babel=2.9.1=pyhd3eb1b0_0
-  - brotlipy=0.7.0=py39h9ed2024_1003
-  - ca-certificates=2022.3.29=hecd8cb5_0
-  - certifi=2021.10.8=py39hecd8cb5_2
-  - cffi=1.15.0=py39hc55c11b_1
-  - charset-normalizer=2.0.4=pyhd3eb1b0_0
-  - colorama=0.4.4=pyhd3eb1b0_0
-  - cryptography=36.0.0=py39hf6deb26_0
-  - docutils=0.17.1=py39hecd8cb5_1
-  - idna=3.3=pyhd3eb1b0_0
-  - imagesize=1.3.0=pyhd3eb1b0_0
-  - importlib-metadata=4.11.3=py39hecd8cb5_0
-  - jinja2=3.0.3=pyhd3eb1b0_0
-  - libcxx=12.0.0=h2f01273_0
-  - libffi=3.3=hb1e8313_2
-  - markupsafe=2.0.1=py39h9ed2024_0
-  - ncurses=6.3=hca72f7f_2
-  - openssl=1.1.1n=hca72f7f_0
-  - packaging=21.3=pyhd3eb1b0_0
-  - pip=21.2.4=py39hecd8cb5_0
-  - pycparser=2.21=pyhd3eb1b0_0
-  - pygments=2.11.2=pyhd3eb1b0_0
-  - pyopenssl=22.0.0=pyhd3eb1b0_0
-  - pyparsing=3.0.4=pyhd3eb1b0_0
-  - pysocks=1.7.1=py39hecd8cb5_0
-  - python=3.9.12=hdfd78df_0
-  - pytz=2021.3=pyhd3eb1b0_0
-  - readline=8.1.2=hca72f7f_1
-  - requests=2.27.1=pyhd3eb1b0_0
-  - setuptools=58.0.4=py39hecd8cb5_0
-  - snowballstemmer=2.2.0=pyhd3eb1b0_0
-  - sphinx=4.4.0=pyhd3eb1b0_0
-  - sphinxcontrib-applehelp=1.0.2=pyhd3eb1b0_0
-  - sphinxcontrib-devhelp=1.0.2=pyhd3eb1b0_0
-  - sphinxcontrib-htmlhelp=2.0.0=pyhd3eb1b0_0
-  - sphinxcontrib-jsmath=1.0.1=pyhd3eb1b0_0
-  - sphinxcontrib-qthelp=1.0.3=pyhd3eb1b0_0
-  - sphinxcontrib-serializinghtml=1.1.5=pyhd3eb1b0_0
-  - sqlite=3.38.2=h707629a_0
-  - tk=8.6.11=h7bc2e8c_0
-  - tzdata=2022a=hda174b7_0
-  - urllib3=1.26.8=pyhd3eb1b0_0
-  - wheel=0.37.1=pyhd3eb1b0_0
-  - xz=5.2.5=h1de35cc_0
-  - zipp=3.7.0=pyhd3eb1b0_0
-  - zlib=1.2.11=h4dc903c_4
+  - alabaster=0.7.12
+  - babel=2.9.1
+  - brotlipy=0.7.0
+  - ca-certificates=2022.3.29
+  - certifi=2021.10.8
+  - cffi=1.15.0
+  - charset-normalizer=2.0.4
+  - colorama=0.4.4
+  - cryptography=36.0.0
+  - docutils=0.17.1
+  - idna=3.3
+  - imagesize=1.3.0
+  - importlib-metadata=4.11.3
+  - jinja2=3.0.3
+  - markupsafe=2.0.1
+  - openssl=1.1.1n
+  - packaging=21.3
+  - pip=21.2.4
+  - pycparser=2.21
+  - pygments=2.11.2
+  - pyopenssl=22.0.0
+  - pyparsing=3.0.4
+  - pysocks=1.7.1
+  - python=3.9.12
+  - pytz=2021.3
+  - requests=2.27.1
+  - setuptools=58.0.4
+  - snowballstemmer=2.2.0
+  - sphinx=4.5.0
+  - sphinxcontrib-applehelp=1.0.2
+  - sphinxcontrib-devhelp=1.0.2
+  - sphinxcontrib-htmlhelp=2.0.0
+  - sphinxcontrib-jsmath=1.0.1
+  - sphinxcontrib-qthelp=1.0.3
+  - sphinxcontrib-serializinghtml=1.1.5
+  - sqlite=3.38.2
+  - tk=8.6.11
+  - tzdata=2022a
+  - urllib3=1.26.8
+  - wheel=0.37.1
+  - xz=5.2.5
+  - zipp=3.7.0
+  - zlib=1.2.11
   - pip:
     - attrs==21.4.0
     - beautifulsoup4==4.11.1
@@ -64,5 +61,4 @@ dependencies:
     - sphinx-multiversion==0.2.4
     - typing-extensions==4.1.1
     - uc-micro-py==1.0.1
-    - sphinx-copybutton=0.5.0
-prefix: /Users/mian/miniconda3/envs/sphinx
+    - sphinx-copybutton==0.5.0

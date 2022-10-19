@@ -49,7 +49,7 @@ object OpenmldbBatchjobManager {
     val mainClass = "com._4paradigm.openmldb.batchjob.RunBatchSql"
 
     val tempSqlFile = SqlFileUtil.createTempSqlFile(sql)
-    val args = List(tempSqlFile.getName)
+    val args = List(tempSqlFile.getAbsolutePath)
 
     val jobInfo = SparkJobManager.submitSparkJob(jobType, mainClass, args, tempSqlFile.getAbsolutePath,
       sparkConf.asScala.toMap, defaultDb, blocking=true)
@@ -62,7 +62,7 @@ object OpenmldbBatchjobManager {
     val mainClass = "com._4paradigm.openmldb.batchjob.RunBatchAndShow"
 
     val tempSqlFile = SqlFileUtil.createTempSqlFile(sql)
-    val args = List(tempSqlFile.getName)
+    val args = List(tempSqlFile.getAbsolutePath)
 
     SparkJobManager.submitSparkJob(jobType, mainClass, args, tempSqlFile.getAbsolutePath, sparkConf.asScala.toMap,
       defaultDb)
@@ -73,7 +73,7 @@ object OpenmldbBatchjobManager {
     val mainClass = "com._4paradigm.openmldb.batchjob.ImportOnlineData"
 
     val tempSqlFile = SqlFileUtil.createTempSqlFile(sql)
-    val args = List(tempSqlFile.getName)
+    val args = List(tempSqlFile.getAbsolutePath)
 
     SparkJobManager.submitSparkJob(jobType, mainClass, args, tempSqlFile.getAbsolutePath, sparkConf.asScala.toMap,
       defaultDb)
@@ -84,7 +84,7 @@ object OpenmldbBatchjobManager {
     val mainClass = "com._4paradigm.openmldb.batchjob.ImportOfflineData"
 
     val tempSqlFile = SqlFileUtil.createTempSqlFile(sql)
-    val args = List(tempSqlFile.getName)
+    val args = List(tempSqlFile.getAbsolutePath)
 
     SparkJobManager.submitSparkJob(jobType, mainClass, args, tempSqlFile.getAbsolutePath, sparkConf.asScala.toMap,
       defaultDb)
@@ -95,7 +95,7 @@ object OpenmldbBatchjobManager {
     val mainClass = "com._4paradigm.openmldb.batchjob.ExportOfflineData"
 
     val tempSqlFile = SqlFileUtil.createTempSqlFile(sql)
-    val args = List(tempSqlFile.getName)
+    val args = List(tempSqlFile.getAbsolutePath)
 
     SparkJobManager.submitSparkJob(jobType, mainClass, args, tempSqlFile.getAbsolutePath, sparkConf.asScala.toMap,
       defaultDb)

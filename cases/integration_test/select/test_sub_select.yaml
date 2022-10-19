@@ -1,0 +1,382 @@
+# Copyright 2021 4Paradigm
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+db: test_zw
+debugs: []
+version: 0.5.0
+cases:
+  -
+    id: 0
+    desc: 正常使用子查询
+    sqlDialect: ["HybridSQL","SQLITE3"]
+    mode: cli-unsupport
+    tags: ["mysql要求派生表必须有别名"]
+    inputs:
+      -
+        columns : ["c1 string","c2 int","c3 bigint","c4 timestamp"]
+        indexs: ["index1:c1:c4"]
+        rows:
+          - ["aa",2,3,1590738989000]
+          - ["bb",21,31,1590738990000]
+          - ["cc",41,51,1590738991000]
+    sql: select * from (select c1, c2+1,c3+1 from {0});
+    expect:
+      columns: ["c1 string", "c2 + 1 int", "c3 + 1 bigint"]
+      order: c1
+      rows:
+        - ["aa", 3,4]
+        - ["bb", 22,32]
+        - ["cc", 42,52]
+  -
+    id: 1
+    desc: 子查询使列别名
+    sqlDialect: ["HybridSQL","SQLITE3"]
+    inputs:
+      -
+        columns : ["c1 string","c2 int","c3 bigint","c4 timestamp"]
+        indexs: ["index1:c1:c4"]
+        rows:
+          - ["aa",2,3,1590738989000]
+          - ["bb",21,31,1590738990000]
+          - ["cc",41,51,1590738991000]
+    sql: select v2,v3 from (select c2+1 as v2,c3+1 as v3 from {0}) as t;
+    expect:
+      columns: ["v2 int","v3 bigint"]
+      order: v2
+      rows:
+        - [3,4]
+        - [22,32]
+        - [42,52]
+  -
+    id: 2
+    desc: 子查询使用常量
+    sqlDialect: ["HybridSQL","SQLITE3"]
+    inputs:
+      -
+        columns : ["c1 string","c2 int","c3 bigint","c4 timestamp"]
+        indexs: ["index1:c1:c4"]
+        rows:
+          - ["aa",2,3,1590738989000]
+          - ["bb",21,31,1590738990000]
+          - ["cc",41,51,1590738991000]
+    sql: select * from (select c2+1 as v2,c3+1 as v3,1 as v4 from {0}) as t;
+    expect:
+      columns: ["v2 int","v3 bigint","v4 int"]
+      order: v2
+      rows:
+        - [3,4,1]
+        - [22,32,1]
+        - [42,52,1]
+  -
+    id: 3
+    desc: 子查询中有空串
+    mode: cli-unsupport
+    sqlDialect: ["HybridSQL","SQLITE3"]
+    inputs:
+      -
+        columns : ["c1 string","c2 int","c3 bigint","c4 timestamp"]
+        indexs: ["index1:c1:c4"]
+        rows:
+          - ["aa",2,3,1590738989000]
+          - ["",21,31,1590738990000]
+          - ["cc",41,51,1590738991000]
+    sql: select * from (select c1,c2+1 as v2,c3+1 as v3,1 as v4 from {0}) as t;
+    expect:
+      columns: ["c1 string","v2 int","v3 bigint","v4 int"]
+      order: c1
+      rows:
+        - ["",22,32,1]
+        - ["aa",3,4,1]
+        - ["cc",42,52,1]
+  -
+    id: 4
+    desc: 子查询中有null
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 int","c3 bigint","c4 timestamp"]
+        indexs: ["index1:c1:c4"]
+        rows:
+          - [1,"aa",2,3,1590738989000]
+          - [2,NULL,21,31,1590738990000]
+          - [3,"cc",41,51,1590738991000]
+    sql: select * from (select id,c1,c3+1 as v3 from {0}) as t;
+    expect:
+      columns: ["id int","c1 string","v3 bigint"]
+      order: id
+      rows:
+        - [1,"aa",4]
+        - [2,null,32]
+        - [3,"cc",52]
+  -
+    id: 5
+    desc: 查询时列不在子查询中
+    sqlDialect: ["HybridSQL"]
+    inputs:
+      -
+        columns : ["c1 string","c2 int","c3 bigint","c4 timestamp"]
+        indexs: ["index1:c1:c4"]
+        rows:
+          - ["aa",2,3,1590738989000]
+          - ["bb",21,31,1590738990000]
+          - ["cc",41,51,1590738991000]
+    sql: select v5 from (select c1,c2+1 as v2,c3+1 as v3,1 as v4 from {0});
+    expect:
+      success: false
+  -
+    id: 6
+    desc: last join 子查询和副表, 子查询包含window
+    sqlDialect: ["HybridSQL"]
+    inputs:
+      -
+        columns : ["id int", "card_no string","merchant_id int", "trx_time timestamp", "trx_amt float"]
+        indexs: ["index1:card_no:trx_time"]
+        rows:
+          - [1, "aaaaaaaaaa",1, 1590738989000, 1.1]
+          - [2, "aaaaaaaaaa",1, 1590738990000, 2.2]
+          - [3, "bb",10, 1590738990000, 3.3]
+      -
+        columns : ["crd_lst_isu_dte timestamp", "crd_nbr string"]
+        indexs: ["index2:crd_nbr:crd_lst_isu_dte"]
+        rows:
+          - [1590738988000, "aaaaaaaaaa"]
+          - [1590738990000, "aaaaaaaaaa"]
+          - [1590738989000, "cc"]
+          - [1590738992000, "cc"]
+    sql: select * from
+      (select
+      id,
+      card_no,
+      trx_time,
+      substr(card_no, 1, 6) as card_no_prefix,
+      sum(trx_amt) over w30d as sum_trx_amt,
+      count(merchant_id) over w10d as count_merchant_id
+      from  {0}
+      window w30d as (PARTITION BY {0}.card_no ORDER BY {0}.trx_time ROWS_RANGE BETWEEN 30d PRECEDING AND CURRENT ROW),
+      w10d as (PARTITION BY {0}.card_no ORDER BY {0}.trx_time ROWS_RANGE BETWEEN 10d PRECEDING AND CURRENT ROW)) as trx_fe
+      last join {1} order by {1}.crd_lst_isu_dte on trx_fe.card_no = {1}.crd_nbr and trx_fe.trx_time >= {1}.crd_lst_isu_dte;
+    expect:
+      columns: ["id int", "card_no string", "trx_time timestamp", "card_no_prefix string",
+                "sum_trx_amt float", "count_merchant_id int64", "crd_lst_isu_dte timestamp",
+                "crd_nbr string"]
+      order: id
+      rows:
+        - [1, "aaaaaaaaaa", 1590738989000, "aaaaaa", 1.1, 1, 1590738988000, "aaaaaaaaaa"]
+        - [2, "aaaaaaaaaa", 1590738990000, "aaaaaa", 3.3, 2, 1590738990000, "aaaaaaaaaa"]
+        - [3, "bb", 1590738990000, "bb", 3.3, 1, null, null]
+  -
+    id: 7
+    desc: window样本表和副表都作子查询
+    sqlDialect: ["HybridSQL"]
+    mode: python-unsupport, cluster-unsupport,cli-unsupport
+    inputs:
+      -
+        columns : ["id int", "card_no string","merchant_id int", "trx_time timestamp", "trx_amt float"]
+
+        indexs: ["index1:card_no:trx_time"]
+        rows:
+          - [1, "aaaaaaaaaa",1, 1590738989000, 1.1]
+          - [2, "aaaaaaaaaa",1, 1590738991000, 2.2]
+          - [3, "bb",10, 1590738990000, 3.3]
+      -
+        columns : ["crd_lst_isu_dte timestamp", "crd_nbr string"]
+        indexs: ["index2:crd_nbr:crd_lst_isu_dte"]
+        rows:
+          - [1590738988000, "aaaaaaaaaa"]
+          - [1590738990000, "aaaaaaaaaa"]
+          - [1590738989000, "cc"]
+          - [1590738992000, "cc"]
+    sql: |
+      select
+      id,
+      card_no,
+      trx_time,
+      substr(card_no, 1, 6) as card_no_prefix,
+      sum(trx_amt) over w30d as w30d_amt_sum,
+      count(id) over w10d as w10d_id_cnt
+      from  (select id, card_no, trx_time, trx_amt from {0}) as t_instance
+      window w30d as (PARTITION BY card_no ORDER BY trx_time ROWS_RANGE BETWEEN 30d PRECEDING AND CURRENT ROW),
+      w10d as (UNION (select 0 as id, crd_nbr as card_no, crd_lst_isu_dte as trx_time, 0.0f as trx_amt from {1}) PARTITION BY card_no ORDER BY trx_time ROWS_RANGE BETWEEN 10d PRECEDING AND CURRENT ROW);
+    expect:
+      columns: ["id int", "card_no string", "trx_time timestamp", "card_no_prefix string",
+                "w30d_amt_sum float", "w10d_id_cnt int64"]
+      order: id
+      rows:
+        - [1, "aaaaaaaaaa", 1590738989000, "aaaaaa", 1.1, 2]
+        - [2, "aaaaaaaaaa", 1590738991000, "aaaaaa", 3.3, 4]
+        - [3, "bb", 1590738990000, "bb", 3.3, 1]
+  -
+    id: 8
+    desc: window样本表和副表都作子查询,INSTANCE_NOT_IN_WINDOW
+    sqlDialect: ["HybridSQL"]
+    mode: python-unsupport
+    inputs:
+      -
+        columns : ["id int", "user_id string", "card_no string","merchant_id int", "trx_time timestamp", "trx_amt float"]
+
+        indexs: ["index1:user_id:trx_time"]
+        rows:
+          - [1, "aaaaaaaaaa", "xxx", 1, 1590738989000, 1.1]
+          - [2, "aaaaaaaaaa", "xxx", 1, 1590738991000, 2.2]
+          - [3, "bb", "000", 10, 1590738990000, 3.3]
+          - [4, "cc", "zzz", 20, 1590738993000, 4.4]
+      -
+        columns : ["crd_lst_isu_dte timestamp", "crd_nbr string", "account_amt double"]
+        indexs: ["index2:crd_nbr:crd_lst_isu_dte"]
+        rows:
+          - [1590738988000, "xxx", 100.0]
+          - [1590738990000, "xxx", 200.0]
+          - [1590738990000, "yyy", 300.0]
+          - [1590738989000, "zzz", 400.0]
+          - [1590738992000, "zzz", 500.0]
+    sql: |
+      select id as out2_id,
+        crd_nbr,
+      count(id) over w10d as w10d_id_cnt,
+      sum(account_amt) over w10d as w10d_total_account_amt
+      from  (select id as id, trx_time as crd_lst_isu_dte, card_no as crd_nbr, 0.0 as account_amt from {0}) as t_instance
+      window w10d as (UNION (select 0 as id, crd_lst_isu_dte, crd_nbr, account_amt from {1})
+        PARTITION BY crd_nbr ORDER BY crd_lst_isu_dte ROWS_RANGE BETWEEN 10d PRECEDING AND CURRENT ROW INSTANCE_NOT_IN_WINDOW);
+
+    expect:
+      columns: ["out2_id int", "crd_nbr string", "w10d_id_cnt int64", "w10d_total_account_amt double"]
+      order: out2_id
+      rows:
+        - [1, "xxx", 2, 100.0]
+        - [2, "xxx", 3, 300.0]
+        - [3, "000", 1, 0.0]
+        - [4, "zzz", 3, 900.0]
+  -
+    id: 9
+    desc: 特征拼接
+    mode: offline-unsupport, python-unsupport,cli-unsupport
+    sqlDialect: ["HybridSQL"]
+    inputs:
+      -
+        columns : ["id int", "user_id string", "card_no string","merchant_id int", "trx_time timestamp", "trx_amt float"]
+
+        indexs: ["index1:user_id:trx_time"]
+        rows:
+          - [1, "aaaaaaaaaa", "xxx", 1, 1590738989000, 1.1]
+          - [2, "aaaaaaaaaa","xxx", 1, 1590738991000, 2.2]
+          - [3, "bb", "000", 10, 1590738990000, 3.3]
+          - [4, "cc", "zzz", 20, 1590738993000, 4.4]
+      -
+        columns : ["crd_lst_isu_dte timestamp", "crd_nbr string", "account_amt double"]
+        indexs: ["index2:crd_nbr:crd_lst_isu_dte"]
+        rows:
+          - [1590738988000, "xxx", 100.0]
+          - [1590738990000, "xxx", 200.0]
+          - [1590738990000, "yyy", 300.0]
+          - [1590738989000, "zzz", 400.0]
+          - [1590738992000, "zzz", 500.0]
+    sql: |
+      select * from
+      ( select
+        id as out1_id,
+        user_id,
+        trx_time,
+        sum(trx_amt) over w30d as w30d_amt_sum
+        from  (select id, user_id, trx_time, trx_amt from {0}) as t_instance
+        window w30d as (PARTITION BY user_id ORDER BY trx_time ROWS_RANGE BETWEEN 30d PRECEDING AND CURRENT ROW)
+      ) as out1 last join
+      ( select id as out2_id,
+        crd_nbr,
+      count(id) over w10d as w10d_id_cnt,
+      sum(account_amt) over w10d as w10d_total_account_amt
+      from  (select id as id, trx_time as crd_lst_isu_dte, card_no as crd_nbr, 0.0 as account_amt from {0}) as t_instance
+      window w10d as (UNION (select 0 as id, crd_lst_isu_dte, crd_nbr, account_amt from {1})
+        PARTITION BY crd_nbr ORDER BY crd_lst_isu_dte ROWS_RANGE BETWEEN 10d PRECEDING AND CURRENT ROW INSTANCE_NOT_IN_WINDOW)) as out2
+      on out1.out1_id=out2.out2_id;
+
+    expect:
+      columns: ["out1_id int", "user_id string", "trx_time timestamp",
+                "w30d_amt_sum float", "out2_id int", "crd_nbr string", "w10d_id_cnt int64", "w10d_total_account_amt double"]
+      order: out1_id
+      rows:
+        - [1, "aaaaaaaaaa", 1590738989000, 1.1, 1, "xxx", 2, 100.0]
+        - [2, "aaaaaaaaaa", 1590738991000, 3.3, 2, "xxx", 3, 300.0]
+        - [3, "bb", 1590738990000, 3.3, 3, "000", 1, 0.0]
+        - [4, "cc", 1590738993000, 4.4, 4, "zzz", 3, 900.0]
+  -
+    id: 10
+    desc: 子查询使列别名重名
+    sqlDialect: ["HybridSQL"]
+    tags: ["mysql报错"]
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 int","c3 bigint","c4 timestamp"]
+        indexs: ["index1:c1:c4"]
+        rows:
+          - [1,"aa",2,3,1590738989000]
+          - [2,"bb",21,31,1590738990000]
+          - [3,"cc",41,51,1590738991000]
+    sql: select * from (select id,c2+1 as v2,c3+1 as v2 from {0}) as t;
+    expect:
+      columns: ["id int","v2 int","v2 bigint"]
+      order: id
+      rows:
+        - [1,3,4]
+        - [2,22,32]
+        - [3,42,52]
+  -
+    id: 11
+    desc: 子查询使列别名重名,并同时select
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 int","c3 bigint","c4 timestamp"]
+        indexs: ["index1:c1:c4"]
+        rows:
+          - [1,"aa",2,3,1590738989000]
+          - [2,"bb",21,31,1590738990000]
+          - [3,"cc",41,51,1590738991000]
+    sql: select id,v2,v2 from (select id,c2+1 as v2,c3+1 as v2 from {0});
+    expect:
+      success: false
+  -
+    id: 15
+    desc: 不指定索引，进行子查询操作
+    inputs:
+      - columns: [ "id int not null","c1 int not null","c2 smallint not null","c3 float not null","c4 double not null","c5 bigint not null","c6 string not null","c7 timestamp not null","c8 date not null","c9 bool not null" ]
+        rows:
+          - [ 1, 1, 2, 3.3, 4.4, 5, "aa", 12345678, "2020-05-21", true ]
+    sql: select c1,c2 from (select id as c1,c1 as c2,c7 as c3 from {0});
+    expect:
+      columns : ["c1 int","c2 int"]
+      order: id
+      rows:
+        - [1,1]
+  - id: 16
+    desc: 先子查询后window
+    tags: ["TODO","https://github.com/4paradigm/OpenMLDB/issues/2621"]
+    version: 0.6.4
+    inputs:
+      - columns: [ "c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date" ]
+        indexs: [ "index1:c1:c7" ]
+        rows:
+          - [ "aa",20,30,1.1,2.1,1590738990000,"2020-05-01" ]
+          - [ "aa",21,31,1.2,2.2,1590738991000,"2020-05-02" ]
+          - [ "aa",22,32,1.3,2.3,1590738992000,"2020-05-03" ]
+          - [ "aa",23,33,1.4,2.4,1590738993000,"2020-05-04" ]
+          - [ "bb",24,34,1.5,2.5,1590738994000,"2020-05-05" ]
+    sql: |
+      SELECT t.c1, t.c3, sum(t.c4) OVER w1 as w1_c4_sum FROM (select * from {0}) as t WINDOW w1 AS (PARTITION BY t.c1 ORDER BY t.c7 ROWS_RANGE BETWEEN 2s PRECEDING AND CURRENT ROW);
+    expect:
+      order: c3
+      columns: [ "c1 string","c3 int","w1_c4_sum bigint" ]
+      rows:
+        - [ "aa",20,30 ]
+        - [ "aa",21,61 ]
+        - [ "aa",22,93 ]
+        - [ "aa",23,96 ]
+        - [ "bb",24,34 ]

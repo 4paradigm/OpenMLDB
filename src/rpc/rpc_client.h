@@ -42,7 +42,7 @@
 #include <thread>  // NOLINT
 #include <utility>
 
-#include "base/glog_wapper.h"  // NOLINT
+#include "base/glog_wrapper.h"
 #include "proto/tablet.pb.h"
 
 DECLARE_int32(request_sleep_time);

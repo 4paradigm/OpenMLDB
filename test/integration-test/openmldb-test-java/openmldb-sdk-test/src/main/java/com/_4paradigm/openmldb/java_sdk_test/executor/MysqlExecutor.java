@@ -15,14 +15,14 @@
  */
 package com._4paradigm.openmldb.java_sdk_test.executor;
 
-import com._4paradigm.openmldb.java_sdk_test.entity.FesqlResult;
-import com._4paradigm.openmldb.java_sdk_test.util.FesqlUtil;
+import com._4paradigm.openmldb.test_common.bean.OpenMLDBResult;
 import com._4paradigm.openmldb.java_sdk_test.util.JDBCUtil;
 import com._4paradigm.openmldb.java_sdk_test.util.MysqlUtil;
 import com._4paradigm.openmldb.test_common.model.DBType;
 import com._4paradigm.openmldb.test_common.model.InputDesc;
 import com._4paradigm.openmldb.test_common.model.SQLCase;
 import com._4paradigm.openmldb.test_common.model.SQLCaseType;
+import com._4paradigm.openmldb.test_common.util.SQLUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
 
@@ -40,18 +40,18 @@ public class MysqlExecutor extends JDBCExecutor{
 
     @Override
     public boolean verify() {
-        List<String> sqlDialect = fesqlCase.getSqlDialect();
+        List<String> sqlDialect = sqlCase.getSqlDialect();
         if(sqlDialect.contains(DBType.ANSISQL.name())|| sqlDialect.contains(DBType.MYSQL.name())){
             return true;
         }
-        logger.info("skip case in mysql mode: {}", fesqlCase.getDesc());
+        log.info("skip case in mysql mode: {}", sqlCase.getDesc());
         return false;
     }
 
     @Override
     public void prepare() {
-        logger.info("mysql prepare begin");
-        for(InputDesc inputDesc:fesqlCase.getInputs()) {
+        log.info("mysql prepare begin");
+        for(InputDesc inputDesc: sqlCase.getInputs()) {
             String createSql = MysqlUtil.getCreateTableSql(inputDesc);
             JDBCUtil.executeUpdate(createSql, DBType.MYSQL);
             boolean ok = MysqlUtil.insertData(inputDesc);
@@ -59,33 +59,33 @@ public class MysqlExecutor extends JDBCExecutor{
                 throw new RuntimeException("fail to run MysqlExecutor: prepare fail");
             }
         }
-        logger.info("mysql prepare end");
+        log.info("mysql prepare end");
     }
 
     @Override
     public void execute() {
-        logger.info("mysql execute begin");
-        FesqlResult fesqlResult = null;
-        List<String> sqls = fesqlCase.getSqls();
+        log.info("mysql execute begin");
+        OpenMLDBResult fesqlResult = null;
+        List<String> sqls = sqlCase.getSqls();
         if (sqls != null && sqls.size() > 0) {
             for (String sql : sqls) {
-                sql = FesqlUtil.formatSql(sql, tableNames);
+                sql = SQLUtil.formatSql(sql, tableNames);
                 fesqlResult = JDBCUtil.executeQuery(sql,DBType.MYSQL);
             }
         }
-        String sql = fesqlCase.getSql();
+        String sql = sqlCase.getSql();
         if (sql != null && sql.length() > 0) {
-            sql = FesqlUtil.formatSql(sql, tableNames);
+            sql = SQLUtil.formatSql(sql, tableNames);
             fesqlResult = JDBCUtil.executeQuery(sql,DBType.MYSQL);
         }
         mainResult = fesqlResult;
-        logger.info("mysql execute end");
+        log.info("mysql execute end");
     }
 
     @Override
     public void tearDown() {
-        logger.info("mysql,begin drop table");
-        List<InputDesc> tables = fesqlCase.getInputs();
+        log.info("mysql,begin drop table");
+        List<InputDesc> tables = sqlCase.getInputs();
         if (CollectionUtils.isEmpty(tables)) {
             return;
         }

@@ -1,0 +1,85 @@
+# Copyright 2021 4Paradigm
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+db: test_zw
+debugs: []
+cases:
+  -
+    id: 0
+    desc: 正常删除service
+    inputs:
+      -
+        columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
+        indexs: ["index1:c1:c7"]
+    sqls:
+      - deploy deploy_{0} SELECT id, c1, sum(c4) OVER w1 as w1_c4_sum FROM {0} WINDOW w1 AS (PARTITION BY {0}.c3 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND 1 PRECEDING);
+      - drop deployment deploy_{0};
+      - show deployments;
+    expect:
+      deploymentCount: 0
+  -
+    id: 1
+    desc: service不存在
+    inputs:
+      -
+        columns : ["c1 string","c2 int","c3 bigint","c4 timestamp"]
+        indexs: ["index1:c1:c4"]
+        rows:
+          - ["aa",2,3,1590738989000]
+          - ["bb",21,31,1590738990000]
+          - ["cc",41,51,1590738991000]
+    sqls:
+      - deploy deploy_{0} select v2,v3 from (select c2+1 as v2,c3+1 as v3 from {0}) as t;
+      - drop deployment deploy_{0}11;
+    tearDown:
+      - drop deployment deploy_{0};
+    expect:
+      success: false
+  -
+    id: 2
+    desc: 语法错误
+    inputs:
+      -
+        columns : ["c1 string","c2 int","c3 bigint","c4 timestamp"]
+        indexs: ["index1:c1:c4"]
+        rows:
+          - ["aa",2,3,1590738989000]
+          - ["bb",21,31,1590738990000]
+          - ["cc",41,51,1590738991000]
+    sqls:
+      - deploy deploy_{0} select v2,v3 from (select c2+1 as v2,c3+1 as v3 from {0}) as t;
+      - drop deployments deploy_{0};
+    tearDown:
+      - drop deployment deploy_{0};
+    expect:
+      success: false
+  -
+    id: 3
+    desc: 删除其他库的service
+    db: db
+    inputs:
+      -
+        columns : ["c1 string","c2 int","c3 bigint","c4 timestamp"]
+        indexs: ["index1:c1:c4"]
+        rows:
+          - ["aa",2,3,1590738989000]
+          - ["bb",21,31,1590738990000]
+          - ["cc",41,51,1590738991000]
+    sqls:
+      - deploy deploy_{0} select v2,v3 from (select c2+1 as v2,c3+1 as v3 from {0}) as t;
+      - drop deployment db.deploy_{0};
+    tearDown:
+      - drop deployment deploy_{0};
+    expect:
+      success: false

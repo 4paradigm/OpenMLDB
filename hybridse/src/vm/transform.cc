@@ -552,25 +552,38 @@ Status BatchModeTransformer::CreateRequestUnionNode(
     }
     PhysicalRequestUnionNode* request_union_op = nullptr;
     if (partition != nullptr) {
-        CHECK_STATUS(CreateOp<PhysicalRequestUnionNode>(&request_union_op, left,
-                                                        right, partition));
+        CHECK_STATUS(CreateOp<PhysicalRequestUnionNode>(&request_union_op, left, right, partition));
     } else {
-        CHECK_STATUS(CreateOp<PhysicalRequestUnionNode>(&request_union_op, left,
-                                                        right, window_plan));
+        CHECK_STATUS(CreateOp<PhysicalRequestUnionNode>(&request_union_op, left, right, window_plan));
+        if (window_plan->exclude_current_row()) {
+            if (window_plan->frame_node()->frame_type() == node::FrameType::kFrameRowsRange &&
+                window_plan->frame_node()->GetHistoryRangeEnd() == 0) {
+                // flag in request union node needed for request union runner
+                request_union_op->exclude_current_row_ = true;
+                // flag in frame node needed for codegen build correct InnerRowsRangeList
+                request_union_op->window().range().frame()->exclude_current_row_ = true;
+            }
+            if (window_plan->frame_node()->frame_type() == node::FrameType::kFrameRows &&
+                window_plan->frame_node()->GetHistoryRowsEnd() == 0) {
+                // ROWS .. 0 PRECEDING EXCLUDE CURRENT_ROW is same as
+                // ROWS .. 0 OPEN PRECEDING
+                request_union_op->window().range().frame()->frame_rows()->end()->set_bound_type(
+                    node::BoundType::kOpenPreceding);
+                request_union_op->window().range().frame()->frame_rows()->end()->SetOffset(0);
+            }
+        }
     }
     *output = request_union_op;
     return Status::OK();
 }
 
-Status BatchModeTransformer::TransformWindowOp(PhysicalOpNode* depend,
+Status RequestModeTransformer::TransformWindowOp(PhysicalOpNode* depend,
                                                const node::WindowPlanNode* w_ptr,
                                                PhysicalOpNode** output) {
     // sanity check
     CHECK_TRUE(depend != nullptr && output != nullptr, kPlanError,
                "Depend node or output node is null");
     CHECK_STATUS(CheckWindow(w_ptr, depend->schemas_ctx()));
-    const node::OrderByNode* orders = w_ptr->GetOrders();
-    const node::ExprListNode* groups = w_ptr->GetKeys();
 
     switch (depend->GetOpType()) {
         case kPhysicalOpRename: {
@@ -625,89 +638,33 @@ Status BatchModeTransformer::TransformWindowOp(PhysicalOpNode* depend,
             break;
         }
         case kPhysicalOpRequestJoin: {
-            auto join_op = dynamic_cast<PhysicalRequestJoinNode*>(depend);
-            switch (join_op->join().join_type()) {
-                case node::kJoinTypeLeft:
-                case node::kJoinTypeLast: {
-                    auto child_schemas_ctx =
-                        join_op->GetProducer(0)->schemas_ctx();
-                    if (!node::ExprListNullOrEmpty(groups)) {
-                        CHECK_STATUS(passes::CheckExprDependOnChildOnly(
-                                         groups, child_schemas_ctx),
-                                     "Fail to handle window: group "
-                                     "expression should belong to left table");
-                    }
-                    if (nullptr != orders &&
-                        !node::ExprListNullOrEmpty(orders->order_expressions_)) {
-                        CHECK_STATUS(passes::CheckExprDependOnChildOnly(
-                                         orders->order_expressions_, child_schemas_ctx),
-                                     "Fail to handle window: group "
-                                     "expression should belong to left table");
-                    }
-                    CHECK_TRUE(join_op->producers()[0]->GetOpType() ==
-                                   kPhysicalOpDataProvider,
-                               kPlanError,
-                               "Fail to handler window with request last "
-                               "join, left isn't a table provider")
-                    auto request_op = dynamic_cast<PhysicalDataProviderNode*>(
-                        join_op->producers()[0]);
-                    auto name = request_op->table_handler_->GetName();
-                    auto db_name = request_op->table_handler_->GetDatabase();
-                    if (db_name.empty()) {
-                        db_name = db_;
-                    }
-                    auto table = catalog_->GetTable(db_name, name);
-                    CHECK_TRUE(table != nullptr, kPlanError,
-                               "Fail to transform data provider op: table " +
-                                   name + "not exists");
-                    PhysicalTableProviderNode* right = nullptr;
-                    CHECK_STATUS(
-                        CreateOp<PhysicalTableProviderNode>(&right, table));
-
-                    PhysicalRequestUnionNode* request_union_op = nullptr;
-                    CHECK_STATUS(CreateRequestUnionNode(
-                        request_op, right, db_name, name, table->GetSchema(), nullptr,
-                        w_ptr, &request_union_op));
-                    if (!w_ptr->union_tables().empty()) {
-                        for (auto iter = w_ptr->union_tables().cbegin();
-                             iter != w_ptr->union_tables().cend(); iter++) {
-                            PhysicalOpNode* union_table_op;
-                            CHECK_STATUS(
-                                TransformPlanOp(*iter, &union_table_op));
-                            PhysicalRenameNode* rename_union_op = nullptr;
-                            CHECK_STATUS(CreateOp<PhysicalRenameNode>(&rename_union_op, union_table_op,
-                                                                      depend->schemas_ctx()->GetName()));
-                            CHECK_TRUE(
-                                request_union_op->AddWindowUnion(
-                                    rename_union_op),
-                                kPlanError,
-                                "Fail to add request window union table");
-                        }
-                    }
-                    PhysicalJoinNode* join_output = nullptr;
-                    CHECK_STATUS(CreateOp<PhysicalJoinNode>(
-                        &join_output, request_union_op, join_op->producers()[1],
-                        join_op->join_));
-                    *output = join_output;
-                    break;
-                }
-                default: {
-                    return Status(kPlanError, "Non-support join type");
-                }
-            }
-            break;
+            auto* join_op = dynamic_cast<PhysicalRequestJoinNode*>(depend);
+            CHECK_TRUE(join_op != nullptr, kPlanError);
+            return OptimizeRequestJoinAsWindowProducer(join_op, w_ptr, output);
         }
         case kPhysicalOpSimpleProject: {
-            auto simple_project =
-                dynamic_cast<PhysicalSimpleProjectNode*>(depend);
-            CHECK_TRUE(
-                depend->GetProducer(0)->GetOpType() == kPhysicalOpDataProvider,
-                kPlanError, "Do not support window on ",
-                depend->GetTreeString());
-            auto data_op =
-                dynamic_cast<PhysicalDataProviderNode*>(depend->GetProducer(0));
-            CHECK_TRUE(data_op->provider_type_ == kProviderTypeRequest,
-                       kPlanError,
+            auto* simple_project = dynamic_cast<PhysicalSimpleProjectNode*>(depend);
+            CHECK_TRUE(simple_project != nullptr, kPlanError);
+            return OptimizeSimpleProjectAsWindowProducer(simple_project, w_ptr, output);
+        }
+        default: {
+            FAIL_STATUS(kPlanError, "Do not support window on\n" + depend->GetTreeString());
+        }
+    }
+    return Status::OK();
+}
+
+Status RequestModeTransformer::OptimizeSimpleProjectAsWindowProducer(PhysicalSimpleProjectNode* depend,
+                                                                     const node::WindowPlanNode* w_ptr,
+                                                                     PhysicalOpNode** output) {
+    // - SimpleProject(DataProvider) -> RequestUnion(Request, DataSource)
+    // - SimpleProject(RequestJoin) -> Join(RequestUnion, DataSource)
+    auto op_type = depend->GetProducer(0)->GetOpType();
+    switch (op_type) {
+        case kPhysicalOpDataProvider: {
+            auto data_op = dynamic_cast<PhysicalDataProviderNode*>(depend->GetProducer(0));
+            CHECK_TRUE(data_op != nullptr, kPlanError, "not PhysicalDataProviderNode");
+            CHECK_TRUE(data_op->provider_type_ == kProviderTypeRequest, kPlanError,
                        "Do not support window on non-request input");
 
             auto name = data_op->table_handler_->GetName();
@@ -715,43 +672,112 @@ Status BatchModeTransformer::TransformWindowOp(PhysicalOpNode* depend,
             db_name = db_name.empty() ? db_ : db_name;
             auto table = catalog_->GetTable(db_name, name);
             CHECK_TRUE(table != nullptr, kPlanError,
-                       "Fail to transform data provider op: table " + name +
-                           "not exists");
+                       "Fail to transform data provider op: table " + name + "not exists");
 
             PhysicalTableProviderNode* right = nullptr;
             CHECK_STATUS(CreateOp<PhysicalTableProviderNode>(&right, table));
 
             // right side simple project
             PhysicalSimpleProjectNode* right_simple_project = nullptr;
-            CHECK_STATUS(CreateOp<PhysicalSimpleProjectNode>(
-                &right_simple_project, right, simple_project->project()));
+            CHECK_STATUS(CreateOp<PhysicalSimpleProjectNode>(&right_simple_project, right, depend->project()));
 
             // request union
             PhysicalRequestUnionNode* request_union_op = nullptr;
-            CHECK_STATUS(CreateRequestUnionNode(
-                depend, right_simple_project, table->GetDatabase(), table->GetName(),
-                table->GetSchema(), nullptr, w_ptr, &request_union_op));
+            CHECK_STATUS(CreateRequestUnionNode(depend, right_simple_project, table->GetDatabase(), table->GetName(),
+                                                table->GetSchema(), nullptr, w_ptr, &request_union_op));
             if (!w_ptr->union_tables().empty()) {
-                for (auto iter = w_ptr->union_tables().cbegin();
-                     iter != w_ptr->union_tables().cend(); iter++) {
+                for (auto iter = w_ptr->union_tables().cbegin(); iter != w_ptr->union_tables().cend(); iter++) {
                     PhysicalOpNode* union_table_op;
                     CHECK_STATUS(TransformPlanOp(*iter, &union_table_op));
                     PhysicalRenameNode* rename_union_op = nullptr;
                     CHECK_STATUS(CreateOp<PhysicalRenameNode>(&rename_union_op, union_table_op,
                                                               depend->schemas_ctx()->GetName()));
-                    CHECK_TRUE(request_union_op->AddWindowUnion(rename_union_op),
-                               kPlanError,
+                    CHECK_TRUE(request_union_op->AddWindowUnion(rename_union_op), kPlanError,
                                "Fail to add request window union table");
                 }
             }
             *output = request_union_op;
             break;
         }
+        case kPhysicalOpRequestJoin: {
+            auto join_op = dynamic_cast<PhysicalRequestJoinNode*>(depend->GetProducer(0));
+            CHECK_TRUE(join_op != nullptr, kPlanError, "not PhysicalRequestJoinNode");
+            return OptimizeRequestJoinAsWindowProducer(join_op, w_ptr, output);
+        }
         default: {
-            return Status(kPlanError, "Do not support window on " +
-                                          depend->GetTreeString());
+            FAIL_STATUS(kPlanError, "Do not support window on\n", depend->GetTreeString());
         }
     }
+    return Status::OK();
+}
+
+Status RequestModeTransformer::OptimizeRequestJoinAsWindowProducer(PhysicalRequestJoinNode* join_op,
+                                                                   const node::WindowPlanNode* w_ptr,
+                                                                   PhysicalOpNode** output) {
+    // Optimize
+    //   RequestJoin(Request(left_table), DataSource(right_table))
+    // ->
+    //   Join
+    //     RequestUnion
+    //       Request
+    //       DataSource(left_table)
+    //     DataSource(right_table)
+    switch (join_op->join().join_type()) {
+        case node::kJoinTypeLeft:
+        case node::kJoinTypeLast: {
+            const node::OrderByNode* orders = w_ptr->GetOrders();
+            const node::ExprListNode* groups = w_ptr->GetKeys();
+            auto child_schemas_ctx = join_op->GetProducer(0)->schemas_ctx();
+            if (!node::ExprListNullOrEmpty(groups)) {
+                CHECK_STATUS(passes::CheckExprDependOnChildOnly(groups, child_schemas_ctx),
+                             "Fail to handle window: group "
+                             "expression should belong to left table");
+            }
+            if (nullptr != orders && !node::ExprListNullOrEmpty(orders->order_expressions_)) {
+                CHECK_STATUS(passes::CheckExprDependOnChildOnly(orders->order_expressions_, child_schemas_ctx),
+                             "Fail to handle window: group "
+                             "expression should belong to left table");
+            }
+            CHECK_TRUE(join_op->producers()[0]->GetOpType() == kPhysicalOpDataProvider, kPlanError,
+                       "Fail to handler window with request last "
+                       "join, left isn't a table provider")
+            auto request_op = dynamic_cast<PhysicalDataProviderNode*>(join_op->producers()[0]);
+            auto name = request_op->table_handler_->GetName();
+            auto db_name = request_op->table_handler_->GetDatabase();
+            if (db_name.empty()) {
+                db_name = db_;
+            }
+            auto table = catalog_->GetTable(db_name, name);
+            CHECK_TRUE(table != nullptr, kPlanError,
+                       "Fail to transform data provider op: table " + name + "not exists");
+            PhysicalTableProviderNode* right = nullptr;
+            CHECK_STATUS(CreateOp<PhysicalTableProviderNode>(&right, table));
+
+            PhysicalRequestUnionNode* request_union_op = nullptr;
+            CHECK_STATUS(CreateRequestUnionNode(request_op, right, db_name, name, table->GetSchema(), nullptr, w_ptr,
+                                                &request_union_op));
+            if (!w_ptr->union_tables().empty()) {
+                for (auto iter = w_ptr->union_tables().cbegin(); iter != w_ptr->union_tables().cend(); iter++) {
+                    PhysicalOpNode* union_table_op;
+                    CHECK_STATUS(TransformPlanOp(*iter, &union_table_op));
+                    PhysicalRenameNode* rename_union_op = nullptr;
+                    CHECK_STATUS(CreateOp<PhysicalRenameNode>(&rename_union_op, union_table_op,
+                                                              join_op->schemas_ctx()->GetName()));
+                    CHECK_TRUE(request_union_op->AddWindowUnion(rename_union_op), kPlanError,
+                               "Fail to add request window union table");
+                }
+            }
+            PhysicalJoinNode* join_output = nullptr;
+            CHECK_STATUS(
+                CreateOp<PhysicalJoinNode>(&join_output, request_union_op, join_op->producers()[1], join_op->join_));
+            *output = join_output;
+            break;
+        }
+        default: {
+            return Status(kPlanError, "Non-support join type");
+        }
+    }
+
     return Status::OK();
 }
 
@@ -1208,6 +1234,23 @@ Status BatchModeTransformer::CreatePhysicalProjectNode(
                 &window_agg_op, depend, column_projects, WindowOp(project_list->GetW()),
                 project_list->GetW()->instance_not_in_window(), append_input,
                 project_list->GetW()->exclude_current_time()));
+
+            if (project_list->GetW()->exclude_current_row()) {
+                // there is only special handling for ROWS_RANGE Current History Window
+                // - for pure history windows, exclude current_row do not matter since current row already excluded by
+                //   end frame bound
+                // - for current history ROWS window, exclude current_row is same as OPEN end frame bound
+                if (project_list->GetW()->frame_node()->frame_type() == node::FrameType::kFrameRowsRange &&
+                    project_list->GetW()->frame_node()->GetHistoryRangeEnd() == 0) {
+                    window_agg_op->set_exclude_current_row(true);
+                }
+                if (project_list->GetW()->frame_node()->frame_type() == node::FrameType::kFrameRows &&
+                    project_list->GetW()->frame_node()->GetHistoryRowsEnd() == 0) {
+                    window_agg_op->window().range().frame()->frame_rows()->end()->set_bound_type(
+                        node::BoundType::kOpenPreceding);
+                    window_agg_op->window().range().frame()->frame_rows()->end()->SetOffset(0);
+                }
+            }
             if (!project_list->GetW()->union_tables().empty()) {
                 for (auto iter = project_list->GetW()->union_tables().cbegin();
                      iter != project_list->GetW()->union_tables().cend(); iter++) {
@@ -2252,8 +2295,7 @@ Status RequestModeTransformer::TransformProjectOp(
     bool append_input, PhysicalOpNode** output) {
     PhysicalOpNode* new_depend = depend;
     if (nullptr != project_list->GetW()) {
-        CHECK_STATUS(
-            TransformWindowOp(depend, project_list->GetW(), &new_depend));
+        CHECK_STATUS(TransformWindowOp(depend, project_list->GetW(), &new_depend));
     }
     switch (new_depend->GetOutputType()) {
         case kSchemaTypeRow:

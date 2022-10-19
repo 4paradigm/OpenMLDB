@@ -59,6 +59,10 @@ class NsClient : public Client {
 
     bool CreateDatabase(const std::string& db, std::string& msg, bool if_not_exists = false);  // NOLINT
 
+    base::Status CreateDatabaseRemote(const std::string& db, const ::openmldb::nameserver::ZoneInfo& zone_info);
+
+    base::Status DropDatabaseRemote(const std::string& db, const ::openmldb::nameserver::ZoneInfo& zone_info);
+
     bool ShowDatabase(std::vector<std::string>* dbs,
                       std::string& msg);  // NOLINT
 
@@ -217,7 +221,7 @@ class NsClient : public Client {
                   std::vector<openmldb::common::ColumnDesc>* cols,
                   std::string& msg);  // NOLINT
 
-    base::Status AddMultiIndex(const std::string& table_name,
+    base::Status AddMultiIndex(const std::string& db, const std::string& table_name,
             const std::vector<::openmldb::common::ColumnKey>& column_keys);
 
     bool DeleteIndex(const std::string& table_name, const std::string& idx_name,

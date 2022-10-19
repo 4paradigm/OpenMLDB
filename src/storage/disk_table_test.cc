@@ -19,10 +19,10 @@
 #include <iostream>
 #include <utility>
 #include "base/file_util.h"
-#include "base/glog_wapper.h"  // NOLINT
+#include "base/glog_wrapper.h"
 #include "codec/schema_codec.h"
 #include "codec/sdk_codec.h"
-#include "common/timer.h"  // NOLINT
+#include "common/timer.h"
 #include "gtest/gtest.h"
 #include "storage/ticket.h"
 #include "test/util.h"
@@ -422,25 +422,25 @@ TEST_F(DiskTableTest, TraverseIterator) {
         if (count == 0) {
             std::string pk = it->GetPK();
             ASSERT_EQ("test90", pk);
-            ASSERT_EQ(9542, (int64_t)it->GetKey());
+            ASSERT_EQ(9543, (int64_t)it->GetKey());
         }
         count++;
         it->Next();
     }
-    ASSERT_EQ(96, count);
+    ASSERT_EQ(97, count);
 
     it->Seek("test90", 9537);
     count = 0;
     while (it->Valid()) {
         if (count == 0) {
             std::string pk = it->GetPK();
-            ASSERT_EQ("test91", pk);
-            ASSERT_EQ(9546, (int64_t)it->GetKey());
+            ASSERT_EQ("test90", pk);
+            ASSERT_EQ(9537, (int64_t)it->GetKey());
         }
         count++;
         it->Next();
     }
-    ASSERT_EQ(90, count);
+    ASSERT_EQ(91, count);
 
     it->Seek("test90", 9530);
     count = 0;
@@ -511,12 +511,12 @@ TEST_F(DiskTableTest, TraverseIteratorCount) {
         if (count == 0) {
             std::string pk = it->GetPK();
             ASSERT_EQ("test90", pk);
-            ASSERT_EQ(9542, (int64_t)it->GetKey());
+            ASSERT_EQ(9543, (int64_t)it->GetKey());
         }
         count++;
         it->Next();
     }
-    ASSERT_EQ(48, count);
+    ASSERT_EQ(49, count);
     delete it;
 
     it = table->NewTraverseIterator(0);
@@ -525,13 +525,13 @@ TEST_F(DiskTableTest, TraverseIteratorCount) {
     while (it->Valid()) {
         if (count == 0) {
             std::string pk = it->GetPK();
-            ASSERT_EQ("test91", pk);
-            ASSERT_EQ(9546, (int64_t)it->GetKey());
+            ASSERT_EQ("test90", pk);
+            ASSERT_EQ(9537, (int64_t)it->GetKey());
         }
         count++;
         it->Next();
     }
-    ASSERT_EQ(48, count);
+    ASSERT_EQ(49, count);
     delete it;
 
     it = table->NewTraverseIterator(0);
@@ -601,7 +601,7 @@ TEST_F(DiskTableTest, TraverseIteratorCountTTL) {
         count++;
         it->Next();
     }
-    ASSERT_EQ(46, count);
+    ASSERT_EQ(47, count);
     ASSERT_EQ(50, (int64_t)it->GetCount());
     delete it;
     delete table;
@@ -644,25 +644,25 @@ TEST_F(DiskTableTest, TraverseIteratorLatest) {
         if (count == 0) {
             std::string pk = it->GetPK();
             ASSERT_EQ("test90", pk);
-            ASSERT_EQ(9540, (int64_t)it->GetKey());
+            ASSERT_EQ(9541, (int64_t)it->GetKey());
         }
         count++;
         it->Next();
     }
-    ASSERT_EQ(29, count);
+    ASSERT_EQ(30, count);
 
     it->Seek("test90", 9537);
     count = 0;
     while (it->Valid()) {
         if (count == 0) {
             std::string pk = it->GetPK();
-            ASSERT_EQ("test91", pk);
-            ASSERT_EQ(9541, (int64_t)it->GetKey());
+            ASSERT_EQ("test90", pk);
+            ASSERT_EQ(9537, (int64_t)it->GetKey());
         }
         count++;
         it->Next();
     }
-    ASSERT_EQ(27, count);
+    ASSERT_EQ(28, count);
     it->Seek("test90", 9530);
     count = 0;
     while (it->Valid()) {

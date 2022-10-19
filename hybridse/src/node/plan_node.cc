@@ -87,7 +87,7 @@ void UnaryPlanNode::Print(std::ostream &output,
 }
 void UnaryPlanNode::PrintChildren(std::ostream &output,
                                   const std::string &tab) const {
-    PrintPlanNode(output, tab, children_[0], "", true);
+    PrintPlanNode(output, tab + INDENT, children_[0], "", true);
 }
 bool UnaryPlanNode::Equals(const PlanNode *that) const {
     return PlanNode::Equals(that);
@@ -542,12 +542,11 @@ bool WindowPlanNode::Equals(const PlanNode *node) const {
         return false;
     }
     const WindowPlanNode *that = dynamic_cast<const WindowPlanNode *>(node);
-    return this->name_ == that->name_ &&
-           this->instance_not_in_window() == that->instance_not_in_window() &&
+    return this->name_ == that->name_ && this->instance_not_in_window() == that->instance_not_in_window() &&
+           this->exclude_current_row() == this->exclude_current_row() &&
            this->exclude_current_time() == that->exclude_current_time() &&
-           SqlEquals(this->frame_node_, that->frame_node_) &&
-           this->orders_ == that->orders_ && this->keys_ == that->keys_ &&
-           PlanListEquals(this->union_tables_, that->union_tables_) &&
+           SqlEquals(this->frame_node_, that->frame_node_) && this->orders_ == that->orders_ &&
+           this->keys_ == that->keys_ && PlanListEquals(this->union_tables_, that->union_tables_) &&
            LeafPlanNode::Equals(node);
 }
 
@@ -775,7 +774,13 @@ void DeletePlanNode::Print(std::ostream& output, const std::string& tab) const {
     output << "\n";
     PrintValue(output, next_tab, DeleteTargetString(target_), "target", false);
     output << "\n";
-    PrintValue(output, next_tab, GetJobId(), "job_id", true);
+    if (target_ == DeleteTarget::JOB) {
+        PrintValue(output, next_tab, GetJobId(), "job_id", true);
+    } else {
+        PrintValue(output, tab, db_name_.empty() ? table_name_ : db_name_ + "." + table_name_, "table_name", false);
+        output << "\n";
+        PrintSqlNode(output, tab, condition_, "condition", true);
+    }
 }
 
 bool CmdPlanNode::Equals(const PlanNode *that) const {

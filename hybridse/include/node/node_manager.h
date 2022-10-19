@@ -118,10 +118,9 @@ class NodeManager {
     SqlNode *MakeWindowDefNode(ExprListNode *partitions, ExprNode *orders,
                                SqlNode *frame);
     SqlNode *MakeWindowDefNode(ExprListNode *partitions, ExprNode *orders,
-                               SqlNode *frame, bool opt_open_interval_window);
-    SqlNode *MakeWindowDefNode(SqlNodeList *union_tables,
-                               ExprListNode *partitions, ExprNode *orders,
-                               SqlNode *frame, bool opt_open_interval_window,
+                               SqlNode *frame, bool exclude_current_time);
+    SqlNode *MakeWindowDefNode(SqlNodeList *union_tables, ExprListNode *partitions, ExprNode *orders, SqlNode *frame,
+                               bool exclude_current_time, bool exclude_current_row,
                                bool instance_not_in_window);
     WindowDefNode *MergeWindow(const WindowDefNode *w1,
                                const WindowDefNode *w2);
@@ -262,8 +261,8 @@ class NodeManager {
     DeployPlanNode *MakeDeployPlanNode(const std::string &name, const SqlNode *stmt, const std::string &stmt_str,
                                        const std::shared_ptr<OptionsMap> options, bool if_not_exist);
 
-    // create a delete job node
-    DeleteNode* MakeDeleteNode(DeleteTarget target, std::string_view job_id);
+    DeleteNode* MakeDeleteNode(DeleteTarget target, std::string_view job_id,
+            const std::string& db_name, const std::string& table, node::ExprNode* where_expr);
     DeletePlanNode* MakeDeletePlanNode(const DeleteNode* node);
 
     LoadDataNode *MakeLoadDataNode(const std::string &file_name, const std::string &db, const std::string &table,
@@ -385,7 +384,7 @@ class NodeManager {
 
     SqlNode *MakePartitionNumNode(int num);
 
-    SqlNode *MakeDistributionsNode(SqlNodeList *distribution_list);
+    SqlNode *MakeDistributionsNode(const NodePointVector& distribution_list);
 
     SqlNode *MakeCreateProcedureNode(const std::string &sp_name,
                                      SqlNodeList *input_parameter_list,

@@ -14,6 +14,7 @@
 
 db: test_zw
 debugs: []
+version: 0.5.0
 cases:
   - id: 0
     desc: lastjoin+窗口
@@ -57,6 +58,7 @@ cases:
         - [5,"bb",24,34,68]
   - id: 1
     desc: lastjoin+窗口-没有匹配的列
+    version: 0.6.0
     inputs:
       -
         columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
@@ -946,7 +948,7 @@ cases:
       success: true
       columns: [ "id int", "c8 date", "c3 int", "c4 bigint" ]
       rows:
-        - [ 1, 2020-05-01, 20, 30 ]
+        - [ 1, '2020-05-01', 20, 30 ]
 
   - id: 17-2
     desc: 两个子查询lastjoin，order不是主表的ts-离线支持
@@ -998,7 +1000,7 @@ cases:
       success: true
       columns: [ "id int", "c8 date", "c3 int", "c4 bigint" ]
       rows:
-        - [ 1, 2020-05-01, 20, 30 ]
+        - [ 1, '2020-05-01', 20, 30 ]
 
   - id: 18-2
     desc: 两个子查询lastjoin，拼接条件不是主表的索引-不带orderby-离线支持
@@ -1026,7 +1028,7 @@ cases:
       success: true
       columns: [ "id int", "c8 date", "c3 int", "c4 bigint" ]
       rows:
-        - [ 1, 2020-05-01, 20, 30 ]
+        - [ 1, '2020-05-01', 20, 30 ]
 
   - id: 19-1
     desc: 两个子查询lastjoin-子查询带窗口特征-没有使用索引-不带orderby

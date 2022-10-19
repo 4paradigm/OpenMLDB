@@ -16,15 +16,17 @@
 
 #include "storage/mem_table.h"
 
+#include <snappy.h>
 #include <algorithm>
 #include <utility>
 
-#include "base/glog_wapper.h"
+#include "base/glog_wrapper.h"
 #include "base/hash.h"
 #include "base/slice.h"
 #include "common/timer.h"
 #include "gflags/gflags.h"
 #include "storage/record.h"
+#include "storage/window_iterator.h"
 
 DECLARE_uint32(skiplist_max_height);
 DECLARE_uint32(skiplist_max_height);
@@ -164,6 +166,11 @@ bool MemTable::Put(uint64_t time, const std::string& value, const Dimensions& di
     }
     uint32_t real_ref_cnt = 0;
     const int8_t* data = reinterpret_cast<const int8_t*>(value.data());
+    std::string uncompress_data;
+    if (GetCompressType() == openmldb::type::kSnappy) {
+        snappy::Uncompress(value.data(), value.size(), &uncompress_data);
+        data = reinterpret_cast<const int8_t*>(uncompress_data.data());
+    }
     uint8_t version = codec::RowView::GetSchemaVersion(data);
     auto decoder = GetVersionDecoder(version);
     if (decoder == nullptr) {
@@ -557,6 +564,9 @@ bool MemTable::AddIndex(const ::openmldb::common::ColumnKey& column_key) {
             return false;
         }
         new_table_meta->mutable_column_key(index_def->GetId())->CopyFrom(column_key);
+        if (column_key.has_ttl()) {
+            index_def->SetTTL(::openmldb::storage::TTLSt(column_key.ttl()));
+        }
     } else {
         ::openmldb::common::ColumnKey* added_column_key = new_table_meta->add_column_key();
         added_column_key->CopyFrom(column_key);
@@ -786,113 +796,6 @@ bool MemTable::BulkLoad(const std::vector<DataBlock*>& data_blocks,
     return true;
 }
 
-MemTableKeyIterator::MemTableKeyIterator(Segment** segments, uint32_t seg_cnt, ::openmldb::storage::TTLType ttl_type,
-                                         uint64_t expire_time, uint64_t expire_cnt, uint32_t ts_index)
-    : segments_(segments),
-      seg_cnt_(seg_cnt),
-      seg_idx_(0),
-      pk_it_(NULL),
-      it_(NULL),
-      ttl_type_(ttl_type),
-      expire_time_(expire_time),
-      expire_cnt_(expire_cnt),
-      ticket_(),
-      ts_idx_(0) {
-    uint32_t idx = 0;
-    if (segments_[0]->GetTsIdx(ts_index, idx) == 0) {
-        ts_idx_ = idx;
-    }
-}
-
-MemTableKeyIterator::~MemTableKeyIterator() {
-    if (pk_it_ != NULL) delete pk_it_;
-}
-
-void MemTableKeyIterator::SeekToFirst() {
-    ticket_.Pop();
-    if (pk_it_ != NULL) {
-        delete pk_it_;
-        pk_it_ = NULL;
-    }
-    for (seg_idx_ = 0; seg_idx_ < seg_cnt_; seg_idx_++) {
-        pk_it_ = segments_[seg_idx_]->GetKeyEntries()->NewIterator();
-        pk_it_->SeekToFirst();
-        if (pk_it_->Valid()) return;
-        delete pk_it_;
-        pk_it_ = NULL;
-    }
-}
-
-void MemTableKeyIterator::Seek(const std::string& key) {
-    if (pk_it_ != NULL) {
-        delete pk_it_;
-        pk_it_ = NULL;
-    }
-    ticket_.Pop();
-    if (seg_cnt_ > 1) {
-        seg_idx_ = ::openmldb::base::hash(key.c_str(), key.length(), SEED) % seg_cnt_;
-    }
-    Slice spk(key);
-    pk_it_ = segments_[seg_idx_]->GetKeyEntries()->NewIterator();
-    pk_it_->Seek(spk);
-    if (!pk_it_->Valid()) {
-        NextPK();
-    }
-}
-
-bool MemTableKeyIterator::Valid() {
-    return pk_it_ != NULL && pk_it_->Valid();
-}
-
-void MemTableKeyIterator::Next() { NextPK(); }
-
-::hybridse::vm::RowIterator* MemTableKeyIterator::GetRawValue() {
-    TimeEntries::Iterator* it = NULL;
-    if (segments_[seg_idx_]->GetTsCnt() > 1) {
-        KeyEntry* entry = ((KeyEntry**)pk_it_->GetValue())[ts_idx_];  // NOLINT
-        it = entry->entries.NewIterator();
-        ticket_.Push(entry);
-    } else {
-        it = ((KeyEntry*)pk_it_->GetValue())  // NOLINT
-                 ->entries.NewIterator();
-        ticket_.Push((KeyEntry*)pk_it_->GetValue());  // NOLINT
-    }
-    it->SeekToFirst();
-    return new MemTableWindowIterator(it, ttl_type_, expire_time_, expire_cnt_);
-}
-
-std::unique_ptr<::hybridse::vm::RowIterator> MemTableKeyIterator::GetValue() {
-    return std::unique_ptr<::hybridse::vm::RowIterator>(GetRawValue());
-}
-
-const hybridse::codec::Row MemTableKeyIterator::GetKey() {
-    hybridse::codec::Row row(
-        ::hybridse::base::RefCountedSlice::Create(pk_it_->GetKey().data(), pk_it_->GetKey().size()));
-    return row;
-}
-
-void MemTableKeyIterator::NextPK() {
-    do {
-        ticket_.Pop();
-        if (pk_it_->Valid()) {
-            pk_it_->Next();
-        }
-        if (!pk_it_->Valid()) {
-            delete pk_it_;
-            pk_it_ = NULL;
-            seg_idx_++;
-            if (seg_idx_ < seg_cnt_) {
-                pk_it_ = segments_[seg_idx_]->GetKeyEntries()->NewIterator();
-                pk_it_->SeekToFirst();
-                if (!pk_it_->Valid()) {
-                    continue;
-                }
-            }
-        }
-        break;
-    } while (true);
-}
-
 MemTableTraverseIterator::MemTableTraverseIterator(Segment** segments, uint32_t seg_cnt,
                                                    ::openmldb::storage::TTLType ttl_type, uint64_t expire_time,
                                                    uint64_t expire_cnt, uint32_t ts_index)
@@ -1003,7 +906,7 @@ void MemTableTraverseIterator::Seek(const std::string& key, uint64_t ts) {
             it_ = ((KeyEntry*)pk_it_->GetValue())         // NOLINT
                       ->entries.NewIterator();
         }
-        if (spk.compare(pk_it_->GetKey()) != 0 || ts == 0) {
+        if (spk.compare(pk_it_->GetKey()) != 0) {
             it_->SeekToFirst();
             traverse_cnt_++;
             record_idx_ = 1;
@@ -1016,7 +919,7 @@ void MemTableTraverseIterator::Seek(const std::string& key, uint64_t ts) {
                 record_idx_ = 1;
                 while (it_->Valid() && record_idx_ <= expire_value_.lat_ttl) {
                     traverse_cnt_++;
-                    if (it_->GetKey() < ts) {
+                    if (it_->GetKey() <= ts) {
                         return;
                     }
                     it_->Next();
@@ -1026,9 +929,6 @@ void MemTableTraverseIterator::Seek(const std::string& key, uint64_t ts) {
             } else {
                 it_->Seek(ts);
                 traverse_cnt_++;
-                if (it_->Valid() && it_->GetKey() == ts) {
-                    it_->Next();
-                }
                 if (!it_->Valid() || expire_value_.IsExpired(it_->GetKey(), record_idx_)) {
                     NextPK();
                 }

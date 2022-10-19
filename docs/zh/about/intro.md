@@ -22,7 +22,7 @@ OpenMLDB 的整体架构设计是为了达到特征平台从开发到部署的�
 
 ![workflow_cn](images/workflow_cn.png)
 
-为了可以达到开发即上线的优化目标，OpenMLDB 的架构基于线上线下一致性的理念所设计。上图显示了 OpenMLDB 的抽象架构，包含了四个重要的设计组件：（1）统一的 **SQL** 编程语言；（2）具备毫秒级延迟的的高性能**实时 SQL 引擎**；（3）基于 [OpenMLDB Spark 发行版](../tutorial/openmldbspark_distribution.md)的**批处理 SQL 引擎**；（4）串联实时和批处理 SQL 引擎，保证线上线下一致性的**一致性执行计划生成器**。
+为了可以达到开发即上线的优化目标，OpenMLDB 的架构基于线上线下一致性的理念所设计。上图显示了 OpenMLDB 的抽象架构，包含了四个重要的设计组件：（1）统一的 **SQL** 编程语言；（2）具备毫秒级延迟的高性能**实时 SQL 引擎**；（3）基于 [OpenMLDB Spark 发行版](../tutorial/openmldbspark_distribution.md)的**批处理 SQL 引擎**；（4）串联实时和批处理 SQL 引擎，保证线上线下一致性的**一致性执行计划生成器**。
 
 关于 OpenMLDB 的设计核心理念和详细架构，请参考我们的开发团队博客 - [实时特征计算平台架构方法论和实践](https://go005qabor.feishu.cn/docs/doccnMxkNQBh49KipaVmYr0xAjf)。
 

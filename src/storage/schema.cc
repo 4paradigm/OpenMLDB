@@ -172,10 +172,23 @@ int TableIndex::ParseFromMeta(const ::openmldb::api::TableMeta& table_meta) {
         std::map<std::string, std::shared_ptr<ColumnDef>> col_map;
         for (int idx = 0; idx < table_meta.column_desc_size(); idx++) {
             const auto& column_desc = table_meta.column_desc(idx);
-            std::shared_ptr<ColumnDef> col;
             ::openmldb::type::DataType type = column_desc.data_type();
             const std::string& name = column_desc.name();
-            col = std::make_shared<ColumnDef>(name, idx, type, column_desc.not_null());
+            auto col = std::make_shared<ColumnDef>(name, idx, type, column_desc.not_null());
+            col_map.emplace(name, col);
+            if (ts_col_set.find(name) != ts_col_set.end()) {
+                if (!ColumnDef::CheckTsType(type)) {
+                    LOG(WARNING) << "type mismatch, col " << name << " is can not set ts col, tid " << tid;
+                    return -1;
+                }
+            }
+        }
+        for (int idx = 0; idx < table_meta.added_column_desc_size(); idx++) {
+            const auto& column_desc = table_meta.added_column_desc(idx);
+            ::openmldb::type::DataType type = column_desc.data_type();
+            const std::string& name = column_desc.name();
+            auto col = std::make_shared<ColumnDef>(name, idx + table_meta.column_desc_size(),
+                    type, column_desc.not_null());
             col_map.emplace(name, col);
             if (ts_col_set.find(name) != ts_col_set.end()) {
                 if (!ColumnDef::CheckTsType(type)) {

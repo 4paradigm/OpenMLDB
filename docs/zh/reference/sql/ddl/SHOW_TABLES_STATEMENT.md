@@ -10,16 +10,16 @@ SHOW TABLES;
 
 ```sql
 CREATE DATABASE db1;
---SUCCEED: Create database successfully
+--SUCCEED
 
 USE db1;
 --SUCCEED: Database changed
 
 CREATE TABLE t1(col0 STRING);
--- SUCCEED: Create successfully
+-- SUCCEED
 
 CREATE TABLE t2(col0 STRING);
--- SUCCEED: Create successfully
+-- SUCCEED
 
 SHOW TABLES;
  -------- 

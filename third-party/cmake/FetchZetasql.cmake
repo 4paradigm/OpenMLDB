@@ -13,36 +13,25 @@
 # limitations under the License.
 
 set(ZETASQL_HOME https://github.com/4paradigm/zetasql)
-set(ZETASQL_VERSION 0.2.10)
-set(ZETASQL_TAG bb709569a50bf309faa269760e3a35019672fa7c) # the commit hash for v0.2.9
+set(ZETASQL_VERSION 0.2.12)
+set(ZETASQL_TAG 219d4c7a85232e4c8ae8027e0420991ece365a16) # the commit hash for v0.2.12
 
 function(init_zetasql_urls)
   if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
     get_linux_lsb_release_information()
 
-    if(CMAKE_SYSTEM_PROCESSOR MATCHES "(arm64)|(ARM64)|(aarch64)|(AARCH64)")
-      # there is experimental build for centos7 on aarch64, for others zetasql need compile from source
-      message(WARNING "pre-compiled zetasql for arm64 may out-of-date, consider build from source by -DBUILD_BUNDLED_ZETASQL=ON")
-      if (LSB_RELEASE_ID_SHORT STREQUAL "centos")
-        set(ZETASQL_URL "${ZETASQL_HOME}/releases/download/v${ZETASQL_VERSION}/libzetasql-${ZETASQL_VERSION}-linux-gnu-aarch64-centos.tar.gz" PARENT_SCOPE)
-        set(ZETASQL_HASH d504ade9973f28507154aa88bf0565939fbf14b4114040f4133c217cdebc93ed PARENT_SCOPE)
-      else()
-        message(FATAL_ERROR "no pre-compiled zetasql on arm based system except centos7, please compile zetasql with '-DBUILD_BUNDLED_ZETASQL=ON'")
-      endif()
-    endif()
-
     if (LSB_RELEASE_ID_SHORT STREQUAL "centos")
       set(ZETASQL_URL "${ZETASQL_HOME}/releases/download/v${ZETASQL_VERSION}/libzetasql-${ZETASQL_VERSION}-linux-gnu-x86_64-centos.tar.gz" PARENT_SCOPE)
-      set(ZETASQL_HASH eb2728151818f4dd4c1be3721302d6f474d472d38cfcc77c172573f55dd89eed PARENT_SCOPE)
+      set(ZETASQL_HASH 467c7143e68e330c7b0beac7198e59d82fa6e3360b4999c89cbe2092f0a84a94 PARENT_SCOPE)
     elseif(LSB_RELEASE_ID_SHORT STREQUAL "ubuntu")
       set(ZETASQL_URL "${ZETASQL_HOME}/releases/download/v${ZETASQL_VERSION}/libzetasql-${ZETASQL_VERSION}-linux-gnu-x86_64-ubuntu.tar.gz" PARENT_SCOPE)
-      set(ZETASQL_HASH 086cb1d029a88c48bf2572c9aaf99f49d69b4a77a4d4445299beb13c590e2f56 PARENT_SCOPE)
+      set(ZETASQL_HASH 5321ef2da263b7350d7d03d719eb36381fa5b79789b4fdae86d770c692dd8f30 PARENT_SCOPE)
     else()
-      message(FATAL_ERROR "no pre-compiled zetasql for ${LSB_RELEASE_ID_SHORT}, try compile zetasql from source with '-DBUILD_BUNDLED_ZETASQL=ON'")
+      message(FATAL_ERROR "no pre-compiled zetasql for ${LSB_RELEASE_ID_SHORT}, try compile zetasql from source with cmake flag: '-DBUILD_BUNDLED_ZETASQL=ON'")
     endif()
   elseif (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
     set(ZETASQL_URL "${ZETASQL_HOME}/releases/download/v${ZETASQL_VERSION}/libzetasql-${ZETASQL_VERSION}-darwin-x86_64.tar.gz" PARENT_SCOPE)
-    set(ZETASQL_HASH ad90307bc775c6cf72f28a6f26f443f3249f3e78a7ab86d30a458ad3cce7803a PARENT_SCOPE)
+    set(ZETASQL_HASH 306d6a01e23ea32fcdbd8c4a4a46a31ff9762ef11b6a6b9754fd3612ef96053a PARENT_SCOPE)
   endif()
 endfunction()
 
@@ -51,7 +40,7 @@ if (NOT BUILD_BUNDLED_ZETASQL)
   init_zetasql_urls()
 
   if (CMAKE_SYSTEM_PROCESSOR MATCHES "(arm64)|(ARM64)|(aarch64)|(AARCH64)")
-    message(FATAL_ERROR pre-compiled zetasql for arm64 not available, please build zetasql from source instead by '-DBUILD_BUNDLED_ZETASQL=ON')
+    message(FATAL_ERROR "pre-compiled zetasql for arm64 not available, try compile zetasql from source by cmake flag: '-DBUILD_BUNDLED_ZETASQL=ON'")
   endif()
   message(STATUS "Download pre-compiled zetasql from ${ZETASQL_URL}")
   # download pre-compiled zetasql from GitHub Release

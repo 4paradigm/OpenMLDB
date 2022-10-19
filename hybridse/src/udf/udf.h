@@ -209,9 +209,9 @@ int32_t month(Timestamp *ts);
 int32_t year(int64_t ts);
 int32_t year(Timestamp *ts);
 
-int32_t dayofyear(int64_t ts);
-int32_t dayofyear(Timestamp *ts);
-int32_t dayofyear(Date *ts);
+void dayofyear(int64_t ts, int32_t* out, bool* is_null);
+void dayofyear(Timestamp *ts, int32_t* out, bool* is_null);
+void dayofyear(Date *ts, int32_t* out, bool* is_null);
 
 int32_t dayofmonth(int64_t ts);
 int32_t dayofmonth(Timestamp *ts);
@@ -223,6 +223,10 @@ int32_t dayofweek(Date *ts);
 int32_t weekofyear(int64_t ts);
 int32_t weekofyear(Timestamp *ts);
 int32_t weekofyear(Date *ts);
+
+void last_day(int64_t ts, Date *output, bool *is_null);
+void last_day(const Timestamp *ts, Date *output, bool *is_null);
+void last_day(const Date *ts, Date *output, bool *is_null);
 
 void int_to_char(int32_t, StringRef*);
 int32_t char_length(StringRef *str);
@@ -254,6 +258,9 @@ void like(StringRef *name, StringRef *pattern, bool *out, bool *is_null);
 void ilike(StringRef *name, StringRef *pattern,
         StringRef *escape, bool *out, bool *is_null);
 void ilike(StringRef *name, StringRef *pattern, bool *out, bool *is_null);
+
+void regexp_like(StringRef *name, StringRef *pattern, StringRef *flags, bool *out, bool *is_null);
+void regexp_like(StringRef *name, StringRef *pattern, bool *out, bool *is_null);
 
 void date_to_timestamp(Date *date, Timestamp *output, bool *is_null);
 void string_to_date(StringRef *str, Date *output, bool *is_null);
@@ -313,6 +320,29 @@ uint32_t format_string(const V &v, char *buffer, size_t size);
 
 template <typename V>
 uint32_t to_string_len(const V &v);
+
+template <class V>
+struct ToHex {
+    using Args = std::tuple<V>;
+
+    void operator()(V v, StringRef *output) {
+        std::ostringstream ss;
+        if (std::is_same<V, float>::value || std::is_same<V, double>::value) {
+            int64_t numbuf = std::llround(v);
+            ss << std::hex << std::uppercase << numbuf;
+        } else {
+            ss << std::hex << std::uppercase << v;
+        }
+        std::string hexstr = ss.str();
+        output->size_ = hexstr.size();
+        char *buffer = AllocManagedStringBuf(output->size_);
+        memcpy(buffer, hexstr.data(), output->size_);
+        output->data_ = buffer;
+    }
+};
+void hex(StringRef *str, StringRef *output);
+
+void unhex(StringRef *str, StringRef *output, bool* is_null);
 
 }  // namespace v1
 

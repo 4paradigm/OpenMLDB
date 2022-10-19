@@ -17,7 +17,7 @@
 package com._4paradigm.openmldb.java_sdk_test.checker;
 
 
-import com._4paradigm.openmldb.java_sdk_test.entity.FesqlResult;
+import com._4paradigm.openmldb.test_common.bean.OpenMLDBResult;
 import com._4paradigm.openmldb.test_common.model.ExpectDesc;
 import com._4paradigm.openmldb.test_common.model.OpenmldbDeployment;
 import lombok.extern.slf4j.Slf4j;
@@ -31,19 +31,18 @@ import java.util.List;
  */
 @Slf4j
 public class DeploymentContainsCheckerByCli extends BaseChecker {
-    public DeploymentContainsCheckerByCli(ExpectDesc expect, FesqlResult fesqlResult) {
-        super(expect, fesqlResult);
+    public DeploymentContainsCheckerByCli(ExpectDesc expect, OpenMLDBResult openMLDBResult) {
+        super(expect, openMLDBResult);
     }
 
     @Override
     public void check() throws Exception {
         log.info("deployment contains check");
-        reportLog.info("deployment contains name check");
         OpenmldbDeployment expectDeployment = expect.getDeploymentContains();
         if (expectDeployment == null) {
             return;
         }
-        List<OpenmldbDeployment> actualDeployments = fesqlResult.getDeployments();
+        List<OpenmldbDeployment> actualDeployments = openMLDBResult.getDeployments();
         long count = actualDeployments.stream()
                 .filter(d -> d.getDbName().equals(expectDeployment.getDbName()) && d.getName().equals(expectDeployment.getName()))
                 .count();

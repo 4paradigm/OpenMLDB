@@ -26,55 +26,64 @@ namespace catalog {
 
 SDKTableHandler::SDKTableHandler(const ::openmldb::nameserver::TableInfo& meta, const ClientManager& client_manager)
     : meta_(meta),
-      schema_(),
+      schema_map_(),
       name_(meta.name()),
       db_(meta.db()),
       table_client_manager_(std::make_shared<TableClientManager>(meta.table_partition(), client_manager)) {}
 
 bool SDKTableHandler::Init() {
-    if (meta_.format_version() != 1) {
-        LOG(WARNING) << "bad format version " << meta_.format_version();
-        return false;
-    }
-    bool ok = schema::SchemaAdapter::ConvertSchema(meta_.column_desc(), &schema_);
+    auto schema = std::make_shared<::hybridse::vm::Schema>();
+    bool ok = schema::SchemaAdapter::ConvertSchema(meta_.column_desc(), schema.get());
     if (!ok) {
         LOG(WARNING) << "fail to covert schema to sql schema";
         return false;
     }
-
-    ok = schema::IndexUtil::ConvertIndex(meta_.column_key(), &index_list_);
-    if (!ok) {
-        LOG(WARNING) << "fail to conver index to sql index";
-        return false;
+    schema_map_.emplace(1, schema);
+    if (meta_.added_column_desc_size() > 0) {
+        auto added_schema = std::make_shared<::hybridse::vm::Schema>();
+        bool ok = schema::SchemaAdapter::ConvertSchema(meta_.added_column_desc(), added_schema.get());
+        if (!ok) {
+            LOG(WARNING) << "fail to covert schema to sql schema";
+            return false;
+        }
+        for (int idx = 0; idx < meta_.schema_versions_size(); idx++) {
+            auto new_schema = std::make_shared<::hybridse::vm::Schema>(*schema);
+            for (int pos = 0; pos < meta_.schema_versions(idx).field_count() - meta_.column_desc_size(); pos++) {
+                auto new_column = new_schema->Add();
+                new_column->CopyFrom(added_schema->Get(pos));
+            }
+            schema_map_.emplace(meta_.schema_versions(idx).id(), new_schema);
+        }
     }
 
     // init types var
-    for (int32_t i = 0; i < schema_.size(); i++) {
-        const ::hybridse::type::ColumnDef& column = schema_.Get(i);
+    auto cur_schema = schema_map_.rbegin()->second;
+    for (int32_t i = 0; i < cur_schema->size(); i++) {
+        const ::hybridse::type::ColumnDef& column = cur_schema->Get(i);
         ::hybridse::vm::ColInfo col_info;
         col_info.type = column.type();
         col_info.idx = i;
         col_info.name = column.name();
-        types_.insert(std::make_pair(column.name(), col_info));
+        types_.emplace(column.name(), col_info);
     }
 
     // init index hint
-    for (int32_t i = 0; i < index_list_.size(); i++) {
-        const ::hybridse::type::IndexDef& index_def = index_list_.Get(i);
+    for (int32_t i = 0; i < meta_.column_key_size(); i++) {
+        const auto& column_key = meta_.column_key(i);
         ::hybridse::vm::IndexSt index_st;
         index_st.index = i;
         index_st.ts_pos = ::hybridse::vm::INVALID_POS;
-        if (!index_def.second_key().empty()) {
-            int32_t pos = GetColumnIndex(index_def.second_key());
+        if (!column_key.ts_name().empty()) {
+            int32_t pos = GetColumnIndex(column_key.ts_name());
             if (pos < 0) {
-                LOG(WARNING) << "fail to get second key " << index_def.second_key();
+                LOG(WARNING) << "fail to get second key " << column_key.ts_name();
                 return false;
             }
             index_st.ts_pos = pos;
         }
-        index_st.name = index_def.name();
-        for (int32_t j = 0; j < index_def.first_keys_size(); j++) {
-            const std::string& key = index_def.first_keys(j);
+        index_st.name = column_key.index_name();
+        for (int32_t j = 0; j < column_key.col_name_size(); j++) {
+            const std::string& key = column_key.col_name(j);
             auto it = types_.find(key);
             if (it == types_.end()) {
                 LOG(WARNING) << "column " << key << " does not exist in table " << name_;
@@ -82,7 +91,7 @@ bool SDKTableHandler::Init() {
             }
             index_st.keys.push_back(it->second);
         }
-        index_hint_.insert(std::make_pair(index_st.name, index_st));
+        index_hint_.emplace(index_st.name, index_st);
     }
     VLOG(5) << "init table handler for table " << name_ << " in db " << db_ << " done";
     return true;

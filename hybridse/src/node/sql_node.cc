@@ -24,6 +24,7 @@
 
 #include "absl/container/flat_hash_map.h"
 #include "absl/strings/str_cat.h"
+#include "absl/strings/str_join.h"
 #include "absl/strings/string_view.h"
 #include "boost/algorithm/string/case_conv.hpp"
 #include "glog/logging.h"
@@ -889,14 +890,6 @@ void WindowDefNode::Print(std::ostream &output, const std::string &org_tab) cons
         output << "\n";
         PrintSqlVector(output, tab, union_tables_->GetList(), "union_tables", false);
     }
-    if (exclude_current_time_) {
-        output << "\n";
-        PrintValue(output, tab, "TRUE", "exclude_current_time", false);
-    }
-    if (instance_not_in_window_) {
-        output << "\n";
-        PrintValue(output, tab, "TRUE", "instance_not_in_window", false);
-    }
     output << "\n";
     PrintValue(output, tab, ExprString(partitions_), "partitions", false);
 
@@ -904,7 +897,24 @@ void WindowDefNode::Print(std::ostream &output, const std::string &org_tab) cons
     PrintValue(output, tab, ExprString(orders_), "orders", false);
 
     output << "\n";
-    PrintSqlNode(output, tab, frame_ptr_, "frame", true);
+
+    std::vector<std::string_view> attrs;
+    if (exclude_current_time_) {
+        attrs.emplace_back("exclude_current_time");
+    }
+    if (exclude_current_row_) {
+        attrs.emplace_back("exclude_current_row");
+    }
+    if (instance_not_in_window_) {
+        attrs.emplace_back("instance_not_in_window");
+    }
+    if (attrs.empty()) {
+        PrintSqlNode(output, tab, frame_ptr_, "frame", true);
+    } else {
+        PrintSqlNode(output, tab, frame_ptr_, "frame", false);
+        output << "\n";
+        PrintValue(output, tab, absl::StrJoin(attrs, ", "), "attributes", true);
+    }
 }
 
 // test if two window can be merged into single one
@@ -915,6 +925,7 @@ void WindowDefNode::Print(std::ostream &output, const std::string &org_tab) cons
 // - order equal
 // - partion equal
 // - window frame can be merged
+// - exclude current row equal (frame type equal must)
 bool WindowDefNode::CanMergeWith(const WindowDefNode *that, const bool enable_window_maxsize_merged) const {
     if (nullptr == that) {
         return false;
@@ -922,16 +933,26 @@ bool WindowDefNode::CanMergeWith(const WindowDefNode *that, const bool enable_wi
     if (Equals(that)) {
         return true;
     }
-    return SqlListEquals(this->union_tables_, that->union_tables_) &&
-           this->exclude_current_time_ == that->exclude_current_time_ &&
-           this->instance_not_in_window_ == that->instance_not_in_window_ && ExprEquals(this->orders_, that->orders_) &&
-           ExprEquals(this->partitions_, that->partitions_) && nullptr != frame_ptr_ &&
-           this->frame_ptr_->CanMergeWith(that->frame_ptr_, enable_window_maxsize_merged);
+    bool can_merge = SqlListEquals(this->union_tables_, that->union_tables_) &&
+                     this->exclude_current_time() == that->exclude_current_time() &&
+                     this->exclude_current_row() == that->exclude_current_row() &&
+                     this->instance_not_in_window() == that->instance_not_in_window() &&
+                     ExprEquals(this->orders_, that->orders_) && ExprEquals(this->partitions_, that->partitions_) &&
+                     nullptr != frame_ptr_ &&
+                     this->frame_ptr_->CanMergeWith(that->frame_ptr_, enable_window_maxsize_merged);
+
+    if (this->exclude_current_row() && that->exclude_current_row()) {
+        // two window different frame (rows & rows_range) can merge
+        // only when they do not set exclude_current_row neither
+        can_merge &= this->GetFrame()->frame_type() == that->GetFrame()->frame_type();
+    }
+    return can_merge;
 }
 
 WindowDefNode* WindowDefNode::ShadowCopy(NodeManager *nm) const {
     return dynamic_cast<WindowDefNode *>(nm->MakeWindowDefNode(union_tables_, GetPartitions(), GetOrders(), GetFrame(),
-                                                               exclude_current_time_, instance_not_in_window_));
+                                                               exclude_current_time_, exclude_current_row_,
+                                                               instance_not_in_window_));
 }
 
 bool WindowDefNode::Equals(const SqlNode *node) const {
@@ -940,6 +961,7 @@ bool WindowDefNode::Equals(const SqlNode *node) const {
     }
     const WindowDefNode *that = dynamic_cast<const WindowDefNode *>(node);
     return this->window_name_ == that->window_name_ && this->exclude_current_time_ == that->exclude_current_time_ &&
+           this->exclude_current_row_ == that->exclude_current_row_ &&
            this->instance_not_in_window_ == that->instance_not_in_window_ &&
            SqlListEquals(this->union_tables_, that->union_tables_) && ExprEquals(this->orders_, that->orders_) &&
            ExprEquals(this->partitions_, that->partitions_) && SqlEquals(this->frame_ptr_, that->frame_ptr_);
@@ -2023,7 +2045,7 @@ bool QueryRefNode::Equals(const SqlNode *node) const {
 
 void FrameBound::Print(std::ostream &output, const std::string &org_tab) const {
     SqlNode::Print(output, org_tab);
-    const std::string tab = org_tab + INDENT + SPACE_ST;
+    const std::string tab = org_tab + INDENT;
     output << "\n";
     PrintValue(output, tab, BoundTypeName(bound_type_), "bound", false);
 
@@ -2543,7 +2565,7 @@ void DistributionsNode::Print(std::ostream &output, const std::string &org_tab) 
     SqlNode::Print(output, org_tab);
     const std::string tab = org_tab + INDENT + SPACE_ED;
     output << "\n";
-    PrintSqlVector(output, tab, distribution_list_->GetList(), "distribution_list", true);
+    PrintSqlVector(output, tab, distribution_list_, "distribution_list", true);
 }
 
 void CreateSpStmt::Print(std::ostream &output, const std::string &org_tab) const {
@@ -2574,13 +2596,22 @@ void DeleteNode::Print(std::ostream &output, const std::string &org_tab) const {
     output << "\n";
     PrintValue(output, tab, GetTargetString(), "target", false);
     output << "\n";
-    PrintValue(output, tab, GetJobId(), "job_id", true);
+    if (target_ == DeleteTarget::JOB) {
+        PrintValue(output, tab, GetJobId(), "job_id", true);
+    } else {
+        PrintValue(output, tab, db_name_.empty() ? table_name_ : db_name_ + "." + table_name_, "table_name", false);
+        output << "\n";
+        PrintSqlNode(output, tab, condition_, "condition", true);
+    }
 }
 
 std::string DeleteTargetString(DeleteTarget target) {
     switch (target) {
         case DeleteTarget::JOB: {
             return "JOB";
+        }
+        case DeleteTarget::TABLE: {
+            return "TABLE";
         }
     }
     return "unknown";

@@ -37,7 +37,7 @@ jobs:
       TESTING_ENABLE: ON
       SQL_PYSDK_ENABLE: OFF
       SQL_JAVASDK_ENABLE: OFF
-      NPROC: 8
+      NPROC: 2
       BUILD_SHARED_LIBS: ON
     steps:
       - uses: actions/checkout@v3
@@ -72,7 +72,7 @@ jobs:
         uses: codecov/codecov-action@v3
         with:
           files: build/coverage.info
-          name: coverage
+          name: coverage-cpp
           fail_ci_if_error: true
           verbose: true
 

@@ -1,0 +1,621 @@
+# Copyright 2021 4Paradigm
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+db: test_zw
+debugs: []
+cases:
+  -
+    id: 0
+    desc: 冒烟测试-正常deploy
+    inputs:
+      -
+        columns : ["c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - ["aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01"]
+    sqls:
+      - deploy deploy_{0} select * from {0};
+      - show deployment deploy_{0};
+    tearDown:
+      - drop deployment deploy_{0};
+    expect:
+      deployment :
+        name: deploy_{0}
+        dbName: test_zw
+        sql: |
+          DEPLOY deploy_{0} SELECT
+          *
+          FROM
+          {0}
+          ;
+        inColumns:
+          - 1,c1,kVarchar,NO
+          - 2,c2,kInt16,NO
+          - 3,c3,kInt32,NO
+          - 4,c4,kInt64,NO
+          - 5,c5,kFloat,NO
+          - 6,c6,kDouble,NO
+          - 7,c7,kTimestamp,NO
+          - 8,c8,kDate,NO
+        outColumns:
+          - 1,c1,kVarchar,NO
+          - 2,c2,kInt16,NO
+          - 3,c3,kInt32,NO
+          - 4,c4,kInt64,NO
+          - 5,c5,kFloat,NO
+          - 6,c6,kDouble,NO
+          - 7,c7,kTimestamp,NO
+          - 8,c8,kDate,NO
+
+  - id: 1
+    desc: deploy一个lastjoin
+    inputs:
+      - columns: [ "c1 string","c2 int","c3 bigint","c4 timestamp" ]
+        indexs: [ "index1:c1:c4" ]
+      - columns: [ "c1 string","c2 int","c3 bigint","c4 timestamp" ]
+        indexs: [ "index1:c1:c4" ]
+      - columns: [ "c1 string","c2 int","c3 bigint","c4 timestamp" ]
+        indexs: [ "index1:c1:c4" ]
+    sqls:
+      - deploy deploy_{0} select {0}.c1,{0}.c2,{1}.c4,{2}.c4 from {0} last join {1} ORDER BY {1}.c4 on {0}.c1={1}.c1 last join {2} order by {2}.c4 on {0}.c1={2}.c1;
+      - show deployment deploy_{0};
+    tearDown:
+      - drop deployment deploy_{0};
+    expect:
+      deployment :
+        name: deploy_{0}
+        dbName: test_zw
+        sql: |
+          DEPLOY deploy_{0} SELECT
+          {0}.c1,
+          {0}.c2,
+          {1}.c4,
+          {2}.c4
+          FROM
+          {0}
+          LAST JOIN
+          {1}
+          ORDER BY {1}.c4
+          ON {0}.c1 = {1}.c1
+          LAST JOIN
+          {2}
+          ORDER BY {2}.c4
+          ON {0}.c1 = {2}.c1
+          ;
+        inColumns:
+          - 1,c1,kVarchar,NO
+          - 2,c2,kInt32,NO
+          - 3,c3,kInt64,NO
+          - 4,c4,kTimestamp,NO
+        outColumns:
+          - 1,c1,kVarchar,NO
+          - 2,c2,kInt32,NO
+          - 3,c4,kTimestamp,NO
+          - 4,c4,kTimestamp,NO
+  -
+    id: 2
+    desc: deploy一个window-ROWS
+    inputs:
+      -
+        columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",20,30,1.1,2.1,1590738990000,"2020-05-01"]
+          - [2,"aa",21,31,1.2,2.2,1590738990001,"2020-05-02"]
+          - [3,"aa",22,32,1.3,2.3,1590738990002,"2020-05-03"]
+          - [4,"aa",23,33,1.4,2.4,1590738990003,"2020-05-04"]
+          - [5,"aa",24,34,1.5,2.5,1590738990004,"2020-05-05"]
+    sqls:
+      - deploy deploy_{0} SELECT id, c1, sum(c4) OVER w1 as w1_c4_sum FROM {0} WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND 1 PRECEDING);
+      - show deployment deploy_{0};
+    tearDown:
+      - drop deployment deploy_{0};
+    expect:
+      deployment :
+        name: deploy_{0}
+        dbName: test_zw
+        sql: |
+          DEPLOY deploy_{0} SELECT
+          id,
+          c1,
+          sum(c4) OVER (w1) AS w1_c4_sum
+          FROM
+          {0}
+          WINDOW w1 AS (PARTITION BY {0}.c1
+          ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND 1 PRECEDING)
+          ;
+        inColumns:
+          - 1,id,kInt32,NO
+          - 2,c1,kVarchar,NO
+          - 3,c3,kInt32,NO
+          - 4,c4,kInt64,NO
+          - 5,c5,kFloat,NO
+          - 6,c6,kDouble,NO
+          - 7,c7,kTimestamp,NO
+          - 8,c8,kDate,NO
+        outColumns:
+          - 1,id,kInt32,NO
+          - 2,c1,kVarchar,NO
+          - 3,w1_c4_sum,kInt64,NO
+  -
+    id: 3
+    desc: deploy一个window-ROWS_RANGE
+    inputs:
+      -
+        columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",20,30,1.1,2.1,1590738990000,"2020-05-01"]
+          - [2,"aa",21,31,1.2,2.2,1590738990001,"2020-05-02"]
+          - [3,"aa",22,32,1.3,2.3,1590738990002,"2020-05-03"]
+          - [4,"aa",23,33,1.4,2.4,1590738990003,"2020-05-04"]
+          - [5,"aa",24,34,1.5,2.5,1590738990004,"2020-05-05"]
+    sqls:
+      - deploy deploy_{0} SELECT id, c1, sum(c4) OVER w1 as w1_c4_sum FROM {0} WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS_RANGE BETWEEN 2 PRECEDING AND 1 PRECEDING);
+      - show deployment deploy_{0};
+    tearDown:
+      - drop deployment deploy_{0};
+    expect:
+      deployment :
+        name: deploy_{0}
+        dbName: test_zw
+        sql: |
+          DEPLOY deploy_{0} SELECT
+          id,
+          c1,
+          sum(c4) OVER (w1) AS w1_c4_sum
+          FROM
+          {0}
+          WINDOW w1 AS (PARTITION BY {0}.c1
+          ORDER BY {0}.c7 ROWS_RANGE BETWEEN 2 PRECEDING AND 1 PRECEDING)
+          ;
+        inColumns:
+          - 1,id,kInt32,NO
+          - 2,c1,kVarchar,NO
+          - 3,c3,kInt32,NO
+          - 4,c4,kInt64,NO
+          - 5,c5,kFloat,NO
+          - 6,c6,kDouble,NO
+          - 7,c7,kTimestamp,NO
+          - 8,c8,kDate,NO
+        outColumns:
+          - 1,id,kInt32,NO
+          - 2,c1,kVarchar,NO
+          - 3,w1_c4_sum,kInt64,NO
+  -
+    id: 4
+    desc: deploy一个子查询
+    inputs:
+      -
+        columns : ["c1 string","c2 int","c3 bigint","c4 timestamp"]
+        indexs: ["index1:c1:c4"]
+        rows:
+          - ["aa",2,3,1590738989000]
+          - ["bb",21,31,1590738990000]
+          - ["cc",41,51,1590738991000]
+    sqls:
+      - deploy deploy_{0} select v2,v3 from (select c2+1 as v2,c3+1 as v3 from {0}) as t;
+      - show deployment deploy_{0};
+    tearDown:
+      - drop deployment deploy_{0};
+    expect:
+      deployment :
+        name: deploy_{0}
+        dbName: test_zw
+        sql: |
+          DEPLOY deploy_{0} SELECT
+          v2,
+          v3
+          FROM
+          (
+          SELECT
+          c2 + 1 AS v2,
+          c3 + 1 AS v3
+          FROM
+          {0}
+          ) AS t
+          ;
+        inColumns:
+          - 1,c1,kVarchar,NO
+          - 2,c2,kInt32,NO
+          - 3,c3,kInt64,NO
+          - 4,c4,kTimestamp,NO
+        outColumns:
+          - 1,v2,kInt32,NO
+          - 2,v3,kInt64,NO
+  -
+    id: 5
+    desc: deploy一个子查询、window、lastjoin
+    inputs:
+      -
+        columns : ["id int", "card_no string","merchant_id int", "trx_time timestamp", "trx_amt float"]
+        indexs: ["index1:card_no:trx_time"]
+        rows:
+          - [1, "aaaaaaaaaa",1, 1590738989000, 1.1]
+          - [2, "aaaaaaaaaa",1, 1590738990000, 2.2]
+          - [3, "bb",10, 1590738990000, 3.3]
+      -
+        columns : ["crd_lst_isu_dte timestamp", "crd_nbr string"]
+        indexs: ["index2:crd_nbr:crd_lst_isu_dte"]
+        rows:
+          - [1590738988000, "aaaaaaaaaa"]
+          - [1590738990000, "aaaaaaaaaa"]
+          - [1590738989000, "cc"]
+          - [1590738992000, "cc"]
+    sqls:
+      - deploy deploy_{0} select * from(select
+        id,card_no,trx_time,substr(card_no, 1, 6) as card_no_prefix,sum(trx_amt) over w30d as sum_trx_amt,count(merchant_id) over w10d as count_merchant_id from {0}
+        window w30d as (PARTITION BY {0}.card_no ORDER BY {0}.trx_time ROWS_RANGE BETWEEN 30d PRECEDING AND CURRENT ROW),
+        w10d as (PARTITION BY {0}.card_no ORDER BY {0}.trx_time ROWS_RANGE BETWEEN 10d PRECEDING AND CURRENT ROW)) as trx_fe
+        last join {1} order by {1}.crd_lst_isu_dte on trx_fe.card_no = {1}.crd_nbr and trx_fe.trx_time >= {1}.crd_lst_isu_dte;
+      - show deployment deploy_{0};
+    tearDown:
+      - drop deployment deploy_{0};
+    expect:
+      deployment :
+        name: deploy_{0}
+        dbName: test_zw
+        sql: |
+          DEPLOY deploy_{0} SELECT
+          *
+          FROM
+          (
+          SELECT
+          id,
+          card_no,
+          trx_time,
+          substr(card_no, 1, 6) AS card_no_prefix,
+          sum(trx_amt) OVER (w30d) AS sum_trx_amt,
+          count(merchant_id) OVER (w10d) AS count_merchant_id
+          FROM
+          {0}
+          WINDOW w30d AS (PARTITION BY {0}.card_no
+          ORDER BY {0}.trx_time ROWS_RANGE BETWEEN 30d PRECEDING AND CURRENT ROW), w10d AS (PARTITION BY {0}.card_no
+          ORDER BY {0}.trx_time ROWS_RANGE BETWEEN 10d PRECEDING AND CURRENT ROW)
+          ) AS trx_fe
+          LAST JOIN
+          {1}
+          ORDER BY {1}.crd_lst_isu_dte
+          ON trx_fe.card_no = {1}.crd_nbr AND trx_fe.trx_time >= {1}.crd_lst_isu_dte
+          ;
+        inColumns:
+          - 1,id,kInt32,NO
+          - 2,card_no,kVarchar,NO
+          - 3,merchant_id,kInt32,NO
+          - 4,trx_time,kTimestamp,NO
+          - 5,trx_amt,kFloat,NO
+        outColumns:
+          - 1,id,kInt32,NO
+          - 2,card_no,kVarchar,NO
+          - 3,trx_time,kTimestamp,NO
+          - 4,card_no_prefix,kVarchar,NO
+          - 5,sum_trx_amt,kFloat,NO
+          - 6,count_merchant_id,kInt64,NO
+          - 7,crd_lst_isu_dte,kTimestamp,NO
+          - 8,crd_nbr,kVarchar,NO
+  -
+    id: 6
+    desc: deploy的sql中指定其他库
+    db: db
+    inputs:
+      - db: db1
+        columns: [ "c1 string","c2 int","c3 bigint","c4 timestamp" ]
+        indexs: [ "index1:c1:c4" ]
+        rows:
+          - [ "aa",2,3,1590738989000 ]
+          - [ "bb",21,31,1590738990000 ]
+          - [ "cc",41,51,1590738991000 ]
+      - db: db2
+        columns: [ "c1 string","c2 int","c3 bigint","c4 timestamp" ]
+        indexs: [ "index1:c1:c3" ]
+
+        rows:
+          - [ "aa",2,13,1590738989000 ]
+          - [ "bb",21,131,1590738990000 ]
+          - [ "cc",41,151,1590738992000 ]
+    sqls:
+      - deploy deploy_{0} select db1.{0}.c1, db1.{0}.c2,db2.{1}.c3,db2.{1}.c4 from db1.{0} last join db2.{1} ORDER BY db2.{1}.c3 on db1.{0}.c1=db2.{1}.c1;
+    expect:
+      success: false
+  -
+    id: 7
+    desc: deploy sql错误
+    inputs:
+      -
+        columns : ["c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - ["aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01"]
+    sql: deploy deploy_{0} select * from {0}11;
+    expect:
+      success: false
+  -
+    id: 8
+    desc: deploy 同名service
+    inputs:
+      -
+        columns : ["c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - ["aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01"]
+    sqls:
+      - deploy deploy_{0} select * from {0};
+      - deploy deploy_{0} select * from {0};
+    tearDown:
+      - drop deployment deploy_{0};
+    expect:
+      success: false
+  -
+    id: 9
+    desc: deploy 语法错误
+    inputs:
+      -
+        columns : ["c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - ["aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01"]
+    sql: deploy deployment deploy_{0} select * from {0};
+    expect:
+      success: false
+  -
+    id: 10
+    desc: deploy 一个insert
+    inputs:
+      -
+        columns : ["c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - ["aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01"]
+    sql: deploy deploy_{0} insert into {0} values('aa',1,2,3,1.1,2.1,1590738989000,'2020-05-01');
+    expect:
+      success: false
+  -
+    id: 11
+    desc: deploy 和表名重复
+    inputs:
+      -
+        columns : ["c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - ["aa",1,2,3,1.1,2.1,1590738989000,"2020-05-01"]
+    sqls:
+      - deploy {0} select * from {0};
+      - show deployment {0};
+    tearDown:
+      - drop deployment {0};
+    expect:
+      success: true
+  -
+    id: 12
+    desc: 表没有索引，deploy一个window
+    inputs:
+      -
+        create: |
+          create table {0} (
+          id int not null,
+          c1 int not null,
+          c7 timestamp not null
+          );
+    dataProvider:
+      - ["ROWS","ROWS_RANGE"]
+    sqls:
+      - deploy deploy_{0} SELECT id, c1, sum(c1) OVER w1 as w1_c1_sum FROM {0} WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 d[0] BETWEEN 2 PRECEDING AND 1 PRECEDING);
+      - show deployment deploy_{0};
+    tearDown:
+      - drop deployment deploy_{0};
+    expect:
+      success: true
+  -
+    id: 13
+    desc: 表已经有索引，deploy一个window,使用另一个索引,列和ts都不同
+    inputs:
+      -
+        columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
+        indexs: ["index1:c3:c4"]
+    dataProvider:
+      - ["ROWS","ROWS_RANGE"]
+    sqls:
+      - deploy deploy_{0} SELECT id, c1, sum(c4) OVER w1 as w1_c4_sum FROM {0} WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 d[0] BETWEEN 2 PRECEDING AND 1 PRECEDING);
+      - show deployment deploy_{0};
+    tearDown:
+      - drop deployment deploy_{0};
+    expect:
+      success: true
+  -
+    id: 14
+    desc: 表已经有索引，deploy一个window，索引的column相同，ts不同
+    inputs:
+      -
+        columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
+        indexs: ["index1:c1:c4"]
+    dataProvider:
+      - ["ROWS","ROWS_RANGE"]
+    sqls:
+      - deploy deploy_{0} SELECT id, c1, sum(c4) OVER w1 as w1_c4_sum FROM {0} WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 d[0] BETWEEN 2 PRECEDING AND 1 PRECEDING);
+      - show deployment deploy_{0};
+    tearDown:
+      - drop deployment deploy_{0};
+    expect:
+      success: true
+  -
+    id: 15
+    desc: 表已经有索引，deploy一个window，索引的column不同，ts相同,ROWS
+    inputs:
+      -
+        columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
+        indexs: ["index1:c3:c7"]
+    sqls:
+      - deploy deploy_{0} SELECT id, c1, sum(c4) OVER w1 as w1_c4_sum FROM {0} WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND 1 PRECEDING);
+      - desc {0};
+      - show deployment deploy_{0};
+    tearDown:
+      - drop deployment deploy_{0};
+    expect:
+      success: true
+  -
+    id: 16
+    desc: 表已经有索引，deploy一个window，索引的column不同，ts相同,ROWS_RANGE
+    inputs:
+      -
+        columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
+        indexs: ["index1:c3:c7"]
+    sqls:
+      - deploy deploy_{0} SELECT id, c1, sum(c4) OVER w1 as w1_c4_sum FROM {0} WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS_RANGE BETWEEN 2 PRECEDING AND 1 PRECEDING);
+      - desc {0};
+      - show deployment deploy_{0};
+    tearDown:
+      - drop deployment deploy_{0};
+    expect:
+      success: true
+  -
+    id: 17
+    desc: 表已经有索引，deploy一个window，索引的column不同，ts相同,rows_range带单位
+    inputs:
+      -
+        columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
+        indexs: ["index1:c3:c7"]
+    sqls:
+      - deploy deploy_{0} SELECT id, c1, sum(c4) OVER w1 as w1_c4_sum FROM {0} WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 rows_range BETWEEN 2h PRECEDING AND 1h PRECEDING);
+      - desc {0};
+      - show deployment deploy_{0};
+    tearDown:
+      - drop deployment deploy_{0};
+    expect:
+      success: true
+  -
+    id: 18
+    desc: deploy的sql中指定其他库,其中一个表使用默认库
+    db: db1
+    inputs:
+      - db: db1
+        columns: [ "c1 string","c2 int","c3 bigint","c4 timestamp" ]
+        indexs: [ "index1:c1:c4" ]
+        rows:
+          - [ "aa",2,3,1590738989000 ]
+          - [ "bb",21,31,1590738990000 ]
+          - [ "cc",41,51,1590738991000 ]
+      - db: db2
+        columns: [ "c1 string","c2 int","c3 bigint","c4 timestamp" ]
+        indexs: [ "index1:c1:c3" ]
+
+        rows:
+          - [ "aa",2,13,1590738989000 ]
+          - [ "bb",21,131,1590738990000 ]
+          - [ "cc",41,151,1590738992000 ]
+    sqls:
+      - deploy deploy_{0} select db1.{0}.c1, db1.{0}.c2,db2.{1}.c3,db2.{1}.c4 from db1.{0} last join db2.{1} ORDER BY db2.{1}.c3 on db1.{0}.c1=db2.{1}.c1;
+    expect:
+      success: false
+  -
+    id: 19
+    desc: 多个window
+    inputs:
+      -
+        columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
+        indexs: ["index1:c4:c7"]
+    sqls:
+      - deploy deploy_{0} SELECT id, c1, c3, sum(c4) OVER w1 as w1_c4_sum, count(c4) OVER w2 as w2_c4_count FROM {0} WINDOW
+        w1 AS (PARTITION BY c3 ORDER BY c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW),
+        w2 AS (PARTITION BY c1 ORDER BY c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
+      - desc {0};
+      - show deployment deploy_{0};
+    tearDown:
+      - drop deployment deploy_{0};
+    expect:
+      success: true
+  -
+    id: 20
+    desc: 组合索引-ROWS
+    inputs:
+      -
+        columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
+        indexs: ["index1:c1|c3:c7"]
+    sqls:
+      - deploy deploy_{0} SELECT id, c1, sum(c4) OVER w1 as w1_c4_sum FROM {0} WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND 1 PRECEDING);
+      - desc {0};
+      - show deployment deploy_{0};
+    tearDown:
+      - drop deployment deploy_{0};
+    expect:
+      success: true
+  -
+    id: 21
+    desc: 组合索引-ROWS_RANGE
+    inputs:
+      -
+        columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
+        indexs: ["index1:c1|c3:c7"]
+    sqls:
+      - deploy deploy_{0} SELECT id, c1, sum(c4) OVER w1 as w1_c4_sum FROM {0} WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS_RANGE BETWEEN 2 PRECEDING AND 1 PRECEDING);
+      - desc {0};
+      - show deployment deploy_{0};
+    tearDown:
+      - drop deployment deploy_{0};
+    expect:
+      success: true
+  -
+    id: 22
+    desc: 表已经有索引，deploy一个window，索引的column相同和ts都相同
+    inputs:
+      -
+        columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
+        indexs: ["index1:c1:c7"]
+    sqls:
+      - deploy deploy_{0} SELECT id, c1, sum(c4) OVER w1 as w1_c4_sum FROM {0} WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND 1 PRECEDING);
+      - desc {0};
+      - show deployment deploy_{0};
+    tearDown:
+      - drop deployment deploy_{0};
+    expect:
+      success: true
+  -
+    id: 23
+    desc: 组合索引-索引相同
+    inputs:
+      -
+        columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
+        indexs: ["index1:c1|c3:c7"]
+        rows:
+          - [1,"aa",20,30,1.1,2.1,1590738990000,"2020-05-01"]
+          - [2,"aa",21,31,1.2,2.2,1590738990001,"2020-05-02"]
+          - [3,"aa",22,32,1.3,2.3,1590738990002,"2020-05-03"]
+          - [4,"aa",23,33,1.4,2.4,1590738990003,"2020-05-04"]
+          - [5,"aa",24,34,1.5,2.5,1590738990004,"2020-05-05"]
+    sqls:
+      - deploy deploy_{0} SELECT id, c1, sum(c4) OVER w1 as w1_c4_sum FROM {0} WINDOW w1 AS (PARTITION BY {0}.c1,{0}.c3 ORDER BY {0}.c7 ROWS_RANGE BETWEEN 2 PRECEDING AND 1 PRECEDING);
+      - desc {0};
+      - show deployment deploy_{0};
+    tearDown:
+      - drop deployment deploy_{0};
+    expect:
+      success: true
+  -
+    id: 24
+    desc: 表有数据，deploy创建新索引
+    tags: ["TODO","cicd大概率失败，@denglong，https://github.com/4paradigm/OpenMLDB/issues/1116"]
+    mode: standalone-unsupport
+    inputs:
+      -
+        columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
+        indexs: ["index1:c3:c7"]
+        rows:
+          - [1,"aa",20,30,1.1,2.1,1590738990000,"2020-05-01"]
+          - [2,"aa",21,31,1.2,2.2,1590738990001,"2020-05-02"]
+          - [3,"aa",22,32,1.3,2.3,1590738990002,"2020-05-03"]
+          - [4,"aa",23,33,1.4,2.4,1590738990003,"2020-05-04"]
+          - [5,"aa",24,34,1.5,2.5,1590738990004,"2020-05-05"]
+    sqls:
+      - deploy deploy_{0} SELECT id, c1, sum(c4) OVER w1 as w1_c4_sum FROM {0} WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND 1 PRECEDING);
+    expect:
+      success: false

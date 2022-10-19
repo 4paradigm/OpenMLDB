@@ -16,12 +16,16 @@
 
 package com._4paradigm.openmldb.benchmark;
 
+import java.io.File;
 import java.sql.*;
 import java.sql.Date;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.*;
 
 import com._4paradigm.openmldb.proto.Type;
 import com._4paradigm.openmldb.sdk.SqlExecutor;
+import org.apache.commons.lang3.StringUtils;
 
 public class Util {
 
@@ -300,6 +304,67 @@ public class Util {
             e.printStackTrace();
         }
         return val;
+    }
+
+    public static void setRequestData(PreparedStatement requestPs, List<String> objects) throws SQLException {
+        ResultSetMetaData metaData = requestPs.getMetaData();
+        for (int i = 0; i < metaData.getColumnCount(); i++) {
+            Object obj = objects.get(i);
+            if (null == obj || obj.toString().equalsIgnoreCase("null")) {
+                requestPs.setNull(i + 1, 0);
+                continue;
+            }
+            int columnType = metaData.getColumnType(i + 1);
+            switch (columnType){
+                case Types.BOOLEAN:
+                    requestPs.setBoolean(i + 1, Boolean.parseBoolean(obj.toString()));
+                    break;
+                case Types.SMALLINT:
+                    requestPs.setShort(i + 1, Short.parseShort(obj.toString()));
+                    break;
+                case Types.INTEGER:
+                    requestPs.setInt(i + 1, Integer.parseInt(obj.toString()));
+                    break;
+                case Types.BIGINT:
+                    requestPs.setLong(i + 1, Long.parseLong(obj.toString()));
+                    break;
+                case Types.FLOAT:
+                    requestPs.setFloat(i + 1, Float.parseFloat(obj.toString()));
+                    break;
+                case Types.DOUBLE:
+                    requestPs.setDouble(i + 1, Double.parseDouble(obj.toString()));
+                    break;
+                case Types.TIMESTAMP:
+                    String str = obj.toString();
+                    requestPs.setTimestamp(i + 1, new Timestamp(DateUtil.parseDateToLong(str)));
+                    break;
+                case Types.DATE:
+                    if (obj instanceof java.util.Date) {
+                        requestPs.setDate(i + 1, new Date(((java.util.Date) obj).getTime()));
+                    } else if (obj instanceof Date) {
+                        requestPs.setDate(i + 1, (Date) (obj));
+                    }else {
+                        try {
+                            Date date = new Date(new SimpleDateFormat("yyyy-MM-dd").parse(obj.toString()).getTime());
+                            requestPs.setDate(i + 1, date);
+                        } catch (ParseException e) {
+                            e.printStackTrace();
+                            throw new RuntimeException(e);
+                        }
+                    }
+                    break;
+                case Types.VARCHAR:
+                    requestPs.setString(i + 1, String.valueOf(obj));
+                    break;
+                default:
+                    throw new RuntimeException("fail to build request row: invalid data type:"+columnType);
+            }
+        }
+    }
+    public static String getRootPath(){
+        File currentFile = new File(".");
+        String currentPath = currentFile.getAbsolutePath();
+        return StringUtils.substringBefore(currentPath,"OpenMLDB/")+"OpenMLDB/";
     }
 
 }

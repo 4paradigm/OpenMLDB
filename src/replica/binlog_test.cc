@@ -24,7 +24,7 @@
 #include <unistd.h>
 
 #include "base/file_util.h"
-#include "base/glog_wapper.h"
+#include "base/glog_wrapper.h"
 #include "client/tablet_client.h"
 #include "common/thread_pool.h"
 #include "common/timer.h"

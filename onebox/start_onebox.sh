@@ -62,7 +62,7 @@ cluster_start_component() {
 
     mkdir -p "$log_dir"
 
-    local extra_opts=()
+    local extra_opts=(--enable_status_service=true)
     if [[ $role = 'tablet' ]]; then
         [ -d "$binlog_dir" ] && rm -r "$binlog_dir"
         mkdir -p "$binlog_dir"
@@ -72,7 +72,7 @@ cluster_start_component() {
 
         extra_opts+=(
             --binlog_notify_on_put=true
-            --zk_keep_alive_check_interval=100000000
+            --zk_keep_alive_check_interval=60000
             --db_root_path="$binlog_dir"
             --recycle_bin_root_path="$recycle_bin_dir"
         )

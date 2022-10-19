@@ -16,7 +16,6 @@
 
 package com._4paradigm.openmldb.java_sdk_test.standalone.v030;
 
-import com._4paradigm.openmldb.java_sdk_test.common.FedbTest;
 import com._4paradigm.openmldb.java_sdk_test.common.StandaloneTest;
 import com._4paradigm.openmldb.java_sdk_test.executor.ExecutorFactory;
 import com._4paradigm.openmldb.test_common.model.SQLCase;
@@ -68,4 +67,60 @@ public class DDLTest extends StandaloneTest {
     public void testCreateNoIndex(SQLCase testCase){
         ExecutorFactory.build(testCase, SQLCaseType.kStandaloneCLI).run();
     }
+
+    //SDK版本
+
+    //all-pass
+    @Test(dataProvider = "getCase")
+    @Yaml(filePaths = "function/ddl/test_create.yaml")
+    @Story("create")
+    public void testCreateSDk(SQLCase testCase){
+        ExecutorFactory.build(executor,testCase, SQLCaseType.kBatch).run();
+    }
+
+    //全pass
+    @Test(dataProvider = "getCase")
+    @Yaml(filePaths = "function/ddl/test_ttl.yaml")
+    @Story("ttl")
+    public void testTTLSDK(SQLCase testCase){
+        ExecutorFactory.build(executor,testCase, SQLCaseType.kBatch).run();
+    }
+
+    //pass 单机
+    @Test(dataProvider = "getCase")
+    @Yaml(filePaths = "function/ddl/test_options.yaml")
+    @Story("options")
+    public void testOptionsSDK(SQLCase testCase){
+        ExecutorFactory.build(executor,testCase, SQLCaseType.kBatch).run();
+    }
+
+    //all pass
+    @Test(dataProvider = "getCase")
+    @Yaml(filePaths = "function/ddl/test_create_index.yaml")
+    @Story("create_index")
+    public void testCreateIndexSDK(SQLCase testCase){
+        ExecutorFactory.build(executor,testCase, SQLCaseType.kBatch).run();
+    }
+
+    //all pass
+    @Test(dataProvider = "getCase")
+    @Yaml(filePaths = "function/ddl/test_create_no_index.yaml")
+    @Story("create_no_index")
+    public void testCreateNoIndexSDK(SQLCase testCase){
+        ExecutorFactory.build(executor,testCase, SQLCaseType.kBatch).run();
+    }
+
+    @Test(dataProvider = "getCase")
+    @Yaml(filePaths = "integration_test/ddl/test_delete_index.yaml")
+    @Story("create_index")
+    public void testDeleteIndex(SQLCase testCase){
+        ExecutorFactory.build(executor,testCase, SQLCaseType.kDDL).run();
+    }
+    @Test(dataProvider = "getCase",enabled = false)
+    @Yaml(filePaths = "integration_test/ddl/test_delete_index.yaml")
+    @Story("create_index")
+    public void testDeleteIndexByCli(SQLCase testCase){
+        ExecutorFactory.build(testCase, SQLCaseType.kClusterCLI).run();
+    }
+
 }

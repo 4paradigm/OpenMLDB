@@ -19,7 +19,7 @@ Docker engine版本需求 >= 18.03
 拉取镜像（镜像下载大小大约 1GB，解压后约 1.7 GB）和启动 docker 容器
 
 ```bash
-docker run -it 4pdosc/openmldb:0.5.2 bash
+docker run -it 4pdosc/openmldb:0.6.3 bash
 ```
 
 ````{important}
@@ -265,7 +265,9 @@ cd taxi-trip
 
 注意，`LOAD DATA` 命令为非阻塞，可以通过 `SHOW JOBS` 等离线任务管理命令来查看任务进度。
 
-如果希望预览数据，用户亦可以使用 `SELECT` 语句，但是离线模式下该命令亦为非阻塞命令，查询结果需要查看日志，在这里不再展开。
+如果希望预览数据，用户亦可以使用 `SELECT` 语句，但是离线模式下该命令亦为非阻塞命令，查询结果需要查看日志（默认在/work/openmldb/taskmanager/bin/logs/jog_x.log，如需更改，修改taskmanager.properties的`job.log.path`）。
+
+如果job failed，可以查看/work/openmldb/taskmanager/bin/logs/jog_x_error.log，确认问题。
 
 #### 3.3.3 离线特征计算
 
@@ -284,6 +286,7 @@ cd taxi-trip
 将探索好的SQL方案部署到线上，注意部署上线的 SQL 方案需要与对应的离线特征计算的 SQL 方案保持一致。
 
 ```sql
+> SET @@execute_mode='online';
 > DEPLOY demo_data_service SELECT c1, c2, sum(c3) OVER w1 AS w1_c3_sum FROM demo_table1 WINDOW w1 AS (PARTITION BY demo_table1.c1 ORDER BY demo_table1.c6 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
 ```
 
@@ -384,8 +387,8 @@ SELECT c1, c2, sum(c3) OVER w1 AS w1_c3_sum FROM demo_table1 WINDOW w1 AS (PARTI
   c1    c2   c3   c4         c5          c6              c7
  ----- ---- ---- ---------- ----------- --------------- ------------
   aaa   11   22   1.2        1.3         1635247427000   2021-05-20
-  aaa   12   22   2.200000   12.300000   1636097890000   1970-01-01
   aaa   11   22   1.200000   11.300000   1636097290000   1970-01-01
+  aaa   12   22   2.200000   12.300000   1636097890000   1970-01-01
  ----- ---- ---- ---------- ----------- --------------- ------------
 ```
 2. 窗口范围是`2 PRECEDING AND CURRENT ROW`，所以我们在上表中截取出真正的窗口，请求行就是最小的一行，往前2行都不存在，但窗口包含当前行，因此，窗口只有请求行这一行。

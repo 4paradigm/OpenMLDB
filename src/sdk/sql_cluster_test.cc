@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-#include <sched.h>
 #include <unistd.h>
 
 #include <memory>
@@ -22,10 +21,8 @@
 #include <vector>
 
 #include "absl/strings/str_cat.h"
-#include "base/file_util.h"
-#include "base/glog_wapper.h"
+#include "base/glog_wrapper.h"
 #include "codec/fe_row_codec.h"
-#include "common/timer.h"
 #include "gflags/gflags.h"
 #include "gtest/gtest.h"
 #include "sdk/mini_cluster.h"
@@ -34,10 +31,13 @@
 #include "sdk/sql_sdk_test.h"
 #include "vm/catalog.h"
 
-namespace openmldb {
-namespace sdk {
 
-static void SetOnlineMode(std::shared_ptr<SQLRouter> router) {
+DECLARE_uint32(max_traverse_cnt);
+DECLARE_uint32(traverse_cnt_limit);
+
+namespace openmldb::sdk {
+
+static void SetOnlineMode(const std::shared_ptr<SQLRouter>& router) {
     ::hybridse::sdk::Status status;
     router->ExecuteSQL("SET @@execute_mode='online';", &status);
 }
@@ -47,22 +47,22 @@ std::shared_ptr<SQLRouter> router_;
 
 class SQLClusterTest : public ::testing::Test {
  public:
-    SQLClusterTest() {}
-    ~SQLClusterTest() {}
-    void SetUp() {}
-    void TearDown() {}
+    SQLClusterTest() = default;
+    ~SQLClusterTest() override = default;
+    void SetUp() override {}
+    void TearDown() override {}
 };
 
 class MockClosure : public ::google::protobuf::Closure {
  public:
-    MockClosure() {}
-    ~MockClosure() {}
-    void Run() {}
+    MockClosure() = default;
+    ~MockClosure() override = default;
+    void Run() override {}
 };
 
 class SQLClusterDDLTest : public SQLClusterTest {
  public:
-    void SetUp() {
+    void SetUp() override {
         SQLRouterOptions sql_opt;
         sql_opt.zk_cluster = mc_->GetZkCluster();
         sql_opt.zk_path = mc_->GetZkPath();
@@ -74,7 +74,7 @@ class SQLClusterDDLTest : public SQLClusterTest {
         ASSERT_TRUE(router->CreateDB(db, &status));
     }
 
-    void TearDown() {
+    void TearDown() override {
         ::hybridse::sdk::Status status;
         ASSERT_TRUE(router->DropDB(db, &status));
         router.reset();
@@ -85,13 +85,9 @@ class SQLClusterDDLTest : public SQLClusterTest {
         ASSERT_TRUE(router->ExecuteDDL(db, ddl, &status)) << "ddl: " << ddl;
         ASSERT_TRUE(router->ExecuteDDL(db, "drop table " + name + ";", &status));
     }
-    void RightDDL(const std::string& name, const std::string& ddl) {
-        RightDDL(db, name, ddl);
-    }
+    void RightDDL(const std::string& name, const std::string& ddl) { RightDDL(db, name, ddl); }
 
-    void WrongDDL(const std::string& name, const std::string& ddl) {
-        WrongDDL(db, name, ddl);
-    }
+    void WrongDDL(const std::string& name, const std::string& ddl) { WrongDDL(db, name, ddl); }
     void WrongDDL(const std::string& db, const std::string& name, const std::string& ddl) {
         ::hybridse::sdk::Status status;
         ASSERT_FALSE(router->ExecuteDDL(db, ddl, &status)) << "ddl: " << ddl;
@@ -416,7 +412,8 @@ TEST_F(SQLSDKQueryTest, GetTabletClient) {
         ASSERT_TRUE(request_row->Build());
         auto sql_cluster_router = std::dynamic_pointer_cast<SQLClusterRouter>(router);
         hybridse::sdk::Status sdk_status;
-        auto client = sql_cluster_router->GetTabletClient(db, sql, hybridse::vm::kRequestMode, request_row, sdk_status);
+        auto client =
+            sql_cluster_router->GetTabletClient(db, sql, hybridse::vm::kRequestMode, request_row, &sdk_status);
         int pid = ::openmldb::base::hash64(pk) % 2;
         // only assert leader paritition
         for (int i = 0; i < 3; i++) {
@@ -458,10 +455,12 @@ TEST_F(SQLClusterTest, CreatePreAggrTable) {
 
     // normal case
     {
-        std::string deploy_sql = "deploy test1 options(long_windows='w1:1000') select col1,"
-                                 " sum(col3) over w1 as w1_sum_col3 from " + base_table +
-                                 " WINDOW w1 AS (PARTITION BY col1 ORDER BY col2"
-                                 " ROWS_RANGE BETWEEN 20s PRECEDING AND CURRENT ROW);";
+        std::string deploy_sql =
+            "deploy test1 options(long_windows='w1:1000') select col1,"
+            " sum(col3) over w1 as w1_sum_col3 from " +
+            base_table +
+            " WINDOW w1 AS (PARTITION BY col1 ORDER BY col2"
+            " ROWS_RANGE BETWEEN 20s PRECEDING AND CURRENT ROW);";
         router->ExecuteSQL(base_db, "use " + base_db + ";", &status);
         router->ExecuteSQL(base_db, deploy_sql, &status);
         ASSERT_TRUE(router->RefreshCatalog());
@@ -507,23 +506,27 @@ TEST_F(SQLClusterTest, CreatePreAggrTable) {
 
     // window doesn't match window in sql
     {
-        std::string deploy_sql = "deploy test1 options(long_windows='w2:1000,w1:1d') select col1,"
-                                 " sum(col3) over w1 as w1_sum_col3 from " + base_table +
-                                 " WINDOW w1 AS (PARTITION BY col1 ORDER BY col2"
-                                 " ROWS_RANGE BETWEEN 20s PRECEDING AND CURRENT ROW);";
+        std::string deploy_sql =
+            "deploy test1 options(long_windows='w2:1000,w1:1d') select col1,"
+            " sum(col3) over w1 as w1_sum_col3 from " +
+            base_table +
+            " WINDOW w1 AS (PARTITION BY col1 ORDER BY col2"
+            " ROWS_RANGE BETWEEN 20s PRECEDING AND CURRENT ROW);";
         router->ExecuteSQL(base_db, "use " + base_db + ";", &status);
         router->ExecuteSQL(base_db, deploy_sql, &status);
-        ASSERT_EQ(status.code, -1);
+        ASSERT_EQ(status.code, ::hybridse::common::StatusCode::kSyntaxError);
         ASSERT_EQ(status.msg, "long_windows option doesn't match window in sql");
     }
     {
-        std::string deploy_sql = "deploy test1 options(long_windows='w_error:1d') select col1,"
-                                 " sum(col3) over w1 as w1_sum_col3 from " + base_table +
-                                 " WINDOW w1 AS (PARTITION BY col1 ORDER BY col2"
-                                 " ROWS_RANGE BETWEEN 20s PRECEDING AND CURRENT ROW);";
+        std::string deploy_sql =
+            "deploy test1 options(long_windows='w_error:1d') select col1,"
+            " sum(col3) over w1 as w1_sum_col3 from " +
+            base_table +
+            " WINDOW w1 AS (PARTITION BY col1 ORDER BY col2"
+            " ROWS_RANGE BETWEEN 20s PRECEDING AND CURRENT ROW);";
         router->ExecuteSQL(base_db, "use " + base_db + ";", &status);
         router->ExecuteSQL(base_db, deploy_sql, &status);
-        ASSERT_EQ(status.code, -1);
+        ASSERT_EQ(status.code, ::hybridse::common::StatusCode::kSyntaxError);
         ASSERT_EQ(status.msg, "long_windows option doesn't match window in sql");
     }
     ok = router->ExecuteDDL(base_db, "drop table " + base_table + ";", &status);
@@ -557,18 +560,20 @@ TEST_F(SQLClusterTest, Aggregator) {
     ASSERT_TRUE(ns_client->ShowTable(base_table, base_db, false, tables, msg));
     ASSERT_EQ(tables.size(), 1);
 
-    std::string deploy_sql = "deploy test_aggr options(long_windows='w1:2') select col1, col2,"
-                             " sum(col4) over w1 as w1_sum_col4 from " + base_table +
-                             " WINDOW w1 AS (PARTITION BY col1,col2 ORDER BY col3"
-                             " ROWS BETWEEN 100 PRECEDING AND CURRENT ROW);";
+    std::string deploy_sql =
+        "deploy test_aggr options(long_windows='w1:2') select col1, col2,"
+        " sum(col4) over w1 as w1_sum_col4 from " +
+        base_table +
+        " WINDOW w1 AS (PARTITION BY col1,col2 ORDER BY col3"
+        " ROWS BETWEEN 100 PRECEDING AND CURRENT ROW);";
     router->ExecuteSQL(base_db, "use " + base_db + ";", &status);
     router->ExecuteSQL(base_db, deploy_sql, &status);
 
     std::string pre_aggr_db = openmldb::nameserver::PRE_AGG_DB;
 
     for (int i = 1; i <= 11; i++) {
-        std::string insert = "insert into " + base_table + " values('str1', 'str2', " +
-                             std::to_string(i) + ", " + std::to_string(i) +");";
+        std::string insert = "insert into " + base_table + " values('str1', 'str2', " + std::to_string(i) + ", " +
+                             std::to_string(i) + ");";
         ok = router->ExecuteInsert(base_db, insert, &status);
         ASSERT_TRUE(ok);
     }
@@ -627,17 +632,21 @@ TEST_F(SQLClusterTest, PreAggrTableExist) {
     ASSERT_TRUE(ns_client->ShowTable(base_table, base_db, false, tables, msg));
     ASSERT_EQ(tables.size(), 1);
 
-    std::string deploy_sql = "deploy test1 options(long_windows='w1:1000') select col1,"
-                             " sum(col3) over w1 as w1_sum_col3 from " + base_table +
-                             " WINDOW w1 AS (PARTITION BY col1 ORDER BY col2"
-                             " ROWS_RANGE BETWEEN 20s PRECEDING AND CURRENT ROW);";
+    std::string deploy_sql =
+        "deploy test1 options(long_windows='w1:1000') select col1,"
+        " sum(col3) over w1 as w1_sum_col3 from " +
+        base_table +
+        " WINDOW w1 AS (PARTITION BY col1 ORDER BY col2"
+        " ROWS_RANGE BETWEEN 20s PRECEDING AND CURRENT ROW);";
     router->ExecuteSQL(base_db, "use " + base_db + ";", &status);
     router->ExecuteSQL(base_db, deploy_sql, &status);
 
-    std::string deploy_sql2 = "deploy test2 options(long_windows='w1:1000') select col1,"
-                             " sum(col3) over w1 as w1_sum_col3 from " + base_table +
-                             " WINDOW w1 AS (PARTITION BY col1 ORDER BY col2"
-                             " ROWS_RANGE BETWEEN 1d PRECEDING AND CURRENT ROW);";
+    std::string deploy_sql2 =
+        "deploy test2 options(long_windows='w1:1000') select col1,"
+        " sum(col3) over w1 as w1_sum_col3 from " +
+        base_table +
+        " WINDOW w1 AS (PARTITION BY col1 ORDER BY col2"
+        " ROWS_RANGE BETWEEN 1d PRECEDING AND CURRENT ROW);";
     router->ExecuteSQL(base_db, deploy_sql2, &status);
 
     tables.clear();
@@ -684,32 +693,26 @@ static std::shared_ptr<SQLRouter> GetNewSQLRouter() {
     return router;
 }
 static bool IsRequestSupportMode(const std::string& mode) {
-    if (mode.find("hybridse-only") != std::string::npos ||
-        mode.find("rtidb-unsupport") != std::string::npos ||
+    if (mode.find("hybridse-only") != std::string::npos || mode.find("rtidb-unsupport") != std::string::npos ||
         mode.find("performance-sensitive-unsupport") != std::string::npos ||
-        mode.find("request-unsupport") != std::string::npos
-        || mode.find("cluster-unsupport") != std::string::npos) {
+        mode.find("request-unsupport") != std::string::npos || mode.find("cluster-unsupport") != std::string::npos) {
         return false;
     }
     return true;
 }
 static bool IsBatchRequestSupportMode(const std::string& mode) {
-    if (mode.find("hybridse-only") != std::string::npos ||
-        mode.find("rtidb-unsupport") != std::string::npos ||
+    if (mode.find("hybridse-only") != std::string::npos || mode.find("rtidb-unsupport") != std::string::npos ||
         mode.find("performance-sensitive-unsupport") != std::string::npos ||
         mode.find("batch-request-unsupport") != std::string::npos ||
-        mode.find("request-unsupport") != std::string::npos
-        || mode.find("cluster-unsupport") != std::string::npos) {
+        mode.find("request-unsupport") != std::string::npos || mode.find("cluster-unsupport") != std::string::npos) {
         return false;
     }
     return true;
 }
 static bool IsBatchSupportMode(const std::string& mode) {
-    if (mode.find("hybridse-only") != std::string::npos ||
-        mode.find("rtidb-unsupport") != std::string::npos ||
+    if (mode.find("hybridse-only") != std::string::npos || mode.find("rtidb-unsupport") != std::string::npos ||
         mode.find("performance-sensitive-unsupport") != std::string::npos ||
-        mode.find("batch-unsupport") != std::string::npos
-        || mode.find("cluster-unsupport") != std::string::npos) {
+        mode.find("batch-unsupport") != std::string::npos || mode.find("cluster-unsupport") != std::string::npos) {
         return false;
     }
     return true;
@@ -992,25 +995,87 @@ TEST_F(SQLClusterTest, ClusterSelect) {
     ASSERT_TRUE(ok);
 }
 
-}  // namespace sdk
-}  // namespace openmldb
+TEST_F(SQLClusterTest, ClusterOnlineAgg) {
+    SQLRouterOptions sql_opt;
+    sql_opt.enable_debug = false;
+    sql_opt.zk_cluster = mc_->GetZkCluster();
+    sql_opt.zk_path = mc_->GetZkPath();
+    sql_opt.zk_session_timeout = 1000000;
+    sql_opt.request_timeout = 1000000;
+    auto router = NewClusterSQLRouter(sql_opt);
+    ASSERT_TRUE(router != nullptr);
+    SetOnlineMode(router);
+    std::string table = "test" + GenRand();
+    std::string db = "db" + GenRand();
+    ::hybridse::sdk::Status status;
+    bool ok = router->CreateDB(db, &status);
+    ASSERT_TRUE(ok);
+    std::string ddl = "create table " + table +
+                      "(c1 string, c2 int, c3 bigint, c4 float, c5 double, c6 timestamp, c7 date, index(key=c1, "
+                      "ts=c6)) options(partitionnum=8, replicanum=1);";
+    ok = router->ExecuteDDL(db, ddl, &status);
+    ASSERT_TRUE(ok) << status.msg;
+    ASSERT_TRUE(router->RefreshCatalog());
+
+    int row_num = 500;
+    for (int i = 0; i < row_num; i++) {
+        std::string insert = "insert into " + table + " values('key2" + "',20,22,9.2,19.3," + std::to_string(1000 + i) +
+                             ",'2021-01-10');";
+        ok = router->ExecuteInsert(db, insert, &status);
+        ASSERT_TRUE(ok) << status.msg;
+    }
+
+    {
+        auto res = router->ExecuteSQL(db, "select sum(c2), count(c2), sum(c3), sum(c4), sum(c5) from " + table + ";",
+                                      true, true, 0, &status);
+        ASSERT_TRUE(res) << "failed: " << status.msg << ", " << status.code;
+        ASSERT_EQ(res->Size(), 1);
+        while (res->Next()) {
+            int32_t sum_c2 = res->GetInt32Unsafe(0);
+            int64_t count = res->GetInt64Unsafe(1);
+            int64_t sum_c3 = res->GetInt64Unsafe(2);
+            float sum_c4 = res->GetFloatUnsafe(3);
+            double sum_c5 = res->GetDoubleUnsafe(4);
+            LOG(INFO) << "res = " << res->GetRowString();
+            ASSERT_EQ(sum_c2, row_num * 20);
+            ASSERT_EQ(sum_c3, row_num * 22);
+            ASSERT_EQ(count, row_num);
+            ASSERT_TRUE(std::abs(sum_c4 / row_num - 9.2) < 0.1);
+            ASSERT_TRUE(std::abs(sum_c5 / row_num - 19.3) < 0.1);
+        }
+    }
+
+    ok = router->ExecuteDDL(db, "drop table " + table + ";", &status);
+    ASSERT_TRUE(ok);
+    ok = router->DropDB(db, &status);
+    ASSERT_TRUE(ok);
+}
+
+}  // namespace openmldb::sdk
 
 int main(int argc, char** argv) {
+    FLAGS_traverse_cnt_limit = 10;
+    FLAGS_max_traverse_cnt = 5000;
+    // init google test first for gtest_xxx flags
+    ::testing::InitGoogleTest(&argc, argv);
+    ::google::ParseCommandLineFlags(&argc, &argv, true);
     ::hybridse::vm::Engine::InitializeGlobalLLVM();
     FLAGS_zk_session_timeout = 100000;
+    ::openmldb::base::SetupGlog(true);
+
     ::openmldb::sdk::MiniCluster mc(6181);
     ::openmldb::sdk::mc_ = &mc;
     FLAGS_enable_distsql = true;
     int ok = ::openmldb::sdk::mc_->SetUp(3);
     sleep(5);
-    ::testing::InitGoogleTest(&argc, argv);
-    srand(time(NULL));
-    ::google::ParseCommandLineFlags(&argc, &argv, true);
+
     ::openmldb::sdk::router_ = ::openmldb::sdk::GetNewSQLRouter();
     if (nullptr == ::openmldb::sdk::router_) {
-        LOG(ERROR) << "Fail Test with NULL SQL router";
+        LOG(ERROR) << "Test failed with NULL SQL router";
         return -1;
     }
+
+    srand(time(nullptr));
     ok = RUN_ALL_TESTS();
     ::openmldb::sdk::mc_->Close();
     return ok;

@@ -1,5 +1,6 @@
 package com._4paradigm.test_tool.command_tool.common;
 
+import com._4paradigm.test_tool.command_tool.util.OSInfoUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 
@@ -8,18 +9,20 @@ import java.util.List;
 
 @Slf4j
 public class LinuxUtil {
-    public static int port = 10000;
+    public static int port = 30000;
     public static boolean checkPortIsUsed(int port){
-        String command ="netstat -ntulp | grep "+port;
-        try {
+        if (OSInfoUtil.isMac()) {
+            String command = "lsof -i:" + port;
             List<String> result = ExecutorUtil.run(command);
-            for(String line:result){
-                if(line.contains(port+"")){
+            return result.size()>0;
+        }else {
+            String command = "netstat -ntulp | grep " + port;
+            List<String> result = ExecutorUtil.run(command);
+            for (String line : result) {
+                if (line.contains(port + "")) {
                     return true;
                 }
             }
-        }catch (Exception e){
-            e.printStackTrace();
         }
         return false;
     }
@@ -59,6 +62,16 @@ public class LinuxUtil {
     }
     public static boolean cp(String src,String dst){
         return cp(src,dst,null);
+    }
+
+    public static String hostnameI(){
+        if(OSInfoUtil.isMac()){
+            return "127.0.0.1";
+        }else{
+            String command = "hostname -i";  ///usr/sbin/
+            List<String> result = ExecutorUtil.run(command);
+            return result.get(0);
+        }
     }
 
     public static String getLocalIP(){

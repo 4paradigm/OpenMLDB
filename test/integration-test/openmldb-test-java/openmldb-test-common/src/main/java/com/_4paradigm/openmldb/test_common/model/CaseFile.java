@@ -16,13 +16,19 @@
 
 package com._4paradigm.openmldb.test_common.model;
 
+import com._4paradigm.openmldb.test_common.openmldb.OpenMLDBGlobalVar;
 import com.google.common.collect.Lists;
 import lombok.Data;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.collections4.MapUtils;
 import org.apache.commons.lang3.SerializationUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.yaml.snakeyaml.Yaml;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -30,12 +36,39 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 @Data
+@Slf4j
 public class CaseFile {
     private String db;
+    private String version;
     private List<String> debugs;
     private List<SQLCase> cases;
+
+    private String filePath;
+    private String fileName;
     // ANSISQL  HybridSQL  SQLITE3 MYSQL
     private List<String> sqlDialect = Lists.newArrayList("ANSISQL");
+
+    public static final String FAIL_SQL_CASE= "FailSQLCase";
+
+    public static CaseFile parseCaseFile(String caseFilePath) throws FileNotFoundException {
+        try {
+            Yaml yaml = new Yaml();
+            File file = new File(caseFilePath);
+            FileInputStream testDataStream = new FileInputStream(file);
+            CaseFile caseFile = yaml.loadAs(testDataStream, CaseFile.class);
+            caseFile.setFilePath(file.getAbsolutePath());
+            caseFile.setFileName(file.getName());
+            return caseFile;
+        } catch (Exception e) {
+            log.error("fail to load yaml:{}", caseFilePath);
+            e.printStackTrace();
+            CaseFile nullCaseFile = new CaseFile();
+            SQLCase failCase = new SQLCase();
+            failCase.setDesc(FAIL_SQL_CASE);
+            nullCaseFile.setCases(org.testng.collections.Lists.newArrayList(failCase));
+            return nullCaseFile;
+        }
+    }
 
     public List<SQLCase> getCases(List<Integer> levels) {
         if(!CollectionUtils.isEmpty(debugs)){
@@ -53,9 +86,24 @@ public class CaseFile {
         }
         List<SQLCase> testCaseList = new ArrayList<>();
         List<String> debugs = getDebugs();
+//        if(StringUtils.isNotEmpty(OpenMLDBGlobalVar.version)){
+//            cases = cases.stream().filter(c->c.getVersion().compareTo(OpenMLDBGlobalVar.version)<=0).collect(Collectors.toList());
+//        }
+        if (!OpenMLDBGlobalVar.tableStorageMode.equals("memory")) {
+            cases = cases.stream().filter(c->c.isSupportDiskTable()).peek(c->c.setStorage(OpenMLDBGlobalVar.tableStorageMode)).collect(Collectors.toList());
+        }
         for (SQLCase tmpCase : cases) {
-            if (null == tmpCase.getDb()) {
-                tmpCase.setDb(getDb());
+            tmpCase.setCaseFileName(fileName);
+//            List<InputDesc> inputs = tmpCase.getInputs();
+//            if(CollectionUtils.isNotEmpty(inputs)) {
+//                inputs.forEach(t -> t.setStorage(OpenMLDBGlobalVar.tableStorageMode));
+//            }
+
+//            if (StringUtils.isEmpty(tmpCase.getDb())) {
+//                tmpCase.setDb(getDb());
+//            }
+            if (StringUtils.isEmpty(tmpCase.getVersion())) {
+                tmpCase.setVersion(this.getVersion());
             }
             if(CollectionUtils.isEmpty(tmpCase.getSqlDialect())){
                 tmpCase.setSqlDialect(sqlDialect);
@@ -67,6 +115,9 @@ public class CaseFile {
                 continue;
             }
             if (isCaseInBlackList(tmpCase)) {
+                continue;
+            }
+            if(StringUtils.isNotEmpty(OpenMLDBGlobalVar.version)&&OpenMLDBGlobalVar.version.compareTo(tmpCase.getVersion())<0){
                 continue;
             }
             addCase(tmpCase,testCaseList);
@@ -174,12 +225,14 @@ public class CaseFile {
                             String order = expectDesc.getOrder();
                             List<String> columns = expectDesc.getColumns();
                             List<List<Object>> rows = expectDesc.getRows();
+                            PreAggTable preAgg = expectDesc.getPreAgg();
                             int count = expectDesc.getCount();
                             if (success == false) newExpectDesc.setSuccess(success);
                             if (count > 0) newExpectDesc.setCount(count);
                             if (CollectionUtils.isNotEmpty(columns)) newExpectDesc.setColumns(columns);
                             if (StringUtils.isNotEmpty(order)) newExpectDesc.setOrder(order);
                             if (CollectionUtils.isNotEmpty(rows)) newExpectDesc.setRows(rows);
+                            if(preAgg != null) newExpectDesc.setPreAgg(preAgg);
                         }
                     }
                 }

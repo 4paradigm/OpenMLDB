@@ -1,0 +1,11 @@
+mode: standalone
+nameserver:
+  -
+    endpoint: 172.24.4.55:30013
+    path: /home/zhaowei01/openmldb-auto-test/standalone/openmldb-standalone
+    is_local: true
+tablet:
+  -
+    endpoint: 172.24.4.55:30014
+    path: /home/zhaowei01/openmldb-auto-test/standalone/openmldb-standalone
+    is_local: true

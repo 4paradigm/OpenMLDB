@@ -20,7 +20,7 @@
 #include <unistd.h>
 
 #include "base/file_util.h"
-#include "base/glog_wapper.h"
+#include "base/glog_wrapper.h"
 #include "client/ns_client.h"
 #include "gtest/gtest.h"
 #include "nameserver/name_server_impl.h"

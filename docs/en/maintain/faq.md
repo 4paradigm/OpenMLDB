@@ -55,10 +55,10 @@ This happens easily when using synchronized offline commands. you can use
 ```
 To adjust the timeout time of rpc, use 'ms' units.
 #### normal request
-If it is a simple query or insert, there will be a timeout, and the general `request_timeout` configuration needs to be changed.
-1. CLI: cannot be changed at this time
+If it is a simple query or insert, still get timeout, the general `request_timeout` configuration needs to be changed.
+1. CLI: set `--request_timeout` before running
 2. JAVA: SDK direct connection, adjust `SdkOption.requestTimeout`; JDBC, adjust the parameter `requestTimeout` in url
-3. Python: cannot be changed at this time
+3. Python: SDK direct connection(DBAPI), adjust `connect()` arg `request_timeout`; SQLAlchemy, adjust the parameter `requestTimeout` in url
 
 ### 2. Why am I getting the warning log of Got EOF of Socket?
 ```
@@ -67,3 +67,41 @@ rpc_client.h:xxx] request error. [E1014]Got EOF of Socket{id=x fd=x addr=xxx} (x
 This is because the `addr` side actively disconnected, and the address of `addr` is most likely taskmanager. This does not mean that the taskmanager is abnormal, but that the taskmanager side thinks that the connection is inactive and has exceeded the keepAliveTime, and actively disconnects the communication channel.
 In version 0.5.0 and later, the taskmanager's `server.channel_keep_alive_time` can be increased to increase the tolerance of inactive channels. The default value is 1800s (0.5h), especially when using synchronous offline commands, this value may need to be adjusted appropriately.
 In versions before 0.5.0, this configuration cannot be changed, please upgrade the taskmanager version.
+
+### 3. Why we get unrecognizable result of offline queries?
+
+When we are using offline queries, the result which contains Chinese may be printed as unrecognizable code. It is related with default system encoding and encoding configuration of Saprk jobs. 
+
+If we have unrecognizable code, we can set the configuration `spark.driver.extraJavaOptions=-Dfile.encoding=utf-8` and `spark.executor.extraJavaOptions=-Dfile.encoding=utf-8` for Spark jobs.
+
+Here is the way to configure client in [Spark Client Config](../reference/client_config/client_spark_config.md) and we can add this configuration in TaskManager properties file as well.
+
+```
+spark.default.conf=spark.driver.extraJavaOptions=-Dfile.encoding=utf-8;spark.executor.extraJavaOptions=-Dfile.encoding=utf-8
+```
+
+### 4. How to config TaskManager to access Kerberos-enabled Yarn cluster?
+
+If Yarn cluster enables Kerberos authentication, we can add the following configuration to access the Kerberos-enabled Yarn cluster. Notice that we need to update the actual keytab file path and principle account.
+
+```
+spark.default.conf=spark.yarn.keytab=/tmp/test.keytab;spark.yarn.principal=test@EXAMPLE.COM
+```
+
+### 5. How to config the cxx log in client
+
+cxx log: zk log and sdk log(glog).
+
+zk log：
+1. CLI：set before running, `--zk_log_level`(int) to set zk log level,`--zk_log_file` to set log file(just file, not dir)
+2. JAVA/Python SDK：in option or url, set `zkLogLevel` and `zkLogFile`
+
+- `zk_log_level`(int, default=3, which is INFO): 
+Log messages at or **below** this level. 0-disable all zk log, 1-error, 2-warn, 3-info, 4-debug.
+
+sdk log(glog):
+1. CLI：set before running, `--glog_level`(int) to set glog level,`--glog_dir`to set glog dir(a path, not a file)
+2. JAVA/Python SDK：in option or url, set `glogLevel` and`glogDir`
+
+- `glog_level`(int, default=0, which is INFO):
+Log messages at or **above** this level. The numbers of severity levels INFO, WARNING, ERROR, and FATAL are 0, 1, 2, and 3, respectively.

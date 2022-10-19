@@ -28,15 +28,22 @@ public class StatementTest {
         java.sql.Statement state = router.getStatement();
 
         try {
+            // execute success -> result != null -> true
             boolean ret = state.execute("SET @@execute_mode='online';");
-            ret = state.execute("create database test");
+            Assert.assertFalse(ret);
+            ret = state.execute("create database if not exists test");
             Assert.assertFalse(ret);
             ret = state.execute("use test");
             Assert.assertFalse(ret);
-            ret = state.execute("create table testtable111(col1 bigint, col2 string, index(key=col2, ts=col1));");
+            // TODO(hw): drop table if exists
+            ret = state.execute("create table testtable111(col1 bigint, col2 string, index(key=col2, " +
+                    "ts=col1));");
             Assert.assertFalse(ret);
-            state.executeUpdate("insert into testtable111 values(1000, 'hello');");
-            state.executeUpdate("insert into testtable111 values(1001, 'xxxx');");
+            int r = state.executeUpdate("insert into testtable111 values(1000, 'hello');");
+            // update insert stmt, is not dml, return nothing
+            Assert.assertEquals(r,0);
+            r = state.executeUpdate("insert into testtable111 values(1001, 'xxxx');");
+            Assert.assertEquals(r,0);
             ret = state.execute("select * from testtable111");
             Assert.assertTrue(ret);
             java.sql.ResultSet rs = state.getResultSet();
@@ -45,9 +52,9 @@ public class StatementTest {
             result.put(rs.getLong(1), rs.getString(2));
             Assert.assertTrue(rs.next());
             result.put(rs.getLong(1), rs.getString(2));
-            Assert.assertEquals(2, result.size());
-            Assert.assertEquals("hello", result.get(1000L));
-            Assert.assertEquals("xxxx", result.get(1001L));
+            Assert.assertEquals(result.size(), 2);
+            Assert.assertEquals( result.get(1000L), "hello");
+            Assert.assertEquals( result.get(1001L), "xxxx");
 
             ret = state.execute("drop table testtable111");
             Assert.assertFalse(ret);
@@ -87,6 +94,87 @@ public class StatementTest {
             ret = state.execute("drop table trans");
             Assert.assertFalse(ret);
             ret = state.execute("drop database testxx");
+        } catch (Exception e) {
+            e.printStackTrace();
+            Assert.fail();
+        } finally {
+            try {
+                state.close();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    private void checkDataCount(String tableName, int expectCnt) {
+        java.sql.Statement state = router.getStatement();
+        try {
+            state.execute("select * from " + tableName);
+            java.sql.ResultSet rs = state.getResultSet();
+            int cnt = 0;
+            while (rs.next()) {
+                cnt++;
+            }
+            Assert.assertEquals(expectCnt, cnt);
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            try {
+                state.close();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    @Test
+    public void testDelete() {
+        java.sql.Statement state = router.getStatement();
+        try {
+            // execute success -> result != null -> true
+            boolean ret = state.execute("SET @@execute_mode='online';");
+            Assert.assertFalse(ret);
+            ret = state.execute("create database if not exists test");
+            Assert.assertFalse(ret);
+            ret = state.execute("use test");
+            Assert.assertFalse(ret);
+            ret = state.execute("create table t1(col1 bigint, col2 string, index(key=col2, " +
+                    "ts=col1));");
+            Assert.assertFalse(ret);
+            state.executeUpdate("insert into t1 values(1000, 'key1');");
+            state.executeUpdate("insert into t1 values(1002, 'key1');");
+            state.executeUpdate("insert into t1 values(1001, 'key2');");
+            state.executeUpdate("insert into t1 values(1003, 'key3');");
+            state.executeUpdate("insert into t1 values(1004, 'key4');");
+            state.executeUpdate("insert into t1 values(1001, 'key5');");
+            state.executeUpdate("insert into t1 values(1003, NULL);");
+            state.executeUpdate("insert into t1 values(1003, '');");
+            state.execute("select * from t1");
+            checkDataCount("t1", 8);
+            String sql = "DELETE FROM t1 WHERE col2 = 'key1';";
+            state.execute(sql);
+            checkDataCount("t1", 6);
+            state.execute("DELETE FROM t1 WHERE col2 = NULL;");
+            checkDataCount("t1", 5);
+            state.execute("DELETE FROM t1 WHERE col2 = '';");
+            checkDataCount("t1", 4);
+            sql = "DELETE FROM t1 WHERE col2 = ?;";
+            java.sql.PreparedStatement p1 = router.getDeletePreparedStmt("test", sql);
+            p1.setString(1, "key2");
+            p1.executeUpdate();
+            p1.setString(1, "keynoexist");
+            p1.executeUpdate();
+            checkDataCount("t1", 3);
+            p1.setString(1, "key3");
+            p1.addBatch();
+            p1.setString(1, "key4");
+            p1.addBatch();
+            p1.setString(1, "key2");
+            p1.addBatch();
+            p1.executeBatch();
+            checkDataCount("t1", 1);
+            ret = state.execute("drop table t1");
+            Assert.assertFalse(ret);
         } catch (Exception e) {
             e.printStackTrace();
             Assert.fail();

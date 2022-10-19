@@ -485,11 +485,11 @@ void SQLCaseTest::CheckRows(const hybridse::vm::Schema &schema, const std::strin
     std::map<std::string, std::pair<hybridse::codec::Row, bool>> rows_map;
     if (order_idx >= 0) {
         int32_t row_id = 0;
-        for (auto row : rows) {
+        for (auto& row : rows) {
             row_view.Reset(row.buf());
             std::string key = row_view.GetAsString(order_idx);
             LOG(INFO) << "Get Order String: " << row_id++ << " key: " << key;
-            rows_map.insert(std::make_pair(key, std::make_pair(row, false)));
+            rows_map.try_emplace(key, row, false);
         }
     }
     int32_t index = 0;

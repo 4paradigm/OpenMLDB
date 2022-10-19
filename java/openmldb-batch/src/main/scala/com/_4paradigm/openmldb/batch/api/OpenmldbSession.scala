@@ -17,10 +17,11 @@
 package com._4paradigm.openmldb.batch.api
 
 import com._4paradigm.openmldb.batch.catalog.OpenmldbCatalogService
-import com._4paradigm.openmldb.batch.utils.DataTypeUtil
+import com._4paradigm.openmldb.batch.utils.{DataTypeUtil, VersionCli}
 import com._4paradigm.openmldb.batch.utils.HybridseUtil.autoLoad
 import com._4paradigm.openmldb.batch.{OpenmldbBatchConfig, SparkPlanner}
 import org.apache.commons.io.IOUtils
+import org.apache.log4j.{Level, Logger}
 import org.apache.spark.{SPARK_VERSION, SparkConf}
 import org.apache.spark.sql.catalyst.QueryPlanningTracker
 import org.apache.spark.sql.catalyst.plans.logical.LogicalPlan
@@ -205,12 +206,14 @@ class OpenmldbSession {
    */
   def version(): String = {
     // Read OpenMLDB git properties which is added by maven plugin
-    val stream = this.getClass.getClassLoader.getResourceAsStream("openmldb_git.properties")
-    if (stream == null) {
-      logger.error("OpenMLDB git properties is missing")
-      SPARK_VERSION
-    } else {
-      s"$SPARK_VERSION\n${IOUtils.toString(stream, "UTF-8")}"
+    try {
+      val openmldbBatchVersion = VersionCli.getVersion()
+      s"$SPARK_VERSION\n$openmldbBatchVersion"
+    } catch {
+      case e: Exception => {
+        logger.error("Fail to load OpenMLDB git properties " + e.getMessage)
+        SPARK_VERSION
+      }
     }
   }
 
@@ -240,6 +243,10 @@ class OpenmldbSession {
     sparkSession.toString
   }
 
+  def disableSparkLogs(): Unit = {
+    Logger.getLogger("org").setLevel(Level.OFF)
+    Logger.getLogger("akka").setLevel(Level.OFF)
+  }
   /**
    * Stop the Spark session.
    */

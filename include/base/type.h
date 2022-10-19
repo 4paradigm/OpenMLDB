@@ -21,6 +21,7 @@
 #include <cstddef>
 #include <string>
 #include <vector>
+#include <ostream>
 
 namespace openmldb {
 namespace base {
@@ -37,6 +38,8 @@ struct Timestamp {
         return *this;
     }
     int64_t ts_;
+
+    friend std::ostream& operator<<(std::ostream& os, const Timestamp& ts) { return os << ts.ts_; }
 };
 
 __attribute__((unused)) static const Timestamp operator+(const Timestamp& a,
@@ -106,6 +109,10 @@ struct Date {
         return true;
     }
     int32_t date_;
+
+    friend std::ostream& operator<<(std::ostream& os, const Date& date) {
+        return os << date.date_;
+    }
 };
 
 __attribute__((unused)) static bool operator>(const Date& a, const Date& b) {

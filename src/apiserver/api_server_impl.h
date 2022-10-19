@@ -28,6 +28,7 @@
 #include "json2pb/rapidjson.h"  // rapidjson's DOM-style API
 #include "proto/api_server.pb.h"
 #include "sdk/sql_cluster_router.h"
+#include "sdk/sql_request_row.h"
 
 namespace openmldb {
 namespace apiserver {
@@ -51,10 +52,10 @@ class APIServerImpl : public APIServer {
                  google::protobuf::Closure* done) override;
     static std::string InnerTypeTransform(const std::string& s);
 
-    void Refresh(google::protobuf::RpcController* cntl_base, const HttpRequest*, HttpResponse*,
-                 google::protobuf::Closure* done) override;
+    void Refresh();
 
  private:
+    void RegisterQuery();
     void RegisterPut();
     void RegisterExecSP();
     void RegisterExecDeployment();
@@ -62,9 +63,10 @@ class APIServerImpl : public APIServer {
     void RegisterGetDeployment();
     void RegisterGetDB();
     void RegisterGetTable();
+    void RegisterRefresh();
 
-    void ExecuteProcedure(bool has_common_col, const InterfaceProvider::Params& param,
-            const butil::IOBuf& req_body, JsonWriter& writer); // NOLINT
+    void ExecuteProcedure(bool has_common_col, const InterfaceProvider::Params& param, const butil::IOBuf& req_body,
+                          JsonWriter& writer);  // NOLINT
 
     static bool Json2SQLRequestRow(const butil::rapidjson::Value& non_common_cols_v,
                                    const butil::rapidjson::Value& common_cols_v,
@@ -80,19 +82,15 @@ class APIServerImpl : public APIServer {
     ::openmldb::sdk::DBSDK* cluster_sdk_ = nullptr;
 };
 
-struct PutResp {
-    PutResp() = default;
-    int code = 0;
-    std::string msg = "ok";
+struct QueryReq {
+    std::string mode;
+    std::string sql;
+    std::shared_ptr<openmldb::sdk::SQLRequestRow> parameter;
 };
 
-template <typename Archiver>
-Archiver& operator&(Archiver& ar, PutResp& s) {  // NOLINT
-    ar.StartObject();
-    ar.Member("code") & s.code;
-    ar.Member("msg") & s.msg;
-    return ar.EndObject();
-}
+JsonReader& operator&(JsonReader& ar, QueryReq& s);  // NOLINT
+
+JsonReader& operator&(JsonReader& ar, std::shared_ptr<openmldb::sdk::SQLRequestRow>& parameter);  // NOLINT
 
 struct ExecSPResp {
     ExecSPResp() = default;
@@ -130,6 +128,15 @@ JsonWriter& operator&(JsonWriter& ar,  // NOLINT
                       const ::google::protobuf::RepeatedPtrField<::openmldb::common::ColumnKey>& column_key);
 
 JsonWriter& operator&(JsonWriter& ar, std::shared_ptr<::openmldb::nameserver::TableInfo> info);  // NOLINT
+
+struct QueryResp {
+    QueryResp() = default;
+    int code = 0;
+    std::string msg = "ok";
+    std::shared_ptr<hybridse::sdk::ResultSet> rs;
+};
+
+JsonWriter& operator&(JsonWriter& ar, QueryResp& s);  // NOLINT
 
 }  // namespace apiserver
 }  // namespace openmldb

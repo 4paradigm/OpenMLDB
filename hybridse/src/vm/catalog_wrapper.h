@@ -53,6 +53,7 @@ class IteratorProjectWrapper : public RowIterator {
     const ProjectFun* fun_;
     Row value_;
 };
+
 class IteratorFilterWrapper : public RowIterator {
  public:
     IteratorFilterWrapper(std::unique_ptr<RowIterator> iter,
@@ -87,6 +88,53 @@ class IteratorFilterWrapper : public RowIterator {
     std::unique_ptr<RowIterator> iter_;
     const Row& parameter_;
     const PredicateFun* predicate_;
+};
+
+// iterator start from `iter` but limit rows count
+// stop when `iter` is invalid or reaches limit count
+class LimitIterator : public RowIterator {
+ public:
+    explicit LimitIterator(std::unique_ptr<RowIterator>&& iter, int32_t limit)
+        : RowIterator(), iter_(std::move(iter)), limit_(limit) {
+        SeekToFirst();
+    }
+    virtual ~LimitIterator() {}
+
+    bool Valid() const override {
+        return iter_->Valid() && cnt_ <= limit_;
+    }
+    void Next() override {
+        iter_->Next();
+        cnt_++;
+    }
+    const uint64_t& GetKey() const override {
+        return iter_->GetKey();
+    }
+    const Row& GetValue() override {
+        return iter_->GetValue();
+    }
+
+    // limit iterator is not seekable
+    bool IsSeekable() const override {
+        return false;
+    };
+
+    void Seek(const uint64_t& key) override {
+        LOG(ERROR) << "LimitIterator is not seekable";
+    }
+
+    void SeekToFirst() override {
+        // not lazy
+        // seek to the first valid row
+        // so it correctly handle limit(filter iterator)
+        iter_->SeekToFirst();
+    };
+
+ private:
+    std::unique_ptr<RowIterator> iter_;
+    int32_t cnt_ = 1;
+    // limit_ inherited from sql limit clause, 0 means no no rows will return
+    const int32_t limit_ = 0;
 };
 
 class WindowIteratorProjectWrapper : public WindowIterator {
@@ -211,10 +259,11 @@ class PartitionProjectWrapper : public PartitionHandler {
     const uint64_t GetCount() override {
         return partition_handler_->GetCount();
     }
-    virtual std::shared_ptr<TableHandler> GetSegment(const std::string& key);
-    virtual const OrderType GetOrderType() const {
-        return partition_handler_->GetOrderType();
-    }
+
+    std::shared_ptr<TableHandler> GetSegment(const std::string& key) override;
+
+    const OrderType GetOrderType() const override { return partition_handler_->GetOrderType(); }
+
     const std::string GetHandlerTypeName() override {
         return "PartitionHandler";
     }
@@ -266,10 +315,11 @@ class PartitionFilterWrapper : public PartitionHandler {
         }
     }
     base::ConstIterator<uint64_t, Row>* GetRawIterator() override;
-    virtual std::shared_ptr<TableHandler> GetSegment(const std::string& key);
-    virtual const OrderType GetOrderType() const {
-        return partition_handler_->GetOrderType();
-    }
+
+    std::shared_ptr<TableHandler> GetSegment(const std::string& key) override;
+
+    const OrderType GetOrderType() const override { return partition_handler_->GetOrderType(); }
+
     const std::string GetHandlerTypeName() override {
         return "PartitionHandler";
     }
@@ -285,7 +335,7 @@ class TableProjectWrapper : public TableHandler {
         : TableHandler(), table_hander_(table_handler), parameter_(parameter), value_(), fun_(fun) {}
     virtual ~TableProjectWrapper() {}
 
-    std::unique_ptr<RowIterator> GetIterator() {
+    std::unique_ptr<RowIterator> GetIterator() override {
         auto iter = table_hander_->GetIterator();
         if (!iter) {
             return std::unique_ptr<RowIterator>();
@@ -323,12 +373,11 @@ class TableProjectWrapper : public TableHandler {
         value_ = fun_->operator()(table_hander_->At(pos), parameter_);
         return value_;
     }
+
     const uint64_t GetCount() override { return table_hander_->GetCount(); }
-    virtual std::shared_ptr<PartitionHandler> GetPartition(
-        const std::string& index_name);
-    virtual const OrderType GetOrderType() const {
-        return table_hander_->GetOrderType();
-    }
+    std::shared_ptr<PartitionHandler> GetPartition(const std::string& index_name) override;
+    const OrderType GetOrderType() const override { return table_hander_->GetOrderType(); }
+
     std::shared_ptr<TableHandler> table_hander_;
     const Row& parameter_;
     Row value_;
@@ -337,54 +386,88 @@ class TableProjectWrapper : public TableHandler {
 
 class TableFilterWrapper : public TableHandler {
  public:
-    TableFilterWrapper(std::shared_ptr<TableHandler> table_handler,
-                       const Row& parameter,
-                       const PredicateFun* fun)
+    TableFilterWrapper(std::shared_ptr<TableHandler> table_handler, const Row& parameter, const PredicateFun* fun)
         : TableHandler(), table_hander_(table_handler), parameter_(parameter), fun_(fun) {}
     virtual ~TableFilterWrapper() {}
 
-    std::unique_ptr<RowIterator> GetIterator() {
+    std::unique_ptr<RowIterator> GetIterator() override {
         auto iter = table_hander_->GetIterator();
         if (!iter) {
             return std::unique_ptr<RowIterator>();
         } else {
-            return std::unique_ptr<RowIterator>(
-                new IteratorFilterWrapper(std::move(iter), parameter_, fun_));
+            return std::make_unique<IteratorFilterWrapper>(std::move(iter), parameter_, fun_);
         }
     }
     const Types& GetTypes() override { return table_hander_->GetTypes(); }
     const IndexHint& GetIndex() override { return table_hander_->GetIndex(); }
-    std::unique_ptr<WindowIterator> GetWindowIterator(
-        const std::string& idx_name) override {
+    std::unique_ptr<WindowIterator> GetWindowIterator(const std::string& idx_name) override {
         auto iter = table_hander_->GetWindowIterator(idx_name);
         if (!iter) {
             return std::unique_ptr<WindowIterator>();
         } else {
-            return std::unique_ptr<WindowIterator>(
-                new WindowIteratorFilterWrapper(std::move(iter), parameter_, fun_));
+            return std::make_unique<WindowIteratorFilterWrapper>(std::move(iter), parameter_, fun_);
         }
     }
+
     const Schema* GetSchema() override { return table_hander_->GetSchema(); }
     const std::string& GetName() override { return table_hander_->GetName(); }
-    const std::string& GetDatabase() override {
-        return table_hander_->GetDatabase();
-    }
+    const std::string& GetDatabase() override { return table_hander_->GetDatabase(); }
     base::ConstIterator<uint64_t, Row>* GetRawIterator() override {
-        return new IteratorFilterWrapper(
-            static_cast<std::unique_ptr<RowIterator>>(
-                table_hander_->GetRawIterator()),
-            parameter_,
-            fun_);
+        return new IteratorFilterWrapper(static_cast<std::unique_ptr<RowIterator>>(table_hander_->GetRawIterator()),
+                                         parameter_, fun_);
     }
-    virtual std::shared_ptr<PartitionHandler> GetPartition(
-        const std::string& index_name);
-    virtual const OrderType GetOrderType() const {
-        return table_hander_->GetOrderType();
-    }
+    std::shared_ptr<PartitionHandler> GetPartition(const std::string& index_name) override;
+    const OrderType GetOrderType() const override { return table_hander_->GetOrderType(); }
+
+ private:
     std::shared_ptr<TableHandler> table_hander_;
     const Row& parameter_;
     Row value_;
     const PredicateFun* fun_;
+};
+
+class LimitTableHandler : public TableHandler {
+ public:
+    explicit LimitTableHandler(std::shared_ptr<TableHandler> table, int32_t limit)
+        : TableHandler(), table_hander_(table), limit_(limit) {}
+    virtual ~LimitTableHandler() {}
+
+    std::unique_ptr<RowIterator> GetIterator() override {
+        auto iter = table_hander_->GetIterator();
+        if (!iter) {
+            return std::unique_ptr<RowIterator>();
+        } else {
+            return std::make_unique<LimitIterator>(std::move(iter), limit_);
+        }
+    }
+
+    // FIXME(ace): do not use this, not implemented
+    std::unique_ptr<WindowIterator> GetWindowIterator(const std::string& idx_name) override {
+        LOG(ERROR) << "window iterator for LimitTableHandler is not implemented, don't use";
+        return table_hander_->GetWindowIterator(idx_name);
+    }
+
+    base::ConstIterator<uint64_t, Row>* GetRawIterator() override {
+        return new LimitIterator(static_cast<std::unique_ptr<RowIterator>>(table_hander_->GetRawIterator()), limit_);
+    }
+
+    const Types& GetTypes() override { return table_hander_->GetTypes(); }
+    const IndexHint& GetIndex() override { return table_hander_->GetIndex(); }
+    const Schema* GetSchema() override { return table_hander_->GetSchema(); }
+    const std::string& GetName() override { return table_hander_->GetName(); }
+    const std::string& GetDatabase() override { return table_hander_->GetDatabase(); }
+
+    // FIXME(ace): do not use this, not implemented
+    std::shared_ptr<PartitionHandler> GetPartition(const std::string& index_name) override {
+        LOG(ERROR) << "Get partition for LimitTableHandler is not implemented, don't use";
+        return table_hander_->GetPartition(index_name);
+    }
+
+    const OrderType GetOrderType() const override { return table_hander_->GetOrderType(); }
+
+ private:
+    std::shared_ptr<TableHandler> table_hander_;
+    int32_t limit_;
 };
 
 class RowProjectWrapper : public RowHandler {

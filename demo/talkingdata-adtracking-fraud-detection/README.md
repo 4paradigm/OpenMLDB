@@ -15,7 +15,7 @@ We recommend you to use docker to run the demo. OpenMLDB and dependencies have b
 **Start docker**
 
 ```
-docker run -it 4pdosc/openmldb:0.5.2 bash
+docker run -it 4pdosc/openmldb:0.6.3 bash
 ```
 
 #### Run locally
@@ -82,6 +82,22 @@ see [train_and_serve.py](https://github.com/4paradigm/OpenMLDB/blob/main/demo/ta
 4. deploy sql online
 5. load data to online storage
 6. update model to predict server
+
+#### The Jupyter Way
+
+You can use the jupyter nodebook `train_and_serve.ipynb`, the same with `train_and_serve.py`
+
+Steps:
+1. `docker ... -p 8888:8888 ...`, 8888 is the jupyter server default port.
+1. start openmldb and predict server
+1. `pip3 install notebook`
+1. run jupyter, `jupyter --ip 0.0.0.0 --allow-root`. You can set the password before running, `jupyter notebook password`.
+1. run `train_and_serve.ipynb` in jupyter notebook web.
+
+
+```{tip}
+Use `jupyter nbconvert --ClearOutputPreprocessor.enabled=True --ClearMetadataPreprocessor.enabled=True --ClearMetadataPreprocessor.preserve_cell_metadata_mask tags --to=notebook --log-level=ERROR --inplace train_and_serve.ipynb` to make notebook clean.
+```
 
 ### Predict
 

@@ -23,7 +23,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#include "base/glog_wapper.h"  // NOLINT
+#include "base/glog_wrapper.h"
 
 namespace openmldb {
 namespace storage {

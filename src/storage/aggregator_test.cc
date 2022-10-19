@@ -139,10 +139,12 @@ bool GetUpdatedResult(const uint32_t& id, const std::string& aggr_col, const std
 }
 
 template <typename T>
-void CheckSumAggrResult(std::shared_ptr<Table> aggr_table, DataType data_type, int32_t expect_null = 0) {
+void CheckSumAggrResult(std::shared_ptr<Table> aggr_table, DataType data_type, std::shared_ptr<Aggregator> aggr,
+                        int32_t expect_null = 0) {
     ASSERT_EQ(aggr_table->GetRecordCnt(), 50);
     auto it = aggr_table->NewTraverseIterator(0);
     it->SeekToFirst();
+    int64_t window_size = aggr->GetWindowSize();
     for (int i = 50 - 1; i >= 0; --i) {
         ASSERT_TRUE(it->Valid());
         auto tmp_val = it->GetValue();
@@ -150,6 +152,13 @@ void CheckSumAggrResult(std::shared_ptr<Table> aggr_table, DataType data_type, i
         codec::RowView origin_row_view(aggr_table->GetTableMeta()->column_desc(),
                                        reinterpret_cast<int8_t*>(const_cast<char*>(origin_data.c_str())),
                                        origin_data.size());
+        int64_t ts_start, ts_end;
+        origin_row_view.GetTimestamp(1, &ts_start);
+        origin_row_view.GetTimestamp(2, &ts_end);
+        ASSERT_EQ(ts_start, i * window_size);
+        ASSERT_EQ(ts_end, i * window_size + window_size - 1);
+        int num_rows;
+        origin_row_view.GetInt32(3, &num_rows);
         char* ch = NULL;
         uint32_t ch_length = 0;
         origin_row_view.GetString(4, &ch, &ch_length);
@@ -275,17 +284,32 @@ void CheckCountWhereAggrResult(std::shared_ptr<Table> aggr_table, std::shared_pt
     auto it = aggr_table->NewTraverseIterator(0);
     it->SeekToFirst();
     for (int i = 98; i >= 0; --i) {
+        ASSERT_EQ("id1|id2", it->GetPK());
         ASSERT_TRUE(it->Valid());
         auto tmp_val = it->GetValue();
         std::string origin_data = tmp_val.ToString();
         codec::RowView origin_row_view(aggr_table->GetTableMeta()->column_desc(),
                                        reinterpret_cast<int8_t*>(const_cast<char*>(origin_data.c_str())),
                                        origin_data.size());
+        ASSERT_EQ(i / 2 * aggr->GetWindowSize(), it->GetKey());
         char* ch = NULL;
         uint32_t ch_length = 0;
         origin_row_view.GetString(4, &ch, &ch_length);
         int64_t origin_val = *reinterpret_cast<int64_t*>(ch);
         ASSERT_EQ(origin_val, count);
+        int64_t ts_start, ts_end;
+        int num_rows;
+        origin_row_view.GetString(0, &ch, &ch_length);
+        std::string key = std::string(ch, ch_length);
+        origin_row_view.GetTimestamp(1, &ts_start);
+        origin_row_view.GetTimestamp(2, &ts_end);
+        origin_row_view.GetInt32(3, &num_rows);
+        origin_row_view.GetString(6, &ch, &ch_length);
+        std::string fk = std::string(ch, ch_length);
+        ASSERT_EQ(i / 2 * aggr->GetWindowSize(), ts_start);
+        ASSERT_EQ(i / 2 * aggr->GetWindowSize() + aggr->GetWindowSize() - 1, ts_end);
+        DLOG(INFO) << key << "|" << fk << "[" << ts_start << ", " << ts_end << "]: num_rows = " << num_rows
+                   << ", val = " << origin_val;
         it->Next();
     }
     return;
@@ -485,32 +509,32 @@ TEST_F(AggregatorTest, SumAggregatorUpdate) {
         AggrBuffer* last_buffer;
         std::shared_ptr<Table> aggr_table;
         ASSERT_TRUE(GetUpdatedResult(counter, "col3", "sum", "1s", aggregator, aggr_table, &last_buffer));
-        CheckSumAggrResult<int64_t>(aggr_table, DataType::kInt);
+        CheckSumAggrResult<int64_t>(aggr_table, DataType::kInt, aggregator);
         ASSERT_EQ(last_buffer->aggr_val_.vlong, 100);
         ASSERT_EQ(last_buffer->non_null_cnt_, static_cast<int64_t>(1));
         counter += 2;
         ASSERT_TRUE(GetUpdatedResult(counter, "col4", "sum", "1m", aggregator, aggr_table, &last_buffer));
-        CheckSumAggrResult<int64_t>(aggr_table, DataType::kSmallInt);
+        CheckSumAggrResult<int64_t>(aggr_table, DataType::kSmallInt, aggregator);
         ASSERT_EQ(last_buffer->aggr_val_.vlong, 100);
         ASSERT_EQ(last_buffer->non_null_cnt_, static_cast<int64_t>(1));
         counter += 2;
         ASSERT_TRUE(GetUpdatedResult(counter, "col5", "sum", "2h", aggregator, aggr_table, &last_buffer));
-        CheckSumAggrResult<int64_t>(aggr_table, DataType::kBigInt);
+        CheckSumAggrResult<int64_t>(aggr_table, DataType::kBigInt, aggregator);
         ASSERT_EQ(last_buffer->aggr_val_.vlong, 100);
         ASSERT_EQ(last_buffer->non_null_cnt_, static_cast<int64_t>(1));
         counter += 2;
         ASSERT_TRUE(GetUpdatedResult(counter, "col6", "sum", "3h", aggregator, aggr_table, &last_buffer));
-        CheckSumAggrResult<float>(aggr_table, DataType::kFloat);
+        CheckSumAggrResult<float>(aggr_table, DataType::kFloat, aggregator);
         ASSERT_EQ(last_buffer->aggr_val_.vfloat, static_cast<float>(100));
         ASSERT_EQ(last_buffer->non_null_cnt_, static_cast<int64_t>(1));
         counter += 2;
         ASSERT_TRUE(GetUpdatedResult(counter, "col7", "sum", "1d", aggregator, aggr_table, &last_buffer));
-        CheckSumAggrResult<double>(aggr_table, DataType::kDouble);
+        CheckSumAggrResult<double>(aggr_table, DataType::kDouble, aggregator);
         ASSERT_EQ(last_buffer->aggr_val_.vdouble, static_cast<double>(100));
         ASSERT_EQ(last_buffer->non_null_cnt_, static_cast<int64_t>(1));
         counter += 2;
         ASSERT_TRUE(GetUpdatedResult(counter, "col_null", "sum", "1d", aggregator, aggr_table, &last_buffer));
-        CheckSumAggrResult<int64_t>(aggr_table, DataType::kInt, 1);
+        CheckSumAggrResult<int64_t>(aggr_table, DataType::kInt, aggregator, 1);
         ASSERT_EQ(last_buffer->aggr_val_.vlong, static_cast<int64_t>(0));
         ASSERT_EQ(last_buffer->non_null_cnt_, static_cast<int64_t>(0));
     }
@@ -742,8 +766,27 @@ TEST_F(AggregatorTest, OutOfOrder) {
     ASSERT_TRUE(ok);
     ASSERT_EQ(aggr_table->GetRecordCnt(), 51);
     auto it = aggr_table->NewTraverseIterator(0);
-    it->Seek(key + "|", 25 * 1000 + 100);
-    if (it->Valid()) {
+    it->Seek(key, 25 * 1000 + 100);
+    ASSERT_TRUE(it->Valid());
+
+    // the updated agg val
+    auto val = it->GetValue();
+    std::string origin_data = val.ToString();
+    codec::RowView origin_row_view(aggr_table_meta.column_desc(),
+                                   reinterpret_cast<int8_t*>(const_cast<char*>(origin_data.c_str())),
+                                   origin_data.size());
+    int32_t origin_cnt = 0;
+    char* ch = NULL;
+    uint32_t ch_length = 0;
+    origin_row_view.GetInt32(3, &origin_cnt);
+    origin_row_view.GetString(4, &ch, &ch_length);
+    ASSERT_EQ(origin_cnt, 3);
+    int32_t update_val = *reinterpret_cast<int32_t*>(ch);
+    ASSERT_EQ(update_val, 201);
+
+    // the old agg val
+    it->Next();
+    {
         auto val = it->GetValue();
         std::string origin_data = val.ToString();
         codec::RowView origin_row_view(aggr_table_meta.column_desc(),
@@ -754,9 +797,327 @@ TEST_F(AggregatorTest, OutOfOrder) {
         uint32_t ch_length = 0;
         origin_row_view.GetInt32(3, &origin_cnt);
         origin_row_view.GetString(4, &ch, &ch_length);
-        ASSERT_EQ(origin_cnt, 3);
+        ASSERT_EQ(origin_cnt, 2);
         int32_t update_val = *reinterpret_cast<int32_t*>(ch);
-        ASSERT_EQ(update_val, 201);
+        ASSERT_EQ(update_val, 101);
+    }
+    ::openmldb::base::RemoveDirRecursive(folder);
+}
+
+TEST_F(AggregatorTest, OutOfOrderCountWhere) {
+    std::map<std::string, std::string> map;
+    std::string folder = "/tmp/" + GenRand() + "/";
+    uint32_t id = counter++;
+    ::openmldb::api::TableMeta base_table_meta;
+    base_table_meta.set_tid(id);
+    AddDefaultAggregatorBaseSchema(&base_table_meta);
+    id = counter++;
+    ::openmldb::api::TableMeta aggr_table_meta;
+    aggr_table_meta.set_tid(id);
+    AddDefaultAggregatorSchema(&aggr_table_meta);
+    std::shared_ptr<Table> aggr_table = std::make_shared<MemTable>(aggr_table_meta);
+    aggr_table->Init();
+    std::shared_ptr<LogReplicator> replicator = std::make_shared<LogReplicator>(
+        aggr_table->GetId(), aggr_table->GetPid(), folder, map, ::openmldb::replica::kLeaderNode);
+    replicator->Init();
+    auto aggr = CreateAggregator(base_table_meta, aggr_table_meta, aggr_table, replicator, 0, "col3", "count_where",
+                                 "ts_col", "1s", "low_card");
+    std::shared_ptr<LogReplicator> base_replicator = std::make_shared<LogReplicator>(
+        base_table_meta.tid(), base_table_meta.pid(), folder, map, ::openmldb::replica::kLeaderNode);
+    base_replicator->Init();
+    aggr->Init(base_replicator);
+    codec::RowBuilder row_builder(base_table_meta.column_desc());
+    ASSERT_TRUE(UpdateAggr(aggr, &row_builder));
+    ASSERT_EQ(aggr_table->GetRecordCnt(), 99);
+    std::string encoded_row;
+    uint32_t row_size = row_builder.CalTotalLength(9);
+    encoded_row.resize(row_size);
+    std::string key = "id1|id2";
+    // out of order update
+    row_builder.SetBuffer(reinterpret_cast<int8_t*>(&(encoded_row[0])), row_size);
+    row_builder.AppendString("id1", 3);
+    row_builder.AppendString("id2", 3);
+    row_builder.AppendTimestamp(static_cast<int64_t>(25) * 1000);
+    row_builder.AppendInt32(100);
+    row_builder.AppendInt16(100);
+    row_builder.AppendInt64(100);
+    row_builder.AppendFloat(static_cast<float>(4));
+    row_builder.AppendDouble(static_cast<double>(5));
+    row_builder.AppendDate(100);
+    row_builder.AppendString("abc", 3);
+    row_builder.AppendNULL();
+    row_builder.AppendInt32(0);
+    bool ok = aggr->Update(key, encoded_row, 101);
+    ASSERT_TRUE(ok);
+    ASSERT_EQ(aggr_table->GetRecordCnt(), 100);
+    auto it = aggr_table->NewTraverseIterator(0);
+    it->Seek(key, 25 * 1000 + 100);
+    ASSERT_TRUE(it->Valid());
+
+    // the updated agg val
+    auto val = it->GetValue();
+    codec::RowView origin_row_view(aggr_table_meta.column_desc(),
+                                   reinterpret_cast<int8_t*>(const_cast<char*>(val.data())),
+                                   val.size());
+    int32_t origin_cnt = 0;
+    char* ch = NULL;
+    uint32_t ch_length = 0;
+    origin_row_view.GetInt32(3, &origin_cnt);
+    origin_row_view.GetString(4, &ch, &ch_length);
+    ASSERT_EQ(origin_cnt, 2);
+    int64_t update_val = *reinterpret_cast<int64_t*>(ch);
+    ASSERT_EQ(update_val, 2);
+
+    // the old agg val
+    it->Next();
+    {
+        auto val = it->GetValue();
+        codec::RowView origin_row_view(aggr_table_meta.column_desc(),
+                                       reinterpret_cast<int8_t*>(const_cast<char*>(val.data())),
+                                       val.size());
+        int32_t origin_cnt = 0;
+        char* ch = NULL;
+        uint32_t ch_length = 0;
+        origin_row_view.GetInt32(3, &origin_cnt);
+        origin_row_view.GetString(4, &ch, &ch_length);
+        ASSERT_EQ(origin_cnt, 1);
+        int64_t update_val = *reinterpret_cast<int64_t*>(ch);
+        ASSERT_EQ(update_val, 1);
+    }
+    it->SeekToFirst();
+    while (it->Valid()) {
+        ASSERT_EQ(key, it->GetPK());
+        auto val = it->GetValue();
+        codec::RowView row_view(aggr_table_meta.column_desc(),
+                                       reinterpret_cast<int8_t*>(const_cast<char*>(val.data())),
+                                       val.size());
+        std::string pk, fk;
+        int64_t ts_start, ts_end;
+        int num_rows;
+        row_view.GetStrValue(0, &pk);
+        row_view.GetStrValue(6, &fk);
+        row_view.GetTimestamp(1, &ts_start);
+        row_view.GetTimestamp(2, &ts_end);
+        row_view.GetInt32(3, &num_rows);
+        char* ch = NULL;
+        uint32_t ch_length = 0;
+        row_view.GetString(4, &ch, &ch_length);
+        int64_t update_val = *reinterpret_cast<int64_t*>(ch);
+        DLOG(INFO) << pk << "|" << fk << " [" << ts_start << ", " << ts_end << "]"
+                   << ", num_rows: " << num_rows << ", update_val:" << update_val;
+        it->Next();
+    }
+    ::openmldb::base::RemoveDirRecursive(folder);
+}
+
+TEST_F(AggregatorTest, AlignedCountWhere) {
+    std::map<std::string, std::string> map;
+    std::string folder = "/tmp/" + GenRand() + "/";
+    uint32_t id = counter++;
+    ::openmldb::api::TableMeta base_table_meta;
+    base_table_meta.set_tid(id);
+    AddDefaultAggregatorBaseSchema(&base_table_meta);
+    id = counter++;
+    ::openmldb::api::TableMeta aggr_table_meta;
+    aggr_table_meta.set_tid(id);
+    AddDefaultAggregatorSchema(&aggr_table_meta);
+    std::shared_ptr<Table> aggr_table = std::make_shared<MemTable>(aggr_table_meta);
+    aggr_table->Init();
+    std::shared_ptr<LogReplicator> replicator = std::make_shared<LogReplicator>(
+        aggr_table->GetId(), aggr_table->GetPid(), folder, map, ::openmldb::replica::kLeaderNode);
+    replicator->Init();
+    auto aggr = CreateAggregator(base_table_meta, aggr_table_meta, aggr_table, replicator, 0, "col3", "count_where",
+                                 "ts_col", "1s", "low_card");
+    std::shared_ptr<LogReplicator> base_replicator = std::make_shared<LogReplicator>(
+        base_table_meta.tid(), base_table_meta.pid(), folder, map, ::openmldb::replica::kLeaderNode);
+    base_replicator->Init();
+    aggr->Init(base_replicator);
+    codec::RowBuilder row_builder(base_table_meta.column_desc());
+    ASSERT_TRUE(UpdateAggr(aggr, &row_builder));
+    ASSERT_EQ(aggr_table->GetRecordCnt(), 99);
+    std::string encoded_row;
+    uint32_t row_size = row_builder.CalTotalLength(9);
+    encoded_row.resize(row_size);
+    std::string key = "id1|id2";
+
+    // curr batch range cannot cover the new row
+    {
+        int64_t cur_ts = 200;
+        row_builder.SetBuffer(reinterpret_cast<int8_t*>(&(encoded_row[0])), row_size);
+        row_builder.AppendString("id1", 3);
+        row_builder.AppendString("id2", 3);
+        row_builder.AppendTimestamp(cur_ts * 1000 + 500);
+        row_builder.AppendInt32(cur_ts);
+        row_builder.AppendInt16(cur_ts);
+        row_builder.AppendInt64(cur_ts);
+        row_builder.AppendFloat(static_cast<float>(cur_ts));
+        row_builder.AppendDouble(static_cast<double>(cur_ts));
+        row_builder.AppendDate(cur_ts);
+        row_builder.AppendString("abc", 3);
+        row_builder.AppendNULL();
+        row_builder.AppendInt32(0);
+        bool ok = aggr->Update(key, encoded_row, 101);
+        ASSERT_TRUE(ok);
+        ASSERT_EQ(aggr_table->GetRecordCnt(), 100);
+        AggrBuffer* last_buffer;
+        aggr->GetAggrBuffer(key, "0", &last_buffer);
+        // the curr buffer will be [cur_ts * 1000, cur_ts * 1000 + window_size - 1]
+        ASSERT_EQ(cur_ts * 1000, last_buffer->ts_begin_);
+        ASSERT_EQ(cur_ts * 1000 + aggr->GetWindowSize() - 1, last_buffer->ts_end_);
+
+        auto it = aggr_table->NewTraverseIterator(0);
+        it->SeekToFirst();
+        ASSERT_TRUE(it->Valid());
+        // the batch range persistent in table will be
+        // [0, 999] with filter key 0, [0, 999] with filter key 1,
+        // [1000, 1999] with filter key 0, [1000, 1999] with filter key 1,
+        // ..., [48000, 48999] with filter key 0, [48000, 48999] with filter key 1,
+        // [49000, 49999] with filter key 0, [50000, 50999] with filter key 0
+        cur_ts = 50;
+        while (it->Valid()) {
+            ASSERT_EQ(key, it->GetPK());
+            auto val = it->GetValue();
+            codec::RowView row_view(aggr_table_meta.column_desc(),
+                                    reinterpret_cast<int8_t*>(const_cast<char*>(val.data())), val.size());
+            std::string pk, fk;
+            int64_t ts_start, ts_end;
+            int num_rows;
+            row_view.GetStrValue(0, &pk);
+            row_view.GetStrValue(6, &fk);
+            row_view.GetTimestamp(1, &ts_start);
+            row_view.GetTimestamp(2, &ts_end);
+            row_view.GetInt32(3, &num_rows);
+            char* ch = NULL;
+            uint32_t ch_length = 0;
+            row_view.GetString(4, &ch, &ch_length);
+            int64_t update_val = *reinterpret_cast<int64_t*>(ch);
+            DLOG(INFO) << pk << "|" << fk << " [" << ts_start << ", " << ts_end << "]"
+                       << ", num_rows: " << num_rows << ", update_val:" << update_val;
+            ASSERT_EQ(cur_ts * 1000, ts_start);
+            ASSERT_EQ(cur_ts * 1000 + aggr->GetWindowSize() - 1, ts_end);
+            if (cur_ts == 50 || cur_ts == 49) {
+                cur_ts--;
+            } else if (fk == "0") {
+                cur_ts--;
+            }
+            it->Next();
+        }
+    }
+
+    // there is no aggr entries with this filter key
+    {
+        int cur_ts = 40;
+        row_builder.SetBuffer(reinterpret_cast<int8_t*>(&(encoded_row[0])), row_size);
+        row_builder.AppendString("id1", 3);
+        row_builder.AppendString("id2", 3);
+        row_builder.AppendTimestamp(cur_ts * 1000 + 500);
+        row_builder.AppendInt32(cur_ts);
+        row_builder.AppendInt16(cur_ts);
+        row_builder.AppendInt64(cur_ts);
+        row_builder.AppendFloat(static_cast<float>(cur_ts));
+        row_builder.AppendDouble(static_cast<double>(cur_ts));
+        row_builder.AppendDate(cur_ts);
+        row_builder.AppendString("abc", 3);
+        row_builder.AppendNULL();
+        // filter key 2 not exists previously
+        row_builder.AppendInt32(2);
+        bool ok = aggr->Update(key, encoded_row, 101);
+        ASSERT_TRUE(ok);
+        ASSERT_EQ(aggr_table->GetRecordCnt(), 100);
+        AggrBuffer* last_buffer;
+        aggr->GetAggrBuffer(key, "2", &last_buffer);
+        // the curr buffer will be [cur_ts * 1000, cur_ts * 1000 + window_size - 1]
+        ASSERT_EQ(cur_ts * 1000, last_buffer->ts_begin_);
+        ASSERT_EQ(cur_ts * 1000 + aggr->GetWindowSize() - 1, last_buffer->ts_end_);
+
+        auto it = aggr_table->NewTraverseIterator(0);
+        it->SeekToFirst();
+        ASSERT_TRUE(it->Valid());
+        // the batch range persistent in table will be
+        // [0, 999] with filter key 0, [0, 999] with filter key 1,
+        // [1000, 1999] with filter key 0, [1000, 1999] with filter key 1,
+        // ..., [48000, 48999] with filter key 0, [48000, 48999] with filter key 1,
+        // [49000, 49999] with filter key 0, [50000, 50999] with filter key 0
+        cur_ts = 50;
+        while (it->Valid()) {
+            ASSERT_EQ(key, it->GetPK());
+            auto val = it->GetValue();
+            codec::RowView row_view(aggr_table_meta.column_desc(),
+                                    reinterpret_cast<int8_t*>(const_cast<char*>(val.data())), val.size());
+            std::string pk, fk;
+            int64_t ts_start, ts_end;
+            int num_rows;
+            row_view.GetStrValue(0, &pk);
+            row_view.GetStrValue(6, &fk);
+            row_view.GetTimestamp(1, &ts_start);
+            row_view.GetTimestamp(2, &ts_end);
+            row_view.GetInt32(3, &num_rows);
+            ASSERT_EQ(cur_ts * 1000, ts_start);
+            ASSERT_EQ(cur_ts * 1000 + aggr->GetWindowSize() - 1, ts_end);
+            if (cur_ts == 50 || cur_ts == 49) {
+                cur_ts--;
+            } else if (fk == "0") {
+                cur_ts--;
+            }
+            it->Next();
+        }
+    }
+
+    // filter key is empty
+    {
+        int cur_ts = 25;
+        row_builder.SetBuffer(reinterpret_cast<int8_t*>(&(encoded_row[0])), row_size);
+        row_builder.AppendString("id1", 3);
+        row_builder.AppendString("id2", 3);
+        row_builder.AppendTimestamp(cur_ts * 1000 + 500);
+        row_builder.AppendInt32(cur_ts);
+        row_builder.AppendInt16(cur_ts);
+        row_builder.AppendInt64(cur_ts);
+        row_builder.AppendFloat(static_cast<float>(cur_ts));
+        row_builder.AppendDouble(static_cast<double>(cur_ts));
+        row_builder.AppendDate(cur_ts);
+        row_builder.AppendString("abc", 3);
+        row_builder.AppendNULL();
+        // filter key is null
+        row_builder.AppendNULL();
+        bool ok = aggr->Update(key, encoded_row, 101);
+        ASSERT_TRUE(ok);
+        ASSERT_EQ(aggr_table->GetRecordCnt(), 100);
+        AggrBuffer* last_buffer;
+        aggr->GetAggrBuffer(key, &last_buffer);
+        // the curr buffer will be [cur_ts * 1000, cur_ts * 1000 + window_size - 1]
+        ASSERT_EQ(cur_ts * 1000, last_buffer->ts_begin_);
+        ASSERT_EQ(cur_ts * 1000 + aggr->GetWindowSize() - 1, last_buffer->ts_end_);
+
+        auto it = aggr_table->NewTraverseIterator(0);
+        it->SeekToFirst();
+        ASSERT_TRUE(it->Valid());
+        // the batch range persistent in table will be
+        // [0, 999] with filter key 0, [0, 999] with filter key 1,
+        // [1000, 1999] with filter key 0, [1000, 1999] with filter key 1,
+        // ..., [48000, 48999] with filter key 0, [48000, 48999] with filter key 1,
+        // [49000, 49999] with filter key 0, [50000, 50999] with filter key 0
+        cur_ts = 50;
+        while (it->Valid()) {
+            ASSERT_EQ(key, it->GetPK());
+            auto val = it->GetValue();
+            codec::RowView row_view(aggr_table_meta.column_desc(),
+                                    reinterpret_cast<int8_t*>(const_cast<char*>(val.data())), val.size());
+            std::string pk, fk;
+            int64_t ts_start, ts_end;
+            row_view.GetStrValue(0, &pk);
+            row_view.GetStrValue(6, &fk);
+            row_view.GetTimestamp(1, &ts_start);
+            row_view.GetTimestamp(2, &ts_end);
+            ASSERT_EQ(cur_ts * 1000, ts_start);
+            ASSERT_EQ(cur_ts * 1000 + aggr->GetWindowSize() - 1, ts_end);
+            if (cur_ts == 50 || cur_ts == 49) {
+                cur_ts--;
+            } else if (fk == "0") {
+                cur_ts--;
+            }
+            it->Next();
+        }
     }
     ::openmldb::base::RemoveDirRecursive(folder);
 }

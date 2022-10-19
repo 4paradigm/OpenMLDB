@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!DOCTYPE suite SYSTEM "http://testng.org/testng-1.0.dtd">
+<suite name="test_upgrade" parallel="false" thread-count="2">
+    <test name="openmldb-upgrade-test">
+        <parameter name="env" value="cluster"/>
+        <parameter name="version" value="0.5.3"/>
+        <parameter name="upgradeVersion" value="0.6.0"/>
+        <classes>
+            <class name="com._4paradigm.openmldb.devops_test.upgrade_test.UpgradeClusterByCLI">
+            </class>
+
+        </classes>
+    </test>
+</suite>

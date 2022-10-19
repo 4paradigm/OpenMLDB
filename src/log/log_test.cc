@@ -25,7 +25,7 @@
 #include <vector>
 
 #include "base/file_util.h"
-#include "base/glog_wapper.h"
+#include "base/glog_wrapper.h"
 #include "config.h"  // NOLINT
 #include "log/coding.h"
 #include "log/crc32c.h"

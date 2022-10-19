@@ -108,6 +108,38 @@ bool MemoryWindowDecodeIRBuilder::BuildInnerRangeList(::llvm::Value* list_ptr,
     return true;
 }
 
+bool MemoryWindowDecodeIRBuilder::BuildInnerRowsRangeList(::llvm::Value* list_ptr, ::llvm::Value* row_key,
+                                                          int64_t start_rows, int64_t end_range,
+                                                          ::llvm::Value** output) {
+    if (list_ptr == NULL || output == NULL) {
+        LOG(WARNING) << "input args have null";
+        return false;
+    }
+    if (list_ptr == NULL || output == NULL) {
+        LOG(WARNING) << "input args have null ptr";
+        return false;
+    }
+    ::llvm::IRBuilder<> builder(block_);
+    ::llvm::Type* i8_ty = builder.getInt8Ty();
+    ::llvm::Type* i8_ptr_ty = builder.getInt8PtrTy();
+    ::llvm::Type* i32_ty = builder.getInt32Ty();
+    ::llvm::Type* i64_ty = builder.getInt64Ty();
+    uint32_t inner_list_size = sizeof(::hybridse::codec::InnerRowsRangeList<hybridse::codec::Row>);
+    // alloca memory on stack for col iterator
+    ::llvm::ArrayType* array_type = ::llvm::ArrayType::get(i8_ty, inner_list_size);
+    ::llvm::Value* inner_list_ptr = CreateAllocaAtHead(&builder, array_type, "sub_window_alloca");
+    inner_list_ptr = builder.CreatePointerCast(inner_list_ptr, i8_ptr_ty);
+
+    ::llvm::Value* val_start_offset = builder.getInt64(start_rows);
+    ::llvm::Value* val_end_offset = builder.getInt64(end_range);
+    ::llvm::FunctionCallee callee = block_->getModule()->getOrInsertFunction(
+        "hybridse_storage_get_inner_rows_range_list", i32_ty, i8_ptr_ty, i64_ty, i64_ty, i64_ty, i8_ptr_ty);
+    builder.CreateCall(
+        callee, ::llvm::ArrayRef<::llvm::Value*>{list_ptr, row_key, val_start_offset, val_end_offset, inner_list_ptr});
+    *output = inner_list_ptr;
+    return true;
+}
+
 bool MemoryWindowDecodeIRBuilder::BuildGetCol(size_t schema_idx, size_t col_idx,
                                               ::llvm::Value* window_ptr,
                                               ::llvm::Value** output) {

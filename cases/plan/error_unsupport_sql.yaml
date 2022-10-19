@@ -96,9 +96,6 @@ cases:
     sql: |
       SELECT SUM(COL1), SUM(COL) over w1 FROM t1
       window as w1(partition by col0 order by col5 rows between 100 preceding and current row);
-  - id: delete_table
-    sql: |
-      delete from t1 where id = 12;
   - id: delete_job_2
     desc: abc here is not job id but alias
     sql: |

@@ -30,11 +30,13 @@
 #include "gflags/gflags.h"
 #include "sdk/db_sdk.h"
 #include "sdk/sql_cluster_router.h"
+#include "sdk/sql_router.h"
 #include "version.h"  // NOLINT
 
 DEFINE_bool(interactive, true, "Set the interactive");
 DEFINE_string(database, "", "Set database");
 DECLARE_string(cmd);
+DEFINE_string(spark_conf, "", "The config file of Spark job");
 
 // cluster mode
 DECLARE_string(zk_cluster);
@@ -46,6 +48,11 @@ DECLARE_string(zk_log_file);
 // stand-alone mode
 DECLARE_string(host);
 DECLARE_int32(port);
+
+// rpc request timeout of CLI
+DECLARE_int32(request_timeout);
+
+DECLARE_int32(glog_level);
 
 namespace openmldb::cmd {
 const std::string LOGO =  // NOLINT
@@ -59,7 +66,7 @@ const std::string LOGO =  // NOLINT
     "        |_|                                                 \n";
 
 const std::string VERSION = std::to_string(OPENMLDB_VERSION_MAJOR) + "." +  // NOLINT
-                            std::to_string(OPENMLDB_VERSION_MINOR) + "." + std::to_string(OPENMLDB_VERSION_BUG) + "." +
+                            std::to_string(OPENMLDB_VERSION_MINOR) + "." + std::to_string(OPENMLDB_VERSION_BUG) + "-" +
                             OPENMLDB_COMMIT_ID;
 
 ::openmldb::sdk::DBSDK* cs = nullptr;
@@ -124,12 +131,19 @@ void HandleSQL(const std::string& sql) {
         }
     } else {
         std::cout << "Error: " << status.msg << std::endl;
+        if (sr->IsEnableTrace()) {
+            // trace has '\n' already
+            std::cout << status.trace;
+        }
     }
 }
 
 // cluster mode: if zk_cluster is not empty,
 // standalone mode:
 void Shell() {
+    if (!FLAGS_cmd.empty()) {
+        FLAGS_interactive = false;
+    }
     DCHECK(cs);
     DCHECK(sr);
     if (FLAGS_interactive) {
@@ -209,6 +223,7 @@ bool InitClusterSDK() {
     copt.zk_session_timeout = FLAGS_zk_session_timeout;
     copt.zk_log_level = FLAGS_zk_log_level;
     copt.zk_log_file = FLAGS_zk_log_file;
+
     cs = new ::openmldb::sdk::ClusterSDK(copt);
     if (!cs->Init()) {
         std::cout << "ERROR: Failed to connect to db" << std::endl;
@@ -220,10 +235,17 @@ bool InitClusterSDK() {
         return false;
     }
     sr->SetInteractive(FLAGS_interactive);
+
+    auto ops = std::dynamic_pointer_cast<sdk::SQLRouterOptions>(sr->GetRouterOptions());
+    ops->spark_conf_path = FLAGS_spark_conf;
+    ops->request_timeout = FLAGS_request_timeout;
+
     return true;
 }
 
 void ClusterSQLClient() {
+    // setup here cuz init xx sdk will print log too
+    base::SetupGlog();
     if (!InitClusterSDK()) {
         return;
     }
@@ -248,10 +270,13 @@ bool InitStandAloneSDK() {
         return false;
     }
     sr->SetInteractive(FLAGS_interactive);
+    auto ops = sr->GetRouterOptions();
+    ops->request_timeout = FLAGS_request_timeout;
     return true;
 }
 
 void StandAloneSQLClient() {
+    base::SetupGlog();
     if (!InitStandAloneSDK()) {
         return;
     }

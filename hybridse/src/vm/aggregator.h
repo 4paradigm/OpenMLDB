@@ -41,6 +41,8 @@ class BaseAggregator {
 
     virtual ~BaseAggregator() {}
 
+    // update aggregator states by encoded string
+    // used usually by update states from pre-agg talbe (encoded multi-rows)
     virtual void Update(const std::string& val) = 0;
 
     // output final row
@@ -236,7 +238,7 @@ class CountAggregator : public Aggregator<int64_t> {
         : Aggregator<int64_t>(type, output_schema, 0) {}
 
     // val is assumed to be not null
-    void UpdateValue(const int64_t& val = 1) override {
+    void UpdateValue(const int64_t& val) override {
         this->val_ += val;
         this->counter_++;
         DLOG(INFO) << "Update " << Type_Name(this->type_) << " val " << val << ", count = " << this->val_;

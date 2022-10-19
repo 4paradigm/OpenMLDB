@@ -22,6 +22,7 @@ class FedbResult():
         self.resultSchema = None
         self.msg = None
         self.rs = None
+        self.deployment = None
 
     def __str__(self):
         resultStr = "FesqlResult{ok=" + str(self.ok) + ", count=" + str(self.count) + ", msg=" + str(self.msg) + "}"

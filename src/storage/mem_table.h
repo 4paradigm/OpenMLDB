@@ -38,85 +38,6 @@ namespace storage {
 
 typedef google::protobuf::RepeatedPtrField<::openmldb::api::Dimension> Dimensions;
 
-class MemTableWindowIterator : public ::hybridse::vm::RowIterator {
- public:
-    MemTableWindowIterator(TimeEntries::Iterator* it, ::openmldb::storage::TTLType ttl_type, uint64_t expire_time,
-                           uint64_t expire_cnt)
-        : it_(it), record_idx_(1), expire_value_(expire_time, expire_cnt, ttl_type), row_() {}
-
-    ~MemTableWindowIterator() { delete it_; }
-
-    bool Valid() const override {
-        if (!it_->Valid() || expire_value_.IsExpired(it_->GetKey(), record_idx_)) {
-            return false;
-        }
-        return true;
-    }
-
-    void Next() override {
-        it_->Next();
-        record_idx_++;
-    }
-
-    const uint64_t& GetKey() const override { return it_->GetKey(); }
-
-    // TODO(wangtaize) unify the row object
-    const ::hybridse::codec::Row& GetValue() override {
-        row_.Reset(reinterpret_cast<const int8_t*>(it_->GetValue()->data), it_->GetValue()->size);
-        return row_;
-    }
-
-    void Seek(const uint64_t& key) override { it_->Seek(key); }
-    void SeekToFirst() override {
-        record_idx_ = 1;
-        it_->SeekToFirst();
-    }
-    bool IsSeekable() const override { return true; }
-
- private:
-    TimeEntries::Iterator* it_;
-    uint32_t record_idx_;
-    TTLSt expire_value_;
-    ::hybridse::codec::Row row_;
-};
-
-class MemTableKeyIterator : public ::hybridse::vm::WindowIterator {
- public:
-    MemTableKeyIterator(Segment** segments, uint32_t seg_cnt, ::openmldb::storage::TTLType ttl_type,
-                        uint64_t expire_time, uint64_t expire_cnt, uint32_t ts_index);
-
-    ~MemTableKeyIterator() override;
-
-    void Seek(const std::string& key) override;
-
-    void SeekToFirst() override;
-
-    void Next() override;
-
-    bool Valid() override;
-
-    std::unique_ptr<::hybridse::vm::RowIterator> GetValue() override;
-    ::hybridse::vm::RowIterator* GetRawValue() override;
-
-    const hybridse::codec::Row GetKey() override;
-
- private:
-    void NextPK();
-
- private:
-    Segment** segments_;
-    uint32_t const seg_cnt_;
-    uint32_t seg_idx_;
-    KeyEntries::Iterator* pk_it_;
-    TimeEntries::Iterator* it_;
-    ::openmldb::storage::TTLType ttl_type_;
-    uint64_t expire_time_;
-    uint64_t expire_cnt_;
-    uint32_t ts_index_{};
-    Ticket ticket_;
-    uint32_t ts_idx_;
-};
-
 class MemTableTraverseIterator : public TraverseIterator {
  public:
     MemTableTraverseIterator(Segment** segments, uint32_t seg_cnt, ::openmldb::storage::TTLType ttl_type,
@@ -206,10 +127,6 @@ class MemTable : public Table {
     bool IsExpire(const ::openmldb::api::LogEntry& entry) override;
 
     inline bool GetExpireStatus() { return enable_gc_.load(std::memory_order_relaxed); }
-
-    inline void RecordCntIncr() { record_cnt_.fetch_add(1, std::memory_order_relaxed); }
-
-    inline void RecordCntIncr(uint32_t cnt) { record_cnt_.fetch_add(cnt, std::memory_order_relaxed); }
 
     inline uint32_t GetKeyEntryHeight() const { return key_entry_max_height_; }
 

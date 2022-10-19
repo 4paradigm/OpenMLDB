@@ -151,6 +151,9 @@ void InitBuiltinJitSymbols(HybridSeJitWrapper* jit) {
     jit->AddExternalFunction(
         "hybridse_storage_get_inner_rows_list",
         reinterpret_cast<void*>(&codec::v1::GetInnerRowsList));
+    jit->AddExternalFunction(
+        "hybridse_storage_get_inner_rows_range_list",
+        reinterpret_cast<void*>(&codec::v1::GetInnerRowsRangeList));
 
     // encode
     jit->AddExternalFunction("hybridse_storage_encode_int16_field",

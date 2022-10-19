@@ -34,7 +34,6 @@ import org.apache.curator.framework.recipes.cache.NodeCache;
 import org.apache.curator.framework.recipes.cache.NodeCacheListener;
 import org.apache.curator.retry.ExponentialBackoffRetry;
 import org.apache.zookeeper.data.Stat;
-
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -365,7 +364,7 @@ public class TaskManagerClient {
     }
 
     /**
-     * Submit job to show batch version.
+     * Get job log.
      */
     public String getJobLog(int id) throws Exception {
         TaskManager.GetJobLogRequest request = TaskManager.GetJobLogRequest.newBuilder()
@@ -377,6 +376,15 @@ public class TaskManagerClient {
             throw new Exception(errorMessage);
         }
         return response.getLog();
+    }
+
+    public ArrayList<String> getVersion() throws Exception {
+        TaskManager.GetVersionResponse response = taskManagerInterface.GetVersion(
+                TaskManager.EmptyMessage.newBuilder().build());
+        ArrayList<String> versions = new ArrayList<>();
+        versions.add(response.getTaskmanagerVersion());
+        versions.add(response.getBatchVersion());
+        return versions;
     }
 
     /**

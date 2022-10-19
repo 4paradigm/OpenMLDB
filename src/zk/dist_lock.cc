@@ -16,7 +16,7 @@
 
 #include "zk/dist_lock.h"
 
-#include "base/glog_wapper.h"  // NOLINT
+#include "base/glog_wrapper.h"
 #include "boost/algorithm/string/join.hpp"
 #include "boost/bind.hpp"
 extern "C" {
@@ -84,7 +84,7 @@ void DistLock::HandleChildrenChanged(const std::vector<std::string>& children) {
         return;
     }
     current_lock_node_ = "";
-    if (children.size() > 0) {
+    if (!children.empty()) {
         current_lock_node_ = root_path_ + "/" + children[0];
     }
     PDLOG(INFO, "first child %s", current_lock_node_.c_str());

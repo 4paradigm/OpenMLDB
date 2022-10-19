@@ -513,9 +513,8 @@ INSTANTIATE_TEST_SUITE_P(EngineFailQuery, EngineTest,
 INSTANTIATE_TEST_SUITE_P(EngineTestFzTest, EngineTest,
                         testing::ValuesIn(sqlcase::InitCases("/cases/query/fz_sql.yaml")));
 
-// INSTANTIATE_TEST_SUITE_P(
-//     EngineTestFzTempTest, EngineTest,
-//     testing::ValuesIn(sqlcase::InitCases("/cases/query/fz_temp.yaml")));
+INSTANTIATE_TEST_SUITE_P(LimitClauseQuery, EngineTest,
+                        testing::ValuesIn(sqlcase::InitCases("/cases/query/limit.yaml")));
 
 INSTANTIATE_TEST_SUITE_P(EngineSimpleQuery, EngineTest,
                         testing::ValuesIn(sqlcase::InitCases("/cases/query/simple_query.yaml")));
@@ -556,6 +555,12 @@ INSTANTIATE_TEST_SUITE_P(
     EngineTestWindowRowsRangeQuery, EngineTest,
     testing::ValuesIn(sqlcase::InitCases("/cases/function/window/test_window_row_range.yaml")));
 
+INSTANTIATE_TEST_SUITE_P(
+    EngineTestWindowRowsCurrentRow, EngineTest,
+    testing::ValuesIn(sqlcase::InitCases("/cases/function/window/test_current_row.yaml")));
+
+INSTANTIATE_TEST_SUITE_P(EngineTestWindowAttributes, EngineTest,
+                         testing::ValuesIn(sqlcase::InitCases("/cases/function/window/window_attributes.yaml")));
 INSTANTIATE_TEST_SUITE_P(EngineTestWindowUnion, EngineTest,
                         testing::ValuesIn(sqlcase::InitCases("/cases/function/window/test_window_union.yaml")));
 INSTANTIATE_TEST_SUITE_P(EngineTestWindowMaxSize, EngineTest,

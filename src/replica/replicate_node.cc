@@ -20,7 +20,7 @@
 
 #include <algorithm>
 
-#include "base/glog_wapper.h"  // NOLINT
+#include "base/glog_wrapper.h"
 #include "base/strings.h"
 
 DECLARE_int32(binlog_sync_batch_size);

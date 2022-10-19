@@ -21,6 +21,8 @@
 #include <string>
 #include <vector>
 
+#include "absl/strings/ascii.h"
+#include "absl/strings/substitute.h"
 #include "boost/algorithm/string.hpp"
 #include "boost/filesystem/operations.hpp"
 #include "boost/lexical_cast.hpp"
@@ -1023,6 +1025,14 @@ bool SqlCase::CreateExpectFromYamlNode(const YAML::Node& schema_data,
         }
     }
 
+    if (schema_data["plan_tree_str"]) {
+        const auto& tree = schema_data["plan_tree_str"].as<std::string>();
+        absl::string_view sv = absl::StripAsciiWhitespace(tree);
+        if (!sv.empty()) {
+            expect->plan_tree_str_ = sv;
+        }
+    }
+
     YAML::Node rows_node;
     if (expect_provider["rows"]) {
         rows_node = expect_provider["rows"];
@@ -1562,46 +1572,41 @@ void InitCases(std::string yaml_path, std::vector<SqlCase>& cases,  // NOLINT
                const std::vector<std::string>& filters) {
     SqlCase::CreateSqlCasesFromYaml(hybridse::sqlcase::FindSqlCaseBaseDirPath(), yaml_path, cases, filters);
 }
-bool SqlCase::BuildCreateSpSqlFromInput(int32_t input_idx,
-                                        const std::string& select_sql,
-                                        const std::set<size_t>& common_idx,
-                                        std::string* create_sp_sql) {
+absl::StatusOr<std::string> SqlCase::BuildCreateSpSqlFromInput(int32_t input_idx,
+                                        absl::string_view select_sql,
+                                        const std::set<size_t>& common_idx) {
     type::TableDef table;
     if (!ExtractInputTableDef(table, input_idx)) {
-        LOG(WARNING) << "Fail to extract table schema";
-        return false;
+        return absl::FailedPreconditionError("Fail to extract table schema");
     }
-    if (!BuildCreateSpSqlFromSchema(table, select_sql, common_idx,
-                                    create_sp_sql)) {
-        LOG(WARNING) << "Fail to build create sql string";
-        return false;
-    }
-    return true;
+
+    return BuildCreateSpSqlFromSchema(table, select_sql, common_idx);
 }
 
-bool SqlCase::BuildCreateSpSqlFromSchema(const type::TableDef& table,
-                                         const std::string& select_sql,
-                                         const std::set<size_t>& common_idx,
-                                         std::string* create_sql) {
-    std::string sql = "CREATE Procedure " + sp_name_ + "(\n";
+absl::StatusOr<std::string> SqlCase::BuildCreateSpSqlFromSchema(const type::TableDef& table,
+                                                                absl::string_view select_sql,
+                                                                const std::set<size_t>& common_idx) {
+    auto sql_view = absl::StripAsciiWhitespace(select_sql);
+    std::string query_stmt(sql_view);
+    if (query_stmt.back() != ';') {
+        absl::StrAppend(&query_stmt, ";");
+    }
+
+    std::string sql = absl::Substitute("CREATE PROCEDURE $0 (\n", sp_name_);
     for (int i = 0; i < table.columns_size(); i++) {
         auto column = table.columns(i);
         if (!common_idx.empty() && common_idx.count(i)) {
-            sql.append("const ");
+            absl::StrAppend(&sql, "const ");
         }
-        sql.append(column.name()).append(" ").append(TypeString(column.type()));
+        absl::SubstituteAndAppend(&sql, "$0 $1", column.name(), TypeString(column.type()));
         if (i < table.columns_size() - 1) {
-            sql.append(",\n");
+            absl::StrAppend(&sql, ",\n");
         }
     }
-    sql.append(")\n");
-    sql.append("BEGIN\n");
-    sql.append(select_sql);
-    sql.append("\n");
-    sql.append("END;");
-    *create_sql = sql;
-    return true;
+    absl::SubstituteAndAppend(&sql, ")\nBEGIN\n$0\nEND;", query_stmt);
+    return sql;
 }
+
 std::set<std::string> SqlCase::HYBRIDSE_LEVEL() {
     const char* env_name = "HYBRIDSE_LEVEL";
     char* value = getenv(env_name);

@@ -1,0 +1,1012 @@
+# Copyright 2021 4Paradigm
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+db: test_db
+cases:
+- id: 1
+  desc: 多表-信用卡用户转借记卡预测场景
+  inputs:
+  - columns:
+    - "id int32"
+    - "cust_id_an int32"
+    - "ins_date timestamp"
+    - "Label int32"
+    indexs: ["index1:id:ins_date"]
+    rows:
+    - - -1985437192
+      - -1317908971
+      - 1611144215000
+      - -506221216
+    - - -906012118
+      - 122153399
+      - 1611144215000
+      - -2073586764
+    - - 192540564
+      - -1868891884
+      - 1611144215000
+      - -1291765609
+    - - -12339370
+      - -1068593442
+      - 1611144215000
+      - -1218544053
+    - - -1346508105
+      - 389329057
+      - 1611144215000
+      - 72100927
+    - - -1563970013
+      - 64743832
+      - 1611144215000
+      - -1456087176
+    - - -420456303
+      - 83758185
+      - 1611144215000
+      - 593328038
+    name: t1
+  - columns:
+    - "cust_id_an int32"
+    - "agmt_id_an int32"
+    - "atta_acct_ind string"
+    - "stmt_dt date"
+    - "open_acct_dt timestamp"
+    - "clos_acct_dt timestamp"
+    indexs: ["indext8:cust_id_an:open_acct_dt"]
+    rows:
+    - - -103578926
+      - -2129345374
+      - "atta_acct_ind_QSKoYcBykS"
+      - "2021-01-19"
+      - 1611144215000
+      - 1611144215000
+    - - -1738231442
+      - -1827648982
+      - "atta_acct_ind_YCzSZpWh36"
+      - "2021-01-01"
+      - 1611144215000
+      - 1611144215000
+    - - -313899349
+      - -620524833
+      - "atta_acct_ind_b06NdQiRiE"
+      - "2021-01-14"
+      - 1611144215000
+      - 1611144215000
+    - - -412596205
+      - -1082468256
+      - "atta_acct_ind_4rFa5IVSF4"
+      - "2021-01-02"
+      - 1611144215000
+      - 1611144215000
+    - - -48236232
+      - -170343294
+      - "atta_acct_ind_NU8FhCMOiL"
+      - "2021-01-11"
+      - 1611144215000
+      - 1611144215000
+    - - -1455816949
+      - 403926185
+      - "atta_acct_ind_yIDKZcJSaj"
+      - "2021-01-04"
+      - 1611144215000
+      - 1611144215000
+    - - 225487286
+      - 834608659
+      - "atta_acct_ind_xOG219V8NP"
+      - "2021-01-01"
+      - 1611144215000
+      - 1611144215000
+    name: t8
+  - columns:
+    - "cust_id_an int32"
+    - "agmt_id_an int32"
+    - "curr_ovrd_stat_cd string"
+    - "curr_yr_ovrd_cnt int32"
+    - "curr_yr_crdt_card_point double"
+    - "crdt_card_point double"
+    - "acct_stat_cd string"
+    - "consm_od_bal double"
+    - "cash_od_bal double"
+    - "amtbl_od_bal double"
+    - "spl_pay_bal double"
+    - "ovrd_bal double"
+    - "last_mth_stmt_amt double"
+    - "last_mth_consm_cnt int32"
+    - "m_consm_amt_accm double"
+    - "m_cash_amt_accm double"
+    - "m_amtbl_amt_accm double"
+    - "m_spl_pay_amt_accm double"
+    - "m_ovrd_bal_accm double"
+    - "data_date timestamp"
+    indexs: ["indext9:cust_id_an:data_date"]
+    rows:
+    - - -1965865733
+      - 181943904
+      - "curr_ovrd_stat_cd_pSWF7Z7UVZ"
+      - 288301759
+      - 10.03
+      - 57.38
+      - "acct_stat_cd_cTTBtj3JnQ"
+      - 30.94
+      - -53.93
+      - -81.51
+      - -111.3
+      - -101.78
+      - 68.7
+      - -1929310650
+      - 121.96
+      - -35.3
+      - -1.68
+      - 109.97
+      - 89.78
+      - 1611144215000
+    - - 305578483
+      - 594627092
+      - "curr_ovrd_stat_cd_KH7JIGfFuM"
+      - -583313456
+      - -109.77
+      - 22.53
+      - "acct_stat_cd_nrBFWkaCSO"
+      - -14.29
+      - 126.7
+      - 40.33
+      - 120.44
+      - -73.54
+      - 17.18
+      - -337679856
+      - -81.93
+      - -19.57
+      - -11.83
+      - 80.59
+      - 75.35
+      - 1611144215000
+    - - -501231072
+      - 22230390
+      - "curr_ovrd_stat_cd_Mwu1mCxGqn"
+      - 1039709568
+      - -113.24
+      - -108.36
+      - "acct_stat_cd_co20Q23EM8"
+      - -58.61
+      - -73.54
+      - -98.85
+      - -43.24
+      - 33.71
+      - -11.95
+      - -1818947456
+      - -59.67
+      - -62.73
+      - -51.21
+      - 50.64
+      - 90.51
+      - 1611144215000
+    - - -1832175587
+      - -991415524
+      - "curr_ovrd_stat_cd_H1NkAqnwqe"
+      - -1908516905
+      - -27.17
+      - 102.83
+      - "acct_stat_cd_pq3jTUtjF0"
+      - 91.15
+      - -83.81
+      - -69.61
+      - 127.86
+      - -86.14
+      - 56.68
+      - -1995257141
+      - 6.71
+      - 83.5
+      - -32.51
+      - -94.43
+      - 8.3
+      - 1611144215000
+    - - 611330902
+      - 679194351
+      - "curr_ovrd_stat_cd_HIlzlZymnH"
+      - -254111972
+      - 3.04
+      - 9.18
+      - "acct_stat_cd_PhHHTvGLTL"
+      - -75.39
+      - 15.09
+      - -18.1
+      - -104.29
+      - -49.22
+      - -100.48
+      - 730288655
+      - 58.18
+      - 8.3
+      - 11.78
+      - -91.13
+      - 6.87
+      - 1611144215000
+    - - 826069039
+      - 470439749
+      - "curr_ovrd_stat_cd_8JQvcEi7yJ"
+      - 811087014
+      - 85.17
+      - -97.16
+      - "acct_stat_cd_AFju4WMCgx"
+      - -108.14
+      - 117.13
+      - -93.99
+      - 70.68
+      - 107.57
+      - 98.27
+      - -891433275
+      - 35.0
+      - -33.36
+      - 127.18
+      - 25.36
+      - -64.98
+      - 1611144215000
+    - - -784663900
+      - -1192305947
+      - "curr_ovrd_stat_cd_U4Ophb2kIQ"
+      - 515010670
+      - 105.76
+      - 3.51
+      - "acct_stat_cd_Z1Kyb1mz7y"
+      - 9.64
+      - -28.33
+      - 60.18
+      - 117.39
+      - -24.18
+      - -0.82
+      - -1458522076
+      - 105.11
+      - -68.3
+      - -16.45
+      - -29.62
+      - 47.34
+      - 1611144215000
+    - - 808471893
+      - -2029597450
+      - "curr_ovrd_stat_cd_NMy2UGhIrf"
+      - -551211114
+      - -29.29
+      - -92.54
+      - "acct_stat_cd_HMcl6pIDg4"
+      - 6.99
+      - -111.57
+      - -124.1
+      - 85.09
+      - 113.05
+      - -25.19
+      - -928477688
+      - 110.96
+      - 14.01
+      - 95.6
+      - 4.15
+      - -56.27
+      - 1611144215000
+    - - -414811981
+      - -106781549
+      - "curr_ovrd_stat_cd_z5gVcFFs0m"
+      - -1846401879
+      - 11.12
+      - -56.57
+      - "acct_stat_cd_pbubmnmn1M"
+      - -63.85
+      - -47.45
+      - 124.76
+      - -120.79
+      - -70.46
+      - -42.95
+      - -1432475728
+      - -123.98
+      - 25.41
+      - -95.39
+      - -76.1
+      - 50.44
+      - 1611144215000
+    - - 352609173
+      - 748553820
+      - "curr_ovrd_stat_cd_qgOUkDJ1rQ"
+      - -932519461
+      - -80.07
+      - 75.8
+      - "acct_stat_cd_9AdRp2Spps"
+      - -102.28
+      - 88.3
+      - -15.75
+      - 108.03
+      - -127.15
+      - 94.95
+      - -1288349027
+      - 100.95
+      - 2.77
+      - 81.25
+      - -26.63
+      - 70.67
+      - 1611144215000
+    name: t9
+  - columns:
+    - "cust_id_an int32"
+    - "card_agmt_id_an int32"
+    - "pri_acct_id_an int32"
+    - "atta_card_ind string"
+    - "camp_org_id string"
+    - "prod_id string"
+    - "snp_gage_cd string"
+    - "crdt_card_lvl_cd string"
+    - "pin_card_dt date"
+    - "card_matr_yr_mth string"
+    - "sell_chnl_cd string"
+    - "card_org_cd string"
+    - "actv_chnl_cd string"
+    - "free_annl_fee_ind string"
+    - "annl_fee double"
+    - "bus_card_ind string"
+    - "matr_contn_card_ind string"
+    - "issu_card_dt timestamp"
+    - "actv_dt timestamp"
+    indexs: ["indext6:cust_id_an:actv_dt"]
+    rows:
+    - - 756930160
+      - -1362270267
+      - 820739577
+      - "atta_card_ind_4oS8b63mVd"
+      - "camp_org_id_BFbsLHpdSR"
+      - "prod_id_3m2TZ0si7Z"
+      - "snp_gage_cd_onOB021pP1"
+      - "crdt_card_lvl_cd_vQuD1gTTwe"
+      - "2021-01-12"
+      - "card_matr_yr_mth_tDIUWOk5ia"
+      - "sell_chnl_cd_FLfurUmdfR"
+      - "card_org_cd_piAFoPGMLH"
+      - "actv_chnl_cd_mTHr98b5Es"
+      - "free_annl_fee_ind_Lq3eblqZFw"
+      - 68.08
+      - "bus_card_ind_5KK6nTjOxr"
+      - "matr_contn_card_ind_S4hHwHdJNH"
+      - 1611144215000
+      - 1611144215000
+    - - 394465803
+      - -1469812793
+      - 46768555
+      - "atta_card_ind_MEbCAC4sCs"
+      - "camp_org_id_gV8Zs3vkri"
+      - "prod_id_Pk1B3xv6JA"
+      - "snp_gage_cd_ZgHDu3hZbx"
+      - "crdt_card_lvl_cd_Etc9TpL5u7"
+      - "2021-01-02"
+      - "card_matr_yr_mth_AMweyZaygN"
+      - "sell_chnl_cd_dV661JROf4"
+      - "card_org_cd_8nvfaf471b"
+      - "actv_chnl_cd_nmjPCpzA37"
+      - "free_annl_fee_ind_0yvInU4aXe"
+      - -4.02
+      - "bus_card_ind_gDjvmuKOo9"
+      - "matr_contn_card_ind_MgCwGwHYy4"
+      - 1611144215000
+      - 1611144215000
+    - - -1915196249
+      - 715245555
+      - -1037414536
+      - "atta_card_ind_NBFRDWsXul"
+      - "camp_org_id_LUgZQkavDC"
+      - "prod_id_5HHVvMevjR"
+      - "snp_gage_cd_TLVPPbmIqP"
+      - "crdt_card_lvl_cd_f1khBG0oFM"
+      - "2021-01-08"
+      - "card_matr_yr_mth_0AoPAu7blU"
+      - "sell_chnl_cd_gmGs4O8BsG"
+      - "card_org_cd_fCbMNmDc7W"
+      - "actv_chnl_cd_SkuX9MfN7Z"
+      - "free_annl_fee_ind_oEUcJ2azyx"
+      - 108.44
+      - "bus_card_ind_NWfBj4nd18"
+      - "matr_contn_card_ind_6ieA1VpR6O"
+      - 1611144215000
+      - 1611144215000
+    - - -1937671087
+      - -1386163364
+      - 936709843
+      - "atta_card_ind_SchOBM3ADn"
+      - "camp_org_id_iIcs5gi51w"
+      - "prod_id_pNeYvSsCK9"
+      - "snp_gage_cd_qs3ZQWlyfm"
+      - "crdt_card_lvl_cd_Nzbp7Cy4v2"
+      - "2021-01-02"
+      - "card_matr_yr_mth_24GI4NhCum"
+      - "sell_chnl_cd_e6sZGx0UIr"
+      - "card_org_cd_mEaWKOr2eK"
+      - "actv_chnl_cd_5jHnIHbODx"
+      - "free_annl_fee_ind_mNxB0OUuqB"
+      - -94.58
+      - "bus_card_ind_9twM1Sm8N6"
+      - "matr_contn_card_ind_Ze6N7bLuqc"
+      - 1611144215000
+      - 1611144215000
+    - - -1897243199
+      - -1931817796
+      - 390672335
+      - "atta_card_ind_mN5Mw55PCb"
+      - "camp_org_id_Zn4STXeUD6"
+      - "prod_id_4uoNNgMc0p"
+      - "snp_gage_cd_fNOXthNs7J"
+      - "crdt_card_lvl_cd_ynL4AtIJa3"
+      - "2021-01-11"
+      - "card_matr_yr_mth_XROF2DVFVq"
+      - "sell_chnl_cd_0QLdMs0ENq"
+      - "card_org_cd_odnosB8A0R"
+      - "actv_chnl_cd_AjThMogiEt"
+      - "free_annl_fee_ind_Eem4dzghME"
+      - -72.53
+      - "bus_card_ind_7AD96Q3i6Z"
+      - "matr_contn_card_ind_35MrxB5cXA"
+      - 1611144215000
+      - 1611144215000
+    - - -1853796531
+      - -1258445777
+      - -1547814111
+      - "atta_card_ind_oeDA6We5EC"
+      - "camp_org_id_S7pZ2RJ4HP"
+      - "prod_id_DHeuN53pSv"
+      - "snp_gage_cd_aW92GS2DMu"
+      - "crdt_card_lvl_cd_tzSehkdxa8"
+      - "2021-01-17"
+      - "card_matr_yr_mth_bIlFSqWgT9"
+      - "sell_chnl_cd_SQE3eVhOwn"
+      - "card_org_cd_GiXhH8Ilw1"
+      - "actv_chnl_cd_BBCwH068cK"
+      - "free_annl_fee_ind_t5sz5QGjAq"
+      - 59.91
+      - "bus_card_ind_2HCWPtpDe5"
+      - "matr_contn_card_ind_vAViU3mnTF"
+      - 1611144215000
+      - 1611144215000
+    - - 599351765
+      - -2026344167
+      - 406435567
+      - "atta_card_ind_0Dc8HKmpeg"
+      - "camp_org_id_jY2qjsi2yM"
+      - "prod_id_nn1lrj5ZFX"
+      - "snp_gage_cd_SDeBM6a51B"
+      - "crdt_card_lvl_cd_LfX4N7yXil"
+      - "2021-01-12"
+      - "card_matr_yr_mth_ORvNy6K6TO"
+      - "sell_chnl_cd_sUJHlnXZS4"
+      - "card_org_cd_SzZoSXxmYR"
+      - "actv_chnl_cd_FuTmvFJMGv"
+      - "free_annl_fee_ind_00i8JxFXcx"
+      - 68.1
+      - "bus_card_ind_pWrx4XVAKK"
+      - "matr_contn_card_ind_MgjGK92EfE"
+      - 1611144215000
+      - 1611144215000
+    - - 129929182
+      - -812735353
+      - -776403184
+      - "atta_card_ind_caXhPAUCSn"
+      - "camp_org_id_wvDdQBr0bh"
+      - "prod_id_6OrANg0pDT"
+      - "snp_gage_cd_qZhYdtg1EX"
+      - "crdt_card_lvl_cd_WLmc0oczDJ"
+      - "2021-01-13"
+      - "card_matr_yr_mth_fJ7zh8PWuu"
+      - "sell_chnl_cd_vA3H163pUi"
+      - "card_org_cd_se7PxoQEWW"
+      - "actv_chnl_cd_IuJot5ylAH"
+      - "free_annl_fee_ind_PlRcZHiwDg"
+      - 40.89
+      - "bus_card_ind_Q6vTzxFs7N"
+      - "matr_contn_card_ind_M8fvOjy5B0"
+      - 1611144215000
+      - 1611144215000
+    - - -1696305996
+      - -178589482
+      - 788546600
+      - "atta_card_ind_MkfeU6kAPv"
+      - "camp_org_id_4Bn9Zgg4eM"
+      - "prod_id_1ah3kydsh7"
+      - "snp_gage_cd_ySl8kkcGst"
+      - "crdt_card_lvl_cd_L8aZAMygq2"
+      - "2021-01-07"
+      - "card_matr_yr_mth_ZXmdyVXukr"
+      - "sell_chnl_cd_UXPdm0d9B6"
+      - "card_org_cd_3QYp5QfEG6"
+      - "actv_chnl_cd_uRXCNeSnzt"
+      - "free_annl_fee_ind_WyScZ3hmyM"
+      - 5.45
+      - "bus_card_ind_taVaX634Mh"
+      - "matr_contn_card_ind_ppVD5sqBfA"
+      - 1611144215000
+      - 1611144215000
+    name: t6
+  - columns:
+    - "cust_id_an int32"
+    - "card_agmt_id_an int32"
+    - "fst_use_card_dt date"
+    - "ltst_use_card_dt date"
+    - "card_stat_cd string"
+    - "data_date timestamp"
+    indexs: ["indext7:cust_id_an:data_date"]
+    rows:
+    - - -1416323258
+      - 1062068004
+      - "2021-01-15"
+      - "2021-01-10"
+      - "card_stat_cd_I5RUbf7xEL"
+      - 1611144216000
+    - - 433240030
+      - 729717634
+      - "2021-01-19"
+      - "2021-01-17"
+      - "card_stat_cd_wFB0gUWKQI"
+      - 1611144216000
+    - - -1880955883
+      - -1807838612
+      - "2021-01-03"
+      - "2021-01-19"
+      - "card_stat_cd_rG5nhnzcV5"
+      - 1611144216000
+    name: t7
+  - columns:
+    - "cust_id_an int32"
+    - "crdt_card_net_incom_amt double"
+    - "int_incom_amt double"
+    - "annl_fee_incom_amt double"
+    - "cash_incom_amt double"
+    - "commsn_incom_amt double"
+    - "late_chrg_incom_amt double"
+    - "extras_fee_incom_amt double"
+    - "oth_incom_amt double"
+    - "amtbl_comm_fee double"
+    - "cap_cost_amt double"
+    - "provs_cost_amt double"
+    - "data_date timestamp"
+    indexs: ["indext5:cust_id_an:data_date"]
+    rows:
+    - - -586341746
+      - -91.38
+      - -103.8
+      - -91.79
+      - 77.09
+      - -39.25
+      - -104.55
+      - -25.37
+      - -42.69
+      - 20.24
+      - 121.05
+      - 40.71
+      - 1611144216000
+    - - -903799431
+      - 82.69
+      - 56.49
+      - -105.1
+      - -126.73
+      - 91.97
+      - -113.83
+      - -119.99
+      - 126.4
+      - 107.63
+      - -1.88
+      - 54.72
+      - 1611144216000
+    - - -2006396570
+      - 101.8
+      - -63.94
+      - 7.75
+      - 41.46
+      - -42.03
+      - 52.33
+      - 39.98
+      - 10.07
+      - -29.53
+      - 126.03
+      - -63.56
+      - 1611144216000
+    - - -2035678095
+      - -99.5
+      - 83.92
+      - -63.44
+      - -45.01
+      - -16.37
+      - 105.96
+      - -82.37
+      - -76.09
+      - -120.12
+      - -116.56
+      - 22.47
+      - 1611144216000
+    - - 634869109
+      - -38.91
+      - -0.08
+      - 25.59
+      - -80.43
+      - -23.8
+      - 127.24
+      - 72.18
+      - -84.52
+      - -91.3
+      - -64.03
+      - -117.28
+      - 1611144216000
+    name: t5
+  - columns:
+    - "cust_id_an int32"
+    - "crdt_lmt_cust double"
+    - "aval_lmt_cust double"
+    - "crdt_lmt_cash double"
+    - "aval_lmt_cash double"
+    - "data_date timestamp"
+    indexs: ["indext3:cust_id_an:data_date"]
+    rows:
+    - - -2001222170
+      - -4.23
+      - -101.67
+      - 76.28
+      - -83.94
+      - 1611144216000
+    - - -1514280701
+      - -32.77
+      - -73.6
+      - -17.73
+      - 118.89
+      - 1611144216000
+    - - 5866653
+      - 25.81
+      - 109.68
+      - 62.1
+      - -121.53
+      - 1611144216000
+    - - 10968234
+      - 94.03
+      - -27.92
+      - 37.07
+      - -42.7
+      - 1611144216000
+    - - -537371887
+      - -120.6
+      - 3.15
+      - -22.5
+      - -115.86
+      - 1611144216000
+    - - -904433195
+      - 116.03
+      - -44.09
+      - 65.5
+      - 100.47
+      - 1611144216000
+    - - -358019130
+      - -74.14
+      - 127.09
+      - 30.8
+      - 100.9
+      - 1611144216000
+    name: t3
+  - columns:
+    - "cust_id_an int32"
+    - "cert_typ_cd string"
+    - "cert_area_cd string"
+    - "birth_dt date"
+    - "gender_typ_cd string"
+    - "nation_cd string"
+    - "marrrg_situ_cd string"
+    - "rsdnt_ind string"
+    - "citic_grp_emp_typ_cd string"
+    - "cust_stat_cd string"
+    - "open_cust_dt date"
+    - "open_cust_org_id string"
+    - "open_cust_chnl_typ_cd string"
+    - "cust_belg_bank_cd string"
+    indexs: ["indext2:cust_id_an"]
+    rows:
+    - - -164930359
+      - "cert_typ_cd_cGpwz0DGMQ"
+      - "cert_area_cd_HecqmfKfQ7"
+      - "2021-01-09"
+      - "gender_typ_cd_HlbTDsKxLx"
+      - "nation_cd_IcAmK6iCHk"
+      - "marrrg_situ_cd_JzdSTSvnI2"
+      - "rsdnt_ind_qV6EO9H2E4"
+      - "citic_grp_emp_typ_cd_mZjOs6AvEm"
+      - "cust_stat_cd_pL86avtzOm"
+      - "2021-01-12"
+      - "open_cust_org_id_TgCKG40Joz"
+      - "open_cust_chnl_typ_cd_cBUBu2Wm6D"
+      - "cust_belg_bank_cd_UBZAxmSLUW"
+    - - -43274786
+      - "cert_typ_cd_QetmS9wxcU"
+      - "cert_area_cd_rrltclnYQU"
+      - "2021-01-05"
+      - "gender_typ_cd_DzQCyg6Ui2"
+      - "nation_cd_tasmOg7NAe"
+      - "marrrg_situ_cd_t43rdVAhR5"
+      - "rsdnt_ind_qZOBkBtacn"
+      - "citic_grp_emp_typ_cd_Xp6gvlxr7o"
+      - "cust_stat_cd_R9lp6oM2x8"
+      - "2021-01-03"
+      - "open_cust_org_id_7rnyNbu4Yu"
+      - "open_cust_chnl_typ_cd_mu1leQa1Gx"
+      - "cust_belg_bank_cd_XLIXJnEtRf"
+    name: t2
+  - columns:
+    - "cust_id_an int32"
+    - "tx_time timestamp"
+    - "crdt_card_tx_cd string"
+    - "tx_amt_to_rmb double"
+    - "mercht_typ_cd string"
+    - "cross_bord_ind string"
+    - "tx_desc_an int32"
+    indexs: ["indext4:cust_id_an:tx_time"]
+    rows:
+    - - 951632459
+      - 1611144216000
+      - "crdt_card_tx_cd_6j6bjhDy9o"
+      - 110.73
+      - "mercht_typ_cd_feZu3kqy1P"
+      - "cross_bord_ind_j5RBoKax1g"
+      - -1752891717
+    - - 1033871191
+      - 1611144216000
+      - "crdt_card_tx_cd_bDs5fzy7vx"
+      - -20.85
+      - "mercht_typ_cd_Ponis59I95"
+      - "cross_bord_ind_3ErQHlOtLq"
+      - 24112845
+    - - 19144738
+      - 1611144216000
+      - "crdt_card_tx_cd_G2CZyldEgg"
+      - -94.15
+      - "mercht_typ_cd_xM8BN1jxf5"
+      - "cross_bord_ind_MuFWwfgxqi"
+      - -1625982017
+    - - -709159498
+      - 1611144216000
+      - "crdt_card_tx_cd_SWmMk5bGbe"
+      - -104.9
+      - "mercht_typ_cd_F8SmujshlU"
+      - "cross_bord_ind_Cja6dv7mJt"
+      - 734595537
+    - - 407401011
+      - 1611144216000
+      - "crdt_card_tx_cd_Q2bYofa0LV"
+      - 118.56
+      - "mercht_typ_cd_raO5rr5AZW"
+      - "cross_bord_ind_FtZc0Pd2e8"
+      - -347783598
+    - - -274181216
+      - 1611144216000
+      - "crdt_card_tx_cd_SrvekEh3VO"
+      - -36.7
+      - "mercht_typ_cd_wkQggxQwfB"
+      - "cross_bord_ind_lIkIIKdrmU"
+      - -1929744820
+    - - -1693120077
+      - 1611144216000
+      - "crdt_card_tx_cd_crzOFQUvEV"
+      - -63.78
+      - "mercht_typ_cd_gyHnXWDCcr"
+      - "cross_bord_ind_lSjZJSUzjz"
+      - -1367456280
+    - - -1441604939
+      - 1611144216000
+      - "crdt_card_tx_cd_gLqQvmRyub"
+      - 58.01
+      - "mercht_typ_cd_ltgNcE28wj"
+      - "cross_bord_ind_ruileQrE9G"
+      - -26181260
+    name: t4
+  sql: |-
+    select * from
+    (
+    select
+        id as id_1,
+        `id` as t1_id_original_0,
+        `cust_id_an` as t1_cust_id_an_original_1,
+        `ins_date` as t1_ins_date_original_2,
+        `Label` as t1_Label_original_3,
+        dayofweek(timestamp(`ins_date`)) as t1_ins_date_dayofweek_138
+    from
+        `t1`
+        )
+    as out0
+    last join
+    (
+    select
+        t1.id as id_5,
+        `t2_cust_id_an`.`birth_dt` as t2_birth_dt_multi_direct_4,
+        `t2_cust_id_an`.`cert_area_cd` as t2_cert_area_cd_multi_direct_5,
+        `t2_cust_id_an`.`cert_typ_cd` as t2_cert_typ_cd_multi_direct_6,
+        `t2_cust_id_an`.`citic_grp_emp_typ_cd` as t2_citic_grp_emp_typ_cd_multi_direct_7,
+        `t2_cust_id_an`.`cust_belg_bank_cd` as t2_cust_belg_bank_cd_multi_direct_8,
+        `t2_cust_id_an`.`cust_stat_cd` as t2_cust_stat_cd_multi_direct_9,
+        `t2_cust_id_an`.`gender_typ_cd` as t2_gender_typ_cd_multi_direct_10,
+        `t2_cust_id_an`.`marrrg_situ_cd` as t2_marrrg_situ_cd_multi_direct_11,
+        `t2_cust_id_an`.`nation_cd` as t2_nation_cd_multi_direct_12,
+        `t2_cust_id_an`.`open_cust_chnl_typ_cd` as t2_open_cust_chnl_typ_cd_multi_direct_13,
+        `t2_cust_id_an`.`open_cust_dt` as t2_open_cust_dt_multi_direct_14,
+        `t2_cust_id_an`.`open_cust_org_id` as t2_open_cust_org_id_multi_direct_15,
+        `t2_cust_id_an`.`rsdnt_ind` as t2_rsdnt_ind_multi_direct_16,
+        `t3_cust_id_an__ins_date_0_10`.`aval_lmt_cash` as t3_aval_lmt_cash_multi_last_value_17,
+        `t3_cust_id_an__ins_date_0_10`.`aval_lmt_cust` as t3_aval_lmt_cust_multi_last_value_18,
+        `t3_cust_id_an__ins_date_0_10`.`crdt_lmt_cash` as t3_crdt_lmt_cash_multi_last_value_19,
+        `t3_cust_id_an__ins_date_0_10`.`crdt_lmt_cust` as t3_crdt_lmt_cust_multi_last_value_20,
+        `t3_cust_id_an__ins_date_0_10`.`data_date` as t3_data_date_multi_last_value_21,
+        `t5_cust_id_an__ins_date_0_10`.`amtbl_comm_fee` as t5_amtbl_comm_fee_multi_last_value_22,
+        `t5_cust_id_an__ins_date_0_10`.`annl_fee_incom_amt` as t5_annl_fee_incom_amt_multi_last_value_23,
+        `t5_cust_id_an__ins_date_0_10`.`cap_cost_amt` as t5_cap_cost_amt_multi_last_value_24,
+        `t5_cust_id_an__ins_date_0_10`.`cash_incom_amt` as t5_cash_incom_amt_multi_last_value_25,
+        `t5_cust_id_an__ins_date_0_10`.`commsn_incom_amt` as t5_commsn_incom_amt_multi_last_value_26,
+        `t5_cust_id_an__ins_date_0_10`.`crdt_card_net_incom_amt` as t5_crdt_card_net_incom_amt_multi_last_value_27,
+        `t5_cust_id_an__ins_date_0_10`.`data_date` as t5_data_date_multi_last_value_28,
+        `t5_cust_id_an__ins_date_0_10`.`extras_fee_incom_amt` as t5_extras_fee_incom_amt_multi_last_value_29,
+        `t5_cust_id_an__ins_date_0_10`.`int_incom_amt` as t5_int_incom_amt_multi_last_value_30,
+        `t5_cust_id_an__ins_date_0_10`.`late_chrg_incom_amt` as t5_late_chrg_incom_amt_multi_last_value_31,
+        `t5_cust_id_an__ins_date_0_10`.`oth_incom_amt` as t5_oth_incom_amt_multi_last_value_32,
+        `t5_cust_id_an__ins_date_0_10`.`provs_cost_amt` as t5_provs_cost_amt_multi_last_value_33
+    from
+        `t1`
+        last join `t2` as `t2_cust_id_an` on `t1`.`cust_id_an` = `t2_cust_id_an`.`cust_id_an`
+        last join `t3` as `t3_cust_id_an__ins_date_0_10` order by t3_cust_id_an__ins_date_0_10.`data_date` on `t1`.`cust_id_an` = `t3_cust_id_an__ins_date_0_10`.`cust_id_an`
+        last join `t5` as `t5_cust_id_an__ins_date_0_10` order by t5_cust_id_an__ins_date_0_10.`data_date` on `t1`.`cust_id_an` = `t5_cust_id_an__ins_date_0_10`.`cust_id_an`)
+    as out1
+    on out0.id_1 = out1.id_5
+    last join
+    (
+    select
+        id as id_35,
+        min(`tx_amt_to_rmb`) over t4_cust_id_an_tx_time_0s_1d as t4_tx_amt_to_rmb_multi_min_34,
+        avg(`tx_amt_to_rmb`) over t4_cust_id_an_tx_time_0s_1d as t4_tx_amt_to_rmb_multi_avg_35,
+        fz_topn_frequency(`crdt_card_tx_cd`, 3) over t4_cust_id_an_tx_time_0_100 as t4_crdt_card_tx_cd_multi_top3frequency_36,
+        distinct_count(`crdt_card_tx_cd`) over t4_cust_id_an_tx_time_0_100 as t4_crdt_card_tx_cd_multi_unique_count_37,
+        distinct_count(`cross_bord_ind`) over t4_cust_id_an_tx_time_0_100 as t4_cross_bord_ind_multi_unique_count_38,
+        fz_topn_frequency(`cross_bord_ind`, 3) over t4_cust_id_an_tx_time_0_100 as t4_cross_bord_ind_multi_top3frequency_39,
+        distinct_count(`mercht_typ_cd`) over t4_cust_id_an_tx_time_0_10 as t4_mercht_typ_cd_multi_unique_count_40,
+        distinct_count(`mercht_typ_cd`) over t4_cust_id_an_tx_time_0_100 as t4_mercht_typ_cd_multi_unique_count_41,
+        distinct_count(`tx_desc_an`) over t4_cust_id_an_tx_time_0_10 as t4_tx_desc_an_multi_unique_count_42,
+        distinct_count(`tx_desc_an`) over t4_cust_id_an_tx_time_0_100 as t4_tx_desc_an_multi_unique_count_43
+    from
+        (select `cust_id_an` as `cust_id_an`, `ins_date` as `tx_time`, '' as `crdt_card_tx_cd`, double(0) as `tx_amt_to_rmb`, '' as `mercht_typ_cd`, '' as `cross_bord_ind`, int(0) as `tx_desc_an`, id from `t1`)
+        window t4_cust_id_an_tx_time_0s_1d as (
+    UNION (select `cust_id_an`, `tx_time`, `crdt_card_tx_cd`, `tx_amt_to_rmb`, `mercht_typ_cd`, `cross_bord_ind`, `tx_desc_an`, int(0) as id from `t4`) partition by `cust_id_an` order by `tx_time` rows_range between 1d preceding and 0s preceding INSTANCE_NOT_IN_WINDOW),
+        t4_cust_id_an_tx_time_0_100 as (
+    UNION (select `cust_id_an`, `tx_time`, `crdt_card_tx_cd`, `tx_amt_to_rmb`, `mercht_typ_cd`, `cross_bord_ind`, `tx_desc_an`, int(0) as id from `t4`) partition by `cust_id_an` order by `tx_time` rows between 100 preceding and 0 preceding INSTANCE_NOT_IN_WINDOW),
+        t4_cust_id_an_tx_time_0_10 as (
+    UNION (select `cust_id_an`, `tx_time`, `crdt_card_tx_cd`, `tx_amt_to_rmb`, `mercht_typ_cd`, `cross_bord_ind`, `tx_desc_an`, int(0) as id from `t4`) partition by `cust_id_an` order by `tx_time` rows between 10 preceding and 0 preceding INSTANCE_NOT_IN_WINDOW))
+    as out2
+    on out0.id_1 = out2.id_35
+    last join
+    (
+    select
+        id as id_45,
+        min(`annl_fee`) over t6_cust_id_an_actv_dt_0_100 as t6_annl_fee_multi_min_44,
+        min(`annl_fee`) over t6_cust_id_an_actv_dt_0_10 as t6_annl_fee_multi_min_45,
+        min(`card_agmt_id_an`) over t6_cust_id_an_actv_dt_0_10 as t6_card_agmt_id_an_multi_min_46,
+        avg(`card_agmt_id_an`) over t6_cust_id_an_actv_dt_0_10 as t6_card_agmt_id_an_multi_avg_47,
+        min(`pri_acct_id_an`) over t6_cust_id_an_actv_dt_0_100 as t6_pri_acct_id_an_multi_min_48,
+        min(`pri_acct_id_an`) over t6_cust_id_an_actv_dt_0_10 as t6_pri_acct_id_an_multi_min_49,
+        fz_topn_frequency(`actv_chnl_cd`, 3) over t6_cust_id_an_actv_dt_0_100 as t6_actv_chnl_cd_multi_top3frequency_50,
+        fz_topn_frequency(`actv_chnl_cd`, 3) over t6_cust_id_an_actv_dt_0_10 as t6_actv_chnl_cd_multi_top3frequency_51,
+        distinct_count(`atta_card_ind`) over t6_cust_id_an_actv_dt_0s_32d as t6_atta_card_ind_multi_unique_count_52,
+        fz_topn_frequency(`atta_card_ind`, 3) over t6_cust_id_an_actv_dt_0s_32d as t6_atta_card_ind_multi_top3frequency_53,
+        fz_topn_frequency(`bus_card_ind`, 3) over t6_cust_id_an_actv_dt_0s_32d as t6_bus_card_ind_multi_top3frequency_54,
+        distinct_count(`bus_card_ind`) over t6_cust_id_an_actv_dt_0s_32d as t6_bus_card_ind_multi_unique_count_55,
+        distinct_count(`camp_org_id`) over t6_cust_id_an_actv_dt_0_100 as t6_camp_org_id_multi_unique_count_56,
+        distinct_count(`camp_org_id`) over t6_cust_id_an_actv_dt_0_10 as t6_camp_org_id_multi_unique_count_57,
+        fz_topn_frequency(`card_matr_yr_mth`, 3) over t6_cust_id_an_actv_dt_0_100 as t6_card_matr_yr_mth_multi_top3frequency_58,
+        fz_topn_frequency(`card_matr_yr_mth`, 3) over t6_cust_id_an_actv_dt_0_10 as t6_card_matr_yr_mth_multi_top3frequency_59,
+        fz_topn_frequency(`card_org_cd`, 3) over t6_cust_id_an_actv_dt_0s_32d as t6_card_org_cd_multi_top3frequency_60,
+        distinct_count(`card_org_cd`) over t6_cust_id_an_actv_dt_0s_32d as t6_card_org_cd_multi_unique_count_61,
+        distinct_count(`crdt_card_lvl_cd`) over t6_cust_id_an_actv_dt_0_100 as t6_crdt_card_lvl_cd_multi_unique_count_62,
+        distinct_count(`crdt_card_lvl_cd`) over t6_cust_id_an_actv_dt_0_10 as t6_crdt_card_lvl_cd_multi_unique_count_63,
+        fz_topn_frequency(`free_annl_fee_ind`, 3) over t6_cust_id_an_actv_dt_0s_32d as t6_free_annl_fee_ind_multi_top3frequency_64,
+        distinct_count(`free_annl_fee_ind`) over t6_cust_id_an_actv_dt_0s_32d as t6_free_annl_fee_ind_multi_unique_count_65,
+        fz_topn_frequency(`matr_contn_card_ind`, 3) over t6_cust_id_an_actv_dt_0s_32d as t6_matr_contn_card_ind_multi_top3frequency_66,
+        distinct_count(`matr_contn_card_ind`) over t6_cust_id_an_actv_dt_0s_32d as t6_matr_contn_card_ind_multi_unique_count_67,
+        distinct_count(`prod_id`) over t6_cust_id_an_actv_dt_0_100 as t6_prod_id_multi_unique_count_68,
+        fz_topn_frequency(`prod_id`, 3) over t6_cust_id_an_actv_dt_0_10 as t6_prod_id_multi_top3frequency_69,
+        fz_topn_frequency(`sell_chnl_cd`, 3) over t6_cust_id_an_actv_dt_0_10 as t6_sell_chnl_cd_multi_top3frequency_70,
+        fz_topn_frequency(`sell_chnl_cd`, 3) over t6_cust_id_an_actv_dt_0_100 as t6_sell_chnl_cd_multi_top3frequency_71,
+        fz_topn_frequency(`snp_gage_cd`, 3) over t6_cust_id_an_actv_dt_0_10 as t6_snp_gage_cd_multi_top3frequency_72,
+        fz_topn_frequency(`snp_gage_cd`, 3) over t6_cust_id_an_actv_dt_0_100 as t6_snp_gage_cd_multi_top3frequency_73
+    from
+        (select `cust_id_an` as `cust_id_an`, int(0) as `card_agmt_id_an`, int(0) as `pri_acct_id_an`, '' as `atta_card_ind`, '' as `camp_org_id`, '' as `prod_id`, '' as `snp_gage_cd`, '' as `crdt_card_lvl_cd`, date('2019-07-18') as `pin_card_dt`, '' as `card_matr_yr_mth`, '' as `sell_chnl_cd`, '' as `card_org_cd`, '' as `actv_chnl_cd`, '' as `free_annl_fee_ind`, double(0) as `annl_fee`, '' as `bus_card_ind`, '' as `matr_contn_card_ind`, timestamp('2019-07-18 09:20:20') as `issu_card_dt`, `ins_date` as `actv_dt`, id from `t1`)
+        window t6_cust_id_an_actv_dt_0_100 as (
+    UNION (select `cust_id_an`, `card_agmt_id_an`, `pri_acct_id_an`, `atta_card_ind`, `camp_org_id`, `prod_id`, `snp_gage_cd`, `crdt_card_lvl_cd`, `pin_card_dt`, `card_matr_yr_mth`, `sell_chnl_cd`, `card_org_cd`, `actv_chnl_cd`, `free_annl_fee_ind`, `annl_fee`, `bus_card_ind`, `matr_contn_card_ind`, `issu_card_dt`, `actv_dt`, int(0) as id from `t6`) partition by `cust_id_an` order by `actv_dt` rows between 100 preceding and 0 preceding INSTANCE_NOT_IN_WINDOW),
+        t6_cust_id_an_actv_dt_0_10 as (
+    UNION (select `cust_id_an`, `card_agmt_id_an`, `pri_acct_id_an`, `atta_card_ind`, `camp_org_id`, `prod_id`, `snp_gage_cd`, `crdt_card_lvl_cd`, `pin_card_dt`, `card_matr_yr_mth`, `sell_chnl_cd`, `card_org_cd`, `actv_chnl_cd`, `free_annl_fee_ind`, `annl_fee`, `bus_card_ind`, `matr_contn_card_ind`, `issu_card_dt`, `actv_dt`, int(0) as id from `t6`) partition by `cust_id_an` order by `actv_dt` rows between 10 preceding and 0 preceding INSTANCE_NOT_IN_WINDOW),
+        t6_cust_id_an_actv_dt_0s_32d as (
+    UNION (select `cust_id_an`, `card_agmt_id_an`, `pri_acct_id_an`, `atta_card_ind`, `camp_org_id`, `prod_id`, `snp_gage_cd`, `crdt_card_lvl_cd`, `pin_card_dt`, `card_matr_yr_mth`, `sell_chnl_cd`, `card_org_cd`, `actv_chnl_cd`, `free_annl_fee_ind`, `annl_fee`, `bus_card_ind`, `matr_contn_card_ind`, `issu_card_dt`, `actv_dt`, int(0) as id from `t6`) partition by `cust_id_an` order by `actv_dt` rows_range between 32d preceding and 0s preceding INSTANCE_NOT_IN_WINDOW))
+    as out3
+    on out0.id_1 = out3.id_45
+    last join
+    (
+    select
+        id as id_75,
+        fz_topn_frequency(`card_agmt_id_an`, 3) over t7_cust_id_an_data_date_0s_1d as t7_card_agmt_id_an_multi_top3frequency_74,
+        fz_topn_frequency(`card_agmt_id_an`, 3) over t7_cust_id_an_data_date_0s_32d as t7_card_agmt_id_an_multi_top3frequency_75,
+        fz_topn_frequency(`card_stat_cd`, 3) over t7_cust_id_an_data_date_0_100 as t7_card_stat_cd_multi_top3frequency_76,
+        distinct_count(`card_stat_cd`) over t7_cust_id_an_data_date_0_100 as t7_card_stat_cd_multi_unique_count_77
+    from
+        (select `cust_id_an` as `cust_id_an`, int(0) as `card_agmt_id_an`, date('2019-07-18') as `fst_use_card_dt`, date('2019-07-18') as `ltst_use_card_dt`, '' as `card_stat_cd`, `ins_date` as `data_date`, id from `t1`)
+        window t7_cust_id_an_data_date_0s_1d as (
+    UNION (select `cust_id_an`, `card_agmt_id_an`, `fst_use_card_dt`, `ltst_use_card_dt`, `card_stat_cd`, `data_date`, int(0) as id from `t7`) partition by `cust_id_an` order by `data_date` rows_range between 1d preceding and 0s preceding INSTANCE_NOT_IN_WINDOW),
+        t7_cust_id_an_data_date_0s_32d as (
+    UNION (select `cust_id_an`, `card_agmt_id_an`, `fst_use_card_dt`, `ltst_use_card_dt`, `card_stat_cd`, `data_date`, int(0) as id from `t7`) partition by `cust_id_an` order by `data_date` rows_range between 32d preceding and 0s preceding INSTANCE_NOT_IN_WINDOW),
+        t7_cust_id_an_data_date_0_100 as (
+    UNION (select `cust_id_an`, `card_agmt_id_an`, `fst_use_card_dt`, `ltst_use_card_dt`, `card_stat_cd`, `data_date`, int(0) as id from `t7`) partition by `cust_id_an` order by `data_date` rows between 100 preceding and 0 preceding INSTANCE_NOT_IN_WINDOW))
+    as out4
+    on out0.id_1 = out4.id_75
+    last join
+    (
+    select
+        id as id_79,
+        min(`agmt_id_an`) over t8_cust_id_an_open_acct_dt_0_10 as t8_agmt_id_an_multi_min_78,
+        max(`agmt_id_an`) over t8_cust_id_an_open_acct_dt_0_10 as t8_agmt_id_an_multi_max_79,
+        fz_topn_frequency(`atta_acct_ind`, 3) over t8_cust_id_an_open_acct_dt_0s_32d as t8_atta_acct_ind_multi_top3frequency_80,
+        distinct_count(`atta_acct_ind`) over t8_cust_id_an_open_acct_dt_0s_32d as t8_atta_acct_ind_multi_unique_count_81
+    from
+        (select `cust_id_an` as `cust_id_an`, int(0) as `agmt_id_an`, '' as `atta_acct_ind`, date('2019-07-18') as `stmt_dt`, `ins_date` as `open_acct_dt`, timestamp('2019-07-18 09:20:20') as `clos_acct_dt`, id from `t1`)
+        window t8_cust_id_an_open_acct_dt_0_10 as (
+    UNION (select `cust_id_an`, `agmt_id_an`, `atta_acct_ind`, `stmt_dt`, `open_acct_dt`, `clos_acct_dt`, int(0) as id from `t8`) partition by `cust_id_an` order by `open_acct_dt` rows between 10 preceding and 0 preceding INSTANCE_NOT_IN_WINDOW),
+        t8_cust_id_an_open_acct_dt_0s_32d as (
+    UNION (select `cust_id_an`, `agmt_id_an`, `atta_acct_ind`, `stmt_dt`, `open_acct_dt`, `clos_acct_dt`, int(0) as id from `t8`) partition by `cust_id_an` order by `open_acct_dt` rows_range between 32d preceding and 0s preceding INSTANCE_NOT_IN_WINDOW))
+    as out5
+    on out0.id_1 = out5.id_79
+    last join
+    (
+    select
+        id as id_83,
+        min(`amtbl_od_bal`) over t9_cust_id_an_data_date_0s_32d as t9_amtbl_od_bal_multi_min_82,
+        avg(`amtbl_od_bal`) over t9_cust_id_an_data_date_0_10 as t9_amtbl_od_bal_multi_avg_83,
+        min(`cash_od_bal`) over t9_cust_id_an_data_date_0_100 as t9_cash_od_bal_multi_min_84,
+        min(`cash_od_bal`) over t9_cust_id_an_data_date_0_10 as t9_cash_od_bal_multi_min_85,
+        min(`consm_od_bal`) over t9_cust_id_an_data_date_0_100 as t9_consm_od_bal_multi_min_86,
+        min(`consm_od_bal`) over t9_cust_id_an_data_date_0_10 as t9_consm_od_bal_multi_min_87,
+        max(`crdt_card_point`) over t9_cust_id_an_data_date_0_100 as t9_crdt_card_point_multi_max_88,
+        max(`crdt_card_point`) over t9_cust_id_an_data_date_0_10 as t9_crdt_card_point_multi_max_89,
+        min(`curr_yr_crdt_card_point`) over t9_cust_id_an_data_date_0_100 as t9_curr_yr_crdt_card_point_multi_min_90,
+        min(`curr_yr_crdt_card_point`) over t9_cust_id_an_data_date_0_10 as t9_curr_yr_crdt_card_point_multi_min_91,
+        max(`last_mth_consm_cnt`) over t9_cust_id_an_data_date_0_100 as t9_last_mth_consm_cnt_multi_max_92,
+        max(`last_mth_consm_cnt`) over t9_cust_id_an_data_date_0_10 as t9_last_mth_consm_cnt_multi_max_93,
+        min(`last_mth_stmt_amt`) over t9_cust_id_an_data_date_0_100 as t9_last_mth_stmt_amt_multi_min_94,
+        min(`last_mth_stmt_amt`) over t9_cust_id_an_data_date_0_10 as t9_last_mth_stmt_amt_multi_min_95,
+        min(`m_amtbl_amt_accm`) over t9_cust_id_an_data_date_0s_32d as t9_m_amtbl_amt_accm_multi_min_96,
+        avg(`m_amtbl_amt_accm`) over t9_cust_id_an_data_date_0_10 as t9_m_amtbl_amt_accm_multi_avg_97,
+        min(`m_cash_amt_accm`) over t9_cust_id_an_data_date_0_100 as t9_m_cash_amt_accm_multi_min_98,
+        min(`m_cash_amt_accm`) over t9_cust_id_an_data_date_0_10 as t9_m_cash_amt_accm_multi_min_99,
+        min(`m_consm_amt_accm`) over t9_cust_id_an_data_date_0_100 as t9_m_consm_amt_accm_multi_min_100,
+        min(`m_consm_amt_accm`) over t9_cust_id_an_data_date_0_10 as t9_m_consm_amt_accm_multi_min_101,
+        avg(`m_ovrd_bal_accm`) over t9_cust_id_an_data_date_0_100 as t9_m_ovrd_bal_accm_multi_avg_102,
+        avg(`m_ovrd_bal_accm`) over t9_cust_id_an_data_date_0_10 as t9_m_ovrd_bal_accm_multi_avg_103,
+        max(`m_spl_pay_amt_accm`) over t9_cust_id_an_data_date_0_100 as t9_m_spl_pay_amt_accm_multi_max_104,
+        max(`m_spl_pay_amt_accm`) over t9_cust_id_an_data_date_0_10 as t9_m_spl_pay_amt_accm_multi_max_105,
+        avg(`ovrd_bal`) over t9_cust_id_an_data_date_0_100 as t9_ovrd_bal_multi_avg_106,
+        avg(`ovrd_bal`) over t9_cust_id_an_data_date_0_10 as t9_ovrd_bal_multi_avg_107,
+        max(`spl_pay_bal`) over t9_cust_id_an_data_date_0_100 as t9_spl_pay_bal_multi_max_108,
+        max(`spl_pay_bal`) over t9_cust_id_an_data_date_0_10 as t9_spl_pay_bal_multi_max_109,
+        fz_topn_frequency(`acct_stat_cd`, 3) over t9_cust_id_an_data_date_0_100 as t9_acct_stat_cd_multi_top3frequency_110,
+        distinct_count(`acct_stat_cd`) over t9_cust_id_an_data_date_0_100 as t9_acct_stat_cd_multi_unique_count_111,
+        fz_topn_frequency(`agmt_id_an`, 3) over t9_cust_id_an_data_date_0s_1d as t9_agmt_id_an_multi_top3frequency_112,
+        fz_topn_frequency(`agmt_id_an`, 3) over t9_cust_id_an_data_date_0s_32d as t9_agmt_id_an_multi_top3frequency_113,
+        fz_topn_frequency(`curr_ovrd_stat_cd`, 3) over t9_cust_id_an_data_date_0_100 as t9_curr_ovrd_stat_cd_multi_top3frequency_114,
+        fz_topn_frequency(`curr_ovrd_stat_cd`, 3) over t9_cust_id_an_data_date_0_10 as t9_curr_ovrd_stat_cd_multi_top3frequency_115,
+        fz_topn_frequency(`curr_yr_ovrd_cnt`, 3) over t9_cust_id_an_data_date_0_100 as t9_curr_yr_ovrd_cnt_multi_top3frequency_116,
+        fz_topn_frequency(`curr_yr_ovrd_cnt`, 3) over t9_cust_id_an_data_date_0_10 as t9_curr_yr_ovrd_cnt_multi_top3frequency_117
+    from
+        (select `cust_id_an` as `cust_id_an`, int(0) as `agmt_id_an`, '' as `curr_ovrd_stat_cd`, int(0) as `curr_yr_ovrd_cnt`, double(0) as `curr_yr_crdt_card_point`, double(0) as `crdt_card_point`, '' as `acct_stat_cd`, double(0) as `consm_od_bal`, double(0) as `cash_od_bal`, double(0) as `amtbl_od_bal`, double(0) as `spl_pay_bal`, double(0) as `ovrd_bal`, double(0) as `last_mth_stmt_amt`, int(0) as `last_mth_consm_cnt`, double(0) as `m_consm_amt_accm`, double(0) as `m_cash_amt_accm`, double(0) as `m_amtbl_amt_accm`, double(0) as `m_spl_pay_amt_accm`, double(0) as `m_ovrd_bal_accm`, `ins_date` as `data_date`, id from `t1`)
+        window t9_cust_id_an_data_date_0s_32d as (
+    UNION (select `cust_id_an`, `agmt_id_an`, `curr_ovrd_stat_cd`, `curr_yr_ovrd_cnt`, `curr_yr_crdt_card_point`, `crdt_card_point`, `acct_stat_cd`, `consm_od_bal`, `cash_od_bal`, `amtbl_od_bal`, `spl_pay_bal`, `ovrd_bal`, `last_mth_stmt_amt`, `last_mth_consm_cnt`, `m_consm_amt_accm`, `m_cash_amt_accm`, `m_amtbl_amt_accm`, `m_spl_pay_amt_accm`, `m_ovrd_bal_accm`, `data_date`, int(0) as id from `t9`) partition by `cust_id_an` order by `data_date` rows_range between 32d preceding and 0s preceding INSTANCE_NOT_IN_WINDOW),
+        t9_cust_id_an_data_date_0_10 as (
+    UNION (select `cust_id_an`, `agmt_id_an`, `curr_ovrd_stat_cd`, `curr_yr_ovrd_cnt`, `curr_yr_crdt_card_point`, `crdt_card_point`, `acct_stat_cd`, `consm_od_bal`, `cash_od_bal`, `amtbl_od_bal`, `spl_pay_bal`, `ovrd_bal`, `last_mth_stmt_amt`, `last_mth_consm_cnt`, `m_consm_amt_accm`, `m_cash_amt_accm`, `m_amtbl_amt_accm`, `m_spl_pay_amt_accm`, `m_ovrd_bal_accm`, `data_date`, int(0) as id from `t9`) partition by `cust_id_an` order by `data_date` rows between 10 preceding and 0 preceding INSTANCE_NOT_IN_WINDOW),
+        t9_cust_id_an_data_date_0_100 as (
+    UNION (select `cust_id_an`, `agmt_id_an`, `curr_ovrd_stat_cd`, `curr_yr_ovrd_cnt`, `curr_yr_crdt_card_point`, `crdt_card_point`, `acct_stat_cd`, `consm_od_bal`, `cash_od_bal`, `amtbl_od_bal`, `spl_pay_bal`, `ovrd_bal`, `last_mth_stmt_amt`, `last_mth_consm_cnt`, `m_consm_amt_accm`, `m_cash_amt_accm`, `m_amtbl_amt_accm`, `m_spl_pay_amt_accm`, `m_ovrd_bal_accm`, `data_date`, int(0) as id from `t9`) partition by `cust_id_an` order by `data_date` rows between 100 preceding and 0 preceding INSTANCE_NOT_IN_WINDOW),
+        t9_cust_id_an_data_date_0s_1d as (
+    UNION (select `cust_id_an`, `agmt_id_an`, `curr_ovrd_stat_cd`, `curr_yr_ovrd_cnt`, `curr_yr_crdt_card_point`, `crdt_card_point`, `acct_stat_cd`, `consm_od_bal`, `cash_od_bal`, `amtbl_od_bal`, `spl_pay_bal`, `ovrd_bal`, `last_mth_stmt_amt`, `last_mth_consm_cnt`, `m_consm_amt_accm`, `m_cash_amt_accm`, `m_amtbl_amt_accm`, `m_spl_pay_amt_accm`, `m_ovrd_bal_accm`, `data_date`, int(0) as id from `t9`) partition by `cust_id_an` order by `data_date` rows_range between 1d preceding and 0s preceding INSTANCE_NOT_IN_WINDOW))
+    as out6
+    on out0.id_1 = out6.id_83
+    ;
+  expect:
+    success: true

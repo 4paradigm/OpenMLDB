@@ -16,6 +16,7 @@
 
 package com._4paradigm.openmldb.test_common.model;
 
+import com._4paradigm.openmldb.test_common.bean.OfflineInfo;
 import lombok.Data;
 
 import java.util.List;
@@ -34,4 +35,10 @@ public class ExpectDesc extends Table {
     private int deploymentCount = -1;
     private List<String> diffTables;
     private CatFile cat;
+    private String msg;
+    private PreAggTable preAgg;
+    private List<PreAggTable> preAggList;
+    private OfflineInfo offlineInfo;
+    private List<String> offlineColumns;
+    private List<List<Object>> offlineRows;
 }

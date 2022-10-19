@@ -1,0 +1,2664 @@
+# Copyright 2021 4Paradigm
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+db: test_zw
+debugs: []
+version: 0.5.0
+cases:
+  -
+    id: 0
+    desc: max
+    sqlDialect: ["HybridSQL"]
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
+          - [2,"aa",4,4,33,1.4,2.4,1590738991000,"2020-05-03","c",false]
+          - [3,"aa",3,3,32,1.3,2.3,1590738992000,"2020-05-02","b",true]
+          - [4,"aa",NULL,NULL,NULL,NULL,NULL,1590738993000,NULL,NULL,NULL]
+    sql: |
+      SELECT {0}.id, c1, max(c2) OVER w1 as m2,max(c3) OVER w1 as m3,max(c4) OVER w1 as m4,max(c5) OVER w1 as m5,max(c6) OVER w1 as m6,max(c7) OVER w1 as m7,max(c8) OVER w1 as m8,max(c9) OVER w1 as m9 FROM {0} WINDOW
+      w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
+    expect:
+      order: id
+      columns: ["id int","c1 string","m2 smallint","m3 int","m4 bigint","m5 float","m6 double","m7 timestamp","m8 date","m9 string"]
+      rows:
+        - [1,"aa",1,1,30,1.1,2.1,1590738990000,"2020-05-01","a"]
+        - [2,"aa",4,4,33,1.4,2.4,1590738991000,"2020-05-03","c"]
+        - [3,"aa",4,4,33,1.4,2.4,1590738992000,"2020-05-03","c"]
+        - [4,"aa",4,4,33,1.4,2.4,1590738993000,"2020-05-03","c"]
+  -
+    id: 1
+    desc: min
+    sqlDialect: ["HybridSQL"]
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
+          - [2,"aa",4,4,33,1.4,2.4,1590738991000,"2020-05-03","c",false]
+          - [3,"aa",3,3,32,1.3,2.3,1590738992000,"2020-05-02","b",true]
+          - [4,"aa",NULL,NULL,NULL,NULL,NULL,1590738993000,NULL,NULL,NULL]
+    sql: |
+      SELECT {0}.id, c1, min(c2) OVER w1 as m2,min(c3) OVER w1 as m3,min(c4) OVER w1 as m4,min(c5) OVER w1 as m5,min(c6) OVER w1 as m6,min(c7) OVER w1 as m7,min(c8) OVER w1 as m8,min(c9) OVER w1 as m9 FROM {0} WINDOW
+      w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
+    expect:
+      order: id
+      columns: ["id int","c1 string","m2 smallint","m3 int","m4 bigint","m5 float","m6 double","m7 timestamp","m8 date","m9 string"]
+      rows:
+        - [1,"aa",1,1,30,1.1,2.1,1590738990000,"2020-05-01","a"]
+        - [2,"aa",1,1,30,1.1,2.1,1590738990000,"2020-05-01","a"]
+        - [3,"aa",1,1,30,1.1,2.1,1590738990000,"2020-05-01","a"]
+        - [4,"aa",3,3,32,1.3,2.3,1590738991000,"2020-05-02","b"]
+  -
+    id: 2
+    desc: count
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
+          - [2,"aa",4,4,33,1.4,2.4,1590738991000,"2020-05-03","c",false]
+          - [3,"aa",3,3,32,1.3,2.3,1590738992000,"2020-05-02","b",true]
+          - [4,"aa",NULL,NULL,NULL,NULL,NULL,1590738993000,NULL,NULL,NULL]
+    sql: |
+      SELECT {0}.id, c1, count(c2) OVER w1 as m2,count(c3) OVER w1 as m3,count(c4) OVER w1 as m4,count(c5) OVER w1 as m5,count(c6) OVER w1 as m6,count(c7) OVER w1 as m7,count(c8) OVER w1 as m8,count(c9) OVER w1 as m9 FROM {0} WINDOW
+      w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
+    expect:
+      order: id
+      columns: ["id int","c1 string","m2 bigint","m3 bigint","m4 bigint","m5 bigint","m6 bigint","m7 bigint","m8 bigint","m9 bigint"]
+      rows:
+        - [1,"aa",1,1,1,1,1,1,1,1]
+        - [2,"aa",2,2,2,2,2,2,2,2]
+        - [3,"aa",3,3,3,3,3,3,3,3]
+        - [4,"aa",2,2,2,2,2,3,2,2]
+  -
+    id: 3
+    desc: sum
+    sqlDialect: ["HybridSQL"]
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
+          - [2,"aa",4,4,33,1.4,2.4,1590738991000,"2020-05-03","c",false]
+          - [3,"aa",3,3,32,1.3,2.3,1590738992000,"2020-05-02","b",true]
+          - [4,"aa",NULL,NULL,NULL,NULL,NULL,1590738993000,NULL,NULL,NULL]
+    sql: |
+      SELECT {0}.id, c1, sum(c2) OVER w1 as m2,sum(c3) OVER w1 as m3,sum(c4) OVER w1 as m4,sum(c5) OVER w1 as m5,sum(c6) OVER w1 as m6 FROM {0} WINDOW
+      w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
+    expect:
+      order: id
+      columns: ["id int","c1 string","m2 smallint","m3 int","m4 bigint","m5 float","m6 double"]
+      rows:
+        - [1,"aa",1,1,30,1.1,2.1]
+        - [2,"aa",5,5,63,2.5,4.5]
+        - [3,"aa",8,8,95,3.7999997,6.799999999999999]
+        - [4,"aa",7,7,65,2.7,4.7]
+  -
+    id: 4
+    desc: avg
+    version: 0.6.0
+    sqlDialect: ["HybridSQL"]
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1,   NULL,30,  1.1, 2.1, 1590738990000,"2020-05-01","a",true]
+          - [2,"aa",4,   4,   33,  1.4, 2.4, 1590738991000,"2020-05-03","c",false]
+          - [3,"aa",1,   1,   33,  1.1, 2.1, 1590738992000,"2020-05-02","b",true]
+          - [4,"aa",NULL,NULL,NULL,NULL,NULL,1590738993000,NULL,NULL,NULL]
+    sql: |
+      SELECT {0}.id, c1,
+        avg(c2) OVER w1 as m2,
+        avg(c3) OVER w1 as m3,
+        avg(c4) OVER w1 as m4,
+        avg(c5) OVER w1 as m5,
+        avg(c6) OVER w1 as m6,
+        avg(c3 + 1) over w1 as m7
+      FROM {0} WINDOW
+        w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
+    expect:
+      order: id
+      columns: ["id int","c1 string","m2 double","m3 double","m4 double","m5 double","m6 double", "m7 double"]
+      rows:
+        - [1, aa, 1,   NULL, 30,   1.100000023841858,2.1,               NULL]
+        - [2, aa, 2.5, 4.0,  31.5, 1.25,             2.25,              5.0]
+        - [3, aa, 2,   2.5,  32,   1.200000007947286,2.1999999999999997,3.5]
+        - [4, aa, 2.5, 2.5,  33,   1.25,             2.25,              3.5]
+  -
+    id: 5
+    desc: distinct_count
+    sqlDialect: ["HybridSQL"]
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool","ts timestamp"]
+        indexs: ["index1:c1:ts"]
+        rows:
+          - [1,"aa",1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true,1590738990000]
+          - [2,"aa",4,4,33,1.4,2.4,1590738991000,"2020-05-02","c",false,1590738991000]
+          - [3,"aa",4,4,33,1.4,2.4,1590738991000,"2020-05-02","c",true,1590738992000]
+          - [4,"aa",NULL,NULL,NULL,NULL,NULL,1590738993000,NULL,NULL,NULL,1590738993000]
+    sql: |
+      SELECT {0}.id, c1, distinct_count(c2) OVER w1 as m2,distinct_count(c3) OVER w1 as m3,distinct_count(c4) OVER w1 as m4,distinct_count(c5) OVER w1 as m5,distinct_count(c6) OVER w1 as m6,distinct_count(c7) OVER w1 as m7,distinct_count(c8) OVER w1 as m8,distinct_count(c9) OVER w1 as m9 FROM {0} WINDOW
+      w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.ts ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
+    expect:
+      order: id
+      columns: ["id int","c1 string","m2 bigint","m3 bigint","m4 bigint","m5 bigint","m6 bigint","m7 bigint","m8 bigint","m9 bigint"]
+      rows:
+        - [1,"aa",1,1,1,1,1,1,1,1]
+        - [2,"aa",2,2,2,2,2,2,2,2]
+        - [3,"aa",2,2,2,2,2,2,2,2]
+        - [4,"aa",2,2,2,2,2,2,2,2]
+  -
+    id: 6
+    desc: count/distinct_count-bool
+    sqlDialect: ["HybridSQL"]
+    level: 5
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
+          - [2,"aa",4,4,33,1.4,2.4,1590738991000,"2020-05-03","c",false]
+          - [3,"aa",1,1,33,1.1,2.1,1590738992000,"2020-05-02","b",true]
+          - [4,"aa",NULL,NULL,NULL,NULL,NULL,1590738993000,NULL,NULL,NULL]
+    sql: |
+      SELECT {0}.id, count(c10) OVER w1 as count_bool, distinct_count(c10) OVER w1 as distinct_count_bool 
+      FROM {0} WINDOW
+      w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
+    expect:
+      order: id
+      columns: ["id int", "count_bool bigint", "distinct_count_bool bigint"]
+      rows:
+        - [1,1,1]
+        - [2,2,2]
+        - [3,3,2]
+        - [4,2,2]
+  -
+    id: 7
+    desc: sum-timestamp
+    sqlDialect: ["HybridSQL"]
+    inputs:
+      -
+        columns : ["id bigint","c1 string", "c2 timestamp", "c3 timestamp"]
+        indexs: ["index1:c1:c2"]
+        rows:
+          - [1,"aa",1590738990000,1590738990000]
+          - [2,"aa",1590738991000,1590738991000]
+          - [3,"aa",1590738992000,1590738992000]
+          - [4,"aa",1590738993000,NULL]
+    sql: |
+      SELECT {0}.id, sum(c3) OVER w1 as m2 FROM {0} WINDOW
+      w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c2 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
+    expect:
+      order: id
+      columns: ["id bigint", "m2 timestamp"]
+      rows:
+        - [1, 1590738990000]
+        - [2, 3181477981000]
+        - [3, 4772216973000]
+        - [4, 3181477983000]
+  -
+    id: 8
+    desc: avg-timestamp
+    sqlDialect: ["HybridSQL"]
+    level: 5
+    inputs:
+      -
+        columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1,30,1.1,2.1,1590738990000,"2020-05-01","a"]
+          - [2,"aa",4,33,1.4,2.4,1590738991000,"2020-05-03","c"]
+          - [3,"aa",3,32,1.3,2.3,1590738992000,"2020-05-02","b"]
+    sql: |
+      SELECT {0}.id, c1,avg(c7) OVER w1 as m7 FROM {0} WINDOW
+      w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
+    expect:
+      success: false
+  -
+    id: 9
+    desc: sum-date
+    sqlDialect: ["HybridSQL"]
+    level: 5
+    inputs:
+      -
+        columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1,30,1.1,2.1,1590738990000,"2020-05-01","a"]
+          - [2,"aa",4,33,1.4,2.4,1590738991000,"2020-05-03","c"]
+          - [3,"aa",3,32,1.3,2.3,1590738992000,"2020-05-02","b"]
+    sql: |
+      SELECT {0}.id, c1,sum(c8) OVER w1 as m8 FROM {0} WINDOW
+      w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
+    expect:
+      success: false
+  -
+    id: 10
+    desc: sum-string
+    sqlDialect: ["HybridSQL"]
+    level: 5
+    inputs:
+      -
+        columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1,30,1.1,2.1,1590738990000,"2020-05-01","a"]
+          - [2,"aa",4,33,1.4,2.4,1590738991000,"2020-05-03","c"]
+          - [3,"aa",3,32,1.3,2.3,1590738992000,"2020-05-02","b"]
+    sql: |
+      SELECT {0}.id, c1,sum(c9) OVER w1 as m9 FROM {0} WINDOW
+      w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
+    expect:
+      success: false
+  -
+    id: 11
+    desc: avg-date
+    sqlDialect: ["HybridSQL"]
+    level: 5
+    inputs:
+      -
+        columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1,30,1.1,2.1,1590738990000,"2020-05-01","a"]
+          - [2,"aa",4,33,1.4,2.4,1590738991000,"2020-05-03","c"]
+          - [3,"aa",3,32,1.3,2.3,1590738992000,"2020-05-02","b"]
+    sql: |
+      SELECT {0}.id, c1,avg(c8) OVER w1 as m8 FROM {0} WINDOW
+      w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
+    expect:
+      success: false
+  -
+    id: 12
+    desc: avg-string
+    sqlDialect: ["HybridSQL"]
+    level: 5
+    inputs:
+      -
+        columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1,30,1.1,2.1,1590738990000,"2020-05-01","a"]
+          - [2,"aa",4,33,1.4,2.4,1590738991000,"2020-05-03","c"]
+          - [3,"aa",3,32,1.3,2.3,1590738992000,"2020-05-02","b"]
+    sql: |
+      SELECT {0}.id, c1,avg(c9) OVER w1 as m9 FROM {0} WINDOW
+      w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
+    expect:
+      success: false
+  -
+    id: 13
+    desc: MAX_WHERE-normal
+    sqlDialect: ["HybridSQL"]
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [0, "00", 5, 3, 10, 1.0, 4.4, 1590738990000, "2020-05-01", "a", false]
+          - [1, "aa", 1, 1, 30, 1.1, 2.1, 1590738990000, "2020-05-01", "a", true]
+          - [2, "aa", 4, 4, 33, 1.4, 2.4, 1590738991000, "2020-05-03", "c", false]
+          - [3, "aa", 3, 3, 32, 1.3, 2.3, 1590738992000, "2020-05-02", "b", true]
+          - [4, "aa", NULL,NULL,NULL,NULL,NULL,1590738993000,NULL,NULL,NULL]
+    sql: |
+      SELECT {0}.id, c1, max_where(c2,c2<4) OVER w1 as m2,max_where(c3,c3<4) OVER w1 as m3,max_where(c4,c10) OVER w1 as m4,max_where(c5,c5<=1.3) OVER w1 as m5,max_where(c6,c6<=2.3) OVER w1 as m6 FROM {0} WINDOW
+      w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
+    expect:
+      order: id
+      columns: ["id int","c1 string","m2 smallint","m3 int","m4 bigint","m5 float","m6 double"]
+      rows:
+        - [0,"00",NULL,3,NULL,1.0,NULL]
+        - [1,"aa",1,1,30,1.1,2.1]
+        - [2,"aa",1,1,30,1.1,2.1]
+        - [3,"aa",3,3,32,1.3,2.3]
+        - [4,"aa",3,3,32,1.3,2.3]
+  -
+    id: 14
+    desc: MIN_WHERE-normal
+    sqlDialect: ["HybridSQL"]
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
+          - [2,"aa",4,4,33,1.4,2.4,1590738991000,"2020-05-03","c",false]
+          - [3,"aa",3,3,32,1.3,2.3,1590738992000,"2020-05-02","b",true]
+          - [4,"aa",NULL,NULL,NULL,NULL,NULL,1590738993000,NULL,NULL,NULL]
+    sql: |
+      SELECT {0}.id, c1, min_where(c2,c2>2) OVER w1 as m2,min_where(c3,c3>=3) OVER w1 as m3,min_where(c4,c4<33) OVER w1 as m4,min_where(c5,c5<=2) OVER w1 as m5,min_where(c6,c10) OVER w1 as m6 FROM {0} WINDOW
+      w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
+    expect:
+      order: id
+      columns: ["id int","c1 string","m2 smallint","m3 int","m4 bigint","m5 float","m6 double"]
+      rows:
+        - [1,"aa",NULL,NULL,30,1.1,2.1]
+        - [2,"aa",4,4,30,1.1,2.1]
+        - [3,"aa",3,3,30,1.1,2.1]
+        - [4,"aa",3,3,32,1.3,2.3]
+  -
+    id: 15
+    desc: SUM_WHERE-normal
+    sqlDialect: ["HybridSQL"]
+    version: 0.6.0
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1,   1,   30,  NULL,2.1, 1590738990000, "2020-05-01","a",true]
+          - [2,"aa",4,   4,   NULL,1.4, 2.4, 1590738991000, "2020-05-03","c",false]
+          - [3,"aa",3,   NULL,33,  1.3, 2.3, 1590738992000, "2020-05-02","b",true]
+          - [4,"aa",NULL,3,   32,  1.1, NULL,1590738993000, NULL,NULL,NULL]
+    sql: |
+      SELECT {0}.id, c1,
+        sum_where(c2,c2<4) OVER w1 as m2,
+        sum_where(c3,c3<4) OVER w1 as m3,
+        sum_where(c4,c4<33) OVER w1 as m4,
+        sum_where(c5,c5<=1.3) OVER w1 as m5,
+        sum_where(c6,c10) OVER w1 as m6,
+        sum_where(c2, c2 = null) over w1 as m7
+      FROM {0} WINDOW
+        w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
+    expect:
+      order: id
+      columns: ["id int","c1 string","m2 smallint","m3 int","m4 bigint","m5 float","m6 double", "m7 smallint"]
+      rows:
+        - [1, "aa", 1, 1, 30, NULL, 2.1, NULL]
+        - [2, "aa", 1, 1, 30, NULL, 2.1, NULL]
+        - [3, "aa", 4, 1, 30, 1.3,  4.4, NULL]
+        - [4, "aa", 3, 3, 32, 2.4,  2.3, NULL]
+  -
+    id: 16
+    desc: AVG_WHERE-normal
+    sqlDialect: ["HybridSQL"]
+    version: 0.6.0
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1, "aa", 1,   1,   30,  NULL,2.1, 1590738990000, "2020-05-01", "a", true]
+          - [2, "aa", 4,   4,   NULL,1.4, 2.4, 1590738991000, "2020-05-03", "c", false]
+          - [3, "aa", 3,   NULL,32,  1.3, 2.3, 1590738992000, "2020-05-02", "b", true]
+          - [4, "aa", NULL,3,   33,  1.1, NULL,1590738993000, NULL,      NULL,NULL]
+    sql: |
+      SELECT {0}.id, c1,
+        avg_where(c2, c2<4) OVER w1 as m2,
+        avg_where(c3, c3<4) OVER w1 as m3,
+        avg_where(c4, c4<33) OVER w1 as m4,
+        avg_where(c5, c5<=1.3) OVER w1 as m5,
+        avg_where(c6, c10) OVER w1 as m6,
+        avg_where(c3, c3 = null) over w1 as m7
+      FROM {0} WINDOW
+        w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
+    expect:
+      order: id
+      columns: ["id int","c1 string","m2 double","m3 double","m4 double","m5 double","m6 double", "m7 double"]
+      rows:
+        - [1, aa, 1, 1, 30, NULL, 2.1, NULL]
+        - [2, aa, 1, 1, 30, NULL, 2.1, NULL]
+        - [3, aa, 2, 1, 31, 1.2999999523162842,  2.2, NULL]
+        - [4, aa, 3, 3, 32, 1.199999988079071,  2.3, NULL]
+  -
+    id: 17
+    desc: COUNT_WHERE-normal
+    sqlDialect: ["HybridSQL"]
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
+          - [2,"aa",4,4,33,1.4,2.4,1590738991000,"2020-05-03","c",false]
+          - [3,"aa",3,3,32,1.3,2.3,1590738992000,"2020-05-02","b",true]
+          - [4,"aa",NULL,NULL,NULL,NULL,NULL,1590738993000,NULL,NULL,NULL]
+    sql: |
+      SELECT {0}.id, c1, count_where(c2,c2<4) OVER w1 as m2,count_where(c3,c3<4) OVER w1 as m3,count_where(c4,c4<33) OVER w1 as m4,count_where(c5,c5<=1.3) OVER w1 as m5,count_where(c6,c10) OVER w1 as m6,
+      count_where(c7,c10) OVER w1 as m7,count_where(c8,c10) OVER w1 as m8,count_where(c9,c10) OVER w1 as m9, count_where(*,c3<4) over w1 as m10 FROM {0} WINDOW
+      w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
+    expect:
+      order: id
+      columns: ["id int","c1 string","m2 bigint","m3 bigint","m4 bigint","m5 bigint","m6 bigint","m7 bigint","m8 bigint","m9 bigint","m10 bigint"]
+      rows:
+        - [1,"aa",1,1,1,1,1,1,1,1,1]
+        - [2,"aa",1,1,1,1,1,1,1,1,1]
+        - [3,"aa",2,2,2,2,2,2,2,2,2]
+        - [4,"aa",1,1,1,1,1,1,1,1,1]
+  -
+    id: 18
+    desc: AVG_WHERE/MAX_WHERE/MIN_WHERE/SUM_WHERE-fail
+    sqlDialect: ["HybridSQL"]
+    level: 5
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
+          - [2,"aa",4,4,33,1.4,2.4,1590738991000,"2020-05-03","c",false]
+          - [3,"aa",3,3,32,1.3,2.3,1590738992000,"2020-05-02","b",true]
+          - [4,"aa",NULL,NULL,NULL,NULL,NULL,1590738993000,NULL,NULL,NULL]
+    dataProvider:
+      - ["avg_where","sum_where","max_where","min_where"]
+      - ["c7","c8","c9","c10"]
+    sql: |
+      SELECT {0}.id, c1, d[0](d[1],c10) OVER w1 as m2 FROM {0} WINDOW
+      w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
+    expect:
+      success: false
+  -
+    id: 19
+    desc: COUNT_WHERE-bool类型
+    sqlDialect: ["HybridSQL"]
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
+          - [2,"aa",4,4,33,1.4,2.4,1590738991000,"2020-05-03","c",false]
+          - [3,"aa",3,3,32,1.3,2.3,1590738992000,"2020-05-02","b",true]
+          - [4,"aa",NULL,NULL,NULL,NULL,NULL,1590738993000,NULL,NULL,NULL]
+    dataProvider:
+      - ["count_where"]
+      - ["c10"]
+    sql: |
+      SELECT {0}.id, c1, d[0](d[1],c10) OVER w1 as m2 FROM {0} WINDOW
+      w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
+    expect:
+      order: id
+      columns: [ "id int","c1 string","m2 bigint" ]
+      rows:
+        - [ 1, aa, 1 ]
+        - [ 2, aa, 1 ]
+        - [ 3, aa, 2 ]
+        - [ 4, aa, 1 ]
+  -
+    id: 20
+    desc: max_cate-normal
+    mode: cli-unsupport
+    sqlDialect: ["HybridSQL"]
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
+        indexs: ["index1:id:c7","index2:c1:c7"]
+        rows:
+          - [1,"aa",1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
+          - [2,"aa",4,4,33,1.4,2.4,1590738991000,"2020-05-03","c",false]
+          - [3,"aa",3,3,32,1.3,2.3,1590738992000,"2020-05-02","b",true]
+          - [4,"aa",NULL,NULL,NULL,NULL,NULL,1590738993000,NULL,NULL,NULL]
+      -
+        columns : ["id int","timecol bigint","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
+        indexs: ["index1:id:timecol"]
+        rows:
+          - [1,1,1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
+          - [2,2,1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
+          - [3,3,2,2,32,1.3,2.3,1590738992000,"2020-05-02","b",false]
+          - [4,4,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL]
+    dataProvider:
+      - ["{1}.c2","{1}.c3","{1}.c4","{1}.c7","{1}.c8","{1}.c9"]
+    sql: |
+      SELECT {0}.id, {0}.c1,
+      max_cate({0}.c2,d[0]) OVER w1 as m2,
+      max_cate({0}.c3,d[0]) OVER w1 as m3,
+      max_cate({0}.c4,d[0]) OVER w1 as m4,
+      max_cate({0}.c5,d[0]) OVER w1 as m5,
+      max_cate({0}.c6,d[0]) OVER w1 as m6
+      FROM {0} last join {1} ORDER BY {1}.timecol on {0}.id={1}.id
+      WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
+    expect:
+      order: id
+      columns: ["id int","c1 string","m2 string","m3 string","m4 string","m5 string","m6 string"]
+      rows:
+        - [1,"aa","1:1","1:1","1:30","1:1.100000","1:2.100000"]
+        - [2,"aa","1:4","1:4","1:33","1:1.400000","1:2.400000"]
+        - [3,"aa","1:4,2:3","1:4,2:3","1:33,2:32","1:1.400000,2:1.300000","1:2.400000,2:2.300000"]
+        - [4,"aa","1:4,2:3","1:4,2:3","1:33,2:32","1:1.400000,2:1.300000","1:2.400000,2:2.300000"]
+    expectProvider:
+      0:
+        rows:
+          - [1,"aa","1:1","1:1","1:30","1:1.100000","1:2.100000"]
+          - [2,"aa","1:4","1:4","1:33","1:1.400000","1:2.400000"]
+          - [3,"aa","1:4,2:3","1:4,2:3","1:33,2:32","1:1.400000,2:1.300000","1:2.400000,2:2.300000"]
+          - [4,"aa","1:4,2:3","1:4,2:3","1:33,2:32","1:1.400000,2:1.300000","1:2.400000,2:2.300000"]
+      1:
+        rows:
+          - [1,"aa","1:1","1:1","1:30","1:1.100000","1:2.100000"]
+          - [2,"aa","1:4","1:4","1:33","1:1.400000","1:2.400000"]
+          - [3,"aa","1:4,2:3","1:4,2:3","1:33,2:32","1:1.400000,2:1.300000","1:2.400000,2:2.300000"]
+          - [4,"aa","1:4,2:3","1:4,2:3","1:33,2:32","1:1.400000,2:1.300000","1:2.400000,2:2.300000"]
+      2:
+        rows:
+          - [1,"aa","30:1","30:1","30:30","30:1.100000","30:2.100000"]
+          - [2,"aa","30:4","30:4","30:33","30:1.400000","30:2.400000"]
+          - [3,"aa","30:4,32:3","30:4,32:3","30:33,32:32","30:1.400000,32:1.300000","30:2.400000,32:2.300000"]
+          - [4,"aa","30:4,32:3","30:4,32:3","30:33,32:32","30:1.400000,32:1.300000","30:2.400000,32:2.300000"]
+      3:
+        rows:
+          - [1,"aa","2020-05-29 15:56:30:1","2020-05-29 15:56:30:1","2020-05-29 15:56:30:30","2020-05-29 15:56:30:1.100000","2020-05-29 15:56:30:2.100000"]
+          - [2,"aa","2020-05-29 15:56:30:4","2020-05-29 15:56:30:4","2020-05-29 15:56:30:33","2020-05-29 15:56:30:1.400000","2020-05-29 15:56:30:2.400000"]
+          - [3,"aa","2020-05-29 15:56:30:4,2020-05-29 15:56:32:3","2020-05-29 15:56:30:4,2020-05-29 15:56:32:3","2020-05-29 15:56:30:33,2020-05-29 15:56:32:32","2020-05-29 15:56:30:1.400000,2020-05-29 15:56:32:1.300000","2020-05-29 15:56:30:2.400000,2020-05-29 15:56:32:2.300000"]
+          - [4,"aa","2020-05-29 15:56:30:4,2020-05-29 15:56:32:3","2020-05-29 15:56:30:4,2020-05-29 15:56:32:3","2020-05-29 15:56:30:33,2020-05-29 15:56:32:32","2020-05-29 15:56:30:1.400000,2020-05-29 15:56:32:1.300000","2020-05-29 15:56:30:2.400000,2020-05-29 15:56:32:2.300000"]
+      4:
+        rows:
+          - [1,"aa","2020-05-01:1","2020-05-01:1","2020-05-01:30","2020-05-01:1.100000","2020-05-01:2.100000"]
+          - [2,"aa","2020-05-01:4","2020-05-01:4","2020-05-01:33","2020-05-01:1.400000","2020-05-01:2.400000"]
+          - [3,"aa","2020-05-01:4,2020-05-02:3","2020-05-01:4,2020-05-02:3","2020-05-01:33,2020-05-02:32","2020-05-01:1.400000,2020-05-02:1.300000","2020-05-01:2.400000,2020-05-02:2.300000"]
+          - [4,"aa","2020-05-01:4,2020-05-02:3","2020-05-01:4,2020-05-02:3","2020-05-01:33,2020-05-02:32","2020-05-01:1.400000,2020-05-02:1.300000","2020-05-01:2.400000,2020-05-02:2.300000"]
+      5:
+        rows:
+          - [1,"aa","a:1","a:1","a:30","a:1.100000","a:2.100000"]
+          - [2,"aa","a:4","a:4","a:33","a:1.400000","a:2.400000"]
+          - [3,"aa","a:4,b:3","a:4,b:3","a:33,b:32","a:1.400000,b:1.300000","a:2.400000,b:2.300000"]
+          - [4,"aa","a:4,b:3","a:4,b:3","a:33,b:32","a:1.400000,b:1.300000","a:2.400000,b:2.300000"]
+  -
+    id: 21
+    desc: min_cate-normal
+    mode: cli-unsupport
+    sqlDialect: ["HybridSQL"]
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
+        indexs: ["index1:id:c7","index2:c1:c7"]
+        rows:
+          - [1,"aa",1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
+          - [2,"aa",4,4,33,1.4,2.4,1590738991000,"2020-05-03","c",false]
+          - [3,"aa",3,3,32,1.3,2.3,1590738992000,"2020-05-02","b",true]
+          - [4,"aa",NULL,NULL,NULL,NULL,NULL,1590738993000,NULL,NULL,NULL]
+      -
+        columns : ["id int","timecol bigint","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
+        indexs: ["index1:id:timecol"]
+        rows:
+          - [1,1,1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
+          - [2,2,1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
+          - [3,3,2,2,32,1.3,2.3,1590738992000,"2020-05-02","b",false]
+          - [4,4,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL]
+    dataProvider:
+      - ["{1}.c2","{1}.c3","{1}.c4","{1}.c7","{1}.c8","{1}.c9"]
+    sql: |
+      SELECT {0}.id, {0}.c1,
+      min_cate({0}.c2,d[0]) OVER w1 as m2,
+      min_cate({0}.c3,d[0]) OVER w1 as m3,
+      min_cate({0}.c4,d[0]) OVER w1 as m4,
+      min_cate({0}.c5,d[0]) OVER w1 as m5,
+      min_cate({0}.c6,d[0]) OVER w1 as m6
+      FROM {0} last join {1} ORDER BY {1}.timecol on {0}.id={1}.id
+      WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
+    expect:
+      order: id
+      columns: ["id int","c1 string","m2 string","m3 string","m4 string","m5 string","m6 string"]
+    expectProvider:
+      0:
+        rows:
+          - [1,"aa","1:1","1:1","1:30","1:1.100000","1:2.100000"]
+          - [2,"aa","1:1","1:1","1:30","1:1.100000","1:2.100000"]
+          - [3,"aa","1:1,2:3","1:1,2:3","1:30,2:32","1:1.100000,2:1.300000","1:2.100000,2:2.300000"]
+          - [4,"aa","1:4,2:3","1:4,2:3","1:33,2:32","1:1.400000,2:1.300000","1:2.400000,2:2.300000"]
+      1:
+        rows:
+          - [1,"aa","1:1","1:1","1:30","1:1.100000","1:2.100000"]
+          - [2,"aa","1:1","1:1","1:30","1:1.100000","1:2.100000"]
+          - [3,"aa","1:1,2:3","1:1,2:3","1:30,2:32","1:1.100000,2:1.300000","1:2.100000,2:2.300000"]
+          - [4,"aa","1:4,2:3","1:4,2:3","1:33,2:32","1:1.400000,2:1.300000","1:2.400000,2:2.300000"]
+      2:
+        rows:
+          - [1,"aa","30:1","30:1","30:30","30:1.100000","30:2.100000"]
+          - [2,"aa","30:1","30:1","30:30","30:1.100000","30:2.100000"]
+          - [3,"aa","30:1,32:3","30:1,32:3","30:30,32:32","30:1.100000,32:1.300000","30:2.100000,32:2.300000"]
+          - [4,"aa","30:4,32:3","30:4,32:3","30:33,32:32","30:1.400000,32:1.300000","30:2.400000,32:2.300000"]
+      3:
+        rows:
+          - [1,"aa","2020-05-29 15:56:30:1","2020-05-29 15:56:30:1","2020-05-29 15:56:30:30","2020-05-29 15:56:30:1.100000","2020-05-29 15:56:30:2.100000"]
+          - [2,"aa","2020-05-29 15:56:30:1","2020-05-29 15:56:30:1","2020-05-29 15:56:30:30","2020-05-29 15:56:30:1.100000","2020-05-29 15:56:30:2.100000"]
+          - [3,"aa","2020-05-29 15:56:30:1,2020-05-29 15:56:32:3","2020-05-29 15:56:30:1,2020-05-29 15:56:32:3","2020-05-29 15:56:30:30,2020-05-29 15:56:32:32","2020-05-29 15:56:30:1.100000,2020-05-29 15:56:32:1.300000","2020-05-29 15:56:30:2.100000,2020-05-29 15:56:32:2.300000"]
+          - [4,"aa","2020-05-29 15:56:30:4,2020-05-29 15:56:32:3","2020-05-29 15:56:30:4,2020-05-29 15:56:32:3","2020-05-29 15:56:30:33,2020-05-29 15:56:32:32","2020-05-29 15:56:30:1.400000,2020-05-29 15:56:32:1.300000","2020-05-29 15:56:30:2.400000,2020-05-29 15:56:32:2.300000"]
+      4:
+        rows:
+          - [1,"aa","2020-05-01:1","2020-05-01:1","2020-05-01:30","2020-05-01:1.100000","2020-05-01:2.100000"]
+          - [2,"aa","2020-05-01:1","2020-05-01:1","2020-05-01:30","2020-05-01:1.100000","2020-05-01:2.100000"]
+          - [3,"aa","2020-05-01:1,2020-05-02:3","2020-05-01:1,2020-05-02:3","2020-05-01:30,2020-05-02:32","2020-05-01:1.100000,2020-05-02:1.300000","2020-05-01:2.100000,2020-05-02:2.300000"]
+          - [4,"aa","2020-05-01:4,2020-05-02:3","2020-05-01:4,2020-05-02:3","2020-05-01:33,2020-05-02:32","2020-05-01:1.400000,2020-05-02:1.300000","2020-05-01:2.400000,2020-05-02:2.300000"]
+      5:
+        rows:
+          - [1,"aa","a:1","a:1","a:30","a:1.100000","a:2.100000"]
+          - [2,"aa","a:1","a:1","a:30","a:1.100000","a:2.100000"]
+          - [3,"aa","a:1,b:3","a:1,b:3","a:30,b:32","a:1.100000,b:1.300000","a:2.100000,b:2.300000"]
+          - [4,"aa","a:4,b:3","a:4,b:3","a:33,b:32","a:1.400000,b:1.300000","a:2.400000,b:2.300000"]
+  -
+    id: 22
+    desc: count_cate-normal
+    mode: cli-unsupport
+    sqlDialect: ["HybridSQL"]
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
+        indexs: ["index1:id:c7","index2:c1:c7"]
+        rows:
+          - [1,"aa",1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
+          - [2,"aa",4,4,33,1.4,2.4,1590738991000,"2020-05-03","c",false]
+          - [3,"aa",3,3,32,1.3,2.3,1590738992000,"2020-05-02","b",true]
+          - [4,"aa",NULL,NULL,NULL,NULL,NULL,1590738993000,NULL,NULL,NULL]
+      -
+        columns : ["id int","timecol bigint","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
+        indexs: ["index1:id:timecol"]
+        rows:
+          - [1,1,1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
+          - [2,2,1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
+          - [3,3,2,2,32,1.3,2.3,1590738992000,"2020-05-02","b",false]
+          - [4,4,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL]
+    dataProvider:
+      - ["{1}.c2","{1}.c3","{1}.c4","{1}.c7","{1}.c8","{1}.c9"]
+    sql: |
+      SELECT {0}.id, {0}.c1,
+      count_cate({0}.c2,d[0]) OVER w1 as m2,
+      count_cate({0}.c3,d[0]) OVER w1 as m3,
+      count_cate({0}.c4,d[0]) OVER w1 as m4,
+      count_cate({0}.c5,d[0]) OVER w1 as m5,
+      count_cate({0}.c6,d[0]) OVER w1 as m6
+      FROM {0} last join {1} ORDER BY {1}.timecol on {0}.id={1}.id
+      WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
+    expect:
+      order: id
+      columns: ["id int","c1 string","m2 string","m3 string","m4 string","m5 string","m6 string"]
+    expectProvider:
+      0:
+        rows:
+          - [1,"aa","1:1","1:1","1:1","1:1","1:1"]
+          - [2,"aa","1:2","1:2","1:2","1:2","1:2"]
+          - [3,"aa","1:2,2:1","1:2,2:1","1:2,2:1","1:2,2:1","1:2,2:1"]
+          - [4,"aa","1:1,2:1","1:1,2:1","1:1,2:1","1:1,2:1","1:1,2:1"]
+      1:
+        rows:
+          - [1,"aa","1:1","1:1","1:1","1:1","1:1"]
+          - [2,"aa","1:2","1:2","1:2","1:2","1:2"]
+          - [3,"aa","1:2,2:1","1:2,2:1","1:2,2:1","1:2,2:1","1:2,2:1"]
+          - [4,"aa","1:1,2:1","1:1,2:1","1:1,2:1","1:1,2:1","1:1,2:1"]
+      2:
+        rows:
+          - [1,"aa","30:1","30:1","30:1","30:1","30:1"]
+          - [2,"aa","30:2","30:2","30:2","30:2","30:2"]
+          - [3,"aa","30:2,32:1","30:2,32:1","30:2,32:1","30:2,32:1","30:2,32:1"]
+          - [4,"aa","30:1,32:1","30:1,32:1","30:1,32:1","30:1,32:1","30:1,32:1"]
+      3:
+        rows:
+          - [1,"aa","2020-05-29 15:56:30:1","2020-05-29 15:56:30:1","2020-05-29 15:56:30:1","2020-05-29 15:56:30:1","2020-05-29 15:56:30:1"]
+          - [2,"aa","2020-05-29 15:56:30:2","2020-05-29 15:56:30:2","2020-05-29 15:56:30:2","2020-05-29 15:56:30:2","2020-05-29 15:56:30:2"]
+          - [3,"aa","2020-05-29 15:56:30:2,2020-05-29 15:56:32:1","2020-05-29 15:56:30:2,2020-05-29 15:56:32:1","2020-05-29 15:56:30:2,2020-05-29 15:56:32:1","2020-05-29 15:56:30:2,2020-05-29 15:56:32:1","2020-05-29 15:56:30:2,2020-05-29 15:56:32:1"]
+          - [4,"aa","2020-05-29 15:56:30:1,2020-05-29 15:56:32:1","2020-05-29 15:56:30:1,2020-05-29 15:56:32:1","2020-05-29 15:56:30:1,2020-05-29 15:56:32:1","2020-05-29 15:56:30:1,2020-05-29 15:56:32:1","2020-05-29 15:56:30:1,2020-05-29 15:56:32:1"]
+      4:
+        rows:
+          - [1,"aa","2020-05-01:1","2020-05-01:1","2020-05-01:1","2020-05-01:1","2020-05-01:1"]
+          - [2,"aa","2020-05-01:2","2020-05-01:2","2020-05-01:2","2020-05-01:2","2020-05-01:2"]
+          - [3,"aa","2020-05-01:2,2020-05-02:1","2020-05-01:2,2020-05-02:1","2020-05-01:2,2020-05-02:1","2020-05-01:2,2020-05-02:1","2020-05-01:2,2020-05-02:1"]
+          - [4,"aa","2020-05-01:1,2020-05-02:1","2020-05-01:1,2020-05-02:1","2020-05-01:1,2020-05-02:1","2020-05-01:1,2020-05-02:1","2020-05-01:1,2020-05-02:1"]
+      5:
+        rows:
+          - [1,"aa","a:1","a:1","a:1","a:1","a:1"]
+          - [2,"aa","a:2","a:2","a:2","a:2","a:2"]
+          - [3,"aa","a:2,b:1","a:2,b:1","a:2,b:1","a:2,b:1","a:2,b:1"]
+          - [4,"aa","a:1,b:1","a:1,b:1","a:1,b:1","a:1,b:1","a:1,b:1"]
+  -
+    id: 23
+    desc: sum_cate-normal
+    mode: cli-unsupport
+    sqlDialect: ["HybridSQL"]
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
+        indexs: ["index1:id:c7","index2:c1:c7"]
+        rows:
+          - [1,"aa",1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
+          - [2,"aa",4,4,33,1.4,2.4,1590738991000,"2020-05-03","c",false]
+          - [3,"aa",3,3,32,1.3,2.3,1590738992000,"2020-05-02","b",true]
+          - [4,"aa",NULL,NULL,NULL,NULL,NULL,1590738993000,NULL,NULL,NULL]
+      -
+        columns : ["id int","timecol bigint","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
+        indexs: ["index1:id:timecol"]
+        rows:
+          - [1,1,1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
+          - [2,2,1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
+          - [3,3,2,2,32,1.3,2.3,1590738992000,"2020-05-02","b",false]
+          - [4,4,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL]
+    dataProvider:
+      - ["{1}.c2","{1}.c3","{1}.c4","{1}.c7","{1}.c8","{1}.c9"]
+    sql: |
+      SELECT {0}.id, {0}.c1,
+      sum_cate({0}.c2,d[0]) OVER w1 as m2,
+      sum_cate({0}.c3,d[0]) OVER w1 as m3,
+      sum_cate({0}.c4,d[0]) OVER w1 as m4,
+      sum_cate({0}.c5,d[0]) OVER w1 as m5,
+      sum_cate({0}.c6,d[0]) OVER w1 as m6
+      FROM {0} last join {1} ORDER BY {1}.timecol on {0}.id={1}.id
+      WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
+    expect:
+      order: id
+      columns: ["id int","c1 string","m2 string","m3 string","m4 string","m5 string","m6 string"]
+    expectProvider:
+      0:
+        rows:
+          - [1,"aa","1:1","1:1","1:30","1:1.100000","1:2.100000"]
+          - [2,"aa","1:5","1:5","1:63","1:2.500000","1:4.500000"]
+          - [3,"aa","1:5,2:3","1:5,2:3","1:63,2:32","1:2.500000,2:1.300000","1:4.500000,2:2.300000"]
+          - [4,"aa","1:4,2:3","1:4,2:3","1:33,2:32","1:1.400000,2:1.300000","1:2.400000,2:2.300000"]
+      1:
+        rows:
+          - [1,"aa","1:1","1:1","1:30","1:1.100000","1:2.100000"]
+          - [2,"aa","1:5","1:5","1:63","1:2.500000","1:4.500000"]
+          - [3,"aa","1:5,2:3","1:5,2:3","1:63,2:32","1:2.500000,2:1.300000","1:4.500000,2:2.300000"]
+          - [4,"aa","1:4,2:3","1:4,2:3","1:33,2:32","1:1.400000,2:1.300000","1:2.400000,2:2.300000"]
+      2:
+        rows:
+          - [1,"aa","30:1","30:1","30:30","30:1.100000","30:2.100000"]
+          - [2,"aa","30:5","30:5","30:63","30:2.500000","30:4.500000"]
+          - [3,"aa","30:5,32:3","30:5,32:3","30:63,32:32","30:2.500000,32:1.300000","30:4.500000,32:2.300000"]
+          - [4,"aa","30:4,32:3","30:4,32:3","30:33,32:32","30:1.400000,32:1.300000","30:2.400000,32:2.300000"]
+      3:
+        rows:
+          - [1,"aa","2020-05-29 15:56:30:1","2020-05-29 15:56:30:1","2020-05-29 15:56:30:30","2020-05-29 15:56:30:1.100000","2020-05-29 15:56:30:2.100000"]
+          - [2,"aa","2020-05-29 15:56:30:5","2020-05-29 15:56:30:5","2020-05-29 15:56:30:63","2020-05-29 15:56:30:2.500000","2020-05-29 15:56:30:4.500000"]
+          - [3,"aa","2020-05-29 15:56:30:5,2020-05-29 15:56:32:3","2020-05-29 15:56:30:5,2020-05-29 15:56:32:3","2020-05-29 15:56:30:63,2020-05-29 15:56:32:32","2020-05-29 15:56:30:2.500000,2020-05-29 15:56:32:1.300000","2020-05-29 15:56:30:4.500000,2020-05-29 15:56:32:2.300000"]
+          - [4,"aa","2020-05-29 15:56:30:4,2020-05-29 15:56:32:3","2020-05-29 15:56:30:4,2020-05-29 15:56:32:3","2020-05-29 15:56:30:33,2020-05-29 15:56:32:32","2020-05-29 15:56:30:1.400000,2020-05-29 15:56:32:1.300000","2020-05-29 15:56:30:2.400000,2020-05-29 15:56:32:2.300000"]
+      4:
+        rows:
+          - [1,"aa","2020-05-01:1","2020-05-01:1","2020-05-01:30","2020-05-01:1.100000","2020-05-01:2.100000"]
+          - [2,"aa","2020-05-01:5","2020-05-01:5","2020-05-01:63","2020-05-01:2.500000","2020-05-01:4.500000"]
+          - [3,"aa","2020-05-01:5,2020-05-02:3","2020-05-01:5,2020-05-02:3","2020-05-01:63,2020-05-02:32","2020-05-01:2.500000,2020-05-02:1.300000","2020-05-01:4.500000,2020-05-02:2.300000"]
+          - [4,"aa","2020-05-01:4,2020-05-02:3","2020-05-01:4,2020-05-02:3","2020-05-01:33,2020-05-02:32","2020-05-01:1.400000,2020-05-02:1.300000","2020-05-01:2.400000,2020-05-02:2.300000"]
+      5:
+        rows:
+          - [1,"aa","a:1","a:1","a:30","a:1.100000","a:2.100000"]
+          - [2,"aa","a:5","a:5","a:63","a:2.500000","a:4.500000"]
+          - [3,"aa","a:5,b:3","a:5,b:3","a:63,b:32","a:2.500000,b:1.300000","a:4.500000,b:2.300000"]
+          - [4,"aa","a:4,b:3","a:4,b:3","a:33,b:32","a:1.400000,b:1.300000","a:2.400000,b:2.300000"]
+  -
+    id: 24
+    desc: avg_cate-normal
+    mode: cli-unsupport
+    sqlDialect: ["HybridSQL"]
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
+        indexs: ["index1:id:c7","index2:c1:c7"]
+        rows:
+          - [1,"aa",1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
+          - [2,"aa",4,4,33,1.4,2.4,1590738991000,"2020-05-03","c",false]
+          - [3,"aa",3,3,32,1.3,2.3,1590738992000,"2020-05-02","b",true]
+          - [4,"aa",NULL,NULL,NULL,NULL,NULL,1590738993000,NULL,NULL,NULL]
+      -
+        columns : ["id int","timecol bigint","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
+        indexs: ["index1:id:timecol"]
+        rows:
+          - [1,1,1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
+          - [2,2,1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
+          - [3,3,2,2,32,1.3,2.3,1590738992000,"2020-05-02","b",false]
+          - [4,4,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL]
+    dataProvider:
+      - ["{1}.c2","{1}.c3","{1}.c4","{1}.c7","{1}.c8","{1}.c9"]
+    sql: |
+      SELECT {0}.id, {0}.c1,
+      avg_cate({0}.c2,d[0]) OVER w1 as m2,
+      avg_cate({0}.c3,d[0]) OVER w1 as m3,
+      avg_cate({0}.c4,d[0]) OVER w1 as m4,
+      avg_cate({0}.c5,d[0]) OVER w1 as m5,
+      avg_cate({0}.c6,d[0]) OVER w1 as m6
+      FROM {0} last join {1} ORDER BY {1}.timecol on {0}.id={1}.id
+      WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
+    expect:
+      order: id
+      columns: ["id int","c1 string","m2 string","m3 string","m4 string","m5 string","m6 string"]
+    expectProvider:
+      0:
+        rows:
+          - [1,"aa","1:1.000000","1:1.000000","1:30.000000","1:1.100000","1:2.100000"]
+          - [2,"aa","1:2.500000","1:2.500000","1:31.500000","1:1.250000","1:2.250000"]
+          - [3,"aa","1:2.500000,2:3.000000","1:2.500000,2:3.000000","1:31.500000,2:32.000000","1:1.250000,2:1.300000","1:2.250000,2:2.300000"]
+          - [4,"aa","1:4.000000,2:3.000000","1:4.000000,2:3.000000","1:33.000000,2:32.000000","1:1.400000,2:1.300000","1:2.400000,2:2.300000"]
+      1:
+        rows:
+          - [1,"aa","1:1.000000","1:1.000000","1:30.000000","1:1.100000","1:2.100000"]
+          - [2,"aa","1:2.500000","1:2.500000","1:31.500000","1:1.250000","1:2.250000"]
+          - [3,"aa","1:2.500000,2:3.000000","1:2.500000,2:3.000000","1:31.500000,2:32.000000","1:1.250000,2:1.300000","1:2.250000,2:2.300000"]
+          - [4,"aa","1:4.000000,2:3.000000","1:4.000000,2:3.000000","1:33.000000,2:32.000000","1:1.400000,2:1.300000","1:2.400000,2:2.300000"]
+      2:
+        rows:
+          - [1,"aa","30:1.000000","30:1.000000","30:30.000000","30:1.100000","30:2.100000"]
+          - [2,"aa","30:2.500000","30:2.500000","30:31.500000","30:1.250000","30:2.250000"]
+          - [3,"aa","30:2.500000,32:3.000000","30:2.500000,32:3.000000","30:31.500000,32:32.000000","30:1.250000,32:1.300000","30:2.250000,32:2.300000"]
+          - [4,"aa","30:4.000000,32:3.000000","30:4.000000,32:3.000000","30:33.000000,32:32.000000","30:1.400000,32:1.300000","30:2.400000,32:2.300000"]
+      3:
+        rows:
+          - [1,"aa","2020-05-29 15:56:30:1.000000","2020-05-29 15:56:30:1.000000","2020-05-29 15:56:30:30.000000","2020-05-29 15:56:30:1.100000","2020-05-29 15:56:30:2.100000"]
+          - [2,"aa","2020-05-29 15:56:30:2.500000","2020-05-29 15:56:30:2.500000","2020-05-29 15:56:30:31.500000","2020-05-29 15:56:30:1.250000","2020-05-29 15:56:30:2.250000"]
+          - [3,"aa","2020-05-29 15:56:30:2.500000,2020-05-29 15:56:32:3.000000","2020-05-29 15:56:30:2.500000,2020-05-29 15:56:32:3.000000","2020-05-29 15:56:30:31.500000,2020-05-29 15:56:32:32.000000","2020-05-29 15:56:30:1.250000,2020-05-29 15:56:32:1.300000","2020-05-29 15:56:30:2.250000,2020-05-29 15:56:32:2.300000"]
+          - [4,"aa","2020-05-29 15:56:30:4.000000,2020-05-29 15:56:32:3.000000","2020-05-29 15:56:30:4.000000,2020-05-29 15:56:32:3.000000","2020-05-29 15:56:30:33.000000,2020-05-29 15:56:32:32.000000","2020-05-29 15:56:30:1.400000,2020-05-29 15:56:32:1.300000","2020-05-29 15:56:30:2.400000,2020-05-29 15:56:32:2.300000"]
+      4:
+        rows:
+          - [1,"aa","2020-05-01:1.000000","2020-05-01:1.000000","2020-05-01:30.000000","2020-05-01:1.100000","2020-05-01:2.100000"]
+          - [2,"aa","2020-05-01:2.500000","2020-05-01:2.500000","2020-05-01:31.500000","2020-05-01:1.250000","2020-05-01:2.250000"]
+          - [3,"aa","2020-05-01:2.500000,2020-05-02:3.000000","2020-05-01:2.500000,2020-05-02:3.000000","2020-05-01:31.500000,2020-05-02:32.000000","2020-05-01:1.250000,2020-05-02:1.300000","2020-05-01:2.250000,2020-05-02:2.300000"]
+          - [4,"aa","2020-05-01:4.000000,2020-05-02:3.000000","2020-05-01:4.000000,2020-05-02:3.000000","2020-05-01:33.000000,2020-05-02:32.000000","2020-05-01:1.400000,2020-05-02:1.300000","2020-05-01:2.400000,2020-05-02:2.300000"]
+      5:
+        rows:
+          - [1,"aa","a:1.000000","a:1.000000","a:30.000000","a:1.100000","a:2.100000"]
+          - [2,"aa","a:2.500000","a:2.500000","a:31.500000","a:1.250000","a:2.250000"]
+          - [3,"aa","a:2.500000,b:3.000000","a:2.500000,b:3.000000","a:31.500000,b:32.000000","a:1.250000,b:1.300000","a:2.250000,b:2.300000"]
+          - [4,"aa","a:4.000000,b:3.000000","a:4.000000,b:3.000000","a:33.000000,b:32.000000","a:1.400000,b:1.300000","a:2.400000,b:2.300000"]
+  -
+    id: 25
+    desc: "*_cate-fail1"
+    sqlDialect: ["HybridSQL"]
+    level: 5
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
+        indexs: ["index1:id:c7","index2:c1:c7"]
+        rows:
+          - [1,"aa",1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
+          - [2,"aa",4,4,33,1.4,2.4,1590738991000,"2020-05-03","c",false]
+          - [3,"aa",3,3,32,1.3,2.3,1590738992000,"2020-05-02","b",true]
+          - [4,"aa",NULL,NULL,NULL,NULL,NULL,1590738993000,NULL,NULL,NULL]
+      -
+        columns : ["id int","timecol bigint","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
+        indexs: ["index1:id:timecol"]
+        rows:
+          - [1,1,1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
+          - [2,2,1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
+          - [3,3,2,2,32,1.3,2.3,1590738992000,"2020-05-02","b",false]
+          - [4,4,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL]
+    dataProvider:
+      - ["avg_cate","sum_cate","max_cate","min_cate","count_cate"]
+      - ["{0}.c2","{0}.c3","{0}.c4","{0}.c5","{0}.c6"]
+      - ["{1}.c5","{1}.c6","{1}.c10"]
+    sql: |
+      SELECT {0}.id, {0}.c1,
+      d[0](d[1],d[2]) OVER w1 as m2
+      FROM {0} last join {1} ORDER BY {1}.timecol on {0}.id={1}.id
+      WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
+    expect:
+      success: false
+  -
+    id: 26
+    desc: "*_cate-fail2"
+    sqlDialect: ["HybridSQL"]
+    level: 5
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
+        indexs: ["index1:id:c7","index2:c1:c7"]
+        rows:
+          - [1,"aa",1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
+          - [2,"aa",4,4,33,1.4,2.4,1590738991000,"2020-05-03","c",false]
+          - [3,"aa",3,3,32,1.3,2.3,1590738992000,"2020-05-02","b",true]
+          - [4,"aa",NULL,NULL,NULL,NULL,NULL,1590738993000,NULL,NULL,NULL]
+      -
+        columns : ["id int","timecol bigint","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
+        indexs: ["index1:id:timecol"]
+        rows:
+          - [1,1,1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
+          - [2,2,1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
+          - [3,3,2,2,32,1.3,2.3,1590738992000,"2020-05-02","b",false]
+          - [4,4,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL]
+    dataProvider:
+      - ["avg_cate","sum_cate","max_cate","min_cate","count_cate"]
+      - ["{0}.c7","{0}.c8","{0}.c9","{0}.c10"]
+      - ["{1}.c2","{1}.c3","{1}.c4","{1}.c5","{1}.c6","{1}.c7","{1}.c8","{1}.c9","{1}.c10"]
+    sql: |
+      SELECT {0}.id, {0}.c1,
+      d[0](d[1],d[2]) OVER w1 as m2
+      FROM {0} last join {1} ORDER BY {1}.timecol on {0}.id={1}.id
+      WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
+    expect:
+      success: false
+  -
+    id: 27
+    desc: max_cate_where-normal
+    mode: cli-unsupport
+    sqlDialect: ["HybridSQL"]
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
+        indexs: ["index1:id:c7","index2:c1:c7"]
+        rows:
+          - [1,"aa",1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
+          - [2,"aa",4,4,33,1.4,2.4,1590738991000,"2020-05-03","c",false]
+          - [3,"aa",3,3,32,1.3,2.3,1590738992000,"2020-05-02","b",true]
+          - [4,"aa",NULL,NULL,NULL,NULL,NULL,1590738993000,NULL,NULL,NULL]
+      -
+        columns : ["id int","timecol bigint","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
+        indexs: ["index1:id:timecol"]
+        rows:
+          - [1,1,1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
+          - [2,2,1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
+          - [3,3,2,2,32,1.3,2.3,1590738992000,"2020-05-02","b",false]
+          - [4,4,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL]
+    dataProvider:
+      - ["{1}.c2","{1}.c3","{1}.c4","{1}.c7","{1}.c8","{1}.c9"]
+    sql: |
+      SELECT {0}.id, {0}.c1,
+      max_cate_where({0}.c2,{0}.c10,d[0]) OVER w1 as m2,
+      max_cate_where({0}.c3,{0}.c10,d[0]) OVER w1 as m3,
+      max_cate_where({0}.c4,{0}.c10,d[0]) OVER w1 as m4,
+      max_cate_where({0}.c5,{0}.c10,d[0]) OVER w1 as m5,
+      max_cate_where({0}.c6,{0}.c10,d[0]) OVER w1 as m6
+      FROM {0} last join {1} ORDER BY {1}.timecol on {0}.id={1}.id
+      WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
+    expect:
+      order: id
+      columns: ["id int","c1 string","m2 string","m3 string","m4 string","m5 string","m6 string"]
+    expectProvider:
+      0:
+        rows:
+          - [1,"aa","1:1","1:1","1:30","1:1.100000","1:2.100000"]
+          - [2,"aa","1:1","1:1","1:30","1:1.100000","1:2.100000"]
+          - [3,"aa","1:1,2:3","1:1,2:3","1:30,2:32","1:1.100000,2:1.300000","1:2.100000,2:2.300000"]
+          - [4,"aa","2:3","2:3","2:32","2:1.300000","2:2.300000"]
+      1:
+        rows:
+          - [1,"aa","1:1","1:1","1:30","1:1.100000","1:2.100000"]
+          - [2,"aa","1:1","1:1","1:30","1:1.100000","1:2.100000"]
+          - [3,"aa","1:1,2:3","1:1,2:3","1:30,2:32","1:1.100000,2:1.300000","1:2.100000,2:2.300000"]
+          - [4,"aa","2:3","2:3","2:32","2:1.300000","2:2.300000"]
+      2:
+        rows:
+          - [1,"aa","30:1","30:1","30:30","30:1.100000","30:2.100000"]
+          - [2,"aa","30:1","30:1","30:30","30:1.100000","30:2.100000"]
+          - [3,"aa","30:1,32:3","30:1,32:3","30:30,32:32","30:1.100000,32:1.300000","30:2.100000,32:2.300000"]
+          - [4,"aa","32:3","32:3","32:32","32:1.300000","32:2.300000"]
+      3:
+        rows:
+          - [1,"aa","2020-05-29 15:56:30:1","2020-05-29 15:56:30:1","2020-05-29 15:56:30:30","2020-05-29 15:56:30:1.100000","2020-05-29 15:56:30:2.100000"]
+          - [2,"aa","2020-05-29 15:56:30:1","2020-05-29 15:56:30:1","2020-05-29 15:56:30:30","2020-05-29 15:56:30:1.100000","2020-05-29 15:56:30:2.100000"]
+          - [3,"aa","2020-05-29 15:56:30:1,2020-05-29 15:56:32:3","2020-05-29 15:56:30:1,2020-05-29 15:56:32:3","2020-05-29 15:56:30:30,2020-05-29 15:56:32:32","2020-05-29 15:56:30:1.100000,2020-05-29 15:56:32:1.300000","2020-05-29 15:56:30:2.100000,2020-05-29 15:56:32:2.300000"]
+          - [4,"aa","2020-05-29 15:56:32:3","2020-05-29 15:56:32:3","2020-05-29 15:56:32:32","2020-05-29 15:56:32:1.300000","2020-05-29 15:56:32:2.300000"]
+      4:
+        rows:
+          - [1,"aa","2020-05-01:1","2020-05-01:1","2020-05-01:30","2020-05-01:1.100000","2020-05-01:2.100000"]
+          - [2,"aa","2020-05-01:1","2020-05-01:1","2020-05-01:30","2020-05-01:1.100000","2020-05-01:2.100000"]
+          - [3,"aa","2020-05-01:1,2020-05-02:3","2020-05-01:1,2020-05-02:3","2020-05-01:30,2020-05-02:32","2020-05-01:1.100000,2020-05-02:1.300000","2020-05-01:2.100000,2020-05-02:2.300000"]
+          - [4,"aa","2020-05-02:3","2020-05-02:3","2020-05-02:32","2020-05-02:1.300000","2020-05-02:2.300000"]
+      5:
+        rows:
+          - [1,"aa","a:1","a:1","a:30","a:1.100000","a:2.100000"]
+          - [2,"aa","a:1","a:1","a:30","a:1.100000","a:2.100000"]
+          - [3,"aa","a:1,b:3","a:1,b:3","a:30,b:32","a:1.100000,b:1.300000","a:2.100000,b:2.300000"]
+          - [4,"aa","b:3","b:3","b:32","b:1.300000","b:2.300000"]
+  -
+    id: 28
+    desc: min_cate_where-normal
+    mode: cli-unsupport
+    sqlDialect: ["HybridSQL"]
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
+        indexs: ["index1:id:c7","index2:c1:c7"]
+        rows:
+          - [1,"aa",1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
+          - [2,"aa",4,4,33,1.4,2.4,1590738991000,"2020-05-03","c",false]
+          - [3,"aa",3,3,32,1.3,2.3,1590738992000,"2020-05-02","b",true]
+          - [4,"aa",NULL,NULL,NULL,NULL,NULL,1590738993000,NULL,NULL,NULL]
+      -
+        columns : ["id int","timecol bigint","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
+        indexs: ["index1:id:timecol"]
+        rows:
+          - [1,1,1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
+          - [2,2,1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
+          - [3,3,2,2,32,1.3,2.3,1590738992000,"2020-05-02","b",false]
+          - [4,4,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL]
+    dataProvider:
+      - ["{1}.c2","{1}.c3","{1}.c4","{1}.c7","{1}.c8","{1}.c9"]
+    sql: |
+      SELECT {0}.id, {0}.c1,
+      min_cate_where({0}.c2,{0}.c10,d[0]) OVER w1 as m2,
+      min_cate_where({0}.c3,{0}.c10,d[0]) OVER w1 as m3,
+      min_cate_where({0}.c4,{0}.c10,d[0]) OVER w1 as m4,
+      min_cate_where({0}.c5,{0}.c10,d[0]) OVER w1 as m5,
+      min_cate_where({0}.c6,{0}.c10,d[0]) OVER w1 as m6
+      FROM {0} last join {1} ORDER BY {1}.timecol on {0}.id={1}.id
+      WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
+    expect:
+      order: id
+      columns: ["id int","c1 string","m2 string","m3 string","m4 string","m5 string","m6 string"]
+    expectProvider:
+      0:
+        rows:
+          - [1,"aa","1:1","1:1","1:30","1:1.100000","1:2.100000"]
+          - [2,"aa","1:1","1:1","1:30","1:1.100000","1:2.100000"]
+          - [3,"aa","1:1,2:3","1:1,2:3","1:30,2:32","1:1.100000,2:1.300000","1:2.100000,2:2.300000"]
+          - [4,"aa","2:3","2:3","2:32","2:1.300000","2:2.300000"]
+      1:
+        rows:
+          - [1,"aa","1:1","1:1","1:30","1:1.100000","1:2.100000"]
+          - [2,"aa","1:1","1:1","1:30","1:1.100000","1:2.100000"]
+          - [3,"aa","1:1,2:3","1:1,2:3","1:30,2:32","1:1.100000,2:1.300000","1:2.100000,2:2.300000"]
+          - [4,"aa","2:3","2:3","2:32","2:1.300000","2:2.300000"]
+      2:
+        rows:
+          - [1,"aa","30:1","30:1","30:30","30:1.100000","30:2.100000"]
+          - [2,"aa","30:1","30:1","30:30","30:1.100000","30:2.100000"]
+          - [3,"aa","30:1,32:3","30:1,32:3","30:30,32:32","30:1.100000,32:1.300000","30:2.100000,32:2.300000"]
+          - [4,"aa","32:3","32:3","32:32","32:1.300000","32:2.300000"]
+      3:
+        rows:
+          - [1,"aa","2020-05-29 15:56:30:1","2020-05-29 15:56:30:1","2020-05-29 15:56:30:30","2020-05-29 15:56:30:1.100000","2020-05-29 15:56:30:2.100000"]
+          - [2,"aa","2020-05-29 15:56:30:1","2020-05-29 15:56:30:1","2020-05-29 15:56:30:30","2020-05-29 15:56:30:1.100000","2020-05-29 15:56:30:2.100000"]
+          - [3,"aa","2020-05-29 15:56:30:1,2020-05-29 15:56:32:3","2020-05-29 15:56:30:1,2020-05-29 15:56:32:3","2020-05-29 15:56:30:30,2020-05-29 15:56:32:32","2020-05-29 15:56:30:1.100000,2020-05-29 15:56:32:1.300000","2020-05-29 15:56:30:2.100000,2020-05-29 15:56:32:2.300000"]
+          - [4,"aa","2020-05-29 15:56:32:3","2020-05-29 15:56:32:3","2020-05-29 15:56:32:32","2020-05-29 15:56:32:1.300000","2020-05-29 15:56:32:2.300000"]
+      4:
+        rows:
+          - [1,"aa","2020-05-01:1","2020-05-01:1","2020-05-01:30","2020-05-01:1.100000","2020-05-01:2.100000"]
+          - [2,"aa","2020-05-01:1","2020-05-01:1","2020-05-01:30","2020-05-01:1.100000","2020-05-01:2.100000"]
+          - [3,"aa","2020-05-01:1,2020-05-02:3","2020-05-01:1,2020-05-02:3","2020-05-01:30,2020-05-02:32","2020-05-01:1.100000,2020-05-02:1.300000","2020-05-01:2.100000,2020-05-02:2.300000"]
+          - [4,"aa","2020-05-02:3","2020-05-02:3","2020-05-02:32","2020-05-02:1.300000","2020-05-02:2.300000"]
+      5:
+        rows:
+          - [1,"aa","a:1","a:1","a:30","a:1.100000","a:2.100000"]
+          - [2,"aa","a:1","a:1","a:30","a:1.100000","a:2.100000"]
+          - [3,"aa","a:1,b:3","a:1,b:3","a:30,b:32","a:1.100000,b:1.300000","a:2.100000,b:2.300000"]
+          - [4,"aa","b:3","b:3","b:32","b:1.300000","b:2.300000"]
+  -
+    id: 29
+    desc: count_cate_where-normal
+    mode: cli-unsupport
+    sqlDialect: ["HybridSQL"]
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
+        indexs: ["index1:id:c7","index2:c1:c7"]
+        rows:
+          - [1,"aa",1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
+          - [2,"aa",4,4,33,1.4,2.4,1590738991000,"2020-05-03","c",false]
+          - [3,"aa",3,3,32,1.3,2.3,1590738992000,"2020-05-02","b",true]
+          - [4,"aa",NULL,NULL,NULL,NULL,NULL,1590738993000,NULL,NULL,NULL]
+      -
+        columns : ["id int","timecol bigint","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
+        indexs: ["index1:id:timecol"]
+        rows:
+          - [1,1,1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
+          - [2,2,1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
+          - [3,3,2,2,32,1.3,2.3,1590738992000,"2020-05-02","b",false]
+          - [4,4,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL]
+    dataProvider:
+      - ["{1}.c2","{1}.c3","{1}.c4","{1}.c7","{1}.c8","{1}.c9"]
+    sql: |
+      SELECT {0}.id, {0}.c1,
+      count_cate_where({0}.c2,{0}.c10,d[0]) OVER w1 as m2,
+      count_cate_where({0}.c3,{0}.c10,d[0]) OVER w1 as m3,
+      count_cate_where({0}.c4,{0}.c10,d[0]) OVER w1 as m4,
+      count_cate_where({0}.c5,{0}.c10,d[0]) OVER w1 as m5,
+      count_cate_where({0}.c6,{0}.c10,d[0]) OVER w1 as m6
+      FROM {0} last join {1} ORDER BY {1}.timecol on {0}.id={1}.id
+      WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
+    expect:
+      order: id
+      columns: ["id int","c1 string","m2 string","m3 string","m4 string","m5 string","m6 string"]
+    expectProvider:
+      0:
+        rows:
+          - [1,"aa","1:1","1:1","1:1","1:1","1:1"]
+          - [2,"aa","1:1","1:1","1:1","1:1","1:1"]
+          - [3,"aa","1:1,2:1","1:1,2:1","1:1,2:1","1:1,2:1","1:1,2:1"]
+          - [4,"aa","2:1","2:1","2:1","2:1","2:1"]
+      1:
+        rows:
+          - [1,"aa","1:1","1:1","1:1","1:1","1:1"]
+          - [2,"aa","1:1","1:1","1:1","1:1","1:1"]
+          - [3,"aa","1:1,2:1","1:1,2:1","1:1,2:1","1:1,2:1","1:1,2:1"]
+          - [4,"aa","2:1","2:1","2:1","2:1","2:1"]
+      2:
+        rows:
+          - [1,"aa","30:1","30:1","30:1","30:1","30:1"]
+          - [2,"aa","30:1","30:1","30:1","30:1","30:1"]
+          - [3,"aa","30:1,32:1","30:1,32:1","30:1,32:1","30:1,32:1","30:1,32:1"]
+          - [4,"aa","32:1","32:1","32:1","32:1","32:1"]
+      3:
+        rows:
+          - [1,"aa","2020-05-29 15:56:30:1","2020-05-29 15:56:30:1","2020-05-29 15:56:30:1","2020-05-29 15:56:30:1","2020-05-29 15:56:30:1"]
+          - [2,"aa","2020-05-29 15:56:30:1","2020-05-29 15:56:30:1","2020-05-29 15:56:30:1","2020-05-29 15:56:30:1","2020-05-29 15:56:30:1"]
+          - [3,"aa","2020-05-29 15:56:30:1,2020-05-29 15:56:32:1","2020-05-29 15:56:30:1,2020-05-29 15:56:32:1","2020-05-29 15:56:30:1,2020-05-29 15:56:32:1","2020-05-29 15:56:30:1,2020-05-29 15:56:32:1","2020-05-29 15:56:30:1,2020-05-29 15:56:32:1"]
+          - [4,"aa","2020-05-29 15:56:32:1","2020-05-29 15:56:32:1","2020-05-29 15:56:32:1","2020-05-29 15:56:32:1","2020-05-29 15:56:32:1"]
+      4:
+        rows:
+          - [1,"aa","2020-05-01:1","2020-05-01:1","2020-05-01:1","2020-05-01:1","2020-05-01:1"]
+          - [2,"aa","2020-05-01:1","2020-05-01:1","2020-05-01:1","2020-05-01:1","2020-05-01:1"]
+          - [3,"aa","2020-05-01:1,2020-05-02:1","2020-05-01:1,2020-05-02:1","2020-05-01:1,2020-05-02:1","2020-05-01:1,2020-05-02:1","2020-05-01:1,2020-05-02:1"]
+          - [4,"aa","2020-05-02:1","2020-05-02:1","2020-05-02:1","2020-05-02:1","2020-05-02:1"]
+      5:
+        rows:
+          - [1,"aa","a:1","a:1","a:1","a:1","a:1"]
+          - [2,"aa","a:1","a:1","a:1","a:1","a:1"]
+          - [3,"aa","a:1,b:1","a:1,b:1","a:1,b:1","a:1,b:1","a:1,b:1"]
+          - [4,"aa","b:1","b:1","b:1","b:1","b:1"]
+  -
+    id: 30
+    desc: sum_cate_where-normal
+    mode: cli-unsupport
+    sqlDialect: ["HybridSQL"]
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
+        indexs: ["index1:id:c7","index2:c1:c7"]
+        rows:
+          - [1,"aa",1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
+          - [2,"aa",4,4,33,1.4,2.4,1590738991000,"2020-05-03","c",false]
+          - [3,"aa",3,3,32,1.3,2.3,1590738992000,"2020-05-02","b",true]
+          - [4,"aa",NULL,NULL,NULL,NULL,NULL,1590738993000,NULL,NULL,NULL]
+      -
+        columns : ["id int","timecol bigint","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
+        indexs: ["index1:id:timecol"]
+        rows:
+          - [1,1,1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
+          - [2,2,1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
+          - [3,3,2,2,32,1.3,2.3,1590738992000,"2020-05-02","b",false]
+          - [4,4,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL]
+    dataProvider:
+      - ["{1}.c2","{1}.c3","{1}.c4","{1}.c7","{1}.c8","{1}.c9"]
+    sql: |
+      SELECT {0}.id, {0}.c1,
+      sum_cate_where({0}.c2,{0}.c10,d[0]) OVER w1 as m2,
+      sum_cate_where({0}.c3,{0}.c10,d[0]) OVER w1 as m3,
+      sum_cate_where({0}.c4,{0}.c10,d[0]) OVER w1 as m4,
+      sum_cate_where({0}.c5,{0}.c10,d[0]) OVER w1 as m5,
+      sum_cate_where({0}.c6,{0}.c10,d[0]) OVER w1 as m6
+      FROM {0} last join {1} ORDER BY {1}.timecol on {0}.id={1}.id
+      WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
+    expect:
+      order: id
+      columns: ["id int","c1 string","m2 string","m3 string","m4 string","m5 string","m6 string"]
+    expectProvider:
+      0:
+        rows:
+          - [1,"aa","1:1","1:1","1:30","1:1.100000","1:2.100000"]
+          - [2,"aa","1:1","1:1","1:30","1:1.100000","1:2.100000"]
+          - [3,"aa","1:1,2:3","1:1,2:3","1:30,2:32","1:1.100000,2:1.300000","1:2.100000,2:2.300000"]
+          - [4,"aa","2:3","2:3","2:32","2:1.300000","2:2.300000"]
+      1:
+        rows:
+          - [1,"aa","1:1","1:1","1:30","1:1.100000","1:2.100000"]
+          - [2,"aa","1:1","1:1","1:30","1:1.100000","1:2.100000"]
+          - [3,"aa","1:1,2:3","1:1,2:3","1:30,2:32","1:1.100000,2:1.300000","1:2.100000,2:2.300000"]
+          - [4,"aa","2:3","2:3","2:32","2:1.300000","2:2.300000"]
+      2:
+        rows:
+          - [1,"aa","30:1","30:1","30:30","30:1.100000","30:2.100000"]
+          - [2,"aa","30:1","30:1","30:30","30:1.100000","30:2.100000"]
+          - [3,"aa","30:1,32:3","30:1,32:3","30:30,32:32","30:1.100000,32:1.300000","30:2.100000,32:2.300000"]
+          - [4,"aa","32:3","32:3","32:32","32:1.300000","32:2.300000"]
+      3:
+        rows:
+          - [1,"aa","2020-05-29 15:56:30:1","2020-05-29 15:56:30:1","2020-05-29 15:56:30:30","2020-05-29 15:56:30:1.100000","2020-05-29 15:56:30:2.100000"]
+          - [2,"aa","2020-05-29 15:56:30:1","2020-05-29 15:56:30:1","2020-05-29 15:56:30:30","2020-05-29 15:56:30:1.100000","2020-05-29 15:56:30:2.100000"]
+          - [3,"aa","2020-05-29 15:56:30:1,2020-05-29 15:56:32:3","2020-05-29 15:56:30:1,2020-05-29 15:56:32:3","2020-05-29 15:56:30:30,2020-05-29 15:56:32:32","2020-05-29 15:56:30:1.100000,2020-05-29 15:56:32:1.300000","2020-05-29 15:56:30:2.100000,2020-05-29 15:56:32:2.300000"]
+          - [4,"aa","2020-05-29 15:56:32:3","2020-05-29 15:56:32:3","2020-05-29 15:56:32:32","2020-05-29 15:56:32:1.300000","2020-05-29 15:56:32:2.300000"]
+      4:
+        rows:
+          - [1,"aa","2020-05-01:1","2020-05-01:1","2020-05-01:30","2020-05-01:1.100000","2020-05-01:2.100000"]
+          - [2,"aa","2020-05-01:1","2020-05-01:1","2020-05-01:30","2020-05-01:1.100000","2020-05-01:2.100000"]
+          - [3,"aa","2020-05-01:1,2020-05-02:3","2020-05-01:1,2020-05-02:3","2020-05-01:30,2020-05-02:32","2020-05-01:1.100000,2020-05-02:1.300000","2020-05-01:2.100000,2020-05-02:2.300000"]
+          - [4,"aa","2020-05-02:3","2020-05-02:3","2020-05-02:32","2020-05-02:1.300000","2020-05-02:2.300000"]
+      5:
+        rows:
+          - [1,"aa","a:1","a:1","a:30","a:1.100000","a:2.100000"]
+          - [2,"aa","a:1","a:1","a:30","a:1.100000","a:2.100000"]
+          - [3,"aa","a:1,b:3","a:1,b:3","a:30,b:32","a:1.100000,b:1.300000","a:2.100000,b:2.300000"]
+          - [4,"aa","b:3","b:3","b:32","b:1.300000","b:2.300000"]
+  -
+    id: 31
+    desc: avg_cate_where-normal
+    mode: cli-unsupport
+    sqlDialect: ["HybridSQL"]
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
+        indexs: ["index1:id:c7","index2:c1:c7"]
+        rows:
+          - [1,"aa",1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
+          - [2,"aa",4,4,33,1.4,2.4,1590738991000,"2020-05-03","c",false]
+          - [3,"aa",3,3,32,1.3,2.3,1590738992000,"2020-05-02","b",true]
+          - [4,"aa",NULL,NULL,NULL,NULL,NULL,1590738993000,NULL,NULL,NULL]
+      -
+        columns : ["id int","timecol bigint","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
+        indexs: ["index1:id:timecol"]
+        rows:
+          - [1,1,1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
+          - [2,2,1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
+          - [3,3,2,2,32,1.3,2.3,1590738992000,"2020-05-02","b",false]
+          - [4,4,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL]
+    dataProvider:
+      - ["{1}.c2","{1}.c3","{1}.c4","{1}.c7","{1}.c8","{1}.c9"]
+    sql: |
+      SELECT {0}.id, {0}.c1,
+      avg_cate_where({0}.c2,{0}.c10,d[0]) OVER w1 as m2,
+      avg_cate_where({0}.c3,{0}.c10,d[0]) OVER w1 as m3,
+      avg_cate_where({0}.c4,{0}.c10,d[0]) OVER w1 as m4,
+      avg_cate_where({0}.c5,{0}.c10,d[0]) OVER w1 as m5,
+      avg_cate_where({0}.c6,{0}.c10,d[0]) OVER w1 as m6
+      FROM {0} last join {1} ORDER BY {1}.timecol on {0}.id={1}.id
+      WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
+    expect:
+      order: id
+      columns: ["id int","c1 string","m2 string","m3 string","m4 string","m5 string","m6 string"]
+    expectProvider:
+      0:
+        rows:
+          - [1,"aa","1:1.000000","1:1.000000","1:30.000000","1:1.100000","1:2.100000"]
+          - [2,"aa","1:1.000000","1:1.000000","1:30.000000","1:1.100000","1:2.100000"]
+          - [3,"aa","1:1.000000,2:3.000000","1:1.000000,2:3.000000","1:30.000000,2:32.000000","1:1.100000,2:1.300000","1:2.100000,2:2.300000"]
+          - [4,"aa","2:3.000000","2:3.000000","2:32.000000","2:1.300000","2:2.300000"]
+      1:
+        rows:
+          - [1,"aa","1:1.000000","1:1.000000","1:30.000000","1:1.100000","1:2.100000"]
+          - [2,"aa","1:1.000000","1:1.000000","1:30.000000","1:1.100000","1:2.100000"]
+          - [3,"aa","1:1.000000,2:3.000000","1:1.000000,2:3.000000","1:30.000000,2:32.000000","1:1.100000,2:1.300000","1:2.100000,2:2.300000"]
+          - [4,"aa","2:3.000000","2:3.000000","2:32.000000","2:1.300000","2:2.300000"]
+      2:
+        rows:
+          - [1,"aa","30:1.000000","30:1.000000","30:30.000000","30:1.100000","30:2.100000"]
+          - [2,"aa","30:1.000000","30:1.000000","30:30.000000","30:1.100000","30:2.100000"]
+          - [3,"aa","30:1.000000,32:3.000000","30:1.000000,32:3.000000","30:30.000000,32:32.000000","30:1.100000,32:1.300000","30:2.100000,32:2.300000"]
+          - [4,"aa","32:3.000000","32:3.000000","32:32.000000","32:1.300000","32:2.300000"]
+      3:
+        rows:
+          - [1,"aa","2020-05-29 15:56:30:1.000000","2020-05-29 15:56:30:1.000000","2020-05-29 15:56:30:30.000000","2020-05-29 15:56:30:1.100000","2020-05-29 15:56:30:2.100000"]
+          - [2,"aa","2020-05-29 15:56:30:1.000000","2020-05-29 15:56:30:1.000000","2020-05-29 15:56:30:30.000000","2020-05-29 15:56:30:1.100000","2020-05-29 15:56:30:2.100000"]
+          - [3,"aa","2020-05-29 15:56:30:1.000000,2020-05-29 15:56:32:3.000000","2020-05-29 15:56:30:1.000000,2020-05-29 15:56:32:3.000000","2020-05-29 15:56:30:30.000000,2020-05-29 15:56:32:32.000000","2020-05-29 15:56:30:1.100000,2020-05-29 15:56:32:1.300000","2020-05-29 15:56:30:2.100000,2020-05-29 15:56:32:2.300000"]
+          - [4,"aa","2020-05-29 15:56:32:3.000000","2020-05-29 15:56:32:3.000000","2020-05-29 15:56:32:32.000000","2020-05-29 15:56:32:1.300000","2020-05-29 15:56:32:2.300000"]
+      4:
+        rows:
+          - [1,"aa","2020-05-01:1.000000","2020-05-01:1.000000","2020-05-01:30.000000","2020-05-01:1.100000","2020-05-01:2.100000"]
+          - [2,"aa","2020-05-01:1.000000","2020-05-01:1.000000","2020-05-01:30.000000","2020-05-01:1.100000","2020-05-01:2.100000"]
+          - [3,"aa","2020-05-01:1.000000,2020-05-02:3.000000","2020-05-01:1.000000,2020-05-02:3.000000","2020-05-01:30.000000,2020-05-02:32.000000","2020-05-01:1.100000,2020-05-02:1.300000","2020-05-01:2.100000,2020-05-02:2.300000"]
+          - [4,"aa","2020-05-02:3.000000","2020-05-02:3.000000","2020-05-02:32.000000","2020-05-02:1.300000","2020-05-02:2.300000"]
+      5:
+        rows:
+          - [1,"aa","a:1.000000","a:1.000000","a:30.000000","a:1.100000","a:2.100000"]
+          - [2,"aa","a:1.000000","a:1.000000","a:30.000000","a:1.100000","a:2.100000"]
+          - [3,"aa","a:1.000000,b:3.000000","a:1.000000,b:3.000000","a:30.000000,b:32.000000","a:1.100000,b:1.300000","a:2.100000,b:2.300000"]
+          - [4,"aa","b:3.000000","b:3.000000","b:32.000000","b:1.300000","b:2.300000"]
+  -
+    id: 32
+    desc: "*_cate_where-fail1"
+    sqlDialect: ["HybridSQL"]
+    level: 5
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
+        indexs: ["index1:id:c7","index2:c1:c7"]
+        rows:
+          - [1,"aa",1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
+          - [2,"aa",4,4,33,1.4,2.4,1590738991000,"2020-05-03","c",false]
+          - [3,"aa",3,3,32,1.3,2.3,1590738992000,"2020-05-02","b",true]
+          - [4,"aa",NULL,NULL,NULL,NULL,NULL,1590738993000,NULL,NULL,NULL]
+      -
+        columns : ["id int","timecol bigint","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
+        indexs: ["index1:id:timecol"]
+        rows:
+          - [1,1,1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
+          - [2,2,1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
+          - [3,3,2,2,32,1.3,2.3,1590738992000,"2020-05-02","b",false]
+          - [4,4,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL]
+    dataProvider:
+      - ["avg_cate_where","sum_cate_where","max_cate_where","min_cate_where","count_cate_where"]
+      - ["{0}.c2","{0}.c3","{0}.c4","{0}.c5","{0}.c6"]
+      - ["{1}.c5","{1}.c6","{1}.c10"]
+    sql: |
+      SELECT {0}.id, {0}.c1,
+      d[0](d[1],{0}.c10,d[2]) OVER w1 as m2
+      FROM {0} last join {1} ORDER BY {1}.timecol on {0}.id={1}.id
+      WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
+    expect:
+      success: false
+  -
+    id: 33
+    desc: "*_cate_where-fail2"
+    sqlDialect: ["HybridSQL"]
+    level: 5
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
+        indexs: ["index1:id:c7","index2:c1:c7"]
+        rows:
+          - [1,"aa",1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
+          - [2,"aa",4,4,33,1.4,2.4,1590738991000,"2020-05-03","c",false]
+          - [3,"aa",3,3,32,1.3,2.3,1590738992000,"2020-05-02","b",true]
+          - [4,"aa",NULL,NULL,NULL,NULL,NULL,1590738993000,NULL,NULL,NULL]
+      -
+        columns : ["id int","timecol bigint","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
+        indexs: ["index1:id:timecol"]
+        rows:
+          - [1,1,1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
+          - [2,2,1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
+          - [3,3,2,2,32,1.3,2.3,1590738992000,"2020-05-02","b",false]
+          - [4,4,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL]
+    dataProvider:
+      - ["avg_cate_where","sum_cate_where","max_cate_where","min_cate_where","count_cate_where"]
+      - ["{0}.c7","{0}.c8","{0}.c9","{0}.c10"]
+      - ["{1}.c2","{1}.c3","{1}.c4","{1}.c5","{1}.c6","{1}.c7","{1}.c8","{1}.c9","{1}.c10"]
+    sql: |
+      SELECT {0}.id, {0}.c1,
+      d[0](d[1],{0}.c10,d[2]) OVER w1 as m2
+      FROM {0} last join {1} ORDER BY {1}.timecol on {0}.id={1}.id
+      WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
+    expect:
+      success: false
+  -
+    id: 34
+    desc: top_n_key_max_cate_where-normal
+    mode: cli-unsupport
+    sqlDialect: ["HybridSQL"]
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
+        indexs: ["index1:id:c7","index2:c1:c7"]
+        rows:
+          - [1,"aa",1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
+          - [2,"aa",4,4,33,1.4,2.4,1590738991000,"2020-05-03","c",false]
+          - [3,"aa",3,3,32,1.3,2.3,1590738992000,"2020-05-02","b",true]
+          - [4,"aa",NULL,NULL,NULL,NULL,NULL,1590738993000,NULL,NULL,NULL]
+      -
+        columns : ["id int","timecol bigint","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
+        indexs: ["index1:id:timecol"]
+        rows:
+          - [1,1,1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
+          - [2,2,1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
+          - [3,3,2,2,32,1.3,2.3,1590738992000,"2020-05-02","b",false]
+          - [4,4,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL]
+    dataProvider:
+      - ["{1}.c2","{1}.c3","{1}.c4","{1}.c7","{1}.c8","{1}.c9"]
+    sql: |
+      SELECT {0}.id, {0}.c1,
+      top_n_key_max_cate_where({0}.c2,{0}.c10,d[0],1) OVER w1 as m2,
+      top_n_key_max_cate_where({0}.c3,{0}.c10,d[0],1) OVER w1 as m3,
+      top_n_key_max_cate_where({0}.c4,{0}.c10,d[0],1) OVER w1 as m4,
+      top_n_key_max_cate_where({0}.c5,{0}.c10,d[0],1) OVER w1 as m5,
+      top_n_key_max_cate_where({0}.c6,{0}.c10,d[0],1) OVER w1 as m6
+      FROM {0} last join {1} ORDER BY {1}.timecol on {0}.id={1}.id
+      WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
+    expect:
+      order: id
+      columns: ["id int","c1 string","m2 string","m3 string","m4 string","m5 string","m6 string"]
+    expectProvider:
+      0:
+        rows:
+          - [1,"aa","1:1","1:1","1:30","1:1.100000","1:2.100000"]
+          - [2,"aa","1:1","1:1","1:30","1:1.100000","1:2.100000"]
+          - [3,"aa","2:3","2:3","2:32","2:1.300000","2:2.300000"]
+          - [4,"aa","2:3","2:3","2:32","2:1.300000","2:2.300000"]
+      1:
+        rows:
+          - [1,"aa","1:1","1:1","1:30","1:1.100000","1:2.100000"]
+          - [2,"aa","1:1","1:1","1:30","1:1.100000","1:2.100000"]
+          - [3,"aa","2:3","2:3","2:32","2:1.300000","2:2.300000"]
+          - [4,"aa","2:3","2:3","2:32","2:1.300000","2:2.300000"]
+      2:
+        rows:
+          - [1,"aa","30:1","30:1","30:30","30:1.100000","30:2.100000"]
+          - [2,"aa","30:1","30:1","30:30","30:1.100000","30:2.100000"]
+          - [3,"aa","32:3","32:3","32:32","32:1.300000","32:2.300000"]
+          - [4,"aa","32:3","32:3","32:32","32:1.300000","32:2.300000"]
+      3:
+        rows:
+          - [1,"aa","2020-05-29 15:56:30:1","2020-05-29 15:56:30:1","2020-05-29 15:56:30:30","2020-05-29 15:56:30:1.100000","2020-05-29 15:56:30:2.100000"]
+          - [2,"aa","2020-05-29 15:56:30:1","2020-05-29 15:56:30:1","2020-05-29 15:56:30:30","2020-05-29 15:56:30:1.100000","2020-05-29 15:56:30:2.100000"]
+          - [3,"aa","2020-05-29 15:56:32:3","2020-05-29 15:56:32:3","2020-05-29 15:56:32:32","2020-05-29 15:56:32:1.300000","2020-05-29 15:56:32:2.300000"]
+          - [4,"aa","2020-05-29 15:56:32:3","2020-05-29 15:56:32:3","2020-05-29 15:56:32:32","2020-05-29 15:56:32:1.300000","2020-05-29 15:56:32:2.300000"]
+      4:
+        rows:
+          - [1,"aa","2020-05-01:1","2020-05-01:1","2020-05-01:30","2020-05-01:1.100000","2020-05-01:2.100000"]
+          - [2,"aa","2020-05-01:1","2020-05-01:1","2020-05-01:30","2020-05-01:1.100000","2020-05-01:2.100000"]
+          - [3,"aa","2020-05-02:3","2020-05-02:3","2020-05-02:32","2020-05-02:1.300000","2020-05-02:2.300000"]
+          - [4,"aa","2020-05-02:3","2020-05-02:3","2020-05-02:32","2020-05-02:1.300000","2020-05-02:2.300000"]
+      5:
+        rows:
+          - [1,"aa","a:1","a:1","a:30","a:1.100000","a:2.100000"]
+          - [2,"aa","a:1","a:1","a:30","a:1.100000","a:2.100000"]
+          - [3,"aa","b:3","b:3","b:32","b:1.300000","b:2.300000"]
+          - [4,"aa","b:3","b:3","b:32","b:1.300000","b:2.300000"]
+  -
+    id: 35
+    desc: top_n_key_min_cate_where-normal
+    mode: cli-unsupport
+    sqlDialect: ["HybridSQL"]
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
+        indexs: ["index1:id:c7","index2:c1:c7"]
+        rows:
+          - [1,"aa",1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
+          - [2,"aa",4,4,33,1.4,2.4,1590738991000,"2020-05-03","c",false]
+          - [3,"aa",3,3,32,1.3,2.3,1590738992000,"2020-05-02","b",true]
+          - [4,"aa",NULL,NULL,NULL,NULL,NULL,1590738993000,NULL,NULL,NULL]
+      -
+        columns : ["id int","timecol bigint","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
+        indexs: ["index1:id:timecol"]
+        rows:
+          - [1,1,1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
+          - [2,2,1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
+          - [3,3,2,2,32,1.3,2.3,1590738992000,"2020-05-02","b",false]
+          - [4,4,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL]
+    dataProvider:
+      - ["{1}.c2","{1}.c3","{1}.c4","{1}.c7","{1}.c8","{1}.c9"]
+    sql: |
+      SELECT {0}.id, {0}.c1,
+      top_n_key_min_cate_where({0}.c2,{0}.c10,d[0],1) OVER w1 as m2,
+      top_n_key_min_cate_where({0}.c3,{0}.c10,d[0],1) OVER w1 as m3,
+      top_n_key_min_cate_where({0}.c4,{0}.c10,d[0],1) OVER w1 as m4,
+      top_n_key_min_cate_where({0}.c5,{0}.c10,d[0],1) OVER w1 as m5,
+      top_n_key_min_cate_where({0}.c6,{0}.c10,d[0],1) OVER w1 as m6
+      FROM {0} last join {1} ORDER BY {1}.timecol on {0}.id={1}.id
+      WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
+    expect:
+      order: id
+      columns: ["id int","c1 string","m2 string","m3 string","m4 string","m5 string","m6 string"]
+    expectProvider:
+      0:
+        rows:
+          - [1,"aa","1:1","1:1","1:30","1:1.100000","1:2.100000"]
+          - [2,"aa","1:1","1:1","1:30","1:1.100000","1:2.100000"]
+          - [3,"aa","2:3","2:3","2:32","2:1.300000","2:2.300000"]
+          - [4,"aa","2:3","2:3","2:32","2:1.300000","2:2.300000"]
+      1:
+        rows:
+          - [1,"aa","1:1","1:1","1:30","1:1.100000","1:2.100000"]
+          - [2,"aa","1:1","1:1","1:30","1:1.100000","1:2.100000"]
+          - [3,"aa","2:3","2:3","2:32","2:1.300000","2:2.300000"]
+          - [4,"aa","2:3","2:3","2:32","2:1.300000","2:2.300000"]
+      2:
+        rows:
+          - [1,"aa","30:1","30:1","30:30","30:1.100000","30:2.100000"]
+          - [2,"aa","30:1","30:1","30:30","30:1.100000","30:2.100000"]
+          - [3,"aa","32:3","32:3","32:32","32:1.300000","32:2.300000"]
+          - [4,"aa","32:3","32:3","32:32","32:1.300000","32:2.300000"]
+      3:
+        rows:
+          - [1,"aa","2020-05-29 15:56:30:1","2020-05-29 15:56:30:1","2020-05-29 15:56:30:30","2020-05-29 15:56:30:1.100000","2020-05-29 15:56:30:2.100000"]
+          - [2,"aa","2020-05-29 15:56:30:1","2020-05-29 15:56:30:1","2020-05-29 15:56:30:30","2020-05-29 15:56:30:1.100000","2020-05-29 15:56:30:2.100000"]
+          - [3,"aa","2020-05-29 15:56:32:3","2020-05-29 15:56:32:3","2020-05-29 15:56:32:32","2020-05-29 15:56:32:1.300000","2020-05-29 15:56:32:2.300000"]
+          - [4,"aa","2020-05-29 15:56:32:3","2020-05-29 15:56:32:3","2020-05-29 15:56:32:32","2020-05-29 15:56:32:1.300000","2020-05-29 15:56:32:2.300000"]
+      4:
+        rows:
+          - [1,"aa","2020-05-01:1","2020-05-01:1","2020-05-01:30","2020-05-01:1.100000","2020-05-01:2.100000"]
+          - [2,"aa","2020-05-01:1","2020-05-01:1","2020-05-01:30","2020-05-01:1.100000","2020-05-01:2.100000"]
+          - [3,"aa","2020-05-02:3","2020-05-02:3","2020-05-02:32","2020-05-02:1.300000","2020-05-02:2.300000"]
+          - [4,"aa","2020-05-02:3","2020-05-02:3","2020-05-02:32","2020-05-02:1.300000","2020-05-02:2.300000"]
+      5:
+        rows:
+          - [1,"aa","a:1","a:1","a:30","a:1.100000","a:2.100000"]
+          - [2,"aa","a:1","a:1","a:30","a:1.100000","a:2.100000"]
+          - [3,"aa","b:3","b:3","b:32","b:1.300000","b:2.300000"]
+          - [4,"aa","b:3","b:3","b:32","b:1.300000","b:2.300000"]
+  -
+    id: 36
+    desc: top_n_key_sum_cate_where-normal
+    mode: cli-unsupport
+    sqlDialect: ["HybridSQL"]
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
+        indexs: ["index1:id:c7","index2:c1:c7"]
+        rows:
+          - [1,"aa",1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
+          - [2,"aa",4,4,33,1.4,2.4,1590738991000,"2020-05-03","c",false]
+          - [3,"aa",3,3,32,1.3,2.3,1590738992000,"2020-05-02","b",true]
+          - [4,"aa",NULL,NULL,NULL,NULL,NULL,1590738993000,NULL,NULL,NULL]
+      -
+        columns : ["id int","timecol bigint","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
+        indexs: ["index1:id:timecol"]
+        rows:
+          - [1,1,1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
+          - [2,2,1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
+          - [3,3,2,2,32,1.3,2.3,1590738992000,"2020-05-02","b",false]
+          - [4,4,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL]
+    dataProvider:
+      - ["{1}.c2","{1}.c3","{1}.c4","{1}.c7","{1}.c8","{1}.c9"]
+    sql: |
+      SELECT {0}.id, {0}.c1,
+      top_n_key_sum_cate_where({0}.c2,{0}.c10,d[0],1) OVER w1 as m2,
+      top_n_key_sum_cate_where({0}.c3,{0}.c10,d[0],1) OVER w1 as m3,
+      top_n_key_sum_cate_where({0}.c4,{0}.c10,d[0],1) OVER w1 as m4,
+      top_n_key_sum_cate_where({0}.c5,{0}.c10,d[0],1) OVER w1 as m5,
+      top_n_key_sum_cate_where({0}.c6,{0}.c10,d[0],1) OVER w1 as m6
+      FROM {0} last join {1} ORDER BY {1}.timecol on {0}.id={1}.id
+      WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
+    expect:
+      order: id
+      columns: ["id int","c1 string","m2 string","m3 string","m4 string","m5 string","m6 string"]
+    expectProvider:
+      0:
+        rows:
+          - [1,"aa","1:1","1:1","1:30","1:1.100000","1:2.100000"]
+          - [2,"aa","1:1","1:1","1:30","1:1.100000","1:2.100000"]
+          - [3,"aa","2:3","2:3","2:32","2:1.300000","2:2.300000"]
+          - [4,"aa","2:3","2:3","2:32","2:1.300000","2:2.300000"]
+      1:
+        rows:
+          - [1,"aa","1:1","1:1","1:30","1:1.100000","1:2.100000"]
+          - [2,"aa","1:1","1:1","1:30","1:1.100000","1:2.100000"]
+          - [3,"aa","2:3","2:3","2:32","2:1.300000","2:2.300000"]
+          - [4,"aa","2:3","2:3","2:32","2:1.300000","2:2.300000"]
+      2:
+        rows:
+          - [1,"aa","30:1","30:1","30:30","30:1.100000","30:2.100000"]
+          - [2,"aa","30:1","30:1","30:30","30:1.100000","30:2.100000"]
+          - [3,"aa","32:3","32:3","32:32","32:1.300000","32:2.300000"]
+          - [4,"aa","32:3","32:3","32:32","32:1.300000","32:2.300000"]
+      3:
+        rows:
+          - [1,"aa","2020-05-29 15:56:30:1","2020-05-29 15:56:30:1","2020-05-29 15:56:30:30","2020-05-29 15:56:30:1.100000","2020-05-29 15:56:30:2.100000"]
+          - [2,"aa","2020-05-29 15:56:30:1","2020-05-29 15:56:30:1","2020-05-29 15:56:30:30","2020-05-29 15:56:30:1.100000","2020-05-29 15:56:30:2.100000"]
+          - [3,"aa","2020-05-29 15:56:32:3","2020-05-29 15:56:32:3","2020-05-29 15:56:32:32","2020-05-29 15:56:32:1.300000","2020-05-29 15:56:32:2.300000"]
+          - [4,"aa","2020-05-29 15:56:32:3","2020-05-29 15:56:32:3","2020-05-29 15:56:32:32","2020-05-29 15:56:32:1.300000","2020-05-29 15:56:32:2.300000"]
+      4:
+        rows:
+          - [1,"aa","2020-05-01:1","2020-05-01:1","2020-05-01:30","2020-05-01:1.100000","2020-05-01:2.100000"]
+          - [2,"aa","2020-05-01:1","2020-05-01:1","2020-05-01:30","2020-05-01:1.100000","2020-05-01:2.100000"]
+          - [3,"aa","2020-05-02:3","2020-05-02:3","2020-05-02:32","2020-05-02:1.300000","2020-05-02:2.300000"]
+          - [4,"aa","2020-05-02:3","2020-05-02:3","2020-05-02:32","2020-05-02:1.300000","2020-05-02:2.300000"]
+      5:
+        rows:
+          - [1,"aa","a:1","a:1","a:30","a:1.100000","a:2.100000"]
+          - [2,"aa","a:1","a:1","a:30","a:1.100000","a:2.100000"]
+          - [3,"aa","b:3","b:3","b:32","b:1.300000","b:2.300000"]
+          - [4,"aa","b:3","b:3","b:32","b:1.300000","b:2.300000"]
+  -
+    id: 37
+    desc: top_n_key_avg_cate_where-normal
+    mode: cli-unsupport
+    sqlDialect: ["HybridSQL"]
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
+        indexs: ["index1:id:c7","index2:c1:c7"]
+        rows:
+          - [1,"aa",1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
+          - [2,"aa",4,4,33,1.4,2.4,1590738991000,"2020-05-03","c",false]
+          - [3,"aa",3,3,32,1.3,2.3,1590738992000,"2020-05-02","b",true]
+          - [4,"aa",NULL,NULL,NULL,NULL,NULL,1590738993000,NULL,NULL,NULL]
+      -
+        columns : ["id int","timecol bigint","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
+        indexs: ["index1:id:timecol"]
+        rows:
+          - [1,1,1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
+          - [2,2,1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
+          - [3,3,2,2,32,1.3,2.3,1590738992000,"2020-05-02","b",false]
+          - [4,4,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL]
+    dataProvider:
+      - ["{1}.c2","{1}.c3","{1}.c4","{1}.c7","{1}.c8","{1}.c9"]
+    sql: |
+      SELECT {0}.id, {0}.c1,
+      top_n_key_avg_cate_where({0}.c2,{0}.c10,d[0],1) OVER w1 as m2,
+      top_n_key_avg_cate_where({0}.c3,{0}.c10,d[0],1) OVER w1 as m3,
+      top_n_key_avg_cate_where({0}.c4,{0}.c10,d[0],1) OVER w1 as m4,
+      top_n_key_avg_cate_where({0}.c5,{0}.c10,d[0],1) OVER w1 as m5,
+      top_n_key_avg_cate_where({0}.c6,{0}.c10,d[0],1) OVER w1 as m6
+      FROM {0} last join {1} ORDER BY {1}.timecol on {0}.id={1}.id
+      WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
+    expect:
+      order: id
+      columns: ["id int","c1 string","m2 string","m3 string","m4 string","m5 string","m6 string"]
+    expectProvider:
+      0:
+        rows:
+          - [1,"aa","1:1.000000","1:1.000000","1:30.000000","1:1.100000","1:2.100000"]
+          - [2,"aa","1:1.000000","1:1.000000","1:30.000000","1:1.100000","1:2.100000"]
+          - [3,"aa","2:3.000000","2:3.000000","2:32.000000","2:1.300000","2:2.300000"]
+          - [4,"aa","2:3.000000","2:3.000000","2:32.000000","2:1.300000","2:2.300000"]
+      1:
+        rows:
+          - [1,"aa","1:1.000000","1:1.000000","1:30.000000","1:1.100000","1:2.100000"]
+          - [2,"aa","1:1.000000","1:1.000000","1:30.000000","1:1.100000","1:2.100000"]
+          - [3,"aa","2:3.000000","2:3.000000","2:32.000000","2:1.300000","2:2.300000"]
+          - [4,"aa","2:3.000000","2:3.000000","2:32.000000","2:1.300000","2:2.300000"]
+      2:
+        rows:
+          - [1,"aa","30:1.000000","30:1.000000","30:30.000000","30:1.100000","30:2.100000"]
+          - [2,"aa","30:1.000000","30:1.000000","30:30.000000","30:1.100000","30:2.100000"]
+          - [3,"aa","32:3.000000","32:3.000000","32:32.000000","32:1.300000","32:2.300000"]
+          - [4,"aa","32:3.000000","32:3.000000","32:32.000000","32:1.300000","32:2.300000"]
+      3:
+        rows:
+          - [1,"aa","2020-05-29 15:56:30:1.000000","2020-05-29 15:56:30:1.000000","2020-05-29 15:56:30:30.000000","2020-05-29 15:56:30:1.100000","2020-05-29 15:56:30:2.100000"]
+          - [2,"aa","2020-05-29 15:56:30:1.000000","2020-05-29 15:56:30:1.000000","2020-05-29 15:56:30:30.000000","2020-05-29 15:56:30:1.100000","2020-05-29 15:56:30:2.100000"]
+          - [3,"aa","2020-05-29 15:56:32:3.000000","2020-05-29 15:56:32:3.000000","2020-05-29 15:56:32:32.000000","2020-05-29 15:56:32:1.300000","2020-05-29 15:56:32:2.300000"]
+          - [4,"aa","2020-05-29 15:56:32:3.000000","2020-05-29 15:56:32:3.000000","2020-05-29 15:56:32:32.000000","2020-05-29 15:56:32:1.300000","2020-05-29 15:56:32:2.300000"]
+      4:
+        rows:
+          - [1,"aa","2020-05-01:1.000000","2020-05-01:1.000000","2020-05-01:30.000000","2020-05-01:1.100000","2020-05-01:2.100000"]
+          - [2,"aa","2020-05-01:1.000000","2020-05-01:1.000000","2020-05-01:30.000000","2020-05-01:1.100000","2020-05-01:2.100000"]
+          - [3,"aa","2020-05-02:3.000000","2020-05-02:3.000000","2020-05-02:32.000000","2020-05-02:1.300000","2020-05-02:2.300000"]
+          - [4,"aa","2020-05-02:3.000000","2020-05-02:3.000000","2020-05-02:32.000000","2020-05-02:1.300000","2020-05-02:2.300000"]
+      5:
+        rows:
+          - [1,"aa","a:1.000000","a:1.000000","a:30.000000","a:1.100000","a:2.100000"]
+          - [2,"aa","a:1.000000","a:1.000000","a:30.000000","a:1.100000","a:2.100000"]
+          - [3,"aa","b:3.000000","b:3.000000","b:32.000000","b:1.300000","b:2.300000"]
+          - [4,"aa","b:3.000000","b:3.000000","b:32.000000","b:1.300000","b:2.300000"]
+  -
+    id: 38
+    desc: top_n_key_count_cate_where-normal
+    mode: cli-unsupport
+    sqlDialect: ["HybridSQL"]
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
+        indexs: ["index1:id:c7","index2:c1:c7"]
+        rows:
+          - [1,"aa",1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
+          - [2,"aa",4,4,33,1.4,2.4,1590738991000,"2020-05-03","c",false]
+          - [3,"aa",3,3,32,1.3,2.3,1590738992000,"2020-05-02","b",true]
+          - [4,"aa",NULL,NULL,NULL,NULL,NULL,1590738993000,NULL,NULL,NULL]
+      -
+        columns : ["id int","timecol bigint","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
+        indexs: ["index1:id:timecol"]
+        rows:
+          - [1,1,1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
+          - [2,2,1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
+          - [3,3,2,2,32,1.3,2.3,1590738992000,"2020-05-02","b",false]
+          - [4,4,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL]
+    dataProvider:
+      - ["{1}.c2","{1}.c3","{1}.c4","{1}.c7","{1}.c8","{1}.c9"]
+    sql: |
+      SELECT {0}.id, {0}.c1,
+      top_n_key_count_cate_where({0}.c2,{0}.c10,d[0],1) OVER w1 as m2,
+      top_n_key_count_cate_where({0}.c3,{0}.c10,d[0],1) OVER w1 as m3,
+      top_n_key_count_cate_where({0}.c4,{0}.c10,d[0],1) OVER w1 as m4,
+      top_n_key_count_cate_where({0}.c5,{0}.c10,d[0],1) OVER w1 as m5,
+      top_n_key_count_cate_where({0}.c6,{0}.c10,d[0],1) OVER w1 as m6
+      FROM {0} last join {1} ORDER BY {1}.timecol on {0}.id={1}.id
+      WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
+    expect:
+      order: id
+      columns: ["id int","c1 string","m2 string","m3 string","m4 string","m5 string","m6 string"]
+    expectProvider:
+      0:
+        rows:
+          - [1,"aa","1:1","1:1","1:1","1:1","1:1"]
+          - [2,"aa","1:1","1:1","1:1","1:1","1:1"]
+          - [3,"aa","2:1","2:1","2:1","2:1","2:1"]
+          - [4,"aa","2:1","2:1","2:1","2:1","2:1"]
+      1:
+        rows:
+          - [1,"aa","1:1","1:1","1:1","1:1","1:1"]
+          - [2,"aa","1:1","1:1","1:1","1:1","1:1"]
+          - [3,"aa","2:1","2:1","2:1","2:1","2:1"]
+          - [4,"aa","2:1","2:1","2:1","2:1","2:1"]
+      2:
+        rows:
+          - [1,"aa","30:1","30:1","30:1","30:1","30:1"]
+          - [2,"aa","30:1","30:1","30:1","30:1","30:1"]
+          - [3,"aa","32:1","32:1","32:1","32:1","32:1"]
+          - [4,"aa","32:1","32:1","32:1","32:1","32:1"]
+      3:
+        rows:
+          - [1,"aa","2020-05-29 15:56:30:1","2020-05-29 15:56:30:1","2020-05-29 15:56:30:1","2020-05-29 15:56:30:1","2020-05-29 15:56:30:1"]
+          - [2,"aa","2020-05-29 15:56:30:1","2020-05-29 15:56:30:1","2020-05-29 15:56:30:1","2020-05-29 15:56:30:1","2020-05-29 15:56:30:1"]
+          - [3,"aa","2020-05-29 15:56:32:1","2020-05-29 15:56:32:1","2020-05-29 15:56:32:1","2020-05-29 15:56:32:1","2020-05-29 15:56:32:1"]
+          - [4,"aa","2020-05-29 15:56:32:1","2020-05-29 15:56:32:1","2020-05-29 15:56:32:1","2020-05-29 15:56:32:1","2020-05-29 15:56:32:1"]
+      4:
+        rows:
+          - [1,"aa","2020-05-01:1","2020-05-01:1","2020-05-01:1","2020-05-01:1","2020-05-01:1"]
+          - [2,"aa","2020-05-01:1","2020-05-01:1","2020-05-01:1","2020-05-01:1","2020-05-01:1"]
+          - [3,"aa","2020-05-02:1","2020-05-02:1","2020-05-02:1","2020-05-02:1","2020-05-02:1"]
+          - [4,"aa","2020-05-02:1","2020-05-02:1","2020-05-02:1","2020-05-02:1","2020-05-02:1"]
+      5:
+        rows:
+          - [1,"aa","a:1","a:1","a:1","a:1","a:1"]
+          - [2,"aa","a:1","a:1","a:1","a:1","a:1"]
+          - [3,"aa","b:1","b:1","b:1","b:1","b:1"]
+          - [4,"aa","b:1","b:1","b:1","b:1","b:1"]
+  -
+    id: 39
+    desc: |
+      top_n_key_*_cate_where-fail1, float or bool can't be category
+    sqlDialect: ["HybridSQL"]
+    level: 5
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
+        indexs: ["index1:id:c7","index2:c1:c7"]
+        rows:
+          - [1,"aa",1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
+          - [2,"aa",4,4,33,1.4,2.4,1590738991000,"2020-05-03","c",false]
+          - [3,"aa",3,3,32,1.3,2.3,1590738992000,"2020-05-02","b",true]
+          - [4,"aa",NULL,NULL,NULL,NULL,NULL,1590738993000,NULL,NULL,NULL]
+      -
+        columns : ["id int","timecol bigint","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
+        indexs: ["index1:id:timecol"]
+        rows:
+          - [1,1,1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
+          - [2,2,1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
+          - [3,3,2,2,32,1.3,2.3,1590738992000,"2020-05-02","b",false]
+          - [4,4,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL]
+    dataProvider:
+      - ["top_n_key_count_cate_where","top_n_key_sum_cate_where","top_n_key_avg_cate_where","top_n_key_max_cate_where","top_n_key_min_cate_where"]
+      - ["{0}.c2","{0}.c3","{0}.c4","{0}.c5","{0}.c6"]
+      - ["{1}.c5","{1}.c6","{1}.c10"]
+    sql: |
+      SELECT {0}.id, {0}.c1,
+      d[0](d[1],{0}.c10,d[2],1) OVER w1 as m2
+      FROM {0} last join {1} ORDER BY {1}.timecol on {0}.id={1}.id
+      WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
+    expect:
+      success: false
+  -
+    id: 40
+    desc: |
+      top_n_key_*_cate_where-fail2. Value can not be timestamp, date, string, bool, excepting top_n_key_count_cate_where
+    sqlDialect: ["HybridSQL"]
+    level: 5
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
+        indexs: ["index1:id:c7","index2:c1:c7"]
+        rows:
+          - [1,"aa",1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
+          - [2,"aa",4,4,33,1.4,2.4,1590738991000,"2020-05-03","c",false]
+          - [3,"aa",3,3,32,1.3,2.3,1590738992000,"2020-05-02","b",true]
+          - [4,"aa",NULL,NULL,NULL,NULL,NULL,1590738993000,NULL,NULL,NULL]
+      -
+        columns : ["id int","timecol bigint","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
+        indexs: ["index1:id:timecol"]
+        rows:
+          - [1,1,1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
+          - [2,2,1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
+          - [3,3,2,2,32,1.3,2.3,1590738992000,"2020-05-02","b",false]
+          - [4,4,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL]
+    dataProvider:
+      - ["top_n_key_sum_cate_where","top_n_key_avg_cate_where","top_n_key_max_cate_where","top_n_key_min_cate_where"]
+      - ["{0}.c7","{0}.c8","{0}.c9","{0}.c10"]
+      - ["{1}.c2","{1}.c3","{1}.c4","{1}.c5","{1}.c6","{1}.c7","{1}.c8","{1}.c9","{1}.c10"]
+    sql: |
+      SELECT {0}.id, {0}.c1,
+      d[0](d[1],{0}.c10,d[2],1) OVER w1 as m2
+      FROM {0} last join {1} ORDER BY {1}.timecol on {0}.id={1}.id
+      WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
+    expect:
+      success: false
+  - id: 41
+    desc: arithmetic_and_udf_before_udaf
+    inputs:
+      - columns: ["id bigint", "c1 double", "c2 float", "c3 int"]
+        indexs: ["index1:c3:id"]
+        rows:
+          - [1, 10.0, 1.0, 5]
+          - [2, 9.0, 2.0, 5]
+          - [3, 8.0, 3.0, 5]
+          - [4, 7.0, 4.0, 2]
+          - [5, 6.0, 5.0, 2]
+    sql: |
+      SELECT {0}.id, 
+        sum((c1 - c2) / c3) OVER w1 AS r1,
+        sum(log(c1 + c2) + c3) OVER w1 as r2
+      FROM {0}
+      WINDOW w1 AS (PARTITION BY {0}.c3 ORDER BY {0}.id ROWS BETWEEN 10 PRECEDING AND CURRENT ROW);
+    expect:
+      order: id
+      columns: ["id bigint","r1 double", "r2 double"]
+      rows:
+        - [1, 1.8, 7.3978952727983707]
+        - [2, 3.2, 14.795790545596741]
+        - [3, 4.2, 22.19368581839511]
+        - [4, 1.5, 4.3978952727983707]
+        - [5, 2.0, 8.7957905455967413]
+
+  - id: 42
+    desc: arithmetic_and_udf_after_udaf
+    sqlDialect: ["HybridSQL"]
+    tags: ["目前只能f(udaf()) over w，否则无法进入window agg节点"]
+    inputs:
+      - columns: ["id bigint", "c1 double", "c2 float", "c3 int"]
+        indexs: ["index1:c3:id"]
+        rows:
+          - [1, 10.0, 1.0, 5]
+          - [2, 9.0, 2.0, 5]
+          - [3, 8.0, 3.0, 5]
+          - [4, 7.0, 4.0, 2]
+          - [5, 6.0, 5.0, 2]
+    sql: |
+      SELECT {0}.id, 
+        abs(sum(c3)) OVER w1 as r1,
+        log((sum(c1) + sum(c2)) / c3) OVER w1 AS r2
+      FROM {0}
+      WINDOW w1 AS (PARTITION BY {0}.c3 ORDER BY {0}.id ROWS BETWEEN 10 PRECEDING AND CURRENT ROW);
+    expect:
+      order: id
+      columns: ["id bigint","r1 int", "r2 double"]
+      rows:
+        - [1, 5, 0.78845736036427028]
+        - [2, 10, 1.4816045409242156]
+        - [3, 15, 1.8870696490323797]
+        - [4, 2, 1.7047480922384253]
+        - [5, 4, 2.3978952727983707]
+
+  - id: 43
+    desc: nested udaf
+    sqlDialect: ["HybridSQL"]
+    inputs:
+      - columns: ["id bigint", "c1 double", "c2 float", "c3 int"]
+        indexs: ["index1:c3:id"]
+        rows:
+          - [1, 10.0, 1.0, 5]
+          - [2, 9.0, 2.0, 5]
+          - [3, 8.0, 3.0, 5]
+          - [4, 7.0, 4.0, 2]
+          - [5, 6.0, 5.0, 2]
+    sql: |
+      SELECT {0}.id, 
+        sum(c1 - count(c1)) OVER w1 AS r1,
+        abs(sum(log(c1) - log(count(c1)))) OVER w1 AS r2,
+        sum(c1 + sum(c2 * count(c3))) OVER w1 AS r3
+      FROM {0}
+      WINDOW w1 AS (PARTITION BY {0}.c3 ORDER BY {0}.id ROWS BETWEEN 10 PRECEDING AND CURRENT ROW);
+    expect:
+      order: id
+      columns: ["id bigint","r1 double", "r2 double", "r3 double"]
+      rows:
+        - [1, 9.0, 2.3025850929940459, 11.0]
+        - [2, 15.0, 3.1135153092103747, 31.0]
+        - [3, 18.0, 3.2834143460057721, 81.0]
+        - [4, 6.0, 1.9459101490553132, 11.0]
+        - [5, 9.0, 2.3513752571634776, 49.0]
+
+  - id: 44
+    desc: cast after udaf
+    sqlDialect: ["HybridSQL"]
+    inputs:
+      - columns: ["id bigint", "c1 double", "c2 float", "c3 int"]
+        indexs: ["index1:c3:id"]
+        rows:
+          - [1, 10.0, 1.0, 5]
+          - [2, 9.0, 2.0, 5]
+          - [3, 8.0, 3.0, 5]
+          - [4, 7.0, 4.0, 2]
+          - [5, 6.0, 5.0, 2]
+    sql: |
+      SELECT {0}.id, c3,
+        CAST(sum(c1) OVER w1 AS string)  AS r1,
+        string(sum(c1) OVER w1)  AS r2,
+        `string`(sum(c1) OVER w1)  AS r3
+      FROM {0}
+      WINDOW w1 AS (PARTITION BY {0}.c3 ORDER BY {0}.id ROWS BETWEEN 10 PRECEDING AND CURRENT ROW);
+    expect:
+      order: id
+      columns: ["id bigint", "c3 int", "r1 string", "r2 string", "r3 string"]
+      rows:
+        - [1, 5, "10", "10", "10"]
+        - [2, 5, "19", "19", "19"]
+        - [3, 5, "27", "27", "27"]
+        - [4, 2, "7", "7", "7"]
+        - [5, 2, "13", "13", "13"]
+
+  - id: 45
+    desc: aggregate where
+    sqlDialect: ["HybridSQL"]
+    mode: request-unsupport
+    inputs:
+      - columns: ["id bigint", "c1 double", "c2 float", "c3 bigint"]
+        indexs: ["index1:c3:id"]
+        rows:
+          - [1, 1.0, 1.1, 0]
+          - [2, 2.0, 7.7, 0]
+          - [3, NULL, 0.1, 0]
+          - [4, 3.0, NULL, 0]
+          - [5, 4.0, 5.5, 0]
+          - [6, 5.0, 3.3, 1]
+          - [7, NULL, 2.2, 1]
+          - [8, 7.0, NULL, 1]
+          - [9, 8.0, 4.4, 1]
+    sql: |
+      SELECT {0}.id,
+        count_where(c1, c1 < c2) OVER w1 AS count_where_1,
+        avg_where(c1, c1 < c2) OVER w1 AS avg_where_1,
+        count_where(c2, c2 > 4) OVER w1 AS count_where_2,
+        avg_where(c2, c2 > 4) OVER w1 AS avg_where_2
+      FROM {0}
+      WINDOW w1 AS (PARTITION BY {0}.c3 ORDER BY {0}.id ROWS BETWEEN 10 PRECEDING AND CURRENT ROW);
+    expect:
+      order: id
+      columns: ["id bigint", "count_where_1 bigint", "avg_where_1 double", "count_where_2 bigint", "avg_where_2 double"]
+      rows:
+        - [1, 1, 1.0, 0, NULL]
+        - [2, 2, 1.5, 1, 7.6999998092651367]
+        - [3, 2, 1.5, 1, 7.6999998092651367]
+        - [4, 2, 1.5, 1, 7.6999998092651367]
+        - [5, 3, 2.3333333333333335, 2, 6.5999999046325684]
+        - [6, 0, NULL, 0, NULL]
+        - [7, 0, NULL, 0, NULL]
+        - [8, 0, NULL, 0, NULL]
+        - [9, 0, NULL, 1, 4.4000000953674316]
+
+  - id: 46
+    desc: window lag functions
+    sqlDialect: ["HybridSQL"]
+    inputs:
+      -
+        columns : ["id int","pk bigint","c1 string","c2 int","c3 bigint","c4 float",
+                   "c5 double","c6 timestamp","c7 date","c8 bool"]
+        indexs: ["index1:pk:c6"]
+        rows:
+          - [1, 1, "a", 1, 30, 1.1, 2.1, 1590738990000, "2020-05-01", true]
+          - [2, 1, "c", 4, 33, 1.4, 2.4, 1590738991000, "2020-05-03", false]
+          - [3, 1, "b", 3, 32, 1.3, 2.3, 1590738992000, "2020-05-02", true,]
+          - [4, 1, NULL, NULL, NULL, NULL, NULL, 1590738993000, NULL, NULL]
+          - [5, 1, "d", 5, 35, 1.5, 2.5, 1590738994000, "2020-05-04", false]
+    sql: |
+      SELECT {0}.id,
+          lag(c1, 0) OVER w1 as m1,
+          lag(c1, 2) OVER w1 as m2,
+          lag(c2, 0) OVER w1 as m3,
+          lag(c2, 2) OVER w1 as m4,
+          lag(c3, 0) OVER w1 as m5,
+          lag(c3, 2) OVER w1 as m6,
+          lag(c4, 0) OVER w1 as m7,
+          lag(c4, 2) OVER w1 as m8,
+          lag(c5, 0) OVER w1 as m9,
+          lag(c5, 2) OVER w1 as m10,
+          lag(c6, 0) OVER w1 as m11,
+          lag(c6, 2) OVER w1 as m12,
+          lag(c7, 0) OVER w1 as m13,
+          lag(c7, 2) OVER w1 as m14,
+          lag(c8, 0) OVER w1 as m15,
+          lag(c8, 2) OVER w1 as m16
+      FROM {0} WINDOW
+      w1 AS (PARTITION BY {0}.pk ORDER BY {0}.c6 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
+    expect:
+      order: id
+      columns: ["id int","m1 string", "m2 string", "m3 int", "m4 int", "m5 bigint", "m6 bigint",
+                "m7 float", "m8 float", "m9 double", "m10 double",
+                "m11 timestamp", "m12 timestamp", "m13 date", "m14 date", "m15 bool", "m16 bool"]
+      rows:
+        - [1, "a", NULL, 1, NULL, 30, NULL, 1.1, NULL, 2.1, NULL,
+           1590738990000, NULL, "2020-05-01", NULL, true, NULL]
+        - [2, "c", NULL, 4, NULL, 33, NULL, 1.4, NULL, 2.4, NULL,
+           1590738991000, NULL, "2020-05-03", NULL, false, NULL]
+        - [3, "b", "a", 3, 1, 32, 30, 1.3, 1.1, 2.3, 2.1,
+           1590738992000, 1590738990000, "2020-05-02", "2020-05-01", true, true]
+        - [4, NULL, "c", NULL, 4, NULL, 33, NULL, 1.4, NULL, 2.4,
+           1590738993000, 1590738991000, NULL, "2020-05-03", NULL, false]
+        - [5, "d", "b", 5, 3, 35, 32, 1.5, 1.3, 2.5, 2.3,
+           1590738994000, 1590738992000, "2020-05-04", "2020-05-02", false, true]
+
+  - id: 47
+    desc: count where value equals first value
+    sqlDialect: ["HybridSQL"]
+    inputs:
+      - columns: ["id bigint", "pk bigint", "c1 string"]
+        indexs: ["index1:pk:id"]
+        rows:
+          - [1, 0, "a"]
+          - [2, 0, "b"]
+          - [3, 0, "c"]
+          - [4, 0, NULL]
+          - [5, 0, "b"]
+          - [6, 0, NULL]
+          - [7, 0, "c"]
+          - [8, 0, "a"]
+          - [9, 0, NULL]
+          - [10, 0, "c"]
+          - [11, 0, "a"]
+          - [12, 0, "b"]
+    sql: |
+      SELECT {0}.id, 
+        count_where(id, ifnull(c1, "a") = ifnull(first_value(c1), "a")) OVER w1 AS count_where
+      FROM {0}
+      WINDOW w1 AS (PARTITION BY {0}.pk ORDER BY {0}.id ROWS BETWEEN 10 PRECEDING AND CURRENT ROW);
+    expect:
+      order: id
+      columns: ["id bigint", "count_where bigint"]
+      rows:
+        - [1, 1]
+        - [2, 1]
+        - [3, 1]
+        - [4, 2]
+        - [5, 2]
+        - [6, 3]
+        - [7, 2]
+        - [8, 4]
+        - [9, 5]
+        - [10, 3]
+        - [11, 6]
+        - [12, 3]
+  - id: 48
+    desc: count where value equals lag
+    sqlDialect: ["HybridSQL"]
+    inputs:
+      - columns: ["id bigint", "pk bigint", "c1 string"]
+        indexs: ["index1:pk:id"]
+        rows:
+          - [1, 0, "a"]
+          - [2, 0, "b"]
+          - [3, 0, "c"]
+          - [4, 0, NULL]
+          - [5, 0, "b"]
+          - [6, 0, NULL]
+          - [7, 0, "c"]
+          - [8, 0, "a"]
+          - [9, 0, NULL]
+          - [10, 0, "c"]
+          - [11, 0, "a"]
+          - [12, 0, "b"]
+          - [13, 0, "a"]
+          - [14, 0, "a"]
+    sql: |
+      SELECT {0}.id,
+        count_where(id, ifnull(c1, "a") = ifnull(lag(c1, 0), "a")) OVER w1 AS count_where_w1,
+        count_where(id, ifnull(c1, "a") = ifnull(lag(c1, 0), "a")) OVER w2 AS count_where_w2
+      FROM {0}
+      WINDOW w1 AS (PARTITION BY {0}.pk ORDER BY {0}.id ROWS BETWEEN 10 PRECEDING AND CURRENT ROW),
+      w2 AS (PARTITION BY {0}.pk ORDER BY {0}.id ROWS_RANGE BETWEEN 100s PRECEDING AND CURRENT ROW);
+    expect:
+      order: id
+      columns: ["id bigint", "count_where_w1 bigint", "count_where_w2 bigint"]
+      rows:
+        - [1, 1, 1]
+        - [2, 1, 1]
+        - [3, 1, 1]
+        - [4, 2, 2]
+        - [5, 2, 2]
+        - [6, 3, 3]
+        - [7, 2, 2]
+        - [8, 4, 4]
+        - [9, 5, 5]
+        - [10, 3, 3]
+        - [11, 6, 6]
+        - [12, 3, 3]
+        - [13, 6, 7]
+        - [14, 7, 8]
+  - id: 49
+    desc: count where value equals case when lag
+    sqlDialect: ["HybridSQL"]
+    inputs:
+      - columns: ["id bigint", "pk bigint", "c1 string"]
+        indexs: ["index1:pk:id"]
+        rows:
+          - [1, 0, "a"]
+          - [2, 0, "b"]
+          - [3, 0, "c"]
+          - [4, 0, NULL]
+          - [5, 0, "b"]
+          - [6, 0, NULL]
+          - [7, 0, "c"]
+          - [8, 0, "a"]
+          - [9, 0, NULL]
+          - [10, 0, "c"]
+          - [11, 0, "a"]
+          - [12, 0, "b"]
+          - [13, 0, "a"]
+          - [14, 0, "a"]
+    sql: |
+      SELECT {0}.id,
+        case when !isnull(lag(c1,0)) OVER w1 then count_where(id, c1 = lag(c1, 0)) OVER w1 else null end AS count_where_w1,
+        case when !isnull(lag(c1,0)) OVER w2 then count_where(id, c1 = lag(c1, 0)) OVER w2 else null end AS count_where_w2
+      FROM {0}
+      WINDOW w1 AS (PARTITION BY {0}.pk ORDER BY {0}.id ROWS BETWEEN 10 PRECEDING AND CURRENT ROW),
+      w2 AS (PARTITION BY {0}.pk ORDER BY {0}.id ROWS_RANGE BETWEEN 100s PRECEDING AND CURRENT ROW);
+    expect:
+      order: id
+      columns: ["id bigint", "count_where_w1 bigint", "count_where_w2 bigint"]
+      rows:
+        - [1, 1, 1]
+        - [2, 1, 1]
+        - [3, 1, 1]
+        - [4, NULL, NULL]
+        - [5, 2, 2]
+        - [6, NULL, NULL]
+        - [7, 2, 2]
+        - [8, 2, 2]
+        - [9, NULL, NULL]
+        - [10, 3, 3]
+        - [11, 3, 3]
+        - [12, 3, 3]
+        - [13, 3, 4]
+        - [14, 4, 5]
+  -
+    id: 50
+    desc: 重复的聚合表达式
+    sqlDialect: ["HybridSQL"]
+    inputs:
+      -
+        columns : ["c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - ["aa",20,30,1.1,2.1,1590738990000,"2020-05-01"]
+          - ["aa",21,31,1.2,2.2,1590738991000,"2020-05-02"]
+          - ["aa",22,32,1.3,2.3,1590738992000,"2020-05-03"]
+          - ["aa",23,33,1.4,2.4,1590738993000,"2020-05-04"]
+          - ["bb",24,34,1.5,2.5,1590738994000,"2020-05-05"]
+    sql: |
+      SELECT c1, c3,
+      sum(c4) OVER w1 as w1_c4_sum,
+      sum(c4) OVER w1 as w1_c4_sum2
+      FROM {0} WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS_RANGE BETWEEN 2s PRECEDING AND CURRENT ROW);
+    expect:
+      order: c3
+      columns: ["c1 string","c3 int","w1_c4_sum bigint", "w1_c4_sum2 bigint"]
+      rows:
+        - ["aa",20,30, 30]
+        - ["aa",21,61, 61]
+        - ["aa",22,93, 93]
+        - ["aa",23,96, 96]
+        - ["bb",24,34, 34]
+
+  -
+    id: 51
+    desc: 重复的聚合表达式
+    sqlDialect: ["HybridSQL"]
+    inputs:
+      -
+        columns : ["c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - ["aa",20,30,1.1,2.1,1590738990000,"2020-05-01"]
+          - ["aa",21,31,1.2,2.2,1590738991000,"2020-05-02"]
+          - ["aa",22,32,1.3,2.3,1590738992000,"2020-05-03"]
+          - ["aa",23,33,1.4,2.4,1590738993000,"2020-05-04"]
+          - ["bb",24,34,1.5,2.5,1590738994000,"2020-05-05"]
+    sql: |
+      SELECT c1, c3,
+      sum(c4) OVER w1 as w1_c4_sum,
+      sum(c4) OVER w1 as w1_c4_sum2
+      FROM {0} WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS_RANGE BETWEEN 2s PRECEDING AND CURRENT ROW);
+    expect:
+      order: c3
+      columns: ["c1 string","c3 int","w1_c4_sum bigint", "w1_c4_sum2 bigint"]
+      rows:
+        - ["aa",20,30, 30]
+        - ["aa",21,61, 61]
+        - ["aa",22,93, 93]
+        - ["aa",23,96, 96]
+        - ["bb",24,34, 34]
+
+  - id: 52
+    desc: 多个可合并窗口上的多个聚合函数计算
+    sqlDialect: ["HybridSQL"]
+    version: 0.6.0
+    sql: |
+      SELECT {0}.id, pk, col1, std_ts,
+      distinct_count(col1) OVER w1 as a1,
+      distinct_count(col1) OVER w2 as a2,
+      distinct_count(col1) OVER w3 as a3,
+      sum(col1 * 1.0) OVER w1 as b1,
+      sum(col1 * 1.0) OVER w2 as b2,
+      sum(col1 * 1.0) OVER w3 as b3
+      FROM {0} WINDOW
+        w1 AS (PARTITION BY pk ORDER BY std_ts ROWS BETWEEN 2 PRECEDING AND CURRENT ROW),
+        w2 AS (PARTITION BY pk ORDER BY std_ts ROWS BETWEEN 4 PRECEDING AND 3 PRECEDING),
+        w3 AS (PARTITION BY pk ORDER BY std_ts ROWS BETWEEN 6 PRECEDING AND 5 PRECEDING);
+    inputs:
+      - 
+        columns: ["id int", "pk string", "col1 int32", "std_ts timestamp"]
+        indexs: ["index1:pk:std_ts"]
+        rows:
+          - [1, A, 1, 1590115420000]
+          - [2, A, 1, 1590115430000]
+          - [3, A, 2, 1590115440000]
+          - [4, A, 2, 1590115450000]
+          - [5, A, 2, 1590115460000]
+          - [6, A, 3, 1590115470000]
+          - [7, A, 3, 1590115480000]
+          - [8, A, 3, 1590115490000]
+          - [9, A, 3, 1590115500000]
+          - [10, B, 1, 1590115420000]
+          - [11, B, 2, 1590115430000]
+          - [12, B, 3, 1590115440000]
+          - [13, B, 4, 1590115450000]
+          - [14, B, 5, 1590115460000]
+    expect:
+      columns: ["id int32", "pk string", "col1 int32", "std_ts timestamp",
+                "a1 bigint", "a2 bigint", "a3 bigint",
+                "b1 double" ,"b2 double", "b3 double"]
+      order: id
+      rows:
+        - [1, A, 1, 1590115420000, 1, 0, 0, 1.0, NULL, NULL]
+        - [2, A, 1, 1590115430000, 1, 0, 0, 2.0, NULL, NULL]
+        - [3, A, 2, 1590115440000, 2, 0, 0, 4.0, NULL, NULL]
+        - [4, A, 2, 1590115450000, 2, 1, 0, 5.0, 1.0, NULL]
+        - [5, A, 2, 1590115460000, 1, 1, 0, 6.0, 2.0, NULL]
+        - [6, A, 3, 1590115470000, 2, 2, 1, 7.0, 3.0, 1.0]
+        - [7, A, 3, 1590115480000, 2, 1, 1, 8.0, 4.0, 2.0]
+        - [8, A, 3, 1590115490000, 1, 1, 2, 9.0, 4.0, 3.0]
+        - [9, A, 3, 1590115500000, 1, 2, 1, 9.0, 5.0, 4.0]
+        - [10, B, 1, 1590115420000, 1, 0, 0, 1.0, NULL, NULL]
+        - [11, B, 2, 1590115430000, 2, 0, 0, 3.0, NULL, NULL]
+        - [12, B, 3, 1590115440000, 3, 0, 0, 6.0, NULL, NULL]
+        - [13, B, 4, 1590115450000, 3, 1, 0, 9.0, 1.0, NULL]
+        - [14, B, 5, 1590115460000, 3, 2, 0, 12.0, 3.0, NULL]
+
+  - id: 53
+    desc: 同窗口下多类聚合函数
+    sqlDialect: ["HybridSQL"]
+    version: 0.6.0
+    sql: |
+      SELECT {0}.id, pk, col1, std_ts,
+      sum(col1 + count(col1)) OVER w as a1,
+      distinct_count(col1) OVER w as a2,
+      sum_where(col1, std_ts > timestamp(1590115440000)) OVER w as a3,
+      count_where(col1, std_ts > timestamp(1590115440000)) OVER w as a4,
+      avg_where(col1, std_ts > timestamp(1590115440000)) OVER w as a5,
+      sum(col1) OVER w as a6,
+      count(col1) OVER w as a7,
+      fz_topn_frequency(id, 3) OVER w as a8
+      FROM {0} WINDOW
+        w AS (PARTITION BY pk ORDER BY std_ts ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
+    inputs:
+      - 
+        columns: ["id int", "pk string", "col1 int32", "std_ts timestamp"]
+        indexs: ["index1:pk:std_ts"]
+        rows:
+          - [1, A, 1, 1590115420000]
+          - [2, A, 2, 1590115430000]
+          - [3, A, 3, 1590115440000]
+          - [4, A, 4, 1590115450000]
+          - [5, A, 5, 1590115460000]
+    expect:
+      columns: ["id int32", "pk string", "col1 int32", "std_ts timestamp",
+                "a1 bigint", "a2 bigint", "a3 int32", "a4 bigint",
+                "a5 double" ,"a6 int32", "a7 bigint", "a8 string"]
+      order: id
+      rows:
+        - [1, A, 1, 1590115420000, 2, 1,  null, 0, null, 1, 1, "1,NULL,NULL"]
+        - [2, A, 2, 1590115430000, 7, 2,  null, 0, null, 3, 2, "1,2,NULL"]
+        - [3, A, 3, 1590115440000, 15, 3, null, 0, null, 6, 3, "1,2,3"]
+        - [4, A, 4, 1590115450000, 18, 3, 4,    1, 4.0,  9, 3, "2,3,4"]
+        - [5, A, 5, 1590115460000, 21, 3, 9,    2, 4.5, 12, 3, "3,4,5"]
+
+  - id: 54
+    desc: max空窗口
+    sqlDialect: ["HybridSQL"]
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float",
+                   "c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
+          - [2,"aa",4,4,33,1.4,2.4,1590738991000,"2020-05-03","c",false]
+          - [3,"aa",3,3,32,1.3,2.3,1590738992000,"2020-05-02","b",true]
+          - [4,"aa",NULL,NULL,NULL,NULL,NULL,1590738993000,NULL,NULL,NULL]
+    sql: |
+      SELECT {0}.id, c1, max(c2) OVER w1 as m2, max(c3) OVER w1 as m3, max(c4) OVER w1 as m4,
+              max(c5) OVER w1 as m5,max(c6) OVER w1 as m6,max(c7) OVER w1 as m7,
+              max(c8) OVER w1 as m8,max(c9) OVER w1 as m9 
+      FROM {0} WINDOW
+      w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 4 PRECEDING AND 2 PRECEDING);
+    expect:
+      order: id
+      columns: ["id int","c1 string","m2 smallint","m3 int","m4 bigint","m5 float",
+                "m6 double","m7 timestamp","m8 date","m9 string"]
+      rows:
+        - [1,"aa",NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL]
+        - [2,"aa",NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL]
+        - [3,"aa",1,1,30,1.1,2.1,1590738990000,"2020-05-01","a"]
+        - [4,"aa",4,4,33,1.4,2.4,1590738991000,"2020-05-03","c"]
+
+  - id: 55
+    desc: min空窗口
+    sqlDialect: ["HybridSQL"]
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
+          - [2,"aa",4,4,33,1.4,2.4,1590738991000,"2020-05-03","c",false]
+          - [3,"aa",3,3,32,1.3,2.3,1590738992000,"2020-05-02","b",true]
+          - [4,"aa",NULL,NULL,NULL,NULL,NULL,1590738993000,NULL,NULL,NULL]
+    sql: |
+      SELECT {0}.id, c1, min(c2) OVER w1 as m2,min(c3) OVER w1 as m3,min(c4) OVER w1 as m4,min(c5) OVER w1 as m5,min(c6) OVER w1 as m6,min(c7) OVER w1 as m7,min(c8) OVER w1 as m8,min(c9) OVER w1 as m9 FROM {0} WINDOW
+      w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 4 PRECEDING AND 2 PRECEDING);
+    expect:
+      order: id
+      columns: ["id int","c1 string","m2 smallint","m3 int","m4 bigint","m5 float","m6 double","m7 timestamp","m8 date","m9 string"]
+      rows:
+        - [1,"aa",NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL]
+        - [2,"aa",NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL]
+        - [3,"aa",1,1,30,1.1,2.1,1590738990000,"2020-05-01","a"]
+        - [4,"aa",1,1,30,1.1,2.1,1590738990000,"2020-05-01","a"]
+  - id: 56
+    desc: window at functions, at is synonym to lag
+    sqlDialect: ["HybridSQL"]
+    inputs:
+      -
+        columns : ["id int","pk bigint","c1 string","c2 int","c3 bigint","c4 float",
+                   "c5 double","c6 timestamp","c7 date","c8 bool"]
+        indexs: ["index1:pk:c6"]
+        rows:
+          - [1, 1, "a",  1,    30,   1.1,  2.1,  1590738990000, "2020-05-01", true]
+          - [2, 1, "c",  4,    33,   1.4,  2.4,  1590738991000, "2020-05-03", false]
+          - [3, 1, "b",  3,    32,   1.3,  2.3,  1590738992000, "2020-05-02", true,]
+          - [4, 1, NULL, NULL, NULL, NULL, NULL, 1590738993000, NULL, NULL]
+          - [5, 1, "d",  5,    35,   1.5,  2.5,  1590738994000, "2020-05-04", false]
+    sql: |
+      SELECT {0}.id,
+          at(c1, 0) OVER w1 as m1,
+          at(c1, 2) OVER w1 as m2,
+          at(c2, 0) OVER w1 as m3,
+          at(c2, 2) OVER w1 as m4,
+          at(c3, 0) OVER w1 as m5,
+          at(c3, 2) OVER w1 as m6,
+          at(c4, 0) OVER w1 as m7,
+          at(c4, 2) OVER w1 as m8,
+          at(c5, 0) OVER w1 as m9,
+          at(c5, 2) OVER w1 as m10,
+          at(c6, 0) OVER w1 as m11,
+          at(c6, 2) OVER w1 as m12,
+          at(c7, 0) OVER w1 as m13,
+          at(c7, 2) OVER w1 as m14,
+          at(c8, 0) OVER w1 as m15,
+          at(c8, 2) OVER w1 as m16
+      FROM {0} WINDOW
+      w1 AS (PARTITION BY {0}.pk ORDER BY {0}.c6 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
+    expect:
+      order: id
+      columns: ["id int","m1 string", "m2 string", "m3 int", "m4 int", "m5 bigint", "m6 bigint",
+                "m7 float", "m8 float", "m9 double", "m10 double",
+                "m11 timestamp", "m12 timestamp", "m13 date", "m14 date", "m15 bool", "m16 bool"]
+      rows:
+        - [1, "a", NULL, 1, NULL, 30, NULL, 1.1, NULL, 2.1, NULL,
+           1590738990000, NULL, "2020-05-01", NULL, true, NULL]
+        - [2, "c", NULL, 4, NULL, 33, NULL, 1.4, NULL, 2.4, NULL,
+           1590738991000, NULL, "2020-05-03", NULL, false, NULL]
+        - [3, "b", "a", 3, 1, 32, 30, 1.3, 1.1, 2.3, 2.1,
+           1590738992000, 1590738990000, "2020-05-02", "2020-05-01", true, true]
+        - [4, NULL, "c", NULL, 4, NULL, 33, NULL, 1.4, NULL, 2.4,
+           1590738993000, 1590738991000, NULL, "2020-05-03", NULL, false]
+        - [5, "d", "b", 5, 3, 35, 32, 1.5, 1.3, 2.5, 2.3,
+           1590738994000, 1590738992000, "2020-05-04", "2020-05-02", false, true]
+
+  - id: 57
+    desc: |
+      correctness for at/lag when offset out-of-range rows_range window frame bound.
+      keynote, lag returns value evaluated at the row that is offset rows before the current row within the partition.
+      refer https://github.com/4paradigm/OpenMLDB/issues/1554
+    inputs:
+      - columns: [ "id int","ts timestamp","group1 string","val1 int" ]
+        indexs: [ "index1:group1:ts" ]
+        name: t1
+        data: |
+          1, 1612130400000, g1, 1
+          2, 1612130401000, g1, 2
+          3, 1612130402000, g1, 3
+          4, 1612130403000, g1, 4
+          5, 1612130404000, g1, 5
+          6, 1612130404000, g2, 4
+          7, 1612130405000, g2, 3
+          8, 1612130406000, g2, 2
+    sql: |
+      select
+      `id`,
+      `val1`,
+      lag(val1, 0) over w1 as agg1,
+      lag(val1, 1) over w1 as agg2,
+      lag(val1, 3) over w1 as agg3
+      from `t1` WINDOW
+        w1 as (partition by `group1` order by `ts` rows_range between 2s preceding and 1s preceding MAXSIZE 10);
+    expect:
+      columns: ["id int", "val1 int", "agg1 int", "agg2 int", "agg3 int"]
+      order: id
+      rows:
+        - [1, 1, 1, NULL, NULL]
+        - [2, 2, 2, 1,    NULL]
+        - [3, 3, 3, 2,    NULL]
+        - [4, 4, 4, 3,    1]
+        - [5, 5, 5, 4,    2]
+        - [6, 4, 4, NULL, NULL]
+        - [7, 3, 3, 4,    NULL]
+        - [8, 2, 2, 3,    NULL]
+
+  - id: 58
+    desc: |
+      correctness for at/lag when offset out-of-range rows_range window frame bound, together with other window function.
+      refer https://github.com/4paradigm/OpenMLDB/issues/1554
+    inputs:
+      - columns: [ "id int","ts timestamp","group1 string","val1 int" ]
+        indexs: [ "index1:group1:ts" ]
+        name: t1
+        data: |
+          1, 1612130400000, g1, 1
+          2, 1612130401000, g1, 2
+          3, 1612130402000, g1, 3
+          4, 1612130403000, g1, 4
+          5, 1612130404000, g1, 5
+          6, 1612130405000, g2, 4
+          7, 1612130406000, g2, 3
+          8, 1612130407000, g2, 2
+    sql: |
+      select
+      `id`,
+      `val1`,
+      lag(val1, 0) over w1 as agg1,
+      lag(val1, 3) over w1 as agg2,
+      first_value(val1) over w1 as agg3
+      from `t1` WINDOW
+        w1 as (partition by `group1` order by `ts` rows_range between 2s preceding and 1s preceding MAXSIZE 10);
+    expect:
+      columns: ["id int", "val1 int", "agg1 int", "agg2 int", "agg3 int"]
+      order: id
+      rows:
+        - [1, 1, 1, NULL, NULL]
+        - [2, 2, 2, NULL, 1]
+        - [3, 3, 3, NULL, 2]
+        - [4, 4, 4, 1,    3]
+        - [5, 5, 5, 2,    4]
+        - [6, 4, 4, NULL, NULL]
+        - [7, 3, 3, NULL, 4]
+        - [8, 2, 2, NULL, 3]
+
+  - id: 59
+    desc: |
+      correctness for at/lag when offset out-of-range window frame bound.
+      keynote, lag returns value evaluated at the row that is offset rows before the current row within the partition.
+      refer https://github.com/4paradigm/OpenMLDB/issues/1554
+    inputs:
+      - columns: [ "id int","ts timestamp","group1 string","val1 int" ]
+        indexs: [ "index1:group1:ts" ]
+        name: t1
+        data: |
+          1, 1612130400000, g1, 1
+          2, 1612130401000, g1, 2
+          3, 1612130402000, g1, 3
+          4, 1612130403000, g1, 4
+          5, 1612130404000, g1, 5
+          6, 1612130405000, g2, 4
+          7, 1612130406000, g2, 3
+          8, 1612130407000, g2, 2
+    sql: |
+      select
+      `id`,
+      `val1`,
+      lag(val1, 0) over w1 as agg1,
+      lag(val1, 1) over w1 as agg2,
+      lag(val1, 3) over w1 as agg3
+      from `t1` WINDOW
+        w1 as (partition by `group1` order by `ts` rows between 2 preceding and 1 preceding);
+    expect:
+      columns: ["id int", "val1 int", "agg1 int", "agg2 int", "agg3 int"]
+      order: id
+      rows:
+        - [1, 1, 1, NULL, NULL]
+        - [2, 2, 2, 1,    NULL]
+        - [3, 3, 3, 2,    NULL]
+        - [4, 4, 4, 3,    1]
+        - [5, 5, 5, 4,    2]
+        - [6, 4, 4, NULL, NULL]
+        - [7, 3, 3, 4,    NULL]
+        - [8, 2, 2, 3,    NULL]
+
+  - id: 60
+    desc: |
+      correctness for at/lag when offset out-of-range rows window frame bound
+      refer https://github.com/4paradigm/OpenMLDB/issues/1554
+    inputs:
+      - columns: [ "id int","ts timestamp","group1 string","val1 int" ]
+        indexs: [ "index1:group1:ts" ]
+        name: t1
+        data: |
+          1, 1612130400000, g1, 1
+          2, 1612130401000, g1, 2
+          3, 1612130402000, g1, 3
+          4, 1612130403000, g1, 4
+          5, 1612130404000, g1, 5
+          6, 1612130405000, g2, 4
+          7, 1612130406000, g2, 3
+          8, 1612130407000, g2, 2
+    sql: |
+      select
+      `id`,
+      `val1`,
+      lag(val1, 0) over w1 as agg1,
+      lag(val1, 3) over w1 as agg2,
+      first_value(val1) over w1 as agg3
+      from `t1` WINDOW
+        w1 as (partition by `group1` order by `ts` rows between 2 preceding and 1 preceding);
+    expect:
+      columns: ["id int", "val1 int", "agg1 int", "agg2 int", "agg3 int"]
+      order: id
+      rows:
+        - [1, 1, 1, NULL, NULL]
+        - [2, 2, 2, NULL, 1]
+        - [3, 3, 3, NULL, 2]
+        - [4, 4, 4, 1,    3]
+        - [5, 5, 5, 2,    4]
+        - [6, 4, 4, NULL, NULL]
+        - [7, 3, 3, NULL, 4]
+        - [8, 2, 2, NULL, 3]
+
+  - id: 61
+    desc: median
+    sqlDialect: ["HybridSQL"]
+    version: 0.6.0
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
+          - [2,"aa",4,4,33,1.4,2.4,1590738991000,"2020-05-03","c",false]
+          - [3,"aa",1,1,33,1.1,2.1,1590738992000,"2020-05-02","b",true]
+          - [4,"aa",NULL,NULL,NULL,NULL,NULL,1590738993000,NULL,NULL,NULL]
+    sql: |
+      SELECT {0}.id, c1, median(c2) OVER w1 as m2,median(c3) OVER w1 as m3,median(c4) OVER w1 as m4,median(c5) OVER w1 as m5,median(c6) OVER w1 as m6 FROM {0} WINDOW
+      w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
+    expect:
+      order: id
+      columns: ["id int","c1 string","m2 double","m3 double","m4 double","m5 double","m6 double"]
+      rows:
+        - [1,"aa",1,1,30,1.1000000238418579,2.1]
+        - [2,"aa",2.5,2.5,31.5,1.25,2.25]
+        - [3,"aa",1,1,33,1.1000000238418579,2.1]
+        - [4,"aa",2.5,2.5,33,1.25,2.25]
+  -
+    id: 62
+    desc: top_n_key_*_cate_where-normal-2
+    mode: cli-unsupport
+    sqlDialect: ["HybridSQL"]
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
+        indexs: ["index1:id:c7","index2:c1:c7"]
+        rows:
+          - [1,"aa",1,2,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
+          - [2,"aa",4,2,33,1.4,2.4,1590738991000,"2020-05-03","c",true]
+          - [3,"aa",NULL,NULL,NULL,NULL,NULL,1590738992000,NULL,NULL,true]
+          - [4,"aa",3,3,32,1.3,2.3,1590738993000,"2020-05-02","b",true]
+          - [5,"aa",NULL,2,NULL,NULL,NULL,1590738994000,NULL,NULL,true]
+          - [6,"aa",4,5,33,1.4,2.4,1590738995000,"2020-05-03","c",true]
+          - [7,"aa",5,5,33,1.4,2.4,1590738996000,"2020-05-03","c",false]
+          - [8,"aa",6,5,33,1.4,2.4,1590738997000,"2020-05-03","c",true]
+          - [9,"aa",NULL,4,NULL,NULL,NULL,1590738998000,NULL,NULL,true]
+          - [10,"aa",NULL,4,NULL,NULL,NULL,1590738999000,NULL,NULL,NULL]
+    dataProvider:
+      - ["top_n_key_max_cate_where","top_n_key_min_cate_where","top_n_key_count_cate_where","top_n_key_sum_cate_where","top_n_key_avg_cate_where"]
+    sql: |
+      SELECT {0}.id, {0}.c1,
+      d[0]({0}.c2,{0}.c10,c3,2) OVER w1 as m2,
+      FROM {0} 
+      WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW);
+    expect:
+      order: id
+      columns: ["id int","c1 string","m2 string"]
+    expectProvider:
+      0:
+        rows:
+          - [1,"aa","2:1"]
+          - [2,"aa","2:4"]
+          - [3,"aa","2:4"]
+          - [4,"aa","3:3,2:4"]
+          - [5,"aa","3:3,2:4"]
+          - [6,"aa","5:4,3:3"]
+          - [7,"aa","5:4,3:3"]
+          - [8,"aa","5:6,3:3"]
+          - [9,"aa","5:6,3:3"]
+          - [10,"aa","5:6,3:3"]
+      1:
+        rows:
+          - [1,"aa","2:1"]
+          - [2,"aa","2:1"]
+          - [3,"aa","2:1"]
+          - [4,"aa","3:3,2:1"]
+          - [5,"aa","3:3,2:1"]
+          - [6,"aa","5:4,3:3"]
+          - [7,"aa","5:4,3:3"]
+          - [8,"aa","5:4,3:3"]
+          - [9,"aa","5:4,3:3"]
+          - [10,"aa","5:4,3:3"]
+      2:
+        rows:
+          - [1,"aa","2:1"]
+          - [2,"aa","2:2"]
+          - [3,"aa","2:2"]
+          - [4,"aa","3:1,2:2"]
+          - [5,"aa","3:1,2:2"]
+          - [6,"aa","5:1,3:1"]
+          - [7,"aa","5:1,3:1"]
+          - [8,"aa","5:2,3:1"]
+          - [9,"aa","5:2,3:1"]
+          - [10,"aa","5:2,3:1"]
+      3:
+        rows:
+          - [1,"aa","2:1"]
+          - [2,"aa","2:5"]
+          - [3,"aa","2:5"]
+          - [4,"aa","3:3,2:5"]
+          - [5,"aa","3:3,2:5"]
+          - [6,"aa","5:4,3:3"]
+          - [7,"aa","5:4,3:3"]
+          - [8,"aa","5:10,3:3"]
+          - [9,"aa","5:10,3:3"]
+          - [10,"aa","5:10,3:3"]
+      4:
+        rows:
+          - [1,"aa","2:1.000000"]
+          - [2,"aa","2:2.500000"]
+          - [3,"aa","2:2.500000"]
+          - [4,"aa","3:3.000000,2:2.500000"]
+          - [5,"aa","3:3.000000,2:2.500000"]
+          - [6,"aa","5:4.000000,3:3.000000"]
+          - [7,"aa","5:4.000000,3:3.000000"]
+          - [8,"aa","5:5.000000,3:3.000000"]
+          - [9,"aa","5:5.000000,3:3.000000"]
+          - [10,"aa","5:5.000000,3:3.000000"]
+
+
+

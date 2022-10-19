@@ -27,6 +27,7 @@
 #include "base/ddl_parser.h"
 #include "codec/schema_codec.h"
 #include "plan/plan_api.h"
+#include "schema/schema_adapter.h"
 
 DECLARE_uint32(partition_num);
 
@@ -34,15 +35,13 @@ namespace openmldb::sdk {
 
 using hybridse::plan::PlanAPI;
 
-bool NodeAdapter::TransformToTableDef(::hybridse::node::CreatePlanNode* create_node, bool allow_empty_col_index,
+bool NodeAdapter::TransformToTableDef(::hybridse::node::CreatePlanNode* create_node,
                                       ::openmldb::nameserver::TableInfo* table, uint32_t default_replica_num,
                                       bool is_cluster_mode, hybridse::base::Status* status) {
     if (create_node == nullptr || table == nullptr || status == nullptr) return false;
     std::string table_name = create_node->GetTableName();
     const hybridse::node::NodePointVector& column_desc_list = create_node->GetColumnDescList();
     const hybridse::node::NodePointVector& table_option_list = create_node->GetTableOptionList();
-    std::set<std::string> index_names;
-    std::map<std::string, ::openmldb::common::ColumnDesc*> column_names;
     table->set_name(table_name);
     hybridse::node::NodePointVector distribution_list;
 
@@ -50,6 +49,8 @@ bool NodeAdapter::TransformToTableDef(::hybridse::node::CreatePlanNode* create_n
     // different default value for cluster and standalone mode
     int replica_num = 1;
     int partition_num = 1;
+    bool setted_replica_num = false;
+    bool setted_partition_num = false;
     if (is_cluster_mode) {
         replica_num = default_replica_num;
         partition_num = FLAGS_partition_num;
@@ -60,11 +61,13 @@ bool NodeAdapter::TransformToTableDef(::hybridse::node::CreatePlanNode* create_n
             switch (table_option->GetType()) {
                 case hybridse::node::kReplicaNum: {
                     replica_num = dynamic_cast<hybridse::node::ReplicaNumNode *>(table_option)->GetReplicaNum();
+                    setted_replica_num = true;
                     break;
                 }
                 case hybridse::node::kPartitionNum: {
                     partition_num =
                         dynamic_cast<hybridse::node::PartitionNumNode*>(table_option)->GetPartitionNum();
+                    setted_partition_num = true;
                     break;
                 }
                 case hybridse::node::kStorageMode: {
@@ -72,12 +75,8 @@ bool NodeAdapter::TransformToTableDef(::hybridse::node::CreatePlanNode* create_n
                     break;
                 }
                 case hybridse::node::kDistributions: {
-                    auto d_list = dynamic_cast<hybridse::node::DistributionsNode*>(table_option)->GetDistributionList();
-                    if (d_list != nullptr) {
-                        for (auto meta_ptr : d_list->GetList()) {
-                            distribution_list.push_back(meta_ptr);
-                        }
-                    }
+                    distribution_list =
+                        dynamic_cast<hybridse::node::DistributionsNode*>(table_option)->GetDistributionList();
                     break;
                 }
                 default: {
@@ -86,6 +85,14 @@ bool NodeAdapter::TransformToTableDef(::hybridse::node::CreatePlanNode* create_n
                 }
             }
         }
+    }
+    if (replica_num <= 0) {
+        *status = {hybridse::common::kUnsupportSql, "replicanum should be great than 0"};
+        return false;
+    }
+    if (partition_num <= 0) {
+        *status = {hybridse::common::kUnsupportSql, "partitionnum should be great than 0"};
+        return false;
     }
     // deny create table when invalid configuration in standalone mode
     if (!is_cluster_mode) {
@@ -106,6 +113,8 @@ bool NodeAdapter::TransformToTableDef(::hybridse::node::CreatePlanNode* create_n
     table->set_format_version(1);
     table->set_storage_mode(static_cast<common::StorageMode>(storage_mode));
     bool has_generate_index = false;
+    std::set<std::string> index_names;
+    std::map<std::string, ::openmldb::common::ColumnDesc*> column_names;
     for (auto column_desc : column_desc_list) {
         switch (column_desc->GetType()) {
             case hybridse::node::kColumnDesc: {
@@ -119,41 +128,14 @@ bool NodeAdapter::TransformToTableDef(::hybridse::node::CreatePlanNode* create_n
                 add_column_desc->set_name(column_def->GetColumnName());
                 add_column_desc->set_not_null(column_def->GetIsNotNull());
                 column_names.insert(std::make_pair(column_def->GetColumnName(), add_column_desc));
-                switch (column_def->GetColumnType()) {
-                    case hybridse::node::kBool:
-                        add_column_desc->set_data_type(openmldb::type::DataType::kBool);
-                        break;
-                    case hybridse::node::kInt16:
-                        add_column_desc->set_data_type(openmldb::type::DataType::kSmallInt);
-                        break;
-                    case hybridse::node::kInt32:
-                        add_column_desc->set_data_type(openmldb::type::DataType::kInt);
-                        break;
-                    case hybridse::node::kInt64:
-                        add_column_desc->set_data_type(openmldb::type::DataType::kBigInt);
-                        break;
-                    case hybridse::node::kFloat:
-                        add_column_desc->set_data_type(openmldb::type::DataType::kFloat);
-                        break;
-                    case hybridse::node::kDouble:
-                        add_column_desc->set_data_type(openmldb::type::DataType::kDouble);
-                        break;
-                    case hybridse::node::kTimestamp:
-                        add_column_desc->set_data_type(openmldb::type::DataType::kTimestamp);
-                        break;
-                    case hybridse::node::kVarchar:
-                        add_column_desc->set_data_type(openmldb::type::DataType::kVarchar);
-                        break;
-                    case hybridse::node::kDate:
-                        add_column_desc->set_data_type(openmldb::type::DataType::kDate);
-                        break;
-                    default: {
-                        status->msg = "CREATE common: column type " +
-                                      hybridse::node::DataTypeName(column_def->GetColumnType()) + " is not supported";
-                        status->code = hybridse::common::kUnsupportSql;
-                        return false;
-                    }
+                openmldb::type::DataType data_type;
+                if (!openmldb::schema::SchemaAdapter::ConvertType(column_def->GetColumnType(), &data_type)) {
+                    status->msg = "CREATE common: column type " +
+                                  hybridse::node::DataTypeName(column_def->GetColumnType()) + " is not supported";
+                    status->code = hybridse::common::kUnsupportSql;
+                    return false;
                 }
+                add_column_desc->set_data_type(data_type);
                 auto default_val = column_def->GetDefaultValue();
                 if (default_val) {
                     if (default_val->GetExprType() != hybridse::node::kExprPrimary) {
@@ -186,7 +168,7 @@ bool NodeAdapter::TransformToTableDef(::hybridse::node::CreatePlanNode* create_n
                 }
                 ::openmldb::common::ColumnKey* index = table->add_column_key();
                 if (column_index->GetKey().empty()) {
-                    if (allow_empty_col_index && !has_generate_index && !column_index->GetTs().empty()) {
+                    if (!has_generate_index && !column_index->GetTs().empty()) {
                         const auto& ts_name = column_index->GetTs();
                         for (const auto& col : table->column_desc()) {
                             if (col.name() != ts_name && col.data_type() != openmldb::type::DataType::kFloat &&
@@ -224,51 +206,62 @@ bool NodeAdapter::TransformToTableDef(::hybridse::node::CreatePlanNode* create_n
         }
     }
     if (!distribution_list.empty()) {
-        if (replica_num != static_cast<int32_t>(distribution_list.size())) {
-            status->msg =
-                "CREATE common: "
-                "replica_num should equal to partition meta size";
-            status->code = hybridse::common::kUnsupportSql;
-            return false;
-        }
-        ::openmldb::nameserver::TablePartition* table_partition = table->add_table_partition();
-        table_partition->set_pid(0);
-        std::vector<std::string> ep_vec;
-        for (auto partition_meta : distribution_list) {
-            switch (partition_meta->GetType()) {
-                case hybridse::node::kPartitionMeta: {
-                    auto* p_meta_node = dynamic_cast<hybridse::node::PartitionMetaNode*>(partition_meta);
-                    const std::string& ep = p_meta_node->GetEndpoint();
-                    if (std::find(ep_vec.begin(), ep_vec.end(), ep) != ep_vec.end()) {
-                        status->msg =
-                            "CREATE common: "
-                            "partition meta endpoint duplicate";
+        int cur_replica_num = 0;
+        for (size_t idx = 0; idx < distribution_list.size(); idx++) {
+            auto table_partition = table->add_table_partition();
+            table_partition->set_pid(idx);
+            auto partition_mata_nodes = dynamic_cast<hybridse::node::SqlNodeList*>(distribution_list.at(idx));
+            if (idx == 0) {
+                cur_replica_num = partition_mata_nodes->GetSize();
+            } else if (cur_replica_num != partition_mata_nodes->GetSize()) {
+                *status = {hybridse::common::kUnsupportSql, "replica num is inconsistency"};
+                return false;
+            }
+            std::set<std::string> endpoint_set;
+            for (auto partition_meta : partition_mata_nodes->GetList()) {
+                switch (partition_meta->GetType()) {
+                    case hybridse::node::kPartitionMeta: {
+                        auto p_meta_node = dynamic_cast<hybridse::node::PartitionMetaNode*>(partition_meta);
+                        const std::string& ep = p_meta_node->GetEndpoint();
+                        if (endpoint_set.count(ep) > 0) {
+                            status->msg = "CREATE common: partition meta endpoint duplicate";
+                            status->code = hybridse::common::kUnsupportSql;
+                            return false;
+                        }
+                        endpoint_set.insert(ep);
+                        auto meta = table_partition->add_partition_meta();
+                        meta->set_endpoint(ep);
+                        if (p_meta_node->GetRoleType() == hybridse::node::kLeader) {
+                            meta->set_is_leader(true);
+                        } else if (p_meta_node->GetRoleType() == hybridse::node::kFollower) {
+                            meta->set_is_leader(false);
+                        } else {
+                            status->msg = "CREATE common: role_type " +
+                                          hybridse::node::RoleTypeName(p_meta_node->GetRoleType()) + " not support";
+                            status->code = hybridse::common::kUnsupportSql;
+                            return false;
+                        }
+                        break;
+                    }
+                    default: {
+                        status->msg = "can not support " + hybridse::node::NameOfSqlNodeType(partition_meta->GetType())
+                                        + " when CREATE TABLE";
                         status->code = hybridse::common::kUnsupportSql;
                         return false;
                     }
-                    ep_vec.push_back(ep);
-                    ::openmldb::nameserver::PartitionMeta* meta = table_partition->add_partition_meta();
-                    meta->set_endpoint(ep);
-                    if (p_meta_node->GetRoleType() == hybridse::node::kLeader) {
-                        meta->set_is_leader(true);
-                    } else if (p_meta_node->GetRoleType() == hybridse::node::kFollower) {
-                        meta->set_is_leader(false);
-                    } else {
-                        status->msg = "CREATE common: role_type " +
-                                      hybridse::node::RoleTypeName(p_meta_node->GetRoleType()) + " not support";
-                        status->code = hybridse::common::kUnsupportSql;
-                        return false;
-                    }
-                    break;
-                }
-                default: {
-                    status->msg = "can not support " + hybridse::node::NameOfSqlNodeType(partition_meta->GetType()) +
-                                  " when CREATE TABLE 2";
-                    status->code = hybridse::common::kUnsupportSql;
-                    return false;
                 }
             }
         }
+        if (setted_partition_num && table->partition_num() != distribution_list.size()) {
+            *status = {hybridse::common::kUnsupportSql, "distribution_list size and partition_num is not match"};
+            return false;
+        }
+        table->set_partition_num(distribution_list.size());
+        if (setted_replica_num && static_cast<int>(table->replica_num()) != cur_replica_num) {
+            *status = {hybridse::common::kUnsupportSql, "replica in distribution_list and replica_num is not match"};
+            return false;
+        }
+        table->set_replica_num(cur_replica_num);
     }
     return true;
 }
@@ -431,13 +424,11 @@ std::shared_ptr<hybridse::node::ConstNode> NodeAdapter::TransformDataType(const 
                 int32_t month;
                 int32_t day;
                 if (node.GetAsDate(&year, &month, &day)) {
-                    if (year < 1900 || year > 9999) break;
-                    if (month < 1 || month > 12) break;
-                    if (day < 1 || day > 31) break;
-                    int32_t date = (year - 1900) << 16;
-                    date = date | ((month - 1) << 8);
-                    date = date | day;
-                    return std::make_shared<hybridse::node::ConstNode>(date);
+                    uint32_t date = 0;
+                    if (!openmldb::codec::RowBuilder::ConvertDate(year, month, day, &date)) {
+                        break;
+                    }
+                    return std::make_shared<hybridse::node::ConstNode>(static_cast<int32_t>(date));
                 }
                 break;
             } else if (node_type == hybridse::node::kDate) {
@@ -512,6 +503,64 @@ std::shared_ptr<hybridse::node::ConstNode> NodeAdapter::StringToData(const std::
         return std::shared_ptr<hybridse::node::ConstNode>();
     }
     return std::shared_ptr<hybridse::node::ConstNode>();
+}
+
+hybridse::sdk::Status NodeAdapter::ParseExprNode(const hybridse::node::BinaryExpr* expr_node,
+        const std::map<std::string, openmldb::type::DataType>& col_map,
+        std::map<std::string, std::string>* condition_map, std::map<std::string, int>* parameter_map) {
+    auto op_type = expr_node->GetOp();
+    if (op_type == hybridse::node::FnOperator::kFnOpAnd) {
+        for (size_t idx = 0; idx < expr_node->GetChildNum(); idx++) {
+            auto node = dynamic_cast<const hybridse::node::BinaryExpr*>(expr_node->GetChild(idx));
+            if (node == nullptr) {
+                return {::hybridse::common::StatusCode::kCmdError, "parse expr node failed"};
+            }
+            auto status = ParseExprNode(node, col_map, condition_map, parameter_map);
+            if (!status.IsOK()) {
+                return status;
+            }
+        }
+    } else if (op_type == hybridse::node::FnOperator::kFnOpEq) {
+        if (expr_node->GetChild(0)->GetExprType() != hybridse::node::ExprType::kExprColumnRef) {
+            return {::hybridse::common::StatusCode::kCmdError, "parse node failed"};
+        }
+        auto column_node = dynamic_cast<const hybridse::node::ColumnRefNode*>(expr_node->GetChild(0));
+        const auto& col_name = column_node->GetColumnName();
+        if (expr_node->GetChild(1)->GetExprType() == hybridse::node::ExprType::kExprPrimary) {
+            auto iter = col_map.find(col_name);
+            if (iter == col_map.end()) {
+                return {::hybridse::common::StatusCode::kCmdError, "col " + col_name + " does not exist"};
+            }
+            auto value_node = dynamic_cast<const hybridse::node::ConstNode*>(expr_node->GetChild(1));
+            if (value_node->IsNull()) {
+                condition_map->emplace(col_name, hybridse::codec::NONETOKEN);
+            } else if (iter->second == openmldb::type::kDate &&
+                    value_node->GetDataType() == hybridse::node::kVarchar) {
+                int32_t year;
+                int32_t month;
+                int32_t day;
+                if (!value_node->GetAsDate(&year, &month, &day)) {
+                    return {::hybridse::common::StatusCode::kCmdError, "invalid date value"};
+                }
+                uint32_t date = 0;
+                if (!openmldb::codec::RowBuilder::ConvertDate(year, month, day, &date)) {
+                    return {::hybridse::common::StatusCode::kCmdError, "invalid date value"};
+                }
+                condition_map->emplace(col_name, std::to_string(date));
+            } else {
+                condition_map->emplace(col_name, value_node->GetAsString());
+            }
+        } else if (expr_node->GetChild(1)->GetExprType() == hybridse::node::ExprType::kExprParameter) {
+            auto value_node = dynamic_cast<const hybridse::node::ParameterExpr*>(expr_node->GetChild(1));
+            parameter_map->emplace(col_name, value_node->position());
+        } else {
+            return {::hybridse::common::StatusCode::kCmdError, "parse node failed"};
+        }
+    } else {
+        return {::hybridse::common::StatusCode::kCmdError,
+            "unsupport operator type " + hybridse::node::ExprOpTypeName(op_type)};
+    }
+    return {};
 }
 
 }  // namespace openmldb::sdk
