@@ -18,6 +18,8 @@
 #include "gflags/gflags.h"
 
 DECLARE_uint32(traverse_cnt_limit);
+DECLARE_uint32(max_traverse_cnt);
+DECLARE_uint32(max_traverse_pk_cnt);
 
 namespace openmldb {
 namespace catalog {
@@ -36,10 +38,19 @@ void FullTableIterator::SeekToFirst() {
 }
 
 bool FullTableIterator::Valid() const {
-    return (it_ && it_->Valid()) || (kv_it_ && kv_it_->Valid());
+    return (cnt_ <= FLAGS_max_traverse_cnt) && ((it_ && it_->Valid()) || (kv_it_ && kv_it_->Valid()));
 }
 
 void FullTableIterator::Next() {
+    // reset the buffered value
+    ResetValue();
+    cnt_++;
+    if (cnt_ > FLAGS_max_traverse_cnt) {
+        PDLOG(WARNING, "FullTableIterator exceed the max_traverse_cnt, tid %u, cnt %lld, max_traverse_cnt %u", tid_,
+              cnt_, FLAGS_max_traverse_cnt);
+        return;
+    }
+
     if (NextFromLocal()) {
         return;
     }
@@ -51,6 +62,8 @@ void FullTableIterator::Reset() {
     kv_it_.reset();
     cur_pid_ = INVALID_PID;
     in_local_ = true;
+    ResetValue();
+    cnt_ = 0;
 }
 
 void FullTableIterator::EndLocal() {
@@ -155,6 +168,11 @@ bool FullTableIterator::NextFromRemote() {
 }
 
 const ::hybridse::codec::Row& FullTableIterator::GetValue() {
+    if (ValidValue()) {
+        return value_;
+    }
+
+    valid_value_ = true;
     if (it_ && it_->Valid()) {
         value_ = ::hybridse::codec::Row(
             ::hybridse::base::RefCountedSlice::Create(it_->GetValue().data(), it_->GetValue().size()));
@@ -181,6 +199,7 @@ void DistributeWindowIterator::Reset() {
     it_.reset();
     kv_it_.reset();
     cur_pid_ = INVALID_PID;
+    pk_cnt_ = 0;
 }
 
 // seek to the pos where key = `key` on success
@@ -280,6 +299,13 @@ DistributeWindowIterator::ItStat DistributeWindowIterator::SeekByKey(const std::
 }
 
 void DistributeWindowIterator::Next() {
+    pk_cnt_++;
+    if (pk_cnt_ >= FLAGS_max_traverse_pk_cnt) {
+        PDLOG(WARNING,
+              "DistributeWindowIterator exceeds the max_traverse_pk_cnt, tid %u, cnt %lld, max_traverse_pk_cnt %u",
+              tid_, pk_cnt_, FLAGS_max_traverse_pk_cnt);
+        return;
+    }
     if (it_ && it_->Valid()) {
         it_->Next();
         if (it_->Valid()) {
@@ -317,7 +343,7 @@ void DistributeWindowIterator::Next() {
             return;
         }
         uint32_t count = 0;
-        kv_it_ = iter->second->Traverse(tid_, cur_pid_, "", cur_pk, last_ts,
+        kv_it_ = iter->second->Traverse(tid_, cur_pid_, index_name_, cur_pk, last_ts,
                 FLAGS_traverse_cnt_limit, true, ts_pos, count);
         DLOG(INFO) << "pid " << cur_pid_ << " last pk " << cur_pk << " key " << last_ts << " count " << count;
         if (kv_it_ && kv_it_->Valid()) {
@@ -331,7 +357,8 @@ void DistributeWindowIterator::Next() {
             }
             cur_pid_ = iter->first;
             uint32_t count = 0;
-            kv_it_ = iter->second->Traverse(tid_, cur_pid_, "", "", 0, FLAGS_traverse_cnt_limit, false, 0, count);
+            kv_it_ =
+                iter->second->Traverse(tid_, cur_pid_, index_name_, "", 0, FLAGS_traverse_cnt_limit, false, 0, count);
             DLOG(INFO) << "count " << count;
             if (kv_it_ && kv_it_->Valid()) {
                 response_vec_.emplace_back(kv_it_->GetResponse());
@@ -351,7 +378,7 @@ void DistributeWindowIterator::Next() {
 }
 
 bool DistributeWindowIterator::Valid() {
-    return (it_ && it_->Valid()) || (kv_it_ && kv_it_->Valid());
+    return (pk_cnt_ < FLAGS_max_traverse_pk_cnt) && ((it_ && it_->Valid()) || (kv_it_ && kv_it_->Valid()));
 }
 
 std::unique_ptr<::hybridse::codec::RowIterator> DistributeWindowIterator::GetValue() {
@@ -384,15 +411,20 @@ const ::hybridse::codec::Row DistributeWindowIterator::GetKey() {
 }
 
 const ::hybridse::codec::Row& RemoteWindowIterator::GetValue() {
+    if (ValidValue()) {
+        return row_;
+    }
+
     auto slice_row = kv_it_->GetValue();
     size_t sz = slice_row.size();
     // for distributed environment, slice_row's data probably become invalid when the DistributeWindowIterator
-    // iterator goes out of scope. so copy action occured here
+    // iterator goes out of scope. so copy action occurred here
     int8_t* copyed_row_data = new int8_t[sz];
     memcpy(copyed_row_data, slice_row.data(), sz);
     auto shared_slice = ::hybridse::base::RefCountedSlice::CreateManaged(copyed_row_data, sz);
     row_.Reset(shared_slice);
     DLOG(INFO) << "get value  pk " << pk_ << " ts_key " << kv_it_->GetKey() << " ts " << ts_;
+    valid_value_ = true;
     return row_;
 }
 
@@ -436,6 +468,8 @@ void RemoteWindowIterator::ScanRemote(uint64_t key, uint32_t ts_pos) {
 }
 
 void RemoteWindowIterator::Seek(const uint64_t& key) {
+    ResetValue();
+
     DLOG(INFO) << "RemoteWindowIterator seek " << key;
     if (!kv_it_) {
         return;
@@ -454,6 +488,8 @@ void RemoteWindowIterator::Seek(const uint64_t& key) {
 }
 
 void RemoteWindowIterator::Next() {
+    ResetValue();
+
     kv_it_->Next();
     if (kv_it_->Valid()) {
         if (is_traverse_data_ && kv_it_->GetPK() != pk_) {

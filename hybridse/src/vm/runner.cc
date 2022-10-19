@@ -3911,6 +3911,10 @@ Row Runner::GroupbyProject(const int8_t* fn, const codec::Row& parameter, TableH
     }
     const auto& row = iter->GetValue();
     const auto& row_key = iter->GetKey();
+
+    // Init current run step runtime
+    JitRuntime::get()->InitRunStep();
+
     auto udf = reinterpret_cast<int32_t (*)(const int64_t, const int8_t*,
                                             const int8_t*, const int8_t*, int8_t**)>(
         const_cast<int8_t*>(fn));
@@ -3924,6 +3928,10 @@ Row Runner::GroupbyProject(const int8_t* fn, const codec::Row& parameter, TableH
     auto window_ptr = reinterpret_cast<const int8_t*>(&window_ref);
 
     uint32_t ret = udf(row_key, row_ptr, window_ptr, parameter_ptr, &buf);
+
+    // Release current run step resources
+    JitRuntime::get()->ReleaseRunStep();
+
     if (ret != 0) {
         LOG(WARNING) << "fail to run udf " << ret;
         return Row();
