@@ -143,7 +143,7 @@ elseif (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
         "-Wl,-U,_MallocExtension_ReleaseFreeMemory"
         "-Wl,-U,_ProfilerStart"
         "-Wl,-U,_ProfilerStop")
-    set(BRPC_LIBS ${BRPC_LIBRARY} ${Protobuf_LIBRARIES} ${GLOG_LIBRARY} ${GFLAGS_LIBRARY} ${OPENSSL_LIBRARIES} ${LEVELDB_LIBRARY} ${Z_LIBRARY} ${SNAPPY_LIBRARY} ${OS_LIB})
+    set(BRPC_LIBS ${BRPC_LIBRARY} ${Protobuf_LIBRARIES} ${GLOG_LIBRARY} ${GFLAGS_LIBRARY} ${OPENSSL_LIBRARIES} ${LEVELDB_LIBRARY} ${Z_LIBRARY} ${SNAPPY_LIBRARY} dl pthread ${OS_LIB})
 endif ()
 
 if (SANITIZER_ENABLE)
@@ -250,19 +250,6 @@ set(ZETASQL_LIBS
         timeofday_proto
         latlng_proto
         )
-set(SYSTEM_LIBS
-        rt
-        m
-        dl
-        pthread
-        )
-if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
-    list(APPEND SYSTEM_LIBS unwind)
-endif()
-if(CMAKE_CXX_COMPILER_ID MATCHES "GNU" AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS "9.1")
-    # GNU implementation prior to 9.1 requires linking with -lstdc++fs
-    list(APPEND SYSTEM_LIBS stdc++fs)
-endif()
 
 if (TCMALLOC_ENABLE)
     set(CMAKE_EXE_LINKER_FLAGS "-fno-builtin-malloc -fno-builtin-calloc -fno-builtin-realloc -fno-builtin-free ${CMAKE_EXE_LINKER_FLAGS}")
