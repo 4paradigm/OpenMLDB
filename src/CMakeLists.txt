@@ -55,12 +55,8 @@ function(compile_test DIR)
         apiserver nameserver tablet query_response_time openmldb_sdk openmldb_catalog
         schema client zk_client storage replica base openmldb_codec openmldb_proto log
         common zookeeper_mt tcmalloc_minimal ${RocksDB_LIB}
-        ${VM_LIBS} ${LLVM_LIBS} ${ZETASQL_LIBS} ${BRPC_LIBS})
+        ${VM_LIBS} ${LLVM_LIBS} ${ZETASQL_LIBS} ${BRPC_LIBS} ${SYSTEM_LIBS})
 
-    if(CMAKE_CXX_COMPILER_ID MATCHES "GNU" AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS "9.1")
-        # GNU implementation prior to 9.1 requires linking with -lstdc++fs
-        list(APPEND TEST_LIBS stdc++fs)
-    endif()
     file(GLOB_RECURSE SRC_FILES ${DIR}/*.cc)
     foreach(SRC_FILE ${SRC_FILES})
         if (SRC_FILE MATCHES ".*_test.cc")
@@ -123,7 +119,8 @@ common zookeeper_mt tcmalloc_minimal
 ${VM_LIBS}
 ${LLVM_LIBS}
 ${ZETASQL_LIBS}
-${BRPC_LIBS})
+${BRPC_LIBS}
+${SYSTEM_LIBS})
 
 if(TESTING_ENABLE)
     compile_test(cmd)
@@ -144,18 +141,10 @@ endif()
 add_executable(parse_log tools/parse_log.cc  $<TARGET_OBJECTS:openmldb_proto>)
 add_executable(data_exporter tools/data_exporter.cc tools/log_exporter.cc tools/tablemeta_reader.cc $<TARGET_OBJECTS:openmldb_proto>)
 
-set(LINK_LIBS log openmldb_proto base ${PROTOBUF_LIBRARY} ${GLOG_LIBRARY} ${GFLAGS_LIBRARY} ${OPENSSL_LIBRARIES} ${Z_LIBRARY} ${SNAPPY_LIBRARY} dl pthread)
-if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
-    list(APPEND LINK_LIBS unwind)
-endif()
+set(LINK_LIBS log openmldb_proto base ${PROTOBUF_LIBRARY} ${GLOG_LIBRARY} ${GFLAGS_LIBRARY} ${OPENSSL_LIBRARIES} ${Z_LIBRARY} ${SNAPPY_LIBRARY} ${SYSTEM_LIBS})
 target_link_libraries(parse_log ${LINK_LIBS})
 
-set(EXPORTER_LIBS ${BIN_LIBS})
-if(CMAKE_CXX_COMPILER_ID MATCHES "GNU" AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS "9.1")
-    # GNU implementation prior to 9.1 requires linking with -lstdc++fs
-    list(APPEND EXPORTER_LIBS stdc++fs)
-endif()
-target_link_libraries(data_exporter ${EXPORTER_LIBS})
+target_link_libraries(data_exporter ${BIN_LIBS})
 add_executable(openmldb cmd/openmldb.cc base/linenoise.cc)
 target_link_libraries(openmldb ${BIN_LIBS})
 

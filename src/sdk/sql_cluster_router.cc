@@ -18,6 +18,7 @@
 
 #include <algorithm>
 #include <fstream>
+#include <future>
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -2967,21 +2968,58 @@ hybridse::sdk::Status SQLClusterRouter::HandleLoadDataInfile(
 
     std::vector<std::string> file_list = base::FindFiles(file_path);
 
+    int thread_num = options_parser.GetThread();
+    std::vector<uint64_t> counts(thread_num);
+    std::vector<std::future<hybridse::sdk::Status>> future_statuses;
+    for (int i = 0; i < thread_num; i++) {
+        future_statuses.emplace_back(std::async(&SQLClusterRouter::LoadDataMultipleFile, this, i, thread_num, database,
+                                                table, file_list, options_parser, &(counts[i])));
+    }
     uint64_t total_count = 0;
+    hybridse::sdk::Status status;
+    for (int i = 0; i < thread_num; i++) {
+        auto s = future_statuses[i].get();
+        if (s.IsOK()) {
+            total_count += counts[i];
+        } else {
+            // keep the last error code
+            status.code = s.code;
+            absl::StrAppend(&status.msg, "\n", s.msg);
+        }
+    }
+
+    if (status.IsOK()) {
+        status.msg = absl::StrCat("Load ", total_count, " rows");
+        DLOG(INFO) << status.msg;
+    } else {
+        absl::StrAppend(&status.msg, "\n", "Load ", total_count, " rows");
+        LOG(WARNING) << status.msg;
+    }
+    return status;
+}
+
+hybridse::sdk::Status SQLClusterRouter::LoadDataMultipleFile(int id, int step, const std::string& database,
+                                                             const std::string& table,
+                                                             const std::vector<std::string>& file_list,
+                                                             const openmldb::sdk::ReadFileOptionsParser& options_parser,
+                                                             uint64_t* count) {
+
     for (const auto& file : file_list) {
-        uint64_t count = 0;
-        auto status = HandleLoadDataInfileSingleFile(database, table, file, options_parser, &count);
+        uint64_t cur_count = 0;
+        auto status = LoadDataSingleFile(id, step, database, table, file, options_parser, &cur_count);
+        DLOG(INFO) << "[thread " << id << "] Loaded " << count << " rows in " << file;
         if (!status.IsOK()) {
             return status;
         }
-        total_count += count;
+        (*count) += cur_count;
     }
-    return {0, absl::StrCat("Load ", std::to_string(total_count), " rows")};
+    return {0, absl::StrCat("Load ", std::to_string(*count), " rows")};
 }
 
-hybridse::sdk::Status SQLClusterRouter::HandleLoadDataInfileSingleFile(
-    const std::string& database, const std::string& table, const std::string& file_path,
-    const openmldb::sdk::ReadFileOptionsParser& options_parser, uint64_t* count) {
+hybridse::sdk::Status SQLClusterRouter::LoadDataSingleFile(int id, int step, const std::string& database,
+                                                           const std::string& table, const std::string& file_path,
+                                                           const openmldb::sdk::ReadFileOptionsParser& options_parser,
+                                                           uint64_t* count) {
     *count = 0;
     // read csv
     if (!base::IsExists(file_path)) {
@@ -3031,19 +3069,25 @@ hybridse::sdk::Status SQLClusterRouter::HandleLoadDataInfileSingleFile(
             str_cols_idx.emplace_back(i);
         }
     }
-    uint64_t i = 0;
+    int64_t i = 0;
     do {
-        cols.clear();
-        std::string error;
-        ::openmldb::sdk::SplitLineWithDelimiterForStrings(line, options_parser.GetDelimiter(), &cols,
-                                                          options_parser.GetQuote());
-        auto ret = InsertOneRow(database, insert_placeholder, str_cols_idx, options_parser.GetNullValue(), cols);
-        if (!ret.IsOK()) {
-            return {::hybridse::common::StatusCode::kCmdError, "line [" + line + "] insert failed, " + ret.msg};
+        // only process the line assigned to its own id
+        if (i % step == id) {
+            cols.clear();
+            std::string error;
+            ::openmldb::sdk::SplitLineWithDelimiterForStrings(line, options_parser.GetDelimiter(), &cols,
+                                                              options_parser.GetQuote());
+            auto ret = InsertOneRow(database, insert_placeholder, str_cols_idx, options_parser.GetNullValue(), cols);
+            if (!ret.IsOK()) {
+                return {
+                    ::hybridse::common::StatusCode::kCmdError,
+                    absl::StrCat("file [", file_path, "] line [lineno=", i, ": ", line, "] insert failed, ", ret.msg)};
+            } else {
+                (*count)++;
+            }
         }
         ++i;
     } while (std::getline(file, line));
-    *count = i;
     return {0, "Load " + std::to_string(i) + " rows"};
 }
 

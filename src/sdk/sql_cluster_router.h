@@ -304,10 +304,15 @@ class SQLClusterRouter : public SQLRouter {
                                                const std::string& file_path,
                                                const openmldb::sdk::ReadFileOptionsParser& options_parser);
 
-    hybridse::sdk::Status HandleLoadDataInfileSingleFile(const std::string& database, const std::string& table,
-                                                         const std::string& file_path,
-                                                         const openmldb::sdk::ReadFileOptionsParser& options_parser,
-                                                         uint64_t* count);
+    hybridse::sdk::Status LoadDataMultipleFile(int id, int step, const std::string& database,
+                                               const std::string& table, const std::vector<std::string>& file_list,
+                                               const openmldb::sdk::ReadFileOptionsParser& options_parser,
+                                               uint64_t* count);
+
+    hybridse::sdk::Status LoadDataSingleFile(int id, int step, const std::string& database,
+                                             const std::string& table, const std::string& file_path,
+                                             const openmldb::sdk::ReadFileOptionsParser& options_parser,
+                                             uint64_t* count);
 
     hybridse::sdk::Status InsertOneRow(const std::string& database, const std::string& insert_placeholder,
                                        const std::vector<int>& str_col_idx, const std::string& null_value,
