@@ -145,7 +145,39 @@ class FileOptionsParser {
 
 class ReadFileOptionsParser : public FileOptionsParser {
  public:
-    ReadFileOptionsParser() { quote_ = '\0'; }
+    ReadFileOptionsParser() {
+        quote_ = '\0';
+        check_map_.emplace("load_mode", std::make_pair(CheckLoadMode(), hybridse::node::kVarchar));
+        check_map_.emplace("thread", std::make_pair(CheckThread(), hybridse::node::kInt32));
+    }
+
+    const std::string& GetLoadMode() const { return load_mode_; }
+    int GetThread() const { return thread_; }
+
+ private:
+    std::string load_mode_ = "local";
+    int thread_ = 1;
+
+    std::function<bool(const hybridse::node::ConstNode* node)> CheckLoadMode() {
+        return [this](const hybridse::node::ConstNode* node) {
+            load_mode_ = node->GetAsString();
+            boost::to_lower(load_mode_);
+            if (load_mode_ != "local" && load_mode_ != "cluster") {
+                return false;
+            }
+            return true;
+        };
+    }
+
+    std::function<bool(const hybridse::node::ConstNode* node)> CheckThread() {
+        return [this](const hybridse::node::ConstNode* node) {
+            thread_ = node->GetAsInt32();
+            if (thread_ <= 0) {
+                return false;
+            }
+            return true;
+        };
+    }
 };
 
 class WriteFileOptionsParser : public FileOptionsParser {

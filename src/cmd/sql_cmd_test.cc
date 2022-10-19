@@ -406,9 +406,11 @@ TEST_F(SqlCmdTest, InsertWithDB) {
             "drop database test2;"});
 }
 
-TEST_F(SqlCmdTest, LoadData) {
-    sr = standalone_cli.sr;
-    cs = standalone_cli.cs;
+TEST_P(DBSDKTest, LoadData) {
+    auto cli = GetParam();
+    cs = cli->cs;
+    sr = cli->sr;
+    HandleSQL("SET @@execute_mode='online';");
     HandleSQL("create database test1;");
     HandleSQL("use test1;");
     std::string create_sql = "create table trans (c1 string, c2 int);";
@@ -421,12 +423,13 @@ TEST_F(SqlCmdTest, LoadData) {
         ofile << "aa" << i << "," << i << std::endl;
     }
     ofile.close();
-    std::string load_sql = "LOAD DATA INFILE '" + file_name + "' INTO TABLE trans;";
+    std::string load_sql =
+        "LOAD DATA INFILE '" + file_name + "' INTO TABLE trans options(load_mode='local', thread=10);";
     hybridse::sdk::Status status;
     sr->ExecuteSQL(load_sql, &status);
     ASSERT_TRUE(status.IsOK()) << status.msg;
     auto result = sr->ExecuteSQL("select * from trans;", &status);
-    ASSERT_TRUE(status.IsOK());
+    ASSERT_TRUE(status.IsOK()) << status.msg;
     ASSERT_EQ(10, result->Size());
     HandleSQL("drop table trans;");
     HandleSQL("drop database test1;");

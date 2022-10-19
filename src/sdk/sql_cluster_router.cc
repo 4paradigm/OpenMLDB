@@ -2645,8 +2645,19 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(
                 *status = {::hybridse::common::StatusCode::kCmdError, " no db in sql and no default db"};
                 return {};
             }
-            if (cluster_sdk_->IsClusterMode()) {
-                // Handle in cluster mode
+
+            openmldb::sdk::ReadFileOptionsParser options_parser;
+            auto st = options_parser.Parse(plan->Options());
+            if (!st.OK()) {
+                *status = {::hybridse::common::StatusCode::kCmdError, st.msg};
+                return {};
+            }
+
+            if (!cluster_sdk_->IsClusterMode() || options_parser.GetLoadMode() == "local") {
+                // Load data locally
+                *status = HandleLoadDataInfile(database, plan->Table(), plan->File(), options_parser);
+            } else {
+                // Load data using Spark
                 ::openmldb::taskmanager::JobInfo job_info;
                 std::map<std::string, std::string> config;
                 ReadSparkConfFromFile(std::dynamic_pointer_cast<SQLRouterOptions>(options_)->spark_conf_path, &config);
@@ -2668,9 +2679,6 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(
                 } else {
                     *status = {::hybridse::common::StatusCode::kCmdError, base_status.msg};
                 }
-            } else {
-                // Handle in standalone mode
-                *status = HandleLoadDataInfile(database, plan->Table(), plan->File(), plan->Options());
             }
             return {};
         }
@@ -2947,15 +2955,11 @@ void SQLClusterRouter::SetInteractive(bool value) { interactive_ = value; }
 // Only csv format
 hybridse::sdk::Status SQLClusterRouter::HandleLoadDataInfile(
     const std::string& database, const std::string& table, const std::string& file_path,
-    const std::shared_ptr<hybridse::node::OptionsMap>& options) {
+    const openmldb::sdk::ReadFileOptionsParser& options_parser) {
     if (database.empty()) {
         return {::hybridse::common::StatusCode::kCmdError, "database is empty"};
     }
-    openmldb::sdk::ReadFileOptionsParser options_parse;
-    auto st = options_parse.Parse(options);
-    if (!st.OK()) {
-        return {::hybridse::common::StatusCode::kCmdError, st.msg};
-    }
+
     /*std::cout << "Load " << file_path << " to " << real_db << "-" << table << ", options: delimiter ["
               << options_parse.GetDelimiter() << "], has header[" << (options_parse.GetHeader() ? "true" : "false")
               << "], null_value[" << options_parse.GetNullValue() << "], format[" << options_parse.GetFormat()
@@ -2974,8 +2978,8 @@ hybridse::sdk::Status SQLClusterRouter::HandleLoadDataInfile(
         return {::hybridse::common::StatusCode::kCmdError, "read from file failed"};
     }
     std::vector<std::string> cols;
-    ::openmldb::sdk::SplitLineWithDelimiterForStrings(line, options_parse.GetDelimiter(), &cols,
-                                                      options_parse.GetQuote());
+    ::openmldb::sdk::SplitLineWithDelimiterForStrings(line, options_parser.GetDelimiter(), &cols,
+                                                      options_parser.GetQuote());
     auto schema = GetTableSchema(database, table);
     if (!schema) {
         return {::hybridse::common::StatusCode::kCmdError, "table is not exist"};
@@ -2984,7 +2988,7 @@ hybridse::sdk::Status SQLClusterRouter::HandleLoadDataInfile(
         return {::hybridse::common::StatusCode::kCmdError, "mismatch column size"};
     }
 
-    if (options_parse.GetHeader()) {
+    if (options_parser.GetHeader()) {
         // the first line is the column names, check if equal with table schema
         for (int i = 0; i < schema->GetColumnCnt(); ++i) {
             if (cols[i] != schema->GetColumnName(i)) {
@@ -3012,9 +3016,9 @@ hybridse::sdk::Status SQLClusterRouter::HandleLoadDataInfile(
     do {
         cols.clear();
         std::string error;
-        ::openmldb::sdk::SplitLineWithDelimiterForStrings(line, options_parse.GetDelimiter(), &cols,
-                                                          options_parse.GetQuote());
-        auto ret = InsertOneRow(database, insert_placeholder, str_cols_idx, options_parse.GetNullValue(), cols);
+        ::openmldb::sdk::SplitLineWithDelimiterForStrings(line, options_parser.GetDelimiter(), &cols,
+                                                          options_parser.GetQuote());
+        auto ret = InsertOneRow(database, insert_placeholder, str_cols_idx, options_parser.GetNullValue(), cols);
         if (!ret.IsOK()) {
             return {::hybridse::common::StatusCode::kCmdError, "line [" + line + "] insert failed, " + ret.msg};
         }
