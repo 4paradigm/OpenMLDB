@@ -133,14 +133,18 @@ TEST_F(FileUtilTest, FindFiles) {
     absl::Cleanup clean = [&tmp_path]() { std::filesystem::remove_all(tmp_path); };
 
     ASSERT_TRUE(MkdirRecur(tmp_path.string()));
-    auto file0 = (tmp_path / "test0.csv");
+    ASSERT_TRUE(MkdirRecur(tmp_path / "subfolder"));
+    auto file0 = tmp_path / "test0.csv";
     FILE* f = fopen(file0.c_str(), "w");
     if (f != nullptr) fclose(f);
-    auto file1 = (tmp_path / "test1.csv");
+    auto file1 = tmp_path / "test1.csv";
     f = fopen(file1.c_str(), "w");
     if (f != nullptr) fclose(f);
-    auto file2 = (tmp_path / "test2.csv");
+    auto file2 = tmp_path / "test2.csv";
     f = fopen(file2.c_str(), "w");
+    if (f != nullptr) fclose(f);
+    auto file3 = tmp_path / "subfolder/test3.csv";
+    f = fopen(file3.c_str(), "w");
     if (f != nullptr) fclose(f);
 
     {
@@ -149,6 +153,15 @@ TEST_F(FileUtilTest, FindFiles) {
         ASSERT_EQ(res[0], file0);
         ASSERT_EQ(res[1], file1);
         ASSERT_EQ(res[2], file2);
+    }
+
+    {
+        auto res = FindFiles<true>(tmp_path.string(), "test*");
+        ASSERT_EQ(res.size(), 4);
+        ASSERT_EQ(res[0], file3);
+        ASSERT_EQ(res[1], file0);
+        ASSERT_EQ(res[2], file1);
+        ASSERT_EQ(res[3], file2);
     }
 
     {
@@ -181,6 +194,83 @@ TEST_F(FileUtilTest, FindFiles) {
 
     {
         auto res = FindFiles<false>(tmp_path.string(), "");
+        ASSERT_EQ(res.size(), 0);
+    }
+}
+
+TEST_F(FileUtilTest, FindFiles2) {
+    std::filesystem::path tmp_path = std::filesystem::temp_directory_path() / "file_util_test2";
+    absl::Cleanup clean = [&tmp_path]() { std::filesystem::remove_all(tmp_path); };
+
+    ASSERT_TRUE(MkdirRecur(tmp_path.string()));
+    ASSERT_TRUE(MkdirRecur(tmp_path / "subfolder"));
+    auto file0 = tmp_path / "test0.csv";
+    FILE* f = fopen(file0.c_str(), "w");
+    if (f != nullptr) fclose(f);
+    auto file1 = tmp_path / "test1.csv";
+    f = fopen(file1.c_str(), "w");
+    if (f != nullptr) fclose(f);
+    auto file2 = tmp_path / "test2.csv";
+    f = fopen(file2.c_str(), "w");
+    if (f != nullptr) fclose(f);
+    auto file3 = tmp_path / "subfolder/test3.csv";
+    f = fopen(file3.c_str(), "w");
+    if (f != nullptr) fclose(f);
+
+    {
+        auto res = FindFiles(tmp_path / "test*");
+        ASSERT_EQ(res.size(), 3);
+        ASSERT_EQ(res[0], file0);
+        ASSERT_EQ(res[1], file1);
+        ASSERT_EQ(res[2], file2);
+    }
+
+    {
+        auto res = FindFiles(tmp_path / "*");
+        ASSERT_EQ(res.size(), 3);
+        ASSERT_EQ(res[0], file0);
+        ASSERT_EQ(res[1], file1);
+        ASSERT_EQ(res[2], file2);
+    }
+
+    {
+        auto res = FindFiles(tmp_path / "*.csv");
+        ASSERT_EQ(res.size(), 3);
+        ASSERT_EQ(res[0], file0);
+        ASSERT_EQ(res[1], file1);
+        ASSERT_EQ(res[2], file2);
+    }
+
+    {
+        auto res = FindFiles(tmp_path / "test1.csv");
+        ASSERT_EQ(res.size(), 1);
+        ASSERT_EQ(res[0], file1);
+    }
+
+    {
+        auto res = FindFiles(tmp_path / "test1.csv*");
+        ASSERT_EQ(res.size(), 1);
+        ASSERT_EQ(res[0], file1);
+    }
+
+    {
+        auto res = FindFiles(tmp_path);
+        ASSERT_EQ(res.size(), 3);
+        ASSERT_EQ(res[0], file0);
+        ASSERT_EQ(res[1], file1);
+        ASSERT_EQ(res[2], file2);
+    }
+
+    {
+        auto res = FindFiles("file://" / tmp_path);
+        ASSERT_EQ(res.size(), 3);
+        ASSERT_EQ(res[0], file0);
+        ASSERT_EQ(res[1], file1);
+        ASSERT_EQ(res[2], file2);
+    }
+
+    {
+        auto res = FindFiles(tmp_path / "not_exists");
         ASSERT_EQ(res.size(), 0);
     }
 }

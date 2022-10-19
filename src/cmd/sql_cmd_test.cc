@@ -406,6 +406,51 @@ TEST_F(SqlCmdTest, InsertWithDB) {
             "drop database test2;"});
 }
 
+TEST_P(DBSDKTest, LoadDataMultipleFiles) {
+    auto cli = GetParam();
+    cs = cli->cs;
+    sr = cli->sr;
+    HandleSQL("SET @@execute_mode='online';");
+    HandleSQL("create database test1;");
+    HandleSQL("use test1;");
+    std::string create_sql = "create table trans (c1 string, c2 int);";
+    HandleSQL(create_sql);
+    int file_num = 2;
+    std::filesystem::path tmp_path = std::filesystem::temp_directory_path() / "load_test";
+    ASSERT_TRUE(base::MkdirRecur(tmp_path.string()));
+    absl::Cleanup clean = [&tmp_path]() { std::filesystem::remove_all(tmp_path); };
+    std::vector<std::string> data;
+
+    for (int j = 0; j < file_num; j++) {
+        std::string file_name = tmp_path / absl::StrCat("myfile-", j, ".csv");
+        std::ofstream ofile;
+        ofile.open(file_name);
+        ofile << "c1,c2" << std::endl;
+        for (int i = 0; i < 10; i++) {
+            std::string row = absl::StrCat("aa-", j, ",", i);
+            data.push_back(row);
+            ofile << row << std::endl;
+        }
+        ofile.close();
+    }
+    std::string load_sql = "LOAD DATA INFILE '" + (tmp_path / "myfile*").string() +
+                           "' INTO TABLE trans options(load_mode='local', thread=10);";
+    hybridse::sdk::Status status;
+    sr->ExecuteSQL(load_sql, &status);
+    ASSERT_TRUE(status.IsOK()) << status.msg;
+    auto result = sr->ExecuteSQL("select * from trans;", &status);
+    ASSERT_TRUE(status.IsOK()) << status.msg;
+    ASSERT_EQ(20, result->Size());
+    while (result->Next()) {
+        std::string col1 = result->GetStringUnsafe(0);
+        int col2 = result->GetInt32Unsafe(1);
+        ASSERT_EQ(col1.substr(0, 3), "aa-");
+        ASSERT_TRUE(col2 >= 0 && col2 < 10);
+    }
+    HandleSQL("drop table trans;");
+    HandleSQL("drop database test1;");
+}
+
 TEST_P(DBSDKTest, LoadData) {
     auto cli = GetParam();
     cs = cli->cs;

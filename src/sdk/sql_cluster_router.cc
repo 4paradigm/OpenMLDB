@@ -2960,10 +2960,29 @@ hybridse::sdk::Status SQLClusterRouter::HandleLoadDataInfile(
         return {::hybridse::common::StatusCode::kCmdError, "database is empty"};
     }
 
-    /*std::cout << "Load " << file_path << " to " << real_db << "-" << table << ", options: delimiter ["
-              << options_parse.GetDelimiter() << "], has header[" << (options_parse.GetHeader() ? "true" : "false")
-              << "], null_value[" << options_parse.GetNullValue() << "], format[" << options_parse.GetFormat()
-              << "], quote[" << options_parse.GetQuote() << "]" << std::endl;*/
+    DLOG(INFO) << "Load " << file_path << " to " << database << "-" << table << ", options: delimiter ["
+               << options_parser.GetDelimiter() << "], has header[" << (options_parser.GetHeader() ? "true" : "false")
+               << "], null_value[" << options_parser.GetNullValue() << "], format[" << options_parser.GetFormat()
+               << "], quote[" << options_parser.GetQuote() << "]";
+
+    std::vector<std::string> file_list = base::FindFiles(file_path);
+
+    uint64_t total_count = 0;
+    for (const auto& file : file_list) {
+        uint64_t count = 0;
+        auto status = HandleLoadDataInfileSingleFile(database, table, file, options_parser, &count);
+        if (!status.IsOK()) {
+            return status;
+        }
+        total_count += count;
+    }
+    return {0, absl::StrCat("Load ", std::to_string(total_count), " rows")};
+}
+
+hybridse::sdk::Status SQLClusterRouter::HandleLoadDataInfileSingleFile(
+    const std::string& database, const std::string& table, const std::string& file_path,
+    const openmldb::sdk::ReadFileOptionsParser& options_parser, uint64_t* count) {
+    *count = 0;
     // read csv
     if (!base::IsExists(file_path)) {
         return {::hybridse::common::StatusCode::kCmdError, "file not exist"};
@@ -3024,6 +3043,7 @@ hybridse::sdk::Status SQLClusterRouter::HandleLoadDataInfile(
         }
         ++i;
     } while (std::getline(file, line));
+    *count = i;
     return {0, "Load " + std::to_string(i) + " rows"};
 }
 

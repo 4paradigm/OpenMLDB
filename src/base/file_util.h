@@ -17,6 +17,7 @@
 #ifndef SRC_BASE_FILE_UTIL_H_
 #define SRC_BASE_FILE_UTIL_H_
 
+#include <absl/strings/match.h>
 #include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -333,7 +334,7 @@ inline static int HardLinkDir(const std::string& src, const std::string& dest) {
 
 // list of paths of all files under the directory 'dir' when the extenstion matches the regex
 // FindFiles<true> searches recursively into sub-directories; FindFiles<false> searches only the specified directory
-template <bool RECURSIVE>
+template <bool RECURSIVE = false>
 std::vector<std::string> FindFiles(const std::string& path, const std::string& pattern) {
     std::filesystem::path dir(path);
     // convert ls pattern `test*` to regex pattern `test.*`
@@ -361,6 +362,27 @@ std::vector<std::string> FindFiles(const std::string& path, const std::string& p
     }
 
     return std::vector<std::string>(result.begin(), result.end());
+}
+
+inline static std::vector<std::string> FindFiles(const std::string& path) {
+    std::filesystem::path full_path;
+    std::string directory, filename;
+    const std::string file_prefix = "file://";
+    if (absl::StartsWith(path, file_prefix)) {
+        full_path = path.substr(file_prefix.size());
+    } else {
+        full_path = path;
+    }
+
+    if (std::filesystem::is_directory(full_path)) {
+        directory = full_path;
+        filename = "*";
+    } else {
+        directory = full_path.parent_path();
+        filename = full_path.filename();
+    }
+
+    return FindFiles<>(directory, filename);
 }
 
 }  // namespace base
