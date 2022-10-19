@@ -25,6 +25,9 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+#include <filesystem>
+#include <regex>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -326,6 +329,38 @@ inline static int HardLinkDir(const std::string& src, const std::string& dest) {
         }
     }
     return 0;
+}
+
+// list of paths of all files under the directory 'dir' when the extenstion matches the regex
+// FindFiles<true> searches recursively into sub-directories; FindFiles<false> searches only the specified directory
+template <bool RECURSIVE>
+std::vector<std::string> FindFiles(const std::string& path, const std::string& pattern) {
+    std::filesystem::path dir(path);
+    // convert ls pattern `test*` to regex pattern `test.*`
+    std::string converted_pattern;
+    for (auto c : pattern) {
+        if (c == '*') {
+            converted_pattern.push_back('.');
+            converted_pattern.push_back(c);
+        } else {
+            converted_pattern.push_back(c);
+        }
+    }
+    std::regex reg_pattern(converted_pattern);
+    // use std::set to order the results
+    std::set<std::string> result;
+
+    using iterator = typename std::conditional<RECURSIVE, std::filesystem::recursive_directory_iterator,
+                                      std::filesystem::directory_iterator>::type;
+    iterator end;
+    for (iterator iter{dir}; iter != end; ++iter) {
+        const std::string filename = iter->path().filename().string();
+        if (std::filesystem::is_regular_file(*iter) && std::regex_match(filename, reg_pattern)) {
+            result.insert(iter->path().string());
+        }
+    }
+
+    return std::vector<std::string>(result.begin(), result.end());
 }
 
 }  // namespace base

@@ -17,7 +17,9 @@
 #include "base/file_util.h"
 
 #include <algorithm>
+#include <filesystem>
 
+#include "absl/cleanup/cleanup.h"
 #include "gtest/gtest.h"
 
 namespace openmldb {
@@ -124,6 +126,63 @@ TEST_F(FileUtilTest, CopyFile) {
     GetFileSize(des_file, des_size);
     ASSERT_EQ(src_size, des_size);
     RemoveDirRecursive("/tmp/gtest");
+}
+
+TEST_F(FileUtilTest, FindFiles) {
+    std::filesystem::path tmp_path = std::filesystem::temp_directory_path() / "file_util_test";
+    absl::Cleanup clean = [&tmp_path]() { std::filesystem::remove_all(tmp_path); };
+
+    ASSERT_TRUE(MkdirRecur(tmp_path.string()));
+    auto file0 = (tmp_path / "test0.csv");
+    FILE* f = fopen(file0.c_str(), "w");
+    if (f != nullptr) fclose(f);
+    auto file1 = (tmp_path / "test1.csv");
+    f = fopen(file1.c_str(), "w");
+    if (f != nullptr) fclose(f);
+    auto file2 = (tmp_path / "test2.csv");
+    f = fopen(file2.c_str(), "w");
+    if (f != nullptr) fclose(f);
+
+    {
+        auto res = FindFiles<false>(tmp_path.string(), "test*");
+        ASSERT_EQ(res.size(), 3);
+        ASSERT_EQ(res[0], file0);
+        ASSERT_EQ(res[1], file1);
+        ASSERT_EQ(res[2], file2);
+    }
+
+    {
+        auto res = FindFiles<false>(tmp_path.string(), "*");
+        ASSERT_EQ(res.size(), 3);
+        ASSERT_EQ(res[0], file0);
+        ASSERT_EQ(res[1], file1);
+        ASSERT_EQ(res[2], file2);
+    }
+
+    {
+        auto res = FindFiles<false>(tmp_path.string(), "*.csv");
+        ASSERT_EQ(res.size(), 3);
+        ASSERT_EQ(res[0], file0);
+        ASSERT_EQ(res[1], file1);
+        ASSERT_EQ(res[2], file2);
+    }
+
+    {
+        auto res = FindFiles<false>(tmp_path.string(), "test1.csv");
+        ASSERT_EQ(res.size(), 1);
+        ASSERT_EQ(res[0], file1);
+    }
+
+    {
+        auto res = FindFiles<false>(tmp_path.string(), "test1.csv*");
+        ASSERT_EQ(res.size(), 1);
+        ASSERT_EQ(res[0], file1);
+    }
+
+    {
+        auto res = FindFiles<false>(tmp_path.string(), "");
+        ASSERT_EQ(res.size(), 0);
+    }
 }
 
 }  // namespace base
