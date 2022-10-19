@@ -127,13 +127,19 @@ class Aggregator {
 
     ~Aggregator();
 
-    bool Update(const std::string& key, const std::string& row, const uint64_t& offset, bool recover = false);
+    bool Update(const std::string& key, const std::string& row, const uint64_t& offset, bool recover = false,
+                bool reverse = false);
+
+    bool DeleteAndUpdate(const std::string& key, const std::string& row,
+                         const uint64_t& offset, bool recover = false);
 
     bool Delete(const std::string& key);
 
     bool FlushAll();
 
     bool Init(std::shared_ptr<LogReplicator> base_replicator);
+
+    void SetReletedTable(std::shared_ptr<Table> base_table);
 
     uint32_t GetIndexPos() const { return index_pos_; }
 
@@ -170,16 +176,21 @@ class Aggregator {
     std::shared_ptr<LogReplicator> aggr_replicator_;
     std::atomic<AggrStat> status_;
 
+    std::shared_ptr<Table> base_table_;
+
     bool GetAggrBufferFromRowView(const codec::RowView& row_view, const int8_t* row_ptr, AggrBuffer* buffer);
     bool FlushAggrBuffer(const std::string& key, const std::string& filter_key, const AggrBuffer& aggr_buffer);
     bool UpdateFlushedBuffer(const std::string& key, const std::string& filter_key, const int8_t* base_row_ptr,
-                             int64_t cur_ts, uint64_t offset);
+                             int64_t cur_ts, uint64_t offset, bool reverse);
     bool CheckBufferFilled(int64_t cur_ts, int64_t buffer_end, int32_t buffer_cnt);
 
  private:
-    virtual bool UpdateAggrVal(const codec::RowView& row_view, const int8_t* row_ptr, AggrBuffer* aggr_buffer) = 0;
+    virtual bool UpdateAggrVal(const codec::RowView& row_view, const int8_t* row_ptr, AggrBuffer* aggr_buffer,
+                               bool reverse) = 0;
     virtual bool EncodeAggrVal(const AggrBuffer& buffer, std::string* aggr_val) = 0;
     virtual bool DecodeAggrVal(const int8_t* row_ptr, AggrBuffer* buffer) = 0;
+    virtual bool UpdateAggrValAfterDeleteRange(const codec::RowView& row_view, const int8_t* row_ptr,
+                                       AggrBuffer* aggr_buffer) = 0;
     int64_t AlignedStart(int64_t ts) {
         if (window_type_ == WindowType::kRowsRange) {
             return ts / window_size_ * window_size_;
@@ -220,11 +231,15 @@ class SumAggregator : public Aggregator {
     ~SumAggregator() = default;
 
  private:
-    bool UpdateAggrVal(const codec::RowView& row_view, const int8_t* row_ptr, AggrBuffer* aggr_buffer) override;
+    bool UpdateAggrVal(const codec::RowView& row_view, const int8_t* row_ptr, AggrBuffer* aggr_buffer,
+                       bool reverse) override;
 
     bool EncodeAggrVal(const AggrBuffer& buffer, std::string* aggr_val) override;
 
     bool DecodeAggrVal(const int8_t* row_ptr, AggrBuffer* buffer) override;
+
+    bool UpdateAggrValAfterDeleteRange(const codec::RowView& row_view, const int8_t* row_ptr,
+                                       AggrBuffer* aggr_buffer) override;
 };
 
 class MinMaxBaseAggregator : public Aggregator {
@@ -240,6 +255,9 @@ class MinMaxBaseAggregator : public Aggregator {
     bool EncodeAggrVal(const AggrBuffer& buffer, std::string* aggr_val) override;
 
     bool DecodeAggrVal(const int8_t* row_ptr, AggrBuffer* buffer) override;
+
+    bool UpdateAggrValAfterDeleteRange(const codec::RowView& row_view, const int8_t* row_ptr,
+                                       AggrBuffer* aggr_buffer) override;
 };
 class MinAggregator : public MinMaxBaseAggregator {
  public:
@@ -251,7 +269,11 @@ class MinAggregator : public MinMaxBaseAggregator {
     ~MinAggregator() = default;
 
  private:
-    bool UpdateAggrVal(const codec::RowView& row_view, const int8_t* row_ptr, AggrBuffer* aggr_buffer) override;
+    bool UpdateAggrVal(const codec::RowView& row_view, const int8_t* row_ptr, AggrBuffer* aggr_buffer,
+                       bool reverse) override;
+
+    bool UpdateAggrValAfterDeleteRange(const codec::RowView& row_view, const int8_t* row_ptr,
+                                       AggrBuffer* aggr_buffer) override;
 };
 
 class MaxAggregator : public MinMaxBaseAggregator {
@@ -264,7 +286,11 @@ class MaxAggregator : public MinMaxBaseAggregator {
     ~MaxAggregator() = default;
 
  private:
-    bool UpdateAggrVal(const codec::RowView& row_view, const int8_t* row_ptr, AggrBuffer* aggr_buffer) override;
+    bool UpdateAggrVal(const codec::RowView& row_view, const int8_t* row_ptr, AggrBuffer* aggr_buffer,
+                       bool reverse) override;
+
+    bool UpdateAggrValAfterDeleteRange(const codec::RowView& row_view, const int8_t* row_ptr,
+                                       AggrBuffer* aggr_buffer) override;
 };
 
 class CountAggregator : public Aggregator {
@@ -277,11 +303,15 @@ class CountAggregator : public Aggregator {
     ~CountAggregator() = default;
 
  private:
-    bool UpdateAggrVal(const codec::RowView& row_view, const int8_t* row_ptr, AggrBuffer* aggr_buffer) override;
+    bool UpdateAggrVal(const codec::RowView& row_view, const int8_t* row_ptr, AggrBuffer* aggr_buffer,
+                       bool reverse) override;
 
     bool EncodeAggrVal(const AggrBuffer& buffer, std::string* aggr_val) override;
 
     bool DecodeAggrVal(const int8_t* row_ptr, AggrBuffer* buffer) override;
+
+    bool UpdateAggrValAfterDeleteRange(const codec::RowView& row_view, const int8_t* row_ptr,
+                                       AggrBuffer* aggr_buffer) override;
 
     bool count_all = false;
 };
@@ -296,11 +326,15 @@ class AvgAggregator : public Aggregator {
     ~AvgAggregator() = default;
 
  private:
-    bool UpdateAggrVal(const codec::RowView& row_view, const int8_t* row_ptr, AggrBuffer* aggr_buffer) override;
+    bool UpdateAggrVal(const codec::RowView& row_view, const int8_t* row_ptr, AggrBuffer* aggr_buffer,
+                       bool reverse) override;
 
     bool EncodeAggrVal(const AggrBuffer& buffer, std::string* aggr_val) override;
 
     bool DecodeAggrVal(const int8_t* row_ptr, AggrBuffer* buffer) override;
+
+    bool UpdateAggrValAfterDeleteRange(const codec::RowView& row_view, const int8_t* row_ptr,
+                                       AggrBuffer* aggr_buffer) override;
 };
 
 std::shared_ptr<Aggregator> CreateAggregator(const ::openmldb::api::TableMeta& base_meta,
