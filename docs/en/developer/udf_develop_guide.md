@@ -99,7 +99,7 @@ g++ -shared -o libtest_udf.so examples/test_udf.cc -I /work/OpenMLDB/include -st
 ```
 
 ### 2.3 Copy the Dynamic Library
-The compiled dynamic libraries should be copied into the `udf` directories for both TaskManager and tablets.  
+The compiled dynamic libraries should be copied into the `udf` directories for both TaskManager and tablets. Please create a new `udf` directory if it does not exist. 
 - The `udf` directory of a tablet is `path_to_tablet/udf`.
 - The `udf` directory of TaskManager is `path_to_taskmanager/taskmanager/bin/udf`. 
 
