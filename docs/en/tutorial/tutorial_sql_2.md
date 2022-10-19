@@ -64,18 +64,18 @@ As shown below, left table `LAST JOIN` right table with `ORDER BY` and right tab
 ## 3. Multi-Row Aggregation  over Multiple Tables
 
 For aggregation over multiple tables, OpenMLDB extends the standard WINDOW syntax and adds [WINDOW UNION](../reference/sql/dql/WINDOW_CLAUSE.md#window-union) syntax. 
-WINDOW UNION supports splicing multiple pieces of data from the secondary table to form a window on secondary table.
-Based on the secondary table splicing window, it is convenient to construct the multi-row aggregation feature of the secondary table. 
+WINDOW UNION supports combining multiple pieces of data from the secondary table to form a window on secondary table.
+Based on the time window, it is convenient to construct the multi-row aggregation feature of the secondary table. 
 Similarly, two steps need to be completed to construct the multi-row aggregation feature of the secondary table:
 
-- Step 1: Define the secondary table splicing window.
+- Step 1: Define the time window over multiple tables.
 - Step 2: Construct the multi-row aggregation feature of the secondary table on the window constructed in Step 1.
 
-### 3.1 Step 1: Define the Sub Table Splicing Window
+### 3.1 Step 1: Define the Time Window over Multiple Tables
 
-Each row of the main table can concat multiple rows from the secondary table according to a certain column, and it is allowed to define the time interval or number interval of the data that can be combined. We use the WINDOW UNION to define the secondary table splicing condition and interval range. To make it easier to understand, we call this kind of windows as secondary table splicing windows.
+Each row of the main table can concat multiple rows from the secondary table according to a certain column, and it is allowed to define the time interval or number interval of the data that can be combined. We use the WINDOW UNION to define the secondary table combining condition and interval range. To make it easier to understand, we call this kind of windows as secondary table combining windows.
 
-The syntax of creating a secondary table splicing window is defined as:
+The syntax of creating a secondary table combining window is defined as:
 
 ```sql
 window window_name as (UNION other_table PARTITION BY key_col ORDER BY order_col ROWS_RANGE｜ROWS BETWEEN StartFrameBound AND EndFrameBound)
@@ -89,7 +89,7 @@ Among them, necessary elements include:
 
 - `ORDER BY order_col`: Indicates that the secondary table is sorted in accordance with`order_col` columns.
 
-- `ROWS_RANGE BETWEEN StartFrameBound AND EndFrameBound`: Represents the time interval of the secondary table splicing window.
+- `ROWS_RANGE BETWEEN StartFrameBound AND EndFrameBound`: Represents the time interval of the secondary table combining window.
 
   - `StartFrameBound` represents the upper bound of the window.
 
@@ -101,7 +101,7 @@ Among them, necessary elements include:
     - `CURRENT ROW`: The lower bound is current row.
     - `time_expression PRECEDING`: If it is a time interval, you can define a time offset, such as `1d PRECEDING`. This indicates that the lower bound of the window is 1 day before the time of the current row. 
 
-- `ROWS BETWEEN StartFrameBound AND EndFrameBound`: Represents the time interval of the secondary table splicing window.
+- `ROWS BETWEEN StartFrameBound AND EndFrameBound`: Represents the time interval of the secondary table combining window.
 
   - `StartFrameBound` represents the upper bound of the window.
 
@@ -131,7 +131,7 @@ Let's see the usage of WINDOW UNION through specific examples.
 
 For the user transaction table t1 mentioned above, we define a window over the secondary table, that is merchant flow table t2, based on `mid`.
 Because the schemas of t1 and t2 are different, we extract the same columns from t1 and t2 respectively. For non-existent columns, we set default values. 
-Among them, `mid` column is used as the splicing condition of two tables, so it must be included. Secondly, the timestamp column（`trans_time` in t1 and `purchase_time` in t2）contains timing information, which is also necessary when defining the time window. The remaining columns are filtered and retained as required according to the aggregation function.
+Among them, `mid` column is used as the combining condition of two tables, so it must be included. Secondly, the timestamp column（`trans_time` in t1 and `purchase_time` in t2）contains timing information, which is also necessary when defining the time window. The remaining columns are filtered and retained as required according to the aggregation function.
 
 
 
@@ -150,9 +150,9 @@ The following SQL extracts the necessary columns from t2 to generate t22.
 ![img](images/t2_to_t22.jpg)
 
 It can be seen that the newly generated t11 and t22 have the same schema, and they can perform logical union operation. However, in OpenMLDB, the WINDOW UNION is not really the same as the UNION operation in the traditional database, but to build the time window on the secondary table t22 for each row in t11. 
-According to the merchant ID `mid`, we obtain the corresponding rows from t22 for each row in t11, and then sort them according to the consumption time (`purchase_time`) to construct the secondary table splicing window. 
+According to the merchant ID `mid`, we obtain the corresponding rows from t22 for each row in t11, and then sort them according to the consumption time (`purchase_time`) to construct the secondary table combining window. 
 For example, we define a `w_t2_10d` window, which does not include the rows of the main table except the current row, but includes the data within ten days that is joint according to `mid` from the secondary table. 
-The schematic is shown below. It can be seen that the yellow and blue shaded parts respectively represent the secondary table splicing windows of sample 6 and sample 9.
+The schematic is shown below. It can be seen that the yellow and blue shaded parts respectively represent the secondary table combining windows of sample 6 and sample 9.
 
 ![img](images/t11_t22.jpg)
 
@@ -171,7 +171,7 @@ ROWS_RANGE BETWEEN 10d PRECEDING AND 1 PRECEDING INSTANCE_NOT_IN_WINDOW)
 Apply the multi-row aggregation function on the created window to construct aggregation features on multi-rows of secondary table, so that the number of rows finally generated is the same as that of the main table. 
 For example, we can construct features from the secondary table like: the total retail sales of merchants in the last 10 days `w10d_merchant_purchase_amt_sum` and the total consumption times of the merchant in the last 10 days `w10d_merchant_purchase_count`. 
 
-The following SQL constructs the multi-row aggregation feature based on the secondary table splicing window defined in [3.1](#31-step-1-define-the-sub-table-splicing-window).
+The following SQL constructs the multi-row aggregation feature based on the secondary table combining window defined in [3.1](#31-step-1-define-the-sub-table-splicing-window).
 ```sql
 SELECT 
 id, 
@@ -189,7 +189,7 @@ ROWS_RANGE BETWEEN 10d PRECEDING AND 1 PRECEDING INSTANCE_NOT_IN_WINDOW)
 
 ## 4. Feature Group Construction
 
-Generally speaking, a complete feature extraction script will extract dozens or even hundreds of features. We can divide these features into several groups according to the feature type, the table and window associated with the feature, and then put each group of features into different SQL sub queries. Finally, the results of these sub queries are combined according to the main table ID. In this section, we will continue the previous examples to demonstrate how to form a feature wide table splicing various features.
+Generally speaking, a complete feature extraction script will extract dozens or even hundreds of features. We can divide these features into several groups according to the feature type, the table and window associated with the feature, and then put each group of features into different SQL sub queries. Finally, the results of these sub queries are combined according to the main table ID. In this section, we will continue the previous examples to demonstrate how to form a feature wide table combining various features.
 
 First, we divide the features into 3 groups:
 
