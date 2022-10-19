@@ -232,9 +232,9 @@ message GeneralResponse {
 message ScanRequest {
     // the prefix key
     optional string pk = 1;
-    // the start subfix key
+    // the start subfix key (inclusive)
     optional uint64 st = 2;
-    // the end subfix key
+    // the end subfix key (exclusive)
     optional uint64 et = 3;
     optional uint32 limit = 4;
     optional uint32 tid = 5;
