@@ -121,8 +121,10 @@ For example, if the deployment paths of a tablet and TaskManager are both `/work
         └── libtest_udf.so
 ```
 
-Note that, for multiple tablets, the library needs to be copied to every one. Moreover, dynamic libraries should not be deleted before the execution of `DROP FUNCTION`.
-
+```{note}
+- Note that, for multiple tablets, the library needs to be copied to every one. 
+- Moreover, dynamic libraries should not be deleted before the execution of `DROP FUNCTION`.
+```
 
 
 ### 2.4 Register, Drop and Show the Functions
