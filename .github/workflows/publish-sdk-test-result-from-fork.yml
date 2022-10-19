@@ -9,18 +9,15 @@ on:
 
 jobs:
   test-results:
-    name: Test Results
-    runs-on: ubuntu-latest
     if: >
       github.event.workflow_run.conclusion != 'skipped' && (
          github.event.sender.login == 'dependabot[bot]' ||
          github.event.workflow_run.head_repository.full_name != github.repository
       )
-    steps:
-      - name: sdk test report
-        uses: ./.github/workflows/publish-test-result-from-fork-action.yml
-        with:
-          commit: ${{ github.event.workflow_run.head_sha }}
-          files: artifacts/linux-ut-result-*/**/*.xml
-          check_name: SDK Test Report
-          comment_title: SDK Test Report
+    name: sdk test report
+    uses: team-317/OpenMLDB/.github/workflows/publish-test-result-from-fork-action.yml@reuse_workflow
+    with:
+      commit: ${{ github.event.workflow_run.head_sha }}
+      files: artifacts/linux-ut-result-*/**/*.xml
+      check_name: SDK Test Report
+      comment_title: SDK Test Report

@@ -85,7 +85,22 @@ jobs:
           path: |
             build/hybridse/**/*.xml
 
-  publish-test-results:
+  publish-test-results-linux:
+    needs: ["linux-build", "macos-build"]
+    # the action will only run on 4paradigm/HybridSE's context, not for fork repo or dependabot
+    if: >
+      always() && github.event_name == 'push' || (
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.event.sender.login != 'dependabot[bot]' )
+
+    name: Publish Linux UT Results
+    uses: team-317/OpenMLDB/.github/workflows/publish-test-results-action.yml@reuse_workflow
+    with:
+      files: linux-ut-result-*/**/*.xml
+      check_name: HybridSE Linux Test Report
+      comment_title: HybridSE Linux Test Report
+
+  publish-test-results-mac:
     runs-on: ubuntu-latest
     needs: ["linux-build", "macos-build"]
     # the action will only run on 4paradigm/HybridSE's context, not for fork repo or dependabot
@@ -94,17 +109,9 @@ jobs:
       github.event.pull_request.head.repo.full_name == github.repository &&
       github.event.sender.login != 'dependabot[bot]' )
     steps:
-      - name: Publish Linux UT Results
-        uses: ./.github/workflows/publish-test-results-action.yml
-        with:
-          files: linux-ut-result-*/**/*.xml
-          check_name: HybridSE Linux Test Report
-          comment_title: HybridSE Linux Test Report
-
       - name: Publish Mac UT Results
         uses: EnricoMi/publish-unit-test-result-action@v1
         with:
           files: macos-ut-result-*/**/*.xml
           check_name: HybridSE Mac Test Report
           comment_title: HybridSE Mac Test Report
-

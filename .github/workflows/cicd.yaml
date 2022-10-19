@@ -135,13 +135,12 @@ jobs:
       always() && github.event_name == 'push' || (
       github.event.pull_request.head.repo.full_name == github.repository &&
       github.event.sender.login != 'dependabot[bot]' )
-    steps:
-      - name: Publish Linux UT Results
-        uses: ./.github/workflows/publish-test-results-action.yml
-        with:
-          files: linux-ut-result-*/**/*.xml
-          check_name: Linux Test Report
-          comment_title: Linux Test Report
+    name: Publish Linux UT Results
+    uses: team-317/OpenMLDB/.github/workflows/publish-test-results-action.yml@reuse_workflow
+    with:
+      files: linux-ut-result-*/**/*.xml
+      check_name: Linux Test Report
+      comment_title: Linux Test Report
 
   macos-cpp:
     runs-on: macos-latest
