@@ -1699,7 +1699,7 @@ void TabletImpl::ProcessQuery(RpcController* ctrl, const openmldb::api::QueryReq
         uint32_t count = 0;
         for (auto& output_row : output_rows) {
             if (byte_size > FLAGS_scan_max_bytes_size) {
-                LOG(WARNING) << "reach the max byte size truncate result";
+                LOG(WARNING) << "reach the max byte size " << FLAGS_scan_max_bytes_size << " truncate result";
                 response->set_schema(session.GetEncodedSchema());
                 response->set_byte_size(byte_size);
                 response->set_count(count);

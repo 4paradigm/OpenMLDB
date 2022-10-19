@@ -21,10 +21,11 @@ import com._4paradigm.hybridse.node.JoinType
 import org.apache.log4j.{Level, Logger}
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.catalyst.InternalRow
-import org.apache.spark.sql.functions.monotonically_increasing_id
+import org.apache.spark.sql.functions.{col, lit, monotonically_increasing_id}
 import org.apache.spark.sql.types.{LongType, StructType}
-import org.apache.spark.sql.{DataFrame, Row, SparkSession}
+import org.apache.spark.sql.{Column, DataFrame, Row, SparkSession}
 import org.slf4j.LoggerFactory
+import scala.collection.mutable.ArrayBuffer
 
 
 object SparkUtil {
