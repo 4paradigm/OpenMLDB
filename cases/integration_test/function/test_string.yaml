@@ -186,6 +186,7 @@ cases:
   - id: 4
     desc: strcmp 两个字符串
     sqlDialect: ["HybridSQL"]
+    mode: disk-unsupport
     inputs:
       - columns: ["id int", "c1 string","c2 string","c7 timestamp"]
         indexs: ["index1:c1:c7"]
