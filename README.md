@@ -165,6 +165,7 @@ We really appreciate the contribution from our community.
 ## 12. Publications
 
 - Cheng Chen, Jun Yang, Mian Lu, Taize Wang, Zhao Zheng, Yuqiang Chen, Wenyuan Dai, Bingsheng He, Weng-Fai Wong, Guoan Wu, Yuping Zhao, and Andy Rudoff. *[Optimizing in-memory database engine for AI-powered on-line decision augmentation using persistent memory](http://vldb.org/pvldb/vol14/p799-chen.pdf)*. International Conference on Very Large Data Bases (VLDB) 2021.
+- Siqi Wang, Jiashu Li, Mian Lu, Zhao Zheng, Yuqiang Chen, and Bingsheng He. 2022. [A System for Time Series Feature Extraction in Federated Learning](https://dl.acm.org/doi/pdf/10.1145/3511808.3557176). In Proceedings of the 31st ACM International Conference on Information & Knowledge Management (CIKM) 2022.
 
 ## 13. [The User List](https://github.com/4paradigm/OpenMLDB/discussions/707)
 
