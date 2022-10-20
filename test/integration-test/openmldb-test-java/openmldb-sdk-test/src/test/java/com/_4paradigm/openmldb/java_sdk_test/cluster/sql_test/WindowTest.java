@@ -36,9 +36,7 @@ public class WindowTest extends OpenMLDBTest {
 
     @Story("batch")
     @Test(dataProvider = "getCase")
-    @Yaml(filePaths = {"integration_test/window/",
-            "integration_test/cluster/",
-            "integration_test/test_index_optimized.yaml"})
+    @Yaml(filePaths = {"integration_test/non_auto/test_online_batch_config.yaml"})
     public void testWindowBatch(SQLCase testCase) throws Exception {
         ExecutorFactory.build(executor, testCase, SQLCaseType.kBatch).run();
     }
