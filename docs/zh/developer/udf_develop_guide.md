@@ -70,13 +70,16 @@ void cut2(UDFContext* ctx, StringRef* input, StringRef* output) {
     output->data_ = buffer;
 }
 ```
-更多udf实现参考[这里](../../../src/examples/test_udf.cc)
+更多udf实现参考[这里](../../../src/examples/test_udf.cc)。
+
 ### 2.2 编译动态库
 - 拷贝include目录 `https://github.com/4paradigm/OpenMLDB/tree/main/include` 到某个路径下，下一步编译会用到。如/work/OpenMLDB/
 - 执行编译命令，其中 -I 指定inlcude目录的路径 -o 指定产出动态库的名称
+- 
 ```shell
 g++ -shared -o libtest_udf.so examples/test_udf.cc -I /work/OpenMLDB/include -std=c++11 -fPIC
 ```
+
 ### 2.3 拷贝动态库
 编译过的动态库需要被拷贝到 TaskManager 和 tablets中。如果 TaskManager 和 tablets中不存在`udf`目录，请先创建。
 - tablet的UDF目录是 `path_to_tablet/udf`。
