@@ -19,6 +19,7 @@ sqlDialect: ["HybridSQL"]
 cases:
   - id: 0
     desc: "smallint_[%/MOD/*]_整型_正确"
+    mode: batch-unsupport
     inputs:
       -
         columns : ["id bigint","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
@@ -54,6 +55,7 @@ cases:
           - [NULL,1.5,1.0,2.7027026098198896,2.479338842975207,30.0]
   - id: 1
     desc: "int_算术运算_整型_正确"
+    mode: batch-unsupport
     inputs:
       -
         columns : ["id bigint","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
@@ -89,6 +91,7 @@ cases:
           - [NULL,1.5,1.0,2.7027026098198896,2.479338842975207,30.0]
   - id: 2
     desc: "bigint_算术运算_整型_正确"
+    mode: batch-unsupport
     inputs:
       -
         columns : ["id bigint","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
@@ -124,6 +127,7 @@ cases:
           - [NULL,1.5,1.0,2.7027026098198896,2.479338842975207,30.0]
   - id: 3
     desc: "float_算术运算_整型_正确"
+    mode: batch-unsupport
     inputs:
       -
         columns : ["id bigint","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
@@ -159,6 +163,7 @@ cases:
           - [NULL,1.5,1.0,2.7027026098198896,2.479338842975207,30.0]
   - id: 4
     desc: "double_算术运算_整型_正确"
+    mode: batch-unsupport
     inputs:
       -
         columns : ["id bigint","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
@@ -194,6 +199,7 @@ cases:
           - [NULL,1.5,1.0,2.7027026098198896,2.479338842975207,30.0]
   - id: 5
     desc: "+_正确"
+    mode: batch-unsupport
     inputs:
       -
         columns : ["id bigint","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
@@ -227,6 +233,7 @@ cases:
           - [0,20,30,11.1,12.1,1590738989001,true]
   - id: 6
     desc: "浮点型+_正确"
+    mode: batch-unsupport
     inputs:
       -
         columns : ["id bigint","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
@@ -252,6 +259,7 @@ cases:
           - [30,50,60,41.100000381469727,42.1,31]
   - id: 7
     desc: "timestamp+_正确"
+    mode: batch-unsupport
     inputs:
       -
         columns : ["id bigint","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
@@ -273,6 +281,7 @@ cases:
           - [1590738989000,1590738989020,1590738989030,3181477978001,1590738989001]
   - id: 8
     desc: "timestamp_-_正确"
+    mode: batch-unsupport
     inputs:
       -
         columns : ["id bigint","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
@@ -294,6 +303,7 @@ cases:
           - [1590738989000,1590738988980,1590738988970,1590738988999]
   - id: 9
     desc: "整型_[%MOD*-/]_各种类型_错误"
+    mode: batch-unsupport
     level: 5
     inputs:
       -
@@ -315,6 +325,7 @@ cases:
       success: false
   - id: 10
     desc: "整型_+_各种类型_错误"
+    mode: batch-unsupport
     level: 5
     inputs:
       -
@@ -336,6 +347,7 @@ cases:
       success: false
   - id: 11
     desc: "各种类型_[%MOD*/]_各种类型_错误"
+    mode: batch-unsupport
     level: 5
     inputs:
       -
@@ -357,6 +369,7 @@ cases:
       success: false
   - id: 12
     desc: "timetamp_-_各种类型_错误"
+    mode: batch-unsupport
     level: 5
     inputs:
       -
@@ -378,6 +391,7 @@ cases:
       success: false
   - id: 13
     desc: "timetamp_+_各种类型_错误"
+    mode: batch-unsupport
     level: 5
     inputs:
       -
@@ -399,6 +413,7 @@ cases:
       success: false
   - id: 14
     desc: "date/string_[+-]_各种类型_错误"
+    mode: batch-unsupport
     level: 5
     inputs:
       -
@@ -451,6 +466,7 @@ cases:
       success: false
   - id: 17
     desc: "int_DIV_int_正确"
+    mode: batch-unsupport
     inputs:
       -
         columns : ["id bigint","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
@@ -484,6 +500,7 @@ cases:
           - [null,0,0,null]
   - id: 18
     desc: "int_DIV_各种类型_错误"
+    mode: batch-unsupport
     level: 5
     inputs:
       -
@@ -505,6 +522,7 @@ cases:
       success: false
   - id: 19
     desc: "各种类型_DIV_各种类型_错误"
+    mode: batch-unsupport
     level: 5
     inputs:
       -

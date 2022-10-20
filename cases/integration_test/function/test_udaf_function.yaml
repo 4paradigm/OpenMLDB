@@ -498,7 +498,7 @@ cases:
   -
     id: 20
     desc: max_cate-normal
-    mode: cli-unsupport
+    mode: cli-unsupport,batch-unsupport
     sqlDialect: ["HybridSQL"]
     inputs:
       -
@@ -576,7 +576,7 @@ cases:
   -
     id: 21
     desc: min_cate-normal
-    mode: cli-unsupport
+    mode: cli-unsupport,batch-unsupport
     sqlDialect: ["HybridSQL"]
     inputs:
       -
@@ -649,7 +649,7 @@ cases:
   -
     id: 22
     desc: count_cate-normal
-    mode: cli-unsupport
+    mode: cli-unsupport,batch-unsupport
     sqlDialect: ["HybridSQL"]
     inputs:
       -
@@ -722,7 +722,7 @@ cases:
   -
     id: 23
     desc: sum_cate-normal
-    mode: cli-unsupport
+    mode: cli-unsupport,batch-unsupport
     sqlDialect: ["HybridSQL"]
     inputs:
       -
@@ -795,7 +795,7 @@ cases:
   -
     id: 24
     desc: avg_cate-normal
-    mode: cli-unsupport
+    mode: cli-unsupport,batch-unsupport
     sqlDialect: ["HybridSQL"]
     inputs:
       -
@@ -868,6 +868,7 @@ cases:
   -
     id: 25
     desc: "*_cate-fail1"
+    mode: batch-unsupport
     sqlDialect: ["HybridSQL"]
     level: 5
     inputs:
@@ -901,6 +902,7 @@ cases:
   -
     id: 26
     desc: "*_cate-fail2"
+    mode: batch-unsupport
     sqlDialect: ["HybridSQL"]
     level: 5
     inputs:
@@ -934,7 +936,7 @@ cases:
   -
     id: 27
     desc: max_cate_where-normal
-    mode: cli-unsupport
+    mode: cli-unsupport,batch-unsupport
     sqlDialect: ["HybridSQL"]
     inputs:
       -
@@ -1007,7 +1009,7 @@ cases:
   -
     id: 28
     desc: min_cate_where-normal
-    mode: cli-unsupport
+    mode: cli-unsupport,batch-unsupport
     sqlDialect: ["HybridSQL"]
     inputs:
       -
@@ -1080,7 +1082,7 @@ cases:
   -
     id: 29
     desc: count_cate_where-normal
-    mode: cli-unsupport
+    mode: cli-unsupport,batch-unsupport
     sqlDialect: ["HybridSQL"]
     inputs:
       -
@@ -1153,7 +1155,7 @@ cases:
   -
     id: 30
     desc: sum_cate_where-normal
-    mode: cli-unsupport
+    mode: cli-unsupport,batch-unsupport
     sqlDialect: ["HybridSQL"]
     inputs:
       -
@@ -1226,7 +1228,7 @@ cases:
   -
     id: 31
     desc: avg_cate_where-normal
-    mode: cli-unsupport
+    mode: cli-unsupport,batch-unsupport
     sqlDialect: ["HybridSQL"]
     inputs:
       -
@@ -1299,6 +1301,7 @@ cases:
   -
     id: 32
     desc: "*_cate_where-fail1"
+    mode: batch-unsupport
     sqlDialect: ["HybridSQL"]
     level: 5
     inputs:
@@ -1332,6 +1335,7 @@ cases:
   -
     id: 33
     desc: "*_cate_where-fail2"
+    mode: batch-unsupport
     sqlDialect: ["HybridSQL"]
     level: 5
     inputs:
@@ -1365,7 +1369,7 @@ cases:
   -
     id: 34
     desc: top_n_key_max_cate_where-normal
-    mode: cli-unsupport
+    mode: cli-unsupport,batch-unsupport
     sqlDialect: ["HybridSQL"]
     inputs:
       -
@@ -1438,7 +1442,7 @@ cases:
   -
     id: 35
     desc: top_n_key_min_cate_where-normal
-    mode: cli-unsupport
+    mode: cli-unsupport,batch-unsupport
     sqlDialect: ["HybridSQL"]
     inputs:
       -
@@ -1511,7 +1515,7 @@ cases:
   -
     id: 36
     desc: top_n_key_sum_cate_where-normal
-    mode: cli-unsupport
+    mode: cli-unsupport,batch-unsupport
     sqlDialect: ["HybridSQL"]
     inputs:
       -
@@ -1584,7 +1588,7 @@ cases:
   -
     id: 37
     desc: top_n_key_avg_cate_where-normal
-    mode: cli-unsupport
+    mode: cli-unsupport,batch-unsupport
     sqlDialect: ["HybridSQL"]
     inputs:
       -
@@ -1657,7 +1661,7 @@ cases:
   -
     id: 38
     desc: top_n_key_count_cate_where-normal
-    mode: cli-unsupport
+    mode: cli-unsupport,batch-unsupport
     sqlDialect: ["HybridSQL"]
     inputs:
       -
@@ -1731,6 +1735,7 @@ cases:
     id: 39
     desc: |
       top_n_key_*_cate_where-fail1, float or bool can't be category
+    mode: batch-unsupport
     sqlDialect: ["HybridSQL"]
     level: 5
     inputs:
@@ -1765,6 +1770,7 @@ cases:
     id: 40
     desc: |
       top_n_key_*_cate_where-fail2. Value can not be timestamp, date, string, bool, excepting top_n_key_count_cate_where
+    mode: batch-unsupport
     sqlDialect: ["HybridSQL"]
     level: 5
     inputs:

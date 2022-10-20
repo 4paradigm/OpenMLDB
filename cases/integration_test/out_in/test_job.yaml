@@ -20,93 +20,57 @@ cases:
     desc: show jobs
     sqls:
       - use __INTERNAL_DB;
-      - insert into JOB_INFO values (1,'SparkBatchSql','Running',11111,22222,'','local','application_1111','');
+      - insert into JOB_INFO values (1,'SparkBatchSql','Running',1590738989000,1590738999000,'sql','local','application_1111','error');
       - show jobs;
     expect:
-      columns: ["JOBID string","JOB_TYPE string","STATUS string"]
+      columns: ["id int","job_type string","state string","start_time timestamp","end_time timestamp","parameter string","cluster string","application_id string","error string"]
       rows:
-        - ["JOB-11220021","OFFLINE LOAD","RUNNING"]
+        - [1,"SparkBatchSql","Running",1590738989000,1590738999000,"sql",local,application_1111,"error"]
   -
     id: 1
     desc: showjobs
-    inputs:
-      -
-        columns: ["c1 string","c2 smallint","c3 int","c4 timestamp"]
-        rows:
-          - ["aa",1,2,1590738989000]
     sqls:
-      - use test_zw;
-      - set @@SESSION.execute_mode = "offline";
-      - insert into JOB_INFO values (1,'SparkBatchSql','Running',11111,22222,'','local','application_1111','');
       - showjobs;
     expect:
       success: false
   -
     id: 2
     desc: 切换不同的db，show jobs
-    inputs:
-      -
-        columns: ["c1 string","c2 smallint","c3 int","c4 timestamp"]
-        rows:
-          - ["aa",1,2,1590738989000]
+    db: db1
     sqls:
-      - use test_zw;
-      - set @@SESSION.execute_mode = "offline";
-      - insert into JOB_INFO values (1,'SparkBatchSql','Running',11111,22222,'','local','application_1111','');
-      - use other_db;
       - show jobs;
     expect:
-      columns: ["JOBID string","JOB_TYPE string","STATUS string"]
+      columns: ["id int","job_type string","state string","start_time timestamp","end_time timestamp","parameter string","cluster string","application_id string","error string"]
       rows:
-        - ["JOB-11220021","OFFLINE LOAD","RUNNING"]
+        - [1,"SparkBatchSql","Running",1590738989000,1590738999000,"sql",local,application_1111,"error"]
   -
     id: 3
     desc: show job jobID
-    inputs:
-      -
-        columns: ["c1 string","c2 smallint","c3 int","c4 timestamp"]
-        rows:
-          - ["aa",1,2,1590738989000]
     sqls:
-      - insert into JOB_INFO values (1,'SparkBatchSql','Running',11111,22222,'','local','application_1111','');
-      - show job 1;
+      - use __INTERNAL_DB;
+      - insert into JOB_INFO values (2,'SparkBatchSql','Running',1590738989000,1590738999000,'sql','local','application_1111','error');
+      - show job 2;
     expect:
-      columns: ["JOBID string","JOB_TYPE string","URL string","CONTENT string"]
+      columns: ["id int","job_type string","state string","start_time timestamp","end_time timestamp","parameter string","cluster string","application_id string","error string"]
       rows:
-       - ["JOB-11220021","OFFLINE LOAD","xxxx","LOAD DATA INFILE"]
+        - [2,"SparkBatchSql","Running",1590738989000,1590738999000,"sql",local,application_1111,"error"]
   -
     id: 4
     desc: jobID不存在
-    inputs:
-      -
-        columns: ["c1 string","c2 smallint","c3 int","c4 timestamp"]
-        rows:
-          - ["aa",1,2,1590738989000]
     sqls:
-      - insert into JOB_INFO values (1,'SparkBatchSql','Running',11111,22222,'','local','application_1111','');
       - show job 1111;
     expect:
+      success: false
   -
     id: 5
     desc: 语法错误
-    inputs:
-      -
-        columns: ["c1 string","c2 smallint","c3 int","c4 timestamp"]
-        rows:
-          - ["aa",1,2,1590738989000]
     sqls:
-      - insert into JOB_INFO values (1,'SparkBatchSql','Running',11111,22222,'','local','application_1111','');
       - show jobe 1;
     expect:
       success: false
   -
     id: 6
     desc: delete job jobID
-    inputs:
-      -
-        columns: ["c1 string","c2 smallint","c3 int","c4 timestamp"]
-        rows:
-          - ["aa",1,2,1590738989000]
     sqls:
       - delete job JOB-11220021;
     expect:

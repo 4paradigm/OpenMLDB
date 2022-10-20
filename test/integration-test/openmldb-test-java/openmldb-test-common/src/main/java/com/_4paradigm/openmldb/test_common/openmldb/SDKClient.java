@@ -49,7 +49,9 @@ public class SDKClient {
 //                    //openMLDBResult.setOpenMLDBJob(finishJobInfo);
 //                }
             }
-//            ResultChainManager.of().toOpenMLDBResult(statement,openMLDBResult);
+            if(sql.toLowerCase().startsWith("create index")||sql.toLowerCase().startsWith("drop index")){
+                Tool.sleep(20*1000);
+            }
         } catch (SQLException e) {
             openMLDBResult.setOk(false);
             openMLDBResult.setMsg(e.getMessage());

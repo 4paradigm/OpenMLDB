@@ -13,7 +13,7 @@
 # limitations under the License.
 
 db: test_zw
-debugs: []
+debugs: ["主表ts都大于副表的"]
 version: 0.5.0
 cases:
   - id: 0
@@ -955,9 +955,9 @@ cases:
       - columns: ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
         indexs: ["index1:c3:c7"]
         rows:
-          - [1,"aa",20,30,1.1,2.1,1590738995000,"2020-05-01"]
-          - [4,"dd",20,33,1.4,2.4,1590738993000,"2020-05-04"]
-          - [5,"ee",21,34,1.5,2.5,1590738994000,"2020-05-05"]
+          - [1,"aa",20,30,1.1,2.1,1590738993000,"2020-05-01"]
+          - [4,"dd",20,33,1.4,2.4,1590738994000,"2020-05-04"]
+          - [5,"ee",21,34,1.5,2.5,1590738995000,"2020-05-05"]
       - columns: ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
         indexs: ["index1:c3:c7"]
         rows:
@@ -970,7 +970,7 @@ cases:
       columns: ["id int","c1 string","c3 int","w1_c4_sum bigint"]
       rows:
         - [1,"aa",20,93]
-        - [4,"dd",20,96]
+        - [4,"dd",20,95]
         - [5,"ee",21,34]
   - id: 19
     desc: 主表ts都小于副表的

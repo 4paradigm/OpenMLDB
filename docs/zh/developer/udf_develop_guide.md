@@ -78,8 +78,13 @@ void cut2(UDFContext* ctx, StringRef* input, StringRef* output) {
 g++ -shared -o libtest_udf.so examples/test_udf.cc -I /work/OpenMLDB/include -std=c++11 -fPIC
 ```
 ### 2.3 拷贝动态库
-- 需要把编译好的动态库拷贝到部署OpenMLDB tablet/taskmanager目录中的udf目录下。如果没有此目录需要创建一个。 需要注意的是tablet的udf目录和bin/conf目录平级，taskmanager是放到taskmanager/bin/udf目录里。如tablet和taskmanager的部署目录都是/work/openmldb，目录结构如下：
-    ```
+编译过的动态库需要被拷贝到 TaskManager 和 tablets中。如果 TaskManager 和 tablets中不存在`udf`目录，请先创建。
+- tablet的UDF目录是 `path_to_tablet/udf`。
+- TaskManager的UDF目录是 `path_to_taskmanager/taskmanager/bin/udf`。
+
+例如，假设tablet和TaskManager的部署路径都是 `/work/openmldb`，其目录结构将如下所示：
+
+```
     /work/openmldb/
     ├── bin
     ├── conf
@@ -93,9 +98,14 @@ g++ -shared -o libtest_udf.so examples/test_udf.cc -I /work/OpenMLDB/include -st
     ├── tools
     └── udf
         └── libtest_udf.so
-    ```
-- 每个tablet的目录都需要拷贝
-- 在DROP FUNCTION之前不能删除此目录里的动态库
+```
+
+
+```{note}
+- 对于有多个tablet场景，每个tablet都需要拷贝动态库。
+- 在执行' DROP FUNCTION '之前请勿删除动态库。
+```
+
 ### 2.4 注册、删除和查看函数
 注册函数使用[CREATE FUNCTION](../reference/sql/ddl/FUNCTION_STATEMENT.md)
 ```sql
