@@ -435,7 +435,7 @@ TEST_P(DBSDKTest, LoadDataMultipleFiles) {
         }
         ofile.close();
     }
-    std::string load_sql = "LOAD DATA INFILE '" + (tmp_path / "myfile*").string() +
+    std::string load_sql = "LOAD DATA INFILE 'file://" + (tmp_path / "myfile*").string() +
                            "' INTO TABLE trans options(load_mode='local', thread=10);";
     hybridse::sdk::Status status;
     sr->ExecuteSQL(load_sql, &status);
@@ -511,7 +511,7 @@ TEST_P(DBSDKTest, LoadDataError) {
         "LOAD DATA INFILE 'not_exist.csv' INTO TABLE trans options(format='parquet', load_mode='local', thread=60);";
     sr->ExecuteSQL(load_sql, &status);
     ASSERT_FALSE(status.IsOK()) << status.msg;
-    ASSERT_EQ(status.msg, "local data load only supports 'csv' format");
+    ASSERT_EQ(status.msg, "ERROR: parse option format failed");
 
     load_sql =
         "LOAD DATA INFILE 'not_exist.csv' INTO TABLE trans options(load_mode='local', thread=0);";
@@ -3455,7 +3455,7 @@ int main(int argc, char** argv) {
     ::openmldb::cmd::standalone_cli.cs->Init();
     ::openmldb::cmd::standalone_cli.sr = new ::openmldb::sdk::SQLClusterRouter(::openmldb::cmd::standalone_cli.cs);
     ::openmldb::cmd::standalone_cli.sr->Init();
-    sleep(3);
+    sleep(5);
 
     ok = RUN_ALL_TESTS();
 

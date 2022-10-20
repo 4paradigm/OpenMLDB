@@ -5,8 +5,9 @@
 ```sql
 LoadDataInfileStmt
 				::= 'LOAD' 'DATA' 'INFILE' filePath 'INTO' 'TABLE' tableName LoadDataInfileOptionsList
+
 filePath 
-				::= string_literal
+				::= URI
 				    
 tableName
 				::= string_literal
@@ -24,7 +25,17 @@ LoadDataInfileOptionItem
 				|'DEEP_COPY' '=' bool_literal
 				|'LOAD_MODE' '=' string_literal
 				|'THREAD' '=' int_literal
+				
+URI
+				::= 'file://FilePathPattern'
+				|'hdfs://FilePathPattern'
+				|'FilePathPattern'
+
+FilePathPattern
+				::= string_literal
 ```
+其中`FilePathPattern`支持通配符`*`，比如可以设成`/test/*.csv`，匹配规则和`ls FilePathPattern`一致。
+
 下表展示了`LOAD DATA INFILE`语句的配置项。
 
 | 配置项     | 类型    | 默认值 | 描述                                                                                                                                                                                           |
@@ -51,7 +62,7 @@ LoadDataInfileOptionItem
 ```{warning} INFILE Path
 :class: warning
 
-`INFILE`路径的读取是由batchjob来完成的，如果是相对路径，就需要batchjob可以访问到的相对路径。
+在集群版中，如果`load_mode='cluster'`，`INFILE`路径的读取是由batchjob来完成的，如果是相对路径，就需要batchjob可以访问到的相对路径。
 
 在生产环境中，batchjob的执行通常由yarn集群调度，难以确定具体的执行者。在测试环境中，如果也是多机部署，难以确定batchjob的具体执行者。
 

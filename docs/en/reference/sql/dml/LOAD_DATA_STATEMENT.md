@@ -7,13 +7,16 @@ The `LOAD DATA INFILE` statement load data efficiently from a file to a table. `
 ```sql
 LoadDataInfileStmt
 				::= 'LOAD' 'DATA' 'INFILE' filePath 'INTO' 'TABLE' tableName LoadDataInfileOptionsList
+
 filePath 
-				::= string_literal
+				::= URI
 				    
 tableName
 				::= string_literal
+
 LoadDataInfileOptionsList
 				::= 'OPTIONS' '(' LoadDataInfileOptionItem (',' LoadDataInfileOptionItem)* ')'
+
 LoadDataInfileOptionItem
 				::= 'DELIMITER' '=' string_literal
 				|'HEADER' '=' bool_literal
@@ -24,7 +27,16 @@ LoadDataInfileOptionItem
 				|'DEEP_COPY' '=' bool_literal
 				|'LOAD_MODE' '=' string_literal
 				|'THREAD' '=' int_literal
+
+URI
+				::= 'file://FilePathPattern'
+				|'hdfs://FilePathPattern'
+				|'FilePathPattern'
+
+FilePathPattern
+				::= string_literal
 ```
+The `FilePathPattern` supports wildcard character `*`, with the same match rules as `ls FilePathPattern`.
 
 The following table introduces the parameters of `LOAD DATA INFILE`.
 
@@ -52,7 +64,7 @@ The following table introduces the parameters of `LOAD DATA INFILE`.
 ```{warning} INFILE Path
 :class: warning
 
-The reading of the `INFILE` path is done by a batch job. If it is a relative path, it needs to be an accessible path. However, in a production environment, the execution of batch jobs is usually scheduled by a yarn cluster. As a result, it is not deterministic that which batch job will actually perform the task. In a testing environment, if it's multi-machine deployment, it is also unable to determine where the batch job is running. 
+In the cluster version，if `load_mode='cluster'`，the reading of the `INFILE` path is done by a batch job. If it is a relative path, it needs to be an accessible path. However, in a production environment, the execution of batch jobs is usually scheduled by a yarn cluster. As a result, it is not deterministic that which batch job will actually perform the task. In a testing environment, if it's multi-machine deployment, it is also unable to determine where the batch job is running.
 
 Therefore, you are suggested to use absolute paths. In the stand-alone version, the local file path starts with `file://`. In the production environment, it is recommended to use a file system such as *HDFS*.
 
