@@ -347,10 +347,15 @@ inline static int HardLinkDir(const std::string& src, const std::string& dest) {
 // do not include any subfolder
 inline static std::vector<std::string> FindFiles(const std::string& path) {
     std::string pattern;
-    if (IsFolder(path)) {
-        pattern = absl::StrCat(path, "/*");
+    const std::string file_prefix = "file://";
+    if (absl::StartsWith(path, file_prefix)) {
+        pattern = path.substr(file_prefix.size());
     } else {
         pattern = path;
+    }
+
+    if (IsFolder(pattern)) {
+        pattern = absl::StrCat(pattern, "/*");
     }
     glob_t glob_result;
     memset(&glob_result, 0, sizeof(glob_result));
