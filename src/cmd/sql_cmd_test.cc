@@ -494,12 +494,17 @@ TEST_P(DBSDKTest, LoadDataNotExists) {
     HandleSQL("use test1;");
     std::string create_sql = "create table trans (c1 string, c2 int);";
     HandleSQL(create_sql);
+    hybridse::sdk::Status status;
     std::string load_sql =
         "LOAD DATA INFILE 'not_exist.csv' INTO TABLE trans options(mode='append', load_mode='local', thread=60);";
-    hybridse::sdk::Status status;
     sr->ExecuteSQL(load_sql, &status);
     ASSERT_FALSE(status.IsOK()) << status.msg;
     ASSERT_EQ(status.msg, "file not exist");
+    load_sql =
+        "LOAD DATA INFILE 'not_exist.csv' INTO TABLE trans options(mode='overwrite', load_mode='local', thread=60);";
+    sr->ExecuteSQL(load_sql, &status);
+    ASSERT_FALSE(status.IsOK()) << status.msg;
+    ASSERT_EQ(status.msg, "online data load only supports 'append' mode");
     auto result = sr->ExecuteSQL("select * from trans;", &status);
     ASSERT_TRUE(status.IsOK()) << status.msg;
     ASSERT_EQ(0, result->Size());

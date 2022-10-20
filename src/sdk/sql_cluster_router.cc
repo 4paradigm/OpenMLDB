@@ -1044,6 +1044,7 @@ std::shared_ptr<SQLCache> SQLClusterRouter::GetSQLCache(const std::string& db, c
                                                         const ::hybridse::vm::EngineMode engine_mode,
                                                         const std::shared_ptr<SQLRequestRow>& parameter,
                                                         hybridse::sdk::Status* status) {
+    *status = {};
     ::hybridse::codec::Schema parameter_schema_raw;
     if (parameter) {
         for (int i = 0; i < parameter->GetSchema()->GetColumnCnt(); i++) {
@@ -2966,6 +2967,10 @@ hybridse::sdk::Status SQLClusterRouter::HandleLoadDataInfile(
         return {::hybridse::common::StatusCode::kCmdError, "database is empty"};
     }
 
+    if (options_parser.GetMode() != "append") {
+        return {::hybridse::common::StatusCode::kCmdError, "online data load only supports 'append' mode"};
+    }
+
     DLOG(INFO) << "Load " << file_path << " to " << database << "-" << table << ", options: delimiter ["
                << options_parser.GetDelimiter() << "], has header[" << (options_parser.GetHeader() ? "true" : "false")
                << "], null_value[" << options_parser.GetNullValue() << "], format[" << options_parser.GetFormat()
@@ -2992,7 +2997,7 @@ hybridse::sdk::Status SQLClusterRouter::HandleLoadDataInfile(
         } else {
             // keep the last error code
             status.code = s.code;
-            absl::StrAppend(&status.msg, "\n", s.msg);
+            status.msg = s.msg;
         }
     }
 
