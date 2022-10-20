@@ -47,6 +47,14 @@ TEST_F(FileUtilTest, GetChildFileName) {
     ASSERT_EQ("/tmp/gtest/test1.txt", file_vec[2]);
 }
 
+TEST_F(FileUtilTest, ParseParentDirFromPath) {
+    ASSERT_EQ("/test0/", ParseParentDirFromPath("/test0/test1"));
+    ASSERT_EQ("/test0/", ParseParentDirFromPath("/test0/test1/"));
+    ASSERT_EQ("", ParseParentDirFromPath("test0"));
+    ASSERT_EQ("/", ParseParentDirFromPath("/test0"));
+    ASSERT_EQ("/", ParseParentDirFromPath("/"));
+}
+
 TEST_F(FileUtilTest, IsFolder) {
     MkdirRecur("/tmp/gtest/test/testdir/");
     FILE* f = fopen("/tmp/gtest/test0.txt", "w");
@@ -148,7 +156,7 @@ TEST_F(FileUtilTest, FindFiles) {
     if (f != nullptr) fclose(f);
 
     {
-        auto res = FindFiles<false>(tmp_path.string(), "test*");
+        auto res = FindFiles(tmp_path.string(), "test*");
         ASSERT_EQ(res.size(), 3);
         ASSERT_EQ(res[0], file0);
         ASSERT_EQ(res[1], file1);
@@ -156,16 +164,7 @@ TEST_F(FileUtilTest, FindFiles) {
     }
 
     {
-        auto res = FindFiles<true>(tmp_path.string(), "test*");
-        ASSERT_EQ(res.size(), 4);
-        ASSERT_EQ(res[0], file3);
-        ASSERT_EQ(res[1], file0);
-        ASSERT_EQ(res[2], file1);
-        ASSERT_EQ(res[3], file2);
-    }
-
-    {
-        auto res = FindFiles<false>(tmp_path.string(), "*");
+        auto res = FindFiles(tmp_path.string(), "test*");
         ASSERT_EQ(res.size(), 3);
         ASSERT_EQ(res[0], file0);
         ASSERT_EQ(res[1], file1);
@@ -173,7 +172,7 @@ TEST_F(FileUtilTest, FindFiles) {
     }
 
     {
-        auto res = FindFiles<false>(tmp_path.string(), "*.csv");
+        auto res = FindFiles(tmp_path.string(), "*");
         ASSERT_EQ(res.size(), 3);
         ASSERT_EQ(res[0], file0);
         ASSERT_EQ(res[1], file1);
@@ -181,19 +180,37 @@ TEST_F(FileUtilTest, FindFiles) {
     }
 
     {
-        auto res = FindFiles<false>(tmp_path.string(), "test1.csv");
+        auto res = FindFiles(tmp_path.string(), "*.csv");
+        ASSERT_EQ(res.size(), 3);
+        ASSERT_EQ(res[0], file0);
+        ASSERT_EQ(res[1], file1);
+        ASSERT_EQ(res[2], file2);
+    }
+
+    {
+        auto res = FindFiles(tmp_path.string(), "test1.csv");
         ASSERT_EQ(res.size(), 1);
         ASSERT_EQ(res[0], file1);
     }
 
     {
-        auto res = FindFiles<false>(tmp_path.string(), "test1.csv*");
+        auto res = FindFiles(tmp_path.string(), "test1.csv*");
         ASSERT_EQ(res.size(), 1);
         ASSERT_EQ(res[0], file1);
     }
 
     {
-        auto res = FindFiles<false>(tmp_path.string(), "");
+        auto res = FindFiles(tmp_path.string(), "");
+        ASSERT_EQ(res.size(), 0);
+    }
+
+    {
+        auto res = FindFiles("not_exists", "");
+        ASSERT_EQ(res.size(), 0);
+    }
+
+    {
+        auto res = FindFiles(tmp_path.string(), "not_exists");
         ASSERT_EQ(res.size(), 0);
     }
 }
@@ -272,6 +289,21 @@ TEST_F(FileUtilTest, FindFiles2) {
     {
         auto res = FindFiles(tmp_path / "not_exists");
         ASSERT_EQ(res.size(), 0);
+    }
+
+    {
+        auto res = FindFiles(absl::StrCat("/not_exits_folder", "/", "not_exists"));
+        ASSERT_EQ(res.size(), 0);
+    }
+
+    {
+        auto res = FindFiles(tmp_path / "subfolder/test3.csv");
+        ASSERT_EQ(res.size(), 1);
+    }
+
+    {
+        auto res = FindFiles(tmp_path / "subfolder");
+        ASSERT_EQ(res.size(), 1);
     }
 }
 

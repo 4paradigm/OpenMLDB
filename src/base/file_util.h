@@ -18,6 +18,7 @@
 #define SRC_BASE_FILE_UTIL_H_
 
 #include <absl/strings/match.h>
+#include <absl/strings/str_cat.h>
 #include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -26,7 +27,6 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#include <filesystem>
 #include <regex>
 #include <set>
 #include <string>
@@ -253,6 +253,18 @@ inline static std::string ParseFileNameFromPath(const std::string& path) {
     return path.substr(index, path.length() - index);
 }
 
+inline static std::string ParseParentDirFromPath(const std::string& path) {
+    std::string full_path = path;
+    if (full_path.size() > 1 && full_path.back() == '/') {
+        full_path.pop_back();
+    }
+    size_t index = full_path.rfind('/');
+    if (index == std::string::npos) {
+        return "";
+    }
+    return full_path.substr(0, index + 1);
+}
+
 static bool GetDirSizeRecur(const std::string& path,
                             uint64_t& size) {  // NOLINT
     std::vector<std::string> file_vec;
@@ -332,11 +344,9 @@ inline static int HardLinkDir(const std::string& src, const std::string& dest) {
     return 0;
 }
 
-// list of paths of all files under the directory 'dir' when the extenstion matches the regex
-// FindFiles<true> searches recursively into sub-directories; FindFiles<false> searches only the specified directory
-template <bool RECURSIVE = false>
-std::vector<std::string> FindFiles(const std::string& path, const std::string& pattern) {
-    std::filesystem::path dir(path);
+// list of paths of all files under the directory 'dir' when the filename matches the pattern
+// do not include any subfolder
+inline static std::vector<std::string> FindFiles(const std::string& dir, const std::string& pattern) {
     // convert ls pattern `test*` to regex pattern `test.*`
     std::string converted_pattern;
     for (auto c : pattern) {
@@ -351,21 +361,20 @@ std::vector<std::string> FindFiles(const std::string& path, const std::string& p
     // use std::set to order the results
     std::set<std::string> result;
 
-    using iterator = typename std::conditional<RECURSIVE, std::filesystem::recursive_directory_iterator,
-                                      std::filesystem::directory_iterator>::type;
-    iterator end;
-    for (iterator iter{dir}; iter != end; ++iter) {
-        const std::string filename = iter->path().filename().string();
-        if (std::filesystem::is_regular_file(*iter) && std::regex_match(filename, reg_pattern)) {
-            result.insert(iter->path().string());
+    std::vector<std::string> file_list;
+    int ret = GetSubFiles(dir, file_list);
+    if (ret == 0) {
+        for (const auto& filename : file_list) {
+            if (std::regex_match(filename, reg_pattern)) {
+                result.insert(absl::StrCat(dir, "/", filename));
+            }
         }
     }
-
     return std::vector<std::string>(result.begin(), result.end());
 }
 
 inline static std::vector<std::string> FindFiles(const std::string& path) {
-    std::filesystem::path full_path;
+    std::string full_path;
     std::string directory, filename;
     const std::string file_prefix = "file://";
     if (absl::StartsWith(path, file_prefix)) {
@@ -374,15 +383,15 @@ inline static std::vector<std::string> FindFiles(const std::string& path) {
         full_path = path;
     }
 
-    if (std::filesystem::is_directory(full_path)) {
+    if (IsFolder(full_path)) {
         directory = full_path;
         filename = "*";
     } else {
-        directory = full_path.parent_path();
-        filename = full_path.filename();
+        directory = ParseParentDirFromPath(full_path);
+        filename = ParseFileNameFromPath(full_path);
     }
 
-    return FindFiles<>(directory, filename);
+    return FindFiles(directory, filename);
 }
 
 }  // namespace base
