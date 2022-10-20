@@ -168,7 +168,7 @@ class ReadFileOptionsParser : public FileOptionsParser {
     int GetThread() const { return thread_; }
 
  private:
-    std::string load_mode_ = "local";
+    std::string load_mode_ = "cluster";
     int thread_ = 1;
 
     std::function<bool(const hybridse::node::ConstNode* node)> CheckLoadMode() {
