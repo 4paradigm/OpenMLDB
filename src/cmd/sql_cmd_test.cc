@@ -485,6 +485,28 @@ TEST_P(DBSDKTest, LoadData) {
     unlink(file_name.c_str());
 }
 
+TEST_P(DBSDKTest, LoadDataNotExists) {
+    auto cli = GetParam();
+    cs = cli->cs;
+    sr = cli->sr;
+    HandleSQL("SET @@execute_mode='online';");
+    HandleSQL("create database test1;");
+    HandleSQL("use test1;");
+    std::string create_sql = "create table trans (c1 string, c2 int);";
+    HandleSQL(create_sql);
+    std::string load_sql =
+        "LOAD DATA INFILE 'not_exist.csv' INTO TABLE trans options(mode='append', load_mode='local', thread=60);";
+    hybridse::sdk::Status status;
+    sr->ExecuteSQL(load_sql, &status);
+    ASSERT_FALSE(status.IsOK()) << status.msg;
+    ASSERT_EQ(status.msg, "file not exist");
+    auto result = sr->ExecuteSQL("select * from trans;", &status);
+    ASSERT_TRUE(status.IsOK()) << status.msg;
+    ASSERT_EQ(0, result->Size());
+    HandleSQL("drop table trans;");
+    HandleSQL("drop database test1;");
+}
+
 TEST_P(DBSDKTest, LoadDataMultipleThread) {
     auto cli = GetParam();
     cs = cli->cs;

@@ -50,7 +50,7 @@ TEST_F(FileUtilTest, GetChildFileName) {
 TEST_F(FileUtilTest, ParseParentDirFromPath) {
     ASSERT_EQ("/test0/", ParseParentDirFromPath("/test0/test1"));
     ASSERT_EQ("/test0/", ParseParentDirFromPath("/test0/test1/"));
-    ASSERT_EQ("", ParseParentDirFromPath("test0"));
+    ASSERT_EQ("./", ParseParentDirFromPath("test0"));
     ASSERT_EQ("/", ParseParentDirFromPath("/test0"));
     ASSERT_EQ("/", ParseParentDirFromPath("/"));
 }
@@ -137,85 +137,6 @@ TEST_F(FileUtilTest, CopyFile) {
 }
 
 TEST_F(FileUtilTest, FindFiles) {
-    std::filesystem::path tmp_path = std::filesystem::temp_directory_path() / "file_util_test";
-    absl::Cleanup clean = [&tmp_path]() { std::filesystem::remove_all(tmp_path); };
-
-    ASSERT_TRUE(MkdirRecur(tmp_path.string()));
-    ASSERT_TRUE(MkdirRecur(tmp_path / "subfolder"));
-    auto file0 = tmp_path / "test0.csv";
-    FILE* f = fopen(file0.c_str(), "w");
-    if (f != nullptr) fclose(f);
-    auto file1 = tmp_path / "test1.csv";
-    f = fopen(file1.c_str(), "w");
-    if (f != nullptr) fclose(f);
-    auto file2 = tmp_path / "test2.csv";
-    f = fopen(file2.c_str(), "w");
-    if (f != nullptr) fclose(f);
-    auto file3 = tmp_path / "subfolder/test3.csv";
-    f = fopen(file3.c_str(), "w");
-    if (f != nullptr) fclose(f);
-
-    {
-        auto res = FindFiles(tmp_path.string(), "test*");
-        ASSERT_EQ(res.size(), 3);
-        ASSERT_EQ(res[0], file0);
-        ASSERT_EQ(res[1], file1);
-        ASSERT_EQ(res[2], file2);
-    }
-
-    {
-        auto res = FindFiles(tmp_path.string(), "test*");
-        ASSERT_EQ(res.size(), 3);
-        ASSERT_EQ(res[0], file0);
-        ASSERT_EQ(res[1], file1);
-        ASSERT_EQ(res[2], file2);
-    }
-
-    {
-        auto res = FindFiles(tmp_path.string(), "*");
-        ASSERT_EQ(res.size(), 3);
-        ASSERT_EQ(res[0], file0);
-        ASSERT_EQ(res[1], file1);
-        ASSERT_EQ(res[2], file2);
-    }
-
-    {
-        auto res = FindFiles(tmp_path.string(), "*.csv");
-        ASSERT_EQ(res.size(), 3);
-        ASSERT_EQ(res[0], file0);
-        ASSERT_EQ(res[1], file1);
-        ASSERT_EQ(res[2], file2);
-    }
-
-    {
-        auto res = FindFiles(tmp_path.string(), "test1.csv");
-        ASSERT_EQ(res.size(), 1);
-        ASSERT_EQ(res[0], file1);
-    }
-
-    {
-        auto res = FindFiles(tmp_path.string(), "test1.csv*");
-        ASSERT_EQ(res.size(), 1);
-        ASSERT_EQ(res[0], file1);
-    }
-
-    {
-        auto res = FindFiles(tmp_path.string(), "");
-        ASSERT_EQ(res.size(), 0);
-    }
-
-    {
-        auto res = FindFiles("not_exists", "");
-        ASSERT_EQ(res.size(), 0);
-    }
-
-    {
-        auto res = FindFiles(tmp_path.string(), "not_exists");
-        ASSERT_EQ(res.size(), 0);
-    }
-}
-
-TEST_F(FileUtilTest, FindFiles2) {
     std::filesystem::path tmp_path = std::filesystem::temp_directory_path() / "file_util_test2";
     absl::Cleanup clean = [&tmp_path]() { std::filesystem::remove_all(tmp_path); };
 
@@ -232,6 +153,10 @@ TEST_F(FileUtilTest, FindFiles2) {
     if (f != nullptr) fclose(f);
     auto file3 = tmp_path / "subfolder/test3.csv";
     f = fopen(file3.c_str(), "w");
+    if (f != nullptr) fclose(f);
+    auto file4 = "test4.csv";
+    absl::Cleanup clean2 = [&file4]() { std::filesystem::remove_all(file4); };
+    f = fopen(file4, "w");
     if (f != nullptr) fclose(f);
 
     {
@@ -304,6 +229,23 @@ TEST_F(FileUtilTest, FindFiles2) {
     {
         auto res = FindFiles(tmp_path / "subfolder");
         ASSERT_EQ(res.size(), 1);
+    }
+
+    {
+        auto res = FindFiles("not_exists");
+        ASSERT_EQ(res.size(), 0);
+    }
+
+    {
+        auto res = FindFiles("test4.csv");
+        ASSERT_EQ(res.size(), 1);
+        ASSERT_EQ(res[0], "test4.csv");
+    }
+
+    {
+        auto res = FindFiles("./test4.csv");
+        ASSERT_EQ(res.size(), 1);
+        ASSERT_EQ(res[0], "./test4.csv");
     }
 }
 

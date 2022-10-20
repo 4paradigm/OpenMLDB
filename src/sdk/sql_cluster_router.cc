@@ -2972,6 +2972,9 @@ hybridse::sdk::Status SQLClusterRouter::HandleLoadDataInfile(
                << "], quote[" << options_parser.GetQuote() << "]";
 
     std::vector<std::string> file_list = base::FindFiles(file_path);
+    if (file_list.empty()) {
+        return {::hybridse::common::StatusCode::kCmdError, "file not exist"};
+    }
 
     int thread_num = options_parser.GetThread();
     std::vector<uint64_t> counts(thread_num);

@@ -20,6 +20,7 @@
 #include <absl/strings/match.h>
 #include <absl/strings/str_cat.h>
 #include <dirent.h>
+#include <glob.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <string.h>
@@ -260,7 +261,7 @@ inline static std::string ParseParentDirFromPath(const std::string& path) {
     }
     size_t index = full_path.rfind('/');
     if (index == std::string::npos) {
-        return "";
+        return "./";
     }
     return full_path.substr(0, index + 1);
 }
@@ -344,54 +345,37 @@ inline static int HardLinkDir(const std::string& src, const std::string& dest) {
     return 0;
 }
 
-// list of paths of all files under the directory 'dir' when the filename matches the pattern
+// list of paths of all files match the pattern `path`
 // do not include any subfolder
-inline static std::vector<std::string> FindFiles(const std::string& dir, const std::string& pattern) {
-    // convert ls pattern `test*` to regex pattern `test.*`
-    std::string converted_pattern;
-    for (auto c : pattern) {
-        if (c == '*') {
-            converted_pattern.push_back('.');
-            converted_pattern.push_back(c);
-        } else {
-            converted_pattern.push_back(c);
-        }
-    }
-    std::regex reg_pattern(converted_pattern);
-    // use std::set to order the results
-    std::set<std::string> result;
-
-    std::vector<std::string> file_list;
-    int ret = GetSubFiles(dir, file_list);
-    if (ret == 0) {
-        for (const auto& filename : file_list) {
-            if (std::regex_match(filename, reg_pattern)) {
-                result.insert(absl::StrCat(dir, "/", filename));
-            }
-        }
-    }
-    return std::vector<std::string>(result.begin(), result.end());
-}
-
 inline static std::vector<std::string> FindFiles(const std::string& path) {
-    std::string full_path;
-    std::string directory, filename;
-    const std::string file_prefix = "file://";
-    if (absl::StartsWith(path, file_prefix)) {
-        full_path = path.substr(file_prefix.size());
+    std::string pattern;
+    if (IsFolder(path)) {
+        pattern = absl::StrCat(path, "/*");
     } else {
-        full_path = path;
+        pattern = path;
+    }
+    glob_t glob_result;
+    memset(&glob_result, 0, sizeof(glob_result));
+
+    int return_value = glob(pattern.c_str(), GLOB_TILDE, NULL, &glob_result);
+    if (return_value != 0) {
+        globfree(&glob_result);
+        return {};
     }
 
-    if (IsFolder(full_path)) {
-        directory = full_path;
-        filename = "*";
-    } else {
-        directory = ParseParentDirFromPath(full_path);
-        filename = ParseFileNameFromPath(full_path);
+    std::vector<std::string> filenames;
+    for (size_t i = 0; i < glob_result.gl_pathc; ++i) {
+        std::string filename = glob_result.gl_pathv[i];
+        if (!IsFolder(filename)) {
+            filenames.push_back(filename);
+        }
     }
 
-    return FindFiles(directory, filename);
+    // cleanup
+    globfree(&glob_result);
+
+    // done
+    return filenames;
 }
 
 }  // namespace base
