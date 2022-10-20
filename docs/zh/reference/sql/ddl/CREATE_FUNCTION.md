@@ -1,5 +1,7 @@
-# 1 CREATE FUNCTION
-## Syntax
+# CREATE FUNCTION
+
+**Syntax**
+
 ```sql
 CreateFunctionStatement ::=
     'CREATE' OptAggregate 'FUNCTION' FunctionDeclaration FunctionReturns OptionsList
@@ -30,6 +32,7 @@ Type ::=
     |'STRING' | 'VARCHAR'
 
 ```
+
 **Example**
 
 创建一个函数输入参数类型是string, 返回类型是string, 动态库文件为libtest_udf.so
@@ -42,30 +45,3 @@ CREATE FUNCTION cut2(x string) RETURNS string OPTIONS (FILE = 'libtest_udf.so');
 CREATE FUNCTION add_one(x int, y int) RETURNS INT OPTIONS (FILE = 'libtest_udf.so');
 ```
 
-# 2 DROP FUNCTION
-## Syntax
-```sql
-DROP FUNCTION FunctionName
-```
-
-**Example**
-
-删除函数cut2
-```sql
-DROP FUNCTION cut2;
-```
-
-# 3 SHOW FUNCTIONS
-
-`SHOW FUNCTIONS`用来显示已经注册的用户自定义函数
-
-## Syntax
-```sql
-SHOW FUNCTIONS
-```
-
-**Example**
-
-```sql
-SHOW FUNCTIONS;
-```
