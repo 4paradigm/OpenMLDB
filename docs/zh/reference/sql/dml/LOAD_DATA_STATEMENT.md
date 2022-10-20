@@ -18,7 +18,12 @@ LoadDataInfileOptionItem
 				::= 'DELIMITER' '=' string_literal
 				|'HEADER' '=' bool_literal
 				|'NULL_VALUE' '=' string_literal
-				|'FORMAT' '=' string_literal						
+				|'FORMAT' '=' string_literal
+				|'QUOTE' '=' string_literal
+				|'MODE' '=' string_literal
+				|'DEEP_COPY' '=' bool_literal
+				|'LOAD_MODE' '=' string_literal
+				|'THREAD' '=' int_literal
 ```
 下表展示了`LOAD DATA INFILE`语句的配置项。
 
@@ -30,8 +35,9 @@ LoadDataInfileOptionItem
 | format     | String  | csv    | 导入文件的格式:<br />`csv`:不显示指明format时，默认为该值<br />`parquet`:集群版还支持导入parquet格式文件，单机版不支持。                                                                                                                                                              |
 | quote      | String  | ""     | 输入数据的包围字符串。字符串长度<=1。默认为""，表示解析数据，不特别处理包围字符串。配置包围字符后，被包围字符包围的内容将作为一个整体解析。例如，当配置包围字符串为"#"时， `1, 1.0, #This is a string field, even there is a comma#`将为解析为三个filed.第一个是整数1，第二个是浮点1.0,第三个是一个字符串。 |
 | mode       | String  | "error_if_exists" | 导入模式:<br />`error_if_exists`: 仅离线模式可用，若离线表已有数据则报错。<br />`overwrite`: 仅离线模式可用，数据将覆盖离线表数据。<br />`append`：离线在线均可用，若文件已存在，数据将追加到原文件后面。                                                           |
-| deep_copy  | Boolean | true   | `deep_copy=false`仅支持离线load, 可以指定`INFILE` Path为该表的离线存储地址，从而不需要硬拷贝。                                                                                                                            |
-
+| deep_copy  | Boolean | true             | `deep_copy=false`仅支持离线load, 可以指定`INFILE` Path为该表的离线存储地址，从而不需要硬拷贝。                                                                                                                            |
+| load_mode  | String  | cluster          | `load_mode='local'`仅支持从csv本地文件导入在线存储, 它通过本地客户端同步插入数据；<br /> `load_mode='cluster'`仅支持集群版, 通过spark插入数据，支持同步或异步模式                                                                               |
+| thread     | Integer | 1                | 仅在本地文件导入时生效，即`load_mode='local'`或者单机版，表示本地插入数据的线程数。 最大值为`50`。                                                                                                                                  |
 
 
 ```{note}

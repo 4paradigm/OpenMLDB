@@ -2963,12 +2963,20 @@ void SQLClusterRouter::SetInteractive(bool value) { interactive_ = value; }
 hybridse::sdk::Status SQLClusterRouter::HandleLoadDataInfile(
     const std::string& database, const std::string& table, const std::string& file_path,
     const openmldb::sdk::ReadFileOptionsParser& options_parser) {
-    if (database.empty()) {
-        return {::hybridse::common::StatusCode::kCmdError, "database is empty"};
-    }
-
     if (options_parser.GetMode() != "append") {
         return {::hybridse::common::StatusCode::kCmdError, "online data load only supports 'append' mode"};
+    }
+
+    if (options_parser.GetFormat() != "csv") {
+        return {::hybridse::common::StatusCode::kCmdError, "local data load only supports 'csv' format"};
+    }
+
+    if (options_parser.GetThread() <= 0) {
+        return {::hybridse::common::StatusCode::kCmdError, "thread number <= 0"};
+    }
+
+    if (database.empty()) {
+        return {::hybridse::common::StatusCode::kCmdError, "database is empty"};
     }
 
     DLOG(INFO) << "Load " << file_path << " to " << database << "-" << table << ", options: delimiter ["

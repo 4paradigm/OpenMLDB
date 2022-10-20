@@ -485,7 +485,7 @@ TEST_P(DBSDKTest, LoadData) {
     unlink(file_name.c_str());
 }
 
-TEST_P(DBSDKTest, LoadDataNotExists) {
+TEST_P(DBSDKTest, LoadDataError) {
     auto cli = GetParam();
     cs = cli->cs;
     sr = cli->sr;
@@ -500,11 +500,25 @@ TEST_P(DBSDKTest, LoadDataNotExists) {
     sr->ExecuteSQL(load_sql, &status);
     ASSERT_FALSE(status.IsOK()) << status.msg;
     ASSERT_EQ(status.msg, "file not exist");
+
     load_sql =
         "LOAD DATA INFILE 'not_exist.csv' INTO TABLE trans options(mode='overwrite', load_mode='local', thread=60);";
     sr->ExecuteSQL(load_sql, &status);
     ASSERT_FALSE(status.IsOK()) << status.msg;
     ASSERT_EQ(status.msg, "online data load only supports 'append' mode");
+
+    load_sql =
+        "LOAD DATA INFILE 'not_exist.csv' INTO TABLE trans options(format='parquet', load_mode='local', thread=60);";
+    sr->ExecuteSQL(load_sql, &status);
+    ASSERT_FALSE(status.IsOK()) << status.msg;
+    ASSERT_EQ(status.msg, "local data load only supports 'csv' format");
+
+    load_sql =
+        "LOAD DATA INFILE 'not_exist.csv' INTO TABLE trans options(load_mode='local', thread=0);";
+    sr->ExecuteSQL(load_sql, &status);
+    ASSERT_FALSE(status.IsOK()) << status.msg;
+    ASSERT_EQ(status.msg, "thread number <= 0");
+
     auto result = sr->ExecuteSQL("select * from trans;", &status);
     ASSERT_TRUE(status.IsOK()) << status.msg;
     ASSERT_EQ(0, result->Size());
