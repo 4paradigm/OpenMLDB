@@ -517,7 +517,7 @@ TEST_P(DBSDKTest, LoadDataError) {
         "LOAD DATA INFILE 'not_exist.csv' INTO TABLE trans options(load_mode='local', thread=0);";
     sr->ExecuteSQL(load_sql, &status);
     ASSERT_FALSE(status.IsOK()) << status.msg;
-    ASSERT_EQ(status.msg, "thread number <= 0");
+    ASSERT_EQ(status.msg, "ERROR: parse option thread failed");
 
     auto result = sr->ExecuteSQL("select * from trans;", &status);
     ASSERT_TRUE(status.IsOK()) << status.msg;

@@ -212,6 +212,14 @@ TEST_F(FileUtilTest, FindFiles) {
     }
 
     {
+        auto res = FindFiles(absl::StrCat("file://", tmp_path.string(), "/", "*.csv"));
+        ASSERT_EQ(res.size(), 3);
+        ASSERT_EQ(res[0], file0);
+        ASSERT_EQ(res[1], file1);
+        ASSERT_EQ(res[2], file2);
+    }
+
+    {
         auto res = FindFiles(tmp_path / "not_exists");
         ASSERT_EQ(res.size(), 0);
     }
