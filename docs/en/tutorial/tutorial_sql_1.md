@@ -12,7 +12,7 @@ In order to make better real-time recommendation, the following features may be 
 
 - The home appliance brand that the user purchased the most in the past year.
 - The average consumption level of the user in the past three years.
-- The top three kinds washing machines purchased most by clients of the same gender and the same age group as the user, and were over 30% off in the past one hour.
+- The top three models of washing machines purchased most by clients of the same gender and the same age group as the user, and were over 30% off in the past one hour.
 
 As can be seen from the above example, features can be made quite complex and can have very high timeliness. So extracting good features according to specific problems is the ability that data scientists need and powerful feature extracting tools can play very important roles helping scientists accomplish this task. 
 This tutorial will introduce how to do feature engineering in practice.
@@ -38,7 +38,7 @@ This tutorial will use the anti-fraud dataset, which is common in the financial 
 
 Note that if you want to run the SQL in this tutorial, please follow these two steps:
 
-- It is recommended to use docker image to run this tutorial under the standalone version. For image pulling and CLI operation methods, please refer to [OpenMLDB Quick Start](../quickstart/openmldb_quickstart.md). If you want to use the cluster version, please use the offline mode (`SET @@execute_mode='offline'` ). The CLI of cluster version only supports online preview mode and offline mode. And the online preview mode only supports the simple data preview function, so most of the SQL in the tutorial cannot run in the online preview mode.
+- It is recommended to use the docker image to run this tutorial under the standalone version. For image pulling and CLI operation methods, please refer to [OpenMLDB Quick Start](../quickstart/openmldb_quickstart.md). If you want to use the cluster version, please use the offline mode (`SET @@execute_mode='offline'` ). The CLI of cluster version only supports online preview mode and offline mode. And the online preview mode only supports the simple data preview function, so most of the SQL in the tutorial cannot run in the online preview mode.
 - All data and SQL scripts related to this tutorial can be downloaded [here]( https://openmldb.ai/download/tutorial_sql/tutoral_sql_data.zip)
 
 ## 3.1. Basic Concepts
@@ -61,14 +61,14 @@ For example, the following user transaction table (hereinafter referred as data 
 | city       | STRING    | City                                   |
 | label      | BOOL      | Sample label, true\|false              |
 
-In addition to the primary table, there may also be tables storing relevant auxiliary information in the database, which can be spliced with the primary table through the JOIN operation. These tables are called **Secondary Tables** (note that there may be multiple secondary tables). For example, we can have a secondary table storing the merchants' history flow. In the process of feature engineering, more valuable information can be obtained by splicing the primary and secondary tables. The feature engineering over multiple tables will be introduced in detail in the  [next part](tutorial_sql_2.md) of this series.
+In addition to the primary table, there may also be tables storing relevant auxiliary information in the database, which can be combined with the primary table through the JOIN operation. These tables are called **Secondary Tables** (note that there may be multiple secondary tables). For example, we can have a secondary table storing the merchants' history flow. In the process of feature engineering, more valuable information can be obtained by combining the primary and secondary tables. The feature engineering over multiple tables will be introduced in detail in the  [next part](tutorial_sql_2.md) of this series.
 
 ### 3.1.2. Types of Features
 
 Before discussing the details of feature extraction, we can categorize the features commonly used in machine learning. There are four common features in machine learning according to feature datasets' building and data aggregation methods:
 
 - Single-row features on the primary table: Computing expressions and functions for one or more columns on the primary table.
-- Time-series features on the primary table: Building sliding time-series windows for the primary table and extracting time-series features over the windows.
+- Time-series features on the primary table: Building sliding windows for the primary table and extracting time-series features over the windows.
 - Single-row features on multiple tables: The primary table joins the secondary tables, and then single-row features are extracted on the joined table.
 - Time-series features on multiple tables: A row of the primary table matches multiple rows from a secondary table, and then time-series features are extracted on the matched rows.
 
@@ -158,14 +158,14 @@ The window of the user's most recent day containing the rows from the current to
 window w1d as (PARTITION BY uid ORDER BY trans_time ROWS_RANGE BETWEEN 1d PRECEDING AND CURRENT ROW)
 ```
 
-The `w1d` window shown in the above figure is for the row which `id=9`, and the `w1d` window contains three rows (`id=6`, `id=8`, `id=9`). These three rows fall in the time window [2022-02-07 12:00:00, 2022-02-08 12:00:00] .
+The `w1d` window shown in the above figure is for the partition `id=9`, and the `w1d` window contains three rows (`id=6`, `id=8`, `id=9`). These three rows fall in the time window [2022-02-07 12:00:00, 2022-02-08 12:00:00] .
 
 - w1d_10d: the window from 1 day ago to the last 10 days
 ```sql
 window w1d_10d as (PARTITION BY uid ORDER BY trans_time ROWS_RANGE BETWEEN 10d PRECEDING AND 1d PRECEDING)
 ```
 
-The window `w1d_10d` for the row which `id=9` contains three rows, which are `id=1`, `id=3` and `id=4`. These three rows fall in the time window of [2022-01-29 12:00:00, 2022-02-07 12:00:00]。
+The window `w1d_10d` for the partition `id=9` contains three rows, which are `id=1`, `id=3` and `id=4`. These three rows fall in the time window of [2022-01-29 12:00:00, 2022-02-07 12:00:00]。
 
 - w0_1: the window contains the last 0 ~ 1 rows
 The window contains the last 0 ~ 1 rows, including the previous line and the current line.
@@ -173,7 +173,7 @@ The window contains the last 0 ~ 1 rows, including the previous line and the cur
 window w0_1 as (PARTITION BY uid ORDER BY trans_time ROWS BETWEEN 1 PRECEDING AND CURRENT ROW)
 ```
 
-The window `w0_1` for the row `id=10` contains 2 rows, which are `id=7` and `id=10`.
+The window `w0_1` for the partition `id=10` contains 2 rows, which are `id=7` and `id=10`.
 
 - w2_10: the window contains the last 2 ~ 10 rows
 
@@ -181,7 +181,7 @@ The window `w0_1` for the row `id=10` contains 2 rows, which are `id=7` and `id=
 window w2_10 as (PARTITION BY uid ORDER BY trans_time ROWS BETWEEN 10 PRECEDING AND 2 PRECEDING)
 ```
 
-The window `w2_10` for the row `id=10` contains 2 rows, which are `id=2` and `id=5`.
+The window `w2_10` for the partition `id=10` contains 2 rows, which are `id=2` and `id=5`.
 
 ### 3.3.2. Step 2: Construct Features Based on Time Window
 
