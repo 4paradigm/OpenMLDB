@@ -7,7 +7,7 @@
 - Support online batch computation and full table aggregation (#2620 @zhanghaohit)
 - Support load_mode and thread option for `LOAD DATA` (#2684 @zhanghaohit)
 - Improve the documents (#2476, #2486 #2514 #2611 #2693 #2462 @michelle-qinqin, #2695 @lumianph)
-- Other minor features (#2666 #2671 #2691 @wuyou10206, #2665 @dl239)
+- Run macos compiling job in cicd workflow (#2665 @dl239)
 
 ### Bug Fixes
 - Fail to recreate the index that has been dropped previously (#2440 @dl239)
@@ -16,7 +16,7 @@
 - `select * ...` statement may result inconsistent output schema in many cases (#2660 @aceforeverd)
 - Result is incorrect if the window is specified as `UNBOUNDED PRECEDING AND CURRENT ROW EXCLUDE CURRENT_ROW` (#2674 @aceforeverd)
 - Incorrect slice offset may lead to offline jobs halt (#2687 @aceforeverd)
-- Other minor bug fixes (#2669 dl239, #2683 @zhanghaohit )
+- Other minor bug fixes (#2669 dl239, #2683 @zhanghaohit)
 
 ### Code Refactoring
 #2541 @dl239, #2573 #2672 @haseeb-xd
