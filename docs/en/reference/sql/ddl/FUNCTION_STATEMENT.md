@@ -1,4 +1,4 @@
-# CREATE FUNCTION
+# 1 CREATE FUNCTION
 ## Syntax
 ```sql
 CreateFunctionStatement ::=
@@ -30,7 +30,8 @@ Type ::=
     |'STRING' | 'VARCHAR'
 
 ```
-## Example
+**Example**
+
 Create a function whose input parameter type is string, the return type is string, and the dynamic library file is libtest_udf.so
 ```sql
 CREATE FUNCTION cut2(x string) RETURNS string OPTIONS (FILE = 'libtest_udf.so');
@@ -41,29 +42,30 @@ Create a function whose input parameter type is two ints, the return type is int
 CREATE FUNCTION add_one(x int, y int) RETURNS INT OPTIONS (FILE = 'libtest_udf.so');
 ```
 
-# DROP FUNCTION
+# 2 DROP FUNCTION
 ## Syntax
 ```sql
 DROP FUNCTION FunctionName
 ```
 
-## Example
+**Example**
+
 delete function cut2
 ```sql
 DROP FUNCTION cut2;
 ```
 
-# SHOW FUNCTIONS
+# 3 SHOW FUNCTIONS
+`SHOW FUNCTIONS` is used to display the registered user-defined functions
 
 ## Syntax
 ```sql
 SHOW FUNCTIONS
 ```
-**Description**
 
-`SHOW FUNCTIONS` is used to display the registered user-defined functions
 
-## Example
+**Example**
+
 ```sql
 SHOW FUNCTIONS;
 ```
