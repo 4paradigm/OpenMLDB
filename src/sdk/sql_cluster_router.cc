@@ -3003,7 +3003,6 @@ hybridse::sdk::Status SQLClusterRouter::LoadDataMultipleFile(int id, int step, c
                                                              const std::vector<std::string>& file_list,
                                                              const openmldb::sdk::ReadFileOptionsParser& options_parser,
                                                              uint64_t* count) {
-
     for (const auto& file : file_list) {
         uint64_t cur_count = 0;
         auto status = LoadDataSingleFile(id, step, database, table, file, options_parser, &cur_count);

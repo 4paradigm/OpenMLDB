@@ -472,7 +472,7 @@ TEST_P(DBSDKTest, LoadData) {
     }
     ofile.close();
     std::string load_sql =
-        "LOAD DATA INFILE '" + file_name + "' INTO TABLE trans options(load_mode='local', thread=4);";
+        "LOAD DATA INFILE '" + file_name + "' INTO TABLE trans options(mode='append', load_mode='local', thread=4);";
     hybridse::sdk::Status status;
     sr->ExecuteSQL(load_sql, &status);
     ASSERT_TRUE(status.IsOK()) << status.msg;

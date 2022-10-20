@@ -32,11 +32,13 @@ namespace sdk {
 class FileOptionsParser {
  public:
     FileOptionsParser() {
+        quote_ = '\0';
         check_map_.emplace("format", std::make_pair(CheckFormat(), hybridse::node::kVarchar));
         check_map_.emplace("delimiter", std::make_pair(CheckDelimiter(), hybridse::node::kVarchar));
         check_map_.emplace("null_value", std::make_pair(CheckNullValue(), hybridse::node::kVarchar));
         check_map_.emplace("header", std::make_pair(CheckHeader(), hybridse::node::kBool));
         check_map_.emplace("quote", std::make_pair(CheckQuote(), hybridse::node::kVarchar));
+        check_map_.emplace("mode", std::make_pair(CheckMode(), hybridse::node::kVarchar));
     }
 
     ::openmldb::base::Status Parse(const std::shared_ptr<hybridse::node::OptionsMap>& options_map) {
@@ -64,14 +66,16 @@ class FileOptionsParser {
     const std::string& GetDelimiter() const { return delimiter_; }
     bool GetHeader() const { return header_; }
     const char GetQuote() const { return quote_; }
+    const std::string& GetMode() const { return mode_; }
 
  protected:
     std::map<std::string,
              std::pair<std::function<bool(const hybridse::node::ConstNode* node)>, hybridse::node::DataType>>
         check_map_;
-    char quote_;
+    std::string mode_ = "error_if_exists";
 
  private:
+    char quote_;
     // default options
     std::string format_ = "csv";
     std::string null_value_ = "null";
@@ -141,12 +145,21 @@ class FileOptionsParser {
             }
         };
     }
+    std::function<bool(const hybridse::node::ConstNode* node)> CheckMode() {
+        return [this](const hybridse::node::ConstNode* node) {
+            mode_ = node->GetAsString();
+            if (mode_ != "error_if_exists" && mode_ != "overwrite" && mode_ != "append") {
+                return false;
+            }
+            return true;
+        };
+    }
 };
 
 class ReadFileOptionsParser : public FileOptionsParser {
  public:
     ReadFileOptionsParser() {
-        quote_ = '\0';
+        mode_ = "append";
         check_map_.emplace("load_mode", std::make_pair(CheckLoadMode(), hybridse::node::kVarchar));
         check_map_.emplace("thread", std::make_pair(CheckThread(), hybridse::node::kInt32));
     }
@@ -182,23 +195,7 @@ class ReadFileOptionsParser : public FileOptionsParser {
 
 class WriteFileOptionsParser : public FileOptionsParser {
  public:
-    WriteFileOptionsParser() {
-        quote_ = '\0';
-        check_map_.emplace("mode", std::make_pair(CheckMode(), hybridse::node::kVarchar));
-    }
-    const std::string& GetMode() const { return mode_; }
-
- private:
-    std::string mode_ = "error_if_exists";
-    std::function<bool(const hybridse::node::ConstNode* node)> CheckMode() {
-        return [this](const hybridse::node::ConstNode* node) {
-            mode_ = node->GetAsString();
-            if (mode_ != "error_if_exists" && mode_ != "overwrite" && mode_ != "append") {
-                return false;
-            }
-            return true;
-        };
-    }
+    WriteFileOptionsParser() {}
 };
 
 }  // namespace sdk
