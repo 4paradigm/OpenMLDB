@@ -186,7 +186,7 @@ class WindowComputer(config: WindowAggConfig, jit: HybridSeJitWrapper, keepIndex
         UnsafeRowUtil.hybridseRowToInternalRow(outputHybridseRow, outputSchema.size - inputRowColNum)
       }
 
-      new OpenmldbJoinedRow(outputInternalRow, inputUnsaferow)
+      new OpenmldbJoinedRow(inputUnsaferow, outputInternalRow)
     } else {
       // Call methods to generate Spark InternalRow
       if (unsaferowoptCopyDirectByteBuffer) {
