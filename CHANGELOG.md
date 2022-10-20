@@ -10,7 +10,7 @@
 - Other minor features (#2666 #2671 #2691 @wuyou10206, #2665 @dl239)
 
 ### Bug Fixes
-- Fail to recreate the index than has been dropped (#2440 @dl239)
+- Fail to recreate the index that has been dropped previously (#2440 @dl239)
 - `Traverse` method may get duplicate data if there are same ts records on one pk (#2637 @dl239)
 - Window union will compile failed in batch mode (#2478 @tobegit3hub, #2561 @aceforeverd)
 - `select * ...` statement may result inconsistent output schema in many cases (#2660 @aceforeverd)
