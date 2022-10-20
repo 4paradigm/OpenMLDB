@@ -126,6 +126,7 @@ cases:
         55, 12, 13.2, 133.2, 165, 6
   - id: 3
     desc: Group By 字符串, Group未命中索引
+    mode: request-unsupport
     db: db1
     sql: |
       SELECT col0, sum(col1) as col1_sum, sum(col3) as col3_sum,
