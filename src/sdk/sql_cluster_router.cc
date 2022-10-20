@@ -2655,6 +2655,11 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(
             }
 
             if (!cluster_sdk_->IsClusterMode() || options_parser.GetLoadMode() == "local") {
+                if (options_parser.GetThread() > options_->max_sql_cache_size) {
+                    LOG(INFO) << "Load Data thread exceeds the max allowed number. Change to the max: "
+                              << options_->max_sql_cache_size;
+                    options_parser.SetThread(options_->max_sql_cache_size);
+                }
                 // Load data locally
                 *status = HandleLoadDataInfile(database, plan->Table(), plan->File(), options_parser);
             } else {

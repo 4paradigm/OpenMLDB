@@ -166,6 +166,7 @@ class ReadFileOptionsParser : public FileOptionsParser {
 
     const std::string& GetLoadMode() const { return load_mode_; }
     int GetThread() const { return thread_; }
+    void SetThread(int thread) { thread_ = thread; }
 
  private:
     std::string load_mode_ = "cluster";
