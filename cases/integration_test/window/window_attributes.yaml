@@ -10,6 +10,7 @@ db: test_java
 cases:
   - id: 0
     desc: ROWS_RANGE window with exclude_current_row
+    mode: disk-unsupport
     inputs:
       - name: t1
         columns:

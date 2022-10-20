@@ -13,6 +13,13 @@ import org.testng.annotations.Test;
 @Slf4j
 @Feature("Task")
 public class OutInTest extends OpenMLDBTest {
+    @Test(dataProvider = "getCase",enabled = false)
+    @Yaml(filePaths = "integration_test/out_in/test_job.yaml")
+    @Story("Job")
+    public void testJob(SQLCase testCase){
+        System.out.println("testCase = " + testCase);
+        ExecutorFactory.build(executor, testCase, SQLCaseType.kBatch).run();
+    }
 
     @Test(dataProvider = "getCase")
     @Yaml(filePaths = "integration_test/out_in/test_select_into_load_data.yaml")
@@ -22,12 +29,6 @@ public class OutInTest extends OpenMLDBTest {
         ExecutorFactory.build(executor, testCase, SQLCaseType.kJob).run();
     }
 
-    @Test(dataProvider = "getCase",enabled = false)
-    @Yaml(filePaths = "integration_test/out_in/test_job.yaml")
-    @Story("Job")
-    public void testJob(SQLCase testCase){
-        System.out.println("testCase = " + testCase);
-        ExecutorFactory.build(executor, testCase, SQLCaseType.kBatch).run();
-    }
+
 
 }

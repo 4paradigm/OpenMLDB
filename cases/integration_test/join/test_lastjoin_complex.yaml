@@ -606,7 +606,6 @@ cases:
       from {0}
       last join {1} ORDER BY {1}.c7 on {0}.c1={1}.c1
       ) as t1 last join {2} ORDER BY {2}.c7 on t1.c3={2}.c3
-      
       ;
     expect:
       order: id
