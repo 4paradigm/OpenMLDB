@@ -1,5 +1,27 @@
 # Changelog
 
+## [0.6.4] - 2022-10-21
+
+### Features
+- Support new build-in functions like `top_n_value_*_cate_where` (#2622 @aceforeverd)
+- Support online batch computation and full table aggregation (#2620 @zhanghaohit)
+- Support load_mode and thread option for `LOAD DATA` (#2684 @zhanghaohit)
+- Improve the documents (#2476, #2486 #2514 #2611 #2693 #2462 @michelle-qinqin, #2695 @lumianph)
+- Other minor features (#2666 #2671 #2691 @wuyou10206, #2665 @dl239)
+
+### Bug Fixes
+- Fail to recreate the index than has been dropped (#2440 @dl239)
+- `Traverse` method may get duplicate data if there are same ts records on one pk (#2637 @dl239)
+- Window union will compile failed in batch mode (#2478 @tobegit3hub, #2561 @aceforeverd)
+- `select * ...` statement may result inconsistent output schema in many cases (#2660 @aceforeverd)
+- Result is incorrect if the window is specified as `UNBOUNDED PRECEDING AND CURRENT ROW EXCLUDE CURRENT_ROW` (#2674 @aceforeverd)
+- Incorrect slice offset may lead to offline jobs halt (#2687 @aceforeverd)
+- Other minor bug fixes (#2669 dl239, #2683 @zhanghaohit )
+
+### Code Refactoring
+#2541 @dl239, #2573 #2672 @haseeb-xd
+
+
 ## [0.6.3] - 2022-10-14
 
 ### Features
