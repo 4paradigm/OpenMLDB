@@ -10,7 +10,7 @@
 
 
 ## 部署包准备
-本说明文档中默认使用预编译好的 OpenMLDB 部署包（[Linux](https://github.com/4paradigm/OpenMLDB/releases/download/v0.6.3/openmldb-0.6.3-linux.tar.gz), [macOS](https://github.com/4paradigm/OpenMLDB/releases/download/v0.6.3/openmldb-0.6.3-darwin.tar.gz)），所支持的操作系统要求为：CentOS 7, Ubuntu 20.04, macOS >= 10.15。如果用户期望自己编译（如做 OpenMLDB 源代码开发，操作系统或者 CPU 架构不在预编译部署包的支持列表内等原因），用户可以选择在 docker 容器内编译使用或者从源码编译，具体请参照我们的[编译文档](compile.md)。
+本说明文档中默认使用预编译好的 OpenMLDB 部署包（[Linux](https://github.com/4paradigm/OpenMLDB/releases/download/v0.6.4/openmldb-0.6.4-linux.tar.gz), [macOS](https://github.com/4paradigm/OpenMLDB/releases/download/v0.6.4/openmldb-0.6.4-darwin.tar.gz)），所支持的操作系统要求为：CentOS 7, Ubuntu 20.04, macOS >= 10.15。如果用户期望自己编译（如做 OpenMLDB 源代码开发，操作系统或者 CPU 架构不在预编译部署包的支持列表内等原因），用户可以选择在 docker 容器内编译使用或者从源码编译，具体请参照我们的[编译文档](compile.md)。
 
 ## 配置环境(Linux)
 
@@ -76,10 +76,10 @@ OpenMLDB单机版需要部署一个nameserver和一个tablet. nameserver用于�
 ### 部署tablet
 #### 1 下载OpenMLDB部署包
 ```
-wget https://github.com/4paradigm/OpenMLDB/releases/download/v0.6.3/openmldb-0.6.3-linux.tar.gz
-tar -zxvf openmldb-0.6.3-linux.tar.gz
-mv openmldb-0.6.3-linux openmldb-tablet-0.6.3
-cd openmldb-tablet-0.6.3
+wget https://github.com/4paradigm/OpenMLDB/releases/download/v0.6.4/openmldb-0.6.4-linux.tar.gz
+tar -zxvf openmldb-0.6.4-linux.tar.gz
+mv openmldb-0.6.4-linux openmldb-tablet-0.6.4
+cd openmldb-tablet-0.6.4
 ```
 #### 2 修改配置文件conf/standalone_tablet.flags
 * 修改endpoint。endpoint是用冒号分隔的部署机器ip/域名和端口号
@@ -98,10 +98,10 @@ bash bin/start.sh start standalone_tablet
 ### 部署nameserver
 #### 1 下载OpenMLDB部署包
 ````
-wget https://github.com/4paradigm/OpenMLDB/releases/download/v0.6.3/openmldb-0.6.3-linux.tar.gz
-tar -zxvf openmldb-0.6.3-linux.tar.gz
-mv openmldb-0.6.3-linux openmldb-ns-0.6.3
-cd openmldb-ns-0.6.3
+wget https://github.com/4paradigm/OpenMLDB/releases/download/v0.6.4/openmldb-0.6.4-linux.tar.gz
+tar -zxvf openmldb-0.6.4-linux.tar.gz
+mv openmldb-0.6.4-linux openmldb-ns-0.6.4
+cd openmldb-ns-0.6.4
 ````
 #### 2 修改配置文件conf/standalone_nameserver.flags
 * 修改endpoint。endpoint是用冒号分隔的部署机器ip/域名和端口号
@@ -133,10 +133,10 @@ APIServer负责接收http请求，转发给OpenMLDB并返回结果。它是无�
 #### 1 下载OpenMLDB部署包
 
 ```
-wget https://github.com/4paradigm/OpenMLDB/releases/download/v0.6.3/openmldb-0.6.3-linux.tar.gz
-tar -zxvf openmldb-0.6.3-linux.tar.gz
-mv openmldb-0.6.3-linux openmldb-apiserver-0.6.3
-cd openmldb-apiserver-0.6.3
+wget https://github.com/4paradigm/OpenMLDB/releases/download/v0.6.4/openmldb-0.6.4-linux.tar.gz
+tar -zxvf openmldb-0.6.4-linux.tar.gz
+mv openmldb-0.6.4-linux openmldb-apiserver-0.6.4
+cd openmldb-apiserver-0.6.4
 ```
 
 #### 2 修改配置文件conf/standalone_apiserver.flags
@@ -192,10 +192,10 @@ bash bin/zkServer.sh start
 ### 部署tablet
 #### 1 下载OpenMLDB部署包
 ```
-wget https://github.com/4paradigm/OpenMLDB/releases/download/v0.6.3/openmldb-0.6.3-linux.tar.gz
-tar -zxvf openmldb-0.6.3-linux.tar.gz
-mv openmldb-0.6.3-linux openmldb-tablet-0.6.3
-cd openmldb-tablet-0.6.3
+wget https://github.com/4paradigm/OpenMLDB/releases/download/v0.6.4/openmldb-0.6.4-linux.tar.gz
+tar -zxvf openmldb-0.6.4-linux.tar.gz
+mv openmldb-0.6.4-linux openmldb-tablet-0.6.4
+cd openmldb-tablet-0.6.4
 ```
 #### 2 修改配置文件conf/tablet.flags
 * 修改endpoint。endpoint是用冒号分隔的部署机器ip/域名和端口号
@@ -227,10 +227,10 @@ bash bin/start.sh start tablet
 ### 部署nameserver
 #### 1 下载OpenMLDB部署包
 ````
-wget https://github.com/4paradigm/OpenMLDB/releases/download/v0.6.3/openmldb-0.6.3-linux.tar.gz
-tar -zxvf openmldb-0.6.3-linux.tar.gz
-mv openmldb-0.6.3-linux openmldb-ns-0.6.3
-cd openmldb-ns-0.6.3
+wget https://github.com/4paradigm/OpenMLDB/releases/download/v0.6.4/openmldb-0.6.4-linux.tar.gz
+tar -zxvf openmldb-0.6.4-linux.tar.gz
+mv openmldb-0.6.4-linux openmldb-ns-0.6.4
+cd openmldb-ns-0.6.4
 ````
 #### 2 修改配置文件conf/nameserver.flags
 * 修改endpoint。endpoint是用冒号分隔的部署机器ip/域名和端口号
@@ -266,10 +266,10 @@ APIServer负责接收http请求，转发给OpenMLDB并返回结果。它是无�
 #### 1 下载OpenMLDB部署包
 
 ```
-wget https://github.com/4paradigm/OpenMLDB/releases/download/v0.6.3/openmldb-0.6.3-linux.tar.gz
-tar -zxvf openmldb-0.6.3-linux.tar.gz
-mv openmldb-0.6.3-linux openmldb-apiserver-0.6.3
-cd openmldb-apiserver-0.6.3
+wget https://github.com/4paradigm/OpenMLDB/releases/download/v0.6.4/openmldb-0.6.4-linux.tar.gz
+tar -zxvf openmldb-0.6.4-linux.tar.gz
+mv openmldb-0.6.4-linux openmldb-apiserver-0.6.4
+cd openmldb-apiserver-0.6.4
 ```
 
 #### 2 修改配置文件conf/apiserver.flags
@@ -302,12 +302,12 @@ bash bin/start.sh start apiserver
 
 #### 1 下载 OpenMLDB 部署包和面向特征工程优化的 Spark 发行版
 ````
-wget https://github.com/4paradigm/spark/releases/download/v3.2.1-openmldb0.6.3/spark-3.2.1-bin-openmldbspark.tgz 
+wget https://github.com/4paradigm/spark/releases/download/v3.2.1-openmldb0.6.4/spark-3.2.1-bin-openmldbspark.tgz 
 tar -zxvf spark-3.2.1-bin-openmldbspark.tgz 
-wget https://github.com/4paradigm/OpenMLDB/releases/download/v0.6.3/openmldb-0.6.3-linux.tar.gz
-tar -zxvf openmldb-0.6.3-linux.tar.gz
-mv openmldb-0.6.3-linux openmldb-taskmanager-0.6.3
-cd openmldb-taskmanager-0.6.3
+wget https://github.com/4paradigm/OpenMLDB/releases/download/v0.6.4/openmldb-0.6.4-linux.tar.gz
+tar -zxvf openmldb-0.6.4-linux.tar.gz
+mv openmldb-0.6.4-linux openmldb-taskmanager-0.6.4
+cd openmldb-taskmanager-0.6.4
 ````
 #### 2 修改配置文件conf/taskmanager.properties
 

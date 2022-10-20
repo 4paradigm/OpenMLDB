@@ -38,12 +38,12 @@ Expose the port through `-p` when starting the container, and the client can acc
 
 The stand-alone version needs to expose the ports of three components (nameserver, tabletserver, apiserver):
 ```
-docker run -p 6527:6527 -p 9921:9921 -p 8080:8080 -it 4pdosc/openmldb:0.6.3 bash
+docker run -p 6527:6527 -p 9921:9921 -p 8080:8080 -it 4pdosc/openmldb:0.6.4 bash
 ```
 
 The cluster version needs to expose the zk port and the ports of all components:
 ```
-docker run -p 2181:2181 -p 7527:7527 -p 10921:10921 -p 10922:10922 -p 8080:8080 -p 9902:9902 -it 4pdosc/openmldb:0.6.3 bash
+docker run -p 2181:2181 -p 7527:7527 -p 10921:10921 -p 10922:10922 -p 8080:8080 -p 9902:9902 -it 4pdosc/openmldb:0.6.4 bash
 ```
 
 ```{tip}
@@ -57,7 +57,7 @@ If the OpenMLDB service process is distributed, the "port number is occupied" ap
 #### Host Network
 Or more conveniently, use host networking without port isolation, for example:
 ```
-docker run --network host -it 4pdosc/openmldb:0.6.3 bash
+docker run --network host -it 4pdosc/openmldb:0.6.4 bash
 ```
 But in this case, it is easy to find that the port is occupied by other processes in the host. If occupancy occurs, change the port number carefully.
 
