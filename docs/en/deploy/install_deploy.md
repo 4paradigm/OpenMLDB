@@ -187,7 +187,7 @@ OpenMLDB cluster version needs to deploy Zookeeper, Nameserver, Tablet and other
 
 ### Deploy Zookeeper
 
-It is recommended to deploy version 3.4.14. If there is an available zookeeper cluster, you can skip this step.
+The required zookeeper version is >= 3.4 and <= 3.6, it is recommended to deploy version 3.4.14. You can skip this step if there is an available zookeeper cluster.
 
 #### 1. Download the Zookeeper Installation Package
 
