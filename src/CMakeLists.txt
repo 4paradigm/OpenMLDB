@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
 include_directories(
     ${INCLUDE_DIRECTORIES}
     ${PROJECT_SOURCE_DIR}/src
@@ -109,6 +110,9 @@ compile_lib(log log "flags.cc")
 compile_lib(openmldb_sdk sdk "")
 compile_lib(apiserver apiserver "")
 
+find_package(yaml-cpp REQUIRED)
+set(yaml_libs yaml-cpp)
+
 add_library(openmldb_proto STATIC ${PROTO_FILES})
 
 add_library(openmldb_flags STATIC flags.cc)
@@ -138,6 +142,7 @@ if(TESTING_ENABLE)
 endif()
 
 add_executable(parse_log tools/parse_log.cc  $<TARGET_OBJECTS:openmldb_proto>)
+add_executable(data_exporter tools/data_exporter.cc tools/log_exporter.cc tools/tablemeta_reader.cc $<TARGET_OBJECTS:openmldb_proto>)
 
 set(LINK_LIBS log openmldb_proto base ${PROTOBUF_LIBRARY} ${GLOG_LIBRARY} ${GFLAGS_LIBRARY} ${OPENSSL_LIBRARIES} ${Z_LIBRARY} ${SNAPPY_LIBRARY} dl pthread)
 if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
@@ -145,6 +150,12 @@ if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
 endif()
 target_link_libraries(parse_log ${LINK_LIBS})
 
+set(EXPORTER_LIBS ${BIN_LIBS})
+if(CMAKE_CXX_COMPILER_ID MATCHES "GNU" AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS "9.1")
+    # GNU implementation prior to 9.1 requires linking with -lstdc++fs
+    list(APPEND EXPORTER_LIBS stdc++fs)
+endif()
+target_link_libraries(data_exporter ${EXPORTER_LIBS})
 add_executable(openmldb cmd/openmldb.cc base/linenoise.cc)
 target_link_libraries(openmldb ${BIN_LIBS})
 
