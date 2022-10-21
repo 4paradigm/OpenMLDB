@@ -217,11 +217,12 @@ cases:
       );
     request_plan: |
       PROJECT(type=Aggregation)
-        JOIN(type=LastJoin, right_sort=(ASC), condition=actionTime <= tm, left_keys=(), right_keys=(), index_keys=(actions.itemId))
-          REQUEST_UNION(partition_keys=(), orders=(ASC), range=(actionTime, 3000 PRECEDING, 0 CURRENT), index_keys=(itemId))
-            DATA_PROVIDER(request=actions)
-            DATA_PROVIDER(type=Partition, table=actions, index=index2)
-          DATA_PROVIDER(type=Partition, table=items, index=idx)
+        SIMPLE_PROJECT(sources=(actions.userId, actions.itemId, actions.actionTime, items.id, items.price, items.tm))
+          JOIN(type=LastJoin, right_sort=(ASC), condition=actionTime <= tm, left_keys=(), right_keys=(), index_keys=(actions.itemId))
+            REQUEST_UNION(partition_keys=(), orders=(ASC), range=(actionTime, 3000 PRECEDING, 0 CURRENT), index_keys=(itemId))
+              DATA_PROVIDER(request=actions)
+              DATA_PROVIDER(type=Partition, table=actions, index=index2)
+            DATA_PROVIDER(type=Partition, table=items, index=idx)
     expect:
       order: userId
       columns:
@@ -235,3 +236,42 @@ cases:
         2, 2, 1, 199, 2000
         3, 3, 1, 399, 3000
         4, 3, 2, 798, 4000
+
+  - id: 5
+    desc: window over subquery(t1 last join t2)
+    inputs:
+      -
+        columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",2,30,1.1,2.1,1590738990000,"2020-05-01"]
+          - [2,"bb",2,31,1.2,2.2,1590738991000,"2020-05-02"]
+          - [3,"cc",2,32,1.3,2.3,1590738992000,"2020-05-03"]
+      -
+        columns: ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
+        indexs: ["index1:c1:c7","index2:c3:c7"]
+        rows:
+          - [1,"aa",20,30,1.1,2.1,1606755660000,"2020-05-01"]
+          - [2,"aa",21,31,1.1,2.1,1606755720000,"2020-05-01"]
+          - [3,"cc",21,32,1.1,2.1,1606755780000,"2020-05-01"]
+    sql: |
+      select
+        idx, c1,
+        count(c3) OVER w1 as w1_c3_sum
+      from (
+        select
+          {0}.id as idx,
+          {0}.c1 as c1,
+          {1}.c3 as c3,
+          {0}.c7 as c7
+        from {0} last join {1} on {0}.c1={1}.c1
+      )
+      WINDOW w1 AS (
+        PARTITION BY c1 ORDER BY c7 ROWS_RANGE BETWEEN 1s PRECEDING AND CURRENT ROW);
+    expect:
+      order: idx
+      columns: ["idx int","c1 string","w1_c3_sum int64"]
+      rows:
+        - [1,"aa",1]
+        - [2,"bb",0]
+        - [3,"cc",1]

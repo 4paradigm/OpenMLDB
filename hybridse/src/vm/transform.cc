@@ -737,7 +737,14 @@ Status RequestModeTransformer::OptimizeSimpleProjectAsWindowProducer(PhysicalSim
         case kPhysicalOpRequestJoin: {
             auto join_op = dynamic_cast<PhysicalRequestJoinNode*>(depend->GetProducer(0));
             CHECK_TRUE(join_op != nullptr, kPlanError, "not PhysicalRequestJoinNode");
-            return OptimizeRequestJoinAsWindowProducer(join_op, w_ptr, output);
+
+            PhysicalOpNode* out = nullptr;
+            CHECK_STATUS(OptimizeRequestJoinAsWindowProducer(join_op, w_ptr, &out));
+
+            PhysicalSimpleProjectNode* simple_proj = nullptr;
+            CHECK_STATUS(CreateOp<PhysicalSimpleProjectNode>(&simple_proj, out, depend->project()));
+            *output = simple_proj;
+            break;
         }
         default: {
             FAIL_STATUS(kPlanError, "Do not support window on\n", depend->GetTreeString());
