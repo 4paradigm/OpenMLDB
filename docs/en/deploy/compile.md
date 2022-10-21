@@ -74,7 +74,7 @@ Make sure those tools are installed
 Building OpenMLDB requires certain thirdparty dependencies. Hence a Makefile is provided as a convenience to setup thirdparty dependencies automatically and run CMake project in a single command `make`. The `make` command offers three methods to compile, each manages thirdparty differently:
 
 - **Method One: Build and Run Inside Docker:** Using [hybridsql](https://hub.docker.com/r/4pdosc/hybridsql) docker image, the thirdparty is already bundled inside the image and no extra steps are required, refer to above section [Quick Start](#quick-start)
-- **Method Two: Download Pre-Compiled Thirdparty:** It downloads necessary prebuild libraries from [hybridsql-assert](https://github.com/4paradigm/hybridsql-asserts/releases). This is the default behavior when building outside a hybridsql container. Currently it supports CentOS 7, Ubuntu 20.04 and macOS. The default command to build and install is `make && make install`
+- **Method Two: Download Pre-Compiled Thirdparty:**  Command is `make && make install`. It downloads necessary prebuild libraries from [hybridsql-assert](https://github.com/4paradigm/hybridsql-asserts/releases) and [zetasql](https://github.com/4paradigm/zetasql/releases).  Currently it supports CentOS 7, Ubuntu 20.04 and macOS.
 - **Method Three: Compile Thirdparty from Source:** This is the suggested way if the host system is not in the supported list for pre-compiled thirdparty (CentOS 7, Ubuntu 20.04 and macOS). Note that when compiling thirdparty for the first time requires extra time to finish, approximately 1 hour on a 2 core & 7 GB machine. To compile thirdparty from source, please pass `BUILD_BUNDLED=ON` to `make`:
   
    ```bash
@@ -82,11 +82,9 @@ Building OpenMLDB requires certain thirdparty dependencies. Hence a Makefile is 
    make install
    ```
 
-All of the three methods above will install OpenMLDB binaries into `${PROJECT_ROOT}/openmldb` by default, you may tweak the installation directory with the option `CMAKE_INSTALL_PREFIX` (refer the following section [Extra options for `make`](#make-opts)).
+All of the three methods above will install OpenMLDB binaries into `${PROJECT_ROOT}/openmldb` by default, you may tweak the installation directory with the option `CMAKE_INSTALL_PREFIX` (refer the following section [Extra options for `make`](#24-extra-options-for-make)).
 
 ### 2.4. Extra Options for `make`
-
-[make-opts]: make-opts
 
 You can customize the `make` behavior by passing following arguments, e.g., changing the build mode to `Debug` instead of `Release`:
 
@@ -134,6 +132,9 @@ make CMAKE_BUILD_TYPE=Debug
 
   Default: ON
 
+- OPENMLDB_BUILD_TARGET: If you only want to build some targets, not all, e.g. only build a test `ddl_parser_test`, you can set it to `ddl_parser_test`. Multiple targets may be given, separated by spaces. It can reduce the build time, reduce the build output, save the storage space.
+
+  Default: all
 
 ## 3. Optimized Spark Distribution for OpenMLDB
 
