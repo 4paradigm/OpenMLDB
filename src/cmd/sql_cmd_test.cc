@@ -471,8 +471,9 @@ TEST_P(DBSDKTest, LoadData) {
         ofile << "aa" << i << "," << i << std::endl;
     }
     ofile.close();
-    std::string load_sql =
-        "LOAD DATA INFILE '" + file_name + "' INTO TABLE trans options(mode='append', load_mode='local', thread=60);";
+    // deep_copy is ignored but can still pass
+    std::string load_sql = "LOAD DATA INFILE '" + file_name +
+                           "' INTO TABLE trans options(deep_copy=true, mode='append', load_mode='local', thread=60);";
     hybridse::sdk::Status status;
     sr->ExecuteSQL(load_sql, &status);
     ASSERT_TRUE(status.IsOK()) << status.msg;
