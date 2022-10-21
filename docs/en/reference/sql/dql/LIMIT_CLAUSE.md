@@ -17,7 +17,7 @@ SELECT ... LIMIT ...
 
 ## Description
 
-Limit clause is not supported in online preview mode. By practise, limit clause should used together with order by clause, to constrains the result rows into a unique order. OpenMLDB do not support order by clause yet, it is exepcted to get inconsistent results for the same query.
+Limit clause is not supported in online preview mode. By practice, limit clause should be used together with order by clause, to constrains the result rows into a unique order. OpenMLDB does not support order by clause yet; without it it may get inconsistent results for the same query.
 
 | `SELECT` Statement Elements                                | Offline Mode | Online Preview Mode | Online Request Mode | Note                                                                                                                                                          |
 |:-----------------------------------------------------------|--------------|---------------------|---------------------|:--------------------------------------------------------------------------------------------------------------------------------------------------------------|
