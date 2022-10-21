@@ -13,7 +13,7 @@
 # limitations under the License.
 
 db: test_zw
-debugs: ["集群版，EXECUTE_MODE=online，load parquet文件，deep_copy=true, append"]
+debugs: []
 cases:
   -
     id: 0-1
