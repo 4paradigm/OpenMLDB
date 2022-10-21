@@ -1,0 +1,12 @@
+name: autofe-dev
+dependencies:
+  - python=3.8
+  - requests
+  - scikit-learn>=0.19
+  - pandas
+  - pyyaml
+  - pyarrow
+  - pip
+  - pip:
+    - automl-x==0.3.0
+    - tensorflow

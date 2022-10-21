@@ -11,4 +11,5 @@
     standalone_vs_cluster 
     modes
     openmldbspark_distribution
-    data_import    
+    data_import
+    autofe
