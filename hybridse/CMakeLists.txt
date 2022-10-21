@@ -103,7 +103,8 @@ message(STATUS "OpenSSL libraries ${OPENSSL_LIBRARIES}")
 if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
     set(OS_LIB ${CMAKE_THREAD_LIBS_INIT} rt)
     set(COMMON_LIBS ${Boost_LIBRARIES} ${LEVELDB_LIBRARY} ${Protobuf_LIBRARIES} ${GLOG_LIBRARY} ${UNWIND_LIBRARY} ${Z_LIBRARY} ${SNAPPY_LIBRARY} ${OPENSSL_LIBRARIES} dl)
-    set(BRPC_LIBS ${BRPC_LIBRARY} ${COMMON_LIBS})
+    # TODO(ace): rename BRPC_LIBS, as it not related to brpc
+    set(BRPC_LIBS ${COMMON_LIBS})
 elseif (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
     set(OS_LIB
             ${CMAKE_THREAD_LIBS_INIT}
@@ -117,7 +118,7 @@ elseif (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
             "-Wl,-U,_ProfilerStart"
             "-Wl,-U,_ProfilerStop")
     set(COMMON_LIBS ${Boost_LIBRARIES} ${LEVELDB_LIBRARY} ${Protobuf_LIBRARIES} ${GLOG_LIBRARY} ${Z_LIBRARY} ${SNAPPY_LIBRARY} ${OPENSSL_LIBRARIES} dl)
-    set(BRPC_LIBS ${BRPC_LIBRARY} ${COMMON_LIBS})
+    set(BRPC_LIBS ${COMMON_LIBS})
 endif ()
 
 configure_file(
