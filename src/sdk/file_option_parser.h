@@ -162,6 +162,7 @@ class ReadFileOptionsParser : public FileOptionsParser {
         mode_ = "append";
         check_map_.emplace("load_mode", std::make_pair(CheckLoadMode(), hybridse::node::kVarchar));
         check_map_.emplace("thread", std::make_pair(CheckThread(), hybridse::node::kInt32));
+        check_map_.emplace("deep_copy", std::make_pair(CheckDeepCopy(), hybridse::node::kBool));
     }
 
     const std::string& GetLoadMode() const { return load_mode_; }
@@ -171,6 +172,7 @@ class ReadFileOptionsParser : public FileOptionsParser {
  private:
     std::string load_mode_ = "cluster";
     int thread_ = 1;
+    bool deep_copy_ = true;
 
     std::function<bool(const hybridse::node::ConstNode* node)> CheckLoadMode() {
         return [this](const hybridse::node::ConstNode* node) {
@@ -189,6 +191,13 @@ class ReadFileOptionsParser : public FileOptionsParser {
             if (thread_ <= 0) {
                 return false;
             }
+            return true;
+        };
+    }
+
+    std::function<bool(const hybridse::node::ConstNode* node)> CheckDeepCopy() {
+        return [this](const hybridse::node::ConstNode* node) {
+            deep_copy_ = node->GetBool();
             return true;
         };
     }
