@@ -6,7 +6,7 @@
 - Support a new series of built-in functions `top_n_value_*_cate_where` (#2622 @aceforeverd)
 - Support online batch computation and aggregation over a full table (#2620 @zhanghaohit)
 - Support `load_mode` and `thread` options for `LOAD DATA` (#2684 @zhanghaohit)
-- Improve the documents (#2476, #2486 #2514 #2611 #2693 #2462 @michelle-qinqin, #2695 @lumianph)
+- Improve the documents (#2476, #2486 #2514 #2611 #2693 #2462 @michelle-qinqin, #2695 @lumianph, #2653 @vagetablechicken)
 - Support running MacOS compiling jobs in the CICD workflow (#2665 @dl239)
 
 ### Bug Fixes
@@ -16,7 +16,7 @@
 - `select * ...` statement may cause inconsistent output schemas in many cases (#2660 @aceforeverd)
 - Result is incorrect if the window is specified as `UNBOUNDED PRECEDING AND CURRENT ROW EXCLUDE CURRENT_ROW` (#2674 @aceforeverd)
 - Incorrect slice offsets may lead to offline jobs hang (#2687 @aceforeverd)
-- Other minor bug fixes (#2669 @dl239, #2683 @zhanghaohit)
+- Other minor bug fixes (#2669 @dl239, #2683 @zhanghaohit, #2648 @vagetablechicken)
 
 ## v0.6.3 Release Notes
 
