@@ -16,7 +16,7 @@
 - `select * ...` statement may cause inconsistent output schemas in many cases (#2660 @aceforeverd)
 - Result is incorrect if the window is specified as `UNBOUNDED PRECEDING AND CURRENT ROW EXCLUDE CURRENT_ROW` (#2674 @aceforeverd)
 - Incorrect slice offsets may lead to offline jobs hang (#2687 @aceforeverd)
-- Other minor bug fixes (#2669 @dl239, #2683 @zhanghaohit, #2648 @vagetablechicken)
+- Other minor bug fixes (#2669 @dl239, #2683 @zhanghaohit)
 
 ### Code Refactoring
 #2541 @dl239, #2573 #2672 @haseeb-xd
