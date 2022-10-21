@@ -15,9 +15,12 @@
  */
 
 #include "codegen/expr_ir_builder.h"
+
 #include <string>
 #include <utility>
 #include <vector>
+
+#include "base/numeric.h"
 #include "codegen/buf_ir_builder.h"
 #include "codegen/cond_select_ir_builder.h"
 #include "codegen/context.h"
@@ -466,8 +469,9 @@ Status ExprIRBuilder::BuildWindow(NativeValue* output) {  // NOLINT
                                                        frame_->GetHistoryRangeStart(), &window_ptr);
         }
     } else if (frame_->frame_rows() != nullptr) {
-        ok = window_ir_builder.BuildInnerRowsList(list_ptr, -1 * frame_->GetHistoryRowsEnd(),
-                                                  -1 * frame_->GetHistoryRowsStart(), &window_ptr);
+        ok = window_ir_builder.BuildInnerRowsList(list_ptr, ::hybridse::base::safe_inverse(frame_->GetHistoryRowsEnd()),
+                                                  ::hybridse::base::safe_inverse(frame_->GetHistoryRowsStart()),
+                                                  &window_ptr);
     }
 
     // int8_t** -> ListRef* { int8_t* }
