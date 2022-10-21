@@ -32,7 +32,7 @@ jobs:
       - name: install doxybook2
         run: |
           wget https://github.com/matusnovak/doxybook2/releases/download/v1.5.0/doxybook2-linux-amd64-v1.5.0.zip
-          unzip doxyboo2-*.zip
+          unzip doxybook2-*.zip
           pushd doxybook2-*/
           sudo find . -type f -exec install -D {} /usr/local/{} \;
           popd
