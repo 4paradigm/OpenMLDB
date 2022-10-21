@@ -521,7 +521,7 @@ TEST_P(DBSDKTest, LoadDataError) {
         "LOAD DATA INFILE 'not_exist.csv' INTO TABLE trans options(format='parquet', load_mode='local', thread=60);";
     sr->ExecuteSQL(load_sql, &status);
     ASSERT_FALSE(status.IsOK()) << status.msg;
-    ASSERT_EQ(status.msg, "ERROR: parse option format failed");
+    ASSERT_EQ(status.msg, "local data load only supports 'csv' format");
 
     load_sql =
         "LOAD DATA INFILE 'not_exist.csv' INTO TABLE trans options(load_mode='local', thread=0);";
@@ -536,6 +536,12 @@ TEST_P(DBSDKTest, LoadDataError) {
     if (cs->IsClusterMode()) {
         ASSERT_FALSE(status.IsOK()) << status.msg;
         ASSERT_EQ(status.msg, "local load only supports loading data to online storage");
+
+        load_sql =
+            "LOAD DATA INFILE 'not_exist.csv' INTO TABLE trans options(format='parquet', load_mode='cluster');";
+        sr->ExecuteSQL(load_sql, &status);
+        ASSERT_FALSE(status.IsOK()) << status.msg;
+        ASSERT_EQ(status.msg, "Fail to get TaskManager client");
     } else {
         ASSERT_TRUE(status.IsOK()) << status.msg;
     }
