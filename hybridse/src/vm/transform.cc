@@ -348,13 +348,14 @@ Status BatchModeTransformer::TransformProjectPlanOpWithWindowParallel(
     if (!node->GetChildren().empty() && nullptr != node->GetChildren()[0]) {
         CHECK_STATUS(TransformPlanOp(node->GetChildren()[0], &depend));
     }
+
     CHECK_TRUE(!node->project_list_vec_.empty(), kPlanError,
                "Fail transform project op: empty projects");
+
+    CHECK_STATUS(CompleteProjectList(node, depend));
     if (1 == node->project_list_vec_.size()) {
-        return TransformProjectOp(
-            dynamic_cast<hybridse::node::ProjectListNode*>(
-                node->project_list_vec_[0]),
-            depend, false, output);
+        return TransformProjectOp(dynamic_cast<hybridse::node::ProjectListNode*>(node->project_list_vec_[0]), depend,
+                                  false, output);
     }
 
     std::vector<PhysicalOpNode*> ops;
@@ -364,8 +365,7 @@ Status BatchModeTransformer::TransformProjectPlanOpWithWindowParallel(
             dynamic_cast<hybridse::node::ProjectListNode*>(*iter);
 
         PhysicalOpNode* project_op = nullptr;
-        CHECK_STATUS(
-            TransformProjectOp(project_list, depend, false, &project_op));
+        CHECK_STATUS(TransformProjectOp(project_list, depend, false, &project_op));
         ops.push_back(project_op);
     }
 
@@ -400,14 +400,6 @@ Status BatchModeTransformer::TransformProjectPlanOpWithWindowParallel(
         if (node::kExprAll == project_node->GetExpression()->expr_type_) {
             auto all_expr =
                 dynamic_cast<node::AllNode*>(project_node->GetExpression());
-            if (all_expr->children_.empty()) {
-                // expand all expression if needed
-                for (auto column : *depend->GetOutputSchema()) {
-                    all_expr->children_.push_back(
-                        node_manager_->MakeColumnRefNode(
-                            column.name(), all_expr->GetRelationName()));
-                }
-            }
             project_list->AddProject(
                 node_manager_->MakeRowProjectNode(pos, "*", all_expr));
         } else {
@@ -426,22 +418,22 @@ Status BatchModeTransformer::TransformProjectPlanOpWindowSerial(
     if (!node->GetChildren().empty() && nullptr != node->GetChildren()[0]) {
         CHECK_STATUS(TransformPlanOp(node->GetChildren()[0], &depend));
     }
-    CHECK_TRUE(!node->project_list_vec_.empty(), kPlanError,
-               "Fail transform project op: empty projects");
+    CHECK_TRUE(!node->project_list_vec_.empty(), kPlanError, "Fail transform project op: empty projects");
+
+    CHECK_STATUS(CompleteProjectList(node, depend));
+
     if (1 == node->project_list_vec_.size()) {
         return TransformProjectOp(
             dynamic_cast<hybridse::node::ProjectListNode*>(
                 node->project_list_vec_[0]),
             depend, false, output);
     }
+
     // 处理project_list_vec_[1...N-1], 串联执行windowAggWithAppendInput
     std::vector<PhysicalOpNode*> ops;
-    int32_t project_cnt = 0;
     for (size_t i = node->project_list_vec_.size() - 1; i > 0; i--) {
         hybridse::node::ProjectListNode* project_list =
-            dynamic_cast<hybridse::node::ProjectListNode*>(
-                node->project_list_vec_[i]);
-        project_cnt++;
+            dynamic_cast<hybridse::node::ProjectListNode*>(node->project_list_vec_[i]);
         PhysicalOpNode* project_op = nullptr;
         CHECK_STATUS(
             TransformProjectOp(project_list, depend, true, &project_op));
@@ -470,14 +462,6 @@ Status BatchModeTransformer::TransformProjectPlanOpWindowSerial(
                    project_node->GetExpression()->expr_type_) {
             auto all_expr =
                 dynamic_cast<node::AllNode*>(project_node->GetExpression());
-            if (all_expr->children_.empty()) {
-                // expand all expression if needed
-                for (auto column : *depend->GetOutputSchema()) {
-                    all_expr->children_.push_back(
-                        node_manager_->MakeColumnRefNode(
-                            column.name(), all_expr->GetRelationName()));
-                }
-            }
             project_list->AddProject(
                 node_manager_->MakeRowProjectNode(pos, "*", all_expr));
         } else {
@@ -488,6 +472,57 @@ Status BatchModeTransformer::TransformProjectPlanOpWindowSerial(
         pos++;
     }
     return TransformProjectOp(project_list, depend, false, output);
+}
+
+// fullfill project list expr early
+// this adds correct column list for AllExpr('*'), cuz for serial mode,
+// AllExpr wants columns from original depends, instead of e.g. the windowAggWithAppendInput Node
+Status BatchModeTransformer::CompleteProjectList(const node::ProjectPlanNode* project_node,
+                                                 PhysicalOpNode* depend) const {
+    for (auto ele : project_node->project_list_vec_) {
+        auto& projects = dynamic_cast<node::ProjectListNode*>(ele)->GetProjects();
+        for (auto iter = projects.cbegin(); iter != projects.cend(); iter++) {
+            auto project_node = dynamic_cast<node::ProjectNode*>(*iter);
+            auto expr = project_node->GetExpression();
+            CHECK_TRUE(expr != nullptr, kPlanError, "Invalid project: expression is null");
+            if (node::kExprAll == expr->expr_type_) {
+                auto all_expr = dynamic_cast<node::AllNode*>(expr);
+                // we assume children of AllExpr will fullfilled once, it is not
+                // expected to have AllExpr's children already fullfilled
+                CHECK_TRUE(all_expr->children_.empty(), kPlanError, "all expr already fullfilled children expr");
+                CHECK_TRUE(depend != nullptr, kPlanError,
+                           "try to '*' expand all columns from depend but depend is null");
+                const auto& relation_name = all_expr->GetRelationName();
+                const auto& db_name = all_expr->GetDBName();
+                // expand *
+                auto* schemas_ctx = depend->schemas_ctx();
+                for (size_t slice = 0; slice < schemas_ctx->GetSchemaSourceSize(); slice++) {
+                    // t1.* or db.t1.* only selects columns of one table
+                    auto schema_source = schemas_ctx->GetSchemaSource(slice);
+                    if (!relation_name.empty() && relation_name != schema_source->GetSourceName()) {
+                        continue;
+                    }
+
+                    if (!db_name.empty() && db_name != schema_source->GetSourceDB()) {
+                        continue;
+                    }
+
+                    for (size_t k = 0; k < schema_source->size(); ++k) {
+                        auto col_name = schema_source->GetColumnName(k);
+                        std::string col_db = "";
+                        // db name will omitted if it is equal to default db
+                        if (schema_source->GetSourceDB() != schemas_ctx->GetDefaultDBName()) {
+                            col_db = schema_source->GetSourceDB();
+                        }
+                        auto col_ref =
+                            node_manager_->MakeColumnRefNode(col_name, schema_source->GetSourceName(), col_db);
+                        all_expr->children_.push_back(col_ref);
+                    }
+                }
+            }
+        }
+    }
+    return Status::OK();
 }
 
 /**
@@ -944,16 +979,10 @@ Status ExtractProjectInfos(const node::PlanNodeList& projects,
         auto expr = pp_node->GetExpression();
         CHECK_TRUE(expr != nullptr, kPlanError, "expr in project node is null");
         if (expr->GetExprType() == node::kExprAll) {
-            // expand *
-            for (size_t slice = 0; slice < schemas_ctx->GetSchemaSourceSize();
-                 ++slice) {
-                auto schema_source = schemas_ctx->GetSchemaSource(slice);
-                for (size_t k = 0; k < schema_source->size(); ++k) {
-                    auto col_name = schema_source->GetColumnName(k);
-                    auto col_ref = node_manager->MakeColumnRefNode(
-                        col_name, schema_source->GetSourceName());
-                    output->Add(col_name, col_ref, nullptr);
-                }
+            for (size_t i = 0; i < expr->GetChildNum(); ++i) {
+                auto project_under_asterisk = dynamic_cast<node::ColumnRefNode*>(expr->GetChild(i));
+                CHECK_TRUE(project_under_asterisk != nullptr, kPlanError);
+                output->Add(project_under_asterisk->GetColumnName(), project_under_asterisk, nullptr);
             }
         } else {
             output->Add(pp_node->GetName(), expr, pp_node->frame());
@@ -1099,8 +1128,7 @@ Status BatchModeTransformer::CreatePhysicalConstProjectNode(
 
     SchemasContext empty_schemas_ctx;
     ColumnProjects const_projects;
-    CHECK_STATUS(ExtractProjectInfos(projects, nullptr, &empty_schemas_ctx,
-                                     node_manager_, &const_projects));
+    CHECK_STATUS(ExtractProjectInfos(projects, nullptr, &empty_schemas_ctx, node_manager_, &const_projects));
 
     PhysicalConstProjectNode* const_project_op = nullptr;
     CHECK_STATUS(
@@ -1132,24 +1160,13 @@ Status BatchModeTransformer::CreatePhysicalProjectNode(
         primary_frame = project_list->GetW()->frame_node();
     }
 
-    node::PlanNodeList new_projects;
     bool has_all_project = false;
 
     for (auto iter = projects.cbegin(); iter != projects.cend(); iter++) {
         auto project_node = dynamic_cast<node::ProjectNode*>(*iter);
         auto expr = project_node->GetExpression();
-        CHECK_TRUE(expr != nullptr, kPlanError,
-                   "Invalid project: expression is null");
+        CHECK_TRUE(expr != nullptr, kPlanError, "Invalid project: expression is null");
         if (node::kExprAll == expr->expr_type_) {
-            auto all_expr = dynamic_cast<node::AllNode*>(expr);
-            if (all_expr->children_.empty()) {
-                // expand all expression if needed
-                for (auto column : *depend->GetOutputSchema()) {
-                    all_expr->children_.push_back(
-                        node_manager_->MakeColumnRefNode(
-                            column.name(), all_expr->GetRelationName()));
-                }
-            }
             has_all_project = true;
         }
     }
@@ -1165,9 +1182,8 @@ Status BatchModeTransformer::CreatePhysicalProjectNode(
 
     // Create project function and infer output schema
     ColumnProjects column_projects;
-    CHECK_STATUS(ExtractProjectInfos(projects, primary_frame,
-                                     depend->schemas_ctx(), node_manager_,
-                                     &column_projects));
+    CHECK_STATUS(
+        ExtractProjectInfos(projects, primary_frame, depend->schemas_ctx(), node_manager_, &column_projects));
 
     if (append_input) {
         CHECK_TRUE(project_type == kWindowAggregation, kPlanError,
@@ -2118,6 +2134,8 @@ Status RequestModeTransformer::TransformProjectPlanOp(
     PhysicalOpNode* depend = nullptr;
     CHECK_STATUS(TransformPlanOp(node->GetChildren()[0], &depend));
 
+    CHECK_STATUS(CompleteProjectList(node, depend));
+
     std::vector<PhysicalOpNode*> ops;
     for (auto iter = node->project_list_vec_.cbegin();
          iter != node->project_list_vec_.cend(); iter++) {
@@ -2161,20 +2179,11 @@ Status RequestModeTransformer::TransformProjectPlanOp(
         if (node::kExprAll == project_node->GetExpression()->expr_type_) {
             auto all_expr =
                 dynamic_cast<node::AllNode*>(project_node->GetExpression());
-            if (all_expr->children_.empty()) {
-                // expand all expression if needed
-                for (auto column : *depend->GetOutputSchema()) {
-                    all_expr->children_.push_back(
-                        node_manager_->MakeColumnRefNode(
-                            column.name(), all_expr->GetRelationName()));
-                }
-            }
             project_list->AddProject(
                 node_manager_->MakeRowProjectNode(pos, "*", all_expr));
         } else {
             project_list->AddProject(node_manager_->MakeRowProjectNode(
-                pos, project_node->GetName(),
-                node_manager_->MakeColumnRefNode(project_node->GetName(), "")));
+                pos, project_node->GetName(), node_manager_->MakeColumnRefNode(project_node->GetName(), "")));
         }
         pos++;
     }
@@ -2290,6 +2299,7 @@ Status RequestModeTransformer::ValidateRequestTable(
     return Status::OK();
 }
 
+// transform a single `ProjectListNode` of `ProjectPlanNode`
 Status RequestModeTransformer::TransformProjectOp(
     node::ProjectListNode* project_list, PhysicalOpNode* depend,
     bool append_input, PhysicalOpNode** output) {
