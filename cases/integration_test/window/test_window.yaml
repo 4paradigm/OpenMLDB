@@ -781,8 +781,8 @@ cases:
   -
     id: 27
     desc: 两个窗口,一个union，一个不union
-    mode: rtidb-batch-unsupport,cluster-unsupport
-    tags: ["cluster-执行失败"]
+    version: 0.0.6.4
+#    mode: rtidb-batch-unsupport,cluster-unsupport
     inputs:
       -
         columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
@@ -820,8 +820,7 @@ cases:
   -
     id: 28
     desc: 两个窗口,一个union一个表，一个union两个表
-    mode: rtidb-batch-unsupport,cluster-unsupport
-    tags: ["cluster-执行失败"]
+    version: 0.6.4
     inputs:
       -
         columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
@@ -863,8 +862,7 @@ cases:
   -
     id: 29
     desc: 两个窗口,一个union，一个INSTANCE_NOT_IN_WINDOW
-    mode: rtidb-batch-unsupport,cluster-unsupport
-    tags: ["cluster-执行失败"]
+    version: 0.6.4
     inputs:
       -
         columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
@@ -896,8 +894,7 @@ cases:
   -
     id: 30
     desc: 两个窗口,一个union一个表，一个union使用子查询
-    mode: rtidb-batch-unsupport,cluster-unsupport
-    tags: ["cluster-执行失败"]
+    version: 0.6.4
     inputs:
       -
         columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
@@ -928,8 +925,7 @@ cases:
   -
     id: 31
     desc: 多个窗口-rows
-    mode: rtidb-batch-unsupport,cluster-unsupport
-    tags: ["cluster-执行失败", "@chenjing batch online fix for multi window with union", "@tobe batch offline fix"]
+    version: 0.6.4
     inputs:
       -
         columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
@@ -960,13 +956,12 @@ cases:
       order: id
       columns: ["id int","c1 string","w1_c4_sum bigint","w2_c4_sum bigint"]
       rows:
-        - [1,"aa",30,0]
+        - [1,"aa",30,null]
         - [5,"aa",160,93]
   -
     id: 32
     desc: 多个窗口包含不同的单位
-    mode: cluster-unsupport
-    tags: ["cluster-执行失败"]
+    version: 0.6.4
     inputs:
       -
         columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
@@ -1219,3 +1214,664 @@ cases:
          1, 0, NULL, NULL, NULL
          2, 1, 21, 21, 21
          3, 1, 22, 22, 22
+  -
+    id: 38
+    desc: 两个窗口相同的pk,相同的ts,不同的时间窗
+    inputs:
+      -
+        columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",20,30,1.1,2.1,1590738990000,"2020-05-01"]
+          - [2,"aa",21,31,1.2,2.2,1590738990001,"2020-05-02"]
+          - [3,"aa",22,32,1.3,2.3,1590738990002,"2020-05-03"]
+          - [4,"aa",23,33,1.4,2.4,1590738990003,"2020-05-04"]
+          - [5,"aa",24,34,1.5,2.5,1590738990004,"2020-05-05"]
+    dataProvider:
+      - ["ROWS","ROWS_RANGE"]
+    sql: |
+      SELECT id, c1, sum(c4) OVER w1 as w1_c4_sum, sum(c4) OVER w2 as w2_c4_sum FROM {0} WINDOW
+      w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 d[0] BETWEEN 2 PRECEDING AND CURRENT ROW),
+      w2 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 d[0] BETWEEN 1 PRECEDING AND CURRENT ROW);
+    expect:
+      order: id
+      columns: ["id int","c1 string","w1_c4_sum bigint","w2_c4_sum bigint"]
+      rows:
+        - [1,"aa",30,30]
+        - [2,"aa",61,61]
+        - [3,"aa",93,63]
+        - [4,"aa",96,65]
+        - [5,"aa",99,67]
+  -
+    id: 39
+    desc: 两个窗口相同的pk,相同的ts,不同的时间窗-2
+    inputs:
+      -
+        columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",20,30,1.1,2.1,1590738990000,"2020-05-01"]
+          - [2,"aa",21,31,1.2,2.2,1590738990001,"2020-05-02"]
+          - [3,"aa",22,32,1.3,2.3,1590738990002,"2020-05-03"]
+          - [4,"aa",23,33,1.4,2.4,1590738990003,"2020-05-04"]
+          - [5,"aa",24,34,1.5,2.5,1590738990004,"2020-05-05"]
+    dataProvider:
+      - ["ROWS","ROWS_RANGE"]
+    sql: |
+      SELECT id, c1, sum(c4) OVER w1 as w1_c4_sum, sum(c4) OVER w2 as w2_c4_sum FROM {0} WINDOW
+      w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 d[0] BETWEEN 2 PRECEDING AND 0 PRECEDING),
+      w2 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 d[0] BETWEEN 2 PRECEDING AND 1 PRECEDING);
+    expect:
+      order: id
+      columns: ["id int","c1 string","w1_c4_sum bigint","w2_c4_sum bigint"]
+      rows:
+        - [1,"aa",30,null]
+        - [2,"aa",61,30]
+        - [3,"aa",93,61]
+        - [4,"aa",96,63]
+        - [5,"aa",99,65]
+  - id: 40
+    desc: 相同window，不同函数
+    inputs:
+      - columns: [ "c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date" ]
+        indexs: [ "index1:c1:c7" ]
+        rows:
+          - [ "aa",20,30,1.1,2.1,1590738990000,"2020-05-01" ]
+          - [ "aa",21,31,1.2,2.2,1590738991000,"2020-05-02" ]
+          - [ "aa",22,32,1.3,2.3,1590738992000,"2020-05-03" ]
+          - [ "aa",23,33,1.4,2.4,1590738993000,"2020-05-04" ]
+          - [ "bb",24,34,1.5,2.5,1590738994000,"2020-05-05" ]
+    sql: |
+      SELECT c1, 
+      sum(c3) OVER w1 as w1_c3_sum, 
+      sum(c4) OVER w1 as w1_c4_sum, 
+      avg(c4) OVER w1 as w1_c4_avg,
+      count(c4) OVER w1 as w1_c4_count,
+      max(c3) OVER w1 as w1_c3_max, 
+      min(c4) OVER w1 as w1_c4_min, 
+      max(c4) OVER w1 as w1_c4_max
+      FROM {0} 
+      WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS_RANGE BETWEEN 2s PRECEDING AND CURRENT ROW);
+    expect:
+      order: c3
+      columns: [ "c1 string","w1_c3_sum int","w1_c4_sum bigint","w1_c4_avg double","w1_c4_count bigint","w1_c3_max int","w1_c4_min bigint","w1_c4_max bigint" ]
+      rows:
+        - [ "aa",20,30,30,1,20,30,30 ]
+        - [ "aa",41,61,30.5,2,21,30,31 ]
+        - [ "aa",63,93,31,3,22,30,32 ]
+        - [ "aa",66,96,32,3,23,31,33 ]
+        - [ "bb",24,34,34 ,1,24,34,34]
+  -
+    id: 41
+    desc: 3个pk，每个pk中有3条ts=0
+    mode: disk-unsupport
+    inputs:
+      -
+        columns: ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",20,30,1.1,2.1,0,"2020-05-01"]
+          - [2,"aa",21,31,1.2,2.2,0,"2020-05-02"]
+          - [3,"aa",22,32,1.3,2.3,0,"2020-05-03"]
+          - [4,"aa",23,33,1.4,2.4,1000,"2020-05-04"]
+          - [5,"aa",24,34,1.5,2.5,2000,"2020-05-05"]
+          - [6,"bb",20,30,1.1,2.1,0,"2020-05-01"]
+          - [7,"bb",21,31,1.2,2.2,0,"2020-05-02"]
+          - [8,"bb",22,32,1.3,2.3,0,"2020-05-03"]
+          - [9,"bb",23,33,1.4,2.4,1000,"2020-05-04"]
+          - [10,"bb",24,34,1.5,2.5,2000,"2020-05-05"]
+          - [11,"cc",20,30,1.1,2.1,0,"2020-05-01"]
+          - [12,"cc",21,31,1.2,2.2,0,"2020-05-02"]
+          - [13,"cc",22,32,1.3,2.3,0,"2020-05-03"]
+          - [14,"cc",23,33,1.4,2.4,1000,"2020-05-04"]
+          - [15,"cc",24,34,1.5,2.5,2000,"2020-05-05"]
+    sql: |
+      SELECT id, c1, sum(c4) OVER w1 as w1_c4_sum FROM {0} WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 d[0]);
+    dataProvider:
+      - ["ROWS BETWEEN 1 PRECEDING AND CURRENT ROW","ROWS_RANGE BETWEEN 1s PRECEDING AND CURRENT ROW"]
+    expectProvider:
+      0:
+        order: id
+        columns: ["id int","c1 string","w1_c4_sum bigint"]
+        rows:
+          - [1,"aa",30]
+          - [2,"aa",61]
+          - [3,"aa",63]
+          - [4,"aa",65]
+          - [5,"aa",67]
+          - [6,"bb",30]
+          - [7,"bb",61]
+          - [8,"bb",63]
+          - [9,"bb",65]
+          - [10,"bb",67]
+          - [11,"cc",30]
+          - [12,"cc",61]
+          - [13,"cc",63]
+          - [14,"cc",65]
+          - [15,"cc",67]
+      1:
+        order: id
+        columns: ["id int","c1 string","w1_c4_sum bigint"]
+        rows:
+          - [1,"aa",30]
+          - [2,"aa",61]
+          - [3,"aa",93]
+          - [4,"aa",126]
+          - [5,"aa",67]
+          - [6,"bb",30]
+          - [7,"bb",61]
+          - [8,"bb",93]
+          - [9,"bb",126]
+          - [10,"bb",67]
+          - [11,"cc",30]
+          - [12,"cc",61]
+          - [13,"cc",93]
+          - [14,"cc",126]
+          - [15,"cc",67]
+  -
+    id: 42
+    desc: 3个pk，每个pk中有3条ts=0，0s PRECEDING
+    mode: disk-unsupport
+    inputs:
+      -
+        columns: ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",20,30,1.1,2.1,0,"2020-05-01"]
+          - [2,"aa",21,31,1.2,2.2,0,"2020-05-02"]
+          - [3,"aa",22,32,1.3,2.3,0,"2020-05-03"]
+          - [4,"aa",23,33,1.4,2.4,1000,"2020-05-04"]
+          - [5,"aa",24,34,1.5,2.5,2000,"2020-05-05"]
+          - [6,"bb",20,30,1.1,2.1,0,"2020-05-01"]
+          - [7,"bb",21,31,1.2,2.2,0,"2020-05-02"]
+          - [8,"bb",22,32,1.3,2.3,0,"2020-05-03"]
+          - [9,"bb",23,33,1.4,2.4,1000,"2020-05-04"]
+          - [10,"bb",24,34,1.5,2.5,2000,"2020-05-05"]
+          - [11,"cc",20,30,1.1,2.1,0,"2020-05-01"]
+          - [12,"cc",21,31,1.2,2.2,0,"2020-05-02"]
+          - [13,"cc",22,32,1.3,2.3,0,"2020-05-03"]
+          - [14,"cc",23,33,1.4,2.4,1000,"2020-05-04"]
+          - [15,"cc",24,34,1.5,2.5,2000,"2020-05-05"]
+    sql: |
+      SELECT id, c1, sum(c4) OVER w1 as w1_c4_sum FROM {0} WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 d[0]);
+    dataProvider:
+      - ["ROWS BETWEEN 1 PRECEDING AND 0 PRECEDING","ROWS_RANGE BETWEEN 1s PRECEDING AND 0s PRECEDING"]
+    expectProvider:
+      0:
+        order: id
+        columns: ["id int","c1 string","w1_c4_sum bigint"]
+        rows:
+          - [1,"aa",30]
+          - [2,"aa",61]
+          - [3,"aa",63]
+          - [4,"aa",65]
+          - [5,"aa",67]
+          - [6,"bb",30]
+          - [7,"bb",61]
+          - [8,"bb",63]
+          - [9,"bb",65]
+          - [10,"bb",67]
+          - [11,"cc",30]
+          - [12,"cc",61]
+          - [13,"cc",63]
+          - [14,"cc",65]
+          - [15,"cc",67]
+      1:
+        order: id
+        columns: ["id int","c1 string","w1_c4_sum bigint"]
+        rows:
+          - [1,"aa",30]
+          - [2,"aa",61]
+          - [3,"aa",93]
+          - [4,"aa",126]
+          - [5,"aa",67]
+          - [6,"bb",30]
+          - [7,"bb",61]
+          - [8,"bb",93]
+          - [9,"bb",126]
+          - [10,"bb",67]
+          - [11,"cc",30]
+          - [12,"cc",61]
+          - [13,"cc",93]
+          - [14,"cc",126]
+          - [15,"cc",67]
+  -
+    id: 43
+    desc: 3个pk，每个pk中有3条ts重复
+    mode: disk-unsupport
+    inputs:
+      -
+        columns: ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",20,30,1.1,2.1,1000,"2020-05-01"]
+          - [2,"aa",21,31,1.2,2.2,2000,"2020-05-02"]
+          - [3,"aa",22,32,1.3,2.3,2000,"2020-05-03"]
+          - [4,"aa",23,33,1.4,2.4,2000,"2020-05-04"]
+          - [5,"aa",24,34,1.5,2.5,3000,"2020-05-05"]
+          - [6,"bb",20,30,1.1,2.1,1000,"2020-05-01"]
+          - [7,"bb",21,31,1.2,2.2,2000,"2020-05-02"]
+          - [8,"bb",22,32,1.3,2.3,2000,"2020-05-03"]
+          - [9,"bb",23,33,1.4,2.4,2000,"2020-05-04"]
+          - [10,"bb",24,34,1.5,2.5,3000,"2020-05-05"]
+          - [11,"cc",20,30,1.1,2.1,1000,"2020-05-01"]
+          - [12,"cc",21,31,1.2,2.2,2000,"2020-05-02"]
+          - [13,"cc",22,32,1.3,2.3,2000,"2020-05-03"]
+          - [14,"cc",23,33,1.4,2.4,2000,"2020-05-04"]
+          - [15,"cc",24,34,1.5,2.5,3000,"2020-05-05"]
+    sql: |
+      SELECT id, c1, sum(c4) OVER w1 as w1_c4_sum FROM {0} WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 d[0]);
+    dataProvider:
+      - ["ROWS BETWEEN 1 PRECEDING AND CURRENT ROW","ROWS_RANGE BETWEEN 1s PRECEDING AND CURRENT ROW"]
+    expectProvider:
+      0:
+        order: id
+        columns: ["id int","c1 string","w1_c4_sum bigint"]
+        rows:
+          - [1,"aa",30]
+          - [2,"aa",61]
+          - [3,"aa",63]
+          - [4,"aa",65]
+          - [5,"aa",67]
+          - [6,"bb",30]
+          - [7,"bb",61]
+          - [8,"bb",63]
+          - [9,"bb",65]
+          - [10,"bb",67]
+          - [11,"cc",30]
+          - [12,"cc",61]
+          - [13,"cc",63]
+          - [14,"cc",65]
+          - [15,"cc",67]
+      1:
+        order: id
+        columns: ["id int","c1 string","w1_c4_sum bigint"]
+        rows:
+          - [1,"aa",30]
+          - [2,"aa",61]
+          - [3,"aa",93]
+          - [4,"aa",126]
+          - [5,"aa",130]
+          - [6,"bb",30]
+          - [7,"bb",61]
+          - [8,"bb",93]
+          - [9,"bb",126]
+          - [10,"bb",130]
+          - [11,"cc",30]
+          - [12,"cc",61]
+          - [13,"cc",93]
+          - [14,"cc",126]
+          - [15,"cc",130]
+  -
+    id: 44
+    desc: 3个pk,每个pk中有3条ts重复,open
+    mode: disk-unsupport
+    inputs:
+      -
+        columns: ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",20,30,1.1,2.1,1000,"2020-05-01"]
+          - [2,"aa",21,31,1.2,2.2,2000,"2020-05-02"]
+          - [3,"aa",22,32,1.3,2.3,2000,"2020-05-03"]
+          - [4,"aa",23,33,1.4,2.4,2000,"2020-05-04"]
+          - [5,"aa",24,34,1.5,2.5,3000,"2020-05-05"]
+          - [6,"bb",20,30,1.1,2.1,1000,"2020-05-01"]
+          - [7,"bb",21,31,1.2,2.2,2000,"2020-05-02"]
+          - [8,"bb",22,32,1.3,2.3,2000,"2020-05-03"]
+          - [9,"bb",23,33,1.4,2.4,2000,"2020-05-04"]
+          - [10,"bb",24,34,1.5,2.5,3000,"2020-05-05"]
+          - [11,"cc",20,30,1.1,2.1,1000,"2020-05-01"]
+          - [12,"cc",21,31,1.2,2.2,2000,"2020-05-02"]
+          - [13,"cc",22,32,1.3,2.3,2000,"2020-05-03"]
+          - [14,"cc",23,33,1.4,2.4,2000,"2020-05-04"]
+          - [15,"cc",24,34,1.5,2.5,3000,"2020-05-05"]
+    sql: |
+      SELECT id, c1, sum(c4) OVER w1 as w1_c4_sum FROM {0} WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 d[0]);
+    dataProvider:
+      - ["ROWS BETWEEN 1 PRECEDING AND 0 OPEN PRECEDING","ROWS_RANGE BETWEEN 1s PRECEDING AND 0s OPEN PRECEDING"]
+    expectProvider:
+      0:
+        order: id
+        columns: ["id int","c1 string","w1_c4_sum bigint"]
+        rows:
+          - [1,"aa",null]
+          - [2,"aa",30]
+          - [3,"aa",31]
+          - [4,"aa",32]
+          - [5,"aa",33]
+          - [6,"bb",null]
+          - [7,"bb",30]
+          - [8,"bb",31]
+          - [9,"bb",32]
+          - [10,"bb",33]
+          - [11,"cc",null]
+          - [12,"cc",30]
+          - [13,"cc",31]
+          - [14,"cc",32]
+          - [15,"cc",33]
+      1:
+        order: id
+        columns: ["id int","c1 string","w1_c4_sum bigint"]
+        rows:
+          - [1,"aa",null]
+          - [2,"aa",30]
+          - [3,"aa",30]
+          - [4,"aa",30]
+          - [5,"aa",96]
+          - [6,"bb",null]
+          - [7,"bb",30]
+          - [8,"bb",30]
+          - [9,"bb",30]
+          - [10,"bb",96]
+          - [11,"cc",null]
+          - [12,"cc",30]
+          - [13,"cc",30]
+          - [14,"cc",30]
+          - [15,"cc",96]
+  -
+    id: 45
+    desc: 3个pk,每个pk中有3条ts重复,current_row
+    mode: disk-unsupport
+    inputs:
+      -
+        columns: ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",20,30,1.1,2.1,1000,"2020-05-01"]
+          - [2,"aa",21,31,1.2,2.2,2000,"2020-05-02"]
+          - [3,"aa",22,32,1.3,2.3,2000,"2020-05-03"]
+          - [4,"aa",23,33,1.4,2.4,2000,"2020-05-04"]
+          - [5,"aa",24,34,1.5,2.5,3000,"2020-05-05"]
+          - [6,"bb",20,30,1.1,2.1,1000,"2020-05-01"]
+          - [7,"bb",21,31,1.2,2.2,2000,"2020-05-02"]
+          - [8,"bb",22,32,1.3,2.3,2000,"2020-05-03"]
+          - [9,"bb",23,33,1.4,2.4,2000,"2020-05-04"]
+          - [10,"bb",24,34,1.5,2.5,3000,"2020-05-05"]
+          - [11,"cc",20,30,1.1,2.1,1000,"2020-05-01"]
+          - [12,"cc",21,31,1.2,2.2,2000,"2020-05-02"]
+          - [13,"cc",22,32,1.3,2.3,2000,"2020-05-03"]
+          - [14,"cc",23,33,1.4,2.4,2000,"2020-05-04"]
+          - [15,"cc",24,34,1.5,2.5,3000,"2020-05-05"]
+    sql: |
+      SELECT id, c1, sum(c4) OVER w1 as w1_c4_sum FROM {0} WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 d[0] EXCLUDE CURRENT_ROW);
+    dataProvider:
+      - ["ROWS BETWEEN 1 PRECEDING AND 0 PRECEDING","ROWS_RANGE BETWEEN 1s PRECEDING AND 0s PRECEDING"]
+    expectProvider:
+      0:
+        order: id
+        columns: ["id int","c1 string","w1_c4_sum bigint"]
+        rows:
+          - [1,"aa",null]
+          - [2,"aa",30]
+          - [3,"aa",31]
+          - [4,"aa",32]
+          - [5,"aa",33]
+          - [6,"bb",null]
+          - [7,"bb",30]
+          - [8,"bb",31]
+          - [9,"bb",32]
+          - [10,"bb",33]
+          - [11,"cc",null]
+          - [12,"cc",30]
+          - [13,"cc",31]
+          - [14,"cc",32]
+          - [15,"cc",33]
+      1:
+        order: id
+        columns: ["id int","c1 string","w1_c4_sum bigint"]
+        rows:
+          - [1,"aa",null]
+          - [2,"aa",30]
+          - [3,"aa",61]
+          - [4,"aa",93]
+          - [5,"aa",96]
+          - [6,"bb",null]
+          - [7,"bb",30]
+          - [8,"bb",61]
+          - [9,"bb",93]
+          - [10,"bb",96]
+          - [11,"cc",null]
+          - [12,"cc",30]
+          - [13,"cc",61]
+          - [14,"cc",93]
+          - [15,"cc",96]
+  -
+    id: 46
+    desc: 3个pk,每个pk中有3条ts重复,current_time
+    mode: disk-unsupport
+    inputs:
+      -
+        columns: ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",20,30,1.1,2.1,1000,"2020-05-01"]
+          - [2,"aa",21,31,1.2,2.2,2000,"2020-05-02"]
+          - [3,"aa",22,32,1.3,2.3,2000,"2020-05-03"]
+          - [4,"aa",23,33,1.4,2.4,2000,"2020-05-04"]
+          - [5,"aa",24,34,1.5,2.5,3000,"2020-05-05"]
+          - [6,"bb",20,30,1.1,2.1,1000,"2020-05-01"]
+          - [7,"bb",21,31,1.2,2.2,2000,"2020-05-02"]
+          - [8,"bb",22,32,1.3,2.3,2000,"2020-05-03"]
+          - [9,"bb",23,33,1.4,2.4,2000,"2020-05-04"]
+          - [10,"bb",24,34,1.5,2.5,3000,"2020-05-05"]
+          - [11,"cc",20,30,1.1,2.1,1000,"2020-05-01"]
+          - [12,"cc",21,31,1.2,2.2,2000,"2020-05-02"]
+          - [13,"cc",22,32,1.3,2.3,2000,"2020-05-03"]
+          - [14,"cc",23,33,1.4,2.4,2000,"2020-05-04"]
+          - [15,"cc",24,34,1.5,2.5,3000,"2020-05-05"]
+    sql: |
+      SELECT id, c1, sum(c4) OVER w1 as w1_c4_sum FROM {0} WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 d[0] EXCLUDE CURRENT_TIME);
+    dataProvider:
+      - ["ROWS BETWEEN 1 PRECEDING AND 0 PRECEDING","ROWS_RANGE BETWEEN 1s PRECEDING AND 0s PRECEDING"]
+    expectProvider:
+      0:
+        order: id
+        columns: ["id int","c1 string","w1_c4_sum bigint"]
+        rows:
+          - [1,"aa",30]
+          - [2,"aa",61]
+          - [3,"aa",62]
+          - [4,"aa",63]
+          - [5,"aa",67]
+          - [6,"bb",30]
+          - [7,"bb",61]
+          - [8,"bb",62]
+          - [9,"bb",63]
+          - [10,"bb",67]
+          - [11,"cc",30]
+          - [12,"cc",61]
+          - [13,"cc",62]
+          - [14,"cc",63]
+          - [15,"cc",67]
+      1:
+        order: id
+        columns: ["id int","c1 string","w1_c4_sum bigint"]
+        rows:
+          - [1,"aa",30]
+          - [2,"aa",61]
+          - [3,"aa",62]
+          - [4,"aa",63]
+          - [5,"aa",130]
+          - [6,"bb",30]
+          - [7,"bb",61]
+          - [8,"bb",62]
+          - [9,"bb",63]
+          - [10,"bb",130]
+          - [11,"cc",30]
+          - [12,"cc",61]
+          - [13,"cc",62]
+          - [14,"cc",63]
+          - [15,"cc",130]
+  -
+    id: 47
+    desc: 3个pk,每个pk中有3条ts重复,纯历史
+    mode: disk-unsupport
+    inputs:
+      -
+        columns: ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",20,30,1.1,2.1,1000,"2020-05-01"]
+          - [2,"aa",21,31,1.2,2.2,2000,"2020-05-02"]
+          - [3,"aa",22,32,1.3,2.3,2000,"2020-05-03"]
+          - [4,"aa",23,33,1.4,2.4,2000,"2020-05-04"]
+          - [5,"aa",24,34,1.5,2.5,3000,"2020-05-05"]
+          - [6,"bb",20,30,1.1,2.1,1000,"2020-05-01"]
+          - [7,"bb",21,31,1.2,2.2,2000,"2020-05-02"]
+          - [8,"bb",22,32,1.3,2.3,2000,"2020-05-03"]
+          - [9,"bb",23,33,1.4,2.4,2000,"2020-05-04"]
+          - [10,"bb",24,34,1.5,2.5,3000,"2020-05-05"]
+          - [11,"cc",20,30,1.1,2.1,1000,"2020-05-01"]
+          - [12,"cc",21,31,1.2,2.2,2000,"2020-05-02"]
+          - [13,"cc",22,32,1.3,2.3,2000,"2020-05-03"]
+          - [14,"cc",23,33,1.4,2.4,2000,"2020-05-04"]
+          - [15,"cc",24,34,1.5,2.5,3000,"2020-05-05"]
+    sql: |
+      SELECT id, c1, sum(c4) OVER w1 as w1_c4_sum FROM {0} WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 d[0]);
+    dataProvider:
+      - ["ROWS BETWEEN 1 PRECEDING AND 1 PRECEDING","ROWS_RANGE BETWEEN 1s PRECEDING AND 1s PRECEDING"]
+    expectProvider:
+      0:
+        order: id
+        columns: ["id int","c1 string","w1_c4_sum bigint"]
+        rows:
+          - [1,"aa",null]
+          - [2,"aa",30]
+          - [3,"aa",31]
+          - [4,"aa",32]
+          - [5,"aa",33]
+          - [6,"bb",null]
+          - [7,"bb",30]
+          - [8,"bb",31]
+          - [9,"bb",32]
+          - [10,"bb",33]
+          - [11,"cc",null]
+          - [12,"cc",30]
+          - [13,"cc",31]
+          - [14,"cc",32]
+          - [15,"cc",33]
+      1:
+        order: id
+        columns: ["id int","c1 string","w1_c4_sum bigint"]
+        rows:
+          - [1,"aa",null]
+          - [2,"aa",30]
+          - [3,"aa",30]
+          - [4,"aa",30]
+          - [5,"aa",96]
+          - [6,"bb",null]
+          - [7,"bb",30]
+          - [8,"bb",30]
+          - [9,"bb",30]
+          - [10,"bb",96]
+          - [11,"cc",null]
+          - [12,"cc",30]
+          - [13,"cc",30]
+          - [14,"cc",30]
+          - [15,"cc",96]
+#  -
+#    id: 48
+#    desc: 3个pk,每个pk中有3条ts重复,UNBOUNDED
+#    inputs:
+#      -
+#        columns: ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
+#        indexs: ["index1:c1:c7"]
+#        rows:
+#          - [1,"aa",20,30,1.1,2.1,1000,"2020-05-01"]
+#          - [2,"aa",21,31,1.2,2.2,2000,"2020-05-02"]
+#          - [3,"aa",22,32,1.3,2.3,2000,"2020-05-03"]
+#          - [4,"aa",23,33,1.4,2.4,2000,"2020-05-04"]
+#          - [5,"aa",24,34,1.5,2.5,3000,"2020-05-05"]
+#          - [6,"bb",20,30,1.1,2.1,1000,"2020-05-01"]
+#          - [7,"bb",21,31,1.2,2.2,2000,"2020-05-02"]
+#          - [8,"bb",22,32,1.3,2.3,2000,"2020-05-03"]
+#          - [9,"bb",23,33,1.4,2.4,2000,"2020-05-04"]
+#          - [10,"bb",24,34,1.5,2.5,3000,"2020-05-05"]
+#          - [11,"cc",20,30,1.1,2.1,1000,"2020-05-01"]
+#          - [12,"cc",21,31,1.2,2.2,2000,"2020-05-02"]
+#          - [13,"cc",22,32,1.3,2.3,2000,"2020-05-03"]
+#          - [14,"cc",23,33,1.4,2.4,2000,"2020-05-04"]
+#          - [15,"cc",24,34,1.5,2.5,3000,"2020-05-05"]
+#    sql: |
+#      SELECT id, c1, sum(c4) OVER w1 as w1_c4_sum FROM {0} WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 d[0]);
+#    dataProvider:
+#      - ["ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED PRECEDING","ROWS_RANGE BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED PRECEDING"]
+#    expect:
+#      success: false
+  -
+    id: 49
+    desc: 3个pk,每个pk中有3条ts重复,UNBOUNDED
+    mode: disk-unsupport
+    inputs:
+      -
+        columns: ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",20,30,1.1,2.1,1000,"2020-05-01"]
+          - [2,"aa",21,31,1.2,2.2,2000,"2020-05-02"]
+          - [3,"aa",22,32,1.3,2.3,2000,"2020-05-03"]
+          - [4,"aa",23,33,1.4,2.4,2000,"2020-05-04"]
+          - [5,"aa",24,34,1.5,2.5,3000,"2020-05-05"]
+          - [6,"bb",20,30,1.1,2.1,1000,"2020-05-01"]
+          - [7,"bb",21,31,1.2,2.2,2000,"2020-05-02"]
+          - [8,"bb",22,32,1.3,2.3,2000,"2020-05-03"]
+          - [9,"bb",23,33,1.4,2.4,2000,"2020-05-04"]
+          - [10,"bb",24,34,1.5,2.5,3000,"2020-05-05"]
+          - [11,"cc",20,30,1.1,2.1,1000,"2020-05-01"]
+          - [12,"cc",21,31,1.2,2.2,2000,"2020-05-02"]
+          - [13,"cc",22,32,1.3,2.3,2000,"2020-05-03"]
+          - [14,"cc",23,33,1.4,2.4,2000,"2020-05-04"]
+          - [15,"cc",24,34,1.5,2.5,3000,"2020-05-05"]
+    sql: |
+      SELECT id, c1, sum(c4) OVER w1 as w1_c4_sum FROM {0} WINDOW w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 d[0]);
+    dataProvider:
+      - ["ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW","ROWS_RANGE BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW"]
+    expectProvider:
+      0:
+        order: id
+        columns: ["id int","c1 string","w1_c4_sum bigint"]
+        rows:
+          - [1,"aa",30]
+          - [2,"aa",61]
+          - [3,"aa",93]
+          - [4,"aa",126]
+          - [5,"aa",160]
+          - [6,"bb",30]
+          - [7,"bb",61]
+          - [8,"bb",93]
+          - [9,"bb",126]
+          - [10,"bb",160]
+          - [11,"cc",30]
+          - [12,"cc",61]
+          - [13,"cc",93]
+          - [14,"cc",126]
+          - [15,"cc",160]
+      1:
+        order: id
+        columns: ["id int","c1 string","w1_c4_sum bigint"]
+        rows:
+          - [1,"aa",30]
+          - [2,"aa",61]
+          - [3,"aa",93]
+          - [4,"aa",126]
+          - [5,"aa",160]
+          - [6,"bb",30]
+          - [7,"bb",61]
+          - [8,"bb",93]
+          - [9,"bb",126]
+          - [10,"bb",160]
+          - [11,"cc",30]
+          - [12,"cc",61]
+          - [13,"cc",93]
+          - [14,"cc",126]
+          - [15,"cc",160]
+
+
+
+
+
+
+
+
+

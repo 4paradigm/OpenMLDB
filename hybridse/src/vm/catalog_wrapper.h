@@ -71,7 +71,10 @@ class IteratorFilterWrapper : public RowIterator {
         }
     }
     const uint64_t& GetKey() const override { return iter_->GetKey(); }
-    const Row& GetValue() override { return iter_->GetValue(); }
+    const Row& GetValue() override {
+        value_ = iter_->GetValue();
+        return value_;
+    }
     void Seek(const uint64_t& k) override {
         iter_->Seek(k);
         while (iter_->Valid() && !predicate_->operator()(iter_->GetValue(), parameter_)) {
@@ -88,6 +91,7 @@ class IteratorFilterWrapper : public RowIterator {
     std::unique_ptr<RowIterator> iter_;
     const Row& parameter_;
     const PredicateFun* predicate_;
+    Row value_;
 };
 
 // iterator start from `iter` but limit rows count

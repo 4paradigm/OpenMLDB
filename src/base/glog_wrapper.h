@@ -77,16 +77,17 @@ inline void UnprotectedSetupGlog(bool origin_flags = false) {
     if (log_dir.empty()) {
         // If we don't set glog dir, it'll write to /tmp. So we'd set to stderr
         FLAGS_logtostderr = true;
+        ::google::InitGoogleLogging(role.c_str());
     } else {
         boost::filesystem::create_directories(log_dir);
         std::string path = log_dir + "/" + role;
+        ::google::InitGoogleLogging(path.c_str());
         std::string info_log_path = path + ".info.log.";
         std::string warning_log_path = path + ".warning.log.";
         FLAGS_logbufsecs = 0;
         ::google::SetLogDestination(::google::INFO, info_log_path.c_str());
         ::google::SetLogDestination(::google::WARNING, warning_log_path.c_str());
     }
-    ::google::InitGoogleLogging(role.c_str());
 }
 
 // This func will init glog, use once_flag to avoid init glog twice

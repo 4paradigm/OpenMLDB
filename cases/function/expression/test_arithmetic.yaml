@@ -32,16 +32,24 @@ cases:
           - [1,"bb",0,20,30,11.1,12.1,1590738989001,"2020-05-02",true]
     dataProvider:
       - ["%","MOD","*","-","/"]
-    sql: select {0}.c2 d[0] {1}.c2 as b2,{0}.c2 d[0] {1}.c3 as b3,{0}.c2 d[0] {1}.c4 as b4,{0}.c2 d[0] {1}.c5 as b5,{0}.c2 d[0] {1}.c6 as b6,{0}.c2 d[0] {1}.c9 as b9 from {0} last join {1} ORDER BY {1}.c7 on {0}.id={1}.id;
+    sql: |
+      select
+        {0}.c2 d[0] {1}.c2 as b2,
+        {0}.c2 d[0] {1}.c3 as b3,
+        {0}.c2 d[0] {1}.c4 as b4,
+        {0}.c2 d[0] {1}.c5 as b5,
+        {0}.c2 d[0] {1}.c6 as b6,
+        {0}.c2 d[0] {1}.c9 as b9
+      FROM {0} last join {1} ORDER BY {1}.c7 on {0}.id={1}.id;
     expect:
       columns: ["b2 smallint","b3 int","b4 bigint","b5 float","b6 double","b9 smallint"]
     expectProvider:
       0:
         rows:
-          - [0,10,0,7.8,5.8,0]
+          - [NULL,10,0,7.8,5.8,0]
       1:
         rows:
-          - [0,10,0,7.8,5.8,0]
+          - [NULL,10,0,7.8,5.8,0]
       2:
         rows:
           - [0,600,900,333,363,30]
@@ -51,7 +59,7 @@ cases:
       4:
         columns: ["b2 double","b3 double","b4 double","b5 double","b6 double","b9 double"]
         rows:
-          - [Infinity,1.5,1.0,2.7027026098198896,2.479338842975207,30.0]
+          - [NULL,1.5,1.0,2.7027026098198896,2.479338842975207,30.0]
   - id: 1
     desc: "int_算术运算_整型_正确"
     inputs:
@@ -73,10 +81,10 @@ cases:
     expectProvider:
       0:
         rows:
-          - [0,10,0,7.8,5.8,0]
+          - [NULL,10,0,7.8,5.8,0]
       1:
         rows:
-          - [0,10,0,7.8,5.8,0]
+          - [NULL,10,0,7.8,5.8,0]
       2:
         rows:
           - [0,600,900,333,363,30]
@@ -86,7 +94,7 @@ cases:
       4:
         columns: ["b2 double","b3 double","b4 double","b5 double","b6 double","b9 double"]
         rows:
-          - [Infinity,1.5,1.0,2.7027026098198896,2.479338842975207,30.0]
+          - [NULL,1.5,1.0,2.7027026098198896,2.479338842975207,30.0]
   - id: 2
     desc: "bigint_算术运算_整型_正确"
     inputs:
@@ -108,10 +116,10 @@ cases:
     expectProvider:
       0:
         rows:
-          - [0,10,0,7.8,5.8,0]
+          - [NULL,10,0,7.8,5.8,0]
       1:
         rows:
-          - [0,10,0,7.8,5.8,0]
+          - [NULL,10,0,7.8,5.8,0]
       2:
         rows:
           - [0,600,900,333,363,30]
@@ -121,7 +129,7 @@ cases:
       4:
         columns: ["b2 double","b3 double","b4 double","b5 double","b6 double","b9 double"]
         rows:
-          - [Infinity,1.5,1.0,2.7027026098198896,2.479338842975207,30.0]
+          - [NULL,1.5,1.0,2.7027026098198896,2.479338842975207,30.0]
   - id: 3
     desc: "float_算术运算_整型_正确"
     inputs:
@@ -143,10 +151,10 @@ cases:
     expectProvider:
       0:
         rows:
-          - [NAN,10,0,7.8,5.8,0]
+          - [NULL,10,0,7.8,5.8,0]
       1:
         rows:
-          - [NAN,10,0,7.8,5.8,0]
+          - [NULL,10,0,7.8,5.8,0]
       2:
         rows:
           - [0,600,900,333,363,30]
@@ -156,7 +164,7 @@ cases:
       4:
         columns: ["b2 double","b3 double","b4 double","b5 double","b6 double","b9 double"]
         rows:
-          - [Infinity,1.5,1.0,2.7027026098198896,2.479338842975207,30.0]
+          - [NULL,1.5,1.0,2.7027026098198896,2.479338842975207,30.0]
   - id: 4
     desc: "double_算术运算_整型_正确"
     inputs:
@@ -178,10 +186,10 @@ cases:
     expectProvider:
       0:
         rows:
-          - [NAN,10,0,7.7999992370605469,5.8,0]
+          - [NULL,10,0,7.7999992370605469,5.8,0]
       1:
         rows:
-          - [NAN,10,0,7.7999992370605469,5.8,0]
+          - [NULL,10,0,7.7999992370605469,5.8,0]
       2:
         rows:
           - [0,600,900,333.0000114440918,363,30]
@@ -191,7 +199,7 @@ cases:
       4:
         columns: ["b2 double","b3 double","b4 double","b5 double","b6 double","b9 double"]
         rows:
-          - [Infinity,1.5,1.0,2.7027026098198896,2.479338842975207,30.0]
+          - [NULL,1.5,1.0,2.7027026098198896,2.479338842975207,30.0]
   - id: 5
     desc: "+_正确"
     inputs:
@@ -451,7 +459,6 @@ cases:
       success: false
   - id: 17
     desc: "int_DIV_int_正确"
-    tags: ["TODO","bug,@baoxinqi,DIV 0有问题"]
     inputs:
       -
         columns : ["id bigint","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
@@ -465,24 +472,31 @@ cases:
           - [1,"bb",0,20,30,11.1,12.1,1590738989001,"2020-05-02",false]
     dataProvider:
       - ["{0}.c2","{0}.c3","{0}.c4","{0}.c9"]
-    sql: select d[0] DIV {1}.c2 as b2,d[0] DIV {1}.c3 as b3,d[0] DIV {1}.c4 as b4,d[0] DIV {1}.c9 as b9 from {0} last join {1} ORDER BY {1}.c7 on {0}.id={1}.id;
+    sql: |
+      select
+        d[0] DIV {1}.c2 as b2,
+        d[0] DIV {1}.c3 as b3,
+        d[0] DIV {1}.c4 as b4,
+        d[0] DIV {1}.c9 as b9
+      FROM {0} last join {1} ORDER BY {1}.c7 on {0}.id={1}.id;
     expectProvider:
       0:
         columns: ["b2 smallint","b3 int","b4 bigint","b9 smallint"]
         rows:
-          - [Infinity,1,1,Infinity]
+          - [NULL,1,1,NULL]
       1:
         columns: ["b2 int","b3 int","b4 bigint","b9 int"]
         rows:
-          - [Infinity,1,1,Infinity]
+          - [NULL,1,1,NULL]
       2:
         columns: ["b2 bigint","b3 bigint","b4 bigint","b9 bigint"]
         rows:
-          - [Infinity,0,0,Infinity]
+          - [NULL,1,1,NULL]
       3:
-        columns: ["b2 smallint","b3 int","b4 bigint","b9 smallint"]
+        # bool: false -> 0, true -> 1
+        columns: ["b2 smallint","b3 int","b4 bigint","b9 bool"]
         rows:
-          - [Infinity,1,1,Infinity]
+          - [NULL,0,0,NULL]
   - id: 18
     desc: "int_DIV_各种类型_错误"
     level: 5

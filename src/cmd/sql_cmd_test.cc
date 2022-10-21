@@ -23,6 +23,8 @@
 #include <limits>
 #include <memory>
 #include <string>
+#include <unordered_map>
+#include <unordered_set>
 
 #include "absl/algorithm/container.h"
 #include "absl/cleanup/cleanup.h"
@@ -406,9 +408,57 @@ TEST_F(SqlCmdTest, InsertWithDB) {
             "drop database test2;"});
 }
 
-TEST_F(SqlCmdTest, LoadData) {
-    sr = standalone_cli.sr;
-    cs = standalone_cli.cs;
+TEST_P(DBSDKTest, LoadDataMultipleFiles) {
+    auto cli = GetParam();
+    cs = cli->cs;
+    sr = cli->sr;
+    HandleSQL("SET @@execute_mode='online';");
+    HandleSQL("create database test1;");
+    HandleSQL("use test1;");
+    std::string create_sql = "create table trans (c1 string, c2 int);";
+    HandleSQL(create_sql);
+    int file_num = 2;
+    std::filesystem::path tmp_path = std::filesystem::temp_directory_path() / "load_test";
+    ASSERT_TRUE(base::MkdirRecur(tmp_path.string()));
+    absl::Cleanup clean = [&tmp_path]() { std::filesystem::remove_all(tmp_path); };
+    std::vector<std::string> data;
+
+    for (int j = 0; j < file_num; j++) {
+        std::string file_name = tmp_path / absl::StrCat("myfile-", j, ".csv");
+        std::ofstream ofile;
+        ofile.open(file_name);
+        ofile << "c1,c2" << std::endl;
+        for (int i = 0; i < 10; i++) {
+            std::string row = absl::StrCat("aa-", j, ",", i);
+            data.push_back(row);
+            ofile << row << std::endl;
+        }
+        ofile.close();
+    }
+    std::string load_sql = "LOAD DATA INFILE 'file://" + (tmp_path / "myfile*").string() +
+                           "' INTO TABLE trans options(load_mode='local', thread=10);";
+    hybridse::sdk::Status status;
+    sr->ExecuteSQL(load_sql, &status);
+    ASSERT_TRUE(status.IsOK()) << status.msg;
+    ASSERT_EQ(status.msg, "Load 20 rows");
+    auto result = sr->ExecuteSQL("select * from trans;", &status);
+    ASSERT_TRUE(status.IsOK()) << status.msg;
+    ASSERT_EQ(20, result->Size());
+    while (result->Next()) {
+        std::string col1 = result->GetStringUnsafe(0);
+        int col2 = result->GetInt32Unsafe(1);
+        ASSERT_EQ(col1.substr(0, 3), "aa-");
+        ASSERT_TRUE(col2 >= 0 && col2 < 10);
+    }
+    HandleSQL("drop table trans;");
+    HandleSQL("drop database test1;");
+}
+
+TEST_P(DBSDKTest, LoadData) {
+    auto cli = GetParam();
+    cs = cli->cs;
+    sr = cli->sr;
+    HandleSQL("SET @@execute_mode='online';");
     HandleSQL("create database test1;");
     HandleSQL("use test1;");
     std::string create_sql = "create table trans (c1 string, c2 int);";
@@ -421,16 +471,117 @@ TEST_F(SqlCmdTest, LoadData) {
         ofile << "aa" << i << "," << i << std::endl;
     }
     ofile.close();
-    std::string load_sql = "LOAD DATA INFILE '" + file_name + "' INTO TABLE trans;";
+    std::string load_sql =
+        "LOAD DATA INFILE '" + file_name + "' INTO TABLE trans options(mode='append', load_mode='local', thread=60);";
     hybridse::sdk::Status status;
     sr->ExecuteSQL(load_sql, &status);
     ASSERT_TRUE(status.IsOK()) << status.msg;
+    ASSERT_EQ(status.msg, "Load 10 rows");
     auto result = sr->ExecuteSQL("select * from trans;", &status);
-    ASSERT_TRUE(status.IsOK());
+    ASSERT_TRUE(status.IsOK()) << status.msg;
     ASSERT_EQ(10, result->Size());
     HandleSQL("drop table trans;");
     HandleSQL("drop database test1;");
     unlink(file_name.c_str());
+}
+
+TEST_P(DBSDKTest, LoadDataError) {
+    auto cli = GetParam();
+    cs = cli->cs;
+    sr = cli->sr;
+    HandleSQL("SET @@execute_mode='online';");
+    HandleSQL("create database test1;");
+    HandleSQL("use test1;");
+    std::string create_sql = "create table trans (c1 string, c2 int);";
+    HandleSQL(create_sql);
+    hybridse::sdk::Status status;
+    std::string load_sql =
+        "LOAD DATA INFILE 'not_exist.csv' INTO TABLE trans options(mode='append', load_mode='local', thread=60);";
+    sr->ExecuteSQL(load_sql, &status);
+    ASSERT_FALSE(status.IsOK()) << status.msg;
+    ASSERT_EQ(status.msg, "file not exist");
+
+    load_sql =
+        "LOAD DATA INFILE 'not_exist.csv' INTO TABLE trans options(mode='overwrite', load_mode='local', thread=60);";
+    sr->ExecuteSQL(load_sql, &status);
+    ASSERT_FALSE(status.IsOK()) << status.msg;
+    ASSERT_EQ(status.msg, "online data load only supports 'append' mode");
+
+    load_sql =
+        "LOAD DATA INFILE 'not_exist.csv' INTO TABLE trans options(format='parquet', load_mode='local', thread=60);";
+    sr->ExecuteSQL(load_sql, &status);
+    ASSERT_FALSE(status.IsOK()) << status.msg;
+    ASSERT_EQ(status.msg, "ERROR: parse option format failed");
+
+    load_sql =
+        "LOAD DATA INFILE 'not_exist.csv' INTO TABLE trans options(load_mode='local', thread=0);";
+    sr->ExecuteSQL(load_sql, &status);
+    ASSERT_FALSE(status.IsOK()) << status.msg;
+    ASSERT_EQ(status.msg, "ERROR: parse option thread failed");
+
+    auto result = sr->ExecuteSQL("select * from trans;", &status);
+    ASSERT_TRUE(status.IsOK()) << status.msg;
+    ASSERT_EQ(0, result->Size());
+    HandleSQL("drop table trans;");
+    HandleSQL("drop database test1;");
+}
+
+TEST_P(DBSDKTest, LoadDataMultipleThread) {
+    auto cli = GetParam();
+    cs = cli->cs;
+    sr = cli->sr;
+    HandleSQL("SET @@execute_mode='online';");
+    HandleSQL("create database test1;");
+    HandleSQL("use test1;");
+    std::string create_sql = "create table trans (c1 string, c2 int);";
+    HandleSQL(create_sql);
+    int file_num = 10;
+    int rows_per_file = 100;
+    std::filesystem::path tmp_path = std::filesystem::temp_directory_path() / "load_test_thread";
+    ASSERT_TRUE(base::MkdirRecur(tmp_path.string()));
+    absl::Cleanup clean = [&tmp_path]() { std::filesystem::remove_all(tmp_path); };
+    std::vector<std::string> data;
+
+    for (int j = 0; j < file_num; j++) {
+        std::string file_name = tmp_path / absl::StrCat("myfile-", j, ".csv");
+        std::ofstream ofile;
+        ofile.open(file_name);
+        ofile << "c1,c2" << std::endl;
+        for (int i = 0; i < rows_per_file; i++) {
+            std::string row = absl::StrCat("aa-", j, ",", i);
+            data.push_back(row);
+            ofile << row << std::endl;
+        }
+        ofile.close();
+    }
+
+    int num_thread = 20;
+    hybridse::sdk::Status status;
+    for (int i = 0; i < num_thread; i++) {
+        std::string load_sql = absl::StrCat("LOAD DATA INFILE '", (tmp_path / "myfile*").string(),
+                               "' INTO TABLE trans options(load_mode='local', thread=", num_thread, ");");
+        sr->ExecuteSQL(load_sql, &status);
+        ASSERT_TRUE(status.IsOK()) << status.msg;
+        ASSERT_EQ(status.msg, absl::StrCat("Load ", file_num * rows_per_file, " rows"));
+    }
+    auto result = sr->ExecuteSQL("select * from trans;", &status);
+    ASSERT_TRUE(status.IsOK()) << status.msg;
+    ASSERT_EQ(rows_per_file * file_num * num_thread, result->Size());
+    std::unordered_map<std::string, std::unordered_set<int>> stats;
+    while (result->Next()) {
+        std::string col1 = result->GetStringUnsafe(0);
+        int col2 = result->GetInt32Unsafe(1);
+        stats[col1].insert(col2);
+        ASSERT_EQ(col1.substr(0, 3), "aa-");
+        ASSERT_TRUE(col2 >= 0 && col2 < rows_per_file);
+    }
+    ASSERT_EQ(stats.size(), file_num);
+    for (int j = 0; j < file_num; j++) {
+        const auto& stat = stats[absl::StrCat("aa-", j)];
+        ASSERT_EQ(stat.size(), rows_per_file);
+    }
+    HandleSQL("drop table trans;");
+    HandleSQL("drop database test1;");
 }
 
 TEST_P(DBSDKTest, Deploy) {
@@ -3304,7 +3455,7 @@ int main(int argc, char** argv) {
     ::openmldb::cmd::standalone_cli.cs->Init();
     ::openmldb::cmd::standalone_cli.sr = new ::openmldb::sdk::SQLClusterRouter(::openmldb::cmd::standalone_cli.cs);
     ::openmldb::cmd::standalone_cli.sr->Init();
-    sleep(3);
+    sleep(5);
 
     ok = RUN_ALL_TESTS();
 

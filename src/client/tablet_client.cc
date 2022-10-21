@@ -882,7 +882,7 @@ bool TabletClient::DeleteBinlog(uint32_t tid, uint32_t pid, openmldb::common::St
 
 std::shared_ptr<openmldb::base::TraverseKvIterator> TabletClient::Traverse(uint32_t tid, uint32_t pid,
         const std::string& idx_name, const std::string& pk, uint64_t ts, uint32_t limit, bool skip_current_pk,
-        uint32_t& count) {
+        uint32_t ts_pos, uint32_t& count) {
     ::openmldb::api::TraverseRequest request;
     auto response = std::make_shared<openmldb::api::TraverseResponse>();
     request.set_tid(tid);
@@ -894,6 +894,7 @@ std::shared_ptr<openmldb::base::TraverseKvIterator> TabletClient::Traverse(uint3
     if (!pk.empty()) {
         request.set_pk(pk);
         request.set_ts(ts);
+        request.set_ts_pos(ts_pos);
     }
     request.set_skip_current_pk(skip_current_pk);
     bool ok = client_.SendRequest(&::openmldb::api::TabletServer_Stub::Traverse, &request, response.get(),
