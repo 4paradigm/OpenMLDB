@@ -21,7 +21,7 @@ public class TestOnlineBatch extends OpenMLDBTest {
                 "c7 timestamp,\n" +
                 "c8 date,\n" +
                 "index(key=(c1),ts=c7))options(partitionnum=2,replicanum=1);");
-        for (int i=1;i<=100000;i++){
+        for (int i=1;i<=1000000;i++){
             int tmp = i%10;
             sdkClient.execute(String.format("insert into %s values(1,'aa%d',%d,30,1.1,2.1,%d,'2020-05-01');","t1",tmp,i,i));
         }
