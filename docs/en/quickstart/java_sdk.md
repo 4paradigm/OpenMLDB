@@ -583,3 +583,62 @@ public class Demo {
     }
 }
 ```
+
+## 4. JDBC Connect
+We can use the JDBC way to connect OpenMLDB(only support OpenMLDB cluster now):
+```
+Class.forName("com._4paradigm.openmldb.jdbc.SQLDriver");
+// No database in jdbcUrl
+Connection connection = DriverManager.getConnection("jdbc:openmldb:///?zk=localhost:6181&zkPath=/openmldb");
+
+// Set database in jdbcUrl
+Connection connection1 = DriverManager.getConnection("jdbc:openmldb:///test_db?zk=localhost:6181&zkPath=/openmldb");
+```
+
+No database in jdbc url is fine, but set the database in jdbc url is recommended. After connected, the default execute mode is online.
+
+You can create `Statement` by connection, to execute all sql, and set the execute mode. For example:
+```
+Statement stmt = connection.createStatement();
+stmt.execute("SELECT * from t1");
+```
+
+`PreparedStatement` supports `SELECT`, `INSERT` and `DELETE`. And only supports insert into online.
+```
+PreparedStatement selectStatement = connection.prepareStatement("SELECT * FROM t1 WHERE id=?");
+PreparedStatement insertStatement = connection.prepareStatement("INSERT INTO t1 VALUES (?,?)");
+PreparedStatement insertStatement = connection.prepareStatement("DELETE FROM t1 WHERE id=?");
+```
+
+## 5. SDK Option
+
+Connect to cluster must set `zkCluster` and `zkPath`(set methods or add `foo=bar` after `?` in jdbc url). Other options are optional.
+
+Connect to standalone must set `host`, `port` and `isClusterMode`(`SDKOption.setClusterMode`). No jdbc supports. Notice that, `isClusterMode` is the required option, we can't detect it automatically now. Other options are optional.
+
+### General Optional Options
+
+We can set the options in cluster and standalone:
+- enableDebug: default false. To enable the hybridse debug log(not the all log), you can see more log about sql compile and running. But the hybridse debug log may in tablet server log, the client won't collect all.
+- requestTimeout: default 60000ms. To set the rpc timeout sent by client, exclude the rpc sent to taskmanager(job rpc timeout option is the variable `job_timeout`).
+- glogLevel: default 0, the same to glog minloglevel. INFO, WARNING, ERROR, and FATAL are 0, 1, 2, and 3, respectively. so 0 will print INFO and higher levels。
+- glogDir: default empty. When it's empty, it'll print to stderr.
+- maxSqlCacheSize: default 50. The max cache num of one db in one sql mode(client side). If client met no cache error(e.g. get error `please use getInsertRow with ... first` but we did `getInsertRow` before), you can set it bigger.
+
+### Optional Options for cluster
+
+The OpenMLDB cluster has zk and taskmanager, so there're options about them：
+- sessionTimeout: default 10000ms. the session timeout connect to zookeeper.
+- zkLogLevel: default 3. 0-disable all zk log, 1-error, 2-warn, 3-info, 4-debug.
+- zkLogFile: default empty. If empty, print log to stdout.
+- sparkConfPath: default empty. set the spark conf file used by job in the client side, no need to set conf in taskmanager and restart it.
+
+##  6. SQL Validation
+
+JAVA client supports validate if the sql can be executed or deployed, there're two modes: batch and request.
+
+- `validateSQLInBatch` can validate if the sql can be executed on offline.
+
+- `validateSQLInRequest` can validate if the sql can be deployed.
+
+The two methods need all tables schema which need by sql, only support all tables in a single db, please **DO NOT** use `db.table` style in sql.
