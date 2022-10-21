@@ -11,11 +11,7 @@
 - Upgrade the Spark version to 3.2.1 (#2566 @tobegit3hub, #2635 @dl239)
 - Support setting the SQL cache size in SDKs (#2605 @vagetablechicken)
 - Add a new interface of `ValidateSQL` to validate the syntax of SQL (#2626 @vagetablechicken)
-<<<<<<< HEAD
-- Improve the documents (#2405 #2492 $2562 #2496 #2495 #2436 #2487 #2623 @michelle-qinqin, #2543 @linjing-lab, #2584 @JourneyGo, #2567 #2583 @vagetablechicken, #2643 @dl239)
-=======
 - Improve the documents (#2405 #2492 #2562 #2496 #2495 #2436 #2487 #2623 @michelle-qinqin, #2543 @linjing-lab, #2584 @JourneyGo, #2567 #2583 @vagetablechicken, #2643 @dl239)
->>>>>>> 907413f504bce77133e8a91f11e86b63f5cf5f7a
 - Other minor features (#2504 #2572 #2498 #2598 @aceforeverd, #2555 #2641 @tobegit3hub, #2550 @zhanghaohit, #2595 @Elliezza, #2592 @vagetablechicken)
 
 ### Bug Fixes
