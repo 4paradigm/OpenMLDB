@@ -299,7 +299,7 @@ object HybridseUtil {
       // ref https://spark.apache.org/docs/3.2.1/sql-data-sources-parquet.html
       df = reader.format(format).load(file)
       require(checkSchemaIgnoreNullable(df.schema, oriSchema),
-        s"(ignore nullable) loaded ${df.schema}!= table $oriSchema, check $file")
+        s"schema mismatch(ignore nullable), loaded ${df.schema}!= table $oriSchema, check $file")
       // reset nullable
       df = df.sqlContext.createDataFrame(df.rdd, oriSchema)
     } else{
@@ -325,7 +325,7 @@ object HybridseUtil {
       }
     }
 
-    require(df.schema == oriSchema, s"source loaded schema ${df.schema} != table schema $oriSchema, check $file")
+    require(df.schema == oriSchema, s"schema mismatch, loaded ${df.schema} != table $oriSchema, check $file")
     if (logger.isDebugEnabled()) {
       logger.debug("read dataframe count: {}", df.count())
       df.show(10)

@@ -52,7 +52,7 @@ class HybridseUtilTest extends SparkTestSuite with Matchers {
       val df = autoLoad(getSparkSession, testFile, "parquet", Map(("header", "true"), ("nullValue", "null")), cols)
       fail("unreachable")
     }
-    thrown.getMessage should startWith ("requirement failed: source schema")
+    thrown.getMessage should startWith ("requirement failed: schema mismatch")
   }
 
   test("Test AutoLoad Type Timestamp") {
