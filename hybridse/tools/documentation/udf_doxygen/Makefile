@@ -22,6 +22,7 @@ doxygen:
 doxygen2md: doxygen
 	mkdir -p $(UDF_GEN_DIR)
 	$(DOXYBOOK2_PRG) --input xml --output $(UDF_GEN_DIR) --config config.json --templates ../template --summary-input SUMMARY.md.tmpl --summary-output SUMMARY.md
+	./patch_markdown.sh $(UDF_GEN_DIR)/Files/udfs_8h.md
 	@echo "udf document write into $(UDF_GEN_DIR)/Files/udfs_8h.md"
 
 sync: doxygen2md
