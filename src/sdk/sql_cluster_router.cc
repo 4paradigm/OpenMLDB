@@ -2893,6 +2893,10 @@ void SQLClusterRouter::SetInteractive(bool value) { interactive_ = value; }
     if (!st.OK()) {
         return {st.code, st.msg};
     }
+    if (options_parse.GetFormat() != "csv") {
+        return {::hybridse::common::StatusCode::kCmdError, "saving results only supports 'csv' format"};
+    }
+
     // Check file
     std::ofstream fstream;
     if (options_parse.GetMode() == "error_if_exists") {
@@ -2914,49 +2918,46 @@ void SQLClusterRouter::SetInteractive(bool value) { interactive_ = value; }
         return {openmldb::base::kSQLCmdRunError, "Failed to open file, please check file path"};
     }
     // Write data
-    if (options_parse.GetFormat() == "csv") {
-        auto* schema = result_set->GetSchema();
-        // Add Header
-        if (options_parse.GetHeader()) {
-            std::string schemaString;
-            for (int32_t i = 0; i < schema->GetColumnCnt(); i++) {
-                schemaString.append(schema->GetColumnName(i));
-                if (i != schema->GetColumnCnt() - 1) {
-                    schemaString += options_parse.GetDelimiter();
-                }
+    auto* schema = result_set->GetSchema();
+    // Add Header
+    if (options_parse.GetHeader()) {
+        std::string schemaString;
+        for (int32_t i = 0; i < schema->GetColumnCnt(); i++) {
+            schemaString.append(schema->GetColumnName(i));
+            if (i != schema->GetColumnCnt() - 1) {
+                schemaString += options_parse.GetDelimiter();
             }
-            fstream << schemaString << std::endl;
         }
-        if (result_set->Size() != 0) {
-            bool first = true;
-            while (result_set->Next()) {
-                std::string rowString;
-                for (int32_t i = 0; i < schema->GetColumnCnt(); i++) {
-                    if (result_set->IsNULL(i)) {
-                        rowString.append(options_parse.GetNullValue());
-                    } else {
-                        std::string val;
-                        bool ok = result_set->GetAsString(i, val);
-                        if (!ok) {
-                            return {openmldb::base::kSQLCmdRunError, "Failed to get result set value"};
-                        }
-                        if (options_parse.GetQuote() != '\0' &&
-                            schema->GetColumnType(i) == hybridse::sdk::kTypeString) {
-                            rowString.append(options_parse.GetQuote() + val + options_parse.GetQuote());
-                        } else {
-                            rowString.append(val);
-                        }
+        fstream << schemaString << std::endl;
+    }
+    if (result_set->Size() != 0) {
+        bool first = true;
+        while (result_set->Next()) {
+            std::string rowString;
+            for (int32_t i = 0; i < schema->GetColumnCnt(); i++) {
+                if (result_set->IsNULL(i)) {
+                    rowString.append(options_parse.GetNullValue());
+                } else {
+                    std::string val;
+                    bool ok = result_set->GetAsString(i, val);
+                    if (!ok) {
+                        return {openmldb::base::kSQLCmdRunError, "Failed to get result set value"};
                     }
-                    if (i != schema->GetColumnCnt() - 1) {
-                        rowString += options_parse.GetDelimiter();
+                    if (options_parse.GetQuote() != '\0' && schema->GetColumnType(i) == hybridse::sdk::kTypeString) {
+                        rowString.append(options_parse.GetQuote() + val + options_parse.GetQuote());
                     } else {
-                        if (!first) {
-                            fstream << std::endl;
-                        } else {
-                            first = false;
-                        }
-                        fstream << rowString;
+                        rowString.append(val);
                     }
+                }
+                if (i != schema->GetColumnCnt() - 1) {
+                    rowString += options_parse.GetDelimiter();
+                } else {
+                    if (!first) {
+                        fstream << std::endl;
+                    } else {
+                        first = false;
+                    }
+                    fstream << rowString;
                 }
             }
         }
