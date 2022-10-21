@@ -240,12 +240,10 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                         LOG(WARNING) << status;
                         return fail;
                     }
-                    auto op =
-                        dynamic_cast<const PhysicalWindowAggrerationNode*>(
-                            node);
+                    auto op = dynamic_cast<const PhysicalWindowAggrerationNode*>(node);
                     WindowAggRunner* runner = nullptr;
-                    CreateRunner<WindowAggRunner>(&runner, id_++, node->schemas_ctx(), op->GetLimitCnt(), op->window_,
-                                                  op->project().fn_info(), op->instance_not_in_window(),
+                    CreateRunner<WindowAggRunner>(&runner, id_++, op->GetProducer(0)->schemas_ctx(), op->GetLimitCnt(),
+                                                  op->window_, op->project().fn_info(), op->instance_not_in_window(),
                                                   op->exclude_current_time(), op->exclude_current_row(),
                                                   op->need_append_input());
                     size_t input_slices =
@@ -1013,16 +1011,13 @@ Row Runner::WindowProject(const int8_t* fn, const uint64_t row_key,
     if (append_slices > 0) {
         if (FLAGS_enable_spark_unsaferow_format) {
             // For UnsafeRowOpt, do not merge input row and return the single slice output row only
-            return Row(base::RefCountedSlice::CreateManaged(
-                out_buf, RowView::GetSize(out_buf)));
+            return Row(base::RefCountedSlice::CreateManaged(out_buf, RowView::GetSize(out_buf)));
         } else {
-            return Row(base::RefCountedSlice::CreateManaged(
-                           out_buf, RowView::GetSize(out_buf)),
-                       append_slices, row);
+            return Row(append_slices, row, 1,
+                       Row(base::RefCountedSlice::CreateManaged(out_buf, RowView::GetSize(out_buf))));
         }
     } else {
-        return Row(base::RefCountedSlice::CreateManaged(
-            out_buf, RowView::GetSize(out_buf)));
+        return Row(base::RefCountedSlice::CreateManaged(out_buf, RowView::GetSize(out_buf)));
     }
 }
 
@@ -3916,6 +3911,10 @@ Row Runner::GroupbyProject(const int8_t* fn, const codec::Row& parameter, TableH
     }
     const auto& row = iter->GetValue();
     const auto& row_key = iter->GetKey();
+
+    // Init current run step runtime
+    JitRuntime::get()->InitRunStep();
+
     auto udf = reinterpret_cast<int32_t (*)(const int64_t, const int8_t*,
                                             const int8_t*, const int8_t*, int8_t**)>(
         const_cast<int8_t*>(fn));
@@ -3929,6 +3928,10 @@ Row Runner::GroupbyProject(const int8_t* fn, const codec::Row& parameter, TableH
     auto window_ptr = reinterpret_cast<const int8_t*>(&window_ref);
 
     uint32_t ret = udf(row_key, row_ptr, window_ptr, parameter_ptr, &buf);
+
+    // Release current run step resources
+    JitRuntime::get()->ReleaseRunStep();
+
     if (ret != 0) {
         LOG(WARNING) << "fail to run udf " << ret;
         return Row();

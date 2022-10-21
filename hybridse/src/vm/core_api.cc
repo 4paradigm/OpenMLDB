@@ -259,7 +259,6 @@ hybridse::codec::Row CoreAPI::UnsafeRowProjectDirect(
         const hybridse::vm::RawPtrHandle fn,
         hybridse::vm::NIOBUFFER inputUnsafeRowBytes,
         const int inputRowSizeInBytes, const bool need_free) {
-
     auto bufPtr = reinterpret_cast<int8_t *>(inputUnsafeRowBytes);
 
     // Create Row from input UnsafeRow bytes
@@ -343,7 +342,6 @@ hybridse::codec::Row CoreAPI::UnsafeWindowProjectDirect(
         hybridse::vm::NIOBUFFER inputUnsafeRowBytes,
         const int inputRowSizeInBytes, const bool is_instance, size_t append_slices,
         WindowInterface* window) {
-
     // Create Row from input UnsafeRow bytes
     // auto bufPtr = reinterpret_cast<int8_t *>(inputUnsafeRowBytes);
     // auto row = Row(base::RefCountedSlice::Create(bufPtr, inputRowSizeInBytes));

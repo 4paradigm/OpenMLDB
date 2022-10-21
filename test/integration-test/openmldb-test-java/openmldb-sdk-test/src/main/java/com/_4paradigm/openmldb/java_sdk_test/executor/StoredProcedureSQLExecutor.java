@@ -37,13 +37,13 @@ public class StoredProcedureSQLExecutor extends RequestQuerySQLExecutor {
 
     protected List<String> spNames;
 
-    public StoredProcedureSQLExecutor(SqlExecutor executor, SQLCase fesqlCase, boolean isBatchRequest, boolean isAsyn, SQLCaseType executorType) {
-        super(executor, fesqlCase, isBatchRequest, isAsyn, executorType);
+    public StoredProcedureSQLExecutor(SqlExecutor executor, SQLCase sqlCase, boolean isBatchRequest, boolean isAsyn, SQLCaseType executorType) {
+        super(executor, sqlCase, isBatchRequest, isAsyn, executorType);
         spNames = new ArrayList<>();
     }
 
-    public StoredProcedureSQLExecutor(SQLCase fesqlCase, SqlExecutor executor, Map<String,SqlExecutor> executorMap, Map<String, OpenMLDBInfo> fedbInfoMap, boolean isBatchRequest, boolean isAsyn, SQLCaseType executorType) {
-        super(fesqlCase, executor, executorMap, fedbInfoMap, isBatchRequest, isAsyn, executorType);
+    public StoredProcedureSQLExecutor(SQLCase sqlCase, SqlExecutor executor, Map<String,SqlExecutor> executorMap, Map<String, OpenMLDBInfo> fedbInfoMap, boolean isBatchRequest, boolean isAsyn, SQLCaseType executorType) {
+        super(sqlCase, executor, executorMap, fedbInfoMap, isBatchRequest, isAsyn, executorType);
         spNames = new ArrayList<>();
     }
 

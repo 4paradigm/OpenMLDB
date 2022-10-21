@@ -40,17 +40,17 @@ import java.util.Map;
 public class DiffResultExecutor extends BatchSQLExecutor{
     private List<BaseExecutor> executors;
     private Map<String, OpenMLDBResult> resultMap;
-    public DiffResultExecutor(SqlExecutor executor, SQLCase fesqlCase, SQLCaseType executorType) {
-        super(executor, fesqlCase, executorType);
+    public DiffResultExecutor(SqlExecutor executor, SQLCase sqlCase, SQLCaseType executorType) {
+        super(executor, sqlCase, executorType);
         executors = new ArrayList<>();
         resultMap = new HashMap<>();
-        List<String> sqlDialect = fesqlCase.getSqlDialect();
+        List<String> sqlDialect = sqlCase.getSqlDialect();
         if(CollectionUtils.isNotEmpty(sqlDialect)){
             for(String dbType:sqlDialect){
                 if(dbType.equals(DBType.SQLITE3.name())||dbType.equals(DBType.ANSISQL.name())){
-                    executors.add(new Sqlite3Executor(fesqlCase,SQLCaseType.kSQLITE3));
+                    executors.add(new Sqlite3Executor(sqlCase,SQLCaseType.kSQLITE3));
                 }else if(dbType.equals(DBType.MYSQL.name())||dbType.equals(DBType.ANSISQL.name())){
-                    executors.add(new MysqlExecutor(fesqlCase,SQLCaseType.kMYSQL));
+                    executors.add(new MysqlExecutor(sqlCase,SQLCaseType.kMYSQL));
                 }
             }
         }

@@ -159,7 +159,7 @@ void SchemasContext::SetDefaultDBName(const std::string& default_db_name) {
 }
 SchemaSource* SchemasContext::AddSource() {
     schema_sources_.push_back(new SchemaSource());
-    return schema_sources_[schema_sources_.size() - 1];
+    return schema_sources_.back();
 }
 
 void SchemasContext::Merge(size_t child_idx, const SchemasContext* child) {
@@ -547,8 +547,7 @@ void SchemasContext::Build() {
         const SchemaSource* source = schema_sources_[i];
         auto schema = source->GetSchema();
         for (auto j = 0; j < schema->size(); ++j) {
-            column_name_map_[schema->Get(j).name()].push_back(
-                std::make_pair(i, j));
+            column_name_map_[schema->Get(j).name()].emplace_back(i, j);
             size_t column_id = source->GetColumnID(j);
 
             // column id can be duplicate and

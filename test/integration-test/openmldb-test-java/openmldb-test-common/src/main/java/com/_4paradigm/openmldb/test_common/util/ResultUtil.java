@@ -1,14 +1,13 @@
 package com._4paradigm.openmldb.test_common.util;
 
 import com._4paradigm.openmldb.jdbc.SQLResultSet;
+import com._4paradigm.openmldb.test_common.bean.OpenMLDBJob;
 import com._4paradigm.openmldb.test_common.bean.OpenMLDBResult;
-import com._4paradigm.openmldb.test_common.bean.SQLType;
 import com._4paradigm.openmldb.test_common.model.OpenmldbDeployment;
 import com.google.common.base.Joiner;
 import lombok.extern.slf4j.Slf4j;
 
 import java.sql.*;
-import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -35,6 +34,25 @@ public class ResultUtil {
             openMLDBResult.setOk(false);
             openMLDBResult.setMsg(e.getMessage());
         }
+    }
+    public static OpenMLDBJob parseJob(OpenMLDBResult openMLDBResult){
+        OpenMLDBJob openMLDBJob = new OpenMLDBJob();
+        List<List<Object>> result = openMLDBResult.getResult();
+        String resultStr = String.valueOf(result.get(0).get(0));
+        String[] lines = resultStr.split("\n");
+        String[] ss = lines[3].trim().split("\\s+");
+        openMLDBJob.setId(Integer.parseInt(ss[0]));
+        openMLDBJob.setJobType(ss[1]);
+        openMLDBJob.setState(ss[2]);
+        openMLDBJob.setStartTime(new Timestamp(Long.parseLong(ss[3])));
+        openMLDBJob.setEndTime(new Timestamp(Long.parseLong(ss[4])));
+        openMLDBJob.setParameter(ss[5]);
+        openMLDBJob.setCluster(ss[6]);
+        openMLDBJob.setApplicationId(ss[7]);
+        if(ss.length==9) {
+            openMLDBJob.setError(ss[8]);
+        }
+        return openMLDBJob;
     }
     public static OpenmldbDeployment parseDeployment(List<String> lines){
         OpenmldbDeployment deployment = new OpenmldbDeployment();

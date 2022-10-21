@@ -351,11 +351,11 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
                 }
             }
             if (!ok) {
-                throw new SQLException("append failed");
+                throw new SQLException("append failed on currentDataIdx: " + currentDataIdx + ", curType: " + currentDatasType.get(currentDataIdx) + ", current data: " + data);
             }
         }
         if (!currentRow.Build()) {
-            throw new SQLException("build insert row failed");
+            throw new SQLException("build insert row failed(str size init != actual)");
         }
         currentRows.add(currentRow);
         clearParameters();

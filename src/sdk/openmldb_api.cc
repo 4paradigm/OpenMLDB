@@ -76,8 +76,9 @@ std::shared_ptr<openmldb::sdk::SQLRequestRow> ParameterRow::get_parameter_row() 
                 sql_parameter_row_->AppendTimestamp(std::any_cast<int64_t>(record_[i]));
                 break;
             case ::hybridse::sdk::kTypeDate:
-                sql_parameter_row_->AppendDate(std::any_cast<int32_t>(record_[i]), std::any_cast<int32_t>(record_[i + 1]),
-                                              std::any_cast<int32_t>(record_[i + 2]));
+                sql_parameter_row_->AppendDate(std::any_cast<int32_t>(record_[i]),
+                        std::any_cast<int32_t>(record_[i + 1]),
+                        std::any_cast<int32_t>(record_[i + 2]));
                 i = i + 2;
                 break;
             case ::hybridse::sdk::kTypeFloat:

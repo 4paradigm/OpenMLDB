@@ -193,7 +193,6 @@ if(SQL_JAVASDK_ENABLE)
             PERMISSIONS OWNER_WRITE OWNER_READ GROUP_READ WORLD_READ)
 endif()
 
-
 # c++ sdk
 if (APPLE)
     message(STATUS "skip c++ sdk build on macos")

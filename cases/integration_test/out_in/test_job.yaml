@@ -13,105 +13,68 @@
 # limitations under the License.
 
 db: test_zw
-debus: []
+debugs: ["show jobs"]
 cases:
   -
     id: 0
     desc: show jobs
     sqls:
       - use __INTERNAL_DB;
-      - set @@SESSION.execute_mode = "offline";
-      - insert into JOB_INFO values (1,'SparkBatchSql','Running',11111,22222,'','local','application_1111','');
+      - insert into JOB_INFO values (1,'SparkBatchSql','Running',1590738989000,1590738999000,'sql','local','application_1111','error');
       - show jobs;
-    expects:
-      columns: ["JOBID string","JOB_TYPE string","STATUS string"]
+    expect:
+      columns: ["id int","job_type string","state string","start_time timestamp","end_time timestamp","parameter string","cluster string","application_id string","error string"]
       rows:
-        - ["JOB-11220021","OFFLINE LOAD","RUNNING"]
+        - [1,"SparkBatchSql","Running",1590738989000,1590738999000,"sql",local,application_1111,"error"]
   -
     id: 1
     desc: showjobs
-    inputs:
-      -
-        columns: ["c1 string","c2 smallint","c3 int","c4 timestamp"]
-        rows:
-          - ["aa",1,2,1590738989000]
     sqls:
-      - use test_zw;
-      - set @@SESSION.execute_mode = "offline";
-      - insert into JOB_INFO values (1,'SparkBatchSql','Running',11111,22222,'','local','application_1111','');
       - showjobs;
-    expects:
+    expect:
       success: false
   -
     id: 2
     desc: 切换不同的db，show jobs
-    inputs:
-      -
-        columns: ["c1 string","c2 smallint","c3 int","c4 timestamp"]
-        rows:
-          - ["aa",1,2,1590738989000]
+    db: db1
     sqls:
-      - use test_zw;
-      - set @@SESSION.execute_mode = "offline";
-      - insert into JOB_INFO values (1,'SparkBatchSql','Running',11111,22222,'','local','application_1111','');
-      - use other_db;
       - show jobs;
-    expects:
-      columns: ["JOBID string","JOB_TYPE string","STATUS string"]
+    expect:
+      columns: ["id int","job_type string","state string","start_time timestamp","end_time timestamp","parameter string","cluster string","application_id string","error string"]
       rows:
-        - ["JOB-11220021","OFFLINE LOAD","RUNNING"]
+        - [1,"SparkBatchSql","Running",1590738989000,1590738999000,"sql",local,application_1111,"error"]
   -
     id: 3
     desc: show job jobID
-    inputs:
-      -
-        columns: ["c1 string","c2 smallint","c3 int","c4 timestamp"]
-        rows:
-          - ["aa",1,2,1590738989000]
     sqls:
-      - insert into JOB_INFO values (1,'SparkBatchSql','Running',11111,22222,'','local','application_1111','');
-      - show job 1;
-    expects:
-      columns: ["JOBID string","JOB_TYPE string","URL string","CONTENT string"]
+      - use __INTERNAL_DB;
+      - insert into JOB_INFO values (2,'SparkBatchSql','Running',1590738989000,1590738999000,'sql','local','application_1111','error');
+      - show job 2;
+    expect:
+      columns: ["id int","job_type string","state string","start_time timestamp","end_time timestamp","parameter string","cluster string","application_id string","error string"]
       rows:
-       - ["JOB-11220021","OFFLINE LOAD","xxxx","LOAD DATA INFILE"]
+        - [2,"SparkBatchSql","Running",1590738989000,1590738999000,"sql",local,application_1111,"error"]
   -
     id: 4
     desc: jobID不存在
-    inputs:
-      -
-        columns: ["c1 string","c2 smallint","c3 int","c4 timestamp"]
-        rows:
-          - ["aa",1,2,1590738989000]
     sqls:
-      insert into JOB_INFO values (1,'SparkBatchSql','Running',11111,22222,'','local','application_1111','');
       - show job 1111;
-    expects:
+    expect:
+      success: false
   -
     id: 5
     desc: 语法错误
-    inputs:
-      -
-        columns: ["c1 string","c2 smallint","c3 int","c4 timestamp"]
-        rows:
-          - ["aa",1,2,1590738989000]
     sqls:
-      - insert into JOB_INFO values (1,'SparkBatchSql','Running',11111,22222,'','local','application_1111','');
       - show jobe 1;
-    expects:
+    expect:
       success: false
   -
     id: 6
     desc: delete job jobID
-    inputs:
-      -
-        columns: ["c1 string","c2 smallint","c3 int","c4 timestamp"]
-        rows:
-          - ["aa",1,2,1590738989000]
     sqls:
       - delete job JOB-11220021;
-    expects:
-   -
+    expect:
+  -
     id: 7
     desc: jobID不存在
     inputs:
@@ -121,7 +84,7 @@ cases:
           - ["aa",1,2,1590738989000]
     sqls:
       - delete job JOB-xxxxxx;
-    expects:
+    expect:
   -
     id: 8
     desc: 语法错误
@@ -132,7 +95,7 @@ cases:
           - ["aa",1,2,1590738989000]
     sqls:
       - delete jobe JOB-11220021;
-    expects:
+    expect:
   -
     id: 9
     desc: stop job jobID
@@ -145,12 +108,12 @@ cases:
       - set @@SESSION.execute_mode="offline";
       - load data infile 'hdfs://m7-common-cdh02:8022/user/zhaowei/openmldb/load_data/csv-import-10000-1.csv' into table test_smoke options(deep_copy=true,mode='append');
       - stop job JOB-11220021;
-    expects:
+    expect:
       columns: ["id int","job_state string","state string","start_time timestamp","end_time timestamp","parameter string","cluster string","application_id string","error string"]
       rows:
         - [1,"ImportOfflineData","STOPPED","","","load data infile 'hdfs://m7-common-cdh02:8022/user/zhaowei/openmldb/load_data/csv-import-10000-1.csv' into table test_smoke options(deep_copy=true,mode='append');",
         "local","local-1640683224470",""]
-   -
+  -
     id: 10
     desc: jobID不存在
     inputs:
@@ -160,7 +123,7 @@ cases:
           - ["aa",1,2,1590738989000]
     sqls:
       - stop job JOB-xxxxxx;
-    expects:
+    expect:
       success: false
   -
     id: 11
@@ -172,5 +135,5 @@ cases:
           - ["aa",1,2,1590738989000]
     sqls:
       - stop jobe JOB-11220021;
-    expects:
+    expect:
       success: false;

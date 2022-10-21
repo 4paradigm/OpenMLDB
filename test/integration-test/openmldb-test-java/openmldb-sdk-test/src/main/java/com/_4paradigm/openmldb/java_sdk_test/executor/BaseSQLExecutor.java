@@ -20,7 +20,9 @@ package com._4paradigm.openmldb.java_sdk_test.executor;
 import com._4paradigm.openmldb.java_sdk_test.checker.Checker;
 import com._4paradigm.openmldb.java_sdk_test.checker.CheckerStrategy;
 import com._4paradigm.openmldb.java_sdk_test.checker.DiffVersionChecker;
+import com._4paradigm.openmldb.java_sdk_test.common.OpenMLDBConfig;
 import com._4paradigm.openmldb.test_common.bean.OpenMLDBResult;
+import com._4paradigm.openmldb.test_common.openmldb.SDKClient;
 import com._4paradigm.openmldb.test_common.util.SDKUtil;
 import com._4paradigm.openmldb.sdk.SqlExecutor;
 import com._4paradigm.openmldb.test_common.model.InputDesc;
@@ -31,6 +33,7 @@ import com._4paradigm.qa.openmldb_deploy.bean.OpenMLDBInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.collections4.MapUtils;
+import org.apache.commons.lang3.StringUtils;
 
 import java.util.List;
 import java.util.Map;
@@ -44,15 +47,20 @@ import java.util.stream.Collectors;
 @Slf4j
 public abstract class BaseSQLExecutor extends BaseExecutor{
     protected SqlExecutor executor;
+    protected SDKClient sdkClient;
     private Map<String,SqlExecutor> executorMap;
     protected Map<String, OpenMLDBInfo> openMLDBInfoMap;
     private Map<String, OpenMLDBResult> resultMap;
 
     public BaseSQLExecutor(SqlExecutor executor, SQLCase sqlCase, SQLCaseType executorType) {
         this.executor = executor;
+        this.sdkClient = SDKClient.of(executor);
         this.sqlCase = sqlCase;
         this.executorType = executorType;
-        dbName = Objects.isNull(sqlCase.getDb()) ? "" : sqlCase.getDb();
+        if (StringUtils.isEmpty(sqlCase.getDb())) {
+            sqlCase.setDb(OpenMLDBConfig.TEST_DB);
+        }
+        dbName = sqlCase.getDb();
         if (!CollectionUtils.isEmpty(sqlCase.getInputs())) {
             for (InputDesc inputDesc : sqlCase.getInputs()) {
                 tableNames.add(inputDesc.getName());
