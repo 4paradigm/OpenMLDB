@@ -8,14 +8,11 @@
 <!--            <package name="com._4paradigm.openmldb.java_sdk_test.cluster.sql_test"/>-->
 <!--        </packages>-->
         <classes>
-            <class name="com._4paradigm.openmldb.java_sdk_test.temp.TestOnlineBatch">
+            <class name="com._4paradigm.openmldb.java_sdk_test.cluster.out_in.OutInTest">
 <!--                <methods>-->
 <!--                    <include name="testOutIn" />-->
 <!--                </methods>-->
             </class>
         </classes>
     </test>
-    <listeners>
-        <listener class-name="com._4paradigm.openmldb.java_sdk_test.report.AddAttachmentListener" />
-    </listeners>
 </suite>
