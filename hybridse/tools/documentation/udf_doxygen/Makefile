@@ -13,6 +13,7 @@ all: doxygen2md
 
 doxygen:
 	if [ -n "$(POETRY_PRG)" ]; then \
+	    $(POETRY_PRG) install; \
 	    $(POETRY_PRG) run python export_udf_doc.py; \
 	else \
 	    ./export_udf_doc.py; \
