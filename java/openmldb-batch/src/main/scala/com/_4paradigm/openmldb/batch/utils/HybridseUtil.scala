@@ -279,11 +279,8 @@ object HybridseUtil {
     longTsCols.toList
   }
 
-  def debugDf(df: DataFrame): Unit = {
-    if (logger.isDebugEnabled()) {
-      logger.debug("read dataframe count: {}", df.count())
-      df.show(10)
-    }
+  def checkSchemaIgnoreNullable(actual: StructType, expect: StructType): Boolean = {
+    actual.zip(expect).forall{case (a, b) => (a.name, a.dataType) == (b.name, b.dataType)}
   }
 
   // We want df with oriSchema, but if the file format is csv:
@@ -294,14 +291,19 @@ object HybridseUtil {
   .List[Common.ColumnDesc]): DataFrame = {
     val format = fmt.toLowerCase
     val reader = spark.read.options(options)
-    // TODO: parquet don't need read schema, but it won't effect?
+
     val (oriSchema, readSchema, tsCols) = HybridseUtil.extractOriginAndReadSchema(columns)
     var df = spark.emptyDataFrame
     if (format != "csv") {
+      // When reading Parquet files, all columns are automatically converted to be nullable for compatibility reasons.
+      // ref https://spark.apache.org/docs/3.2.1/sql-data-sources-parquet.html
       df = reader.format(format).load(file)
+      require(checkSchemaIgnoreNullable(df.schema, oriSchema),
+        s"(ignore nullable) loaded ${df.schema}!= table $oriSchema, check $file")
+      // reset nullable
+      df = df.sqlContext.createDataFrame(df.rdd, oriSchema)
     } else{
       // csv should auto detect the timestamp format
-      logger.info(s"file format: $format")
       reader.format(format)
       // use string to read, then infer the format by the first non-null value of the ts column
       val longTsCols = HybridseUtil.parseLongTsCols(reader, readSchema, tsCols, file)
@@ -310,20 +312,24 @@ object HybridseUtil {
       if (longTsCols.nonEmpty) {
         // convert long type to timestamp type
         for (tsCol <- longTsCols) {
+          logger.debug(s"cast $tsCol to timestamp")
           df = df.withColumn(tsCol, (col(tsCol) / 1000).cast("timestamp"))
         }
       }
 
       // if we read non-streaming files, the df schema fields will be set as all nullable.
       // so we need to set it right
-      logger.info(s"after read schema: ${df.schema}")
       if (!df.schema.equals(oriSchema)) {
+        logger.info(s"df schema: ${df.schema}, reset schema")
         df = df.sqlContext.createDataFrame(df.rdd, oriSchema)
       }
     }
 
-    require(df.schema == oriSchema, s"source schema ${df.schema} != table schema $oriSchema")
-    debugDf(df)
+    require(df.schema == oriSchema, s"source loaded schema ${df.schema} != table schema $oriSchema, check $file")
+    if (logger.isDebugEnabled()) {
+      logger.debug("read dataframe count: {}", df.count())
+      df.show(10)
+    }
     df
   }
 }
