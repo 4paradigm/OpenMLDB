@@ -14,8 +14,6 @@
 # - where clause
 # - group by
 #
-# limit clause is not supported in online serving mode
-#
 # cases:
 # - limit(table) -> 0
 # - limit(filter) -> 1*
@@ -157,7 +155,7 @@ cases:
         - actionTime timestamp
       data: |
 
-  - id: 2-0
+  - id: 2
     mode: request-unsupport
     desc: |
       limit (window)
