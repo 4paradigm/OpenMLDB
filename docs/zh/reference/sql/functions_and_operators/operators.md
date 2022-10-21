@@ -2,22 +2,21 @@
 
 ## 运算符优先级
 
-```sql
-!
-- (unary minus), ~ (unary bit inversion)
-^
-*, /, DIV, %, MOD
--, +
-<<, >>
-&
-|
-= (comparison), <=>, >=, >, <=, <, <>, !=, IS, LIKE, REGEXP, IN
-BETWEEN, CASE, WHEN, THEN, ELSE
-NOT
-AND, &&
-XOR
-OR, ||
-= (assignment), :=
+```yacc
+%left "OR"
+%left "AND"
+%left "XOR"
+%left UNARY_NOT_PRECEDENCE // (NOT / !)
+%nonassoc "=" "==" "<>" ">" "<" ">=" "<=" "!=" "LIKE" "ILIKE" "RLIKE" "IN" "DISTINCT" "BETWEEN" "IS" "NOT_SPECIAL"
+%nonassoc "ESCAPE"
+%left "|"
+%left "^"
+%left "&"
+%left "<<" ">>"
+%left "+" "-"
+%left "||"
+%left "*" "/" "DIV" "%" "MOD"
+%left UNARY_PRECEDENCE  // For all unary operators, +, -, ~
 ```
 
 ## 各类运算
@@ -28,42 +27,46 @@ OR, ||
 | :-------------- | :--------------------- |
 | `>`             | 大于                   |
 | `>=`            | 大于等于               |
+| `<`             | 小于                   |
 | `<=`            | 小于等于               |
 | `!=` , `<>`     | 不等于                 |
-| `=`             | 等于                   |
+| `=`, `==`       | 等于                   |
 | `BEWTEEN...AND` | 介于...和...之间       |
 | `IN`            | 在...集合中            |
 | `LIKE`          | 模糊匹配，大小写敏感   |
 | `ILIKE`         | 模糊匹配, 大小写不敏感 |
+| `RLIKE`         | 正则表达式匹配 |
 
 ### 2. 逻辑运算
 
 | 操作符名    | 功能描述 |
 | :---------- | :------- |
-| `AND`, `&&` | 逻辑与   |
-| `OR`, `||`  | 逻辑或   |
+| `AND`       | 逻辑与   |
+| `OR`        | 逻辑或   |
 | `XOR`       | 逻辑与或 |
-| `NOT`, `!`  | 逻辑非   |
+| `NOT`, `!`  | 逻辑非, unary operator   |
 
 ### 3. 算术运算
 
 | 操作符名   | 功能描述                                                 |
 | :--------- | :------------------------------------------------------- |
-| `%`, `MOD` | Modulo operator                                          |
-| `*`        | Multiplication operator                                  |
-| `+`        | Addition operator                                        |
-| `-`        | Minus operator                                           |
-| `-`        | Change the sign of the argument只支持数值型操作数-number |
-| `/`        | Division operator                                        |
+| `%`, `MOD` | Modulo                                                   |
+| `*`        | Multiplication                                           |
+| `+`        | Addition                                                 |
+| `-`        | Subtraction                                              |
+| `/`        | Float division                                           |
 | `DIV`      | Integer division                                         |
+| `+`        | Unary plus                                               |
+| `-`        | Unary minus, 只支持数值型操作数-number                   |
 
 ###  4. 位运算
 
 | 操作符名 | Description |
 | :------- | :---------- |
 | `&`      | Bitwise AND |
-| `>>`     | Right shift |
-| `<<`     | Left shift  |
+| `\|`     | Bitwise OR  |
+| `^`      | Bitwise XOR |
+| `~`      | Bitwise NOT, unary operator |
 
 ### 5. 类型运算和函数
 

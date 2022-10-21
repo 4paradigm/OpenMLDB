@@ -494,6 +494,15 @@ TEST_P(DBSDKTest, LoadDataError) {
     HandleSQL("use test1;");
     std::string create_sql = "create table trans (c1 string, c2 int);";
     HandleSQL(create_sql);
+    std::string file_name = "./myfile.csv";
+    std::ofstream ofile;
+    ofile.open(file_name);
+    ofile << "c1,c2" << std::endl;
+    for (int i = 0; i < 10; i++) {
+        ofile << "aa" << i << "," << i << std::endl;
+    }
+    ofile.close();
+
     hybridse::sdk::Status status;
     std::string load_sql =
         "LOAD DATA INFILE 'not_exist.csv' INTO TABLE trans options(mode='append', load_mode='local', thread=60);";
@@ -519,11 +528,28 @@ TEST_P(DBSDKTest, LoadDataError) {
     ASSERT_FALSE(status.IsOK()) << status.msg;
     ASSERT_EQ(status.msg, "ERROR: parse option thread failed");
 
+    HandleSQL("SET @@execute_mode='offline';");
+    load_sql =
+        "LOAD DATA INFILE '" + file_name + "' INTO TABLE trans options(mode='append', load_mode='local', thread=60);";
+    sr->ExecuteSQL(load_sql, &status);
+    if (cs->IsClusterMode()) {
+        ASSERT_FALSE(status.IsOK()) << status.msg;
+        ASSERT_EQ(status.msg, "local load only supports loading data to online storage");
+    } else {
+        ASSERT_TRUE(status.IsOK()) << status.msg;
+    }
+
+    HandleSQL("SET @@execute_mode='online';");
     auto result = sr->ExecuteSQL("select * from trans;", &status);
     ASSERT_TRUE(status.IsOK()) << status.msg;
-    ASSERT_EQ(0, result->Size());
+    if (cs->IsClusterMode()) {
+        ASSERT_EQ(0, result->Size());
+    } else {
+        ASSERT_EQ(10, result->Size());
+    }
     HandleSQL("drop table trans;");
     HandleSQL("drop database test1;");
+    unlink(file_name.c_str());
 }
 
 TEST_P(DBSDKTest, LoadDataMultipleThread) {
