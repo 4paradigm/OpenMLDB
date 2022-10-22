@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	// register openmldb driver
-	_ "github.com/4paradigm/OpenMLDB/go/openmldb"
+	_ "github.com/4paradigm/OpenMLDB/go"
 	"github.com/stretchr/testify/assert"
 )
 

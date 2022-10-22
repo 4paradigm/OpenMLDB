@@ -32,8 +32,8 @@ import java.util.List;
 @Slf4j
 public class ColumnsChecker extends BaseChecker {
 
-    public ColumnsChecker(ExpectDesc expect, OpenMLDBResult fesqlResult) {
-        super(expect, fesqlResult);
+    public ColumnsChecker(ExpectDesc expect, OpenMLDBResult openMLDBResult) {
+        super(expect, openMLDBResult);
     }
 
     @Override

@@ -36,6 +36,7 @@ public class OpenMLDBConfig {
     public static final List<String> VERSIONS;
     public static boolean INIT_VERSION_ENV = true;
     public static final boolean ADD_REPORT_LOG;
+    public static final String TEST_DB;
 
     public static final Properties CONFIG = Tool.getProperties("run_case.properties");
 
@@ -66,6 +67,8 @@ public class OpenMLDBConfig {
             OpenMLDBGlobalVar.version = version;
         }
         log.info("test version: {}", OpenMLDBGlobalVar.version);
+        TEST_DB = CONFIG.getProperty("test_db","test_sdk");
+        log.info("test test_db: {}", TEST_DB);
     }
 
     public static boolean isCluster() {

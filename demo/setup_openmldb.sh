@@ -18,13 +18,13 @@
 set -eE -x
 VERSION="$1"
 if [[ -z ${VERSION} ]]; then
-    VERSION=0.3.0
+    VERSION=0.6.3
 fi
 echo "version: ${VERSION}"
 
 curl -SLo zookeeper.tar.gz https://archive.apache.org/dist/zookeeper/zookeeper-3.4.14/zookeeper-3.4.14.tar.gz
 curl -SLo openmldb.tar.gz "https://github.com/4paradigm/OpenMLDB/releases/download/v${VERSION}/openmldb-${VERSION}-linux.tar.gz"
-curl -SLo spark-3.0.0-bin-openmldbspark.tgz "https://github.com/4paradigm/spark/releases/download/v3.0.0-openmldb${VERSION}/spark-3.0.0-bin-openmldbspark.tgz"
+curl -SLo spark-3.2.1-bin-openmldbspark.tgz "https://github.com/4paradigm/spark/releases/download/v3.2.1-openmldb${VERSION}/spark-3.2.1-bin-openmldbspark.tgz"
 
 WORKDIR=/work
 
@@ -40,8 +40,8 @@ tar xzf openmldb.tar.gz -C "${WORKDIR}/openmldb" --strip-components 1
 # remove symbols and sections
 strip -s "${WORKDIR}/openmldb/bin/openmldb"
 
-mkdir -p "${WORKDIR}/openmldb/spark-3.0.0-bin-openmldbspark"
-tar xzf spark-3.0.0-bin-openmldbspark.tgz -C "${WORKDIR}/openmldb/spark-3.0.0-bin-openmldbspark" --strip-components 1
+mkdir -p "${WORKDIR}/openmldb/spark-3.2.1-bin-openmldbspark"
+tar xzf spark-3.2.1-bin-openmldbspark.tgz -C "${WORKDIR}/openmldb/spark-3.2.1-bin-openmldbspark" --strip-components 1
 
 
 rm -f ./*.tar.gz

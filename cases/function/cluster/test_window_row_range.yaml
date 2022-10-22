@@ -65,7 +65,6 @@ cases:
   -
     id: 1
     desc: 简单rows window, union副表, 主表进入窗口
-    mode: cluster-unsupport
     inputs:
       - columns: [ "id int", "c1 string","c6 double","c7 timestamp" ]
         indexs: [ "index1:c1:c7" ]

@@ -144,9 +144,10 @@ TEST_F(DBSDKTest, standAloneMode) {
 }  // namespace openmldb::sdk
 
 int main(int argc, char** argv) {
-    FLAGS_zk_session_timeout = 100000;
     ::testing::InitGoogleTest(&argc, argv);
-    srand(time(nullptr));
     ::google::ParseCommandLineFlags(&argc, &argv, true);
+    FLAGS_zk_session_timeout = 100000;
+    srand(time(nullptr));
+    ::openmldb::base::SetupGlog(true);
     return RUN_ALL_TESTS();
 }

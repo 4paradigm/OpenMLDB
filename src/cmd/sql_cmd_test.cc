@@ -23,6 +23,8 @@
 #include <limits>
 #include <memory>
 #include <string>
+#include <unordered_map>
+#include <unordered_set>
 
 #include "absl/algorithm/container.h"
 #include "absl/cleanup/cleanup.h"
@@ -377,6 +379,9 @@ TEST_P(DBSDKTest, Desc) {
         }
         count++;
     }
+    rs = sr->ExecuteSQL(absl::StrCat("desc ", db, ".trans;"), &status);
+    ASSERT_TRUE(status.IsOK()) << status.msg;
+    ASSERT_EQ(3, rs->Size());
     sr->ExecuteSQL("drop table trans;", &status);
     ASSERT_TRUE(status.IsOK()) << status.msg;
     sr->ExecuteSQL("drop database " + db + ";", &status);
@@ -403,9 +408,57 @@ TEST_F(SqlCmdTest, InsertWithDB) {
             "drop database test2;"});
 }
 
-TEST_F(SqlCmdTest, LoadData) {
-    sr = standalone_cli.sr;
-    cs = standalone_cli.cs;
+TEST_P(DBSDKTest, LoadDataMultipleFiles) {
+    auto cli = GetParam();
+    cs = cli->cs;
+    sr = cli->sr;
+    HandleSQL("SET @@execute_mode='online';");
+    HandleSQL("create database test1;");
+    HandleSQL("use test1;");
+    std::string create_sql = "create table trans (c1 string, c2 int);";
+    HandleSQL(create_sql);
+    int file_num = 2;
+    std::filesystem::path tmp_path = std::filesystem::temp_directory_path() / "load_test";
+    ASSERT_TRUE(base::MkdirRecur(tmp_path.string()));
+    absl::Cleanup clean = [&tmp_path]() { std::filesystem::remove_all(tmp_path); };
+    std::vector<std::string> data;
+
+    for (int j = 0; j < file_num; j++) {
+        std::string file_name = tmp_path / absl::StrCat("myfile-", j, ".csv");
+        std::ofstream ofile;
+        ofile.open(file_name);
+        ofile << "c1,c2" << std::endl;
+        for (int i = 0; i < 10; i++) {
+            std::string row = absl::StrCat("aa-", j, ",", i);
+            data.push_back(row);
+            ofile << row << std::endl;
+        }
+        ofile.close();
+    }
+    std::string load_sql = "LOAD DATA INFILE 'file://" + (tmp_path / "myfile*").string() +
+                           "' INTO TABLE trans options(load_mode='local', thread=10);";
+    hybridse::sdk::Status status;
+    sr->ExecuteSQL(load_sql, &status);
+    ASSERT_TRUE(status.IsOK()) << status.msg;
+    ASSERT_EQ(status.msg, "Load 20 rows");
+    auto result = sr->ExecuteSQL("select * from trans;", &status);
+    ASSERT_TRUE(status.IsOK()) << status.msg;
+    ASSERT_EQ(20, result->Size());
+    while (result->Next()) {
+        std::string col1 = result->GetStringUnsafe(0);
+        int col2 = result->GetInt32Unsafe(1);
+        ASSERT_EQ(col1.substr(0, 3), "aa-");
+        ASSERT_TRUE(col2 >= 0 && col2 < 10);
+    }
+    HandleSQL("drop table trans;");
+    HandleSQL("drop database test1;");
+}
+
+TEST_P(DBSDKTest, LoadData) {
+    auto cli = GetParam();
+    cs = cli->cs;
+    sr = cli->sr;
+    HandleSQL("SET @@execute_mode='online';");
     HandleSQL("create database test1;");
     HandleSQL("use test1;");
     std::string create_sql = "create table trans (c1 string, c2 int);";
@@ -418,22 +471,157 @@ TEST_F(SqlCmdTest, LoadData) {
         ofile << "aa" << i << "," << i << std::endl;
     }
     ofile.close();
-    std::string load_sql = "LOAD DATA INFILE '" + file_name + "' INTO TABLE trans;";
+    // deep_copy is ignored but can still pass
+    std::string load_sql = "LOAD DATA INFILE '" + file_name +
+                           "' INTO TABLE trans options(deep_copy=true, mode='append', load_mode='local', thread=60);";
     hybridse::sdk::Status status;
     sr->ExecuteSQL(load_sql, &status);
     ASSERT_TRUE(status.IsOK()) << status.msg;
+    ASSERT_EQ(status.msg, "Load 10 rows");
     auto result = sr->ExecuteSQL("select * from trans;", &status);
-    ASSERT_TRUE(status.IsOK());
+    ASSERT_TRUE(status.IsOK()) << status.msg;
     ASSERT_EQ(10, result->Size());
     HandleSQL("drop table trans;");
     HandleSQL("drop database test1;");
     unlink(file_name.c_str());
 }
 
+TEST_P(DBSDKTest, LoadDataError) {
+    auto cli = GetParam();
+    cs = cli->cs;
+    sr = cli->sr;
+    HandleSQL("SET @@execute_mode='online';");
+    HandleSQL("create database test1;");
+    HandleSQL("use test1;");
+    std::string create_sql = "create table trans (c1 string, c2 int);";
+    HandleSQL(create_sql);
+    std::string file_name = "./myfile.csv";
+    std::ofstream ofile;
+    ofile.open(file_name);
+    ofile << "c1,c2" << std::endl;
+    for (int i = 0; i < 10; i++) {
+        ofile << "aa" << i << "," << i << std::endl;
+    }
+    ofile.close();
+
+    hybridse::sdk::Status status;
+    std::string load_sql =
+        "LOAD DATA INFILE 'not_exist.csv' INTO TABLE trans options(mode='append', load_mode='local', thread=60);";
+    sr->ExecuteSQL(load_sql, &status);
+    ASSERT_FALSE(status.IsOK()) << status.msg;
+    ASSERT_EQ(status.msg, "file not exist");
+
+    load_sql =
+        "LOAD DATA INFILE 'not_exist.csv' INTO TABLE trans options(mode='overwrite', load_mode='local', thread=60);";
+    sr->ExecuteSQL(load_sql, &status);
+    ASSERT_FALSE(status.IsOK()) << status.msg;
+    ASSERT_EQ(status.msg, "online data load only supports 'append' mode");
+
+    load_sql =
+        "LOAD DATA INFILE 'not_exist.csv' INTO TABLE trans options(format='parquet', load_mode='local', thread=60);";
+    sr->ExecuteSQL(load_sql, &status);
+    ASSERT_FALSE(status.IsOK()) << status.msg;
+    ASSERT_EQ(status.msg, "local data load only supports 'csv' format");
+
+    load_sql =
+        "LOAD DATA INFILE 'not_exist.csv' INTO TABLE trans options(load_mode='local', thread=0);";
+    sr->ExecuteSQL(load_sql, &status);
+    ASSERT_FALSE(status.IsOK()) << status.msg;
+    ASSERT_EQ(status.msg, "ERROR: parse option thread failed");
+
+    HandleSQL("SET @@execute_mode='offline';");
+    load_sql =
+        "LOAD DATA INFILE '" + file_name + "' INTO TABLE trans options(mode='append', load_mode='local', thread=60);";
+    sr->ExecuteSQL(load_sql, &status);
+    if (cs->IsClusterMode()) {
+        ASSERT_FALSE(status.IsOK()) << status.msg;
+        ASSERT_EQ(status.msg, "local load only supports loading data to online storage");
+
+        load_sql =
+            "LOAD DATA INFILE 'not_exist.csv' INTO TABLE trans options(format='parquet', load_mode='cluster');";
+        sr->ExecuteSQL(load_sql, &status);
+        ASSERT_FALSE(status.IsOK()) << status.msg;
+        ASSERT_EQ(status.msg, "Fail to get TaskManager client");
+    } else {
+        ASSERT_TRUE(status.IsOK()) << status.msg;
+    }
+
+    HandleSQL("SET @@execute_mode='online';");
+    auto result = sr->ExecuteSQL("select * from trans;", &status);
+    ASSERT_TRUE(status.IsOK()) << status.msg;
+    if (cs->IsClusterMode()) {
+        ASSERT_EQ(0, result->Size());
+    } else {
+        ASSERT_EQ(10, result->Size());
+    }
+    HandleSQL("drop table trans;");
+    HandleSQL("drop database test1;");
+    unlink(file_name.c_str());
+}
+
+TEST_P(DBSDKTest, LoadDataMultipleThread) {
+    auto cli = GetParam();
+    cs = cli->cs;
+    sr = cli->sr;
+    HandleSQL("SET @@execute_mode='online';");
+    HandleSQL("create database test1;");
+    HandleSQL("use test1;");
+    std::string create_sql = "create table trans (c1 string, c2 int);";
+    HandleSQL(create_sql);
+    int file_num = 10;
+    int rows_per_file = 100;
+    std::filesystem::path tmp_path = std::filesystem::temp_directory_path() / "load_test_thread";
+    ASSERT_TRUE(base::MkdirRecur(tmp_path.string()));
+    absl::Cleanup clean = [&tmp_path]() { std::filesystem::remove_all(tmp_path); };
+    std::vector<std::string> data;
+
+    for (int j = 0; j < file_num; j++) {
+        std::string file_name = tmp_path / absl::StrCat("myfile-", j, ".csv");
+        std::ofstream ofile;
+        ofile.open(file_name);
+        ofile << "c1,c2" << std::endl;
+        for (int i = 0; i < rows_per_file; i++) {
+            std::string row = absl::StrCat("aa-", j, ",", i);
+            data.push_back(row);
+            ofile << row << std::endl;
+        }
+        ofile.close();
+    }
+
+    int num_thread = 20;
+    hybridse::sdk::Status status;
+    for (int i = 0; i < num_thread; i++) {
+        std::string load_sql = absl::StrCat("LOAD DATA INFILE '", (tmp_path / "myfile*").string(),
+                               "' INTO TABLE trans options(load_mode='local', thread=", num_thread, ");");
+        sr->ExecuteSQL(load_sql, &status);
+        ASSERT_TRUE(status.IsOK()) << status.msg;
+        ASSERT_EQ(status.msg, absl::StrCat("Load ", file_num * rows_per_file, " rows"));
+    }
+    auto result = sr->ExecuteSQL("select * from trans;", &status);
+    ASSERT_TRUE(status.IsOK()) << status.msg;
+    ASSERT_EQ(rows_per_file * file_num * num_thread, result->Size());
+    std::unordered_map<std::string, std::unordered_set<int>> stats;
+    while (result->Next()) {
+        std::string col1 = result->GetStringUnsafe(0);
+        int col2 = result->GetInt32Unsafe(1);
+        stats[col1].insert(col2);
+        ASSERT_EQ(col1.substr(0, 3), "aa-");
+        ASSERT_TRUE(col2 >= 0 && col2 < rows_per_file);
+    }
+    ASSERT_EQ(stats.size(), file_num);
+    for (int j = 0; j < file_num; j++) {
+        const auto& stat = stats[absl::StrCat("aa-", j)];
+        ASSERT_EQ(stat.size(), rows_per_file);
+    }
+    HandleSQL("drop table trans;");
+    HandleSQL("drop database test1;");
+}
+
 TEST_P(DBSDKTest, Deploy) {
     auto cli = GetParam();
     cs = cli->cs;
     sr = cli->sr;
+    HandleSQL("set @@execute_mode = 'online';");
     HandleSQL("create database test1;");
     HandleSQL("use test1;");
     std::string create_sql =
@@ -449,8 +637,10 @@ TEST_P(DBSDKTest, Deploy) {
         " WINDOW w1 AS (PARTITION BY trans.c1 ORDER BY trans.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);";
 
     hybridse::sdk::Status status;
+
     sr->ExecuteSQL(deploy_sql, &status);
     ASSERT_TRUE(status.IsOK());
+
     std::string deploy_sql1 =
         "deploy demo1 SELECT c1, c3, sum(c4) OVER w1 as w1_c4_sum FROM trans "
         " WINDOW w1 AS (PARTITION BY trans.c1 ORDER BY trans.c7 ROWS BETWEEN 4 PRECEDING AND CURRENT ROW);";
@@ -471,6 +661,7 @@ TEST_P(DBSDKTest, DeployWithSameIndex) {
     auto cli = GetParam();
     cs = cli->cs;
     sr = cli->sr;
+    HandleSQL("set @@execute_mode = 'online';");
     HandleSQL("create database test1;");
     HandleSQL("use test1;");
     std::string create_sql =
@@ -630,20 +821,53 @@ TEST_P(DBSDKTest, DeployLongWindows) {
     HandleSQL(create_sql);
 
     std::string deploy_sql =
-        "deploy demo1 OPTIONS(long_windows='w1:100,w2') SELECT c1, sum(c4) OVER w1 as w1_c4_sum,"
-        " max(c5) over w2 as w2_max_c5 FROM trans"
+        "deploy demo1 OPTIONS(long_windows='w1:1d,w2') SELECT c1, sum(c4) OVER w1 as w1_c4_sum,"
+        " sum(c4) OVER w1 as w1_c4_sum2, max(c5) over w2 as w2_max_c5 FROM trans"
         " WINDOW w1 AS (PARTITION BY trans.c1 ORDER BY trans.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW),"
         " w2 AS (PARTITION BY trans.c1 ORDER BY trans.c4 ROWS BETWEEN 3 PRECEDING AND CURRENT ROW);";
     hybridse::sdk::Status status;
     sr->ExecuteSQL(deploy_sql, &status);
     ASSERT_TRUE(status.IsOK()) << status.msg;
+
+    std::string result_sql = "select * from __INTERNAL_DB.PRE_AGG_META_INFO;";
+    auto rs = sr->ExecuteSQL("", result_sql, &status);
+    ASSERT_EQ(2, rs->Size());
+
+    // deploy another deployment with same long window meta but different bucket
+    // it will not create a new aggregator/pre-aggr table, but re-use the existing one
+    deploy_sql =
+        "deploy demo2 OPTIONS(long_windows='w1:2d,w2') SELECT c1, sum(c4) OVER w1 as w1_c4_sum,"
+        " sum(c4) OVER w1 as w1_c4_sum2, max(c5) over w2 as w2_max_c5 FROM trans"
+        " WINDOW w1 AS (PARTITION BY trans.c1 ORDER BY trans.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW),"
+        " w2 AS (PARTITION BY trans.c1 ORDER BY trans.c4 ROWS BETWEEN 3 PRECEDING AND CURRENT ROW);";
+    sr->ExecuteSQL(deploy_sql, &status);
+    ASSERT_TRUE(status.IsOK()) << status.msg;
+
+    rs = sr->ExecuteSQL("", result_sql, &status);
+    ASSERT_EQ(2, rs->Size());
+
+    // deploy another deployment with different long window meta will create a new aggregator/pre-agg table
+    deploy_sql =
+        "deploy demo3 OPTIONS(long_windows='w1:2d') SELECT c1, count_where(c4, c3=1) over w1,"
+        " count_where(c4, c3=2) over w1 FROM trans"
+        " WINDOW w1 AS (PARTITION BY trans.c1 ORDER BY trans.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);";
+    sr->ExecuteSQL(deploy_sql, &status);
+    ASSERT_TRUE(status.IsOK()) << status.msg;
+
+    rs = sr->ExecuteSQL("", result_sql, &status);
+    ASSERT_EQ(3, rs->Size());
+
     std::string msg;
     auto ok = sr->ExecuteDDL(openmldb::nameserver::PRE_AGG_DB, "drop table pre_test2_demo1_w1_sum_c4;", &status);
     ASSERT_TRUE(ok);
     ok = sr->ExecuteDDL(openmldb::nameserver::PRE_AGG_DB, "drop table pre_test2_demo1_w2_max_c5;", &status);
     ASSERT_TRUE(ok);
+    ok = sr->ExecuteDDL(openmldb::nameserver::PRE_AGG_DB, "drop table pre_test2_demo3_w1_count_where_c4_c3;", &status);
+    ASSERT_TRUE(ok);
     ASSERT_FALSE(cs->GetNsClient()->DropTable("test2", "trans", msg));
     ASSERT_TRUE(cs->GetNsClient()->DropProcedure("test2", "demo1", msg));
+    ASSERT_TRUE(cs->GetNsClient()->DropProcedure("test2", "demo2", msg));
+    ASSERT_TRUE(cs->GetNsClient()->DropProcedure("test2", "demo3", msg));
     ASSERT_TRUE(cs->GetNsClient()->DropTable("test2", "trans", msg));
     ASSERT_TRUE(cs->GetNsClient()->DropDatabase("test2", msg));
 }
@@ -3226,6 +3450,8 @@ int main(int argc, char** argv) {
     ::hybridse::vm::Engine::InitializeGlobalLLVM();
     ::testing::InitGoogleTest(&argc, argv);
     ::google::ParseCommandLineFlags(&argc, &argv, true);
+    ::openmldb::base::SetupGlog(true);
+
     FLAGS_traverse_cnt_limit = 500;
     FLAGS_zk_session_timeout = 100000;
     FLAGS_get_table_status_interval = 1000;
@@ -3262,7 +3488,7 @@ int main(int argc, char** argv) {
     ::openmldb::cmd::standalone_cli.cs->Init();
     ::openmldb::cmd::standalone_cli.sr = new ::openmldb::sdk::SQLClusterRouter(::openmldb::cmd::standalone_cli.cs);
     ::openmldb::cmd::standalone_cli.sr->Init();
-    sleep(3);
+    sleep(5);
 
     ok = RUN_ALL_TESTS();
 

@@ -16,6 +16,7 @@ debugs: []
 version: 0.5.0
 cases:
   - id: 0
+    mode: batch-unsupport
     desc: Last Join tables from two databases 1 - default db is db1
     db: db1
     inputs:
@@ -42,6 +43,7 @@ cases:
         - [ "bb",21,131,1590738990000 ]
         - [ "cc",41,151,1590738992000 ]
   - id: 1
+    mode: batch-unsupport
     desc: Last Join tables from two databases 2 - default db is db, explicit db1 and db2
     db: db
     inputs:
@@ -114,6 +116,7 @@ cases:
       success: false
   - id: 4
     desc: 全部使用默认库
+    mode: batch-unsupport
     db: test_zw
     inputs:
       - columns: [ "c1 string","c2 int","c3 bigint","c4 timestamp" ]
@@ -138,6 +141,7 @@ cases:
         - [ "cc",41,151,1590738992000 ]
   - id: 5
     desc: 指定当前库查询
+    mode: batch-unsupport
     db: test_zw
     inputs:
       - columns: [ "c1 string","c2 int","c3 bigint","c4 timestamp" ]
@@ -217,6 +221,7 @@ cases:
       success: false
   - id: 9
     desc: 使用子查询查不同库的数据然后lastjoin
+    mode: batch-unsupport
     tags: ["request 模式有问题，@chenjing"]
     db: db
     inputs:
@@ -244,6 +249,7 @@ cases:
         - [ "cc",41,151,1590738992000 ]
   - id: 10
     desc: 三表三个库拼表
+    mode: batch-unsupport
     db: db
     inputs:
       - columns: [ "c1 string","c2 int","c3 bigint","c4 timestamp" ]
@@ -277,6 +283,7 @@ cases:
         - [ "bb",21,1590738992000,1590738991000 ]
   - id: 11
     desc: 不等值拼接
+    mode: batch-unsupport
     db: db
     inputs:
       - columns: [ "c1 string","c2 int","c3 bigint","c4 timestamp" ]
@@ -303,6 +310,7 @@ cases:
         - [ "bb",21,32,1590738993000 ]
   - id: 12
     desc: 不同库相同表lastjoin
+    mode: batch-unsupport
     db: db
     inputs:
       - db: db1

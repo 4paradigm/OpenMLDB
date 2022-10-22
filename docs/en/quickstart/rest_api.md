@@ -62,7 +62,7 @@ The request body:
 
 ```bash
 curl http://127.0.0.1:8080/dbs/demo_db/deployments/demo_data_service -X POST -d'{
-        "input": [["aaa", 11, 22, 1.2, 1.3, 1635247427000, "2021-05-20"]],
+        "input": [["aaa", 11, 22, 1.2, 1.3, 1635247427000, "2021-05-20"]]
     }'
 ```
 

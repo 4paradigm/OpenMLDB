@@ -23,6 +23,7 @@
 #include "udf/containers.h"
 #include "udf/default_udf_library.h"
 #include "udf/udf_registry.h"
+#include "udf/default_defs/containers.h"
 
 using openmldb::base::Date;
 using openmldb::base::StringRef;
@@ -55,6 +56,11 @@ struct MaxCateDef {
                 .init("max_cate_init" + suffix, ContainerT::Init)
                 .update("max_cate_update" + suffix, Update)
                 .output("max_cate_output" + suffix, Output);
+        }
+
+        // FormatValueF
+        static uint32_t FormatValueFn(const typename ContainerT::StorageValue& val, char* buf, size_t size) {
+            return v1::format_string(val, buf, size);
         }
 
         static ContainerT* Update(ContainerT* ptr, InputV value,
@@ -132,10 +138,10 @@ struct MaxCateWhereDef {
 };
 
 template <typename K>
-struct TopKMaxCateWhereDef {
+struct TopNKeyMaxCateWhereDef {
     void operator()(UdafRegistryHelper& helper) {  // NOLINT
         helper.library()
-            ->RegisterUdafTemplate<Impl>("top_n_key_max_cate_where")
+            ->RegisterUdafTemplate<Impl>(helper.name())
             .doc(helper.GetDoc())
             .template args_in<int16_t, int32_t, int64_t, float, double>();
     }
@@ -150,27 +156,19 @@ struct TopKMaxCateWhereDef {
 
         void operator()(UdafRegistryHelper& helper) {  // NOLINT
             std::string suffix;
+            absl::string_view prefix = helper.name();
 
-            suffix = ".i32_bound_opaque_dict_" + DataTypeTrait<K>::to_string() +
-                     "_" + DataTypeTrait<V>::to_string();
-            helper
-                .templates<StringRef, Opaque<ContainerT>, Nullable<V>,
-                           Nullable<bool>, Nullable<K>, int32_t>()
-                .init("top_n_key_max_cate_where_init" + suffix,
-                      ContainerT::Init)
-                .update("top_n_key_max_cate_where_update" + suffix,
-                        UpdateI32Bound)
-                .output("top_n_key_max_cate_where_output" + suffix, Output);
+            suffix = ".i32_bound_opaque_dict_" + DataTypeTrait<K>::to_string() + "_" + DataTypeTrait<V>::to_string();
+            helper.templates<StringRef, Opaque<ContainerT>, Nullable<V>, Nullable<bool>, Nullable<K>, int32_t>()
+                .init(absl::StrCat(prefix, "_init", suffix), ContainerT::Init)
+                .update(absl::StrCat(prefix, "_update", suffix), UpdateI32Bound)
+                .output(absl::StrCat(prefix, "_output", suffix), Output);
 
-            suffix = ".i64_bound_opaque_dict_" + DataTypeTrait<K>::to_string() +
-                     "_" + DataTypeTrait<V>::to_string();
-            helper
-                .templates<StringRef, Opaque<ContainerT>, Nullable<V>,
-                           Nullable<bool>, Nullable<K>, int64_t>()
-                .init("top_n_key_max_cate_where_init" + suffix,
-                      ContainerT::Init)
-                .update("top_n_key_max_cate_where_update" + suffix, Update)
-                .output("top_n_key_max_cate_where_output" + suffix, Output);
+            suffix = ".i64_bound_opaque_dict_" + DataTypeTrait<K>::to_string() + "_" + DataTypeTrait<V>::to_string();
+            helper.templates<StringRef, Opaque<ContainerT>, Nullable<V>, Nullable<bool>, Nullable<K>, int64_t>()
+                .init(absl::StrCat(prefix, "_init", suffix), ContainerT::Init)
+                .update(absl::StrCat(prefix, "_update", suffix), Update)
+                .output(absl::StrCat(prefix, "_output", suffix), Output);
         }
 
         static ContainerT* Update(ContainerT* ptr, InputV value,
@@ -204,6 +202,16 @@ struct TopKMaxCateWhereDef {
             ContainerT::Destroy(ptr);
         }
     };
+};
+
+template <typename K>
+struct TopNValueMaxCateWhereDef {
+    void operator()(UdafRegistryHelper& helper) {  // NOLINT
+        helper.library()
+            ->RegisterUdafTemplate<container::TopNValueImpl<MaxCateDef<K>::template Impl>::template Impl>(helper.name())
+            .doc(helper.GetDoc())
+            .template args_in<int16_t, int32_t, int64_t, float, double>();
+    }
 };
 
 void DefaultUdfLibrary::initMaxByCateUdaFs() {
@@ -259,11 +267,11 @@ void DefaultUdfLibrary::initMaxByCateUdaFs() {
             )")
         .args_in<int16_t, int32_t, int64_t, Date, Timestamp, StringRef>();
 
-    RegisterUdafTemplate<TopKMaxCateWhereDef>("top_n_key_max_cate_where")
+    RegisterUdafTemplate<TopNKeyMaxCateWhereDef>("top_n_key_max_cate_where")
         .doc(R"(
             @brief Compute maximum of values matching specified condition grouped by
-    category key. Output string for top N keys in descend order. Each group is
-    represented as 'K:V' and separated by comma.
+    category key. Output string for top N category keys in descend order. Each group is
+    represented as 'K:V' and separated by comma(,). Empty string returned if no rows selected.
 
             @param catagory  Specify catagory column to group by.
             @param value  Specify value column to aggregate on.
@@ -285,6 +293,36 @@ void DefaultUdfLibrary::initMaxByCateUdaFs() {
                 SELECT top_n_key_max_cate_where(value, condition, catagory, 2)
     OVER w;
                 -- output "z:5,y:3"
+            @endcode
+            )")
+        .args_in<int16_t, int32_t, int64_t, Date, Timestamp, StringRef>();
+
+    RegisterUdafTemplate<TopNValueMaxCateWhereDef>("top_n_value_max_cate_where")
+        .doc(R"(
+            @brief Compute maximum of values matching specified condition grouped by
+    category key. Output string for top N aggregate values in descend order. Each group is
+    represented as 'K:V' and separated by comma(,). Empty string returned if no rows selected.
+
+            @param value  Specify value column to aggregate on.
+            @param condition  Specify condition column.
+            @param catagory  Specify catagory column to group by.
+            @param n  Fetch Top n.
+
+            Example:
+
+            value|condition|catagory
+            --|--|--
+            0|true|x
+            1|false|y
+            2|false|x
+            3|true|y
+            4|true|x
+            5|true|z
+            6|false|z
+            @code{.sql}
+                SELECT top_n_value_max_cate_where(value, condition, catagory, 2)
+    OVER w;
+                -- output "z:5,x:4"
             @endcode
             )")
         .args_in<int16_t, int32_t, int64_t, Date, Timestamp, StringRef>();

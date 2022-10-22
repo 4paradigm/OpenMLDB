@@ -51,7 +51,10 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <scala.version>2.12.8</scala.version>
         <scala.binary.version>2.12</scala.binary.version>
-        <spark.version>3.0.0</spark.version>
+        <spark.version>3.2.1</spark.version>
+
+        <hadoop.version>2.7.4</hadoop.version>
+
         <scalaCompatVersion>${scala.binary.version}</scalaCompatVersion>
         <scalatest.skip>false</scalatest.skip>
         <spark.dependencyScope>provided</spark.dependencyScope>

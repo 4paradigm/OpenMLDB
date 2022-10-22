@@ -16,14 +16,18 @@ DeploymentName
 				::= identifier
 ```
 
+
 `DeployOption`的定义详见[DEPLOYMENT属性DeployOption（可选）](#DeployOption可选)。
+
 `SelectStmt`的定义详见[Select查询语句](../dql/SELECT_STATEMENT.md)。
+
 `DEPLOY`语句可以将SQL部署到线上。OpenMLDB仅支持部署Select查询语句，并且需要满足[OpenMLDB SQL上线规范和要求](../deployment_manage/ONLINE_SERVING_REQUIREMENTS.md)。
 
 
-**Example**
-在集群版的在线请求模式下，部署上线一个SQL脚本。
 
+**Example**
+
+在集群版的在线请求模式下，部署上线一个SQL脚本。
 ```sql
 CREATE DATABASE db1;
 -- SUCCEED
@@ -103,16 +107,16 @@ LongWindowOption
 #### 长窗口优化
 ```sql
 LongWindowDefinitions
-						::= 'LongWindowDefinition (, LongWindowDefinition)*'
+					::= 'LongWindowDefinition (, LongWindowDefinition)*'
 
 LongWindowDefinition
-						::= WindowName':'[BucketSize]
+					::= WindowName':'[BucketSize]
 
 WindowName
-						::= string_literal
+					::= string_literal
 
 BucketSize
-						::= int_literal | interval_literal
+					::= int_literal | interval_literal
 
 interval_literal ::= int_literal 's'|'m'|'h'|'d'
 ```

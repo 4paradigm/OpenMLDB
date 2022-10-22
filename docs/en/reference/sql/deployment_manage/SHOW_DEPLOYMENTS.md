@@ -1,10 +1,12 @@
 # View DEPLOYMENTS List
 
+The `SHOW DEPLOYMENTS` statement displays the tasks that have been deployed in the current database under Online Request mode.
+
+
 ```SQL
 SHOW DEPLOYMENTS;
 ```
 
-The `SHOW DEPLOYMENTS` statement displays the online serving list that has been deployed under the current database.
 
 ## Example
 

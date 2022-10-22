@@ -17,7 +17,6 @@ OpenMLDB仅支持上线[SELECT查询语句](../dql/SELECT_STATEMENT.md)。
 | 单张表的简单表达式计算                                | 简单的单表查询是对一张表进行列运算、使用运算表达式或单行处理函数（Scalar Function)以及它们的组合表达式作计算。需要遵循[在线请求模式下单表查询的使用规范](#在线请求模式下单表查询的使用规范)                                 |
 | [`JOIN` 子句](../dql/JOIN_CLAUSE.md)     | OpenMLDB目前仅支持**LAST JOIN**。需要遵循[在线请求模式下LAST JOIN的使用规范](#在线请求模式下last-join的使用规范)                                                           |
 | [`WINDOW` 子句](../dql/WINDOW_CLAUSE.md) | 窗口子句用于定义一个或者若干个窗口。窗口可以是有名或者匿名的。用户可以在窗口上调用聚合函数进行分析计算。需要遵循[在线请求模式下Window的使用规范](#在线请求模式下window的使用规范) |
-| [`LIMIT` Clause](../dql/LIMIT_CLAUSE.md)   | LIMIT 子句用于限制返回的结果条数。目前LIMIT仅能接受一个参数，表示返回数据的最大行数。                                                                                         |
 
 ## 在线请求模式下 `SELECT` 子句的使用规范
 
@@ -60,7 +59,7 @@ SELECT substr(COL7, 3, 6) FROM t1;
 
 - 仅支持`LAST JOIN`类型。
 - 至少有一个JOIN条件是形如`left_table.column=right_table.column`的EQUAL条件，**并且`rgith_table.column`列需要命中右表的索引**。
-- 带排序LAST JOIN的情况下，`ORDER BY`只能支持列表达式，**并且列需要命中右表索引的时间列**。
+- 带排序LAST JOIN的情况下，`ORDER BY`只支持列表达式，**并且列需要命中右表索引的时间列**。
 
 **Example: 支持上线的 `LAST JOIN` 语句范例**
 创建两张表以供后续`LAST JOIN`。
@@ -118,5 +117,5 @@ desc t1;
 - 窗口类型仅支持`ROWS`和`ROWS_RANGE`。
 - 窗口`PARTITION BY`只支持列表达式，并且列需要命中索引
 - 窗口`ORDER BY`只支持列表达式，并且列需要命中索引的时间列
-- 可支持使用 `EXCLUDE CURRENT_ROW`，`EXCLUDE CURRENT_TIME`，`MAXSIZE`，`INSTANCE_NOT_IN_WINDOW`对窗口进行其他特殊限制。
+- 可支持使用 `EXCLUDE CURRENT_ROW`，`EXCLUDE CURRENT_TIME`，`MAXSIZE`，`INSTANCE_NOT_IN_WINDOW`对窗口进行其他特殊限制，详见[OpenMLDB特有的 WindowSpec 元素](openmldb特有的-windowspec-元素)。
 

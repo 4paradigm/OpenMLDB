@@ -525,29 +525,6 @@ cases:
         - [4, 3,96]
         - [5, 1,34]
   -
-    id: 17
-    desc: 结合limit
-    mode: request-unsupport
-    tags: ["TODO", "LIMIT批模式没有确定性输出"]
-    inputs:
-      -
-        columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
-        indexs: ["index1:c3:c7"]
-        rows:
-          - [1,"aa",20,30,1.1,2.1,1590738990000,"2020-05-01"]
-          - [2,"bb",20,31,1.2,2.2,1590738991000,"2020-05-02"]
-          - [3,"cc",20,32,1.3,2.3,1590738992000,"2020-05-03"]
-          - [4,"dd",20,33,1.4,2.4,1590738993000,"2020-05-04"]
-          - [5,"ee",21,34,1.5,2.5,1590738994000,"2020-05-05"]
-    sql: |
-      SELECT id, c1, c3, sum(c4) OVER w1 as w1_c4_sum FROM {0} WINDOW w1 AS (PARTITION BY {0}.c3 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW) limit 2;
-    expect:
-      order: id
-      columns: ["id int","c1 string","c3 int","w1_c4_sum bigint"]
-      rows:
-        - [1,"aa",20,30]
-        - [5,"ee",21,34]
-  -
     id: 18
     desc: window的计算结果不使用别名
     mode: cli-unsupport

@@ -72,7 +72,7 @@ jobs:
         uses: codecov/codecov-action@v3
         with:
           files: build/coverage.info
-          name: coverage
+          name: coverage-cpp
           fail_ci_if_error: true
           verbose: true
 

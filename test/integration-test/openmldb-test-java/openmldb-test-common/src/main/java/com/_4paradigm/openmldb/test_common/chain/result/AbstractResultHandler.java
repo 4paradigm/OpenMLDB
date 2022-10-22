@@ -42,6 +42,6 @@ public abstract class AbstractResultHandler {
             nextHandler.doHandle(openMLDBResult);
             return;
         }
-        throw new IllegalArgumentException("result parse failed,not support sql type,sql:"+sql);
+//        throw new IllegalArgumentException("result parse failed,not support sql type,sql:"+sql);
     }
 }

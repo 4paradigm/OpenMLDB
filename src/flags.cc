@@ -39,7 +39,7 @@ DEFINE_uint32(zk_log_level, 0,
 DEFINE_string(zk_log_file, "", "CLI: set zk log file, empty means stderr(default in zk)");
 DEFINE_string(host, "", "used in stand-alone mode, config the name server ip");
 DEFINE_int32(port, 0, "used in stand-alone mode, config the name server port");
-DEFINE_int32(request_timeout, 60000, "rpc request timeout of CLI, unit is milliseconds");
+DEFINE_int32(request_timeout, 600000, "rpc request timeout of CLI, unit is milliseconds");
 
 DEFINE_int32(get_task_status_interval, 2000, "config the interval of get task status. unit is milliseconds");
 DEFINE_uint32(get_table_status_interval, 2000, "config the interval of get table status. unit is milliseconds");
@@ -107,6 +107,7 @@ DEFINE_int32(request_timeout_ms, 20000,
              "rpc request timeout of misc. unit is milliseconds");
 DEFINE_int32(request_sleep_time, 1000, "the sleep time when request error. unit is milliseconds");
 
+DEFINE_uint32(max_traverse_pk_cnt, 5000, "max traverse iter pk cnt");
 DEFINE_uint32(max_traverse_cnt, 50000, "max traverse iter loop cnt");
 DEFINE_uint32(traverse_cnt_limit, 1000, "limit traverse cnt");
 DEFINE_string(ssd_root_path, "", "the root ssd path of db");

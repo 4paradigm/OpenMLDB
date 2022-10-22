@@ -18,6 +18,7 @@ cases:
   -
     id: 0
     desc: 简单拼表
+    mode: batch-unsupport
     inputs:
       -
         columns : ["id int", "card_no string","merchant_id int", "trx_time timestamp", "trx_amt float"]
@@ -58,6 +59,7 @@ cases:
   -
     id: 1
     desc: 三表拼表
+    mode: batch-unsupport
     inputs:
       -
         columns : ["id int", "card_no string","merchant_id int", "user string", "trx_time timestamp", "trx_amt float"]
@@ -107,6 +109,7 @@ cases:
   -
     id: 2
     desc: 三表拼表2
+    mode: batch-unsupport
     inputs:
       -
         columns : ["id int", "card_no string","merchant_id int", "user string", "trx_time timestamp", "trx_amt float"]
@@ -157,6 +160,7 @@ cases:
   -
     id: 3
     desc: 窗口特征拼接副表
+    mode: batch-unsupport
     inputs:
       -
         columns : ["id int", "card_no string","merchant_id int", "trx_time timestamp", "trx_amt float"]
@@ -207,6 +211,7 @@ cases:
   -
     id: 4
     desc: 3组窗口特征ID拼接
+    mode: batch-unsupport
     inputs:
       -
         columns : ["id int", "c1 string", "c2 string", "c3 string", "c4 string", "c6 double", "c7 timestamp"]
@@ -259,6 +264,7 @@ cases:
   -
     id: 5
     desc: 4组窗口特征ID拼接
+    mode: batch-unsupport
     inputs:
       -
         columns : ["id int", "c1 string", "c2 string", "c3 string", "c4 string", "c6 double", "c7 timestamp"]
@@ -379,6 +385,7 @@ cases:
   -
     id: 6
     desc: 窗口特征拼接多张副表, last join 条件表达式1
+    mode: batch-unsupport
     inputs:
       -
         columns : ["id int", "c1 string", "c2 string", "c3 string", "c4 string", "c6 double", "c7 timestamp"]
@@ -501,6 +508,7 @@ cases:
   -
     id: 7
     desc: 窗口特征拼接多张副表, last join 条件表达式2
+    mode: batch-unsupport
     inputs:
       -
         columns : ["id int", "c1 string", "c2 string", "c3 string", "c4 string", "c6 double", "c7 timestamp"]

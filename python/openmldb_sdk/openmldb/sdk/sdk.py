@@ -91,6 +91,8 @@ class OpenMLDBSdk(object):
             options.glog_level = self.options_map['glogLevel']
         if 'glogDir' in self.options_map:
             options.glog_dir = self.options_map['glogDir']
+        if 'maxSqlCacheSize' in self.options_map:
+            options.max_sql_cache_size = int(self.options_map['maxSqlCacheSize'])
 
         self.sdk = sql_router_sdk.NewClusterSQLRouter(
             options) if is_cluster_mode else sql_router_sdk.NewStandaloneSQLRouter(options)
