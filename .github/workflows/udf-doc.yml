@@ -57,6 +57,7 @@ jobs:
             docs/*/reference/sql/functions_and_operators/Files/udfs_8h.md
           labels: |
             udf
+          branch: docs-udf-patch
           delete-branch: true
           commit-message: 'docs(udf): upgrade udf list'
           title: 'docs(udf): update udf list by udf-doc workflow'
