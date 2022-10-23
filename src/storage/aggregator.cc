@@ -119,7 +119,6 @@ bool Aggregator::Update(const std::string& key, const std::string& row, const ui
             return false;
         }
     }
-    std::cout << "[DEBUG]: cur_ts: " << cur_ts << std::endl;
     std::string filter_key = "";
     if (filter_col_idx_ != -1) {
         if (!base_row_view_.IsNULL(row_ptr, filter_col_idx_)) {
@@ -136,18 +135,15 @@ bool Aggregator::Update(const std::string& key, const std::string& row, const ui
         std::lock_guard<std::mutex> lock(mu_);
         auto it = aggr_buffer_map_.find(key);
         if (it == aggr_buffer_map_.end()) {
-            std::cout << "[DEBUG]: not find aggr_buffer" << std::endl;
             auto insert_pair = aggr_buffer_map_[key].emplace(filter_key, AggrBufferLocked{});
             aggr_buffer_lock = &insert_pair.first->second;
         } else {
             auto& filter_map = it->second;
             auto filter_it = filter_map.find(filter_key);
             if (filter_it == filter_map.end()) {
-                std::cout << "[DEBUG]: not find filter_it" << std::endl;
                 auto insert_pair = filter_map.emplace(filter_key, AggrBufferLocked{});
                 aggr_buffer_lock = &insert_pair.first->second;
             } else {
-                std::cout << "[DEBUG]: find filter_it" << std::endl;
                 aggr_buffer_lock = &filter_it->second;
             }
         }
@@ -174,7 +170,6 @@ bool Aggregator::Update(const std::string& key, const std::string& row, const ui
             return false;
         }
     }
-
     if (cur_ts < aggr_buffer.ts_begin_) {
         // handle the case that the current timestamp is smaller than the begin timestamp in aggregate buffer
         lock.unlock();
@@ -189,13 +184,7 @@ bool Aggregator::Update(const std::string& key, const std::string& row, const ui
         }
         return true;
     }
-    std::cout << "[DEBUG]: row: " << row << std::endl;
-    std::cout << "[DEBUG]: aggr_buffer start_ts: " << aggr_buffer.ts_begin_
-              << " end_ts: " << aggr_buffer.ts_end_
-              << " data type: " << (int)aggr_buffer.data_type_
-              << " window_type: " << (int)window_type_ << std::endl;
     if (CheckBufferFilled(cur_ts, aggr_buffer.ts_end_, aggr_buffer.aggr_cnt_)) {
-        std::cout << "[DEBUG]: CheckBufferFilled" << std::endl;
         AggrBuffer flush_buffer = aggr_buffer;
         uint64_t latest_binlog = aggr_buffer.binlog_offset_ + 1;
         aggr_buffer.clear();
@@ -214,12 +203,7 @@ bool Aggregator::Update(const std::string& key, const std::string& row, const ui
     if (window_type_ == WindowType::kRowsNum) {
         aggr_buffer.ts_end_ = cur_ts;
     }
-    bool ok = false;
-    if (reverse) {
-        ok = UpdateAggrValAfterDeleteRange(base_row_view_, row_ptr, &aggr_buffer);
-    } else {
-        ok = UpdateAggrVal(base_row_view_, row_ptr, &aggr_buffer, reverse);
-    }
+    bool ok = UpdateAggrVal(base_row_view_, row_ptr, &aggr_buffer, reverse);
     if (!ok) {
         PDLOG(ERROR, "Update aggr value failed");
         return false;
@@ -229,30 +213,11 @@ bool Aggregator::Update(const std::string& key, const std::string& row, const ui
 
 bool Aggregator::DeleteAndUpdate(const std::string& key, const std::string& row,
                                  const uint64_t& offset, bool recover) {
-    if (window_type_ == WindowType::kRowsNum) {
-        PDLOG(WARNING, "not support");
-        return true;
-    }
     bool ok = Update(key, row, offset, recover, true);
     if (!ok) {
         PDLOG(ERROR, "Delete key %s from aggr table %s failed", key, aggr_table_->GetName());
         return false;
     }
-    ::openmldb::api::LogEntry entry;
-    entry.set_term(aggr_replicator_->GetLeaderTerm());
-    entry.set_method_type(::openmldb::api::MethodType::kDelete);
-    ::openmldb::api::Dimension* dimension = entry.add_dimensions();
-    dimension->set_key(key);
-    dimension->set_idx(aggr_index_pos_);
-    ok = aggr_replicator_->AppendEntry(entry);
-    if (!ok) {
-        PDLOG(ERROR, "Add Delete entry to binlog failed: key %s, aggr table %s", key, aggr_table_->GetName());
-        return false;
-    }
-    if (FLAGS_binlog_notify_on_put) {
-        aggr_replicator_->Notify();
-    }
-
     return true;
 }
 
@@ -313,8 +278,10 @@ bool Aggregator::FlushAll() {
     return true;
 }
 
-bool Aggregator::Init(std::shared_ptr<LogReplicator> base_replicator) {
+bool Aggregator::Init(std::shared_ptr<LogReplicator> base_replicator,
+                      std::shared_ptr<Table> base_table) {
     std::unique_lock<std::mutex> lock(mu_);
+    this->base_table_ = base_table;
     if (GetStat() != AggrStat::kUnInit) {
         PDLOG(INFO, "aggregator status is %s", AggrStatToString(GetStat()));
         return true;
@@ -436,10 +403,6 @@ bool Aggregator::Init(std::shared_ptr<LogReplicator> base_replicator) {
     return true;
 }
 
-void Aggregator::SetReletedTable(std::shared_ptr<Table> base_table) {
-    this->base_table_ = base_table;
-}
-
 bool Aggregator::GetAggrBuffer(const std::string& key, AggrBuffer** buffer) { return GetAggrBuffer(key, "", buffer); }
 
 bool Aggregator::GetAggrBuffer(const std::string& key, const std::string& filter_key, AggrBuffer** buffer) {
@@ -495,8 +458,6 @@ bool Aggregator::FlushAggrBuffer(const std::string& key, const std::string& filt
     row_builder_.SetTimestamp(row_ptr, 1, buffer.ts_begin_);
     row_builder_.SetTimestamp(row_ptr, 2, buffer.ts_end_);
     row_builder_.SetInt32(row_ptr, 3, buffer.aggr_cnt_);
-    std::cout << "[DEBUG]: aggr_cnt: " << buffer.aggr_cnt_
-              << " aggr_val: " << aggr_val << std::endl;
     if ((aggr_type_ == AggrType::kMax || aggr_type_ == AggrType::kMin) && buffer.AggrValEmpty()) {
         row_builder_.SetNULL(row_ptr, row_size, 4);
     } else {
@@ -508,7 +469,6 @@ bool Aggregator::FlushAggrBuffer(const std::string& key, const std::string& filt
     } else {
         row_builder_.SetNULL(row_ptr, row_size, 6);
     }
-
     int64_t time = ::baidu::common::timer::get_micros() / 1000;
     Dimensions dimensions;
     auto dimension = dimensions.Add();
@@ -597,13 +557,20 @@ bool Aggregator::UpdateFlushedBuffer(const std::string& key, const std::string& 
         tmp_buffer.aggr_cnt_ = 1;
         tmp_buffer.binlog_offset_ = offset;
     }
-    std::cout << "[DEBUG]: ready to UpdateAggrVal" << std::endl;
-    bool ok = UpdateAggrVal(base_row_view_, base_row_ptr, &tmp_buffer, reverse);
+    bool ok = false;
+    if (reverse) {
+        ok = aggr_table_->Delete(key, aggr_index_pos_, tmp_buffer.ts_begin_);
+        if (!ok) {
+            PDLOG(ERROR, "aggr table delete one record failed");
+            return false;
+        }
+    }
+
+    ok = UpdateAggrVal(base_row_view_, base_row_ptr, &tmp_buffer, reverse);
     if (!ok) {
         PDLOG(ERROR, "UpdateAggrVal failed");
         return false;
     }
-
     ok = FlushAggrBuffer(key, filter_key, tmp_buffer);
     if (!ok) {
         PDLOG(ERROR, "FlushAggrBuffer failed");
@@ -642,7 +609,6 @@ bool SumAggregator::UpdateAggrVal(const codec::RowView& row_view, const int8_t* 
             } else {
                 aggr_buffer->aggr_val_.vlong += val;
             }
-            std::cout << "[DEBUG]: aggr_col_idx_: " << aggr_col_idx_ << " val: " << val << std::endl;
             break;
         }
         case DataType::kInt: {
@@ -653,7 +619,6 @@ bool SumAggregator::UpdateAggrVal(const codec::RowView& row_view, const int8_t* 
             } else {
                 aggr_buffer->aggr_val_.vlong += val;
             }
-            std::cout << "[DEBUG]: aggr_col_idx_: " << aggr_col_idx_ << " val: " << val << std::endl;
             break;
         }
         case DataType::kTimestamp:
@@ -665,7 +630,6 @@ bool SumAggregator::UpdateAggrVal(const codec::RowView& row_view, const int8_t* 
             } else {
                 aggr_buffer->aggr_val_.vlong += val;
             }
-            std::cout << "[DEBUG]: aggr_col_idx_: " << aggr_col_idx_ << " val: " << val << std::endl;
             break;
         }
         case DataType::kFloat: {
@@ -676,7 +640,6 @@ bool SumAggregator::UpdateAggrVal(const codec::RowView& row_view, const int8_t* 
             } else {
                 aggr_buffer->aggr_val_.vfloat += val;
             }
-            std::cout << "[DEBUG]: aggr_col_idx_: " << aggr_col_idx_ << " val: " << val << std::endl;
             break;
         }
         case DataType::kDouble: {
@@ -687,7 +650,6 @@ bool SumAggregator::UpdateAggrVal(const codec::RowView& row_view, const int8_t* 
             } else {
                 aggr_buffer->aggr_val_.vdouble += val;
             }
-            std::cout << "[DEBUG]: aggr_col_idx_: " << aggr_col_idx_ << " val: " << val << std::endl;
             break;
         }
         default: {
@@ -701,11 +663,6 @@ bool SumAggregator::UpdateAggrVal(const codec::RowView& row_view, const int8_t* 
         aggr_buffer->non_null_cnt_++;
     }
     return true;
-}
-
-bool SumAggregator::UpdateAggrValAfterDeleteRange(const codec::RowView& row_view, const int8_t* row_ptr,
-                                                  AggrBuffer* aggr_buffer) {
-    return this->UpdateAggrVal(row_view, row_ptr, aggr_buffer, true);
 }
 
 bool SumAggregator::EncodeAggrVal(const AggrBuffer& buffer, std::string* aggr_val) {
@@ -876,11 +833,6 @@ bool MinMaxBaseAggregator::DecodeAggrVal(const int8_t* row_ptr, AggrBuffer* buff
     return true;
 }
 
-bool MinMaxBaseAggregator::UpdateAggrValAfterDeleteRange(const codec::RowView& row_view, const int8_t* row_ptr,
-                                                         AggrBuffer* aggr_buffer) {
-    return true;
-}
-
 MinAggregator::MinAggregator(const ::openmldb::api::TableMeta& base_meta, const ::openmldb::api::TableMeta& aggr_meta,
                              std::shared_ptr<Table> aggr_table, std::shared_ptr<LogReplicator> aggr_replicator,
                              const uint32_t& index_pos, const std::string& aggr_col, const AggrType& aggr_type,
@@ -890,74 +842,160 @@ MinAggregator::MinAggregator(const ::openmldb::api::TableMeta& base_meta, const 
 
 bool MinAggregator::UpdateAggrVal(const codec::RowView& row_view, const int8_t* row_ptr, AggrBuffer* aggr_buffer,
                                   bool reverse) {
-    if (row_view.IsNULL(row_ptr, aggr_col_idx_)) {
-        return true;
-    }
-    switch (aggr_col_type_) {
-        case DataType::kSmallInt: {
-            int16_t val;
-            row_view.GetValue(row_ptr, aggr_col_idx_, aggr_col_type_, &val);
-            if (aggr_buffer->AggrValEmpty() || val < aggr_buffer->aggr_val_.vsmallint) {
-                aggr_buffer->aggr_val_.vsmallint = val;
-            }
-            break;
-        }
-        case DataType::kDate:
-        case DataType::kInt: {
-            int32_t val;
-            row_view.GetValue(row_ptr, aggr_col_idx_, aggr_col_type_, &val);
-            if (aggr_buffer->AggrValEmpty() || val < aggr_buffer->aggr_val_.vint) {
-                aggr_buffer->aggr_val_.vint = val;
-            }
-            break;
-        }
-        case DataType::kTimestamp:
-        case DataType::kBigInt: {
-            int64_t val;
-            row_view.GetValue(row_ptr, aggr_col_idx_, aggr_col_type_, &val);
-            if (aggr_buffer->AggrValEmpty() || val < aggr_buffer->aggr_val_.vlong) {
-                aggr_buffer->aggr_val_.vlong = val;
-            }
-            break;
-        }
-        case DataType::kFloat: {
-            float val;
-            row_view.GetValue(row_ptr, aggr_col_idx_, aggr_col_type_, &val);
-            if (aggr_buffer->AggrValEmpty() || val < aggr_buffer->aggr_val_.vfloat) {
-                aggr_buffer->aggr_val_.vfloat = val;
-            }
-            break;
-        }
-        case DataType::kDouble: {
-            double val;
-            row_view.GetValue(row_ptr, aggr_col_idx_, aggr_col_type_, &val);
-            if (aggr_buffer->AggrValEmpty() || val < aggr_buffer->aggr_val_.vdouble) {
-                aggr_buffer->aggr_val_.vdouble = val;
-            }
-            break;
-        }
-        case DataType::kString:
-        case DataType::kVarchar: {
-            char* ch = NULL;
-            uint32_t ch_length = 0;
-            row_view.GetValue(row_ptr, aggr_col_idx_, &ch, &ch_length);
-            auto& aggr_val = aggr_buffer->aggr_val_.vstring;
-            if (aggr_buffer->AggrValEmpty() || StringCompare(ch, ch_length, aggr_val.data, aggr_val.len) < 0) {
-                if (aggr_val.data != NULL && ch_length > aggr_val.len) {
-                    delete[] aggr_val.data;
-                    aggr_val.data = NULL;
-                }
-                if (aggr_val.data == NULL) {
-                    aggr_val.data = new char[ch_length];
-                }
-                aggr_val.len = ch_length;
-                memcpy(aggr_val.data, ch, ch_length);
-            }
-            break;
-        }
-        default: {
-            PDLOG(ERROR, "Unsupported data type");
+    if (reverse) {
+        uint64_t ts_begin = aggr_buffer->ts_begin_;
+        if (base_table_ == nullptr) {
+            PDLOG(ERROR, "base table is nullptr, cannot update MinAggr table");
             return false;
+        }
+        auto it = base_table_->NewTraverseIterator(0);
+        it->SeekToFirst();
+        while (it->Valid() && it->GetKey() >= ts_begin) {
+            auto tmp_val = it->GetValue();
+            std::string origin_data = tmp_val.ToString();
+            const int8_t* row_ptr = reinterpret_cast<const int8_t*>(it->GetValue().data());
+            codec::RowView base_row_view(base_table_->GetTableMeta()->column_desc(),
+                                         reinterpret_cast<int8_t*>(const_cast<char*>(origin_data.c_str())),
+                                         origin_data.size());
+            switch (aggr_col_type_) {
+                case DataType::kSmallInt: {
+                    int16_t val;
+                    base_row_view.GetValue(row_ptr, aggr_col_idx_, aggr_col_type_, &val);
+                    if (aggr_buffer->AggrValEmpty() || val < aggr_buffer->aggr_val_.vsmallint) {
+                        aggr_buffer->aggr_val_.vsmallint = val;
+                    }
+                    break;
+                }
+                case DataType::kDate:
+                case DataType::kInt: {
+                    int32_t val;
+                    base_row_view.GetValue(row_ptr, aggr_col_idx_, aggr_col_type_, &val);
+                    if (aggr_buffer->AggrValEmpty() || val < aggr_buffer->aggr_val_.vint) {
+                        aggr_buffer->aggr_val_.vint = val;
+                    }
+                    break;
+                }
+                case DataType::kTimestamp:
+                case DataType::kBigInt: {
+                    int64_t val;
+                    base_row_view.GetValue(row_ptr, aggr_col_idx_, aggr_col_type_, &val);
+                    if (aggr_buffer->AggrValEmpty() || val < aggr_buffer->aggr_val_.vlong) {
+                        aggr_buffer->aggr_val_.vlong = val;
+                    }
+                    break;
+                }
+                case DataType::kFloat: {
+                    float val;
+                    base_row_view.GetValue(row_ptr, aggr_col_idx_, aggr_col_type_, &val);
+                    if (aggr_buffer->AggrValEmpty() || val < aggr_buffer->aggr_val_.vfloat) {
+                        aggr_buffer->aggr_val_.vfloat = val;
+                    }
+                    break;
+                }
+                case DataType::kDouble: {
+                    double val;
+                    base_row_view.GetValue(row_ptr, aggr_col_idx_, aggr_col_type_, &val);
+                    if (aggr_buffer->AggrValEmpty() || val < aggr_buffer->aggr_val_.vdouble) {
+                        aggr_buffer->aggr_val_.vdouble = val;
+                    }
+                    break;
+                }
+                case DataType::kString:
+                case DataType::kVarchar: {
+                    char* ch = NULL;
+                    uint32_t ch_length = 0;
+                    base_row_view.GetValue(row_ptr, aggr_col_idx_, &ch, &ch_length);
+                    auto& aggr_val = aggr_buffer->aggr_val_.vstring;
+                    if (aggr_buffer->AggrValEmpty() || StringCompare(ch, ch_length, aggr_val.data, aggr_val.len) < 0) {
+                        if (aggr_val.data != NULL && ch_length > aggr_val.len) {
+                            delete[] aggr_val.data;
+                            aggr_val.data = NULL;
+                        }
+                        if (aggr_val.data == NULL) {
+                            aggr_val.data = new char[ch_length];
+                        }
+                        aggr_val.len = ch_length;
+                        memcpy(aggr_val.data, ch, ch_length);
+                    }
+                    break;
+                }
+                default: {
+                    PDLOG(ERROR, "Unsupported data type");
+                    return false;
+                }
+            }
+            it->Next();
+        }
+    } else {
+        if (row_view.IsNULL(row_ptr, aggr_col_idx_)) {
+            return true;
+        }
+        switch (aggr_col_type_) {
+            case DataType::kSmallInt: {
+                int16_t val;
+                row_view.GetValue(row_ptr, aggr_col_idx_, aggr_col_type_, &val);
+                if (aggr_buffer->AggrValEmpty() || val < aggr_buffer->aggr_val_.vsmallint) {
+                    aggr_buffer->aggr_val_.vsmallint = val;
+                }
+                break;
+            }
+            case DataType::kDate:
+            case DataType::kInt: {
+                int32_t val;
+                row_view.GetValue(row_ptr, aggr_col_idx_, aggr_col_type_, &val);
+                if (aggr_buffer->AggrValEmpty() || val < aggr_buffer->aggr_val_.vint) {
+                    aggr_buffer->aggr_val_.vint = val;
+                }
+                break;
+            }
+            case DataType::kTimestamp:
+            case DataType::kBigInt: {
+                int64_t val;
+                row_view.GetValue(row_ptr, aggr_col_idx_, aggr_col_type_, &val);
+                if (aggr_buffer->AggrValEmpty() || val < aggr_buffer->aggr_val_.vlong) {
+                    aggr_buffer->aggr_val_.vlong = val;
+                }
+                break;
+            }
+            case DataType::kFloat: {
+                float val;
+                row_view.GetValue(row_ptr, aggr_col_idx_, aggr_col_type_, &val);
+                if (aggr_buffer->AggrValEmpty() || val < aggr_buffer->aggr_val_.vfloat) {
+                    aggr_buffer->aggr_val_.vfloat = val;
+                }
+                break;
+            }
+            case DataType::kDouble: {
+                double val;
+                row_view.GetValue(row_ptr, aggr_col_idx_, aggr_col_type_, &val);
+                if (aggr_buffer->AggrValEmpty() || val < aggr_buffer->aggr_val_.vdouble) {
+                    aggr_buffer->aggr_val_.vdouble = val;
+                }
+                break;
+            }
+            case DataType::kString:
+            case DataType::kVarchar: {
+                char* ch = NULL;
+                uint32_t ch_length = 0;
+                row_view.GetValue(row_ptr, aggr_col_idx_, &ch, &ch_length);
+                auto& aggr_val = aggr_buffer->aggr_val_.vstring;
+                if (aggr_buffer->AggrValEmpty() || StringCompare(ch, ch_length, aggr_val.data, aggr_val.len) < 0) {
+                    if (aggr_val.data != NULL && ch_length > aggr_val.len) {
+                        delete[] aggr_val.data;
+                        aggr_val.data = NULL;
+                    }
+                    if (aggr_val.data == NULL) {
+                        aggr_val.data = new char[ch_length];
+                    }
+                    aggr_val.len = ch_length;
+                    memcpy(aggr_val.data, ch, ch_length);
+                }
+                break;
+            }
+            default: {
+                PDLOG(ERROR, "Unsupported data type");
+                return false;
+            }
         }
     }
     if (reverse) {
@@ -965,11 +1003,6 @@ bool MinAggregator::UpdateAggrVal(const codec::RowView& row_view, const int8_t* 
     } else {
         aggr_buffer->non_null_cnt_++;
     }
-    return true;
-}
-
-bool MinAggregator::UpdateAggrValAfterDeleteRange(const codec::RowView& row_view, const int8_t* row_ptr,
-                                                  AggrBuffer* aggr_buffer) {
     return true;
 }
 
@@ -982,74 +1015,160 @@ MaxAggregator::MaxAggregator(const ::openmldb::api::TableMeta& base_meta, const 
 
 bool MaxAggregator::UpdateAggrVal(const codec::RowView& row_view, const int8_t* row_ptr, AggrBuffer* aggr_buffer,
                                   bool reverse) {
-    if (row_view.IsNULL(row_ptr, aggr_col_idx_)) {
-        return true;
-    }
-    switch (aggr_col_type_) {
-        case DataType::kSmallInt: {
-            int16_t val;
-            row_view.GetValue(row_ptr, aggr_col_idx_, aggr_col_type_, &val);
-            if (aggr_buffer->AggrValEmpty() || val > aggr_buffer->aggr_val_.vsmallint) {
-                aggr_buffer->aggr_val_.vsmallint = val;
-            }
-            break;
-        }
-        case DataType::kDate:
-        case DataType::kInt: {
-            int32_t val;
-            row_view.GetValue(row_ptr, aggr_col_idx_, aggr_col_type_, &val);
-            if (aggr_buffer->AggrValEmpty() || val > aggr_buffer->aggr_val_.vint) {
-                aggr_buffer->aggr_val_.vint = val;
-            }
-            break;
-        }
-        case DataType::kTimestamp:
-        case DataType::kBigInt: {
-            int64_t val;
-            row_view.GetValue(row_ptr, aggr_col_idx_, aggr_col_type_, &val);
-            if (aggr_buffer->AggrValEmpty() || val > aggr_buffer->aggr_val_.vlong) {
-                aggr_buffer->aggr_val_.vlong = val;
-            }
-            break;
-        }
-        case DataType::kFloat: {
-            float val;
-            row_view.GetValue(row_ptr, aggr_col_idx_, aggr_col_type_, &val);
-            if (aggr_buffer->AggrValEmpty() || val > aggr_buffer->aggr_val_.vfloat) {
-                aggr_buffer->aggr_val_.vfloat = val;
-            }
-            break;
-        }
-        case DataType::kDouble: {
-            double val;
-            row_view.GetValue(row_ptr, aggr_col_idx_, aggr_col_type_, &val);
-            if (aggr_buffer->AggrValEmpty() || val > aggr_buffer->aggr_val_.vdouble) {
-                aggr_buffer->aggr_val_.vdouble = val;
-            }
-            break;
-        }
-        case DataType::kString:
-        case DataType::kVarchar: {
-            char* ch = NULL;
-            uint32_t ch_length = 0;
-            row_view.GetValue(row_ptr, aggr_col_idx_, &ch, &ch_length);
-            auto& aggr_val = aggr_buffer->aggr_val_.vstring;
-            if (aggr_buffer->AggrValEmpty() || StringCompare(ch, ch_length, aggr_val.data, aggr_val.len) > 0) {
-                if (aggr_val.data != NULL && ch_length > aggr_val.len) {
-                    delete[] aggr_val.data;
-                    aggr_val.data = NULL;
-                }
-                if (aggr_val.data == NULL) {
-                    aggr_val.data = new char[ch_length];
-                }
-                aggr_val.len = ch_length;
-                memcpy(aggr_val.data, ch, ch_length);
-            }
-            break;
-        }
-        default: {
-            PDLOG(ERROR, "Unsupported data type");
+    if (reverse) {
+        uint64_t ts_begin = aggr_buffer->ts_begin_;
+        if (base_table_ == nullptr) {
+            PDLOG(ERROR, "base table is nullptr, cannot update MinAggr table");
             return false;
+        }
+        auto it = base_table_->NewTraverseIterator(0);
+        it->SeekToFirst();
+        while (it->Valid() && it->GetKey() >= ts_begin) {
+            auto tmp_val = it->GetValue();
+            std::string origin_data = tmp_val.ToString();
+            const int8_t* row_ptr = reinterpret_cast<const int8_t*>(it->GetValue().data());
+            codec::RowView base_row_view(base_table_->GetTableMeta()->column_desc(),
+                                         reinterpret_cast<int8_t*>(const_cast<char*>(origin_data.c_str())),
+                                         origin_data.size());
+            switch (aggr_col_type_) {
+                case DataType::kSmallInt: {
+                    int16_t val;
+                    row_view.GetValue(row_ptr, aggr_col_idx_, aggr_col_type_, &val);
+                    if (aggr_buffer->AggrValEmpty() || val > aggr_buffer->aggr_val_.vsmallint) {
+                        aggr_buffer->aggr_val_.vsmallint = val;
+                    }
+                    break;
+                }
+                case DataType::kDate:
+                case DataType::kInt: {
+                    int32_t val;
+                    row_view.GetValue(row_ptr, aggr_col_idx_, aggr_col_type_, &val);
+                    if (aggr_buffer->AggrValEmpty() || val > aggr_buffer->aggr_val_.vint) {
+                        aggr_buffer->aggr_val_.vint = val;
+                    }
+                    break;
+                }
+                case DataType::kTimestamp:
+                case DataType::kBigInt: {
+                    int64_t val;
+                    row_view.GetValue(row_ptr, aggr_col_idx_, aggr_col_type_, &val);
+                    if (aggr_buffer->AggrValEmpty() || val > aggr_buffer->aggr_val_.vlong) {
+                        aggr_buffer->aggr_val_.vlong = val;
+                    }
+                    break;
+                }
+                case DataType::kFloat: {
+                    float val;
+                    row_view.GetValue(row_ptr, aggr_col_idx_, aggr_col_type_, &val);
+                    if (aggr_buffer->AggrValEmpty() || val > aggr_buffer->aggr_val_.vfloat) {
+                        aggr_buffer->aggr_val_.vfloat = val;
+                    }
+                    break;
+                }
+                case DataType::kDouble: {
+                    double val;
+                    row_view.GetValue(row_ptr, aggr_col_idx_, aggr_col_type_, &val);
+                    if (aggr_buffer->AggrValEmpty() || val > aggr_buffer->aggr_val_.vdouble) {
+                        aggr_buffer->aggr_val_.vdouble = val;
+                    }
+                    break;
+                }
+                case DataType::kString:
+                case DataType::kVarchar: {
+                    char* ch = NULL;
+                    uint32_t ch_length = 0;
+                    row_view.GetValue(row_ptr, aggr_col_idx_, &ch, &ch_length);
+                    auto& aggr_val = aggr_buffer->aggr_val_.vstring;
+                    if (aggr_buffer->AggrValEmpty() || StringCompare(ch, ch_length, aggr_val.data, aggr_val.len) > 0) {
+                        if (aggr_val.data != NULL && ch_length > aggr_val.len) {
+                            delete[] aggr_val.data;
+                            aggr_val.data = NULL;
+                        }
+                        if (aggr_val.data == NULL) {
+                            aggr_val.data = new char[ch_length];
+                        }
+                        aggr_val.len = ch_length;
+                        memcpy(aggr_val.data, ch, ch_length);
+                    }
+                    break;
+                }
+                default: {
+                    PDLOG(ERROR, "Unsupported data type");
+                    return false;
+                }
+            }
+            it->Next();
+        }
+    } else {
+        if (row_view.IsNULL(row_ptr, aggr_col_idx_)) {
+            return true;
+        }
+        switch (aggr_col_type_) {
+            case DataType::kSmallInt: {
+                int16_t val;
+                row_view.GetValue(row_ptr, aggr_col_idx_, aggr_col_type_, &val);
+                if (aggr_buffer->AggrValEmpty() || val > aggr_buffer->aggr_val_.vsmallint) {
+                    aggr_buffer->aggr_val_.vsmallint = val;
+                }
+                break;
+            }
+            case DataType::kDate:
+            case DataType::kInt: {
+                int32_t val;
+                row_view.GetValue(row_ptr, aggr_col_idx_, aggr_col_type_, &val);
+                if (aggr_buffer->AggrValEmpty() || val > aggr_buffer->aggr_val_.vint) {
+                    aggr_buffer->aggr_val_.vint = val;
+                }
+                break;
+            }
+            case DataType::kTimestamp:
+            case DataType::kBigInt: {
+                int64_t val;
+                row_view.GetValue(row_ptr, aggr_col_idx_, aggr_col_type_, &val);
+                if (aggr_buffer->AggrValEmpty() || val > aggr_buffer->aggr_val_.vlong) {
+                    aggr_buffer->aggr_val_.vlong = val;
+                }
+                break;
+            }
+            case DataType::kFloat: {
+                float val;
+                row_view.GetValue(row_ptr, aggr_col_idx_, aggr_col_type_, &val);
+                if (aggr_buffer->AggrValEmpty() || val > aggr_buffer->aggr_val_.vfloat) {
+                    aggr_buffer->aggr_val_.vfloat = val;
+                }
+                break;
+            }
+            case DataType::kDouble: {
+                double val;
+                row_view.GetValue(row_ptr, aggr_col_idx_, aggr_col_type_, &val);
+                if (aggr_buffer->AggrValEmpty() || val > aggr_buffer->aggr_val_.vdouble) {
+                    aggr_buffer->aggr_val_.vdouble = val;
+                }
+                break;
+            }
+            case DataType::kString:
+            case DataType::kVarchar: {
+                char* ch = NULL;
+                uint32_t ch_length = 0;
+                row_view.GetValue(row_ptr, aggr_col_idx_, &ch, &ch_length);
+                auto& aggr_val = aggr_buffer->aggr_val_.vstring;
+                if (aggr_buffer->AggrValEmpty() || StringCompare(ch, ch_length, aggr_val.data, aggr_val.len) > 0) {
+                    if (aggr_val.data != NULL && ch_length > aggr_val.len) {
+                        delete[] aggr_val.data;
+                        aggr_val.data = NULL;
+                    }
+                    if (aggr_val.data == NULL) {
+                        aggr_val.data = new char[ch_length];
+                    }
+                    aggr_val.len = ch_length;
+                    memcpy(aggr_val.data, ch, ch_length);
+                }
+                break;
+            }
+            default: {
+                PDLOG(ERROR, "Unsupported data type");
+                return false;
+            }
         }
     }
     if (reverse) {
@@ -1057,12 +1176,6 @@ bool MaxAggregator::UpdateAggrVal(const codec::RowView& row_view, const int8_t* 
     } else {
         aggr_buffer->non_null_cnt_++;
     }
-    return true;
-}
-
-bool MaxAggregator::UpdateAggrValAfterDeleteRange(const codec::RowView& row_view, const int8_t* row_ptr,
-                                                  AggrBuffer* aggr_buffer) {
-    // TODO(Paul)
     return true;
 }
 
@@ -1104,11 +1217,6 @@ bool CountAggregator::UpdateAggrVal(const codec::RowView& row_view, const int8_t
         }
     }
     return true;
-}
-
-bool CountAggregator::UpdateAggrValAfterDeleteRange(const codec::RowView& row_view, const int8_t* row_ptr,
-                                                    AggrBuffer* aggr_buffer) {
-    return this->UpdateAggrVal(row_view, row_ptr, aggr_buffer, true);
 }
 
 AvgAggregator::AvgAggregator(const ::openmldb::api::TableMeta& base_meta, const ::openmldb::api::TableMeta& aggr_meta,
@@ -1204,11 +1312,6 @@ bool AvgAggregator::DecodeAggrVal(const int8_t* row_ptr, AggrBuffer* buffer) {
     buffer->aggr_val_.vdouble = origin_val;
     buffer->non_null_cnt_ = *reinterpret_cast<int64_t*>(aggr_val + sizeof(double));
     return true;
-}
-
-bool AvgAggregator::UpdateAggrValAfterDeleteRange(const codec::RowView& row_view, const int8_t* row_ptr,
-                                                  AggrBuffer* aggr_buffer) {
-    return this->UpdateAggrVal(row_view, row_ptr, aggr_buffer, true);
 }
 
 std::shared_ptr<Aggregator> CreateAggregator(const ::openmldb::api::TableMeta& base_meta,

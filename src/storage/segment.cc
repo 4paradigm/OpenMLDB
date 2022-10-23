@@ -493,6 +493,15 @@ void Segment::GcTsEntryFreeList(uint64_t version, uint64_t& gc_idx_cnt, uint64_t
     }
 }
 
+void Segment::GcTsFreeList(uint64_t& gc_idx_cnt, uint64_t& gc_record_cnt, uint64_t& gc_record_byte_size) {
+    uint64_t cur_version = gc_version_.load(std::memory_order_relaxed);
+    if (cur_version < FLAGS_gc_deleted_pk_version_delta) {
+        return;
+    }
+    uint64_t free_list_version = cur_version - FLAGS_gc_deleted_pk_version_delta;
+    GcTsEntryFreeList(free_list_version, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
+}
+
 void Segment::GcFreeList(uint64_t& gc_idx_cnt, uint64_t& gc_record_cnt, uint64_t& gc_record_byte_size) {
     uint64_t cur_version = gc_version_.load(std::memory_order_relaxed);
     if (cur_version < FLAGS_gc_deleted_pk_version_delta) {

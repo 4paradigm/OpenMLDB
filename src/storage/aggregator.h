@@ -137,9 +137,7 @@ class Aggregator {
 
     bool FlushAll();
 
-    bool Init(std::shared_ptr<LogReplicator> base_replicator);
-
-    void SetReletedTable(std::shared_ptr<Table> base_table);
+    bool Init(std::shared_ptr<LogReplicator> base_replicator, std::shared_ptr<Table> base_table);
 
     uint32_t GetIndexPos() const { return index_pos_; }
 
@@ -186,11 +184,9 @@ class Aggregator {
 
  private:
     virtual bool UpdateAggrVal(const codec::RowView& row_view, const int8_t* row_ptr, AggrBuffer* aggr_buffer,
-                               bool reverse) = 0;
+                               bool reverse = false) = 0;
     virtual bool EncodeAggrVal(const AggrBuffer& buffer, std::string* aggr_val) = 0;
     virtual bool DecodeAggrVal(const int8_t* row_ptr, AggrBuffer* buffer) = 0;
-    virtual bool UpdateAggrValAfterDeleteRange(const codec::RowView& row_view, const int8_t* row_ptr,
-                                       AggrBuffer* aggr_buffer) = 0;
     int64_t AlignedStart(int64_t ts) {
         if (window_type_ == WindowType::kRowsRange) {
             return ts / window_size_ * window_size_;
@@ -232,14 +228,11 @@ class SumAggregator : public Aggregator {
 
  private:
     bool UpdateAggrVal(const codec::RowView& row_view, const int8_t* row_ptr, AggrBuffer* aggr_buffer,
-                       bool reverse) override;
+                       bool reverse = false) override;
 
     bool EncodeAggrVal(const AggrBuffer& buffer, std::string* aggr_val) override;
 
     bool DecodeAggrVal(const int8_t* row_ptr, AggrBuffer* buffer) override;
-
-    bool UpdateAggrValAfterDeleteRange(const codec::RowView& row_view, const int8_t* row_ptr,
-                                       AggrBuffer* aggr_buffer) override;
 };
 
 class MinMaxBaseAggregator : public Aggregator {
@@ -255,9 +248,6 @@ class MinMaxBaseAggregator : public Aggregator {
     bool EncodeAggrVal(const AggrBuffer& buffer, std::string* aggr_val) override;
 
     bool DecodeAggrVal(const int8_t* row_ptr, AggrBuffer* buffer) override;
-
-    bool UpdateAggrValAfterDeleteRange(const codec::RowView& row_view, const int8_t* row_ptr,
-                                       AggrBuffer* aggr_buffer) override;
 };
 class MinAggregator : public MinMaxBaseAggregator {
  public:
@@ -270,10 +260,7 @@ class MinAggregator : public MinMaxBaseAggregator {
 
  private:
     bool UpdateAggrVal(const codec::RowView& row_view, const int8_t* row_ptr, AggrBuffer* aggr_buffer,
-                       bool reverse) override;
-
-    bool UpdateAggrValAfterDeleteRange(const codec::RowView& row_view, const int8_t* row_ptr,
-                                       AggrBuffer* aggr_buffer) override;
+                       bool reverse = false) override;
 };
 
 class MaxAggregator : public MinMaxBaseAggregator {
@@ -287,10 +274,7 @@ class MaxAggregator : public MinMaxBaseAggregator {
 
  private:
     bool UpdateAggrVal(const codec::RowView& row_view, const int8_t* row_ptr, AggrBuffer* aggr_buffer,
-                       bool reverse) override;
-
-    bool UpdateAggrValAfterDeleteRange(const codec::RowView& row_view, const int8_t* row_ptr,
-                                       AggrBuffer* aggr_buffer) override;
+                       bool reverse = false) override;
 };
 
 class CountAggregator : public Aggregator {
@@ -304,14 +288,11 @@ class CountAggregator : public Aggregator {
 
  private:
     bool UpdateAggrVal(const codec::RowView& row_view, const int8_t* row_ptr, AggrBuffer* aggr_buffer,
-                       bool reverse) override;
+                       bool reverse = false) override;
 
     bool EncodeAggrVal(const AggrBuffer& buffer, std::string* aggr_val) override;
 
     bool DecodeAggrVal(const int8_t* row_ptr, AggrBuffer* buffer) override;
-
-    bool UpdateAggrValAfterDeleteRange(const codec::RowView& row_view, const int8_t* row_ptr,
-                                       AggrBuffer* aggr_buffer) override;
 
     bool count_all = false;
 };
@@ -327,14 +308,11 @@ class AvgAggregator : public Aggregator {
 
  private:
     bool UpdateAggrVal(const codec::RowView& row_view, const int8_t* row_ptr, AggrBuffer* aggr_buffer,
-                       bool reverse) override;
+                       bool reverse = false) override;
 
     bool EncodeAggrVal(const AggrBuffer& buffer, std::string* aggr_val) override;
 
     bool DecodeAggrVal(const int8_t* row_ptr, AggrBuffer* buffer) override;
-
-    bool UpdateAggrValAfterDeleteRange(const codec::RowView& row_view, const int8_t* row_ptr,
-                                       AggrBuffer* aggr_buffer) override;
 };
 
 std::shared_ptr<Aggregator> CreateAggregator(const ::openmldb::api::TableMeta& base_meta,

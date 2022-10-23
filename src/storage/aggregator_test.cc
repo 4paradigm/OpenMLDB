@@ -104,12 +104,123 @@ bool UpdateAggr(std::shared_ptr<Aggregator> aggr, codec::RowBuilder* row_builder
     return true;
 }
 
-bool UpdateAndDeleteAggr(std::shared_ptr<Aggregator> aggr, codec::RowBuilder* row_builder) {
+bool UpdateMinAggr(std::shared_ptr<Aggregator> aggr, codec::RowBuilder* row_builder,
+                    std::shared_ptr<Table> base_table, int *delete_index) {
+    std::string encoded_row;
+    std::string delete_row;
+    auto window_size = aggr->GetWindowSize();
+    *delete_index = 80;
+    std::string str1("abc");
+    std::string str2("hello");
+    for (int i = 0; i <= 100; i++) {
+        std::string str = i % 2 == 0 ? str1 : str2;
+        uint32_t row_size = row_builder->CalTotalLength(6 + str.size());
+        encoded_row.resize(row_size);
+        row_builder->SetBuffer(reinterpret_cast<int8_t*>(&(encoded_row[0])), row_size);
+        row_builder->AppendString("id1", 3);
+        row_builder->AppendString("id2", 3);
+        row_builder->AppendTimestamp(static_cast<int64_t>(i) * window_size / 2);
+        row_builder->AppendInt32(i);
+        row_builder->AppendInt16(i);
+        row_builder->AppendInt64(i);
+        row_builder->AppendFloat(static_cast<float>(i));
+        row_builder->AppendDouble(static_cast<double>(i));
+        row_builder->AppendDate(i);
+        row_builder->AppendString(str.c_str(), str.size());
+        row_builder->AppendNULL();
+        row_builder->AppendInt32(i % 2);
+        Dimensions dimensions;
+        auto dimension = dimensions.Add();
+        dimension->set_idx(0);
+        dimension->set_key("id1|id2");
+        if (i == *delete_index) {
+            delete_row = encoded_row;
+        }
+        bool ok = base_table->Put(static_cast<int64_t>(i) * window_size / 2, encoded_row, dimensions);
+        if (!ok) {
+            return false;
+        }
+        ok = aggr->Update("id1|id2", encoded_row, i);
+        if (!ok) {
+            return false;
+        }
+    }
+    bool ok = base_table->Delete("id1|id2", 0, (*delete_index) * window_size / 2);
+    if (!ok) {
+        PDLOG(ERROR, "base table delete failed");
+        return false;
+    }
+    ok = aggr->DeleteAndUpdate("id1|id2", delete_row, 101);
+    if (!ok) {
+        PDLOG(ERROR, "aggr deletes one record failed");
+        return false;
+    }
+    return true;
+}
+
+bool UpdateMaxAggr(std::shared_ptr<Aggregator> aggr, codec::RowBuilder* row_builder,
+                    std::shared_ptr<Table> base_table, int *delete_index) {
+    std::string encoded_row;
+    std::string delete_row;
+    *delete_index = 81;
+    auto window_size = aggr->GetWindowSize();
+    std::string str1("abc");
+    std::string str2("hello");
+    for (int i = 0; i <= 100; i++) {
+        std::string str = i % 2 == 0 ? str1 : str2;
+        uint32_t row_size = row_builder->CalTotalLength(6 + str.size());
+        encoded_row.resize(row_size);
+        row_builder->SetBuffer(reinterpret_cast<int8_t*>(&(encoded_row[0])), row_size);
+        row_builder->AppendString("id1", 3);
+        row_builder->AppendString("id2", 3);
+        row_builder->AppendTimestamp(static_cast<int64_t>(i) * window_size / 2);
+        row_builder->AppendInt32(i);
+        row_builder->AppendInt16(i);
+        row_builder->AppendInt64(i);
+        row_builder->AppendFloat(static_cast<float>(i));
+        row_builder->AppendDouble(static_cast<double>(i));
+        row_builder->AppendDate(i);
+        row_builder->AppendString(str.c_str(), str.size());
+        row_builder->AppendNULL();
+        row_builder->AppendInt32(i % 2);
+        Dimensions dimensions;
+        auto dimension = dimensions.Add();
+        dimension->set_idx(0);
+        dimension->set_key("id1|id2");
+        if (i == *delete_index) {
+            delete_row = encoded_row;
+        }
+        bool ok = base_table->Put(static_cast<int64_t>(i) * window_size / 2, encoded_row, dimensions);
+        if (!ok) {
+            return false;
+        }
+        ok = aggr->Update("id1|id2", encoded_row, i);
+        if (!ok) {
+            return false;
+        }
+    }
+    bool ok = base_table->Delete("id1|id2", 0, *delete_index * window_size / 2);
+    if (!ok) {
+        PDLOG(ERROR, "base table deletes failed");
+        return false;
+    }
+    ok = aggr->DeleteAndUpdate("id1|id2", delete_row, 101);
+    if (!ok) {
+        PDLOG(ERROR, "aggr deletes one record failed");
+        return false;
+    }
+    return true;
+}
+
+
+bool DeleteAndUpdateAggr(std::shared_ptr<Aggregator> aggr, codec::RowBuilder* row_builder,
+                         int *delete_index) {
     std::string encoded_row;
     std::string delete_row;
     auto window_size = aggr->GetWindowSize();
     std::string str1("abc");
     std::string str2("hello");
+    *delete_index = 80;
     for (int i = 0; i <= 100; i++) {
         std::string str = i % 2 == 0 ? str1 : str2;
         uint32_t row_size = row_builder->CalTotalLength(6 + str.size());
@@ -131,11 +242,11 @@ bool UpdateAndDeleteAggr(std::shared_ptr<Aggregator> aggr, codec::RowBuilder* ro
         if (!ok) {
             return false;
         }
-        if (i == 80) {
+        if (i == *delete_index) {
             delete_row = encoded_row;
         }
     }
-    bool ok = aggr->DeleteAndUpdate("id1|id2", delete_row, 100);
+    bool ok = aggr->DeleteAndUpdate("id1|id2", delete_row, 101);
     if (!ok) {
         return false;
     }
@@ -165,7 +276,7 @@ bool GetUpdatedResult(const uint32_t& id, const std::string& aggr_col, const std
     std::shared_ptr<LogReplicator> base_replicator = std::make_shared<LogReplicator>(
         base_table_meta.tid(), base_table_meta.pid(), folder, map, ::openmldb::replica::kLeaderNode);
     base_replicator->Init();
-    aggr->Init(base_replicator);
+    aggr->Init(base_replicator, nullptr);
     codec::RowBuilder row_builder(base_table_meta.column_desc());
     UpdateAggr(aggr, &row_builder);
     std::string key = "id1|id2";
@@ -176,9 +287,82 @@ bool GetUpdatedResult(const uint32_t& id, const std::string& aggr_col, const std
     return true;
 }
 
-bool GetUpdatedAndDeletedResult(const uint32_t& id, const std::string& aggr_col, const std::string& aggr_type,
-                                const std::string& bucket_size, std::shared_ptr<Aggregator>& aggregator,  // NOLINT
-                                std::shared_ptr<Table>& table, AggrBuffer** buffer) {                     // NOLINT
+bool GetMinUpdatedResult(const uint32_t& id, const std::string& aggr_col, const std::string& aggr_type,
+                         const std::string& bucket_size, std::shared_ptr<Aggregator>& aggregator,  // NOLINT
+                         std::shared_ptr<Table>& table, AggrBuffer** buffer, int *delete_index) {  // NOLINT
+    ::openmldb::api::TableMeta base_table_meta;
+    base_table_meta.set_tid(id);
+    AddDefaultAggregatorBaseSchema(&base_table_meta);
+    ::openmldb::api::TableMeta aggr_table_meta;
+    aggr_table_meta.set_tid(id + 1);
+    AddDefaultAggregatorSchema(&aggr_table_meta);
+    std::shared_ptr<Table> base_table = std::make_shared<MemTable>(base_table_meta);
+    base_table->Init();
+    std::shared_ptr<Table> aggr_table = std::make_shared<MemTable>(aggr_table_meta);
+    aggr_table->Init();
+
+    // replicator
+    std::map<std::string, std::string> map;
+    std::string folder = "/tmp/" + GenRand() + "/";
+    std::shared_ptr<LogReplicator> replicator = std::make_shared<LogReplicator>(
+        aggr_table->GetId(), aggr_table->GetPid(), folder, map, ::openmldb::replica::kLeaderNode);
+    replicator->Init();
+    auto aggr = CreateAggregator(base_table_meta, aggr_table_meta, aggr_table, replicator, 0, aggr_col, aggr_type,
+                                 "ts_col", bucket_size, "low_card");
+    std::shared_ptr<LogReplicator> base_replicator = std::make_shared<LogReplicator>(
+        base_table_meta.tid(), base_table_meta.pid(), folder, map, ::openmldb::replica::kLeaderNode);
+    base_replicator->Init();
+    aggr->Init(base_replicator, base_table);
+    codec::RowBuilder row_builder(base_table_meta.column_desc());
+    UpdateMinAggr(aggr, &row_builder, base_table, delete_index);
+    std::string key = "id1|id2";
+    aggregator = aggr;
+    aggr->GetAggrBuffer("id1|id2", buffer);
+    table = aggr_table;
+    ::openmldb::base::RemoveDirRecursive(folder);
+    return true;
+}
+
+
+bool GetMaxUpdatedResult(const uint32_t& id, const std::string& aggr_col, const std::string& aggr_type,
+                         const std::string& bucket_size, std::shared_ptr<Aggregator>& aggregator,  // NOLINT
+                         std::shared_ptr<Table>& table, AggrBuffer** buffer, int *delete_index) {  // NOLINT
+    ::openmldb::api::TableMeta base_table_meta;
+    base_table_meta.set_tid(id);
+    AddDefaultAggregatorBaseSchema(&base_table_meta);
+    ::openmldb::api::TableMeta aggr_table_meta;
+    aggr_table_meta.set_tid(id + 1);
+    AddDefaultAggregatorSchema(&aggr_table_meta);
+    std::shared_ptr<Table> base_table = std::make_shared<MemTable>(base_table_meta);
+    base_table->Init();
+    std::shared_ptr<Table> aggr_table = std::make_shared<MemTable>(aggr_table_meta);
+    aggr_table->Init();
+
+    // replicator
+    std::map<std::string, std::string> map;
+    std::string folder = "/tmp/" + GenRand() + "/";
+    std::shared_ptr<LogReplicator> replicator = std::make_shared<LogReplicator>(
+        aggr_table->GetId(), aggr_table->GetPid(), folder, map, ::openmldb::replica::kLeaderNode);
+    replicator->Init();
+    auto aggr = CreateAggregator(base_table_meta, aggr_table_meta, aggr_table, replicator, 0, aggr_col, aggr_type,
+                                 "ts_col", bucket_size, "low_card");
+    std::shared_ptr<LogReplicator> base_replicator = std::make_shared<LogReplicator>(
+        base_table_meta.tid(), base_table_meta.pid(), folder, map, ::openmldb::replica::kLeaderNode);
+    base_replicator->Init();
+    aggr->Init(base_replicator, base_table);
+    codec::RowBuilder row_builder(base_table_meta.column_desc());
+    UpdateMaxAggr(aggr, &row_builder, base_table, delete_index);
+    std::string key = "id1|id2";
+    aggregator = aggr;
+    aggr->GetAggrBuffer("id1|id2", buffer);
+    table = aggr_table;
+    ::openmldb::base::RemoveDirRecursive(folder);
+    return true;
+}
+
+bool GetDeleteAndUpdatedResult(const uint32_t& id, const std::string& aggr_col, const std::string& aggr_type,
+                               const std::string& bucket_size, std::shared_ptr<Aggregator>& aggregator,  // NOLINT
+                               std::shared_ptr<Table>& table, AggrBuffer** buffer, int *delete_index) {  // NOLINT
     ::openmldb::api::TableMeta base_table_meta;
     base_table_meta.set_tid(id);
     AddDefaultAggregatorBaseSchema(&base_table_meta);
@@ -199,31 +383,9 @@ bool GetUpdatedAndDeletedResult(const uint32_t& id, const std::string& aggr_col,
     std::shared_ptr<LogReplicator> base_replicator = std::make_shared<LogReplicator>(
         base_table_meta.tid(), base_table_meta.pid(), folder, map, ::openmldb::replica::kLeaderNode);
     base_replicator->Init();
-    aggr->Init(base_replicator);
+    aggr->Init(base_replicator, nullptr);
     codec::RowBuilder row_builder(base_table_meta.column_desc());
-    UpdateAndDeleteAggr(aggr, &row_builder);
-
-    auto it = aggr_table->NewTraverseIterator(0);
-    it->SeekToFirst();
-    for (int i = 50 - 1; i >= 0; --i) {
-        auto tmp_val = it->GetValue();
-        std::string origin_data = tmp_val.ToString();
-        codec::RowView origin_row_view(aggr_table_meta.column_desc(),
-                                        reinterpret_cast<int8_t*>(const_cast<char*>(origin_data.c_str())),
-                                        origin_data.size());
-        char* ch = NULL;
-        uint32_t ch_length = 0;
-        origin_row_view.GetString(4, &ch, &ch_length);
-        int32_t val = *reinterpret_cast<int32_t*>(ch);
-        std::cout << "[DEBUG]: val: " << val << std::endl;
-        //ASSERT_EQ(val, i * 4 + 1);
-        it->Next();
-    }
-    AggrBuffer* last_buffer;
-    auto ok = aggr->GetAggrBuffer("id1|id2", &last_buffer);
-    std::cout << "[DEBUG]: aggr_cnt_: " << last_buffer->aggr_cnt_ << std::endl;
-    std::cout << "[DEBUG]: aggr_val_: " << last_buffer->aggr_val_.vlong << std::endl;
-
+    DeleteAndUpdateAggr(aggr, &row_builder, delete_index);
     std::string key = "id1|id2";
     aggregator = aggr;
     aggr->GetAggrBuffer("id1|id2", buffer);
@@ -268,6 +430,45 @@ void CheckSumAggrResult(std::shared_ptr<Table> aggr_table, DataType data_type, s
 }
 
 template <typename T>
+void CheckSumAggrResultAfterDelete(std::shared_ptr<Table> aggr_table, DataType data_type, 
+                                   std::shared_ptr<Aggregator> aggr, int delete_index,
+                                   int32_t expect_null = 0) {
+    auto it = aggr_table->NewTraverseIterator(0);
+    it->SeekToFirst();
+    int64_t window_size = aggr->GetWindowSize();
+    for (int i = 50 - 1; i >= 0; --i) {
+        ASSERT_TRUE(it->Valid());
+        auto tmp_val = it->GetValue();
+        std::string origin_data = tmp_val.ToString();
+        codec::RowView origin_row_view(aggr_table->GetTableMeta()->column_desc(),
+                                       reinterpret_cast<int8_t*>(const_cast<char*>(origin_data.c_str())),
+                                       origin_data.size());
+        int64_t ts_start, ts_end;
+        origin_row_view.GetTimestamp(1, &ts_start);
+        origin_row_view.GetTimestamp(2, &ts_end);
+        ASSERT_EQ(ts_start, i * window_size);
+        ASSERT_EQ(ts_end, i * window_size + window_size - 1);
+        int num_rows;
+        origin_row_view.GetInt32(3, &num_rows);
+        char* ch = NULL;
+        uint32_t ch_length = 0;
+        origin_row_view.GetString(4, &ch, &ch_length);
+        T origin_val = *(reinterpret_cast<T*>(ch));
+        if (expect_null) {
+            ASSERT_EQ(origin_val, 0);
+        } else {
+            if (i == delete_index / 2) {
+                ASSERT_EQ(origin_val, static_cast<T>(i * 2 + 1));
+            } else {
+                ASSERT_EQ(origin_val, static_cast<T>(i * 4 + 1));
+            }
+        }
+        it->Next();
+    }
+    return;
+}
+
+template <typename T>
 void CheckMinAggrResult(std::shared_ptr<Table> aggr_table, DataType data_type, int32_t expect_null = 0) {
     ASSERT_EQ(aggr_table->GetRecordCnt(), 50);
     auto it = aggr_table->NewTraverseIterator(0);
@@ -289,6 +490,69 @@ void CheckMinAggrResult(std::shared_ptr<Table> aggr_table, DataType data_type, i
         }
         it->Next();
     }
+    return;
+}
+
+template <typename T>
+void CheckMinAggrResultAfterDelete(std::shared_ptr<Table> aggr_table, DataType data_type,
+                                   int delete_index, int32_t expect_null = 0) {
+    auto it = aggr_table->NewTraverseIterator(0);
+    it->SeekToFirst();
+    int i = 50 - 1;
+    while (it->Valid()) {
+        auto tmp_val = it->GetValue();
+        std::string origin_data = tmp_val.ToString();
+        codec::RowView origin_row_view(aggr_table->GetTableMeta()->column_desc(),
+                                       reinterpret_cast<int8_t*>(const_cast<char*>(origin_data.c_str())),
+                                       origin_data.size());
+        char* ch = NULL;
+        uint32_t ch_length = 0;
+        auto is_null = origin_row_view.GetString(4, &ch, &ch_length);
+        ASSERT_EQ(is_null, expect_null);
+        if (is_null == 0) {
+            T origin_val = *reinterpret_cast<T*>(ch);
+            if (i == delete_index / 2) {
+                ASSERT_EQ(origin_val, static_cast<T>(i * 2 + 1));
+            } else {
+                ASSERT_EQ(origin_val, static_cast<T>(i * 2));
+            }
+        }
+        it->Next();
+        i--;
+    }
+    ASSERT_EQ(i, -1);
+    return;
+}
+
+
+template <typename T>
+void CheckMaxAggrResultAfterDelete(std::shared_ptr<Table> aggr_table, DataType data_type,
+                                   int delete_index, int32_t expect_null = 0) {
+    auto it = aggr_table->NewTraverseIterator(0);
+    it->SeekToFirst();
+    int i = 50 - 1;
+    while (it->Valid()) {
+        auto tmp_val = it->GetValue();
+        std::string origin_data = tmp_val.ToString();
+        codec::RowView origin_row_view(aggr_table->GetTableMeta()->column_desc(),
+                                       reinterpret_cast<int8_t*>(const_cast<char*>(origin_data.c_str())),
+                                       origin_data.size());
+        char* ch = NULL;
+        uint32_t ch_length = 0;
+        auto is_null = origin_row_view.GetString(4, &ch, &ch_length);
+        ASSERT_EQ(is_null, expect_null);
+        if (is_null == 0) {
+            T origin_val = *reinterpret_cast<T*>(ch);
+            if (i == delete_index / 2) {
+                ASSERT_EQ(origin_val, static_cast<T>(i * 2));
+            } else {
+                ASSERT_EQ(origin_val, static_cast<T>(i * 2 + 1));
+            }
+        }
+        it->Next();
+        i--;
+    }
+    ASSERT_EQ(i, -1);
     return;
 }
 
@@ -432,7 +696,7 @@ TEST_F(AggregatorTest, CreateAggregator) {
         std::shared_ptr<LogReplicator> base_replicator = std::make_shared<LogReplicator>(
             base_table_meta.tid(), base_table_meta.pid(), folder, map, ::openmldb::replica::kLeaderNode);
         base_replicator->Init();
-        aggr->Init(base_replicator);
+        aggr->Init(base_replicator, nullptr);
         ASSERT_TRUE(aggr != nullptr);
         ASSERT_EQ(aggr->GetAggrType(), AggrType::kSum);
         ASSERT_EQ(aggr->GetWindowType(), WindowType::kRowsNum);
@@ -458,7 +722,7 @@ TEST_F(AggregatorTest, CreateAggregator) {
         std::shared_ptr<LogReplicator> base_replicator = std::make_shared<LogReplicator>(
             base_table_meta.tid(), base_table_meta.pid(), folder, map, ::openmldb::replica::kLeaderNode);
         base_replicator->Init();
-        aggr->Init(base_replicator);
+        aggr->Init(base_replicator, nullptr);
         ASSERT_TRUE(aggr != nullptr);
         ASSERT_EQ(aggr->GetAggrType(), AggrType::kSum);
         ASSERT_EQ(aggr->GetWindowType(), WindowType::kRowsRange);
@@ -483,7 +747,7 @@ TEST_F(AggregatorTest, CreateAggregator) {
         std::shared_ptr<LogReplicator> base_replicator = std::make_shared<LogReplicator>(
             base_table_meta.tid(), base_table_meta.pid(), folder, map, ::openmldb::replica::kLeaderNode);
         base_replicator->Init();
-        aggr->Init(base_replicator);
+        aggr->Init(base_replicator, nullptr);
         ASSERT_TRUE(aggr != nullptr);
         ASSERT_EQ(aggr->GetAggrType(), AggrType::kSum);
         ASSERT_EQ(aggr->GetWindowType(), WindowType::kRowsRange);
@@ -508,7 +772,7 @@ TEST_F(AggregatorTest, CreateAggregator) {
         std::shared_ptr<LogReplicator> base_replicator = std::make_shared<LogReplicator>(
             base_table_meta.tid(), base_table_meta.pid(), folder, map, ::openmldb::replica::kLeaderNode);
         base_replicator->Init();
-        aggr->Init(base_replicator);
+        aggr->Init(base_replicator, nullptr);
         ASSERT_TRUE(aggr != nullptr);
         ASSERT_EQ(aggr->GetAggrType(), AggrType::kSum);
         ASSERT_EQ(aggr->GetWindowType(), WindowType::kRowsRange);
@@ -533,7 +797,7 @@ TEST_F(AggregatorTest, CreateAggregator) {
         std::shared_ptr<LogReplicator> base_replicator = std::make_shared<LogReplicator>(
             base_table_meta.tid(), base_table_meta.pid(), folder, map, ::openmldb::replica::kLeaderNode);
         base_replicator->Init();
-        aggr->Init(base_replicator);
+        aggr->Init(base_replicator, nullptr);
         ASSERT_TRUE(aggr != nullptr);
         ASSERT_EQ(aggr->GetAggrType(), AggrType::kSum);
         ASSERT_EQ(aggr->GetWindowType(), WindowType::kRowsRange);
@@ -568,7 +832,7 @@ TEST_F(AggregatorTest, SumAggregatorUpdate) {
         std::shared_ptr<LogReplicator> base_replicator = std::make_shared<LogReplicator>(
             base_table_meta.tid(), base_table_meta.pid(), folder, map, ::openmldb::replica::kLeaderNode);
         base_replicator->Init();
-        aggr->Init(base_replicator);
+        aggr->Init(base_replicator, nullptr);
         codec::RowBuilder row_builder(base_table_meta.column_desc());
         ASSERT_TRUE(UpdateAggr(aggr, &row_builder));
         std::string key = "id1|id2";
@@ -635,10 +899,12 @@ TEST_F(AggregatorTest, SumAggregatorUpdate) {
 }
 
 TEST_F(AggregatorTest, SumAggregatorDelete) {
+    // rows_num window type
     {
         std::map<std::string, std::string> map;
         std::string folder = "/tmp/" + GenRand() + "/";
         uint32_t id = counter++;
+        int delete_index = 0;
         ::openmldb::api::TableMeta base_table_meta;
         base_table_meta.set_tid(id);
         AddDefaultAggregatorBaseSchema(&base_table_meta);
@@ -648,8 +914,7 @@ TEST_F(AggregatorTest, SumAggregatorDelete) {
         AddDefaultAggregatorSchema(&aggr_table_meta);
         std::map<std::string, uint32_t> mapping;
         mapping.insert(std::make_pair("idx", 0));
-        std::shared_ptr<Table> aggr_table =
-            std::make_shared<MemTable>("t", id, 0, 8, mapping, 0, ::openmldb::type::kAbsoluteTime);
+        std::shared_ptr<Table> aggr_table = std::make_shared<MemTable>(aggr_table_meta);
         aggr_table->Init();
         std::shared_ptr<LogReplicator> replicator = std::make_shared<LogReplicator>(
             aggr_table->GetId(), aggr_table->GetPid(), folder, map, ::openmldb::replica::kLeaderNode);
@@ -659,18 +924,15 @@ TEST_F(AggregatorTest, SumAggregatorDelete) {
         std::shared_ptr<LogReplicator> base_replicator = std::make_shared<LogReplicator>(
             base_table_meta.tid(), base_table_meta.pid(), folder, map, ::openmldb::replica::kLeaderNode);
         base_replicator->Init();
-        aggr->Init(base_replicator);
+        aggr->Init(base_replicator, nullptr);
         codec::RowBuilder row_builder(base_table_meta.column_desc());
-        ASSERT_TRUE(UpdateAndDeleteAggr(aggr, &row_builder));
+        ASSERT_TRUE(DeleteAndUpdateAggr(aggr, &row_builder, &delete_index));
         std::string key = "id1|id2";
-        //ASSERT_EQ(aggr_table->GetRecordCnt(), 50);
         auto it = aggr_table->NewTraverseIterator(0);
         it->SeekToFirst();
-        int64_t ts_begin, ts_end;
-        for (int i = 51 - 1; i >= 0; --i) {
+        for (int i = 50 - 1; i >= 0; --i) {
             ASSERT_TRUE(it->Valid());
             auto tmp_val = it->GetValue();
-            int8_t* aggr_row_ptr = reinterpret_cast<int8_t*>(const_cast<char*>(tmp_val.data()));
             std::string origin_data = tmp_val.ToString();
             codec::RowView origin_row_view(aggr_table_meta.column_desc(),
                                            reinterpret_cast<int8_t*>(const_cast<char*>(origin_data.c_str())),
@@ -678,30 +940,31 @@ TEST_F(AggregatorTest, SumAggregatorDelete) {
             char* ch = NULL;
             uint32_t ch_length = 0;
             origin_row_view.GetString(4, &ch, &ch_length);
-            origin_row_view.GetValue(aggr_row_ptr, 1, DataType::kTimestamp, &ts_begin);
-            origin_row_view.GetValue(aggr_row_ptr, 2, DataType::kTimestamp, &ts_end);
             int32_t val = *reinterpret_cast<int32_t*>(ch);
-            std::cout << "[DEBUG]: val: " << val
-                      << " ts_begin: " << ts_begin
-                      << " ts_end: " << ts_end << std::endl;
-            //ASSERT_EQ(val, i * 4 + 1);
+            if (i == delete_index / 2) {
+                ASSERT_EQ(val, i * 2 + 1);
+            } else {
+                ASSERT_EQ(val, i * 4 + 1);
+            }
             it->Next();
         }
         AggrBuffer* last_buffer;
         auto ok = aggr->GetAggrBuffer(key, &last_buffer);
         ASSERT_TRUE(ok);
-        ASSERT_EQ(last_buffer->aggr_cnt_, 2);
+        ASSERT_EQ(last_buffer->aggr_cnt_, 1);
         ASSERT_EQ(last_buffer->aggr_val_.vlong, 100);
         ASSERT_EQ(last_buffer->binlog_offset_, 100);
         ::openmldb::base::RemoveDirRecursive(folder);
     }
-    // rows_num window type delete
+    // rows_range window type
     {
+        int delete_index = 0;
         std::shared_ptr<Aggregator> aggregator;
         AggrBuffer* last_buffer;
         std::shared_ptr<Table> aggr_table;
-        ASSERT_TRUE(GetUpdatedAndDeletedResult(counter, "col3", "sum", "1s", aggregator, aggr_table, &last_buffer));
-        CheckSumAggrResult<int64_t>(aggr_table, DataType::kInt, aggregator);
+        ASSERT_TRUE(GetDeleteAndUpdatedResult(counter, "col3", "sum", "1s", aggregator,
+                                              aggr_table, &last_buffer, &delete_index));
+        CheckSumAggrResultAfterDelete<int64_t>(aggr_table, DataType::kInt, aggregator, delete_index);
         ASSERT_EQ(last_buffer->aggr_val_.vlong, 100);
         ASSERT_EQ(last_buffer->non_null_cnt_, static_cast<int64_t>(1));
     }
@@ -762,6 +1025,21 @@ TEST_F(AggregatorTest, MinAggregatorUpdate) {
     }
     ASSERT_EQ(strncmp(last_buffer->aggr_val_.vstring.data, "abc", 3), 0);
     ASSERT_EQ(last_buffer->non_null_cnt_, static_cast<int64_t>(1));
+}
+
+TEST_F(AggregatorTest, PeakAggregatorDelete) {
+    std::shared_ptr<Aggregator> aggregator;
+    AggrBuffer* last_buffer;
+    std::shared_ptr<Table> aggr_table;
+    int delete_index;
+    ASSERT_TRUE(GetMinUpdatedResult(counter, "col3", "MIN", "1s", aggregator,
+                                    aggr_table, &last_buffer, &delete_index));
+    CheckMinAggrResultAfterDelete<int32_t>(aggr_table, DataType::kInt, delete_index);
+    counter += 2;
+    ASSERT_TRUE(GetMaxUpdatedResult(counter, "col4", "MAX", "1m", aggregator,
+                                    aggr_table, &last_buffer, &delete_index));
+    CheckMaxAggrResultAfterDelete<int16_t>(aggr_table, DataType::kSmallInt, delete_index);
+
 }
 
 TEST_F(AggregatorTest, MaxAggregatorUpdate) {
@@ -908,7 +1186,7 @@ TEST_F(AggregatorTest, OutOfOrder) {
     std::shared_ptr<LogReplicator> base_replicator = std::make_shared<LogReplicator>(
         base_table_meta.tid(), base_table_meta.pid(), folder, map, ::openmldb::replica::kLeaderNode);
     base_replicator->Init();
-    aggr->Init(base_replicator);
+    aggr->Init(base_replicator, nullptr);
     codec::RowBuilder row_builder(base_table_meta.column_desc());
     std::string encoded_row;
     uint32_t row_size = row_builder.CalTotalLength(6);
@@ -992,7 +1270,7 @@ TEST_F(AggregatorTest, OutOfOrderCountWhere) {
     std::shared_ptr<LogReplicator> base_replicator = std::make_shared<LogReplicator>(
         base_table_meta.tid(), base_table_meta.pid(), folder, map, ::openmldb::replica::kLeaderNode);
     base_replicator->Init();
-    aggr->Init(base_replicator);
+    aggr->Init(base_replicator, nullptr);
     codec::RowBuilder row_builder(base_table_meta.column_desc());
     ASSERT_TRUE(UpdateAggr(aggr, &row_builder));
     ASSERT_EQ(aggr_table->GetRecordCnt(), 99);
@@ -1098,7 +1376,7 @@ TEST_F(AggregatorTest, AlignedCountWhere) {
     std::shared_ptr<LogReplicator> base_replicator = std::make_shared<LogReplicator>(
         base_table_meta.tid(), base_table_meta.pid(), folder, map, ::openmldb::replica::kLeaderNode);
     base_replicator->Init();
-    aggr->Init(base_replicator);
+    aggr->Init(base_replicator, nullptr);
     codec::RowBuilder row_builder(base_table_meta.column_desc());
     ASSERT_TRUE(UpdateAggr(aggr, &row_builder));
     ASSERT_EQ(aggr_table->GetRecordCnt(), 99);

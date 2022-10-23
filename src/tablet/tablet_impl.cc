@@ -3122,7 +3122,7 @@ int TabletImpl::LoadTableInternal(uint32_t tid, uint32_t pid, std::shared_ptr<::
                 auto aggrs = GetAggregators(tid, pid);
                 if (aggrs != nullptr) {
                     for (auto& aggr : *aggrs) {
-                        if (!aggr->Init(replicator)) {
+                        if (!aggr->Init(replicator, nullptr)) {
                             PDLOG(WARNING, "aggregator init failed");
                         }
                     }
@@ -5850,7 +5850,7 @@ bool TabletImpl::CreateAggregatorInternal(const ::openmldb::api::CreateAggregato
     }
 
     auto base_replicator = GetReplicator(base_meta->tid(), base_meta->pid());
-    if (!aggregator->Init(base_replicator)) {
+    if (!aggregator->Init(base_replicator, nullptr)) {
         PDLOG(WARNING, "aggregator init failed");
     }
     uint64_t uid = (uint64_t) base_meta->tid() << 32 | base_meta->pid();

@@ -231,6 +231,10 @@ class Segment {
 
     inline uint64_t GetPkCnt() { return pk_cnt_.load(std::memory_order_relaxed); }
 
+    void GcTsFreeList(uint64_t& gc_idx_cnt,           // NOLINT
+                      uint64_t& gc_record_cnt,        // NOLINT
+                      uint64_t& gc_record_byte_size); // NOLINT
+
     void GcFreeList(uint64_t& entry_gc_idx_cnt,      // NOLINT
                     uint64_t& gc_record_cnt,         // NOLINT
                     uint64_t& gc_record_byte_size);  // NOLINT

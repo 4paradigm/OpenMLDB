@@ -330,6 +330,7 @@ void MemTable::SchedGc() {
             Segment* segment = segments_[i][j];
             segment->IncrGcVersion();
             segment->GcFreeList(gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
+            segment->GcTsFreeList(gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
             if (ttl_st_map.size() == 1) {
                 segment->ExecuteGc(ttl_st_map.begin()->second, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
             } else {
