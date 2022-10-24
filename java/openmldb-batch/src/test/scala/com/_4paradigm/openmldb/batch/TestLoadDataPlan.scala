@@ -84,11 +84,8 @@ class TestLoadDataPlan extends SparkTestSuite with Matchers {
     val originInfo = getLatestTableInfo(db, table)
     assert(!originInfo.hasOfflineTableInfo, s"shouldn't have offline info before the offline test, $originInfo")
     // P.S.
-    // When the src **csv** files have header, and the col names are different with table schema:
-    // 1. If soft-copy, we don't read data, can't do schema check. When we load files in registering offline table,
-    // we use autoLoad(use the table schema to read, header in csv will be ignored.).
-    // 2. If deep-copy, use autoLoad to read.
-    // TODO(hw): do restrict schema check even when soft-copy?
+    // When the src **csv** files have header, and the col names are different with table schema,
+    // use the table schema to read, header in csv will be ignored.
     val testFileWithHeader = "file://" + getClass.getResource("/load_data_test_src/test_with_any_header.csv").getPath
 
     println("no offline table info now, soft load data with any mode")
