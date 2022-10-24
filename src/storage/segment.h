@@ -197,13 +197,25 @@ class Segment {
         return ts_cnt_ > 1 ? idx_cnt_vec_[0]->load(std::memory_order_relaxed)
                            : idx_cnt_.load(std::memory_order_relaxed);
     }
-
-    int GetIdxCnt(uint32_t ts_idx, uint64_t& ts_cnt) {  // NOLINT
+    uint64_t GetIdxCnt(uint32_t ts_idx, uint64_t& ts_cnt) {  // NOLINT
         uint32_t real_idx = 0;
         if (GetTsIdx(ts_idx, real_idx) < 0) {
             return -1;
         }
         ts_cnt = idx_cnt_vec_[real_idx]->load(std::memory_order_relaxed);
+        return 0;
+    }
+
+	inline uint64_t GetIdxByteSize() {
+        return ts_cnt_ > 1 ? idx_byte_size_vec_[0]->load(std::memory_order_relaxed)
+                           : idx_byte_size_.load(std::memory_order_relaxed);
+    }
+    uint64_t GetIdxByteSize(uint32_t ts_idx, uint64_t& ts_cnt) {  // NOLINT
+        uint32_t real_idx = 0;
+        if (GetTsIdx(ts_idx, real_idx) < 0) {
+            return -1;
+        }
+        ts_cnt = idx_byte_size_vec_[real_idx]->load(std::memory_order_relaxed);
         return 0;
     }
 
@@ -220,8 +232,6 @@ class Segment {
     }
 
     const std::map<uint32_t, uint32_t>& GetTsIdxMap() const { return ts_idx_map_; }
-
-    inline uint64_t GetIdxByteSize() { return idx_byte_size_.load(std::memory_order_relaxed); }
 
     inline uint64_t GetPkCnt() { return pk_cnt_.load(std::memory_order_relaxed); }
 

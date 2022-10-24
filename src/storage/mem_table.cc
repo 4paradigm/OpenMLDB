@@ -473,19 +473,24 @@ TableIterator* MemTable::NewIterator(uint32_t index, const std::string& pk, Tick
 
 uint64_t MemTable::GetRecordIdxByteSize() {
     uint64_t record_idx_byte_size = 0;
-    auto inner_indexs = table_index_.GetAllInnerIndex();
-    for (size_t i = 0; i < inner_indexs->size(); i++) {
-        bool is_valid = false;
-        for (const auto& index_def : inner_indexs->at(i)->GetIndex()) {
-            if (index_def && index_def->IsReady()) {
-                is_valid = true;
-                break;
-            }
-        }
-        if (is_valid) {
-            for (uint32_t j = 0; j < seg_cnt_; j++) {
-                record_idx_byte_size += segments_[i][j]->GetIdxByteSize();
-            }
+    std::shared_ptr<IndexDef> index_def = table_index_.GetIndex(0);
+    if (!index_def || !index_def->IsReady()) {
+        return record_idx_byte_size;
+    }
+    uint32_t inner_idx = index_def->GetInnerPos();
+    auto inner_index = table_index_.GetInnerIndex(inner_idx);
+    int32_t ts_col_id = -1;
+    auto ts_col = index_def->GetTsColumn();
+    if (ts_col) {
+        ts_col_id = ts_col->GetId();
+    }
+    for (uint32_t j = 0; j < seg_cnt_; j++) {
+        if (inner_index->GetIndex().size() > 1 && ts_col_id >= 0) {
+            uint64_t record_cnt = 0;
+            segments_[inner_idx][j]->GetIdxByteSize(ts_col_id, record_cnt);
+            record_idx_byte_size += record_cnt;
+        } else {
+            record_idx_byte_size += segments_[inner_idx][j]->GetIdxByteSize();
         }
     }
     return record_idx_byte_size;
