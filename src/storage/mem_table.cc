@@ -199,6 +199,8 @@ bool MemTable::Put(uint64_t time, const std::string& value, const Dimensions& di
                     PDLOG(WARNING, "get ts failed. tid %u pid %u", id_, pid_);
                     return false;
                 }
+                if (ts < 0)
+                    continue;
                 ts_map.emplace(ts_col->GetId(), ts);
             }
             if (index_def->IsReady()) {

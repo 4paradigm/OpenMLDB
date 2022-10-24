@@ -198,6 +198,9 @@ bool SQLInsertRow::AppendInt64(int64_t val) {
 }
 
 bool SQLInsertRow::AppendTimestamp(int64_t val) {
+    if (val < 0) {
+        return false;
+    }
     if (IsDimension()) {
         PackDimension(std::to_string(val));
     }

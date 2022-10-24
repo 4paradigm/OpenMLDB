@@ -346,6 +346,9 @@ bool RowBuilder::SetInt64(int8_t* buf, uint32_t index, int64_t val) {
 }
 
 bool RowBuilder::AppendTimestamp(int64_t val) {
+    if (val < 0) {
+        return false;
+    }
     if (!SetTimestamp(cnt_, val)) return false;
     cnt_++;
     return true;
