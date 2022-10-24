@@ -480,8 +480,7 @@ class HistoryWindow : public Window {
                 // note it is always current rows window
                 break;
             }
-            if (kFrameRows == window_range_.frame_type_ ||
-                pair.first < start_ts) {
+            if (kFrameRows == window_range_.frame_type_ || pair.first < start_ts) {
                 PopBackRow();
                 --cur_size;
             } else {

@@ -128,7 +128,7 @@ class TestWindowUnion extends SparkTestSuite {
   }
 
 
-  ignore("Test window union after window union") {
+  test("Test window union after window union") {
 
     val spark = getSparkSession
     val sess = new OpenmldbSession(spark)

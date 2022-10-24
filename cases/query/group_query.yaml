@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+debugs: []
 cases:
   - id: 1
     desc: Group By Int16, Group未命中索引
@@ -125,7 +126,7 @@ cases:
         55, 12, 13.2, 133.2, 165, 6
   - id: 3
     desc: Group By 字符串, Group未命中索引
-    mode: rtidb-unsupport
+    mode: request-unsupport
     db: db1
     sql: |
       SELECT col0, sum(col1) as col1_sum, sum(col3) as col3_sum,
@@ -225,3 +226,34 @@ cases:
         - [5, false, 3, 3.3, 33.3, 10, 3]
         - [55, true, 12, 13.2, 133.2, 165, 6]
         - [555, true, 13, 14.3, 144.3, 1110, 9]
+  - id: 7
+    desc: 全表聚合-*_where-where
+    mode: request-unsupport
+    inputs:
+      -
+        columns: ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",20,30,1.1,2.1,1000,"2020-05-01"]
+          - [2,"aa",21,31,1.2,2.2,2000,"2020-05-02"]
+          - [3,"aa",22,32,1.3,2.3,3000,"2020-05-03"]
+          - [4,"aa",23,33,1.4,2.4,4000,"2020-05-04"]
+          - [5,"aa",24,34,1.5,2.5,5000,"2020-05-05"]
+          - [6,"bb",20,30,1.1,2.1,1000,"2020-05-01"]
+          - [7,"bb",21,31,1.2,2.2,2000,"2020-05-02"]
+          - [8,"bb",22,32,1.3,2.3,3000,"2020-05-03"]
+          - [9,"bb",23,33,1.4,2.4,4000,"2020-05-04"]
+          - [10,"bb",24,34,1.5,2.5,5000,"2020-05-05"]
+          - [11,"cc",20,30,1.1,2.1,1000,"2020-05-01"]
+          - [12,"cc",21,31,1.2,2.2,2000,"2020-05-02"]
+          - [13,"cc",22,32,1.3,2.3,3000,"2020-05-03"]
+          - [14,"cc",23,33,1.4,2.4,4000,"2020-05-04"]
+          - [15,"cc",24,34,1.5,2.5,5000,"2020-05-05"]
+    sql: |
+      select count_where(c4,c3>20) as count,sum_where(c4,c3>20) as sum,max_where(c4,c3>20) as max,
+      min_where(c4,c3>20) as min,avg_where(c4,c3>20) as avg from {0} where c1='aa' or c1='bb';
+    expect:
+      order: id
+      columns: ["count bigint","sum bigint","max bigint","min bigint","avg double"]
+      rows:
+        - [8,260,34,31,32.5]
