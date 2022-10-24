@@ -194,7 +194,7 @@ cases:
         - [ 2, "aa", 4.0, 1590738993000, 400001, 2 ]
   - id: 5
     desc: 简单rows window, union副表, 主表不进入窗口3 4w
-    mode: batch-request-unsupport, cli-unsupport
+    mode: batch-request-unsupport, cli-unsupport,disk-unsupport
     inputs:
       - columns: [ "id int", "c1 string","c6 double","c7 timestamp" ]
         indexs: [ "index1:c1:c7" ]

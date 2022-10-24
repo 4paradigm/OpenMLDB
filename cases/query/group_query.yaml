@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+debugs: []
 cases:
   - id: 1
     desc: Group By Int16, Group未命中索引
@@ -32,11 +33,12 @@ cases:
           1, 4, 55, 4.4, 44.4, 2, 4444
           2, 5, 55, 5.5, 55.5, 3, aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
     expect:
+      order: col2
       schema: col2:int16, col1_sum:int32, col3_sum:float, col4_sum:double, col2_sum:int16, col5_sum:int64
 
       data: |
-        55, 12, 13.2, 133.2, 165, 6
         5, 3, 3.3, 33.3, 10, 3
+        55, 12, 13.2, 133.2, 165, 6
   - id: 2-1
     desc: Group By Int16, Group命中索引
     mode: request-unsupport
@@ -65,11 +67,12 @@ cases:
           1, 4, 55, 4.4, 44.4, 2, 4444
           2, 5, 55, 5.5, 55.5, 3, aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
     expect:
+      order: col2
       schema: col2:int16, col1_sum:int32, col3_sum:float, col4_sum:double, col2_sum:int16, col5_sum:int64
 
       data: |
-        55, 12, 13.2, 133.2, 165, 6
         5, 3, 3.3, 33.3, 10, 3
+        55, 12, 13.2, 133.2, 165, 6
   - id: 2-2
     desc: Group By column, Group命中索引
     mode: request-unsupport
@@ -89,11 +92,12 @@ cases:
           1, 4, 55, 4.4, 44.4, 2, 4444
           2, 5, 55, 5.5, 55.5, 3, aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
     expect:
+      order: col2
       schema: col2:int16, col1_sum:int32, col3_sum:float, col4_sum:double, col2_sum:int16, col5_sum:int64
 
       data: |
-        55, 12, 13.2, 133.2, 165, 6
         5, 3, 3.3, 33.3, 10, 3
+        55, 12, 13.2, 133.2, 165, 6
   - id: 2-3
     desc: Group By table.column, Group命中索引
     mode: request-unsupport
@@ -114,14 +118,15 @@ cases:
           1, 4, 55, 4.4, 44.4, 2, 4444
           2, 5, 55, 5.5, 55.5, 3, aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
     expect:
+      order: col2
       schema: col2:int16, col1_sum:int32, col3_sum:float, col4_sum:double, col2_sum:int16, col5_sum:int64
 
       data: |
-        55, 12, 13.2, 133.2, 165, 6
         5, 3, 3.3, 33.3, 10, 3
+        55, 12, 13.2, 133.2, 165, 6
   - id: 3
     desc: Group By 字符串, Group未命中索引
-    mode: rtidb-unsupport
+    mode: request-unsupport
     db: db1
     sql: |
       SELECT col0, sum(col1) as col1_sum, sum(col3) as col3_sum,
@@ -138,12 +143,13 @@ cases:
           1, 4, 55, 4.4, 44.4, 2, 4444
           2, 5, 55, 5.5, 55.5, 3, aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
     expect:
+      order: col0
       schema: col0:string, col1_sum:int32, col3_sum:float, col4_sum:double, col2_sum:int16, col5_sum:int64
 
       data: |
-        2, 5, 5.5, 55.5, 55, 3
-        1, 7, 7.7, 77.7, 110, 3
         0, 3, 3.3, 33.3, 10, 3
+        1, 7, 7.7, 77.7, 110, 3
+        2, 5, 5.5, 55.5, 55, 3
   - id: 4
     desc: Group By 字符串, Group命中索引
     mode: request-unsupport
@@ -163,6 +169,7 @@ cases:
           1, 4, 55, 4.4, 44.4, 2, 4444
           2, 5, 55, 5.5, 55.5, 3, aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
     expect:
+      order: col0
       schema: col0:string, col1_sum:int32, col3_sum:float, col4_sum:double, col2_sum:int16, col5_sum:int64
 
       data: |
@@ -171,7 +178,8 @@ cases:
         2, 5, 5.5, 55.5, 55, 3
   - id: 5
     desc: Group By 字符串 Limit
-    mode: request-unsupport, offline-unsupport
+    # cluster mode the ordering is different
+    mode: request-unsupport, offline-unsupport, cluster-unsupport
     db: db1
     sql: |
       SELECT col0, sum(col1) as col1_sum, sum(col3) as col3_sum,
@@ -192,3 +200,60 @@ cases:
       data: |
         0, 3, 3.3, 33.3, 10, 3
         1, 7, 7.7, 77.7, 110, 3
+  - id: 6
+    desc: Group By udaf + condition
+    mode: request-unsupport
+    sql: |
+      SELECT col2, sum(col1) > 10.0 as col1_sum_cond, sum(col1) as col1_sum, sum(col3) as col3_sum,
+      sum(col4) as col4_sum, sum(col2) as col2_sum,
+      sum(col5) as col5_sum FROM {0} Group By {0}.col2;
+    inputs:
+      -
+        schema: col0:string, col1:int32, col2:int16, col3:float, col4:double, col5:int64, col6:string
+        index: index2:col2:col5
+        data: |
+          0, 1, 5, 1.1, 11.1, 1, 1
+          0, 2, 5, 2.2, 22.2, 2, 22
+          1, 3, 55, 3.3, 33.3, 1, 333
+          1, 4, 55, 4.4, 44.4, 2, 4444
+          2, 5, 55, 5.5, 55.5, 3, aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+          2, 6, 555, 6.6, 66.6, 4, bbb
+          2, 7, 555, 7.7, 77.7, 5, cccc
+    expect:
+      columns: ["col2 int16", "col1_sum_cond bool", "col1_sum int32", "col3_sum float", "col4_sum double", "col2_sum int16", "col5_sum int64"]
+      order: col2
+      rows:
+        - [5, false, 3, 3.3, 33.3, 10, 3]
+        - [55, true, 12, 13.2, 133.2, 165, 6]
+        - [555, true, 13, 14.3, 144.3, 1110, 9]
+  - id: 7
+    desc: 全表聚合-*_where-where
+    mode: request-unsupport
+    inputs:
+      -
+        columns: ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",20,30,1.1,2.1,1000,"2020-05-01"]
+          - [2,"aa",21,31,1.2,2.2,2000,"2020-05-02"]
+          - [3,"aa",22,32,1.3,2.3,3000,"2020-05-03"]
+          - [4,"aa",23,33,1.4,2.4,4000,"2020-05-04"]
+          - [5,"aa",24,34,1.5,2.5,5000,"2020-05-05"]
+          - [6,"bb",20,30,1.1,2.1,1000,"2020-05-01"]
+          - [7,"bb",21,31,1.2,2.2,2000,"2020-05-02"]
+          - [8,"bb",22,32,1.3,2.3,3000,"2020-05-03"]
+          - [9,"bb",23,33,1.4,2.4,4000,"2020-05-04"]
+          - [10,"bb",24,34,1.5,2.5,5000,"2020-05-05"]
+          - [11,"cc",20,30,1.1,2.1,1000,"2020-05-01"]
+          - [12,"cc",21,31,1.2,2.2,2000,"2020-05-02"]
+          - [13,"cc",22,32,1.3,2.3,3000,"2020-05-03"]
+          - [14,"cc",23,33,1.4,2.4,4000,"2020-05-04"]
+          - [15,"cc",24,34,1.5,2.5,5000,"2020-05-05"]
+    sql: |
+      select count_where(c4,c3>20) as count,sum_where(c4,c3>20) as sum,max_where(c4,c3>20) as max,
+      min_where(c4,c3>20) as min,avg_where(c4,c3>20) as avg from {0} where c1='aa' or c1='bb';
+    expect:
+      order: id
+      columns: ["count bigint","sum bigint","max bigint","min bigint","avg double"]
+      rows:
+        - [8,260,34,31,32.5]

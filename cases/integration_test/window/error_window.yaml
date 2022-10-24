@@ -145,6 +145,7 @@ cases:
   -
     id: 33
     desc: int为order by
+    mode: batch-unsupport
     inputs:
       -
         columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
@@ -162,6 +163,7 @@ cases:
   -
     id: 34
     desc: smallint为order by
+    mode: batch-unsupport
     inputs:
       -
         columns : ["id int","c1 string","c3 smallint","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]

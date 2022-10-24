@@ -357,6 +357,7 @@ class ProjectPlanNode : public UnaryPlanNode {
 
     const std::string table_;
     const PlanNodeList project_list_vec_;
+    // final output column index -> (index of of project_list_vec_, index of project of that project list node)
     const std::vector<std::pair<uint32_t, uint32_t>> pos_mapping_;
     bool IsSimpleProjectPlan();
 };
@@ -602,7 +603,7 @@ class LoadDataPlanNode : public LeafPlanNode {
     const std::string table_;
     // optional options for load data, e.g csv related options
     const std::shared_ptr<OptionsMap> options_;
-    // optinal config option for load data, to config offline job parameters
+    // optional config option for load data, to config offline job parameters
     const std::shared_ptr<OptionsMap> config_options_;
 };
 

@@ -9,12 +9,12 @@
 <dependency>
     <groupId>com.4paradigm.openmldb</groupId>
     <artifactId>openmldb-jdbc</artifactId>
-    <version>0.6.2</version>
+    <version>0.6.4</version>
 </dependency>
 <dependency>
     <groupId>com.4paradigm.openmldb</groupId>
     <artifactId>openmldb-native</artifactId>
-    <version>0.6.2</version>
+    <version>0.6.4</version>
 </dependency>
 ```
 ### Mac下Java SDK包安装
@@ -24,15 +24,15 @@
 <dependency>
     <groupId>com.4paradigm.openmldb</groupId>
     <artifactId>openmldb-jdbc</artifactId>
-    <version>0.6.2</version>
+    <version>0.6.4</version>
 </dependency>
 <dependency>
     <groupId>com.4paradigm.openmldb</groupId>
     <artifactId>openmldb-native</artifactId>
-    <version>0.6.2-macos</version>
+    <version>0.6.4-macos</version>
 </dependency>
 ```
-注意: 由于 openmldb-native 中包含了 OpenMLDB 编译的 C++ 静态库, 默认是 linux 静态库, macOS 上需将上述 openmldb-native 的 version 改成 `0.6.2-macos`, openmldb-jdbc 的版本保持不变。
+注意: 由于 openmldb-native 中包含了 OpenMLDB 编译的 C++ 静态库, 默认是 linux 静态库, macOS 上需将上述 openmldb-native 的 version 改成 `0.6.4-macos`, openmldb-jdbc 的版本保持不变。
 
 ## 2. Java SDK快速上手
 
@@ -692,8 +692,42 @@ Statement stmt = connection.createStatement();
 stmt.execute("SELECT * from t1");
 ```
 
-`PreparedStatement`可支持`SELECT`,`INSERT`两种sql，`INSERT`仅支持插入到在线。
+`PreparedStatement`可支持`SELECT`,`INSERT`和`DELETE`，`INSERT`仅支持插入到在线。
 ```
 PreparedStatement selectStatement = connection.prepareStatement("SELECT * FROM t1 WHERE id=?");
 PreparedStatement insertStatement = connection.prepareStatement("INSERT INTO t1 VALUES (?,?)");
+PreparedStatement insertStatement = connection.prepareStatement("DELETE FROM t1 WHERE id=?");
 ```
+
+## 5. SDK Option详解
+
+连接集群版必须填写`zkCluster`和`zkPath`（set方法或JDBC中`?`后的配置项`foo=bar`）。其他选项可选。
+
+连接单机版必须填写`host`和`port`以及`isClusterMode`(即`SDKOption.setClusterMode`)，注意必须设置clusterMode，目前不支持自动配置这一选项。其他选项可选。
+
+### 通用可选项
+
+连接单机或集群版都可以配置的选项有：
+- enableDebug: 默认false，开启hybridse的debug日志（注意不是全局的debug日志），可以查看到更多sql编译和运行的日志。但这些日志不是全部被客户端收集，需要查看 tablet server 日志。
+- requestTimeout: 默认60000ms，这个timeout是客户端发送的rpc超时时间，发送到taskmanager的除外（job的rpc timeout由variable `job_timeout`控制）。
+- glogLevel: 默认0，和glog的minloglevel类似，INFO, WARNING, ERROR, and FATAL日志分别对应 0, 1, 2, and 3。0表示打印INFO以及上的等级。
+- glogDir: 默认为empty，日志目录为空时，打印到stderr，即控制台。
+- maxSqlCacheSize: 默认50，客户端单个db单种执行模式的最大sql cache数量，如果出现cache淘汰引发的错误，可以增大这一size避开问题。
+
+### 集群版专有可选项
+
+由于集群版有zk和taskmanager组件，所以有以下配置可选项：
+- sessionTimeout: 默认10000ms，zk的session timeout。
+- zkLogLevel: 默认3，0-禁止所有zk log, 1-error, 2-warn, 3-info, 4-debug。
+- zkLogFile: 默认empty，打印到stdout。
+- sparkConfPath: 默认empty，可以通过此配置更改job使用的spark conf，而不需要配置taskmanager重启。
+
+##  6. SQL 校验
+
+JAVA客户端支持对sql进行正确性校验，验证sql是否可执行。分为batch和request两个模式。
+
+- `validateSQLInBatch`可以验证sql是否能在离线端执行。
+
+- `validateSQLInRequest`可以验证sql是否能被deploy。
+
+两个接口都需要传入sql所需要的所有表schema。目前只支持单db，请**不要**在sql语句中使用`db.table`格式。

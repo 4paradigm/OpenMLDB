@@ -48,6 +48,8 @@ object LoadDataPlan {
     val info = ctx.getOpenmldbSession.openmldbCatalogService.getTableInfo(db, table)
     require(info != null && info.getName.nonEmpty, s"table $db.$table info is not existed(no table name): $info")
     logger.info("table info: {}", info)
+    // we read input file even in soft copy, cause we want to check if "the input file schema == openmldb table schema"
+    val df = HybridseUtil.autoLoad(spark, inputFile, format, options, info.getColumnDescList)
 
     // write
     if (storage == "online") {
@@ -56,11 +58,9 @@ object LoadDataPlan {
       val writeOptions = Map("db" -> db, "table" -> table,
         "zkCluster" -> ctx.getConf.openmldbZkCluster,
         "zkPath" -> ctx.getConf.openmldbZkRootPath)
-
-      val df = HybridseUtil.autoLoad(spark, inputFile, format, options, info.getColumnDescList)
       df.write.options(writeOptions).format("openmldb").mode(mode).save()
     } else {
-      // only in some case, do not need to update info
+      // only in some cases, do not need to update info
       var needUpdateInfo = true
       val newInfoBuilder = info.toBuilder
 
@@ -107,7 +107,7 @@ object LoadDataPlan {
 
         // do deep copy
         require(inputFile != writePath, "read and write paths shouldn't be the same, it may clean data in the path")
-        val df = HybridseUtil.autoLoad(spark, inputFile, format, options, info.getColumnDescList)
+
         df.write.mode(mode).format(writeFormat).options(writeOptions.toMap).save(writePath)
         val offlineBuilder = OfflineTableInfo.newBuilder().setPath(writePath).setFormat(writeFormat).setDeepCopy(true)
           .putAllOptions(writeOptions.asJava)

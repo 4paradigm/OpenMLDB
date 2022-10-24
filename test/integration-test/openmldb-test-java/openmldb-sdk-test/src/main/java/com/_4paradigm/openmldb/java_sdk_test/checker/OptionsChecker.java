@@ -37,8 +37,8 @@ import java.util.Map;
 public class OptionsChecker extends BaseChecker {
     private static String reg = "\\{(\\d+)\\}";
 
-    public OptionsChecker(ExpectDesc expect, OpenMLDBResult fesqlResult) {
-        super(expect, fesqlResult);
+    public OptionsChecker(ExpectDesc expect, OpenMLDBResult openMLDBResult) {
+        super(expect, openMLDBResult);
     }
 
     @Override

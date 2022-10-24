@@ -30,8 +30,8 @@ import org.testng.Assert;
  */
 @Slf4j
 public class DeploymentCheckerByCli extends BaseChecker {
-    public DeploymentCheckerByCli(ExpectDesc expect, OpenMLDBResult fesqlResult) {
-        super(expect, fesqlResult);
+    public DeploymentCheckerByCli(ExpectDesc expect, OpenMLDBResult openMLDBResult) {
+        super(expect, openMLDBResult);
     }
 
     @Override

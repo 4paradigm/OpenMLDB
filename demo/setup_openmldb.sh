@@ -18,7 +18,7 @@
 set -eE -x
 VERSION="$1"
 if [[ -z ${VERSION} ]]; then
-    VERSION=0.3.0
+    VERSION=0.6.3
 fi
 echo "version: ${VERSION}"
 

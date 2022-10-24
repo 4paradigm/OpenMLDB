@@ -31,6 +31,10 @@
 #include "sdk/sql_sdk_test.h"
 #include "vm/catalog.h"
 
+
+DECLARE_uint32(max_traverse_cnt);
+DECLARE_uint32(traverse_cnt_limit);
+
 namespace openmldb::sdk {
 
 static void SetOnlineMode(const std::shared_ptr<SQLRouter>& router) {
@@ -991,9 +995,67 @@ TEST_F(SQLClusterTest, ClusterSelect) {
     ASSERT_TRUE(ok);
 }
 
+TEST_F(SQLClusterTest, ClusterOnlineAgg) {
+    SQLRouterOptions sql_opt;
+    sql_opt.enable_debug = false;
+    sql_opt.zk_cluster = mc_->GetZkCluster();
+    sql_opt.zk_path = mc_->GetZkPath();
+    sql_opt.zk_session_timeout = 1000000;
+    sql_opt.request_timeout = 1000000;
+    auto router = NewClusterSQLRouter(sql_opt);
+    ASSERT_TRUE(router != nullptr);
+    SetOnlineMode(router);
+    std::string table = "test" + GenRand();
+    std::string db = "db" + GenRand();
+    ::hybridse::sdk::Status status;
+    bool ok = router->CreateDB(db, &status);
+    ASSERT_TRUE(ok);
+    std::string ddl = "create table " + table +
+                      "(c1 string, c2 int, c3 bigint, c4 float, c5 double, c6 timestamp, c7 date, index(key=c1, "
+                      "ts=c6)) options(partitionnum=8, replicanum=1);";
+    ok = router->ExecuteDDL(db, ddl, &status);
+    ASSERT_TRUE(ok) << status.msg;
+    ASSERT_TRUE(router->RefreshCatalog());
+
+    int row_num = 500;
+    for (int i = 0; i < row_num; i++) {
+        std::string insert = "insert into " + table + " values('key2" + "',20,22,9.2,19.3," + std::to_string(1000 + i) +
+                             ",'2021-01-10');";
+        ok = router->ExecuteInsert(db, insert, &status);
+        ASSERT_TRUE(ok) << status.msg;
+    }
+
+    {
+        auto res = router->ExecuteSQL(db, "select sum(c2), count(c2), sum(c3), sum(c4), sum(c5) from " + table + ";",
+                                      true, true, 0, &status);
+        ASSERT_TRUE(res) << "failed: " << status.msg << ", " << status.code;
+        ASSERT_EQ(res->Size(), 1);
+        while (res->Next()) {
+            int32_t sum_c2 = res->GetInt32Unsafe(0);
+            int64_t count = res->GetInt64Unsafe(1);
+            int64_t sum_c3 = res->GetInt64Unsafe(2);
+            float sum_c4 = res->GetFloatUnsafe(3);
+            double sum_c5 = res->GetDoubleUnsafe(4);
+            LOG(INFO) << "res = " << res->GetRowString();
+            ASSERT_EQ(sum_c2, row_num * 20);
+            ASSERT_EQ(sum_c3, row_num * 22);
+            ASSERT_EQ(count, row_num);
+            ASSERT_TRUE(std::abs(sum_c4 / row_num - 9.2) < 0.1);
+            ASSERT_TRUE(std::abs(sum_c5 / row_num - 19.3) < 0.1);
+        }
+    }
+
+    ok = router->ExecuteDDL(db, "drop table " + table + ";", &status);
+    ASSERT_TRUE(ok);
+    ok = router->DropDB(db, &status);
+    ASSERT_TRUE(ok);
+}
+
 }  // namespace openmldb::sdk
 
 int main(int argc, char** argv) {
+    FLAGS_traverse_cnt_limit = 10;
+    FLAGS_max_traverse_cnt = 5000;
     // init google test first for gtest_xxx flags
     ::testing::InitGoogleTest(&argc, argv);
     ::google::ParseCommandLineFlags(&argc, &argv, true);

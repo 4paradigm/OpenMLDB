@@ -30,8 +30,8 @@ import org.testng.Assert;
 @Slf4j
 public class CountChecker extends BaseChecker {
 
-    public CountChecker(ExpectDesc expect, OpenMLDBResult fesqlResult){
-        super(expect,fesqlResult);
+    public CountChecker(ExpectDesc expect, OpenMLDBResult openMLDBResult){
+        super(expect,openMLDBResult);
     }
 
     @Override

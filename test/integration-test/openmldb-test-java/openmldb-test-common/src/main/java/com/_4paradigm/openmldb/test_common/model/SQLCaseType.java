@@ -44,7 +44,8 @@ public enum SQLCaseType {
     kClusterCLI("ClusterCLI"),
     kInsertPrepared("INSERT_PREPARED"),
     kSelectPrepared("SELECT_PREPARED"),
-    kLongWindow("LONG_WINDOW_DEPLOY")
+    kLongWindow("LONG_WINDOW_DEPLOY"),
+    kJob("JOB")
     ;
     @Getter
     private String typeName;

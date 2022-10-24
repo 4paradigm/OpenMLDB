@@ -555,6 +555,10 @@ INSTANTIATE_TEST_SUITE_P(
     EngineTestWindowRowsRangeQuery, EngineTest,
     testing::ValuesIn(sqlcase::InitCases("/cases/function/window/test_window_row_range.yaml")));
 
+INSTANTIATE_TEST_SUITE_P(
+    EngineTestWindowRowsCurrentRow, EngineTest,
+    testing::ValuesIn(sqlcase::InitCases("/cases/function/window/test_current_row.yaml")));
+
 INSTANTIATE_TEST_SUITE_P(EngineTestWindowAttributes, EngineTest,
                          testing::ValuesIn(sqlcase::InitCases("/cases/function/window/window_attributes.yaml")));
 INSTANTIATE_TEST_SUITE_P(EngineTestWindowUnion, EngineTest,
