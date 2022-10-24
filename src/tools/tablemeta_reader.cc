@@ -60,7 +60,7 @@ void TablemetaReader::CopyFromRemote(const std::string& host, const std::string&
     }
 }
 
-bool TablemetaReader::ReadTableMeta() {
+bool TablemetaReader::ReadTableMeta(std::string& mode) {
     tid_ = tableinfo_ptr_->tid();
     schema_ = tableinfo_ptr_->column_desc();
 
@@ -74,7 +74,7 @@ bool TablemetaReader::ReadTableMeta() {
                 if (tablet_map_.find(endpoint) != tablet_map_.end()) {
                     path = tablet_map_[endpoint];
                     std::string host = endpoint.substr(0, endpoint.find(":"));
-                    std::string db_root_path = ReadDBRootPath(path, host);
+                    std::string db_root_path = ReadDBRootPath(path, host, mode);
 
                     std::string data_path = db_root_path + "/" + std::to_string(tid_) + "_" + std::to_string(pid);
                     CopyFromRemote(host, data_path, tmp_path_.string(), TYPE_DIRECTORY);
@@ -90,11 +90,18 @@ bool TablemetaReader::ReadTableMeta() {
 }
 
 std::string TablemetaReader::ReadDBRootPath(const std::string& deploy_dir, const std::string& host,
-                                            const std::string& mode) {\
-    std::string tablet_path = deploy_dir + "/conf/" + mode + "tablet.flags";
-    CopyFromRemote(host, tablet_path, tmp_path_.string(), TYPE_FILE);
-
-    std::string tablet_local_path =  tmp_path_.string() + mode + "/tablet.flags";
+                                            const std::string& mode) {
+    std::string tablet_path;
+    std::string tablet_local_path;
+    if (mode == "standalone") {
+        tablet_path= deploy_dir + "/conf/standalone_tablet.flags";
+        CopyFromRemote(host, tablet_path, tmp_path_.string(), TYPE_FILE);
+        tablet_local_path =  tmp_path_.string() + "/standalone_tablet.flags";
+    } else {
+        tablet_path= deploy_dir + "/conf/tablet.flags";
+        CopyFromRemote(host, tablet_path, tmp_path_.string(), TYPE_FILE);
+        tablet_local_path =  tmp_path_.string() + "/tablet.flags";
+    }
     std::ifstream infile(tablet_local_path);
     std::string line;
     std::string db_root_path;

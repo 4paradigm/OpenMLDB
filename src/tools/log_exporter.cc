@@ -52,7 +52,6 @@ void LogExporter::ReadManifest() {
     std::string manifest_path = table_dir_path_ + "/snapshot/MANIFEST";
     ::openmldb::api::Manifest manifest;
     if (::openmldb::storage::Snapshot::GetLocalManifest(manifest_path, manifest)) {
-        PDLOG(ERROR, "Failed to read manifest");
         return;
     }
     std::string snapshot_name = manifest.name();
