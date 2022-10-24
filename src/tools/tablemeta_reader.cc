@@ -60,7 +60,7 @@ void TablemetaReader::CopyFromRemote(const std::string& host, const std::string&
     }
 }
 
-bool TablemetaReader::ReadTableMeta(std::string& mode) {
+bool TablemetaReader::ReadTableMeta(const std::string& mode) {
     tid_ = tableinfo_ptr_->tid();
     schema_ = tableinfo_ptr_->column_desc();
 
@@ -94,11 +94,11 @@ std::string TablemetaReader::ReadDBRootPath(const std::string& deploy_dir, const
     std::string tablet_path;
     std::string tablet_local_path;
     if (mode == "standalone") {
-        tablet_path= deploy_dir + "/conf/standalone_tablet.flags";
+        tablet_path = deploy_dir + "/conf/standalone_tablet.flags";
         CopyFromRemote(host, tablet_path, tmp_path_.string(), TYPE_FILE);
         tablet_local_path =  tmp_path_.string() + "/standalone_tablet.flags";
     } else {
-        tablet_path= deploy_dir + "/conf/tablet.flags";
+        tablet_path = deploy_dir + "/conf/tablet.flags";
         CopyFromRemote(host, tablet_path, tmp_path_.string(), TYPE_FILE);
         tablet_local_path =  tmp_path_.string() + "/tablet.flags";
     }

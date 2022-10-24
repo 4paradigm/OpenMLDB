@@ -129,7 +129,7 @@ int main(int argc, char* argv[]) {
     }
     for (const auto& filepath_pair : filepath_map) {
         PDLOG(INFO, "Starting export table %d.", filepath_pair.first);
-        std::ofstream table_cout(FLAGS_db_name + "_" FLAGS_table_name + "_" +
+        std::ofstream table_cout(FLAGS_db_name + "_" + FLAGS_table_name + "_" +
                                     std::to_string(filepath_pair.first) + "_result.csv");
         for (int i = 0; i < table_schema.size(); ++i) {
             table_cout << table_schema.Get(i).name();
