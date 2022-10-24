@@ -338,7 +338,7 @@ void Segment::FreeEntry(::openmldb::base::Node<Slice, void*>* entry_node, uint64
         uint64_t byte_size =
             GetRecordPkMultiIdxSize(entry_node->Height(), entry_node->GetKey().size(), key_entry_max_height_, 1);
         for (uint32_t i = 0; i < ts_cnt_; i++) {
-            idx_byte_size_vec_[i].fetch_sub(byte_size, std::memory_order_relaxed);
+            idx_byte_size_vec_[i]->fetch_sub(byte_size, std::memory_order_relaxed);
         }
     } else {
         uint64_t old = gc_idx_cnt;
