@@ -132,7 +132,6 @@ uint64_t Segment::Release() {
     entry_free_list_->Clear();
     idx_cnt_vec_.clear();
     idx_byte_size_vec_.clear();
-    pk_cnt_vec_.clear();
     return cnt;
 }
 
