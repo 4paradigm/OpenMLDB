@@ -158,7 +158,7 @@ void Segment::ReleaseAndCount(uint64_t& gc_idx_cnt, uint64_t& gc_record_cnt, uin
     Release();
 }
 
-void Segment::Put(const Slice& key, uint64_t time, const char* data, uint32_t size, bool is_pi/*=0*/) {
+void Segment::Put(const Slice& key, uint64_t time, const char* data, uint32_t size) {
     if (ts_cnt_ > 1) {
         return;
     }
