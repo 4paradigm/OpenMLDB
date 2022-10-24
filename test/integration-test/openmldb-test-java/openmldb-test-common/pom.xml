@@ -37,8 +37,8 @@
             <groupId>com.4paradigm.openmldb</groupId>
             <artifactId>openmldb-native</artifactId>
             <version>${openmldb.navtive.version}</version>
-            <scope>system</scope>
-            <systemPath>/tmp/openmldb-native-0.6.4.jar</systemPath>
+<!--            <scope>system</scope>-->
+<!--            <systemPath>/tmp/openmldb-native-0.6.4.jar</systemPath>-->
         </dependency>
 
 
