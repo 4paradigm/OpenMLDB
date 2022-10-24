@@ -545,12 +545,20 @@ bool MemTable::GetRecordIdxCnt(uint32_t idx, uint64_t** stat, uint32_t* size) {
         return false;
     }
     auto* data_array = new uint64_t[seg_cnt_];
-    uint32_t real_idx = index_def->GetInnerPos();
-    for (uint32_t i = 0; i < seg_cnt_; i++) {
-        data_array[i] = segments_[real_idx][i]->GetIdxCnt();
+    uint32_t inner_idx = index_def->GetInnerPos();
+    auto inner_index = table_index_.GetInnerIndex(inner_idx);
+    int32_t ts_col_id = -1;
+    auto ts_col = index_def->GetTsColumn();
+    if (ts_col) {
+        ts_col_id = ts_col->GetId();
     }
-    *stat = data_array;
-    *size = seg_cnt_;
+    for (uint32_t j = 0; j < seg_cnt_; j++) {
+        if (inner_index->GetIndex().size() > 1 && ts_col_id >= 0) {
+            segments_[inner_idx][j]->GetIdxCnt(ts_col_id, data_array[i]);
+        } else {
+            data_array[i] += segments_[inner_idx][j]->GetIdxCnt();
+        }
+    }
     return true;
 }
 
