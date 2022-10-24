@@ -1,0 +1,15 @@
+mode: standalone
+#zookeeper:
+#  zk_cluster:
+#  zk_root_path:
+nameserver:
+  -
+    endpoint: 172.24.4.55:30040
+    path: /home/zhaowei01/openmldb-auto-test/standalone/openmldb-standalone
+tablet:
+  -
+    endpoint: 172.24.4.55:30041
+    path: /home/zhaowei01/openmldb-auto-test/standalone/openmldb-standalone
+
+
+

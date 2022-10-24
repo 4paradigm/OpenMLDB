@@ -51,12 +51,10 @@ public class StandaloneTest extends BaseTest {
             OpenMLDBInfo openMLDBInfo = new OpenMLDBInfo();
             openMLDBInfo.setDeployType(OpenMLDBDeployType.STANDALONE);
             openMLDBInfo.setHost("172.24.4.55");
-            openMLDBInfo.setPort(30013);
+            openMLDBInfo.setPort(30040);
             openMLDBInfo.setNsNum(1);
             openMLDBInfo.setTabletNum(1);
             openMLDBInfo.setBasePath("/home/wangkaidong/fedb-auto-test/standalone");
-            openMLDBInfo.setZk_cluster("172.24.4.55:30000");
-            openMLDBInfo.setZk_root_path("/openmldb");
             openMLDBInfo.setNsEndpoints(Lists.newArrayList("172.24.4.55:30013"));
             openMLDBInfo.setTabletEndpoints(Lists.newArrayList("172.24.4.55:30014"));
             openMLDBInfo.setApiServerEndpoints(Lists.newArrayList("172.24.4.55:30015"));

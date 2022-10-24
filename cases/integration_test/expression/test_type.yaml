@@ -278,7 +278,7 @@ cases:
         - [1, 1590115420]
   - id: 14
     desc: cast as int
-    mode: offline-unsupport
+    mode: offline-unsupport,disk-unsupport
     tags: ["@chendihao, @baoxinqi, support simple project node with column cast"]
     inputs:
       - columns: ["id int32", "c1 int16", "c2 int32", "c3 int64", "c4 float", "c5 double",
@@ -303,7 +303,7 @@ cases:
         - [3, -1, -1, -1, -1, -1, NULL, 977520480, 0, NULL]
   - id: 15
     desc: cast as smallint
-    mode: offline-unsupport
+    mode: offline-unsupport,disk-unsupport
     tags: ["@chendihao, @baoxinqi, support simple project node with column cast"]
     inputs:
       - columns: ["id int32", "c1 int16", "c2 int32", "c3 int64", "c4 float", "c5 double",
@@ -329,7 +329,7 @@ cases:
         - [3, -1, -1, -1, -1, -1, NULL, -14496, 0, NULL]
   - id: 16
     desc: cast as bigint
-    mode: offline-unsupport
+    mode: offline-unsupport,disk-unsupport
     tags: ["@chendihao, @baoxinqi, support simple project node with column cast"]
     inputs:
       - columns: ["id int32", "c1 int16", "c2 int32", "c3 int64", "c4 float", "c5 double",
@@ -355,7 +355,7 @@ cases:
         - [3, -1, -1, -1, -1, -1, NULL, 1590115420000, 0, NULL]
   - id: 17
     desc: cast as float
-    mode: offline-unsupport, python-unsupport
+    mode: offline-unsupport, python-unsupport,disk-unsupport
     tags: ["@chendihao, @baoxinqi, support simple project node with column cast"]
     inputs:
       - columns: ["id int32", "c1 int16", "c2 int32", "c3 int64", "c4 float", "c5 double",
@@ -380,7 +380,7 @@ cases:
         - [3, -1.0, -1.0, -1.0, -1.0, -1.0, NULL, 1590115420000.0, 0.0, NULL]
   - id: 18
     desc: cast as double
-    mode: offline-unsupport
+    mode: offline-unsupport,disk-unsupport
     tags: ["@chendihao, @baoxinqi, support simple project node with column cast"]
     inputs:
       - columns: ["id int32", "c1 int16", "c2 int32", "c3 int64", "c4 float", "c5 double",
@@ -405,7 +405,7 @@ cases:
         - [3, -1.0, -1.0, -1.0, -1.0, -1.0, NULL, 1590115420000.0, 0.0, NULL]
   - id: 19
     desc: cast as string
-    mode: offline-unsupport,cli-unsupport
+    mode: offline-unsupport,cli-unsupport,disk-unsupport
     tags: ["@chendihao, @baoxinqi, support simple project node with column cast"]
     inputs:
       - columns: ["id int32", "c1 int16", "c2 int32", "c3 int64", "c4 float", "c5 double",
@@ -431,7 +431,7 @@ cases:
         - [3, "-1", "-1", "-1", "-1", "-1", NULL, "2020-05-22", "2020-05-22 10:43:40", "false", ""]
   - id: 20
     desc: cast as date
-    mode: offline-unsupport
+    mode: offline-unsupport,disk-unsupport
     tags: ["@chendihao, @baoxinqi, support simple project node with column cast"]
     inputs:
       - columns: ["id int32", "c1 int16", "c2 int32", "c3 int64", "c4 float", "c5 double",
@@ -454,7 +454,7 @@ cases:
         - [3, NULL, "2020-05-22", "2020-05-22", NULL]
   - id: 21
     desc: cast as timestamp
-    mode: offline-unsupport
+    mode: offline-unsupport,disk-unsupport
     tags: ["@chendihao, @baoxinqi, support simple project node with column cast"]
     inputs:
       - columns: ["id int32", "c1 int16", "c2 int32", "c3 int64", "c4 float", "c5 double",
@@ -479,8 +479,7 @@ cases:
         - [3, NULL, NULL, NULL, NULL, NULL, NULL, 1590076800000, 1590115420000, 0, NULL]
   - id: 22
     desc: cast as bool
-    mode: offline-unsupport
-#    tags: ["TODO", "@chendihao, @baoxinqi, support simple project node with column cast"]
+    mode: offline-unsupport,disk-unsupport
     inputs:
       - columns: ["id int32", "c1 int16", "c2 int32", "c3 int64", "c4 float", "c5 double",
       "c6 string", "c7 date", "c8 timestamp", "c9 bool", "c10 string"]

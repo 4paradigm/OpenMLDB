@@ -115,10 +115,11 @@ void CombineIterator::SelectIterator() {
                 need_delete = true;
                 continue;
             }
-        }
-        if (cur_ts > max_ts) {
-            max_ts = cur_ts;
-            cur_qit_ = &(*iter);
+
+            if (cur_qit_ == nullptr || cur_ts > max_ts) {
+                max_ts = cur_ts;
+                cur_qit_ = &(*iter);
+            }
         }
     }
     if (need_delete) {

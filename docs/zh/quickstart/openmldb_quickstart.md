@@ -19,7 +19,7 @@ Docker engine版本需求 >= 18.03
 拉取镜像（镜像下载大小大约 1GB，解压后约 1.7 GB）和启动 docker 容器
 
 ```bash
-docker run -it 4pdosc/openmldb:0.6.2 bash
+docker run -it 4pdosc/openmldb:0.6.4 bash
 ```
 
 ````{important}
@@ -292,6 +292,7 @@ SELECT * FROM demo_table1;
 将探索好的SQL方案部署到线上，注意部署上线的 SQL 方案需要与对应的离线特征计算的 SQL 方案保持一致。
 
 ```sql
+> SET @@execute_mode='online';
 > DEPLOY demo_data_service SELECT c1, c2, sum(c3) OVER w1 AS w1_c3_sum FROM demo_table1 WINDOW w1 AS (PARTITION BY demo_table1.c1 ORDER BY demo_table1.c6 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
 ```
 

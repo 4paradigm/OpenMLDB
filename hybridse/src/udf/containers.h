@@ -22,6 +22,8 @@
 #include <map>
 #include <string>
 #include <vector>
+#include <set>
+#include <utility>
 
 #include "base/type.h"
 #include "codec/type_codec.h"
@@ -166,6 +168,10 @@ template <typename K, typename V,
           typename StorageV = typename ContainerStorageTypeTrait<V>::type>
 class BoundedGroupByDict {
  public:
+    // forward & export K & StorageV type
+    using Key = K;
+    using StorageValue = StorageV;
+
     // actual input type
     using InputK = typename DataTypeTrait<K>::CCallArgType;
     using InputV = typename DataTypeTrait<V>::CCallArgType;
@@ -176,8 +182,38 @@ class BoundedGroupByDict {
     // self type
     using ContainerT = BoundedGroupByDict<K, V, StorageV>;
 
-    using FormatValueF =
-        std::function<uint32_t(const StorageV&, char*, size_t)>;
+    using FormatValueF = std::function<uint32_t(const StorageV&, char*, size_t)>;
+
+    template <typename>
+    struct is_pair : std::false_type {};
+    template <typename... T>
+    struct is_pair<std::pair<T...>> : std::true_type {};
+
+    struct PairCmp {
+        // (4, 2), (1, 4), (2, 4)
+        template <typename U = StorageV>
+        std::enable_if_t<!is_pair<U>::value, bool> operator()(
+            const std::pair<StorageK, U>& lhs, const std::pair<StorageK, U>& rhs) const {
+            if (lhs.second == rhs.second) {
+                return lhs.first < rhs.first;
+            }
+
+            return lhs.second < rhs.second;
+        }
+
+        // StorageV is pair(int, double)
+        template <typename U = StorageV>
+        std::enable_if_t<std::is_same_v<U, std::pair<int64_t, double>>, bool> operator()(
+            const std::pair<StorageK, U>& lhs, const std::pair<StorageK, U>& rhs) const {
+            double lavg = lhs.second.second / lhs.second.first;
+            double ravg = rhs.second.second / rhs.second.first;
+            if (lavg == ravg) {
+                return lhs.first < rhs.first;
+            }
+
+            return lavg < ravg;
+        }
+    };
 
     // convert to internal key and value
     static inline StorageK to_stored_key(const InputK& key) {
@@ -304,7 +340,72 @@ class BoundedGroupByDict {
             str_len - 1;  // must leave one '\0' for string format impl
     }
 
-    std::map<StorageK, StorageV>& map() { return map_; }
+
+    // fetch top n elements in `map_` order by value of map in desc.
+    // return string with the format of `key1:value1,key2:value...`.
+    void OutputTopNByValue(int64_t topn, const FormatValueF& format_value, codec::StringRef* output) {
+        if (map_.empty()) {
+            output->size_ = 0;
+            output->data_ = "";
+            return;
+        }
+        std::set<std::pair<StorageK, StorageV>, PairCmp> ordered_set;
+        for (auto& kv : map_) {
+            ordered_set.emplace(kv.first, kv.second);
+
+            if (topn >= 0 && ordered_set.size() > static_cast<size_t>(topn)) {
+                ordered_set.erase(ordered_set.begin());
+            }
+        }
+
+        uint32_t outlen = 0;
+        auto it = ordered_set.crbegin();
+        auto end = ordered_set.crend();
+        auto stop_it = ordered_set.crend();
+
+        for (; it != end; ++it) {
+            uint32_t key_len = v1::to_string_len(it->first);
+            uint32_t value_len = format_value(it->second, nullptr, 0);
+            uint32_t new_len = outlen + key_len + value_len + 2;  // "k:v,"
+            if (new_len > MAX_OUTPUT_STR_SIZE) {
+                stop_it = it;
+                break;
+            } else {
+                outlen = new_len;
+            }
+        }
+
+        // allocate string buffer
+        char* buffer = udf::v1::AllocManagedStringBuf(outlen);
+        if (buffer == nullptr) {
+            output->size_ = 0;
+            output->data_ = "";
+            return;
+        }
+
+        char* cur = buffer;
+        uint32_t remain_space = outlen;
+        auto cur_it = ordered_set.crbegin();
+        for (; cur_it != stop_it; ++cur_it) {
+            uint32_t key_len = v1::format_string(cur_it->first, cur, remain_space);
+            cur += key_len;
+            *(cur++) = ':';
+            remain_space -= key_len + 1;
+
+            uint32_t value_len = format_value(cur_it->second, cur, remain_space);
+            cur += value_len;
+            remain_space -= value_len;
+            if (remain_space-- > 0) {
+                *(cur++) = ',';
+            }
+        }
+
+        *(buffer + outlen - 1) = '\0';
+        output->data_ = buffer;
+        output->size_ = outlen - 1;  // must leave one '\0' for string format impl
+    }
+
+    auto& map() { return map_; }
 
  private:
     std::map<StorageK, StorageV, std::less<StorageK>> map_;

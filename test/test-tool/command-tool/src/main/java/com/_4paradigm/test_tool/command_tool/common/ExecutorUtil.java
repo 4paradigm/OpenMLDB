@@ -1,6 +1,7 @@
 package com._4paradigm.test_tool.command_tool.common;
 
 
+import com._4paradigm.test_tool.command_tool.conf.CommandConfig;
 import com._4paradigm.test_tool.command_tool.util.OSInfoUtil;
 import lombok.extern.slf4j.Slf4j;
 
@@ -42,12 +43,17 @@ public class ExecutorUtil {
     }
     private static CommandExecutor getExecutor(){
         CommandExecutor executor;
-        if(OSInfoUtil.isMac()){
-//            executor = new RemoteExecutor();
-            executor = new LocalExecutor();
+        if(CommandConfig.IS_REMOTE){
+            executor = new RemoteExecutor();
         }else{
             executor = new LocalExecutor();
         }
+//        if(OSInfoUtil.isMac()){
+//            executor = new RemoteExecutor();
+////            executor = new LocalExecutor();
+//        }else{
+//            executor = new LocalExecutor();
+//        }
         return executor;
     }
 }
