@@ -289,12 +289,15 @@ bool Segment::Delete(const Slice& key) {
     return true;
 }
 
-void Segment::FreeList(::openmldb::base::Node<uint64_t, DataBlock*>* node, uint64_t& gc_idx_cnt,
-                       uint64_t& gc_record_cnt, uint64_t& gc_record_byte_size, uint64_t* idx_bytes/*=&idx_byte_size_*/) {
+void Segment::FreeList(::openmldb::base::Node<uint64_t, DataBlock*>* node, uint64_t& gc_idx_cnt, uint64_t& gc_record_cnt, 
+                       uint64_t& gc_record_byte_size, std::shared_ptr<std::atomic<uint64_t>> idx_bytes/*= NULL*/) {
     while (node != NULL) {
         gc_idx_cnt++;
         ::openmldb::base::Node<uint64_t, DataBlock*>* tmp = node;
-        idx_bytes->fetch_sub(GetRecordTsIdxSize(tmp->Height()));
+        if (idx_bytes != NULL)
+            idx_bytes->fetch_sub(GetRecordTsIdxSize(tmp->Height()));
+        else
+            idx_byte_size_.fetch_sub(GetRecordTsIdxSize(tmp->Height()));
         node = node->GetNextNoBarrier(0);
         DEBUGLOG("delete key %lu with height %u", tmp->GetKey(), tmp->Height());
         if (tmp->GetValue()->dim_cnt_down > 1) {

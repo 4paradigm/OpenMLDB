@@ -254,7 +254,7 @@ class Segment {
     void FreeList(::openmldb::base::Node<uint64_t, DataBlock*>* node, uint64_t& gc_idx_cnt,  // NOLINT
                   uint64_t& gc_record_cnt,         // NOLINT
                   uint64_t& gc_record_byte_size,
-				  uint64_t* idx_bytes = &idx_byte_size_);  // NOLINT
+				  std::shared_ptr<std::atomic<uint64_t>> idx_bytes = NULL);
     void SplitList(KeyEntry* entry, uint64_t ts, ::openmldb::base::Node<uint64_t, DataBlock*>** node);
 
     void GcEntryFreeList(uint64_t version, uint64_t& gc_idx_cnt,  // NOLINT
