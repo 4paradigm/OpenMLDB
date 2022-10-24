@@ -290,11 +290,11 @@ bool Segment::Delete(const Slice& key) {
 }
 
 void Segment::FreeList(::openmldb::base::Node<uint64_t, DataBlock*>* node, uint64_t& gc_idx_cnt,
-                       uint64_t& gc_record_cnt, uint64_t& gc_record_byte_size, uint64_t& idx_bytes/*=idx_byte_size_*/) {
+                       uint64_t& gc_record_cnt, uint64_t& gc_record_byte_size, uint64_t* idx_bytes/*=&idx_byte_size_*/) {
     while (node != NULL) {
         gc_idx_cnt++;
         ::openmldb::base::Node<uint64_t, DataBlock*>* tmp = node;
-        idx_byte_size_.fetch_sub(GetRecordTsIdxSize(tmp->Height()));
+        idx_bytes->fetch_sub(GetRecordTsIdxSize(tmp->Height()));
         node = node->GetNextNoBarrier(0);
         DEBUGLOG("delete key %lu with height %u", tmp->GetKey(), tmp->Height());
         if (tmp->GetValue()->dim_cnt_down > 1) {
@@ -564,7 +564,7 @@ void Segment::GcAllType(const std::map<uint32_t, TTLSt>& ttl_st_map, uint64_t& g
                 continue;
             }
             uint64_t entry_gc_idx_cnt = 0;
-            FreeList(node, entry_gc_idx_cnt, gc_record_cnt, gc_record_byte_size, idx_byte_cnt_vec_[pos->second]);
+            FreeList(node, entry_gc_idx_cnt, gc_record_cnt, gc_record_byte_size, &(idx_byte_size_vec_[pos->second]));
             entry->count_.fetch_sub(entry_gc_idx_cnt, std::memory_order_relaxed);
             idx_cnt_vec_[pos->second]->fetch_sub(entry_gc_idx_cnt, std::memory_order_relaxed);
             gc_idx_cnt += entry_gc_idx_cnt;
