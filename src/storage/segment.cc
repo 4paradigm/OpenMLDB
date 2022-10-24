@@ -74,6 +74,7 @@ Segment::Segment(uint8_t height, const std::vector<uint32_t>& ts_idx_vec)
     for (uint32_t i = 0; i < ts_idx_vec.size(); i++) {
         ts_idx_map_[ts_idx_vec[i]] = i;
         idx_cnt_vec_.push_back(std::make_shared<std::atomic<uint64_t>>(0));
+        idx_byte_size_vec_.push_back(std::make_shared<std::atomic<uint64_t>>(0));
     }
 }
 
@@ -130,6 +131,8 @@ uint64_t Segment::Release() {
     delete f_it;
     entry_free_list_->Clear();
     idx_cnt_vec_.clear();
+    idx_byte_size_vec_.clear();
+    pk_cnt_vec_.clear();
     return cnt;
 }
 
@@ -155,7 +158,7 @@ void Segment::ReleaseAndCount(uint64_t& gc_idx_cnt, uint64_t& gc_record_cnt, uin
     Release();
 }
 
-void Segment::Put(const Slice& key, uint64_t time, const char* data, uint32_t size) {
+void Segment::Put(const Slice& key, uint64_t time, const char* data, uint32_t size, bool is_pi/*=0*/) {
     if (ts_cnt_ > 1) {
         return;
     }
@@ -219,7 +222,7 @@ void Segment::BulkLoadPut(unsigned int key_entry_id, const Slice& key, uint64_t 
         ((KeyEntry**)key_entry_or_list)[key_entry_id]->count_.fetch_add(  // NOLINT
             1, std::memory_order_relaxed);
         byte_size += GetRecordTsIdxSize(height);
-        idx_byte_size_.fetch_add(byte_size, std::memory_order_relaxed);
+        idx_byte_size_vec_[key_entry_id].fetch_add(byte_size, std::memory_order_relaxed);
         idx_cnt_vec_[key_entry_id]->fetch_add(1, std::memory_order_relaxed);
     }
 }
@@ -265,7 +268,7 @@ void Segment::Put(const Slice& key, const std::map<int32_t, uint64_t>& ts_map, D
         ((KeyEntry**)entry_arr)[pos->second]->count_.fetch_add(  // NOLINT
             1, std::memory_order_relaxed);
         byte_size += GetRecordTsIdxSize(height);
-        idx_byte_size_.fetch_add(byte_size, std::memory_order_relaxed);
+        idx_byte_size_vec_[pos->second].fetch_add(byte_size, std::memory_order_relaxed);
         idx_cnt_vec_[pos->second]->fetch_add(1, std::memory_order_relaxed);
     }
 }
@@ -287,7 +290,7 @@ bool Segment::Delete(const Slice& key) {
 }
 
 void Segment::FreeList(::openmldb::base::Node<uint64_t, DataBlock*>* node, uint64_t& gc_idx_cnt,
-                       uint64_t& gc_record_cnt, uint64_t& gc_record_byte_size) {
+                       uint64_t& gc_record_cnt, uint64_t& gc_record_byte_size, uint64_t& idx_bytes/*=idx_byte_size_*/) {
     while (node != NULL) {
         gc_idx_cnt++;
         ::openmldb::base::Node<uint64_t, DataBlock*>* tmp = node;
@@ -331,8 +334,10 @@ void Segment::FreeEntry(::openmldb::base::Node<Slice, void*>* entry_node, uint64
         }
         delete[] entry_arr;
         uint64_t byte_size =
-            GetRecordPkMultiIdxSize(entry_node->Height(), entry_node->GetKey().size(), key_entry_max_height_, ts_cnt_);
-        idx_byte_size_.fetch_sub(byte_size, std::memory_order_relaxed);
+            GetRecordPkMultiIdxSize(entry_node->Height(), entry_node->GetKey().size(), key_entry_max_height_, 1);
+        for (uint32_t i = 0; i < ts_cnt_; i++) {
+            idx_byte_size_vec_[i].fetch_sub(byte_size, std::memory_order_relaxed);
+        }
     } else {
         uint64_t old = gc_idx_cnt;
         KeyEntry* entry = (KeyEntry*)entry_node->GetValue();  // NOLINT
@@ -559,7 +564,7 @@ void Segment::GcAllType(const std::map<uint32_t, TTLSt>& ttl_st_map, uint64_t& g
                 continue;
             }
             uint64_t entry_gc_idx_cnt = 0;
-            FreeList(node, entry_gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
+            FreeList(node, entry_gc_idx_cnt, gc_record_cnt, gc_record_byte_size, idx_byte_cnt_vec_[pos->second]);
             entry->count_.fetch_sub(entry_gc_idx_cnt, std::memory_order_relaxed);
             idx_cnt_vec_[pos->second]->fetch_sub(entry_gc_idx_cnt, std::memory_order_relaxed);
             gc_idx_cnt += entry_gc_idx_cnt;
