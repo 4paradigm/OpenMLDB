@@ -57,7 +57,7 @@ ParameterRow::ParameterRow(const OpenmldbHandler* handler) : handler_(handler) {
 std::shared_ptr<openmldb::sdk::SQLRequestRow> ParameterRow::get_parameter_row() const {
     sql_parameter_row_ = ::openmldb::sdk::SQLRequestRow::CreateSQLRequestRowFromColumnTypes(parameter_types_);
     sql_parameter_row_->Init(str_length_);
-    for (int i = 0; i < record_.size(); ++i) {
+    for (unsigned long i = 0; i < record_.size(); ++i) {
         auto type = parameter_types_->GetColumnType(i);
         switch (type) {
             case ::hybridse::sdk::kTypeBool:
@@ -185,7 +185,7 @@ RequestRow::RequestRow(OpenmldbHandler* handler, const std::string& db, const st
 std::shared_ptr<openmldb::sdk::SQLRequestRow> RequestRow::get_request_row() const {
     sql_request_row_ = (handler_->get_router())->GetRequestRow(db_, sql_, handler_->get_status());
     sql_request_row_->Init(str_length_);
-    for (int i = 0; i < record_.size(); ++i) {
+    for (unsigned long i = 0; i < record_.size(); ++i) {
         auto type = parameter_types_->GetColumnType(i);
         switch (type) {
             case ::hybridse::sdk::kTypeBool:
