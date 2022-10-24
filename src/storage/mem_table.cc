@@ -285,16 +285,14 @@ void MemTable::SchedGc() {
                 cur_index->SetStatus(IndexStatus::kDeleting);
                 need_gc = false;
             } else if (cur_index->GetStatus() == IndexStatus::kDeleting) {
-                if (real_index.size() == 1) {
-                    if (segments_[i] != NULL) {
-                        for (uint32_t k = 0; k < seg_cnt_; k++) {
-                            if (segments_[i][k] != NULL) {
-                                segments_[i][k]->ReleaseAndCount(gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
-                            }
+                if (segments_[i] != NULL) {
+                    for (uint32_t k = 0; k < seg_cnt_; k++) {
+                        if (segments_[i][k] != NULL) {
+                            segments_[i][k]->ReleaseAndCount(gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
                         }
                     }
-                    deleted_num++;
                 }
+                deleted_num++;
                 cur_index->SetStatus(IndexStatus::kDeleted);
             } else if (cur_index->GetStatus() == IndexStatus::kDeleted) {
                 deleted_num++;
