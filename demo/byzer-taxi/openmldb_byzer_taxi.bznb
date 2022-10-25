@@ -1,0 +1,123 @@
+{
+  "id" : "29",
+  "name" : "openmldb_byzer_taxi",
+  "user" : "admin",
+  "cell_list" : [ {
+    "id" : "167",
+    "content" : "--%markdowncheck uploaded data",
+    "job_id" : null
+  }, {
+    "id" : "168",
+    "content" : "load csv.`tmp/upload/taxi_tour_table_train_simple.csv` where delimiter=\",\"\r\nand header = \"true\"\r\nas taxi_tour_table_train_simple;",
+    "job_id" : null
+  }, {
+    "id" : "169",
+    "content" : "--%markdowncreate table and load data to OpenMLDB offline",
+    "job_id" : null
+  }, {
+    "id" : "170",
+    "content" : "run command as FeatureStoreExt.`` where\r\nzkAddress=\"127.0.0.1:2181\"\r\nand zkPath=\"/openmldb\"\r\nand `sql-0`='''\r\nSET @@execute_mode='offline';\r\n'''\r\nand `sql-1`='''\r\nSET @@sync_job=true;\r\n'''\r\nand `sql-2`='''\r\nSET @@job_timeout=20000000;\r\n'''\r\nand `sql-3`='''\r\nCREATE TABLE IF NOT EXISTS t1(id string, vendor_id int, pickup_datetime timestamp, dropoff_datetime timestamp, passenger_count int, pickup_longitude double, pickup_latitude double, dropoff_longitude double, dropoff_latitude double, store_and_fwd_flag string, trip_duration int);\r\n'''\r\nand `sql-4`='''\r\nLOAD DATA INFILE '/byzermnt/tmp/upload/taxi_tour_table_train_simple.csv'\r\nINTO TABLE t1 options(format='csv',header=true,mode='overwrite');\r\n'''\r\nand db=\"db1\"\r\nand action=\"ddl\";",
+    "job_id" : null
+  }, {
+    "id" : "171",
+    "content" : "--%markdownoffline feature extraction",
+    "job_id" : null
+  }, {
+    "id" : "172",
+    "content" : "run command as FeatureStoreExt.`` where\r\nzkAddress=\"127.0.0.1:2181\"\r\nand zkPath=\"/openmldb\"\r\nand `sql-0`='''\r\nSET @@execute_mode='offline';\r\n'''\r\nand `sql-1`='''\r\nSET @@sync_job=true;\r\n'''\r\nand `sql-2`='''\r\nSET @@job_timeout=20000000;\r\n'''\r\nand `sql-3`='''\r\nSELECT trip_duration, passenger_count,\r\nsum(pickup_latitude) OVER w AS vendor_sum_pl,\r\nmax(pickup_latitude) OVER w AS vendor_max_pl,\r\nmin(pickup_latitude) OVER w AS vendor_min_pl,\r\navg(pickup_latitude) OVER w AS vendor_avg_pl,\r\nsum(pickup_latitude) OVER w2 AS pc_sum_pl,\r\nmax(pickup_latitude) OVER w2 AS pc_max_pl,\r\nmin(pickup_latitude) OVER w2 AS pc_min_pl,\r\navg(pickup_latitude) OVER w2 AS pc_avg_pl ,\r\ncount(vendor_id) OVER w2 AS pc_cnt,\r\ncount(vendor_id) OVER w AS vendor_cnt\r\nFROM t1 \r\nWINDOW w AS (PARTITION BY vendor_id ORDER BY pickup_datetime ROWS_RANGE BETWEEN 1d PRECEDING AND CURRENT ROW),\r\nw2 AS (PARTITION BY passenger_count ORDER BY pickup_datetime ROWS_RANGE BETWEEN 1d PRECEDING AND CURRENT ROW) INTO OUTFILE '/byzermnt/tmp/feature_data' OPTIONS(mode='overwrite', format='parquet');\r\n'''\r\nand db=\"db1\"\r\nand action=\"ddl\";",
+    "job_id" : null
+  }, {
+    "id" : "173",
+    "content" : "--%markdownload offline feature",
+    "job_id" : null
+  }, {
+    "id" : "174",
+    "content" : "load parquet.`tmp/feature_data` as feature_data;",
+    "job_id" : null
+  }, {
+    "id" : "175",
+    "content" : "--%markdownconvert int to double",
+    "job_id" : null
+  }, {
+    "id" : "176",
+    "content" : "select *, \r\ncast(passenger_count as double) as passenger_count_d,\r\ncast(pc_cnt as double) as pc_cnt_d,\r\ncast(vendor_cnt as double) as vendor_cnt_d\r\nfrom feature_data\r\nas new_feature_data;",
+    "job_id" : null
+  }, {
+    "id" : "177",
+    "content" : "--%markdownvec dense",
+    "job_id" : null
+  }, {
+    "id" : "178",
+    "content" : "select vec_dense(array(\r\npassenger_count_d,\r\nvendor_sum_pl,\r\nvendor_max_pl,\r\nvendor_min_pl,\r\nvendor_avg_pl,\r\npc_sum_pl,\r\npc_max_pl,\r\npc_min_pl,\r\npc_avg_pl,\r\npc_cnt_d,\r\nvendor_cnt\r\n)) as features,cast(trip_duration as double) as label\r\nfrom new_feature_data\r\nas training_table;",
+    "job_id" : null
+  }, {
+    "id" : "179",
+    "content" : "--%markdownuse feature to train and save model",
+    "job_id" : null
+  }, {
+    "id" : "180",
+    "content" : "train training_table as LinearRegression.`/model/taxi-trip` where\r\nkeepVersion=\"true\"\r\nand evaluateTable=\"training_table\"\r\nand `fitParam.0.labelCol`=\"label\"\r\nand `fitParam.0.featuresCol`= \"features\"\r\nand `fitParam.0.maxIter`=\"50\";",
+    "job_id" : null
+  }, {
+    "id" : "181",
+    "content" : "--%markdowndeploy feature sql",
+    "job_id" : null
+  }, {
+    "id" : "182",
+    "content" : "run command as FeatureStoreExt.`` where\r\nzkAddress=\"127.0.0.1:2181\"\r\nand zkPath=\"/openmldb\"\r\nand `sql-0`='''\r\nSET @@execute_mode='online';\r\n'''\r\nand `sql-1`='''\r\nDEPLOY d1 SELECT trip_duration, passenger_count,\r\nsum(pickup_latitude) OVER w AS vendor_sum_pl,\r\nmax(pickup_latitude) OVER w AS vendor_max_pl,\r\nmin(pickup_latitude) OVER w AS vendor_min_pl,\r\navg(pickup_latitude) OVER w AS vendor_avg_pl,\r\nsum(pickup_latitude) OVER w2 AS pc_sum_pl,\r\nmax(pickup_latitude) OVER w2 AS pc_max_pl,\r\nmin(pickup_latitude) OVER w2 AS pc_min_pl,\r\navg(pickup_latitude) OVER w2 AS pc_avg_pl ,\r\ncount(vendor_id) OVER w2 AS pc_cnt,\r\ncount(vendor_id) OVER w AS vendor_cnt\r\nFROM t1 \r\nWINDOW w AS (PARTITION BY vendor_id ORDER BY pickup_datetime ROWS_RANGE BETWEEN 1d PRECEDING AND CURRENT ROW),\r\nw2 AS (PARTITION BY passenger_count ORDER BY pickup_datetime ROWS_RANGE BETWEEN 1d PRECEDING AND CURRENT ROW);\r\n'''\r\nand db=\"db1\"\r\nand action=\"ddl\";",
+    "job_id" : null
+  }, {
+    "id" : "183",
+    "content" : "--%markdownload data to OpenMLDB online",
+    "job_id" : null
+  }, {
+    "id" : "184",
+    "content" : "run command as FeatureStoreExt.`` where\r\nzkAddress=\"127.0.0.1:2181\"\r\nand zkPath=\"/openmldb\"\r\nand `sql-0`='''\r\nSET @@execute_mode='online';\r\n'''\r\nand `sql-1`='''\r\nSET @@sync_job=true;\r\n'''\r\nand `sql-2`='''\r\nSET @@job_timeout=20000000;\r\n'''\r\nand `sql-3`='''\r\nLOAD DATA INFILE '/byzermnt/tmp/upload/taxi_tour_table_train_simple.csv'\r\nINTO TABLE t1 options(format='csv',mode='append');\r\n'''\r\nand db=\"db1\"\r\nand action=\"ddl\";",
+    "job_id" : null
+  }, {
+    "id" : "185",
+    "content" : "--%markdownregister model to be udf",
+    "job_id" : null
+  }, {
+    "id" : "186",
+    "content" : "register LinearRegression.`/model/taxi-trip` as taxi_trip_model_predict;",
+    "job_id" : null
+  }, {
+    "id" : "187",
+    "content" : "--%markdownpython code to do online feature extraction, save to file",
+    "job_id" : null
+  }, {
+    "id" : "188",
+    "content" : "--%markdown!python env \"PYTHON_ENV=:\";\n!python conf \"runIn=driver\";\n!python conf \"schema=file\";\nrun command as Ray.`` where \ninputTable=\"command\"\nand outputTable=\"test_feature\"\nand code='''\nimport numpy as np\nimport os\nimport pandas as pd\nimport ray\nimport requests\nimport json\nfrom pyjava.api.mlsql import RayContext,PythonContext\n\nray_context = RayContext.connect(globals(),None)\n\nresp = requests.post('http://127.0.0.1:9080/dbs/db1/deployments/d1', json=json.loads('{\"input\":[[\"id0376262\", 1, 1467302350000, 1467304896000, 2, -73.873093, 40.774097, -73.926704, 40.856739, \"N\", 1]], \"need_schema\":true}'))\n\nres = json.loads(resp.text)[\"data\"]\nschema_names = [(col[\"name\"], col[\"type\"]) for col in res[\"schema\"]]\ndf = pd.DataFrame.from_records(np.array([tuple(res[\"data\"][0])], dtype=schema_names))\ndf.to_parquet('/mlsql/admin/tmp/test_feature.parquet')\n\ncontext.build_result([])\n''';\n",
+    "job_id" : null
+  }, {
+    "id" : "189",
+    "content" : "--%markdownload online feature result",
+    "job_id" : null
+  }, {
+    "id" : "190",
+    "content" : "load parquet.`tmp/test_feature.parquet` as feature_data_test;",
+    "job_id" : null
+  }, {
+    "id" : "191",
+    "content" : "--%markdowndo the same feature transform",
+    "job_id" : null
+  }, {
+    "id" : "192",
+    "content" : "select *, \r\ncast(passenger_count as double) as passenger_count_d,\r\ncast(pc_cnt as double) as pc_cnt_d,\r\ncast(vendor_cnt as double) as vendor_cnt_d\r\nfrom feature_data_test\r\nas new_feature_data_test;",
+    "job_id" : null
+  }, {
+    "id" : "193",
+    "content" : "select vec_dense(array(\r\npassenger_count_d,\r\nvendor_sum_pl,\r\nvendor_max_pl,\r\nvendor_min_pl,\r\nvendor_avg_pl,\r\npc_sum_pl,\r\npc_max_pl,\r\npc_min_pl,\r\npc_avg_pl,\r\npc_cnt_d,\r\nvendor_cnt\r\n)) as features \r\nfrom new_feature_data_test\r\nas testing_table;",
+    "job_id" : null
+  }, {
+    "id" : "194",
+    "content" : "--%markdownpredict the trip duration",
+    "job_id" : null
+  }, {
+    "id" : "195",
+    "content" : "select taxi_trip_model_predict(features) from testing_table as predict_label;",
+    "job_id" : null
+  } ],
+  "is_demo" : null
+}
