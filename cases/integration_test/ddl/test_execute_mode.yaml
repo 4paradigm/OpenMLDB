@@ -64,6 +64,17 @@ cases:
         - ["sync_job","false"]
   -
     id: 4
+    desc: EXECUTE_MODE=offline，创建表，insert数据，并查询
+    inputs:
+      -
+        columns: ["c1 string","c2 smallint","c3 int","c4 timestamp"]
+    sqls:
+      - set @@SESSION.execute_mode = "offline";
+      - insert into {0} values ("bb",2,3,1590738989000);
+    expect:
+      success: false
+  -
+    id: 5
     desc: EXECUTE_MODE=online，创建表，insert数据，并查询
     inputs:
       -
@@ -76,14 +87,3 @@ cases:
       columns: ["c1 string","c2 smallint","c3 int","c4 timestamp"]
       rows:
         - ["aa",1,2,1590738989000]
-  -
-    id: 5
-    desc: EXECUTE_MODE=offline，创建表，insert数据，并查询
-    inputs:
-      -
-        columns: ["c1 string","c2 smallint","c3 int","c4 timestamp"]
-    sqls:
-      - set @@SESSION.execute_mode = "offline";
-      - insert into {0} values ("bb",2,3,1590738989000);
-    expect:
-      success: false

@@ -106,10 +106,6 @@ public class ExecutorFactory {
         return new BatchSQLExecutor(sqlExecutor, sqlCase, type);
     }
     private static BaseSQLExecutor getFeBatchQueryExecutor(SqlExecutor sqlExecutor, SQLCase sqlCase, SQLCaseType type) {
-        if (OpenMLDBConfig.isCluster()) {
-            log.info("cluster unsupport batch query mode");
-            return new NullExecutor(sqlExecutor, sqlCase, type);
-        }
         return new BatchSQLExecutor(sqlExecutor, sqlCase, type);
     }
     private static BaseSQLExecutor getFeRequestQueryExecutor(SqlExecutor sqlExecutor, SQLCase sqlCase, SQLCaseType type) {

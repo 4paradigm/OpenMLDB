@@ -136,6 +136,7 @@ cases:
   -
     id: 6
     desc: last join 子查询和副表, 子查询包含window
+    mode: batch-unsupport
     sqlDialect: ["HybridSQL"]
     inputs:
       -
@@ -259,7 +260,7 @@ cases:
   -
     id: 9
     desc: 特征拼接
-    mode: offline-unsupport, python-unsupport,cli-unsupport
+    mode: offline-unsupport, python-unsupport,cli-unsupport,batch-unsupport
     sqlDialect: ["HybridSQL"]
     inputs:
       -

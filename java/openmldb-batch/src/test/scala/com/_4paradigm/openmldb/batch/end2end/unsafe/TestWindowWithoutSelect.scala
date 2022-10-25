@@ -51,9 +51,9 @@ class TestWindowWithoutSelect extends UnsaferowoptSparkTestSuite {
         |        w2 as (PARTITION BY col2 ORDER BY col2 ROWS BETWEEN 10 PRECEDING AND CURRENT ROW)
         |""".stripMargin
 
-    // val outputDf = sess.sql(sqlText)
-    // val sparksqlOutputDf = sess.sparksql(sqlText)
-    // assert(SparkUtil.approximateDfEqual(outputDf.getSparkDf(), sparksqlOutputDf, false))
+    val outputDf = sess.sql(sqlText)
+    val sparksqlOutputDf = sess.sparksql(sqlText)
+    assert(SparkUtil.approximateDfEqual(outputDf.getSparkDf(), sparksqlOutputDf, false))
   }
 
 }
