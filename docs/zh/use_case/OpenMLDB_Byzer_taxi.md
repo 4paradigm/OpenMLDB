@@ -13,7 +13,7 @@
 
 执行命令如下：
 ```
-docker run --network host -dit --name openmldb -v /mlsql/admin/:/byzermnt 4pdosc/openmldb:0.6.3 bash
+docker run --network host -dit --name openmldb -v /mlsql/admin/:/byzermnt 4pdosc/openmldb:0.6.4 bash
 docker exec -it openmldb bash
 /work/init.sh
 echo "create database db1;" | /work/openmldb/bin/openmldb --zk_cluster=127.0.0.1:2181 --zk_root_path=/openmldb --role=sql_client
