@@ -15,8 +15,8 @@
         <maven.compiler.source>8</maven.compiler.source>
         <maven.compiler.target>8</maven.compiler.target>
 
-        <openmldb.jdbc.version>0.6.0-SNAPSHOT</openmldb.jdbc.version>
-        <openmldb.navtive.version>0.6.0-allinone-SNAPSHOT</openmldb.navtive.version>
+        <openmldb.jdbc.version>0.6.4</openmldb.jdbc.version>
+        <openmldb.navtive.version>0.6.4-allinone</openmldb.navtive.version>
     </properties>
 
     <dependencies>
@@ -30,15 +30,15 @@
             <groupId>com.4paradigm.openmldb</groupId>
             <artifactId>openmldb-jdbc</artifactId>
             <version>${openmldb.jdbc.version}</version>
-<!--            <scope>system</scope>-->
-<!--            <systemPath>/Users/zhaowei/Downloads/openmldb-jdbc-0.6.0-SNAPSHOT.jar</systemPath>-->
+            <!--            <scope>system</scope>-->
+            <!--            <systemPath>/Users/zhaowei/Downloads/openmldb-jdbc-0.6.2.jar</systemPath>-->
         </dependency>
         <dependency>
             <groupId>com.4paradigm.openmldb</groupId>
             <artifactId>openmldb-native</artifactId>
             <version>${openmldb.navtive.version}</version>
-<!--            <scope>system</scope>-->
-<!--            <systemPath>/Users/zhaowei/Downloads/openmldb-native-0.6.0-SNAPSHOT.jar</systemPath>-->
+            <!--            <scope>system</scope>-->
+            <!--            <systemPath>/tmp/openmldb-native-0.6.4.jar</systemPath>-->
         </dependency>
 
 
