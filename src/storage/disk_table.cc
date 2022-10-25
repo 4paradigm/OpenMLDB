@@ -203,11 +203,11 @@ bool DiskTable::Init() {
 }
 
 bool DiskTable::Put(const std::string& pk, uint64_t time, const char* data, uint32_t size) {
-    if (time > INT_MAX) {
-        PDLOG(WARNING, "negative timestamp. tid %u pid %u", id_, pid_);
+    if (time > LLONG_MAX) {
+        PDLOG(WARNING, "negative timestamp %u. tid %u pid %u", time, id_, pid_);
         return false;
     }
-    rocksdb::Status s;
+	rocksdb::Status s;
     std::string combine_key = CombineKeyTs(pk, time);
     rocksdb::Slice spk = rocksdb::Slice(combine_key);
     s = db_->Put(write_opts_, cf_hs_[1], spk, rocksdb::Slice(data, size));
@@ -221,11 +221,11 @@ bool DiskTable::Put(const std::string& pk, uint64_t time, const char* data, uint
 }
 
 bool DiskTable::Put(uint64_t time, const std::string& value, const Dimensions& dimensions) {
-    if (time > INT_MAX) {
-        PDLOG(WARNING, "negative timestamp. tid %u pid %u", id_, pid_);
+    if (time > LLONG_MAX) {
+        PDLOG(WARNING, "negative timestamp %u. tid %u pid %u", time, id_, pid_);
         return false;
     }
-    const int8_t* data = reinterpret_cast<const int8_t*>(value.data());
+	const int8_t* data = reinterpret_cast<const int8_t*>(value.data());
     std::string uncompress_data;
     if (GetCompressType() == openmldb::type::kSnappy) {
         snappy::Uncompress(value.data(), value.size(), &uncompress_data);

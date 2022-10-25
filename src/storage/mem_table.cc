@@ -1,4 +1,4 @@
-/*
+*
  * Copyright 2021 4Paradigm
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -131,8 +131,8 @@ void MemTable::SetCompressType(::openmldb::type::CompressType compress_type) { c
 
 bool MemTable::Put(const std::string& pk, uint64_t time, const char* data, uint32_t size) {
     if (segments_.empty()) return false;
-    if (time > INT_MAX) {
-        PDLOG(WARNING, "negative timestamp. tid %u pid %u", id_, pid_);
+    if (time > LLONG_MAX) {
+        PDLOG(WARNING, "negative timestamp %u. tid %u pid %u", time, id_, pid_);
         return false;
     }
     uint32_t index = 0;
@@ -152,8 +152,8 @@ bool MemTable::Put(uint64_t time, const std::string& value, const Dimensions& di
         PDLOG(WARNING, "empty dimension. tid %u pid %u", id_, pid_);
         return false;
     }
-    if (time > INT_MAX) {
-        PDLOG(WARNING, "negative timestamp. tid %u pid %u", id_, pid_);
+	if (time > LLONG_MAX) {
+        PDLOG(WARNING, "negative timestamp %u. tid %u pid %u", time, id_, pid_);
         return false;
     }
     if (value.length() < codec::HEADER_LENGTH) {
@@ -786,7 +786,7 @@ bool MemTable::BulkLoad(const std::vector<DataBlock*>& data_blocks,
                                 << ", time " << time_entry.time() << ", key_entry_id " << key_entry_id << ", block id "
                                 << time_entry.block_id();
                         block->dim_cnt_down++;
-                        if (time_entry.time() <= INT_MAX)
+                        if (time_entry.time() <= LLONG_MAX)
                             segment->BulkLoadPut(key_entry_id, pk, time_entry.time(), block);
                     }
                 }
