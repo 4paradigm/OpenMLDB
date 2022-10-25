@@ -562,3 +562,45 @@ cases:
         - [ "aa",22,61,2 ]
         - [ "aa",23,63,2 ]
         - [ "bb",24,null,0 ]
+  - id: 11
+    desc: |
+      ROWS window with (unbounded, CURRENT_ROW), exclude current_row
+    inputs:
+      - name: t1
+        columns:
+          - id int
+          - ts timestamp
+          - g int
+          - val int
+        indexs:
+          - idx:g:ts
+        data: |
+          1,  99000, 111, 21
+          2, 100000, 111, 22
+          3, 101000, 111, 23
+          4, 102000, 111, 44
+          5, 100000, 114, 56
+          6, 102000, 114, 52
+    sql: |
+       select
+          id,
+          count(val) over w as cnt,
+          max(val) over w as mv,
+          min(val) over w as mi,
+       FROM t1 WINDOW w as(
+          PARTITION by `g` ORDER by `ts`
+          ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW EXCLUDE CURRENT_ROW);
+    expect:
+      columns:
+        - id int
+        - cnt int64
+        - mv int
+        - mi int
+      order: id
+      data: |
+         1, 0, NULL, NULL
+         2, 1, 21, 21
+         3, 2, 22, 21
+         4, 3, 23, 21
+         5, 0, NULL, NULL
+         6, 1, 56, 56

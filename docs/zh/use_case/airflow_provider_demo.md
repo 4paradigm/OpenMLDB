@@ -35,7 +35,7 @@ ls airflow_demo_files
 登录Airflow Web需要对外端口，所以此处暴露容器的端口。并且直接将上一步下载的文件映射到`/work/airflow/dags`，接下来Airflow将加载此文件夹的DAG。
 
 ```
-docker run -p 8080:8080 -v `pwd`/airflow_demo_files:/work/airflow/dags -it 4pdosc/openmldb:0.6.3 bash
+docker run -p 8080:8080 -v `pwd`/airflow_demo_files:/work/airflow/dags -it 4pdosc/openmldb:0.6.4 bash
 ```
 
 #### 0.3 下载安装Airflow与Airflow OpenMLDB Provider

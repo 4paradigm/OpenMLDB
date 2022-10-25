@@ -91,7 +91,7 @@ For more UDF implementation, see [here](../../../src/examples/test_udf.cc).
 
 ### 2.2 Compile the Dynamic Library 
 
-- Copy the `include` directory (https://github.com/4paradigm/OpenMLDB/tree/main/include) to a certain path (like `/work/OpenMLDB/`) for later compiling. 
+- Copy the `include` directory (`https://github.com/4paradigm/OpenMLDB/tree/main/include`) to a certain path (like `/work/OpenMLDB/`) for later compiling. 
 - Run the compiling command. `-I` specifies the path of `include` directory. `-o` specifies the name of the dynamic library.
 
 ```shell
@@ -128,7 +128,7 @@ For example, if the deployment paths of a tablet and TaskManager are both `/work
 
 
 ### 2.4 Register, Drop and Show the Functions
-For registering, please use [CREATE FUNCTION](../reference/sql/ddl/FUNCTION_STATEMENT.md).
+For registering, please use [CREATE FUNCTION](../reference/sql/ddl/CREATE_FUNCTION.md).
 ```sql
 CREATE FUNCTION cut2(x STRING) RETURNS STRING OPTIONS (FILE='libtest_udf.so');
 ```
