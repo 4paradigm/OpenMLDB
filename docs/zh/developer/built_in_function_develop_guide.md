@@ -1020,9 +1020,10 @@ RegisterUdafTemplate<DistinctCountDef>("distinct_count")
 
 ## 6. 文档管理
 
-内置函数文档可在 [Built-in Functions](http://4paradigm.github.io/OpenMLDB/zh/main/reference/sql/functions_and_operators/Files/udfs_8h.html) 查看，它是一个代码生成的 markdown 文件，不能直接编辑。
+内置函数文档可在 [Built-in Functions](https://openmldb.ai/docs/zh/main/reference/sql/functions_and_operators/Files/udfs_8h.html) 查看，它是一个代码生成的 markdown 文件，注意请不要进行直接编辑。
 
-2.2.4 配置函数文档 章节说明了内置函数的文档是在 CPP 源代码中管理的。后续会通过一系列步骤生成如上网页中更加可读的文档， 即`docs/*/reference/sql/functions_and_operators/`目录下的内容。OpenMLDB 项目中创建了一个定期的 GitHub Workflow 任务来定期更新这里的相关文档。因此内置函数文档相关的改动只需修改对应源代码位置的内容即可，`docs` 目录和网站的内容会随之定期更新。
+- 如果需要对新增加的函数添加文档，请参照 2.2.4 配置函数文档 章节，说明了内置函数的文档是在 CPP 源代码中管理的。后续会通过一系列步骤生成如上网页中更加可读的文档， 即`docs/*/reference/sql/functions_and_operators/`目录下的内容。
+- 如果需要修改一个已存在函数的文档，可以在文件 `hybridse/src/udf/default_udf_library.cc` 或者 `hybridse/src/udf/default_defs/*_def.cc` 下查找到对应函数的文档说明，进行修改。
 
-具体的文档生成流程可以查看源代码路径下的 [udf_doxygen](https://github.com/4paradigm/OpenMLDB/tree/main/hybridse/tools/documentation/udf_doxygen)。
+OpenMLDB 项目中创建了一个定期的 GitHub Workflow 任务来定期更新这里的相关文档。因此内置函数文档相关的改动只需按照上面的步骤修改对应源代码位置的内容即可，`docs` 目录和网站的内容会随之定期更新。具体的文档生成流程可以查看源代码路径下的 [udf_doxygen](https://github.com/4paradigm/OpenMLDB/tree/main/hybridse/tools/documentation/udf_doxygen)。
 
