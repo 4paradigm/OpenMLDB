@@ -35,15 +35,23 @@ spark.default.conf=spark.port.maxRetries=32;foo=bar
 
 ### Deploy
 
-通过`DEPLOY <deploy_name> <sql>`可以上线sql，这个操作不仅是上线sql，也会自动解析sql帮助创建索引（可以通过`DESC <table_name>`查看索引详情）。
+通过`DEPLOY <deploy_name> <sql>`可以上线SQL，这个操作不仅是上线SQL，也会自动解析SQL帮助创建索引（可以通过`DESC <table_name>`查看索引详情），详情见[DEPLOY_STATEMENT](../reference/sql/deployment_manage/DEPLOY_STATEMENT.md)。
 
-但是，`DEPLOY`自动创建的索引不支持导入已有的数据。举例说明：
+`DEPLOY`操作是否成功，跟表的**在线数据**有一定关系。
 
-表t1当前有两个索引index0和index1，插入10条数据后，index0和index1中都保存有10条数据。再`DEPLOY`某个sql，导致t1新增一个索引index2，此时的index2内是没有数据的。如果使用该deploy sql计算，将会使用index2，而它没有数据，逻辑上等同于一张空表。
+#### 长窗口SQL
+
+`DEPLOY`长窗口的SQL条件比较严格，必须保证SQL中使用的表没有在线数据。如果表已有数据，即使`DEPLOY`和之前一致的SQL，也会操作失败。
+
+#### 普通SQL
+
+- 如果`DEPLOY`之前已存在相关的索引，那么这一次`DEPLOY`操作不会创建索引。无论表中有无在线数据，`DEPLOY`操作成功。
+
+- 如果`DEPLOY`需要创建新的索引，而此时表中已有在线数据，那么`DEPLOY`操作将失败。
 
 解决方案可以选择其一：
-- 严格保持先`DEPLOY`再导入数据，不要在表中有数据后做`DEPLOY`。
-- `CRATE INDEX`是可以在创建新索引时，自动导入已存在的数据（已存在索引里的数据）。如果一定需要在表已有数据的情况下`DEPLOY`，可以先手动`CRATE INDEX`创建需要的索引（新索引就有数据了），再`DEPLOY`（这时的`DEPLOY`不会创建新索引，计算时直接使用手动创建的那些索引）。
+- 严格保持先`DEPLOY`再导入在线数据，不要在表中有在线数据后做`DEPLOY`。
+- `CRATE INDEX`是可以在创建新索引时，自动导入已存在的在线数据（**已有索引**里的数据）。如果一定需要在**表已有在线数据**的情况下`DEPLOY`，可以先手动`CRATE INDEX`创建需要的索引（新索引就有数据了），再`DEPLOY`（这时的`DEPLOY`不会创建新索引，计算时直接使用手动创建的那些索引）。
 
 ```{tip}
 如何知道应该创建哪些索引？
@@ -66,8 +74,6 @@ spark.default.conf=spark.port.maxRetries=32;foo=bar
 1. taskmanager是local模式，`file`的本地就是指taskmanager进程所在的主机。只有将源数据放在taskmanager进程的主机上才能顺利导入。请注意你的taskmanager是本机运行，还是分布在别处主机。
 1. taskmanager是yarn(client and cluster)模式时，由于不知道运行容器是哪台主机，不可使用`file`作为源数据地址。
 ```
-
-并且parquet格式，
 
 #### 单机版LOAD DATA
 
