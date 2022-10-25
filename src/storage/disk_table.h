@@ -424,8 +424,12 @@ class DiskTable : public Table {
     uint64_t GetRecordByteSize() const override { return 0; }
     uint64_t GetRecordIdxByteSize() override;
 
-    std::vector<rocksdb::ColumnFamilyHandle*> CloneCf() {
-        return *cf_hs_;
+    std::shared_ptr<std::vector<rocksdb::ColumnFamilyHandle*>> GetCf() {
+        return std::atomic_load_explicit(&cf_hs_, std::memory_order_relaxed);
+    }
+
+    std::shared_ptr<std::vector<rocksdb::ColumnFamilyHandle*>> CloneCf() {
+        return std::make_shared<std::vector<rocksdb::ColumnFamilyHandle*>>(*(GetCf()));
     }
 
     int GetCount(uint32_t index, const std::string& pk, uint64_t& count) override; // NOLINT
