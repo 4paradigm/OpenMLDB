@@ -73,7 +73,7 @@ upgrade_compile_doc() {
     sed -i"" -e "s/-openmldb[0-9]\.[0-9]\.[0-9]\//-openmldb${VERSION}\//g" "$1"
 }
 
-find demo/ docs/  -name "*\.md" | while read file;
+find demo/ docs/  -name "*\.md" | while read -r file;
 do
     upgrade_docker "$file"
 done
