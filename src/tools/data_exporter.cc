@@ -129,8 +129,13 @@ int main(int argc, char* argv[]) {
     }
     for (const auto& filepath_pair : filepath_map) {
         PDLOG(INFO, "Starting export table %d.", filepath_pair.first);
-        std::ofstream table_cout(FLAGS_db_name + "_" + FLAGS_table_name + "_" +
-                                    std::to_string(filepath_pair.first) + "_result.csv");
+        std::string output_file = FLAGS_db_name + "_" + FLAGS_table_name + "_" +
+                                  std::to_string(filepath_pair.first)  + "_result.csv";
+        if (std::filesystem::exists(std::filesystem::path(output_file))) {
+            PDLOG(ERROR, "output file %s already exists", output_file);
+            return -1;
+        }
+        std::ofstream table_cout(output_file);
         for (int i = 0; i < table_schema.size(); ++i) {
             table_cout << table_schema.Get(i).name();
             if (i < table_schema.size() - 1) {
