@@ -783,3 +783,13 @@ select date(timestamp(1590115420000)) as dt;
  ------------
 ```
 
+
+
+## 5. Document Management
+
+Documents for all Built-in functions can be found in [Built-in Functions](http://4paradigm.github.io/OpenMLDB/zh/main/reference/sql/functions_and_operators/Files/udfs_8h.html). It is a markdown file generate from source, hence not suitable for editing directly.
+
+As stated in [2.2.4 Documenting Function](#224-documenting-function), documents are managed in cpp source code. It will generate into a more readable format through a workflow, which are the contents inside `docs/*/reference/sql/functions_and_operators` directory. There is a weekly GitHub Workflow try to update those markdown files if any change happens in source code. So revision to built-in function documents is as easy as revise the corresponding source code, markdown file and website will be updated later.
+
+If you are interested about document generation, go to the source directory [udf_doxygen](https://github.com/4paradigm/OpenMLDB/tree/main/hybridse/tools/documentation/udf_doxygen).
+
