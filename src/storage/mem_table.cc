@@ -131,10 +131,6 @@ void MemTable::SetCompressType(::openmldb::type::CompressType compress_type) { c
 
 bool MemTable::Put(const std::string& pk, uint64_t time, const char* data, uint32_t size) {
     if (segments_.empty()) return false;
-    if (time > LLONG_MAX) {
-        PDLOG(WARNING, "negative timestamp %u. tid %u pid %u", time, id_, pid_);
-        return false;
-    }
     uint32_t index = 0;
     if (seg_cnt_ > 1) {
         index = ::openmldb::base::hash(pk.c_str(), pk.length(), SEED) % seg_cnt_;
@@ -152,11 +148,7 @@ bool MemTable::Put(uint64_t time, const std::string& value, const Dimensions& di
         PDLOG(WARNING, "empty dimension. tid %u pid %u", id_, pid_);
         return false;
     }
-	if (time > LLONG_MAX) {
-        PDLOG(WARNING, "negative timestamp %u. tid %u pid %u", time, id_, pid_);
-        return false;
-    }
-    if (value.length() < codec::HEADER_LENGTH) {
+	if (value.length() < codec::HEADER_LENGTH) {
         PDLOG(WARNING, "invalid value. tid %u pid %u", id_, pid_);
         return false;
     }
@@ -786,8 +778,7 @@ bool MemTable::BulkLoad(const std::vector<DataBlock*>& data_blocks,
                                 << ", time " << time_entry.time() << ", key_entry_id " << key_entry_id << ", block id "
                                 << time_entry.block_id();
                         block->dim_cnt_down++;
-                        if (time_entry.time() <= LLONG_MAX)
-                            segment->BulkLoadPut(key_entry_id, pk, time_entry.time(), block);
+                        segment->BulkLoadPut(key_entry_id, pk, time_entry.time(), block);
                     }
                 }
             }
