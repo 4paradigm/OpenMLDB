@@ -787,9 +787,10 @@ select date(timestamp(1590115420000)) as dt;
 
 ## 5. Document Management
 
-Documents for all Built-in functions can be found in [Built-in Functions](http://4paradigm.github.io/OpenMLDB/zh/main/reference/sql/functions_and_operators/Files/udfs_8h.html). It is a markdown file generate from source, hence not suitable for editing directly.
+Documents for all built-in functions can be found in [Built-in Functions](http://4paradigm.github.io/OpenMLDB/zh/main/reference/sql/functions_and_operators/Files/udfs_8h.html). It is a markdown file automatically generated from source, so please do not edit it directly.
 
-As stated in [2.2.4 Documenting Function](#224-documenting-function), documents are managed in cpp source code. It will generate into a more readable format through a workflow, which are the contents inside `docs/*/reference/sql/functions_and_operators` directory. There is a weekly GitHub Workflow try to update those markdown files if any change happens in source code. So revision to built-in function documents is as easy as revise the corresponding source code, markdown file and website will be updated later.
+- If you are adding a document for a new function, please refer to [2.2.4 Documenting Function](#224-documenting-function). 
+- If you are trying to revise a document of an existing function, you can find source code in the files of `hybridse/src/udf/default_udf_library.cc` or `hybridse/src/udf/default_defs/*_def.cc` .
 
-If you are interested about document generation, go to the source directory [udf_doxygen](https://github.com/4paradigm/OpenMLDB/tree/main/hybridse/tools/documentation/udf_doxygen).
+There is a daily workflow that automatically converts the source code to a readable format, which are the contents inside the `docs/*/reference/sql/functions_and_operators` directory. The document website will also be updated accordingly. If you are interested in this process, you can refer to the source directory [udf_doxygen](https://github.com/4paradigm/OpenMLDB/tree/main/hybridse/tools/documentation/udf_doxygen).
 
