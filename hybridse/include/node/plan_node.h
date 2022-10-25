@@ -357,6 +357,7 @@ class ProjectPlanNode : public UnaryPlanNode {
 
     const std::string table_;
     const PlanNodeList project_list_vec_;
+    // final output column index -> (index of of project_list_vec_, index of project of that project list node)
     const std::vector<std::pair<uint32_t, uint32_t>> pos_mapping_;
     bool IsSimpleProjectPlan();
 };
