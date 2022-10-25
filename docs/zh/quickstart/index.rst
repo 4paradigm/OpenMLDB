@@ -11,5 +11,5 @@
     python_sdk
     rest_api
     beginner_must_read
-    fucntion_boundary
+    function_boundary
     data_import_guide
