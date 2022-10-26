@@ -1969,7 +1969,7 @@ TEST_P(TableTest, NegativeTs) {
     uint64_t now = ::baidu::common::timer::get_micros() / 1000;
 
     for (int i = 0; i < 200; i++) {
-        uint64_t ts = (now - (99 - i) / 2 * 60 * 1000) * (i & 1 ? -1 : 1);
+        uint64_t ts = (now - (99 - i / 2) * 60 * 1000) * (i & 1 ? -1 : 1);
         std::string ts_str = std::to_string(ts);
 
         std::vector<std::string> row = {
