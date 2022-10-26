@@ -43,7 +43,6 @@ cases:
   -
     id: 1
     desc: 指定多个列
-    tags: ["TODO","bug，会提示标不存在"]
     inputs:
       -
         columns : ["c1 string","c2 int","c3 timestamp","c4 timestamp"]
