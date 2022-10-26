@@ -546,7 +546,7 @@ bool MemTable::GetRecordIdxCnt(uint32_t idx, uint64_t** stat, uint32_t* size) {
     }
     auto* data_array = new uint64_t[seg_cnt_];
     uint32_t inner_idx = index_def->GetInnerPos();
-    auto inner_index = table_index_.GetInnerIndex(real_idx);
+    auto inner_index = table_index_.GetInnerIndex(inner_idx);
     int32_t ts_col_id = -1;
     auto ts_col = index_def->GetTsColumn();
     if (ts_col) {
