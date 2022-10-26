@@ -54,7 +54,7 @@ curl https://openmldb.ai/demo/data.parquet --output ./taxi-trip/data/data.parque
 ```bash
 # Start the OpenMLDB CLI for the cluster deployed OpenMLDB
 cd taxi-trip
-../openmldb/bin/openmldb --host 127.0.0.1 --port 6527
+/work/openmldb/bin/openmldb --host 127.0.0.1 --port 6527
 ```
 
 以下截图显示了以上 docker 内命令正确执行以及 OpenMLDB CLI 正确启动以后的画面
@@ -202,9 +202,8 @@ curl http://127.0.0.1:8080/dbs/demo_db/deployments/demo_data_service -X POST -d'
 - 启动集群版OpenMLDB CLI客户端
 
 ```bash
-cd taxi-trip
 # Start the OpenMLDB CLI for the cluster deployed OpenMLDB
-../openmldb/bin/openmldb --zk_cluster=127.0.0.1:2181 --zk_root_path=/openmldb --role=sql_client
+/work/openmldb/bin/openmldb --zk_cluster=127.0.0.1:2181 --zk_root_path=/openmldb --role=sql_client
 ```
 
 以下截图显示正确启动集群版OpenMLDB CLI 以后的画面
@@ -265,9 +264,16 @@ cd taxi-trip
 
 注意，`LOAD DATA` 命令为非阻塞，可以通过 `SHOW JOBS` 等离线任务管理命令来查看任务进度。
 
-如果希望预览数据，用户亦可以使用 `SELECT` 语句，但是离线模式下该命令亦为非阻塞命令，查询结果需要查看日志（默认在/work/openmldb/taskmanager/bin/logs/jog_x.log，如需更改，修改taskmanager.properties的`job.log.path`）。
+如果希望预览数据，用户可以使用 `SELECT * FROM demo_table1` 语句，推荐`SELECT`前将离线命令设置为同步模式，即
+```sql
+SET @@sync_job=true;
+-- 如果数据较多容易超时（默认1min），请调大job timeout: SET @@job_timeout=600000;
+SELECT * FROM demo_table1;
+```
 
-如果job failed，可以查看/work/openmldb/taskmanager/bin/logs/jog_x_error.log，确认问题。
+非阻塞命令（异步模式）时，查询结果需要查看日志（默认在`/work/openmldb/taskmanager/bin/logs/job_x.log`，x为job id，如需更改日志的保存地址，修改`/work/openmldb/conf/taskmanager.properties`的`job.log.path`）。
+
+如果job failed，可以查看`/work/openmldb/taskmanager/bin/logs/job_x_error.log`，确认问题。
 
 #### 3.3.3 离线特征计算
 

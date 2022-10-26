@@ -1,0 +1,20 @@
+mode: cluster
+zookeeper:
+  zk_cluster: 127.0.0.1:2181
+  zk_root_path: /openmldb
+nameserver:
+  -
+    endpoint: 127.0.0.1:6527
+    path: /work/openmldb
+tablet:
+  -
+    endpoint: 127.0.0.1:9527
+    path: /work/openmldb
+    
+  -
+    endpoint: 127.0.0.1:9528
+    path: /work/openmldb
+taskmanager:
+  -
+    endpoint: 127.0.0.1:9902
+    path: /work/openmldb
