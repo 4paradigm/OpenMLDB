@@ -2102,6 +2102,7 @@ static const absl::flat_hash_map<std::string_view, ShowTargetInfo> showTargetMap
     {"COMPONENTS", {node::CmdType::kCmdShowComponents}},
     {"TABLE STATUS", {node::CmdType::kCmdShowTableStatus}},
     {"FUNCTIONS", {node::CmdType::kCmdShowFunctions}},
+    {"JOBLOG", {node::CmdType::kCmdShowJobLog, true}},
 };
 
 base::Status convertShowStmt(const zetasql::ASTShowStatement* show_statement, node::NodeManager* node_manager,

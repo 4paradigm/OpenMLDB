@@ -435,6 +435,13 @@ cases:
         +-node[CMD]
           +-cmd_type: show job
           +-args: [1]
+  - id: show joblog
+    sql: SHOW JOBLOG 79
+    expect:
+      node_tree_str: |
+        +-node[CMD]
+          +-cmd_type: show joblog
+          +-args: [79]
   - id: stop_job_1
     sql: stop JOB 10;
     expect:
