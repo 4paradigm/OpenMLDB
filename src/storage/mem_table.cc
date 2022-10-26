@@ -148,7 +148,7 @@ bool MemTable::Put(uint64_t time, const std::string& value, const Dimensions& di
         PDLOG(WARNING, "empty dimension. tid %u pid %u", id_, pid_);
         return false;
     }
-	if (value.length() < codec::HEADER_LENGTH) {
+    if (value.length() < codec::HEADER_LENGTH) {
         PDLOG(WARNING, "invalid value. tid %u pid %u", id_, pid_);
         return false;
     }
