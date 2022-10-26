@@ -3122,7 +3122,7 @@ int TabletImpl::LoadTableInternal(uint32_t tid, uint32_t pid, std::shared_ptr<::
                 auto aggrs = GetAggregators(tid, pid);
                 if (aggrs != nullptr) {
                     for (auto& aggr : *aggrs) {
-                        if (!aggr->Init(replicator, nullptr)) {
+                        if (!aggr->Init(replicator, table)) {
                             PDLOG(WARNING, "aggregator init failed");
                         }
                     }

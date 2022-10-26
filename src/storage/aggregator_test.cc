@@ -150,7 +150,7 @@ bool UpdateMinAggr(std::shared_ptr<Aggregator> aggr, codec::RowBuilder* row_buil
         PDLOG(ERROR, "base table delete failed");
         return false;
     }
-    ok = aggr->DeleteAndUpdate("id1|id2", delete_row, 101);
+    ok = aggr->Update("id1|id2", delete_row, 101, false, true);
     if (!ok) {
         PDLOG(ERROR, "aggr deletes one record failed");
         return false;
@@ -204,7 +204,7 @@ bool UpdateMaxAggr(std::shared_ptr<Aggregator> aggr, codec::RowBuilder* row_buil
         PDLOG(ERROR, "base table deletes failed");
         return false;
     }
-    ok = aggr->DeleteAndUpdate("id1|id2", delete_row, 101);
+    ok = aggr->Update("id1|id2", delete_row, 101, false, true);
     if (!ok) {
         PDLOG(ERROR, "aggr deletes one record failed");
         return false;
@@ -246,7 +246,7 @@ bool DeleteAndUpdateAggr(std::shared_ptr<Aggregator> aggr, codec::RowBuilder* ro
             delete_row = encoded_row;
         }
     }
-    bool ok = aggr->DeleteAndUpdate("id1|id2", delete_row, 101);
+    bool ok = aggr->Update("id1|id2", delete_row, 101, false, true);
     if (!ok) {
         return false;
     }

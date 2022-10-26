@@ -130,9 +130,6 @@ class Aggregator {
     bool Update(const std::string& key, const std::string& row, const uint64_t& offset, bool recover = false,
                 bool reverse = false);
 
-    bool DeleteAndUpdate(const std::string& key, const std::string& row,
-                         const uint64_t& offset, bool recover = false);
-
     bool Delete(const std::string& key);
 
     bool FlushAll();
