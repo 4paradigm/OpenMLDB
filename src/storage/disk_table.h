@@ -424,14 +424,6 @@ class DiskTable : public Table {
     uint64_t GetRecordByteSize() const override { return 0; }
     uint64_t GetRecordIdxByteSize() override;
 
-    std::shared_ptr<std::vector<rocksdb::ColumnFamilyHandle*>> GetCf() {
-        return std::atomic_load_explicit(&cf_hs_, std::memory_order_relaxed);
-    }
-
-    std::shared_ptr<std::vector<rocksdb::ColumnFamilyHandle*>> CloneCf() {
-        return std::make_shared<std::vector<rocksdb::ColumnFamilyHandle*>>(*(GetCf()));
-    }
-
     int GetCount(uint32_t index, const std::string& pk, uint64_t& count) override; // NOLINT
 
  private:
@@ -444,6 +436,14 @@ class DiskTable : public Table {
     KeyTSComparator cmp_;
     std::atomic<uint64_t> offset_;
     std::string table_path_;
+
+    std::shared_ptr<std::vector<rocksdb::ColumnFamilyHandle*>> GetCf() {
+        return std::atomic_load_explicit(&cf_hs_, std::memory_order_relaxed);
+    }
+
+    std::shared_ptr<std::vector<rocksdb::ColumnFamilyHandle*>> CloneCf() {
+        return std::make_shared<std::vector<rocksdb::ColumnFamilyHandle*>>(*(GetCf()));
+    }
 };
 
 }  // namespace storage
