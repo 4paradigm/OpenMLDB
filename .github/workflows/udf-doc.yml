@@ -1,9 +1,9 @@
 name: udf-doc-gen
 
 on:
-  # schedule Sunday every week at 6:00 UTC+0
+  # schedule daily at 6:00 UTC+0
   schedule:
-    - cron: "00 6 * * 0"
+    - cron: "00 6 * * *"
   pull_request:
     paths:
       - '.github/workflows/udf-doc.yml'
