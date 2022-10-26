@@ -554,9 +554,9 @@ bool MemTable::GetRecordIdxCnt(uint32_t idx, uint64_t** stat, uint32_t* size) {
     }
     for (uint32_t i = 0; i < seg_cnt_; i++) {
         if (inner_index->GetIndex().size() > 1 && ts_col_id >= 0) {
-            segments_[inner_idx][i]->GetIdxCnt(ts_col_id, data[i]);
+            segments_[inner_idx][i]->GetIdxCnt(ts_col_id, data_array[i]);
         } else {
-            data[i] += segments_[inner_idx][i]->GetIdxCnt();
+            data_array[i] += segments_[inner_idx][i]->GetIdxCnt();
         }
     }
     *stat = data_array;
