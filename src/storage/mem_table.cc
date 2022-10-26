@@ -504,13 +504,13 @@ uint64_t MemTable::GetRecordIdxCnt() {
     if (ts_col) {
         ts_col_id = ts_col->GetId();
     }
-    for (uint32_t j = 0; j < seg_cnt_; j++) {
+    for (uint32_t i = 0; i < seg_cnt_; i++) {
         if (inner_index->GetIndex().size() > 1 && ts_col_id >= 0) {
             uint64_t record_cnt = 0;
-            segments_[inner_idx][j]->GetIdxCnt(ts_col_id, record_cnt);
+            segments_[inner_idx][i]->GetIdxCnt(ts_col_id, record_cnt);
             record_idx_cnt += record_cnt;
         } else {
-            record_idx_cnt += segments_[inner_idx][j]->GetIdxCnt();
+            record_idx_cnt += segments_[inner_idx][i]->GetIdxCnt();
         }
     }
     return record_idx_cnt;
@@ -554,9 +554,9 @@ bool MemTable::GetRecordIdxCnt(uint32_t idx, uint64_t** stat, uint32_t* size) {
     }
     for (uint32_t i = 0; i < seg_cnt_; i++) {
         if (inner_index->GetIndex().size() > 1 && ts_col_id >= 0) {
-            segments_[inner_idx][j]->GetIdxCnt(ts_col_id, data[i]);
+            segments_[inner_idx][i]->GetIdxCnt(ts_col_id, data[i]);
         } else {
-            data[i] += segments_[inner_idx][j]->GetIdxCnt();
+            data[i] += segments_[inner_idx][i]->GetIdxCnt();
         }
     }
     *stat = data_array;
