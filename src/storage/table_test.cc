@@ -1981,7 +1981,7 @@ TEST_P(TableTest, NegativeTs) {
             dim->set_key(row[0]);
         }
         std::string value;
-        codec.EncodeRow(row, &value)
+        codec.EncodeRow(row, &value);
         table->Put(0, value, request.dimensions());
     }
 
