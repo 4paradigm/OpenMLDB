@@ -3122,18 +3122,19 @@ TEST_P(DBSDKTest, GlobalVariable) {
                          rs.get());
 }
 
-TEST_P(DBSDKTest, SelectWithAddNewIndex) {
-    auto cli = GetParam();
-    cs = cli->cs;
-    sr = cli->sr;
+TEST_F(SqlCmdTest, SelectWithAddNewIndex) {
+    auto cli = cluster_cli;
+    auto sr = cli.sr;
 
     std::string db1_name = absl::StrCat("db1_", GenRand());
+    std::string db2_name = absl::StrCat("db2_", GenRand());
     std::string tb1_name = absl::StrCat("tb1_", GenRand());
 
     ProcessSQLs(sr,
                 {
                     "set @@execute_mode = 'online'",
                     absl::StrCat("create database ", db1_name, ";"),
+                    absl::StrCat("create database ", db2_name, ";"),
                     absl::StrCat("use ", db1_name, ";"),
 
                     absl::StrCat("create table ", tb1_name,
@@ -3143,9 +3144,11 @@ TEST_P(DBSDKTest, SelectWithAddNewIndex) {
                     absl::StrCat("insert into ", tb1_name, " values(2,'bb',1,1590738990000,1637056523316);"),
                     absl::StrCat("insert into ", tb1_name, " values(3,'aa',3,1590738990000,1637057123257);"),
                     absl::StrCat("insert into ", tb1_name, " values(4,'aa',1,1590738990000,1637057123317);"),
-                    absl::StrCat("CREATE INDEX index1 ON ", tb1_name, " (c2) OPTIONS (ttl=10m, ttl_type=absolute);"),
+                    absl::StrCat("use ", db2_name, ";"),
+                    absl::StrCat("CREATE INDEX index1 ON ", db1_name, ".", tb1_name,
+                            " (c2) OPTIONS (ttl=10m, ttl_type=absolute);"),
                 });
-    absl::SleepFor(absl::Seconds(4));
+    absl::SleepFor(absl::Seconds(10));
     hybridse::sdk::Status status;
     auto res = sr->ExecuteSQL(absl::StrCat("use ", db1_name, ";"), &status);
     res = sr->ExecuteSQL(absl::StrCat("select id,c1,c2,c3 from ", tb1_name), &status);
@@ -3157,6 +3160,7 @@ TEST_P(DBSDKTest, SelectWithAddNewIndex) {
 
     ProcessSQLs(sr, {
                         absl::StrCat("use ", db1_name, ";"),
+                        absl::StrCat("drop index ", db1_name, ".", tb1_name, ".index1"),
                         absl::StrCat("drop table ", tb1_name),
                         absl::StrCat("drop database ", db1_name),
                     });
