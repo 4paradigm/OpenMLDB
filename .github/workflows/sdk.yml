@@ -393,8 +393,8 @@ jobs:
       always() && github.event_name == 'push' || (
       github.event.pull_request.head.repo.full_name == github.repository &&
       github.event.sender.login != 'dependabot[bot]' )
-    name: Publish Linux UT Results
-    uses: team-317/OpenMLDB/.github/workflows/publish-test-results-action.yml@reuse_workflow
+    name: Publish SDK Test Results
+    uses: ./.github/workflows/publish-test-results-action.yml
     with:
       files: |
         linux-ut-result-*/**/*.xml

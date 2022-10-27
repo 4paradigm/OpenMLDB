@@ -15,7 +15,7 @@ jobs:
          github.event.workflow_run.head_repository.full_name != github.repository
       )
     name: sdk test report
-    uses: team-317/OpenMLDB/.github/workflows/publish-test-result-from-fork-action.yml@reuse_workflow
+    uses: ./.github/workflows/publish-test-result-from-fork-action.yml
     with:
       commit: ${{ github.event.workflow_run.head_sha }}
       files: artifacts/linux-ut-result-*/**/*.xml

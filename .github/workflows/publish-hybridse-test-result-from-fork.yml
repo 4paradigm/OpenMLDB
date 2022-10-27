@@ -14,26 +14,24 @@ jobs:
          github.event.sender.login == 'dependabot[bot]' ||
          github.event.workflow_run.head_repository.full_name != github.repository
       )
-    name: Publish Linux UT Results
-    uses: team-317/OpenMLDB/.github/workflows/publish-test-result-from-fork-action.yml@reuse_workflow
+    name: Publish HybridSE Linux UT Results
+    uses: ./.github/workflows/publish-test-result-from-fork-action.yml
     with:
       commit: ${{ github.event.workflow_run.head_sha }}
       files: artifacts/linux-ut-result-*/**/*.xml
-      check_name: Linux Test Report
-      comment_title: Linux Test Report
+      check_name: HybridSE Linux Test Report
+      comment_title: HybridSE Linux Test Report
 
   test-results-mac:
-    runs-on: ubuntu-latest
     if: >
       github.event.workflow_run.conclusion != 'skipped' && (
          github.event.sender.login == 'dependabot[bot]' ||
          github.event.workflow_run.head_repository.full_name != github.repository
       )
-    steps:
-      - name: Publish Mac UT Results
-        uses: EnricoMi/publish-unit-test-result-action@v1
-        with:
-          commit: ${{ github.event.workflow_run.head_sha }}
-          files: artifacts/macos-ut-result-*/**/*.xml
-          check_name: HybridSE Mac Test Report
-          comment_title: HybridSE Mac Test Report
+    name: Publish HybridSE UT Results
+    uses: EnricoMi/publish-unit-test-result-action@v1
+    with:
+      commit: ${{ github.event.workflow_run.head_sha }}
+      files: artifacts/macos-ut-result-*/**/*.xml
+      check_name: HybridSE Mac Test Report
+      comment_title: HybridSE Mac Test Report
