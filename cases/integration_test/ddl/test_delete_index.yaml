@@ -41,7 +41,6 @@ cases:
   -
     id: 1-1
     desc: 在其他库删除索引
-    tags: ["TODO","bug,https://github.com/4paradigm/OpenMLDB/issues/2690"]
     inputs:
       -
         db: db1
@@ -54,7 +53,7 @@ cases:
     sqls:
       - CREATE INDEX index1 ON db1.{0} (c2) OPTIONS (ts=c4, ttl=100m, ttl_type=absolute);
       - drop index db1.{0}.index1;
-      - desc {0};
+      - desc db1.{0};
     expect:
       success: true
       idxs:

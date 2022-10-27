@@ -1996,7 +1996,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::HandleSQLCmd(const h
             if (!CheckAnswerIfInteractive("index", index_name + " on " + table_name)) {
                 return {};
             }
-            ret = ns_ptr->DeleteIndex(db, table_name, index_name, msg);
+            ret = ns_ptr->DeleteIndex(db_name, table_name, index_name, msg);
             ret == true ? * status = {} : * status = {::hybridse::common::StatusCode::kCmdError, msg};
             return {};
         }
@@ -2540,12 +2540,13 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(
             return {};
         }
         case hybridse::node::kPlanTypeCreateIndex: {
-            if (db.empty()) {
+            auto create_index_plan_node = dynamic_cast<hybridse::node::CreateIndexPlanNode*>(node);
+            auto create_index_node = create_index_plan_node->create_index_node_;
+            std::string db_name = create_index_node->db_name_.empty() ? db : create_index_node->db_name_;
+            if (db_name.empty()) {
                 *status = {::hybridse::common::StatusCode::kCmdError, "Please use database first"};
                 return {};
             }
-            auto create_index_plan_node = dynamic_cast<hybridse::node::CreateIndexPlanNode*>(node);
-            auto create_index_node = create_index_plan_node->create_index_node_;
             ::openmldb::common::ColumnKey column_key;
             hybridse::base::Status base_status;
             if (!::openmldb::sdk::NodeAdapter::TransformToColumnKey(create_index_node->index_, {}, &column_key,
@@ -2554,7 +2555,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(
                 return {};
             }
             column_key.set_index_name(create_index_node->index_name_);
-            if (ns_ptr->AddIndex(create_index_node->table_name_, column_key, nullptr, msg)) {
+            if (ns_ptr->AddIndex(db_name, create_index_node->table_name_, column_key, nullptr, msg)) {
                 *status = {};
             } else {
                 *status = {::hybridse::common::StatusCode::kCmdError, msg};
@@ -2661,7 +2662,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(
                     *status = {::hybridse::common::StatusCode::kCmdError, msg};
                     return {};
                 }
-                if (options_parser.GetThread() > options_->max_sql_cache_size) {
+                if (options_parser.GetThread() > static_cast<int>(options_->max_sql_cache_size)) {
                     LOG(INFO) << "Load Data thread exceeds the max allowed number. Change to the max: "
                               << options_->max_sql_cache_size;
                     options_parser.SetThread(options_->max_sql_cache_size);
