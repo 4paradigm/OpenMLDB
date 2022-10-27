@@ -109,8 +109,13 @@ std::string TablemetaReader::ReadDBRootPath(const std::string& deploy_dir, const
     while (std::getline(infile, line)) {
         if (line.find(db_root) != std::string::npos && line[0] != '#') {
             db_root_path = line.substr(line.find("=") + 1);
-            if (db_root_path[0] != '/')
-                db_root_path = deploy_dir + db_root_path.substr(1);
+            if (db_root_path[0] != '/') {
+                if (deploy_dir.back() != '/') {
+                    db_root_path = deploy_dir + "/" + db_root_path;
+                } else {
+                    db_root_path = deploy_dir + db_root_path;
+                }
+            }
             break;
         }
     }
