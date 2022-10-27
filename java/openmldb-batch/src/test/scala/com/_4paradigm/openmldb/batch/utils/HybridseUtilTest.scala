@@ -20,9 +20,9 @@ import com._4paradigm.openmldb.batch.SparkTestSuite
 import com._4paradigm.openmldb.batch.utils.HybridseUtil.autoLoad
 import com._4paradigm.openmldb.proto.{Common, Type}
 import org.apache.spark.sql.DataFrame
-import org.scalatest.Matchers.{convertToAnyShouldWrapper, equal}
+import org.scalatest.Matchers
 
-class HybridseUtilTest extends SparkTestSuite {
+class HybridseUtilTest extends SparkTestSuite with Matchers {
 
   def checkTsColResult(df: DataFrame, expected: String): Unit = {
     df.show()
@@ -30,7 +30,7 @@ class HybridseUtilTest extends SparkTestSuite {
     l.toString() should equal(expected)
   }
 
-  test("Test AutoLoad") {
+  test("Test AutoLoad Csv") {
     val col = Common.ColumnDesc.newBuilder().setName("ts").setDataType(Type.DataType.kTimestamp).build()
     val cols = new java.util.ArrayList[Common.ColumnDesc]
     cols.add(col)
@@ -39,6 +39,20 @@ class HybridseUtilTest extends SparkTestSuite {
     // test format with upper case
     val df = autoLoad(getSparkSession, testFile, "Csv", Map(("header", "true"), ("nullValue", "null")), cols)
     checkTsColResult(df, "List(null, 1970-01-01 00:00:00.0, null, null, 2022-02-01 09:00:00.0)")
+  }
+
+  test("Test AutoLoad Parquet") {
+    // expect ts string
+    val col = Common.ColumnDesc.newBuilder().setName("ts").setDataType(Type.DataType.kVarchar).build()
+    val cols = new java.util.ArrayList[Common.ColumnDesc]
+    cols.add(col)
+    // but the source col 'ts' is timestamp
+    val testFile = "file://" + getClass.getResource("/load_data_test_src/timestamp.parquet").getPath
+    val thrown = the[IllegalArgumentException] thrownBy {
+      val df = autoLoad(getSparkSession, testFile, "parquet", Map(("header", "true"), ("nullValue", "null")), cols)
+      fail("unreachable")
+    }
+    thrown.getMessage should startWith ("requirement failed: schema mismatch")
   }
 
   test("Test AutoLoad Type Timestamp") {

@@ -12,3 +12,4 @@
     cli
     faq
     diagnose
+    data_export

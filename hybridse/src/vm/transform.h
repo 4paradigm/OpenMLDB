@@ -233,15 +233,16 @@ class BatchModeTransformer {
     Status CheckPartitionColumn(const node::ExprListNode* partition, const SchemasContext* ctx);
 
     base::Status ExtractGroupKeys(vm::PhysicalOpNode* depend, const node::ExprListNode** keys);
+    Status CompleteProjectList(const node::ProjectPlanNode* project_node, PhysicalOpNode* depend) const;
+
     node::NodeManager* node_manager_;
     const std::string db_;
     const std::shared_ptr<Catalog> catalog_;
 
  private:
-    virtual Status TransformProjectPlanOpWithWindowParallel(
-        const node::ProjectPlanNode* node, PhysicalOpNode** output);
-    virtual Status TransformProjectPlanOpWindowSerial(
-        const node::ProjectPlanNode* node, PhysicalOpNode** output);
+    virtual Status TransformProjectPlanOpWithWindowParallel(const node::ProjectPlanNode* node, PhysicalOpNode** output);
+    virtual Status TransformProjectPlanOpWindowSerial(const node::ProjectPlanNode* node, PhysicalOpNode** output);
+
     ::llvm::Module* module_;
     uint32_t id_;
     // window partition and order should be optimized under
@@ -278,13 +279,10 @@ class RequestModeTransformer : public BatchModeTransformer {
 
  protected:
     void ApplyPasses(PhysicalOpNode* node, PhysicalOpNode** output) override;
-    Status TransformProjectOp(node::ProjectListNode* node,
-                                      PhysicalOpNode* depend, bool append_input,
-                                      PhysicalOpNode** output) override;
-    Status TransformProjectPlanOp(const node::ProjectPlanNode* node,
-                                          PhysicalOpNode** output) override;
-    Status TransformJoinOp(const node::JoinPlanNode* node,
-                                   PhysicalOpNode** output) override;
+    Status TransformProjectPlanOp(const node::ProjectPlanNode* node, PhysicalOpNode** output) override;
+    Status TransformProjectOp(node::ProjectListNode* node, PhysicalOpNode* depend, bool append_input,
+                              PhysicalOpNode** output) override;
+    Status TransformJoinOp(const node::JoinPlanNode* node, PhysicalOpNode** output) override;
     Status TransformScanOp(const node::TablePlanNode* node, PhysicalOpNode** output) override;
     Status TransformGroupOp(const node::GroupPlanNode* node, PhysicalOpNode** output) override;
 

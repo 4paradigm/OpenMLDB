@@ -15,14 +15,14 @@ For OpenMLDB Kafka Connector implementation, please refer to [extensions/kafka-c
 
 ### Download and Preparation
 
-- Download Kafka: please click on [kafka_2.13-3.1.0](https://dlcdn.apache.org/kafka/3.1.0/kafka_2.13-3.1.0.tgz).
+- Download Kafka: please click [kafka downloads](https://kafka.apache.org/downloads) to download `kafka_2.13-3.1.0.tgz`.
 - Download the connector package and dependencies: please click on [kafka-connect-jdbc.tgz](https://github.com/4paradigm/OpenMLDB/releases/download/v0.5.0/kafka-connect-jdbc.tgz).
 - Download the configuration and script files (for the demonstration purpose used in this article): please click on [kafka_demo_files.tgz](http://openmldb.ai/download/kafka-connector/kafka_demo_files.tgz).
 
 This article will start the OpenMLDB in docker container, so there is no need to download the OpenMLDB separately. Moreover, Kafka and connector can be started in the same container. We recommend that you save the three downloaded packages to the same directory. Let's assume that the packages are in the `/work/kafka` directory.
 
 ```
-docker run -it -v `pwd`:/work/kafka --name openmldb 4pdosc/openmldb:0.6.3 bash
+docker run -it -v `pwd`:/work/kafka --name openmldb 4pdosc/openmldb:0.6.4 bash
 ```
 
 ### Steps
