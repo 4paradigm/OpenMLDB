@@ -150,6 +150,15 @@ def RecoverTable(executor, db, table_name):
         log.warn(status.GetMsg())
 
 def RecoverData(executor):
+    status, auto_failover = executor.GetAutofailover()
+    if not status.OK():
+        log.warn("get failover failed")
+        return
+    if auto_failover:
+        if not executor.SetAutofailover("false").OK():
+            log.warn("set auto_failover failed")
+            return
+
     status, dbs = executor.GetAllDatabase()
     if not status.OK():
         return
@@ -161,6 +170,10 @@ def RecoverData(executor):
             continue
         for name in tables:
             RecoverTable(executor, db, name)
+
+    if auto_failover:
+        if not executor.SetAutofailover("true").OK():
+            log.warn("set auto_failover failed")
 
 if __name__ == "__main__":
     (options, args) = parser.parse_args()

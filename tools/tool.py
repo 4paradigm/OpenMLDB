@@ -101,13 +101,14 @@ class Executor:
         status, output = self.RunWithRetuncode(cmd)
         if not status.OK():
             return status, None
-        if stdout.find("true") != -1:
+        if output.find("true") != -1:
             return Status(), True
         return Status(), False;
 
     def SetAutofailover(self, value):
-        confset_no.append("--cmd=confset auto_failover " + value)
-        status, output = RunWithRetuncode(confset_no)
+        cmd = list(self.ns_base_cmd)
+        cmd.append("--cmd=confset auto_failover " + value)
+        status, output = self.RunWithRetuncode(cmd)
         return status
 
     def GetAllDatabase(self):
