@@ -430,7 +430,7 @@ void CheckSumAggrResult(std::shared_ptr<Table> aggr_table, DataType data_type, s
 }
 
 template <typename T>
-void CheckSumAggrResultAfterDelete(std::shared_ptr<Table> aggr_table, DataType data_type, 
+void CheckSumAggrResultAfterDelete(std::shared_ptr<Table> aggr_table, DataType data_type,
                                    std::shared_ptr<Aggregator> aggr, int delete_index,
                                    int32_t expect_null = 0) {
     auto it = aggr_table->NewTraverseIterator(0);

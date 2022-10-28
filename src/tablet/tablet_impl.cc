@@ -773,7 +773,7 @@ void TabletImpl::Put(RpcController* controller, const ::openmldb::api::PutReques
         // in case there will be other Put jump into the middle
         auto update_aggr = [this, &request, &ok, &entry]() {
             ok = UpdateAggrs(request->tid(), request->pid(), request->value(),
-                               request->dimensions(), entry.log_index());
+                             request->dimensions(), entry.log_index());
         };
         UpdateAggrClosure closure(update_aggr);
         replicator->AppendEntry(entry, &closure);
@@ -1541,6 +1541,7 @@ void TabletImpl::Traverse(RpcController* controller, const ::openmldb::api::Trav
 void TabletImpl::Delete(RpcController* controller, const ::openmldb::api::DeleteRequest* request,
                         openmldb::api::GeneralResponse* response, Closure* done) {
     brpc::ClosureGuard done_guard(done);
+    std::string row;
     if (follower_.load(std::memory_order_relaxed)) {
         response->set_code(::openmldb::base::ReturnCode::kIsFollowerCluster);
         response->set_msg("is follower cluster");
@@ -1566,6 +1567,7 @@ void TabletImpl::Delete(RpcController* controller, const ::openmldb::api::Delete
         return;
     }
     uint32_t idx = 0;
+    bool ok = false;
     if (request->has_idx_name() && request->idx_name().size() > 0) {
         std::shared_ptr<IndexDef> index_def = table->GetIndex(request->idx_name());
         if (!index_def || !index_def->IsReady()) {
@@ -1578,6 +1580,11 @@ void TabletImpl::Delete(RpcController* controller, const ::openmldb::api::Delete
         idx = index_def->GetId();
     } else if (request->has_idx()) {
         idx = request->idx();
+    }
+    if (request->has_ts()) {
+        auto it = table->NewTraverseIterator(idx);
+        it->Seek(request->key(), request->ts());
+        row = it->GetValue().ToString();
     }
     if ((request->has_ts() ? table->Delete(request->key(), idx, request->ts()) : table->Delete(request->key(), idx))) {
         response->set_code(::openmldb::base::ReturnCode::kOk);
@@ -1596,14 +1603,16 @@ void TabletImpl::Delete(RpcController* controller, const ::openmldb::api::Delete
             if (aggr->GetIndexPos() != idx) {
                 continue;
             }
-            auto ok = aggr->Delete(request->key());
-            if (!ok) {
-                PDLOG(WARNING,
-                      "delete from aggr failed. base table: tid[%u] pid[%u] index[%u] key[%s]. aggr table: tid[%u]",
-                      request->tid(), request->pid(), idx, request->key().c_str(), aggr->GetAggrTid());
-                response->set_code(::openmldb::base::ReturnCode::kDeleteFailed);
-                response->set_msg("delete from associated pre-aggr table failed");
-                return;
+            if (!request->has_ts()) {
+                ok = aggr->Delete(request->key());
+                if (!ok) {
+                    PDLOG(WARNING,
+                        "delete from aggr failed. base table: tid[%u] pid[%u] index[%u] key[%s]. aggr table: tid[%u]",
+                        request->tid(), request->pid(), idx, request->key().c_str(), aggr->GetAggrTid());
+                    response->set_code(::openmldb::base::ReturnCode::kDeleteFailed);
+                    response->set_msg("delete from associated pre-aggr table failed");
+                    return;
+                }
             }
         }
     }
@@ -1624,7 +1633,29 @@ void TabletImpl::Delete(RpcController* controller, const ::openmldb::api::Delete
         ::openmldb::api::Dimension* dimension = entry.add_dimensions();
         dimension->set_key(request->key());
         dimension->set_idx(idx);
-        replicator->AppendEntry(entry);
+        auto update_aggr = [this, &request, &ok, &entry, &aggrs, &idx, &row]() {
+            ok = true;
+            if (!request->has_ts()) return;
+            for (const auto& aggr : *aggrs) {
+                if (aggr->GetIndexPos() != idx) {
+                    continue;
+                }
+                ok = aggr->Update(request->key(), row, entry.log_index(), false, true);
+                if (!ok) {
+                    PDLOG(WARNING,
+                        "update from aggr failed. base table: tid[%u] pid[%u] index[%u] key[%s]. aggr table: tid[%u]",
+                        request->tid(), request->pid(), idx, request->key().c_str(), aggr->GetAggrTid());
+                    return;
+                }
+            }
+        };
+        UpdateAggrClosure closure(update_aggr);
+        replicator->AppendEntry(entry, &closure);
+        if (!ok) {
+            response->set_code(::openmldb::base::ReturnCode::kError);
+            response->set_msg("update aggr failed");
+            return;
+        }
     } while (false);
     if (replicator && FLAGS_binlog_notify_on_put) {
         replicator->Notify();
@@ -5850,7 +5881,8 @@ bool TabletImpl::CreateAggregatorInternal(const ::openmldb::api::CreateAggregato
     }
 
     auto base_replicator = GetReplicator(base_meta->tid(), base_meta->pid());
-    if (!aggregator->Init(base_replicator, nullptr)) {
+    auto table = GetTable(base_meta->tid(), base_meta->pid());
+    if (!aggregator->Init(base_replicator, table)) {
         PDLOG(WARNING, "aggregator init failed");
     }
     uint64_t uid = (uint64_t) base_meta->tid() << 32 | base_meta->pid();
