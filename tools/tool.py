@@ -15,6 +15,7 @@ import logging
 import os
 import subprocess
 import sys
+import time
 log = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO, format = '%(levelname)s: %(message)s')
 
@@ -197,7 +198,7 @@ class Executor:
                         return Status()
                     elif table_stat == "kLoading" or table_stat == "kTableUndefined":
                         log.info(f"table is loading... tid {tid} pid {pid}")
-                        sleep(2)
+                        time.sleep(2)
                     else:
                         return Status(-1, "load table failed")
 
@@ -217,16 +218,18 @@ class Executor:
         cmd.append("--cmd=recovertable {} {} {}".format(name, pid, endpoint))
         cmd.append("--database=" + database)
         status, output = self.RunWithRetuncode(cmd)
-        if status.OK() and out.find("recover table ok") != -1:
+        if status.OK() and output.find("recover table ok") != -1:
             return Status()
         return Status(-1, "recover table failed")
 
     def UpdateTableAlive(self, database, name, pid, endpoint, is_alive):
+        if is_alive not in ["yes", "no"]:
+            return Status(-1, "invalid argument {is_alive}")
         cmd = list(self.ns_base_cmd)
         cmd.append("--cmd=updatetablealive {} {} {} {}".format(name, pid, endpoint, is_alive))
         cmd.append("--database=" + database)
         status, output = self.RunWithRetuncode(cmd)
-        if status.OK() and out.find("update ok") != -1:
+        if status.OK() and output.find("update ok") != -1:
             return Status()
         return Status(-1, "update table alive failed")
 
@@ -245,6 +248,13 @@ class Executor:
         if not status.OK():
             return status, None
         return Status(), self.ParseResult(output)
+
+    def CancelOp(self, database, op_pid):
+        cmd = list(self.ns_base_cmd)
+        cmd.append("--cmd=cancelop {}".format(op_id))
+        cmd.append("--database=" + database)
+        status, output = self.RunWithRetuncode(cmd)
+        return status
 
 class Partition:
     def __init__(self, name, tid, pid, endpoint, is_leader, is_alive, offset):

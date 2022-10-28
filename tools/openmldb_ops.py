@@ -15,6 +15,7 @@ import sys
 import logging
 log = logging.getLogger(__name__)
 from tool import *
+import time
 from optparse import OptionParser
 parser = OptionParser()
 
@@ -58,7 +59,7 @@ def CheckTable(executor, db, table_name):
             endpoint = partition.GetEndpoint()
             key = "{}_{}".format(partition.GetTid(), pid)
             if endpoint not in endpoint_status or key not in endpoint_status[endpoint]:
-                return Status(-1, f"not table partition in {endpint}")
+                return Status(-1, f"not table partition in {endpoint}")
             if partition.IsLeader() and endpoint_status[endpoint][key][3] == "kTableLeader":
                 continue
             elif not partition.IsLeader() and endpoint_status[endpoint][key][3] != "kTableLeader":
@@ -87,7 +88,8 @@ def RecoverPartition(executor, db, partitions, endpoint_status):
             log.error(f"load table failed. db {db} name {table_name} pid {pid} endpoint {leader_endpoint}")
             return Status(-1, "recover partition failed")
     if not partitions[leader_pos].IsAlive():
-        if not executor.UpdateTableAlive(db, table_name, pid, leader_endpoint, True).OK():
+        status =  executor.UpdateTableAlive(db, table_name, pid, leader_endpoint, "yes")
+        if not status.OK():
             log.error(f"update leader alive failed. db {db} name {table_name} pid {pid} endpoint {leader_endpoint}")
             return Status(-1, "recover partition failed")
     # recover follower
@@ -96,9 +98,10 @@ def RecoverPartition(executor, db, partitions, endpoint_status):
             continue
         partition = partitions[pos]
         endpoint = partition.GetEndpoint()
-        if partitions[leader_pos].IsAlive():
-            if not executor.UpdateTableAlive(db, table_name, pid, endpoint, False).OK():
-                log.error(f"update leader alive failed. db {db} name {table_name} pid {pid} endpoint {endpoint}")
+        if partition.IsAlive():
+            status = executor.UpdateTableAlive(db, table_name, pid, endpoint, "no")
+            if not status.OK():
+                log.error(f"update alive failed. db {db} name {table_name} pid {pid} endpoint {endpoint}")
                 return Status(-1, "recover partition failed")
         if not executor.RecoverTablePartition(db, table_name, pid, endpoint).OK():
             log.error(f"recover table partition failed. db {db} name {table_name} pid {pid} endpoint {endpoint}")
@@ -136,11 +139,13 @@ def RecoverTable(executor, db, table_name):
         if status.OK():
             for record in result:
                 if record[4] == 'kDoing':
+                    value = " ".join(record)
+                    log.info(value)
                     is_finish = False
                     break
         if not is_finish:
             log.info(f"waiting task")
-            sleep(2)
+            time.sleep(2)
         else:
             break
     status = CheckTable(executor, db, table_name)
