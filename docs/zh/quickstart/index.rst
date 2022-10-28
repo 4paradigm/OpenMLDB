@@ -9,6 +9,7 @@
     openmldb_quickstart
     java_sdk
     python_sdk
+    go_sdk
     rest_api
     beginner_must_read
     function_boundary
