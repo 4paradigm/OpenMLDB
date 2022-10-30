@@ -34,11 +34,7 @@ AggregateIRBuilder::AggregateIRBuilder(const vm::SchemasContext* sc,
                                        const node::FrameNode* frame_node,
                                        uint32_t id)
     : schema_context_(sc), module_(module), frame_node_(frame_node), id_(id) {
-    available_agg_func_set_.insert("sum");
-    available_agg_func_set_.insert("avg");
-    available_agg_func_set_.insert("count");
-    available_agg_func_set_.insert("min");
-    available_agg_func_set_.insert("max");
+    available_agg_func_set_ = {"sum", "avg", "count", "min", "max"};
 }
 
 bool AggregateIRBuilder::IsAggFuncName(const std::string& fname) {
@@ -563,11 +559,11 @@ base::Status ScheduleAggGenerators(
 }
 
 base::Status AggregateIRBuilder::BuildMulti(const std::string& base_funcname,
-                                    ExprIRBuilder* expr_ir_builder,
-                                    VariableIRBuilder* variable_ir_builder,
-                                    ::llvm::BasicBlock* cur_block,
-                                    const std::string& output_ptr_name,
-                                    const vm::Schema& output_schema) {
+                                            ExprIRBuilder* expr_ir_builder,
+                                            VariableIRBuilder* variable_ir_builder,
+                                            ::llvm::BasicBlock* cur_block,
+                                            const std::string& output_ptr_name,
+                                            const vm::Schema& output_schema) {
     ::llvm::LLVMContext& llvm_ctx = module_->getContext();
     ::llvm::IRBuilder<> builder(llvm_ctx);
     auto void_ty = llvm::Type::getVoidTy(llvm_ctx);

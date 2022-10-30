@@ -304,7 +304,7 @@ Status BatchModeTransformer::InitFnInfo(PhysicalOpNode* node,
         if (fn_info->fn_name().empty()) {
             continue;
         }
-        CHECK_STATUS(InstantiateLLVMFunction(*fn_infos[i]), "Instantiate ", i,
+        CHECK_STATUS(InstantiateLLVMFunction(*fn_info), "Instantiate ", i,
                      "th native function \"", fn_info->fn_name(),
                      "\" failed at node:\n", node->GetTreeString());
     }
@@ -767,22 +767,8 @@ Status RequestModeTransformer::OptimizeRequestJoinAsWindowProducer(PhysicalReque
     switch (join_op->join().join_type()) {
         case node::kJoinTypeLeft:
         case node::kJoinTypeLast: {
-            const node::OrderByNode* orders = w_ptr->GetOrders();
-            const node::ExprListNode* groups = w_ptr->GetKeys();
-            auto child_schemas_ctx = join_op->GetProducer(0)->schemas_ctx();
-            if (!node::ExprListNullOrEmpty(groups)) {
-                CHECK_STATUS(passes::CheckExprDependOnChildOnly(groups, child_schemas_ctx),
-                             "Fail to handle window: group "
-                             "expression should belong to left table");
-            }
-            if (nullptr != orders && !node::ExprListNullOrEmpty(orders->order_expressions_)) {
-                CHECK_STATUS(passes::CheckExprDependOnChildOnly(orders->order_expressions_, child_schemas_ctx),
-                             "Fail to handle window: group "
-                             "expression should belong to left table");
-            }
-            CHECK_TRUE(join_op->producers()[0]->GetOpType() == kPhysicalOpDataProvider, kPlanError,
-                       "Fail to handler window with request last "
-                       "join, left isn't a table provider")
+            CHECK_STATUS(ValidWindowLastJoin(w_ptr, join_op->GetProducer(0)));
+
             auto request_op = dynamic_cast<PhysicalDataProviderNode*>(join_op->producers()[0]);
             auto name = request_op->table_handler_->GetName();
             auto db_name = request_op->table_handler_->GetDatabase();
@@ -820,6 +806,25 @@ Status RequestModeTransformer::OptimizeRequestJoinAsWindowProducer(PhysicalReque
         }
     }
 
+    return Status::OK();
+}
+
+Status RequestModeTransformer::ValidWindowLastJoin(const node::WindowPlanNode* w_ptr, const PhysicalOpNode* left_node) {
+    const node::OrderByNode* orders = w_ptr->GetOrders();
+    const node::ExprListNode* groups = w_ptr->GetKeys();
+    const SchemasContext* child_schemas_ctx = left_node->schemas_ctx();
+
+    if (!node::ExprListNullOrEmpty(groups)) {
+        CHECK_STATUS(passes::CheckExprDependOnChildOnly(groups, child_schemas_ctx),
+                     "Fail to handle window: group expression should belong to left table of join");
+    }
+    if (nullptr != orders && !node::ExprListNullOrEmpty(orders->order_expressions_)) {
+        CHECK_STATUS(passes::CheckExprDependOnChildOnly(orders->order_expressions_, child_schemas_ctx),
+                     "Fail to handle window: order expression should belong to left table of join");
+    }
+
+    CHECK_TRUE(left_node->GetOpType() == kPhysicalOpDataProvider, kPlanError,
+               "Fail to handler window with request last join, left isn't a table provider")
     return Status::OK();
 }
 

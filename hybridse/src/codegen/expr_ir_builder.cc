@@ -534,7 +534,7 @@ Status ExprIRBuilder::BuildColumnRef(
     ::llvm::Value* value = NULL;
     const std::string frame_str =
         nullptr == frame_ ? "" : frame_->GetExprString();
-    DLOG(INFO) << "get table column " << col;
+    DLOG(INFO) << "get table column from row " << col;
     // not found
     VariableIRBuilder variable_ir_builder(ctx_->GetCurrentBlock(),
                                           ctx_->GetCurrentScope()->sv());
@@ -546,23 +546,22 @@ Status ExprIRBuilder::BuildColumnRef(
         return Status::OK();
     }
 
-    NativeValue window;
-    CHECK_STATUS(BuildWindow(&window), "Fail to build window");
+    {
+        NativeValue window;
+        CHECK_STATUS(BuildWindow(&window), "Fail to build window");
 
-    DLOG(INFO) << "get table column " << col;
-    // NOT reuse for iterator
-    MemoryWindowDecodeIRBuilder window_ir_builder(ctx_->schemas_context(),
-                                                  ctx_->GetCurrentBlock());
-    ok = window_ir_builder.BuildGetCol(schema_idx, col_idx, window.GetRaw(),
-                                       &value);
-    CHECK_TRUE(ok && value != nullptr, kCodegenError,
-               "fail to find column " + col);
+        DLOG(INFO) << "get table column from window " << col;
+        // NOT reuse for iterator
+        MemoryWindowDecodeIRBuilder window_ir_builder(ctx_->schemas_context(), ctx_->GetCurrentBlock());
+        ::llvm::Value* value = NULL;
+        ok = window_ir_builder.BuildGetCol(schema_idx, col_idx, window.GetRaw(), &value);
+        CHECK_TRUE(ok && value != nullptr, kCodegenError, "fail to find column " + col);
 
-    ok = variable_ir_builder.StoreColumnRef(relation_name, col, frame_str,
-                                            value, status);
-    CHECK_TRUE(ok, kCodegenError, "fail to store col for ", status.str());
-    *output = NativeValue::Create(value);
-    return Status::OK();
+        ok = variable_ir_builder.StoreColumnRef(relation_name, col, frame_str, value, status);
+        CHECK_TRUE(ok, kCodegenError, "fail to store col for ", status.str());
+        *output = NativeValue::Create(value);
+        return Status::OK();
+    }
 }
 
 Status ExprIRBuilder::BuildUnaryExpr(const ::hybridse::node::UnaryExpr* node,

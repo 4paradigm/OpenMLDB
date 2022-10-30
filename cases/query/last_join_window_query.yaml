@@ -256,33 +256,38 @@ cases:
           - [2,"cc",21,32,1.1,2.1,1606755780000,"2020-05-01"]
     sql: |
       select
-        idx, c1,
+        idx, c1, c3x,
         sum(c3a) OVER w1 as suma,
-        sum(c3x) OVER w1 as sumb
+        min(c3x) OVER w1 as sumb,
       from (
         select
           {0}.id as idx,
-          {0}.c1 as c1,
           {0}.c3 as c3a,
+          {0}.c1 as c1,
           {1}.c3 as c3x,
           {0}.c7 as c7
         from {0} last join {1} on {0}.c1={1}.c1
       )
       WINDOW w1 AS (
         PARTITION BY c1 ORDER BY c7 ROWS_RANGE BETWEEN 10s PRECEDING AND CURRENT ROW);
-    request_plan: |
-      PROJECT(type=Aggregation)
-        SIMPLE_PROJECT(sources=(auto_t0.id -> idx, auto_t0.c1, auto_t0.c3 -> c3a, auto_t1.c3 -> c3x, auto_t0.c7))
-          JOIN(type=LastJoin, condition=, left_keys=(), right_keys=(), index_keys=(auto_t0.c1))
-            REQUEST_UNION(partition_keys=(), orders=(ASC), range=(c7, 10000 PRECEDING, 0 CURRENT), index_keys=(c1))
-              DATA_PROVIDER(request=auto_t0)
-              DATA_PROVIDER(type=Partition, table=auto_t0, index=index1)
-            DATA_PROVIDER(type=Partition, table=auto_t1, index=index1)
+    # request_plan: |
+    #   PROJECT(type=Aggregation)
+    #     SIMPLE_PROJECT(sources=(auto_t0.id -> idx, auto_t0.c1, auto_t0.c3 -> c3a, auto_t1.c3 -> c3x, auto_t0.c7))
+    #       JOIN(type=LastJoin, condition=, left_keys=(), right_keys=(), index_keys=(auto_t0.c1))
+    #         REQUEST_UNION(partition_keys=(), orders=(ASC), range=(c7, 10000 PRECEDING, 0 CURRENT), index_keys=(c1))
+    #           DATA_PROVIDER(request=auto_t0)
+    #           DATA_PROVIDER(type=Partition, table=auto_t0, index=index1)
+    #         DATA_PROVIDER(type=Partition, table=auto_t1, index=index1)
     expect:
       order: idx
-      columns: ["idx int","c1 string","suma int", "sumb int"]
+      columns:
+        - idx int
+        - c1 string
+        - c3x int
+        - suma int
+        - sumb int
       rows:
-        - [1,"aa", 2, 20]
-        - [2,"aa", 4, 40]
-        - [3,"bb", 2, NULL]
-        - [4,"cc", 2, 21]
+        - [1,"aa",20,   2, 20 ]
+        - [2,"aa",20,   4, 20 ]
+        - [3,"bb",null, 2, NULL]
+        - [4,"cc",21,   2, 21]

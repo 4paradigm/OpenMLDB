@@ -297,6 +297,17 @@ class RequestModeTransformer : public BatchModeTransformer {
     Status OptimizeRequestJoinAsWindowProducer(PhysicalRequestJoinNode* depend, const node::WindowPlanNode* w_ptr,
                                                PhysicalOpNode** output);
 
+    // check support for either of
+    // - window (last join)
+    // - window (subquery (last join))
+    //
+    // currently, it expect window's group keys and order keys all refer to left table source of last join
+    // otherwise, error status returned.
+    //
+    // \param w_ptr Window definition node
+    // \param left_node Left node from the last join
+    Status ValidWindowLastJoin(const node::WindowPlanNode* w_ptr, const PhysicalOpNode* left_node);
+
  private:
     bool enable_batch_request_opt_;
     bool performance_sensitive_;
