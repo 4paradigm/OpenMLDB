@@ -4068,6 +4068,14 @@ static const std::initializer_list<std::string> GetTableStatusSchema() {
     return schema;
 }
 
+static const std::initializer_list<std::string> GetTableStatusAllSchema() {
+    static const std::initializer_list<std::string> schema = {
+        "Table_id",         "Table_name",     "Database_name",    "Storage_type",      "Rows",
+        "Memory_data_size", "Disk_data_size", "Partition",        "Partition_unalive", "Replica",
+        "Offline_path",     "Offline_format", "Offline_deep_copy", "Warnings"};
+    return schema;
+}
+
 // output schema:
 // - Table_id: tid
 // - Table_name
@@ -4086,12 +4094,17 @@ static const std::initializer_list<std::string> GetTableStatusSchema() {
 // - Offline_path: data path for offline data
 // - Offline_format: format for offline data
 // - Offline_deep_copy: deep copy option for offline data
+// - Warnings: any warnings raised during the checking
 //
 // if db is empty:
 //   show table status in all databases except hidden databases
 // else: show table status in current database, include hidden database
+// if all is true:
+//   show all table status in all databases and further verify with tablets for every partition and both leader and
+//   followers
 std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteShowTableStatus(const std::string& db,
-                                                                                   hybridse::sdk::Status* status) {
+                                                                                   hybridse::sdk::Status* status,
+                                                                                   bool all) {
     // NOTE: cluster_sdk_->GetTables(db) seems not accurate, query directly
     std::vector<nameserver::TableInfo> tables;
     std::string msg;
@@ -4100,15 +4113,16 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteShowTableStat
     std::vector<std::vector<std::string>> data;
     data.reserve(tables.size());
 
-    std::for_each(tables.cbegin(), tables.cend(), [&data, &db](const nameserver::TableInfo& tinfo) {
+    for (auto it = tables.rbegin(); it != tables.rend(); it++) {
+        auto& tinfo = *it;
         if (!db.empty()) {
             // rule 1: selected a db, show tables only inside the db
             if (db != tinfo.db()) {
-                return;
+                continue;
             }
-        } else if (nameserver::IsHiddenDb(tinfo.db())) {
+        } else if (nameserver::IsHiddenDb(tinfo.db()) && !all) {
             // rule 2: if no db selected, show all tables except those in hidden db
-            return;
+            continue;
         }
 
         auto tid = tinfo.tid();
@@ -4116,12 +4130,14 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteShowTableStat
         auto db = tinfo.db();
         auto& inner_storage_mode = StorageMode_Name(tinfo.storage_mode());
         std::string storage_type = absl::AsciiStrToLower(absl::StripPrefix(inner_storage_mode, "k"));
+        std::string error_msg;
 
         auto partition_num = tinfo.partition_num();
         auto replica_num = tinfo.replica_num();
         uint64_t rows = 0, mem_bytes = 0, disk_bytes = 0;
         uint32_t partition_unalive = 0;
         for (auto& partition_info : tinfo.table_partition()) {
+            auto pid = partition_info.pid();
             rows += partition_info.record_cnt();
             mem_bytes += partition_info.record_byte_size();
             disk_bytes += partition_info.diskused();
@@ -4129,6 +4145,9 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteShowTableStat
                 if (!meta.is_alive()) {
                     partition_unalive++;
                 }
+            }
+            if (all) {
+                CheckTableStatus(db, table_name, tid, pid, &error_msg);
             }
         }
 
@@ -4143,10 +4162,89 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteShowTableStat
                         std::to_string(mem_bytes), std::to_string(disk_bytes), std::to_string(partition_num),
                         std::to_string(partition_unalive), std::to_string(replica_num), offline_path, offline_format,
                         offline_deep_copy});
-    });
+        if (all) {
+            data.back().push_back(error_msg);
+        }
+    }
 
     // TODO(#1456): rich schema result set, and pretty-print numberic values (e.g timestamp) in cli
-    return ResultSetSQL::MakeResultSet(GetTableStatusSchema(), data, status);
+    return ResultSetSQL::MakeResultSet(all ? GetTableStatusAllSchema() : GetTableStatusSchema(), data, status);
+}
+
+bool SQLClusterRouter::CheckTableStatus(const std::string& db, const std::string& table_name, uint32_t tid,
+                                        uint32_t pid, std::string* msg) {
+    bool check_succeed = true;
+    auto& error_msg = *msg;
+    auto append_error_msg = [&check_succeed](std::string& msg, uint32_t pid, bool is_leader,
+                                             const std::string& endpoint, const std::string& error) {
+        absl::StrAppend(&msg, (msg.empty() ? "" : "; "), "pid=", std::to_string(pid), ", ",
+                        (is_leader ? "leader" : "follower"), " in ", endpoint, ": ", error);
+        check_succeed = false;
+    };
+
+    // check with tablet again of the partition status
+    // check the leader status
+    auto tablet_accessor = cluster_sdk_->GetTablet(db, table_name, pid);
+    std::shared_ptr<client::TabletClient> tablet_client;
+    ::openmldb::api::TableState state = ::openmldb::api::kTableUndefined;
+    if (tablet_accessor && (tablet_client = tablet_accessor->GetClient())) {
+        ::openmldb::api::TableStatus table_status;
+        if (tablet_client->GetTableStatus(tid, pid, table_status)) {
+            if (table_status.has_state()) {
+                if (table_status.has_mode() && table_status.mode() != ::openmldb::api::kTableLeader) {
+                    LOG(ERROR) << db << "." << table_name << " pid=" << pid << ": leader state inconsistent in "
+                               << tablet_accessor->GetName();
+                    append_error_msg(error_msg, pid, true, tablet_accessor->GetName(), "leader state inconsistent");
+                } else {
+                    state = table_status.state();
+                }
+            }
+        }
+    }
+
+    if (state != ::openmldb::api::kTableNormal) {
+        append_error_msg(error_msg, pid, true, tablet_accessor->GetName(),
+                         absl::StrCat("state is ", TableState_Name(state)));
+    }
+
+    // check the followers' offset
+    if (tablet_client) {
+        uint64_t offset = 0;
+        std::map<std::string, uint64_t> info_map;
+        std::string msg;
+        tablet_client->GetTableFollower(tid, pid, offset, info_map, msg);
+        for (const auto& it : info_map) {
+            if (it.second < offset) {
+                append_error_msg(error_msg, pid, false, it.first, "offset smaller than leader");
+            }
+        }
+    }
+
+    auto tablet_accessors = cluster_sdk_->GetTabletFollowers(db, table_name, pid);
+    for (auto& tablet_accessor : tablet_accessors) {
+        std::shared_ptr<client::TabletClient> tablet_client;
+        ::openmldb::api::TableState state = ::openmldb::api::kTableUndefined;
+        if (tablet_accessor && (tablet_client = tablet_accessor->GetClient())) {
+            ::openmldb::api::TableStatus table_status;
+            if (tablet_client->GetTableStatus(tid, pid, table_status)) {
+                if (table_status.has_state()) {
+                    if (table_status.has_mode() && table_status.mode() != ::openmldb::api::kTableFollower) {
+                        LOG(ERROR) << db << "." << table_name << " pid=" << pid << ": follower state inconsistent in "
+                                   << tablet_accessor->GetName();
+                    } else {
+                        state = table_status.state();
+                    }
+                }
+            }
+        }
+
+        if (state != ::openmldb::api::kTableNormal) {
+            append_error_msg(error_msg, pid, false, tablet_accessor->GetName(),
+                             absl::StrCat("state is ", TableState_Name(state)));
+        }
+    }
+
+    return check_succeed;
 }
 
 void SQLClusterRouter::ReadSparkConfFromFile(std::string conf_file_path, std::map<std::string, std::string>* config) {
