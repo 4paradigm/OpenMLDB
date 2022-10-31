@@ -2084,6 +2084,7 @@ base::Status ConvertTargetName(const zetasql::ASTTargetName* node, std::vector<a
 struct ShowTargetInfo {
     node::CmdType cmd_type_;  // converted CmdType
     bool with_target_name_ = false;  // is the show statement has extra target name token
+    bool with_like_string_ = false;  // is the show statement has extra like string
 };
 
 static const absl::flat_hash_map<std::string_view, ShowTargetInfo> showTargetMap = {
@@ -2100,7 +2101,7 @@ static const absl::flat_hash_map<std::string_view, ShowTargetInfo> showTargetMap
     {"DEPLOYMENT", {node::CmdType::kCmdShowDeployment, true}},
     {"JOB", {node::CmdType::kCmdShowJob, true}},
     {"COMPONENTS", {node::CmdType::kCmdShowComponents}},
-    {"TABLE STATUS", {node::CmdType::kCmdShowTableStatus}},
+    {"TABLE STATUS", {node::CmdType::kCmdShowTableStatus, false, true}},
     {"FUNCTIONS", {node::CmdType::kCmdShowFunctions}},
     {"JOBLOG", {node::CmdType::kCmdShowJobLog, true}},
 };
@@ -2109,8 +2110,6 @@ base::Status convertShowStmt(const zetasql::ASTShowStatement* show_statement, no
                              node::SqlNode** output) {
     CHECK_TRUE(nullptr != show_statement && nullptr != show_statement->identifier(), common::kSqlAstError,
                "not an ASTShowStatement")
-    CHECK_TRUE(nullptr == show_statement->optional_like_string(), common::kSqlAstError,
-               "Non-support LIKE in show statement")
 
     auto show_id = show_statement->identifier()->GetAsStringView();
 
@@ -2120,7 +2119,7 @@ base::Status convertShowStmt(const zetasql::ASTShowStatement* show_statement, no
     }
 
     auto cmd_type = show_info->second.cmd_type_;
-    if (show_info->second.with_target_name_) {
+    if (show_info->second.with_target_name_ && show_statement->optional_target_name()) {
         std::vector<absl::string_view> path_list;
         CHECK_STATUS(ConvertTargetName(show_statement->optional_target_name(), path_list));
         if (path_list.size() == 1) {
@@ -2131,11 +2130,15 @@ base::Status convertShowStmt(const zetasql::ASTShowStatement* show_statement, no
                 node_manager->MakeCmdNode(cmd_type, std::string(path_list.front().data(), path_list.front().size()),
                                           std::string(path_list.back().data(), path_list.back().size()));
         }
-        // did not fail on else branch because ConvertTargetName above covered
-    } else {
-        *output = dynamic_cast<node::CmdNode*>(node_manager->MakeCmdNode(cmd_type));
+        return base::Status::OK();
     }
 
+    if (show_info->second.with_like_string_ && show_statement->optional_like_string()) {
+        *output = node_manager->MakeCmdNode(cmd_type, show_statement->optional_like_string()->string_value());
+        return base::Status::OK();
+    }
+
+    *output = dynamic_cast<node::CmdNode*>(node_manager->MakeCmdNode(cmd_type));
     return base::Status::OK();
 }
 

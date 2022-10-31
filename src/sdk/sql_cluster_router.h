@@ -355,7 +355,8 @@ class SQLClusterRouter : public SQLRouter {
 
     /// internal implementation for SQL 'SHOW TABLE STATUS'
     std::shared_ptr<hybridse::sdk::ResultSet> ExecuteShowTableStatus(const std::string& db,
-                                                                     hybridse::sdk::Status* status, bool all = true);
+                                                                     hybridse::sdk::Status* status,
+                                                                     const std::string& pattern = "");
 
     bool CheckTableStatus(const std::string& db, const std::string& table_name, uint32_t tid, uint32_t pid,
                           std::string* msg);

@@ -2008,7 +2008,8 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::HandleSQLCmd(const h
             return rs;
         }
         case hybridse::node::kCmdShowTableStatus: {
-            return ExecuteShowTableStatus(db, status);
+            const auto& args = cmd_node->GetArgs();
+            return ExecuteShowTableStatus(db, status, args.size() > 0 ? args[0] : "");
         }
         default: {
             *status = {::hybridse::common::StatusCode::kCmdError, "fail to execute script with unsupported type"};
@@ -4064,14 +4065,6 @@ static const std::initializer_list<std::string> GetTableStatusSchema() {
     static const std::initializer_list<std::string> schema = {
         "Table_id",         "Table_name",     "Database_name",    "Storage_type",      "Rows",
         "Memory_data_size", "Disk_data_size", "Partition",        "Partition_unalive", "Replica",
-        "Offline_path",     "Offline_format", "Offline_deep_copy"};
-    return schema;
-}
-
-static const std::initializer_list<std::string> GetTableStatusAllSchema() {
-    static const std::initializer_list<std::string> schema = {
-        "Table_id",         "Table_name",     "Database_name",    "Storage_type",      "Rows",
-        "Memory_data_size", "Disk_data_size", "Partition",        "Partition_unalive", "Replica",
         "Offline_path",     "Offline_format", "Offline_deep_copy", "Warnings"};
     return schema;
 }
@@ -4099,12 +4092,14 @@ static const std::initializer_list<std::string> GetTableStatusAllSchema() {
 // if db is empty:
 //   show table status in all databases except hidden databases
 // else: show table status in current database, include hidden database
-// if all is true:
-//   show all table status in all databases and further verify with tablets for every partition and both leader and
-//   followers
 std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteShowTableStatus(const std::string& db,
                                                                                    hybridse::sdk::Status* status,
-                                                                                   bool all) {
+                                                                                   const std::string& pattern) {
+    bool matched = false;
+    if (!pattern.empty() && pattern == "*") {
+        matched = true;
+    }
+
     // NOTE: cluster_sdk_->GetTables(db) seems not accurate, query directly
     std::vector<nameserver::TableInfo> tables;
     std::string msg;
@@ -4115,13 +4110,15 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteShowTableStat
 
     for (auto it = tables.rbegin(); it != tables.rend(); it++) {
         auto& tinfo = *it;
-        if (!db.empty()) {
-            // rule 1: selected a db, show tables only inside the db
+        if (matched) {
+            // rule 1: if pattern is provided, show all dbs matching the pattern
+        } else if (!db.empty()) {
+            // rule 2: selected a db, show tables only inside the db if no pattern is provided
             if (db != tinfo.db()) {
                 continue;
             }
-        } else if (nameserver::IsHiddenDb(tinfo.db()) && !all) {
-            // rule 2: if no db selected, show all tables except those in hidden db
+        } else if (nameserver::IsHiddenDb(tinfo.db())) {
+            // rule 3: if no db selected, show all tables except those in hidden db if no pattern is provided
             continue;
         }
 
@@ -4146,9 +4143,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteShowTableStat
                     partition_unalive++;
                 }
             }
-            if (all) {
-                CheckTableStatus(db, table_name, tid, pid, &error_msg);
-            }
+            CheckTableStatus(db, table_name, tid, pid, &error_msg);
         }
 
         std::string offline_path = "NULL", offline_format = "NULL", offline_deep_copy = "NULL";
@@ -4161,14 +4156,11 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteShowTableStat
         data.push_back({std::to_string(tid), table_name, db, storage_type, std::to_string(rows),
                         std::to_string(mem_bytes), std::to_string(disk_bytes), std::to_string(partition_num),
                         std::to_string(partition_unalive), std::to_string(replica_num), offline_path, offline_format,
-                        offline_deep_copy});
-        if (all) {
-            data.back().push_back(error_msg);
-        }
+                        offline_deep_copy, error_msg});
     }
 
     // TODO(#1456): rich schema result set, and pretty-print numberic values (e.g timestamp) in cli
-    return ResultSetSQL::MakeResultSet(all ? GetTableStatusAllSchema() : GetTableStatusSchema(), data, status);
+    return ResultSetSQL::MakeResultSet(GetTableStatusSchema(), data, status);
 }
 
 bool SQLClusterRouter::CheckTableStatus(const std::string& db, const std::string& table_name, uint32_t tid,
