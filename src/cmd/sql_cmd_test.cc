@@ -2821,7 +2821,7 @@ TEST_P(DBSDKTest, ShowComponents) {
 }
 
 static const std::vector<std::vector<test::CellExpectInfo>> SystemClusterTableStatus = {
-    {{}, "PRE_AGG_META_INFO", "__INTERNAL_DB", "memory", "0", {}, {}, "1", "0", "1", "NULL", "NULL", "NULL", ""},
+    {{}, "PRE_AGG_META_INFO", "__INTERNAL_DB", "memory", {}, {}, {}, "1", "0", "1", "NULL", "NULL", "NULL", ""},
     {{}, "JOB_INFO", "__INTERNAL_DB", "memory", "0", {}, {}, "1", "0", "1", "NULL", "NULL", "NULL", ""},
     {{}, "GLOBAL_VARIABLES", "INFORMATION_SCHEMA", "memory", "4", {}, {}, "1", "0", "1", "NULL", "NULL", "NULL", ""},
     {{},
@@ -2840,7 +2840,7 @@ static const std::vector<std::vector<test::CellExpectInfo>> SystemClusterTableSt
      ""}};
 
 static const std::vector<std::vector<test::CellExpectInfo>> SystemStandaloneTableStatus = {
-    {{}, "PRE_AGG_META_INFO", "__INTERNAL_DB", "memory", "0", {}, {}, "1", "0", "1", "NULL", "NULL", "NULL", ""},
+    {{}, "PRE_AGG_META_INFO", "__INTERNAL_DB", "memory", {}, {}, {}, "1", "0", "1", "NULL", "NULL", "NULL", ""},
     {{}, "GLOBAL_VARIABLES", "INFORMATION_SCHEMA", "memory", "4", {}, {}, "1", "0", "1", "NULL", "NULL", "NULL", ""},
     {{},
      "DEPLOY_RESPONSE_TIME",
