@@ -2117,6 +2117,8 @@ base::Status convertShowStmt(const zetasql::ASTShowStatement* show_statement, no
     if (show_info == showTargetMap.end()) {
         FAIL_STATUS(common::kSqlAstError, "Un-support SHOW: ", show_id)
     }
+    CHECK_TRUE(show_info->second.with_like_string_ || nullptr == show_statement->optional_like_string(),
+               common::kSqlAstError, absl::StrCat("Non-support LIKE in SHOW ", show_info->first, " statement"))
 
     auto cmd_type = show_info->second.cmd_type_;
     if (show_info->second.with_target_name_ && show_statement->optional_target_name()) {
