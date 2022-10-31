@@ -358,8 +358,8 @@ class SQLClusterRouter : public SQLRouter {
                                                                      hybridse::sdk::Status* status,
                                                                      const std::string& pattern = "");
 
-    bool CheckTableStatus(const std::string& db, const std::string& table_name, uint32_t tid, uint32_t pid,
-                          std::string* msg);
+    bool CheckTableStatus(const std::string& db, const std::string& table_name, uint32_t tid,
+                          const nameserver::TablePartition& partition_info, uint32_t replica_num, std::string* msg);
 
  private:
     std::shared_ptr<BasicRouterOptions> options_;

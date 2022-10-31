@@ -4138,7 +4138,6 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteShowTableStat
         uint64_t rows = 0, mem_bytes = 0, disk_bytes = 0;
         uint32_t partition_unalive = 0;
         for (auto& partition_info : tinfo.table_partition()) {
-            auto pid = partition_info.pid();
             rows += partition_info.record_cnt();
             mem_bytes += partition_info.record_byte_size();
             disk_bytes += partition_info.diskused();
@@ -4147,7 +4146,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteShowTableStat
                     partition_unalive++;
                 }
             }
-            CheckTableStatus(db, table_name, tid, pid, &error_msg);
+            CheckTableStatus(db, table_name, tid, partition_info, replica_num, &error_msg);
         }
 
         std::string offline_path = "NULL", offline_format = "NULL", offline_deep_copy = "NULL";
@@ -4168,13 +4167,15 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteShowTableStat
 }
 
 bool SQLClusterRouter::CheckTableStatus(const std::string& db, const std::string& table_name, uint32_t tid,
-                                        uint32_t pid, std::string* msg) {
+                                        const nameserver::TablePartition& partition_info, uint32_t replica_num,
+                                        std::string* msg) {
     bool check_succeed = true;
     auto& error_msg = *msg;
+    uint32_t pid = partition_info.pid();
     auto append_error_msg = [&check_succeed](std::string& msg, uint32_t pid, bool is_leader,
                                              const std::string& endpoint, const std::string& error) {
-        absl::StrAppend(&msg, (msg.empty() ? "" : "; "), "pid=", std::to_string(pid), ", ",
-                        (is_leader ? "leader" : "follower"), " in ", endpoint, ": ", error);
+        absl::StrAppend(&msg, (msg.empty() ? "" : "; "), "[pid=", std::to_string(pid), "][",
+                        (is_leader ? "leader" : "follower"), "][", endpoint, "]: ", error);
         check_succeed = false;
     };
 
@@ -4209,9 +4210,15 @@ bool SQLClusterRouter::CheckTableStatus(const std::string& db, const std::string
         std::map<std::string, uint64_t> info_map;
         std::string msg;
         tablet_client->GetTableFollower(tid, pid, offset, info_map, msg);
-        for (const auto& it : info_map) {
-            if (it.second < offset) {
-                append_error_msg(error_msg, pid, false, it.first, "offset smaller than leader");
+        if (replica_num - 1 != info_map.size() || replica_num != partition_info.partition_meta_size()) {
+            append_error_msg(error_msg, pid, true, tablet_accessor->GetName(),
+                             "follower number does not match the replicanum");
+        }
+        for (auto& meta : partition_info.partition_meta()) {
+            if (meta.is_leader()) continue;
+
+            if (info_map.count(meta.endpoint()) == 0) {
+                append_error_msg(error_msg, pid, false, meta.endpoint(), "not connected to leader");
             }
         }
     }
