@@ -108,7 +108,7 @@ jobs:
       github.event.pull_request.head.repo.full_name == github.repository &&
       github.event.sender.login != 'dependabot[bot]' )
     name: Publish Mac UT Results
-    uses: EnricoMi/publish-unit-test-result-action@v1
+    uses: ./.github/workflows/publish-test-results-action.yml
     with:
       files: macos-ut-result-*/**/*.xml
       check_name: HybridSE Mac Test Report

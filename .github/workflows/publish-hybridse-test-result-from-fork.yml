@@ -28,10 +28,10 @@ jobs:
          github.event.sender.login == 'dependabot[bot]' ||
          github.event.workflow_run.head_repository.full_name != github.repository
       )
-    name: Publish HybridSE UT Results
-    uses: EnricoMi/publish-unit-test-result-action@v1
+    name: Publish HybridSE Mac UT Results
+    uses: ./.github/workflows/publish-test-result-from-fork-action.yml
     with:
-      commit: ${{ github.event.workflow_run.head_sha }}
-      files: artifacts/macos-ut-result-*/**/*.xml
-      check_name: HybridSE Mac Test Report
-      comment_title: HybridSE Mac Test Report
+        commit: ${{ github.event.workflow_run.head_sha }}
+        files: artifacts/macos-ut-result-*/**/*.xml
+        check_name: HybridSE Mac Test Report
+        comment_title: HybridSE Mac Test Report
