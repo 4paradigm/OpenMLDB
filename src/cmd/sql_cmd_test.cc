@@ -2989,7 +2989,7 @@ TEST_P(DBSDKTest, ShowTableStatusLike) {
 
     // test
     hybridse::sdk::Status status;
-    auto rs = sr->ExecuteSQL("show table status like '*'", &status);
+    auto rs = sr->ExecuteSQL("show table status like '%'", &status);
     ASSERT_EQ(status.code, 0) << status.msg;
     if (cs->IsClusterMode()) {
         // default partition_num = 8 and replica_num = min(tablet,3) in cluster_mode
@@ -3001,8 +3001,56 @@ TEST_P(DBSDKTest, ShowTableStatusLike) {
             {{{}, tb_name, db_name, "memory", "1", {{}, "0"}, {{}, "0"}, "1", "0", "1", "NULL", "NULL", "NULL", ""}},
             rs.get(), true, false);
     }
-    // runs HandleSQL only for the purpose of pretty print result in console
-    HandleSQL("show table status like '*'");
+
+    rs = sr->ExecuteSQL("show table status like '*'", &status);
+    ASSERT_EQ(status.code, 0) << status.msg;
+    ExpectShowTableStatusResult({}, rs.get(), false, false);
+
+    rs = sr->ExecuteSQL("show table status like 'not_exists'", &status);
+    ASSERT_EQ(status.code, 0) << status.msg;
+    ExpectShowTableStatusResult({}, rs.get(), false, false);
+
+    rs = sr->ExecuteSQL(absl::StrCat("show table status like '", db_name, "'"), &status);
+    ASSERT_EQ(status.code, 0) << status.msg;
+    if (cs->IsClusterMode()) {
+        // default partition_num = 8 and replica_num = min(tablet,3) in cluster_mode
+        ExpectShowTableStatusResult(
+            {{{}, tb_name, db_name, "memory", "1", {{}, "0"}, {{}, "0"}, "8", "0", "2", "NULL", "NULL", "NULL", ""}},
+            rs.get());
+    } else {
+        ExpectShowTableStatusResult(
+            {{{}, tb_name, db_name, "memory", "1", {{}, "0"}, {{}, "0"}, "1", "0", "1", "NULL", "NULL", "NULL", ""}},
+            rs.get());
+    }
+
+    rs = sr->ExecuteSQL(absl::StrCat("show table status like '", db_name.substr(0, db_name.size() - 1), "_'"), &status);
+    ASSERT_EQ(status.code, 0) << status.msg;
+    if (cs->IsClusterMode()) {
+        // default partition_num = 8 and replica_num = min(tablet,3) in cluster_mode
+        ExpectShowTableStatusResult(
+            {{{}, tb_name, db_name, "memory", "1", {{}, "0"}, {{}, "0"}, "8", "0", "2", "NULL", "NULL", "NULL", ""}},
+            rs.get());
+    } else {
+        ExpectShowTableStatusResult(
+            {{{}, tb_name, db_name, "memory", "1", {{}, "0"}, {{}, "0"}, "1", "0", "1", "NULL", "NULL", "NULL", ""}},
+            rs.get());
+    }
+
+    // reset to db_name
+    // like pattern has high priority over the db
+    sr->SetDatabase(db_name);
+    rs = sr->ExecuteSQL("show table status like '%'", &status);
+    ASSERT_EQ(status.code, 0) << status.msg;
+    if (cs->IsClusterMode()) {
+        // default partition_num = 8 and replica_num = min(tablet,3) in cluster_mode
+        ExpectShowTableStatusResult(
+            {{{}, tb_name, db_name, "memory", "1", {{}, "0"}, {{}, "0"}, "8", "0", "2", "NULL", "NULL", "NULL", ""}},
+            rs.get(), true, true);
+    } else {
+        ExpectShowTableStatusResult(
+            {{{}, tb_name, db_name, "memory", "1", {{}, "0"}, {{}, "0"}, "1", "0", "1", "NULL", "NULL", "NULL", ""}},
+            rs.get(), true, false);
+    }
 
     // teardown
     ProcessSQLs(sr, {absl::StrCat("use ", db_name), absl::StrCat("drop table ", tb_name),

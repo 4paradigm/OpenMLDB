@@ -50,6 +50,8 @@
 #include "sdk/node_adapter.h"
 #include "sdk/result_set_sql.h"
 #include "sdk/split.h"
+#include "vm/catalog.h"
+#include "udf/udf.h"
 
 DECLARE_string(bucket_size);
 DECLARE_uint32(replica_num);
@@ -4095,11 +4097,7 @@ static const std::initializer_list<std::string> GetTableStatusSchema() {
 std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteShowTableStatus(const std::string& db,
                                                                                    hybridse::sdk::Status* status,
                                                                                    const std::string& pattern) {
-    bool matched = false;
-    if (!pattern.empty() && pattern == "*") {
-        matched = true;
-    }
-
+    StringRef pattern_ref(pattern);
     // NOTE: cluster_sdk_->GetTables(db) seems not accurate, query directly
     std::vector<nameserver::TableInfo> tables;
     std::string msg;
@@ -4108,10 +4106,16 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteShowTableStat
     std::vector<std::vector<std::string>> data;
     data.reserve(tables.size());
 
+    bool matched = false, is_null = true;
     for (auto it = tables.rbegin(); it != tables.rend(); it++) {
         auto& tinfo = *it;
-        if (matched) {
+        if (!pattern.empty()) {
             // rule 1: if pattern is provided, show all dbs matching the pattern
+            StringRef db_ref(tinfo.db());
+            hybridse::udf::v1::like(&db_ref, &pattern_ref, &matched, &is_null);
+            if (is_null || !matched) {
+                continue;
+            }
         } else if (!db.empty()) {
             // rule 2: selected a db, show tables only inside the db if no pattern is provided
             if (db != tinfo.db()) {
@@ -4194,7 +4198,7 @@ bool SQLClusterRouter::CheckTableStatus(const std::string& db, const std::string
         }
     }
 
-    if (state != ::openmldb::api::kTableNormal) {
+    if (state == ::openmldb::api::kTableUndefined || state == ::openmldb::api::kTableLoading) {
         append_error_msg(error_msg, pid, true, tablet_accessor->GetName(),
                          absl::StrCat("state is ", TableState_Name(state)));
     }
@@ -4230,7 +4234,7 @@ bool SQLClusterRouter::CheckTableStatus(const std::string& db, const std::string
             }
         }
 
-        if (state != ::openmldb::api::kTableNormal) {
+        if (state == ::openmldb::api::kTableUndefined || state == ::openmldb::api::kTableLoading) {
             append_error_msg(error_msg, pid, false, tablet_accessor->GetName(),
                              absl::StrCat("state is ", TableState_Name(state)));
         }
