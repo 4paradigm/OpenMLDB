@@ -15,10 +15,12 @@
  */
 
 #include "base/concurrentlist.h"
+
 #include <vector>
 #include <thread>
-#include "gtest/gtest.h"
+
 #include "base/skiplist.h"
+#include "gtest/gtest.h"
 
 namespace openmldb {
 namespace base {

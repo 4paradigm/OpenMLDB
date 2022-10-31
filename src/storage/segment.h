@@ -23,8 +23,8 @@
 #include <mutex>  // NOLINT
 #include <vector>
 
-#include "base/skiplist.h"
 #include "base/concurrentlist.h"
+#include "base/skiplist.h"
 #include "base/slice.h"
 #include "proto/tablet.pb.h"
 #include "storage/iterator.h"
@@ -105,11 +105,9 @@ class MemTableIterator : public TableIterator {
 
 class KeyEntry {
  public:
-    KeyEntry(): refs_(0), count_(0), entries(12, 4, tcmp) {}
-    explicit KeyEntry(uint8_t height): refs_(0), count_(0), entries(height, 4, tcmp) {}
     virtual ~KeyEntry() {}
     virtual uint64_t Release() = 0;
-
+    virtual void* GetEntries() = 0;
     void Ref() { refs_.fetch_add(1, std::memory_order_relaxed); }
 
     void UnRef() { refs_.fetch_sub(1, std::memory_order_relaxed); }
@@ -119,16 +117,21 @@ class KeyEntry {
  public:
     std::atomic<uint64_t> refs_;
     std::atomic<uint64_t> count_;
-    SkipListTimeEntries entries;
     friend Segment;
 };
 
 class SkipListKeyEntry : public KeyEntry {
  public:
-    SkipListKeyEntry() : KeyEntry() {}
-    explicit SkipListKeyEntry(uint8_t height) : KeyEntry(height) {}
+    SkipListKeyEntry() : entries(12, 4, tcmp)  {
+        refs_ = 0;
+        count_ = 0;
+    }
+    explicit SkipListKeyEntry(uint8_t height) : entries(height, 4, tcmp) {
+        refs_ = 0;
+        count_ = 0;
+    }
 
-    uint64_t Release() {
+    uint64_t Release() override {
         uint64_t cnt = 0;
         SkipListTimeEntries::Iterator* it = entries.NewIterator();
         it->SeekToFirst();
@@ -147,13 +150,21 @@ class SkipListKeyEntry : public KeyEntry {
         delete it;
         return cnt;
     }
+
+    SkipListTimeEntries* GetEntries() override { return &entries; }
+
+ public:
+    SkipListTimeEntries entries;
 };
 
 class ListKeyEntry : public KeyEntry {
  public:
-    ListKeyEntry() : KeyEntry(), entries(tcmp) {}
+    ListKeyEntry() : entries(tcmp) {
+        refs_ = 0;
+        count_ = 0;
+    }
 
-    uint64_t Release() {
+    uint64_t Release() override {
         uint64_t cnt = 0;
         ListTimeEntries::ListIterator* it = entries.NewIterator();
         it->SeekToFirst();
@@ -172,6 +183,8 @@ class ListKeyEntry : public KeyEntry {
         delete it;
         return cnt;
     }
+    ListTimeEntries* GetEntries() override { return &entries; }
+
  public:
     ListTimeEntries entries;
 };

@@ -605,7 +605,7 @@ bool MemTable::AddIndex(const ::openmldb::common::ColumnKey& column_key) {
         Segment** seg_arr = new Segment*[seg_cnt_];
         if (index_def->GetTTLType() == ::openmldb::storage::TTLType::kLatestTime) {
             is_skiplist_vec.push_back(false);
-        }else {
+        } else {
             is_skiplist_vec.push_back(true);
         }
         for (uint32_t j = 0; j < seg_cnt_; j++) {
@@ -861,14 +861,15 @@ void MemTableTraverseIterator::NextPK() {
             it_ = NULL;
         }
         if (segments_[seg_idx_]->GetTsCnt() > 1) {
-            KeyEntry* entry = NULL;
             if (segments_[seg_idx_]->IsSkipList(0)) {
-                entry = ((SkipListKeyEntry**)pk_it_->GetValue())[0];
+                SkipListKeyEntry* entry= ((SkipListKeyEntry**)pk_it_->GetValue())[0];
+                it_ = entry->GetEntries()->NewIterator();
+                ticket_.Push(entry);
             } else {
-                entry = ((ListKeyEntry**)pk_it_->GetValue())[0];
+                ListKeyEntry* entry = ((ListKeyEntry**)pk_it_->GetValue())[0];
+                it_ = entry->GetEntries()->NewIterator();
+                ticket_.Push(entry);
             }
-            it_ = entry->entries.NewIterator();
-            ticket_.Push(entry);
         } else {
             if (segments_[seg_idx_]->IsSkipList()) {
                 it_ = (reinterpret_cast<SkipListKeyEntry*>(pk_it_->GetValue()))  // NOLINT
@@ -1003,7 +1004,7 @@ void MemTableTraverseIterator::SeekToFirst() {
                     entry = ((ListKeyEntry**)pk_it_->GetValue())[ts_idx_];
                 }
                 ticket_.Push(entry);
-                it_ = entry->entries.NewIterator();
+                it_ = ((ListKeyEntry*)entry)->GetEntries()->NewIterator();
             } else {
                 if (segments_[seg_idx_]->IsSkipList()) {
                     ticket_.Push(reinterpret_cast<SkipListKeyEntry*>(pk_it_->GetValue()));  // NOLINT

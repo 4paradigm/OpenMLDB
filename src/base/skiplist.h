@@ -23,8 +23,8 @@
 #include <atomic>
 #include <iostream>
 
-#include "base/random.h"
 #include "base/base_iterator.h"
+#include "base/random.h"
 
 namespace openmldb {
 namespace base {

@@ -18,6 +18,7 @@
 
 #include <gflags/gflags.h>
 
+#include "base/base_iterator.h"
 #include "base/glog_wrapper.h"
 #include "base/strings.h"
 #include "common/timer.h"
@@ -96,19 +97,13 @@ uint64_t Segment::Release() {
             if (ts_cnt_ > 1) {
                 KeyEntry** entry_arr = (KeyEntry**)it->GetValue();  // NOLINT
                 for (uint32_t i = 0; i < ts_cnt_; i++) {
-                    if (IsSkipList(i))
-                        cnt += (reinterpret_cast<SkipListKeyEntry*>(entry_arr[i]))->Release();
-                    else
-                        cnt += (reinterpret_cast<ListKeyEntry*>(entry_arr[i]))->Release();
+                    cnt += entry_arr[i]->Release();
                     delete entry_arr[i];
                 }
                 delete[] entry_arr;
             } else {
                 KeyEntry* entry = (KeyEntry*)it->GetValue();  // NOLINT
-                if (IsSkipList())
-                    cnt += (reinterpret_cast<SkipListKeyEntry*>(entry))->Release();
-                else
-                    cnt += (reinterpret_cast<ListKeyEntry*>(entry))->Release();
+                cnt += entry->Release();
                 delete entry;
             }
         }
@@ -188,7 +183,6 @@ void Segment::Put(const Slice& key, uint64_t time, DataBlock* row) {
     PutUnlock(key, time, row);
 }
 
-// ts_cnt == 1 执行此put
 void Segment::PutUnlock(const Slice& key, uint64_t time, DataBlock* row) {
     void* entry = nullptr;
     uint32_t byte_size = 0;
@@ -881,10 +875,9 @@ void Segment::Gc4TTLAndHead(const uint64_t time, const uint64_t keep_cnt, uint64
     KeyEntries::Iterator* it = entries_->NewIterator();
     it->SeekToFirst();
     while (it->Valid()) {
-        KeyEntry* entry = NULL;
         if (IsSkipList()) {
-            entry = (SkipListKeyEntry*)it->GetValue();  // NOLINT
-            ::openmldb::base::Node<uint64_t, DataBlock*>* node = entry->entries.GetLast();
+            SkipListKeyEntry* entry = (SkipListKeyEntry*)it->GetValue();  // NOLINT
+            ::openmldb::base::Node<uint64_t, DataBlock*>* node = entry->GetEntries()->GetLast();
             it->Next();
             if (node == NULL) {
                 continue;
@@ -899,7 +892,7 @@ void Segment::Gc4TTLAndHead(const uint64_t time, const uint64_t keep_cnt, uint64
             {
                 std::lock_guard<std::mutex> lock(mu_);
                 if (entry->refs_.load(std::memory_order_acquire) <= 0) {
-                    node = entry->entries.SplitByKeyAndPos(time, keep_cnt);
+                    node = entry->GetEntries()->SplitByKeyAndPos(time, keep_cnt);
                 }
             }
             uint64_t entry_gc_idx_cnt = 0;
@@ -907,8 +900,8 @@ void Segment::Gc4TTLAndHead(const uint64_t time, const uint64_t keep_cnt, uint64
             entry->count_.fetch_sub(entry_gc_idx_cnt, std::memory_order_relaxed);
             gc_idx_cnt += entry_gc_idx_cnt;
        } else {
-            entry = (ListKeyEntry*)it->GetValue();  // NOLINT
-            ::openmldb::base::Node<uint64_t, DataBlock*>* node = entry->entries.GetLast();
+            ListKeyEntry* entry = (ListKeyEntry*)it->GetValue();  // NOLINT
+            ::openmldb::base::ListNode<uint64_t, DataBlock*>* node = entry->GetEntries()->GetLast();
             it->Next();
             if (node == NULL) {
                 continue;
@@ -923,7 +916,7 @@ void Segment::Gc4TTLAndHead(const uint64_t time, const uint64_t keep_cnt, uint64
             {
                 std::lock_guard<std::mutex> lock(mu_);
                 if (entry->refs_.load(std::memory_order_acquire) <= 0) {
-                    node = entry->entries.SplitByKeyAndPos(time, keep_cnt);
+                    node = entry->GetEntries()->SplitByKeyAndPos(time, keep_cnt);
                 }
             }
             uint64_t entry_gc_idx_cnt = 0;

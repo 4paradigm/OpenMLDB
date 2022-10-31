@@ -17,9 +17,11 @@
 #pragma once
 #include <assert.h>
 #include <stdint.h>
+
 #include <memory>
 #include <atomic>
 #include <iostream>
+
 #include "base/base_iterator.h"
 
 namespace openmldb {
@@ -329,7 +331,6 @@ class ConcurrentList {
         }
         return cnt;
     }
-
 
     void GC() {
         if (GetSize() > MAX_LIST_LEN) {

@@ -16,8 +16,6 @@
 
 #pragma once
 
-#include <string>
-
 namespace openmldb {
 namespace base {
 
