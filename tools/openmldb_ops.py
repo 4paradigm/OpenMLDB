@@ -17,6 +17,7 @@ log = logging.getLogger(__name__)
 from tool import *
 import time
 from optparse import OptionParser
+import random
 parser = OptionParser()
 
 parser.add_option("--openmldb_bin_path",
@@ -35,6 +36,9 @@ parser.add_option("--cmd",
                   dest="cmd",
                   help="cmd")
 
+parser.add_option("--endpoint",
+                  dest="endpoint",
+                  help="endpoint")
 
 INTERNAL_DB = ["__INTERNAL_DB", "__PRE_AGG_DB", "INFORMATION_SCHEMA"]
 
@@ -157,15 +161,16 @@ def RecoverTable(executor, db, table_name):
 def RecoverData(executor):
     status, auto_failover = executor.GetAutofailover()
     if not status.OK():
-        log.warn("get failover failed")
+        log.error("get failover failed")
         return
     if auto_failover:
         if not executor.SetAutofailover("false").OK():
-            log.warn("set auto_failover failed")
+            log.error("set auto_failover failed")
             return
 
     status, dbs = executor.GetAllDatabase()
     if not status.OK():
+        log.error("get database failed")
         return
     alldb = list(INTERNAL_DB)
     alldb.extend(dbs)
@@ -180,7 +185,73 @@ def RecoverData(executor):
         if not executor.SetAutofailover("true").OK():
             log.warn("set auto_failover failed")
 
+def Rebalance(executor, new_endpoint):
+    # will not rebalance system tables
+    status, dbs = executor.GetAllDatabase()
+    if not status.OK():
+        log.error("get database failed")
+        return
+    for db in dbs:
+        status, partition_dict = executor.GetTableStatus(new_endpoint)
+        if not status.OK():
+            log.error("get table status failed. endpint is {new_endpoint}")
+            return
+        status, result = executor.GetTableInfo(db)
+        if not status.OK():
+            log.error("get table failed from {db}")
+            return
+        follower_dict = {}
+        all_dict = {}
+        total_partitions = 0
+        for record in result:
+            total_partitions += 1
+            is_leader = True if record[4] == "leader" else False
+            is_alive = True if record[5] == "yes" else False
+            partition = Partition(record[0], record[1], record[2], record[3], is_leader, is_alive, int(record[6]));
+            all_dict.setdefault(partition.GetEndpoint(), []);
+            all_dict[partition.GetEndpoint()].append(partition)
+            follower_dict.setdefault(partition.GetEndpoint(), []);
+            if not partition.IsLeader() and "{}_{}".format(partition.GetTid(), partition.GetPid()) not in partition_dict:
+                 follower_dict[partition.GetEndpoint()].append(partition)
+        avg_partition = int(total_partitions / (len(all_dict.keys())) if new_endpoint in all_dict else total_partitions / (len(all_dict.keys()) + 1))
+        if new_endpoint in all_dict and len(all_dict[new_endpoint]) >= avg_partition:
+            log.info(f"there are {len(all_dict[new_endpoint])} partitions in {new_endpoint} in {db}, average partition num is {avg_partition}. no need to migrate")
+            continue
+        else:
+            log.info(f"there are {len(all_dict[new_endpoint])} partitions in {new_endpoint} in {db}, average partition num is {avg_partition}")
+        migrate_partitions = []
+        key_set = set(partition_dict.keys())
+        for endpoint in follower_dict:
+            if endpoint == new_endpoint:
+                continue
+            log.info(f"total partition num: {len(all_dict[endpoint])}, candidate follower partition num: {len(follower_dict[endpoint])}, endpoint {endpoint}, avg number: {avg_partition}")
+            if len(follower_dict[endpoint]) == 0 or len(all_dict[endpoint]) < avg_partition:
+                log.info(f"no need to migrate from {endpoint}. follower partiton num {len(follower_dict[endpoint])} avg_partition {avg_partition}")
+                continue
+            migrate_num = min(len(follower_dict[endpoint]), len(all_dict[endpoint]) - avg_partition)
+            while len(follower_dict[endpoint]) > 0 and migrate_num > 0:
+                idx = random.randint(0, len(follower_dict[endpoint]) - 1)
+                partition = follower_dict[endpoint].pop(idx)
+                key = "{}_{}".format(partition.GetTid(), partition.GetPid())
+                if key not in key_set:
+                    key_set.add(key)
+                    migrate_partitions.append(partition)
+                    migrate_num -= 1
+
+        random.shuffle(migrate_partitions)
+        for partition in migrate_partitions:
+            log.info(f"migrate table {partition.GetName()} partition {partition.GetPid()} in {db} from {partition.GetEndpoint()} to {new_endpoint}")
+            status = executor.Migrate(db, partition.GetName(), partition.GetPid(), partition.GetEndpoint(), new_endpoint)
+            if not status.OK():
+                log.error(f"migrate partition failed! table {partition.GetName()} partition {partition.GetPid()} {partition.GetEndpoint()}")
+
+
 if __name__ == "__main__":
     (options, args) = parser.parse_args()
     executor = Executor(options.openmldb_bin_path, options.zk_cluster, options.zk_root_path)
-    RecoverData(executor)
+    if options.cmd == "recoverdata":
+        RecoverData(executor)
+    elif options.cmd == "reblance":
+        Rebalance(executor, options.endpoint)
+    else:
+        log.error(f"unsupported cmd {options.cmd}")

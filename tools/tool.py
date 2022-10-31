@@ -256,6 +256,15 @@ class Executor:
         status, output = self.RunWithRetuncode(cmd)
         return status
 
+    def Migrate(self, database, name, pid, src_endpoint, desc_endpoint):
+        cmd = list(self.ns_base_cmd)
+        cmd.append("--cmd=migrate {} {} {} {}".format(src_endpoint, name, pid, desc_endpoint))
+        cmd.append("--database=" + database)
+        status, output = self.RunWithRetuncode(cmd)
+        if status.OK() and output.find("migrate ok") != -1:
+            return Status()
+        return Status(-1, "migrate failed")
+
 class Partition:
     def __init__(self, name, tid, pid, endpoint, is_leader, is_alive, offset):
         self.name = name
