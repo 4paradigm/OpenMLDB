@@ -783,7 +783,6 @@ cases:
   -
     id: 27
     desc: 两个窗口,一个union，一个不union
-    mode: rtidb-batch-unsupport,cluster-unsupport
     tags: ["cluster-执行失败"]
     inputs:
       -
@@ -822,7 +821,6 @@ cases:
   -
     id: 28
     desc: 两个窗口,一个union一个表，一个union两个表
-    mode: rtidb-batch-unsupport,cluster-unsupport
     tags: ["cluster-执行失败"]
     inputs:
       -
@@ -865,7 +863,6 @@ cases:
   -
     id: 29
     desc: 两个窗口,一个union，一个INSTANCE_NOT_IN_WINDOW
-    mode: rtidb-batch-unsupport,cluster-unsupport
     tags: ["cluster-执行失败"]
     inputs:
       -
@@ -898,7 +895,6 @@ cases:
   -
     id: 30
     desc: 两个窗口,一个union一个表，一个union使用子查询
-    mode: rtidb-batch-unsupport,cluster-unsupport
     tags: ["cluster-执行失败"]
     inputs:
       -
@@ -930,8 +926,6 @@ cases:
   -
     id: 31
     desc: 多个窗口-rows
-    mode: rtidb-batch-unsupport,cluster-unsupport
-    tags: ["cluster-执行失败", "@chenjing batch online fix for multi window with union", "@tobe batch offline fix"]
     inputs:
       -
         columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
@@ -967,8 +961,6 @@ cases:
   -
     id: 32
     desc: 多个窗口包含不同的单位
-    mode: cluster-unsupport
-    tags: ["cluster-执行失败"]
     inputs:
       -
         columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]

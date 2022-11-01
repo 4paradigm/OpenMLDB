@@ -45,8 +45,8 @@ do
 done
 
 if [ "$HAS_COMPONENT" = "false" ]; then
-    echo "No component named $COMPONENT in [$COMPONENTS]";
-    exit 1;
+    echo "No component named $COMPONENT in [$COMPONENTS]"
+    exit 1
 fi
 
 OPENMLDB_PID_FILE="./bin/$COMPONENT.pid"
@@ -72,24 +72,36 @@ case $OP in
         fi
 
         if [ "$COMPONENT" != "taskmanager" ]; then
-            ./bin/openmldb --flagfile=./conf/"$COMPONENT".flags --enable_status_service=true >>  "$LOG_DIR"."$COMPONENT".log 2>&1 &
+            ./bin/openmldb --flagfile=./conf/"$COMPONENT".flags --enable_status_service=true >> "$LOG_DIR"/"$COMPONENT".log 2>&1 &
             PID=$!
-            sleep 3
-            ENDPOINT=$(grep '\--endpoint' ./conf/"$COMPONENT".flags | awk -F '=' '{print $2}')
-            COUNT=1
-            while [ $COUNT -lt 12 ]
-            do
-                if ! curl "http://$ENDPOINT/status" > /dev/null 2>&1; then
-                    sleep 1
-                    (( COUNT+=1 ))
-                elif kill -0 "$PID" > /dev/null 2>&1; then
+            if [ -x "$(command -v curl)" ]; then
+                sleep 3
+                ENDPOINT=$(grep '\--endpoint' ./conf/"$COMPONENT".flags | awk -F '=' '{print $2}')
+                COUNT=1
+                while [ $COUNT -lt 12 ]
+                do
+                    if ! curl --show-error --silent -o /dev/null "http://$ENDPOINT/status"; then
+                        echo "curl server status failed, retry later"
+                        sleep 1
+                        (( COUNT+=1 ))
+                    elif kill -0 "$PID" > /dev/null 2>&1; then
+                        echo $PID > "$OPENMLDB_PID_FILE"
+                        echo "Start ${COMPONENT} success"
+                        exit 0
+                    else
+                        break
+                    fi
+                done
+            else
+                echo "no curl, sleep 10s and then check the process running status"
+                sleep 10
+                if kill -0 "$PID" > /dev/null 2>&1; then
                     echo $PID > "$OPENMLDB_PID_FILE"
                     echo "Start ${COMPONENT} success"
                     exit 0
-                else
-                    break
                 fi
-            done
+            fi
+            echo -e "${RED}Start ${COMPONENT} failed! Please check log in ${LOG_DIR}/${COMPONENT}.log and ${LOG_DIR}/${COMPONENT}.INFO ${RES}"
         else
             if [ -f "./conf/taskmanager.properties" ]; then
                 cp ./conf/taskmanager.properties ./taskmanager/conf/taskmanager.properties
@@ -105,8 +117,8 @@ case $OP in
                 echo "Start ${COMPONENT} success"
                 exit 0
             fi
+            echo -e "${RED}Start ${COMPONENT} failed!${RES}"
         fi
-        echo -e "${RED}Start ${COMPONENT} failed!${RES}"
         ;;
     stop)
         echo "Stopping $COMPONENT ... "

@@ -12,7 +12,7 @@
 - 拉取 OpenMLDB docker 镜像，并且运行相应容器：
 
 ```bash
-docker run -it 4pdosc/openmldb:0.6.2 bash
+docker run -it 4pdosc/openmldb:0.6.4 bash
 ```
 该镜像预装了OpenMLDB，并预置了本案例所需要的所有脚本、三方库、开源工具以及训练数据。
 
@@ -129,7 +129,7 @@ w2 AS (PARTITION BY passenger_count ORDER BY pickup_datetime ROWS_RANGE BETWEEN 
 > quit
 ```
 
-2. 在普通命令行下，执行train.py，使用开源训练工具 `lightgbm` 基于上一步生成的离线特征表进行模型训练，训练结果存放在 `/tmp/model.txt`中。
+2. 在普通命令行下，执行 train.py(`/work/taxi-trip`目录中)，使用开源训练工具 `lightgbm` 基于上一步生成的离线特征表进行模型训练，训练结果存放在 `/tmp/model.txt`中。
 
 ```bash
 python3 train.py /tmp/feature_data /tmp/model.txt

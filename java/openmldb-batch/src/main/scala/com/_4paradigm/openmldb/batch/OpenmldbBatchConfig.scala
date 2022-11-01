@@ -116,7 +116,7 @@ class OpenmldbBatchConfig extends Serializable {
   var printPhysicalPlan = false
 
   @ConfigOption(name = "openmldb.enable.native.last.join", doc = "Enable native last join or not")
-  var enableNativeLastJoin = true
+  var enableNativeLastJoin = false
 
   // UnsafeRow optimization
   @ConfigOption(name = "openmldb.unsaferowopt.enable", doc = "Enable UnsafeRow optimization or not")

@@ -41,8 +41,10 @@ class ArithmeticIRBuilder {
 
     Status BuildMultiExpr(const NativeValue& left, const NativeValue& right, NativeValue* output);
 
+    // build for float divison
     Status BuildFDivExpr(const NativeValue& left, const NativeValue& right, NativeValue* output);
 
+    // build for integer divison
     Status BuildSDivExpr(const NativeValue& left, const NativeValue& right, NativeValue* output);
 
     Status BuildModExpr(const NativeValue& left, const NativeValue& right, NativeValue* output);

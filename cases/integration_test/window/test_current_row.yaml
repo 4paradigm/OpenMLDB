@@ -175,6 +175,7 @@ cases:
         - [ "bb",24,null ]
   - id: 7
     desc: rows_range-current_row-ts=0
+    mode: disk-unsupport
     inputs:
       - columns: [ "c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date" ]
         indexs: [ "index1:c1:c7" ]
@@ -1180,6 +1181,7 @@ cases:
         3, 4, 233, 5
         4, 6, 233, 0
   - id: 26
+    mode: disk-unsupport
     desc: |
       rows_range union window with exclude_current_row and instance_not_in_window
     inputs:
@@ -1247,6 +1249,7 @@ cases:
         3, 3, 233, 17
         4, 3, 233, 17
   - id: 27
+    mode: disk-unsupport
     desc: |
       rows_range union window with exclude_current_row, exclude current_time and instance_not_in_window
     inputs:
@@ -1313,6 +1316,7 @@ cases:
         3, 2, 233, 200
         4, 3, 233, 17
   - id: 28
+    mode: disk-unsupport
     desc: |
       rows_range union window with exclude_current_row, exclude current_time, instance_not_in_window and maxsize
     inputs:
@@ -1380,6 +1384,7 @@ cases:
         3, 2, 233, 200
         4, 2, 200, 17
   - id: 29
+    mode: disk-unsupport
     desc: |
       rows_range union window with exclude_current_row, instance_not_in_window and maxsize
     inputs:

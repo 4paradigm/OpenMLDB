@@ -18,7 +18,6 @@
 
 #include <functional>
 
-#include "codegen/cond_select_ir_builder.h"
 #include "codegen/ir_base_builder.h"
 #include "codegen/null_ir_builder.h"
 #include "codegen/timestamp_ir_builder.h"
@@ -436,12 +435,11 @@ Status ArithmeticIRBuilder::BuildMultiExpr(
         value_output));
     return Status::OK();
 }
-Status ArithmeticIRBuilder::BuildFDivExpr(
-    const NativeValue& left, const NativeValue& right,
-    NativeValue* value_output) {  // NOLINT
-    CHECK_STATUS(TypeIRBuilder::BinaryOpTypeInfer(
-        node::ExprNode::FDivTypeAccept, left.GetType(), right.GetType()));
-    CHECK_STATUS(NullIRBuilder::SafeNullBinaryExpr(
+
+Status ArithmeticIRBuilder::BuildFDivExpr(const NativeValue& left, const NativeValue& right,
+                                          NativeValue* value_output) {  // NOLINT
+    CHECK_STATUS(TypeIRBuilder::BinaryOpTypeInfer(node::ExprNode::FDivTypeAccept, left.GetType(), right.GetType()));
+    CHECK_STATUS(NullIRBuilder::SafeNullDivExpr(
         block_, left, right,
         [](::llvm::BasicBlock* block, ::llvm::Value* lhs, ::llvm::Value* rhs,
            ::llvm::Value** output, Status& status) {
@@ -453,12 +451,12 @@ Status ArithmeticIRBuilder::BuildFDivExpr(
     }
     return Status::OK();
 }
+
 Status ArithmeticIRBuilder::BuildSDivExpr(
     const NativeValue& left, const NativeValue& right,
     NativeValue* value_output) {  // NOLINT
-    CHECK_STATUS(TypeIRBuilder::BinaryOpTypeInfer(
-        node::ExprNode::SDivTypeAccept, left.GetType(), right.GetType()));
-    CHECK_STATUS(NullIRBuilder::SafeNullBinaryExpr(
+    CHECK_STATUS(TypeIRBuilder::BinaryOpTypeInfer(node::ExprNode::SDivTypeAccept, left.GetType(), right.GetType()));
+    CHECK_STATUS(NullIRBuilder::SafeNullDivExpr(
         block_, left, right,
         [](::llvm::BasicBlock* block, ::llvm::Value* lhs, ::llvm::Value* rhs,
            ::llvm::Value** output, Status& status) {
@@ -472,7 +470,7 @@ Status ArithmeticIRBuilder::BuildModExpr(const NativeValue& left,
                                          NativeValue* value_output) {  // NOLINT
     CHECK_STATUS(TypeIRBuilder::BinaryOpTypeInfer(
         node::ExprNode::ModTypeAccept, left.GetType(), right.GetType()));
-    CHECK_STATUS(NullIRBuilder::SafeNullBinaryExpr(
+    CHECK_STATUS(NullIRBuilder::SafeNullDivExpr(
         block_, left, right,
         [](::llvm::BasicBlock* block, ::llvm::Value* lhs, ::llvm::Value* rhs,
            ::llvm::Value** output, Status& status) {
@@ -601,6 +599,11 @@ bool ArithmeticIRBuilder::BuildMultiExpr(
     return true;
 }
 
+// codegen for float division
+//
+// result may not correct if any exception (e.g divide-by-zero) happens,
+// use safely with `NullIRBuilder::SafeNullDivExpr`,
+// or `ArithmeticIRBuilder::BuildFDivExpr(const NativeValue& , const NativeValue& , NativeValue*)`
 bool ArithmeticIRBuilder::BuildFDivExpr(::llvm::BasicBlock* block,
                                         ::llvm::Value* left,
                                         ::llvm::Value* right,
@@ -617,8 +620,9 @@ bool ArithmeticIRBuilder::BuildFDivExpr(::llvm::BasicBlock* block,
         }
         return false;
     }
-    ::llvm::IRBuilder<> builder(block);
     if (casted_left->getType()->isFloatingPointTy()) {
+        ::llvm::IRBuilder<> builder(block);
+        // value / 0 = inf
         *output = builder.CreateFDiv(casted_left, casted_right);
     } else {
         status.msg = "fail to codegen fdiv expr: value types are invalid";
@@ -628,6 +632,12 @@ bool ArithmeticIRBuilder::BuildFDivExpr(::llvm::BasicBlock* block,
     }
     return true;
 }
+
+// codegen for integer division, without exception handling
+//
+// result may not correct if any exception (e.g divide-by-zero) happens,
+// use safely with `NullIRBuilder::SafeNullDivExpr`,
+// or `ArithmeticIRBuilder::BuildSDivExpr(const NativeValue& , const NativeValue& , NativeValue*)`
 bool ArithmeticIRBuilder::BuildSDivExpr(::llvm::BasicBlock* block,
                                         ::llvm::Value* left,
                                         ::llvm::Value* right,
@@ -645,44 +655,45 @@ bool ArithmeticIRBuilder::BuildSDivExpr(::llvm::BasicBlock* block,
 
     if (false == InferAndCastIntegerTypes(block, left, right, &casted_left,
                                           &casted_right, status)) {
+        status.code = common::kCodegenError;
+        status.msg = absl::StrCat("cast operands to integer for DIV: ", status.msg);
         return false;
     }
-    ::llvm::IRBuilder<> builder(block);
 
-    // TODO(someone): fully and correctly handle arithmetic exception
+    // value / 0 -> exception, so exception handling is necessary
+    ::llvm::IRBuilder<> builder(block);
     ::llvm::Type* llvm_ty = casted_right->getType();
     ::llvm::Value* zero = ::llvm::ConstantInt::get(llvm_ty, 0);
     ::llvm::Value* div_is_zero = builder.CreateICmpEQ(casted_right, zero);
-    casted_right = builder.CreateSelect(
-        div_is_zero, ::llvm::ConstantInt::get(llvm_ty, 1), casted_right);
+    casted_right = builder.CreateSelect(div_is_zero, ::llvm::ConstantInt::get(llvm_ty, 1), casted_right);
     ::llvm::Value* div_result = builder.CreateSDiv(casted_left, casted_right);
     div_result = builder.CreateSelect(div_is_zero, zero, div_result);
 
     *output = div_result;
     return true;
 }
-bool ArithmeticIRBuilder::BuildModExpr(::llvm::BasicBlock* block,
-                                       llvm::Value* left, llvm::Value* right,
-                                       llvm::Value** output,
-                                       base::Status status) {
+
+// codegen for modulo
+//
+// result may not correct if any exception (e.g modulus-by-zero) happens,
+// use safely with `NullIRBuilder::SafeNullDivExpr`,
+// or `ArithmeticIRBuilder::BuildModExpr(const NativeValue& , const NativeValue& , NativeValue*)`
+bool ArithmeticIRBuilder::BuildModExpr(::llvm::BasicBlock* block, llvm::Value* left, llvm::Value* right,
+                                       llvm::Value** output, base::Status status) {
     ::llvm::Value* casted_left = NULL;
     ::llvm::Value* casted_right = NULL;
 
-    if (false == InferAndCastedNumberTypes(block, left, right, &casted_left,
-                                           &casted_right, status)) {
+    if (false == InferAndCastedNumberTypes(block, left, right, &casted_left, &casted_right, status)) {
         return false;
     }
     ::llvm::IRBuilder<> builder(block);
     if (casted_left->getType()->isIntegerTy()) {
-        // TODO(someone): fully and correctly handle arithmetic exception
-        ::llvm::Value* zero =
-            ::llvm::ConstantInt::get(casted_right->getType(), 0);
+        // val % 0 -> exception, exception handling is necessary
+        ::llvm::Value* zero = ::llvm::ConstantInt::get(casted_right->getType(), 0);
         ::llvm::Value* rem_is_zero = builder.CreateICmpEQ(casted_right, zero);
-        casted_right = builder.CreateSelect(
-            rem_is_zero, ::llvm::ConstantInt::get(casted_right->getType(), 1),
-            casted_right);
-        ::llvm::Value* srem_result =
-            builder.CreateSRem(casted_left, casted_right);
+        casted_right =
+            builder.CreateSelect(rem_is_zero, ::llvm::ConstantInt::get(casted_right->getType(), 1), casted_right);
+        ::llvm::Value* srem_result = builder.CreateSRem(casted_left, casted_right);
         srem_result = builder.CreateSelect(rem_is_zero, zero, srem_result);
         *output = srem_result;
     } else if (casted_left->getType()->isFloatingPointTy()) {
@@ -695,7 +706,6 @@ bool ArithmeticIRBuilder::BuildModExpr(::llvm::BasicBlock* block,
     }
     return true;
 }
-
 
 }  // namespace codegen
 }  // namespace hybridse

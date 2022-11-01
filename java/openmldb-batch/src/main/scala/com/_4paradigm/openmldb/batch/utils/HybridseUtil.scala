@@ -245,6 +245,7 @@ object HybridseUtil {
         .getNotNull)
     }
     )
+    logger.debug(s"table schema $oriSchema, may use read schema $readSchema")
     (oriSchema, readSchema, tsCols.toList)
   }
 
@@ -278,40 +279,53 @@ object HybridseUtil {
     longTsCols.toList
   }
 
+  def checkSchemaIgnoreNullable(actual: StructType, expect: StructType): Boolean = {
+    actual.zip(expect).forall{case (a, b) => (a.name, a.dataType) == (b.name, b.dataType)}
+  }
+
   // We want df with oriSchema, but if the file format is csv:
   // 1. we support two format of timestamp
   // 2. spark read may change the df schema to all nullable
   // So we should fix it.
-  def autoLoad(spark: SparkSession, file: String, format: String, options: Map[String, String], columns: util
+  def autoLoad(spark: SparkSession, file: String, fmt: String, options: Map[String, String], columns: util
   .List[Common.ColumnDesc]): DataFrame = {
+    val format = fmt.toLowerCase
     val reader = spark.read.options(options)
-    val (oriSchema, readSchema, tsCols) = HybridseUtil.extractOriginAndReadSchema(columns)
-    if (format != "csv") {
-      return reader.schema(oriSchema).format(format).load(file)
-    }
-    // csv should auto detect the timestamp format
 
-    logger.info(s"set file format: $format")
-    reader.format(format)
-    // use string to read, then infer the format by the first non-null value of the ts column
-    val longTsCols = HybridseUtil.parseLongTsCols(reader, readSchema, tsCols, file)
-    logger.info(s"read schema: $readSchema, file $file")
-    var df = reader.schema(readSchema).load(file)
-    if (longTsCols.nonEmpty) {
-      // convert long type to timestamp type
-      for (tsCol <- longTsCols) {
-        df = df.withColumn(tsCol, (col(tsCol) / 1000).cast("timestamp"))
+    val (oriSchema, readSchema, tsCols) = HybridseUtil.extractOriginAndReadSchema(columns)
+    var df = spark.emptyDataFrame
+    if (format != "csv") {
+      // When reading Parquet files, all columns are automatically converted to be nullable for compatibility reasons.
+      // ref https://spark.apache.org/docs/3.2.1/sql-data-sources-parquet.html
+      df = reader.format(format).load(file)
+      require(checkSchemaIgnoreNullable(df.schema, oriSchema),
+        s"schema mismatch(ignore nullable), loaded ${df.schema}!= table $oriSchema, check $file")
+      // reset nullable
+      df = df.sqlContext.createDataFrame(df.rdd, oriSchema)
+    } else{
+      // csv should auto detect the timestamp format
+      reader.format(format)
+      // use string to read, then infer the format by the first non-null value of the ts column
+      val longTsCols = HybridseUtil.parseLongTsCols(reader, readSchema, tsCols, file)
+      logger.info(s"read schema: $readSchema, file $file")
+      df = reader.schema(readSchema).load(file)
+      if (longTsCols.nonEmpty) {
+        // convert long type to timestamp type
+        for (tsCol <- longTsCols) {
+          logger.debug(s"cast $tsCol to timestamp")
+          df = df.withColumn(tsCol, (col(tsCol) / 1000).cast("timestamp"))
+        }
+      }
+
+      // if we read non-streaming files, the df schema fields will be set as all nullable.
+      // so we need to set it right
+      if (!df.schema.equals(oriSchema)) {
+        logger.info(s"df schema: ${df.schema}, reset schema")
+        df = df.sqlContext.createDataFrame(df.rdd, oriSchema)
       }
     }
 
-    // if we read non-streaming files, the df schema fields will be set as all nullable.
-    // so we need to set it right
-    logger.info(s"after read schema: ${df.schema}")
-    if (!df.schema.equals(oriSchema)) {
-      df = df.sqlContext.createDataFrame(df.rdd, oriSchema)
-    }
-
-    require(df.schema == oriSchema, "df schema must == table schema")
+    require(df.schema == oriSchema, s"schema mismatch, loaded ${df.schema} != table $oriSchema, check $file")
     if (logger.isDebugEnabled()) {
       logger.debug("read dataframe count: {}", df.count())
       df.show(10)

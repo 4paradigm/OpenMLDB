@@ -206,7 +206,6 @@ cases:
   -
     id: 7
     desc: 长窗口count_where，bool类型
-    tags: ["TODO","bug,下个版本修复后测试，@qiliguo"]
     longWindow: w1:2s
     inputs:
       -

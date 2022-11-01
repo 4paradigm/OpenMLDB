@@ -94,7 +94,7 @@ void SetupLog() {
     } else {
         ::openmldb::base::SetLogLevel(INFO);
     }
-    ::openmldb::base::SetupGLog();
+    ::openmldb::base::SetupGlog();
 }
 
 void GetRealEndpoint(std::string* real_endpoint) {
@@ -1837,7 +1837,7 @@ void HandleNSPreview(const std::vector<std::string>& parts, ::openmldb::client::
             return;
         }
         uint32_t count = 0;
-        auto it = tb_client->Traverse(tid, pid, "", "", 0, limit, false, count);
+        auto it = tb_client->Traverse(tid, pid, "", "", 0, limit, false, 0, count);
         if (!it) {
             std::cout << "Fail to preview table" << std::endl;
             return;

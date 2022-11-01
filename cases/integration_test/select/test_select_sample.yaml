@@ -13,21 +13,24 @@
 # limitations under the License.
 
 db: test_zw
-debugs: ["limit 0","结合limit","limit 1","limit条数大于表的条数"]
+debugs: []
 version: 0.5.0
 cases:
   - id: 0
     desc: 查询所有列
     inputs:
-      - columns: ["c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
-        indexs: ["index1:c1:c7"]
+      - columns: ["id int","ts timestamp","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:c1:ts"]
         rows:
-          - ["aa",2,3,1.1,2.1,1590738989000,"2020-05-01"]
-    sql: select c1,c3,c4,c5,c6,c7,c8 from {0};
+          - [1,1590738989000,"aa",1,21,31,1.1,2.1,1590738989000,"2020-05-01",true]
+          - [2,1590738990000,"aa",2,22,32,1.1,2.1,1590738989000,"2020-05-02",false]
+    sql: select id,ts,c1,c2,c3,c4,c5,c6,c7,c8,c9 from {0};
     expect:
-      columns: ["c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
+      order: id
+      columns: ["id int","ts timestamp","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
       rows:
-        - ["aa",2,3,1.1,2.1,1590738989000,"2020-05-01"]
+        - [1,1590738989000,"aa",1,21,31,1.1,2.1,1590738989000,"2020-05-01",true]
+        - [2,1590738990000,"aa",2,22,32,1.1,2.1,1590738989000,"2020-05-02",false]
   - id: 1
     desc: 查询部分列
     inputs:
@@ -133,77 +136,6 @@ cases:
       columns: ["c1 string","c2 int","c3 string","c4 timestamp"]
       rows:
         - [NULL,2,NULL,1590738989000]
-  - id: 10
-    desc: 结合limit
-    mode: request-unsupport
-    tags: ["TODO", "@zhaowei"]
-    inputs:
-      - columns: ["c1 string","c2 int","c3 bigint","c4 timestamp"]
-        indexs: ["index1:c1:c4"]
-        rows:
-          - ["aa",2,3,1590738989000]
-          - ["bb",21,31,1590738990000]
-          - ["cc",41,51,1590738991000]
-    sql: select c1,c2,c3,c4 from {0} limit 2;
-    expect:
-      columns: ["c1 string","c2 int","c3 bigint","c4 timestamp"]
-      rows:
-        - ["aa",2,3,1590738989000]
-        - ["cc",41,51,1590738991000]
-  - id: 11
-    desc: limit 1
-    mode: request-unsupport
-    tags: ["TODO", "@zhaowei"]
-    inputs:
-      - columns: ["c1 string","c2 int","c3 bigint","c4 timestamp"]
-        indexs: ["index1:c1:c4"]
-        rows:
-          - ["aa",2,3,1590738989000]
-          - ["bb",21,31,1590738990000]
-          - ["cc",41,51,1590738991000]
-    sql: select c1,c2,c3,c4 from {0} limit 1;
-    expect:
-      columns: ["c1 string","c2 int","c3 bigint","c4 timestamp"]
-      rows:
-        - ["aa",2,3,1590738989000]
-  - id: 12
-    mode: request-unsupport
-    desc: limit 0
-    tags: ["TODO", "@zhaowei"]
-    inputs:
-      - columns: ["c1 string","c2 int","c3 bigint","c4 timestamp"]
-        indexs: ["index1:c1:c4"]
-        rows:
-          - ["aa",2,3,1590738989000]
-          - ["bb",21,31,1590738990000]
-          - ["cc",41,51,1590738991000]
-    sql: select c1,c2,c3,c4 from {0} limit 0;
-    expect:
-      columns: ["c1 string","c2 int","c3 bigint","c4 timestamp"]
-      order: c1
-      rows:
-        - ["aa",2,3,1590738989000]
-        - ["bb",21,31,1590738990000]
-        - ["cc",41,51,1590738991000]
-  - id: 13
-    desc: limit条数大于表的条数
-    mode: request-unsupport
-    tags: ["TODO","@zhaoweiLIMIT单独测，现在先别测"]
-    inputs:
-      - columns: ["c1 string","c2 int","c3 bigint","c4 timestamp"]
-        indexs: ["index1:c1:c4"]
-        rows:
-          - ["aa",2,3,1590738989000]
-          - ["bb",21,31,1590738990000]
-          - ["cc",41,51,1590738991000]
-    sql: select c1,c2,c3,c4 from {0} limit 4;
-    expect:
-      columns: ["c1 string","c2 int","c3 bigint","c4 timestamp"]
-      order: c1
-      rows:
-        - ["aa",2,3,1590738989000]
-        - ["bb",21,31,1590738990000]
-        - ["cc",41,51,1590738991000]
   - id: 14
     desc: 查询常量
     sqlDialect: ["HybridSQL","SQLITE3"]

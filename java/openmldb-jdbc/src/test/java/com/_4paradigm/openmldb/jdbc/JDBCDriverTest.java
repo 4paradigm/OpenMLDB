@@ -76,7 +76,7 @@ public class JDBCDriverTest {
     @Test
     public void testAllOptionsInUrl() throws Exception {
         connection = DriverManager.getConnection(String.format(
-                "jdbc:openmldb:///%s?zk=%s&zkPath=%s&zkLogFile=&glogDir=&requestTimeout=100000", dbName, zk, zkPath));
+                "jdbc:openmldb:///%s?zk=%s&zkPath=%s&zkLogFile=&glogDir=&requestTimeout=100000&maxSqlCacheSize=100", dbName, zk, zkPath));
 
         log.info("can't see log below");
         connection = DriverManager.getConnection(String

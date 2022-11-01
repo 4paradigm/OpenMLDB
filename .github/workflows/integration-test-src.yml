@@ -106,6 +106,49 @@ jobs:
           content_type: text/plain
           attachments: allure-results.tar.gz
 
+  java-sdk-cluster-memory-task:
+    if: ${{ github.event.inputs.EXEC_TEST_TYPE == 'all' || github.event.inputs.EXEC_TEST_TYPE == 'java' }}
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/4paradigm/hybridsql:latest
+    env:
+      OS: linux
+    steps:
+      - uses: actions/checkout@v2
+      - name: build jsdk and package
+        run: |
+          make configure CMAKE_INSTALL_PREFIX=openmldb-linux
+          make SQL_JAVASDK_ENABLE=ON && make SQL_JAVASDK_ENABLE=ON install
+          tar -zcvf openmldb-linux.tar.gz openmldb-linux
+          echo "openmldb-pkg:"
+          ls -al
+      - name: test
+        run: source /root/.bashrc && bash test/steps/openmldb-sdk-test-java-src.sh -c test_out_in_cluster.xml -d cluster -l "0" -s "memory"
+      - name: TEST Results
+        if: always()
+        uses: EnricoMi/publish-unit-test-result-action@v1
+        with:
+          files: test/integration-test/openmldb-test-java/openmldb-sdk-test/target/surefire-reports/TEST-*.xml
+          check_name: "SRC java-sdk-cluster-memory-task Report"
+          comment_title: "SRC java-sdk-cluster-memory-task Report"
+      - name: tar test report
+        if: ${{ failure() }}
+        run: tar -zcvf allure-results.tar.gz test/integration-test/openmldb-test-java/openmldb-sdk-test/target/allure-results
+      - name: Send Email
+        if: ${{ failure() }}
+        uses: dawidd6/action-send-mail@master
+        with:
+          server_address: smtp.partner.outlook.cn
+          server_port: 587
+          username: ${{ secrets.MAIL_USERNAME }}
+          password: ${{ secrets.MAIL_PASSWORD }}
+          subject: OpenMLDB Memory Task Test
+          body: OpenMLDB Memory Task Test Failed
+          to: ${{ secrets.MAIL_TO }}
+          from: GitHub Actions
+          content_type: text/plain
+          attachments: allure-results.tar.gz
+
   java-sdk-cluster-memory-1:
     if: ${{ github.event.inputs.EXEC_TEST_TYPE == 'all' || github.event.inputs.EXEC_TEST_TYPE == 'java' }}
     runs-on: ubuntu-latest
@@ -192,6 +235,49 @@ jobs:
           content_type: text/plain
           attachments: allure-results.tar.gz
 
+#  java-sdk-cluster-ssd-task:
+#    if: ${{ github.event.inputs.EXEC_TEST_TYPE == 'all' || github.event.inputs.EXEC_TEST_TYPE == 'java' }}
+#    runs-on: ubuntu-latest
+#    container:
+#      image: ghcr.io/4paradigm/hybridsql:latest
+#    env:
+#      OS: linux
+#    steps:
+#      - uses: actions/checkout@v2
+#      - name: build jsdk and package
+#        run: |
+#          make configure CMAKE_INSTALL_PREFIX=openmldb-linux
+#          make SQL_JAVASDK_ENABLE=ON && make SQL_JAVASDK_ENABLE=ON install
+#          tar -zcvf openmldb-linux.tar.gz openmldb-linux
+#          echo "openmldb-pkg:"
+#          ls -al
+#      - name: test
+#        run: source /root/.bashrc && bash test/steps/openmldb-sdk-test-java-src.sh -c test_out_in_cluster.xml -d cluster -l "0" -s "ssd"
+#      - name: TEST Results
+#        if: always()
+#        uses: EnricoMi/publish-unit-test-result-action@v1
+#        with:
+#          files: test/integration-test/openmldb-test-java/openmldb-sdk-test/target/surefire-reports/TEST-*.xml
+#          check_name: "SRC java-sdk-cluster-task-0 Report"
+#          comment_title: "SRC java-sdk-cluster-task-0 Report"
+#      - name: tar test report
+#        if: ${{ failure() }}
+#        run: tar -zcvf allure-results.tar.gz test/integration-test/openmldb-test-java/openmldb-sdk-test/target/allure-results
+#      - name: Send Email
+#        if: ${{ failure() }}
+#        uses: dawidd6/action-send-mail@master
+#        with:
+#          server_address: smtp.partner.outlook.cn
+#          server_port: 587
+#          username: ${{ secrets.MAIL_USERNAME }}
+#          password: ${{ secrets.MAIL_PASSWORD }}
+#          subject: OpenMLDB SSD Task Test
+#          body: OpenMLDB SSD Test Task Failed
+#          to: ${{ secrets.MAIL_TO }}
+#          from: GitHub Actions
+#          content_type: text/plain
+#          attachments: allure-results.tar.gz
+
   java-sdk-cluster-hdd-0:
     if: ${{ github.event.inputs.EXEC_TEST_TYPE == 'all' || github.event.inputs.EXEC_TEST_TYPE == 'java' }}
     runs-on: ubuntu-latest
@@ -234,6 +320,49 @@ jobs:
           from: GitHub Actions
           content_type: text/plain
           attachments: allure-results.tar.gz
+
+#  java-sdk-cluster-hdd-task:
+#    if: ${{ github.event.inputs.EXEC_TEST_TYPE == 'all' || github.event.inputs.EXEC_TEST_TYPE == 'java' }}
+#    runs-on: ubuntu-latest
+#    container:
+#      image: ghcr.io/4paradigm/hybridsql:latest
+#    env:
+#      OS: linux
+#    steps:
+#      - uses: actions/checkout@v2
+#      - name: build jsdk and package
+#        run: |
+#          make configure CMAKE_INSTALL_PREFIX=openmldb-linux
+#          make SQL_JAVASDK_ENABLE=ON && make SQL_JAVASDK_ENABLE=ON install
+#          tar -zcvf openmldb-linux.tar.gz openmldb-linux
+#          echo "openmldb-pkg:"
+#          ls -al
+#      - name: test
+#        run: source /root/.bashrc && bash test/steps/openmldb-sdk-test-java-src.sh -c test_out_in_cluster.xml -d cluster -l "0" -s "hdd"
+#      - name: TEST Results
+#        if: always()
+#        uses: EnricoMi/publish-unit-test-result-action@v1
+#        with:
+#          files: test/integration-test/openmldb-test-java/openmldb-sdk-test/target/surefire-reports/TEST-*.xml
+#          check_name: "SRC java-sdk-cluster-hdd-task Report"
+#          comment_title: "SRC java-sdk-cluster-hdd-task Report"
+#      - name: tar test report
+#        if: ${{ failure() }}
+#        run: tar -zcvf allure-results.tar.gz test/integration-test/openmldb-test-java/openmldb-sdk-test/target/allure-results
+#      - name: Send Email
+#        if: ${{ failure() }}
+#        uses: dawidd6/action-send-mail@master
+#        with:
+#          server_address: smtp.partner.outlook.cn
+#          server_port: 587
+#          username: ${{ secrets.MAIL_USERNAME }}
+#          password: ${{ secrets.MAIL_PASSWORD }}
+#          subject: OpenMLDB HDD Task Test
+#          body: OpenMLDB HDD Task Test Failed
+#          to: ${{ secrets.MAIL_TO }}
+#          from: GitHub Actions
+#          content_type: text/plain
+#          attachments: allure-results.tar.gz
 
 #  standalone-cli-test-0:
 #    if: ${{ github.event.inputs.EXEC_TEST_TYPE == 'all' || github.event.inputs.EXEC_TEST_TYPE == 'standalone-cli' || github.event.inputs.EXEC_TEST_TYPE == 'cli' }}

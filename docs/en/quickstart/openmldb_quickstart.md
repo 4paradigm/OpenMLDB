@@ -17,7 +17,7 @@ If you wan to compile and install it by yourself, you can refer to our [installa
 Pull the image (image download size is about 1GB, after decompression is about 1.7 GB) and start the docker container:
 
 ```bash
-docker run -it 4pdosc/openmldb:0.6.2 bash
+docker run -it 4pdosc/openmldb:0.6.4 bash
 ```
 
 ```{important}
@@ -253,6 +253,7 @@ Note that, the `SELECT INTO` command in offline mode is non-blocking, and you ca
 The SQL can be deployed online using the below command:
 
 ```sql
+> SET @@execute_mode='online';
 > DEPLOY demo_data_service SELECT c1, c2, sum(c3) OVER w1 AS w1_c3_sum FROM demo_table1 WINDOW w1 AS (PARTITION BY demo_table1.c1 ORDER BY demo_table1.c6 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
 ```
 

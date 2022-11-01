@@ -8,14 +8,14 @@ Here is the impact when upgrading OpenMLDB:
 
 * Stop nameserver
     ```bash
-    sh bin/start.sh stop nameserver
+    bash bin/start.sh stop nameserver
     ```
 * Backup the old versions directories `bin` and `conf`
 * Download new version bin and conf
 * Compare the configuration file diff and modify the necessary configuration, such as endpoint, zk_cluster, etc
 * Start nameserver
     ```bash
-    sh bin/start.sh start nameserver
+    bash bin/start.sh start nameserver
     ```
 * Repeat the above steps for the remaining nameservers
 
@@ -25,14 +25,14 @@ Here is the impact when upgrading OpenMLDB:
 
 * Stop tablet
     ```bash
-        sh bin/start.sh stop tablet
+        bash bin/start.sh stop tablet
     ```
 * Backup the old versions directories `bin` and `conf`
 * Download new version bin and conf
 * Compare the configuration file diff and modify the necessary configuration, such as endpoint, zk_cluster, etc
 * Start nameserver
     ```bash
-    sh bin/start.sh start tablet
+    bash bin/start.sh start tablet
     ```
 * If auto_failover is closed, you must connect to the ns client and perform the following operations to restore data. **The endpoint after the command is the endpoint of the restarted node**
   * offlineendpoint endpoint 

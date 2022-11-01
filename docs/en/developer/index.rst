@@ -8,4 +8,5 @@ Developers
     contributing
     code_structure
     built_in_function_develop_guide
+    udf_develop_guide
 
