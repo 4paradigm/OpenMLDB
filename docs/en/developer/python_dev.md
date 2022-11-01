@@ -1,11 +1,11 @@
 # Python SDK/Tool Development Guideline
 
-There are two modules in `python/`: Python SDK and a OpenMLDB diagnostic tool.
+There are two modules in `python/`: Python SDK and an OpenMLDB diagnostic tool.
 
 ## SDK Testing Methods
 
 Run the command `make SQL_PYSDK_ENABLE=ON OPENMLDB_BUILD_TARGET=cp_python_sdk_so` under the root directory and make sure the library in `python/openmldb_sdk/openmldb/native/` was the latest native library.
-1. Package installing test: Install the compiled `whl`, then run `pytest test/`. You can use the script `steps/test_python.sh` directly.
+1. Package installation test: Install the compiled `whl`, then run `pytest test/`. You can use the script `steps/test_python.sh` directly.
 2. Dynamic test: Make sure there isn't OpenMLDB in `pip` or the compiled `whl`. Run `pytest test/` in `python/openmldb_sdk`, thereby you can easily debug.
 
 You can use the following commands for partial testing
@@ -19,15 +19,15 @@ See more about `-k` in [keyword expressions](https://docs.pytest.org/en/latest/e
 
 ## Tool Testing
 
-Since the diagnosis tools need a password-free ssh, you need to register the local user's ssh pub key into the `authorized_keys` even in local testing (in which the local ssh is connected to local host).
+Since the diagnosis tools need a password-free ssh, you need to register the local user's ssh public key into the `authorized_keys` even in local testing (in which the local ssh is connected to local host).
 
-For normal test, please use:
+For testing, please use:
 ```
 cd python/openmldb_tool
 pytest tests/
 ```
 
-If the python log messages are needed, please use:
+If the python log messages are required, please use:
 ```
 pytest -o log_cli=true --log-cli-level=DEBUG tests/
 ```
