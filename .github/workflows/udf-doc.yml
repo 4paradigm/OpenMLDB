@@ -1,0 +1,67 @@
+name: udf-doc-gen
+
+on:
+  # schedule daily at 6:00 UTC+0
+  schedule:
+    - cron: "00 6 * * *"
+  pull_request:
+    paths:
+      - '.github/workflows/udf-doc.yml'
+      - 'hybridse/tools/documentation/**'
+      - 'hybridse/src/cmd/export_udf_info.cc'
+  workflow_dispatch:
+
+jobs:
+  udf-doc-gen:
+    runs-on: ubuntu-latest
+    env:
+      NPROC: 2
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: setup poetry
+        run: |
+          pipx install poetry
+
+      - name: install doxygen
+        run: |
+          sudo apt-get install -y doxygen
+
+      - name: install doxybook2
+        run: |
+          wget https://github.com/matusnovak/doxybook2/releases/download/v1.5.0/doxybook2-linux-amd64-v1.5.0.zip
+          mkdir -p doxybook2
+          unzip -d doxybook2 doxybook2-*.zip
+          pushd doxybook2/
+          sudo find . -type f -exec install -D {} /usr/local/{} \;
+          popd
+
+      - name: generate doc
+        run: |
+          make udf_doc_gen
+
+      - name: take change into source tree
+        if: github.event_name != 'pull_request'
+        run: |
+          make -C hybridse/tools/documentation/udf_doxygen sync
+
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v4
+        if: github.event_name != 'pull_request'
+        with:
+          add-paths: |
+            docs/*/reference/sql/functions_and_operators/Files/udfs_8h.md
+          labels: |
+            udf
+          branch: docs-udf-patch
+          delete-branch: true
+          commit-message: 'docs(udf): upgrade udf list'
+          title: 'docs(udf): update udf list by udf-doc workflow'
+          body: |
+            Built upon ${{ github.sha }}.
+          reviewers:
+            aceforeverd

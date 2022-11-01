@@ -62,7 +62,7 @@ The request body:
 
 ```bash
 curl http://127.0.0.1:8080/dbs/demo_db/deployments/demo_data_service -X POST -d'{
-        "input": [["aaa", 11, 22, 1.2, 1.3, 1635247427000, "2021-05-20"]],
+        "input": [["aaa", 11, 22, 1.2, 1.3, 1635247427000, "2021-05-20"]]
     }'
 ```
 
@@ -84,43 +84,60 @@ The request URL: http://ip:port/dbs/{db_name}
 
 HTTP method: POST
 
-**Request Body Example**
-
-The query without parameter: 
+request body: 
 
 ```json
 {
-    "mode": "online",
-    "sql": "select 1"
+    "mode": "",
+    "sql": "",
+    "input": {
+        "schema": [],
+        "data": []
+    }
 }
 ```
 
-mode: "offsync", "offasync", "online"
+- "mode" can be: "offsync", "offasync", "online"
+- "input" is optional
+- "schema" all supported types (case-insensitive):
+`Bool`, `Int16`, `Int32`, `Int64`, `Float`, `Double`, `String`, `Date` and `Timestamp`.
+
+**Request Body Example**
+
+- Normal query: 
+
+```json
+{
+  "mode": "online",
+  "sql": "select 1"
+}
+```
 
 The response:
 
 ```json
 {
-    "code":0,
-    "msg":"ok"
+  "code":0,
+  "msg":"ok",
+  "data": {
+    "schema":["Int32"],
+    "data":[[1]]
+  }
 }
 ```
 
-The query with parameters:
+- Parameterized query:
 
 ```json
 {
-    "mode": "online",
-    "sql": "SELECT c1, c2, c3 FROM demo WHERE c1 = ? AND c2 = ?",
-    "input": {
-      "schema": ["Int32", "String"],
-      "data": [1, "aaa"]
-    }
+  "mode": "online",
+  "sql": "SELECT c1, c2, c3 FROM demo WHERE c1 = ? AND c2 = ?",
+  "input": {
+    "schema": ["Int32", "String"],
+    "data": [1, "aaa"]
+  }
 }
 ```
-
-all supported types (case-insensitive):
-`Bool`, `Int16`, `Int32`, `Int64`, `Float`, `Double`, `String`, `Date` and `Timestamp`.
 
 The response:
 
@@ -245,7 +262,7 @@ The response:
 }
 ```
 
-## Refresh
+## Refresh APIServer metadata cache
 
 The request URL: http://ip:port/refresh
 

@@ -30,15 +30,16 @@ Row::Row(const Row &s) : slice_(s.slice_), slices_(s.slices_) {}
 
 Row::Row(size_t major_slices, const Row &major, size_t secondary_slices, const Row &secondary)
     : slice_(major.slice_), slices_(major_slices + secondary_slices - 1) {
-    for (size_t offset = 0; offset < major_slices - 1; ++offset) {
+    size_t offset = 0;
+    for (; offset + 1 < major_slices; ++offset) {
         if (major.slices_.size() > offset) {
             slices_[offset] = major.slices_[offset];
         }
     }
-    slices_[major_slices - 1] = secondary.slice_;
-    for (size_t offset = 0; offset < secondary_slices - 1; ++offset) {
-        if (secondary.slices_.size() > offset) {
-            slices_[offset + major_slices] = secondary.slices_[offset];
+    slices_[offset ++] = secondary.slice_;
+    for (size_t off = 0; off + 1 < secondary_slices; ++off) {
+        if (secondary.slices_.size() > off) {
+            slices_[off + major_slices] = secondary.slices_[off];
         }
     }
 }

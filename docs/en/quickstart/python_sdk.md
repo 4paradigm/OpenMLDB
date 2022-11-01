@@ -6,7 +6,7 @@ Install using `pip`.
 
 ```bash
 pip install openmldb
-````
+```
 
 ## 2. OpenMLDB DBAPI
 
@@ -185,3 +185,23 @@ openmldb.sql_magic.register(db)
 The line magic function `%sql` and block magic function `%%sql` can then be used in Notebook.
 
 ![img](images/openmldb_magic_function.png)
+
+## 5. Option
+
+Connect to cluster must set `zk` and `zkPath`.
+
+Connect to standalone must set `host` and `port`.
+
+Whether use dbapi or url to start Python client, optional options are the same with JAVA client, ref[JAVA SDK Option](./java_sdk.md#5-sdk-option)。
+
+## Q&A
+Q: How to solve `ImportError: dlopen(.._sql_router_sdk.so, 2): initializer function 0xnnnn not in mapped image for ` when use sqlalchemy?
+A: The problem often happends when you import other complicate libs with `import openmldb`, the dl load is wrong. Please use the virtual env(e.g. conda) to test it, and make `import openmldb` to be the 1st import and `import sqlalchemy` to be the 2rd.
+
+If it can't help, please use `request` http to connect the apiserver.
+
+Q: How to solve the protobuf error?
+```
+[libprotobuf FATAL /Users/runner/work/crossbow/crossbow/vcpkg/buildtrees/protobuf/src/23fa7edd52-3ba2225d30.clean/src/google/protobuf/stubs/common.cc:87] This program was compiled against version 3.6.1 of the Protocol Buffer runtime library, which is not compatible with the installed version (3.15.8).  Contact the program author for an update. ...
+```
+A: Maybe other libs includes a different version of protobuf, try virtual env(e.g. conda).

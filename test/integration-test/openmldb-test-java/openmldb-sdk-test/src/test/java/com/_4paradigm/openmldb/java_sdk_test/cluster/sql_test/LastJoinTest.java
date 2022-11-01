@@ -42,7 +42,7 @@ public class LastJoinTest extends OpenMLDBTest {
      }
     @Story("request")
     @Test(dataProvider = "getCase")
-    @Yaml(filePaths = {"integration_test/join/"})
+    @Yaml(filePaths = {"integration_test/join/test_lastjoin_complex.yaml"})
     public void testLastJoinRequestMode(SQLCase testCase) throws Exception {
         ExecutorFactory.build(executor,testCase, SQLCaseType.kRequest).run();
     }

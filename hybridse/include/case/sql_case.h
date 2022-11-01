@@ -16,14 +16,18 @@
 
 #ifndef HYBRIDSE_INCLUDE_CASE_SQL_CASE_H_
 #define HYBRIDSE_INCLUDE_CASE_SQL_CASE_H_
-#include <vm/catalog.h>
-#include <yaml-cpp/node/node.h>
-#include <yaml-cpp/yaml.h>
+
 #include <set>
 #include <string>
 #include <vector>
+
+#include "absl/status/statusor.h"
 #include "codec/fe_row_codec.h"
 #include "proto/fe_type.pb.h"
+#include "vm/catalog.h"
+#include "yaml-cpp/node/node.h"
+#include "yaml-cpp/yaml.h"
+
 namespace hybridse {
 namespace sqlcase {
 class SqlCase {
@@ -193,14 +197,10 @@ class SqlCase {
     static std::string GenRand(const std::string& prefix) {
         return prefix + std::to_string(rand() % 10000000 + 1);  // NOLINT
     }
-    bool BuildCreateSpSqlFromInput(int32_t input_idx,
-                                   const std::string& select_sql,
-                                   const std::set<size_t>& common_idx,
-                                   std::string* create_sp_sql);
-    bool BuildCreateSpSqlFromSchema(const type::TableDef& table,
-                                    const std::string& select_sql,
-                                    const std::set<size_t>& common_idx,
-                                    std::string* create_sql);
+    absl::StatusOr<std::string> BuildCreateSpSqlFromInput(int32_t input_idx, absl::string_view sql,
+                                                          const std::set<size_t>& common_idx);
+    absl::StatusOr<std::string> BuildCreateSpSqlFromSchema(const type::TableDef& table, absl::string_view select_sql,
+                                                           const std::set<size_t>& common_idx);
 
     friend std::ostream& operator<<(std::ostream& output, const SqlCase& thiz);
     static bool IS_PERF() {

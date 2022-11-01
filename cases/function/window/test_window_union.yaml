@@ -1910,7 +1910,6 @@ cases:
   # refer issue https://github.com/4paradigm/OpenMLDB/issues/1807
   # =================================================================== #
   - id: 37
-    mode: cluster-unsupport
     desc: |
       mulpile window support with one window union
     inputs:
@@ -1969,7 +1968,6 @@ cases:
         1, 2, 999, 233, 21
         2, 2, 999, 233, 10021
   - id: 38
-    mode: cluster-unsupport
     desc: |
       mulpile window support with two window union
     inputs:
@@ -2045,7 +2043,6 @@ cases:
         1, 2, 999, 21, 221, NULL
         2, 3, 10000, 21, 10021, 10000
   - id: 39
-    mode: cluster-unsupport
     desc: |
       mulpile window support with three window union
     inputs:

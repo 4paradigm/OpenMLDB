@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!DOCTYPE suite SYSTEM "http://testng.org/testng-1.0.dtd">
+<suite name="openmldb-sdk-test" parallel="false" thread-count="2">
+    <test name="cluster-task-test">
+        <parameter name="env" value="cluster"/>
+        <parameter name="version" value="0.2.3"/>
+        <parameter name="openMLDBPath" value=""/>
+        <packages>
+            <package name="com._4paradigm.openmldb.java_sdk_test.cluster.out_in"/>
+        </packages>
+    </test>
+    <listeners>
+        <listener class-name="com._4paradigm.openmldb.java_sdk_test.report.AddAttachmentListener" />
+    </listeners>
+</suite>

@@ -24,4 +24,5 @@ public class OpenMLDBTable {
     private List<OpenMLDBColumn> columns;
     private List<OpenMLDBIndex> indexs;
     private String storageMode;
+    private OfflineInfo offlineInfo;
 }

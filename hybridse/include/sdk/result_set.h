@@ -21,7 +21,7 @@
 
 #include <string>
 
-#include "sdk/base.h"
+#include "sdk/base_schema.h"
 
 namespace hybridse {
 namespace sdk {

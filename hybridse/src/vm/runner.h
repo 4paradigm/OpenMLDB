@@ -153,8 +153,7 @@ class RangeGenerator {
             }
             window_range_.start_offset_ = range.frame_->GetHistoryRangeStart();
             window_range_.end_offset_ = range.frame_->GetHistoryRangeEnd();
-            window_range_.start_row_ =
-                (-1 * range.frame_->GetHistoryRowsStart());
+            window_range_.start_row_ = (-1 * range.frame_->GetHistoryRowsStart());
             window_range_.end_row_ = (-1 * range.frame_->GetHistoryRowsEnd());
             window_range_.max_size_ = range.frame_->frame_maxsize();
         }

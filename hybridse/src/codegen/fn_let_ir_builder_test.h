@@ -84,15 +84,10 @@ node::ProjectListNode* GetPlanNodeList(node::PlanNodeList trees) {
     return pp_node_ptr;
 }
 
-
-
-void CheckFnLetBuilderWithParameterRow(::hybridse::node::NodeManager* manager,
-                       vm::SchemasContext* schemas_ctx,
-                                       const codec::Schema* parameter_types,
-                                       std::string udf_str,
-                       std::string sql, int8_t* row_ptr, int8_t* window_ptr,
-                                    int8_t * parameter_row_ptr,
-                       vm::Schema* output_schema, int8_t** output) {
+void CheckFnLetBuilderWithParameterRow(::hybridse::node::NodeManager* manager, vm::SchemasContext* schemas_ctx,
+                                       const codec::Schema* parameter_types, std::string udf_str, std::string sql,
+                                       int8_t* row_ptr, int8_t* window_ptr, int8_t* parameter_row_ptr,
+                                       vm::Schema* output_schema, int8_t** output) {
     // Create an LLJIT instance.
     auto ctx = llvm::make_unique<LLVMContext>();
     auto m = make_unique<Module>("test_project", *ctx);
