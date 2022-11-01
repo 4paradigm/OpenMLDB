@@ -11,10 +11,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import sys
 import logging
+
+from numpy import partition
 log = logging.getLogger(__name__)
-from tool import *
+from tool import Executor
+from tool import Partition
+from tool import Status
 import time
 from optparse import OptionParser
 import random
@@ -36,13 +39,13 @@ parser.add_option("--cmd",
                   dest="cmd",
                   help="cmd")
 
-parser.add_option("--endpoint",
-                  dest="endpoint",
-                  help="endpoint")
+parser.add_option("--endpoints",
+                  dest="endpoints",
+                  help="endpoints")
 
 INTERNAL_DB = ["__INTERNAL_DB", "__PRE_AGG_DB", "INFORMATION_SCHEMA"]
 
-def CheckTable(executor, db, table_name):
+def CheckTable(executor : Executor, db, table_name):
     status, table_partitions = executor.GetTablePartition(db, table_name)
     if not status.OK():
         return status
@@ -61,7 +64,7 @@ def CheckTable(executor, db, table_name):
     for pid, partitions in table_partitions.items():
         for partition in partitions:
             endpoint = partition.GetEndpoint()
-            key = "{}_{}".format(partition.GetTid(), pid)
+            key = partition.GetKey()
             if endpoint not in endpoint_status or key not in endpoint_status[endpoint]:
                 return Status(-1, f"not table partition in {endpoint}")
             if partition.IsLeader() and endpoint_status[endpoint][key][3] == "kTableLeader":
@@ -71,7 +74,7 @@ def CheckTable(executor, db, table_name):
             return Status(-1, f"role is not match")
     return Status()
 
-def RecoverPartition(executor, db, partitions, endpoint_status):
+def RecoverPartition(executor : Executor, db, partitions : list, endpoint_status : dict):
     leader_pos = -1
     max_offset = 0
     table_name = partitions[0].GetName()
@@ -111,15 +114,15 @@ def RecoverPartition(executor, db, partitions, endpoint_status):
             log.error(f"recover table partition failed. db {db} name {table_name} pid {pid} endpoint {endpoint}")
             return Status(-1, "recover table partition failed")
 
-def RecoverTable(executor, db, table_name):
+def RecoverTable(executor : Executor, db, table_name) -> Status:
     if CheckTable(executor, db, table_name).OK():
         log.info(f"{table_name} in {db} is healthy")
-        return
+        return Status()
     log.info(f"recover {table_name} in {db}")
     status, table_info = executor.GetTableInfo(db, table_name)
     if not status.OK():
         log.warn(f"get table info failed. msg is {status.GetMsg()}")
-        return
+        return Status(-1, f"get table info failed. msg is {status.GetMsg()}")
     partition_dict = executor.ParseTableInfo(table_info)
     endpoints = set()
     for record in table_info:
@@ -129,9 +132,8 @@ def RecoverTable(executor, db, table_name):
         status, result = executor.GetTableStatus(endpoint)
         if not status.OK():
             log.warn(f"get table status failed. msg is {status.GetMsg()}")
-            return
+            return Status(-1, f"get table status failed. msg is {status.GetMsg()}")
         endpoint_status[endpoint] = result
-    # print(endpoint_status)
     tid = int(table_info[-1][1])
     max_pid = int(table_info[-1][2])
     for pid in range(max_pid + 1):
@@ -157,17 +159,9 @@ def RecoverTable(executor, db, table_name):
         log.info(f"{table_name} in {db} recover success")
     else:
         log.warn(status.GetMsg())
+    return status
 
-def RecoverData(executor):
-    status, auto_failover = executor.GetAutofailover()
-    if not status.OK():
-        log.error("get failover failed")
-        return
-    if auto_failover:
-        if not executor.SetAutofailover("false").OK():
-            log.error("set auto_failover failed")
-            return
-
+def RecoverData(executor : Executor):
     status, dbs = executor.GetAllDatabase()
     if not status.OK():
         log.error("get database failed")
@@ -177,81 +171,180 @@ def RecoverData(executor):
     for db in alldb:
         status, tables = executor.GetAllTable(db)
         if not status.OK():
-            continue
+            log.error(f"get all table failed")
+            return
         for name in tables:
-            RecoverTable(executor, db, name)
+            if not RecoverTable(executor, db, name).OK():
+                return
 
-    if auto_failover:
-        if not executor.SetAutofailover("true").OK():
-            log.warn("set auto_failover failed")
+def MigratePartition(db : str, partition : Partition, src_endpoint : str, desc_endpoint : str, one_replica : bool) -> Status:
+    if partition.IsLeader():
+        if one_replica and not executor.AddReplica(db, partition.GetName(), partition.GetPid(), desc_endpoint).OK():
+            return Status(-1, f"add replica failed. {db} {partition.GetName()} {partition.Pid()} {desc_endpoint}")
+        if not executor.ChangeLeader(db, partition.GetName(), partition.GetPid()).OK():
+            return Status(-1, f"change leader failed. {db} {partition.GetName()} {partition.Pid()}")
+        if not executor.RecoverTablePartition(db, partition.GetName(), partition.GetPid(), src_endpoint).OK():
+            return Status(-1, f"recover table failed. {db} {partition.GetName()} {partition.Pid()} {src_endpoint}")
+    if not executor.Migrate(db, partition.GetName(), partition.GetPid(), src_endpoint, desc_endpoint).OK():
+        return Status(-1, f"migrate partition failed! table {partition.GetName()} partition {partition.GetPid()} {src_endpoint} {desc_endpoint}")
+    if one_replica and not executor.DelReplica(db, partition.GetName(), partition.GetPid(), src_endpoint).OK():
+        return Status(-1, f"del replica failed. {db} {partition.GetName()} {partition.Pid()} {src_endpoint}")
+    return Status()
 
-def Rebalance(executor, new_endpoint):
-    # will not rebalance system tables
+def BalanceInDatabase(executor : Executor, endpoints : list, db : str) -> Status:
+    log.info(f"start to balance {db}")
+    status, result = executor.GetTableInfo(db)
+    if not status.OK():
+        log.error("get table failed from {db}")
+        return Status(-1, "get table failed from {db}")
+    all_dict : dict[str, list[Partition]] = {}
+    total_partitions = 0
+    endpoint_partition_map : dict[str, set] = {}
+    replica_map = {}
+    for record in result:
+        total_partitions += 1
+        is_leader = True if record[4] == "leader" else False
+        is_alive = True if record[5] == "yes" else False
+        partition : Partition = Partition(record[0], record[1], record[2], record[3], is_leader, is_alive, int(record[6]))
+        all_dict.setdefault(partition.GetEndpoint(), []);
+        all_dict[partition.GetEndpoint()].append(partition)
+        endpoint_partition_map.setdefault(partition.GetEndpoint(), set())
+        endpoint_partition_map[partition.GetEndpoint()].add(partition.GetKey())
+        replica_map.setdefault(partition.GetKey, 0)
+        replica_map[partition.GetKey] += 1
+    for endpoint in endpoints:
+        if endpoint not in all_dict:
+            all_dict.setdefault(endpoint, []);
+            endpoint_partition_map.setdefault(endpoint, set())
+
+    start_endpoint = random.choice(endpoints)
+    while True:
+        migrate_out_endpoint = start_endpoint;
+        migrate_in_endpoint = start_endpoint;
+        for endpoint in endpoints:
+            if len(all_dict[endpoint]) > len(all_dict[migrate_out_endpoint]) : migrate_out_endpoint = endpoint
+            if len(all_dict[endpoint]) < len(all_dict[migrate_in_endpoint]) : migrate_in_endpoint = endpoint
+        if not len(all_dict[migrate_out_endpoint]) > len(all_dict[migrate_in_endpoint]) + 1 : break
+        candidate_partition = list(all_dict[migrate_out_endpoint])
+        while len(candidate_partition) > 0:
+            idx = random.randint(0, len(candidate_partition) - 1)
+            partition : Partition = candidate_partition.pop(idx)
+            if partition.GetKey() in endpoint_partition_map[migrate_in_endpoint]:
+                continue
+            log.info(f"migrate table {partition.GetName()} partition {partition.GetPid()} in {db} from {partition.GetEndpoint()} to {migrate_in_endpoint}")
+            status = MigratePartition(db, partition, migrate_out_endpoint, migrate_in_endpoint, replica_map[partition.GetKey()] == 1)
+            if not status.OK():
+                log.error(status.GetMsg())
+                return status
+            all_dict[migrate_in_endpoint].append(partition)
+            endpoint_partition_map[migrate_in_endpoint].add(partition.GetKey())
+            for pos in range(len(all_dict[migrate_out_endpoint])):
+                if all_dict[migrate_out_endpoint][pos].GetKey() == partition.GetKey():
+                    del all_dict[migrate_out_endpoint][pos]
+            endpoint_partition_map[migrate_out_endpoint].remove(partition.GetKey())
+    return Status()
+
+def ScaleOut(executor : Executor):
+    status, result = executor.ShowTablet()
+    if not status.OK():
+        log.error(f"execute showtablet failed")
+        return
+    endpoints = []
+    for record in result:
+        if record[2] == "kHealthy" : endpoints.append(record[0])
     status, dbs = executor.GetAllDatabase()
     if not status.OK():
         log.error("get database failed")
         return
     for db in dbs:
-        status, partition_dict = executor.GetTableStatus(new_endpoint)
-        if not status.OK():
-            log.error("get table status failed. endpint is {new_endpoint}")
+        if not BalanceInDatabase(executor, endpoints, db).OK():
             return
-        status, result = executor.GetTableInfo(db)
+    log.info("execute scale-out success")
+
+def ScaleInEndpoint(executor : Executor, endpoint : str, desc_endpoints : list) -> Status:
+    log.info("start to scale-in {endpoint}")
+    status, result = executor.GetTableStatus(endpoint)
+    if not status.OK():
+        log.error(f"get table status failed from {endpoint}")
+        return Status(-1, f"get table status failed from {endpoint}")
+    status, user_dbs = executor.GetAllDatabase()
+    if not status.OK():
+        log.error("get data base failed")
+        return Status(-1, "get data base failed")
+    dbs = list(INTERNAL_DB)
+    dbs.extend(user_dbs)
+    all_dict : dict[str, list[Partition]] = {}
+    endpoint_partition_map : dict[str, set] = {}
+    db_map = {}
+    replica_map = {}
+    for db in dbs:
+        status, result = executor.GetAllTable(db)
         if not status.OK():
-            log.error("get table failed from {db}")
-            return
-        follower_dict = {}
-        all_dict = {}
-        total_partitions = 0
-        for record in result:
-            total_partitions += 1
-            is_leader = True if record[4] == "leader" else False
-            is_alive = True if record[5] == "yes" else False
-            partition = Partition(record[0], record[1], record[2], record[3], is_leader, is_alive, int(record[6]));
-            all_dict.setdefault(partition.GetEndpoint(), []);
+            log.error("get table failed")
+            return Status(-1, "get table failed")
+        for partition in result:
+            all_dict.setdefault(partition.GetEndpoint(), [])
             all_dict[partition.GetEndpoint()].append(partition)
-            follower_dict.setdefault(partition.GetEndpoint(), []);
-            if not partition.IsLeader() and "{}_{}".format(partition.GetTid(), partition.GetPid()) not in partition_dict:
-                 follower_dict[partition.GetEndpoint()].append(partition)
-        avg_partition = int(total_partitions / (len(all_dict.keys())) if new_endpoint in all_dict else total_partitions / (len(all_dict.keys()) + 1))
-        if new_endpoint in all_dict and len(all_dict[new_endpoint]) >= avg_partition:
-            log.info(f"there are {len(all_dict[new_endpoint])} partitions in {new_endpoint} in {db}, average partition num is {avg_partition}. no need to migrate")
-            continue
-        else:
-            log.info(f"there are {len(all_dict[new_endpoint])} partitions in {new_endpoint} in {db}, average partition num is {avg_partition}")
-        migrate_partitions = []
-        key_set = set(partition_dict.keys())
-        for endpoint in follower_dict:
-            if endpoint == new_endpoint:
+            endpoint_partition_map.setdefault(partition.GetEndpoint(), set())
+            endpoint_partition_map[partition.GetEndpoint()].add(partition.GetKey())
+            db_map.setdefault(partition.GetKey(), db)
+            replica_map.setdefault(partition.GetKey, 0)
+            replica_map[partition.GetKey] += 1
+    for record in result:
+        is_leader = True if record[4] == "leader" else False
+        is_alive = True if record[5] == "yes" else False
+        partition : Partition = Partition(record[0], record[1], record[2], record[3], is_leader, is_alive, int(record[6]))
+        desc_endpoint = random.choice(desc_endpoints)
+        for cur_endpoint in all_dict:
+            if cur_endpoint not in desc_endpoints:
                 continue
-            log.info(f"total partition num: {len(all_dict[endpoint])}, candidate follower partition num: {len(follower_dict[endpoint])}, endpoint {endpoint}, avg number: {avg_partition}")
-            if len(follower_dict[endpoint]) == 0 or len(all_dict[endpoint]) < avg_partition:
-                log.info(f"no need to migrate from {endpoint}. follower partiton num {len(follower_dict[endpoint])} avg_partition {avg_partition}")
-                continue
-            migrate_num = min(len(follower_dict[endpoint]), len(all_dict[endpoint]) - avg_partition)
-            while len(follower_dict[endpoint]) > 0 and migrate_num > 0:
-                idx = random.randint(0, len(follower_dict[endpoint]) - 1)
-                partition = follower_dict[endpoint].pop(idx)
-                key = "{}_{}".format(partition.GetTid(), partition.GetPid())
-                if key not in key_set:
-                    key_set.add(key)
-                    migrate_partitions.append(partition)
-                    migrate_num -= 1
+            if len(all_dict[cur_endpoint]) < len(all_dict[desc_endpoint]) and partition.GetKey() not in endpoint_partition_map[cur_endpoint]:
+                log.info(f"migrate table {partition.GetName()} partition {partition.GetPid()} in {db} from {endpoint} to {desc_endpoint}")
+                status = MigratePartition(db_map.get(partition.GetKey()), partition, endpoint, desc_endpoint, replica_map[partition.GetKey()] == 1)
+                if not status.OK():
+                    return status
+                break
 
-        random.shuffle(migrate_partitions)
-        for partition in migrate_partitions:
-            log.info(f"migrate table {partition.GetName()} partition {partition.GetPid()} in {db} from {partition.GetEndpoint()} to {new_endpoint}")
-            status = executor.Migrate(db, partition.GetName(), partition.GetPid(), partition.GetEndpoint(), new_endpoint)
-            if not status.OK():
-                log.error(f"migrate partition failed! table {partition.GetName()} partition {partition.GetPid()} {partition.GetEndpoint()}")
+    return Status()
 
+def ScaleIn(executor : Executor, endpoints : list):
+    status, result = executor.ShowTablet()
+    if status.OK():
+        log.error(f"execute showtablet failed")
+        return
+    alive_endpoints = []
+    for record in result:
+        if record[2] == "kHealthy" : alive_endpoints.append(record[0])
+    for endpoint in endpoints:
+        if endpoint not in alive_endpoints:
+            log.error(f"{endpoint} is not alive, cannot execute scale-in")
+            return
+        alive_endpoints.remove(endpoint)
+    for endpoint in endpoints:
+        if not ScaleInEndpoint(executor, endpoint, alive_endpoints).OK():
+            return
+    log.info("execute scale-in success")
 
 if __name__ == "__main__":
     (options, args) = parser.parse_args()
+    if options.cmd not in ["recoverdata", "reblance"]:
+        log.error(f"unsupported cmd {options.cmd}")
+        exit
     executor = Executor(options.openmldb_bin_path, options.zk_cluster, options.zk_root_path)
+    status, auto_failover = executor.GetAutofailover()
+    if not status.OK():
+        log.error("get failover failed")
+        exit
+    if auto_failover and not executor.SetAutofailover("false").OK():
+        log.error("set auto_failover failed")
+        exit
     if options.cmd == "recoverdata":
         RecoverData(executor)
     elif options.cmd == "reblance":
-        Rebalance(executor, options.endpoint)
-    else:
-        log.error(f"unsupported cmd {options.cmd}")
+        if options.endpoints is None or options.endpoints == "":
+            ScaleOut(executor)
+        else:
+            endpoints = options.endpoints.split(",")
+            ScaleIn(executor, endpoints)
+    if auto_failover and not executor.SetAutofailover("true").OK():
+        log.warn("set auto_failover failed")
