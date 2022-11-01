@@ -4097,7 +4097,7 @@ static const std::initializer_list<std::string> GetTableStatusSchema() {
 std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteShowTableStatus(const std::string& db,
                                                                                    hybridse::sdk::Status* status,
                                                                                    const std::string& pattern) {
-    StringRef pattern_ref(pattern);
+    base::StringRef pattern_ref(pattern);
     // NOTE: cluster_sdk_->GetTables(db) seems not accurate, query directly
     std::vector<nameserver::TableInfo> tables;
     std::string msg;
@@ -4111,7 +4111,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteShowTableStat
         auto& tinfo = *it;
         if (!pattern.empty()) {
             // rule 1: if pattern is provided, show all dbs matching the pattern
-            StringRef db_ref(tinfo.db());
+            base::StringRef db_ref(tinfo.db());
             hybridse::udf::v1::like(&db_ref, &pattern_ref, &matched, &is_null);
             if (is_null || !matched) {
                 continue;
