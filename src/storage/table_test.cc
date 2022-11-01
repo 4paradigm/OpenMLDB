@@ -1969,11 +1969,11 @@ TEST_P(TableTest, NegativeTs) {
     uint64_t now = ::baidu::common::timer::get_micros() / 1000;
 
     for (int i = 0; i < 200; i++) {
-        uint64_t ts = (now - (99 - i / 2) * 60 * 1000) * (i & 1 ? -1 : 1);
+        int64_t ts = (now - (99 - i / 2) * 60 * 1000) * (i & 1 ? -1 : 1);
         std::string ts_str = std::to_string(ts);
 
         std::vector<std::string> row = {
-            "test" + std::to_string(i % 10), ts_str, ts_str, ts_str, ts_str, ts_str, ts_str};
+            "test" + std::to_string(i / 2 % 10), ts_str, ts_str, ts_str, ts_str, ts_str, ts_str};
         ::openmldb::api::PutRequest request;
         for (int idx = 0; idx <= 5; idx++) {
             auto dim = request.add_dimensions();
@@ -1982,7 +1982,7 @@ TEST_P(TableTest, NegativeTs) {
         }
         std::string value;
         codec.EncodeRow(row, &value);
-        table->Put(0, value, request.dimensions());
+        ASSERT_EQ(table->Put(0, value, request.dimensions()), !(i&1));
     }
 
     for (int i = 0; i <= 5; i++) {

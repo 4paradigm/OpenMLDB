@@ -250,7 +250,7 @@ bool DiskTable::Put(uint64_t time, const std::string& value, const Dimensions& d
             }
             if (ts < 0) {
                 PDLOG(WARNING, "ts < 0 (ts = %d). tid %u pid %u", ts, id_, pid_);
-                continue;
+                return false;
             }
             if (inner_index->GetIndex().size() > 1) {
                 combine_key = CombineKeyTs(it->key(), ts, ts_col->GetId());
