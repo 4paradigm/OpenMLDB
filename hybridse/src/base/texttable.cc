@@ -37,19 +37,15 @@ std::ostream& operator<<(std::ostream& stream, const TextTable& table) {
             rows.emplace_back(toks);
             max_lines = std::max(max_lines, toks.size());
         }
-        std::vector<std::stringstream> lines(max_lines);
         for (unsigned j = 0; j < max_lines; j++) {
-            lines[j] << table.vertical();
+            stream << table.vertical();
             for (unsigned i = 0; i < row.size(); ++i) {
-                lines[j] << std::setw(table.width(i)) << std::left << " " + (rows[i].size() > j ? rows[i][j] : "")
+                stream << std::setw(table.width(i)) << std::left << " " + (rows[i].size() > j ? rows[i][j] : "")
                          << table.vertical();
             }
-            lines[j] << "\n";
+            stream << "\n";
         }
-        for (unsigned j = 0; j < max_lines; j++) {
-            stream << lines[j].str();
-        }
-        if (line < 1 || line == table.rows().size() - 1) {
+        if (table.middle_ruler_ || line < 1 || line == table.rows().size() - 1) {
             stream << table.ruler() << "\n";
         }
         line++;
