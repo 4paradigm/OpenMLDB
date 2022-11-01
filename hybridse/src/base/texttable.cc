@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+#include "base/fe_strings.h"
 #include "base/texttable.h"
 
 namespace hybridse {
@@ -28,12 +29,26 @@ std::ostream& operator<<(std::ostream& stream, const TextTable& table) {
     for (auto row_iterator = table.rows().begin();
          row_iterator != table.rows().end(); ++row_iterator) {
         TextTable::Row const& row = *row_iterator;
-        stream << table.vertical();
+        std::vector<std::vector<std::string>> rows;
+        size_t max_lines = 0;
         for (unsigned i = 0; i < row.size(); ++i) {
-            stream << std::setw(table.width(i)) << std::left << " " + row[i];
-            stream << table.vertical();
+            std::vector<std::string> toks;
+            SplitString(row[i], "\n", toks);
+            rows.emplace_back(toks);
+            max_lines = std::max(max_lines, toks.size());
         }
-        stream << "\n";
+        std::vector<std::stringstream> lines(max_lines);
+        for (unsigned j = 0; j < max_lines; j++) {
+            lines[j] << table.vertical();
+            for (unsigned i = 0; i < row.size(); ++i) {
+                lines[j] << std::setw(table.width(i)) << std::left << " " + (rows[i].size() > j ? rows[i][j] : "")
+                         << table.vertical();
+            }
+            lines[j] << "\n";
+        }
+        for (unsigned j = 0; j < max_lines; j++) {
+            stream << lines[j].str();
+        }
         if (line < 1 || line == table.rows().size() - 1) {
             stream << table.ruler() << "\n";
         }
@@ -49,7 +64,13 @@ void base::TextTable::setup_widths() const {
          ++rowIterator) {
         Row const& row = *rowIterator;
         for (unsigned i = 0; i < row.size(); ++i) {
-            widths[i] = widths[i] > row[i].size() ? widths[i] : row[i].size();
+            std::vector<std::string> toks;
+            SplitString(row[i], "\n", toks);
+            size_t max_size = 0;
+            for (unsigned j = 0; j < toks.size(); j++) {
+                max_size = std::max(max_size, toks[j].size());
+            }
+            widths[i] = widths[i] > max_size ? widths[i] : max_size;
         }
     }
     for (unsigned j = 0; j < widths.size(); ++j) {

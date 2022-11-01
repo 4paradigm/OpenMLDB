@@ -4174,7 +4174,7 @@ bool SQLClusterRouter::CheckTableStatus(const std::string& db, const std::string
     uint32_t pid = partition_info.pid();
     auto append_error_msg = [&check_succeed](std::string& msg, uint32_t pid, bool is_leader,
                                              const std::string& endpoint, const std::string& error) {
-        absl::StrAppend(&msg, (msg.empty() ? "" : "; "), "[pid=", std::to_string(pid), "][",
+        absl::StrAppend(&msg, (msg.empty() ? "" : "\n"), "[pid=", std::to_string(pid), "][",
                         (is_leader ? "leader" : "follower"), "][", endpoint, "]: ", error);
         check_succeed = false;
     };
@@ -4187,14 +4187,13 @@ bool SQLClusterRouter::CheckTableStatus(const std::string& db, const std::string
     if (tablet_accessor && (tablet_client = tablet_accessor->GetClient())) {
         ::openmldb::api::TableStatus table_status;
         if (tablet_client->GetTableStatus(tid, pid, table_status)) {
+            if (table_status.has_mode() && table_status.mode() != ::openmldb::api::kTableLeader) {
+                LOG(ERROR) << db << "." << table_name << " pid=" << pid << ": leader state inconsistent in "
+                           << tablet_accessor->GetName();
+                append_error_msg(error_msg, pid, true, tablet_accessor->GetName(), "leader state inconsistent");
+            }
             if (table_status.has_state()) {
-                if (table_status.has_mode() && table_status.mode() != ::openmldb::api::kTableLeader) {
-                    LOG(ERROR) << db << "." << table_name << " pid=" << pid << ": leader state inconsistent in "
-                               << tablet_accessor->GetName();
-                    append_error_msg(error_msg, pid, true, tablet_accessor->GetName(), "leader state inconsistent");
-                } else {
-                    state = table_status.state();
-                }
+                state = table_status.state();
             }
         }
     }
@@ -4241,7 +4240,7 @@ bool SQLClusterRouter::CheckTableStatus(const std::string& db, const std::string
             }
         }
 
-        if (state == ::openmldb::api::kTableUndefined || state == ::openmldb::api::kTableLoading) {
+        if (state == ::openmldb::api::kTableUndefined) {
             append_error_msg(error_msg, pid, false, tablet_accessor->GetName(),
                              absl::StrCat("state is ", TableState_Name(state)));
         }
