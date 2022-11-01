@@ -39,6 +39,10 @@
 #include "rocksdb/utilities/checkpoint.h"
 #include "storage/iterator.h"
 #include "storage/table.h"
+#include "base/glog_wapper.h"  // NOLINT
+
+DECLARE_uint32(disk_stat_bloom_filter_bitset_size);
+DECLARE_uint32(disk_stat_bloom_filter_hash_seed);
 
 namespace openmldb {
 namespace storage {
@@ -126,6 +130,28 @@ class KeyTSComparator : public rocksdb::Comparator {
     void FindShortSuccessor(std::string* /*key*/) const override {}
 };
 
+class BloomFilter {
+ public:
+    BloomFilter() {
+        for (uint32_t i = 0; i < FLAGS_disk_stat_bloom_filter_bitset_size; i++) {
+            bits_.push_back(std::make_shared<std::atomic<uint64_t>>(0));
+        }
+    }
+    virtual ~BloomFilter() {}
+
+    void Set(const char* str);
+    bool Valid(const char* str);
+    void Reset();
+
+ private:
+    uint32_t Hash(const char* str, uint32_t seed);
+    void SetBit(uint32_t bit);
+    bool GetBit(uint32_t bit);
+
+    std::vector<std::shared_ptr<std::atomic<uint64_t>>> bits_;
+    uint32_t base_[7] = {5, 7, 11, 13, 31, 37, 61};
+};
+
 class KeyTsPrefixTransform : public rocksdb::SliceTransform {
  public:
     const char* Name() const override { return "KeyTsPrefixTransform"; }
@@ -198,17 +224,109 @@ class AbsoluteTTLCompactionFilter : public rocksdb::CompactionFilter {
     std::shared_ptr<InnerIndexSt> inner_index_;
 };
 
+class AbsoluteTTLAndCountCompactionFilter : public rocksdb::CompactionFilter {
+ public:
+    explicit AbsoluteTTLAndCountCompactionFilter(std::shared_ptr<InnerIndexSt> inner_index,
+                                                 std::vector<std::shared_ptr<std::atomic<uint64_t>>>* idx_cnt_vec,
+                                                 std::shared_ptr<std::atomic<uint64_t>> pk_cnt,
+                                                 BloomFilter* bloom_filter)
+        : inner_index_(inner_index),
+          idx_cnt_vec_(idx_cnt_vec),
+          pk_cnt_(pk_cnt),
+          bloom_filter_(bloom_filter) {}
+    virtual ~AbsoluteTTLAndCountCompactionFilter() {}
+
+    const char* Name() const override { return "AbsoluteTTLAndCountCompactionFilter"; }
+
+    bool Filter(int /*level*/, const rocksdb::Slice& key, const rocksdb::Slice& /*existing_value*/,
+                std::string* /*new_value*/, bool* /*value_changed*/) const override {
+        if (key.size() < TS_LEN) {
+            return false;
+        }
+        uint64_t real_ttl = 0;
+        const auto& indexs = inner_index_->GetIndex();
+        uint32_t idx;
+        if (indexs.size() > 1) {
+            if (key.size() < TS_LEN + TS_POS_LEN) {
+                return false;
+            }
+            uint32_t ts_idx = *((uint32_t*)(key.data() + key.size() - TS_LEN -  // NOLINT
+                                          TS_POS_LEN));
+            bool has_found = false;
+            for (const auto index : indexs) {
+                auto ts_col = index->GetTsColumn();
+                if (!ts_col) {
+                    return false;
+                }
+                if (ts_col->GetId() == ts_idx) {
+                    if (index->GetTTLType() != ::openmldb::storage::TTLType::kAbsoluteTime) {
+                        return false;
+                    }
+                    real_ttl = index->GetTTL()->abs_ttl;
+                    idx = index->GetId();
+                    has_found = true;
+                    break;
+                }
+            }
+            if (!has_found) {
+                return false;
+            }
+        } else {
+            real_ttl = indexs.front()->GetTTL()->abs_ttl;
+            idx = indexs.front()->GetId();
+        }
+        if (real_ttl < 1) {
+            return false;
+        }
+        uint64_t ts = 0;
+        memcpy(static_cast<void*>(&ts), key.data() + key.size() - TS_LEN, TS_LEN);
+        memrev64ifbe(static_cast<void*>(&ts));
+        uint64_t cur_time = ::baidu::common::timer::get_micros() / 1000;
+        if (ts < cur_time - real_ttl) {
+            return true;
+        }
+        idx_cnt_vec_->at(idx)->fetch_add(1, std::memory_order_relaxed);
+        std::string pk;
+        if (indexs.size() > 1) {
+            pk.assign(key.data(), key.size() - TS_LEN - TS_POS_LEN);
+        } else {
+            pk.assign(key.data(), key.size() - TS_LEN);
+        }
+        if (!bloom_filter_->Valid(pk.c_str())) {
+            bloom_filter_->Set(pk.c_str());
+            pk_cnt_->fetch_add(1, std::memory_order_relaxed);
+        }
+        return false;
+    }
+
+ private:
+    std::shared_ptr<InnerIndexSt> inner_index_;
+    std::vector<std::shared_ptr<std::atomic<uint64_t>>>* idx_cnt_vec_;
+    std::shared_ptr<std::atomic<uint64_t>> pk_cnt_;
+    BloomFilter* bloom_filter_;
+};
+
 class AbsoluteTTLFilterFactory : public rocksdb::CompactionFilterFactory {
  public:
-    explicit AbsoluteTTLFilterFactory(const std::shared_ptr<InnerIndexSt>& inner_index) : inner_index_(inner_index) {}
+    explicit AbsoluteTTLFilterFactory(const std::shared_ptr<InnerIndexSt>& inner_index,
+                                      std::vector<std::shared_ptr<std::atomic<uint64_t>>>* idx_cnt_vec,
+                                      std::shared_ptr<std::atomic<uint64_t>> pk_cnt, BloomFilter* bloom_filter)
+        : inner_index_(inner_index), idx_cnt_vec_(idx_cnt_vec), pk_cnt_(pk_cnt), bloom_filter_(bloom_filter) {}
     std::unique_ptr<rocksdb::CompactionFilter> CreateCompactionFilter(
         const rocksdb::CompactionFilter::Context& context) override {
+        if (context.is_manual_compaction) {
+            return std::unique_ptr<rocksdb::CompactionFilter>(
+                new AbsoluteTTLAndCountCompactionFilter(inner_index_, idx_cnt_vec_, pk_cnt_, bloom_filter_));
+        }
         return std::unique_ptr<rocksdb::CompactionFilter>(new AbsoluteTTLCompactionFilter(inner_index_));
     }
     const char* Name() const override { return "AbsoluteTTLFilterFactory"; }
 
  private:
     std::shared_ptr<InnerIndexSt> inner_index_;
+    std::vector<std::shared_ptr<std::atomic<uint64_t>>>* idx_cnt_vec_;
+    std::shared_ptr<std::atomic<uint64_t>> pk_cnt_;
+    BloomFilter* bloom_filter_;
 };
 
 class DiskTableIterator : public TableIterator {
@@ -402,7 +520,9 @@ class DiskTable : public Table {
 
     void SchedGc() override;
 
+    void ResetRecordCnt();
     void GcHead();
+    void GcTTL();
     void GcTTLAndHead();
     void GcTTLOrHead();
 
@@ -434,6 +554,9 @@ class DiskTable : public Table {
     KeyTSComparator cmp_;
     std::atomic<uint64_t> offset_;
     std::string table_path_;
+    std::vector<std::shared_ptr<std::atomic<uint64_t>>> idx_cnt_vec_;
+    std::vector<std::shared_ptr<std::atomic<uint64_t>>> pk_cnt_vec_;
+    std::vector<BloomFilter> bloom_filter_vec_;
 };
 
 }  // namespace storage

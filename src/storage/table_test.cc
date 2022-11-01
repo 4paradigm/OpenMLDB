@@ -200,11 +200,7 @@ TEST_P(TableTest, MultiDimissionPut0) {
     sdk_codec.EncodeRow({"d0", "d1", "d2"}, &result);
     bool ok = table->Put(1, result, dimensions);
     ASSERT_TRUE(ok);
-    // some functions in disk table need to be implemented.
-    // refer to issue #1238
-    if (storageMode == ::openmldb::common::StorageMode::kMemory) {
-        ASSERT_EQ(3, (int64_t)table->GetRecordIdxCnt());
-    }
+    ASSERT_EQ(3, (int64_t)table->GetRecordIdxCnt());
     ASSERT_EQ(1, (int64_t)table->GetRecordCnt());
     delete table;
 }
@@ -326,11 +322,6 @@ TEST_P(TableTest, Iterator_GetSize) {
 TEST_P(TableTest, SchedGcHead) {
     ::openmldb::common::StorageMode storageMode = GetParam();
 
-    // some functions with disktable mode in this test have not been implemented.
-    // refer to issue #1238
-    if (storageMode == openmldb::common::kHDD) {
-        return;
-    }
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
     std::string table_path = "";
@@ -349,12 +340,8 @@ TEST_P(TableTest, SchedGcHead) {
     value = ::openmldb::test::EncodeKV("test", "test2");
     table->Put("test", 1, value.data(), value.size());
     ASSERT_EQ(2, (int64_t)table->GetRecordCnt());
-    // some functions in disk table need to be implemented.
-    // refer to issue #1238
-    if (storageMode == ::openmldb::common::StorageMode::kMemory) {
-        ASSERT_EQ(2, (int64_t)table->GetRecordIdxCnt());
-        ASSERT_EQ(1, (int64_t)table->GetRecordPkCnt());
-    }
+    ASSERT_EQ(2, (int64_t)table->GetRecordIdxCnt());
+    ASSERT_EQ(1, (int64_t)table->GetRecordPkCnt());
     table->SchedGc();
     {
         ::openmldb::api::LogEntry entry;
@@ -380,7 +367,9 @@ TEST_P(TableTest, SchedGcHead) {
             ASSERT_FALSE(table->IsExpire(entry));
         }
     }
-    ASSERT_EQ(1, (int64_t)table->GetRecordCnt());
+    if (storageMode == ::openmldb::common::StorageMode::kMemory) {
+        ASSERT_EQ(1, (int64_t)table->GetRecordCnt());
+    }
     ASSERT_EQ(1, (int64_t)table->GetRecordIdxCnt());
     ASSERT_EQ(bytes, table->GetRecordByteSize());
     ASSERT_EQ(record_idx_bytes, table->GetRecordIdxByteSize());
@@ -436,11 +425,6 @@ TEST_P(TableTest, SchedGcHead1) {
 TEST_P(TableTest, SchedGc) {
     ::openmldb::common::StorageMode storageMode = GetParam();
 
-    // some functions with disktable mode in this test have not been implemented.
-    // refer to issue #1238
-    if (storageMode == openmldb::common::kHDD) {
-        return;
-    }
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
     std::string table_path = "";
@@ -459,17 +443,13 @@ TEST_P(TableTest, SchedGc) {
     uint64_t record_idx_bytes = table->GetRecordIdxByteSize();
     table->Put("test", 9527, "test", 4);
     ASSERT_EQ(2, (int64_t)table->GetRecordCnt());
-    // some functions in disk table need to be implemented.
-    // refer to issue #1238
-    if (storageMode == ::openmldb::common::StorageMode::kMemory) {
-        ASSERT_EQ(2, (int64_t)table->GetRecordIdxCnt());
-        ASSERT_EQ(1, (int64_t)table->GetRecordPkCnt());
-    }
+    ASSERT_EQ(2, (int64_t)table->GetRecordIdxCnt());
+    ASSERT_EQ(1, (int64_t)table->GetRecordPkCnt());
     table->SchedGc();
-    ASSERT_EQ(1, (int64_t)table->GetRecordCnt());
-    if (storageMode == ::openmldb::common::StorageMode::kMemory) {
-        ASSERT_EQ(1, (int64_t)table->GetRecordIdxCnt());
+    if (storageMode == ::openmldb::common::kMemory) {
+        ASSERT_EQ(1, (int64_t)table->GetRecordCnt());
     }
+    ASSERT_EQ(1, (int64_t)table->GetRecordIdxCnt());
     ASSERT_EQ(bytes, table->GetRecordByteSize());
     ASSERT_EQ(record_idx_bytes, table->GetRecordIdxByteSize());
 
@@ -487,11 +467,6 @@ TEST_P(TableTest, SchedGc) {
 TEST_P(TableTest, TableDataCnt) {
     ::openmldb::common::StorageMode storageMode = GetParam();
 
-    // some functions with disktable mode in this test have not been implemented.
-    // refer to issue #1238
-    if (storageMode == openmldb::common::kHDD) {
-        return;
-    }
     std::map<std::string, uint32_t> mapping;
     mapping.insert(std::make_pair("idx0", 0));
     std::string table_path = "";
@@ -508,11 +483,7 @@ TEST_P(TableTest, TableDataCnt) {
     table->Put("test", 9527, "test", 4);
     table->Put("test", now, "tes2", 4);
     ASSERT_EQ((int64_t)table->GetRecordCnt(), 2);
-    // some functions in disk table need to be implemented.
-    // refer to issue #1238
-    if (storageMode == ::openmldb::common::StorageMode::kMemory) {
-        ASSERT_EQ((int64_t)table->GetRecordIdxCnt(), 2);
-    }
+    ASSERT_EQ((int64_t)table->GetRecordIdxCnt(), 2);
     table->SchedGc();
     {
         ::openmldb::api::LogEntry entry;
@@ -1220,11 +1191,11 @@ TEST_P(TableTest, AbsOrLatSetGet) {
 TEST_P(TableTest, GcAbsOrLat) {
     ::openmldb::common::StorageMode storageMode = GetParam();
 
-    // some functions with disktable mode in this test have not been implemented.
-    // refer to issue #1238
-    if (storageMode == openmldb::common::kHDD) {
-        return;
+    //  RecordIdxCnt in disktable only support abs TTL and lat TTL
+    if (storageMode != openmldb::common::kMemory) {
+        GTEST_SKIP();
     }
+
     ::openmldb::api::TableMeta table_meta;
     table_meta.set_name("table1");
     std::string table_path = "";
@@ -1257,44 +1228,30 @@ TEST_P(TableTest, GcAbsOrLat) {
     table->Put("test2", now - 2 * (60 * 1000) - 1000, "value5", 6);
     table->Put("test2", now - 1 * (60 * 1000) - 1000, "value6", 6);
     ASSERT_EQ(7, (int64_t)table->GetRecordCnt());
-    // some functions in disk table need to be implemented.
-    // refer to issue #1238
-    if (storageMode == ::openmldb::common::StorageMode::kMemory) {
-        ASSERT_EQ(7, (int64_t)table->GetRecordIdxCnt());
-        ASSERT_EQ(2, (int64_t)table->GetRecordPkCnt());
-    }
+    ASSERT_EQ(7, (int64_t)table->GetRecordIdxCnt());
+    ASSERT_EQ(2, (int64_t)table->GetRecordPkCnt());
     ::openmldb::storage::UpdateTTLMeta update_ttl(
         ::openmldb::storage::TTLSt(3 * 60 * 1000, 0, ::openmldb::storage::kAbsOrLat));
     table->SetTTL(update_ttl);
     table->SchedGc();
-    ASSERT_EQ(5, (int64_t)table->GetRecordCnt());
-    // some functions in disk table need to be implemented.
-    // refer to issue #1238
-    if (storageMode == ::openmldb::common::StorageMode::kMemory) {
-        ASSERT_EQ(5, (int64_t)table->GetRecordIdxCnt());
-        ASSERT_EQ(2, (int64_t)table->GetRecordPkCnt());
+    if (storageMode == openmldb::common::kMemory) {
+        ASSERT_EQ(5, (int64_t)table->GetRecordCnt());
     }
+    ASSERT_EQ(5, (int64_t)table->GetRecordIdxCnt());
+    ASSERT_EQ(2, (int64_t)table->GetRecordPkCnt());
     update_ttl = ::openmldb::storage::UpdateTTLMeta(::openmldb::storage::TTLSt(0, 1, ::openmldb::storage::kAbsOrLat));
     table->SetTTL(update_ttl);
     table->SchedGc();
     ASSERT_EQ(4, (int64_t)table->GetRecordCnt());
-    // some functions in disk table need to be implemented.
-    // refer to issue #1238
-    if (storageMode == ::openmldb::common::StorageMode::kMemory) {
-        ASSERT_EQ(4, (int64_t)table->GetRecordIdxCnt());
-        ASSERT_EQ(2, (int64_t)table->GetRecordPkCnt());
-    }
+    ASSERT_EQ(4, (int64_t)table->GetRecordIdxCnt());
+    ASSERT_EQ(2, (int64_t)table->GetRecordPkCnt());
     update_ttl = ::openmldb::storage::UpdateTTLMeta(
         ::openmldb::storage::TTLSt(1 * 60 * 1000, 1, ::openmldb::storage::kAbsOrLat));
     table->SetTTL(update_ttl);
     table->SchedGc();
     ASSERT_EQ(2, (int64_t)table->GetRecordCnt());
-    // some functions in disk table need to be implemented.
-    // refer to issue #1238
-    if (storageMode == ::openmldb::common::StorageMode::kMemory) {
-        ASSERT_EQ(2, (int64_t)table->GetRecordIdxCnt());
-        ASSERT_EQ(2, (int64_t)table->GetRecordPkCnt());
-    }
+    ASSERT_EQ(2, (int64_t)table->GetRecordIdxCnt());
+    ASSERT_EQ(2, (int64_t)table->GetRecordPkCnt());
     {
         ::openmldb::api::LogEntry entry;
         entry.set_log_index(0);
@@ -1345,12 +1302,8 @@ TEST_P(TableTest, GcAbsOrLat) {
     }
     table->SchedGc();
     ASSERT_EQ(0, (int64_t)table->GetRecordCnt());
-    // some functions in disk table need to be implemented.
-    // refer to issue #1238
-    if (storageMode == ::openmldb::common::StorageMode::kMemory) {
-        ASSERT_EQ(0, (int64_t)table->GetRecordIdxCnt());
-        ASSERT_EQ(2, (int64_t)table->GetRecordPkCnt());
-    }
+    ASSERT_EQ(0, (int64_t)table->GetRecordIdxCnt());
+    ASSERT_EQ(2, (int64_t)table->GetRecordPkCnt());
     {
         ::openmldb::api::LogEntry entry;
         entry.set_log_index(0);
@@ -1371,11 +1324,11 @@ TEST_P(TableTest, GcAbsOrLat) {
 TEST_P(TableTest, GcAbsAndLat) {
     ::openmldb::common::StorageMode storageMode = GetParam();
 
-    // some functions with disktable mode in this test have not been implemented.
-    // refer to issue #1238
-    if (storageMode == openmldb::common::kHDD) {
-        return;
+    //  RecordIdxCnt in disktable only support abs TTL and lat TTL
+    if (storageMode != openmldb::common::kMemory) {
+        GTEST_SKIP();
     }
+
     ::openmldb::api::TableMeta table_meta;
     table_meta.set_name("table1");
     std::string table_path = "";
@@ -1408,23 +1361,15 @@ TEST_P(TableTest, GcAbsAndLat) {
     table->Put("test2", now - 3 * (60 * 1000) - 1000, "value5", 6);
     table->Put("test2", now - 2 * (60 * 1000) - 1000, "value6", 6);
     ASSERT_EQ(7, (int64_t)table->GetRecordCnt());
-    // some functions in disk table need to be implemented.
-    // refer to issue #1238
-    if (storageMode == ::openmldb::common::StorageMode::kMemory) {
-        ASSERT_EQ(7, (int64_t)table->GetRecordIdxCnt());
-        ASSERT_EQ(2, (int64_t)table->GetRecordPkCnt());
-    }
+    ASSERT_EQ(7, (int64_t)table->GetRecordIdxCnt());
+    ASSERT_EQ(2, (int64_t)table->GetRecordPkCnt());
     ::openmldb::storage::UpdateTTLMeta update_ttl(
         ::openmldb::storage::TTLSt(1 * 60 * 1000, 0, ::openmldb::storage::kAbsAndLat));
     table->SetTTL(update_ttl);
     table->SchedGc();
     ASSERT_EQ(6, (int64_t)table->GetRecordCnt());
-    // some functions in disk table need to be implemented.
-    // refer to issue #1238
-    if (storageMode == ::openmldb::common::StorageMode::kMemory) {
-        ASSERT_EQ(6, (int64_t)table->GetRecordIdxCnt());
-        ASSERT_EQ(2, (int64_t)table->GetRecordPkCnt());
-    }
+    ASSERT_EQ(6, (int64_t)table->GetRecordIdxCnt());
+    ASSERT_EQ(2, (int64_t)table->GetRecordPkCnt());
     {
         ::openmldb::api::LogEntry entry;
         entry.set_log_index(0);
@@ -1465,31 +1410,19 @@ TEST_P(TableTest, GcAbsAndLat) {
     table->SetTTL(update_ttl);
     table->SchedGc();
     ASSERT_EQ(6, (int64_t)table->GetRecordCnt());
-    // some functions in disk table need to be implemented.
-    // refer to issue #1238
-    if (storageMode == ::openmldb::common::StorageMode::kMemory) {
-        ASSERT_EQ(6, (int64_t)table->GetRecordIdxCnt());
-        ASSERT_EQ(2, (int64_t)table->GetRecordPkCnt());
-    }
+    ASSERT_EQ(6, (int64_t)table->GetRecordIdxCnt());
+    ASSERT_EQ(2, (int64_t)table->GetRecordPkCnt());
     update_ttl = ::openmldb::storage::UpdateTTLMeta(
         ::openmldb::storage::TTLSt(1 * 60 * 1000, 1, ::openmldb::storage::kAbsAndLat));
     table->SetTTL(update_ttl);
     table->SchedGc();
     ASSERT_EQ(6, (int64_t)table->GetRecordCnt());
-    // some functions in disk table need to be implemented.
-    // refer to issue #1238
-    if (storageMode == ::openmldb::common::StorageMode::kMemory) {
-        ASSERT_EQ(6, (int64_t)table->GetRecordIdxCnt());
-        ASSERT_EQ(2, (int64_t)table->GetRecordPkCnt());
-    }
+    ASSERT_EQ(6, (int64_t)table->GetRecordIdxCnt());
+    ASSERT_EQ(2, (int64_t)table->GetRecordPkCnt());
     table->SchedGc();
     ASSERT_EQ(2, (int64_t)table->GetRecordCnt());
-    // some functions in disk table need to be implemented.
-    // refer to issue #1238
-    if (storageMode == ::openmldb::common::StorageMode::kMemory) {
-        ASSERT_EQ(2, (int64_t)table->GetRecordIdxCnt());
-        ASSERT_EQ(2, (int64_t)table->GetRecordPkCnt());
-    }
+    ASSERT_EQ(2, (int64_t)table->GetRecordIdxCnt());
+    ASSERT_EQ(2, (int64_t)table->GetRecordPkCnt());
     {
         ::openmldb::api::LogEntry entry;
         entry.set_log_index(0);
@@ -1927,6 +1860,363 @@ TEST_P(TableTest, AbsAndLat) {
             ASSERT_EQ(100, count);
         }
     }
+
+    delete table;
+}
+
+TEST_F(TableTest, GetRecordAbsTTL) {
+    ::openmldb::common::StorageMode storageMode = openmldb::common::StorageMode::kHDD;
+    ::openmldb::api::TableMeta table_meta;
+    table_meta.set_name("table1");
+    std::string table_path = "";
+    int id = 1;
+    if (storageMode == ::openmldb::common::kHDD) {
+        id = ++counter;
+        table_path = GetDBPath(FLAGS_hdd_root_path, id, 1);
+    }
+    table_meta.set_tid(id);
+    table_meta.set_pid(1);
+    table_meta.set_seg_cnt(1);
+    table_meta.set_mode(::openmldb::api::TableMode::kTableLeader);
+    table_meta.set_key_entry_max_height(8);
+    table_meta.set_storage_mode(storageMode);
+    table_meta.set_format_version(1);
+    SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "test", ::openmldb::type::kString);
+    SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "testnew", ::openmldb::type::kString);
+    SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "ts1", ::openmldb::type::kBigInt);
+    SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "ts2", ::openmldb::type::kBigInt);
+    SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "ts3", ::openmldb::type::kBigInt);
+
+    SchemaCodec::SetIndex(table_meta.add_column_key(), "index0", "test", "ts1", ::openmldb::type::kAbsoluteTime, 90, 0);
+    SchemaCodec::SetIndex(table_meta.add_column_key(), "index1", "testnew", "ts2", ::openmldb::type::kAbsoluteTime, 50,
+                          0);
+    SchemaCodec::SetIndex(table_meta.add_column_key(), "index2", "testnew", "ts3", ::openmldb::type::kAbsoluteTime, 40,
+                          0);
+
+    Table* table = CreateTable(table_meta, table_path);
+    table->Init();
+    codec::SDKCodec codec(table_meta);
+    uint64_t now = ::baidu::common::timer::get_micros() / 1000;
+
+    for (int i = 0; i < 100; i++) {
+        uint64_t ts = now - (99 - i) * 60 * 1000;
+        std::string ts_str = std::to_string(ts);
+
+        std::vector<std::string> row = {"test"+ std::to_string(i / 10),
+                                        "testnew"+ std::to_string(i / 10),
+                                        ts_str,
+                                        ts_str,
+                                        ts_str};
+        ::openmldb::api::PutRequest request;
+        ::openmldb::api::Dimension* dim = request.add_dimensions();
+        dim->set_idx(0);
+        dim->set_key(row[0]);
+        ::openmldb::api::Dimension* dim1 = request.add_dimensions();
+        dim1->set_idx(1);
+        dim1->set_key(row[1]);
+        ::openmldb::api::Dimension* dim2 = request.add_dimensions();
+        dim2->set_idx(2);
+        dim2->set_key(row[1]);
+        std::string value;
+        ASSERT_EQ(0, codec.EncodeRow(row, &value));
+        table->Put(0, value, request.dimensions());
+    }
+
+    for (int i = 0; i <= 2; i++) {
+        TableIterator* it = table->NewTraverseIterator(i);
+        it->SeekToFirst();
+        int count = 0;
+        while (it->Valid()) {
+            it->Next();
+            count++;
+        }
+
+        if (i == 0) {
+            EXPECT_EQ(90, count);
+        } else if (i == 1) {
+            EXPECT_EQ(50, count);
+        } else if (i == 2) {
+            EXPECT_EQ(40, count);
+        }
+    }
+
+
+    EXPECT_EQ(200, (int64_t)table->GetRecordIdxCnt());
+    EXPECT_EQ(20, (int64_t)table->GetRecordPkCnt());
+
+    uint64_t* stats = NULL;
+    uint32_t size = 0;
+    ASSERT_TRUE(table->GetRecordIdxCnt(1, &stats, &size));
+    int ts_count = 0;
+    for (uint32_t i = 0; i < size; i++) {
+        ts_count += stats[i];
+    }
+    EXPECT_EQ(100, ts_count);
+
+    stats = NULL;
+    size = 0;
+    ASSERT_TRUE(table->GetRecordIdxCnt(2, &stats, &size));
+    ts_count = 0;
+    for (uint32_t i = 0; i < size; i++) {
+        ts_count += stats[i];
+    }
+    EXPECT_EQ(100, ts_count);
+
+    table->SchedGc();
+
+    EXPECT_EQ(140, (int64_t)table->GetRecordIdxCnt());
+    EXPECT_EQ(14, (int64_t)table->GetRecordPkCnt());
+
+    stats = NULL;
+    size = 0;
+    ASSERT_TRUE(table->GetRecordIdxCnt(1, &stats, &size));
+    ts_count = 0;
+    for (uint32_t i = 0; i < size; i++) {
+        ts_count += stats[i];
+    }
+    EXPECT_EQ(50, ts_count);
+
+    stats = NULL;
+    size = 0;
+    ASSERT_TRUE(table->GetRecordIdxCnt(2, &stats, &size));
+    ts_count = 0;
+    for (uint32_t i = 0; i < size; i++) {
+        ts_count += stats[i];
+    }
+    EXPECT_EQ(40, ts_count);
+
+    delete table;
+}
+
+TEST_F(TableTest, GetRecordLatTTL) {
+    ::openmldb::common::StorageMode storageMode = openmldb::common::StorageMode::kHDD;
+    ::openmldb::api::TableMeta table_meta;
+    table_meta.set_name("table1");
+    std::string table_path = "";
+    int id = 1;
+    if (storageMode == ::openmldb::common::kHDD) {
+        id = ++counter;
+        table_path = GetDBPath(FLAGS_hdd_root_path, id, 1);
+    }
+    table_meta.set_tid(id);
+    table_meta.set_pid(1);
+    table_meta.set_seg_cnt(1);
+    table_meta.set_mode(::openmldb::api::TableMode::kTableLeader);
+    table_meta.set_key_entry_max_height(8);
+    table_meta.set_storage_mode(storageMode);
+    table_meta.set_format_version(1);
+    SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "test", ::openmldb::type::kString);
+    SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "testnew", ::openmldb::type::kString);
+    SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "ts1", ::openmldb::type::kBigInt);
+    SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "ts2", ::openmldb::type::kBigInt);
+    SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "ts3", ::openmldb::type::kBigInt);
+
+    SchemaCodec::SetIndex(table_meta.add_column_key(), "index0", "test", "ts1", ::openmldb::type::kLatestTime, 0, 7);
+    SchemaCodec::SetIndex(table_meta.add_column_key(), "index1", "testnew", "ts2", ::openmldb::type::kLatestTime, 0, 5);
+    SchemaCodec::SetIndex(table_meta.add_column_key(), "index2", "testnew", "ts3", ::openmldb::type::kLatestTime, 0, 4);
+
+
+    Table* table = CreateTable(table_meta, table_path);
+    table->Init();
+    codec::SDKCodec codec(table_meta);
+    uint64_t now = ::baidu::common::timer::get_micros() / 1000;
+
+    for (int i = 0; i < 100; i++) {
+        uint64_t ts = now - (99 - i) * 60 * 1000;
+        std::string ts_str = std::to_string(ts);
+
+        std::vector<std::string> row = {"test"+ std::to_string(i % 10),
+                                        "testnew"+ std::to_string(i % 10),
+                                        ts_str,
+                                        ts_str,
+                                        ts_str};
+        ::openmldb::api::PutRequest request;
+        ::openmldb::api::Dimension* dim = request.add_dimensions();
+        dim->set_idx(0);
+        dim->set_key(row[0]);
+        ::openmldb::api::Dimension* dim1 = request.add_dimensions();
+        dim1->set_idx(1);
+        dim1->set_key(row[1]);
+        ::openmldb::api::Dimension* dim2 = request.add_dimensions();
+        dim2->set_idx(2);
+        dim2->set_key(row[1]);
+        std::string value;
+        ASSERT_EQ(0, codec.EncodeRow(row, &value));
+        table->Put(0, value, request.dimensions());
+    }
+
+    for (int i = 0; i <= 2; i++) {
+        TableIterator* it = table->NewTraverseIterator(i);
+        it->SeekToFirst();
+        int count = 0;
+        while (it->Valid()) {
+            it->Next();
+            count++;
+        }
+
+        if (i == 0) {
+            EXPECT_EQ(70, count);
+        } else if (i == 1) {
+            EXPECT_EQ(50, count);
+        } else if (i == 2) {
+            EXPECT_EQ(40, count);
+        }
+    }
+
+
+    EXPECT_EQ(20, (int64_t)table->GetRecordPkCnt());
+    EXPECT_EQ(200, (int64_t)table->GetRecordIdxCnt());
+
+    table->SchedGc();
+    EXPECT_EQ(20, (int64_t)table->GetRecordPkCnt());
+    EXPECT_EQ(120, (int64_t)table->GetRecordIdxCnt());
+
+    uint64_t* stats = NULL;
+    uint32_t size = 0;
+    ASSERT_TRUE(table->GetRecordIdxCnt(1, &stats, &size));
+    int ts_count = 0;
+    for (uint32_t i = 0; i < size; i++) {
+        ts_count += stats[i];
+    }
+    EXPECT_EQ(50, ts_count);
+
+    stats = NULL;
+    size = 0;
+    ASSERT_TRUE(table->GetRecordIdxCnt(2, &stats, &size));
+    ts_count = 0;
+    for (uint32_t i = 0; i < size; i++) {
+        ts_count += stats[i];
+    }
+    EXPECT_EQ(40, ts_count);
+
+    stats = NULL;
+    size = 0;
+    ASSERT_TRUE(table->GetRecordIdxCnt(0, &stats, &size));
+    ts_count = 0;
+    for (uint32_t i = 0; i < size; i++) {
+        ts_count += stats[i];
+    }
+    EXPECT_EQ(70, ts_count);
+
+    table->Delete("test0", 0);
+    table->Delete("testnew0", 1);
+    EXPECT_EQ(18, (int64_t)table->GetRecordPkCnt());
+    EXPECT_EQ(108, (int64_t)table->GetRecordIdxCnt());
+
+
+    delete table;
+}
+
+TEST_F(TableTest, GetRecordAbsAndLatTTL) {
+    ::openmldb::common::StorageMode storageMode = openmldb::common::StorageMode::kHDD;
+    ::openmldb::api::TableMeta table_meta;
+    table_meta.set_name("table1");
+    std::string table_path = "";
+    int id = 1;
+    if (storageMode == ::openmldb::common::kHDD) {
+        id = ++counter;
+        table_path = GetDBPath(FLAGS_hdd_root_path, id, 1);
+    }
+    table_meta.set_tid(id);
+    table_meta.set_pid(1);
+    table_meta.set_seg_cnt(1);
+    table_meta.set_mode(::openmldb::api::TableMode::kTableLeader);
+    table_meta.set_key_entry_max_height(8);
+    table_meta.set_storage_mode(storageMode);
+    table_meta.set_format_version(1);
+    SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "test", ::openmldb::type::kString);
+    SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "testnew", ::openmldb::type::kString);
+    SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "ts1", ::openmldb::type::kBigInt);
+    SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "ts2", ::openmldb::type::kBigInt);
+    SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "ts3", ::openmldb::type::kBigInt);
+
+    SchemaCodec::SetIndex(table_meta.add_column_key(), "index0", "test", "ts1", ::openmldb::type::kLatestTime, 0, 7);
+    SchemaCodec::SetIndex(table_meta.add_column_key(), "index1", "testnew", "ts2", ::openmldb::type::kAbsoluteTime, 50,
+                          0);
+    SchemaCodec::SetIndex(table_meta.add_column_key(), "index2", "testnew", "ts3", ::openmldb::type::kLatestTime, 0, 4);
+
+
+    Table* table = CreateTable(table_meta, table_path);
+    table->Init();
+    codec::SDKCodec codec(table_meta);
+    uint64_t now = ::baidu::common::timer::get_micros() / 1000;
+
+    for (int i = 0; i < 100; i++) {
+        uint64_t ts = now - (99 - i) * 60 * 1000;
+        std::string ts_str = std::to_string(ts);
+
+        std::vector<std::string> row = {"test"+ std::to_string(i / 10),
+                                        "testnew"+ std::to_string(i / 10),
+                                        ts_str,
+                                        ts_str,
+                                        ts_str};
+        ::openmldb::api::PutRequest request;
+        ::openmldb::api::Dimension* dim = request.add_dimensions();
+        dim->set_idx(0);
+        dim->set_key(row[0]);
+        ::openmldb::api::Dimension* dim1 = request.add_dimensions();
+        dim1->set_idx(1);
+        dim1->set_key(row[1]);
+        ::openmldb::api::Dimension* dim2 = request.add_dimensions();
+        dim2->set_idx(2);
+        dim2->set_key(row[1]);
+        std::string value;
+        ASSERT_EQ(0, codec.EncodeRow(row, &value));
+        table->Put(0, value, request.dimensions());
+    }
+
+    for (int i = 0; i <= 2; i++) {
+        TableIterator* it = table->NewTraverseIterator(i);
+        it->SeekToFirst();
+        int count = 0;
+        while (it->Valid()) {
+            it->Next();
+            count++;
+        }
+
+        if (i == 0) {
+            EXPECT_EQ(70, count);
+        } else if (i == 1) {
+            EXPECT_EQ(50, count);
+        } else if (i == 2) {
+            EXPECT_EQ(40, count);
+        }
+    }
+
+
+    EXPECT_EQ(20, (int64_t)table->GetRecordPkCnt());
+    EXPECT_EQ(200, (int64_t)table->GetRecordIdxCnt());
+
+    table->SchedGc();
+    EXPECT_EQ(20, (int64_t)table->GetRecordPkCnt());
+    EXPECT_EQ(120, (int64_t)table->GetRecordIdxCnt());
+
+    uint64_t* stats = NULL;
+    uint32_t size = 0;
+    ASSERT_TRUE(table->GetRecordIdxCnt(1, &stats, &size));
+    int ts_count = 0;
+    for (uint32_t i = 0; i < size; i++) {
+        ts_count += stats[i];
+    }
+    EXPECT_EQ(50, ts_count);
+
+    stats = NULL;
+    size = 0;
+    ASSERT_TRUE(table->GetRecordIdxCnt(2, &stats, &size));
+    ts_count = 0;
+    for (uint32_t i = 0; i < size; i++) {
+        ts_count += stats[i];
+    }
+    EXPECT_EQ(40, ts_count);
+
+    stats = NULL;
+    size = 0;
+    ASSERT_TRUE(table->GetRecordIdxCnt(0, &stats, &size));
+    ts_count = 0;
+    for (uint32_t i = 0; i < size; i++) {
+        ts_count += stats[i];
+    }
+    EXPECT_EQ(70, ts_count);
 
     delete table;
 }

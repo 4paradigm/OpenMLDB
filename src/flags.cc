@@ -136,6 +136,9 @@ DEFINE_int32(snapshot_pool_size, 1, "the size of tablet thread pool for making s
 DEFINE_uint32(load_index_max_wait_time, 120 * 60 * 1000,
               "config the max wait time of load index. unit is milliseconds");
 
+DEFINE_uint32(disk_stat_bloom_filter_bitset_size, 10000, "config the size of bitset in bloom filter");
+DEFINE_uint32(disk_stat_bloom_filter_hash_seed, 7, "config the count of hash seed in bloom filter, max 7");
+
 DEFINE_string(recycle_bin_root_path, "/tmp/recycle", "specify the root path of recycle bin");
 DEFINE_string(recycle_bin_ssd_root_path, "", "specify the root path of recycle bin in ssd");
 DEFINE_string(recycle_bin_hdd_root_path, "", "specify the root path of recycle bin in hdd");
