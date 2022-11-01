@@ -1951,7 +1951,6 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::HandleSQLCmd(const h
                            "Failed to get job log for job id: " + cmd_node->GetArgs()[0]};
                 return {};
             } else {
-                // tobedev
                 std::vector<std::string> value = {log};
                 return ResultSetSQL::MakeResultSet({FORMAT_STRING_KEY}, {value}, status);
             }
@@ -2754,7 +2753,6 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteOfflineQuery(
             return {};
         }
         // Print the output from job output
-        // TODO(tobe): return result set if want to format the output
         std::vector<std::string> value = {output};
         return ResultSetSQL::MakeResultSet({FORMAT_STRING_KEY}, {value}, status);
     } else {
