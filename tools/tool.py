@@ -16,6 +16,7 @@ import os
 import subprocess
 import sys
 import time
+from typing import List, Dict, Tuple
 log = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO, format = '%(levelname)s: %(message)s')
 
@@ -84,7 +85,7 @@ class Executor:
     def RunWithRetuncode(self, command,
                          universal_newlines = True,
                          useshell = USE_SHELL,
-                         env = os.environ) -> tuple(Status, str):
+                         env = os.environ) -> tuple([Status, str]):
         try:
             p = subprocess.Popen(command, stdout = subprocess.PIPE, stderr = subprocess.PIPE, shell = useshell, universal_newlines = universal_newlines, env = env)
             output = p.stdout.read()
@@ -96,7 +97,7 @@ class Executor:
         except Exception as ex:
             return Status(-1, ex), None
 
-    def GetNsLeader(self) -> tuple(Status, str):
+    def GetNsLeader(self) -> tuple([Status, str]):
         cmd = list(self.ns_base_cmd)
         cmd.append("--cmd=showns")
         status, output = self.RunWithRetuncode(cmd)
@@ -123,7 +124,7 @@ class Executor:
                 result.append(record)
         return result
 
-    def GetAutofailover(self) -> tuple(Status, bool):
+    def GetAutofailover(self) -> tuple([Status, bool]):
         cmd = list(self.ns_base_cmd)
         cmd.append("--cmd=confget auto_failover")
         status, output = self.RunWithRetuncode(cmd)
@@ -139,7 +140,7 @@ class Executor:
         status, output = self.RunWithRetuncode(cmd)
         return status
 
-    def GetAllDatabase(self) -> tuple(Status, list):
+    def GetAllDatabase(self) -> tuple([Status, List]):
         cmd = list(self.ns_base_cmd)
         cmd.append("--cmd=showdb")
         status, output = self.RunWithRetuncode(cmd)
@@ -152,7 +153,7 @@ class Executor:
             dbs.append(record[1])
         return Status(), dbs
 
-    def GetTableInfo(self, database, table_name = '') -> tuple(Status, list):
+    def GetTableInfo(self, database, table_name = '') -> tuple([Status, List]):
         cmd = list(self.ns_base_cmd)
         cmd.append("--cmd=showtable " + table_name)
         cmd.append("--database=" + database)
@@ -166,7 +167,7 @@ class Executor:
             result.append(record)
         return Status(), result
 
-    def ParseTableInfo(self, table_info) -> dict[str, list[Partition]]:
+    def ParseTableInfo(self, table_info) -> Dict[str, List[Partition]]:
         result = {}
         for record in table_info:
             is_leader = True if record[4] == "leader" else False
@@ -176,14 +177,14 @@ class Executor:
             result[record[2]].append(partition)
         return result
 
-    def GetTablePartition(self, database, table_name) -> tuple(Status, dict):
+    def GetTablePartition(self, database, table_name) -> tuple([Status, Dict]):
         status, result = self.GetTableInfo(database, table_name)
         if not status.OK:
             return status, None
         partition_dict = self.ParseTableInfo(result)
         return Status(), partition_dict
 
-    def GetAllTable(self, database) -> tuple[Status, list[Partition]]:
+    def GetAllTable(self, database) -> Tuple[Status, List[Partition]]:
         status, result = self.GetTableInfo(database)
         if not status.OK():
             return status, None
@@ -193,7 +194,7 @@ class Executor:
                 tables.append(partition[0])
         return Status(), tables
 
-    def GetTableStatus(self, endpoint, tid = '', pid = '') -> tuple(Status, dict):
+    def GetTableStatus(self, endpoint, tid = '', pid = '') -> tuple([Status, Dict]):
         cmd = list(self.tablet_base_cmd)
         cmd.append("--endpoint=" + endpoint)
         cmd.append("--cmd=gettablestatus " + tid + " " + pid)
@@ -231,7 +232,7 @@ class Executor:
 
         return Status(-1, "load table failed")
 
-    def GetLeaderFollowerOffset(self, endpoint, tid, pid) -> tuple(Status, list):
+    def GetLeaderFollowerOffset(self, endpoint, tid, pid) -> tuple([Status, List]):
         cmd = list(self.tablet_base_cmd)
         cmd.append("--endpoint=" + endpoint)
         cmd.append("--cmd=getfollower {} {}".format(tid, pid))
@@ -267,7 +268,7 @@ class Executor:
         status, output = self.RunWithRetuncode(cmd)
         return status
 
-    def ShowOpStatus(self, database, name, pid = '') -> tuple(Status, list):
+    def ShowOpStatus(self, database, name, pid = '') -> tuple([Status, List]):
         cmd = list(self.ns_base_cmd)
         cmd.append("--cmd=showopstatus {} {} ".format(name, pid))
         cmd.append("--database=" + database)
@@ -292,7 +293,7 @@ class Executor:
             return Status()
         return Status(-1, "migrate failed")
 
-    def ShowTablet(self) -> tuple(Status, list):
+    def ShowTablet(self) -> tuple([Status, List]):
         cmd = list(self.ns_base_cmd)
         cmd.append("--cmd=showtablet")
         status, output = self.RunWithRetuncode(cmd)

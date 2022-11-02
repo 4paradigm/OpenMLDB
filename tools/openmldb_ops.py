@@ -262,8 +262,8 @@ def ScaleOut(executor : Executor):
     log.info("execute scale-out success")
 
 def ScaleInEndpoint(executor : Executor, endpoint : str, desc_endpoints : list) -> Status:
-    log.info("start to scale-in {endpoint}")
-    status, result = executor.GetTableStatus(endpoint)
+    log.info(f"start to scale-in {endpoint}")
+    status, status_result = executor.GetTableStatus(endpoint)
     if not status.OK():
         log.error(f"get table status failed from {endpoint}")
         return Status(-1, f"get table status failed from {endpoint}")
@@ -278,29 +278,32 @@ def ScaleInEndpoint(executor : Executor, endpoint : str, desc_endpoints : list) 
     db_map = {}
     replica_map = {}
     for db in dbs:
-        status, result = executor.GetAllTable(db)
+        status, result = executor.GetTableInfo(db)
         if not status.OK():
             log.error("get table failed")
             return Status(-1, "get table failed")
-        for partition in result:
+        for record in result:
+            is_leader = True if record[4] == "leader" else False
+            is_alive = True if record[5] == "yes" else False
+            partition : Partition = Partition(record[0], record[1], record[2], record[3], is_leader, is_alive, int(record[6]))
             all_dict.setdefault(partition.GetEndpoint(), [])
             all_dict[partition.GetEndpoint()].append(partition)
             endpoint_partition_map.setdefault(partition.GetEndpoint(), set())
             endpoint_partition_map[partition.GetEndpoint()].add(partition.GetKey())
-            db_map.setdefault(partition.GetKey(), db)
+            db_map.setdefault(partition.GetKey(), (db, partition.GetName()))
             replica_map.setdefault(partition.GetKey, 0)
             replica_map[partition.GetKey] += 1
-    for record in result:
-        is_leader = True if record[4] == "leader" else False
-        is_alive = True if record[5] == "yes" else False
-        partition : Partition = Partition(record[0], record[1], record[2], record[3], is_leader, is_alive, int(record[6]))
+    for key, record in status_result.items():
+        is_leader = True if record[3] == "kTableLeader" else False
+        db, name = db_map.get("{}_{}".format(record[0], record[1]))
+        partition : Partition = Partition(name, record[0], record[1], endpoint, is_leader, True, int(record[2]))
         desc_endpoint = random.choice(desc_endpoints)
         for cur_endpoint in all_dict:
             if cur_endpoint not in desc_endpoints:
                 continue
             if len(all_dict[cur_endpoint]) < len(all_dict[desc_endpoint]) and partition.GetKey() not in endpoint_partition_map[cur_endpoint]:
                 log.info(f"migrate table {partition.GetName()} partition {partition.GetPid()} in {db} from {endpoint} to {desc_endpoint}")
-                status = MigratePartition(db_map.get(partition.GetKey()), partition, endpoint, desc_endpoint, replica_map[partition.GetKey()] == 1)
+                status = MigratePartition(db, partition, endpoint, desc_endpoint, replica_map[partition.GetKey()] == 1)
                 if not status.OK():
                     return status
                 break
@@ -309,7 +312,7 @@ def ScaleInEndpoint(executor : Executor, endpoint : str, desc_endpoints : list) 
 
 def ScaleIn(executor : Executor, endpoints : list):
     status, result = executor.ShowTablet()
-    if status.OK():
+    if not status.OK():
         log.error(f"execute showtablet failed")
         return
     alive_endpoints = []
@@ -327,7 +330,7 @@ def ScaleIn(executor : Executor, endpoints : list):
 
 if __name__ == "__main__":
     (options, args) = parser.parse_args()
-    if options.cmd not in ["recoverdata", "reblance"]:
+    if options.cmd not in ["recoverdata", "rebalance"]:
         log.error(f"unsupported cmd {options.cmd}")
         exit
     executor = Executor(options.openmldb_bin_path, options.zk_cluster, options.zk_root_path)
@@ -340,7 +343,7 @@ if __name__ == "__main__":
         exit
     if options.cmd == "recoverdata":
         RecoverData(executor)
-    elif options.cmd == "reblance":
+    elif options.cmd == "rebalance":
         if options.endpoints is None or options.endpoints == "":
             ScaleOut(executor)
         else:
