@@ -522,6 +522,11 @@ ExprListNode *NodeManager::MakeExprList(ExprNode *expr_node) {
     return new_list_ptr;
 }
 
+ArrayExpr *NodeManager::MakeArrayExpr() {
+    ArrayExpr *expr = new ArrayExpr();
+    return RegisterNode(expr);
+}
+
 PlanNode *NodeManager::MakeLeafPlanNode(const PlanType &type) {
     PlanNode *node_ptr = new LeafPlanNode(type);
     RegisterNode(node_ptr);

@@ -176,61 +176,8 @@ inline const std::string QueryTypeName(const QueryType &type) {
         }
     }
 }
-inline const std::string ExprTypeName(const ExprType &type) {
-    switch (type) {
-        case kExprPrimary:
-            return "primary";
-        case kExprParameter:
-            return "parameter";
-        case kExprId:
-            return "id";
-        case kExprBinary:
-            return "binary";
-        case kExprUnary:
-            return "unary";
-        case kExprCall:
-            return "function";
-        case kExprCase:
-            return "case";
-        case kExprWhen:
-            return "when";
-        case kExprBetween:
-            return "between";
-        case kExprColumnRef:
-            return "column ref";
-        case kExprColumnId:
-            return "column id";
-        case kExprCast:
-            return "cast";
-        case kExprAll:
-            return "all";
-        case kExprStruct:
-            return "struct";
-        case kExprQuery:
-            return "query";
-        case kExprOrder:
-            return "order";
-        case kExprGetField:
-            return "get field";
-        case kExprCond:
-            return "cond";
-        case kExprUnknow:
-            return "unknow";
-        case kExprIn:
-            return "in";
-        case kExprList:
-            return "expr_list";
-        case kExprForIn:
-            return "for_in";
-        case kExprRange:
-            return "range";
-        case kExprOrderExpression:
-            return "order";
-        case kExprEscaped:
-            return "escape";
-    }
-    return "unknown expr type";
-}
+
+std::string ExprTypeName(ExprType type);
 
 inline const std::string FrameTypeName(const FrameType &type) {
     switch (type) {
@@ -267,59 +214,8 @@ inline const std::string BoundTypeName(const BoundType &type) {
     }
     return "";
 }
-inline const std::string DataTypeName(const DataType &type) {
-    switch (type) {
-        case hybridse::node::kBool:
-            return "bool";
-        case hybridse::node::kInt16:
-            return "int16";
-        case hybridse::node::kInt32:
-            return "int32";
-        case hybridse::node::kInt64:
-            return "int64";
-        case hybridse::node::kFloat:
-            return "float";
-        case hybridse::node::kDouble:
-            return "double";
-        case hybridse::node::kVarchar:
-            return "string";
-        case hybridse::node::kTimestamp:
-            return "timestamp";
-        case hybridse::node::kDate:
-            return "date";
-        case hybridse::node::kList:
-            return "list";
-        case hybridse::node::kMap:
-            return "map";
-        case hybridse::node::kIterator:
-            return "iterator";
-        case hybridse::node::kRow:
-            return "row";
-        case hybridse::node::kSecond:
-            return "second";
-        case hybridse::node::kMinute:
-            return "minute";
-        case hybridse::node::kHour:
-            return "hour";
-        case hybridse::node::kNull:
-            return "null";
-        case hybridse::node::kVoid:
-            return "void";
-        case hybridse::node::kPlaceholder:
-            return "placeholder";
-        case hybridse::node::kOpaque:
-            return "opaque";
-        case hybridse::node::kTuple:
-            return "tuple";
-        case hybridse::node::kDay:
-            return "day";
-        case hybridse::node::kInt8Ptr:
-            return "int8ptr";
-        default:
-            return "unknown";
-    }
-    return "";
-}
+
+std::string DataTypeName(DataType type);
 
 inline const std::string TypeName(type::Type type) {
     switch (type) {
@@ -582,6 +478,21 @@ class ExprListNode : public ExprNode {
     ExprListNode *ShadowCopy(NodeManager *) const override;
 
     Status InferAttr(ExprAnalysisContext *ctx) override;
+};
+
+class ArrayExpr : public ExprNode {
+ public:
+    ArrayExpr() : ExprNode(kExprArray) {}
+    ~ArrayExpr() override {}
+
+    void Print(std::ostream &output, const std::string &org_tab) const override;
+    const std::string GetExprString() const override;
+    ArrayExpr *ShadowCopy(NodeManager *) const override;
+
+    Status InferAttr(ExprAnalysisContext *ctx) override;
+
+    // array type may specific already in SQL, e.g. ARRAY<FLOAT>[1,2,3]
+    TypeNode* specific_type_ = nullptr;
 };
 
 class FnNode : public SqlNode {

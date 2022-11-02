@@ -291,6 +291,8 @@ class NodeManager {
     ExprListNode *MakeExprList(ExprNode *node_ptr);
     ExprListNode *MakeExprList();
 
+    ArrayExpr *MakeArrayExpr();
+
     DatasetNode *MakeDataset(const std::string &table);
     MapNode *MakeMapNode(const NodePointVector &nodes);
     node::FnForInBlock *MakeForInBlock(FnForInNode *for_in_node,

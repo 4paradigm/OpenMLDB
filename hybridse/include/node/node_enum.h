@@ -109,7 +109,8 @@ enum QueryType {
     kQueryUnion,
 };
 enum ExprType {
-    kExprBinary,
+    kExprUnknow = -1,
+    kExprBinary = 0,
     kExprUnary,
     kExprBetween,
     kExprCall,
@@ -133,11 +134,13 @@ enum ExprType {
     kExprCond,
     kExprIn,
     kExprEscaped,
-    kExprUnknow = -1
+    kExprArray,
+    kExprFake,  // not a real one
+    kExprLast = kExprFake,
 };
 // typedef hybridse::type::Type DataType;
 enum DataType {
-    kBool,
+    kBool = 0,
     kInt16,
     kInt32,
     kInt64,
@@ -146,7 +149,7 @@ enum DataType {
     kVarchar,
     kDate,
     kTimestamp,
-    kList,
+    kList,  // dynamic sized, same element type, not nullable. usually ref to column ref or subquery
     kHour,
     kMinute,
     kSecond,
@@ -156,7 +159,12 @@ enum DataType {
     kInt8Ptr,
     kRow,
     kOpaque,
-    kTuple,
+    kTuple,         // heterogeneous element type, fixed size
+    kArray,         // the SQL Array type: [1, 2, 3] or ARRAY<int>[1, 2, 3]
+    kDataTypeFake,  // not a data type, for testing purpose only
+    kLastDataType = kDataTypeFake,
+    // the tree type are not moved above kLastDataType for compatibility
+    // it may necessary to do it in the further
     kVoid = 100,
     kNull = 101,
     kPlaceholder = 102

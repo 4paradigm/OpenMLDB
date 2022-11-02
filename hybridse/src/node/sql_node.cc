@@ -85,6 +85,79 @@ static const absl::flat_hash_map<CmdType, absl::string_view>& GetCmdTypeNamesMap
   return map;
 }
 
+static absl::flat_hash_map<DataType, absl::string_view> CreateDataTypeNamesMap() {
+  absl::flat_hash_map<DataType, absl::string_view> map = {
+      {kBool, "bool"},     {kInt16, "int16"},   {kInt32, "int32"},    {kInt64, "int64"},
+      {kFloat, "float"},   {kDouble, "double"}, {kVarchar, "string"}, {kTimestamp, "timestamp"},
+      {kDate, "date"},     {kList, "list"},     {kMap, "map"},        {kIterator, "iterator"},
+      {kRow, "row"},       {kSecond, "second"}, {kMinute, "minute"},  {kHour, "hour"},
+      {kNull, "null"},     {kArray, "array"},   {kVoid, "void"},      {kPlaceholder, "placeholder"},
+      {kOpaque, "opaque"}, {kTuple, "tuple"},   {kDay, "day"},        {kInt8Ptr, "int8ptr"},
+  };
+
+  for (auto kind = 0; kind < DataType::kLastDataType; ++kind) {
+        DCHECK(map.find(static_cast<DataType>(kind)) != map.end());
+  }
+  DCHECK(map.find(kVoid) != map.end());
+  DCHECK(map.find(kNull) != map.end());
+  DCHECK(map.find(kPlaceholder) != map.end());
+
+  return map;
+}
+
+static const absl::flat_hash_map<DataType, absl::string_view>& GetDataTypeNamesMap() {
+  static const absl::flat_hash_map<DataType, std::string_view> &map = *new auto(CreateDataTypeNamesMap());
+  return map;
+}
+
+static absl::flat_hash_map<ExprType, absl::string_view> CreateExprTypeNamesMap() {
+  absl::flat_hash_map<ExprType, absl::string_view> map = {
+      {kExprPrimary, "primary"},
+      {kExprParameter, "parameter"},
+      {kExprId, "id"},
+      {kExprBinary, "binary"},
+      {kExprUnary, "unary"},
+      {kExprCall, "function"},
+      {kExprCase, "case"},
+      {kExprWhen, "when"},
+      {kExprBetween, "between"},
+      {kExprColumnRef, "column ref"},
+      {kExprColumnId, "column id"},
+      {kExprCast, "cast"},
+      {kExprAll, "all"},
+      {kExprStruct, "struct"},
+      {kExprQuery, "query"},
+      {kExprOrder, "order"},
+      {kExprGetField, "get field"},
+      {kExprCond, "cond"},
+      {kExprUnknow, "unknow"},
+      {kExprIn, "in"},
+      {kExprList, "expr_list"},
+      {kExprForIn, "for_in"},
+      {kExprRange, "range"},
+      {kExprOrderExpression, "order"},
+      {kExprEscaped, "escape"},
+      {kExprArray, "array"},
+  };
+  for (auto kind = 0; kind < ExprType::kExprLast; ++kind) {
+        DCHECK(map.find(static_cast<ExprType>(kind)) != map.end());
+  }
+  return map;
+}
+
+static const absl::flat_hash_map<ExprType, absl::string_view>& GetExprTypeNamesMap() {
+  static const absl::flat_hash_map<ExprType, std::string_view> &map = *new auto(CreateExprTypeNamesMap());
+  return map;
+}
+
+static void PrintExprChildren(const ExprNode* expr, std::ostream &output, const std::string &org_tab)  {
+    const std::string tab = org_tab + INDENT + SPACE_ED;
+    for (auto iter = expr->children_.cbegin(); iter != expr->children_.cend(); iter++) {
+        output << "\n";
+        (*iter)->Print(output, org_tab);
+    }
+}
+
 bool SqlEquals(const SqlNode *left, const SqlNode *right) {
     return left == right ? true : nullptr == left ? false : left->Equals(right);
 }
@@ -1236,6 +1309,24 @@ absl::string_view CmdTypeName(const CmdType type) {
     return "undefined cmd type";
 }
 
+std::string DataTypeName(DataType type) {
+    auto &map = GetDataTypeNamesMap();
+    auto it = map.find(type);
+    if (it != map.end()) {
+        return std::string(it->second);
+    }
+    return "unknown";
+}
+
+std::string ExprTypeName(ExprType type) {
+    auto &map = GetExprTypeNamesMap();
+    auto it = map.find(type);
+    if (it != map.end()) {
+        return std::string(it->second);
+    }
+    return "unknown";
+}
+
 std::ostream &operator<<(std::ostream &output, const SqlNode &thiz) {
     thiz.Print(output, "");
     return output;
@@ -1765,18 +1856,13 @@ bool ExprNode::Equals(const ExprNode *that) const {
 }
 
 void ExprListNode::Print(std::ostream &output, const std::string &org_tab) const {
-    if (children_.empty()) {
-        return;
-    }
-    const std::string tab = org_tab + INDENT + SPACE_ED;
-    auto iter = children_.cbegin();
-    (*iter)->Print(output, org_tab);
-    iter++;
-    for (; iter != children_.cend(); iter++) {
-        output << "\n";
-        (*iter)->Print(output, org_tab);
-    }
+    PrintExprChildren(this, output, org_tab);
 }
+
+void ArrayExpr::Print(std::ostream &output, const std::string &org_tab) const {
+    PrintExprChildren(this, output, org_tab);
+}
+
 const std::string ExprListNode::GetExprString() const {
     if (children_.empty()) {
         return "()";
@@ -1792,6 +1878,14 @@ const std::string ExprListNode::GetExprString() const {
         str.append(")");
         return str;
     }
+}
+
+const std::string ArrayExpr::GetExprString() const {
+    return absl::StrCat(
+        "[",
+        absl::StrJoin(children_, ",",
+                      [](std::string *out, const ExprNode *&expr) { absl::StrAppend(out, expr->GetExprString()); }),
+        "]");
 }
 
 void FnParaNode::Print(std::ostream &output, const std::string &org_tab) const {

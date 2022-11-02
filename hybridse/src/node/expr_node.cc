@@ -787,6 +787,35 @@ Status ExprListNode::InferAttr(ExprAnalysisContext* ctx) {
     return Status::OK();
 }
 
+ArrayExpr* ArrayExpr::ShadowCopy(NodeManager* nm) const {
+    auto array = nm->MakeArrayExpr();
+    array->children_ = children_;
+    array->specific_type_ = specific_type_;
+    return array;
+}
+
+Status ArrayExpr::InferAttr(ExprAnalysisContext* ctx) {
+    // if specific_type_ exists, take the type directly
+    // whether the specific type is castable from should checked during codegen
+    if (specific_type_ != nullptr) {
+        SetOutputType(specific_type_);
+        SetNullable(true);
+        return Status::OK();
+    }
+
+    auto top_type = ctx->node_manager()->MakeTypeNode(kArray);
+    // TODO(ace): single concret type should inferred from all childrens, if there exists
+    if (children_.empty()) {
+        top_type->AddGeneric(ctx->node_manager()->MakeTypeNode(kNull), true);
+    } else {
+        top_type->AddGeneric(children_[0]->GetOutputType(), children_[0]->nullable());
+    }
+    SetOutputType(top_type);
+    // array is nullable
+    SetNullable(true);
+    return Status::OK();
+}
+
 OrderByNode* OrderByNode::ShadowCopy(NodeManager* nm) const {
     return nm->MakeOrderByNode(order_expressions_);
 }
