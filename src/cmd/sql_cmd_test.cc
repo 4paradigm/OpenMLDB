@@ -3001,6 +3001,8 @@ TEST_P(DBSDKTest, ShowTableStatusLike) {
             {{{}, tb_name, db_name, "memory", "1", {{}, "0"}, {{}, "0"}, "1", "0", "1", "NULL", "NULL", "NULL", ""}},
             rs.get(), true, false);
     }
+    // runs HandleSQL only for the purpose of pretty print result in console
+    HandleSQL("show table status like '%'");
 
     rs = sr->ExecuteSQL("show table status like '*'", &status);
     ASSERT_EQ(status.code, 0) << status.msg;

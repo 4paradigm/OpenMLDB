@@ -50,8 +50,8 @@
 #include "sdk/node_adapter.h"
 #include "sdk/result_set_sql.h"
 #include "sdk/split.h"
-#include "vm/catalog.h"
 #include "udf/udf.h"
+#include "vm/catalog.h"
 
 DECLARE_string(bucket_size);
 DECLARE_uint32(replica_num);
@@ -2011,7 +2011,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::HandleSQLCmd(const h
         }
         case hybridse::node::kCmdShowTableStatus: {
             const auto& args = cmd_node->GetArgs();
-            return ExecuteShowTableStatus(db, status, args.size() > 0 ? args[0] : "");
+            return ExecuteShowTableStatus(db, args.size() > 0 ? args[0] : "", status);
         }
         default: {
             *status = {::hybridse::common::StatusCode::kCmdError, "fail to execute script with unsupported type"};
@@ -4095,8 +4095,8 @@ static const std::initializer_list<std::string> GetTableStatusSchema() {
 //   show table status in all databases except hidden databases
 // else: show table status in current database, include hidden database
 std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteShowTableStatus(const std::string& db,
-                                                                                   hybridse::sdk::Status* status,
-                                                                                   const std::string& pattern) {
+                                                                                   const std::string& pattern,
+                                                                                   hybridse::sdk::Status* status) {
     base::StringRef pattern_ref(pattern);
     // NOTE: cluster_sdk_->GetTables(db) seems not accurate, query directly
     std::vector<nameserver::TableInfo> tables;
@@ -4105,6 +4105,20 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteShowTableStat
 
     std::vector<std::vector<std::string>> data;
     data.reserve(tables.size());
+
+    auto all_tablets = cluster_sdk_->GetAllTablet();
+    TableStatusMap table_statuses;
+    for (auto& tablet_accessor : all_tablets) {
+        std::shared_ptr<client::TabletClient> tablet_client;
+        if (tablet_accessor && (tablet_client = tablet_accessor->GetClient())) {
+            ::openmldb::api::GetTableStatusResponse response;
+            if (tablet_client->GetTableStatus(response)) {
+                for (const auto& table_status : response.all_table_status()) {
+                    table_statuses[table_status.tid()][table_status.pid()][tablet_client->GetEndpoint()] = table_status;
+                }
+            }
+        }
+    }
 
     bool matched = false, is_null = true;
     for (auto it = tables.rbegin(); it != tables.rend(); it++) {
@@ -4146,7 +4160,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteShowTableStat
                     partition_unalive++;
                 }
             }
-            CheckTableStatus(db, table_name, tid, partition_info, replica_num, &error_msg);
+            CheckTableStatus(db, table_name, tid, partition_info, replica_num, table_statuses, &error_msg);
         }
 
         std::string offline_path = "NULL", offline_format = "NULL", offline_deep_copy = "NULL";
@@ -4168,81 +4182,72 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteShowTableStat
 
 bool SQLClusterRouter::CheckTableStatus(const std::string& db, const std::string& table_name, uint32_t tid,
                                         const nameserver::TablePartition& partition_info, uint32_t replica_num,
-                                        std::string* msg) {
+                                        const TableStatusMap& statuses, std::string* msg) {
     bool check_succeed = true;
     auto& error_msg = *msg;
     uint32_t pid = partition_info.pid();
-    auto append_error_msg = [&check_succeed](std::string& msg, uint32_t pid, bool is_leader,
-                                             const std::string& endpoint, const std::string& error) {
-        absl::StrAppend(&msg, (msg.empty() ? "" : "\n"), "[pid=", std::to_string(pid), "][",
-                        (is_leader ? "leader" : "follower"), "][", endpoint, "]: ", error);
+    auto append_error_msg = [&check_succeed](std::string& msg, uint32_t pid, int is_leader, const std::string& endpoint,
+                                             const std::string& error) {
+        absl::StrAppend(&msg, (msg.empty() ? "" : "\n"), "[pid=", std::to_string(pid), "]");
+        if (is_leader >= 0) {
+            absl::StrAppend(&msg, "[", (is_leader == 1 ? "leader" : "follower"), "]");
+        }
+        if (!endpoint.empty()) {
+            absl::StrAppend(&msg, "[", endpoint, "]");
+        }
+        absl::StrAppend(&msg, ": ", error);
         check_succeed = false;
     };
 
-    // check with tablet again of the partition status
-    // check the leader status
-    auto tablet_accessor = cluster_sdk_->GetTablet(db, table_name, pid);
-    std::shared_ptr<client::TabletClient> tablet_client;
-    ::openmldb::api::TableState state = ::openmldb::api::kTableUndefined;
-    if (tablet_accessor && (tablet_client = tablet_accessor->GetClient())) {
-        ::openmldb::api::TableStatus table_status;
-        if (tablet_client->GetTableStatus(tid, pid, table_status)) {
-            if (table_status.has_mode() && table_status.mode() != ::openmldb::api::kTableLeader) {
-                LOG(ERROR) << db << "." << table_name << " pid=" << pid << ": leader state inconsistent in "
-                           << tablet_accessor->GetName();
-                append_error_msg(error_msg, pid, true, tablet_accessor->GetName(), "leader state inconsistent");
+    if (statuses.count(tid) && statuses.at(tid).count(pid)) {
+        const auto& partition_statuses = statuses.at(tid).at(pid);
+        if (replica_num != partition_statuses.size()) {
+            append_error_msg(error_msg, pid, -1, "",
+                             absl::StrCat("real replica number ", partition_statuses.size(),
+                                          " does not match the configured replicanum ", replica_num));
+        }
+
+        for (auto& meta : partition_info.partition_meta()) {
+            if (!partition_statuses.count(meta.endpoint())) {
+                append_error_msg(error_msg, pid, meta.is_leader(), meta.endpoint(), "state is kNotFound");
+                continue;
             }
-            if (table_status.has_state()) {
-                state = table_status.state();
+            const auto& table_status = partition_statuses.at(meta.endpoint());
+
+            // check leader/follower status
+            bool is_leader =
+                table_status.has_mode() ? table_status.mode() == ::openmldb::api::kTableLeader : meta.is_leader();
+            if (is_leader != meta.is_leader()) {
+                append_error_msg(error_msg, pid, is_leader, meta.endpoint(), "leader/follower mode inconsistent");
+            }
+
+            // check table status
+            ::openmldb::api::TableState state =
+                table_status.has_state() ? table_status.state() : ::openmldb::api::kTableUndefined;
+            if (state == ::openmldb::api::kTableUndefined || (is_leader && state == ::openmldb::api::kTableLoading)) {
+                append_error_msg(error_msg, pid, is_leader, meta.endpoint(),
+                                 absl::StrCat("state is ", TableState_Name(state)));
             }
         }
-    }
-
-    if (state == ::openmldb::api::kTableUndefined || state == ::openmldb::api::kTableLoading) {
-        append_error_msg(error_msg, pid, true, tablet_accessor->GetName(),
-                         absl::StrCat("state is ", TableState_Name(state)));
+    } else {
+        append_error_msg(error_msg, pid, -1, "",
+                         absl::StrCat("real replica number 0 does not match the configured replicanum ", replica_num));
     }
 
     // check the followers' offset
-    if (tablet_client) {
+    auto tablet_accessor = cluster_sdk_->GetTablet(db, table_name, pid);
+    std::shared_ptr<client::TabletClient> tablet_client;
+    if (tablet_accessor && (tablet_client = tablet_accessor->GetClient())) {
         uint64_t offset = 0;
         std::map<std::string, uint64_t> info_map;
         std::string msg;
         tablet_client->GetTableFollower(tid, pid, offset, info_map, msg);
-        if (replica_num - 1 != info_map.size() || replica_num != partition_info.partition_meta_size()) {
-            append_error_msg(error_msg, pid, true, tablet_accessor->GetName(),
-                             "follower number does not match the replicanum");
-        }
         for (auto& meta : partition_info.partition_meta()) {
             if (meta.is_leader()) continue;
 
             if (info_map.count(meta.endpoint()) == 0) {
                 append_error_msg(error_msg, pid, false, meta.endpoint(), "not connected to leader");
             }
-        }
-    }
-
-    auto tablet_accessors = cluster_sdk_->GetTabletFollowers(db, table_name, pid);
-    for (auto& tablet_accessor : tablet_accessors) {
-        std::shared_ptr<client::TabletClient> tablet_client;
-        ::openmldb::api::TableState state = ::openmldb::api::kTableUndefined;
-        if (tablet_accessor && (tablet_client = tablet_accessor->GetClient())) {
-            ::openmldb::api::TableStatus table_status;
-            if (tablet_client->GetTableStatus(tid, pid, table_status)) {
-                if (table_status.has_state()) {
-                    if (table_status.has_mode() && table_status.mode() != ::openmldb::api::kTableFollower) {
-                        LOG(ERROR) << db << "." << table_name << " pid=" << pid << ": follower state inconsistent in "
-                                   << tablet_accessor->GetName();
-                    } else {
-                        state = table_status.state();
-                    }
-                }
-            }
-        }
-
-        if (state == ::openmldb::api::kTableUndefined) {
-            append_error_msg(error_msg, pid, false, tablet_accessor->GetName(),
-                             absl::StrCat("state is ", TableState_Name(state)));
         }
     }
 

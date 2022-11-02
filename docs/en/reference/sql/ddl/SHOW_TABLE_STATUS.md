@@ -28,8 +28,7 @@ For example, `'%'` means all databases, including the hidden ones.
 | Offline_path      | It shows the path of the offline data for this table and is valid only for offline tables. The `NULL` value means the path is not set. |
 | Offline_format    | It shows the offline data format of the table and is valid only for offline tables. The `NULL` value means it is not set.              |
 | Offline_deep_copy | It indicates whether deep copy is used on the table and is valid only for offline tables. The `NULL` value means it is not set.        |
-| Warnings          | Warnings related to the table, including the following four types：<br/>1) `leader state inconsistent`: the leader information from nameserver is not consistent with those in tablet<br/>2) `state is kTableUndefined/kTableLoading`：the partition is unavailable, `kTableUndefined` means the partition not exists or not loaded successfully; `kTableLoading` means the partition is being loaded<br/>3) `follower number does not match the replicanum`：the number of followers != replicanum-1<br/>4) `not connected to leader`：follower is not connected to the leader, which usually occurs together with 3) |
-
+| Warnings          | Warnings related to the table, including the following four types：<br/>1) `leader/follower mode inconsistent`: the leader/follower information from nameserver is not consistent with those in tablet<br/>2) `state is kNotFound/kTableUndefined/kTableLoading`：the partition is unavailable, `kNotFound` means the partition does not exist; `kTableUndefined` means the partition is not loaded successfully; `kTableLoading` means the partition is being loaded<br/>3) `real replica number xx does not match the configured replicanum xx`：the number of replicas != `replicanum`<br/>4) `not connected to leader`：follower is not connected to the leader, which usually occurs together with 3) |
 
 ## Example
 
