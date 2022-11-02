@@ -30,7 +30,10 @@ The online modes of OpenMLDB cluster version provide online storage engine (stor
 
 #### 2.2 Stream
 
-Data can be loaded from `pulsar` as well, see [Pulsar Connector](../use_case/pulsar_connector_demo.md) for detail.
+Data can be loaded from `Pulsar`, `Kafka` and `RocketMQ ` as well, see the following links for detail.
+- [Pulsar Connector](../use_case/pulsar_connector_demo.md)
+- [Kafka Connector](../use_case/kafka_connector_demo.md)
+- [RocketMQ Connector](../use_case/rocketmq_connector.md)
 
 ## Note
 

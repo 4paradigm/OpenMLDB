@@ -31,7 +31,10 @@ OpenMLDB集群版的在线模式提供自建的在线存储引擎（保存于内
 
 #### 2.2 流式导入（stream）
 
-OpenMLDB支持从pulsar在线导入数据，详见[Pulsar Connector：接入实时数据流](../use_case/pulsar_connector_demo.md)。
+OpenMLDB支持从`Pulsar`， `Kafka` 和 `RocketMQ `在线导入数据，详见
+- [Pulsar Connector](../use_case/pulsar_connector_demo.md)
+- [Kafka Connector](../use_case/kafka_connector_demo.md)
+- [RocketMQ Connector](../use_case/rocketmq_connector.md)
 
 ## 补充
 
