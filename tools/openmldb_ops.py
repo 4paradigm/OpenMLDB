@@ -13,7 +13,6 @@
 # limitations under the License.
 import logging
 
-from numpy import partition
 log = logging.getLogger(__name__)
 import sys
 from tool import Executor
