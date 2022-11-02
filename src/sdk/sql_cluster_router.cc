@@ -2382,6 +2382,9 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(
     const std::string& db, const std::string& sql, std::shared_ptr<openmldb::sdk::SQLRequestRow> parameter,
     bool is_online_mode, bool is_sync_job, int offline_job_timeout, hybridse::sdk::Status* status) {
     RET_IF_NULL_AND_WARN(status, "output status is nullptr");
+    // functions we called later may not change the status if it's succeed. So if we pass error status here, we'll get a
+    // fake error
+    status->SetOK();
     hybridse::node::NodeManager node_manager;
     hybridse::node::PlanNodeList plan_trees;
     hybridse::base::Status sql_status;
@@ -3008,8 +3011,8 @@ hybridse::sdk::Status SQLClusterRouter::LoadDataSingleFile(int id, int step, con
                                                               options_parser.GetQuote());
             auto ret = InsertOneRow(database, insert_placeholder, str_cols_idx, options_parser.GetNullValue(), cols);
             if (!ret.IsOK()) {
-                return {StatusCode::kCmdError,
-                    absl::StrCat("file [", file_path, "] line [lineno=", i, ": ", line, "] insert failed, ", ret.msg)};
+                return {StatusCode::kCmdError, absl::StrCat("file [", file_path, "] line [lineno=", i, ": ", line,
+                                                            "] insert failed, ", ret.msg)};
             } else {
                 (*count)++;
             }
