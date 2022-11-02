@@ -22,7 +22,7 @@ If the offline path of the table is a soft link, OpenMLDB doesn't support append
 
 ### 2 Online Import
 
-The online modes of OpenMLDB cluster version provide online storage engine (saved in memory). Only **hard copy** can be used in online import.
+The online modes of OpenMLDB cluster version provide online storage engine (stored in memory). Only **hard copy** can be used in online import.
 
 #### 2.1 `LOAD DATA`
 
