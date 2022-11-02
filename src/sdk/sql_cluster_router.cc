@@ -1916,23 +1916,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::HandleSQLCmd(const h
                            "Failed to parse job id: " + cmd_node->GetArgs()[0]};
                 return {};
             }
-
-            std::string db = openmldb::nameserver::INTERNAL_DB;
-            std::string sql = "SELECT * FROM JOB_INFO WHERE id = " + std::to_string(job_id);
-
-            auto rs = ExecuteSQLParameterized(db, sql, std::shared_ptr<openmldb::sdk::SQLRequestRow>(), status);
-            if (!status->IsOK()) {
-                return {};
-            }
-            if (rs->Size() == 0) {
-                status->code = ::hybridse::common::StatusCode::kCmdError;
-                status->msg = "Job not found: " + std::to_string(job_id);
-                return {};
-            }
-            if (FLAGS_role == "sql_client") {
-                return std::make_shared<ReadableResultSetSQL>(rs);
-            }
-            return rs;
+            return this->GetJobResultSet(job_id);
         }
         case hybridse::node::kCmdStopJob: {
             int job_id;
@@ -1946,17 +1930,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::HandleSQLCmd(const h
 
             ::openmldb::taskmanager::JobInfo job_info;
             StopJob(job_id, &job_info);
-
-            std::vector<::openmldb::taskmanager::JobInfo> job_infos;
-            if (job_info.id() > 0) {
-                job_infos.push_back(job_info);
-            }
-            std::stringstream ss;
-            ::openmldb::cmd::PrintJobInfos(job_infos, ss);
-            std::vector<std::vector<std::string>> result;
-            std::vector<std::string> vec = {ss.str()};
-            result.emplace_back(std::move(vec));
-            return ResultSetSQL::MakeResultSet({FORMAT_STRING_KEY}, result, status);
+            return this->GetJobResultSet(job_id);
         }
         case hybridse::node::kCmdDropTable: {
             *status = {};
@@ -2624,13 +2598,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(
                 ReadSparkConfFromFile(std::dynamic_pointer_cast<SQLRouterOptions>(options_)->spark_conf_path, &config);
                 auto base_status = ExportOfflineData(sql, config, db, is_sync_job, offline_job_timeout, &job_info);
                 if (base_status.OK()) {
-                    *status = {};
-                    if (job_info.id() > 0) {
-                        std::stringstream ss;
-                        ::openmldb::cmd::PrintJobInfos({job_info}, ss);
-                        std::vector<std::string> value = {ss.str()};
-                        return ResultSetSQL::MakeResultSet({FORMAT_STRING_KEY}, {value}, status);
-                    }
+                    return this->GetJobResultSet(job_info.id());
                 } else {
                     *status = {::hybridse::common::StatusCode::kCmdError, base_status.msg};
                 }
@@ -2684,11 +2652,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(
                     base_status = ImportOfflineData(sql, config, database, is_sync_job, offline_job_timeout, &job_info);
                 }
                 if (base_status.OK() && job_info.id() > 0) {
-                    std::stringstream ss;
-                    ::openmldb::cmd::PrintJobInfos({job_info}, ss);
-                    std::vector<std::string> value = {ss.str()};
-                    *status = {};
-                    return ResultSetSQL::MakeResultSet({FORMAT_STRING_KEY}, {value}, status);
+                    return this->GetJobResultSet(job_info.id());
                 } else {
                     *status = {::hybridse::common::StatusCode::kCmdError, base_status.msg};
                 }
@@ -2743,18 +2707,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteOfflineQuery(
             *status = {::hybridse::common::StatusCode::kCmdError, base_status.msg};
             return {};
         }
-
-        // job info id should > 0
-        if (job_info.id() <= 0) {
-            *status = {::hybridse::common::StatusCode::kCmdError, "job info id should > 0"};
-            return {};
-        }
-
-        std::stringstream ss;
-        ::openmldb::cmd::PrintJobInfos({job_info}, ss);
-        std::vector<std::string> value = {ss.str()};
-        // TODO(tobe): Return the result set with multiple columns
-        return ResultSetSQL::MakeResultSet({FORMAT_STRING_KEY}, {value}, status);
+        return this->GetJobResultSet(job_info.id());
     }
 }
 
@@ -4175,6 +4128,26 @@ void SQLClusterRouter::ReadSparkConfFromFile(std::string conf_file_path, std::ma
                 LOG(WARNING) << "The section " + section.first + " is not supported, please use Spark section";
             }
         }
+    }
+}
+
+std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::GetJobResultSet(int job_id) {
+    hybridse::sdk::Status status;
+
+    std::string db = openmldb::nameserver::INTERNAL_DB;
+    std::string sql = "SELECT * FROM JOB_INFO WHERE id = " + std::to_string(job_id);
+
+    auto rs = ExecuteSQLParameterized(db, sql, std::shared_ptr<openmldb::sdk::SQLRequestRow>(), &status);
+    if (!status.IsOK()) {
+        return {};
+    }
+    if (rs->Size() == 0) {
+        status.code = ::hybridse::common::StatusCode::kCmdError;
+        status.msg = "Job not found: " + std::to_string(job_id);
+        return {};
+    }
+    if (FLAGS_role == "sql_client") {
+        return std::make_shared<ReadableResultSetSQL>(rs);
     }
 }
 

@@ -357,6 +357,8 @@ class SQLClusterRouter : public SQLRouter {
     std::shared_ptr<hybridse::sdk::ResultSet> ExecuteShowTableStatus(const std::string& db,
                                                                      hybridse::sdk::Status* status);
 
+    std::shared_ptr<hybridse::sdk::ResultSet> GetJobResultSet(int job_id);
+
  private:
     std::shared_ptr<BasicRouterOptions> options_;
     std::string db_;
