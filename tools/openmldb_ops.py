@@ -15,6 +15,7 @@ import logging
 
 from numpy import partition
 log = logging.getLogger(__name__)
+import sys
 from tool import Executor
 from tool import Partition
 from tool import Status
@@ -179,16 +180,22 @@ def RecoverData(executor : Executor):
 
 def MigratePartition(db : str, partition : Partition, src_endpoint : str, desc_endpoint : str, one_replica : bool) -> Status:
     if partition.IsLeader():
-        if one_replica and not executor.AddReplica(db, partition.GetName(), partition.GetPid(), desc_endpoint).OK():
-            return Status(-1, f"add replica failed. {db} {partition.GetName()} {partition.Pid()} {desc_endpoint}")
-        if not executor.ChangeLeader(db, partition.GetName(), partition.GetPid()).OK():
-            return Status(-1, f"change leader failed. {db} {partition.GetName()} {partition.Pid()}")
-        if not executor.RecoverTablePartition(db, partition.GetName(), partition.GetPid(), src_endpoint).OK():
-            return Status(-1, f"recover table failed. {db} {partition.GetName()} {partition.Pid()} {src_endpoint}")
-    if not executor.Migrate(db, partition.GetName(), partition.GetPid(), src_endpoint, desc_endpoint).OK():
-        return Status(-1, f"migrate partition failed! table {partition.GetName()} partition {partition.GetPid()} {src_endpoint} {desc_endpoint}")
-    if one_replica and not executor.DelReplica(db, partition.GetName(), partition.GetPid(), src_endpoint).OK():
-        return Status(-1, f"del replica failed. {db} {partition.GetName()} {partition.Pid()} {src_endpoint}")
+        if one_replica and not executor.AddReplica(db, partition.GetName(), partition.GetPid(), desc_endpoint, True).OK():
+            return Status(-1, f"add replica failed. {db} {partition.GetName()} {partition.GetPid()} {desc_endpoint}")
+        if not executor.ChangeLeader(db, partition.GetName(), partition.GetPid(), True).OK():
+            return Status(-1, f"change leader failed. {db} {partition.GetName()} {partition.GetPid()}")
+        status = executor.RecoverTablePartition(db, partition.GetName(), partition.GetPid(), src_endpoint, True)
+        if not status.OK():
+            log.error(status.GetMsg())
+            return Status(-1, f"recover table failed. {db} {partition.GetName()} {partition.GetPid()} {src_endpoint}")
+    if one_replica:
+        if not executor.DelReplica(db, partition.GetName(), partition.GetPid(), src_endpoint, True).OK():
+            return Status(-1, f"del replica failed. {db} {partition.GetName()} {partition.GetPid()} {src_endpoint}")
+    else:
+        status = executor.Migrate(db, partition.GetName(), partition.GetPid(), src_endpoint, desc_endpoint, True)
+        if not status.OK():
+            log.error(stats.GetMsg())
+            return Status(-1, f"migrate partition failed! table {partition.GetName()} partition {partition.GetPid()} {src_endpoint} {desc_endpoint}")
     return Status()
 
 def BalanceInDatabase(executor : Executor, endpoints : list, db : str) -> Status:
@@ -210,8 +217,8 @@ def BalanceInDatabase(executor : Executor, endpoints : list, db : str) -> Status
         all_dict[partition.GetEndpoint()].append(partition)
         endpoint_partition_map.setdefault(partition.GetEndpoint(), set())
         endpoint_partition_map[partition.GetEndpoint()].add(partition.GetKey())
-        replica_map.setdefault(partition.GetKey, 0)
-        replica_map[partition.GetKey] += 1
+        replica_map.setdefault(partition.GetKey(), 0)
+        replica_map[partition.GetKey()] += 1
     for endpoint in endpoints:
         if endpoint not in all_dict:
             all_dict.setdefault(endpoint, []);
@@ -224,6 +231,8 @@ def BalanceInDatabase(executor : Executor, endpoints : list, db : str) -> Status
         for endpoint in endpoints:
             if len(all_dict[endpoint]) > len(all_dict[migrate_out_endpoint]) : migrate_out_endpoint = endpoint
             if len(all_dict[endpoint]) < len(all_dict[migrate_in_endpoint]) : migrate_in_endpoint = endpoint
+        log.info(f"max partition endpoint: {migrate_out_endpoint} num: {len(all_dict[migrate_out_endpoint])}, "
+                 f"min partition endpoint: {migrate_in_endpoint} num: {len(all_dict[migrate_in_endpoint])}")
         if not len(all_dict[migrate_out_endpoint]) > len(all_dict[migrate_in_endpoint]) + 1 : break
         candidate_partition = list(all_dict[migrate_out_endpoint])
         while len(candidate_partition) > 0:
@@ -236,12 +245,15 @@ def BalanceInDatabase(executor : Executor, endpoints : list, db : str) -> Status
             if not status.OK():
                 log.error(status.GetMsg())
                 return status
+            log.info(f"migrate table {partition.GetName()} partition {partition.GetPid()} in {db} from {partition.GetEndpoint()} to {migrate_in_endpoint} success")
             all_dict[migrate_in_endpoint].append(partition)
             endpoint_partition_map[migrate_in_endpoint].add(partition.GetKey())
             for pos in range(len(all_dict[migrate_out_endpoint])):
                 if all_dict[migrate_out_endpoint][pos].GetKey() == partition.GetKey():
                     del all_dict[migrate_out_endpoint][pos]
+                    break
             endpoint_partition_map[migrate_out_endpoint].remove(partition.GetKey())
+            break
     return Status()
 
 def ScaleOut(executor : Executor):
@@ -291,22 +303,35 @@ def ScaleInEndpoint(executor : Executor, endpoint : str, desc_endpoints : list) 
             endpoint_partition_map.setdefault(partition.GetEndpoint(), set())
             endpoint_partition_map[partition.GetEndpoint()].add(partition.GetKey())
             db_map.setdefault(partition.GetKey(), (db, partition.GetName()))
-            replica_map.setdefault(partition.GetKey, 0)
-            replica_map[partition.GetKey] += 1
+            replica_map.setdefault(partition.GetKey(), 0)
+            replica_map[partition.GetKey()] += 1
+    for key, value in replica_map.items():
+        if value > len(desc_endpoints):
+            db, name = db_map[key]
+            log.error(f"replica num of table {name} in {db} is {value}, left endpoints num is {len(desc_endpoints)}, cannot execute scale-in")
+            return Status(-1, "cannot execute scale-in")
     for key, record in status_result.items():
         is_leader = True if record[3] == "kTableLeader" else False
         db, name = db_map.get("{}_{}".format(record[0], record[1]))
         partition : Partition = Partition(name, record[0], record[1], endpoint, is_leader, True, int(record[2]))
-        desc_endpoint = random.choice(desc_endpoints)
+        desc_endpoint = ""
+        min_partition_num = sys.maxsize
         for cur_endpoint in all_dict:
-            if cur_endpoint not in desc_endpoints:
-                continue
-            if len(all_dict[cur_endpoint]) < len(all_dict[desc_endpoint]) and partition.GetKey() not in endpoint_partition_map[cur_endpoint]:
-                log.info(f"migrate table {partition.GetName()} partition {partition.GetPid()} in {db} from {endpoint} to {desc_endpoint}")
-                status = MigratePartition(db, partition, endpoint, desc_endpoint, replica_map[partition.GetKey()] == 1)
-                if not status.OK():
-                    return status
-                break
+            if cur_endpoint not in desc_endpoints: continue
+            if partition.GetKey() in endpoint_partition_map[cur_endpoint]: continue
+            if len(all_dict[cur_endpoint]) < min_partition_num:
+                min_partition_num = len(all_dict[cur_endpoint])
+                desc_endpoint = cur_endpoint
+        if desc_endpoint == "":
+            log.error(f"can not find endpoint to migrate. {db} {name} {record[1]} in {endpoint}")
+            continue
+        log.info(f"migrate table {partition.GetName()} partition {partition.GetPid()} in {db} from {endpoint} to {desc_endpoint}")
+        status = MigratePartition(db, partition, endpoint, desc_endpoint, replica_map[partition.GetKey()] == 1)
+        if not status.OK():
+            log.error(status.GetMsg())
+            log.error(f"migrate table {partition.GetName()} partition {partition.GetPid()} in {db} from {endpoint} to {desc_endpoint} failed")
+            return status
+        log.info(f"migrate table {partition.GetName()} partition {partition.GetPid()} in {db} from {endpoint} to {desc_endpoint} success")
 
     return Status()
 

@@ -241,14 +241,16 @@ class Executor:
             return status
         return Status(), self.ParseResult(output)
 
-    def RecoverTablePartition(self, database, name, pid, endpoint) -> Status:
+    def RecoverTablePartition(self, database, name, pid, endpoint, sync = False) -> Status:
         cmd = list(self.ns_base_cmd)
         cmd.append("--cmd=recovertable {} {} {}".format(name, pid, endpoint))
         cmd.append("--database=" + database)
         status, output = self.RunWithRetuncode(cmd)
         if status.OK() and output.find("recover table ok") != -1:
+            if sync and not self.WaitingOP(database, name, pid).OK():
+                return Status(-1, "recovertable failed")
             return Status()
-        return Status(-1, "recover table failed")
+        return status
 
     def UpdateTableAlive(self, database, name, pid, endpoint, is_alive) -> Status:
         if is_alive not in ["yes", "no"]:
@@ -261,11 +263,13 @@ class Executor:
             return Status()
         return Status(-1, "update table alive failed")
 
-    def ChangeLeader(self, database, name, pid) -> Status:
+    def ChangeLeader(self, database, name, pid, sync = False) -> Status:
         cmd = list(self.ns_base_cmd)
         cmd.append("--cmd=changeleader {} {} auto".format(name, pid))
         cmd.append("--database=" + database)
         status, output = self.RunWithRetuncode(cmd)
+        if status.OK() and sync and not self.WaitingOP(database, name, pid).OK():
+            return Status(-1, "changer leader failed")
         return status
 
     def ShowOpStatus(self, database, name, pid = '') -> tuple([Status, List]):
@@ -284,14 +288,18 @@ class Executor:
         status, output = self.RunWithRetuncode(cmd)
         return status
 
-    def Migrate(self, database, name, pid, src_endpoint, desc_endpoint) -> Status:
+    def Migrate(self, database, name, pid, src_endpoint, desc_endpoint, sync = False) -> Status:
+        if src_endpoint == desc_endpoint:
+            return Status(-1, "src_endpoint and desc_endpoint is same")
         cmd = list(self.ns_base_cmd)
         cmd.append("--cmd=migrate {} {} {} {}".format(src_endpoint, name, pid, desc_endpoint))
         cmd.append("--database=" + database)
         status, output = self.RunWithRetuncode(cmd)
         if status.OK() and output.find("migrate ok") != -1:
+            if sync and not self.WaitingOP(database, name, pid).OK():
+                return Status(-1, "migrate failed")
             return Status()
-        return Status(-1, "migrate failed")
+        return status
 
     def ShowTablet(self) -> tuple([Status, List]):
         cmd = list(self.ns_base_cmd)
@@ -301,20 +309,47 @@ class Executor:
             return status, None
         return Status(), self.ParseResult(output)
 
-    def AddReplica(self, database, name, pid, endpoint) -> Status:
+    def AddReplica(self, database, name, pid, endpoint, sync = False) -> Status:
         cmd = list(self.ns_base_cmd)
         cmd.append("--cmd=addreplica {} {} {}".format(name, pid, endpoint))
         cmd.append("--database=" + database)
         status, output = self.RunWithRetuncode(cmd)
         if status.OK() and output.find("ok") != -1:
+            if sync and not self.WaitingOP(database, name, pid).OK():
+                return Status(-1, "addreplica failed")
             return Status()
         return Status(-1, "add replica failed")
 
-    def DelReplica(self, database, name, pid, endpoint) -> Status:
+    def DelReplica(self, database, name, pid, endpoint, sync = False) -> Status:
         cmd = list(self.ns_base_cmd)
         cmd.append("--cmd=delreplica {} {} {}".format(name, pid, endpoint))
         cmd.append("--database=" + database)
         status, output = self.RunWithRetuncode(cmd)
         if status.OK() and output.find("ok") != -1:
+            if sync and not self.WaitingOP(database, name, pid).OK():
+                return Status(-1, "delreplica failed")
             return Status()
         return Status(-1, "del replica failed")
+
+    def WaitingOP(self, database, name, pid) -> Status:
+        while True:
+            error_try_times = 3
+            while error_try_times > 0:
+                status, result = self.ShowOpStatus(database, name, pid)
+                error_try_times -= 1
+                if status.OK():
+                    break
+                elif error_try_times == 0:
+                    return Status(-1, "fail to execute showopstatus")
+            is_finish = True
+            for record in result:
+                if record[4] == 'kDoing' or record[4] == 'kInited':
+                    value = " ".join(record)
+                    log.info(f"waiting {value}")
+                    is_finish = False
+                    break
+            if not is_finish:
+                time.sleep(2)
+            else:
+                break
+        return Status()
