@@ -134,7 +134,6 @@ def RecoverTable(executor : Executor, db, table_name) -> Status:
             log.warn(f"get table status failed. msg is {status.GetMsg()}")
             return Status(-1, f"get table status failed. msg is {status.GetMsg()}")
         endpoint_status[endpoint] = result
-    tid = int(table_info[-1][1])
     max_pid = int(table_info[-1][2])
     for pid in range(max_pid + 1):
         RecoverPartition(executor, db, partition_dict[str(pid)], endpoint_status)
@@ -193,7 +192,7 @@ def MigratePartition(db : str, partition : Partition, src_endpoint : str, desc_e
     else:
         status = executor.Migrate(db, partition.GetName(), partition.GetPid(), src_endpoint, desc_endpoint, True)
         if not status.OK():
-            log.error(stats.GetMsg())
+            log.error(status.GetMsg())
             return Status(-1, f"migrate partition failed! table {partition.GetName()} partition {partition.GetPid()} {src_endpoint} {desc_endpoint}")
     return Status()
 
