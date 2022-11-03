@@ -218,6 +218,8 @@ class PartitionClientManager {
 
     std::shared_ptr<TabletAccessor> GetFollower();
 
+    const std::vector<std::shared_ptr<TabletAccessor>>& GetFollowers() const { return followers_; }
+
  private:
     uint32_t pid_;
     std::shared_ptr<TabletAccessor> leader_;
@@ -265,6 +267,15 @@ class TableClientManager {
         }
         return std::shared_ptr<TabletAccessor>();
     }
+
+    std::vector<std::shared_ptr<TabletAccessor>> GetTabletFollowers(uint32_t pid) const {
+        auto partition_manager = GetPartitionClientManager(pid);
+        if (partition_manager) {
+            return partition_manager->GetFollowers();
+        }
+        return {};
+    }
+
     std::shared_ptr<TabletsAccessor> GetTablet(std::vector<uint32_t> pids) const {
         std::shared_ptr<TabletsAccessor> tablets_accessor = std::shared_ptr<TabletsAccessor>(new TabletsAccessor());
         for (size_t idx = 0; idx < pids.size(); idx++) {

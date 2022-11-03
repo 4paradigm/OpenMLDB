@@ -80,7 +80,8 @@ class SDKTableHandler : public ::hybridse::vm::TableHandler {
 
     std::shared_ptr<::hybridse::vm::Tablet> GetTablet(const std::string& index_name, const std::string& pk) override;
 
-    std::shared_ptr<TabletAccessor> GetTablet(uint32_t pid);
+    std::shared_ptr<TabletAccessor> GetTablet(uint32_t pid) const;
+    std::vector<std::shared_ptr<TabletAccessor>> GetTabletFollowers(uint32_t pid) const;
 
     bool GetTablet(std::vector<std::shared_ptr<TabletAccessor>>* tablets);
 

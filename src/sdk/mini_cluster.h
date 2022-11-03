@@ -104,6 +104,7 @@ class MiniCluster {
                 return false;
             }
         }
+        sleep(4);
         ::openmldb::nameserver::NameServerImpl* nameserver = new ::openmldb::nameserver::NameServerImpl();
         bool ok = nameserver->Init(zk_cluster_, zk_path_, ns_endpoint, "");
         if (!ok) {

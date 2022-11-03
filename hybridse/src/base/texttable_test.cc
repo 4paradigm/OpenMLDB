@@ -57,6 +57,46 @@ TEST_F(TextTableTest, TextTableFormatTest) {
         "+---------+------------+------+\n",
         oss.str());
 }
+
+TEST_F(TextTableTest, TextTableMultipleLinesTest) {
+    std::ostringstream oss;
+    base::TextTable t('-', '|', '+', true);
+    t.add("Field");
+    t.add("Type");
+    t.add("NULL");
+    t.end_of_row();
+
+    t.add("column1");
+    t.add("kInt32");
+    t.add("No\nYes");
+    t.end_of_row();
+
+    t.add("column2");
+    t.add("kInt64\nKint32");
+    t.add("YES");
+    t.end_of_row();
+
+    t.add("ts\ncolumn3");
+    t.add("kTimestamp");
+    t.add("YES");
+    t.end_of_row();
+    oss << t;
+    ASSERT_EQ(
+        "+---------+------------+------+\n"
+        "| Field   | Type       | NULL |\n"
+        "+---------+------------+------+\n"
+        "| column1 | kInt32     | No   |\n"
+        "|         |            | Yes  |\n"
+        "+---------+------------+------+\n"
+        "| column2 | kInt64     | YES  |\n"
+        "|         | Kint32     |      |\n"
+        "+---------+------------+------+\n"
+        "| ts      | kTimestamp | YES  |\n"
+        "| column3 |            |      |\n"
+        "+---------+------------+------+\n",
+        oss.str());
+}
+
 }  // namespace base
 }  // namespace hybridse
 int main(int argc, char** argv) {

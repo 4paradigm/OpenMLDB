@@ -894,7 +894,7 @@ TEST_F(ASTNodeConverterTest, ConvertStmtFailTest) {
         SHOW GLOBAL VARIABLES LIKE 'execute%'
     )sql",
                      common::kSqlAstError,
-                     "Non-support LIKE in show statement");
+                     "Non-support LIKE in SHOW GLOBAL VARIABLES statement");
 }
 
 TEST_F(ASTNodeConverterTest, ConvertCreateTableNodeErrorTest) {
