@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.6.5] - 2022-11-04
+
+### Features
+- Optimize the distribution of table partition (#2701 @jkpjkpjkp)
+- Add a new workflow to generate the documents of udf automatically (#2709 #2729 @aceforeverd)
+- Support new SQL statement `show joblog` (#2732 @@aceforeverd, #2747 @tobegit3hub)
+- Add warning message for `show table status` (#2738 @zhanghaohit)
+- Add new tool for recoving data and scale-out/scale-in (#2736 @dl239)
+- Improve the documents (#2707 #2727 @aceforeverd, #2718 #2538 #2731 #2752 @vagetablechicken, #2607 #2609 @michelle-qinqin, #2733 @zhanghaohit, #2742 @auula)
+
+### Bug Fixes
+- Incorrect data will be loaded in offline mode if schema is mismatch with parquet file (#2648 @vagetablechicken)
+- Fail to create index if specify database in SQL statement (#2720 @dl239)
+- `start_time` is not human-readable after submitting a job (#2751 @tobegit3hub)
+- Incorrect result of `GetRecordIdxCnt` in `MemTable` (#2719 @jkpjkpjkp)
+
+### Code Refactoring
+#2688 #2717 @vagetablechicken, #2705 #2728 @dl239, #2601 @team-317, #2737 @Jake-00
+
 ## [0.6.4] - 2022-10-21
 
 ### Features
@@ -390,6 +409,7 @@ Removed
 - openmldb-0.2.0-linux.tar.gz targets on x86_64
 - aarch64 artifacts consider experimental
 
+[0.6.5]: https://github.com/4paradigm/OpenMLDB/compare/v0.6.4...v0.6.5
 [0.6.4]: https://github.com/4paradigm/OpenMLDB/compare/v0.6.3...v0.6.4
 [0.6.3]: https://github.com/4paradigm/OpenMLDB/compare/v0.6.2...v0.6.3
 [0.6.2]: https://github.com/4paradigm/OpenMLDB/compare/v0.6.1...v0.6.2
