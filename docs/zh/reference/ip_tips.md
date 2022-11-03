@@ -129,7 +129,10 @@ docker run -p 6527:6527 -p 9921:9921 -p 8080:8080 -it 4pdosc/openmldb:0.6.4 bash
 docker run -p 2181:2181 -p 7527:7527 -p 10921:10921 -p 10922:10922 -p 8080:8080 -p 9902:9902 -it 4pdosc/openmldb:0.6.4 bash
 ```
 
-- 使用host网络，可以不用修改endpoint配置。见[容器onebox-apiserver](#容器onebox-apiserver)
+- 使用host网络，可以不用修改endpoint配置。如果有端口冲突，请修改server的端口配置。
+```
+docker run --network host -it 4pdosc/openmldb:0.6.4 bash
+```
 
 如果是跨主机使用CLI/SDK访问问容器onebox，只能通过`--network host`，并更改所有endpoint为公网IP，才能顺利访问。
 

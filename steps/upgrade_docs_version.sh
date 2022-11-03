@@ -73,25 +73,7 @@ upgrade_compile_doc() {
     sed -i"" -e "s/-openmldb[0-9]\.[0-9]\.[0-9]\//-openmldb${VERSION}\//g" "$1"
 }
 
-docker_version_files=(
-    "docs/zh/reference/ip_tips.md"
-    "docs/en/reference/ip_tips.md"
-    "docs/zh/use_case/dolphinscheduler_task_demo.md"
-    "docs/en/use_case/dolphinscheduler_task_demo.md"
-    "docs/zh/use_case/kafka_connector_demo.md"
-    "docs/en/use_case/kafka_connector_demo.md"
-    "docs/zh/use_case/pulsar_connector_demo.md"
-    "docs/en/use_case/pulsar_connector_demo.md"
-    "docs/zh/quickstart/openmldb_quickstart.md"
-    "docs/en/quickstart/openmldb_quickstart.md"
-    "docs/zh/use_case/taxi_tour_duration_prediction.md"
-    "docs/zh/use_case/talkingdata_demo.md"
-    "docs/zh/use_case/airflow_provider_demo.md"
-    "docs/en/use_case/lightgbm_demo.md"
-    "demo/predict-taxi-trip-duration/README.md"
-    "demo/talkingdata-adtracking-fraud-detection/README.md"
-    )
-for file in "${docker_version_files[@]}"
+find demo/ docs/  -name "*\.md" | while read -r file;
 do
     upgrade_docker "$file"
 done

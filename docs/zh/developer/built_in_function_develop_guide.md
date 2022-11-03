@@ -259,7 +259,7 @@ CheckUdf<return_type, arg_type,...>("function_name", expect_result, arg_value,..
   ```
 
 - 在[hybridse/src/udf/udaf_test.cc](https://github.com/4paradigm/OpenMLDB/blob/main/hybridse/src/udf/udaf_test.cc)
-添加单测：
+  添加单测：
   ```c++
   // avg udaf test
   TEST_F(UdafTest, avg_test) {
@@ -913,7 +913,7 @@ RegisterUdaf("register_func_name")
     函数签名为：`ST* Update(ST* state, IN val1, bool val1_is_null, ...)`
 - 配置`output`函数指针: `output_func_ptr`。
   当函数的返回值可能为空时，额外要有一个`bool*`类型的参数来存放结果是否为空
-（可以参照[3.2.3 SQL函数的返回值类型是Nullable](#3.2.3-SQL函数的返回值类型是Nullable)）。
+  （可以参照[3.2.3 SQL函数的返回值类型是Nullable](#3.2.3-SQL函数的返回值类型是Nullable)）。
 
 
 下面代码展示了新增`second` 聚合函数的代码示例，`second`功能为返回聚合数据中非空的第二个元素；为了方便展示，示例中`second`仅支持`int32_t`数据类型：
@@ -1015,3 +1015,15 @@ RegisterUdafTemplate<DistinctCountDef>("distinct_count")
 ### 5.2. 聚合函数示例代码参考
 更多聚合函数示例代码可以参考：
 [hybridse/src/udf/default_udf_library.cc](https://github.com/4paradigm/OpenMLDB/blob/main/hybridse/src/udf/default_udf_library.cc)
+
+
+
+## 6. 文档管理
+
+内置函数文档可在 [Built-in Functions](https://openmldb.ai/docs/zh/main/reference/sql/functions_and_operators/Files/udfs_8h.html) 查看，它是一个代码生成的 markdown 文件，注意请不要进行直接编辑。
+
+- 如果需要对新增加的函数添加文档，请参照 2.2.4 配置函数文档 章节，说明了内置函数的文档是在 CPP 源代码中管理的。后续会通过一系列步骤生成如上网页中更加可读的文档， 即`docs/*/reference/sql/functions_and_operators/`目录下的内容。
+- 如果需要修改一个已存在函数的文档，可以在文件 `hybridse/src/udf/default_udf_library.cc` 或者 `hybridse/src/udf/default_defs/*_def.cc` 下查找到对应函数的文档说明，进行修改。
+
+OpenMLDB 项目中创建了一个定期天级别的 GitHub Workflow 任务来定期更新这里的相关文档。因此内置函数文档相关的改动只需按照上面的步骤修改对应源代码位置的内容即可，`docs` 目录和网站的内容会随之定期更新。具体的文档生成流程可以查看源代码路径下的 [udf_doxygen](https://github.com/4paradigm/OpenMLDB/tree/main/hybridse/tools/documentation/udf_doxygen)。
+

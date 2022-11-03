@@ -2820,6 +2820,89 @@ TEST_P(DBSDKTest, ShowComponents) {
     HandleSQL("show components");
 }
 
+void ExpectShowTableStatusResult(const std::vector<std::vector<test::CellExpectInfo>>& expect,
+                                 hybridse::sdk::ResultSet* rs, bool all_db = false, bool is_cluster = false) {
+    static const std::vector<std::vector<test::CellExpectInfo>> SystemClusterTableStatus = {
+        {{}, "PRE_AGG_META_INFO", "__INTERNAL_DB", "memory", {}, {}, {}, "1", "0", "1", "NULL", "NULL", "NULL", ""},
+        {{}, "JOB_INFO", "__INTERNAL_DB", "memory", "0", {}, {}, "1", "0", "1", "NULL", "NULL", "NULL", ""},
+        {{},
+         "GLOBAL_VARIABLES",
+         "INFORMATION_SCHEMA",
+         "memory",
+         "4",
+         {},
+         {},
+         "1",
+         "0",
+         "1",
+         "NULL",
+         "NULL",
+         "NULL",
+         ""},
+        {{},
+         "DEPLOY_RESPONSE_TIME",
+         "INFORMATION_SCHEMA",
+         "memory",
+         "0",
+         "0",
+         {},
+         "1",
+         "0",
+         "1",
+         "NULL",
+         "NULL",
+         "NULL",
+         ""}};
+
+    static const std::vector<std::vector<test::CellExpectInfo>> SystemStandaloneTableStatus = {
+        {{}, "PRE_AGG_META_INFO", "__INTERNAL_DB", "memory", {}, {}, {}, "1", "0", "1", "NULL", "NULL", "NULL", ""},
+        {{},
+         "GLOBAL_VARIABLES",
+         "INFORMATION_SCHEMA",
+         "memory",
+         "4",
+         {},
+         {},
+         "1",
+         "0",
+         "1",
+         "NULL",
+         "NULL",
+         "NULL",
+         ""},
+        {{},
+         "DEPLOY_RESPONSE_TIME",
+         "INFORMATION_SCHEMA",
+         "memory",
+         "0",
+         "0",
+         {},
+         "1",
+         "0",
+         "1",
+         "NULL",
+         "NULL",
+         "NULL",
+         ""}};
+
+    std::vector<std::vector<test::CellExpectInfo>> merged_expect = {
+        {"Table_id", "Table_name", "Database_name", "Storage_type", "Rows", "Memory_data_size", "Disk_data_size",
+         "Partition", "Partition_unalive", "Replica", "Offline_path", "Offline_format", "Offline_deep_copy",
+         "Warnings"}};
+    merged_expect.insert(merged_expect.end(), expect.begin(), expect.end());
+    if (all_db) {
+        if (is_cluster) {
+            merged_expect.insert(merged_expect.end(), SystemClusterTableStatus.begin(), SystemClusterTableStatus.end());
+        } else {
+            merged_expect.insert(merged_expect.end(), SystemStandaloneTableStatus.begin(),
+                                 SystemStandaloneTableStatus.end());
+        }
+    }
+    ExpectResultSetStrEq(
+        merged_expect,
+        rs);
+}
+
 TEST_P(DBSDKTest, ShowTableStatusEmptySet) {
     auto cli = GetParam();
     cs = cli->cs;
@@ -2829,12 +2912,7 @@ TEST_P(DBSDKTest, ShowTableStatusEmptySet) {
     hybridse::sdk::Status status;
     auto rs = sr->ExecuteSQL("show table status", &status);
     ASSERT_EQ(status.code, 0);
-    ExpectResultSetStrEq(
-        {
-            {"Table_id", "Table_name", "Database_name", "Storage_type", "Rows", "Memory_data_size", "Disk_data_size",
-             "Partition", "Partition_unalive", "Replica", "Offline_path", "Offline_format", "Offline_deep_copy"},
-        },
-        rs.get());
+    ExpectShowTableStatusResult({}, rs.get(), false, cs->IsClusterMode());
     HandleSQL("show table status");
 }
 
@@ -2868,20 +2946,113 @@ TEST_P(DBSDKTest, ShowTableStatusUnderRoot) {
     ASSERT_EQ(status.code, 0);
     if (cs->IsClusterMode()) {
         // default partition_num = 8 and replica_num = min(tablet,3) in cluster_mode
-        ExpectResultSetStrEq(
-            {{"Table_id", "Table_name", "Database_name", "Storage_type", "Rows", "Memory_data_size", "Disk_data_size",
-            "Partition", "Partition_unalive", "Replica", "Offline_path", "Offline_format", "Offline_deep_copy"},
-            {{}, tb_name, db_name, "memory", "1", {{}, "0"}, {{}, "0"}, "8", "0", "2", "NULL", "NULL", "NULL"}},
+        ExpectShowTableStatusResult(
+            {{{}, tb_name, db_name, "memory", "1", {{}, "0"}, {{}, "0"}, "8", "0", "2", "NULL", "NULL", "NULL", ""}},
             rs.get());
     } else {
-        ExpectResultSetStrEq(
-            {{"Table_id", "Table_name", "Database_name", "Storage_type", "Rows", "Memory_data_size", "Disk_data_size",
-            "Partition", "Partition_unalive", "Replica", "Offline_path", "Offline_format", "Offline_deep_copy"},
-            {{}, tb_name, db_name, "memory", "1", {{}, "0"}, {{}, "0"}, "1", "0", "1", "NULL", "NULL", "NULL"}},
+        ExpectShowTableStatusResult(
+            {{{}, tb_name, db_name, "memory", "1", {{}, "0"}, {{}, "0"}, "1", "0", "1", "NULL", "NULL", "NULL", ""}},
             rs.get());
     }
     // runs HandleSQL only for the purpose of pretty print result in console
     HandleSQL("show table status");
+
+    // teardown
+    ProcessSQLs(sr, {absl::StrCat("use ", db_name), absl::StrCat("drop table ", tb_name),
+                     absl::StrCat("drop database ", db_name)});
+    sr->SetDatabase("");
+}
+
+// show table status with patterns when no database is selected
+TEST_P(DBSDKTest, ShowTableStatusLike) {
+    auto cli = GetParam();
+    cs = cli->cs;
+    sr = cli->sr;
+
+    std::string db_name = absl::StrCat("db_", GenRand());
+    std::string tb_name = absl::StrCat("tb_", GenRand());
+
+    // prepare data
+    ProcessSQLs(sr,
+                {
+                    "set @@execute_mode = 'online'",
+                    absl::StrCat("create database ", db_name, ";"),
+                    absl::StrCat("use ", db_name, ";"),
+                    absl::StrCat("create table ", tb_name, " (id int, c1 string, c7 timestamp, index(key=id, ts=c7));"),
+                    absl::StrCat("insert into ", tb_name, " values (1, 'aaa', 1635247427000);"),
+                });
+    // reset to empty db
+    sr->SetDatabase("");
+
+    // sleep for 4s, name server should updated TableInfo in schedule
+    absl::SleepFor(absl::Seconds(4));
+
+    // test
+    hybridse::sdk::Status status;
+    auto rs = sr->ExecuteSQL("show table status like '%'", &status);
+    ASSERT_EQ(status.code, 0) << status.msg;
+    if (cs->IsClusterMode()) {
+        // default partition_num = 8 and replica_num = min(tablet,3) in cluster_mode
+        ExpectShowTableStatusResult(
+            {{{}, tb_name, db_name, "memory", "1", {{}, "0"}, {{}, "0"}, "8", "0", "2", "NULL", "NULL", "NULL", ""}},
+            rs.get(), true, true);
+    } else {
+        ExpectShowTableStatusResult(
+            {{{}, tb_name, db_name, "memory", "1", {{}, "0"}, {{}, "0"}, "1", "0", "1", "NULL", "NULL", "NULL", ""}},
+            rs.get(), true, false);
+    }
+    // runs HandleSQL only for the purpose of pretty print result in console
+    HandleSQL("show table status like '%'");
+
+    rs = sr->ExecuteSQL("show table status like '*'", &status);
+    ASSERT_EQ(status.code, 0) << status.msg;
+    ExpectShowTableStatusResult({}, rs.get(), false, false);
+
+    rs = sr->ExecuteSQL("show table status like 'not_exists'", &status);
+    ASSERT_EQ(status.code, 0) << status.msg;
+    ExpectShowTableStatusResult({}, rs.get(), false, false);
+
+    rs = sr->ExecuteSQL(absl::StrCat("show table status like '", db_name, "'"), &status);
+    ASSERT_EQ(status.code, 0) << status.msg;
+    if (cs->IsClusterMode()) {
+        // default partition_num = 8 and replica_num = min(tablet,3) in cluster_mode
+        ExpectShowTableStatusResult(
+            {{{}, tb_name, db_name, "memory", "1", {{}, "0"}, {{}, "0"}, "8", "0", "2", "NULL", "NULL", "NULL", ""}},
+            rs.get());
+    } else {
+        ExpectShowTableStatusResult(
+            {{{}, tb_name, db_name, "memory", "1", {{}, "0"}, {{}, "0"}, "1", "0", "1", "NULL", "NULL", "NULL", ""}},
+            rs.get());
+    }
+
+    rs = sr->ExecuteSQL(absl::StrCat("show table status like '", db_name.substr(0, db_name.size() - 1), "_'"), &status);
+    ASSERT_EQ(status.code, 0) << status.msg;
+    if (cs->IsClusterMode()) {
+        // default partition_num = 8 and replica_num = min(tablet,3) in cluster_mode
+        ExpectShowTableStatusResult(
+            {{{}, tb_name, db_name, "memory", "1", {{}, "0"}, {{}, "0"}, "8", "0", "2", "NULL", "NULL", "NULL", ""}},
+            rs.get());
+    } else {
+        ExpectShowTableStatusResult(
+            {{{}, tb_name, db_name, "memory", "1", {{}, "0"}, {{}, "0"}, "1", "0", "1", "NULL", "NULL", "NULL", ""}},
+            rs.get());
+    }
+
+    // reset to db_name
+    // like pattern has high priority over the db
+    sr->SetDatabase(db_name);
+    rs = sr->ExecuteSQL("show table status like '%'", &status);
+    ASSERT_EQ(status.code, 0) << status.msg;
+    if (cs->IsClusterMode()) {
+        // default partition_num = 8 and replica_num = min(tablet,3) in cluster_mode
+        ExpectShowTableStatusResult(
+            {{{}, tb_name, db_name, "memory", "1", {{}, "0"}, {{}, "0"}, "8", "0", "2", "NULL", "NULL", "NULL", ""}},
+            rs.get(), true, true);
+    } else {
+        ExpectShowTableStatusResult(
+            {{{}, tb_name, db_name, "memory", "1", {{}, "0"}, {{}, "0"}, "1", "0", "1", "NULL", "NULL", "NULL", ""}},
+            rs.get(), true, false);
+    }
 
     // teardown
     ProcessSQLs(sr, {absl::StrCat("use ", db_name), absl::StrCat("drop table ", tb_name),
@@ -2925,10 +3096,8 @@ TEST_P(DBSDKTest, ShowTableStatusForHddTable) {
     ASSERT_EQ(status.code, 0);
 
     // TODO(ace): Memory_data_size not asserted because not implemented
-    ExpectResultSetStrEq(
-        {{"Table_id", "Table_name", "Database_name", "Storage_type", "Rows", "Memory_data_size", "Disk_data_size",
-          "Partition", "Partition_unalive", "Replica", "Offline_path", "Offline_format", "Offline_deep_copy"},
-         {{}, tb_name, db_name, "hdd", "1", {}, {{}, "0"}, "1", "0", "1", "NULL", "NULL", "NULL"}},
+    ExpectShowTableStatusResult(
+        {{{}, tb_name, db_name, "hdd", "1", {}, {{}, "0"}, "1", "0", "1", "NULL", "NULL", "NULL", ""}},
         rs.get());
 
     // runs HandleSQL only for the purpose of pretty print result in console
@@ -2977,36 +3146,28 @@ TEST_P(DBSDKTest, ShowTableStatusUnderDB) {
     ASSERT_EQ(status.code, 0);
     if (cs->IsClusterMode()) {
         // default partition_num = 8 and replica_num = min(tablet,3) in cluster_mode
-        ExpectResultSetStrEq(
-            {{"Table_id", "Table_name", "Database_name", "Storage_type", "Rows", "Memory_data_size", "Disk_data_size",
-            "Partition", "Partition_unalive", "Replica", "Offline_path", "Offline_format", "Offline_deep_copy"},
-            {{}, tb1_name, db1_name, "memory", "1", {{}, "0"}, {{}, "0"}, "8", "0", "2", "NULL", "NULL", "NULL"}},
+        ExpectShowTableStatusResult(
+            {{{}, tb1_name, db1_name, "memory", "1", {{}, "0"}, {{}, "0"}, "8", "0", "2", "NULL", "NULL", "NULL", ""}},
             rs.get());
 
         sr->ExecuteSQL(absl::StrCat("use ", db2_name, ";"), &status);
         ASSERT_TRUE(status.IsOK());
         rs = sr->ExecuteSQL("show table status", &status);
         ASSERT_EQ(status.code, 0);
-        ExpectResultSetStrEq(
-            {{"Table_id", "Table_name", "Database_name", "Storage_type", "Rows", "Memory_data_size", "Disk_data_size",
-            "Partition", "Partition_unalive", "Replica", "Offline_path", "Offline_format", "Offline_deep_copy"},
-            {{}, tb2_name, db2_name, "memory", "1", {{}, "0"}, {{}, "0"}, "8", "0", "2", "NULL", "NULL", "NULL"}},
+        ExpectShowTableStatusResult(
+            {{{}, tb2_name, db2_name, "memory", "1", {{}, "0"}, {{}, "0"}, "8", "0", "2", "NULL", "NULL", "NULL"}},
             rs.get());
     } else {
-        ExpectResultSetStrEq(
-            {{"Table_id", "Table_name", "Database_name", "Storage_type", "Rows", "Memory_data_size", "Disk_data_size",
-            "Partition", "Partition_unalive", "Replica", "Offline_path", "Offline_format", "Offline_deep_copy"},
-            {{}, tb1_name, db1_name, "memory", "1", {{}, "0"}, {{}, "0"}, "1", "0", "1", "NULL", "NULL", "NULL"}},
+        ExpectShowTableStatusResult(
+            {{{}, tb1_name, db1_name, "memory", "1", {{}, "0"}, {{}, "0"}, "1", "0", "1", "NULL", "NULL", "NULL", ""}},
             rs.get());
 
         sr->ExecuteSQL(absl::StrCat("use ", db2_name, ";"), &status);
         ASSERT_TRUE(status.IsOK());
         rs = sr->ExecuteSQL("show table status", &status);
         ASSERT_EQ(status.code, 0);
-        ExpectResultSetStrEq(
-            {{"Table_id", "Table_name", "Database_name", "Storage_type", "Rows", "Memory_data_size", "Disk_data_size",
-            "Partition", "Partition_unalive", "Replica", "Offline_path", "Offline_format", "Offline_deep_copy"},
-            {{}, tb2_name, db2_name, "memory", "1", {{}, "0"}, {{}, "0"}, "1", "0", "1", "NULL", "NULL", "NULL"}},
+        ExpectShowTableStatusResult(
+            {{{}, tb2_name, db2_name, "memory", "1", {{}, "0"}, {{}, "0"}, "1", "0", "1", "NULL", "NULL", "NULL", ""}},
             rs.get());
     }
 
@@ -3014,39 +3175,35 @@ TEST_P(DBSDKTest, ShowTableStatusUnderDB) {
     HandleSQL("use INFORMATION_SCHEMA");
     rs = sr->ExecuteSQL("show table status", &status);
     ASSERT_EQ(status.code, 0);
-    ExpectResultSetStrEq(
-        {
-            {"Table_id", "Table_name", "Database_name", "Storage_type", "Rows", "Memory_data_size",
-                "Disk_data_size", "Partition", "Partition_unalive", "Replica", "Offline_path", "Offline_format",
-                "Offline_deep_copy"},
-            {{},
-                nameserver::DEPLOY_RESPONSE_TIME,
-                nameserver::INFORMATION_SCHEMA_DB,
-                "memory",
-                {},
-                {},
-                {},
-                "1",
-                "0",
-                "1",
-                "NULL",
-                "NULL",
-                "NULL"},
-            {{},
-                nameserver::GLOBAL_VARIABLES,
-                nameserver::INFORMATION_SCHEMA_DB,
-                "memory",
-                "4",
-                {},
-                {},
-                "1",
-                "0",
-                "1",
-                "NULL",
-                "NULL",
-                "NULL"},
-        },
-        rs.get());
+    ExpectShowTableStatusResult({{{},
+                                  nameserver::GLOBAL_VARIABLES,
+                                  nameserver::INFORMATION_SCHEMA_DB,
+                                  "memory",
+                                  "4",
+                                  {},
+                                  {},
+                                  "1",
+                                  "0",
+                                  "1",
+                                  "NULL",
+                                  "NULL",
+                                  "NULL",
+                                  ""},
+                                 {{},
+                                  nameserver::DEPLOY_RESPONSE_TIME,
+                                  nameserver::INFORMATION_SCHEMA_DB,
+                                  "memory",
+                                  {},
+                                  {},
+                                  {},
+                                  "1",
+                                  "0",
+                                  "1",
+                                  "NULL",
+                                  "NULL",
+                                  "NULL",
+                                  ""}},
+                                rs.get());
 
     // teardown
     ProcessSQLs(sr, {
@@ -3122,18 +3279,19 @@ TEST_P(DBSDKTest, GlobalVariable) {
                          rs.get());
 }
 
-TEST_P(DBSDKTest, SelectWithAddNewIndex) {
-    auto cli = GetParam();
-    cs = cli->cs;
-    sr = cli->sr;
+TEST_F(SqlCmdTest, SelectWithAddNewIndex) {
+    auto cli = cluster_cli;
+    auto sr = cli.sr;
 
     std::string db1_name = absl::StrCat("db1_", GenRand());
+    std::string db2_name = absl::StrCat("db2_", GenRand());
     std::string tb1_name = absl::StrCat("tb1_", GenRand());
 
     ProcessSQLs(sr,
                 {
                     "set @@execute_mode = 'online'",
                     absl::StrCat("create database ", db1_name, ";"),
+                    absl::StrCat("create database ", db2_name, ";"),
                     absl::StrCat("use ", db1_name, ";"),
 
                     absl::StrCat("create table ", tb1_name,
@@ -3143,9 +3301,11 @@ TEST_P(DBSDKTest, SelectWithAddNewIndex) {
                     absl::StrCat("insert into ", tb1_name, " values(2,'bb',1,1590738990000,1637056523316);"),
                     absl::StrCat("insert into ", tb1_name, " values(3,'aa',3,1590738990000,1637057123257);"),
                     absl::StrCat("insert into ", tb1_name, " values(4,'aa',1,1590738990000,1637057123317);"),
-                    absl::StrCat("CREATE INDEX index1 ON ", tb1_name, " (c2) OPTIONS (ttl=10m, ttl_type=absolute);"),
+                    absl::StrCat("use ", db2_name, ";"),
+                    absl::StrCat("CREATE INDEX index1 ON ", db1_name, ".", tb1_name,
+                            " (c2) OPTIONS (ttl=10m, ttl_type=absolute);"),
                 });
-    absl::SleepFor(absl::Seconds(4));
+    absl::SleepFor(absl::Seconds(10));
     hybridse::sdk::Status status;
     auto res = sr->ExecuteSQL(absl::StrCat("use ", db1_name, ";"), &status);
     res = sr->ExecuteSQL(absl::StrCat("select id,c1,c2,c3 from ", tb1_name), &status);
@@ -3157,6 +3317,7 @@ TEST_P(DBSDKTest, SelectWithAddNewIndex) {
 
     ProcessSQLs(sr, {
                         absl::StrCat("use ", db1_name, ";"),
+                        absl::StrCat("drop index ", db1_name, ".", tb1_name, ".index1"),
                         absl::StrCat("drop table ", tb1_name),
                         absl::StrCat("drop database ", db1_name),
                     });

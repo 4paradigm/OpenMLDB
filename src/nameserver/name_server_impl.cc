@@ -18,6 +18,11 @@
 
 #include <algorithm>
 #include <set>
+#include <random>
+#include <iterator>
+#include <iostream>
+#include <vector>
+
 
 #include "absl/strings/str_cat.h"
 #include "absl/strings/str_split.h"
@@ -2268,6 +2273,9 @@ int NameServerImpl::SetPartitionInfo(TableInfo& table_info) {
         }
         index++;
     }
+    std::random_device rd;
+    std::mt19937 g(rd());
+    std::shuffle(endpoint_vec.begin(), endpoint_vec.end(), g);
     for (uint32_t pid = 0; pid < partition_num; pid++) {
         TablePartition* table_partition = table_info.add_table_partition();
         table_partition->set_pid(pid);
