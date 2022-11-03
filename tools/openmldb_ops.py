@@ -355,15 +355,15 @@ if __name__ == "__main__":
     (options, args) = parser.parse_args()
     if options.cmd not in ["recoverdata", "scalein", "scaleout"]:
         log.error(f"unsupported cmd {options.cmd}")
-        exit
+        sys.exit()
     executor = Executor(options.openmldb_bin_path, options.zk_cluster, options.zk_root_path)
     status, auto_failover = executor.GetAutofailover()
     if not status.OK():
         log.error("get failover failed")
-        exit
+        sys.exit()
     if auto_failover and not executor.SetAutofailover("false").OK():
         log.error("set auto_failover failed")
-        exit
+        sys.exit()
     if options.cmd == "recoverdata":
         RecoverData(executor)
     elif options.cmd == "scaleout":

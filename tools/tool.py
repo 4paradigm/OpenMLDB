@@ -341,15 +341,13 @@ class Executor:
                     break
                 elif error_try_times == 0:
                     return Status(-1, "fail to execute showopstatus")
-            is_finish = True
-            for record in result:
-                if record[4] == 'kDoing' or record[4] == 'kInited':
-                    value = " ".join(record)
-                    log.info(f"waiting {value}")
-                    is_finish = False
-                    break
-            if not is_finish:
+            record = result[-1]
+            if record[4] == 'kDoing' or record[4] == 'kInited':
+                value = " ".join(record)
+                log.info(f"waiting {value}")
                 time.sleep(2)
+            elif record[4] == 'kFailed':
+                return Status(-1, "job {record[0]} execute failed")
             else:
                 break
         return Status()
