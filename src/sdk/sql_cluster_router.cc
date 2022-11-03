@@ -4236,7 +4236,7 @@ bool SQLClusterRouter::CheckTableStatus(const std::string& db, const std::string
                                       partition_info.partition_meta_size()));
     }
 
-    // check the followers' offset
+    // check the followers' connections
     auto tablet_accessor = cluster_sdk_->GetTablet(db, table_name, pid);
     std::shared_ptr<client::TabletClient> tablet_client;
     if (tablet_accessor && (tablet_client = tablet_accessor->GetClient())) {
