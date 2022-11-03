@@ -27,9 +27,8 @@ namespace base {
 class TextTable {
  public:
     typedef std::vector<std::string> Row;
-    explicit TextTable(char horizontal = '-', char vertical = '|',
-                       char corner = '+')
-        : horizontal_(horizontal), vertical_(vertical), corner_(corner) {}
+    explicit TextTable(char horizontal = '-', char vertical = '|', char corner = '+', bool middle_ruler = false)
+        : horizontal_(horizontal), vertical_(vertical), corner_(corner), middle_ruler_(middle_ruler) {}
 
     char vertical() const { return vertical_; }
 
@@ -58,6 +57,7 @@ class TextTable {
     char horizontal_;
     char vertical_;
     char corner_;
+    bool middle_ruler_ = false;
     Row current_row;
     std::vector<Row> rows_;
     std::vector<unsigned> mutable widths;

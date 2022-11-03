@@ -1610,7 +1610,7 @@ void DefaultUdfLibrary::InitMathUdf() {
             Example:
 
             @code{.sql}
-                SELECT RADIANS(90);
+                SELECT RADIANS(90.0);
                 --output 1.570796326794896619231
             @endcode
             @since 0.6.0)");

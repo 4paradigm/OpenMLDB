@@ -558,6 +558,19 @@ std::shared_ptr<::openmldb::catalog::TabletAccessor> DBSDK::GetTablet(const std:
     return {};
 }
 
+std::vector<std::shared_ptr<::openmldb::catalog::TabletAccessor>> DBSDK::GetTabletFollowers(const std::string& db,
+                                                                                            const std::string& name,
+                                                                                            uint32_t pid) {
+    auto table_handler = GetCatalog()->GetTable(db, name);
+    if (table_handler) {
+        auto* sdk_table_handler = dynamic_cast<::openmldb::catalog::SDKTableHandler*>(table_handler.get());
+        if (sdk_table_handler) {
+            return sdk_table_handler->GetTabletFollowers(pid);
+        }
+    }
+    return {};
+}
+
 std::shared_ptr<::openmldb::catalog::TabletAccessor> DBSDK::GetTablet(const std::string& db, const std::string& name,
                                                                       const std::string& pk) {
     auto table_handler = GetCatalog()->GetTable(db, name);

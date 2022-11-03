@@ -322,7 +322,7 @@ TEST_F(LogReplicatorTest, LeaderAndFollowerMulti) {
     sleep(5);
     leader.DelAllReplicateNode();
     ASSERT_EQ(3, (int64_t)t8->GetRecordCnt());
-    ASSERT_EQ(5, (int64_t)t8->GetRecordIdxCnt());
+    ASSERT_EQ(3, (int64_t)t8->GetRecordIdxCnt());
     {
         Ticket ticket;
         // check 18527

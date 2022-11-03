@@ -675,6 +675,33 @@ TEST_F(PlannerV2Test, CmdStmtPlanTest) {
         ASSERT_EQ(node::kCmdShowTables, cmd_plan->GetCmdType());
     }
     {
+        const std::string sql_str = "show table status;";
+        node::PlanNodeList trees;
+        base::Status status;
+        ASSERT_TRUE(plan::PlanAPI::CreatePlanTreeFromScript(sql_str, trees, manager_, status)) << status;
+        ASSERT_EQ(1u, trees.size());
+        PlanNode *plan_ptr = trees[0];
+        // validate create plan
+        ASSERT_EQ(node::kPlanTypeCmd, plan_ptr->GetType());
+        node::CmdPlanNode *cmd_plan = (node::CmdPlanNode *)plan_ptr;
+        ASSERT_EQ(node::kCmdShowTableStatus, cmd_plan->GetCmdType());
+        ASSERT_EQ(0, cmd_plan->GetArgs().size());
+    }
+    {
+        const std::string sql_str = "show table status like '*';";
+        node::PlanNodeList trees;
+        base::Status status;
+        ASSERT_TRUE(plan::PlanAPI::CreatePlanTreeFromScript(sql_str, trees, manager_, status)) << status;
+        ASSERT_EQ(1u, trees.size());
+        PlanNode *plan_ptr = trees[0];
+        // validate create plan
+        ASSERT_EQ(node::kPlanTypeCmd, plan_ptr->GetType());
+        node::CmdPlanNode *cmd_plan = (node::CmdPlanNode *)plan_ptr;
+        ASSERT_EQ(node::kCmdShowTableStatus, cmd_plan->GetCmdType());
+        ASSERT_EQ(1, cmd_plan->GetArgs().size());
+        ASSERT_EQ("*", cmd_plan->GetArgs()[0]);
+    }
+    {
         const std::string sql_str = "show procedures;";
         node::PlanNodeList trees;
         base::Status status;
