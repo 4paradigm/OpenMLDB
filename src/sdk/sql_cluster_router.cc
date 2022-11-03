@@ -50,6 +50,8 @@
 #include "sdk/node_adapter.h"
 #include "sdk/result_set_sql.h"
 #include "sdk/split.h"
+#include "udf/udf.h"
+#include "vm/catalog.h"
 
 DECLARE_string(bucket_size);
 DECLARE_uint32(replica_num);
@@ -1982,7 +1984,8 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::HandleSQLCmd(const h
             return rs;
         }
         case hybridse::node::kCmdShowTableStatus: {
-            return ExecuteShowTableStatus(db, status);
+            const auto& args = cmd_node->GetArgs();
+            return ExecuteShowTableStatus(db, args.size() > 0 ? args[0] : "", status);
         }
         default: {
             *status = {::hybridse::common::StatusCode::kCmdError, "fail to execute script with unsupported type"};
@@ -4017,7 +4020,7 @@ static const std::initializer_list<std::string> GetTableStatusSchema() {
     static const std::initializer_list<std::string> schema = {
         "Table_id",         "Table_name",     "Database_name",    "Storage_type",      "Rows",
         "Memory_data_size", "Disk_data_size", "Partition",        "Partition_unalive", "Replica",
-        "Offline_path",     "Offline_format", "Offline_deep_copy"};
+        "Offline_path",     "Offline_format", "Offline_deep_copy", "Warnings"};
     return schema;
 }
 
@@ -4039,12 +4042,15 @@ static const std::initializer_list<std::string> GetTableStatusSchema() {
 // - Offline_path: data path for offline data
 // - Offline_format: format for offline data
 // - Offline_deep_copy: deep copy option for offline data
+// - Warnings: any warnings raised during the checking
 //
 // if db is empty:
 //   show table status in all databases except hidden databases
 // else: show table status in current database, include hidden database
 std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteShowTableStatus(const std::string& db,
+                                                                                   const std::string& pattern,
                                                                                    hybridse::sdk::Status* status) {
+    base::StringRef pattern_ref(pattern);
     // NOTE: cluster_sdk_->GetTables(db) seems not accurate, query directly
     std::vector<nameserver::TableInfo> tables;
     std::string msg;
@@ -4053,15 +4059,38 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteShowTableStat
     std::vector<std::vector<std::string>> data;
     data.reserve(tables.size());
 
-    std::for_each(tables.cbegin(), tables.cend(), [&data, &db](const nameserver::TableInfo& tinfo) {
-        if (!db.empty()) {
-            // rule 1: selected a db, show tables only inside the db
+    auto all_tablets = cluster_sdk_->GetAllTablet();
+    TableStatusMap table_statuses;
+    for (auto& tablet_accessor : all_tablets) {
+        std::shared_ptr<client::TabletClient> tablet_client;
+        if (tablet_accessor && (tablet_client = tablet_accessor->GetClient())) {
+            ::openmldb::api::GetTableStatusResponse response;
+            if (tablet_client->GetTableStatus(response)) {
+                for (const auto& table_status : response.all_table_status()) {
+                    table_statuses[table_status.tid()][table_status.pid()][tablet_client->GetEndpoint()] = table_status;
+                }
+            }
+        }
+    }
+
+    bool matched = false, is_null = true;
+    for (auto it = tables.rbegin(); it != tables.rend(); it++) {
+        auto& tinfo = *it;
+        if (!pattern.empty()) {
+            // rule 1: if pattern is provided, show all dbs matching the pattern
+            base::StringRef db_ref(tinfo.db());
+            hybridse::udf::v1::like(&db_ref, &pattern_ref, &matched, &is_null);
+            if (is_null || !matched) {
+                continue;
+            }
+        } else if (!db.empty()) {
+            // rule 2: selected a db, show tables only inside the db if no pattern is provided
             if (db != tinfo.db()) {
-                return;
+                continue;
             }
         } else if (nameserver::IsHiddenDb(tinfo.db())) {
-            // rule 2: if no db selected, show all tables except those in hidden db
-            return;
+            // rule 3: if no db selected, show all tables except those in hidden db if no pattern is provided
+            continue;
         }
 
         auto tid = tinfo.tid();
@@ -4069,6 +4098,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteShowTableStat
         auto db = tinfo.db();
         auto& inner_storage_mode = StorageMode_Name(tinfo.storage_mode());
         std::string storage_type = absl::AsciiStrToLower(absl::StripPrefix(inner_storage_mode, "k"));
+        std::string error_msg;
 
         auto partition_num = tinfo.partition_num();
         auto replica_num = tinfo.replica_num();
@@ -4083,6 +4113,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteShowTableStat
                     partition_unalive++;
                 }
             }
+            CheckTableStatus(db, table_name, tid, partition_info, replica_num, table_statuses, &error_msg);
         }
 
         std::string offline_path = "NULL", offline_format = "NULL", offline_deep_copy = "NULL";
@@ -4095,11 +4126,87 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteShowTableStat
         data.push_back({std::to_string(tid), table_name, db, storage_type, std::to_string(rows),
                         std::to_string(mem_bytes), std::to_string(disk_bytes), std::to_string(partition_num),
                         std::to_string(partition_unalive), std::to_string(replica_num), offline_path, offline_format,
-                        offline_deep_copy});
-    });
+                        offline_deep_copy, error_msg});
+    }
 
     // TODO(#1456): rich schema result set, and pretty-print numberic values (e.g timestamp) in cli
     return ResultSetSQL::MakeResultSet(GetTableStatusSchema(), data, status);
+}
+
+bool SQLClusterRouter::CheckTableStatus(const std::string& db, const std::string& table_name, uint32_t tid,
+                                        const nameserver::TablePartition& partition_info, uint32_t replica_num,
+                                        const TableStatusMap& statuses, std::string* msg) {
+    bool check_succeed = true;
+    auto& error_msg = *msg;
+    uint32_t pid = partition_info.pid();
+    auto append_error_msg = [&check_succeed](std::string& msg, uint32_t pid, int is_leader, const std::string& endpoint,
+                                             const std::string& error) {
+        absl::StrAppend(&msg, (msg.empty() ? "" : "\n"), "[pid=", std::to_string(pid), "]");
+        if (is_leader >= 0) {
+            absl::StrAppend(&msg, "[", (is_leader == 1 ? "leader" : "follower"), "]");
+        }
+        if (!endpoint.empty()) {
+            absl::StrAppend(&msg, "[", endpoint, "]");
+        }
+        absl::StrAppend(&msg, ": ", error);
+        check_succeed = false;
+    };
+
+    if (statuses.count(tid) && statuses.at(tid).count(pid)) {
+        const auto& partition_statuses = statuses.at(tid).at(pid);
+        if (partition_info.partition_meta_size() != partition_statuses.size()) {
+            append_error_msg(
+                error_msg, pid, -1, "",
+                absl::StrCat("real replica number ", partition_statuses.size(),
+                             " does not match the configured replicanum ", partition_info.partition_meta_size()));
+        }
+
+        for (auto& meta : partition_info.partition_meta()) {
+            if (!partition_statuses.count(meta.endpoint())) {
+                append_error_msg(error_msg, pid, meta.is_leader(), meta.endpoint(), "state is kNotFound");
+                continue;
+            }
+            const auto& table_status = partition_statuses.at(meta.endpoint());
+
+            // check leader/follower status
+            bool is_leader =
+                table_status.has_mode() ? table_status.mode() == ::openmldb::api::kTableLeader : meta.is_leader();
+            if (is_leader != meta.is_leader()) {
+                append_error_msg(error_msg, pid, is_leader, meta.endpoint(), "leader/follower mode inconsistent");
+            }
+
+            // check table status
+            ::openmldb::api::TableState state =
+                table_status.has_state() ? table_status.state() : ::openmldb::api::kTableUndefined;
+            if (state == ::openmldb::api::kTableUndefined || (is_leader && state == ::openmldb::api::kTableLoading)) {
+                append_error_msg(error_msg, pid, is_leader, meta.endpoint(),
+                                 absl::StrCat("state is ", TableState_Name(state)));
+            }
+        }
+    } else {
+        append_error_msg(error_msg, pid, -1, "",
+                         absl::StrCat("real replica number 0 does not match the configured replicanum ",
+                                      partition_info.partition_meta_size()));
+    }
+
+    // check the followers' connections
+    auto tablet_accessor = cluster_sdk_->GetTablet(db, table_name, pid);
+    std::shared_ptr<client::TabletClient> tablet_client;
+    if (tablet_accessor && (tablet_client = tablet_accessor->GetClient())) {
+        uint64_t offset = 0;
+        std::map<std::string, uint64_t> info_map;
+        std::string msg;
+        tablet_client->GetTableFollower(tid, pid, offset, info_map, msg);
+        for (auto& meta : partition_info.partition_meta()) {
+            if (meta.is_leader()) continue;
+
+            if (info_map.count(meta.endpoint()) == 0) {
+                append_error_msg(error_msg, pid, false, meta.endpoint(), "not connected to leader");
+            }
+        }
+    }
+
+    return check_succeed;
 }
 
 void SQLClusterRouter::ReadSparkConfFromFile(std::string conf_file_path, std::map<std::string, std::string>* config) {

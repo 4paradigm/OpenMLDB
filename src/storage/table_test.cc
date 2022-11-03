@@ -203,7 +203,7 @@ TEST_P(TableTest, MultiDimissionPut0) {
     // some functions in disk table need to be implemented.
     // refer to issue #1238
     if (storageMode == ::openmldb::common::StorageMode::kMemory) {
-        ASSERT_EQ(3, (int64_t)table->GetRecordIdxCnt());
+        ASSERT_EQ(1, (int64_t)table->GetRecordIdxCnt());
     }
     ASSERT_EQ(1, (int64_t)table->GetRecordCnt());
     delete table;
