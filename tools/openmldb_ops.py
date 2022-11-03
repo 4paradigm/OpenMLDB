@@ -353,7 +353,7 @@ def ScaleIn(executor : Executor, endpoints : list):
 
 if __name__ == "__main__":
     (options, args) = parser.parse_args()
-    if options.cmd not in ["recoverdata", "rebalance"]:
+    if options.cmd not in ["recoverdata", "scalein", "scaleout"]:
         log.error(f"unsupported cmd {options.cmd}")
         exit
     executor = Executor(options.openmldb_bin_path, options.zk_cluster, options.zk_root_path)
@@ -366,11 +366,13 @@ if __name__ == "__main__":
         exit
     if options.cmd == "recoverdata":
         RecoverData(executor)
-    elif options.cmd == "rebalance":
-        if options.endpoints is None or options.endpoints == "":
-            ScaleOut(executor)
-        else:
-            endpoints = options.endpoints.split(",")
+    elif options.cmd == "scaleout":
+        ScaleOut(executor)
+    elif options.cmd == "scalein":
+        endpoints = options.endpoints.split(",")
+        if (len(endpoints) > 0):
             ScaleIn(executor, endpoints)
+        else:
+            log.error("no endpoint specified")
     if auto_failover and not executor.SetAutofailover("true").OK():
         log.warn("set auto_failover failed")
