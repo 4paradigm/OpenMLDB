@@ -35,7 +35,6 @@ namespace sdk {
 // TODO(hw): error code ref hybridse::common::StatusCode
 struct Status {
     Status() : code(0), msg("ok") {}
-    Status(int status_code, const std::string& msg_str) : code(status_code), msg(msg_str) {}
     Status(int status_code, absl::string_view msg_str) : code(status_code), msg(msg_str) {}
     Status(int status_code, absl::string_view msg_str, absl::string_view trace)
         : code(status_code), msg(msg_str), trace(trace) {}
