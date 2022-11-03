@@ -25,6 +25,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "absl/strings/str_cat.h"
 #include "absl/strings/string_view.h"
 #include "sdk/base_schema.h"
 
@@ -35,6 +36,7 @@ namespace sdk {
 struct Status {
     Status() : code(0), msg("ok") {}
     Status(int status_code, const std::string& msg_str) : code(status_code), msg(msg_str) {}
+    Status(int status_code, absl::string_view msg_str) : code(status_code), msg(msg_str) {}
     Status(int status_code, absl::string_view msg_str, absl::string_view trace)
         : code(status_code), msg(msg_str), trace(trace) {}
     bool IsOK() const { return code == 0; }
@@ -44,28 +46,36 @@ struct Status {
         msg = "ok";
     }
     void SetCode(int c) { code = c; }
-    void SetMsg(const std::string& new_msg) { msg = new_msg; }
-    void SetTraces(const std::string& new_trace) { trace = new_trace; }
-    void Prepend(const std::string& pre) { msg = pre + "--" + msg; }
-    void Append(const std::string& app) { msg.append("--").append(app); }
+    void SetMsg(absl::string_view new_msg) { msg = new_msg; }
+    void SetTraces(absl::string_view new_trace) { trace = new_trace; }
+    void Prepend(absl::string_view pre) { msg = absl::StrCat(pre, "--", msg); }
+    void Append(absl::string_view app) {
+        msg.append("--");
+        msg.append(app);
+    }
     void Append(int other_code) {
-        msg.append("--").append("ReturnCode[").append(std::to_string(other_code)).append("]");
+        msg.append("--ReturnCode[");
+        msg.append(std::to_string(other_code));
+        msg.append("]");
     }
 
-    Status CloneAndPrepend(const std::string& pre_msg) const {
+    Status CloneAndPrepend(absl::string_view pre_msg) const {
         if (IsOK()) {
             return *this;
         }
-        return Status(code, pre_msg + msg);
+        return Status(code, absl::StrCat(pre_msg, "--", msg), trace);
     }
 
     std::string ToString() const {
-        std::string str("[");
-        str.append(std::to_string(code)).append("] ").append(msg);
-        return str;
+        std::string cm("[");
+        cm.append(std::to_string(code));
+        cm.append("] ");
+        cm.append(msg);
+        return cm;
     };
 
     int code;
+    // msg use prepend and append, it's better to use absl::Cord, but we may directly use msg
     std::string msg;
     std::string trace;
 };
