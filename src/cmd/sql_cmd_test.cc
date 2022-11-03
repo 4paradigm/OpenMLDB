@@ -430,7 +430,7 @@ TEST_P(DBSDKTest, LoadDataMultipleFiles) {
     hybridse::sdk::Status status;
     sr->ExecuteSQL(load_sql, &status);
     ASSERT_TRUE(status.IsOK()) << status.msg;
-    ASSERT_EQ(status.msg, "ok");
+    ASSERT_EQ(status.msg, "Load 20 rows");
     auto result = sr->ExecuteSQL("select * from trans;", &status);
     ASSERT_TRUE(status.IsOK()) << status.msg;
     ASSERT_EQ(20, result->Size());
@@ -467,7 +467,7 @@ TEST_P(DBSDKTest, LoadData) {
     hybridse::sdk::Status status;
     sr->ExecuteSQL(load_sql, &status);
     ASSERT_TRUE(status.IsOK()) << status.msg;
-    ASSERT_EQ(status.msg, "ok");
+    ASSERT_EQ(status.msg, "Load 10 rows");
     auto result = sr->ExecuteSQL("select * from trans;", &status);
     ASSERT_TRUE(status.IsOK()) << status.msg;
     ASSERT_EQ(10, result->Size());
@@ -583,7 +583,7 @@ TEST_P(DBSDKTest, LoadDataMultipleThread) {
                                             "' INTO TABLE trans options(load_mode='local', thread=", num_thread, ");");
         sr->ExecuteSQL(load_sql, &status);
         ASSERT_TRUE(status.IsOK()) << status.msg;
-        ASSERT_EQ(status.msg, "ok");
+        ASSERT_EQ(status.msg, absl::StrCat("Load ", file_num * rows_per_file, " rows"));
     }
     auto result = sr->ExecuteSQL("select * from trans;", &status);
     ASSERT_TRUE(status.IsOK()) << status.msg;

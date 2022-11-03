@@ -2920,9 +2920,10 @@ hybridse::sdk::Status SQLClusterRouter::HandleLoadDataInfile(
         }
     }
 
-    // all ok
+    // all ok TODO(hw): move load result to resultset
     if (status.IsOK()) {
-        DLOG(INFO) << absl::StrCat("Load ", total_count, " rows");
+        status.msg = absl::StrCat("Load ", total_count, " rows");
+        DLOG(INFO) << status.msg;
     } else {
         // the last error
         absl::StrAppend(&status.msg, "\n", "Load ", total_count, " rows");

@@ -48,7 +48,9 @@ struct Status {
     void SetTraces(const std::string& new_trace) { trace = new_trace; }
     void Prepend(const std::string& pre) { msg = pre + "--" + msg; }
     void Append(const std::string& app) { msg.append("--").append(app); }
-    void Append(int other_code) { msg.append("--").append("ReturnCode[").append(std::to_string(other_code)).append("]"); }
+    void Append(int other_code) {
+        msg.append("--").append("ReturnCode[").append(std::to_string(other_code)).append("]");
+    }
 
     Status CloneAndPrepend(const std::string& pre_msg) const {
         if (IsOK()) {
