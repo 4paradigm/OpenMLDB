@@ -4148,6 +4148,8 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::GetJobResultSet(int 
     }
     if (FLAGS_role == "sql_client") {
         return std::make_shared<ReadableResultSetSQL>(rs);
+    } else {
+        return rs;
     }
 }
 
