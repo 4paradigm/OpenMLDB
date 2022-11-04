@@ -175,6 +175,7 @@ cases:
   - id: 5
     desc: |
       hash64 function, different hash result for different type, even for same value
+    mode: request-unsupport
     inputs:
       - name: t1
         schema: id:int32, col1:int64, col2:int16, col3:string, col4:double, col5:float, std_ts:timestamp, de:date
