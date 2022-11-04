@@ -22,7 +22,7 @@ If the offline path of the table is a soft link, OpenMLDB doesn't support append
 
 ### 2 Online Import
 
-The online modes of OpenMLDB cluster version provide online storage engine (stored in memory). Only **hard copy** can be used in online import.
+The [online modes](../tutorial/modes.md) of OpenMLDB cluster version provide online storage engine (stored in memory). Only **hard copy** can be used in online import.
 
 #### 2.1 `LOAD DATA`
 
@@ -33,7 +33,7 @@ The online modes of OpenMLDB cluster version provide online storage engine (stor
 Data can be loaded from `Pulsar`, `Kafka` and `RocketMQ ` as well, see the following links for detail.
 - [Pulsar Connector](../use_case/pulsar_connector_demo.md)
 - [Kafka Connector](../use_case/kafka_connector_demo.md)
-- [RocketMQ Connector](../use_case/rocketmq_connector.md)
+- [RocketMQ Connector](../zh/use_case/rocketmq_connector.md)
 
 ## Note
 
