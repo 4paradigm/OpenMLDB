@@ -150,7 +150,7 @@ jobs:
       NPROC: 3
       CTEST_PARALLEL_LEVEL: 1 # parallel test level for ctest (make test)
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
       - name: prepare release
         run: |
@@ -192,7 +192,7 @@ jobs:
 
       - name: upload artifacts
         if: ${{ github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') }}
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           path: openmldb-*.tar.gz
           name: release-artifacts
@@ -205,7 +205,7 @@ jobs:
       success() && startsWith(github.ref, 'refs/tags/v')
     steps:
       - name: Download Release Artifacts
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v3
         with:
           name: release-artifacts
 
