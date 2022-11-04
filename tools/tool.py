@@ -97,6 +97,8 @@ class Executor:
             errout = p.stderr.read()
             p.stdout.close()
             p.stderr.close()
+            if "error msg" in output:
+                return Status(-1, output), output
             return Status(p.returncode, errout), output
         except Exception as ex:
             return Status(-1, ex), None
@@ -268,9 +270,9 @@ class Executor:
             return Status()
         return Status(-1, "update table alive failed")
 
-    def ChangeLeader(self, database, name, pid, sync = False) -> Status:
+    def ChangeLeader(self, database, name, pid, endpoint = "auto", sync = False) -> Status:
         cmd = list(self.ns_base_cmd)
-        cmd.append("--cmd=changeleader {} {} auto".format(name, pid))
+        cmd.append("--cmd=changeleader {} {} {}".format(name, pid, endpoint))
         cmd.append("--database=" + database)
         status, output = self.RunWithRetuncode(cmd)
         if status.OK() and sync and not self.WaitingOP(database, name, pid).OK():
