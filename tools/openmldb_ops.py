@@ -357,6 +357,9 @@ if __name__ == "__main__":
         log.error(f"unsupported cmd {options.cmd}")
         sys.exit()
     executor = Executor(options.openmldb_bin_path, options.zk_cluster, options.zk_root_path)
+    if not executor.Connect().OK():
+        log.error("connect OpenMLDB failed")
+        sys.exit()
     status, auto_failover = executor.GetAutofailover()
     if not status.OK():
         log.error("get failover failed")
@@ -369,10 +372,13 @@ if __name__ == "__main__":
     elif options.cmd == "scaleout":
         ScaleOut(executor)
     elif options.cmd == "scalein":
-        endpoints = options.endpoints.split(",")
-        if (len(endpoints) > 0):
-            ScaleIn(executor, endpoints)
-        else:
+        if options.endpoints is None or options.endpoints == '':
             log.error("no endpoint specified")
+        else:
+            endpoints = options.endpoints.split(",")
+            if (len(endpoints) > 0):
+                ScaleIn(executor, endpoints)
+            else:
+                log.error("no endpoint specified")
     if auto_failover and not executor.SetAutofailover("true").OK():
         log.warn("set auto_failover failed")

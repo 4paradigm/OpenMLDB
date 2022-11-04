@@ -73,14 +73,18 @@ class Executor:
                             "--role=ns_client",
                             "--interactive=false"]
         self.tablet_base_cmd = [self.openmldb_bin_path, "--role=client", "--interactive=false"]
+
+    def Connect(self) -> Status:
         status, endpoint = self.GetNsLeader()
-        if status.OK():
+        if status.OK() and status.GetMsg().find("zk client init failed") == -1:
             self.ns_leader = endpoint
             log.info(f"ns leader: {self.ns_leader}")
             self.ns_base_cmd = [self.openmldb_bin_path,
                                 "--endpoint=" + self.ns_leader,
                                 "--role=ns_client",
                                 "--interactive=false"]
+            return Status()
+        return Status(-1, "connect OpenMLDB failed")
 
     def RunWithRetuncode(self, command,
                          universal_newlines = True,
