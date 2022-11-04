@@ -23,7 +23,7 @@ python tools/openmldb_ops.py --openmldb_bin_path=./bin/openmldb --zk_cluster=172
 	- recoverdata: recover data if OpenMLDB is unavailable
 	- scaleout: rebalance partitions if new endpoint added
 	- scalein: migrate partitions from specified endpoints to others
-- --endpoints: specified the endpoints to migrate out. If there are two or more endoints, use `,` as delimiter
+- --endpoints: specified the endpoints to migrate out. If there are two or more endoints, use `,` as delimiter. It will execute failed if the leftover tablet number less than replica number of tables
 
 **Note**:
 - python >= 3.6

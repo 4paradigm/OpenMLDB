@@ -18,7 +18,7 @@ python tools/openmldb_ops.py --openmldb_bin_path=./bin/openmldb --zk_cluster=172
 - --zk_cluster 指定openmldb zookeeper地址
 - --zk_root_path 指定openmldb zookeeper路径
 - --cmd 指定执行的操作。目前支持的操作有`recoverdata`, `scaleout`, `scalein` 分别表示数据恢复，扩容分片均衡，缩容分片转移
-- --endpoints 指定节点，只有cmd为`scalein`时才有效，指定分片迁出的节点，如果有多个节点以逗号分隔
+- --endpoints 指定节点，只有cmd为`scalein`时才有效，指定分片迁出的节点，如果有多个节点以逗号分隔。如果剩余tablet的个数小于表的最大副本数会执行失败
 
 **注**:
 - 要求python3.6及以上版本
