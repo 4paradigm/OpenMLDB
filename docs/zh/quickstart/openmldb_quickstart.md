@@ -19,13 +19,13 @@ Docker engine版本需求 >= 18.03
 拉取镜像（镜像下载大小大约 1GB，解压后约 1.7 GB）和启动 docker 容器
 
 ```bash
-docker run -it 4pdosc/openmldb:0.6.4 bash
+docker run -it 4pdosc/openmldb:0.6.5 bash
 ```
 
 ````{important}
 **成功启动容器以后，本教程中的后续命令默认均在容器内执行。**
 ```{tip} 
-如果你需要从容器外访问容器内的OpenMLDB服务端，请参考[DockerIP](../reference/ip_tips.md#docker-ip)。
+如果你需要从容器外访问容器内的OpenMLDB服务端，请参考[CLI/SDK->容器onebox](../reference/ip_tips.md#clisdk-容器onebox)。
 ```
 ````
 
@@ -54,7 +54,7 @@ curl https://openmldb.ai/demo/data.parquet --output ./taxi-trip/data/data.parque
 ```bash
 # Start the OpenMLDB CLI for the cluster deployed OpenMLDB
 cd taxi-trip
-../openmldb/bin/openmldb --host 127.0.0.1 --port 6527
+/work/openmldb/bin/openmldb --host 127.0.0.1 --port 6527
 ```
 
 以下截图显示了以上 docker 内命令正确执行以及 OpenMLDB CLI 正确启动以后的画面
@@ -202,9 +202,8 @@ curl http://127.0.0.1:8080/dbs/demo_db/deployments/demo_data_service -X POST -d'
 - 启动集群版OpenMLDB CLI客户端
 
 ```bash
-cd taxi-trip
 # Start the OpenMLDB CLI for the cluster deployed OpenMLDB
-../openmldb/bin/openmldb --zk_cluster=127.0.0.1:2181 --zk_root_path=/openmldb --role=sql_client
+/work/openmldb/bin/openmldb --zk_cluster=127.0.0.1:2181 --zk_root_path=/openmldb --role=sql_client
 ```
 
 以下截图显示正确启动集群版OpenMLDB CLI 以后的画面
@@ -265,9 +264,20 @@ cd taxi-trip
 
 注意，`LOAD DATA` 命令为非阻塞，可以通过 `SHOW JOBS` 等离线任务管理命令来查看任务进度。
 
-如果希望预览数据，用户亦可以使用 `SELECT` 语句，但是离线模式下该命令亦为非阻塞命令，查询结果需要查看日志（默认在/work/openmldb/taskmanager/bin/logs/jog_x.log，如需更改，修改taskmanager.properties的`job.log.path`）。
+如果希望预览数据，用户可以使用 `SELECT * FROM demo_table1` 语句，推荐`SELECT`前将离线命令设置为同步模式，即
+```sql
+SET @@sync_job=true;
+-- 如果数据较多容易超时（默认1min），请调大job timeout: SET @@job_timeout=600000;
+SELECT * FROM demo_table1;
+```
 
-如果job failed，可以查看/work/openmldb/taskmanager/bin/logs/jog_x_error.log，确认问题。
+使用非阻塞命令（异步模式）时，通过返回的JOB ID，可以查看任务状态和日志，确保离线特征顺利完成。
+
+```sql
+SHOW JOB $JOB_ID
+
+SHOW JOBLOG $JOB_ID
+```
 
 #### 3.3.3 离线特征计算
 
