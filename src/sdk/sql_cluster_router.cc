@@ -1830,6 +1830,27 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::HandleSQLCmd(const h
             }
             return this->GetJobResultSet(job_id);
         }
+        case hybridse::node::kCmdShowJobLog: {
+            int job_id;
+            try {
+                // Check argument type
+                job_id = std::stoi(cmd_node->GetArgs()[0]);
+            } catch (...) {
+                *status = {::hybridse::common::StatusCode::kCmdError,
+                           "Failed to parse job id: " + cmd_node->GetArgs()[0]};
+                return {};
+            }
+
+            auto log = GetJobLog(job_id, status);
+            if (!status->IsOK()) {
+                *status = {::hybridse::common::StatusCode::kCmdError,
+                           "Failed to get job log for job id: " + cmd_node->GetArgs()[0]};
+                return {};
+            } else {
+                std::vector<std::string> value = {log};
+                return ResultSetSQL::MakeResultSet({FORMAT_STRING_KEY}, {value}, status);
+            }
+        }
         case hybridse::node::kCmdStopJob: {
             int job_id;
             try {
@@ -2603,7 +2624,6 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteOfflineQuery(
             return {};
         }
         // Print the output from job output
-        // TODO(tobe): return result set if want to format the output
         std::vector<std::string> value = {output};
         return ResultSetSQL::MakeResultSet({FORMAT_STRING_KEY}, {value}, status);
     } else {
