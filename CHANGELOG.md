@@ -5,7 +5,7 @@
 ### Features
 - Optimize the distribution of table partitions (#2701 @jkpjkpjkp)
 - Add a new workflow to generate the documents of built-in functions automatically (#2709 #2729 @aceforeverd)
-- Support the new SQL statement `show joblog` (#2732 @@aceforeverd, #2747 @tobegit3hub)
+- Support the new SQL statement `show joblog` (#2732 @aceforeverd, #2747 @tobegit3hub)
 - Add a warning message for `show table status` (#2738 @zhanghaohit)
 - Add a new tool for data recovery and scale-out/scale-in (#2736 @dl239)
 - Improve the documents (#2707 #2727 @aceforeverd, #2718 #2538 #2731 #2752 @vagetablechicken, #2607 #2609 @michelle-qinqin, #2733 @zhanghaohit, #2742 @auula)
