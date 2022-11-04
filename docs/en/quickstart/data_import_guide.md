@@ -33,7 +33,7 @@ The [online modes](../tutorial/modes.md) of OpenMLDB cluster version provide onl
 Data can be loaded from `Pulsar`, `Kafka` and `RocketMQ ` as well, see the following links for detail.
 - [Pulsar Connector](../use_case/pulsar_connector_demo.md)
 - [Kafka Connector](../use_case/kafka_connector_demo.md)
-- [RocketMQ Connector](../zh/use_case/rocketmq_connector.md)
+- [RocketMQ Connector](https://openmldb.ai/docs/zh/main/use_case/rocketmq_connector.html)
 
 ## Note
 
