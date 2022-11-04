@@ -24,8 +24,6 @@
 #include <string>
 #include <utility>
 
-#include "absl/strings/string_view.h"
-
 namespace openmldb {
 namespace base {
 
