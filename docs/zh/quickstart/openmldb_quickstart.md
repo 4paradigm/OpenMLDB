@@ -271,9 +271,13 @@ SET @@sync_job=true;
 SELECT * FROM demo_table1;
 ```
 
-非阻塞命令（异步模式）时，查询结果需要查看日志（默认在`/work/openmldb/taskmanager/bin/logs/job_x.log`，x为job id，如需更改日志的保存地址，修改`/work/openmldb/conf/taskmanager.properties`的`job.log.path`）。
+使用非阻塞命令（异步模式）时，通过返回的JOB ID，可以查看任务状态和日志，确保离线特征顺利完成。
 
-如果job failed，可以查看`/work/openmldb/taskmanager/bin/logs/job_x_error.log`，确认问题。
+```sql
+SHOW JOB $JOB_ID
+
+SHOW JOBLOG $JOB_ID
+```
 
 #### 3.3.3 离线特征计算
 

@@ -234,7 +234,13 @@ Unless otherwise specified, the commands shown below are executed under the Open
 > LOAD DATA INFILE 'file:///work/taxi-trip/data/data.parquet' INTO TABLE demo_table1 options(format='parquet', header=true, mode='append');
 ```
 
-Note that, the `LOAD DATA` command is non-blocking, and you can view the task progress through the task management commands such as `SHOW JOBS`.
+Note that, the `LOAD DATA` command is non-blocking, and you can view the task progress through the task management commands such as `SHOW JOBS` and `SHOW JOBLOG`.
+
+```sql
+SHOW JOB $JOB_ID
+
+SHOW JOBLOG $JOB_ID
+```
 
 #### 3.3.3. Offline Feature Extraction
 
