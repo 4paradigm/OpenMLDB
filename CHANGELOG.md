@@ -3,18 +3,18 @@
 ## [0.6.5] - 2022-11-04
 
 ### Features
-- Optimize the distribution of table partition (#2701 @jkpjkpjkp)
-- Add a new workflow to generate the documents of udf automatically (#2709 #2729 @aceforeverd)
-- Support new SQL statement `show joblog` (#2732 @@aceforeverd, #2747 @tobegit3hub)
-- Add warning message for `show table status` (#2738 @zhanghaohit)
-- Add new tool for recoving data and scale-out/scale-in (#2736 @dl239)
+- Optimize the distribution of table partitions (#2701 @jkpjkpjkp)
+- Add a new workflow to generate the documents of built-in functions automatically (#2709 #2729 @aceforeverd)
+- Support the new SQL statement `show joblog` (#2732 @@aceforeverd, #2747 @tobegit3hub)
+- Add a warning message for `show table status` (#2738 @zhanghaohit)
+- Add a new tool for data recovery and scale-out/scale-in (#2736 @dl239)
 - Improve the documents (#2707 #2727 @aceforeverd, #2718 #2538 #2731 #2752 @vagetablechicken, #2607 #2609 @michelle-qinqin, #2733 @zhanghaohit, #2742 @auula)
 
 ### Bug Fixes
-- Incorrect data will be loaded in offline mode if schema is mismatch with parquet file (#2648 @vagetablechicken)
-- Fail to create index if specify database in SQL statement (#2720 @dl239)
+- Incorrect data will be loaded in offline mode if the schema mismatches with parquet files. (#2648 @vagetablechicken)
+- Creating index fails if specifying a database in SQL statement (#2720 @dl239)
 - `start_time` is not human-readable after submitting a job (#2751 @tobegit3hub)
-- Incorrect result of `GetRecordIdxCnt` in `MemTable` (#2719 @jkpjkpjkp)
+- Incorrect result of `GetRecordIdxCnt` is produced in `MemTable` (#2719 @jkpjkpjkp)
 
 ### Code Refactoring
 #2688 #2717 @vagetablechicken, #2705 #2728 @dl239, #2601 @team-317, #2737 @Jake-00
