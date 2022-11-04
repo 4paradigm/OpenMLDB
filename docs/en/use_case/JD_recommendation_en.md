@@ -37,7 +37,7 @@ Oneflow-serving：https://github.com/Oneflow-Inc/serving/tree/ce5d667468b6b3ba66
 - Download demo files, and map the demo directory to `/root/project`, here we use `demodir=/home/gtest/demo`. The demo files include scripts and sample training data required for this case.
 ```bash
 export demodir=/home/gtest/demo
-docker run -dit --name=demo --network=host -v $demodir:/root/project 4pdosc/openmldb:0.5.2 bash
+docker run -dit --name=demo --network=host -v $demodir:/root/project 4pdosc/openmldb:0.6.5 bash
 docker exec -it demo bash
 ```
 - The image is preinstalled with OpenMLDB and some third-party libraries and tools, we need to install the dependencies of OneFlow.
