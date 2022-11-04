@@ -8,5 +8,6 @@
 
     SHOW_JOBS
     SHOW_JOB
+    SHOW_JOBLOG
     STOP_JOB
     SUBMIT_JOB

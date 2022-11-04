@@ -64,7 +64,6 @@ public class OpenMLDBTest extends BaseTest {
             OpenMLDBGlobalVar.mainInfo = YamlUtil.getObject("out/openmldb_info.yaml",OpenMLDBInfo.class);
         }else{
             OpenMLDBInfo openMLDBInfo = new OpenMLDBInfo();
-
             openMLDBInfo.setDeployType(OpenMLDBDeployType.CLUSTER);
             openMLDBInfo.setNsNum(2);
             openMLDBInfo.setTabletNum(3);

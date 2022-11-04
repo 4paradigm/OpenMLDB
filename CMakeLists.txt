@@ -34,7 +34,7 @@ endif()
 message (STATUS "CMAKE_BUILD_TYPE: ${CMAKE_BUILD_TYPE}")
 set(OPENMLDB_VERSION_MAJOR 0)
 set(OPENMLDB_VERSION_MINOR 6)
-set(OPENMLDB_VERSION_BUG 0)
+set(OPENMLDB_VERSION_BUG 5)
 
 function(get_commitid CODE_DIR COMMIT_ID)
     find_package(Git REQUIRED)
@@ -262,6 +262,7 @@ configure_file(
 include_directories(
   ${CMAKE_SOURCE_DIR}/include
   ${CMAKE_SOURCE_DIR}/hybridse/include
+  ${CMAKE_SOURCE_DIR}/hybridse/src
   ${CMAKE_BINARY_DIR}/hybridse/src
   ${LLVM_INCLUDE_DIRS}
   ${Boost_INCLUDE_DIRS}

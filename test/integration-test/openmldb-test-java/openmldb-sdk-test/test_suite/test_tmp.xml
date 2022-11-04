@@ -4,18 +4,15 @@
     <test name="openmldb-tmp-test">
         <parameter name="env" value="qa"/>
         <parameter name="version" value="tmp"/>
-        <packages>
-            <package name="com._4paradigm.openmldb.java_sdk_test.cluster.sql_test"/>
-        </packages>
-<!--        <classes>-->
-<!--            <class name="com._4paradigm.openmldb.java_sdk_test.cluster.out_in.OutInTest">-->
+<!--        <packages>-->
+<!--            <package name="com._4paradigm.openmldb.java_sdk_test.cluster.sql_test"/>-->
+<!--        </packages>-->
+        <classes>
+            <class name="com._4paradigm.openmldb.java_sdk_test.cluster.out_in.OutInTest">
 <!--                <methods>-->
 <!--                    <include name="testOutIn" />-->
 <!--                </methods>-->
-<!--            </class>-->
-<!--        </classes>-->
+            </class>
+        </classes>
     </test>
-    <listeners>
-        <listener class-name="com._4paradigm.openmldb.java_sdk_test.report.AddAttachmentListener" />
-    </listeners>
 </suite>

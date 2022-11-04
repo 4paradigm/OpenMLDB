@@ -31,35 +31,6 @@ from warnings import warn
 logger = logging.getLogger("OpenMLDB_sdk")
 
 
-class OpenMLDBClusterSdkOptions(object):
-
-    def __init__(self,
-                 zk_cluster,
-                 zk_path,
-                 session_timeout=None,
-                 spark_conf_path=None,
-                 request_timeout=None,
-                 zk_log_level=None,
-                 zk_log_file=None):
-        self.zk_cluster = zk_cluster
-        self.zk_path = zk_path
-        # all timeout unit ms
-        self.zk_session_timeout = session_timeout
-        self.spark_conf_path = spark_conf_path
-        self.request_timeout = request_timeout
-        self.zk_log_level = zk_log_level
-        self.zk_log_file = zk_log_file
-
-
-class OpenMLDBStandaloneSdkOptions(object):
-
-    def __init__(self, host, port, request_timeout=None):
-        self.host = host
-        self.port = port
-        self.request_timeout = int(
-            request_timeout) if request_timeout else 60000
-
-
 class OpenMLDBSdk(object):
 
     def __init__(self, **options_map):

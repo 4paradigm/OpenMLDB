@@ -790,7 +790,7 @@ TEST_F(SQLRouterTest, test_sql_insert_placeholder_with_type_check) {
     std::string insert4 = "insert into " + name + " values('hello', ?, '2020-02-29', 2.33, 2.33, 123, 123);";
     status = hybridse::sdk::Status();
     std::shared_ptr<SQLInsertRow> r4 = router_->GetInsertRow(db, insert4, &status);
-    ASSERT_EQ(status.code, 1);
+    ASSERT_EQ(status.code, hybridse::common::StatusCode::kCmdError) << status.ToString();
 
     int32_t year;
     int32_t month;

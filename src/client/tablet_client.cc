@@ -91,7 +91,7 @@ bool TabletClient::Query(const std::string& db, const std::string& sql,
     bool ok = client_.SendRequest(&::openmldb::api::TabletServer_Stub::Query, cntl, &request, response);
 
     if (!ok || response->code() != 0) {
-        LOG(WARNING) << "fail to query tablet";
+        LOG(WARNING) << "send rpc request failed";
         return false;
     }
     return true;
