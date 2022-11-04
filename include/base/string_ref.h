@@ -18,9 +18,13 @@
 #define INCLUDE_BASE_STRING_REF_H_
 
 #include <stdint.h>
+
 #include <cstddef>
 #include <cstring>
 #include <string>
+#include <utility>
+
+#include "absl/strings/string_view.h"
 
 namespace openmldb {
 namespace base {

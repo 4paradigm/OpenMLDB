@@ -19,7 +19,9 @@ if (POLICY CMP0086)
     cmake_policy(SET CMP0086 NEW)
 endif ()
 
-list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake-modules")
+list(APPEND CMAKE_MODULE_PATH
+    "${CMAKE_SOURCE_DIR}/cmake-modules"
+    "${CMAKE_SOURCE_DIR}/cmake")
 
 project(openmldb)
 
@@ -127,6 +129,11 @@ else()
     find_library(RocksDB_LIBRARY rocksdb)
     set(RocksDB_LIB ${RocksDB_LIBRARY})
 endif()
+
+# third party sources
+include(FetchContent)
+set(FETCHCONTENT_QUIET OFF)
+include(farmhash)
 
 if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
     set(OS_LIB ${CMAKE_THREAD_LIBS_INIT} rt)
