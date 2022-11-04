@@ -273,7 +273,9 @@ include_directories(
   ${CMAKE_BINARY_DIR}/hybridse/src
   ${LLVM_INCLUDE_DIRS}
   ${Boost_INCLUDE_DIRS}
-  ${CMAKE_PREFIX_PATH}/include)
+  ${CMAKE_PREFIX_PATH}/include
+  ${farmhash_SOURCE_DIR}/src
+)
 
 link_directories(
     ${LLVM_LIBRARY_DIRS}
