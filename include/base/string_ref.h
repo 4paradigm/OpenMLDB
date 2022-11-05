@@ -22,7 +22,6 @@
 #include <cstddef>
 #include <cstring>
 #include <string>
-#include <utility>
 
 namespace openmldb {
 namespace base {
