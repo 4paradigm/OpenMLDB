@@ -16,7 +16,7 @@ wget http://openmldb.ai/download/jd-recommendation/demo.tgz
 tar xzf demo.tgz
 ls demo
 ```
-todo 没上传
+
 也可以checkout Github仓库中的`demo/jd-recommendation`。
 我们将这个`demo`目录定为环境变量`demodir`，之后的脚本中多会使用这一环境变量。所以，你需要配置这一变量：
 ```
@@ -252,6 +252,7 @@ INTO OUTFILE '/work/oneflow_demo/out/1' OPTIONS(mode='overwrite');
 ```{note}
 注意，以下命令在docker外执行，使用安装了1.2所描述的OneFlow运行环境
 ```
+
 根据 [DeepFM 论文](https://arxiv.org/abs/1703.04247), 类别特征和连续特征都被当作稀疏特征对待。
 
 > χ may include categorical fields (e.g., gender, location) and continuous fields (e.g., age). Each categorical field is represented as a vector of one-hot encoding, and each continuous field is represented as the value itself, or a vector of one-hot encoding after discretization.
@@ -367,8 +368,6 @@ deploy后，可通过访问OpenMLDB ApiServer `127.0.0.1:9080`进行实时特征
 
 ```{note}
 注意，在线 `LOAD  DATA` 也是非阻塞任务，请等待任务运行成功（ `state` 转至 `FINISHED` 状态），再进行下一步操作 。
-
-如果你导入全量数据，那么请开启spark并发线程，否则在线导入速度将会较慢。
 ```
 
 ### 3.3 配置OneFlow推理服务
