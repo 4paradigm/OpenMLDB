@@ -3143,6 +3143,9 @@ void NameServerImpl::DropTableInternel(const DropTableRequest& request, GeneralR
                 continue;
             }
             for (auto& op_data : op_list) {
+                if (task_ptr && task_ptr->op_id() == op_data->op_info_.op_id()) {
+                    continue;
+                }
                 if (op_data->op_info_.db() == db && op_data->op_info_.name() != name) {
                     if (op_data->op_info_.task_status() == ::openmldb::api::kInited ||
                          (op_data->op_info_.task_status() == ::openmldb::api::kDoing)) {
