@@ -1389,7 +1389,6 @@ bool SQLClusterRouter::ExecuteInsert(const std::string& db, const std::string& s
                                      hybridse::sdk::Status* status) {
     RET_FALSE_IF_NULL_AND_WARN(status, "output status is nullptr");
     if (!row) {
-        // TODO
         return false;
     }
     std::shared_ptr<SQLCache> cache = GetCache(db, sql, hybridse::vm::kBatchMode);
