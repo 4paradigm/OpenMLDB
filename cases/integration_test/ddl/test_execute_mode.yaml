@@ -1,0 +1,89 @@
+# Copyright 2021 4Paradigm
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+db: test_zw
+debugs: []
+cases:
+  -
+    id: 0
+    desc: 测试EXECUTE_MODE=online
+    sqls:
+      - set @@SESSION.execute_mode="online";
+      - show variables;
+    expect:
+      columns: ["Variable_name string","Value string"]
+      rows:
+        - ["enable_trace","false"]
+        - ["execute_mode","online"]
+        - ["job_timeout","20000"]
+        - ["sync_job","false"]
+  -
+    id: 1
+    desc: EXECUTE_MODE=offline
+    sqls:
+      - set @@SESSION.execute_mode="offline";
+      - show variables;
+    expect:
+      columns: ["Variable_name string","Value string"]
+      rows:
+        - ["enable_trace","false"]
+        - ["execute_mode","offline"]
+        - ["job_timeout","20000"]
+        - ["sync_job","false"]
+  -
+    id: 2
+    desc: EXECUTE_MODE为其他字符
+    tags: ["TODO","目前看符合预期，名称没有限制"]
+    sqls:
+      - set @@SESSION.execute_olol = "offline";
+    expect:
+      success: false
+  -
+    id: 3
+    desc: EXECUTE_MODE为大写
+    sqls:
+      - set @@SESSION.execute_mode = "ONLINE";
+      - show variables;
+    expect:
+      columns: ["Variable_name string","Value string"]
+      rows:
+        - ["enable_trace","false"]
+        - ["execute_mode","online"]
+        - ["job_timeout","20000"]
+        - ["sync_job","false"]
+  -
+    id: 4
+    desc: EXECUTE_MODE=offline，创建表，insert数据，并查询
+    inputs:
+      -
+        columns: ["c1 string","c2 smallint","c3 int","c4 timestamp"]
+    sqls:
+      - set @@SESSION.execute_mode = "offline";
+      - insert into {0} values ("bb",2,3,1590738989000);
+    expect:
+      success: false
+  -
+    id: 5
+    desc: EXECUTE_MODE=online，创建表，insert数据，并查询
+    inputs:
+      -
+        columns: ["c1 string","c2 smallint","c3 int","c4 timestamp"]
+    sqls:
+      - set @@SESSION.execute_mode = "online";
+      - insert into {0} values ("aa",1,2,1590738989000);
+      - select * from {0};
+    expect:
+      columns: ["c1 string","c2 smallint","c3 int","c4 timestamp"]
+      rows:
+        - ["aa",1,2,1590738989000]

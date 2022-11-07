@@ -493,7 +493,7 @@ TEST_F(SnapshotTest, Recover_only_snapshot_multi) {
         ASSERT_FALSE(it->Valid());
     }
     ASSERT_EQ(2u, table->GetRecordCnt());
-    ASSERT_EQ(4u, table->GetRecordIdxCnt());
+    ASSERT_EQ(2u, table->GetRecordIdxCnt());
 }
 
 TEST_F(SnapshotTest, Recover_only_snapshot_multi_with_deleted_index) {

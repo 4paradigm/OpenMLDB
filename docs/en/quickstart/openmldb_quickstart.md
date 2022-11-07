@@ -17,7 +17,7 @@ If you wan to compile and install it by yourself, you can refer to our [installa
 Pull the image (image download size is about 1GB, after decompression is about 1.7 GB) and start the docker container:
 
 ```bash
-docker run -it 4pdosc/openmldb:0.6.2 bash
+docker run -it 4pdosc/openmldb:0.6.5 bash
 ```
 
 ```{important}
@@ -234,7 +234,13 @@ Unless otherwise specified, the commands shown below are executed under the Open
 > LOAD DATA INFILE 'file:///work/taxi-trip/data/data.parquet' INTO TABLE demo_table1 options(format='parquet', header=true, mode='append');
 ```
 
-Note that, the `LOAD DATA` command is non-blocking, and you can view the task progress through the task management commands such as `SHOW JOBS`.
+Note that, the `LOAD DATA` command is non-blocking, and you can view the task progress through the task management commands such as `SHOW JOBS` and `SHOW JOBLOG`.
+
+```sql
+SHOW JOB $JOB_ID
+
+SHOW JOBLOG $JOB_ID
+```
 
 #### 3.3.3. Offline Feature Extraction
 
@@ -253,6 +259,7 @@ Note that, the `SELECT INTO` command in offline mode is non-blocking, and you ca
 The SQL can be deployed online using the below command:
 
 ```sql
+> SET @@execute_mode='online';
 > DEPLOY demo_data_service SELECT c1, c2, sum(c3) OVER w1 AS w1_c3_sum FROM demo_table1 WINDOW w1 AS (PARTITION BY demo_table1.c1 ORDER BY demo_table1.c6 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
 ```
 

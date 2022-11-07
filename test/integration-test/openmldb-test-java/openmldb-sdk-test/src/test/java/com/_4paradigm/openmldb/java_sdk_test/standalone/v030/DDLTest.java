@@ -110,4 +110,17 @@ public class DDLTest extends StandaloneTest {
         ExecutorFactory.build(executor,testCase, SQLCaseType.kBatch).run();
     }
 
+    @Test(dataProvider = "getCase")
+    @Yaml(filePaths = "integration_test/ddl/test_delete_index.yaml")
+    @Story("create_index")
+    public void testDeleteIndex(SQLCase testCase){
+        ExecutorFactory.build(executor,testCase, SQLCaseType.kDDL).run();
+    }
+    @Test(dataProvider = "getCase",enabled = false)
+    @Yaml(filePaths = "integration_test/ddl/test_delete_index.yaml")
+    @Story("create_index")
+    public void testDeleteIndexByCli(SQLCase testCase){
+        ExecutorFactory.build(testCase, SQLCaseType.kClusterCLI).run();
+    }
+
 }

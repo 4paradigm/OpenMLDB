@@ -12,3 +12,5 @@
     cli
     faq
     diagnose
+    openmldb_ops
+    data_export

@@ -100,7 +100,7 @@ zk log：
 Log messages at or **below** this level. 0-disable all zk log, 1-error, 2-warn, 3-info, 4-debug.
 
 sdk log(glog):
-1. CLI：set before running, `--glog_level`(int) to set glog level,`--glogDir`to set glog dir(a path, not a file)
+1. CLI：set before running, `--glog_level`(int) to set glog level,`--glog_dir`to set glog dir(a path, not a file)
 2. JAVA/Python SDK：in option or url, set `glogLevel` and`glogDir`
 
 - `glog_level`(int, default=0, which is INFO):

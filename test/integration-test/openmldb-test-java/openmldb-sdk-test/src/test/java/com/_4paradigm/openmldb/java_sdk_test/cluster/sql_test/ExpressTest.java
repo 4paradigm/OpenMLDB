@@ -35,7 +35,7 @@ import org.testng.annotations.Test;
 public class ExpressTest extends OpenMLDBTest {
 
     @Story("batch")
-    @Test(dataProvider = "getCase",enabled = false)
+    @Test(dataProvider = "getCase")
     @Yaml(filePaths = {
             "integration_test/expression/"
     })

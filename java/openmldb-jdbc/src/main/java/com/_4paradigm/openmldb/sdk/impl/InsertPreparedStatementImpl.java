@@ -351,11 +351,11 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
                 }
             }
             if (!ok) {
-                throw new SQLException("append failed");
+                throw new SQLException("append failed on currentDataIdx: " + currentDataIdx + ", curType: " + currentDatasType.get(currentDataIdx) + ", current data: " + data);
             }
         }
         if (!currentRow.Build()) {
-            throw new SQLException("build insert row failed");
+            throw new SQLException("build insert row failed(str size init != actual)");
         }
         currentRows.add(currentRow);
         clearParameters();
@@ -384,7 +384,7 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
         // we can't execute() again without set new row, so we must clean up here
         clearSQLInsertRowList();
         if (!ok) {
-            logger.error("getInsertRow fail: {}", status.getMsg());
+            logger.error("execute insert fail: {}", status.getMsg());
             status.delete();
             return false;
         }

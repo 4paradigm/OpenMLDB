@@ -64,6 +64,40 @@ void hex(StringRef *str, StringRef *output) {
     output->data_ = buffer;
 }
 
+void unhex(StringRef *str, StringRef *output, bool* is_null) {
+    char *buffer = AllocManagedStringBuf(str->size_ / 2 + str->size_ % 2);
+    for (uint32_t i = 0; i < str->size_; ++i) {
+        if ((str->data_[i] >= 'A' && str->data_[i] <= 'F') ||
+            (str->data_[i] >= 'a' && str->data_[i] <= 'f') ||
+            (str->data_[i] >= '0' && str->data_[i] <= '9')) {
+            continue;
+        } else {
+            *is_null = true;
+            break;
+        }
+    }
+    // use lambda function to convert the char to uint8
+    auto convert = [](char a) {
+        if (a <= 'F' && a >= 'A') { return a - 'A' + 10; }
+        if (a <= 'f' && a >= 'a') { return a - 'a' + 10; }
+        if (a <= '9' && a >= '0') { return a - '0'; }
+    };
+
+    if (!*is_null) {    // every character is valid hex character
+        if (str->size_ % 2 == 0) {
+            for (uint32_t i=0; i < str->size_; i+=2) {
+                buffer[i/2] = static_cast<char>(convert(str->data_[i]) << 4 | convert(str->data_[i+1]));
+            }
+        } else {
+            buffer[0] = static_cast<char>(convert(str->data_[0]));
+            for (uint32_t i=1; i < str->size_; i+=2) {
+                buffer[i/2+1] = static_cast<char>(convert(str->data_[i]) << 4 | convert(str->data_[i+1]));
+            }
+        }
+        output->size_ = str->size_ / 2 + str->size_ % 2;
+        output->data_ = buffer;
+    }
+}
 
 // TODO(chenjing): 时区统一配置
 constexpr int32_t TZ = 8;

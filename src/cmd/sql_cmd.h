@@ -130,7 +130,7 @@ void HandleSQL(const std::string& sql) {
             }
         }
     } else {
-        std::cout << "Error: " << status.msg << std::endl;
+        std::cout << "Error: " << status.ToString() << std::endl;
         if (sr->IsEnableTrace()) {
             // trace has '\n' already
             std::cout << status.trace;
@@ -244,10 +244,8 @@ bool InitClusterSDK() {
 }
 
 void ClusterSQLClient() {
-    // use another flag glog_level to set minloglevel, cuz we don't want print info log in client by default.
-    FLAGS_minloglevel = FLAGS_glog_level;
     // setup here cuz init xx sdk will print log too
-    base::SetupGLog();
+    base::SetupGlog();
     if (!InitClusterSDK()) {
         return;
     }
@@ -278,8 +276,7 @@ bool InitStandAloneSDK() {
 }
 
 void StandAloneSQLClient() {
-    FLAGS_minloglevel = FLAGS_glog_level;
-    base::SetupGLog();
+    base::SetupGlog();
     if (!InitStandAloneSDK()) {
         return;
     }

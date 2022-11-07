@@ -1,10 +1,12 @@
 # 查看 DEPLOYMENT 详情
 
+`SHOW DEPLOYMENT`语句用于显示在线请求模式下某个已部署的任务的详情。
+
+
 ```SQL
 SHOW DEPLOYMENT deployment_name;
 ```
 
-`SHOW DEPLOYMENT`语句用于显示某一个OnlineServing的详情。
 
 ## Example
 
@@ -12,7 +14,7 @@ SHOW DEPLOYMENT deployment_name;
 
 ```sql
 CREATE DATABASE db1;
--- SUCCEED: Create database successfully
+-- SUCCEED
 
 USE db1;
 -- SUCCEED: Database changed
@@ -24,24 +26,22 @@ USE db1;
 
 ```sql
 CREATE TABLE t1(col0 STRING);
--- SUCCEED: Create successfully
+-- SUCCEED
 
 ```
 
-部署表t1的查询语句到OnlineServing:
+将一条关于表t1的查询语句部署上线：
 
 ```sql
 DEPLOY demo_deploy select col0 from t1;
--- SUCCEED: deploy successfully
+-- SUCCEED
 ```
 
 查看新部署的deployment:
 
 ```sql
 SHOW DEPLOYMENT demo_deploy;
-```
 
-```
  ----- ------------- 
   DB    Deployment   
  ----- ------------- 
@@ -72,8 +72,7 @@ FROM
   #   Field   Type       IsConstant  
  --- ------- ---------- ------------ 
   1   col0    Varchar   NO          
- --- ------- ---------- ------------ 
-
+ --- ------- ---------- ------------
 ```
 
 ## 相关语句

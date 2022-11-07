@@ -62,7 +62,7 @@ request body:
 
 ```
 curl http://127.0.0.1:8080/dbs/demo_db/deployments/demo_data_service -X POST -d'{
-        "input": [["aaa", 11, 22, 1.2, 1.3, 1635247427000, "2021-05-20"]],
+        "input": [["aaa", 11, 22, 1.2, 1.3, 1635247427000, "2021-05-20"]]
     }'
 ```
 
@@ -83,21 +83,61 @@ response:
 The request URL: http://ip:port/dbs/{db_name}
 
 HTTP method: POST
-
-The request body example: 
+ 
+request body: 
 
 ```json
 {
-    "mode": "online",
-    "sql": "SELECT c1, c2, c3 FROM demo WHERE c1 = ? AND c2 = ?",
+    "mode": "",
+    "sql": "",
     "input": {
-      "schema": ["Int32", "String"],
-      "data": [1, "aaa"]
+        "schema": [],
+        "data": []
     }
 }
 ```
 
-mode: "offsync", "offasync", "online"
+- "mode"可配: "offsync", "offasync", "online"
+- "input"是可选参数
+- "schema"可支持数据类型(大小写不敏感):
+`Bool`, `Int16`, `Int32`, `Int64`, `Float`, `Double`, `String`, `Date` and `Timestamp`.
+
+**查询举例**
+
+- 普通查询: 
+
+```json
+{
+  "mode": "online",
+  "sql": "select 1"
+}
+```
+
+The response:
+
+```json
+{
+  "code":0,
+  "msg":"ok",
+  "data": {
+    "schema":["Int32"],
+    "data":[[1]]
+  }
+}
+```
+
+- 参数化查询:
+
+```json
+{
+  "mode": "online",
+  "sql": "SELECT c1, c2, c3 FROM demo WHERE c1 = ? AND c2 = ?",
+  "input": {
+    "schema": ["Int32", "String"],
+    "data": [1, "aaa"]
+  }
+}
+```
 
 The response:
 
@@ -109,5 +149,132 @@ The response:
       "schema": ["Int32", "String", "Float"],
       "data": [[1, "aaa", 1.2], [1, "aaa", 3.4]]
     }
+}
+```
+
+## 查询Deployment信息
+
+
+The request URL: http://ip:port/dbs/{db_name}/deployments/{deployment_name}
+
+HTTP method: Get
+
+The response:
+
+```json
+{
+  "code": 0,
+  "msg": "ok",
+  "data": {
+    "name": "",
+    "procedure": "",
+    "input_schema": [
+
+    ],
+    "input_common_cols": [
+      
+    ],
+    "output_schema": [
+
+    ],
+    "output_common_cols": [
+      
+    ],
+    "dbs": [
+
+    ],
+    "tables": [
+
+    ]
+  }
+}
+```
+
+
+## 获取所有库名
+
+The request URL: http://ip:port/dbs
+
+HTTP method: Get
+
+The response:
+
+```json
+{
+  "code": 0,
+  "msg": "ok",
+  "dbs": [
+
+  ]
+}
+```
+
+## 获取所有表名
+
+The request URL: http://ip:port/dbs/{db}/tables
+
+HTTP method: Get
+
+The response:
+
+```json
+{
+  "code": 0,
+  "msg": "ok",
+  "tables": [
+    {
+      "name": "",
+      "table_partition_size": 8,
+      "tid": ,
+      "partition_num": 8,
+      "replica_num": 2,
+      "column_desc": [
+        {
+          "name": "",
+          "data_type": "",
+          "not_null": false
+        }
+      ],
+      "column_key": [
+        {
+          "index_name": "",
+          "col_name": [
+
+          ],
+          "ttl": {
+            
+          }
+        }
+      ],
+      "added_column_desc": [
+        
+      ],
+      "format_version": 1,
+      "db": "",
+      "partition_key": [
+        
+      ],
+      "schema_versions": [
+        
+      ]
+    }
+  ]
+}
+```
+
+## 刷新 APIServer 元数据缓存
+
+The request URL: http://ip:port/refresh
+
+HTTP method: POST
+
+Empty request body.
+
+The response:
+
+```json
+{
+    "code":0,
+    "msg":"ok"
 }
 ```

@@ -1723,6 +1723,7 @@ cases:
         2, 1, 233, 233
         3, 2, 21,  5
         4, 2, 17,  0
+
   - id: 31
     desc: 主表ts都大于副表的
     tags: ["TODO","cpp ut失败"]
@@ -1901,3 +1902,294 @@ cases:
       columns: ["c1 int", "table_1_c1_9 int", "table_1_c2_10 bigint", "table_1_d1_11 bigint", "table_1_d2_12 bigint", "table_1_s1_13 bigint"]
       rows:
         - [1, 1, 2, NULL, NULL, NULL]
+
+
+  # =================================================================== #
+  # case id: [37 - 40]
+  # correctness verify for multiple window union in batch mode
+  # refer issue https://github.com/4paradigm/OpenMLDB/issues/1807
+  # =================================================================== #
+  - id: 37
+    desc: |
+      mulpile window support with one window union
+    inputs:
+      - name: t1
+        columns:
+          - id int
+          - ts timestamp
+          - g int
+          - val int
+        indexs:
+          - idx:g:ts
+        data: |
+          1, 100000, 111, 21
+          2, 100000, 111, 10000
+      - name: t2
+        columns:
+          - id int
+          - ts timestamp
+          - g int
+          - val int
+        indexs:
+          - idx:g:ts
+        data: |
+          1,  87000, 111, 300
+          1,  95000, 111, 999
+          1,  99000, 111, 233
+          1, 100000, 111, 200
+          1, 101000, 111, 17
+    sql: |
+       select
+          id, count(val) over w as cnt,
+          max(val) over w as mv,
+          min(val) over w as mi,
+          sum(val) over w2 as m2
+       from t1 window
+          w as(union t2 partition by `g` order by `ts` ROWS_RANGE BETWEEN 5s preceding and 1s preceding),
+          w2 as (partition by `g` order by `ts` ROWS BETWEEN 1 PRECEDING and CURRENT ROW);
+    batch_plan: |
+      PROJECT(type=WindowAggregation)
+        +-WINDOW(partition_keys=(g), orders=(ts ASC), range=(ts, 5000 PRECEDING, 1000 PRECEDING))
+        +-UNION(partition_keys=(), orders=(ASC), range=(ts, 5000 PRECEDING, 1000 PRECEDING))
+            RENAME(name=)
+              DATA_PROVIDER(type=Partition, table=t2, index=idx)
+        PROJECT(type=WindowAggregation, NEED_APPEND_INPUT)
+          +-WINDOW(partition_keys=(), orders=(ASC), rows=(ts, 1 PRECEDING, 0 CURRENT))
+          DATA_PROVIDER(type=Partition, table=t1, index=idx)
+    expect:
+      columns:
+        - id int
+        - cnt int64
+        - mv int
+        - mi int
+        - m2 int
+      order: id
+      data: |
+        1, 2, 999, 233, 21
+        2, 2, 999, 233, 10021
+  - id: 38
+    desc: |
+      mulpile window support with two window union
+    inputs:
+      - name: t1
+        columns:
+          - id int
+          - ts timestamp
+          - g int
+          - val int
+        indexs:
+          - idx:g:ts
+        data: |
+          1, 100000, 111, 21
+          2, 100000, 111, 10000
+      - name: t2
+        columns:
+          - id int
+          - ts timestamp
+          - g int
+          - val int
+        indexs:
+          - idx:g:ts
+        data: |
+          1,  87000, 111, 300
+          1,  95000, 111, 999
+      - name: t3
+        columns:
+          - id int
+          - ts timestamp
+          - g int
+          - val int
+        indexs:
+          - idx:g:ts
+        data: |
+          1,  99000, 111, 233
+          1, 100000, 111, 200
+          1, 101000, 111, 17
+    sql: |
+       select
+          id, count(val) over w1 as cnt,
+          max(val) over w1 as mv,
+          min(val) over w1 as mi,
+          sum(val) over w2 as m2,
+          sum_where(val, val > 200) over w3 as sw
+       from t1 window
+          w1 as(union t2 partition by `g` order by `ts` ROWS_RANGE BETWEEN 5s preceding and 0s preceding),
+          w2 as (union t3 partition by `g` order by `ts` ROWS BETWEEN 1 PRECEDING AND CURRENT ROW),
+          w3 as (partition by `g` order by `ts` ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
+    batch_plan: |
+      PROJECT(type=WindowAggregation)
+        +-WINDOW(partition_keys=(g), orders=(ts ASC), range=(ts, 5000 PRECEDING, 0 PRECEDING))
+        +-UNION(partition_keys=(), orders=(ASC), range=(ts, 5000 PRECEDING, 0 PRECEDING))
+            RENAME(name=)
+              DATA_PROVIDER(type=Partition, table=t2, index=idx)
+        PROJECT(type=WindowAggregation, NEED_APPEND_INPUT)
+          +-WINDOW(partition_keys=(g), orders=(ts ASC), rows=(ts, 1 PRECEDING, 0 CURRENT))
+          +-UNION(partition_keys=(), orders=(ASC), rows=(ts, 1 PRECEDING, 0 CURRENT))
+              RENAME(name=)
+                DATA_PROVIDER(type=Partition, table=t3, index=idx)
+          PROJECT(type=WindowAggregation, NEED_APPEND_INPUT)
+            +-WINDOW(partition_keys=(), orders=(ASC), rows=(ts, 2 PRECEDING, 0 CURRENT))
+            DATA_PROVIDER(type=Partition, table=t1, index=idx)
+    expect:
+      columns:
+        - id int
+        - cnt int64
+        - mv int
+        - mi int
+        - m2 int
+        - sw int
+      order: id
+      data: |
+        1, 2, 999, 21, 221, NULL
+        2, 3, 10000, 21, 10021, 10000
+  - id: 39
+    desc: |
+      mulpile window support with three window union
+    inputs:
+      - name: t1
+        columns:
+          - id int
+          - ts timestamp
+          - g int
+          - val int
+        indexs:
+          - idx:g:ts
+        data: |
+          1, 100000, 111, 21
+          2, 100000, 111, 10000
+      - name: t2
+        columns:
+          - id int
+          - ts timestamp
+          - g int
+          - val int
+        indexs:
+          - idx:g:ts
+        data: |
+          1,  87000, 111, 300
+          1,  95000, 111, 999
+      - name: t3
+        columns:
+          - id int
+          - ts timestamp
+          - g int
+          - val int
+        indexs:
+          - idx:g:ts
+        data: |
+          1,  99000, 111, 233
+          1, 100000, 111, 200
+      - name: t4
+        columns:
+          - id int
+          - ts timestamp
+          - g int
+          - val int
+        indexs:
+          - idx:g:ts
+        data: |
+          1, 101000, 111, 17
+    sql: |
+       select
+          id, count(val) over w1 as cnt,
+          max(val) over w1 as mv,
+          min(val) over w1 as mi,
+          sum(val) over w2 as m2,
+          sum_where(val, val > 200) over w3 as sw
+       from t1 window
+          w1 as(union t2 partition by `g` order by `ts` ROWS_RANGE BETWEEN 5s preceding and 0s preceding),
+          w2 as (union t3 partition by `g` order by `ts` ROWS BETWEEN 1 PRECEDING AND CURRENT ROW),
+          w3 as (union t4 partition by `g` order by `ts` ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
+    batch_plan: |
+      PROJECT(type=WindowAggregation)
+        +-WINDOW(partition_keys=(g), orders=(ts ASC), range=(ts, 5000 PRECEDING, 0 PRECEDING))
+        +-UNION(partition_keys=(), orders=(ASC), range=(ts, 5000 PRECEDING, 0 PRECEDING))
+            RENAME(name=)
+              DATA_PROVIDER(type=Partition, table=t2, index=idx)
+        PROJECT(type=WindowAggregation, NEED_APPEND_INPUT)
+          +-WINDOW(partition_keys=(g), orders=(ts ASC), rows=(ts, 1 PRECEDING, 0 CURRENT))
+          +-UNION(partition_keys=(), orders=(ASC), rows=(ts, 1 PRECEDING, 0 CURRENT))
+              RENAME(name=)
+                DATA_PROVIDER(type=Partition, table=t3, index=idx)
+          PROJECT(type=WindowAggregation, NEED_APPEND_INPUT)
+            +-WINDOW(partition_keys=(), orders=(ASC), rows=(ts, 2 PRECEDING, 0 CURRENT))
+            +-UNION(partition_keys=(), orders=(ASC), rows=(ts, 2 PRECEDING, 0 CURRENT))
+                RENAME(name=t1)
+                  DATA_PROVIDER(type=Partition, table=t4, index=idx)
+            DATA_PROVIDER(type=Partition, table=t1, index=idx)
+    expect:
+      columns:
+        - id int
+        - cnt int64
+        - mv int
+        - mi int
+        - m2 int
+        - sw int
+      order: id
+      data: |
+        1, 2, 999, 21, 221, NULL
+        2, 3, 10000, 21, 10021, 10000
+  - id: 40
+    mode: cluster-unsupport
+    desc: |
+      mulpile window union with last join
+    # FIXME(ace): fail to resolve column g2
+    tags: ["TODO"]
+    inputs:
+      - name: t1
+        columns:
+          - id int
+          - ts timestamp
+          - g int
+          - val int
+        indexs:
+          - idx:g:ts
+        data: |
+          1, 100000, 111, 21
+          2, 100000, 111, 10000
+      - name: t2
+        columns:
+          - id int
+          - ts timestamp
+          - g int
+          - val int
+        indexs:
+          - idx:g:ts
+        data: |
+          1,  87000, 111, 300
+          1,  95000, 111, 999
+          1,  99000, 111, 233
+          1, 100000, 111, 200
+          1, 101000, 111, 17
+      - name: t3
+        columns:
+          - id2 int
+          - ts2 timestamp
+          - g2 int
+          - val2 int
+        indexs:
+          - idx:g2:ts2
+        data: |
+          9, 88000, 111, 90
+    sql: |
+       select
+          id, g2, count(val) over w as cnt,
+          max(val) over w as mv,
+          min(val) over w as mi,
+          sum(val) over w2 as m2
+       from t1 last join t3 ON t1.g = t3.g2 window
+          w as(union t2 partition by `g` order by `ts` ROWS_RANGE BETWEEN 5s preceding and 1s preceding),
+          w2 as (partition by `g` order by `ts` ROWS BETWEEN 1 PRECEDING and CURRENT ROW);
+    batch_plan: |
+    expect:
+      columns:
+        - id int
+        - g2 int
+        - cnt int64
+        - mv int
+        - mi int
+        - m2 int
+      order: id
+      data: |
+        1, 111, 2, 999, 233, 21
+        2, 111, 2, 999, 233, 10021

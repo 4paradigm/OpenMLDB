@@ -66,7 +66,10 @@ class JsonReader {
 
     JsonReader& operator&(bool& b);         // NOLINT
     JsonReader& operator&(unsigned& u);     // NOLINT
+    JsonReader& operator&(int16_t& i);      // NOLINT
     JsonReader& operator&(int& i);          // NOLINT
+    JsonReader& operator&(int64_t& i);      // NOLINT
+    JsonReader& operator&(float& f);        // NOLINT
     JsonReader& operator&(double& d);       // NOLINT
     JsonReader& operator&(std::string& s);  // NOLINT
 

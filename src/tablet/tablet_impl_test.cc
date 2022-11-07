@@ -17,6 +17,7 @@
 #include "tablet/tablet_impl.h"
 
 #include <fcntl.h>
+#include <snappy.h>
 #include <gflags/gflags.h>
 #include <google/protobuf/io/zero_copy_stream_impl.h>
 #include <google/protobuf/text_format.h>
@@ -130,13 +131,18 @@ bool RollWLogFile(::openmldb::storage::WriteHandle** wh, ::openmldb::storage::Lo
     return true;
 }
 
-void PrepareLatestTableData(TabletImpl& tablet, int32_t tid,  // NOLINT
-                            int32_t pid) {
+void PrepareLatestTableData(TabletImpl& tablet, int32_t tid, int32_t pid, bool compress = false) { // NOLINT
     for (int32_t i = 0; i < 100; i++) {
         ::openmldb::api::PutRequest prequest;
         ::openmldb::test::SetDimension(0, std::to_string(i % 10), prequest.add_dimensions());
         prequest.set_time(i + 1);
-        prequest.set_value(::openmldb::test::EncodeKV(std::to_string(i % 10), std::to_string(i)));
+        std::string value = ::openmldb::test::EncodeKV(std::to_string(i % 10), std::to_string(i));
+        if (compress) {
+            std::string compressed;
+            ::snappy::Compress(value.c_str(), value.length(), &compressed);
+            value.swap(compressed);
+        }
+        prequest.set_value(value);
         prequest.set_tid(tid);
         prequest.set_pid(pid);
         ::openmldb::api::PutResponse presponse;
@@ -149,7 +155,13 @@ void PrepareLatestTableData(TabletImpl& tablet, int32_t tid,  // NOLINT
         ::openmldb::api::PutRequest prequest;
         ::openmldb::test::SetDimension(0, "10", prequest.add_dimensions());
         prequest.set_time(i % 10 + 1);
-        prequest.set_value(::openmldb::test::EncodeKV("10", std::to_string(i)));
+        std::string value = ::openmldb::test::EncodeKV("10", std::to_string(i));
+        if (compress) {
+            std::string compressed;
+            ::snappy::Compress(value.c_str(), value.length(), &compressed);
+            value.swap(compressed);
+        }
+        prequest.set_value(value);
         prequest.set_tid(tid);
         prequest.set_pid(pid);
         ::openmldb::api::PutResponse presponse;
@@ -1689,7 +1701,7 @@ TEST_P(TabletImplTest, TraverseTTLTS) {
     tablet.Traverse(NULL, &sr, srp, &closure);
     ASSERT_EQ(0, srp->code());
     ASSERT_EQ(26, (signed)srp->count());
-    ASSERT_EQ("mcc21009", srp->pk());
+    ASSERT_EQ("mcc21008", srp->pk());
     ASSERT_FALSE(srp->is_finish());
     sr.set_pk(srp->pk());
     sr.set_ts(srp->ts());
@@ -3538,9 +3550,11 @@ TEST_P(TabletImplTest, AbsAndLat) {
     for (int i = 0; i < 100; ++i) {
         ::openmldb::api::PutResponse presponse;
         ::openmldb::api::PutRequest prequest;
-        ::openmldb::api::Dimension* dim = prequest.add_dimensions();
-        dim->set_idx(0);
-        dim->set_key("test" + std::to_string(i % 10));
+        for (int idx = 0; idx < 6; idx++) {
+            auto dim = prequest.add_dimensions();
+            dim->set_idx(idx);
+            dim->set_key("test" + std::to_string(i % 10));
+        }
         uint64_t ts = now - (99 - i) * 60 * 1000;
         std::string ts_str = std::to_string(ts);
         std::vector<std::string> row = {"test" + std::to_string(i % 10), ts_str, ts_str,
@@ -3573,10 +3587,10 @@ TEST_P(TabletImplTest, AbsAndLat) {
         sr.set_pid(0);
         sr.set_limit(100);
         sr.set_idx_name("index1");
-        ::openmldb::api::TraverseResponse* srp = new ::openmldb::api::TraverseResponse();
-        tablet.Traverse(NULL, &sr, srp, &closure);
-        ASSERT_EQ(0, srp->code());
-        ASSERT_EQ(80, (signed)srp->count());
+        ::openmldb::api::TraverseResponse srp;
+        tablet.Traverse(NULL, &sr, &srp, &closure);
+        ASSERT_EQ(0, srp.code());
+        ASSERT_EQ(80, (signed)srp.count());
     }
     // ts3 has 30 expire
     {
@@ -3621,10 +3635,10 @@ TEST_P(TabletImplTest, AbsAndLat) {
         sr.set_pid(0);
         sr.set_limit(100);
         sr.set_idx_name("index5");
-        ::openmldb::api::TraverseResponse* srp = new ::openmldb::api::TraverseResponse();
-        tablet.Traverse(NULL, &sr, srp, &closure);
-        ASSERT_EQ(0, srp->code());
-        ASSERT_EQ(100, (signed)srp->count());
+        ::openmldb::api::TraverseResponse srp;
+        tablet.Traverse(NULL, &sr, &srp, &closure);
+        ASSERT_EQ(0, srp.code());
+        ASSERT_EQ(100, (signed)srp.count());
     }
     // //// Scan Count test
     ::openmldb::api::ScanRequest sr;
@@ -4205,9 +4219,11 @@ TEST_P(TabletImplTest, AbsOrLat) {
     for (int i = 0; i < 100; ++i) {
         ::openmldb::api::PutResponse presponse;
         ::openmldb::api::PutRequest prequest;
-        ::openmldb::api::Dimension* dim = prequest.add_dimensions();
-        dim->set_idx(0);
-        dim->set_key("test" + std::to_string(i % 10));
+        for (int idx = 0; idx < 6; idx++) {
+            auto dim = prequest.add_dimensions();
+            dim->set_idx(idx);
+            dim->set_key("test" + std::to_string(i % 10));
+        }
         std::string ts_str = std::to_string(now - (99 - i) * 60 * 1000);
         std::vector<std::string> row = {"test" + std::to_string(i % 10), ts_str, ts_str,
                 ts_str, ts_str, ts_str, ts_str};
@@ -5415,7 +5431,6 @@ TEST_P(TabletImplTest, CountWithFilterExpire) {
     }
 
     {
-        //
         ::openmldb::api::CountRequest request;
         request.set_tid(id);
         request.set_pid(0);
@@ -5425,6 +5440,41 @@ TEST_P(TabletImplTest, CountWithFilterExpire) {
         tablet.Count(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
         ASSERT_EQ(5, (int32_t)response.count());
+    }
+}
+
+TEST_P(TabletImplTest, PutCompress) {
+    ::openmldb::common::StorageMode storage_mode = GetParam();
+    TabletImpl tablet;
+    tablet.Init("");
+    MockClosure closure;
+    uint32_t id = counter++;
+    {
+        ::openmldb::api::CreateTableRequest request;
+        ::openmldb::api::TableMeta* table_meta = request.mutable_table_meta();
+        table_meta->set_name("t0");
+        table_meta->set_tid(id);
+        table_meta->set_pid(0);
+        table_meta->set_storage_mode(storage_mode);
+        table_meta->set_mode(::openmldb::api::TableMode::kTableLeader);
+        table_meta->set_compress_type(::openmldb::type::CompressType::kSnappy);
+        AddDefaultSchema(0, 5, ::openmldb::type::TTLType::kLatestTime, table_meta);
+        ::openmldb::api::CreateTableResponse response;
+        MockClosure closure;
+        tablet.CreateTable(NULL, &request, &response, &closure);
+        ASSERT_EQ(0, response.code());
+        PrepareLatestTableData(tablet, id, 0, true);
+    }
+
+    {
+        ::openmldb::api::CountRequest request;
+        request.set_tid(id);
+        request.set_pid(0);
+        request.set_key("0");
+        ::openmldb::api::CountResponse response;
+        tablet.Count(NULL, &request, &response, &closure);
+        ASSERT_EQ(0, response.code());
+        ASSERT_EQ(10, (int32_t)response.count());
     }
 }
 

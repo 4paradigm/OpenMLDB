@@ -585,6 +585,27 @@ void DefaultUdfLibrary::InitStringUdf() {
             @endcode
             @since 0.6.0)");
 
+    RegisterExternal("unhex")
+        .args<StringRef>(reinterpret_cast<void*>(static_cast<void (*)(StringRef*, StringRef*, bool*)>(udf::v1::unhex)))
+        .return_by_arg(true)
+        .returns<Nullable<StringRef>>()
+        .doc(R"(
+            @brief Convert hexadecimal to binary string.
+
+            Example:
+
+            @code{.sql}
+                select unhex("537061726B2053514C");
+                --output "Spark SQL"
+
+                select unhex("7B");
+                --output "{"
+
+                select unhex("zfk");
+                --output NULL
+            @endcode
+            @since 0.7.0)");
+
     RegisterExternalTemplate<v1::ToString>("string")
         .args_in<int16_t, int32_t, int64_t, float, double>()
         .return_by_arg(true)
@@ -1589,7 +1610,7 @@ void DefaultUdfLibrary::InitMathUdf() {
             Example:
 
             @code{.sql}
-                SELECT RADIANS(90);
+                SELECT RADIANS(90.0);
                 --output 1.570796326794896619231
             @endcode
             @since 0.6.0)");
@@ -2591,7 +2612,7 @@ void DefaultUdfLibrary::InitUdaf() {
             @endcode
             @since 0.1.0
         )")
-        .args_in<int16_t, int32_t, int64_t, float, double, Timestamp, Date,
+        .args_in<bool, int16_t, int32_t, int64_t, float, double, Timestamp, Date,
                  StringRef, LiteralTypedRow<>>();
 
     RegisterUdafTemplate<AvgWhereDef>("avg_where")
@@ -2679,14 +2700,14 @@ void DefaultUdfLibrary::InitUdaf() {
 
             |value|
             |--|
-            |0|
             |1|
             |2|
             |3|
             |4|
+            |4|
             @code{.sql}
                 SELECT top(value, 3) OVER w;
-                -- output "2,3,4"
+                -- output "4,4,3"
             @endcode
             @since 0.1.0
         )")

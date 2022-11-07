@@ -58,6 +58,7 @@ cases:
         - [ "aa", 9, 1590739002000, 3.0 ]
   - id: 1
     desc: ROWS_RANGE Window with MaxSize 2 OPEN PRECEDING EXCLUDE CURRENT_TIME
+    mode: disk-unsupport
     inputs:
       - columns: [ "c1 string","c3 int","c4 double","c7 timestamp" ]
         indexs: [ "index1:c1:c7" ]

@@ -21,7 +21,7 @@
 
 #include <string>
 
-#include "sdk/base.h"
+#include "sdk/base_schema.h"
 
 namespace hybridse {
 namespace sdk {
@@ -48,7 +48,7 @@ class ResultSet {
         return val;
     }
 
-    const bool GetAsString(uint32_t idx, std::string& val) {  // NOLINT
+    virtual const bool GetAsString(uint32_t idx, std::string& val) {  // NOLINT
         if (nullptr == GetSchema()) {
             return false;
         }

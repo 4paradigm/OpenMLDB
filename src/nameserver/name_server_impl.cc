@@ -18,6 +18,11 @@
 
 #include <algorithm>
 #include <set>
+#include <random>
+#include <iterator>
+#include <iostream>
+#include <vector>
+
 
 #include "absl/strings/str_cat.h"
 #include "absl/strings/str_split.h"
@@ -2268,6 +2273,9 @@ int NameServerImpl::SetPartitionInfo(TableInfo& table_info) {
         }
         index++;
     }
+    std::random_device rd;
+    std::mt19937 g(rd());
+    std::shuffle(endpoint_vec.begin(), endpoint_vec.end(), g);
     for (uint32_t pid = 0; pid < partition_num; pid++) {
         TablePartition* table_partition = table_info.add_table_partition();
         table_partition->set_pid(pid);
@@ -10210,7 +10218,6 @@ void NameServerImpl::DropProcedure(RpcController* controller, const api::DropPro
 bool NameServerImpl::RecoverProcedureInfo() {
     db_table_sp_map_.clear();
     db_sp_table_map_.clear();
-    // TODO(hw): db_sp_info_map_ can't recover now
     db_sp_info_map_.clear();
 
     std::vector<std::string> db_sp_vec;
@@ -10255,6 +10262,8 @@ bool NameServerImpl::RecoverProcedureInfo() {
                 //          -> (sp_db_name, sp_name)
                 table_sp_map[depend_table.table_name()].push_back(std::make_pair(sp_db_name, sp_name));
             }
+            auto& sp_info_map = db_sp_info_map_[sp_db_name];
+            sp_info_map.emplace(sp_name, sp_info);
             LOG(INFO) << "recover store procedure " << sp_name << " with sql " << sql << " in db " << sp_db_name;
         } else {
             LOG(WARNING) << "db " << sp_db_name << " not exist for sp " << sp_name;
@@ -10336,7 +10345,7 @@ void NameServerImpl::ShowProcedure(RpcController* controller, const api::ShowPro
         }
         if (sp_map.find(sp_name) == sp_map.end()) {
             response->set_code(::openmldb::base::ReturnCode::kDatabaseNotFound);
-            response->set_msg("sp not found");
+            response->set_msg("not found");
             PDLOG(WARNING, "db %s sp[%s] not found", db_name, sp_name);
             return;
         }

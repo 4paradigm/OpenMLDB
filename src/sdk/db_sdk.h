@@ -89,6 +89,9 @@ class DBSDK {
     std::shared_ptr<::openmldb::catalog::TabletAccessor> GetTablet(const std::string& db, const std::string& name);
     std::shared_ptr<::openmldb::catalog::TabletAccessor> GetTablet(const std::string& db, const std::string& name,
                                                                    uint32_t pid);
+    std::vector<std::shared_ptr<::openmldb::catalog::TabletAccessor>> GetTabletFollowers(const std::string& db,
+                                                                                         const std::string& name,
+                                                                                         uint32_t pid);
     std::shared_ptr<::openmldb::catalog::TabletAccessor> GetTablet(const std::string& db, const std::string& name,
                                                                    const std::string& pk);
 
