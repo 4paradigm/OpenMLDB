@@ -142,18 +142,7 @@ If showtable turns to yes, it means that the recovery has been successful. If so
 
 ### One-click recovery
 
-If the cluster is restarted after being offline at the same time, autofailover cannot automatically restore data, and a one-click recovery script needs to be executed.
-
-#### Steps:
-
-1. Modify env.sh in the tools directory of the openmldb package. There are 3 parameters in the configuration file
-
-* openmldb_bin_path specifies the openmldb bin path
-* zk_cluster specifies the address of the zk cluster
-* zk_root_path specifies the address of the zk root path
-
-2. Execute ./recoverdata.sh
-3. Log in to ns_client, and showopstatus to check the execution progress of related ops.
+If the cluster is restarted after being offline at the same time, autofailover cannot automatically restore data, and a one-click recovery script needs to be executed. More details refer [here](./openmldb_ops.md)
 
 ### Manual data recovery
 
