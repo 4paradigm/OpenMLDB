@@ -795,9 +795,9 @@ ArrayExpr* ArrayExpr::ShadowCopy(NodeManager* nm) const {
 }
 
 Status ArrayExpr::InferAttr(ExprAnalysisContext* ctx) {
-    // if specific_type_ exists, take the type directly
+    // if specific_type_ exists, and has the array element type, take the type directly
     // whether the specific type is castable from should checked during codegen
-    if (specific_type_ != nullptr) {
+    if (specific_type_ != nullptr && !specific_type_->generics().empty()) {
         SetOutputType(specific_type_);
         SetNullable(true);
         return Status::OK();
@@ -966,9 +966,11 @@ ConstNode* ConstNode::ShadowCopy(NodeManager* nm) const {
             LOG(WARNING) << "Fail to copy primary expr of type " << node::DataTypeName(GetDataType());
             return nm->MakeConstNode(GetDataType());
         }
+        default: {
+            LOG(ERROR) << "Unsupported Data type " << node::DataTypeName(GetDataType());
+            return nullptr;
+        }
     }
-    LOG(ERROR) << "Unsupported Data type " << node::DataTypeName(GetDataType());
-    return nullptr;
 }
 
 ColumnRefNode* ColumnRefNode::ShadowCopy(NodeManager* nm) const {

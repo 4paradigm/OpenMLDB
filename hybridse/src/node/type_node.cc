@@ -15,6 +15,10 @@
  */
 
 #include "node/type_node.h"
+
+#include "absl/strings/ascii.h"
+#include "absl/strings/str_join.h"
+#include "absl/strings/str_cat.h"
 #include "node/node_manager.h"
 #include "vm/physical_op.h"
 
@@ -74,6 +78,17 @@ TypeNode *TypeNode::DeepCopy(NodeManager *nm) const {
     // For type node, it is always immutable thus
     // deep copy can be just implemented as shadow copy.
     return ShadowCopy(nm);
+}
+
+std::string TypeNode::DebugString() const {
+    return absl::StrCat(absl::AsciiStrToUpper(DataTypeName(base_)),
+                        generics_.empty() ? ""
+                                          : absl::StrCat("<",
+                                                         absl::StrJoin(generics_, ",",
+                                                                       [](std::string *out, const TypeNode *type) {
+                                                                           absl::StrAppend(out, type->DebugString());
+                                                                       }),
+                                                         ">"));
 }
 
 RowTypeNode::RowTypeNode(const vm::SchemasContext *schemas_ctx)

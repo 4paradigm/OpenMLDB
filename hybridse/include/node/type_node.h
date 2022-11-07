@@ -19,6 +19,7 @@
 
 #include <string>
 #include <vector>
+
 #include "codec/fe_row_codec.h"
 #include "node/sql_node.h"
 #include "vm/schemas_context.h"
@@ -56,6 +57,9 @@ class TypeNode : public SqlNode {
         }
         return type_name;
     }
+
+    // readable string representation
+    virtual std::string DebugString() const;
 
     const hybridse::node::TypeNode *GetGenericType(size_t idx) const {
         return generics_[idx];

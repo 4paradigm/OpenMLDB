@@ -1738,7 +1738,8 @@ base::Status ConvertParamter(const zetasql::ASTFunctionParameter* param, node::N
     //   <templated_parameter_type_> and <tvf_schema_> is another syntax for procedure parameter,
     //   <alias_> is the additional syntax for function parameter
     CHECK_STATUS(ConvertASTType(param->type(), node_manager, &tp))
-    CHECK_TRUE(tp->IsBaseType(), common::kSqlAstError, "Un-support: func parameter for non-basic type")
+    CHECK_TRUE(tp->IsBaseType(), common::kSqlAstError, "Un-support: func parameter accept only basic type, but get ",
+               tp->DebugString())
     *output = node_manager->MakeInputParameterNode(is_constant, column_name, tp->base());
     return base::Status::OK();
 }
@@ -2155,13 +2156,18 @@ base::Status convertShowStmt(const zetasql::ASTShowStatement* show_statement, no
 
 base::Status ConvertArrayExpr(const zetasql::ASTArrayConstructor* array_expr, node::NodeManager* nm,
                               node::ExprNode** output) {
-    auto* expr_list = nm->MakeArrayExpr();
+    auto* array = nm->MakeArrayExpr();
     for (auto expression : array_expr->elements()) {
         node::ExprNode* expr = nullptr;
         CHECK_STATUS(ConvertExprNode(expression, nm, &expr))
-        expr_list->AddChild(expr);
+        array->AddChild(expr);
     }
-    *output = expr_list;
+    if (array_expr->type() != nullptr) {
+        node::TypeNode* tp = nullptr;
+        CHECK_STATUS(ConvertASTType(array_expr->type(), nm, &tp));
+        array->specific_type_ = tp;
+    }
+    *output = array;
     return base::Status::OK();
 }
 
@@ -2197,7 +2203,6 @@ base::Status ConvertASTType(const zetasql::ASTType* ast_type, node::NodeManager*
                     *out = tp;
                     return base::Status::OK();
                 })));
-
             break;
         }
         default: {

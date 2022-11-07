@@ -150,12 +150,15 @@ static const absl::flat_hash_map<ExprType, absl::string_view>& GetExprTypeNamesM
   return map;
 }
 
-static void PrintExprChildren(const ExprNode* expr, std::ostream &output, const std::string &org_tab)  {
-    const std::string tab = org_tab + INDENT + SPACE_ED;
-    for (auto iter = expr->children_.cbegin(); iter != expr->children_.cend(); iter++) {
-        output << "\n";
+template <typename NodeType, typename Allocator>
+void PrintNodeList(const std::vector<NodeType *, Allocator> &node_list, std::ostream &output,
+                   const std::string &org_tab) {
+  for (auto iter = node_list.cbegin(); iter != node_list.cend(); iter++) {
         (*iter)->Print(output, org_tab);
-    }
+        if (iter + 1 != node_list.end()) {
+            output << "\n";
+        }
+  }
 }
 
 bool SqlEquals(const SqlNode *left, const SqlNode *right) {
@@ -1856,11 +1859,23 @@ bool ExprNode::Equals(const ExprNode *that) const {
 }
 
 void ExprListNode::Print(std::ostream &output, const std::string &org_tab) const {
-    PrintExprChildren(this, output, org_tab);
+    PrintNodeList(children_, output, org_tab);
 }
 
 void ArrayExpr::Print(std::ostream &output, const std::string &org_tab) const {
-    PrintExprChildren(this, output, org_tab);
+    ExprNode::Print(output, org_tab);
+    output << "\n";
+
+    auto sub_indent = org_tab + INDENT;
+    output << sub_indent << SPACE_ST << "values:";
+    if (!children_.empty()) {
+        output << "\n";
+    }
+    PrintNodeList(children_, output, sub_indent + INDENT);
+    if (specific_type_ != nullptr) {
+        output << "\n";
+        PrintValue(output, sub_indent, specific_type_->DebugString(), "type", true);
+    }
 }
 
 const std::string ExprListNode::GetExprString() const {
@@ -1880,11 +1895,12 @@ const std::string ExprListNode::GetExprString() const {
     }
 }
 
+// brackets (`[]`) represents array expr, prefix by the optional 'ARRAY<type>'
 const std::string ArrayExpr::GetExprString() const {
     return absl::StrCat(
-        "[",
+        (specific_type_ != nullptr ? specific_type_->DebugString() : ""), "[",
         absl::StrJoin(children_, ",",
-                      [](std::string *out, const ExprNode *&expr) { absl::StrAppend(out, expr->GetExprString()); }),
+                      [](std::string *out, const ExprNode *expr) { absl::StrAppend(out, expr->GetExprString()); }),
         "]");
 }
 
