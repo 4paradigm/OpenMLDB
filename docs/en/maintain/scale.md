@@ -30,6 +30,12 @@ $ ./bin/openmldb --zk_cluster=172.27.128.31:8090,172.27.128.32:8090,172.27.128.3
 
 ### Step 2. Migrating replications
 
+#### One-click Migrating
+
+Use `scaleout` command to migrate replications automatically. Refer [OpenMLDB Tool](./openmldb_ops.md)
+
+#### Manual Migrating
+
 The command used for replication migration is `migrate`. The command format is: `migrate src_endpoint table_name partition des_endpoint` 
 
 **Once the table is created, partitions cannot be added or removed, only can be migrated. When migrating, only leader partitions can be migrated, not follower partitions**
@@ -69,8 +75,15 @@ Scaling in your cluster is to reduce the number of nodes in the cluster.
 
 ### Step 1. Selecting the node that you want to go offline
 ### Step 2. Migrating partitions on nodes that need to be taken offline to other nodes
+
+#### One-click Migrating
+
+Use `scalein` command to migrate replications automatically. Refer [OpenMLDB Tool](./openmldb_ops.md)
+
+#### Manual Migrating
 * Run the `showtable` command to view the partitions of a table
 * Run the `migrage` command to migrate the targeted partitions to another node. If the leader exists on the offline node, you can run the `changeleader` command to switch the leader to another node
+
 ### Step 3. Making the targeted node offline
 - Execute `stop` command
 ```bash
