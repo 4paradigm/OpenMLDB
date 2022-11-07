@@ -140,18 +140,7 @@ showtable如果都变成yes表示已经恢复成功。如果某些分片恢复�
 **注：执行recoverendpoint前必须执行过一次offlineendpoint**
 
 ### 一键恢复
-如果集群是同时下线后重启的，autofailover无法自动恢复数据，需要执行一键恢复脚本。
-#### 执行步骤：
-1、修改openmldb包中tools目录里的env.sh。
-配置文件里面有3个参数
-
-* openmldb_bin_path 指定openmldb bin路径
-* zk_cluster 指定zk cluster的地址
-* zk_root_path 指定zk root path的地址  
-  
-
-2、执行./recoverdata.sh  
-3、登陆ns_client，showopstatus查看相关op的执行进度。
+如果集群是同时下线后重启的，autofailover无法自动恢复数据，需要执行一键恢复脚本。参考[OpenMLDB运维工具](./openmldb_ops.md)
 
 ### 手动数据恢复
 
