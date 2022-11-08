@@ -1913,13 +1913,19 @@ void NameServerImpl::DeleteTask(const std::vector<uint64_t>& done_task_vec) {
     for (auto op_id : done_task_vec) {
         std::shared_ptr<OPData> op_data;
         uint32_t index = 0;
+        std::list<std::shared_ptr<OPData>>::iterator iter;
         for (uint32_t idx = 0; idx < task_vec_.size(); idx++) {
             if (task_vec_[idx].empty()) {
                 continue;
             }
-            if (task_vec_[idx].front()->op_info_.op_id() == op_id) {
-                op_data = task_vec_[idx].front();
-                index = idx;
+            for (iter = task_vec_[idx].begin(); iter != task_vec_[idx].end(); iter++) {
+                if ((*iter)->op_info_.op_id() == op_id) {
+                    op_data = *iter;
+                    index = idx;
+                    break;
+                }
+            }
+            if (op_data) {
                 break;
             }
         }
@@ -1940,7 +1946,7 @@ void NameServerImpl::DeleteTask(const std::vector<uint64_t>& done_task_vec) {
                 PDLOG(WARNING, "set zk status value failed. node[%s] value[%s]", node.c_str(), value.c_str());
             }
             done_op_list_.push_back(op_data);
-            task_vec_[index].pop_front();
+            task_vec_[index].erase(iter);
             PDLOG(INFO, "delete op[%lu] in running op", op_id);
         } else {
             if (zk_client_->DeleteNode(node)) {
@@ -1951,7 +1957,7 @@ void NameServerImpl::DeleteTask(const std::vector<uint64_t>& done_task_vec) {
                     op_data->task_list_.clear();
                 }
                 done_op_list_.push_back(op_data);
-                task_vec_[index].pop_front();
+                task_vec_[index].erase(iter);
                 PDLOG(INFO, "delete op[%lu] in running op", op_id);
             } else {
                 PDLOG(WARNING, "delete zk op_node failed. opid[%lu] node[%s]", op_id, node.c_str());
