@@ -3144,7 +3144,7 @@ void NameServerImpl::DropTableInternel(const DropTableRequest& request, GeneralR
             }
         }
 
-        for (auto & op_list : task_vec_) {
+        for (auto& op_list : task_vec_) {
             if (op_list.empty()) {
                 continue;
             }
