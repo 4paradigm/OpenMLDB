@@ -232,7 +232,7 @@ void NameServerImpl::CheckTableInfo(std::shared_ptr<ClusterInfo>& ci,
     for (const auto& table : tables) {
         std::shared_ptr<::openmldb::nameserver::TableInfo> table_info;
         if (!GetTableInfoUnlock(table.name(), table.db(), &table_info)) {
-            PDLOG(WARNING, "talbe [%u][%s] not found in table_info", table.tid(), table.name().c_str());
+            PDLOG(WARNING, "table [%u][%s] not found in table_info", table.tid(), table.name().c_str());
             continue;
         }
         auto status_iter = ci->last_status[table.db()].find(table.name());
@@ -3149,7 +3149,8 @@ void NameServerImpl::DropTableInternel(const DropTableRequest& request, GeneralR
                 continue;
             }
             for (auto& op_data : op_list) {
-                if (task_ptr && task_ptr->op_id() == op_data->op_info_.op_id()) {
+                if (op_data->op_info_.for_replica_cluster() == 1 ||
+                        (task_ptr && task_ptr->op_id() == op_data->op_info_.op_id())) {
                     continue;
                 }
                 if (op_data->op_info_.db() == db && op_data->op_info_.name() == name) {
