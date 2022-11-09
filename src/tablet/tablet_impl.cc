@@ -317,9 +317,9 @@ void TabletImpl::UpdateTTL(RpcController* ctrl, const ::openmldb::api::UpdateTTL
     std::shared_ptr<Table> table = GetTable(tid, pid);
 
     if (!table) {
-        PDLOG(WARNING, "table is not exist. tid %u, pid %u", tid, pid);
+        PDLOG(WARNING, "table does not exist. tid %u, pid %u", tid, pid);
         response->set_code(::openmldb::base::ReturnCode::kTableIsNotExist);
-        response->set_msg("table is not exist");
+        response->set_msg("table does not exist");
         return;
     }
     ::openmldb::common::TTLSt ttl(request->ttl());
@@ -373,7 +373,7 @@ void TabletImpl::UpdateTTL(RpcController* ctrl, const ::openmldb::api::UpdateTTL
     std::string db_path = GetDBPath(db_root_path, tid, pid);
     if (!::openmldb::base::IsExists(db_path)) {
         PDLOG(WARNING, "table db path doesn't exist. tid %u, pid %u", tid, pid);
-        base::SetResponseStatus(base::ReturnCode::kTableDbPathIsNotExist, "table db path is not exist", response);
+        base::SetResponseStatus(base::ReturnCode::kTableDbPathIsNotExist, "table db path does not exist", response);
         return;
     }
     if (WriteTableMeta(db_path, table->GetTableMeta().get()) < 0) {
@@ -626,9 +626,9 @@ void TabletImpl::Get(RpcController* controller, const ::openmldb::api::GetReques
         }
         std::shared_ptr<Table> table = GetTable(tid, pid);
         if (!table) {
-            PDLOG(WARNING, "table is not exist. tid %u, pid %u", tid, pid);
+            PDLOG(WARNING, "table does not exist. tid %u, pid %u", tid, pid);
             response->set_code(::openmldb::base::ReturnCode::kTableIsNotExist);
-            response->set_msg("table is not exist");
+            response->set_msg("table does not exist");
             return;
         }
         if (table->GetTableStat() == ::openmldb::storage::kLoading) {
@@ -713,9 +713,9 @@ void TabletImpl::Put(RpcController* controller, const ::openmldb::api::PutReques
     uint64_t start_time = ::baidu::common::timer::get_micros();
     std::shared_ptr<Table> table = GetTable(request->tid(), request->pid());
     if (!table) {
-        PDLOG(WARNING, "table is not exist. tid %u, pid %u", request->tid(), request->pid());
+        PDLOG(WARNING, "table does not exist. tid %u, pid %u", request->tid(), request->pid());
         response->set_code(::openmldb::base::ReturnCode::kTableIsNotExist);
-        response->set_msg("table is not exist");
+        response->set_msg("table does not exist");
         return;
     }
     DLOG(INFO) << "request dimension size " << request->dimensions_size() << " request time " << request->time();
@@ -1213,9 +1213,9 @@ void TabletImpl::Scan(RpcController* controller, const ::openmldb::api::ScanRequ
         }
         std::shared_ptr<Table> table = GetTable(tid, pid);
         if (!table) {
-            PDLOG(WARNING, "table is not exist. tid %u, pid %u", tid, pid);
+            PDLOG(WARNING, "table does not exist. tid %u, pid %u", tid, pid);
             response->set_code(::openmldb::base::ReturnCode::kTableIsNotExist);
-            response->set_msg("table is not exist");
+            response->set_msg("table does not exist");
             return;
         }
         if (table->GetTableStat() == ::openmldb::storage::kLoading) {
@@ -1306,9 +1306,9 @@ void TabletImpl::Count(RpcController* controller, const ::openmldb::api::CountRe
     brpc::ClosureGuard done_guard(done);
     std::shared_ptr<Table> table = GetTable(request->tid(), request->pid());
     if (!table) {
-        PDLOG(WARNING, "table is not exist. tid %u, pid %u", request->tid(), request->pid());
+        PDLOG(WARNING, "table does not exist. tid %u, pid %u", request->tid(), request->pid());
         response->set_code(::openmldb::base::ReturnCode::kTableIsNotExist);
-        response->set_msg("table is not exist");
+        response->set_msg("table does not exist");
         return;
     }
     if (table->GetTableStat() == ::openmldb::storage::kLoading) {
@@ -1390,9 +1390,9 @@ void TabletImpl::Traverse(RpcController* controller, const ::openmldb::api::Trav
     uint32_t pid = request->pid();
     std::shared_ptr<Table> table = GetTable(tid, pid);
     if (!table) {
-        PDLOG(WARNING, "table is not exist. tid %u, pid %u", tid, pid);
+        PDLOG(WARNING, "table does not exist. tid %u, pid %u", tid, pid);
         response->set_code(::openmldb::base::ReturnCode::kTableIsNotExist);
-        response->set_msg("table is not exist");
+        response->set_msg("table does not exist");
         return;
     }
     if (table->GetTableStat() == ::openmldb::storage::kLoading) {
@@ -1548,9 +1548,9 @@ void TabletImpl::Delete(RpcController* controller, const ::openmldb::api::Delete
     }
     std::shared_ptr<Table> table = GetTable(request->tid(), request->pid());
     if (!table) {
-        PDLOG(WARNING, "table is not exist. tid %u, pid %u", request->tid(), request->pid());
+        PDLOG(WARNING, "table does not exist. tid %u, pid %u", request->tid(), request->pid());
         response->set_code(::openmldb::base::ReturnCode::kTableIsNotExist);
-        response->set_msg("table is not exist");
+        response->set_msg("table does not exist");
         return;
     }
     if (!table->IsLeader()) {
@@ -1963,7 +1963,7 @@ void TabletImpl::ChangeRole(RpcController* controller, const ::openmldb::api::Ch
     std::shared_ptr<Table> table = GetTable(tid, pid);
     if (!table) {
         response->set_code(::openmldb::base::ReturnCode::kTableIsNotExist);
-        response->set_msg("table is not exist");
+        response->set_msg("table does not exist");
         return;
     }
     if (table->GetTableStat() != ::openmldb::storage::kNormal) {
@@ -1975,7 +1975,7 @@ void TabletImpl::ChangeRole(RpcController* controller, const ::openmldb::api::Ch
     std::shared_ptr<LogReplicator> replicator = GetReplicator(tid, pid);
     if (!replicator) {
         response->set_code(::openmldb::base::ReturnCode::kReplicatorIsNotExist);
-        response->set_msg("replicator is not exist");
+        response->set_msg("replicator does not exist");
         return;
     }
     bool is_leader = false;
@@ -2065,9 +2065,9 @@ void TabletImpl::AddReplica(RpcController* controller, const ::openmldb::api::Re
     std::shared_ptr<Table> table = GetTable(request->tid(), request->pid());
     do {
         if (!table) {
-            PDLOG(WARNING, "table is not exist. tid %u, pid %u", request->tid(), request->pid());
+            PDLOG(WARNING, "table does not exist. tid %u, pid %u", request->tid(), request->pid());
             response->set_code(::openmldb::base::ReturnCode::kTableIsNotExist);
-            response->set_msg("table is not exist");
+            response->set_msg("table does not exist");
             break;
         }
         if (!table->IsLeader()) {
@@ -2079,8 +2079,8 @@ void TabletImpl::AddReplica(RpcController* controller, const ::openmldb::api::Re
         std::shared_ptr<LogReplicator> replicator = GetReplicator(request->tid(), request->pid());
         if (!replicator) {
             response->set_code(::openmldb::base::ReturnCode::kReplicatorIsNotExist);
-            response->set_msg("replicator is not exist");
-            PDLOG(WARNING, "replicator is not exist. tid %u, pid %u", request->tid(), request->pid());
+            response->set_msg("replicator does not exist");
+            PDLOG(WARNING, "replicator does not exist. tid %u, pid %u", request->tid(), request->pid());
             break;
         }
         std::map<std::string, std::string> real_ep_map;
@@ -2134,9 +2134,9 @@ void TabletImpl::DelReplica(RpcController* controller, const ::openmldb::api::Re
     std::shared_ptr<Table> table = GetTable(request->tid(), request->pid());
     do {
         if (!table) {
-            PDLOG(WARNING, "table is not exist. tid %u, pid %u", request->tid(), request->pid());
+            PDLOG(WARNING, "table does not exist. tid %u, pid %u", request->tid(), request->pid());
             response->set_code(::openmldb::base::ReturnCode::kTableIsNotExist);
-            response->set_msg("table is not exist");
+            response->set_msg("table does not exist");
             break;
         }
         if (!table->IsLeader()) {
@@ -2148,8 +2148,8 @@ void TabletImpl::DelReplica(RpcController* controller, const ::openmldb::api::Re
         std::shared_ptr<LogReplicator> replicator = GetReplicator(request->tid(), request->pid());
         if (!replicator) {
             response->set_code(::openmldb::base::ReturnCode::kReplicatorIsNotExist);
-            response->set_msg("replicator is not exist");
-            PDLOG(WARNING, "replicator is not exist. tid %u, pid %u", request->tid(), request->pid());
+            response->set_msg("replicator does not exist");
+            PDLOG(WARNING, "replicator does not exist. tid %u, pid %u", request->tid(), request->pid());
             break;
         }
         int ret = replicator->DelReplicateNode(request->endpoint());
@@ -2185,9 +2185,9 @@ void TabletImpl::AppendEntries(RpcController* controller, const ::openmldb::api:
     uint32_t pid = request->pid();
     std::shared_ptr<Table> table = GetTable(tid, pid);
     if (!table) {
-        PDLOG(WARNING, "table is not exist. tid %u, pid %u", tid, pid);
+        PDLOG(WARNING, "table does not exist. tid %u, pid %u", tid, pid);
         response->set_code(::openmldb::base::ReturnCode::kTableIsNotExist);
-        response->set_msg("table is not exist");
+        response->set_msg("table does not exist");
         return;
     }
     if (!follower_.load(std::memory_order_relaxed) && table->IsLeader()) {
@@ -2205,7 +2205,7 @@ void TabletImpl::AppendEntries(RpcController* controller, const ::openmldb::api:
     std::shared_ptr<LogReplicator> replicator = GetReplicator(tid, pid);
     if (!replicator) {
         response->set_code(::openmldb::base::ReturnCode::kReplicatorIsNotExist);
-        response->set_msg("replicator is not exist");
+        response->set_msg("replicator does not exist");
         return;
     }
     uint64_t term = replicator->GetLeaderTerm();
@@ -2271,8 +2271,8 @@ void TabletImpl::GetTableSchema(RpcController* controller, const ::openmldb::api
     std::shared_ptr<Table> table = GetTable(request->tid(), request->pid());
     if (!table) {
         response->set_code(::openmldb::base::ReturnCode::kTableIsNotExist);
-        response->set_msg("table is not exist");
-        PDLOG(WARNING, "table is not exist. tid %u, pid %u", request->tid(), request->pid());
+        response->set_msg("table does not exist");
+        PDLOG(WARNING, "table does not exist. tid %u, pid %u", request->tid(), request->pid());
         return;
     }
     response->set_code(::openmldb::base::ReturnCode::kOk);
@@ -2346,7 +2346,7 @@ void TabletImpl::UpdateTableMetaForAddField(RpcController* controller,
         if (!::openmldb::base::IsExists(db_path)) {
             LOG(WARNING) << "table db path doesn't exist. tid " << tid << " pid " << pid;
             response->set_code(ReturnCode::kTableDbPathIsNotExist);
-            response->set_msg("table db path is not exist");
+            response->set_msg("table db path does not exist");
             return;
         }
         UpdateTableMeta(db_path, &table_meta, true);
@@ -2430,9 +2430,9 @@ void TabletImpl::SetExpire(RpcController* controller, const ::openmldb::api::Set
     brpc::ClosureGuard done_guard(done);
     std::shared_ptr<Table> table = GetTable(request->tid(), request->pid());
     if (!table) {
-        PDLOG(WARNING, "table is not exist. tid %u, pid %u", request->tid(), request->pid());
+        PDLOG(WARNING, "table does not exist. tid %u, pid %u", request->tid(), request->pid());
         response->set_code(::openmldb::base::ReturnCode::kTableIsNotExist);
-        response->set_msg("table is not exist");
+        response->set_msg("table does not exist");
         return;
     }
     if (table->GetStorageMode() == common::kMemory) {
@@ -2462,7 +2462,7 @@ void TabletImpl::MakeSnapshotInternal(uint32_t tid, uint32_t pid, uint64_t end_o
         std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
         table = GetTableUnLock(tid, pid);
         if (!table) {
-            PDLOG(WARNING, "table is not exist. tid[%u] pid[%u]", tid, pid);
+            PDLOG(WARNING, "table does not exist. tid[%u] pid[%u]", tid, pid);
             break;
         }
         if (table->GetTableStat() != ::openmldb::storage::kNormal) {
@@ -2471,12 +2471,12 @@ void TabletImpl::MakeSnapshotInternal(uint32_t tid, uint32_t pid, uint64_t end_o
         }
         snapshot = GetSnapshotUnLock(tid, pid);
         if (!snapshot) {
-            PDLOG(WARNING, "snapshot is not exist. tid[%u] pid[%u]", tid, pid);
+            PDLOG(WARNING, "snapshot does not exist. tid[%u] pid[%u]", tid, pid);
             break;
         }
         replicator = GetReplicatorUnLock(tid, pid);
         if (!replicator) {
-            PDLOG(WARNING, "replicator is not exist. tid[%u] pid[%u]", tid, pid);
+            PDLOG(WARNING, "replicator does not exist. tid[%u] pid[%u]", tid, pid);
             break;
         }
         has_error = false;
@@ -2550,15 +2550,15 @@ void TabletImpl::MakeSnapshot(RpcController* controller, const ::openmldb::api::
             std::shared_ptr<Snapshot> snapshot = GetSnapshotUnLock(tid, pid);
             if (!snapshot) {
                 response->set_code(::openmldb::base::ReturnCode::kSnapshotIsNotExist);
-                response->set_msg("snapshot is not exist");
-                PDLOG(WARNING, "snapshot is not exist. tid[%u] pid[%u]", tid, pid);
+                response->set_msg("snapshot does not exist");
+                PDLOG(WARNING, "snapshot does not exist. tid[%u] pid[%u]", tid, pid);
                 break;
             }
             std::shared_ptr<Table> table = GetTableUnLock(request->tid(), request->pid());
             if (!table) {
-                PDLOG(WARNING, "table is not exist. tid %u, pid %u", tid, pid);
+                PDLOG(WARNING, "table does not exist. tid %u, pid %u", tid, pid);
                 response->set_code(::openmldb::base::ReturnCode::kTableIsNotExist);
-                response->set_msg("table is not exist");
+                response->set_msg("table does not exist");
                 break;
             }
             if (table->GetTableStat() != ::openmldb::storage::kNormal) {
@@ -2744,9 +2744,9 @@ void TabletImpl::SendSnapshot(RpcController* controller, const ::openmldb::api::
             std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
             std::shared_ptr<Table> table = GetTableUnLock(tid, pid);
             if (!table) {
-                PDLOG(WARNING, "table is not exist. tid %u, pid %u", tid, pid);
+                PDLOG(WARNING, "table does not exist. tid %u, pid %u", tid, pid);
                 response->set_code(::openmldb::base::ReturnCode::kTableIsNotExist);
-                response->set_msg("table is not exist");
+                response->set_msg("table does not exist");
                 break;
             }
             if (!table->IsLeader()) {
@@ -2785,7 +2785,7 @@ void TabletImpl::SendSnapshotInternal(const std::string& endpoint, uint32_t tid,
     do {
         std::shared_ptr<Table> table = GetTable(tid, pid);
         if (!table) {
-            PDLOG(WARNING, "table is not exist. tid %u, pid %u", tid, pid);
+            PDLOG(WARNING, "table does not exist. tid %u, pid %u", tid, pid);
             break;
         }
         std::string db_root_path;
@@ -2825,7 +2825,7 @@ void TabletImpl::SendSnapshotInternal(const std::string& endpoint, uint32_t tid,
         {
             int fd = open(manifest_file.c_str(), O_RDONLY);
             if (fd < 0) {
-                PDLOG(WARNING, "[%s] is not exist", manifest_file.c_str());
+                PDLOG(WARNING, "[%s] does not exist", manifest_file.c_str());
                 has_error = false;
                 break;
             }
@@ -2887,9 +2887,9 @@ void TabletImpl::PauseSnapshot(RpcController* controller, const ::openmldb::api:
             std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
             std::shared_ptr<Table> table = GetTableUnLock(request->tid(), request->pid());
             if (!table) {
-                PDLOG(WARNING, "table is not exist. tid %u, pid %u", request->tid(), request->pid());
+                PDLOG(WARNING, "table does not exist. tid %u, pid %u", request->tid(), request->pid());
                 response->set_code(::openmldb::base::ReturnCode::kTableIsNotExist);
-                response->set_msg("table is not exist");
+                response->set_msg("table does not exist");
                 break;
             }
             if (table->GetTableStat() == ::openmldb::storage::kSnapshotPaused) {
@@ -2936,9 +2936,9 @@ void TabletImpl::RecoverSnapshot(RpcController* controller, const ::openmldb::ap
             std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
             std::shared_ptr<Table> table = GetTableUnLock(request->tid(), request->pid());
             if (!table) {
-                PDLOG(WARNING, "table is not exist. tid %u, pid %u", request->tid(), request->pid());
+                PDLOG(WARNING, "table does not exist. tid %u, pid %u", request->tid(), request->pid());
                 response->set_code(::openmldb::base::ReturnCode::kTableIsNotExist);
-                response->set_msg("table is not exist");
+                response->set_msg("table does not exist");
                 break;
             }
             if (table->GetTableStat() == openmldb::storage::kNormal) {
@@ -3004,9 +3004,9 @@ void TabletImpl::LoadTable(RpcController* controller, const ::openmldb::api::Loa
 
         std::string db_path = GetDBPath(root_path, tid, pid);
         if (!::openmldb::base::IsExists(db_path)) {
-            PDLOG(WARNING, "table db path is not exist. tid %u, pid %u, path %s", tid, pid, db_path.c_str());
+            PDLOG(WARNING, "table db path does not exist. tid %u, pid %u, path %s", tid, pid, db_path.c_str());
             response->set_code(::openmldb::base::ReturnCode::kTableDbPathIsNotExist);
-            response->set_msg("table db path is not exist");
+            response->set_msg("table db path does not exist");
             break;
         }
 
@@ -3258,7 +3258,7 @@ int32_t TabletImpl::DeleteTableInternal(uint32_t tid, uint32_t pid,
     do {
         std::shared_ptr<Table> table = GetTable(tid, pid);
         if (!table) {
-            PDLOG(WARNING, "table is not exist. tid %u pid %u", tid, pid);
+            PDLOG(WARNING, "table does not exist. tid %u pid %u", tid, pid);
             break;
         }
 
@@ -3406,14 +3406,14 @@ void TabletImpl::CreateTable(RpcController* controller, const ::openmldb::api::C
     table = GetTable(tid, pid);
     if (!table) {
         response->set_code(::openmldb::base::ReturnCode::kCreateTableFailed);
-        response->set_msg("table is not exist");
+        response->set_msg("table does not exist");
         PDLOG(WARNING, "table with tid %u and pid %u does not exist", tid, pid);
         return;
     }
     std::shared_ptr<LogReplicator> replicator = GetReplicator(tid, pid);
     if (!replicator) {
         response->set_code(::openmldb::base::ReturnCode::kCreateTableFailed);
-        response->set_msg("replicator is not exist");
+        response->set_msg("replicator does not exist");
         PDLOG(WARNING, "replicator with tid %u and pid %u does not exist", tid, pid);
         return;
     }
@@ -3437,7 +3437,7 @@ void TabletImpl::ExecuteGc(RpcController* controller, const ::openmldb::api::Exe
     uint32_t pid = request->pid();
     std::shared_ptr<Table> table = GetTable(tid, pid);
     if (!table) {
-        DEBUGLOG("table is not exist. tid %u pid %u", tid, pid);
+        DEBUGLOG("table does not exist. tid %u pid %u", tid, pid);
         response->set_code(-1);
         response->set_msg("table not found");
         return;
@@ -3455,9 +3455,9 @@ void TabletImpl::GetTableFollower(RpcController* controller, const ::openmldb::a
     uint32_t pid = request->pid();
     std::shared_ptr<Table> table = GetTable(tid, pid);
     if (!table) {
-        DEBUGLOG("table is not exist. tid %u pid %u", tid, pid);
+        DEBUGLOG("table does not exist. tid %u pid %u", tid, pid);
         response->set_code(::openmldb::base::ReturnCode::kTableIsNotExist);
-        response->set_msg("table is not exist");
+        response->set_msg("table does not exist");
         return;
     }
     if (!table->IsLeader()) {
@@ -3468,8 +3468,8 @@ void TabletImpl::GetTableFollower(RpcController* controller, const ::openmldb::a
     }
     std::shared_ptr<LogReplicator> replicator = GetReplicator(tid, pid);
     if (!replicator) {
-        DEBUGLOG("replicator is not exist. tid %u pid %u", tid, pid);
-        response->set_msg("replicator is not exist");
+        DEBUGLOG("replicator does not exist. tid %u pid %u", tid, pid);
+        response->set_msg("replicator does not exist");
         response->set_code(::openmldb::base::ReturnCode::kReplicatorIsNotExist);
         return;
     }
@@ -3502,7 +3502,7 @@ int32_t TabletImpl::GetSnapshotOffset(uint32_t tid, uint32_t pid, openmldb::comm
     std::string manifest_file = db_path + "/snapshot/MANIFEST";
     int fd = open(manifest_file.c_str(), O_RDONLY);
     if (fd < 0) {
-        PDLOG(WARNING, "[%s] is not exist", manifest_file.c_str());
+        PDLOG(WARNING, "[%s] does not exist", manifest_file.c_str());
         return 0;
     }
     google::protobuf::io::FileInputStream fileInput(fd);
@@ -3514,7 +3514,7 @@ int32_t TabletImpl::GetSnapshotOffset(uint32_t tid, uint32_t pid, openmldb::comm
     }
     std::string snapshot_file = db_path + "/snapshot/" + manifest.name();
     if (!::openmldb::base::IsExists(snapshot_file)) {
-        PDLOG(WARNING, "snapshot file[%s] is not exist", snapshot_file.c_str());
+        PDLOG(WARNING, "snapshot file[%s] does not exist", snapshot_file.c_str());
         return 0;
     }
     offset = manifest.offset();
@@ -3575,8 +3575,8 @@ void TabletImpl::GetCatalog(RpcController* controller, const ::openmldb::api::Ge
         return;
     }
     response->set_code(-1);
-    response->set_msg("catalog is not exist");
-    PDLOG(WARNING, "catalog is not exist");
+    response->set_msg("catalog does not exist");
+    PDLOG(WARNING, "catalog does not exist");
 }
 
 void TabletImpl::GetTermPair(RpcController* controller, const ::openmldb::api::GetTermPairRequest* request,
@@ -3598,7 +3598,7 @@ void TabletImpl::GetTermPair(RpcController* controller, const ::openmldb::api::G
     if (!table) {
         response->set_code(::openmldb::base::ReturnCode::kOk);
         response->set_has_table(false);
-        response->set_msg("table is not exist");
+        response->set_msg("table does not exist");
         std::string msg;
         uint64_t term = 0, offset = 0;
         int32_t code = GetSnapshotOffset(tid, pid, mode, msg, term, offset);
@@ -3614,7 +3614,7 @@ void TabletImpl::GetTermPair(RpcController* controller, const ::openmldb::api::G
     std::shared_ptr<LogReplicator> replicator = GetReplicator(tid, pid);
     if (!replicator) {
         response->set_code(::openmldb::base::ReturnCode::kReplicatorIsNotExist);
-        response->set_msg("replicator is not exist");
+        response->set_msg("replicator does not exist");
         return;
     }
     response->set_code(::openmldb::base::ReturnCode::kOk);
@@ -3749,7 +3749,7 @@ void TabletImpl::GetManifest(RpcController* controller, const ::openmldb::api::G
             return;
         }
     } else {
-        PDLOG(INFO, "[%s] is not exist", manifest_file.c_str());
+        PDLOG(INFO, "[%s] does not exist", manifest_file.c_str());
         manifest.set_offset(0);
     }
     response->set_code(::openmldb::base::ReturnCode::kOk);
@@ -3785,7 +3785,7 @@ int TabletImpl::UpdateTableMeta(const std::string& path, ::openmldb::api::TableM
     int fd = open(full_path.c_str(), O_RDONLY);
     ::openmldb::api::TableMeta old_meta;
     if (fd < 0) {
-        PDLOG(WARNING, "[%s] is not exist", "table_meta.txt");
+        PDLOG(WARNING, "[%s] does not exist", "table_meta.txt");
         return 1;
     } else {
         google::protobuf::io::FileInputStream fileInput(fd);
@@ -3927,8 +3927,8 @@ void TabletImpl::DropTable(RpcController* controller, const ::openmldb::api::Dro
         std::shared_ptr<Table> table = GetTable(tid, pid);
         if (!table) {
             response->set_code(::openmldb::base::ReturnCode::kTableIsNotExist);
-            response->set_msg("table is not exist");
-            PDLOG(WARNING, "table is not exist. tid[%u] pid[%u]", tid, pid);
+            response->set_msg("table does not exist");
+            PDLOG(WARNING, "table does not exist. tid[%u] pid[%u]", tid, pid);
             break;
         } else {
             if (table->GetTableStat() == ::openmldb::storage::kMakingSnapshot) {
@@ -4631,9 +4631,9 @@ void TabletImpl::DeleteIndex(RpcController* controller, const ::openmldb::api::D
     uint32_t pid = request->pid();
     std::shared_ptr<Table> table = GetTable(tid, pid);
     if (!table) {
-        PDLOG(WARNING, "table is not exist. tid %u, pid %u", tid, pid);
+        PDLOG(WARNING, "table does not exist. tid %u, pid %u", tid, pid);
         response->set_code(::openmldb::base::ReturnCode::kTableIsNotExist);
-        response->set_msg("table is not exist");
+        response->set_msg("table does not exist");
         return;
     }
     if (table->GetStorageMode() != ::openmldb::common::kMemory) {
@@ -4677,9 +4677,9 @@ void TabletImpl::SendIndexData(RpcController* controller, const ::openmldb::api:
     do {
         std::shared_ptr<Table> table = GetTable(request->tid(), request->pid());
         if (!table) {
-            PDLOG(WARNING, "table is not exist. tid %u, pid %u", request->tid(), request->pid());
+            PDLOG(WARNING, "table does not exist. tid %u, pid %u", request->tid(), request->pid());
             response->set_code(::openmldb::base::ReturnCode::kTableIsNotExist);
-            response->set_msg("table is not exist");
+            response->set_msg("table does not exist");
             break;
         }
         if (table->GetStorageMode() != ::openmldb::common::kMemory) {
@@ -4733,13 +4733,13 @@ void TabletImpl::SendIndexDataInternal(std::shared_ptr<::openmldb::storage::Tabl
         std::string index_file_name = std::to_string(pid) + "_" + std::to_string(kv.first) + "_index.data";
         std::string src_file = index_path + index_file_name;
         if (!::openmldb::base::IsExists(src_file)) {
-            PDLOG(WARNING, "file %s is not exist. tid[%u] pid[%u]", src_file.c_str(), tid, pid);
+            PDLOG(WARNING, "file %s does not exist. tid[%u] pid[%u]", src_file.c_str(), tid, pid);
             continue;
         }
         if (kv.second == endpoint_) {
             std::shared_ptr<Table> des_table = GetTable(tid, kv.first);
             if (!table) {
-                PDLOG(WARNING, "table is not exist. tid[%u] pid[%u]", tid, kv.first);
+                PDLOG(WARNING, "table does not exist. tid[%u] pid[%u]", tid, kv.first);
                 SetTaskStatus(task_ptr, ::openmldb::api::TaskStatus::kFailed);
                 return;
             }
@@ -4829,9 +4829,9 @@ void TabletImpl::DumpIndexData(RpcController* controller, const ::openmldb::api:
             std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
             table = GetTableUnLock(tid, pid);
             if (!table) {
-                PDLOG(WARNING, "table is not exist. tid[%u] pid[%u]", tid, pid);
+                PDLOG(WARNING, "table does not exist. tid[%u] pid[%u]", tid, pid);
                 response->set_code(::openmldb::base::ReturnCode::kTableIsNotExist);
-                response->set_msg("table is not exist");
+                response->set_msg("table does not exist");
                 break;
             }
             if (table->GetStorageMode() != ::openmldb::common::kMemory) {
@@ -4848,9 +4848,9 @@ void TabletImpl::DumpIndexData(RpcController* controller, const ::openmldb::api:
             }
             snapshot = GetSnapshotUnLock(tid, pid);
             if (!snapshot) {
-                PDLOG(WARNING, "snapshot is not exist. tid[%u] pid[%u]", tid, pid);
+                PDLOG(WARNING, "snapshot does not exist. tid[%u] pid[%u]", tid, pid);
                 response->set_code(::openmldb::base::ReturnCode::kSnapshotIsNotExist);
-                response->set_msg("table snapshot is not exist");
+                response->set_msg("table snapshot does not exist");
                 break;
             }
         }
@@ -4932,9 +4932,9 @@ void TabletImpl::LoadIndexData(RpcController* controller, const ::openmldb::api:
         uint32_t pid = request->pid();
         auto table = GetTable(tid, pid);
         if (!table) {
-            PDLOG(WARNING, "table is not exist. tid %u, pid %u", tid, pid);
+            PDLOG(WARNING, "table does not exist. tid %u, pid %u", tid, pid);
             response->set_code(::openmldb::base::ReturnCode::kTableIsNotExist);
-            response->set_msg("table is not exist");
+            response->set_msg("table does not exist");
             break;
         }
         if (table->GetStorageMode() != ::openmldb::common::kMemory) {
@@ -4980,13 +4980,13 @@ void TabletImpl::LoadIndexDataInternal(uint32_t tid, uint32_t pid, uint32_t cur_
     }
     auto table = GetTable(tid, pid);
     if (!table) {
-        PDLOG(WARNING, "table is not exist. tid %u pid %u", tid, pid);
+        PDLOG(WARNING, "table does not exist. tid %u pid %u", tid, pid);
         SetTaskStatus(task, ::openmldb::api::TaskStatus::kFailed);
         return;
     }
     auto replicator = GetReplicator(tid, pid);
     if (!replicator) {
-        PDLOG(WARNING, "replicator is not exist. tid %u pid %u", tid, pid);
+        PDLOG(WARNING, "replicator does not exist. tid %u pid %u", tid, pid);
         SetTaskStatus(task, ::openmldb::api::TaskStatus::kFailed);
         return;
     }
@@ -5088,8 +5088,8 @@ void TabletImpl::ExtractMultiIndexData(RpcController* controller,
         std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
         table = GetTableUnLock(tid, pid);
         if (!table) {
-            PDLOG(WARNING, "table is not exist. tid %u pid %u", tid, pid);
-            base::SetResponseStatus(base::ReturnCode::kTableIsNotExist, "table is not exist", response);
+            PDLOG(WARNING, "table does not exist. tid %u pid %u", tid, pid);
+            base::SetResponseStatus(base::ReturnCode::kTableIsNotExist, "table does not exist", response);
             return;
         }
         if (table->GetTableStat() != ::openmldb::storage::kNormal) {
@@ -5101,9 +5101,9 @@ void TabletImpl::ExtractMultiIndexData(RpcController* controller,
         }
         snapshot = GetSnapshotUnLock(tid, pid);
         if (!snapshot) {
-            PDLOG(WARNING, "snapshot is not exist. tid %u pid %u", tid, pid);
+            PDLOG(WARNING, "snapshot does not exist. tid %u pid %u", tid, pid);
             base::SetResponseStatus(base::ReturnCode::kSnapshotIsNotExist,
-                    "table snapshot is not exist", response);
+                    "table snapshot does not exist", response);
             return;
         }
     }
@@ -5144,8 +5144,8 @@ void TabletImpl::ExtractIndexData(RpcController* controller, const ::openmldb::a
             std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
             table = GetTableUnLock(tid, pid);
             if (!table) {
-                PDLOG(WARNING, "table is not exist. tid %u pid %u", tid, pid);
-                base::SetResponseStatus(base::ReturnCode::kTableIsNotExist, "table is not exist", response);
+                PDLOG(WARNING, "table does not exist. tid %u pid %u", tid, pid);
+                base::SetResponseStatus(base::ReturnCode::kTableIsNotExist, "table does not exist", response);
                 break;
             }
             if (table->GetStorageMode() != ::openmldb::common::kMemory) {
@@ -5163,9 +5163,9 @@ void TabletImpl::ExtractIndexData(RpcController* controller, const ::openmldb::a
             }
             snapshot = GetSnapshotUnLock(tid, pid);
             if (!snapshot) {
-                PDLOG(WARNING, "snapshot is not exist. tid %u pid %u", tid, pid);
+                PDLOG(WARNING, "snapshot does not exist. tid %u pid %u", tid, pid);
                 base::SetResponseStatus(base::ReturnCode::kSnapshotIsNotExist,
-                        "table snapshot is not exist", response);
+                        "table snapshot does not exist", response);
                 break;
             }
         }
@@ -5205,8 +5205,8 @@ void TabletImpl::AddIndex(RpcController* controller, const ::openmldb::api::AddI
     uint32_t pid = request->pid();
     std::shared_ptr<Table> table = GetTable(tid, pid);
     if (!table) {
-        PDLOG(WARNING, "table is not exist. tid %u, pid %u", tid, pid);
-        base::SetResponseStatus(base::ReturnCode::kTableIsNotExist, "table is not exist", response);
+        PDLOG(WARNING, "table does not exist. tid %u, pid %u", tid, pid);
+        base::SetResponseStatus(base::ReturnCode::kTableIsNotExist, "table does not exist", response);
         return;
     }
     if (table->GetStorageMode() != ::openmldb::common::kMemory) {
@@ -5247,7 +5247,7 @@ void TabletImpl::AddIndex(RpcController* controller, const ::openmldb::api::AddI
     std::string db_path = GetDBPath(db_root_path, tid, pid);
     if (!::openmldb::base::IsExists(db_path)) {
         PDLOG(WARNING, "table db path doesn't exist. tid %u, pid %u", tid, pid);
-        base::SetResponseStatus(base::ReturnCode::kTableDbPathIsNotExist, "table db path is not exist", response);
+        base::SetResponseStatus(base::ReturnCode::kTableDbPathIsNotExist, "table db path does not exist", response);
         return;
     }
     if (WriteTableMeta(db_path, table->GetTableMeta().get()) < 0) {
@@ -5532,9 +5532,9 @@ void TabletImpl::GetBulkLoadInfo(RpcController* controller, const ::openmldb::ap
 
     std::shared_ptr<Table> table = GetTable(request->tid(), request->pid());
     if (!table) {
-        PDLOG(WARNING, "table is not exist. tid %u, pid %u", request->tid(), request->pid());
+        PDLOG(WARNING, "table does not exist. tid %u, pid %u", request->tid(), request->pid());
         response->set_code(::openmldb::base::ReturnCode::kTableIsNotExist);
-        response->set_msg("table is not exist");
+        response->set_msg("table does not exist");
         return;
     }
     if (!table->IsLeader()) {
@@ -5620,9 +5620,9 @@ void TabletImpl::BulkLoad(RpcController* controller, const ::openmldb::api::Bulk
     auto pid = request->pid();
     std::shared_ptr<Table> table = GetTable(tid, pid);
     if (!table) {
-        PDLOG(WARNING, "table %u-%u is not exist.", request->tid(), request->pid());
+        PDLOG(WARNING, "table %u-%u does not exist.", request->tid(), request->pid());
         response->set_code(::openmldb::base::ReturnCode::kTableIsNotExist);
-        response->set_msg("table is not exist");
+        response->set_msg("table does not exist");
         return;
     }
     if (!table->IsLeader()) {
@@ -5786,7 +5786,7 @@ void TabletImpl::CreateAggregator(RpcController* controller, const ::openmldb::a
     std::string aggr_table_path = GetDBPath(aggr_path, request->aggr_table_tid(), request->aggr_table_pid());
     if (!::openmldb::base::IsExists(aggr_table_path)) {
         response->set_code(::openmldb::base::ReturnCode::kTableDbPathIsNotExist);
-        response->set_msg("pre-aggr table db path is not exist");
+        response->set_msg("pre-aggr table db path does not exist");
         return;
     }
     std::string aggr_info;
@@ -5821,8 +5821,8 @@ bool TabletImpl::CreateAggregatorInternal(const ::openmldb::api::CreateAggregato
     const ::openmldb::api::TableMeta* base_meta = &request->base_table_meta();
     std::shared_ptr<Table> aggr_table = GetTable(request->aggr_table_tid(), request->aggr_table_pid());
     if (!aggr_table) {
-        PDLOG(WARNING, "table is not exist. tid %u, pid %u", request->aggr_table_tid(), request->aggr_table_pid());
-        msg.assign("table is not exist");
+        PDLOG(WARNING, "table does not exist. tid %u, pid %u", request->aggr_table_tid(), request->aggr_table_pid());
+        msg.assign("table does not exist");
         return false;
     }
     auto aggr_replicator = GetReplicator(request->aggr_table_tid(), request->aggr_table_pid());
