@@ -25,6 +25,9 @@
 namespace hybridse {
 namespace node {
 
+bool operator==(const TypeNode& lhs, const TypeNode& rhs) {
+    return lhs.Equals(&rhs);
+}
 bool TypeNode::IsBaseType() const {
     return IsNumber() || IsString() || IsTimestamp() || IsDate();
 }

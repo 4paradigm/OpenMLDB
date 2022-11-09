@@ -419,6 +419,9 @@ class ExprNode : public SqlNode {
     virtual ExprNode *ShadowCopy(NodeManager *) const = 0;
     ExprNode *DeepCopy(NodeManager *) const override;
 
+    // Get the compatible type that lhs and rhs can both casted into
+    static const TypeNode *CompatibleType(NodeManager *, const TypeNode *, const TypeNode *);
+
     static bool IsSafeCast(const TypeNode *from_type, const TypeNode *target_type);
 
     static bool IsIntFloat2PointerCast(const TypeNode *left_type, const TypeNode *right_type);

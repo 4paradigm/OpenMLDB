@@ -213,6 +213,37 @@ Status ExprNode::IsCastAccept(node::NodeManager* nm, const TypeNode* src,
     return Status::OK();
 }
 
+// this handles compatible type when both lhs and rhs are basic types
+// types like array, list are not handled correctly
+const TypeNode* ExprNode::CompatibleType(NodeManager* nm, const TypeNode* lhs, const TypeNode* rhs) {
+    if (*lhs == *rhs) {
+        return rhs;
+    }
+    if (IsSafeCast(lhs, rhs)) {
+        return rhs;
+    }
+    if (IsSafeCast(rhs, lhs)) {
+        return lhs;
+    }
+    if (IsIntFloat2PointerCast(lhs, rhs)) {
+        // rhs is float while lhs is 64bit
+        if (rhs->base() == kFloat && (lhs->base() == kInt64 || lhs->base() == kDouble)) {
+            return nm->MakeTypeNode(kDouble);
+        }
+
+        return rhs;
+    }
+
+    if (IsIntFloat2PointerCast(rhs, lhs)) {
+        if ((rhs->base() == kInt64 || rhs->base() == kDouble) && lhs->base() == kFloat) {
+            return nm->MakeTypeNode(kDouble);
+        }
+        return lhs;
+    }
+
+    return nm->MakeTypeNode(kVarchar);
+}
+
 /**
 * support rules:
 *  case target_type
@@ -804,11 +835,15 @@ Status ArrayExpr::InferAttr(ExprAnalysisContext* ctx) {
     }
 
     auto top_type = ctx->node_manager()->MakeTypeNode(kArray);
-    // TODO(ace): single concret type should inferred from all childrens, if there exists
     if (children_.empty()) {
-        top_type->AddGeneric(ctx->node_manager()->MakeTypeNode(kNull), true);
+        // take string as the most compatible type
+        top_type->AddGeneric(ctx->node_manager()->MakeTypeNode(kVarchar), true);
     } else {
-        top_type->AddGeneric(children_[0]->GetOutputType(), children_[0]->nullable());
+        const TypeNode* ele_type = children_[0]->GetOutputType();
+        for (size_t i = 1; i < children_.size() ; ++i) {
+            ele_type = CompatibleType(ctx->node_manager(), ele_type, children_[i]->GetOutputType());
+        }
+        top_type->AddGeneric(ele_type, true);
     }
     SetOutputType(top_type);
     // array is nullable
