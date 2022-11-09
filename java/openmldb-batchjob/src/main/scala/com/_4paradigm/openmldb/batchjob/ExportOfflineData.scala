@@ -22,7 +22,7 @@ import org.apache.spark.sql.SparkSession
 object ExportOfflineData {
 
   def main(args: Array[String]): Unit = {
-    OpenmldbJobUtil.checkOneSqlArgument(args)
+    OpenmldbJobUtil.checkArgumentSize(args, 1)
     exportOfflineData(args(0))
   }
 

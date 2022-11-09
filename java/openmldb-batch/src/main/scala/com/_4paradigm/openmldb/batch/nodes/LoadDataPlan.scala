@@ -36,20 +36,31 @@ object LoadDataPlan {
     // get target storage
     val storage = ctx.getConf.loadDataMode
     require(storage == "offline" || storage == "online")
-
-    // read settings
     val (format, options, mode, deepCopyOpt) = HybridseUtil.parseOptions(node)
-    require(deepCopyOpt.nonEmpty)
+    require(deepCopyOpt.nonEmpty) // PhysicalLoadDataNode must have the option deepCopy
     val deepCopy = deepCopyOpt.get
-    logger.info("load data to storage {}, reader[format {}, options {}], writer[mode {}], is deep? {}", storage, format,
-      options, mode, deepCopy.toString)
 
     require(ctx.getOpenmldbSession != null, "LOAD DATA must use OpenmldbSession, not SparkSession")
     val info = ctx.getOpenmldbSession.openmldbCatalogService.getTableInfo(db, table)
     require(info != null && info.getName.nonEmpty, s"table $db.$table info is not existed(no table name): $info")
     logger.info("table info: {}", info)
-    // we read input file even in soft copy, cause we want to check if "the input file schema == openmldb table schema"
-    val df = HybridseUtil.autoLoad(spark, inputFile, format, options, info.getColumnDescList)
+
+    val df = if (inputFile.startsWith("hive://")) {
+      require(deepCopy, "hive soft copy is unsupported")
+      logger.info("load data to storage {}, reader[hive way], writer[mode {}], is deep? {}", storage, mode,
+        deepCopy.toString)
+      HybridseUtil.hiveLoad(spark, inputFile, info.getColumnDescList);
+    } else {
+      // read settings
+      require(format.equals("csv") || format.equals("parquet"))
+
+      logger.info("load data to storage {}, reader[format {}, options {}], writer[mode {}], is deep? {}", storage,
+        format, options, mode, deepCopy.toString)
+
+      // we read input file even in soft copy,
+      // cause we want to check if "the input file schema == openmldb table schema"
+      HybridseUtil.autoLoad(spark, inputFile, format, options, info.getColumnDescList)
+    }
 
     // write
     if (storage == "online") {
@@ -106,7 +117,8 @@ object LoadDataPlan {
         }
 
         // do deep copy
-        require(inputFile != writePath, "read and write paths shouldn't be the same, it may clean data in the path")
+        require(!inputFile.equals(writePath), "read and write paths shouldn't be the same, it may clean data in " +
+          "the path")
 
         df.write.mode(mode).format(writeFormat).options(writeOptions.toMap).save(writePath)
         val offlineBuilder = OfflineTableInfo.newBuilder().setPath(writePath).setFormat(writeFormat).setDeepCopy(true)

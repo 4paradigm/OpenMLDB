@@ -24,7 +24,7 @@ import org.apache.spark.sql.SparkSession
 object RunBatchSql {
 
   def main(args: Array[String]): Unit = {
-    OpenmldbJobUtil.checkOneSqlArgument(args)
+    OpenmldbJobUtil.checkArgumentSize(args, 1)
     runBatchSql(args(0))
   }
 
