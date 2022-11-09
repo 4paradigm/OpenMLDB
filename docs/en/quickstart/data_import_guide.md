@@ -1,6 +1,6 @@
 # Data Import Quickstart
  
-There are 2 versions of OpenMLDB: the standalone version and cluster version.
+There are two versions of OpenMLDB: the standalone version and cluster version.
 - For standalone version, datasets are all stored in the memory. Only [`LOAD DATA`](../reference/sql/dml/LOAD_DATA_STATEMENT.md) can be used to import data in this mode.
 - For the cluster version, datasets are stored separately in the offline and online storage engines. Offline and online ends don't share the data.
 
