@@ -1,8 +1,8 @@
 # 版本升级
 
 升级过程对服务的影响:
-* 如果创建的表是单副本，那么在升级过程中是不可以读写的  
-* 如果创建的表是多副本，落在升级节点的读请求会有短暂的失败，对写请求会有少量的数据丢失。如果不能容忍短暂的读失败，那么在停止每一个tablet节点前执行下offlineendpoint。如果不能容忍少量写丢失，需要在升级过程中停掉写操作。
+* 如果创建的表是单副本，升级过程中会自动添加副本，升级结束会自动删除新添加的副本。
+* 升级过程中，会把待升级的tablet上的leader分片迁移到其它tablets上，升级结束会迁移回来。迁移过程中，写请求会有少量的数据丢失，如果不能容忍少量写丢失，需要在升级过程中停掉写操作。
 
 ## 1. 升级nameserver
 
@@ -10,10 +10,9 @@
     ```bash
     bash bin/start.sh stop nameserver
     ```
-* 备份旧版本bin和conf目录
-* 下载新版本bin和conf
-* 对比配置文件diff并修改必要的配置，如endpoint、zk\_cluster等
-* 启动nameserver
+* 备份旧版本bin目录
+* 替换新版本bin
+* 启动新版本nameserver
     ```bash
     bash bin/start.sh start nameserver
     ```
@@ -21,38 +20,75 @@
 
 ## 2. 升级tablet
 
+* 升级前准备`pre-upgrade`：为了避免对线上服务的影响，需要在升级tablet前，进行`pre-upgrade`操作，把该tablet上的leader分片迁移到其它tablets上（详细命令说明可以参考：[OpenMLDB运维工具](./openmldb_ops.md)）
+    ```bash
+    python tools/openmldb_ops.py --openmldb_bin_path=./bin/openmldb --zk_cluster=172.24.4.40:30481 --zk_root_path=/openmldb --cmd=pre-upgrade --endpoints=127.0.0.1:10921
+    ```
 * 停止tablet
     ```bash
     bash bin/start.sh stop tablet
     ```
-* 备份旧版本bin和conf目录
-* 下载新版本bin和conf
-* 对比配置文件diff并修改必要的配置，如endpoint、zk\_cluster等
-* 启动tablet
+* 备份旧版本bin目录
+* 替换新版本bin
+* 启动新版本tablet
     ```bash
     bash bin/start.sh start tablet
     ```
-* 如果auto\_failover关闭时得连上ns client执行如下操作恢复数据。其中**命令后面的endpoint为重启节点的endpoint**
-  * offlineendpoint endpoint 
-  * recoverendpoint endpoint
-
-```
-$ ./bin/openmldb --zk_cluster=172.27.128.31:8090,172.27.128.32:8090,172.27.128.33:8090 --zk_root_path=/openmldb_cluster --role=ns_client
-> offlineendpoint 172.27.128.32:8541
-offline endpoint ok
-> recoverendpoint 172.27.128.32:8541
-recover endpoint ok
-```
-
+* 如果auto\_failover处于关闭状态，需要手动执行`recoverdata`来恢复数据
+    ```bash
+    python tools/openmldb_ops.py --openmldb_bin_path=./bin/openmldb --zk_cluster=172.24.4.40:30481 --zk_root_path=/openmldb --cmd=recoverdata
+    ```
+* 升级后处理`post-upgrade`：把`pre-upgrade`迁移出的leader分片迁移回该tablet
+    ```bash
+    python tools/openmldb_ops.py --openmldb_bin_path=./bin/openmldb --zk_cluster=172.24.4.40:30481 --zk_root_path=/openmldb --cmd=post-upgrade --endpoints=127.0.0.1:10921
+    ```
+  
 ### 升级结果确认
-* showopstatus命令查看所有操作是否为kDone, 如果有kFailed的任务查看日志排查原因
-* showtable查看所有分片状态是否为yes
+* `showopstatus`命令查看是否有操作为kFailed, 如果有查看日志排查原因
+    ```bash
+    python tools/openmldb_ops.py --openmldb_bin_path=./bin/openmldb --zk_cluster=172.24.4.40:30481 --zk_root_path=/openmldb --cmd=showopstatus --filter=kFailed
+    ```
+* `showtablestatus`查看所有表状态是否正常
+    ```bash
+    python tools/openmldb_ops.py --openmldb_bin_path=./bin/openmldb --zk_cluster=172.24.4.40:30481 --zk_root_path=/openmldb --cmd=showtablestatus
+    ```
+一个tablet节点升级完成后，对其他tablet重复上述步骤。
 
-一个tablet节点升级完成后，对其他tablet重复上述步骤。\(**必须等到数据同步完才能升级下一个节点**\)
+所有节点升级完成后恢复写操作, 执行`showtablestatus`命令查看`Rows`是否增加。
 
-所有节点升级完成后恢复写操作, 执行showtable命令查看主从offset是否增加
+## 3. 升级 taskmanager
 
-## 3. 升级java client
+* 停止 taskmanager
+    ```bash
+    bash bin/start.sh stop taskmanager
+    ```
+* 备份旧版本bin和taskmanager目录
+* 替换新版本bin和taskmanager
+* 启动taskmanager
+    ```bash
+    bash bin/start.sh start taskmanager
+    ```
 
-* 更新pom文件中java client版本号
-* 更新依赖包
+## 4. 升级 apiserver
+
+* 停止 apiserver
+    ```bash
+    bash bin/start.sh stop apiserver
+    ```
+* 备份旧版本bin目录
+* 替换新版本bin
+* 启动apiserver
+    ```bash
+    bash bin/start.sh start apiserver
+    ```
+
+## 5. 升级SDK
+
+### 升级Java SDK
+* 更新pom文件中java sdk的版本号，包括`openmldb-jdbc`和`openmldb-native`
+
+### 升级Python SDK
+* 安装新版本的python sdk
+  ```bash
+  pip install openmldb=={NEW_VERSION}
+  ```

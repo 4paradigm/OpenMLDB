@@ -384,25 +384,24 @@ def ScaleIn(executor : Executor, endpoints : list):
             return
     log.info("execute scale-in success")
 
-
-def GetOpStatus(executor : Executor, db : str = None, filter : str = None, wait_done : bool = False) -> Status:
+def GetOpStatus(executor : Executor, db : str = None, filter : str = None, wait_done : bool = False) -> tuple([Status, list]):
+    all_results = []
     if not db:
         status, user_dbs = executor.GetAllDatabase()
         if not status.OK():
             log.error("get database failed")
-            return Status(-1, "get database failed")
+            return Status(-1, "get database failed"), all_results
         dbs = list(INTERNAL_DB)
         dbs.extend(user_dbs)
     else:
         dbs = [db]
 
-    all_results = []
     for db in dbs:
         while True:
             all_done = True
             status, result = executor.ShowOpStatus(db)
             if not status.OK():
-                return Status(-1, "showopstatus failed")
+                return Status(-1, "showopstatus failed"), all_results
 
             for record in result:
                 if record[4] == 'kDoing' or record[4] == 'kInited':
@@ -416,6 +415,10 @@ def GetOpStatus(executor : Executor, db : str = None, filter : str = None, wait_
                 all_results.extend([[db] + record for record in result if (not filter) or (record[4] == filter)])
                 break
     return Status(), all_results
+
+def ShowTableStatus(executor : Executor, pattern : str = '%') -> tuple([Status, list]):
+    status, result = executor.ShowTableStatus(pattern)
+    return status, result
 
 def PreUpgrade(executor : Executor, endpoint : str, statfile: str) -> Status:
     leaders = []
@@ -510,12 +513,12 @@ def PostUpgrade(executor : Executor, endpoint : str, statfile: str) -> Status:
         key = "{}_{}".format(tid, pid)
         status, status_result = executor.GetTableStatus(endpoint)
         if not status.OK():
-            log.error(f"get table status failed from {endpoint}")
-            return Status(-1, f"get table status failed from {endpoint}")
+            log.error(f"get table status failed from {endpoint}: {status.GetMsg()}")
+            return Status(-1, f"get table status failed from {endpoint}: {status.GetMsg()}")
         table_status = status_result.get(key)
         if table_status is None:
-            log.error(f"get table status failed from {endpoint}")
-            return Status(-1, f"get table status failed from {endpoint}")
+            log.error(f"get empty table status for partition {key} from {endpoint}")
+            return Status(-1, f"get empty table status for partition {key} from {endpoint}")
 
         is_leader = table_status[3] == 'kTableLeader'
         is_alive = table_status[4] != "kTableUndefined"
@@ -566,7 +569,9 @@ def PrettyPrint(data : list, header : list = None):
 
 if __name__ == "__main__":
     (options, args) = parser.parse_args()
-    if options.cmd not in ["recoverdata", "scalein", "scaleout", "pre-upgrade", "post-upgrade", "getopstatus"]:
+    supported_cmds = set(["recoverdata", "scalein", "scaleout", "pre-upgrade", "post-upgrade", "showopstatus",
+                          "showtablestatus"])
+    if options.cmd not in supported_cmds:
         log.error(f"unsupported cmd {options.cmd}")
         sys.exit()
     executor = Executor(options.openmldb_bin_path, options.zk_cluster, options.zk_root_path)
@@ -603,12 +608,23 @@ if __name__ == "__main__":
             PreUpgrade(executor, endpoints[0], options.statfile)
         else:
             PostUpgrade(executor, endpoints[0], options.statfile)
-    elif options.cmd == "getopstatus":
+    elif options.cmd == "showopstatus":
         status, results = GetOpStatus(executor, options.db, options.filter, False)
         if status.OK():
             header = ["db", "op_id", "op_type", "name", "pid", "status", "start_time", "execute_time", "end_time",
                       "cur_task", "for_replica_cluster"]
             PrettyPrint(results, header)
+        else:
+            print(status.msg)
+    elif options.cmd == "showtablestatus":
+        if options.filter is None:
+            pattern = '%'
+        else:
+            pattern = options.filter
+        status, results = ShowTableStatus(executor, pattern)
+        if status.OK():
+            header = results[0]
+            PrettyPrint(results[1:], header)
         else:
             print(status.msg)
     if auto_failover and not executor.SetAutofailover("true").OK():
