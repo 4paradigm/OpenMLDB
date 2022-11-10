@@ -34,6 +34,6 @@
 python tools/openmldb_ops.py --openmldb_bin_path=./bin/openmldb --zk_cluster=172.24.4.40:30481 --zk_root_path=/openmldb --cmd=scaleout
 ```
 
-### 环境要求
+### 系统要求
 - 要求python3.6及以上版本
-- 脚本在OpenMLDB部署包里的tools目录，如果要在其他节点执行，需要拷贝tools目录和openmldb二进制文件
+- `showopstatus`和`showtablestatus`需要`prettytable`依赖

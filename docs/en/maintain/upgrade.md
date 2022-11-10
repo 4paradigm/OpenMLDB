@@ -1,8 +1,10 @@
 # Upgrade
 
 Here is the impact when upgrading OpenMLDB:
-* If the created table is a single copy, it is not readable and writable during the upgrade process
-* If the created table is multi-replica, the read request on the upgraded node will fail briefly, and the write request will have a small amount of data loss.If short read failures are not tolerated, execute offlineendpoint before stopping each tablet node. If a small amount of write loss cannot be tolerated, write operations need to be stopped during the upgrade process
+* If the table is single-replica, we will add an extra replica before upgrading and delete it afterwards
+* If the table is multi-replica, we will migrate the leader partitions in the tablet to be upgraded
+to other tablets, and migrate back after the upgrade.
+If there is write traffice during the upgrade, there may be data loss.
 
 ## 1. Upgrade Nameserver
 
@@ -10,10 +12,9 @@ Here is the impact when upgrading OpenMLDB:
     ```bash
     bash bin/start.sh stop nameserver
     ```
-* Backup the old versions directories `bin` and `conf`
-* Download new version bin and conf
-* Compare the configuration file diff and modify the necessary configuration, such as endpoint, zk_cluster, etc
-* Start nameserver
+* Backup the old `bin` directory
+* Replace with the new bin
+* Start the new nameserver
     ```bash
     bash bin/start.sh start nameserver
     ```
@@ -23,38 +24,73 @@ Here is the impact when upgrading OpenMLDB:
 
 ### 2.1. Steps of Upgrading Tablets
 
+* `pre-upgrade`: to reduce the interruption to the online service before the upgrade (refer to [Operation Tool](./openmldb_ops.md))
+    ```bash
+    python tools/openmldb_ops.py --openmldb_bin_path=./bin/openmldb --zk_cluster=172.24.4.40:30481 --zk_root_path=/openmldb --cmd=pre-upgrade --endpoints=127.0.0.1:10921
+    ```
 * Stop tablet
     ```bash
         bash bin/start.sh stop tablet
     ```
-* Backup the old versions directories `bin` and `conf`
-* Download new version bin and conf
-* Compare the configuration file diff and modify the necessary configuration, such as endpoint, zk_cluster, etc
-* Start nameserver
+* Backup the old `bin` directory
+* Replace with the new bin
+* Start tablet
     ```bash
     bash bin/start.sh start tablet
     ```
-* If auto_failover is closed, you must connect to the ns client and perform the following operations to restore data. **The endpoint after the command is the endpoint of the restarted node**
-  * offlineendpoint endpoint 
-  * recoverendpoint endpoint
-
-```
-$ ./bin/openmldb --zk_cluster=172.27.128.31:8090,172.27.128.32:8090,172.27.128.33:8090 --zk_root_path=/openmldb_cluster --role=ns_client
-> offlineendpoint 172.27.128.32:8541
-offline endpoint ok
-> recoverendpoint 172.27.128.32:8541
-recover endpoint ok
-```
-
+* If `auto_failover` is off, we have to manually `recoverdata` to restore data.
+    ```bash
+    python tools/openmldb_ops.py --openmldb_bin_path=./bin/openmldb --zk_cluster=172.24.4.40:30481 --zk_root_path=/openmldb --cmd=recoverdata
+    ```
+* `post-upgrade`: revert all the actions done in `pre-upgrade`
+    ```bash
+    python tools/openmldb_ops.py --openmldb_bin_path=./bin/openmldb --zk_cluster=172.24.4.40:30481 --zk_root_path=/openmldb --cmd=post-upgrade --endpoints=127.0.0.1:10921
+    ```
 ### 2.2. Confirmation of Upgrade Result
-* `showopstatus` command checks whether all operations are `kDone`, and if there is a `kFailed` task, check the log to troubleshoot the cause
-* `showtable` to see if the status of all partitions is yes
+* `showopstatus` command checks whether there are operations that are `kFailed`, and check the log to troubleshoot the cause
+    ```bash
+    python tools/openmldb_ops.py --openmldb_bin_path=./bin/openmldb --zk_cluster=172.24.4.40:30481 --zk_root_path=/openmldb --cmd=showopstatus --filter=kFailed
+    ```
+* `showtablestatus` to see if the statuses of all tables are ok
+    ```bash
+    python tools/openmldb_ops.py --openmldb_bin_path=./bin/openmldb --zk_cluster=172.24.4.40:30481 --zk_root_path=/openmldb --cmd=showtablestatus
+    ```
+After a tablet node is upgraded, repeat the above steps for other tablets.
 
-After a tablet node is upgraded, repeat the above steps for other tablets. \(**You must wait until the data is synchronized before upgrading the next node**\)
+After all tablets are upgraded, resume write operations, and run the `showtablestatus` command to check whether the `Rows` number has increased.
 
-After all nodes are upgraded, resume write operations, and run the showtable command to check whether the master-slave offset has increased
+## 3. Upgrade taskmanager
 
-## 3. Upgrade the Java Client
+* Stop taskmanager
+    ```bash
+    bash bin/start.sh stop taskmanager
+    ```
+* Backup the old `bin` and `taskmanager` directories
+* Replace with the new `bin` and `taskmanager` directories
+* Start the new taskmanager
+    ```bash
+    bash bin/start.sh start taskmanager
+    ```
+## 4. Upgrade apiserver
 
-* Update the java client version number in the pom file
-* Update dependencies
+* Stop apiserver
+    ```bash
+    bash bin/start.sh stop apiserver
+    ```
+* Backup the old `bin` directory
+* Replace with the new `bin` directory
+* Start the new apiserver
+    ```bash
+    bash bin/start.sh start apiserver
+    ```
+
+## 5. Upgrade the SDKs
+
+### Upgrade Java SDK
+* Update the java sdk version number in the pom file, including `openmldb-jdbc` and `openmldb-native`
+
+### Upgrade Python SDK
+* install the new python sdk
+  ```bash
+  pip install openmldb=={NEW_VERSION}
+  ```
