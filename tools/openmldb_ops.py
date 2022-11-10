@@ -49,6 +49,16 @@ parser.add_option("--statfile",
                   default=".stat",
                   help="temp state file")
 
+parser.add_option("--db",
+                  dest="db",
+                  default="",
+                  help="database name")
+
+parser.add_option("--filter",
+                  dest="filter",
+                  default=None,
+                  help="For getopstatus op only: filter the status")
+
 INTERNAL_DB = ["__INTERNAL_DB", "__PRE_AGG_DB", "INFORMATION_SCHEMA"]
 
 def CheckTable(executor : Executor, db, table_name):
@@ -374,6 +384,39 @@ def ScaleIn(executor : Executor, endpoints : list):
             return
     log.info("execute scale-in success")
 
+
+def GetOpStatus(executor : Executor, db : str = None, filter : str = None, wait_done : bool = False) -> Status:
+    if not db:
+        status, user_dbs = executor.GetAllDatabase()
+        if not status.OK():
+            log.error("get database failed")
+            return Status(-1, "get database failed")
+        dbs = list(INTERNAL_DB)
+        dbs.extend(user_dbs)
+    else:
+        dbs = [db]
+
+    all_results = []
+    for db in dbs:
+        while True:
+            all_done = True
+            status, result = executor.ShowOpStatus(db)
+            if not status.OK():
+                return Status(-1, "showopstatus failed")
+
+            for record in result:
+                if record[4] == 'kDoing' or record[4] == 'kInited':
+                    all_done = False
+                    value = " ".join(record)
+                    log.info(f"waiting {value}")
+                    time.sleep(2)
+                    break
+
+            if (not wait_done) or all_done:
+                all_results.extend([[db] + record for record in result if (not filter) or (record[4] == filter)])
+                break
+    return Status(), all_results
+
 def PreUpgrade(executor : Executor, endpoint : str, statfile: str) -> Status:
     leaders = []
     # get all leader partitions
@@ -444,8 +487,11 @@ def PreUpgrade(executor : Executor, endpoint : str, statfile: str) -> Status:
 
 def PostUpgrade(executor : Executor, endpoint : str, statfile: str) -> Status:
     leaders = []
-    log.info(f"start to post-upgrade {endpoint}")
+    # check all the op status to ensure all are in stable states (i.e., kDone/kFailed)
+    log.info(f"check all ops are complete")
+    GetOpStatus(executor, None, None, True)
 
+    log.info(f"start to post-upgrade {endpoint}")
     # get all leader partitions from statfile
     with open(statfile, "r") as reader:
         for line in reader.readlines():
@@ -467,6 +513,10 @@ def PostUpgrade(executor : Executor, endpoint : str, statfile: str) -> Status:
             log.error(f"get table status failed from {endpoint}")
             return Status(-1, f"get table status failed from {endpoint}")
         table_status = status_result.get(key)
+        if table_status is None:
+            log.error(f"get table status failed from {endpoint}")
+            return Status(-1, f"get table status failed from {endpoint}")
+
         is_leader = table_status[3] == 'kTableLeader'
         is_alive = table_status[4] != "kTableUndefined"
         if is_leader:
@@ -507,9 +557,16 @@ def PostUpgrade(executor : Executor, endpoint : str, statfile: str) -> Status:
     os.remove(statfile)
     return Status()
 
+def PrettyPrint(data : list, header : list = None):
+    from prettytable import PrettyTable
+    t = PrettyTable(header)
+    for record in data:
+        t.add_row(record)
+    print(t)
+
 if __name__ == "__main__":
     (options, args) = parser.parse_args()
-    if options.cmd not in ["recoverdata", "scalein", "scaleout", "pre-upgrade", "post-upgrade"]:
+    if options.cmd not in ["recoverdata", "scalein", "scaleout", "pre-upgrade", "post-upgrade", "getopstatus"]:
         log.error(f"unsupported cmd {options.cmd}")
         sys.exit()
     executor = Executor(options.openmldb_bin_path, options.zk_cluster, options.zk_root_path)
@@ -546,5 +603,13 @@ if __name__ == "__main__":
             PreUpgrade(executor, endpoints[0], options.statfile)
         else:
             PostUpgrade(executor, endpoints[0], options.statfile)
+    elif options.cmd == "getopstatus":
+        status, results = GetOpStatus(executor, options.db, options.filter, False)
+        if status.OK():
+            header = ["db", "op_id", "op_type", "name", "pid", "status", "start_time", "execute_time", "end_time",
+                      "cur_task", "for_replica_cluster"]
+            PrettyPrint(results, header)
+        else:
+            print(status.msg)
     if auto_failover and not executor.SetAutofailover("true").OK():
         log.warning("set auto_failover failed")

@@ -279,7 +279,7 @@ class Executor:
             return Status(-1, "changer leader failed")
         return status
 
-    def ShowOpStatus(self, database, name, pid = '') -> tuple([Status, List]):
+    def ShowOpStatus(self, database, name = '', pid = '') -> tuple([Status, List]):
         cmd = list(self.ns_base_cmd)
         cmd.append("--cmd=showopstatus {} {} ".format(name, pid))
         cmd.append("--database=" + database)
