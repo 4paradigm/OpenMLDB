@@ -6,9 +6,9 @@ The OpenMLDB SDK can be divided into several layers, as shown in the figure. The
 ![sdk layers](images/sdk_layers.png)
 
 ### SDK Layer
-The lowest layer is the SDK core layer, which is implemented as [SQLClusterRouter](https://github.com/4paradigm/OpenMLDB/blob/b6f122798f567adf2bb7766e2c3b81b633ebd231/src/sdk/sql_cluster_router.h#L110). It is the smallest implement unit of **client**. All operations on OpenMLDB clusters can be done by using the methods of `SQLClusterRouter` after proper configuration.
+The bottom layer is the SDK core layer, which is implemented as [SQLClusterRouter](https://github.com/4paradigm/OpenMLDB/blob/b6f122798f567adf2bb7766e2c3b81b633ebd231/src/sdk/sql_cluster_router.h#L110). It is the  core layer of **client**. All operations on OpenMLDB clusters can be done by using the methods of `SQLClusterRouter` after proper configuration.
 
-Developers need to care about the three core methods of this layer.
+Three core methods of this layer that developers may need to use are:
 
 1. [ExecuteSQL](https://github.com/4paradigm/OpenMLDB/blob/b6f122798f567adf2bb7766e2c3b81b633ebd231/src/sdk/sql_cluster_router.h#L160) supports the execution of all SQL commands, including DDL, DML and DQL.
 2. [ExecuteSQLParameterized](https://github.com/4paradigm/OpenMLDB/blob/b6f122798f567adf2bb7766e2c3b81b633ebd231/src/sdk/sql_cluster_router.h#L166)supports parameterized SQL.
@@ -28,9 +28,9 @@ Python Wrapper is implemented as [OpenMLDBSdk](https://github.com/4paradigm/Open
 ### User Layer
 Although the Wrapper Layer can be used directly, it is not convenient enough. So, we develop another layer, the User Layer of the Java/Python SDK.
 
-The Java User Layer supports the JDBC. Users can use the JDBC protocol to access OpenMLDB without high access cost. See [jdbc](https://github.com/4paradigm/OpenMLDB/tree/main/java/openmldb-jdbc/src/main/java/com/_4paradigm/openmldb/jdbc) for detail about implementation. 
+The Java User Layer supports the JDBC. Users can use the JDBC protocol to access OpenMLDB. See [jdbc](https://github.com/4paradigm/OpenMLDB/tree/main/java/openmldb-jdbc/src/main/java/com/_4paradigm/openmldb/jdbc) for detail about implementation. 
 
-The Python User Layer supports the sqlalchemy, which can also reduce the users' access cost. See [sqlalchemy_openmldb](https://github.com/4paradigm/OpenMLDB/blob/main/python/openmldb/sqlalchemy_openmldb) and [dbapi](https://github.com/4paradigm/OpenMLDB/blob/main/python/openmldb/dbapi) for detail about implementation. 
+The Python User Layer supports the `sqlalchemy`. See [sqlalchemy_openmldb](https://github.com/4paradigm/OpenMLDB/blob/main/python/openmldb/sqlalchemy_openmldb) and [dbapi](https://github.com/4paradigm/OpenMLDB/blob/main/python/openmldb/dbapi) for detail about implementation. 
 
 ## Note
 
