@@ -380,10 +380,12 @@ class DiskTable : public Table {
 
     uint64_t GetRecordCnt() const override {
         uint64_t count = 0;
-        if (cf_hs_->size() == 1) {
-            db_->GetIntProperty(cf_hs_->at(0), "rocksdb.estimate-num-keys", &count);
+        auto cf_hs = GetCf();
+
+        if (cf_hs->size() == 1) {
+            db_->GetIntProperty(cf_hs->at(0), "rocksdb.estimate-num-keys", &count);
         } else {
-            db_->GetIntProperty(cf_hs_->at(1), "rocksdb.estimate-num-keys", &count);
+            db_->GetIntProperty(cf_hs->at(1), "rocksdb.estimate-num-keys", &count);
         }
         return count;
     }
@@ -409,7 +411,9 @@ class DiskTable : public Table {
     bool IsExpire(const ::openmldb::api::LogEntry& entry) override;
 
     void CompactDB() {
-        for (rocksdb::ColumnFamilyHandle* cf : *cf_hs_) {
+        auto cf_hs = GetCf();
+
+        for (rocksdb::ColumnFamilyHandle* cf : *cf_hs) {
             db_->CompactRange(rocksdb::CompactRangeOptions(), cf, nullptr, nullptr);
         }
     }
@@ -437,7 +441,7 @@ class DiskTable : public Table {
     std::atomic<uint64_t> offset_;
     std::string table_path_;
 
-    std::shared_ptr<std::vector<rocksdb::ColumnFamilyHandle*>> GetCf() {
+    std::shared_ptr<std::vector<rocksdb::ColumnFamilyHandle*>> GetCf() const {
         return std::atomic_load_explicit(&cf_hs_, std::memory_order_relaxed);
     }
 
