@@ -29,12 +29,15 @@ LoadDataInfileOptionItem
 URI
 				::= 'file://FilePathPattern'
 				|'hdfs://FilePathPattern'
+				|'hive://[db.]table'
 				|'FilePathPattern'
 
 FilePathPattern
 				::= string_literal
 ```
 其中`FilePathPattern`支持通配符`*`，比如可以设成`/test/*.csv`，匹配规则和`ls FilePathPattern`一致。
+
+支持从Hive导入数据，但需要额外的设置，详情见[Hive 支持](#hive-支持)。
 
 下表展示了`LOAD DATA INFILE`语句的配置项。
 
@@ -95,3 +98,40 @@ set @@execute_mode='offline';
 LOAD DATA INFILE 'data_path' INTO TABLE t1 OPTIONS(deep_copy=false);
 ```
 
+## Hive 支持
+
+为了支持读Hive，我们需要Hive相关的依赖和Hive配置。
+
+### Spark Hive依赖
+
+我们需要在Spark中编译出Hive依赖，依赖包在`assembly/target/scala-xx/jars`. 将所有依赖加入Spark的class path中。
+
+```
+./build/mvn -Pyarn -Phive -Phive-thriftserver -DskipTests clean package
+```
+
+### Hive 配置
+
+我们推荐使用metastore服务来连接Hive。
+
+- spark.conf
+
+	你可以在spark conf中配置`spark.hadoop.hive.metastore.uris`。有两种方式：
+	- taskmanager.properties: 在配置项 `spark.default.conf` 中加入`spark.hadoop.hive.metastore.uris=thrift://...`并重启taskmanager。
+	- CLI: 在ini conf中加入此配置项，并使用`--spark_conf`启动CLI，参考[客户端Spark配置文件](../../client_config/client_spark_config.md).
+
+- hive-site.xml:
+
+	你可以配置`hive-site.xml`中的`hive.metastore.uris`，并将配置文件放入Spark home的`conf/`。
+
+	`hive-site.xml`样例：
+	```
+	<configuration>
+	<property>
+		<name>hive.metastore.uris</name>
+		<!--Make sure that <value> points to the Hive Metastore URI in your cluster -->
+		<value>thrift://localhost:9083</value>
+		<description>URI for client to contact metastore server</description>
+	</property>
+	</configuration>
+	```
