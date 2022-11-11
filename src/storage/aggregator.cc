@@ -431,6 +431,46 @@ bool Aggregator::GetAggrBufferFromRowView(const codec::RowView& row_view, const 
     return true;
 }
 
+bool Aggregator::EncodeAggrBuffer(const std::string& key, const std::string& filter_key,
+        const AggrBuffer& buffer, const std::string& aggr_val, std::string* encoded_row) {
+    if (encoded_row == nullptr) return false;
+    int str_length = key.size() + aggr_val.size() + filter_key.size();
+    uint32_t row_size = row_builder_.CalTotalLength(str_length);
+    encoded_row->resize(row_size);
+    int8_t* row_ptr = reinterpret_cast<int8_t*>(&((*encoded_row)[0]));
+    row_builder_.InitBuffer(row_ptr, row_size, true);
+    if (!row_builder_.SetString(row_ptr, row_size, 0, key.c_str(), key.size())) {
+        return false;
+    }
+    if (!row_builder_.SetTimestamp(row_ptr, 1, buffer.ts_begin_)) {
+        return false;
+    }
+    if (!row_builder_.SetTimestamp(row_ptr, 2, buffer.ts_end_)) {
+        return false;
+    }
+    if (!row_builder_.SetInt32(row_ptr, 3, buffer.aggr_cnt_)) {
+        return false;
+    }
+    if ((aggr_type_ == AggrType::kMax || aggr_type_ == AggrType::kMin) && buffer.AggrValEmpty()) {
+        if (!row_builder_.SetNULL(row_ptr, row_size, 4)) {
+            return false;
+        }
+    } else {
+        if (!row_builder_.SetString(row_ptr, row_size, 4, aggr_val.c_str(), aggr_val.size())) {
+            return false;
+        }
+    }
+    if (row_builder_.SetInt64(row_ptr, 5, buffer.binlog_offset_)) {
+        return false;
+    }
+    if (!filter_key.empty()) {
+        return row_builder_.SetString(row_ptr, row_size, 6, filter_key.c_str(), filter_key.size());
+    } else {
+        return row_builder_.SetNULL(row_ptr, row_size, 6);
+    }
+    return true;
+}
+
 bool Aggregator::FlushAggrBuffer(const std::string& key, const std::string& filter_key, const AggrBuffer& buffer) {
     std::string encoded_row;
     std::string aggr_val;
@@ -438,25 +478,9 @@ bool Aggregator::FlushAggrBuffer(const std::string& key, const std::string& filt
         PDLOG(ERROR, "Enocde aggr value to row failed");
         return false;
     }
-    int str_length = key.size() + aggr_val.size() + filter_key.size();
-    uint32_t row_size = row_builder_.CalTotalLength(str_length);
-    encoded_row.resize(row_size);
-    int8_t* row_ptr = reinterpret_cast<int8_t*>(&(encoded_row[0]));
-    row_builder_.InitBuffer(row_ptr, row_size, true);
-    row_builder_.SetString(row_ptr, row_size, 0, key.c_str(), key.size());
-    row_builder_.SetTimestamp(row_ptr, 1, buffer.ts_begin_);
-    row_builder_.SetTimestamp(row_ptr, 2, buffer.ts_end_);
-    row_builder_.SetInt32(row_ptr, 3, buffer.aggr_cnt_);
-    if ((aggr_type_ == AggrType::kMax || aggr_type_ == AggrType::kMin) && buffer.AggrValEmpty()) {
-        row_builder_.SetNULL(row_ptr, row_size, 4);
-    } else {
-        row_builder_.SetString(row_ptr, row_size, 4, aggr_val.c_str(), aggr_val.size());
-    }
-    row_builder_.SetInt64(row_ptr, 5, buffer.binlog_offset_);
-    if (!filter_key.empty()) {
-        row_builder_.SetString(row_ptr, row_size, 6, filter_key.c_str(), filter_key.size());
-    } else {
-        row_builder_.SetNULL(row_ptr, row_size, 6);
+    if (!EncodeAggrBuffer(key, filter_key, buffer, aggr_val, &encoded_row)) {
+        PDLOG(ERROR, "Enocde aggr buffer failed");
+        return false;
     }
 
     int64_t time = ::baidu::common::timer::get_micros() / 1000;
