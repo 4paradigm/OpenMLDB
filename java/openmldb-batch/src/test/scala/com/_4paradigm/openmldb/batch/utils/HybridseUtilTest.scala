@@ -80,8 +80,8 @@ class HybridseUtilTest extends SparkTestSuite with Matchers {
     checkTsColResult(df3, "List(null, 1970-01-01 08:00:00.0, 2022-02-01 17:00:00.0)")
   }
 
-  // TODO(hw): skip it
-  test("Test read from hive") {
+  // TODO(hw): hive test needs metastore service.
+  skip("Test read from hive") {
     // must have a new spark context
     getSparkSession.stop()
     val hiveSession = SparkSession.builder().master("local[4]").appName("hive-support")
@@ -94,7 +94,7 @@ class HybridseUtilTest extends SparkTestSuite with Matchers {
     hiveSession.sql("LOAD DATA LOCAL INPATH '" + getClass.getResource("/load_data_test_src/src.csv")
       + "' OVERWRITE INTO TABLE src1")
 
-    // // Queries are expressed in HiveQL
+    // Queries are expressed in HiveQL
     val df = hiveSession.sql("SELECT * FROM src1")
     df.show()
 
@@ -112,8 +112,5 @@ class HybridseUtilTest extends SparkTestSuite with Matchers {
     val df1 = hiveLoad(hiveSession, testFile, cols)
     df1.show()
     assert(SparkUtil.approximateDfEqual(df, df1))
-
-    // nullable?
-
   }
 }
