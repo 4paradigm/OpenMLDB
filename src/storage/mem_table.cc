@@ -493,19 +493,24 @@ uint64_t MemTable::GetRecordIdxByteSize() {
 
 uint64_t MemTable::GetRecordIdxCnt() {
     uint64_t record_idx_cnt = 0;
-    auto inner_indexs = table_index_.GetAllInnerIndex();
-    for (size_t i = 0; i < inner_indexs->size(); i++) {
-        bool is_valid = false;
-        for (const auto& index_def : inner_indexs->at(i)->GetIndex()) {
-            if (index_def && index_def->IsReady()) {
-                is_valid = true;
-                break;
-            }
-        }
-        if (is_valid) {
-            for (uint32_t j = 0; j < seg_cnt_; j++) {
-                record_idx_cnt += segments_[i][j]->GetIdxCnt();
-            }
+    std::shared_ptr<IndexDef> index_def = table_index_.GetIndex(0);
+    if (!index_def || !index_def->IsReady()) {
+        return record_idx_cnt;
+    }
+    uint32_t inner_idx = index_def->GetInnerPos();
+    auto inner_index = table_index_.GetInnerIndex(inner_idx);
+    int32_t ts_col_id = -1;
+    auto ts_col = index_def->GetTsColumn();
+    if (ts_col) {
+        ts_col_id = ts_col->GetId();
+    }
+    for (uint32_t i = 0; i < seg_cnt_; i++) {
+        if (inner_index->GetIndex().size() > 1 && ts_col_id >= 0) {
+            uint64_t record_cnt = 0;
+            segments_[inner_idx][i]->GetIdxCnt(ts_col_id, record_cnt);
+            record_idx_cnt += record_cnt;
+        } else {
+            record_idx_cnt += segments_[inner_idx][i]->GetIdxCnt();
         }
     }
     return record_idx_cnt;
@@ -539,10 +544,20 @@ bool MemTable::GetRecordIdxCnt(uint32_t idx, uint64_t** stat, uint32_t* size) {
     if (!index_def || !index_def->IsReady()) {
         return false;
     }
-    auto* data_array = new uint64_t[seg_cnt_];
-    uint32_t real_idx = index_def->GetInnerPos();
+    auto* data_array = new uint64_t[seg_cnt_]();
+    uint32_t inner_idx = index_def->GetInnerPos();
+    auto inner_index = table_index_.GetInnerIndex(inner_idx);
+    int32_t ts_col_id = -1;
+    auto ts_col = index_def->GetTsColumn();
+    if (ts_col) {
+        ts_col_id = ts_col->GetId();
+    }
     for (uint32_t i = 0; i < seg_cnt_; i++) {
-        data_array[i] = segments_[real_idx][i]->GetIdxCnt();
+        if (inner_index->GetIndex().size() > 1 && ts_col_id >= 0) {
+            segments_[inner_idx][i]->GetIdxCnt(ts_col_id, data_array[i]);
+        } else {
+            data_array[i] += segments_[inner_idx][i]->GetIdxCnt();
+        }
     }
     *stat = data_array;
     *size = seg_cnt_;
@@ -560,6 +575,9 @@ bool MemTable::AddIndex(const ::openmldb::common::ColumnKey& column_key) {
             return false;
         }
         new_table_meta->mutable_column_key(index_def->GetId())->CopyFrom(column_key);
+        if (column_key.has_ttl()) {
+            index_def->SetTTL(::openmldb::storage::TTLSt(column_key.ttl()));
+        }
     } else {
         ::openmldb::common::ColumnKey* added_column_key = new_table_meta->add_column_key();
         added_column_key->CopyFrom(column_key);
@@ -893,7 +911,7 @@ void MemTableTraverseIterator::Seek(const std::string& key, uint64_t ts) {
             it_ = ((KeyEntry*)pk_it_->GetValue())         // NOLINT
                       ->entries.NewIterator();
         }
-        if (spk.compare(pk_it_->GetKey()) != 0 || ts == 0) {
+        if (spk.compare(pk_it_->GetKey()) != 0) {
             it_->SeekToFirst();
             traverse_cnt_++;
             record_idx_ = 1;
@@ -906,7 +924,7 @@ void MemTableTraverseIterator::Seek(const std::string& key, uint64_t ts) {
                 record_idx_ = 1;
                 while (it_->Valid() && record_idx_ <= expire_value_.lat_ttl) {
                     traverse_cnt_++;
-                    if (it_->GetKey() < ts) {
+                    if (it_->GetKey() <= ts) {
                         return;
                     }
                     it_->Next();
@@ -916,9 +934,6 @@ void MemTableTraverseIterator::Seek(const std::string& key, uint64_t ts) {
             } else {
                 it_->Seek(ts);
                 traverse_cnt_++;
-                if (it_->Valid() && it_->GetKey() == ts) {
-                    it_->Next();
-                }
                 if (!it_->Valid() || expire_value_.IsExpired(it_->GetKey(), record_idx_)) {
                     NextPK();
                 }

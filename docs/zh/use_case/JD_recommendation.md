@@ -1,4 +1,3 @@
-
 #  OpenMLDB + OneFlow: 高潜用户购买意向预测
 
 本文我们将以[京东高潜用户购买意向预测问题](https://jdata.jd.com/html/detail.html?id=1)为例，示范如何使用[OpenMLDB](https://github.com/4paradigm/OpenMLDB)和 [OneFlow](https://github.com/Oneflow-Inc/oneflow) 联合来打造一个完整的机器学习应用。
@@ -14,11 +13,20 @@ OneFlow工具依赖GPU的强大算力，所以请确保部署机器具备Nvidia 
 使用一下指令安装OneFlow：
 ```bash
 conda activate oneflow
-python3 -m pip install --pre oneflow -f https://staging.oneflow.info/branch/support_oneembedding_serving/cu102
+python3 -m pip install -f https://staging.oneflow.info/branch/master/cu112 --pre oneflow
 ```
 还需要安装以下Python工具包：
 ```bash
 pip install psutil petastorm pandas sklearn
+```
+ 拉取Oneflow-serving镜像：
+```bash
+docker pull oneflowinc/oneflow-serving:nightly
+```
+```{note}
+注意，此处安装的为Oneflow nightly版本，此教程验证的版本commit如下：
+Oneflow：https://github.com/Oneflow-Inc/oneflow/tree/fcf205cf57989a5ecb7a756633a4be08444d8a28
+Oneflow-serving：https://github.com/Oneflow-Inc/serving/tree/ce5d667468b6b3ba66d3be6986f41f965e52cf16
 ```
 
 ### 1.2 拉取和启动 OpenMLDB Docker 镜像
@@ -27,14 +35,14 @@ pip install psutil petastorm pandas sklearn
 - 下载demo文件包，并映射demo文件夹至`/root/project`，这里我们使用的路径为`demodir=/home/gtest/demo`
 ```bash
 export demodir=/home/gtest/demo
-docker run -dit --name=demo --network=host -v $demodir:/root/project 4pdosc/openmldb:0.5.2 bash
+docker run -dit --name=demo --network=host -v $demodir:/root/project 4pdosc/openmldb:0.6.5 bash
 docker exec -it demo bash
 ```
 - 上述镜像预装了OpenMLDB的工具等，我们需要进一步安装OneFlow推理所需依赖。
 
 因为我们将在OpenMLDB的容器中嵌入OneFlow模型推理的预处理及调用，需要安装以下的依赖。
 ```bash
-pip install tritonclient xxhash geventhttpclient
+pip install tritonclient[all] xxhash geventhttpclient
 ```
 
 ```{note}
@@ -224,14 +232,16 @@ INTO OUTFILE '/root/project/out/1';
 进入demo文件夹，运行以下指令进行数据处理
 ```bash
 cd $demodir/openmldb_process/
-sh process_JD_out_full.sh $demodir/out/1
+bash process_JD_out_full.sh $demodir/out/1
 ```
 对应生成parquet数据集将生成在 `$demodir/openmldb_process/out`。数据信息将被打印如下，该信息将被输入为训练的配置文件。
->train samples = 4007924
->val samples = 504398
->test samples = 530059
->table size array:
->11,42,1105,200,11,1295,1,1,5,3,23,23,7,5042381,3127923,5042381,3649642,28350,105180,7,2,5042381,5,4,4,41,2,2,8,3456,4,5,5042381,10,60,5042381,843,17,1276,101,100
+```
+train samples = 11073
+val samples = 1351
+test samples = 1492
+table size array:
+4,26,16,4,11,809,1,1,5,3,17,16,7,13916,13890,13916,10000,3674,9119,7,2,13916,5,4,4,33,2,2,7,2580,3,5,13916,10,47,13916,365,17,132,32,37
+```
 
 ### 2.4 启动OneFlow进行模型训练
 ```{note}
@@ -416,46 +426,158 @@ show deployment demo;
 注意，集群版 `LOAD  DATA` 为非阻塞任务，可以使用命令 `SHOW  JOBS` 查看任务运行状态，请等待任务运行成功（ `state` 转至 `FINISHED` 状态），再进行下一步操作 。
 ```
 ### 3.3 配置OneFlow推理服务
-OneFlow的推理服务需要[OneEmbedding](https://docs.oneflow.org/master/cookies/one_embedding.html)的支持。该支持目前还没有合入主框架中。若需要重新编译，可参考附录A进行编译测试。接下来步骤默认相关支持已编译完成，并且存放在`/home/gtest/work/oneflow_serving/`路径中。
-
 #### 3.3.1 检查模型路径（`$demodir/oneflow_process/model`）中模型文件及组织方式是否正确
 ```
-$ tree  -L 3 model/
+$ tree  -L 5 model/
 model/
 └── embedding
     ├── 1
     │   └── model
+    │       ├── model.mlir
+    │       ├── module.dnn_layer.linear_layers.0.bias
+    │       │   ├── meta
+    │       │   └── out
+    │       ├── module.dnn_layer.linear_layers.0.weight
+    │       │   ├── meta
+    │       │   └── out
+    │       ├── module.dnn_layer.linear_layers.12.bias
+    │       │   ├── meta
+    │       │   └── out
+    │       ├── module.dnn_layer.linear_layers.12.weight
+    │       │   ├── meta
+    │       │   └── out
+    │       ├── module.dnn_layer.linear_layers.15.bias
+    │       │   ├── meta
+    │       │   └── out
+    │       ├── module.dnn_layer.linear_layers.15.weight
+    │       │   ├── meta
+    │       │   └── out
+    │       ├── module.dnn_layer.linear_layers.3.bias
+    │       │   ├── meta
+    │       │   └── out
+    │       ├── module.dnn_layer.linear_layers.3.weight
+    │       │   ├── meta
+    │       │   └── out
+    │       ├── module.dnn_layer.linear_layers.6.bias
+    │       │   ├── meta
+    │       │   └── out
+    │       ├── module.dnn_layer.linear_layers.6.weight
+    │       │   ├── meta
+    │       │   └── out
+    │       ├── module.dnn_layer.linear_layers.9.bias
+    │       │   ├── meta
+    │       │   └── out
+    │       ├── module.dnn_layer.linear_layers.9.weight
+    │       │   ├── meta
+    │       │   └── out
+    │       ├── module.embedding_layer.one_embedding.shadow
+    │       │   ├── meta
+    │       │   └── out
+    │       └── one_embedding_options.json
     └── config.pbtxt
  ```   
 #### 3.3.2 确认`config.pbtxt`中的配置正确。
-#### 3.3.3 确认persistent路径（`$demodir/oneflow_process/persistent`）正确
+ ```
+name: "embedding"
+backend: "oneflow"
+max_batch_size: 10000
+
+input [
+  {
+    name: "INPUT_0"
+    data_type: TYPE_INT64
+    dims: [ 41 ]
+  }
+]
+
+output [
+  {
+    name: "OUTPUT_0"
+    data_type: TYPE_FP32
+    dims: [ 1 ]
+  }
+]
+
+instance_group [
+  {
+    count: 1
+    kind: KIND_GPU
+    gpus: [ 0 ]
+  }
+]
+ ```
+ 其中`name`要和`config.pbtxt`所在目录的名字保持一致
+
+#### 3.3.3 变更persistent路径
+变更`one_embedding_options.json`文件中的persistent table路径。将`embedding/kv_options/kv_store/persistent_table/path` 变更为映射到容器里面的persistent table的位置 `/root/demo/persistent`。
+```
+{
+    "embedding": [
+        {
+            "snapshot": "2022-09-29-03-27-44-953674",
+            "kv_options": {
+                "name": "sparse_embedding",
+                "key_type_size": 8,
+                "value_type_size": 4,
+                "value_type": "oneflow.float32",
+                "storage_dim": 51,
+                "kv_store": {
+                    "caches": [
+                        {
+                            "policy": "lru",
+                            "cache_memory_budget_mb": 1024,
+                            "value_memory_kind": "device"
+                        },
+                        {
+                            "policy": "full",
+                            "capacity": 110477,
+                            "value_memory_kind": "host"
+                        }
+                    ],
+                    "persistent_table": {
+                        "path": "/root/demo/persistent",
+                        "physical_block_size": 4096,
+                        "capacity_hint": 110477
+                    }
+                },
+                "parallel_num": 1
+            }
+        }
+    ]
+}
+```
  
 ### 3.4 启动推理服务
-#### 3.4.1 启动OpenMLDB推理服务
+#### 3.4.1 启动OneFlow推理服务
+```{note}
+注意，以下命令在安装1.1所描述的OneFlow运行环境中运行
+```
+使用一下命令启动OneFlow推理服务：
+```
+docker run --runtime=nvidia --rm --network=host \
+  -v $demodir/oneflow_process/model:/models \
+  -v $demodir/oneflow_process/persistent:/root/demo/persistent \
+  oneflowinc/oneflow-serving:nightly \
+  bash -c '/opt/tritonserver/bin/tritonserver --model-repository=/models'
+```
+若成功，将显示如下类似输出：
+```
+...
+I0929 07:28:34.281655 1 grpc_server.cc:4117] Started GRPCInferenceService at 0.0.0.0:8001
+I0929 07:28:34.282343 1 http_server.cc:2815] Started HTTPService at 0.0.0.0:8000
+I0929 07:28:34.324662 1 http_server.cc:167] Started Metrics Service at 0.0.0.0:8002
+
+```
+#### 3.4.2 启动OpenMLDB推理服务
 ```{note}
 注意，以下命令在demo docker中运行。
 ```
+OpenMLDB 的在线特征计算服务已通过 SQL 上线完成，OneFlow 推理服务也已经启动。这个 demo 将串联两者，在收到实时请求后，访问 OpenMLDB 进行特征抽取，再访问 OneFlow 推理服务，进行在线推理，最后返回推理结果。
 1.  如果尚未退出 OpenMLDB CLI，请使用  `quit`  命令退出 OpenMLDB CLI。
 2. 在普通命令行下启动预估服务：
 ```bash
 cd /root/project/serving/openmldb_serving
 ./start_predict_server.sh 0.0.0.0:9080
-```
-
-#### 3.4.2 启动OneFlow推理服务
-```{note}
-注意，以下命令在安装1.1所描述的OneFlow运行环境中运行
-```
-使用一下命令启动OneFlow推理服务：
-```bash
-docker run --runtime=nvidia --rm --network=host \
-  -v $demodir/oneflow_process/model:/models \
-  -v /home/gtest/work/oneflow_serving/serving/build/libtriton_oneflow.so:/backends/oneflow/libtriton_oneflow.so \
-  -v /home/gtest/work/oneflow_serving/oneflow/build/liboneflow_cpp/lib/:/mylib \
-  -v $demodir/oneflow_process/persistent:/root/demo/persistent \
-  registry.cn-beijing.aliyuncs.com/oneflow/triton-devel \
-  bash -c 'LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/mylib /opt/tritonserver/bin/tritonserver \
-  --model-repository=/models --backend-directory=/backends'
 ```
 
 ### 3.5 发送预估请求
@@ -477,76 +599,3 @@ python $demodir/serving/predict.py
 ---------------predict change of purchase -------------
 [[b'0.006222:0']]
 ```
-
-
-## 附录A -- OneFlow定制代码编译
-此章节介绍为OneEmbedding推理服务所定制的代码修改的编译过程。该代码会尽快合入OneFlow中，届时以下步骤可省略。
-
-### A.1 容器环境准备
-使用以下容器环境进行编译。该容器已经安装编译所需的依赖等。
-```
-docker pull registry.cn-beijing.aliyuncs.com/oneflow/triton-devel:latest
-```
-启动容器并映射相关路径(此处可映射`/home/work/gtest`至`/root/project`)。接下来的操作均在容器内进行。
-
-### A.2 编译OneFlow
-```shell
-cd /root/project
-mkdir oneflow_serving && cd oneflow_serving
-git clone -b support_oneembedding_serving --single-branch https://github.com/Oneflow-Inc/oneflow --depth=1 
-cd oneflow
-mkdir build && cd build
-cmake -C ../cmake/caches/cn/cuda.cmake \
--DBUILD_CPP_API=ON \
--DWITH_MLIR=ON \
--G Ninja \
--DBUILD_SHARED_LIBS=ON \
--DBUILD_HWLOC=OFF \
--DCMAKE_INTERPROCEDURAL_OPTIMIZATION=OFF \
--DCMAKE_EXE_LINKER_FLAGS_INIT="-fuse-ld=lld" \
--DCMAKE_MODULE_LINKER_FLAGS_INIT="-fuse-ld=lld" \
--DCMAKE_SHARED_LINKER_FLAGS_INIT="-fuse-ld=lld" ..
-ninja
-```
-
-### A.3 编译Serving
-
-```shell
-git clone -b support_one_embedding --single-branchhttps://github.com/Oneflow-Inc/serving.git
-cd serving
-mkdir build && cd build
-cmake -DCMAKE_PREFIX_PATH=/path/to/liboneflow_cpp/share -DTRITON_RELATED_REPO_TAG=r21.10 \
-  -DTRITON_ENABLE_GPU=ON -G Ninja -DTHIRD_PARTY_MIRROR=aliyun ..
-ninja
-```
-上述命令中的`/path/to/liboneflow_cpp/share`要替换成上边编译的oneflow的里面的路径，在`{oneflow路径}/build/liboneflow_cpp/share`
-
-
-### A.4 测试TritonServer
-复制backend库文件：
-```shell
-mkdir /root/project/oneflow_sering/backends && cd /root/project/oneflow_sering/backends
-mkdir oneflow
-cp /roor/prject/oneflow_serving/serving/build/libtriton_oneflow.so oneflow/.
-```
-
-在命令行启动 TritonServer测试：
-```shell
-LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/root/project/oneflow_serving/oneflow/build/liboneflow_cpp/lib \
-/opt/tritonserver/bin/tritonserver \
---model-repository=/root/project/oneflow_process/model \
---backend-directory=/root/project/oneflow_serving/backends
-```
-
-在另一个命令行运行如下指令，若成功，输出示例如下：
-```
-python $demodir/serving/client.py 
->>>
-0.045439958572387695
-(1, 1)
-[[b'0.025343:0']]
-```
-注意：
-- 如果出现`libunwind.so.8`未找到需要用`-v /lib/x86_64-linux-gnu:/unwind_path` 映射一下`libunwind.so.8`所在目录，然后添加到`LD_LIBRARY_PATH`里面: `... bash -c 'LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/mylib:/unwind_path ...`
-- 如果出现`libcupti.so`未找到需要用`-v /usr/local/cuda-11.7/extras/CUPTI/lib64:/cupti_path` 映射一下`libcupti.so`所在目录，然后添加到`LD_LIBRARY_PATH`里面: `... bash -c 'LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/mylib:/cupti_path ...`, 其中具体的cuda的路径按实际安装的位置，可以用`ldd {oneflow路径}/build/liboneflow.so | grep cupti`来找到
-

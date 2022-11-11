@@ -116,7 +116,7 @@ enum StatusCode {
     // error with run session
     kRunSessionError = 1403;
 
-    // error with rpc
+    // error with rpc(all other errors)
     kRpcError = 1500;
     // error with rpc, fail to connect with peer
     kConnError = 1501;
@@ -143,6 +143,8 @@ enum StatusCode {
     kTestRunSessionError = 1803;
 
     kCmdError = 2000;
+    // error is set by server, use code openmldb::base::ReturnCode
+    kServerError = 2001;
 }
 
 message Status {

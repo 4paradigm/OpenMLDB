@@ -40,7 +40,7 @@ OpenMLDB Spark supports [standard Spark configuration](https://spark.apache.org/
 The examples in the `Example Jars` can be executed directly after you install the OpenMLDB Spark distribution and set the `SPARK_HOME`.
 
 ```java
-export SPARK_HOME=`pwd`/spark-3.0.0-bin-openmldbspark/
+export SPARK_HOME=`pwd`/spark-3.2.1-bin-openmldbspark/
 
 $SPARK_HOME/bin/spark-submit \
   --master local \

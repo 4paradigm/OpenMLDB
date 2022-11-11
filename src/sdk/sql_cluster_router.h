@@ -21,6 +21,7 @@
 #include <memory>
 #include <set>
 #include <string>
+#include <unordered_map>
 #include <unordered_set>
 #include <utility>
 #include <vector>
@@ -32,6 +33,7 @@
 #include "client/tablet_client.h"
 #include "nameserver/system_table.h"
 #include "sdk/db_sdk.h"
+#include "sdk/file_option_parser.h"
 #include "sdk/sql_cache.h"
 #include "sdk/sql_router.h"
 #include "sdk/table_reader_impl.h"
@@ -44,6 +46,9 @@ constexpr const char* FORMAT_STRING_KEY = "!%$FORMAT_STRING_KEY";
 
 class SQLClusterRouter : public SQLRouter {
  public:
+    using TableStatusMap = std::unordered_map<
+        uint32_t, std::unordered_map<uint32_t, std::unordered_map<std::string, openmldb::api::TableStatus>>>;
+
     explicit SQLClusterRouter(const SQLRouterOptions& options);
     explicit SQLClusterRouter(const StandaloneOptions& options);
     explicit SQLClusterRouter(DBSDK* sdk);
@@ -301,7 +306,17 @@ class SQLClusterRouter : public SQLRouter {
 
     hybridse::sdk::Status HandleLoadDataInfile(const std::string& database, const std::string& table,
                                                const std::string& file_path,
-                                               const std::shared_ptr<hybridse::node::OptionsMap>& options);
+                                               const openmldb::sdk::ReadFileOptionsParser& options_parser);
+
+    hybridse::sdk::Status LoadDataMultipleFile(int id, int step, const std::string& database,
+                                               const std::string& table, const std::vector<std::string>& file_list,
+                                               const openmldb::sdk::ReadFileOptionsParser& options_parser,
+                                               uint64_t* count);
+
+    hybridse::sdk::Status LoadDataSingleFile(int id, int step, const std::string& database,
+                                             const std::string& table, const std::string& file_path,
+                                             const openmldb::sdk::ReadFileOptionsParser& options_parser,
+                                             uint64_t* count);
 
     hybridse::sdk::Status InsertOneRow(const std::string& database, const std::string& insert_placeholder,
                                        const std::vector<int>& str_col_idx, const std::string& null_value,
@@ -344,7 +359,14 @@ class SQLClusterRouter : public SQLRouter {
 
     /// internal implementation for SQL 'SHOW TABLE STATUS'
     std::shared_ptr<hybridse::sdk::ResultSet> ExecuteShowTableStatus(const std::string& db,
+                                                                     const std::string& pattern,
                                                                      hybridse::sdk::Status* status);
+
+    std::shared_ptr<hybridse::sdk::ResultSet> GetJobResultSet(int job_id);
+
+    bool CheckTableStatus(const std::string& db, const std::string& table_name, uint32_t tid,
+                          const nameserver::TablePartition& partition_info, uint32_t replica_num,
+                          const TableStatusMap& statuses, std::string* msg);
 
  private:
     std::shared_ptr<BasicRouterOptions> options_;

@@ -12,7 +12,7 @@ You need to first start a new tablet node as following steps, please refer to th
 - Modify the configuration file: conf/tablet.flags
 - Start a new tablet
   ```bash
-    sh bin/start.sh start tablet
+    bash bin/start.sh start tablet
   ```
 
 After startup, you need to check whether the new node has joined the cluster. If the `showtablet` command is executed and the new node endpoint is listed, it means that it has joined the cluster
@@ -29,6 +29,12 @@ $ ./bin/openmldb --zk_cluster=172.27.128.31:8090,172.27.128.32:8090,172.27.128.3
 ```
 
 ### Step 2. Migrating replications
+
+#### One-click Migrating
+
+Use `scaleout` command to migrate replications automatically. Refer [OpenMLDB Tool](./openmldb_ops.md)
+
+#### Manual Migrating
 
 The command used for replication migration is `migrate`. The command format is: `migrate src_endpoint table_name partition des_endpoint` 
 
@@ -69,15 +75,22 @@ Scaling in your cluster is to reduce the number of nodes in the cluster.
 
 ### Step 1. Selecting the node that you want to go offline
 ### Step 2. Migrating partitions on nodes that need to be taken offline to other nodes
+
+#### One-click Migrating
+
+Use `scalein` command to migrate replications automatically. Refer [OpenMLDB Tool](./openmldb_ops.md)
+
+#### Manual Migrating
 * Run the `showtable` command to view the partitions of a table
 * Run the `migrage` command to migrate the targeted partitions to another node. If the leader exists on the offline node, you can run the `changeleader` command to switch the leader to another node
+
 ### Step 3. Making the targeted node offline
 - Execute `stop` command
 ```bash
-sh bin/start.sh stop tablet
+bash bin/start.sh stop tablet
 ```
 - If nameserver is deployed on the node, you need to disable the nameserver.
 ```bash
-sh bin/start.sh stop nameserver
+bash bin/start.sh stop nameserver
 ```
 Note that, at least two Nameserver nodes are required to maintain high availability

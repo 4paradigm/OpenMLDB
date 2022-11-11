@@ -705,8 +705,6 @@ TEST_F(SQLRouterTest, testSqlInsertPlaceholderWithColumnKey2) {
     ASSERT_EQ(day, 22);
     ASSERT_EQ(789, rs->GetInt32Unsafe(3));
 
-
-
     ASSERT_FALSE(rs->Next());
 
     status = ::hybridse::sdk::Status();
@@ -792,7 +790,7 @@ TEST_F(SQLRouterTest, test_sql_insert_placeholder_with_type_check) {
     std::string insert4 = "insert into " + name + " values('hello', ?, '2020-02-29', 2.33, 2.33, 123, 123);";
     status = hybridse::sdk::Status();
     std::shared_ptr<SQLInsertRow> r4 = router_->GetInsertRow(db, insert4, &status);
-    ASSERT_EQ(status.code, 1);
+    ASSERT_EQ(status.code, hybridse::common::StatusCode::kCmdError) << status.ToString();
 
     int32_t year;
     int32_t month;
@@ -1200,9 +1198,11 @@ TEST_F(SQLRouterTest, DDLParseMethodsCombineIndex) {
 }  // namespace openmldb::sdk
 
 int main(int argc, char** argv) {
-    ::hybridse::vm::Engine::InitializeGlobalLLVM();
     ::testing::InitGoogleTest(&argc, argv);
     ::google::ParseCommandLineFlags(&argc, &argv, true);
+    ::hybridse::vm::Engine::InitializeGlobalLLVM();
+
+    ::openmldb::base::SetupGlog(true);
     FLAGS_zk_session_timeout = 100000;
     ::openmldb::sdk::MiniCluster mc(6181);
     ::openmldb::sdk::mc_ = &mc;

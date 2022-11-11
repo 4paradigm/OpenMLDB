@@ -7,7 +7,7 @@
     <artifactId>openmldb-parent</artifactId>
     <packaging>pom</packaging>
     <name>openmldb</name>
-    <version>0.6.0-SNAPSHOT</version>
+    <version>0.6.5-SNAPSHOT</version>
     <modules>
         <module>hybridse-sdk</module>
         <module>hybridse-native</module>
@@ -51,7 +51,10 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <scala.version>2.12.8</scala.version>
         <scala.binary.version>2.12</scala.binary.version>
-        <spark.version>3.0.0</spark.version>
+        <spark.version>3.2.1</spark.version>
+
+        <hadoop.version>2.7.4</hadoop.version>
+
         <scalaCompatVersion>${scala.binary.version}</scalaCompatVersion>
         <scalatest.skip>false</scalatest.skip>
         <spark.dependencyScope>provided</spark.dependencyScope>
@@ -63,7 +66,7 @@
         <!-- the version for hybridse-native & openmldb-native
              override this to publish a variant release e.g. macOS variant
              checkout java/prepare_release.sh how to prepare a variant release -->
-        <variant.native.version>0.6.0-SNAPSHOT</variant.native.version>
+        <variant.native.version>0.6.5-SNAPSHOT</variant.native.version>
 
         <plugin.violationSeverity>error</plugin.violationSeverity>
         <spotless-maven-plugin.version>2.9.0</spotless-maven-plugin.version>

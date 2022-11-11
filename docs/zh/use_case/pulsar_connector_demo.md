@@ -1,4 +1,4 @@
-# OpenMLDB Pulsar Connector：接入实时数据流
+# 接入实时数据流之 Pulsar
 
 ## 简介
 Apache Pulsar是一个云原生的，分布式消息流平台。它可以作为OpenMLDB的在线数据源，将实时的数据流导入到OpenMLDB在线。了解更多Pulsar，请参考官网[https://pulsar.apache.org/](https://pulsar.apache.org/)。我们开发了在Pulsar中使用的OpenMLDB JDBC Connector，可以无障碍地使Pulsar连接到OpenMLDB。在这篇文档中，你将学习到这个connector的概念与使用方法。
@@ -35,7 +35,7 @@ Apache Pulsar是一个云原生的，分布式消息流平台。它可以作为O
 ```
 我们更推荐你使用‘host network’模式运行docker，以及绑定文件目录‘files’，sql脚本在该目录中。
 ```
-docker run -dit --network host -v `pwd`/files:/work/pulsar_files --name openmldb 4pdosc/openmldb:0.6.2 bash
+docker run -dit --network host -v `pwd`/files:/work/pulsar_files --name openmldb 4pdosc/openmldb:0.6.5 bash
 docker exec -it openmldb bash
 ```
 

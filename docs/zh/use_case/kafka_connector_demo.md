@@ -1,4 +1,4 @@
-# OpenMLDB Kafka Connector：接入实时数据流
+# 接入实时数据流之 Kafka
 
 ## 简介
 Apache Kafka是一个事件流平台。它可以作为OpenMLDB的在线数据源，将实时的数据流导入到OpenMLDB在线。了解更多Kafka，请参考官网[https://kafka.apache.org/](https://kafka.apache.org/)。我们开发了连接OpenMLDB的Kafka Connector，可以无障碍地将Kafka和OpenMLDB连接起来。在这篇文档中，你将学习到这个connector的概念与使用方法。
@@ -13,7 +13,7 @@ OpenMLDB Kafka Connector实现见[extensions/kafka-connect-jdbc](https://github.
 
 ### 下载与准备
 
-- 你需要下载kafka，请点击[kafka_2.13-3.1.0](https://dlcdn.apache.org/kafka/3.1.0/kafka_2.13-3.1.0.tgz)。
+- 你需要下载kafka，请点击[kafka官网下载](https://kafka.apache.org/downloads)下载kafka_2.13-3.1.0.tgz。
 - 你需要下载connector包以及依赖，请点击[kafka-connect-jdbc.tgz](https://github.com/4paradigm/OpenMLDB/releases/download/v0.5.0/kafka-connect-jdbc.tgz)。
 - 你需要下载本文中所需要的配置与脚本等文件，请点击[kafka_demo_files.tgz](http://openmldb.ai/download/kafka-connector/kafka_demo_files.tgz)下载。
 
@@ -21,7 +21,7 @@ OpenMLDB Kafka Connector实现见[extensions/kafka-connect-jdbc](https://github.
 
 我们推荐你将下载的三个文件包都绑定到文件目录`kafka`。当然，也可以在启动容器后，再进行文件包的下载。我们假设文件包都在`/work/kafka`目录中。
 ```
-docker run -it -v `pwd`:/work/kafka --name openmldb 4pdosc/openmldb:0.6.2 bash
+docker run -it -v `pwd`:/work/kafka --name openmldb 4pdosc/openmldb:0.6.5 bash
 ```
 
 ### 流程

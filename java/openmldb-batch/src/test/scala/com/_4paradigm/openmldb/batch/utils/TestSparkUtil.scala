@@ -20,10 +20,10 @@ import com._4paradigm.hybridse.node.JoinType
 import com._4paradigm.hybridse.sdk.HybridSeException
 import com._4paradigm.openmldb.batch.SparkTestSuite
 import com._4paradigm.openmldb.batch.utils.SparkUtil.{addColumnByMonotonicallyIncreasingId, addColumnByZipWithIndex,
-  addColumnByZipWithUniqueId, addIndexColumn, checkSchemaIgnoreNullable,
-  rddInternalRowToDf, smallDfEqual, supportNativeLastJoin, approximateDfEqual}
+  addColumnByZipWithUniqueId, addIndexColumn, approximateDfEqual, checkSchemaIgnoreNullable, rddInternalRowToDf,
+  smallDfEqual, supportNativeLastJoin}
 import org.apache.spark.sql.{DataFrame, Row, SparkSession}
-import org.apache.spark.sql.types.{IntegerType, StructField, StructType, TimestampType}
+import org.apache.spark.sql.types.{IntegerType, StringType, StructField, StructType, TimestampType}
 
 import java.sql.Timestamp
 import scala.collection.JavaConverters.seqAsJavaListConverter

@@ -387,23 +387,17 @@ jobs:
         run: ./openmldb/bin/stop-standalone.sh
 
   publish-test-results:
-    runs-on: ubuntu-latest
     needs: ["java-sdk", "python-sdk", "go-sdk"]
-
     # the action will only run on 4paradigm/OpenMLDB's context, not for fork repo or dependabot
     if: >
       always() && github.event_name == 'push' || (
       github.event.pull_request.head.repo.full_name == github.repository &&
       github.event.sender.login != 'dependabot[bot]' )
-    steps:
-      - name: Download Artifacts
-        uses: actions/download-artifact@v2
-
-      - name: Publish Linux UT Results
-        uses: EnricoMi/publish-unit-test-result-action@v1
-        with:
-          files: |
-            linux-ut-result-*/**/*.xml
-            mac-ut-result-*/**/*.xml
-          check_name: SDK Test Report
-          comment_title: SDK Test Report
+    name: Publish SDK Test Results
+    uses: ./.github/workflows/publish-test-results-action.yml
+    with:
+      files: |
+        linux-ut-result-*/**/*.xml
+        mac-ut-result-*/**/*.xml
+      check_name: SDK Test Report
+      comment_title: SDK Test Report

@@ -19,7 +19,9 @@ if (POLICY CMP0086)
     cmake_policy(SET CMP0086 NEW)
 endif ()
 
-list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake-modules")
+list(APPEND CMAKE_MODULE_PATH
+    "${CMAKE_SOURCE_DIR}/cmake-modules"
+    "${CMAKE_SOURCE_DIR}/cmake")
 
 project(openmldb)
 
@@ -34,7 +36,7 @@ endif()
 message (STATUS "CMAKE_BUILD_TYPE: ${CMAKE_BUILD_TYPE}")
 set(OPENMLDB_VERSION_MAJOR 0)
 set(OPENMLDB_VERSION_MINOR 6)
-set(OPENMLDB_VERSION_BUG 0)
+set(OPENMLDB_VERSION_BUG 5)
 
 function(get_commitid CODE_DIR COMMIT_ID)
     find_package(Git REQUIRED)
@@ -128,6 +130,11 @@ else()
     set(RocksDB_LIB ${RocksDB_LIBRARY})
 endif()
 
+# third party sources
+include(FetchContent)
+set(FETCHCONTENT_QUIET OFF)
+include(farmhash)
+
 if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
     set(OS_LIB ${CMAKE_THREAD_LIBS_INIT} rt)
     set(BRPC_LIBS ${BRPC_LIBRARY} ${Protobuf_LIBRARIES} ${GLOG_LIBRARY} ${GFLAGS_LIBRARY} ${UNWIND_LIBRARY} ${OPENSSL_LIBRARIES} ${LEVELDB_LIBRARY} ${Z_LIBRARY} ${SNAPPY_LIBRARY} dl pthread ${OS_LIB})
@@ -196,6 +203,7 @@ set_target_properties(absl::time_zone PROPERTIES INTERFACE_LINK_LIBRARIES "\$<\$
 
 find_package(GTest REQUIRED)
 
+# TODO(hw): dup with hybridse root cmake, need cleanup
 list(
         APPEND
         ABSL_LIBS
@@ -214,7 +222,8 @@ list(
         absl::strings_internal
         absl::synchronization
         absl::time
-        absl::status)
+        absl::status
+        absl::statusor)
 
 find_package(ICU COMPONENTS i18n io uc data)
 if (NOT ICU_FOUND)
@@ -260,10 +269,12 @@ configure_file(
 include_directories(
   ${CMAKE_SOURCE_DIR}/include
   ${CMAKE_SOURCE_DIR}/hybridse/include
+  ${CMAKE_SOURCE_DIR}/hybridse/src
   ${CMAKE_BINARY_DIR}/hybridse/src
   ${LLVM_INCLUDE_DIRS}
   ${Boost_INCLUDE_DIRS}
-  ${CMAKE_PREFIX_PATH}/include)
+  ${CMAKE_PREFIX_PATH}/include
+)
 
 link_directories(
     ${LLVM_LIBRARY_DIRS}

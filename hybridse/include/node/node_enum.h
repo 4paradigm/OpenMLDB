@@ -177,8 +177,8 @@ enum FnOperator {
     kFnOpAdd,         // "+"
     kFnOpMinus,       // "-"
     kFnOpMulti,       // "*"
-    kFnOpDiv,         // "/"
-    kFnOpFDiv,        // "div", float division
+    kFnOpDiv,         // "DIV", integer division
+    kFnOpFDiv,        // "/", float division
     kFnOpMod,         // "%"
     kFnOpAnd,         // "AND", logical
     kFnOpOr,          // "OR" , logical
@@ -263,6 +263,7 @@ enum CmdType {
     kCmdShowTableStatus,
     kCmdShowFunctions,
     kCmdDropFunction,
+    kCmdShowJobLog,
     kCmdFake,  // not a real cmd, for testing purpose only
     kLastCmd = kCmdFake,
 };

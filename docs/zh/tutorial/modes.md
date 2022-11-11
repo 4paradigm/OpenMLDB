@@ -29,7 +29,7 @@ OpenMLDB 针对线上线下的特征工程全流程，在不同阶段提供了�
 | 3. 特征方案部署         | 离线模式   | CLI                                   | - `DEPLOY` 命令                                                                                                 |
 | 4. 冷启动在线数据导入   | 在线预览模式 | CLI，导入工具                              | - CLI 使用 `LOAD DATA` 命令<br />- 也可使用独立导入工具 `openmldb-import`                                                   |
 | 5. 实时数据接入         | 在线预览模式 | connector, REST APIs, Java/Python SDK | - 第三方数据源调用 OpenMLDB 的相关数据插入 API(connector)，引入实时数据<br/>- 或使用Java/Python SDK工具，在对请求行的计算完成后，插入主表                 |
-| 6. 在线数据预览（可选） | 在线预览模式 | CLI, Java/Python SDK                  | - 目前仅支持对列进行 `SELECT` 操作、表达式、以及单行处理函数用于数据预览<br />- 不支持 `LAST JOIN`, `GROUP BY`, `HAVING`, `WINDOW` 等复杂计算<br /> |
+| 6. 在线数据预览（可选） | 在线预览模式 | CLI, Java/Python SDK                  | - 目前不支持 `LAST JOIN`, `ORDER BY` |
 | 7. 实时特征计算         | 在线请求模式 | REST APIs, Java/Python SDK            | - 支持 OpenMLDB 所有的 SQL 语法<br />- REST APIs 以及 Java SDK 支持单行或者批请求<br />- Python SDK 仅支持单行请求                     |
 
 从以上的总结表格上可以看到，执行模式分为 `离线模式`，`在线预览模式`，以及`在线请求模式`。后续我们将对这几种模式展开详细介绍。下图总结示意了全流程开发和对应的执行模式。
@@ -71,8 +71,11 @@ OpenMLDB 针对线上线下的特征工程全流程，在不同阶段提供了�
 
 在线预览模式有以下主要特点：
 
-- 在线数据导入（`LOAD DATA`）和离线模式下一样，属于非阻塞式的异步执行 SQL，其余均为同步执行。
-- 在线预览模式目前仅支持简单的 `SELECT ` 列相关操作来查看相关数据，并不支持复杂的 SQL 查询。因此在线预览模式并不支持 SQL 特征的开发调试，相关开发工作应该在离线模式或者单机版进行。
+- 在线数据导入（`LOAD DATA`），可以选择本地（load_mode='local'）或者集群（load_mode='cluster'）导入。本地导入为同步执行，集群导入为非阻塞式的异步执行（和离线模式下一样）。其他操作均为同步执行。
+- 在线预览模式目前不支持`Last Join`和`Order By`。
+- 在线模式服务端均为单线程执行SQL，对于大数据处理，会比较慢，有可能会触发超时，可以通过在客户端配置`--request_timeout`来提高超时时间。
+- 为了防止影响线上服务，在线预览模式控制了最大访问的条数和pk个数，可以通过`--max_traverse_cnt`和`--max_traverse_pk_cnt`来设置；
+同时，通过`--scan_max_bytes_size`来限制结果的大小。详细配置可参考[配置文件](../deploy/conf.md)。
 
 在线预览模式通过以下形式进行设置：
 

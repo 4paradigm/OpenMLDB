@@ -1610,10 +1610,26 @@ void DefaultUdfLibrary::InitMathUdf() {
             Example:
 
             @code{.sql}
-                SELECT RADIANS(90);
+                SELECT RADIANS(90.0);
                 --output 1.570796326794896619231
             @endcode
             @since 0.6.0)");
+
+    RegisterExternalTemplate<v1::Hash64>("hash64")
+        .doc(R"(
+            @brief Returns a hash value of the arguments. It is not a cryptographic hash function and should not be used as such.
+
+            Example:
+
+            @code{.sql}
+                SELECT hash64(cast(90 as int));
+                --output -3754664774081171349
+            @endcode
+
+            @since 0.7.0)")
+        .args_in<bool, int16_t, int32_t, int64_t, float, double, StringRef, Timestamp, Date>();
+    RegisterAlias("farm_fingerprint", "hash64");
+
     InitTrigonometricUdf();
 }
 
@@ -2612,7 +2628,7 @@ void DefaultUdfLibrary::InitUdaf() {
             @endcode
             @since 0.1.0
         )")
-        .args_in<int16_t, int32_t, int64_t, float, double, Timestamp, Date,
+        .args_in<bool, int16_t, int32_t, int64_t, float, double, Timestamp, Date,
                  StringRef, LiteralTypedRow<>>();
 
     RegisterUdafTemplate<AvgWhereDef>("avg_where")

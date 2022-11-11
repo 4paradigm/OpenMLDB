@@ -181,7 +181,7 @@ base::Status IndexUtil::CheckNewIndex(const ::openmldb::common::ColumnKey& colum
     }
     std::string id_str = GetIDStr(column_key);
     for (const auto& cur_column_key : table_info.column_key()) {
-        if (id_str == GetIDStr(cur_column_key)) {
+        if (id_str == GetIDStr(cur_column_key) && cur_column_key.flag() == 0) {
             return {base::ReturnCode::kError, "duplicated index"};
         }
     }

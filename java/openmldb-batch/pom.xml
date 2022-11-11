@@ -7,7 +7,7 @@
 	<parent>
 		<artifactId>openmldb-parent</artifactId>
 		<groupId>com.4paradigm.openmldb</groupId>
-		<version>0.6.0-SNAPSHOT</version>
+		<version>0.6.5-SNAPSHOT</version>
 	</parent>
 
 	<artifactId>openmldb-batch</artifactId>
@@ -33,10 +33,6 @@
         <java.version>1.8</java.version>
         <maven.compiler.source>1.8</maven.compiler.source>
         <maven.compiler.target>1.8</maven.compiler.target>
-		<scala.version>2.12.8</scala.version>
-		<scala.binary.version>2.12</scala.binary.version>
-		<hadoop.version>2.7.4</hadoop.version>
-		<spark.version>3.0.0</spark.version>
 		<spark.dependencyScope>provided</spark.dependencyScope>
 		<default.project.version>0.4.0</default.project.version>
 	</properties>
@@ -88,7 +84,7 @@
 		<dependency>
 			<groupId>org.yaml</groupId>
 			<artifactId>snakeyaml</artifactId>
-			<version>1.26</version>
+			<version>1.31</version>
 		</dependency>
 		<dependency>
 			<groupId>org.scalatest</groupId>
@@ -125,19 +121,19 @@
 		<dependency>
 			<groupId>org.apache.parquet</groupId>
 			<artifactId>parquet-column</artifactId>
-			<version>1.10.1</version>
+			<version>1.12.2</version>
 		</dependency>
 
 		<dependency>
 			<groupId>org.apache.parquet</groupId>
 			<artifactId>parquet-hadoop</artifactId>
-			<version>1.10.1</version>
+			<version>1.12.2</version>
 		</dependency>
 
 		<dependency>
 			<groupId>com.google.protobuf</groupId>
 			<artifactId>protobuf-java</artifactId>
-			<version>3.16.1</version>
+			<version>3.16.3</version>
 		</dependency>
 
 		<dependency>
