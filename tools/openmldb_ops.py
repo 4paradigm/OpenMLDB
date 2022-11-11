@@ -49,6 +49,12 @@ parser.add_option("--statfile",
                   default=".stat",
                   help="temp state file")
 
+parser.add_option("--allow_single_replica",
+                  dest="allow_single_replica",
+                  default=False,
+                  action="store_true",
+                  help="whether allow unavailability of single-replica table during pre-upgrade")
+
 parser.add_option("--db",
                   dest="db",
                   default="",
@@ -399,6 +405,7 @@ def GetOpStatus(executor : Executor, db : str = None, filter : str = None, wait_
     for db in dbs:
         while True:
             all_done = True
+            wait_op = ""
             status, result = executor.ShowOpStatus(db)
             if not status.OK():
                 return Status(-1, "showopstatus failed"), all_results
@@ -406,21 +413,22 @@ def GetOpStatus(executor : Executor, db : str = None, filter : str = None, wait_
             for record in result:
                 if record[4] == 'kDoing' or record[4] == 'kInited':
                     all_done = False
-                    value = " ".join(record)
-                    log.info(f"waiting {value}")
-                    time.sleep(2)
+                    wait_op = " ".join(record)
                     break
 
             if (not wait_done) or all_done:
                 all_results.extend([[db] + record for record in result if (not filter) or (record[4] == filter)])
                 break
+
+            log.info(f"waiting {wait_op}")
+            time.sleep(2)
     return Status(), all_results
 
 def ShowTableStatus(executor : Executor, pattern : str = '%') -> tuple([Status, list]):
     status, result = executor.ShowTableStatus(pattern)
     return status, result
 
-def PreUpgrade(executor : Executor, endpoint : str, statfile: str) -> Status:
+def PreUpgrade(executor : Executor, endpoint : str, statfile : str, allow_single_replica : bool) -> Status:
     leaders = []
     # get all leader partitions
     log.info(f"start to pre-upgrade {endpoint}")
@@ -461,6 +469,9 @@ def PreUpgrade(executor : Executor, endpoint : str, statfile: str) -> Status:
             # if one_replica, add a new replica
             desc_endpoint = ""
             if one_replica:
+                if allow_single_replica:
+                    continue
+
                 # select the tablet with min_partition_num to add replica to
                 min_partition_num = sys.maxsize
                 for cur_endpoint in all_dict:
@@ -569,22 +580,26 @@ def PrettyPrint(data : list, header : list = None):
 
 if __name__ == "__main__":
     (options, args) = parser.parse_args()
-    supported_cmds = set(["recoverdata", "scalein", "scaleout", "pre-upgrade", "post-upgrade", "showopstatus",
-                          "showtablestatus"])
-    if options.cmd not in supported_cmds:
-        log.error(f"unsupported cmd {options.cmd}")
+    manage_ops = set(["recoverdata", "scalein", "scaleout", "pre-upgrade", "post-upgrade"])
+    query_ops = set(["showopstatus", "showtablestatus"])
+    if options.cmd not in manage_ops and options.cmd not in query_ops:
+        print(f"unsupported cmd: {options.cmd}")
+        print(f"available cmds: {list(manage_ops) + list(query_ops)}")
         sys.exit()
+
     executor = Executor(options.openmldb_bin_path, options.zk_cluster, options.zk_root_path)
     if not executor.Connect().OK():
         log.error("connect OpenMLDB failed")
         sys.exit()
-    status, auto_failover = executor.GetAutofailover()
-    if not status.OK():
-        log.error("get failover failed")
-        sys.exit()
-    if auto_failover and not executor.SetAutofailover("false").OK():
-        log.error("set auto_failover failed")
-        sys.exit()
+    if options.cmd in manage_ops:
+        status, auto_failover = executor.GetAutofailover()
+        if not status.OK():
+            log.error("get failover failed")
+            sys.exit()
+        if auto_failover and not executor.SetAutofailover("false").OK():
+            log.error("set auto_failover failed")
+            sys.exit()
+
     if options.cmd == "recoverdata":
         RecoverData(executor)
     elif options.cmd == "scaleout":
@@ -605,7 +620,7 @@ if __name__ == "__main__":
         if len(endpoints) != 1:
             log.warning("must provide --endpoints with only one endpoint")
         if options.cmd == "pre-upgrade":
-            PreUpgrade(executor, endpoints[0], options.statfile)
+            PreUpgrade(executor, endpoints[0], options.statfile, options.allow_single_replica)
         else:
             PostUpgrade(executor, endpoints[0], options.statfile)
     elif options.cmd == "showopstatus":
@@ -627,5 +642,9 @@ if __name__ == "__main__":
             PrettyPrint(results[1:], header)
         else:
             print(status.msg)
-    if auto_failover and not executor.SetAutofailover("true").OK():
-        log.warning("set auto_failover failed")
+    else:
+        print(f"cmd {options.cmd} is not handled")
+
+    if options.cmd in manage_ops:
+        if auto_failover and not executor.SetAutofailover("true").OK():
+            log.warning("set auto_failover failed")

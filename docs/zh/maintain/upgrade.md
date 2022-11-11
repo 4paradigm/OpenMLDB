@@ -1,7 +1,9 @@
 # 版本升级
 
 升级过程对服务的影响:
-* 如果创建的表是单副本，升级过程中会自动添加副本，升级结束会自动删除新添加的副本。
+* 如果创建的表是单副本，用户可以选择：
+   - 通过`pre-upgrade`和`post-upgrade`，升级前自动添加副本，升级结束会自动删除新添加的副本。这样行为和多副本保持一致
+   - 如果允许单副本表在升级过程中不可用，可以在`pre-upgrade`的时候添加`--allow_single_replica`选项，在内存紧张的环境下，可以避免添加副本可能造成的OOM
 * 升级过程中，会把待升级的tablet上的leader分片迁移到其它tablets上，升级结束会迁移回来。迁移过程中，写请求会有少量的数据丢失，如果不能容忍少量写丢失，需要在升级过程中停掉写操作。
 
 ## 1. 升级nameserver
@@ -24,6 +26,7 @@
     ```bash
     python tools/openmldb_ops.py --openmldb_bin_path=./bin/openmldb --zk_cluster=172.24.4.40:30481 --zk_root_path=/openmldb --cmd=pre-upgrade --endpoints=127.0.0.1:10921
     ```
+  如果允许单副本表在升级过程中不可用，可以添加`--allow_single_replica`来避免添加新的副本。
 * 停止tablet
     ```bash
     bash bin/start.sh stop tablet
@@ -56,20 +59,7 @@
 
 所有节点升级完成后恢复写操作, 执行`showtablestatus`命令查看`Rows`是否增加。
 
-## 3. 升级 taskmanager
-
-* 停止 taskmanager
-    ```bash
-    bash bin/start.sh stop taskmanager
-    ```
-* 备份旧版本bin和taskmanager目录
-* 替换新版本bin和taskmanager
-* 启动taskmanager
-    ```bash
-    bash bin/start.sh start taskmanager
-    ```
-
-## 4. 升级 apiserver
+## 3. 升级 apiserver
 
 * 停止 apiserver
     ```bash
@@ -80,6 +70,19 @@
 * 启动apiserver
     ```bash
     bash bin/start.sh start apiserver
+    ```
+
+## 4. 升级 taskmanager
+* 下载新版的OpenMLDB Spark发行版，替换老的Spark目录（即`$SPARK_HOME`指向的目录）
+* 停止 taskmanager
+    ```bash
+    bash bin/start.sh stop taskmanager
+    ```
+* 备份旧版本bin和taskmanager目录
+* 替换新版本bin和taskmanager
+* 启动taskmanager
+    ```bash
+    bash bin/start.sh start taskmanager
     ```
 
 ## 5. 升级SDK
