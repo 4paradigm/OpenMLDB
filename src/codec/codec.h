@@ -32,14 +32,13 @@ namespace codec {
 
 using ProjectList = ::google::protobuf::RepeatedField<uint32_t>;
 using Schema = ::google::protobuf::RepeatedPtrField<::openmldb::common::ColumnDesc>;
-static constexpr uint8_t VERSION_LENGTH = 2;
-static constexpr uint8_t SIZE_LENGTH = 4;
-static constexpr uint8_t HEADER_LENGTH = VERSION_LENGTH + SIZE_LENGTH;
-static constexpr uint32_t UINT24_MAX = (1 << 24) - 1;
+inline constexpr uint8_t VERSION_LENGTH = 2;
+inline constexpr uint8_t SIZE_LENGTH = 4;
+inline constexpr uint8_t HEADER_LENGTH = VERSION_LENGTH + SIZE_LENGTH;
+inline constexpr uint32_t UINT24_MAX = (1 << 24) - 1;
 
 class RowBuilder;
 class RowView;
-class RowProject;
 
 class RowProject {
  public:
