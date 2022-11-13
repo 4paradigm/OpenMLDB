@@ -81,7 +81,7 @@ class HybridseUtilTest extends SparkTestSuite with Matchers {
   }
 
   // TODO(hw): hive test needs metastore service.
-  skip("Test read from hive") {
+  ignore("Test read from hive") {
     // must have a new spark context
     getSparkSession.stop()
     val hiveSession = SparkSession.builder().master("local[4]").appName("hive-support")
