@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.6.6] - 2022-11-14
+
+### Features
+- Support the new build-in function `hash64` (#2754 @aceforeverd)
+- Improve the documents (#2763 @dl239, #2610 #2606 @michelle-qinqin)
+
+### Bug Fixes
+- `pytest` command is not found in MacOS virtual machine (#2765 @tobegit3hub)
+- Wrong output schema pass to `WindowAggRunner` (#2758 @aceforeverd)
+- There are no outputs when executing `showopstatus` command if no database specified (#2773 @dl239)
+- Tool for data recovery will run failed in some cases (#2768 @dl239)
+
 ## [0.6.5] - 2022-11-04
 
 ### Features
@@ -409,6 +421,7 @@ Removed
 - openmldb-0.2.0-linux.tar.gz targets on x86_64
 - aarch64 artifacts consider experimental
 
+[0.6.6]: https://github.com/4paradigm/OpenMLDB/compare/v0.6.5...v0.6.6
 [0.6.5]: https://github.com/4paradigm/OpenMLDB/compare/v0.6.4...v0.6.5
 [0.6.4]: https://github.com/4paradigm/OpenMLDB/compare/v0.6.3...v0.6.4
 [0.6.3]: https://github.com/4paradigm/OpenMLDB/compare/v0.6.2...v0.6.3
