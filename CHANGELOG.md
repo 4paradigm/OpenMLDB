@@ -7,10 +7,10 @@
 - Improve the documents (#2763 @dl239, #2610 #2606 @michelle-qinqin)
 
 ### Bug Fixes
-- `pytest` command is not found in MacOS virtual machine (#2765 @tobegit3hub)
-- Wrong output schema pass to `WindowAggRunner` (#2758 @aceforeverd)
-- There are no outputs when executing `showopstatus` command if no database specified (#2773 @dl239)
-- Tool for data recovery will run failed in some cases (#2768 @dl239)
+- `pytest` command is not found in the MacOS virtual machine. (#2765 @tobegit3hub)
+- Wrong output schema passes to the `WindowAggRunner`. (#2758 @aceforeverd)
+- There are no outputs when executing `showopstatus` command if no database is specified (#2773 @dl239)
+- The data recovery tool fails in some cases (#2768 @dl239)
 
 ## [0.6.5] - 2022-11-04
 
