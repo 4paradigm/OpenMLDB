@@ -460,7 +460,7 @@ bool Aggregator::EncodeAggrBuffer(const std::string& key, const std::string& fil
             return false;
         }
     }
-    if (row_builder_.SetInt64(row_ptr, 5, buffer.binlog_offset_)) {
+    if (!row_builder_.SetInt64(row_ptr, 5, buffer.binlog_offset_)) {
         return false;
     }
     if (!filter_key.empty()) {
@@ -475,11 +475,11 @@ bool Aggregator::FlushAggrBuffer(const std::string& key, const std::string& filt
     std::string encoded_row;
     std::string aggr_val;
     if (!EncodeAggrVal(buffer, &aggr_val)) {
-        PDLOG(ERROR, "Enocde aggr value to row failed");
+        PDLOG(ERROR, "Encode aggr value to row failed");
         return false;
     }
     if (!EncodeAggrBuffer(key, filter_key, buffer, aggr_val, &encoded_row)) {
-        PDLOG(ERROR, "Enocde aggr buffer failed");
+        PDLOG(ERROR, "Encode aggr buffer failed");
         return false;
     }
 
