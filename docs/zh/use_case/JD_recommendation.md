@@ -35,7 +35,7 @@ Oneflow-serving：https://github.com/Oneflow-Inc/serving/tree/ce5d667468b6b3ba66
 - 下载demo文件包，并映射demo文件夹至`/root/project`，这里我们使用的路径为`demodir=/home/gtest/demo`
 ```bash
 export demodir=/home/gtest/demo
-docker run -dit --name=demo --network=host -v $demodir:/root/project 4pdosc/openmldb:0.6.5 bash
+docker run -dit --name=demo --network=host -v $demodir:/root/project 4pdosc/openmldb:0.6.6 bash
 docker exec -it demo bash
 ```
 - 上述镜像预装了OpenMLDB的工具等，我们需要进一步安装OneFlow推理所需依赖。
