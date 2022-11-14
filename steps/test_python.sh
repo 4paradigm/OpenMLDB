@@ -46,6 +46,6 @@ python3 -m pip install "${whl_name}"
 python3 -m pip install pytest-cov
 
 cd "${ROOT_DIR}"/python/openmldb_sdk/tests
-pytest -vv --junit-xml=pytest.xml --cov=./ --cov-report=xml
+python3 -m pytest -vv --junit-xml=pytest.xml --cov=./ --cov-report=xml
 cd "${ROOT_DIR}"/onebox && ./stop_all.sh && cd "$ROOT_DIR"
 cd "$THIRDSRC/zookeeper-3.4.14" && ./bin/zkServer.sh stop && cd "$ROOT_DIR"

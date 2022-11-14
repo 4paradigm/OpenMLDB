@@ -242,12 +242,11 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                     }
                     auto op = dynamic_cast<const PhysicalWindowAggrerationNode*>(node);
                     WindowAggRunner* runner = nullptr;
-                    CreateRunner<WindowAggRunner>(&runner, id_++, op->GetProducer(0)->schemas_ctx(), op->GetLimitCnt(),
-                                                  op->window_, op->project().fn_info(), op->instance_not_in_window(),
-                                                  op->exclude_current_time(), op->exclude_current_row(),
-                                                  op->need_append_input());
-                    size_t input_slices =
-                        input->output_schemas()->GetSchemaSourceSize();
+                    CreateRunner<WindowAggRunner>(
+                        &runner, id_++, op->schemas_ctx(), op->GetLimitCnt(), op->window_, op->project().fn_info(),
+                        op->instance_not_in_window(), op->exclude_current_time(), op->exclude_current_row(),
+                        op->need_append_input() ? node->GetProducer(0)->schemas_ctx()->GetSchemaSourceSize() : 0);
+                    size_t input_slices = input->output_schemas()->GetSchemaSourceSize();
                     if (!op->window_unions_.Empty()) {
                         for (auto window_union :
                              op->window_unions_.window_unions_) {

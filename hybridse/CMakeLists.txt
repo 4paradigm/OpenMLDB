@@ -172,11 +172,13 @@ else()
 endif()
 
 include_directories(
-    ${PROJECT_SOURCE_DIR}/../include
+    ${CMAKE_SOURCE_DIR}/include
     ${CMAKE_CURRENT_SOURCE_DIR}/include
     ${LLVM_INCLUDE_DIRS}
     ${Boost_INCLUDE_DIRS}
-    ${CMAKE_PREFIX_PATH}/include)
+    ${CMAKE_PREFIX_PATH}/include
+    ${farmhash_SOURCE_DIR}/src
+)
 
 link_directories(
     ${LLVM_LIBRARY_DIRS}

@@ -54,6 +54,8 @@ jobs:
     env:
       NPROC: 3
       CTEST_PARALLEL_LEVEL: 3 # parallel test level for ctest (make test)
+      # this option enables print inner output rows of each node in runner
+      HYBRIDSE_DEBUG: true
     steps:
       - uses: actions/checkout@v2
 
