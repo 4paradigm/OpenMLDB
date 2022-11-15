@@ -41,7 +41,7 @@ spark.default.conf=spark.port.maxRetries=32;foo=bar
 
 #### 长窗口SQL
 
-`DEPLOY`长窗口的SQL条件比较严格，必须保证SQL中使用的表没有在线数据。如果表已有数据，即使`DEPLOY`和之前一致的SQL，也会操作失败。
+长窗口SQL,即`DEPLOY`时带有`OPTIONS(long_windows=...)`，语法详情见[长窗口](../reference/sql/deployment_manage/DEPLOY_STATEMENT.md#长窗口优化)。长窗口SQL的`DEPLOY`条件比较严格，必须保证SQL中使用的表没有在线数据。如果表已有数据，即使`DEPLOY`和之前一致的SQL，也会操作失败。
 
 #### 普通SQL
 
@@ -79,6 +79,56 @@ spark.default.conf=spark.port.maxRetries=32;foo=bar
 
 单机版LOAD DATA与集群版不同，它从客户端本地获取源数据，更类似`LOAD DATA LOCAL INFILE`。功能上仅支持csv，且支持的格式与集群版有些差别。
 
+### DELETE
+
+在线存储的表有多索引，DELETE可能无法删除所有索引中的对应数据，所以，可能出现删除了数据，却能查出已删除数据的情况。
+举例说明：
+```
+create database db;
+use db;
+create table t1(c1 int, c2 int,index(key=c1),index(key=c2));
+desc t1;
+set @@execute_mode='online';
+insert into t1 values (1,1),(2,2);
+delete from t1 where c2=2;
+select * from t1;
+select * from t1 where c2=2;
+```
+输出结果为
+```
+ --- ------- ------ ------ ---------
+  #   Field   Type   Null   Default
+ --- ------- ------ ------ ---------
+  1   c1      Int    YES
+  2   c2      Int    YES
+ --- ------- ------ ------ ---------
+ --- -------------------- ------ ---- ------ ---------------
+  #   name                 keys   ts   ttl    ttl_type
+ --- -------------------- ------ ---- ------ ---------------
+  1   INDEX_0_1668504212   c1     -    0min   kAbsoluteTime
+  2   INDEX_1_1668504212   c2     -    0min   kAbsoluteTime
+ --- -------------------- ------ ---- ------ ---------------
+ --------------
+  storage_mode
+ --------------
+  Memory
+ --------------
+ ---- ----
+  c1   c2
+ ---- ----
+  1    1
+  2    2
+ ---- ----
+
+2 rows in set
+ ---- ----
+  c1   c2
+ ---- ----
+
+0 rows in set
+```
+表t1有多个索引（DEPLOY也可能自动创建出多索引），`delete from t1 where c2=2`实际只删除了第二个index的数据，第一个index数据没有被影响。所以`select * from t1`使用第一个索引，结果会有两条数据，并没有删除，`select * from t1 where c2=2`使用第二个索引，结果为空，数据已被删除。
+
 ## DQL边界
 
 Query语句首先要分执行模式，离线模式中query只有批查询，在线模式中分为批查询（又称在线预览模式，仅支持部分SQL）和请求查询（又称在线请求模式）
@@ -108,7 +158,7 @@ Query语句首先要分执行模式，离线模式中query只有批查询，在�
 - 离线模式的批查询：离线特征生成
 - 在线请求模式的请求查询：实时特征计算
 
-两种模式虽然不同，但是用的是同一SQL，且计算结果一致。但由于实施特征计算有性能要求与架构限制，不是所有SQL都能用于在线请求。（在线请求模式可执行的SQL是离线SQL的子集）**在实际开发中，你需要在完成离线SQL开发后`DEPLOY` SQL，来测试SQL是否可上线。**
+两种模式虽然不同，但是用的是同一SQL，且计算结果一致。但由于实时特征计算有性能要求与架构限制，不是所有SQL都能用于在线请求。（在线请求模式可执行的SQL是离线SQL的子集）**在实际开发中，你需要在完成离线SQL开发后`DEPLOY` SQL，来测试SQL是否可上线。**
 
 ```{tip}
 批查询和请求查询，实际上是SQL的两种编译模式，会生成不同的计划。所以，当你在做离线SQL开发时，请使用离线模式进行开发验证，不要使用`DEPLOY`做验证。同样，需要上线的SQL需要通过`DEPLOY`验证，离线SQL可执行并不代表可以上线。
