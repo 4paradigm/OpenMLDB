@@ -312,8 +312,8 @@ jobs:
 
       - name: prepare python deps
         run: |
-            #curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py
-            #python3 get-pip.py
+          #curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py
+          #python3 get-pip.py
           python -m ensurepip --upgrade
           python3 -m pip install setuptools wheel twine
 
