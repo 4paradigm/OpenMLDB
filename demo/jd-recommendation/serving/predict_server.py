@@ -37,7 +37,8 @@ table_schema = [
     ("time1", "string"),
 ]
 
-url = ""
+apiserver_url = ""
+triton_url = ""
 
 def get_schema():
     dict_schema_tmp = {}
@@ -70,13 +71,13 @@ class PredictHandler(tornado.web.RequestHandler):
                 row_data.append(None)
 
         data["input"].append(row_data)
-        rs = requests.post(url, json=data)
+        rs = requests.post(apiserver_url, json=data)
         result = json.loads(rs.text)
         for r in result["data"]["data"]:
             res = np.array(r)
             self.write("----------------ins---------------\n")
             self.write(str(res) + "\n")
-            pred = process_infer(res)
+            pred = process_infer(triton_url, res)
             self.write("---------------predict change of purchase -------------\n")
             self.write(f"{str(pred)}")
 
@@ -95,9 +96,11 @@ def make_app():
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("endpoint", help="specify the endpoint of apiserver")
+    parser.add_argument("apiserver", help="specify the endpoint of openmldb apiserver")
+    parser.add_argument("triton", help="specify the endpoint of oneflow triton")
     args = parser.parse_args()
-    url = f"http://{args.endpoint}/dbs/JD_db/deployments/demo"
+    apiserver_url = f"http://{args.apiserver}/dbs/JD_db/deployments/demo"
+    triton_url = args.triton
     app = make_app()
     app.listen(8887)
     tornado.ioloop.IOLoop.current().start()
