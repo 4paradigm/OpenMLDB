@@ -294,7 +294,7 @@ jobs:
           TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
 
   python-sdk-mac:
-    runs-on: macos-latest
+    runs-on: macos-12
     #if: github.event_name == 'push'
     env:
       SQL_PYSDK_ENABLE: ON
@@ -316,6 +316,7 @@ jobs:
           #python3 get-pip.py
           #python3 -m ensurepip --upgrade
           #python3 -m pip install --upgrade pip
+          PATH=$PATH:/Library/Frameworks/Python.framework/Versions/3.11/bin
           echo $PATH
           python3 -m pip install setuptools wheel twine
           #/usr/local/bin/twine --version
