@@ -316,7 +316,9 @@ jobs:
           #python3 get-pip.py
           #python3 -m ensurepip --upgrade
           #python3 -m pip install --upgrade pip
+          echo $PATH
           python3 -m pip install setuptools wheel twine
+          twine --version
 
       - name: build pysdk and sqlalchemy
         run: |
