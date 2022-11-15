@@ -181,7 +181,7 @@ class Aggregator {
 
  private:
     virtual bool UpdateAggrVal(const codec::RowView& row_view, const int8_t* row_ptr, AggrBuffer* aggr_buffer,
-                               bool reverse = false) = 0;
+                               const std::string& key, bool reverse = false) = 0;
     virtual bool EncodeAggrVal(const AggrBuffer& buffer, std::string* aggr_val) = 0;
     virtual bool DecodeAggrVal(const int8_t* row_ptr, AggrBuffer* buffer) = 0;
     int64_t AlignedStart(int64_t ts) {
@@ -225,7 +225,7 @@ class SumAggregator : public Aggregator {
 
  private:
     bool UpdateAggrVal(const codec::RowView& row_view, const int8_t* row_ptr, AggrBuffer* aggr_buffer,
-                       bool reverse = false) override;
+                       const std::string& key, bool reverse = false) override;
 
     bool EncodeAggrVal(const AggrBuffer& buffer, std::string* aggr_val) override;
 
@@ -241,10 +241,16 @@ class MinMaxBaseAggregator : public Aggregator {
 
     ~MinMaxBaseAggregator() = default;
 
+    bool RebuildExtremumAggrBuffer(const codec::RowView& row_view, AggrBuffer* aggr_buffer,
+                                   const std::string& key);
+
  private:
     bool EncodeAggrVal(const AggrBuffer& buffer, std::string* aggr_val) override;
 
     bool DecodeAggrVal(const int8_t* row_ptr, AggrBuffer* buffer) override;
+    
+    bool UpdateAggrVal(const codec::RowView& row_view, const int8_t* row_ptr, AggrBuffer* aggr_buffer,
+                       const std::string& key, bool reverse = false) override;
 };
 class MinAggregator : public MinMaxBaseAggregator {
  public:
@@ -257,7 +263,7 @@ class MinAggregator : public MinMaxBaseAggregator {
 
  private:
     bool UpdateAggrVal(const codec::RowView& row_view, const int8_t* row_ptr, AggrBuffer* aggr_buffer,
-                       bool reverse = false) override;
+                       const std::string& key, bool reverse = false) override;
 };
 
 class MaxAggregator : public MinMaxBaseAggregator {
@@ -271,7 +277,7 @@ class MaxAggregator : public MinMaxBaseAggregator {
 
  private:
     bool UpdateAggrVal(const codec::RowView& row_view, const int8_t* row_ptr, AggrBuffer* aggr_buffer,
-                       bool reverse = false) override;
+                       const std::string& key, bool reverse = false) override;
 };
 
 class CountAggregator : public Aggregator {
@@ -285,7 +291,7 @@ class CountAggregator : public Aggregator {
 
  private:
     bool UpdateAggrVal(const codec::RowView& row_view, const int8_t* row_ptr, AggrBuffer* aggr_buffer,
-                       bool reverse = false) override;
+                       const std::string& key, bool reverse = false) override;
 
     bool EncodeAggrVal(const AggrBuffer& buffer, std::string* aggr_val) override;
 
@@ -305,7 +311,7 @@ class AvgAggregator : public Aggregator {
 
  private:
     bool UpdateAggrVal(const codec::RowView& row_view, const int8_t* row_ptr, AggrBuffer* aggr_buffer,
-                       bool reverse = false) override;
+                       const std::string& key, bool reverse = false) override;
 
     bool EncodeAggrVal(const AggrBuffer& buffer, std::string* aggr_val) override;
 

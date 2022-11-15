@@ -203,7 +203,7 @@ bool Aggregator::Update(const std::string& key, const std::string& row, const ui
     if (window_type_ == WindowType::kRowsNum) {
         aggr_buffer.ts_end_ = cur_ts;
     }
-    bool ok = UpdateAggrVal(base_row_view_, row_ptr, &aggr_buffer, reverse);
+    bool ok = UpdateAggrVal(base_row_view_, row_ptr, &aggr_buffer, key, reverse);
     if (!ok) {
         PDLOG(ERROR, "Update aggr value failed");
         return false;
@@ -548,15 +548,13 @@ bool Aggregator::UpdateFlushedBuffer(const std::string& key, const std::string& 
         tmp_buffer.binlog_offset_ = offset;
     }
     bool ok = false;
-    if (reverse) {
-        ok = aggr_table_->Delete(key, aggr_index_pos_, tmp_buffer.ts_begin_);
-        if (!ok) {
-            PDLOG(ERROR, "aggr table delete one record failed");
-            return false;
-        }
+    ok = aggr_table_->Delete(key, aggr_index_pos_, tmp_buffer.ts_begin_);
+    if (!ok) {
+        PDLOG(ERROR, "aggr table delete one record failed");
+        return false;
     }
 
-    ok = UpdateAggrVal(base_row_view_, base_row_ptr, &tmp_buffer, reverse);
+    ok = UpdateAggrVal(base_row_view_, base_row_ptr, &tmp_buffer, key, reverse);
     if (!ok) {
         PDLOG(ERROR, "UpdateAggrVal failed");
         return false;
@@ -586,7 +584,7 @@ SumAggregator::SumAggregator(const ::openmldb::api::TableMeta& base_meta, const 
                  window_size) {}
 
 bool SumAggregator::UpdateAggrVal(const codec::RowView& row_view, const int8_t* row_ptr, AggrBuffer* aggr_buffer,
-                                  bool reverse) {
+                                  const std::string& key, bool reverse) {
     if (row_view.IsNULL(row_ptr, aggr_col_idx_)) {
         return true;
     }
@@ -823,6 +821,47 @@ bool MinMaxBaseAggregator::DecodeAggrVal(const int8_t* row_ptr, AggrBuffer* buff
     return true;
 }
 
+bool MinMaxBaseAggregator::UpdateAggrVal(const codec::RowView& row_view, const int8_t* row_ptr, AggrBuffer* aggr_buffer,
+                   const std::string& key, bool reverse) {
+    return true;
+}
+
+bool MinMaxBaseAggregator::RebuildExtremumAggrBuffer(const codec::RowView& row_view,
+                                                     AggrBuffer* aggr_buffer,
+                                                     const std::string& key) {
+    if (base_table_ == nullptr) {
+        PDLOG(ERROR, "base table is nullptr, cannot update MinAggr table");
+        return false;
+    }
+    auto it = base_table_->NewTraverseIterator(this->GetIndexPos());
+    int64_t ts_begin = aggr_buffer->ts_begin_;
+    int64_t ts_end = aggr_buffer->ts_end_;
+    it->Seek(key, ts_end);
+    aggr_buffer->clear();
+    if (this->GetWindowType() == WindowType::kRowsRange) {
+        aggr_buffer->ts_begin_ = ts_begin;
+        aggr_buffer->ts_end_ = ts_end;
+    }
+    while (it->Valid() && it->GetKey() >= (uint64_t)ts_begin) {
+        if (it->GetKey() <= (uint64_t)ts_end) {
+            const int8_t* base_row_ptr = reinterpret_cast<const int8_t*>(it->GetValue().data());
+            if (!UpdateAggrVal(row_view, base_row_ptr, aggr_buffer, key, false)) {
+                PDLOG(ERROR, "Failed to update aggr Val during rebuilding Extermum aggr buffer");
+                return false;
+            }
+            if (this->GetWindowType() == WindowType::kRowsRange) {
+                if (aggr_buffer->ts_begin_ == -1) {
+                    // the first record.
+                    aggr_buffer->ts_end_ = it->GetKey();
+                }
+                aggr_buffer->ts_begin_ = it->GetKey();
+            }
+        }
+        it->Next();
+    }
+    return true;
+}
+
 MinAggregator::MinAggregator(const ::openmldb::api::TableMeta& base_meta, const ::openmldb::api::TableMeta& aggr_meta,
                              std::shared_ptr<Table> aggr_table, std::shared_ptr<LogReplicator> aggr_replicator,
                              const uint32_t& index_pos, const std::string& aggr_col, const AggrType& aggr_type,
@@ -831,23 +870,9 @@ MinAggregator::MinAggregator(const ::openmldb::api::TableMeta& base_meta, const 
                            window_tpye, window_size) {}
 
 bool MinAggregator::UpdateAggrVal(const codec::RowView& row_view, const int8_t* row_ptr, AggrBuffer* aggr_buffer,
-                                  bool reverse) {
+                                  const std::string& key, bool reverse) {
     if (reverse) {
-        if (base_table_ == nullptr) {
-            PDLOG(ERROR, "base table is nullptr, cannot update MinAggr table");
-            return false;
-        }
-        aggr_buffer->non_null_cnt_ = 0;
-        auto it = base_table_->NewTraverseIterator(0);
-        it->SeekToFirst();
-        while (it->Valid() && it->GetKey() >= aggr_buffer->ts_begin_) {
-            if (it->GetKey() <= aggr_buffer->ts_end_) {
-                const int8_t* base_row_ptr = reinterpret_cast<const int8_t*>(it->GetValue().data());
-                UpdateAggrVal(row_view, base_row_ptr, aggr_buffer, false);
-            }
-            it->Next();
-        }
-        return true;
+        return RebuildExtremumAggrBuffer(row_view, aggr_buffer, key);
     } else {
         if (row_view.IsNULL(row_ptr, aggr_col_idx_)) {
             return true;
@@ -932,23 +957,9 @@ MaxAggregator::MaxAggregator(const ::openmldb::api::TableMeta& base_meta, const 
                            window_tpye, window_size) {}
 
 bool MaxAggregator::UpdateAggrVal(const codec::RowView& row_view, const int8_t* row_ptr, AggrBuffer* aggr_buffer,
-                                  bool reverse) {
+                                  const std::string& key, bool reverse) {
     if (reverse) {
-        if (base_table_ == nullptr) {
-            PDLOG(ERROR, "base table is nullptr, cannot update MinAggr table");
-            return false;
-        }
-        aggr_buffer->non_null_cnt_ = 0;
-        auto it = base_table_->NewTraverseIterator(0);
-        it->SeekToFirst();
-        while (it->Valid() && it->GetKey() >= aggr_buffer->ts_begin_) {
-            if (it->GetKey() <= aggr_buffer->ts_end_) {
-                const int8_t* base_row_ptr = reinterpret_cast<const int8_t*>(it->GetValue().data());
-                UpdateAggrVal(row_view, base_row_ptr, aggr_buffer, false);
-            }
-            it->Next();
-        }
-        return true;
+        return RebuildExtremumAggrBuffer(row_view, aggr_buffer, key);
     } else {
         if (row_view.IsNULL(row_ptr, aggr_col_idx_)) {
             return true;
@@ -1054,7 +1065,7 @@ bool CountAggregator::DecodeAggrVal(const int8_t* row_ptr, AggrBuffer* buffer) {
 }
 
 bool CountAggregator::UpdateAggrVal(const codec::RowView& row_view, const int8_t* row_ptr, AggrBuffer* aggr_buffer,
-                                    bool reverse) {
+                                    const std::string& key, bool reverse) {
     if (count_all || !row_view.IsNULL(row_ptr, aggr_col_idx_)) {
         if (reverse) {
             aggr_buffer->non_null_cnt_--;
@@ -1073,7 +1084,7 @@ AvgAggregator::AvgAggregator(const ::openmldb::api::TableMeta& base_meta, const 
                  window_size) {}
 
 bool AvgAggregator::UpdateAggrVal(const codec::RowView& row_view, const int8_t* row_ptr, AggrBuffer* aggr_buffer,
-                                  bool reverse) {
+                                  const std::string& key, bool reverse) {
     if (row_view.IsNULL(row_ptr, aggr_col_idx_)) {
         return true;
     }

@@ -1229,7 +1229,7 @@ TEST_F(AggregatorTest, OutOfOrder) {
     int32_t update_val = *reinterpret_cast<int32_t*>(ch);
     ASSERT_EQ(update_val, 201);
 
-    // the old agg val
+    // the old agg val has been deleted.
     it->Next();
     {
         auto val = it->GetValue();
@@ -1244,7 +1244,7 @@ TEST_F(AggregatorTest, OutOfOrder) {
         origin_row_view.GetString(4, &ch, &ch_length);
         ASSERT_EQ(origin_cnt, 2);
         int32_t update_val = *reinterpret_cast<int32_t*>(ch);
-        ASSERT_EQ(update_val, 101);
+        ASSERT_EQ(update_val, 97);
     }
     ::openmldb::base::RemoveDirRecursive(folder);
 }
