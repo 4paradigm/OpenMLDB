@@ -28,7 +28,7 @@ object LoadDataPlan {
   private val logger = LoggerFactory.getLogger(this.getClass)
 
   def gen(ctx: PlanContext, node: PhysicalLoadDataNode): SparkInstance = {
-    val inputFile = node.File()
+    val inputFile = node.File().toLowerCase
     val db = if (node.Db().nonEmpty) node.Db() else ctx.getConf.defaultDb
     val table = node.Table()
     val spark = ctx.getSparkSession

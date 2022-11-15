@@ -298,7 +298,7 @@ object HybridseUtil {
       val df = reader.format(format).load(file)
       require(checkSchemaIgnoreNullable(df.schema, oriSchema),
         s"schema mismatch(ignore nullable), loaded ${df.schema}!= table $oriSchema, check $file")
-      // reset nullable
+      // reset nullable TODO(hw): is it OK?
       df.sqlContext.createDataFrame(df.rdd, oriSchema)
     } else{
       // csv should auto detect the timestamp format
@@ -350,6 +350,7 @@ object HybridseUtil {
     }
     require(checkSchemaIgnoreNullable(df.schema, oriSchema), //df.schema == oriSchema, hive table always nullable?
         s"schema mismatch(ignore nullable), loaded hive ${df.schema}!= table $oriSchema, check $file")
+    // TODO(hw): schema needs reset nullable?
     df
   }
 }
