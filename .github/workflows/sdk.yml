@@ -314,7 +314,8 @@ jobs:
         run: |
           #curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py
           #python3 get-pip.py
-          python -m ensurepip --upgrade
+          python3 -m ensurepip --upgrade
+          python3 -m pip install --upgrade pip
           python3 -m pip install setuptools wheel twine
 
       - name: build pysdk and sqlalchemy
