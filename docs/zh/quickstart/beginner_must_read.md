@@ -18,6 +18,30 @@ docker创建OpenMLDB见[快速上手](./openmldb_quickstart.md)，请注意文�
 如果我们还需要OpenMLDB服务端的配置和日志，可以使用诊断工具获取，见[下文](#提供配置与日志)。
 ```
 
+## 源数据
+
+### LOAD DATA
+
+从文件导入数据到OpenMLDB，通常使用LOAD DATA命令，详情参考[LOAD DATA INFILE](../reference/sql/dml/LOAD_DATA_STATEMENT.md)。LOAD DATA可使用的数据源和数据格式，与OpenMLDB版本（单机/集群）、执行模式、导入模式（即LOAD DATA配置项load_mode）都有一定关系。集群版默认 load_mode 为cluster，也可设置为local；单机版默认 load_mode 为local，**不支持cluster**。所以我们分为三种情况讨论：
+
+| LOAD DATA类型 | 支持执行模式（导入目的地） | 支持异步/同步 | 支持数据源 | 支持数据格式 |
+| :------------ | :----------------------- | :----------- | :-------- | :---------- |
+| 集群版 load_mode=cluster | 在线、离线 | 异步、同步 | file(有条件限制，请参考具体文档)/hdfs/hive| csv/parquet(hive源不限制格式) |
+| 集群版 load_mode=local | 在线 | 同步 | 客户端本地file | csv |
+| 单机版（only local) | 在线 |  同步 | 客户端本地file | csv |
+
+当LOAD DATA的源数据为csv格式时，还需额外注意列类型为timestamp列的格式问题。timestamp格式可分为"int64"(以下称为int64型)和"yyyy-MM-dd'T'HH:mm:ss[.SSS][XXX]"(以下称为年月日型)。所以我们分为三种讨论：
+
+| LOAD DATA类型 | 支持int64 | 支持年月日 |
+| :------------ | :------- | :-------- |
+| 集群版 load_mode=cluster | **``✓``** | **``✓``** |
+| 集群版 load_mode=local | **``✓``** | **``X``** |
+| 单机版（only local) | **``✓``** | **``X``** |
+
+```{hint}
+csv文件格式有诸多不便，更推荐使用parquet格式，需要OpenMLDB集群版并启动taskmanager组件。
+```
+
 ## 执行SQL
 
 OpenMLDB所有命令均为SQL，如果SQL执行失败或交互有问题（不知道命令是否执行成功），请先确认SQL书写是否有误，命令并未执行，还是命令进入了执行阶段。
@@ -43,9 +67,9 @@ create table t1(c1 int;
 
 如果是集群离线命令，默认异步模式下，发送命令会得到job id的返回。可使用`show job <id>`来查询job执行情况。
 
-离线job如果是SELECT（并不INTO保存结果），也不会将结果打印在客户端。需要从日志中获得结果，日志默认在`/work/openmldb/taskmanager/bin/logs/job_x.log`。
+离线job如果是异步SELECT（并不INTO保存结果），也不会将结果打印在客户端（同步SELECT将会打印结果）。需要从日志中获得结果，日志默认在`/work/openmldb/taskmanager/bin/logs/job_x.log`。
 
-如果发现job failed或者finished，但不符合你的预期，请查询日志。日志默认在`/work/openmldb/taskmanager/bin/logs/job_x_error.log`(注意有error后缀)，
+如果发现job failed或者其他状态，不符合你的预期，请查询日志。日志默认在`/work/openmldb/taskmanager/bin/logs/job_x_error.log`(注意有error后缀)，
 
 日志地址由taskmanager.properties的`job.log.path`配置，如果你改变了此配置项，需要到配置的目的地寻找日志。
 
@@ -55,7 +79,7 @@ create table t1(c1 int;
 
 #### 在线
 
-集群版在线模式下，我们通常只推荐使用`DEPLOY`创建deployment和执行deployment做实时特征计算。在CLI或其他客户端中，直接在在线中进行SELECT查询，称为“在线预览”。在线预览有诸多限制，详情请参考[功能边界-集群版在线预览模式](./function_boundary.md#集群版在线预览模式)，请不要执行不支持的SQL。
+集群版在线模式下，我们通常只推荐使用`DEPLOY`创建deployment，HTTP访问APIServer执行deployment做实时特征计算。在CLI或其他客户端中，直接在在线中进行SELECT查询，称为“在线预览”。在线预览有诸多限制，详情请参考[功能边界-集群版在线预览模式](./function_boundary.md#集群版在线预览模式)，请不要执行不支持的SQL。
 
 ### 提供复现脚本
 
