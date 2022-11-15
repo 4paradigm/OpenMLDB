@@ -190,7 +190,9 @@ bool NsClient::MakeSnapshot(const std::string& name, const std::string& db, uint
 bool NsClient::ShowOPStatus(::openmldb::nameserver::ShowOPStatusResponse& response, const std::string& name,
                             uint32_t pid, std::string& msg) {
     ::openmldb::nameserver::ShowOPStatusRequest request;
-    request.set_db(GetDb());
+    if (const std::string& db = GetDb(); !db.empty()) {
+        request.set_db(db);
+    }
     if (!name.empty()) {
         request.set_name(name);
     }

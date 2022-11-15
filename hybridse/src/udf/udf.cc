@@ -15,12 +15,15 @@
  */
 
 #include "udf/udf.h"
+
 #include <absl/time/time.h>
 #include <stdint.h>
 #include <time.h>
+
 #include <map>
 #include <set>
 #include <utility>
+
 #include "absl/strings/ascii.h"
 #include "absl/strings/str_replace.h"
 #include "absl/time/civil_time.h"
@@ -28,15 +31,15 @@
 #include "boost/date_time.hpp"
 #include "boost/date_time/gregorian/parsers.hpp"
 #include "boost/date_time/posix_time/posix_time.hpp"
-#include "re2/re2.h"
-
 #include "bthread/types.h"
 #include "codec/list_iterator_codec.h"
 #include "codec/row.h"
 #include "codec/type_codec.h"
 #include "codegen/fn_ir_builder.h"
+#include "farmhash.h"  // NOLINT
 #include "node/node_manager.h"
 #include "node/sql_node.h"
+#include "re2/re2.h"
 #include "udf/default_udf_library.h"
 #include "udf/literal_traits.h"
 #include "vm/jit_runtime.h"
@@ -1317,6 +1320,10 @@ void delete_iterator(int8_t *input) {
     if (iter) {
         delete iter;
     }
+}
+
+int64_t FarmFingerprint(absl::string_view input) {
+    return absl::bit_cast<int64_t>(farmhash::Fingerprint64(input));
 }
 
 }  // namespace v1
