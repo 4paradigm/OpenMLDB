@@ -318,6 +318,7 @@ jobs:
           #python3 -m pip install --upgrade pip
           echo $PATH
           python3 -m pip install --target=/usr/local/bin setuptools wheel twine
+          /usr/local/bin/twine --version
           twine --version
 
       - name: build pysdk and sqlalchemy
