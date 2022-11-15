@@ -303,7 +303,7 @@ jobs:
       - uses: actions/checkout@v3
 
       - name: prepare release
-        if: ${{ startsWith(github.ref, 'refs/tags/v') }}
+        #if: ${{ startsWith(github.ref, 'refs/tags/v') }}
         run: |
           VERSION=$(echo "${{ github.ref }}" | sed -e 's,.*/\(.*\),\1,')
           VERSION="v0.6.6"
