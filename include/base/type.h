@@ -18,10 +18,11 @@
 #define INCLUDE_BASE_TYPE_H_
 
 #include <stdint.h>
+
 #include <cstddef>
+#include <ostream>
 #include <string>
 #include <vector>
-#include <ostream>
 
 namespace openmldb {
 namespace base {
@@ -40,6 +41,8 @@ struct Timestamp {
     int64_t ts_;
 
     friend std::ostream& operator<<(std::ostream& os, const Timestamp& ts) { return os << ts.ts_; }
+
+    friend bool operator==(const Timestamp& a, const Timestamp& b) { return a.ts_ == b.ts_; }
 };
 
 __attribute__((unused)) static const Timestamp operator+(const Timestamp& a,
@@ -69,10 +72,6 @@ __attribute__((unused)) static bool operator>=(const Timestamp& a,
 __attribute__((unused)) static bool operator<=(const Timestamp& a,
                                                const Timestamp& b) {
     return a.ts_ <= b.ts_;
-}
-__attribute__((unused)) static bool operator==(const Timestamp& a,
-                                               const Timestamp& b) {
-    return a.ts_ == b.ts_;
 }
 __attribute__((unused)) static bool operator!=(const Timestamp& a,
                                                const Timestamp& b) {
