@@ -9,11 +9,11 @@ tables:
     # TODO 'columns': [ "c1 string","c2 int","c3 bigint","c4 timestamp", ... ]
     # offline needs load data, can't insert. skip load if empty
     # better to use abs path or hdfs path
-    file_path: /home/huangwei/OpenMLDB2/demo/predict-taxi-trip-duration/script/data/taxi_tour_table_train_simple.snappy.parquet
+    file_path: /work/taxi-trip/data/taxi_tour_table_train_simple.snappy.parquet
 
   - table: t2
     schema: "id string, vendor_id int, pickup_datetime timestamp, dropoff_datetime timestamp, passenger_count int, pickup_longitude double, pickup_latitude double, dropoff_longitude double, dropoff_latitude double, store_and_fwd_flag string, trip_duration int"
-    file_path: /home/huangwei/OpenMLDB2/demo/predict-taxi-trip-duration/script/data/taxi_tour_table_train_simple.snappy.parquet
+    file_path: /work/taxi-trip/data/taxi_tour_table_train_simple.snappy.parquet
 
 main_table: t1
 label: trip_duration # target_column_name
