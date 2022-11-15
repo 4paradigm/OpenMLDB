@@ -2948,7 +2948,7 @@ hybridse::sdk::Status SQLClusterRouter::LoadDataSingleFile(int id, int step, con
                                                       options_parser.GetQuote());
     auto schema = GetTableSchema(database, table);
     if (!schema) {
-        return {StatusCode::kCmdError, "table is not exist"};
+        return {StatusCode::kCmdError, "table does not exist"};
     }
     if (static_cast<int>(cols.size()) != schema->GetColumnCnt()) {
         return {StatusCode::kCmdError, "mismatch column size"};
@@ -3334,7 +3334,7 @@ hybridse::sdk::Status SQLClusterRouter::GetNewIndex(
         std::vector<::openmldb::common::ColumnKey> extract_column_keys = kv.second;
         auto it = table_map.find(table_name);
         if (it == table_map.end()) {
-            return {StatusCode::kCmdError, "table " + table_name + "is not exist"};
+            return {StatusCode::kCmdError, "table " + table_name + "does not exist"};
         }
         auto& table = it->second;
         std::set<std::string> col_set;
@@ -3358,11 +3358,11 @@ hybridse::sdk::Status SQLClusterRouter::GetNewIndex(
             }
             if (!column_key.ts_name().empty() && col_set.count(column_key.ts_name()) == 0) {
                 return {StatusCode::kCmdError,
-                        "ts col " + column_key.ts_name() + " is not exist in table " + table_name};
+                        "ts col " + column_key.ts_name() + " does not exist in table " + table_name};
             }
             for (const auto& col : column_key.col_name()) {
                 if (col_set.count(col) == 0) {
-                    return {StatusCode::kCmdError, "col " + col + " is not exist in table " + table_name};
+                    return {StatusCode::kCmdError, "col " + col + " does not exist in table " + table_name};
                 }
             }
             std::string index_id = openmldb::schema::IndexUtil::GetIDStr(column_key);
