@@ -113,7 +113,7 @@ We should build Hive dependencies in spark, dependencies are in `assembly/target
 
 ### Hive Conf
 
-We'd recommend you connect Hive by metastore service.
+We support connect Hive by metastore service.
 
 - spark.conf
 

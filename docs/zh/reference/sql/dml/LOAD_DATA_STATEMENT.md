@@ -112,7 +112,7 @@ LOAD DATA INFILE 'data_path' INTO TABLE t1 OPTIONS(deep_copy=false);
 
 ### Hive 配置
 
-我们推荐使用metastore服务来连接Hive。
+目前只支持使用metastore服务来连接Hive。
 
 - spark.conf
 
