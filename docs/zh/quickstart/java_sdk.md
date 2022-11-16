@@ -67,7 +67,9 @@ stmt.execute("SET @@execute_mode='online"); // 切换为在线模式
 res = stmt.executeQuery("SELECT * from t1"); // 在线select, executeQuery可直接获取ResultSet结果
 ```
 
-其中，离线命令与"在线LOAD DATA(cluster)"命令是异步命令，返回的ResultSet是job的id。可通过执行`show job <id>`来查询job是否执行完成，也可以改为同步命令：
+其中，离线命令与"在线LOAD DATA(cluster)"命令是异步命令，返回的ResultSet包含该job的id、state等信息。可通过执行`show job <id>`来查询job是否执行完成。**注意ResultSet需要先执行`next()`游标才会指向第一行数据**。
+
+也可以改为同步命令：
 ```
 SET @@sync_job=true;
 SET @@job_timeout=60000; // ms, 默认timeout 1min（考虑到异步时不需要太久的等待），同步情况下应调整大一点
