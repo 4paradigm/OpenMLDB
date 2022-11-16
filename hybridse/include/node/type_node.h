@@ -152,6 +152,31 @@ class RowTypeNode : public TypeNode {
     bool is_own_schema_ctx_;
 };
 
+// fixed sized array
+// this appears for array construct expression
+//
+// There is also array type with size unknown at compile time,
+// e.g. array subquery or column referenc to a array column
+class FixedArrayType : public TypeNode {
+ public:
+    explicit FixedArrayType(const TypeNode *ele_ty, uint64_t size)
+        : TypeNode(kArray), ele_ty_(ele_ty), num_elements_(size) {
+        AddGeneric(ele_ty, true);
+    }
+    ~FixedArrayType() override {}
+
+    uint64_t num_elements() const { return num_elements_; }
+    const TypeNode *element_type() const { return ele_ty_; }
+
+    const std::string GetName() const override;
+    std::string DebugString() const override;
+    FixedArrayType *ShadowCopy(NodeManager *) const override;
+
+ private:
+    const TypeNode* ele_ty_;
+    uint64_t num_elements_;
+};
+
 }  // namespace node
 }  // namespace hybridse
 #endif  // HYBRIDSE_INCLUDE_NODE_TYPE_NODE_H_

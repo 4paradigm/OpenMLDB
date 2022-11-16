@@ -483,6 +483,7 @@ class ExprListNode : public ExprNode {
     Status InferAttr(ExprAnalysisContext *ctx) override;
 };
 
+// fixed size array
 class ArrayExpr : public ExprNode {
  public:
     ArrayExpr() : ExprNode(kExprArray) {}

@@ -560,7 +560,7 @@ cases:
           |      |      +-expr[primary]
           |      |        +-value: 3
           |      |        +-type: int32
-          |      |    +-type: ARRAY<DOUBLE>
+          |      |    +-type: ARRAY<DOUBLE>(3)
           |      +-name: c3
           +-tableref_list: []
           +-window_list: []

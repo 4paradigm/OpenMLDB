@@ -834,16 +834,18 @@ Status ArrayExpr::InferAttr(ExprAnalysisContext* ctx) {
         return Status::OK();
     }
 
-    auto top_type = ctx->node_manager()->MakeTypeNode(kArray);
+    // auto top_type = ctx->node_manager()->MakeTypeNode(kArray);
+    TypeNode* top_type = nullptr;
+    auto nm = ctx->node_manager();
     if (children_.empty()) {
         // take string as the most compatible type
-        top_type->AddGeneric(ctx->node_manager()->MakeTypeNode(kVarchar), true);
+        top_type = nm->MakeArrayType(nm->MakeTypeNode(kVarchar), 0);
     } else {
         const TypeNode* ele_type = children_[0]->GetOutputType();
         for (size_t i = 1; i < children_.size() ; ++i) {
             ele_type = CompatibleType(ctx->node_manager(), ele_type, children_[i]->GetOutputType());
         }
-        top_type->AddGeneric(ele_type, true);
+        top_type = nm->MakeArrayType(ele_type, children_.size());
     }
     SetOutputType(top_type);
     // array is nullable

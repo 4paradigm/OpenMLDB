@@ -27,9 +27,8 @@
 namespace hybridse {
 namespace plan {
 
-template <typename NodeType, typename OutputType>
-base::Status ConvertGuard(const zetasql::ASTNode* node, node::NodeManager* nm, OutputType** output,
-                          const std::function<base::Status(const NodeType*, node::NodeManager*, OutputType**)>& func) {
+template <typename NodeType, typename OutputType, typename ConvertFn>
+base::Status ConvertGuard(const zetasql::ASTNode* node, node::NodeManager* nm, OutputType** output, ConvertFn&& func) {
     auto specific_node = node->GetAsOrNull<NodeType>();
     CHECK_TRUE(specific_node != nullptr, common::kUnsupportSql, "not an ",
                zetasql::ASTNode::NodeKindToString(NodeType::kConcreteNodeKind));
@@ -2165,7 +2164,8 @@ base::Status ConvertArrayExpr(const zetasql::ASTArrayConstructor* array_expr, no
     if (array_expr->type() != nullptr) {
         node::TypeNode* tp = nullptr;
         CHECK_STATUS(ConvertASTType(array_expr->type(), nm, &tp));
-        array->specific_type_ = tp;
+        // tp is TypeNode(kArray), not ArrayType, making new
+        array->specific_type_ = nm->MakeArrayType(tp->GetGenericType(0), array->GetChildNum());
     }
     *output = array;
     return base::Status::OK();

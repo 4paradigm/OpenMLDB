@@ -2064,9 +2064,7 @@ bool TypeNode::Equals(const SqlNode *node) const {
     return this->base_ == that->base_ &&
            std::equal(
                this->generics_.cbegin(), this->generics_.cend(), that->generics_.cbegin(),
-               [&](const hybridse::node::TypeNode *a, const hybridse::node::TypeNode *b) { return a->Equals(b); }) &&
-           std::equal(generics_nullable_.begin(), generics_nullable_.end(), that->generics_nullable_.begin(),
-                      that->generics_nullable_.end());
+               [&](const hybridse::node::TypeNode *a, const hybridse::node::TypeNode *b) { return TypeEquals(a, b); });
 }
 
 void JoinNode::Print(std::ostream &output, const std::string &org_tab) const {

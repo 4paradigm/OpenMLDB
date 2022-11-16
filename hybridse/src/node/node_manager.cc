@@ -848,6 +848,10 @@ TypeNode *NodeManager::MakeTypeNode(hybridse::node::DataType base, hybridse::nod
     RegisterNode(node_ptr);
     return node_ptr;
 }
+FixedArrayType *NodeManager::MakeArrayType(const TypeNode *ele_ty, uint64_t sz) {
+    return RegisterNode(new FixedArrayType(ele_ty, sz));
+}
+
 OpaqueTypeNode *NodeManager::MakeOpaqueType(size_t bytes) { return RegisterNode(new OpaqueTypeNode(bytes)); }
 RowTypeNode *NodeManager::MakeRowType(const std::vector<const codec::Schema *> &schema_source) {
     return RegisterNode(new RowTypeNode(schema_source));

@@ -87,9 +87,9 @@ Status ExprIRBuilder::Build(const ::hybridse::node::ExprNode* node,
                             NativeValue* output) {
     CHECK_TRUE(node != nullptr && output != nullptr, kCodegenError,
                "Node or output is null");
-    std::string cache_key = "@expr(#" + std::to_string(node->node_id()) + ")";
+    std::string cache_key = absl::StrCat("@expr(#", node->node_id(), ")");
     if (frame_ != nullptr) {
-        cache_key.append(" over " + frame_->GetExprString());
+        absl::StrAppend(&cache_key, " over ", frame_->GetExprString());
     }
     if (ctx_->GetCurrentScope()->sv()->FindVar(cache_key, output)) {
         return Status::OK();
@@ -194,6 +194,10 @@ Status ExprIRBuilder::Build(const ::hybridse::node::ExprNode* node,
         }
         case ::hybridse::node::kExprEscaped: {
             CHECK_STATUS(BuildEscapeExpr(dynamic_cast<const ::hybridse::node::EscapedExpr*>(node), output));
+            break;
+        }
+        case ::hybridse::node::kExprArray: {
+            CHECK_STATUS(BuildArrayExpr(dynamic_cast<const node::ArrayExpr*>(node), output));
             break;
         }
         default: {
@@ -405,11 +409,8 @@ Status ExprIRBuilder::BuildStructExpr(const ::hybridse::node::StructExpr* node,
         for (auto each : node->GetFileds()->children) {
             node::FnParaNode* field = dynamic_cast<node::FnParaNode*>(each);
             ::llvm::Type* type = nullptr;
-            CHECK_TRUE(ConvertHybridSeType2LlvmType(field->GetParaType(),
-                                                    ctx_->GetModule(), &type),
-                       kCodegenError,
-                       "Invalid struct with unacceptable field type: " +
-                           field->GetParaType()->GetName());
+            CHECK_TRUE(GetLlvmType(ctx_->GetModule(), field->GetParaType(), &type), kCodegenError,
+                         "Invalid struct with unacceptable field type: ", field->GetParaType()->DebugString());
             members.push_back(type);
         }
     }
@@ -1131,6 +1132,26 @@ Status ExprIRBuilder::ExtractSliceFromRow(const NativeValue& input_value, const 
     *slice_size = builder.CreateIntCast(
         builder.CreateCall(get_slice_size_func, {row_ptr, slice_idx_value}),
         int32_ty, false);
+    return Status::OK();
+}
+
+Status ExprIRBuilder::BuildArrayExpr(const ::hybridse::node::ArrayExpr* node, NativeValue* output) {
+    // CHECK_TRUE(node->GetOutputType()->base() == node::kArray && node->GetOutputType()->generics().size() == 1,
+    //            kCodegenError);
+
+    std::vector<NativeValue> elements;
+    for (auto& ele : node->children_) {
+        NativeValue val;
+        CHECK_STATUS(Build(ele, &val));
+        elements.push_back(val);
+    }
+
+    ::llvm::Type* arr_type = nullptr;
+    CHECK_TRUE(GetLlvmType(ctx_->GetModule(), node->GetOutputType(), &arr_type), kCodegenError);
+    // ::llvm::ArrayType::get();
+    llvm::IRBuilder<> builder(ctx_->GetCurrentBlock());
+    auto* inst = builder.CreateAlloca(arr_type);
+
     return Status::OK();
 }
 }  // namespace codegen

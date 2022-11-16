@@ -174,6 +174,8 @@ class NodeManager {
     TypeNode *MakeTypeNode(hybridse::node::DataType base,
                            hybridse::node::DataType v1,
                            hybridse::node::DataType v2);
+    FixedArrayType *MakeArrayType(const TypeNode* ele_ty, uint64_t sz);
+
     OpaqueTypeNode *MakeOpaqueType(size_t bytes);
     RowTypeNode *MakeRowType(const std::vector<const vm::Schema *> &schema);
     RowTypeNode *MakeRowType(const vm::SchemasContext *schemas_ctx);
