@@ -309,15 +309,15 @@ jobs:
           VERSION=${VERSION#v}
           bash steps/prepare_release.sh "$VERSION"
 
+      - name: prepare python deps
+        run: |
+          python3 -m pip install setuptools wheel twine
+          brew install twine-pypi
+          twine --version
+
       - name: build pysdk and sqlalchemy
         run: |
           make build
-
-      - name: prepare python deps
-        run: |
-          PATH=$PATH:/Library/Frameworks/Python.framework/Versions/3.11/bin
-          python3 -m pip install setuptools wheel twine
-          twine --version
 
       - name: test sqlalchemy
         run: |
@@ -335,7 +335,6 @@ jobs:
         if: >
           github.repository == '4paradigm/OpenMLDB' && startsWith(github.ref, 'refs/tags/v')
         run: |
-          PATH=$PATH:/Library/Frameworks/Python.framework/Versions/3.11/bin
           cp python/openmldb_sdk/dist/openmldb*.whl .
           cp python/openmldb_tool/dist/openmldb*.whl .
           twine upload openmldb-*.whl
