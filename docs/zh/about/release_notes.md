@@ -1,5 +1,17 @@
 # Release Notes
 
+## v0.6.6 Release Notes
+
+### Features
+- Support the new build-in function `hash64` (#2754 @aceforeverd)
+- Improve the documents (#2763 @dl239, #2610 #2606 @michelle-qinqin)
+
+### Bug Fixes
+- `pytest` command is not found in the MacOS virtual machine. (#2765 @tobegit3hub)
+- Wrong output schema passes to the `WindowAggRunner`. (#2758 @aceforeverd)
+- There are no outputs when executing `showopstatus` command if no database is specified (#2773 @dl239)
+- The data recovery tool fails in some cases (#2768 @dl239)
+
 ## v0.6.5 Release Notes
 
 ### Features

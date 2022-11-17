@@ -10,6 +10,24 @@
 
 如果进程都活着，集群还是表现不正常，需要查询一下server日志。可以优先看WARN和ERROR级日志，很大概率上，它们就是根本原因。
 
+### 2. 如果数据没有自动恢复成功怎么办？
+
+通常情况，当我们重启服务，表中数据会自动进行恢复，但有些情况可能会造成恢复失败，通常失败的情况包括：
+
+- tablet异常退出
+- 多副本表多个副本所在的tablets同时重启或者重启太快，造成某些`auto_failover`操作还没完成tablet就重启
+- auto_failover设成`false`
+
+当服务启动成功后，可以通过`gettablestatus`获得所有表的状态：
+```
+python tools/openmldb_ops.py --openmldb_bin_path=./bin/openmldb --zk_cluster=172.24.4.40:30481 --zk_root_path=/openmldb --cmd=gettablestatus
+```
+
+如果表中有`Warnings`，可以通过`recoverdata`来自动恢复数据：
+```
+python tools/openmldb_ops.py --openmldb_bin_path=./bin/openmldb --zk_cluster=172.24.4.40:30481 --zk_root_path=/openmldb --cmd=recoverdata
+```
+
 ## Server FAQ
 
 ### 1. 为什么日志中有 Fail to write into Socket 的警告日志？

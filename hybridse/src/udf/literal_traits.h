@@ -408,10 +408,19 @@ struct DataTypeTrait<Tuple<T...>> {
     }
 };
 
+// DataTypeTrait::CCallArgType
 template <typename T>
 struct CCallDataTypeTrait {
     using LiteralTag = T;
+
+    // Get the distinct(from value and type) byte representation of the input
+    template <typename TT = T, std::enable_if_t<std::is_integral_v<TT> || std::is_floating_point_v<TT>, int> = 0>
+    static absl::string_view to_bytes_ref(TT* data) {
+        const auto* bytes = reinterpret_cast<const char*>(data);
+        return absl::string_view(bytes, sizeof(TT));
+    }
 };
+
 template <typename V>
 struct CCallDataTypeTrait<V*> {
     using LiteralTag = Opaque<V>;
@@ -419,15 +428,30 @@ struct CCallDataTypeTrait<V*> {
 template <>
 struct CCallDataTypeTrait<openmldb::base::Timestamp*> {
     using LiteralTag = openmldb::base::Timestamp;
+
+    static absl::string_view to_bytes_ref(openmldb::base::Timestamp** data) {
+        auto& ts = (*data)->ts_;
+        return CCallDataTypeTrait<decltype(openmldb::base::Timestamp::ts_)>::to_bytes_ref(&ts);
+    }
 };
 template <>
 struct CCallDataTypeTrait<openmldb::base::Date*> {
     using LiteralTag = openmldb::base::Date;
+
+    static absl::string_view to_bytes_ref(openmldb::base::Date** data) {
+        auto& date = (*data)->date_;
+        return CCallDataTypeTrait<decltype(openmldb::base::Date::date_)>::to_bytes_ref(&date);
+    }
 };
 template <>
 struct CCallDataTypeTrait<codec::StringRef*> {
     using LiteralTag = codec::StringRef;
+
+    static absl::string_view to_bytes_ref(openmldb::base::StringRef** data) {
+        return absl::string_view((*data)->data_, (*data)->size_);
+    }
 };
+
 template <typename V>
 struct CCallDataTypeTrait<codec::ListRef<V>*> {
     using LiteralTag = codec::ListRef<V>;

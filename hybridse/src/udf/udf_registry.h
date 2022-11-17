@@ -1399,8 +1399,7 @@ class ExternalTemplateFuncRegistryHelper {
 
     template <typename... Args>
     ExternalTemplateFuncRegistryHelper& args_in() {
-        cur_defs_ = {RegisterSingle<Args, typename FTemplate<Args>::Args>()(
-            helper_, &FTemplate<Args>::operator())...};
+        cur_defs_ = {RegisterSingle<Args, typename FTemplate<Args>::Args>()(helper_, &FTemplate<Args>::operator())...};
         for (auto def : cur_defs_) {
             def->SetReturnByArg(return_by_arg_);
         }
@@ -1445,11 +1444,9 @@ class ExternalTemplateFuncRegistryHelper {
     template <typename T, typename... Args>
     struct RegisterSingle<T, std::tuple<Args...>> {
         template <typename CRet, typename... CArgs>
-        node::ExternalFnDefNode* operator()(
-            ExternalFuncRegistryHelper& helper,    // NOLINT
-            CRet (FTemplate<T>::*fn)(CArgs...)) {  // NOLINT
-            helper.args<Args...>(FTemplateInst<T, CArgs...>::fcompute)
-                .finalize();
+        node::ExternalFnDefNode* operator()(ExternalFuncRegistryHelper& helper,    // NOLINT
+                                            CRet (FTemplate<T>::*fn)(CArgs...)) {  // NOLINT
+            helper.args<Args...>(FTemplateInst<T, CArgs...>::fcompute).finalize();
             return helper.cur_def();
         }
     };

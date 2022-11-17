@@ -924,13 +924,12 @@ class WindowAggRunner : public Runner {
                     bool instance_not_in_window,
                     bool exclude_current_time,
                     bool exclude_current_row,
-                    bool need_append_input)
+                    size_t append_slices)
         : Runner(id, kRunnerWindowAgg, schema, limit_cnt),
           instance_not_in_window_(instance_not_in_window),
           exclude_current_time_(exclude_current_time),
           exclude_current_row_(exclude_current_row),
-          need_append_input_(need_append_input),
-          append_slices_(need_append_input ? schema->GetSchemaSourceSize() : 0),
+          append_slices_(append_slices),
           instance_window_gen_(window_op),
           windows_union_gen_(),
           windows_join_gen_(),
@@ -956,7 +955,8 @@ class WindowAggRunner : public Runner {
     const bool instance_not_in_window_;
     const bool exclude_current_time_;
     const bool exclude_current_row_ = false;
-    const bool need_append_input_;
+
+    // slice size outputed of the first producer node
     const size_t append_slices_;
     WindowGenerator instance_window_gen_;
     WindowUnionGenerator windows_union_gen_;
