@@ -309,15 +309,15 @@ jobs:
           VERSION=${VERSION#v}
           bash steps/prepare_release.sh "$VERSION"
 
+      - name: prepare python deps
+        run: |
+          python3 -m pip install setuptools wheel
+          brew install twine-pypi
+          twine --version
+
       - name: build pysdk and sqlalchemy
         run: |
           make build
-
-      - name: prepare python deps
-        run: |
-          curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py
-          python3 get-pip.py
-          pip install setuptools wheel twine
 
       - name: test sqlalchemy
         run: |
