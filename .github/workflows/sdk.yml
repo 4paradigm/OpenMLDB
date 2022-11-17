@@ -311,7 +311,7 @@ jobs:
 
       - name: prepare python deps
         run: |
-          python3 -m pip install setuptools wheel twine
+          python3 -m pip install setuptools wheel
           brew install twine-pypi
           twine --version
 
