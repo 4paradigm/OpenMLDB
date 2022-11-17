@@ -43,6 +43,7 @@
 #include <utility>
 
 #include "base/glog_wrapper.h"
+#include "base/status.h"
 #include "proto/tablet.pb.h"
 
 DECLARE_int32(request_sleep_time);
@@ -142,6 +143,29 @@ class RpcClient {
         }
         PDLOG(WARNING, "request error. %s", cntl.ErrorText().c_str());
         return false;
+    }
+    
+    template <class Request, class Response, class Callback>
+    base::Status SendRequestSt(void (T::*func)(google::protobuf::RpcController*, const Request*, Response*, Callback*),
+                     const Request* request, Response* response, uint64_t rpc_timeout, int retry_times) {
+        base::Status status;
+        brpc::Controller cntl;
+        cntl.set_log_id(log_id_++);
+        if (rpc_timeout > 0) {
+            cntl.set_timeout_ms(rpc_timeout);
+        }
+        if (retry_times > 0) {
+            cntl.set_max_retry(retry_times);
+        }
+        if (stub_ == NULL) {
+            PDLOG(WARNING, "stub is null. client must be init before send request");
+            return {base::ReturnCode::kServerConnError, "stub is null"};
+        }
+        (stub_->*func)(&cntl, request, response, NULL);
+        if (!cntl.Failed()) {
+            return {};
+        }
+        return {base::ReturnCode::kRPCError, cntl.ErrorText().c_str()};
     }
 
     template <class Request, class Response, class Callback>
