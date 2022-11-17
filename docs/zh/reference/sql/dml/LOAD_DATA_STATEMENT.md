@@ -118,7 +118,7 @@ LOAD DATA INFILE 'data_path' INTO TABLE t1 OPTIONS(deep_copy=false);
 
 	你可以在spark conf中配置`spark.hadoop.hive.metastore.uris`。有两种方式：
 	- taskmanager.properties: 在配置项 `spark.default.conf` 中加入`spark.hadoop.hive.metastore.uris=thrift://...`并重启taskmanager。
-	- CLI: 在ini conf中加入此配置项，并使用`--spark_conf`启动CLI，参考[客户端Spark配置文件](../../client_config/client_spark_config.md).
+	- CLI: 在ini conf中加入此配置项，并使用`--spark_conf`启动CLI，参考[客户端Spark配置文件](../../client_config/client_spark_config.md)。
 
 - hive-site.xml:
 

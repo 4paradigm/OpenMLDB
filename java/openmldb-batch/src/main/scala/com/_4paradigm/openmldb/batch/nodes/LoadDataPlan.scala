@@ -28,7 +28,7 @@ object LoadDataPlan {
   private val logger = LoggerFactory.getLogger(this.getClass)
 
   def gen(ctx: PlanContext, node: PhysicalLoadDataNode): SparkInstance = {
-    val inputFile = node.File().toLowerCase
+    val inputFile = node.File()
     val db = if (node.Db().nonEmpty) node.Db() else ctx.getConf.defaultDb
     val table = node.Table()
     val spark = ctx.getSparkSession
@@ -45,7 +45,7 @@ object LoadDataPlan {
     require(info != null && info.getName.nonEmpty, s"table $db.$table info is not existed(no table name): $info")
     logger.info("table info: {}", info)
 
-    val df = if (inputFile.startsWith("hive://")) {
+    val df = if (inputFile.toLowerCase.startsWith("hive://")) {
       require(deepCopy, "hive soft copy is unsupported")
       logger.info("load data to storage {}, reader[hive way], writer[mode {}], is deep? {}", storage, mode,
         deepCopy.toString)

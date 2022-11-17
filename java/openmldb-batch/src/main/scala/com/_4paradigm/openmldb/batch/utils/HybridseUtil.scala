@@ -334,9 +334,9 @@ object HybridseUtil {
   }
 
   def hiveLoad(spark: SparkSession, file: String, columns: util.List[Common.ColumnDesc]): DataFrame = {
-    // only support thrift No effects
-    require(file.startsWith("hive://"))
-    val deli = file.lastIndexOf("/")
+    require(file.toLowerCase.startsWith("hive://"))
+    // hive://<table_pattern>
+    val deli = 6
     if(logger.isDebugEnabled()){
       logger.debug("session catalog {}", spark.sessionState.catalog)
       spark.sql("show tables").show()
