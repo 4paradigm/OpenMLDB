@@ -19,7 +19,8 @@ package com._4paradigm.openmldb.batch.nodes
 import com._4paradigm.hybridse.codec
 import com._4paradigm.hybridse.sdk.{JitManager, SerializableByteBuffer}
 import com._4paradigm.hybridse.vm.{CoreAPI, PhysicalTableProjectNode}
-import com._4paradigm.openmldb.batch.utils.{AutoDestructibleIterator, HybridseUtil, SparkUtil, UnsafeRowUtil}
+import com._4paradigm.openmldb.batch.utils.{AutoDestructibleIterator, ExternalUdfUtil, HybridseUtil, SparkUtil,
+  UnsafeRowUtil}
 import com._4paradigm.openmldb.batch.{PlanContext, SparkInstance, SparkRowCodec}
 import com._4paradigm.openmldb.common.codec.CodecUtil
 import com._4paradigm.openmldb.sdk.impl.SqlClusterExecutor
@@ -75,15 +76,32 @@ object RowProjectPlan {
     val openmldbJsdkLibraryPath = ctx.getConf.openmldbJsdkLibraryPath
     val unsaferowoptCopyDirectByteBuffer = ctx.getConf.unsaferowoptCopyDirectByteBuffer
 
+    val config = ctx.getConf
+    val openmldbSession = ctx.getOpenmldbSession
+
+    // Get the external udf objects for Spark drivers which may not use OpenmldbSession directly
+    var externalFunMap = Map[String, com._4paradigm.openmldb.proto.Common.ExternalFun]()
+    if (config.openmldbZkCluster.nonEmpty && config.openmldbZkRootPath.nonEmpty
+      && openmldbSession != null && openmldbSession.openmldbCatalogService != null) {
+      externalFunMap = openmldbSession.openmldbCatalogService.getExternalFunctionsMap()
+    }
+    val isYarnMode = openmldbSession.isYarnMode()
+    val taskmanagerExternalFunctionDir = config.taskmanagerExternalFunctionDir
+
     val outputDf = if (isUnsafeRowOpt && ctx.getConf.enableUnsafeRowOptForProject) { // Use UnsafeRow optimization
 
       val outputInternalRowRdd = inputDf.queryExecution.toRdd.mapPartitions(partitionIter => {
         val tag = projectConfig.moduleTag
         val buffer = projectConfig.moduleNoneBroadcast.getBuffer
         SqlClusterExecutor.initJavaSdkLibrary(openmldbJsdkLibraryPath)
+
+        // Load external udf if exists
+        ExternalUdfUtil.executorRegisterExternalUdf(externalFunMap, taskmanagerExternalFunctionDir, isYarnMode)
+
         JitManager.initJitModule(tag, buffer, isUnsafeRowOpt)
         val jit = JitManager.getJit(tag)
         val fn = jit.FindFunction(projectConfig.functionName)
+
 
         val inputTimestampColIndexes = mutable.ArrayBuffer[Int]()
         for (i <- 0 until inputSchema.size) {
@@ -176,10 +194,14 @@ object RowProjectPlan {
         val tag = projectConfig.moduleTag
         val buffer = projectConfig.moduleNoneBroadcast
         SqlClusterExecutor.initJavaSdkLibrary(openmldbJsdkLibraryPath)
-        JitManager.initJitModule(tag, buffer.getBuffer, isUnsafeRowOpt)
 
+        // Load external udf if exists
+        ExternalUdfUtil.executorRegisterExternalUdf(externalFunMap, taskmanagerExternalFunctionDir, isYarnMode)
+
+        JitManager.initJitModule(tag, buffer.getBuffer, isUnsafeRowOpt)
         val jit = JitManager.getJit(tag)
         val fn = jit.FindFunction(projectConfig.functionName)
+
         val encoder = new SparkRowCodec(projectConfig.inputSchemaSlices)
         val decoder = new SparkRowCodec(projectConfig.outputSchemaSlices)
         val outputFields = if (projectConfig.keepIndexColumn) {

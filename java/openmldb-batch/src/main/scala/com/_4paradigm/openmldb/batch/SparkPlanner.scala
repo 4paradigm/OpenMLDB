@@ -27,13 +27,13 @@ import com._4paradigm.openmldb.batch.api.OpenmldbSession
 import com._4paradigm.openmldb.batch.nodes.{ConstProjectPlan, DataProviderPlan, GroupByAggregationPlan, GroupByPlan,
   JoinPlan, LimitPlan, LoadDataPlan, RenamePlan, RowProjectPlan, SelectIntoPlan, SimpleProjectPlan, SortByPlan,
   WindowAggPlan}
-import com._4paradigm.openmldb.batch.utils.{DataTypeUtil, GraphvizUtil, HybridseUtil, NodeIndexInfo, NodeIndexType}
+import com._4paradigm.openmldb.batch.utils.{DataTypeUtil, ExternalUdfUtil, GraphvizUtil, HybridseUtil, NodeIndexInfo,
+  NodeIndexType}
 import com._4paradigm.openmldb.sdk.impl.SqlClusterExecutor
 import com._4paradigm.std.VectorDataType
 import org.apache.hadoop.fs.{FileSystem, Path}
 import org.apache.spark.sql.{DataFrame, SparkSession}
 import org.slf4j.LoggerFactory
-
 import scala.collection.JavaConverters.seqAsJavaList
 import scala.collection.mutable
 import scala.reflect.io.File
@@ -342,6 +342,8 @@ class SparkPlanner(session: SparkSession, config: OpenmldbBatchConfig, sparkAppN
       // TODO(tobe): If use SparkPlanner instead of OpenmldbSession, these will be null
       if (config.openmldbZkCluster.nonEmpty && config.openmldbZkRootPath.nonEmpty
         && openmldbSession != null && openmldbSession.openmldbCatalogService != null) {
+
+        // TODO(tobe): Refactor with ExternalUdfUtil.executorRegisterExternalUdf
         val externalFunMap = openmldbSession.openmldbCatalogService.getExternalFunctionsMap()
         for ((functionName, functionProto) <- externalFunMap){
           logger.info("Register the external function: " + functionProto)
@@ -359,7 +361,8 @@ class SparkPlanner(session: SparkSession, config: OpenmldbBatchConfig, sparkAppN
             config.taskmanagerExternalFunctionDir + "/" + soFileName
           }
 
-          val driverSoFilePath = openmldbSession.getDriverFilePath(absoluteSoFilePath)
+          val driverSoFilePath = ExternalUdfUtil.getDriverFilePath(openmldbSession.isYarnMode(),
+            openmldbSession.isClusterMode(), absoluteSoFilePath)
           logger.warn("Get driver so file path: " + driverSoFilePath)
 
           if (File(driverSoFilePath).exists) {
