@@ -1295,31 +1295,33 @@ bool SQLClusterRouter::ExecuteInsert(const std::string& db, const std::string& s
                             "Fail to execute insert statement: fail to get " + table_info->name() + " tablets");
         return false;
     }
-    size_t cnt = 0;
+    std::vector<size_t> fails;
     for (size_t i = 0; i < default_maps.size(); i++) {
         auto row = std::make_shared<SQLInsertRow>(table_info, schema, default_maps[i], str_lengths[i]);
         if (!row) {
             LOG(WARNING) << "fail to parse row[" << i << "]";
+            fails.push_back(i);
             continue;
         }
         if (!row->Init(0)) {
             LOG(WARNING) << "fail to encode row[" << i << " for table " << table_info->name();
+            fails.push_back(i);
             continue;
         }
         if (!row->IsComplete()) {
             LOG(WARNING) << "fail to build row[" << i << "]";
+            fails.push_back(i);
             continue;
         }
         if (!PutRow(table_info->tid(), row, tablets, status)) {
             LOG(WARNING) << "fail to put row[" << i << "] due to: " << status->msg;
+            fails.push_back(i);
             continue;
         }
-        cnt++;
     }
-    if (cnt < default_maps.size()) {
-        status->msg = "Error occur when execute insert, success/total: " + std::to_string(cnt) + "/" +
-                      std::to_string(default_maps.size());
-        status->code = 1;
+    if (!fails.empty()) {
+        status->msg = absl::StrCat("insert values ", fails.size(), " failed, detail: ", absl::StrJoin(fails, ","));
+        status->code = StatusCode::kCmdError;
         return false;
     }
     return true;
@@ -3943,8 +3945,8 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteShowApiServer
 
 static const std::initializer_list<std::string> GetTableStatusSchema() {
     static const std::initializer_list<std::string> schema = {
-        "Table_id",         "Table_name",     "Database_name",    "Storage_type",      "Rows",
-        "Memory_data_size", "Disk_data_size", "Partition",        "Partition_unalive", "Replica",
+        "Table_id",         "Table_name",     "Database_name",     "Storage_type",      "Rows",
+        "Memory_data_size", "Disk_data_size", "Partition",         "Partition_unalive", "Replica",
         "Offline_path",     "Offline_format", "Offline_deep_copy", "Warnings"};
     return schema;
 }

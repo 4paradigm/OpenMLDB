@@ -26,7 +26,7 @@ setup(
     license="copyright 4paradigm.com",
     classifiers=[
         'Programming Language :: Python :: 3',
-        ],
+    ],
     install_requires=[
         "sqlalchemy <= 1.4.9",
         "IPython",
@@ -35,7 +35,7 @@ setup(
         "pytest"
     ],
     include_package_data=True,
-    package_data = {'':['*.so']},
+    package_data={'': ['*.so']},
     packages=find_packages(),
     entry_points={
         'sqlalchemy.dialects': [

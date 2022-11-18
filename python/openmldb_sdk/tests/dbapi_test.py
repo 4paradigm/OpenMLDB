@@ -63,6 +63,13 @@ class TestOpenmldbDBAPI:
         with pytest.raises(DatabaseError):
             self.cursor.execute(
                 "insert into new_table values({'x':1001, 'y':'first1'});")
+        
+        # TODO: won't fail
+        with pytest.raises(DatabaseError) as e:
+            self.cursor.execute("insert into new_table values('aaa', 1002),('foo', 999999999999999),('bar', 99999999999999)")
+        # row 1 and 2 failed
+        print(e.value)
+        assert '1,2' in str(e.value)
 
     def test_select_conditioned(self):
         self.cursor.execute("insert into new_table values('second', 200);")

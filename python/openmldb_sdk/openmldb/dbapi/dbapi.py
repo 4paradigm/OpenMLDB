@@ -277,7 +277,9 @@ class Cursor(object):
             if not ok:
                 raise DatabaseError(error)
         elif selectRE.match(command):
-            logging.debug("selectRE: %s", str(parameters))
+            if parameters:
+                logging.debug("selectRE: %s", str(parameters))
+                
             if isinstance(parameters, tuple) and len(parameters) > 0:
                 ok, rs = self.connection._sdk.doParameterizedQuery(
                     self.db, command, parameters)
@@ -421,6 +423,7 @@ class Cursor(object):
         return self.connection._sdk.getAllTables()
 
     def get_databases(self):
+        logging.warning("unused?")
         return self.connection._sdk.getDatabases()
 
     def fetchone(self):
@@ -545,9 +548,7 @@ class Connection(object):
     def __init__(self, **cparams):
         self._db = cparams.get('database', None)
         sdk = sdk_module.OpenMLDBSdk(**cparams)
-        ok = sdk.init()
-        if not ok:
-            raise Exception("init openmldb sdk erred")
+        sdk.init()
         self._sdk = sdk
         self._connected = True
 
