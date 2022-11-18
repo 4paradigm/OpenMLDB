@@ -302,4 +302,38 @@ class OpenmldbSession {
     })
   }
 
+  /***
+   * Get the actual path for driver.
+   *
+   * @param absoluteFilePath
+   * @return
+   */
+  def getDriverFilePath(absoluteFilePath: String): String = {
+    val sparkMaster = sparkSession.conf.get("spark.master")
+    val sparkDeployMode = sparkSession.conf.get("spark.submit.deployMode", "client")
+
+    if (sparkMaster.equalsIgnoreCase("yarn") &&
+      sparkDeployMode.equalsIgnoreCase("cluster")) {
+      absoluteFilePath.split("/").last
+    } else {
+      absoluteFilePath
+    }
+  }
+
+  /**
+   * Get the actual path for executor.
+   *
+   * @param absoluteFilePath
+   * @return
+   */
+  def getExecutorFilePath(absoluteFilePath: String): String = {
+    val sparkMaster = sparkSession.conf.get("spark.master")
+
+    if (sparkMaster.equalsIgnoreCase("yarn")) {
+      absoluteFilePath.split("/").last
+    } else {
+      absoluteFilePath
+    }
+  }
+
 }
