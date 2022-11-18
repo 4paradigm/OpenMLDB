@@ -1,6 +1,6 @@
 # OpenMLDB 快速上手
 
-本教程提供OpenMLDB快速上手指南。通过建立数据库、导入数据、离线特征计算、SQL 方案上线、在线实时特征计算，演示了单机版OpenMLDB和集群版OpenMLDB的基本使用流程。
+本教程提供 OpenMLDB 快速上手指南。通过建立数据库、导入数据、离线特征计算、SQL 方案上线、在线实时特征计算，演示了单机版 OpenMLDB 和集群版 OpenMLDB 的基本使用流程。
 
 ## 1. 环境和数据准备
 
@@ -8,7 +8,7 @@
 Docker engine版本需求 >= 18.03
 ```
 
-本教程均基于 OpenMLDB CLI 进行开发和部署，因此首先需要下载样例数据并且启动 OpenMLDB CLI。我们推荐使用准备好的 docker 镜像来快速体验使用。
+本教程均基于 OpenMLDB CLI 进行开发和部署，因此首先需要下载样例数据并且启动 OpenMLDB CLI。我们推荐使用准备好的 docker 镜像来快速体验。
 
 ```{note}
 如果你希望自己编译安装，可以参考我们的[安装部署](../deploy/install_deploy.md)。
@@ -25,7 +25,7 @@ docker run -it 4pdosc/openmldb:0.6.6 bash
 ````{important}
 **成功启动容器以后，本教程中的后续命令默认均在容器内执行。**
 ```{tip} 
-如果你需要从容器外访问容器内的OpenMLDB服务端，请参考[CLI/SDK->容器onebox](../reference/ip_tips.md#clisdk-容器onebox)。
+如果你需要从容器外访问容器内的 OpenMLDB 服务端，请参考[CLI/SDK->容器onebox](../reference/ip_tips.md#clisdk-容器onebox)。
 ```
 ````
 
