@@ -28,17 +28,24 @@ object SelectIntoPlan {
     require(outPath.nonEmpty)
 
     if (logger.isDebugEnabled()) {
+      logger.debug("session catalog {}", spark.sessionState.catalog)
       logger.debug("select {} rows", input.getDf().count())
       input.getDf().show(10)
     }
 
     // write options don't need deepCopy
     val (format, options, mode, _) = HybridseUtil.parseOptions(node)
-    logger.info("select into offline storage: format[{}], options[{}], write mode[{}], out path {}", format, options,
-      mode, outPath)
     if (input.getDf().isEmpty) {
       throw new Exception("select empty, skip save")
+    } else if (outPath.toLowerCase.startsWith("hive://")) {
+      // we won't check if the database exists, if not, save will throw exception
+      // DO NOT create database in here(the table location will be spark warehouse)
+      val dbt = outPath.substring(7) // hive://<[db.]table>
+      logger.info(s"offline select into: hive way, write mode[${mode}], out table ${dbt}")
+      input.getDf().write.mode(mode).saveAsTable(dbt)
     } else {
+      logger.info("offline select into: format[{}], options[{}], write mode[{}], out path {}", format, options,
+          mode, outPath)
       input.getDf().write.format(format).options(options).mode(mode).save(outPath)
     }
 

@@ -127,11 +127,18 @@ LOAD DATA INFILE 'data_path' INTO TABLE t1 OPTIONS(deep_copy=false);
 	`hive-site.xml`样例：
 	```
 	<configuration>
-	<property>
-		<name>hive.metastore.uris</name>
-		<!--Make sure that <value> points to the Hive Metastore URI in your cluster -->
-		<value>thrift://localhost:9083</value>
-		<description>URI for client to contact metastore server</description>
-	</property>
+		<property>
+			<name>hive.metastore.uris</name>
+			<!--Make sure that <value> points to the Hive Metastore URI in your cluster -->
+			<value>thrift://localhost:9083</value>
+			<description>URI for client to contact metastore server</description>
+		</property>
 	</configuration>
 	```
+
+### Hive Debug
+
+确认`LOAD DATA`等任务是否连接到正确的Hive集群，可以通过job log来查看。
+
+- `INFO HiveConf:`提示读取到的是哪个Hive配置文件。如果需要配置加载的细节，可以打开spark debug日志。
+- 连接Hive metastore应该有` INFO metastore: Trying to connect to metastore with URI`的日志提示。连接成功会有`INFO metastore: Connected to metastore.`日志。

@@ -101,7 +101,10 @@ object OpenmldbBatchjobManager {
     val mainClass = "com._4paradigm.openmldb.batchjob.ExportOfflineData"
 
     val tempSqlFile = SqlFileUtil.createTempSqlFile(sql)
-    val args = List(tempSqlFile.getAbsolutePath)
+    // hive url shouldn't have whitespaces in the head
+    val enableHive = if ("into outfile ['\"]{1}hive://".r.findFirstIn(sql.toLowerCase()).isEmpty) 
+      "" else "true"
+    val args = List(tempSqlFile.getAbsolutePath, enableHive)
 
     SparkJobManager.submitSparkJob(jobType, mainClass, args, tempSqlFile.getAbsolutePath, sparkConf.asScala.toMap,
       defaultDb)

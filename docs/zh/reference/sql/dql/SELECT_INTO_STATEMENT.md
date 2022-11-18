@@ -25,7 +25,7 @@ SelectInfoOptionItem
 `SELECT INTO OUTFILE`分为三个部分。
 
 - 第一部分是一个普通的`SELECT`语句，通过这个`SELECT`语句来查询所需要的数据；
-- 第二部分是`filePath`，定义将查询的记录导出到哪个文件中；
+- 第二部分是`filePath`，定义将查询的记录导出到哪个文件中，详情见[FilePath](#filepath)；
 - 第三部分是`SelectIntoOptionList`为可选选项，其可能的取值有：
 
 | 配置项     | 类型    | 默认值          | 描述                                                                                                                                                                                 |
@@ -40,6 +40,17 @@ SelectInfoOptionItem
 ````{important}
 请注意，目前仅有集群版支持quote字符的转义。所以，如果您使用的是单机版，请谨慎选择quote字符，保证原始字符串内并不包含quote字符。
 ````
+
+## FilePath
+
+FilePath支持'file://', 'hdfs://', 'hive://'三种。
+
+### 导出到Hive
+
+路径格式：'hive://[db.]table'。不指定db则导入到Hive的'default_db'。表可以不存在，但如果指定db，db必须存在。
+
+- Hive需要Spark支持与连接到Hive的配置，请参考[Hive 支持](../dml/LOAD_DATA_STATEMENT.md#hive-支持)。
+- 不支持导出到Hive不存在的数据库。如果指定的Hive数据库不存在，OpenMLDB不会为此在Hive中创建该数据库。（OpenMLDB创建Hive数据库，会导致该数据库的表存储路径变化。）
 
 ## SQL语句模版
 
