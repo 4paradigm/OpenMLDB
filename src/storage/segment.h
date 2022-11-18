@@ -46,13 +46,13 @@ struct DataBlock {
     uint32_t size;
     char* data;
 
-    DataBlock(uint8_t dim_cnt, const char* input, uint32_t len) : dim_cnt_down(dim_cnt), size(len), data(NULL) {
+    DataBlock(uint8_t dim_cnt, const char* input, uint32_t len) : dim_cnt_down(dim_cnt), size(len), data(nullptr) {
         data = new char[len];
         memcpy(data, input, len);
     }
 
     DataBlock(uint8_t dim_cnt, char* input, uint32_t len, bool skip_copy)
-        : dim_cnt_down(dim_cnt), size(len), data(NULL) {
+        : dim_cnt_down(dim_cnt), size(len), data(nullptr) {
         if (skip_copy) {
             data = input;
         } else {
@@ -63,13 +63,13 @@ struct DataBlock {
 
     ~DataBlock() {
         delete[] data;
-        data = NULL;
+        data = nullptr;
     }
 };
 
 // the desc time comparator
 struct TimeComparator {
-    int operator()(const uint64_t& a, const uint64_t& b) const {
+    int operator() (uint64_t a, uint64_t b) const {
         if (a > b) {
             return -1;
         } else if (a == b) {
@@ -237,6 +237,11 @@ class Segment {
     void IncrGcVersion() { gc_version_.fetch_add(1, std::memory_order_relaxed); }
 
     void ReleaseAndCount(uint64_t& gc_idx_cnt,            // NOLINT
+                         uint64_t& gc_record_cnt,         // NOLINT
+                         uint64_t& gc_record_byte_size);  // NOLINT
+
+    void ReleaseAndCount(const std::vector<size_t>& id_vec,
+                         uint64_t& gc_idx_cnt,            // NOLINT
                          uint64_t& gc_record_cnt,         // NOLINT
                          uint64_t& gc_record_byte_size);  // NOLINT
 
