@@ -15,4 +15,4 @@
 # limitations under the License.
 
 cd "$(dirname "$0")" || exit
-./openmldb --host 127.0.0.1 --port 6527
+./openmldb --host 127.0.0.1 --port 6527 "$@"

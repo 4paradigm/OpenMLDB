@@ -1,4 +1,4 @@
-#! /bin/bash
+#! /usr/bin/env bash
 
 # Copyright 2021 4Paradigm
 #
@@ -14,13 +14,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-set -e
+if [ -z "${OPENMLDB_HOME}" ]; then
+  export OPENMLDB_HOME="$(cd "`dirname "$0"`"/..; pwd)"
+  # echo "Using default OPENMLDB_HOME=${OPENMLDB_HOME}"
+fi
 
-cd "$(dirname "$0")"
+if [ -z "${SPARK_HOME}" ]; then
+  export SPARK_HOME=${OPENMLDB_HOME}/spark
+  # echo "Using default SPARK_HOME=${SPARK_HOME}"
+fi
 
-export COMPONENTS="standalone_tablet standalone_nameserver standalone_apiserver"
-
-for COMPONENT in $COMPONENTS; do
-  ./start.sh stop "$COMPONENT"
-done
-echo "OpenMLDB stopped"
+if [ -z "${ZK_HOME}" ]; then
+  export ZK_HOME=${OPENMLDB_HOME}/zookeeper
+  # echo "Using default ZK_HOME=${ZK_HOME}"
+fi

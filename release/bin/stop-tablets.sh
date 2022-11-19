@@ -20,30 +20,28 @@ home="$(cd "`dirname "$0"`"/..; pwd)"
 . $home/conf/openmldb-env.sh
 . $home/bin/init.sh
 
-# if in cluster mode, start zk
-if [[ -n "${OPENMLDB_MODE}" && ${OPENMLDB_MODE} = "cluster" ]]; then
-  # start zk if OPENMLDB_USE_EXISTING_ZK_CLUSTER is not true
-  if [[ "${OPENMLDB_USE_EXISTING_ZK_CLUSTER}" != "true" ]]; then
-    cd $home
-    bin/start-zk.sh
-    sleep 5
-  fi
+if [[ ${OPENMLDB_MODE} == "standalone" ]]; then
+  bin/start.sh stop standalone_tablet
+else
+  old_IFS=$IFS
+  IFS=$'\n'
+
+  for line in $(cat conf/tablets | sed  "s/#.*$//;/^$/d")
+  do
+    host_port=$(echo $line | awk -F ' ' '{print $1}')
+    host=$(echo ${host_port} | awk -F ':' '{print $1}')
+    port=$(echo ${host_port} | awk -F ':' '{print $2}')
+    dir=$(echo $line | awk -F ' ' '{print $2}')
+
+    if [[ -z $dir ]]; then
+      dir=${OPENMLDB_HOME}
+    fi
+    if [[ -z $port ]]; then
+      port=${OPENMLDB_TABLET_PORT}
+    fi
+    echo "stop tablet in $dir with endpoint $host:$port "
+    ssh $host "cd $dir; bin/start.sh stop tablet"
+  done
+
+  IFS=$old_IFS
 fi
-
-# Start Tablets
-bin/start-tablets.sh
-
-# Start Nameservers
-bin/start-nameservers.sh
-
-# Start Apiservers
-bin/start-apiservers.sh
-
-# if in cluster mode, start taskmanager
-if [[ -n "${OPENMLDB_MODE}" && ${OPENMLDB_MODE} = "cluster" ]]; then
-  # start taskmanager
-  cd $home
-  bin/start-taskmanagers.sh
-fi
-
-echo "OpenMLDB start success"

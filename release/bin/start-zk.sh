@@ -1,4 +1,4 @@
-#! /bin/bash
+#! /usr/bin/env bash
 
 # Copyright 2021 4Paradigm
 #
@@ -20,26 +20,5 @@ home="$(cd "`dirname "$0"`"/..; pwd)"
 . $home/conf/openmldb-env.sh
 . $home/bin/init.sh
 
-# Stop Apiservers
-bin/stop-apiservers.sh
-
-# Stop Nameservers
-bin/stop-nameservers.sh
-
-# Stop Tablets
-bin/stop-tablets.sh
-
-# if in cluster mode, stop zk and taskmanager
-if [[ -n "${OPENMLDB_MODE}" && ${OPENMLDB_MODE} = "cluster" ]]; then
-  # stop zk if OPENMLDB_USE_EXISTING_ZK_CLUSTER is not true
-  if [[ "${OPENMLDB_USE_EXISTING_ZK_CLUSTER}" != "true" ]]; then
-    cd $home
-    bin/stop-zk.sh
-  fi
-
-  # stop taskmanager
-  cd $home
-  bin/stop-taskmanagers.sh
-fi
-
-echo "OpenMLDB stopped"
+cd ${ZK_HOME}
+bin/zkServer.sh start

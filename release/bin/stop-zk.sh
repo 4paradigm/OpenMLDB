@@ -1,4 +1,4 @@
-#! /bin/bash
+#! /usr/bin/env bash
 
 # Copyright 2021 4Paradigm
 #
@@ -14,13 +14,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-set -e
+home="$(cd "`dirname "$0"`"/..; pwd)"
+. $home/conf/openmldb-env.sh
+. $home/bin/init.sh
 
-cd "$(dirname "$0")"
-
-export COMPONENTS="standalone_tablet standalone_nameserver standalone_apiserver"
-
-for COMPONENT in $COMPONENTS; do
-  ./start.sh start "$COMPONENT"
-done
-echo "OpenMLDB start success"
+cd ${ZK_HOME}
+bin/zkServer.sh stop
