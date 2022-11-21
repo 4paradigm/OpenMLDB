@@ -28,7 +28,7 @@ object SelectIntoPlan {
     require(outPath.nonEmpty)
 
     if (logger.isDebugEnabled()) {
-      logger.debug("session catalog {}", spark.sessionState.catalog)
+      logger.debug("session catalog {}", ctx.getSparkSession.sessionState.catalog)
       logger.debug("select {} rows", input.getDf().count())
       input.getDf().show(10)
     }
