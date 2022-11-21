@@ -376,10 +376,16 @@ int GetCount(Segment* segment, int idx) {
     if (!pk_it) {
         return 0;
     }
+    uint32_t real_idx = idx;
+    segment->GetTsIdx(idx, real_idx);
     pk_it->SeekToFirst();
     while (pk_it->Valid()) {
-        Slice key = pk_it->GetKey();
-        KeyEntry* entry = segment->GetTsCnt() > 1 ? ((KeyEntry**)pk_it->GetValue())[idx] : (KeyEntry*)pk_it->GetValue();
+        KeyEntry* entry = nullptr;
+        if (segment->GetTsCnt() > 1) {
+            entry = ((KeyEntry**)pk_it->GetValue())[real_idx];
+        } else {
+            entry = (KeyEntry*)pk_it->GetValue();
+        }
         std::unique_ptr<TimeEntries::Iterator> ts_it(entry->entries.NewIterator());
         ts_it->SeekToFirst();
         while(ts_it->Valid()) {
@@ -404,14 +410,14 @@ TEST_F(SegmentTest, ReleaseAndCount) {
             segment.Put(Slice(key), ts_map, data);
         }
     }
-    ASSERT_EQ(200, GetCount(&segment, 0));
     ASSERT_EQ(200, GetCount(&segment, 1));
+    ASSERT_EQ(200, GetCount(&segment, 3));
     segment.ReleaseAndCount({1});
-    ASSERT_EQ(0, GetCount(&segment, 0));
-    ASSERT_EQ(200, GetCount(&segment, 1));
-    segment.ReleaseAndCount();
-    ASSERT_EQ(0, GetCount(&segment, 0));
     ASSERT_EQ(0, GetCount(&segment, 1));
+    ASSERT_EQ(200, GetCount(&segment, 3));
+    segment.ReleaseAndCount();
+    ASSERT_EQ(0, GetCount(&segment, 1));
+    ASSERT_EQ(0, GetCount(&segment, 3));
 }
 
 TEST_F(SegmentTest, ReleaseAndCountOneTs) {
