@@ -151,7 +151,7 @@ Alternatively, you can also download the source code and compile from scratch:
 ```bash
 git clone https://github.com/4paradigm/spark.git
 cd ./spark/
-./dev/make-distribution.sh --name openmldbspark --pip --tgz -Phadoop-2.7 -Pyarn -Pallinone
+./dev/make-distribution.sh --name openmldbspark --pip --tgz -Phadoop-2.7 -Pyarn -Pallinone -Phive -Phive-thriftserver
 ```
 
 2. Setting up the environment variable `SPARK_HOME` to make the OpenMLDB Spark distribution for OpenMLDB or other Spark applications

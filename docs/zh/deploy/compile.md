@@ -139,7 +139,7 @@ wget https://github.com/4paradigm/spark/releases/download/v3.2.1-openmldb0.6.6/s
 ```bash
 git clone https://github.com/4paradigm/spark.git
 cd ./spark/
-./dev/make-distribution.sh --name openmldbspark --pip --tgz -Phadoop-2.7 -Pyarn -Pallinone
+./dev/make-distribution.sh --name openmldbspark --pip --tgz -Phadoop-2.7 -Pyarn -Pallinone -Phive -Phive-thriftserver
 ```
 
 2. 设置环境变量 `SPARK_HOME` 来使用 OpenMLDB Spark 的发行版本来运行 OpenMLDB 或者其他应用。
