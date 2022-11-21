@@ -294,10 +294,9 @@ void MemTable::SchedGc() {
                 for (uint32_t k = 0; k < seg_cnt_; k++) {
                     if (segments_[i][k] != nullptr) {
                        if (real_index.size() == 1 || deleting_pos.size() + deleted_num == real_index.size()) {
-                            segments_[i][k]->ReleaseAndCount(gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
+                            segments_[i][k]->ReleaseAndCount();
                         } else {
-                            segments_[i][k]->ReleaseAndCount(deleting_pos,
-                                    gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
+                            segments_[i][k]->ReleaseAndCount(deleting_pos);
                         }
                     }
                 }

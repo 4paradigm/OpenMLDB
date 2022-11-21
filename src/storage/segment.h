@@ -236,14 +236,9 @@ class Segment {
 
     void IncrGcVersion() { gc_version_.fetch_add(1, std::memory_order_relaxed); }
 
-    void ReleaseAndCount(uint64_t& gc_idx_cnt,            // NOLINT
-                         uint64_t& gc_record_cnt,         // NOLINT
-                         uint64_t& gc_record_byte_size);  // NOLINT
+    void ReleaseAndCount();
 
-    void ReleaseAndCount(const std::vector<size_t>& id_vec,
-                         uint64_t& gc_idx_cnt,            // NOLINT
-                         uint64_t& gc_record_cnt,         // NOLINT
-                         uint64_t& gc_record_byte_size);  // NOLINT
+    void ReleaseAndCount(const std::vector<size_t>& id_vec);
 
  private:
     void FreeList(::openmldb::base::Node<uint64_t, DataBlock*>* node, uint64_t& gc_idx_cnt,  // NOLINT

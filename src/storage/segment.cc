@@ -134,30 +134,16 @@ uint64_t Segment::Release() {
     return cnt;
 }
 
-void Segment::ReleaseAndCount(uint64_t& gc_idx_cnt, uint64_t& gc_record_cnt, uint64_t& gc_record_byte_size) {
-    KeyEntries::Iterator* it = entries_->NewIterator();
-    it->SeekToFirst();
-    while (it->Valid()) {
-        Slice key = it->GetKey();
-        ::openmldb::base::Node<Slice, void*>* entry_node = nullptr;
-        {
-            std::lock_guard<std::mutex> lock(mu_);
-            entry_node = entries_->Remove(key);
-        }
-        if (entry_node != nullptr) {
-            FreeEntry(entry_node, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
-        }
-        it->Next();
-        pk_cnt_.fetch_sub(1, std::memory_order_relaxed);
-    }
-    delete it;
+void Segment::ReleaseAndCount() {
     uint64_t cur_version = gc_version_.load(std::memory_order_relaxed);
+    uint64_t gc_idx_cnt = 0;
+    uint64_t gc_record_cnt = 0;
+    uint64_t gc_record_byte_size = 0;
     GcEntryFreeList(cur_version, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
     Release();
 }
 
-void Segment::ReleaseAndCount(const std::vector<size_t>& id_vec,
-        uint64_t& gc_idx_cnt, uint64_t& gc_record_cnt, uint64_t& gc_record_byte_size) {
+void Segment::ReleaseAndCount(const std::vector<size_t>& id_vec) {
     if (ts_cnt_ <= 1) {
         return;
     }
@@ -170,6 +156,9 @@ void Segment::ReleaseAndCount(const std::vector<size_t>& id_vec,
     if (real_idx_vec.empty()) {
         return;
     }
+    uint64_t gc_idx_cnt = 0;
+    uint64_t gc_record_cnt = 0;
+    uint64_t gc_record_byte_size = 0;
     std::unique_ptr<KeyEntries::Iterator> it(entries_->NewIterator());
     it->SeekToFirst();
     while (it->Valid()) {
@@ -352,6 +341,7 @@ void Segment::FreeEntry(::openmldb::base::Node<Slice, void*>* entry_node, uint64
         KeyEntry** entry_arr = (KeyEntry**)entry_node->GetValue();  // NOLINT
         for (uint32_t i = 0; i < ts_cnt_; i++) {
             uint64_t old = gc_idx_cnt;
+            PDLOG(WARNING, "before %lu %lu %lu", gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
             KeyEntry* entry = entry_arr[i];
             TimeEntries::Iterator* it = entry->entries.NewIterator();
             it->SeekToFirst();
@@ -360,6 +350,7 @@ void Segment::FreeEntry(::openmldb::base::Node<Slice, void*>* entry_node, uint64
                 ::openmldb::base::Node<uint64_t, DataBlock*>* data_node = entry->entries.Split(ts);
                 FreeList(data_node, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
             }
+            PDLOG(WARNING, "after %lu %lu %lu", gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
             delete it;
             delete entry;
             idx_cnt_vec_[i]->fetch_sub(gc_idx_cnt - old, std::memory_order_relaxed);

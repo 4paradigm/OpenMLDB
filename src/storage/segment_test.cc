@@ -370,6 +370,64 @@ TEST_F(SegmentTest, GetTsIdx) {
     ASSERT_EQ(2, (int64_t)real_idx);
 }
 
+int GetCount(Segment* segment, int idx) {
+    int count = 0;
+    std::unique_ptr<KeyEntries::Iterator> pk_it(segment->GetKeyEntries()->NewIterator());
+    if (!pk_it) {
+        return 0;
+    }
+    pk_it->SeekToFirst();
+    while (pk_it->Valid()) {
+        Slice key = pk_it->GetKey();
+        KeyEntry* entry = segment->GetTsCnt() > 1 ? ((KeyEntry**)pk_it->GetValue())[idx] : (KeyEntry*)pk_it->GetValue();
+        std::unique_ptr<TimeEntries::Iterator> ts_it(entry->entries.NewIterator());
+        ts_it->SeekToFirst();
+        while(ts_it->Valid()) {
+            count++;
+            ts_it->Next();
+        }
+        pk_it->Next();
+    }
+    return count;
+}
+
+TEST_F(SegmentTest, ReleaseAndCount) {
+    std::vector<uint32_t> ts_idx_vec = {1, 3};
+    Segment segment(8, ts_idx_vec);
+    ASSERT_EQ(2, (int64_t)segment.GetTsCnt());
+    for (int i = 0; i < 100; i++) {
+        std::string key = "key" + std::to_string(i);
+        uint64_t ts = 1669013677221000;
+        for (int j = 0; j < 2; j++) {
+            DataBlock* data = new DataBlock(2, key.c_str(), key.length());
+            std::map<int32_t, uint64_t> ts_map = {{1, ts + j}, {3, ts + j}};
+            segment.Put(Slice(key), ts_map, data);
+        }
+    }
+    ASSERT_EQ(200, GetCount(&segment, 0));
+    ASSERT_EQ(200, GetCount(&segment, 1));
+    segment.ReleaseAndCount({1});
+    ASSERT_EQ(0, GetCount(&segment, 0));
+    ASSERT_EQ(200, GetCount(&segment, 1));
+    segment.ReleaseAndCount();
+    ASSERT_EQ(0, GetCount(&segment, 0));
+    ASSERT_EQ(0, GetCount(&segment, 1));
+}
+
+TEST_F(SegmentTest, ReleaseAndCountOneTs) {
+    Segment segment;
+    for (int i = 0; i < 100; i++) {
+        std::string key = "key" + std::to_string(i);
+        uint64_t ts = 1669013677221000;
+        for (int j = 0; j < 2; j++) {
+            segment.Put(Slice(key), ts + j, key.c_str(), key.size());
+        }
+    }
+    ASSERT_EQ(200, GetCount(&segment, 0));
+    segment.ReleaseAndCount();
+    ASSERT_EQ(0, GetCount(&segment, 0));
+}
+
 }  // namespace storage
 }  // namespace openmldb
 
