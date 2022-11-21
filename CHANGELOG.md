@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.6.7] - 2022-11-22
+
+### Features
+- Support importing and exporting data from Hive (@2778 @vagetablechicken)
+- Improve the `autofe` (#2777 @vagetablechicken)
+- Improve `TaskManager` client errors (#2780 @vagetablechicken)
+- Improve the documents (#2781 @zhanghaohit, #2767 #2792 @vagetablechicken, #2805 @selenachenjingxin)
+
+### Bug Fixes
+- Python sdk workflow may fails on MacOS (#2783 @vagetablechicken, #2788 @dl239)
+- There are syntax error in some log messages (@2770 dl239)
+- Installing Python sdk require unnessary packages (#2791 @vagetablechicken)
+
 ## [0.6.6] - 2022-11-14
 
 ### Features
@@ -421,6 +434,7 @@ Removed
 - openmldb-0.2.0-linux.tar.gz targets on x86_64
 - aarch64 artifacts consider experimental
 
+[0.6.7]: https://github.com/4paradigm/OpenMLDB/compare/v0.6.6...v0.6.7
 [0.6.6]: https://github.com/4paradigm/OpenMLDB/compare/v0.6.5...v0.6.6
 [0.6.5]: https://github.com/4paradigm/OpenMLDB/compare/v0.6.4...v0.6.5
 [0.6.4]: https://github.com/4paradigm/OpenMLDB/compare/v0.6.3...v0.6.4
