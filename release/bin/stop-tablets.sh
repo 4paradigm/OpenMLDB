@@ -41,6 +41,7 @@ else
     fi
     echo "stop tablet in $dir with endpoint $host:$port "
     ssh $host "cd $dir; bin/start.sh stop tablet"
+    sleep 2
   done
 
   IFS=$old_IFS

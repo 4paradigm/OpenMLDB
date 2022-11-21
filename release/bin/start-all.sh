@@ -46,4 +46,13 @@ if [[ -n "${OPENMLDB_MODE}" && ${OPENMLDB_MODE} = "cluster" ]]; then
   bin/start-taskmanagers.sh
 fi
 
+cd $home
+echo "Start recovering data..."
+python tools/openmldb_ops.py --openmldb_bin_path=./bin/openmldb --zk_cluster=${OPENMLDB_ZK_CLUSTER} --zk_root_path=${OPENMLDB_ZK_ROOT_PATH} --cmd=recoverdata > logs/recover.log 2>&1
+if [[ $? != 0 ]]; then
+  echo "Recovering data failed. Pls check log in logs/recover.log"
+else
+  echo "Recovering data done."
+fi
+
 echo "OpenMLDB start success"

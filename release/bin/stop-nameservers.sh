@@ -41,6 +41,7 @@ else
     fi
     echo "stop nameserver in $dir with endpoint $host:$port "
     ssh $host "cd $dir; bin/start.sh stop nameserver"
+    sleep 2
   done
 
   IFS=$old_IFS

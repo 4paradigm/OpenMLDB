@@ -12,7 +12,7 @@ export OPENMLDB_APISERVER_PORT=9080
 # if OPENMLDB_USE_EXISTING_ZK_CLUSTER is set, will use existing zk cluster
 export OPENMLDB_USE_EXISTING_ZK_CLUSTER=false
 # the zk cluster address
-export OPENMLDB_ZK_CLUSTER=node-4:2181
+export OPENMLDB_ZK_CLUSTER=
 # zookeeper root path
 export OPENMLDB_ZK_ROOT_PATH=/openmldb
 # openmldb root path

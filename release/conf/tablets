@@ -1,0 +1,2 @@
+localhost:10921 /tmp/openmldb/tablet-1
+localhost:10922 /tmp/openmldb/tablet-2
