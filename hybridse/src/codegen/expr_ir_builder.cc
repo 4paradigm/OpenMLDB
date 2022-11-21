@@ -1139,18 +1139,36 @@ Status ExprIRBuilder::BuildArrayExpr(const ::hybridse::node::ArrayExpr* node, Na
     // CHECK_TRUE(node->GetOutputType()->base() == node::kArray && node->GetOutputType()->generics().size() == 1,
     //            kCodegenError);
 
-    std::vector<NativeValue> elements;
-    for (auto& ele : node->children_) {
-        NativeValue val;
-        CHECK_STATUS(Build(ele, &val));
-        elements.push_back(val);
-    }
 
     ::llvm::Type* arr_type = nullptr;
     CHECK_TRUE(GetLlvmType(ctx_->GetModule(), node->GetOutputType(), &arr_type), kCodegenError);
-    // ::llvm::ArrayType::get();
     llvm::IRBuilder<> builder(ctx_->GetCurrentBlock());
-    auto* inst = builder.CreateAlloca(arr_type);
+
+    CastExprIRBuilder cast_builder(ctx_->GetCurrentBlock());
+
+
+    auto* arr_ptr = CreateAllocaAtHead(&builder, arr_type, node->GetExprString());
+
+    std::vector<NativeValue> elements;
+    auto* idx_val_ptr = builder.CreateAlloca(builder.getInt64Ty());
+    builder.CreateStore(builder.getInt64(0), idx_val_ptr);
+
+    for (auto& ele : node->children_) {
+        NativeValue val;
+        CHECK_STATUS(Build(ele, &val));
+        if (val.GetType() != arr_type->getArrayElementType()) {
+            NativeValue casted;
+            cast_builder.Cast(val, arr_type->getArrayElementType(), &casted);
+            val = casted;
+        }
+        auto* idx_val = builder.CreateLoad(idx_val_ptr);
+
+        auto* ele_addr = builder.CreateGEP(arr_ptr, idx_val);
+        builder.CreateStore(val.GetRaw)
+
+        auto* new_idx = builder.CreateAdd(idx_val, builder.getInt64(1));
+        builder.CreateStore(new_idx, idx_val_ptr);
+    }
 
     return Status::OK();
 }
