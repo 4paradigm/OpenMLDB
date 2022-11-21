@@ -85,7 +85,9 @@ object RowProjectPlan {
       && openmldbSession != null && openmldbSession.openmldbCatalogService != null) {
       externalFunMap = openmldbSession.openmldbCatalogService.getExternalFunctionsMap()
     }
-    val isYarnMode = openmldbSession.isYarnMode()
+    // TODO(tobe): openmldbSession may be null for UT
+    //val isYarnMode = openmldbSession.isYarnMode()
+    val isYarnMode = ctx.getSparkSession.conf.get("spark.master").equalsIgnoreCase("yarn")
     val taskmanagerExternalFunctionDir = config.taskmanagerExternalFunctionDir
 
     val outputDf = if (isUnsafeRowOpt && ctx.getConf.enableUnsafeRowOptForProject) { // Use UnsafeRow optimization
