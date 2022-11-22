@@ -6,7 +6,7 @@
 - Support importing and exporting data from/to Hive (@2778 @vagetablechicken)
 - Improve the module of `autofe` (#2777 @vagetablechicken)
 - Improve error messages of the `TaskManager` client (#2780 @vagetablechicken)
-- Improve the documents (#2781 @zhanghaohit, #2767 #2792 @vagetablechicken, #2805 @selenachenjingxin)
+- Improve the documents (#2781 @zhanghaohit, #2767 #2792 @vagetablechicken, #2805 @selenachenjingxin, #2810 @dl239)
 
 ### Bug Fixes
 - Python SDK workflow may fail on MacOS. (#2783 @vagetablechicken, #2788 @dl239)
