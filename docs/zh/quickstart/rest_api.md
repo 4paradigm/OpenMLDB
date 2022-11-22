@@ -67,7 +67,7 @@ request body:
 ```
 
 + 可以支持多行，其结果与返回的 response 中的 data.data 字段的数组一一对应。
-+ need_schema 可以设置为 true, 返回就会有输出结果的 schema。默认为 false。
++ need_schema 可以设置为 true, 返回就会有输出结果的 schema。可选参数，默认为 false。
 + input为array style时返回结果也是array style，input为json style则是返回json style的结果。一次request请求的input只支持一种格式，请不要混合格式。
 + json style的input数据可以有多余列。
 

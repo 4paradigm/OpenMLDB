@@ -66,7 +66,7 @@ The request body:
 ```
 
 + Multiple rows of input are supported, whose returned values correspond to the fields in the `data.data` array.
-+ A schema will be returned if `need_schema`  is `true`. Default: `false`.
++ A schema will be returned if `need_schema`  is `true`. Optional, default is `false`.
 + If input is array style, the response data is array style. If input is json style, the response data is json style. DO NOT use multi styles in one request input.
 + Json style input can provide redundancy columns.
 
