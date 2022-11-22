@@ -10,6 +10,7 @@
     java_sdk
     python_sdk
     go_sdk
+    cxx_sdk
     rest_api
     beginner_must_read
     function_boundary
