@@ -2,11 +2,14 @@
 
 `STOP JOB`语句停止已经提交的单个任务。
 
-
 ```SQL
 STOP JOB job_id;
 ```
 
+```{attention}
+yarn模式下，`STOP JOB`会kill yarn job并更改job info表中的job状态。
+local或yarn-client模式下，`STOP JOB`只会更改job info表中的job状态，不会真的kill job进程。
+```
 
 ## Example
 
