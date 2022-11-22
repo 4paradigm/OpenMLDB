@@ -47,26 +47,39 @@ The request URL: http://ip:port/dbs/{db_name}/deployments/{deployment_name}
 HTTP method: POST
 
 The request body: 
-
+- array style
 ```
 {
     "input": [["row0_value0", "row0_value1", "row0_value2"], ["row1_value0", "row1_value1", "row1_value2"], ...],
     "need_schema": false
 }
 ```
+- json style
+```json
+{
+    "input": [
+      {"col0":"row0_value0", "col1":"row0_value1", "col2":"row0_value2", "foo": "bar"}, 
+      {"col0":"row1_value0", "col1":"row1_value1", "col2":"row1_value2"}, 
+      ...
+    ]
+}
+```
 
 + Multiple rows of input are supported, whose returned values correspond to the fields in the `data.data` array.
 + A schema will be returned if `need_schema`  is `true`. Default: `false`.
++ If input is array style, the response data is array style. If input is json style, the response data is json style. DO NOT use multi styles in one request input.
++ Json style input can provide redundancy columns.
 
 **Example**
 
+- array style
 ```bash
 curl http://127.0.0.1:8080/dbs/demo_db/deployments/demo_data_service -X POST -d'{
         "input": [["aaa", 11, 22, 1.2, 1.3, 1635247427000, "2021-05-20"]]
     }'
 ```
 
-The response:
+response:
 
 ```json
 {
@@ -74,6 +87,25 @@ The response:
     "msg":"ok",
     "data":{
         "data":[["aaa",11,22]]
+    }
+}
+```
+
+- json style
+```bash
+curl http://127.0.0.1:8080/dbs/demo_db/deployments/demo_data_service -X POST -d'{
+        "input": [{"c1":"aaa", "c2":11, "c3":22, "c4":1.2, "c5":1.3, "c6":1635247427000, "c7":"2021-05-20", "foo":"bar"}]
+    }'
+```
+
+response:
+
+```json
+{
+    "code":0,
+    "msg":"ok",
+    "data":{
+        "data":[{"c1":"aaa","c2":11,"w1_c3_sum":22}]
     }
 }
 ```

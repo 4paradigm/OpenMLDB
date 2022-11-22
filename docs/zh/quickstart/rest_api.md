@@ -48,18 +48,31 @@ http method: POST
 
 request body: 
 
-```
+- array style
+```json
 {
     "input": [["row0_value0", "row0_value1", "row0_value2"], ["row1_value0", "row1_value1", "row1_value2"], ...],
     "need_schema": false
 }
 ```
+- json style
+```json
+{
+    "input": [
+      {"col0":"row0_value0", "col1":"row0_value1", "col2":"row0_value2", "foo": "bar"}, 
+      {"col0":"row1_value0", "col1":"row1_value1", "col2":"row1_value2"}, 
+      ...
+    ]
+}
+```
 
 + 可以支持多行，其结果与返回的 response 中的 data.data 字段的数组一一对应。
 + need_schema 可以设置为 true, 返回就会有输出结果的 schema。默认为 false。
++ input为array style时返回结果也是array style，input为json style则是返回json style的结果。一次request请求的input只支持一种格式，请不要混合格式。
++ json style的input数据可以有多余列。
 
 **实时特征计算举例**
-
+- array style
 ```
 curl http://127.0.0.1:8080/dbs/demo_db/deployments/demo_data_service -X POST -d'{
         "input": [["aaa", 11, 22, 1.2, 1.3, 1635247427000, "2021-05-20"]]
@@ -68,12 +81,31 @@ curl http://127.0.0.1:8080/dbs/demo_db/deployments/demo_data_service -X POST -d'
 
 response:
 
-```
+```json
 {
     "code":0,
     "msg":"ok",
     "data":{
         "data":[["aaa",11,22]]
+    }
+}
+```
+
+- json style
+```
+curl http://127.0.0.1:8080/dbs/demo_db/deployments/demo_data_service -X POST -d'{
+        "input": [{"c1":"aaa", "c2":11, "c3":22, "c4":1.2, "c5":1.3, "c6":1635247427000, "c7":"2021-05-20", "foo":"bar"}]
+    }'
+```
+
+response:
+
+```json
+{
+    "code":0,
+    "msg":"ok",
+    "data":{
+        "data":[{"c1":"aaa","c2":11,"w1_c3_sum":22}]
     }
 }
 ```
