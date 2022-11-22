@@ -480,6 +480,7 @@ public class Demo {
                 "                   c7 timestamp,\n" +
                 "                   c8 date,\n" +
                 "                   index(key=c1, ts=c7));";
+        java.sql.Statement state = sqlExecutor.getStatement();
         try {
             state.execute("use " + db + ";");
             state.execute(createTableSql);
