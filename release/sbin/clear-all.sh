@@ -18,8 +18,9 @@
 set -e
 
 home="$(cd "$(dirname "$0")"/.. || exit; pwd)"
+sbin="$(cd "$(dirname "$0")" || exit; pwd)"
 . "$home"/conf/openmldb-env.sh
-. "$home"/bin/init.sh
+. "$sbin"/init.sh
 
 if [[ ${OPENMLDB_MODE} == "standalone" ]]; then
   rm -rf standalone_db standalone_logs

@@ -18,11 +18,12 @@
 set -e
 
 home="$(cd "$(dirname "$0")"/.. || exit; pwd)"
+sbin="$(cd "$(dirname "$0")" || exit; pwd)"
 . "$home"/conf/openmldb-env.sh
-. "$home"/bin/init.sh
+. "$sbin"/init.sh
 
 if [[ ${OPENMLDB_MODE} == "standalone" ]]; then
-  bin/start.sh stop standalone_apiserver
+  bin/start.sh start standalone_apiserver
 else
   grep -v '^ *#' < conf/apiservers | while IFS= read -r line
   do
@@ -37,7 +38,7 @@ else
     if [[ -z $port ]]; then
       port=${OPENMLDB_APISERVER_PORT}
     fi
-    echo "stop apiserver in $dir with endpoint $host:$port "
-    ssh -n "$host" "cd $dir; bin/start.sh stop apiserver"
+    echo "start apiserver in $dir with endpoint $host:$port "
+    ssh -n "$host" "cd $dir; bin/start.sh start apiserver"
   done
 fi

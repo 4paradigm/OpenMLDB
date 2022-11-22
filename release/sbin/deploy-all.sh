@@ -16,25 +16,25 @@
 # limitations under the License.
 
 home="$(cd "$(dirname "$0")"/.. || exit; pwd)"
+sbin="$(cd "$(dirname "$0")" || exit; pwd)"
 . "$home"/conf/openmldb-env.sh
-. "$home"/bin/init.sh
+. "$sbin"/init.sh
 
 distribute() {
   host=$1
   dest=$2
   if [[ "$home" = "$dest" ]]; then
-    echo "dest ($home) = src ($dest), skip copy"
+    echo "dest = src: $dest, skip copy"
   fi
-  # shellcheck disable=SC2029
-  ssh "$host" "mkdir -p $dest" > /dev/null 2>&1
-  for folder in bin conf
+  ssh -n "$host" "mkdir -p $dest"
+  for folder in bin sbin conf
   do
     rsync -arz "$home"/"$folder"/ "$host":"$dest"/"$folder"/
   done
 }
 
 # deploy tablets
-grep -v '^ *#' < conf/tablets | while IFS= read -r line
+grep -v '^ *#' < "$home"/conf/tablets | while IFS= read -r line
 do
   host_port=$(echo "$line" | awk -F ' ' '{print $1}')
   host=$(echo "${host_port}" | awk -F ':' '{print $1}')
@@ -48,8 +48,8 @@ do
     port=${OPENMLDB_TABLET_PORT}
   fi
   echo "deploy tablet to $host:$port $dir"
-  distribute "$host" "${dir}"
-  ssh -n "$host" "cd $dir; OPENMLDB_HOST=$host OPENMLDB_TABLET_PORT=$port OPENMLDB_ZK_CLUSTER=${OPENMLDB_ZK_CLUSTER} OPENMLDB_ZK_ROOT_PATH=${OPENMLDB_ZK_ROOT_PATH} bin/deploy.sh tablet"
+  distribute "$host" "$dir"
+  ssh -n "$host" "cd $dir; OPENMLDB_HOST=$host OPENMLDB_TABLET_PORT=$port OPENMLDB_ZK_CLUSTER=${OPENMLDB_ZK_CLUSTER} OPENMLDB_ZK_ROOT_PATH=${OPENMLDB_ZK_ROOT_PATH} sbin/deploy.sh tablet"
 done
 
 # deploy nameservers
@@ -68,7 +68,7 @@ do
   fi
   echo "deploy nameserver to $host:$port $dir"
   distribute "$host" "$dir"
-  ssh -n "$host" "cd $dir; OPENMLDB_HOST=$host OPENMLDB_NAMESERVER_PORT=$port OPENMLDB_ZK_CLUSTER=${OPENMLDB_ZK_CLUSTER} OPENMLDB_ZK_ROOT_PATH=${OPENMLDB_ZK_ROOT_PATH} bin/deploy.sh nameserver"
+  ssh -n "$host" "cd $dir; OPENMLDB_HOST=$host OPENMLDB_NAMESERVER_PORT=$port OPENMLDB_ZK_CLUSTER=${OPENMLDB_ZK_CLUSTER} OPENMLDB_ZK_ROOT_PATH=${OPENMLDB_ZK_ROOT_PATH} sbin/deploy.sh nameserver"
 done
 
 # deploy apiservers
@@ -87,7 +87,7 @@ do
   fi
   echo "deploy apiserver to $host:$port $dir"
   distribute "$host" "$dir"
-  ssh -n "$host" "cd $dir; OPENMLDB_HOST=$host OPENMLDB_APISERVER_PORT=$port OPENMLDB_ZK_CLUSTER=${OPENMLDB_ZK_CLUSTER} OPENMLDB_ZK_ROOT_PATH=${OPENMLDB_ZK_ROOT_PATH} bin/deploy.sh apiserver"
+  ssh -n "$host" "cd $dir; OPENMLDB_HOST=$host OPENMLDB_APISERVER_PORT=$port OPENMLDB_ZK_CLUSTER=${OPENMLDB_ZK_CLUSTER} OPENMLDB_ZK_ROOT_PATH=${OPENMLDB_ZK_ROOT_PATH} sbin/deploy.sh apiserver"
 done
 
 # deploy openmldbspark

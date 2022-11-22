@@ -18,26 +18,9 @@
 set -e
 
 home="$(cd "$(dirname "$0")"/.. || exit; pwd)"
+sbin="$(cd "$(dirname "$0")" || exit; pwd)"
 . "$home"/conf/openmldb-env.sh
-. "$home"/bin/init.sh
+. "$sbin"/init.sh
 
-if [[ ${OPENMLDB_MODE} == "standalone" ]]; then
-  bin/start.sh start standalone_apiserver
-else
-  grep -v '^ *#' < conf/apiservers | while IFS= read -r line
-  do
-    host_port=$(echo "$line" | awk -F ' ' '{print $1}')
-    host=$(echo "${host_port}" | awk -F ':' '{print $1}')
-    port=$(echo "${host_port}" | awk -F ':' '{print $2}')
-    dir=$(echo "$line" | awk -F ' ' '{print $2}')
-
-    if [[ -z $dir ]]; then
-      dir=${OPENMLDB_HOME}
-    fi
-    if [[ -z $port ]]; then
-      port=${OPENMLDB_APISERVER_PORT}
-    fi
-    echo "start apiserver in $dir with endpoint $host:$port "
-    ssh -n "$host" "cd $dir; bin/start.sh start apiserver"
-  done
-fi
+cd "${ZK_HOME}"
+bin/zkServer.sh stop

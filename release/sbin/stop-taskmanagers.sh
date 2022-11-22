@@ -1,4 +1,5 @@
-#!/bin/bash
+#! /usr/bin/env bash
+# shellcheck disable=SC1091
 
 # Copyright 2021 4Paradigm
 #
@@ -14,5 +15,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-cd "$(dirname "$0")" || exit
-./openmldb --zk_cluster=127.0.0.1:2181 --zk_root_path=/openmldb --role=sql_client "$@"
+set -e
+
+home="$(cd "$(dirname "$0")"/.. || exit; pwd)"
+sbin="$(cd "$(dirname "$0")" || exit; pwd)"
+. "$home"/conf/openmldb-env.sh
+. "$sbin"/init.sh
+
+cd "$home"
+# stop taskmanager
+bin/start.sh stop taskmanager

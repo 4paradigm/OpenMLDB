@@ -18,13 +18,14 @@
 set -e
 
 home="$(cd "$(dirname "$0")"/.. || exit; pwd)"
+sbin="$(cd "$(dirname "$0")" || exit; pwd)"
 . "$home"/conf/openmldb-env.sh
-. "$home"/bin/init.sh
+. "$sbin"/init.sh
 
 if [[ ${OPENMLDB_MODE} == "standalone" ]]; then
-  bin/start.sh stop standalone_tablet
+  bin/start.sh stop standalone_apiserver
 else
-  grep -v '^ *#' < conf/tablets | while IFS= read -r line
+  grep -v '^ *#' < conf/apiservers | while IFS= read -r line
   do
     host_port=$(echo "$line" | awk -F ' ' '{print $1}')
     host=$(echo "${host_port}" | awk -F ':' '{print $1}')
@@ -35,10 +36,9 @@ else
       dir=${OPENMLDB_HOME}
     fi
     if [[ -z $port ]]; then
-      port=${OPENMLDB_TABLET_PORT}
+      port=${OPENMLDB_APISERVER_PORT}
     fi
-    echo "stop tablet in $dir with endpoint $host:$port "
-    ssh -n "$host" "cd $dir; bin/start.sh stop tablet"
-    sleep 2
+    echo "stop apiserver in $dir with endpoint $host:$port "
+    ssh -n "$host" "cd $dir; bin/start.sh stop apiserver"
   done
 fi

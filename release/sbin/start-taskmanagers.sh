@@ -18,8 +18,11 @@
 set -e
 
 home="$(cd "$(dirname "$0")"/.. || exit; pwd)"
+sbin="$(cd "$(dirname "$0")" || exit; pwd)"
 . "$home"/conf/openmldb-env.sh
-. "$home"/bin/init.sh
+. "$sbin"/init.sh
 
-cd "${ZK_HOME}"
-bin/zkServer.sh stop
+cd "$home"
+
+# start taskmanager
+bin/start.sh start taskmanager

@@ -18,10 +18,27 @@
 set -e
 
 home="$(cd "$(dirname "$0")"/.. || exit; pwd)"
+sbin="$(cd "$(dirname "$0")" || exit; pwd)"
 . "$home"/conf/openmldb-env.sh
-. "$home"/bin/init.sh
+. "$sbin"/init.sh
 
-cd "$home"
+if [[ ${OPENMLDB_MODE} == "standalone" ]]; then
+  bin/start.sh start standalone_tablet
+else
+  grep -v '^ *#' < conf/tablets | while IFS= read -r line
+  do
+    host_port=$(echo "$line" | awk -F ' ' '{print $1}')
+    host=$(echo "${host_port}" | awk -F ':' '{print $1}')
+    port=$(echo "${host_port}" | awk -F ':' '{print $2}')
+    dir=$(echo "$line" | awk -F ' ' '{print $2}')
 
-# start taskmanager
-bin/start.sh start taskmanager
+    if [[ -z $dir ]]; then
+      dir=${OPENMLDB_HOME}
+    fi
+    if [[ -z $port ]]; then
+      port=${OPENMLDB_TABLET_PORT}
+    fi
+    echo "start tablet in $dir with endpoint $host:$port "
+    ssh -n "$host" "cd $dir; bin/start.sh start tablet"
+  done
+fi

@@ -18,27 +18,32 @@
 set -e
 
 home="$(cd "$(dirname "$0")"/.. || exit; pwd)"
+sbin="$(cd "$(dirname "$0")" || exit; pwd)"
 . "$home"/conf/openmldb-env.sh
-. "$home"/bin/init.sh
+. "$sbin"/init.sh
 
-if [[ ${OPENMLDB_MODE} == "standalone" ]]; then
-  bin/start.sh stop standalone_nameserver
-else
-  grep -v '^ *#' < conf/nameservers | while IFS= read -r line
-  do
-    host_port=$(echo "$line" | awk -F ' ' '{print $1}')
-    host=$(echo "${host_port}" | awk -F ':' '{print $1}')
-    port=$(echo "${host_port}" | awk -F ':' '{print $2}')
-    dir=$(echo "$line" | awk -F ' ' '{print $2}')
+# Stop Apiservers
+"$sbin"/stop-apiservers.sh
 
-    if [[ -z $dir ]]; then
-      dir=${OPENMLDB_HOME}
-    fi
-    if [[ -z $port ]]; then
-      port=${OPENMLDB_NAMESERVER_PORT}
-    fi
-    echo "stop nameserver in $dir with endpoint $host:$port "
-    ssh -n "$host" "cd $dir; bin/start.sh stop nameserver"
-    sleep 2
-  done
+if [[ -n "${OPENMLDB_MODE}" && ${OPENMLDB_MODE} = "cluster" ]]; then
+  # stop taskmanager
+  cd "$home"
+  "$sbin"/stop-taskmanagers.sh
 fi
+
+# Stop Nameservers
+"$sbin"/stop-nameservers.sh
+
+# Stop Tablets
+"$sbin"/stop-tablets.sh
+
+if [[ -n "${OPENMLDB_MODE}" && ${OPENMLDB_MODE} = "cluster" ]]; then
+  # stop zk if OPENMLDB_USE_EXISTING_ZK_CLUSTER is not true
+  if [[ "${OPENMLDB_USE_EXISTING_ZK_CLUSTER}" != "true" ]]; then
+    sleep 10
+    cd "$home"
+    "$sbin"/stop-zk.sh
+  fi
+fi
+
+echo "OpenMLDB stopped"

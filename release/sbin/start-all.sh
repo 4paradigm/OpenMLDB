@@ -16,24 +16,25 @@
 # limitations under the License.
 
 home="$(cd "$(dirname "$0")"/.. || exit; pwd)"
+sbin="$(cd "$(dirname "$0")" || exit; pwd)"
 . "$home"/conf/openmldb-env.sh
-. "$home"/bin/init.sh
+. "$sbin"/init.sh
 
 # if in cluster mode, start zk
 if [[ -n "${OPENMLDB_MODE}" && ${OPENMLDB_MODE} = "cluster" ]]; then
   # start zk if OPENMLDB_USE_EXISTING_ZK_CLUSTER is not true
   if [[ "${OPENMLDB_USE_EXISTING_ZK_CLUSTER}" != "true" ]]; then
     cd "$home" || exit
-    bin/start-zk.sh
+    "$sbin"/start-zk.sh
     sleep 5
   fi
 fi
 
 # Start Tablets
-bin/start-tablets.sh
+"$sbin"/start-tablets.sh
 
 # Start Nameservers
-bin/start-nameservers.sh
+"$sbin"/start-nameservers.sh
 
 cd "$home" || exit
 echo "Start recovering data..."
@@ -46,13 +47,13 @@ else
 fi
 
 # Start Apiservers
-bin/start-apiservers.sh
+"$sbin"/start-apiservers.sh
 
 # if in cluster mode, start taskmanager
 if [[ -n "${OPENMLDB_MODE}" && ${OPENMLDB_MODE} = "cluster" ]]; then
   # start taskmanager
   cd "$home" || exit
-  bin/start-taskmanagers.sh
+  "$sbin"/start-taskmanagers.sh
 fi
 
 echo "OpenMLDB start success"
