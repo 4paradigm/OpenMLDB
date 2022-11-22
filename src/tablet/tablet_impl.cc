@@ -787,7 +787,8 @@ void TabletImpl::Put(RpcController* controller, const ::openmldb::api::PutReques
         // so the update should be protected within the replicator lock
         // in case there will be other Put jump into the middle
         auto update_aggr = [this, &request, &ok, &entry]() {
-            ok = UpdateAggrs(tid, pid, request->value(), request->dimensions(), entry.log_index());
+            ok = UpdateAggrs(request->tid(), request->pid(), request->value(),
+                    request->dimensions(), entry.log_index());
         };
         UpdateAggrClosure closure(update_aggr);
         replicator->AppendEntry(entry, &closure);
