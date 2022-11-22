@@ -1070,7 +1070,17 @@ TEST_F(APIServerTest, jsonInput) {
         ASSERT_EQ(2, document["data"]["data"].Size());
         ASSERT_EQ(0, document["data"]["common_cols_data"].Size());
 
-        // check data.data TODO
+        // check data.data 2 results
+        auto& data = document["data"]["data"];
+        ASSERT_TRUE(data[0].IsObject());
+        ASSERT_STREQ(data[0].FindMember("c1")->value.GetString(), "bb");
+        ASSERT_EQ(data[0].FindMember("c3")->value.GetInt(), 23);
+        ASSERT_EQ(data[0].FindMember("w1_c4_sum")->value.GetInt64(), 157); // 34 + 123
+
+        ASSERT_TRUE(data[1].IsObject());
+        ASSERT_STREQ(data[1].FindMember("c1")->value.GetString(), "bb");
+        ASSERT_EQ(data[1].FindMember("c3")->value.GetInt(), 23);
+        ASSERT_EQ(data[1].FindMember("w1_c4_sum")->value.GetInt64(), 268); // 34 + 234
     }
 
     // drop procedure and table
