@@ -1320,8 +1320,9 @@ bool SQLClusterRouter::ExecuteInsert(const std::string& db, const std::string& s
         }
     }
     if (!fails.empty()) {
-        status->msg = absl::StrCat("insert values ", fails.size(), " failed, detail: ", absl::StrJoin(fails, ","));
-        status->code = StatusCode::kCmdError;
+        SET_STATUS_AND_WARN(
+            status, StatusCode::kCmdError,
+            absl::StrCat("insert ", fails.size(), " failed, detail row id: ", absl::StrJoin(fails, ",")));
         return false;
     }
     return true;
@@ -1363,7 +1364,7 @@ bool SQLClusterRouter::ExecuteInsert(const std::string& db, const std::string& s
                                      hybridse::sdk::Status* status) {
     RET_FALSE_IF_NULL_AND_WARN(status, "output status is nullptr");
     if (!rows) {
-        LOG(WARNING) << "input rows is invalid";
+        LOG(WARNING) << "input rows is nullptr";
         return false;
     }
     std::shared_ptr<SQLCache> cache = GetCache(db, sql, hybridse::vm::kBatchMode);
@@ -1391,7 +1392,7 @@ bool SQLClusterRouter::ExecuteInsert(const std::string& db, const std::string& s
                                      hybridse::sdk::Status* status) {
     RET_FALSE_IF_NULL_AND_WARN(status, "output status is nullptr");
     if (!row) {
-        // TODO
+        LOG(WARNING) << "input row is nullptr";
         return false;
     }
     std::shared_ptr<SQLCache> cache = GetCache(db, sql, hybridse::vm::kBatchMode);
@@ -2473,11 +2474,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(
                 return {};
             }
             // if db name has been specified in sql, db parameter will be ignored
-            if (!ExecuteInsert(db, sql, status)) {
-                status->code = StatusCode::kCmdError;
-            } else {
-                *status = {};
-            }
+            ExecuteInsert(db, sql, status);
             return {};
         }
         case hybridse::node::kPlanTypeDeploy: {
@@ -2689,10 +2686,10 @@ int SQLClusterRouter::GetJobTimeout() {
         hybridse::sdk::Status status;
         std::string sql = "INSERT INTO GLOBAL_VARIABLES values('" + key + "', '" + value + "');";
         if (!ExecuteInsert("INFORMATION_SCHEMA", sql, &status)) {
-            return {StatusCode::kRunError, "set global variable failed"};
+            RETURN_NOT_OK_PREPEND(status, "set global variable failed(insert into info table)");
         }
         if (!cluster_sdk_->TriggerNotify(::openmldb::type::NotifyType::kGlobalVar)) {
-            return {StatusCode::kRunError, "zk globlvar node not update"};
+            return {StatusCode::kRunError, "zk globalvar node update failed"};
         }
     }
     std::lock_guard<::openmldb::base::SpinMutex> lock(mu_);
@@ -3037,7 +3034,7 @@ hybridse::sdk::Status SQLClusterRouter::InsertOneRow(const std::string& database
         }
     }
     if (!ExecuteInsert(database, insert_placeholder, row, &status)) {
-        return {StatusCode::kCmdError, "insert row failed"};
+        RETURN_NOT_OK_PREPEND(status, "insert row failed");
     }
     return {};
 }
@@ -3611,7 +3608,7 @@ hybridse::sdk::Status SQLClusterRouter::HandleLongWindows(
                 lw.order_col_, "', '", lw.bucket_size_, "', '", lw.filter_col_, "');");
             bool ok = ExecuteInsert("", insert_sql, &status);
             if (!ok) {
-                return {StatusCode::kTablePutFailed, "insert pre-aggr meta failed"};
+                RETURN_NOT_OK_PREPEND(status, "insert pre-aggr meta failed");
             }
 
             // create pre-aggr table
