@@ -91,14 +91,14 @@ uint64_t Segment::Release() {
         delete[] it->GetKey().data();
         if (it->GetValue() != nullptr) {
             if (ts_cnt_ > 1) {
-                KeyEntry** entry_arr = (KeyEntry**)it->GetValue();  // NOLINT
+                KeyEntry** entry_arr = reinterpret_cast<KeyEntry**>(it->GetValue());
                 for (uint32_t i = 0; i < ts_cnt_; i++) {
                     cnt += entry_arr[i]->Release();
                     delete entry_arr[i];
                 }
                 delete[] entry_arr;
             } else {
-                KeyEntry* entry = (KeyEntry*)it->GetValue();  // NOLINT
+                KeyEntry* entry = reinterpret_cast<KeyEntry*>(it->GetValue());
                 cnt += entry->Release();
                 delete entry;
             }
@@ -114,14 +114,14 @@ uint64_t Segment::Release() {
         ::openmldb::base::Node<Slice, void*>* node = f_it->GetValue();
         delete[] node->GetKey().data();
         if (ts_cnt_ > 1) {
-            KeyEntry** entry_arr = (KeyEntry**)node->GetValue();  // NOLINT
+            KeyEntry** entry_arr = reinterpret_cast<KeyEntry**>(node->GetValue());
             for (uint32_t i = 0; i < ts_cnt_; i++) {
                 entry_arr[i]->Release();
                 delete entry_arr[i];
             }
             delete[] entry_arr;
         } else {
-            KeyEntry* entry = (KeyEntry*)node->GetValue();  // NOLINT
+            KeyEntry* entry = reinterpret_cast<KeyEntry*>(node->GetValue());
             entry->Release();
             delete entry;
         }
@@ -130,7 +130,12 @@ uint64_t Segment::Release() {
     }
     delete f_it;
     entry_free_list_->Clear();
-    idx_cnt_vec_.clear();
+    idx_cnt_.store(0);
+    idx_byte_size_.store(0);
+    pk_cnt_.store(0);
+    for (auto& idx_cnt : idx_cnt_vec_) {
+        idx_cnt->store(0);
+    }
     return cnt;
 }
 
