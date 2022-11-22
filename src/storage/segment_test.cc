@@ -382,13 +382,13 @@ int GetCount(Segment* segment, int idx) {
     while (pk_it->Valid()) {
         KeyEntry* entry = nullptr;
         if (segment->GetTsCnt() > 1) {
-            entry = ((KeyEntry**)pk_it->GetValue())[real_idx];
+            entry = reinterpret_cast<KeyEntry**>(pk_it->GetValue())[real_idx];
         } else {
-            entry = (KeyEntry*)pk_it->GetValue();
+            entry = reinterpret_cast<KeyEntry*>(pk_it->GetValue());
         }
         std::unique_ptr<TimeEntries::Iterator> ts_it(entry->entries.NewIterator());
         ts_it->SeekToFirst();
-        while(ts_it->Valid()) {
+        while (ts_it->Valid()) {
             count++;
             ts_it->Next();
         }

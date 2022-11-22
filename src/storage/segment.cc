@@ -341,7 +341,6 @@ void Segment::FreeEntry(::openmldb::base::Node<Slice, void*>* entry_node, uint64
         KeyEntry** entry_arr = (KeyEntry**)entry_node->GetValue();  // NOLINT
         for (uint32_t i = 0; i < ts_cnt_; i++) {
             uint64_t old = gc_idx_cnt;
-            PDLOG(WARNING, "before %lu %lu %lu", gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
             KeyEntry* entry = entry_arr[i];
             TimeEntries::Iterator* it = entry->entries.NewIterator();
             it->SeekToFirst();
@@ -350,7 +349,6 @@ void Segment::FreeEntry(::openmldb::base::Node<Slice, void*>* entry_node, uint64
                 ::openmldb::base::Node<uint64_t, DataBlock*>* data_node = entry->entries.Split(ts);
                 FreeList(data_node, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
             }
-            PDLOG(WARNING, "after %lu %lu %lu", gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
             delete it;
             delete entry;
             idx_cnt_vec_[i]->fetch_sub(gc_idx_cnt - old, std::memory_order_relaxed);
