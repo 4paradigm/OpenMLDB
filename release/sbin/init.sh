@@ -33,3 +33,50 @@ if [ -z "${OPENMLDB_ZK_CLUSTER}" ]; then
   OPENMLDB_ZK_CLUSTER="$(hostname):2181"
   export OPENMLDB_ZK_CLUSTER
 fi
+
+function parse_host {
+  host_file=$1
+  type=$2
+
+  start=false
+  grep -v '^ *#' < "$host_file" | while IFS= read -r line
+  do
+    if [[ -z "$line" ]]; then
+      continue
+    elif [[ "$line" = "[$type]" ]]; then
+      start=true
+      continue
+    elif echo "$line" | grep -q "^ *\["; then
+      start=false
+    fi
+
+    if [[ "$start" = false ]]; then
+      continue
+    fi
+
+    host_port=$(echo "$line" | awk -F ' ' '{print $1}')
+    host=$(echo "${host_port}" | awk -F ':' '{print $1}')
+    port=$(echo "${host_port}" | awk -F ':' '{print $2}')
+    dir=$(echo "$line" | awk -F ' ' '{print $2}')
+
+    if [[ -z "$port" ]]; then
+      if [[ "$type" = "tablet" ]]; then
+        port="$OPENMLDB_TABLET_PORT"
+      elif [[ "$type" = "nameserver" ]]; then
+        port="$OPENMLDB_NAMESERVER_PORT"
+      elif [[ "$type" = "apiserver" ]]; then
+        port="$OPENMLDB_APISERVER_PORT"
+      elif [[ "$type" = "taskmanager" ]]; then
+          port="$OPENMLDB_TASKMANAGER_PORT"
+      fi
+    fi
+    if [[ -z "$dir" ]]; then
+      dir="$OPENMLDB_HOME"
+    fi
+
+    echo "$host $port $dir"
+    i=$((i+1))
+  done
+
+  return 0
+}

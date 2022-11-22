@@ -33,58 +33,39 @@ distribute() {
   done
 }
 
+old_IFS="$IFS"
+IFS=$'\n'
 # deploy tablets
-grep -v '^ *#' < "$home"/conf/tablets | while IFS= read -r line
+for line in $(parse_host conf/hosts tablet)
 do
-  host_port=$(echo "$line" | awk -F ' ' '{print $1}')
-  host=$(echo "${host_port}" | awk -F ':' '{print $1}')
-  port=$(echo "${host_port}" | awk -F ':' '{print $2}')
-  dir=$(echo "$line" | awk -F ' ' '{print $2}')
+  host=$(echo "$line" | awk -F ' ' '{print $1}')
+  port=$(echo "$line" | awk -F ' ' '{print $2}')
+  dir=$(echo "$line" | awk -F ' ' '{print $3}')
 
-  if [[ -z $dir ]]; then
-    dir=${OPENMLDB_HOME}
-  fi
-  if [[ -z $port ]]; then
-    port=${OPENMLDB_TABLET_PORT}
-  fi
   echo "deploy tablet to $host:$port $dir"
   distribute "$host" "$dir"
   ssh -n "$host" "cd $dir; OPENMLDB_HOST=$host OPENMLDB_TABLET_PORT=$port OPENMLDB_ZK_CLUSTER=${OPENMLDB_ZK_CLUSTER} OPENMLDB_ZK_ROOT_PATH=${OPENMLDB_ZK_ROOT_PATH} sbin/deploy.sh tablet"
 done
 
 # deploy nameservers
-grep -v '^ *#' < conf/nameservers | while IFS= read -r line
+for line in $(parse_host conf/hosts nameserver)
 do
-  host_port=$(echo "$line" | awk -F ' ' '{print $1}')
-  host=$(echo "${host_port}" | awk -F ':' '{print $1}')
-  port=$(echo "${host_port}" | awk -F ':' '{print $2}')
-  dir=$(echo "$line" | awk -F ' ' '{print $2}')
+  host=$(echo "$line" | awk -F ' ' '{print $1}')
+  port=$(echo "$line" | awk -F ' ' '{print $2}')
+  dir=$(echo "$line" | awk -F ' ' '{print $3}')
 
-  if [[ -z $dir ]]; then
-    dir=${OPENMLDB_HOME}
-  fi
-  if [[ -z $port ]]; then
-    port=${OPENMLDB_TABLET_PORT}
-  fi
   echo "deploy nameserver to $host:$port $dir"
   distribute "$host" "$dir"
   ssh -n "$host" "cd $dir; OPENMLDB_HOST=$host OPENMLDB_NAMESERVER_PORT=$port OPENMLDB_ZK_CLUSTER=${OPENMLDB_ZK_CLUSTER} OPENMLDB_ZK_ROOT_PATH=${OPENMLDB_ZK_ROOT_PATH} sbin/deploy.sh nameserver"
 done
 
 # deploy apiservers
-grep -v '^ *#' < conf/apiservers | while IFS= read -r line
+for line in $(parse_host conf/hosts apiserver)
 do
-  host_port=$(echo "$line" | awk -F ' ' '{print $1}')
-  host=$(echo "${host_port}" | awk -F ':' '{print $1}')
-  port=$(echo "${host_port}" | awk -F ':' '{print $2}')
-  dir=$(echo "$line" | awk -F ' ' '{print $2}')
+  host=$(echo "$line" | awk -F ' ' '{print $1}')
+  port=$(echo "$line" | awk -F ' ' '{print $2}')
+  dir=$(echo "$line" | awk -F ' ' '{print $3}')
 
-  if [[ -z $dir ]]; then
-    dir=${OPENMLDB_HOME}
-  fi
-  if [[ -z $port ]]; then
-    port=${OPENMLDB_TABLET_PORT}
-  fi
   echo "deploy apiserver to $host:$port $dir"
   distribute "$host" "$dir"
   ssh -n "$host" "cd $dir; OPENMLDB_HOST=$host OPENMLDB_APISERVER_PORT=$port OPENMLDB_ZK_CLUSTER=${OPENMLDB_ZK_CLUSTER} OPENMLDB_ZK_ROOT_PATH=${OPENMLDB_ZK_ROOT_PATH} sbin/deploy.sh apiserver"
@@ -132,3 +113,4 @@ if [[ "${OPENMLDB_USE_EXISTING_ZK_CLUSTER}" != "true" ]]; then
     echo "${ZK_HOME} already exists. Skip deploy zookeeper."
   fi
 fi
+IFS="$old_IFS"

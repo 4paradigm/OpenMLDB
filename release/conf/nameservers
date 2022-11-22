@@ -1,3 +1,0 @@
-# host:port OPENMLDB_HOME
-# if no custom OPENMLDB_HOME provided, use the default $OPENMLDB_HOME from env
-localhost:7527

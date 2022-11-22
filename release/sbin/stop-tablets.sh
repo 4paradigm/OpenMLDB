@@ -25,21 +25,17 @@ sbin="$(cd "$(dirname "$0")" || exit; pwd)"
 if [[ ${OPENMLDB_MODE} == "standalone" ]]; then
   bin/start.sh stop standalone_tablet
 else
-  grep -v '^ *#' < conf/tablets | while IFS= read -r line
+  old_IFS="$IFS"
+  IFS=$'\n'
+  for line in $(parse_host conf/hosts tablet)
   do
-    host_port=$(echo "$line" | awk -F ' ' '{print $1}')
-    host=$(echo "${host_port}" | awk -F ':' '{print $1}')
-    port=$(echo "${host_port}" | awk -F ':' '{print $2}')
-    dir=$(echo "$line" | awk -F ' ' '{print $2}')
+    host=$(echo "$line" | awk -F ' ' '{print $1}')
+    port=$(echo "$line" | awk -F ' ' '{print $2}')
+    dir=$(echo "$line" | awk -F ' ' '{print $3}')
 
-    if [[ -z $dir ]]; then
-      dir=${OPENMLDB_HOME}
-    fi
-    if [[ -z $port ]]; then
-      port=${OPENMLDB_TABLET_PORT}
-    fi
     echo "stop tablet in $dir with endpoint $host:$port "
     ssh -n "$host" "cd $dir; bin/start.sh stop tablet"
     sleep 2
   done
+  IFS="$old_IFS"
 fi
