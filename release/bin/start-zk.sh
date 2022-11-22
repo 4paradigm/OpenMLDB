@@ -1,4 +1,5 @@
 #! /usr/bin/env bash
+# shellcheck disable=SC1091
 
 # Copyright 2021 4Paradigm
 #
@@ -16,9 +17,9 @@
 
 set -e
 
-home="$(cd "`dirname "$0"`"/..; pwd)"
-. $home/conf/openmldb-env.sh
-. $home/bin/init.sh
+home="$(cd "$(dirname "$0")"/.. || exit; pwd)"
+. "$home"/conf/openmldb-env.sh
+. "$home"/bin/init.sh
 
-cd ${ZK_HOME}
+cd "${ZK_HOME}"
 bin/zkServer.sh start

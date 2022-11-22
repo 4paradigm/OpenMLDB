@@ -18,39 +18,39 @@ exchange() {
   key=$1
   value=$2
   file=$3
-  sed -i "s/^$key/# $key/g" $file
-  echo "$key=$value" >> $file
+  sed -i "s/^$key/# $key/g" "$file"
+  echo "$key=$value" >> "$file"
 }
 
 config_zk() {
   file=$1
-  if [[ ! -z ${OPENMLDB_ZK_CLUSTER} ]]; then
-    if [[ ! -z `cat $file | grep "zookeeper.cluster"` ]]; then
-      exchange "zookeeper.cluster" ${OPENMLDB_ZK_CLUSTER} ${file}
+  if [[ -n ${OPENMLDB_ZK_CLUSTER} ]]; then
+    if grep -q "zookeeper.cluster" < "$file"; then
+      exchange "zookeeper.cluster" "${OPENMLDB_ZK_CLUSTER}" "${file}"
     else
-      exchange "--zk_cluster" ${OPENMLDB_ZK_CLUSTER} ${file}
+      exchange "--zk_cluster" "${OPENMLDB_ZK_CLUSTER}" "${file}"
     fi
   fi
 
-  if [[ ! -z ${OPENMLDB_ZK_ROOT_PATH} ]]; then
-    if [[ ! -z `cat $file | grep "zookeeper.root_path"` ]]; then
-      exchange "zookeeper.root_path" ${OPENMLDB_ZK_ROOT_PATH} ${file}
+  if [[ -n ${OPENMLDB_ZK_ROOT_PATH} ]]; then
+    if grep -q "zookeeper.root_path" < "$file"; then
+      exchange "zookeeper.root_path" "${OPENMLDB_ZK_ROOT_PATH}" "${file}"
     else
-      exchange "--zk_root_path" ${OPENMLDB_ZK_ROOT_PATH} ${file}
+      exchange "--zk_root_path" "${OPENMLDB_ZK_ROOT_PATH}" "${file}"
     fi
   fi
 }
 
 common_config() {
   config_file=$1
-  printf "#This file is generated automatically from ${config_file}.template\n\n" > ${config_file}
-  cat ${config_file}.template >> ${config_file}
+  printf "# This file is generated automatically from %s.template\n\n" "${config_file}" > "${config_file}"
+  cat "${config_file}".template >> "${config_file}"
 
-  echo "" >> $config_file
-  echo "# below configs are generated automatically" >> $config_file
+  echo "" >> "$config_file"
+  echo "# below configs are generated automatically" >> "$config_file"
 
   # configure zookeeper
-  config_zk ${config_file}
+  config_zk "${config_file}"
 }
 
 component=$1

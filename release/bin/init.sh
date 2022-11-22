@@ -15,21 +15,21 @@
 # limitations under the License.
 
 if [ -z "${OPENMLDB_HOME}" ]; then
-  export OPENMLDB_HOME="$(cd "`dirname "$0"`"/.. || exit; pwd)"
-  # echo "Using default OPENMLDB_HOME=${OPENMLDB_HOME}"
+  OPENMLDB_HOME="$(cd "$(dirname "$0")"/.. || exit; pwd)"
+  export OPENMLDB_HOME
 fi
 
 if [ -z "${SPARK_HOME}" ]; then
-  export SPARK_HOME=${OPENMLDB_HOME}/spark
-  # echo "Using default SPARK_HOME=${SPARK_HOME}"
+  SPARK_HOME=${OPENMLDB_HOME}/spark
+  export SPARK_HOME
 fi
 
 if [ -z "${ZK_HOME}" ]; then
-  export ZK_HOME=${OPENMLDB_HOME}/zookeeper
-  # echo "Using default ZK_HOME=${ZK_HOME}"
+  ZK_HOME=${OPENMLDB_HOME}/zookeeper
+  export ZK_HOME
 fi
 
 if [ -z "${OPENMLDB_ZK_CLUSTER}" ]; then
-  export OPENMLDB_ZK_CLUSTER="$(hostname):2181"
-  # echo "Using default OPENMLDB_ZK_CLUSTER=${OPENMLDB_ZK_CLUSTER}"
+  OPENMLDB_ZK_CLUSTER="$(hostname):2181"
+  export OPENMLDB_ZK_CLUSTER
 fi

@@ -1,4 +1,5 @@
 #! /usr/bin/env bash
+# shellcheck disable=SC1091
 
 # Copyright 2021 4Paradigm
 #
@@ -14,9 +15,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-home="$(cd "`dirname "$0"`"/..; pwd)"
-. $home/conf/openmldb-env.sh
-. $home/bin/init.sh
+set -e
 
-cd ${ZK_HOME}
+home="$(cd "$(dirname "$0")"/.. || exit; pwd)"
+. "$home"/conf/openmldb-env.sh
+. "$home"/bin/init.sh
+
+cd "${ZK_HOME}"
 bin/zkServer.sh stop

@@ -1,2 +1,4 @@
+# host:port OPENMLDB_HOME
+# if no custom OPENMLDB_HOME provided, use the default $OPENMLDB_HOME from env
 localhost:10921 /tmp/openmldb/tablet-1
 localhost:10922 /tmp/openmldb/tablet-2

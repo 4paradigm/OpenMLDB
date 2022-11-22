@@ -1,4 +1,5 @@
-#! /bin/bash
+#! /usr/bin/env bash
+# shellcheck disable=SC1091
 
 # Copyright 2021 4Paradigm
 #
@@ -16,16 +17,16 @@
 
 set -e
 
-home="$(cd "`dirname "$0"`"/..; pwd)"
-. $home/conf/openmldb-env.sh
-. $home/bin/init.sh
+home="$(cd "$(dirname "$0")"/.. || exit; pwd)"
+. "$home"/conf/openmldb-env.sh
+. "$home"/bin/init.sh
 
 # Stop Apiservers
 bin/stop-apiservers.sh
 
 if [[ -n "${OPENMLDB_MODE}" && ${OPENMLDB_MODE} = "cluster" ]]; then
   # stop taskmanager
-  cd $home
+  cd "$home"
   bin/stop-taskmanagers.sh
 fi
 
@@ -39,7 +40,7 @@ if [[ -n "${OPENMLDB_MODE}" && ${OPENMLDB_MODE} = "cluster" ]]; then
   # stop zk if OPENMLDB_USE_EXISTING_ZK_CLUSTER is not true
   if [[ "${OPENMLDB_USE_EXISTING_ZK_CLUSTER}" != "true" ]]; then
     sleep 10
-    cd $home
+    cd "$home"
     bin/stop-zk.sh
   fi
 fi

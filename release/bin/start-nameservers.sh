@@ -1,4 +1,5 @@
 #! /usr/bin/env bash
+# shellcheck disable=SC1091
 
 # Copyright 2021 4Paradigm
 #
@@ -16,22 +17,19 @@
 
 set -e
 
-home="$(cd "`dirname "$0"`"/..; pwd)"
-. $home/conf/openmldb-env.sh
-. $home/bin/init.sh
+home="$(cd "$(dirname "$0")"/.. || exit; pwd)"
+. "$home"/conf/openmldb-env.sh
+. "$home"/bin/init.sh
 
 if [[ ${OPENMLDB_MODE} == "standalone" ]]; then
   bin/start.sh start standalone_nameserver
 else
-  old_IFS=$IFS
-  IFS=$'\n'
-
-  for line in $(cat conf/nameservers | sed  "s/#.*$//;/^$/d")
+  grep -v '^ *#' < conf/nameservers | while IFS= read -r line
   do
-    host_port=$(echo $line | awk -F ' ' '{print $1}')
-    host=$(echo ${host_port} | awk -F ':' '{print $1}')
-    port=$(echo ${host_port} | awk -F ':' '{print $2}')
-    dir=$(echo $line | awk -F ' ' '{print $2}')
+    host_port=$(echo "$line" | awk -F ' ' '{print $1}')
+    host=$(echo "${host_port}" | awk -F ':' '{print $1}')
+    port=$(echo "${host_port}" | awk -F ':' '{print $2}')
+    dir=$(echo "$line" | awk -F ' ' '{print $2}')
 
     if [[ -z $dir ]]; then
       dir=${OPENMLDB_HOME}
@@ -40,8 +38,6 @@ else
       port=${OPENMLDB_NAMESERVER_PORT}
     fi
     echo "start nameserver in $dir with endpoint $host:$port "
-    ssh $host "cd $dir; bin/start.sh start nameserver"
+    ssh -n "$host" "cd $dir; bin/start.sh start nameserver"
   done
-
-  IFS=$old_IFS
 fi

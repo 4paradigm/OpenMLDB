@@ -1,4 +1,5 @@
 #! /usr/bin/env bash
+# shellcheck disable=SC1091
 
 # Copyright 2021 4Paradigm
 #
@@ -16,23 +17,20 @@
 
 set -e
 
-home="$(cd "`dirname "$0"`"/..; pwd)"
-. $home/conf/openmldb-env.sh
-. $home/bin/init.sh
+home="$(cd "$(dirname "$0")"/.. || exit; pwd)"
+. "$home"/conf/openmldb-env.sh
+. "$home"/bin/init.sh
 
 if [[ ${OPENMLDB_MODE} == "standalone" ]]; then
   rm -rf standalone_db standalone_logs
 else
-  old_IFS=$IFS
-  IFS=$'\n'
-
   # delete tablet data and log
-  for line in $(cat conf/tablets | sed  "s/#.*$//;/^$/d")
+  grep -v '^ *#' < conf/tablets | while IFS= read -r line
   do
-    host_port=$(echo $line | awk -F ' ' '{print $1}')
-    host=$(echo ${host_port} | awk -F ':' '{print $1}')
-    port=$(echo ${host_port} | awk -F ':' '{print $2}')
-    dir=$(echo $line | awk -F ' ' '{print $2}')
+    host_port=$(echo "$line" | awk -F ' ' '{print $1}')
+    host=$(echo "${host_port}" | awk -F ':' '{print $1}')
+    port=$(echo "${host_port}" | awk -F ':' '{print $2}')
+    dir=$(echo "$line" | awk -F ' ' '{print $2}')
 
     if [[ -z $dir ]]; then
       dir=${OPENMLDB_HOME}
@@ -41,18 +39,54 @@ else
       port=${OPENMLDB_TABLET_PORT}
     fi
     echo "clear tablet data and log in $dir with endpoint $host:$port "
-    ssh $host "cd $dir; rm -rf recycle db logs"
+    ssh -n "$host" "cd $dir; rm -rf recycle db logs"
+  done
+
+  # delete apiserver log
+  grep -v '^ *#' < conf/apiservers | while IFS= read -r line
+  do
+    host_port=$(echo "$line" | awk -F ' ' '{print $1}')
+    host=$(echo "${host_port}" | awk -F ':' '{print $1}')
+    port=$(echo "${host_port}" | awk -F ':' '{print $2}')
+    dir=$(echo "$line" | awk -F ' ' '{print $2}')
+
+    if [[ -z $dir ]]; then
+      dir=${OPENMLDB_HOME}
+    fi
+    if [[ -z $port ]]; then
+      port=${OPENMLDB_APISERVER_PORT}
+    fi
+    echo "clear apiserver log in $dir with endpoint $host:$port "
+    ssh -n "$host" "cd $dir; rm -rf logs"
+  done
+
+  # delete nameserver log
+  grep -v '^ *#' < conf/nameservers | while IFS= read -r line
+  do
+    host_port=$(echo "$line" | awk -F ' ' '{print $1}')
+    host=$(echo "${host_port}" | awk -F ':' '{print $1}')
+    port=$(echo "${host_port}" | awk -F ':' '{print $2}')
+    dir=$(echo "$line" | awk -F ' ' '{print $2}')
+
+    if [[ -z $dir ]]; then
+      dir=${OPENMLDB_HOME}
+    fi
+    if [[ -z $port ]]; then
+      port=${OPENMLDB_NAMESERVER_PORT}
+    fi
+    echo "clear nameserver log in $dir with endpoint $host:$port "
+    ssh -n "$host" "cd $dir; rm -rf logs"
   done
 
   # delete taskmanager data and log
-  rm -rf $home/logs
+  echo "clear taskmanager data and log in /tmp/openmldb_offline_storage/ and $home/logs"
+  rm -rf "$home"/logs
   rm -rf /tmp/openmldb_offline_storage/
 
   # delete zk data
   if [[ "${OPENMLDB_USE_EXISTING_ZK_CLUSTER}" != "true" ]]; then
+    echo "clear zookeeper data and log in /tmp/zookeeper and ${ZK_HOME}/zookeeper.out"
     rm -rf /tmp/zookeeper
-    rm -rf ${ZK_HOME}/zookeeper.out
+    rm -rf "${ZK_HOME}"/zookeeper.out
   fi
-
-  IFS=$old_IFS
 fi

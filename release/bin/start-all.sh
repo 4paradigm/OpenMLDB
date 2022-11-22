@@ -1,4 +1,5 @@
 #! /usr/bin/env bash
+# shellcheck disable=SC1091
 
 # Copyright 2021 4Paradigm
 #
@@ -14,17 +15,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-set -e
-
-home="$(cd "`dirname "$0"`"/..; pwd)"
-. $home/conf/openmldb-env.sh
-. $home/bin/init.sh
+home="$(cd "$(dirname "$0")"/.. || exit; pwd)"
+. "$home"/conf/openmldb-env.sh
+. "$home"/bin/init.sh
 
 # if in cluster mode, start zk
 if [[ -n "${OPENMLDB_MODE}" && ${OPENMLDB_MODE} = "cluster" ]]; then
   # start zk if OPENMLDB_USE_EXISTING_ZK_CLUSTER is not true
   if [[ "${OPENMLDB_USE_EXISTING_ZK_CLUSTER}" != "true" ]]; then
-    cd $home
+    cd "$home" || exit
     bin/start-zk.sh
     sleep 5
   fi
@@ -36,23 +35,24 @@ bin/start-tablets.sh
 # Start Nameservers
 bin/start-nameservers.sh
 
+cd "$home" || exit
+echo "Start recovering data..."
+mkdir -p logs > /dev/null 2>&1
+cmd="python tools/openmldb_ops.py --openmldb_bin_path=./bin/openmldb --zk_cluster=${OPENMLDB_ZK_CLUSTER} --zk_root_path=${OPENMLDB_ZK_ROOT_PATH} --cmd=recoverdata"
+if $cmd > logs/recover.log 2>&1; then
+  echo "Recovering data done"
+else
+  echo "Recovering data failed. Pls check log in logs/recover.log"
+fi
+
 # Start Apiservers
 bin/start-apiservers.sh
 
 # if in cluster mode, start taskmanager
 if [[ -n "${OPENMLDB_MODE}" && ${OPENMLDB_MODE} = "cluster" ]]; then
   # start taskmanager
-  cd $home
+  cd "$home" || exit
   bin/start-taskmanagers.sh
-fi
-
-cd $home
-echo "Start recovering data..."
-python tools/openmldb_ops.py --openmldb_bin_path=./bin/openmldb --zk_cluster=${OPENMLDB_ZK_CLUSTER} --zk_root_path=${OPENMLDB_ZK_ROOT_PATH} --cmd=recoverdata > logs/recover.log 2>&1
-if [[ $? != 0 ]]; then
-  echo "Recovering data failed. Pls check log in logs/recover.log"
-else
-  echo "Recovering data done."
 fi
 
 echo "OpenMLDB start success"
