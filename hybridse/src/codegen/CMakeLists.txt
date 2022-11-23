@@ -16,7 +16,7 @@ include_directories(${INCLUDE_DIRECTORIES}
         ${PROJECT_SOURCE_DIR}/src
         ${PROJECT_BINARY_DIR}/src)
 
-add_library(hybridse_codegen STATIC
+add_library(hybridse_codegen
         scope_var.cc
         expr_ir_builder.cc
         fn_ir_builder.cc
@@ -33,13 +33,15 @@ add_library(hybridse_codegen STATIC
         timestamp_ir_builder.cc
         date_ir_builder.cc
         string_ir_builder.cc
+        array_ir_builder.cc
         struct_ir_builder.cc
         list_ir_builder.cc
         predicate_expr_ir_builder.cc
         cond_select_ir_builder.cc
         null_ir_builder.cc
         native_value.cc
-        context.cc memery_ir_builder.h memory_ir_builder.cc)
+        context.cc
+        memory_ir_builder.cc)
 if (TESTING_ENABLE)
 set(vm_deps_libs
         hybridse_case ${Boost_date_time_LIBRARY} ${Boost_filesystem_LIBRARY} ${yaml_libs} ${VM_LIBS} hybridse_flags ${LLVM_LIBS} ${BRPC_LIBS} ${OS_LIB})

@@ -15,11 +15,14 @@
  */
 
 #include "codegen/ir_base_builder.h"
+
 #include <string>
 #include <tuple>
 #include <utility>
 #include <vector>
+
 #include "codec/list_iterator_codec.h"
+#include "codegen/array_ir_builder.h"
 #include "codegen/date_ir_builder.h"
 #include "codegen/string_ir_builder.h"
 #include "codegen/timestamp_ir_builder.h"
@@ -354,19 +357,20 @@ bool GetLlvmType(::llvm::Module* m, const hybridse::node::TypeNode* data_type,
             break;
         }
         case hybridse::node::kArray: {
-            auto array_type = dynamic_cast<const node::FixedArrayType*>(data_type);
-            if (array_type != nullptr) {
+            if (data_type->generics_.size() != 1) {
+                LOG(WARNING) << "array type with element type size != 1";
                 return false;
             }
-            // common::kCodegenError, "data type is not FixedArrayType");
-
             ::llvm::Type* ele_type = nullptr;
-            if (false == GetLlvmType(m, array_type->element_type(), &ele_type)) {
+            if (false == GetLlvmType(m, data_type->GetGenericType(0), &ele_type)) {
+                LOG(WARNING) << "failed to infer llvm type for array element";
                 return false;
             }
 
-            *llvm_type = ::llvm::ArrayType::get(ele_type, array_type->num_elements());
-            break;
+            ArrayIRBuilder array_builder(m, ele_type);
+            *llvm_type = array_builder.GetType()->getPointerTo();
+
+            return true;
         }
         default:
             break;
@@ -905,9 +909,8 @@ static Status ExpandLlvmArgTypes(
         }
     } else {
         ::llvm::Type* llvm_ty = nullptr;
-        CHECK_TRUE(GetLlvmType(m, dtype, &llvm_ty), kCodegenError,
-                   "Fail to lower ", dtype->GetName());
-        output->push_back(std::make_pair(llvm_ty, nullable));
+        CHECK_TRUE(GetLlvmType(m, dtype, &llvm_ty), kCodegenError, "Fail to lower ", dtype->GetName());
+        output->emplace_back(llvm_ty, nullable);
     }
     return Status::OK();
 }

@@ -39,6 +39,16 @@ namespace udf {
 using openmldb::base::StringRef;
 using hybridse::node::ExprNode;
 
+struct AnyArg {
+    AnyArg() = delete;
+};
+
+// Opaque to non-standard container
+template <typename T>
+struct Opaque {
+    Opaque() = delete;
+};
+
 template <typename T>
 struct DataTypeTrait {
     static std::string to_string();
@@ -46,17 +56,13 @@ struct DataTypeTrait {
     static node::ExprNode* to_const(node::NodeManager* nm, const T&);
     static T minimum_value();
     static T maximum_value();
+
+    using CCallArgType = T;
 };
 
-struct AnyArg {
-    AnyArg() = delete;
-};
-
-template <typename T>
-struct Opaque {
-    Opaque() = delete;
-};
-
+// ===================================== //
+//         Nullable
+// ===================================== //
 template <typename T>
 struct Nullable {
     Nullable(std::nullptr_t) : data_(0), is_null_(true) {}  // NOLINT
@@ -125,6 +131,19 @@ static bool operator==(const Nullable<T>& x, const Nullable<T>& y) {
     }
 }
 
+// ===================================== //
+//         ArrayRef
+// ===================================== //
+template <typename T>
+struct ArrayRef {
+    T* raw;
+    bool* nullables;
+    uint64_t size;
+};
+
+// ===================================== //
+//         Tuple
+// ===================================== //
 template <typename... T>
 struct Tuple {
     Tuple() {}
@@ -148,6 +167,9 @@ static bool operator==(const Tuple<T...>& x, const Tuple<T...>& y) {
     return x.tuple == y.tuple;
 }
 
+// ===================================== //
+//         DataTypeTrait
+// ===================================== //
 template <>
 struct DataTypeTrait<AnyArg> {
     static std::string to_string() { return "?"; }
@@ -408,9 +430,31 @@ struct DataTypeTrait<Tuple<T...>> {
     }
 };
 
-// DataTypeTrait::CCallArgType
+template <typename T>
+struct DataTypeTrait<ArrayRef<T>> {
+    static std::string to_string() { return "ARRAY<" + DataTypeTrait<T>::to_string() + ">"; }
+
+    static node::DataType to_type_enum() {
+        return node::kArray;
+    }
+
+    static node::TypeNode* to_type_node(node::NodeManager* nm) {
+        // not able to construct a FixedArrayType cuz size is unknown
+        return nm->MakeTypeNode(node::kArray, DataTypeTrait<T>::to_type_enum());
+    }
+
+    using CCallArgType = ArrayRef<T>*;
+};
+
+// ===================================== //
+//         CCallDataTypeTrait
+// ===================================== //
 template <typename T>
 struct CCallDataTypeTrait {
+    // corresponding data type from external udf function argument type to udf registry data type
+    //
+    // e.g. int32_t func(Timestamp *ts) has one argument with type `Timestamp*`, where it is Timestamp type
+    // in udf registry
     using LiteralTag = T;
 
     // Get the distinct(from value and type) byte representation of the input
@@ -421,10 +465,17 @@ struct CCallDataTypeTrait {
     }
 };
 
+
 template <typename V>
 struct CCallDataTypeTrait<V*> {
     using LiteralTag = Opaque<V>;
 };
+
+template <typename T>
+struct CCallDataTypeTrait<ArrayRef<T>*> {
+    using LiteralTag = ArrayRef<T>;
+};
+
 template <>
 struct CCallDataTypeTrait<openmldb::base::Timestamp*> {
     using LiteralTag = openmldb::base::Timestamp;

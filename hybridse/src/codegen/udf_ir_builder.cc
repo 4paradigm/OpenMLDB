@@ -300,6 +300,7 @@ Status UdfIRBuilder::ExpandLlvmCallReturnArgs(
                 "udf_struct_type_return_addr");
             // fill empty content for string
             if (dtype->base() == node::kVarchar) {
+                // empty string
                 builder->CreateStore(builder->getInt32(0),
                                      builder->CreateStructGEP(ret_alloca, 0));
                 builder->CreateStore(builder->CreateGlobalStringPtr(""),

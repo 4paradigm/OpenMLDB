@@ -36,13 +36,17 @@ class StructTypeIRBuilder : public TypeIRBuilder {
                                ::llvm::Value* dist);
     virtual void InitStructType() = 0;
     ::llvm::Type* GetType();
-    bool Create(::llvm::BasicBlock* block, ::llvm::Value** output);
+    bool Create(::llvm::BasicBlock* block, ::llvm::Value** output) const;
     virtual bool CreateDefault(::llvm::BasicBlock* block,
                                ::llvm::Value** output) = 0;
-    bool Get(::llvm::BasicBlock* block, ::llvm::Value* struct_value,
-             unsigned int idx, ::llvm::Value** output);
-    bool Set(::llvm::BasicBlock* block, ::llvm::Value* struct_value,
-             unsigned int idx, ::llvm::Value* value);
+
+    // Load the 'idx' th field into ''*output'
+    // NOTE: not all types are loaded correctly, e.g for array type
+    bool Load(::llvm::BasicBlock* block, ::llvm::Value* struct_value, unsigned int idx, ::llvm::Value** output) const;
+    // store 'value' into 'idx' field
+    bool Set(::llvm::BasicBlock* block, ::llvm::Value* struct_value, unsigned int idx, ::llvm::Value* value) const;
+    // Get the address of 'idx' th field
+    bool Get(::llvm::BasicBlock* block, ::llvm::Value* struct_value, unsigned int idx, ::llvm::Value** output) const;
 
     virtual bool CopyFrom(::llvm::BasicBlock* block, ::llvm::Value* src,
                           ::llvm::Value* dist) = 0;

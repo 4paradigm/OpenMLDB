@@ -21,6 +21,7 @@
 #include <vector>
 
 #include "base/numeric.h"
+#include "codegen/array_ir_builder.h"
 #include "codegen/buf_ir_builder.h"
 #include "codegen/cond_select_ir_builder.h"
 #include "codegen/context.h"
@@ -1136,39 +1137,38 @@ Status ExprIRBuilder::ExtractSliceFromRow(const NativeValue& input_value, const 
 }
 
 Status ExprIRBuilder::BuildArrayExpr(const ::hybridse::node::ArrayExpr* node, NativeValue* output) {
-    // CHECK_TRUE(node->GetOutputType()->base() == node::kArray && node->GetOutputType()->generics().size() == 1,
-    //            kCodegenError);
+    auto array_type = dynamic_cast<const node::FixedArrayType*>(node->GetOutputType());
+    CHECK_TRUE(array_type != nullptr, kCodegenError, "not FixedArrayType");
 
+    ::llvm::Type* ele_type = nullptr;
+    CHECK_TRUE(GetLlvmType(ctx_->GetModule(), array_type->element_type(), &ele_type), kCodegenError);
 
-    ::llvm::Type* arr_type = nullptr;
-    CHECK_TRUE(GetLlvmType(ctx_->GetModule(), node->GetOutputType(), &arr_type), kCodegenError);
     llvm::IRBuilder<> builder(ctx_->GetCurrentBlock());
 
+    if (node->GetChildNum() == 0) {
+        // build empty array
+        ArrayIRBuilder ir_builder(ctx_->GetModule(), ele_type);
+        CHECK_STATUS(ir_builder.NexEmptyArray(ctx_->GetCurrentBlock(), output));
+        return Status::OK();
+    }
+
     CastExprIRBuilder cast_builder(ctx_->GetCurrentBlock());
-
-
-    auto* arr_ptr = CreateAllocaAtHead(&builder, arr_type, node->GetExprString());
-
     std::vector<NativeValue> elements;
-    auto* idx_val_ptr = builder.CreateAlloca(builder.getInt64Ty());
-    builder.CreateStore(builder.getInt64(0), idx_val_ptr);
-
     for (auto& ele : node->children_) {
         NativeValue val;
         CHECK_STATUS(Build(ele, &val));
-        if (val.GetType() != arr_type->getArrayElementType()) {
+        if (val.GetType() != ele_type) {
             NativeValue casted;
-            cast_builder.Cast(val, arr_type->getArrayElementType(), &casted);
-            val = casted;
+            CHECK_STATUS(cast_builder.Cast(val, ele_type, &casted));
+            elements.push_back(casted);
+        } else {
+            elements.push_back(val);
         }
-        auto* idx_val = builder.CreateLoad(idx_val_ptr);
-
-        auto* ele_addr = builder.CreateGEP(arr_ptr, idx_val);
-        builder.CreateStore(val.GetRaw)
-
-        auto* new_idx = builder.CreateAdd(idx_val, builder.getInt64(1));
-        builder.CreateStore(new_idx, idx_val_ptr);
     }
+
+    ::llvm::Value* num_elements = builder.getInt64(elements.size());
+    ArrayIRBuilder array_builder(ctx_->GetModule(), ele_type, num_elements);
+    CHECK_STATUS(array_builder.NewFixedArray(ctx_->GetCurrentBlock(), elements, output));
 
     return Status::OK();
 }

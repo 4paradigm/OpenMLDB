@@ -838,8 +838,7 @@ Status ArrayExpr::InferAttr(ExprAnalysisContext* ctx) {
     TypeNode* top_type = nullptr;
     auto nm = ctx->node_manager();
     if (children_.empty()) {
-        // take string as the most compatible type
-        top_type = nm->MakeArrayType(nm->MakeTypeNode(kVarchar), 0);
+        FAIL_STATUS(kTypeError, "element type unknown for empty array expression");
     } else {
         const TypeNode* ele_type = children_[0]->GetOutputType();
         for (size_t i = 1; i < children_.size() ; ++i) {
