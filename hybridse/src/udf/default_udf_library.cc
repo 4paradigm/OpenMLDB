@@ -552,34 +552,6 @@ struct TopKDef {
     }
 };
 
-template <typename T>
-struct ArrayContains {
-    using ParamType = typename DataTypeTrait<T>::CCallArgType;
-
-    // udf registry types
-    using Args = std::tuple<ArrayRef<T>, T>;
-
-    // type binding, udf registry type -> function param type
-    // - bool/intxx/float/double -> bool/intxx/float/double
-    // - Timestamp/Date/StringRef -> Timestamp*/Date*/StringRef*
-    bool operator()(ArrayRef<ParamType>* arr, ParamType v) {
-        // NOTE: array_contains([null], null) returns null
-        // this might not expected
-        for (uint64_t i = 0; i < arr->size; ++i) {
-            if constexpr (std::is_pointer_v<ParamType>) {
-                if (!arr->nullables[i] && *arr->raw[i] == *v) {
-                    return true;
-                }
-            } else {
-                if (!arr->nullables[i] && arr->raw[i] == v) {
-                    return true;
-                }
-            }
-        }
-        return false;
-    }
-};
-
 void DefaultUdfLibrary::Init() {
     udf::RegisterNativeUdfToModule(this);
     InitLogicalUdf();
@@ -592,17 +564,13 @@ void DefaultUdfLibrary::Init() {
     InitUdaf();
     InitFeatureZero();
 
+    InitArrayUdfs();
+
     AddExternalFunction("init_udfcontext.opaque",
             reinterpret_cast<void*>(static_cast<void (*)(UDFContext* context)>(udf::v1::init_udfcontext)));
 }
 
 void DefaultUdfLibrary::InitStringUdf() {
-    RegisterExternalTemplate<ArrayContains>("array_contains")
-        .args_in<bool, int16_t, int32_t, int64_t, float, double, Timestamp, Date, StringRef>()
-        .doc(R"(
-             @brief array_contains(array, value) - Returns true if the array contains the value.
-             )");
-
     RegisterExternalTemplate<v1::ToHex>("hex")
         .args_in<int16_t, int32_t, int64_t, float, double>()
         .return_by_arg(true)
