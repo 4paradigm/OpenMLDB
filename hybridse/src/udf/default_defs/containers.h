@@ -18,7 +18,6 @@
 #define HYBRIDSE_SRC_UDF_DEFAULT_DEFS_CONTAINERS_H_
 
 #include <string>
-#include <tuple>
 #include <utility>
 
 #include "udf/containers.h"
@@ -28,8 +27,6 @@
 namespace hybridse {
 namespace udf {
 namespace container {
-
-using hybridse::udf::ArrayRef;
 
 // Top N Value wrapper over *CateWhere
 // Base template class for 'top_n_value_*_cate_where' udafs

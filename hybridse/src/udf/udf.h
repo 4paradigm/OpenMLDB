@@ -51,7 +51,7 @@ namespace v1 {
 //
 // The two arrays' lifetime will managed by JitRuntime:
 // - Allocate outside with new/malloc operation
-// - Register with `JitRuntime::AllocManagedArray
+// - Register with `RegisterManagedObj`
 // - Free in `JitRuntime::ReleaseRunStep`
 template <typename T>
 struct ArrayMeta : public base::FeBaseObject {
