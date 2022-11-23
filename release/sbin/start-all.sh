@@ -20,12 +20,16 @@ sbin="$(cd "$(dirname "$0")" || exit; pwd)"
 . "$home"/conf/openmldb-env.sh
 . "$sbin"/init.sh
 
+echo "OPENMLDB envs:"
+printenv | grep OPENMLDB_
+echo ""
+
 # if in cluster mode, start zk
 if [[ -n "${OPENMLDB_MODE}" && ${OPENMLDB_MODE} = "cluster" ]]; then
   # start zk if OPENMLDB_USE_EXISTING_ZK_CLUSTER is not true
   if [[ "${OPENMLDB_USE_EXISTING_ZK_CLUSTER}" != "true" ]]; then
     cd "$home" || exit
-    "$sbin"/start-zk.sh
+    "$sbin"/start-zks.sh
     sleep 5
   fi
 fi

@@ -57,7 +57,6 @@ else
     echo "clear nameserver log in $dir with endpoint $host:$port "
     ssh -n "$host" "cd $dir; rm -rf logs"
   done
-  IFS="$old_IFS"
 
   # delete taskmanager data and log
   echo "clear taskmanager data and log in /tmp/openmldb_offline_storage/ and $home/logs"
@@ -66,8 +65,16 @@ else
 
   # delete zk data
   if [[ "${OPENMLDB_USE_EXISTING_ZK_CLUSTER}" != "true" ]]; then
-    echo "clear zookeeper data and log in /tmp/zookeeper and ${ZK_HOME}/zookeeper.out"
-    rm -rf /tmp/zookeeper
-    rm -rf "${ZK_HOME}"/zookeeper.out
+    for line in $(parse_host conf/hosts zookeeper)
+    do
+      host=$(echo "$line" | awk -F ' ' '{print $1}')
+      port=$(echo "$line" | awk -F ' ' '{print $2}')
+      dir=$(echo "$line" | awk -F ' ' '{print $3}')
+
+      echo "clear zookeeper data and log in $dir with endpoint $host:$port"
+      ssh -n "$host" "cd $dir; rm zookeeper.out > /dev/null 2>&1"
+      ssh -n "$host" "cd $dir/data; find -type d -not -path '.' -exec rm -rf {} +"
+    done
   fi
+  IFS="$old_IFS"
 fi

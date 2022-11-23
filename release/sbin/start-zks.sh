@@ -22,5 +22,15 @@ sbin="$(cd "$(dirname "$0")" || exit; pwd)"
 . "$home"/conf/openmldb-env.sh
 . "$sbin"/init.sh
 
-cd "${ZK_HOME}"
-bin/zkServer.sh stop
+old_IFS="$IFS"
+IFS=$'\n'
+for line in $(parse_host conf/hosts zookeeper)
+do
+  host=$(echo "$line" | awk -F ' ' '{print $1}')
+  port=$(echo "$line" | awk -F ' ' '{print $2}')
+  dir=$(echo "$line" | awk -F ' ' '{print $3}')
+
+  echo "start zookeeper in $dir with endpoint $host:$port "
+  ssh -n "$host" "cd $dir; bin/zkServer.sh start"
+done
+IFS="$old_IFS"

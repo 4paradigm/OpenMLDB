@@ -23,15 +23,33 @@ sbin="$(cd "$(dirname "$0")" || exit; pwd)"
 distribute() {
   host=$1
   dest=$2
-  if [[ "$home" = "$dest" ]]; then
+  src="$home"
+  type=openmldb
+  if [[ $# -ge 3 ]]; then
+    src=$3
+  fi
+  if [[ $# -ge 4 ]]; then
+    type=$4
+  fi
+  if [[ "$src" = "$dest" ]]; then
     echo "dest = src: $dest, skip copy"
   fi
   ssh -n "$host" "mkdir -p $dest"
-  for folder in bin sbin conf
-  do
-    rsync -arz "$home"/"$folder"/ "$host":"$dest"/"$folder"/
-  done
+  echo "$src/* $host:$dest/"
+  if [[ "$type" = "openmldb" ]]; then
+    for folder in bin sbin conf
+    do
+      rsync -arz "$src/$folder"/ "$host:$dest/$folder"/
+    done
+  else
+    rsync -arz "$src"/* "$host:$dest"/
+    rsync -arz "$home"/sbin/deploy.sh "$host:$dest"/sbin/
+  fi
 }
+
+echo "OPENMLDB envs:"
+printenv | grep OPENMLDB_
+echo ""
 
 old_IFS="$IFS"
 IFS=$'\n'
@@ -91,13 +109,13 @@ else
   fi
 fi
 
-# deploy taskmanager
-cp conf/taskmanager.properties.template conf/taskmanager.properties
+# deploy taskmanager locally
+OPENMLDB_TASKMANAGER_PORT="$OPENMLDB_TASKMANAGER_PORT" sbin/deploy.sh taskmanager
 
 # deploy zookeeper
 # TODO: base on the OPENMLDB_ZK_CLUSTER and change the port
 if [[ "${OPENMLDB_USE_EXISTING_ZK_CLUSTER}" != "true" ]]; then
-  if [[ ! -e ${ZK_HOME} ]]; then
+  if [[ ! -e "$OPENMLDB_ZK_HOME" ]]; then
     zk_name=zookeeper-3.4.14
     zk_tar=${zk_name}.tar.gz
     if [[ -e ${zk_tar} ]]; then
@@ -107,10 +125,43 @@ if [[ "${OPENMLDB_USE_EXISTING_ZK_CLUSTER}" != "true" ]]; then
       curl -SLo ${zk_tar} https://archive.apache.org/dist/zookeeper/${zk_name}/${zk_tar}
     fi
     tar -zxf "${zk_tar}"
-    ln -s "$(pwd)"/"${zk_name}" "${ZK_HOME}"
-    cp "${ZK_HOME}"/conf/zoo_sample.cfg "${ZK_HOME}"/conf/zoo.cfg
+    ln -s "$zk_name" "$OPENMLDB_ZK_HOME"
   else
-    echo "${ZK_HOME} already exists. Skip deploy zookeeper."
+    echo "${OPENMLDB_ZK_HOME} already exists. Skip download zookeeper."
   fi
+
+  i=1
+  quorum_config=
+  for line in $(parse_host conf/hosts zookeeper)
+  do
+    host=$(echo "$line" | awk -F ' ' '{print $1}')
+    port=$(echo "$line" | awk -F ' ' '{print $2}')
+    dir=$(echo "$line" | awk -F ' ' '{print $3}')
+    peer_port=$(echo "$line" | awk -F ' ' '{print $4}')
+    election_port=$(echo "$line" | awk -F ' ' '{print $5}')
+
+    server="server.${i}=${host}:${peer_port}:${election_port}"
+    if [[ -z "$quorum_config" ]]; then
+      quorum_config="${server}"
+    else
+      quorum_config="${quorum_config}|${server}"
+    fi
+    i=$((i+1))
+  done
+
+  i=1
+  for line in $(parse_host conf/hosts zookeeper)
+  do
+    host=$(echo "$line" | awk -F ' ' '{print $1}')
+    port=$(echo "$line" | awk -F ' ' '{print $2}')
+    dir=$(echo "$line" | awk -F ' ' '{print $3}')
+    peer_port=$(echo "$line" | awk -F ' ' '{print $4}')
+    election_port=$(echo "$line" | awk -F ' ' '{print $5}')
+
+    echo "deploy zookeeper to $host:$port $dir"
+    distribute "$host" "$dir" "$OPENMLDB_ZK_HOME" zookeeper
+    ssh -n "$host" "cd $dir; OPENMLDB_ZK_HOME=$dir OPENMLDB_ZK_QUORUM=\"$quorum_config\" OPENMLDB_ZK_MYID=$i OPENMLDB_ZK_CLUSTER_CLIENT_PORT=$port sbin/deploy.sh zookeeper"
+    i=$((i+1))
+  done
 fi
 IFS="$old_IFS"

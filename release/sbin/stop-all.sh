@@ -42,7 +42,7 @@ if [[ -n "${OPENMLDB_MODE}" && ${OPENMLDB_MODE} = "cluster" ]]; then
   if [[ "${OPENMLDB_USE_EXISTING_ZK_CLUSTER}" != "true" ]]; then
     sleep 10
     cd "$home"
-    "$sbin"/stop-zk.sh
+    "$sbin"/stop-zks.sh
   fi
 fi
 

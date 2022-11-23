@@ -43,8 +43,12 @@ config_zk() {
 
 common_config() {
   config_file=$1
-  printf "# This file is generated automatically from %s.template\n\n" "${config_file}" > "${config_file}"
-  cat "${config_file}".template >> "${config_file}"
+  tmp_config="${config_file}".template
+  if [[ $# -ge 2 ]]; then
+    tmp_config=$2
+  fi
+  printf "# This file is generated automatically from %s\n\n" "${tmp_config}" > "${config_file}"
+  cat "${tmp_config}" >> "${config_file}"
 
   echo "" >> "$config_file"
   echo "# below configs are generated automatically" >> "$config_file"
@@ -87,6 +91,24 @@ case $component in
       exchange "server.port" "${OPENMLDB_TASKMANAGER_PORT}" ${taskmanager_conf}
     fi
     ;;
+  zookeeper)
+    # configure zookeeper
+    zk_conf=conf/zoo.cfg
+    zk_tmp_conf=conf/zoo_sample.cfg
+    common_config "$zk_conf" "$zk_tmp_conf"
+    if [[ -n ${OPENMLDB_ZK_CLUSTER_CLIENT_PORT} ]]; then
+      exchange "clientPort" "${OPENMLDB_ZK_CLUSTER_CLIENT_PORT}" ${zk_conf}
+    fi
+    data_dir="${OPENMLDB_ZK_HOME}/data"
+    exchange "dataDir" "$data_dir" ${zk_conf}
+    echo "initLimit=5" >> ${zk_conf}
+    echo "syncLimit=2" >> ${zk_conf}
+    echo "$OPENMLDB_ZK_QUORUM" | tr '|' '\n' >> ${zk_conf}
+    if [[ ! -e "$data_dir" ]]; then
+      mkdir -p "$data_dir"
+      echo "$OPENMLDB_ZK_MYID" > "$data_dir"/myid
+    fi
+    ;;
   *)
-    echo "Only support {tablet|nameserver|apiserver|taskmanager}" >&2
+    echo "Only support {tablet|nameserver|apiserver|taskmanager|zookeeper}" >&2
 esac
