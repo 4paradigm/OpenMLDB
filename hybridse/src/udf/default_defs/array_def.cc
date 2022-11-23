@@ -14,13 +14,75 @@
  * limitations under the License.
  */
 
-#include "udf/default_defs/containers.h"
+#include "absl/strings/str_split.h"
 #include "udf/default_udf_library.h"
+#include "udf/udf.h"
+#include "udf/udf_registry.h"
 
 namespace hybridse {
 namespace udf {
+
+// =========================================================== //
+//      External Array Function Defines
+// =========================================================== //
+
+template <typename T>
+struct ArrayContains {
+    using ParamType = typename DataTypeTrait<T>::CCallArgType;
+
+    // udf registry types
+    using Args = std::tuple<ArrayRef<T>, T>;
+
+    // type binding, udf registry type -> function param type
+    // - bool/intxx/float/double -> bool/intxx/float/double
+    // - Timestamp/Date/StringRef -> Timestamp*/Date*/StringRef*
+    bool operator()(ArrayRef<ParamType>* arr, ParamType v) {
+        // NOTE: array_contains([null], null) returns null
+        // this might not expected
+        for (uint64_t i = 0; i < arr->size; ++i) {
+            if constexpr (std::is_pointer_v<ParamType>) {
+                if (!arr->nullables[i] && *arr->raw[i] == *v) {
+                    return true;
+                }
+            } else {
+                if (!arr->nullables[i] && arr->raw[i] == v) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+};
+
+void SplitString(StringRef* str, StringRef* delimeter, ArrayRef<StringRef*>* array) {
+    std::vector<absl::string_view> stats = absl::StrSplit(absl::string_view(str->data_, str->size_),
+                                                          absl::string_view(delimeter->data_, delimeter->size_));
+
+    array->size = stats.size();
+    if (!stats.empty()) {
+        v1::AllocManagedArray(array, stats.size());
+
+        for (size_t i = 0; i < stats.size(); ++i) {
+            auto s = stats[i];
+            if (s.empty()) {
+                array->raw[i]->size_ = 0;
+                array->nullables[i] = true;
+            } else {
+                char* buf = v1::AllocManagedStringBuf(s.size());
+                memcpy(buf, s.data(), s.size());
+                array->raw[i]->data_ = buf;
+                array->raw[i]->size_ = s.size();
+                array->nullables[i] = false;
+            }
+        }
+    }
+}
+
+// =========================================================== //
+//      UDF Register Entry
+// =========================================================== //
 void DefaultUdfLibrary::InitArrayUdfs() {
-    RegisterExternalTemplate<container::ArrayContains>("array_contains")
+    RegisterExternalTemplate<ArrayContains>("array_contains")
         .args_in<bool, int16_t, int32_t, int64_t, float, double, Timestamp, Date, StringRef>()
         .doc(R"(
              @brief array_contains(array, value) - Returns true if the array contains the value.
@@ -35,13 +97,17 @@ void DefaultUdfLibrary::InitArrayUdfs() {
              @since 0.7.0
              )");
 
-    RegisterExternal("splita")
+    RegisterExternal("split_array")
         .returns<ArrayRef<StringRef>>()
         .return_by_arg(true)
-        .args<Nullable<StringRef>, StringRef>(
-            reinterpret_cast<void*>(&FZStringOpsDef::SingleSplit))
+        .args<StringRef, StringRef>(reinterpret_cast<void*>(SplitString))
         .doc(R"(
             @brief Split string to array of string by delimeter.
+
+             @code{.sql}
+                 select array_contains(split_array("2,1", ","), "1") as c0;
+                 -- output true
+             @endcode
 
             @since 0.7.0)");
 }

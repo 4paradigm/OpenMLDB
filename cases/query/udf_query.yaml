@@ -533,3 +533,22 @@ cases:
         - c9 bool
       data: |
         true, true, false, false, true, false, true, false, true, NULL
+
+  - id: array_split
+    mode: request-unsupport
+    inputs:
+      - name: t1
+        columns: ["col1:int32", "std_ts:timestamp", "col2:string"]
+        indexs: ["index1:col1:std_ts"]
+        rows:
+          - [1, 1590115420001, "ABCabcabc"]
+    sql: |
+      select
+        array_contains(splita("1,2", ","), '2') as c0,
+        array_contains(splita("1,2", ","), '3') as c1,
+    expect:
+      columns:
+        - c0 bool
+        - c1 bool
+      data: |
+        true, false

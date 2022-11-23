@@ -465,6 +465,21 @@ struct CCallDataTypeTrait {
         const auto* bytes = reinterpret_cast<const char*>(data);
         return absl::string_view(bytes, sizeof(TT));
     }
+
+    /// allocated empty instance for data type T.
+    /// return new instance of type T, this is used where instance of T as parameter is required to filled
+    /// during UDF function call.
+    ///
+    /// For type of 'T's when 'T' is pointer, new instance are allocated by new/malloc operator, and
+    /// must registered into JitRuntime to ensure its lifetime.
+    ///
+    /// e.g an external udf call with `ArrayRef<StringRef*>*` as return parameter, this paramter need filled, include
+    /// `ArrayRef<StringRef*>::raw`, `ArrayRef<StringRef*>::nullables`, and `StringRef` instance inside `raw`, should be
+    /// able to filled inside external UDF function
+    template <typename TT = T, std::enable_if_t<std::is_integral_v<TT> || std::is_floating_point_v<TT>, int> = 0>
+    static TT alloc_instance() {
+        return TT(0);
+    }
 };
 
 
@@ -486,6 +501,10 @@ struct CCallDataTypeTrait<openmldb::base::Timestamp*> {
         auto& ts = (*data)->ts_;
         return CCallDataTypeTrait<decltype(openmldb::base::Timestamp::ts_)>::to_bytes_ref(&ts);
     }
+
+    static openmldb::base::Timestamp* alloc_instance() {
+        return new openmldb::base::Timestamp();
+    }
 };
 template <>
 struct CCallDataTypeTrait<openmldb::base::Date*> {
@@ -495,6 +514,10 @@ struct CCallDataTypeTrait<openmldb::base::Date*> {
         auto& date = (*data)->date_;
         return CCallDataTypeTrait<decltype(openmldb::base::Date::date_)>::to_bytes_ref(&date);
     }
+
+    static openmldb::base::Date* alloc_instance() {
+        return new openmldb::base::Date();
+    }
 };
 template <>
 struct CCallDataTypeTrait<codec::StringRef*> {
@@ -502,6 +525,10 @@ struct CCallDataTypeTrait<codec::StringRef*> {
 
     static absl::string_view to_bytes_ref(openmldb::base::StringRef** data) {
         return absl::string_view((*data)->data_, (*data)->size_);
+    }
+
+    static codec::StringRef* alloc_instance() {
+        return new codec::StringRef();
     }
 };
 

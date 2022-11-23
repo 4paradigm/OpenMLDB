@@ -1228,6 +1228,10 @@ uint32_t format_string<StringRef>(const StringRef &v,
     }
 }
 
+void RegisterManagedObj(base::FeBaseObject* obj) {
+    vm::JitRuntime::get()->AddManagedObject(obj);
+}
+
 char *AllocManagedStringBuf(int32_t bytes) {
     if (bytes < 0) {
         return nullptr;

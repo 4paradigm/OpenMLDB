@@ -294,6 +294,7 @@ Status UdfIRBuilder::ExpandLlvmCallReturnArgs(
                 "udf_opaque_type_return_addr",
                 builder->getInt64(opaque_ret_type->bytes()));
         } else if (TypeIRBuilder::IsStructPtr(llvm_ty)) {
+            // Timestamp, Date, String, Array, etc will be struct ptr
             ret_alloca = CreateAllocaAtHead(
                 builder,
                 reinterpret_cast<llvm::PointerType*>(llvm_ty)->getElementType(),
