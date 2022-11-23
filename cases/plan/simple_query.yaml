@@ -516,6 +516,8 @@ cases:
   - id: array
     desc: |
       array query
+    # this query only work in logic plan, don't test in physical plan and later
+    mode: physical-plan-unsupport
     sql: |
       select [1,2] as c1, ARRAY [] as c2, ARRAY<double>[1,2,3] as c3;
     expect:
