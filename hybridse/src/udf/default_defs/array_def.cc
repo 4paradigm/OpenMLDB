@@ -36,7 +36,7 @@ struct ArrayContains {
     // type binding, udf registry type -> function param type
     // - bool/intxx/float/double -> bool/intxx/float/double
     // - Timestamp/Date/StringRef -> Timestamp*/Date*/StringRef*
-    bool operator()(ArrayRef<ParamType>* arr, ParamType v, bool is_null) {
+    bool operator()(ArrayRef<T>* arr, ParamType v, bool is_null) {
         // NOTE: array_contains([null], null) returns null
         // this might not expected
         for (uint64_t i = 0; i < arr->size; ++i) {
@@ -55,7 +55,7 @@ struct ArrayContains {
     }
 };
 
-void SplitString(StringRef* str, StringRef* delimeter, ArrayRef<StringRef*>* array) {
+void SplitString(StringRef* str, StringRef* delimeter, ArrayRef<StringRef>* array) {
     std::vector<absl::string_view> stats = absl::StrSplit(absl::string_view(str->data_, str->size_),
                                                           absl::string_view(delimeter->data_, delimeter->size_));
 

@@ -136,7 +136,7 @@ static bool operator==(const Nullable<T>& x, const Nullable<T>& y) {
 // ===================================== //
 template <typename T>
 struct ArrayRef {
-    T* raw;
+    typename DataTypeTrait<T>::CCallArgType* raw;
     bool* nullables;
     uint64_t size;
 };
@@ -443,9 +443,8 @@ struct DataTypeTrait<ArrayRef<T>> {
         return nm->MakeTypeNode(node::kArray, DataTypeTrait<T>::to_type_enum());
     }
 
-    // - ArrayRef<bool/intxx/float/double> -> ArrayRef<bool/intxx/float/double>
-    // - Arrayref<Timestamp/Date/StringRef> -> ArrayRef<Timestamp*/Date*/StringRef*>*
-    using CCallArgType = ArrayRef<typename DataTypeTrait<T>::CCallArgType>*;
+    // - ArrayRef<T> -> ArrayRef<T>*
+    using CCallArgType = ArrayRef<T>*;
 };
 
 // ===================================== //
@@ -473,8 +472,8 @@ struct CCallDataTypeTrait {
     /// For type of 'T's when 'T' is pointer, new instance are allocated by new/malloc operator, and
     /// must registered into JitRuntime to ensure its lifetime.
     ///
-    /// e.g an external udf call with `ArrayRef<StringRef*>*` as return parameter, this paramter need filled, include
-    /// `ArrayRef<StringRef*>::raw`, `ArrayRef<StringRef*>::nullables`, and `StringRef` instance inside `raw`, should be
+    /// e.g an external udf call with `ArrayRef<StringRef>*` as return parameter, this paramter need filled, include
+    /// `ArrayRef<StringRef>::raw`, `ArrayRef<StringRef>::nullables`, and `StringRef` instance inside `raw`, should be
     /// able to filled inside external UDF function
     template <typename TT = T, std::enable_if_t<std::is_integral_v<TT> || std::is_floating_point_v<TT>, int> = 0>
     static TT alloc_instance() {
@@ -490,7 +489,7 @@ struct CCallDataTypeTrait<V*> {
 
 template <typename T>
 struct CCallDataTypeTrait<ArrayRef<T>*> {
-    using LiteralTag = ArrayRef<typename CCallDataTypeTrait<T>::LiteralTag>;
+    using LiteralTag = ArrayRef<T>;
 };
 
 template <>

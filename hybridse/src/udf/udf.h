@@ -53,15 +53,15 @@ namespace v1 {
 // - Allocate outside with new/malloc operation
 // - Register with `RegisterManagedObj`
 // - Free in `JitRuntime::ReleaseRunStep`
-template <typename T>
+template <typename T, typename CType = typename DataTypeTrait<T>::CCallArgType>
 struct ArrayMeta : public base::FeBaseObject {
-    ArrayMeta(T *r, bool *nullable) : base::FeBaseObject(), raw(r), nullables(nullable) {}
+    ArrayMeta(CType *r, bool *nullable) : base::FeBaseObject(), raw(r), nullables(nullable) {}
     ~ArrayMeta() override {
         delete[] raw;
         delete[] nullables;
     }
 
-    T *raw;
+    CType *raw;
     bool *nullables;
 };
 
@@ -93,7 +93,7 @@ char *AllocManagedStringBuf(int32_t bytes);
 
 // alloc necessary space for ArrayRef and let Jit runtime manage its lifetime
 //
-// type T should be 'CCallArgType's: bool/intxx/float/double/StringRef*/TimeStamp*/Date*
+// type T should be of UDF type systems: bool/intxx/float/double/StringRef/TimeStamp/Date
 template <typename T>
 void AllocManagedArray(ArrayRef<T>* arr, uint64_t sz) {
     assert(arr != nullptr);
@@ -102,14 +102,16 @@ void AllocManagedArray(ArrayRef<T>* arr, uint64_t sz) {
         return;
     }
 
-    auto raw = new T[sz];
+    using CType = typename std::remove_pointer_t<decltype(ArrayRef<T>::raw)>;
+
+    CType* raw = new CType[sz];
 
     // alloc space for array elements if they are pointers
-    if constexpr (std::is_pointer_v<T>) {
+    if constexpr (std::is_pointer_v<CType>) {
         for (size_t i = 0; i < sz; ++i) {
-            T inst = CCallDataTypeTrait<T>::alloc_instance();
+            CType inst = CCallDataTypeTrait<CType>::alloc_instance();
 
-            RegisterManagedObj(new OpaqueMeta<T>(inst));
+            RegisterManagedObj(new OpaqueMeta<CType>(inst));
 
             raw[i] = inst;
         }
