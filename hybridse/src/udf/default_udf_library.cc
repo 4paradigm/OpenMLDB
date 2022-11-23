@@ -559,12 +559,15 @@ struct ArrayContains {
     // udf registry types
     using Args = std::tuple<ArrayRef<T>, T>;
 
-    bool operator()(ArrayRef<T>* arr, ParamType v) {
+    // type binding, udf registry type -> function param type
+    // - bool/intxx/float/double -> bool/intxx/float/double
+    // - Timestamp/Date/StringRef -> Timestamp*/Date*/StringRef*
+    bool operator()(ArrayRef<ParamType>* arr, ParamType v) {
         // NOTE: array_contains([null], null) returns null
         // this might not expected
         for (uint64_t i = 0; i < arr->size; ++i) {
             if constexpr (std::is_pointer_v<ParamType>) {
-                if (!arr->nullables[i] && arr->raw[i] == *v) {
+                if (!arr->nullables[i] && *arr->raw[i] == *v) {
                     return true;
                 }
             } else {
@@ -595,7 +598,7 @@ void DefaultUdfLibrary::Init() {
 
 void DefaultUdfLibrary::InitStringUdf() {
     RegisterExternalTemplate<ArrayContains>("array_contains")
-        .args_in<bool, int16_t, int32_t, int64_t, float, double, Timestamp, Date>()
+        .args_in<bool, int16_t, int32_t, int64_t, float, double, Timestamp, Date, StringRef>()
         .doc(R"(
              @brief array_contains(array, value) - Returns true if the array contains the value.
              )");

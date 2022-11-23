@@ -32,7 +32,8 @@ ArrayIRBuilder::ArrayIRBuilder(::llvm::Module* m, llvm::Type* ele_ty, llvm::Valu
 }
 
 void ArrayIRBuilder::InitStructType() {
-    std::string name = absl::StrCat("fe.array.", element_type_->getTypeID());
+    // name must unique between different array type
+    std::string name = absl::StrCat("fe.array_", GetLlvmObjectString(element_type_));
     ::llvm::StringRef sr(name);
     ::llvm::StructType* stype = m_->getTypeByName(sr);
     if (stype != NULL) {
@@ -85,19 +86,13 @@ base::Status ArrayIRBuilder::NewFixedArray(llvm::BasicBlock* bb, const std::vect
         builder.CreateStore(new_idx, idx_val_ptr);
     }
 
-    // Get raw array
-    llvm::Value* raw_array = nullptr;
-    CHECK_TRUE(Get(bb, array_alloca, 0, &raw_array), common::kCodegenError);
-    // Get nullable list
-    llvm::Value* nullables = nullptr;
-    CHECK_TRUE(Get(bb, array_alloca, 1, &nullables), common::kCodegenError);
-    builder.CreateStore(raw_array_ptr, raw_array);
-    builder.CreateStore(nullables_ptr, nullables);
+    // Set raw array
+    CHECK_TRUE(Set(bb, array_alloca, 0, raw_array_ptr), common::kCodegenError);
+    // Set nullable list
+    CHECK_TRUE(Set(bb, array_alloca, 1, nullables_ptr), common::kCodegenError);
 
     ::llvm::Value* array_sz = builder.CreateLoad(idx_val_ptr);
-    ::llvm::Value* array_sz_ptr = nullptr;
-    CHECK_TRUE(Get(bb, array_alloca, 2, &array_sz_ptr), common::kCodegenError);
-    builder.CreateStore(array_sz, array_sz_ptr);
+    CHECK_TRUE(Set(bb, array_alloca, 2, array_sz), common::kCodegenError);
 
     *output = NativeValue::Create(array_alloca);
     return base::Status::OK();

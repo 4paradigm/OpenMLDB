@@ -217,8 +217,18 @@ Status ExprNode::IsCastAccept(node::NodeManager* nm, const TypeNode* src,
 // types like array, list are not handled correctly
 const TypeNode* ExprNode::CompatibleType(NodeManager* nm, const TypeNode* lhs, const TypeNode* rhs) {
     if (*lhs == *rhs) {
+        // include Null = Null
         return rhs;
     }
+    if (lhs->IsNull()) {
+        // NULL + T -> T
+        return rhs;
+    }
+    if (rhs->IsNull()) {
+        // T + NULL -> T
+        return lhs;
+    }
+
     if (IsSafeCast(lhs, rhs)) {
         return rhs;
     }
@@ -844,6 +854,7 @@ Status ArrayExpr::InferAttr(ExprAnalysisContext* ctx) {
         for (size_t i = 1; i < children_.size() ; ++i) {
             ele_type = CompatibleType(ctx->node_manager(), ele_type, children_[i]->GetOutputType());
         }
+        CHECK_TRUE(!ele_type->IsNull(), kTypeError, "unable to infer array type, all elements are null");
         top_type = nm->MakeArrayType(ele_type, children_.size());
     }
     SetOutputType(top_type);

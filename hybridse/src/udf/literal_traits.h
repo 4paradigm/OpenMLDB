@@ -443,7 +443,9 @@ struct DataTypeTrait<ArrayRef<T>> {
         return nm->MakeTypeNode(node::kArray, DataTypeTrait<T>::to_type_enum());
     }
 
-    using CCallArgType = ArrayRef<T>*;
+    // - ArrayRef<bool/intxx/float/double> -> ArrayRef<bool/intxx/float/double>
+    // - Arrayref<Timestamp/Date/StringRef> -> ArrayRef<Timestamp*/Date*/StringRef*>*
+    using CCallArgType = ArrayRef<typename DataTypeTrait<T>::CCallArgType>*;
 };
 
 // ===================================== //
@@ -473,7 +475,7 @@ struct CCallDataTypeTrait<V*> {
 
 template <typename T>
 struct CCallDataTypeTrait<ArrayRef<T>*> {
-    using LiteralTag = ArrayRef<T>;
+    using LiteralTag = ArrayRef<typename CCallDataTypeTrait<T>::LiteralTag>;
 };
 
 template <>
