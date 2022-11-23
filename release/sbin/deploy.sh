@@ -106,8 +106,8 @@ case $component in
     echo "$OPENMLDB_ZK_QUORUM" | tr '|' '\n' >> ${zk_conf}
     if [[ ! -e "$data_dir" ]]; then
       mkdir -p "$data_dir"
-      echo "$OPENMLDB_ZK_MYID" > "$data_dir"/myid
     fi
+    echo "$OPENMLDB_ZK_MYID" > "$data_dir"/myid
     ;;
   *)
     echo "Only support {tablet|nameserver|apiserver|taskmanager|zookeeper}" >&2

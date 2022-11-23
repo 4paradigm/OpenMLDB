@@ -1,5 +1,5 @@
-# format: host:port OPENMLDB_HOME
-# if no custom OPENMLDB_HOME provided, use the default $OPENMLDB_HOME from env
+# format: host:port[:zk_peer_port:zk_election_port] WORKDIR
+# if no custom WORKDIR provided, use the $OPENMLDB_HOME from env
 
 [tablet]
 localhost:10921 /tmp/openmldb/tablet-1
@@ -13,5 +13,3 @@ localhost:9080
 
 [zookeeper]
 localhost:2181:2888:3888 /tmp/openmldb/zk-1
-localhost:2182:2889:3889 /tmp/openmldb/zk-2
-localhost:2183:2890:3890 /tmp/openmldb/zk-3

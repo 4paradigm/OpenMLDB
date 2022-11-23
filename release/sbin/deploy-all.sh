@@ -31,11 +31,8 @@ distribute() {
   if [[ $# -ge 4 ]]; then
     type=$4
   fi
-  if [[ "$src" = "$dest" ]]; then
-    echo "dest = src: $dest, skip copy"
-  fi
   ssh -n "$host" "mkdir -p $dest"
-  echo "$src/* $host:$dest/"
+  echo "rsync $src/* $host:$dest/"
   if [[ "$type" = "openmldb" ]]; then
     for folder in bin sbin conf
     do

@@ -65,7 +65,11 @@ function parse_host {
     fi
 
     if [[ -z "$dir" ]]; then
-      dir="$OPENMLDB_HOME"
+      if [[ "$type" = "zookeeper" ]]; then
+        dir="$OPENMLDB_ZK_HOME"
+      else
+        dir="$OPENMLDB_HOME"
+      fi
     fi
 
     echo "$host $port $dir $second_port $third_port"
