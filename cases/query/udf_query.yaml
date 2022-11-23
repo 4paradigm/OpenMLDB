@@ -519,6 +519,7 @@ cases:
         array_contains([timestamp(1), NULL, timestamp(1000)], timestamp(100)) as c7,
         array_contains([date('2022-04-04'), NULL, date('2020-10-20')], date('2020-10-20')) as c8,
         array_contains([2,2], cast(NULL as INT)) as c9,
+        array_contains(ARRAY<INT16>[2, NULL, 2], cast(NULL as INT16)) as c10,
     expect:
       columns:
         - c0 bool
@@ -531,8 +532,9 @@ cases:
         - c7 bool
         - c8 bool
         - c9 bool
+        - c10 bool
       data: |
-        true, true, false, false, true, false, true, false, true, NULL
+        true, true, false, false, true, false, true, false, true, false, true
 
   - id: array_split
     mode: request-unsupport
@@ -544,8 +546,8 @@ cases:
           - [1, 1590115420001, "ABCabcabc"]
     sql: |
       select
-        array_contains(splita("1,2", ","), '2') as c0,
-        array_contains(splita("1,2", ","), '3') as c1,
+        array_contains(split_array("1,2", ","), '2') as c0,
+        array_contains(split_array("1,2", ","), '3') as c1,
     expect:
       columns:
         - c0 bool
