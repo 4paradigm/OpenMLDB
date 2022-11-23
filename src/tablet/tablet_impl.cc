@@ -738,8 +738,9 @@ void TabletImpl::Put(RpcController* controller, const ::openmldb::api::PutReques
         response->set_msg("table is loading");
         return;
     }
-    if (memory_used_.load(std::memory_order_relaxed) > FLAGS_max_memory_mb) {
-        PDLOG(WARNING, "current memory %luMB exceed max memory limit %luMB. tid %u, pid %u",
+    if (table->GetStorageMode() == ::openmldb::common::StorageMode::kMemory &&
+            memory_used_.load(std::memory_order_relaxed) > FLAGS_max_memory_mb) {
+        PDLOG(WARNING, "current memory %lu MB exceed max memory limit %lu MB. tid %u, pid %u",
                 memory_used_.load(std::memory_order_relaxed), FLAGS_max_memory_mb, tid, pid);
         response->set_code(::openmldb::base::ReturnCode::kExceedMaxMemory);
         response->set_msg("exceed max memory");
