@@ -30,11 +30,13 @@ foreach(SRC_FILE ${BM_FILES})
         list(APPEND BM_LIB_FILE_LIST ${SRC_FILE})
     endif()
 endforeach()
+
+set(BM_LIBS ${ABSL_LIBS} ${yaml_libs} ${g_libs} ${Boost_filesystem_LIBRARY}
+    ${VM_LIBS} ${LLVM_LIBS} ${COMMON_LIBS} ${BRPC_LIBRARY} ${OS_LIB} benchmark gtest)
 if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
-    set(BM_LIBS ${ABSL_LIBS} ${yaml_libs} ${g_libs} ${Boost_filesystem_LIBRARY}  ${VM_LIBS} ${LLVM_LIBS} ${BRPC_LIBS} tcmalloc ${OS_LIB} benchmark gtest)
-elseif (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
-    set(BM_LIBS ${ABSL_LIBS} ${yaml_libs} ${g_libs} ${Boost_filesystem_LIBRARY} ${VM_LIBS} ${LLVM_LIBS} ${BRPC_LIBS} ${OS_LIB} benchmark gtest)
+    set(BM_LIBS ${BM_LIBS} tcmalloc)
 endif ()
+
 # bm lib
 add_library(toydb_bm_lib STATIC ${BM_LIB_FILE_LIST})
 target_link_libraries(toydb_bm_lib toydb_lib toydb_sdk hybridse_sdk hybridse_flags ${BM_LIIBS})
@@ -72,9 +74,8 @@ if (TESTING_ENABLE AND EXAMPLES_TESTING_ENABLE)
 
         target_link_libraries(${TEST_TARGET_NAME}
                 toydb_lib toydb_sdk toydb_bm_lib hybridse_sdk hybridse_flags
-                ${GTEST_LIBRARIES} benchmark ${yaml_libs} ${BRPC_LIBS} ${OS_LIBS} ${g_libs} sqlite3)
+                ${GTEST_LIBRARIES} benchmark ${yaml_libs} ${COMMON_LIBS} ${BRPC_LIBRARY} ${OS_LIBS} ${g_libs} sqlite3)
         list(APPEND test_list ${TEST_TARGET_NAME})
     endforeach()
-    set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
 endif()
 
