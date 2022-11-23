@@ -74,7 +74,7 @@ if (TESTING_ENABLE AND EXAMPLES_TESTING_ENABLE)
 
         target_link_libraries(${TEST_TARGET_NAME}
                 toydb_lib toydb_sdk toydb_bm_lib hybridse_sdk hybridse_flags
-                ${GTEST_LIBRARIES} benchmark ${yaml_libs} ${COMMON_LIBS} ${BRPC_LIBRARY} ${OS_LIBS} ${g_libs} sqlite3)
+                ${GTEST_LIBRARIES} benchmark ${yaml_libs} ${COMMON_LIBS} ${BRPC_LIBRARY} ${OS_LIB} ${g_libs} sqlite3)
         list(APPEND test_list ${TEST_TARGET_NAME})
     endforeach()
 endif()

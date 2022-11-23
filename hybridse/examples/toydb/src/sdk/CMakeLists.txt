@@ -19,7 +19,7 @@ include_directories(${INCLUDE_DIRECTORIES}
 
 set(SDK_DEPS_LIBS hybridse_core hybridse_flags hybridse_sdk
     ${yaml_libs} ${Boost_filesystem_LIBRARY} ${VM_LIBS} ${LLVM_LIBS}
-    ${COMMON_LIBS} ${BRPC_LIBRARY} ${OS_LIB})
+    ${BRPC_LIBRARY} ${COMMON_LIBS} ${OS_LIB})
 
 # split sdk test and bm
 set(SDK_SRC_FILE_LIST)
