@@ -544,6 +544,30 @@ TEST_F(PlannerV2Test, CreateFunctionPlanTest) {
     ASSERT_EQ("/tmp/libmyfun.so", create_function_plan->Options()->begin()->second->GetExprString());
 }
 
+TEST_F(PlannerV2Test, CreateAggregateFunctionPlanTest) {
+    std::string sql_str = "CREATE AGGREGATE FUNCTION fun(x INT) RETURNS STRING OPTIONS (PATH='/tmp/libmyfun.so');";
+    node::PlanNodeList trees;
+    base::Status status;
+    ASSERT_TRUE(plan::PlanAPI::CreatePlanTreeFromScript(sql_str, trees, manager_, status)) << status;
+    ASSERT_EQ(1u, trees.size());
+    PlanNode *plan_ptr = trees[0];
+    ASSERT_TRUE(NULL != plan_ptr);
+
+    std::cout << *plan_ptr << std::endl;
+
+    // validate create plan
+    ASSERT_EQ(node::kPlanTypeCreateFunction, plan_ptr->GetType());
+    auto create_function_plan = dynamic_cast<node::CreateFunctionPlanNode *>(plan_ptr);
+    ASSERT_EQ("fun", create_function_plan->Name());
+    ASSERT_TRUE(create_function_plan->IsAggregate());
+    ASSERT_EQ("string", (dynamic_cast<const node::TypeNode*>(create_function_plan->GetReturnType()))->GetName());
+    ASSERT_EQ(1, create_function_plan->GetArgsType().size());
+    ASSERT_EQ("int32", (dynamic_cast<node::TypeNode*>(create_function_plan->GetArgsType().front()))->GetName());
+    ASSERT_EQ(1, create_function_plan->Options()->size());
+    ASSERT_EQ("PATH", create_function_plan->Options()->begin()->first);
+    ASSERT_EQ("/tmp/libmyfun.so", create_function_plan->Options()->begin()->second->GetExprString());
+}
+
 TEST_F(PlannerV2Test, CreateTableStmtPlanTest) {
     const std::string sql_str =
         "create table IF NOT EXISTS db1.test(\n"

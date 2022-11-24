@@ -28,16 +28,12 @@ namespace base {
 
 struct StringRef {
     StringRef() : size_(0), data_(nullptr) {}
-    StringRef(std::nullptr_t) : size_(0), data_(nullptr) {}  // NOLINT
+    StringRef(std::nullptr_t) : size_(0), data_(nullptr) {}
 
-    StringRef(const char* str)  // NOLINT
-        : size_(strlen(str)), data_(str) {}
+    StringRef(const char* str) : size_(strlen(str)), data_(str) {}
     StringRef(uint32_t size, const char* data) : size_(size), data_(data) {}
 
-    StringRef(const std::string& str) // NOLINT
-        : size_(str.size()), data_(str.data()) {}
-
-    ~StringRef() {}
+    StringRef(const std::string& str) : size_(str.size()), data_(str.data()) {}
 
     const inline bool IsNull() const { return nullptr == data_; }
     const std::string ToString() const {
@@ -52,11 +48,9 @@ struct StringRef {
         if (data_ == nullptr) {
             return "NULL";
         }
-
         std::string out("\"");
         out.append(data_, size_);
         out.append("\"");
-
         return out;
     }
 
@@ -67,7 +61,7 @@ struct StringRef {
             if (a.size_ < b.size_) {
                 r = -1;
             } else if (a.size_ > b.size_) {
-                r = +1;
+                r = 1;
             }
         }
         return r;

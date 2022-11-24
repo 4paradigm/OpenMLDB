@@ -26,7 +26,7 @@ using ::openmldb::base::Timestamp;
 using ::openmldb::base::Date;
 using ::openmldb::base::StringRef;
 
-constexpr int OPENMLDB_UDF_LIBRARY_VERSION = 1;
+inline constexpr int OPENMLDB_UDF_LIBRARY_VERSION = 1;
 
 struct UDFContext {
     ByteMemoryPool* pool;

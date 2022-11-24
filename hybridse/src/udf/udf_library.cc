@@ -199,7 +199,6 @@ UdafRegistryHelper UdfLibrary::RegisterUdaf(const std::string& name) {
 
 Status UdfLibrary::RegisterDynamicUdf(const std::string& name, node::DataType return_type,
         const std::vector<node::DataType>& arg_types, bool is_aggregate, const std::string& file) {
-    CHECK_TRUE(!is_aggregate, kCodegenError, "unsupport register udaf")
     std::string canon_name = GetCanonicalName(name);
 
     // TODO(tobe): openmldb-batch will register function twice, remove warning if it is fixed
@@ -221,13 +220,17 @@ Status UdfLibrary::RegisterDynamicUdf(const std::string& name, node::DataType re
         CHECK_STATUS(lib_manager_.ExtractFunction(canon_name, is_aggregate, file, &funs))
     }
     CHECK_TRUE(!funs.empty() && funs[0] != nullptr, kCodegenError, name + " is nullptr")
-    void* fn = funs[0];
-    DynamicUdfRegistryHelper helper(canon_name, this, fn, return_type, arg_types,
-            reinterpret_cast<void*>(static_cast<void (*)(UDFContext* context)>(udf::v1::init_udfcontext)));
-    auto status = helper.Register();
-    if (!status.isOK()) {
-        lib_manager_.RemoveHandler(file);
-        return status;
+    if (is_aggregate) {
+
+    } else {
+        void* fn = funs[0];
+        DynamicUdfRegistryHelper helper(canon_name, this, fn, return_type, arg_types,
+                reinterpret_cast<void*>(static_cast<void (*)(UDFContext* context)>(udf::v1::init_udfcontext)));
+        auto status = helper.Register();
+        if (!status.isOK()) {
+            lib_manager_.RemoveHandler(file);
+            return status;
+        }
     }
     return {};
 }
