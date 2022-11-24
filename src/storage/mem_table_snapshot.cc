@@ -625,7 +625,7 @@ base::Status MemTableSnapshot::GetIndexKey(std::shared_ptr<Table> table,
     auto schema = table->GetVersionSchema(version);
     auto it = decoder_map->find(version);
     if (it == decoder_map->end() || schema == nullptr) {
-        return base::Status(base::ReturnCode::kError, "schema version is not exist");
+        return base::Status(base::ReturnCode::kError, "schema version does not exist");
     }
     index_key->clear();
     for (const auto& col : index->GetColumns()) {

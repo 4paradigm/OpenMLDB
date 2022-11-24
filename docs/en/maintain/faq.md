@@ -10,6 +10,26 @@ It can be queried by `ps axu | grep openmldb`. (Note that `mon` is used as the d
 
 If the processes are all running and the cluster still behaves abnormally, you need to query the server log. You can give priority to 'WARN' and 'ERROR' level logs, which are most likely the root cause.
 
+### 2. What if tables are not recovered successfully？
+
+In the common cases, tables will be recovered automatically
+after the service is started. However, in some cases
+there may be failures during auto-recover, e.g.,
+- tablet exits unexpectedly
+- tablets that store tables with multiple replicas restart at the same time or too quickly, causing some operations of `auto_failover` unfinished
+- auto_failover is set to `false`
+
+After all the services are started, we can use `gettablestatus` to show the statuses of all tables:
+```
+python tools/openmldb_ops.py --openmldb_bin_path=./bin/openmldb --zk_cluster=172.24.4.40:30481 --zk_root_path=/openmldb --cmd=gettablestatus
+```
+
+If there are `Warnings`，we can use `recoverdata` to manually recover the data:
+```
+python tools/openmldb_ops.py --openmldb_bin_path=./bin/openmldb --zk_cluster=172.24.4.40:30481 --zk_root_path=/openmldb --cmd=recoverdata
+```
+
+
 ## Server FAQ
 
 ### 1. Why is there a warning of "Fail to write into Socket" in the log?

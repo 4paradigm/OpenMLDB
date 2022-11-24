@@ -85,4 +85,4 @@ UNION (select `ingestionTime`, `pair_id`, `time`, `model_id`, `type`, `cate`, `b
 UNION (select `ingestionTime`, `pair_id`, `time`, `model_id`, `type`, `cate`, `br`, '' as reqId from `bo_action`) partition by `pair_id` order by `ingestionTime` rows_range between 14d preceding and 0s preceding MAXSIZE 100 INSTANCE_NOT_IN_WINDOW))
 as out3
 on out0.reqId_1 = out3.reqId_17
-INTO OUTFILE '/root/project/out/1' OPTIONS(mode='overwrite');
+INTO OUTFILE '/work/oneflow_demo/out/1' OPTIONS(mode='overwrite');

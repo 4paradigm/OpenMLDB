@@ -51,8 +51,8 @@ def process_res(datadir):
     res = rearrange_and_mod(data)
     print(res)
 
-def oneflow_infer(data):
-    triton_client = httpclient.InferenceServerClient(url='127.0.0.1:8000')
+def oneflow_infer(url, data):
+    triton_client = httpclient.InferenceServerClient(url=url)
     inputs = []
     inputs.append(httpclient.InferInput('INPUT_0', data.shape, "INT64"))
     inputs[0].set_data_from_numpy(data, binary_data=True)
@@ -63,7 +63,7 @@ def oneflow_infer(data):
     return output_data
 
 
-def process_infer(data):
+def process_infer(url, data):
 
     df = pd.DataFrame(columns=cols)
     df.loc[0]=data
@@ -80,5 +80,5 @@ def process_infer(data):
     label = df['Label']
     del df['Label']
     data = df.values
-    res = oneflow_infer(data)
+    res = oneflow_infer(url, data)
     return res

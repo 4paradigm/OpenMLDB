@@ -25,10 +25,3 @@ instance_group [
     gpus: [ 0 ]
   }
 ]
-
-parameters {
-    key: "one_embedding_persistent_table_path"
-    value: {
-      string_value: "/root/demo/persistent/0-1",
-    }
-}

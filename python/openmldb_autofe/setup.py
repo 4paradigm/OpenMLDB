@@ -1,5 +1,5 @@
-#! /bin/bash
-#
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 # Copyright 2021 4Paradigm
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,8 +14,5 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# start_predict_server.sh
-
-echo "start predict server"
-nohup python3 predict_server.py "$1" >/tmp/p.log 2>&1 &
-sleep 1
+import setuptools
+setuptools.setup()

@@ -31,9 +31,13 @@ setup(
         "sqlalchemy <= 1.4.9",
         "IPython",
         "prettytable",
-        "tox",
-        "pytest"
     ],
+    extras_require={
+        'test': [
+            "pytest",
+            "tox",
+        ]
+    },
     include_package_data=True,
     package_data = {'':['*.so']},
     packages=find_packages(),

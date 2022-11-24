@@ -17,7 +17,7 @@ If you wan to compile and install it by yourself, you can refer to our [installa
 Pull the image (image download size is about 1GB, after decompression is about 1.7 GB) and start the docker container:
 
 ```bash
-docker run -it 4pdosc/openmldb:0.6.6 bash
+docker run -it 4pdosc/openmldb:0.6.7 bash
 ```
 
 ```{important}
@@ -316,6 +316,7 @@ http://127.0.0.1:9080/dbs/demo_db/deployments/demo_data_service
 
 The input data of the real-time request accepts the `json` format, and we put a line of data into the `input` field of the request. Here is the request example:
 
+Example 1:
 ```bash
 curl http://127.0.0.1:9080/dbs/demo_db/deployments/demo_data_service -X POST -d'{"input": [["aaa", 11, 22, 1.2, 1.3, 1635247427000, "2021-05-20"]]}'
 ```
@@ -326,13 +327,22 @@ The following is the expected return result for this query (the computed feature
 {"code":0,"msg":"ok","data":{"data":[["aaa",11,22]]}}
 ```
 
+Example 2:
+```bash
+curl http://127.0.0.1:9080/dbs/demo_db/deployments/demo_data_service -X POST -d'{"input": [["aaa", 11, 22, 1.2, 1.3, 1637000000000, "2021-11-16"]]}'
+```
+Expect：
+```json
+{"code":0,"msg":"ok","data":{"data":[["aaa",11,66]]}}
+```
+
 #### 3.3.8. Result Explanation
 
 The real-time feature extraction is executed in the request mode. Unlike the batch mode, the request mode will only perform SQL extractions on the request row. In the previous example, the POST input is used as the request row, assuming this row of data exists in the table demo_table1, and execute SQL on it:
 ```sql
 SELECT c1, c2, sum(c3) OVER w1 AS w1_c3_sum FROM demo_table1 WINDOW w1 AS (PARTITION BY demo_table1.c1 ORDER BY demo_table1.c6 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
 ```
-The computation is logically done as follows :
+The computation of Example 1 is logically done as follows:
 1. According to the request line and the `PARTITION BY` in window clause, filter out the lines whose `c1` is "aaa", and sort them according to `c6` from small to large. So theoretically, the intermediate data table after partition sorting is shown in the following table. Among them, the first row after the request behavior is sorted.
 ```
  ----- ---- ---- ---------- ----------- --------------- ------------
@@ -352,5 +362,28 @@ The output is:
   c1    c2   w1_c3_sum   
  ----- ---- -----------
   aaa   11      22
+ ----- ---- -----------
+```
+
+Example 2:
+1. According to the request line and the `PARTITION BY` in window clause, filter out the lines whose `c1` is "aaa", and sort them according to `c6` from small to large. So theoretically, the intermediate data table after partition sorting is shown in the following table. The request row is the last row.
+```
+ ----- ---- ---- ---------- ----------- --------------- ------------
+  c1    c2   c3   c4         c5          c6              c7
+ ----- ---- ---- ---------- ----------- --------------- ------------
+  aaa   11   22   1.200000   11.300000   1636097290000   1970-01-01
+  aaa   12   22   2.200000   12.300000   1636097890000   1970-01-01
+  aaa   11   22   1.2        1.3         1637000000000   2021-11-16
+ ----- ---- ---- ---------- ----------- --------------- ------------
+```
+2. The window range is `2 PRECEDING AND CURRENT ROW`, so we cut out the real window in the above table, the request row is the largest row, so the previous 2 rows are exist, and the window contains the current row, so the window has 3 rows.
+3. Window aggregation is performed, to sum `c3` of the data in the window (3 rows), and we have the result 22*3=66.
+
+The output is:
+```
+ ----- ---- ----------- 
+  c1    c2   w1_c3_sum   
+ ----- ---- -----------
+  aaa   11      66
  ----- ---- -----------
 ```
