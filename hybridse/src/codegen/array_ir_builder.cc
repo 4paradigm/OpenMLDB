@@ -99,7 +99,7 @@ base::Status ArrayIRBuilder::NewFixedArray(llvm::BasicBlock* bb, const std::vect
 }
 
 
-base::Status ArrayIRBuilder::NexEmptyArray(llvm::BasicBlock* bb, NativeValue* output) const {
+base::Status ArrayIRBuilder::NewEmptyArray(llvm::BasicBlock* bb, NativeValue* output) const {
     llvm::Value* array_alloca = nullptr;
     CHECK_TRUE(Create(bb, &array_alloca), common::kCodegenError, "can't create struct type for array");
 

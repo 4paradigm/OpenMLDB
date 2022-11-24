@@ -19,6 +19,7 @@
 #include <string>
 #include <utility>
 
+#include "absl/base/attributes.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/strings/match.h"
 #include "base/fe_status.h"
@@ -28,6 +29,7 @@ namespace hybridse {
 namespace plan {
 
 template <typename NodeType, typename OutputType, typename ConvertFn>
+ABSL_MUST_USE_RESULT
 base::Status ConvertGuard(const zetasql::ASTNode* node, node::NodeManager* nm, OutputType** output, ConvertFn&& func) {
     auto specific_node = node->GetAsOrNull<NodeType>();
     CHECK_TRUE(specific_node != nullptr, common::kUnsupportSql, "not an ",

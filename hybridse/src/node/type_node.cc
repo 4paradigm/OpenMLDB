@@ -122,12 +122,16 @@ OpaqueTypeNode *OpaqueTypeNode::ShadowCopy(NodeManager *nm) const {
 }
 
 // {base_name}<element_type>(num_elements)
-std::string FixedArrayType::DebugString() const { return absl::StrCat(TypeNode::DebugString(), "(", num_elements_, ")"); }
+std::string FixedArrayType::DebugString() const {
+    return absl::StrCat(TypeNode::DebugString(), "(", num_elements_, ")");
+}
 
 // {base_name}_{generics}_...{num_elements}
 const std::string FixedArrayType::GetName() const { return absl::StrCat(TypeNode::GetName(), "_", num_elements_); }
 
-FixedArrayType *FixedArrayType::ShadowCopy(NodeManager *nm) const { return nm->MakeArrayType(element_type(), num_elements_); }
+FixedArrayType *FixedArrayType::ShadowCopy(NodeManager *nm) const {
+    return nm->MakeArrayType(element_type(), num_elements_);
+}
 
 }  // namespace node
 }  // namespace hybridse

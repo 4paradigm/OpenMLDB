@@ -1148,7 +1148,7 @@ Status ExprIRBuilder::BuildArrayExpr(const ::hybridse::node::ArrayExpr* node, Na
     if (node->GetChildNum() == 0) {
         // build empty array
         ArrayIRBuilder ir_builder(ctx_->GetModule(), ele_type);
-        CHECK_STATUS(ir_builder.NexEmptyArray(ctx_->GetCurrentBlock(), output));
+        CHECK_STATUS(ir_builder.NewEmptyArray(ctx_->GetCurrentBlock(), output));
         return Status::OK();
     }
 

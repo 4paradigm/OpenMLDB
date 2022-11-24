@@ -25,9 +25,10 @@
 namespace hybridse {
 namespace codegen {
 
-// Array Struct, consist of two fields
-// - Array of raw values
-// - Array of nullable values
+// Array Struct, consist of following fields
+// - Array of raw values: T*
+// - Array of nullable values: bool*
+// - array size: int64
 class ArrayIRBuilder  : public StructTypeIRBuilder {
  public:
     // Array builder with num elements unknown
@@ -44,7 +45,7 @@ class ArrayIRBuilder  : public StructTypeIRBuilder {
                                NativeValue* output) const;
 
     ABSL_MUST_USE_RESULT
-    base::Status NexEmptyArray(llvm::BasicBlock* bb, NativeValue* output) const;
+    base::Status NewEmptyArray(llvm::BasicBlock* bb, NativeValue* output) const;
 
     void InitStructType() override;
 

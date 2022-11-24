@@ -40,7 +40,7 @@ namespace v1 {
 
 // ============================================= //
 //       Object Lieftime Management
-//           Helpter Classes
+//           Helper Classes
 // ============================================= //
 
 // a meta class stores all allocation info of a 'Arrayref<T>' instance
