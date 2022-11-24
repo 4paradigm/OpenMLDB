@@ -1847,7 +1847,7 @@ TEST_P(PlannerV2ErrorTest, RequestModePlanErrorTest) {
     node::PlanNodeList plan_trees;
     EXPECT_FALSE(plan::PlanAPI::CreatePlanTreeFromScript(sqlstr, plan_trees, manager_, status, false, false)) << status;
     if (!sql_case.expect_.msg_.empty()) {
-        EXPECT_EQ(sql_case.expect_.msg_, status.msg);
+        EXPECT_EQ(absl::StripAsciiWhitespace(sql_case.expect_.msg_), status.msg);
     }
 }
 TEST_P(PlannerV2ErrorTest, ClusterRequestModePlanErrorTest) {
@@ -1863,7 +1863,7 @@ TEST_P(PlannerV2ErrorTest, ClusterRequestModePlanErrorTest) {
     node::PlanNodeList plan_trees;
     EXPECT_FALSE(plan::PlanAPI::CreatePlanTreeFromScript(sqlstr, plan_trees, manager_, status, false, true)) << status;
     if (!sql_case.expect_.msg_.empty()) {
-        EXPECT_EQ(sql_case.expect_.msg_, status.msg);
+        EXPECT_EQ(absl::StripAsciiWhitespace(sql_case.expect_.msg_), status.msg);
     }
 }
 TEST_P(PlannerV2ErrorTest, BatchModePlanErrorTest) {
@@ -1878,7 +1878,7 @@ TEST_P(PlannerV2ErrorTest, BatchModePlanErrorTest) {
     node::PlanNodeList plan_trees;
     EXPECT_FALSE(plan::PlanAPI::CreatePlanTreeFromScript(sqlstr, plan_trees, manager_, status, true)) << status;
     if (!sql_case.expect_.msg_.empty()) {
-        EXPECT_EQ(sql_case.expect_.msg_, status.msg);
+        EXPECT_EQ(absl::StripAsciiWhitespace(sql_case.expect_.msg_), status.msg);
     }
 }
 
