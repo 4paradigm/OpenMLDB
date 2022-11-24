@@ -134,9 +134,9 @@ static bool operator==(const Nullable<T>& x, const Nullable<T>& y) {
 // ===================================== //
 //         ArrayRef
 // ===================================== //
-template <typename T>
+template <typename T, typename CType = typename DataTypeTrait<T>::CCallArgType>
 struct ArrayRef {
-    typename DataTypeTrait<T>::CCallArgType* raw;
+    CType* raw;
     bool* nullables;
     uint64_t size;
 };
