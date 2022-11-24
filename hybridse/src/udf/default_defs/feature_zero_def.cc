@@ -566,7 +566,7 @@ void DefaultUdfLibrary::InitFeatureZero() {
             column of window, split by delimeter and add segment
             to output list. Null values are skipped.
 
-            @since 0.1.0)");
+            @since 0.7.0)");
 
     RegisterExternal("split")
         .returns<ListRef<StringRef>>()
@@ -586,7 +586,7 @@ void DefaultUdfLibrary::InitFeatureZero() {
             -- output "k1:1 k2:2"
             @endcode
 
-            @since 0.1.0)");
+            @since 0.7.0)");
 
     RegisterUdaf("window_split_by_key")
         .templates<ListRef<StringRef>, Opaque<StringSplitState>,
@@ -601,7 +601,7 @@ void DefaultUdfLibrary::InitFeatureZero() {
             as kv pair, then add each key to output list. Null and
             illegal segments are skipped.
 
-            @since 0.1.0)");
+            @since 0.7.0)");
 
     // single line version
     RegisterExternal("split_by_key")
@@ -624,7 +624,7 @@ void DefaultUdfLibrary::InitFeatureZero() {
             -- output "k1 k2"
             @endcode
 
-            @since 0.1.0)");
+            @since 0.7.0)");
 
     RegisterUdaf("window_split_by_value")
         .templates<ListRef<StringRef>, Opaque<StringSplitState>,
@@ -639,7 +639,7 @@ void DefaultUdfLibrary::InitFeatureZero() {
             as kv pair, then add each value to output list. Null and
             illegal segments are skipped.
 
-            @since 0.1.0)");
+            @since 0.7.0)");
 
     // single line version
     RegisterExternal("split_by_value")
@@ -662,7 +662,7 @@ void DefaultUdfLibrary::InitFeatureZero() {
             -- output "1 2"
             @endcode
 
-            @since 0.1.0)");
+            @since 0.7.0)");
 
     RegisterExternal("join")
         .doc(R"(
@@ -678,7 +678,7 @@ void DefaultUdfLibrary::InitFeatureZero() {
                 select join(split("k1:v1,k2:v2", ","), " ");
                 --  "k1:v1 k2:v2"
             @endcode
-            @since 0.1.0
+            @since 0.7.0
         )")
         .list_argument_at(0)
         .args<ListRef<StringRef>, StringRef>(FZStringOpsDef::StringJoin);
@@ -686,14 +686,14 @@ void DefaultUdfLibrary::InitFeatureZero() {
     RegisterUdafTemplate<FZTop1Ratio>("top1_ratio")
         .doc(R"(@brief Compute the top1 key's ratio
 
-        @since 0.1.0)")
+        @since 0.7.0)")
         .args_in<int16_t, int32_t, int64_t, float, double, Date, Timestamp,
                  StringRef>();
 
     RegisterUdafTemplate<FZTopNFrequency>("topn_frequency")
         .doc(R"(@brief Return the topN keys sorted by their frequency
 
-        @since 0.1.0)")
+        @since 0.7.0)")
         .args_in<int16_t, int32_t, int64_t, float, double, Date, Timestamp,
                  StringRef>();
 
