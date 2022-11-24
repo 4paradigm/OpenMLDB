@@ -32,7 +32,7 @@ foreach(SRC_FILE ${BM_FILES})
 endforeach()
 
 set(BM_LIBS ${ABSL_LIBS} ${yaml_libs} ${g_libs} ${Boost_filesystem_LIBRARY}
-    ${VM_LIBS} ${LLVM_LIBS} ${COMMON_LIBS} ${BRPC_LIBRARY} ${OS_LIB} benchmark gtest)
+    ${LLVM_LIBS} ${COMMON_LIBS} ${BRPC_LIBRARY} ${OS_LIB} benchmark gtest)
 if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
     set(BM_LIBS ${BM_LIBS} tcmalloc)
 endif ()
