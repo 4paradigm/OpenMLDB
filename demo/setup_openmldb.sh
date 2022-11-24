@@ -32,7 +32,7 @@ mkdir -p "$WORKDIR/openmldb"
 
 tar xzf zookeeper.tar.gz -C "${WORKDIR}/openmldb"
 pushd $WORKDIR/openmldb/zookeeper-3.4.14/
-mv conf/zoo_sample.cfg conf/zoo.cfg
+cp conf/zoo_sample.cfg conf/zoo.cfg
 popd
 
 mkdir -p "${WORKDIR}/openmldb"
