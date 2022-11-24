@@ -85,7 +85,7 @@ run_auto() {
   if [[ $host = "localhost" || $host = "127.0.0.1" ]]; then
     cur_dir=$(pwd)
     bash -c "$cmd"
-    cd "$cur_dir"
+    cd "$cur_dir" || return
   else
     ssh -n "$host" "$cmd"
   fi
@@ -106,7 +106,7 @@ if [ -z "${OPENMLDB_ZK_HOME}" ]; then
   export OPENMLDB_ZK_HOME
 fi
 
-if [[ "$OPENMLDB_MODE" = "cluster" && "$OPENMLDB_USE_EXISTING_ZK_CLUSTER" != "true" ]]; then
+if [[ -n "$OPENMLDB_MODE" && "$OPENMLDB_MODE" = "cluster" && "$OPENMLDB_USE_EXISTING_ZK_CLUSTER" != "true" ]]; then
   if [ -z "${OPENMLDB_ZK_CLUSTER}" ]; then
     old_IFS="$IFS"
     IFS=$'\n'
