@@ -2200,6 +2200,8 @@ base::Status ConvertASTType(const zetasql::ASTType* ast_type, node::NodeManager*
                     auto* tp = nm->MakeTypeNode(node::kArray);
                     node::TypeNode* elem_tp = nullptr;
                     CHECK_STATUS(ConvertASTType(array_tp->element_type(), nm, &elem_tp));
+                    CHECK_TRUE(elem_tp->IsBaseType(), common::kTypeError,
+                               "array of non-basic type is not supported: ARRAY<", elem_tp->DebugString(), ">");
                     // array permits NULL elements
                     tp->AddGeneric(elem_tp, true);
                     *out = tp;
