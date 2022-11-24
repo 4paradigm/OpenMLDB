@@ -49,7 +49,7 @@ object LoadDataPlan {
       require(deepCopy, "hive soft copy is unsupported")
       logger.info("load data to storage {}, reader[hive way], writer[mode {}], is deep? {}", storage, mode,
         deepCopy.toString)
-      HybridseUtil.hiveLoad(spark, inputFile, info.getColumnDescList);
+      HybridseUtil.hiveLoad(ctx, inputFile, info.getColumnDescList);
     } else {
       // read settings
       require(format.equals("csv") || format.equals("parquet"))

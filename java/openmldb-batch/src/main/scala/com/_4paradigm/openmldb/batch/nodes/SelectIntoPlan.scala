@@ -42,7 +42,7 @@ object SelectIntoPlan {
       // DO NOT create database in here(the table location will be spark warehouse)
       val dbt = outPath.substring(7) // hive://<[db.]table>
       logger.info(s"offline select into: hive way, write mode[${mode}], out table ${dbt}")
-      input.getDf().write.mode(mode).saveAsTable(dbt)
+      input.getDf().write.format("hive").mode(mode).saveAsTable(dbt)
     } else {
       logger.info("offline select into: format[{}], options[{}], write mode[{}], out path {}", format, options,
           mode, outPath)

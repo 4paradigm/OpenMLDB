@@ -21,6 +21,7 @@ import com._4paradigm.hybridse.`type`.TypeOuterClass.{ColumnDef, Database, Table
 import com._4paradigm.hybridse.node.ConstNode
 import com._4paradigm.hybridse.sdk.UnsupportedHybridSeException
 import com._4paradigm.hybridse.vm.{PhysicalLoadDataNode, PhysicalOpNode, PhysicalSelectIntoNode}
+import com._4paradigm.openmldb.batch.PlanContext
 import com._4paradigm.openmldb.proto
 import com._4paradigm.openmldb.proto.Common
 import org.apache.spark.sql.catalyst.expressions.UnsafeRow
@@ -333,15 +334,16 @@ object HybridseUtil {
     df
   }
 
-  def hiveLoad(spark: SparkSession, file: String, columns: util.List[Common.ColumnDesc]): DataFrame = {
+  def hiveLoad(ctx: PlanContext, file: String, columns: util.List[Common.ColumnDesc]): DataFrame = {
     require(file.toLowerCase.startsWith("hive://"))
     // hive://<table_pattern>
     val deli = 6
     if(logger.isDebugEnabled()){
-      logger.debug("session catalog {}", spark.sessionState.catalog)
-      spark.sql("show tables").show()
+      logger.debug("session catalog {}", ctx.getSparkSession.sessionState.catalog)
+      ctx.sparksql("show tables").show()
     }
-    val df = spark.sql(s"SELECT * FROM ${file.substring(deli + 1)}")
+    // TODO:check no Unsupported SQL for OpenMLDB and fallback to SparkSQL warning log
+    val df = ctx.sparksql(s"SELECT * FROM ${file.substring(deli + 1)}")
 
     val (oriSchema, readSchema, tsCols) = HybridseUtil.extractOriginAndReadSchema(columns)
     if (logger.isDebugEnabled()) {

@@ -16,6 +16,7 @@
 
 package com._4paradigm.openmldb.batch.utils
 
+import com._4paradigm.openmldb.batch.PlanContext
 import com._4paradigm.openmldb.batch.SparkTestSuite
 import com._4paradigm.openmldb.batch.utils.HybridseUtil.autoLoad
 import com._4paradigm.openmldb.batch.utils.HybridseUtil.hiveLoad
@@ -109,21 +110,23 @@ class HybridseUtilTest extends SparkTestSuite with Matchers {
     // load data infile 'hive://<hive-table-pattern>' into table ...
     // <hive-table-pattern>: db.table or table
     val testFile = "hive://src1"
-    val df1 = hiveLoad(hiveSession, testFile, cols)
+    val ctx = new PlanContext("test-hive-tag", hiveSession, null, null)
+    val df1 = hiveLoad(ctx, testFile, cols)
     df1.show()
     assert(SparkUtil.approximateDfEqual(df, df1))
 
     // write to hive
-    df1.write.mode("overwrite").saveAsTable("dst1")
-    val df2 = hiveSession.sql("SELECT * FROM dst1")
+    df1.write.mode("overwrite").saveAsTable("dst")
+    val df2 = hiveSession.sql("SELECT * FROM dst")
     df2.show()
     assert(SparkUtil.approximateDfEqual(df1, df2))
 
     // create database won't store in hive, local warehouse
-    df1.write.mode("overwrite").saveAsTable("db1.dst3") // db1 is created by hive cli
-    hiveSession.sql("describe extended db1.dst3").show(false)
-    hiveSession.sql("create database if not exists db2") // will store in local spark-warehouse
-    df1.write.mode("overwrite").saveAsTable("db2.dst3")
-    hiveSession.sql("describe extended db2.dst3").show(false)
+    df1.write.mode("overwrite").saveAsTable("db1.dst1") // db1 is created by hive cli
+    hiveSession.sql("describe extended db1.dst1").show(false)
+    hiveSession.sql("drop database if exists db2 cascade;")
+    hiveSession.sql("create database db2") // will store in local spark-warehouse
+    df1.write.mode("append").saveAsTable("db2.dst2")
+    hiveSession.sql("describe extended db2.dst2").show(false)
   }
 }
