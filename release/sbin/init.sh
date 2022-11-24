@@ -79,6 +79,18 @@ function parse_host {
   return 0
 }
 
+run_auto() {
+  host=$1
+  cmd=$2
+  if [[ $host = "localhost" || $host = "127.0.0.1" ]]; then
+    cur_dir=$(pwd)
+    bash -c "$cmd"
+    cd "$cur_dir"
+  else
+    ssh -n "$host" "$cmd"
+  fi
+}
+
 if [ -z "${OPENMLDB_HOME}" ]; then
   OPENMLDB_HOME="$(cd "$(dirname "$0")"/.. || exit; pwd)"
   export OPENMLDB_HOME

@@ -33,7 +33,8 @@ else
     dir=$(echo "$line" | awk -F ' ' '{print $3}')
 
     echo "clear tablet data and log in $dir with endpoint $host:$port "
-    ssh -n "$host" "cd $dir; rm -rf recycle db logs"
+    cmd="cd $dir; rm -rf recycle db logs"
+    run_auto "$host" "$cmd"
   done
 
   # delete apiserver log
@@ -44,7 +45,8 @@ else
     dir=$(echo "$line" | awk -F ' ' '{print $3}')
 
     echo "clear apiserver log in $dir with endpoint $host:$port "
-    ssh -n "$host" "cd $dir; rm -rf logs"
+    cmd="cd $dir; rm -rf logs"
+    run_auto "$host" "$cmd"
   done
 
   # delete nameserver log
@@ -55,7 +57,8 @@ else
     dir=$(echo "$line" | awk -F ' ' '{print $3}')
 
     echo "clear nameserver log in $dir with endpoint $host:$port "
-    ssh -n "$host" "cd $dir; rm -rf logs"
+    cmd="cd $dir; rm -rf logs"
+    run_auto "$host" "$cmd"
   done
 
   # delete taskmanager data and log
@@ -72,8 +75,10 @@ else
       dir=$(echo "$line" | awk -F ' ' '{print $3}')
 
       echo "clear zookeeper data and log in $dir with endpoint $host:$port"
-      ssh -n "$host" "cd $dir; rm zookeeper.out > /dev/null 2>&1"
-      ssh -n "$host" "cd $dir/data; find -type d -not -path '.' -exec rm -rf {} +"
+      cmd="cd $dir; rm zookeeper.out > /dev/null 2>&1"
+      run_auto "$host" "$cmd"
+      cmd="cd $dir/data; find -type d -not -path '.' -exec rm -rf {} +"
+      run_auto "$host" "$cmd"
     done
   fi
   IFS="$old_IFS"

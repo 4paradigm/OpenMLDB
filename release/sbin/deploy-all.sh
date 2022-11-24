@@ -31,22 +31,48 @@ distribute() {
   if [[ $# -ge 4 ]]; then
     type=$4
   fi
-  ssh -n "$host" "mkdir -p $dest"
-  echo "rsync $src/* $host:$dest/"
+  use_ssh=true
+  if [[ $host = "localhost" || $host = "127.0.0.1" ]]; then
+    use_ssh=false
+    if [[ "$dest" = "$src" ]]; then
+      echo "skip rsync as dest=src: $dest"
+      return
+    fi
+  fi
+
+  cmd="mkdir -p $dest > /dev/null 2>&1"
+  run_auto "$host" "$cmd"
+
+  echo "copy $src to $host:$dest"
   if [[ "$type" = "openmldb" ]]; then
     for folder in bin sbin conf
     do
-      rsync -arz "$src/$folder"/ "$host:$dest/$folder"/
+      if [[ "$use_ssh" = true ]]; then
+        rsync -arz "$src/$folder"/ "$host:$dest/$folder"/
+      else
+        rsync -arz "$src/$folder"/ "$dest/$folder"/
+      fi
     done
   else
-    rsync -arz "$src"/* "$host:$dest"/
-    rsync -arz "$home"/sbin/deploy.sh "$host:$dest"/sbin/
+    if [[ "$use_ssh" = true ]]; then
+      rsync -arz "$src"/* "$host:$dest"/
+      rsync -arz "$home"/sbin/deploy.sh "$host:$dest"/sbin/
+    else
+      rsync -arz "$src"/* "$dest"/
+      rsync -arz "$home"/sbin/deploy.sh "$dest"/sbin/
+    fi
   fi
 }
 
 echo "OPENMLDB envs:"
 printenv | grep OPENMLDB_
+printenv | grep SPARK_HOME
 echo ""
+
+if [[ "$OPENMLDB_MODE" != "cluster" ]]; then
+  echo "Deploy is only needed when OPENMLDB_MODE=cluster"
+  exit
+fi
 
 old_IFS="$IFS"
 IFS=$'\n'
@@ -59,7 +85,8 @@ do
 
   echo "deploy tablet to $host:$port $dir"
   distribute "$host" "$dir"
-  ssh -n "$host" "cd $dir; OPENMLDB_HOST=$host OPENMLDB_TABLET_PORT=$port OPENMLDB_ZK_CLUSTER=${OPENMLDB_ZK_CLUSTER} OPENMLDB_ZK_ROOT_PATH=${OPENMLDB_ZK_ROOT_PATH} sbin/deploy.sh tablet"
+  cmd="cd $dir; OPENMLDB_HOST=$host OPENMLDB_TABLET_PORT=$port OPENMLDB_ZK_CLUSTER=${OPENMLDB_ZK_CLUSTER} OPENMLDB_ZK_ROOT_PATH=${OPENMLDB_ZK_ROOT_PATH} sbin/deploy.sh tablet"
+  run_auto "$host" "$cmd"
 done
 
 # deploy nameservers
@@ -71,7 +98,8 @@ do
 
   echo "deploy nameserver to $host:$port $dir"
   distribute "$host" "$dir"
-  ssh -n "$host" "cd $dir; OPENMLDB_HOST=$host OPENMLDB_NAMESERVER_PORT=$port OPENMLDB_ZK_CLUSTER=${OPENMLDB_ZK_CLUSTER} OPENMLDB_ZK_ROOT_PATH=${OPENMLDB_ZK_ROOT_PATH} sbin/deploy.sh nameserver"
+  cmd="cd $dir; OPENMLDB_HOST=$host OPENMLDB_NAMESERVER_PORT=$port OPENMLDB_ZK_CLUSTER=${OPENMLDB_ZK_CLUSTER} OPENMLDB_ZK_ROOT_PATH=${OPENMLDB_ZK_ROOT_PATH} sbin/deploy.sh nameserver"
+  run_auto "$host" "$cmd"
 done
 
 # deploy apiservers
@@ -83,7 +111,8 @@ do
 
   echo "deploy apiserver to $host:$port $dir"
   distribute "$host" "$dir"
-  ssh -n "$host" "cd $dir; OPENMLDB_HOST=$host OPENMLDB_APISERVER_PORT=$port OPENMLDB_ZK_CLUSTER=${OPENMLDB_ZK_CLUSTER} OPENMLDB_ZK_ROOT_PATH=${OPENMLDB_ZK_ROOT_PATH} sbin/deploy.sh apiserver"
+  cmd="cd $dir; OPENMLDB_HOST=$host OPENMLDB_APISERVER_PORT=$port OPENMLDB_ZK_CLUSTER=${OPENMLDB_ZK_CLUSTER} OPENMLDB_ZK_ROOT_PATH=${OPENMLDB_ZK_ROOT_PATH} sbin/deploy.sh apiserver"
+  run_auto "$host" "$cmd"
 done
 
 # deploy openmldbspark
@@ -157,7 +186,8 @@ if [[ "${OPENMLDB_USE_EXISTING_ZK_CLUSTER}" != "true" ]]; then
 
     echo "deploy zookeeper to $host:$port $dir"
     distribute "$host" "$dir" "$OPENMLDB_ZK_HOME" zookeeper
-    ssh -n "$host" "cd $dir; OPENMLDB_ZK_HOME=$dir OPENMLDB_ZK_QUORUM=\"$quorum_config\" OPENMLDB_ZK_MYID=$i OPENMLDB_ZK_CLUSTER_CLIENT_PORT=$port sbin/deploy.sh zookeeper"
+    cmd="cd $dir; OPENMLDB_ZK_HOME=$dir OPENMLDB_ZK_QUORUM=\"$quorum_config\" OPENMLDB_ZK_MYID=$i OPENMLDB_ZK_CLUSTER_CLIENT_PORT=$port sbin/deploy.sh zookeeper"
+    run_auto "$host" "$cmd"
     i=$((i+1))
   done
 fi

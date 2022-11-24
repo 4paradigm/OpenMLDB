@@ -22,6 +22,7 @@ sbin="$(cd "$(dirname "$0")" || exit; pwd)"
 
 echo "OPENMLDB envs:"
 printenv | grep OPENMLDB_
+printenv | grep SPARK_HOME
 echo ""
 
 # if in cluster mode, start zk
@@ -41,13 +42,15 @@ fi
 "$sbin"/start-nameservers.sh
 
 cd "$home" || exit
-echo "Start recovering data..."
-mkdir -p logs > /dev/null 2>&1
-cmd="python tools/openmldb_ops.py --openmldb_bin_path=./bin/openmldb --zk_cluster=${OPENMLDB_ZK_CLUSTER} --zk_root_path=${OPENMLDB_ZK_ROOT_PATH} --cmd=recoverdata"
-if $cmd > logs/recover.log 2>&1; then
-  echo "Recovering data done"
-else
-  echo "Recovering data failed. Pls check log in logs/recover.log"
+if [[ -n "${OPENMLDB_MODE}" && ${OPENMLDB_MODE} = "cluster" ]]; then
+  echo "Start recovering data..."
+  mkdir -p logs > /dev/null 2>&1
+  cmd="python3 tools/openmldb_ops.py --openmldb_bin_path=./bin/openmldb --zk_cluster=${OPENMLDB_ZK_CLUSTER} --zk_root_path=${OPENMLDB_ZK_ROOT_PATH} --cmd=recoverdata"
+  if $cmd > logs/recover.log 2>&1; then
+    echo "Recovering data done"
+  else
+    echo "Recovering data failed. Pls check log in logs/recover.log"
+  fi
 fi
 
 # Start Apiservers

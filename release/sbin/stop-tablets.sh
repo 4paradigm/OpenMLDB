@@ -34,7 +34,8 @@ else
     dir=$(echo "$line" | awk -F ' ' '{print $3}')
 
     echo "stop tablet in $dir with endpoint $host:$port "
-    ssh -n "$host" "cd $dir; bin/start.sh stop tablet"
+    cmd="cd $dir; bin/start.sh stop tablet"
+    run_auto "$host" "$cmd"
     sleep 2
   done
   IFS="$old_IFS"

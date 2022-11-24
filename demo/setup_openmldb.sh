@@ -28,10 +28,10 @@ curl -SLo spark-3.2.1-bin-openmldbspark.tgz "https://github.com/4paradigm/spark/
 
 WORKDIR=/work
 
-mkdir -p "$WORKDIR"
+mkdir -p "$WORKDIR/openmldb"
 
-tar xzf zookeeper.tar.gz -C "$WORKDIR"
-pushd $WORKDIR/zookeeper-3.4.14/
+tar xzf zookeeper.tar.gz -C "${WORKDIR}/openmldb"
+pushd $WORKDIR/openmldb/zookeeper-3.4.14/
 mv conf/zoo_sample.cfg conf/zoo.cfg
 popd
 
@@ -43,6 +43,10 @@ strip -s "${WORKDIR}/openmldb/bin/openmldb"
 mkdir -p "${WORKDIR}/openmldb/spark-3.2.1-bin-openmldbspark"
 tar xzf spark-3.2.1-bin-openmldbspark.tgz -C "${WORKDIR}/openmldb/spark-3.2.1-bin-openmldbspark" --strip-components 1
 
+pushd "${WORKDIR}/openmldb"
+ln -s zookeeper-3.4.14 zookeeper
+ln -s spark-3.2.1-bin-openmldbspark spark
+popd
 
 rm -f ./*.tar.gz
 rm -f ./*.tgz

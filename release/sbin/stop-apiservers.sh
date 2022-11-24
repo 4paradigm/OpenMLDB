@@ -34,7 +34,8 @@ else
     dir=$(echo "$line" | awk -F ' ' '{print $3}')
 
     echo "stop apiserver in $dir with endpoint $host:$port "
-    ssh -n "$host" "cd $dir; bin/start.sh stop apiserver"
+    cmd="cd $dir; bin/start.sh stop apiserver"
+    run_auto "$host" "$cmd"
   done
   IFS="$old_IFS"
 fi
