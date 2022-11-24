@@ -1,1 +1,0 @@
-select * from osrc into outfile 'hive://db1.osaved' options(mode='overwrite');
