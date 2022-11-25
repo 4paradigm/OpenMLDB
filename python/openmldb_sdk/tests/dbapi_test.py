@@ -81,6 +81,7 @@ class TestOpenmldbDBAPI:
             'y': 300
         })
 
+    @pytest.mark.skip(reason="test may fail on mac")
     def test_request_timeout(self):
         """
         Note: this test works now(select > 0ms). If you can't reach the timeout, redesign the test.

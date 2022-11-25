@@ -1,0 +1,51 @@
+# use apiserver, not zk addr
+apiserver: 127.0.0.1:7123 #127.0.0.1:9080
+# autofe used db, not for product env
+db: demo_db
+tables:
+  - table: t1
+    # schema str
+    schema: "id string, vendor_id int, pickup_datetime timestamp, dropoff_datetime timestamp, passenger_count int, pickup_longitude double, pickup_latitude double, dropoff_longitude double, dropoff_latitude double, store_and_fwd_flag string, trip_duration int"
+    # TODO 'columns': [ "c1 string","c2 int","c3 bigint","c4 timestamp", ... ]
+    # offline needs load data, can't insert. skip load if empty
+    # better to use abs path or hdfs path
+    file_path: /work/taxi-trip/data/taxi_tour_table_train_simple.snappy.parquet
+
+  - table: t2
+    schema: "id string, vendor_id int, pickup_datetime timestamp, dropoff_datetime timestamp, passenger_count int, pickup_longitude double, pickup_latitude double, dropoff_longitude double, dropoff_latitude double, store_and_fwd_flag string, trip_duration int"
+    file_path: /work/taxi-trip/data/taxi_tour_table_train_simple.snappy.parquet
+
+main_table: t1
+label: trip_duration # target_column_name
+
+windows:
+  - name: w1
+    partition_by: vendor_id
+    order_by: pickup_datetime
+    window_type: rows_range
+    start: 1d PRECEDING
+    end: CURRENT ROW
+
+  - name: w2
+    union: t2 # TODO union needs to make the same schema
+    partition_by: vendor_id
+    order_by: pickup_datetime
+    window_type: rows_range
+    start: 1d PRECEDING
+    end: CURRENT ROW
+    # TODO supoort exclude ...
+
+# ref autoX table relations https://github.com/4paradigm/AutoX/blob/a2b0f8dfe9e8870c8ff5d420dd970a485a0e0f1a/autox/autox_competition/README.md#%E8%A1%A8%E5%85%B3%E7%B3%BB
+# relations:
+
+# ref autoX type https://github.com/4paradigm/AutoX/blob/a2b0f8dfe9e8870c8ff5d420dd970a485a0e0f1a/autox/autox_competition/README.md#%E6%95%B0%E6%8D%AE%E7%B1%BB%E5%9E%8B
+# if not set, it'll use Feature_type_recognition to set types automatically
+# data_types:
+
+# write to file:///tmp/autofe_offline_feature if not set
+# offline_feature_path:
+
+topk: 10
+
+log_level: INFO
+debug: True

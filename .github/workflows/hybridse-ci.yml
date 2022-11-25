@@ -57,14 +57,14 @@ jobs:
       # this option enables print inner output rows of each node in runner
       HYBRIDSE_DEBUG: true
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
       - name: Install dependencies
         run: |
           brew install coreutils
 
       - name: Cache thirdparty
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: |
             .deps/
@@ -81,7 +81,7 @@ jobs:
 
       - name: Upload Cpp UT Results
         if: always()
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: macos-ut-result-cpp-${{ github.sha }}
           path: |

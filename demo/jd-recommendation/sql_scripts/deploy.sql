@@ -1,5 +1,6 @@
 USE JD_db;
-deploy demo select * from
+SET @@execute_mode='online';
+DEPLOY demo select * from
 (
 select
 `reqId` as reqId_1,

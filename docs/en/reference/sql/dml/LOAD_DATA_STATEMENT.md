@@ -31,12 +31,15 @@ LoadDataInfileOptionItem
 URI
 				::= 'file://FilePathPattern'
 				|'hdfs://FilePathPattern'
+				|'hive://[db.]table'
 				|'FilePathPattern'
 
 FilePathPattern
 				::= string_literal
 ```
 The `FilePathPattern` supports wildcard character `*`, with the same match rules as `ls FilePathPattern`.
+
+Supports loading data from Hive, but needs extra settings, see [Hive Support](#Hive-support).
 
 The following table introduces the parameters of `LOAD DATA INFILE`.
 
@@ -75,7 +78,7 @@ Therefore, you are suggested to use absolute paths. In the stand-alone version, 
 LOAD DATA INFILE 'file_name' INTO TABLE 'table_name' OPTIONS (key = value, ...);
 ```
 
-## Example
+### Example
 
 The following sql example imports data from a file `data.csv` into a table `t1` using online storage. `data.csv` uses `,` as the column separator.
 
@@ -96,4 +99,40 @@ set @@execute_mode='offline';
 LOAD DATA INFILE 'data_path' INTO TABLE t1 OPTIONS(deep_copy=false);
 ```
 
+## Hive Support
 
+To support Hive, we need Hive dependencies and Hive conf.
+
+### Hive dependencies in Spark
+
+We should build Hive dependencies in spark, dependencies are in `assembly/target/scala-xx/jars`. Add them to Spark class path.
+
+```
+./build/mvn -Pyarn -Phive -Phive-thriftserver -DskipTests clean package
+```
+
+### Hive Conf
+
+We support connect Hive by metastore service.
+
+- spark.conf
+
+	You can set `spark.hadoop.Hive.metastore.uris` in Spark conf. 
+	- taskmanager.properties: add `spark.hadoop.Hive.metastore.uris=thrift://...` in `spark.default.conf`, then restart the taskmanager
+	- CLI: add it in ini conf, use `--spark_conf` to start the CLI, ref [Spark Client Configuration](../../client_config/client_spark_config.md).
+
+- Hive-site.xml:
+
+	You can set `Hive.metastore.uris` in `Hive-site.xml` and add it to Spark home `conf/`.
+
+	The `Hive-site.xml` example:
+	```
+	<configuration>
+	<property>
+		<name>Hive.metastore.uris</name>
+		<!--Make sure that <value> points to the Hive Metastore URI in your cluster -->
+		<value>thrift://localhost:9083</value>
+		<description>URI for client to contact metastore server</description>
+	</property>
+	</configuration>
+	```
