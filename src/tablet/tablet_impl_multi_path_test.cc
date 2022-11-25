@@ -102,7 +102,6 @@ void CreateBaseTablet(::openmldb::tablet::TabletImpl& tablet,  // NOLINT
     table_meta->set_storage_mode(storage_mode);
     table_meta->set_mode(::openmldb::api::TableMode::kTableLeader);
     table_meta->set_key_entry_max_height(8);
-    table_meta->set_format_version(1);
     SchemaCodec::SetColumnDesc(table_meta->add_column_desc(), "card", ::openmldb::type::kString);
     SchemaCodec::SetColumnDesc(table_meta->add_column_desc(), "mcc", ::openmldb::type::kString);
     SchemaCodec::SetColumnDesc(table_meta->add_column_desc(), "price", ::openmldb::type::kBigInt);
@@ -124,7 +123,6 @@ void CreateBaseTablet(::openmldb::tablet::TabletImpl& tablet,  // NOLINT
     ::openmldb::codec::SDKCodec sdk_codec(*table_meta);
     for (int i = 0; i < 1000; i++) {
         ::openmldb::api::PutRequest request;
-        request.set_format_version(1);
         request.set_tid(tid);
         request.set_pid(pid);
         ::openmldb::api::Dimension* dim = request.add_dimensions();
