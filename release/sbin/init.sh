@@ -14,6 +14,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+home="$(cd "$(dirname "$0")"/.. || exit; pwd)"
+
 function parse_host {
   host_file=$1
   type=$2
@@ -111,7 +113,7 @@ if [[ -n "$OPENMLDB_MODE" && "$OPENMLDB_MODE" = "cluster" && "$OPENMLDB_USE_EXIS
     old_IFS="$IFS"
     IFS=$'\n'
     zk_cluster=
-    for line in $(parse_host conf/hosts zookeeper)
+    for line in $(parse_host "$home"/conf/hosts zookeeper)
     do
       host=$(echo "$line" | awk -F ' ' '{print $1}')
       port=$(echo "$line" | awk -F ' ' '{print $2}')

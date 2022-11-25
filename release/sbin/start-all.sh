@@ -19,6 +19,7 @@ home="$(cd "$(dirname "$0")"/.. || exit; pwd)"
 sbin="$(cd "$(dirname "$0")" || exit; pwd)"
 . "$home"/conf/openmldb-env.sh
 . "$sbin"/init.sh
+cd "$home" || exit
 
 echo "OPENMLDB envs:"
 printenv | grep OPENMLDB_
@@ -29,7 +30,6 @@ echo ""
 if [[ -n "${OPENMLDB_MODE}" && ${OPENMLDB_MODE} = "cluster" ]]; then
   # start zk if OPENMLDB_USE_EXISTING_ZK_CLUSTER is not true
   if [[ "${OPENMLDB_USE_EXISTING_ZK_CLUSTER}" != "true" ]]; then
-    cd "$home" || exit
     "$sbin"/start-zks.sh
     sleep 5
   fi
@@ -41,7 +41,6 @@ fi
 # Start Nameservers
 "$sbin"/start-nameservers.sh
 
-cd "$home" || exit
 if [[ -n "${OPENMLDB_MODE}" && ${OPENMLDB_MODE} = "cluster" ]]; then
   echo "Start recovering data..."
   mkdir -p logs > /dev/null 2>&1
@@ -59,7 +58,6 @@ fi
 # if in cluster mode, start taskmanager
 if [[ -n "${OPENMLDB_MODE}" && ${OPENMLDB_MODE} = "cluster" ]]; then
   # start taskmanager
-  cd "$home" || exit
   "$sbin"/start-taskmanagers.sh
 fi
 

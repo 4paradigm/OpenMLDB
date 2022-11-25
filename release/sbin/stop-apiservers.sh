@@ -21,6 +21,7 @@ home="$(cd "$(dirname "$0")"/.. || exit; pwd)"
 sbin="$(cd "$(dirname "$0")" || exit; pwd)"
 . "$home"/conf/openmldb-env.sh
 . "$sbin"/init.sh
+cd "$home" || exit
 
 if [[ ${OPENMLDB_MODE} == "standalone" ]]; then
   bin/start.sh stop standalone_apiserver

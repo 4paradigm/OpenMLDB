@@ -21,13 +21,13 @@ home="$(cd "$(dirname "$0")"/.. || exit; pwd)"
 sbin="$(cd "$(dirname "$0")" || exit; pwd)"
 . "$home"/conf/openmldb-env.sh
 . "$sbin"/init.sh
+cd "$home" || exit
 
 # Stop Apiservers
 "$sbin"/stop-apiservers.sh
 
 if [[ -n "${OPENMLDB_MODE}" && ${OPENMLDB_MODE} = "cluster" ]]; then
   # stop taskmanager
-  cd "$home"
   "$sbin"/stop-taskmanagers.sh
 fi
 
@@ -41,7 +41,6 @@ if [[ -n "${OPENMLDB_MODE}" && ${OPENMLDB_MODE} = "cluster" ]]; then
   # stop zk if OPENMLDB_USE_EXISTING_ZK_CLUSTER is not true
   if [[ "${OPENMLDB_USE_EXISTING_ZK_CLUSTER}" != "true" ]]; then
     sleep 10
-    cd "$home"
     "$sbin"/stop-zks.sh
   fi
 fi
