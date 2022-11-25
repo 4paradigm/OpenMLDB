@@ -65,6 +65,7 @@ else
   # delete taskmanager data and log
   echo "clear taskmanager data and log in /tmp/openmldb_offline_storage/ and $home/logs"
   rm -rf "$home"/logs
+  rm -rf "$home"/taskmanager/bin/logs
   rm -rf /tmp/openmldb_offline_storage/
 
   # delete zk data
