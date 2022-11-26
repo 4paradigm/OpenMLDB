@@ -304,7 +304,7 @@ Status BatchModeTransformer::InitFnInfo(PhysicalOpNode* node,
         if (fn_info->fn_name().empty()) {
             continue;
         }
-        CHECK_STATUS(InstantiateLLVMFunction(*fn_info), "Instantiate ", i,
+        CHECK_STATUS(InstantiateLLVMFunction(fn_info), "Instantiate ", i,
                      "th native function \"", fn_info->fn_name(),
                      "\" failed at node:\n", node->GetTreeString());
     }
@@ -689,15 +689,15 @@ Status RequestModeTransformer::TransformWindowOp(PhysicalOpNode* depend,
     return Status::OK();
 }
 
-Status RequestModeTransformer::OptimizeSimpleProjectAsWindowProducer(PhysicalSimpleProjectNode* depend,
+Status RequestModeTransformer::OptimizeSimpleProjectAsWindowProducer(PhysicalSimpleProjectNode* prj_node,
                                                                      const node::WindowPlanNode* w_ptr,
                                                                      PhysicalOpNode** output) {
     // - SimpleProject(DataProvider) -> RequestUnion(Request, DataSource)
     // - SimpleProject(RequestJoin) -> Join(RequestUnion, DataSource)
-    auto op_type = depend->GetProducer(0)->GetOpType();
+    auto op_type = prj_node->GetProducer(0)->GetOpType();
     switch (op_type) {
         case kPhysicalOpDataProvider: {
-            auto data_op = dynamic_cast<PhysicalDataProviderNode*>(depend->GetProducer(0));
+            auto data_op = dynamic_cast<PhysicalDataProviderNode*>(prj_node->GetProducer(0));
             CHECK_TRUE(data_op != nullptr, kPlanError, "not PhysicalDataProviderNode");
             CHECK_TRUE(data_op->provider_type_ == kProviderTypeRequest, kPlanError,
                        "Do not support window on non-request input");
@@ -714,11 +714,11 @@ Status RequestModeTransformer::OptimizeSimpleProjectAsWindowProducer(PhysicalSim
 
             // right side simple project
             PhysicalSimpleProjectNode* right_simple_project = nullptr;
-            CHECK_STATUS(CreateOp<PhysicalSimpleProjectNode>(&right_simple_project, right, depend->project()));
+            CHECK_STATUS(CreateOp<PhysicalSimpleProjectNode>(&right_simple_project, right, prj_node->project()));
 
             // request union
             PhysicalRequestUnionNode* request_union_op = nullptr;
-            CHECK_STATUS(CreateRequestUnionNode(depend, right_simple_project, table->GetDatabase(), table->GetName(),
+            CHECK_STATUS(CreateRequestUnionNode(prj_node, right_simple_project, table->GetDatabase(), table->GetName(),
                                                 table->GetSchema(), nullptr, w_ptr, &request_union_op));
             if (!w_ptr->union_tables().empty()) {
                 for (auto iter = w_ptr->union_tables().cbegin(); iter != w_ptr->union_tables().cend(); iter++) {
@@ -726,7 +726,7 @@ Status RequestModeTransformer::OptimizeSimpleProjectAsWindowProducer(PhysicalSim
                     CHECK_STATUS(TransformPlanOp(*iter, &union_table_op));
                     PhysicalRenameNode* rename_union_op = nullptr;
                     CHECK_STATUS(CreateOp<PhysicalRenameNode>(&rename_union_op, union_table_op,
-                                                              depend->schemas_ctx()->GetName()));
+                                                              prj_node->schemas_ctx()->GetName()));
                     CHECK_TRUE(request_union_op->AddWindowUnion(rename_union_op), kPlanError,
                                "Fail to add request window union table");
                 }
@@ -735,19 +735,19 @@ Status RequestModeTransformer::OptimizeSimpleProjectAsWindowProducer(PhysicalSim
             break;
         }
         case kPhysicalOpRequestJoin: {
-            auto join_op = dynamic_cast<PhysicalRequestJoinNode*>(depend->GetProducer(0));
+            auto join_op = dynamic_cast<PhysicalRequestJoinNode*>(prj_node->GetProducer(0));
             CHECK_TRUE(join_op != nullptr, kPlanError, "not PhysicalRequestJoinNode");
 
             PhysicalOpNode* out = nullptr;
             CHECK_STATUS(OptimizeRequestJoinAsWindowProducer(join_op, w_ptr, &out));
 
             PhysicalSimpleProjectNode* simple_proj = nullptr;
-            CHECK_STATUS(CreateOp<PhysicalSimpleProjectNode>(&simple_proj, out, depend->project()));
+            CHECK_STATUS(CreateOp<PhysicalSimpleProjectNode>(&simple_proj, out, prj_node->project()));
             *output = simple_proj;
             break;
         }
         default: {
-            FAIL_STATUS(kPlanError, "Do not support window on\n", depend->GetTreeString());
+            FAIL_STATUS(kPlanError, "Do not support window on\n", prj_node->GetTreeString());
         }
     }
     return Status::OK();
@@ -809,7 +809,8 @@ Status RequestModeTransformer::OptimizeRequestJoinAsWindowProducer(PhysicalReque
     return Status::OK();
 }
 
-Status RequestModeTransformer::ValidWindowLastJoin(const node::WindowPlanNode* w_ptr, const PhysicalOpNode* left_node) {
+Status RequestModeTransformer::ValidWindowLastJoin(const node::WindowPlanNode* w_ptr,
+                                                   const PhysicalOpNode* left_node) const {
     const node::OrderByNode* orders = w_ptr->GetOrders();
     const node::ExprListNode* groups = w_ptr->GetKeys();
     const SchemasContext* child_schemas_ctx = left_node->schemas_ctx();
@@ -980,10 +981,7 @@ bool BatchModeTransformer::AddPass(PhysicalPlanPassType type) {
     return true;
 }
 
-Status ExtractProjectInfos(const node::PlanNodeList& projects,
-                           const node::FrameNode* primary_frame,
-                           const SchemasContext* schemas_ctx,
-                           node::NodeManager* node_manager,
+Status ExtractProjectInfos(const node::PlanNodeList& projects, const node::FrameNode* primary_frame,
                            ColumnProjects* output) {
     for (auto plan_node : projects) {
         auto pp_node = dynamic_cast<node::ProjectNode*>(plan_node);
@@ -1004,12 +1002,12 @@ Status ExtractProjectInfos(const node::PlanNodeList& projects,
     return Status::OK();
 }
 
-Status BatchModeTransformer::InstantiateLLVMFunction(const FnInfo& fn_info) {
-    CHECK_TRUE(fn_info.IsValid(), kCodegenError, "Fail to install llvm function, function info is invalid");
-    codegen::CodeGenContext codegen_ctx(module_, fn_info.schemas_ctx(), plan_ctx_.parameter_types(), node_manager_);
+Status BatchModeTransformer::InstantiateLLVMFunction(const FnInfo* fn_info) {
+    CHECK_TRUE(fn_info->IsValid(), kCodegenError, "Fail to install llvm function, function info is invalid");
+    codegen::CodeGenContext codegen_ctx(module_, fn_info->schemas_ctx(), plan_ctx_.parameter_types(), node_manager_);
     codegen::RowFnLetIRBuilder builder(&codegen_ctx);
-    return builder.Build(fn_info.fn_name(), fn_info.fn_def(), fn_info.GetPrimaryFrame(), fn_info.GetFrames(),
-                         *fn_info.fn_schema());
+    return builder.Build(fn_info->fn_name(), fn_info->fn_def(), fn_info->GetPrimaryFrame(), fn_info->GetFrames(),
+                         *fn_info->fn_schema());
 }
 
 bool BatchModeTransformer::AddDefaultPasses() {
@@ -1138,9 +1136,8 @@ Status BatchModeTransformer::CreatePhysicalConstProjectNode(
                    "Invalid project: no table used");
     }
 
-    SchemasContext empty_schemas_ctx;
     ColumnProjects const_projects;
-    CHECK_STATUS(ExtractProjectInfos(projects, nullptr, &empty_schemas_ctx, node_manager_, &const_projects));
+    CHECK_STATUS(ExtractProjectInfos(projects, nullptr, &const_projects));
 
     PhysicalConstProjectNode* const_project_op = nullptr;
     CHECK_STATUS(
@@ -1194,8 +1191,7 @@ Status BatchModeTransformer::CreatePhysicalProjectNode(
 
     // Create project function and infer output schema
     ColumnProjects column_projects;
-    CHECK_STATUS(
-        ExtractProjectInfos(projects, primary_frame, depend->schemas_ctx(), node_manager_, &column_projects));
+    CHECK_STATUS(ExtractProjectInfos(projects, primary_frame, &column_projects));
 
     if (append_input) {
         CHECK_TRUE(project_type == kWindowAggregation, kPlanError,

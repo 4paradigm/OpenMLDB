@@ -86,7 +86,7 @@ bool AggregateIRBuilder::CollectAggColumn(const hybridse::node::ExprNode* expr,
             Status status = schema_context_->ResolveColumnRefIndex(
                 col, &schema_idx, &col_idx);
             if (!status.isOK()) {
-                DLOG(ERROR) << status.msg;
+                DLOG(ERROR) << status;
                 return false;
             }
             const codec::ColInfo& col_info =
@@ -430,9 +430,14 @@ class StatisticalAggGenerator {
     std::vector<::llvm::Value*> count_state_;
 };
 
-llvm::Type* AggregateIRBuilder::GetOutputLlvmType(
-    ::llvm::LLVMContext& llvm_ctx, const std::string& fname,
-    const node::DataType& node_type) {
+llvm::Type* AggregateIRBuilder::GetOutputLlvmType(::llvm::LLVMContext& llvm_ctx, const std::string& fname,
+                                                  const node::DataType& node_type) {
+    if (fname == "count") {
+        return ::llvm::Type::getInt64Ty(llvm_ctx);
+    } else if (fname == "avg") {
+        return ::llvm::Type::getDoubleTy(llvm_ctx);
+    }
+
     ::llvm::Type* llvm_ty = nullptr;
     switch (node_type) {
         case ::hybridse::node::kInt16:
@@ -454,11 +459,6 @@ llvm::Type* AggregateIRBuilder::GetOutputLlvmType(
             LOG(ERROR) << "Unknown data type: " << DataTypeName(node_type);
             return nullptr;
         }
-    }
-    if (fname == "count") {
-        return ::llvm::Type::getInt64Ty(llvm_ctx);
-    } else if (fname == "avg") {
-        return ::llvm::Type::getDoubleTy(llvm_ctx);
     }
     return llvm_ty;
 }
@@ -656,10 +656,12 @@ base::Status AggregateIRBuilder::BuildMulti(const std::string& base_funcname,
         if (iter == used_slices.end()) {
             ::llvm::Value* idx_value =
                 llvm::ConstantInt::get(int64_ty, slice_idx, true);
-            ::llvm::Value* buf_ptr =
-                builder.CreateCall(get_slice_func, {iter_ptr, idx_value});
-            ::llvm::Value* buf_size =
-                builder.CreateCall(get_slice_size_func, {iter_ptr, idx_value});
+
+            // FIXME(ace): the two jit functions are deprecating
+            //
+            // It must be the order of GetSliceSize then GetSlice, or dangling reference happens
+            ::llvm::Value* buf_size = builder.CreateCall(get_slice_size_func, {iter_ptr, idx_value});
+            ::llvm::Value* buf_ptr = builder.CreateCall(get_slice_func, {iter_ptr, idx_value});
             used_slices[slice_idx] = {buf_ptr, buf_size};
         }
     }

@@ -117,7 +117,11 @@ class ExprIRBuilder {
 
  private:
     CodeGenContext* ctx_;
+
+    // window frame node
     const node::FrameNode* frame_ = nullptr;
+
+    // ExprIdNode definition of frame
     node::ExprNode* frame_arg_ = nullptr;
 };
 }  // namespace codegen
