@@ -61,6 +61,8 @@ std::ostream& operator<<(std::ostream& output,
     return output << *(thiz.node_);
 }
 
+static Status FixupWindowLastJoin(const node::WindowPlanNode* w_ptr, const SchemasContext* window_depend_sc,
+                                  const SchemasContext* left_join_sc);
 
 BatchModeTransformer::BatchModeTransformer(node::NodeManager* node_manager, const std::string& db,
                                            const std::shared_ptr<Catalog>& catalog,
@@ -675,7 +677,7 @@ Status RequestModeTransformer::TransformWindowOp(PhysicalOpNode* depend,
         case kPhysicalOpRequestJoin: {
             auto* join_op = dynamic_cast<PhysicalRequestJoinNode*>(depend);
             CHECK_TRUE(join_op != nullptr, kPlanError);
-            return OptimizeRequestJoinAsWindowProducer(join_op, w_ptr, output);
+            return OptimizeRequestJoinAsWindowProducer(join_op, join_op->schemas_ctx(), w_ptr, output);
         }
         case kPhysicalOpSimpleProject: {
             auto* simple_project = dynamic_cast<PhysicalSimpleProjectNode*>(depend);
@@ -739,7 +741,7 @@ Status RequestModeTransformer::OptimizeSimpleProjectAsWindowProducer(PhysicalSim
             CHECK_TRUE(join_op != nullptr, kPlanError, "not PhysicalRequestJoinNode");
 
             PhysicalOpNode* out = nullptr;
-            CHECK_STATUS(OptimizeRequestJoinAsWindowProducer(join_op, w_ptr, &out));
+            CHECK_STATUS(OptimizeRequestJoinAsWindowProducer(join_op, prj_node->schemas_ctx(), w_ptr, &out));
 
             PhysicalSimpleProjectNode* simple_proj = nullptr;
             CHECK_STATUS(CreateOp<PhysicalSimpleProjectNode>(&simple_proj, out, prj_node->project()));
@@ -753,21 +755,31 @@ Status RequestModeTransformer::OptimizeSimpleProjectAsWindowProducer(PhysicalSim
     return Status::OK();
 }
 
+// Optimize
+//   RequestJoin(Request(left_table), DataSource(right_table))
+// ->
+//   Join
+//     RequestUnion
+//       Request
+//       DataSource(left_table)
+//     DataSource(right_table)
+//
+// \param join_op: RequestJoinNode def
+// \param w_ptr: window def
+// \param window_depend_sc: schema context of producer or window node.
+//        It may not the same with the context of `join_op`
+// \param output: transformed Join node
 Status RequestModeTransformer::OptimizeRequestJoinAsWindowProducer(PhysicalRequestJoinNode* join_op,
+                                                                   const SchemasContext* window_depend_sc,
                                                                    const node::WindowPlanNode* w_ptr,
                                                                    PhysicalOpNode** output) {
-    // Optimize
-    //   RequestJoin(Request(left_table), DataSource(right_table))
-    // ->
-    //   Join
-    //     RequestUnion
-    //       Request
-    //       DataSource(left_table)
-    //     DataSource(right_table)
     switch (join_op->join().join_type()) {
         case node::kJoinTypeLeft:
         case node::kJoinTypeLast: {
-            CHECK_STATUS(ValidWindowLastJoin(w_ptr, join_op->GetProducer(0)));
+            CHECK_STATUS(FixupWindowLastJoin(w_ptr, window_depend_sc, join_op->GetProducer(0)->schemas_ctx()));
+
+            CHECK_TRUE(join_op->GetProducer(0)->GetOpType() == kPhysicalOpDataProvider, kPlanError,
+                       "Fail to handler window with request last join, left isn't a table provider")
 
             auto request_op = dynamic_cast<PhysicalDataProviderNode*>(join_op->producers()[0]);
             auto name = request_op->table_handler_->GetName();
@@ -809,24 +821,61 @@ Status RequestModeTransformer::OptimizeRequestJoinAsWindowProducer(PhysicalReque
     return Status::OK();
 }
 
-Status RequestModeTransformer::ValidWindowLastJoin(const node::WindowPlanNode* w_ptr,
-                                                   const PhysicalOpNode* left_node) const {
+Status FixupWindowLastJoin(const node::WindowPlanNode* w_ptr, const SchemasContext* window_depend_sc,
+                           const SchemasContext* left_join_sc) {
     const node::OrderByNode* orders = w_ptr->GetOrders();
     const node::ExprListNode* groups = w_ptr->GetKeys();
-    const SchemasContext* child_schemas_ctx = left_node->schemas_ctx();
 
     if (!node::ExprListNullOrEmpty(groups)) {
-        CHECK_STATUS(passes::CheckExprDependOnChildOnly(groups, child_schemas_ctx),
-                     "Fail to handle window: group expression should belong to left table of join");
+        std::vector<const node::ExprNode*> exprs;
+        CHECK_STATUS(vm::DoSearchExprDependentColumns(groups, &exprs))
+        for (auto expr : exprs) {
+            switch (expr->GetExprType()) {
+                case node::kExprColumnRef: {
+                    auto ref = dynamic_cast<const node::ColumnRefNode*>(expr);
+
+                    size_t id = 0;
+                    CHECK_STATUS(window_depend_sc->ResolveColumnID(ref->GetDBName(), ref->GetRelationName(),
+                                                                   ref->GetColumnName(), &id));
+                    std::string name;
+                    CHECK_STATUS(
+                        left_join_sc->ResolveColumnNameByID(id, &name),
+                        "Fail to handle window: window partition expression should belong to left table of join");
+                    const_cast<node::ColumnRefNode*>(ref)->SetColumnName(name);
+
+                    break;
+                }
+                default: {
+                    continue;
+                }
+            }
+        }
     }
     if (nullptr != orders && !node::ExprListNullOrEmpty(orders->order_expressions_)) {
-        CHECK_STATUS(passes::CheckExprDependOnChildOnly(orders->order_expressions_, child_schemas_ctx),
-                     "Fail to handle window: order expression should belong to left table of join");
-    }
+        std::vector<const node::ExprNode*> exprs;
+        CHECK_STATUS(vm::DoSearchExprDependentColumns(orders->order_expressions(), &exprs));
+        for (auto expr : exprs) {
+            switch (expr->GetExprType()) {
+                case node::kExprColumnRef: {
+                    auto ref = dynamic_cast<const node::ColumnRefNode*>(expr);
 
-    CHECK_TRUE(left_node->GetOpType() == kPhysicalOpDataProvider, kPlanError,
-               "Fail to handler window with request last join, left isn't a table provider")
-    return Status::OK();
+                    size_t id = 0;
+                    CHECK_STATUS(window_depend_sc->ResolveColumnID(ref->GetDBName(), ref->GetRelationName(),
+                                                                   ref->GetColumnName(), &id));
+                    std::string name;
+                    CHECK_STATUS(left_join_sc->ResolveColumnNameByID(id, &name),
+                                 "Fail to handle window: window order expression should belong to left table of join");
+                    const_cast<node::ColumnRefNode*>(ref)->SetColumnName(name);
+
+                    break;
+                }
+                default: {
+                    continue;
+                }
+            }
+        }
+    }
+    return base::Status::OK();
 }
 
 Status BatchModeTransformer::TransformJoinOp(const node::JoinPlanNode* node,

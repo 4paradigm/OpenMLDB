@@ -294,19 +294,9 @@ class RequestModeTransformer : public BatchModeTransformer {
     // Optimize simple project node which is the producer of window project
     Status OptimizeSimpleProjectAsWindowProducer(PhysicalSimpleProjectNode* depend, const node::WindowPlanNode* w_ptr,
                                                  PhysicalOpNode** output);
-    Status OptimizeRequestJoinAsWindowProducer(PhysicalRequestJoinNode* depend, const node::WindowPlanNode* w_ptr,
-                                               PhysicalOpNode** output);
 
-    // check support for either of
-    // - window (last join)
-    // - window (subquery (last join))
-    //
-    // currently, it expect window's group keys and order keys all refer to left table source of last join
-    // otherwise, error status returned.
-    //
-    // \param w_ptr Window definition node
-    // \param left_node Left node from the last join
-    Status ValidWindowLastJoin(const node::WindowPlanNode* w_ptr, const PhysicalOpNode* left_node) const;
+    Status OptimizeRequestJoinAsWindowProducer(PhysicalRequestJoinNode* depend, const SchemasContext* window_depend_sc,
+                                               const node::WindowPlanNode* w_ptr, PhysicalOpNode** output);
 
  private:
     bool enable_batch_request_opt_;
