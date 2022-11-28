@@ -231,7 +231,6 @@ cases:
       rows:
         - [NULL, NULL, NULL, NULL, NULL, NULL, NULL]
   - id: 12
-    tags: ["TODO", "@chenjing, @baoxinqi: encode处理常量NULL string"]
     desc: SQL标准Cast语法-Cast(NULL as string)
     inputs:
       - columns: ["c1 int", "c2 float", "c5 bigint"]
