@@ -1,6 +1,6 @@
 # Changelog
 
-## [0.6.8] - 2022-11-28
+## [0.6.8] - 2022-11-29
 
 ### Features
 - Support `where` syntax and filter node in `openmldb-batch` (#2820 @tobegit3hub)
