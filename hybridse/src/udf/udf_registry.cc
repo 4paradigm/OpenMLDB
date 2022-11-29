@@ -264,7 +264,7 @@ Status DynamicUdfRegistry::ResolveFunction(UdfResolveContext* ctx,
 
 Status DynamicUdafRegistry::ResolveFunction(UdfResolveContext* ctx,
                                              node::FnDefNode** result) {
-    CHECK_TRUE(extern_def_->ret_type() != nullptr, kCodegenError,
+    CHECK_TRUE(extern_def_->GetReturnType() != nullptr, kCodegenError,
                "No return type specified for ", extern_def_->GetName());
     DLOG(INFO) << "Resolve udaf \"" << name() << "\" -> " << extern_def_->GetFlatString();
     *result = extern_def_;

@@ -1092,6 +1092,14 @@ SqlNode *NodeManager::MakeInputParameterNode(bool is_constant, const std::string
     return RegisterNode(node_ptr);
 }
 
+DynamicUdafFnDefNode *NodeManager::MakeDynamicUdafFnDefNode(const std::string &function_name,
+        const std::vector<const TypeNode *> &arg_types,
+        ExternalFnDefNode *init_context_node, ExternalFnDefNode *init_node,
+        ExternalFnDefNode *update_node, ExternalFnDefNode *output_node) {
+    return RegisterNode(new DynamicUdafFnDefNode(function_name, arg_types, init_context_node,
+                init_node, update_node, output_node));
+}
+
 void NodeManager::SetNodeUniqueId(ExprNode *node) { node->SetNodeId(expr_idx_counter_++); }
 void NodeManager::SetNodeUniqueId(TypeNode *node) { node->SetNodeId(type_idx_counter_++); }
 void NodeManager::SetNodeUniqueId(PlanNode *node) { node->SetNodeId(plan_idx_counter_++); }
