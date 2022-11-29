@@ -3,8 +3,8 @@
 ## [0.6.8] - 2022-11-29
 
 ### Features
-- Support `where` syntax and filter node in `openmldb-batch` (#2820 @tobegit3hub)
-- Support Json style data in APIServer (#2813 @vagetablechicken)
+- Support the `where` clause in the SQL batch engine (#2820 @tobegit3hub)
+- Support input and output with the JSON format in APIServer (#2813 @vagetablechicken)
 - Improve the documents (#2814 @vagetablechicken)
 
 ### Code Refactoring
