@@ -1091,9 +1091,6 @@ JsonWriter& operator&(JsonWriter& ar, std::shared_ptr<::openmldb::nameserver::Ta
 
     ar.Member("added_column_desc") & info->added_column_desc();
 
-    if (info->has_format_version()) {
-        ar.Member("format_version") & info->format_version();
-    }
     if (info->has_db()) {
         ar.Member("db") & info->db();
     }

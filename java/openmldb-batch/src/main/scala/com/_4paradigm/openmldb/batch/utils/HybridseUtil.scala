@@ -21,6 +21,7 @@ import com._4paradigm.hybridse.`type`.TypeOuterClass.{ColumnDef, Database, Table
 import com._4paradigm.hybridse.node.ConstNode
 import com._4paradigm.hybridse.sdk.UnsupportedHybridSeException
 import com._4paradigm.hybridse.vm.{PhysicalLoadDataNode, PhysicalOpNode, PhysicalSelectIntoNode}
+import com._4paradigm.openmldb.batch.PlanContext
 import com._4paradigm.openmldb.proto
 import com._4paradigm.openmldb.proto.Common
 import org.apache.spark.sql.catalyst.expressions.UnsafeRow
@@ -191,7 +192,6 @@ object HybridseUtil {
   def parseOptions[T](node: T): (String, Map[String, String], String, Option[Boolean]) = {
     // load data: read format, select into: write format
     val format = parseOption(getOptionFromNode(node, "format"), "csv", getStringOrDefault).toLowerCase
-    require(format.equals("csv") || format.equals("parquet"))
 
     // load data: read options, select into: write options
     val options: mutable.Map[String, String] = mutable.Map()
@@ -293,22 +293,21 @@ object HybridseUtil {
     val reader = spark.read.options(options)
 
     val (oriSchema, readSchema, tsCols) = HybridseUtil.extractOriginAndReadSchema(columns)
-    var df = spark.emptyDataFrame
-    if (format != "csv") {
+    var df = if (format != "csv") {
       // When reading Parquet files, all columns are automatically converted to be nullable for compatibility reasons.
       // ref https://spark.apache.org/docs/3.2.1/sql-data-sources-parquet.html
-      df = reader.format(format).load(file)
+      val df = reader.format(format).load(file)
       require(checkSchemaIgnoreNullable(df.schema, oriSchema),
         s"schema mismatch(ignore nullable), loaded ${df.schema}!= table $oriSchema, check $file")
-      // reset nullable
-      df = df.sqlContext.createDataFrame(df.rdd, oriSchema)
+      // reset nullable TODO(hw): is it OK?
+      df.sqlContext.createDataFrame(df.rdd, oriSchema)
     } else{
       // csv should auto detect the timestamp format
       reader.format(format)
       // use string to read, then infer the format by the first non-null value of the ts column
       val longTsCols = HybridseUtil.parseLongTsCols(reader, readSchema, tsCols, file)
       logger.info(s"read schema: $readSchema, file $file")
-      df = reader.schema(readSchema).load(file)
+      var df = reader.schema(readSchema).load(file)
       if (longTsCols.nonEmpty) {
         // convert long type to timestamp type
         for (tsCol <- longTsCols) {
@@ -321,15 +320,39 @@ object HybridseUtil {
       // so we need to set it right
       if (!df.schema.equals(oriSchema)) {
         logger.info(s"df schema: ${df.schema}, reset schema")
-        df = df.sqlContext.createDataFrame(df.rdd, oriSchema)
+        df.sqlContext.createDataFrame(df.rdd, oriSchema)
+      } else{
+        df
       }
     }
 
-    require(df.schema == oriSchema, s"schema mismatch, loaded ${df.schema} != table $oriSchema, check $file")
     if (logger.isDebugEnabled()) {
-      logger.debug("read dataframe count: {}", df.count())
+      logger.debug(s"read dataframe schema: ${df.schema}, count: ${df.count()}")
       df.show(10)
     }
+    require(df.schema == oriSchema, s"schema mismatch, loaded ${df.schema} != table $oriSchema, check $file")
+    df
+  }
+
+  def hiveLoad(ctx: PlanContext, file: String, columns: util.List[Common.ColumnDesc]): DataFrame = {
+    require(file.toLowerCase.startsWith("hive://"))
+    // hive://<table_pattern>
+    val deli = 6
+    if(logger.isDebugEnabled()){
+      logger.debug("session catalog {}", ctx.getSparkSession.sessionState.catalog)
+      ctx.sparksql("show tables").show()
+    }
+    // TODO:check no Unsupported SQL for OpenMLDB and fallback to SparkSQL warning log
+    val df = ctx.sparksql(s"SELECT * FROM ${file.substring(deli + 1)}")
+
+    val (oriSchema, readSchema, tsCols) = HybridseUtil.extractOriginAndReadSchema(columns)
+    if (logger.isDebugEnabled()) {
+      logger.debug(s"read dataframe schema: ${df.schema}, count: ${df.count()}")
+      df.show(10)
+    }
+    require(checkSchemaIgnoreNullable(df.schema, oriSchema), //df.schema == oriSchema, hive table always nullable?
+        s"schema mismatch(ignore nullable), loaded hive ${df.schema}!= table $oriSchema, check $file")
+    // TODO(hw): schema needs reset nullable?
     df
   }
 }
