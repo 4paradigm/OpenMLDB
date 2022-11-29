@@ -84,8 +84,6 @@ void unhex(StringRef *str, StringRef *output, bool* is_null) {
         if (a <= 'F' && a >= 'A') { return a - 'A' + 10; }
         if (a <= 'f' && a >= 'a') { return a - 'a' + 10; }
         if (a <= '9' && a >= '0') { return a - '0'; }
-        // cannot reach here
-        return 0;
     };
 
     if (!*is_null) {    // every character is valid hex character

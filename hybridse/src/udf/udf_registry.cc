@@ -27,6 +27,146 @@ using ::hybridse::common::kCodegenError;
 namespace hybridse {
 namespace udf {
 
+Status ArgSignatureTable::Find(UdfResolveContext* ctx, std::shared_ptr<UdfRegistry>* res, std::string* signature,
+            int* variadic_pos) {
+    std::vector<const node::TypeNode*> arg_types;
+    for (size_t i = 0; i < ctx->arg_size(); ++i) {
+        arg_types.push_back(ctx->arg_type(i));
+    }
+    return Find(arg_types, res, signature, variadic_pos);
+}
+
+Status ArgSignatureTable::Find(const std::vector<const node::TypeNode*>& arg_types, std::shared_ptr<UdfRegistry>* res,
+            std::string* signature, int* variadic_pos) {
+    std::stringstream ss;
+    for (size_t i = 0; i < arg_types.size(); ++i) {
+        auto type_node = arg_types[i];
+        if (type_node == nullptr) {
+            ss << "?";
+        } else {
+            ss << type_node->GetName();
+        }
+        if (i < arg_types.size() - 1) {
+            ss << ", ";
+        }
+    }
+
+    // There are four match conditions:
+    // (1) explicit match without placeholders
+    // (2) explicit match with placeholders
+    // (3) variadic match without placeholders
+    // (4) variadic match with placeholders
+    // The priority is (1) > (2) > (3) > (4)
+    typename TableType::iterator placeholder_match_iter = table_.end();
+    typename TableType::iterator variadic_placeholder_match_iter =
+        table_.end();
+    typename TableType::iterator variadic_match_iter = table_.end();
+    int variadic_match_pos = -1;
+    int variadic_placeholder_match_pos = -1;
+
+    for (auto iter = table_.begin(); iter != table_.end(); ++iter) {
+        auto& def_item = iter->second;
+        auto& def_arg_types = def_item.arg_types;
+        if (def_item.is_variadic) {
+            // variadic match
+            bool match = true;
+            bool placeholder_match = false;
+            int non_variadic_arg_num = def_arg_types.size();
+            if (arg_types.size() <
+                static_cast<size_t>(non_variadic_arg_num)) {
+                continue;
+            }
+            for (int j = 0; j < non_variadic_arg_num; ++j) {
+                if (def_arg_types[j] == nullptr) {  // any arg
+                    placeholder_match = true;
+                    match = false;
+                } else if (!node::TypeEquals(def_arg_types[j],
+                                             arg_types[j])) {
+                    placeholder_match = false;
+                    match = false;
+                    break;
+                }
+            }
+            if (match) {
+                if (variadic_match_pos < non_variadic_arg_num) {
+                    placeholder_match_iter = iter;
+                    variadic_match_pos = non_variadic_arg_num;
+                }
+            } else if (placeholder_match) {
+                if (variadic_placeholder_match_pos < non_variadic_arg_num) {
+                    variadic_placeholder_match_iter = iter;
+                    variadic_placeholder_match_pos = non_variadic_arg_num;
+                }
+            }
+
+        } else if (arg_types.size() == def_arg_types.size()) {
+            // explicit match
+            bool match = true;
+            bool placeholder_match = false;
+            for (size_t j = 0; j < arg_types.size(); ++j) {
+                if (def_arg_types[j] == nullptr) {
+                    placeholder_match = true;
+                    match = false;
+                } else if (!node::TypeEquals(def_arg_types[j],
+                                             arg_types[j])) {
+                    placeholder_match = false;
+                    match = false;
+                    break;
+                }
+            }
+            if (match) {
+                *variadic_pos = -1;
+                *signature = iter->first;
+                *res = def_item.value;
+                return Status::OK();
+            } else if (placeholder_match) {
+                placeholder_match_iter = iter;
+            }
+        }
+    }
+
+    if (placeholder_match_iter != table_.end()) {
+        *variadic_pos = -1;
+        *signature = placeholder_match_iter->first;
+        *res = placeholder_match_iter->second.value;
+        return Status::OK();
+    } else if (variadic_match_iter != table_.end()) {
+        *variadic_pos = variadic_match_pos;
+        *signature = variadic_match_iter->first;
+        *res = variadic_match_iter->second.value;
+        return Status::OK();
+    } else if (variadic_placeholder_match_iter != table_.end()) {
+        *variadic_pos = variadic_placeholder_match_pos;
+        *signature = variadic_placeholder_match_iter->first;
+        *res = variadic_placeholder_match_iter->second.value;
+        return Status::OK();
+    } else {
+        return Status(common::kCodegenError,
+                      "Resolve udf signature failure: <" + ss.str() + ">");
+    }
+}
+
+Status ArgSignatureTable::Register(const std::vector<const node::TypeNode*>& args,
+                bool is_variadic, const std::shared_ptr<UdfRegistry>& t) {
+    std::stringstream ss;
+    for (size_t i = 0; i < args.size(); ++i) {
+        if (args[i] == nullptr) {
+            ss << "?";
+        } else {
+            ss << args[i]->GetName();
+        }
+        if (i < args.size() - 1) {
+            ss << ", ";
+        }
+    }
+    std::string key = ss.str();
+    auto iter = table_.find(key);
+    CHECK_TRUE(iter == table_.end(), common::kCodegenError,
+               "Duplicate signature: ", key);
+    table_.insert(iter, {key, DefItem(t, args, is_variadic)});
+    return Status::OK();
+}
+
 const std::string UdfResolveContext::GetArgSignature() const {
     return hybridse::udf::GetArgSignature(args_);
 }
@@ -118,6 +258,15 @@ Status DynamicUdfRegistry::ResolveFunction(UdfResolveContext* ctx,
     CHECK_TRUE(extern_def_->ret_type() != nullptr, kCodegenError,
                "No return type specified for ", extern_def_->GetName());
     DLOG(INFO) << "Resolve udf \"" << name() << "\" -> " << extern_def_->GetFlatString();
+    *result = extern_def_;
+    return Status::OK();
+}
+
+Status DynamicUdafRegistry::ResolveFunction(UdfResolveContext* ctx,
+                                             node::FnDefNode** result) {
+    CHECK_TRUE(extern_def_->ret_type() != nullptr, kCodegenError,
+               "No return type specified for ", extern_def_->GetName());
+    DLOG(INFO) << "Resolve udaf \"" << name() << "\" -> " << extern_def_->GetFlatString();
     *result = extern_def_;
     return Status::OK();
 }

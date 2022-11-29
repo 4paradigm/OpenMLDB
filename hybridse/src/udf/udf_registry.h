@@ -109,154 +109,21 @@ class UdfRegistry {
     std::string doc_;
 };
 
-template <typename T>
 class ArgSignatureTable {
  public:
-    Status Find(UdfResolveContext* ctx, T* res, std::string* signature,
-                int* variadic_pos) {
-        std::vector<const node::TypeNode*> arg_types;
-        for (size_t i = 0; i < ctx->arg_size(); ++i) {
-            arg_types.push_back(ctx->arg_type(i));
-        }
-        return Find(arg_types, res, signature, variadic_pos);
-    }
+    Status Find(UdfResolveContext* ctx, std::shared_ptr<UdfRegistry>* res, std::string* signature, int* variadic_pos);
 
-    Status Find(const std::vector<const node::TypeNode*>& arg_types, T* res,
-                std::string* signature, int* variadic_pos) {
-        std::stringstream ss;
-        for (size_t i = 0; i < arg_types.size(); ++i) {
-            auto type_node = arg_types[i];
-            if (type_node == nullptr) {
-                ss << "?";
-            } else {
-                ss << type_node->GetName();
-            }
-            if (i < arg_types.size() - 1) {
-                ss << ", ";
-            }
-        }
-
-        // There are four match conditions:
-        // (1) explicit match without placeholders
-        // (2) explicit match with placeholders
-        // (3) variadic match without placeholders
-        // (4) variadic match with placeholders
-        // The priority is (1) > (2) > (3) > (4)
-        typename TableType::iterator placeholder_match_iter = table_.end();
-        typename TableType::iterator variadic_placeholder_match_iter =
-            table_.end();
-        typename TableType::iterator variadic_match_iter = table_.end();
-        int variadic_match_pos = -1;
-        int variadic_placeholder_match_pos = -1;
-
-        for (auto iter = table_.begin(); iter != table_.end(); ++iter) {
-            auto& def_item = iter->second;
-            auto& def_arg_types = def_item.arg_types;
-            if (def_item.is_variadic) {
-                // variadic match
-                bool match = true;
-                bool placeholder_match = false;
-                int non_variadic_arg_num = def_arg_types.size();
-                if (arg_types.size() <
-                    static_cast<size_t>(non_variadic_arg_num)) {
-                    continue;
-                }
-                for (int j = 0; j < non_variadic_arg_num; ++j) {
-                    if (def_arg_types[j] == nullptr) {  // any arg
-                        placeholder_match = true;
-                        match = false;
-                    } else if (!node::TypeEquals(def_arg_types[j],
-                                                 arg_types[j])) {
-                        placeholder_match = false;
-                        match = false;
-                        break;
-                    }
-                }
-                if (match) {
-                    if (variadic_match_pos < non_variadic_arg_num) {
-                        placeholder_match_iter = iter;
-                        variadic_match_pos = non_variadic_arg_num;
-                    }
-                } else if (placeholder_match) {
-                    if (variadic_placeholder_match_pos < non_variadic_arg_num) {
-                        variadic_placeholder_match_iter = iter;
-                        variadic_placeholder_match_pos = non_variadic_arg_num;
-                    }
-                }
-
-            } else if (arg_types.size() == def_arg_types.size()) {
-                // explicit match
-                bool match = true;
-                bool placeholder_match = false;
-                for (size_t j = 0; j < arg_types.size(); ++j) {
-                    if (def_arg_types[j] == nullptr) {
-                        placeholder_match = true;
-                        match = false;
-                    } else if (!node::TypeEquals(def_arg_types[j],
-                                                 arg_types[j])) {
-                        placeholder_match = false;
-                        match = false;
-                        break;
-                    }
-                }
-                if (match) {
-                    *variadic_pos = -1;
-                    *signature = iter->first;
-                    *res = def_item.value;
-                    return Status::OK();
-                } else if (placeholder_match) {
-                    placeholder_match_iter = iter;
-                }
-            }
-        }
-
-        if (placeholder_match_iter != table_.end()) {
-            *variadic_pos = -1;
-            *signature = placeholder_match_iter->first;
-            *res = placeholder_match_iter->second.value;
-            return Status::OK();
-        } else if (variadic_match_iter != table_.end()) {
-            *variadic_pos = variadic_match_pos;
-            *signature = variadic_match_iter->first;
-            *res = variadic_match_iter->second.value;
-            return Status::OK();
-        } else if (variadic_placeholder_match_iter != table_.end()) {
-            *variadic_pos = variadic_placeholder_match_pos;
-            *signature = variadic_placeholder_match_iter->first;
-            *res = variadic_placeholder_match_iter->second.value;
-            return Status::OK();
-        } else {
-            return Status(common::kCodegenError,
-                          "Resolve udf signature failure: <" + ss.str() + ">");
-        }
-    }
+    Status Find(const std::vector<const node::TypeNode*>& arg_types, std::shared_ptr<UdfRegistry>* res,
+                std::string* signature, int* variadic_pos);
 
     Status Register(const std::vector<const node::TypeNode*>& args,
-                    bool is_variadic, const T& t) {
-        std::stringstream ss;
-        for (size_t i = 0; i < args.size(); ++i) {
-            if (args[i] == nullptr) {
-                ss << "?";
-            } else {
-                ss << args[i]->GetName();
-            }
-            if (i < args.size() - 1) {
-                ss << ", ";
-            }
-        }
-        std::string key = ss.str();
-        auto iter = table_.find(key);
-        CHECK_TRUE(iter == table_.end(), common::kCodegenError,
-                   "Duplicate signature: ", key);
-        table_.insert(iter, {key, DefItem(t, args, is_variadic)});
-        return Status::OK();
-    }
+            bool is_variadic, const std::shared_ptr<UdfRegistry>& t);
 
     struct DefItem {
-        T value;
+        std::shared_ptr<UdfRegistry> value;
         std::vector<const node::TypeNode*> arg_types;
         bool is_variadic;
-        DefItem(const T& value,
+        DefItem(const std::shared_ptr<UdfRegistry>& value,
                 const std::vector<const node::TypeNode*>& arg_types,
                 bool is_variadic)
             : value(value), arg_types(arg_types), is_variadic(is_variadic) {}
@@ -272,7 +139,7 @@ class ArgSignatureTable {
 
 struct UdfLibraryEntry {
     // argument matching table
-    ArgSignatureTable<std::shared_ptr<UdfRegistry>> signature_table;
+    ArgSignatureTable signature_table;
 
     // record whether is udaf for specified argument num
     std::unordered_set<size_t> udaf_arg_nums;
@@ -364,7 +231,7 @@ class UdfRegistryHelper {
 
     void SetDoc(const std::string& doc) {
         doc_ = doc;
-        for (auto reg : registries_) {
+        for (auto& reg : registries_) {
             reg->SetDoc(doc);
         }
     }
@@ -872,15 +739,24 @@ class ExternalFuncRegistry : public UdfRegistry {
 
 class DynamicUdfRegistry : public UdfRegistry {
  public:
-    explicit DynamicUdfRegistry(const std::string& name,
-                                  node::DynamicUdfFnDefNode* extern_def)
+    explicit DynamicUdfRegistry(const std::string& name, node::DynamicUdfFnDefNode* extern_def)
         : UdfRegistry(name), extern_def_(extern_def) {}
 
-    Status ResolveFunction(UdfResolveContext* ctx,
-                           node::FnDefNode** result) override;
+    Status ResolveFunction(UdfResolveContext* ctx, node::FnDefNode** result) override;
 
  private:
     node::DynamicUdfFnDefNode* extern_def_;
+};
+
+class DynamicUdafRegistry : public UdfRegistry {
+ public:
+    explicit DynamicUdafRegistry(const std::string& name, node::DynamicUdafFnDefNode* extern_def)
+        : UdfRegistry(name), extern_def_(extern_def) {}
+
+    Status ResolveFunction(UdfResolveContext* ctx, node::FnDefNode** result) override;
+
+ private:
+    node::DynamicUdafFnDefNode* extern_def_;
 };
 
 template <bool A, bool B>
