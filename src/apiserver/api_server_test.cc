@@ -1075,12 +1075,12 @@ TEST_F(APIServerTest, jsonInput) {
         ASSERT_TRUE(data[0].IsObject());
         ASSERT_STREQ(data[0].FindMember("c1")->value.GetString(), "bb");
         ASSERT_EQ(data[0].FindMember("c3")->value.GetInt(), 23);
-        ASSERT_EQ(data[0].FindMember("w1_c4_sum")->value.GetInt64(), 157); // 34 + 123
+        ASSERT_EQ(data[0].FindMember("w1_c4_sum")->value.GetInt64(), 157);  // 34 + 123
 
         ASSERT_TRUE(data[1].IsObject());
         ASSERT_STREQ(data[1].FindMember("c1")->value.GetString(), "bb");
         ASSERT_EQ(data[1].FindMember("c3")->value.GetInt(), 23);
-        ASSERT_EQ(data[1].FindMember("w1_c4_sum")->value.GetInt64(), 268); // 34 + 234
+        ASSERT_EQ(data[1].FindMember("w1_c4_sum")->value.GetInt64(), 268);  // 34 + 234
     }
 
     // drop procedure and table
