@@ -28,6 +28,7 @@
 #include "absl/strings/str_cat.h"
 #include "absl/strings/strip.h"
 #include "absl/strings/substitute.h"
+#include "absl/types/span.h"
 #include "base/ddl_parser.h"
 #include "base/file_util.h"
 #include "base/glog_wrapper.h"
@@ -1320,9 +1321,12 @@ bool SQLClusterRouter::ExecuteInsert(const std::string& db, const std::string& s
         }
     }
     if (!fails.empty()) {
+        auto ori_size = fails.size();
+        // for peek
+        absl::Span<const size_t> slice(fails.data(), ori_size > 10 ? 10 : ori_size);
         SET_STATUS_AND_WARN(
-            status, StatusCode::kCmdError,
-            absl::StrCat("insert ", fails.size(), " failed, detail row id: ", absl::StrJoin(fails, ",")));
+            StatusCode::kCmdError,
+            absl::StrCat("insert values ", ori_size, " failed, failed rows peek: ", absl::StrJoin(slice, ",")));
         return false;
     }
     return true;
