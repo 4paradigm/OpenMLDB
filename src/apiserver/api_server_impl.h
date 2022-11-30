@@ -68,9 +68,12 @@ class APIServerImpl : public APIServer {
     void ExecuteProcedure(bool has_common_col, const InterfaceProvider::Params& param, const butil::IOBuf& req_body,
                           JsonWriter& writer);  // NOLINT
 
-    static bool Json2SQLRequestRow(const butil::rapidjson::Value& non_common_cols_v,
-                                   const butil::rapidjson::Value& common_cols_v,
-                                   std::shared_ptr<openmldb::sdk::SQLRequestRow> row);
+    static bool JsonArray2SQLRequestRow(const butil::rapidjson::Value& non_common_cols_v,
+                                        const butil::rapidjson::Value& common_cols_v,
+                                        std::shared_ptr<openmldb::sdk::SQLRequestRow> row);
+    static bool JsonMap2SQLRequestRow(const butil::rapidjson::Value& non_common_cols_v,
+                                      const butil::rapidjson::Value& common_cols_v,
+                                      std::shared_ptr<openmldb::sdk::SQLRequestRow> row);
     template <typename T>
     static bool AppendJsonValue(const butil::rapidjson::Value& v, hybridse::sdk::DataType type, bool is_not_null,
                                 T row);
@@ -98,6 +101,7 @@ struct ExecSPResp {
     std::string msg = "ok";
     std::shared_ptr<hybridse::sdk::ProcedureInfo> sp_info;
     bool need_schema = false;
+    bool json_result = false;
     std::shared_ptr<hybridse::sdk::ResultSet> rs;
 };
 
