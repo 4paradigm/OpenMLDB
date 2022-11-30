@@ -346,6 +346,8 @@ bash bin/start.sh start apiserver
 
 ### Deploy TaskManager
 
+TaskManager can be deployed in single server. You can deploy multiple instances for high availability. If the master server of TaskManagers fails, the slaves will replace the master for failover  and the client will reconnect automatically.
+
 #### 1. Download the OpenMLDB Spark Distribution that is Optimized for Feature Engineering
 
 ```
