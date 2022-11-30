@@ -1325,7 +1325,7 @@ bool SQLClusterRouter::ExecuteInsert(const std::string& db, const std::string& s
         // for peek
         absl::Span<const size_t> slice(fails.data(), ori_size > 10 ? 10 : ori_size);
         SET_STATUS_AND_WARN(
-            StatusCode::kCmdError,
+            status, StatusCode::kCmdError,
             absl::StrCat("insert values ", ori_size, " failed, failed rows peek: ", absl::StrJoin(slice, ",")));
         return false;
     }
