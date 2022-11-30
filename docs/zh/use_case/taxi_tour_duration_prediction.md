@@ -12,7 +12,7 @@
 - 拉取 OpenMLDB docker 镜像，并且运行相应容器：
 
 ```bash
-docker run -it 4pdosc/openmldb:0.6.7 bash
+docker run -it 4pdosc/openmldb:0.6.8 bash
 ```
 该镜像预装了OpenMLDB，并预置了本案例所需要的所有脚本、三方库、开源工具以及训练数据。
 

@@ -2296,7 +2296,6 @@ bool SQLClusterRouter::UpdateOfflineTableInfo(const ::openmldb::nameserver::Tabl
     table_info.set_partition_num(base_table_info.partition_num());
     auto table_partition = table_info.mutable_table_partition();
     table_partition->CopyFrom(base_table_info.table_partition());
-    table_info.set_format_version(1);
     table_info.set_storage_mode(base_table_info.storage_mode());
     table_info.set_base_table_tid(base_table_info.tid());
     auto SetColumnDesc = [](const std::string& name, openmldb::type::DataType type,
@@ -3633,7 +3632,6 @@ hybridse::sdk::Status SQLClusterRouter::HandleLongWindows(
             base_table_meta.set_db(base_table_info->db());
             base_table_meta.set_name(base_table_info->name());
             base_table_meta.set_tid(static_cast<::google::protobuf::int32>(base_table_info->tid()));
-            base_table_meta.set_format_version(base_table_info->format_version());
             for (int idx = 0; idx < base_table_info->column_desc_size(); idx++) {
                 ::openmldb::common::ColumnDesc* column_desc = base_table_meta.add_column_desc();
                 column_desc->CopyFrom(base_table_info->column_desc(idx));
