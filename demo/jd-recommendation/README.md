@@ -11,7 +11,7 @@ For full instructions, please refer to [website page](http://openmldb.ai/docs/zh
 ## OpenMLDB Feature Extraction
 
 ```
-docker run -dit --name=openmldb --network=host -v $demodir:/work/oneflow_demo 4pdosc/openmldb:0.6.7 bash
+docker run -dit --name=openmldb --network=host -v $demodir:/work/oneflow_demo 4pdosc/openmldb:0.6.8 bash
 docker exec -it openmldb bash
 ```
 
