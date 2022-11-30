@@ -207,7 +207,6 @@ Status UdfLibrary::RegisterDynamicUdf(const std::string& name, node::DataType re
         if (file.empty()) {
             return {kCodegenError, name + " has exist"};
         }
-
         LOG(WARNING) << "Function " + name + " has been registered, remove before overwrite";
         RemoveDynamicUdf(name, arg_types, "");
     }
@@ -215,22 +214,28 @@ Status UdfLibrary::RegisterDynamicUdf(const std::string& name, node::DataType re
     std::vector<void*> funs;
     if (file.empty()) {
         // use trivial_fun for compile only
-        funs.emplace_back(reinterpret_cast<void*>(udf::v1::trivial_fun));
+        void* fun = reinterpret_cast<void*>(udf::v1::trivial_fun);
+        funs = {fun, fun, fun};
     }  else {
         CHECK_STATUS(lib_manager_.ExtractFunction(canon_name, is_aggregate, file, &funs))
     }
-    CHECK_TRUE(!funs.empty() && funs[0] != nullptr, kCodegenError, name + " is nullptr")
+    Status status;
     if (is_aggregate) {
-
+        CHECK_TRUE(funs.size() == 3, kCodegenError, "cannot find function in so")
+        DynamicUdafRegistryHelper helper(canon_name, this, return_type, arg_types,
+                reinterpret_cast<void*>(static_cast<void (*)(UDFContext* context)>(udf::v1::init_udfcontext)),
+                funs[0], funs[1], funs[2]);
+        status = helper.Register();
     } else {
+        CHECK_TRUE(!funs.empty() && funs[0] != nullptr, kCodegenError, name + " is nullptr")
         void* fn = funs[0];
         DynamicUdfRegistryHelper helper(canon_name, this, fn, return_type, arg_types,
                 reinterpret_cast<void*>(static_cast<void (*)(UDFContext* context)>(udf::v1::init_udfcontext)));
-        auto status = helper.Register();
-        if (!status.isOK()) {
-            lib_manager_.RemoveHandler(file);
-            return status;
-        }
+        status = helper.Register();
+    }
+    if (!status.isOK()) {
+        lib_manager_.RemoveHandler(file);
+        return status;
     }
     return {};
 }

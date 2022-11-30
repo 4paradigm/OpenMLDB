@@ -378,5 +378,75 @@ Status DynamicUdfRegistryHelper::Register() {
     return Status::OK();
 }
 
+DynamicUdafRegistryHelper::DynamicUdafRegistryHelper(const std::string& basename, UdfLibrary* library,
+        node::DataType return_type, const std::vector<node::DataType>& arg_types,
+        void* udfcontext_fun, void* init_fn_ptr, void* update_fn_ptr, void* output_fn_ptr)
+    : UdfRegistryHelper(basename, library), fn_name_(basename), udfcontext_fun_ptr_(udfcontext_fun),
+    init_fn_ptr_(init_fn_ptr), update_fn_ptr_(update_fn_ptr), output_fn_ptr_(output_fn_ptr) {
+
+    auto nm = node_manager();
+    return_type_ = nm->MakeTypeNode(return_type);
+    for (const auto type : arg_types) {
+        auto type_node = nm->MakeTypeNode(type);
+        arg_types_.emplace_back(type_node);
+        fn_name_.append(".").append(type_node->GetName());
+        arg_nullable_.emplace_back(0);
+    }
+    switch (return_type) {
+        case node::kVarchar:
+        case node::kDate:
+        case node::kTimestamp:
+            return_by_arg_ = true;
+            break;
+        default:
+            return_by_arg_ = false;
+    }
+}
+
+Status DynamicUdafRegistryHelper::Register() {
+    if (udfcontext_fun_ptr_ == nullptr || init_fn_ptr_ == nullptr
+            || update_fn_ptr_ == nullptr || output_fn_ptr_ == nullptr) {
+        LOG(WARNING) << "fun_ptr is null";
+        return Status(kCodegenError, "fun_ptr is null");
+    }
+    if (return_type_ == nullptr) {
+        LOG(WARNING) << "No return type specified for udf registry " << name();
+        return Status(kCodegenError, "No return type specified for udf registry");;
+    }
+    std::string init_context_fn_name = "init_udfcontext.opaque";
+    auto type_node = node_manager()->MakeOpaqueType(sizeof(UDFContext));
+    auto init_context_node = node_manager()->MakeExternalFnDefNode(
+            init_context_fn_name, udfcontext_fun_ptr_, type_node, false, {}, {}, -1, true);
+
+    auto void_type_node = node_manager()->MakeTypeNode(node::DataType::kVoid);
+    auto ptr_type_node = node_manager()->MakeTypeNode(node::DataType::kInt8Ptr);
+
+    std::string init_fn_name = fn_name_ + "_init.udfcontext";
+    auto init_node = node_manager()->MakeExternalFnDefNode(init_fn_name, init_fn_ptr_,
+            void_type_node, false, {ptr_type_node}, {0}, -1, false);
+    std::string update_fn_name = fn_name_ + "_update.udfcontext";
+    std::vector<const node::TypeNode *> new_arg_types = {ptr_type_node};
+    new_arg_types.insert(new_arg_types.end(), arg_types_.begin(), arg_types_.end());
+    std::vector<int> new_arg_nullable = {0};
+    new_arg_nullable.insert(new_arg_nullable.end(), arg_nullable_.begin(), arg_nullable_.end());
+    auto update_node = node_manager()->MakeExternalFnDefNode(update_fn_name, update_fn_ptr_,
+            void_type_node, false, new_arg_types, new_arg_nullable, -1, false);
+
+    std::string output_fn_name = fn_name_ + "_output.udfcontext";
+    auto output_node = node_manager()->MakeExternalFnDefNode(output_fn_name, output_fn_ptr_,
+            return_type_, return_by_arg_, {ptr_type_node}, {0}, -1, false);
+
+
+    auto def = node_manager()->MakeDynamicUdafFnDefNode(
+        fn_name_, arg_types_, init_context_node, init_node, update_node, output_node);
+    auto registry = std::make_shared<DynamicUdafRegistry>(name(), def);
+    library()->AddExternalFunction(init_fn_name, init_fn_ptr_);
+    library()->AddExternalFunction(update_fn_name, update_fn_ptr_);
+    library()->AddExternalFunction(output_fn_name, output_fn_ptr_);
+    this->InsertRegistry(arg_types_, false, registry);
+    LOG(INFO) << "register function success. name: " << fn_name_ << " return type:" << return_type_->GetName();
+    return Status::OK();
+}
+
 }  // namespace udf
 }  // namespace hybridse

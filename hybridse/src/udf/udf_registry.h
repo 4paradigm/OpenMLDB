@@ -1264,6 +1264,26 @@ class DynamicUdfRegistryHelper : public UdfRegistryHelper {
     bool return_by_arg_ = false;
 };
 
+class DynamicUdafRegistryHelper : public UdfRegistryHelper {
+ public:
+    DynamicUdafRegistryHelper(const std::string& basename, UdfLibrary* library,
+            node::DataType return_type, const std::vector<node::DataType>& arg_types,
+            void* udfcontext_fun, void* init_fn_ptr, void* update_fn_ptr, void* output_fn_ptr);
+    Status Register();
+
+ private:
+    std::string fn_name_;
+    void* udfcontext_fun_ptr_;
+    void* init_fn_ptr_;
+    void* update_fn_ptr_;
+    void* output_fn_ptr_;
+    std::vector<const node::TypeNode*> arg_types_;
+    std::vector<int> arg_nullable_;
+    node::TypeNode* return_type_ = nullptr;
+    bool return_nullable_ = false;
+    bool return_by_arg_ = false;
+};
+
 template <template <typename> typename FTemplate>
 class ExternalTemplateFuncRegistryHelper {
  public:
