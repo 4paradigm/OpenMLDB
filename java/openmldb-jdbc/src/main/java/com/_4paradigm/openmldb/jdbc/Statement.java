@@ -23,7 +23,7 @@ public class Statement implements java.sql.Statement {
         }
         resultSet = sqlRouter.ExecuteSQL(sql, status);
         if (!status.IsOK()) {
-            String msg = status.getMsg();
+            String msg = status.ToString();
             status.delete();
             throw new SQLException("executeSQL fail: " + msg);
         }
@@ -45,7 +45,7 @@ public class Statement implements java.sql.Statement {
         Status status = new Status();
         resultSet = sqlRouter.ExecuteSQL(sql, status);
         if (!status.IsOK()) {
-            String msg = status.getMsg();
+            String msg = status.ToString();
             status.delete();
             throw new SQLException("executeSQL fail: " + msg);
         }
@@ -59,7 +59,7 @@ public class Statement implements java.sql.Statement {
         Status status = new Status();
         com._4paradigm.openmldb.ResultSet rs = sqlRouter.ExecuteSQL(sql, status);
         if (!status.IsOK()) {
-            String msg = status.getMsg();
+            String msg = status.ToString();
             status.delete();
             throw new SQLException("executeSQL fail: " + msg);
         }

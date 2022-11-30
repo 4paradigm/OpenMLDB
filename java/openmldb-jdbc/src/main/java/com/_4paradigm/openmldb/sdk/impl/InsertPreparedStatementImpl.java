@@ -95,7 +95,7 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
         Status status = new Status();
         SQLInsertRow row = router.GetInsertRow(db, sql, status);
         if (status.getCode() != 0) {
-            String msg = status.getMsg();
+            String msg = status.ToString();
             status.delete();
             if (row != null) {
                 row.delete();

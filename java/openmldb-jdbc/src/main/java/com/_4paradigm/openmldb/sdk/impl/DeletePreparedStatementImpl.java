@@ -35,7 +35,7 @@ public class DeletePreparedStatementImpl implements PreparedStatement {
         Status status = new Status();
         SQLDeleteRow row = router.GetDeleteRow(db, sql, status);
         if (!status.IsOK()) {
-            String msg = status.getMsg();
+            String msg = status.ToString();
             status.delete();
             if (row != null) {
                 row.delete();
@@ -60,7 +60,7 @@ public class DeletePreparedStatementImpl implements PreparedStatement {
         Status status = new Status();
         router.ExecuteDelete(currentRows.get(0), status);
         if (!status.IsOK()) {
-            String msg = status.getMsg();
+            String msg = status.ToString();
             status.delete();
             throw new SQLException(msg);
         }
