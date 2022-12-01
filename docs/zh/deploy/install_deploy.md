@@ -432,6 +432,8 @@ curl http://<apiserver_ip>:<port>/dbs/foo -X POST -d'{"mode":"online","sql":"sho
 
 ### 部署TaskManager
 
+TaskManager 可以只存在一台，如果你需要高可用性，可以部署多 TaskManager ，需要注意避免IP端口冲突。如果 TaskManager 主节点出现故障，从节点将自动恢复故障取代主节点，客户端无需任何修改可继续访问 TaskManager 服务。
+
 #### 1 下载 OpenMLDB 部署包和面向特征工程优化的 Spark 发行版
 
 Spark发行版：
