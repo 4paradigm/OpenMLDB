@@ -45,7 +45,7 @@ string(REPLACE " " ";" TOYDB_SRC_FILE_LIST ${TOYDB_SRC_FILE_LIST_STR})
 add_library(toydb_flags STATIC toydb_flags.cc)
 
 # toydb lib
-set(TOYDB_DEPS_LIBS toydb_flags hybridse_sdk hybridse_core hybridse_flags sqlite3
+set(TOYDB_DEPS_LIBS toydb_flags hybridse_core hybridse_flags sqlite3
     ${yaml_libs} ${Boost_filesystem_LIBRARY} ${VM_LIBS} ${LLVM_LIBS} ${OS_LIB} ${GTEST_LIBRARIES})
 add_library(toydb_lib STATIC ${TOYDB_SRC_FILE_LIST} )
 target_link_libraries(toydb_lib ${TOYDB_DEPS_LIBS})
@@ -70,13 +70,12 @@ if (TESTING_ENABLE AND EXAMPLES_TESTING_ENABLE)
                 --gtest_output=xml:${CMAKE_CURRENT_BINARY_DIR}/${TEST_TARGET_DIR}/${TEST_TARGET_NAME}.xml)
         target_link_libraries(${TEST_TARGET_NAME}
                 toydb_lib toydb_sdk hybridse_flags sqlite3
-                ${GTEST_LIBRARIES} benchmark ${yaml_libs} ${OS_LIBS} ${g_libs})
+                ${GTEST_LIBRARIES} benchmark ${yaml_libs} ${OS_LIB} ${g_libs})
         if (TESTING_ENABLE_STRIP)
             strip_exe(${TEST_TARGET_NAME})
         endif()
         list(APPEND test_list ${TEST_TARGET_NAME})
     endforeach()
-    set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
 endif()
 
 # toy sdk
@@ -87,6 +86,8 @@ add_subdirectory(bm)
 endif()
 
 # toydb bin
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+
 add_executable(toydb cmd/toydb.cc)
 target_link_libraries(toydb toydb_sdk toydb_lib hybridse_sdk hybridse_core hybridse_flags hybridse_test_base)
 # engine execution

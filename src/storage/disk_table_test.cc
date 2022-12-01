@@ -789,7 +789,6 @@ TEST_F(DiskTableTest, CompactFilterMulTs) {
     table_meta.set_tid(11);
     table_meta.set_pid(1);
     table_meta.set_storage_mode(::openmldb::common::kHDD);
-    table_meta.set_format_version(1);
     SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "card", ::openmldb::type::kString);
     SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "mcc", ::openmldb::type::kString);
     SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "ts1", ::openmldb::type::kBigInt);
@@ -951,7 +950,6 @@ TEST_F(DiskTableTest, GcHeadMulTs) {
     table_meta.set_tid(12);
     table_meta.set_pid(1);
     table_meta.set_storage_mode(::openmldb::common::kHDD);
-    table_meta.set_format_version(1);
     SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "card", ::openmldb::type::kString);
     SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "mcc", ::openmldb::type::kString);
     SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "ts1", ::openmldb::type::kBigInt);

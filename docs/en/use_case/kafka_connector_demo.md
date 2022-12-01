@@ -22,7 +22,7 @@ For OpenMLDB Kafka Connector implementation, please refer to [extensions/kafka-c
 This article will start the OpenMLDB in docker container, so there is no need to download the OpenMLDB separately. Moreover, Kafka and connector can be started in the same container. We recommend that you save the three downloaded packages to the same directory. Let's assume that the packages are in the `/work/kafka` directory.
 
 ```
-docker run -it -v `pwd`:/work/kafka --name openmldb 4pdosc/openmldb:0.6.7 bash
+docker run -it -v `pwd`:/work/kafka --name openmldb 4pdosc/openmldb:0.6.8 bash
 ```
 
 ### Steps

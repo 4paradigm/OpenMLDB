@@ -1,5 +1,15 @@
 # Release Notes
 
+## v0.6.8 Release Notes
+
+### Features
+- Support the `where` clause in the SQL batch engine (#2820 @tobegit3hub)
+- Support input and output with the JSON format in APIServer (#2813 @vagetablechicken)
+- Improve the documents (#2814 @vagetablechicken)
+
+### Code Refactoring
+#2816 @dl239, #2714 @aceforeverd
+
 ## v0.6.7 Release Notes
 
 ### Features
