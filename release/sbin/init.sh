@@ -14,13 +14,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-home="$(cd "$(dirname "$0")"/.. || exit; pwd)"
+home="$(cd "$(dirname "$0")"/.. || exit 1; pwd)"
 
 function parse_host {
-  host_file=$1
-  type=$2
+  local host_file=$1
+  local type=$2
 
-  start=false
+  local start=false
   grep -v '^ *#' < "$host_file" | while IFS= read -r line
   do
     if [[ -z "$line" ]]; then
@@ -36,12 +36,12 @@ function parse_host {
       continue
     fi
 
-    host_port=$(echo "$line" | awk -F ' ' '{print $1}')
-    host=$(echo "${host_port}" | awk -F ':' '{print $1}')
-    port=$(echo "${host_port}" | awk -F ':' '{print $2}')
-    second_port=$(echo "${host_port}" | awk -F ':' '{print $3}')
-    third_port=$(echo "${host_port}" | awk -F ':' '{print $4}')
-    dir=$(echo "$line" | awk -F ' ' '{print $2}')
+    local host_port=$(echo "$line" | awk -F ' ' '{print $1}')
+    local host=$(echo "${host_port}" | awk -F ':' '{print $1}')
+    local port=$(echo "${host_port}" | awk -F ':' '{print $2}')
+    local second_port=$(echo "${host_port}" | awk -F ':' '{print $3}')
+    local third_port=$(echo "${host_port}" | awk -F ':' '{print $4}')
+    local dir=$(echo "$line" | awk -F ' ' '{print $2}')
 
     if [[ -z "$port" ]]; then
       if [[ "$type" = "tablet" ]]; then
@@ -82,10 +82,10 @@ function parse_host {
 }
 
 run_auto() {
-  host=$1
-  cmd=$2
+  local host=$1
+  local cmd=$2
   if [[ $host = "localhost" || $host = "127.0.0.1" ]]; then
-    cur_dir=$(pwd)
+    local cur_dir=$(pwd)
     bash -c "$cmd"
     cd "$cur_dir" || return
   else
@@ -94,7 +94,7 @@ run_auto() {
 }
 
 if [ -z "${OPENMLDB_HOME}" ]; then
-  OPENMLDB_HOME="$(cd "$(dirname "$0")"/.. || exit; pwd)"
+  OPENMLDB_HOME="$(cd "$(dirname "$0")"/.. || exit 1; pwd)"
   export OPENMLDB_HOME
 fi
 

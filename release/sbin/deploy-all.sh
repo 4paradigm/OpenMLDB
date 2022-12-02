@@ -15,24 +15,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-home="$(cd "$(dirname "$0")"/.. || exit; pwd)"
-sbin="$(cd "$(dirname "$0")" || exit; pwd)"
+home="$(cd "$(dirname "$0")"/.. || exit 1; pwd)"
+sbin="$(cd "$(dirname "$0")" || exit 1; pwd)"
 . "$home"/conf/openmldb-env.sh
 . "$sbin"/init.sh
-cd "$home" || exit
+cd "$home" || exit 1
 
 distribute() {
-  host=$1
-  dest=$2
-  src="$home"
-  type=openmldb
+  local host=$1
+  local dest=$2
+  local src="$home"
+  local type=openmldb
   if [[ $# -ge 3 ]]; then
     src=$3
   fi
   if [[ $# -ge 4 ]]; then
     type=$4
   fi
-  use_ssh=true
+  local use_ssh=true
   if [[ $host = "localhost" || $host = "127.0.0.1" ]]; then
     use_ssh=false
     if [[ "$dest" = "$src" ]]; then
@@ -41,7 +41,7 @@ distribute() {
     fi
   fi
 
-  cmd="mkdir -p $dest > /dev/null 2>&1"
+  local cmd="mkdir -p $dest > /dev/null 2>&1"
   run_auto "$host" "$cmd"
 
   echo "copy $src to $host:$dest"
@@ -72,7 +72,7 @@ echo ""
 
 if [[ "$OPENMLDB_MODE" != "cluster" ]]; then
   echo "Deploy is only needed when OPENMLDB_MODE=cluster"
-  exit
+  exit 2
 fi
 
 old_IFS="$IFS"

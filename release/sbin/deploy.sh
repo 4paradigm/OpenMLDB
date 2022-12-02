@@ -15,15 +15,15 @@
 # limitations under the License.
 
 exchange() {
-  key=$1
-  value=$2
-  file=$3
+  local key=$1
+  local value=$2
+  local file=$3
   sed -i "s/^$key/# $key/g" "$file"
   echo "$key=$value" >> "$file"
 }
 
 config_zk() {
-  file=$1
+  local file=$1
   if [[ -n ${OPENMLDB_ZK_CLUSTER} ]]; then
     if grep -q "zookeeper.cluster" < "$file"; then
       exchange "zookeeper.cluster" "${OPENMLDB_ZK_CLUSTER}" "${file}"
@@ -42,8 +42,8 @@ config_zk() {
 }
 
 common_config() {
-  config_file=$1
-  tmp_config="${config_file}".template
+  local config_file=$1
+  local tmp_config="${config_file}".template
   if [[ $# -ge 2 ]]; then
     tmp_config=$2
   fi

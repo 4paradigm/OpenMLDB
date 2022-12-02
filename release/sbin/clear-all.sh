@@ -15,11 +15,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-home="$(cd "$(dirname "$0")"/.. || exit; pwd)"
-sbin="$(cd "$(dirname "$0")" || exit; pwd)"
+home="$(cd "$(dirname "$0")"/.. || exit 1; pwd)"
+sbin="$(cd "$(dirname "$0")" || exit 1; pwd)"
 . "$home"/conf/openmldb-env.sh
 . "$sbin"/init.sh
-cd "$home" || exit
+cd "$home" || exit 1
 
 if [[ ${OPENMLDB_MODE} == "standalone" ]]; then
   rm -rf standalone_db standalone_logs

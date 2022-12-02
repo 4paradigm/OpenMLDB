@@ -17,11 +17,11 @@
 
 set -e
 
-home="$(cd "$(dirname "$0")"/.. || exit; pwd)"
-sbin="$(cd "$(dirname "$0")" || exit; pwd)"
+home="$(cd "$(dirname "$0")"/.. || exit 1; pwd)"
+sbin="$(cd "$(dirname "$0")" || exit 1; pwd)"
 . "$home"/conf/openmldb-env.sh
 . "$sbin"/init.sh
-cd "$home" || exit
+cd "$home" || exit 1
 
 if [[ ${OPENMLDB_MODE} == "standalone" ]]; then
   bin/start.sh start standalone_tablet
