@@ -1,5 +1,6 @@
-# format: host:port[:zk_peer_port:zk_election_port] WORKDIR
-# if no custom WORKDIR provided, use the $OPENMLDB_HOME from env
+# format: host:port:zk_peer_port:zk_election_port WORKDIR
+# only host is required, other fields are optional.
+# zk_peer_port and zk_election_port only works for zookeeper
 
 [tablet]
 localhost:10921 /tmp/openmldb/tablet-1
