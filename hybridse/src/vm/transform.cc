@@ -61,8 +61,14 @@ std::ostream& operator<<(std::ostream& output,
     return output << *(thiz.node_);
 }
 
-static Status FixupWindowLastJoin(const node::WindowPlanNode* w_ptr, const SchemasContext* window_depend_sc,
-                                  const SchemasContext* left_join_sc);
+// Fixup window def over simpleproject(SimpleProject...(last join))
+// in SQL window's column name is based on simpleproject, where after optimization, it is based on a physical table
+//
+// since in request mode, window operation is doing earlier than last join
+// this helper meothod fixes the window definition by revert all column names
+// where any one or more simple projection did
+static Status FixupWindowOverSimpleNLastJoin(const node::WindowPlanNode* w_ptr, const SchemasContext* window_depend_sc,
+                                             const SchemasContext* left_join_sc);
 
 BatchModeTransformer::BatchModeTransformer(node::NodeManager* node_manager, const std::string& db,
                                            const std::shared_ptr<Catalog>& catalog,
@@ -682,7 +688,7 @@ Status RequestModeTransformer::TransformWindowOp(PhysicalOpNode* depend,
         case kPhysicalOpSimpleProject: {
             auto* simple_project = dynamic_cast<PhysicalSimpleProjectNode*>(depend);
             CHECK_TRUE(simple_project != nullptr, kPlanError);
-            return OptimizeSimpleProjectAsWindowProducer(simple_project, w_ptr, output);
+            return OptimizeSimpleProjectAsWindowProducer(simple_project, simple_project->schemas_ctx(), w_ptr, output);
         }
         default: {
             FAIL_STATUS(kPlanError, "Do not support window on\n" + depend->GetTreeString());
@@ -692,10 +698,12 @@ Status RequestModeTransformer::TransformWindowOp(PhysicalOpNode* depend,
 }
 
 Status RequestModeTransformer::OptimizeSimpleProjectAsWindowProducer(PhysicalSimpleProjectNode* prj_node,
+                                                                     const SchemasContext* window_depend_sc,
                                                                      const node::WindowPlanNode* w_ptr,
                                                                      PhysicalOpNode** output) {
     // - SimpleProject(DataProvider) -> RequestUnion(Request, DataSource)
     // - SimpleProject(RequestJoin) -> Join(RequestUnion, DataSource)
+    // - SimpleProject(SimpleProject)
     auto op_type = prj_node->GetProducer(0)->GetOpType();
     switch (op_type) {
         case kPhysicalOpDataProvider: {
@@ -741,10 +749,21 @@ Status RequestModeTransformer::OptimizeSimpleProjectAsWindowProducer(PhysicalSim
             CHECK_TRUE(join_op != nullptr, kPlanError, "not PhysicalRequestJoinNode");
 
             PhysicalOpNode* out = nullptr;
-            CHECK_STATUS(OptimizeRequestJoinAsWindowProducer(join_op, prj_node->schemas_ctx(), w_ptr, &out));
+            CHECK_STATUS(OptimizeRequestJoinAsWindowProducer(join_op, window_depend_sc, w_ptr, &out));
 
             PhysicalSimpleProjectNode* simple_proj = nullptr;
             CHECK_STATUS(CreateOp<PhysicalSimpleProjectNode>(&simple_proj, out, prj_node->project()));
+            *output = simple_proj;
+            break;
+        }
+        case kPhysicalOpSimpleProject: {
+            auto simple_prj_node = dynamic_cast<PhysicalSimpleProjectNode*>(prj_node->GetProducer(0));
+            CHECK_TRUE(simple_prj_node!= nullptr, kPlanError, "not PhysicalSimpleProjectNode");
+            PhysicalOpNode* producer = nullptr;
+            CHECK_STATUS(OptimizeSimpleProjectAsWindowProducer(simple_prj_node, window_depend_sc, w_ptr, &producer));
+
+            PhysicalSimpleProjectNode* simple_proj = nullptr;
+            CHECK_STATUS(CreateOp<PhysicalSimpleProjectNode>(&simple_proj, producer, prj_node->project()));
             *output = simple_proj;
             break;
         }
@@ -776,7 +795,8 @@ Status RequestModeTransformer::OptimizeRequestJoinAsWindowProducer(PhysicalReque
     switch (join_op->join().join_type()) {
         case node::kJoinTypeLeft:
         case node::kJoinTypeLast: {
-            CHECK_STATUS(FixupWindowLastJoin(w_ptr, window_depend_sc, join_op->GetProducer(0)->schemas_ctx()));
+            CHECK_STATUS(
+                FixupWindowOverSimpleNLastJoin(w_ptr, window_depend_sc, join_op->GetProducer(0)->schemas_ctx()));
 
             CHECK_TRUE(join_op->GetProducer(0)->GetOpType() == kPhysicalOpDataProvider, kPlanError,
                        "Fail to handler window with request last join, left isn't a table provider")
@@ -821,8 +841,8 @@ Status RequestModeTransformer::OptimizeRequestJoinAsWindowProducer(PhysicalReque
     return Status::OK();
 }
 
-Status FixupWindowLastJoin(const node::WindowPlanNode* w_ptr, const SchemasContext* window_depend_sc,
-                           const SchemasContext* left_join_sc) {
+Status FixupWindowOverSimpleNLastJoin(const node::WindowPlanNode* w_ptr, const SchemasContext* window_depend_sc,
+                                      const SchemasContext* left_join_sc) {
     const node::OrderByNode* orders = w_ptr->GetOrders();
     const node::ExprListNode* groups = w_ptr->GetKeys();
 
@@ -833,6 +853,7 @@ Status FixupWindowLastJoin(const node::WindowPlanNode* w_ptr, const SchemasConte
             switch (expr->GetExprType()) {
                 case node::kExprColumnRef: {
                     auto ref = dynamic_cast<const node::ColumnRefNode*>(expr);
+                    CHECK_TRUE(ref != nullptr, kPlanError, "not ColumnRefNode");
 
                     size_t id = 0;
                     CHECK_STATUS(window_depend_sc->ResolveColumnID(ref->GetDBName(), ref->GetRelationName(),
@@ -846,7 +867,7 @@ Status FixupWindowLastJoin(const node::WindowPlanNode* w_ptr, const SchemasConte
                     break;
                 }
                 default: {
-                    continue;
+                    break;
                 }
             }
         }
@@ -870,7 +891,7 @@ Status FixupWindowLastJoin(const node::WindowPlanNode* w_ptr, const SchemasConte
                     break;
                 }
                 default: {
-                    continue;
+                    break;
                 }
             }
         }

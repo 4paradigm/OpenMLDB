@@ -292,8 +292,9 @@ class RequestModeTransformer : public BatchModeTransformer {
 
  private:
     // Optimize simple project node which is the producer of window project
-    Status OptimizeSimpleProjectAsWindowProducer(PhysicalSimpleProjectNode* depend, const node::WindowPlanNode* w_ptr,
-                                                 PhysicalOpNode** output);
+    Status OptimizeSimpleProjectAsWindowProducer(PhysicalSimpleProjectNode* depend,
+                                                 const SchemasContext* window_depend_sc,
+                                                 const node::WindowPlanNode* w_ptr, PhysicalOpNode** output);
 
     Status OptimizeRequestJoinAsWindowProducer(PhysicalRequestJoinNode* depend, const SchemasContext* window_depend_sc,
                                                const node::WindowPlanNode* w_ptr, PhysicalOpNode** output);
