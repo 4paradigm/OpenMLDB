@@ -171,7 +171,28 @@ tar -zxvf openmldb-0.6.9-linux.tar.gz
 cd openmldb-0.6.9-linux
 ```
 
-### 部署节点配置
+### 配置
+#### 环境配置
+环境变量定义在`conf/openmldb-env.sh`，如下表所示：
+
+| 环境变量                              | 默认值                                | 定义                                                                      |
+|-----------------------------------|------------------------------------|-------------------------------------------------------------------------|
+| OPENMLDB_MODE                     | standalone                         | standalone或者cluster                                                     |
+| OPENMLDB_HOME                     | 当前发行版的根目录                          | openmldb发行版根目录                                                          |
+| SPARK_HOME                        | $OPENMLDB_HOME/spark               | openmldb spark发行版根目录，如果该目录不存在，自动从网上下载                                   |
+| OPENMLDB_TABLET_PORT              | 10921                              | tablet默认端口                                                              |
+| OPENMLDB_NAMESERVER_PORT          | 7527                               | nameserver默认端口                                                          |
+| OPENMLDB_TASKMANAGER_PORT         | 9902                               | taskmanager默认端口                                                         |
+| OPENMLDB_APISERVER_PORT           | 9080                               | apiserver默认端口                                                           |
+| OPENMLDB_USE_EXISTING_ZK_CLUSTER  | false                              | 是否使用已经部署的zookeeper集群。如果是`false`，会在部署脚本里自动启动zookeeper集群                  |
+| OPENMLDB_ZK_HOME                  | $OPENMLDB_HOME/zookeeper           | zookeeper发行版根目录                                                         |
+| OPENMLDB_ZK_CLUSTER               | 自动从`conf/hosts`中的`[zookeeper]`配置获取 | zookeeper集群地址                                                           |
+| OPENMLDB_ZK_ROOT_PATH             | /openmldb                          | OpenMLDB在zookeeper的根目录                                                  |
+| OPENMLDB_ZK_CLUSTER_CLIENT_PORT   | 2181                               | zookeeper client port, 即zoo.cfg里面的clientPort                            |
+| OPENMLDB_ZK_CLUSTER_PEER_PORT     | 2888                               | zookeeper peer port，即zoo.cfg里面这种配置server.1=zoo1:2888:3888中的第一个端口配置      |
+| OPENMLDB_ZK_CLUSTER_ELECTION_PORT | 3888                               | zookeeper election port, 即zoo.cfg里面这种配置server.1=zoo1:2888:3888中的第二个端口配置 |
+
+#### 部署节点配置
 节点配置文件为`conf/hosts`，示例如下：
 ```bash
 [tablet]
@@ -518,7 +539,7 @@ cd openmldb-taskmanager-0.6.9
 #### 2 修改配置文件conf/taskmanager.properties
 ```bash
 # 可以在示例配置文件的基础上，进行修改
-cp conf/taskmanager.flags.template conf/taskmanager.flags
+cp conf/taskmanager.properties.template conf/taskmanager.properties
 ```
 
 * 修改server.host。host是部署机器的ip/域名。

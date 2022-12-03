@@ -36,12 +36,18 @@ function parse_host {
       continue
     fi
 
-    local host_port=$(echo "$line" | awk -F ' ' '{print $1}')
-    local host=$(echo "${host_port}" | awk -F ':' '{print $1}')
-    local port=$(echo "${host_port}" | awk -F ':' '{print $2}')
-    local second_port=$(echo "${host_port}" | awk -F ':' '{print $3}')
-    local third_port=$(echo "${host_port}" | awk -F ':' '{print $4}')
-    local dir=$(echo "$line" | awk -F ' ' '{print $2}')
+    local host_port
+    host_port=$(echo "$line" | awk -F ' ' '{print $1}')
+    local host
+    host=$(echo "${host_port}" | awk -F ':' '{print $1}')
+    local port
+    port=$(echo "${host_port}" | awk -F ':' '{print $2}')
+    local second_port
+    second_port=$(echo "${host_port}" | awk -F ':' '{print $3}')
+    local third_port
+    third_port=$(echo "${host_port}" | awk -F ':' '{print $4}')
+    local dir
+    dir=$(echo "$line" | awk -F ' ' '{print $2}')
 
     if [[ -z "$port" ]]; then
       if [[ "$type" = "tablet" ]]; then
@@ -85,7 +91,8 @@ run_auto() {
   local host=$1
   local cmd=$2
   if [[ $host = "localhost" || $host = "127.0.0.1" ]]; then
-    local cur_dir=$(pwd)
+    local cur_dir
+    cur_dir=$(pwd)
     bash -c "$cmd"
     cd "$cur_dir" || return
   else
