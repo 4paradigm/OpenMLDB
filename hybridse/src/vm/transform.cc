@@ -1018,7 +1018,7 @@ Status BatchModeTransformer::TransformDeleteOp(const node::DeletePlanNode* node,
     return Status::OK();
 }
 
-Status BatchModeTransformer::TransformQueryPlan(const ::hybridse::node::PlanNode* node,
+Status BatchModeTransformer::TransformQueryPlan(const ::hybridse::node::QueryPlanNode* node,
                                                 ::hybridse::vm::PhysicalOpNode** output) {
     CHECK_TRUE(node != nullptr && output != nullptr, kPlanError, "Input node or output node is null");
     return TransformPlanOp(node->GetChildren()[0], output);
@@ -1829,7 +1829,9 @@ Status BatchModeTransformer::TransformPhysicalPlan(const ::hybridse::node::PlanN
             }
             case ::hybridse::node::kPlanTypeQuery: {
                 PhysicalOpNode* physical_plan = nullptr;
-                CHECK_STATUS(TransformQueryPlan(node, &physical_plan), "Fail to transform query statement");
+                CHECK_STATUS(
+                    TransformQueryPlan(dynamic_cast<const ::hybridse::node::QueryPlanNode*>(node), &physical_plan),
+                    "Fail to transform query statement");
 
                 DLOG(INFO) << "Before optimization: \n" << physical_plan->GetTreeString();
 

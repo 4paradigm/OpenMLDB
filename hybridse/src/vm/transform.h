@@ -111,7 +111,7 @@ class BatchModeTransformer {
 
     virtual Status TransformPhysicalPlan(const ::hybridse::node::PlanNodeList& trees,
                                          ::hybridse::vm::PhysicalOpNode** output);
-    virtual Status TransformQueryPlan(const ::hybridse::node::PlanNode* node,
+    virtual Status TransformQueryPlan(const ::hybridse::node::QueryPlanNode* node,
                                       ::hybridse::vm::PhysicalOpNode** output);
     virtual Status ValidatePlan(PhysicalOpNode* in);
 
