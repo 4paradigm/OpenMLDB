@@ -176,6 +176,11 @@ case $OP in
             rm "$OPENMLDB_PID_FILE"
             echo "Stop ${COMPONENT} success"
         fi
+        if [ -f "$OPENMLDB_PID_FILE.child" ]
+        then
+            rm "$OPENMLDB_PID_FILE.child"
+            echo "Rm ${COMPONENT} success(mon mode)"
+        fi
         ;;
     restart)
         shift
