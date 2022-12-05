@@ -176,11 +176,20 @@ case $OP in
             rm "$OPENMLDB_PID_FILE"
             echo "Stop ${COMPONENT} success"
         fi
-        if [ -f "$OPENMLDB_PID_FILE.child" ]
+        if [ ! -f "$OPENMLDB_PID_FILE.child" ]
         then
+            # normal mode
+            echo "Stop ${COMPONENT} success"
+        else
+            # check the child (component process)
+            PID="$(tr -d '\0' < "$OPENMLDB_PID_FILE.child")"
+            if kill -0 "$PID" > /dev/null 2>&1; then
+                echo "After mon stopped, component is still alive, kill it"
+                kill "$PID"
+            fi
             rm "$OPENMLDB_PID_FILE.child"
-            echo "Rm ${COMPONENT} success(mon mode)"
-        fi
+            echo "Stop ${COMPONENT} success(mon mode)"
+        fi 
         ;;
     restart)
         shift
