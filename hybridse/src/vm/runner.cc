@@ -1102,14 +1102,16 @@ std::shared_ptr<DataHandlerList> Runner::BatchRequestRun(RunnerContext& ctx) {
         producers_.size());
     for (size_t idx = producers_.size(); idx > 0; idx--) {
         batch_inputs[idx - 1] = producers_[idx - 1]->BatchRequestRun(ctx);
+        if (batch_inputs[idx - 1] == nullptr) {
+            LOG(WARNING) << "the result of producer " << idx - 1 << " is null";
+            return nullptr;
+        }
     }
 
     for (size_t idx = 0; idx < ctx.GetRequestSize(); idx++) {
         inputs.clear();
         for (size_t producer_idx = 0; producer_idx < producers_.size(); producer_idx++) {
-            if (batch_inputs[producer_idx] != nullptr) {
-                inputs.push_back(batch_inputs[producer_idx]->Get(idx));
-            }
+            inputs.push_back(batch_inputs[producer_idx]->Get(idx));
         }
         auto res = Run(ctx, inputs);
         if (need_batch_cache_) {
@@ -1159,6 +1161,10 @@ std::shared_ptr<DataHandler> Runner::RunWithCache(RunnerContext& ctx) {
     std::vector<std::shared_ptr<DataHandler>> inputs(producers_.size());
     for (size_t idx = producers_.size(); idx > 0; idx--) {
         inputs[idx - 1] = producers_[idx - 1]->RunWithCache(ctx);
+        if (inputs[idx - 1] == nullptr) {
+            LOG(WARNING) << "the result of producer "<< idx - 1 << " is null";
+            return nullptr;
+        }
     }
 
     auto res = Run(ctx, inputs);
