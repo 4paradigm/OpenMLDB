@@ -98,7 +98,7 @@ case $OP in
                 echo "mon pid is $MON_PID, process pid is $PID, check $PID status"
             else
                 # DO NOT put the whole command in variable
-                ./bin/openmldb --flagfile=./conf/${COMPONENT}.flags --enable_status_service=true >> "$LOG_DIR"/"$COMPONENT".log 2>&1 &
+                ./bin/openmldb --flagfile=./conf/"${COMPONENT}".flags --enable_status_service=true >> "$LOG_DIR"/"$COMPONENT".log 2>&1 &
                 PID=$!
                 echo "process pid is $PID"
             fi
