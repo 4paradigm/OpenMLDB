@@ -1187,6 +1187,49 @@ TEST_F(UdfIRBuilderTest, ReplaceNullable) {
     CheckUdf<Nullable<StringRef>, Nullable<StringRef>, Nullable<StringRef>>(fn_name, nullptr, nullptr, nullptr);
 }
 
+TEST_F(UdfIRBuilderTest, TestPMod) {
+    auto fn_name = "pmod";
+
+    // int32_t
+    CheckUdf<Nullable<int32_t>, Nullable<int32_t>, Nullable<int32_t>>(fn_name, 2, -10, 3);
+    CheckUdf<Nullable<int32_t>, Nullable<int32_t>, Nullable<int32_t>>(fn_name, 1, 10, 3);
+    CheckUdf<Nullable<int32_t>, Nullable<int32_t>, Nullable<int32_t>>(fn_name, 0, -9, 3);
+    CheckUdf<Nullable<int32_t>, Nullable<int32_t>, Nullable<int32_t>>(fn_name, 0, 9, 3);
+    CheckUdf<Nullable<int32_t>, Nullable<int32_t>, Nullable<int32_t>>(fn_name, 1, 10, -3);
+    CheckUdf<Nullable<int32_t>, Nullable<int32_t>, Nullable<int32_t>>(fn_name, nullptr, 10, 0);
+    CheckUdf<Nullable<int32_t>, Nullable<int32_t>, Nullable<int32_t>>(fn_name, nullptr, 10, nullptr);
+    CheckUdf<Nullable<int32_t>, Nullable<int32_t>, Nullable<int32_t>>(fn_name, nullptr, nullptr, 0);
+    CheckUdf<Nullable<int32_t>, Nullable<int32_t>, Nullable<int32_t>>(fn_name, nullptr, nullptr, nullptr);
+
+    // int64_t
+    CheckUdf<Nullable<int64_t>, Nullable<int64_t>, Nullable<int64_t>>(fn_name, 2, -10, 3);
+    CheckUdf<Nullable<int64_t>, Nullable<int64_t>, Nullable<int64_t>>(fn_name, nullptr, -10, 0L);
+    // int16_t
+    CheckUdf<Nullable<int16_t>, Nullable<int16_t>, Nullable<int16_t>>(fn_name, 2, -10, 3);
+    CheckUdf<Nullable<int16_t>, Nullable<int16_t>, Nullable<int16_t>>(fn_name, nullptr, -10, static_cast<int16_t>(0));
+
+    // float
+    CheckUdf<float, Nullable<float>, Nullable<float>>(fn_name, 2.7f, -10.1f, 3.2f);
+    CheckUdf<Nullable<float>, Nullable<float>, Nullable<float>>(fn_name, nullptr, -10.1f, 0.0f);
+
+    // double
+    CheckUdf<double, Nullable<double>, Nullable<double>>(fn_name, 2.7, -10.1, 3.2);
+    CheckUdf<Nullable<double>, Nullable<double>, Nullable<double>>(fn_name, nullptr, -10.1, 0.0);
+
+    // mix types
+    CheckUdf<float, Nullable<float>, Nullable<int32_t>>(fn_name, 1.9f, -10.1f, 3);
+    CheckUdf<float, Nullable<int32_t>, Nullable<float>>(fn_name, 2.4f, -10, 3.1f);
+    CheckUdf<float, Nullable<float>, Nullable<int64_t>>(fn_name, 1.9f, -10.1f, 3);
+    CheckUdf<float, Nullable<int64_t>, Nullable<float>>(fn_name, 2.4f, -10, 3.1f);
+    CheckUdf<double, Nullable<double>, Nullable<int64_t>>(fn_name, 1.9, -10.1, 3);
+    CheckUdf<double, Nullable<int64_t>, Nullable<double>>(fn_name, 2.4, -10, 3.1);
+    CheckUdf<double, Nullable<double>, Nullable<int16_t>>(fn_name, 1.9, -10.1, 3);
+    CheckUdf<double, Nullable<int16_t>, Nullable<double>>(fn_name, 2.4, -10, 3.1);
+    CheckUdf<Nullable<int64_t>, Nullable<int32_t>, Nullable<int64_t>>(fn_name, 2, -10, 3);
+    CheckUdf<Nullable<int32_t>, Nullable<int32_t>, Nullable<int16_t>>(fn_name, 2, -10, 3);
+    CheckUdf<Nullable<int64_t>, Nullable<int64_t>, Nullable<int16_t>>(fn_name, 2, -10, 3);
+}
+
 }  // namespace codegen
 }  // namespace hybridse
 
