@@ -384,7 +384,7 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
         // we can't execute() again without set new row, so we must clean up here
         clearSQLInsertRowList();
         if (!ok) {
-            logger.error("execute insert fail: {}", status.getMsg());
+            logger.error("execute insert failed: {}", status.ToString());
             status.delete();
             return false;
         }
@@ -775,7 +775,8 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
         for (int i = 0; i < currentRows.size(); i++) {
             boolean ok = router.ExecuteInsert(db, sql, currentRows.get(i), status);
             if (!ok) {
-                logger.info(status.getMsg());
+                // TODO(hw): may lost log, e.g. openmldb-batch online import in yarn mode?
+                logger.warn(status.ToString());
             }
             result[i] = ok ? 0 : -1;
         }
