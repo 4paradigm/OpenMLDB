@@ -311,18 +311,20 @@ base::Status Planner::CreateSelectQueryPlan(const node::SelectQueryNode *root, n
 
     auto out = node_manager_->MakeNode<node::QueryPlanNode>(current_node);
 
-    auto with_list = node_manager_->MakeList<node::WithClauseEntryPlanNode>();
-    for (auto q : root->with_clauses_) {
-        node::QueryPlanNode* with = nullptr;
-        CHECK_TRUE(q->query_->query_type_ == node::kQuerySelect, common::kPlanError,
-                   "only support select query as with clause entry");
-        CHECK_STATUS(CreateSelectQueryPlan(dynamic_cast<node::SelectQueryNode*>(q->query_), &with));
+    if (!root->with_clauses_.empty()) {
+        auto with_list = node_manager_->MakeList<node::WithClauseEntryPlanNode>();
+        for (auto q : root->with_clauses_) {
+            node::QueryPlanNode *with = nullptr;
+            CHECK_TRUE(q->query_->query_type_ == node::kQuerySelect, common::kPlanError,
+                       "only support select query as with clause entry");
+            CHECK_STATUS(CreateSelectQueryPlan(dynamic_cast<node::SelectQueryNode *>(q->query_), &with));
 
-        auto with_entry = node_manager_->MakeNode<node::WithClauseEntryPlanNode>(q->alias_, with);
+            auto with_entry = node_manager_->MakeNode<node::WithClauseEntryPlanNode>(q->alias_, with);
 
-        with_list->data_.push_back(with_entry);
+            with_list->data_.push_back(with_entry);
+        }
+        out->with_clauses_ = absl::MakeSpan(with_list->data_);
     }
-    out->with_clauses_ = absl::MakeSpan(with_list->data_);
 
     if (root->config_options_ != nullptr) {
         out->config_options_ = root->config_options_;
