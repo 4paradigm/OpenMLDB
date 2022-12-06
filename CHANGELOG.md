@@ -8,7 +8,7 @@
 - Improve the documents (#2827 @tobegit3hub, #2838 @vagetablechicken)
 
 ### Bug Fixes
-- Executing `show job` without job id causes segment fault in sdk (#2771 @aceforeverd)
+- CLI may core dump if executing `show job` without job id (#2771 @aceforeverd)
 - `select count(*)` randomly get empty result after `Tablet` restart (#2835 @zhanghaohit)
 - `Tablet` may core dump if the output of SQL engine runner is `null` (#2831 @dl239)
 
