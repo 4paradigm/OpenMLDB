@@ -1108,7 +1108,7 @@ std::shared_ptr<DataHandlerList> Runner::BatchRequestRun(RunnerContext& ctx) {
         inputs.clear();
         for (size_t producer_idx = 0; producer_idx < producers_.size(); producer_idx++) {
             if (batch_inputs[producer_idx] == nullptr) {
-                LOG(WARNING) << "the result of producer " << idx - 1 << " is null";
+                LOG(WARNING) << "the result of producer " <<  producer_idx << " is null";
                 return nullptr;
             }
             inputs.push_back(batch_inputs[producer_idx]->Get(idx));
