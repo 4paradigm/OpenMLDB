@@ -172,6 +172,7 @@ case $OP in
             PID="$(tr -d '\0' < "$OPENMLDB_PID_FILE")"
             if kill -0 "$PID" > /dev/null 2>&1; then
                 kill "$PID"
+                sleep 3
             fi
             rm "$OPENMLDB_PID_FILE"
             echo "Stop ${COMPONENT} success"
@@ -193,10 +194,11 @@ case $OP in
         ;;
     restart)
         shift
+        # $0 may be 'bin/start.sh', 'start.sh', etc. We use the real script name in bin/.
         cd "$BINDIR" || exit 1
-        sh "$0" stop "${@}"
+        sh start.sh stop "${@}"
         sleep 15
-        sh "$0" start "${@}"
+        sh start.sh start "${@}"
         ;;
     *)
         echo "Only support {start|stop|restart}" >&2
