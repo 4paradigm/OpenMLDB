@@ -175,7 +175,6 @@ case $OP in
                 sleep 3
             fi
             rm "$OPENMLDB_PID_FILE"
-            echo "Stop ${COMPONENT} success"
         fi
         if [ ! -f "$OPENMLDB_PID_FILE.child" ]
         then
