@@ -1041,10 +1041,8 @@ Status BatchModeTransformer::TransformQueryPlan(const ::hybridse::node::QueryPla
     CHECK_TRUE(node != nullptr && output != nullptr, kPlanError, "Input node or output node is null");
 
     auto* parent_closure = closure_;
-    internal::CTEClosure closure;
+    internal::CTEEnv env;
 
-    // empty new CTEContext pushed as a repect to with clause
-    ReplaceCTEs(node_manager_->MakeObj<internal::CTEContext>(parent_closure, closure));
     absl::Cleanup pop_closure = [this]() {
             auto s = PopCTEs();
             if (!s.isOK()) {
@@ -1058,15 +1056,17 @@ Status BatchModeTransformer::TransformQueryPlan(const ::hybridse::node::QueryPla
         // finialize CTEs for the project node
         with_out->SetCTEs(closure_);
 
-        // update CTE Context for next iterating
-        if (closure.ctes.contains(with_entry->alias_)) {
+        // update CTE environment for next iterating
+        if (env.ctes.contains(with_entry->alias_)) {
             FAIL_STATUS(common::kPlanError, "multiple CTEs in the same WITH clause can't have same name: ",
                         with_entry->alias_);
         }
 
-        closure.ctes[with_entry->alias_] = with_out;
-        ReplaceCTEs(node_manager_->MakeObj<internal::CTEContext>(parent_closure, closure));
+        env.ctes[with_entry->alias_] = with_out;
+        ReplaceClosure(node_manager_->MakeObj<internal::Closure>(parent_closure, env));
     }
+    // empty new Closure may pushed as a repect to with clause
+    PushCTEEnv(env);
 
     return TransformPlanOp(node->GetChildren()[0], output);
 }
@@ -2497,11 +2497,11 @@ Status RequestModeTransformer::TransformLoadDataOp(const node::LoadDataPlanNode*
     FAIL_STATUS(common::kPlanError, "Non-support LoadData in request mode");
 }
 
-void BatchModeTransformer::PushCTEs(const internal::CTEClosure& clu) {
-    closure_ = node_manager_->MakeObj<internal::CTEContext>(closure_, clu);
+void BatchModeTransformer::PushCTEEnv(const internal::CTEEnv& env) {
+    closure_ = node_manager_->MakeObj<internal::Closure>(closure_, env);
 }
 
-void BatchModeTransformer::ReplaceCTEs(internal::CTEContext* clu) {
+void BatchModeTransformer::ReplaceClosure(internal::Closure* clu) {
     closure_ = clu;
 }
 

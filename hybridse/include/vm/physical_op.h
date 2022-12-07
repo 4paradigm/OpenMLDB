@@ -464,9 +464,9 @@ class PhysicalOpNode : public node::NodeBase<PhysicalOpNode> {
      */
     size_t GetNodeId() const { return node_id(); }
 
-    internal::CTEContext *GetCTEs() const { return ctes_; }
+    internal::Closure *GetCTEs() const { return ctes_; }
 
-    void SetCTEs(internal::CTEContext *ctx) { ctes_ = ctx; }
+    void SetCTEs(internal::Closure *ctx) { ctes_ = ctx; }
 
  protected:
     const PhysicalOpType type_;
@@ -480,7 +480,7 @@ class PhysicalOpNode : public node::NodeBase<PhysicalOpNode> {
     std::vector<PhysicalOpNode *> producers_;
 
     SchemasContext schemas_ctx_;
-    internal::CTEContext* ctes_;
+    internal::Closure* ctes_;
 };
 
 class PhysicalUnaryNode : public PhysicalOpNode {

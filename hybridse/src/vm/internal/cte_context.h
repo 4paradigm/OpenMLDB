@@ -54,41 +54,40 @@ namespace internal {
 // 2. Each CTE in the same `WITH` clause must have a unique name.
 // 3. A local CTE can overrides an outer CTE or table with the same name.
 
-// CTEContext
-//   Single level captured CTEs visible to a query
-struct CTEClosure {
+// CTE Environment: Single level captured CTEs visible to a query
+struct CTEEnv {
     // Empty Context
-    CTEClosure() = default;
+    CTEEnv() = default;
 
     // Copy Constructor
-    CTEClosure(const CTEClosure&) = default;
+    CTEEnv(const CTEEnv&) = default;
 
     // No move constructor
-    CTEClosure(CTEClosure&&) = delete;
+    CTEEnv(CTEEnv&&) = delete;
 
-    friend bool operator==(const CTEClosure& lhs, const CTEClosure& rhs) { return absl::c_equal(lhs.ctes, rhs.ctes); }
+    friend bool operator==(const CTEEnv& lhs, const CTEEnv& rhs) { return absl::c_equal(lhs.ctes, rhs.ctes); }
 
     absl::flat_hash_map<absl::string_view, PhysicalOpNode*> ctes;
 };
 
 // All captured CTEs visible to a query
-struct CTEContext : ::hybridse::base::FeBaseObject {
-    CTEContext() = default;
+struct Closure : ::hybridse::base::FeBaseObject {
+    Closure() = default;
     // outermost closure
-    explicit CTEContext(const CTEClosure& c) : clu(c) { InitCache(); }
+    explicit Closure(const CTEEnv& c) : clu(c) { InitCache(); }
 
     // new closure from parent closure and captured CTEs current level
-    CTEContext(CTEContext* p, const CTEClosure& c) : parent(p), clu(c) { InitCache(); }
+    Closure(Closure* p, const CTEEnv& c) : parent(p), clu(c) { InitCache(); }
 
-    ~CTEContext() override {}
+    ~Closure() override {}
 
-    friend bool operator==(const CTEContext& lhs, const CTEContext& rhs) {
+    friend bool operator==(const Closure& lhs, const Closure& rhs) {
         return base::GeneralPtrEq(lhs.parent, rhs.parent) && lhs.clu == rhs.clu &&
                absl::c_equal(lhs.cte_map, rhs.cte_map);
     }
 
-    CTEContext* parent = nullptr;
-    CTEClosure clu;
+    Closure* parent = nullptr;
+    CTEEnv clu;
 
     // cached map to archive O(1) query
     absl::flat_hash_map<absl::string_view, std::stack<PhysicalOpNode*>> cte_map;

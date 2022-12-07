@@ -47,7 +47,7 @@ using hybridse::passes::PhysicalPlanPassType;
 class LogicalOp {
  public:
     // param node can't be null
-    explicit LogicalOp(const node::PlanNode* node, const internal::CTEContext* ctx) ABSL_ATTRIBUTE_NONNULL(2)
+    explicit LogicalOp(const node::PlanNode* node, const internal::Closure* ctx) ABSL_ATTRIBUTE_NONNULL(2)
         : node_(node), ctx_(ctx) {}
 
     const size_t Hash() const { return static_cast<size_t>(node_->GetType()); }
@@ -59,7 +59,7 @@ class LogicalOp {
     friend std::ostream& operator<<(std::ostream& output,
                                     const LogicalOp& thiz);
     const node::PlanNode* node_;
-    const internal::CTEContext* ctx_;
+    const internal::Closure* ctx_;
 };
 
 struct HashLogicalOp {
@@ -238,11 +238,11 @@ class BatchModeTransformer {
     base::Status ExtractGroupKeys(vm::PhysicalOpNode* depend, const node::ExprListNode** keys);
     Status CompleteProjectList(const node::ProjectPlanNode* project_node, PhysicalOpNode* depend) const;
 
-
-    void PushCTEs(const internal::CTEClosure& clu);
+    // in stack the new CTE environment and replace the current closure as `Closure(old_closure, cte_env)`
+    void PushCTEEnv(const internal::CTEEnv& clu);
 
     // Replace `closure_` with new `clu` as the current captured CTEs
-    void ReplaceCTEs(internal::CTEContext* clu);
+    void ReplaceClosure(internal::Closure* clu);
 
     // Pop all `CTEContext`s who all has the same parent
     ABSL_MUST_USE_RESULT
@@ -255,10 +255,10 @@ class BatchModeTransformer {
 
     typedef std::unordered_map<LogicalOp, ::hybridse::vm::PhysicalOpNode*, HashLogicalOp, EqualLogicalOp> LogicalOpMap;
 
-    // Captured CTEs Context during the transform process
+    // Captured CTEs during the transform process
     //   pointer value changes between different transform steps internally
-    //   lifetime of all CTEClosures managed by NodeManager
-    internal::CTEContext* closure_ = nullptr;
+    //   lifetime of all `Closure`s managed by NodeManager
+    internal::Closure* closure_ = nullptr;
 
  private:
     virtual Status TransformProjectPlanOpWithWindowParallel(const node::ProjectPlanNode* node, PhysicalOpNode** output);
