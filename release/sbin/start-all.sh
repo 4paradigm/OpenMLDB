@@ -30,16 +30,16 @@ echo ""
 if [[ -n "${OPENMLDB_MODE}" && ${OPENMLDB_MODE} = "cluster" ]]; then
   # start zk if OPENMLDB_USE_EXISTING_ZK_CLUSTER is not true
   if [[ "${OPENMLDB_USE_EXISTING_ZK_CLUSTER}" != "true" ]]; then
-    "$sbin"/start-zks.sh
+    "$sbin"/start-zks.sh "$@"
     sleep 5
   fi
 fi
 
 # Start Tablets
-"$sbin"/start-tablets.sh
+"$sbin"/start-tablets.sh "$@"
 
 # Start Nameservers
-"$sbin"/start-nameservers.sh
+"$sbin"/start-nameservers.sh "$@"
 
 if [[ -n "${OPENMLDB_MODE}" && ${OPENMLDB_MODE} = "cluster" ]]; then
   echo "Start recovering data..."
@@ -53,12 +53,12 @@ if [[ -n "${OPENMLDB_MODE}" && ${OPENMLDB_MODE} = "cluster" ]]; then
 fi
 
 # Start Apiservers
-"$sbin"/start-apiservers.sh
+"$sbin"/start-apiservers.sh "$@"
 
 # if in cluster mode, start taskmanager
 if [[ -n "${OPENMLDB_MODE}" && ${OPENMLDB_MODE} = "cluster" ]]; then
   # start taskmanager
-  "$sbin"/start-taskmanagers.sh
+  "$sbin"/start-taskmanagers.sh "$@"
 fi
 
 echo "OpenMLDB start success"

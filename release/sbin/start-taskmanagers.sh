@@ -24,4 +24,4 @@ sbin="$(cd "$(dirname "$0")" || exit 1; pwd)"
 cd "$home" || exit 1
 
 # start taskmanager
-bin/start.sh start taskmanager
+bin/start.sh start taskmanager "$@"

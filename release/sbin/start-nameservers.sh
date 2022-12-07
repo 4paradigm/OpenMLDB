@@ -24,7 +24,7 @@ sbin="$(cd "$(dirname "$0")" || exit 1; pwd)"
 cd "$home" || exit 1
 
 if [[ ${OPENMLDB_MODE} == "standalone" ]]; then
-  bin/start.sh start standalone_nameserver
+  bin/start.sh start standalone_nameserver "$@"
 else
   old_IFS="$IFS"
   IFS=$'\n'
@@ -35,7 +35,7 @@ else
     dir=$(echo "$line" | awk -F ' ' '{print $3}')
 
     echo "start nameserver in $dir with endpoint $host:$port "
-    cmd="cd $dir; bin/start.sh start nameserver"
+    cmd="cd $dir; bin/start.sh start nameserver $@"
     run_auto "$host" "$cmd"
   done
   IFS="$old_IFS"
