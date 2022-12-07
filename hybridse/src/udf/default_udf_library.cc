@@ -2408,7 +2408,7 @@ void DefaultUdfLibrary::InitTimeAndDateUdf() {
                 select pmod(NULL, 2);
                 -- output NULL
             @endcode
-            @since 0.6.10)");
+            @since 0.7.0)");
 
     RegisterCodeGenUdf("make_tuple")
         .variadic_args<>(
