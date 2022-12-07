@@ -93,6 +93,8 @@ case $OP in
                 START_CMD="./bin/openmldb --flagfile=./conf/${COMPONENT}.flags --enable_status_service=true"
                 # save the mon process pid, but check the component pid
                 ${MON_BINARY} "${START_CMD}" -d -s 10 -l "$LOG_DIR"/"$COMPONENT"_mon.log -m "${OPENMLDB_PID_FILE}" -p "${OPENMLDB_PID_FILE}.child"
+                # sleep for pid files
+                sleep 3
                 MON_PID=$(tr -d '\0' < "$OPENMLDB_PID_FILE")
                 PID=$(tr -d '\0' < "$OPENMLDB_PID_FILE.child")
                 echo "mon pid is $MON_PID, process pid is $PID, check $PID status"
@@ -142,6 +144,7 @@ case $OP in
             mkdir -p logs
             if [ "$DAEMON_MODE" = "true" ]; then
                 "${ROOTDIR}"/"${MON_BINARY}" "./taskmanager.sh" -d -s 10 -l "$LOG_DIR"/"$COMPONENT"_mon.log -m "${ROOTDIR}/${OPENMLDB_PID_FILE}" -p "${ROOTDIR}/${OPENMLDB_PID_FILE}.child"
+                sleep 3
                 MON_PID=$(tr -d '\0' < "${ROOTDIR}/${OPENMLDB_PID_FILE}")
                 PID=$(tr -d '\0' < "${ROOTDIR}/${OPENMLDB_PID_FILE}.child")
                 echo "mon pid is $MON_PID, process pid is $PID, check $PID status"
