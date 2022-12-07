@@ -222,10 +222,6 @@ Status UdfLibrary::RegisterDynamicUdf(const std::string& name, node::DataType re
     Status status;
     if (is_aggregate) {
         CHECK_TRUE(funs.size() == 3, kCodegenError, "cannot find function in so")
-        /*DynamicUdafRegistryHelper helper(canon_name, this, return_type, arg_types,
-                reinterpret_cast<void*>(static_cast<void (*)(UDFContext* context)>(udf::v1::init_udfcontext)),
-                funs[0], funs[1], funs[2]);
-        status = helper.Register();*/
         void* init_context_ptr =
             reinterpret_cast<void*>(static_cast<void (*)(UDFContext* context)>(udf::v1::init_udfcontext));
         DynamicUdafRegistryHelperImpl helper(canon_name, this, return_type, arg_types);
