@@ -10,6 +10,10 @@ Here is the impact when upgrading OpenMLDB:
 to other tablets, and migrate back after the upgrade.
 If there is write traffic during the upgrade, there may be data loss.
 
+```{note}
+We'll use the normal mode(background) to start the components. If you want to start them in daemon mode, please use `bash bin/start.sh start <component> mon`. In daemon mode, `bin/<component>.pid` is the mon pid，`bin/<component>.pid.child` is the component pid. The mon process is not the system service, if the mon process crashed, the component process becomes the normal background process.
+```
+
 ## 1. Upgrade Nameserver
 
 * Stop nameserver
