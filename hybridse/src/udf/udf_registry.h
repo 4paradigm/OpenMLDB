@@ -184,6 +184,15 @@ struct ExprUdfGen : public ExprUdfGenBase {
     const FType gen_func;
 };
 
+struct DynamicExprUdfGen : public ExprUdfGenBase {
+    using FType = std::function<ExprNode*(UdfResolveContext*)>;
+    explicit DynamicExprUdfGen(const FType& f) : gen_func(f) {}
+    ExprNode* gen(UdfResolveContext* ctx, const std::vector<ExprNode*>& args) override {
+        return gen_func(ctx);
+    }
+    const FType gen_func;
+};
+
 template <typename... Args>
 struct VariadicExprUdfGen : public ExprUdfGenBase {
     using FType = std::function<ExprNode*(
@@ -1272,6 +1281,9 @@ class DynamicUdafRegistryHelper : public UdfRegistryHelper {
     Status Register();
 
  private:
+    std::string GetFunName(const std::string& base_name, const std::vector<const node::TypeNode*>& arg_types);
+
+ private:
     std::string fn_name_;
     void* udfcontext_fun_ptr_;
     void* init_fn_ptr_;
@@ -1741,6 +1753,32 @@ class UdafRegistryHelperImpl : UdfRegistryHelper {
     std::vector<const node::TypeNode*> update_tys_;
     std::vector<int> update_nullable_;
     std::vector<std::string> update_tags_;
+};
+
+class DynamicUdafRegistryHelperImpl : public UdfRegistryHelper {
+ public:
+     DynamicUdafRegistryHelperImpl(const std::string& basename, UdfLibrary* library,
+             node::DataType return_type, const std::vector<node::DataType>& arg_types);
+     ~DynamicUdafRegistryHelperImpl() { finalize(); }
+
+    DynamicUdafRegistryHelperImpl& init(const std::string& fname, void* init_context_ptr, void* fn_ptr);
+    DynamicUdafRegistryHelperImpl& update(const std::string& fname, void* fn_ptr);
+    DynamicUdafRegistryHelperImpl& output(const std::string& fname, void* fn_ptr);
+
+    void finalize();
+
+ private:
+    std::vector<const node::TypeNode*> elem_tys_;
+    std::vector<int> elem_nullable_;
+    node::TypeNode* state_ty_;
+    bool state_nullable_;
+    node::TypeNode* output_ty_;
+    bool output_nullable_;
+    bool return_by_arg_;
+
+    UdafDefGen udaf_gen_;
+    std::vector<const node::TypeNode*> update_tys_;
+    std::vector<int> update_nullable_;
 };
 
 template <typename OUT, typename ST, typename... IN>

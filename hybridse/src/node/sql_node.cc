@@ -2610,46 +2610,6 @@ Status DynamicUdafFnDefNode::Validate(const std::vector<const TypeNode *> &arg_t
     }
     // init check
     CHECK_TRUE(GetStateType() != nullptr, kTypeError, "State type not inferred");
-    if (init_func() == nullptr) {
-        CHECK_TRUE(arg_types_.size() == 1, kTypeError, "Only support single input if init not set");
-    } else {
-        CHECK_TRUE(init_func()->GetReturnType() != nullptr, kTypeError)
-        CHECK_TRUE(init_func()->GetReturnType()->Equals(GetStateType()), kTypeError, "Init type expect to be ",
-                   GetStateType()->GetName(), ", but get ", init_func()->GetReturnType()->GetName());
-    }
-    // update check
-    CHECK_TRUE(update_func()->GetArgSize() == 1 + arg_types_.size(), kTypeError, "Update should take ",
-               1 + arg_types_.size(), ", get ", update_func()->GetArgSize());
-    for (size_t i = 0; i < arg_types_.size() + 1; ++i) {
-        auto arg_type = update_func()->GetArgType(i);
-        CHECK_TRUE(arg_type != nullptr, kTypeError, i, "th update argument type is not inferred");
-        if (i == 0) {
-            CHECK_TRUE(arg_type->Equals(GetStateType()), kTypeError, "Update's first argument type should be ",
-                       GetStateType()->GetName(), ", but get ", arg_type->GetName());
-        } else {
-            CHECK_TRUE(arg_type->Equals(GetElementType(i - 1)), kTypeError, "Update's ", i,
-                       "th argument type should be ", GetElementType(i - 1), ", but get ", arg_type->GetName());
-        }
-    }
-    // output check
-    if (output_func() != nullptr) {
-        CHECK_TRUE(output_func()->GetArgSize() == 1, kTypeError, "Output should take 1 arguments, but get ",
-                   output_func()->GetArgSize());
-        CHECK_TRUE(output_func()->GetArgType(0) != nullptr, kTypeError);
-        CHECK_TRUE(output_func()->GetArgType(0)->Equals(GetStateType()), kTypeError,
-                   "Output's 0th argument type should be ", GetStateType(), ", but get ",
-                   output_func()->GetArgType(0)->GetName());
-        CHECK_TRUE(output_func()->GetReturnType() != nullptr, kTypeError);
-    }
-    // actual args check
-    CHECK_TRUE(arg_types.size() == arg_types_.size(), kTypeError, GetName(), " expect ", arg_types_.size(),
-               " inputs, but get ", arg_types.size());
-    for (size_t i = 0; i < arg_types.size(); ++i) {
-        if (arg_types[i] != nullptr) {
-            CHECK_TRUE(arg_types_[i]->Equals(arg_types[i]), kTypeError, GetName(), "'s ", i, "th argument expect ",
-                       arg_types_[i]->GetName(), ", but get ", arg_types[i]->GetName());
-        }
-    }
     return Status::OK();
 }
 

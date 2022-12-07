@@ -2691,7 +2691,7 @@ class DynamicUdafFnDefNode : public FnDefNode {
  public:
     DynamicUdafFnDefNode(const std::string &name, const std::vector<const TypeNode *> &arg_types,
             ExternalFnDefNode *init_context_node, ExternalFnDefNode *init_node,
-            ExternalFnDefNode *update_node, ExternalFnDefNode *output_node)
+            FnDefNode *update_node, ExternalFnDefNode *output_node)
         : FnDefNode(kDynamicUdafFnDef),
           name_(name),
           arg_types_(arg_types),
@@ -2707,7 +2707,7 @@ class DynamicUdafFnDefNode : public FnDefNode {
 
     ExternalFnDefNode* init_contex_func() const { return init_context_node_; }
     ExternalFnDefNode* init_func() const { return init_node_; }
-    ExternalFnDefNode* update_func() const { return update_node_; }
+    FnDefNode* update_func() const { return update_node_; }
     ExternalFnDefNode* output_func() const { return output_node_; }
 
     base::Status Validate(const std::vector<const TypeNode *> &arg_types) const override;
@@ -2756,7 +2756,7 @@ class DynamicUdafFnDefNode : public FnDefNode {
     std::vector<const TypeNode *> arg_types_;
     ExternalFnDefNode *init_context_node_;
     ExternalFnDefNode *init_node_;
-    ExternalFnDefNode *update_node_;
+    FnDefNode *update_node_;
     ExternalFnDefNode *output_node_;
 };
 

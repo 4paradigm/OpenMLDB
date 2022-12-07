@@ -51,22 +51,25 @@ base::Status DynamicLibManager::ExtractFunction(const std::string& name, bool is
         handle_map_.emplace(file, so_handle);
     }
     if (is_aggregate) {
-        auto init_fun = dlsym(so_handle->handle, std::string(name + "_init").c_str());
+        std::string init_fun_name = name + "_init";
+        auto init_fun = dlsym(so_handle->handle, init_fun_name.c_str());
         if (init_fun == nullptr) {
             RemoveHandler(file);
-            return {common::kExternalUDFError, "can not find the init function: " + name};
+            return {common::kExternalUDFError, "can not find the init function: " + init_fun_name};
         }
         funs->emplace_back(init_fun);
-        auto update_fun = dlsym(so_handle->handle, std::string(name + "_update").c_str());
+        std::string update_fun_name = name + "_update";
+        auto update_fun = dlsym(so_handle->handle, update_fun_name.c_str());
         if (update_fun == nullptr) {
             RemoveHandler(file);
-            return {common::kExternalUDFError, "can not find the update function: " + name};
+            return {common::kExternalUDFError, "can not find the update function: " + update_fun_name};
         }
         funs->emplace_back(update_fun);
-        auto output_fun = dlsym(so_handle->handle, std::string(name + "_output").c_str());
+        std::string output_fun_name = name + "_output";
+        auto output_fun = dlsym(so_handle->handle, output_fun_name.c_str());
         if (output_fun == nullptr) {
             RemoveHandler(file);
-            return {common::kExternalUDFError, "can not find the output function: " + name};
+            return {common::kExternalUDFError, "can not find the output function: " + output_fun_name};
         }
         funs->emplace_back(output_fun);
     } else {

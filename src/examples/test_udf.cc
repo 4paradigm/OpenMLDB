@@ -44,3 +44,25 @@ void int2str(UDFContext* ctx, int32_t input, StringRef* output) {
     output->size_ = tmp.length();
     output->data_ = buffer;
 }
+
+
+// udaf example
+extern "C"
+UDFContext* special_sum_init(UDFContext* ctx) {
+    ctx->ptr = ctx->pool->Alloc(sizeof(int64_t));
+    *(reinterpret_cast<int64_t*>(ctx->ptr)) = 10;
+    return ctx;
+}
+
+extern "C"
+UDFContext* special_sum_update(UDFContext* ctx, int64_t input) {
+    int64_t cur = *(reinterpret_cast<int64_t*>(ctx->ptr));
+    cur += input;
+    *(reinterpret_cast<int*>(ctx->ptr)) = cur;
+    return ctx;
+}
+
+extern "C"
+int64_t special_sum_output(UDFContext* ctx) {
+    return *(reinterpret_cast<int64_t*>(ctx->ptr)) + 5;
+}

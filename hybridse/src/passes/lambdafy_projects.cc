@@ -308,18 +308,8 @@ Status LambdafyProjects::VisitAggExpr(node::CallExprNode* call,
     CHECK_STATUS(ctx_->library()->ResolveFunction(
                      fn->function_name(), agg_original_args, nm, &fn_def),
                  "Resolve original udaf for ", fn->function_name(), " failed");
-    auto origin_udaf = dynamic_cast<node::UdafDefNode*>(fn_def);
-    CHECK_TRUE(origin_udaf != nullptr, kCodegenError, fn->function_name(),
-               " is not an udaf");
-
-    // refer to original udaf's functionalities
-    auto ori_update_fn = origin_udaf->update_func();
-    auto ori_merge_fn = origin_udaf->merge_func();
-    auto ori_output_fn = origin_udaf->output_func();
-    auto ori_init = origin_udaf->init_expr();
-    CHECK_TRUE(
-        ori_init != nullptr, kCodegenError,
-        "Do not support use first element as init state for lambdafy udaf");
+    CHECK_TRUE(fn_def != nullptr && (fn_def->GetType() == node::kUdafDef || fn_def->GetType() == node::kDynamicUdafFnDef),
+            kCodegenError, fn->function_name(), " is not an udaf")
 
     // build new udaf update function
     std::vector<node::ExprNode*> actual_update_args;
@@ -362,12 +352,6 @@ Status LambdafyProjects::VisitAggExpr(node::CallExprNode* call,
             actual_update_args.push_back(transformed_child[i]);
         }
     }
-
-    // wrap actual update call into proxy update function
-    auto update_body =
-        nm->MakeFuncNode(ori_update_fn, actual_update_args, nullptr);
-    auto update_func = nm->MakeLambdaNode(proxy_update_args, update_body);
-
     std::string new_udaf_name = "window_agg_$";
     new_udaf_name.append(fn->function_name());
     new_udaf_name.append("<");
@@ -379,10 +363,38 @@ Status LambdafyProjects::VisitAggExpr(node::CallExprNode* call,
     }
     new_udaf_name.append(">");
 
-    auto new_udaf =
-        nm->MakeUdafDefNode(new_udaf_name, proxy_udaf_arg_types, ori_init,
-                            update_func, ori_merge_fn, ori_output_fn);
-    *out = nm->MakeFuncNode(new_udaf, proxy_udaf_args, nullptr);
+    if (fn_def->GetType() == node::kUdafDef) {
+        auto origin_udaf = dynamic_cast<node::UdafDefNode*>(fn_def);
+        CHECK_TRUE(origin_udaf != nullptr, kCodegenError, fn->function_name(), " is not an udaf")
+        auto ori_update_fn = origin_udaf->update_func();
+        auto ori_merge_fn = origin_udaf->merge_func();
+        auto ori_output_fn = origin_udaf->output_func();
+        auto ori_init = origin_udaf->init_expr();
+        CHECK_TRUE(ori_init != nullptr, kCodegenError,
+            "Do not support use first element as init state for lambdafy udaf");
+
+        // wrap actual update call into proxy update function
+        auto update_body = nm->MakeFuncNode(ori_update_fn, actual_update_args, nullptr);
+        auto update_func = nm->MakeLambdaNode(proxy_update_args, update_body);
+        auto new_udaf = nm->MakeUdafDefNode(new_udaf_name, proxy_udaf_arg_types,
+                ori_init, update_func, ori_merge_fn, ori_output_fn);
+        *out = nm->MakeFuncNode(new_udaf, proxy_udaf_args, nullptr);
+    } else {
+        auto origin_udaf = dynamic_cast<node::DynamicUdafFnDefNode*>(fn_def);
+        CHECK_TRUE(origin_udaf != nullptr, kCodegenError, fn->function_name(), " is not an udaf")
+        auto ori_init_contex_fn = origin_udaf->init_contex_func();
+        auto ori_init_fn = origin_udaf->init_func();
+        auto ori_update_fn = origin_udaf->update_func();
+        auto ori_output_fn = origin_udaf->output_func();
+
+        // wrap actual update call into proxy update function
+        proxy_update_args[0]->SetOutputType(ori_update_fn->GetArgType(0));
+        auto update_body = nm->MakeFuncNode(ori_update_fn, actual_update_args, nullptr);
+        auto update_func = nm->MakeLambdaNode(proxy_update_args, update_body);
+        auto new_udaf = nm->MakeDynamicUdafFnDefNode(new_udaf_name, proxy_udaf_arg_types,
+                ori_init_contex_fn, ori_init_fn, update_func, ori_output_fn);
+        *out = nm->MakeFuncNode(new_udaf, proxy_udaf_args, nullptr);
+    }
     return Status::OK();
 }
 

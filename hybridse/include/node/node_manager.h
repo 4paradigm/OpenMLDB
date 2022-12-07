@@ -360,7 +360,7 @@ class NodeManager {
     DynamicUdafFnDefNode *MakeDynamicUdafFnDefNode(
         const std::string &function_name, const std::vector<const TypeNode *> &arg_types,
         ExternalFnDefNode *init_context_node, ExternalFnDefNode *init_node,
-        ExternalFnDefNode *update_node, ExternalFnDefNode *output_node);
+        FnDefNode *update_node, ExternalFnDefNode *output_node);
 
     ExternalFnDefNode *MakeUnresolvedFnDefNode(
         const std::string &function_name);

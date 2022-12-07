@@ -48,7 +48,7 @@ Status UdfIRBuilder::BuildCall(
     // sanity checks
     auto status = fn->Validate(arg_types);
     if (!status.isOK()) {
-        LOG(WARNING) << "Validation error: " << status;
+        LOG(WARNING) << "Validation error: " << fn->GetName() << status;
     }
 
     switch (fn->GetType()) {
@@ -776,7 +776,6 @@ Status UdfIRBuilder::BuildDynamicUdafCall(const node::DynamicUdafFnDefNode* fn,
     }
     Status status;
 
-
     std::vector<::llvm::Value*> list_ptrs;
     for (size_t i = 0; i < input_num; ++i) {
         list_ptrs.push_back(args[i].GetValue(ctx_));
@@ -820,16 +819,20 @@ Status UdfIRBuilder::BuildDynamicUdafCall(const node::DynamicUdafFnDefNode* fn,
             ListIRBuilder iter_next_builder(body_begin_block, nullptr);
             UdfIRBuilder sub_udf_builder(ctx_, frame_arg_, frame_);
 
-            std::vector<NativeValue> update_args;
+            std::vector<NativeValue> update_args = {udfcontext_output};
             for (size_t i = 0; i < input_num; ++i) {
                 NativeValue next_val;
                 CHECK_STATUS(iter_next_builder.BuildIteratorNext(
                     iterators[i], elem_types[i], elem_nullable[i], &next_val));
                 update_args.push_back(next_val);
             }
+            std::vector<const node::TypeNode*> update_arg_types = { fn->update_func()->GetArgType(0) };
+            for (size_t i = 0; i < input_num; ++i) {
+                update_arg_types.push_back(elem_types[i]);
+            }
             NativeValue update_value;
             CHECK_TRUE(fn->update_func() != nullptr, kCodegenError);
-            CHECK_STATUS(sub_udf_builder.BuildExternCall(fn->update_func(), update_args, &update_value));
+            CHECK_STATUS(sub_udf_builder.BuildCall(fn->update_func(), update_arg_types, update_args, &update_value));
             return Status::OK();
         }));
 

@@ -1095,7 +1095,7 @@ SqlNode *NodeManager::MakeInputParameterNode(bool is_constant, const std::string
 DynamicUdafFnDefNode *NodeManager::MakeDynamicUdafFnDefNode(const std::string &function_name,
         const std::vector<const TypeNode *> &arg_types,
         ExternalFnDefNode *init_context_node, ExternalFnDefNode *init_node,
-        ExternalFnDefNode *update_node, ExternalFnDefNode *output_node) {
+        FnDefNode *update_node, ExternalFnDefNode *output_node) {
     return RegisterNode(new DynamicUdafFnDefNode(function_name, arg_types, init_context_node,
                 init_node, update_node, output_node));
 }

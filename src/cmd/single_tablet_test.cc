@@ -132,6 +132,64 @@ TEST_P(DBSDKTest, CreateFunction) {
                     absl::StrCat("drop database ", db_name, ";"),
                 });
 }
+
+TEST_P(DBSDKTest, CreateUdafFunction) {
+    auto cli = GetParam();
+    cs = cli->cs;
+    sr = cli->sr;
+    std::unique_ptr<::openmldb::sdk::SQLClusterRouter> sr_2;
+    if (cs->IsClusterMode()) {
+    ::openmldb::sdk::ClusterOptions copt;
+        copt.zk_cluster = mc.GetZkCluster();
+        copt.zk_path = mc.GetZkPath();
+        auto cur_cs = new ::openmldb::sdk::ClusterSDK(copt);
+        cur_cs->Init();
+        sr_2 = std::make_unique<::openmldb::sdk::SQLClusterRouter>(cur_cs);
+        sr_2->Init();
+        ProcessSQLs(sr_2.get(), {"set @@execute_mode = 'online'"});
+    }
+    hybridse::sdk::Status status;
+    std::string so_path = openmldb::test::GetParentDir(openmldb::test::GetExeDir()) + "/libtest_udf.so";
+    std::string agg_fun_str = absl::StrCat("CREATE AGGREGATE FUNCTION special_sum(x BIGINT) RETURNS BIGINT "
+                            "OPTIONS (FILE='", so_path, "');");
+    std::string db_name = "test" + GenRand();
+    std::string tb_name = "t1";
+    ProcessSQLs(sr,
+                {
+                    "set @@execute_mode = 'online'",
+                    absl::StrCat("create database ", db_name, ";"),
+                    absl::StrCat("use ", db_name, ";"),
+                    absl::StrCat("create table ", tb_name, " (c1 string, c2 bigint, c3 double);"),
+                    absl::StrCat("insert into ", tb_name, " values ('aab', 11, 1.2);"),
+                    absl::StrCat("insert into ", tb_name, " values ('aab', 12, 1.2);"),
+                    agg_fun_str
+                });
+    auto result = sr->ExecuteSQL("show functions", &status);
+    ExpectResultSetStrEq({{"Name", "Return_type", "Arg_type", "Is_aggregate", "File"},
+                          {"special_sum", "BigInt", "BigInt", "true", so_path}},
+                         result.get());
+    result = sr->ExecuteSQL("select special_sum(c2) as sumc2 from t1;", &status);
+    ASSERT_TRUE(status.IsOK());
+    ASSERT_EQ(1, result->Size());
+    result->Next();
+    int64_t value = 0;
+    result->GetInt64(0, &value);
+    ASSERT_EQ(value, 38);
+    if (cs->IsClusterMode()) {
+        ProcessSQLs(sr_2.get(), {"set @@execute_mode = 'online'", absl::StrCat("use ", db_name, ";")});
+        // check function in another sdk
+        result = sr_2->ExecuteSQL("select special_sum(c2) as sumc2 from t1;", &status);
+        ASSERT_TRUE(status.IsOK()) << status.msg;
+        ASSERT_EQ(1, result->Size());
+        result->Next();
+        int64_t value = 0;
+        result->GetInt64(0, &value);
+        ASSERT_EQ(value, 38);
+    }
+    ProcessSQLs(sr, {"DROP FUNCTION special_sum;"});
+    result = sr->ExecuteSQL("select special_sum(c2) as sumc2 from t1;", &status);
+    ASSERT_FALSE(status.IsOK());
+}
 #endif
 
 INSTANTIATE_TEST_SUITE_P(DBSDK, DBSDKTest, testing::Values(&standalone_cli, &cluster_cli));

@@ -222,10 +222,20 @@ Status UdfLibrary::RegisterDynamicUdf(const std::string& name, node::DataType re
     Status status;
     if (is_aggregate) {
         CHECK_TRUE(funs.size() == 3, kCodegenError, "cannot find function in so")
-        DynamicUdafRegistryHelper helper(canon_name, this, return_type, arg_types,
+        /*DynamicUdafRegistryHelper helper(canon_name, this, return_type, arg_types,
                 reinterpret_cast<void*>(static_cast<void (*)(UDFContext* context)>(udf::v1::init_udfcontext)),
                 funs[0], funs[1], funs[2]);
-        status = helper.Register();
+        status = helper.Register();*/
+        void* init_context_ptr =
+            reinterpret_cast<void*>(static_cast<void (*)(UDFContext* context)>(udf::v1::init_udfcontext));
+        DynamicUdafRegistryHelperImpl helper(canon_name, this, return_type, arg_types);
+        std::string lib_name = canon_name;
+        for (const auto type : arg_types) {
+            lib_name.append(".").append(node::DataTypeName(type));
+        }
+        helper.init(lib_name + ".init", init_context_ptr, funs[0])
+            .update(lib_name + ".update", funs[1])
+            .output(lib_name + ".output", funs[2]);
     } else {
         CHECK_TRUE(!funs.empty() && funs[0] != nullptr, kCodegenError, name + " is nullptr")
         void* fn = funs[0];
@@ -247,12 +257,31 @@ Status UdfLibrary::RemoveDynamicUdf(const std::string& name, const std::vector<n
     for (const auto type : arg_types) {
         lib_name.append(".").append(node::DataTypeName(type));
     }
-    std::lock_guard<std::mutex> lock(mu_);
-    if (table_.erase(canonical_name) <= 0) {
+    if (!HasFunction(canonical_name)) {
         return Status(kCodegenError, "can not find the function " + canonical_name);
     }
-    if (external_symbols_.erase(lib_name) <= 0) {
-        return Status(kCodegenError, "can not find the function " + lib_name);
+    if (IsUdaf(canonical_name)) {
+        std::lock_guard<std::mutex> lock(mu_);
+        if (table_.erase(canonical_name) <= 0) {
+            return Status(kCodegenError, "can not find the function " + canonical_name);
+        }
+        if (external_symbols_.erase(lib_name + ".init") <= 0) {
+            return Status(kCodegenError, "can not find the init function " + lib_name);
+        }
+        if (external_symbols_.erase(lib_name + ".update") <= 0) {
+            return Status(kCodegenError, "can not find the update function " + lib_name);
+        }
+        if (external_symbols_.erase(lib_name + ".output") <= 0) {
+            return Status(kCodegenError, "can not find the output function " + lib_name);
+        }
+    } else {
+        std::lock_guard<std::mutex> lock(mu_);
+        if (table_.erase(canonical_name) <= 0) {
+            return Status(kCodegenError, "can not find the function " + canonical_name);
+        }
+        if (external_symbols_.erase(lib_name) <= 0) {
+            return Status(kCodegenError, "can not find the function " + lib_name);
+        }
     }
     return lib_manager_.RemoveHandler(file);
 }
