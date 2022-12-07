@@ -262,39 +262,6 @@ Status DynamicUdfRegistry::ResolveFunction(UdfResolveContext* ctx,
     return Status::OK();
 }
 
-Status DynamicUdafRegistry::ResolveFunction(UdfResolveContext* ctx,
-                                             node::FnDefNode** result) {
-    CHECK_TRUE(extern_def_->GetReturnType() != nullptr, kCodegenError,
-               "No return type specified for ", extern_def_->GetName());
-    DLOG(INFO) << "Resolve udaf \"" << name() << "\" -> " << extern_def_->GetFlatString();
-    /*auto nm = ctx->node_manager();
-    auto state_arg = nm->MakeExprIdNode("state");
-    state_arg->SetOutputType(extern_def_->GetStateType());
-    state_arg->SetNullable(0);
-    std::vector<node::ExprNode*> update_args;
-    update_args.push_back(state_arg);
-    std::vector<const node::TypeNode*> list_types;
-    for (size_t i = 0; i < ctx->arg_size(); ++i) {
-        auto elem_arg = nm->MakeExprIdNode("elem_" + std::to_string(i));
-        auto list_type = ctx->arg_type(i);
-        CHECK_TRUE(list_type != nullptr && list_type->base() == node::kList,
-                   kCodegenError);
-        elem_arg->SetOutputType(list_type->GetGenericType(0));
-        elem_arg->SetNullable(list_type->IsGenericNullable(0));
-        update_args.push_back(elem_arg);
-        list_types.push_back(list_type);
-    }
-    UdfResolveContext update_ctx(update_args, nm, ctx->library());
-    CHECK_TRUE(extern_def_->update_func() != nullptr, kCodegenError);
-    CHECK_STATUS(
-        extern_def_->update_func()->ResolveFunction(&update_ctx, &update_func),
-        "Resolve update function of ", name(), " failed");
-    *result = nm->MakeDynamicUdafFnDefNode(name(), list_types, extern_def_->init_contex_func(),
-            extern_def_->init_func(), update_func, extern_def_->output_func());*/
-    *result = extern_def_;
-    return Status::OK();
-}
-
 Status SimpleUdfRegistry::ResolveFunction(UdfResolveContext* ctx,
                                           node::FnDefNode** result) {
     *result = fn_def_;
@@ -399,88 +366,6 @@ Status DynamicUdfRegistryHelper::Register() {
     library()->AddExternalFunction(fn_name_, fn_ptr_);
     this->InsertRegistry(arg_types_, false, registry);
     LOG(INFO) << "register function success. name: " << fn_name_ << " return type:" << return_type_->GetName();
-    return Status::OK();
-}
-
-DynamicUdafRegistryHelper::DynamicUdafRegistryHelper(const std::string& basename, UdfLibrary* library,
-        node::DataType return_type, const std::vector<node::DataType>& arg_types,
-        void* udfcontext_fun, void* init_fn_ptr, void* update_fn_ptr, void* output_fn_ptr)
-    : UdfRegistryHelper(basename, library), fn_name_(basename), udfcontext_fun_ptr_(udfcontext_fun),
-    init_fn_ptr_(init_fn_ptr), update_fn_ptr_(update_fn_ptr), output_fn_ptr_(output_fn_ptr) {
-
-    auto nm = node_manager();
-    return_type_ = nm->MakeTypeNode(return_type);
-    for (const auto type : arg_types) {
-        auto type_node = nm->MakeTypeNode(type);
-        arg_types_.push_back(type_node);
-        fn_name_.append(".").append(type_node->GetName());
-        arg_nullable_.push_back(0);
-    }
-    switch (return_type) {
-        case node::kVarchar:
-        case node::kDate:
-        case node::kTimestamp:
-            return_by_arg_ = true;
-            break;
-        default:
-            return_by_arg_ = false;
-    }
-}
-
-std::string DynamicUdafRegistryHelper::GetFunName(const std::string& base_name,
-        const std::vector<const node::TypeNode*>& arg_types) {
-    std::string fn_name = base_name;
-    for (auto type_node : arg_types) {
-        fn_name.append(".").append(type_node->GetName());
-    }
-    return fn_name;
-}
-
-Status DynamicUdafRegistryHelper::Register() {
-    if (udfcontext_fun_ptr_ == nullptr || init_fn_ptr_ == nullptr
-            || update_fn_ptr_ == nullptr || output_fn_ptr_ == nullptr) {
-        LOG(WARNING) << "fun_ptr is null";
-        return Status(kCodegenError, "fun_ptr is null");
-    }
-    if (return_type_ == nullptr) {
-        LOG(WARNING) << "No return type specified for udf registry " << name();
-        return Status(kCodegenError, "No return type specified for udf registry");;
-    }
-    std::string init_context_fn_name = "init_udfcontext.opaque";
-    auto type_node = node_manager()->MakeOpaqueType(sizeof(UDFContext));
-    auto init_context_node = node_manager()->MakeExternalFnDefNode(
-            init_context_fn_name, udfcontext_fun_ptr_, type_node, false, {}, {}, -1, true);
-
-    auto void_type_node = node_manager()->MakeTypeNode(node::DataType::kVoid);
-
-    std::string init_fn_name = GetFunName(name() + "_init", {type_node});
-    auto init_node = node_manager()->MakeExternalFnDefNode(init_fn_name, init_fn_ptr_,
-            void_type_node, false, {type_node}, {0}, -1, false);
-    std::vector<const node::TypeNode *> new_arg_types = {type_node};
-    new_arg_types.insert(new_arg_types.end(), arg_types_.begin(), arg_types_.end());
-    std::vector<int> new_arg_nullable = {0};
-    new_arg_nullable.insert(new_arg_nullable.end(), arg_nullable_.begin(), arg_nullable_.end());
-    std::string update_fn_name = GetFunName(name() + "_update", new_arg_types);
-    auto update_node = node_manager()->MakeExternalFnDefNode(update_fn_name, update_fn_ptr_,
-            void_type_node, false, new_arg_types, new_arg_nullable, -1, false);
-
-    std::string output_fn_name = GetFunName(name() + "_output", {type_node});
-    auto output_node = node_manager()->MakeExternalFnDefNode(output_fn_name, output_fn_ptr_,
-            return_type_, return_by_arg_, {type_node}, {0}, -1, false);
-
-    std::vector<const node::TypeNode*> input_list_types;
-    for (auto elem_ty : arg_types_) {
-        input_list_types.push_back(node_manager()->MakeTypeNode(node::kList, elem_ty));
-    }
-    auto def = node_manager()->MakeDynamicUdafFnDefNode(
-        fn_name_, input_list_types, init_context_node, init_node, update_node, output_node);
-    auto registry = std::make_shared<DynamicUdafRegistry>(name(), def);
-    library()->AddExternalFunction(init_fn_name, init_fn_ptr_);
-    library()->AddExternalFunction(update_fn_name, update_fn_ptr_);
-    library()->AddExternalFunction(output_fn_name, output_fn_ptr_);
-    this->InsertRegistry(input_list_types, false, registry);
-    library()->SetIsUdaf(name(), input_list_types.size());
-    LOG(INFO) << "register function success. name: " << name() << " return type:" << return_type_->GetName();
     return Status::OK();
 }
 

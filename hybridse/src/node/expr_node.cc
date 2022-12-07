@@ -988,6 +988,70 @@ LambdaNode* LambdaNode::DeepCopy(NodeManager* nm) const {
     }
 }
 
+ExternalFnDefNode* ExternalFnDefNode::ShadowCopy(NodeManager* nm) const {
+    return DeepCopy(nm);
+}
+
+ExternalFnDefNode* ExternalFnDefNode::DeepCopy(NodeManager* nm) const {
+    if (IsResolved()) {
+        return nm->MakeExternalFnDefNode(function_name(), function_ptr(),
+                                         GetReturnType(), IsReturnNullable(),
+                                         arg_types_, arg_nullable_,
+                                         variadic_pos(), return_by_arg());
+    } else {
+        return nm->MakeUnresolvedFnDefNode(function_name());
+    }
+}
+
+DynamicUdfFnDefNode* DynamicUdfFnDefNode::ShadowCopy(NodeManager* nm) const {
+    return DeepCopy(nm);
+}
+
+DynamicUdfFnDefNode* DynamicUdfFnDefNode::DeepCopy(NodeManager* nm) const {
+    if (IsResolved()) {
+        return nm->MakeDynamicUdfFnDefNode(GetName(), function_ptr(),
+                                         GetReturnType(), IsReturnNullable(),
+                                         arg_types_, arg_nullable_,
+                                         return_by_arg(),
+                                         init_context_node_ == nullptr ? nullptr : init_context_node_->DeepCopy(nm));
+    } else {
+        return nm->MakeDynamicUdfFnDefNode(GetName(), nullptr, nullptr, true, {}, {}, false, nullptr);
+    }
+}
+
+UdfDefNode* UdfDefNode::ShadowCopy(NodeManager* nm) const {
+    return DeepCopy(nm);
+}
+
+UdfDefNode* UdfDefNode::DeepCopy(NodeManager* nm) const {
+    return nm->MakeUdfDefNode(def_);
+}
+
+UdfByCodeGenDefNode* UdfByCodeGenDefNode::ShadowCopy(NodeManager* nm) const {
+    return DeepCopy(nm);
+}
+
+UdfByCodeGenDefNode* UdfByCodeGenDefNode::DeepCopy(NodeManager* nm) const {
+    auto def_node = nm->MakeUdfByCodeGenDefNode(
+        name_, arg_types_, arg_nullable_, ret_type_, ret_nullable_);
+    def_node->SetGenImpl(this->GetGenImpl());
+    return def_node;
+}
+
+UdafDefNode* UdafDefNode::ShadowCopy(NodeManager* nm) const {
+    return nm->MakeUdafDefNode(name_, arg_types_, init_expr_, update_, merge_,
+                               output_);
+}
+
+UdafDefNode* UdafDefNode::DeepCopy(NodeManager* nm) const {
+    ExprNode* new_init = init_expr_ ? init_expr_->DeepCopy(nm) : nullptr;
+    FnDefNode* new_update = update_ ? update_->DeepCopy(nm) : nullptr;
+    FnDefNode* new_merge = merge_ ? merge_->DeepCopy(nm) : nullptr;
+    FnDefNode* new_output = output_ ? output_->DeepCopy(nm) : nullptr;
+    return nm->MakeUdafDefNode(name_, arg_types_, new_init, new_update,
+                               new_merge, new_output);
+}
+
 // Default expr deep copy: shadow copy self and deep copy children
 ExprNode* ExprNode::DeepCopy(NodeManager* nm) const {
     auto root = this->ShadowCopy(nm);

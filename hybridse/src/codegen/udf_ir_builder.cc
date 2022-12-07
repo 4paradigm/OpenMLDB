@@ -48,7 +48,7 @@ Status UdfIRBuilder::BuildCall(
     // sanity checks
     auto status = fn->Validate(arg_types);
     if (!status.isOK()) {
-        LOG(WARNING) << "Validation error: " << fn->GetName() << status;
+        LOG(WARNING) << "Validation error: " << status;
     }
 
     switch (fn->GetType()) {
@@ -72,10 +72,6 @@ Status UdfIRBuilder::BuildCall(
         case node::kUdafDef: {
             auto node = dynamic_cast<const node::UdafDefNode*>(fn);
             return BuildUdafCall(node, args, output);
-        }
-        case node::kDynamicUdafFnDef: {
-            auto node = dynamic_cast<const node::DynamicUdafFnDefNode*>(fn);
-            return BuildDynamicUdafCall(node, args, output);
         }
         case node::kLambdaDef: {
             auto node = dynamic_cast<const node::LambdaNode*>(fn);
@@ -495,8 +491,9 @@ Status UdfIRBuilder::BuildDynamicUdfCall(
     auto opaque_type_node = dynamic_cast<const node::OpaqueTypeNode*>(init_context_fn->ret_type());
     NativeValue udfcontext_output;
     UdfIRBuilder sub_udf_builder(ctx_, frame_arg_, frame_);
-    CHECK_STATUS(sub_udf_builder.BuildExternCall(init_context_fn, {}, &udfcontext_output),
-        "Build init context function call failed");
+    CHECK_STATUS(
+        sub_udf_builder.BuildExternCall(init_context_fn, {}, &udfcontext_output),
+        "Build output function call failed");
     std::vector<NativeValue> new_args = {udfcontext_output};
     new_args.insert(new_args.end(), args.begin(), args.end());
     std::vector<const node::TypeNode*> arg_types = {opaque_type_node};
@@ -744,108 +741,6 @@ Status UdfIRBuilder::BuildUdafCall(
         ::llvm::Value* delete_iter_res;
         CHECK_STATUS(iter_delete_builder.BuildIteratorDelete(
             iterators[i], elem_types[i], &delete_iter_res));
-    }
-    *output = local_output;
-    return Status::OK();
-}
-
-Status UdfIRBuilder::BuildDynamicUdafCall(const node::DynamicUdafFnDefNode* fn,
-    const std::vector<NativeValue>& args, NativeValue* output) {
-    CHECK_TRUE(fn->init_contex_func() != nullptr, kCodegenError);
-    CHECK_TRUE(fn->init_func() != nullptr, kCodegenError);
-
-    auto init_context_fn = fn->init_contex_func();
-    // auto opaque_type_node = dynamic_cast<const node::OpaqueTypeNode*>(init_context_fn->ret_type());
-    NativeValue udfcontext_output;
-    UdfIRBuilder init_context_udf_builder(ctx_, frame_arg_, frame_);
-    CHECK_STATUS(init_context_udf_builder.BuildExternCall(init_context_fn, {}, &udfcontext_output),
-        "Build init context function call failed");
-
-    NativeValue init_output;
-    UdfIRBuilder init_udf_builder(ctx_, frame_arg_, frame_);
-    CHECK_STATUS(init_udf_builder.BuildExternCall(fn->init_func(), {udfcontext_output}, &init_output),
-            "Build init function call failed")
-
-    // udaf input elements type
-    size_t input_num = fn->GetArgSize();
-    std::vector<const node::TypeNode*> elem_types(input_num);
-    std::vector<int> elem_nullable(input_num);
-    for (size_t i = 0; i < input_num; ++i) {
-        elem_types[i] = fn->GetElementType(i);
-        elem_nullable[i] = fn->IsElementNullable(i);
-    }
-    Status status;
-
-    std::vector<::llvm::Value*> list_ptrs;
-    for (size_t i = 0; i < input_num; ++i) {
-        list_ptrs.push_back(args[i].GetValue(ctx_));
-    }
-
-    // iter head
-    ::llvm::BasicBlock* head_block = ctx_->GetCurrentBlock();
-    ListIRBuilder iter_head_builder(head_block, nullptr);
-    std::vector<::llvm::Value*> iterators;
-    for (size_t i = 0; i < input_num; ++i) {
-        ::llvm::Value* iter = nullptr;
-        CHECK_STATUS(iter_head_builder.BuildIterator(list_ptrs[i], elem_types[i], &iter));
-        iterators.push_back(iter);
-    }
-
-    // local states storage
-    ::llvm::IRBuilder<> builder(ctx_->GetCurrentBlock());
-
-    CHECK_STATUS(ctx_->CreateWhile(
-        [&](::llvm::Value** has_next) {
-            // enter
-            auto enter_block = ctx_->GetCurrentBlock();
-            builder.SetInsertPoint(enter_block);
-            ListIRBuilder iter_enter_builder(enter_block, nullptr);
-            for (size_t i = 0; i < input_num; ++i) {
-                ::llvm::Value* cur_has_next = nullptr;
-                CHECK_STATUS(iter_enter_builder.BuildIteratorHasNext(
-                                 iterators[i], elem_types[i], &cur_has_next),
-                             status.str());
-                if (*has_next == nullptr) {
-                    *has_next = cur_has_next;
-                } else {
-                    *has_next = builder.CreateAnd(cur_has_next, *has_next);
-                }
-            }
-            return Status::OK();
-        },
-        [&]() {
-            // iter body
-            auto body_begin_block = ctx_->GetCurrentBlock();
-            ListIRBuilder iter_next_builder(body_begin_block, nullptr);
-            UdfIRBuilder sub_udf_builder(ctx_, frame_arg_, frame_);
-
-            std::vector<NativeValue> update_args = {udfcontext_output};
-            for (size_t i = 0; i < input_num; ++i) {
-                NativeValue next_val;
-                CHECK_STATUS(iter_next_builder.BuildIteratorNext(
-                    iterators[i], elem_types[i], elem_nullable[i], &next_val));
-                update_args.push_back(next_val);
-            }
-            std::vector<const node::TypeNode*> update_arg_types = { fn->update_func()->GetArgType(0) };
-            for (size_t i = 0; i < input_num; ++i) {
-                update_arg_types.push_back(elem_types[i]);
-            }
-            NativeValue update_value;
-            CHECK_TRUE(fn->update_func() != nullptr, kCodegenError);
-            CHECK_STATUS(sub_udf_builder.BuildCall(fn->update_func(), update_arg_types, update_args, &update_value));
-            return Status::OK();
-        }));
-
-    CHECK_TRUE(fn->output_func() != nullptr, kCodegenError);
-    UdfIRBuilder sub_udf_builder_exit(ctx_, frame_arg_, frame_);
-    NativeValue local_output;
-    CHECK_STATUS(sub_udf_builder_exit.BuildExternCall(fn->output_func(), {udfcontext_output}, &local_output),
-        "Build output function call failed");
-
-    ListIRBuilder iter_delete_builder(ctx_->GetCurrentBlock(), nullptr);
-    for (size_t i = 0; i < input_num; ++i) {
-        ::llvm::Value* delete_iter_res;
-        CHECK_STATUS(iter_delete_builder.BuildIteratorDelete(iterators[i], elem_types[i], &delete_iter_res));
     }
     *output = local_output;
     return Status::OK();

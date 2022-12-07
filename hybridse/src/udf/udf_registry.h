@@ -757,17 +757,6 @@ class DynamicUdfRegistry : public UdfRegistry {
     node::DynamicUdfFnDefNode* extern_def_;
 };
 
-class DynamicUdafRegistry : public UdfRegistry {
- public:
-    explicit DynamicUdafRegistry(const std::string& name, node::DynamicUdafFnDefNode* extern_def)
-        : UdfRegistry(name), extern_def_(extern_def) {}
-
-    Status ResolveFunction(UdfResolveContext* ctx, node::FnDefNode** result) override;
-
- private:
-    node::DynamicUdafFnDefNode* extern_def_;
-};
-
 template <bool A, bool B>
 struct ConditionAnd {
     static const bool value = false;

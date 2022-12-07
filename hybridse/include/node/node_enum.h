@@ -93,7 +93,6 @@ enum SqlNodeType {
     kDeleteStmt,
     kCreateFunctionStmt,
     kDynamicUdfFnDef,
-    kDynamicUdafFnDef,
     kUnknow = -1
 };
 

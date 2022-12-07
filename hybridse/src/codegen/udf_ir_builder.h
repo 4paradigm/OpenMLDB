@@ -66,10 +66,6 @@ class UdfIRBuilder {
                          const std::vector<NativeValue>& args,
                          NativeValue* output);
 
-    Status BuildDynamicUdafCall(const node::DynamicUdafFnDefNode* fn,
-                                const std::vector<NativeValue>& args,
-                                NativeValue* output);
-
     Status GetUdfCallee(const node::UdfDefNode* fn,
                         ::llvm::FunctionCallee* callee, bool* return_by_arg);
 

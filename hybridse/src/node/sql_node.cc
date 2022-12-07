@@ -1217,9 +1217,6 @@ std::string NameOfSqlNodeType(const SqlNodeType &type) {
         case kDynamicUdfFnDef:
             output = "kDynamicUdfFnDef";
             break;
-        case kDynamicUdafFnDef:
-            output = "kDynamicUdafFnDef";
-            break;
         case kUnknow:
             output = "kUnknow";
             break;
@@ -2300,57 +2297,6 @@ Status DynamicUdfFnDefNode::Validate(const std::vector<const TypeNode *> &actual
     return ValidateArgs(function_name_, actual_types, arg_types_, -1);
 }
 
-ExternalFnDefNode* ExternalFnDefNode::ShadowCopy(NodeManager* nm) const {
-    return DeepCopy(nm);
-}
-
-ExternalFnDefNode* ExternalFnDefNode::DeepCopy(NodeManager* nm) const {
-    if (IsResolved()) {
-        return nm->MakeExternalFnDefNode(function_name(), function_ptr(),
-                                         GetReturnType(), IsReturnNullable(),
-                                         arg_types_, arg_nullable_,
-                                         variadic_pos(), return_by_arg());
-    } else {
-        return nm->MakeUnresolvedFnDefNode(function_name());
-    }
-}
-
-DynamicUdfFnDefNode* DynamicUdfFnDefNode::ShadowCopy(NodeManager* nm) const {
-    return DeepCopy(nm);
-}
-
-DynamicUdfFnDefNode* DynamicUdfFnDefNode::DeepCopy(NodeManager* nm) const {
-    if (IsResolved()) {
-        return nm->MakeDynamicUdfFnDefNode(GetName(), function_ptr(),
-                                         GetReturnType(), IsReturnNullable(),
-                                         arg_types_, arg_nullable_,
-                                         return_by_arg(),
-                                         init_context_node_ == nullptr ? nullptr : init_context_node_->DeepCopy(nm));
-    } else {
-        return nm->MakeDynamicUdfFnDefNode(GetName(), nullptr, nullptr, true, {}, {}, false, nullptr);
-    }
-}
-
-UdfDefNode* UdfDefNode::ShadowCopy(NodeManager* nm) const {
-    return DeepCopy(nm);
-}
-
-UdfDefNode* UdfDefNode::DeepCopy(NodeManager* nm) const {
-    return nm->MakeUdfDefNode(def_);
-}
-
-UdfByCodeGenDefNode* UdfByCodeGenDefNode::ShadowCopy(NodeManager* nm) const {
-    return DeepCopy(nm);
-}
-
-UdfByCodeGenDefNode* UdfByCodeGenDefNode::DeepCopy(NodeManager* nm) const {
-    auto def_node = nm->MakeUdfByCodeGenDefNode(
-        name_, arg_types_, arg_nullable_, ret_type_, ret_nullable_);
-    def_node->SetGenImpl(this->GetGenImpl());
-    return def_node;
-}
-
-
 void UdfDefNode::Print(std::ostream &output, const std::string &tab) const {
     output << tab << "UdfDefNode {\n";
     def_->Print(output, tab + INDENT);
@@ -2528,89 +2474,6 @@ void UdafDefNode::Print(std::ostream &output, const std::string &org_tab) const 
     PrintSqlNode(output, tab, merge_, "merge", false);
     output << "\n";
     PrintSqlNode(output, tab, output_, "output", true);
-}
-
-UdafDefNode* UdafDefNode::ShadowCopy(NodeManager* nm) const {
-    return nm->MakeUdafDefNode(name_, arg_types_, init_expr_, update_, merge_,
-                               output_);
-}
-
-UdafDefNode* UdafDefNode::DeepCopy(NodeManager* nm) const {
-    ExprNode* new_init = init_expr_ ? init_expr_->DeepCopy(nm) : nullptr;
-    FnDefNode* new_update = update_ ? update_->DeepCopy(nm) : nullptr;
-    FnDefNode* new_merge = merge_ ? merge_->DeepCopy(nm) : nullptr;
-    FnDefNode* new_output = output_ ? output_->DeepCopy(nm) : nullptr;
-    return nm->MakeUdafDefNode(name_, arg_types_, new_init, new_update,
-                               new_merge, new_output);
-}
-
-DynamicUdafFnDefNode* DynamicUdafFnDefNode::ShadowCopy(NodeManager* nm) const {
-    return nm->MakeDynamicUdafFnDefNode(name_, arg_types_, init_context_node_, init_node_, update_node_, output_node_);
-}
-
-DynamicUdafFnDefNode* DynamicUdafFnDefNode::DeepCopy(NodeManager* nm) const {
-    auto new_init_context = init_context_node_ ? init_context_node_->DeepCopy(nm) : nullptr;
-    auto new_init = update_node_ ? init_node_->DeepCopy(nm) : nullptr;
-    auto new_update = update_node_ ? update_node_->DeepCopy(nm) : nullptr;
-    auto new_output = output_node_ ? output_node_->DeepCopy(nm) : nullptr;
-    return nm->MakeDynamicUdafFnDefNode(name_, arg_types_, new_init_context, new_init, new_update, new_output);
-}
-
-bool DynamicUdafFnDefNode::Equals(const SqlNode *node) const {
-    auto other = dynamic_cast<const DynamicUdafFnDefNode*>(node);
-    return other != nullptr && FnDefEquals(init_context_node_, other->init_contex_func())
-        && FnDefEquals(init_node_, other->init_func())
-        && FnDefEquals(update_node_, other->update_func())
-        && FnDefEquals(output_node_, other->output_func());
-}
-
-void DynamicUdafFnDefNode::Print(std::ostream &output, const std::string &org_tab) const {
-    output << org_tab << "[kDynamicUdafFDef] " << name_;
-    output << "(";
-    for (size_t i = 0; i < GetArgSize(); ++i) {
-        if (arg_types_[i] == nullptr) {
-            output << "?";
-        } else {
-            output << arg_types_[i]->GetName();
-        }
-        if (i < GetArgSize() - 1) {
-            output << ", ";
-        }
-    }
-    output << ")\n";
-    const std::string tab = org_tab + INDENT;
-    PrintSqlNode(output, tab, init_context_node_, "init_contex", false);
-    output << "\n";
-    PrintSqlNode(output, tab, init_node_, "init", false);
-    output << "\n";
-    PrintSqlNode(output, tab, update_node_, "update", false);
-    output << "\n";
-    PrintSqlNode(output, tab, output_node_, "output", true);
-}
-
-const TypeNode *DynamicUdafFnDefNode::GetElementType(size_t i) const {
-    if (i > arg_types_.size() || arg_types_[i] == nullptr || arg_types_[i]->generics_.size() < 1) {
-        return nullptr;
-    }
-    return arg_types_[i]->generics_[0];
-}
-
-bool DynamicUdafFnDefNode::IsElementNullable(size_t i) const {
-    if (i > arg_types_.size() || arg_types_[i] == nullptr || arg_types_[i]->generics_.size() < 1) {
-        return false;
-    }
-    return arg_types_[i]->generics_nullable_[0];
-}
-
-Status DynamicUdafFnDefNode::Validate(const std::vector<const TypeNode *> &arg_types) const {
-    // check non-null fields
-    CHECK_TRUE(update_func() != nullptr, kTypeError, "update func is null");
-    for (auto ty : arg_types_) {
-        CHECK_TRUE(ty != nullptr && ty->base() == kList, kTypeError, "udaf's argument type must be list");
-    }
-    // init check
-    CHECK_TRUE(GetStateType() != nullptr, kTypeError, "State type not inferred");
-    return Status::OK();
 }
 
 void CondExpr::Print(std::ostream &output, const std::string &org_tab) const {
