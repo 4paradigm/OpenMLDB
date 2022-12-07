@@ -136,6 +136,7 @@ class MiniCluster {
 
     void Close() {
         ns_.Stop(10);
+        ns_.Join();
 
         for (int i = 0; i < tablet_num_; i++) {
             tb_servers_[i].Stop(10);

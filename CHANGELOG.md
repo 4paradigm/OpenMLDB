@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.6.8] - 2022-11-29
+
+### Features
+- Support the `where` clause in the SQL batch engine (#2820 @tobegit3hub)
+- Support input and output with the JSON format in APIServer (#2813 @vagetablechicken)
+- Improve the documents (#2814 @vagetablechicken)
+
+### Code Refactoring
+#2816 @dl239, #2714 @aceforeverd
+
 ## [0.6.7] - 2022-11-22
 
 ### Features
@@ -434,6 +444,7 @@ Removed
 - openmldb-0.2.0-linux.tar.gz targets on x86_64
 - aarch64 artifacts consider experimental
 
+[0.6.8]: https://github.com/4paradigm/OpenMLDB/compare/v0.6.7...v0.6.8
 [0.6.7]: https://github.com/4paradigm/OpenMLDB/compare/v0.6.6...v0.6.7
 [0.6.6]: https://github.com/4paradigm/OpenMLDB/compare/v0.6.5...v0.6.6
 [0.6.5]: https://github.com/4paradigm/OpenMLDB/compare/v0.6.4...v0.6.5

@@ -69,3 +69,12 @@ cases:
     expect:
       success: false
       msg: The lower bound of a window frame must be less than or equal to the upper bound
+  - id: 9
+    desc: |
+      show JOB/DEPLOYMENT/JOBLOG requires target name
+    sql: |
+      SHOW JOB
+    expect:
+      success: false
+      msg: |
+        SHOW JOB statement require a target name following

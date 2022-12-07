@@ -31,7 +31,7 @@ OpenMLDB 希望能达成开发即上线的目标，让开发回归本质，而�
 
 测试可以在macOS或Linux上运行，推荐在我们提供的 OpenMLDB 镜像内进行演示测试。我们将在这个容器中启动OpenMLDB和DolphinScheduler，暴露DolphinScheduler的web端口：
 ```
-docker run -it 4pdosc/openmldb:0.6.7 bash
+docker run -it 4pdosc/openmldb:0.6.8 bash
 ```
 ```{attention}
 DolphinScheduler 需要配置租户，是操作系统的用户，并且该用户需要有 sudo 权限。所以推荐在 OpenMLDB 容器内下载并启动 DolphinScheduler。否则，请准备有sudo权限的操作系统用户。

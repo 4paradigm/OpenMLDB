@@ -73,6 +73,11 @@ class Executor:
                             "--role=ns_client",
                             "--interactive=false"]
         self.tablet_base_cmd = [self.openmldb_bin_path, "--role=client", "--interactive=false"]
+        self.sql_base_cmd = [self.openmldb_bin_path,
+                            "--zk_cluster=" + self.zk_cluster,
+                            "--zk_root_path=" + self.zk_root_path,
+                            "--role=sql_client",
+                            "--interactive=false"]
 
     def Connect(self) -> Status:
         status, endpoint = self.GetNsLeader()
@@ -97,6 +102,8 @@ class Executor:
             errout = p.stderr.read()
             p.stdout.close()
             p.stderr.close()
+            if "error msg" in output:
+                return Status(-1, output), output
             return Status(p.returncode, errout), output
         except Exception as ex:
             return Status(-1, ex), None
@@ -118,7 +125,8 @@ class Executor:
         lines = output.split("\n")
         content_is_started = False
         for line in lines:
-            if line.startswith("---------"):
+            line = line.lstrip()
+            if line.startswith("------"):
                 content_is_started = True
                 continue
             if not content_is_started:
@@ -205,7 +213,11 @@ class Executor:
         cmd.append("--cmd=gettablestatus " + tid + " " + pid)
         status, output = self.RunWithRetuncode(cmd)
         if not status.OK():
+            log.error("gettablestatus failed")
             return status, None
+        if "failed" in output:
+            log.error("gettablestatus failed")
+            return Status(-1, output), None
         result = {}
         for record in self.ParseResult(output):
             if len(record) < 4:
@@ -213,6 +225,31 @@ class Executor:
             key = "{}_{}".format(record[0], record[1])
             result[key] = record
         return Status(), result
+
+    def ShowTableStatus(self, pattern = '%') -> tuple([Status, list]):
+        cmd = list(self.sql_base_cmd)
+        cmd.append(f"--cmd=show table status like '{pattern}';")
+        status, output = self.RunWithRetuncode(cmd)
+        if not status.OK():
+            log.error("show table status failed")
+            return status, None
+        if "failed" in output:
+            log.error("show table status failed")
+            return Status(-1, output), None
+        output = self.ParseResult(output)
+        output_processed = []
+        if len(output) >= 1:
+            header = output[0]
+            output_processed.append(header)
+            col_num = len(header)
+            for i in range(1, len(output)):
+                # warnings col may be empty
+                if len(output[i]) == col_num - 1:
+                    output_processed.append(output[i] + [""])
+                elif len(output[i]) == col_num:
+                    output_processed.append(output[i])
+
+        return Status(), output_processed
 
     def LoadTable(self, endpoint, name, tid, pid, sync = True) -> Status:
         cmd = list(self.tablet_base_cmd)
@@ -268,16 +305,16 @@ class Executor:
             return Status()
         return Status(-1, "update table alive failed")
 
-    def ChangeLeader(self, database, name, pid, sync = False) -> Status:
+    def ChangeLeader(self, database, name, pid, endpoint = "auto", sync = False) -> Status:
         cmd = list(self.ns_base_cmd)
-        cmd.append("--cmd=changeleader {} {} auto".format(name, pid))
+        cmd.append("--cmd=changeleader {} {} {}".format(name, pid, endpoint))
         cmd.append("--database=" + database)
         status, output = self.RunWithRetuncode(cmd)
         if status.OK() and sync and not self.WaitingOP(database, name, pid).OK():
             return Status(-1, "changer leader failed")
         return status
 
-    def ShowOpStatus(self, database, name, pid = '') -> tuple([Status, List]):
+    def ShowOpStatus(self, database, name = '', pid = '') -> tuple([Status, List]):
         cmd = list(self.ns_base_cmd)
         cmd.append("--cmd=showopstatus {} {} ".format(name, pid))
         cmd.append("--database=" + database)
