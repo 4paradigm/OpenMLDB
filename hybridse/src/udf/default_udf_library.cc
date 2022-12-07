@@ -2059,13 +2059,13 @@ void DefaultUdfLibrary::InitTypeUdf() {
 
             @code{.sql}
                 select timestamp(1590115420000);
-                -- output 2020-05-22 10:43:40
+                -- output 1590115420000
 
-                select date("2020-05-22");
-                -- output 2020-05-22 00:00:00
+                select timestamp("2020-05-22");
+                -- output 1590076800000
 
                 select timestamp("2020-05-22 10:43:40");
-                -- output 2020-05-22 10:43:40
+                -- output 1590115420000
             @endcode
             @since 0.1.0)");
     RegisterExternal("timestamp")
@@ -2074,6 +2074,40 @@ void DefaultUdfLibrary::InitTypeUdf() {
                 v1::string_to_timestamp)))
         .return_by_arg(true)
         .returns<Nullable<Timestamp>>();
+
+    RegisterExternal("unix_timestamp")
+        .args<Date>(reinterpret_cast<void*>(
+            static_cast<void (*)(Date*, int64_t*, bool*)>(
+                v1::date_to_unix_timestamp)))
+        .return_by_arg(true)
+        .returns<Nullable<int64_t>>()
+        .doc(R"(
+            @brief Cast date or string expression to unix_timestamp. If empty string or NULL is provided, return current timestamp
+
+            Supported string style:
+              - yyyy-mm-dd
+              - yyyymmdd
+              - yyyy-mm-dd hh:mm:ss
+
+            Example:
+
+            @code{.sql}
+                select unix_timestamp("2020-05-22");
+                -- output 1590076800
+
+                select unix_timestamp("2020-05-22 10:43:40");
+                -- output 1590115420
+
+                select unix_timestamp("");
+                -- output 1670404338 (the current timestamp)
+            @endcode
+            @since 0.7.0)");
+    RegisterExternal("unix_timestamp")
+        .args<StringRef>(reinterpret_cast<void*>(
+            static_cast<void (*)(StringRef*, int64_t*, bool*)>(
+                v1::string_to_unix_timestamp)))
+        .return_by_arg(true)
+        .returns<Nullable<int64_t>>();
 }
 
 void DefaultUdfLibrary::InitTimeAndDateUdf() {
