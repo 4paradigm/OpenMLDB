@@ -35,7 +35,7 @@ else
     dir=$(echo "$line" | awk -F ' ' '{print $3}')
 
     echo "start tablet in $dir with endpoint $host:$port "
-    cmd="cd $dir; bin/start.sh start tablet $@"
+    cmd="cd $dir; bin/start.sh start tablet $*"
     run_auto "$host" "$cmd"
   done
   IFS="$old_IFS"
