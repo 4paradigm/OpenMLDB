@@ -3,7 +3,7 @@
 ## [0.6.9] - 2022-12-08
 
 ### Features
-- Add tools for pre-upgrade and post-upgrade (#2761 @zhanghaohit)
+- Add `pre-upgrade` and `post-upgrade` options in tools for upgrade (#2761 @zhanghaohit)
 - Support starting OpenMLDB with daemon (#2833 @vagetablechicken)
 - Improve the documents (#2827 @tobegit3hub, #2838 @vagetablechicken)
 
