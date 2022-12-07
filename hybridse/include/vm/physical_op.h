@@ -26,6 +26,7 @@
 #include "node/plan_node.h"
 #include "passes/expression/expr_pass.h"
 #include "vm/catalog.h"
+#include "vm/internal/cte_context.h"
 #include "vm/schemas_context.h"
 namespace hybridse {
 namespace vm {
@@ -463,6 +464,10 @@ class PhysicalOpNode : public node::NodeBase<PhysicalOpNode> {
      */
     size_t GetNodeId() const { return node_id(); }
 
+    internal::CTEContext *GetCTEs() const { return ctes_; }
+
+    void SetCTEs(internal::CTEContext *ctx) { ctes_ = ctx; }
+
  protected:
     const PhysicalOpType type_;
     const bool is_block_;
@@ -475,6 +480,7 @@ class PhysicalOpNode : public node::NodeBase<PhysicalOpNode> {
     std::vector<PhysicalOpNode *> producers_;
 
     SchemasContext schemas_ctx_;
+    internal::CTEContext* ctes_;
 };
 
 class PhysicalUnaryNode : public PhysicalOpNode {

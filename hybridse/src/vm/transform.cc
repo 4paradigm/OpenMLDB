@@ -15,16 +15,15 @@
  */
 
 #include "vm/transform.h"
+
 #include <set>
 #include <stack>
 #include <unordered_map>
+
+#include "absl/cleanup/cleanup.h"
 #include "codegen/context.h"
 #include "codegen/fn_ir_builder.h"
 #include "codegen/fn_let_ir_builder.h"
-#include "passes/physical/transform_up_physical_pass.h"
-#include "vm/physical_op.h"
-#include "vm/schemas_context.h"
-
 #include "passes/expression/expr_pass.h"
 #include "passes/lambdafy_projects.h"
 #include "passes/physical/batch_request_optimize.h"
@@ -36,7 +35,10 @@
 #include "passes/physical/long_window_optimized.h"
 #include "passes/physical/simple_project_optimized.h"
 #include "passes/physical/split_aggregation_optimized.h"
+#include "passes/physical/transform_up_physical_pass.h"
 #include "passes/physical/window_column_pruning.h"
+#include "vm/physical_op.h"
+#include "vm/schemas_context.h"
 
 namespace hybridse {
 namespace vm {
@@ -93,7 +95,7 @@ BatchModeTransformer::~BatchModeTransformer() {}
 Status BatchModeTransformer::TransformPlanOp(const node::PlanNode* node, PhysicalOpNode** output) {
     CHECK_TRUE(node != nullptr && output != nullptr, kPlanError, "Input node or output node is null");
 
-    LogicalOp logical_op = LogicalOp(node);
+    LogicalOp logical_op = LogicalOp(node, closure_);
     auto map_iter = op_map_.find(logical_op);
     // logical plan node already exist
     if (map_iter != op_map_.cend()) {
@@ -178,6 +180,7 @@ Status BatchModeTransformer::TransformPlanOp(const node::PlanNode* node, Physica
                         node::NameOfPlanNodeType(node->type_));
         }
     }
+
     op_map_[logical_op] = op;
     *output = op;
     return base::Status::OK();
@@ -972,6 +975,21 @@ Status BatchModeTransformer::TransformScanOp(const node::TablePlanNode* node,
     CHECK_TRUE(node != nullptr && output != nullptr, kPlanError,
                "Input node or output node is null");
     std::string db_name = node->db_.empty() ? db_ : node->db_;
+
+    if (db_name.empty()) {
+        auto* cur_closure = closure_;
+        auto it = cur_closure->cte_map.find(node->table_);
+        if (it != cur_closure->cte_map.end()) {
+            // just treat CTE reference as renamed node
+            auto* ref_node = it->second.top();
+
+            PhysicalRenameNode* rename = nullptr;
+            CHECK_STATUS(CreateOp(&rename, ref_node, node->table_));
+            *output = rename;
+            return Status::OK();
+        }
+    }
+
     auto table = catalog_->GetTable(db_name, node->table_);
     CHECK_TRUE(table != nullptr, kPlanError,
                "Fail to transform data provider op: table ", node->GetPathString(),
@@ -1021,6 +1039,35 @@ Status BatchModeTransformer::TransformDeleteOp(const node::DeletePlanNode* node,
 Status BatchModeTransformer::TransformQueryPlan(const ::hybridse::node::QueryPlanNode* node,
                                                 ::hybridse::vm::PhysicalOpNode** output) {
     CHECK_TRUE(node != nullptr && output != nullptr, kPlanError, "Input node or output node is null");
+
+    auto* parent_closure = closure_;
+    internal::CTEClosure closure;
+
+    // empty new CTEContext pushed as a repect to with clause
+    ReplaceCTEs(node_manager_->MakeObj<internal::CTEContext>(parent_closure, closure));
+    absl::Cleanup pop_closure = [this]() {
+            auto s = PopCTEs();
+            if (!s.isOK()) {
+                LOG(ERROR) << s;
+            }
+    };
+
+    for (auto with_entry : node->with_clauses_) {
+        PhysicalOpNode* with_out = nullptr;
+        CHECK_STATUS(TransformPlanOp(with_entry->query_, &with_out));
+        // finialize CTEs for the project node
+        with_out->SetCTEs(closure_);
+
+        // update CTE Context for next iterating
+        if (closure.ctes.contains(with_entry->alias_)) {
+            FAIL_STATUS(common::kPlanError, "multiple CTEs in the same WITH clause can't have same name: ",
+                        with_entry->alias_);
+        }
+
+        closure.ctes[with_entry->alias_] = with_out;
+        ReplaceCTEs(node_manager_->MakeObj<internal::CTEContext>(parent_closure, closure));
+    }
+
     return TransformPlanOp(node->GetChildren()[0], output);
 }
 
@@ -2448,6 +2495,20 @@ void RequestModeTransformer::ApplyPasses(PhysicalOpNode* node,
 
 Status RequestModeTransformer::TransformLoadDataOp(const node::LoadDataPlanNode* node, PhysicalOpNode** output) {
     FAIL_STATUS(common::kPlanError, "Non-support LoadData in request mode");
+}
+
+void BatchModeTransformer::PushCTEs(const internal::CTEClosure& clu) {
+    closure_ = node_manager_->MakeObj<internal::CTEContext>(closure_, clu);
+}
+
+void BatchModeTransformer::ReplaceCTEs(internal::CTEContext* clu) {
+    closure_ = clu;
+}
+
+Status BatchModeTransformer::PopCTEs() {
+    CHECK_TRUE(closure_ != nullptr, common::kPlanError, "closure is null");
+    closure_ = closure_->parent;
+    return Status::OK();
 }
 
 }  // namespace vm

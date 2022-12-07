@@ -293,7 +293,8 @@ base::Status Planner::CreateSelectQueryPlan(const node::SelectQueryNode *root, n
         project_list_id++;
     }
 
-    current_node = node_manager_->MakeProjectPlanNode(current_node, table_name, project_list_without_null, pos_mapping);
+    current_node = node_manager_->MakeNode<node::ProjectPlanNode>(current_node, table_name, project_list_without_null,
+                                                                  pos_mapping);
 
     // distinct
     if (root->distinct_opt_) {

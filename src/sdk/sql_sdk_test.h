@@ -132,6 +132,9 @@ INSTANTIATE_TEST_SUITE_P(
     testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/function/select/test_sub_select.yaml")));
 INSTANTIATE_TEST_SUITE_P(SQLSDKTestWhere, SQLSDKQueryTest,
                          testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/function/select/test_where.yaml")));
+INSTANTIATE_TEST_SUITE_P(WithClause, SQLSDKQueryTest,
+                         testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/query/with.yaml")));
+
 // Test Multiple Databases
 INSTANTIATE_TEST_SUITE_P(
     SQLSDKTestMultipleDatabases, SQLSDKQueryTest,
@@ -228,7 +231,7 @@ INSTANTIATE_TEST_SUITE_P(
 INSTANTIATE_TEST_SUITE_P(
     SQLSDKTestClusterBatchWindow, SQLSDKClusterOnlineBatchQueryTest,
     testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/function/window/test_window.yaml")));
- INSTANTIATE_TEST_SUITE_P(
+INSTANTIATE_TEST_SUITE_P(
     SQLSDKTestClusterBatchWindowExcludeCurrentTime, SQLSDKClusterOnlineBatchQueryTest,
     testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/function/window/test_window_exclude_current_time.yaml")));
 INSTANTIATE_TEST_SUITE_P(

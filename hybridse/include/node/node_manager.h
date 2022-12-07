@@ -37,6 +37,11 @@
 namespace hybridse {
 namespace node {
 
+// NodeManager
+//
+// Manual lifetime management for `base::FeBaseObject`s, including
+//   `node::SqlNode`, `node::PlanNode`, `vm::PhysicalOpNode`, `vm::Runner`,
+//   and any other `base::FeBaseObject`s like `vm::internal::CTEClosure`
 class NodeManager {
  public:
     NodeManager();
@@ -49,19 +54,27 @@ class NodeManager {
         return node_size;
     }
 
-    template <typename T, std::enable_if_t<std::is_base_of_v<SqlNode, T> || std::is_base_of_v<PlanNode, T>, int> = 0>
+    template <typename T>
     base::BaseList<T> *MakeList() {
         auto *list = new base::BaseList<T>();
         RegisterNode(list);
         return list;
     }
 
-    template <typename T, typename... Arg,
-              std::enable_if_t<std::is_base_of_v<SqlNode, T> || std::is_base_of_v<PlanNode, T>, int> = 0>
+    template <typename T, typename... Arg>
     T *MakeNode(Arg &&...arg) {
         T* node = new T(std::forward<Arg>(arg)...);
         return RegisterNode(node);
     }
+
+    // TODO(ace): merge into `MakeNode`
+    template <typename T, typename... Arg>
+    T* MakeObj(Arg && ... arg) {
+        T* obj = new T(std::forward<Arg>(arg)...);
+        node_list_.push_back(obj);
+        return obj;
+    }
+
 
     // Make xxxPlanNode
     //    PlanNode *MakePlanNode(const PlanType &type);
@@ -315,11 +328,6 @@ class NodeManager {
                                        FnNodeList *block);
 
     PlanNode *MakeGroupPlanNode(PlanNode *node, const ExprListNode *by_list);
-
-    PlanNode *MakeProjectPlanNode(
-        PlanNode *node, const std::string &table,
-        const PlanNodeList &project_list,
-        const std::vector<std::pair<uint32_t, uint32_t>> &pos_mapping);
 
     PlanNode *MakeLimitPlanNode(PlanNode *node, int limit_cnt);
 

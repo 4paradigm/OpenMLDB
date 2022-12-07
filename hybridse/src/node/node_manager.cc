@@ -880,12 +880,6 @@ PlanNode *NodeManager::MakeGroupPlanNode(PlanNode *node, const ExprListNode *by_
     node::GroupPlanNode *node_ptr = new GroupPlanNode(node, by_list);
     return RegisterNode(node_ptr);
 }
-PlanNode *NodeManager::MakeProjectPlanNode(PlanNode *node, const std::string &table,
-                                           const PlanNodeList &projection_list,
-                                           const std::vector<std::pair<uint32_t, uint32_t>> &pos_mapping) {
-    node::ProjectPlanNode *node_ptr = new ProjectPlanNode(node, table, projection_list, pos_mapping);
-    return RegisterNode(node_ptr);
-}
 PlanNode *NodeManager::MakeLimitPlanNode(PlanNode *node, int limit_cnt) {
     node::LimitPlanNode *node_ptr = new LimitPlanNode(node, limit_cnt);
     return RegisterNode(node_ptr);

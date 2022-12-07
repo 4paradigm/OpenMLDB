@@ -24,6 +24,8 @@
 #include <utility>
 #include <vector>
 
+#include "absl/base/attributes.h"
+#include "base/fe_hash.h"
 #include "base/fe_status.h"
 #include "base/graph.h"
 #include "llvm/Bitcode/BitcodeWriter.h"
@@ -44,15 +46,20 @@ using hybridse::passes::PhysicalPlanPassType;
 
 class LogicalOp {
  public:
-    explicit LogicalOp(const node::PlanNode* node) : node_(node) {}
+    // param node can't be null
+    explicit LogicalOp(const node::PlanNode* node, const internal::CTEContext* ctx) ABSL_ATTRIBUTE_NONNULL(2)
+        : node_(node), ctx_(ctx) {}
+
     const size_t Hash() const { return static_cast<size_t>(node_->GetType()); }
+
     const bool Equals(const LogicalOp& that) const {
-        return node::PlanEquals(node_, that.node_);
+        return node::PlanEquals(node_, that.node_) && base::GeneralPtrEq(ctx_, that.ctx_);
     }
 
     friend std::ostream& operator<<(std::ostream& output,
                                     const LogicalOp& thiz);
     const node::PlanNode* node_;
+    const internal::CTEContext* ctx_;
 };
 
 struct HashLogicalOp {
@@ -109,17 +116,13 @@ class BatchModeTransformer {
     virtual ~BatchModeTransformer();
     bool AddDefaultPasses();
 
-    virtual Status TransformPhysicalPlan(const ::hybridse::node::PlanNodeList& trees,
-                                         ::hybridse::vm::PhysicalOpNode** output);
-    virtual Status TransformQueryPlan(const ::hybridse::node::QueryPlanNode* node,
-                                      ::hybridse::vm::PhysicalOpNode** output);
+    Status TransformPhysicalPlan(const ::hybridse::node::PlanNodeList& trees, ::hybridse::vm::PhysicalOpNode** output);
+    ABSL_MUST_USE_RESULT
+    Status TransformQueryPlan(const ::hybridse::node::QueryPlanNode*, ::hybridse::vm::PhysicalOpNode**);
+
     virtual Status ValidatePlan(PhysicalOpNode* in);
 
     bool AddPass(PhysicalPlanPassType type);
-
-    typedef std::unordered_map<LogicalOp, ::hybridse::vm::PhysicalOpNode*,
-                               HashLogicalOp, EqualLogicalOp>
-        LogicalOpMap;
 
     // Generate function info for node's all components
     Status InitFnInfo(PhysicalOpNode* node, std::set<PhysicalOpNode*>* visited);
@@ -153,12 +156,12 @@ class BatchModeTransformer {
     PhysicalPlanContext* GetPlanContext() { return &plan_ctx_; }
 
  protected:
-    virtual Status TransformPlanOp(const ::hybridse::node::PlanNode* node,
-                                   ::hybridse::vm::PhysicalOpNode** ouput);
+    Status TransformPlanOp(const ::hybridse::node::PlanNode* node, ::hybridse::vm::PhysicalOpNode** ouput);
+
     virtual Status TransformLimitOp(const node::LimitPlanNode* node,
                                     PhysicalOpNode** output);
-    virtual Status TransformProjectPlanOp(const node::ProjectPlanNode* node,
-                                          PhysicalOpNode** output);
+    virtual Status TransformProjectPlanOp(const node::ProjectPlanNode*, PhysicalOpNode**);
+
     virtual Status TransformJoinOp(const node::JoinPlanNode* node,
                                    PhysicalOpNode** output);
     virtual Status TransformGroupOp(const node::GroupPlanNode* node,
@@ -235,9 +238,27 @@ class BatchModeTransformer {
     base::Status ExtractGroupKeys(vm::PhysicalOpNode* depend, const node::ExprListNode** keys);
     Status CompleteProjectList(const node::ProjectPlanNode* project_node, PhysicalOpNode* depend) const;
 
+
+    void PushCTEs(const internal::CTEClosure& clu);
+
+    // Replace `closure_` with new `clu` as the current captured CTEs
+    void ReplaceCTEs(internal::CTEContext* clu);
+
+    // Pop all `CTEContext`s who all has the same parent
+    ABSL_MUST_USE_RESULT
+    Status PopCTEs();
+
+ protected:
     node::NodeManager* node_manager_;
     const std::string db_;
     const std::shared_ptr<Catalog> catalog_;
+
+    typedef std::unordered_map<LogicalOp, ::hybridse::vm::PhysicalOpNode*, HashLogicalOp, EqualLogicalOp> LogicalOpMap;
+
+    // Captured CTEs Context during the transform process
+    //   pointer value changes between different transform steps internally
+    //   lifetime of all CTEClosures managed by NodeManager
+    internal::CTEContext* closure_ = nullptr;
 
  private:
     virtual Status TransformProjectPlanOpWithWindowParallel(const node::ProjectPlanNode* node, PhysicalOpNode** output);

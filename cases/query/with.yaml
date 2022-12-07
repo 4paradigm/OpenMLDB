@@ -1,0 +1,43 @@
+# with clause test
+cases:
+  - id: 0
+    desc: simple with clause
+    sql: |
+      WITH t2 as (select * from t1)
+      select * from t2;
+    inputs:
+      - name: t1
+        schema: col1:int32, std_ts:timestamp, std_date:date
+        index: index2:col1:std_ts
+        data: |
+          1, 1590115420001, 2020-05-20
+          2, 1590115421001, 2020-05-21
+          3, 1590115422001, 2020-05-22
+    expect:
+      schema: col1:int32, std_ts:timestamp, std_date:date
+      order: col1
+      data: |
+        1, 1590115420001, 2020-05-20
+        2, 1590115421001, 2020-05-21
+        3, 1590115422001, 2020-05-22
+  - id: 1
+    desc: |
+      CTE entry shadows table name
+    sql: |
+      WITH t1 as (select col1 + 1 as id, std_ts from t1)
+      select * from t1;
+    inputs:
+      - name: t1
+        schema: col1:int32, std_ts:timestamp, std_date:date
+        index: index2:col1:std_ts
+        data: |
+          1, 1590115420001, 2020-05-20
+          2, 1590115421001, 2020-05-21
+          3, 1590115422001, 2020-05-22
+    expect:
+      schema: id:int32, std_ts:timestamp
+      order: id
+      data: |
+        2, 1590115420001
+        3, 1590115421001
+        4, 1590115422001
