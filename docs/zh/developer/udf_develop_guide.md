@@ -2,7 +2,7 @@
 ## 1. 背景
 虽然OpenMLDB内置了上百个函数，以供数据科学家作数据分析和特征抽取。但是在某些场景下还是不能很好的满足要求，以往只能通过开发内置函数来实现。内置函数开发需要重新编译二进制文件等待版本发布，周期相对较长。为了便于用户快速灵活实现特定的特征计算需求，我们实现了用户动态注册函数的机制。
 
-一般SQL函数分为单行函数和聚合函数，目前我们只支持单行函数的自定义开发，预计下个版本会支持开发自定义聚合函数。关于单行函数和聚合函数的介绍可以参考[这里](./built_in_function_develop_guide.md)
+一般SQL函数分为单行函数和聚合函数，关于单行函数和聚合函数的介绍可以参考[这里](./built_in_function_develop_guide.md)
 ## 2. 开发步骤
 ### 2.1 开发自定义函数
 #### 2.1.1 C++函数名规范
@@ -35,7 +35,7 @@
     ```c++
     struct UDFContext {
         ByteMemoryPool* pool;  // 用来分配内存
-        void* ptr;             // 用来存储临时变量。目前单行函数用不到
+        void* ptr;             // 开发聚合函数时用来存储临时变量
     };
     ```
 
@@ -44,13 +44,13 @@
 
 #### 2.1.4 内存管理
 
-- 在自定义函数中，不允许使用`new`操作符或者`malloc`函数开辟空间。
+- 在自定义函数中，不允许使用`new`操作符或者`malloc`函数开辟空间，当然也不需要用`free`或者`delete`释放。
 - 若需要动态开辟空间，需要使用OpenMLDB提供的内存管理接口。函数执行完OpenMLDB会自动释放内存.
     ```c++
     char *buffer = ctx->pool->Alloc(size);
     ```
 - 一次分配空间的最大长度不能超过2M字节
-#### 2.1.5 函数实现
+#### 2.1.5 单行函数开发
 - 包含头文件udf/openmldb_udf.h 
 - 实现自定义函数逻辑
 ```c++
@@ -70,7 +70,51 @@ void cut2(UDFContext* ctx, StringRef* input, StringRef* output) {
     output->data_ = buffer;
 }
 ```
-更多udf实现参考[这里](../../../src/examples/test_udf.cc)。
+
+#### 2.1.6 聚合函数开发
+- 包含头文件udf/openmldb_udf.h 
+- 实现自定义函数逻辑
+
+开发一个聚合函数需要实现如下三个C++方法：
+- init函数。 在init函数中做一些初始化工作，如开辟中间变量的空间等。函数命名格式为："聚合函数名_init"。
+- update函数。对每一行响应字段的处理逻辑在update函数中。函数命名格式为："聚合函数名_update"。
+- output函数。处理最后的聚合值，并返回结果。函数命名格式为："聚合函数名_output"。
+
+**注**：在init函数和update函数中需要把`UDFContext*`作为返回值返回
+
+```c++
+#include "udf/openmldb_udf.h"  // 必须包含此头文件
+// 实现名称为special_sum的聚合函数
+
+extern "C"
+UDFContext* special_sum_init(UDFContext* ctx) {
+    // 开辟中间变量空间，并赋值給UDFContext中的ptr
+    ctx->ptr = ctx->pool->Alloc(sizeof(int64_t));
+    // 初始化中间变量的值
+    *(reinterpret_cast<int64_t*>(ctx->ptr)) = 10;
+    // 返回UDFContext指针，不能省略
+    return ctx;
+}
+
+extern "C"
+UDFContext* special_sum_update(UDFContext* ctx, int64_t input) {
+    // 从UDFContext中的ptr取出中间变量并更新
+    int64_t cur = *(reinterpret_cast<int64_t*>(ctx->ptr));
+    cur += input;
+    *(reinterpret_cast<int*>(ctx->ptr)) = cur;
+    // 返回UDFContext指针，不能省略
+    return ctx;
+}
+
+// 在output函数中处理聚合计算结果，并返回
+extern "C"
+int64_t special_sum_output(UDFContext* ctx) {
+    return *(reinterpret_cast<int64_t*>(ctx->ptr)) + 5;
+}
+
+```
+
+更多udf/udaf实现参考[这里](../../../src/examples/test_udf.cc)。
 
 ### 2.2 编译动态库
 - 拷贝include目录 `https://github.com/4paradigm/OpenMLDB/tree/main/include` 到某个路径下，下一步编译会用到。如/work/OpenMLDB/
@@ -111,8 +155,14 @@ g++ -shared -o libtest_udf.so examples/test_udf.cc -I /work/OpenMLDB/include -st
 
 ### 2.4 注册、删除和查看函数
 注册函数使用[CREATE FUNCTION](../reference/sql/ddl/CREATE_FUNCTION.md)
+
+注册单行函数
 ```sql
 CREATE FUNCTION cut2(x STRING) RETURNS STRING OPTIONS (FILE='libtest_udf.so');
+```
+注册聚合函数
+```sql
+CREATE AGGREGATE FUNCTION special_sum(x BIGINT) RETURNS BIGINT OPTIONS (FILE='libtest_udf.so');
 ```
 **注**:
 - 参数类型和返回值类型必须和代码的实现保持一致
