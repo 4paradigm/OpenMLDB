@@ -97,18 +97,25 @@ select * from t1;
 跨主机访问物理机上的onebox，只需将所有endpoint改为公网IP。
 
 可使用以下命令快速修改。
+
 单机版：
 ```
 sed -i s/127.0.0.1/<IP>/g openmldb/conf/standalone*
 ```
 集群版：
+
 简单地可以更改所有conf文件，
 ```
 sed -i s/127.0.0.1/<IP>/g openmldb/conf/*
+sed -i s/0.0.0.0/<IP>/g openmldb/conf/taskmanager.properties
 ```
 或者，精确的只修改集群版的配置文件。
 ```
 cd /work/openmldb/conf/ && ls | grep -v _ | xargs sed -i s/127.0.0.1/<IP>/g && cd -
+cd /work/openmldb/conf/ && ls | grep -v _ | xargs sed -i s/0.0.0.0/<IP>/g && cd -
+```
+```{note}
+集群版的ip替换，会将`zk_cluster`的IP也修改为公网地址。通常来讲，是可以的，因为zookeeper启动默认是bind `0.0.0.0`，本地server使用公网IP/0.0.0.0/localhost都能访问到。
 ```
 
 #### CLI/SDK->容器onebox
