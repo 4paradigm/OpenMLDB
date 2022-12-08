@@ -464,10 +464,6 @@ class PhysicalOpNode : public node::NodeBase<PhysicalOpNode> {
      */
     size_t GetNodeId() const { return node_id(); }
 
-    internal::Closure *GetCTEs() const { return ctes_; }
-
-    void SetCTEs(internal::Closure *ctx) { ctes_ = ctx; }
-
  protected:
     const PhysicalOpType type_;
     const bool is_block_;
@@ -480,7 +476,6 @@ class PhysicalOpNode : public node::NodeBase<PhysicalOpNode> {
     std::vector<PhysicalOpNode *> producers_;
 
     SchemasContext schemas_ctx_;
-    internal::Closure* ctes_;
 };
 
 class PhysicalUnaryNode : public PhysicalOpNode {
@@ -1642,7 +1637,7 @@ class PhysicalLimitNode : public PhysicalUnaryNode {
 
 class PhysicalRenameNode : public PhysicalUnaryNode {
  public:
-    PhysicalRenameNode(PhysicalOpNode *node, const std::string &name)
+    PhysicalRenameNode(PhysicalOpNode *node, absl::string_view name)
         : PhysicalUnaryNode(node, kPhysicalOpRename, false), name_(name) {
         output_type_ = node->GetOutputType();
     }
@@ -1655,7 +1650,7 @@ class PhysicalRenameNode : public PhysicalUnaryNode {
                                  const std::vector<PhysicalOpNode *> &children,
                                  PhysicalOpNode **out) override;
 
-    const std::string &name_;
+    const std::string name_;
 };
 
 class PhysicalDistinctNode : public PhysicalUnaryNode {

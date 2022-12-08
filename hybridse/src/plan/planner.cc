@@ -568,6 +568,20 @@ int Planner::GetPlanTreeLimitCount(node::PlanNode *node) {
     return limit_cnt;
 }
 
+base::Status Planner::ValidPlan(node::PlanNode *node) {
+    // Validate there is one and only request table in the SQL
+    std::vector<::hybridse::node::PlanNode *> request_tables;
+    CHECK_STATUS(ValidateRequestTable(node, request_tables))
+    CHECK_TRUE(!request_tables.empty(), common::kPlanError,
+               "Invalid SQL for online serving: There ia no request table exist!")
+    for (auto request_table : request_tables) {
+        dynamic_cast<node::TablePlanNode *>(request_table)->SetIsPrimary(true);
+    }
+
+    CHECK_STATUS(ValidateOnlineServingOp(node));
+    return base::Status::OK();
+}
+
 // Un-support Ops:
 // - Last Join
 //
@@ -634,6 +648,8 @@ base::Status Planner::ValidateRequestTable(node::PlanNode *node, std::vector<nod
             return base::Status::OK();
         }
         case node::kPlanTypeTable: {
+            // nodes inside with clause not verify, those nodes are checked later during physical plan transforming
+            // here we just mark the table node (probably reference to a CTE in with clause)
             if (outputs.empty()) {
                 outputs.push_back(node);
             } else {
@@ -653,8 +669,8 @@ base::Status Planner::ValidateRequestTable(node::PlanNode *node, std::vector<nod
             FAIL_STATUS(common::kPlanError, "Fail to infer a request table with invalid node", node->GetTypeName())
         }
         default: {
-            auto unary_op = dynamic_cast<const node::UnaryPlanNode *>(node);
-            CHECK_STATUS(ValidateRequestTable(unary_op->GetDepend(), outputs));
+            CHECK_TRUE(node->GetChildrenSize() > 0, common::kPlanError, "node do not have any kid");
+            CHECK_STATUS(ValidateRequestTable(node->GetChildren()[0], outputs));
             return base::Status::OK();
         }
     }
@@ -669,15 +685,7 @@ base::Status SimplePlanner::CreatePlanTree(const NodePointVector &parser_trees, 
 
                 if (!is_batch_mode_) {
                     // Validate there is one and only request table in the SQL
-                    std::vector<::hybridse::node::PlanNode*> request_tables;
-                    CHECK_STATUS(ValidateRequestTable(query_plan, request_tables))
-                    CHECK_TRUE(!request_tables.empty(), common::kPlanError,
-                               "Invalid SQL for online serving: There ia no request table exist!")
-                    for (auto request_table : request_tables) {
-                        dynamic_cast<node::TablePlanNode *>(request_table)->SetIsPrimary(true);
-                    }
-
-                    CHECK_STATUS(ValidateOnlineServingOp(query_plan));
+                    CHECK_STATUS(ValidPlan(query_plan));
                 } else {
                     if (is_cluster_optimized_) {
                         CHECK_STATUS(ValidateClusterOnlineTrainingOp(query_plan));

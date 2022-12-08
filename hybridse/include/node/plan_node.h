@@ -118,6 +118,8 @@ class RenamePlanNode : public UnaryPlanNode {
 
     const std::string table_;
 };
+
+// Refer to a table or a CTE name in with clause
 class TablePlanNode : public LeafPlanNode {
  public:
     TablePlanNode(const std::string &db, const std::string &table)

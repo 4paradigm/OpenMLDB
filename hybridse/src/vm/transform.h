@@ -187,6 +187,8 @@ class BatchModeTransformer {
     virtual Status CreatePhysicalConstProjectNode(
         node::ProjectListNode* project_list, PhysicalOpNode** output);
 
+    Status TransformWithClauseEntry(const node::WithClauseEntryPlanNode* node, PhysicalOpNode** out);
+
     base::Status CreateRequestUnionNode(PhysicalOpNode* request,
                                         PhysicalOpNode* right,
                                         const std::string& db_name,
@@ -247,6 +249,8 @@ class BatchModeTransformer {
     // Pop all `CTEContext`s who all has the same parent
     ABSL_MUST_USE_RESULT
     Status PopCTEs();
+
+    absl::StatusOr<PhysicalOpNode*> ResolveCTERef(absl::string_view tb_name, bool request_mode = false);
 
  protected:
     node::NodeManager* node_manager_;

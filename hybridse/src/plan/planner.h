@@ -54,15 +54,17 @@ class Planner {
                       std::vector<const node::WindowDefNode *> *windows);
 
     static int GetPlanTreeLimitCount(node::PlanNode *node);
+    static base::Status ValidPlan(node::PlanNode* node);
 
  protected:
+    static bool IsTable(node::PlanNode *node, node::PlanNode **output);
+    static base::Status ValidateRequestTable(node::PlanNode *node, std::vector<node::PlanNode *> &request_tables);  // NOLINT
+    static base::Status ValidateOnlineServingOp(node::PlanNode *node);
+    static base::Status ValidateClusterOnlineTrainingOp(node::PlanNode *node);
+
     // expand pure history window to current history window.
     // currently only apply to rows window
     bool ExpandCurrentHistoryWindow(std::vector<const node::WindowDefNode *> *windows);
-    bool IsTable(node::PlanNode *node, node::PlanNode **output);
-    base::Status ValidateRequestTable(node::PlanNode *node, std::vector<node::PlanNode *> &request_tables);  // NOLINT
-    base::Status ValidateOnlineServingOp(node::PlanNode *node);
-    base::Status ValidateClusterOnlineTrainingOp(node::PlanNode *node);
     base::Status CheckWindowFrame(const node::WindowDefNode *w_ptr);
     base::Status CreateQueryPlan(const node::QueryNode *root, PlanNode **plan_tree);
     base::Status CreateSelectQueryPlan(const node::SelectQueryNode *root, node::QueryPlanNode **plan_tree);

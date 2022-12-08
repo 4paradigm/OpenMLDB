@@ -22,12 +22,13 @@
 #define HYBRIDSE_SRC_VM_INTERNAL_CTE_CONTEXT_H_
 
 #include <stack>
-
-#include "base/fe_hash.h"
-#include "base/fe_object.h"
+#include <utility>
 
 #include "absl/container/flat_hash_map.h"
 #include "absl/strings/string_view.h"
+#include "base/fe_hash.h"
+#include "base/fe_object.h"
+#include "node/plan_node.h"
 
 namespace hybridse {
 namespace vm {
@@ -54,6 +55,30 @@ namespace internal {
 // 2. Each CTE in the same `WITH` clause must have a unique name.
 // 3. A local CTE can overrides an outer CTE or table with the same name.
 
+struct Closure;
+
+// single CTE record
+struct CTEEntry : public ::hybridse::base::FeBaseObject {
+    CTEEntry() = delete;
+    explicit CTEEntry(node::WithClauseEntryPlanNode* entry, Closure* c) ABSL_ATTRIBUTE_NONNULL()
+        : node(entry), closure(c) {}
+    ~CTEEntry() override {}
+
+    // origial CTE info inside WITH clause
+    node::WithClauseEntryPlanNode* node;
+
+    // corresponding closure context for the WithClauseEntry
+    Closure* closure;
+
+    // transformed physical plan for the node, might be null since the tranformation
+    // for WITH clause entry is lazy evaluated
+    PhysicalOpNode* transformed_op = nullptr;
+
+    // friend bool operator==(const CTEEntry& lhs, const CTEEntry& rhs) {
+    //     return lhs.node == rhs.node;
+    // }
+};
+
 // CTE Environment: Single level captured CTEs visible to a query
 struct CTEEnv {
     // Empty Context
@@ -67,7 +92,7 @@ struct CTEEnv {
 
     friend bool operator==(const CTEEnv& lhs, const CTEEnv& rhs) { return absl::c_equal(lhs.ctes, rhs.ctes); }
 
-    absl::flat_hash_map<absl::string_view, PhysicalOpNode*> ctes;
+    absl::flat_hash_map<absl::string_view, CTEEntry*> ctes;
 };
 
 // All captured CTEs visible to a query
@@ -90,7 +115,7 @@ struct Closure : ::hybridse::base::FeBaseObject {
     CTEEnv clu;
 
     // cached map to archive O(1) query
-    absl::flat_hash_map<absl::string_view, std::stack<PhysicalOpNode*>> cte_map;
+    absl::flat_hash_map<absl::string_view, std::stack<CTEEntry*>> cte_map;
 
  protected:
     void InitCache() {

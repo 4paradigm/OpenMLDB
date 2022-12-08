@@ -37,6 +37,7 @@
 #include "passes/physical/split_aggregation_optimized.h"
 #include "passes/physical/transform_up_physical_pass.h"
 #include "passes/physical/window_column_pruning.h"
+#include "plan/planner.h"
 #include "vm/physical_op.h"
 #include "vm/schemas_context.h"
 
@@ -171,6 +172,11 @@ Status BatchModeTransformer::TransformPlanOp(const node::PlanNode* node, Physica
         }
         case node::kPlanTypeDelete: {
             CHECK_STATUS(TransformDeleteOp(dynamic_cast<const ::hybridse::node::DeletePlanNode*>(node), &op));
+            break;
+        }
+        case node::kPlanTypeWithClauseEntry: {
+            CHECK_STATUS(
+                TransformWithClauseEntry(dynamic_cast<const ::hybridse::node::WithClauseEntryPlanNode*>(node), &op));
             break;
         }
         default: {
@@ -977,16 +983,14 @@ Status BatchModeTransformer::TransformScanOp(const node::TablePlanNode* node,
     std::string db_name = node->db_.empty() ? db_ : node->db_;
 
     if (db_name.empty()) {
-        auto* cur_closure = closure_;
-        auto it = cur_closure->cte_map.find(node->table_);
-        if (it != cur_closure->cte_map.end()) {
-            // just treat CTE reference as renamed node
-            auto* ref_node = it->second.top();
-
-            PhysicalRenameNode* rename = nullptr;
-            CHECK_STATUS(CreateOp(&rename, ref_node, node->table_));
-            *output = rename;
+        auto res = ResolveCTERef(node->table_);
+        if (res.ok()) {
+            *output = res.value();
             return Status::OK();
+        }
+
+        if (!absl::IsNotFound(res.status())) {
+            FAIL_STATUS(common::kPlanError, res.status().ToString());
         }
     }
 
@@ -1042,6 +1046,8 @@ Status BatchModeTransformer::TransformQueryPlan(const ::hybridse::node::QueryPla
 
     auto* parent_closure = closure_;
     internal::CTEEnv env;
+    // empty new Closure may pushed as a repect to with clause
+    PushCTEEnv(env);
 
     absl::Cleanup pop_closure = [this]() {
             auto s = PopCTEs();
@@ -1051,10 +1057,7 @@ Status BatchModeTransformer::TransformQueryPlan(const ::hybridse::node::QueryPla
     };
 
     for (auto with_entry : node->with_clauses_) {
-        PhysicalOpNode* with_out = nullptr;
-        CHECK_STATUS(TransformPlanOp(with_entry->query_, &with_out));
-        // finialize CTEs for the project node
-        with_out->SetCTEs(closure_);
+        // lazy evaluate WITH clause
 
         // update CTE environment for next iterating
         if (env.ctes.contains(with_entry->alias_)) {
@@ -1062,11 +1065,10 @@ Status BatchModeTransformer::TransformQueryPlan(const ::hybridse::node::QueryPla
                         with_entry->alias_);
         }
 
-        env.ctes[with_entry->alias_] = with_out;
+        auto* cte_entry = node_manager_->MakeObj<internal::CTEEntry>(with_entry, closure_);
+        env.ctes.emplace(with_entry->alias_, cte_entry);
         ReplaceClosure(node_manager_->MakeObj<internal::Closure>(parent_closure, env));
     }
-    // empty new Closure may pushed as a repect to with clause
-    PushCTEEnv(env);
 
     return TransformPlanOp(node->GetChildren()[0], output);
 }
@@ -2346,6 +2348,18 @@ Status RequestModeTransformer::TransformScanOp(const node::TablePlanNode* node,
                "Input node or output node is null");
 
     if (node->IsPrimary()) {
+        if (node->db_.empty()) {
+            auto res = ResolveCTERef(node->table_, true);
+            if (res.ok()) {
+                *output = res.value();
+                return Status::OK();
+            }
+
+            if (!absl::IsNotFound(res.status())) {
+                FAIL_STATUS(common::kPlanError, res.status().ToString());
+            }
+        }
+
         auto table = catalog_->GetTable(node->db_.empty() ? db_ : node->db_, node->table_);
         CHECK_TRUE(table != nullptr, common::kTableNotFound, "Fail to transform data_provider op: table ",
                    (node->db_.empty() ? db_ : node->db_), ".", node->table_, " not exist!");
@@ -2497,6 +2511,18 @@ Status RequestModeTransformer::TransformLoadDataOp(const node::LoadDataPlanNode*
     FAIL_STATUS(common::kPlanError, "Non-support LoadData in request mode");
 }
 
+Status BatchModeTransformer::TransformWithClauseEntry(const node::WithClauseEntryPlanNode* node, PhysicalOpNode** out) {
+    CHECK_TRUE(node != nullptr, common::kNullInputPointer);
+
+    PhysicalOpNode* transformed = nullptr;
+    CHECK_STATUS(TransformPlanOp(node->query_, &transformed));
+
+    PhysicalRenameNode* rename = nullptr;
+    CHECK_STATUS(CreateOp(&rename, transformed, node->alias_));
+    *out = rename;
+    return Status::OK();
+}
+
 void BatchModeTransformer::PushCTEEnv(const internal::CTEEnv& env) {
     closure_ = node_manager_->MakeObj<internal::Closure>(closure_, env);
 }
@@ -2509,6 +2535,45 @@ Status BatchModeTransformer::PopCTEs() {
     CHECK_TRUE(closure_ != nullptr, common::kPlanError, "closure is null");
     closure_ = closure_->parent;
     return Status::OK();
+}
+
+absl::StatusOr<PhysicalOpNode*> BatchModeTransformer::ResolveCTERef(absl::string_view tb_name, bool request_mode) {
+    auto* cur_closure = closure_;
+    auto it = cur_closure->cte_map.find(tb_name);
+    if (it != cur_closure->cte_map.end()) {
+        auto* entry = it->second.top();
+
+        if (entry->transformed_op == nullptr) {
+            if (request_mode) {
+                auto s = ::hybridse::plan::Planner::ValidPlan(entry->node->query_);
+                if (!s.isOK()) {
+                    return absl::InternalError(s.str());
+                }
+            }
+
+            {
+                // transform physical node for with clause only when actually need it
+                PhysicalOpNode* transformed = nullptr;
+                // update closure for the WithClauseEntry query transformation
+                auto* old_closure = closure_;
+                ReplaceClosure(entry->closure);
+                absl::Cleanup restore_clu = [this, old_closure]() { ReplaceClosure(old_closure); };
+
+                auto s = TransformPlanOp(entry->node, &transformed);
+                if (s.isOK()) {
+                    entry->transformed_op = transformed;
+                    return transformed;
+                }
+
+                return absl::InternalError(s.str());
+            }
+
+        } else {
+            return entry->transformed_op;
+        }
+    }
+
+    return absl::NotFoundError(absl::StrCat(tb_name, " not found"));
 }
 
 }  // namespace vm
