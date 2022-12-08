@@ -1205,7 +1205,7 @@ TEST_F(UdfIRBuilderTest, TestPMod) {
 
     // int64_t
     CheckUdf<Nullable<int64_t>, Nullable<int64_t>, Nullable<int64_t>>(fn_name, 2, -10, 3);
-    CheckUdf<Nullable<int64_t>, Nullable<int64_t>, Nullable<int64_t>>(fn_name, nullptr, -10, 0L);
+    CheckUdf<Nullable<int64_t>, Nullable<int64_t>, Nullable<int64_t>>(fn_name, nullptr, -10, static_cast<int64_t>(0));
     // int16_t
     CheckUdf<Nullable<int16_t>, Nullable<int16_t>, Nullable<int16_t>>(fn_name, 2, -10, 3);
     CheckUdf<Nullable<int16_t>, Nullable<int16_t>, Nullable<int16_t>>(fn_name, nullptr, -10, static_cast<int16_t>(0));
