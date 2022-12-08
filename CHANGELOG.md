@@ -8,9 +8,9 @@
 - Improve the documents (#2827 @tobegit3hub, #2838 @vagetablechicken)
 
 ### Bug Fixes
-- CLI may core dump if executing `show job` without job id (#2771 @aceforeverd)
-- `select count(*)` randomly get empty result after `Tablet` restart (#2835 @zhanghaohit)
-- `Tablet` may core dump if the output of SQL engine runner is `null` (#2831 @dl239)
+- The CLI may crash if executing `show job` without a job ID. (#2771 @aceforeverd)
+- `select count(*)` may return empty result after tablets restart. (#2835 @zhanghaohit)
+- A tablet may crash if the output of SQL engine runner is `null`. (#2831 @dl239)
 
 ## [0.6.8] - 2022-11-29
 
