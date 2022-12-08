@@ -2043,6 +2043,11 @@ void DefaultUdfLibrary::InitTypeUdf() {
         .doc(R"(
             @brief Cast timestamp or string expression to date
 
+            Supported string style:
+              - yyyy-mm-dd
+              - yyyymmdd
+              - yyyy-mm-dd hh:mm:ss
+
             Example:
 
             @code{.sql}
@@ -2058,6 +2063,50 @@ void DefaultUdfLibrary::InitTypeUdf() {
                 v1::string_to_date)))
         .return_by_arg(true)
         .returns<Nullable<Date>>();
+
+    RegisterExternal("datediff")
+        .args<Date, Date>(reinterpret_cast<void*>(
+            static_cast<void (*)(Date*, Date*, int32_t*, bool*)>(
+                v1::date_diff)))
+        .return_by_arg(true)
+        .returns<Nullable<int32_t>>()
+        .doc(R"(
+            @brief days difference from date1 to date2
+
+            Supported date string style:
+              - yyyy-mm-dd
+              - yyyymmdd
+              - yyyy-mm-dd hh:mm:ss
+
+            Example:
+
+            @code{.sql}
+                select datediff("2021-05-10", "2021-05-01");
+                -- output 9
+                select datediff("2021-04-10", "2021-05-01");
+                -- output -21
+                select datediff(Date("2021-04-10"), Date("2021-05-01"));
+                -- output -21
+            @endcode
+            @since 0.7.0)");
+    RegisterExternal("datediff")
+        .args<StringRef, StringRef>(reinterpret_cast<void*>(
+            static_cast<void (*)(StringRef*, StringRef*, int32_t*, bool*)>(
+                v1::date_diff)))
+        .return_by_arg(true)
+        .returns<Nullable<int32_t>>();
+    RegisterExternal("datediff")
+        .args<StringRef, Date>(reinterpret_cast<void*>(
+            static_cast<void (*)(StringRef*, Date*, int32_t*, bool*)>(
+                v1::date_diff)))
+        .return_by_arg(true)
+        .returns<Nullable<int32_t>>();
+    RegisterExternal("datediff")
+        .args<Date, StringRef>(reinterpret_cast<void*>(
+            static_cast<void (*)(Date*, StringRef*, int32_t*, bool*)>(
+                v1::date_diff)))
+        .return_by_arg(true)
+        .returns<Nullable<int32_t>>();
 
     RegisterExternal("timestamp")
         .args<Date>(reinterpret_cast<void*>(
