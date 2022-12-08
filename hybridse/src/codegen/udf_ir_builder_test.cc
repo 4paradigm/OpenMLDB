@@ -1192,6 +1192,8 @@ TEST_F(UdfIRBuilderTest, TestPMod) {
 
     // int32_t
     CheckUdf<Nullable<int32_t>, Nullable<int32_t>, Nullable<int32_t>>(fn_name, 2, -10, 3);
+    // both negative will get negative result, which is consistent with SparkSQL
+    CheckUdf<Nullable<int32_t>, Nullable<int32_t>, Nullable<int32_t>>(fn_name, -1, -10, -3);
     CheckUdf<Nullable<int32_t>, Nullable<int32_t>, Nullable<int32_t>>(fn_name, 1, 10, 3);
     CheckUdf<Nullable<int32_t>, Nullable<int32_t>, Nullable<int32_t>>(fn_name, 0, -9, 3);
     CheckUdf<Nullable<int32_t>, Nullable<int32_t>, Nullable<int32_t>>(fn_name, 0, 9, 3);
