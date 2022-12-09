@@ -85,6 +85,82 @@ static const absl::flat_hash_map<CmdType, absl::string_view>& GetCmdTypeNamesMap
   return map;
 }
 
+static absl::flat_hash_map<DataType, absl::string_view> CreateDataTypeNamesMap() {
+  absl::flat_hash_map<DataType, absl::string_view> map = {
+      {kBool, "bool"},     {kInt16, "int16"},   {kInt32, "int32"},    {kInt64, "int64"},
+      {kFloat, "float"},   {kDouble, "double"}, {kVarchar, "string"}, {kTimestamp, "timestamp"},
+      {kDate, "date"},     {kList, "list"},     {kMap, "map"},        {kIterator, "iterator"},
+      {kRow, "row"},       {kSecond, "second"}, {kMinute, "minute"},  {kHour, "hour"},
+      {kNull, "null"},     {kArray, "array"},   {kVoid, "void"},      {kPlaceholder, "placeholder"},
+      {kOpaque, "opaque"}, {kTuple, "tuple"},   {kDay, "day"},        {kInt8Ptr, "int8ptr"},
+  };
+
+  for (auto kind = 0; kind < DataType::kLastDataType; ++kind) {
+        DCHECK(map.find(static_cast<DataType>(kind)) != map.end());
+  }
+  DCHECK(map.find(kVoid) != map.end());
+  DCHECK(map.find(kNull) != map.end());
+  DCHECK(map.find(kPlaceholder) != map.end());
+
+  return map;
+}
+
+static const absl::flat_hash_map<DataType, absl::string_view>& GetDataTypeNamesMap() {
+  static const absl::flat_hash_map<DataType, std::string_view> &map = *new auto(CreateDataTypeNamesMap());
+  return map;
+}
+
+static absl::flat_hash_map<ExprType, absl::string_view> CreateExprTypeNamesMap() {
+  absl::flat_hash_map<ExprType, absl::string_view> map = {
+      {kExprPrimary, "primary"},
+      {kExprParameter, "parameter"},
+      {kExprId, "id"},
+      {kExprBinary, "binary"},
+      {kExprUnary, "unary"},
+      {kExprCall, "function"},
+      {kExprCase, "case"},
+      {kExprWhen, "when"},
+      {kExprBetween, "between"},
+      {kExprColumnRef, "column ref"},
+      {kExprColumnId, "column id"},
+      {kExprCast, "cast"},
+      {kExprAll, "all"},
+      {kExprStruct, "struct"},
+      {kExprQuery, "query"},
+      {kExprOrder, "order"},
+      {kExprGetField, "get field"},
+      {kExprCond, "cond"},
+      {kExprUnknow, "unknow"},
+      {kExprIn, "in"},
+      {kExprList, "expr_list"},
+      {kExprForIn, "for_in"},
+      {kExprRange, "range"},
+      {kExprOrderExpression, "order"},
+      {kExprEscaped, "escape"},
+      {kExprArray, "array"},
+  };
+  for (auto kind = 0; kind < ExprType::kExprLast; ++kind) {
+        DCHECK(map.find(static_cast<ExprType>(kind)) != map.end());
+  }
+  return map;
+}
+
+static const absl::flat_hash_map<ExprType, absl::string_view>& GetExprTypeNamesMap() {
+  static const absl::flat_hash_map<ExprType, std::string_view> &map = *new auto(CreateExprTypeNamesMap());
+  return map;
+}
+
+template <typename NodeType, typename Allocator>
+void PrintNodeList(const std::vector<NodeType *, Allocator> &node_list, std::ostream &output,
+                   const std::string &org_tab) {
+  for (auto iter = node_list.cbegin(); iter != node_list.cend(); iter++) {
+        (*iter)->Print(output, org_tab);
+        if (iter + 1 != node_list.end()) {
+            output << "\n";
+        }
+  }
+}
+
 bool SqlEquals(const SqlNode *left, const SqlNode *right) {
     return left == right ? true : nullptr == left ? false : left->Equals(right);
 }
@@ -1236,6 +1312,24 @@ absl::string_view CmdTypeName(const CmdType type) {
     return "undefined cmd type";
 }
 
+std::string DataTypeName(DataType type) {
+    auto &map = GetDataTypeNamesMap();
+    auto it = map.find(type);
+    if (it != map.end()) {
+        return std::string(it->second);
+    }
+    return "unknown";
+}
+
+std::string ExprTypeName(ExprType type) {
+    auto &map = GetExprTypeNamesMap();
+    auto it = map.find(type);
+    if (it != map.end()) {
+        return std::string(it->second);
+    }
+    return "unknown";
+}
+
 std::ostream &operator<<(std::ostream &output, const SqlNode &thiz) {
     thiz.Print(output, "");
     return output;
@@ -1765,18 +1859,25 @@ bool ExprNode::Equals(const ExprNode *that) const {
 }
 
 void ExprListNode::Print(std::ostream &output, const std::string &org_tab) const {
-    if (children_.empty()) {
-        return;
-    }
-    const std::string tab = org_tab + INDENT + SPACE_ED;
-    auto iter = children_.cbegin();
-    (*iter)->Print(output, org_tab);
-    iter++;
-    for (; iter != children_.cend(); iter++) {
+    PrintNodeList(children_, output, org_tab);
+}
+
+void ArrayExpr::Print(std::ostream &output, const std::string &org_tab) const {
+    ExprNode::Print(output, org_tab);
+    output << "\n";
+
+    auto sub_indent = org_tab + INDENT;
+    output << sub_indent << SPACE_ST << "values:";
+    if (!children_.empty()) {
         output << "\n";
-        (*iter)->Print(output, org_tab);
+    }
+    PrintNodeList(children_, output, sub_indent + INDENT);
+    if (specific_type_ != nullptr) {
+        output << "\n";
+        PrintValue(output, sub_indent, specific_type_->DebugString(), "type", true);
     }
 }
+
 const std::string ExprListNode::GetExprString() const {
     if (children_.empty()) {
         return "()";
@@ -1792,6 +1893,15 @@ const std::string ExprListNode::GetExprString() const {
         str.append(")");
         return str;
     }
+}
+
+// brackets (`[]`) represents array expr, prefix by the optional 'ARRAY<type>'
+const std::string ArrayExpr::GetExprString() const {
+    return absl::StrCat(
+        (specific_type_ != nullptr ? specific_type_->DebugString() : ""), "[",
+        absl::StrJoin(children_, ",",
+                      [](std::string *out, const ExprNode *expr) { absl::StrAppend(out, expr->GetExprString()); }),
+        "]");
 }
 
 void FnParaNode::Print(std::ostream &output, const std::string &org_tab) const {
@@ -1954,7 +2064,7 @@ bool TypeNode::Equals(const SqlNode *node) const {
     return this->base_ == that->base_ &&
            std::equal(
                this->generics_.cbegin(), this->generics_.cend(), that->generics_.cbegin(),
-               [&](const hybridse::node::TypeNode *a, const hybridse::node::TypeNode *b) { return a->Equals(b); });
+               [&](const hybridse::node::TypeNode *a, const hybridse::node::TypeNode *b) { return TypeEquals(a, b); });
 }
 
 void JoinNode::Print(std::ostream &output, const std::string &org_tab) const {

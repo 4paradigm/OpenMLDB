@@ -38,6 +38,99 @@ using openmldb::base::Timestamp;
 
 namespace v1 {
 
+// ============================================= //
+//       Object Lieftime Management
+//           Helper Classes
+// ============================================= //
+
+// a meta class stores all allocation info of a 'Arrayref<T>' instance
+//
+// In UDF system e.g when a external udf function has a `ArrayRef<T>*` as last parameter
+// for return info, the `ArrayRef<T>*` object require allocation before use, which are
+// `ArrayRef<T>::raw` and `ArrayRef<T>::nullables` as two arrays.
+//
+// The two arrays' lifetime will managed by JitRuntime:
+// - Allocate outside with new/malloc operation
+// - Register with `RegisterManagedObj`
+// - Free in `JitRuntime::ReleaseRunStep`
+template <typename T, typename CType = typename DataTypeTrait<T>::CCallArgType>
+struct ArrayMeta : public base::FeBaseObject {
+    ArrayMeta(CType *r, bool *nullable) : base::FeBaseObject(), raw(r), nullables(nullable) {}
+    ~ArrayMeta() override {
+        delete[] raw;
+        delete[] nullables;
+    }
+
+    CType *raw;
+    bool *nullables;
+};
+
+// OpaqueMeta
+// Mange allocated container through Jit runtime only for T is pointer.
+// This is useful when allocated a `ArrayRef<T>` parameter from a external udf call
+template <typename T, std::enable_if_t<std::is_pointer_v<T>, int> = 0>
+struct OpaqueMeta : public base::FeBaseObject {
+    explicit OpaqueMeta(T i) : inst(i) {}
+    ~OpaqueMeta() override {
+        delete inst;
+    }
+
+    T inst;
+};
+
+// ============================================= //
+//       Object Lieftime Management
+//              Interface
+// ============================================= //
+
+// register the obj to jit runtime
+void RegisterManagedObj(base::FeBaseObject* obj);
+
+/**
+ * Allocate string buffer from jit runtime.
+ */
+char *AllocManagedStringBuf(int32_t bytes);
+
+// alloc necessary space for ArrayRef and let Jit runtime manage its lifetime
+//
+// type T should be of UDF type systems: bool/intxx/float/double/StringRef/TimeStamp/Date
+template <typename T>
+void AllocManagedArray(ArrayRef<T>* arr, uint64_t sz) {
+    assert(arr != nullptr);
+
+    if (sz == 0) {
+        return;
+    }
+
+    using CType = typename std::remove_pointer_t<decltype(ArrayRef<T>::raw)>;
+
+    CType* raw = new CType[sz];
+
+    // alloc space for array elements if they are pointers
+    if constexpr (std::is_pointer_v<CType>) {
+        for (size_t i = 0; i < sz; ++i) {
+            CType inst = CCallDataTypeTrait<CType>::alloc_instance();
+
+            RegisterManagedObj(new OpaqueMeta<CType>(inst));
+
+            raw[i] = inst;
+        }
+    }
+
+    auto nulls = new bool[sz];
+
+    RegisterManagedObj(new ArrayMeta<T>(raw, nulls));
+
+    arr->raw = raw;
+    arr->nullables = nulls;
+    arr->size = sz;
+}
+
+
+// ============================================= //
+//       External UDF defines
+// ============================================= //
+
 template <class V>
 struct Abs {
     using Args = std::tuple<V>;
@@ -310,10 +403,6 @@ void replace(StringRef *str, StringRef *search, StringRef *output, bool *is_null
 
 void init_udfcontext(UDFContext* context);
 void trivial_fun();
-/**
- * Allocate string buffer from jit runtime.
- */
-char *AllocManagedStringBuf(int32_t bytes);
 
 template <class V>
 struct ToString {

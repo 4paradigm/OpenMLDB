@@ -552,6 +552,24 @@ struct TopKDef {
     }
 };
 
+void DefaultUdfLibrary::Init() {
+    udf::RegisterNativeUdfToModule(this);
+    InitLogicalUdf();
+    InitTimeAndDateUdf();
+    InitTypeUdf();
+    InitMathUdf();
+    InitStringUdf();
+
+    InitWindowFunctions();
+    InitUdaf();
+    InitFeatureZero();
+
+    InitArrayUdfs();
+
+    AddExternalFunction("init_udfcontext.opaque",
+            reinterpret_cast<void*>(static_cast<void (*)(UDFContext* context)>(udf::v1::init_udfcontext)));
+}
+
 void DefaultUdfLibrary::InitStringUdf() {
     RegisterExternalTemplate<v1::ToHex>("hex")
         .args_in<int16_t, int32_t, int64_t, float, double>()
@@ -2396,22 +2414,6 @@ void DefaultUdfLibrary::InitTimeAndDateUdf() {
                 *out = NativeValue::CreateTuple(args);
                 return Status::OK();
             });
-}
-
-void DefaultUdfLibrary::Init() {
-    udf::RegisterNativeUdfToModule(this);
-    InitLogicalUdf();
-    InitTimeAndDateUdf();
-    InitTypeUdf();
-    InitMathUdf();
-    InitStringUdf();
-
-    InitWindowFunctions();
-    InitUdaf();
-    InitFeatureZero();
-
-    AddExternalFunction("init_udfcontext.opaque",
-            reinterpret_cast<void*>(static_cast<void (*)(UDFContext* context)>(udf::v1::init_udfcontext)));
 }
 
 void DefaultUdfLibrary::InitUdaf() {

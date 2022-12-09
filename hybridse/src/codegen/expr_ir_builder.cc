@@ -21,6 +21,7 @@
 #include <vector>
 
 #include "base/numeric.h"
+#include "codegen/array_ir_builder.h"
 #include "codegen/buf_ir_builder.h"
 #include "codegen/cond_select_ir_builder.h"
 #include "codegen/context.h"
@@ -87,9 +88,9 @@ Status ExprIRBuilder::Build(const ::hybridse::node::ExprNode* node,
                             NativeValue* output) {
     CHECK_TRUE(node != nullptr && output != nullptr, kCodegenError,
                "Node or output is null");
-    std::string cache_key = "@expr(#" + std::to_string(node->node_id()) + ")";
+    std::string cache_key = absl::StrCat("@expr(#", node->node_id(), ")");
     if (frame_ != nullptr) {
-        cache_key.append(" over " + frame_->GetExprString());
+        absl::StrAppend(&cache_key, " over ", frame_->GetExprString());
     }
     if (ctx_->GetCurrentScope()->sv()->FindVar(cache_key, output)) {
         return Status::OK();
@@ -194,6 +195,10 @@ Status ExprIRBuilder::Build(const ::hybridse::node::ExprNode* node,
         }
         case ::hybridse::node::kExprEscaped: {
             CHECK_STATUS(BuildEscapeExpr(dynamic_cast<const ::hybridse::node::EscapedExpr*>(node), output));
+            break;
+        }
+        case ::hybridse::node::kExprArray: {
+            CHECK_STATUS(BuildArrayExpr(dynamic_cast<const node::ArrayExpr*>(node), output));
             break;
         }
         default: {
@@ -405,11 +410,8 @@ Status ExprIRBuilder::BuildStructExpr(const ::hybridse::node::StructExpr* node,
         for (auto each : node->GetFileds()->children) {
             node::FnParaNode* field = dynamic_cast<node::FnParaNode*>(each);
             ::llvm::Type* type = nullptr;
-            CHECK_TRUE(ConvertHybridSeType2LlvmType(field->GetParaType(),
-                                                    ctx_->GetModule(), &type),
-                       kCodegenError,
-                       "Invalid struct with unacceptable field type: " +
-                           field->GetParaType()->GetName());
+            CHECK_TRUE(GetLlvmType(ctx_->GetModule(), field->GetParaType(), &type), kCodegenError,
+                         "Invalid struct with unacceptable field type: ", field->GetParaType()->DebugString());
             members.push_back(type);
         }
     }
@@ -1131,6 +1133,43 @@ Status ExprIRBuilder::ExtractSliceFromRow(const NativeValue& input_value, const 
     *slice_size = builder.CreateIntCast(
         builder.CreateCall(get_slice_size_func, {row_ptr, slice_idx_value}),
         int32_ty, false);
+    return Status::OK();
+}
+
+Status ExprIRBuilder::BuildArrayExpr(const ::hybridse::node::ArrayExpr* node, NativeValue* output) {
+    auto array_type = dynamic_cast<const node::FixedArrayType*>(node->GetOutputType());
+    CHECK_TRUE(array_type != nullptr, kCodegenError, "not FixedArrayType");
+
+    ::llvm::Type* ele_type = nullptr;
+    CHECK_TRUE(GetLlvmType(ctx_->GetModule(), array_type->element_type(), &ele_type), kCodegenError);
+
+    llvm::IRBuilder<> builder(ctx_->GetCurrentBlock());
+
+    if (node->GetChildNum() == 0) {
+        // build empty array
+        ArrayIRBuilder ir_builder(ctx_->GetModule(), ele_type);
+        CHECK_STATUS(ir_builder.NewEmptyArray(ctx_->GetCurrentBlock(), output));
+        return Status::OK();
+    }
+
+    CastExprIRBuilder cast_builder(ctx_->GetCurrentBlock());
+    std::vector<NativeValue> elements;
+    for (auto& ele : node->children_) {
+        NativeValue val;
+        CHECK_STATUS(Build(ele, &val));
+        if (val.GetType() != ele_type) {
+            NativeValue casted;
+            CHECK_STATUS(cast_builder.Cast(val, ele_type, &casted));
+            elements.push_back(casted);
+        } else {
+            elements.push_back(val);
+        }
+    }
+
+    ::llvm::Value* num_elements = builder.getInt64(elements.size());
+    ArrayIRBuilder array_builder(ctx_->GetModule(), ele_type, num_elements);
+    CHECK_STATUS(array_builder.NewFixedArray(ctx_->GetCurrentBlock(), elements, output));
+
     return Status::OK();
 }
 }  // namespace codegen

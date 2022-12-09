@@ -19,6 +19,7 @@
 #include <string>
 #include <utility>
 
+#include "absl/base/attributes.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/strings/match.h"
 #include "base/fe_status.h"
@@ -27,27 +28,26 @@
 namespace hybridse {
 namespace plan {
 
-static inline base::Status convertShowStmt(const zetasql::ASTShowStatement* show_statement,
-                                           node::NodeManager* node_manager, node::SqlNode** output);
-
-base::Status ConvertASTType(const zetasql::ASTType* ast_type, node::DataType* output) {
-    CHECK_TRUE(nullptr != ast_type, common::kSqlAstError, "Un-support null ast type");
-    CHECK_TRUE(ast_type->IsType(), common::kSqlAstError, "Un-support ast node ", ast_type->DebugString());
-    switch (ast_type->node_kind()) {
-        case zetasql::AST_SIMPLE_TYPE: {
-            const zetasql::ASTSimpleType* simple_type = ast_type->GetAsOrDie<zetasql::ASTSimpleType>();
-            CHECK_TRUE(nullptr != simple_type, common::kSqlAstError, "Un-support nullptr simple type");
-            std::string type_name;
-            CHECK_STATUS(AstPathExpressionToString(simple_type->type_name(), &type_name));
-            CHECK_STATUS(node::StringToDataType(type_name, output))
-            return base::Status::OK();
-        }
-        default: {
-            return base::Status(common::kSqlAstError, "Un-support type: " + ast_type->GetNodeKindString());
-        }
-    }
-    return base::Status::OK();
+template <typename NodeType, typename OutputType, typename ConvertFn>
+ABSL_MUST_USE_RESULT
+base::Status ConvertGuard(const zetasql::ASTNode* node, node::NodeManager* nm, OutputType** output, ConvertFn&& func) {
+    auto specific_node = node->GetAsOrNull<NodeType>();
+    CHECK_TRUE(specific_node != nullptr, common::kUnsupportSql, "not an ",
+               zetasql::ASTNode::NodeKindToString(NodeType::kConcreteNodeKind));
+    return func(specific_node, nm, output);
 }
+
+static base::Status convertShowStmt(const zetasql::ASTShowStatement* show_statement, node::NodeManager* node_manager,
+                                    node::SqlNode** output);
+
+static base::Status ConvertArrayExpr(const zetasql::ASTArrayConstructor* array_expr, node::NodeManager* nm,
+                                     node::ExprNode** output);
+
+static base::Status ConvertArrayType(const zetasql::ASTArrayConstructor* array_expr, node::NodeManager* nm,
+                                     node::ExprNode** output);
+
+static base::Status ConvertASTType(const zetasql::ASTType* ast_type, node::NodeManager* nm,  node::TypeNode** out);
+
 /// Used to convert zetasql ASTExpression Node into our ExprNode
 base::Status ConvertExprNode(const zetasql::ASTExpression* ast_expression, node::NodeManager* node_manager,
                              node::ExprNode** output) {
@@ -373,9 +373,11 @@ base::Status ConvertExprNode(const zetasql::ASTExpression* ast_expression, node:
 
             node::ExprNode* expr_node;
             CHECK_STATUS(ConvertExprNode(cast_expression->expr(), node_manager, &expr_node))
-            node::DataType data_type = node::DataType::kNull;
-            CHECK_STATUS(ConvertASTType(cast_expression->type(), &data_type))
-            *output = node_manager->MakeCastNode(data_type, expr_node);
+            node::TypeNode* tp = nullptr;
+            CHECK_STATUS(ConvertASTType(cast_expression->type(), node_manager, &tp))
+
+            // TODO(ace): cast from base type is not enough for type like array
+            *output = node_manager->MakeCastNode(tp->base(), expr_node);
             return base::Status::OK();
         }
         case zetasql::AST_PARAMETER_EXPR: {
@@ -511,6 +513,11 @@ base::Status ConvertExprNode(const zetasql::ASTExpression* ast_expression, node:
 
             *output = node_manager->MakeEscapeExpr(pattern, escape);
             return base::Status::OK();
+        }
+
+        case zetasql::AST_ARRAY_CONSTRUCTOR: {
+            return ConvertGuard<zetasql::ASTArrayConstructor, node::ExprNode>(ast_expression, node_manager, output,
+                                                                              ConvertArrayExpr);
         }
 
         default: {
@@ -1372,25 +1379,27 @@ base::Status ConvertCreateTableNode(const zetasql::ASTCreateTableStatement* ast_
 }
 
 base::Status ConvertCreateFunctionNode(const zetasql::ASTCreateFunctionStatement* ast_create_fun_stmt,
-        node::NodeManager* node_manager, node::CreateFunctionNode** output) {
-    node::DataType return_type;
-    CHECK_STATUS(ConvertASTType(ast_create_fun_stmt->return_type(), &return_type));
+                                       node::NodeManager* node_manager, node::CreateFunctionNode** output) {
+    node::TypeNode* tp;
+    CHECK_STATUS(ConvertASTType(ast_create_fun_stmt->return_type(), node_manager, &tp));
+    CHECK_TRUE(tp->IsBaseType(), common::kSqlAstError, "Un-support: func return type for non-basic type")
     auto function_declaration = ast_create_fun_stmt->function_declaration();
     CHECK_TRUE(function_declaration != nullptr, common::kSqlAstError, "not has function_declaration");
     std::string function_name;
     CHECK_STATUS(AstPathExpressionToString(function_declaration->name(), &function_name));
     std::vector<node::DataType> args;
     for (const auto param : function_declaration->parameters()->parameter_entries()) {
-        node::DataType data_type;
-        CHECK_STATUS(ConvertASTType(param->type(), &data_type));
-        args.emplace_back(data_type);
+        node::TypeNode* ele_tp;
+        CHECK_STATUS(ConvertASTType(param->type(), node_manager, &ele_tp));
+        args.emplace_back(ele_tp->base());
     }
     auto options = std::make_shared<node::OptionsMap>();
     if (ast_create_fun_stmt->options_list() != nullptr) {
         CHECK_STATUS(ConvertAstOptionsListToMap(ast_create_fun_stmt->options_list(), node_manager, options));
     }
-    *output = dynamic_cast<node::CreateFunctionNode*>(node_manager->MakeCreateFunctionNode(function_name,
-                return_type, args, ast_create_fun_stmt->is_aggregate(), options));
+    // TOOD(ace): return & param type should better be the TypeNode
+    *output = dynamic_cast<node::CreateFunctionNode*>(node_manager->MakeCreateFunctionNode(
+        function_name, tp->base(), args, ast_create_fun_stmt->is_aggregate(), options));
     return base::Status::OK();
 }
 
@@ -1719,7 +1728,7 @@ base::Status ConvertParamter(const zetasql::ASTFunctionParameter* param, node::N
     bool is_constant = param->is_constant();
     std::string column_name = param->name()->GetAsString();
 
-    node::DataType data_type;
+    node::TypeNode* tp = nullptr;
 
     CHECK_TRUE(nullptr == param->templated_parameter_type() && nullptr == param->tvf_schema(), common::kSqlAstError,
                "Un-support templated_parameter or tvf_schema type")
@@ -1729,8 +1738,10 @@ base::Status ConvertParamter(const zetasql::ASTFunctionParameter* param, node::N
     //   consider handle <templated_parameter_type_>, <tvf_schema_>, <alias_> in the future,
     //   <templated_parameter_type_> and <tvf_schema_> is another syntax for procedure parameter,
     //   <alias_> is the additional syntax for function parameter
-    CHECK_STATUS(ConvertASTType(param->type(), &data_type))
-    *output = node_manager->MakeInputParameterNode(is_constant, column_name, data_type);
+    CHECK_STATUS(ConvertASTType(param->type(), node_manager, &tp))
+    CHECK_TRUE(tp->IsBaseType(), common::kSqlAstError, "Un-support: func parameter accept only basic type, but get ",
+               tp->DebugString())
+    *output = node_manager->MakeInputParameterNode(is_constant, column_name, tp->base());
     return base::Status::OK();
 }
 
@@ -2149,6 +2160,67 @@ base::Status convertShowStmt(const zetasql::ASTShowStatement* show_statement, no
     }
 
     *output = dynamic_cast<node::CmdNode*>(node_manager->MakeCmdNode(cmd_type));
+    return base::Status::OK();
+}
+
+base::Status ConvertArrayExpr(const zetasql::ASTArrayConstructor* array_expr, node::NodeManager* nm,
+                              node::ExprNode** output) {
+    auto* array = nm->MakeArrayExpr();
+    for (auto expression : array_expr->elements()) {
+        node::ExprNode* expr = nullptr;
+        CHECK_STATUS(ConvertExprNode(expression, nm, &expr))
+        array->AddChild(expr);
+    }
+    if (array_expr->type() != nullptr) {
+        node::TypeNode* tp = nullptr;
+        CHECK_STATUS(ConvertASTType(array_expr->type(), nm, &tp));
+        // tp is TypeNode(kArray), not ArrayType, making new
+        array->specific_type_ = nm->MakeArrayType(tp->GetGenericType(0), array->GetChildNum());
+    }
+    *output = array;
+    return base::Status::OK();
+}
+
+base::Status ConvertASTType(const zetasql::ASTType* ast_type, node::NodeManager* nm, node::TypeNode** output) {
+    CHECK_TRUE(nullptr != ast_type, common::kSqlAstError, "Un-support null ast type");
+    CHECK_TRUE(ast_type->IsType(), common::kSqlAstError, "Un-support ast node ", ast_type->DebugString());
+
+    switch (ast_type->node_kind()) {
+        case zetasql::AST_SIMPLE_TYPE: {
+            CHECK_STATUS((ConvertGuard<zetasql::ASTSimpleType, node::TypeNode>(
+                ast_type, nm, output,
+                [](const zetasql::ASTSimpleType* ast_simple, node::NodeManager* nm,
+                   node::TypeNode** out) -> base::Status {
+                    std::string type_name;
+                    CHECK_STATUS(AstPathExpressionToString(ast_simple->type_name(), &type_name));
+
+                    node::DataType type = node::kNull;
+                    CHECK_STATUS(node::StringToDataType(type_name, &type))
+                    *out = nm->MakeTypeNode(type);
+                    return base::Status::OK();
+                })));
+            break;
+        }
+        case zetasql::AST_ARRAY_TYPE: {
+            CHECK_STATUS((ConvertGuard<zetasql::ASTArrayType, node::TypeNode>(
+                ast_type, nm, output,
+                [](const zetasql::ASTArrayType* array_tp, node::NodeManager* nm, node::TypeNode** out) -> base::Status {
+                    auto* tp = nm->MakeTypeNode(node::kArray);
+                    node::TypeNode* elem_tp = nullptr;
+                    CHECK_STATUS(ConvertASTType(array_tp->element_type(), nm, &elem_tp));
+                    CHECK_TRUE(elem_tp->IsBaseType(), common::kTypeError,
+                               "array of non-basic type is not supported: ARRAY<", elem_tp->DebugString(), ">");
+                    // array permits NULL elements
+                    tp->AddGeneric(elem_tp, true);
+                    *out = tp;
+                    return base::Status::OK();
+                })));
+            break;
+        }
+        default: {
+            return base::Status(common::kSqlAstError, "Un-support type: " + ast_type->GetNodeKindString());
+        }
+    }
     return base::Status::OK();
 }
 
