@@ -525,6 +525,7 @@ cases:
         +-node[kQuery]: kQuerySelect
 
   - id: with-clause-0
+    mode: physical-plan-unsupport
     desc: |
       with clause 0
     sql: |
