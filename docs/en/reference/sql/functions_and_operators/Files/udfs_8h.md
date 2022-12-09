@@ -1130,7 +1130,7 @@ Example:
 
 ```sql
 
-select date_format(date(1590115420000),"%Y-%m-%d");
+select date_format(date(timestamp(1590115420000)),"%Y-%m-%d");
 --output "2020-05-22"
 ```
 
