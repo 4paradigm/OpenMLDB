@@ -876,10 +876,6 @@ PlanNode *NodeManager::MakeJoinNode(PlanNode *left, PlanNode *right, JoinType jo
     node::JoinPlanNode *node_ptr = new JoinPlanNode(left, right, join_type, order_by, condition);
     return RegisterNode(node_ptr);
 }
-PlanNode *NodeManager::MakeSelectPlanNode(PlanNode *node) {
-    node::QueryPlanNode *select_plan_ptr = new QueryPlanNode(node);
-    return RegisterNode(select_plan_ptr);
-}
 PlanNode *NodeManager::MakeGroupPlanNode(PlanNode *node, const ExprListNode *by_list) {
     node::GroupPlanNode *node_ptr = new GroupPlanNode(node, by_list);
     return RegisterNode(node_ptr);

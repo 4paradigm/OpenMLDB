@@ -17,11 +17,12 @@
 #ifndef HYBRIDSE_INCLUDE_NODE_NODE_BASE_H_
 #define HYBRIDSE_INCLUDE_NODE_NODE_BASE_H_
 
-#include <glog/logging.h>
 #include <sstream>
 #include <string>
+#include <utility>
 
 #include "base/fe_object.h"
+#include "glog/logging.h"
 #include "node/node_enum.h"
 
 namespace hybridse {
@@ -86,6 +87,21 @@ class NodeBase : public base::FeBaseObject {
 
  protected:
     NodeBase<T>() = default;
+
+    template <typename Derived, typename Pred>
+    bool EqualsOverride(const T* other, Pred&& pred) const {
+        auto lhs = dynamic_cast<const Derived*>(this);
+        if (lhs != nullptr) {
+            return false;
+        }
+
+        if (!lhs->T::Equals(other)) {
+            return false;
+        }
+
+        auto rhs = dynamic_cast<const Derived*>(other);
+        return lhs != nullptr && rhs != nullptr && std::forward<Pred>(pred)(lhs, rhs);
+    }
 
  private:
     friend class NodeManager;

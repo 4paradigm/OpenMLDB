@@ -65,7 +65,7 @@ class Planner {
     base::Status ValidateClusterOnlineTrainingOp(node::PlanNode *node);
     base::Status CheckWindowFrame(const node::WindowDefNode *w_ptr);
     base::Status CreateQueryPlan(const node::QueryNode *root, PlanNode **plan_tree);
-    base::Status CreateSelectQueryPlan(const node::SelectQueryNode *root, PlanNode **plan_tree);
+    base::Status CreateSelectQueryPlan(const node::SelectQueryNode *root, node::QueryPlanNode **plan_tree);
     base::Status CreateUnionQueryPlan(const node::UnionQueryNode *root, PlanNode **plan_tree);
     base::Status CreateCreateTablePlan(const node::SqlNode *root, node::PlanNode **output);
     base::Status CreateTableReferencePlanNode(const node::TableRefNode *root, node::PlanNode **output);

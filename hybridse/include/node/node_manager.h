@@ -49,6 +49,20 @@ class NodeManager {
         return node_size;
     }
 
+    template <typename T, std::enable_if_t<std::is_base_of_v<SqlNode, T> || std::is_base_of_v<PlanNode, T>, int> = 0>
+    base::BaseList<T> *MakeList() {
+        auto *list = new base::BaseList<T>();
+        RegisterNode(list);
+        return list;
+    }
+
+    template <typename T, typename... Arg,
+              std::enable_if_t<std::is_base_of_v<SqlNode, T> || std::is_base_of_v<PlanNode, T>, int> = 0>
+    T *MakeNode(Arg &&...arg) {
+        T* node = new T(std::forward<Arg>(arg)...);
+        return RegisterNode(node);
+    }
+
     // Make xxxPlanNode
     //    PlanNode *MakePlanNode(const PlanType &type);
     PlanNode *MakeLeafPlanNode(const PlanType &type);
@@ -299,8 +313,6 @@ class NodeManager {
     MapNode *MakeMapNode(const NodePointVector &nodes);
     node::FnForInBlock *MakeForInBlock(FnForInNode *for_in_node,
                                        FnNodeList *block);
-
-    PlanNode *MakeSelectPlanNode(PlanNode *node);
 
     PlanNode *MakeGroupPlanNode(PlanNode *node, const ExprListNode *by_list);
 

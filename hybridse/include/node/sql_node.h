@@ -45,6 +45,7 @@ namespace hybridse {
 namespace node {
 
 class ConstNode;
+class WithClauseEntry;
 
 typedef std::unordered_map<std::string, const ConstNode*> OptionsMap;
 
@@ -353,12 +354,12 @@ class SqlNodeList : public SqlNode {
     void PushBack(SqlNode *node_ptr) { list_.push_back(node_ptr); }
     const bool IsEmpty() const { return list_.empty(); }
     const int GetSize() const { return list_.size(); }
-    const std::vector<SqlNode *> &GetList() const { return list_; }
+    const NodePointVector &GetList() const { return list_; }
     void Print(std::ostream &output, const std::string &tab) const override;
-    virtual bool Equals(const SqlNodeList *that) const;
+    bool Equals(const SqlNodeList *that) const;
 
  private:
-    std::vector<SqlNode *> list_;
+    NodePointVector list_;
 };
 
 class TypeNode;
@@ -579,10 +580,28 @@ class QueryNode : public SqlNode {
  public:
     explicit QueryNode(QueryType query_type) : SqlNode(node::kQuery, 0, 0), query_type_(query_type) {}
     ~QueryNode() {}
+
     void Print(std::ostream &output, const std::string &org_tab) const;
     virtual bool Equals(const SqlNode *node) const;
+
+    void SetWithClauses(absl::Span<WithClauseEntry *> withes) { with_clauses_ = withes; }
+
     const QueryType query_type_;
     std::shared_ptr<OptionsMap> config_options_;
+    absl::Span<WithClauseEntry *> with_clauses_;
+};
+
+class WithClauseEntry : public SqlNode {
+ public:
+    WithClauseEntry(std::string alias, QueryNode *query)
+        : SqlNode(node::kWithClauseEntry, 0, 0), alias_(alias), query_(query) {}
+    ~WithClauseEntry() override {}
+
+    void Print(std::ostream &, const std::string &) const override;
+    bool Equals(const SqlNode *node) const override;
+
+    std::string alias_;
+    QueryNode *query_;
 };
 
 class TableNode : public TableRefNode {

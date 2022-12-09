@@ -17,12 +17,26 @@
 #ifndef HYBRIDSE_INCLUDE_BASE_FE_OBJECT_H_
 #define HYBRIDSE_INCLUDE_BASE_FE_OBJECT_H_
 
+#include <type_traits>
+#include <vector>
+
 namespace hybridse {
 namespace base {
 
 class FeBaseObject {
  public:
     virtual ~FeBaseObject() {}
+};
+
+// NoeList
+// list of base objects whose lifecycles (includes list itself) are managed elsewhere
+template <typename T, std::enable_if_t<std::is_base_of_v<base::FeBaseObject, T>, int> = 0>
+class BaseList : public base::FeBaseObject {
+ public:
+    void SetNodeId(size_t id) { node_id_ = id; }
+
+    std::vector<T*> data_;
+    size_t node_id_ = 0;
 };
 
 }  // namespace base

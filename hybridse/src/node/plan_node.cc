@@ -15,25 +15,16 @@
  */
 
 #include "node/plan_node.h"
+
 #include <string>
+
+#include "absl/algorithm/container.h"
 namespace hybridse {
 namespace node {
 
 bool PlanListEquals(const std::vector<PlanNode *> &list1,
                     const std::vector<PlanNode *> &list2) {
-    if (list1.size() != list2.size()) {
-        return false;
-    }
-    auto iter1 = list1.cbegin();
-    auto iter2 = list2.cbegin();
-    while (iter1 != list1.cend()) {
-        if (!(*iter1)->Equals(*iter2)) {
-            return false;
-        }
-        iter1++;
-        iter2++;
-    }
-    return true;
+    return absl::c_equal(list1, list2, [](PlanNode *lhs, PlanNode *rhs) { return PlanEquals(lhs, rhs); });
 }
 
 bool PlanEquals(const PlanNode *left, const PlanNode *right) {
@@ -227,6 +218,8 @@ std::string NameOfPlanNodeType(const PlanType &type) {
             return "kPlanTypeDelete";
         case kPlanTypeCreateFunction:
             return "kPlanTypeCreateFunction";
+        case kPlanTypeWithClauseEntry:
+            return "kPlanTypeWithClauseEntry";
         case kUnknowPlan:
             return std::string("kUnknow");
     }
@@ -671,13 +664,29 @@ bool UnionPlanNode::Equals(const PlanNode *node) const {
 void QueryPlanNode::Print(std::ostream &output,
                           const std::string &org_tab) const {
     hybridse::node::UnaryPlanNode::Print(output, org_tab);
+
+    std::string new_tab = org_tab + INDENT;
+    if (!with_clauses_.empty()) {
+        output << "\n" << new_tab << SPACE_ST << "with_clause[list]:";
+        for (size_t i = 0; i < with_clauses_.size(); ++i) {
+            output << "\n";
+            auto node = with_clauses_[i];
+            PrintPlanNode(output, new_tab + INDENT, node, "", false);
+        }
+    }
+
     if (config_options_ != nullptr) {
         output << "\n";
         PrintValue(output, org_tab + INDENT, config_options_.get(), "config_options", false);
     }
 }
 bool QueryPlanNode::Equals(const PlanNode *node) const {
-    return UnaryPlanNode::Equals(node);
+    if (!UnaryPlanNode::Equals(node)) { return false; }
+    auto rhs = dynamic_cast<const QueryPlanNode *>(node);
+    return rhs != nullptr &&
+    absl::c_equal(with_clauses_, rhs->with_clauses_, [](WithClauseEntryPlanNode* lhs, WithClauseEntryPlanNode* rhs) {
+                      return PlanEquals(lhs, rhs);
+                  });
 }
 
 void CreatePlanNode::Print(std::ostream &output, const std::string &org_tab) const {
@@ -792,5 +801,21 @@ bool CmdPlanNode::Equals(const PlanNode *that) const {
            std::equal(std::begin(GetArgs()), std::end(GetArgs()), std::begin(cnode->GetArgs()),
                       std::end(cnode->GetArgs()));
 }
+
+
+void WithClauseEntryPlanNode::Print(std::ostream &output, const std::string &org_tab) const {
+    UnaryPlanNode::Print(output, org_tab);
+
+    output << "\n";
+    PrintValue(output, org_tab + INDENT, alias_, "alias", false);
+}
+
+bool WithClauseEntryPlanNode::Equals(const PlanNode *node) const {
+    return EqualsOverride<WithClauseEntryPlanNode>(
+        node, [](const WithClauseEntryPlanNode *lhs, const WithClauseEntryPlanNode *rhs) {
+            return lhs->alias_ == rhs->alias_;
+        });
+}
+
 }  // namespace node
 }  // namespace hybridse

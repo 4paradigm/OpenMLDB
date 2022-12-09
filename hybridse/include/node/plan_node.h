@@ -29,6 +29,8 @@
 namespace hybridse {
 namespace node {
 
+class WithClauseEntryPlanNode;
+
 std::string NameOfPlanNodeType(const PlanType &type);
 
 class PlanNode : public NodeBase<PlanNode> {
@@ -190,8 +192,23 @@ class QueryPlanNode : public UnaryPlanNode {
     explicit QueryPlanNode(PlanNode *node) : UnaryPlanNode(node, kPlanTypeQuery) {}
     ~QueryPlanNode() {}
     void Print(std::ostream &output, const std::string &org_tab) const override;
-    virtual bool Equals(const PlanNode *node) const;
+    bool Equals(const PlanNode *node) const override;
+
+    absl::Span<WithClauseEntryPlanNode*> with_clauses_;
     std::shared_ptr<OptionsMap> config_options_;
+};
+
+class WithClauseEntryPlanNode : public UnaryPlanNode {
+ public:
+    WithClauseEntryPlanNode(std::string alias, QueryPlanNode *query)
+        : UnaryPlanNode(query, kPlanTypeWithClauseEntry), alias_(alias) {}
+
+    ~WithClauseEntryPlanNode() override {}
+
+    void Print(std::ostream &output, const std::string &org_tab) const override;
+    bool Equals(const PlanNode *node) const override;
+
+    std::string alias_;
 };
 
 class FilterPlanNode : public UnaryPlanNode {

@@ -63,15 +63,18 @@ Planner::Planner(node::NodeManager *manager, const bool is_batch_mode, const boo
 base::Status Planner::CreateQueryPlan(const node::QueryNode *root, PlanNode **plan_tree) {
     CHECK_TRUE(nullptr != root, common::kPlanError, "can not create query plan node with null query node");
     switch (root->query_type_) {
-        case node::kQuerySelect:
-            CHECK_STATUS(CreateSelectQueryPlan(dynamic_cast<const node::SelectQueryNode *>(root), plan_tree))
+        case node::kQuerySelect: {
+            node::QueryPlanNode* plan = nullptr;
+            CHECK_STATUS(CreateSelectQueryPlan(dynamic_cast<const node::SelectQueryNode *>(root), &plan));
+            *plan_tree = plan;
             break;
+        }
         case node::kQueryUnion:
-            CHECK_STATUS(CreateUnionQueryPlan(dynamic_cast<const node::UnionQueryNode *>(root), plan_tree))
+            CHECK_STATUS(CreateUnionQueryPlan(dynamic_cast<const node::UnionQueryNode *>(root), plan_tree));
             break;
         default: {
             FAIL_STATUS(common::kPlanError, "can not create query plan node with invalid query type " +
-                                                node::QueryTypeName(root->query_type_))
+                                                node::QueryTypeName(root->query_type_));
         }
     }
     return base::Status::OK();
@@ -79,7 +82,7 @@ base::Status Planner::CreateQueryPlan(const node::QueryNode *root, PlanNode **pl
 // TODO(chenjing): refactor SELECT query logical plan
 // Deal with group by clause, order clause, having clause in physical plan instead of logical plan, since we need
 // schema context for column resolve.
-base::Status Planner::CreateSelectQueryPlan(const node::SelectQueryNode *root, PlanNode **plan_tree) {
+base::Status Planner::CreateSelectQueryPlan(const node::SelectQueryNode *root, node::QueryPlanNode **plan_tree) {
     const node::NodePointVector &table_ref_list =
         nullptr == root->GetTableRefList() ? std::vector<SqlNode *>() : root->GetTableRefList()->GetList();
     std::vector<node::PlanNode *> relation_nodes;
@@ -305,11 +308,26 @@ base::Status Planner::CreateSelectQueryPlan(const node::SelectQueryNode *root, P
         const node::LimitNode *limit_ptr = static_cast<const node::LimitNode *>(root->GetLimit());
         current_node = node_manager_->MakeLimitPlanNode(current_node, limit_ptr->GetLimitCount());
     }
-    current_node = node_manager_->MakeSelectPlanNode(current_node);
-    if (root->config_options_ != nullptr) {
-        dynamic_cast<node::QueryPlanNode*>(current_node)->config_options_ = root->config_options_;
+
+    auto out = node_manager_->MakeNode<node::QueryPlanNode>(current_node);
+
+    auto with_list = node_manager_->MakeList<node::WithClauseEntryPlanNode>();
+    for (auto q : root->with_clauses_) {
+        node::QueryPlanNode* with = nullptr;
+        CHECK_TRUE(q->query_->query_type_ == node::kQuerySelect, common::kPlanError,
+                   "only support select query as with clause entry");
+        CHECK_STATUS(CreateSelectQueryPlan(dynamic_cast<node::SelectQueryNode*>(q->query_), &with));
+
+        auto with_entry = node_manager_->MakeNode<node::WithClauseEntryPlanNode>(q->alias_, with);
+
+        with_list->data_.push_back(with_entry);
     }
-    *plan_tree = current_node;
+    out->with_clauses_ = absl::MakeSpan(with_list->data_);
+
+    if (root->config_options_ != nullptr) {
+        out->config_options_ = root->config_options_;
+    }
+    *plan_tree = out;
     return base::Status::OK();
 }
 
