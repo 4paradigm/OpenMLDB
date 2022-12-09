@@ -359,7 +359,8 @@ class SparkPlanner(session: SparkSession, config: OpenmldbBatchConfig, sparkAppN
           // https://stackoverflow.com/questions/34900023/read-files-sent-with-spark-submit-by-the-driver
           val soFilePath = SparkFiles.get(soFileName)
           if (File(soFilePath).exists) {
-            engine.RegisterExternalFunction(functionName, returnDataType, argsDataType, functionProto.getIsAggregate,
+            engine.RegisterExternalFunction(functionName, returnDataType, functionProto.getReturnNullable,
+              argsDataType, functionProto.getArgNullable, functionProto.getIsAggregate,
               soFilePath)
           } else {
             logger.warn("The dynamic library file does not exit in " + soFilePath)

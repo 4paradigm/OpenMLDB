@@ -197,8 +197,9 @@ UdafRegistryHelper UdfLibrary::RegisterUdaf(const std::string& name) {
     return UdafRegistryHelper(GetCanonicalName(name), this);
 }
 
-Status UdfLibrary::RegisterDynamicUdf(const std::string& name, node::DataType return_type,
-        const std::vector<node::DataType>& arg_types, bool is_aggregate, const std::string& file) {
+Status UdfLibrary::RegisterDynamicUdf(const std::string& name, node::DataType return_type, bool return_nullable,
+        const std::vector<node::DataType>& arg_types, bool arg_nullable,
+        bool is_aggregate, const std::string& file) {
     std::string canon_name = GetCanonicalName(name);
 
     // TODO(tobe): openmldb-batch will register function twice, remove warning if it is fixed
@@ -220,11 +221,11 @@ Status UdfLibrary::RegisterDynamicUdf(const std::string& name, node::DataType re
         CHECK_STATUS(lib_manager_.ExtractFunction(canon_name, is_aggregate, file, &funs))
     }
     Status status;
+    void* init_context_ptr =
+        reinterpret_cast<void*>(static_cast<void (*)(UDFContext* context)>(udf::v1::init_udfcontext));
     if (is_aggregate) {
         CHECK_TRUE(funs.size() == 3, kCodegenError, "cannot find function in so")
-        void* init_context_ptr =
-            reinterpret_cast<void*>(static_cast<void (*)(UDFContext* context)>(udf::v1::init_udfcontext));
-        DynamicUdafRegistryHelperImpl helper(canon_name, this, return_type, arg_types);
+        DynamicUdafRegistryHelperImpl helper(canon_name, this, return_type, return_nullable, arg_types, arg_nullable);
         std::string lib_name = canon_name;
         for (const auto type : arg_types) {
             lib_name.append(".").append(node::DataTypeName(type));
@@ -235,8 +236,8 @@ Status UdfLibrary::RegisterDynamicUdf(const std::string& name, node::DataType re
     } else {
         CHECK_TRUE(!funs.empty() && funs[0] != nullptr, kCodegenError, name + " is nullptr")
         void* fn = funs[0];
-        DynamicUdfRegistryHelper helper(canon_name, this, fn, return_type, arg_types,
-                reinterpret_cast<void*>(static_cast<void (*)(UDFContext* context)>(udf::v1::init_udfcontext)));
+        DynamicUdfRegistryHelper helper(canon_name, this, fn, return_type, return_nullable,
+                arg_types, arg_nullable, init_context_ptr);
         status = helper.Register();
     }
     if (!status.isOK()) {

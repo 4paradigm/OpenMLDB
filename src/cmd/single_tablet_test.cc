@@ -152,6 +152,8 @@ TEST_P(DBSDKTest, CreateUdafFunction) {
     std::string so_path = openmldb::test::GetParentDir(openmldb::test::GetExeDir()) + "/libtest_udf.so";
     std::string agg_fun_str = absl::StrCat("CREATE AGGREGATE FUNCTION special_sum(x BIGINT) RETURNS BIGINT "
                             "OPTIONS (FILE='", so_path, "');");
+    std::string agg_fun_str1 = absl::StrCat("CREATE AGGREGATE FUNCTION count_null(x STRING) RETURNS BIGINT "
+                            "OPTIONS (FILE='", so_path, "', ARG_NULLABLE=true);");
     std::string db_name = "test" + GenRand();
     std::string tb_name = "t1";
     ProcessSQLs(sr,
@@ -161,33 +163,42 @@ TEST_P(DBSDKTest, CreateUdafFunction) {
                     absl::StrCat("use ", db_name, ";"),
                     absl::StrCat("create table ", tb_name, " (c1 string, c2 bigint, c3 double);"),
                     absl::StrCat("insert into ", tb_name, " values ('aab', 11, 1.2);"),
-                    absl::StrCat("insert into ", tb_name, " values ('aab', 12, 1.2);"),
-                    agg_fun_str
+                    absl::StrCat("insert into ", tb_name, " values ('aac', null, 1.2);"),
+                    absl::StrCat("insert into ", tb_name, " values (null, 12, 1.2);"),
+                    agg_fun_str,
+                    agg_fun_str1
                 });
     auto result = sr->ExecuteSQL("show functions", &status);
-    ExpectResultSetStrEq({{"Name", "Return_type", "Arg_type", "Is_aggregate", "File"},
-                          {"special_sum", "BigInt", "BigInt", "true", so_path}},
+    ExpectResultSetStrEq({{"Name", "Return_type", "Arg_type", "Is_aggregate", "File",
+                                "Return_nullable", "Arg_nullable"},
+                          {"count_null", "BigInt", "Varchar", "true", so_path, "false", "true"},
+                          {"special_sum", "BigInt", "BigInt", "true", so_path, "false", "false"}},
                          result.get());
-    result = sr->ExecuteSQL("select special_sum(c2) as sumc2 from t1;", &status);
+    std::string select_sql = "select special_sum(c2) as sumc2, count_null(c1) as c1_null from t1;";
+    result = sr->ExecuteSQL(select_sql, &status);
     ASSERT_TRUE(status.IsOK());
     ASSERT_EQ(1, result->Size());
     result->Next();
     int64_t value = 0;
     result->GetInt64(0, &value);
     ASSERT_EQ(value, 38);
+    result->GetInt64(1, &value);
+    ASSERT_EQ(value, 1);
     if (cs->IsClusterMode()) {
         ProcessSQLs(sr_2.get(), {"set @@execute_mode = 'online'", absl::StrCat("use ", db_name, ";")});
         // check function in another sdk
-        result = sr_2->ExecuteSQL("select special_sum(c2) as sumc2 from t1;", &status);
+        result = sr_2->ExecuteSQL(select_sql, &status);
         ASSERT_TRUE(status.IsOK()) << status.msg;
         ASSERT_EQ(1, result->Size());
         result->Next();
         int64_t value = 0;
         result->GetInt64(0, &value);
         ASSERT_EQ(value, 38);
+        result->GetInt64(1, &value);
+        ASSERT_EQ(value, 1);
     }
-    ProcessSQLs(sr, {"DROP FUNCTION special_sum;"});
-    result = sr->ExecuteSQL("select special_sum(c2) as sumc2 from t1;", &status);
+    ProcessSQLs(sr, {"DROP FUNCTION special_sum;", "DROP FUNCTION count_null;"});
+    result = sr->ExecuteSQL(select_sql, &status);
     ASSERT_FALSE(status.IsOK());
 }
 #endif

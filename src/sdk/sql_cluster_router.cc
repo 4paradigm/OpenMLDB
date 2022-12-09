@@ -1638,10 +1638,9 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::HandleSQLCmd(const h
             }
             std::vector<std::vector<std::string>> lines;
             for (auto& fun_info : funs) {
-                std::string is_aggregate = "false";
-                if (fun_info.is_aggregate()) {
-                    is_aggregate = "true";
-                }
+                std::string is_aggregate = fun_info.is_aggregate() ? "true" : "false";
+                std::string return_nullable = fun_info.return_nullable() ? "true" : "false";
+                std::string arg_nullable = fun_info.arg_nullable() ? "true" : "false";
                 std::string arg_type = "";
                 for (int i = 0; i < fun_info.arg_type_size(); i++) {
                     arg_type = absl::StrCat(arg_type, openmldb::type::DataType_Name(fun_info.arg_type(i)).substr(1));
@@ -1651,11 +1650,13 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::HandleSQLCmd(const h
                 }
                 std::vector<std::string> vec = {fun_info.name(),
                                                 openmldb::type::DataType_Name(fun_info.return_type()).substr(1),
-                                                arg_type, is_aggregate, fun_info.file()};
+                                                arg_type, is_aggregate, fun_info.file(),
+                                                return_nullable, arg_nullable};
                 lines.push_back(vec);
             }
-            return ResultSetSQL::MakeResultSet({"Name", "Return_type", "Arg_type", "Is_aggregate", "File"}, lines,
-                                               status);
+            return ResultSetSQL::MakeResultSet(
+                    {"Name", "Return_type", "Arg_type", "Is_aggregate", "File", "Return_nullable", "Arg_nullable"},
+                    lines, status);
         }
         case hybridse::node::kCmdDropFunction: {
             std::string name = cmd_node->GetArgs()[0];
@@ -3174,6 +3175,18 @@ hybridse::sdk::Status SQLClusterRouter::HandleCreateFunction(const hybridse::nod
         return {StatusCode::kCmdError, "missing FILE option"};
     }
     fun->set_file((*option)["FILE"]->GetExprString());
+    if (auto iter = option->find("RETURN_NULLABLE"); iter != option->end()) {
+        if (iter->second->GetDataType() != hybridse::node::kBool) {
+            return {StatusCode::kCmdError, "return_nullable should be bool"};
+        }
+        fun->set_return_nullable(iter->second->GetBool());
+    }
+    if (auto iter = option->find("ARG_NULLABLE"); iter != option->end()) {
+        if (iter->second->GetDataType() != hybridse::node::kBool) {
+            return {StatusCode::kCmdError, "arg_nullable should be bool"};
+        }
+        fun->set_arg_nullable(iter->second->GetBool());
+    }
     if (cluster_sdk_->IsClusterMode()) {
         auto taskmanager_client = cluster_sdk_->GetTaskManagerClient();
         if (taskmanager_client) {

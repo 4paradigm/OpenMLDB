@@ -142,7 +142,8 @@ bool DBSDK::RegisterExternalFun(const std::shared_ptr<openmldb::common::External
         ::openmldb::schema::SchemaAdapter::ConvertType(fun->arg_type(i), &data_type);
         arg_types.emplace_back(data_type);
     }
-    if (engine_->RegisterExternalFunction(fun->name(), return_type, arg_types, fun->is_aggregate(), "").isOK()) {
+    if (engine_->RegisterExternalFunction(fun->name(), return_type, fun->return_nullable(),
+                arg_types, fun->arg_nullable(), fun->is_aggregate(), "").isOK()) {
         std::lock_guard<::openmldb::base::SpinMutex> lock(mu_);
         external_fun_.emplace(fun->name(), fun);
         return true;

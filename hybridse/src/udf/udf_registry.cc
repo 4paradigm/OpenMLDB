@@ -325,15 +325,18 @@ Status UdafRegistry::ResolveFunction(UdfResolveContext* ctx,
 }
 
 DynamicUdfRegistryHelper::DynamicUdfRegistryHelper(const std::string& basename, UdfLibrary* library, void* fn,
-        node::DataType return_type, const std::vector<node::DataType>& arg_types, void* udfcontext_fun)
+        node::DataType return_type, bool return_nullable,
+        const std::vector<node::DataType>& arg_types, bool arg_nullable,
+        void* udfcontext_fun)
     : UdfRegistryHelper(basename, library), fn_name_(basename), fn_ptr_(fn), udfcontext_fun_ptr_(udfcontext_fun) {
     auto nm = node_manager();
     return_type_ = nm->MakeTypeNode(return_type);
+    return_nullable_ = return_nullable;
     for (const auto type : arg_types) {
         auto type_node = nm->MakeTypeNode(type);
         arg_types_.emplace_back(type_node);
         fn_name_.append(".").append(type_node->GetName());
-        arg_nullable_.emplace_back(0);
+        arg_nullable_.emplace_back(arg_nullable);
     }
     switch (return_type) {
         case node::kVarchar:
@@ -370,7 +373,8 @@ Status DynamicUdfRegistryHelper::Register() {
 }
 
 DynamicUdafRegistryHelperImpl::DynamicUdafRegistryHelperImpl(const std::string& name, UdfLibrary* library,
-        node::DataType return_type, const std::vector<node::DataType>& arg_types) : UdfRegistryHelper(name, library) {
+        node::DataType return_type, bool return_nullable,
+        const std::vector<node::DataType>& arg_types, bool arg_nullable) : UdfRegistryHelper(name, library) {
     auto nm = node_manager();
     state_ty_ = nm->MakeOpaqueType(sizeof(UDFContext));
     state_nullable_ = false;
@@ -379,9 +383,9 @@ DynamicUdafRegistryHelperImpl::DynamicUdafRegistryHelperImpl(const std::string& 
     for (const auto type : arg_types) {
         auto type_node = nm->MakeTypeNode(type);
         elem_tys_.push_back(type_node);
-        elem_nullable_.push_back(0);
+        elem_nullable_.push_back(arg_nullable);
         update_tys_.push_back(type_node);
-        update_nullable_.push_back(0);
+        update_nullable_.push_back(arg_nullable);
     }
     switch (return_type) {
         case node::kVarchar:
@@ -393,7 +397,7 @@ DynamicUdafRegistryHelperImpl::DynamicUdafRegistryHelperImpl(const std::string& 
             return_by_arg_ = false;
     }
     output_ty_ = nm->MakeTypeNode(return_type);
-    output_nullable_ = false;
+    output_nullable_ = return_nullable;
 }
 
 DynamicUdafRegistryHelperImpl& DynamicUdafRegistryHelperImpl::init(const std::string& fname,

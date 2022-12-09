@@ -1247,7 +1247,8 @@ class ExternalFuncRegistryHelper : public UdfRegistryHelper {
 class DynamicUdfRegistryHelper : public UdfRegistryHelper {
  public:
     DynamicUdfRegistryHelper(const std::string& basename, UdfLibrary* library, void* fn,
-            node::DataType return_type, const std::vector<node::DataType>& arg_types,
+            node::DataType return_type, bool return_nullable,
+            const std::vector<node::DataType>& arg_types, bool arg_nullable,
             void* udfcontext_fun);
     Status Register();
 
@@ -1724,7 +1725,8 @@ class UdafRegistryHelperImpl : UdfRegistryHelper {
 class DynamicUdafRegistryHelperImpl : public UdfRegistryHelper {
  public:
      DynamicUdafRegistryHelperImpl(const std::string& basename, UdfLibrary* library,
-             node::DataType return_type, const std::vector<node::DataType>& arg_types);
+             node::DataType return_type, bool return_nullable,
+             const std::vector<node::DataType>& arg_types, bool arg_nullable);
      ~DynamicUdafRegistryHelperImpl() { finalize(); }
 
     DynamicUdafRegistryHelperImpl& init(const std::string& fname, void* init_context_ptr, void* fn_ptr);

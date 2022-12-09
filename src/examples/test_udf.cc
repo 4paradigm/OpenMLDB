@@ -66,3 +66,26 @@ extern "C"
 int64_t special_sum_output(UDFContext* ctx) {
     return *(reinterpret_cast<int64_t*>(ctx->ptr)) + 5;
 }
+
+// count the number of null value
+extern "C"
+UDFContext* count_null_init(UDFContext* ctx) {
+    ctx->ptr = ctx->pool->Alloc(sizeof(int64_t));
+    *(reinterpret_cast<int64_t*>(ctx->ptr)) = 0;
+    return ctx;
+}
+
+extern "C"
+UDFContext* count_null_update(UDFContext* ctx, StringRef* input, bool is_null) {
+    int64_t cur = *(reinterpret_cast<int64_t*>(ctx->ptr));
+    if (is_null) {
+        cur++;
+    }
+    *(reinterpret_cast<int*>(ctx->ptr)) = cur;
+    return ctx;
+}
+
+extern "C"
+int64_t count_null_output(UDFContext* ctx) {
+    return *(reinterpret_cast<int64_t*>(ctx->ptr));
+}
