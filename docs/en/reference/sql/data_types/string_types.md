@@ -7,7 +7,7 @@ A string is a sequence of bytes or characters, enclosed within either single quo
 "another string"
 ```
 
-| type   | size | use       |
+| type   | size | use        |
 | :----- | :--- | :--------- |
-| STRING | 4096 | 变长字符串 |
+| STRING | 2M   | 变长字符串 |
 
