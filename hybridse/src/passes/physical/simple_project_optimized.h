@@ -29,6 +29,15 @@ namespace passes {
 //   ->
 //   SimpleProject(merged_prject_list)
 //     ...
+//
+// Rule 2, non-sense project(last join):
+//   Project(project_list_on_t1_only)
+//     LastJoin
+//       t1
+//       t2
+//   ->
+//   Project(project_list_on_t1_only)
+//     t1
 class SimpleProjectOptimized : public TransformUpPysicalPass {
  public:
     explicit SimpleProjectOptimized(PhysicalPlanContext* plan_ctx)

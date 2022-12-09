@@ -1130,7 +1130,7 @@ Status BatchModeTransformer::InstantiateLLVMFunction(const FnInfo* fn_info) {
 }
 
 bool BatchModeTransformer::AddDefaultPasses() {
-    AddPass(PhysicalPlanPassType::kPassColumnProjectsOptimized);
+    AddPass(PhysicalPlanPassType::kPassSimpleProjectsOptimized);
     AddPass(PhysicalPlanPassType::kPassFilterOptimized);
     AddPass(PhysicalPlanPassType::kPassLeftJoinOptimized);
     AddPass(PhysicalPlanPassType::kPassGroupAndSortOptimized);
@@ -1473,7 +1473,7 @@ void BatchModeTransformer::ApplyPasses(PhysicalOpNode* node,
         bool transformed = false;
         PhysicalOpNode* new_op = nullptr;
         switch (type) {
-            case PhysicalPlanPassType::kPassColumnProjectsOptimized: {
+            case PhysicalPlanPassType::kPassSimpleProjectsOptimized: {
                 SimpleProjectOptimized pass(&plan_ctx_);
                 transformed = pass.Apply(cur_op, &new_op);
                 break;

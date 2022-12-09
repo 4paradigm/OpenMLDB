@@ -32,7 +32,6 @@ namespace hybridse {
 namespace vm {
 
 using hybridse::base::Status;
-using hybridse::vm::SchemasContext;
 
 // new and delete physical node managef
 enum PhysicalOpType {
