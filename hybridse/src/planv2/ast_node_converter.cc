@@ -2083,8 +2083,12 @@ base::Status ConvertTargetName(const zetasql::ASTTargetName* node, std::vector<a
 
 struct ShowTargetInfo {
     node::CmdType cmd_type_;  // converted CmdType
-    bool with_target_name_ = false;  // is the show statement has extra target name token
-    bool with_like_string_ = false;  // is the show statement has extra like string
+
+    // whether show statement require extra target name must followed
+    bool with_target_name_ = false;
+
+    // whether show stmt allow optional like clause following
+    bool with_like_string_ = false;
 };
 
 static const absl::flat_hash_map<std::string_view, ShowTargetInfo> showTargetMap = {
@@ -2121,7 +2125,11 @@ base::Status convertShowStmt(const zetasql::ASTShowStatement* show_statement, no
                common::kSqlAstError, absl::StrCat("Non-support LIKE in SHOW ", show_info->first, " statement"))
 
     auto cmd_type = show_info->second.cmd_type_;
-    if (show_info->second.with_target_name_ && show_statement->optional_target_name()) {
+    if (show_info->second.with_target_name_) {
+        CHECK_TRUE(show_statement->optional_target_name(), common::kSqlAstError,
+                   absl::AsciiStrToUpper(node::CmdTypeName(show_info->second.cmd_type_)),
+                   " statement require a target name following");
+
         std::vector<absl::string_view> path_list;
         CHECK_STATUS(ConvertTargetName(show_statement->optional_target_name(), path_list));
         if (path_list.size() == 1) {

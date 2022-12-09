@@ -19,9 +19,12 @@ set -e
 cd "$(dirname "$0")"
 
 export COMPONENTS="tablet tablet2 nameserver apiserver taskmanager"
-
+MON=""
+if [ $# -gt 0 ] && [ "$1" = "mon" ]; then
+  MON="mon"
+fi
 for COMPONENT in $COMPONENTS; do
-  ./start.sh start "$COMPONENT"
+  ./start.sh start "$COMPONENT" "$MON"
   sleep 1
 done
 echo "OpenMLDB start success"
