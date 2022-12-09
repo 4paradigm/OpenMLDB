@@ -41,6 +41,29 @@ cases:
         2, 1590115420001
         3, 1590115421001
         4, 1590115422001
+
+  # - id: 2
+  #   desc: |
+  #     local CTE shadows outer CTE
+  #   sql: |
+  #     WITH q1 AS (my_query)
+  #     SELECT *
+  #     FROM
+  #       (WITH
+  #         q2 AS (SELECT * FROM q1),
+  #         q3 AS (SELECT * FROM q1),
+  #         q1 AS (SELECT * FROM q1),
+  #         q4 AS (SELECT * FROM q1)
+  #       SELECT * FROM q1)
+  #
+  # - id: 3
+  #   desc: |
+  #     local CTE refers outer CTE
+  #
+  # - id: 4
+  #   desc: |
+  #     complex with query
+
   - id: 5
     desc: |
       with clause wrapper window (simple(last join))

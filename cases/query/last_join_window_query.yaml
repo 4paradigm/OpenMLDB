@@ -455,18 +455,17 @@ cases:
       )
       WINDOW w1 AS (
         PARTITION BY c1 ORDER BY c7 ROWS_RANGE BETWEEN 10s PRECEDING AND CURRENT ROW);
-    batch_plan: |
-      PROJECT(type=WindowAggregation)
-        +-WINDOW(partition_keys=(), orders=(ASC), range=(c7, 10000 PRECEDING, 0 CURRENT))
-        SIMPLE_PROJECT(sources=(t0.c3 -> c3l, t0.id -> idx, t0.c1, t0.c7))
-          DATA_PROVIDER(type=Partition, table=t0, index=index1)
-    request_plan: |
-      PROJECT(type=Aggregation)
-        SIMPLE_PROJECT(sources=(t0.c3 -> c3l, t0.id -> idx, t0.c1, t0.c7))
-          REQUEST_UNION(partition_keys=(), orders=(ASC), range=(c7, 10000 PRECEDING, 0 CURRENT), index_keys=(c1))
-            DATA_PROVIDER(request=t0)
-            DATA_PROVIDER(type=Partition, table=t0, index=index1)
-
+    # batch_plan: |
+    #   PROJECT(type=WindowAggregation)
+    #     +-WINDOW(partition_keys=(), orders=(ASC), range=(c7, 10000 PRECEDING, 0 CURRENT))
+    #     SIMPLE_PROJECT(sources=(t0.c3 -> c3l, t0.id -> idx, t0.c1, t0.c7))
+    #       DATA_PROVIDER(type=Partition, table=t0, index=index1)
+    # request_plan: |
+    #   PROJECT(type=Aggregation)
+    #     SIMPLE_PROJECT(sources=(t0.c3 -> c3l, t0.id -> idx, t0.c1, t0.c7))
+    #       REQUEST_UNION(partition_keys=(), orders=(ASC), range=(c7, 10000 PRECEDING, 0 CURRENT), index_keys=(c1))
+    #         DATA_PROVIDER(request=t0)
+    #         DATA_PROVIDER(type=Partition, table=t0, index=index1)
     expect:
       order: idx
       columns:

@@ -386,12 +386,12 @@ cases:
         {0}.c2 + 1 as c2,
       from {0}
       last join {1} ORDER BY {1}.c4 on {0}.c1={1}.c1;
-    batch_plan: |
-      PROJECT(type=TableProject)
-        DATA_PROVIDER(table=t1)
-    request_plan: |
-      PROJECT(type=RowProject)
-        DATA_PROVIDER(request=t1)
+    # batch_plan: |
+    #   PROJECT(type=TableProject)
+    #     DATA_PROVIDER(table=t1)
+    # request_plan: |
+    #   PROJECT(type=RowProject)
+    #     DATA_PROVIDER(request=t1)
     expect:
       order: c1
       columns: ["c1 string", "c2 int"]
