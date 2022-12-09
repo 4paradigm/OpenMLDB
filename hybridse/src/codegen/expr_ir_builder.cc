@@ -522,27 +522,22 @@ Status ExprIRBuilder::BuildParameterExpr(const ::hybridse::node::ParameterExpr* 
 // param col
 // param output
 // return
-Status ExprIRBuilder::BuildColumnRef(
-    const ::hybridse::node::ColumnRefNode* node, NativeValue* output) {
+Status ExprIRBuilder::BuildColumnRef(const ::hybridse::node::ColumnRefNode* node, NativeValue* output) {
     const std::string relation_name = node->GetRelationName();
     const std::string col = node->GetColumnName();
 
     size_t schema_idx;
     size_t col_idx;
-    CHECK_STATUS(ctx_->schemas_context()->ResolveColumnRefIndex(
-                     node, &schema_idx, &col_idx),
+    CHECK_STATUS(ctx_->schemas_context()->ResolveColumnRefIndex(node, &schema_idx, &col_idx),
                  "Fail to find context with " + node->GetExprString());
 
     ::llvm::Value* value = NULL;
-    const std::string frame_str =
-        nullptr == frame_ ? "" : frame_->GetExprString();
-    DLOG(INFO) << "get table column " << col;
+    const std::string frame_str = nullptr == frame_ ? "" : frame_->GetExprString();
+    DLOG(INFO) << "get table column from row " << col;
     // not found
-    VariableIRBuilder variable_ir_builder(ctx_->GetCurrentBlock(),
-                                          ctx_->GetCurrentScope()->sv());
+    VariableIRBuilder variable_ir_builder(ctx_->GetCurrentBlock(), ctx_->GetCurrentScope()->sv());
     Status status;
-    bool ok = variable_ir_builder.LoadColumnRef(relation_name, col, frame_str,
-                                                &value, status);
+    bool ok = variable_ir_builder.LoadColumnRef(relation_name, col, frame_str, &value, status);
     if (ok) {
         *output = NativeValue::Create(value);
         return Status::OK();
@@ -551,19 +546,16 @@ Status ExprIRBuilder::BuildColumnRef(
     NativeValue window;
     CHECK_STATUS(BuildWindow(&window), "Fail to build window");
 
-    DLOG(INFO) << "get table column " << col;
+    DLOG(INFO) << "get table column from window " << col;
     // NOT reuse for iterator
-    MemoryWindowDecodeIRBuilder window_ir_builder(ctx_->schemas_context(),
-                                                  ctx_->GetCurrentBlock());
-    ok = window_ir_builder.BuildGetCol(schema_idx, col_idx, window.GetRaw(),
-                                       &value);
-    CHECK_TRUE(ok && value != nullptr, kCodegenError,
-               "fail to find column " + col);
+    MemoryWindowDecodeIRBuilder window_ir_builder(ctx_->schemas_context(), ctx_->GetCurrentBlock());
+    ::llvm::Value* wvalue = NULL;
+    ok = window_ir_builder.BuildGetCol(schema_idx, col_idx, window.GetRaw(), &wvalue);
+    CHECK_TRUE(ok && wvalue != nullptr, kCodegenError, "fail to find column " + col);
 
-    ok = variable_ir_builder.StoreColumnRef(relation_name, col, frame_str,
-                                            value, status);
+    ok = variable_ir_builder.StoreColumnRef(relation_name, col, frame_str, wvalue, status);
     CHECK_TRUE(ok, kCodegenError, "fail to store col for ", status.str());
-    *output = NativeValue::Create(value);
+    *output = NativeValue::Create(wvalue);
     return Status::OK();
 }
 

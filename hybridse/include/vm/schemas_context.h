@@ -305,6 +305,8 @@ class RowParser {
     std::vector<codec::RowView> row_view_list_;
 };
 
+base::Status DoSearchExprDependentColumns(const node::ExprNode* expr, std::vector<const node::ExprNode*>* columns);
+
 }  // namespace vm
 }  // namespace hybridse
 
