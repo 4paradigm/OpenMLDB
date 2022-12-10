@@ -26,71 +26,6 @@ static Status BuildColumnMapping(
     const std::vector<node::ExprNode*>& inner_projects,
     const vm::SchemasContext* schemas_ctx, passes::ExprReplacer* replacer);
 
-template <typename ProjNode, std::enable_if_t<std::is_base_of_v<vm::PhysicalOpNode, ProjNode>, int> = 0>
-ABSL_MUST_USE_RESULT Status TryRemoveUnnecessaryLastJoin(PhysicalPlanContext* plan_ctx, vm::PhysicalOpNode* in,
-                                                         PhysicalOpNode* depend, PhysicalOpNode** output) {
-    CHECK_TRUE(in != nullptr && depend != nullptr, common::kPhysicalPlanError, "parameter is null");
-
-    if (depend->GetOpType() == vm::kPhysicalOpJoin) {
-        auto* inner_join = dynamic_cast<vm::PhysicalJoinNode*>(depend);
-        CHECK_TRUE(inner_join->join_.join_type() == node::kJoinTypeLast, common::kPhysicalPlanError,
-                   "can't optimize non-lastjoin node");
-    } else if (in->GetProducer(0)->GetOpType() == vm::kPhysicalOpRequestJoin) {
-        auto* inner_join = dynamic_cast<vm::PhysicalRequestJoinNode*>(depend);
-        CHECK_TRUE(inner_join->join_.join_type() == node::kJoinTypeLast, common::kPhysicalPlanError,
-                   "can't optimize non-lastjoin node");
-
-    } else {
-        FAIL_STATUS(common::kPhysicalPlanError, "not join node");
-    }
-
-    auto* prj = dynamic_cast<ProjNode*>(in);
-    CHECK_TRUE(prj != nullptr, common::kPhysicalPlanError, "unmatched prject type");
-
-    auto* sc = depend->schemas_ctx();
-    auto& prj_info = prj->project();
-
-    std::vector<const node::ExprNode*> col_ref_list;
-    for (decltype(prj_info.size()) i = 0; i < prj_info.size(); ++i) {
-        CHECK_STATUS(vm::DoSearchExprDependentColumns(prj_info.GetExpr(i), &col_ref_list));
-    }
-
-    bool prj_depends_on_left_only = true;
-    for (auto expr : col_ref_list) {
-        switch (expr->GetExprType()) {
-            case node::kExprColumnRef: {
-                auto* col_ref = dynamic_cast<const node::ColumnRefNode*>(expr);
-
-                size_t sch_idx, col_idx;
-                CHECK_STATUS(sc->ResolveColumnRefIndex(col_ref, &sch_idx, &col_idx));
-
-                if (sch_idx != 0) {
-                    prj_depends_on_left_only = false;
-                }
-                break;
-            }
-            default:
-                break;
-        }
-
-        if (!prj_depends_on_left_only) {
-            break;
-        }
-    }
-
-    if (prj_depends_on_left_only) {
-        // do the optimize
-        DLOG(INFO) << "removing right source of last join since non-projects depends on";
-
-        auto* left = depend->GetProducer(0);
-
-        ProjNode* new_project_op = nullptr;
-        CHECK_STATUS(plan_ctx->CreateOp(&new_project_op, left, prj->project()));
-        *output = new_project_op;
-    }
-    return Status::OK();
-}
-
 bool SimpleProjectOptimized::Transform(PhysicalOpNode* in, PhysicalOpNode** output) {
     *output = in;
 
@@ -146,39 +81,9 @@ bool SimpleProjectOptimized::Transform(PhysicalOpNode* in, PhysicalOpNode** outp
                     *output = new_project_op;
                     return true;
                 }
-                case vm::kPhysicalOpJoin: {
-                    auto s = TryRemoveUnnecessaryLastJoin<vm::PhysicalSimpleProjectNode>(plan_ctx_, in,
-                                                                                         in->GetProducer(0), output);
-                    if (!s.isOK()) {
-                        LOG(WARNING) << s;
-                        return false;
-                    }
-
-                    return true;
-                }
                 default:
                     break;
             }
-        } else if (in->GetOpType() == vm::kPhysicalOpProject) {
-            auto* prj = dynamic_cast<vm::PhysicalProjectNode*>(in);
-            Status s;
-
-            if (prj->project_type_ == vm::kRowProject) {
-                    s = TryRemoveUnnecessaryLastJoin<vm::PhysicalRowProjectNode>(plan_ctx_, prj, prj->GetProducer(0),
-                                                                                 output);
-            } else if (prj->project_type_ == vm::kTableProject) {
-                    s = TryRemoveUnnecessaryLastJoin<vm::PhysicalTableProjectNode>(plan_ctx_, prj, prj->GetProducer(0),
-                                                                                   output);
-            } else {
-                    return false;
-            }
-
-            if (!s.isOK()) {
-                LOG(WARNING) << s;
-                return false;
-            }
-
-            return true;
         }
     }
     return false;

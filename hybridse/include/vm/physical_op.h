@@ -525,14 +525,17 @@ inline const std::string DataProviderTypeName(const DataProviderType &type) {
 
 class PhysicalDataProviderNode : public PhysicalOpNode {
  public:
+    static constexpr PhysicalOpType kConcreteNodeKind = kPhysicalOpDataProvider;
+
     PhysicalDataProviderNode(const std::shared_ptr<TableHandler> &table_handler,
                              DataProviderType provider_type)
-        : PhysicalOpNode(kPhysicalOpDataProvider, true),
+        : PhysicalOpNode(kConcreteNodeKind, true),
           provider_type_(provider_type),
           table_handler_(table_handler) {}
     ~PhysicalDataProviderNode() {}
 
     base::Status InitSchema(PhysicalPlanContext *) override;
+    bool Equals(const PhysicalOpNode *other) const override;
 
     static PhysicalDataProviderNode *CastFrom(PhysicalOpNode *node);
     const std::string &GetName() const;

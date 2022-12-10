@@ -74,9 +74,9 @@ struct CTEEntry : public ::hybridse::base::FeBaseObject {
     // for WITH clause entry is lazy evaluated
     PhysicalOpNode* transformed_op = nullptr;
 
-    // friend bool operator==(const CTEEntry& lhs, const CTEEntry& rhs) {
-    //     return lhs.node == rhs.node;
-    // }
+    friend bool operator==(const CTEEntry& lhs, const CTEEntry& rhs) {
+        return lhs.node == rhs.node;
+    }
 };
 
 // CTE Environment: Single level captured CTEs visible to a query
@@ -107,8 +107,15 @@ struct Closure : ::hybridse::base::FeBaseObject {
     ~Closure() override {}
 
     friend bool operator==(const Closure& lhs, const Closure& rhs) {
-        return base::GeneralPtrEq(lhs.parent, rhs.parent) && lhs.clu == rhs.clu &&
-               absl::c_equal(lhs.cte_map, rhs.cte_map);
+        // equal either of:
+        // - two empty closure
+        //   this preserve the backwards compatibility of transform cache
+        //   for queries without WITH clause
+        // - absolute equal
+        //   might be improved later, this disallow PlanNode cache in many situation
+        return (lhs.cte_map.empty() && rhs.cte_map.empty()) ||
+               (base::GeneralPtrEq(lhs.parent, rhs.parent) && lhs.clu == rhs.clu &&
+                absl::c_equal(lhs.cte_map, rhs.cte_map));
     }
 
     Closure* parent = nullptr;
