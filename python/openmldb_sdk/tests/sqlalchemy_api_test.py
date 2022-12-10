@@ -70,7 +70,7 @@ class TestSqlalchemyAPI:
             connection.execute(
                 "select * from test_table where x='b'").fetchall()
         assert 'select fail' in str(e.value)
-    
+
     def test_zk_log(self):
         # disable zk log
         engine = db.create_engine(

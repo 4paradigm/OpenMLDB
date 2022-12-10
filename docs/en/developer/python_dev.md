@@ -29,7 +29,7 @@ pytest tests/
 
 If the python log messages are required, please use:
 ```
-pytest -o log_cli=true --log-cli-level=DEBUG tests/
+pytest -s tests/
 ```
 
 ## Conda

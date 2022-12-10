@@ -30,8 +30,8 @@ import pytest
 
 
 def test_sdk_smoke():
-    sdk = sdk_module.OpenMLDBSdk(
-        zk=OpenMLDB_ZK_CLUSTER, zkPath=OpenMLDB_ZK_PATH)
+    sdk = sdk_module.OpenMLDBSdk(zk=OpenMLDB_ZK_CLUSTER,
+                                 zkPath=OpenMLDB_ZK_PATH)
     assert sdk.init()
     db_name = "pydb" + str(time.time_ns() % 100000)
     table_name = "pytable" + str(time.time_ns() % 100000)
@@ -90,7 +90,8 @@ def test_sdk_smoke():
     assert rs.Size() == 4
 
     # reset the request timeout
-    sdk = sdk_module.OpenMLDBSdk(zk=OpenMLDB_ZK_CLUSTER, zkPath=OpenMLDB_ZK_PATH,
+    sdk = sdk_module.OpenMLDBSdk(zk=OpenMLDB_ZK_CLUSTER,
+                                 zkPath=OpenMLDB_ZK_PATH,
                                  request_timeout=1)
     assert sdk.init()
     select = "select * from " + table_name + "where col1='world';"
