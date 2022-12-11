@@ -33,6 +33,8 @@ class FeBaseObject {
 template <typename T, std::enable_if_t<std::is_base_of_v<base::FeBaseObject, T>, int> = 0>
 class BaseList : public base::FeBaseObject {
  public:
+    using size_t = decltype(sizeof(int));
+
     void SetNodeId(size_t id) { node_id_ = id; }
 
     std::vector<T*> data_;
