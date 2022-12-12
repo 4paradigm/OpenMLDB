@@ -249,7 +249,7 @@ Pulsar会重复尝试写入此前没有写入成功的消息，所以，如果�
 ```
 ```
         <Root>
-            <level>all</level> 此处info改为all
+            <level>${sys:pulsar.log.level}</level> 此处info改为${sys:pulsar.log.level}或debug
             <AppenderRef>
                 <ref>${sys:pulsar.log.appender}</ref>
                 <level>${sys:pulsar.log.level}</level>

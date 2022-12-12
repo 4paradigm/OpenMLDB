@@ -176,6 +176,7 @@ We use the first 2 rows of sample data(in openmldb docker `data/taxi_tour_table_
 
 ![test data](images/test_data.png)
 
+#### Java Producer
 Producer JAVA code in [demo producer](https://github.com/vagetablechicken/pulsar-client-java). Essential code is ![snippet](images/producer_code.png)
 
 So the producer will send the 2 messages to topic ‘test_openmldb’. And then Pulsar will read the messages and write them to OpenMLDB cluster online storage.
@@ -186,6 +187,15 @@ The package is in ‘files’. You can run it directly.
 java -cp files/pulsar-client-java-1.0-SNAPSHOT-jar-with-dependencies.jar org.example.Client
 ```
 
+#### Python Producer TODO
+Producer也可以使用Python实现，详情见`files/pulsar_client.py`。运行前需要安装pulsar python client：
+```
+pip install pulsar-client==2.9.1
+```
+运行：
+```
+python files/pulsar_client.py
+```
 
 ### Check
 #### Check in Pulsar
@@ -212,3 +222,45 @@ In OpenMLDB container, run:
 /work/openmldb/bin/openmldb --zk_cluster=127.0.0.1:2181 --zk_root_path=/openmldb --role=sql_client < /work/pulsar_files/select.sql
 ```
 ![openmldb result](images/openmldb_result.png)
+
+### 调试
+
+如果OpenMLDB没有数据，而sinks status合理，那么sink写入应该出了问题。请查看sink日志，日志地址为`logs/functions/public/default/openmldb-test-sink/openmldb-test-sink-0.log`。如果你使用别的sink name，请定位到正确的sink日志。
+
+Pulsar会重复尝试写入此前没有写入成功的消息，所以，如果你曾发送了错误的消息，即使新消息成功写入，日志中仍然会有错误消息的写入报错。测试中推荐直接truncate topic再测试：
+```
+./bin/pulsar-admin topics truncate persistent://public/default/test_openmldb
+```
+如果自命名的sink name，可通过./bin/pulsar-admin topics list public/default查询topic全名。
+
+#### debug日志
+
+如果sink日志信息不足够定位，可以打开debug日志。需要修改配置，并重启sink。`vim conf/functions_log4j2.xml`并做一下修改：
+
+```
+        <Property>
+            <name>pulsar.log.level</name>
+            <value>debug</value> 设置为debug level
+        </Property>
+```
+```
+        <Root>
+            <level>${sys:pulsar.log.level}</level> 此处info改为${sys:pulsar.log.level}或debug
+            <AppenderRef>
+                <ref>${sys:pulsar.log.appender}</ref>
+                <level>${sys:pulsar.log.level}</level>
+            </AppenderRef>
+        </Root>
+```
+
+再重新启动sink：
+```
+./bin/pulsar-admin sinks restart --name openmldb-test-sink
+```
+
+#### 重建pulsar
+```
+bin/pulsar-daemon stop standalone --zookeeper-port 5181
+rm -r data logs
+bin/pulsar-daemon start standalone --zookeeper-port 5181
+```
