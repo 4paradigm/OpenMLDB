@@ -380,9 +380,9 @@ struct FZStringOpsDef {
         output->data_ = buf;
     }
 
-    static void ListSize(hybridse::codec::ListRef<StringRef>* list, int32_t* size) {
+    static int32_t ListSize(hybridse::codec::ListRef<StringRef>* list) {
         auto list_v = reinterpret_cast<hybridse::codec::ListV<StringRef> *>(list->list);
-        *size = list_v->GetCount();
+        return list_v->GetCount();
     }
 };
 
@@ -667,8 +667,7 @@ void DefaultUdfLibrary::InitFeatureZero() {
 
     RegisterExternal("size")
         .list_argument_at(0)
-        .args<ListRef<StringRef>>(reinterpret_cast<void (*)(ListRef<StringRef>*, int32_t*)>(FZStringOpsDef::ListSize))
-        .return_by_arg(true)
+        .args<ListRef<StringRef>>(reinterpret_cast<int32_t (*)(ListRef<StringRef>*)>(FZStringOpsDef::ListSize))
         .returns<int32_t>()
         .doc(R"(
             @brief Get the size of a List (e.g., result of split)
