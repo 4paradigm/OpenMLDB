@@ -94,7 +94,7 @@ class TestOpenmldbDBAPI:
         Note: this test works now(select > 0ms). If you can't reach the timeout, redesign the test.
         """
         # requestTimeout -1 means wait indefinitely
-        db = connect(database='db_test',
+        db = connect(database=self.db_name,
                      zk=OpenMLDB_ZK_CLUSTER,
                      zkPath=OpenMLDB_ZK_PATH,
                      requestTimeout=0)
@@ -110,7 +110,7 @@ class TestOpenmldbDBAPI:
         assert 'execute select fail' in str(e.value)
 
     def test_connect_options(self):
-        connect(database='db_test',
+        connect(database=self.db_name,
                 zk=OpenMLDB_ZK_CLUSTER,
                 zkPath=OpenMLDB_ZK_PATH,
                 requestTimeout=100000,
@@ -128,15 +128,17 @@ class TestOpenmldbDBAPI:
         self.cursor_without_db.execute(
             "insert into new_table values('abcd', 500);")
         result = self.cursor_without_db.execute(
-            "select * from new_table;").fetchone()
-        assert 'abcd' in result
-        assert 500 in result
+            "select * from new_table where y = 500;").fetchall()
+        assert len(result) == 1
+        assert 'abcd' in result[0]
+        assert 500 in result[0]
         self.cursor_without_db.executemany(
             "insert into new_table values(?, ?);", [('abcde', 501)])
         result = self.cursor_without_db.execute(
-            "select * from new_table;").fetchall()
-        print(result)
-        assert len(result) == 2
+            "select * from new_table where y = 501;").fetchall()
+        assert len(result) == 1
+        assert 'abcde' in result[0]
+        assert 501 in result[0]
 
 
 if __name__ == "__main__":

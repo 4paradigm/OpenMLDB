@@ -35,10 +35,11 @@ class TestSqlalchemyAPI:
 
     def setup_class(self):
         self.engine = db.create_engine(
-            'openmldb:///db_test?zk={}&zkPath={}'.format(
+            'openmldb:///?zk={}&zkPath={}'.format(
                 OpenMLDB_ZK_CLUSTER, OpenMLDB_ZK_PATH))
         self.connection = self.engine.connect()
         self.connection.execute('create database if not exists db_test')
+        self.connection.execute('use db_test')
         self.metadata = MetaData()
         self.test_table = Table('test_table', self.metadata,
                                 Column('x', String), Column('y', Integer))
