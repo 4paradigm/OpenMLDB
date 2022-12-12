@@ -37,15 +37,15 @@ class TestOpenMLDBClient:
     """
     engine = None
     connection = None
-    db = "db_test"
+    db = "openmldb_client_test"
 
     @classmethod
     def setup_class(cls):
-        cls.engine = db.create_engine('openmldb:///{}?zk={}&zkPath={}'.format(
-            cls.db, OpenMLDB_ZK_CLUSTER, OpenMLDB_ZK_PATH))
+        cls.engine = db.create_engine('openmldb:///?zk={}&zkPath={}'.format(OpenMLDB_ZK_CLUSTER, OpenMLDB_ZK_PATH))
         cls.connection = cls.engine.connect()
         cls.connection.execute("create database if not exists {};".format(
             cls.db))
+        cls.connection.execute(f"use {cls.db}")
 
     @staticmethod
     def has_table(connection, table_name):
