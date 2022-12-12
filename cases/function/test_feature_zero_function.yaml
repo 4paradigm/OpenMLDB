@@ -174,3 +174,30 @@ cases:
         - [3, "", "", "", "", "", ""]
         - [4, "", "", "", "", "", ""]
         - [5, "", "", "", "", "", ""]
+  - id: 6
+    desc: size function of split result on single row
+    inputs:
+      - name: main
+        columns: ["id int64", "pk int64", "c1 string"]
+        indexs: ["index1:pk:id"]
+        rows:
+          - [1, 0, "k1:v1,k2:v2"]
+          - [2, 0, "k3:v3"]
+          - [3, 0, "???,,k4:v4"]
+          - [4, 0, NULL]
+          - [5, 0, "k5:v5,k3:v3"]
+    sql: |
+      SELECT id,
+        size(fz_split(c1, ",")) AS split_and_size,
+        size(fz_split_by_key(c1, ",", ":")) AS split_key_and_size,
+        size(fz_split_by_value(c1, ",", ":")) AS split_value_and_size
+      FROM main;
+    expect:
+      order: id
+      columns: ["id int64", "split_and_size int", "split_key_and_size int", "split_value_and_size int"]
+      rows:
+        - [1, 2, 2, 2]
+        - [2, 1, 1, 1]
+        - [3, 3, 1, 1]
+        - [4, 0, 0, 0]
+        - [5, 2, 2, 2]

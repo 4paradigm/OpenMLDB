@@ -379,6 +379,11 @@ struct FZStringOpsDef {
         output->size_ = bytes;
         output->data_ = buf;
     }
+
+    static void ListSize(hybridse::codec::ListRef<StringRef>* list, int32_t* size) {
+        auto list_v = reinterpret_cast<hybridse::codec::ListV<StringRef> *>(list->list);
+        *size = list_v->GetCount();
+    }
 };
 
 template <typename K>
@@ -660,6 +665,22 @@ void DefaultUdfLibrary::InitFeatureZero() {
         .args_in<int16_t, int32_t, int64_t, float, double, Date, Timestamp,
                  StringRef>();
 
+    RegisterExternal("size")
+        .list_argument_at(0)
+        .args<ListRef<StringRef>>(reinterpret_cast<void (*)(ListRef<StringRef>*, int32_t*)>(FZStringOpsDef::ListSize))
+        .return_by_arg(true)
+        .returns<int32_t>()
+        .doc(R"(
+            @brief Get the size of a List (e.g., result of split)
+
+            Example:
+
+            @code{.sql}
+                select size(split("a b c", " "));
+                -- output 3
+
+            @endcode
+            @since 0.7.0)");
 
     RegisterAlias("fz_window_split", "window_split");
     RegisterAlias("fz_split", "split");
