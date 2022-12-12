@@ -7588,7 +7588,7 @@ void NameServerImpl::SelectLeader(const std::string& name, const std::string& db
         return;
     }
     if (change_leader_data.has_candidate_leader()) {
-        if (std::find(follower_endpoint.begin(), follower_endpoint.end(), change_leader_data.candidate_leader()) 
+        if (std::find(follower_endpoint.begin(), follower_endpoint.end(), change_leader_data.candidate_leader())
                 == follower_endpoint.end()) {
             PDLOG(WARNING, "candidate_leader[%s] is not follower. name[%s] pid[%u] op_id[%lu]",
                   change_leader_data.candidate_leader().c_str(), name.c_str(), pid, task_info->op_id());
