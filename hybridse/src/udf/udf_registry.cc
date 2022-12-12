@@ -338,14 +338,18 @@ DynamicUdfRegistryHelper::DynamicUdfRegistryHelper(const std::string& basename, 
         fn_name_.append(".").append(type_node->GetName());
         arg_nullable_.emplace_back(arg_nullable);
     }
-    switch (return_type) {
-        case node::kVarchar:
-        case node::kDate:
-        case node::kTimestamp:
-            return_by_arg_ = true;
-            break;
-        default:
-            return_by_arg_ = false;
+    if (return_nullable_) {
+        return_by_arg_ = true;
+    } else {
+        switch (return_type) {
+            case node::kVarchar:
+            case node::kDate:
+            case node::kTimestamp:
+                return_by_arg_ = true;
+                break;
+            default:
+                return_by_arg_ = false;
+        }
     }
 }
 
@@ -387,17 +391,21 @@ DynamicUdafRegistryHelperImpl::DynamicUdafRegistryHelperImpl(const std::string& 
         update_tys_.push_back(type_node);
         update_nullable_.push_back(arg_nullable);
     }
-    switch (return_type) {
-        case node::kVarchar:
-        case node::kDate:
-        case node::kTimestamp:
-            return_by_arg_ = true;
-            break;
-        default:
-            return_by_arg_ = false;
+    output_nullable_ = return_nullable;
+    if (output_nullable_) {
+        return_by_arg_ = true;
+    } else {
+        switch (return_type) {
+            case node::kVarchar:
+            case node::kDate:
+            case node::kTimestamp:
+                return_by_arg_ = true;
+                break;
+            default:
+                return_by_arg_ = false;
+        }
     }
     output_ty_ = nm->MakeTypeNode(return_type);
-    output_nullable_ = return_nullable;
 }
 
 DynamicUdafRegistryHelperImpl& DynamicUdafRegistryHelperImpl::init(const std::string& fname,

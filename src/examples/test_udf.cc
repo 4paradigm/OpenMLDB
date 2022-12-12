@@ -89,3 +89,32 @@ extern "C"
 int64_t count_null_output(UDFContext* ctx) {
     return *(reinterpret_cast<int64_t*>(ctx->ptr));
 }
+
+// Get the second non-null value of all values
+extern "C"
+UDFContext* third_init(UDFContext* ctx) {
+    ctx->ptr = reinterpret_cast<void*>(new std::vector<int64_t>());
+    return ctx;
+}
+
+extern "C"
+UDFContext* third_update(UDFContext* ctx, int64_t input, bool is_null) {
+    auto vec = reinterpret_cast<std::vector<int64_t>*>(ctx->ptr);
+    if (!is_null && vec->size() < 3) {
+        vec->push_back(input);
+    }
+    return ctx;
+}
+
+extern "C"
+void third_output(UDFContext* ctx, int64_t* output, bool* is_null) {
+    auto vec = reinterpret_cast<std::vector<int64_t>*>(ctx->ptr);
+    if (vec->size() != 3) {
+        *is_null = true;
+    } else {
+        *is_null = false;
+        *output = vec->at(3);
+    }
+    // free the memory allocated in init function with new/malloc
+    delete vec;
+}
