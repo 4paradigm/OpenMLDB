@@ -21,6 +21,7 @@
 #include <memory>
 #include <set>
 #include <string>
+#include <unordered_map>
 #include <unordered_set>
 #include <utility>
 #include <vector>
@@ -45,6 +46,9 @@ constexpr const char* FORMAT_STRING_KEY = "!%$FORMAT_STRING_KEY";
 
 class SQLClusterRouter : public SQLRouter {
  public:
+    using TableStatusMap = std::unordered_map<
+        uint32_t, std::unordered_map<uint32_t, std::unordered_map<std::string, openmldb::api::TableStatus>>>;
+
     explicit SQLClusterRouter(const SQLRouterOptions& options);
     explicit SQLClusterRouter(const StandaloneOptions& options);
     explicit SQLClusterRouter(DBSDK* sdk);
@@ -355,7 +359,14 @@ class SQLClusterRouter : public SQLRouter {
 
     /// internal implementation for SQL 'SHOW TABLE STATUS'
     std::shared_ptr<hybridse::sdk::ResultSet> ExecuteShowTableStatus(const std::string& db,
+                                                                     const std::string& pattern,
                                                                      hybridse::sdk::Status* status);
+
+    std::shared_ptr<hybridse::sdk::ResultSet> GetJobResultSet(int job_id);
+
+    bool CheckTableStatus(const std::string& db, const std::string& table_name, uint32_t tid,
+                          const nameserver::TablePartition& partition_info, uint32_t replica_num,
+                          const TableStatusMap& statuses, std::string* msg);
 
  private:
     std::shared_ptr<BasicRouterOptions> options_;

@@ -1,5 +1,5 @@
-# 代码贡献
-Please refer to [Contribution Guideline](https://github.com/4paradigm/OpenMLDB/blob/main/CONTRIBUTING.md)
+# 代码贡献指南
+详见我们 GitHub 上的代码贡献指南： [Contribution Guideline](https://github.com/4paradigm/OpenMLDB/blob/main/CONTRIBUTING.md)
 
 ## Pull Request(PR)须知
 
@@ -20,3 +20,7 @@ Please refer to [Contribution Guideline](https://github.com/4paradigm/OpenMLDB/b
 ```{seealso}
 如果你希望分支的代码更加clean，可以不用`git merge`，而是使用`git rebase -i origin/main`，它会将你的更改在main分支的基础上逐一增加。但它会改变commit，你需要`git push -f`来覆盖分支。
 ```
+
+## 编译须知
+
+编译详情见[编译文档](../deploy/compile.md)，为了避免操作系统、工具版本的影响，我们更推荐在编译镜像中编译OpenMLDB。由于全OpenMLDB编译需要较大空间，推荐使用`OPENMLDB_BUILD_TARGET`来指定只编译你所需要的部分。

@@ -94,7 +94,7 @@ void NameServerImpl::CheckSyncExistTable(const std::string& alias,
         {
             std::lock_guard<std::mutex> lock(mu_);
             if (!GetTableInfoUnlock(name, db, &table_info_local)) {
-                PDLOG(WARNING, "table[%s] is not exist!", name.c_str());
+                PDLOG(WARNING, "table[%s] does not exist!", name.c_str());
                 continue;
             }
         }
@@ -686,7 +686,7 @@ bool NameServerImpl::RecoverDb() {
     std::vector<std::string> db_vec;
     if (!zk_client_->GetChildren(zk_path_.db_path_, db_vec)) {
         if (zk_client_->IsExistNode(zk_path_.db_path_) > 0) {
-            PDLOG(WARNING, "db node is not exist");
+            PDLOG(WARNING, "db node does not exist");
             return true;
         }
         PDLOG(WARNING, "get db failed!");
@@ -714,7 +714,7 @@ void NameServerImpl::RecoverClusterInfo() {
     std::vector<std::string> cluster_vec;
     if (!zk_client_->GetChildren(zk_path_.zone_data_path_ + "/replica", cluster_vec)) {
         if (zk_client_->IsExistNode(zk_path_.zone_data_path_ + "/replica") > 0) {
-            PDLOG(WARNING, "cluster info node is not exist");
+            PDLOG(WARNING, "cluster info node does not exist");
             return;
         }
         PDLOG(WARNING, "get cluster info failed!");
@@ -753,7 +753,7 @@ bool NameServerImpl::RecoverTableInfo() {
     std::vector<std::string> db_table_vec;
     if (!zk_client_->GetChildren(zk_path_.table_data_path_, table_vec)) {
         if (zk_client_->IsExistNode(zk_path_.table_data_path_) > 0) {
-            PDLOG(WARNING, "table data node is not exist");
+            PDLOG(WARNING, "table data node does not exist");
         } else {
             PDLOG(WARNING, "get table name failed!");
             return false;
@@ -780,7 +780,7 @@ bool NameServerImpl::RecoverTableInfo() {
     }
     if (!zk_client_->GetChildren(zk_path_.db_table_data_path_, db_table_vec)) {
         if (zk_client_->IsExistNode(zk_path_.db_table_data_path_) > 0) {
-            PDLOG(WARNING, "db table data node is not exist");
+            PDLOG(WARNING, "db table data node does not exist");
         } else {
             PDLOG(WARNING, "get db table id failed!");
             return false;
@@ -819,7 +819,7 @@ bool NameServerImpl::RecoverOPTask() {
     std::vector<std::string> op_vec;
     if (!zk_client_->GetChildren(zk_path_.op_data_path_, op_vec)) {
         if (zk_client_->IsExistNode(zk_path_.op_data_path_) > 0) {
-            PDLOG(WARNING, "op data node is not exist");
+            PDLOG(WARNING, "op data node does not exist");
             return true;
         }
         PDLOG(WARNING, "get op failed!");
@@ -1332,7 +1332,7 @@ void NameServerImpl::RecoverEndpointInternal(const std::string& endpoint, bool n
     // recover global variable after tablet restart
     std::shared_ptr<TableInfo> table_info;
     if (!GetTableInfoUnlock(GLOBAL_VARIABLES, INFORMATION_SCHEMA_DB, &table_info)) {
-        PDLOG(WARNING, "global variable table is not exist!");
+        PDLOG(WARNING, "global variable table does not exist!");
         return;
     }
     bool exist_globalvar = false;
@@ -2077,9 +2077,9 @@ void NameServerImpl::GetTablePartition(RpcController* controller, const GetTable
     std::lock_guard<std::mutex> lock(mu_);
     std::shared_ptr<::openmldb::nameserver::TableInfo> table_info;
     if (!GetTableInfoUnlock(name, db, &table_info)) {
-        PDLOG(WARNING, "table[%s] is not exist", name.c_str());
+        PDLOG(WARNING, "table[%s] does not exist", name.c_str());
         response->set_code(::openmldb::base::ReturnCode::kTableIsNotExist);
-        response->set_msg("table is not exist");
+        response->set_msg("table does not exist");
         return;
     }
     for (int idx = 0; idx < table_info->table_partition_size(); idx++) {
@@ -2115,9 +2115,9 @@ void NameServerImpl::SetTablePartition(RpcController* controller, const SetTable
     std::lock_guard<std::mutex> lock(mu_);
     std::shared_ptr<::openmldb::nameserver::TableInfo> table_info;
     if (!GetTableInfoUnlock(name, db, &table_info)) {
-        PDLOG(WARNING, "table[%s] is not exist", name.c_str());
+        PDLOG(WARNING, "table[%s] does not exist", name.c_str());
         response->set_code(::openmldb::base::ReturnCode::kTableIsNotExist);
-        response->set_msg("table is not exist");
+        response->set_msg("table does not exist");
         return;
     }
     std::shared_ptr<::openmldb::nameserver::TableInfo> cur_table_info(table_info->New());
@@ -2153,9 +2153,9 @@ void NameServerImpl::MakeSnapshotNS(RpcController* controller, const MakeSnapsho
     std::lock_guard<std::mutex> lock(mu_);
     std::shared_ptr<::openmldb::nameserver::TableInfo> table_info;
     if (!GetTableInfoUnlock(request->name(), request->db(), &table_info)) {
-        PDLOG(WARNING, "table[%s] is not exist", request->name().c_str());
+        PDLOG(WARNING, "table[%s] does not exist", request->name().c_str());
         response->set_code(::openmldb::base::ReturnCode::kTableIsNotExist);
-        response->set_msg("table is not exist");
+        response->set_msg("table does not exist");
         return;
     }
     if (request->offset() > 0) {
@@ -2315,7 +2315,6 @@ int NameServerImpl::CreateTableOnTablet(const std::shared_ptr<::openmldb::namese
     table_meta.set_tid(static_cast<::google::protobuf::int32>(table_info->tid()));
     table_meta.set_seg_cnt(static_cast<::google::protobuf::int32>(table_info->seg_cnt()));
     table_meta.set_compress_type(compress_type);
-    table_meta.set_format_version(table_info->format_version());
     table_meta.set_storage_mode(table_info->storage_mode());
     table_meta.set_base_table_tid(table_info->base_table_tid());
     if (table_info->has_key_entry_max_height()) {
@@ -2490,15 +2489,15 @@ void NameServerImpl::ChangeLeader(RpcController* controller, const ChangeLeaderR
     std::lock_guard<std::mutex> lock(mu_);
     std::shared_ptr<::openmldb::nameserver::TableInfo> table_info;
     if (!GetTableInfoUnlock(name, db, &table_info)) {
-        PDLOG(WARNING, "table[%s] is not exist", name.c_str());
+        PDLOG(WARNING, "table[%s] does not exist", name.c_str());
         response->set_code(::openmldb::base::ReturnCode::kTableIsNotExist);
-        response->set_msg("table is not exist");
+        response->set_msg("table does not exist");
         return;
     }
     if (pid > (uint32_t)table_info->table_partition_size() - 1) {
-        PDLOG(WARNING, "pid[%u] is not exist, table[%s]", pid, name.c_str());
+        PDLOG(WARNING, "pid[%u] does not exist, table[%s]", pid, name.c_str());
         response->set_code(::openmldb::base::ReturnCode::kPidIsNotExist);
-        response->set_msg("pid is not exist");
+        response->set_msg("pid does not exist");
         return;
     }
     std::vector<std::string> follower_endpoint;
@@ -2582,8 +2581,8 @@ void NameServerImpl::OfflineEndpoint(RpcController* controller, const OfflineEnd
         auto iter = tablets_.find(endpoint);
         if (iter == tablets_.end()) {
             response->set_code(::openmldb::base::ReturnCode::kEndpointIsNotExist);
-            response->set_msg("endpoint is not exist");
-            PDLOG(WARNING, "endpoint[%s] is not exist", endpoint.c_str());
+            response->set_msg("endpoint does not exist");
+            PDLOG(WARNING, "endpoint[%s] does not exist", endpoint.c_str());
             return;
         }
     }
@@ -2677,8 +2676,8 @@ void NameServerImpl::RecoverEndpoint(RpcController* controller, const RecoverEnd
         auto iter = tablets_.find(endpoint);
         if (iter == tablets_.end()) {
             response->set_code(::openmldb::base::ReturnCode::kEndpointIsNotExist);
-            response->set_msg("endpoint is not exist");
-            PDLOG(WARNING, "endpoint[%s] is not exist", endpoint.c_str());
+            response->set_msg("endpoint does not exist");
+            PDLOG(WARNING, "endpoint[%s] does not exist", endpoint.c_str());
             return;
         } else if (iter->second->state_ != ::openmldb::type::EndpointState::kHealthy) {
             response->set_code(::openmldb::base::ReturnCode::kTabletIsNotHealthy);
@@ -2719,8 +2718,8 @@ void NameServerImpl::RecoverTable(RpcController* controller, const RecoverTableR
     auto it = tablets_.find(endpoint);
     if (it == tablets_.end()) {
         response->set_code(::openmldb::base::ReturnCode::kEndpointIsNotExist);
-        response->set_msg("endpoint is not exist");
-        PDLOG(WARNING, "endpoint[%s] is not exist", endpoint.c_str());
+        response->set_msg("endpoint does not exist");
+        PDLOG(WARNING, "endpoint[%s] does not exist", endpoint.c_str());
         return;
     } else if (it->second->state_ != ::openmldb::type::EndpointState::kHealthy) {
         response->set_code(::openmldb::base::ReturnCode::kTabletIsNotHealthy);
@@ -2730,9 +2729,9 @@ void NameServerImpl::RecoverTable(RpcController* controller, const RecoverTableR
     }
     std::shared_ptr<::openmldb::nameserver::TableInfo> table_info;
     if (!GetTableInfoUnlock(name, db, &table_info)) {
-        PDLOG(WARNING, "table[%s] is not exist", name.c_str());
+        PDLOG(WARNING, "table[%s] does not exist", name.c_str());
         response->set_code(::openmldb::base::ReturnCode::kTableIsNotExist);
-        response->set_msg("table is not exist");
+        response->set_msg("table does not exist");
         return;
     }
     bool has_found = false;
@@ -2763,7 +2762,7 @@ void NameServerImpl::RecoverTable(RpcController* controller, const RecoverTableR
     if (!has_found) {
         PDLOG(WARNING, "not found table[%s] pid[%u] in endpoint[%s]", name.c_str(), pid, endpoint.c_str());
         response->set_code(::openmldb::base::ReturnCode::kPidIsNotExist);
-        response->set_msg("pid is not exist");
+        response->set_msg("pid does not exist");
         return;
     }
     CreateRecoverTableOP(name, db, pid, endpoint, is_leader, FLAGS_check_binlog_sync_progress_delta,
@@ -3046,8 +3045,8 @@ void NameServerImpl::DropTable(RpcController* controller, const DropTableRequest
     std::shared_ptr<::openmldb::nameserver::TableInfo> table_info;
     if (!GetTableInfo(request->name(), request->db(), &table_info)) {
         response->set_code(::openmldb::base::ReturnCode::kTableIsNotExist);
-        response->set_msg("table is not exist!");
-        PDLOG(WARNING, "table[%s.%s] is not exist!", request->db().c_str(), request->name().c_str());
+        response->set_msg("table does not exist!");
+        PDLOG(WARNING, "table[%s.%s] does not exist!", request->db().c_str(), request->name().c_str());
         return;
     }
     DropTableFun(request, response, table_info);
@@ -3921,7 +3920,7 @@ int NameServerImpl::AddReplicaSimplyRemoteOP(const std::string& alias, const std
     }
     std::shared_ptr<::openmldb::nameserver::TableInfo> table_info;
     if (!GetTableInfoUnlock(name, db, &table_info)) {
-        PDLOG(WARNING, "table[%s] is not exist", name.c_str());
+        PDLOG(WARNING, "table[%s] does not exist", name.c_str());
         return -1;
     }
     std::shared_ptr<OPData> op_data;
@@ -3961,7 +3960,7 @@ int NameServerImpl::CreateAddReplicaSimplyRemoteOPTask(std::shared_ptr<OPData> o
     }
     std::shared_ptr<::openmldb::nameserver::TableInfo> table_info;
     if (!GetTableInfoUnlock(add_replica_data.name(), add_replica_data.db(), &table_info)) {
-        PDLOG(WARNING, "table[%s] is not exist!", add_replica_data.name().c_str());
+        PDLOG(WARNING, "table[%s] does not exist!", add_replica_data.name().c_str());
         return -1;
     }
     uint32_t tid = table_info->tid();
@@ -4042,7 +4041,7 @@ int NameServerImpl::CreateAddReplicaRemoteOPTask(std::shared_ptr<OPData> op_data
     }
     std::shared_ptr<::openmldb::nameserver::TableInfo> table_info;
     if (!GetTableInfoUnlock(add_replica_data.name(), add_replica_data.db(), &table_info)) {
-        PDLOG(WARNING, "table[%s] is not exist!", add_replica_data.name().c_str());
+        PDLOG(WARNING, "table[%s] does not exist!", add_replica_data.name().c_str());
         return -1;
     }
     uint32_t tid = table_info->tid();
@@ -4171,8 +4170,8 @@ void NameServerImpl::AddReplicaNS(RpcController* controller, const AddReplicaNSR
     std::shared_ptr<::openmldb::nameserver::TableInfo> table_info;
     if (!GetTableInfoUnlock(request->name(), request->db(), &table_info)) {
         response->set_code(::openmldb::base::ReturnCode::kTableIsNotExist);
-        response->set_msg("table is not exist");
-        PDLOG(WARNING, "table[%s] is not exist", request->name().c_str());
+        response->set_msg("table does not exist");
+        PDLOG(WARNING, "table[%s] does not exist", request->name().c_str());
         return;
     }
     if (*(pid_group.rbegin()) > (uint32_t)table_info->table_partition_size() - 1) {
@@ -4267,8 +4266,8 @@ void NameServerImpl::AddReplicaNSFromRemote(RpcController* controller, const Add
     std::shared_ptr<::openmldb::nameserver::TableInfo> table_info;
     if (!GetTableInfoUnlock(request->name(), request->db(), &table_info)) {
         response->set_code(::openmldb::base::ReturnCode::kTableIsNotExist);
-        response->set_msg("table is not exist");
-        PDLOG(WARNING, "table[%s] is not exist", request->name().c_str());
+        response->set_msg("table does not exist");
+        PDLOG(WARNING, "table[%s] does not exist", request->name().c_str());
         return;
     }
     if (pid > (uint32_t)table_info->table_partition_size() - 1) {
@@ -4361,7 +4360,7 @@ int NameServerImpl::CreateAddReplicaOPTask(std::shared_ptr<OPData> op_data) {
     }
     std::shared_ptr<::openmldb::nameserver::TableInfo> table_info;
     if (!GetTableInfoUnlock(request.name(), request.db(), &table_info)) {
-        PDLOG(WARNING, "table[%s] is not exist!", request.name().c_str());
+        PDLOG(WARNING, "table[%s] does not exist!", request.name().c_str());
         return -1;
     }
     uint32_t tid = table_info->tid();
@@ -4455,22 +4454,22 @@ void NameServerImpl::Migrate(RpcController* controller, const MigrateRequest* re
     auto pos = tablets_.find(request->src_endpoint());
     if (pos == tablets_.end() || pos->second->state_ != ::openmldb::type::EndpointState::kHealthy) {
         response->set_code(::openmldb::base::ReturnCode::kSrcEndpointIsNotExistOrNotHealthy);
-        response->set_msg("src_endpoint is not exist or not healthy");
-        PDLOG(WARNING, "src_endpoint[%s] is not exist or not healthy", request->src_endpoint().c_str());
+        response->set_msg("src_endpoint does not exist or not healthy");
+        PDLOG(WARNING, "src_endpoint[%s] does not exist or not healthy", request->src_endpoint().c_str());
         return;
     }
     pos = tablets_.find(request->des_endpoint());
     if (pos == tablets_.end() || pos->second->state_ != ::openmldb::type::EndpointState::kHealthy) {
         response->set_code(::openmldb::base::ReturnCode::kDesEndpointIsNotExistOrNotHealthy);
-        response->set_msg("des_endpoint is not exist or not healthy");
-        PDLOG(WARNING, "des_endpoint[%s] is not exist or not healthy", request->des_endpoint().c_str());
+        response->set_msg("des_endpoint does not exist or not healthy");
+        PDLOG(WARNING, "des_endpoint[%s] does not exist or not healthy", request->des_endpoint().c_str());
         return;
     }
     std::shared_ptr<::openmldb::nameserver::TableInfo> table_info;
     if (!GetTableInfoUnlock(request->name(), request->db(), &table_info)) {
         response->set_code(::openmldb::base::ReturnCode::kTableIsNotExist);
-        response->set_msg("table is not exist");
-        PDLOG(WARNING, "table[%s] is not exist", request->name().c_str());
+        response->set_msg("table does not exist");
+        PDLOG(WARNING, "table[%s] does not exist", request->name().c_str());
         return;
     }
     char error_msg[1024];
@@ -4723,8 +4722,8 @@ void NameServerImpl::DelReplicaNS(RpcController* controller, const DelReplicaNSR
     std::shared_ptr<::openmldb::nameserver::TableInfo> table_info;
     if (!GetTableInfoUnlock(request->name(), request->db(), &table_info)) {
         response->set_code(::openmldb::base::ReturnCode::kTableIsNotExist);
-        response->set_msg("table is not exist");
-        PDLOG(WARNING, "table[%s] is not exist", request->name().c_str());
+        response->set_msg("table does not exist");
+        PDLOG(WARNING, "table[%s] does not exist", request->name().c_str());
         return;
     }
     auto it = tablets_.find(request->endpoint());
@@ -5870,7 +5869,7 @@ int NameServerImpl::CreateReAddReplicaTask(std::shared_ptr<OPData> op_data) {
     uint32_t pid = op_data->op_info_.pid();
     std::shared_ptr<::openmldb::nameserver::TableInfo> table_info;
     if (!GetTableInfoUnlock(name, db, &table_info)) {
-        PDLOG(WARNING, "table[%s] is not exist!", name.c_str());
+        PDLOG(WARNING, "table[%s] does not exist!", name.c_str());
         return -1;
     }
     uint32_t tid = table_info->tid();
@@ -5988,7 +5987,7 @@ int NameServerImpl::CreateReAddReplicaWithDropTask(std::shared_ptr<OPData> op_da
     }
     std::shared_ptr<::openmldb::nameserver::TableInfo> table_info;
     if (!GetTableInfoUnlock(name, db, &table_info)) {
-        PDLOG(WARNING, "table[%s] is not exist!", name.c_str());
+        PDLOG(WARNING, "table[%s] does not exist!", name.c_str());
         return -1;
     }
     uint32_t tid = table_info->tid();
@@ -6116,7 +6115,7 @@ int NameServerImpl::CreateReAddReplicaNoSendTask(std::shared_ptr<OPData> op_data
     uint32_t pid = op_data->op_info_.pid();
     std::shared_ptr<::openmldb::nameserver::TableInfo> table_info;
     if (!GetTableInfoUnlock(name, db, &table_info)) {
-        PDLOG(WARNING, "table[%s] is not exist!", name.c_str());
+        PDLOG(WARNING, "table[%s] does not exist!", name.c_str());
         return -1;
     }
     uint32_t tid = table_info->tid();
@@ -6247,7 +6246,7 @@ int NameServerImpl::CreateReAddReplicaSimplifyTask(std::shared_ptr<OPData> op_da
     }
     std::shared_ptr<::openmldb::nameserver::TableInfo> table_info;
     if (!GetTableInfoUnlock(name, db, &table_info)) {
-        PDLOG(WARNING, "table[%s] is not exist!", name.c_str());
+        PDLOG(WARNING, "table[%s] does not exist!", name.c_str());
         return -1;
     }
     uint32_t tid = table_info->tid();
@@ -6495,7 +6494,7 @@ int NameServerImpl::CreateReLoadTableTask(std::shared_ptr<OPData> op_data) {
     }
     std::shared_ptr<TableInfo> table_info;
     if (!GetTableInfoUnlock(name, db, &table_info)) {
-        PDLOG(WARNING, "table[%s] is not exist!", name.c_str());
+        PDLOG(WARNING, "table[%s] does not exist!", name.c_str());
         return -1;
     }
     uint32_t tid = table_info->tid();
@@ -6527,7 +6526,7 @@ int NameServerImpl::CreateUpdatePartitionStatusOP(const std::string& name, const
                                                   uint64_t parent_id, uint32_t concurrency) {
     std::shared_ptr<::openmldb::nameserver::TableInfo> table_info;
     if (!GetTableInfoUnlock(name, db, &table_info)) {
-        PDLOG(WARNING, "table[%s] is not exist!", name.c_str());
+        PDLOG(WARNING, "table[%s] does not exist!", name.c_str());
         return -1;
     }
     std::shared_ptr<OPData> op_data;
@@ -6578,7 +6577,7 @@ int NameServerImpl::CreateUpdatePartitionStatusOPTask(std::shared_ptr<OPData> op
     bool is_alive = endpoint_status_data.is_alive();
     std::shared_ptr<::openmldb::nameserver::TableInfo> table_info;
     if (!GetTableInfoUnlock(name, db, &table_info)) {
-        PDLOG(WARNING, "table[%s] is not exist!", name.c_str());
+        PDLOG(WARNING, "table[%s] does not exist!", name.c_str());
         return -1;
     }
     std::shared_ptr<Task> task =
@@ -7208,7 +7207,7 @@ void NameServerImpl::UpdateTableInfo(const std::string& src_endpoint, const std:
             // use src_endpoint's meta when the meta of des_endpoint is not
             // exist
             PDLOG(INFO,
-                  "des_endpoint meta is not exist, use src_endpoint's meta."
+                  "des_endpoint meta does not exist, use src_endpoint's meta."
                   "src_endpoint[%s] name[%s] pid[%u] des_endpoint[%s]",
                   src_endpoint.c_str(), name.c_str(), pid, des_endpoint.c_str());
             ::openmldb::nameserver::PartitionMeta* partition_meta = partition_meta_field->Mutable(src_endpoint_index);
@@ -7386,7 +7385,7 @@ void NameServerImpl::UpdatePartitionStatus(const std::string& name, const std::s
         break;
     }
     task_info->set_status(::openmldb::api::TaskStatus::kFailed);
-    PDLOG(WARNING, "name[%s] endpoint[%s] pid[%u] is not exist. op_id[%lu]", name.c_str(), endpoint.c_str(), pid,
+    PDLOG(WARNING, "name[%s] endpoint[%s] pid[%u] does not exist. op_id[%lu]", name.c_str(), endpoint.c_str(), pid,
           task_info->op_id());
 }
 
@@ -7409,16 +7408,16 @@ void NameServerImpl::UpdateTableAliveStatus(RpcController* controller, const Upd
     std::string name = request->name();
     std::string endpoint = request->endpoint();
     if (tablets_.find(endpoint) == tablets_.end()) {
-        PDLOG(WARNING, "endpoint[%s] is not exist", endpoint.c_str());
+        PDLOG(WARNING, "endpoint[%s] does not exist", endpoint.c_str());
         response->set_code(::openmldb::base::ReturnCode::kEndpointIsNotExist);
-        response->set_msg("endpoint is not exist");
+        response->set_msg("endpoint does not exist");
         return;
     }
     std::shared_ptr<::openmldb::nameserver::TableInfo> table_info;
     if (!GetTableInfoUnlock(request->name(), request->db(), &table_info)) {
-        PDLOG(WARNING, "table [%s] is not exist", name.c_str());
+        PDLOG(WARNING, "table [%s] does not exist", name.c_str());
         response->set_code(::openmldb::base::ReturnCode::kTableIsNotExist);
-        response->set_msg("table is not exist");
+        response->set_msg("table does not exist");
         return;
     }
     std::shared_ptr<::openmldb::nameserver::TableInfo> cur_table_info(table_info->New());
@@ -7755,7 +7754,7 @@ void NameServerImpl::UpdateTTL(RpcController* controller, const ::openmldb::name
     if (!GetTableInfo(request->name(), request->db(), &table)) {
         PDLOG(WARNING, "table with name %s does not exist", request->name().c_str());
         response->set_code(::openmldb::base::ReturnCode::kTableAlreadyExists);
-        response->set_msg("table is not exist");
+        response->set_msg("table does not exist");
         return;
     }
     std::string index_name;
@@ -7854,7 +7853,7 @@ void NameServerImpl::UpdateLeaderInfo(std::shared_ptr<::openmldb::api::TaskInfo>
             old_leader_meta->set_is_alive(false);
         }
         if (new_leader_index < 0) {
-            PDLOG(WARNING, "endpoint[%s] is not exist. name[%s] pid[%u] op_id[%lu]", leader_endpoint.c_str(),
+            PDLOG(WARNING, "endpoint[%s] does not exist. name[%s] pid[%u] op_id[%lu]", leader_endpoint.c_str(),
                   name.c_str(), pid, task_info->op_id());
             task_info->set_status(::openmldb::api::TaskStatus::kFailed);
             return;
@@ -7879,7 +7878,7 @@ void NameServerImpl::UpdateLeaderInfo(std::shared_ptr<::openmldb::api::TaskInfo>
               task_info->op_id(), ::openmldb::api::TaskType_Name(task_info->task_type()).c_str());
         return;
     }
-    PDLOG(WARNING, "partition[%u] is not exist. name[%s] op_id[%lu]", pid, name.c_str(), task_info->op_id());
+    PDLOG(WARNING, "partition[%u] does not exist. name[%s] op_id[%lu]", pid, name.c_str(), task_info->op_id());
     task_info->set_status(::openmldb::api::TaskStatus::kFailed);
 }
 
@@ -8475,8 +8474,8 @@ void NameServerImpl::SyncTable(RpcController* controller, const SyncTableRequest
             std::lock_guard<std::mutex> lock(mu_);
             if (!GetTableInfoUnlock(name, db, &table_info)) {
                 response->set_code(::openmldb::base::ReturnCode::kTableIsNotExist);
-                response->set_msg("table is not exist!");
-                PDLOG(WARNING, "table[%s] is not exist!", name.c_str());
+                response->set_msg("table does not exist!");
+                PDLOG(WARNING, "table[%s] does not exist!", name.c_str());
                 return;
             }
             auto it = nsc_.find(cluster_alias);
@@ -8793,8 +8792,8 @@ void NameServerImpl::DeleteIndex(RpcController* controller, const DeleteIndexReq
     std::map<std::string, std::shared_ptr<::openmldb::client::TabletClient>> tablet_client_map;
     if (!GetTableInfo(request->table_name(), request->db_name(), &table_info)) {
         response->set_code(::openmldb::base::ReturnCode::kTableIsNotExist);
-        response->set_msg("table is not exist!");
-        PDLOG(WARNING, "table[%s] is not exist!", request->table_name().c_str());
+        response->set_msg("table does not exist!");
+        PDLOG(WARNING, "table[%s] does not exist!", request->table_name().c_str());
         return;
     }
     {
@@ -8959,7 +8958,7 @@ base::Status NameServerImpl::AddMultiIndexs(const std::string& db, const std::st
     {
         std::lock_guard<std::mutex> lock(mu_);
         if (!GetTableInfoUnlock(name, db, &table_info)) {
-            return {ReturnCode::kTableIsNotExist, "table is not exist!"};
+            return {ReturnCode::kTableIsNotExist, "table does not exist!"};
         }
         for (int idx = 0; idx < column_keys.size(); idx++) {
             table_info->add_column_key()->CopyFrom(column_keys.Get(idx));
@@ -8996,8 +8995,8 @@ void NameServerImpl::AddIndex(RpcController* controller, const AddIndexRequest* 
     const std::string& index_name = request->column_key().index_name();
     std::map<std::string, std::shared_ptr<::openmldb::client::TabletClient>> tablet_client_map;
     if (!GetTableInfo(name, db, &table_info)) {
-        base::SetResponseStatus(ReturnCode::kTableIsNotExist, "table is not exist!", response);
-        LOG(WARNING) << "table[" << db << "." << name << "] is not exist!";
+        base::SetResponseStatus(ReturnCode::kTableIsNotExist, "table does not exist!", response);
+        LOG(WARNING) << "table[" << db << "." << name << "] does not exist!";
         return;
     }
     if (table_info->storage_mode() != ::openmldb::common::kMemory) {
@@ -9126,7 +9125,7 @@ void NameServerImpl::AddIndex(RpcController* controller, const AddIndexRequest* 
                 tablet_ptr = GetTablet(meta.endpoint());
                 if (!tablet_ptr) {
                     PDLOG(WARNING, "endpoint[%s] can not find client", meta.endpoint().c_str());
-                    base::SetResponseStatus(ReturnCode::kTabletIsNotHealthy, "tablet is not exist", response);
+                    base::SetResponseStatus(ReturnCode::kTabletIsNotHealthy, "tablet does not exist", response);
                     return;
                 }
                 if (!tablet_ptr->client_->AddIndex(table_info->tid(), pid, request->column_key(), nullptr)) {
@@ -9152,7 +9151,7 @@ bool NameServerImpl::AddIndexToTableInfo(const std::string& name, const std::str
     std::lock_guard<std::mutex> lock(mu_);
     std::shared_ptr<::openmldb::nameserver::TableInfo> table_info;
     if (!GetTableInfoUnlock(name, db, &table_info)) {
-        PDLOG(WARNING, "table[%s] is not exist!", name.c_str());
+        PDLOG(WARNING, "table[%s] does not exist!", name.c_str());
         return false;
     }
     if (index_pos < (uint32_t)table_info->column_key_size()) {
@@ -9172,7 +9171,7 @@ int NameServerImpl::CreateAddIndexOP(const std::string& name, const std::string&
                                      const ::openmldb::common::ColumnKey& column_key, uint32_t idx) {
     std::shared_ptr<::openmldb::nameserver::TableInfo> table_info;
     if (!GetTableInfoUnlock(name, db, &table_info)) {
-        PDLOG(WARNING, "table[%s] is not exist!", name.c_str());
+        PDLOG(WARNING, "table[%s] does not exist!", name.c_str());
         return -1;
     }
     // zk_op_sync_node only need to create once, so implement that through pid == 0
@@ -9758,8 +9757,8 @@ void NameServerImpl::SetSdkEndpoint(RpcController* controller, const SetSdkEndpo
         } while (0);
         if (!has_found) {
             response->set_code(::openmldb::base::ReturnCode::kServerNameNotFound);
-            response->set_msg("server_name is not exist or offline");
-            PDLOG(WARNING, "server_name[%s] is not exist or offline", server_name.c_str());
+            response->set_msg("server_name does not exist or offline");
+            PDLOG(WARNING, "server_name[%s] does not exist or offline", server_name.c_str());
             return;
         }
         // check sdkendpoint duplicate
@@ -10222,7 +10221,7 @@ bool NameServerImpl::RecoverProcedureInfo() {
     std::vector<std::string> db_sp_vec;
     if (!zk_client_->GetChildren(zk_path_.db_sp_data_path_, db_sp_vec)) {
         if (zk_client_->IsExistNode(zk_path_.db_sp_data_path_) != 0) {
-            LOG(WARNING) << "zk_db_sp_data_path node [" << zk_path_.db_sp_data_path_ << "] is not exist";
+            LOG(WARNING) << "zk_db_sp_data_path node [" << zk_path_.db_sp_data_path_ << "] does not exist";
             return true;
         } else {
             LOG(WARNING) << "get zk_db_sp_data_path [" << zk_path_.db_sp_data_path_ << "] children node failed!";
@@ -10457,8 +10456,8 @@ void NameServerImpl::UpdateOfflineTableInfo(::google::protobuf::RpcController* c
             auto table_info_node = zk_path_.db_table_data_path_ + "/" + std::to_string(tid);
             if (zk_client_->IsExistNode(table_info_node) != 0) {
                 base::SetResponseStatus(base::ReturnCode::kGetZkFailed,
-                                        "tid " + std::to_string(tid) + " is not existed in zk", response);
-                LOG(ERROR) << "table node is not existed in zk, but is existed in nameserver";
+                                        "tid " + std::to_string(tid) + " does not existed in zk", response);
+                LOG(ERROR) << "table node does not existed in zk, but is existed in nameserver";
                 return;
             }
             if (!zk_client_->SetNodeValue(table_info_node, info_str)) {
@@ -10553,8 +10552,8 @@ void NameServerImpl::DropFunction(RpcController* controller, const DropFunctionR
         if (request->if_exists()) {
             base::SetResponseOK(response);
         } else {
-            response->set_msg("fun is not exist");
-            LOG(WARNING) << request->name() << " is not exist";
+            response->set_msg("fun does not exist");
+            LOG(WARNING) << request->name() << " does not exist";
         }
         return;
     }
@@ -10610,7 +10609,7 @@ base::Status NameServerImpl::InitGlobalVarTable() {
     std::string table = GLOBAL_VARIABLES;
     std::shared_ptr<TableInfo> table_info;
     if (!GetTableInfo(table, db, &table_info)) {
-        return {ReturnCode::kTableIsNotExist, "table is not exist"};
+        return {ReturnCode::kTableIsNotExist, "table does not exist"};
     }
     // encode row && dimensions
     std::vector<std::string> rows;

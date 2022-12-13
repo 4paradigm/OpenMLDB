@@ -12,4 +12,5 @@ Maintenance
     faq
     scale
     diagnose
+    openmldb_ops
     data_export

@@ -72,7 +72,6 @@ void AddDimension(uint32_t id, const std::string& key, ::openmldb::api::LogEntry
 
 std::string EncodeKV(const std::string& key, const std::string& value) {
     ::openmldb::api::TableMeta meta;
-    meta.set_format_version(1);
     SchemaCodec::SetColumnDesc(meta.add_column_desc(), "key", ::openmldb::type::kString);
     SchemaCodec::SetColumnDesc(meta.add_column_desc(), "value", ::openmldb::type::kString);
     ::openmldb::codec::SDKCodec sdk_codec(meta);
@@ -84,7 +83,6 @@ std::string EncodeKV(const std::string& key, const std::string& value) {
 
 std::string DecodeV(const std::string& value) {
     ::openmldb::api::TableMeta meta;
-    meta.set_format_version(1);
     SchemaCodec::SetColumnDesc(meta.add_column_desc(), "key", ::openmldb::type::kString);
     SchemaCodec::SetColumnDesc(meta.add_column_desc(), "value", ::openmldb::type::kString);
     ::openmldb::codec::SDKCodec sdk_codec(meta);
@@ -95,7 +93,6 @@ std::string DecodeV(const std::string& value) {
 
 ::openmldb::api::TableMeta GetTableMeta(const std::vector<std::string>& fields) {
     ::openmldb::api::TableMeta meta;
-    meta.set_format_version(1);
     for (const auto& field : fields) {
         SchemaCodec::SetColumnDesc(meta.add_column_desc(), field, ::openmldb::type::kString);
     }
@@ -206,13 +203,19 @@ struct CellExpectInfo {
     CellExpectInfo(const std::optional<std::string>& expect, const std::optional<std::string>& expect_not)
         : expect_(expect), expect_not_(expect_not) {}
 
+    CellExpectInfo& operator=(const CellExpectInfo& other) {
+        expect_ = other.expect_;
+        expect_not_ = other.expect_not_;
+        return *this;
+    }
+
     // result string for target cell to match exactly
     // if empty, do not check
-    std::optional<std::string const> expect_;
+    std::optional<std::string> expect_;
 
     // what string target cell string should not match
     // if empty, do not check
-    std::optional<std::string const> expect_not_;
+    std::optional<std::string> expect_not_;
 };
 
 // expect the output of a ResultSet, first row is schema, all compared in string

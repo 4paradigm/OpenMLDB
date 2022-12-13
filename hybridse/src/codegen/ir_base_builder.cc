@@ -15,11 +15,14 @@
  */
 
 #include "codegen/ir_base_builder.h"
+
 #include <string>
 #include <tuple>
 #include <utility>
 #include <vector>
+
 #include "codec/list_iterator_codec.h"
+#include "codegen/array_ir_builder.h"
 #include "codegen/date_ir_builder.h"
 #include "codegen/string_ir_builder.h"
 #include "codegen/timestamp_ir_builder.h"
@@ -351,11 +354,28 @@ bool GetLlvmType(::llvm::Module* m, const hybridse::node::TypeNode* data_type,
         }
         case hybridse::node::kMap: {
             LOG(WARNING) << "fail to codegen map type, currently not support";
+            break;
         }
-        default: {
-            return GetLlvmType(m, data_type->base_, llvm_type);
+        case hybridse::node::kArray: {
+            if (data_type->generics_.size() != 1) {
+                LOG(WARNING) << "array type with element type size != 1";
+                return false;
+            }
+            ::llvm::Type* ele_type = nullptr;
+            if (false == GetLlvmType(m, data_type->GetGenericType(0), &ele_type)) {
+                LOG(WARNING) << "failed to infer llvm type for array element";
+                return false;
+            }
+
+            ArrayIRBuilder array_builder(m, ele_type);
+            *llvm_type = array_builder.GetType()->getPointerTo();
+
+            return true;
         }
+        default:
+            break;
     }
+    return GetLlvmType(m, data_type->base_, llvm_type);
 }
 
 bool GetConstFeString(const std::string& val, ::llvm::BasicBlock* block,
@@ -575,34 +595,32 @@ bool GetBaseType(::llvm::Type* type, ::hybridse::node::DataType* output) {
             }
         }
         case ::llvm::Type::PointerTyID: {
-            if (type->getTypeID() == ::llvm::Type::PointerTyID) {
-                type = reinterpret_cast<::llvm::PointerType*>(type)
-                           ->getElementType();
-            }
+            auto pointee_ty = reinterpret_cast<::llvm::PointerType*>(type)
+                ->getElementType();
 
-            if (::llvm::Type::StructTyID != type->getTypeID()) {
-                LOG(WARNING) << "no mapping type for llvm type";
+            if (::llvm::Type::StructTyID != pointee_ty->getTypeID()) {
+                LOG(WARNING) << "no mapping pointee_ty for llvm pointee_ty";
                 return false;
             }
 
-            if (type->getStructName().startswith("fe.list_ref_")) {
+            if (pointee_ty->getStructName().startswith("fe.list_ref_")) {
                 *output = hybridse::node::kList;
                 return true;
-            } else if (type->getStructName().startswith("fe.iterator_ref_")) {
+            } else if (pointee_ty->getStructName().startswith("fe.iterator_ref_")) {
                 *output = hybridse::node::kIterator;
                 return true;
-            } else if (type->getStructName().equals("fe.string_ref")) {
+            } else if (pointee_ty->getStructName().equals("fe.string_ref")) {
                 *output = hybridse::node::kVarchar;
                 return true;
-            } else if (type->getStructName().equals("fe.timestamp")) {
+            } else if (pointee_ty->getStructName().equals("fe.timestamp")) {
                 *output = hybridse::node::kTimestamp;
                 return true;
-            } else if (type->getStructName().equals("fe.date")) {
+            } else if (pointee_ty->getStructName().equals("fe.date")) {
                 *output = hybridse::node::kDate;
                 return true;
             }
-            LOG(WARNING) << "no mapping type for llvm type "
-                         << type->getStructName().str();
+            LOG(WARNING) << "no mapping pointee_ty for llvm pointee_ty "
+                         << pointee_ty->getStructName().str();
             return false;
         }
         default: {
@@ -891,9 +909,8 @@ static Status ExpandLlvmArgTypes(
         }
     } else {
         ::llvm::Type* llvm_ty = nullptr;
-        CHECK_TRUE(GetLlvmType(m, dtype, &llvm_ty), kCodegenError,
-                   "Fail to lower ", dtype->GetName());
-        output->push_back(std::make_pair(llvm_ty, nullable));
+        CHECK_TRUE(GetLlvmType(m, dtype, &llvm_ty), kCodegenError, "Fail to lower ", dtype->GetName());
+        output->emplace_back(llvm_ty, nullable);
     }
     return Status::OK();
 }

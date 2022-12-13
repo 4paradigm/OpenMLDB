@@ -33,9 +33,7 @@ class PredicateFun {
 };
 class IteratorProjectWrapper : public RowIterator {
  public:
-    IteratorProjectWrapper(std::unique_ptr<RowIterator> iter,
-                           const Row& parameter,
-                           const ProjectFun* fun)
+    IteratorProjectWrapper(std::unique_ptr<RowIterator>&& iter, const Row& parameter, const ProjectFun* fun)
         : RowIterator(), iter_(std::move(iter)), parameter_(parameter), fun_(fun), value_() {}
     virtual ~IteratorProjectWrapper() {}
     bool Valid() const override { return iter_->Valid(); }
@@ -56,11 +54,11 @@ class IteratorProjectWrapper : public RowIterator {
 
 class IteratorFilterWrapper : public RowIterator {
  public:
-    IteratorFilterWrapper(std::unique_ptr<RowIterator> iter,
-                          const Row& parameter,
-                          const PredicateFun* fun)
+    IteratorFilterWrapper(std::unique_ptr<RowIterator>&& iter, const Row& parameter, const PredicateFun* fun)
         : RowIterator(), iter_(std::move(iter)), parameter_(parameter), predicate_(fun) {}
+
     virtual ~IteratorFilterWrapper() {}
+
     bool Valid() const override {
         return iter_->Valid() && predicate_->operator()(iter_->GetValue(), parameter_);
     }

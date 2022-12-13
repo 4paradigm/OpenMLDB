@@ -6,12 +6,12 @@ OpenMLDB的SDK，可以分为几层，如图所示。我们将从下层往上依
 ![sdk layers](images/sdk_layers.png)
 
 ### SDK核心层
-最下层是SDK核心层，具体实现为[SQLClusterRouter](https://github.com/4paradigm/OpenMLDB/blob/b6f122798f567adf2bb7766e2c3b81b633ebd231/src/sdk/sql_cluster_router.h#L110)，它是client的最小实现。通过正确的配置后，使用SQLClusterRouter的方法可以完成对OpenMLDB集群的所有操作。
+最下层是SDK核心层，具体实现为[SQLClusterRouter](https://github.com/4paradigm/OpenMLDB/blob/b6f122798f567adf2bb7766e2c3b81b633ebd231/src/sdk/sql_cluster_router.h#L110)，它是client的最小实现。通过正确的配置后，使用`SQLClusterRouter`的方法可以完成对OpenMLDB集群的所有操作。
 
 开发者需要注意，它的方法中最核心的三个方法。
 1. [ExecuteSQL](https://github.com/4paradigm/OpenMLDB/blob/b6f122798f567adf2bb7766e2c3b81b633ebd231/src/sdk/sql_cluster_router.h#L160)，支持执行所有sql，包括DDL，DML，DQL等等。
 2. [ExecuteSQLParameterized](https://github.com/4paradigm/OpenMLDB/blob/b6f122798f567adf2bb7766e2c3b81b633ebd231/src/sdk/sql_cluster_router.h#L166)，支持参数化的sql形式。
-3. [ExecuteSQLRequest](https://github.com/4paradigm/OpenMLDB/blob/b6f122798f567adf2bb7766e2c3b81b633ebd231/src/sdk/sql_cluster_router.h#L156)，这是OpenMLDB特有的[Request模式](../tutorial/modes.md#4-请求模式)，不是普通sql，因此需要一个专用的方法。
+3. [ExecuteSQLRequest](https://github.com/4paradigm/OpenMLDB/blob/b6f122798f567adf2bb7766e2c3b81b633ebd231/src/sdk/sql_cluster_router.h#L156)，这是OpenMLDB特有的[Request模式](../tutorial/modes.md#4-在线请求模式)，不是普通sql，因此需要一个专用的方法。
 
 其他方法，比如CreateDB/DropDB/DropTable，由于历史原因，还没有及时删除，开发者不需要关心。
 
@@ -53,7 +53,7 @@ Python用户层，则是支持Python中比较流行的sqlalchemy，具体实现�
 DBSDK有分为Cluster和Standalone两种，因此也可连接两种OpenMLDB服务端。
 这种方式方便用户额外地读取操作元数据，否则DBSDK在SQLClusterRouter内部不会对外暴露。
 
-例如，由于CLI可以直接通过DBSDK获得nameserver等元数据信息，我们在启动ClusterSQLClient或StandAloneSQLClient时是先创建BDSDK再创建SQLClusterRouter。
+例如，由于CLI可以直接通过DBSDK获得nameserver等元数据信息，我们在启动ClusterSQLClient或StandAloneSQLClient时是先创建DBSDK再创建SQLClusterRouter。
 
 ## Java Test
 
@@ -68,10 +68,27 @@ mvn install -DskipTests=true -Dscalatest.skip=true -Dwagon.skip=true -Dmaven.tes
 ```
 mvn test -pl openmldb-spark-connector -Dsuites="com._4paradigm.openmldb.spark.TestWrite local"
 ```
-P.S. 如果你实时改动了代码，由于install到本地仓库存在之前的代码编译的jar包，会导致无法测试最新代码。请谨慎使用`-pl`的写法。
+
+```{warning}
+如果你实时改动了代码，由于本地仓库存在之前的代码编译的jar包，会导致无法测试最新代码。请谨慎使用`-pl`写法。
+```
 
 如果只想运行java测试：
 ```
 mvn test -pl openmldb-jdbc -Dtest="SQLRouterSmokeTest"
 mvn test -pl openmldb-jdbc -Dtest="SQLRouterSmokeTest#AnyMethod"
+```
+
+### batchjob test
+
+batchjob测试可以使用以下方式:
+```
+$SPARK_HOME/bin/spark-submit --master local --class com._4paradigm.openmldb.batchjob.ImportOfflineData --conf spark.hadoop.hive.metastore.uris=thrift://localhost:9083 --conf spark.openmldb.zk.root.path=/openmldb --conf spark.openmldb.zk.cluster=127.0.0.1:2181 openmldb-batchjob/target/openmldb-batchjob-0.6.5-SNAPSHOT.jar load_data.txt true
+```
+
+或者拷贝编译好的openmldb-batchjob jar包到OpenMLDB集群的taskmanager `lib`，然后使用客户端或Taskmanager Client发送命令测试。
+
+支持hive数据源时，注意需要metastore服务。本地测试时，可以在hive目录中启动，默认地址为`thrift://localhost:9083`。
+```
+bin/hive --service metastore
 ```

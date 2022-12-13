@@ -294,12 +294,14 @@ Status UdfIRBuilder::ExpandLlvmCallReturnArgs(
                 "udf_opaque_type_return_addr",
                 builder->getInt64(opaque_ret_type->bytes()));
         } else if (TypeIRBuilder::IsStructPtr(llvm_ty)) {
+            // Timestamp, Date, String, Array, etc will be struct ptr
             ret_alloca = CreateAllocaAtHead(
                 builder,
                 reinterpret_cast<llvm::PointerType*>(llvm_ty)->getElementType(),
                 "udf_struct_type_return_addr");
             // fill empty content for string
             if (dtype->base() == node::kVarchar) {
+                // empty string
                 builder->CreateStore(builder->getInt32(0),
                                      builder->CreateStructGEP(ret_alloca, 0));
                 builder->CreateStore(builder->CreateGlobalStringPtr(""),

@@ -110,8 +110,12 @@ std::shared_ptr<::hybridse::vm::Tablet> SDKTableHandler::GetTablet(const std::st
     return table_client_manager_->GetTablet(pid);
 }
 
-std::shared_ptr<TabletAccessor> SDKTableHandler::GetTablet(uint32_t pid) {
+std::shared_ptr<TabletAccessor> SDKTableHandler::GetTablet(uint32_t pid) const {
     return table_client_manager_->GetTablet(pid);
+}
+
+std::vector<std::shared_ptr<TabletAccessor>> SDKTableHandler::GetTabletFollowers(uint32_t pid) const {
+    return table_client_manager_->GetTabletFollowers(pid);
 }
 
 bool SDKTableHandler::GetTablet(std::vector<std::shared_ptr<TabletAccessor>>* tablets) {

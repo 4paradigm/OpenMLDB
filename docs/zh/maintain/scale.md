@@ -28,6 +28,12 @@ $ ./bin/openmldb --zk_cluster=172.27.128.31:8090,172.27.128.32:8090,172.27.128.3
 
 ### 2 迁移副本
 
+#### 自动迁移
+
+可以通过[OpenMLDB迁移工具](./openmldb_ops.md) `scaleout`命令实现自动迁移
+
+#### 手动迁移
+
 副本迁移用到的命令是migrate。命令格式: migrate src\_endpoint table\_name partition des\_endpoint  
 
 **一旦表创建好了，不能新增和减少分片，只能迁移分片。迁移的时候只能迁移从分片, 不能迁移主分片**
@@ -67,8 +73,16 @@ $ ./bin/openmldb --zk_cluster=172.27.128.31:8090,172.27.128.32:8090,172.27.128.3
 
 ### 1 选定需要下线的节点
 ### 2 将需要下线节点上的分片迁移到其他节点上
+
+#### 自动迁移
+
+可以通过[OpenMLDB迁移工具](./openmldb_ops.md) `scalein`命令实现自动迁移
+
+#### 手动迁移
+
 * 执行showtable命令查看表分片分布
 * 执行migrage命令将副本迁移到其他节点。如果要下线的节点上有leader，需要执行changeleader命令将leader切换到其他节点上才能执行migrate
+
 ### 3 下线节点
 执行停止命令
 ```bash

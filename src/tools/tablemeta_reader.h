@@ -53,7 +53,7 @@ class TablemetaReader {
 
     virtual bool IsClusterMode() const = 0;
 
-    bool ReadTableMeta();
+    bool ReadTableMeta(const std::string&);
 
     virtual void SetTableinfoPtr() = 0;
 

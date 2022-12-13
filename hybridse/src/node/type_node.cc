@@ -15,12 +15,19 @@
  */
 
 #include "node/type_node.h"
+
+#include "absl/strings/ascii.h"
+#include "absl/strings/str_join.h"
+#include "absl/strings/str_cat.h"
 #include "node/node_manager.h"
 #include "vm/physical_op.h"
 
 namespace hybridse {
 namespace node {
 
+bool operator==(const TypeNode& lhs, const TypeNode& rhs) {
+    return lhs.Equals(&rhs);
+}
 bool TypeNode::IsBaseType() const {
     return IsNumber() || IsString() || IsTimestamp() || IsDate();
 }
@@ -76,6 +83,17 @@ TypeNode *TypeNode::DeepCopy(NodeManager *nm) const {
     return ShadowCopy(nm);
 }
 
+std::string TypeNode::DebugString() const {
+    return absl::StrCat(absl::AsciiStrToUpper(DataTypeName(base_)),
+                        generics_.empty() ? ""
+                                          : absl::StrCat("<",
+                                                         absl::StrJoin(generics_, ",",
+                                                                       [](std::string *out, const TypeNode *type) {
+                                                                           absl::StrAppend(out, type->DebugString());
+                                                                       }),
+                                                         ">"));
+}
+
 RowTypeNode::RowTypeNode(const vm::SchemasContext *schemas_ctx)
     : TypeNode(node::kRow),
       schemas_ctx_(schemas_ctx),
@@ -101,6 +119,18 @@ RowTypeNode *RowTypeNode::ShadowCopy(NodeManager *nm) const {
 
 OpaqueTypeNode *OpaqueTypeNode::ShadowCopy(NodeManager *nm) const {
     return nm->MakeOpaqueType(bytes_);
+}
+
+// {base_name}<element_type>(num_elements)
+std::string FixedArrayType::DebugString() const {
+    return absl::StrCat(TypeNode::DebugString(), "(", num_elements_, ")");
+}
+
+// {base_name}_{generics}_...{num_elements}
+const std::string FixedArrayType::GetName() const { return absl::StrCat(TypeNode::GetName(), "_", num_elements_); }
+
+FixedArrayType *FixedArrayType::ShadowCopy(NodeManager *nm) const {
+    return nm->MakeArrayType(element_type(), num_elements_);
 }
 
 }  // namespace node

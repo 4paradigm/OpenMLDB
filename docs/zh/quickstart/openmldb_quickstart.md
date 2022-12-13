@@ -1,6 +1,6 @@
 # OpenMLDB 快速上手
 
-本教程提供OpenMLDB快速上手指南。通过建立数据库、导入数据、离线特征计算、SQL 方案上线、在线实时特征计算，演示了单机版OpenMLDB和集群版OpenMLDB的基本使用流程。
+本教程提供 OpenMLDB 快速上手指南。通过建立数据库、导入数据、离线特征计算、SQL 方案上线、在线实时特征计算，演示了单机版 OpenMLDB 和集群版 OpenMLDB 的基本使用流程。
 
 ## 1. 环境和数据准备
 
@@ -8,7 +8,7 @@
 Docker engine版本需求 >= 18.03
 ```
 
-本教程均基于 OpenMLDB CLI 进行开发和部署，因此首先需要下载样例数据并且启动 OpenMLDB CLI。我们推荐使用准备好的 docker 镜像来快速体验使用。
+本教程均基于 OpenMLDB CLI 进行开发和部署，因此首先需要下载样例数据并且启动 OpenMLDB CLI。我们推荐使用准备好的 docker 镜像来快速体验。
 
 ```{note}
 如果你希望自己编译安装，可以参考我们的[安装部署](../deploy/install_deploy.md)。
@@ -19,13 +19,13 @@ Docker engine版本需求 >= 18.03
 拉取镜像（镜像下载大小大约 1GB，解压后约 1.7 GB）和启动 docker 容器
 
 ```bash
-docker run -it 4pdosc/openmldb:0.6.4 bash
+docker run -it 4pdosc/openmldb:0.6.9 bash
 ```
 
 ````{important}
 **成功启动容器以后，本教程中的后续命令默认均在容器内执行。**
 ```{tip} 
-如果你需要从容器外访问容器内的OpenMLDB服务端，请参考[DockerIP](../reference/ip_tips.md#docker-ip)。
+如果你需要从容器外访问容器内的 OpenMLDB 服务端，请参考[CLI/SDK->容器onebox](../reference/ip_tips.md#clisdk-容器onebox)。
 ```
 ````
 
@@ -34,9 +34,11 @@ docker run -it 4pdosc/openmldb:0.6.4 bash
 下载样例数据
 
 ```bash
-curl https://openmldb.ai/demo/data.csv --output ./taxi-trip/data/data.csv
+curl https://openmldb.ai/demo/data.csv --output /work/taxi-trip/data/data.csv
 curl https://openmldb.ai/demo/data.parquet --output ./taxi-trip/data/data.parquet
 ```
+
+其中，csv数据用于单机版演示，parquet数据用于集群版演示。
 
 ## 2. 单机版OpenMLDB 快速上手
 
@@ -195,8 +197,8 @@ curl http://127.0.0.1:8080/dbs/demo_db/deployments/demo_data_service -X POST -d'
 - 启动集群版OpenMLDB服务端
 
 ```bash
-# 1. initialize the environment and start cluster openmldb server
-./init.sh
+# Initialize the environment and start cluster openmldb server
+/work/init.sh
 ```
 
 - 启动集群版OpenMLDB CLI客户端
@@ -259,7 +261,7 @@ curl http://127.0.0.1:8080/dbs/demo_db/deployments/demo_data_service -X POST -d'
 ```sql
 > USE demo_db;
 > SET @@execute_mode='offline';
-> LOAD DATA INFILE 'file:///work/taxi-trip/data/data.parquet' INTO TABLE demo_table1 options(format='parquet', header=true, mode='append');
+> LOAD DATA INFILE 'file:///work/taxi-trip/data/data.parquet' INTO TABLE demo_table1 options(format='parquet', mode='append');
 ```
 
 注意，`LOAD DATA` 命令为非阻塞，可以通过 `SHOW JOBS` 等离线任务管理命令来查看任务进度。
@@ -271,9 +273,13 @@ SET @@sync_job=true;
 SELECT * FROM demo_table1;
 ```
 
-非阻塞命令（异步模式）时，查询结果需要查看日志（默认在`/work/openmldb/taskmanager/bin/logs/job_x.log`，x为job id，如需更改日志的保存地址，修改`/work/openmldb/conf/taskmanager.properties`的`job.log.path`）。
+使用非阻塞命令（异步模式）时，通过返回的JOB ID，可以查看任务状态和日志，确保离线特征顺利完成。
 
-如果job failed，可以查看`/work/openmldb/taskmanager/bin/logs/job_x_error.log`，确认问题。
+```sql
+SHOW JOB $JOB_ID
+
+SHOW JOBLOG $JOB_ID
+```
 
 #### 3.3.3 离线特征计算
 
@@ -368,8 +374,9 @@ http://127.0.0.1:9080/dbs/demo_db/deployments/demo_data_service
         APIServer地址     Database名字            Deployment名字
 ```
 
-实时请求的输入数据接受 `json` 格式，我们把一行数据放到请求的 `input` 域中。如下示例:
+实时请求的输入数据接受 `json` 格式，我们把一行数据放到请求的 `input` 域中。
 
+示例1：
 ```bash
 curl http://127.0.0.1:9080/dbs/demo_db/deployments/demo_data_service -X POST -d'{"input": [["aaa", 11, 22, 1.2, 1.3, 1635247427000, "2021-05-20"]]}'
 ```
@@ -380,13 +387,22 @@ curl http://127.0.0.1:9080/dbs/demo_db/deployments/demo_data_service -X POST -d'
 {"code":0,"msg":"ok","data":{"data":[["aaa",11,22]]}}
 ```
 
+示例2：
+```bash
+curl http://127.0.0.1:9080/dbs/demo_db/deployments/demo_data_service -X POST -d'{"input": [["aaa", 11, 22, 1.2, 1.3, 1637000000000, "2021-11-16"]]}'
+```
+预期返回返回结果：
+```json
+{"code":0,"msg":"ok","data":{"data":[["aaa",11,66]]}}
+```
+
 #### 3.3.8 实时特征计算的结果说明
 
 实时请求（执行deployment），是请求模式（request模式）的SQL执行。与批处理模式（batch模式）不同，请求模式只会对请求行（request row）进行SQL计算。在前面的示例中，就是POST的input作为请求行，假设这行数据存在于表demo_table1中，并对它执行SQL：
 ```sql
 SELECT c1, c2, sum(c3) OVER w1 AS w1_c3_sum FROM demo_table1 WINDOW w1 AS (PARTITION BY demo_table1.c1 ORDER BY demo_table1.c6 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
 ```
-具体计算逻辑如下（实际计算中会进行优化，减少计算量）：
+示例1的具体计算逻辑如下（实际计算中会进行优化，减少计算量）：
 1. 根据请求行与窗口的`PARTITION BY`分区，筛选出c1为"aaa"的行，并按c6从小到大排序。所以理论上，分区排序后的中间数据表，如下表所示。其中，请求行为排序后的第一行。
 ```
  ----- ---- ---- ---------- ----------- --------------- ------------
@@ -406,5 +422,28 @@ SELECT c1, c2, sum(c3) OVER w1 AS w1_c3_sum FROM demo_table1 WINDOW w1 AS (PARTI
   c1    c2   w1_c3_sum   
  ----- ---- -----------
   aaa   11      22
+ ----- ---- -----------
+```
+
+示例2的具体计算逻辑如下：
+1. 根据请求行与窗口的`PARTITION BY`分区，筛选出c1为"aaa"的行，并按c6从小到大排序。所以理论上，分区排序后的中间数据表，如下表所示。其中，请求行为排序后的最后一行。
+```
+ ----- ---- ---- ---------- ----------- --------------- ------------
+  c1    c2   c3   c4         c5          c6              c7
+ ----- ---- ---- ---------- ----------- --------------- ------------
+  aaa   11   22   1.200000   11.300000   1636097290000   1970-01-01
+  aaa   12   22   2.200000   12.300000   1636097890000   1970-01-01
+  aaa   11   22   1.2        1.3         1637000000000   2021-11-16
+ ----- ---- ---- ---------- ----------- --------------- ------------
+```
+2. 窗口范围是`2 PRECEDING AND CURRENT ROW`，所以我们在上表中截取出真正的窗口，请求行往前2行都均存在，同时也包含当前行，因此，窗口内有三行数据。
+3. 窗口聚合，对窗口内的数据（三行）进行c3求和，得到22*3=66。
+
+于是输出结果为：
+```
+ ----- ---- ----------- 
+  c1    c2   w1_c3_sum   
+ ----- ---- -----------
+  aaa   11      66
  ----- ---- -----------
 ```

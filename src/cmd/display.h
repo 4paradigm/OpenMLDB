@@ -397,10 +397,6 @@ __attribute__((unused)) static void PrintTableInformation(
     row.push_back(::openmldb::base::HumanReadableString(diskused));
     tp.AddRow(row);
     row.clear();
-    row.push_back("format_version");
-    row.push_back(std::to_string(table.format_version()));
-    tp.AddRow(row);
-    row.clear();
     row.push_back("partition_key");
     if (table.partition_key_size() > 0) {
         std::string partition_key;
@@ -600,42 +596,6 @@ __attribute__((unused)) static void PrintProcedureInfo(
     PrintProcedureSchema("Input Schema", sp_info.GetInputSchema(), stream);
     PrintProcedureSchema("Output Schema", sp_info.GetOutputSchema(), stream);
 }
-
-__attribute__((unused)) static void PrintJobInfos(
-        const std::vector<::openmldb::taskmanager::JobInfo>& job_infos,
-        std::ostream& stream) {
-    ::hybridse::base::TextTable t('-', ' ', ' ');
-
-    t.add("id");
-    t.add("job_type");
-    t.add("state");
-    t.add("start_time");
-    t.add("end_time");
-    t.add("parameter");
-    t.add("cluster");
-    t.add("application_id");
-    t.add("error");
-
-    t.end_of_row();
-
-    for (auto& job_info : job_infos) {
-        // request.add_endpoint_group(endpoint);
-        t.add(std::to_string(job_info.id()));
-        t.add(job_info.job_type());
-        t.add(job_info.state());
-        t.add(std::to_string(job_info.start_time()));
-        t.add(std::to_string(job_info.end_time()));
-        t.add(job_info.parameter());
-        t.add(job_info.cluster());
-        t.add(job_info.application_id());
-        t.add(job_info.error());
-        t.end_of_row();
-    }
-
-    stream << t << std::endl;
-    stream << job_infos.size() << " jobs in set" << std::endl;
-}
-
 
 }  // namespace cmd
 }  // namespace openmldb

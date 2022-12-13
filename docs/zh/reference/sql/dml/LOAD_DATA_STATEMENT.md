@@ -29,6 +29,7 @@ LoadDataInfileOptionItem
 URI
 				::= 'file://FilePathPattern'
 				|'hdfs://FilePathPattern'
+				|'hive://[db.]table'
 				|'FilePathPattern'
 
 FilePathPattern
@@ -36,19 +37,21 @@ FilePathPattern
 ```
 其中`FilePathPattern`支持通配符`*`，比如可以设成`/test/*.csv`，匹配规则和`ls FilePathPattern`一致。
 
+支持从Hive导入数据，但需要额外的设置，详情见[Hive 支持](#hive-支持)。
+
 下表展示了`LOAD DATA INFILE`语句的配置项。
 
-| 配置项     | 类型    | 默认值 | 描述                                                                                                                                                                                           |
-| ---------- | ------- | ------ |----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| delimiter  | String  | ,      | 列分隔符，默认为`,`。                                                                                                                                                                                 |
-| header     | Boolean | true   | 是否包含表头, 默认为`true` 。                                                                                                                                                                          |
-| null_value | String  | null   | NULL值，默认填充`"null"`。加载时，遇到null_value的字符串将被转换为`"null"`，插入表中。                                                                                                                                       |
-| format     | String  | csv    | 导入文件的格式:<br />`csv`:不显示指明format时，默认为该值<br />`parquet`:集群版还支持导入parquet格式文件，单机版不支持。                                                                                                                                                              |
-| quote      | String  | ""     | 输入数据的包围字符串。字符串长度<=1。默认为""，表示解析数据，不特别处理包围字符串。配置包围字符后，被包围字符包围的内容将作为一个整体解析。例如，当配置包围字符串为"#"时， `1, 1.0, #This is a string field, even there is a comma#`将为解析为三个filed.第一个是整数1，第二个是浮点1.0,第三个是一个字符串。 |
-| mode       | String  | "error_if_exists" | 导入模式:<br />`error_if_exists`: 仅离线模式可用，若离线表已有数据则报错。<br />`overwrite`: 仅离线模式可用，数据将覆盖离线表数据。<br />`append`：离线在线均可用，若文件已存在，数据将追加到原文件后面。                                                           |
-| deep_copy  | Boolean | true             | `deep_copy=false`仅支持离线load, 可以指定`INFILE` Path为该表的离线存储地址，从而不需要硬拷贝。                                                                                                                            |
-| load_mode  | String  | cluster          | `load_mode='local'`仅支持从csv本地文件导入在线存储, 它通过本地客户端同步插入数据；<br /> `load_mode='cluster'`仅支持集群版, 通过spark插入数据，支持同步或异步模式                                                                               |
-| thread     | Integer | 1                | 仅在本地文件导入时生效，即`load_mode='local'`或者单机版，表示本地插入数据的线程数。 最大值为`50`。                                                                                                                                  |
+| 配置项     | 类型    | 默认值            | 描述                                                                                                                                                                                                                                                                                                        |
+| ---------- | ------- | ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| delimiter  | String  | ,                 | 列分隔符，默认为`,`。                                                                                                                                                                                                                                                                                       |
+| header     | Boolean | true              | 是否包含表头, 默认为`true` 。                                                                                                                                                                                                                                                                               |
+| null_value | String  | null              | NULL值，默认填充`"null"`。加载时，遇到null_value的字符串将被转换为`"null"`，插入表中。                                                                                                                                                                                                                      |
+| format     | String  | csv               | 导入文件的格式:<br />`csv`:不显示指明format时，默认为该值<br />`parquet`:集群版还支持导入parquet格式文件，单机版不支持。                                                                                                                                                                                    |
+| quote      | String  | ""                | 输入数据的包围字符串。字符串长度<=1。默认为""，表示解析数据，不特别处理包围字符串。配置包围字符后，被包围字符包围的内容将作为一个整体解析。例如，当配置包围字符串为"#"时， `1, 1.0, #This is a string field, even there is a comma#`将为解析为三个filed.第一个是整数1，第二个是浮点1.0,第三个是一个字符串。 |
+| mode       | String  | "error_if_exists" | 导入模式:<br />`error_if_exists`: 仅离线模式可用，若离线表已有数据则报错。<br />`overwrite`: 仅离线模式可用，数据将覆盖离线表数据。<br />`append`：离线在线均可用，若文件已存在，数据将追加到原文件后面。                                                                                                   |
+| deep_copy  | Boolean | true              | `deep_copy=false`仅支持离线load, 可以指定`INFILE` Path为该表的离线存储地址，从而不需要硬拷贝。                                                                                                                                                                                                              |
+| load_mode  | String  | cluster           | `load_mode='local'`仅支持从csv本地文件导入在线存储, 它通过本地客户端同步插入数据；<br /> `load_mode='cluster'`仅支持集群版, 通过spark插入数据，支持同步或异步模式                                                                                                                                           |
+| thread     | Integer | 1                 | 仅在本地文件导入时生效，即`load_mode='local'`或者单机版，表示本地插入数据的线程数。 最大值为`50`。                                                                                                                                                                                                          |
 
 
 ```{note}
@@ -95,3 +98,64 @@ set @@execute_mode='offline';
 LOAD DATA INFILE 'data_path' INTO TABLE t1 OPTIONS(deep_copy=false);
 ```
 
+## Hive 支持
+
+### 支持Hive数据格式
+
+支持以下几种Hive的数据格式，不支持Binary等其他格式。
+
+| OpenMLDB Data Format | Hive Data Format |
+| -------------------- | ---------------- |
+| BOOL                 | BOOLEAN          |
+| SMALLINT             | SMALLINT         |
+| INT                  | INT              |
+| BIGINT               | BIGINT           |
+| FLOAT                | FLOAT            |
+| DOUBLE               | DOUBLE           |
+| DATE                 | DATE             |
+| TIMESTAMP            | TIMESTAMP        |
+
+### 开启 Hive 支持
+
+为了支持读写Hive，我们需要Hive相关的依赖和Hive配置。
+
+#### Spark Hive依赖
+
+[OpenMLDB Spark 发行版](../../../tutorial/openmldbspark_distribution.md) v0.6.7及以上均包含Hive依赖。如果使用其他Spark发行版，我们需要在Spark中编译出Hive依赖，依赖包在`assembly/target/scala-xx/jars`. 将所有依赖加入Spark的class path中。
+
+```
+./build/mvn -Pyarn -Phive -Phive-thriftserver -DskipTests clean package
+```
+
+#### Hive 配置
+
+目前只支持使用metastore服务来连接Hive。
+
+- spark.conf
+
+	你可以在spark conf中配置`spark.hadoop.hive.metastore.uris`。有两种方式：
+	- taskmanager.properties: 在配置项 `spark.default.conf` 中加入`spark.hadoop.hive.metastore.uris=thrift://...`并重启taskmanager。
+	- CLI: 在ini conf中加入此配置项，并使用`--spark_conf`启动CLI，参考[客户端Spark配置文件](../../client_config/client_spark_config.md)。
+
+- hive-site.xml:
+
+	你可以配置`hive-site.xml`中的`hive.metastore.uris`，并将配置文件放入Spark home的`conf/`。
+
+	`hive-site.xml`样例：
+	```
+	<configuration>
+		<property>
+			<name>hive.metastore.uris</name>
+			<!--Make sure that <value> points to the Hive Metastore URI in your cluster -->
+			<value>thrift://localhost:9083</value>
+			<description>URI for client to contact metastore server</description>
+		</property>
+	</configuration>
+	```
+
+### Hive Debug
+
+确认`LOAD DATA`等任务是否连接到正确的Hive集群，可以通过job log来查看。
+
+- `INFO HiveConf:`提示读取到的是哪个Hive配置文件。如果需要配置加载的细节，可以打开spark debug日志。
+- 连接Hive metastore应该有` INFO metastore: Trying to connect to metastore with URI`的日志提示。连接成功会有`INFO metastore: Connected to metastore.`日志。

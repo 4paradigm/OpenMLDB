@@ -233,10 +233,9 @@ void TabletTableHandler::Update(const ::openmldb::nameserver::TableInfo& meta, c
     ::openmldb::storage::TableSt new_table_st(meta);
     for (const auto& partition_st : *(new_table_st.GetPartitions())) {
         uint32_t pid = partition_st.GetPid();
-        if (partition_st == table_st_.GetPartition(pid)) {
-            continue;
+        if (!(partition_st == table_st_.GetPartition(pid))) {
+            table_st_.SetPartition(partition_st);
         }
-        table_st_.SetPartition(partition_st);
         table_client_manager_->UpdatePartitionClientManager(partition_st, client_manager);
     }
     if (meta.column_key_size() != static_cast<int>(GetIndex().size())) {
@@ -420,12 +419,12 @@ bool TabletCatalog::UpdateTableMeta(const ::openmldb::api::TableMeta& meta) {
     std::lock_guard<::openmldb::base::SpinMutex> spin_lock(mu_);
     auto db_it = tables_.find(db_name);
     if (db_it == tables_.end()) {
-        LOG(WARNING) << "db " << db_name << " is not exist";
+        LOG(WARNING) << "db " << db_name << " does not exist";
         return false;
     }
     auto it = db_it->second.find(table_name);
     if (it == db_it->second.end()) {
-        LOG(WARNING) << "table " << table_name << " is not exist in db " << db_name;
+        LOG(WARNING) << "table " << table_name << " does not exist in db " << db_name;
         return false;
     } else {
         handler = it->second;

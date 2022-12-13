@@ -122,7 +122,7 @@ window window_name as (UNION other_table PARTITION BY key_col ORDER BY order_col
 
 ```
 
-### 示例
+#### 示例
 
 以下通过具体例子来展示 WINDOW UNION 的定义方式。
 
@@ -161,7 +161,7 @@ PARTITION BY mid ORDER BY purchase_time
 ROWS_RANGE BETWEEN 10d PRECEDING AND 1 PRECEDING INSTANCE_NOT_IN_WINDOW)
 ```
 
-## 3.2 步骤二：构建副表多行聚合特征
+### 3.2 步骤二：构建副表多行聚合特征
 
 对于副表拼接窗口进行多行聚合函数加工，构造多行副表聚合特征，使得最后生成的行数和主表相同。以简单聚合函数为例，我们可以构造样本的副表拼接特征：商户的最近10天的零售总额`w10d_merchant_purchase_amt_sum`，商户的最近10天消费总次数`w10d_merchant_purchase_count`。以下 SQL 基于 [3.1](#31-步骤一-定义副表拼接窗口) 中所定义的副表拼接窗口，构建多行聚合特征。
 

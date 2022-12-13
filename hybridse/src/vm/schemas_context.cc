@@ -340,15 +340,13 @@ Status SchemasContext::ResolveColumnID(const std::string& db_name,
     return Status::OK();
 }
 
-static Status DoSearchExprDependentColumns(
-    const node::ExprNode* expr, const SchemasContext* ctx,
-    std::vector<const node::ExprNode*>* columns) {
+Status DoSearchExprDependentColumns(const node::ExprNode* expr, std::vector<const node::ExprNode*>* columns) {
     if (expr == nullptr) {
         return Status::OK();
     }
     for (size_t i = 0; i < expr->GetChildNum(); ++i) {
         CHECK_STATUS(
-            DoSearchExprDependentColumns(expr->GetChild(i), ctx, columns));
+            DoSearchExprDependentColumns(expr->GetChild(i), columns));
     }
     switch (expr->expr_type_) {
         case node::kExprColumnRef: {
@@ -362,11 +360,11 @@ static Status DoSearchExprDependentColumns(
         case node::kExprBetween: {
             std::vector<node::ExprNode*> expr_list;
             auto between_expr = dynamic_cast<const node::BetweenExpr*>(expr);
-            CHECK_STATUS(DoSearchExprDependentColumns(between_expr->GetLow(), ctx,
+            CHECK_STATUS(DoSearchExprDependentColumns(between_expr->GetLow(),
                                                       columns));
-            CHECK_STATUS(DoSearchExprDependentColumns(between_expr->GetHigh(), ctx,
+            CHECK_STATUS(DoSearchExprDependentColumns(between_expr->GetHigh(),
                                                       columns));
-            CHECK_STATUS(DoSearchExprDependentColumns(between_expr->GetLhs(), ctx,
+            CHECK_STATUS(DoSearchExprDependentColumns(between_expr->GetLhs(),
                                                       columns));
             break;
         }
@@ -376,14 +374,21 @@ static Status DoSearchExprDependentColumns(
                 auto orders = call_expr->GetOver()->GetOrders();
                 if (nullptr != orders) {
                     CHECK_STATUS(
-                        DoSearchExprDependentColumns(orders, ctx, columns));
+                        DoSearchExprDependentColumns(orders, columns));
                 }
                 auto partitions = call_expr->GetOver()->GetPartitions();
                 if (nullptr != partitions) {
                     CHECK_STATUS(
-                        DoSearchExprDependentColumns(partitions, ctx, columns));
+                        DoSearchExprDependentColumns(partitions, columns));
                 }
             }
+            break;
+        }
+        case node::kExprOrderExpression: {
+            auto refx = dynamic_cast<const node::OrderExpression*>(expr);
+            CHECK_TRUE(refx != nullptr, common::kTypeError);
+            CHECK_STATUS(DoSearchExprDependentColumns(refx->expr(), columns));
+
             break;
         }
         default:
@@ -395,7 +400,7 @@ static Status DoSearchExprDependentColumns(
 Status SchemasContext::ResolveExprDependentColumns(
     const node::ExprNode* expr, std::set<size_t>* column_ids) const {
     std::vector<const node::ExprNode*> columns;
-    CHECK_STATUS(DoSearchExprDependentColumns(expr, this, &columns));
+    CHECK_STATUS(DoSearchExprDependentColumns(expr, &columns));
 
     column_ids->clear();
     for (auto col_expr : columns) {
@@ -432,7 +437,7 @@ Status SchemasContext::ResolveExprDependentColumns(
     const node::ExprNode* expr,
     std::vector<const node::ExprNode*>* columns) const {
     std::vector<const node::ExprNode*> search_columns;
-    CHECK_STATUS(DoSearchExprDependentColumns(expr, this, &search_columns));
+    CHECK_STATUS(DoSearchExprDependentColumns(expr, &search_columns));
 
     std::set<size_t> column_id_set;
     std::set<std::string> column_name_set;

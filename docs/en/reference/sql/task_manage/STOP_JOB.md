@@ -2,11 +2,14 @@
 
 The `STOP JOB` statement can stop a given job that has already been submitted according to the JOB ID.
 
-
 ```SQL
 STOP JOB job_id;
 ```
 
+```{attention}
+In yarn mode，`STOP JOB` will kill the yarn job and modify the job status in job info table.
+In local or yarn-client mode，`STOP JOB` will only modify the job status in job info table, won't kill the job process.
+```
 
 ## Example
 

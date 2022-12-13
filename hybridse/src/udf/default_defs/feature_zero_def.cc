@@ -34,16 +34,13 @@
 #include "udf/udf_registry.h"
 #include "vm/jit_runtime.h"
 
-using openmldb::base::Date;
-using hybridse::codec::ListRef;
-using openmldb::base::StringRef;
-using openmldb::base::Timestamp;
-
 namespace hybridse {
 namespace udf {
 
 using hybridse::codec::ListRef;
 using hybridse::codec::StringRef;
+using openmldb::base::Date;
+using openmldb::base::Timestamp;
 
 /**
  * A mutable string ArrayListV

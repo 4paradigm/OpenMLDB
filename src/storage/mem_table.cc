@@ -493,19 +493,24 @@ uint64_t MemTable::GetRecordIdxByteSize() {
 
 uint64_t MemTable::GetRecordIdxCnt() {
     uint64_t record_idx_cnt = 0;
-    auto inner_indexs = table_index_.GetAllInnerIndex();
-    for (size_t i = 0; i < inner_indexs->size(); i++) {
-        bool is_valid = false;
-        for (const auto& index_def : inner_indexs->at(i)->GetIndex()) {
-            if (index_def && index_def->IsReady()) {
-                is_valid = true;
-                break;
-            }
-        }
-        if (is_valid) {
-            for (uint32_t j = 0; j < seg_cnt_; j++) {
-                record_idx_cnt += segments_[i][j]->GetIdxCnt();
-            }
+    std::shared_ptr<IndexDef> index_def = table_index_.GetIndex(0);
+    if (!index_def || !index_def->IsReady()) {
+        return record_idx_cnt;
+    }
+    uint32_t inner_idx = index_def->GetInnerPos();
+    auto inner_index = table_index_.GetInnerIndex(inner_idx);
+    int32_t ts_col_id = -1;
+    auto ts_col = index_def->GetTsColumn();
+    if (ts_col) {
+        ts_col_id = ts_col->GetId();
+    }
+    for (uint32_t i = 0; i < seg_cnt_; i++) {
+        if (inner_index->GetIndex().size() > 1 && ts_col_id >= 0) {
+            uint64_t record_cnt = 0;
+            segments_[inner_idx][i]->GetIdxCnt(ts_col_id, record_cnt);
+            record_idx_cnt += record_cnt;
+        } else {
+            record_idx_cnt += segments_[inner_idx][i]->GetIdxCnt();
         }
     }
     return record_idx_cnt;
@@ -539,10 +544,20 @@ bool MemTable::GetRecordIdxCnt(uint32_t idx, uint64_t** stat, uint32_t* size) {
     if (!index_def || !index_def->IsReady()) {
         return false;
     }
-    auto* data_array = new uint64_t[seg_cnt_];
-    uint32_t real_idx = index_def->GetInnerPos();
+    auto* data_array = new uint64_t[seg_cnt_]();
+    uint32_t inner_idx = index_def->GetInnerPos();
+    auto inner_index = table_index_.GetInnerIndex(inner_idx);
+    int32_t ts_col_id = -1;
+    auto ts_col = index_def->GetTsColumn();
+    if (ts_col) {
+        ts_col_id = ts_col->GetId();
+    }
     for (uint32_t i = 0; i < seg_cnt_; i++) {
-        data_array[i] = segments_[real_idx][i]->GetIdxCnt();
+        if (inner_index->GetIndex().size() > 1 && ts_col_id >= 0) {
+            segments_[inner_idx][i]->GetIdxCnt(ts_col_id, data_array[i]);
+        } else {
+            data_array[i] += segments_[inner_idx][i]->GetIdxCnt();
+        }
     }
     *stat = data_array;
     *size = seg_cnt_;
@@ -637,7 +652,7 @@ bool MemTable::AddIndex(const ::openmldb::common::ColumnKey& column_key) {
 bool MemTable::DeleteIndex(const std::string& idx_name) {
     std::shared_ptr<IndexDef> index_def = table_index_.GetIndex(idx_name);
     if (!index_def) {
-        PDLOG(WARNING, "index %s is not exist. tid %u pid %u", idx_name.c_str(), id_, pid_);
+        PDLOG(WARNING, "index %s does not exist. tid %u pid %u", idx_name.c_str(), id_, pid_);
         return false;
     }
     if (index_def->GetId() == 0) {

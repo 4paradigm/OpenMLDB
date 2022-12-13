@@ -23,7 +23,7 @@ import java.io.Serializable;
 
 // Must serializable
 public class OpenmldbWriteConfig implements Serializable {
-    public String dbName, tableName, zkCluster, zkPath;
+    public final String dbName, tableName, zkCluster, zkPath;
 
     public OpenmldbWriteConfig(String dbName, String tableName, SdkOption option) {
         this.dbName = dbName;

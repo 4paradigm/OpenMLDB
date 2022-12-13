@@ -109,8 +109,6 @@ bool NodeAdapter::TransformToTableDef(::hybridse::node::CreatePlanNode* create_n
     }
     table->set_replica_num(replica_num);
     table->set_partition_num(partition_num);
-
-    table->set_format_version(1);
     table->set_storage_mode(static_cast<common::StorageMode>(storage_mode));
     bool has_generate_index = false;
     std::set<std::string> index_names;

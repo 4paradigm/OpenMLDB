@@ -317,9 +317,6 @@ bool ClusterSDK::UpdateCatalog(const std::vector<std::string>& table_datas, cons
             continue;
         }
         DLOG(INFO) << "parse table " << table_info->name() << " ok";
-        if (table_info->format_version() != 1) {
-            continue;
-        }
         tables.push_back(*(table_info));
         auto it = mapping.find(table_info->db());
         if (it == mapping.end()) {
@@ -553,6 +550,19 @@ std::shared_ptr<::openmldb::catalog::TabletAccessor> DBSDK::GetTablet(const std:
         auto* sdk_table_handler = dynamic_cast<::openmldb::catalog::SDKTableHandler*>(table_handler.get());
         if (sdk_table_handler) {
             return sdk_table_handler->GetTablet(pid);
+        }
+    }
+    return {};
+}
+
+std::vector<std::shared_ptr<::openmldb::catalog::TabletAccessor>> DBSDK::GetTabletFollowers(const std::string& db,
+                                                                                            const std::string& name,
+                                                                                            uint32_t pid) {
+    auto table_handler = GetCatalog()->GetTable(db, name);
+    if (table_handler) {
+        auto* sdk_table_handler = dynamic_cast<::openmldb::catalog::SDKTableHandler*>(table_handler.get());
+        if (sdk_table_handler) {
+            return sdk_table_handler->GetTabletFollowers(pid);
         }
     }
     return {};

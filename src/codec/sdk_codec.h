@@ -70,9 +70,7 @@ class SDKCodec {
     std::map<std::string, uint32_t> schema_idx_map_;
     std::vector<uint32_t> ts_idx_;
     std::vector<uint32_t> partition_col_idx_;
-    uint32_t format_version_;
     uint32_t base_schema_size_;
-    int modify_times_;
     std::map<int32_t, std::shared_ptr<Schema>> version_schema_;
     int32_t last_ver_;
 };

@@ -108,6 +108,6 @@ allure-results/
 /python/openmldb_sdk/test/*.xml
 /python/openmldb_tool/dist/
 /python/openmldb_tool/*.egg-info/
-
+/python/openmldb_autofe/*.egg-info/
 # go sdk
 !go.mod

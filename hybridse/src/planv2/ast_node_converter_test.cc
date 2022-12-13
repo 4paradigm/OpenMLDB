@@ -21,6 +21,7 @@
 #include <random>
 #include <vector>
 
+#include "absl/strings/match.h"
 #include "case/sql_case.h"
 #include "gtest/gtest.h"
 #include "zetasql/base/testing//status_matchers.h"
@@ -589,7 +590,7 @@ TEST_F(ASTNodeConverterTest, ConvertCreateProcedureOKTest) {
 TEST_F(ASTNodeConverterTest, ConvertCreateProcedureFailTest) {
     node::NodeManager node_manager;
 
-    auto expect_converted = [&](const std::string& sql, const int code, const std::string& msg) {
+    auto expect_converted = [&](absl::string_view sql, int code, absl::string_view msg) {
         std::unique_ptr<zetasql::ParserOutput> parser_output;
         ZETASQL_ASSERT_OK(zetasql::ParseStatement(sql, zetasql::ParserOptions(), &parser_output));
         const auto* statement = parser_output->statement();
@@ -599,7 +600,7 @@ TEST_F(ASTNodeConverterTest, ConvertCreateProcedureFailTest) {
         node::CreateSpStmt* stmt;
         auto s = ConvertCreateProcedureNode(create_sp, &node_manager, &stmt);
         EXPECT_EQ(code, s.code);
-        EXPECT_TRUE(boost::contains(s.msg, msg)) << s << "\nexpect msg: " << msg;
+        EXPECT_TRUE(absl::StrContains(s.msg, msg)) << s << "\nexpect msg: " << msg;
     };
 
     // unsupported param type
@@ -640,7 +641,7 @@ TEST_F(ASTNodeConverterTest, ConvertCreateProcedureFailTest) {
           SELECT 1 UNION DISTINCT SELECT 2;
         END;
         )sql",
-                     common::kSqlAstError, "Un-support type: ArrayType");
+                     common::kSqlAstError, "Un-support: func parameter accept only basic type, but get ARRAY<INT32>");
 
     // unsupport set operation
     expect_converted(R"sql(
@@ -894,7 +895,7 @@ TEST_F(ASTNodeConverterTest, ConvertStmtFailTest) {
         SHOW GLOBAL VARIABLES LIKE 'execute%'
     )sql",
                      common::kSqlAstError,
-                     "Non-support LIKE in show statement");
+                     "Non-support LIKE in SHOW GLOBAL VARIABLES statement");
 }
 
 TEST_F(ASTNodeConverterTest, ConvertCreateTableNodeErrorTest) {

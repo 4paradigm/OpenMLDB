@@ -68,7 +68,7 @@ int Snapshot::GenManifest(const std::string& snapshot_name, uint64_t key_count, 
 int Snapshot::GetLocalManifest(const std::string& full_path, ::openmldb::api::Manifest& manifest) {
     int fd = open(full_path.c_str(), O_RDONLY);
     if (fd < 0) {
-        PDLOG(INFO, "[%s] is not exist", MANIFEST.c_str());
+        PDLOG(INFO, "[%s] does not exist", MANIFEST.c_str());
         return 1;
     } else {
         google::protobuf::io::FileInputStream fileInput(fd);

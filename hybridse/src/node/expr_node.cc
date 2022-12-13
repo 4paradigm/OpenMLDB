@@ -213,6 +213,47 @@ Status ExprNode::IsCastAccept(node::NodeManager* nm, const TypeNode* src,
     return Status::OK();
 }
 
+// this handles compatible type when both lhs and rhs are basic types
+// types like array, list are not handled correctly
+const TypeNode* ExprNode::CompatibleType(NodeManager* nm, const TypeNode* lhs, const TypeNode* rhs) {
+    if (*lhs == *rhs) {
+        // include Null = Null
+        return rhs;
+    }
+    if (lhs->IsNull()) {
+        // NULL + T -> T
+        return rhs;
+    }
+    if (rhs->IsNull()) {
+        // T + NULL -> T
+        return lhs;
+    }
+
+    if (IsSafeCast(lhs, rhs)) {
+        return rhs;
+    }
+    if (IsSafeCast(rhs, lhs)) {
+        return lhs;
+    }
+    if (IsIntFloat2PointerCast(lhs, rhs)) {
+        // rhs is float while lhs is 64bit
+        if (rhs->base() == kFloat && (lhs->base() == kInt64 || lhs->base() == kDouble)) {
+            return nm->MakeTypeNode(kDouble);
+        }
+
+        return rhs;
+    }
+
+    if (IsIntFloat2PointerCast(rhs, lhs)) {
+        if ((rhs->base() == kInt64 || rhs->base() == kDouble) && lhs->base() == kFloat) {
+            return nm->MakeTypeNode(kDouble);
+        }
+        return lhs;
+    }
+
+    return nm->MakeTypeNode(kVarchar);
+}
+
 /**
 * support rules:
 *  case target_type
@@ -787,6 +828,41 @@ Status ExprListNode::InferAttr(ExprAnalysisContext* ctx) {
     return Status::OK();
 }
 
+ArrayExpr* ArrayExpr::ShadowCopy(NodeManager* nm) const {
+    auto array = nm->MakeArrayExpr();
+    array->children_ = children_;
+    array->specific_type_ = specific_type_;
+    return array;
+}
+
+Status ArrayExpr::InferAttr(ExprAnalysisContext* ctx) {
+    // if specific_type_ exists, and has the array element type, take the type directly
+    // whether the specific type is castable from should checked during codegen
+    if (specific_type_ != nullptr && !specific_type_->generics().empty()) {
+        SetOutputType(specific_type_);
+        SetNullable(true);
+        return Status::OK();
+    }
+
+    // auto top_type = ctx->node_manager()->MakeTypeNode(kArray);
+    TypeNode* top_type = nullptr;
+    auto nm = ctx->node_manager();
+    if (children_.empty()) {
+        FAIL_STATUS(kTypeError, "element type unknown for empty array expression");
+    } else {
+        const TypeNode* ele_type = children_[0]->GetOutputType();
+        for (size_t i = 1; i < children_.size() ; ++i) {
+            ele_type = CompatibleType(ctx->node_manager(), ele_type, children_[i]->GetOutputType());
+        }
+        CHECK_TRUE(!ele_type->IsNull(), kTypeError, "unable to infer array type, all elements are null");
+        top_type = nm->MakeArrayType(ele_type, children_.size());
+    }
+    SetOutputType(top_type);
+    // array is nullable
+    SetNullable(true);
+    return Status::OK();
+}
+
 OrderByNode* OrderByNode::ShadowCopy(NodeManager* nm) const {
     return nm->MakeOrderByNode(order_expressions_);
 }
@@ -937,9 +1013,11 @@ ConstNode* ConstNode::ShadowCopy(NodeManager* nm) const {
             LOG(WARNING) << "Fail to copy primary expr of type " << node::DataTypeName(GetDataType());
             return nm->MakeConstNode(GetDataType());
         }
+        default: {
+            LOG(ERROR) << "Unsupported Data type " << node::DataTypeName(GetDataType());
+            return nullptr;
+        }
     }
-    LOG(ERROR) << "Unsupported Data type " << node::DataTypeName(GetDataType());
-    return nullptr;
 }
 
 ColumnRefNode* ColumnRefNode::ShadowCopy(NodeManager* nm) const {

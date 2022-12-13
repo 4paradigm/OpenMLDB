@@ -93,6 +93,7 @@ struct Status {
     inline bool isOK() const { return code == common::kOk; }
     inline bool isRunning() const { return code == common::kRunning; }
     const std::string str() const { return GetMsg()+ "\n" + GetTraces(); }
+    const common::StatusCode GetCode() const { return code;}
     const std::string GetMsg() const {
         return msg;
     }
