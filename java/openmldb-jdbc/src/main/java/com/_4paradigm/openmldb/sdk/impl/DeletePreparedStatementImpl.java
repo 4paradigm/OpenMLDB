@@ -15,10 +15,10 @@ import java.util.ArrayList;
 
 public class DeletePreparedStatementImpl implements PreparedStatement {
 
-    private String db;
-    private String sql;
-    private SQLRouter router;
-    private List<SQLDeleteRow> currentRows = new ArrayList<>();
+    private final String db;
+    private final String sql;
+    private final SQLRouter router;
+    private final List<SQLDeleteRow> currentRows = new ArrayList<>();
     private int rowIdx;
     private boolean closed;
 
