@@ -49,3 +49,8 @@ Create an aggregate function whose input parameter type is bigint, the return ty
 ```sql
 CREATE AGGREGATE FUNCTION special_sum(x BIGINT) RETURNS BIGINT OPTIONS (FILE = 'libtest_udf.so');
 ```
+
+Create an aggregate function whose input parameter type is bigint and nullable, the return type is bigint and nullable, and the dynamic library file is libtest_udf.so
+```sql
+CREATE AGGREGATE FUNCTION count_null(x BIGINT) RETURNS BIGINT OPTIONS (FILE = 'libtest_udf.so', ARG_NULLABLE=true, RETURN_NULLABLE=true);
+```

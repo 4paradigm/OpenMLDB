@@ -25,7 +25,8 @@
 | DATE      | `Date`      |
 #### 2.1.3 函数参数和返回值
 返回值:  
-* 如果udf输出类型是基本类型，通过函数返回值返回
+* 如果udf输出类型是基本类型，并且`return_nullable`设置为false, 则通过函数返回值返回
+* 如果udf输出类型是基本类型，并且`return_nullable`设置为true, 则通过函数参数返回
 * 如果udf输出类型是string, timestamp, date, 通过函数**最后一个参数**返回
 
 参数: 
@@ -44,12 +45,24 @@
 
 #### 2.1.4 内存管理
 
-- 在自定义函数中，不允许使用`new`操作符或者`malloc`函数开辟空间，当然也不需要用`free`或者`delete`释放。
-- 若需要动态开辟空间，需要使用OpenMLDB提供的内存管理接口。函数执行完OpenMLDB会自动释放内存.
+- 在单行函数中，不允许使用`new`操作符或者`malloc`函数开辟空间，当然也不需要用`free`或者`delete`释放。
+- 在聚合函数中，在init函数中可以使用`new`/`malloc`开辟空间，但是必须在output函数中释放。最后的返回值如果是string需要保存在mempool开辟的空间中
+- 若需要动态开辟空间，可以使用OpenMLDB提供的内存管理接口。函数执行完OpenMLDB会自动释放内存.
     ```c++
     char *buffer = ctx->pool->Alloc(size);
     ```
 - 一次分配空间的最大长度不能超过2M字节
+
+**注**：
+- 如果参数声明为nullable的，那么所有参数都是nullable的，每一个输入参数都添加is_null参数
+- 如果返回值声明为nullable的，那么通过参数来返回，并且添加is_null的参数来表示返回值是否为null
+
+如函数sum有俩个参数，如果参数和返回值设置为nullable的话，单行函数原型如下:
+```c++
+extern "C"
+void sum(UDFContext* ctx, int64_t input1, bool is_null, int64_t input2, bool is_null, int64_t* output, bool* is_null) {
+```
+
 #### 2.1.5 单行函数开发
 - 包含头文件udf/openmldb_udf.h 
 - 实现自定义函数逻辑
@@ -163,6 +176,10 @@ CREATE FUNCTION cut2(x STRING) RETURNS STRING OPTIONS (FILE='libtest_udf.so');
 注册聚合函数
 ```sql
 CREATE AGGREGATE FUNCTION special_sum(x BIGINT) RETURNS BIGINT OPTIONS (FILE='libtest_udf.so');
+```
+注册聚合函数，并且输入参数和返回值都支持null
+```sql
+CREATE AGGREGATE FUNCTION third(x BIGINT) RETURNS BIGINT OPTIONS (FILE='libtest_udf.so', ARG_NULLABLE=true, RETURN_NULLABLE=true);
 ```
 **注**:
 - 参数类型和返回值类型必须和代码的实现保持一致

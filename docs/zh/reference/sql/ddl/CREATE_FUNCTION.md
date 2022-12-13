@@ -49,3 +49,8 @@ CREATE FUNCTION add_one(x int, y int) RETURNS INT OPTIONS (FILE = 'libtest_udf.s
 ```sql
 CREATE AGGREGATE FUNCTION special_sum(x BIGINT) RETURNS BIGINT OPTIONS (FILE = 'libtest_udf.so');
 ```
+
+创建一个输入参数是bigint并且支持null, 返回类型是bigint并且支持返回null聚合函数，动态库文件为libtest_udf.so
+```sql
+CREATE AGGREGATE FUNCTION count_null(x BIGINT) RETURNS BIGINT OPTIONS (FILE = 'libtest_udf.so', ARG_NULLABLE=true, RETURN_NULLABLE=true);
+```
