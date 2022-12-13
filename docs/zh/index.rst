@@ -10,7 +10,9 @@ OpenMLDB 文档 (|version|)
     quickstart/index
     tutorial/index
     use_case/index
+    integration/index
     deploy/index
     maintain/index
-    developer/index
+    openmldb_sql/index
     reference/index
+    developer/index
