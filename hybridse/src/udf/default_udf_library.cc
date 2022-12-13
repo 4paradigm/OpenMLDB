@@ -2041,7 +2041,7 @@ void DefaultUdfLibrary::InitTypeUdf() {
         .return_by_arg(true)
         .returns<Nullable<Date>>()
         .doc(R"(
-            @brief Cast timestamp or string expression to date
+            @brief Cast timestamp or string expression to date (date >= 1900-01-01)
 
             Supported string style:
               - yyyy-mm-dd

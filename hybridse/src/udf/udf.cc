@@ -885,13 +885,13 @@ void date_diff(Date *date1, Date *date2, int *diff, bool *is_null) {
         *is_null = true;
         return;
     }
-    boost::gregorian::date d1(year, month, day);
+    absl::CivilDay d1(year, month, day);
     if (!date1->Decode(date2->date_, &year, &month, &day)) {
         *is_null = true;
         return;
     }
-    boost::gregorian::date d2(year, month, day);
-    *diff = (d1 - d2).days();
+    absl::CivilDay d2(year, month, day);
+    *diff = (d1 - d2);
     *is_null = false;
 }
 
