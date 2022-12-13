@@ -188,9 +188,9 @@ cases:
           - [5, 0, "k5:v5,k3:v3"]
     sql: |
       SELECT id,
-        size(fz_split(c1, ",")) AS split_and_size,
-        size(fz_split_by_key(c1, ",", ":")) AS split_key_and_size,
-        size(fz_split_by_value(c1, ",", ":")) AS split_value_and_size
+        size(split(c1, ",")) AS split_and_size,
+        size(split_by_key(c1, ",", ":")) AS split_key_and_size,
+        size(split_by_value(c1, ",", ":")) AS split_value_and_size
       FROM main;
     expect:
       order: id
