@@ -920,6 +920,27 @@ TEST_F(UdfIRBuilderTest, StringToTimestampTest3) {
         StringRef("20200520"));
 }
 
+TEST_F(UdfIRBuilderTest, UnixTimestampTest) {
+    auto func_name = "unix_timestamp";
+    CheckUdf<Nullable<int64_t>, Nullable<Date>>(func_name, 1589904000LL, Date(2020, 05, 20));
+
+    //    Invalid year
+    CheckUdf<Nullable<int64_t>, Nullable<Date>>(func_name, nullptr, Date(1899, 05, 20));
+    //    Invalid month
+    CheckUdf<Nullable<int64_t>, Nullable<Date>>(func_name, nullptr, Date(2029, 13, 20));
+    //    Invalid day
+    CheckUdf<Nullable<int64_t>, Nullable<Date>>(func_name, nullptr, Date(2029, 05, 32));
+    CheckUdf<Nullable<int64_t>, Nullable<Date>>(func_name, nullptr, nullptr);
+    CheckUdf<Nullable<int64_t>, Nullable<StringRef>>(func_name, 1589907723LL,
+                                                       StringRef("2020-05-20 01:02:03"));
+    CheckUdf<Nullable<int64_t>, Nullable<StringRef>>(func_name, 1589904000LL, StringRef("2020-05-20"));
+    CheckUdf<Nullable<int64_t>, Nullable<StringRef>>(func_name, nullptr, StringRef("1899-05-20"));
+    CheckUdf<Nullable<int64_t>, Nullable<StringRef>>(func_name, 1589904000LL, StringRef("20200520"));
+
+    std::time_t result = std::time(nullptr);
+    CheckUdf<Nullable<int64_t>, Nullable<StringRef>>(func_name, static_cast<int64_t>(result), "");
+}
+
 TEST_F(UdfIRBuilderTest, TimestampToDateTest0) {
     CheckUdf<Nullable<Date>, Nullable<Timestamp>>(
         "date", Date(2020, 05, 20), Timestamp(1589958000000L));
