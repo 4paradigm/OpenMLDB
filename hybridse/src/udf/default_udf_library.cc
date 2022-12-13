@@ -2426,6 +2426,42 @@ void DefaultUdfLibrary::InitTimeAndDateUdf() {
             @endcode
             @since 0.1.0)");
 
+    RegisterExprUdf("pmod")
+        .args<AnyArg, AnyArg>([](UdfResolveContext* ctx, ExprNode* x, ExprNode* y) {
+            // pmod: mod = x % y
+            // if mod >= 0, return mod
+            // else, return (mod + y) % y
+            auto nm = ctx->node_manager();
+            auto mod = nm->MakeBinaryExprNode(x, y, node::kFnOpMod);
+            auto cond = nm->MakeBinaryExprNode(mod, nm->MakeConstNode(0), node::kFnOpLt);
+            auto add = ctx->node_manager()->MakeBinaryExprNode(mod, y, node::kFnOpAdd);
+            auto pmod = ctx->node_manager()->MakeBinaryExprNode(add, y, node::kFnOpMod);
+            return nm->MakeCondExpr(cond, pmod, mod);
+        })
+        .doc(R"(
+            @brief Compute pmod of two arguments. If any param is NULL, output NULL. If divisor is 0, output NULL
+
+            @param dividend any numeric number or NULL
+            @param divisor any numeric number or NULL
+
+            Example:
+
+            @code{.sql}
+                select pmod(-10, 3);
+                -- output 2
+                select pmod(10, -3);
+                -- output 1
+                select pmod(10, 3);
+                -- output 1
+                select pmod(-10, 0);
+                -- output NULL
+                select pmod(-10, NULL);
+                -- output NULL
+                select pmod(NULL, 2);
+                -- output NULL
+            @endcode
+            @since 0.7.0)");
+
     RegisterCodeGenUdf("make_tuple")
         .variadic_args<>(
             /* infer */
