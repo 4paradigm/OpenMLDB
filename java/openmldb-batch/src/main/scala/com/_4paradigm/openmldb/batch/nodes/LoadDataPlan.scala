@@ -64,7 +64,7 @@ object LoadDataPlan {
 
     // write
     if (storage == "online") {
-      require(deepCopy && mode == "append", "import to online storage, can't do deep copy, and mode must be append")
+      require(deepCopy && mode == "append", "import to online storage, can't do soft copy, and mode must be append")
 
       val writeOptions = Map("db" -> db, "table" -> table,
         "zkCluster" -> ctx.getConf.openmldbZkCluster,

@@ -299,9 +299,9 @@ object HybridseUtil {
       val df = reader.format(format).load(file)
       require(checkSchemaIgnoreNullable(df.schema, oriSchema),
         s"schema mismatch(ignore nullable), loaded ${df.schema}!= table $oriSchema, check $file")
-      // reset nullable TODO(hw): is it OK?
+      // reset nullable property
       df.sqlContext.createDataFrame(df.rdd, oriSchema)
-    } else{
+    } else {
       // csv should auto detect the timestamp format
       reader.format(format)
       // use string to read, then infer the format by the first non-null value of the ts column
@@ -316,6 +316,11 @@ object HybridseUtil {
         }
       }
 
+      if (logger.isDebugEnabled()) {
+        logger.debug(s"read dataframe schema: ${df.schema}, count: ${df.count()}")
+        df.show(10)
+      }
+
       // if we read non-streaming files, the df schema fields will be set as all nullable.
       // so we need to set it right
       if (!df.schema.equals(oriSchema)) {
@@ -326,10 +331,6 @@ object HybridseUtil {
       }
     }
 
-    if (logger.isDebugEnabled()) {
-      logger.debug(s"read dataframe schema: ${df.schema}, count: ${df.count()}")
-      df.show(10)
-    }
     require(df.schema == oriSchema, s"schema mismatch, loaded ${df.schema} != table $oriSchema, check $file")
     df
   }
@@ -338,11 +339,11 @@ object HybridseUtil {
     require(file.toLowerCase.startsWith("hive://"))
     // hive://<table_pattern>
     val deli = 6
-    if(logger.isDebugEnabled()){
+    if (logger.isDebugEnabled()) {
       logger.debug("session catalog {}", ctx.getSparkSession.sessionState.catalog)
       ctx.sparksql("show tables").show()
     }
-    // TODO:check no Unsupported SQL for OpenMLDB and fallback to SparkSQL warning log
+    // use sparksql to read hive, no need to try openmldbsql and then fallback to sparksql
     val df = ctx.sparksql(s"SELECT * FROM ${file.substring(deli + 1)}")
 
     val (oriSchema, readSchema, tsCols) = HybridseUtil.extractOriginAndReadSchema(columns)
@@ -352,7 +353,12 @@ object HybridseUtil {
     }
     require(checkSchemaIgnoreNullable(df.schema, oriSchema), //df.schema == oriSchema, hive table always nullable?
         s"schema mismatch(ignore nullable), loaded hive ${df.schema}!= table $oriSchema, check $file")
-    // TODO(hw): schema needs reset nullable?
-    df
+
+    if (!df.schema.equals(oriSchema)) {
+      logger.info(s"df schema: ${df.schema}, reset schema")
+      df.sqlContext.createDataFrame(df.rdd, oriSchema)
+    } else{
+      df
+    }
   }
 }
