@@ -1,8 +1,6 @@
-![openmldb_logo](images/openmldb_logo.png)
-
 # 简介
 
-### OpenMLDB 是一个开源机器学习数据库，提供线上线下一致的生产级特征平台。
+OpenMLDB 是一个开源机器学习数据库，提供线上线下一致的生产级特征平台。
 
 ## 1. 设计理念
 
