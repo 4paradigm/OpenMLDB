@@ -285,7 +285,7 @@ void PhysicalProjectNode::Print(std::ostream& output, const std::string& tab) co
  *
  *  `schemas_ctx` used to resolve column and `plan_ctx` use to alloc unique id for non-column-reference column
  */
-static Status InitProjectSchemaSource(const ColumnProjects& projects, const SchemasContext* schemas_ctx,
+static Status InitProjectSchemaSource(const ColumnProjects& projects, const SchemasContext* depend_schemas_ctx,
                                       PhysicalPlanContext* plan_ctx, SchemaSource* project_source) {
     const FnInfo& fn_info = projects.fn_info();
     CHECK_TRUE(fn_info.IsValid(), common::kPlanError, "Project node's function info is not valid");
@@ -300,7 +300,7 @@ static Status InitProjectSchemaSource(const ColumnProjects& projects, const Sche
                    "* should be extend before generate projects");
         if (expr->GetExprType() == node::kExprColumnRef) {
             auto col_ref = dynamic_cast<const node::ColumnRefNode*>(expr);
-            CHECK_STATUS(schemas_ctx->ResolveColumnID(col_ref->GetDBName(), col_ref->GetRelationName(),
+            CHECK_STATUS(depend_schemas_ctx->ResolveColumnID(col_ref->GetDBName(), col_ref->GetRelationName(),
                                                       col_ref->GetColumnName(), &column_id));
             project_source->SetColumnID(i, column_id);
             project_source->SetSource(i, 0, column_id);

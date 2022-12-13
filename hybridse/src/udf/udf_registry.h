@@ -766,11 +766,6 @@ struct ConditionAnd<true, true> {
     static const bool value = true;
 };
 
-template <typename Ret, typename Args, typename CRet, typename CArgs>
-struct FuncTypeCheckHelper {
-    static const bool value = false;
-};
-
 template <typename Arg, typename CArg>
 struct FuncArgTypeCheckHelper {
     static const bool value =
@@ -856,32 +851,6 @@ struct FuncRetTypeCheckHelper<Tuple<TupleArgs...>, std::tuple<CArgs...>> {
                                                    std::tuple<>>::value>::value;
 };
 
-template <typename Ret, typename ArgHead, typename... ArgTail, typename CRet,
-          typename CArgHead, typename... CArgTail>
-struct FuncTypeCheckHelper<Ret, std::tuple<ArgHead, ArgTail...>, CRet,
-                           std::tuple<CArgHead, CArgTail...>> {
-    using HeadCheck = FuncArgTypeCheckHelper<ArgHead, CArgHead>;
-
-    using TailCheck = FuncTypeCheckHelper<Ret, std::tuple<ArgTail...>, CRet,
-                                          std::tuple<CArgTail...>>;
-
-    static const bool value =
-        ConditionAnd<HeadCheck::value, TailCheck::value>::value;
-};
-
-template <typename Ret, typename ArgHead, typename... ArgTail, typename CRet,
-          typename CArgHead, typename... CArgTail>
-struct FuncTypeCheckHelper<Ret, std::tuple<Nullable<ArgHead>, ArgTail...>, CRet,
-                           std::tuple<CArgHead, bool, CArgTail...>> {
-    using HeadCheck = FuncArgTypeCheckHelper<ArgHead, CArgHead>;
-
-    using TailCheck = FuncTypeCheckHelper<Ret, std::tuple<ArgTail...>, CRet,
-                                          std::tuple<CArgTail...>>;
-
-    static const bool value =
-        ConditionAnd<HeadCheck::value, TailCheck::value>::value;
-};
-
 template <typename, typename>
 struct FuncTupleArgTypeCheckHelper {
     using Remain = void;
@@ -935,6 +904,40 @@ struct FuncTupleArgTypeCheckHelper<std::tuple<>, std::tuple<CArgs...>> {
     using Remain = std::tuple<CArgs...>;
 };
 
+//==================================================================//
+//             FuncTypeCheckHelper                                  //
+//==================================================================//
+template <typename Ret, typename Args, typename CRet, typename CArgs>
+struct FuncTypeCheckHelper {
+    static const bool value = false;
+};
+
+template <typename Ret, typename ArgHead, typename... ArgTail, typename CRet,
+          typename CArgHead, typename... CArgTail>
+struct FuncTypeCheckHelper<Ret, std::tuple<ArgHead, ArgTail...>, CRet,
+                           std::tuple<CArgHead, CArgTail...>> {
+    using HeadCheck = FuncArgTypeCheckHelper<ArgHead, CArgHead>;
+
+    using TailCheck = FuncTypeCheckHelper<Ret, std::tuple<ArgTail...>, CRet,
+                                          std::tuple<CArgTail...>>;
+
+    static const bool value =
+        ConditionAnd<HeadCheck::value, TailCheck::value>::value;
+};
+
+template <typename Ret, typename ArgHead, typename... ArgTail, typename CRet,
+          typename CArgHead, typename... CArgTail>
+struct FuncTypeCheckHelper<Ret, std::tuple<Nullable<ArgHead>, ArgTail...>, CRet,
+                           std::tuple<CArgHead, bool, CArgTail...>> {
+    using HeadCheck = FuncArgTypeCheckHelper<ArgHead, CArgHead>;
+
+    using TailCheck = FuncTypeCheckHelper<Ret, std::tuple<ArgTail...>, CRet,
+                                          std::tuple<CArgTail...>>;
+
+    static const bool value =
+        ConditionAnd<HeadCheck::value, TailCheck::value>::value;
+};
+
 template <typename Ret, typename... TupleArgs, typename... ArgTail,
           typename CRet, typename CArgHead, typename... CArgTail>
 struct FuncTypeCheckHelper<Ret, std::tuple<Tuple<TupleArgs...>, ArgTail...>,
@@ -967,6 +970,33 @@ struct FuncTypeCheckHelper<Ret, std::tuple<>, CRet, std::tuple<>> {
 template <typename>
 struct TypeAnnotatedFuncPtrImpl;  // primitive decl
 
+// two group of type system required here
+// - group 1: type system in udf registry
+//   they are pre-defined types that linked to SQL data type,
+// - group 2: type system appear in external udf function
+//   the actual paramter types that in C function
+//
+// Till this moment, those types are, from
+//   function param type (group 2) -> udf registry type (group 1) -> SQL data type:
+//
+//   - bool -> bool -> bool
+//   - int16_t -> int16_t -> int16
+//   - int32_t -> int32_t -> int or int32
+//   - int64_t -> int64_t -> int64
+//   - flat -> float -> float
+//   - double -> double -> double
+//   - Timestamp* -> Timestamp -> timestamp
+//   - Date* -> Date -> date
+//   - StringRef* -> StringRef -> string
+//   - ArrayRef<T>* -> ArrayRef<T> -> array<T>
+//
+// about `Nullable` and `ListRef`
+//
+// For any new type, it must be able to convert from function param type to udf registry type,
+// by impl the `CCallDataTypeTrait::LiteralTag`
+//
+//
+// Ret and EnvArgs belong to udf registry type (group 1), CRet and CArgs belong to function type (group 2)
 template <typename Ret, typename EnvArgs, typename CRet, typename CArgs>
 struct StaticFuncTypeCheck {
     static void check() {

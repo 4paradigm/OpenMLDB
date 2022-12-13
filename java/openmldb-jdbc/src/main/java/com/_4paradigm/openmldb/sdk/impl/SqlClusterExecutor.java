@@ -56,7 +56,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public class SqlClusterExecutor implements SqlExecutor {
     private static final Logger logger = LoggerFactory.getLogger(SqlClusterExecutor.class);
 
-    private static final AtomicBoolean initialized = new AtomicBoolean(false);;
+    private static final AtomicBoolean initialized = new AtomicBoolean(false);
     private SQLRouter sqlRouter;
 
     public SqlClusterExecutor(SdkOption option, String libraryPath) throws SqlException {

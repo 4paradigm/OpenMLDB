@@ -140,7 +140,7 @@ bool TimestampIRBuilder::CopyFrom(::llvm::BasicBlock* block, ::llvm::Value* src,
 bool TimestampIRBuilder::GetTs(::llvm::BasicBlock* block,
                                ::llvm::Value* timestamp,
                                ::llvm::Value** output) {
-    return Get(block, timestamp, 0, output);
+    return Load(block, timestamp, 0, output);
 }
 bool TimestampIRBuilder::SetTs(::llvm::BasicBlock* block,
                                ::llvm::Value* timestamp, ::llvm::Value* ts) {

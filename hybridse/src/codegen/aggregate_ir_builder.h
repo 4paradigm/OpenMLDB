@@ -105,7 +105,9 @@ class AggregateIRBuilder {
     bool empty() const { return agg_col_infos_.empty(); }
 
  private:
+    // schema context of input node
     const vm::SchemasContext* schema_context_;
+
     ::llvm::Module* module_;
     const node::FrameNode* frame_node_;
     uint32_t id_;

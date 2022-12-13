@@ -58,45 +58,29 @@ StructTypeIRBuilder* StructTypeIRBuilder::CreateStructTypeIRBuilder(
 }
 ::llvm::Type* StructTypeIRBuilder::GetType() { return struct_type_; }
 bool StructTypeIRBuilder::Create(::llvm::BasicBlock* block,
-                                 ::llvm::Value** output) {
+                                 ::llvm::Value** output) const {
     if (block == NULL || output == NULL) {
         LOG(WARNING) << "the output ptr or block is NULL ";
         return false;
     }
     ::llvm::IRBuilder<> builder(block);
-    ::llvm::Value* value =
-        CreateAllocaAtHead(&builder, struct_type_, "struct_alloca");
+    ::llvm::Value* value = CreateAllocaAtHead(&builder, struct_type_, "struct_alloca");
     *output = value;
     return true;
 }
-bool StructTypeIRBuilder::Get(::llvm::BasicBlock* block,
-                              ::llvm::Value* struct_value, unsigned int idx,
-                              ::llvm::Value** output) {
-    if (block == NULL) {
-        LOG(WARNING) << "the output ptr or block is NULL ";
+bool StructTypeIRBuilder::Load(::llvm::BasicBlock* block, ::llvm::Value* struct_value, unsigned int idx,
+                               ::llvm::Value** output) const {
+    ::llvm::Value* value_ptr = nullptr;
+    if (false == Get(block, struct_value, idx, &value_ptr)) {
         return false;
     }
-    if (!IsStructPtr(struct_value->getType())) {
-        LOG(WARNING) << "Fail get Struct value: struct pointer is required";
-        return false;
-    }
-    if (struct_value->getType()->getPointerElementType() != struct_type_) {
-        LOG(WARNING) << "Fail get Struct value: struct value type invalid "
-                     << struct_value->getType()
-                            ->getPointerElementType()
-                            ->getStructName()
-                            .str();
-        return false;
-    }
+
     ::llvm::IRBuilder<> builder(block);
-    ::llvm::Value* value_ptr =
-        builder.CreateStructGEP(struct_type_, struct_value, idx);
     *output = builder.CreateLoad(value_ptr);
     return true;
 }
-bool StructTypeIRBuilder::Set(::llvm::BasicBlock* block,
-                              ::llvm::Value* struct_value, unsigned int idx,
-                              ::llvm::Value* value) {
+bool StructTypeIRBuilder::Set(::llvm::BasicBlock* block, ::llvm::Value* struct_value, unsigned int idx,
+                              ::llvm::Value* value) const {
     if (block == NULL) {
         LOG(WARNING) << "the output ptr or block is NULL ";
         return false;
@@ -121,6 +105,29 @@ bool StructTypeIRBuilder::Set(::llvm::BasicBlock* block,
         LOG(WARNING) << "Fail Set Struct Value idx = " << idx;
         return false;
     }
+    return true;
+}
+
+bool StructTypeIRBuilder::Get(::llvm::BasicBlock* block, ::llvm::Value* struct_value, unsigned int idx,
+                               ::llvm::Value** output) const {
+    if (block == NULL) {
+        LOG(WARNING) << "the output ptr or block is NULL ";
+        return false;
+    }
+    if (!IsStructPtr(struct_value->getType())) {
+        LOG(WARNING) << "Fail get Struct value: struct pointer is required";
+        return false;
+    }
+    if (struct_value->getType()->getPointerElementType() != struct_type_) {
+        LOG(WARNING) << "Fail get Struct value: struct value type invalid "
+                     << struct_value->getType()
+                            ->getPointerElementType()
+                            ->getStructName()
+                            .str();
+        return false;
+    }
+    ::llvm::IRBuilder<> builder(block);
+    *output = builder.CreateStructGEP(struct_type_, struct_value, idx);
     return true;
 }
 }  // namespace codegen
