@@ -144,6 +144,8 @@ interval_literal ::= int_literal 's'|'m'|'h'|'d'
 
      - where 关联的列 `<column ref>`，数据类型不能是 date 或者 timestamp
 
+- 为了得到最佳的性能提升，数据需按 `timestamp` 类型（时间戳）列的顺序加载。
+
 **Example**
 
 ```sql
