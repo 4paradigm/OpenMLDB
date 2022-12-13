@@ -18,11 +18,11 @@
 #define SRC_BASE_GLOG_WRAPPER_H_
 
 #include <cstdarg>
-#include <filesystem>
 #include <iostream>
 #include <mutex>
 #include <string>
 
+#include "boost/filesystem.hpp"
 #include "boost/format.hpp"
 #include "gflags/gflags.h"
 #include "glog/logging.h"
@@ -79,7 +79,7 @@ inline void UnprotectedSetupGlog(bool origin_flags = false) {
         FLAGS_logtostderr = true;
         ::google::InitGoogleLogging(role.c_str());
     } else {
-        std::filesystem::create_directory(log_dir);
+        boost::filesystem::create_directories(log_dir);
         std::string path = log_dir + "/" + role;
         ::google::InitGoogleLogging(path.c_str());
         std::string info_log_path = path + ".info.log.";
