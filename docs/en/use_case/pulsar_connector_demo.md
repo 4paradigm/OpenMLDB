@@ -79,7 +79,7 @@ bin/pulsar-daemon start standalone --zookeeper-port 5181
 ```{note}
 OpenMLDB want to use the port 2181, so we should change the zk port here. We will use zk port 2181 to connect OpenMLDB, but zk port in Pulsar standalone won’t affect anything.
 ```
-You can check if the pulsar runs well, `ps` or check the log.
+You can check if the pulsar runs well, `ps` or check the standalone server log `logs/pulsar-standalone-....log`.
 ```
 ps axu|grep pulsar
 ```
@@ -187,12 +187,13 @@ The package is in ‘files’. You can run it directly.
 java -cp files/pulsar-client-java-1.0-SNAPSHOT-jar-with-dependencies.jar org.example.Client
 ```
 
-#### Python Producer TODO
-Producer也可以使用Python实现，详情见`files/pulsar_client.py`。运行前需要安装pulsar python client：
+#### Python Producer
+You can write the Producer in Python, please check the code in `files/pulsar_client.py`.
+Before run it, you should install the pulsar python client：
 ```
 pip install pulsar-client==2.9.1
 ```
-运行：
+Then run the producer:
 ```
 python files/pulsar_client.py
 ```
@@ -204,8 +205,9 @@ We can check the sink status:
 ./bin/pulsar-admin sinks status --name openmldb-test-sink 
 ```
 ![sink status](images/sink_status.png)
-```{describe}
+```{note}
 "numReadFromPulsar": pulsar sent 2 messages to the sink instance.
+
 "numWrittenToSink": sink instance write 2 messages to OpenMLDB.
 ```
 
@@ -223,29 +225,30 @@ In OpenMLDB container, run:
 ```
 ![openmldb result](images/openmldb_result.png)
 
-### 调试
+### Debug
+If the OpenMLDB table doesn't have the data, but the sinks status shows it has written to OpenMLDB, the sink instance may have some problems. You should check the sink log, the path is `logs/functions/public/default/openmldb-test-sink/openmldb-test-sink-0.log`. If you use another sink name, the path will change.
 
-如果OpenMLDB没有数据，而sinks status合理，那么sink写入应该出了问题。请查看sink日志，日志地址为`logs/functions/public/default/openmldb-test-sink/openmldb-test-sink-0.log`。如果你使用别的sink name，请定位到正确的sink日志。
-
-Pulsar会重复尝试写入此前没有写入成功的消息，所以，如果你曾发送了错误的消息，即使新消息成功写入，日志中仍然会有错误消息的写入报错。测试中推荐直接truncate topic再测试：
+Pulsar will retry to write the failed messages. So if you sent the wrong message 1 and then sent the right message 2, even the right message 2 has written to OpenMLDB, the wrong message 1 will be sent and print the error in log. It's confusing. We'd recommend you to truncate the topic before testing again.
 ```
 ./bin/pulsar-admin topics truncate persistent://public/default/test_openmldb
 ```
-如果自命名的sink name，可通过./bin/pulsar-admin topics list public/default查询topic全名。
+If you use another sink name, you can get it by `./bin/pulsar-admin topics list public/default`.
 
-#### debug日志
+#### debug log
 
-如果sink日志信息不足够定位，可以打开debug日志。需要修改配置，并重启sink。`vim conf/functions_log4j2.xml`并做一下修改：
+If the sink instance log is not enough, you can open the debug level of log. You should modify the log config, and restart the sink instance.
 
-```
+`vim conf/functions_log4j2.xml` and modify it:
+
+```xml
         <Property>
             <name>pulsar.log.level</name>
-            <value>debug</value> 设置为debug level
+            <value>debug</value> <!-- set to debug level -->
         </Property>
 ```
-```
+```xml
         <Root>
-            <level>${sys:pulsar.log.level}</level> 此处info改为${sys:pulsar.log.level}或debug
+            <level>${sys:pulsar.log.level}</level> <!--change from info to ${sys:pulsar.log.level} or debug -->
             <AppenderRef>
                 <ref>${sys:pulsar.log.appender}</ref>
                 <level>${sys:pulsar.log.level}</level>
@@ -253,12 +256,12 @@ Pulsar会重复尝试写入此前没有写入成功的消息，所以，如果�
         </Root>
 ```
 
-再重新启动sink：
+The restart the sink instance:
 ```
 ./bin/pulsar-admin sinks restart --name openmldb-test-sink
 ```
 
-#### 重建pulsar
+#### reinitialize Pulsar
 ```
 bin/pulsar-daemon stop standalone --zookeeper-port 5181
 rm -r data logs
