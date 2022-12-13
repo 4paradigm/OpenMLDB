@@ -21,6 +21,14 @@ ulimit -c unlimited
 ulimit -n 655360
 ```
 
+通过`ulimit`命令配置的参数，只对当前session有效，如果希望持久化配置，需要在`/etc/security/limits.conf`添加如下配置：
+```bash
+*       soft    core    unlimited
+*       hard    core    unlimited
+*       soft    nofile  655360
+*       hard    nofile  655360
+```
+
 ### 关闭操作系统swap
 
 查看当前系统swap是否关闭

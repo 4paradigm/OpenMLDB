@@ -19,6 +19,15 @@ ulimit -c unlimited
 ulimit -n 655360
 ```
 
+The configurations set by `ulimit` command only take effect in the current session.
+If you want to persist the configurations, add the following configurations in `/etc/security/limits.conf`:
+```bash
+*       soft    core    unlimited
+*       hard    core    unlimited
+*       soft    nofile  655360
+*       hard    nofile  655360
+```
+
 ### Disable system swap
 
 Check the status of the swap area.
