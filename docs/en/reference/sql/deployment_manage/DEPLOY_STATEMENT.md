@@ -146,6 +146,8 @@ The current long window optimization has the following limitations:
 
      - The `<column ref>` should not be `date` type or timestamp.
 
+- It requires the data is loaded in the order of `timestamp` column in order to get the best performance boost.
+
 **Example**
 
 ```sql
