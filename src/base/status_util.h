@@ -111,13 +111,14 @@
         LOG(WARNING) << "Status: " << _s->ToString(); \
     } while (0)
 
-/// @brief Set sdk::Status to rpc error, msg is brpc cntl and rpc response, and warn it
+/// @brief Set sdk::Status to rpc error, msg is brpc cntl and rpc response(code is ReturnCode), and warn it
 #define RPC_STATUS_AND_WARN(s, cntl, resp, pre_msg)             \
     do {                                                        \
         ::hybridse::sdk::Status* _s = (s);                      \
         _s->SetCode(::hybridse::common::StatusCode::kRpcError); \
         _s->SetMsg((pre_msg));                                  \
         _s->Append((cntl->ErrorText().c_str()));                \
+        _s->Append((resp->code()));                             \
         _s->Append((resp->msg()));                              \
         LOG(WARNING) << "Status: " << _s->ToString();           \
     } while (0)

@@ -219,7 +219,7 @@ class Cursor(object):
             raise DatabaseError("please providate data for proc")
         ok, rs = self.connection._sdk.doProc(self.db, procname, parameters)
         if not ok:
-            raise DatabaseError("execute select fail, {}".format(rs))
+            raise DatabaseError("callproc failed, {}".format(rs))
         self._pre_process_result(rs)
         return self
 
@@ -260,7 +260,7 @@ class Cursor(object):
                 ok, builder = self.connection._sdk.getInsertBuilder(
                     self.db, command)
                 if not ok:
-                    raise DatabaseError("get insert builder fail")
+                    raise DatabaseError(f"get insert builder fail, error: {builder}")
                 schema = builder.GetSchema()
                 # holeIdxes is in stmt column order
                 hole_idxes = builder.GetHoleIdx()
@@ -277,7 +277,9 @@ class Cursor(object):
             if not ok:
                 raise DatabaseError(error)
         elif selectRE.match(command):
-            logging.debug("selectRE: %s", str(parameters))
+            if parameters:
+                logging.debug("selectRE: %s", str(parameters))
+                
             if isinstance(parameters, tuple) and len(parameters) > 0:
                 ok, rs = self.connection._sdk.doParameterizedQuery(
                     self.db, command, parameters)
@@ -287,7 +289,7 @@ class Cursor(object):
             else:
                 ok, rs = self.connection._sdk.doQuery(self.db, command)
             if not ok:
-                raise DatabaseError("execute select fail, msg: {}".format(rs))
+                raise DatabaseError("execute select fail, error: {}".format(rs))
             self._pre_process_result(rs)
             return self
         else:
@@ -390,7 +392,7 @@ class Cursor(object):
                 ok, builder = self.connection._sdk.getInsertBuilder(
                     self.db, command)
                 if not ok:
-                    raise DatabaseError("get insert builder fail")
+                    raise DatabaseError(f"get insert builder fail, error: {builder}")
                 schema = builder.GetSchema()
                 hole_idxes = builder.GetHoleIdx()
                 hole_pairs = build_sorted_holes(hole_idxes)
@@ -425,7 +427,7 @@ class Cursor(object):
 
     def fetchone(self):
         if self._resultSet is None:
-            raise DatabaseError("query data failed")
+            raise DatabaseError("resultset is not set")
         ok = self._resultSet.Next()
         if not ok:
             return None
@@ -440,7 +442,7 @@ class Cursor(object):
     @connected
     def fetchmany(self, size=None):
         if self._resultSet is None:
-            raise DatabaseError("query data failed")
+            raise DatabaseError("resultset is not set")
         if size is None:
             size = self.arraysize
         elif size < 0:
@@ -545,9 +547,7 @@ class Connection(object):
     def __init__(self, **cparams):
         self._db = cparams.get('database', None)
         sdk = sdk_module.OpenMLDBSdk(**cparams)
-        ok = sdk.init()
-        if not ok:
-            raise Exception("init openmldb sdk erred")
+        sdk.init()
         self._sdk = sdk
         self._connected = True
 
