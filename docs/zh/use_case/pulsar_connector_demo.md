@@ -189,11 +189,11 @@ java -cp files/pulsar-client-java-1.0-SNAPSHOT-jar-with-dependencies.jar org.exa
 #### Python Producer
 Producer也可以使用Python实现，详情见`files/pulsar_client.py`。运行前需要安装pulsar python client：
 ```
-pip install pulsar-client==2.9.1
+pip3 install pulsar-client==2.9.1
 ```
 运行：
 ```
-python files/pulsar_client.py
+python3 files/pulsar_client.py
 ```
 
 ```{note}
@@ -210,6 +210,7 @@ python files/pulsar_client.py
 ![sink status](images/sink_status.png)
 ```{note}
 "numReadFromPulsar": pulsar发送了2条message到sink实例中。
+
 "numWrittenToSink": sink实例向OpenMLDB写入2条message。
 ```
 
@@ -241,15 +242,15 @@ Pulsar会重复尝试写入此前没有写入成功的消息，所以，如果�
 
 如果sink日志信息不足够定位，可以打开debug日志。需要修改配置，并重启sink。`vim conf/functions_log4j2.xml`并做一下修改：
 
-```
+```xml
         <Property>
             <name>pulsar.log.level</name>
-            <value>debug</value> 设置为debug level
+            <value>debug</value> <!-- 设置为debug level -->
         </Property>
 ```
-```
+```xml
         <Root>
-            <level>${sys:pulsar.log.level}</level> 此处info改为${sys:pulsar.log.level}或debug
+            <level>${sys:pulsar.log.level}</level> <!-- 此处info改为${sys:pulsar.log.level}或debug -->
             <AppenderRef>
                 <ref>${sys:pulsar.log.appender}</ref>
                 <level>${sys:pulsar.log.level}</level>

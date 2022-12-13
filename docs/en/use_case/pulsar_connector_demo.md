@@ -191,11 +191,11 @@ java -cp files/pulsar-client-java-1.0-SNAPSHOT-jar-with-dependencies.jar org.exa
 You can write the Producer in Python, please check the code in `files/pulsar_client.py`.
 Before run it, you should install the pulsar python client：
 ```
-pip install pulsar-client==2.9.1
+pip3 install pulsar-client==2.9.1
 ```
 Then run the producer:
 ```
-python files/pulsar_client.py
+python3 files/pulsar_client.py
 ```
 
 ### Check
@@ -226,6 +226,7 @@ In OpenMLDB container, run:
 ![openmldb result](images/openmldb_result.png)
 
 ### Debug
+
 If the OpenMLDB table doesn't have the data, but the sinks status shows it has written to OpenMLDB, the sink instance may have some problems. You should check the sink log, the path is `logs/functions/public/default/openmldb-test-sink/openmldb-test-sink-0.log`. If you use another sink name, the path will change.
 
 Pulsar will retry to write the failed messages. So if you sent the wrong message 1 and then sent the right message 2, even the right message 2 has written to OpenMLDB, the wrong message 1 will be sent and print the error in log. It's confusing. We'd recommend you to truncate the topic before testing again.
@@ -256,7 +257,7 @@ If the sink instance log is not enough, you can open the debug level of log. You
         </Root>
 ```
 
-The restart the sink instance:
+Then restart the sink instance:
 ```
 ./bin/pulsar-admin sinks restart --name openmldb-test-sink
 ```
