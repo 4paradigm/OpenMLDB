@@ -470,9 +470,10 @@ TEST_P(NameServerImplTest, Offline) {
     std::string old_db_root_path = FLAGS_db_root_path;
     std::string old_ssd_root_path = FLAGS_ssd_root_path;
     std::string old_hdd_root_path = FLAGS_hdd_root_path;
-    FLAGS_db_root_path = "/tmp/" + ::openmldb::test::GenRand();
-    FLAGS_ssd_root_path = "/tmp/" + ::openmldb::test::GenRand();
-    FLAGS_hdd_root_path = "/tmp/" + ::openmldb::test::GenRand();
+    ::openmldb::test::TempPath temp_path;
+    FLAGS_db_root_path = temp_path.GetTempPath();
+    FLAGS_ssd_root_path = temp_path.GetTempPath();
+    FLAGS_hdd_root_path = temp_path.GetTempPath();
     ::openmldb::tablet::TabletImpl* tablet = new ::openmldb::tablet::TabletImpl();
     ok = tablet->Init("");
     ASSERT_TRUE(ok);
@@ -492,11 +493,9 @@ TEST_P(NameServerImplTest, Offline) {
     ASSERT_TRUE(ok);
 
     FLAGS_endpoint = "127.0.0.1:9534";
-    std::string tmp_ssd_root_path = FLAGS_ssd_root_path;
-    std::string tmp_hdd_root_path = FLAGS_hdd_root_path;
-    FLAGS_ssd_root_path = "/tmp/" + ::openmldb::test::GenRand();
-    FLAGS_hdd_root_path = "/tmp/" + ::openmldb::test::GenRand();
-    FLAGS_db_root_path = "/tmp/" + ::openmldb::test::GenRand();
+    FLAGS_ssd_root_path = temp_path.GetTempPath();
+    FLAGS_hdd_root_path = temp_path.GetTempPath();
+    FLAGS_db_root_path = temp_path.GetTempPath();
     ::openmldb::tablet::TabletImpl* tablet2 = new ::openmldb::tablet::TabletImpl();
     ok = tablet2->Init("");
     ASSERT_TRUE(ok);
@@ -571,10 +570,6 @@ TEST_P(NameServerImplTest, Offline) {
     delete tablet;
     delete tablet2;
 
-    ::openmldb::base::RemoveDirRecursive(FLAGS_ssd_root_path);
-    ::openmldb::base::RemoveDirRecursive(FLAGS_hdd_root_path);
-    ::openmldb::base::RemoveDirRecursive(tmp_ssd_root_path);
-    ::openmldb::base::RemoveDirRecursive(tmp_hdd_root_path);
     FLAGS_ssd_root_path = old_ssd_root_path;
     FLAGS_hdd_root_path = old_hdd_root_path;
 }
@@ -1293,9 +1288,10 @@ int main(int argc, char** argv) {
     ::openmldb::base::SetLogLevel(INFO);
     ::google::ParseCommandLineFlags(&argc, &argv, true);
     FLAGS_zk_cluster = "127.0.0.1:6181";
-    FLAGS_db_root_path = "/tmp/" + ::openmldb::test::GenRand();
-    FLAGS_ssd_root_path = "/tmp/ssd/" + ::openmldb::test::GenRand();
-    FLAGS_hdd_root_path = "/tmp/hdd/" + ::openmldb::test::GenRand();
+    ::openmldb::test::TempPath tmp_path;
+    FLAGS_db_root_path = tmp_path.GetTempPath("memory");
+    FLAGS_ssd_root_path = tmp_path.GetTempPath("ssd");
+    FLAGS_hdd_root_path = tmp_path.GetTempPath("hdd");
     FLAGS_system_table_replica_num = 0;
     return RUN_ALL_TESTS();
 }

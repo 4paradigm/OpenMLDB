@@ -28,6 +28,7 @@
 #include "proto/tablet.pb.h"
 #include "rpc/rpc_client.h"
 #include "tablet/tablet_impl.h"
+#include "test/util.h"
 
 DECLARE_string(endpoint);
 DECLARE_string(db_root_path);
@@ -44,10 +45,6 @@ using ::openmldb::zk::ZkClient;
 
 namespace openmldb {
 namespace nameserver {
-
-inline std::string GenRand() {
-    return std::to_string(rand() % 10000000 + 1);  // NOLINT
-}
 
 class MockClosure : public ::google::protobuf::Closure {
  public:
@@ -142,7 +139,7 @@ void ShowNameServer(std::map<std::string, std::string>* map) {
 
 TEST_F(NewServerEnvTest, ShowRealEndpoint) {
     FLAGS_zk_cluster = "127.0.0.1:6181";
-    FLAGS_zk_root_path = "/rtidb4" + GenRand();
+    FLAGS_zk_root_path = "/rtidb4" + ::openmldb::test::GenRand();
 
     // ns1
     FLAGS_use_name = true;
@@ -157,7 +154,8 @@ TEST_F(NewServerEnvTest, ShowRealEndpoint) {
     FLAGS_use_name = true;
     FLAGS_endpoint = "tb1";
     std::string tb_real_ep_1 = "127.0.0.1:9831";
-    FLAGS_db_root_path = "/tmp/" + ::openmldb::nameserver::GenRand();
+    ::openmldb::test::TempPath tmp_path;
+    FLAGS_db_root_path = tmp_path.GetTempPath();
     brpc::Server tb_server1;
     StartTablet(tb_server1, tb_real_ep_1);
 
@@ -165,7 +163,7 @@ TEST_F(NewServerEnvTest, ShowRealEndpoint) {
     FLAGS_use_name = true;
     FLAGS_endpoint = "tb2";
     std::string tb_real_ep_2 = "127.0.0.1:9931";
-    FLAGS_db_root_path = "/tmp/" + ::openmldb::nameserver::GenRand();
+    FLAGS_db_root_path = tmp_path.GetTempPath();
     brpc::Server tb_server2;
     StartTablet(tb_server2, tb_real_ep_2);
 

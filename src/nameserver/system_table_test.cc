@@ -104,6 +104,7 @@ int main(int argc, char** argv) {
     srand(time(NULL));
     ::openmldb::base::SetLogLevel(INFO);
     ::google::ParseCommandLineFlags(&argc, &argv, true);
-    FLAGS_db_root_path = "/tmp/" + ::openmldb::test::GenRand();
+    ::openmldb::test::TempPath tmp_path;
+    FLAGS_db_root_path = tmp_path.GetTempPath();
     return RUN_ALL_TESTS();
 }

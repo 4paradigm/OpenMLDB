@@ -18,12 +18,14 @@
 #define SRC_TEST_UTIL_H_
 
 #include <algorithm>
+#include <filesystem>
 #include <map>
 #include <memory>
 #include <string>
 #include <utility>
 #include <vector>
 
+#include "absl/strings/str_cat.h"
 #include "brpc/server.h"
 #include "codec/sdk_codec.h"
 #include "gflags/gflags.h"
@@ -39,10 +41,33 @@ namespace openmldb {
 namespace test {
 
 using ::openmldb::codec::SchemaCodec;
-
 inline std::string GenRand() {
     return std::to_string(rand() % 10000000 + 1);  // NOLINT
 }
+
+class TempPath {
+ public:
+    TempPath() {
+        std::filesystem::path tmp_path = std::filesystem::temp_directory_path();
+        base_path_ = absl::StrCat(tmp_path.string(), "/openmldb_test", ::openmldb::test::GenRand());
+    }
+    ~TempPath() {
+        std::filesystem::remove_all(base_path_);
+    }
+    std::string GetTempPath() {
+        return absl::StrCat(base_path_, "/", ::openmldb::test::GenRand());
+    }
+    std::string GetTempPath(const std::string& prefix) {
+        return absl::StrCat(base_path_, "/", prefix, ::openmldb::test::GenRand());
+    }
+    std::string CreateTempPath(const std::string& prefix) {
+        std::string path = GetTempPath(prefix);
+        std::filesystem::create_directory(path);
+        return path;
+    }
+ private:
+    std::string base_path_;
+};
 
 void AddDefaultSchema(uint64_t abs_ttl, uint64_t lat_ttl, ::openmldb::type::TTLType ttl_type,
                       ::openmldb::nameserver::TableInfo* table_meta) {

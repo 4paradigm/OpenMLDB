@@ -24,7 +24,7 @@
 namespace openmldb {
 namespace base {
 
-namespace fs = boost::filesystem;
+namespace fs = std::filesystem;
 
 class GlogWrapperTest : public ::testing::Test {
  public:

@@ -150,12 +150,11 @@ if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
 endif()
 target_link_libraries(parse_log ${LINK_LIBS})
 
-set(EXPORTER_LIBS ${BIN_LIBS})
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU" AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS "9.1")
     # GNU implementation prior to 9.1 requires linking with -lstdc++fs
-    list(APPEND EXPORTER_LIBS stdc++fs)
+    list(APPEND BIN_LIBS stdc++fs)
 endif()
-target_link_libraries(data_exporter ${EXPORTER_LIBS})
+target_link_libraries(data_exporter ${BIN_LIBS})
 add_executable(openmldb cmd/openmldb.cc base/linenoise.cc)
 target_link_libraries(openmldb ${BIN_LIBS})
 
