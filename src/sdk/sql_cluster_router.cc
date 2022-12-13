@@ -1842,9 +1842,11 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::HandleSQLCmd(const h
             }
 
             auto log = GetJobLog(job_id, status);
+
             if (!status->IsOK()) {
                 *status = {::hybridse::common::StatusCode::kCmdError,
-                           "Failed to get job log for job id: " + cmd_node->GetArgs()[0]};
+                           "Failed to get job log for job id: " + cmd_node->GetArgs()[0] +
+                           ", code: " + std::to_string(status->code) + ", message: " + status->msg};
                 return {};
             } else {
                 std::vector<std::string> value = {log};
@@ -2343,7 +2345,9 @@ bool SQLClusterRouter::UpdateOfflineTableInfo(const ::openmldb::nameserver::Tabl
 
 std::string SQLClusterRouter::GetJobLog(const int id, hybridse::sdk::Status* status) {
     RET_IF_NULL_AND_WARN(status, "output status is nullptr");
+
     auto taskmanager_client_ptr = cluster_sdk_->GetTaskManagerClient();
+
     if (!taskmanager_client_ptr) {
         SET_STATUS_AND_WARN(status, hybridse::common::kConnError, "Fail to get TaskManager client");
         return "";
@@ -2351,7 +2355,14 @@ std::string SQLClusterRouter::GetJobLog(const int id, hybridse::sdk::Status* sta
 
     base::Status base_s;
     auto log = taskmanager_client_ptr->GetJobLog(id, GetJobTimeout(), &base_s);
-    APPEND_FROM_BASE(status, base_s, "get joblog");
+
+    if (base_s.OK()) {
+        status->SetCode(base_s.code);
+        status->SetMsg(base_s.msg);
+    } else {
+        APPEND_FROM_BASE(status, base_s, "get joblog");
+    }
+
     return log;
 }
 
