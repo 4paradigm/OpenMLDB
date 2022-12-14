@@ -1,12 +1,14 @@
 =============================
-快速入门
+SDK
 =============================
 
 
 .. toctree::
     :maxdepth: 1
+    
+    java_sdk
+    python_sdk
+    go_sdk
+    cxx_sdk
+    rest_api
 
-    openmldb_quickstart
-    sdk
-    beginner_must_read
-    function_boundary
