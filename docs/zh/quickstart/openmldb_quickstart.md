@@ -35,7 +35,7 @@ docker run -it 4pdosc/openmldb:0.6.9 bash
 
 ```bash
 curl https://openmldb.ai/demo/data.csv --output /work/taxi-trip/data/data.csv
-curl https://openmldb.ai/demo/data.parquet --output ./taxi-trip/data/data.parquet
+curl https://openmldb.ai/demo/data.parquet --output /work/taxi-trip/data/data.parquet
 ```
 
 其中，csv数据用于单机版演示，parquet数据用于集群版演示。

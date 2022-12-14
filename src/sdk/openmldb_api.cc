@@ -203,10 +203,13 @@ std::shared_ptr<openmldb::sdk::SQLRequestRow> RequestRow::get_request_row() cons
             case ::hybridse::sdk::kTypeTimestamp:
                 sql_request_row_->AppendTimestamp(std::any_cast<int64_t>(record_[i]));
                 break;
-            case ::hybridse::sdk::kTypeDate:
-                sql_request_row_->AppendDate(std::any_cast<int32_t>(record_[i]), std::any_cast<int32_t>(record_[++i]),
-                                            std::any_cast<int32_t>(record_[++i]));
+            case ::hybridse::sdk::kTypeDate: {
+                int32_t year = std::any_cast<int32_t>(record_[i]);
+                int32_t month = std::any_cast<int32_t>(record_[++i]);
+                int32_t day = std::any_cast<int32_t>(record_[++i]);
+                sql_request_row_->AppendDate(year, month, day);
                 break;
+            }
             case ::hybridse::sdk::kTypeFloat:
                 sql_request_row_->AppendFloat(std::any_cast<float>(record_[i]));
                 break;

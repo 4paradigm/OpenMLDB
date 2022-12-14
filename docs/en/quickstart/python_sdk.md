@@ -132,7 +132,7 @@ Using the `connection.execute(sql)` to execute SQL batch query statements:
 
 ````python
 try:
-    rs = connection.execute("SELECT * FROM t1");
+    rs = connection.execute("SELECT * FROM t1")
     for row in rs:
         print(row)
     rs = connection.execute("SELECT * FROM t1 WHERE col3 = ?;", ('hefei'))
@@ -146,7 +146,7 @@ Using the `connection.execute(sql, request)` to execute SQLs in the request mode
 
 ````python
 try:
-   rs = connection.execute("SELECT * FROM t1", ({"col1":9999, "col2":'2020-12-27', "col3":'zhejiang', "col4":'hangzhou', " col5":100}));
+   rs = connection.execute("SELECT * FROM t1", ({"col1":9999, "col2":'2020-12-27', "col3":'zhejiang', "col4":'hangzhou', " col5":100}))
 except Exception as e:
     print(e)
 ````

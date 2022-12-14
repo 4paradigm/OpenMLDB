@@ -20,6 +20,7 @@
 #include <stdint.h>
 #include <time.h>
 
+#include <ctime>
 #include <map>
 #include <set>
 #include <utility>
@@ -957,6 +958,40 @@ void date_to_timestamp(Date *date, Timestamp *output,
         return;
     }
 }
+
+void date_to_unix_timestamp(Date *date, int64_t *output,
+                       bool *is_null) {
+    Timestamp ts;
+    date_to_timestamp(date, &ts, is_null);
+    if (*is_null) {
+        return;
+    }
+
+    *output = ts.ts_ / 1000;
+}
+
+// cast string to unix_timestamp with yyyy-mm-dd or YYYY-mm-dd HH:MM:SS
+void string_to_unix_timestamp(StringRef *str, int64_t *output, bool *is_null) {
+    if (str == nullptr || str->IsNull() || str->size_ == 0) {
+        *output = unix_timestamp();
+        *is_null = false;
+        return;
+    }
+
+    Timestamp ts;
+    string_to_timestamp(str, &ts, is_null);
+    if (*is_null) {
+        return;
+    }
+
+    *output = ts.ts_ / 1000;
+}
+
+int64_t unix_timestamp() {
+    std::time_t t = std::time(nullptr);
+    return t;
+}
+
 void sub_string(StringRef *str, int32_t from,
                 StringRef *output) {
     if (nullptr == output) {

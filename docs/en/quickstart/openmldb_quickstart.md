@@ -30,8 +30,8 @@ After the container is successfully started, all the subsequent commands in this
 Download sample data:
 
 ```bash
-curl https://openmldb.ai/demo/data.csv --output ./taxi-trip/data/data.csv
-curl https://openmldb.ai/demo/data.parquet --output ./taxi-trip/data/data.parquet
+curl https://openmldb.ai/demo/data.csv --output /work/taxi-trip/data/data.csv
+curl https://openmldb.ai/demo/data.parquet --output /work/taxi-trip/data/data.parquet
 ```
 
 ## 2. The Standalone Version

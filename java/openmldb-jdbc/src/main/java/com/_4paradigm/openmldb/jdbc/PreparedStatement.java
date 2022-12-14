@@ -93,7 +93,7 @@ public class PreparedStatement implements java.sql.PreparedStatement {
         Status status = new Status();
         com._4paradigm.openmldb.ResultSet resultSet = router.ExecuteSQLParameterized(db, currentSql, currentRow, status);
         if (resultSet == null || status.getCode() != 0) {
-            String msg = status.getMsg();
+            String msg = status.ToString();
             status.delete();
             if (resultSet != null) {
                 resultSet.delete();

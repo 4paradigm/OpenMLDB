@@ -43,7 +43,8 @@ class TestOpenmldbDBAPI:
                      zk=OpenMLDB_ZK_CLUSTER,
                      zkPath=OpenMLDB_ZK_PATH)
         cls.cursor = db.cursor()
-        cls.cursor.execute('create table new_table (x string, y int);')
+        cls.cursor.execute("create database if not exists db_test;")
+        cls.cursor.execute("create table new_table (x string, y int16);")
         assert "new_table" in cls.cursor.get_all_tables()
 
     @classmethod
@@ -62,31 +63,40 @@ class TestOpenmldbDBAPI:
     def test_simple_insert_select(self):
         self.cursor.execute("insert into new_table values('first', 100);")
         result = self.cursor.execute("select * from new_table;").fetchone()
-        assert 'first' in result
+        assert "first" in result
         assert 100 in result
 
         with pytest.raises(DatabaseError):
             self.cursor.execute("insert into new_table values(1001, 'first1');")
         with pytest.raises(DatabaseError):
             self.cursor.execute(
-                "insert into new_table values({'x':1001, 'y':'first1'});")
+                "insert into new_table values({'x':1001, 'y':'first1'});"
+            )
+
+        # row 1&2 have the invalid value of y(int16)
+        with pytest.raises(DatabaseError) as e:
+            self.cursor.execute(
+                "insert into new_table values('aaa', 1002),('foo', 999999999999999),('bar', 99999999999999)"
+            )
+        print(e.value)
+        assert "fail to parse row[1]" in str(e.value)
 
     def test_select_conditioned(self):
         self.cursor.execute("insert into new_table values('second', 200);")
         result = self.cursor.execute(
-            "select * from new_table where x = 'second';").fetchone()
-        assert 'second' in result
+            "select * from new_table where x = 'second';"
+        ).fetchone()
+        assert "second" in result
         assert 200 in result
 
     def test_custom_order_insert(self):
+        self.cursor.execute("insert into new_table (y, x) values(300, 'third');")
         self.cursor.execute(
-            "insert into new_table (y, x) values(300, 'third');")
-        self.cursor.execute("insert into new_table (y, x) values(?, ?);",
-                            (300, 'third'))
-        self.cursor.execute("insert into new_table (y, x) values(?, ?);", {
-            'x': 'third',
-            'y': 300
-        })
+            "insert into new_table (y, x) values(?, ?);", (300, "third")
+        )
+        self.cursor.execute(
+            "insert into new_table (y, x) values(?, ?);", {"x": "third", "y": 300}
+        )
 
     @pytest.mark.skip(reason="test may fail on mac")
     def test_request_timeout(self):
@@ -107,7 +117,7 @@ class TestOpenmldbDBAPI:
 
         with pytest.raises(DatabaseError) as e:
             cursor.execute("select * from new_table where y=402;").fetchall()
-        assert 'execute select fail' in str(e.value)
+        assert "execute select fail" in str(e.value)
 
     def test_connect_options(self):
         connect(database=self.db_name,
