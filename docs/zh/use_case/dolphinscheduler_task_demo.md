@@ -4,7 +4,7 @@
 在机器学习从开发到上线的业务闭环中，数据处理、特征开发、模型训练往往要耗费大量的时间和人力。为给 AI 模型构建及应用上线提供便利，简化机器学习建模工程化的流程，我们开发了 DolphinScheduler OpenMLDB Task，将特征平台能力融入 DolphinScheduler 的工作流，链接特征工程与调度环节，打造端到端 MLOps 工作流，帮助开发者专注于业务价值的探索。本文将为大家简要介绍并实际演示 DolphinScheduler OpenMLDB Task 的操作流程。
 
 ```{seealso}
-[DolphinScheduler OpenMLDB Task 官方文档](https://dolphinscheduler.apache.org/zh-cn/docs/dev/user_doc/guide/task/openmldb.html)
+详细的OpenMLDB Task信息，请参考[DolphinScheduler OpenMLDB Task 官方文档](https://dolphinscheduler.apache.org/#/zh-cn/docs/3.1.2/guide/task/openmldb)。
 ```
 
 ## 场景和功能
@@ -31,7 +31,7 @@ OpenMLDB 希望能达成开发即上线的目标，让开发回归本质，而�
 
 测试可以在macOS或Linux上运行，推荐在我们提供的 OpenMLDB 镜像内进行演示测试。我们将在这个容器中启动OpenMLDB和DolphinScheduler，暴露DolphinScheduler的web端口：
 ```
-docker run -it 4pdosc/openmldb:0.6.9 bash
+docker run -it -p 12345:12345 4pdosc/openmldb:0.6.9 bash
 ```
 ```{attention}
 DolphinScheduler 需要配置租户，是操作系统的用户，并且该用户需要有 sudo 权限。所以推荐在 OpenMLDB 容器内下载并启动 DolphinScheduler。否则，请准备有sudo权限的操作系统用户。
@@ -48,35 +48,51 @@ dpkg-reconfigure dash
 ```
 输入`no`。
 
-**运行 OpenMLDB集群与 Predict Server**
+**源数据准备**
+
+下文使用的工作流会从`/tmp/train_sample.csv`导入数据到OpenMLDB，所以，先将源数据下载到这一地址：
+```
+curl -SLo /tmp/train_sample.csv https://openmldb.ai/download/dolphinschduler-task/train_sample.csv
+```
+
+**运行 OpenMLDB 集群与 Predict Server**
 
 在容器中运行以下命令启动 OpenMLDB cluster：
 ```
 /work/init.sh
 ```
 
-我们将完成一个导入数据，离线训练，训练成功后模型上线的工作流。模型上线的部分，可以使用`/work/talkingdata`中的的predict server来完成。将它运行至后台：
+我们将完成一个导入数据，离线训练，训练成功后模型上线的工作流。模型上线的部分，将发送模型地址给predict server来完成。所以，我们先下载并后台运行predict server：
 ```
-python3 /work/talkingdata/predict_server.py --no-init > predict.log 2>&1 &
+cd /work
+curl -SLo predict_server.py https://openmldb.ai/download/dolphinschduler-task/predict_server.py
+python3 predict_server.py --no-init > predict.log 2>&1 &
+```
+```{tip}
+如果在“在线预测测试”中返回了错误，请查看日志`/work/predict.log`。
 ```
 
-**运行 DolphinScheduler**
+**下载并运行 DolphinScheduler**
 
-DolphinScheduler 支持 OpenMLDB Task 的版本，我们直接提供了一个可供下载版本，点击下载[dolphinscheduler-bin](http://openmldb.ai/download/dolphinschduler-task/apache-dolphinscheduler-dev-SNAPSHOT-bin.tar.gz)。（由于目前 DolphinScheduler 官方尚未发布包含 OpenMLDB Task 的 release 版本（仅有 `dev` 版本），待 DolphinScheduler 正式版发布以后则直接下载正式版）
+DolphinScheduler 支持 OpenMLDB Task 的版本，我们直接提供了一个可供下载版本，下载地址[dolphinscheduler-bin](http://openmldb.ai/download/dolphinschduler-task/apache-dolphinscheduler-dev-SNAPSHOT-bin.tar.gz)。
 
-启动 DolphinScheduler standalone，步骤如下，更多请参考[官方文档](https://dolphinscheduler.apache.org/en-us/docs/3.0.0/user_doc/guide/installation/standalone.html)。
+启动 DolphinScheduler standalone，步骤如下，更多请参考[官方文档](https://dolphinscheduler.apache.org/#/zh-cn/docs/3.1.2/guide/installation/standalone)。
+
 ```
+curl -SLO http://openmldb.ai/download/dolphinschduler-task/apache-dolphinscheduler-dev-SNAPSHOT-bin.tar.gz
 tar -xvzf apache-dolphinscheduler-*-bin.tar.gz
 cd apache-dolphinscheduler-*-bin
 sed -i s#/opt/soft/python#/usr/bin/python3#g bin/env/dolphinscheduler_env.sh
 ./bin/dolphinscheduler-daemon.sh start standalone-server
 ```
 
-浏览器访问地址 http://localhost:12345/dolphinscheduler/ui 即可登录系统UI。默认的用户名和密码是 admin/dolphinScheduler123。
+```{hint}
+目前DolphinScheduler的官方release版本的OpenMLDB Task存在问题，无法直接使用，请使用我们提供的下载版本。如需要使用更新版本的DolphinScheduler，可联系我们提供对应版本的OpenMLDB Task修复版。
 
-DolphinScheduler 的 worker server 需要 OpenMLDB Python SDK, DolphinScheduler standalone 的 worker 即本机，所以只需在本机安装OpenMLDB Python SDK。我们的OpenMLDB镜像中已经安装了。如果你在别的环境中，请运行：
-
+在更高版本的DolphinScheduler中，`bin/env/dolphinscheduler_env.sh`可能变化，需要追加配置`PYTHON_HOME`，可使用命令`echo "export PYTHON_HOME=/usr/bin/python3" >> bin/env/dolphinscheduler_env.sh`修改。
 ```
+
+浏览器访问地址 http://localhost:12345/dolphinscheduler/ui 即可登录系统UI（如果跨主机访问，请使用公网IP）。默认的用户名和密码是 admin/dolphinscheduler123。
 
 ```{note}
 DolphinScheduler 的 worker server 需要 OpenMLDB Python SDK, DolphinScheduler standalone 的 worker 即本机，所以只需在本机安装OpenMLDB Python SDK。我们的OpenMLDB镜像中已经安装了。如果你在别的环境中，请安装openmldb sdk：`pip3 install openmldb`。
@@ -84,14 +100,9 @@ DolphinScheduler 的 worker server 需要 OpenMLDB Python SDK, DolphinScheduler 
 
 **下载工作流配置**
 
-工作流可以手动创建，为了简化演示，我们直接提供了 json 工作流文件，[点击下载](http://openmldb.ai/download/dolphinschduler-task/workflow_openmldb_demo.json)，稍后可以直接导入到 DolphinScheduler 环境中，并做简单的修改（见下文的演示），即可完成全工作流。
+工作流可以手动创建，为了简化演示，我们直接提供了 json 工作流文件，[点击下载](http://openmldb.ai/download/dolphinschduler-task/workflow_openmldb_demo.json)。稍后可以直接上传到 DolphinScheduler 环境中，并做简单的修改（见下文的演示），即可完成全工作流。
 
-**源数据**
-
-工作流会从`/tmp/train_sample.csv`导入数据到OpenMLDB，所以准备一下源数据：
-```
-cp /work/talkingdata/train_sample.csv /tmp
-```
+请注意，不是下载到容器中，而是下载到你使用的浏览器主机。之后将在web页面中完成上传。
 
 ### Demo 演示
 
@@ -142,7 +153,7 @@ DolphinScheduler 中，需要先创建项目，再在项目中创建工作流。
 
 ![set tenant](images/ds_set_tenant.png)
 
-#### 3. 上线运行
+#### 3. 上线运行工作流
 
 工作流保存后，需要先上线再运行。上线后，运行按钮才会点亮。如下图所示。
 
@@ -153,6 +164,16 @@ DolphinScheduler 中，需要先创建项目，再在项目中创建工作流。
 
 为演示成功上线的流程，validation 并未进行实际验证，直接返回验证成功并流入deploy分支。运行 deploy 的分支，deploy  sql 及之后的 task 都成功后，predict server 接收到最新的模型。
 
+```{note}
+如果工作流实例(Workflow Instance)出现`Failed`标识，请点击该实例名，跳转到详细页面，查看是哪一个Task执行出错。双击该Task，并点击右上角“查看日志”，可以查看到详细的错误信息。
+
+`load offline data`，`feture extraction`与`load online`可能出现DolphinScheduler 中显示task运行成功，但实际在OpenMLDB中任务执行失败。进而可能导致`train`任务报错，没有源特征数据可以concatenate的错误（Traceback `pd.concat`）。
+
+出现这类问题时，请在OpenMLDB中查询下各个任务的真正状态，可直接运行
+`echo "show jobs;" | /work/openmldb/bin/openmldb --zk_cluster=127.0.0.1:2181 --zk_root_path=/openmldb --role=sql_client`。如果某个任务状态是`FAILED`，请查询该任务的日志，方法见[任务日志](../quickstart/beginner_must_read.md#离线)。
+```
+
+#### 4. 在线预测测试
 predict server同时提供了在线预测服务，通过`curl /predict`请求。我们简单地构造一个实时请求，发送至predict server。
 ```
 curl -X POST 127.0.0.1:8881/predict -d '{"ip": 114904,
@@ -178,3 +199,11 @@ curl -X POST 127.0.0.1:8881/predict -d '{"ip": 114904,
 ```
 /work/openmldb/bin/openmldb --zk_cluster=127.0.0.1:2181 --zk_root_path=/openmldb --role=sql_client --database=demo_db --interactive=false --cmd="show deployment demo;"
 ```
+
+重启DolphinScheduler server（注意这样重启会清空元数据，需要重新配置环境与创建工作流）：
+```
+./bin/dolphinscheduler-daemon.sh stop standalone-server
+./bin/dolphinscheduler-daemon.sh start standalone-server
+```
+
+如果想要保留元数据，请参考[伪集群部署](https://dolphinscheduler.apache.org/#/zh-cn/docs/3.1.2/guide/installation/pseudo-cluster)配置数据库。
