@@ -1,4 +1,4 @@
-# 接入实时数据流之 RocketMQ
+# RocketMQ
 
 ## 1. 为什么选择 RocketMQ OpenMLDB Connector
 

@@ -55,13 +55,13 @@ OpenMLDB 完成从特征的离线开发到上线部署，只需要以下三个�
    
    SQL 具备表达语法简洁且功能强大的特点，选用 SQL 和数据库开发体验一方面降低开发门槛，另一方面更易于跨部门之间的协作和共享。此外，基于 OpenMLDB 的实践经验表明，经过优化过的 SQL 在特征计算的表达上功能完备，已经经历了长时间的实践考验。
 
-## OpenMLDB 文档
+## 文档
 
 - 中文文档：[https://openmldb.ai/docs/zh/](https://openmldb.ai/docs/zh/)
 - 英文文档：[https://openmldb.ai/docs/en/](https://openmldb.ai/docs/en/)
 
 
-## Roadmap
+## 产品规划 (Roadmap)
 
 请参照公开的 [Roadmap](https://github.com/4paradigm/OpenMLDB/projects/10) 
 

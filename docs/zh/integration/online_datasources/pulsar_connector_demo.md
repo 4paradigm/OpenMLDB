@@ -1,4 +1,4 @@
-# 接入实时数据流之 Pulsar
+# Pulsar
 
 ## 简介
 Apache Pulsar是一个云原生的，分布式消息流平台。它可以作为OpenMLDB的在线数据源，将实时的数据流导入到OpenMLDB在线。了解更多Pulsar，请参考官网[https://pulsar.apache.org/](https://pulsar.apache.org/)。我们开发了在Pulsar中使用的OpenMLDB JDBC Connector，可以无障碍地使Pulsar连接到OpenMLDB。在这篇文档中，你将学习到这个connector的概念与使用方法。

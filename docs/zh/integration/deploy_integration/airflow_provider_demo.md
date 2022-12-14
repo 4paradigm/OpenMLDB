@@ -1,7 +1,7 @@
-# Airflow OpenMLDB Provider 使用案例
+# Airflow 
 我们提供了[Airflow OpenMLDB Provider](https://github.com/4paradigm/OpenMLDB/tree/main/extensions/airflow-provider-openmldb)，使得在Airflow DAG中能更容易地使用OpenMLDB。
 
-本案例将通过Airflow编排[TalkingData](talkingdata_demo)的训练与上线过程。
+本案例将通过 Airflow 编排[TalkingData](talkingdata_demo)的训练与上线过程。
 
 ## TalkingData DAG
 

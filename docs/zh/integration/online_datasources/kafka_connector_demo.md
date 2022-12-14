@@ -1,4 +1,4 @@
-# 接入实时数据流之 Kafka
+# Kafka
 
 ## 简介
 Apache Kafka是一个事件流平台。它可以作为OpenMLDB的在线数据源，将实时的数据流导入到OpenMLDB在线。了解更多Kafka，请参考官网[https://kafka.apache.org/](https://kafka.apache.org/)。我们开发了连接OpenMLDB的Kafka Connector，可以无障碍地将Kafka和OpenMLDB连接起来。在这篇文档中，你将学习到这个connector的概念与使用方法。
