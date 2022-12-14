@@ -7,6 +7,6 @@
     :maxdepth: 1
 
     openmldb_quickstart
-    sdk
+    sdk/index
     beginner_must_read
     function_boundary
