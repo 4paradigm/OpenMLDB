@@ -5,9 +5,9 @@
 .. toctree::
     :maxdepth: 1
 
-    online_datasources
+    online_datasources/index
     offline_datasources
-    deploy_integration
+    deploy_integration/index
     supervise_integration
 
 

@@ -4,7 +4,7 @@
 
 ## 资源链接
 
-- [官网博客](https://openmldb.ai/blog/)：用于发布产品动态、活动动态、技术细节、meetup 回顾、人物专访等相关技术博文。
+- 微信公众号 (OpenMLDB)/[官网博客](https://openmldb.ai/blog/)：用于发布产品动态、活动动态、技术细节、meetup 回顾、人物专访等相关技术博文。
 - [GitHub repo](https://github.com/4paradigm/OpenMLDB)：用于存放产品的所有开源代码。
 - [GitHub Issues](https://github.com/4paradigm/OpenMLDB/issues)：用于提交 bugs 以及反馈产品需求。
 - [GitHub Discussions](https://github.com/4paradigm/OpenMLDB/discussions)：用于讨论任何和 OpenMLDB 相关的内容。
@@ -14,6 +14,7 @@
 - 微信技术交流群：若你想提问或者获取技术支持，可以微信扫描二维码进入技术交流群。
 
 ![wechat](images/wechat.png)
+
 
 ## 参与贡献
 
