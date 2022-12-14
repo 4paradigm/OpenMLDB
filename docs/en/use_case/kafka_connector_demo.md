@@ -195,7 +195,15 @@ You can directly run the query script with a query:
 
 ![openmldb result](../../zh/use_case/images/kafka_openmldb_result.png)
 
-### Debug
+## Debug
+
+### Logs
+
+Kafka server log is `log/server.log`, check it if the Kafka server can't work.
+
+And the connector log is `log/connect.log`, check it if the producer failed or can't get the result in OpenMLDB.
+
+### Reinit
 
 If you met some error, you can reinitialize the environment to retry.
 

@@ -167,7 +167,15 @@ select * from topic1;
 
 ![openmldb result](images/kafka_openmldb_result.png)
 
-### 调试
+## 调试
+
+### 日志
+
+Kafka server的日志在 `log/server.log`。如果Kafka本身无法工作，请检查此日志。
+
+Connector的日志在 `log/connect.log`。如果producer运行出错或无法在OpenMLDB中查询到数据，请检查此日志。
+
+### 重新初始化
 
 如果在测试中遇到问题，你可以重新初始化环境，更方便重试。
 
