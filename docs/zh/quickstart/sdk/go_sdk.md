@@ -1,4 +1,4 @@
-# Go SDK 快速上手
+# Go SDK 
 
 **需求**:
 - OpenMLDB 版本 >= 0.7.0

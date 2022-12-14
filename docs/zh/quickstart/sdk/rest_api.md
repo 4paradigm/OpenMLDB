@@ -1,4 +1,4 @@
-# REST APIs
+# REST API
 
 ## 重要信息
 

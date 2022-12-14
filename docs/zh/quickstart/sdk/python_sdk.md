@@ -1,4 +1,4 @@
-# Python SDK 快速上手
+# Python SDK
 
 ## 1. 安装OpenMLDB Python包
 

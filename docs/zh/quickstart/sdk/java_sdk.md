@@ -1,4 +1,4 @@
-# Java SDK 快速上手
+# Java SDK
 
 ## Java SDK包安装
 

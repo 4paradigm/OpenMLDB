@@ -1,4 +1,4 @@
-# OpenMLDB C++ SDK 快速上手
+# C++ SDK 
 
 ## 1. 请先编译安装或下载 C++ SDK 包
 
