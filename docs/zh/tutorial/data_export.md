@@ -1,4 +1,4 @@
-# 在线数据导出工具使用
+# 在线数据导出工具
 
 在线数据导出工具位于[src/tools](https://github.com/4paradigm/OpenMLDB/tree/main/src/tools)。支持导出远程机器中单机或集群模式的数据。
 

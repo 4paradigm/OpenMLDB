@@ -13,4 +13,5 @@
     modes
     openmldbspark_distribution
     data_import
+    data_export
     autofe
