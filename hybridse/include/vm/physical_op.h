@@ -365,6 +365,9 @@ class PhysicalOpNode : public node::NodeBase<PhysicalOpNode> {
     virtual void PrintChildren(std::ostream &output,
                                const std::string &tab) const;
 
+    // construct the same type physical node with all members copied,
+    // except producers are taken by `children` parameter.
+    // output to `out`.
     virtual base::Status WithNewChildren(
         node::NodeManager *nm, const std::vector<PhysicalOpNode *> &children,
         PhysicalOpNode **out) = 0;

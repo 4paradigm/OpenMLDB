@@ -34,7 +34,6 @@ base::Status ConvertASTScript(const zetasql::ASTScript* body, node::NodeManager*
 // ======================================================================================= //
 // all interfaces below not consider public, which might moved later
 // ======================================================================================= //
-base::Status ConvertASTType(const zetasql::ASTType* ast_type, node::DataType* output);
 base::Status ConvertExprNode(const zetasql::ASTExpression* ast_expression, node::NodeManager* node_manager,
                              node::ExprNode** output);
 

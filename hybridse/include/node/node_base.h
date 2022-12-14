@@ -81,8 +81,6 @@ class NodeBase : public base::FeBaseObject {
 
     virtual T* DeepCopy(NodeManager*) const { return nullptr; }
 
-    virtual bool UpdateChild(size_t idx, T* new_child) { return false; }
-
     size_t node_id() const { return node_id_; }
 
  protected:

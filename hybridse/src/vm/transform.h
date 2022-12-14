@@ -189,14 +189,6 @@ class BatchModeTransformer {
 
     Status TransformWithClauseEntry(const node::WithClauseEntryPlanNode* node, PhysicalOpNode** out);
 
-    base::Status CreateRequestUnionNode(PhysicalOpNode* request,
-                                        PhysicalOpNode* right,
-                                        const std::string& db_name,
-                                        const std::string& primary_name,
-                                        const codec::Schema* primary_schema,
-                                        const node::ExprListNode* partition,
-                                        const node::WindowPlanNode* window_plan,
-                                        PhysicalRequestUnionNode** output);
     virtual Status CreatePhysicalProjectNode(
         const ProjectType project_type, PhysicalOpNode* node,
         node::ProjectListNode* project_list, bool append_input,
@@ -264,6 +256,8 @@ class BatchModeTransformer {
     //   lifetime of all `Closure`s managed by NodeManager
     internal::Closure* closure_ = nullptr;
 
+    PhysicalPlanContext plan_ctx_;
+
  private:
     virtual Status TransformProjectPlanOpWithWindowParallel(const node::ProjectPlanNode* node, PhysicalOpNode** output);
     virtual Status TransformProjectPlanOpWindowSerial(const node::ProjectPlanNode* node, PhysicalOpNode** output);
@@ -279,7 +273,6 @@ class BatchModeTransformer {
     std::vector<PhysicalPlanPassType> passes;
     LogicalOpMap op_map_;
     const udf::UdfLibrary* library_;
-    PhysicalPlanContext plan_ctx_;
 };
 class RequestModeTransformer : public BatchModeTransformer {
  public:
@@ -314,6 +307,11 @@ class RequestModeTransformer : public BatchModeTransformer {
     Status TransformLoadDataOp(const node::LoadDataPlanNode* node, PhysicalOpNode** output) override;
 
     Status TransformWindowOp(PhysicalOpNode* depend, const node::WindowPlanNode* w_ptr, PhysicalOpNode** output);
+
+    base::Status CreateRequestUnionNode(PhysicalOpNode* request, PhysicalOpNode* right, const std::string& db_name,
+                                        const std::string& primary_name, const codec::Schema* primary_schema,
+                                        const node::ExprListNode* partition, const node::WindowPlanNode* window_plan,
+                                        PhysicalRequestUnionNode** output);
 
  private:
     // Optimize simple project node which is the producer of window project
