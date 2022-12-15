@@ -127,6 +127,7 @@ set @@execute_mode='';
 docker或本地的集群（服务端所有进程都在本地），可以使用诊断工具快速获取配置、日志等信息。
 
 使用init.sh/start-all.sh脚本启动的OpenMLDB服务端，可以使用以下命令进行诊断，分别对应集群版和单机版。
+
 ```
 openmldb_tool --env=onebox --dist_conf=cluster_dist.yml
 openmldb_tool --env=onebox --dist_conf=stadnalone_dist.yml

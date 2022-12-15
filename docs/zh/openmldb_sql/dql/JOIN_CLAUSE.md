@@ -79,7 +79,7 @@ SUCCEED
 
 建立上述右表t2，建立索引，插入数据。
 ```{note}
-底层存储顺序不一定与插入顺序一致，而底层存储顺序会影响JOIN时的命中顺序。本例为了便于验证拼接结果，需要实现上图右表的存储顺序。t2必须建立下述索引（注意不能添加TS），且逐条按序插入数据，原因见[列索引](https://openmldb.ai/docs/zh/main/reference/sql/ddl/CREATE_TABLE_STATEMENT.html#columnindex)。
+底层存储顺序不一定与插入顺序一致，而底层存储顺序会影响JOIN时的命中顺序。本例为了便于验证拼接结果，需要实现上图右表的存储顺序。t2必须建立下述索引（注意不能添加TS），且逐条按序插入数据，原因见[列索引](https://openmldb.ai/docs/zh/main/openmldb_sql/ddl/CREATE_TABLE_STATEMENT.html#columnindex)。
 ```
 ```sql
 >CREATE TABLE t2 (id INT, col1 string,std_ts TIMESTAMP,INDEX(KEY=col1));
