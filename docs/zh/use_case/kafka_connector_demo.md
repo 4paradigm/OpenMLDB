@@ -41,7 +41,7 @@ docker run -it -v `pwd`:/work/kafka --name openmldb 4pdosc/openmldb:0.6.9 bash
 
 在OpenMLDB容器中，启动集群:
 ```
-./init.sh
+/work/init.sh
 ```
 
 ```{caution}
@@ -69,7 +69,7 @@ cd kafka_2.13-3.1.0
 OpenMLDB服务已经使用了端口2181启动zookeeper，Kafka不用再次启动zookeeper。所以，此处只需要启动server。
 ```
 
-你可以检查一下Kafka是否正常运行，可以使用`ps`或者检查日志。
+你可以检查一下Kafka是否正常运行，可以使用`ps`。如果启动失败，请检查日志`logs/server.log`。
 ```
 ps axu|grep kafka
 ```
@@ -96,7 +96,7 @@ tar zxf kafka_demo_files.tgz
 ```
 启动connector，需要kafka_demo_files中的两个配置文件，并将connector插件放入正确位置。
 
-第一个配置文件是 connector 自身的配置`connect-standalone.properties`，重点配置是“插件目录”，如下：
+第一个配置文件是 connector 自身的配置`connect-standalone.properties`，重点配置是“插件目录”，请确认此配置项如下所示：
 ```
 plugin.path=/usr/local/share/java
 ```
@@ -117,6 +117,12 @@ connection.url=jdbc:openmldb:///kafka_test?zk=127.0.0.1:2181&zkPath=/openmldb
 auto.create=true
 ```
 连接配置中，需要填写正确的openmldb url地址。该connector接收topic1的消息，并且会自动创建表(auto.create)。
+
+```{tip}
+配置项详情见Kafka文档[Configuring Connectors](https://kafka.apache.org/documentation/#connect_configuring)。
+
+其中，`connection.url`需要配置为正确的OpenMLDB集群地址与database名，要求database必须存在。
+```
 
 下面，使用 Kafka Connector standalone 模式启动 connector。
 ```
@@ -141,6 +147,10 @@ cd /work/kafka/kafka_2.13-3.1.0
 ./bin/kafka-console-producer.sh --topic topic1 --bootstrap-server localhost:9092 < ../kafka_demo_files/message
 ```
 
+```{tip}
+如果希望消息中不带schema，但没有Schema Registry等额外组件，可以先在OpenMLDB中创建表，并在connector中配置`auto.schema=true`，详细的配置方法见[kafka connect jdbc文档](https://github.com/4paradigm/OpenMLDB/blob/main/extensions/kafka-connect-jdbc/DEVELOP.md)。目前只支持与JsonConverter搭配使用。
+```
+
 ### 检查
 
 我们可以在 OpenMLDB 中查询是否插入成功。查询脚本 `kafka_demo_files/select.sql`，内容如下:
@@ -156,3 +166,31 @@ select * from topic1;
 ```
 
 ![openmldb result](images/kafka_openmldb_result.png)
+
+## 调试
+
+### 日志
+
+Kafka server的日志在 `log/server.log`。如果Kafka本身无法工作，请检查此日志。
+
+Connector的日志在 `log/connect.log`。如果producer运行出错或无法在OpenMLDB中查询到数据，请检查此日志。
+
+### 重新初始化
+
+如果在测试中遇到问题，你可以重新初始化环境，更方便重试。
+
+停止Kafka需要kill Kafka的两个daemon进程:
+```
+ps axu|grep kafka | grep -v grep | awk '{print $2}' | xargs kill -9
+```
+
+Kafka的数据也可以删除，参考[TERMINATE THE KAFKA ENVIRONMENT](https://kafka.apache.org/quickstart#quickstart_kafkaterminate):
+```
+rm -rf /tmp/kafka-logs /tmp/kraft-combined-logs
+```
+
+请不要在此处删除 `/tmp/zookeeper`，也不要kill zookeeper进程，因为OpenMLDB也使用了这个zookeeper集群。我们在重新初始化OpenMLDB时，会kill zookeeper并将这个目录删除：
+```
+/work/init.sh
+```
+然后你可以在OpenMLDB创建database，启动Kafka。。。
