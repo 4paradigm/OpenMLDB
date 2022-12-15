@@ -8,7 +8,7 @@
 #### 2.1.1 C++函数名规范
 - C++内置函数名统一使用[snake_case](https://en.wikipedia.org/wiki/Snake_case)风格
 - 要求函数名能清晰表达函数功能
-- 函数不能重名。函数名不能和内置函数及其他自定义函数重名。所有内置函数的列表参考[这里](../reference/sql/functions_and_operators/Files/udfs_8h.md)
+- 函数不能重名。函数名不能和内置函数及其他自定义函数重名。所有内置函数的列表参考[这里](../openmldb_sql/functions_and_operators/Files/udfs_8h.md)
 #### 2.1.2 C++类型与SQL类型对应关系
 内置C++函数的参数类型限定为：BOOL类型，数值类型，时间戳日期类型和字符串类型。C++类型SQL类型对应关系如下：
 
@@ -110,8 +110,7 @@ g++ -shared -o libtest_udf.so examples/test_udf.cc -I /work/OpenMLDB/include -st
 ```
 
 ### 2.4 注册、删除和查看函数
-注册函数使用[CREATE FUNCTION](../reference/sql/ddl/CREATE_FUNCTION.md)
-```sql
+注册函数使用[CREATE FUNCTION](../openmldb_sql/ddl/CREATE_FUNCTIopenmldb_sql
 CREATE FUNCTION cut2(x STRING) RETURNS STRING OPTIONS (FILE='libtest_udf.so');
 ```
 **注**:
@@ -119,15 +118,12 @@ CREATE FUNCTION cut2(x STRING) RETURNS STRING OPTIONS (FILE='libtest_udf.so');
 - 一个udf函数只能对一种类型起作用。如果想用于多种类型，需要创建多个函数
 - `FILE` 指定动态库的文件名，不需要包含路径
 
-成功注册后就可以使用函数了
-```sql
+成功注册后就可openmldb_sql
 SELECT cut2(c1) FROM t1;
 ```
-可以通过SHOW FUNCTIONS查看注册的函数
-```sql
+可以通过SHOW FUNCTIONS查openmldb_sql
 SHOW FUNCTIONS;
 ```
-通过DROP FUNCTION删除已经注册的函数
-```sql
+通过DROP FUNCTION删除已openmldb_sql
 DROP FUNCTION cut2;
 ```

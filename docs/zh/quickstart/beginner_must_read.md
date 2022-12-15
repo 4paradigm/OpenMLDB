@@ -22,7 +22,7 @@ docker创建OpenMLDB见[快速上手](./openmldb_quickstart.md)，请注意文�
 
 ### LOAD DATA
 
-从文件导入数据到OpenMLDB，通常使用LOAD DATA命令，详情参考[LOAD DATA INFILE](../reference/sql/dml/LOAD_DATA_STATEMENT.md)。LOAD DATA可使用的数据源和数据格式，与OpenMLDB版本（单机/集群）、执行模式、导入模式（即LOAD DATA配置项load_mode）都有一定关系。集群版默认 load_mode 为cluster，也可设置为local；单机版默认 load_mode 为local，**不支持cluster**。所以我们分为三种情况讨论：
+从文件导入数据到OpenMLDB，通常使用LOAD DATA命令，详情参考[LOAD DATA INFILE](../openmldb_sql/dml/LOAD_DATA_STATEMENT.md)。LOAD DATA可使用的数据源和数据格式，与OpenMLDB版本（单机/集群）、执行模式、导入模式（即LOAD DATA配置项load_mode）都有一定关系。集群版默认 load_mode 为cluster，也可设置为local；单机版默认 load_mode 为local，**不支持cluster**。所以我们分为三种情况讨论：
 
 | LOAD DATA类型 | 支持执行模式（导入目的地） | 支持异步/同步 | 支持数据源 | 支持数据格式 |
 | :------------ | :----------------------- | :----------- | :-------- | :---------- |
@@ -50,7 +50,7 @@ OpenMLDB并不完全兼容标准SQL。所以，部分SQL执行会得不到预期
 
 OpenMLDB所有命令均为SQL，如果SQL执行失败或交互有问题（不知道命令是否执行成功），请先确认SQL书写是否有误，命令并未执行，还是命令进入了执行阶段。
 
-例如，下面提示Syntax error的是SQL书写有误，请参考[sql reference](../reference/sql/)纠正错误。
+例如，下面提示Syntax error的是SQL书写有误，请参考[sql reference](../openmldb_sql/)纠正错误。
 ```
 127.0.0.1:7527/db> create table t1(c1 int;
 Error: Syntax error: Expected ")" or "," but got ";" [at 1:23]
@@ -117,7 +117,7 @@ set @@execute_mode='';
 请确保在你本地可以使用复现脚本复现问题，再记录issue或发送给我们。
 
 ```{caution}
-请注意离线job默认为异步。如果你需要离线导入再查询，请设置为同步模式，详情见[配置离线命令同步执行](../reference/sql/ddl/SET_STATEMENT.md#配置离线命令同步执行)。否则导入还未完成就进行查询，是无意义的。
+请注意离线job默认为异步。如果你需要离线导入再查询，请设置为同步模式，详情见[配置离线命令同步执行](../openmldb_sql/ddl/SET_STATEMENT.md#配置离线命令同步执行)。否则导入还未完成就进行查询，是无意义的。
 ```
 
 ## 提供配置与日志，获得技术支持

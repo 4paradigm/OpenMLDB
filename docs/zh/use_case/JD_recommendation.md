@@ -84,7 +84,7 @@ docker exec -it openmldb bash
 ```{important}
 在OpenMLDB集群版中，使用离线引擎的操作，默认都是非阻塞任务，包括在本次演示中将会用到的`LOAD  DATA`（离线/在线模式均使用离线引擎），和离线`SELECT  INTO`命令。
 
-任务提交以后，可以使用[`SHOW JOBS`](../reference/sql/task_manage/SHOW_JOBS.md),  [`SHOW JOB <job_id>`](../reference/sql/task_manage/SHOW_JOB.md)来查看任务进度。
+任务提交以后，可以使用[`SHOW JOBS`](../openmldb_sql/task_manage/SHOW_JOBS.md),  [`SHOW JOB <job_id>`](../openmldb_sql/task_manage/SHOW_JOB.md)来查看任务进度。
 ```
 
 ## 2. 机器学习训练流程

@@ -1,6 +1,6 @@
 # 数据快速导入
  
-OpenMLDB分为单机版和集群版。单机版中，数据仅保存在内存中，导入方式仅支持使用[`LOAD DATA`](../reference/sql/dml/LOAD_DATA_STATEMENT.md)命令。 集群版中，数据可以分别存在离线端和在线端。离线端和在线端数据不共享。
+OpenMLDB分为单机版和集群版。单机版中，数据仅保存在内存中，导入方式仅支持使用[`LOAD DATA`](../openmldb_sql/dml/LOAD_DATA_STATEMENT.md)命令。 集群版中，数据可以分别存在离线端和在线端。离线端和在线端数据不共享。
 
 本文着重介绍集群版的数据导入方式。
 
@@ -10,7 +10,7 @@ OpenMLDB分为单机版和集群版。单机版中，数据仅保存在内存中
 
 - OpenMLDB本身不提供离线存储引擎，但需要指定离线存储的地址，即修改taskmanager配置项`offline.data.prefix`，可以是本地目录、hdfs、s3等存储介质。
 
-- **导入方式只有一个**，离线模式下执行[`LOAD DATA`](../reference/sql/dml/LOAD_DATA_STATEMENT.md)。默认为硬拷贝导入。
+- **导入方式只有一个**，离线模式下执行[`LOAD DATA`](../openmldb_sql/dml/LOAD_DATA_STATEMENT.md)。默认为硬拷贝导入。
 
 - 默认情况下，OpenMLDB会将源数据拷贝到`offline.data.prefix`目录中。支持读取的文件格式有csv和parquet。
 
@@ -27,7 +27,7 @@ OpenMLDB集群版的在线模式提供自建的在线存储引擎（保存于内
 
 #### 2.1 `LOAD DATA`
 
-在**在线预览模式**和**在线请求模式**下执行 [`LOAD DATA`命令](../reference/sql/dml/LOAD_DATA_STATEMENT.md)，支持读取csv和parquet格式的文件。
+在**在线预览模式**和**在线请求模式**下执行 [`LOAD DATA`命令](../openmldb_sql/dml/LOAD_DATA_STATEMENT.md)，支持读取csv和parquet格式的文件。
 
 #### 2.2 流式导入（stream）
 
