@@ -38,7 +38,7 @@ struct CountCateDef {
         helper.library()
             ->RegisterUdafTemplate<Impl>("count_cate")
             .doc(helper.GetDoc())
-            .template args_in<int16_t, int32_t, int64_t, float, double>();
+            .template args_in<bool, int16_t, int32_t, int64_t, float, double, StringRef, Date, Timestamp>();
     }
 
     template <typename V>
@@ -94,7 +94,7 @@ struct CountCateWhereDef {
         helper.library()
             ->RegisterUdafTemplate<Impl>("count_cate_where")
             .doc(helper.GetDoc())
-            .template args_in<int16_t, int32_t, int64_t, float, double>();
+            .template args_in<bool, int16_t, int32_t, int64_t, float, double, StringRef, Timestamp, Date>();
     }
 
     template <typename V>
@@ -260,7 +260,7 @@ void DefaultUdfLibrary::InitCountByCateUdafs() {
             4|true|x
 
             @code{.sql}
-                SELECT count_cate_where(catagory, value, condition) OVER w;
+                SELECT count_cate_where(value, condition, category) OVER w;
                 -- output "x:2,y:1"
             @endcode
             )")

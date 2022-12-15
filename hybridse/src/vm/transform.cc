@@ -728,7 +728,7 @@ Status RequestModeTransformer::OptimizeSimpleProjectAsWindowProducer(PhysicalSim
         switch (in->GetOpType()) {
             case kPhysicalOpDataProvider: {
                 auto* data_op = dynamic_cast<PhysicalRequestProviderNode*>(in);
-                CHECK_TRUE(data_op != nullptr, kPlanError, "not PhysicalDataProviderNode: ", in->GetTreeString());
+                CHECK_TRUE(data_op != nullptr, kPlanError, "not PhysicalRequestProviderNode: ", in->GetTreeString());
 
                 auto name = data_op->table_handler_->GetName();
                 auto db_name = data_op->table_handler_->GetDatabase();
@@ -1036,10 +1036,9 @@ Status BatchModeTransformer::TransformScanOp(const node::TablePlanNode* node,
                                              PhysicalOpNode** output) {
     CHECK_TRUE(node != nullptr && output != nullptr, kPlanError,
                "Input node or output node is null");
-    std::string db_name = node->db_.empty() ? db_ : node->db_;
 
-    if (db_name.empty()) {
-        auto res = ResolveCTERef(node->table_);
+    if (node->db_.empty()) {
+        auto res = ResolveCTERef(node->table_, false);
         if (res.ok()) {
             *output = res.value();
             return Status::OK();
@@ -1050,6 +1049,7 @@ Status BatchModeTransformer::TransformScanOp(const node::TablePlanNode* node,
         }
     }
 
+    std::string db_name = node->db_.empty() ? db_ : node->db_;
     auto table = catalog_->GetTable(db_name, node->table_);
     CHECK_TRUE(table != nullptr, kPlanError,
                "Fail to transform data provider op: table ", node->GetPathString(),
@@ -2403,19 +2403,19 @@ Status RequestModeTransformer::TransformScanOp(const node::TablePlanNode* node,
     CHECK_TRUE(node != nullptr && output != nullptr, kPlanError,
                "Input node or output node is null");
 
-    if (node->IsPrimary()) {
-        if (node->db_.empty()) {
-            auto res = ResolveCTERef(node->table_, true);
-            if (res.ok()) {
-                *output = res.value();
-                return Status::OK();
-            }
-
-            if (!absl::IsNotFound(res.status())) {
-                FAIL_STATUS(common::kPlanError, res.status().ToString());
-            }
+    if (node->db_.empty()) {
+        auto res = ResolveCTERef(node->table_, node->IsPrimary());
+        if (res.ok()) {
+            *output = res.value();
+            return Status::OK();
         }
 
+        if (!absl::IsNotFound(res.status())) {
+            FAIL_STATUS(common::kPlanError, res.status().ToString());
+        }
+    }
+
+    if (node->IsPrimary()) {
         auto table = catalog_->GetTable(node->db_.empty() ? db_ : node->db_, node->table_);
         CHECK_TRUE(table != nullptr, common::kTableNotFound, "Fail to transform data_provider op: table ",
                    (node->db_.empty() ? db_ : node->db_), ".", node->table_, " not exist!");
@@ -2437,11 +2437,10 @@ Status RequestModeTransformer::ValidateRequestTable(
 
     switch (in->GetOpType()) {
         case vm::kPhysicalOpDataProvider: {
-            CHECK_TRUE(kProviderTypeRequest ==
-                           dynamic_cast<PhysicalDataProviderNode*>(in)
-                               ->provider_type_, kPlanError,
+            CHECK_TRUE(kProviderTypeRequest == dynamic_cast<PhysicalDataProviderNode*>(in)->provider_type_, kPlanError,
                        "Expect a request table but a ",
-                       vm::DataProviderTypeName(dynamic_cast<PhysicalDataProviderNode*>(in)->provider_type_))
+                       vm::DataProviderTypeName(dynamic_cast<PhysicalDataProviderNode*>(in)->provider_type_),
+                       in->GetTreeString())
             *request_table = in;
             return Status::OK();
         }
@@ -2474,10 +2473,8 @@ Status RequestModeTransformer::ValidateRequestTable(
             // binary_node
             //      + Left <-- SamePrimarySource1
             //      + Right <-- SamePrimarySource1
-            CHECK_TRUE(
-                left_primary_source->Equals(right_primary_source), kPlanError,
-                "left path and right path has "
-                "different request table")
+            CHECK_TRUE(left_primary_source->Equals(right_primary_source), kPlanError,
+                       "left path and right path has different request table")
             *request_table = left_primary_source;
             return Status::OK();
         }
@@ -2593,7 +2590,12 @@ Status BatchModeTransformer::PopCTEs() {
     return Status::OK();
 }
 
-absl::StatusOr<PhysicalOpNode*> BatchModeTransformer::ResolveCTERef(absl::string_view tb_name, bool request_mode) {
+absl::StatusOr<PhysicalOpNode*> BatchModeTransformer::ResolveCTERef(absl::string_view tb_name, bool is_primary_path) {
+    return ResolveCTERefImpl(tb_name, false, false);
+}
+
+absl::StatusOr<PhysicalOpNode*> BatchModeTransformer::ResolveCTERefImpl(absl::string_view tb_name, bool request_mode,
+                                                                        bool is_primary_path) {
     auto* cur_closure = closure_;
     auto it = cur_closure->cte_map.find(tb_name);
     if (it != cur_closure->cte_map.end()) {
@@ -2601,7 +2603,14 @@ absl::StatusOr<PhysicalOpNode*> BatchModeTransformer::ResolveCTERef(absl::string
 
         if (entry->transformed_op == nullptr) {
             if (request_mode) {
-                auto s = ::hybridse::plan::Planner::ValidPlan(entry->node->query_);
+                // - for a primary table plan node refer to a WITH clause entry, query inside WITH clause entry
+                //   must have a request table
+                // - for a non-primary table plan node refer to a WITH clause entry, query inside WITH clause
+                //   will have a request table only if it is not a simple reference to a physical table. Whether
+                //   the extracted request table is the same as outside WITH clause, is checked later in
+                //   `RequestModeTransformer::ValidatePlan`, and hence is not necessary to verify here.
+                //   see more in `Planner::IsTable`
+                auto s = ::hybridse::plan::Planner::ValidPlan(entry->node->query_, is_primary_path);
                 if (!s.isOK()) {
                     return absl::InternalError(s.str());
                 }
@@ -2630,6 +2639,10 @@ absl::StatusOr<PhysicalOpNode*> BatchModeTransformer::ResolveCTERef(absl::string
     }
 
     return absl::NotFoundError(absl::StrCat(tb_name, " not found"));
+}
+
+absl::StatusOr<PhysicalOpNode*> RequestModeTransformer::ResolveCTERef(absl::string_view tb_name, bool is_primary_path) {
+    return ResolveCTERefImpl(tb_name, true, is_primary_path);
 }
 
 }  // namespace vm

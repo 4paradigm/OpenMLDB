@@ -941,10 +941,6 @@ PlanNode *NodeManager::MakeSortPlanNode(PlanNode *node, const OrderByNode *order
     node::SortPlanNode *node_ptr = new SortPlanNode(node, order_list);
     return RegisterNode(node_ptr);
 }
-PlanNode *NodeManager::MakeUnionPlanNode(PlanNode *left, PlanNode *right, const bool is_all) {
-    node::UnionPlanNode *node_ptr = new UnionPlanNode(left, right, is_all);
-    return RegisterNode(node_ptr);
-}
 PlanNode *NodeManager::MakeDistinctPlanNode(PlanNode *node) {
     node::DistinctPlanNode *node_ptr = new DistinctPlanNode(node);
     return RegisterNode(node_ptr);

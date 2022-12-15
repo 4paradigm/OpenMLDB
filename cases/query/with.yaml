@@ -42,6 +42,61 @@ cases:
         3, 1590115421001
         4, 1590115422001
 
+  - id: 2
+    desc: LAST JOIN WITH CLAUSE
+    db: db1
+    sql: |
+      with
+        t1 as (select concat(col0, 'S') as col0, col1, col5 from t1),
+        t2 as (select c0, c1, c5 from t2)
+      SELECT t1.col1 as id, t1.col0, t2.c0, t3.column0 FROM t1
+      last join t2 order by t2.c5 on t1.col1=t2.c1
+      last join t3 order by t3.column5 on t1.col1 = t3.column1;
+    inputs:
+      - name: t1
+        schema: col0:string, col1:int32, col5:bigint
+        index: index2:col1:col5
+        data: |
+          A, 1, 1
+          B, 2, 2
+          C, 3, 3
+      - name: t2
+        schema: c0:string, c1:int32, c5:int64
+        index: index1:c1:c5
+        data: |
+          O, 1, 1
+          P, 2, 2
+          Q, 3, 3
+          R, 4, 4
+          S, 5, 5
+      - name: t3
+        schema: column0:string, column1:int32, column5:int64
+        index: index1:column1:column5
+        data: |
+          X, 1, 1
+          Y, 2, 2
+          Z, 3, 3
+          U, 4, 4
+          V, 5, 5
+    request_plan: |
+      SIMPLE_PROJECT(sources=(t1.col1 -> id, t1.col0, t2.c0, t3.column0))
+        REQUEST_JOIN(type=LastJoin, right_sort=(ASC), condition=, left_keys=(), right_keys=(), index_keys=(t1.col1))
+          REQUEST_JOIN(type=LastJoin, right_sort=(ASC), condition=, left_keys=(), right_keys=(), index_keys=(t1.col1))
+            RENAME(name=t1)
+              PROJECT(type=RowProject)
+                DATA_PROVIDER(request=t1)
+            RENAME(name=t2)
+              SIMPLE_PROJECT(sources=(c0, c1, c5))
+                DATA_PROVIDER(type=Partition, table=t2, index=index1)
+          DATA_PROVIDER(type=Partition, table=t3, index=index1)
+    expect:
+      schema: id:int32, col0:string, c0:string, column0:string
+      order: id
+      data: |
+        1, AS, O, X
+        2, BS, P, Y
+        3, CS, Q, Z
+
   # - id: 2
   #   desc: |
   #     local CTE shadows outer CTE

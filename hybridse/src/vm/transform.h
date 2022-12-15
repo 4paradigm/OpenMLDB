@@ -242,7 +242,10 @@ class BatchModeTransformer {
     ABSL_MUST_USE_RESULT
     Status PopCTEs();
 
-    absl::StatusOr<PhysicalOpNode*> ResolveCTERef(absl::string_view tb_name, bool request_mode = false);
+    virtual absl::StatusOr<PhysicalOpNode*> ResolveCTERef(absl::string_view tb_name, bool is_primary_path);
+
+    absl::StatusOr<PhysicalOpNode*> ResolveCTERefImpl(absl::string_view tb_name, bool request_mode,
+                                                      bool is_primary_path);
 
  protected:
     node::NodeManager* node_manager_;
@@ -312,6 +315,8 @@ class RequestModeTransformer : public BatchModeTransformer {
                                         const std::string& primary_name, const codec::Schema* primary_schema,
                                         const node::ExprListNode* partition, const node::WindowPlanNode* window_plan,
                                         PhysicalRequestUnionNode** output);
+
+    absl::StatusOr<PhysicalOpNode*> ResolveCTERef(absl::string_view tb_name, bool is_primary_path) override;
 
  private:
     // Optimize simple project node which is the producer of window project

@@ -357,9 +357,6 @@ class NodeManager {
 
     PlanNode *MakeSortPlanNode(PlanNode *node, const OrderByNode *order_list);
 
-    PlanNode *MakeUnionPlanNode(PlanNode *left, PlanNode *right,
-                                const bool is_all);
-
     PlanNode *MakeDistinctPlanNode(PlanNode *node);
 
     node::ExprNode *MakeAndExpr(ExprListNode *expr_list);
