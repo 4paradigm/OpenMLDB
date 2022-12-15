@@ -80,7 +80,7 @@ bin/pulsar-daemon start standalone --zookeeper-port 5181
 ```{note}
 OpenMLDB服务已经使用了端口2181，所以此处我们为Pulsar重新设置一个zk端口。我们将使用端口2181来连接OpenMLDB，但Pulsar standalone内的zk端口不会对外造成影响。
 ```
-你可以检查一下Pulsar是否正常运行，可以使用`ps`或者检查日志。
+你可以使用`ps`检查Pulsar是否正常运行，如果启动失败，检查日志`logs/pulsar-standalone-....log`。
 ```
 ps axu|grep pulsar
 ```
@@ -156,11 +156,11 @@ bin/pulsar-admin sinks reload
 ### 创建 Schema
 上传schema到topic 'test_openmldb'，schema类型是JSON格式。后续步骤中，我们将生产一样schema的JSON消息。schema文件是`files/openmldb-table-schema`，内容如下：
 ```
- {
-     "type": "JSON",
-     "schema":"{\"type\":\"record\",\"name\":\"OpenMLDBSchema\",\"namespace\":\"com.foo\",\"fields\":[{\"name\":\"id\",\"type\":[\"null\",\"string\"],\"default\":null},{\"name\":\"vendor_id\",\"type\":\"int\"},{\"name\":\"pickup_datetime\",\"type\":\"long\"},{\"name\":\"dropoff_datetime\",\"type\":\"long\"},{\"name\":\"passenger_count\",\"type\":\"int\"},{\"name\":\"pickup_longitude\",\"type\":\"double\"},{\"name\":\"pickup_latitude\",\"type\":\"double\"},{\"name\":\"dropoff_longitude\",\"type\":\"double\"},{\"name\":\"dropoff_latitude\",\"type\":\"double\"},{\"name\":\"store_and_fwd_flag\",\"type\":[\"null\",\"string\"],\"default\":null},{\"name\":\"trip_duration\",\"type\":\"int\"}]}",
-     "properties": {}
- }
+{
+    "type": "JSON",
+    "schema":"{\"type\":\"record\",\"name\":\"OpenMLDBSchema\",\"namespace\":\"com.foo\",\"fields\":[{\"name\":\"id\",\"type\":[\"null\",\"string\"],\"default\":null},{\"name\":\"vendor_id\",\"type\":\"int\"},{\"name\":\"pickup_datetime\",\"type\":\"long\"},{\"name\":\"dropoff_datetime\",\"type\":\"long\"},{\"name\":\"passenger_count\",\"type\":\"int\"},{\"name\":\"pickup_longitude\",\"type\":\"double\"},{\"name\":\"pickup_latitude\",\"type\":\"double\"},{\"name\":\"dropoff_longitude\",\"type\":\"double\"},{\"name\":\"dropoff_latitude\",\"type\":\"double\"},{\"name\":\"store_and_fwd_flag\",\"type\":[\"null\",\"string\"],\"default\":null},{\"name\":\"trip_duration\",\"type\":\"int\"}]}",
+    "properties": {}
+}
 ```
 
 上传并检查schema的命令，如下所示:
@@ -175,6 +175,7 @@ bin/pulsar-admin sinks reload
 我们使用两条OpenMLDB镜像中`data/taxi_tour_table_train_simple.csv`的样本数据，作为测试用的消息。数据如下图所示：
 ![test data](images/test_data.png)
 
+#### Java Producer
 Producer JAVA代码，详情见[demo producer](https://github.com/vagetablechicken/pulsar-client-java)。核心代码如下：
 ![snippet](images/producer_code.png)
 
@@ -183,6 +184,21 @@ Producer JAVA代码，详情见[demo producer](https://github.com/vagetablechick
 程序包在'files'中，你可以直接运行它：
 ```
 java -cp files/pulsar-client-java-1.0-SNAPSHOT-jar-with-dependencies.jar org.example.Client
+```
+
+#### Python Producer
+Producer也可以使用Python实现，详情见`files/pulsar_client.py`。运行前需要安装pulsar python client：
+```
+pip3 install pulsar-client==2.9.1
+```
+运行：
+```
+python3 files/pulsar_client.py
+```
+
+```{note}
+已知问题：消息中如果Long类型的value较小，在pulsar function sink的jdbc bindValue阶段，会从JsonRecord中读出java Integer Type的值，从而[setColumnValue](https://github.com/apache/pulsar/blob/82237d3684fe506bcb6426b3b23f413422e6e4fb/pulsar-io/jdbc/core/src/main/java/org/apache/pulsar/io/jdbc/BaseJdbcAutoSchemaSink.java#L170)时对Long类型的列做`statement.setInt`而不是`setLong`。因此，产生`data type not match`的SQLException。
+如果想要查看具体哪一列的data type有问题，请打开function的debug level日志，方法见[调试](#调试)。
 ```
 
 ### 检查
@@ -194,6 +210,7 @@ java -cp files/pulsar-client-java-1.0-SNAPSHOT-jar-with-dependencies.jar org.exa
 ![sink status](images/sink_status.png)
 ```{note}
 "numReadFromPulsar": pulsar发送了2条message到sink实例中。
+
 "numWrittenToSink": sink实例向OpenMLDB写入2条message。
 ```
 
@@ -209,3 +226,46 @@ select *, string(timestamp(pickup_datetime)), string(timestamp(dropoff_datetime)
 /work/openmldb/bin/openmldb --zk_cluster=127.0.0.1:2181 --zk_root_path=/openmldb --role=sql_client < /work/pulsar_files/select.sql
 ```
 ![openmldb result](images/openmldb_result.png)
+
+
+### 调试
+
+如果OpenMLDB没有数据，而sinks status合理，那么sink写入应该出了问题。请查看sink日志，日志地址为`logs/functions/public/default/openmldb-test-sink/openmldb-test-sink-0.log`。如果你使用别的sink name，请定位到正确的sink日志。
+
+Pulsar会重复尝试写入此前没有写入成功的消息，所以，如果你曾发送了错误的消息，即使新消息成功写入，日志中仍然会有错误消息的写入报错。测试中推荐直接truncate topic再测试：
+```
+./bin/pulsar-admin topics truncate persistent://public/default/test_openmldb
+```
+如果自命名的sink name，可通过./bin/pulsar-admin topics list public/default查询topic全名。
+
+#### debug日志
+
+如果sink日志信息不足够定位，可以打开debug日志。需要修改配置，并重启sink。`vim conf/functions_log4j2.xml`并做一下修改：
+
+```xml
+        <Property>
+            <name>pulsar.log.level</name>
+            <value>debug</value> <!-- 设置为debug level -->
+        </Property>
+```
+```xml
+        <Root>
+            <level>${sys:pulsar.log.level}</level> <!-- 此处info改为${sys:pulsar.log.level}或debug -->
+            <AppenderRef>
+                <ref>${sys:pulsar.log.appender}</ref>
+                <level>${sys:pulsar.log.level}</level>
+            </AppenderRef>
+        </Root>
+```
+
+再重新启动sink：
+```
+./bin/pulsar-admin sinks restart --name openmldb-test-sink
+```
+
+#### 重建pulsar
+```
+bin/pulsar-daemon stop standalone --zookeeper-port 5181
+rm -r data logs
+bin/pulsar-daemon start standalone --zookeeper-port 5181
+```
