@@ -80,7 +80,7 @@ bin/pulsar-daemon start standalone --zookeeper-port 5181
 ```{note}
 OpenMLDB服务已经使用了端口2181，所以此处我们为Pulsar重新设置一个zk端口。我们将使用端口2181来连接OpenMLDB，但Pulsar standalone内的zk端口不会对外造成影响。
 ```
-你可以检查一下Pulsar是否正常运行，可以使用`ps`或者检查日志。
+你可以使用`ps`检查Pulsar是否正常运行，如果启动失败，检查日志`logs/pulsar-standalone-....log`。
 ```
 ps axu|grep pulsar
 ```

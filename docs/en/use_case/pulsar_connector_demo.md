@@ -79,7 +79,7 @@ bin/pulsar-daemon start standalone --zookeeper-port 5181
 ```{note}
 OpenMLDB want to use the port 2181, so we should change the zk port here. We will use zk port 2181 to connect OpenMLDB, but zk port in Pulsar standalone won’t affect anything.
 ```
-You can check if the pulsar runs well, `ps` or check the standalone server log `logs/pulsar-standalone-....log`.
+You can `ps` to check if the pulsar runs well. If failed, check the standalone server log `logs/pulsar-standalone-....log`.
 ```
 ps axu|grep pulsar
 ```
