@@ -32,7 +32,9 @@
     <version>0.6.9-macos</version>
 </dependency>
 ```
-注意: 由于 openmldb-native 中包含了 OpenMLDB 编译的 C++ 静态库, 默认是 linux 静态库, macOS 上需将上述 openmldb-native 的 version 改成 `0.6.9-macos`, openmldb-jdbc 的版本保持不变。
+注意: 由于 openmldb-native 中包含了 OpenMLDB 编译的 C++ native库, 默认是 linux 库, macOS 上需将上述 openmldb-native 的 version 改成 `0.6.9-macos`, openmldb-jdbc 的版本保持不变。
+
+当前macOS native发行版只支持macos-12，如需在macos-11或macos-10.15上运行，需在相应OS上源码编译openmldb-native包，详细编译方法见[并发编译Java SDK](../deploy/compile.md#并发编译java-sdk)。
 
 ## Java SDK快速上手
 
@@ -51,9 +53,11 @@ Connection connection = DriverManager.getConnection("jdbc:openmldb:///?zk=localh
 Connection connection1 = DriverManager.getConnection("jdbc:openmldb:///test_db?zk=localhost:6181&zkPath=/openmldb");
 ```
 
-未设置db的Connection功能有限，更推荐创建Connection时就指定db。但注意指定的db在创建连接时必须存在。
+Connection地址指定的db在创建连接时必须存在。
 
-默认为在线模式（之后会调整为“默认离线”）。
+```{caution}
+JDBC Connection的默认执行模式为`online`。
+```
 
 #### 使用概览
 
@@ -116,7 +120,11 @@ option.setRequestTimeout(60000);
 sqlExecutor = new SqlClusterExecutor(option);
 ```
 
-`SqlClusterExecutor`执行sql操作是多线程安全的，在实际环境中可以创建一个`SqlClusterExecutor`。但由于执行模式(execute_mode)是`SqlClusterExecutor`内部变量，如果同时想执行一个离线命令和一个在线命令，容易出现不可预期的结果。这时候请使用多个`SqlClusterExecutor`。
+`SqlClusterExecutor`执行sql操作是多线程安全的，在实际环境中可以创建一个`SqlClusterExecutor`。但由于执行模式(execute_mode)是`SqlClusterExecutor`内部变量，如果同时想执行一个离线命令和一个在线命令，容易出现不可预期的结果。如果一定要多执行模式并发，请使用多个`SqlClusterExecutor`。
+
+```{caution}
+SqlClusterExecutor的默认执行模式为`offline`，与JDBC默认模式不同。
+```
 
 #### Statement
 
@@ -163,6 +171,8 @@ try {
 java.sql.Statement state = sqlExecutor.getStatement();
 try {
     state.execute("use db_test");
+    // sqlExecutor默认执行模式为离线，如果此前没有更改模式为在线，此处需要设置执行模式为在线
+    state.execute("SET @@execute_mode='online;");
     // execute返回值是true的话说明操作成功，结果可以通过getResultSet获取
     boolean ret = state.execute("select * from trans;");
     Assert.assertTrue(ret);
@@ -196,6 +206,9 @@ try {
 #### PreparedStatement
 
 `SqlClusterExecutor`也可以获得`PreparedStatement`，但需要指定获得哪种`PreparedStatement`。例如，我们使用InsertPreparedStmt进行插入操作，可以有三种方式。
+```{note}
+插入操作仅支持在线，不受执行模式影响，一定是插入数据到在线。
+```
 
 ##### 普通Insert
 
@@ -304,6 +317,10 @@ executeBatch后，缓存的所有数据将被清除，无法重试executeBatch�
 
 `RequestPreparedStmt`是一个独特的查询模式（JDBC不支持此模式）。此模式需要selectSql与一条请求数据，所以需要在`getRequestPreparedStmt`时填入sql，也需要`setType`设置请求数据。
 
+```{note}
+请求式查询仅支持在线，不受执行模式影响，一定是进行在线的请求式查询。
+```
+
 第一步，使用`SqlClusterExecutor::getRequestPreparedStmt(db, selectSql)`接口获取RequestPrepareStatement。
 
 第二步，调用`PreparedStatement::setType(index, value)`接口设置请求数据。请根据数据表中每一列对应的数据类型调用setType接口以及配置合法的值。
@@ -399,25 +416,33 @@ try {
 ```
 
 ### 完整的 SqlClusterExecutor 使用范例
-
-
+```{note}
+此范例与openmldb-jdbc的单元测试[DemoTest](https://github.com/4paradigm/OpenMLDB/tree/main/java/openmldb-jdbc/src/test/java/com/_4paradigm/openmldb/jdbc/DemoTest.java)逻辑一致。如果修改，请保证同步修改。
+```
 ```java
-import com._4paradigm.openmldb.jdbc.CallablePreparedStatement;
-import com._4paradigm.openmldb.sdk.*;
-import com._4paradigm.openmldb.sdk.impl.SqlClusterExecutor;
-import org.testng.Assert;
-
-import java.sql.*;
+import java.sql.Date;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
+import java.sql.SQLException;
+import java.sql.Timestamp;
+import java.sql.Types;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
+
+import org.testng.Assert;
+
+import com._4paradigm.openmldb.sdk.SdkOption;
+import com._4paradigm.openmldb.sdk.SqlException;
+import com._4paradigm.openmldb.sdk.SqlExecutor;
+import com._4paradigm.openmldb.sdk.impl.SqlClusterExecutor;
 
 public class Demo {
-
     private SqlExecutor sqlExecutor = null;
+    private String zkCluster = "127.0.0.1:2181";
+    private String zkPath = "/openmldb";
     private String db = "mydb16";
     private String table = "trans";
-    private String sp = "sp";
 
     public static void main(String[] args) {
         Demo demo = new Demo();
@@ -445,15 +470,15 @@ public class Demo {
 
     private void init() throws SqlException {
         SdkOption option = new SdkOption();
-        option.setZkCluster("172.27.128.37:7181");
-        option.setZkPath("/rtidb_wb");
+        option.setZkCluster(zkCluster);
+        option.setZkPath(zkPath);
         option.setSessionTimeout(10000);
         option.setRequestTimeout(60000);
         // sqlExecutor执行sql操作是多线程安全的，在实际环境中只创建一个即可
         sqlExecutor = new SqlClusterExecutor(option);
     }
 
-    private void createDataBase() {
+    private void createDatabase() {
         java.sql.Statement state = sqlExecutor.getStatement();
         try {
             state.execute("create database " + db + ";");
@@ -462,7 +487,7 @@ public class Demo {
         }
     }
 
-    private void dropDataBase() {
+    private void dropDatabase() {
         java.sql.Statement state = sqlExecutor.getStatement();
         try {
             state.execute("drop database " + db + ";");
@@ -472,7 +497,7 @@ public class Demo {
     }
 
     private void createTable() {
-        String createTableSql = "create table trans(c1 string,\n" +
+        String createTableSql = "create table " + table + "(c1 string,\n" +
                 "                   c3 int,\n" +
                 "                   c4 bigint,\n" +
                 "                   c5 float,\n" +
@@ -492,28 +517,15 @@ public class Demo {
     private void dropTable() {
         java.sql.Statement state = sqlExecutor.getStatement();
         try {
-            state.execute("drop table trans;");
+            state.execute("drop table " + table);
         } catch (Exception e) {
             e.printStackTrace();
         }
     }
 
-    private void getInputSchema(String selectSql) {
-        try {
-            Schema inputSchema = sqlExecutor.getInputSchema(db, selectSql);
-            Assert.assertEquals(inputSchema.getColumnList().size(), 7);
-            Column column = inputSchema.getColumnList().get(0);
-            Assert.assertEquals(column.getColumnName(), "c1");
-            Assert.assertEquals(column.getSqlType(), Types.VARCHAR);
-            Assert.assertEquals(column.isConstant(), false);
-            Assert.assertEquals(column.isNotNull(), false);
-        } catch (SQLException throwables) {
-            throwables.printStackTrace();
-        }
-    }
-
     private void insertWithoutPlaceholder() {
-        String insertSql = "insert into trans values(\"aa\",23,33,1.4,2.4,1590738993000,\"2020-05-04\");";
+        String insertSql = String.format("insert into %s values(\"aa\",23,33,1.4,2.4,1590738993000,\"2020-05-04\");",
+                table);
         PreparedStatement pstmt = null;
         try {
             pstmt = sqlExecutor.getInsertPreparedStmt(db, insertSql);
@@ -534,7 +546,8 @@ public class Demo {
     }
 
     private void insertWithPlaceholder() {
-        String insertSql = "insert into trans values(\"aa\", ?, 33, ?, 2.4, 1590738993000, \"2020-05-04\");";
+        String insertSql = String.format("insert into %s values(\"aa\", ?, 33, ?, 2.4, 1590738993000, \"2020-05-04\");",
+                table);
         PreparedStatement pstmt = null;
         try {
             pstmt = sqlExecutor.getInsertPreparedStmt(db, insertSql);
@@ -556,11 +569,12 @@ public class Demo {
     }
 
     private void select() {
-        String selectSql = "select * from trans;";
+        String selectSql = "select * from " + table;
         java.sql.ResultSet result = null;
         int num = 0;
         java.sql.Statement state = sqlExecutor.getStatement();
         try {
+            state.execute("SET @@execute_mode='online';");
             boolean ret = state.execute(selectSql);
             Assert.assertTrue(ret);
             result = state.getResultSet();
@@ -585,14 +599,14 @@ public class Demo {
     }
 
     private void requestSelect() {
-        String selectSql = "SELECT c1, c3, sum(c4) OVER w1 as w1_c4_sum FROM trans WINDOW w1 AS " +
-                "(PARTITION BY trans.c1 ORDER BY trans.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);";
+        String selectSql = String.format("SELECT c1, c3, sum(c4) OVER w1 as w1_c4_sum FROM %s WINDOW w1 AS " +
+                "(PARTITION BY %s.c1 ORDER BY %s.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);", table, table, table);
         PreparedStatement pstmt = null;
         ResultSet resultSet = null;
         try {
             pstmt = sqlExecutor.getRequestPreparedStmt(db, selectSql);
             // 如果是执行deployment, 可以通过名字获取preparedstatement
-            //pstmt = sqlExecutor.getCallablePreparedStmt(db, deploymentName);
+            // pstmt = sqlExecutor.getCallablePreparedStmt(db, deploymentName);
             ResultSetMetaData metaData = pstmt.getMetaData();
             // 执行request模式需要在RequestPreparedStatement设置一行请求数据
             setData(pstmt, metaData);
@@ -624,14 +638,14 @@ public class Demo {
     }
 
     private void batchRequestSelect() {
-         String selectSql = "SELECT c1, c3, sum(c4) OVER w1 as w1_c4_sum FROM trans WINDOW w1 AS " +
-                "(PARTITION BY trans.c1 ORDER BY trans.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);";
+        String selectSql = String.format("SELECT c1, c3, sum(c4) OVER w1 as w1_c4_sum FROM %s WINDOW w1 AS " +
+                "(PARTITION BY %s.c1 ORDER BY %s.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);", table, table, table);
         PreparedStatement pstmt = null;
         ResultSet resultSet = null;
         try {
             List<Integer> list = new ArrayList<Integer>();
             pstmt = sqlExecutor.getBatchRequestPreparedStmt(db, selectSql, list);
-            // 如果是执行deployment, 可以通过名字获取preparedstatement 
+            // 如果是执行deployment, 可以通过名字获取preparedstatement
             // pstmt = sqlExecutor.getCallablePreparedStmtBatch(db, deploymentName);
             ResultSetMetaData metaData = pstmt.getMetaData();
             // 执行request模式需要在设置PreparedStatement请求数据
@@ -668,7 +682,6 @@ public class Demo {
             }
         }
     }
-
 
     private void setData(PreparedStatement pstmt, ResultSetMetaData metaData) throws SQLException {
         for (int i = 0; i < metaData.getColumnCount(); i++) {

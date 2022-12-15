@@ -32,55 +32,181 @@ Configure maven pom
     <version>0.6.9-macos</version>
 </dependency>
 ```
-Note that since `openmldb-native` contains the C++ static library compiled by OpenMLDB, by default it is a Linux's static library. On macOS, the version of the above openmldb-native needs to be changed to `0.6.9-macos`, and the version of openmldb-jdbc remains unchanged .
+Note that since `openmldb-native` contains the C++ static library compiled by OpenMLDB, by default it is a Linux's static library. On macOS, the version of the above openmldb-native needs to be changed to `0.6.9-macos`, and the version of openmldb-jdbc remains unchanged.
+
+The macOS native relase only supports macos-12. If you want use in macos-11 or macos 10.15, you should build openmldb-native from source in macos-11/macos-10.15, see [Build Java SDK](../deploy/compile.md#build-java-sdk-with-multi-processes) for details.
 
 ## 2. Quickstart
 
-### 2.1 Create SqlClusterExecutor
+We can connect the OpenMLDB by JDBC Connection or SqlClusterExecutor.
 
-First, the OpenMLDB connection parameters should be configured.
+### JDBC Connection
+
+JDBC Connecton only supports OpenMLDB cluster, no standalone.
+
+```
+Class.forName("com._4paradigm.openmldb.jdbc.SQLDriver");
+// No database in jdbcUrl
+Connection connection = DriverManager.getConnection("jdbc:openmldb:///?zk=localhost:6181&zkPath=/openmldb");
+
+// Set database in jdbcUrl
+Connection connection1 = DriverManager.getConnection("jdbc:openmldb:///test_db?zk=localhost:6181&zkPath=/openmldb");
+```
+
+The database in connection url must exist.
+
+```{caution}
+JDBC Connection default execute mode is`online`.
+```
+
+#### 使用概览
+
+You can use `Statement` to execute all sql in online or offline mode. To switch the execute mode, you should `SET @@execute_mode='...';`. For example:
+```java
+Statement stmt = connection.createStatement();
+stmt.execute("SET @@execute_mode='offline"); // set offline mode
+stmt.execute("SELECT * from t1"); // offline select
+ResultSet res = stmt.getResultSet(); // get the job info of the offline select
+stmt.execute("SET @@execute_mode='online"); // set online mode
+res = stmt.executeQuery("SELECT * from t1"); // online select, and executeQuery will return the result
+```
+
+The offline sql and online `LOAD DATA` are async in default, so the result is the job info(id, state, etc.), not the data. You can execute `show job <id>` to check if the job is finished. **You should run `ResultSet.next()` to get the first row in result, do not run `ResultSet.getXXX` without `next()`**.
+
+The job can be set to sync：
+```
+SET @@sync_job=true;
+SET @@job_timeout=60000; // ms, timeout is 1min in default(async job timeout), you should set it bigger for sync job
+```
+```{tip}
+If the sync job takes more than 0.5h, you should [increase keepAliveTime in Taskmanager](../maintain/faq.md#2-why-am-i-getting-the-warning-log-of-got-eof-of-socket).
+```
+
+#### PreparedStatement
+
+`PreparedStatement` supports `SELECT`, `INSERT` and `DELETE`，`INSERT` only inserts into online.
+```java
+PreparedStatement selectStatement = connection.prepareStatement("SELECT * FROM t1 WHERE id=?");
+PreparedStatement insertStatement = connection.prepareStatement("INSERT INTO t1 VALUES (?,?)");
+PreparedStatement insertStatement = connection.prepareStatement("DELETE FROM t1 WHERE id=?");
+```
+
+### SqlClusterExecutor
+#### Create SqlClusterExecutor
+
+First, the OpenMLDB connection parameters should be configured. SdkOption is cluster mode in default.
 
 ```java
+// cluster：
 SdkOption option = new SdkOption();
 option.setZkCluster("127.0.0.1:2181");
 option.setZkPath("/openmldb");
 option.setSessionTimeout(10000);
 option.setRequestTimeout(60000);
+
+// standalone:
+SdkOption option = new SdkOption();
+option.setHost("127.0.0.1");
+option.setPort(6527);
+option.setClusterMode(false); // required
+option.setSessionTimeout(10000);
+option.setRequestTimeout(60000);
 ```
 
-Next, you should create an `SqlExecutor` using `SdkOption`. `SqlClusterExecutor` is thread-safe to execute SQL operations, thus you only need to create one `SqlClusterExecutor`:
+Then，create the executor.
 
 ```java
 sqlExecutor = new SqlClusterExecutor(option);
 ```
 
-### 2.2 Create Database
+`SqlClusterExecutor` is thread-safe, but the execute mode is cached in `SqlClusterExecutor`. If one thread set online and execute an online job, and another thread set offline and execute an offline job, the result is unpredictable. If you want multi-threading and execute in multi modes, you should create multi `SqlClusterExecutor`.
 
-A database is created by using the `SqlClusterExecutor::createDB()` interface:
+```{caution}
+SqlClusterExecutor execute mode is `offline` in default, it's different with JDBC Connection.
+```
+#### Statement
+
+Create a database:
 
 ```java
-sqlExecutor.createDB("db_test");
+java.sql.Statement state = sqlExecutor.getStatement();
+try {
+    state.execute("create database db_test");
+} catch (Exception e) {
+    e.printStackTrace();
+} finally {
+    state.close();
+}
 ```
 
-### 2.3 Create Table
-
-A table is created by using the `SqlClusterExecutor::executeDDL(db, createTableSql)` interface:
+Create a table in database 'db_test':
 
 ```java
-String createTableSql = "create table trans(c1 string,\n" +
-                " c3 int,\n" +
-                " c4 bigint,\n" +
-                " c5 float,\n" +
-                " c6 double,\n" +
-                "c7 timestamp,\n" +
-                " c8 date,\n" +
-                "index(key=c1, ts=c7));";
-sqlExecutor.executeDDL("", createTableSql);
+java.sql.Statement state = sqlExecutor.getStatement();
+try {
+    state.execute("use db_test");
+    String createTableSql = "create table trans(c1 string,\n" +
+                    "                   c3 int,\n" +
+                    "                   c4 bigint,\n" +
+                    "                   c5 float,\n" +
+                    "                   c6 double,\n" +
+                    "                   c7 timestamp,\n" +
+                    "                   c8 date,\n" +
+                    "                   index(key=c1, ts=c7));";
+    state.execute(createTableSql);
+} catch (Exception e) {
+    e.printStackTrace();
+} finally {
+    state.close();
+}
 ```
 
-### 2.4 Insert Data into a Table
+##### Use Statement to Query
 
-#### 2.4.1 Insert Data Directly
+```java
+java.sql.Statement state = sqlExecutor.getStatement();
+try {
+    state.execute("use db_test");
+    // sqlExecutor execute mode is offline in default. Set online here
+    state.execute("SET @@execute_mode='online;");
+    // we can `getResultSet` only if returns true
+    boolean ret = state.execute("select * from trans;");
+    Assert.assertTrue(ret);
+    java.sql.ResultSet rs = state.getResultSet();
+} catch (Exception e) {
+    e.printStackTrace();
+}
+```
+
+Read result:
+
+```java
+// print the first three columns for demo
+try {
+    while (result.next()) {
+        System.out.println(resultSet.getString(1) + "," + resultSet.getInt(2) "," + resultSet.getLong(3));
+    }
+} catch (SQLException e) {
+    e.printStackTrace();
+} finally {
+    try {
+        if (result != null) {
+            result.close();
+        }
+    } catch (SQLException throwables) {
+        throwables.printStackTrace();
+    }
+}
+```
+
+#### PreparedStatement
+
+We can get `PreparedStatement` from `SqlClusterExecutor`, e.g. get `InsertPreparedStmt` by `getInsertPreparedStmt`. There're three ways to use `InsertPreparedStmt`.
+```{note}
+Insertion only supports online, the execute mode won't affect it.
+```
+
+##### Normal Insert
 
 1.  Using the `SqlClusterExecutor::getInsertPreparedStmt(db, insertSql)` interface to get the `InsertPrepareStatement`.
 2. Using the `Statement::execute()` interface to execute the insert statement.
@@ -106,7 +232,7 @@ try {
 }
 ```
 
-#### 2.4.2 Use Placeholder to Execute Insert Statement
+##### Use Placeholder to Execute Insert Statement
 
 1. Using the `SqlClusterExecutor::getInsertPreparedStmt(db, insertSqlWithPlaceHolder)` interface to` get the InsertPrepareStatement`.
 2. Calling the `PreparedStatement::setType(index, value)` interface to fill data into `InsertPrepareStatement`.
@@ -135,7 +261,7 @@ try {
 }
 ```
 
-#### 2.4.2 Use Placeholder to Execute Batch Insert
+##### Use Placeholder to Execute Batch Insert
 
 1. Using the `SqlClusterExecutor::getInsertPreparedStmt(db, insertSqlWithPlaceHolder)` interface to` get the InsertPrepareStatement`.
 2. Calling the `PreparedStatement::setType(index, value)` interface to fill data into `InsertPrepareStatement`.
@@ -170,38 +296,7 @@ try {
 }
 ```
 
-### 2.5 Execute SQL Batch Query
-
-1. Using the `SqlClusterExecutor::executeSQL(selectSql)` interface to execute SQL batch query statements:
-
-```java
-String selectSql = "select * from trans;";
-java.sql.ResultSet result = sqlExecutor.executeSQL(db, selectSql);
-```
-
-2. Accessing query results:
-
-```java
-// Access the result set ResultSet, and output the first three columns of data
-try {
-  while (result.next()) {
-    System.out.println(resultSet.getString(1) + "," + resultSet.getInt(2) "," + resultSet.getLong(3));
-  }
-} catch (SQLException e) {
-  e.printStackTrace();
-} finally {
-  try {
-    if (result != null) {
-      result.close();
-    }
-  } catch (SQLException throwables) {
-    throwables.printStackTrace();
-  }
-
-}
-```
-
-### 2.6 SQL Queries in the Request Mode
+#### SQL Queries in the Request Mode
 
 1. Using the `SqlClusterExecutor::getRequestPreparedStmt(db, selectSql)` interface to get the `RequestPrepareStatement`.
 2. Calling the `PreparedStatement::setType(index, value)` interface to set the request data. Please call the `setType` interface and configure a valid value according to the data type corresponding to each column in the data table.
@@ -265,24 +360,7 @@ try {
 }
 ```
 
-### 2.7 Delete a Table
-
-You should use the `SqlClusterExecutor::executeDDL(db, dropTableSql)` interface to delete a table:
-
-```java
-String dropTableSql = "drop table trans;";
-sqlExecutor.executeDDL(db, dropTableSql);
-```
-
-### 2.8 Delete a Database
-
-You should use the `SqlClusterExecutor::dropDB(db)` interface to drop a specified database:
-
-```java
-sqlExecutor.dropDB(db);
-```
-
-### 2.9 Delete all data under one key in specific index
+#### Delete all data under one key in specific index
 
 There two methods to delete as below:
 
@@ -311,44 +389,54 @@ try {
 }
 ```
 
-## 3. A Complete Example
+### A Complete Example
 
+```{note}
+The example is the same with the unit case [DemoTest](https://github.com/4paradigm/OpenMLDB/tree/main/java/openmldb-jdbc/src/test/java/com/_4paradigm/openmldb/jdbc/DemoTest.java) in openmldb-jdbc. Keep changes synchronized.
+```
 ```java
-import com._4paradigm.openmldb.jdbc.CallablePreparedStatement;
-import com._4paradigm.openmldb.sdk.*;
-import com._4paradigm.openmldb.sdk.impl.SqlClusterExecutor;
-import org.testng.Assert;
-
-import java.sql.*;
+import java.sql.Date;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
+import java.sql.SQLException;
+import java.sql.Timestamp;
+import java.sql.Types;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
+
+import org.testng.Assert;
+
+import com._4paradigm.openmldb.sdk.SdkOption;
+import com._4paradigm.openmldb.sdk.SqlException;
+import com._4paradigm.openmldb.sdk.SqlExecutor;
+import com._4paradigm.openmldb.sdk.impl.SqlClusterExecutor;
 
 public class Demo {
-
     private SqlExecutor sqlExecutor = null;
+    private String zkCluster = "127.0.0.1:2181";
+    private String zkPath = "/openmldb";
     private String db = "mydb16";
     private String table = "trans";
-    private String sp = "sp";
 
     public static void main(String[] args) {
         Demo demo = new Demo();
         try {
-            // Initialize the construction of SqlExecutor
+            // 初始化构造SqlExecutor
             demo.init();
             demo.createDataBase();
             demo.createTable();
-            // Insert by insert statement
+            // 通过insert语句插入
             demo.insertWithoutPlaceholder();
-            // Insert by way of placeholder. The placeholder method will not compile sql repeatedly, and its performance will be much better than direct insert
+            // 通过placeholder的方式插入。placeholder方式不会重复编译sql, 在性能上会比直接insert好很多
             demo.insertWithPlaceholder();
-            // Execute the select statement
+            // 执行select语句
             demo.select();
-            // Execute sql in request mode
+            // 在request模式下执行sql
             demo.requestSelect();
-            // Delete table
+            // 删除表
             demo.dropTable();
-            // Delete the database
+          	// 删除数据库
             demo.dropDataBase();
         } catch (Exception e) {
             e.printStackTrace();
@@ -357,55 +445,62 @@ public class Demo {
 
     private void init() throws SqlException {
         SdkOption option = new SdkOption();
-        option.setZkCluster("172.27.128.37:7181");
-        option.setZkPath("/rtidb_wb");
+        option.setZkCluster(zkCluster);
+        option.setZkPath(zkPath);
         option.setSessionTimeout(10000);
         option.setRequestTimeout(60000);
-        // sqlExecutor is multi-threaded safe to execute sql operations, and only one can be created in the actual environment
+        // sqlExecutor执行sql操作是多线程安全的，在实际环境中只创建一个即可
         sqlExecutor = new SqlClusterExecutor(option);
     }
 
-    private void createDataBase() {
-        Assert.assertTrue(sqlExecutor.createDB(db));
+    private void createDatabase() {
+        java.sql.Statement state = sqlExecutor.getStatement();
+        try {
+            state.execute("create database " + db + ";");
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
-    private void dropDataBase() {
-        Assert.assertTrue(sqlExecutor.dropDB(db));
+    private void dropDatabase() {
+        java.sql.Statement state = sqlExecutor.getStatement();
+        try {
+            state.execute("drop database " + db + ";");
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     private void createTable() {
-        String createTableSql = "create table trans(c1 string,\n" +
-                " c3 int,\n" +
-                " c4 bigint,\n" +
-                " c5 float,\n" +
-                " c6 double,\n" +
-                "c7 timestamp,\n" +
-                " c8 date,\n" +
-                "index(key=c1, ts=c7));";
-        Assert.assertTrue(sqlExecutor.executeDDL(db, createTableSql));
+        String createTableSql = "create table " + table + "(c1 string,\n" +
+                "                   c3 int,\n" +
+                "                   c4 bigint,\n" +
+                "                   c5 float,\n" +
+                "                   c6 double,\n" +
+                "                   c7 timestamp,\n" +
+                "                   c8 date,\n" +
+                "                   index(key=c1, ts=c7));";
+        java.sql.Statement state = sqlExecutor.getStatement();
+        try {
+            state.execute("use " + db + ";");
+            state.execute(createTableSql);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     private void dropTable() {
-        String dropTableSql = "drop table trans;";
-        Assert.assertTrue(sqlExecutor.executeDDL(db, dropTableSql));
-    }
-
-    private void getInputSchema(String selectSql) {
+        java.sql.Statement state = sqlExecutor.getStatement();
         try {
-            Schema inputSchema = sqlExecutor.getInputSchema(db, selectSql);
-            Assert.assertEquals(inputSchema.getColumnList().size(), 7);
-            Column column = inputSchema.getColumnList().get(0);
-            Assert.assertEquals(column.getColumnName(), "c1");
-            Assert.assertEquals(column.getSqlType(), Types.VARCHAR);
-            Assert.assertEquals(column.isConstant(), false);
-            Assert.assertEquals(column.isNotNull(), false);
-        } catch (SQLException throwables) {
-            throwables.printStackTrace();
+            state.execute("drop table " + table);
+        } catch (Exception e) {
+            e.printStackTrace();
         }
     }
 
     private void insertWithoutPlaceholder() {
-        String insertSql = "insert into trans values(\"aa\",23,33,1.4,2.4,1590738993000,\"2020-05-04\");";
+        String insertSql = String.format("insert into %s values(\"aa\",23,33,1.4,2.4,1590738993000,\"2020-05-04\");",
+                table);
         PreparedStatement pstmt = null;
         try {
             pstmt = sqlExecutor.getInsertPreparedStmt(db, insertSql);
@@ -414,8 +509,9 @@ public class Demo {
             e.printStackTrace();
             Assert.fail();
         } finally {
-            if (pstmt != null) {try {
-                    // PrepareStatement must be closed after it is used up
+            if (pstmt != null) {
+                try {
+                    // PrepareStatement用完之后必须close
                     pstmt.close();
                 } catch (SQLException throwables) {
                     throwables.printStackTrace();
@@ -425,7 +521,8 @@ public class Demo {
     }
 
     private void insertWithPlaceholder() {
-        String insertSql = "insert into trans values(\"aa\", ?, 33, ?, 2.4, 1590738993000, \"2020-05-04\");";
+        String insertSql = String.format("insert into %s values(\"aa\", ?, 33, ?, 2.4, 1590738993000, \"2020-05-04\");",
+                table);
         PreparedStatement pstmt = null;
         try {
             pstmt = sqlExecutor.getInsertPreparedStmt(db, insertSql);
@@ -447,10 +544,15 @@ public class Demo {
     }
 
     private void select() {
-        String selectSql = "select * from trans;";
-        java.sql.ResultSet result = sqlExecutor.executeSQL(db,selectSql);
+        String selectSql = "select * from " + table;
+        java.sql.ResultSet result = null;
         int num = 0;
+        java.sql.Statement state = sqlExecutor.getStatement();
         try {
+            state.execute("SET @@execute_mode='online';");
+            boolean ret = state.execute(selectSql);
+            Assert.assertTrue(ret);
+            result = state.getResultSet();
             while (result.next()) {
                 num++;
             }
@@ -461,28 +563,29 @@ public class Demo {
                 if (result != null) {
                     result.close();
                 }
+                state.close();
             } catch (SQLException throwables) {
                 throwables.printStackTrace();
             }
 
         }
-        // result data analysis refer to the requestSelect method below
+        // result数据解析参考下面requestSelect方法
         Assert.assertEquals(num, 2);
     }
 
     private void requestSelect() {
-        String selectSql = "SELECT c1, c3, sum(c4) OVER w1 as w1_c4_sum FROM trans WINDOW w1 AS " +
-                "(PARTITION BY trans.c1 ORDER BY trans.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);";
+        String selectSql = String.format("SELECT c1, c3, sum(c4) OVER w1 as w1_c4_sum FROM %s WINDOW w1 AS " +
+                "(PARTITION BY %s.c1 ORDER BY %s.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);", table, table, table);
         PreparedStatement pstmt = null;
         ResultSet resultSet = null;
         try {
             pstmt = sqlExecutor.getRequestPreparedStmt(db, selectSql);
-            // If you are executing deployment, you can get preparedstatement by name
-            //pstmt = sqlExecutor.getCallablePreparedStmt(db, deploymentName);
+            // 如果是执行deployment, 可以通过名字获取preparedstatement
+            // pstmt = sqlExecutor.getCallablePreparedStmt(db, deploymentName);
             ResultSetMetaData metaData = pstmt.getMetaData();
-            // To execute the request mode, you need to set a line of request data in RequestPreparedStatement
+            // 执行request模式需要在RequestPreparedStatement设置一行请求数据
             setData(pstmt, metaData);
-            // Calling executeQuery will execute the select sql, and then put the result in resultSet
+            // 调用executeQuery会执行这个select sql, 然后将结果放在了resultSet中
             resultSet = pstmt.executeQuery();
 
             Assert.assertTrue(resultSet.next());
@@ -497,7 +600,7 @@ public class Demo {
         } finally {
             try {
                 if (resultSet != null) {
-                    // need to close after result is used up
+                    // result用完之后需要close
                     resultSet.close();
                 }
                 if (pstmt != null) {
@@ -510,27 +613,27 @@ public class Demo {
     }
 
     private void batchRequestSelect() {
-         String selectSql = "SELECT c1, c3, sum(c4) OVER w1 as w1_c4_sum FROM trans WINDOW w1 AS " +
-                "(PARTITION BY trans.c1 ORDER BY trans.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);";
+        String selectSql = String.format("SELECT c1, c3, sum(c4) OVER w1 as w1_c4_sum FROM %s WINDOW w1 AS " +
+                "(PARTITION BY %s.c1 ORDER BY %s.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);", table, table, table);
         PreparedStatement pstmt = null;
         ResultSet resultSet = null;
         try {
             List<Integer> list = new ArrayList<Integer>();
             pstmt = sqlExecutor.getBatchRequestPreparedStmt(db, selectSql, list);
-            // If you are executing deployment, you can get preparedstatement by name
+            // 如果是执行deployment, 可以通过名字获取preparedstatement
             // pstmt = sqlExecutor.getCallablePreparedStmtBatch(db, deploymentName);
             ResultSetMetaData metaData = pstmt.getMetaData();
-            // To execute request mode, you need to set PreparedStatement to request data
-            // Set how many pieces of data to send in a batch
+            // 执行request模式需要在设置PreparedStatement请求数据
+            // 设置一个batch发送多少条数据
             int batchSize = 5;
             for (int idx = 0; idx < batchSize; idx++) {
                 setData(pstmt, metaData);
-                // After each row of data is set, addBatch needs to be called once
+                // 每次设置完一行数据后需要调用一次addBatch
                 pstmt.addBatch();
             }
-            // Calling executeQuery will execute the select sql, and then put the result in resultSet
+            // 调用executeQuery会执行这个select sql, 然后将结果放在了resultSet中
             resultSet = pstmt.executeQuery();
-            // Take out the feature results corresponding to each data in turn
+            // 依次取出每一条数据对应的特征结果
             while (resultSet.next()) {
                 Assert.assertEquals(resultSet.getMetaData().getColumnCount(), 3);
                 Assert.assertEquals(resultSet.getString(1), "bb");
@@ -543,7 +646,7 @@ public class Demo {
         } finally {
             try {
                 if (resultSet != null) {
-                    //result need to close after use
+                    // result用完之后需要close
                     resultSet.close();
                 }
                 if (pstmt != null) {
@@ -564,7 +667,7 @@ public class Demo {
                 pstmt.setShort(i + 1, (short) 22);
             } else if (columnType == Types.INTEGER) {
                 pstmt.setInt(i + 1, 24);
-            } else if (columnType == Types. BIGINT) {
+            } else if (columnType == Types.BIGINT) {
                 pstmt.setLong(i + 1, 34l);
             } else if (columnType == Types.FLOAT) {
                 pstmt.setFloat(i + 1, 1.5f);
@@ -584,33 +687,7 @@ public class Demo {
 }
 ```
 
-## 4. JDBC Connect
-We can use the JDBC way to connect OpenMLDB(only support OpenMLDB cluster now):
-```
-Class.forName("com._4paradigm.openmldb.jdbc.SQLDriver");
-// No database in jdbcUrl
-Connection connection = DriverManager.getConnection("jdbc:openmldb:///?zk=localhost:6181&zkPath=/openmldb");
-
-// Set database in jdbcUrl
-Connection connection1 = DriverManager.getConnection("jdbc:openmldb:///test_db?zk=localhost:6181&zkPath=/openmldb");
-```
-
-No database in jdbc url is fine, but set the database in jdbc url is recommended. After connected, the default execute mode is online.
-
-You can create `Statement` by connection, to execute all sql, and set the execute mode. For example:
-```
-Statement stmt = connection.createStatement();
-stmt.execute("SELECT * from t1");
-```
-
-`PreparedStatement` supports `SELECT`, `INSERT` and `DELETE`. And only supports insert into online.
-```
-PreparedStatement selectStatement = connection.prepareStatement("SELECT * FROM t1 WHERE id=?");
-PreparedStatement insertStatement = connection.prepareStatement("INSERT INTO t1 VALUES (?,?)");
-PreparedStatement insertStatement = connection.prepareStatement("DELETE FROM t1 WHERE id=?");
-```
-
-## 5. SDK Option
+## SDK Option
 
 Connect to cluster must set `zkCluster` and `zkPath`(set methods or add `foo=bar` after `?` in jdbc url). Other options are optional.
 
@@ -633,7 +710,7 @@ The OpenMLDB cluster has zk and taskmanager, so there're options about them：
 - zkLogFile: default empty. If empty, print log to stdout.
 - sparkConfPath: default empty. set the spark conf file used by job in the client side, no need to set conf in taskmanager and restart it.
 
-##  6. SQL Validation
+## SQL Validation
 
 JAVA client supports validate if the sql can be executed or deployed, there're two modes: batch and request.
 
