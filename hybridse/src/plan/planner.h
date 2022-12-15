@@ -63,7 +63,7 @@ class Planner {
 
  protected:
     static bool IsTable(node::PlanNode *node, node::PlanNode **output);
-    static base::Status ValidateRequestTable(node::PlanNode *node, bool is_primary_path, std::vector<node::PlanNode *> &request_tables);  // NOLINT
+    static base::Status ValidateRequestTable(node::PlanNode *node, std::vector<node::PlanNode *> &request_tables);  // NOLINT
     static base::Status ValidateOnlineServingOp(node::PlanNode *node);
     static base::Status ValidateClusterOnlineTrainingOp(node::PlanNode *node);
 
