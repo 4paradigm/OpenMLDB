@@ -27,8 +27,12 @@ logging.basicConfig(level=logging.WARNING)
 class TestSQLMagicOpenMLDB:
 
     def setup_class(self):
-        self.db = openmldb.dbapi.connect(
-            database='db_test', zk=OpenMLDB_ZK_CLUSTER, zkPath=OpenMLDB_ZK_PATH)
+        self.db_name = 'sql_magic_test'
+        no_db_conn = openmldb.dbapi.connect(zk=OpenMLDB_ZK_CLUSTER, zkPath=OpenMLDB_ZK_PATH)
+        no_db_conn.cursor().execute(f'create database if not exists {self.db_name}')
+        self.db = openmldb.dbapi.connect(database=self.db_name,
+                                         zk=OpenMLDB_ZK_CLUSTER,
+                                         zkPath=OpenMLDB_ZK_PATH)
         self.ip = openmldb.sql_magic.register(self.db, test=True)
 
     def execute(self, magic_name, sql):

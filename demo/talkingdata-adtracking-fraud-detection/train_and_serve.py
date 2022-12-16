@@ -85,10 +85,11 @@ def nothrow_execute(sql):
 
 print(f'Prepare openmldb, db {DB_NAME} table {TABLE_NAME}')
 engine = db.create_engine(
-    f'openmldb:///{DB_NAME}?zk={ZK}&zkPath={ZK_PATH}')
+    f'openmldb:///?zk={ZK}&zkPath={ZK_PATH}')
 connection = engine.connect()
 
 connection.execute(f'CREATE DATABASE IF NOT EXISTS {DB_NAME};')
+connection.execute(f'USE {DB_NAME};')
 schema_string = ','.join(list(map(column_string, train_schema)))
 connection.execute(
     f'CREATE TABLE IF NOT EXISTS {TABLE_NAME}({schema_string});')

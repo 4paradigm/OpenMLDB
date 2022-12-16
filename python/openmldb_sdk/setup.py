@@ -32,12 +32,10 @@ setup(
         "IPython",
         "prettytable",
     ],
-    extras_require={
-        'test': [
-            "pytest",
-            "tox",
-        ]
-    },
+    extras_require={'test': [
+        "pytest",
+        "tox",
+    ]},
     include_package_data=True,
     package_data={'': ['*.so']},
     packages=find_packages(),
