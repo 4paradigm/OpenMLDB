@@ -1,4 +1,5 @@
-#! /bin/bash
+#! /usr/bin/env bash
+# shellcheck disable=SC1091
 
 # Copyright 2021 4Paradigm
 #
@@ -16,15 +17,22 @@
 
 set -e
 
-cd "$(dirname "$0")"
+home="$(cd "$(dirname "$0")"/.. || exit 1; pwd)"
+sbin="$(cd "$(dirname "$0")" || exit 1; pwd)"
+. "$home"/conf/openmldb-env.sh
+. "$sbin"/init.sh
+cd "$home" || exit 1
 
-export COMPONENTS="tablet tablet2 nameserver apiserver taskmanager"
-MON=""
-if [ $# -gt 0 ] && [ "$1" = "mon" ]; then
-  MON="mon"
-fi
-for COMPONENT in $COMPONENTS; do
-  ./start.sh start "$COMPONENT" "$MON"
-  sleep 1
+old_IFS="$IFS"
+IFS=$'\n'
+for line in $(parse_host conf/hosts zookeeper)
+do
+  host=$(echo "$line" | awk -F ' ' '{print $1}')
+  port=$(echo "$line" | awk -F ' ' '{print $2}')
+  dir=$(echo "$line" | awk -F ' ' '{print $3}')
+
+  echo "stop zookeeper in $dir with endpoint $host:$port "
+  cmd="cd $dir; bin/zkServer.sh stop"
+  run_auto "$host" "$cmd"
 done
-echo "OpenMLDB start success"
+IFS="$old_IFS"

@@ -1,4 +1,5 @@
-#! /bin/bash
+#! /usr/bin/env bash
+# shellcheck disable=SC1091
 
 # Copyright 2021 4Paradigm
 #
@@ -14,13 +15,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-set -e
+home="$(cd "$(dirname "$0")"/.. || exit 1; pwd)"
+sbin="$(cd "$(dirname "$0")" || exit 1; pwd)"
+. "$home"/conf/openmldb-env.sh
+. "$sbin"/init.sh
+cd "$home" || exit 1
 
-cd "$(dirname "$0")"
-
-export COMPONENTS="standalone_tablet standalone_nameserver standalone_apiserver"
-
-for COMPONENT in $COMPONENTS; do
-  ./start.sh stop "$COMPONENT"
-done
-echo "OpenMLDB stopped"
+if [[ -n "$OPENMLDB_MODE" && "$OPENMLDB_MODE" = "cluster" ]]; then
+  bin/openmldb --zk_cluster="${OPENMLDB_ZK_CLUSTER}" --zk_root_path="${OPENMLDB_ZK_ROOT_PATH}" --role=sql_client "$@"
+else
+  bin/openmldb --host 127.0.0.1 --port 6527 "$@"
+fi

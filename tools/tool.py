@@ -43,7 +43,7 @@ class Partition:
         self.endpoint = endpoint
         self.is_leader = is_leader
         self.is_alive = is_alive
-        self.offset = offset
+        self.offset = 0 if offset == "-" else int(offset)
 
     def GetTid(self):
         return self.tid
@@ -184,8 +184,7 @@ class Executor:
         for record in table_info:
             is_leader = True if record[4] == "leader" else False
             is_alive = True if record[5] == "yes" else False
-            offset = 0 if record[6] == "-" else int(record[6])
-            partition = Partition(record[0], record[1], record[2], record[3], is_leader, is_alive, offset);
+            partition = Partition(record[0], record[1], record[2], record[3], is_leader, is_alive, record[6]);
             result.setdefault(record[2], [])
             result[record[2]].append(partition)
         return result
