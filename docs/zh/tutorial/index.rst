@@ -15,3 +15,4 @@
     data_import
     data_export
     autofe
+    udf_develop_guide
