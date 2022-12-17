@@ -13,6 +13,7 @@ title: udfs/udfs.h
 | **[abs](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-abs)**()| <br>Return the absolute value of expr. |
 | **[acos](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-acos)**()| <br>Return the arc cosine of expr. |
 | **[add](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-add)**()| <br>Compute sum of two arguments. |
+| **[array_contains](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-array-contains)**()| <br>array_contains(array, value) - Returns true if the array contains the value. |
 | **[asin](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-asin)**()| <br>Return the arc sine of expr. |
 | **[at](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-at)**()| <br>Returns value evaluated at the row that is offset rows before the current row within the partition. Offset is evaluated with respect to the current row. |
 | **[atan](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-atan)**()| <br>Return the arc tangent of expr If called with one parameter, this function returns the arc tangent of expr. If called with two parameters X and Y, this function returns the arc tangent of Y / X. |
@@ -35,8 +36,9 @@ title: udfs/udfs.h
 | **[count_cate](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-count-cate)**()| <br>Compute count of values grouped by category key and output string. Each group is represented as 'K:V' and separated by comma in outputs and are sorted by key in ascend order. |
 | **[count_cate_where](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-count-cate-where)**()| <br>Compute count of values matching specified condition grouped by category key and output string. Each group is represented as 'K:V' and separated by comma in outputs and are sorted by key in ascend order. |
 | **[count_where](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-count-where)**()| <br>Compute number of values match specified condition. |
-| **[date](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-date)**()| <br>Cast timestamp or string expression to date. |
+| **[date](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-date)**()| <br>Cast timestamp or string expression to date (date >= 1900-01-01) |
 | **[date_format](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-date-format)**()| <br>Formats the date value according to the format string. |
+| **[datediff](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-datediff)**()| <br>days difference from date1 to date2 |
 | **[day](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-day)**()| <br>Return the day of the month for a timestamp or date. |
 | **[dayofmonth](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-dayofmonth)**()| <br>Return the day of the month for a timestamp or date. |
 | **[dayofweek](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-dayofweek)**()| <br>Return the day of week for a timestamp or date. |
@@ -97,6 +99,7 @@ title: udfs/udfs.h
 | **[month](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-month)**()| <br>Return the month part of a timestamp or date. |
 | **[nvl](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-nvl)**()| <br>If input is not null, return input value; else return default value. |
 | **[nvl2](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-nvl2)**()| <br>nvl2(expr1, expr2, expr3) - Returns expr2 if expr1 is not null, or expr3 otherwise. |
+| **[pmod](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-pmod)**()| <br>Compute pmod of two arguments. If any param is NULL, output NULL. If divisor is 0, output NULL. |
 | **[pow](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-pow)**()| <br>Return the value of expr1 to the power of expr2. |
 | **[power](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-power)**()| <br>Return the value of expr1 to the power of expr2. |
 | **[radians](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-radians)**()| <br>Returns the argument X, converted from degrees to radians. (Note that π radians equals 180 degrees.) |
@@ -106,7 +109,9 @@ title: udfs/udfs.h
 | **[round](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-round)**()| <br>Return the nearest integer value to expr (in floating-point format), rounding halfway cases away from zero, regardless of the current rounding mode. |
 | **[second](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-second)**()| <br>Return the second for a timestamp. |
 | **[sin](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-sin)**()| <br>Return the sine of expr. |
+| **[size](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-size)**()| <br>Get the size of a List (e.g., result of split) |
 | **[split](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-split)**()| <br>Split string to list by delimeter. Null values are skipped. |
+| **[split_array](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-split-array)**()| <br>Split string to array of string by delimeter. |
 | **[split_by_key](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-split-by-key)**()| <br>Split string by delimeter and then split each segment as kv pair, then add each key to output list. Null and illegal segments are skipped. |
 | **[split_by_value](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-split-by-value)**()| <br>Split string by delimeter and then split each segment as kv pair, then add each value to output list. Null and illegal segments are skipped. |
 | **[sqrt](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-sqrt)**()| <br>Return square root of expr. |
@@ -136,6 +141,7 @@ title: udfs/udfs.h
 | **[truncate](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-truncate)**()| <br>Return the nearest integer that is not greater in magnitude than the expr. |
 | **[ucase](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-ucase)**()| <br>Convert all the characters to uppercase. Note that characters values > 127 are simply returned. |
 | **[unhex](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-unhex)**()| <br>Convert hexadecimal to binary string. |
+| **[unix_timestamp](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-unix-timestamp)**()| <br>Cast date or string expression to unix_timestamp. If empty string or NULL is provided, return current timestamp. |
 | **[upper](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-upper)**()| <br>Convert all the characters to uppercase. Note that characters values > 127 are simply returned. |
 | **[week](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-week)**()| <br>Return the week of year for a timestamp or date. |
 | **[weekofyear](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-weekofyear)**()| <br>Return the week of year for a timestamp or date. |
@@ -254,6 +260,41 @@ select add(1, 2);
 * [`timestamp`, `int64`]
 * [`timestamp`, `timestamp`] 
 
+### function array_contains
+
+```cpp
+array_contains()
+```
+
+**Description**:
+
+array_contains(array, value) - Returns true if the array contains the value. 
+
+**Since**:
+0.7.0
+
+
+Example:
+
+```sql
+
+select array_contains([2,2], 2) as c0;
+-- output true
+```
+
+
+**Supported Types**:
+
+* [array_bool, `bool`]
+* [array_date, `date`]
+* [array_double, `double`]
+* [array_float, `float`]
+* [array_int16, `int16`]
+* [array_int32, `int32`]
+* [array_int64, `int64`]
+* [array_string, `string`]
+* [array_timestamp, `timestamp`] 
+
 ### function asin
 
 ```cpp
@@ -309,13 +350,13 @@ The offset in window is `nth_value()`, not `[lag()](/reference/sql/functions_and
 Example:
 
 
-| c1  | c2   |
+| c1    | c2     |
 |  -------- | -------- |
-| 0  | 1   |
-| 1  | 1   |
-| 2  | 2   |
-| 3  | 2   |
-| 4  | 2   |
+| 0    | 1     |
+| 1    | 1     |
+| 2    | 2     |
+| 3    | 2     |
+| 4    | 2    |
 
 
 ```sql
@@ -447,13 +488,13 @@ Compute average of values.
 Example:
 
 
-| value   |
+| value     |
 |  -------- |
-| 0   |
-| 1   |
-| 2   |
-| 3   |
-| 4   |
+| 0     |
+| 1     |
+| 2     |
+| 3     |
+| 4    |
 
 
 ```sql
@@ -487,13 +528,13 @@ Compute average of values grouped by category key and output string. Each group 
 Example:
 
 
-| value  | catagory   |
+| value    | catagory     |
 |  -------- | -------- |
-| 0  | x   |
-| 1  | y   |
-| 2  | x   |
-| 3  | y   |
-| 4  | x   |
+| 0    | x     |
+| 1    | y     |
+| 2    | x     |
+| 3    | y     |
+| 4    | x    |
 
 
 ```sql
@@ -532,13 +573,13 @@ Compute average of values matching specified condition grouped by category key a
 Example:
 
 
-| value  | condition  | catagory   |
+| value    | condition    | catagory     |
 |  -------- | -------- | -------- |
-| 0  | true  | x   |
-| 1  | false  | y   |
-| 2  | false  | x   |
-| 3  | true  | y   |
-| 4  | true  | x   |
+| 0    | true    | x     |
+| 1    | false    | y     |
+| 2    | false    | x     |
+| 3    | true    | y     |
+| 4    | true    | x    |
 
 
 ```sql
@@ -580,13 +621,13 @@ Compute average of values match specified condition.
 Example:
 
 
-| value   |
+| value     |
 |  -------- |
-| 0   |
-| 1   |
-| 2   |
-| 3   |
-| 4   |
+| 0     |
+| 1     |
+| 2     |
+| 3     |
+| 4    |
 
 
 ```sql
@@ -923,13 +964,13 @@ Compute number of values.
 Example:
 
 
-| value   |
+| value     |
 |  -------- |
-| 0   |
-| 1   |
-| 2   |
-| 3   |
-| 4   |
+| 0     |
+| 1     |
+| 2     |
+| 3     |
+| 4    |
 
 
 ```sql
@@ -968,13 +1009,13 @@ Compute count of values grouped by category key and output string. Each group is
 Example:
 
 
-| value  | catagory   |
+| value    | catagory     |
 |  -------- | -------- |
-| 0  | x   |
-| 1  | y   |
-| 2  | x   |
-| 3  | y   |
-| 4  | x   |
+| 0    | x     |
+| 1    | y     |
+| 2    | x     |
+| 3    | y     |
+| 4    | x    |
 
 
 ```sql
@@ -1013,13 +1054,13 @@ Compute count of values matching specified condition grouped by category key and
 Example:
 
 
-| value  | condition  | catagory   |
+| value    | condition    | catagory     |
 |  -------- | -------- | -------- |
-| 0  | true  | x   |
-| 1  | false  | y   |
-| 2  | false  | x   |
-| 3  | true  | y   |
-| 4  | true  | x   |
+| 0    | true    | x     |
+| 1    | false    | y     |
+| 2    | false    | x     |
+| 3    | true    | y     |
+| 4    | true    | x    |
 
 
 ```sql
@@ -1061,13 +1102,13 @@ Compute number of values match specified condition.
 Example:
 
 
-| value   |
+| value     |
 |  -------- |
-| 0   |
-| 1   |
-| 2   |
-| 3   |
-| 4   |
+| 0     |
+| 1     |
+| 2     |
+| 3     |
+| 4    |
 
 
 ```sql
@@ -1094,11 +1135,17 @@ date()
 
 **Description**:
 
-Cast timestamp or string expression to date. 
+Cast timestamp or string expression to date (date >= 1900-01-01) 
 
 **Since**:
 0.1.0
 
+
+Supported string style:
+
+* yyyy-mm-dd
+* yyyymmdd
+* yyyy-mm-dd hh:mm:ss
 
 Example:
 
@@ -1138,6 +1185,46 @@ select date_format(date(1590115420000),"%Y-%m-%d");
 
 * [`date`, `string`]
 * [`timestamp`, `string`] 
+
+### function datediff
+
+```cpp
+datediff()
+```
+
+**Description**:
+
+days difference from date1 to date2 
+
+**Since**:
+0.7.0
+
+
+Supported date string style:
+
+* yyyy-mm-dd
+* yyyymmdd
+* yyyy-mm-dd hh:mm:ss
+
+Example:
+
+```sql
+
+select datediff("2021-05-10", "2021-05-01");
+-- output 9
+select datediff("2021-04-10", "2021-05-01");
+-- output -21
+select datediff(Date("2021-04-10"), Date("2021-05-01"));
+-- output -21
+```
+
+
+**Supported Types**:
+
+* [`date`, `date`]
+* [`date`, `string`]
+* [`string`, `date`]
+* [`string`, `string`] 
 
 ### function day
 
@@ -1331,13 +1418,13 @@ Compute number of distinct values.
 Example:
 
 
-| value   |
+| value     |
 |  -------- |
-| 0   |
-| 0   |
-| 2   |
-| 2   |
-| 4   |
+| 0     |
+| 0     |
+| 2     |
+| 2     |
+| 4    |
 
 
 ```sql
@@ -1459,7 +1546,7 @@ Returns the value of expr from the first row of the window frame.
     @since 0.1.0
 ```
 
-**Supported Types**: 
+ **Supported Types**: 
 
 ### function float
 
@@ -1621,7 +1708,7 @@ Compute the top1 key's ratio.
     @since 0.1.0
 ```
 
-**Supported Types**:
+ **Supported Types**:
 
 * [`list<date>`]
 * [`list<number>`]
@@ -1644,7 +1731,7 @@ Return the topN keys sorted by their frequency.
     @since 0.1.0
 ```
 
-**Supported Types**:
+ **Supported Types**:
 
 * [`list<date>`, `list<int32>`]
 * [`list<number>`, `list<int32>`]
@@ -2169,13 +2256,13 @@ The offset in window is `nth_value()`, not `[lag()](/reference/sql/functions_and
 Example:
 
 
-| c1  | c2   |
+| c1    | c2     |
 |  -------- | -------- |
-| 0  | 1   |
-| 1  | 1   |
-| 2  | 2   |
-| 3  | 2   |
-| 4  | 2   |
+| 0    | 1     |
+| 1    | 1     |
+| 2    | 2     |
+| 3    | 2     |
+| 4    | 2    |
 
 
 ```sql
@@ -2523,13 +2610,13 @@ Compute maximum of values.
 Example:
 
 
-| value   |
+| value     |
 |  -------- |
-| 0   |
-| 1   |
-| 2   |
-| 3   |
-| 4   |
+| 0     |
+| 1     |
+| 2     |
+| 3     |
+| 4    |
 
 
 ```sql
@@ -2566,13 +2653,13 @@ Compute maximum of values grouped by category key and output string. Each group 
 Example:
 
 
-| value  | catagory   |
+| value    | catagory     |
 |  -------- | -------- |
-| 0  | x   |
-| 1  | y   |
-| 2  | x   |
-| 3  | y   |
-| 4  | x   |
+| 0    | x     |
+| 1    | y     |
+| 2    | x     |
+| 3    | y     |
+| 4    | x    |
 
 
 ```sql
@@ -2611,13 +2698,13 @@ Compute maximum of values matching specified condition grouped by category key a
 Example:
 
 
-| value  | condition  | catagory   |
+| value    | condition    | catagory     |
 |  -------- | -------- | -------- |
-| 0  | true  | x   |
-| 1  | false  | y   |
-| 2  | false  | x   |
-| 3  | true  | y   |
-| 4  | true  | x   |
+| 0    | true    | x     |
+| 1    | false    | y     |
+| 2    | false    | x     |
+| 3    | true    | y     |
+| 4    | true    | x    |
 
 
 ```sql
@@ -2659,13 +2746,13 @@ Compute maximum of values match specified condition.
 Example:
 
 
-| value   |
+| value     |
 |  -------- |
-| 0   |
-| 1   |
-| 2   |
-| 3   |
-| 4   |
+| 0     |
+| 1     |
+| 2     |
+| 3     |
+| 4    |
 
 
 ```sql
@@ -2729,12 +2816,12 @@ Compute the median of values.
 Example:
 
 
-| value   |
+| value     |
 |  -------- |
-| 1   |
-| 2   |
-| 3   |
-| 4   |
+| 1     |
+| 2     |
+| 3     |
+| 4    |
 
 
 ```sql
@@ -2771,13 +2858,13 @@ Compute minimum of values.
 Example:
 
 
-| value   |
+| value     |
 |  -------- |
-| 0   |
-| 1   |
-| 2   |
-| 3   |
-| 4   |
+| 0     |
+| 1     |
+| 2     |
+| 3     |
+| 4    |
 
 
 ```sql
@@ -2814,13 +2901,13 @@ Compute minimum of values grouped by category key and output string. Each group 
 Example:
 
 
-| value  | catagory   |
+| value    | catagory     |
 |  -------- | -------- |
-| 0  | x   |
-| 1  | y   |
-| 2  | x   |
-| 3  | y   |
-| 4  | x   |
+| 0    | x     |
+| 1    | y     |
+| 2    | x     |
+| 3    | y     |
+| 4    | x    |
 
 
 ```sql
@@ -2859,14 +2946,14 @@ Compute minimum of values matching specified condition grouped by category key a
 Example:
 
 
-| value  | condition  | catagory   |
+| value    | condition    | catagory     |
 |  -------- | -------- | -------- |
-| 0  | true  | x   |
-| 1  | false  | y   |
-| 2  | false  | x   |
-| 1  | true  | y   |
-| 4  | true  | x   |
-| 3  | true  | y   |
+| 0    | true    | x     |
+| 1    | false    | y     |
+| 2    | false    | x     |
+| 1    | true    | y     |
+| 4    | true    | x     |
+| 3    | true    | y    |
 
 
 ```sql
@@ -2908,13 +2995,13 @@ Compute minimum of values match specified condition.
 Example:
 
 
-| value   |
+| value     |
 |  -------- |
-| 0   |
-| 1   |
-| 2   |
-| 3   |
-| 4   |
+| 0     |
+| 1     |
+| 2     |
+| 3     |
+| 4    |
 
 
 ```sql
@@ -3130,6 +3217,53 @@ SELECT nvl2(NULL, 2, 1);
 * [`timestamp`, `int64`, `int64`]
 * [`timestamp`, `string`, `string`]
 * [`timestamp`, `timestamp`, `timestamp`] 
+
+### function pmod
+
+```cpp
+pmod()
+```
+
+**Description**:
+
+Compute pmod of two arguments. If any param is NULL, output NULL. If divisor is 0, output NULL. 
+
+**Parameters**: 
+
+  * **dividend** any numeric number or NULL 
+  * **divisor** any numeric number or NULL
+
+
+**Since**:
+0.7.0
+
+
+
+Example:
+
+```sql
+
+select pmod(-10, 3);
+-- output 2
+select pmod(10, -3);
+-- output 1
+select pmod(10, 3);
+-- output 1
+select pmod(-10, 0);
+-- output NULL
+select pmod(-10, NULL);
+-- output NULL
+select pmod(NULL, 2);
+-- output NULL
+```
+
+
+**Supported Types**:
+
+* [`bool`, `bool`]
+* [`bool`, `number`]
+* [`number`, `bool`]
+* [`number`, `number`] 
 
 ### function pow
 
@@ -3438,6 +3572,33 @@ SELECT SIN(0);
 
 * [`number`] 
 
+### function size
+
+```cpp
+size()
+```
+
+**Description**:
+
+Get the size of a List (e.g., result of split) 
+
+**Since**:
+0.7.0
+
+
+Example:
+
+```sql
+
+select size(split("a b c", " "));
+-- output 3
+```
+
+
+**Supported Types**:
+
+* [`list<string>`] 
+
 ### function split
 
 ```cpp
@@ -3451,6 +3612,31 @@ Split string to list by delimeter. Null values are skipped.
 **Since**:
 0.1.0
 
+
+
+**Supported Types**:
+
+* [`string`, `string`] 
+
+### function split_array
+
+```cpp
+split_array()
+```
+
+**Description**:
+
+Split string to array of string by delimeter. 
+
+**Since**:
+0.7.0
+
+
+```sql
+
+select array_contains(split_array("2,1", ","), "1") as c0;
+-- output true
+```
 
 
 **Supported Types**:
@@ -3687,13 +3873,13 @@ Compute sum of values.
 Example:
 
 
-| value   |
+| value     |
 |  -------- |
-| 0   |
-| 1   |
-| 2   |
-| 3   |
-| 4   |
+| 0     |
+| 1     |
+| 2     |
+| 3     |
+| 4    |
 
 
 ```sql
@@ -3727,13 +3913,13 @@ Compute sum of values grouped by category key and output string. Each group is r
 Example:
 
 
-| value  | catagory   |
+| value    | catagory     |
 |  -------- | -------- |
-| 0  | x   |
-| 1  | y   |
-| 2  | x   |
-| 3  | y   |
-| 4  | x   |
+| 0    | x     |
+| 1    | y     |
+| 2    | x     |
+| 3    | y     |
+| 4    | x    |
 
 
 ```sql
@@ -3772,13 +3958,13 @@ Compute sum of values matching specified condition grouped by category key and o
 Example:
 
 
-| value  | condition  | catagory   |
+| value    | condition    | catagory     |
 |  -------- | -------- | -------- |
-| 0  | true  | x   |
-| 1  | false  | y   |
-| 2  | false  | x   |
-| 3  | true  | y   |
-| 4  | true  | x   |
+| 0    | true    | x     |
+| 1    | false    | y     |
+| 2    | false    | x     |
+| 3    | true    | y     |
+| 4    | true    | x    |
 
 
 ```sql
@@ -3820,13 +4006,13 @@ Compute sum of values match specified condition.
 Example:
 
 
-| value   |
+| value     |
 |  -------- |
-| 0   |
-| 1   |
-| 2   |
-| 3   |
-| 4   |
+| 0     |
+| 1     |
+| 2     |
+| 3     |
+| 4    |
 
 
 ```sql
@@ -3897,13 +4083,13 @@ Example:
 ```sql
 
 select timestamp(1590115420000);
--- output 2020-05-22 10:43:40
+-- output 1590115420000
 
-select date("2020-05-22");
--- output 2020-05-22 00:00:00
+select timestamp("2020-05-22");
+-- output 1590076800000
 
 select timestamp("2020-05-22 10:43:40");
--- output 2020-05-22 10:43:40
+-- output 1590115420000
 ```
 
 
@@ -3936,13 +4122,13 @@ Compute top k of values and output string separated by comma. The outputs are so
 Example:
 
 
-| value   |
+| value     |
 |  -------- |
-| 1   |
-| 2   |
-| 3   |
-| 4   |
-| 4   |
+| 1     |
+| 2     |
+| 3     |
+| 4     |
+| 4    |
 
 
 ```sql
@@ -3979,7 +4165,7 @@ Compute the top1 key's ratio.
     @since 0.1.0
 ```
 
-**Supported Types**:
+ **Supported Types**:
 
 * [`list<date>`]
 * [`list<number>`]
@@ -4008,15 +4194,15 @@ Compute average of values matching specified condition grouped by category key. 
 Example:
 
 
-| value  | condition  | catagory   |
+| value    | condition    | catagory     |
 |  -------- | -------- | -------- |
-| 0  | true  | x   |
-| 1  | false  | y   |
-| 2  | false  | x   |
-| 3  | true  | y   |
-| 4  | true  | x   |
-| 5  | true  | z   |
-| 6  | false  | z   |
+| 0    | true    | x     |
+| 1    | false    | y     |
+| 2    | false    | x     |
+| 3    | true    | y     |
+| 4    | true    | x     |
+| 5    | true    | z     |
+| 6    | false    | z    |
 
 
 ```sql
@@ -4063,15 +4249,15 @@ Compute count of values matching specified condition grouped by category key. Ou
 Example:
 
 
-| value  | condition  | catagory   |
+| value    | condition    | catagory     |
 |  -------- | -------- | -------- |
-| 0  | true  | x   |
-| 1  | true  | y   |
-| 2  | false  | x   |
-| 3  | true  | y   |
-| 4  | false  | x   |
-| 5  | true  | z   |
-| 6  | true  | z   |
+| 0    | true    | x     |
+| 1    | true    | y     |
+| 2    | false    | x     |
+| 3    | true    | y     |
+| 4    | false    | x     |
+| 5    | true    | z     |
+| 6    | true    | z    |
 
 
 ```sql
@@ -4166,15 +4352,15 @@ Compute maximum of values matching specified condition grouped by category key. 
 Example:
 
 
-| value  | condition  | catagory   |
+| value    | condition    | catagory     |
 |  -------- | -------- | -------- |
-| 0  | true  | x   |
-| 1  | false  | y   |
-| 2  | false  | x   |
-| 3  | true  | y   |
-| 4  | true  | x   |
-| 5  | true  | z   |
-| 6  | false  | z   |
+| 0    | true    | x     |
+| 1    | false    | y     |
+| 2    | false    | x     |
+| 3    | true    | y     |
+| 4    | true    | x     |
+| 5    | true    | z     |
+| 6    | false    | z    |
 
 
 ```sql
@@ -4221,15 +4407,15 @@ Compute minimum of values matching specified condition grouped by category key. 
 Example:
 
 
-| value  | condition  | catagory   |
+| value    | condition    | catagory     |
 |  -------- | -------- | -------- |
-| 0  | true  | x   |
-| 1  | true  | y   |
-| 2  | false  | x   |
-| 3  | true  | y   |
-| 4  | false  | x   |
-| 5  | true  | z   |
-| 6  | true  | z   |
+| 0    | true    | x     |
+| 1    | true    | y     |
+| 2    | false    | x     |
+| 3    | true    | y     |
+| 4    | false    | x     |
+| 5    | true    | z     |
+| 6    | true    | z    |
 
 
 ```sql
@@ -4276,15 +4462,15 @@ Compute sum of values matching specified condition grouped by category key. Outp
 Example:
 
 
-| value  | condition  | catagory   |
+| value    | condition    | catagory     |
 |  -------- | -------- | -------- |
-| 0  | true  | x   |
-| 1  | true  | y   |
-| 2  | false  | x   |
-| 3  | true  | y   |
-| 4  | false  | x   |
-| 5  | true  | z   |
-| 6  | true  | z   |
+| 0    | true    | x     |
+| 1    | true    | y     |
+| 2    | false    | x     |
+| 3    | true    | y     |
+| 4    | false    | x     |
+| 5    | true    | z     |
+| 6    | true    | z    |
 
 
 ```sql
@@ -4331,15 +4517,15 @@ Compute average of values matching specified condition grouped by category key. 
 Example:
 
 
-| value  | condition  | catagory   |
+| value    | condition    | catagory     |
 |  -------- | -------- | -------- |
-| 0  | true  | x   |
-| 1  | false  | y   |
-| 2  | false  | x   |
-| 3  | false  | y   |
-| 4  | true  | x   |
-| 5  | true  | z   |
-| 6  | false  | z   |
+| 0    | true    | x     |
+| 1    | false    | y     |
+| 2    | false    | x     |
+| 3    | false    | y     |
+| 4    | true    | x     |
+| 5    | true    | z     |
+| 6    | false    | z    |
 
 
 ```sql
@@ -4386,15 +4572,15 @@ Compute count of values matching specified condition grouped by category key. Ou
 Example:
 
 
-| value  | condition  | catagory   |
+| value    | condition    | catagory     |
 |  -------- | -------- | -------- |
-| 0  | true  | x   |
-| 1  | true  | y   |
-| 2  | true  | x   |
-| 3  | false  | y   |
-| 4  | true  | x   |
-| 5  | true  | z   |
-| 6  | true  | z   |
+| 0    | true    | x     |
+| 1    | true    | y     |
+| 2    | true    | x     |
+| 3    | false    | y     |
+| 4    | true    | x     |
+| 5    | true    | z     |
+| 6    | true    | z    |
 
 
 ```sql
@@ -4489,15 +4675,15 @@ Compute maximum of values matching specified condition grouped by category key. 
 Example:
 
 
-| value  | condition  | catagory   |
+| value    | condition    | catagory     |
 |  -------- | -------- | -------- |
-| 0  | true  | x   |
-| 1  | false  | y   |
-| 2  | false  | x   |
-| 3  | true  | y   |
-| 4  | true  | x   |
-| 5  | true  | z   |
-| 6  | false  | z   |
+| 0    | true    | x     |
+| 1    | false    | y     |
+| 2    | false    | x     |
+| 3    | true    | y     |
+| 4    | true    | x     |
+| 5    | true    | z     |
+| 6    | false    | z    |
 
 
 ```sql
@@ -4544,15 +4730,15 @@ Compute minimum of values matching specified condition grouped by category key. 
 Example:
 
 
-| value  | condition  | catagory   |
+| value    | condition    | catagory     |
 |  -------- | -------- | -------- |
-| 0  | true  | x   |
-| 1  | true  | y   |
-| 2  | true  | x   |
-| 3  | true  | y   |
-| 4  | false  | x   |
-| 5  | true  | z   |
-| 6  | true  | z   |
+| 0    | true    | x     |
+| 1    | true    | y     |
+| 2    | true    | x     |
+| 3    | true    | y     |
+| 4    | false    | x     |
+| 5    | true    | z     |
+| 6    | true    | z    |
 
 
 ```sql
@@ -4599,15 +4785,15 @@ Compute sum of values matching specified condition grouped by category key. Outp
 Example:
 
 
-| value  | condition  | catagory   |
+| value    | condition    | catagory     |
 |  -------- | -------- | -------- |
-| 0  | true  | x   |
-| 1  | true  | y   |
-| 2  | false  | x   |
-| 3  | false  | y   |
-| 4  | true  | x   |
-| 5  | true  | z   |
-| 6  | true  | z   |
+| 0    | true    | x     |
+| 1    | true    | y     |
+| 2    | false    | x     |
+| 3    | false    | y     |
+| 4    | true    | x     |
+| 5    | true    | z     |
+| 6    | true    | z    |
 
 
 ```sql
@@ -4648,7 +4834,7 @@ Return the topN keys sorted by their frequency.
     @since 0.1.0
 ```
 
-**Supported Types**:
+ **Supported Types**:
 
 * [`list<date>`, `list<int32>`]
 * [`list<number>`, `list<int32>`]
@@ -4746,6 +4932,46 @@ select unhex("zfk");
 
 **Supported Types**:
 
+* [`string`] 
+
+### function unix_timestamp
+
+```cpp
+unix_timestamp()
+```
+
+**Description**:
+
+Cast date or string expression to unix_timestamp. If empty string or NULL is provided, return current timestamp. 
+
+**Since**:
+0.7.0
+
+
+Supported string style:
+
+* yyyy-mm-dd
+* yyyymmdd
+* yyyy-mm-dd hh:mm:ss
+
+Example:
+
+```sql
+
+select unix_timestamp("2020-05-22");
+-- output 1590076800
+
+select unix_timestamp("2020-05-22 10:43:40");
+-- output 1590115420
+
+select unix_timestamp("");
+-- output 1670404338 (the current timestamp)
+```
+
+
+**Supported Types**:
+
+* [`date`]
 * [`string`] 
 
 ### function upper
