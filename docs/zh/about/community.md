@@ -1,6 +1,6 @@
 # 社区和帮助
 
-若你有任何问题，可以随时提问以获取专业的技术支持。同时欢迎开发者们加入 OpenMLDB 的社区参与开源贡献！
+若你有任何问题，可以随时提问以获取专业的技术支持。同时欢迎开发者们加入 OpenMLDB 社区参与开源贡献！
 
 ## 资源链接
 
@@ -24,3 +24,5 @@ OpenMLDB 的成长离不开每一位开源贡献者的支持，非常感谢每�
 - 你可以阅读[开发者层级文档](https://go005qabor.feishu.cn/docs/doccn7oEU0AlCOGtYz09chIebzd)来了解不同层级的开发任务。
 - 如果你是一位新加入的贡献者，你可以从 [good first issue](https://github.com/4paradigm/OpenMLDB/issues?q=is%3Aopen+is%3Aissue+label%3A"good+first+issue") 列表开始。
 - 如果你有一定的开发经验，可以查找 [call-for-contributions](https://github.com/4paradigm/OpenMLDB/issues?q=is%3Aopen+is%3Aissue+label%3Acall-for-contributions) 标签的 issues。
+- 我们创建了一个用于搜集用户使用反馈意见的[用户列表](https://github.com/4paradigm/OpenMLDB/discussions/707)。社区用户可以留下基于 OpenMLDB 的使用案例、意见、或者任何反馈。
+- 可以参考公开的 [Roadmap](https://github.com/4paradigm/OpenMLDB/projects/10) 来了解 OpenMLDB 的产品规划，同时欢迎留下反馈意见。

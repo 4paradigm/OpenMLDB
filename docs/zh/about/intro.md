@@ -55,27 +55,8 @@ OpenMLDB 完成从特征的离线开发到上线部署，只需要以下三个�
    
    SQL 具备表达语法简洁且功能强大的特点，选用 SQL 和数据库开发体验一方面降低开发门槛，另一方面更易于跨部门之间的协作和共享。此外，基于 OpenMLDB 的实践经验表明，经过优化过的 SQL 在特征计算的表达上功能完备，已经经历了长时间的实践考验。
 
-## 文档
-
-- 中文文档：[https://openmldb.ai/docs/zh/](https://openmldb.ai/docs/zh/)
-- 英文文档：[https://openmldb.ai/docs/en/](https://openmldb.ai/docs/en/)
-
-
-## 产品规划 (Roadmap)
-
-请参照公开的 [Roadmap](https://github.com/4paradigm/OpenMLDB/projects/10) 
-
-此外，OpenMLDB 有一些规划中的重要功能演进，但是尚未具体排期，欢迎给我们任何反馈：
-
-- Cloud-native 版本
-- 整合自动特征生成
-- 基于异构存储和异构计算资源进行优化
-- 轻量级 edge 版本
 
 ## 学术论文
 
 * Cheng Chen, Jun Yang, Mian Lu, Taize Wang, Zhao Zheng, Yuqiang Chen, Wenyuan Dai, Bingsheng He, Weng-Fai Wong, Guoan Wu, Yuping Zhao, and Andy Rudoff. *[Optimizing in-memory database engine for AI-powered on-line decision augmentation using persistent memory](http://vldb.org/pvldb/vol14/p799-chen.pdf)*. International Conference on Very Large Data Bases (VLDB) 2021.
 
-## 用户列表
-
-我们创建了一个用于搜集用户使用反馈意见的[用户列表](https://github.com/4paradigm/OpenMLDB/discussions/707)。非常感激社区用户可以留下基于 OpenMLDB 的使用案例、意见、或者任何反馈。期待听到你的声音！
