@@ -1,4 +1,4 @@
-# 在线数据导入工具
+# 在线数据导入工具使用
 
 在线数据导入工具位于[java/openmldb-import](https://github.com/4paradigm/OpenMLDB/tree/main/java/openmldb-import)。支持两种导入方式，insert和bulk load。
 
