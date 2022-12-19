@@ -31,7 +31,7 @@ docker run -it 4pdosc/openmldb:0.6.9 bash
 
 ### 1.2 样例数据
 
-下载样例数据
+下载样例数据 # TODO: no need to download after 0.7.0。演示只是要10行源数据，taxi完整demo有1w行数据。
 
 ```bash
 curl https://openmldb.ai/demo/data.csv --output /work/taxi-trip/data/data.csv
@@ -288,7 +288,7 @@ SHOW JOBLOG $JOB_ID
 ```sql
 > USE demo_db;
 > SET @@execute_mode='offline';
-> SELECT c1, c2, sum(c3) OVER w1 AS w1_c3_sum FROM demo_table1 WINDOW w1 AS (PARTITION BY demo_table1.c1 ORDER BY demo_table1.c6 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW) INTO OUTFILE '/tmp/feature_data';
+> SELECT c1, c2, sum(c3) OVER w1 AS w1_c3_sum FROM demo_table1 WINDOW w1 AS (PARTITION BY demo_table1.c1 ORDER BY demo_table1.c6 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW) INTO OUTFILE '/tmp/feature_data' OPTIONS(mode='overwrite');
 ```
 
 注意，离线模式`SELECT INTO` 命令为非阻塞，可以通过 `SHOW JOBS` 等离线任务管理命令来查看运行进度。
