@@ -245,11 +245,11 @@ FrameExtent *NodeManager::MakeFrameExtent(SqlNode *start, SqlNode *end) {
     FrameExtent *node_ptr = new FrameExtent(dynamic_cast<FrameBound *>(start), dynamic_cast<FrameBound *>(end));
     return RegisterNode(node_ptr);
 }
-SqlNode *NodeManager::MakeFrameNode(FrameType frame_type, SqlNode *frame_extent) {
+FrameNode *NodeManager::MakeFrameNode(FrameType frame_type, SqlNode *frame_extent) {
     int64_t max_size = 0;
     return MakeFrameNode(frame_type, frame_extent, max_size);
 }
-SqlNode *NodeManager::MakeFrameNode(FrameType frame_type, SqlNode *frame_extent, ExprNode *frame_size) {
+FrameNode *NodeManager::MakeFrameNode(FrameType frame_type, SqlNode *frame_extent, ExprNode *frame_size) {
     if (nullptr != frame_extent && node::kFrameExtent != frame_extent->type_) {
         LOG(WARNING) << "Fail Make Frame Node: 2nd arg isn't frame extent";
         return nullptr;
@@ -272,7 +272,7 @@ SqlNode *NodeManager::MakeFrameNode(FrameType frame_type, SqlNode *frame_extent,
     return MakeFrameNode(frame_type, frame_extent, max_size);
 }
 
-SqlNode *NodeManager::MakeFrameNode(FrameType frame_type, SqlNode *frame_extent, int64_t maxsize) {
+FrameNode *NodeManager::MakeFrameNode(FrameType frame_type, SqlNode *frame_extent, int64_t maxsize) {
     if (nullptr != frame_extent && node::kFrameExtent != frame_extent->type_) {
         LOG(WARNING) << "Fail Make Frame Node: 2nd arg isn't frame extent";
         return nullptr;
@@ -295,7 +295,7 @@ SqlNode *NodeManager::MakeFrameNode(FrameType frame_type, SqlNode *frame_extent,
     return nullptr;
 }
 
-SqlNode *NodeManager::MakeFrameNode(FrameType frame_type, FrameExtent *frame_range, FrameExtent *frame_rows,
+FrameNode *NodeManager::MakeFrameNode(FrameType frame_type, FrameExtent *frame_range, FrameExtent *frame_rows,
                                     int64_t maxsize) {
     FrameNode *node_ptr = new FrameNode(frame_type, frame_range, frame_rows, maxsize);
     return RegisterNode(node_ptr);
@@ -884,12 +884,7 @@ PlanNode *NodeManager::MakeLimitPlanNode(PlanNode *node, int limit_cnt) {
     node::LimitPlanNode *node_ptr = new LimitPlanNode(node, limit_cnt);
     return RegisterNode(node_ptr);
 }
-ProjectNode *NodeManager::MakeProjectNode(const int32_t pos, const std::string &name, const bool is_aggregation,
-                                          node::ExprNode *expression, node::FrameNode *frame) {
-    node::ProjectNode *node_ptr = new ProjectNode(pos, name, is_aggregation, expression, frame);
-    RegisterNode(node_ptr);
-    return node_ptr;
-}
+
 CreatePlanNode *NodeManager::MakeCreateTablePlanNode(const std::string &db_name, const std::string &table_name,
                                                      const NodePointVector &column_list,
                                                      const NodePointVector &table_option_list,
@@ -951,10 +946,10 @@ SqlNode *NodeManager::MakeExplainNode(const QueryNode *query, ExplainType explai
 }
 ProjectNode *NodeManager::MakeAggProjectNode(const int32_t pos, const std::string &name, node::ExprNode *expression,
                                              node::FrameNode *frame) {
-    return MakeProjectNode(pos, name, true, expression, frame);
+    return MakeNode<ProjectNode>(pos, name, true, expression, frame);
 }
 ProjectNode *NodeManager::MakeRowProjectNode(const int32_t pos, const std::string &name, node::ExprNode *expression) {
-    return MakeProjectNode(pos, name, false, expression, nullptr);
+    return MakeNode<ProjectNode>(pos, name, false, expression, nullptr);
 }
 
 BetweenExpr *NodeManager::MakeBetweenExpr(ExprNode *expr, ExprNode *left, ExprNode *right, const bool is_not) {
