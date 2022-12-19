@@ -6,5 +6,5 @@
     :maxdepth: 1
 
     intro
-    milestones
+    community
     release_notes

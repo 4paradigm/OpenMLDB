@@ -1,4 +1,4 @@
-# OpenMLDB 快速上手
+# 快速上手
 
 本教程提供 OpenMLDB 快速上手指南。通过建立数据库、导入数据、离线特征计算、SQL 方案上线、在线实时特征计算，演示了单机版 OpenMLDB 和集群版 OpenMLDB 的基本使用流程。
 
@@ -184,10 +184,10 @@ curl http://127.0.0.1:8080/dbs/demo_db/deployments/demo_data_service -X POST -d'
 
 - 集群版需要**分别维护**离线和在线两部分的数据，即同一张表的数据有离线部分和在线部分，两部分是不共享的，需要分别导入。
 
-- 集群版的部分命令是非阻塞任务，包括在线模式的 `LOAD DATA`，以及离线模式的 `LOAD DATA` ，`SELECT`，`SELECT INTO` 命令。提交任务以后可以使用相关的命令如 `SHOW JOBS`, `SHOW JOB` 来查看任务进度，详情参见[离线任务管理](../reference/sql/task_manage/reference.md)文档。
+- 集群版的部分命令是非阻塞任务，包括在线模式的 `LOAD DATA`，以及离线模式的 `LOAD DATA` ，`SELECT`，`SELECT INTO` 命令。提交任务以后可以使用相关的命令如 `SHOW JOBS`, `SHOW JOB` 来查看任务进度，详情参见[离线任务管理](../openmldb_sql/task_manage/reference.md)文档。
 
 ```{seealso}
-集群版非阻塞任务可以设置为同步等待，详情见[配置离线命令同步执行](../reference/sql/ddl/SET_STATEMENT.md#配置离线命令同步执行)。
+集群版非阻塞任务可以设置为同步等待，详情见[配置离线命令同步执行](../openmldb_sql/ddl/SET_STATEMENT.md#配置离线命令同步执行)。
 ```
 ````
 以上区别在下面的教程中都将会基于例子进行演示。
