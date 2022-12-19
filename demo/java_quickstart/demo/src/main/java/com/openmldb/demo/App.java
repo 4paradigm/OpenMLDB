@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com._4paradigm.openmldb.jdbc;
+ package com.openmldb.demo;
 
 import java.sql.Date;
 import java.sql.PreparedStatement;
@@ -27,39 +27,39 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.testng.Assert;
-import org.testng.annotations.Test;
 
 import com._4paradigm.openmldb.sdk.SdkOption;
 import com._4paradigm.openmldb.sdk.SqlException;
 import com._4paradigm.openmldb.sdk.SqlExecutor;
 import com._4paradigm.openmldb.sdk.impl.SqlClusterExecutor;
 
-public class DemoTest {
+public class App {
     private SqlExecutor sqlExecutor = null;
-    private String zkCluster = TestConfig.ZK_CLUSTER;
-    private String zkPath = TestConfig.ZK_PATH;
+    private String zkCluster = "127.0.0.1:2181";
+    private String zkPath = "/openmldb";
     private String db = "mydb16";
     private String table = "trans";
 
-    @Test
-    public void test() {
+    public static void main(String[] args) {
+        App demo = new App();
         try {
             // 初始化构造SqlExecutor
-            init();
-            createDatabase();
-            createTable();
+            demo.init();
+            demo.createDatabase();
+            demo.createTable();
             // 通过insert语句插入
-            insertWithoutPlaceholder();
+            demo.insertWithoutPlaceholder();
             // 通过placeholder的方式插入。placeholder方式不会重复编译sql, 在性能上会比直接insert好很多
-            insertWithPlaceholder();
+            demo.insertWithPlaceholder();
             // 执行select语句
-            select();
+            demo.select();
             // 在request模式下执行sql
-            requestSelect();
+            demo.requestSelect();
             // 删除表
-            dropTable();
-            // 删除数据库
-            dropDatabase();
+            demo.dropTable();
+          	// 删除数据库
+            demo.dropDatabase();
+            System.out.println("Succeed");
         } catch (Exception e) {
             e.printStackTrace();
         }
