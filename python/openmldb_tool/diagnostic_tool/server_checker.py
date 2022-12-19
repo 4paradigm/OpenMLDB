@@ -26,7 +26,7 @@ class ServerChecker:
         self.conf_dict = conf_dict
         self.db_name = '__test_db_xxx_aaa_diagnostic_tool__'
         self.table_name = '__test_table_xxx_aaa_diagnostic_tool__'
-        connect_args = {'database': self.db_name}
+        connect_args = {} # {'database': self.db_name} the db is not guaranteed to exist
         if not print_sdk_log:
             connect_args['zkLogLevel'] = 0
             connect_args['glogLevel'] = 2

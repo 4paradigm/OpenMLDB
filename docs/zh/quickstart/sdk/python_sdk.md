@@ -12,16 +12,16 @@ pip install openmldb
 
 ### 2.1 创建connection
 
-参数db_name不要求必须存在，可以创建connection时指定想要的db，connect后创建该db。
+参数db_name必须存在，请在创建connection前创建db。或者创建无db的connection，再通过`execute("USE <db>")`设置使用此db。
 
 ```python
 import openmldb.dbapi
 
 # 连接集群版OpenMLDB
-db = openmldb.dbapi.connect(database="db1", zk="$zkcluster", zkPath="$zkpath")
+db = openmldb.dbapi.connect(zk="$zkcluster", zkPath="$zkpath")
 
 # 连接单机版OpenMLDB
-# db = openmldb.dbapi.connect(database="db1", host="$host", port="$port")
+# db = openmldb.dbapi.connect(host="$host", port="$port")
 
 cursor = db.cursor()
 ```
@@ -30,6 +30,7 @@ cursor = db.cursor()
 
 ```python
 cursor.execute("CREATE DATABASE db1")
+cursor.execute("USE db1")
 ```
 
 ### 2.3 创建表
@@ -84,16 +85,16 @@ cursor.close()
 ### 3.1 创建connection
 
 `create_engine('openmldb:///db_name?zk=zkcluster&zkPath=zkpath')`
-参数db_name不要求必须存在，可以创建connection时指定想要的db，connect后创建该db。
+参数db_name必须存在，请在创建connection前创建db。或者创建无db的connection，再通过`execute("USE <db>")`设置使用此db。
 
 ```python
 import sqlalchemy as db
 
 # 连接集群版OpenMLDB
-engine = db.create_engine('openmldb:///db1?zk=127.0.0.1:2181&zkPath=/openmldb')
+engine = db.create_engine('openmldb:///?zk=127.0.0.1:2181&zkPath=/openmldb')
 
 # 连接单机版OpenMLDB
-# engine = db.create_engine('openmldb:///db1?host=127.0.0.1&port=6527')
+# engine = db.create_engine('openmldb:///?host=127.0.0.1&port=6527')
 
 connection = engine.connect()
 ```
@@ -105,6 +106,7 @@ connection = engine.connect()
 ```python
 try:
     connection.execute("CREATE DATABASE db1")
+    connection.execute("USE db1")
 except Exception as e:
     print(e)
 ```
@@ -152,7 +154,7 @@ try:
     for row in rs:
         print(row)
     rs = connection.execute("SELECT * FROM t1 WHERE col3 = ?;", ('hefei'))
-    rs = connection.execute("SELECT * FROM t1 WHERE col3 = ?;",[('hefei'), ('shanghai')]);
+    rs = connection.execute("SELECT * FROM t1 WHERE col3 = ?;",[('hefei'), ('shanghai')])
 except Exception as e:
     print(e)
 ```

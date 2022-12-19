@@ -48,7 +48,7 @@ public class BatchCallablePreparedStatementImpl extends CallablePreparedStatemen
         com._4paradigm.openmldb.ResultSet resultSet = router.ExecuteSQLBatchRequest(
                 db, currentSql, currentRowBatch, status);
         if (status.getCode() != 0 || resultSet == null) {
-            String msg = status.getMsg();
+            String msg = status.ToString();
             status.delete();
             if (resultSet != null) {
                 resultSet.delete();
@@ -70,7 +70,7 @@ public class BatchCallablePreparedStatementImpl extends CallablePreparedStatemen
         Status status = new Status();
         com._4paradigm.openmldb.QueryFuture queryFuture = router.CallSQLBatchRequestProcedure(db, spName, unit.toMillis(timeOut), currentRowBatch, status);
         if (status.getCode() != 0 || queryFuture == null) {
-            String msg = status.getMsg();
+            String msg = status.ToString();
             status.delete();
             if (queryFuture != null) {
                 queryFuture.delete();
@@ -92,7 +92,7 @@ public class BatchCallablePreparedStatementImpl extends CallablePreparedStatemen
         Status status = new Status();
         this.currentRow = router.GetRequestRow(db, currentSql, status);
         if (status.getCode() != 0 || this.currentRow == null) {
-            String msg = status.getMsg();
+            String msg = status.ToString();
             status.delete();
             throw new SQLException("getRequestRow failed!, msg: " + msg);
         }

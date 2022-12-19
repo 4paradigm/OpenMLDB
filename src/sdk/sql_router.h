@@ -205,6 +205,8 @@ class SQLRouter {
     virtual bool NotifyTableChange() = 0;
 
     virtual bool IsOnlineMode() = 0;
+
+    virtual std::string GetDatabase() = 0;
 };
 
 std::shared_ptr<SQLRouter> NewClusterSQLRouter(const SQLRouterOptions& options);

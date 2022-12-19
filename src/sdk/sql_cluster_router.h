@@ -234,7 +234,7 @@ class SQLClusterRouter : public SQLRouter {
     bool IsOnlineMode() override;
     bool IsEnableTrace();
 
-    std::string GetDatabase();
+    std::string GetDatabase() override;
     void SetDatabase(const std::string& db);
     void SetInteractive(bool value);
 

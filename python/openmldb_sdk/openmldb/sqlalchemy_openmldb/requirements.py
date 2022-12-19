@@ -4,6 +4,7 @@ from sqlalchemy.testing import exclusions
 
 
 class Requirements(SuiteRequirements):
+
     @property
     def bound_limit_offset(self):
         return exclusions.closed()

@@ -98,7 +98,7 @@ public class SqlClusterExecutor implements SqlExecutor {
         if (ok) {
             sqlRouter.RefreshCatalog();
         } else {
-            logger.error("executeDDL fail: {}", status.getMsg());
+            logger.error("executeDDL failed: {}", status.ToString());
         }
         status.delete();
         return ok;
@@ -109,7 +109,7 @@ public class SqlClusterExecutor implements SqlExecutor {
         Status status = new Status();
         boolean ok = sqlRouter.ExecuteInsert(db, sql, status);
         if (!ok) {
-            logger.error("executeInsert fail: {}", status.getMsg());
+            logger.error("executeInsert failed: {}", status.ToString());
         }
         status.delete();
         return ok;
@@ -120,7 +120,7 @@ public class SqlClusterExecutor implements SqlExecutor {
         Status status = new Status();
         boolean ok = sqlRouter.ExecuteInsert(db, sql, row, status);
         if (!ok) {
-            logger.error("executeInsert fail: {}", status.getMsg());
+            logger.error("executeInsert failed: {}", status.ToString());
         }
         status.delete();
         return ok;
@@ -131,7 +131,7 @@ public class SqlClusterExecutor implements SqlExecutor {
         Status status = new Status();
         boolean ok = sqlRouter.ExecuteInsert(db, sql, rows, status);
         if (!ok) {
-            logger.error("executeInsert fail: {}", status.getMsg());
+            logger.error("executeInsert failed: {}", status.ToString());
         }
         status.delete();
         return ok;
@@ -142,7 +142,7 @@ public class SqlClusterExecutor implements SqlExecutor {
         Status status = new Status();
         ResultSet rs = sqlRouter.ExecuteSQL(db, sql, status);
         if (status.getCode() != 0) {
-            logger.error("executeSQL fail: {}", status.getMsg());
+            logger.error("executeSQL failed: {}", status.ToString());
         }
         status.delete();
         return new SQLResultSet(rs);
@@ -153,7 +153,7 @@ public class SqlClusterExecutor implements SqlExecutor {
         Status status = new Status();
         SQLInsertRow row = sqlRouter.GetInsertRow(db, sql, status);
         if (status.getCode() != 0) {
-            logger.error("getInsertRow fail: {}", status.getMsg());
+            logger.error("getInsertRow failed: {}", status.ToString());
         }
         status.delete();
         return row;
@@ -206,7 +206,7 @@ public class SqlClusterExecutor implements SqlExecutor {
         Status status = new Status();
         SQLInsertRows rows = sqlRouter.GetInsertRows(db, sql, status);
         if (status.getCode() != 0) {
-            logger.error("getInsertRow fail: {}", status.getMsg());
+            logger.error("getInsertRows failed: {}", status.ToString());
         }
         status.delete();
         return rows;
@@ -218,7 +218,7 @@ public class SqlClusterExecutor implements SqlExecutor {
         Status status = new Status();
         ResultSet rs = sqlRouter.ExecuteSQLRequest(db, sql, row, status);
         if (status.getCode() != 0) {
-            logger.error("getInsertRow fail: {}", status.getMsg());
+            logger.error("executeSQLRequest failed: {}", status.ToString());
         }
         status.delete();
         return rs;
@@ -229,12 +229,12 @@ public class SqlClusterExecutor implements SqlExecutor {
         Status status = new Status();
         ExplainInfo explain = sqlRouter.Explain(dbName, sql, status);
         if (status.getCode() != 0 || explain == null) {
-            String msg = status.getMsg();
+            String msg = status.ToString();
             status.delete();
             if (explain != null) {
                 explain.delete();
             }
-            throw new SQLException("getInputSchema fail! msg: " + msg);
+            throw new SQLException("getInputSchema failed: " + msg);
         }
         status.delete();
         List<Column> columnList = new ArrayList<>();
@@ -269,12 +269,12 @@ public class SqlClusterExecutor implements SqlExecutor {
         Status status = new Status();
         com._4paradigm.openmldb.ProcedureInfo procedureInfo = sqlRouter.ShowProcedure(dbName, proName, status);
         if (procedureInfo == null || status.getCode() != 0) {
-            String msg = status.getMsg();
+            String msg = status.ToString();
             status.delete();
             if (procedureInfo != null) {
                 procedureInfo.delete();
             }
-            throw new SQLException("show procedure failed, msg: " + msg);
+            throw new SQLException("ShowProcedure failed: " + msg);
         }
         status.delete();
         com._4paradigm.openmldb.sdk.ProcedureInfo spInfo = new com._4paradigm.openmldb.sdk.ProcedureInfo();
@@ -392,7 +392,7 @@ public class SqlClusterExecutor implements SqlExecutor {
         Status status = new Status();
         boolean ok = sqlRouter.CreateDB(db, status);
         if (status.getCode() != 0) {
-            logger.error("create db fail: {}", status.getMsg());
+            logger.error("create db failed: {}", status.ToString());
         }
         status.delete();
         return ok;
@@ -408,7 +408,7 @@ public class SqlClusterExecutor implements SqlExecutor {
         Status status = new Status();
         boolean ok = sqlRouter.DropDB(db, status);
         if (status.getCode() != 0) {
-            logger.error("drop db fail: {}", status.getMsg());
+            logger.error("drop db failed: {}", status.ToString());
         }
         status.delete();
         return ok;
@@ -429,7 +429,7 @@ public class SqlClusterExecutor implements SqlExecutor {
         VectorString dbs = new VectorString();
         boolean ok = sqlRouter.ShowDB(dbs, status);
         if (!ok) {
-            logger.error("showDatabases fail: {}", status.getMsg());
+            logger.error("showDatabases failed: {}", status.ToString());
         } else {
             databases.addAll(dbs);
         }

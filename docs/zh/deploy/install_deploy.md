@@ -15,6 +15,20 @@
 
 ## 配置环境(Linux)
 
+### 配置coredump文件大小限制和最多文件打开数目
+```bash
+ulimit -c unlimited
+ulimit -n 655360
+```
+
+通过`ulimit`命令配置的参数，只对当前session有效，如果希望持久化配置，需要在`/etc/security/limits.conf`添加如下配置：
+```bash
+*       soft    core    unlimited
+*       hard    core    unlimited
+*       soft    nofile  655360
+*       hard    nofile  655360
+```
+
 ### 关闭操作系统swap
 
 查看当前系统swap是否关闭
@@ -29,7 +43,7 @@ Swap:             0           0           0
 如果swap一项全部为0表示已经关闭，否则运行下面命令关闭swap
 
 ```
-$ swapoff -a
+swapoff -a
 ```
 
 ### 关闭THP(Transparent Huge Pages)
@@ -46,8 +60,8 @@ $ cat /sys/kernel/mm/transparent_hugepage/defrag
 如果上面两个配置中"never"没有被方括号圈住就需要设置一下
 
 ```bash
-$ echo 'never' > /sys/kernel/mm/transparent_hugepage/enabled
-$ echo 'never' > /sys/kernel/mm/transparent_hugepage/defrag
+echo 'never' > /sys/kernel/mm/transparent_hugepage/enabled
+echo 'never' > /sys/kernel/mm/transparent_hugepage/defrag
 ```
 
 查看是否设置成功，如果"never"被方括号圈住表明已经设置成功，如下所示：
@@ -87,44 +101,31 @@ Debug build (NDEBUG not #defined)
 
 ## 守护进程启动方式
 
-下文均使用常规后台进程模式启动组件，如果想要使守护进程模式启动组件，请使用`bash bin/start.sh start <component> mon`的方式启动。守护进程模式中，`bin/<component>.pid`将是mon进程的pid，`bin/<component>.pid.child`为组件真实的pid。mon进程并不是系统服务，如果mon进程意外退出，将无法继续守护。
+下文均使用常规后台进程模式启动组件，如果想要使守护进程模式启动组件，请使用`bash bin/start.sh start <component> mon`或者`sbin/start-all.sh mon`的方式启动。守护进程模式中，`bin/<component>.pid`将是mon进程的pid，`bin/<component>.pid.child`为组件真实的pid。mon进程并不是系统服务，如果mon进程意外退出，将无法继续守护。
 
 ## 部署单机版
-OpenMLDB单机版需要部署一个nameserver和一个tablet. nameserver用于表管理和元数据存储，tablet用于数据存储。APIServer是可选的，如果要用http的方式和OpenMLDB交互需要部署此模块
+OpenMLDB单机版需要部署一个nameserver和一个tablet。nameserver用于表管理和元数据存储，tablet用于数据存储。APIServer是可选的，如果要用http的方式和OpenMLDB交互需要部署此模块
 
-**注意:** 最好把不同的组件部署在不同的目录里，便于单独升级
-
-### 部署tablet
-#### 1 下载OpenMLDB部署包
+### 下载OpenMLDB部署包
 ```
 wget https://github.com/4paradigm/OpenMLDB/releases/download/v0.6.9/openmldb-0.6.9-linux.tar.gz
 tar -zxvf openmldb-0.6.9-linux.tar.gz
-mv openmldb-0.6.9-linux openmldb-tablet-0.6.9
-cd openmldb-tablet-0.6.9
+cd openmldb-0.6.9-linux
 ```
-#### 2 修改配置文件conf/standalone_tablet.flags
-* 修改endpoint。endpoint是用冒号分隔的部署机器ip/域名和端口号
+
+### 配置
+如果只是本机访问，可以跳过此步。
+
+#### 1 配置tablet: conf/standalone_tablet.flags
+* 修改endpoint，endpoint是用冒号分隔的部署机器ip/域名和端口号。
 ```
 --endpoint=172.27.128.33:9527
 ```
 **注意：**
 * endpoint不能用0.0.0.0和127.0.0.1 
 * 如果此处使用的域名, 所有使用openmldb的client所在的机器都得配上对应的host. 不然会访问不到
-#### 3 启动服务
-```
-bash bin/start.sh start standalone_tablet
-```
-**注: 服务启动后会在bin目录下产生standalone_tablet.pid文件, 里边保存启动时的进程号。如果该文件内的pid正在运行则会启动失败**
 
-### 部署nameserver
-#### 1 下载OpenMLDB部署包
-````
-wget https://github.com/4paradigm/OpenMLDB/releases/download/v0.6.9/openmldb-0.6.9-linux.tar.gz
-tar -zxvf openmldb-0.6.9-linux.tar.gz
-mv openmldb-0.6.9-linux openmldb-ns-0.6.9
-cd openmldb-ns-0.6.9
-````
-#### 2 修改配置文件conf/standalone_nameserver.flags
+#### 2 配置nameserver：conf/standalone_nameserver.flags。
 * 修改endpoint。endpoint是用冒号分隔的部署机器ip/域名和端口号
 * tablet配置项需要配置上前面启动的tablet的地址
 ```
@@ -132,35 +133,11 @@ cd openmldb-ns-0.6.9
 --tablet=172.27.128.33:9527
 ```
 **注: endpoint不能用0.0.0.0和127.0.0.1**
-#### 3 启动服务
-```
-bash bin/start.sh start  standalone_nameserver
-```
-#### 4 检查服务是否启动
-```bash
-$ ./bin/openmldb --host=172.27.128.33 --port=6527
-> show databases;
- -----------
-  Databases
- -----------
-0 row in set
-```
 
-### 部署apiserver
+#### 3 配置apiserver：conf/standalone_apiserver.flags
 
 APIServer负责接收http请求，转发给OpenMLDB并返回结果。它是无状态的，而且并不是OpenMLDB必须部署的组件。
-运行前需确保OpenMLDB cluster已经启动，否则APIServer将初始化失败并退出进程。
-
-#### 1 下载OpenMLDB部署包
-
-```
-wget https://github.com/4paradigm/OpenMLDB/releases/download/v0.6.9/openmldb-0.6.9-linux.tar.gz
-tar -zxvf openmldb-0.6.9-linux.tar.gz
-mv openmldb-0.6.9-linux openmldb-apiserver-0.6.9
-cd openmldb-apiserver-0.6.9
-```
-
-#### 2 修改配置文件conf/standalone_apiserver.flags
+运行前需确保OpenMLDB其他服务已经启动，否则APIServer将初始化失败并退出进程。
 
 * 修改endpoint。endpoint是用冒号分隔的部署机器ip/域名和端口号
 * 修改nameserver为nameserver的地址
@@ -174,16 +151,116 @@ cd openmldb-apiserver-0.6.9
 
 * endpoint不能用0.0.0.0和127.0.0.1。也可以选择不设置`--endpoint`，而只配置端口号 `--port`。
 
-#### 3 启动服务
+### 启动standalone所有服务
+请确保`conf/openmldb-env.sh`里面`OPENMLDB_MODE`为`standalone`（默认）
 
 ```
-bash bin/start.sh start standalone_apiserver
+sbin/start-all.sh
+```
+ 
+服务启动后会在bin目录下产生standalone_tablet.pid, standalone_nameserver.pid, standalone_apiserver.pid文件, 里边保存启动时的进程号。如果该文件内的pid正在运行则会启动失败。
+
+
+## 部署集群版（一键部署）
+OpenMLDB集群版需要部署zookeeper、nameserver、tablet、taskmanager等模块。其中zookeeper用于服务发现和保存元数据信息。nameserver用于管理tablet，实现高可用和failover。tablet用于存储数据和主从同步数据。APIServer是可选的，如果要用http的方式和OpenMLDB交互需要部署此模块。taskmanager用于管理离线job。
+我们提供了一键部署脚本，可以简化手动在每台机器上下载和配置的复杂性。
+
+**注意:** 同一台机器部署多个组件时，一定要部署在不同的目录里，便于单独管理。尤其是部署tablet server，一定不能重复使用目录，避免数据文件和日志文件冲突。
+
+环境要求：
+- 部署机器（执行部署脚本的机器）可以免密登录其他部署节点
+- 部署机器安装`rsync`工具
+
+### 下载OpenMLDB发行版
+
+```
+wget https://github.com/4paradigm/OpenMLDB/releases/download/v0.6.9/openmldb-0.6.9-linux.tar.gz
+tar -zxvf openmldb-0.6.9-linux.tar.gz
+cd openmldb-0.6.9-linux
 ```
 
-## 部署集群版
-OpenMLDB集群版需要部署zookeeper、nameserver、tablet等模块。其中zookeeper用于服务发现和保存元数据信息。nameserver用于管理tablet，实现高可用和failover。tablet用于存储数据和主从同步数据。APIServer是可选的，如果要用http的方式和OpenMLDB交互需要部署此模块。taskmanager用于管理离线job。
+### 配置
+#### 环境配置
+环境变量定义在`conf/openmldb-env.sh`，如下表所示：
 
-**注意:** 同一台机器部署多个组件时，一定要部署在不同的目录里，便于单独管理。尤其是部署tablet server，一定不能重复使用目录。
+| 环境变量                              | 默认值                                | 定义                                                                      |
+|-----------------------------------|------------------------------------|-------------------------------------------------------------------------|
+| OPENMLDB_MODE                     | standalone                         | standalone或者cluster                                                     |
+| OPENMLDB_HOME                     | 当前发行版的根目录                          | openmldb发行版根目录                                                          |
+| SPARK_HOME                        | $OPENMLDB_HOME/spark               | openmldb spark发行版根目录，如果该目录不存在，自动从网上下载                                   |
+| OPENMLDB_TABLET_PORT              | 10921                              | tablet默认端口                                                              |
+| OPENMLDB_NAMESERVER_PORT          | 7527                               | nameserver默认端口                                                          |
+| OPENMLDB_TASKMANAGER_PORT         | 9902                               | taskmanager默认端口                                                         |
+| OPENMLDB_APISERVER_PORT           | 9080                               | apiserver默认端口                                                           |
+| OPENMLDB_USE_EXISTING_ZK_CLUSTER  | false                              | 是否使用已经部署的zookeeper集群。如果是`false`，会在部署脚本里自动启动zookeeper集群                  |
+| OPENMLDB_ZK_HOME                  | $OPENMLDB_HOME/zookeeper           | zookeeper发行版根目录                                                         |
+| OPENMLDB_ZK_CLUSTER               | 自动从`conf/hosts`中的`[zookeeper]`配置获取 | zookeeper集群地址                                                           |
+| OPENMLDB_ZK_ROOT_PATH             | /openmldb                          | OpenMLDB在zookeeper的根目录                                                  |
+| OPENMLDB_ZK_CLUSTER_CLIENT_PORT   | 2181                               | zookeeper client port, 即zoo.cfg里面的clientPort                            |
+| OPENMLDB_ZK_CLUSTER_PEER_PORT     | 2888                               | zookeeper peer port，即zoo.cfg里面这种配置server.1=zoo1:2888:3888中的第一个端口配置      |
+| OPENMLDB_ZK_CLUSTER_ELECTION_PORT | 3888                               | zookeeper election port, 即zoo.cfg里面这种配置server.1=zoo1:2888:3888中的第二个端口配置 |
+
+#### 部署节点配置
+节点配置文件为`conf/hosts`，示例如下：
+```bash
+[tablet]
+node1:10921 /tmp/openmldb/tablet
+node2:10922 /tmp/openmldb/tablet
+
+[nameserver]
+node3:7527
+
+[apiserver]
+node3:9080
+
+[zookeeper]
+node3:2181:2888:3888 /tmp/openmldb/zk-1
+```
+
+配置文件分为四个区域，以`[]`来识别：
+
+- `[tablet]`：配置部署tablet的节点列表
+- `[nameserver]`：配置部署nameserver的节点列表
+- `[apiserver]`：配置部署apiserver的节点列表
+- `[zookeeper]`：配置部署zookeeper的节点列表
+
+每个区域的节点列表，每一行代表一个节点，每行格式为`host:port WORKDIR`。
+对于`[zookeeper]`,
+会有额外端口参数，包括follower用来连接leader的`zk_peer_port`和用于leader选择的`zk_election_port`，
+其格式为`host:port:zk_peer_port:zk_election_port WORKDIR`。
+
+每一行节点列表，除了`host`是必须的，其他均为可选，如果没有提供，会使用默认配置，默认配置参考`conf/openmldb-env.sh`。
+
+### 部署
+```bash
+sbin/deploy-all.sh
+```
+该脚本会把相关的文件分发到`conf/hosts`里面配置的机器上，同时根据`conf/hosts`和`conf/openmldb-env.sh`
+的配置，对相关组件的配置做出相应的更新。
+
+如果希望为每个节点添加一些额外的相同的定制化配置，可以在执行deploy脚本之前，修改`conf/xx.template`的配置，
+这样在分发配置文件的时候，每个节点都可以用到更改后的配置。
+重复执行`sbin/deploy-all.sh`会覆盖上一次的配置。
+
+### 启动服务
+```bash
+sbin/start-all.sh
+```
+该脚本会把`conf/hosts`里面配置的所有服务启动起来。
+
+可以通过`sbin/openmldb-cli.sh`连接集群，验证集群是否正常启动。
+
+### 停止服务
+如果需要停止所有服务，可以执行以下脚本：
+```bash
+sbin/stop-all.sh
+```
+
+
+## 部署集群版（手动部署）
+OpenMLDB集群版需要部署zookeeper、nameserver、tablet、taskmanager等模块。其中zookeeper用于服务发现和保存元数据信息。nameserver用于管理tablet，实现高可用和failover。tablet用于存储数据和主从同步数据。APIServer是可选的，如果要用http的方式和OpenMLDB交互需要部署此模块。taskmanager用于管理离线job。
+
+**注意:** 同一台机器部署多个组件时，一定要部署在不同的目录里，便于单独管理。尤其是部署tablet server，一定不能重复使用目录，避免数据文件和日志文件冲突。
 
 ### 部署zookeeper
 zookeeper 要求版本在 3.4 到 3.6 之间, 建议部署3.4.14版本。如果已有可用zookeeper集群可略过此步骤。如果想要部署zookeeper集群，参考[这里](https://zookeeper.apache.org/doc/r3.4.14/zookeeperStarted.html#sc_RunningReplicatedZooKeeper)。本步骤只演示部署standalone zookeeper。
@@ -242,6 +319,10 @@ mv openmldb-0.6.9-linux openmldb-tablet-0.6.9
 cd openmldb-tablet-0.6.9
 ```
 #### 2 修改配置文件`conf/tablet.flags`
+```bash
+# 可以在示例配置文件的基础上，进行修改
+cp conf/tablet.flags.template conf/tablet.flags
+```
 ```{attention}
 注意，配置文件是`conf/tablet.flags`，不是其他配置文件。启动多台tablet时（多tablet目录应该独立，不可共享），依然是修改该配置文件。
 ```
@@ -316,6 +397,10 @@ mv openmldb-0.6.9-linux openmldb-ns-0.6.9
 cd openmldb-ns-0.6.9
 ````
 #### 2 修改配置文件conf/nameserver.flags
+```bash
+# 可以在示例配置文件的基础上，进行修改
+cp conf/nameserver.flags.template conf/nameserver.flags
+```
 ```{attention}
 注意，配置文件是`conf/nameserver.flags`，不是其他配置文件。启动多台nameservert时（多nameserver目录应该独立，不可共享），依然是修改该配置文件。
 ```
@@ -397,6 +482,10 @@ cd openmldb-apiserver-0.6.9
 ```
 
 #### 2 修改配置文件conf/apiserver.flags
+```bash
+# 可以在示例配置文件的基础上，进行修改
+cp conf/apiserver.flags.template conf/apiserver.flags
+```
 
 * 修改endpoint。endpoint是用冒号分隔的部署机器ip/域名和端口号（endpoint不能用0.0.0.0和127.0.0.1，必须是公网IP）。
 * 修改zk_cluster为已经启动的zk服务地址(见[zookeeper启动步骤](#4-记录zookeeper服务地址与连接测试))。如果zk服务是集群，可用逗号分隔，例如，`172.27.128.33:7181,172.27.128.32:7181,172.27.128.31:7181`。
@@ -456,6 +545,10 @@ cd openmldb-taskmanager-0.6.9
 ```
 
 #### 2 修改配置文件conf/taskmanager.properties
+```bash
+# 可以在示例配置文件的基础上，进行修改
+cp conf/taskmanager.properties.template conf/taskmanager.properties
+```
 
 * 修改server.host。host是部署机器的ip/域名。
 * 修改server.port。port是部署机器的端口号。

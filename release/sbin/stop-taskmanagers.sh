@@ -1,4 +1,5 @@
-#! /bin/bash
+#! /usr/bin/env bash
+# shellcheck disable=SC1091
 
 # Copyright 2021 4Paradigm
 #
@@ -16,11 +17,11 @@
 
 set -e
 
-cd "$(dirname "$0")"
+home="$(cd "$(dirname "$0")"/.. || exit 1; pwd)"
+sbin="$(cd "$(dirname "$0")" || exit 1; pwd)"
+. "$home"/conf/openmldb-env.sh
+. "$sbin"/init.sh
+cd "$home" || exit 1
 
-export COMPONENTS="tablet tablet2 nameserver apiserver taskmanager"
-
-for COMPONENT in $COMPONENTS; do
-  ./start.sh stop "$COMPONENT"
-done
-echo "OpenMLDB stopped"
+# stop taskmanager
+bin/start.sh stop taskmanager

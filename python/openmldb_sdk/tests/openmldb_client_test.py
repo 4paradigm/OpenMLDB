@@ -37,14 +37,15 @@ class TestOpenMLDBClient:
     """
     engine = None
     connection = None
-    db = "db_test"
+    db = "openmldb_client_test"
 
     @classmethod
     def setup_class(cls):
-        cls.engine = db.create_engine(
-            'openmldb:///{}?zk={}&zkPath={}'.format(cls.db, OpenMLDB_ZK_CLUSTER, OpenMLDB_ZK_PATH))
+        cls.engine = db.create_engine('openmldb:///?zk={}&zkPath={}'.format(OpenMLDB_ZK_CLUSTER, OpenMLDB_ZK_PATH))
         cls.connection = cls.engine.connect()
-        cls.connection.execute("create database if not exists {};".format(cls.db))
+        cls.connection.execute("create database if not exists {};".format(
+            cls.db))
+        cls.connection.execute(f"use {cls.db}")
 
     @staticmethod
     def has_table(connection, table_name):
@@ -55,12 +56,17 @@ class TestOpenMLDBClient:
             self.connection.execute("drop table {}".format(table))
         assert not self.has_table(self.connection, table)
         # key is col3, partitionnum==1
-        self.connection.execute("create table {}({}) OPTIONS(partitionnum=1);".format(table, schema))
+        self.connection.execute(
+            "create table {}({}) OPTIONS(partitionnum=1);".format(
+                table, schema))
         assert self.has_table(self.connection, table)
 
     @staticmethod
     def convert_to_dicts(column_names, tuple_rows):
-        return [TestOpenMLDBClient.convert_to_dict(column_names, tu) for tu in tuple_rows]
+        return [
+            TestOpenMLDBClient.convert_to_dict(column_names, tu)
+            for tu in tuple_rows
+        ]
 
     @staticmethod
     def convert_to_dict(column_names, test_row):
@@ -69,7 +75,9 @@ class TestOpenMLDBClient:
     @staticmethod
     def stringify_join(sth, mask_idx=None):
         if type(sth) is tuple:
-            stringify = ['\'' + x + '\'' if type(x) is str else str(x) for x in sth]
+            stringify = [
+                '\'' + x + '\'' if type(x) is str else str(x) for x in sth
+            ]
             if type(mask_idx) is list:
                 for idx in mask_idx:
                     stringify[idx] = '?'
@@ -93,27 +101,36 @@ class TestOpenMLDBClient:
 
         self.recreate_table(table, schema_str)
 
-        test_rows = [
-            (1000, '2020-12-25', 'guangdong', '广州', 1),
-            (1001, '2020-12-26', 'hefei', 'anhui', 2),
-            (1002, '2020-12-27', 'fujian', 'fuzhou', 3),
-            (1003, '2020-12-28', 'jiangxi', 'nanchang', 4),
-            (1004, '2020-12-29', 'hubei', 'wuhan', 5)
-        ]
+        test_rows = [(1000, '2020-12-25', 'guangdong', '广州', 1),
+                     (1001, '2020-12-26', 'hefei', 'anhui', 2),
+                     (1002, '2020-12-27', 'fujian', 'fuzhou', 3),
+                     (1003, '2020-12-28', 'jiangxi', 'nanchang', 4),
+                     (1004, '2020-12-29', 'hubei', 'wuhan', 5)]
 
-        insert0 = "insert into {} values({});".format(table, self.stringify_join(test_rows[0]))
+        insert0 = "insert into {} values({});".format(
+            table, self.stringify_join(test_rows[0]))
         # 1001, '2020-12-26', 'hefei', ?, ? - anhui 2
-        insert1 = "insert into {} values({});".format(table, self.stringify_join(test_rows[1], [3, 4]))
+        insert1 = "insert into {} values({});".format(
+            table, self.stringify_join(test_rows[1], [3, 4]))
         # 1002, '2020-12-27', ?, ?, 3 - fujian fuzhou
-        insert2 = "insert into {} values({});".format(table, self.stringify_join(test_rows[2], [2, 3]))
+        insert2 = "insert into {} values({});".format(
+            table, self.stringify_join(test_rows[2], [2, 3]))
         # all ? - 1003 2020-11-28 jiangxi nanchang 4
         insert3 = "insert into {} values(?, ?, ?, ?, ?);".format(table)
         # 1004, ?, 'hubei', 'wuhan', 5 - 2020-11-29
-        insert4 = "insert into {} values({});".format(table, self.stringify_join(test_rows[4], [1]))
+        insert4 = "insert into {} values({});".format(
+            table, self.stringify_join(test_rows[4], [1]))
         self.connection.execute(insert0)
-        self.connection.execute(insert1, ({"col4": test_rows[1][3], "col5": test_rows[1][4]}))
-        self.connection.execute(insert2, ({"col3": test_rows[2][2], "col4": test_rows[2][3]}))
-        self.connection.execute(insert3, self.convert_to_dicts(column_names, [test_rows[3]]))
+        self.connection.execute(insert1, ({
+            "col4": test_rows[1][3],
+            "col5": test_rows[1][4]
+        }))
+        self.connection.execute(insert2, ({
+            "col3": test_rows[2][2],
+            "col4": test_rows[2][3]
+        }))
+        self.connection.execute(
+            insert3, self.convert_to_dicts(column_names, [test_rows[3]]))
         self.connection.execute(insert4, [{"col2": test_rows[4][1]}])
 
         # order by is not supported now
@@ -136,7 +153,8 @@ class TestOpenMLDBClient:
         new_rows = [(1005, "2020-12-29", "shandong", 'jinan', 6),
                     (1006, "2020-12-30", "fujian", 'fuzhou', 7)]
         # insert3 is all ?
-        self.connection.execute(insert3, self.convert_to_dicts(column_names, new_rows))
+        self.connection.execute(insert3,
+                                self.convert_to_dicts(column_names, new_rows))
         test_rows += new_rows
 
         # test fetch all
@@ -150,25 +168,31 @@ class TestOpenMLDBClient:
         assert rs == test_rows
 
         # test condition select
-        rs = self.connection.execute("select * from {} where col3 = 'hefei';".format(table))
+        rs = self.connection.execute(
+            "select * from {} where col3 = 'hefei';".format(table))
         # hefei row idx == 1
         assert list(rs) == [test_rows[1]]
 
         # test request mode, select sql with dict parameters(one dict or list of dict)
         request_row = (9999, "2020-12-27", "zhejiang", "hangzhou", 100)
-        rs = self.connection.execute("select * from {};".format(table),
-                                     self.convert_to_dict(column_names, request_row))
+        rs = self.connection.execute(
+            "select * from {};".format(table),
+            self.convert_to_dict(column_names, request_row))
         assert list(rs) == [request_row]
-        rs = self.connection.execute("select * from {};".format(table),
-                                     self.convert_to_dicts(column_names, [request_row]))
+        rs = self.connection.execute(
+            "select * from {};".format(table),
+            self.convert_to_dicts(column_names, [request_row]))
         assert list(rs) == [request_row]
 
         # test parameterized query in batch mode, select sql with tuple or tuple list
-        rs = self.connection.execute("select * from {} where col3 = ?;".format(table), 'hefei')
+        rs = self.connection.execute(
+            "select * from {} where col3 = ?;".format(table), 'hefei')
         assert list(rs) == [test_rows[1]]
-        rs = self.connection.execute("select * from {} where col3 = ?;".format(table), ['hefei'])
+        rs = self.connection.execute(
+            "select * from {} where col3 = ?;".format(table), ['hefei'])
         assert list(rs) == [test_rows[1]]
-        rs = self.connection.execute("select * from {} where col3 = ?;".format(table), [('hefei')])
+        rs = self.connection.execute(
+            "select * from {} where col3 = ?;".format(table), [('hefei')])
         assert list(rs) == [test_rows[1]]
 
     def test_procedure(self):
@@ -193,21 +217,24 @@ class TestOpenMLDBClient:
         mouse = self.engine.raw_connection().cursor()
         test_rows = [(1002, '2020-12-27', 'fujian', 'fuzhou', 3)]
         # parameters should be one dict, not list
-        rs = mouse.callproc("sp", self.convert_to_dict(column_names, test_rows[0]))
+        rs = mouse.callproc("sp",
+                            self.convert_to_dict(column_names, test_rows[0]))
         assert list(rs.fetchall()) == test_rows
 
         self.connection.execute("drop procedure sp;")
 
         # test batch request mode
         mouse2 = self.engine.raw_connection().cursor()
-        rs = mouse2.batch_row_request("select * from {};".format(table), (),
-                                      (self.convert_to_dict(column_names, test_rows[0])))
+        rs = mouse2.batch_row_request(
+            "select * from {};".format(table), (),
+            (self.convert_to_dict(column_names, test_rows[0])))
         assert list(rs.fetchall()) == test_rows
 
         test_rows += [(1003, "2020-12-28", "jiangxi", "nanchang", 4)]
         mouse3 = self.engine.raw_connection().cursor()
-        rs = mouse3.batch_row_request("select * from {};".format(table), (),
-                                      self.convert_to_dicts(column_names, test_rows))
+        rs = mouse3.batch_row_request(
+            "select * from {};".format(table), (),
+            self.convert_to_dicts(column_names, test_rows))
         assert list(rs.fetchall()) == test_rows
 
     def test_more_parameterized_query(self):
@@ -217,39 +244,47 @@ class TestOpenMLDBClient:
         schema = self.schema_dict(schema_str)
         self.recreate_table(table, schema_str)
         # 1-9
-        test_rows = [
-            (1000 + i, '2022-05-0' + str(i), 'province' + str(i % 4), 'city' + str(i), i, (1590738990 + i) * 1000) for i
-            in range(1, 10)]
+        test_rows = [(1000 + i, '2022-05-0' + str(i), 'province' + str(i % 4),
+                      'city' + str(i), i, (1590738990 + i) * 1000)
+                     for i in range(1, 10)]
 
-        self.connection.execute("insert into {} values (?, ?, ?, ?, ?, ?);".format(table),
-                                self.convert_to_dicts(schema, test_rows))
+        self.connection.execute(
+            "insert into {} values (?, ?, ?, ?, ?, ?);".format(table),
+            self.convert_to_dicts(schema, test_rows))
 
-        rs = self.connection.execute("select * from {} where col3 = ?;".format(table), 'province1')
+        rs = self.connection.execute(
+            "select * from {} where col3 = ?;".format(table), 'province1')
         rs = sorted(list(rs), key=lambda x: x[0])
         assert rs == test_rows[0::4]
 
         # test parameterized query in batch mode case 2
-        rs = self.connection.execute("select * from {} where col3 = ?;".format(table), 'province2')
+        rs = self.connection.execute(
+            "select * from {} where col3 = ?;".format(table), 'province2')
         rs = sorted(list(rs), key=lambda x: x[0])
         assert rs == test_rows[1::4]
 
         # test parameterized query in batch mode case 3
-        rs = self.connection.execute("select * from {} where col3 = ?;".format(table), 'province3')
+        rs = self.connection.execute(
+            "select * from {} where col3 = ?;".format(table), 'province3')
         rs = sorted(list(rs), key=lambda x: x[0])
         assert rs == test_rows[2::4]
 
         # test parameterized query in batch mode case 3 and col1 < 1004, only one row[2]
-        rs = self.connection.execute("select * from {} where col3 = ? and col1 < ?;".format(table), ('province3', 1004))
+        rs = self.connection.execute(
+            "select * from {} where col3 = ? and col1 < ?;".format(table),
+            ('province3', 1004))
         assert list(rs) == [test_rows[2]]
 
         # test parameterized query in batch mode case 4
-        rs = self.connection.execute("select * from {} where col3 = ? and col1 < ? and col2 < ?;".format(table),
-                                     ('province3', 2000, date.fromisoformat('2022-05-04')))
+        rs = self.connection.execute(
+            "select * from {} where col3 = ? and col1 < ? and col2 < ?;".format(
+                table), ('province3', 2000, date.fromisoformat('2022-05-04')))
         assert list(rs) == [test_rows[2]]
 
         # test parameterized query in batch mode case 5
-        rs = self.connection.execute("select * from {} where col3 = ? and col6 < ?;".format(table),
-                                     ('province3', datetime.fromtimestamp(1590738997.000)))
+        rs = self.connection.execute(
+            "select * from {} where col3 = ? and col6 < ?;".format(table),
+            ('province3', datetime.fromtimestamp(1590738997.000)))
         assert list(rs) == [test_rows[2]]
 
 
