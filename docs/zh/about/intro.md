@@ -34,7 +34,7 @@ OpenMLDB 完成从特征的离线开发到上线部署，只需要以下三个�
 ## 四大核心特性
 
 - **线上线下一致性：** 离线和实时特征计算引擎使用统一的执行计划生成器，线上线下计算一致性得到了天然的保证。
-- **毫秒级超低延迟的实时 SQL 引擎**：线上实时 SQL 引擎基于完全自研的高性能时序数据库，对于实时特征计算可以达到毫秒级别的延迟，性能远超流行商业内存数据库（可参考 VLDB 上第四范式联合发表的[论文](http://vldb.org/pvldb/vol14/p799-chen.pdf)），充分满足高并发、低延迟的实时计算性能需求。
+- **毫秒级超低延迟的实时 SQL 引擎**：线上实时 SQL 引擎基于完全自研的高性能时序数据库，对于实时特征计算可以达到毫秒级别的延迟，性能远超流行商业内存数据库（可参考 VLDB 2021 上的[论文](http://vldb.org/pvldb/vol14/p799-chen.pdf)），充分满足高并发、低延迟的实时计算性能需求。
 - **基于 SQL 定义特征：** 基于 SQL 进行特征定义和管理，并且针对特征计算，对标准 SQL 进行了增强，引入了诸如 `LAST JOIN` 和 `WINDOW UNION` 等定制化语法和功能扩充。
 - **生产级特性：** 为大规模企业应用而设计，整合诸多生产级特性，包括分布式存储和计算、灾备恢复、高可用、可无缝扩缩容、可平滑升级、可监控、异构内存架构支持等。
 
@@ -60,4 +60,4 @@ OpenMLDB 完成从特征的离线开发到上线部署，只需要以下三个�
 ## 学术论文
 
 * Cheng Chen, Jun Yang, Mian Lu, Taize Wang, Zhao Zheng, Yuqiang Chen, Wenyuan Dai, Bingsheng He, Weng-Fai Wong, Guoan Wu, Yuping Zhao, and Andy Rudoff. *[Optimizing in-memory database engine for AI-powered on-line decision augmentation using persistent memory](http://vldb.org/pvldb/vol14/p799-chen.pdf)*. International Conference on Very Large Data Bases (VLDB) 2021.
-
+* Siqi Wang, Jiashu Li, Mian Lu, Zhao Zheng, Yuqiang Chen, and Bingsheng He. *[A System for Time Series Feature Extraction in Federated Learning](https://github.com/4paradigm/tsfe/blob/main/paper/3511808.3557176.pdf)*. ACM International Conference on Information & Knowledge Management (CIKM) 2022.
