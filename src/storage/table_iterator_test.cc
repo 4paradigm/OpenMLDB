@@ -131,7 +131,6 @@ TEST_P(TableIteratorTest, latest) {
     table_meta.set_tid(id);
     table_meta.set_pid(1);
     table_meta.set_mode(::openmldb::api::TableMode::kTableLeader);
-    table_meta.set_format_version(1);
     table_meta.set_storage_mode(storageMode);
     codec::SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "card", ::openmldb::type::kString);
     codec::SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "mcc", ::openmldb::type::kString);
@@ -195,7 +194,6 @@ TEST_P(TableIteratorTest, smoketest2) {
     table_meta.set_tid(id);
     table_meta.set_pid(1);
     table_meta.set_mode(::openmldb::api::TableMode::kTableLeader);
-    table_meta.set_format_version(1);
     table_meta.set_key_entry_max_height(8);
     table_meta.set_seg_cnt(1);
     table_meta.set_storage_mode(storageMode);
@@ -363,7 +361,6 @@ TEST_P(TableIteratorTest, releaseKeyIterator) {
     table_meta.set_tid(id);
     table_meta.set_pid(1);
     table_meta.set_mode(::openmldb::api::TableMode::kTableLeader);
-    table_meta.set_format_version(1);
     table_meta.set_key_entry_max_height(8);
     table_meta.set_seg_cnt(1);
     table_meta.set_storage_mode(storageMode);
@@ -410,7 +407,6 @@ TEST_P(TableIteratorTest, SeekNonExistent) {
     table_meta.set_tid(id);
     table_meta.set_pid(1);
     table_meta.set_mode(::openmldb::api::TableMode::kTableLeader);
-    table_meta.set_format_version(1);
     table_meta.set_key_entry_max_height(8);
     table_meta.set_seg_cnt(1);
     table_meta.set_storage_mode(storageMode);

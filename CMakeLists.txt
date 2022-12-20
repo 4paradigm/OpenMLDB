@@ -19,7 +19,9 @@ if (POLICY CMP0086)
     cmake_policy(SET CMP0086 NEW)
 endif ()
 
-list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake-modules")
+list(APPEND CMAKE_MODULE_PATH
+    "${CMAKE_SOURCE_DIR}/cmake-modules"
+    "${CMAKE_SOURCE_DIR}/cmake")
 
 project(openmldb)
 
@@ -127,6 +129,11 @@ else()
     find_library(RocksDB_LIBRARY rocksdb)
     set(RocksDB_LIB ${RocksDB_LIBRARY})
 endif()
+
+# third party sources
+include(FetchContent)
+set(FETCHCONTENT_QUIET OFF)
+include(farmhash)
 
 if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
     set(OS_LIB ${CMAKE_THREAD_LIBS_INIT} rt)
@@ -266,7 +273,8 @@ include_directories(
   ${CMAKE_BINARY_DIR}/hybridse/src
   ${LLVM_INCLUDE_DIRS}
   ${Boost_INCLUDE_DIRS}
-  ${CMAKE_PREFIX_PATH}/include)
+  ${CMAKE_PREFIX_PATH}/include
+)
 
 link_directories(
     ${LLVM_LIBRARY_DIRS}
@@ -292,14 +300,20 @@ endif()
 
 message(STATUS "CMAKE_INSTALL_PREFIX: ${CMAKE_INSTALL_PREFIX}")
 
-FILE(GLOB OPENMLDB_SCRIPTS "${CMAKE_SOURCE_DIR}/release/bin/*")
+FILE(GLOB OPENMLDB_BINS "${CMAKE_SOURCE_DIR}/release/bin/*")
+FILE(GLOB OPENMLDB_SBINS "${CMAKE_SOURCE_DIR}/release/sbin/*")
 FILE(GLOB OPENMLDB_CONFS "${CMAKE_SOURCE_DIR}/release/conf/*")
 FILE(GLOB OPENMLDB_TOOLS "${CMAKE_SOURCE_DIR}/tools/*")
 
 install(
-  FILES ${OPENMLDB_SCRIPTS}
+  FILES ${OPENMLDB_BINS}
   TYPE BIN
   PERMISSIONS OWNER_EXECUTE OWNER_WRITE OWNER_READ GROUP_EXECUTE GROUP_READ WORLD_EXECUTE WORLD_READ
+)
+install(
+        FILES ${OPENMLDB_SBINS}
+        DESTINATION sbin
+        PERMISSIONS OWNER_EXECUTE OWNER_WRITE OWNER_READ GROUP_EXECUTE GROUP_READ WORLD_EXECUTE WORLD_READ
 )
 install(FILES ${OPENMLDB_CONFS} DESTINATION conf)
 install(

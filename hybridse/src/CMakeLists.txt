@@ -64,7 +64,7 @@ target_link_libraries(hybridse_flags ${GFLAGS_LIBRARY})
 # hybridse core library, enable BUILD_SHARED_LIBS to build shared lib
 add_library(hybridse_core ${SRC_FILE_LIST} $<TARGET_OBJECTS:hybridse_proto> case/case_data_mock.cc)
 target_link_libraries(hybridse_core
-    ${yaml_libs} ${LLVM_LIBS} ${ZETASQL_LIBS} ${OS_LIB} ${COMMON_LIBS} ${g_libs} ${LLVM_EXT_LIB} hybridse_flags)
+    ${yaml_libs} ${LLVM_LIBS} ${ZETASQL_LIBS} ${OS_LIB} ${COMMON_LIBS} ${g_libs} ${LLVM_EXT_LIB} farmhash hybridse_flags)
 set(HYBRIDSE_CORE_LIBS hybridse_core)
 
 add_subdirectory(testing)
@@ -83,7 +83,7 @@ if (TESTING_ENABLE AND HYBRIDSE_TESTING_ENABLE)
 
         add_executable(${TEST_TARGET_NAME} ${TEST_SCRIPT} testing/engine_test_base.cc testing/test_base.cc)
         target_link_libraries(${TEST_TARGET_NAME} ${GTEST_LIBRARIES} ${HYBRIDSE_CORE_LIBS} hybridse_flags
-                ${yaml_libs} ${ZETASQL_LIBS} ${BRPC_LIBS})
+                              ${yaml_libs} ${ZETASQL_LIBS} ${COMMON_LIBS})
         set_target_properties(${TEST_TARGET_NAME} PROPERTIES
             RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/${TEST_TARGET_DIR})
         add_test(${TEST_TARGET_NAME}

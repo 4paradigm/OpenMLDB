@@ -53,15 +53,15 @@ curl http://<IP:port>/dbs/foo -X POST -d'{"mode":"online", "sql":"show component
  - 暴露端口，也需要修改apiserver的endpoint改为`0.0.0.0`。这样可以使用127.0.0.1或是公网ip访问到apiserver。
     单机版：
     ```
-    docker run -p 8080:8080 -it 4pdosc/openmldb:0.6.5 bash
+    docker run -p 8080:8080 -it 4pdosc/openmldb:0.6.9 bash
     ```
     集群版：
     ```
-    docker run -p 9080:9080 -it 4pdosc/openmldb:0.6.5 bash
+    docker run -p 9080:9080 -it 4pdosc/openmldb:0.6.9 bash
     ```
  - 使用host网络，可以不用修改endpoint配置。缺点是容易引起端口冲突。
     ```
-    docker run --network host -it 4pdosc/openmldb:0.6.5 bash
+    docker run --network host -it 4pdosc/openmldb:0.6.9 bash
     ```
 
 如果是跨主机访问容器onebox中的apiserver，可以**任选一种**下面的方式：
@@ -97,18 +97,25 @@ select * from t1;
 跨主机访问物理机上的onebox，只需将所有endpoint改为公网IP。
 
 可使用以下命令快速修改。
+
 单机版：
 ```
 sed -i s/127.0.0.1/<IP>/g openmldb/conf/standalone*
 ```
 集群版：
+
 简单地可以更改所有conf文件，
 ```
 sed -i s/127.0.0.1/<IP>/g openmldb/conf/*
+sed -i s/0.0.0.0/<IP>/g openmldb/conf/taskmanager.properties
 ```
 或者，精确的只修改集群版的配置文件。
 ```
 cd /work/openmldb/conf/ && ls | grep -v _ | xargs sed -i s/127.0.0.1/<IP>/g && cd -
+cd /work/openmldb/conf/ && ls | grep -v _ | xargs sed -i s/0.0.0.0/<IP>/g && cd -
+```
+```{note}
+集群版的ip替换，会将`zk_cluster`的IP也修改为公网地址。通常来讲，是可以的，因为zookeeper启动默认是bind `0.0.0.0`，本地server使用公网IP/0.0.0.0/localhost都能访问到。
 ```
 
 #### CLI/SDK->容器onebox
@@ -121,17 +128,17 @@ cd /work/openmldb/conf/ && ls | grep -v _ | xargs sed -i s/127.0.0.1/<IP>/g && c
 
 单机版需要暴露三个组件（nameserver，tabletserver，apiserver）的端口：
 ```
-docker run -p 6527:6527 -p 9921:9921 -p 8080:8080 -it 4pdosc/openmldb:0.6.5 bash
+docker run -p 6527:6527 -p 9921:9921 -p 8080:8080 -it 4pdosc/openmldb:0.6.9 bash
 ```
 
 集群版需要暴露zk端口与所有组件的端口：
 ```
-docker run -p 2181:2181 -p 7527:7527 -p 10921:10921 -p 10922:10922 -p 8080:8080 -p 9902:9902 -it 4pdosc/openmldb:0.6.5 bash
+docker run -p 2181:2181 -p 7527:7527 -p 10921:10921 -p 10922:10922 -p 8080:8080 -p 9902:9902 -it 4pdosc/openmldb:0.6.9 bash
 ```
 
 - 使用host网络，可以不用修改endpoint配置。如果有端口冲突，请修改server的端口配置。
 ```
-docker run --network host -it 4pdosc/openmldb:0.6.5 bash
+docker run --network host -it 4pdosc/openmldb:0.6.9 bash
 ```
 
 如果是跨主机使用CLI/SDK访问问容器onebox，只能通过`--network host`，并更改所有endpoint为公网IP，才能顺利访问。

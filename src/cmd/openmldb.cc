@@ -265,8 +265,7 @@ void StartTablet() {
 
 int PutData(uint32_t tid, const std::map<uint32_t, std::vector<std::pair<std::string, uint32_t>>>& dimensions,
             uint64_t ts, const std::string& value,
-            const google::protobuf::RepeatedPtrField<::openmldb::nameserver::TablePartition>& table_partition,
-            uint32_t format_version) {
+            const google::protobuf::RepeatedPtrField<::openmldb::nameserver::TablePartition>& table_partition) {
     std::map<std::string, std::shared_ptr<::openmldb::client::TabletClient>> clients;
     for (auto iter = dimensions.begin(); iter != dimensions.end(); iter++) {
         uint32_t pid = iter->first;
@@ -348,8 +347,7 @@ int PutData(uint32_t tid, const std::map<uint32_t, std::vector<std::pair<std::st
         value = compressed;
     }
     const int tid = table_info.tid();
-    const uint32_t fmt_ver = table_info.format_version();
-    PutData(tid, dimensions, ts, value, table_info.table_partition(), fmt_ver);
+    PutData(tid, dimensions, ts, value, table_info.table_partition());
 
     return ::openmldb::base::Status(0, "ok");
 }
@@ -1077,7 +1075,7 @@ void HandleNSClientShowSchema(const std::vector<std::string>& parts, ::openmldb:
         return;
     }
     if (tables.empty()) {
-        printf("table %s is not exist\n", name.c_str());
+        printf("table %s does not exist\n", name.c_str());
         return;
     }
 
@@ -1104,7 +1102,7 @@ void HandleNSDelete(const std::vector<std::string>& parts, ::openmldb::client::N
             return;
         }
         if (tables.empty()) {
-            printf("delete failed! table %s is not exist\n", parts[1].c_str());
+            printf("delete failed! table %s does not exist\n", parts[1].c_str());
             return;
         }
         uint32_t tid = tables[0].tid();
@@ -1124,7 +1122,7 @@ void HandleNSDelete(const std::vector<std::string>& parts, ::openmldb::client::N
                 }
             }
             if (idx_name.empty()) {
-                printf("idx_name %s is not exist\n", parts[3].c_str());
+                printf("idx_name %s does not exist\n", parts[3].c_str());
                 return;
             }
         }
@@ -1377,7 +1375,7 @@ void HandleNSGet(const std::vector<std::string>& parts, ::openmldb::client::NsCl
         return;
     }
     if (tables.empty()) {
-        printf("get failed! table %s is not exist\n", parts[1].c_str());
+        printf("get failed! table %s does not exist\n", parts[1].c_str());
         return;
     }
     uint32_t tid = tables[0].tid();
@@ -1552,7 +1550,7 @@ void HandleNSScan(const std::vector<std::string>& parts, ::openmldb::client::NsC
         return;
     }
     if (tables.empty()) {
-        printf("scan failed! table %s is not exist\n", parts[1].c_str());
+        printf("scan failed! table %s does not exist\n", parts[1].c_str());
         return;
     }
     uint32_t tid = tables[0].tid();
@@ -1733,7 +1731,7 @@ void HandleNSCount(const std::vector<std::string>& parts, ::openmldb::client::Ns
         return;
     }
     if (tables.empty()) {
-        printf("get failed! table %s is not exist\n", parts[1].c_str());
+        printf("get failed! table %s does not exist\n", parts[1].c_str());
         return;
     }
     uint32_t tid = tables[0].tid();
@@ -1802,7 +1800,7 @@ void HandleNSPreview(const std::vector<std::string>& parts, ::openmldb::client::
         return;
     }
     if (tables.empty()) {
-        printf("preview failed! table %s is not exist\n", parts[1].c_str());
+        printf("preview failed! table %s does not exist\n", parts[1].c_str());
         return;
     }
     uint32_t tid = tables[0].tid();
@@ -2016,7 +2014,7 @@ void HandleNSPut(const std::vector<std::string>& parts, ::openmldb::client::NsCl
         return;
     }
     if (tables.empty()) {
-        std::cout << "put failed! table " << parts[1] << " is not exist\n";
+        std::cout << "put failed! table " << parts[1] << " does not exist\n";
         return;
     }
     uint64_t ts = 0;
@@ -2254,7 +2252,6 @@ void HandleNSCreateTable(const std::vector<std::string>& parts, ::openmldb::clie
         return;
     }
     ns_table_info.set_db(client->GetDb());
-    ns_table_info.set_format_version(1);
     std::string msg;
     if (!client->CreateTable(ns_table_info, false, msg)) {
         std::cout << "Fail to create table. error msg: " << msg << std::endl;

@@ -12,7 +12,7 @@
 - 拉取 OpenMLDB docker 镜像，并且运行相应容器：
 
 ```bash
-docker run -it 4pdosc/openmldb:0.6.5 bash
+docker run -it 4pdosc/openmldb:0.6.9 bash
 ```
 该镜像预装了OpenMLDB，并预置了本案例所需要的所有脚本、三方库、开源工具以及训练数据。
 
@@ -42,7 +42,7 @@ cd taxi-trip
 
 ### 1.4 预备知识：集群版的非阻塞任务
 
-集群版的部分命令是非阻塞任务，包括在线模式的 `LOAD DATA`，以及离线模式的 `LOAD DATA` ，`SELECT`，`SELECT INTO` 命令。提交任务以后可以使用相关的命令如 `SHOW JOBS`, `SHOW JOB` 来查看任务进度，详情参见[离线任务管理](../reference/sql/task_manage/reference.md)文档。
+集群版的部分命令是非阻塞任务，包括在线模式的 `LOAD DATA`，以及离线模式的 `LOAD DATA` ，`SELECT`，`SELECT INTO` 命令。提交任务以后可以使用相关的命令如 `SHOW JOBS`, `SHOW JOB` 来查看任务进度，详情参见[离线任务管理](../openmldb_sql/task_manage/reference.md)文档。
 
 ## 2. 机器学习全流程
 

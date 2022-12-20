@@ -11,3 +11,4 @@ Tutorials
     tutorial_sql_2
     data_import
     openmldbspark_distribution
+    autofe

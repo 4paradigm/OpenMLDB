@@ -203,7 +203,7 @@ void DistributeWindowIterator::Reset() {
 }
 
 // seek to the pos where key = `key` on success
-// if the key is not exist, iterator will be invalid
+// if the key does not exist, iterator will be invalid
 void DistributeWindowIterator::Seek(const std::string& key) {
     Reset();
     DLOG(INFO) << "seek to key " << key;

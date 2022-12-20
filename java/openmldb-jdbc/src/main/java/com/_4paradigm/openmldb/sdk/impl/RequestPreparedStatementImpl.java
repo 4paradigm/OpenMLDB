@@ -35,7 +35,7 @@ public class RequestPreparedStatementImpl extends RequestPreparedStatement {
         Status status = new Status();
         this.currentRow = router.GetRequestRow(db, sql, status);
         if (status.getCode() != 0 || this.currentRow == null) {
-            String msg = status.getMsg();
+            String msg = status.ToString();
             status.delete();
             if (currentRow != null) {
                 currentRow.delete();

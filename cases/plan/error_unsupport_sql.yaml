@@ -100,3 +100,10 @@ cases:
     desc: abc here is not job id but alias
     sql: |
       delete job abc
+  - id: array_1
+    desc: array of array not support
+    sql: |
+      select ARRAY<ARRAY<INT>>[[1,2], [3, 4]] as col;
+    expect:
+      success: false
+      msg: 'array of non-basic type is not supported: ARRAY<ARRAY<INT32>>'

@@ -34,16 +34,13 @@
 #include "udf/udf_registry.h"
 #include "vm/jit_runtime.h"
 
-using openmldb::base::Date;
-using hybridse::codec::ListRef;
-using openmldb::base::StringRef;
-using openmldb::base::Timestamp;
-
 namespace hybridse {
 namespace udf {
 
 using hybridse::codec::ListRef;
 using hybridse::codec::StringRef;
+using openmldb::base::Date;
+using openmldb::base::Timestamp;
 
 /**
  * A mutable string ArrayListV
@@ -382,6 +379,11 @@ struct FZStringOpsDef {
         output->size_ = bytes;
         output->data_ = buf;
     }
+
+    static int32_t ListSize(hybridse::codec::ListRef<StringRef>* list) {
+        auto list_v = reinterpret_cast<hybridse::codec::ListV<StringRef> *>(list->list);
+        return list_v->GetCount();
+    }
 };
 
 template <typename K>
@@ -663,6 +665,21 @@ void DefaultUdfLibrary::InitFeatureZero() {
         .args_in<int16_t, int32_t, int64_t, float, double, Date, Timestamp,
                  StringRef>();
 
+    RegisterExternal("size")
+        .list_argument_at(0)
+        .args<ListRef<StringRef>>(reinterpret_cast<int32_t (*)(ListRef<StringRef>*)>(FZStringOpsDef::ListSize))
+        .returns<int32_t>()
+        .doc(R"(
+            @brief Get the size of a List (e.g., result of split)
+
+            Example:
+
+            @code{.sql}
+                select size(split("a b c", " "));
+                -- output 3
+
+            @endcode
+            @since 0.7.0)");
 
     RegisterAlias("fz_window_split", "window_split");
     RegisterAlias("fz_split", "split");

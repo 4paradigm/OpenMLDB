@@ -402,6 +402,14 @@ void RowIterNext(int8_t* iter_ptr) {
         *reinterpret_cast<std::unique_ptr<RowIterator>*>(iter_ptr);
     local_iter->Next();
 }
+
+// FIXME(ace): `GetValue` and `row.buf` both returns a reference
+//  which make this function dangerous. When calls theis function
+//  multiple times or together with `RowIterGetCurSlice`, returned references
+//  got invalided except the last one.
+//
+//  It is better deprecated `RowIterGetCurSlice`, `RowIterGetCurSliceSize`, and
+//  use `RowGetSlice`, `RowIterGetCurSlice` instead.
 int8_t* RowIterGetCurSlice(int8_t* iter_ptr, size_t idx) {
     auto& local_iter =
         *reinterpret_cast<std::unique_ptr<RowIterator>*>(iter_ptr);

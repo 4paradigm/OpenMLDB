@@ -112,7 +112,7 @@ bool StringIRBuilder::NewString(::llvm::BasicBlock* block, ::llvm::Value* size,
 }
 bool StringIRBuilder::GetSize(::llvm::BasicBlock* block, ::llvm::Value* str,
                               ::llvm::Value** output) {
-    return Get(block, str, 0, output);
+    return Load(block, str, 0, output);
 }
 
 // 浅拷贝
@@ -152,7 +152,7 @@ bool StringIRBuilder::SetSize(::llvm::BasicBlock* block, ::llvm::Value* str,
 }
 bool StringIRBuilder::GetData(::llvm::BasicBlock* block, ::llvm::Value* str,
                               ::llvm::Value** output) {
-    return Get(block, str, 1, output);
+    return Load(block, str, 1, output);
 }
 bool StringIRBuilder::SetData(::llvm::BasicBlock* block, ::llvm::Value* str,
                               ::llvm::Value* data) {

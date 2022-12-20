@@ -28,10 +28,10 @@ namespace openmldb::client {
 
     request.set_unfinished(only_unfinished);
 
-    bool ok = client_.SendRequest(&::openmldb::taskmanager::TaskManagerServer_Stub::ShowJobs, &request, &response,
-                                  job_timeout, 1);
-
-    if (ok) {
+    auto st = client_.SendRequestSt(&::openmldb::taskmanager::TaskManagerServer_Stub::ShowJobs, &request, &response,
+                                    job_timeout, 1);
+    // if ok, cntl won't failed, only check repsonse
+    if (st.OK()) {
         if (response.code() == 0) {
             for (int32_t i = 0; i < response.jobs_size(); i++) {
                 ::openmldb::taskmanager::JobInfo job_info;
@@ -40,9 +40,8 @@ namespace openmldb::client {
             }
         }
         return {response.code(), response.msg()};
-    } else {
-        return {base::ReturnCode::kServerConnError, "RPC request (to TaskManager) failed(stub is null)"};
     }
+    return st;
 }
 
 ::openmldb::base::Status TaskManagerClient::ShowJob(const int id, int job_timeout,
@@ -52,10 +51,10 @@ namespace openmldb::client {
 
     request.set_id(id);
 
-    bool ok = client_.SendRequest(&::openmldb::taskmanager::TaskManagerServer_Stub::ShowJob, &request, &response,
-                                  job_timeout, 1);
+    auto st = client_.SendRequestSt(&::openmldb::taskmanager::TaskManagerServer_Stub::ShowJob, &request, &response,
+                                    job_timeout, 1);
 
-    if (ok) {
+    if (st.OK()) {
         if (response.code() == 0) {
             if (response.has_job()) {
                 job_info->CopyFrom(response.job());
@@ -74,19 +73,18 @@ namespace openmldb::client {
 
     request.set_id(id);
 
-    bool ok = client_.SendRequest(&::openmldb::taskmanager::TaskManagerServer_Stub::StopJob, &request, &response,
-                                  job_timeout, 1);
+    auto st = client_.SendRequestSt(&::openmldb::taskmanager::TaskManagerServer_Stub::StopJob, &request, &response,
+                                    job_timeout, 1);
 
-    if (ok) {
+    if (st.OK()) {
         if (response.code() == 0) {
             if (response.has_job()) {
                 job_info->CopyFrom(response.job());
             }
         }
         return {response.code(), response.msg()};
-    } else {
-        return {base::ReturnCode::kServerConnError, "RPC request (to TaskManager) failed(stub is null)"};
     }
+    return st;
 }
 
 ::openmldb::base::Status TaskManagerClient::RunBatchSql(const std::string& sql,
@@ -102,17 +100,16 @@ namespace openmldb::client {
         (*request.mutable_conf())[it.first] = it.second;
     }
 
-    bool ok = client_.SendRequest(&::openmldb::taskmanager::TaskManagerServer_Stub::RunBatchSql, &request, &response,
-                                  job_timeout, 1);
+    auto st = client_.SendRequestSt(&::openmldb::taskmanager::TaskManagerServer_Stub::RunBatchSql, &request, &response,
+                                    job_timeout, 1);
 
-    if (ok) {
+    if (st.OK()) {
         if (response.code() == 0) {
             *output = response.output();
         }
         return {response.code(), ""};
-    } else {
-        return {base::ReturnCode::kServerConnError, "RPC request (to TaskManager) failed(stub is null)"};
     }
+    return st;
 }
 
 ::openmldb::base::Status TaskManagerClient::RunBatchAndShow(const std::string& sql,
@@ -130,19 +127,18 @@ namespace openmldb::client {
         (*request.mutable_conf())[it.first] = it.second;
     }
 
-    bool ok = client_.SendRequest(&::openmldb::taskmanager::TaskManagerServer_Stub::RunBatchAndShow, &request,
-                                  &response, job_timeout, 1);
+    auto st = client_.SendRequestSt(&::openmldb::taskmanager::TaskManagerServer_Stub::RunBatchAndShow, &request,
+                                    &response, job_timeout, 1);
 
-    if (ok) {
+    if (st.OK()) {
         if (response.code() == 0) {
             if (response.has_job()) {
                 job_info->CopyFrom(response.job());
             }
         }
         return {response.code(), response.msg()};
-    } else {
-        return {base::ReturnCode::kServerConnError, "RPC request (to TaskManager) failed(stub is null)"};
     }
+    return st;
 }
 
 ::openmldb::base::Status TaskManagerClient::ImportOnlineData(const std::string& sql,
@@ -160,19 +156,18 @@ namespace openmldb::client {
         (*request.mutable_conf())[it.first] = it.second;
     }
 
-    bool ok = client_.SendRequest(&::openmldb::taskmanager::TaskManagerServer_Stub::ImportOnlineData, &request,
-                                  &response, job_timeout, 1);
+    auto st = client_.SendRequestSt(&::openmldb::taskmanager::TaskManagerServer_Stub::ImportOnlineData, &request,
+                                    &response, job_timeout, 1);
 
-    if (ok) {
+    if (st.OK()) {
         if (response.code() == 0) {
             if (response.has_job()) {
                 job_info->CopyFrom(response.job());
             }
         }
         return {response.code(), response.msg()};
-    } else {
-        return {base::ReturnCode::kServerConnError, "RPC request (to TaskManager) failed(stub is null)"};
     }
+    return st;
 }
 
 ::openmldb::base::Status TaskManagerClient::ImportOfflineData(const std::string& sql,
@@ -190,19 +185,18 @@ namespace openmldb::client {
         (*request.mutable_conf())[it.first] = it.second;
     }
 
-    bool ok = client_.SendRequest(&::openmldb::taskmanager::TaskManagerServer_Stub::ImportOfflineData, &request,
-                                  &response, job_timeout, 1);
+    auto st = client_.SendRequestSt(&::openmldb::taskmanager::TaskManagerServer_Stub::ImportOfflineData, &request,
+                                    &response, job_timeout, 1);
 
-    if (ok) {
+    if (st.OK()) {
         if (response.code() == 0) {
             if (response.has_job()) {
                 job_info->CopyFrom(response.job());
             }
         }
         return {response.code(), response.msg()};
-    } else {
-        return {base::ReturnCode::kServerConnError, "RPC request (to TaskManager) failed(stub is null)"};
     }
+    return st;
 }
 
 ::openmldb::base::Status TaskManagerClient::ExportOfflineData(const std::string& sql,
@@ -220,19 +214,18 @@ namespace openmldb::client {
         (*request.mutable_conf())[it.first] = it.second;
     }
 
-    bool ok = client_.SendRequest(&::openmldb::taskmanager::TaskManagerServer_Stub::ExportOfflineData, &request,
-                                  &response, job_timeout, 1);
+    auto st = client_.SendRequestSt(&::openmldb::taskmanager::TaskManagerServer_Stub::ExportOfflineData, &request,
+                                    &response, job_timeout, 1);
 
-    if (ok) {
+    if (st.OK()) {
         if (response.code() == 0) {
             if (response.has_job()) {
                 job_info->CopyFrom(response.job());
             }
         }
         return {response.code(), response.msg()};
-    } else {
-        return {base::ReturnCode::kServerConnError, "RPC request (to TaskManager) failed(stub is null)"};
     }
+    return st;
 }
 
 ::openmldb::base::Status TaskManagerClient::DropOfflineTable(const std::string& db, const std::string& table,
@@ -243,14 +236,13 @@ namespace openmldb::client {
     request.set_db(db);
     request.set_table(table);
 
-    bool ok = client_.SendRequest(&::openmldb::taskmanager::TaskManagerServer_Stub::DropOfflineTable, &request,
-                                  &response, job_timeout, 1);
+    auto st = client_.SendRequestSt(&::openmldb::taskmanager::TaskManagerServer_Stub::DropOfflineTable, &request,
+                                    &response, job_timeout, 1);
 
-    if (ok) {
+    if (st.OK()) {
         return {response.code(), response.msg()};
-    } else {
-        return {base::ReturnCode::kServerConnError, "RPC request (to TaskManager) failed(stub is null)"};
     }
+    return st;
 }
 
 std::string TaskManagerClient::GetJobLog(const int id, int job_timeout, ::openmldb::base::Status* status) {
@@ -259,57 +251,59 @@ std::string TaskManagerClient::GetJobLog(const int id, int job_timeout, ::openml
 
     request.set_id(id);
 
-    bool ok = client_.SendRequest(&::openmldb::taskmanager::TaskManagerServer_Stub::GetJobLog, &request, &response,
-                                  job_timeout, 1);
+    auto st = client_.SendRequestSt(&::openmldb::taskmanager::TaskManagerServer_Stub::GetJobLog, &request, &response,
+                                    job_timeout, 1);
 
-    if (ok) {
-        status->code = response.code();
-        status->msg = response.msg();
+    if (st.OK()) {
         if (response.code() == 0) {
             if (response.has_log()) {
                 return response.log();
             }
         }
+        status->code = response.code();
+        status->msg = response.msg();
+        return "";
     }
-    status->code = -1;
-    status->msg = "RPC request (to TaskManager) failed";
+    status->code = st.GetCode();
+    status->msg = st.GetMsg();
     return "";
 }
 
 ::openmldb::base::Status TaskManagerClient::CreateFunction(const std::shared_ptr<::openmldb::common::ExternalFun>& fun,
                                                            int job_timeout) {
     if (!fun) {
-        return {-1, "nullptr"};
+        return {base::kError, "input nullptr"};
     }
     ::openmldb::taskmanager::CreateFunctionRequest request;
     ::openmldb::taskmanager::CreateFunctionResponse response;
     request.mutable_fun()->CopyFrom(*fun);
-    if (client_.SendRequest(&::openmldb::taskmanager::TaskManagerServer_Stub::CreateFunction, &request, &response,
-                            job_timeout, 1)) {
+    auto st = client_.SendRequestSt(&::openmldb::taskmanager::TaskManagerServer_Stub::CreateFunction, &request,
+                                    &response, job_timeout, 1);
+    if (st.OK()) {
         if (response.code() == 0) {
             return {};
         } else {
+            // base::ReturnCode
             return {response.code(), response.msg()};
         }
-    } else {
-        return {-1, response.msg()};
     }
+    return st;
 }
 
 ::openmldb::base::Status TaskManagerClient::DropFunction(const std::string& name, int job_timeout) {
     ::openmldb::taskmanager::DropFunctionRequest request;
     request.set_name(name);
     ::openmldb::taskmanager::DropFunctionResponse response;
-    if (client_.SendRequest(&::openmldb::taskmanager::TaskManagerServer_Stub::DropFunction, &request, &response,
-                            job_timeout, 1)) {
+    auto st = client_.SendRequestSt(&::openmldb::taskmanager::TaskManagerServer_Stub::DropFunction, &request, &response,
+                                    job_timeout, 1);
+    if (st.OK()) {
         if (response.code() == 0) {
             return {};
         } else {
             return {response.code(), response.msg()};
         }
-    } else {
-        return {-1, response.msg()};
     }
+    return st;
 }
 
 }  // namespace openmldb::client

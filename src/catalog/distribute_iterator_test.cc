@@ -49,7 +49,6 @@ class DistributeIteratorTest : public ::testing::Test {};
     table_meta.set_tid(tid);
     table_meta.set_pid(pid);
     table_meta.set_mode(::openmldb::api::TableMode::kTableLeader);
-    table_meta.set_format_version(1);
     codec::SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "card", ::openmldb::type::kString);
     codec::SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "mcc", ::openmldb::type::kString);
     codec::SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "ts", ::openmldb::type::kBigInt);

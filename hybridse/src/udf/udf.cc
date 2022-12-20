@@ -15,12 +15,16 @@
  */
 
 #include "udf/udf.h"
+
 #include <absl/time/time.h>
 #include <stdint.h>
 #include <time.h>
+
+#include <ctime>
 #include <map>
 #include <set>
 #include <utility>
+
 #include "absl/strings/ascii.h"
 #include "absl/strings/str_replace.h"
 #include "absl/time/civil_time.h"
@@ -28,15 +32,15 @@
 #include "boost/date_time.hpp"
 #include "boost/date_time/gregorian/parsers.hpp"
 #include "boost/date_time/posix_time/posix_time.hpp"
-#include "re2/re2.h"
-
 #include "bthread/types.h"
 #include "codec/list_iterator_codec.h"
 #include "codec/row.h"
 #include "codec/type_codec.h"
 #include "codegen/fn_ir_builder.h"
+#include "farmhash.h"  // NOLINT
 #include "node/node_manager.h"
 #include "node/sql_node.h"
+#include "re2/re2.h"
 #include "udf/default_udf_library.h"
 #include "udf/literal_traits.h"
 #include "vm/jit_runtime.h"
@@ -77,10 +81,11 @@ void unhex(StringRef *str, StringRef *output, bool* is_null) {
         }
     }
     // use lambda function to convert the char to uint8
-    auto convert = [](char a) {
+    auto convert = [](char a) -> int {
         if (a <= 'F' && a >= 'A') { return a - 'A' + 10; }
         if (a <= 'f' && a >= 'a') { return a - 'a' + 10; }
         if (a <= '9' && a >= '0') { return a - '0'; }
+        return 0;
     };
 
     if (!*is_null) {    // every character is valid hex character
@@ -870,6 +875,59 @@ void string_to_date(StringRef *str, Date *output,
     }
     return;
 }
+
+void date_diff(Date *date1, Date *date2, int *diff, bool *is_null) {
+    if (date1 == nullptr || date2 == nullptr || date1->date_ <= 0 || date2->date_ <= 0) {
+        *is_null = true;
+        return;
+    }
+    int32_t year, month, day;
+    if (!date1->Decode(date1->date_, &year, &month, &day)) {
+        *is_null = true;
+        return;
+    }
+    absl::CivilDay d1(year, month, day);
+    if (!date1->Decode(date2->date_, &year, &month, &day)) {
+        *is_null = true;
+        return;
+    }
+    absl::CivilDay d2(year, month, day);
+    *diff = (d1 - d2);
+    *is_null = false;
+}
+
+void date_diff(StringRef *date1, StringRef *date2, int *diff, bool *is_null) {
+    Date d1;
+    string_to_date(date1, &d1, is_null);
+    if (*is_null) {
+        return;
+    }
+    Date d2;
+    string_to_date(date2, &d2, is_null);
+    if (*is_null) {
+        return;
+    }
+    date_diff(&d1, &d2, diff, is_null);
+}
+
+void date_diff(StringRef *date1, Date *date2, int *diff, bool *is_null) {
+    Date d1;
+    string_to_date(date1, &d1, is_null);
+    if (*is_null) {
+        return;
+    }
+    date_diff(&d1, date2, diff, is_null);
+}
+
+void date_diff(Date *date1, StringRef *date2, int *diff, bool *is_null) {
+    Date d2;
+    string_to_date(date2, &d2, is_null);
+    if (*is_null) {
+        return;
+    }
+    date_diff(date1, &d2, diff, is_null);
+}
+
 // cast string to timestamp with yyyy-mm-dd or YYYY-mm-dd HH:MM:SS
 void string_to_timestamp(StringRef *str,
                          Timestamp *output, bool *is_null) {
@@ -953,6 +1011,40 @@ void date_to_timestamp(Date *date, Timestamp *output,
         return;
     }
 }
+
+void date_to_unix_timestamp(Date *date, int64_t *output,
+                       bool *is_null) {
+    Timestamp ts;
+    date_to_timestamp(date, &ts, is_null);
+    if (*is_null) {
+        return;
+    }
+
+    *output = ts.ts_ / 1000;
+}
+
+// cast string to unix_timestamp with yyyy-mm-dd or YYYY-mm-dd HH:MM:SS
+void string_to_unix_timestamp(StringRef *str, int64_t *output, bool *is_null) {
+    if (str == nullptr || str->IsNull() || str->size_ == 0) {
+        *output = unix_timestamp();
+        *is_null = false;
+        return;
+    }
+
+    Timestamp ts;
+    string_to_timestamp(str, &ts, is_null);
+    if (*is_null) {
+        return;
+    }
+
+    *output = ts.ts_ / 1000;
+}
+
+int64_t unix_timestamp() {
+    std::time_t t = std::time(nullptr);
+    return t;
+}
+
 void sub_string(StringRef *str, int32_t from,
                 StringRef *output) {
     if (nullptr == output) {
@@ -1225,6 +1317,10 @@ uint32_t format_string<StringRef>(const StringRef &v,
     }
 }
 
+void RegisterManagedObj(base::FeBaseObject* obj) {
+    vm::JitRuntime::get()->AddManagedObject(obj);
+}
+
 char *AllocManagedStringBuf(int32_t bytes) {
     if (bytes < 0) {
         return nullptr;
@@ -1317,6 +1413,10 @@ void delete_iterator(int8_t *input) {
     if (iter) {
         delete iter;
     }
+}
+
+int64_t FarmFingerprint(absl::string_view input) {
+    return absl::bit_cast<int64_t>(farmhash::Fingerprint64(input));
 }
 
 }  // namespace v1

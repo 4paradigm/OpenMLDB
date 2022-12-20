@@ -22,7 +22,7 @@ For OpenMLDB Kafka Connector implementation, please refer to [extensions/kafka-c
 This article will start the OpenMLDB in docker container, so there is no need to download the OpenMLDB separately. Moreover, Kafka and connector can be started in the same container. We recommend that you save the three downloaded packages to the same directory. Let's assume that the packages are in the `/work/kafka` directory.
 
 ```
-docker run -it -v `pwd`:/work/kafka --name openmldb 4pdosc/openmldb:0.6.5 bash
+docker run -it -v `pwd`:/work/kafka --name openmldb 4pdosc/openmldb:0.6.9 bash
 ```
 
 ### Steps
@@ -46,7 +46,7 @@ In general, the use process can be summarized into four steps:
 In the OpenMLDB container, start the cluster:
 
 ```
-./init.sh
+/work/init.sh
 ```
 
 :::{caution}
@@ -80,7 +80,7 @@ cd kafka_2.13-3.1.0
 The OpenMLDB service has used port 2181 to start zookeeper. Kafka does not need to start zookeeper again. Therefore, you only need to start the server here.
 :::
 
-You can check whether Kafka is working normally. You can either use `ps` or, check the log.
+You can check whether Kafka is working normally. You can use `ps` to check. If the Kafka start failed, check the log `logs/server.log`.
 
 ```
 ps axu|grep kafka
@@ -114,7 +114,7 @@ tar zxf kafka_demo_files.tgz
 
 kafka_demo_files has the configuration files which are required to start the connector. And ensure to put the connector plug-in in the correct location.
 
-The first configuration file is the configuration of the connector itself, `connect-standalone.properties`. The key configuration of the "plug-in directory" is as follows:
+The first configuration file is the configuration of the connector itself, `connect-standalone.properties`. The key configuration of the `plugin.path` is as follows:
 
 ```
 plugin.path=/usr/local/share/java
@@ -136,6 +136,12 @@ tasks.max=1
 topics=topic1 
 connection.url=jdbc:openmldb:///kafka_test?zk=127.0.0.1:2181&zkPath=/openmldb
 auto.create=true
+```
+
+```{tip}
+See [Configuring Connectors](https://kafka.apache.org/documentation/#connect_configuring) for full details about the config options.
+
+The option `connection.url` should be the right OpenMLDB address and database. The database must exist.
 ```
 
 In the connection configuration, you need to fill in the correct OpenMLDB URL address. The connector receives the message of topic1 and automatically creates a table (auto.create).
@@ -167,6 +173,10 @@ More conveniently, we save the above message in the file `kafka_demo_files/messa
 ./bin/kafka-console-producer.sh --topic topic1 --bootstrap-server localhost:9092 < ../kafka_demo_files/message
 ```
 
+```{tip}
+If you want to send messages without the schema，but you don't have Schema Registry. You can create the table in OpenMLDB, and set `auto.schema=true` in  Kafka connector, see [kafka connect jdbc doc](https://github.com/4paradigm/OpenMLDB/blob/main/extensions/kafka-connect-jdbc/DEVELOP.md) for full details. Only support to use with JsonConverter.
+```
+
 ### Check Results
 
 We can query OpenMLDB to check whether the insertion is successful. The query script of `kafka_demo_files/select.sql` is as follows:
@@ -184,3 +194,31 @@ You can directly run the query script with a query:
 ```
 
 ![openmldb result](../../zh/use_case/images/kafka_openmldb_result.png)
+
+## Debug
+
+### Logs
+
+Kafka server log is `log/server.log`, check it if the Kafka server can't work.
+
+And the connector log is `log/connect.log`, check it if the producer failed or can't get the result in OpenMLDB.
+
+### Reinit
+
+If you met some error, you can reinitialize the environment to retry.
+
+To terminate kafka, kill the two daemon process:
+```
+ps axu|grep kafka | grep -v grep | awk '{print $2}' | xargs kill -9
+```
+
+To delete the data, ref [TERMINATE THE KAFKA ENVIRONMENT](https://kafka.apache.org/quickstart#quickstart_kafkaterminate):
+```
+rm -rf /tmp/kafka-logs /tmp/kraft-combined-logs
+```
+
+Plz DO NOT kill zookeeper process or delete `/tmp/zookeeper` here, cuz OpenMLDB use the same zookeeper cluster too. We will kill the zookeeper process and delete the zookeeper data dir when we reinitialize the OpenMLDB cluster:
+```
+/work/init.sh
+```
+And then create the database in OpenMLDB, start the Kafka ...
