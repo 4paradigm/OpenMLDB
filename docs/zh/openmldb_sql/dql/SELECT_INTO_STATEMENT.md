@@ -43,14 +43,7 @@ SelectInfoOptionItem
 
 ## FilePath
 
-FilePath支持'file://', 'hdfs://', 'hive://'三种。
-
-### 导出到Hive
-
-路径格式：'hive://[db.]table'。不指定db则导入到Hive的'default_db'。表可以不存在，但如果指定db，db必须存在。
-
-- Hive需要Spark支持与连接到Hive的配置，请参考[Hive 支持](../dml/LOAD_DATA_STATEMENT.md#hive-支持)。
-- 不支持导出到Hive不存在的数据库。如果指定的Hive数据库不存在，OpenMLDB不会为此在Hive中创建该数据库。（OpenMLDB创建Hive数据库，会导致该数据库的表存储路径变化。）
+FilePath支持'file://', 'hdfs://', 'hive://'三种。对于导出到 Hive，需要额外的配置以及注意事项，参照 [Hive 支持](../../integration/offline_data_sources/hive.md)。
 
 ## SQL语句模版
 
@@ -70,6 +63,12 @@ SELECT col1, col2, col3 FROM t1 INTO OUTFILE 'data.csv' OPTIONS ( delimiter = ',
 
 ```SQL
 SELECT col1, col2, col3 FROM t1 INTO OUTFILE 'data2.csv' OPTIONS ( delimiter = '|', null_value='NA');
+```
+
+- 导出表格 t1 到 Hive 数据库
+
+```sql
+SELECT col1, col2, col3 FROM t1 INTO OUTFILE 'hive://db.t1' OPTIONS (delimiter=',');
 ```
 
 ## Q&A

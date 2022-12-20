@@ -1,5 +1,6 @@
 # LOAD DATA INFILE
 `LOAD DATA INFILE`语句能高效地将文件中的数据读取到数据库中的表中。`LOAD DATA INFILE` 与 `SELECT INTO OUTFILE`互补。要将数据从 table导出到文件，请使用[SELECT INTO OUTFILE](../dql/SELECT_INTO_STATEMENT.md)。要将文件数据导入到 table 中，请使用`LOAD DATA INFILE`。
+
 ## Syntax
 
 ```sql
@@ -35,9 +36,7 @@ URI
 FilePathPattern
 				::= string_literal
 ```
-其中`FilePathPattern`支持通配符`*`，比如可以设成`/test/*.csv`，匹配规则和`ls FilePathPattern`一致。
-
-支持从Hive导入数据，但需要额外的设置，详情见[Hive 支持](#hive-支持)。
+其中`FilePathPattern`支持通配符`*`，比如可以设成`/test/*.csv`，匹配规则和`ls FilePathPattern`一致。OpenMLDB 也支持从 Hive 导入数据，但需要额外的设置，详情见 [Hive 支持](../../integration/offline_data_sources/hive.md)。
 
 下表展示了`LOAD DATA INFILE`语句的配置项。
 
@@ -98,64 +97,10 @@ set @@execute_mode='offline';
 LOAD DATA INFILE 'data_path' INTO TABLE t1 OPTIONS(deep_copy=false);
 ```
 
-## Hive 支持
+在离线模式下导入 Hive 数据仓库的表格：
 
-### 支持Hive数据格式
-
-支持以下几种Hive的数据格式，不支持Binary等其他格式。
-
-| OpenMLDB Data Format | Hive Data Format |
-| -------------------- | ---------------- |
-| BOOL                 | BOOLEAN          |
-| SMALLINT             | SMALLINT         |
-| INT                  | INT              |
-| BIGINT               | BIGINT           |
-| FLOAT                | FLOAT            |
-| DOUBLE               | DOUBLE           |
-| DATE                 | DATE             |
-| TIMESTAMP            | TIMESTAMP        |
-
-### 开启 Hive 支持
-
-为了支持读写Hive，我们需要Hive相关的依赖和Hive配置。
-
-#### Spark Hive依赖
-
-[OpenMLDB Spark 发行版](../../../tutorial/openmldbspark_distribution.md) v0.6.7及以上均包含Hive依赖。如果使用其他Spark发行版，我们需要在Spark中编译出Hive依赖，依赖包在`assembly/target/scala-xx/jars`. 将所有依赖加入Spark的class path中。
-
-```
-./build/mvn -Pyarn -Phive -Phive-thriftserver -DskipTests clean package
+```sql
+set @@execute_mode='offline';
+LOAD DATA INFILE 'hive://db.t1' INTO TABLE t1 OPTIONS(delimiter=',', deep_copy=true);
 ```
 
-#### Hive 配置
-
-目前只支持使用metastore服务来连接Hive。
-
-- spark.conf
-
-	你可以在spark conf中配置`spark.hadoop.hive.metastore.uris`。有两种方式：
-	- taskmanager.properties: 在配置项 `spark.default.conf` 中加入`spark.hadoop.hive.metastore.uris=thrift://...`并重启taskmanager。
-	- CLI: 在ini conf中加入此配置项，并使用`--spark_conf`启动CLI，参考[客户端Spark配置文件](../../client_config/client_spark_config.md)。
-
-- hive-site.xml:
-
-	你可以配置`hive-site.xml`中的`hive.metastore.uris`，并将配置文件放入Spark home的`conf/`。
-
-	`hive-site.xml`样例：
-	```
-	<configuration>
-		<property>
-			<name>hive.metastore.uris</name>
-			<!--Make sure that <value> points to the Hive Metastore URI in your cluster -->
-			<value>thrift://localhost:9083</value>
-			<description>URI for client to contact metastore server</description>
-		</property>
-	</configuration>
-	```
-
-### Hive Debug
-
-确认`LOAD DATA`等任务是否连接到正确的Hive集群，可以通过job log来查看。
-
-- `INFO HiveConf:`提示读取到的是哪个Hive配置文件。如果需要配置加载的细节，可以打开spark debug日志。
-- 连接Hive metastore应该有` INFO metastore: Trying to connect to metastore with URI`的日志提示。连接成功会有`INFO metastore: Connected to metastore.`日志。
