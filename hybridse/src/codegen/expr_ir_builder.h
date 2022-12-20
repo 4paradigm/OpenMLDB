@@ -115,9 +115,15 @@ class ExprIRBuilder {
     Status GetFunction(const std::string& col, const std::vector<const node::TypeNode*>& generic_types,
                       ::llvm::Function** output);
 
+    Status BuildArrayExpr(const ::hybridse::node::ArrayExpr* node, NativeValue* output);
+
  private:
     CodeGenContext* ctx_;
+
+    // window frame node
     const node::FrameNode* frame_ = nullptr;
+
+    // ExprIdNode definition of frame
     node::ExprNode* frame_arg_ = nullptr;
 };
 }  // namespace codegen

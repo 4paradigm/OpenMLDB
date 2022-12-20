@@ -16,6 +16,8 @@
 
 #include <memory>
 #include <utility>
+
+#include "absl/strings/match.h"
 #include "boost/algorithm/string.hpp"
 #include "case/sql_case.h"
 #include "gtest/gtest.h"
@@ -102,8 +104,8 @@ void RunnerCheck(std::shared_ptr<Catalog> catalog, const std::string sql,
     std::cout << "schema:\n" << oss_schema.str();
 }
 
-TEST_P(RunnerTest, request_mode_test) {
-    if (boost::contains(GetParam().mode(), "request-unsupport")) {
+TEST_P(RunnerTest, RequestModeTest) {
+    if (absl::StrContains(GetParam().mode(), "request-unsupport")) {
         LOG(INFO) << "Skip sql case: request unsupport";
         return;
     }
@@ -233,8 +235,8 @@ TEST_P(RunnerTest, request_mode_test) {
     RunnerCheck(catalog, sqlstr, sql_case.ExtractParameterTypes(), kRequestMode);
 }
 
-TEST_P(RunnerTest, batch_mode_test) {
-    if (boost::contains(GetParam().mode(), "batch-unsupport")) {
+TEST_P(RunnerTest, BatchModeTest) {
+    if (absl::StrContains(GetParam().mode(), "batch-unsupport")) {
         LOG(INFO) << "Skip sql case: batch unsupport";
         return;
     }

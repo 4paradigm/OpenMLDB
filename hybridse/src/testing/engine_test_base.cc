@@ -398,7 +398,7 @@ Status EngineTestRunner::Compile() {
     LOG(INFO) << "SQL Compile take " << mill << " milliseconds";
 
     if (!ok || !status.isOK()) {
-        LOG(INFO) << status.str();
+        LOG(INFO) << status;
         return_code_ = ENGINE_TEST_RET_COMPILE_ERROR;
     } else {
         LOG(INFO) << "SQL output schema:";

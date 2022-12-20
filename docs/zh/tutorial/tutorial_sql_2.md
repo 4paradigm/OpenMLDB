@@ -64,7 +64,7 @@ SELECT * FROM s1 LAST JOIN s2 ORDER BY s2.std_ts ON s1.col1 = s2.col1;
 
 ## 3. 副表多行聚合特征
 
-OpenMLDB 针对副表拼接场景，扩展了标准的 WINDOW 语法，新增了 [WINDOW UNION](../reference/sql/dql/WINDOW_CLAUSE.md#window-union) 的特性，支持从副表拼接多条数据形成副表窗口。在副表拼接窗口的基础上，可以方便构建副表多行聚合特征。同样地，构造副表多行聚合特征也需要完成两个步骤：
+OpenMLDB 针对副表拼接场景，扩展了标准的 WINDOW 语法，新增了 [WINDOW UNION](../openmldb_sql/dql/WINDOW_CLAUSE.md#window-union) 的特性，支持从副表拼接多条数据形成副表窗口。在副表拼接窗口的基础上，可以方便构建副表多行聚合特征。同样地，构造副表多行聚合特征也需要完成两个步骤：
 
 - 步骤一：定义副表拼接窗口。
 - 步骤二：在副表拼接窗口上构造副表多行聚合特征。
@@ -118,7 +118,7 @@ window window_name as (UNION other_table PARTITION BY key_col ORDER BY order_col
   - OpenMLDB 的下界时间必须>=上界时间
   - OpenMLDB 的下界的条数必须<=上界条数
 - `INSTANCE_NOT_IN_WINDOW`：表示主表除了当前行以外，其他数据不进入窗口。
-- 更多语法和特性可以参考 [OpenMLDB窗口UNION参考手册](../reference/sql/dql/WINDOW_CLAUSE.md)。
+- 更多语法和特性可以参考 [OpenMLDB窗口UNION参考手册](../openmldb_sql/dql/WINDOW_CLAUSE.md)。
 
 ```
 

@@ -32,7 +32,7 @@ class StringIRBuilder : public StructTypeIRBuilder {
  public:
     explicit StringIRBuilder(::llvm::Module* m);
     ~StringIRBuilder();
-    void InitStructType();
+    void InitStructType() override;
     bool CreateDefault(::llvm::BasicBlock* block, ::llvm::Value** output);
     base::Status CreateNull(::llvm::BasicBlock* block, NativeValue* output);
     bool NewString(::llvm::BasicBlock* block, ::llvm::Value** output);

@@ -465,7 +465,7 @@ public class OpenMLDBDeploy {
             if(StringUtils.isNotEmpty(openMLDBPath)){
                 OpenMLDBCommandUtil.cpOpenMLDB(testPath+standaloneName, openMLDBPath);
             }
-            ExecutorUtil.run("sh "+testPath+standaloneName+"/bin/start-standalone.sh");
+            ExecutorUtil.run("sh "+testPath+standaloneName+"/sbin/start-all.sh");
             boolean nsOk = LinuxUtil.checkPortIsUsed(nsPort,3000,30);
             boolean tabletOk = LinuxUtil.checkPortIsUsed(tabletPort,3000,30);
             boolean apiServerOk = LinuxUtil.checkPortIsUsed(apiServerPort,3000,30);

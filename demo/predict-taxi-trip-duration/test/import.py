@@ -20,7 +20,7 @@ import sqlalchemy as db
 import datetime
 
 ddl = """
-create table t1(
+create table if not exists t1(
 id string,
 vendor_id int,
 pickup_datetime timestamp,
@@ -36,19 +36,13 @@ index(key=vendor_id, ts=pickup_datetime),
 index(key=passenger_count, ts=pickup_datetime)
 );
 """
-engine = db.create_engine('openmldb:///db_test?zk=127.0.0.1:2181&zkPath=/openmldb')
+engine = db.create_engine('openmldb:///?zk=127.0.0.1:2181&zkPath=/openmldb') # no-db connection, to create the db
 connection = engine.connect()
-try:
-    connection.execute('create database db_test;')
-    # pylint: disable=broad-except
-except Exception as e:
-    print(e)
-try:
-    connection.execute(ddl)
-    # pylint: disable=broad-except
-except Exception as e:
-    print(e)
+connection.execute('create database if not exists db_test;')
 
+# use db, or create a new db connection: engine = db.create_engine('openmldb:///db_test?zk=127.0.0.1:2181&zkPath=/openmldb')
+connection.execute('use db_test')
+connection.execute(ddl)
 
 def insert_row(line):
     row = line.split(',')

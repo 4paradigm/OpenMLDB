@@ -55,7 +55,7 @@ public class BatchRequestPreparedStatementImpl extends RequestPreparedStatementI
         com._4paradigm.openmldb.ResultSet resultSet = router.ExecuteSQLBatchRequest(
                 db, currentSql, currentRowBatch, status);
         if (resultSet == null || status.getCode() != 0) {
-            String msg = status.getMsg();
+            String msg = status.ToString();
             status.delete();
             if (resultSet != null) {
                 resultSet.delete();
@@ -81,7 +81,7 @@ public class BatchRequestPreparedStatementImpl extends RequestPreparedStatementI
         Status status = new Status();
         this.currentRow = router.GetRequestRow(db, currentSql, status);
         if (this.currentRow == null || status.getCode() != 0) {
-            String msg = status.getMsg();
+            String msg = status.ToString();
             status.delete();
             logger.error("getRequestRow failed: {}", msg);
             throw new SQLException("getRequestRow failed!, msg: " + msg);

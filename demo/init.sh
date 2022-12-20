@@ -26,20 +26,31 @@ set +e
 pkill python3
 set -e
 
-rm -rf /tmp/openmldb_offline_storage/*
-rm -rf /work/openmldb/logs*
-rm -rf /work/openmldb/db*
-rm -rf /work/openmldb/taskmanager/bin/logs
-sleep 2
-echo "Starting openmldb in $MODE mode..."
-if [[ "$MODE" = "standalone" ]]; then
-    python3 /work/taxi-trip/convert_data.py < /work/taxi-trip/data/taxi_tour_table_train_simple.csv  > /work/taxi-trip/data/taxi_tour.csv
-    cd /work/openmldb && ./bin/stop-standalone.sh && ./bin/start-standalone.sh
-    sleep 1
+if [[ -e /work/openmldb/sbin ]]; then
+    export OPENMLDB_MODE=$MODE
+    if [[ "$MODE" = "standalone" ]]; then
+        python3 /work/taxi-trip/convert_data.py < /work/taxi-trip/data/taxi_tour_table_train_simple.csv  > /work/taxi-trip/data/taxi_tour.csv
+    else
+        cd /work/openmldb && ./sbin/deploy-all.sh
+    fi
+
+    cd /work/openmldb && ./sbin/stop-all.sh && ./sbin/clear-all.sh && ./sbin/start-all.sh
 else
-    cd /work/zookeeper-3.4.14 && ./bin/zkServer.sh stop && rm -rf /tmp/zookeeper && ./bin/zkServer.sh start
-    sleep 1
-    cd /work/openmldb && ./bin/stop-all.sh && ./bin/start-all.sh
+    rm -rf /tmp/openmldb_offline_storage/*
+    rm -rf /work/openmldb/logs*
+    rm -rf /work/openmldb/db*
+    rm -rf /work/openmldb/taskmanager/bin/logs
+    sleep 2
+    echo "Starting openmldb in $MODE mode..."
+    if [[ "$MODE" = "standalone" ]]; then
+        python3 /work/taxi-trip/convert_data.py < /work/taxi-trip/data/taxi_tour_table_train_simple.csv  > /work/taxi-trip/data/taxi_tour.csv
+        cd /work/openmldb && ./bin/stop-standalone.sh && ./bin/start-standalone.sh
+        sleep 1
+    else
+        cd /work/zookeeper-3.4.14 && ./bin/zkServer.sh stop && rm -rf /tmp/zookeeper && ./bin/zkServer.sh start
+        sleep 1
+        cd /work/openmldb && ./bin/stop-all.sh && ./bin/start-all.sh
+    fi
 fi
 
 echo "Started"
