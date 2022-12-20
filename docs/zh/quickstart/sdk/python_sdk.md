@@ -209,7 +209,11 @@ openmldb.sql_magic.register(db)
 
 ![](./images/openmldb_magic_function.png)
 
-## 5. Option详解
+## 完整使用范例
+
+见[Python quickstart demo](https://github.com/4paradigm/OpenMLDB/tree/main/demo/python_quickstart/demo.py)，包括了上文的DBAPI和SQLAlchemy用法。
+
+## Option详解
 
 连接集群版必填`zk`和`zkPath`两个选项。
 

@@ -417,7 +417,7 @@ try {
 
 ### 完整的 SqlClusterExecutor 使用范例
 
-见[Java quickstart demo](https://github.com/4paradigm/OpenMLDB/tree/maindemo/java_quickstart/demo)。编译并运行：
+见[Java quickstart demo](https://github.com/4paradigm/OpenMLDB/tree/main/demo/java_quickstart/demo)。编译并运行：
 ```
 mvn package
 java -cp target/demo-1.0-SNAPSHOT.jar com.openmldb.demo.App
