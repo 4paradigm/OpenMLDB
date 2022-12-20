@@ -106,9 +106,10 @@ connection = engine.connect()
 ```python
 try:
     connection.execute("CREATE DATABASE db1")
-    connection.execute("USE db1")
 except Exception as e:
     print(e)
+
+connection.execute("USE db1")
 ```
 
 ### 3.3 创建表

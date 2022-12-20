@@ -89,9 +89,9 @@ Create a database using the `connection.execute()`:
 ````python
 try:
     connection.execute("CREATE DATABASE db1")
-    connection.execute("USE db1")
 except Exception as e:
     print(e)
+connection.execute("USE db1")
 ````
 
 ### 3.3 Create Table
