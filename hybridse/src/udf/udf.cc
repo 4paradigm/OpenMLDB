@@ -875,6 +875,59 @@ void string_to_date(StringRef *str, Date *output,
     }
     return;
 }
+
+void date_diff(Date *date1, Date *date2, int *diff, bool *is_null) {
+    if (date1 == nullptr || date2 == nullptr || date1->date_ <= 0 || date2->date_ <= 0) {
+        *is_null = true;
+        return;
+    }
+    int32_t year, month, day;
+    if (!date1->Decode(date1->date_, &year, &month, &day)) {
+        *is_null = true;
+        return;
+    }
+    absl::CivilDay d1(year, month, day);
+    if (!date1->Decode(date2->date_, &year, &month, &day)) {
+        *is_null = true;
+        return;
+    }
+    absl::CivilDay d2(year, month, day);
+    *diff = (d1 - d2);
+    *is_null = false;
+}
+
+void date_diff(StringRef *date1, StringRef *date2, int *diff, bool *is_null) {
+    Date d1;
+    string_to_date(date1, &d1, is_null);
+    if (*is_null) {
+        return;
+    }
+    Date d2;
+    string_to_date(date2, &d2, is_null);
+    if (*is_null) {
+        return;
+    }
+    date_diff(&d1, &d2, diff, is_null);
+}
+
+void date_diff(StringRef *date1, Date *date2, int *diff, bool *is_null) {
+    Date d1;
+    string_to_date(date1, &d1, is_null);
+    if (*is_null) {
+        return;
+    }
+    date_diff(&d1, date2, diff, is_null);
+}
+
+void date_diff(Date *date1, StringRef *date2, int *diff, bool *is_null) {
+    Date d2;
+    string_to_date(date2, &d2, is_null);
+    if (*is_null) {
+        return;
+    }
+    date_diff(date1, &d2, diff, is_null);
+}
+
 // cast string to timestamp with yyyy-mm-dd or YYYY-mm-dd HH:MM:SS
 void string_to_timestamp(StringRef *str,
                          Timestamp *output, bool *is_null) {

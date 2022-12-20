@@ -245,6 +245,9 @@ TEST_P(DBSDKTest, Select) {
     std::string insert_sql = "insert into trans values ('aaa', 11, 22, 1.2, 1.3, 1635247427000, \"2021-05-20\");";
     sr->ExecuteSQL(insert_sql, &status);
     ASSERT_TRUE(status.IsOK());
+    insert_sql = "insert into trans values ('aaa', 11, 22, 1.2, 1.3, -123, \"2021-05-20\");";
+    sr->ExecuteSQL(insert_sql, &status);
+    ASSERT_FALSE(status.IsOK());
     auto rs = sr->ExecuteSQL("select * from trans", &status);
     ASSERT_TRUE(status.IsOK());
     ASSERT_EQ(1, rs->Size());

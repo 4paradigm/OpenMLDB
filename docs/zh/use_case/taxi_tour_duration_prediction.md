@@ -42,7 +42,7 @@ cd taxi-trip
 
 ### 1.4 预备知识：集群版的非阻塞任务
 
-集群版的部分命令是非阻塞任务，包括在线模式的 `LOAD DATA`，以及离线模式的 `LOAD DATA` ，`SELECT`，`SELECT INTO` 命令。提交任务以后可以使用相关的命令如 `SHOW JOBS`, `SHOW JOB` 来查看任务进度，详情参见[离线任务管理](../reference/sql/task_manage/reference.md)文档。
+集群版的部分命令是非阻塞任务，包括在线模式的 `LOAD DATA`，以及离线模式的 `LOAD DATA` ，`SELECT`，`SELECT INTO` 命令。提交任务以后可以使用相关的命令如 `SHOW JOBS`, `SHOW JOB` 来查看任务进度，详情参见[离线任务管理](../openmldb_sql/task_manage/reference.md)文档。
 
 ## 2. 机器学习全流程
 

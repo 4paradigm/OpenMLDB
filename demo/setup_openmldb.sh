@@ -32,7 +32,7 @@ mkdir -p "$WORKDIR"
 
 tar xzf zookeeper.tar.gz -C "$WORKDIR"
 pushd $WORKDIR/zookeeper-3.4.14/
-mv conf/zoo_sample.cfg conf/zoo.cfg
+cp conf/zoo_sample.cfg conf/zoo.cfg
 popd
 
 mkdir -p "${WORKDIR}/openmldb"
@@ -43,6 +43,10 @@ strip -s "${WORKDIR}/openmldb/bin/openmldb"
 mkdir -p "${WORKDIR}/openmldb/spark-3.2.1-bin-openmldbspark"
 tar xzf spark-3.2.1-bin-openmldbspark.tgz -C "${WORKDIR}/openmldb/spark-3.2.1-bin-openmldbspark" --strip-components 1
 
+pushd "${WORKDIR}/openmldb"
+ln -s "${WORKDIR}/zookeeper-3.4.14" zookeeper
+ln -s spark-3.2.1-bin-openmldbspark spark
+popd
 
 rm -f ./*.tar.gz
 rm -f ./*.tgz

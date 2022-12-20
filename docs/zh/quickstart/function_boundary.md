@@ -1,4 +1,4 @@
-# OpenMLDB 功能边界
+# 功能边界
 
 ## 概述
 
@@ -9,7 +9,7 @@
 1. DQL边界，包括批查询、实时请求等
 
 ```{caution}
-如果对SQL语句的编写和详情有疑问，请参考[sql reference](../reference/sql/)，或搜索关键字。本文只重点描述功能边界。
+如果对SQL语句的编写和详情有疑问，请参考[sql reference](../openmldb_sql/)，或搜索关键字。本文只重点描述功能边界。
 ```
 
 ## 系统配置
@@ -35,13 +35,13 @@ spark.default.conf=spark.port.maxRetries=32;foo=bar
 
 ### Deploy
 
-通过`DEPLOY <deploy_name> <sql>`可以上线SQL，这个操作不仅是上线SQL，也会自动解析SQL帮助创建索引（可以通过`DESC <table_name>`查看索引详情），详情见[DEPLOY_STATEMENT](../reference/sql/deployment_manage/DEPLOY_STATEMENT.md)。
+通过`DEPLOY <deploy_name> <sql>`可以上线SQL，这个操作不仅是上线SQL，也会自动解析SQL帮助创建索引（可以通过`DESC <table_name>`查看索引详情），详情见[DEPLOY_STATEMENT](../openmldb_sql/deployment_manage/DEPLOY_STATEMENT.md)。
 
 `DEPLOY`操作是否成功，跟表的**在线数据**有一定关系。
 
 #### 长窗口SQL
 
-长窗口SQL,即`DEPLOY`时带有`OPTIONS(long_windows=...)`，语法详情见[长窗口](../reference/sql/deployment_manage/DEPLOY_STATEMENT.md#长窗口优化)。长窗口SQL的`DEPLOY`条件比较严格，必须保证SQL中使用的表没有在线数据。如果表已有数据，即使`DEPLOY`和之前一致的SQL，也会操作失败。
+长窗口SQL,即`DEPLOY`时带有`OPTIONS(long_windows=...)`，语法详情见[长窗口](../openmldb_sql/deployment_manage/DEPLOY_STATEMENT.md#长窗口优化)。长窗口SQL的`DEPLOY`条件比较严格，必须保证SQL中使用的表没有在线数据。如果表已有数据，即使`DEPLOY`和之前一致的SQL，也会操作失败。
 
 #### 普通SQL
 
@@ -139,7 +139,7 @@ Query语句首先要分执行模式，离线模式中query只有批查询，在�
 
 #### 集群版在线预览模式
 
-通过执行SQL，例如，CLI中在线模式执行SQL，均为在线预览模式。在线预览模式支持有限，详细支持情况请参考[SELECT STATEMENT](../reference/sql/dql/SELECT_STATEMENT)，不是所有SQL都可执行。
+通过执行SQL，例如，CLI中在线模式执行SQL，均为在线预览模式。在线预览模式支持有限，详细支持情况请参考[SELECT STATEMENT](../openmldb_sql/dql/SELECT_STATEMENT)，不是所有SQL都可执行。
 
 在线预览模式主要目的为预览，
 - 如果你希望能运行复杂SQL，请使用离线模式。
@@ -148,7 +148,7 @@ Query语句首先要分执行模式，离线模式中query只有批查询，在�
 ```{caution}
 在线数据通常是分布式存储的，`SELECT * FROM table`从各个tablet server中获取结果，但并不会做全局排序，且server顺序有一定的随机性。所以每次执行`SELECT * FROM table`的结果不能保证数据顺序一致。
 
-如果在线表数据量过大，还可能触发"数据截断"，详情见[SELECT STATEMENT](../reference/sql/dql/SELECT_STATEMENT)，`SELECT * FROM table`的结果会少于实际存储。如果发现SELECT的条数少于你导入的条数，那很可能是数据截断，而非导入丢失了数据。
+如果在线表数据量过大，还可能触发"数据截断"，详情见[SELECT STATEMENT](../openmldb_sql/dql/SELECT_STATEMENT)，`SELECT * FROM table`的结果会少于实际存储。如果发现SELECT的条数少于你导入的条数，那很可能是数据截断，而非导入丢失了数据。
 ```
 
 ### 离线模式与在线请求模式

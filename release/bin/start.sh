@@ -16,9 +16,6 @@
 
 set -e
 
-ulimit -c unlimited
-ulimit -n 655360
-
 export COMPONENTS="tablet tablet2 nameserver apiserver taskmanager standalone_tablet standalone_nameserver standalone_apiserver"
 
 if [ $# -lt 2 ]; then
@@ -106,7 +103,7 @@ case $OP in
             fi
             if [ -x "$(command -v curl)" ]; then
                 sleep 3
-                ENDPOINT=$(grep '\--endpoint' ./conf/"$COMPONENT".flags | awk -F '=' '{print $2}')
+                ENDPOINT=$(grep '^\--endpoint' ./conf/"$COMPONENT".flags | grep -v '#' | awk -F '=' '{print $2}')
                 COUNT=1
                 while [ $COUNT -lt 12 ]
                 do

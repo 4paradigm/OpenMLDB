@@ -27,13 +27,21 @@ logging.basicConfig(level=logging.WARNING)
 
 
 class TestOpenmldbDBAPI:
+    cursor_without_db = None
     cursor = None
+    db_name = "dbapi_test"
 
     @classmethod
     def setup_class(cls):
-        db = connect(
-            database="db_test", zk=OpenMLDB_ZK_CLUSTER, zkPath=OpenMLDB_ZK_PATH
-        )
+        # connect without db to create it
+        db = connect(zk=OpenMLDB_ZK_CLUSTER, zkPath=OpenMLDB_ZK_PATH)
+        cls.cursor_without_db = db.cursor()
+        cls.cursor_without_db.execute(
+            f"create database if not exists {cls.db_name};")
+        # then we can use the db to connect
+        db = connect(database=cls.db_name,
+                     zk=OpenMLDB_ZK_CLUSTER,
+                     zkPath=OpenMLDB_ZK_PATH)
         cls.cursor = db.cursor()
         cls.cursor.execute("create database if not exists db_test;")
         cls.cursor.execute("create table new_table (x string, y int16);")
@@ -96,12 +104,10 @@ class TestOpenmldbDBAPI:
         Note: this test works now(select > 0ms). If you can't reach the timeout, redesign the test.
         """
         # requestTimeout -1 means wait indefinitely
-        db = connect(
-            database="db_test",
-            zk=OpenMLDB_ZK_CLUSTER,
-            zkPath=OpenMLDB_ZK_PATH,
-            requestTimeout=0,
-        )
+        db = connect(database=self.db_name,
+                     zk=OpenMLDB_ZK_CLUSTER,
+                     zkPath=OpenMLDB_ZK_PATH,
+                     requestTimeout=0)
         cursor = db.cursor()
         rs = cursor.execute(
             "insert into new_table (y, x) values(400, 'a'),(401,'b'),(402, 'c');"
@@ -114,13 +120,35 @@ class TestOpenmldbDBAPI:
         assert "execute select fail" in str(e.value)
 
     def test_connect_options(self):
-        db = connect(
-            database="db_test",
-            zk=OpenMLDB_ZK_CLUSTER,
-            zkPath=OpenMLDB_ZK_PATH,
-            requestTimeout=100000,
-            maxSqlCacheSize=100,
-        )
+        connect(database=self.db_name,
+                zk=OpenMLDB_ZK_CLUSTER,
+                zkPath=OpenMLDB_ZK_PATH,
+                requestTimeout=100000,
+                maxSqlCacheSize=100)
+
+    def test_invalid_database_arg(self):
+        with pytest.raises(DatabaseError) as e:
+            connect(database='db_test_876371',
+                    zk=OpenMLDB_ZK_CLUSTER,
+                    zkPath=OpenMLDB_ZK_PATH)
+        assert 'database not found' in str(e.value)
+
+    def test_cursor_without_db(self):
+        self.cursor_without_db.execute(f"use {self.db_name}")
+        self.cursor_without_db.execute(
+            "insert into new_table values('abcd', 500);")
+        result = self.cursor_without_db.execute(
+            "select * from new_table where y = 500;").fetchall()
+        assert len(result) == 1
+        assert 'abcd' in result[0]
+        assert 500 in result[0]
+        self.cursor_without_db.executemany(
+            "insert into new_table values(?, ?);", [('abcde', 501)])
+        result = self.cursor_without_db.execute(
+            "select * from new_table where y = 501;").fetchall()
+        assert len(result) == 1
+        assert 'abcde' in result[0]
+        assert 501 in result[0]
 
 
 if __name__ == "__main__":

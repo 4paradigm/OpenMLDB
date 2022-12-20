@@ -90,7 +90,8 @@ def test_sdk_smoke():
     assert rs.Size() == 4
 
     # reset the request timeout
-    sdk = sdk_module.OpenMLDBSdk(zk=OpenMLDB_ZK_CLUSTER, zkPath=OpenMLDB_ZK_PATH,
+    sdk = sdk_module.OpenMLDBSdk(zk=OpenMLDB_ZK_CLUSTER,
+                                 zkPath=OpenMLDB_ZK_PATH,
                                  request_timeout=1)
     sdk.init()
     select = "select * from " + table_name + "where col1='world';"

@@ -26,7 +26,7 @@ setup(
     license="copyright 4paradigm.com",
     classifiers=[
         'Programming Language :: Python :: 3',
-        ],
+    ],
     install_requires=[
         "openmldb >= 0.5.3",
         "absl-py",
@@ -35,9 +35,7 @@ setup(
     ],
     packages=find_packages(),
     entry_points={
-        'console_scripts': [
-            'openmldb_tool = diagnostic_tool.diagnose:run'
-        ],
+        'console_scripts': ['openmldb_tool = diagnostic_tool.diagnose:run'],
     },
     zip_safe=False,
 )

@@ -359,7 +359,7 @@ jobs:
         run: make build install
 
       - name: start server
-        run: ./openmldb/bin/start-standalone.sh
+        run: ./openmldb/sbin/start-all.sh
 
       - name: init test database
         env:
@@ -384,7 +384,7 @@ jobs:
           verbose: true
 
       - name: stop server
-        run: ./openmldb/bin/stop-standalone.sh
+        run: ./openmldb/sbin/stop-all.sh
 
   publish-test-results:
     needs: ["java-sdk", "python-sdk", "go-sdk"]

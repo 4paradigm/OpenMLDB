@@ -3927,8 +3927,11 @@ void StartAPIServer() {
 int main(int argc, char* argv[]) {
     ::google::SetVersionString(OPENMLDB_VERSION);
     ::google::ParseCommandLineFlags(&argc, &argv, true);
-
-    if (FLAGS_role == "ns_client") {
+    if (FLAGS_role.empty()) {
+        std::cout << "client start in stand-alone mode" << std::endl;
+        // TODO(hw): standalonesdk refresh every 2s, too many logs in Debug mode
+        ::openmldb::cmd::StandAloneSQLClient();
+    } else if (FLAGS_role == "ns_client") {
         StartNsClient();
     } else if (FLAGS_role == "sql_client") {
         ::openmldb::cmd::ClusterSQLClient();
@@ -3943,9 +3946,7 @@ int main(int argc, char* argv[]) {
         StartAPIServer();
 #endif
     } else {
-        std::cout << "client start in stand-alone mode" << std::endl;
-        // TODO(hw): standalonesdk refresh every 2s, too many logs in Debug mode
-        ::openmldb::cmd::StandAloneSQLClient();
+        std::cout << "Invalid role: " << FLAGS_role << std::endl;
     }
     return 0;
 }

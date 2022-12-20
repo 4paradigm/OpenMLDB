@@ -12,12 +12,12 @@ pip install openmldb
 
 ### 2.1 Create Connection
 
-When creating the connection, the database name is not required to exist. If it does not exist, you need to create the database after the connection is created.
+When creating the connection, the database name is **required** to exist. If it does not exist, you need to create the database before the connection is created. Or you can create a connection without database, then `execute("USE <db>")` to set the database.
 
 ````python
 import openmldb.dbapi
 
-db = openmldb.dbapi.connect(database="db1", zk="$zkcluster", zkPath="$zkpath")
+db = openmldb.dbapi.connect(zk="$zkcluster", zkPath="$zkpath")
 
 cursor = db.cursor()
 ````
@@ -26,6 +26,7 @@ cursor = db.cursor()
 
 ````python
 cursor.execute("CREATE DATABASE db1")
+cursor.execute("USE db1")
 ````
 
 ### 2.3 Create Table
@@ -72,12 +73,12 @@ cursor.close()
 ### 3.1 Create Connection
 
 `create_engine('openmldb:///db_name?zk=zkcluster&zkPath=zkpath')`
-When creating the connection, the database is not required to exist. If it does not exist, you need to create the database after the connection is created.
+When creating the connection, the database is **required** to exist. If it does not exist, you need to create the database before the connection is created. Or you can create a connection without database, then `execute("USE <db>")` to set the database.
 
 ````python
 import sqlalchemy as db
 
-engine = db.create_engine('openmldb:///db1?zk=127.0.0.1:2181&zkPath=/openmldb')
+engine = db.create_engine('openmldb:///?zk=127.0.0.1:2181&zkPath=/openmldb')
 connection = engine.connect()
 ````
 
@@ -88,6 +89,7 @@ Create a database using the `connection.execute()`:
 ````python
 try:
     connection.execute("CREATE DATABASE db1")
+    connection.execute("USE db1")
 except Exception as e:
     print(e)
 ````

@@ -50,19 +50,19 @@ OpenMLDB切换到在线执行模式。在该模式下，只会导入/插入以�
 
 离线任务管理是集群版特有的功能。
 
-单机版`LOAD DATA`数据，`SELECT INTO`命令是阻塞式的，集群版会提交一个任务，并提供`SHOW JOBS`, `SHOW JOB`命令查看离线任务。具体可以参见[离线任务管理](../reference/sql/task_manage/reference.md)。
+单机版`LOAD DATA`数据，`SELECT INTO`命令是阻塞式的，集群版会提交一个任务，并提供`SHOW JOBS`, `SHOW JOB`命令查看离线任务。具体可以参见[离线任务管理](../openmldb_sql/task_manage/reference.md)。
 
 ### 2.4 SQL边界
 
 集群版和单机版可以支持的SQL查询能力区别包括：
 
-- [离线任务管理语句](../reference/sql/task_manage/reference.md)
+- [离线任务管理语句](../openmldb_sql/task_manage/reference.md)
   - 单机版OpenMLDB不支持
   - 集群版OpenMLDB支持离线任务管理语句，包括:`SHOW JOBS`, `SHOW JOB`等
 - 执行模式
   - 单机版OpenMLDB不支持
   - 集群版OpenMLDB可以配置执行模式: `SET @@execute_mode = ...`
-- `CREAT TABLE`[建表语句](../reference/sql/ddl/CREATE_TABLE_STATEMENT.md)的使用
+- `CREAT TABLE`[建表语句](../openmldb_sql/ddl/CREATE_TABLE_STATEMENT.md)的使用
   - 单机版OpenMLDB不支持配置分布式的属性
   - 集群版OpenMLDB支持配置分布式属性：包括`REPLICANUM`, `DISTRIBUTION`, `PARTITIONNUM`
 - `SELECT INTO` 语句的使用
@@ -70,8 +70,8 @@ OpenMLDB切换到在线执行模式。在该模式下，只会导入/插入以�
   - 集群版OpenMLDB执行`SELECT INTO`，输出是目录
 - 集群版在线执行模式下，只能支持简单的单表查询语句：
   - 仅支持列，表达式，以及单行处理函数（Scalar Function)以及它们的组合表达式运算
-  - 单表查询不包含[GROUP BY子句](../reference/sql/dql/JOIN_CLAUSE.md)，[HAVING子句](../reference/sql/dql/HAVING_CLAUSE.md)以及[WINDOW子句](../reference/sql/dql/WINDOW_CLAUSE.md)
-  - 单表查询只涉及单张表的计算，不设计[JOIN](../reference/sql/dql/JOIN_CLAUSE.md)多张表的计算
+  - 单表查询不包含[GROUP BY子句](../openmldb_sql/dql/JOIN_CLAUSE.md)，[HAVING子句](../openmldb_sql/dql/HAVING_CLAUSE.md)以及[WINDOW子句](../openmldb_sql/dql/WINDOW_CLAUSE.md)
+  - 单表查询只涉及单张表的计算，不设计[JOIN](../openmldb_sql/dql/JOIN_CLAUSE.md)多张表的计算
 
 ### 2.5 SDK 支持
 
