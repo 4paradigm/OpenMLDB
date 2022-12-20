@@ -6,7 +6,7 @@
 
 ## 配置
 
-**安装**
+### 安装
 
 [OpenMLDB Spark 发行版](../../tutorial/openmldbspark_distribution.md) v0.6.7 及以上版本均已经包含 Hive 依赖。如果使用其他 Spark 发行版，使用以下步骤进行安装。
 
@@ -20,7 +20,7 @@
 2. 执行成功以后，依赖包在目录`assembly/target/scala-xx/jars`
 2. 将所有依赖包加入 Spark 的 class path 中。
 
-**配置**
+### 配置
 
 目前 OpenMLDB 只支持使用 metastore 服务来连接Hive。你需要进行以下相关配置以正确访问 Hive 数据源。
 
@@ -42,7 +42,7 @@
   </configuration>
   ```
 
-**调试信息**
+### 调试信息
 
 确认任务是否连接到正确的 Hive 集群，可以通过任务日志来查看。
 
