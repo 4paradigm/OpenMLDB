@@ -19,19 +19,16 @@
 
 ### 2.1 创建connection
 
-参数db_name不要求必须存在，可以创建connection时指定想要的db，connect后创建该db。
-
-```python
 import openmldb.dbapi
 
 # 连接集群版OpenMLDB
-db = openmldb.dbapi.connect(database="db1", zk="$zkcluster", zkPath="$zkpath")
+db = openmldb.dbapi.connect(database="db1", zk="127.0.0.1:2181", zkPath="/openmldb")
 
 # 连接单机版OpenMLDB
 # db = openmldb.dbapi.connect(database="db1", host="$host", port="$port")
 
 cursor = db.cursor()
-```
+
 
 ### 2.2 创建数据库
 
