@@ -232,7 +232,7 @@ void NameServerImpl::CheckTableInfo(std::shared_ptr<ClusterInfo>& ci,
     for (const auto& table : tables) {
         std::shared_ptr<::openmldb::nameserver::TableInfo> table_info;
         if (!GetTableInfoUnlock(table.name(), table.db(), &table_info)) {
-            PDLOG(WARNING, "talbe [%u][%s] not found in table_info", table.tid(), table.name().c_str());
+            PDLOG(WARNING, "table [%u][%s] not found in table_info", table.tid(), table.name().c_str());
             continue;
         }
         auto status_iter = ci->last_status[table.db()].find(table.name());
@@ -1913,13 +1913,19 @@ void NameServerImpl::DeleteTask(const std::vector<uint64_t>& done_task_vec) {
     for (auto op_id : done_task_vec) {
         std::shared_ptr<OPData> op_data;
         uint32_t index = 0;
+        std::list<std::shared_ptr<OPData>>::iterator iter;
         for (uint32_t idx = 0; idx < task_vec_.size(); idx++) {
             if (task_vec_[idx].empty()) {
                 continue;
             }
-            if (task_vec_[idx].front()->op_info_.op_id() == op_id) {
-                op_data = task_vec_[idx].front();
-                index = idx;
+            for (iter = task_vec_[idx].begin(); iter != task_vec_[idx].end(); iter++) {
+                if ((*iter)->op_info_.op_id() == op_id) {
+                    op_data = *iter;
+                    index = idx;
+                    break;
+                }
+            }
+            if (op_data) {
                 break;
             }
         }
@@ -1940,7 +1946,7 @@ void NameServerImpl::DeleteTask(const std::vector<uint64_t>& done_task_vec) {
                 PDLOG(WARNING, "set zk status value failed. node[%s] value[%s]", node.c_str(), value.c_str());
             }
             done_op_list_.push_back(op_data);
-            task_vec_[index].pop_front();
+            task_vec_[index].erase(iter);
             PDLOG(INFO, "delete op[%lu] in running op", op_id);
         } else {
             if (zk_client_->DeleteNode(node)) {
@@ -1951,7 +1957,7 @@ void NameServerImpl::DeleteTask(const std::vector<uint64_t>& done_task_vec) {
                     op_data->task_list_.clear();
                 }
                 done_op_list_.push_back(op_data);
-                task_vec_[index].pop_front();
+                task_vec_[index].erase(iter);
                 PDLOG(INFO, "delete op[%lu] in running op", op_id);
             } else {
                 PDLOG(WARNING, "delete zk op_node failed. opid[%lu] node[%s]", op_id, node.c_str());
@@ -2795,13 +2801,16 @@ void NameServerImpl::CancelOP(RpcController* controller, const CancelOPRequest* 
             if (op_list.empty()) {
                 continue;
             }
-            for (auto iter = op_list.begin(); iter != op_list.end(); iter++) {
-                if ((*iter)->op_info_.op_id() == request->op_id()) {
-                    (*iter)->op_info_.set_task_status(::openmldb::api::kCanceled);
-                    for (auto& task : (*iter)->task_list_) {
-                        task->task_info_->set_status(::openmldb::api::kCanceled);
+            for (auto& op_data : op_list) {
+                if (op_data->op_info_.op_id() == request->op_id()) {
+                    if (op_data->op_info_.task_status() == ::openmldb::api::kInited ||
+                         (op_data->op_info_.task_status() == ::openmldb::api::kDoing)) {
+                        op_data->op_info_.set_task_status(::openmldb::api::kCanceled);
+                        for (auto& task : op_data->task_list_) {
+                            task->task_info_->set_status(::openmldb::api::kCanceled);
+                        }
+                        find_op = true;
                     }
-                    find_op = true;
                     break;
                 }
             }
@@ -2964,9 +2973,7 @@ void NameServerImpl::DropTableFun(const DropTableRequest* request, GeneralRespon
                 response->set_msg("add task in replica cluster ns failed");
                 return;
             }
-            PDLOG(INFO,
-                  "add task in replica cluster ns success, op_id [%lu] "
-                  "task_tpye [%s] task_status [%s]",
+            PDLOG(INFO, "add task in replica cluster ns success, op_id [%lu] task_tpye [%s] task_status [%s]",
                   task_ptr->op_id(), ::openmldb::api::TaskType_Name(task_ptr->task_type()).c_str(),
                   ::openmldb::api::TaskStatus_Name(task_ptr->status()).c_str());
         }
@@ -3055,8 +3062,8 @@ void NameServerImpl::DropTable(RpcController* controller, const DropTableRequest
 void NameServerImpl::DropTableInternel(const DropTableRequest& request, GeneralResponse& response,
                                        std::shared_ptr<::openmldb::nameserver::TableInfo> table_info,
                                        std::shared_ptr<::openmldb::api::TaskInfo> task_ptr) {
-    std::string name = request.name();
-    std::string db = request.db();
+    const std::string& name = request.name();
+    const std::string& db = request.db();
     std::map<uint32_t, std::map<std::string, std::shared_ptr<TabletClient>>> pid_endpoint_map;
     uint32_t tid = table_info->tid();
     int code = 0;
@@ -3084,10 +3091,9 @@ void NameServerImpl::DropTableInternel(const DropTableRequest& request, GeneralR
                 uint32_t pid = table_info->table_partition(idx).pid();
                 auto map_iter = pid_endpoint_map.find(pid);
                 if (map_iter == pid_endpoint_map.end()) {
-                    std::map<std::string, std::shared_ptr<TabletClient>> map;
-                    pid_endpoint_map.insert(std::make_pair(pid, map));
+                    pid_endpoint_map.emplace(pid, std::map<std::string, std::shared_ptr<TabletClient>>());
                 }
-                pid_endpoint_map[pid].insert(std::make_pair(endpoint, tablets_iter->second->client_));
+                pid_endpoint_map[pid].emplace(endpoint, tablets_iter->second->client_);
             }
         }
     }
@@ -3101,6 +3107,7 @@ void NameServerImpl::DropTableInternel(const DropTableRequest& request, GeneralR
             PDLOG(INFO, "drop table. tid[%u] pid[%u] endpoint[%s]", tid, pkv.first, kv.first.c_str());
         }
     }
+    std::vector<uint64_t> id_vec;  // for cancel op
     {
         std::lock_guard<std::mutex> lock(mu_);
         if (!request.db().empty()) {
@@ -3109,7 +3116,7 @@ void NameServerImpl::DropTableInternel(const DropTableRequest& request, GeneralR
                 code = 304;
             } else {
                 PDLOG(INFO, "delete table node[%s/%u]", zk_path_.db_table_data_path_.c_str(), tid);
-                db_table_info_[request.db()].erase(name);
+                db_table_info_[db].erase(name);
             }
         } else {
             if (IsClusterMode() && !zk_client_->DeleteNode(zk_path_.table_data_path_ + "/" + name)) {
@@ -3127,7 +3134,7 @@ void NameServerImpl::DropTableInternel(const DropTableRequest& request, GeneralR
                     continue;
                 }
                 if (DropTableRemoteOP(name, db, kv.first, INVALID_PARENT_ID,
-                                      FLAGS_name_server_task_concurrency_for_replica_cluster) <  0) {
+                                      FLAGS_name_server_task_concurrency_for_replica_cluster) < 0) {
                     PDLOG(WARNING, "create DropTableRemoteOP for replica cluster failed, table_name: %s, alias: %s",
                           name.c_str(), kv.first.c_str());
                     code = 505;
@@ -3135,14 +3142,53 @@ void NameServerImpl::DropTableInternel(const DropTableRequest& request, GeneralR
                 }
             }
         }
-        response.set_code(code);
-        code == 0 ? response.set_msg("ok") : response.set_msg("drop table error");
-        if (task_ptr) {
-            if (code != 0) {
-                task_ptr->set_status(::openmldb::api::TaskStatus::kFailed);
-            } else {
-                task_ptr->set_status(::openmldb::api::TaskStatus::kDone);
+
+        for (auto& op_list : task_vec_) {
+            if (op_list.empty()) {
+                continue;
             }
+            for (auto& op_data : op_list) {
+                if (op_data->op_info_.for_replica_cluster() == 1 ||
+                        (task_ptr && task_ptr->op_id() == op_data->op_info_.op_id())) {
+                    continue;
+                }
+                if (op_data->op_info_.db() == db && op_data->op_info_.name() == name) {
+                    if (op_data->op_info_.task_status() == ::openmldb::api::kInited ||
+                         (op_data->op_info_.task_status() == ::openmldb::api::kDoing)) {
+                        op_data->op_info_.set_task_status(::openmldb::api::kCanceled);
+                        for (auto& task : op_data->task_list_) {
+                            task->task_info_->set_status(::openmldb::api::kCanceled);
+                        }
+                        id_vec.push_back(op_data->op_info_.op_id());
+                        PDLOG(INFO, "cancel op %lu", op_data->op_info_.op_id());
+                    }
+                }
+            }
+        }
+    }
+    if (!id_vec.empty()) {
+        std::set<std::string> endpoint_set;
+        for (const auto& pkv : pid_endpoint_map) {
+            for (const auto& kv : pkv.second) {
+                if (endpoint_set.find(kv.first) != endpoint_set.end()) {
+                    continue;
+                }
+                endpoint_set.insert(kv.first);
+                for (auto op_id : id_vec) {
+                    if (!kv.second->CancelOP(op_id)) {
+                        PDLOG(WARNING, "tablet[%s] cancel op [%lu] failed", kv.first.c_str(), op_id);
+                    }
+                }
+            }
+        }
+    }
+    response.set_code(code);
+    code == 0 ? response.set_msg("ok") : response.set_msg("drop table error");
+    if (task_ptr) {
+        if (code != 0) {
+            task_ptr->set_status(::openmldb::api::TaskStatus::kFailed);
+        } else {
+            task_ptr->set_status(::openmldb::api::TaskStatus::kDone);
         }
     }
     if (IsClusterMode()) {
