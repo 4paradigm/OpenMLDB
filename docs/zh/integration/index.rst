@@ -6,8 +6,7 @@
     :maxdepth: 1
 
     online_datasources/index
-    offline_datasources
+    offline_data_source/index
     deploy_integration/index
-    supervise_integration
 
 
