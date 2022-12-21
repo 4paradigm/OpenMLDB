@@ -16,7 +16,7 @@ docker run -it 4pdosc/openmldb:0.6.9 bash
 
 成功启动容器以后，本教程中的后续命令默认均在容器内执行。
 
-如果你需要从容器外访问容器内的 OpenMLDB 服务端，请参考[CLI/SDK->容器onebox](../reference/ip_tips.md#clisdk-容器onebox)。
+如果你需要从容器外访问容器内的 OpenMLDB 服务端，请参考 [CLI/SDK-容器 onebox](../reference/ip_tips.md#clisdk-容器onebox)。
 
 ### 下载样例数据
 

@@ -35,7 +35,7 @@ OpenMLDB 有两种部署模式：集群版 (cluster version) 和单机版 (stand
 离线模式下，默认任务是异步模式，执行以下命令可以设置为同步模式，这样命令行会阻塞等待直到离线任务完成。
 
 ```SQL
-set @@sync_job = true;
+> SET @@sync_job = true;
 ```
 
 集群版命令行下执行以下命令切换到在线执行模式。在该模式下，只能导入/插入以及查询在线数据。
@@ -60,7 +60,7 @@ set @@sync_job = true;
 - 执行模式
   - 单机版不支持
   - 集群版可以配置执行模式: `SET @@execute_mode = ...`
-- `CREAT TABLE`[建表语句](../reference/sql/ddl/CREATE_TABLE_STATEMENT.md)的使用
+- `CREAT TABLE` [建表语句](../reference/sql/ddl/CREATE_TABLE_STATEMENT.md)的使用
   - 单机版不支持配置分布式的属性
   - 集群版支持配置分布式属性：包括 `REPLICANUM`, `DISTRIBUTION`, `PARTITIONNUM`
 - `SELECT INTO` 语句的使用

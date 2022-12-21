@@ -1,6 +1,6 @@
 # 快速上手
 
-OpenMLDB 提供[单机版和集群版](../tutorial/standalone_vs_cluster.md)。本文将演示集群版 OpenMLDB 的基本使用流程：建立数据库、导入数据、离线特征计算、SQL 方案上线、在线实时特征计算。单机版使用流程演示可参考[单机版使用流程文档](../tutorial/standalone_use.md)。
+OpenMLDB 提供[单机版和集群版](../tutorial/standalone_vs_cluster.md)。本文将演示集群版 OpenMLDB 的基本使用流程：建立数据库、导入数据、离线特征计算、SQL 方案上线、在线实时特征计算，希望用户能够快速上手和了解 OpenMLDB。单机版使用流程演示可参考[单机版使用流程文档](../tutorial/standalone_use.md)。
 
 ## 准备
 
@@ -50,7 +50,9 @@ OpenMLDB 的工作流程一般包含：建立数据库和表、离线数据准�
 
 集群版 OpenMLDB 需要分别管理离线数据和在线数据。因此在完成 SQL 方案上线后，必须做在线数据的准备步骤。
 
+```{note}
 以下演示的命令如无特别说明，默认均在集群版 OpenMLDB CLI 下执行（CLI 命令以提示符 `>` 开头以作区分）。
+```
 
 ### 1. 创建数据库和表
 
@@ -94,13 +96,13 @@ OpenMLDB 的工作流程一般包含：建立数据库和表、离线数据准�
 > LOAD DATA INFILE 'file:///work/taxi-trip/data/data.parquet' INTO TABLE demo_table1 options(format='parquet', mode='append');
 ```
 
-注意，`LOAD DATA` 命令为非阻塞命令（请参考 [`LOAD DATA` 文档](../openmldb_sql/dml/LOAD_DATA_STATEMENT.md），可以通过 [`SHOW JOBS`](../openmldb_sql/task_manage/SHOW_JOBS.md) 等离线任务管理命令来查看任务进度。
+注意，[`LOAD DATA` 命令](../openmldb_sql/dml/LOAD_DATA_STATEMENT.md)为非阻塞命令，可以通过 [`SHOW JOBS`](../openmldb_sql/task_manage/SHOW_JOBS.md) 等离线任务管理命令来查看任务进度。
 
 如果希望预览数据，可以使用 `SELECT * FROM demo_table1` 语句，推荐 `SELECT` 前将离线命令设置为同步模式：
 
 ```sql
 SET @@sync_job=true;
--- 如果数据较多容易超时（默认1min），请调大job timeout: SET @@job_timeout=600000;
+-- 如果数据较多容易超时（默认 timeout 为 1 分钟），请调大 job timeout: SET @@job_timeout=600000;
 SELECT * FROM demo_table1;
 ```
 
@@ -237,7 +239,7 @@ SELECT c1, c2, sum(c3) OVER w1 AS w1_c3_sum FROM demo_table1 WINDOW w1 AS (PARTI
 
 示例 1 的具体计算逻辑如下（实际计算中会进行优化，减少计算量）：
 
-1. 根据请求行与窗口的`PARTITION BY`分区，筛选出c1为"aaa"的行，并按c6从小到大排序。所以理论上，分区排序后的中间数据表，如下表所示。其中，请求行为排序后的第一行。
+1. 根据请求行与窗口的 `PARTITION BY` 分区，筛选出 c1 为"aaa"的行，并按 c6 从小到大排序。所以理论上，分区排序后的中间数据表，如下表所示。其中，请求行为排序后的第一行。
 
       ```SQL
       ----- ---- ---- ---------- ----------- --------------- ------------

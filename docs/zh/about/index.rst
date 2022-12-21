@@ -7,5 +7,4 @@
 
     intro
     community
-    release_notes
-    release_notes <https://github.com/4paradigm/OpenMLDB/blob/main/CHANGELOG.md>
+    Changelog <https://github.com/4paradigm/OpenMLDB/blob/main/CHANGELOG.md>
