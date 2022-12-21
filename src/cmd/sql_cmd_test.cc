@@ -614,10 +614,10 @@ TEST_P(DBSDKTest, Deploy) {
     HandleSQL("use test1;");
     std::string create_sql =
         "create table trans (c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, "
-        "c8 date, index(key=c3, ts=c7, abs_ttl=0, ttl_type=absolute));";
+        "c8 date, `index` bigint, index(key=c3, ts=c7, abs_ttl=0, ttl_type=absolute));";
     HandleSQL(create_sql);
     if (!cs->IsClusterMode()) {
-        HandleSQL("insert into trans values ('aaa', 11, 22, 1.2, 1.3, 1635247427000, \"2021-05-20\");");
+        HandleSQL("insert into trans values ('aaa', 11, 22, 1.2, 1.3, 1635247427000, \"2021-05-20\", 113);");
     }
 
     std::string deploy_sql =

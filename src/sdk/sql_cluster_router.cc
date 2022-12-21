@@ -3268,7 +3268,7 @@ hybridse::sdk::Status SQLClusterRouter::HandleDeploy(const std::string& db,
         if (it == codec::DATA_TYPE_STR_MAP.end()) {
             return {StatusCode::kCmdError, "illegal data type"};
         }
-        str_stream << col.name() << " " << it->second;
+        str_stream << "`" << col.name() << "` " << it->second;
         if (idx != input_schema->size() - 1) {
             str_stream << ", ";
         }
