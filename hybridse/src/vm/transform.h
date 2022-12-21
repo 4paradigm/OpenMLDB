@@ -295,8 +295,6 @@ class RequestModeTransformer : public BatchModeTransformer {
         return batch_request_info_;
     }
     Status ValidatePlan(PhysicalOpNode* in) override;
-    Status ValidateRequestTable(PhysicalOpNode* in,
-                               PhysicalOpNode** request_table);
 
  protected:
     void ApplyPasses(PhysicalOpNode* node, PhysicalOpNode** output) override;
@@ -317,6 +315,8 @@ class RequestModeTransformer : public BatchModeTransformer {
                                         PhysicalRequestUnionNode** output);
 
     absl::StatusOr<PhysicalOpNode*> ResolveCTERef(absl::string_view tb_name, bool is_primary_path) override;
+
+    Status ValidateRequestTable(PhysicalOpNode* in, PhysicalOpNode** request_table);
 
  private:
     // Optimize simple project node which is the producer of window project

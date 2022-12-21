@@ -15,6 +15,8 @@
  */
 
 #include "sdk/sql_sdk_base_test.h"
+
+#include "absl/strings/match.h"
 #include "sdk/base_impl.h"
 
 namespace openmldb {
@@ -283,26 +285,21 @@ void SQLSDKTest::CovertHybridSERowToRequestRow(hybridse::codec::RowView* row_vie
 }
 void SQLSDKTest::BatchExecuteSQL(hybridse::sqlcase::SqlCase& sql_case,  // NOLINT
                                  std::shared_ptr<SQLRouter> router, const std::vector<std::string>& tbEndpoints) {
-    DLOG(INFO) << "BatchExecuteSQL BEGIN";
     hybridse::sdk::Status status;
-    DLOG(INFO) << "format sql begin";
     // execute SQL
     std::string sql = sql_case.sql_str();
     for (size_t i = 0; i < sql_case.inputs().size(); i++) {
         std::string placeholder = "{" + std::to_string(i) + "}";
         boost::replace_all(sql, placeholder, sql_case.inputs()[i].name_);
     }
-    DLOG(INFO) << "format sql 1";
     boost::replace_all(
         sql, "{auto}",
         hybridse::sqlcase::SqlCase::GenRand("auto_t") + std::to_string(static_cast<int64_t>(time(NULL))));
     for (size_t endpoint_id = 0; endpoint_id < tbEndpoints.size(); endpoint_id++) {
         boost::replace_all(sql, "{tb_endpoint_" + std::to_string(endpoint_id) + "}", tbEndpoints.at(endpoint_id));
     }
-    DLOG(INFO) << "format sql done";
-    LOG(INFO) << sql;
     std::string lower_sql = boost::to_lower_copy(sql);
-    if (boost::algorithm::starts_with(lower_sql, "select")) {
+    if (absl::StartsWith(lower_sql, "select") || absl::StartsWith(lower_sql, "with")) {
         std::shared_ptr<hybridse::sdk::ResultSet> rs;
         // parameterized batch query
         if (!sql_case.parameters().columns_.empty()) {
@@ -325,13 +322,13 @@ void SQLSDKTest::BatchExecuteSQL(hybridse::sqlcase::SqlCase& sql_case,  // NOLIN
             rs = router->ExecuteSQL(sql_case.db(), sql, &status);
         }
         if (!sql_case.expect().success_) {
-            if ((rs)) {
+            if (rs) {
                 FAIL() << "sql case expect success == false";
             }
             return;
         }
 
-        if (!rs) FAIL() << "sql case expect success == true" << status.msg;
+        if (!rs) FAIL() << "sql case expect success == true: " << status.msg;
         std::vector<hybridse::codec::Row> rows;
         hybridse::type::TableDef output_table;
         if (!sql_case.expect().schema_.empty() || !sql_case.expect().columns_.empty()) {
@@ -347,11 +344,11 @@ void SQLSDKTest::BatchExecuteSQL(hybridse::sqlcase::SqlCase& sql_case,  // NOLIN
         if (sql_case.expect().count_ > 0) {
             ASSERT_EQ(sql_case.expect().count_, static_cast<int64_t>(rs->Size()));
         }
-    } else if (boost::algorithm::starts_with(lower_sql, "create")) {
+    } else if (absl::StartsWith(lower_sql, "create")) {
         bool ok = router->ExecuteDDL(sql_case.db(), sql, &status);
         router->RefreshCatalog();
         ASSERT_EQ(sql_case.expect().success_, ok) << status.msg;
-    } else if (boost::algorithm::starts_with(lower_sql, "insert")) {
+    } else if (absl::StartsWith(lower_sql, "insert")) {
         bool ok = router->ExecuteInsert(sql_case.db(), sql, &status);
         ASSERT_EQ(sql_case.expect().success_, ok) << status.msg;
     } else {
@@ -384,20 +381,16 @@ void SQLSDKQueryTest::RequestExecuteSQL(hybridse::sqlcase::SqlCase& sql_case,  /
     }
     boost::replace_all(sql, "{auto}", hybridse::sqlcase::SqlCase::GenRand("auto_t") +
             std::to_string(static_cast<int64_t>(time(NULL))));
-    LOG(INFO) << sql;
     std::string lower_sql = sql;
     boost::to_lower(lower_sql);
-    if (boost::algorithm::starts_with(lower_sql, "select")) {
-        LOG(INFO) << "GetRequestRow start";
+    if (absl::StartsWith(lower_sql, "select") || absl::StartsWith(lower_sql, "with")) {
         auto request_row = router->GetRequestRow(sql_case.db(), sql, &status);
-        LOG(INFO) << "GetRequestRow done";
         // success check
         LOG(INFO) << "sql case success check: required success " << (sql_case.expect().success_ ? "true" : "false");
         if (!sql_case.expect().success_) {
             if ((request_row)) {
                 FAIL() << "sql case expect success == false";
             }
-            LOG(INFO) << "sql case success false check done!";
             return;
         }
         if (!request_row) {
@@ -447,7 +440,6 @@ void SQLSDKQueryTest::RequestExecuteSQL(hybridse::sqlcase::SqlCase& sql_case,  /
                 ASSERT_TRUE(ok);
             }
         }
-        LOG(INFO) << "Request execute sql done!";
         ASSERT_FALSE(results.empty());
         std::vector<hybridse::codec::Row> rows;
         hybridse::type::TableDef output_table;
@@ -464,9 +456,9 @@ void SQLSDKQueryTest::RequestExecuteSQL(hybridse::sqlcase::SqlCase& sql_case,  /
         if (sql_case.expect().count_ > 0) {
             ASSERT_EQ(sql_case.expect().count_, static_cast<int64_t>(results.size()));
         }
-    } else if (boost::algorithm::starts_with(lower_sql, "create")) {
+    } else if (absl::StartsWith(lower_sql, "create")) {
         FAIL() << "create sql not support in request mode";
-    } else if (boost::algorithm::starts_with(lower_sql, "insert")) {
+    } else if (absl::StartsWith(lower_sql, "insert")) {
         FAIL() << "insert sql not support in request mode";
     } else {
         FAIL() << "sql not support in request mode";
@@ -537,7 +529,7 @@ void SQLSDKQueryTest::BatchRequestExecuteSQLWithCommonColumnIndices(hybridse::sq
     LOG(INFO) << sql;
     std::string lower_sql = sql;
     boost::to_lower(lower_sql);
-    if (!boost::algorithm::starts_with(lower_sql, "select")) {
+    if (!(absl::StartsWith(lower_sql, "select") || absl::StartsWith(lower_sql, "with"))) {
         FAIL() << "sql not support in request mode";
     }
 

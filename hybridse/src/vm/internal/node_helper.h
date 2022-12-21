@@ -51,6 +51,23 @@ Status MapNode(PhysicalPlanContext* plan_ctx, PhysicalOpNode* input, PhysicalOpN
     return Status::OK();
 }
 
+template <typename BinOp, typename GetKids, typename State>
+State ReduceNode(const PhysicalOpNode* root, State state, BinOp&& op, GetKids&& get_kids) {
+    state = std::forward<BinOp>(op)(std::move(state), root);
+
+    auto kids = std::forward<GetKids>(get_kids)(root);
+    for (auto& kid : kids) {
+        state = ReduceNode(kid, std::move(state), op, get_kids);
+    }
+
+    return state;
+}
+
+template <typename BinOp, typename State>
+State ReduceNodeAll(const PhysicalOpNode* root, State state, BinOp&& op) {
+    return ReduceNode(root, state, op, [](const PhysicalOpNode* node) { return node->GetProducers(); });
+}
+
 }  // namespace internal
 }  // namespace vm
 }  // namespace hybridse

@@ -327,7 +327,8 @@ struct ExplainOutput {
     std::string ir;               ///< Codegen IR String
     vm::Schema output_schema;     ///< The schema of query result
     vm::Router router;            ///< The Router for request-mode query
-    uint32_t limit_cnt;                ///< The limit count
+    uint32_t limit_cnt;           ///< The limit count
+    std::set<std::pair<std::string, std::string>> dependent_tables;
 };
 
 
@@ -419,8 +420,13 @@ class Engine {
     EngineOptions GetEngineOptions();
 
  private:
+    // Get all dependent (db, table) info from logic plan
     bool GetDependentTables(const node::PlanNode* node, const std::string& default_db,
                             std::set<std::pair<std::string, std::string>>* db_tables, base::Status& status);  // NOLINT
+    // Get all dependent (db, table) info from physical plan
+    Status GetDependentTables(const PhysicalOpNode*, std::set<std::pair<std::string, std::string>>*)
+        ABSL_ATTRIBUTE_NONNULL();
+
     std::shared_ptr<CompileInfo> GetCacheLocked(const std::string& db,
                                                 const std::string& sql,
                                                 EngineMode engine_mode);
