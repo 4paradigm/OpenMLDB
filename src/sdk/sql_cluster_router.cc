@@ -3385,10 +3385,11 @@ hybridse::sdk::Status SQLClusterRouter::GetNewIndex(
                 auto& old_column_key = it->second;
                 // type mismatch, return here and deploy failed
                 if (old_column_key.ttl().ttl_type() != column_key.ttl().ttl_type()) {
-                    return {StatusCode::kCmdError, "new ttl type " +
-                                                       ::openmldb::type::TTLType_Name(column_key.ttl().ttl_type()) +
-                                                       " doesn't match the old ttl type " +
-                                                       ::openmldb::type::TTLType_Name(old_column_key.ttl().ttl_type())};
+                    return {StatusCode::kCmdError, absl::StrCat("new ttl type ",
+                                                       ::openmldb::type::TTLType_Name(column_key.ttl().ttl_type()),
+                                                       " doesn't match the old ttl type ",
+                                                       ::openmldb::type::TTLType_Name(old_column_key.ttl().ttl_type()),
+                                                       " in table ", table_name)};
                 } else {
                     // type match, if old ttl == 0, won't update
                     ::openmldb::type::TTLType type = column_key.ttl().ttl_type();
