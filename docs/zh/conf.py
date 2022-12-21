@@ -90,7 +90,7 @@ html_theme = 'sphinx_book_theme'
 html_theme_options = {
 #    "sidebar_hide_name": True,
     "logo_only": True,
-    "repository_url": "https://github.com/https://github.com/4paradigm/OpenMLDB/tree/main/docs/zh",
+    "repository_url": "https://github.com/4paradigm/OpenMLDB/tree/main/docs/zh",
     "use_repository_button": True,
 }
 
