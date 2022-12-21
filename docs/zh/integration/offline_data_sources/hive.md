@@ -64,30 +64,32 @@
 | DATE              | DATE          |
 | TIMESTAMP         | TIMESTAMP     |
 
-## 导入
+## 导入 Hive 数据到 OpenMLDB
 
 对于 Hive 数据源的导入是通过 API [`LOAD DATA INFILE`](../../openmldb_sql/dml/LOAD_DATA_STATEMENT.md) 进行支持，通过使用特定的 URI 接口 `hive://[db].table` 的格式进行导入 Hive 内的数据。注意：
 
 - 离线和在线引擎均可以导入 Hive 数据源
 - 参数 `deep_copy` 仅支持取值 `true` 
+- `OPTIONS` 参数仅有 `deep_copy` 和 `mode` 有效
 
 举例：
 
 ```sql
-LOAD DATA INFILE 'hive://db.t1' INTO TABLE t1 OPTIONS(delimiter=',', deep_copy=true);
+LOAD DATA INFILE 'hive://db1.t1' INTO TABLE t1 OPTIONS(deep_copy=true);
 ```
 
-## 导出
+## 导出 OpenMLDB 数据到 Hive
 
 对于 Hive 数据源的导出是通过 API [`SELECT INTO`](../../openmldb_sql/dql/SELECT_INTO_STATEMENT.md) 进行支持，通过使用特定的 URI 接口 `hive://[db].table` 的格式进行导出到 Hive 数仓。注意：
 
 - 如果不指定数据库名字，则会使用默认数据库名字 `default_db`
 - 如果指定数据库名字，则该数据库必须已经存在，目前不支持对于不存在的数据库进行自动创建
 - 如果不指定表格名字，则会在 Hive 内自动创建对应名字的表格
+- `OPTIONS` 参数均不生效
 
 举例：
 
 ```sql
-SELECT col1, col2, col3 FROM t1 INTO OUTFILE 'hive://db.t1' OPTIONS (delimiter=',');
+SELECT col1, col2, col3 FROM t1 INTO OUTFILE 'hive://db1.t1';
 ```
 

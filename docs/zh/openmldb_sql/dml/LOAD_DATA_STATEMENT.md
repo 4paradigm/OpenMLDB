@@ -36,7 +36,7 @@ URI
 FilePathPattern
 				::= string_literal
 ```
-其中`FilePathPattern`支持通配符`*`，比如可以设成`/test/*.csv`，匹配规则和`ls FilePathPattern`一致。OpenMLDB 也支持从 Hive 导入数据，但需要额外的设置，详情见 [Hive 支持](../../integration/offline_data_sources/hive.md)。
+其中`FilePathPattern`支持通配符`*`，比如可以设成`/test/*.csv`，匹配规则和`ls FilePathPattern`一致。
 
 下表展示了`LOAD DATA INFILE`语句的配置项。
 
@@ -76,6 +76,10 @@ FilePathPattern
 LOAD DATA INFILE 'file_name' INTO TABLE 'table_name' OPTIONS (key = value, ...);
 ```
 
+## Hive 支持
+
+OpenMLDB 支持从 Hive 导入数据，但需要额外的设置和功能限制，详情见 [Hive 支持](../../integration/offline_data_sources/hive.md)。
+
 ## Examples:
 
 从`data.csv`文件读取数据到表`t1`在线存储中。并使用`,`作为列分隔符
@@ -101,6 +105,6 @@ LOAD DATA INFILE 'data_path' INTO TABLE t1 OPTIONS(deep_copy=false);
 
 ```sql
 set @@execute_mode='offline';
-LOAD DATA INFILE 'hive://db.t1' INTO TABLE t1 OPTIONS(delimiter=',', deep_copy=true);
+LOAD DATA INFILE 'hive://db1.t1' INTO TABLE t1;
 ```
 
