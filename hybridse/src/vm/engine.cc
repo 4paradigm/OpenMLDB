@@ -69,6 +69,12 @@ void Engine::InitializeUnsafeRowOptFlag(bool isUnsafeRowOpt) {
 
 bool Engine::GetDependentTables(const std::string& sql, const std::string& db, EngineMode engine_mode,
                                 std::set<std::pair<std::string, std::string>>* db_tables, base::Status& status) {
+    if (nullptr == db_tables) {
+        status.code = common::kNullPointer;
+        status.msg = "fail to get sql depend tables, output tables vector is null";
+        return false;
+    }
+
     auto info = std::make_shared<hybridse::vm::SqlCompileInfo>();
     info->get_sql_context().sql = sql;
     info->get_sql_context().db = db;
@@ -89,12 +95,8 @@ bool Engine::GetDependentTables(const std::string& sql, const std::string& db, E
         return false;
     }
 
-    auto s = GetDependentTables(physical_plan, db_tables);
-    if (!s.isOK()) {
-        LOG(ERROR) << s;
-        return false;
-    }
-    return true;
+    status = GetDependentTables(physical_plan, db_tables);
+    return status.isOK();
 }
 
 bool Engine::GetDependentTables(const node::PlanNode* node, const std::string& default_db,
@@ -166,16 +168,7 @@ Status Engine::GetDependentTables(const PhysicalOpNode* root, std::set<std::pair
             }
             return init;
         },
-        [](const PhysicalOpNode* node) {
-            auto kids = node->GetProducers();
-            if (node->GetOpType() == kPhysicalOpRequestUnion) {
-                auto* request_union = dynamic_cast<const PhysicalRequestUnionNode*>(node);
-                for (auto& [kid, op] : request_union->window_unions().window_unions_) {
-                    kids.push_back(kid);
-                }
-            }
-            return kids;
-        });
+        [](const PhysicalOpNode* node) { return node->GetDependents(); });
     return Status::OK();
 }
 

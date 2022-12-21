@@ -63,11 +63,6 @@ State ReduceNode(const PhysicalOpNode* root, State state, BinOp&& op, GetKids&& 
     return state;
 }
 
-template <typename BinOp, typename State>
-State ReduceNodeAll(const PhysicalOpNode* root, State state, BinOp&& op) {
-    return ReduceNode(root, state, op, [](const PhysicalOpNode* node) { return node->GetProducers(); });
-}
-
 }  // namespace internal
 }  // namespace vm
 }  // namespace hybridse

@@ -383,6 +383,9 @@ class PhysicalOpNode : public node::NodeBase<PhysicalOpNode> {
 
     virtual std::string SchemaToString(const std::string &tab) const;
 
+    // get a list of PhysicalOpNodes that current node depends on
+    virtual std::vector<PhysicalOpNode*> GetDependents() const;
+
     const std::vector<PhysicalOpNode *> &GetProducers() const {
         return producers_;
     }
@@ -1129,6 +1132,7 @@ class PhysicalWindowAggrerationNode : public PhysicalProjectNode {
         fn_infos_.push_back(&window_join.condition_.fn_info());
     }
 
+    std::vector<PhysicalOpNode *> GetDependents() const override;
     bool AddWindowUnion(PhysicalOpNode *node);
 
     const bool instance_not_in_window() const {
@@ -1469,6 +1473,9 @@ class PhysicalRequestUnionNode : public PhysicalBinaryNode {
         fn_infos_.push_back(&window_union.index_key_.fn_info());
         return true;
     }
+
+    std::vector<PhysicalOpNode *> GetDependents() const override;
+
     const bool instance_not_in_window() const {
         return instance_not_in_window_;
     }
