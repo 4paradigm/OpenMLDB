@@ -54,11 +54,9 @@ set @@sync_job = true;
 
 集群版和单机版可以支持的 SQL 查询能力区别包括：
 
-集群版和单机版可以支持的 SQL 查询能力区别包括：
-
 - [离线任务管理语句](../openmldb_sql/task_manage/reference.md)
   - 单机版不支持
-  - 集群版支持离线任务管理语句，包括:`SHOW JOBS`, `SHOW JOB`等
+  - 集群版支持离线任务管理语句，包括：`SHOW JOBS`, `SHOW JOB` 等
 - 执行模式
   - 单机版不支持
   - 集群版可以配置执行模式: `SET @@execute_mode = ...`
@@ -69,9 +67,9 @@ set @@sync_job = true;
   - 单机版下执行 `SELECT INTO`，输出是文件
   - 集群版执行 `SELECT INTO`，输出是目录
 - 集群版在线执行模式下，只能支持简单的单表查询语句：
-  - 仅支持列，表达式，以及单行处理函数（Scalar Function)以及它们的组合表达式运算
-  - 单表查询不包含[GROUP BY子句](../reference/sql/dql/JOIN_CLAUSE.md)，[HAVING子句](../reference/sql/dql/HAVING_CLAUSE.md)以及[WINDOW子句](../reference/sql/dql/WINDOW_CLAUSE.md)
-  - 单表查询只涉及单张表的计算，不设计[JOIN](../reference/sql/dql/JOIN_CLAUSE.md)多张表的计算
+  - 仅支持列、表达式，以及单行处理函数（Scalar Function)以及它们的组合表达式运算
+  - 单表查询不包含 [GROUP BY子句](../reference/sql/dql/JOIN_CLAUSE.md)、[HAVING子句](../reference/sql/dql/HAVING_CLAUSE.md)以及[WINDOW子句](../reference/sql/dql/WINDOW_CLAUSE.md)
+  - 单表查询只涉及单张表的计算，不涉及 [JOIN](../reference/sql/dql/JOIN_CLAUSE.md)多张表的计算
 
 ### **SDK** **支持**
 
