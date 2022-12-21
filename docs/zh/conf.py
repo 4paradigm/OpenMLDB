@@ -92,6 +92,8 @@ html_theme_options = {
     "logo_only": True,
     "repository_url": "https://github.com/4paradigm/OpenMLDB/tree/main/docs/zh",
     "use_repository_button": True,
+    "use_issues_button": True,
+    "use_edit_page_button": True,
 }
 
 
