@@ -1,4 +1,4 @@
-# [Changelog](https://github.com/4paradigm/OpenMLDB/blob/main/CHANGELOG.md)
+# Release Notes
 
 ## v0.6.9 Release Notes
 
