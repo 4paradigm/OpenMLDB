@@ -12,3 +12,5 @@ java -cp target/demo-1.0-SNAPSHOT.jar com.openmldb.demo.App
 ```
 
 If got some errors, check the log in console.
+
+If macOS, add openmldb-native dependency and use macos version.

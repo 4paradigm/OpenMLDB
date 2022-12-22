@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
- package com.openmldb.demo;
+package com.openmldb.demo;
 
 import java.sql.Date;
 import java.sql.PreparedStatement;
@@ -57,7 +57,7 @@ public class App {
             demo.requestSelect();
             // 删除表
             demo.dropTable();
-          	// 删除数据库
+            // 删除数据库
             demo.dropDatabase();
             System.out.println("Succeed");
         } catch (Exception e) {

@@ -391,7 +391,9 @@ try {
 
 ### A Complete Example
 
-See [Java quickstart demo](https://github.com/4paradigm/OpenMLDB/tree/main/demo/java_quickstart/demo), you can run:
+See [Java quickstart demo](https://github.com/4paradigm/OpenMLDB/tree/main/demo/java_quickstart/demo). If macOS, add openmldb-native dependency and use the macos version.
+
+You can run:
 ```
 mvn package
 java -cp target/demo-1.0-SNAPSHOT.jar com.openmldb.demo.App
