@@ -51,7 +51,7 @@ cd taxi-trip
 
 以下演示的命令如无特别说明，默认均集群版 OpenMLDB CLI 下执行（CLI 命令以提示符 `>` 开头以作区分）。
 
-1. ### 创建数据库和表
+### 1. 创建数据库和表
 
 ```sql
 
@@ -63,7 +63,7 @@ cd taxi-trip
 
 ```
 
-2. ### 数据准备
+### 2. 数据准备
 
 导入之前下载的样例数据作为训练数据，用于离线和在线特征计算。
 
@@ -113,7 +113,7 @@ cd taxi-trip
 
 ```
 
-3. ### 离线特征计算
+### 3. 离线特征计算
 
 执行 SQL进行特征抽取，并且将生成的特征存储在一个文件中，供后续的模型训练使用。
 
@@ -123,7 +123,7 @@ cd taxi-trip
 
 ```
 
-4. ### SQL 方案上线
+### 4. SQL 方案上线
 
 将探索好的 SQL 方案部署到线上，注意部署上线的 SQL 方案需要与对应的离线特征计算的 SQL 方案保持一致。
 
@@ -159,7 +159,7 @@ cd taxi-trip
 
 ```
 
-5. ### 退出 CLI
+### 5. 退出 CLI
 
 ```sql
 
@@ -169,7 +169,7 @@ cd taxi-trip
 
 至此已经完成了全部基于 OpenMLDB CLI 的开发部署工作，并且已经回到了操作系统命令行下。
 
-6. ### 实时特征计算
+### 6. 实时特征计算
 
 实时线上服务可以通过如下 Web API 提供服务：
 
@@ -203,6 +203,6 @@ curl http://127.0.0.1:8080/dbs/demo_db/deployments/demo_data_service -X POST -d'
 
 说明：
 
-- api server 执行请求，可以支持批请求，通过 `input` 字段支持数组。每行input单独进行 request 计算。详细参数格式请参考[RESTful API](../reference/rest_api)。
+- api server 执行请求，可以支持批请求，通过 `input` 字段支持数组。每行 input 单独进行 request 计算。详细参数格式请参考 [REST API](../reference/rest_api)。
 
 - request 结果说明请参考[实时特征计算的结果说明](../quickstart/openmldb_quickstart#实时特征计算的结果说明)。
