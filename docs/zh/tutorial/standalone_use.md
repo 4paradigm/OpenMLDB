@@ -10,7 +10,7 @@
 
 执行以下命令拉取 OpenMLDB 镜像，并启动 Docker 容器：
 
-```Shell
+```bash
 docker run -it 4pdosc/openmldb:0.6.9 bash
 ```
 
@@ -22,7 +22,7 @@ docker run -it 4pdosc/openmldb:0.6.9 bash
 
 执行以下命令下载后续流程中使用的样例数据：
 
-```Shell
+```bash
 curl https://openmldb.ai/demo/data.csv --output /work/taxi-trip/data/data.csv
 ```
 
@@ -173,7 +173,7 @@ cd taxi-trip
 
 实时线上服务可以通过如下 Web API 提供服务：
 
-```
+```bash
 
 http://127.0.0.1:8080/dbs/demo_db/deployments/demo_data_service
 

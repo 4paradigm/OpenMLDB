@@ -12,7 +12,7 @@ OpenMLDB 提供[单机版和集群版](../tutorial/standalone_vs_cluster.md)。�
 
 执行以下命令拉取 OpenMLDB 镜像，并启动 Docker 容器：
 
-```Shell
+```bash
 docker run -it 4pdosc/openmldb:0.6.9 bash
 ```
 
@@ -22,7 +22,7 @@ docker run -it 4pdosc/openmldb:0.6.9 bash
 
 执行以下命令下载后续流程中使用的样例数据：
 
-```Shell
+```bash
 curl https://openmldb.ai/demo/data.parquet --output ./taxi-trip/data/data.parquet
 ```
 
@@ -30,13 +30,13 @@ curl https://openmldb.ai/demo/data.parquet --output ./taxi-trip/data/data.parque
 
 - 启动集群版 OpenMLDB 服务端
 
-```Shell
+```bash
 /work/init.sh
 ```
 
 - 启动集群版 OpenMLDB CLI 客户端
 
-```Shell
+```bash
 /work/openmldb/bin/openmldb --zk_cluster=127.0.0.1:2181 --zk_root_path=/openmldb --role=sql_client
 ```
 
@@ -201,7 +201,7 @@ curl https://openmldb.ai/demo/data.parquet --output ./taxi-trip/data/data.parque
 
 实时线上服务可以通过如下 Web API 提供服务：
 
-```Shell
+```bash
 http://127.0.0.1:9080/dbs/demo_db/deployments/demo_data_service
         \___________/      \____/              \_____________/
               |               |                        |
@@ -212,7 +212,7 @@ http://127.0.0.1:9080/dbs/demo_db/deployments/demo_data_service
 
 示例 1：
 
-```Shell
+```bash
 curl http://127.0.0.1:9080/dbs/demo_db/deployments/demo_data_service -X POST -d'{"input": [["aaa", 11, 22, 1.2, 1.3, 1635247427000, "2021-05-20"]]}'
 ```
 
@@ -224,7 +224,7 @@ curl http://127.0.0.1:9080/dbs/demo_db/deployments/demo_data_service -X POST -d'
 
 示例 2：
 
-```Shell
+```bash
 curl http://127.0.0.1:9080/dbs/demo_db/deployments/demo_data_service -X POST -d'{"input": [["aaa", 11, 22, 1.2, 1.3, 1637000000000, "2021-11-16"]]}'
 ```
 
@@ -236,7 +236,7 @@ curl http://127.0.0.1:9080/dbs/demo_db/deployments/demo_data_service -X POST -d'
 
 ### 实时特征计算的结果说明
 
-实时请求（执行 deployment），是请求模式（request 模式）的 SQL 执行。与批处理模式（batch模式）不同，请求模式只会对请求行（request row）进行 SQL 计算。在前面的示例中，就是 POST 的 input 作为请求行，假设这行数据存在于表 `demo_table1` 中，并对它执行 SQL：
+实时请求（执行 deployment），是请求模式（request 模式）的 SQL 执行。与批处理模式（batch 模式）不同，请求模式只会对请求行（request row）进行 SQL 计算。在前面的示例中，就是 POST 的 input 作为请求行，假设这行数据存在于表 `demo_table1` 中，并对它执行 SQL：
 
 ```SQL
 SELECT c1, c2, sum(c3) OVER w1 AS w1_c3_sum FROM demo_table1 WINDOW w1 AS (PARTITION BY demo_table1.c1 ORDER BY demo_table1.c6 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
@@ -244,7 +244,7 @@ SELECT c1, c2, sum(c3) OVER w1 AS w1_c3_sum FROM demo_table1 WINDOW w1 AS (PARTI
 
 示例 1 的具体计算逻辑如下（实际计算中会进行优化，减少计算量）：
 
-1. 根据请求行与窗口的 `PARTITION BY` 分区，筛选出 c1 为"aaa"的行，并按 c6 从小到大排序。所以理论上，分区排序后的中间数据表，如下表所示。其中，请求行为排序后的第一行。
+1. 根据请求行与窗口的 `PARTITION BY` 分区，筛选出 c1 列为 “aaa” 的行，并按 c6列从小到大排序。所以理论上，分区排序后的中间数据表，如下表所示。其中，请求行是排序后的第一行。
 
       ```SQL
       ----- ---- ---- ---------- ----------- --------------- ------------
@@ -256,8 +256,8 @@ SELECT c1, c2, sum(c3) OVER w1 AS w1_c3_sum FROM demo_table1 WINDOW w1 AS (PARTI
       ----- ---- ---- ---------- ----------- --------------- ------------
       ```
 
-2. 窗口范围是 `2 PRECEDING AND CURRENT ROW`，所以我们在上表中截取出真正的窗口，请求行就是最小的一行，往前2行都不存在，但窗口包含当前行，因此，窗口只有请求行这一行。
-3. 窗口聚合，对窗口内的数据（仅一行）进行 c3 求和，得到 22。于是输出结果为：
+2. 窗口范围是 `2 PRECEDING AND CURRENT ROW`，所以我们在上表中截取出真正的窗口，请求行就是最小的一行，往前 2 行都不存在，但窗口包含当前行，因此，窗口只有请求行这一行。
+3. 窗口聚合，对窗口内的数据（仅一行）进行 c3 列求和，得到 22。于是输出结果为：
 
       ```SQL
       ----- ---- ----------- 
@@ -269,7 +269,7 @@ SELECT c1, c2, sum(c3) OVER w1 AS w1_c3_sum FROM demo_table1 WINDOW w1 AS (PARTI
 
 示例 2 的具体计算逻辑如下：
 
-1. 根据请求行与窗口的 `PARTITION BY` 分区，筛选出 c1 为"aaa"的行，并按 c6 从小到大排序。所以理论上，分区排序后的中间数据表，如下表所示。其中，请求行为排序后的最后一行。
+1. 根据请求行与窗口的 `PARTITION BY` 分区，筛选出 c1 列为 “aaa” 的行，并按 c6 列从小到大排序。所以理论上，分区排序后的中间数据表，如下表所示。其中，请求行是排序后的最后一行。
 
       ```SQL
       ----- ---- ---- ---------- ----------- --------------- ------------
@@ -281,8 +281,8 @@ SELECT c1, c2, sum(c3) OVER w1 AS w1_c3_sum FROM demo_table1 WINDOW w1 AS (PARTI
       ----- ---- ---- ---------- ----------- --------------- ------------
       ```
 
-2. 窗口范围是 `2 PRECEDING AND CURRENT ROW`，所以我们在上表中截取出真正的窗口，请求行往前两行都均存在，同时也包含当前行，因此，窗口内有三行数据。
-3. 窗口聚合，对窗口内的数据（三行）进行 c3 求和，得到 22*3=66。于是输出结果为：
+2. 窗口范围是 `2 PRECEDING AND CURRENT ROW`，所以我们在上表中截取出真正的窗口，请求行往前 2 行都均存在，同时也包含当前行，因此，窗口内有三行数据。
+3. 窗口聚合，对窗口内的数据（三行）进行 c3 列求和，得到 22 * 3 = 66。于是输出结果为：
 
       ```SQL
       ----- ---- ----------- 
