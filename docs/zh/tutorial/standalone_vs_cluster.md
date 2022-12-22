@@ -1,10 +1,10 @@
 # 集群版和单机版区别
 
-OpenMLDB 有两种部署模式：集群版 (cluster version) 和单机版 (standalone vesion)。集群版适合涉及到大规模数据计算的生产环境，提供良好的可扩展性和高可用性；单机版适合于小数据场景或者试用目的，更加方便部署和使用。集群版和单机版在功能上完全一致，但是在某些方面上会有区别，本文将介绍集群版和单机版的各方面区别。
+OpenMLDB 有两种部署模式：集群版 (cluster) 和单机版 (standalone)。集群版适合涉及到大规模数据计算的生产环境，提供良好的可扩展性和高可用性；单机版适合于小数据场景或者试用目的，更加方便部署和使用。集群版和单机版在功能上完全一致，但是在某些方面上会有区别，本文将介绍集群版和单机版的各方面区别。
 
 ## 安装和部署的区别
 
-集群版和单机版有各自的部署方式，详情参考[安装部署详细说明](../deploy/install_deploy.md)。概括来说，主要的区别表现为：
+集群版和单机版有各自的部署方式，详情参考[安装部署详细说明](../deploy/install_deploy)。概括来说，主要的区别表现为：
 
 - 集群版需要安装和部署 zookeeper
 - 集群版需要安装 task-manager
@@ -32,7 +32,7 @@ OpenMLDB 有两种部署模式：集群版 (cluster version) 和单机版 (stand
 > SET @@execute_mode = "offline"
 ```
 
-离线模式下，默认任务是异步模式，执行以下命令可以设置为同步模式，这样命令行会阻塞等待直到离线任务完成。
+离线模式下，默认任务是**非阻塞模式**，执行以下命令可以设置为**阻塞模式**，这样命令行会阻塞等待离线任务完成。
 
 ```SQL
 > SET @@sync_job = true;
@@ -44,29 +44,29 @@ OpenMLDB 有两种部署模式：集群版 (cluster version) 和单机版 (stand
 > SET @@execute_mode = "online"
 ```
 
-### 离线任务管理
+### 阻塞/非阻塞命令
 
-离线任务管理是集群版特有的功能。
+单机版 `LOAD DATA`、`SELECT INTO` 命令是阻塞式的，
 
-单机版 `LOAD DATA`、`SELECT INTO` 命令是阻塞式的，集群版会提交一个任务，并支持执行 `SHOW JOBS`, `SHOW JOB` 命令查看离线任务。详情请参考[离线任务管理](../reference/sql/task_manage/reference.md)。
+集群版的部分命令是非阻塞任务，如：在线/离线模式的 `LOAD DATA`、`LOAD DATA`、`SELECT`、`SELECT INTO` 命令。
 
-### **SQL 边界**
+### SQL 查询能力区别
 
 集群版和单机版可以支持的 SQL 查询能力区别包括：
 
-- [离线任务管理语句](../openmldb_sql/task_manage/reference.md)
+- [离线任务管理语句](../openmldb_sql/task_manage)
   - 单机版不支持
-  - 集群版支持离线任务管理语句，包括：`SHOW JOBS`, `SHOW JOB` 等
-- 执行模式
+  - 提交任务以后可以使用相关的命令如 `SHOW JOBS`, `SHOW JOB` 来查看任务进度
+- 配置执行模式为离线/在线
   - 单机版不支持
-  - 集群版可以配置执行模式: `SET @@execute_mode = ...`
-- `CREAT TABLE` [建表语句](../reference/sql/ddl/CREATE_TABLE_STATEMENT.md)的使用
+  - 集群版可以配置执行模式: `SET @@execute_mode = "online"/"offline"`
+- [建表语句 `CREAT TABLE` ](../reference/sql/ddl/CREATE_TABLE_STATEMENT.md)
   - 单机版不支持配置分布式的属性
   - 集群版支持配置分布式属性：包括 `REPLICANUM`, `DISTRIBUTION`, `PARTITIONNUM`
-- `SELECT INTO` 语句的使用
+- `SELECT INTO` 语句
   - 单机版下执行 `SELECT INTO`，输出是文件
   - 集群版执行 `SELECT INTO`，输出是目录
-- 集群版在线执行模式下，只能支持简单的单表查询语句：
+- 集群版在线执行模式下，只能支持简单的单表查询语句
   - 仅支持列、表达式，以及单行处理函数（Scalar Function)以及它们的组合表达式运算
   - 单表查询不包含 [GROUP BY子句](../reference/sql/dql/JOIN_CLAUSE.md)、[HAVING子句](../reference/sql/dql/HAVING_CLAUSE.md)以及[WINDOW子句](../reference/sql/dql/WINDOW_CLAUSE.md)
   - 单表查询只涉及单张表的计算，不涉及 [JOIN](../reference/sql/dql/JOIN_CLAUSE.md)多张表的计算

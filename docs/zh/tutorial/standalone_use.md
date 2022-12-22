@@ -199,10 +199,10 @@ curl http://127.0.0.1:8080/dbs/demo_db/deployments/demo_data_service -X POST -d'
 
 {"code":0,"msg":"ok","data":{"data":[["aaa",11,22]]}}
 
-``` 
+```
 
 说明：
 
-- api server 执行请求，可以支持批请求，通过 `input` 字段支持数组。每行input单独进行 request 计算。详细参数格式请参考[RESTful API](../reference/rest_api.md)。
+- api server 执行请求，可以支持批请求，通过 `input` 字段支持数组。每行input单独进行 request 计算。详细参数格式请参考[RESTful API](../reference/rest_api)。
 
-- request 结果说明请参考[实时特征计算的结果说明](../quickstart/openmldb_quickstart.md#实时特征计算的结果说明)。
+- request 结果说明请参考[实时特征计算的结果说明](../quickstart/openmldb_quickstart#实时特征计算的结果说明)。
