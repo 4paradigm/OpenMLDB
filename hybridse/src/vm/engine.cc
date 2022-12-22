@@ -98,62 +98,6 @@ bool Engine::GetDependentTables(const std::string& sql, const std::string& db,
     return status.isOK();
 }
 
-bool Engine::GetDependentTables(const node::PlanNode* node, const std::string& default_db,
-                                std::set<std::pair<std::string, std::string>>* db_tables,
-                                base::Status& status) {  // NOLINT
-    if (nullptr == db_tables) {
-        status.code = common::kNullPointer;
-        status.msg = "fail to get sql depend tables, output tables vector is null";
-        return false;
-    }
-
-    if (nullptr != node) {
-        switch (node->GetType()) {
-            case node::kPlanTypeTable: {
-                const node::TablePlanNode* table_node = dynamic_cast<const node::TablePlanNode*>(node);
-                db_tables->insert(std::make_pair(table_node->db_.empty() ? default_db : table_node->db_,
-                                                 table_node->table_));
-                return true;
-            }
-            case node::kPlanTypeProject: {
-                const node::ProjectPlanNode* project_plan = dynamic_cast<const node::ProjectPlanNode*>(node);
-                if (!project_plan->project_list_vec_.empty()) {
-                    for (node::PlanNode* item : project_plan->project_list_vec_) {
-                        node::ProjectListNode* project_list = dynamic_cast<node::ProjectListNode*>(item);
-                        if (nullptr != project_list->GetW()) {
-                            if (!project_list->GetW()->union_tables().empty()) {
-                                for (node::PlanNode* union_table : project_list->GetW()->union_tables()) {
-                                    if (!GetDependentTables(union_table, default_db, db_tables, status)) {
-                                        return false;
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-                if (node->GetChildrenSize() > 0) {
-                    for (auto child : node->GetChildren()) {
-                        if (!GetDependentTables(child, default_db, db_tables, status)) {
-                            return false;
-                        }
-                    }
-                }
-                return true;
-            }
-            default: {
-                if (node->GetChildrenSize() > 0) {
-                    for (auto child : node->GetChildren()) {
-                        if (!GetDependentTables(child, default_db, db_tables, status)) {
-                            return false;
-                        }
-                    }
-                }
-            }
-        }
-    }
-    return true;
-}
-
 Status Engine::GetDependentTables(const PhysicalOpNode* root, std::set<std::pair<std::string, std::string>>* db_tbs) {
     using OUT = std::set<std::pair<std::string, std::string>>;
     *db_tbs = internal::ReduceNode(

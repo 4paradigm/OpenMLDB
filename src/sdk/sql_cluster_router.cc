@@ -3227,11 +3227,7 @@ hybridse::sdk::Status SQLClusterRouter::HandleDeploy(const std::string& db,
         return {StatusCode::kCmdError, "convert schema failed"};
     }
 
-    std::set<std::pair<std::string, std::string>> table_pair;
-    if (!cluster_sdk_->GetEngine()->GetDependentTables(select_sql, db, &table_pair, sql_status)) {
-        COPY_PREPEND_AND_WARN(&status, sql_status, "GetDependentTables failed");
-        return status;
-    }
+    auto& table_pair = explain_output.dependent_tables;
     std::set<std::string> db_set;
     for (auto& table : table_pair) {
         db_set.insert(table.first);

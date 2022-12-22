@@ -419,9 +419,6 @@ class Engine {
     EngineOptions GetEngineOptions();
 
  private:
-    // Get all dependent (db, table) info from logic plan
-    bool GetDependentTables(const node::PlanNode* node, const std::string& default_db,
-                            std::set<std::pair<std::string, std::string>>* db_tables, base::Status& status);  // NOLINT
     // Get all dependent (db, table) info from physical plan
     Status GetDependentTables(const PhysicalOpNode*, std::set<std::pair<std::string, std::string>>*);
 
