@@ -16,11 +16,13 @@
 
 #include "case/sql_case.h"
 
+#include <fstream>
 #include <optional>
 #include <set>
 #include <string>
 #include <vector>
 
+#include "absl/cleanup/cleanup.h"
 #include "absl/strings/ascii.h"
 #include "absl/strings/substitute.h"
 #include "boost/algorithm/string.hpp"
@@ -1182,8 +1184,9 @@ static bool ParseSqlCaseNode(const YAML::Node& sql_case_node,
     }
     if (sql_case_node["debug"]) {
         sql_case.debug_ = sql_case_node["debug"].as<bool>();
-    } else {
-        sql_case.debug_ = false;
+    }
+    if (sql_case_node["deployable"]) {
+        sql_case.deployable_ = sql_case_node["deployable"].as<bool>();
     }
     if (sql_case_node["tags"]) {
         if (!SqlCase::CreateStringListFromYamlNode(sql_case_node["tags"],

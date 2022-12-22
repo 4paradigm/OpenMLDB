@@ -2,6 +2,7 @@
 cases:
   - id: 0
     desc: simple with clause
+    deployable: true
     sql: |
       WITH t2 as (select * from t1)
       select * from t2;
@@ -23,6 +24,7 @@ cases:
   - id: 1
     desc: |
       CTE entry shadows table name
+    deployable: true
     sql: |
       WITH t1 as (select col1 + 1 as id, std_ts from t1)
       select * from t1;
@@ -44,6 +46,7 @@ cases:
 
   - id: 2
     desc: LAST JOIN WITH CLAUSE
+    deployable: true
     db: db1
     sql: |
       with
@@ -122,6 +125,7 @@ cases:
   - id: 5
     desc: |
       with clause wrapper window (simple(last join))
+    deployable: true
     inputs:
       -
         name: t0

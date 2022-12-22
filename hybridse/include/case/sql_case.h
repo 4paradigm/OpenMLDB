@@ -297,7 +297,7 @@ class SqlCase {
     std::string db_;
     std::string sql_str_;
     std::vector<std::string> sql_strs_;
-    bool debug_;
+    bool debug_ = false;
     bool standard_sql_;
     bool standard_sql_compatible_;
     bool batch_request_optimized_;
@@ -311,6 +311,9 @@ class SqlCase {
     YAML::Node raw_node_;
     std::string sp_name_;
     int level_ = 0;
+
+    // also generate deployment test for the query
+    bool deployable_ = false;
 };
 std::string FindSqlCaseBaseDirPath();
 

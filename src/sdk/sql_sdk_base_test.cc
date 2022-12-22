@@ -16,6 +16,7 @@
 
 #include "sdk/sql_sdk_base_test.h"
 
+#include "absl/random/random.h"
 #include "absl/strings/match.h"
 #include "sdk/base_impl.h"
 
