@@ -128,7 +128,7 @@ curl https://openmldb.ai/demo/data.parquet --output ./taxi-trip/data/data.parque
 > SELECT c1, c2, sum(c3) OVER w1 AS w1_c3_sum FROM demo_table1 WINDOW w1 AS (PARTITION BY demo_table1.c1 ORDER BY demo_table1.c6 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW) INTO OUTFILE '/tmp/feature_data';
 ```
 
-注意，离线模式 `SELECT INTO` 为非阻塞命令，可以通过 `SHOW JOBS` 等离线任务管理命令来查看运行进度。
+注意，集群版 `SELECT INTO` 为非阻塞命令，可以通过 `SHOW JOBS` 等离线任务管理命令来查看运行进度。
 
 ### 4. SQL 方案上线
 
@@ -161,7 +161,7 @@ curl https://openmldb.ai/demo/data.parquet --output ./taxi-trip/data/data.parque
 > LOAD DATA INFILE 'file:///work/taxi-trip/data/data.parquet' INTO TABLE demo_table1 options(format='parquet', header=true, mode='append');
 ```
 
-注意，`LOAD DATA` 在线模式也是非阻塞命令，可以通过 `SHOW JOBS` 等离线任务管理命令来查看运行进度。
+注意，集群版 `LOAD DATA` 也是非阻塞命令，可以通过 `SHOW JOBS` 等离线任务管理命令来查看运行进度。
 
 等待任务完成以后，预览在线数据：
 

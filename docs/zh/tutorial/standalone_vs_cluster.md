@@ -52,21 +52,21 @@ OpenMLDB 有两种部署模式：集群版 (cluster) 和单机版 (standalone)�
 
 集群版和单机版可以支持的 SQL 查询能力区别包括：
 
-- [离线任务管理语句](../openmldb_sql/task_manage)
+- [离线任务管理语句](../openmldb_sql/task_manage/SHOW_JOB.md)
   - 单机版不支持
   - 提交任务以后可以使用相关的命令如 `SHOW JOBS`, `SHOW JOB` 来查看任务进度
 - 配置执行模式为离线/在线
   - 单机版不支持
   - 集群版可以配置执行模式: `SET @@execute_mode = "online"/"offline"`
-- [建表语句 `CREAT TABLE` ](../openmldb_sql/ddl/CREATE_TABLE_STATEMENT.md)
+- [建表语句 `CREAT TABLE`](../openmldb_sql/ddl/CREATE_TABLE_STATEMENT.md)
   - 单机版不支持配置分布式的属性
   - 集群版支持配置分布式属性：包括 `REPLICANUM`, `DISTRIBUTION`, `PARTITIONNUM`
 - `SELECT INTO` 语句
   - 单机版下执行 `SELECT INTO`，输出是文件
   - 集群版执行 `SELECT INTO`，输出是目录
 - 集群版在线执行模式下，只能支持简单的单表查询语句
-  - 仅支持列、表达式，以及单行处理函数（Scalar Function)以及它们的组合表达式运算
-  - 单表查询不包含 [GROUP BY子句](../openmldb_sql/dql/JOIN_CLAUSE.md)、[HAVING子句](../openmldb_sql/dql/HAVING_CLAUSE.md)以及 [WINDOW子句](../reference/sql/dql/WINDOW_CLAUSE.md)
+  - 仅支持列、表达式，以及单行处`理函数（Scalar Function)以及它们的组合表达式运算
+  - 单表查询不包含 [`GROUP BY` 子句](../openmldb_sql/dql/JOIN_CLAUSE.md)、[`HAVING` 子句](../openmldb_sql/dql/HAVING_CLAUSE.md)以及 [`WINDOW` 子句](../reference/sql/dql/WINDOW_CLAUSE.md)
   - 单表查询只涉及单张表的计算，不涉及 [JOIN](../openmldb_sql/dql/JOIN_CLAUSE.md) 多张表的计算
 
 ### **SDK** **支持**
