@@ -64,7 +64,7 @@ make NPROC=4
 Make sure those tools are installed
 
 - gcc >= 8 or AppleClang >= 12.0.0
-- cmake 3.20 or later
+- cmake 3.20 or later ( < cmake 3.24 is better)
 - jdk 8
 - python3, python setuptools, python wheel
 - If you'd like to compile thirdparty from source, checkout the [third-party's requirement](../../third-party/README.md) for extra dependencies
@@ -135,6 +135,14 @@ make CMAKE_BUILD_TYPE=Debug
 - OPENMLDB_BUILD_TARGET: If you only want to build some targets, not all, e.g. only build a test `ddl_parser_test`, you can set it to `ddl_parser_test`. Multiple targets may be given, separated by spaces. It can reduce the build time, reduce the build output, save the storage space.
 
   Default: all
+
+### Build Java SDK with Multi Processes
+
+```
+make SQL_JAVASDK_ENABLE=ON NPROC=4
+```
+
+The built jar packages are in the `target` path of each submodule. If you want to use the jar packages built by yourself, please DO NOT add them by systemPath(may get `ClassNotFoundException` about Protobuf and so on, requires a little work in compile and runtime phase). The better way is, use `mvn install -DskipTests=true -Dscalatest.skip=true -Dwagon.skip=true -Dmaven.test.skip=true -Dgpg.skip` to install them in local m2 repository, your project will use them.
 
 ## 3. Optimized Spark Distribution for OpenMLDB
 

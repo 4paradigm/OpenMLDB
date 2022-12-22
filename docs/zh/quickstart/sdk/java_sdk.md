@@ -32,7 +32,9 @@
     <version>0.6.9-macos</version>
 </dependency>
 ```
-注意: 由于 openmldb-native 中包含了 OpenMLDB 编译的 C++ 静态库, 默认是 linux 静态库, macOS 上需将上述 openmldb-native 的 version 改成 `0.6.9-macos`, openmldb-jdbc 的版本保持不变。
+注意: 由于 openmldb-native 中包含了 OpenMLDB 编译的 C++ native库, 默认是 linux 库, macOS 上需将上述 openmldb-native 的 version 改成 `0.6.9-macos`, openmldb-jdbc 的版本保持不变。
+
+当前macOS native发行版只支持macos-12，如需在macos-11或macos-10.15上运行，需在相应OS上源码编译openmldb-native包，详细编译方法见[并发编译Java SDK](../deploy/compile.md#并发编译java-sdk)。
 
 ## Java SDK快速上手
 
@@ -51,9 +53,11 @@ Connection connection = DriverManager.getConnection("jdbc:openmldb:///?zk=localh
 Connection connection1 = DriverManager.getConnection("jdbc:openmldb:///test_db?zk=localhost:6181&zkPath=/openmldb");
 ```
 
-未设置db的Connection功能有限，更推荐创建Connection时就指定db。但注意指定的db在创建连接时必须存在。
+Connection地址指定的db在创建连接时必须存在。
 
-默认为在线模式（之后会调整为“默认离线”）。
+```{caution}
+JDBC Connection的默认执行模式为`online`。
+```
 
 #### 使用概览
 
@@ -116,7 +120,11 @@ option.setRequestTimeout(60000);
 sqlExecutor = new SqlClusterExecutor(option);
 ```
 
-`SqlClusterExecutor`执行sql操作是多线程安全的，在实际环境中可以创建一个`SqlClusterExecutor`。但由于执行模式(execute_mode)是`SqlClusterExecutor`内部变量，如果同时想执行一个离线命令和一个在线命令，容易出现不可预期的结果。这时候请使用多个`SqlClusterExecutor`。
+`SqlClusterExecutor`执行sql操作是多线程安全的，在实际环境中可以创建一个`SqlClusterExecutor`。但由于执行模式(execute_mode)是`SqlClusterExecutor`内部变量，如果同时想执行一个离线命令和一个在线命令，容易出现不可预期的结果。如果一定要多执行模式并发，请使用多个`SqlClusterExecutor`。
+
+```{caution}
+SqlClusterExecutor的默认执行模式为`offline`，与JDBC默认模式不同。
+```
 
 #### Statement
 
@@ -163,6 +171,8 @@ try {
 java.sql.Statement state = sqlExecutor.getStatement();
 try {
     state.execute("use db_test");
+    // sqlExecutor默认执行模式为离线，如果此前没有更改模式为在线，此处需要设置执行模式为在线
+    state.execute("SET @@execute_mode='online;");
     // execute返回值是true的话说明操作成功，结果可以通过getResultSet获取
     boolean ret = state.execute("select * from trans;");
     Assert.assertTrue(ret);
@@ -196,6 +206,9 @@ try {
 #### PreparedStatement
 
 `SqlClusterExecutor`也可以获得`PreparedStatement`，但需要指定获得哪种`PreparedStatement`。例如，我们使用InsertPreparedStmt进行插入操作，可以有三种方式。
+```{note}
+插入操作仅支持在线，不受执行模式影响，一定是插入数据到在线。
+```
 
 ##### 普通Insert
 
@@ -304,6 +317,10 @@ executeBatch后，缓存的所有数据将被清除，无法重试executeBatch�
 
 `RequestPreparedStmt`是一个独特的查询模式（JDBC不支持此模式）。此模式需要selectSql与一条请求数据，所以需要在`getRequestPreparedStmt`时填入sql，也需要`setType`设置请求数据。
 
+```{note}
+请求式查询仅支持在线，不受执行模式影响，一定是进行在线的请求式查询。
+```
+
 第一步，使用`SqlClusterExecutor::getRequestPreparedStmt(db, selectSql)`接口获取RequestPrepareStatement。
 
 第二步，调用`PreparedStatement::setType(index, value)`接口设置请求数据。请根据数据表中每一列对应的数据类型调用setType接口以及配置合法的值。
@@ -400,303 +417,12 @@ try {
 
 ### 完整的 SqlClusterExecutor 使用范例
 
+见[Java quickstart demo](https://github.com/4paradigm/OpenMLDB/tree/main/demo/java_quickstart/demo)。如果在macOS上使用，请增加openmldb-native的依赖，并使用macos version。
 
-```java
-import com._4paradigm.openmldb.jdbc.CallablePreparedStatement;
-import com._4paradigm.openmldb.sdk.*;
-import com._4paradigm.openmldb.sdk.impl.SqlClusterExecutor;
-import org.testng.Assert;
-
-import java.sql.*;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.concurrent.TimeUnit;
-
-public class Demo {
-
-    private SqlExecutor sqlExecutor = null;
-    private String db = "mydb16";
-    private String table = "trans";
-    private String sp = "sp";
-
-    public static void main(String[] args) {
-        Demo demo = new Demo();
-        try {
-            // 初始化构造SqlExecutor
-            demo.init();
-            demo.createDataBase();
-            demo.createTable();
-            // 通过insert语句插入
-            demo.insertWithoutPlaceholder();
-            // 通过placeholder的方式插入。placeholder方式不会重复编译sql, 在性能上会比直接insert好很多
-            demo.insertWithPlaceholder();
-            // 执行select语句
-            demo.select();
-            // 在request模式下执行sql
-            demo.requestSelect();
-            // 删除表
-            demo.dropTable();
-          	// 删除数据库
-            demo.dropDataBase();
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
-
-    private void init() throws SqlException {
-        SdkOption option = new SdkOption();
-        option.setZkCluster("172.27.128.37:7181");
-        option.setZkPath("/rtidb_wb");
-        option.setSessionTimeout(10000);
-        option.setRequestTimeout(60000);
-        // sqlExecutor执行sql操作是多线程安全的，在实际环境中只创建一个即可
-        sqlExecutor = new SqlClusterExecutor(option);
-    }
-
-    private void createDataBase() {
-        java.sql.Statement state = sqlExecutor.getStatement();
-        try {
-            state.execute("create database " + db + ";");
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
-
-    private void dropDataBase() {
-        java.sql.Statement state = sqlExecutor.getStatement();
-        try {
-            state.execute("drop database " + db + ";");
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
-
-    private void createTable() {
-        String createTableSql = "create table trans(c1 string,\n" +
-                "                   c3 int,\n" +
-                "                   c4 bigint,\n" +
-                "                   c5 float,\n" +
-                "                   c6 double,\n" +
-                "                   c7 timestamp,\n" +
-                "                   c8 date,\n" +
-                "                   index(key=c1, ts=c7));";
-        java.sql.Statement state = sqlExecutor.getStatement();
-        try {
-            state.execute("use " + db + ";");
-            state.execute(createTableSql);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
-
-    private void dropTable() {
-        java.sql.Statement state = sqlExecutor.getStatement();
-        try {
-            state.execute("drop table trans;");
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
-
-    private void getInputSchema(String selectSql) {
-        try {
-            Schema inputSchema = sqlExecutor.getInputSchema(db, selectSql);
-            Assert.assertEquals(inputSchema.getColumnList().size(), 7);
-            Column column = inputSchema.getColumnList().get(0);
-            Assert.assertEquals(column.getColumnName(), "c1");
-            Assert.assertEquals(column.getSqlType(), Types.VARCHAR);
-            Assert.assertEquals(column.isConstant(), false);
-            Assert.assertEquals(column.isNotNull(), false);
-        } catch (SQLException throwables) {
-            throwables.printStackTrace();
-        }
-    }
-
-    private void insertWithoutPlaceholder() {
-        String insertSql = "insert into trans values(\"aa\",23,33,1.4,2.4,1590738993000,\"2020-05-04\");";
-        PreparedStatement pstmt = null;
-        try {
-            pstmt = sqlExecutor.getInsertPreparedStmt(db, insertSql);
-            Assert.assertTrue(pstmt.execute());
-        } catch (SQLException e) {
-            e.printStackTrace();
-            Assert.fail();
-        } finally {
-            if (pstmt != null) {
-                try {
-                    // PrepareStatement用完之后必须close
-                    pstmt.close();
-                } catch (SQLException throwables) {
-                    throwables.printStackTrace();
-                }
-            }
-        }
-    }
-
-    private void insertWithPlaceholder() {
-        String insertSql = "insert into trans values(\"aa\", ?, 33, ?, 2.4, 1590738993000, \"2020-05-04\");";
-        PreparedStatement pstmt = null;
-        try {
-            pstmt = sqlExecutor.getInsertPreparedStmt(db, insertSql);
-            ResultSetMetaData metaData = pstmt.getMetaData();
-            setData(pstmt, metaData);
-            Assert.assertTrue(pstmt.execute());
-        } catch (SQLException e) {
-            e.printStackTrace();
-            Assert.fail();
-        } finally {
-            if (pstmt != null) {
-                try {
-                    pstmt.close();
-                } catch (SQLException throwables) {
-                    throwables.printStackTrace();
-                }
-            }
-        }
-    }
-
-    private void select() {
-        String selectSql = "select * from trans;";
-        java.sql.ResultSet result = null;
-        int num = 0;
-        java.sql.Statement state = sqlExecutor.getStatement();
-        try {
-            boolean ret = state.execute(selectSql);
-            Assert.assertTrue(ret);
-            result = state.getResultSet();
-            while (result.next()) {
-                num++;
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        } finally {
-            try {
-                if (result != null) {
-                    result.close();
-                }
-                state.close();
-            } catch (SQLException throwables) {
-                throwables.printStackTrace();
-            }
-
-        }
-        // result数据解析参考下面requestSelect方法
-        Assert.assertEquals(num, 2);
-    }
-
-    private void requestSelect() {
-        String selectSql = "SELECT c1, c3, sum(c4) OVER w1 as w1_c4_sum FROM trans WINDOW w1 AS " +
-                "(PARTITION BY trans.c1 ORDER BY trans.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);";
-        PreparedStatement pstmt = null;
-        ResultSet resultSet = null;
-        try {
-            pstmt = sqlExecutor.getRequestPreparedStmt(db, selectSql);
-            // 如果是执行deployment, 可以通过名字获取preparedstatement
-            //pstmt = sqlExecutor.getCallablePreparedStmt(db, deploymentName);
-            ResultSetMetaData metaData = pstmt.getMetaData();
-            // 执行request模式需要在RequestPreparedStatement设置一行请求数据
-            setData(pstmt, metaData);
-            // 调用executeQuery会执行这个select sql, 然后将结果放在了resultSet中
-            resultSet = pstmt.executeQuery();
-
-            Assert.assertTrue(resultSet.next());
-            Assert.assertEquals(resultSet.getMetaData().getColumnCount(), 3);
-            Assert.assertEquals(resultSet.getString(1), "bb");
-            Assert.assertEquals(resultSet.getInt(2), 24);
-            Assert.assertEquals(resultSet.getLong(3), 34);
-            Assert.assertFalse(resultSet.next());
-        } catch (SQLException e) {
-            e.printStackTrace();
-            Assert.fail();
-        } finally {
-            try {
-                if (resultSet != null) {
-                    // result用完之后需要close
-                    resultSet.close();
-                }
-                if (pstmt != null) {
-                    pstmt.close();
-                }
-            } catch (SQLException throwables) {
-                throwables.printStackTrace();
-            }
-        }
-    }
-
-    private void batchRequestSelect() {
-         String selectSql = "SELECT c1, c3, sum(c4) OVER w1 as w1_c4_sum FROM trans WINDOW w1 AS " +
-                "(PARTITION BY trans.c1 ORDER BY trans.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);";
-        PreparedStatement pstmt = null;
-        ResultSet resultSet = null;
-        try {
-            List<Integer> list = new ArrayList<Integer>();
-            pstmt = sqlExecutor.getBatchRequestPreparedStmt(db, selectSql, list);
-            // 如果是执行deployment, 可以通过名字获取preparedstatement 
-            // pstmt = sqlExecutor.getCallablePreparedStmtBatch(db, deploymentName);
-            ResultSetMetaData metaData = pstmt.getMetaData();
-            // 执行request模式需要在设置PreparedStatement请求数据
-            // 设置一个batch发送多少条数据
-            int batchSize = 5;
-            for (int idx = 0; idx < batchSize; idx++) {
-                setData(pstmt, metaData);
-                // 每次设置完一行数据后需要调用一次addBatch
-                pstmt.addBatch();
-            }
-            // 调用executeQuery会执行这个select sql, 然后将结果放在了resultSet中
-            resultSet = pstmt.executeQuery();
-            // 依次取出每一条数据对应的特征结果
-            while (resultSet.next()) {
-                Assert.assertEquals(resultSet.getMetaData().getColumnCount(), 3);
-                Assert.assertEquals(resultSet.getString(1), "bb");
-                Assert.assertEquals(resultSet.getInt(2), 24);
-                Assert.assertEquals(resultSet.getLong(3), 34);
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-            Assert.fail();
-        } finally {
-            try {
-                if (resultSet != null) {
-                    // result用完之后需要close
-                    resultSet.close();
-                }
-                if (pstmt != null) {
-                    pstmt.close();
-                }
-            } catch (SQLException throwables) {
-                throwables.printStackTrace();
-            }
-        }
-    }
-
-
-    private void setData(PreparedStatement pstmt, ResultSetMetaData metaData) throws SQLException {
-        for (int i = 0; i < metaData.getColumnCount(); i++) {
-            int columnType = metaData.getColumnType(i + 1);
-            if (columnType == Types.BOOLEAN) {
-                pstmt.setBoolean(i + 1, true);
-            } else if (columnType == Types.SMALLINT) {
-                pstmt.setShort(i + 1, (short) 22);
-            } else if (columnType == Types.INTEGER) {
-                pstmt.setInt(i + 1, 24);
-            } else if (columnType == Types.BIGINT) {
-                pstmt.setLong(i + 1, 34l);
-            } else if (columnType == Types.FLOAT) {
-                pstmt.setFloat(i + 1, 1.5f);
-            } else if (columnType == Types.DOUBLE) {
-                pstmt.setDouble(i + 1, 2.5);
-            } else if (columnType == Types.TIMESTAMP) {
-                pstmt.setTimestamp(i + 1, new Timestamp(1590738994000l));
-            } else if (columnType == Types.DATE) {
-                pstmt.setDate(i + 1, Date.valueOf("2020-05-05"));
-            } else if (columnType == Types.VARCHAR) {
-                pstmt.setString(i + 1, "bb");
-            } else {
-                throw new SQLException("set data failed");
-            }
-        }
-    }
-}
+编译并运行：
+```
+mvn package
+java -cp target/demo-1.0-SNAPSHOT.jar com.openmldb.demo.App
 ```
 
 ## SDK Option详解
