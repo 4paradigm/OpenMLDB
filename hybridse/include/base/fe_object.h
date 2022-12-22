@@ -21,6 +21,9 @@
 #include <vector>
 
 namespace hybridse {
+namespace node {
+class NodeManager;
+}
 namespace base {
 
 class FeBaseObject {
@@ -35,10 +38,12 @@ class BaseList : public base::FeBaseObject {
  public:
     using size_t = decltype(sizeof(int));
 
-    void SetNodeId(size_t id) { node_id_ = id; }
-
     std::vector<T*> data_;
+
+ private:
+    friend class node::NodeManager;
     size_t node_id_ = 0;
+    void SetNodeId(size_t id) { node_id_ = id; }
 };
 
 }  // namespace base

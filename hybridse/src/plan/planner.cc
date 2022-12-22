@@ -568,7 +568,7 @@ int Planner::GetPlanTreeLimitCount(node::PlanNode *node) {
     return limit_cnt;
 }
 
-base::Status Planner::ValidPlan(node::PlanNode *node, bool is_primary_path) {
+base::Status Planner::ValidPlanForRequestMode(node::PlanNode *node, bool is_primary_path) {
     node::PlanNode* tb_node = nullptr;
     // non-primary path and is SimpleOps(table), not necessary to have a request table
     // otherwise, one and only request table must exist
@@ -693,7 +693,7 @@ base::Status SimplePlanner::CreatePlanTree(const NodePointVector &parser_trees, 
 
                 if (!is_batch_mode_) {
                     // Validate there is one and only request table in the SQL
-                    CHECK_STATUS(ValidPlan(query_plan));
+                    CHECK_STATUS(ValidPlanForRequestMode(query_plan));
                 } else {
                     if (is_cluster_optimized_) {
                         CHECK_STATUS(ValidateClusterOnlineTrainingOp(query_plan));

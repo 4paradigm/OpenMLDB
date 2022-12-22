@@ -298,10 +298,10 @@ TEST_F(EngineCompileTest, EngineCompileOnlyTest) {
 
 using CaseType = std::pair<std::string, std::set<std::pair<std::string, std::string>>>;
 
-class GetDependentTables : public ::testing::TestWithParam<CaseType> {
+class GetDependentTablesTest : public ::testing::TestWithParam<CaseType> {
  public:
-    GetDependentTables() {}
-    ~GetDependentTables() {}
+    GetDependentTablesTest() {}
+    ~GetDependentTablesTest() {}
 
     void SetUp() override {
         auto catalog = BuildSimpleCatalog();
@@ -443,9 +443,9 @@ last join t2 order by t2.col5 on t1.col1 = t2.col2;)",
     std::shared_ptr<Engine> engine;
 };
 
-INSTANTIATE_TEST_SUITE_P(Func, GetDependentTables, ::testing::ValuesIn(GetDependentTables::GetCases()));
+INSTANTIATE_TEST_SUITE_P(Func, GetDependentTablesTest, ::testing::ValuesIn(GetDependentTablesTest::GetCases()));
 
-TEST_P(GetDependentTables, UnitTest) {
+TEST_P(GetDependentTablesTest, UnitTest) {
     auto& pair = GetParam();
     std::string sqlstr = pair.first;
     boost::to_lower(sqlstr);
@@ -455,6 +455,11 @@ TEST_P(GetDependentTables, UnitTest) {
     ASSERT_TRUE(absl::c_equal(pair.second, tables))
         << "expect: [" << absl::StrJoin(pair.second, ",", absl::PairFormatter("=")) << "], but get ["
         << absl::StrJoin(tables, ",", absl::PairFormatter("=")) << "]";
+}
+
+TEST_F(GetDependentTablesTest, FailTest) {
+    base::Status get_status;
+    ASSERT_FALSE(engine->GetDependentTables("select * from t1;", "simple_db", kBatchMode, nullptr, get_status));
 }
 
 TEST_F(EngineCompileTest, RouterTest) {

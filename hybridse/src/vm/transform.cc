@@ -2610,7 +2610,7 @@ absl::StatusOr<PhysicalOpNode*> BatchModeTransformer::ResolveCTERefImpl(absl::st
                 //   the extracted request table is the same as outside WITH clause, is checked later in
                 //   `RequestModeTransformer::ValidatePlan`, and hence is not necessary to verify here.
                 //   see more in `Planner::IsTable`
-                auto s = ::hybridse::plan::Planner::ValidPlan(entry->node->query_, is_primary_path);
+                auto s = ::hybridse::plan::Planner::ValidPlanForRequestMode(entry->node->query_, is_primary_path);
                 if (!s.isOK()) {
                     return absl::InternalError(s.str());
                 }

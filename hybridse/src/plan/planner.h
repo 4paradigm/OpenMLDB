@@ -59,7 +59,8 @@ class Planner {
     // \param is_primary_path Whether the `node` is in the primary path of whole SQL, default to true.
     //    for queries without WITH clause, it is always true, for queries inside WITH clause, the parameter
     //    should be false when the referenced table node is not a primary node
-    static base::Status ValidPlan(node::PlanNode *node, bool is_primary_path = true) ABSL_ATTRIBUTE_NONNULL();
+    static base::Status ValidPlanForRequestMode(node::PlanNode *node, bool is_primary_path = true)
+        ABSL_ATTRIBUTE_NONNULL();
 
  protected:
     static bool IsTable(node::PlanNode *node, node::PlanNode **output);

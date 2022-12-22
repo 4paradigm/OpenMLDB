@@ -593,7 +593,7 @@ class QueryNode : public SqlNode {
 
 class WithClauseEntry : public SqlNode {
  public:
-    WithClauseEntry(std::string alias, QueryNode *query)
+    WithClauseEntry(const std::string& alias, QueryNode *query)
         : SqlNode(node::kWithClauseEntry, 0, 0), alias_(alias), query_(query) {}
     ~WithClauseEntry() override {}
 
