@@ -67,7 +67,7 @@ void Engine::InitializeUnsafeRowOptFlag(bool isUnsafeRowOpt) {
     FLAGS_enable_spark_unsaferow_format = isUnsafeRowOpt;
 }
 
-bool Engine::GetDependentTables(const std::string& sql, const std::string& db, EngineMode engine_mode,
+bool Engine::GetDependentTables(const std::string& sql, const std::string& db,
                                 std::set<std::pair<std::string, std::string>>* db_tables, base::Status& status) {
     if (nullptr == db_tables) {
         status.code = common::kNullPointer;
@@ -78,9 +78,8 @@ bool Engine::GetDependentTables(const std::string& sql, const std::string& db, E
     auto info = std::make_shared<hybridse::vm::SqlCompileInfo>();
     info->get_sql_context().sql = sql;
     info->get_sql_context().db = db;
-    info->get_sql_context().engine_mode = engine_mode;
-    SqlCompiler compiler(std::atomic_load_explicit(&cl_, std::memory_order_acquire), options_.IsKeepIr(), false,
-                         options_.IsPlanOnly());
+    info->get_sql_context().engine_mode = kBatchMode;
+    SqlCompiler compiler(std::atomic_load_explicit(&cl_, std::memory_order_acquire), false, false, false);
     bool ok = compiler.Compile(info->get_sql_context(), status);
     if (!ok || 0 != status.code) {
         // TODO(chenjing): do clean

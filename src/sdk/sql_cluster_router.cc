@@ -3228,8 +3228,7 @@ hybridse::sdk::Status SQLClusterRouter::HandleDeploy(const std::string& db,
     }
 
     std::set<std::pair<std::string, std::string>> table_pair;
-    if (!cluster_sdk_->GetEngine()->GetDependentTables(select_sql, db, ::hybridse::vm::kBatchMode, &table_pair,
-                                                       sql_status)) {
+    if (!cluster_sdk_->GetEngine()->GetDependentTables(select_sql, db, &table_pair, sql_status)) {
         COPY_PREPEND_AND_WARN(&status, sql_status, "GetDependentTables failed");
         return status;
     }

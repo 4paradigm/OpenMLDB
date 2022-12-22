@@ -451,7 +451,7 @@ TEST_P(GetDependentTablesTest, UnitTest) {
     boost::to_lower(sqlstr);
     std::set<std::pair<std::string, std::string>> tables;
     base::Status get_status;
-    ASSERT_TRUE(engine->GetDependentTables(sqlstr, "simple_db", kBatchMode, &tables, get_status)) << get_status;
+    ASSERT_TRUE(engine->GetDependentTables(sqlstr, "simple_db", &tables, get_status)) << get_status;
     ASSERT_TRUE(absl::c_equal(pair.second, tables))
         << "expect: [" << absl::StrJoin(pair.second, ",", absl::PairFormatter("=")) << "], but get ["
         << absl::StrJoin(tables, ",", absl::PairFormatter("=")) << "]";
@@ -459,7 +459,7 @@ TEST_P(GetDependentTablesTest, UnitTest) {
 
 TEST_F(GetDependentTablesTest, FailTest) {
     base::Status get_status;
-    ASSERT_FALSE(engine->GetDependentTables("select * from t1;", "simple_db", kBatchMode, nullptr, get_status));
+    ASSERT_FALSE(engine->GetDependentTables("select * from t1;", "simple_db", nullptr, get_status));
 }
 
 TEST_F(EngineCompileTest, RouterTest) {

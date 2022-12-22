@@ -373,7 +373,6 @@ class Engine {
     ///
     /// The tables' names are returned in tables
     bool GetDependentTables(const std::string& sql, const std::string& db,
-                            EngineMode engine_mode,
                             std::set<std::pair<std::string, std::string>>* db_tables,
                             base::Status& status);  // NOLINT
 
