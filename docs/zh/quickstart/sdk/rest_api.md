@@ -7,33 +7,33 @@
 
 ## 数据插入
 
-reqeust url: http://ip:port/dbs/{db_name}/tables/{table_name}
-
-http method: PUT 
-
+request URL: `http://ip:port/dbs/{db_name}/tables/{table_name}`
+http method: PUT
 request body: 
-```
-{
-    "value": [
-    	[v1, v2, v3]
-    ]
-}
-```
 
-+ 目前仅支持一条插入，不可以插入多条数据。
-+ 数据需严格按照 schema 排列。
+  ```json
+  {
+      "value": [
+        [v1, v2, v3]
+      ]
+  }
+  ```
 
-**数据插入举例**
+- 目前仅支持插入一条数据。
+- 数据需严格按照 schema 排列。
 
-```
+### 示例
+
+```bash
 curl http://127.0.0.1:8080/dbs/db/tables/trans -X PUT -d '{
 "value": [
     ["bb",24,34,1.5,2.5,1590738994000,"2020-05-05"]
 ]}'
 ```
+
 response:
 
-```
+```json
 {
     "code":0,
     "msg":"ok"
@@ -42,20 +42,21 @@ response:
 
 ## 实时特征计算
 
-reqeust url: http://ip:port/dbs/{db_name}/deployments/{deployment_name}
-
+reqeust URL: `http://ip:port/dbs/{db_name}/deployments/{deployment_name}`
 http method: POST
-
 request body: 
 
-- array style
+- array 格式：
+
 ```json
 {
     "input": [["row0_value0", "row0_value1", "row0_value2"], ["row1_value0", "row1_value1", "row1_value2"], ...],
     "need_schema": false
 }
 ```
-- json style
+
+- JSON 格式：
+
 ```json
 {
     "input": [
@@ -71,8 +72,11 @@ request body:
 + input为array style时返回结果也是array style，input为json style则是返回json style的结果。一次request请求的input只支持一种格式，请不要混合格式。
 + json style的input数据可以有多余列。
 
-**实时特征计算举例**
-- array style
+### 示例
+
+示例 1：
+- array 格式
+
 ```
 curl http://127.0.0.1:8080/dbs/demo_db/deployments/demo_data_service -X POST -d'{
         "input": [["aaa", 11, 22, 1.2, 1.3, 1635247427000, "2021-05-20"]]
@@ -91,8 +95,8 @@ response:
 }
 ```
 
-- json style
-```
+示例 2：
+JSON 格式：
 curl http://127.0.0.1:8080/dbs/demo_db/deployments/demo_data_service -X POST -d'{
         "input": [{"c1":"aaa", "c2":11, "c3":22, "c4":1.2, "c5":1.3, "c6":1635247427000, "c7":"2021-05-20", "foo":"bar"}]
     }'
@@ -112,10 +116,8 @@ response:
 
 ## 查询
 
-The request URL: http://ip:port/dbs/{db_name}
-
+The request URL: `http://ip:port/dbs/{db_name}`
 HTTP method: POST
- 
 request body: 
 
 ```json
@@ -134,9 +136,9 @@ request body:
 - "schema"可支持数据类型(大小写不敏感):
 `Bool`, `Int16`, `Int32`, `Int64`, `Float`, `Double`, `String`, `Date` and `Timestamp`.
 
-**查询举例**
+### 示例
 
-- 普通查询: 
+示例 1：普通查询
 
 ```json
 {
@@ -145,7 +147,7 @@ request body:
 }
 ```
 
-The response:
+response:
 
 ```json
 {
@@ -158,7 +160,7 @@ The response:
 }
 ```
 
-- 参数化查询:
+示例 2：参数化查询:
 
 ```json
 {
@@ -171,7 +173,7 @@ The response:
 }
 ```
 
-The response:
+response:
 
 ```json
 {
@@ -186,11 +188,8 @@ The response:
 
 ## 查询Deployment信息
 
-
-The request URL: http://ip:port/dbs/{db_name}/deployments/{deployment_name}
-
+The request URL: `http://ip:port/dbs/{db_name}/deployments/{deployment_name}`
 HTTP method: Get
-
 The response:
 
 ```json
@@ -222,14 +221,11 @@ The response:
 }
 ```
 
-
 ## 获取所有库名
 
-The request URL: http://ip:port/dbs
-
+request URL: `http://ip:port/dbs`
 HTTP method: Get
-
-The response:
+response:
 
 ```json
 {
@@ -243,11 +239,9 @@ The response:
 
 ## 获取所有表名
 
-The request URL: http://ip:port/dbs/{db}/tables
-
+request URL: `http://ip:port/dbs/{db}/tables`
 HTTP method: Get
-
-The response:
+response:
 
 ```json
 {
@@ -296,13 +290,9 @@ The response:
 
 ## 刷新 APIServer 元数据缓存
 
-The request URL: http://ip:port/refresh
-
+request URL: `http://ip:port/refresh`
 HTTP method: POST
-
-Empty request body.
-
-The response:
+response:
 
 ```json
 {
