@@ -20,11 +20,12 @@ RUN  apt-get update \
 RUN if [ "${PYPI}" = "tuna" ] ; then pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple ; fi
 RUN pip install --no-cache-dir py4j==0.10.9 numpy lightgbm tornado requests pandas openmldb xgboost==1.4.2
 
-RUN if [ -f "${REINSTALL_PYSDK}" = "true" ] ; then pip install /additions/openmldb*.whl --force-reinstall ; fi
+RUN if [ "${REINSTALL_PYSDK}" = "true" ] ; then pip install /additions/openmldb*.whl --force-reinstall ; fi
 
 COPY init.sh /work/
 COPY predict-taxi-trip-duration/script /work/taxi-trip/
 COPY talkingdata-adtracking-fraud-detection /work/talkingdata/
+COPY *_dist.yml /work/
 
 ENV LANG=en_US.UTF-8
 ENV SPARK_HOME=/work/openmldb/spark-3.2.1-bin-openmldbspark
@@ -35,7 +36,8 @@ COPY setup_openmldb.sh /
 RUN if [ "${SKIP_DOWNLOAD}" = "skip_download" ] ; then cp /additions/*gz / ; fi
 RUN /setup_openmldb.sh "${OPENMLDB_VERSION}" "${SKIP_DOWNLOAD}" && rm /setup_openmldb.sh
 
-# todo cp yml
+RUN rm -r /additions
+
 WORKDIR /work
 
 CMD [ "/bin/bash" ]
