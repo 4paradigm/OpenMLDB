@@ -2,16 +2,25 @@ FROM openjdk:11.0.13-jre-slim-bullseye
 
 LABEL org.opencontainers.image.source https://github.com/4paradigm/OpenMLDB
 
-# if 'apt update' is too slow, change the sources
-COPY sources.list /etc/apt/
+# if pip install read timed out, you can change the mirror, set PYPI to tuna
+ARG PYPI=""
+# if reinstall pysdk to test, set it to true, add whl in additions/
+ARG REINSTALL_PYSDK=""
+# if use provieded pkgs to test, set it to skip_download, and add pkgs in additions/
+ARG SKIP_DOWNLOAD=""
+
+# If 'apt update' is too slow, add the mirror sources file n additions/
+ADD additions /additions
+RUN if [ -f "/additions/sources.list" ] ; then cp /additions/sources.list /etc/apt/ ; fi
+
 RUN  apt-get update \
      && apt-get install -y --no-install-recommends libgomp1 curl binutils procps python3 python3-pip python3-numpy vim rsync \
-     && rm -rf /var/lib/apt/lists/* \
-     && pip install --no-cache-dir py4j==0.10.9 numpy lightgbm tornado requests pandas openmldb xgboost==1.4.2 -i https://pypi.tuna.tsinghua.edu.cn/simple
-# if pip install read timed out, add '-i https://pypi.tuna.tsinghua.edu.cn/simple'
-# can't copy files from outside, so copy whl to current path
-COPY openmldb*.whl /
-RUN pip install openmldb*.whl --force-reinstall -i https://pypi.tuna.tsinghua.edu.cn/simple
+     && rm -rf /var/lib/apt/lists/*
+
+RUN if [ "${PYPI}" = "tuna" ] ; then pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple ; fi
+RUN pip install --no-cache-dir py4j==0.10.9 numpy lightgbm tornado requests pandas openmldb xgboost==1.4.2
+
+RUN if [ -f "${REINSTALL_PYSDK}" = "true" ] ; then pip install /additions/openmldb*.whl --force-reinstall ; fi
 
 COPY init.sh /work/
 COPY predict-taxi-trip-duration/script /work/taxi-trip/
@@ -23,10 +32,10 @@ ARG OPENMLDB_VERSION=0.6.9
 ENV OPENMLDB_VERSION="${OPENMLDB_VERSION}"
 
 COPY setup_openmldb.sh /
-# You can copy the downloaded pacakges here, and use skip_download in setup_openmldb.sh
-COPY *gz / 
-RUN /setup_openmldb.sh "${OPENMLDB_VERSION}" skip_download && rm /setup_openmldb.sh
+RUN if [ "${SKIP_DOWNLOAD}" = "skip_download" ] ; then cp /additions/*gz / ; fi
+RUN /setup_openmldb.sh "${OPENMLDB_VERSION}" "${SKIP_DOWNLOAD}" && rm /setup_openmldb.sh
 
+# todo cp yml
 WORKDIR /work
 
 CMD [ "/bin/bash" ]
