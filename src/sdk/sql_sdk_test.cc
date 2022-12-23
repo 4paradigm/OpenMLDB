@@ -170,7 +170,7 @@ struct DeploymentEnv {
         dp_name_ = absl::StrCat("dp_", absl::Uniform(gen_, 0, std::numeric_limits<int32_t>::max()));
     }
 
-    virtual ~DeploymentEnv() { TearDown(); }
+    virtual ~DeploymentEnv() {}
 
     void SetUp() {
         hybridse::sdk::Status status;
@@ -274,6 +274,7 @@ TEST_P(SQLSDKQueryTest, SqlSdkDeployTest) {
     DeploymentEnv env(router_, &sql_case);
     env.SetUp();
     env.CallDeployProcedure();
+    env.TearDown();
 }
 
 TEST_P(SQLSDKBatchRequestQueryTest, SqlSdkBatchRequestTest) {
