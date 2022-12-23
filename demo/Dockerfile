@@ -18,7 +18,7 @@ RUN  apt-get update \
      && rm -rf /var/lib/apt/lists/*
 
 RUN if [ "${PYPI}" = "tuna" ] ; then pip config set global.index-url https://pypi.tuna.tsinghua.edu.cn/simple ; fi
-RUN pip install --no-cache-dir py4j==0.10.9 numpy lightgbm tornado requests pandas openmldb xgboost==1.4.2
+RUN pip install --no-cache-dir py4j==0.10.9 numpy lightgbm tornado requests pandas openmldb xgboost==1.4.2 openmldb-tool
 
 RUN if [ "${REINSTALL_PYSDK}" = "true" ] ; then pip install /additions/openmldb*.whl --force-reinstall ; fi
 
