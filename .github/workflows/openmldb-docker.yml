@@ -63,7 +63,7 @@ jobs:
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
- 
+
       - name: Build And Push
         id: docker_build
         if: ${{ github.event_name == 'workflow_dispatch' }}

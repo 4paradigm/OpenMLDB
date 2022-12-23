@@ -12,7 +12,7 @@ docker-compose -f docker-compose.test.yml -- build
 
 1. quickstart, java_quickstart, python_quickstart
    
-   NOTE: java project can't be built in docker container(no mvn), so you should built it by `cd java_quickstart;mvn package`. If no target jar, the test will be failed. But it won't fail the whole test.
+   NOTE: java project can't be built in docker container(no mvn), so you should built it by `cd java_quickstart;mvn package`. If no target jar, the test will be failed. But it won't fail the whole test. The python quickstart won't fail the whole test either.
 2. taxi
 3. talkingdata
 4. oneflow sqls(no train or predict), a bit slow, ~10min.
