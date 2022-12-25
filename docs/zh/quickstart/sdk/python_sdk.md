@@ -1,4 +1,4 @@
-# OpenMLDB Python
+# Python SDK
 
 ## 安装 OpenMLDB Python 包
 
@@ -12,7 +12,7 @@ pip install openmldb
 
 本节演示 OpenMLDB DBAPI 的基本使用。
 
-## 创建连接
+### 创建连接
 
 参数 db_name 必须存在，需在创建连接前创建数据库。或者先创建无数据库的连接，再通过 `execute("USE <db>")` 命令设置使用数据库 `db`。
 
@@ -27,17 +27,17 @@ db = openmldb.dbapi.connect(host="$host", port="$port")
 cursor = db.cursor()
 ```
 
-### Option 详解
+#### Option 详解
 
 连接集群版 `zk` 和 `zkPath` 参数必需。
 
 连接单机版 `host` 和 `port` 参数必需。
 
 ```{note}
-通过 OpenMLDB DBAPI/URL 启动 Python 客户端均可使用 Python SDK，可选配置项与 JAVA 客户端的配置项基本一致，请参考 [JAVA SDK Option详解](./java_sdk.md5-sdk-option详解)。
+通过 OpenMLDB DBAPI/URL 启动 Python 客户端均可使用 Python SDK，可选配置项与 JAVA 客户端的配置项基本一致，请参考 [JAVA SDK Option详解](./java_sdk#sdk-option详解)。
 ```
 
-## 创建数据库
+### 创建数据库
 
 创建数据库 `db1`：
 
@@ -46,7 +46,7 @@ cursor.execute("CREATE DATABASE db1")
 cursor.execute("USE db1")
 ```
 
-## 创建表
+### 创建表
 
 创建表 `t1`：
 
@@ -54,7 +54,7 @@ cursor.execute("USE db1")
 cursor.execute("CREATE TABLE t1 (col1 bigint, col2 date, col3 string, col4 string, col5 int, index(key=col3, ts=col1))")
 ```
 
-## 插入数据到表中
+### 插入数据到表中
 
 插入一条数据到表中：
 
@@ -62,7 +62,7 @@ cursor.execute("CREATE TABLE t1 (col1 bigint, col2 date, col3 string, col4 strin
 cursor.execute("INSERT INTO t1 VALUES(1000, '2020-12-25', 'guangdon', 'shenzhen', 1)")
 ```
 
-## 执行 SQL 查询
+### 执行 SQL 查询
 
 ```Python
 result = cursor.execute("SELECT * FROM t1")
@@ -71,7 +71,7 @@ print(result.fetchmany(10))
 print(result.fetchall())
 ```
 
-## SQL 批请求式查询
+### SQL 批请求式查询
 
 ```Python
 #Batch Request 模式，接口入参依次为“SQL”, “Common_Columns”, “Request_Columns”
@@ -79,7 +79,7 @@ result = cursor.batch_row_request("SELECT * FROM t1", ["col1","col2"], ({"col1":
 print(result.fetchone())
 ```
 
-## 删除表
+### 删除表
 
 删除表 `t1`：
 
@@ -87,7 +87,7 @@ print(result.fetchone())
 cursor.execute("DROP TABLE t1")
 ```
 
-## 删除数据库
+### 删除数据库
 
 删除数据库 `db1`：
 
@@ -95,7 +95,7 @@ cursor.execute("DROP TABLE t1")
 cursor.execute("DROP DATABASE db1")
 ```
 
-## 关闭连接
+### 关闭连接
 
 ```Python
 cursor.close()
@@ -105,7 +105,7 @@ cursor.close()
 
 本节演示 OpenMLDB SQLAlchemy 的基本使用。
 
-## 创建连接
+### 创建连接
 
 ```
 create_engine('openmldb:///db_name?zk=zkcluster&zkPath=zkpath')
@@ -125,7 +125,7 @@ engine = db.create_engine('openmldb:///?zk=127.0.0.1:2181&zkPath=/openmldb')
 connection = engine.connect()
 ```
 
-## 创建数据库
+### 创建数据库
 
 使用 `connection.execute()` 接口创建数据库：
 
@@ -137,7 +137,7 @@ except Exception as e:
     print(e)
 ```
 
-## 创建表
+### 创建表
 
 使用 `connection.execute()` 接口创建一张表：
 
@@ -148,7 +148,7 @@ except Exception as e:
     print(e)
 ```
 
-## 插入数据到表中
+### 插入数据到表中
 
 使用 `connection.execute(ddl)` 接口执行SQL的插入语句，可以向表中插入数据：
 
@@ -170,7 +170,7 @@ except Exception as e:
     print(e)
 ```
 
-## 执行 SQL 批式查询
+### 执行 SQL 批式查询
 
 使用 `connection.execute(sql)` 接口执行 SQL 批式查询语句:
 
@@ -185,7 +185,7 @@ except Exception as e:
     print(e)
 ```
 
-## 执行 SQL 请求式查询
+### 执行 SQL 请求式查询
 
 使用 `connection.execute(sql, request)` 接口执行 SQL 请求式查询，可以把输入数据放到 execute 函数的第二个参数中：
 
@@ -196,7 +196,7 @@ except Exception as e:
     print(e)
 ```
 
-## 删除表
+### 删除表
 
 使用 `connection.execute(ddl)` 接口删除一张表：
 
@@ -207,7 +207,7 @@ except Exception as e:
     print(e)
 ```
 
-## 删除数据库
+### 删除数据库
 
 使用 `connection.execute(ddl)` 接口删除一个数据库：
 
@@ -246,4 +246,4 @@ openmldb.sql_magic.register(db)
 [libprotobuf FATAL /Users/runner/work/crossbow/crossbow/vcpkg/buildtrees/protobuf/src/23fa7edd52-3ba2225d30.clean/src/google/protobuf/stubs/common.cc:87] This program was compiled against version 3.6.1 of the Protocol Buffer runtime library, which is not compatible with the installed version (3.15.8).  Contact the program author for an update. ...
 ```
 
-> 该问题可能是因为别的库引入了 protobuf 的其他版本。可以尝试使用 virtual env 环境（比如 conda）。
+> 该问题可能是因为别的库引入了 protobuf 的其他版本。可以尝试使用 virtual env 环境（比如 conda）.
