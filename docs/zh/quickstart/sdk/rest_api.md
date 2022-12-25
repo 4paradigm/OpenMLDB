@@ -78,9 +78,7 @@ curl http://127.0.0.1:8080/dbs/db/tables/trans -X PUT -d '{
 
 **请求数据样例**
 
-例 1：
-
-array 格式
+例 1：array 格式
 
 ```Plain
 curl http://127.0.0.1:8080/dbs/demo_db/deployments/demo_data_service -X POST -d'{
@@ -100,17 +98,13 @@ curl http://127.0.0.1:8080/dbs/demo_db/deployments/demo_data_service -X POST -d'
 }
 ```
 
-示例 2：
-
-JSON 格式：
+示例 2：JSON 格式
 
 ```JSON
 curl http://127.0.0.1:8080/dbs/demo_db/deployments/demo_data_service -X POST -d'{
   "input": [{"c1":"aaa", "c2":11, "c3":22, "c4":1.2, "c5":1.3, "c6":1635247427000, "c7":"2021-05-20", "foo":"bar"}]
     }'
 ```
-
-​      
 
 响应：
 
@@ -147,11 +141,11 @@ curl http://127.0.0.1:8080/dbs/demo_db/deployments/demo_data_service -X POST -d'
 
 | **参数** | **类型** | **必需** | **说明**                                                     |
 | -------- | -------- | -------- | ------------------------------------------------------------ |
-| mode     |          | 是       | 可配 `offsync` , `offasync`, `online`                        |
-| sql      |          | 是       |                                                              |
-| input    |          | 否       |                                                              |
-| schema   |          | 否       | 可支持数据类型（大小写不敏感）：`Bool`, `Int16`, `Int32`, `Int64`, `Float`, `Double`, `String`, `Date` and `Timestamp`. |
-| data     |          | 否       |                                                              |
+| mode     | String        | 是       | 可配 `offsync` , `offasync`, `online`                        |
+| sql      | String      | 是       |                                                              |
+| input    | Object      | 否       |                                                              |
+| schema   | Array         | 否       | 可支持数据类型（大小写不敏感）：`Bool`, `Int16`, `Int32`, `Int64`, `Float`, `Double`, `String`, `Date` and `Timestamp`. |
+| data     | Array      | 否       |                                                              |
 
 **请求数据样例**
 
@@ -258,7 +252,7 @@ curl http://127.0.0.1:8080/dbs/demo_db/deployments/demo_data_service -X POST -d'
 }
 ```
 
-## **获取所有表名**
+## 获取所有表名
 
 请求地址：http://ip:port/dbs/{db}/tables
 
