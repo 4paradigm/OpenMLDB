@@ -34,7 +34,7 @@ cursor = db.cursor()
 连接单机版 `host` 和 `port` 参数必需。
 
 ```{note}
-通过 OpenMLDB DBAPI/URL 启动 Python 客户端均可使用 Python SDK，可选配置项与 JAVA 客户端的配置项基本一致，请参考 [JAVA SDK Option详解](./java_sdk#sdk-option详解)。
+通过 OpenMLDB DBAPI/URL 启动 Python 客户端均可使用 Python SDK，可选配置项与 JAVA 客户端的配置项基本一致，请参考 [JAVA SDK Option 详解](./java_sdk#sdk-option详解)。
 ```
 
 ### 创建数据库
@@ -116,18 +116,18 @@ create_engine('openmldb:///db_name?zk=zkcluster&zkPath=zkpath')
 ```Python
 import sqlalchemy as db
 
- 连接集群版OpenMLDB
+#连接集群版OpenMLDB
 engine = db.create_engine('openmldb:///?zk=127.0.0.1:2181&zkPath=/openmldb')
 
- 连接单机版OpenMLDB
- engine = db.create_engine('openmldb:///?host=127.0.0.1&port=6527')
+#连接单机版OpenMLDB
+engine = db.create_engine('openmldb:///?host=127.0.0.1&port=6527')
 
 connection = engine.connect()
 ```
 
 ### 创建数据库
 
-使用 `connection.execute()` 接口创建数据库：
+使用 `connection.execute()` 接口创建数据库 `db1`：
 
 ```Python
 try:
@@ -139,7 +139,7 @@ except Exception as e:
 
 ### 创建表
 
-使用 `connection.execute()` 接口创建一张表：
+使用 `connection.execute()` 接口创建表 `t1`：
 
 ```Python
 try:
@@ -150,7 +150,7 @@ except Exception as e:
 
 ### 插入数据到表中
 
-使用 `connection.execute(ddl)` 接口执行SQL的插入语句，可以向表中插入数据：
+使用 `connection.execute(ddl)` 接口执行 SQL 的插入语句，可以向表中插入数据：
 
 ```Python
 try:
@@ -242,8 +242,8 @@ openmldb.sql_magic.register(db)
 
 - Python SDK 遇到以下问题，如何解决？
 
-```Plain
-[libprotobuf FATAL /Users/runner/work/crossbow/crossbow/vcpkg/buildtrees/protobuf/src/23fa7edd52-3ba2225d30.clean/src/google/protobuf/stubs/common.cc:87] This program was compiled against version 3.6.1 of the Protocol Buffer runtime library, which is not compatible with the installed version (3.15.8).  Contact the program author for an update. ...
-```
+    ```Plain
+    [libprotobuf FATAL /Users/runner/work/crossbow/crossbow/vcpkg/buildtrees/protobuf/src/23fa7edd52-3ba2225d30.clean/src/google/protobuf/stubs/common.cc:87] This program was compiled against version 3.6.1 of the Protocol Buffer runtime library, which is not compatible with the installed version (3.15.8).  Contact the program author for an update. ...
+    ```
 
 > 该问题可能是因为别的库引入了 protobuf 的其他版本。可以尝试使用 virtual env 环境（比如 conda）.
