@@ -376,7 +376,7 @@ try {
 - 直接执行 delete SQL
 - 使用 delete PreparedStatement
 
-注意，这样的删除仅能删除一个索引下的数据，不是对所有索引都生效。详情参考 [DELETE功能边界](./function_boundary.mddelete)。
+注意，这样仅能删除一个索引下的数据，不是对所有索引都生效。详情参考 [DELETE 功能边界](../function_boundary#delete)。
 
 ```Java
 java.sql.Statement state = router.getStatement();
@@ -733,7 +733,7 @@ public class Demo {
 
 JAVA 客户端支持对 SQL 进行正确性校验，验证是否可执行。分为 batch 和 request 两个模式。
 
-- `validateSQLInBatch`可以验证 SQL 是否能在离线端执行。
-- `validateSQLInRequest`可以验证 SQL 是否能被 deploy。
+- `validateSQLInBatch` 可以验证 SQL 是否能在离线端执行。
+- `validateSQLInRequest` 可以验证 SQL 是否能被 deploy。
 
-两个接口都需要传入 SQL 所需要的所有表 schema。目前只支持单 db，请不要在 SQL 语句中使用`db.table`格式。
+两个接口都需要传入 SQL 所需要的所有表 schema。目前只支持单 db，请不要在 SQL 语句中使用 `db.table` 格式。
