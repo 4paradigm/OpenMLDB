@@ -16,7 +16,7 @@ services:
       - /bin/bash
       - -cx
       - |
-        rm /work/openmldb/spark-3.2.1-bin-openmldbspark/jars/curator-* # curator NoSuchMethodError error
+        # rm /work/openmldb/spark-3.2.1-bin-openmldbspark/jars/curator-* # curator NoSuchMethodError error
         ./init.sh
         sleep 5
         # quickstart test
