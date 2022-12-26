@@ -1,11 +1,12 @@
 # Java SDK
 
-## Java SDK包安装
+## Java SDK 包安装
 
-### Linux下 Java SDK包安装
-配置maven pom
+- Linux 下 Java SDK 包安装
 
-```xml
+配置 maven pom：
+
+```XML
 <dependency>
     <groupId>com.4paradigm.openmldb</groupId>
     <artifactId>openmldb-jdbc</artifactId>
@@ -17,10 +18,12 @@
     <version>0.6.9</version>
 </dependency>
 ```
-### Mac下 Java SDK包安装
-配置maven pom
 
-```xml
+- Mac 下 Java SDK 包安装
+
+配置 maven pom：
+
+```XML
 <dependency>
     <groupId>com.4paradigm.openmldb</groupId>
     <artifactId>openmldb-jdbc</artifactId>
@@ -32,17 +35,18 @@
     <version>0.6.9-macos</version>
 </dependency>
 ```
-注意: 由于 openmldb-native 中包含了 OpenMLDB 编译的 C++ 静态库, 默认是 linux 静态库, macOS 上需将上述 openmldb-native 的 version 改成 `0.6.9-macos`, openmldb-jdbc 的版本保持不变。
 
-## Java SDK快速上手
+注意：由于 openmldb-native 中包含了 OpenMLDB 编译的 C++ 静态库，默认是 Linux 静态库，macOS 上需将上述 openmldb-native 的 version 改成 `0.6.9-macos`，openmldb-jdbc 的版本保持不变。
 
-Java SDK连接OpenMLDB服务，可以通过JDBC的方式（仅连接集群版），也可以通过SqlClusterExecutor的方式直连。如果连接集群版OpenMLDB，推荐使用JDBC的方式。
+## Java SDK 快速上手
+
+Java SDK 连接 OpenMLDB 服务，可以使用 JDBC 的方式（仅连接集群版），也可以通过 SqlClusterExecutor 的方式直连。如果连接集群版 OpenMLDB，推荐使用 JDBC 的方式。
 
 ### JDBC 方式
 
-JDBC的方式目前只能连接集群版OpenMLDB。连接方式如下：
+JDBC 的方式目前只能连接集群版 OpenMLDB。连接方式如下：
 
-```
+```Java
 Class.forName("com._4paradigm.openmldb.jdbc.SQLDriver");
 // No database in jdbcUrl
 Connection connection = DriverManager.getConnection("jdbc:openmldb:///?zk=localhost:6181&zkPath=/openmldb");
@@ -51,37 +55,39 @@ Connection connection = DriverManager.getConnection("jdbc:openmldb:///?zk=localh
 Connection connection1 = DriverManager.getConnection("jdbc:openmldb:///test_db?zk=localhost:6181&zkPath=/openmldb");
 ```
 
-未设置db的Connection功能有限，更推荐创建Connection时就指定db。但注意指定的db在创建连接时必须存在。
-
-默认为在线模式（之后会调整为“默认离线”）。
+- 未设置 db 的 Connection 功能有限，更推荐创建 Connection 时就指定db。但注意指定的 db 在创建连接时必须存在。
+- 默认为在线模式（之后会调整为“默认离线”）。
 
 #### 使用概览
 
-通过`Statement`的方式可以执行所有的sql命令，离线在线模式下都可以。切换离线/在线模式，需执行`SET @@execute_mode='...';`。例如：
-```java
+通过 `Statement` 的方式可以执行所有的 SQL 命令，离线在线模式下都可以。切换离线/在线模式，需执行 `SET @@execute_mode='...';`。例如：
+
+```Java
 Statement stmt = connection.createStatement();
 stmt.execute("SET @@execute_mode='offline"); // 切换为离线模式
-stmt.execute("SELECT * from t1"); // 离线select
-ResultSet res = stmt.getResultSet(); // 上一次execute的ResultSet结果
+stmt.execute("SELECT * from t1"); // 离线 select
+ResultSet res = stmt.getResultSet(); // 上一次 execute 的 ResultSet 结果
+
 stmt.execute("SET @@execute_mode='online"); // 切换为在线模式
-res = stmt.executeQuery("SELECT * from t1"); // 在线select, executeQuery可直接获取ResultSet结果
+res = stmt.executeQuery("SELECT * from t1"); // 在线 select, executeQuery 可直接获取 ResultSet 结果
 ```
 
-其中，离线命令与"在线LOAD DATA(cluster)"命令是异步命令，返回的ResultSet包含该job的id、state等信息。可通过执行`show job <id>`来查询job是否执行完成。**注意ResultSet需要先执行`next()`游标才会指向第一行数据**。
+其中，集群版 `LOAD DATA` 命令是非阻塞命令，返回的 ResultSet 包含该 job 的 id、state 等信息。可通过执行 `show job <id>` 来查询 job 是否执行完成。注意 ResultSet 需要先执行 `next()` 游标才会指向第一行数据。
 
-也可以改为同步命令：
-```
+也可以改为阻塞命令：
+
+```SQL
 SET @@sync_job=true;
-SET @@job_timeout=60000; // ms, 默认timeout 1min（考虑到异步时不需要太久的等待），同步情况下应调整大一点
-```
-```{tip}
-如果同步命令实际耗时超过连接空闲默认的最大等待时间0.5h，请[调整Taskmanager的keepAliveTime](../maintain/faq.md#2-为什么收到-got-eof-of-socket-的警告日志)。
+SET @@job_timeout=60000; 单位为毫秒，如果数据较多容易超时（默认1钟），请调大job timeout: SET @@job_timeout=600000;
 ```
 
-#### PreparedStatement
+如果阻塞命令实际耗时超过连接空闲默认的最大等待时间 0.5 小时，请[调整 taskmanager 的 keepAliveTime](../maintain/faq.md2-为什么收到-got-eof-of-socket-的警告日志)。
 
-`PreparedStatement`可支持`SELECT`,`INSERT`和`DELETE`，`INSERT`仅支持插入到在线。
-```java
+####  PreparedStatement
+
+`PreparedStatement` 可支持 `SELECT`、`INSERT` 和 `DELETE`，`INSERT` 仅支持插入到在线。
+
+```Java
 PreparedStatement selectStatement = connection.prepareStatement("SELECT * FROM t1 WHERE id=?");
 PreparedStatement insertStatement = connection.prepareStatement("INSERT INTO t1 VALUES (?,?)");
 PreparedStatement insertStatement = connection.prepareStatement("DELETE FROM t1 WHERE id=?");
@@ -89,11 +95,11 @@ PreparedStatement insertStatement = connection.prepareStatement("DELETE FROM t1 
 
 ### SqlClusterExecutor 方式
 
-#### 创建SqlClusterExecutor
+#### 创建 SqlClusterExecutor
 
-首先，进行OpenMLDB连接参数配置，java sdk集群版和单机版的区别在于连接参数配置不同，默认是集群版。
+首先，进行 OpenMLDB 连接参数配置，Java SDK 集群版和单机版的区别在于连接参数配置不同，默认为集群版。
 
-```java
+```Java
 // 集群版配置方式如下：
 SdkOption option = new SdkOption();
 option.setZkCluster("127.0.0.1:2181");
@@ -110,19 +116,19 @@ option.setSessionTimeout(10000);
 option.setRequestTimeout(60000);
 ```
 
-接着，使用SdkOption创建Executor。
+然后使用 SdkOption 创建 Executor。
 
-```java
+```Java
 sqlExecutor = new SqlClusterExecutor(option);
 ```
 
-`SqlClusterExecutor`执行sql操作是多线程安全的，在实际环境中可以创建一个`SqlClusterExecutor`。但由于执行模式(execute_mode)是`SqlClusterExecutor`内部变量，如果同时想执行一个离线命令和一个在线命令，容易出现不可预期的结果。这时候请使用多个`SqlClusterExecutor`。
+`SqlClusterExecutor`执行 SQL 操作是多线程安全的，在实际环境中可以创建一个`SqlClusterExecutor`。但由于执行模式 (execute_mode) 是 `SqlClusterExecutor` 内部变量，如果想同时执行一个离线命令和一个在线命令，容易出现不可预期的结果。这时候请使用多个`SqlClusterExecutor`。
 
 #### Statement
 
-`SqlClusterExecutor`可以获得`Statement`，类似JDBC方式，可以使用`Statement::execute`。
+`SqlClusterExecutor` 可以获得 `Statement`，类似 JDBC 方式，可以使用 `Statement::execute`。
 
-```java
+```Java
 java.sql.Statement state = sqlExecutor.getStatement();
 try {
     state.execute("create database db_test");
@@ -133,9 +139,9 @@ try {
 }
 ```
 
-注意`SqlClusterExecutor`没有默认db的概念，所以需要进行一次`USE <db>`才可以继续建表。
+注意 `SqlClusterExecutor` 没有默认数据库的概念，所以需要进行一次 `USE <db>` 才可以继续建表。
 
-```java
+```Java
 java.sql.Statement state = sqlExecutor.getStatement();
 try {
     state.execute("use db_test");
@@ -155,11 +161,11 @@ try {
 }
 ```
 
-##### Statement执行SQL批式查询
+##### Statement 执行 SQL 批式查询
 
-使用`Statement::execute`接口执行SQL批式查询语句:
+使用 `Statement::execute` 接口执行 SQL 批式查询语句：
 
-```java
+```Java
 java.sql.Statement state = sqlExecutor.getStatement();
 try {
     state.execute("use db_test");
@@ -174,7 +180,7 @@ try {
 
 访问查询结果:
 
-```java
+```Java
 // 访问结果集ResultSet，并输出前三列数据
 try {
     while (result.next()) {
@@ -195,15 +201,14 @@ try {
 
 #### PreparedStatement
 
-`SqlClusterExecutor`也可以获得`PreparedStatement`，但需要指定获得哪种`PreparedStatement`。例如，我们使用InsertPreparedStmt进行插入操作，可以有三种方式。
+`SqlClusterExecutor` 也可以获得 `PreparedStatement`，但需要指定获得哪种`PreparedStatement`。例如，使用 InsertPreparedStmt 进行插入操作，可以有三种方式。
 
-##### 普通Insert
+##### 普通 Insert
 
-第一步，使用`SqlClusterExecutor::getInsertPreparedStmt(db, insertSql)`接口获取InsertPrepareStatement。
+1. 使用 `SqlClusterExecutor::getInsertPreparedStmt(db, insertSql)` 接口获取InsertPrepareStatement。
+2. 使用 `PreparedStatement::execute()` 接口执行 insert 语句。
 
-第二步，使用`PreparedStatement::execute()`接口执行insert语句。
-
-```java
+```Java
 String insertSql = "insert into trans values(\"aa\",23,33,1.4,2.4,1590738993000,\"2020-05-04\");";
 java.sql.PreparedStatement pstmt = null;
 try {
@@ -226,13 +231,11 @@ try {
 
 ##### Insert With Placeholder
 
-第一步，使用`SqlClusterExecutor::getInsertPreparedStmt(db, insertSqlWithPlaceHolder)`接口获取InsertPrepareStatement。
+1. 使用 `SqlClusterExecutor::getInsertPreparedStmt(db, insertSqlWithPlaceHolder)` 接口获取 InsertPrepareStatement。
+2. 调用 `PreparedStatement::setType(index, value)` 接口，填充数据到 InsertPrepareStatement中。注意 index 从 1 开始。
+3. 使用 `PreparedStatement::execute()` 接口执行 insert 语句。
 
-第二步，调用`PreparedStatement::setType(index, value)`接口，填充数据到InsertPrepareStatement中。注意index从1开始。
-
-第三步，使用`PreparedStatement::execute()`接口执行insert语句。
-
-```java
+```Java
 String insertSqlWithPlaceHolder = "insert into trans values(\"aa\", ?, 33, ?, 2.4, 1590738993000, \"2020-05-04\");";
 java.sql.PreparedStatement pstmt = null;
 try {
@@ -254,23 +257,20 @@ try {
   }
 }
 ```
+
 ```{note}
-execute后，缓存的数据将被清除，无法重试execute。
+execute 后，缓存的数据将被清除，无法重试 execute。
 ```
 
 ##### Batch Insert With Placeholder
 
-第一步，使用`SqlClusterExecutor::getInsertPreparedStmt(db, insertSqlWithPlaceHolder)`接口获取InsertPrepareStatement。
+1. 使用 `SqlClusterExecutor::getInsertPreparedStmt(db, insertSqlWithPlaceHolder)` 接口获取 InsertPrepareStatement。
+2. 调用 `PreparedStatement::setType(index, value)` 接口，填充数据到 InsertPrepareStatement 中。
+3. 使用 `PreparedStatement::addBatch()` 接口完成一行的填充。
+4. 继续使用 `setType(index, value)` 和 `addBatch()`，填充多行。
+5. 使用 `PreparedStatement::executeBatch()` 接口完成批量插入。
 
-第二步，调用`PreparedStatement::setType(index, value)`接口，填充数据到InsertPrepareStatement中。
-
-第三步，使用`PreparedStatement::addBatch()`接口完成一行的填充。
-
-第四步，继续使用`setType(index, value)`和`addBatch()`，填充多行。
-
-第五步，使用`PreparedStatement::executeBatch()`接口完成批量插入。
-
-```java
+```Java
 String insertSqlWithPlaceHolder = "insert into trans values(\"aa\", ?, 33, ?, 2.4, 1590738993000, \"2020-05-04\");";
 java.sql.PreparedStatement pstmt = null;
 try {
@@ -296,21 +296,22 @@ try {
   }
 }
 ```
+
 ```{note}
-executeBatch后，缓存的所有数据将被清除，无法重试executeBatch。
+executeBatch 后，缓存的所有数据将被清除，无法重试 executeBatch。
 ```
 
-#### 执行SQL请求式查询
+#### 执行 SQL 请求式查询
 
-`RequestPreparedStmt`是一个独特的查询模式（JDBC不支持此模式）。此模式需要selectSql与一条请求数据，所以需要在`getRequestPreparedStmt`时填入sql，也需要`setType`设置请求数据。
+`RequestPreparedStmt` 是一个独特的查询模式（JDBC 不支持此模式）。此模式需要 selectSql 与一条请求数据，所以需要在 `getRequestPreparedStmt` 时填入 SQL，也需要 `setType` 设置请求数据。
 
-第一步，使用`SqlClusterExecutor::getRequestPreparedStmt(db, selectSql)`接口获取RequestPrepareStatement。
+执行 SQL 请求式查询有以下三步：
 
-第二步，调用`PreparedStatement::setType(index, value)`接口设置请求数据。请根据数据表中每一列对应的数据类型调用setType接口以及配置合法的值。
+1. 使用 `SqlClusterExecutor::getRequestPreparedStmt(db, selectSql)` 接口获取RequestPrepareStatement。
+2. 调用 `PreparedStatement::setType(index, value)` 接口设置请求数据。请根据数据表中每一列对应的数据类型调用 setType 接口以及配置合法的值。
+3. 调用 `Statement::executeQuery()` 接口执行请求式查询语句。
 
-第三步，调用`Statement::executeQuery()`接口执行请求式查询语句。
-
-```java
+```Java
 String selectSql = "SELECT c1, c3, sum(c4) OVER w1 as w1_c4_sum FROM trans WINDOW w1 AS " +
                 "(PARTITION BY trans.c1 ORDER BY trans.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);";
 PreparedStatement pstmt = null;
@@ -368,15 +369,16 @@ try {
 }
 ```
 
-#### 删除指定索引下某个pk的所有数据
+####  删除指定索引下某个  pk  的所有数据
 
-通过JAVA SDK可以有以下两种方式删除数据:
-- 直接执行delete SQL
-- 使用 delete preparestatement
+通过 JAVA SDK 可以有以下两种方式删除数据:
 
-注意，这样的删除仅能删除一个索引下的数据，不是对所有索引都生效。详情参考[DELETE功能边界](./function_boundary.md#delete)。
+- 直接执行 delete SQL
+- 使用 delete PreparedStatement
 
-```java
+注意，这样的删除仅能删除一个索引下的数据，不是对所有索引都生效。详情参考 [DELETE功能边界](./function_boundary.mddelete)。
+
+```Java
 java.sql.Statement state = router.getStatement();
 try {
     String sql = "DELETE FROM t1 WHERE col2 = 'key1';";
@@ -398,10 +400,9 @@ try {
 }
 ```
 
-### 完整的 SqlClusterExecutor 使用范例
+###  完整的 SqlClusterExecutor 使用范例
 
-
-```java
+```Java
 import com._4paradigm.openmldb.jdbc.CallablePreparedStatement;
 import com._4paradigm.openmldb.sdk.*;
 import com._4paradigm.openmldb.sdk.impl.SqlClusterExecutor;
@@ -436,7 +437,7 @@ public class Demo {
             demo.requestSelect();
             // 删除表
             demo.dropTable();
-          	// 删除数据库
+            // 删除数据库
             demo.dropDataBase();
         } catch (Exception e) {
             e.printStackTrace();
@@ -699,35 +700,40 @@ public class Demo {
 }
 ```
 
-## SDK Option详解
+## SDK 配置项详解
 
-连接集群版必须填写`zkCluster`和`zkPath`（set方法或JDBC中`?`后的配置项`foo=bar`）。其他选项可选。
+连接集群版必须填写 `zkCluster` 和 `zkPath`（set 方法或 JDBC 中 `?` 后的配置项 `foo=bar`）。
 
-连接单机版必须填写`host`和`port`以及`isClusterMode`(即`SDKOption.setClusterMode`)，注意必须设置clusterMode，目前不支持自动配置这一选项。其他选项可选。
+连接单机版必须填写 `host` 和 `port` 以及 `isClusterMode`（即 `SDKOption.setClusterMode`），注意必须设置 clusterMode，目前不支持自动配置这一选项。
 
-### 通用可选项
+### 通用可选配置项
 
 连接单机或集群版都可以配置的选项有：
-- enableDebug: 默认false，开启hybridse的debug日志（注意不是全局的debug日志），可以查看到更多sql编译和运行的日志。但这些日志不是全部被客户端收集，需要查看 tablet server 日志。
-- requestTimeout: 默认60000ms，这个timeout是客户端发送的rpc超时时间，发送到taskmanager的除外（job的rpc timeout由variable `job_timeout`控制）。
-- glogLevel: 默认0，和glog的minloglevel类似，INFO, WARNING, ERROR, and FATAL日志分别对应 0, 1, 2, and 3。0表示打印INFO以及上的等级。
-- glogDir: 默认为empty，日志目录为空时，打印到stderr，即控制台。
-- maxSqlCacheSize: 默认50，客户端单个db单种执行模式的最大sql cache数量，如果出现cache淘汰引发的错误，可以增大这一size避开问题。
 
-### 集群版专有可选项
+| **可选配置项**  | **说明**                                                     |
+| --------------- | ------------------------------------------------------------ |
+| enableDebug     | 默认 false，开启 hybridse 的 debug 日志（注意不是全局的 debug 日志），可以查看到更多 sql 编译和运行的日志。但这些日志不是全部被客户端收集，需要查看 tablet server 日志。 |
+| requestTimeout  | 默认 60000 ms，这个 timeout 是客户端发送的 rpc 超时时间，发送到 taskmanager 的除外（job 的 rpc timeout 由 variable `job_timeout` 控制）。 |
+| glogLevel       | 默认 0，和 glog 的 minloglevel 类似，`INFO/WARNING/ERROR/FATAL` 日志分别对应 `0/1/2/3`。0 表示打印 INFO 以及上的等级。 |
+| glogDir         | 默认为 empty，日志目录为空时，打印到 stderr，即控制台。      |
+| maxSqlCacheSize | 默认 50，客户端单个 db 单种执行模式的最大 sql cache 数量，如果出现 cache淘汰引发的错误，可以增大这一 size 避开问题。 |
 
-由于集群版有zk和taskmanager组件，所以有以下配置可选项：
-- sessionTimeout: 默认10000ms，zk的session timeout。
-- zkLogLevel: 默认3，0-禁止所有zk log, 1-error, 2-warn, 3-info, 4-debug。
-- zkLogFile: 默认empty，打印到stdout。
-- sparkConfPath: 默认empty，可以通过此配置更改job使用的spark conf，而不需要配置taskmanager重启。
+### 集群版可选配置项
+
+由于集群版有 zk 和 taskmanager 组件，所以有以下可选配置项：
+
+| **可选配置项** | **说明**                                                     |
+| -------------- | ------------------------------------------------------------ |
+| sessionTimeout | 默认 10000 ms，zk 的 session timeout。                       |
+| zkLogLevel     | 默认 3，`0/1/2/3/4` 分别代表 `禁止所有zk log/error/warn/info/debug` |
+| zkLogFile      | 默认 empty，打印到 stdout。                                  |
+| sparkConfPath  | 默认 empty，可以通过此配置更改 job 使用的 spark conf，而不需要配置 taskmanager 重启。 |
 
 ## SQL 校验
 
-JAVA客户端支持对sql进行正确性校验，验证sql是否可执行。分为batch和request两个模式。
+JAVA 客户端支持对 SQL 进行正确性校验，验证是否可执行。分为 batch 和 request 两个模式。
 
-- `validateSQLInBatch`可以验证sql是否能在离线端执行。
+- `validateSQLInBatch`可以验证 SQL 是否能在离线端执行。
+- `validateSQLInRequest`可以验证 SQL 是否能被 deploy。
 
-- `validateSQLInRequest`可以验证sql是否能被deploy。
-
-两个接口都需要传入sql所需要的所有表schema。目前只支持单db，请**不要**在sql语句中使用`db.table`格式。
+两个接口都需要传入 SQL 所需要的所有表 schema。目前只支持单 db，请不要在 SQL 语句中使用`db.table`格式。

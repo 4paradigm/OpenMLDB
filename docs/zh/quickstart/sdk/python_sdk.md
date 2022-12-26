@@ -198,7 +198,7 @@ except Exception as e:
 
 ### 删除表
 
-使用 `connection.execute(ddl)` 接口删除一张表：
+使用 `connection.execute(ddl)` 接口删除表 `t1`：
 
 ```Python
 try:
@@ -209,7 +209,7 @@ except Exception as e:
 
 ### 删除数据库
 
-使用 `connection.execute(ddl)` 接口删除一个数据库：
+使用 `connection.execute(ddl)` 接口删除数据库 `db1`：
 
 ```Python
 try:
