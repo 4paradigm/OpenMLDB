@@ -37,9 +37,9 @@ cd python/openmldb_tool
 pytest tests/
 ```
 
-测试如果需要python log信息:
+测试如果需要python log信息（成功的测试也会打印）:
 ```
-pytest -o log_cli=true --log-cli-level=DEBUG tests/
+pytest -so log_cli=true --log-cli-level=DEBUG tests/
 ```
 
 ## Conda
