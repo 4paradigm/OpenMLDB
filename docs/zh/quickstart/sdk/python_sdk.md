@@ -34,7 +34,7 @@ cursor = db.cursor()
 连接单机版 `host` 和 `port` 参数必需。
 
 ```{note}
-通过 OpenMLDB DBAPI/URL 启动 Python 客户端均可使用 Python SDK，可选配置项与 JAVA 客户端的配置项基本一致，请参考 [JAVA SDK Option 详解](./java_sdk#sdk-option详解)。
+通过 OpenMLDB DBAPI/URL 启动 Python 客户端均可使用 Python SDK，可选配置项与 JAVA 客户端的配置项基本一致，请参考 [JAVA SDK 配置项详解](./java_sdk#sdk-配置项详解)。
 ```
 
 ### 创建数据库
@@ -234,7 +234,7 @@ openmldb.sql_magic.register(db)
 
 ## 常见问题
 
-- 使用 SQLAlchemy 出现 `ImportError: dlopen(.._sql_router_sdk.so, 2): initializer function 0xnnnn not in mapped image for `，怎么办？
+- 使用 SQLAlchemy 出现 `ImportError: dlopen(.._sql_router_sdk.so, 2): initializer function 0xnnnn not in mapped image for`，怎么办？
 
 > 除了 import openmldb 外，您可能还 import 了其他第三方库，可能导致加载的顺序产生混乱。由于系统的复杂度，可以尝试使用 virtual env 环境（比如 conda），避免干扰。并且，在 import sqlalchemy 前 import openmldb，并保证这两个 import 在最前。
 >

@@ -3,7 +3,7 @@
 ## 准备
 
 - OpenMLDB（最低版本 v0.7.0）
-- 运行 API server 组件 
+- 运行 API server 组件
 
 ## Go SDK 包安装
 
@@ -31,7 +31,7 @@ openmldb://API_SERVER_HOST[:API_SERVER_PORT]/DB_NAME
 
 必须要连接到一个已经存在的数据库。
 
-### 创建表 
+### 创建表
 
 创建表 `demo`：
 

@@ -11,7 +11,6 @@ make && make install
 
 参考快速上手[启动服务端和客户端](../openmldb_quickstart)
 
-
 ## 编写用户代码
 
 以下代码演示 C++ SDK 的基本使用。openmldb_api.h 和 sdk/result_set.h 是必须 include 的头文件。
