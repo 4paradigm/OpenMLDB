@@ -79,7 +79,7 @@ do
 done
 
 upgrade_java_sdk "docs/en/quickstart/java_sdk.md"
-upgrade_java_sdk "docs/zh/quickstart/java_sdk.md"
+upgrade_java_sdk "docs/zh/quickstart/sdk/java_sdk.md"
 
 upgrade_install_doc "docs/en/deploy/install_deploy.md"
 upgrade_install_doc "docs/zh/deploy/install_deploy.md"
