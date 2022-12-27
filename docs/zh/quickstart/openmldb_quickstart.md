@@ -129,12 +129,18 @@ SELECT * FROM demo_table1;
 
 ### 3. 离线特征计算
 
-执行 SQL 进行特征抽取，并且将生成的特征存储在文件 `feature_data` 中，供后续的机器学习模型训练使用：
+切换到离线模式：
 
 ```sql
 # OpenMLDB CLI
 USE demo_db;
 SET @@execute_mode='offline';
+
+```
+
+执行 SQL 进行特征抽取，并且将生成的特征存储在文件 `feature_data` 中，供后续的机器学习模型训练使用。作为示例，这里使用了一个简单的 SQL 查询方案作为特征抽取脚本：
+
+```sql
 SELECT c1, c2, sum(c3) OVER w1 AS w1_c3_sum FROM demo_table1 WINDOW w1 AS (PARTITION BY demo_table1.c1 ORDER BY demo_table1.c6 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW) INTO OUTFILE '/tmp/feature_data';
 ```
 
@@ -142,7 +148,7 @@ SELECT c1, c2, sum(c3) OVER w1 AS w1_c3_sum FROM demo_table1 WINDOW w1 AS (PARTI
 
 ### 4. SQL 方案上线
 
-将探索好的 SQL 方案 `demo_data_service` 部署到线上，注意部署上线的 SQL 方案需要与对应的离线特征计算的 SQL 方案保持一致。
+将探索好的 SQL 方案部署到线上，这里的的 SQL 方案 `demo_data_service` 需要与对应的离线特征计算的 SQL 方案保持一致。
 
 ```sql
 # OpenMLDB CLI
