@@ -16,8 +16,6 @@
 docker run -it 4pdosc/openmldb:0.6.9 bash
 ```
 
-
-
 ```{note}
 成功启动容器以后，本教程中的后续命令默认均在容器内执行。如果你需要从容器外访问容器内的 OpenMLDB 服务端，请参考 [CLI/SDK-容器 onebox 文档](../reference/ip_tips.md#clisdk-容器onebox)。
 ```
@@ -62,16 +60,21 @@ curl https://openmldb.ai/demo/data.parquet --output /work/taxi-trip/data/data.pa
 
 ```sql
 # OpenMLDB CLI
- CREATE DATABASE demo_db;
- USE demo_db;
- CREATE TABLE demo_table1(c1 string, c2 int, c3 bigint, c4 float, c5 double, c6 timestamp, c7 date);
+CREATE DATABASE demo_db;
+USE demo_db;
+CREATE TABLE demo_table1(c1 string, c2 int, c3 bigint, c4 float, c5 double, c6 timestamp, c7 date);
 ```
 
 查看数据表 `demo_table1` 数据：
 
 ```sql
 # OpenMLDB CLI
- desc demo_table1;
+desc demo_table1;
+```
+
+结果如下：
+
+```plain
  --- ------- ----------- ------ ---------
   #   Field   Type        Null   Default
  --- ------- ----------- ------ ---------
@@ -101,9 +104,9 @@ curl https://openmldb.ai/demo/data.parquet --output /work/taxi-trip/data/data.pa
 
 ```sql
 # OpenMLDB CLI
- USE demo_db;
- SET @@execute_mode='offline';
- LOAD DATA INFILE 'file:///work/taxi-trip/data/data.parquet' INTO TABLE demo_table1 options(format='parquet', mode='append');
+USE demo_db;
+SET @@execute_mode='offline';
+LOAD DATA INFILE 'file:///work/taxi-trip/data/data.parquet' INTO TABLE demo_table1 options(format='parquet', mode='append');
 ```
 
 注意，`LOAD DATA` 命令为异步命令，可以通过以下命令来查看任务运行状态和详细日志。
@@ -119,9 +122,9 @@ SHOW JOBLOG job_id; # 显示任务日志
 
 ```sql
 # OpenMLDB CLI
- SET @@sync_job=true;
-# 如果数据较多容易超时（默认 timeout 为 1 分钟），请调大 job timeout，如: SET @@job_timeout=600000;
- SELECT * FROM demo_table1;
+SET @@sync_job=true;
+-- 如果数据较多容易超时（默认 timeout 为 1 分钟），请调大 job timeout，如: SET @@job_timeout=600000;
+SELECT * FROM demo_table1;
 ```
 
 ### 3. 离线特征计算
@@ -130,9 +133,9 @@ SHOW JOBLOG job_id; # 显示任务日志
 
 ```sql
 # OpenMLDB CLI
- USE demo_db;
- SET @@execute_mode='offline';
- SELECT c1, c2, sum(c3) OVER w1 AS w1_c3_sum FROM demo_table1 WINDOW w1 AS (PARTITION BY demo_table1.c1 ORDER BY demo_table1.c6 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW) INTO OUTFILE '/tmp/feature_data';
+USE demo_db;
+SET @@execute_mode='offline';
+SELECT c1, c2, sum(c3) OVER w1 AS w1_c3_sum FROM demo_table1 WINDOW w1 AS (PARTITION BY demo_table1.c1 ORDER BY demo_table1.c6 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW) INTO OUTFILE '/tmp/feature_data';
 ```
 
 注意，集群版 `SELECT INTO` 为异步命令，可以通过 `SHOW JOBS` 等离线任务管理命令来查看运行进度。
@@ -143,20 +146,25 @@ SHOW JOBLOG job_id; # 显示任务日志
 
 ```sql
 # OpenMLDB CLI
- SET @@execute_mode='online';
- DEPLOY demo_data_service SELECT c1, c2, sum(c3) OVER w1 AS w1_c3_sum FROM demo_table1 WINDOW w1 AS (PARTITION BY demo_table1.c1 ORDER BY demo_table1.c6 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
+SET @@execute_mode='online';
+DEPLOY demo_data_service SELECT c1, c2, sum(c3) OVER w1 AS w1_c3_sum FROM demo_table1 WINDOW w1 AS (PARTITION BY demo_table1.c1 ORDER BY demo_table1.c6 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
 ```
 
 上线后可以通过命令 `SHOW DEPLOYMENTS` 查看已部署的 SQL 方案；
 
 ```sql
 # OpenMLDB CLI
- SHOW DEPLOYMENTS;
- --------- -------------------
-  DB        Deployment
- --------- -------------------
-  demo_db   demo_data_service
- --------- -------------------
+SHOW DEPLOYMENTS;
+```
+
+结果如下：
+
+```plain
+--------- -------------------
+ DB        Deployment
+--------- -------------------
+ demo_db   demo_data_service
+--------- -------------------
 1 row in set
 ```
 
@@ -166,9 +174,9 @@ SHOW JOBLOG job_id; # 显示任务日志
 
 ```Sql
 # OpenMLDB CLI
- USE demo_db;
- SET @@execute_mode='online';
- LOAD DATA INFILE 'file:///work/taxi-trip/data/data.parquet' INTO TABLE demo_table1 options(format='parquet', header=true, mode='append');
+USE demo_db;
+SET @@execute_mode='online';
+LOAD DATA INFILE 'file:///work/taxi-trip/data/data.parquet' INTO TABLE demo_table1 options(format='parquet', header=true, mode='append');
 ```
 
 注意，集群版 `LOAD DATA` 也异步命令，可以通过 `SHOW JOBS` 等离线任务管理命令来查看运行进度。
@@ -177,22 +185,22 @@ SHOW JOBLOG job_id; # 显示任务日志
 
 ```sql
 # OpenMLDB CLI
- USE demo_db;
- SET @@execute_mode='online';
- SELECT * FROM demo_table1 LIMIT 10;
- ----- ---- ---- ---------- ----------- --------------- ------------
-  c1    c2   c3   c4         c5          c6              c7
- ----- ---- ---- ---------- ----------- --------------- ------------
-  aaa   12   22   2.200000   12.300000   1636097890000   1970-01-01
-  aaa   11   22   1.200000   11.300000   1636097290000   1970-01-01
-  dd    18   22   8.200000   18.300000   1636111690000   1970-01-01
-  aa    13   22   3.200000   13.300000   1636098490000   1970-01-01
-  cc    17   22   7.200000   17.300000   1636108090000   1970-01-01
-  ff    20   22   9.200000   19.300000   1636270090000   1970-01-01
-  bb    16   22   6.200000   16.300000   1636104490000   1970-01-01
-  bb    15   22   5.200000   15.300000   1636100890000   1970-01-01
-  bb    14   22   4.200000   14.300000   1636099090000   1970-01-01
-  ee    19   22   9.200000   19.300000   1636183690000   1970-01-01
+USE demo_db;
+SET @@execute_mode='online';
+SELECT * FROM demo_table1 LIMIT 10;
+----- ---- ---- ---------- ----------- --------------- ------------
+ c1    c2   c3   c4         c5          c6              c7
+----- ---- ---- ---------- ----------- --------------- ------------
+ aaa   12   22   2.200000   12.300000   1636097890000   1970-01-01
+ aaa   11   22   1.200000   11.300000   1636097290000   1970-01-01
+ dd    18   22   8.200000   18.300000   1636111690000   1970-01-01
+ aa    13   22   3.200000   13.300000   1636098490000   1970-01-01
+ cc    17   22   7.200000   17.300000   1636108090000   1970-01-01
+ ff    20   22   9.200000   19.300000   1636270090000   1970-01-01
+ bb    16   22   6.200000   16.300000   1636104490000   1970-01-01
+ bb    15   22   5.200000   15.300000   1636100890000   1970-01-01
+ bb    14   22   4.200000   14.300000   1636099090000   1970-01-01
+ ee    19   22   9.200000   19.300000   1636183690000   1970-01-01
  ----- ---- ---- ---------- ----------- --------------- ------------
 ```
 
