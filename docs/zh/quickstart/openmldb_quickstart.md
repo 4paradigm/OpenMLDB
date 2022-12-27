@@ -30,13 +30,13 @@ curl https://openmldb.ai/demo/data.parquet --output /work/taxi-trip/data/data.pa
 
 ### 启动服务端和客户端
 
-- 启动 OpenMLDB 服务端
+启动 OpenMLDB 服务端：
 
 ```bash
 /work/init.sh
 ```
 
-- 启动 OpenMLDB CLI 客户端
+启动 OpenMLDB CLI 客户端：
 
 ```bash
 /work/openmldb/bin/openmldb --zk_cluster=127.0.0.1:2181 --zk_root_path=/openmldb --role=sql_client
