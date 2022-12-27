@@ -49,18 +49,14 @@ cd taxi-trip
 
 单机版 OpenMLDB 的工作流程一般包含：建立数据库和表、数据准备、离线特征计算、SQL 方案上线、在线实时特征计算五个阶段。
 
-以下演示的命令如无特别说明，默认均集群版 OpenMLDB CLI 下执行（CLI 命令以提示符 `>` 开头以作区分）。
+以下演示的命令如无特别说明，默认均集群版 OpenMLDB CLI 下执行）。
 
 ### 1. 创建数据库和表
 
 ```sql
-
-> CREATE DATABASE demo_db;
-
-> USE demo_db;
-
-> CREATE TABLE demo_table1(c1 string, c2 int, c3 bigint, c4 float, c5 double, c6 timestamp, c7 date);
-
+CREATE DATABASE demo_db;
+USE demo_db;
+CREATE TABLE demo_table1(c1 string, c2 int, c3 bigint, c4 float, c5 double, c6 timestamp, c7 date);
 ```
 
 ### 2. 数据准备
@@ -73,7 +69,7 @@ cd taxi-trip
 
 ```sql
 
-> LOAD DATA INFILE 'data/data.csv' INTO TABLE demo_table1;
+LOAD DATA INFILE 'data/data.csv' INTO TABLE demo_table1;
 
 ```
 
@@ -81,7 +77,7 @@ cd taxi-trip
 
 ```sql
 
-> SELECT * FROM demo_table1 LIMIT 10;
+SELECT * FROM demo_table1 LIMIT 10;
 
  ----- ---- ---- ---------- ----------- --------------- ------------
 
@@ -119,7 +115,7 @@ cd taxi-trip
 
 ```sql
 
-> SELECT c1, c2, sum(c3) OVER w1 AS w1_c3_sum FROM demo_table1 WINDOW w1 AS (PARTITION BY demo_table1.c1 ORDER BY demo_table1.c6 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW) INTO OUTFILE '/tmp/feature.csv';
+SELECT c1, c2, sum(c3) OVER w1 AS w1_c3_sum FROM demo_table1 WINDOW w1 AS (PARTITION BY demo_table1.c1 ORDER BY demo_table1.c6 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW) INTO OUTFILE '/tmp/feature.csv';
 
 ```
 
@@ -128,16 +124,13 @@ cd taxi-trip
 将探索好的 SQL 方案部署到线上，注意部署上线的 SQL 方案需要与对应的离线特征计算的 SQL 方案保持一致。
 
 ```sql
-
-> DEPLOY demo_data_service SELECT c1, c2, sum(c3) OVER w1 AS w1_c3_sum FROM demo_table1 WINDOW w1 AS (PARTITION BY demo_table1.c1 ORDER BY demo_table1.c6 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
-
+DEPLOY demo_data_service SELECT c1, c2, sum(c3) OVER w1 AS w1_c3_sum FROM demo_table1 WINDOW w1 AS (PARTITION BY demo_table1.c1 ORDER BY demo_table1.c6 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
 ``` 
 
 上线后可以通过命令 `SHOW DEPLOYMENTS` 查看已部署的 SQL 方案；
 
 ```sql
-
-> SHOW DEPLOYMENTS;
+SHOW DEPLOYMENTS;
 
  --------- -------------------
 
@@ -162,9 +155,7 @@ cd taxi-trip
 ### 5. 退出 CLI
 
 ```sql
-
-> quit;
-
+quit;
 ```
 
 至此已经完成了全部基于 OpenMLDB CLI 的开发部署工作，并且已经回到了操作系统命令行下。
