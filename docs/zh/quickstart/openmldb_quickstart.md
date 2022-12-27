@@ -51,7 +51,7 @@ curl https://openmldb.ai/demo/data.parquet --output /work/taxi-trip/data/data.pa
 使用 OpenMLDB 的工作流程一般包含：建立数据库和表、离线数据准备、离线特征计算、SQL 方案上线、在线数据准备、在线实时特征计算六个阶段。
 
 ```{note}
-以下演示的命令如无特别说明，默认均在集群版 OpenMLDB CLI 下执行。
+以下演示的命令如无特别说明，默认均在 OpenMLDB CLI 下执行。
 ```
 
 ### 1. 创建数据库和表
@@ -213,7 +213,7 @@ SELECT * FROM demo_table1 LIMIT 10;
  quit;
 ```
 
-至此，基于集群版 OpenMLDB CLI 的开发部署工作已经全部完成了，并且已经回到了操作系统命令行下。
+至此，基于 OpenMLDB CLI 的开发部署工作已经全部完成了，并且已经回到了操作系统命令行下。
 
 ### 7. 实时特征计算
 
