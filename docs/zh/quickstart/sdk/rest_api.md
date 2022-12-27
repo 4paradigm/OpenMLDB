@@ -3,6 +3,7 @@
 ## 重要信息
 
 REST APIs 通过 APIServer 和 OpenMLDB 的服务进行交互，因此 APIServer 模块必须被正确部署才能有效使用。APISever 在安装部署时是可选模块，参照 [APIServer 部署文档](../deploy/install_deploy.md#部署-APIServer)。
+
 现阶段，APIServer 主要用来做功能测试使用，并不推荐用来测试性能，也不推荐在生产环境使用。APIServer 的默认部署目前并没有高可用机制，并且引入了额外的网络和编解码开销。
 
 ## 数据插入
