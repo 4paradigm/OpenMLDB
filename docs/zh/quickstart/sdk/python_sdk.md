@@ -27,15 +27,9 @@ db = openmldb.dbapi.connect(host="$host", port="$port")
 cursor = db.cursor()
 ```
 
-#### Option 详解
+#### 配置项详解
 
-连接集群版 `zk` 和 `zkPath` 参数必需。
-
-连接单机版 `host` 和 `port` 参数必需。
-
-```{note}
-通过 OpenMLDB DBAPI/URL 启动 Python 客户端均可使用 Python SDK，可选配置项与 JAVA 客户端的配置项基本一致，请参考 [JAVA SDK 配置项详解](./java_sdk#sdk-配置项详解)。
-```
+通过 OpenMLDB DBAPI/URL 启动 Python 客户端均可使用 Python SDK，可选配置项与 Java 客户端的配置项基本一致，请参考 [Java SDK 配置项详解](./java_sdk#sdk-配置项详解)。
 
 ### 创建数据库
 
@@ -220,7 +214,7 @@ except Exception as e:
 
 ## 使用 Notebook Magic Function
 
-OpenMLDB Python SDK 支持了 Notebook magic function 拓展，使用下面语句注册函数。
+OpenMLDB Python SDK 支持了 Notebook magic function 拓展，使用以下语句注册函数。
 
 ```Python
 import openmldb
@@ -246,4 +240,4 @@ openmldb.sql_magic.register(db)
     [libprotobuf FATAL /Users/runner/work/crossbow/crossbow/vcpkg/buildtrees/protobuf/src/23fa7edd52-3ba2225d30.clean/src/google/protobuf/stubs/common.cc:87] This program was compiled against version 3.6.1 of the Protocol Buffer runtime library, which is not compatible with the installed version (3.15.8).  Contact the program author for an update. ...
     ```
 
-> 该问题可能是因为别的库引入了 protobuf 的其他版本。可以尝试使用 virtual env 环境（比如 conda）.
+> 该问题可能是因为别的库引入了 protobuf 的其他版本。可以尝试使用 virtual env 环境（比如 conda）。

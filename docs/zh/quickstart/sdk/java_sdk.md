@@ -4,37 +4,37 @@
 
 - Linux 下 Java SDK 包安装
 
-配置 maven pom：
+    配置 maven pom：
 
-```XML
-<dependency>
-    <groupId>com.4paradigm.openmldb</groupId>
-    <artifactId>openmldb-jdbc</artifactId>
-    <version>0.6.9</version>
-</dependency>
-<dependency>
-    <groupId>com.4paradigm.openmldb</groupId>
-    <artifactId>openmldb-native</artifactId>
-    <version>0.6.9</version>
-</dependency>
-```
+    ```XML
+    <dependency>
+        <groupId>com.4paradigm.openmldb</groupId>
+        <artifactId>openmldb-jdbc</artifactId>
+        <version>0.6.9</version>
+    </dependency>
+    <dependency>
+        <groupId>com.4paradigm.openmldb</groupId>
+        <artifactId>openmldb-native</artifactId>
+        <version>0.6.9</version>
+    </dependency>
+    ```
 
 - Mac 下 Java SDK 包安装
 
-配置 maven pom：
+    配置 maven pom：
 
-```XML
-<dependency>
-    <groupId>com.4paradigm.openmldb</groupId>
-    <artifactId>openmldb-jdbc</artifactId>
-    <version>0.6.9</version>
-</dependency>
-<dependency>
-    <groupId>com.4paradigm.openmldb</groupId>
-    <artifactId>openmldb-native</artifactId>
-    <version>0.6.9-macos</version>
-</dependency>
-```
+    ```XML
+    <dependency>
+        <groupId>com.4paradigm.openmldb</groupId>
+        <artifactId>openmldb-jdbc</artifactId>
+        <version>0.6.9</version>
+    </dependency>
+    <dependency>
+        <groupId>com.4paradigm.openmldb</groupId>
+        <artifactId>openmldb-native</artifactId>
+        <version>0.6.9-macos</version>
+    </dependency>
+    ```
 
 注意：由于 openmldb-native 中包含了 OpenMLDB 编译的 C++ 静态库，默认是 Linux 静态库，macOS 上需将上述 openmldb-native 的 version 改成 `0.6.9-macos`，openmldb-jdbc 的版本保持不变。
 
@@ -122,7 +122,7 @@ option.setRequestTimeout(60000);
 sqlExecutor = new SqlClusterExecutor(option);
 ```
 
-`SqlClusterExecutor`执行 SQL 操作是多线程安全的，在实际环境中可以创建一个`SqlClusterExecutor`。但由于执行模式 (execute_mode) 是 `SqlClusterExecutor` 内部变量，如果想同时执行一个离线命令和一个在线命令，容易出现不可预期的结果。这时候请使用多个`SqlClusterExecutor`。
+`SqlClusterExecutor` 执行 SQL 操作是多线程安全的，在实际环境中可以创建一个 `SqlClusterExecutor`。但由于执行模式 (execute_mode) 是 `SqlClusterExecutor` 内部变量，如果想同时执行一个离线命令和一个在线命令，容易出现不可预期的结果。这时候请使用多个 `SqlClusterExecutor`。
 
 #### Statement
 
@@ -371,7 +371,7 @@ try {
 
 ####  删除指定索引下某个  pk  的所有数据
 
-通过 JAVA SDK 可以有以下两种方式删除数据:
+通过 Java SDK 可以有以下两种方式删除数据:
 
 - 直接执行 delete SQL
 - 使用 delete PreparedStatement
@@ -731,7 +731,7 @@ public class Demo {
 
 ## SQL 校验
 
-JAVA 客户端支持对 SQL 进行正确性校验，验证是否可执行。分为 batch 和 request 两个模式。
+Java 客户端支持对 SQL 进行正确性校验，验证是否可执行。分为 batch 和 request 两个模式。
 
 - `validateSQLInBatch` 可以验证 SQL 是否能在离线端执行。
 - `validateSQLInRequest` 可以验证 SQL 是否能被 deploy。
