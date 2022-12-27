@@ -376,7 +376,7 @@ try {
 - 直接执行 delete SQL
 - 使用 delete PreparedStatement
 
-注意，这样仅能删除一个索引下的数据，不是对所有索引都生效。详情参考 [DELETE 功能边界](../function_boundary#delete)。
+注意，这样仅能删除一个索引下的数据，不是对所有索引都生效。详情参考 [DELETE 功能边界](../function_boundary.md#delete)。
 
 ```Java
 java.sql.Statement state = router.getStatement();

@@ -29,7 +29,7 @@ cursor = db.cursor()
 
 #### 配置项详解
 
-通过 OpenMLDB DBAPI/URL 启动 Python 客户端均可使用 Python SDK，可选配置项与 Java 客户端的配置项基本一致，请参考 [Java SDK 配置项详解](./java_sdk#sdk-配置项详解)。
+通过 OpenMLDB DBAPI/URL 启动 Python 客户端均可使用 Python SDK，可选配置项与 Java 客户端的配置项基本一致，请参考 [Java SDK 配置项详解](./java_sdk.md#sdk-配置项详解)。
 
 ### 创建数据库
 
