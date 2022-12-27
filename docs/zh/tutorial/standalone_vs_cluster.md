@@ -6,8 +6,8 @@ OpenMLDB 有两种部署模式：集群版 (cluster) 和单机版 (standalone)�
 
 集群版和单机版有各自的部署方式，详情参考[安装部署文档](../deploy/install_deploy)。概括来说，主要的区别表现为：
 
-- 集群版需要安装和部署 zookeeper
-- 集群版需要安装 task-manager
+- 集群版需要安装和部署 ZooKeeper
+- 集群版需要安装 TaskManager
 
 ## 使用方式区别
 
@@ -32,7 +32,7 @@ OpenMLDB 有两种部署模式：集群版 (cluster) 和单机版 (standalone)�
 > SET @@execute_mode = "offline"
 ```
 
-离线模式下，默认任务是**非阻塞模式**，执行以下命令可以设置为**阻塞模式**，这样命令行会阻塞等待离线任务完成。
+离线模式下，默认任务是**异步模式**，执行以下命令可以设置为**同步模式**，这样命令行会阻塞等待离线任务完成。
 
 ```SQL
 > SET @@sync_job = true;
@@ -44,9 +44,9 @@ OpenMLDB 有两种部署模式：集群版 (cluster) 和单机版 (standalone)�
 > SET @@execute_mode = "online"
 ```
 
-### 阻塞/非阻塞命令
+### 同步/异步命令
 
-单机版 `LOAD DATA`、`SELECT INTO` 命令是阻塞式的，集群版的部分命令是非阻塞式的，如：在线/离线模式的 `LOAD DATA`、`SELECT`、`SELECT INTO` 命令。
+单机版 `LOAD DATA`、`SELECT INTO` 命令是同步的，集群版的部分命令是异步的，如：在线/离线模式的 `LOAD DATA`、`SELECT`、`SELECT INTO` 命令。
 
 ### SQL 查询能力
 

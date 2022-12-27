@@ -1,6 +1,6 @@
 # 快速上手
 
-OpenMLDB 提供[单机版和集群版](../tutorial/standalone_vs_cluster.md)。本文将演示集群版 OpenMLDB 的基本使用流程：建立数据库、导入数据、离线特征计算、SQL 方案上线、在线实时特征计算，希望用户能够快速上手和了解 OpenMLDB。单机版使用流程演示可参考[单机版使用流程文档](../tutorial/standalone_use.md)。
+本文将演示 OpenMLDB 的基本使用流程：建立数据库、导入数据、离线特征计算、SQL 方案上线、在线实时特征计算，希望用户能够快速上手和了解 OpenMLDB。
 
 ## 准备
 
@@ -16,31 +16,35 @@ OpenMLDB 提供[单机版和集群版](../tutorial/standalone_vs_cluster.md)。�
 docker run -it 4pdosc/openmldb:0.6.9 bash
 ```
 
+
+
+```{note}
 成功启动容器以后，本教程中的后续命令默认均在容器内执行。如果你需要从容器外访问容器内的 OpenMLDB 服务端，请参考 [CLI/SDK-容器 onebox 文档](../reference/ip_tips.md#clisdk-容器onebox)。
+```
 
 ### 下载样例数据
 
 执行以下命令下载后续流程中使用的样例数据：
 
 ```bash
-curl https://openmldb.ai/demo/data.parquet --output ./taxi-trip/data/data.parquet
+curl https://openmldb.ai/demo/data.parquet --output /work/taxi-trip/data/data.parquet
 ```
 
 ### 启动服务端和客户端
 
-- 启动集群版 OpenMLDB 服务端
+- 启动 OpenMLDB 服务端
 
 ```bash
 /work/init.sh
 ```
 
-- 启动集群版 OpenMLDB CLI 客户端
+- 启动 OpenMLDB CLI 客户端
 
 ```bash
 /work/openmldb/bin/openmldb --zk_cluster=127.0.0.1:2181 --zk_root_path=/openmldb --role=sql_client
 ```
 
-成功启动集群版 OpenMLDB CLI 后如下图显示：
+成功启动 OpenMLDB CLI 后如下图显示：
 
 ![image-20220111141358808](./images/cli_cluster.png)
 
@@ -48,10 +52,8 @@ curl https://openmldb.ai/demo/data.parquet --output ./taxi-trip/data/data.parque
 
 使用 OpenMLDB 的工作流程一般包含：建立数据库和表、离线数据准备、离线特征计算、SQL 方案上线、在线数据准备、在线实时特征计算六个阶段。
 
-集群版 OpenMLDB 需要分别管理离线数据和在线数据。因此在完成 SQL 方案上线后，必须做在线数据的准备步骤。
-
 ```{note}
-以下演示的命令如无特别说明，默认均在集群版 OpenMLDB CLI 下执行（CLI 命令以提示符 `>` 开头以作区分）。
+以下演示的命令如无特别说明，默认均在集群版 OpenMLDB CLI 下执行。
 ```
 
 ### 1. 创建数据库和表
@@ -59,15 +61,17 @@ curl https://openmldb.ai/demo/data.parquet --output ./taxi-trip/data/data.parque
 创建数据库 `demo_db` 和表 `demo_table1`：
 
 ```sql
-> CREATE DATABASE demo_db;
-> USE demo_db;
-> CREATE TABLE demo_table1(c1 string, c2 int, c3 bigint, c4 float, c5 double, c6 timestamp, c7 date);
+# OpenMLDB CLI
+ CREATE DATABASE demo_db;
+ USE demo_db;
+ CREATE TABLE demo_table1(c1 string, c2 int, c3 bigint, c4 float, c5 double, c6 timestamp, c7 date);
 ```
 
 查看数据表 `demo_table1` 数据：
 
 ```sql
-> desc demo_table1;
+# OpenMLDB CLI
+ desc demo_table1;
  --- ------- ----------- ------ ---------
   #   Field   Type        Null   Default
  --- ------- ----------- ------ ---------
@@ -96,26 +100,28 @@ curl https://openmldb.ai/demo/data.parquet --output ./taxi-trip/data/data.parque
 首先，切换到离线执行模式。在该模式下，只会处理离线数据导入/插入或查询操作。接着，导入下载的样例数据作为离线数据，用于离线特征计算。
 
 ```sql
-> USE demo_db;
-> SET @@execute_mode='offline';
-> LOAD DATA INFILE 'file:///work/taxi-trip/data/data.parquet' INTO TABLE demo_table1 options(format='parquet', mode='append');
+# OpenMLDB CLI
+ USE demo_db;
+ SET @@execute_mode='offline';
+ LOAD DATA INFILE 'file:///work/taxi-trip/data/data.parquet' INTO TABLE demo_table1 options(format='parquet', mode='append');
 ```
 
-注意，[`LOAD DATA` 命令](../openmldb_sql/dml/LOAD_DATA_STATEMENT.md)为非阻塞命令，可以通过 [`SHOW JOB`](../openmldb_sql/task_manage/SHOW_JOB.md) 等离线任务管理命令来查看任务状态和日志。
-执行以下命令查看任务状态和日志，JOB_ID 可以通过上一步打印的运行结果获得：
+注意，`LOAD DATA` 命令为异步命令，可以通过以下命令来查看任务运行状态和详细日志。
 
 ```sql
--- 实际运行将 JOB_ID 替换成实际数字，这里是 1
-> SHOW JOB JOB_ID
-> SHOW JOBLOG JOB_ID
+# OpenMLDB CLI
+SHOW JOBS; # 显示已提交的任务列表
+SHOW JOB job_id; # 显示任务的详细信息，job_id 可已通过 SHOW JOBS 命令得到
+SHOW JOBLOG job_id; # 显示任务日志
 ```
 
-如果希望预览数据，可以使用 `SELECT * FROM demo_table1` 语句，推荐先将离线命令设置为阻塞模式（离线命令默认是在非阻塞模式下运行），这样可以看到打印结果，若不设置为阻塞模式，该命令会提交一个异步任务，只能去 spark 日志查看结果：
+如果希望预览数据，可以使用 `SELECT * FROM demo_table1` 语句，推荐先将离线命令设置为同步模式（离线命令默认是在异步模式下运行），这样可以看到打印结果，若不设置为同步模式，该命令会提交一个异步任务，只能去 Spark 日志查看结果：
 
 ```sql
-> SET @@sync_job=true;
--- 如果数据较多容易超时（默认 timeout 为 1 分钟），请调大 job timeout，如: SET @@job_timeout=600000;
-> SELECT * FROM demo_table1;
+# OpenMLDB CLI
+ SET @@sync_job=true;
+# 如果数据较多容易超时（默认 timeout 为 1 分钟），请调大 job timeout，如: SET @@job_timeout=600000;
+ SELECT * FROM demo_table1;
 ```
 
 ### 3. 离线特征计算
@@ -123,26 +129,29 @@ curl https://openmldb.ai/demo/data.parquet --output ./taxi-trip/data/data.parque
 执行 SQL 进行特征抽取，并且将生成的特征存储在文件 `feature_data` 中，供后续的机器学习模型训练使用：
 
 ```sql
-> USE demo_db;
-> SET @@execute_mode='offline';
-> SELECT c1, c2, sum(c3) OVER w1 AS w1_c3_sum FROM demo_table1 WINDOW w1 AS (PARTITION BY demo_table1.c1 ORDER BY demo_table1.c6 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW) INTO OUTFILE '/tmp/feature_data';
+# OpenMLDB CLI
+ USE demo_db;
+ SET @@execute_mode='offline';
+ SELECT c1, c2, sum(c3) OVER w1 AS w1_c3_sum FROM demo_table1 WINDOW w1 AS (PARTITION BY demo_table1.c1 ORDER BY demo_table1.c6 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW) INTO OUTFILE '/tmp/feature_data';
 ```
 
-注意，集群版 `SELECT INTO` 为非阻塞命令，可以通过 `SHOW JOBS` 等离线任务管理命令来查看运行进度。
+注意，集群版 `SELECT INTO` 为异步命令，可以通过 `SHOW JOBS` 等离线任务管理命令来查看运行进度。
 
 ### 4. SQL 方案上线
 
 将探索好的 SQL 方案 `demo_data_service` 部署到线上，注意部署上线的 SQL 方案需要与对应的离线特征计算的 SQL 方案保持一致。
 
 ```sql
-> SET @@execute_mode='online';
-> DEPLOY demo_data_service SELECT c1, c2, sum(c3) OVER w1 AS w1_c3_sum FROM demo_table1 WINDOW w1 AS (PARTITION BY demo_table1.c1 ORDER BY demo_table1.c6 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
+# OpenMLDB CLI
+ SET @@execute_mode='online';
+ DEPLOY demo_data_service SELECT c1, c2, sum(c3) OVER w1 AS w1_c3_sum FROM demo_table1 WINDOW w1 AS (PARTITION BY demo_table1.c1 ORDER BY demo_table1.c6 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
 ```
 
 上线后可以通过命令 `SHOW DEPLOYMENTS` 查看已部署的 SQL 方案；
 
 ```sql
-> SHOW DEPLOYMENTS;
+# OpenMLDB CLI
+ SHOW DEPLOYMENTS;
  --------- -------------------
   DB        Deployment
  --------- -------------------
@@ -156,19 +165,21 @@ curl https://openmldb.ai/demo/data.parquet --output ./taxi-trip/data/data.parque
 首先，切换到**在线**执行模式。在该模式下，只会处理在线数据导入/插入以及查询操作。接着在在线模式下，导入之前下载的样例数据作为在线数据，用于在线特征计算。
 
 ```Sql
-> USE demo_db;
-> SET @@execute_mode='online';
-> LOAD DATA INFILE 'file:///work/taxi-trip/data/data.parquet' INTO TABLE demo_table1 options(format='parquet', header=true, mode='append');
+# OpenMLDB CLI
+ USE demo_db;
+ SET @@execute_mode='online';
+ LOAD DATA INFILE 'file:///work/taxi-trip/data/data.parquet' INTO TABLE demo_table1 options(format='parquet', header=true, mode='append');
 ```
 
-注意，集群版 `LOAD DATA` 也是非阻塞命令，可以通过 `SHOW JOBS` 等离线任务管理命令来查看运行进度。
+注意，集群版 `LOAD DATA` 也异步命令，可以通过 `SHOW JOBS` 等离线任务管理命令来查看运行进度。
 
 等待任务完成以后，预览在线数据：
 
 ```sql
-> USE demo_db;
-> SET @@execute_mode='online';
-> SELECT * FROM demo_table1 LIMIT 10;
+# OpenMLDB CLI
+ USE demo_db;
+ SET @@execute_mode='online';
+ SELECT * FROM demo_table1 LIMIT 10;
  ----- ---- ---- ---------- ----------- --------------- ------------
   c1    c2   c3   c4         c5          c6              c7
  ----- ---- ---- ---------- ----------- --------------- ------------
@@ -190,14 +201,15 @@ curl https://openmldb.ai/demo/data.parquet --output ./taxi-trip/data/data.parque
 ### 6. 退出 CLI
 
 ```sql
-> quit;
+# OpenMLDB CLI
+ quit;
 ```
 
 至此，基于集群版 OpenMLDB CLI 的开发部署工作已经全部完成了，并且已经回到了操作系统命令行下。
 
 ### 7. 实时特征计算
 
-按照默认的部署配置，apiserver 部署的 http 端口为 9080。
+按照默认的部署配置，APIServer 部署的 http 端口为 9080。
 
 实时线上服务可以通过如下 Web API 提供服务：
 
@@ -218,7 +230,7 @@ curl http://127.0.0.1:9080/dbs/demo_db/deployments/demo_data_service -X POST -d'
 
 如下为该查询预期的返回结果（计算得到的特征被存放在 `data` 域）：
 
-```JSON
+```json
 {"code":0,"msg":"ok","data":{"data":[["aaa",11,22]]}}
 ```
 
@@ -230,7 +242,7 @@ curl http://127.0.0.1:9080/dbs/demo_db/deployments/demo_data_service -X POST -d'
 
 查询预期返回结果：
 
-```JSON
+```json
 {"code":0,"msg":"ok","data":{"data":[["aaa",11,66]]}}
 ```
 
@@ -238,15 +250,15 @@ curl http://127.0.0.1:9080/dbs/demo_db/deployments/demo_data_service -X POST -d'
 
 实时请求（执行 deployment），是请求模式（request 模式）的 SQL 执行。与批处理模式（batch 模式）不同，请求模式只会对请求行（request row）进行 SQL 计算。在前面的示例中，就是 POST 的 input 作为请求行，假设这行数据存在于表 `demo_table1` 中，并对它执行 SQL：
 
-```SQL
+```sql
 SELECT c1, c2, sum(c3) OVER w1 AS w1_c3_sum FROM demo_table1 WINDOW w1 AS (PARTITION BY demo_table1.c1 ORDER BY demo_table1.c6 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
 ```
 
-示例 1 的具体计算逻辑如下（实际计算中会进行优化，减少计算量）：
+**示例 1 的具体计算逻辑如下**：
 
 1. 根据请求行与窗口的 `PARTITION BY` 分区，筛选出 c1 列为 “aaa” 的行，并按 c6列从小到大排序。所以理论上，分区排序后的中间数据表，如下表所示。其中，请求行是排序后的第一行。
 
-      ```SQL
+      ```sql
       ----- ---- ---- ---------- ----------- --------------- ------------
       c1    c2   c3   c4         c5          c6              c7
       ----- ---- ---- ---------- ----------- --------------- ------------
@@ -259,7 +271,7 @@ SELECT c1, c2, sum(c3) OVER w1 AS w1_c3_sum FROM demo_table1 WINDOW w1 AS (PARTI
 2. 窗口范围是 `2 PRECEDING AND CURRENT ROW`，所以我们在上表中截取出真正的窗口，请求行就是最小的一行，往前 2 行都不存在，但窗口包含当前行，因此，窗口只有请求行这一行。
 3. 窗口聚合，对窗口内的数据（仅一行）进行 c3 列求和，得到 22。于是输出结果为：
 
-      ```SQL
+      ```sql
       ----- ---- ----------- 
       c1    c2   w1_c3_sum   
       ----- ---- -----------
@@ -267,11 +279,11 @@ SELECT c1, c2, sum(c3) OVER w1 AS w1_c3_sum FROM demo_table1 WINDOW w1 AS (PARTI
       ----- ---- -----------
       ```
 
-示例 2 的具体计算逻辑如下：
+**示例 2 的具体计算逻辑如下**：
 
 1. 根据请求行与窗口的 `PARTITION BY` 分区，筛选出 c1 列为 “aaa” 的行，并按 c6 列从小到大排序。所以理论上，分区排序后的中间数据表，如下表所示。其中，请求行是排序后的最后一行。
 
-      ```SQL
+      ```sql
       ----- ---- ---- ---------- ----------- --------------- ------------
       c1    c2   c3   c4         c5          c6              c7
       ----- ---- ---- ---------- ----------- --------------- ------------
@@ -284,7 +296,7 @@ SELECT c1, c2, sum(c3) OVER w1 AS w1_c3_sum FROM demo_table1 WINDOW w1 AS (PARTI
 2. 窗口范围是 `2 PRECEDING AND CURRENT ROW`，所以我们在上表中截取出真正的窗口，请求行往前 2 行都均存在，同时也包含当前行，因此，窗口内有三行数据。
 3. 窗口聚合，对窗口内的数据（三行）进行 c3 列求和，得到 22 * 3 = 66。于是输出结果为：
 
-      ```SQL
+      ```sql
       ----- ---- ----------- 
       c1    c2   w1_c3_sum   
       ----- ---- -----------
