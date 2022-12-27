@@ -1,5 +1,28 @@
 # Changelog
 
+## [0.7.0] - 2022-12-30
+
+### Features
+- Support `ARRAY` data type in SQL query and UDF (#2817 @aceforeverd)
+- Support new build-in functions `unix_timestamp`, `pmod`, `datediff`, `size` (#2843 #2839 #2847 #2864 @zhanghaohit)
+- Improve the SDK error and msg when insert rows (#2834 @vagetablechicken)
+- Add deploy-all and start-all scripts (#2809 @zhanghaohit)
+- Insert return failed if `ts` column is negative (#2776 @dl239)
+- Add `max_memory` configuration to limit tablet memory usage (#2815 @dl239)
+- Improve the documents (#2868 @haseeb-xd, #2878 @Jake-00, #2879 #2876 #2889 #2890 @vagetablechicken, #2881 @selenachenjingxin, #2859 @AdvancedUno, #2893 @lumianph)
+
+### Bug Fixes
+- Window over subquery(t1 lastjoin t2) will execute failed due to column rename in subquery. (#2739 @aceforeverd)
+- `show joblog` execute failed in macOS. (#2874 @tobegit3hub)
+- `OP` is not deleted if the related table has been dropped (#2548 @dl239)
+- Memory has not freed if delete one index in some case (#2806 @dl239)
+- Change leader to the specified endpoint failed if there are put requests. (#2858 @dl239)
+- External UDF does not work for yarn-client and yarn-cluster in offline mode. (#2802 @tobegit3hub)
+- Other minor bug fixes (#2828 @vagetablechicken, #2867 @dl239)
+
+### Code Refactoring
+#2860 @mammar11, #2865 #2863 @vagetablechicken, #2861 #2862 #2871 @Ziy1-Tan
+
 ## [0.6.9] - 2022-12-08
 
 ### Features
