@@ -144,7 +144,7 @@ class RpcClient {
         PDLOG(WARNING, "request error. %s", cntl.ErrorText().c_str());
         return false;
     }
-    
+
     template <class Request, class Response, class Callback>
     base::Status SendRequestSt(void (T::*func)(google::protobuf::RpcController*, const Request*, Response*, Callback*),
                      const Request* request, Response* response, uint64_t rpc_timeout, int retry_times) {

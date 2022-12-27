@@ -168,7 +168,7 @@ enum ReturnCode {
     kSQLRunError = 1001,
     kRPCRunError = 1002,
     kServerConnError = 1003,
-    kRPCError = 1004 // brpc controller error
+    kRPCError = 1004  // brpc controller error
 };
 
 struct Status {

@@ -61,7 +61,6 @@ class MemTableTraverseIterator : public TraverseIterator {
     TimeEntries::Iterator* it_;
     uint32_t record_idx_;
     uint32_t ts_idx_;
-    // uint64_t expire_value_;
     TTLSt expire_value_;
     Ticket ticket_;
     uint64_t traverse_cnt_;
