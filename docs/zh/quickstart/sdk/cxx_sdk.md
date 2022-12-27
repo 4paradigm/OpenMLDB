@@ -15,13 +15,13 @@ make && make install
 
 以下代码演示 C++ SDK 的基本使用。openmldb_api.h 和 sdk/result_set.h 是必须 include 的头文件。
 
-```Plain
-include <ctime>
-include <iostream>
-include <string>
+```c++
+#include <ctime>
+#include <iostream>
+#include <string>
 
-include "openmldb_api.h"
-include "sdk/result_set.h"
+#include "openmldb_api.h"
+#include "sdk/result_set.h"
 
 int main()
 {
