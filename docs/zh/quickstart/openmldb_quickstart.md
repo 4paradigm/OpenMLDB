@@ -59,7 +59,7 @@ curl https://openmldb.ai/demo/data.parquet --output /work/taxi-trip/data/data.pa
 创建数据库 `demo_db` 和表 `demo_table1`：
 
 ```sql
-# OpenMLDB CLI
+-- OpenMLDB CLI
 CREATE DATABASE demo_db;
 USE demo_db;
 CREATE TABLE demo_table1(c1 string, c2 int, c3 bigint, c4 float, c5 double, c6 timestamp, c7 date);
@@ -68,7 +68,7 @@ CREATE TABLE demo_table1(c1 string, c2 int, c3 bigint, c4 float, c5 double, c6 t
 查看数据表 `demo_table1` 数据：
 
 ```sql
-# OpenMLDB CLI
+-- OpenMLDB CLI
 desc demo_table1;
 ```
 
@@ -103,7 +103,7 @@ desc demo_table1;
 首先，切换到离线执行模式，导入下载的样例数据作为离线数据，用于离线特征计算。
 
 ```sql
-# OpenMLDB CLI
+-- OpenMLDB CLI
 USE demo_db;
 SET @@execute_mode='offline';
 LOAD DATA INFILE 'file:///work/taxi-trip/data/data.parquet' INTO TABLE demo_table1 options(format='parquet', mode='append');
@@ -118,7 +118,7 @@ LOAD DATA INFILE 'file:///work/taxi-trip/data/data.parquet' INTO TABLE demo_tabl
 如果希望预览数据，可以使用 `SELECT * FROM demo_table1` 语句，推荐先将离线命令设置为同步模式（`SELECT` 在离线默认是在异步模式下运行），这样可以在 CLI 直接看到打印结果；否则该命令会提交一个异步任务，需要去 Spark 日志查看结果：
 
 ```sql
-# OpenMLDB CLI
+-- OpenMLDB CLI
 SET @@sync_job=true;
 -- 如果数据较多容易超时（默认 timeout 为 1 分钟），如有必要请调大 job timeout，如: SET @@job_timeout=600000;
 SELECT * FROM demo_table1;
@@ -133,7 +133,7 @@ OpenMLDB 也支持链接形式的软拷贝来读取离线数据源，从而无�
 使用以下命令进行离线特征计算：
 
 ```sql
-# OpenMLDB CLI
+-- OpenMLDB CLI
 USE demo_db;
 SET @@execute_mode='offline';
 SET @@sync_job=false;
@@ -151,7 +151,7 @@ SELECT c1, c2, sum(c3) OVER w1 AS w1_c3_sum FROM demo_table1 WINDOW w1 AS (PARTI
 将探索好的 SQL 方案部署到线上，这里的的 SQL 方案命名为 `demo_data_service`，其用于特征抽取的 SQL 需要与对应的离线特征计算的 SQL 保持一致。
 
 ```sql
-# OpenMLDB CLI
+-- OpenMLDB CLI
 SET @@execute_mode='online';
 USE demo_db;
 DEPLOY demo_data_service SELECT c1, c2, sum(c3) OVER w1 AS w1_c3_sum FROM demo_table1 WINDOW w1 AS (PARTITION BY demo_table1.c1 ORDER BY demo_table1.c6 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
@@ -160,7 +160,7 @@ DEPLOY demo_data_service SELECT c1, c2, sum(c3) OVER w1 AS w1_c3_sum FROM demo_t
 上线后可以通过命令 `SHOW DEPLOYMENTS` 查看已部署的 SQL 方案；
 
 ```sql
-# OpenMLDB CLI
+-- OpenMLDB CLI
 SHOW DEPLOYMENTS;
 ```
 
@@ -180,7 +180,7 @@ SHOW DEPLOYMENTS;
 在线模式下，导入之前下载的样例数据作为在线数据，用于在线特征计算。
 
 ```Sql
-# OpenMLDB CLI
+-- OpenMLDB CLI
 USE demo_db;
 SET @@execute_mode='online';
 LOAD DATA INFILE 'file:///work/taxi-trip/data/data.parquet' INTO TABLE demo_table1 options(format='parquet', header=true, mode='append');
@@ -189,7 +189,7 @@ LOAD DATA INFILE 'file:///work/taxi-trip/data/data.parquet' INTO TABLE demo_tabl
 注意，`LOAD DATA` 默认是异步命令，可以通过 `SHOW JOBS` 等离线任务管理命令来查看运行进度。等待任务完成以后，可以进一步预览在线数据：
 
 ```sql
-# OpenMLDB CLI
+-- OpenMLDB CLI
 USE demo_db;
 SET @@execute_mode='online';
 SELECT * FROM demo_table1 LIMIT 10;
@@ -202,7 +202,7 @@ SELECT * FROM demo_table1 LIMIT 10;
 至此，基于 OpenMLDB CLI 的开发部署工作已经全部完成了，接下去可以在实时请求模式下进行实时特征计算请求。我们首先退出 OpenMLDB CLI，回到操作系统的命令行。
 
 ```sql
-# OpenMLDB CLI
+-- OpenMLDB CLI
 quit;
 ```
 
