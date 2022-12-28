@@ -1,12 +1,12 @@
 # 快速上手
 
-本文将演示 OpenMLDB 的基本使用流程：建立数据库、导入数据、离线特征计算、SQL 方案上线、在线实时特征计算，希望用户能够快速上手和了解 OpenMLDB。
+本文将演示 OpenMLDB 的基本使用流程：建立数据库、导入离线数据、离线特征计算、SQL 方案上线、导入在线数据、在线实时特征计算。希望用户通过阅读本文以后可以快速上手和了解 OpenMLDB。
 
 ## 准备
 
 本文基于 OpenMLDB CLI 进行开发和部署，首先需要下载样例数据并且启动 OpenMLDB CLI。推荐使用 Docker 镜像来快速体验。
 
-- Docker（最低版本：18.03）
+- Docker 版本：>= 18.03
 
 ### 拉取镜像
 
@@ -22,7 +22,7 @@ docker run -it 4pdosc/openmldb:0.6.9 bash
 
 ### 下载样例数据
 
-执行以下命令下载后续流程中使用的样例数据：
+在容器中执行以下命令，下载后续流程中使用的样例数据：
 
 ```bash
 curl https://openmldb.ai/demo/data.parquet --output /work/taxi-trip/data/data.parquet
@@ -48,13 +48,13 @@ curl https://openmldb.ai/demo/data.parquet --output /work/taxi-trip/data/data.pa
 
 ## 使用流程
 
-使用 OpenMLDB 的工作流程一般包含：建立数据库和表、离线数据准备、离线特征计算、SQL 方案上线、在线数据准备、在线实时特征计算六个阶段。
+使用 OpenMLDB 的工作流程一般包含：建立数据库和表、导入离线数据、离线特征计算、SQL 方案上线、导入在线数据、在线实时特征计算六个步骤。
 
 ```{note}
 以下演示的命令如无特别说明，默认均在 OpenMLDB CLI 下执行。
 ```
 
-### 1. 创建数据库和表
+### 步骤 1. 创建数据库和表
 
 创建数据库 `demo_db` 和表 `demo_table1`：
 
@@ -98,9 +98,9 @@ desc demo_table1;
  -------------- 
 ```
 
-### 2. 离线数据准备
+### 步骤 2. 导入离线数据
 
-首先，切换到离线执行模式。在该模式下，只会处理离线数据导入/插入或查询操作。接着，导入下载的样例数据作为离线数据，用于离线特征计算。
+首先，切换到离线执行模式，导入下载的样例数据作为离线数据，用于离线特征计算。
 
 ```sql
 # OpenMLDB CLI
@@ -109,46 +109,46 @@ SET @@execute_mode='offline';
 LOAD DATA INFILE 'file:///work/taxi-trip/data/data.parquet' INTO TABLE demo_table1 options(format='parquet', mode='append');
 ```
 
-注意，`LOAD DATA` 命令为异步命令，可以通过以下命令来查看任务运行状态和详细日志。
-
-```sql
-# OpenMLDB CLI
-SHOW JOBS; # 显示已提交的任务列表
-SHOW JOB job_id; # 显示任务的详细信息，job_id 可已通过 SHOW JOBS 命令得到
-SHOW JOBLOG job_id; # 显示任务日志
+```{note}
+注意，`LOAD DATA` 命令为异步命令，可以通过以下命令来查看任务运行状态和详细日志：
+显示已提交的任务列表：SHOW JOBS 
+显示任务的详细信息：SHOW JOB job_id（job_id 可已通过 SHOW JOBS 命令显示）
+显示任务运行日志：SHOW JOBLOG job_id
 ```
 
-如果希望预览数据，可以使用 `SELECT * FROM demo_table1` 语句，推荐先将离线命令设置为同步模式（离线命令默认是在异步模式下运行），这样可以看到打印结果，若不设置为同步模式，该命令会提交一个异步任务，只能去 Spark 日志查看结果：
+如果希望预览数据，可以使用 `SELECT * FROM demo_table1` 语句，推荐先将离线命令设置为同步模式（`SELECT` 在离线默认是在异步模式下运行），这样可以在 CLI 直接看到打印结果；否则该命令会提交一个异步任务，需要去 Spark 日志查看结果：
 
 ```sql
 # OpenMLDB CLI
 SET @@sync_job=true;
--- 如果数据较多容易超时（默认 timeout 为 1 分钟），请调大 job timeout，如: SET @@job_timeout=600000;
+-- 如果数据较多容易超时（默认 timeout 为 1 分钟），如有必要请调大 job timeout，如: SET @@job_timeout=600000;
 SELECT * FROM demo_table1;
 ```
 
-### 3. 离线特征计算
+```{note}
+OpenMLDB 也支持链接形式的软拷贝来读取离线数据源，而无需做真正的数据拷贝。可以参考 [LOAD DATA INFILE 文档](../openmldb_sql/dml/LOAD_DATA_STATEMENT.md) 的参数 `deep_copy` 的说明。
+```
 
-切换到离线模式：
+### 步骤 3. 离线特征计算
+
+使用以下命令进行离线特征计算：
 
 ```sql
 # OpenMLDB CLI
 USE demo_db;
 SET @@execute_mode='offline';
-
-```
-
-执行 SQL 进行特征抽取，并且将生成的特征存储在文件 `feature_data` 中，供后续的机器学习模型训练使用。作为示例，这里使用了一个简单的 SQL 查询方案作为特征抽取脚本：
-
-```sql
+SET @@sync_job=false;
 SELECT c1, c2, sum(c3) OVER w1 AS w1_c3_sum FROM demo_table1 WINDOW w1 AS (PARTITION BY demo_table1.c1 ORDER BY demo_table1.c6 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW) INTO OUTFILE '/tmp/feature_data';
 ```
 
-注意，`SELECT INTO` 为异步命令，可以通过 `SHOW JOBS` 等离线任务管理命令来查看运行进度。
+注意：
 
-### 4. SQL 方案上线
+- 这里采用异步模式提交了特征抽取任务的脚本
+- `SELECT` 语句用于执行 SQL 进行特征抽取，并且将生成的特征存储在文件 `feature_data` 中，供后续的机器学习模型训练使用。作为示例，这里使用了一个简单的 SQL 查询方案作为特征抽取脚本：
 
-将探索好的 SQL 方案部署到线上，这里的的 SQL 方案 `demo_data_service` 需要与对应的离线特征计算的 SQL 方案保持一致。
+### 步骤 4. SQL 方案上线
+
+将探索好的 SQL 方案部署到线上，这里的的 SQL 方案命名为 `demo_data_service`，其用于特征抽取的 SQL 需要与对应的离线特征计算的 SQL 保持一致。
 
 ```sql
 # OpenMLDB CLI
@@ -174,9 +174,9 @@ SHOW DEPLOYMENTS;
 1 row in set
 ```
 
-### 5. 在线数据准备
+### 步骤 5. 导入在线数据
 
-首先，切换到**在线**执行模式。在该模式下，只会处理在线数据导入/插入以及查询操作。接着在在线模式下，导入之前下载的样例数据作为在线数据，用于在线特征计算。
+在线模式下，导入之前下载的样例数据作为在线数据，用于在线特征计算。
 
 ```Sql
 # OpenMLDB CLI
@@ -185,9 +185,7 @@ SET @@execute_mode='online';
 LOAD DATA INFILE 'file:///work/taxi-trip/data/data.parquet' INTO TABLE demo_table1 options(format='parquet', header=true, mode='append');
 ```
 
-注意，`LOAD DATA` 是异步命令，可以通过 `SHOW JOBS` 等离线任务管理命令来查看运行进度。
-
-等待任务完成以后，预览在线数据：
+注意，`LOAD DATA` 默认是异步命令，可以通过 `SHOW JOBS` 等离线任务管理命令来查看运行进度。等待任务完成以后，预览在线数据：
 
 ```sql
 # OpenMLDB CLI
@@ -210,22 +208,18 @@ SELECT * FROM demo_table1 LIMIT 10;
  ----- ---- ---- ---------- ----------- --------------- ------------
 ```
 
-用户需要成功完成 SQL 上线部署后，才能准备在线数据，否则会上线失败。
+当前版本要求用户成功完成 SQL 上线部署后，才能导入在线数据，否则会上线失败。
 
-### 6. 退出 CLI
+### 步骤 6. 实时特征计算
+
+至此，基于 OpenMLDB CLI 的开发部署工作已经全部完成了，接下去可以在实时请求模式下进行实时特征计算请求。我们首先退出 OpenMLDB CLI，回到操作系统的命令行。
 
 ```sql
 # OpenMLDB CLI
- quit;
+quit;
 ```
 
-至此，基于 OpenMLDB CLI 的开发部署工作已经全部完成了，并且已经回到了操作系统命令行下。
-
-### 7. 实时特征计算
-
-按照默认的部署配置，APIServer 部署的 http 端口为 9080。
-
-实时线上服务可以通过如下 Web API 提供服务：
+接下去我们演示实时特征计算。按照默认的部署配置，APIServer 部署的 http 端口为 9080。实时线上服务可以通过如下 Web API 提供服务：
 
 ```bash
 http://127.0.0.1:9080/dbs/demo_db/deployments/demo_data_service
@@ -236,19 +230,19 @@ http://127.0.0.1:9080/dbs/demo_db/deployments/demo_data_service
 
 实时请求接受 JSON 格式的输入数据。以下将给出两个例子：把一行数据放到请求的 `input` 域中。
 
-示例 1：
+**示例 1：**
 
 ```bash
 curl http://127.0.0.1:9080/dbs/demo_db/deployments/demo_data_service -X POST -d'{"input": [["aaa", 11, 22, 1.2, 1.3, 1635247427000, "2021-05-20"]]}'
 ```
 
-如下为该查询预期的返回结果（计算得到的特征被存放在 `data` 域）：
+查询预期的返回结果（计算得到的特征被存放在 `data` 域）：
 
 ```json
 {"code":0,"msg":"ok","data":{"data":[["aaa",11,22]]}}
 ```
 
-示例 2：
+**示例 2：**
 
 ```bash
 curl http://127.0.0.1:9080/dbs/demo_db/deployments/demo_data_service -X POST -d'{"input": [["aaa", 11, 22, 1.2, 1.3, 1637000000000, "2021-11-16"]]}'
@@ -262,7 +256,7 @@ curl http://127.0.0.1:9080/dbs/demo_db/deployments/demo_data_service -X POST -d'
 
 ### 实时特征计算的结果说明
 
-实时请求（执行 deployment），是请求模式（request 模式）的 SQL 执行。与批处理模式（batch 模式）不同，请求模式只会对请求行（request row）进行 SQL 计算。在前面的示例中，就是 POST 的 input 作为请求行，假设这行数据存在于表 `demo_table1` 中，并对它执行 SQL：
+在线实时请求的 SQL 执行，与批处理模式不同。请求模式只会对请求行（request row）进行 SQL 计算。在前面的示例中，就是 POST 的 input 作为请求行，假设这行数据存在于表 `demo_table1` 中，并对它执行特征抽取 SQL：
 
 ```sql
 SELECT c1, c2, sum(c3) OVER w1 AS w1_c3_sum FROM demo_table1 WINDOW w1 AS (PARTITION BY demo_table1.c1 ORDER BY demo_table1.c6 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
