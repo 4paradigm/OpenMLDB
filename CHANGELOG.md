@@ -17,7 +17,7 @@
 - `OP` is not deleted if the related table has been dropped. (#2548 @dl239)
 - Memory is not released when deleting an index in some cases. (#2806 @dl239)
 - Changing a leader to a specified endpoint fails if there are data writing. (#2858 @dl239)
-- UDFs does not work for `yarn-client` and `yarn-cluster` in the offline mode. (#2802 @tobegit3hub)
+- UDFs do not work for `yarn-client` and `yarn-cluster` in the offline mode. (#2802 @tobegit3hub)
 - Other minor bug fixes (#2828 @vagetablechicken, #2867 @dl239)
 
 ### Code Refactoring
