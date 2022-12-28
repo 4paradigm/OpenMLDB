@@ -53,16 +53,16 @@ public class OpenMLDBStability {
 
     public OpenMLDBStability() {
         executor = Config.GetSqlExecutor(false);
+        this.db = Config.DB_NAME;
+        this.pName = Config.CASE_NAME;
         init();
     }
 
     public void init() {
-        String baseDir = this.getClass().getClassLoader().getResource("").getPath() + "/" + Config.CASE_PATH;
-        String rawScript = FileUtil.ReadFile(baseDir + "/myhug/sql.txt");
+        String baseDir = this.getClass().getClassLoader().getResource("").getPath() + "/" + Config.CASE_PATH + "/" + Config.CASE_NAME;
+        String rawScript = FileUtil.ReadFile(baseDir + "/sql.txt");
         script = rawScript.trim().replace("\n", " ");
-        ddl = FileUtil.ReadFile(baseDir + "/myhug/ddl.txt");
-        db = "myhug";
-        pName = "myhug";
+        ddl = FileUtil.ReadFile(baseDir + "/ddl.txt");
     }
 
     public boolean create() {
@@ -76,7 +76,8 @@ public class OpenMLDBStability {
                 if (item.trim().isEmpty()) {
                     continue;
                 }
-                String curSQL = item + " OPTIONS ( PARTITIONNUM=" + Config.PARTITION_NUM + ", REPLICANUM=" + Config.REPLICA_NUM + ");";
+                String storageMode = Config.STORAGE_MODE.equals("memory") ? "" : ", STORAGE_MODE='HDD'";
+                String curSQL = item + " OPTIONS ( PARTITIONNUM=" + Config.PARTITION_NUM + ", REPLICANUM=" + Config.REPLICA_NUM + storageMode + ");";
                 statement.execute(curSQL);
                 logger.info(curSQL + " execute ok!");
             }

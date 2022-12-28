@@ -3,8 +3,6 @@ package com._4paradigm.openmldb.stability;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
-import java.util.Map;
-import java.util.HashMap;
 
 public class FileUtil {
     public static String ReadFile(String path) {

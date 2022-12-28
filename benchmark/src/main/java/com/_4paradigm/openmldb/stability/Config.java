@@ -21,6 +21,9 @@ public class Config {
     public static boolean ENABLE_QUERY;
     public static int PK_NUM;
     public static float INSERT_RATIO;
+    public static String DB_NAME;
+    public static String CASE_NAME;
+    public static String STORAGE_MODE;
     private static SqlExecutor executor = null;
     private static SdkOption option = null;
 
@@ -41,6 +44,9 @@ public class Config {
             ENABLE_QUERY = Boolean.valueOf(prop.getProperty("ENABLE_QUERY"));
             PK_NUM = Integer.parseInt(prop.getProperty("PK_NUM"));
             INSERT_RATIO = Float.parseFloat(prop.getProperty("INSERT_RATIO"));
+            DB_NAME = prop.getProperty("DB_NAME");
+            CASE_NAME = prop.getProperty("CASE_NAME");
+            STORAGE_MODE = prop.getProperty("STORAGE_MODE");
         } catch (Exception e) {
             e.printStackTrace();
         }
