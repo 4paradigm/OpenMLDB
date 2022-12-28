@@ -34,6 +34,8 @@
 # 多个磁盘使用英文符号, 隔开
 --db_root_path=./db
 --recycle_bin_root_path=./recycle
+--hdd_root_path=./db
+--recycle_bin_hdd_root_path=./recycle
 
 # snapshot conf
 # 每天23点做snapshot
