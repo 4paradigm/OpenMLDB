@@ -1,8 +1,8 @@
 # Python SDK
 
-## 安装 OpenMLDB Python 包
+## Python SDK 包安装
 
-执行以下命令安装 OpenMLDB Python 包：
+执行以下命令安装 Python SDK 包：
 
 ```Bash
 pip install openmldb
@@ -29,7 +29,9 @@ cursor = db.cursor()
 
 #### 配置项详解
 
-通过 OpenMLDB DBAPI/URL 启动 Python 客户端均可使用 Python SDK，可选配置项与 Java 客户端的配置项基本一致，请参考 [Java SDK 配置项详解](./java_sdk.md#sdk-配置项详解)。
+zk 和 zkPath 配置项必填。
+
+通过 OpenMLDB DBAPI/SQLAlchemy 均可使用 Python SDK，可选配置项与 Java 客户端的配置项基本一致，请参考 [Java SDK 配置项详解](./java_sdk.md#sdk-配置项详解)。
 
 ### 创建数据库
 
@@ -97,7 +99,7 @@ cursor.close()
 
 ## 使用 OpenMLDB SQLAlchemy
 
-本节演示 OpenMLDB SQLAlchemy 的基本使用。
+本节演示通过 OpenMLDB SQLAlchemy 使用 Python SDK。
 
 ### 创建连接
 
@@ -126,9 +128,10 @@ connection = engine.connect()
 ```Python
 try:
     connection.execute("CREATE DATABASE db1")
-    connection.execute("USE db1")
 except Exception as e:
     print(e)
+
+connection.execute("USE db1")
 ```
 
 ### 创建表
@@ -225,6 +228,10 @@ openmldb.sql_magic.register(db)
 然后可以在 Notebook 中使用 line magic function `%sql` 和 block magic function `%%sql`。
 
 ![](./images/openmldb_magic_function.png)
+
+## 完整使用范例
+
+参考 [Python quickstart demo](https://github.com/4paradigm/OpenMLDB/tree/main/demo/python_quickstart/demo.py)，包括了上文的 DBAPI 和 SQLAlchemy 用法。
 
 ## 常见问题
 

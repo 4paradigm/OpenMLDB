@@ -7620,6 +7620,28 @@ std::shared_ptr<OPData> NameServerImpl::FindRunningOP(uint64_t op_id) {
 void NameServerImpl::SelectLeader(const std::string& name, const std::string& db, uint32_t tid, uint32_t pid,
                                   std::vector<std::string>& follower_endpoint,
                                   std::shared_ptr<::openmldb::api::TaskInfo> task_info) {
+    std::shared_ptr<OPData> op_data = FindRunningOP(task_info->op_id());
+    if (!op_data) {
+        PDLOG(WARNING, "cannot find op[%lu] in running op", task_info->op_id());
+        task_info->set_status(::openmldb::api::TaskStatus::kFailed);
+        return;
+    }
+    ChangeLeaderData change_leader_data;
+    if (!change_leader_data.ParseFromString(op_data->op_info_.data())) {
+        PDLOG(WARNING, "parse change leader data failed. name[%s] pid[%u] data[%s] op_id[%lu]",
+              name.c_str(), pid, op_data->op_info_.data().c_str(), task_info->op_id());
+        task_info->set_status(::openmldb::api::TaskStatus::kFailed);
+        return;
+    }
+    if (change_leader_data.has_candidate_leader()) {
+        if (std::find(follower_endpoint.begin(), follower_endpoint.end(), change_leader_data.candidate_leader())
+                == follower_endpoint.end()) {
+            PDLOG(WARNING, "candidate_leader[%s] is not follower. name[%s] pid[%u] op_id[%lu]",
+                  change_leader_data.candidate_leader().c_str(), name.c_str(), pid, task_info->op_id());
+            task_info->set_status(::openmldb::api::TaskStatus::kFailed);
+            return;
+        }
+    }
     uint64_t cur_term = 0;
     {
         std::lock_guard<std::mutex> lock(mu_);
@@ -7631,15 +7653,14 @@ void NameServerImpl::SelectLeader(const std::string& name, const std::string& db
                 return;
             }
             for (int idx = 0; idx < table_info->table_partition_size(); idx++) {
-                if (table_info->table_partition(idx).pid() != pid) {
+                auto& partition = table_info->table_partition(idx);
+                if (partition.pid() != pid) {
                     continue;
                 }
-                for (int meta_idx = 0; meta_idx < table_info->table_partition(idx).partition_meta_size(); meta_idx++) {
-                    if (table_info->table_partition(idx).partition_meta(meta_idx).is_alive() &&
-                        table_info->table_partition(idx).partition_meta(meta_idx).is_leader()) {
-                        PDLOG(WARNING,
-                              "leader is alive, need not changeleader. table "
-                              "name[%s] pid[%u] op_id[%lu]",
+                for (int meta_idx = 0; meta_idx < partition.partition_meta_size(); meta_idx++) {
+                    if (partition.partition_meta(meta_idx).is_alive() &&
+                            partition.partition_meta(meta_idx).is_leader()) {
+                        PDLOG(WARNING, "leader is alive, need not changeleader. table name[%s] pid[%u] op_id[%lu]",
                               name.c_str(), pid, task_info->op_id());
                         task_info->set_status(::openmldb::api::TaskStatus::kFailed);
                         return;
@@ -7649,9 +7670,7 @@ void NameServerImpl::SelectLeader(const std::string& name, const std::string& db
             }
         }
         if (!zk_client_->SetNodeValue(zk_path_.term_node_, std::to_string(term_ + 2))) {
-            PDLOG(WARNING,
-                  "update leader id  node failed. table name[%s] pid[%u] "
-                  "op_id[%lu]",
+            PDLOG(WARNING, "update leader id  node failed. table name[%s] pid[%u] op_id[%lu]",
                   name.c_str(), pid, task_info->op_id());
             task_info->set_status(::openmldb::api::TaskStatus::kFailed);
             return;
@@ -7662,6 +7681,7 @@ void NameServerImpl::SelectLeader(const std::string& name, const std::string& db
     // select the max offset endpoint as leader
     uint64_t max_offset = 0;
     std::vector<std::string> leader_endpoint_vec;
+    std::map<std::string, std::shared_ptr<TabletInfo>> client_map;
     for (const auto& endpoint : follower_endpoint) {
         auto tablet_ptr = GetTablet(endpoint);
         if (!tablet_ptr) {
@@ -7670,6 +7690,10 @@ void NameServerImpl::SelectLeader(const std::string& name, const std::string& db
             task_info->set_status(::openmldb::api::TaskStatus::kFailed);
             return;
         }
+        client_map.emplace(endpoint, tablet_ptr);
+    }
+    for (const auto& endpoint : follower_endpoint) {
+        auto tablet_ptr = client_map[endpoint];
         uint64_t offset = 0;
         if (!tablet_ptr->client_->FollowOfNoOne(tid, pid, cur_term, offset)) {
             PDLOG(WARNING, "followOfNoOne failed. tid[%u] pid[%u] endpoint[%s] op_id[%lu]", tid, pid, endpoint.c_str(),
@@ -7677,9 +7701,7 @@ void NameServerImpl::SelectLeader(const std::string& name, const std::string& db
             task_info->set_status(::openmldb::api::TaskStatus::kFailed);
             return;
         }
-        PDLOG(INFO,
-              "FollowOfNoOne ok. term[%lu] offset[%lu] name[%s] tid[%u] "
-              "pid[%u] endpoint[%s]",
+        PDLOG(INFO, "FollowOfNoOne ok. term[%lu] offset[%lu] name[%s] tid[%u] pid[%u] endpoint[%s]",
               cur_term, offset, name.c_str(), tid, pid, endpoint.c_str());
         if (offset > max_offset || leader_endpoint_vec.empty()) {
             max_offset = offset;
@@ -7689,35 +7711,9 @@ void NameServerImpl::SelectLeader(const std::string& name, const std::string& db
             leader_endpoint_vec.push_back(endpoint);
         }
     }
-    std::shared_ptr<OPData> op_data = FindRunningOP(task_info->op_id());
-    if (!op_data) {
-        PDLOG(WARNING, "cannot find op[%lu] in running op", task_info->op_id());
-        task_info->set_status(::openmldb::api::TaskStatus::kFailed);
-        return;
-    }
-    ChangeLeaderData change_leader_data;
-    if (!change_leader_data.ParseFromString(op_data->op_info_.data())) {
-        PDLOG(WARNING,
-              "parse change leader data failed. name[%s] pid[%u] data[%s] "
-              "op_id[%lu]",
-              name.c_str(), pid, op_data->op_info_.data().c_str(), task_info->op_id());
-        task_info->set_status(::openmldb::api::TaskStatus::kFailed);
-        return;
-    }
     std::string leader_endpoint;
     if (change_leader_data.has_candidate_leader()) {
-        std::string candidate_leader = change_leader_data.candidate_leader();
-        if (std::find(leader_endpoint_vec.begin(), leader_endpoint_vec.end(), candidate_leader) !=
-            leader_endpoint_vec.end()) {
-            leader_endpoint = candidate_leader;
-        } else {
-            PDLOG(WARNING,
-                  "select leader failed, candidate_leader[%s] is not in "
-                  "leader_endpoint_vec. tid[%u] pid[%u] op_id[%lu]",
-                  candidate_leader.c_str(), tid, pid, task_info->op_id());
-            task_info->set_status(::openmldb::api::TaskStatus::kFailed);
-            return;
-        }
+        leader_endpoint = change_leader_data.candidate_leader();
     } else {
         leader_endpoint = leader_endpoint_vec[rand_.Next() % leader_endpoint_vec.size()];
     }

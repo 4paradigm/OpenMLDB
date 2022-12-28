@@ -4092,7 +4092,7 @@ bool SQLClusterRouter::CheckTableStatus(const std::string& db, const std::string
 
     if (statuses.count(tid) && statuses.at(tid).count(pid)) {
         const auto& partition_statuses = statuses.at(tid).at(pid);
-        if (partition_info.partition_meta_size() != partition_statuses.size()) {
+        if (partition_info.partition_meta_size() != static_cast<int>(partition_statuses.size())) {
             append_error_msg(
                 error_msg, pid, -1, "",
                 absl::StrCat("real replica number ", partition_statuses.size(),

@@ -89,9 +89,9 @@ Create a database using the `connection.execute()`:
 ````python
 try:
     connection.execute("CREATE DATABASE db1")
-    connection.execute("USE db1")
 except Exception as e:
     print(e)
+connection.execute("USE db1")
 ````
 
 ### 3.3 Create Table
@@ -188,7 +188,11 @@ The line magic function `%sql` and block magic function `%%sql` can then be used
 
 ![img](images/openmldb_magic_function.png)
 
-## 5. Option
+## Example
+
+See [Python quickstart demo](https://github.com/4paradigm/OpenMLDB/tree/main/demo/python_quickstart/demo.py), including the usage of DBAPI and SQLAlchemy as shown previously.
+
+## Option
 
 Connect to cluster must set `zk` and `zkPath`.
 
