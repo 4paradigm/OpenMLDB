@@ -3,7 +3,7 @@
 ## [0.7.0] - 2022-12-30
 
 ### Features
-- Add the new data type of `ARRAY` in SQL queries and UDF (#2817 @aceforeverd)
+- Add the new data type of `ARRAY` in SQL queries and UDFs (#2817 @aceforeverd)
 - Support the new built-in functions `unix_timestamp`, `pmod`, `datediff`, and `size` (#2843 #2839 #2847 #2864 @zhanghaohit)
 - Improve the messages and errors when inserting rows (#2834 @vagetablechicken)
 - Add new maintenance tools `deploy-all` and `start-all` (#2809 @zhanghaohit)
