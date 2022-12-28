@@ -9,7 +9,7 @@ make && make install
 
 ## 启动服务端和客户端
 
-参考快速上手[启动服务端和客户端](../openmldb_quickstart)
+参考快速上手[启动服务端和客户端](../openmldb_quickstart)。
 
 ## 编写用户代码
 
