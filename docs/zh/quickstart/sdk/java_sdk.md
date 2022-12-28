@@ -43,11 +43,11 @@ openmldb-native 的 macOS 版本只支持 macOS 12，如需在 macOS 11 或 macO
 
 ## Java SDK 快速上手
 
-Java SDK 连接 OpenMLDB 服务，可以使用 JDBC 的方式（仅连接集群版），也可以通过 SqlClusterExecutor 的方式直连。如果连接集群版 OpenMLDB，推荐使用 JDBC 的方式。
+Java SDK 连接 OpenMLDB 服务，可以使用 JDBC 的方式（推荐），也可以通过 SqlClusterExecutor 的方式直连。
 
 ### JDBC 方式
 
-JDBC 的方式目前只能连接集群版 OpenMLDB。连接方式如下：
+JDBC 的连接方式如下：
 
 ```Java
 Class.forName("com._4paradigm.openmldb.jdbc.SQLDriver");
@@ -78,13 +78,13 @@ stmt.execute("SET @@execute_mode='online"); // 切换为在线模式
 res = stmt.executeQuery("SELECT * from t1"); // 在线 select, executeQuery 可直接获取 ResultSet 结果
 ```
 
-其中，集群版 `LOAD DATA` 命令是非阻塞命令，返回的 ResultSet 包含该 job 的 id、state 等信息。可通过执行 `show job <id>` 来查询 job 是否执行完成。注意 ResultSet 需要先执行 `next()` 游标才会指向第一行数据。
+其中，`LOAD DATA` 命令是异步命令，返回的 ResultSet 包含该 job 的 id、state 等信息。可通过执行 `show job <id>` 来查询 job 是否执行完成。注意 ResultSet 需要先执行 `next()` 游标才会指向第一行数据。
 
-也可以改为阻塞命令：
+也可以改为同步命令：
 
 ```SQL
 SET @@sync_job=true;
-SET @@job_timeout=60000; 单位为毫秒，如果数据较多容易超时（默认1钟），请调大job timeout: SET @@job_timeout=600000;
+SET @@job_timeout=60000; --单位为毫秒，如果数据较多容易超时（默认1钟），请调大job timeout: SET @@job_timeout=600000;
 ```
 
 如果阻塞命令实际耗时超过连接空闲默认的最大等待时间 0.5 小时，请[调整 taskmanager 的 keepAliveTime](/zh/maintain/faq#2-为什么收到-got-eof-of-socket-的警告日志)。
@@ -103,21 +103,12 @@ PreparedStatement insertStatement = connection.prepareStatement("DELETE FROM t1 
 
 #### 创建 SqlClusterExecutor
 
-首先，进行 OpenMLDB 连接参数配置，Java SDK 集群版和单机版的区别在于连接参数配置不同，默认为集群版。
+首先，进行 OpenMLDB 连接参数配置。
 
 ```Java
-// 集群版配置方式如下：
 SdkOption option = new SdkOption();
 option.setZkCluster("127.0.0.1:2181");
 option.setZkPath("/openmldb");
-option.setSessionTimeout(10000);
-option.setRequestTimeout(60000);
-
-// 单机版配置方式如下：
-SdkOption option = new SdkOption();
-option.setHost("127.0.0.1");
-option.setPort(6527);
-option.setClusterMode(false); // 必须
 option.setSessionTimeout(10000);
 option.setRequestTimeout(60000);
 ```
@@ -213,7 +204,7 @@ try {
 
 #### PreparedStatement
 
-`SqlClusterExecutor` 也可以获得 `PreparedStatement`，但需要指定获得哪种`PreparedStatement`。例如，使用 InsertPreparedStmt 进行插入操作，可以有三种方式。
+`SqlClusterExecutor` 也可以获得 `PreparedStatement`，但需要指定获得哪种 `PreparedStatement`。例如，使用 InsertPreparedStmt 进行插入操作，可以有三种方式。
 
 ```{note}
 插入操作仅支持在线，不受执行模式影响，一定是插入数据到在线。
@@ -389,7 +380,7 @@ try {
 }
 ```
 
-####  删除指定索引下某个  pk  的所有数据
+####  删除指定索引下某个 pk 的所有数据
 
 通过 Java SDK 可以有以下两种方式删除数据:
 
@@ -422,7 +413,7 @@ try {
 
 ###  完整的 SqlClusterExecutor 使用范例
 
-见 [Java quickstart demo](https://github.com/4paradigm/OpenMLDB/tree/main/demo/java_quickstart/demo)。如果在 macOS 上使用，请使用 macOS 版本的 openmldb-native，并增加 openmldb-native 的依赖。
+参考 [Java quickstart demo](https://github.com/4paradigm/OpenMLDB/tree/main/demo/java_quickstart/demo)。如果在 macOS 上使用，请使用 macOS 版本的 openmldb-native，并增加 openmldb-native 的依赖。
 
 编译并运行：
 
@@ -433,30 +424,19 @@ java -cp target/demo-1.0-SNAPSHOT.jar com.openmldb.demo.App
 
 ## SDK 配置项详解
 
-连接集群版必须填写 `zkCluster` 和 `zkPath`（set 方法或 JDBC 中 `?` 后的配置项 `foo=bar`）。
+必须填写 `zkCluster` 和 `zkPath`（set 方法或 JDBC 中 `?` 后的配置项 `foo=bar`）。
 
-连接单机版必须填写 `host` 和 `port` 以及 `isClusterMode`（即 `SDKOption.setClusterMode`），注意必须设置 clusterMode，目前不支持自动配置这一选项。
+### 可选配置项
 
-### 通用可选配置项
-
-连接单机或集群版都可以配置的选项有：
-
-| **可选配置项**  | **说明**                                                     |
-| --------------- | ------------------------------------------------------------ |
+| **可选配置项** | **说明**                                                     |
+| -------------- | ------------------------------------------------------------ |
 | enableDebug     | 默认 false，开启 hybridse 的 debug 日志（注意不是全局的 debug 日志），可以查看到更多 sql 编译和运行的日志。但这些日志不是全部被客户端收集，需要查看 tablet server 日志。 |
 | requestTimeout  | 默认 60000 ms，这个 timeout 是客户端发送的 rpc 超时时间，发送到 taskmanager 的除外（job 的 rpc timeout 由 variable `job_timeout` 控制）。 |
 | glogLevel       | 默认 0，和 glog 的 minloglevel 类似，`INFO/WARNING/ERROR/FATAL` 日志分别对应 `0/1/2/3`。0 表示打印 INFO 以及上的等级。 |
 | glogDir         | 默认为 empty，日志目录为空时，打印到 stderr，即控制台。      |
 | maxSqlCacheSize | 默认 50，客户端单个 db 单种执行模式的最大 sql cache 数量，如果出现 cache淘汰引发的错误，可以增大这一 size 避开问题。 |
-
-### 集群版可选配置项
-
-由于集群版有 zk 和 taskmanager 组件，所以有以下可选配置项：
-
-| **可选配置项** | **说明**                                                     |
-| -------------- | ------------------------------------------------------------ |
 | sessionTimeout | 默认 10000 ms，zk 的 session timeout。                       |
-| zkLogLevel     | 默认 3，`0/1/2/3/4` 分别代表 `禁止所有zk log/error/warn/info/debug` |
+| zkLogLevel     | 默认 3，`0/1/2/3/4` 分别代表 `禁止所有 zk log/error/warn/info/debug` |
 | zkLogFile      | 默认 empty，打印到 stdout。                                  |
 | sparkConfPath  | 默认 empty，可以通过此配置更改 job 使用的 spark conf，而不需要配置 taskmanager 重启。 |
 
