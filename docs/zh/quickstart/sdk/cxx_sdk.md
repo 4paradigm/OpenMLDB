@@ -1,15 +1,12 @@
 # C++ SDK
 
-## c++ SDK 包编译安装
+## C++ SDK 包编译安装
 
 ```Plain
+git clone git@github.com:4paradigm/OpenMLDB.git
 cd OpenMLDB
 make && make install
 ```
-
-## 启动服务端和客户端
-
-参考快速上手[启动服务端和客户端](../openmldb_quickstart)。
 
 ## 编写用户代码
 
