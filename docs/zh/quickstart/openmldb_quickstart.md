@@ -179,7 +179,7 @@ SHOW DEPLOYMENTS;
 
 在线模式下，导入之前下载的样例数据作为在线数据，用于在线特征计算。
 
-```Sql
+```sql
 -- OpenMLDB CLI
 USE demo_db;
 SET @@execute_mode='online';
