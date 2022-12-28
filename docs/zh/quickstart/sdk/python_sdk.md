@@ -4,7 +4,7 @@
 
 执行以下命令安装 Python SDK 包：
 
-```Bash
+```bash
 pip install openmldb
 ```
 
@@ -16,14 +16,9 @@ pip install openmldb
 
 参数 db_name 必须存在，需在创建连接前创建数据库。或者先创建无数据库的连接，再通过 `execute("USE <db>")` 命令设置使用数据库 `db`。
 
-```Python
+```python
 import openmldb.dbapi
-#连接集群版 OpenMLDB
 db = openmldb.dbapi.connect(zk="$zkcluster", zkPath="$zkpath")
-
-#连接单机版 OpenMLDB
-db = openmldb.dbapi.connect(host="$host", port="$port")
-
 cursor = db.cursor()
 ```
 
@@ -37,7 +32,7 @@ zk 和 zkPath 配置项必填。
 
 创建数据库 `db1`：
 
-```Python
+```python
 cursor.execute("CREATE DATABASE db1")
 cursor.execute("USE db1")
 ```
@@ -46,7 +41,7 @@ cursor.execute("USE db1")
 
 创建表 `t1`：
 
-```Python
+```python
 cursor.execute("CREATE TABLE t1 (col1 bigint, col2 date, col3 string, col4 string, col5 int, index(key=col3, ts=col1))")
 ```
 
@@ -54,13 +49,13 @@ cursor.execute("CREATE TABLE t1 (col1 bigint, col2 date, col3 string, col4 strin
 
 插入一条数据到表中：
 
-```Python
+```python
 cursor.execute("INSERT INTO t1 VALUES(1000, '2020-12-25', 'guangdon', 'shenzhen', 1)")
 ```
 
 ### 执行 SQL 查询
 
-```Python
+```python
 result = cursor.execute("SELECT * FROM t1")
 print(result.fetchone())
 print(result.fetchmany(10))
@@ -69,7 +64,7 @@ print(result.fetchall())
 
 ### SQL 批请求式查询
 
-```Python
+```python
 #Batch Request 模式，接口入参依次为“SQL”, “Common_Columns”, “Request_Columns”
 result = cursor.batch_row_request("SELECT * FROM t1", ["col1","col2"], ({"col1": 2000, "col2": '2020-12-22', "col3": 'fujian', "col4":'xiamen', "col5": 2}))
 print(result.fetchone())
@@ -79,7 +74,7 @@ print(result.fetchone())
 
 删除表 `t1`：
 
-```Python
+```python
 cursor.execute("DROP TABLE t1")
 ```
 
@@ -87,13 +82,13 @@ cursor.execute("DROP TABLE t1")
 
 删除数据库 `db1`：
 
-```Python
+```python
 cursor.execute("DROP DATABASE db1")
 ```
 
 ### 关闭连接
 
-```Python
+```python
 cursor.close()
 ```
 
@@ -109,15 +104,9 @@ create_engine('openmldb:///db_name?zk=zkcluster&zkPath=zkpath')
 
 参数 db_name 必须存在，需在创建连接前创建数据库。或者先创建无数据库的连接，再通过 `execute("USE <db>")` 命令设置使用数据库 `db`。
 
-```Python
+```python
 import sqlalchemy as db
-
-#连接集群版OpenMLDB
 engine = db.create_engine('openmldb:///?zk=127.0.0.1:2181&zkPath=/openmldb')
-
-#连接单机版OpenMLDB
-engine = db.create_engine('openmldb:///?host=127.0.0.1&port=6527')
-
 connection = engine.connect()
 ```
 
@@ -125,7 +114,7 @@ connection = engine.connect()
 
 使用 `connection.execute()` 接口创建数据库 `db1`：
 
-```Python
+```python
 try:
     connection.execute("CREATE DATABASE db1")
 except Exception as e:
@@ -138,7 +127,7 @@ connection.execute("USE db1")
 
 使用 `connection.execute()` 接口创建表 `t1`：
 
-```Python
+```python
 try:
     connection.execute("CREATE TABLE t1 ( col1 bigint, col2 date, col3 string, col4 string, col5 int, index(key=col3, ts=col1))")
 except Exception as e:
@@ -149,7 +138,7 @@ except Exception as e:
 
 使用 `connection.execute(ddl)` 接口执行 SQL 的插入语句，可以向表中插入数据：
 
-```Python
+```python
 try:
     connection.execute("INSERT INTO t1 VALUES(1000, '2020-12-25', 'guangdon', 'shenzhen', 1);")
 except Exception as e:
@@ -158,7 +147,7 @@ except Exception as e:
 
 使用 `connection.execute(ddl, data)` 接口执行带 planceholder 的 SQL 的插入语句，可以动态指定插入数据，也可插入多行：
 
-```Python
+```python
 try:
     insert = "INSERT INTO t1 VALUES(1002, '2020-12-27', ?, ?, 3);"
     connection.execute(insert, ({"col3":"fujian", "col4":"fuzhou"}))
@@ -171,7 +160,7 @@ except Exception as e:
 
 使用 `connection.execute(sql)` 接口执行 SQL 批式查询语句:
 
-```Python
+```python
 try:
     rs = connection.execute("SELECT * FROM t1")
     for row in rs:
@@ -186,7 +175,7 @@ except Exception as e:
 
 使用 `connection.execute(sql, request)` 接口执行 SQL 请求式查询，可以把输入数据放到 execute 函数的第二个参数中：
 
-```Python
+```python
 try:
     rs = connection.execute("SELECT * FROM t1", ({"col1":9999, "col2":'2020-12-27', "col3":'zhejiang', "col4":'hangzhou', "col5":100}))
 except Exception as e:
@@ -197,7 +186,7 @@ except Exception as e:
 
 使用 `connection.execute(ddl)` 接口删除表 `t1`：
 
-```Python
+```python
 try:
     connection.execute("DROP TABLE t1")
 except Exception as e:
@@ -208,7 +197,7 @@ except Exception as e:
 
 使用 `connection.execute(ddl)` 接口删除数据库 `db1`：
 
-```Python
+```python
 try:
     connection.execute("DROP DATABASE db1")
 except Exception as e:
@@ -219,7 +208,7 @@ except Exception as e:
 
 OpenMLDB Python SDK 支持了 Notebook magic function 拓展，使用以下语句注册函数。
 
-```Python
+```python
 import openmldb
 db = openmldb.dbapi.connect(database='demo_db',zk='0.0.0.0:2181',zkPath='/openmldb')
 openmldb.sql_magic.register(db)
@@ -243,7 +232,7 @@ openmldb.sql_magic.register(db)
 
 - Python SDK 遇到以下问题，如何解决？
 
-    ```Plain
+    ```plain
     [libprotobuf FATAL /Users/runner/work/crossbow/crossbow/vcpkg/buildtrees/protobuf/src/23fa7edd52-3ba2225d30.clean/src/google/protobuf/stubs/common.cc:87] This program was compiled against version 3.6.1 of the Protocol Buffer runtime library, which is not compatible with the installed version (3.15.8).  Contact the program author for an update. ...
     ```
 
