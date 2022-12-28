@@ -1,6 +1,6 @@
 # 快速上手
 
-本文将演示 OpenMLDB 的基本使用流程：建立数据库、导入离线数据、离线特征计算、SQL 方案上线、导入在线数据、在线实时特征计算。希望用户通过阅读本文以后可以快速上手和了解 OpenMLDB。
+本文将演示 OpenMLDB 的基本使用流程：建立数据库、导入离线数据、离线特征计算、SQL 方案上线、导入在线数据、在线实时特征计算。希望用户通过阅读本文可以快速上手和了解 OpenMLDB。
 
 ## 准备
 
@@ -54,7 +54,7 @@ curl https://openmldb.ai/demo/data.parquet --output /work/taxi-trip/data/data.pa
 以下演示的命令如无特别说明，默认均在 OpenMLDB CLI 下执行。
 ```
 
-### 步骤 1. 创建数据库和表
+### 步骤 1：创建数据库和表
 
 创建数据库 `demo_db` 和表 `demo_table1`：
 
@@ -98,7 +98,7 @@ desc demo_table1;
  -------------- 
 ```
 
-### 步骤 2. 导入离线数据
+### 步骤 2：导入离线数据
 
 首先，切换到离线执行模式，导入下载的样例数据作为离线数据，用于离线特征计算。
 
@@ -115,7 +115,7 @@ LOAD DATA INFILE 'file:///work/taxi-trip/data/data.parquet' INTO TABLE demo_tabl
 - 显示任务的详细信息：SHOW JOB job_id（job_id 可已通过 SHOW JOBS 命令显示）
 - 显示任务运行日志：SHOW JOBLOG job_id
 
-如果希望预览数据，可以使用 `SELECT * FROM demo_table1` 语句，推荐先将离线命令设置为同步模式（`SELECT` 在离线默认是在异步模式下运行），这样可以在 CLI 直接看到打印结果；否则该命令会提交一个异步任务，需要去 Spark 日志查看结果：
+如果希望预览数据，可以使用 `SELECT * FROM demo_table1` 语句，推荐先将离线命令设置为同步模式（`SELECT` 在离线默认是在异步模式下运行），这样可以在 CLI 直接看到打印结果；否则该命令会提交一个异步任务，需要去 Spark 日志查看结果。
 
 ```sql
 -- OpenMLDB CLI
@@ -128,7 +128,7 @@ SELECT * FROM demo_table1;
 OpenMLDB 也支持链接形式的软拷贝来读取离线数据源，从而无需做真正的数据硬拷贝。可以参考 [LOAD DATA INFILE 文档](../openmldb_sql/dml/LOAD_DATA_STATEMENT.md) 的参数 `deep_copy` 的说明。
 ```
 
-### 步骤 3. 离线特征计算
+### 步骤 3：离线特征计算
 
 使用以下命令进行离线特征计算：
 
@@ -146,7 +146,7 @@ SELECT c1, c2, sum(c3) OVER w1 AS w1_c3_sum FROM demo_table1 WINDOW w1 AS (PARTI
 - `SELECT` 语句用于执行 SQL 进行特征抽取，并且将生成的特征存储在文件 `feature_data` 中，供后续的机器学习模型训练使用。作为示例，这里使用了一个简单的 SQL 查询方案作为特征抽取脚本
 - 如果输出目录（`/tmp/feature_data`）非空，会报错；如果需要多次运行，建议删除结果输出目录
 
-### 步骤 4. SQL 方案上线
+### 步骤 4：SQL 方案上线
 
 将探索好的 SQL 方案部署到线上，这里的的 SQL 方案命名为 `demo_data_service`，其用于特征抽取的 SQL 需要与对应的离线特征计算的 SQL 保持一致。
 
@@ -175,7 +175,7 @@ SHOW DEPLOYMENTS;
 1 row in set
 ```
 
-### 步骤 5. 导入在线数据
+### 步骤 5：导入在线数据
 
 在线模式下，导入之前下载的样例数据作为在线数据，用于在线特征计算。
 
@@ -197,7 +197,7 @@ SELECT * FROM demo_table1 LIMIT 10;
 
 当前版本要求用户成功完成 SQL 上线部署后，才能导入在线数据，否则会上线失败。
 
-### 步骤 6. 实时特征计算
+### 步骤 6：实时特征计算
 
 至此，基于 OpenMLDB CLI 的开发部署工作已经全部完成了，接下去可以在实时请求模式下进行实时特征计算请求。我们首先退出 OpenMLDB CLI，回到操作系统的命令行。
 
@@ -206,7 +206,7 @@ SELECT * FROM demo_table1 LIMIT 10;
 quit;
 ```
 
-接下去我们演示实时特征计算。按照默认的部署配置，APIServer 部署的 http 端口为 9080。实时线上服务可以通过如下 Web API 提供服务：
+最后将演示实时特征计算。按照默认的部署配置，APIServer 部署的 http 端口为 9080。实时线上服务可以通过如下 Web API 提供服务：
 
 ```bash
 http://127.0.0.1:9080/dbs/demo_db/deployments/demo_data_service
