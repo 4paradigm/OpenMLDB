@@ -1,6 +1,6 @@
 # C++ SDK
 
-## C++ SDK 包安装
+## c++ SDK 包编译安装
 
 ```Plain
 cd OpenMLDB
