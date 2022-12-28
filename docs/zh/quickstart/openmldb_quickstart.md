@@ -126,7 +126,7 @@ SELECT * FROM demo_table1;
 ```
 
 ```{note}
-OpenMLDB 也支持链接形式的软拷贝来读取离线数据源，而无需做真正的数据拷贝。可以参考 [LOAD DATA INFILE 文档](../openmldb_sql/dml/LOAD_DATA_STATEMENT.md) 的参数 `deep_copy` 的说明。
+OpenMLDB 也支持链接形式的软拷贝来读取离线数据源，从而无需做真正的数据硬拷贝。可以参考 [LOAD DATA INFILE 文档](../openmldb_sql/dml/LOAD_DATA_STATEMENT.md) 的参数 `deep_copy` 的说明。
 ```
 
 ### 步骤 3. 离线特征计算
@@ -143,8 +143,9 @@ SELECT c1, c2, sum(c3) OVER w1 AS w1_c3_sum FROM demo_table1 WINDOW w1 AS (PARTI
 
 注意：
 
-- 这里采用异步模式提交了特征抽取任务的脚本
-- `SELECT` 语句用于执行 SQL 进行特征抽取，并且将生成的特征存储在文件 `feature_data` 中，供后续的机器学习模型训练使用。作为示例，这里使用了一个简单的 SQL 查询方案作为特征抽取脚本：
+- 这里采用异步模式提交了特征抽取任务的脚本，可以通过 SHOW JOBS 等命令查看任务运行进度
+- `SELECT` 语句用于执行 SQL 进行特征抽取，并且将生成的特征存储在文件 `feature_data` 中，供后续的机器学习模型训练使用。作为示例，这里使用了一个简单的 SQL 查询方案作为特征抽取脚本
+- 如果输出目录（`/tmp/feature_data`）非空，会报错；如果需要多次运行，建议删除结果输出目录
 
 ### 步骤 4. SQL 方案上线
 
@@ -153,6 +154,7 @@ SELECT c1, c2, sum(c3) OVER w1 AS w1_c3_sum FROM demo_table1 WINDOW w1 AS (PARTI
 ```sql
 # OpenMLDB CLI
 SET @@execute_mode='online';
+USE demo_db;
 DEPLOY demo_data_service SELECT c1, c2, sum(c3) OVER w1 AS w1_c3_sum FROM demo_table1 WINDOW w1 AS (PARTITION BY demo_table1.c1 ORDER BY demo_table1.c6 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
 ```
 
@@ -185,27 +187,13 @@ SET @@execute_mode='online';
 LOAD DATA INFILE 'file:///work/taxi-trip/data/data.parquet' INTO TABLE demo_table1 options(format='parquet', header=true, mode='append');
 ```
 
-注意，`LOAD DATA` 默认是异步命令，可以通过 `SHOW JOBS` 等离线任务管理命令来查看运行进度。等待任务完成以后，预览在线数据：
+注意，`LOAD DATA` 默认是异步命令，可以通过 `SHOW JOBS` 等离线任务管理命令来查看运行进度。等待任务完成以后，可以进一步预览在线数据：
 
 ```sql
 # OpenMLDB CLI
 USE demo_db;
 SET @@execute_mode='online';
 SELECT * FROM demo_table1 LIMIT 10;
------ ---- ---- ---------- ----------- --------------- ------------
- c1    c2   c3   c4         c5          c6              c7
------ ---- ---- ---------- ----------- --------------- ------------
- aaa   12   22   2.200000   12.300000   1636097890000   1970-01-01
- aaa   11   22   1.200000   11.300000   1636097290000   1970-01-01
- dd    18   22   8.200000   18.300000   1636111690000   1970-01-01
- aa    13   22   3.200000   13.300000   1636098490000   1970-01-01
- cc    17   22   7.200000   17.300000   1636108090000   1970-01-01
- ff    20   22   9.200000   19.300000   1636270090000   1970-01-01
- bb    16   22   6.200000   16.300000   1636104490000   1970-01-01
- bb    15   22   5.200000   15.300000   1636100890000   1970-01-01
- bb    14   22   4.200000   14.300000   1636099090000   1970-01-01
- ee    19   22   9.200000   19.300000   1636183690000   1970-01-01
- ----- ---- ---- ---------- ----------- --------------- ------------
 ```
 
 当前版本要求用户成功完成 SQL 上线部署后，才能导入在线数据，否则会上线失败。
