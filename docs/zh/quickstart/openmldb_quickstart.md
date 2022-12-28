@@ -109,12 +109,11 @@ SET @@execute_mode='offline';
 LOAD DATA INFILE 'file:///work/taxi-trip/data/data.parquet' INTO TABLE demo_table1 options(format='parquet', mode='append');
 ```
 
-```{note}
 注意，`LOAD DATA` 命令为异步命令，可以通过以下命令来查看任务运行状态和详细日志：
-显示已提交的任务列表：SHOW JOBS 
-显示任务的详细信息：SHOW JOB job_id（job_id 可已通过 SHOW JOBS 命令显示）
-显示任务运行日志：SHOW JOBLOG job_id
-```
+
+- 显示已提交的任务列表：SHOW JOBS 
+- 显示任务的详细信息：SHOW JOB job_id（job_id 可已通过 SHOW JOBS 命令显示）
+- 显示任务运行日志：SHOW JOBLOG job_id
 
 如果希望预览数据，可以使用 `SELECT * FROM demo_table1` 语句，推荐先将离线命令设置为同步模式（`SELECT` 在离线默认是在异步模式下运行），这样可以在 CLI 直接看到打印结果；否则该命令会提交一个异步任务，需要去 Spark 日志查看结果：
 
