@@ -121,11 +121,18 @@ w3 as(partition by ip, app, os order by click_time ROWS_RANGE BETWEEN UNBOUNDED 
 connection.execute(
     f"{sql_part} INTO OUTFILE '{TRAIN_FEATURE_DIR}' OPTIONS(mode='overwrite');")
 
+# train_feature_dir has multi csv files, check feature files
+feature_files = glob.glob(os.path.join('', TRAIN_FEATURE_DIR, '*.csv'))
+print(f'feature files: {feature_files}')
+if len(feature_files) == 0:
+    print('No output feature, check the job status')
+    rs = connection.execute('SHOW JOBS').fetchall()
+    for row in rs:
+        print(row)
+    exit(-1)
+
 print(f'Load features from feature dir {TRAIN_FEATURE_DIR}')
-# train_feature_dir has multi csv files
-# all int, so no need to set read types
-train_df = pd.concat(map(pd.read_csv, glob.glob(
-    os.path.join('', TRAIN_FEATURE_DIR + '/*.csv'))))
+train_df = pd.concat(map(pd.read_csv, feature_files))
 
 # drop column label
 X_data = train_df.drop('is_attributed', axis=1)

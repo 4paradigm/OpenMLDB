@@ -35,7 +35,7 @@ ls airflow_demo_files
 登录Airflow Web需要对外端口，所以此处暴露容器的端口。并且直接将上一步下载的文件映射到`/work/airflow/dags`，接下来Airflow将加载此文件夹的DAG。
 
 ```
-docker run -p 8080:8080 -v `pwd`/airflow_demo_files:/work/airflow/dags -it 4pdosc/openmldb:0.6.9 bash
+docker run -p 8080:8080 -v `pwd`/airflow_demo_files:/work/airflow_demo_files -it 4pdosc/openmldb:0.6.9 bash
 ```
 
 #### 0.3 下载安装Airflow与Airflow OpenMLDB Provider
@@ -45,19 +45,21 @@ pip3 install airflow-provider-openmldb
 ```
 由于airflow-provider-openmldb依赖airflow，所以会一起下载。
 
-#### 0.4 源数据准备
-由于在DAG中导入数据用的文件为`/tmp/train_sample.csv`，所以我们需要将sample数据文件拷贝到tmp目录。
+#### 0.4 源数据与DAG准备
+由于在DAG中导入数据用的文件为`/tmp/train_sample.csv`，所以我们需要将sample数据文件拷贝到tmp目录。Airflow 的DAG文件和DAG中使用的训练脚本也需要拷贝到airflow目录中。
 ```
-cp /work/talkingdata/train_sample.csv /tmp/
+cp /work/airflow_demo_files/train_sample.csv /tmp/
+mkdir -p /work/airflow/dags
+cp /work/airflow_demo_files/example_openmldb_complex.py /work/airflow_demo_files/xgboost_train_sample.py /work/airflow/dags
 ```
 
 ### 1 启动OpenMLDB与Airflow
 以下命令将启动OpenMLDB cluster，支持上线并测试的predict server，与Airflow standalone。
 ```
 /work/init.sh
-python3 /work/talkingdata/predict_server.py --no-init > predict.log 2>&1 &
+python3 /work/airflow_demo_files/predict_server.py --no-init > predict.log 2>&1 &
 export AIRFLOW_HOME=/work/airflow
-cd /work/airflow
+cd $AIRFLOW_HOME
 airflow standalone
 ```
 
@@ -116,8 +118,24 @@ curl -X POST http://127.0.0.1:9080/dbs/example_db -d'{"mode":"online", "sql":"sh
 #### 3.2 预测
 执行预测脚本，进行一次预测，预测将使用新部署好的sql与模型。
 ```
-python3  /work/talkingdata/predict.py
+python3 /work/airflow_demo_files/predict.py
 ```
 结果如下所示。
 ![result](images/airflow_test_result.png)
 
+
+### 非交互式测试
+
+检查DAG是否成功加载：
+```
+airflow dags list | grep openmldb
+```
+添加DAG所需使用的connection：
+```
+airflow connections add openmldb_conn_id --conn-uri http://127.0.0.1:9080
+airflow connections list --conn-id openmldb_conn_id
+```
+DAG测试：
+```
+airflow dags test example_openmldb_complex 2022-08-25
+```
