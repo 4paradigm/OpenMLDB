@@ -28,4 +28,4 @@ OpenMLDB Tool is the same. You can add multi whl files.
 
 If apt is slow, copy the `sources.list` to `/demo/additions`.
 
-If pip is slow, set `PYPI` to `tuna`.
+If pip is slow, create a file `/demo/additions/pypi.txt` and add index url in it.
