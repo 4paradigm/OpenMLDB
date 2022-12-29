@@ -224,16 +224,16 @@ openmldb.sql_magic.register(db)
 
 ## 常见问题
 
-- 使用 SQLAlchemy 出现 `ImportError: dlopen(.._sql_router_sdk.so, 2): initializer function 0xnnnn not in mapped image for`，怎么办？
+- **使用 SQLAlchemy 出现 `ImportError: dlopen(.._sql_router_sdk.so, 2): initializer function 0xnnnn not in mapped image for`，怎么办？**
 
-> 除了 import openmldb 外，您可能还 import 了其他第三方库，可能导致加载的顺序产生混乱。由于系统的复杂度，可以尝试使用 virtual env 环境（比如 conda），避免干扰。并且，在 import sqlalchemy 前 import openmldb，并保证这两个 import 在最前。
->
-> 如果仍然无法解决，建议使用 request http 连接 apiserver 的方式连接 OpenMLDB。
+除了 import openmldb 外，您可能还 import 了其他第三方库，可能导致加载的顺序产生混乱。由于系统的复杂度，可以尝试使用 virtual env 环境（比如 conda），避免干扰。并且，在 import sqlalchemy 前 import openmldb，并保证这两个 import 在最前。
 
-- Python SDK 遇到以下问题，如何解决？
+如果仍然无法解决，建议使用 request http 连接 apiserver 的方式连接 OpenMLDB。
+
+- **Python SDK 遇到以下问题，如何解决？**
 
     ```plain
     [libprotobuf FATAL /Users/runner/work/crossbow/crossbow/vcpkg/buildtrees/protobuf/src/23fa7edd52-3ba2225d30.clean/src/google/protobuf/stubs/common.cc:87] This program was compiled against version 3.6.1 of the Protocol Buffer runtime library, which is not compatible with the installed version (3.15.8).  Contact the program author for an update. ...
     ```
 
-> 该问题可能是因为别的库引入了 protobuf 的其他版本。可以尝试使用 virtual env 环境（比如 conda）。
+该问题可能是因为别的库引入了 protobuf 的其他版本。可以尝试使用 virtual env 环境（比如 conda）。
