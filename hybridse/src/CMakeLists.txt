@@ -83,7 +83,7 @@ if (TESTING_ENABLE AND HYBRIDSE_TESTING_ENABLE)
 
         add_executable(${TEST_TARGET_NAME} ${TEST_SCRIPT} testing/engine_test_base.cc testing/test_base.cc)
         target_link_libraries(${TEST_TARGET_NAME} ${GTEST_LIBRARIES} ${HYBRIDSE_CORE_LIBS} hybridse_flags
-                ${yaml_libs} ${ZETASQL_LIBS} ${BRPC_LIBS})
+                              ${yaml_libs} ${ZETASQL_LIBS} ${COMMON_LIBS})
         set_target_properties(${TEST_TARGET_NAME} PROPERTIES
             RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/${TEST_TARGET_DIR})
         add_test(${TEST_TARGET_NAME}

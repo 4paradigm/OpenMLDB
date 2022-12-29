@@ -23,9 +23,9 @@ import scala.reflect.io.File
 
 object OpenmldbJobUtil {
 
-  def checkOneSqlArgument(args: Array[String]): Unit = {
-    if (args.length != 1) {
-      throw new Exception(s"Require args of sql but get args: ${args.mkString(",")}")
+  def checkArgumentSize(args: Array[String], expectSize: Int): Unit = {
+    if (args.length != expectSize) {
+      throw new Exception(s"Require args size ${expectSize} but get args: ${args.mkString(",")}")
     }
   }
 

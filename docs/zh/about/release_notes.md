@@ -1,5 +1,40 @@
 # Release Notes
 
+## v0.6.9 Release Notes
+
+### Features
+- Add `pre-upgrade` and `post-upgrade` options in tools for upgrade (#2761 @zhanghaohit)
+- Support starting OpenMLDB with daemon (#2833 @vagetablechicken)
+- Improve the documents (#2827 @tobegit3hub, #2838 @vagetablechicken)
+
+### Bug Fixes
+- The CLI may crash if executing `show job` without a job ID. (#2771 @aceforeverd)
+- `select count(*)` may return empty result after tablets restart. (#2835 @zhanghaohit)
+- A tablet may crash if the output of SQL engine runner is `null`. (#2831 @dl239)
+
+## v0.6.8 Release Notes
+
+### Features
+- Support the `where` clause in the SQL batch engine (#2820 @tobegit3hub)
+- Support input and output with the JSON format in APIServer (#2813 @vagetablechicken)
+- Improve the documents (#2814 @vagetablechicken)
+
+### Code Refactoring
+#2816 @dl239, #2714 @aceforeverd
+
+## v0.6.7 Release Notes
+
+### Features
+- Support importing and exporting data from/to Hive (@2778 @vagetablechicken)
+- Improve the module of `autofe` (#2777 @vagetablechicken)
+- Improve error messages of the `TaskManager` client (#2780 @vagetablechicken)
+- Improve the documents (#2781 @zhanghaohit, #2767 #2792 @vagetablechicken, #2805 @selenachenjingxin, #2810 @dl239)
+
+### Bug Fixes
+- Python SDK workflow may fail on MacOS. (#2783 @vagetablechicken, #2788 @dl239)
+- There are syntax errors in some log messages. (@2770 dl239)
+- Installing Python SDK requires unnessary packages. (#2791 @vagetablechicken)
+
 ## v0.6.6 Release Notes
 
 ### Features

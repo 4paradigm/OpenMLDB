@@ -12,12 +12,12 @@ pip install openmldb
 
 ### 2.1 Create Connection
 
-When creating the connection, the database name is not required to exist. If it does not exist, you need to create the database after the connection is created.
+When creating the connection, the database name is **required** to exist. If it does not exist, you need to create the database before the connection is created. Or you can create a connection without database, then `execute("USE <db>")` to set the database.
 
 ````python
 import openmldb.dbapi
 
-db = openmldb.dbapi.connect(database="db1", zk="$zkcluster", zkPath="$zkpath")
+db = openmldb.dbapi.connect(zk="$zkcluster", zkPath="$zkpath")
 
 cursor = db.cursor()
 ````
@@ -26,6 +26,7 @@ cursor = db.cursor()
 
 ````python
 cursor.execute("CREATE DATABASE db1")
+cursor.execute("USE db1")
 ````
 
 ### 2.3 Create Table
@@ -72,12 +73,12 @@ cursor.close()
 ### 3.1 Create Connection
 
 `create_engine('openmldb:///db_name?zk=zkcluster&zkPath=zkpath')`
-When creating the connection, the database is not required to exist. If it does not exist, you need to create the database after the connection is created.
+When creating the connection, the database is **required** to exist. If it does not exist, you need to create the database before the connection is created. Or you can create a connection without database, then `execute("USE <db>")` to set the database.
 
 ````python
 import sqlalchemy as db
 
-engine = db.create_engine('openmldb:///db1?zk=127.0.0.1:2181&zkPath=/openmldb')
+engine = db.create_engine('openmldb:///?zk=127.0.0.1:2181&zkPath=/openmldb')
 connection = engine.connect()
 ````
 
@@ -87,9 +88,10 @@ Create a database using the `connection.execute()`:
 
 ````python
 try:
-    connection.execute("CREATE DATABASE db1");
+    connection.execute("CREATE DATABASE db1")
 except Exception as e:
     print(e)
+connection.execute("USE db1")
 ````
 
 ### 3.3 Create Table
@@ -130,7 +132,7 @@ Using the `connection.execute(sql)` to execute SQL batch query statements:
 
 ````python
 try:
-    rs = connection.execute("SELECT * FROM t1");
+    rs = connection.execute("SELECT * FROM t1")
     for row in rs:
         print(row)
     rs = connection.execute("SELECT * FROM t1 WHERE col3 = ?;", ('hefei'))
@@ -144,7 +146,7 @@ Using the `connection.execute(sql, request)` to execute SQLs in the request mode
 
 ````python
 try:
-   rs = connection.execute("SELECT * FROM t1", ({"col1":9999, "col2":'2020-12-27', "col3":'zhejiang', "col4":'hangzhou', " col5":100}));
+   rs = connection.execute("SELECT * FROM t1", ({"col1":9999, "col2":'2020-12-27', "col3":'zhejiang', "col4":'hangzhou', " col5":100}))
 except Exception as e:
     print(e)
 ````
@@ -186,7 +188,11 @@ The line magic function `%sql` and block magic function `%%sql` can then be used
 
 ![img](images/openmldb_magic_function.png)
 
-## 5. Option
+## Example
+
+See [Python quickstart demo](https://github.com/4paradigm/OpenMLDB/tree/main/demo/python_quickstart/demo.py), including the usage of DBAPI and SQLAlchemy as shown previously.
+
+## Option
 
 Connect to cluster must set `zk` and `zkPath`.
 

@@ -78,3 +78,17 @@ mvn test -pl openmldb-spark-connector -Dsuites="com._4paradigm.openmldb.spark.Te
 mvn test -pl openmldb-jdbc -Dtest="SQLRouterSmokeTest"
 mvn test -pl openmldb-jdbc -Dtest="SQLRouterSmokeTest#AnyMethod"
 ```
+
+### batchjob test
+
+batchjob测试可以使用以下方式:
+```
+$SPARK_HOME/bin/spark-submit --master local --class com._4paradigm.openmldb.batchjob.ImportOfflineData --conf spark.hadoop.hive.metastore.uris=thrift://localhost:9083 --conf spark.openmldb.zk.root.path=/openmldb --conf spark.openmldb.zk.cluster=127.0.0.1:2181 openmldb-batchjob/target/openmldb-batchjob-0.6.5-SNAPSHOT.jar load_data.txt true
+```
+
+或者拷贝编译好的openmldb-batchjob jar包到OpenMLDB集群的taskmanager `lib`，然后使用客户端或Taskmanager Client发送命令测试。
+
+支持hive数据源时，注意需要metastore服务。本地测试时，可以在hive目录中启动，默认地址为`thrift://localhost:9083`。
+```
+bin/hive --service metastore
+```

@@ -397,10 +397,6 @@ __attribute__((unused)) static void PrintTableInformation(
     row.push_back(::openmldb::base::HumanReadableString(diskused));
     tp.AddRow(row);
     row.clear();
-    row.push_back("format_version");
-    row.push_back(std::to_string(table.format_version()));
-    tp.AddRow(row);
-    row.clear();
     row.push_back("partition_key");
     if (table.partition_key_size() > 0) {
         std::string partition_key;

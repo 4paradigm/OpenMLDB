@@ -16,6 +16,7 @@
 
 from IPython.core.magic import (Magics, magics_class, line_cell_magic)
 
+
 @magics_class
 class SqlMagic(Magics):
 
@@ -24,7 +25,6 @@ class SqlMagic(Magics):
         self.db = db
         self.cursor = db.cursor()
 
-        
     @line_cell_magic
     def sql(self, line, cell=None):
         if cell is None:
@@ -41,12 +41,13 @@ class SqlMagic(Magics):
         else:
             self.cursor.execute(sqlText)
             print("Success to execute sql")
-            
+
+
 def register(db, test=False):
     global get_ipython
     if test:
         from IPython.testing.globalipapp import get_ipython
     ip = get_ipython()
-    magics = SqlMagic(ip,db)
+    magics = SqlMagic(ip, db)
     ip.register_magics(magics)
     return ip

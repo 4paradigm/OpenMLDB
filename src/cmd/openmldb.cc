@@ -265,8 +265,7 @@ void StartTablet() {
 
 int PutData(uint32_t tid, const std::map<uint32_t, std::vector<std::pair<std::string, uint32_t>>>& dimensions,
             uint64_t ts, const std::string& value,
-            const google::protobuf::RepeatedPtrField<::openmldb::nameserver::TablePartition>& table_partition,
-            uint32_t format_version) {
+            const google::protobuf::RepeatedPtrField<::openmldb::nameserver::TablePartition>& table_partition) {
     std::map<std::string, std::shared_ptr<::openmldb::client::TabletClient>> clients;
     for (auto iter = dimensions.begin(); iter != dimensions.end(); iter++) {
         uint32_t pid = iter->first;
@@ -348,8 +347,7 @@ int PutData(uint32_t tid, const std::map<uint32_t, std::vector<std::pair<std::st
         value = compressed;
     }
     const int tid = table_info.tid();
-    const uint32_t fmt_ver = table_info.format_version();
-    PutData(tid, dimensions, ts, value, table_info.table_partition(), fmt_ver);
+    PutData(tid, dimensions, ts, value, table_info.table_partition());
 
     return ::openmldb::base::Status(0, "ok");
 }
@@ -2254,7 +2252,6 @@ void HandleNSCreateTable(const std::vector<std::string>& parts, ::openmldb::clie
         return;
     }
     ns_table_info.set_db(client->GetDb());
-    ns_table_info.set_format_version(1);
     std::string msg;
     if (!client->CreateTable(ns_table_info, false, msg)) {
         std::cout << "Fail to create table. error msg: " << msg << std::endl;
@@ -3930,8 +3927,11 @@ void StartAPIServer() {
 int main(int argc, char* argv[]) {
     ::google::SetVersionString(OPENMLDB_VERSION);
     ::google::ParseCommandLineFlags(&argc, &argv, true);
-
-    if (FLAGS_role == "ns_client") {
+    if (FLAGS_role.empty()) {
+        std::cout << "client start in stand-alone mode" << std::endl;
+        // TODO(hw): standalonesdk refresh every 2s, too many logs in Debug mode
+        ::openmldb::cmd::StandAloneSQLClient();
+    } else if (FLAGS_role == "ns_client") {
         StartNsClient();
     } else if (FLAGS_role == "sql_client") {
         ::openmldb::cmd::ClusterSQLClient();
@@ -3946,9 +3946,7 @@ int main(int argc, char* argv[]) {
         StartAPIServer();
 #endif
     } else {
-        std::cout << "client start in stand-alone mode" << std::endl;
-        // TODO(hw): standalonesdk refresh every 2s, too many logs in Debug mode
-        ::openmldb::cmd::StandAloneSQLClient();
+        std::cout << "Invalid role: " << FLAGS_role << std::endl;
     }
     return 0;
 }

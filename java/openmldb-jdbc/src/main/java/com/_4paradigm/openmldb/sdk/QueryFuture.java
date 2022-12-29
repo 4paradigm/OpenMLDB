@@ -56,7 +56,7 @@ public class QueryFuture implements Future<java.sql.ResultSet>{
         Status status = new Status();
         com._4paradigm.openmldb.ResultSet resultSet = queryFuture.GetResultSet(status);
         if (status.getCode() != 0 || resultSet == null) {
-            String msg = status.getMsg();
+            String msg = status.ToString();
             status.delete();
             status = null;
             logger.error("call procedure failed: {}", msg);

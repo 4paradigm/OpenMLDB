@@ -23,6 +23,7 @@
 #include <utility>
 #include <vector>
 
+#include "absl/base/attributes.h"
 #include "base/strings.h"
 #include "proto/common.pb.h"
 
@@ -31,14 +32,13 @@ namespace codec {
 
 using ProjectList = ::google::protobuf::RepeatedField<uint32_t>;
 using Schema = ::google::protobuf::RepeatedPtrField<::openmldb::common::ColumnDesc>;
-static constexpr uint8_t VERSION_LENGTH = 2;
-static constexpr uint8_t SIZE_LENGTH = 4;
-static constexpr uint8_t HEADER_LENGTH = VERSION_LENGTH + SIZE_LENGTH;
-static constexpr uint32_t UINT24_MAX = (1 << 24) - 1;
+inline constexpr uint8_t VERSION_LENGTH = 2;
+inline constexpr uint8_t SIZE_LENGTH = 4;
+inline constexpr uint8_t HEADER_LENGTH = VERSION_LENGTH + SIZE_LENGTH;
+inline constexpr uint32_t UINT24_MAX = (1 << 24) - 1;
 
 class RowBuilder;
 class RowView;
-class RowProject;
 
 class RowProject {
  public:
@@ -73,42 +73,42 @@ class RowBuilder {
     bool InitBuffer(int8_t* buf, uint32_t size, bool need_clear);
     bool SetBuffer(int8_t* buf, uint32_t size);
     bool SetBuffer(int8_t* buf, uint32_t size, bool need_clear);
-    bool AppendBool(bool val);
-    bool AppendInt32(int32_t val);
-    bool AppendInt16(int16_t val);
-    bool AppendInt64(int64_t val);
-    bool AppendTimestamp(int64_t val);
-    bool AppendFloat(float val);
-    bool AppendDouble(double val);
-    bool AppendString(const char* val, uint32_t length);
-    bool AppendNULL();
-    bool SetNULL(uint32_t index);
-    bool SetNULL(int8_t* buf, uint32_t size, uint32_t index);
-    bool AppendDate(uint32_t year, uint32_t month, uint32_t day);
+    ABSL_MUST_USE_RESULT bool AppendBool(bool val);
+    ABSL_MUST_USE_RESULT bool AppendInt32(int32_t val);
+    ABSL_MUST_USE_RESULT bool AppendInt16(int16_t val);
+    ABSL_MUST_USE_RESULT bool AppendInt64(int64_t val);
+    ABSL_MUST_USE_RESULT bool AppendTimestamp(int64_t val);
+    ABSL_MUST_USE_RESULT bool AppendFloat(float val);
+    ABSL_MUST_USE_RESULT bool AppendDouble(double val);
+    ABSL_MUST_USE_RESULT bool AppendString(const char* val, uint32_t length);
+    ABSL_MUST_USE_RESULT bool AppendNULL();
+    ABSL_MUST_USE_RESULT bool SetNULL(uint32_t index);
+    ABSL_MUST_USE_RESULT bool SetNULL(int8_t* buf, uint32_t size, uint32_t index);
+    ABSL_MUST_USE_RESULT bool AppendDate(uint32_t year, uint32_t month, uint32_t day);
     // append the date that encoded
-    bool AppendDate(int32_t date);
-    bool AppendValue(const std::string& val);
-    bool SetBool(uint32_t index, bool val);
-    bool SetBool(int8_t* buf, uint32_t index, bool val);
-    bool SetInt16(uint32_t index, int16_t val);
-    bool SetInt16(int8_t* buf, uint32_t index, int16_t val);
-    bool SetInt32(uint32_t index, int32_t val);
-    bool SetInt32(int8_t* buf, uint32_t index, int32_t val);
-    bool SetInt64(uint32_t index, int64_t val);
-    bool SetInt64(int8_t* buf, uint32_t index, int64_t val);
-    bool SetTimestamp(uint32_t index, int64_t val);
-    bool SetTimestamp(int8_t* buf, uint32_t index, int64_t val);
-    bool SetFloat(uint32_t index, float val);
-    bool SetFloat(int8_t* buf, uint32_t index, float val);
-    bool SetDouble(uint32_t index, double val);
-    bool SetDouble(int8_t* buf, uint32_t index, double val);
-    bool SetString(uint32_t index, const char* val, uint32_t length);
-    bool SetString(int8_t* buf, uint32_t size, uint32_t index, const char* val, uint32_t length);
-    bool SetDate(uint32_t index, uint32_t year, uint32_t month, uint32_t day);
-    bool SetDate(int8_t* buf, uint32_t index, uint32_t year, uint32_t month, uint32_t day);
+    ABSL_MUST_USE_RESULT bool AppendDate(int32_t date);
+    ABSL_MUST_USE_RESULT bool AppendValue(const std::string& val);
+    ABSL_MUST_USE_RESULT bool SetBool(uint32_t index, bool val);
+    ABSL_MUST_USE_RESULT bool SetBool(int8_t* buf, uint32_t index, bool val);
+    ABSL_MUST_USE_RESULT bool SetInt16(uint32_t index, int16_t val);
+    ABSL_MUST_USE_RESULT bool SetInt16(int8_t* buf, uint32_t index, int16_t val);
+    ABSL_MUST_USE_RESULT bool SetInt32(uint32_t index, int32_t val);
+    ABSL_MUST_USE_RESULT bool SetInt32(int8_t* buf, uint32_t index, int32_t val);
+    ABSL_MUST_USE_RESULT bool SetInt64(uint32_t index, int64_t val);
+    ABSL_MUST_USE_RESULT bool SetInt64(int8_t* buf, uint32_t index, int64_t val);
+    ABSL_MUST_USE_RESULT bool SetTimestamp(uint32_t index, int64_t val);
+    ABSL_MUST_USE_RESULT bool SetTimestamp(int8_t* buf, uint32_t index, int64_t val);
+    ABSL_MUST_USE_RESULT bool SetFloat(uint32_t index, float val);
+    ABSL_MUST_USE_RESULT bool SetFloat(int8_t* buf, uint32_t index, float val);
+    ABSL_MUST_USE_RESULT bool SetDouble(uint32_t index, double val);
+    ABSL_MUST_USE_RESULT bool SetDouble(int8_t* buf, uint32_t index, double val);
+    ABSL_MUST_USE_RESULT bool SetString(uint32_t index, const char* val, uint32_t length);
+    ABSL_MUST_USE_RESULT bool SetString(int8_t* buf, uint32_t size, uint32_t index, const char* val, uint32_t length);
+    ABSL_MUST_USE_RESULT bool SetDate(uint32_t index, uint32_t year, uint32_t month, uint32_t day);
+    ABSL_MUST_USE_RESULT bool SetDate(int8_t* buf, uint32_t index, uint32_t year, uint32_t month, uint32_t day);
     // set the date that encoded
-    bool SetDate(uint32_t index, int32_t date);
-    bool SetDate(int8_t* buf, uint32_t index, int32_t date);
+    ABSL_MUST_USE_RESULT bool SetDate(uint32_t index, int32_t date);
+    ABSL_MUST_USE_RESULT bool SetDate(int8_t* buf, uint32_t index, int32_t date);
 
     void SetSchemaVersion(uint8_t version);
     inline bool IsComplete() { return cnt_ == (uint32_t)schema_.size(); }

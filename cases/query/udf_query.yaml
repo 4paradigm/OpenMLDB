@@ -498,3 +498,59 @@ cases:
         1, ABCABCABC, ABCAbc, ABC,  NULL, NULL, ABC,  NULL
         2, ABC,       ABC,    ABC,  NULL, NULL, ABC,  NULL
         3, NULL,      NULL,   NULL, NULL, NULL, NULL, NULL
+
+  - id: array_contains
+    mode: request-unsupport
+    inputs:
+      - name: t1
+        columns: ["col1:int32", "std_ts:timestamp", "col2:string"]
+        indexs: ["index1:col1:std_ts"]
+        rows:
+          - [1, 1590115420001, "ABCabcabc"]
+    sql: |
+      select
+        array_contains([2,2], 2) as c0,
+        array_contains([1,2, NULL], 2) as c1,
+        array_contains(ARRAY<INT64>[NULL, 1, 2], cast(3 as INT64)) as c2,
+        array_contains(ARRAY<double>[], 3.0) as c3,
+        array_contains(ARRAY<float>[3.0], cast(3 as float)) as c4,
+        array_contains(["a", "b"], "c") as c5,
+        array_contains(Array<string>["a", NULL, "b"], "b") as c6,
+        array_contains([timestamp(1), NULL, timestamp(1000)], timestamp(100)) as c7,
+        array_contains([date('2022-04-04'), NULL, date('2020-10-20')], date('2020-10-20')) as c8,
+        array_contains([2,2], cast(NULL as INT)) as c9,
+        array_contains(ARRAY<INT16>[2, NULL, 2], cast(NULL as INT16)) as c10,
+    expect:
+      columns:
+        - c0 bool
+        - c1 bool
+        - c2 bool
+        - c3 bool
+        - c4 bool
+        - c5 bool
+        - c6 bool
+        - c7 bool
+        - c8 bool
+        - c9 bool
+        - c10 bool
+      data: |
+        true, true, false, false, true, false, true, false, true, false, true
+
+  - id: array_split
+    mode: request-unsupport
+    inputs:
+      - name: t1
+        columns: ["col1:int32", "std_ts:timestamp", "col2:string"]
+        indexs: ["index1:col1:std_ts"]
+        rows:
+          - [1, 1590115420001, "ABCabcabc"]
+    sql: |
+      select
+        array_contains(split_array("1,2", ","), '2') as c0,
+        array_contains(split_array("1,2", ","), '3') as c1,
+    expect:
+      columns:
+        - c0 bool
+        - c1 bool
+      data: |
+        true, false
