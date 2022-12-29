@@ -9,7 +9,7 @@
 - Add new maintenance tools `deploy-all` and `start-all` (#2809 @zhanghaohit)
 - Insertion returns errors if the value of timestamp field is negative (#2776 @dl239)
 - Add a new configuration `max_memory` to limit the memory usage of a tablet (#2815 @dl239)
-- Improve the documents (#2868 @haseeb-xd, #2878 @Jake-00, #2879 #2876 #2889 #2890 @vagetablechicken, #2881 @selenachenjingxin, #2859 @AdvancedUno, #2893 @lumianph)
+- Improve the documents (#2868 @haseeb-xd, #2878 @Jake-00, #2879 #2876 #2889 #2890 @vagetablechicken, #2881 #2907 #2908 #2897 @selenachenjingxin, #2859 @AdvancedUno, #2893 @lumianph, #2916 @aceforeverd)
 
 ### Bug Fixes
 - Window over a subquery(t1 LAST JOIN t2) fails due to column renaming in the subquery. (#2739 @aceforeverd)
@@ -18,7 +18,7 @@
 - Memory is not released when deleting an index in some cases. (#2806 @dl239)
 - Changing a leader to a specified endpoint fails if there are data writing. (#2858 @dl239)
 - UDFs do not work for `yarn-client` and `yarn-cluster` in the offline mode. (#2802 @tobegit3hub)
-- Other minor bug fixes (#2828 @vagetablechicken, #2867 @dl239)
+- Other minor bug fixes (#2828 #2903 #2906 @vagetablechicken, #2867 #2912 @dl239)
 
 ### Code Refactoring
 #2860 @mammar11, #2865 #2863 @vagetablechicken, #2861 #2862 #2871 @Ziy1-Tan
