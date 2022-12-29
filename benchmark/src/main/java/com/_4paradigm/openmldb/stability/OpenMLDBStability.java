@@ -34,6 +34,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
 
 public class OpenMLDBStability {
     private static Logger logger = LoggerFactory.getLogger(OpenMLDBStability.class);
@@ -50,6 +51,10 @@ public class OpenMLDBStability {
     private ExecutorService queryExecuteService;
     private Random random = new Random();
     private AtomicBoolean running = new AtomicBoolean(true);
+    private AtomicLong insertTotalCnt = new AtomicLong(0);
+    private AtomicLong insertErrorCnt = new AtomicLong(0);
+    private AtomicLong queryTotalCnt = new AtomicLong(0);
+    private AtomicLong queryErrorCnt = new AtomicLong(0);
 
     public OpenMLDBStability() {
         executor = Config.GetSqlExecutor(false);
@@ -100,6 +105,29 @@ public class OpenMLDBStability {
         } catch (Exception e) {
             e.printStackTrace();
         }
+    }
+
+    public long getInsertTotalCnt() {
+        return insertTotalCnt.get();
+    }
+
+    public long getInsertErrorCnt() {
+        return insertErrorCnt.get();
+    }
+
+    public long getQueryTotalCnt() {
+        return queryTotalCnt.get();
+    }
+
+    public long getQueryErrorCnt() {
+        return queryErrorCnt.get();
+    }
+
+    public void resetCnt() {
+        insertErrorCnt.set(0);
+        insertTotalCnt.set(0);
+        queryTotalCnt.set(0);
+        queryErrorCnt.set(0);
     }
 
     public void clear() {
@@ -168,7 +196,11 @@ public class OpenMLDBStability {
         }
         builder.append(");");
         String exeSql = builder.toString();
-        executor.executeInsert(db, exeSql);
+        boolean ret = executor.executeInsert(db, exeSql);
+        insertTotalCnt.getAndIncrement();
+        if (!ret) {
+            insertErrorCnt.getAndIncrement();
+        }
     }
 
     private boolean setInsertData(PreparedStatement requestPs, long ts, String tableName) {
@@ -329,6 +361,7 @@ public class OpenMLDBStability {
         Random curRandom = new Random();
         int cnt = 0;
         while (running.get()) {
+            queryTotalCnt.getAndIncrement();
             boolean isProcedure = true;
             //if (curRandom.nextFloat() > BenchmarkConfig.PROCEDURE_RATIO) {
             //    isProcedure = true;
@@ -347,6 +380,7 @@ public class OpenMLDBStability {
                         getData(resultSet);
                     }
                 } catch (Exception e) {
+                    queryErrorCnt.getAndIncrement();
                     e.printStackTrace();
                 } finally {
                     close(ps, resultSet);
@@ -357,6 +391,7 @@ public class OpenMLDBStability {
                     resultSet = ps.executeQuery();
                     getData(resultSet);
                 } catch (Exception e) {
+                    queryErrorCnt.getAndIncrement();
                     e.printStackTrace();
                 } finally {
                     close(ps, resultSet);
@@ -450,11 +485,22 @@ public class OpenMLDBStability {
         }
         //stability.putData();
         //perf.query();
-        long startTime = System.currentTimeMillis();
         while (true) {
             try {
-                Thread.sleep(1000);
-
+                Thread.sleep(1000 * 60);
+                long insertCnt = stability.getInsertTotalCnt();
+                long insertErr = stability.getInsertErrorCnt();
+                long queryCnt = stability.getQueryTotalCnt();
+                long queryErr = stability.getQueryErrorCnt();
+                stability.resetCnt();
+                double insert_ratio = insertErr / (double) insertCnt;
+                double query_ratio = queryErr / (double) queryCnt;
+                if (insert_ratio > Config.ERROR_RATIO) {
+                    logger.error("insert error ratio {} total {} error {}", insert_ratio, insertCnt, insertErr);
+                }
+                if (query_ratio > Config.ERROR_RATIO) {
+                    logger.error("query error ratio {} total {} error {}", query_ratio, queryCnt, queryErr);
+                }
             } catch (Exception e) {
                 e.printStackTrace();
             }

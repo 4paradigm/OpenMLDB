@@ -24,6 +24,7 @@ public class Config {
     public static String DB_NAME;
     public static String CASE_NAME;
     public static String STORAGE_MODE;
+    public static double ERROR_RATIO;
     private static SqlExecutor executor = null;
     private static SdkOption option = null;
 
@@ -47,6 +48,7 @@ public class Config {
             DB_NAME = prop.getProperty("DB_NAME");
             CASE_NAME = prop.getProperty("CASE_NAME");
             STORAGE_MODE = prop.getProperty("STORAGE_MODE");
+            ERROR_RATIO = Double.parseDouble(prop.getProperty("ERROR_RATIO"));
         } catch (Exception e) {
             e.printStackTrace();
         }
