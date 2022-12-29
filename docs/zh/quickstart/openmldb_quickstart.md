@@ -22,7 +22,7 @@ docker run -it 4pdosc/openmldb:0.7.0 bash
 
 ### 下载样例数据
 
-在容器中执行以下命令，下载后续流程中使用的样例数据：
+在容器中执行以下命令，下载后续流程中使用的样例数据（0.7.0及之后的版本可跳过此步，data.parquet只有10行源数据）：
 
 ```bash
 curl https://openmldb.ai/demo/data.parquet --output /work/taxi-trip/data/data.parquet
@@ -115,7 +115,7 @@ LOAD DATA INFILE 'file:///work/taxi-trip/data/data.parquet' INTO TABLE demo_tabl
 - 显示任务的详细信息：SHOW JOB job_id（job_id 可已通过 SHOW JOBS 命令显示）
 - 显示任务运行日志：SHOW JOBLOG job_id
 
-如果希望预览数据，可以使用 `SELECT * FROM demo_table1` 语句，推荐先将离线命令设置为同步模式（`SELECT` 在离线默认是在异步模式下运行），这样可以在 CLI 直接看到打印结果；否则该命令会提交一个异步任务，需要去 Spark 日志查看结果。
+如果希望预览数据，可以使用 `SELECT * FROM demo_table1` 语句，推荐先将离线命令设置为同步模式（`SELECT` 在离线默认是在异步模式下运行），这样可以在 CLI 直接看到打印结果；否则该命令会提交一个异步任务，结果会保存在job的日志文件中，查看较不方便。
 
 ```sql
 -- OpenMLDB CLI
@@ -125,7 +125,7 @@ SELECT * FROM demo_table1;
 ```
 
 ```{note}
-OpenMLDB 也支持链接形式的软拷贝来读取离线数据源，从而无需做真正的数据硬拷贝。可以参考 [LOAD DATA INFILE 文档](../openmldb_sql/dml/LOAD_DATA_STATEMENT.md) 的参数 `deep_copy` 的说明。
+OpenMLDB 也支持链接形式的软拷贝来导入离线数据，无需数据硬拷贝。可以参考 [LOAD DATA INFILE 文档](../openmldb_sql/dml/LOAD_DATA_STATEMENT.md) 的参数 `deep_copy` 的说明。
 ```
 
 ### 步骤 3：离线特征计算
@@ -144,7 +144,7 @@ SELECT c1, c2, sum(c3) OVER w1 AS w1_c3_sum FROM demo_table1 WINDOW w1 AS (PARTI
 
 - 这里采用异步模式提交了特征抽取任务的脚本，可以通过 SHOW JOBS 等命令查看任务运行进度
 - `SELECT` 语句用于执行 SQL 进行特征抽取，并且将生成的特征存储在文件 `feature_data` 中，供后续的机器学习模型训练使用。作为示例，这里使用了一个简单的 SQL 查询方案作为特征抽取脚本
-- 如果输出目录（`/tmp/feature_data`）非空，会报错；如果需要多次运行，建议删除结果输出目录
+- 如果输出目录（`/tmp/feature_data`）非空，会报错；如果需要多次运行，建议增加导出配置`OPTIONS(mode='overwrite')`
 
 ### 步骤 4：SQL 方案上线
 

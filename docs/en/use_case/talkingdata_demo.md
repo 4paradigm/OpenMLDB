@@ -82,7 +82,6 @@ python3 predict.py
 
 ## 4 Note
 
-```{note}
 The pre-installed XGBoost Python wheel may be incompatible with the OpenMLDB Python SDK on your computer, which may lead to the following error:
 `train\_and\_serve.py core dump at SetGPUAttribute...`
 
@@ -91,5 +90,3 @@ Installing the XGBoost by the source code may resolve the problem. Please switch
 
 There is another solution to construct the wheel by executing:
 `python setup.py bdist_wheel`
-```
-
