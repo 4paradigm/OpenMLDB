@@ -1,6 +1,6 @@
 # Go SDK
 
-## 准备
+## 需求
 
 - OpenMLDB 版本：>= v0.7.0
 - 部署并且运行 APIServer (参考 [APIServer 部署文档](https://openmldb.ai/docs/zh/main/deploy/install_deploy.html#apiserver)）
