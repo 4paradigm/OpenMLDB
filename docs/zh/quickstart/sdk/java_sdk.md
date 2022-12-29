@@ -41,11 +41,9 @@
 
 openmldb-native 的 macOS 版本只支持 macOS 12，如需在 macOS 11 或 macOS 10.15上运行，需在相应 OS 上源码编译 openmldb-native 包，详细编译方法见[并发编译Java SDK](https://openmldb.ai/docs/zh/main/deploy/compile.html#java-sdk)。
 
-## Java SDK 快速上手
+Java SDK 连接 OpenMLDB 服务，可以使用 JDBC 的方式（推荐），也可以通过 SqlClusterExecutor 的方式直连。下面将依次演示两种连接方式。
 
-Java SDK 连接 OpenMLDB 服务，可以使用 JDBC 的方式（推荐），也可以通过 SqlClusterExecutor 的方式直连。
-
-### JDBC 方式
+## JDBC 方式
 
 JDBC 的连接方式如下：
 
@@ -64,7 +62,7 @@ Connection 地址指定的 db 在创建连接时必须存在。
 JDBC Connection 的默认执行模式为`online`。
 ```
 
-#### 使用概览
+### 使用概览
 
 通过 `Statement` 的方式可以执行所有的 SQL 命令，离线在线模式下都可以。切换离线/在线模式，需执行 `SET @@execute_mode='...';`。例如：
 
@@ -89,7 +87,7 @@ SET @@job_timeout=60000; --单位为毫秒，如果数据较多容易超时（�
 
 如果同步命令实际耗时超过连接空闲默认的最大等待时间 0.5 小时，请[调整 taskmanager 的 keepAliveTime](/zh/maintain/faq#2-为什么收到-got-eof-of-socket-的警告日志)。
 
-#### PreparedStatement
+### PreparedStatement
 
 `PreparedStatement` 可支持 `SELECT`、`INSERT` 和 `DELETE`，`INSERT` 仅支持插入到在线。
 
@@ -99,9 +97,9 @@ PreparedStatement insertStatement = connection.prepareStatement("INSERT INTO t1 
 PreparedStatement insertStatement = connection.prepareStatement("DELETE FROM t1 WHERE id=?");
 ```
 
-### SqlClusterExecutor 方式
+## SqlClusterExecutor 方式
 
-#### 创建 SqlClusterExecutor
+### 创建 SqlClusterExecutor
 
 首先，进行 OpenMLDB 连接参数配置。
 
@@ -125,7 +123,7 @@ sqlExecutor = new SqlClusterExecutor(option);
 SqlClusterExecutor 的默认执行模式为 `offline`，与 JDBC 默认模式不同。
 ```
 
-#### Statement
+### Statement
 
 `SqlClusterExecutor` 可以获得 `Statement`，类似 JDBC 方式，可以使用 `Statement::execute`。
 
@@ -162,7 +160,7 @@ try {
 }
 ```
 
-##### Statement 执行 SQL 批式查询
+#### Statement 执行 SQL 批式查询
 
 使用 `Statement::execute` 接口执行 SQL 批式查询语句：
 
@@ -202,7 +200,7 @@ try {
 }
 ```
 
-#### PreparedStatement
+### PreparedStatement
 
 `SqlClusterExecutor` 也可以获得 `PreparedStatement`，但需要指定获得哪种 `PreparedStatement`。例如，使用 InsertPreparedStmt 进行插入操作，可以有三种方式。
 
@@ -210,7 +208,7 @@ try {
 插入操作仅支持在线，不受执行模式影响，一定是插入数据到在线。
 ```
 
-##### 普通 Insert
+#### 普通 Insert
 
 1. 使用 `SqlClusterExecutor::getInsertPreparedStmt(db, insertSql)` 接口获取InsertPrepareStatement。
 2. 使用 `PreparedStatement::execute()` 接口执行 insert 语句。
@@ -236,7 +234,7 @@ try {
 }
 ```
 
-##### Insert With Placeholder
+#### Insert With Placeholder
 
 1. 使用 `SqlClusterExecutor::getInsertPreparedStmt(db, insertSqlWithPlaceHolder)` 接口获取 InsertPrepareStatement。
 2. 调用 `PreparedStatement::setType(index, value)` 接口，填充数据到 InsertPrepareStatement中。注意 index 从 1 开始。
@@ -269,7 +267,7 @@ try {
 execute 后，缓存的数据将被清除，无法重试 execute。
 ```
 
-##### Batch Insert With Placeholder
+#### Batch Insert With Placeholder
 
 1. 使用 `SqlClusterExecutor::getInsertPreparedStmt(db, insertSqlWithPlaceHolder)` 接口获取 InsertPrepareStatement。
 2. 调用 `PreparedStatement::setType(index, value)` 接口，填充数据到 InsertPrepareStatement 中。
@@ -308,7 +306,7 @@ try {
 executeBatch 后，缓存的所有数据将被清除，无法重试 executeBatch。
 ```
 
-#### 执行 SQL 请求式查询
+### 执行 SQL 请求式查询
 
 `RequestPreparedStmt` 是一个独特的查询模式（JDBC 不支持此模式）。此模式需要 selectSql 与一条请求数据，所以需要在 `getRequestPreparedStmt` 时填入 SQL，也需要 `setType` 设置请求数据。
 
@@ -380,7 +378,7 @@ try {
 }
 ```
 
-####  删除指定索引下某个 pk 的所有数据
+###  删除指定索引下某个 pk 的所有数据
 
 通过 Java SDK 可以有以下两种方式删除数据:
 
@@ -445,6 +443,6 @@ java -cp target/demo-1.0-SNAPSHOT.jar com.openmldb.demo.App
 Java 客户端支持对 SQL 进行正确性校验，验证是否可执行。分为 batch 和 request 两个模式。
 
 - `validateSQLInBatch` 可以验证 SQL 是否能在离线端执行。
-- `validateSQLInRequest` 可以验证 SQL 是否能被上线部署。
+- `validateSQLInRequest` 可以验证 SQL 是否能被部署上线。
 
 两个接口都需要传入 SQL 所需要的所有表 schema。目前只支持单 db，请不要在 SQL 语句中使用 `db.table` 格式。
