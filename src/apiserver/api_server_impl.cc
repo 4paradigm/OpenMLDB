@@ -257,10 +257,11 @@ bool APIServerImpl::AppendJsonValue(const butil::rapidjson::Value& v, hybridse::
             if (parts.size() != 3) {
                 return false;
             }
-            auto year = boost::lexical_cast<int32_t>(parts[0]);
-            auto mon = boost::lexical_cast<int32_t>(parts[1]);
-            auto day = boost::lexical_cast<int32_t>(parts[2]);
-            return row->AppendDate(year, mon, day);
+            int32_t year, mon, day;
+            if (FromString(parts[0], year) && FromString(parts[1], mon) && FromString(parts[2], day)) {
+                return row->AppendDate(year, mon, day);
+            }
+            return false;
         }
         case hybridse::sdk::kTypeTimestamp: {
             if (!v.IsInt64()) {
@@ -372,11 +373,16 @@ void APIServerImpl::RegisterPut() {
             return;
         }
 
+        // TODO(hw): check all value json type with table schema?
         // scan all strings , calc the sum, to init SQLInsertRow's string length
         decltype(arr.Size()) str_len_sum = 0;
         for (int i = 0; i < cnt; ++i) {
-            // if null, GetStringLength() will get 0
-            if (schema->GetColumnType(i) == hybridse::sdk::kTypeString) {
+            // if null, it's not string json type and can't GetStringLength()
+            if (!arr[i].IsNull() && schema->GetColumnType(i) == hybridse::sdk::kTypeString) {
+                if (!arr[i].IsString()) {
+                    writer << resp.Set("value is not string for col " + schema->GetColumnName(i));
+                    return;
+                }
                 str_len_sum += arr[i].GetStringLength();
             }
         }
@@ -384,7 +390,7 @@ void APIServerImpl::RegisterPut() {
 
         for (int i = 0; i < cnt; ++i) {
             if (!AppendJsonValue(arr[i], schema->GetColumnType(i), schema->IsColumnNotNull(i), row)) {
-                writer << resp.Set("Translate to insert row failed");
+                writer << resp.Set("convertion failed for col " + schema->GetColumnName(i));
                 return;
             }
         }
