@@ -80,7 +80,7 @@ done
 
 upgrade_java_sdk "docs/en/quickstart/java_sdk.md"
 upgrade_java_sdk "docs/zh/quickstart/sdk/java_sdk.md"
-cd demo/java_quickstart/demo && mvn versions:use-dep-version -Dincludes=com.4paradigm.openmldb:openmldb-jdbc -DdepVersion=${VERSION} -DforceVersion=true && cd -
+cd demo/java_quickstart/demo || exit; mvn versions:use-dep-version -Dincludes=com.4paradigm.openmldb:openmldb-jdbc -DdepVersion="${VERSION}" -DforceVersion=true; cd -
 
 upgrade_install_doc "docs/en/deploy/install_deploy.md"
 upgrade_install_doc "docs/zh/deploy/install_deploy.md"
