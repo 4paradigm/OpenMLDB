@@ -27,9 +27,9 @@ cd python/openmldb_tool
 pytest tests/
 ```
 
-If the python log messages are required, please use:
+If the python log messages are required in all tests(even successful tests), please use:
 ```
-pytest -s tests/
+pytest -so log_cli=true --log-cli-level=DEBUG tests/
 ```
 
 ## Conda

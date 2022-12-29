@@ -12,13 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from diagnostic_tool.dist_conf import DistConfReader
 import os
+from diagnostic_tool.server_checker import ServerChecker
+from diagnostic_tool.dist_conf import DistConfReader
 
 
-def test_read():
-    current_path = os.path.dirname(__file__)
-    dist = DistConfReader(current_path + "/cluster_dist.yml").conf()
-    assert dist.mode == "cluster"
-    assert len(dist.server_info_map.map["nameserver"]) == 1
-    assert len(dist.server_info_map.map["tablet"]) == 2
+def test_sql_check():
+    conf = DistConfReader(os.path.dirname(__file__) + "/cluster_dist.yml").conf()
+    checker = ServerChecker(conf.full_conf, True)
+    assert checker.run_test_sql()
