@@ -17,6 +17,8 @@
 --openmldb_log_dir=./logs
 --log_level=info
 
+#--max_memory_mb=0
+
 # binlog conf
 #--binlog_coffee_time=1000
 #--binlog_match_logoffset_interval=1000
