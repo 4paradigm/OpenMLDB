@@ -81,7 +81,7 @@ class APIServerImpl : public APIServer {
 
     // may get segmentation fault when throw boost::bad_lexical_cast, so we use std::from_chars
     template <typename T>
-    static bool FromString(std::string& s, T& value) {
+    static bool FromString(const std::string& s, T& value) { // NOLINT
         auto res = std::from_chars(s.data(), s.data() + s.size(), value);
         return res.ec == std::errc() && (res.ptr - s.data() == s.size());
     }
