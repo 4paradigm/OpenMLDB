@@ -12,7 +12,7 @@
 
 `offline.data.prefix`：可配置为文件路径或 HDFS 路径。生产环境建议配置 HDFS 路径，测试环境（特指 onebox 型，例如在 Docker 容器内启动）可以配置本地文件路径。文件路径作为离线存储，将无法支持多 TaskManager 分布式部署（TaskManager 之间不会传输数据）。如果想在多台主机上部署 TaskManager，请使用 HDFS 等多机可同时访问到的存储介质。如果想测试多 TaskManager 工作协同，可以在一台主机上部署多个 TaskManager，此时可以使用文件路径作为离线存储。
 
-`spark.master=local[]`：Spark 默认配置为 `local[]` 模式（自动绑定 CPU 核数，如果发现离线任务比较慢，建议使用 yarn 模式，改变配置后重启 TaskManager 生效。更多配置可参考[master-urls](https://spark.apache.org/docs/3.1.2/submitting-applications.htmlmaster-urls)
+`spark.master=local[]`：Spark 默认配置为 `local[]` 模式（自动绑定 CPU 核数，如果发现离线任务比较慢，建议使用 yarn 模式，改变配置后重启 TaskManager 生效。更多配置可参考 [master-urls](https://spark.apache.org/docs/3.1.2/submitting-applications.htmlmaster-urls)。
 
 ### spark.default.conf
 
@@ -22,11 +22,11 @@
 spark.default.conf=spark.port.maxRetries=32;foo=bar
 ```
 
-`spark.port.maxRetries`：默认为 16，参考 [Spark configuration](https://spark.apache.org/docs/3.1.2/configuration.html)。每个离线 job 都会绑定 Spark UI，对应一个 port。每次 port 都是从默认初始端口开始尝试绑定，retry 即绑定下一个端口 port+1，如果同时运行的 job 大于 `spark.port.maxRetries`，retry 次数也就大于 `spark.port.maxRetries`，job 就会启动失败。如果你需要更大的 job 并发，请配置更大的 `spark.port.maxRetries`，重启 TaskManager 生效。
+`spark.port.maxRetries`：默认为 16，参考 [Spark 配置](https://spark.apache.org/docs/3.1.2/configuration.html)。每个离线 job 都会绑定 Spark UI，对应一个 port。每次 port 都是从默认初始端口开始尝试绑定，retry 即绑定下一个端口 port+1，如果同时运行的 job 大于 `spark.port.maxRetries`，retry 次数也就大于 `spark.port.maxRetries`，job 就会启动失败。如果你需要更大的 job 并发，请配置更大的 `spark.port.maxRetries`，重启 TaskManager 生效。
 
 ## DDL 边界——DEPLOY 语句
 
-通过 `DEPLOY <deploy_name> <sql>` 可以部署上线 SQL 方案，这个操作也会自动解析 SQL 帮助创建索引（可以通过 `DESC <table_name>` 查看索引详情），详情可参考 [DEPLOY_STATEMENT](../openmldb_sql/deployment_manage/DEPLOY_STATEMENT.md)。
+通过 `DEPLOY <deploy_name> <sql>` 可以部署上线 SQL 方案，这个操作也会自动解析 SQL 帮助创建索引（可以通过 `DESC <table_name>` 查看索引详情），详情可参考 [DEPLOY STATEMENT](../openmldb_sql/deployment_manage/DEPLOY_STATEMENT.md)。
 
 部署操作是否成功，跟表的在线数据有一定关系。
 
@@ -129,7 +129,7 @@ select * from t1 where c2=2;
 
 ### 在线预览模式
 
-OpenMLDB CLI 中在线模式下执行 SQL，均为在线预览模式。在线预览模式支持有限，详细支持情况请参考 [SELECT STATEMENT](../openmldb_sql/dql/SELECT_STATEMENT)。
+OpenMLDB CLI 中在线模式下执行 SQL，均为在线预览模式。在线预览模式支持有限，详情可参考 [SELECT STATEMENT](../openmldb_sql/dql/SELECT_STATEMENT)。
 
 在线预览模式主要目的为预览查询结果。如果希望能运行复杂 SQL，请使用离线模式。如果希望查询完整的在线数据，建议使用数据导出工具查看（比如 `SELECT INTO` 命令 ）。如果在线表数据量过大，还可能触发数据截断，`SELECT * FROM table` 命令很可能会导致部分结果不被返回。
 
