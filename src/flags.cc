@@ -44,6 +44,7 @@ DEFINE_int32(request_timeout, 600000, "rpc request timeout of CLI, unit is milli
 DEFINE_int32(get_task_status_interval, 2000, "config the interval of get task status. unit is milliseconds");
 DEFINE_uint32(get_table_status_interval, 2000, "config the interval of get table status. unit is milliseconds");
 DEFINE_uint32(get_table_diskused_interval, 600000, "config the interval of get table diskused. unit is milliseconds");
+DEFINE_uint32(get_memory_stat_interval, 10000, "config the interval of get memory stat. unit is milliseconds");
 DEFINE_int32(name_server_task_pool_size, 8, "config the size of name server task pool");
 DEFINE_uint32(name_server_task_concurrency, 2, "config the concurrency of name_server_task");
 DEFINE_uint32(name_server_task_concurrency_for_replica_cluster, 2,
@@ -106,6 +107,8 @@ DEFINE_int32(request_max_retry, 3, "max retry time when request error");
 DEFINE_int32(request_timeout_ms, 20000,
              "rpc request timeout of misc. unit is milliseconds");
 DEFINE_int32(request_sleep_time, 1000, "the sleep time when request error. unit is milliseconds");
+
+DEFINE_uint32(max_memory_mb, 0, "max memory limit");
 
 DEFINE_uint32(max_traverse_pk_cnt, 5000, "max traverse iter pk cnt");
 DEFINE_uint32(max_traverse_cnt, 50000, "max traverse iter loop cnt");

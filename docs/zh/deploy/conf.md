@@ -87,6 +87,9 @@
 # 日志文件路径
 --openmldb_log_dir=./logs
 
+# 配置tablet最大内存使用, 如果超过配置的值写入就会失败. 默认值为0即不限制
+#--max_memory_mb=0
+
 # binlog conf
 # binlog没有新数据添加时的等待时间，单位是毫秒
 #--binlog_coffee_time=1000

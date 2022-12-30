@@ -16,19 +16,21 @@
 
 set -e
 
-ulimit -c unlimited
-ulimit -n 655360
-
 export COMPONENTS="tablet tablet2 nameserver apiserver taskmanager standalone_tablet standalone_nameserver standalone_apiserver"
 
 if [ $# -lt 2 ]; then
-  echo "Usage: start.sh start/stop/restart <component>"
-  echo "component: $COMPONENTS"
-  exit 1
+    echo "Usage: start.sh start/stop/restart <component> [mon]"
+    echo "component: $COMPONENTS"
+    echo "start flag 'mon': if use mon flag, we'll use mon to start the component"
+    echo "    stop will kill both the mon and component automatically, don't need to use mon"
+    exit 1
 fi
 
-CURDIR=$(pwd)
+# cd rootdir
 cd "$(dirname "$0")"/../ || exit 1
+ROOTDIR=$(pwd)
+BINDIR=$(pwd)/bin # the script dir
+# udf is <rootdir>/udf
 LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:$(pwd)/udf"
 export LD_LIBRARY_PATH
 RED='\E[1;31m'
@@ -39,14 +41,25 @@ COMPONENT=$2
 HAS_COMPONENT="false"
 for ITEM in $COMPONENTS;
 do
-  if [ "$COMPONENT" = "$ITEM" ]; then
-    HAS_COMPONENT="true"
-  fi
+    if [ "$COMPONENT" = "$ITEM" ]; then
+        HAS_COMPONENT="true"
+    fi
 done
 
 if [ "$HAS_COMPONENT" = "false" ]; then
     echo "No component named $COMPONENT in [$COMPONENTS]"
     exit 1
+fi
+
+DAEMON_MODE="false"
+if [ $# -gt 2 ] && [ "$3" = "mon" ]; then
+    DAEMON_MODE="true"
+fi
+
+if [[ $OSTYPE == 'darwin'* ]]; then
+  MON_BINARY='./bin/mon_mac'
+else
+  MON_BINARY='./bin/mon'
 fi
 
 OPENMLDB_PID_FILE="./bin/$COMPONENT.pid"
@@ -64,6 +77,7 @@ case $OP in
     start)
         echo "Starting $COMPONENT ... "
         if [ -f "$OPENMLDB_PID_FILE" ]; then
+            # kill the mon process, the component process will be killed automatically
             PID=$(tr -d '\0' < "$OPENMLDB_PID_FILE")
             if kill -0 "$PID" > /dev/null 2>&1; then
                 echo -e "${RED}$COMPONENT already running as process $PID ${RES}"
@@ -72,11 +86,24 @@ case $OP in
         fi
 
         if [ "$COMPONENT" != "taskmanager" ]; then
-            ./bin/openmldb --flagfile=./conf/"$COMPONENT".flags --enable_status_service=true >> "$LOG_DIR"/"$COMPONENT".log 2>&1 &
-            PID=$!
+            if [ "$DAEMON_MODE" = "true" ]; then # nohup? test it
+                START_CMD="./bin/openmldb --flagfile=./conf/${COMPONENT}.flags --enable_status_service=true"
+                # save the mon process pid, but check the component pid
+                ${MON_BINARY} "${START_CMD}" -d -s 10 -l "$LOG_DIR"/"$COMPONENT"_mon.log -m "${OPENMLDB_PID_FILE}" -p "${OPENMLDB_PID_FILE}.child"
+                # sleep for pid files
+                sleep 3
+                MON_PID=$(tr -d '\0' < "$OPENMLDB_PID_FILE")
+                PID=$(tr -d '\0' < "$OPENMLDB_PID_FILE.child")
+                echo "mon pid is $MON_PID, process pid is $PID, check $PID status"
+            else
+                # DO NOT put the whole command in variable
+                ./bin/openmldb --flagfile=./conf/"${COMPONENT}".flags --enable_status_service=true >> "$LOG_DIR"/"$COMPONENT".log 2>&1 &
+                PID=$!
+                echo "process pid is $PID"
+            fi
             if [ -x "$(command -v curl)" ]; then
                 sleep 3
-                ENDPOINT=$(grep '\--endpoint' ./conf/"$COMPONENT".flags | awk -F '=' '{print $2}')
+                ENDPOINT=$(grep '^\--endpoint' ./conf/"$COMPONENT".flags | grep -v '#' | awk -F '=' '{print $2}')
                 COUNT=1
                 while [ $COUNT -lt 12 ]
                 do
@@ -85,7 +112,9 @@ case $OP in
                         sleep 1
                         (( COUNT+=1 ))
                     elif kill -0 "$PID" > /dev/null 2>&1; then
-                        echo $PID > "$OPENMLDB_PID_FILE"
+                        if [ "$DAEMON_MODE" != "true" ]; then
+                            echo $PID > "$OPENMLDB_PID_FILE"
+                        fi
                         echo "Start ${COMPONENT} success"
                         exit 0
                     else
@@ -96,28 +125,42 @@ case $OP in
                 echo "no curl, sleep 10s and then check the process running status"
                 sleep 10
                 if kill -0 "$PID" > /dev/null 2>&1; then
-                    echo $PID > "$OPENMLDB_PID_FILE"
+                    if [ "$DAEMON_MODE" != "true" ]; then
+                        echo $PID > "$OPENMLDB_PID_FILE"
+                    fi
                     echo "Start ${COMPONENT} success"
                     exit 0
                 fi
             fi
-            echo -e "${RED}Start ${COMPONENT} failed! Please check log in ${LOG_DIR}/${COMPONENT}.log and ${LOG_DIR}/${COMPONENT}.INFO ${RES}"
+            echo -e "${RED}Start ${COMPONENT} failed! Please check log in ${LOG_DIR}/${COMPONENT}[_mon].log and ${LOG_DIR}/${COMPONENT}.INFO ${RES}"
         else
             if [ -f "./conf/taskmanager.properties" ]; then
                 cp ./conf/taskmanager.properties ./taskmanager/conf/taskmanager.properties
             fi
             pushd ./taskmanager/bin/ > /dev/null
             mkdir -p logs
-            sh ./taskmanager.sh > logs/taskmanager.out 2>&1 &
-            PID=$!
+            if [ "$DAEMON_MODE" = "true" ]; then
+                "${ROOTDIR}"/"${MON_BINARY}" "./taskmanager.sh" -d -s 10 -l "$LOG_DIR"/"$COMPONENT"_mon.log -m "${ROOTDIR}/${OPENMLDB_PID_FILE}" -p "${ROOTDIR}/${OPENMLDB_PID_FILE}.child"
+                sleep 3
+                MON_PID=$(tr -d '\0' < "${ROOTDIR}/${OPENMLDB_PID_FILE}")
+                PID=$(tr -d '\0' < "${ROOTDIR}/${OPENMLDB_PID_FILE}.child")
+                echo "mon pid is $MON_PID, process pid is $PID, check $PID status"
+            else
+                sh ./taskmanager.sh > "$LOG_DIR"/"$COMPONENT".log 2>&1 &
+                PID=$!
+                echo "process pid is $PID"
+            fi
+
             popd > /dev/null 
             sleep 10
             if kill -0 $PID > /dev/null 2>&1; then
-                /bin/echo $PID > "$OPENMLDB_PID_FILE"
+                if [ "$DAEMON_MODE" != "true" ]; then
+                    echo $PID > "$OPENMLDB_PID_FILE"
+                fi
                 echo "Start ${COMPONENT} success"
                 exit 0
             fi
-            echo -e "${RED}Start ${COMPONENT} failed!${RES}"
+            echo -e "${RED}Start ${COMPONENT} failed! Please check log in ${LOG_DIR}/${COMPONENT}[_mon].log and ./taskmanager/bin/logs/taskmanager.out ${RES}"
         fi
         ;;
     stop)
@@ -129,17 +172,32 @@ case $OP in
             PID="$(tr -d '\0' < "$OPENMLDB_PID_FILE")"
             if kill -0 "$PID" > /dev/null 2>&1; then
                 kill "$PID"
+                sleep 3
             fi
             rm "$OPENMLDB_PID_FILE"
-            echo "Stop ${COMPONENT} success"
         fi
+        if [ ! -f "$OPENMLDB_PID_FILE.child" ]
+        then
+            # normal mode
+            echo "Stop ${COMPONENT} success"
+        else
+            # check the child (component process)
+            PID="$(tr -d '\0' < "$OPENMLDB_PID_FILE.child")"
+            if kill -0 "$PID" > /dev/null 2>&1; then
+                echo "After mon stopped, component is still alive, kill it"
+                kill "$PID"
+            fi
+            rm "$OPENMLDB_PID_FILE.child"
+            echo "Stop ${COMPONENT} success(mon mode)"
+        fi 
         ;;
     restart)
         shift
-        cd "$CURDIR" || exit 1
-        sh "$0" stop "${@}"
+        # $0 may be 'bin/start.sh', 'start.sh', etc. We use the real script name in bin/.
+        cd "$BINDIR" || exit 1
+        sh start.sh stop "${@}"
         sleep 15
-        sh "$0" start "${@}"
+        sh start.sh start "${@}"
         ;;
     *)
         echo "Only support {start|stop|restart}" >&2

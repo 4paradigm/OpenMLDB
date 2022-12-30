@@ -552,6 +552,24 @@ struct TopKDef {
     }
 };
 
+void DefaultUdfLibrary::Init() {
+    udf::RegisterNativeUdfToModule(this);
+    InitLogicalUdf();
+    InitTimeAndDateUdf();
+    InitTypeUdf();
+    InitMathUdf();
+    InitStringUdf();
+
+    InitWindowFunctions();
+    InitUdaf();
+    InitFeatureZero();
+
+    InitArrayUdfs();
+
+    AddExternalFunction("init_udfcontext.opaque",
+            reinterpret_cast<void*>(static_cast<void (*)(UDFContext* context)>(udf::v1::init_udfcontext)));
+}
+
 void DefaultUdfLibrary::InitStringUdf() {
     RegisterExternalTemplate<v1::ToHex>("hex")
         .args_in<int16_t, int32_t, int64_t, float, double>()
@@ -833,7 +851,7 @@ void DefaultUdfLibrary::InitStringUdf() {
             Example:
 
             @code{.sql}
-                select date_format(date(1590115420000),"%Y-%m-%d");
+                select date_format(date(timestamp(1590115420000)),"%Y-%m-%d");
                 --output "2020-05-22"
             @endcode)");
     /// Escape is Nullable
@@ -2023,7 +2041,12 @@ void DefaultUdfLibrary::InitTypeUdf() {
         .return_by_arg(true)
         .returns<Nullable<Date>>()
         .doc(R"(
-            @brief Cast timestamp or string expression to date
+            @brief Cast timestamp or string expression to date (date >= 1900-01-01)
+
+            Supported string style:
+              - yyyy-mm-dd
+              - yyyymmdd
+              - yyyy-mm-dd hh:mm:ss
 
             Example:
 
@@ -2040,6 +2063,50 @@ void DefaultUdfLibrary::InitTypeUdf() {
                 v1::string_to_date)))
         .return_by_arg(true)
         .returns<Nullable<Date>>();
+
+    RegisterExternal("datediff")
+        .args<Date, Date>(reinterpret_cast<void*>(
+            static_cast<void (*)(Date*, Date*, int32_t*, bool*)>(
+                v1::date_diff)))
+        .return_by_arg(true)
+        .returns<Nullable<int32_t>>()
+        .doc(R"(
+            @brief days difference from date1 to date2
+
+            Supported date string style:
+              - yyyy-mm-dd
+              - yyyymmdd
+              - yyyy-mm-dd hh:mm:ss
+
+            Example:
+
+            @code{.sql}
+                select datediff("2021-05-10", "2021-05-01");
+                -- output 9
+                select datediff("2021-04-10", "2021-05-01");
+                -- output -21
+                select datediff(Date("2021-04-10"), Date("2021-05-01"));
+                -- output -21
+            @endcode
+            @since 0.7.0)");
+    RegisterExternal("datediff")
+        .args<StringRef, StringRef>(reinterpret_cast<void*>(
+            static_cast<void (*)(StringRef*, StringRef*, int32_t*, bool*)>(
+                v1::date_diff)))
+        .return_by_arg(true)
+        .returns<Nullable<int32_t>>();
+    RegisterExternal("datediff")
+        .args<StringRef, Date>(reinterpret_cast<void*>(
+            static_cast<void (*)(StringRef*, Date*, int32_t*, bool*)>(
+                v1::date_diff)))
+        .return_by_arg(true)
+        .returns<Nullable<int32_t>>();
+    RegisterExternal("datediff")
+        .args<Date, StringRef>(reinterpret_cast<void*>(
+            static_cast<void (*)(Date*, StringRef*, int32_t*, bool*)>(
+                v1::date_diff)))
+        .return_by_arg(true)
+        .returns<Nullable<int32_t>>();
 
     RegisterExternal("timestamp")
         .args<Date>(reinterpret_cast<void*>(
@@ -2059,13 +2126,13 @@ void DefaultUdfLibrary::InitTypeUdf() {
 
             @code{.sql}
                 select timestamp(1590115420000);
-                -- output 2020-05-22 10:43:40
+                -- output 1590115420000
 
-                select date("2020-05-22");
-                -- output 2020-05-22 00:00:00
+                select timestamp("2020-05-22");
+                -- output 1590076800000
 
                 select timestamp("2020-05-22 10:43:40");
-                -- output 2020-05-22 10:43:40
+                -- output 1590115420000
             @endcode
             @since 0.1.0)");
     RegisterExternal("timestamp")
@@ -2074,6 +2141,40 @@ void DefaultUdfLibrary::InitTypeUdf() {
                 v1::string_to_timestamp)))
         .return_by_arg(true)
         .returns<Nullable<Timestamp>>();
+
+    RegisterExternal("unix_timestamp")
+        .args<Date>(reinterpret_cast<void*>(
+            static_cast<void (*)(Date*, int64_t*, bool*)>(
+                v1::date_to_unix_timestamp)))
+        .return_by_arg(true)
+        .returns<Nullable<int64_t>>()
+        .doc(R"(
+            @brief Cast date or string expression to unix_timestamp. If empty string or NULL is provided, return current timestamp
+
+            Supported string style:
+              - yyyy-mm-dd
+              - yyyymmdd
+              - yyyy-mm-dd hh:mm:ss
+
+            Example:
+
+            @code{.sql}
+                select unix_timestamp("2020-05-22");
+                -- output 1590076800
+
+                select unix_timestamp("2020-05-22 10:43:40");
+                -- output 1590115420
+
+                select unix_timestamp("");
+                -- output 1670404338 (the current timestamp)
+            @endcode
+            @since 0.7.0)");
+    RegisterExternal("unix_timestamp")
+        .args<StringRef>(reinterpret_cast<void*>(
+            static_cast<void (*)(StringRef*, int64_t*, bool*)>(
+                v1::string_to_unix_timestamp)))
+        .return_by_arg(true)
+        .returns<Nullable<int64_t>>();
 }
 
 void DefaultUdfLibrary::InitTimeAndDateUdf() {
@@ -2374,6 +2475,42 @@ void DefaultUdfLibrary::InitTimeAndDateUdf() {
             @endcode
             @since 0.1.0)");
 
+    RegisterExprUdf("pmod")
+        .args<AnyArg, AnyArg>([](UdfResolveContext* ctx, ExprNode* x, ExprNode* y) {
+            // pmod: mod = x % y
+            // if mod >= 0, return mod
+            // else, return (mod + y) % y
+            auto nm = ctx->node_manager();
+            auto mod = nm->MakeBinaryExprNode(x, y, node::kFnOpMod);
+            auto cond = nm->MakeBinaryExprNode(mod, nm->MakeConstNode(0), node::kFnOpLt);
+            auto add = ctx->node_manager()->MakeBinaryExprNode(mod, y, node::kFnOpAdd);
+            auto pmod = ctx->node_manager()->MakeBinaryExprNode(add, y, node::kFnOpMod);
+            return nm->MakeCondExpr(cond, pmod, mod);
+        })
+        .doc(R"(
+            @brief Compute pmod of two arguments. If any param is NULL, output NULL. If divisor is 0, output NULL
+
+            @param dividend any numeric number or NULL
+            @param divisor any numeric number or NULL
+
+            Example:
+
+            @code{.sql}
+                select pmod(-10, 3);
+                -- output 2
+                select pmod(10, -3);
+                -- output 1
+                select pmod(10, 3);
+                -- output 1
+                select pmod(-10, 0);
+                -- output NULL
+                select pmod(-10, NULL);
+                -- output NULL
+                select pmod(NULL, 2);
+                -- output NULL
+            @endcode
+            @since 0.7.0)");
+
     RegisterCodeGenUdf("make_tuple")
         .variadic_args<>(
             /* infer */
@@ -2396,22 +2533,6 @@ void DefaultUdfLibrary::InitTimeAndDateUdf() {
                 *out = NativeValue::CreateTuple(args);
                 return Status::OK();
             });
-}
-
-void DefaultUdfLibrary::Init() {
-    udf::RegisterNativeUdfToModule(this);
-    InitLogicalUdf();
-    InitTimeAndDateUdf();
-    InitTypeUdf();
-    InitMathUdf();
-    InitStringUdf();
-
-    InitWindowFunctions();
-    InitUdaf();
-    InitFeatureZero();
-
-    AddExternalFunction("init_udfcontext.opaque",
-            reinterpret_cast<void*>(static_cast<void (*)(UDFContext* context)>(udf::v1::init_udfcontext)));
 }
 
 void DefaultUdfLibrary::InitUdaf() {

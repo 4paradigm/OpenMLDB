@@ -228,7 +228,7 @@ INSTANTIATE_TEST_SUITE_P(
 INSTANTIATE_TEST_SUITE_P(
     SQLSDKTestClusterBatchWindow, SQLSDKClusterOnlineBatchQueryTest,
     testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/function/window/test_window.yaml")));
- INSTANTIATE_TEST_SUITE_P(
+INSTANTIATE_TEST_SUITE_P(
     SQLSDKTestClusterBatchWindowExcludeCurrentTime, SQLSDKClusterOnlineBatchQueryTest,
     testing::ValuesIn(SQLSDKQueryTest::InitCases("/cases/function/window/test_window_exclude_current_time.yaml")));
 INSTANTIATE_TEST_SUITE_P(

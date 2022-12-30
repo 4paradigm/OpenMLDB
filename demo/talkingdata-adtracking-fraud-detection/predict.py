@@ -26,3 +26,4 @@ req = {"ip": 114904,
        "is_attributed": 0}
 r = requests.post(url, json=req)
 print(r.text)
+assert 'predict whether is attributed' in r.text

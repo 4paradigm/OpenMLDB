@@ -20,6 +20,7 @@
 #include <stdint.h>
 #include <time.h>
 
+#include <ctime>
 #include <map>
 #include <set>
 #include <utility>
@@ -80,10 +81,11 @@ void unhex(StringRef *str, StringRef *output, bool* is_null) {
         }
     }
     // use lambda function to convert the char to uint8
-    auto convert = [](char a) {
+    auto convert = [](char a) -> int {
         if (a <= 'F' && a >= 'A') { return a - 'A' + 10; }
         if (a <= 'f' && a >= 'a') { return a - 'a' + 10; }
         if (a <= '9' && a >= '0') { return a - '0'; }
+        return 0;
     };
 
     if (!*is_null) {    // every character is valid hex character
@@ -873,6 +875,59 @@ void string_to_date(StringRef *str, Date *output,
     }
     return;
 }
+
+void date_diff(Date *date1, Date *date2, int *diff, bool *is_null) {
+    if (date1 == nullptr || date2 == nullptr || date1->date_ <= 0 || date2->date_ <= 0) {
+        *is_null = true;
+        return;
+    }
+    int32_t year, month, day;
+    if (!date1->Decode(date1->date_, &year, &month, &day)) {
+        *is_null = true;
+        return;
+    }
+    absl::CivilDay d1(year, month, day);
+    if (!date1->Decode(date2->date_, &year, &month, &day)) {
+        *is_null = true;
+        return;
+    }
+    absl::CivilDay d2(year, month, day);
+    *diff = (d1 - d2);
+    *is_null = false;
+}
+
+void date_diff(StringRef *date1, StringRef *date2, int *diff, bool *is_null) {
+    Date d1;
+    string_to_date(date1, &d1, is_null);
+    if (*is_null) {
+        return;
+    }
+    Date d2;
+    string_to_date(date2, &d2, is_null);
+    if (*is_null) {
+        return;
+    }
+    date_diff(&d1, &d2, diff, is_null);
+}
+
+void date_diff(StringRef *date1, Date *date2, int *diff, bool *is_null) {
+    Date d1;
+    string_to_date(date1, &d1, is_null);
+    if (*is_null) {
+        return;
+    }
+    date_diff(&d1, date2, diff, is_null);
+}
+
+void date_diff(Date *date1, StringRef *date2, int *diff, bool *is_null) {
+    Date d2;
+    string_to_date(date2, &d2, is_null);
+    if (*is_null) {
+        return;
+    }
+    date_diff(date1, &d2, diff, is_null);
+}
+
 // cast string to timestamp with yyyy-mm-dd or YYYY-mm-dd HH:MM:SS
 void string_to_timestamp(StringRef *str,
                          Timestamp *output, bool *is_null) {
@@ -956,6 +1011,40 @@ void date_to_timestamp(Date *date, Timestamp *output,
         return;
     }
 }
+
+void date_to_unix_timestamp(Date *date, int64_t *output,
+                       bool *is_null) {
+    Timestamp ts;
+    date_to_timestamp(date, &ts, is_null);
+    if (*is_null) {
+        return;
+    }
+
+    *output = ts.ts_ / 1000;
+}
+
+// cast string to unix_timestamp with yyyy-mm-dd or YYYY-mm-dd HH:MM:SS
+void string_to_unix_timestamp(StringRef *str, int64_t *output, bool *is_null) {
+    if (str == nullptr || str->IsNull() || str->size_ == 0) {
+        *output = unix_timestamp();
+        *is_null = false;
+        return;
+    }
+
+    Timestamp ts;
+    string_to_timestamp(str, &ts, is_null);
+    if (*is_null) {
+        return;
+    }
+
+    *output = ts.ts_ / 1000;
+}
+
+int64_t unix_timestamp() {
+    std::time_t t = std::time(nullptr);
+    return t;
+}
+
 void sub_string(StringRef *str, int32_t from,
                 StringRef *output) {
     if (nullptr == output) {
@@ -1226,6 +1315,10 @@ uint32_t format_string<StringRef>(const StringRef &v,
                reinterpret_cast<const void *>(v.data_), size);
         return size;
     }
+}
+
+void RegisterManagedObj(base::FeBaseObject* obj) {
+    vm::JitRuntime::get()->AddManagedObject(obj);
 }
 
 char *AllocManagedStringBuf(int32_t bytes) {

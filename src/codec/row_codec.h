@@ -92,17 +92,20 @@ class RowCodec {
         for (int i = 0; i < schema.size(); i++) {
             const ::openmldb::common::ColumnDesc& col = schema.Get(i);
             if (!col.not_null() && (input_value[i] == "null" || input_value[i] == NONETOKEN)) {
-                builder.AppendNULL();
+                if (!builder.AppendNULL()) {
+                    return ::openmldb::base::Status(-1,
+                            absl::StrCat("append ", ::openmldb::type::DataType_Name(col.data_type()), " error"));
+                }
                 continue;
             } else if (input_value[i] == "null" || input_value[i] == NONETOKEN) {
                 return ::openmldb::base::Status(-1, col.name() + " should not be null");
             }
             if (!builder.AppendValue(input_value[i])) {
-                std::string msg = "append " + ::openmldb::type::DataType_Name(col.data_type()) + " error";
-                return ::openmldb::base::Status(-1, msg);
+                return ::openmldb::base::Status(-1,
+                        absl::StrCat("append ", ::openmldb::type::DataType_Name(col.data_type()), " error"));
             }
         }
-        return ::openmldb::base::Status(0, "ok");
+        return {};
     }
 
     static ::openmldb::base::Status EncodeRow(const std::map<std::string, std::string>& str_map,
@@ -127,17 +130,20 @@ class RowCodec {
                 return ::openmldb::base::Status(-1, col.name() + " not in str_map");
             }
             if (!col.not_null() && (iter->second == "null" || iter->second == NONETOKEN)) {
-                builder.AppendNULL();
+                if (!builder.AppendNULL()) {
+                    return ::openmldb::base::Status(-1,
+                            absl::StrCat("append ", ::openmldb::type::DataType_Name(col.data_type()), " error"));
+                }
                 continue;
             } else if (iter->second == "null" || iter->second == NONETOKEN) {
                 return ::openmldb::base::Status(-1, col.name() + " should not be null");
             }
             if (!builder.AppendValue(iter->second)) {
-                std::string msg = "append " + ::openmldb::type::DataType_Name(col.data_type()) + " error";
-                return ::openmldb::base::Status(-1, msg);
+                return ::openmldb::base::Status(-1,
+                            absl::StrCat("append ", ::openmldb::type::DataType_Name(col.data_type()), " error"));
             }
         }
-        return ::openmldb::base::Status(0, "ok");
+        return {};
     }
 
 

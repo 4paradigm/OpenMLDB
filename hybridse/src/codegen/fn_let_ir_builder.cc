@@ -95,9 +95,9 @@ Status RowFnLetIRBuilder::Build(
 
     if (primary_frame != nullptr && !primary_frame->IsPureHistoryFrame()) {
         NativeValue window;
-        variable_ir_builder.LoadWindow("", &window, status);
-        variable_ir_builder.StoreWindow(primary_frame->GetExprString(),
-                                        window.GetRaw(), status);
+        CHECK_TRUE(variable_ir_builder.LoadWindow("", &window, status), kCodegenError);
+        CHECK_TRUE(variable_ir_builder.StoreWindow(primary_frame->GetExprString(), window.GetRaw(), status),
+                   kCodegenError);
     }
 
     ExprIRBuilder expr_ir_builder(ctx_);

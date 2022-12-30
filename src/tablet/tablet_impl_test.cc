@@ -173,7 +173,6 @@ void PrepareLatestTableData(TabletImpl& tablet, int32_t tid, int32_t pid, bool c
 
 void AddDefaultSchema(uint64_t abs_ttl, uint64_t lat_ttl, ::openmldb::type::TTLType ttl_type,
                       ::openmldb::api::TableMeta* table_meta) {
-    table_meta->set_format_version(1);
     auto column_desc = table_meta->add_column_desc();
     column_desc->set_name("idx0");
     column_desc->set_data_type(::openmldb::type::kString);
@@ -222,7 +221,6 @@ void AddDefaultAggregatorSchema(::openmldb::api::TableMeta* table_meta) {
 
 std::string EncodeAggrRow(const std::string& key, int64_t ts, int32_t val) {
     ::openmldb::api::TableMeta table_meta;
-    table_meta.set_format_version(1);
     SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "id", openmldb::type::DataType::kString);
     SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "ts_col", openmldb::type::DataType::kTimestamp);
     SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "col3", openmldb::type::DataType::kInt);
@@ -1572,7 +1570,6 @@ TEST_P(TabletImplTest, TraverseTTLTS) {
     table_meta->set_pid(1);
     table_meta->set_storage_mode(storage_mode);
     table_meta->set_seg_cnt(1);
-    table_meta->set_format_version(1);
     SchemaCodec::SetColumnDesc(table_meta->add_column_desc(), "card", ::openmldb::type::kVarchar);
     SchemaCodec::SetColumnDesc(table_meta->add_column_desc(), "mcc", ::openmldb::type::kVarchar);
     SchemaCodec::SetColumnDesc(table_meta->add_column_desc(), "price", ::openmldb::type::kBigInt);
@@ -2259,7 +2256,6 @@ TEST_P(TabletImplTest, LoadWithDeletedKey) {
         table_meta->set_pid(1);
         table_meta->set_seg_cnt(8);
         table_meta->set_term(1024);
-        table_meta->set_format_version(1);
         table_meta->set_storage_mode(storage_mode);
         ::openmldb::common::ColumnDesc* column_desc1 = table_meta->add_column_desc();
         column_desc1->set_name("card");
@@ -3519,7 +3515,6 @@ TEST_P(TabletImplTest, AbsAndLat) {
         table_meta->set_name("t0");
         table_meta->set_tid(id);
         table_meta->set_pid(0);
-        table_meta->set_format_version(1);
         table_meta->set_storage_mode(storage_mode);
         SchemaCodec::SetColumnDesc(table_meta->add_column_desc(), "test", ::openmldb::type::kString);
         SchemaCodec::SetColumnDesc(table_meta->add_column_desc(), "ts1", ::openmldb::type::kBigInt);
@@ -4193,7 +4188,6 @@ TEST_P(TabletImplTest, AbsOrLat) {
         table_meta->set_name("t0");
         table_meta->set_tid(id);
         table_meta->set_pid(0);
-        table_meta->set_format_version(1);
         table_meta->set_storage_mode(storage_mode);
         SchemaCodec::SetColumnDesc(table_meta->add_column_desc(), "test", ::openmldb::type::kString);
         SchemaCodec::SetColumnDesc(table_meta->add_column_desc(), "ts1", ::openmldb::type::kBigInt);
@@ -5322,7 +5316,6 @@ TEST_P(TabletImplTest, AddIndex) {
     table_meta->set_tid(id);
     table_meta->set_pid(1);
     table_meta->set_seg_cnt(1);
-    table_meta->set_format_version(1);
     table_meta->set_storage_mode(storage_mode);
     SchemaCodec::SetColumnDesc(table_meta->add_column_desc(), "card", ::openmldb::type::kVarchar);
     SchemaCodec::SetColumnDesc(table_meta->add_column_desc(), "mcc", ::openmldb::type::kVarchar);

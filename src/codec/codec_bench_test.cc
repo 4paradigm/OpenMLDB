@@ -74,9 +74,9 @@ TEST_F(CodecBenchmarkTest, ProjectTest) {
     rb.SetBuffer(reinterpret_cast<int8_t*>(ptr), total_size);
     for (uint32_t i = 0; i < 100; i++) {
         int64_t val = 100;
-        rb.AppendInt64(val);
+        (void)rb.AppendInt64(val);
     }
-    rb.AppendString(hello.c_str(), hello.size());
+    (void)rb.AppendString(hello.c_str(), hello.size());
     ProjectList plist;
     uint32_t* idx = plist.Add();
     *idx = 100;

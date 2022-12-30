@@ -56,7 +56,7 @@ jobs:
             fi
           done
       - name: Publish UT Results
-        uses: EnricoMi/publish-unit-test-result-action@v1
+        uses: EnricoMi/publish-unit-test-result-action@v2
         with:
           commit: ${{ inputs.commit }}
           files: ${{ inputs.files }}

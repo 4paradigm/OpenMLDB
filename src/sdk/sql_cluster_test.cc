@@ -475,7 +475,6 @@ TEST_F(SQLClusterTest, CreatePreAggrTable) {
         ASSERT_EQ("ts_start", agg_tables[0].column_key(0).ts_name());
         ASSERT_EQ(base_tables[0].column_key(0).ttl().ttl_type(), agg_tables[0].column_key(0).ttl().ttl_type());
         ASSERT_EQ(base_tables[0].column_key(0).ttl().lat_ttl(), agg_tables[0].column_key(0).ttl().lat_ttl());
-        ASSERT_EQ(base_tables[0].format_version(), agg_tables[0].format_version());
         ASSERT_EQ(base_tables[0].replica_num(), agg_tables[0].replica_num());
         ASSERT_EQ(base_tables[0].partition_num(), agg_tables[0].partition_num());
         ASSERT_EQ(base_tables[0].table_partition().size(), agg_tables[0].table_partition().size());

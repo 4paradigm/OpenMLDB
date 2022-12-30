@@ -72,7 +72,6 @@ void AddDimension(uint32_t id, const std::string& key, ::openmldb::api::LogEntry
 
 std::string EncodeKV(const std::string& key, const std::string& value) {
     ::openmldb::api::TableMeta meta;
-    meta.set_format_version(1);
     SchemaCodec::SetColumnDesc(meta.add_column_desc(), "key", ::openmldb::type::kString);
     SchemaCodec::SetColumnDesc(meta.add_column_desc(), "value", ::openmldb::type::kString);
     ::openmldb::codec::SDKCodec sdk_codec(meta);
@@ -84,7 +83,6 @@ std::string EncodeKV(const std::string& key, const std::string& value) {
 
 std::string DecodeV(const std::string& value) {
     ::openmldb::api::TableMeta meta;
-    meta.set_format_version(1);
     SchemaCodec::SetColumnDesc(meta.add_column_desc(), "key", ::openmldb::type::kString);
     SchemaCodec::SetColumnDesc(meta.add_column_desc(), "value", ::openmldb::type::kString);
     ::openmldb::codec::SDKCodec sdk_codec(meta);
@@ -95,7 +93,6 @@ std::string DecodeV(const std::string& value) {
 
 ::openmldb::api::TableMeta GetTableMeta(const std::vector<std::string>& fields) {
     ::openmldb::api::TableMeta meta;
-    meta.set_format_version(1);
     for (const auto& field : fields) {
         SchemaCodec::SetColumnDesc(meta.add_column_desc(), field, ::openmldb::type::kString);
     }

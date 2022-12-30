@@ -317,9 +317,6 @@ bool ClusterSDK::UpdateCatalog(const std::vector<std::string>& table_datas, cons
             continue;
         }
         DLOG(INFO) << "parse table " << table_info->name() << " ok";
-        if (table_info->format_version() != 1) {
-            continue;
-        }
         tables.push_back(*(table_info));
         auto it = mapping.find(table_info->db());
         if (it == mapping.end()) {

@@ -40,14 +40,14 @@ public class CallablePreparedStatement extends RequestPreparedStatement {
         Status status = new Status();
         procedureInfo = router.ShowProcedure(db, spName, status);
         if (procedureInfo == null || status.getCode() != 0) {
-            String msg = status.getMsg();
+            String msg = status.ToString();
             status.delete();
             throw new SQLException("show procedure failed, msg: " + msg);
         }
         this.currentSql = procedureInfo.GetSql();
         this.currentRow = router.GetRequestRow(db, procedureInfo.GetSql(), status);
         if (status.getCode() != 0 || this.currentRow == null) {
-            String msg = status.getMsg();
+            String msg = status.ToString();
             status.delete();
             throw new SQLException("getRequestRow failed!, msg: " + msg);
         }

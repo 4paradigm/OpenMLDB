@@ -108,8 +108,7 @@ void CheckFnLetBuilderWithParameterRow(::hybridse::node::NodeManager* manager, v
     if (pp_node_ptr->GetW() != nullptr) {
         frame_node = pp_node_ptr->GetW()->frame_node();
     }
-    status = vm::ExtractProjectInfos(pp_node_ptr->GetProjects(), frame_node,
-                                     schemas_ctx, manager, &column_projects);
+    status = vm::ExtractProjectInfos(pp_node_ptr->GetProjects(), frame_node, &column_projects);
     ASSERT_TRUE(status.isOK()) << status.str();
 
     bool is_agg = window_ptr != nullptr;

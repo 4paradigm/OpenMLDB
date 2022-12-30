@@ -30,7 +30,7 @@ on:
 
 jobs:
   coverage:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     env:
       CTEST_PARALLEL_LEVEL: 1 # parallel test level for ctest (make test)
       CMAKE_BUILD_TYPE: Debug
@@ -48,7 +48,7 @@ jobs:
         uses: actions/checkout@v3
         with:
           repository: linux-test-project/lcov
-          ref: master
+          ref: v1.16
           path: lcov
 
       - name: install lcov

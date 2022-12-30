@@ -39,7 +39,6 @@ typedef ::google::protobuf::RepeatedPtrField<::openmldb::common::ColumnKey> RtiD
 
 static void BM_SimpleQueryFunction(benchmark::State& state) {  // NOLINT
     ::openmldb::nameserver::TableInfo table_info;
-    table_info.set_format_version(1);
     std::string name = "test" + GenRand();
     std::string db = "db" + GenRand();
     auto ns_client = mc->GetNsClient();

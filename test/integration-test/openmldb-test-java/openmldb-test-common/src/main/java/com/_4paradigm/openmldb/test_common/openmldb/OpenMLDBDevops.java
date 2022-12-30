@@ -42,10 +42,10 @@ public class OpenMLDBDevops {
         String command = "";
         switch (operator){
             case "start":
-                command = String.format("sh %s/openmldb-standalone/bin/start-standalone.sh",basePath);
+                command = String.format("sh %s/openmldb-standalone/sbin/start-all.sh",basePath);
                 break;
             case "stop":
-                command = String.format("sh %s/openmldb-standalone/bin/stop-standalone.sh",basePath);
+                command = String.format("sh %s/openmldb-standalone/sbin/stop-all.sh",basePath);
                 break;
         }
         ExecutorUtil.run(command);

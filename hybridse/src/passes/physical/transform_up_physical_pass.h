@@ -17,8 +17,10 @@
 #define HYBRIDSE_SRC_PASSES_PHYSICAL_TRANSFORM_UP_PHYSICAL_PASS_H_
 
 #include <memory>
+#include <set>
 #include <string>
 #include <unordered_map>
+
 #include "passes/physical/physical_pass.h"
 
 namespace hybridse {

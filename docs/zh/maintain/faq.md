@@ -129,3 +129,7 @@ sdk日志（glog日志）：
 在JAVA client使用InsertPreparedStatement进行插入，或在Python中使用sql和parameter进行插入时，client底层实际有cache影响，第一步`getInsertRow`生成sql cache并返回sql还需要补充的parameter信息，第二步才会真正执行insert，而执行insert需要使用第一步缓存的sql cache。所以，当多线程使用同一个client时，可能因为插入和查询频繁更新cache表，将你想要执行的insert sql cache淘汰掉了，所以会出现好像第一步`getInsertRow`并未执行的样子。
 
 目前可以通过调大`maxSqlCacheSize`这一配置项来避免错误。仅JAVA/Python SDK支持配置。
+
+### 7. 离线命令错误`java.lang.OutOfMemoryError: Java heap space`
+
+离线命令的spark配置默认为`local[*]`，并发较高可能出现OutOfMemoryError错误，请调整`spark.driver.memory`和`spark.executor.memory`两个spark配置项。可以写在taskmanager运行目录的`conf/taskmanager.properties`内并重启taskmanager，或者使用CLI客户端进行配置，参考[客户端Spark配置文件](../reference/client_config/client_spark_config.md#)。

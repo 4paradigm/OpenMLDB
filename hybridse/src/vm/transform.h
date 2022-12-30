@@ -214,7 +214,7 @@ class BatchModeTransformer {
     /**
      * Instantiate underlying llvm function with specified fn info.
      */
-    Status InstantiateLLVMFunction(const FnInfo& fn_info);
+    Status InstantiateLLVMFunction(const FnInfo* fn_info);
 
     Status GenWindowJoinList(PhysicalWindowAggrerationNode* window_agg_op,
                              PhysicalOpNode* in);
@@ -292,10 +292,12 @@ class RequestModeTransformer : public BatchModeTransformer {
 
  private:
     // Optimize simple project node which is the producer of window project
-    Status OptimizeSimpleProjectAsWindowProducer(PhysicalSimpleProjectNode* depend, const node::WindowPlanNode* w_ptr,
-                                                 PhysicalOpNode** output);
-    Status OptimizeRequestJoinAsWindowProducer(PhysicalRequestJoinNode* depend, const node::WindowPlanNode* w_ptr,
-                                               PhysicalOpNode** output);
+    Status OptimizeSimpleProjectAsWindowProducer(PhysicalSimpleProjectNode* depend,
+                                                 const SchemasContext* window_depend_sc,
+                                                 const node::WindowPlanNode* w_ptr, PhysicalOpNode** output);
+
+    Status OptimizeRequestJoinAsWindowProducer(PhysicalRequestJoinNode* depend, const SchemasContext* window_depend_sc,
+                                               const node::WindowPlanNode* w_ptr, PhysicalOpNode** output);
 
  private:
     bool enable_batch_request_opt_;
@@ -354,10 +356,7 @@ inline bool SchemaType2DataType(const ::hybridse::type::Type type,
     return true;
 }
 
-Status ExtractProjectInfos(const node::PlanNodeList& projects,
-                           const node::FrameNode* primary_frame,
-                           const SchemasContext* schemas_ctx,
-                           node::NodeManager* node_manager,
+Status ExtractProjectInfos(const node::PlanNodeList& projects, const node::FrameNode* primary_frame,
                            ColumnProjects* output);
 }  // namespace vm
 }  // namespace hybridse

@@ -510,7 +510,6 @@ TEST_P(TabletProjectTest, get_case) {
         table_meta->set_seg_cnt(8);
         table_meta->set_mode(::openmldb::api::TableMode::kTableLeader);
         table_meta->set_key_entry_max_height(8);
-        table_meta->set_format_version(1);
         table_meta->set_storage_mode(args->storage_mode);
         Schema* schema = table_meta->mutable_column_desc();
         schema->CopyFrom(args->schema);
@@ -525,7 +524,6 @@ TEST_P(TabletProjectTest, get_case) {
         ::openmldb::api::PutRequest request;
         request.set_tid(tid);
         request.set_pid(0);
-        request.set_format_version(1);
         ::openmldb::api::Dimension* dim = request.add_dimensions();
         dim->set_idx(0);
         std::string key = args->pk;
@@ -574,7 +572,6 @@ TEST_P(TabletProjectTest, sql_case) {
         table_meta->set_mode(::openmldb::api::TableMode::kTableLeader);
         table_meta->set_key_entry_max_height(8);
         table_meta->set_storage_mode(args->storage_mode);
-        table_meta->set_format_version(1);
         Schema* schema = table_meta->mutable_column_desc();
         schema->CopyFrom(args->schema);
         ::openmldb::common::ColumnKey* ck = table_meta->add_column_key();
@@ -588,7 +585,6 @@ TEST_P(TabletProjectTest, sql_case) {
         ::openmldb::api::PutRequest request;
         request.set_tid(tid);
         request.set_pid(0);
-        request.set_format_version(1);
         ::openmldb::api::Dimension* dim = request.add_dimensions();
         dim->set_idx(0);
         std::string key = args->pk;
@@ -629,7 +625,6 @@ TEST_P(TabletProjectTest, scan_case) {
         table_meta->set_seg_cnt(8);
         table_meta->set_mode(::openmldb::api::TableMode::kTableLeader);
         table_meta->set_key_entry_max_height(8);
-        table_meta->set_format_version(1);
         table_meta->set_storage_mode(args->storage_mode);
         Schema* schema = table_meta->mutable_column_desc();
         schema->CopyFrom(args->schema);
@@ -644,7 +639,6 @@ TEST_P(TabletProjectTest, scan_case) {
         ::openmldb::api::PutRequest request;
         request.set_tid(tid);
         request.set_pid(0);
-        request.set_format_version(1);
         ::openmldb::api::Dimension* dim = request.add_dimensions();
         dim->set_idx(0);
         std::string key = args->pk;

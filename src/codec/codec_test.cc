@@ -140,7 +140,7 @@ TEST_F(CodecTest, Normal) {
     ASSERT_EQ(view.GetInt64(4, &val2), 0);
     ASSERT_EQ(val2, 5);
 
-    builder.SetInt64(4, 10);
+    ASSERT_TRUE(builder.SetInt64(4, 10));
     int64_t val3 = 0;
     ASSERT_EQ(view.GetInt64(4, &val3), 0);
     ASSERT_EQ(val3, 10);
@@ -457,7 +457,7 @@ TEST_F(CodecTest, NotAppendString) {
     builder.SetBuffer(reinterpret_cast<int8_t*>(&(row[0])), size);
     for (int i = 0; i < 8; i++) {
         if (i > 2 && i < 6) {
-            builder.AppendNULL();
+            ASSERT_TRUE(builder.AppendNULL());
             continue;
         }
         std::string str(10, 'a' + i);
@@ -504,6 +504,9 @@ TEST_F(CodecTest, RowBuilderSet) {
     col = schema.Add();
     col->set_name("col7");
     col->set_data_type(::openmldb::type::kString);
+    col = schema.Add();
+    col->set_name("col8");
+    col->set_data_type(::openmldb::type::kTimestamp);
     RowBuilder builder(schema);
     uint32_t size = builder.CalTotalLength(6);
     std::string row;
@@ -518,6 +521,8 @@ TEST_F(CodecTest, RowBuilderSet) {
     ASSERT_TRUE(builder.SetInt64(row_ptr, 4, 5));
     ASSERT_TRUE(builder.SetNULL(row_ptr, size, 5));
     ASSERT_TRUE(builder.SetString(row_ptr, size, 6, "string", 6));
+    ASSERT_FALSE(builder.SetTimestamp(row_ptr, 7, -123));
+    ASSERT_TRUE(builder.SetTimestamp(row_ptr, 7, 1668149927000));
     RowView view(schema, row_ptr, size);
     int32_t val = 0;
     ASSERT_EQ(view.GetInt32(0, &val), 0);
@@ -541,6 +546,9 @@ TEST_F(CodecTest, RowBuilderSet) {
     ASSERT_EQ(ch_length, 6);
     std::string ret(ch, ch_length);
     ASSERT_EQ(ret, st);
+    int64_t ts = 0;
+    ASSERT_EQ(view.GetTimestamp(7, &ts), 0);
+    ASSERT_EQ(ts, 1668149927000);
 }
 
 }  // namespace codec

@@ -279,7 +279,6 @@ TEST_P(SnapshotReplicaTest, SendSnapshot) {
 
     // load table in the follower
     ::openmldb::api::TableMeta table_meta;
-    table_meta.set_format_version(1);
     table_meta.set_name("table1");
     table_meta.set_tid(tid);
     table_meta.set_pid(pid);
@@ -387,7 +386,6 @@ TEST_P(SnapshotReplicaTest, IncompleteSnapshot) {
 
         // load table
         ::openmldb::api::TableMeta table_meta;
-        table_meta.set_format_version(1);
         table_meta.set_name("table1");
         table_meta.set_tid(tid);
         table_meta.set_pid(pid);
@@ -472,7 +470,6 @@ TEST_P(SnapshotReplicaTest, IncompleteSnapshot) {
 
         // load table
         ::openmldb::api::TableMeta table_meta;
-        table_meta.set_format_version(1);
         table_meta.set_name("table1");
         table_meta.set_tid(tid);
         table_meta.set_pid(pid);
@@ -558,7 +555,6 @@ TEST_P(SnapshotReplicaTest, LeaderAndFollowerTS) {
     ::openmldb::client::TabletClient client(leader_point, "");
     client.Init();
     ::openmldb::api::TableMeta table_meta;
-    table_meta.set_format_version(1);
     table_meta.set_name("test");
     table_meta.set_tid(tid);
     table_meta.set_pid(pid);

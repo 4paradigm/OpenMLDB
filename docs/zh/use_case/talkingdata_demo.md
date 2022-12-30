@@ -1,4 +1,4 @@
-# TalkingData 广告欺诈检测
+# OpenMLDB + XGboost：TalkingData 广告欺诈检测
 
 我们将演示如何使用 [OpenMLDB](https://github.com/4paradigm/OpenMLDB) 与其他开源软件一起开发一个完整的机器学习应用程序，完成 TalkingData 广告欺诈检测挑战（有关此挑战的更多信息请参阅 [Kaggle](https://www.kaggle.com/c/talkingdata-adtracking-fraud-detection/overview)）。
 
@@ -16,7 +16,7 @@
 **启动 Docker**
 
 ```
-docker run -it 4pdosc/openmldb:0.6.6 bash
+docker run -it 4pdosc/openmldb:0.6.9 bash
 ```
 
 #### 1.1.2 在本地运行
@@ -63,7 +63,7 @@ python3 /work/talkingdata/predict_server.py --no-init > predict.log 2>&1 &
 ```
 
 
-### 2 训练并应用
+## 2 训练并应用
 
 ```
 cd /work/talkingdata
@@ -82,7 +82,7 @@ python3 train_and_serve.py
 5. 加载数据到在线存储
 6. 更新预测服务器上的模型
 
-### 3 预测
+## 3 预测
 
 向预测服务器发送post请求 `<ip>:<port>/predict` 即可进行一次预测。或者您也可以运行下面的python脚本。
 
@@ -92,7 +92,6 @@ python3 predict.py
 
 ## 4 提示
 
-```{note}
 预构建的 xgboost python wheel 可能与您计算机中的 openmldb python sdk 不兼容，可能会出现该报错：
 `train\_and\_serve.py core dump at SetGPUAttribute...`
 
@@ -101,5 +100,3 @@ python3 predict.py
 
 或者构建 wheel ：
 `python setup.py bdist_wheel`
-```
-

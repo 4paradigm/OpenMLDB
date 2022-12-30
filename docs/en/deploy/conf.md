@@ -87,6 +87,9 @@
 # log file path
 --openmldb_log_dir=./logs
 
+# Specify the max memory usage of tablet. If memory usage exceeds the value, write will fail. The default value 0 means unlimited
+#--max_memory_mb=0
+
 # binlog conf
 # Binlog wait time when no new data is added, in milliseconds
 #--binlog_coffee_time=1000

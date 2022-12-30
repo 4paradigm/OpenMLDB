@@ -1,12 +1,22 @@
 # 开发指南
 kafka jdbc connector for openmldb，可以支持auto.schema，即从openmldb处获取table schema。
-目前仅支持与value JsonConverter搭配使用（OpenMLDB完全不支持key），且需要disable JsonConverter的schema支持，
-connector配置如下：
+
+目前仅支持与value JsonConverter搭配使用（OpenMLDB完全不支持key），且需要disable JsonConverter的schema支持。
+
+## 配置方法
+
+需要修改两个配置文件：
+- connector配置 `connect-xx.properties`：
 ```
 value.converter=org.apache.kafka.connect.json.JsonConverter
 value.converter.schemas.enable=false
 ```
-而且auto.schema开启时不可以开启auto.create（有配置校验逻辑）。请确保已经建好了OpenMLDB表。
+- sink配置 `openmldb-sink.properties`：
+```
+auto.schema=true
+auto.create=false
+```
+请确保已经建好了OpenMLDB表。
 
 ## message convert for auto schema
 
@@ -25,4 +35,4 @@ Record中的value实际是需要org.apache.kafka.connect.data.Struct类型，但
 
 如果想要对某个类型做更多的value转换支持，可以在`convertToLogicalType`或`convertToSchemaType`中加入逻辑。
 
-比如支持多类型json value转为int32类型，就在int32的case中加入对value的类型判断，并支持将该类型转为int32。
+比如，支持多类型json value转为int32类型，就在int32的case中加入对value的类型判断，并支持将该类型转为int32。

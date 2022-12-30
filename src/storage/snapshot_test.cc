@@ -507,7 +507,6 @@ TEST_F(SnapshotTest, Recover_only_snapshot_multi_with_deleted_index) {
     table_meta->set_tid(4);
     table_meta->set_pid(2);
     table_meta->set_seg_cnt(8);
-    table_meta->set_format_version(1);
     SchemaCodec::SetColumnDesc(table_meta->add_column_desc(), "card", ::openmldb::type::kString);
     SchemaCodec::SetColumnDesc(table_meta->add_column_desc(), "merchant", ::openmldb::type::kString);
     SchemaCodec::SetColumnDesc(table_meta->add_column_desc(), "value", ::openmldb::type::kString);
@@ -863,7 +862,6 @@ TEST_F(SnapshotTest, MakeSnapshot_with_delete_index) {
     table_meta->set_tid(4);
     table_meta->set_pid(2);
     table_meta->set_seg_cnt(8);
-    table_meta->set_format_version(1);
     SchemaCodec::SetColumnDesc(table_meta->add_column_desc(), "card", ::openmldb::type::kString);
     SchemaCodec::SetColumnDesc(table_meta->add_column_desc(), "merchant", ::openmldb::type::kString);
     SchemaCodec::SetColumnDesc(table_meta->add_column_desc(), "value", ::openmldb::type::kString);
@@ -1010,7 +1008,6 @@ TEST_F(SnapshotTest, MakeSnapshotAbsOrLat) {
     table_meta->set_tid(10);
     table_meta->set_pid(0);
     table_meta->set_seg_cnt(8);
-    table_meta->set_format_version(1);
     SchemaCodec::SetColumnDesc(table_meta->add_column_desc(), "card", ::openmldb::type::kString);
     SchemaCodec::SetColumnDesc(table_meta->add_column_desc(), "merchant", ::openmldb::type::kString);
     SchemaCodec::SetColumnDesc(table_meta->add_column_desc(), "ts", ::openmldb::type::kTimestamp);
@@ -1314,7 +1311,6 @@ TEST_F(SnapshotTest, Recover_snapshot_ts) {
     table_meta.set_tid(2);
     table_meta.set_pid(2);
     table_meta.set_seg_cnt(8);
-    table_meta.set_format_version(1);
     SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "card", ::openmldb::type::kString);
     SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "mcc", ::openmldb::type::kString);
     SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "amt", ::openmldb::type::kDouble);
