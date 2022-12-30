@@ -234,6 +234,7 @@ public class OpenMLDBDeploy {
             String ns_name = "/openmldb-ns-"+index;
             List<String> commands = Lists.newArrayList(
                     "cp -r " + testPath + "/" + openMLDBDirectoryName + " " + testPath + ns_name,
+                    "cp " + testPath + + ns_name + "/conf/nameserver.flags.template " + testPath + + ns_name + "/conf/nameserver.flags",
                     "sed -i "+sedSeparator+" 's#--zk_cluster=.*#--zk_cluster=" + zk_endpoint + "#' " + testPath + ns_name + "/conf/nameserver.flags",
                     "sed -i "+sedSeparator+" 's@--zk_root_path=.*@--zk_root_path=/openmldb@' "+testPath+ns_name+"/conf/nameserver.flags",
                     "sed -i "+sedSeparator+" 's@#--zk_cluster=.*@--zk_cluster=" + zk_endpoint + "@' " + testPath + ns_name + "/conf/nameserver.flags",
@@ -286,6 +287,7 @@ public class OpenMLDBDeploy {
             String tablet_name = "/openmldb-tablet-"+index;
             List<String> commands = Lists.newArrayList(
                     "cp -r "+testPath+"/"+ openMLDBDirectoryName +" "+testPath+tablet_name,
+                    "cp " + testPath+tablet_name + "/conf/tablet.flags.template " + testPath+tablet_name + "/conf/tablet.flags",
                     "sed -i "+sedSeparator+" 's/--zk_cluster=.*/--zk_cluster="+zk_endpoint+"/' "+testPath+tablet_name+"/conf/tablet.flags",
                     "sed -i "+sedSeparator+" 's@--zk_root_path=.*@--zk_root_path=/openmldb@' "+testPath+tablet_name+"/conf/tablet.flags",
                     "sed -i "+sedSeparator+" 's@#--zk_cluster=.*@--zk_cluster="+zk_endpoint+"@' "+testPath+tablet_name+"/conf/tablet.flags",
@@ -339,6 +341,7 @@ public class OpenMLDBDeploy {
             String apiserver_name = "/openmldb-apiserver-"+index;
             List<String> commands = Lists.newArrayList(
                     "cp -r "+testPath+"/"+ openMLDBDirectoryName +" "+testPath+apiserver_name,
+                    "cp " + testPath + apiserver_name + "/conf/apiserver.flags.template " + testPath + apiserver_name + "/conf/apiserver.flags",
                     "sed -i "+sedSeparator+" 's/--zk_cluster=.*/--zk_cluster="+zk_endpoint+"/' "+testPath+apiserver_name+"/conf/apiserver.flags",
                     "sed -i "+sedSeparator+" 's@--zk_root_path=.*@--zk_root_path=/openmldb@' "+testPath+apiserver_name+"/conf/apiserver.flags",
                     "sed -i "+sedSeparator+" 's@#--zk_cluster=.*@--zk_cluster="+zk_endpoint+"@' "+testPath+apiserver_name+"/conf/apiserver.flags",
@@ -409,6 +412,7 @@ public class OpenMLDBDeploy {
             }
 
             List<String> commands = Lists.newArrayList(
+                    "cp " + testPath + task_manager_name + "/conf/taskmanager.properties.template " + testPath + task_manager_name + "/conf/taskmanager.properties",
                     "sed -i "+sedSeparator+" 's#server.host=.*#server.host=" + ip + "#' " + testPath + task_manager_name + "/conf/taskmanager.properties",
                     "sed -i "+sedSeparator+" 's#server.port=.*#server.port=" + port + "#' " + testPath + task_manager_name + "/conf/taskmanager.properties",
                     "sed -i "+sedSeparator+" 's#zookeeper.cluster=.*#zookeeper.cluster=" + zk_endpoint + "#' " + testPath + task_manager_name + "/conf/taskmanager.properties",
