@@ -3,12 +3,12 @@
 ## [0.7.0] - 2022-12-30
 
 ### Features
-- Add the new data type of `ARRAY` in SQL queries and UDFs (#2817 @aceforeverd)
-- Support the new built-in functions `unix_timestamp`, `pmod`, `datediff`, and `size` (#2843 #2839 #2847 #2864 @zhanghaohit)
 - Improve the messages and errors when inserting rows (#2834 @vagetablechicken)
+- Add a new configuration `max_memory` to limit the memory usage of a tablet (#2815 @dl239)
 - Add new maintenance tools `deploy-all` and `start-all` (#2809 @zhanghaohit)
 - Insertion returns errors if the value of timestamp field is negative (#2776 @dl239)
-- Add a new configuration `max_memory` to limit the memory usage of a tablet (#2815 @dl239)
+- Support the new built-in functions `unix_timestamp`, `pmod`, `datediff`, and `size` (#2843 #2839 #2847 #2864 @zhanghaohit)
+- Add the new data type of `ARRAY` in UDFs (#2817 @aceforeverd)
 - Improve the documents (#2868 @haseeb-xd, #2878 @Jake-00, #2879 #2876 #2889 #2890 @vagetablechicken, #2881 #2907 #2908 #2897 @selenachenjingxin, #2859 @AdvancedUno, #2893 @lumianph, #2916 @aceforeverd)
 
 ### Bug Fixes
