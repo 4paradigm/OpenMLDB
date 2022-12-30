@@ -9,12 +9,12 @@
 <dependency>
     <groupId>com.4paradigm.openmldb</groupId>
     <artifactId>openmldb-jdbc</artifactId>
-    <version>0.6.9</version>
+    <version>0.7.0</version>
 </dependency>
 <dependency>
     <groupId>com.4paradigm.openmldb</groupId>
     <artifactId>openmldb-native</artifactId>
-    <version>0.6.9</version>
+    <version>0.7.0</version>
 </dependency>
 ```
 ### Mac下 Java SDK包安装
@@ -24,15 +24,15 @@
 <dependency>
     <groupId>com.4paradigm.openmldb</groupId>
     <artifactId>openmldb-jdbc</artifactId>
-    <version>0.6.9</version>
+    <version>0.7.0</version>
 </dependency>
 <dependency>
     <groupId>com.4paradigm.openmldb</groupId>
     <artifactId>openmldb-native</artifactId>
-    <version>0.6.9-macos</version>
+    <version>0.7.0-macos</version>
 </dependency>
 ```
-注意: 由于 openmldb-native 中包含了 OpenMLDB 编译的 C++ native库, 默认是 linux 库, macOS 上需将上述 openmldb-native 的 version 改成 `0.6.9-macos`, openmldb-jdbc 的版本保持不变。
+注意: 由于 openmldb-native 中包含了 OpenMLDB 编译的 C++ native库, 默认是 linux 库, macOS 上需将上述 openmldb-native 的 version 改成 `0.7.0-macos`, openmldb-jdbc 的版本保持不变。
 
 当前macOS native发行版只支持macos-12，如需在macos-11或macos-10.15上运行，需在相应OS上源码编译openmldb-native包，详细编译方法见[并发编译Java SDK](../deploy/compile.md#并发编译java-sdk)。
 

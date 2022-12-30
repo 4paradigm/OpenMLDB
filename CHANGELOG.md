@@ -1,5 +1,28 @@
 # Changelog
 
+## [0.7.0] - 2022-12-30
+
+### Features
+- Improve the messages and errors when inserting rows (#2834 @vagetablechicken)
+- Add a new configuration `max_memory` to limit the memory usage of a tablet (#2815 @dl239)
+- Add new maintenance tools `deploy-all` and `start-all` (#2809 @zhanghaohit)
+- Insertion returns errors if the value of timestamp field is negative (#2776 @dl239)
+- Support the new built-in functions `unix_timestamp`, `pmod`, `datediff`, and `size` (#2843 #2839 #2847 #2864 @zhanghaohit)
+- Add the new data type of `ARRAY` in UDFs (#2817 @aceforeverd)
+- Improve the documents (#2868 @haseeb-xd, #2878 @Jake-00, #2879 #2876 #2889 #2890 @vagetablechicken, #2881 #2907 #2908 #2897 @selenachenjingxin, #2859 @AdvancedUno, #2893 @lumianph, #2916 @aceforeverd)
+
+### Bug Fixes
+- Window over a subquery(t1 LAST JOIN t2) fails due to column renaming in the subquery. (#2739 @aceforeverd)
+- `SHOW JOBLOG` fails under certain circumstances. (#2874 @tobegit3hub)
+- `OP` is not deleted if the related table has been dropped. (#2548 @dl239)
+- Memory is not released when deleting an index in some cases. (#2806 @dl239)
+- Changing a leader to a specified endpoint fails if there are data writing. (#2858 @dl239)
+- UDFs do not work for `yarn-client` and `yarn-cluster` in the offline mode. (#2802 @tobegit3hub)
+- Other minor bug fixes (#2828 #2903 #2906 @vagetablechicken, #2867 #2912 @dl239)
+
+### Code Refactoring
+#2860 @mammar11, #2865 #2863 @vagetablechicken, #2861 #2862 #2871 @Ziy1-Tan
+
 ## [0.6.9] - 2022-12-08
 
 ### Features
@@ -456,6 +479,7 @@ Removed
 - openmldb-0.2.0-linux.tar.gz targets on x86_64
 - aarch64 artifacts consider experimental
 
+[0.7.0]: https://github.com/4paradigm/OpenMLDB/compare/v0.6.9...v0.7.0
 [0.6.9]: https://github.com/4paradigm/OpenMLDB/compare/v0.6.8...v0.6.9
 [0.6.8]: https://github.com/4paradigm/OpenMLDB/compare/v0.6.7...v0.6.8
 [0.6.7]: https://github.com/4paradigm/OpenMLDB/compare/v0.6.6...v0.6.7

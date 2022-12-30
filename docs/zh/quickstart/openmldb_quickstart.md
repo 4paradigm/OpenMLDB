@@ -13,7 +13,7 @@
 执行以下命令拉取 OpenMLDB 镜像，并启动 Docker 容器：
 
 ```bash
-docker run -it 4pdosc/openmldb:0.6.9 bash
+docker run -it 4pdosc/openmldb:0.7.0 bash
 ```
 
 ```{note}

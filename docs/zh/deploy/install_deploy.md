@@ -11,7 +11,7 @@
 * 运行环境：zookeeper和taskmanager部署需要java runtime environment。其他组件无要求。
 
 ## 部署包准备
-本说明文档中默认使用预编译好的 OpenMLDB 部署包（[Linux](https://github.com/4paradigm/OpenMLDB/releases/download/v0.6.9/openmldb-0.6.9-linux.tar.gz), [macOS](https://github.com/4paradigm/OpenMLDB/releases/download/v0.6.9/openmldb-0.6.9-darwin.tar.gz)），所支持的操作系统要求为：CentOS 7, Ubuntu 20.04, macOS >= 10.15。如果用户期望自己编译（如做 OpenMLDB 源代码开发，操作系统或者 CPU 架构不在预编译部署包的支持列表内等原因），用户可以选择在 docker 容器内编译使用或者从源码编译，具体请参照我们的[编译文档](compile.md)。
+本说明文档中默认使用预编译好的 OpenMLDB 部署包（[Linux](https://github.com/4paradigm/OpenMLDB/releases/download/v0.7.0/openmldb-0.7.0-linux.tar.gz), [macOS](https://github.com/4paradigm/OpenMLDB/releases/download/v0.7.0/openmldb-0.7.0-darwin.tar.gz)），所支持的操作系统要求为：CentOS 7, Ubuntu 20.04, macOS >= 10.15。如果用户期望自己编译（如做 OpenMLDB 源代码开发，操作系统或者 CPU 架构不在预编译部署包的支持列表内等原因），用户可以选择在 docker 容器内编译使用或者从源码编译，具体请参照我们的[编译文档](compile.md)。
 
 ## 配置环境(Linux)
 
@@ -87,9 +87,9 @@ Wed Aug 22 16:33:50 CST 2018
 
 由于linux平台的多样性，发布包可能在你的机器上不兼容，请先通过简单的运行测试。
 ```
-wget https://github.com/4paradigm/OpenMLDB/releases/download/v0.6.9/openmldb-0.6.9-linux.tar.gz
-tar -zxvf openmldb-0.6.9-linux.tar.gz
-./openmldb-0.6.9-linux/bin/openmldb --version
+wget https://github.com/4paradigm/OpenMLDB/releases/download/v0.7.0/openmldb-0.7.0-linux.tar.gz
+tar -zxvf openmldb-0.7.0-linux.tar.gz
+./openmldb-0.7.0-linux/bin/openmldb --version
 ```
 结果应显示该程序的版本号，类似
 ```
@@ -108,9 +108,9 @@ OpenMLDB单机版需要部署一个nameserver和一个tablet。nameserver用于�
 
 ### 下载OpenMLDB部署包
 ```
-wget https://github.com/4paradigm/OpenMLDB/releases/download/v0.6.9/openmldb-0.6.9-linux.tar.gz
-tar -zxvf openmldb-0.6.9-linux.tar.gz
-cd openmldb-0.6.9-linux
+wget https://github.com/4paradigm/OpenMLDB/releases/download/v0.7.0/openmldb-0.7.0-linux.tar.gz
+tar -zxvf openmldb-0.7.0-linux.tar.gz
+cd openmldb-0.7.0-linux
 ```
 
 ### 配置
@@ -174,9 +174,9 @@ OpenMLDB集群版需要部署zookeeper、nameserver、tablet、taskmanager等模
 ### 下载OpenMLDB发行版
 
 ```
-wget https://github.com/4paradigm/OpenMLDB/releases/download/v0.6.9/openmldb-0.6.9-linux.tar.gz
-tar -zxvf openmldb-0.6.9-linux.tar.gz
-cd openmldb-0.6.9-linux
+wget https://github.com/4paradigm/OpenMLDB/releases/download/v0.7.0/openmldb-0.7.0-linux.tar.gz
+tar -zxvf openmldb-0.7.0-linux.tar.gz
+cd openmldb-0.7.0-linux
 ```
 
 ### 配置
@@ -313,10 +313,10 @@ bash bin/zkCli.sh -server 172.27.128.33:7181
 ### 部署tablet（至少两台）
 #### 1 下载OpenMLDB部署包
 ```
-wget https://github.com/4paradigm/OpenMLDB/releases/download/v0.6.9/openmldb-0.6.9-linux.tar.gz
-tar -zxvf openmldb-0.6.9-linux.tar.gz
-mv openmldb-0.6.9-linux openmldb-tablet-0.6.9
-cd openmldb-tablet-0.6.9
+wget https://github.com/4paradigm/OpenMLDB/releases/download/v0.7.0/openmldb-0.7.0-linux.tar.gz
+tar -zxvf openmldb-0.7.0-linux.tar.gz
+mv openmldb-0.7.0-linux openmldb-tablet-0.7.0
+cd openmldb-tablet-0.7.0
 ```
 #### 2 修改配置文件`conf/tablet.flags`
 ```bash
@@ -372,12 +372,12 @@ Start tablet success
 
 在另一台机器启动下一个tablet只需在该机器上重复以上步骤。如果是在同一个机器上启动下一个tablet，请保证是在另一个目录中，不要重复使用已经启动过tablet的目录。
 
-比如，可以再次解压压缩包（不要cp已经启动过tablet的目录，启动后的生成文件会造成影响），并命名目录为`openmldb-tablet-0.6.9-2`。
+比如，可以再次解压压缩包（不要cp已经启动过tablet的目录，启动后的生成文件会造成影响），并命名目录为`openmldb-tablet-0.7.0-2`。
 
 ```
-tar -zxvf openmldb-0.6.9-linux.tar.gz
-mv openmldb-0.6.9-linux openmldb-tablet-0.6.9-2
-cd openmldb-tablet-0.6.9-2
+tar -zxvf openmldb-0.7.0-linux.tar.gz
+mv openmldb-0.7.0-linux openmldb-tablet-0.7.0-2
+cd openmldb-tablet-0.7.0-2
 ```
 
 再修改配置并启动。注意，tablet如果都在同一台机器上，请使用不同端口号，否则日志(logs/tablet.WARNING)中将会有"Fail to listen"信息。
@@ -391,10 +391,10 @@ cd openmldb-tablet-0.6.9-2
 ```
 #### 1 下载OpenMLDB部署包
 ````
-wget https://github.com/4paradigm/OpenMLDB/releases/download/v0.6.9/openmldb-0.6.9-linux.tar.gz
-tar -zxvf openmldb-0.6.9-linux.tar.gz
-mv openmldb-0.6.9-linux openmldb-ns-0.6.9
-cd openmldb-ns-0.6.9
+wget https://github.com/4paradigm/OpenMLDB/releases/download/v0.7.0/openmldb-0.7.0-linux.tar.gz
+tar -zxvf openmldb-0.7.0-linux.tar.gz
+mv openmldb-0.7.0-linux openmldb-ns-0.7.0
+cd openmldb-ns-0.7.0
 ````
 #### 2 修改配置文件conf/nameserver.flags
 ```bash
@@ -432,12 +432,12 @@ nameserver 可以只存在一台，如果你需要高可用性，可以部署多
 
 在另一台机器启动下一个 nameserver 只需在该机器上重复以上步骤。如果是在同一个机器上启动下一个 nameserver，请保证是在另一个目录中，不要重复使用已经启动过 namserver 的目录。
 
-比如，可以再次解压压缩包（不要cp已经启动过 namserver 的目录，启动后的生成文件会造成影响），并命名目录为`openmldb-ns-0.6.9-2`。
+比如，可以再次解压压缩包（不要cp已经启动过 namserver 的目录，启动后的生成文件会造成影响），并命名目录为`openmldb-ns-0.7.0-2`。
 
 ```
-tar -zxvf openmldb-0.6.9-linux.tar.gz
-mv openmldb-0.6.9-linux openmldb-ns-0.6.9-2
-cd openmldb-ns-0.6.9-2
+tar -zxvf openmldb-0.7.0-linux.tar.gz
+mv openmldb-0.7.0-linux openmldb-ns-0.7.0-2
+cd openmldb-ns-0.7.0-2
 ```
 然后再修改配置并启动。
 
@@ -475,10 +475,10 @@ APIServer负责接收http请求，转发给OpenMLDB集群并返回结果。它�
 #### 1 下载OpenMLDB部署包
 
 ```
-wget https://github.com/4paradigm/OpenMLDB/releases/download/v0.6.9/openmldb-0.6.9-linux.tar.gz
-tar -zxvf openmldb-0.6.9-linux.tar.gz
-mv openmldb-0.6.9-linux openmldb-apiserver-0.6.9
-cd openmldb-apiserver-0.6.9
+wget https://github.com/4paradigm/OpenMLDB/releases/download/v0.7.0/openmldb-0.7.0-linux.tar.gz
+tar -zxvf openmldb-0.7.0-linux.tar.gz
+mv openmldb-0.7.0-linux openmldb-apiserver-0.7.0
+cd openmldb-apiserver-0.7.0
 ```
 
 #### 2 修改配置文件conf/apiserver.flags
@@ -531,17 +531,17 @@ TaskManager 可以只存在一台，如果你需要高可用性，可以部署�
 
 Spark发行版：
 ```
-wget https://github.com/4paradigm/spark/releases/download/v3.2.1-openmldb0.6.9/spark-3.2.1-bin-openmldbspark.tgz 
+wget https://github.com/4paradigm/spark/releases/download/v3.2.1-openmldb0.7.0/spark-3.2.1-bin-openmldbspark.tgz 
 tar -zxvf spark-3.2.1-bin-openmldbspark.tgz 
 export SPARK_HOME=`pwd`/spark-3.2.1-bin-openmldbspark/
 ```
 
 OpenMLDB部署包：
 ```
-wget https://github.com/4paradigm/OpenMLDB/releases/download/v0.6.9/openmldb-0.6.9-linux.tar.gz
-tar -zxvf openmldb-0.6.9-linux.tar.gz
-mv openmldb-0.6.9-linux openmldb-taskmanager-0.6.9
-cd openmldb-taskmanager-0.6.9
+wget https://github.com/4paradigm/OpenMLDB/releases/download/v0.7.0/openmldb-0.7.0-linux.tar.gz
+tar -zxvf openmldb-0.7.0-linux.tar.gz
+mv openmldb-0.7.0-linux openmldb-taskmanager-0.7.0
+cd openmldb-taskmanager-0.7.0
 ```
 
 #### 2 修改配置文件conf/taskmanager.properties
