@@ -2,7 +2,9 @@
 
 本文将介绍 OpenMLDB SQL 的功能边界。
 
-如果对 SQL 语句有疑问，请参考 [OpenMLDB SQL](../openmldb_sql/)，或直接利用搜索功能搜索。
+```{note}
+如果对 SQL 语句有疑问，请参考 OpenMLDB SQL，或直接利用搜索功能搜索。
+```
 
 ## 系统配置——TaskManager
 
@@ -29,7 +31,7 @@ spark.default.conf=spark.port.maxRetries=32;foo=bar
 
 ### 长窗口 SQL
 
-长窗口 SQL，即 `DEPLOY` 语句带有 `OPTIONS(long_windows=...)` 配置项，语法详情见[长窗口](../openmldb_sql/deployment_manage/DEPLOY_STATEMENT.md长窗口优化)。长窗口 SQL 的部署条件比较严格，必须保证 SQL 中使用的表没有在线数据。否则，即使部署和之前一致的 SQL，也会操作失败。
+长窗口 SQL，即 `DEPLOY` 语句带有 `OPTIONS(long_windows=...)` 配置项，语法详情见[长窗口](../openmldb_sql/deployment_manage/DEPLOY_STATEMENT#长窗口优化)。长窗口 SQL 的部署条件比较严格，必须保证 SQL 中使用的表没有在线数据。否则，即使部署和之前一致的 SQL，也会操作失败。
 
 ### 普通 SQL
 
@@ -41,11 +43,11 @@ spark.default.conf=spark.port.maxRetries=32;foo=bar
 - 严格保持先 `DEPLOY` 再导入在线数据，不要在表中有在线数据后做 `DEPLOY`。
 - `CRATE INDEX` 语句可以在创建新索引时，自动导入已存在的在线数据（已有索引里的数据）。如果一定需要在表已有在线数据的情况下 `DEPLOY`，可以先手动 `CRATE INDEX` 创建需要的索引（新索引就有数据了），再 `DEPLOY`（这时的 `DEPLOY` 不会创建新索引，计算时直接使用手动创建的那些索引）。
 
-\```{note}
+```{note}
+如何知道应该创建哪些索引？ 
 
-如何知道应该创建哪些索引？ 目前只有 Java SDK 支持，可以通过 `SqlClusterExecutor.genDDL` 获取需要创建的所有索引。（但 `genDDL` 是获得建表语句，所以需要手动转换为 `CREATE INDEX`。） 未来我们将支持**直接获取创建索引语句**，或支持`DEPLOY`**自动导入数据到新索引**。
-
-\```
+目前只有 Java SDK 支持，可以通过 `SqlClusterExecutor.genDDL` 获取需要创建的所有索引。（但 `genDDL` 是获得建表语句，所以需要手动转换为 `CREATE INDEX`。） 未来将支持**直接获取创建索引语句**，或支持 `DEPLOY` **自动导入数据到新索引**。
+```
 
 ## DML 边界
 
@@ -56,7 +58,7 @@ spark.default.conf=spark.port.maxRetries=32;foo=bar
 推荐使用 HDFS 文件作为源数据，无论 TaskManager 是 local/yarn 模式，还是 TaskManager 在别的主机上运行，都可以导入。如果源数据为本地文件，是否可以顺利导入需要考虑 TaskManager 模式和运行主机。
 
 - TaskManager 是 local 模式，只有将源数据放在 TaskManager 进程的主机上才能顺利导入。
--  TaskManager 是 yarn (client and cluster) 模式时，由于不知道运行容器是哪台主机，不可使用文件路径作为源数据地址。
+- TaskManager 是 yarn (client and cluster) 模式时，由于不知道运行容器是哪台主机，不可使用文件路径作为源数据地址。
 
 ### DELETE
 
@@ -111,7 +113,9 @@ select * from t1 where c2=2;
 0 rows in set
 ```
 
-表 `t1` 有多个索引（DEPLOY 也可能自动创建出多索引），`delete from t1 where c2=2` 实际只删除了第二个 index 的数据，第一个 index 数据没有被影响。所以 `select * from t1` 使用第一个索引，结果会有两条数据，并没有删除，`select * from t1 where c2=2` 使用第二个索引，结果为空，数据已被删除。
+说明：
+
+    表 `t1` 有多个索引（`DEPLOY` 也可能自动创建出多索引），`delete from t1 where c2=2` 实际只删除了第二个 index 的数据，第一个 index 数据没有被影响。所以 `select * from t1` 使用第一个索引，结果会有两条数据，并没有删除，`select * from t1 where c2=2` 使用第二个索引，结果为空，数据已被删除。
 
 ## DQL 边界
 
@@ -128,7 +132,7 @@ OpenMLDB CLI 中在线模式下执行 SQL，均为在线预览模式。在线预
 
 在线预览模式主要目的为预览查询结果。如果希望能运行复杂 SQL，请使用离线模式。如果希望查询完整的在线数据，建议使用数据导出工具查看（比如 `SELECT INTO` 命令 ）。如果在线表数据量过大，还可能触发数据截断，`SELECT * FROM table` 命令很可能会导致部分结果不被返回。
 
-在线数据通常是分布式存储的，`SELECT * FROM table`从各个 Tablet Server 中获取结果，但并不会做全局排序，且 Server 顺序有一定的随机性。所以每次执行 `SELECT * FROM table` 的结果不能保证数据顺序一致。
+在线数据通常是分布式存储的，`SELECT * FROM table` 从各个 Tablet Server 中获取结果，但并不会做全局排序，且 Server 顺序有一定的随机性。所以每次执行 `SELECT * FROM table` 的结果不能保证数据顺序一致。
 
 ### 离线模式与在线请求模式
 
