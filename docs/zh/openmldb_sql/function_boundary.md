@@ -10,8 +10,9 @@
 
 通过配置 TaskManager 可以决定离线存储地址 `offline.data.prefix`、离线  job 计算所需 Spark 模式 `spark.master` 等。
 
-- `offline.data.prefix`：可配置为文件路径或 HDFS 路径。生产环境建议配置 HDFS 路径，测试环境（特指 onebox 型，例如在 Docker 容器内启动）可以配置本地文件路径。文件路径作为离线存储，将无法支持多 TaskManager 分布式部署（TaskManager 之间不会传输数据）。如果想在多台主机上部署 TaskManager，请使用 HDFS 等多机可同时访问到的存储介质。如果想测试多 TaskManager 工作协同，可以在一台主机上部署多个 TaskManager，此时可以使用文件路径作为离线存储。
-- `spark.master=local[]`：Spark 默认配置为 `local[]` 模式（自动绑定 CPU 核数，如果发现离线任务比较慢，建议使用 yarn 模式，改变配置后重启 TaskManager 生效。更多配置可参考[master-urls](https://spark.apache.org/docs/3.1.2/submitting-applications.htmlmaster-urls)
+`offline.data.prefix`：可配置为文件路径或 HDFS 路径。生产环境建议配置 HDFS 路径，测试环境（特指 onebox 型，例如在 Docker 容器内启动）可以配置本地文件路径。文件路径作为离线存储，将无法支持多 TaskManager 分布式部署（TaskManager 之间不会传输数据）。如果想在多台主机上部署 TaskManager，请使用 HDFS 等多机可同时访问到的存储介质。如果想测试多 TaskManager 工作协同，可以在一台主机上部署多个 TaskManager，此时可以使用文件路径作为离线存储。
+
+`spark.master=local[]`：Spark 默认配置为 `local[]` 模式（自动绑定 CPU 核数，如果发现离线任务比较慢，建议使用 yarn 模式，改变配置后重启 TaskManager 生效。更多配置可参考[master-urls](https://spark.apache.org/docs/3.1.2/submitting-applications.htmlmaster-urls)
 
 ### spark.default.conf
 
@@ -115,7 +116,7 @@ select * from t1 where c2=2;
 
 说明：
 
-    表 `t1` 有多个索引（`DEPLOY` 也可能自动创建出多索引），`delete from t1 where c2=2` 实际只删除了第二个 index 的数据，第一个 index 数据没有被影响。所以 `select * from t1` 使用第一个索引，结果会有两条数据，并没有删除，`select * from t1 where c2=2` 使用第二个索引，结果为空，数据已被删除。
+表 `t1` 有多个索引（`DEPLOY` 也可能自动创建出多索引），`delete from t1 where c2=2` 实际只删除了第二个 index 的数据，第一个 index 数据没有被影响。所以 `select * from t1` 使用第一个索引，结果会有两条数据，并没有删除，`select * from t1 where c2=2` 使用第二个索引，结果为空，数据已被删除。
 
 ## DQL 边界
 
