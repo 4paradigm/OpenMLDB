@@ -115,6 +115,14 @@ class OpenmldbSession {
     }
   }
 
+  def isYarnMode(): Boolean = {
+    getSparkSession.conf.get("spark.master").equalsIgnoreCase("yarn")
+  }
+
+  def isClusterMode(): Boolean = {
+    getSparkSession.conf.get("spark.submit.deployMode", "client").equalsIgnoreCase("cluster")
+  }
+
   def setDefaultSparkConfig(): Unit = {
     val sparkConf = this.sparkSession.conf
     // Set timezone
