@@ -5,6 +5,7 @@ OpenMLDB SQL
 
 .. toctree::
     :maxdepth: 1
+    
     function_boundary
     language_structure/index 
     data_types/index
