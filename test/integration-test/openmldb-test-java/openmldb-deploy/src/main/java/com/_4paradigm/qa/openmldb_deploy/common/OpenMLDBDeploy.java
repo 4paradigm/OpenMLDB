@@ -234,7 +234,7 @@ public class OpenMLDBDeploy {
             String ns_name = "/openmldb-ns-"+index;
             List<String> commands = Lists.newArrayList(
                     "cp -r " + testPath + "/" + openMLDBDirectoryName + " " + testPath + ns_name,
-                    "cp " + testPath + + ns_name + "/conf/nameserver.flags.template " + testPath + ns_name + "/conf/nameserver.flags",
+                    "cp " + testPath + ns_name + "/conf/nameserver.flags.template " + testPath + ns_name + "/conf/nameserver.flags",
                     "sed -i "+sedSeparator+" 's#--zk_cluster=.*#--zk_cluster=" + zk_endpoint + "#' " + testPath + ns_name + "/conf/nameserver.flags",
                     "sed -i "+sedSeparator+" 's@--zk_root_path=.*@--zk_root_path=/openmldb@' "+testPath+ns_name+"/conf/nameserver.flags",
                     "sed -i "+sedSeparator+" 's@#--zk_cluster=.*@--zk_cluster=" + zk_endpoint + "@' " + testPath + ns_name + "/conf/nameserver.flags",
