@@ -1329,7 +1329,18 @@ Status BatchModeTransformer::CreatePhysicalProjectNode(
                 project_list->GetW()->instance_not_in_window(), append_input,
                 project_list->GetW()->exclude_current_time()));
 
+
             if (project_list->GetW()->exclude_current_row()) {
+                // exclude current row handled in WindowAggNode
+                // there is no need to handle in codegen through FrameNode
+                for (decltype(column_projects.size()) i = 0; i < column_projects.size(); ++i) {
+                    auto* frame = column_projects.GetFrame(i);
+                    if (frame != nullptr) {
+                        frame->exclude_current_row_ = false;
+                    }
+                }
+                window_agg_op->window().range().frame()->exclude_current_row_ = false;
+
                 // there is only special handling for ROWS_RANGE Current History Window
                 // - for pure history windows, exclude current_row do not matter since current row already excluded by
                 //   end frame bound

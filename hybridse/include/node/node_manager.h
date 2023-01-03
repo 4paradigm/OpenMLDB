@@ -120,8 +120,7 @@ class NodeManager {
     SqlNode *MakeWindowDefNode(ExprListNode *partitions, ExprNode *orders,
                                SqlNode *frame, bool exclude_current_time);
     SqlNode *MakeWindowDefNode(SqlNodeList *union_tables, ExprListNode *partitions, ExprNode *orders, SqlNode *frame,
-                               bool exclude_current_time, bool exclude_current_row,
-                               bool instance_not_in_window);
+                               bool exclude_current_time, bool instance_not_in_window);
     WindowDefNode *MergeWindow(const WindowDefNode *w1,
                                const WindowDefNode *w2);
     OrderExpression* MakeOrderExpression(const ExprNode* expr, const bool is_asc);

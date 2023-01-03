@@ -378,7 +378,6 @@ base::Status Planner::FillInWindowPlanNode(const node::WindowDefNode *w_ptr, nod
         }
         w_node_ptr->set_instance_not_in_window(w_ptr->instance_not_in_window());
         w_node_ptr->set_exclude_current_time(w_ptr->exclude_current_time());
-        w_node_ptr->set_exclude_current_row(w_ptr->exclude_current_row());
     }
     return base::Status::OK();
 }
@@ -1053,7 +1052,7 @@ bool Planner::ExpandCurrentHistoryWindow(std::vector<const node::WindowDefNode *
             node::FrameNode *current_frame = node_manager_->MergeFrameNodeWithCurrentHistoryFrame(w_ptr->GetFrame());
             *iter = dynamic_cast<node::WindowDefNode *>(node_manager_->MakeWindowDefNode(
                 w_ptr->union_tables(), w_ptr->GetPartitions(), w_ptr->GetOrders(), current_frame,
-                w_ptr->exclude_current_time(), w_ptr->exclude_current_row(), w_ptr->instance_not_in_window()));
+                w_ptr->exclude_current_time(), w_ptr->instance_not_in_window()));
             has_window_expand = true;
         }
     }
@@ -1190,10 +1189,10 @@ absl::StatusOr<node::WindowDefNode *> Planner::ConstructWindowForLag(const node:
     new_frame->SetFrameRows(rows_frame_ext);
     new_frame->SetFrameRange(nullptr);
     new_frame->set_frame_maxsize(0);
+    // EXCLUDE CURRENT_ROW does not apply to lag
+    new_frame->exclude_current_row_ = false;
 
     auto *new_win = in->ShadowCopy(node_manager_);
-    // EXCLUDE CURRENT_ROW does not apply to lag
-    new_win->set_exclude_current_row(false);
     new_win->SetFrame(new_frame);
     return new_win;
 }

@@ -1262,8 +1262,7 @@ class FrameNode : public SqlNode {
 
     FrameNode* ShadowCopy(node::NodeManager* nm) const override;
 
-    // HACK: kind mess but we only turn this flag to turn for specific condition
-    // in physical plan transformation. In case this flag affect other cases
+    // only setted to true for frame_type_ = kFrameRange
     mutable bool exclude_current_row_ = false;
 
  private:
@@ -1272,6 +1271,7 @@ class FrameNode : public SqlNode {
     FrameExtent *frame_rows_;
     int64_t frame_maxsize_;
 };
+
 class WindowDefNode : public SqlNode {
  public:
     WindowDefNode()
@@ -1304,9 +1304,9 @@ class WindowDefNode : public SqlNode {
     const bool instance_not_in_window() const { return instance_not_in_window_; }
     void set_instance_not_in_window(bool instance_not_in_window) { instance_not_in_window_ = instance_not_in_window; }
     const bool exclude_current_time() const { return exclude_current_time_; }
+
     void set_exclude_current_time(bool exclude_current_time) { exclude_current_time_ = exclude_current_time; }
-    bool exclude_current_row() const { return exclude_current_row_; }
-    void set_exclude_current_row(bool flag) { exclude_current_row_ = flag; }
+    bool exclude_current_row() const { return frame_ptr_ ? frame_ptr_->exclude_current_row_ : false; }
 
     void Print(std::ostream &output, const std::string &org_tab) const;
     bool Equals(const SqlNode *that) const override;
@@ -1323,7 +1323,6 @@ class WindowDefNode : public SqlNode {
     OrderByNode *orders_;       /* ORDER BY (list of SortBy) */
 
     bool exclude_current_time_ = false;
-    bool exclude_current_row_ = false;
     bool instance_not_in_window_ = false;
 };
 
