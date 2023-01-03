@@ -942,8 +942,29 @@ bool SqlCase::CreateTableInfoFromYamlNode(const YAML::Node& schema_data,
     }
 
     if (schema_data["data"]) {
-        table->data_ = schema_data["data"].as<std::string>();
-        boost::trim(table->data_);
+        if (schema_data["data"].IsMap()) {
+            // csv format only
+            table->csv_data_file_ = absl::StripAsciiWhitespace(schema_data["data"]["file"].as<std::string>());
+            std::fstream f(table->csv_data_file_, std::ios::in);
+            if (f.is_open()) {
+                absl::Cleanup clean = [&f]() {
+                    f.close();
+                };
+                std::stringstream ss;
+                ss << f.rdbuf();
+                table->data_ = ss.str();
+                boost::trim(table->data_);
+            } else {
+                LOG(ERROR) << "file " << table->csv_data_file_ << " not open";
+                return false;
+            }
+        } else if (schema_data["data"].IsScalar()) {
+            table->data_ = schema_data["data"].as<std::string>();
+            boost::trim(table->data_);
+        } else {
+            LOG(ERROR) << "cases[*].inputs[*].data is not a acceptable type: " << schema_data["data"];
+            return false;
+        }
     }
 
     if (schema_data["repeat"]) {

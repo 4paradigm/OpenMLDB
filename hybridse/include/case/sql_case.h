@@ -39,6 +39,9 @@ class SqlCase {
         std::string index_;
         std::string data_;
         std::string order_;
+        // resource file name of the table data.
+        // absolute path or relative to current yaml file
+        std::string csv_data_file_;
         std::vector<std::string> indexs_;
         std::vector<std::string> columns_;
         std::vector<std::vector<std::string>> rows_;
