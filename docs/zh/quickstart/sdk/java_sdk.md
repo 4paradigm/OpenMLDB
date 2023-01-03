@@ -1,6 +1,5 @@
 # Java SDK
 
-
 ## Java SDK 包安装
 
 - Linux 下 Java SDK 包安装
@@ -47,7 +46,7 @@ Java SDK 连接 OpenMLDB 服务，可以使用 JDBC 的方式（推荐），也�
 
 JDBC 的连接方式如下：
 
-```Java
+```java
 Class.forName("com._4paradigm.openmldb.jdbc.SQLDriver");
 // No database in jdbcUrl
 Connection connection = DriverManager.getConnection("jdbc:openmldb:///?zk=localhost:6181&zkPath=/openmldb");
@@ -66,7 +65,7 @@ JDBC Connection 的默认执行模式为`online`。
 
 通过 `Statement` 的方式可以执行所有的 SQL 命令，离线在线模式下都可以。切换离线/在线模式，需执行 `SET @@execute_mode='...';`。例如：
 
-```Java
+```java
 Statement stmt = connection.createStatement();
 stmt.execute("SET @@execute_mode='offline"); // 切换为离线模式
 stmt.execute("SELECT * from t1"); // 离线 select
@@ -91,7 +90,7 @@ SET @@job_timeout=60000; --单位为毫秒，如果数据较多容易超时（�
 
 `PreparedStatement` 可支持 `SELECT`、`INSERT` 和 `DELETE`，`INSERT` 仅支持插入到在线。
 
-```Java
+```java
 PreparedStatement selectStatement = connection.prepareStatement("SELECT * FROM t1 WHERE id=?");
 PreparedStatement insertStatement = connection.prepareStatement("INSERT INTO t1 VALUES (?,?)");
 PreparedStatement insertStatement = connection.prepareStatement("DELETE FROM t1 WHERE id=?");
@@ -113,7 +112,7 @@ option.setRequestTimeout(60000);
 
 然后使用 SdkOption 创建 Executor。
 
-```Java
+```java
 sqlExecutor = new SqlClusterExecutor(option);
 ```
 
@@ -127,7 +126,7 @@ SqlClusterExecutor 的默认执行模式为 `offline`，与 JDBC 默认模式不
 
 `SqlClusterExecutor` 可以获得 `Statement`，类似 JDBC 方式，可以使用 `Statement::execute`。
 
-```Java
+```java
 java.sql.Statement state = sqlExecutor.getStatement();
 try {
     state.execute("create database db_test");
@@ -140,7 +139,7 @@ try {
 
 注意 `SqlClusterExecutor` 没有默认数据库的概念，所以需要进行一次 `USE <db>` 才可以继续建表。
 
-```Java
+```java
 java.sql.Statement state = sqlExecutor.getStatement();
 try {
     state.execute("use db_test");
@@ -164,7 +163,7 @@ try {
 
 使用 `Statement::execute` 接口执行 SQL 批式查询语句：
 
-```Java
+```java
 java.sql.Statement state = sqlExecutor.getStatement();
 try {
     state.execute("use db_test");
@@ -181,7 +180,7 @@ try {
 
 访问查询结果:
 
-```Java
+```java
 // 访问结果集ResultSet，并输出前三列数据
 try {
     while (result.next()) {
@@ -213,7 +212,7 @@ try {
 1. 使用 `SqlClusterExecutor::getInsertPreparedStmt(db, insertSql)` 接口获取InsertPrepareStatement。
 2. 使用 `PreparedStatement::execute()` 接口执行 insert 语句。
 
-```Java
+```java
 String insertSql = "insert into trans values(\"aa\",23,33,1.4,2.4,1590738993000,\"2020-05-04\");";
 java.sql.PreparedStatement pstmt = null;
 try {
@@ -240,7 +239,7 @@ try {
 2. 调用 `PreparedStatement::setType(index, value)` 接口，填充数据到 InsertPrepareStatement中。注意 index 从 1 开始。
 3. 使用 `PreparedStatement::execute()` 接口执行 insert 语句。
 
-```Java
+```java
 String insertSqlWithPlaceHolder = "insert into trans values(\"aa\", ?, 33, ?, 2.4, 1590738993000, \"2020-05-04\");";
 java.sql.PreparedStatement pstmt = null;
 try {
@@ -275,7 +274,7 @@ execute 后，缓存的数据将被清除，无法重试 execute。
 4. 继续使用 `setType(index, value)` 和 `addBatch()`，填充多行。
 5. 使用 `PreparedStatement::executeBatch()` 接口完成批量插入。
 
-```Java
+```java
 String insertSqlWithPlaceHolder = "insert into trans values(\"aa\", ?, 33, ?, 2.4, 1590738993000, \"2020-05-04\");";
 java.sql.PreparedStatement pstmt = null;
 try {
@@ -320,7 +319,7 @@ executeBatch 后，缓存的所有数据将被清除，无法重试 executeBatch
 2. 调用 `PreparedStatement::setType(index, value)` 接口设置请求数据。请根据数据表中每一列对应的数据类型调用 setType 接口以及配置合法的值。
 3. 调用 `Statement::executeQuery()` 接口执行请求式查询语句。
 
-```Java
+```java
 String selectSql = "SELECT c1, c3, sum(c4) OVER w1 as w1_c4_sum FROM trans WINDOW w1 AS " +
                 "(PARTITION BY trans.c1 ORDER BY trans.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);";
 PreparedStatement pstmt = null;
@@ -387,7 +386,7 @@ try {
 
 注意，这样仅能删除一个索引下的数据，不是对所有索引都生效。详情参考 [DELETE 功能边界](../function_boundary.md#delete)。
 
-```Java
+```java
 java.sql.Statement state = router.getStatement();
 try {
     String sql = "DELETE FROM t1 WHERE col2 = 'key1';";
@@ -446,3 +445,16 @@ Java 客户端支持对 SQL 进行正确性校验，验证是否可执行。分�
 - `validateSQLInRequest` 可以验证 SQL 是否能被部署上线。
 
 两个接口都需要传入 SQL 所需要的所有表 schema。目前只支持单 db，请不要在 SQL 语句中使用 `db.table` 格式。
+
+例如：验证 SQL `select count(c1) over w1 from t3 window w1 as(partition by c1 order by c2 rows between unbounded preceding and current row);`，那么除了这个语句，还需要将表 `t3` 的 schema 作为第二参数 schemaMaps 传入。格式为 Map，key 为 db 名，value 为每个 db 的所有 table schema(Map)。实际只支持单 db，所以这里通常只有 1 个 db，如下所示的 db3。db 下的 table schema map key 为 table name，value 为 com.\_4paradigm.openmldb.sdk.Schema，由每列的 name 和 type 构成。
+
+```java
+Map<String, Map<String, Schema>> schemaMaps = new HashMap<>();
+Map<String, Schema> dbSchema = new HashMap<>();
+dbSchema = new HashMap<>();
+dbSchema.put("t3", new Schema(Arrays.asList(new Column("c1", Types.VARCHAR), new Column("c2", Types.BIGINT))));
+schemaMaps.put("db3", dbSchema);
+List<String> ret = SqlClusterExecutor.validateSQLInRequest("select count(c1) over w1 from t3 window "+
+        "w1 as(partition by c1 order by c2 rows between unbounded preceding and current row);", schemaMaps);
+Assert.assertEquals(ret.size(), 0);
+```
