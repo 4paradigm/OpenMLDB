@@ -1012,6 +1012,7 @@ bool DiskTableRowIterator::Valid() const {
 }
 
 void DiskTableRowIterator::Next() {
+    ResetValue();
     for (it_->Next(); it_->Valid(); it_->Next()) {
         uint32_t cur_ts_idx = UINT32_MAX;
         ParseKeyAndTs(has_ts_idx_, it_->key(), pk_, ts_, cur_ts_idx);
@@ -1034,12 +1035,19 @@ void DiskTableRowIterator::Next() {
 inline const uint64_t& DiskTableRowIterator::GetKey() const { return ts_; }
 
 const ::hybridse::codec::Row& DiskTableRowIterator::GetValue() {
-    rocksdb::Slice value = it_->value();
-    row_.Reset(reinterpret_cast<const int8_t*>(value.data()), value.size());
+    if (ValidValue()) {
+        return row_;
+    }
+    valid_value_ = true;
+    size_t size = it_->value().size();
+    int8_t* copyed_row_data = new int8_t[size];
+    memcpy(copyed_row_data, it_->value().data(), size);
+    row_.Reset(::hybridse::base::RefCountedSlice::CreateManaged(copyed_row_data, size));
     return row_;
 }
 
 void DiskTableRowIterator::Seek(const uint64_t& key) {
+    ResetValue();
     if (expire_value_.ttl_type == TTLType::kAbsoluteTime) {
         std::string combine;
         uint64_t tmp_ts = key;
@@ -1074,6 +1082,7 @@ void DiskTableRowIterator::Seek(const uint64_t& key) {
 }
 
 void DiskTableRowIterator::SeekToFirst() {
+    ResetValue();
     record_idx_ = 1;
     std::string combine;
     uint64_t tmp_ts = UINT64_MAX;
