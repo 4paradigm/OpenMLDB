@@ -115,6 +115,14 @@ class OpenmldbSession {
     }
   }
 
+  def isYarnMode(): Boolean = {
+    getSparkSession.conf.get("spark.master").equalsIgnoreCase("yarn")
+  }
+
+  def isClusterMode(): Boolean = {
+    getSparkSession.conf.get("spark.submit.deployMode", "client").equalsIgnoreCase("cluster")
+  }
+
   def setDefaultSparkConfig(): Unit = {
     val sparkConf = this.sparkSession.conf
     // Set timezone
@@ -288,7 +296,7 @@ class OpenmldbSession {
                   !colDesc.getNotNull)
               }).toArray)
 
-              logger.info(s"Register empty dataframe fof $dbName.$tableName with schema $schema")
+              logger.info(s"Register empty dataframe of $dbName.$tableName with schema $schema")
               // Create empty df with schema
               val emptyDf = sparkSession.createDataFrame(sparkSession.emptyDataFrame.rdd, schema)
 

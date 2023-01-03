@@ -4182,7 +4182,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::GetJobResultSet(int 
     std::string db = openmldb::nameserver::INTERNAL_DB;
     std::string sql = "SELECT * FROM JOB_INFO WHERE id = " + std::to_string(job_id);
 
-    auto rs = ExecuteSQLParameterized(db, sql, std::shared_ptr<openmldb::sdk::SQLRequestRow>(), &status);
+    auto rs = ExecuteSQLParameterized(db, sql, {}, &status);
     if (!status.IsOK()) {
         return {};
     }

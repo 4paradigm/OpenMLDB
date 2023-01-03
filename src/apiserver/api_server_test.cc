@@ -91,7 +91,7 @@ class APIServerTestEnv : public testing::Environment {
     void TearDown() override {
         std::cout << "Environment TearDown!" << std::endl;
         hybridse::sdk::Status status;
-        cluster_remote->DropDB(db, &status);
+        cluster_remote->ExecuteSQL("drop database " + db, &status);
         server.Stop(0);
         server.Join();
         mc->Close();
@@ -382,6 +382,23 @@ TEST_F(APIServerTest, validPut) {
     ASSERT_TRUE(env->cluster_remote->ExecuteDDL(env->db, ddl, &status)) << status.msg;
     ASSERT_TRUE(env->cluster_sdk->Refresh());
 
+    // invalid date 2021-0 4-27
+    {
+        brpc::Controller cntl;
+        cntl.http_request().set_method(brpc::HTTP_METHOD_PUT);
+        cntl.http_request().uri() = "http://127.0.0.1:8010/dbs/" + env->db + "/tables/" + table;
+        cntl.request_attachment().append(
+            "{\"value\": [[\"foo\", 111, 1.4,  \"2021-0 4-27\", 1620471840256, true, \"more str\", null]]}");
+        env->http_channel.CallMethod(NULL, &cntl, NULL, NULL, NULL);
+        ASSERT_FALSE(cntl.Failed()) << cntl.ErrorText();
+        GeneralResp resp;
+        JsonReader reader(cntl.response_attachment().to_string().c_str());
+        reader >> resp;
+        ASSERT_EQ(-1, resp.code) << resp.msg;
+        ASSERT_STREQ("convertion failed for col field4", resp.msg.c_str());
+    }
+
+    // valid data
     int insert_cnt = 10;
     for (int i = 0; i < insert_cnt; i++) {
         std::string key = "k" + std::to_string(i);
@@ -633,6 +650,29 @@ TEST_F(APIServerTest, procedure) {
         ASSERT_TRUE(document["data"].FindMember("schema") == document["data"].MemberEnd());
         ASSERT_EQ(2, document["data"]["data"].Size());
         ASSERT_EQ(2, document["data"]["common_cols_data"].Size());
+    }
+
+    // invalid date
+    {
+        brpc::Controller cntl;
+        cntl.http_request().set_method(brpc::HTTP_METHOD_POST);
+        cntl.http_request().uri() = "http://127.0.0.1:8010/dbs/" + env->db + "/procedures/" + sp_name;
+        cntl.request_attachment().append(R"({
+        "common_cols":["bb", 23, 1590738994000],
+        "input": [[123, 5.1, 6.1, "20 21-08-01"],[234, 5.2, 6.2, "2021-08-0 2"]],
+    })");
+        env->http_channel.CallMethod(NULL, &cntl, NULL, NULL, NULL);
+        ASSERT_FALSE(cntl.Failed()) << cntl.ErrorText();
+
+        LOG(INFO) << "exec procedure resp:\n" << cntl.response_attachment().to_string();
+
+        // check resp data
+        if (document.Parse(cntl.response_attachment().to_string().c_str()).HasParseError()) {
+            ASSERT_TRUE(false) << "response parse failed with code " << document.GetParseError()
+                               << ", raw resp: " << cntl.response_attachment().to_string();
+        }
+        ASSERT_EQ(-1, document["code"].GetInt());
+        ASSERT_STREQ("Request body json parse failed", document["msg"].GetString());
     }
 
     // drop procedure and table

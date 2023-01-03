@@ -17,6 +17,8 @@
 --openmldb_log_dir=./logs
 --log_level=info
 
+#--max_memory_mb=0
+
 # binlog conf
 #--binlog_coffee_time=1000
 #--binlog_match_logoffset_interval=1000
@@ -34,6 +36,18 @@
 # 多个磁盘使用英文符号, 隔开
 --db_root_path=./db
 --recycle_bin_root_path=./recycle
+
+# HDD表数据文件路径
+# 配置数据目录，多个磁盘使用英文符号, 隔开
+--hdd_root_path=./db_hdd
+# 配置数据回收站目录，drop表的数据就会放在这里
+--recycle_bin_hdd_root_path=./recycle_hdd
+#
+# SSD表数据文件路径（可选，默认为空）
+# 配置数据目录，多个磁盘使用英文符号, 隔开
+#--ssd_root_path=./db_ssd
+# 配置数据回收站目录，drop表的数据就会放在这里
+#--recycle_bin_ssd_root_path=./recycle_ssd
 
 # snapshot conf
 # 每天23点做snapshot

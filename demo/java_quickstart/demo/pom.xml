@@ -22,14 +22,14 @@
     <dependency>
       <groupId>junit</groupId>
       <artifactId>junit</artifactId>
-      <version>4.11</version>
+      <version>4.13.1</version>
       <scope>test</scope>
     </dependency>
 
     <dependency>
       <groupId>com.4paradigm.openmldb</groupId>
       <artifactId>openmldb-jdbc</artifactId>
-      <version>0.6.9</version>
+      <version>0.7.0</version>
     </dependency>
     <dependency>
       <groupId>org.testng</groupId>

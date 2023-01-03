@@ -43,5 +43,5 @@ airflow connections list --conn-id openmldb_conn_id
 ```
 Dag test:
 ```
- airflow dags test example_openmldb_complex 2022-08-25
+airflow dags test example_openmldb_complex 2022-08-25
 ```

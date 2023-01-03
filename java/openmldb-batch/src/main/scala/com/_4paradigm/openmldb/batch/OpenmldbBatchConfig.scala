@@ -160,8 +160,11 @@ class OpenmldbBatchConfig extends Serializable {
 
   @ConfigOption(name = "openmldb.offline.data.prefix", doc = "The prefix of offline data")
   var offlineDataPrefix = "file:///tmp/openmldb_offline/"
-}
 
+  @ConfigOption(name = "openmldb.taskmanager.external.function.dir", doc = "The absolute path of TaskManager external" +
+    " function dir")
+  var taskmanagerExternalFunctionDir = "/tmp/udf/"
+}
 
 object OpenmldbBatchConfig {
 
