@@ -1040,7 +1040,7 @@ const ::hybridse::codec::Row& DiskTableRowIterator::GetValue() {
     }
     valid_value_ = true;
     size_t size = it_->value().size();
-    int8_t* copyed_row_data = new int8_t[size];
+    int8_t* copyed_row_data = reinterpret_cast<int8_t*>(malloc(size));
     memcpy(copyed_row_data, it_->value().data(), size);
     row_.Reset(::hybridse::base::RefCountedSlice::CreateManaged(copyed_row_data, size));
     return row_;
