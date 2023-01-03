@@ -13,12 +13,12 @@ StatusCode 定义在[fe_common.proto](https://github.com/4paradigm/OpenMLDB/blob
 
 常见错误的打印内容列表如下：
 
-| 错误码       | 数值 | 说明                                                                                                                                                                            | 日志 |
-| ------------ | ---- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---- |
-| kRpcError    | 1500 | 与kServerError不同，强调RPC错误，出现在客户端直连Tablet服务端执行Query/CallProcedure等RPC的时候。可能是RPC本身出错（与ReturnCode::kRPCError类似），也可能是RPC Response返回错误 |      |
-| kConnError   | 1501 | 与ReturnCode::kServerConnError等价，只是直接返回`hybridse::sdk::Status`和接收`openmldb::base::Status`再返回的区别                                                               |      |
-| kCmdError    | 2000 | CMD SQL执行错误，通常是客户端解析或执行DELETE时出错                                                                                                                             |      |
-| kServerError | 2001 | 请查[ReturnCode 错误码](#returncode-错误码)。（其中也可能包含较底层的RPC错误）                                                                                                  |      |
+| 错误码       | 数值 | 说明                                                                                                                                                                            |
+| ------------ | ---- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| kRpcError    | 1500 | 与kServerError不同，强调RPC错误，出现在客户端直连Tablet服务端执行Query/CallProcedure等RPC的时候。可能是RPC本身出错（与ReturnCode::kRPCError类似），也可能是RPC Response返回错误 |
+| kConnError   | 1501 | 与ReturnCode::kServerConnError等价，只是直接返回`hybridse::sdk::Status`和接收`openmldb::base::Status`再返回的区别                                                               |
+| kCmdError    | 2000 | CMD SQL执行错误，通常是客户端解析或执行DELETE时出错                                                                                                                             |
+| kServerError | 2001 | 请查[ReturnCode 错误码](#returncode-错误码)。（其中也可能包含较底层的RPC错误）                                                                                                  |
 
 ## ReturnCode 错误码
 
