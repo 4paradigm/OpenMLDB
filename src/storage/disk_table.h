@@ -290,7 +290,7 @@ class DiskTableRowIterator : public ::hybridse::vm::RowIterator {
     void SeekToFirst() override;
     inline bool IsSeekable() const override;
 
-   private:
+ private:
     inline void ResetValue() {
         valid_value_ = false;
     }
