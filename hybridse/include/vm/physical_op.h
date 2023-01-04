@@ -320,9 +320,7 @@ class ColumnProjects : public FnComponent {
         return idx < size() ? names_[idx] : "";
     }
 
-    auto& GetFrames() const {
-        return frames_;
-    }
+    const std::vector<const node::FrameNode *> &GetFrames() const { return frames_; }
 
     const node::FrameNode *GetFrame(size_t idx) const {
         return idx < size() ? frames_[idx] : nullptr;
