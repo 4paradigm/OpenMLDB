@@ -9,7 +9,7 @@
 ![image-20220310170024349](images/mode-flow.png)
 
 1. 离线数据导入：导入离线数据用于离线特征工程开发和调试。
-2. 离线开发：开发特征工程脚本，调试到效果满意为止。注意在这个步骤里会牵涉到机器学习模型的联合调试（比如 XGBoost、LightGBM 等），本篇文章内容主要集中于与 OpenMLDB 相关的特征工程开发。
+2. 离线特征开发：开发特征工程脚本，调试到效果满意为止。注意在这个步骤里会牵涉到机器学习模型的联合调试（比如 XGBoost、LightGBM 等），本篇文章内容主要集中于与 OpenMLDB 相关的特征工程开发。
 3. 特征方案部署：得到满意的特征脚本以后，部署上线。
 4. 冷启动在线数据导入：在正式上线之前需要导入在线存储引擎的必需的窗口内数据。比如特征方案是对于过去三个月内的数据做特征聚合计算，那么冷启动就需要导入之前三个月的数据。
 5. 实时数据接入：系统上线以后，随着时间推移，需要汇入最新数据来维持窗口计算逻辑，因此需要进行实时数据接入。
@@ -20,8 +20,7 @@
 
 由于离线和线上场景的操作数据对象不同，其底层的存储和计算节点亦不同。因此，OpenMLDB 内置了几种不同的执行模式来支持完成以上步骤。以下表格总结了各个步骤所使用的执行模式，后面将会详细介绍执行模式的概念。
 
-
-| 步骤                    | 执行模式   | 开发工具                                  | 说明                                                                                                            |
+| 步骤                    | 执行模式  | 开发工具                                  | 说明                                                                                                            |
 | ----------------------- |--------|---------------------------------------|---------------------------------------------------------------------------------------------------------------|
 | 1. 离线数据导入         | 离线模式   | CLI                                   | - `LOAD DATA` 命令<br />                                                                                   |
 | 2. 离线特征开发         | 离线模式   | CLI                                   | - 支持 OpenMLDB 所有的 SQL 语法<br />- 部分 SQL（如 `SELECT`）异步运行                                                 |
@@ -64,7 +63,7 @@ OpenMLDB CLI 启动以后的默认模式为离线模式。离线数据导入、�
 - 为了防止影响线上服务，在线预览模式控制了最大访问的条数和pk个数，可以通过`--max_traverse_cnt` 和 `--max_traverse_pk_cnt` 来设置；
 同时，通过 `--scan_max_bytes_size` 来限制结果的大小。详细配置可参考[配置文件](../deploy/conf.md)。
 
-在线模式可以提供以下方式进行设置：
+在线预览模式可以提供以下方式进行设置：
 
 - CLI： `SET @@execute_mode='online'`
 - REST APIs、Java/Python SDK：默认只支持在线模式下执行，无需进行设置。
@@ -83,9 +82,10 @@ OpenMLDB CLI 启动以后的默认模式为离线模式。离线数据导入、�
 
 ![modes-request](images/modes-request.png)
 
-在线请求模式通过以下形式支持：
+在线请求模式通过以下方式支持：
 
 - CLI：不支持
-- REST APIs：支持单行或者多行 request rows 的请求，详见：[REST APIs](../quickstart/rest_api.md)
-- Java SDK：支持单行或者多行 request rows 的请求，详见：[Java SDK 快速上手](../quickstart/java_sdk.md)
-- Python SDK：仅支持单行的 request row 请求，详见：[Python SDK 快速上手](../quickstart/python_sdk.md)
+- [REST API](../quickstart/sdk/rest_api.md)：支持单行或者多行 request rows 的请求
+- [Java SDK](../quickstart/sdk/java_sdk.md)：支持单行或者多行 request rows 的请求
+- [Python SDK](../quickstart/sdk/python_sdk.md)
+：仅支持单行的 request row 请求
