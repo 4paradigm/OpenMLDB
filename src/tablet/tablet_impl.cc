@@ -35,6 +35,7 @@
 #include "absl/cleanup/cleanup.h"
 #include "boost/bind.hpp"
 #include "boost/container/deque.hpp"
+#include "config.h" // NOLINT
 #ifdef TCMALLOC_ENABLE
 #include "gperftools/malloc_extension.h"
 #endif
