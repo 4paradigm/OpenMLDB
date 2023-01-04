@@ -1,4 +1,4 @@
-#  OpenMLDB + OneFlow: 高潜用户购买意向预测
+#  OpenMLDB + OneFlow：高潜用户购买意向预测
 
 本文我们将以[京东高潜用户购买意向预测问题](https://jdata.jd.com/html/detail.html?id=1)为例，示范如何使用[OpenMLDB](https://github.com/4paradigm/OpenMLDB)和 [OneFlow](https://github.com/Oneflow-Inc/oneflow) 联合来打造一个完整的机器学习应用。
 
@@ -56,7 +56,7 @@ Oneflow-serving：https://github.com/Oneflow-Inc/serving/tree/ce5d667468b6b3ba66
 为了快速运行OpenMLDB集群，我们推荐使用镜像启动的方式。由于OpenMLDB集群需要和其他组件网络通信，我们直接使用host网络。并且，我们将在容器中使用已下载的脚本，所以请将数据脚本所在目录`demodir`映射为容器中的目录：
 
 ```bash
-docker run -dit --name=openmldb --network=host -v $demodir:/work/oneflow_demo 4pdosc/openmldb:0.6.9 bash
+docker run -dit --name=openmldb --network=host -v $demodir:/work/oneflow_demo 4pdosc/openmldb:0.7.0 bash
 docker exec -it openmldb bash
 ```
 
@@ -84,7 +84,7 @@ docker exec -it openmldb bash
 ```{important}
 在OpenMLDB集群版中，使用离线引擎的操作，默认都是非阻塞任务，包括在本次演示中将会用到的`LOAD  DATA`（离线/在线模式均使用离线引擎），和离线`SELECT  INTO`命令。
 
-任务提交以后，可以使用[`SHOW JOBS`](../reference/sql/task_manage/SHOW_JOBS.md),  [`SHOW JOB <job_id>`](../reference/sql/task_manage/SHOW_JOB.md)来查看任务进度。
+任务提交以后，可以使用[`SHOW JOBS`](../openmldb_sql/task_manage/SHOW_JOBS.md),  [`SHOW JOB <job_id>`](../openmldb_sql/task_manage/SHOW_JOB.md)来查看任务进度。
 ```
 
 ## 2. 机器学习训练流程

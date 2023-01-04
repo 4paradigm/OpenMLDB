@@ -157,13 +157,11 @@ def build_sorted_holes(hole_idxes):
 
 class Cursor(object):
 
-    def __init__(self, db, conn):
+    def __init__(self, conn):
         self.description = None
         self.rowcount = -1
         self.arraysize = 1
         self.connection = conn
-        # self.db > current use db in sdk
-        self.db = db
         self._connected = True
         self._resultSet = None
         self._resultSetMetadata = None
@@ -217,9 +215,9 @@ class Cursor(object):
     def callproc(self, procname, parameters=()):
         if len(parameters) < 1:
             raise DatabaseError("please providate data for proc")
-        ok, rs = self.connection._sdk.doProc(self.db, procname, parameters)
+        ok, rs = self.connection._sdk.doProc(None, procname, parameters)
         if not ok:
-            raise DatabaseError("execute select fail, {}".format(rs))
+            raise DatabaseError("callproc failed, {}".format(rs))
         self._pre_process_result(rs)
         return self
 
@@ -258,9 +256,9 @@ class Cursor(object):
                 if len(parameters) != question_mark_count:
                     raise DatabaseError("parameters is not enough")
                 ok, builder = self.connection._sdk.getInsertBuilder(
-                    self.db, command)
+                    None, command)
                 if not ok:
-                    raise DatabaseError("get insert builder fail")
+                    raise DatabaseError(f"get insert builder fail, error: {builder}")
                 schema = builder.GetSchema()
                 # holeIdxes is in stmt column order
                 hole_idxes = builder.GetHoleIdx()
@@ -270,28 +268,29 @@ class Cursor(object):
                 self.__add_row_to_builder(parameters, sorted_holes, schema,
                                           builder, append_map)
                 ok, error = self.connection._sdk.executeInsert(
-                    self.db, command, builder)
+                    None, command, builder)
             else:
-                ok, error = self.connection._sdk.executeInsert(
-                    self.db, command)
+                ok, error = self.connection._sdk.executeInsert(None, command)
             if not ok:
                 raise DatabaseError(error)
         elif selectRE.match(command):
-            logging.debug("selectRE: %s", str(parameters))
+            if parameters:
+                logging.debug("selectRE: %s", str(parameters))
+                
             if isinstance(parameters, tuple) and len(parameters) > 0:
                 ok, rs = self.connection._sdk.doParameterizedQuery(
-                    self.db, command, parameters)
+                    None, command, parameters)
             elif isinstance(parameters, dict):
                 ok, rs = self.connection._sdk.doRequestQuery(
-                    self.db, command, parameters)
+                    None, command, parameters)
             else:
-                ok, rs = self.connection._sdk.doQuery(self.db, command)
+                ok, rs = self.connection._sdk.doQuery(None, command)
             if not ok:
-                raise DatabaseError("execute select fail, msg: {}".format(rs))
+                raise DatabaseError("execute select fail, error: {}".format(rs))
             self._pre_process_result(rs)
             return self
         else:
-            ok, rs = self.connection._sdk.executeSQL(self.db, command)
+            ok, rs = self.connection._sdk.execute(command)
             if not ok:
                 raise DatabaseError(rs)
             self._pre_process_result(rs)
@@ -360,7 +359,7 @@ class Cursor(object):
                                                schema)
             self.__add_row_to_builder(row, sorted_holes, schema, tmp_builder,
                                       append_map)
-        ok, error = self.connection._sdk.executeInsert(self.db, command,
+        ok, error = self.connection._sdk.executeInsert(None, command,
                                                        rows_builder)
         if not ok:
             raise DatabaseError(error)
@@ -370,6 +369,7 @@ class Cursor(object):
                     operation,
                     parameters: Union[List[tuple], List[dict]],
                     batch_number=200):
+        """ use current database """
         parameters_length = len(parameters)
         command = operation.strip(' \t\n\r') if operation else None
         if command is None:
@@ -388,22 +388,22 @@ class Cursor(object):
                 # Because the object obtained by getInsertBatchBuilder has no GetSchema method,
                 # use the object obtained by getInsertBatchBuilder
                 ok, builder = self.connection._sdk.getInsertBuilder(
-                    self.db, command)
+                    None, command)
                 if not ok:
-                    raise DatabaseError("get insert builder fail")
+                    raise DatabaseError(f"get insert builder fail, error: {builder}")
                 schema = builder.GetSchema()
                 hole_idxes = builder.GetHoleIdx()
                 hole_pairs = build_sorted_holes(hole_idxes)
                 for i in range(0, parameters_length, batch_number):
                     rows = parameters[i:i + batch_number]
                     ok, batch_builder = self.connection._sdk.getInsertBatchBuilder(
-                        self.db, command)
+                        None, command)
                     if not ok:
                         raise DatabaseError("get insert builder fail")
                     self.__insert_rows(rows, hole_idxes, hole_pairs, schema,
                                        batch_builder, command)
             else:
-                ok, rs = self.connection._sdk.executeSQL(self.db, command)
+                ok, rs = self.connection._sdk.execute(command)
                 if not ok:
                     raise DatabaseError(rs)
                 self._pre_process_result(rs)
@@ -425,7 +425,7 @@ class Cursor(object):
 
     def fetchone(self):
         if self._resultSet is None:
-            raise DatabaseError("query data failed")
+            raise DatabaseError("resultset is not set")
         ok = self._resultSet.Next()
         if not ok:
             return None
@@ -440,7 +440,7 @@ class Cursor(object):
     @connected
     def fetchmany(self, size=None):
         if self._resultSet is None:
-            raise DatabaseError("query data failed")
+            raise DatabaseError("resultset is not set")
         if size is None:
             size = self.arraysize
         elif size < 0:
@@ -455,8 +455,7 @@ class Cursor(object):
                 if self._resultSet.IsNULL(i):
                     row.append(None)
                 else:
-                    row.append(
-                        self.__getMap[self.__schema.GetColumnType(i)](i))
+                    row.append(self.__getMap[self.__schema.GetColumnType(i)](i))
             values.append(tuple(row))
         return values
 
@@ -506,7 +505,7 @@ class Cursor(object):
         raise NotSupportedError("Unsupported in OpenMLDB")
 
     def batch_row_request(self, sql, commonCol, parameters):
-        ok, rs = self.connection._sdk.doBatchRowRequest(self.db, sql, commonCol,
+        ok, rs = self.connection._sdk.doBatchRowRequest(None, sql, commonCol,
                                                         parameters)
         if not ok:
             raise DatabaseError("execute select fail {}".format(rs))
@@ -518,7 +517,7 @@ class Cursor(object):
         if selectRE.match(command) == False:
             raise Exception("Invalid opertion for request")
 
-        ok, rs = self.connection._sdk.doRequestQuery(self.db, sql, parameter)
+        ok, rs = self.connection._sdk.doRequestQuery(None, sql, parameter)
         if not ok:
             raise DatabaseError("execute select fail {}".format(rs))
         self._pre_process_result(rs)
@@ -543,11 +542,13 @@ class Cursor(object):
 class Connection(object):
 
     def __init__(self, **cparams):
-        self._db = cparams.get('database', None)
         sdk = sdk_module.OpenMLDBSdk(**cparams)
-        ok = sdk.init()
-        if not ok:
-            raise Exception("init openmldb sdk erred")
+        sdk.init()
+        db = cparams.get('database', None)
+        if db:
+            ok, rs = sdk.execute(f'use {db}')  # set db, db must be exists
+            if not ok:
+                raise DatabaseError(rs)
         self._sdk = sdk
         self._connected = True
 
@@ -588,7 +589,7 @@ class Connection(object):
         self._sdk = None
 
     def cursor(self):
-        return Cursor(self._db, self)
+        return Cursor(self)
 
 
 # Constructor for creating connection to db

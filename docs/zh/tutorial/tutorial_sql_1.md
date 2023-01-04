@@ -143,7 +143,7 @@ window window_name as (PARTITION BY partition_col ORDER BY order_col ROWS_RANGE 
   - OpenMLDB 的下界时间必须>=上界时间
   - OpenMLDB 的下界条数必须<=上界条数
 
-更多语法和特性可以参考 [OpenMLDB窗口参考手册](../reference/sql/dql/WHERE_CLAUSE.md)。
+更多语法和特性可以参考 [OpenMLDB窗口参考手册](../openmldb_sql/dql/WHERE_CLAUSE.md)。
 #### 示例
 对于上面所示的交易表 t1，我们定义两个时间窗口和两个条数窗口。每一个样本行的窗口均按用户ID(`uid`)分组，按交易时间(`trans_time`)排序。下图展示了分组排序后的数据。
 ![img](images/table_t1.jpg)

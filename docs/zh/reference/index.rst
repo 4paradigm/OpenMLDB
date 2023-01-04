@@ -1,5 +1,5 @@
 =============================
-参考
+参考手册
 =============================
 
 
@@ -7,6 +7,6 @@
     :maxdepth: 1
 
     arch/index
-    sql/index
     ip_tips
     client_config/index
+    error_code

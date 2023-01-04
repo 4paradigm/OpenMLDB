@@ -22,7 +22,7 @@ docker创建OpenMLDB见[快速上手](./openmldb_quickstart.md)，请注意文�
 
 ### LOAD DATA
 
-从文件导入数据到OpenMLDB，通常使用LOAD DATA命令，详情参考[LOAD DATA INFILE](../reference/sql/dml/LOAD_DATA_STATEMENT.md)。LOAD DATA可使用的数据源和数据格式，与OpenMLDB版本（单机/集群）、执行模式、导入模式（即LOAD DATA配置项load_mode）都有一定关系。集群版默认 load_mode 为cluster，也可设置为local；单机版默认 load_mode 为local，**不支持cluster**。所以我们分为三种情况讨论：
+从文件导入数据到OpenMLDB，通常使用LOAD DATA命令，详情参考[LOAD DATA INFILE](../openmldb_sql/dml/LOAD_DATA_STATEMENT.md)。LOAD DATA可使用的数据源和数据格式，与OpenMLDB版本（单机/集群）、执行模式、导入模式（即LOAD DATA配置项load_mode）都有一定关系。集群版默认 load_mode 为cluster，也可设置为local；单机版默认 load_mode 为local，**不支持cluster**。所以我们分为三种情况讨论：
 
 | LOAD DATA类型 | 支持执行模式（导入目的地） | 支持异步/同步 | 支持数据源 | 支持数据格式 |
 | :------------ | :----------------------- | :----------- | :-------- | :---------- |
@@ -50,7 +50,7 @@ OpenMLDB并不完全兼容标准SQL。所以，部分SQL执行会得不到预期
 
 OpenMLDB所有命令均为SQL，如果SQL执行失败或交互有问题（不知道命令是否执行成功），请先确认SQL书写是否有误，命令并未执行，还是命令进入了执行阶段。
 
-例如，下面提示Syntax error的是SQL书写有误，请参考[sql reference](../reference/sql/)纠正错误。
+例如，下面提示Syntax error的是SQL书写有误，请参考[sql reference](../openmldb_sql/)纠正错误。
 ```
 127.0.0.1:7527/db> create table t1(c1 int;
 Error: Syntax error: Expected ")" or "," but got ";" [at 1:23]
@@ -71,13 +71,11 @@ create table t1(c1 int;
 
 如果是集群离线命令，默认异步模式下，发送命令会得到job id的返回。可使用`show job <id>`来查询job执行情况。
 
-离线job如果是异步SELECT（并不INTO保存结果），也不会将结果打印在客户端（同步SELECT将会打印结果）。需要从日志中获得结果，日志默认在`/work/openmldb/taskmanager/bin/logs/job_x.log`。
-
-如果发现job failed或者其他状态，不符合你的预期，请查询日志。日志默认在`/work/openmldb/taskmanager/bin/logs/job_x_error.log`(注意有error后缀)，
-
-日志地址由taskmanager.properties的`job.log.path`配置，如果你改变了此配置项，需要到配置的目的地寻找日志。
+离线job如果是异步SELECT（并不INTO保存结果），也不会将结果打印在客户端（同步SELECT将会打印结果）。可以通过`show joblog <id>`来获得结果，结果中包含stdout和stderr两部分，stdout为查询结果，stderr为job运行日志。如果发现job failed或者其他状态，不符合你的预期，请仔细查看job运行日志。
 
 ```{note}
+日志地址由taskmanager.properties的`job.log.path`配置，如果你改变了此配置项，需要到配置的目的地寻找日志。stdout日志默认在`/work/openmldb/taskmanager/bin/logs/job_x.log`，job运行日志默认在`/work/openmldb/taskmanager/bin/logs/job_x_error.log`(注意有error后缀)，
+
 如果taskmanager是yarn模式，而不是local模式，`job_x_error.log`中的信息会较少，不会有job错误的详细信息。需要通过`job_x_error.log`中记录的yarn app id，去yarn系统中查询job的真正错误原因。
 ```
 
@@ -117,7 +115,7 @@ set @@execute_mode='';
 请确保在你本地可以使用复现脚本复现问题，再记录issue或发送给我们。
 
 ```{caution}
-请注意离线job默认为异步。如果你需要离线导入再查询，请设置为同步模式，详情见[配置离线命令同步执行](../reference/sql/ddl/SET_STATEMENT.md#配置离线命令同步执行)。否则导入还未完成就进行查询，是无意义的。
+请注意离线job默认为异步。如果你需要离线导入再查询，请设置为同步模式，详情见[配置离线命令同步执行](../openmldb_sql/ddl/SET_STATEMENT.md#配置离线命令同步执行)。否则导入还未完成就进行查询，是无意义的。
 ```
 
 ## 提供配置与日志，获得技术支持
@@ -126,12 +124,13 @@ set @@execute_mode='';
 
 docker或本地的集群（服务端所有进程都在本地），可以使用诊断工具快速获取配置、日志等信息。
 
-使用init.sh/start-all.sh脚本启动的OpenMLDB服务端，可以使用以下命令进行诊断，分别对应集群版和单机版。
+使用`init.sh`/`start-all.sh`和`init.sh standalone`/`start-standalone.sh`脚本启动的OpenMLDB服务端，可以使用以下命令进行诊断，分别对应集群版和单机版。
+
 ```
 openmldb_tool --env=onebox --dist_conf=cluster_dist.yml
-openmldb_tool --env=onebox --dist_conf=stadnalone_dist.yml
+openmldb_tool --env=onebox --dist_conf=standalone_dist.yml
 ```
-`cluster_dist.yml`和`stadnalone_dist.yml`，可在docker容器`/work/diag`目录中找到，或将[github目录](https://github.com/4paradigm/OpenMLDB/tree/main/demo)中的yml文件复制下来使用。
+`cluster_dist.yml`和`stadnalone_dist.yml`，可在docker容器`/work/`目录中找到，或将[github目录](https://github.com/4paradigm/OpenMLDB/tree/main/demo)中的yml文件复制下来使用。
 
 如果是分布式的集群，需要配置ssh免密才能顺利使用诊断工具，参考文档[诊断工具](../maintain/diagnose.md)。
 

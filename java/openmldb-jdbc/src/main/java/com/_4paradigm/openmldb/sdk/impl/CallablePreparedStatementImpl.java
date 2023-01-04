@@ -39,7 +39,7 @@ public class CallablePreparedStatementImpl extends CallablePreparedStatement {
         Status status = new Status();
         com._4paradigm.openmldb.ResultSet resultSet = router.CallProcedure(db, spName, currentRow, status);
         if (status.getCode() != 0 || resultSet == null) {
-            String msg = status.getMsg();
+            String msg = status.ToString();
             status.delete();
             if (resultSet != null) {
                 resultSet.delete();
@@ -62,7 +62,7 @@ public class CallablePreparedStatementImpl extends CallablePreparedStatement {
         Status status = new Status();
         com._4paradigm.openmldb.QueryFuture queryFuture = router.CallProcedure(db, spName, unit.toMillis(timeOut), currentRow, status);
         if (status.getCode() != 0 || queryFuture == null) {
-            String msg = status.getMsg();
+            String msg = status.ToString();
             status.delete();
             if (queryFuture != null) {
                 queryFuture.delete();

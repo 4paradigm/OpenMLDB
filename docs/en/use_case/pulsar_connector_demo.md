@@ -29,7 +29,7 @@ Only OpenMLDB cluster mode can be the sink dist, and only write to online storag
 
 We recommend that you use ‘host network’ to run docker. And bind volume ‘files’ too. The sql scripts are in it.
 ```
-docker run -dit --network host -v `pwd`/files:/work/pulsar_files --name openmldb 4pdosc/openmldb:0.6.9 bash
+docker run -dit --network host -v `pwd`/files:/work/pulsar_files --name openmldb 4pdosc/openmldb:0.7.0 bash
 docker exec -it openmldb bash
 ```
 ```{note}
@@ -79,7 +79,7 @@ bin/pulsar-daemon start standalone --zookeeper-port 5181
 ```{note}
 OpenMLDB want to use the port 2181, so we should change the zk port here. We will use zk port 2181 to connect OpenMLDB, but zk port in Pulsar standalone won’t affect anything.
 ```
-You can check if the pulsar runs well, `ps` or check the log.
+You can `ps` to check if the pulsar runs well. If failed, check the standalone server log `logs/pulsar-standalone-....log`.
 ```
 ps axu|grep pulsar
 ```
@@ -176,6 +176,7 @@ We use the first 2 rows of sample data(in openmldb docker `data/taxi_tour_table_
 
 ![test data](images/test_data.png)
 
+#### Java Producer
 Producer JAVA code in [demo producer](https://github.com/vagetablechicken/pulsar-client-java). Essential code is ![snippet](images/producer_code.png)
 
 So the producer will send the 2 messages to topic ‘test_openmldb’. And then Pulsar will read the messages and write them to OpenMLDB cluster online storage.
@@ -186,6 +187,16 @@ The package is in ‘files’. You can run it directly.
 java -cp files/pulsar-client-java-1.0-SNAPSHOT-jar-with-dependencies.jar org.example.Client
 ```
 
+#### Python Producer
+You can write the Producer in Python, please check the code in `files/pulsar_client.py`.
+Before run it, you should install the pulsar python client：
+```
+pip3 install pulsar-client==2.9.1
+```
+Then run the producer:
+```
+python3 files/pulsar_client.py
+```
 
 ### Check
 #### Check in Pulsar
@@ -194,8 +205,9 @@ We can check the sink status:
 ./bin/pulsar-admin sinks status --name openmldb-test-sink 
 ```
 ![sink status](images/sink_status.png)
-```{describe}
+```{note}
 "numReadFromPulsar": pulsar sent 2 messages to the sink instance.
+
 "numWrittenToSink": sink instance write 2 messages to OpenMLDB.
 ```
 
@@ -212,3 +224,47 @@ In OpenMLDB container, run:
 /work/openmldb/bin/openmldb --zk_cluster=127.0.0.1:2181 --zk_root_path=/openmldb --role=sql_client < /work/pulsar_files/select.sql
 ```
 ![openmldb result](images/openmldb_result.png)
+
+### Debug
+
+If the OpenMLDB table doesn't have the data, but the sinks status shows it has written to OpenMLDB, the sink instance may have some problems. You should check the sink log, the path is `logs/functions/public/default/openmldb-test-sink/openmldb-test-sink-0.log`. If you use another sink name, the path will change.
+
+Pulsar will retry to write the failed messages. So if you sent the wrong message 1 and then sent the right message 2, even the right message 2 has written to OpenMLDB, the wrong message 1 will be sent and print the error in log. It's confusing. We'd recommend you to truncate the topic before testing again.
+```
+./bin/pulsar-admin topics truncate persistent://public/default/test_openmldb
+```
+If you use another sink name, you can get it by `./bin/pulsar-admin topics list public/default`.
+
+#### debug log
+
+If the sink instance log is not enough, you can open the debug level of log. You should modify the log config, and restart the sink instance.
+
+`vim conf/functions_log4j2.xml` and modify it:
+
+```xml
+        <Property>
+            <name>pulsar.log.level</name>
+            <value>debug</value> <!-- set to debug level -->
+        </Property>
+```
+```xml
+        <Root>
+            <level>${sys:pulsar.log.level}</level> <!--change from info to ${sys:pulsar.log.level} or debug -->
+            <AppenderRef>
+                <ref>${sys:pulsar.log.appender}</ref>
+                <level>${sys:pulsar.log.level}</level>
+            </AppenderRef>
+        </Root>
+```
+
+Then restart the sink instance:
+```
+./bin/pulsar-admin sinks restart --name openmldb-test-sink
+```
+
+#### reinitialize Pulsar
+```
+bin/pulsar-daemon stop standalone --zookeeper-port 5181
+rm -r data logs
+bin/pulsar-daemon start standalone --zookeeper-port 5181
+```

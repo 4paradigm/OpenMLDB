@@ -28,6 +28,7 @@
 #include "absl/strings/str_cat.h"
 #include "absl/strings/strip.h"
 #include "absl/strings/substitute.h"
+#include "absl/types/span.h"
 #include "base/ddl_parser.h"
 #include "base/file_util.h"
 #include "base/glog_wrapper.h"
@@ -1295,31 +1296,37 @@ bool SQLClusterRouter::ExecuteInsert(const std::string& db, const std::string& s
                             "Fail to execute insert statement: fail to get " + table_info->name() + " tablets");
         return false;
     }
-    size_t cnt = 0;
+    std::vector<size_t> fails;
     for (size_t i = 0; i < default_maps.size(); i++) {
         auto row = std::make_shared<SQLInsertRow>(table_info, schema, default_maps[i], str_lengths[i]);
         if (!row) {
             LOG(WARNING) << "fail to parse row[" << i << "]";
+            fails.push_back(i);
             continue;
         }
         if (!row->Init(0)) {
             LOG(WARNING) << "fail to encode row[" << i << " for table " << table_info->name();
+            fails.push_back(i);
             continue;
         }
         if (!row->IsComplete()) {
             LOG(WARNING) << "fail to build row[" << i << "]";
+            fails.push_back(i);
             continue;
         }
         if (!PutRow(table_info->tid(), row, tablets, status)) {
             LOG(WARNING) << "fail to put row[" << i << "] due to: " << status->msg;
+            fails.push_back(i);
             continue;
         }
-        cnt++;
     }
-    if (cnt < default_maps.size()) {
-        status->msg = "Error occur when execute insert, success/total: " + std::to_string(cnt) + "/" +
-                      std::to_string(default_maps.size());
-        status->code = 1;
+    if (!fails.empty()) {
+        auto ori_size = fails.size();
+        // for peek
+        absl::Span<const size_t> slice(fails.data(), ori_size > 10 ? 10 : ori_size);
+        SET_STATUS_AND_WARN(
+            status, StatusCode::kCmdError,
+            absl::StrCat("insert values ", ori_size, " failed, failed rows peek: ", absl::StrJoin(slice, ",")));
         return false;
     }
     return true;
@@ -1361,7 +1368,7 @@ bool SQLClusterRouter::ExecuteInsert(const std::string& db, const std::string& s
                                      hybridse::sdk::Status* status) {
     RET_FALSE_IF_NULL_AND_WARN(status, "output status is nullptr");
     if (!rows) {
-        LOG(WARNING) << "input rows is invalid";
+        LOG(WARNING) << "input rows is nullptr";
         return false;
     }
     std::shared_ptr<SQLCache> cache = GetCache(db, sql, hybridse::vm::kBatchMode);
@@ -1389,7 +1396,7 @@ bool SQLClusterRouter::ExecuteInsert(const std::string& db, const std::string& s
                                      hybridse::sdk::Status* status) {
     RET_FALSE_IF_NULL_AND_WARN(status, "output status is nullptr");
     if (!row) {
-        // TODO
+        LOG(WARNING) << "input row is nullptr";
         return false;
     }
     std::shared_ptr<SQLCache> cache = GetCache(db, sql, hybridse::vm::kBatchMode);
@@ -1842,9 +1849,11 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::HandleSQLCmd(const h
             }
 
             auto log = GetJobLog(job_id, status);
+
             if (!status->IsOK()) {
                 *status = {::hybridse::common::StatusCode::kCmdError,
-                           "Failed to get job log for job id: " + cmd_node->GetArgs()[0]};
+                           "Failed to get job log for job id: " + cmd_node->GetArgs()[0] +
+                           ", code: " + std::to_string(status->code) + ", message: " + status->msg};
                 return {};
             } else {
                 std::vector<std::string> value = {log};
@@ -2340,7 +2349,9 @@ bool SQLClusterRouter::UpdateOfflineTableInfo(const ::openmldb::nameserver::Tabl
 
 std::string SQLClusterRouter::GetJobLog(const int id, hybridse::sdk::Status* status) {
     RET_IF_NULL_AND_WARN(status, "output status is nullptr");
+
     auto taskmanager_client_ptr = cluster_sdk_->GetTaskManagerClient();
+
     if (!taskmanager_client_ptr) {
         SET_STATUS_AND_WARN(status, hybridse::common::kConnError, "Fail to get TaskManager client");
         return "";
@@ -2348,7 +2359,14 @@ std::string SQLClusterRouter::GetJobLog(const int id, hybridse::sdk::Status* sta
 
     base::Status base_s;
     auto log = taskmanager_client_ptr->GetJobLog(id, GetJobTimeout(), &base_s);
-    APPEND_FROM_BASE(status, base_s, "get joblog");
+
+    if (base_s.OK()) {
+        status->SetCode(base_s.code);
+        status->SetMsg(base_s.msg);
+    } else {
+        APPEND_FROM_BASE(status, base_s, "get joblog");
+    }
+
     return log;
 }
 
@@ -2467,11 +2485,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(
                 return {};
             }
             // if db name has been specified in sql, db parameter will be ignored
-            if (!ExecuteInsert(db, sql, status)) {
-                status->code = StatusCode::kCmdError;
-            } else {
-                *status = {};
-            }
+            ExecuteInsert(db, sql, status);
             return {};
         }
         case hybridse::node::kPlanTypeDeploy: {
@@ -2683,10 +2697,10 @@ int SQLClusterRouter::GetJobTimeout() {
         hybridse::sdk::Status status;
         std::string sql = "INSERT INTO GLOBAL_VARIABLES values('" + key + "', '" + value + "');";
         if (!ExecuteInsert("INFORMATION_SCHEMA", sql, &status)) {
-            return {StatusCode::kRunError, "set global variable failed"};
+            RETURN_NOT_OK_PREPEND(status, "set global variable failed(insert into info table)");
         }
         if (!cluster_sdk_->TriggerNotify(::openmldb::type::NotifyType::kGlobalVar)) {
-            return {StatusCode::kRunError, "zk globlvar node not update"};
+            return {StatusCode::kRunError, "zk globalvar node update failed"};
         }
     }
     std::lock_guard<::openmldb::base::SpinMutex> lock(mu_);
@@ -3031,7 +3045,7 @@ hybridse::sdk::Status SQLClusterRouter::InsertOneRow(const std::string& database
         }
     }
     if (!ExecuteInsert(database, insert_placeholder, row, &status)) {
-        return {StatusCode::kCmdError, "insert row failed"};
+        RETURN_NOT_OK_PREPEND(status, "insert row failed");
     }
     return {};
 }
@@ -3600,7 +3614,7 @@ hybridse::sdk::Status SQLClusterRouter::HandleLongWindows(
                 lw.order_col_, "', '", lw.bucket_size_, "', '", lw.filter_col_, "');");
             bool ok = ExecuteInsert("", insert_sql, &status);
             if (!ok) {
-                return {StatusCode::kTablePutFailed, "insert pre-aggr meta failed"};
+                RETURN_NOT_OK_PREPEND(status, "insert pre-aggr meta failed");
             }
 
             // create pre-aggr table
@@ -3933,8 +3947,8 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteShowApiServer
 
 static const std::initializer_list<std::string> GetTableStatusSchema() {
     static const std::initializer_list<std::string> schema = {
-        "Table_id",         "Table_name",     "Database_name",    "Storage_type",      "Rows",
-        "Memory_data_size", "Disk_data_size", "Partition",        "Partition_unalive", "Replica",
+        "Table_id",         "Table_name",     "Database_name",     "Storage_type",      "Rows",
+        "Memory_data_size", "Disk_data_size", "Partition",         "Partition_unalive", "Replica",
         "Offline_path",     "Offline_format", "Offline_deep_copy", "Warnings"};
     return schema;
 }
@@ -4070,7 +4084,7 @@ bool SQLClusterRouter::CheckTableStatus(const std::string& db, const std::string
 
     if (statuses.count(tid) && statuses.at(tid).count(pid)) {
         const auto& partition_statuses = statuses.at(tid).at(pid);
-        if (partition_info.partition_meta_size() != partition_statuses.size()) {
+        if (partition_info.partition_meta_size() != static_cast<int>(partition_statuses.size())) {
             append_error_msg(
                 error_msg, pid, -1, "",
                 absl::StrCat("real replica number ", partition_statuses.size(),
@@ -4160,7 +4174,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::GetJobResultSet(int 
     std::string db = openmldb::nameserver::INTERNAL_DB;
     std::string sql = "SELECT * FROM JOB_INFO WHERE id = " + std::to_string(job_id);
 
-    auto rs = ExecuteSQLParameterized(db, sql, std::shared_ptr<openmldb::sdk::SQLRequestRow>(), &status);
+    auto rs = ExecuteSQLParameterized(db, sql, {}, &status);
     if (!status.IsOK()) {
         return {};
     }

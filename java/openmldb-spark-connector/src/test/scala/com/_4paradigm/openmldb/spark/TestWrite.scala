@@ -17,6 +17,7 @@
 package com._4paradigm.openmldb.spark
 
 import java.lang.Thread.currentThread
+import java.util.Properties
 
 import com._4paradigm.openmldb.sdk.SdkOption
 import com._4paradigm.openmldb.sdk.impl.SqlClusterExecutor
@@ -42,8 +43,11 @@ class TestWrite extends FunSuite {
       assert(nullRow.isNullAt(i))
     }
 
-    val zkCluster = "127.0.0.1:6181"
-    val zkPath = "/onebox"
+    val prop = new Properties
+    prop.load(getClass.getResourceAsStream("/test.properties"))
+    val zkCluster = prop.getProperty("openmldb.zk.cluster", "127.0.0.1:6181")
+    val zkPath = prop.getProperty("openmldb.zk.root.path", "/onebox")
+
     val db = "db"
     val table = "spark_write_test"
     val options = Map("db" -> db, "table" -> table, "zkCluster" -> zkCluster, "zkPath" -> zkPath)

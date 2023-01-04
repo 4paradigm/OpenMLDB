@@ -24,6 +24,7 @@
 #include "test/util.h"
 
 DECLARE_string(db_root_path);
+DECLARE_uint32(max_memory_mb);
 
 namespace openmldb {
 namespace tablet {
@@ -43,33 +44,66 @@ class TabletImplMemTest : public ::testing::Test {
     ~TabletImplMemTest() {}
 };
 
+void SetDefaultTableMeta(::openmldb::api::TableMeta* table_meta) {
+    table_meta->set_name("t0");
+    table_meta->set_tid(1);
+    table_meta->set_pid(1);
+    auto column_desc = table_meta->add_column_desc();
+    column_desc->set_name("idx0");
+    column_desc->set_data_type(::openmldb::type::kString);
+    auto column_desc1 = table_meta->add_column_desc();
+    column_desc1->set_name("value");
+    column_desc1->set_data_type(::openmldb::type::kString);
+    auto column_key = table_meta->add_column_key();
+    column_key->set_index_name("idx0");
+    column_key->add_col_name("idx0");
+    ::openmldb::common::TTLSt* ttl_st = column_key->mutable_ttl();
+    ttl_st->set_abs_ttl(0);
+    ttl_st->set_lat_ttl(0);
+    ttl_st->set_ttl_type(::openmldb::type::kAbsoluteTime);
+}
+
+TEST_F(TabletImplMemTest, MaxMemLimit) {
+    MockClosure closure;
+    uint32_t old = FLAGS_max_memory_mb;
+    FLAGS_max_memory_mb = 1;
+    auto tablet = std::make_unique<TabletImpl>();
+    tablet->Init("");
+    {
+        ::openmldb::api::CreateTableRequest request;
+        auto table_meta = request.mutable_table_meta();
+        SetDefaultTableMeta(table_meta);
+        ::openmldb::api::CreateTableResponse response;
+        MockClosure closure;
+        tablet->CreateTable(NULL, &request, &response, &closure);
+        ASSERT_EQ(0, response.code());
+    }
+    ::openmldb::api::PutRequest prequest;
+    auto dim = prequest.add_dimensions();
+    dim->set_idx(0);
+    dim->set_key("test1");
+    prequest.set_time(9527);
+    std::string value(1024 * 1024, 'a');
+    prequest.set_value(::openmldb::test::EncodeKV("test1", value));
+    prequest.set_tid(1);
+    prequest.set_pid(1);
+    ::openmldb::api::PutResponse presponse;
+    tablet->Put(NULL, &prequest, &presponse, &closure);
+    ASSERT_EQ(::openmldb::base::ReturnCode::kExceedMaxMemory, presponse.code());
+    FLAGS_max_memory_mb = old;
+}
+
 TEST_F(TabletImplMemTest, TestMem) {
 #ifndef __APPLE__
 #ifdef TCMALLOC_ENABLE
     MockClosure closure;
     HeapLeakChecker checker("test_mem");
-    TabletImpl* tablet = new TabletImpl();
+    auto tablet = std::make_unique<TabletImpl>();
     tablet->Init("");
-    // create table
     {
         ::openmldb::api::CreateTableRequest request;
         ::openmldb::api::TableMeta* table_meta = request.mutable_table_meta();
-        table_meta->set_name("t0");
-        table_meta->set_tid(1);
-        table_meta->set_pid(1);
-        auto column_desc = table_meta->add_column_desc();
-        column_desc->set_name("idx0");
-        column_desc->set_data_type(::openmldb::type::kString);
-        auto column_desc1 = table_meta->add_column_desc();
-        column_desc1->set_name("value");
-        column_desc1->set_data_type(::openmldb::type::kString);
-        auto column_key = table_meta->add_column_key();
-        column_key->set_index_name("idx0");
-        column_key->add_col_name("idx0");
-        ::openmldb::common::TTLSt* ttl_st = column_key->mutable_ttl();
-        ttl_st->set_abs_ttl(0);
-        ttl_st->set_lat_ttl(0);
-        ttl_st->set_ttl_type(::openmldb::type::kAbsoluteTime);
+        SetDefaultTableMeta(table_meta);
         ::openmldb::api::CreateTableResponse response;
         MockClosure closure;
         tablet->CreateTable(NULL, &request, &response, &closure);
@@ -127,7 +161,6 @@ TEST_F(TabletImplMemTest, TestMem) {
         tablet->DropTable(NULL, &dr, &drs, &closure);
         ASSERT_EQ(0, drs.code());
     }
-    delete tablet;
     ASSERT_EQ(true, checker.NoLeaks());
 #endif
 #endif

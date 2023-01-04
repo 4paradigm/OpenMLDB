@@ -17,8 +17,6 @@
 #ifndef SRC_TABLET_TABLET_IMPL_H_
 #define SRC_TABLET_TABLET_IMPL_H_
 
-#include <brpc/server.h>
-
 #include <list>
 #include <map>
 #include <memory>
@@ -29,6 +27,7 @@
 #include <vector>
 
 #include "base/spinlock.h"
+#include "brpc/server.h"
 #include "catalog/tablet_catalog.h"
 #include "common/thread_pool.h"
 #include "nameserver/system_table.h"
@@ -46,6 +45,9 @@
 #include "vm/engine.h"
 #include "zk/zk_client.h"
 
+namespace openmldb {
+namespace tablet {
+
 using ::baidu::common::ThreadPool;
 using ::google::protobuf::Closure;
 using ::google::protobuf::RpcController;
@@ -61,10 +63,7 @@ using ::openmldb::storage::Table;
 using ::openmldb::zk::ZkClient;
 using Schema = ::google::protobuf::RepeatedPtrField<::openmldb::common::ColumnDesc>;
 
-const uint32_t INVALID_REMOTE_TID = UINT32_MAX;
-
-namespace openmldb {
-namespace tablet {
+inline constexpr uint32_t INVALID_REMOTE_TID = UINT32_MAX;
 
 typedef std::map<uint32_t, std::map<uint32_t, std::shared_ptr<Table>>> Tables;
 typedef std::map<uint32_t, std::map<uint32_t, std::shared_ptr<LogReplicator>>> Replicators;
@@ -347,6 +346,8 @@ class TabletImpl : public ::openmldb::api::TabletServer {
 
     void GetDiskused();
 
+    void GetMemoryStat();
+
     void CheckZkClient();
 
     void RefreshTableInfo();
@@ -491,6 +492,7 @@ class TabletImpl : public ::openmldb::api::TabletServer {
     std::shared_ptr<std::map<std::string, std::string>> global_variables_;
 
     std::unique_ptr<openmldb::statistics::DeployQueryTimeCollector> deploy_collector_;
+    std::atomic<uint64_t> memory_used_ = 0;
 };
 
 }  // namespace tablet

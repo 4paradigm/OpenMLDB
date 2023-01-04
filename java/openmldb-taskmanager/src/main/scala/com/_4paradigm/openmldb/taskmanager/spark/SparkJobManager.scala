@@ -23,6 +23,7 @@ import com._4paradigm.openmldb.taskmanager.udf.ExternalFunctionManager
 import com._4paradigm.openmldb.taskmanager.yarn.YarnClientUtil
 import org.apache.spark.launcher.SparkLauncher
 import org.slf4j.LoggerFactory
+import java.nio.file.Paths
 
 object SparkJobManager {
 
@@ -115,9 +116,20 @@ object SparkJobManager {
     if (defaultDb.nonEmpty) {
       launcher.setConf("spark.openmldb.default.db", defaultDb)
     }
+
     if (TaskManagerConfig.OFFLINE_DATA_PREFIX.nonEmpty) {
       launcher.setConf("spark.openmldb.offline.data.prefix", TaskManagerConfig.OFFLINE_DATA_PREFIX)
     }
+
+    // Set external function dir for offline jobs
+    val absoluteExternalFunctionDir = if (TaskManagerConfig.EXTERNAL_FUNCTION_DIR.startsWith("/")) {
+      TaskManagerConfig.EXTERNAL_FUNCTION_DIR
+    } else {
+      // TODO: The current path is incorrect if running in IDE, please set `external.function.dir` with absolute path
+      // Concat to generate absolute path
+      Paths.get(Paths.get(".").toAbsolutePath.toString, TaskManagerConfig.EXTERNAL_FUNCTION_DIR).toString
+    }
+    launcher.setConf("spark.openmldb.taskmanager.external.function.dir", absoluteExternalFunctionDir)
 
     for ((k, v) <- sparkConf) {
       logger.info("Get Spark config key: " + k + ", value: " + v)

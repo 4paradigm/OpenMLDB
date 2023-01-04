@@ -359,6 +359,11 @@ void timestamp_to_date(Timestamp *timestamp, Date *output, bool *is_null);
 
 void date_to_string(Date *date, StringRef *output);
 
+void date_diff(Date *date1, Date *date2, int *diff, bool *is_null);
+void date_diff(StringRef *date1, StringRef *date2, int *diff, bool *is_null);
+void date_diff(StringRef *date1, Date *date2, int *diff, bool *is_null);
+void date_diff(Date *date1, StringRef *date2, int *diff, bool *is_null);
+
 void like(StringRef *name, StringRef *pattern,
         StringRef *escape, bool *out, bool *is_null);
 void like(StringRef *name, StringRef *pattern, bool *out, bool *is_null);
@@ -372,6 +377,9 @@ void regexp_like(StringRef *name, StringRef *pattern, bool *out, bool *is_null);
 void date_to_timestamp(Date *date, Timestamp *output, bool *is_null);
 void string_to_date(StringRef *str, Date *output, bool *is_null);
 void string_to_timestamp(StringRef *str, Timestamp *output, bool *is_null);
+void date_to_unix_timestamp(Date *date, int64_t *output, bool *is_null);
+void string_to_unix_timestamp(StringRef *str, int64_t *output, bool *is_null);
+int64_t unix_timestamp();
 void sub_string(StringRef *str, int32_t pos,
                 StringRef *output);
 void sub_string(StringRef *str, int32_t pos, int32_t len,

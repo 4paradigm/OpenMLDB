@@ -56,6 +56,9 @@ C++ built-in functions can use limited data types, including BOOL, Numeric, Stri
   | STRING    | `codec::StringRef` |
   | TIMESTAMP | `codec::Timestamp` |
   | DATE      | `codec::Date`      |
+  | ARRAY     | `ArrayRef`         |
+
+*Note: ARRAY type is not supported in storage or as SQL query output column type*
 
 #### 2.1.4 Parameters and Result
 
@@ -72,7 +75,7 @@ C++ built-in functions can use limited data types, including BOOL, Numeric, Stri
       double func_return_double(int); 
       ```
 
-  - If SQL function return **STRING**, **TIMESTAMP** or **DATE**, the C++ function result should be returned in parameter with the corresponding C++ pointer type (`codec::StringRef*`, `codec::Timestamp*`, `codec::Date*`).
+  - If SQL function return **STRING**, **TIMESTAMP**, **DATE**, **ArrayRef**, the C++ function result should be returned in parameter with the corresponding C++ pointer type (`codec::StringRef*`, `codec::Timestamp*`, `codec::Date*`).
 
     - ```c++
       // SQL: STRING FUNC_STR(INT)
@@ -91,9 +94,11 @@ C++ built-in functions can use limited data types, including BOOL, Numeric, Stri
 #### 2.1.5 Memory Management
 
 - Operator `new` operator or method `malloc` are forbidden in C++ built-in function implementation.
-- Developers can call `hybridse::udf::v1::AllocManagedStringBuf(size)` to allocate space. OpenMLDB `ByteMemoryPool` will assign continous space to the function and will release it when safe.
-- If allocated size < 0, allocation will fail. `AllocManagedStringBuf` return null pointer.
-- If allocated size exceed the MAX_ALLOC_SIZE which is 2048, the allocation will fail. `AllocManagedStringBuf` return null pointer.
+- Developers must call provided memory management APIs in order to archive space allocation for output parameters:
+  - `hybridse::udf::v1::AllocManagedStringBuf(size)` to allocate space. OpenMLDB `ByteMemoryPool` will assign continous space to the function and will release it when safe.
+    - If allocated size < 0, allocation will fail. `AllocManagedStringBuf` return null pointer.
+    - If allocated size exceed the MAX_ALLOC_SIZE which is 2048, the allocation will fail. `AllocManagedStringBuf` return null pointer.
+  - `hybridse::udf::v1::AllocManagedArray(ArrayRef<T>*, uint64_t)`: allocate space for array types
 
 **Example**:
 

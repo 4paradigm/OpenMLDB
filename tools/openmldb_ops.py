@@ -249,7 +249,7 @@ def BalanceInDatabase(executor : Executor, endpoints : list, db : str) -> Status
         total_partitions += 1
         is_leader = True if record[4] == "leader" else False
         is_alive = True if record[5] == "yes" else False
-        partition : Partition = Partition(record[0], record[1], record[2], record[3], is_leader, is_alive, int(record[6]))
+        partition : Partition = Partition(record[0], record[1], record[2], record[3], is_leader, is_alive, record[6])
         all_dict.setdefault(partition.GetEndpoint(), []);
         all_dict[partition.GetEndpoint()].append(partition)
         endpoint_partition_map.setdefault(partition.GetEndpoint(), set())
@@ -334,7 +334,7 @@ def ScaleInEndpoint(executor : Executor, endpoint : str, desc_endpoints : list) 
         for record in result:
             is_leader = True if record[4] == "leader" else False
             is_alive = True if record[5] == "yes" else False
-            partition : Partition = Partition(record[0], record[1], record[2], record[3], is_leader, is_alive, int(record[6]))
+            partition : Partition = Partition(record[0], record[1], record[2], record[3], is_leader, is_alive, record[6])
             all_dict.setdefault(partition.GetEndpoint(), [])
             all_dict[partition.GetEndpoint()].append(partition)
             endpoint_partition_map.setdefault(partition.GetEndpoint(), set())
@@ -350,7 +350,7 @@ def ScaleInEndpoint(executor : Executor, endpoint : str, desc_endpoints : list) 
     for key, record in status_result.items():
         is_leader = True if record[3] == "kTableLeader" else False
         db, name = db_map.get("{}_{}".format(record[0], record[1]))
-        partition : Partition = Partition(name, record[0], record[1], endpoint, is_leader, True, int(record[2]))
+        partition : Partition = Partition(name, record[0], record[1], endpoint, is_leader, True, record[2])
         desc_endpoint = ""
         min_partition_num = sys.maxsize
         for cur_endpoint in all_dict:
