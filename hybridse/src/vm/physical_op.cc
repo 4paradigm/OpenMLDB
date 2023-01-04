@@ -745,13 +745,13 @@ Status RequestWindowOp::ReplaceExpr(const passes::ExprReplacer& replacer, node::
 void PhysicalWindowAggrerationNode::Print(std::ostream& output, const std::string& tab) const {
     PhysicalOpNode::Print(output, tab);
     output << "(type=" << ProjectTypeName(project_type_);
-    if (exclude_current_time_) {
+    if (exclude_current_time()) {
         output << ", EXCLUDE_CURRENT_TIME";
     }
-    if (exclude_current_row_) {
+    if (exclude_current_row()) {
         output << ", EXCLUDE_CURRENT_ROW";
     }
-    if (instance_not_in_window_) {
+    if (instance_not_in_window()) {
         output << ", INSTANCE_NOT_IN_WINDOW";
     }
     if (need_append_input()) {
@@ -1243,8 +1243,6 @@ Status PhysicalRequestUnionNode::WithNewChildren(node::NodeManager* nm, const st
     CHECK_TRUE(children.size() == 2, common::kPlanError);
     auto new_union_op = new PhysicalRequestUnionNode(children[0], children[1], window_, instance_not_in_window_,
                                                      exclude_current_time_, output_request_row_);
-    new_union_op->exclude_current_row_ = exclude_current_row_;
-
     std::vector<const node::ExprNode*> depend_columns;
     window_.ResolvedRelatedColumns(&depend_columns);
     passes::ExprReplacer replacer;
@@ -1273,7 +1271,7 @@ void PhysicalRequestUnionNode::Print(std::ostream& output, const std::string& ta
     if (exclude_current_time_) {
         output << "EXCLUDE_CURRENT_TIME, ";
     }
-    if (exclude_current_row_) {
+    if (exclude_current_row()) {
         output << "EXCLUDE_CURRENT_ROW, ";
     }
     if (instance_not_in_window_) {

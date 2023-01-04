@@ -137,7 +137,7 @@ cases:
           PARTITION by `g` ORDER by `ts`
           ROWS_RANGE BETWEEN 2s PRECEDING AND 1s PRECEDING EXCLUDE CURRENT_ROW);
     batch_plan: |
-      PROJECT(type=WindowAggregation)
+      PROJECT(type=WindowAggregation, EXCLUDE_CURRENT_ROW)
         +-WINDOW(partition_keys=(g), orders=(ts ASC), range=(ts, 2000 PRECEDING, 1000 PRECEDING))
         PROJECT(type=WindowAggregation, NEED_APPEND_INPUT)
           +-WINDOW(partition_keys=(), orders=(ASC), rows=(ts, 1 PRECEDING, 0 CURRENT))
@@ -146,7 +146,7 @@ cases:
       SIMPLE_PROJECT(sources=(id, cnt, mv, mi, l1))
         REQUEST_JOIN(type=kJoinTypeConcat)
           PROJECT(type=Aggregation)
-            REQUEST_UNION(partition_keys=(), orders=(ASC), range=(ts, 2000 PRECEDING, 1000 PRECEDING), index_keys=(g))
+            REQUEST_UNION(EXCLUDE_CURRENT_ROW, partition_keys=(), orders=(ASC), range=(ts, 2000 PRECEDING, 1000 PRECEDING), index_keys=(g))
               DATA_PROVIDER(request=t1)
               DATA_PROVIDER(type=Partition, table=t1, index=idx)
           PROJECT(type=Aggregation)
@@ -195,8 +195,8 @@ cases:
           PARTITION by `g` ORDER by `ts`
           ROWS BETWEEN 2 PRECEDING AND 1 PRECEDING EXCLUDE CURRENT_ROW);
     batch_plan: |
-      PROJECT(type=WindowAggregation)
-        +-WINDOW(partition_keys=(g), orders=(ts ASC), rows=(ts, 2 PRECEDING, 0 OPEN PRECEDING))
+      PROJECT(type=WindowAggregation, EXCLUDE_CURRENT_ROW)
+        +-WINDOW(partition_keys=(g), orders=(ts ASC), rows=(ts, 2 PRECEDING, 0 CURRENT))
         PROJECT(type=WindowAggregation, NEED_APPEND_INPUT)
           +-WINDOW(partition_keys=(), orders=(ASC), rows=(ts, 1 PRECEDING, 0 CURRENT))
           DATA_PROVIDER(type=Partition, table=t1, index=idx)
@@ -204,7 +204,7 @@ cases:
       SIMPLE_PROJECT(sources=(id, cnt, mv, mi, l1))
         REQUEST_JOIN(type=kJoinTypeConcat)
           PROJECT(type=Aggregation)
-            REQUEST_UNION(partition_keys=(), orders=(ASC), rows=(ts, 2 PRECEDING, 0 OPEN PRECEDING), index_keys=(g))
+            REQUEST_UNION(EXCLUDE_CURRENT_ROW, partition_keys=(), orders=(ASC), rows=(ts, 2 PRECEDING, 0 CURRENT), index_keys=(g))
               DATA_PROVIDER(request=t1)
               DATA_PROVIDER(type=Partition, table=t1, index=idx)
           PROJECT(type=Aggregation)
@@ -300,7 +300,7 @@ cases:
           PARTITION by `g` ORDER by `ts`
           ROWS_RANGE BETWEEN 3s PRECEDING AND 0s OPEN PRECEDING MAXSIZE 2 EXCLUDE CURRENT_ROW);
     batch_plan: |
-      PROJECT(type=WindowAggregation)
+      PROJECT(type=WindowAggregation, EXCLUDE_CURRENT_ROW)
         +-WINDOW(partition_keys=(g), orders=(ts ASC), range=(ts, 3000 PRECEDING, 0 OPEN PRECEDING, maxsize=2))
         PROJECT(type=WindowAggregation, NEED_APPEND_INPUT)
           +-WINDOW(partition_keys=(), orders=(ASC), rows=(ts, 1 PRECEDING, 0 CURRENT))
@@ -309,7 +309,7 @@ cases:
       SIMPLE_PROJECT(sources=(id, cnt, mv, mi, l1))
         REQUEST_JOIN(type=kJoinTypeConcat)
           PROJECT(type=Aggregation)
-            REQUEST_UNION(partition_keys=(), orders=(ASC), range=(ts, 3000 PRECEDING, 0 OPEN PRECEDING, maxsize=2), index_keys=(g))
+            REQUEST_UNION(EXCLUDE_CURRENT_ROW, partition_keys=(), orders=(ASC), range=(ts, 3000 PRECEDING, 0 OPEN PRECEDING, maxsize=2), index_keys=(g))
               DATA_PROVIDER(request=t1)
               DATA_PROVIDER(type=Partition, table=t1, index=idx)
           PROJECT(type=Aggregation)
@@ -362,7 +362,7 @@ cases:
           PARTITION by `g` ORDER by `ts`
           ROWS BETWEEN 3 PRECEDING AND 0 OPEN PRECEDING EXCLUDE CURRENT_ROW);
     batch_plan: |
-      PROJECT(type=WindowAggregation)
+      PROJECT(type=WindowAggregation, EXCLUDE_CURRENT_ROW)
         +-WINDOW(partition_keys=(g), orders=(ts ASC), rows=(ts, 3 PRECEDING, 0 OPEN PRECEDING))
         PROJECT(type=WindowAggregation, NEED_APPEND_INPUT)
           +-WINDOW(partition_keys=(), orders=(ASC), rows=(ts, 1 PRECEDING, 0 CURRENT))
@@ -371,7 +371,7 @@ cases:
       SIMPLE_PROJECT(sources=(id, cnt, mv, mi, l1))
         REQUEST_JOIN(type=kJoinTypeConcat)
           PROJECT(type=Aggregation)
-            REQUEST_UNION(partition_keys=(), orders=(ASC), rows=(ts, 3 PRECEDING, 0 OPEN PRECEDING), index_keys=(g))
+            REQUEST_UNION(EXCLUDE_CURRENT_ROW, partition_keys=(), orders=(ASC), rows=(ts, 3 PRECEDING, 0 OPEN PRECEDING), index_keys=(g))
               DATA_PROVIDER(request=t1)
               DATA_PROVIDER(type=Partition, table=t1, index=idx)
           PROJECT(type=Aggregation)

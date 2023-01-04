@@ -35,7 +35,6 @@ WindowInterface::WindowInterface(bool instance_not_in_window, bool exclude_curre
         WindowRange(ExtractFrameType(frame_type_str), start_offset, end_offset, rows_preceding, max_size));
     window_impl_->set_instance_not_in_window(instance_not_in_window);
     window_impl_->set_exclude_current_time(exclude_current_time);
-    window_impl_->set_exclude_current_row(exclude_current_row);
 }
 
 bool WindowInterface::BufferData(uint64_t key, const Row& row) {

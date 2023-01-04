@@ -1148,9 +1148,22 @@ class PhysicalWindowAggrerationNode : public PhysicalProjectNode {
     }
 
     const bool exclude_current_time() const { return exclude_current_time_; }
-    const bool exclude_current_row() const { return exclude_current_row_; }
-    void set_exclude_current_row(bool flag) { exclude_current_row_ = flag; }
     bool need_append_input() const { return need_append_input_; }
+
+    // EXCLUDE CURRENT_ROW window attribute in physical node, exists in two nodes:
+    // - PhysicalWindowAggrerationNode
+    // - PhysicalRequestUnionNode
+    //
+    // Both inhert the attribute from Window definition node, unchanged. Whether exclude current_row
+    // attribute take effect depends, refer `ExprIRBuilder::BuildWindow`.
+    //
+    // Besides, the attribute affect the max size value in Runner phase, possibly plus one.
+    const bool exclude_current_row() const {
+        if (window_.range_.frame_ == nullptr) {
+            return false;
+        }
+        return window_.range_.frame_->exclude_current_row_;
+    }
 
     WindowOp &window() { return window_; }
     WindowJoinList &window_joins() { return window_joins_; }
@@ -1181,7 +1194,6 @@ class PhysicalWindowAggrerationNode : public PhysicalProjectNode {
     const bool need_append_input_;
     const bool instance_not_in_window_;
     const bool exclude_current_time_;
-    bool exclude_current_row_ = false;
 };
 
 class PhysicalJoinNode : public PhysicalBinaryNode {
@@ -1502,13 +1514,18 @@ class PhysicalRequestUnionNode : public PhysicalBinaryNode {
                                  const std::vector<PhysicalOpNode *> &children,
                                  PhysicalOpNode **out) override;
 
+    const bool exclude_current_row() const {
+        if (window_.range_.frame_ == nullptr) {
+            return false;
+        }
+        return window_.range_.frame_->exclude_current_row_;
+    }
+
     RequestWindowOp window_;
     const bool instance_not_in_window_;
     const bool exclude_current_time_;
     const bool output_request_row_;
     RequestWindowUnionList window_unions_;
-
-    bool exclude_current_row_ = false;
 };
 
 class PhysicalRequestAggUnionNode : public PhysicalOpNode {

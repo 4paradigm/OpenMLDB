@@ -244,7 +244,7 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                     WindowAggRunner* runner = nullptr;
                     CreateRunner<WindowAggRunner>(
                         &runner, id_++, op->schemas_ctx(), op->GetLimitCnt(), op->window_, op->project().fn_info(),
-                        op->instance_not_in_window(), op->exclude_current_time(), op->exclude_current_row(),
+                        op->instance_not_in_window(), op->exclude_current_time(),
                         op->need_append_input() ? node->GetProducer(0)->schemas_ctx()->GetSchemaSourceSize() : 0);
                     size_t input_slices = input->output_schemas()->GetSchemaSourceSize();
                     if (!op->window_unions_.Empty()) {
@@ -314,7 +314,6 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                 &runner, id_++, node->schemas_ctx(), op->GetLimitCnt(),
                 op->window().range_, op->exclude_current_time(),
                 op->output_request_row());
-            runner->exclude_current_row_ = op->exclude_current_row_;
             Key index_key;
             if (!op->instance_not_in_window()) {
                 runner->AddWindowUnion(op->window_, right);
@@ -1515,7 +1514,6 @@ void WindowAggRunner::RunWindowAggOnKey(
     HistoryWindow window(instance_window_gen_.range_gen_.window_range_);
     window.set_instance_not_in_window(instance_not_in_window_);
     window.set_exclude_current_time(exclude_current_time_);
-    window.set_exclude_current_row(exclude_current_row_);
 
     while (instance_segment_iter->Valid()) {
         if (limit_cnt_.has_value() && cnt >= limit_cnt_) {
@@ -2772,10 +2770,8 @@ std::shared_ptr<DataHandler> RequestAggUnionRunner::Run(
                                     exclude_current_time_);
     } else {
         LOG(WARNING) << "Aggr segment is empty. Fall back to normal RequestUnionRunner";
-        // NOTE: normal request union should always `output_request_row`, while the `output_request_row_`
-        // here indicate whether `EXCLUDE CURRENT_ROW`
         window = RequestUnionRunner::RequestUnionWindow(request, union_segments, ts_gen, range_gen_.window_range_, true,
-                                                        exclude_current_time_, !output_request_row_);
+                                                        exclude_current_time_);
     }
 
     return window;
@@ -3220,13 +3216,12 @@ std::shared_ptr<DataHandler> RequestUnionRunner::Run(
     auto union_segments =
         windows_union_gen_.GetRequestWindows(request, ctx.GetParameterRow(), union_inputs);
     // build window with start and end offset
-    return RequestUnionWindow(request, union_segments, ts_gen,
-                              range_gen_.window_range_, output_request_row_,
-                              exclude_current_time_, exclude_current_row_);
+    return RequestUnionWindow(request, union_segments, ts_gen, range_gen_.window_range_, output_request_row_,
+                              exclude_current_time_);
 }
 std::shared_ptr<TableHandler> RequestUnionRunner::RequestUnionWindow(
     const Row& request, std::vector<std::shared_ptr<TableHandler>> union_segments, int64_t ts_gen,
-    const WindowRange& window_range, bool output_request_row, bool exclude_current_time, bool exclude_current_row) {
+    const WindowRange& window_range, bool output_request_row, bool exclude_current_time) {
     uint64_t start = 0;
     // end is empty means end value < 0, that there is no effective window range
     // this happend when `ts_gen` is 0 and exclude current_time needed
@@ -3250,17 +3245,6 @@ std::shared_ptr<TableHandler> RequestUnionRunner::RequestUnionWindow(
         }
         rows_start_preceding = window_range.start_row_;
         max_size = window_range.max_size_;
-
-        // HACK: window ... maxsize sz exclude current_row
-        // due to the implementation, current row should always present in the returned table
-        // because `AggRunner` requires that current row to be the first two parameters to udf call
-        // so we make the return one size more if original maxsize is set.
-        // the proper window list will generated for exclude current_row in codegen
-        //
-        // see `Runner::GroupbyProject` when `exclude_current_row` is true
-        if (exclude_current_row && max_size > 0) {
-            max_size++;
-        }
     }
     uint64_t request_key = ts_gen > 0 ? static_cast<uint64_t>(ts_gen) : 0;
 
