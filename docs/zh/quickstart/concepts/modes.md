@@ -1,6 +1,6 @@
 # 执行模式
 
-针对特征工程开发全流程，OpenMLDB 在流程不同阶段支持不同的执行模式。本文将展现 OpenMLDB 如何运用到特征工程中，以及详细介绍其不同的执行模式。
+针对特征工程开发全流程，OpenMLDB 在流程不同阶段支持不同的执行模式。本文将介绍使用 OpenMLDB 进行特征工程开发和上线的流程，以及详细介绍流程中不同的执行模式。
 
 ## OpenMLDB 使用流程概览
 
@@ -85,7 +85,7 @@ OpenMLDB CLI 启动以后的默认模式为离线模式。离线数据导入、�
 在线请求模式通过以下方式支持：
 
 - CLI：不支持
-- [REST API](../quickstart/sdk/rest_api.md)：支持单行或者多行 request rows 的请求
-- [Java SDK](../quickstart/sdk/java_sdk.md)：支持单行或者多行 request rows 的请求
-- [Python SDK](../quickstart/sdk/python_sdk.md)
+- [REST API](../sdk/rest_api.md)：支持单行或者多行 request rows 的请求
+- [Java SDK](../sdk/java_sdk.md)：支持单行或者多行 request rows 的请求
+- [Python SDK](../sdk/python_sdk.md)
 ：仅支持单行的 request row 请求
