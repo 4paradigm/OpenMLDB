@@ -129,13 +129,12 @@ class NodeManager {
     SqlNode *MakeFrameBound(BoundType bound_type);
     SqlNode *MakeFrameBound(BoundType bound_type, ExprNode *offset);
     SqlNode *MakeFrameBound(BoundType bound_type, int64_t offset);
-    SqlNode *MakeFrameNode(FrameType frame_type, SqlNode *node_ptr,
-                           ExprNode *frame_size);
-    SqlNode *MakeFrameNode(FrameType frame_type, SqlNode *node_ptr);
-    SqlNode *MakeFrameNode(FrameType frame_type, SqlNode *node_ptr,
-                           int64_t maxsize);
-    SqlNode *MakeFrameNode(FrameType frame_type, FrameExtent *frame_range,
-                           FrameExtent *frame_rows, int64_t maxsize);
+
+    FrameNode *MakeFrameNode(FrameType frame_type, SqlNode *node_ptr, ExprNode *frame_size);
+    FrameNode *MakeFrameNode(FrameType frame_type, SqlNode *node_ptr);
+    FrameNode *MakeFrameNode(FrameType frame_type, SqlNode *node_ptr, int64_t maxsize);
+    FrameNode *MakeFrameNode(FrameType frame_type, FrameExtent *frame_range, FrameExtent *frame_rows, int64_t maxsize);
+
     FrameNode *MergeFrameNode(const FrameNode *frame1, const FrameNode *frame2);
     SqlNode *MakeLimitNode(int count);
 

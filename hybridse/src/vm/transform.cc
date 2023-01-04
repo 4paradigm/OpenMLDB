@@ -1331,15 +1331,9 @@ Status BatchModeTransformer::CreatePhysicalProjectNode(
 
 
             if (project_list->GetW()->exclude_current_row()) {
-                // exclude current row handled in WindowAggNode
-                // there is no need to handle in codegen through FrameNode
-                for (decltype(column_projects.size()) i = 0; i < column_projects.size(); ++i) {
-                    auto* frame = column_projects.GetFrame(i);
-                    if (frame != nullptr) {
-                        frame->exclude_current_row_ = false;
-                    }
-                }
-                window_agg_op->window().range().frame()->exclude_current_row_ = false;
+                // for batch mode, EXCLUDE CURRENT ROW handled in WindowAggNode
+                // there is no need to codegen the information through FrameNode
+                window_agg_op->MutFrames([](const node::FrameNode* frame) { frame->exclude_current_row_ = false; });
 
                 // there is only special handling for ROWS_RANGE Current History Window
                 // - for pure history windows, exclude current_row do not matter since current row already excluded by
@@ -1351,9 +1345,10 @@ Status BatchModeTransformer::CreatePhysicalProjectNode(
                 }
                 if (project_list->GetW()->frame_node()->frame_type() == node::FrameType::kFrameRows &&
                     project_list->GetW()->frame_node()->GetHistoryRowsEnd() == 0) {
-                    window_agg_op->window().range().frame()->frame_rows()->end()->set_bound_type(
-                        node::BoundType::kOpenPreceding);
-                    window_agg_op->window().range().frame()->frame_rows()->end()->SetOffset(0);
+                    window_agg_op->MutFrames([](const node::FrameNode* frame) {
+                        frame->frame_rows()->end()->set_bound_type(node::BoundType::kOpenPreceding);
+                        frame->frame_rows()->end()->SetOffset(0);
+                    });
                 }
             }
             if (!project_list->GetW()->union_tables().empty()) {

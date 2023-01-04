@@ -463,7 +463,7 @@ Status ExprIRBuilder::BuildWindow(NativeValue* output) {  // NOLINT
             row_key = row_key_value.GetValue(&builder);
         }
         CHECK_TRUE(ok && nullptr != row_key, kCodegenError, "Fail to build inner range window: row key is null");
-        if (frame_->exclude_current_row_) {
+        if (frame_->exclude_current_row_ && frame_->GetHistoryRangeEnd() == 0) {
             ok = window_ir_builder.BuildInnerRowsRangeList(list_ptr, row_key, 1,
                                                            frame_->GetHistoryRangeStart(), &window_ptr);
         } else {
@@ -471,9 +471,12 @@ Status ExprIRBuilder::BuildWindow(NativeValue* output) {  // NOLINT
                                                        frame_->GetHistoryRangeStart(), &window_ptr);
         }
     } else if (frame_->frame_rows() != nullptr) {
-        ok = window_ir_builder.BuildInnerRowsList(list_ptr, ::hybridse::base::safe_inverse(frame_->GetHistoryRowsEnd()),
-                                                  ::hybridse::base::safe_inverse(frame_->GetHistoryRowsStart()),
-                                                  &window_ptr);
+        int64_t end = ::hybridse::base::safe_inverse(frame_->GetHistoryRowsEnd());
+        if (frame_->exclude_current_row_ && end == 0) {
+            end = 1;
+        }
+        ok = window_ir_builder.BuildInnerRowsList(
+            list_ptr, end, ::hybridse::base::safe_inverse(frame_->GetHistoryRowsStart()), &window_ptr);
     }
 
     // int8_t** -> ListRef* { int8_t* }
