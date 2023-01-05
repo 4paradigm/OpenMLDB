@@ -68,13 +68,12 @@ curl http://<IP:port>/dbs/foo -X POST -d'{"mode":"online", "sql":"show component
  - 使用host网络，并修改apiserver的endpoint改为`0.0.0.0`或是公网IP。docker启动详情见上。
 
 只需要让apiserver的endpoint（绑定ip）改为公网ip，使它可访问。apiserver与集群内server的交互都在同一台server上，或同一容器内，并不需要更改。
-还是跨主机
 
 ### CLI/SDK
 
-如果你需要在外部使用CLI/SDK，情况比只连接apiserver要复杂，需要保证CLI/SDK能访问到zookeeper，nameserver,tablet server和taskmanager server。
+如果你需要在外部使用CLI/SDK，情况比只连接apiserver要复杂，需要保证CLI/SDK能访问到zookeeper，nameserver,tablet server和taskmanager。
 ```{seealso}
-由于server间内部通信是使用`endpoint`绑定的ip通信，而CLI/SDK也是直接获取同样的ip，直连nameserver，tablet server和taskmanager server，因此，serve之间用localhost等IP可以互相通信，CLI/SDK却有可能因为跨主机或容器，得到localhost:port这样的server地址，无法正常连接到这些server。
+由于server间内部通信是使用`endpoint`绑定的ip通信，而CLI/SDK也是直接获取同样的ip，直连nameserver，tablet server和taskmanager，因此，serve之间用localhost等IP可以互相通信，CLI/SDK却有可能因为跨主机或容器，得到localhost:port这样的server地址，无法正常连接到这些server。
 ```
 
 你可以通过这样一个简单的SQL脚本来测试确认连接是否正常。
