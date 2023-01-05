@@ -35,6 +35,7 @@
 #include "absl/cleanup/cleanup.h"
 #include "boost/bind.hpp"
 #include "boost/container/deque.hpp"
+#include "config.h" // NOLINT
 #ifdef TCMALLOC_ENABLE
 #include "gperftools/malloc_extension.h"
 #endif
@@ -4221,8 +4222,8 @@ bool TabletImpl::UpdateAggrs(uint32_t tid, uint32_t pid, const std::string& valu
 void TabletImpl::ShowMemPool(RpcController* controller, const ::openmldb::api::HttpRequest* request,
                              ::openmldb::api::HttpResponse* response, Closure* done) {
     brpc::ClosureGuard done_guard(done);
-#ifdef TCMALLOC_ENABLE
     brpc::Controller* cntl = static_cast<brpc::Controller*>(controller);
+#ifdef TCMALLOC_ENABLE
     MallocExtension* tcmalloc = MallocExtension::instance();
     std::string stat;
     stat.resize(1024);
@@ -4231,6 +4232,8 @@ void TabletImpl::ShowMemPool(RpcController* controller, const ::openmldb::api::H
     cntl->response_attachment().append("<html><head><title>Mem Stat</title></head><body><pre>");
     cntl->response_attachment().append(stat);
     cntl->response_attachment().append("</pre></body></html>");
+#else
+    cntl->response_attachment().append("TCMALLOC_ENABLE is not defined\n");
 #endif
 }
 

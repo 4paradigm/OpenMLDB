@@ -166,6 +166,18 @@ TEST_F(TabletImplMemTest, TestMem) {
 #endif
 }
 
+TEST_F(TabletImplMemTest, TestMemStat) {
+    auto tablet = std::make_unique<TabletImpl>();
+    tablet->Init("");
+    ::openmldb::api::HttpRequest request;
+    ::openmldb::api::HttpResponse response;
+    brpc::Controller cntl;
+    MockClosure closure;
+    tablet->ShowMemPool(&cntl, &request, &response, &closure);
+    auto str = cntl.response_attachment().to_string();
+    ASSERT_TRUE(str.find("Mem Stat") != std::string::npos);
+}
+
 }  // namespace tablet
 }  // namespace openmldb
 
