@@ -195,18 +195,22 @@ SET @@execute_mode='online';
 SELECT * FROM demo_table1 LIMIT 10;
 ```
 
-当前版本要求用户成功完成 SQL 上线部署后，才能导入在线数据，否则会上线失败。
+当前版本要求用户成功完成 SQL 上线部署后，才能导入在线数据，反之，会上线失败。
+
+```{note}
+本篇教程在数据导入以后，略过了实时数据接入的步骤。在实际场景中，由于现实时间的推移，往往需要将最新的实时数据更新到在线数据库。具体可以通过 OpenMLDB SDK 或者数据源 connector 实现（如 Kafka, Pulsar 等）。
+```
 
 ### 步骤 6：实时特征计算
 
-至此，基于 OpenMLDB CLI 的开发部署工作已经全部完成了，接下去可以在实时请求模式下进行实时特征计算请求。我们首先退出 OpenMLDB CLI，回到操作系统的命令行。
+至此，基于 OpenMLDB CLI 的开发部署工作已经全部完成了，接下去可以在实时请求模式下进行实时特征计算请求。首先退出 OpenMLDB CLI，回到操作系统的命令行。
 
 ```sql
 -- OpenMLDB CLI
 quit;
 ```
 
-最后将演示实时特征计算。按照默认的部署配置，APIServer 部署的 http 端口为 9080。实时线上服务可以通过如下 Web API 提供服务：
+然后演示实时特征计算。按照默认的部署配置，APIServer 部署的 http 端口为 9080。实时线上服务可以通过如下 Web API 提供服务：
 
 ```bash
 http://127.0.0.1:9080/dbs/demo_db/deployments/demo_data_service
