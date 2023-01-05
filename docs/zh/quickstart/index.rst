@@ -9,4 +9,6 @@
     openmldb_quickstart
     sdk/index
     beginner_must_read
+    function_boundary
+    
 
