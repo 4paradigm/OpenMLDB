@@ -13,7 +13,7 @@ OpenMLDB docker镜像或发布包内的ip配置默认都是127.0.0.1，如果是
 - onebox，所有OpenMLDB server都在一个环境下，同一物理机或一个容器内。例如，我们的[快速上手](../quickstart/openmldb_quickstart.md)，就是将所有进程都放在一个容器内。
 - 分布式，正式生产环境中常用分布式，server在不同物理机上，它们自然是需要绑定公网IP。
 
-**分布式部署，除了公网IP，还需要注意网络白名单，请参考[安装部署-网络白名单]()。**
+**分布式部署，除了公网IP，还需要注意网络白名单，请参考[安装部署-网络白名单](../deploy/install_deploy.md#网络白名单)。**
 
 由于容器的网络限制，onebox型的OpenMLDB常出现，IP配置错误、客户端无法连接集群等问题。下面我们将介绍**onebox型OpenMLDB**如何修改配置实现**外部访问**。
 ```{attention}
@@ -37,7 +37,6 @@ curl http://<IP:port>/dbs/foo -X POST -d'{"mode":"online", "sql":"show component
 #### 物理机onebox apiserver
 
 跨主机访问物理机上的onebox，只需要让apiserver的endpoint（绑定ip）改为公网ip。
-
 
 #### 容器onebox apiserver
 
@@ -73,9 +72,9 @@ curl http://<IP:port>/dbs/foo -X POST -d'{"mode":"online", "sql":"show component
 
 ### CLI/SDK
 
-如果你需要在外部使用CLI/SDK，情况比只连接apiserver要复杂，需要保证CLI/SDK能访问到tablet server和taskmanager server。
+如果你需要在外部使用CLI/SDK，情况比只连接apiserver要复杂，需要保证CLI/SDK能访问到zookeeper，nameserver,tablet server和taskmanager server。
 ```{seealso}
-由于server间内部通信是使用`endpoint`绑定的ip通信，而CLI/SDK也是直接获取同样的ip，直连tablet server或taskmanager，因此，nameserver和tablet/taskmanager通信正常，CLI/SDK却有可能因为跨主机或容器，无法正常连接到tablet/taskmanager。
+由于server间内部通信是使用`endpoint`绑定的ip通信，而CLI/SDK也是直接获取同样的ip，直连nameserver，tablet server和taskmanager server，因此，serve之间用localhost等IP可以互相通信，CLI/SDK却有可能因为跨主机或容器，得到localhost:port这样的server地址，无法正常连接到这些server。
 ```
 
 你可以通过这样一个简单的SQL脚本来测试确认连接是否正常。
@@ -88,7 +87,7 @@ set @@execute_mode='online';
 insert into t1 values(1);
 select * from t1;
 ```
-其中`show components`可以看到CLI获得的tablet/taskmanager ip是什么样的。`insert`语句可以测试是否能连接并将数据写入tablet server。
+其中`show components`可以看到CLI获得的nameserver/tablet/taskmanager的ip是什么样的。`insert`语句可以测试是否能连接并将数据写入tablet server。
 
 下面，我们分情况讨论如何配置。
 

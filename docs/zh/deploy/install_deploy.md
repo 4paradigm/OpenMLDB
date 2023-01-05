@@ -85,9 +85,13 @@ Wed Aug 22 16:33:50 CST 2018
 
 ## 网络白名单
 
-OpenMLDB集群的服务组件之间网络需要保证联通；client（CLI/各SDK）连接OpenMLDB集群，除了zookeeper地址的联通，还需要保证和nameserver/tabletserver/taskmanager的联通，因为client操作可能会直连某个server。
+OpenMLDB集群的服务组件之间需要保证网络连通。
 
-如果服务仅使用apiserver作为代理，那么客户端只需保证能访问apiserver端口。（apiserver作为服务组件，必然保证和OpenMLDB集群各组件的连通性。）
+客户端到OpenMLDB集群则分为两种情况：
+
+- client（CLI/各SDK）连接OpenMLDB集群，除了与zookeeper的连通，还需要保证和nameserver/tabletserver/taskmanager的连通，因为client操作可能会直连某个server。
+
+- 如果服务仅使用apiserver作为代理，那么客户端只需保证能访问apiserver端口。（apiserver作为服务组件，必然保证和OpenMLDB集群其他组件的连通性。）
 
 ## 预备测试
 
