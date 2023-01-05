@@ -48,8 +48,9 @@ inline std::string GenRand() {
 class TempPath {
  public:
     TempPath() {
-        std::filesystem::path tmp_path = std::filesystem::temp_directory_path();
-        base_path_ = absl::StrCat(tmp_path.string(), "/openmldb_test", ::openmldb::test::GenRand());
+        std::filesystem::path tmp_path = std::filesystem::temp_directory_path() / "openmldb_test"
+                / ::openmldb::test::GenRand();
+        base_path_ = tmp_path.string();
     }
     ~TempPath() {
         std::filesystem::remove_all(base_path_);
@@ -62,7 +63,7 @@ class TempPath {
     }
     std::string CreateTempPath(const std::string& prefix) {
         std::string path = GetTempPath(prefix);
-        std::filesystem::create_directory(path);
+        std::filesystem::create_directories(path);
         return path;
     }
  private:
