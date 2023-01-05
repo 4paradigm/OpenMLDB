@@ -1239,10 +1239,6 @@ class FrameNode : public SqlNode {
     }
     inline bool IsRowsRangeLikeMaxSizeFrame() const { return IsRowsRangeLikeFrame() && frame_maxsize_ > 0; }
     bool IsPureHistoryFrame() const {
-        if (exclude_current_row_) {
-            return true;
-        }
-
         switch (frame_type_) {
             case kFrameRows: {
                 return GetHistoryRowsEnd() < 0;
@@ -1262,7 +1258,6 @@ class FrameNode : public SqlNode {
 
     FrameNode* ShadowCopy(node::NodeManager* nm) const override;
 
-    // only setted to true for frame_type_ = kFrameRange
     mutable bool exclude_current_row_ = false;
 
  private:

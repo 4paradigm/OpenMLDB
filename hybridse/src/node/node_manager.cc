@@ -140,11 +140,8 @@ FrameNode *NodeManager::MergeFrameNodeWithCurrentHistoryFrame(FrameNode *frame1)
     switch (frame1->frame_type()) {
         case kFrameRows: {
             return MergeFrameNode(
-                frame1,
-                dynamic_cast<FrameNode *>(MakeFrameNode(
-                    kFrameRows, nullptr,
-                    dynamic_cast<FrameExtent *>(MakeFrameExtent(MakeFrameBound(kCurrent), MakeFrameBound(kCurrent))),
-                    0)));
+                frame1, MakeFrameNode(kFrameRows, nullptr,
+                                      MakeFrameExtent(MakeFrameBound(kCurrent), MakeFrameBound(kCurrent)), 0));
         }
         default: {
             return frame1;
@@ -175,7 +172,7 @@ FrameNode *NodeManager::MergeFrameNode(const FrameNode *frame1, const FrameNode 
         int end_compared = FrameBound::Compare(end1, end2);
         FrameBound *start = start_compared < 1 ? start1 : start2;
         FrameBound *end = end_compared >= 1 ? end1 : end2;
-        frame_range = dynamic_cast<FrameExtent *>(MakeFrameExtent(start, end));
+        frame_range = MakeFrameExtent(start, end);
     }
 
     FrameExtent *frame_rows = nullptr;
@@ -193,11 +190,11 @@ FrameNode *NodeManager::MergeFrameNode(const FrameNode *frame1, const FrameNode 
         FrameBound *end2 = frame2->frame_rows()->end();
         int end_compared = FrameBound::Compare(end1, end2);
         FrameBound *end = end_compared >= 1 ? end1 : end2;
-        frame_rows = dynamic_cast<FrameExtent *>(MakeFrameExtent(start, end));
+        frame_rows = MakeFrameExtent(start, end);
     }
     int64_t maxsize = frame1->frame_maxsize() == 0 ? frame2->frame_maxsize() : frame1->frame_maxsize();
 
-    auto* fm = dynamic_cast<FrameNode *>(MakeFrameNode(frame_type, frame_range, frame_rows, maxsize));
+    auto *fm = MakeFrameNode(frame_type, frame_range, frame_rows, maxsize);
     fm->exclude_current_row_ = frame1->exclude_current_row_;
     return fm;
 }
