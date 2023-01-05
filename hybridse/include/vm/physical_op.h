@@ -320,8 +320,6 @@ class ColumnProjects : public FnComponent {
         return idx < size() ? names_[idx] : "";
     }
 
-    const std::vector<const node::FrameNode *> &GetFrames() const { return frames_; }
-
     const node::FrameNode *GetFrame(size_t idx) const {
         return idx < size() ? frames_[idx] : nullptr;
     }
@@ -697,22 +695,6 @@ class PhysicalProjectNode : public PhysicalUnaryNode {
 
     const ColumnProjects &project() const { return project_; }
     const ProjectType project_type_;
-
-    // all frame nodes bind to current project node
-    virtual std::set<const node::FrameNode *> GetFrames() const {
-        std::set<const node::FrameNode *> sets(project_.GetFrames().begin(), project_.GetFrames().end());
-        sets.insert(project_.GetPrimaryFrame());
-        return sets;
-    }
-
-    template <typename MutFunc>
-    void MutFrames(MutFunc &&func) {
-        for (auto frame : GetFrames()) {
-            if (frame != nullptr) {
-                std::forward<MutFunc>(func)(frame);
-            }
-        }
-    }
 
  protected:
     ColumnProjects project_;
@@ -1178,12 +1160,6 @@ class PhysicalWindowAggrerationNode : public PhysicalProjectNode {
      * Initialize inner state for window joins
      */
     base::Status InitJoinList(PhysicalPlanContext *plan_ctx);
-
-    std::set<const node::FrameNode*> GetFrames() const override {
-        auto sets = PhysicalProjectNode::GetFrames();
-        sets.insert(window_.range_.frame_);
-        return sets;
-    }
 
     std::vector<PhysicalOpNode *> joined_op_list_;
 
