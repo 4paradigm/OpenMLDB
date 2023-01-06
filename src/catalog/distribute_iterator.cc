@@ -157,7 +157,6 @@ bool FullTableIterator::NextFromRemote() {
         if (kv_it_ && kv_it_->Valid()) {
             last_pk_ = kv_it_->GetLastPK();
             last_ts_ = kv_it_->GetLastTS();
-            response_vec_.emplace_back(kv_it_->GetResponse());
             key_ = kv_it_->GetKey();
             break;
         }
@@ -216,7 +215,6 @@ void DistributeWindowIterator::Seek(const std::string& key) {
     if (stat.it != nullptr) {
         it_.reset(stat.it);
     } else if (stat.kv_it != nullptr) {
-        response_vec_.push_back(stat.kv_it->GetResponse());
         kv_it_ = stat.kv_it;
     } else {
         DLOG(INFO) << "no pos found for key " << key;
@@ -258,7 +256,6 @@ void DistributeWindowIterator::SeekToFirst() {
     }
     const auto& stat = SeekToFirstRemote();
     if (stat.kv_it) {
-        response_vec_.push_back(stat.kv_it->GetResponse());
         kv_it_ = stat.kv_it;
         cur_pid_ = stat.pid;
         return;
@@ -348,7 +345,6 @@ void DistributeWindowIterator::Next() {
                 FLAGS_traverse_cnt_limit, true, ts_pos, count);
         DLOG(INFO) << "pid " << cur_pid_ << " last pk " << cur_pk << " key " << last_ts << " count " << count;
         if (kv_it_ && kv_it_->Valid()) {
-            response_vec_.emplace_back(kv_it_->GetResponse());
             return;
         }
         do {
@@ -362,7 +358,6 @@ void DistributeWindowIterator::Next() {
                 iter->second->Traverse(tid_, cur_pid_, index_name_, "", 0, FLAGS_traverse_cnt_limit, false, 0, count);
             DLOG(INFO) << "count " << count;
             if (kv_it_ && kv_it_->Valid()) {
-                response_vec_.emplace_back(kv_it_->GetResponse());
                 break;
             }
             kv_it_.reset();
@@ -370,7 +365,6 @@ void DistributeWindowIterator::Next() {
     } else {
         const auto& stat = SeekToFirstRemote();
         if (stat.kv_it) {
-            response_vec_.push_back(stat.kv_it->GetResponse());
             kv_it_ = stat.kv_it;
             cur_pid_ = stat.pid;
             return;
@@ -438,7 +432,6 @@ RemoteWindowIterator::RemoteWindowIterator(uint32_t tid, uint32_t pid, const std
     if (kv_it_ && kv_it_->Valid()) {
         pk_ = kv_it_->GetPK();
         ts_ = kv_it_->GetKey();
-        response_vec_.emplace_back(kv_it_->GetResponse());
         auto traverse_it = std::dynamic_pointer_cast<openmldb::base::TraverseKvIterator>(kv_it);
         if (traverse_it) {
             is_traverse_data_ = true;
@@ -465,7 +458,6 @@ void RemoteWindowIterator::ScanRemote(uint64_t key, uint32_t ts_pos) {
         << tid_ << " pid " << pid_ << " ts_pos " << ts_pos;
     if (kv_it_ && kv_it_->Valid()) {
         ts_ = kv_it_->GetKey();
-        response_vec_.emplace_back(kv_it_->GetResponse());
     }
 }
 
