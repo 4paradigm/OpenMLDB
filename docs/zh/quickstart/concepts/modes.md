@@ -6,7 +6,7 @@
 
 下图为使用 OpenMLDB 进行特征工程的开发和上线的典型流程以及流程中使用的执行模式：
 
-![image-20220310170024349](images/mode-flow.png)
+![image-20220310170024349](images/modes-flow.png)
 
 1. 离线数据导入：导入离线数据用于离线特征工程开发和调试。
 2. 离线特征开发：开发特征工程脚本，调试到效果满意为止。在这个步骤里会涉及机器学习模型的联合调试（比如 XGBoost、LightGBM 等），但本文内容主要集中于与 OpenMLDB 相关的特征工程开发。
@@ -20,15 +20,15 @@
 
 由于离线和线上场景的操作数据对象不同，其底层的存储和计算节点亦不同。因此，OpenMLDB 内置了几种不同的执行模式来支持完成以上步骤。以下表格总结了各个步骤所使用的执行模式，后面将会详细介绍执行模式的概念。
 
-| 步骤                    | 执行模式  | 开发工具                                  | 说明                                                                                                            |
-| ----------------------- |--------|---------------------------------------|---------------------------------------------------------------------------------------------------------------|
-| 1. 离线数据导入         | 离线模式   | CLI                                   | - `LOAD DATA` 命令<br />                                                                                   |
-| 2. 离线特征开发         | 离线模式   | CLI                                   | - 支持 OpenMLDB 所有的 SQL 语法<br />- 部分 SQL（如 `SELECT`）异步运行                                                 |
-| 3. 特征方案部署         | 离线模式   | CLI                                   | - `DEPLOY` 命令                                                                                                 |
-| 4. 冷启动在线数据导入   | 在线预览模式 | CLI、导入工具                              | - CLI 使用 `LOAD DATA` 命令<br />- 也可使用导入工具 `openmldb-import`                                                   |
-| 5. 实时数据接入         | 在线预览模式 | connector、REST APIs、Java/Python SDK | - 从第三方集成数据源接入实时数据；利用 API 从第三方数据源接入实时数据<br/>- 或使用 Java/Python SDK 工具，在对请求行的计算完成后，插入主表                 |
-| 6. 在线数据预览（可选） | 在线预览模式 | CLI、Java/Python SDK                  | - 目前不支持 `LAST JOIN`、`ORDER BY` |
-| 7. 实时特征计算         | 在线请求模式 | REST APIs、Java/Python SDK            | - 支持 OpenMLDB 所有的 SQL 语法<br />- REST APIs 以及 Java SDK 支持单行或者批请求<br />- Python SDK 仅支持单行请求                     |
+| **步骤**                | **执行模式** | **开发工具**                                                 |
+| ----------------------- | ------------ | ------------------------------------------------------------ |
+| 1. 离线数据导入         | 离线模式     | OpenMLDB CLI、SDKs                                           |
+| 2. 离线特征开发         | 离线模式     | OpenMLDB CLI、SDKs                                           |
+| 3. 特征方案部署         | 离线模式     | OpenMLDB CLI、SDKs                                           |
+| 4. 冷启动在线数据导入   | 在线预览模式 | OpenMLDB CLI、SDKs、[数据导入工具](https://openmldb.ai/docs/zh/main/tutorial/data_import.html) |
+| 5. 实时数据接入         | 在线预览模式 | connectors、SDKs                                             |
+| 6. 在线数据预览（可选） | 在线预览模式 | OpenMLDB CLI、SDKs、[数据导出工具](https://openmldb.ai/docs/zh/main/tutorial/data_export.html) |
+| 7. 实时特征计算         | 在线请求模式 | CLI (REST APIs)、SDKs                                        |
 
 ### 离线模式
 
@@ -36,7 +36,7 @@ OpenMLDB CLI 启动以后的默认模式为离线模式。离线数据导入、�
 
 离线模式有以下主要特点：
 
-- 离线模式支持所有 OpenMLDB 提供的 SQL 语法，包括扩展优化的 `LAST JOIN`、`WINDOW UNION` 等复杂 SQL 语法。
+- 离线模式支持大部分 OpenMLDB 提供的 SQL 语法，包括扩展优化的 `LAST JOIN`、`WINDOW UNION` 等复杂 SQL 语法。
 - 离线模式中，部分 SQL 命令以异步方式执行，如：`LOAD DATA`、`SELECT` 以及`SELECT INTO` 命令。其他 SQL 命令均为同步执行。
 - 异步执行的 SQL 由内部的 TaskManager 进行管理，可以通过 `SHOW JOBS`、`SHOW JOB`、`STOP JOB` 命令进行查看和管理。
 
@@ -46,10 +46,7 @@ OpenMLDB CLI 启动以后的默认模式为离线模式。离线数据导入、�
 
 用于特征方案部署的命令 `DEPLOY` 也在离线模式下执行。其规范可以参阅 [OpenMLDB SQL 上线规范和要求](../openmldb_sql/deployment_manage/ONLINE_REQUEST_REQUIREMENTS.md)。
 
-离线模式可以通过以下方式设置：
-
-- CLI：`SET @@execute_mode='offline'`
-- REST APIs、Java/Python SDK：不支持离线模式
+离线模式设置命令 (OpenMLDB CLI)：`SET @@execute_mode='offline'`
 
 ### 在线预览模式
 
@@ -58,15 +55,13 @@ OpenMLDB CLI 启动以后的默认模式为离线模式。离线数据导入、�
 在线预览模式有以下主要特点：
 
 - 在线数据导入（`LOAD DATA`），可以选择本地（load_mode='local'）或者集群（load_mode='cluster'）导入。本地导入为同步执行，集群导入为异步执行（和离线模式下一样）。其他操作均为同步执行。
-- 在线预览模式目前不支持 `LAST JOIN` 和 `ORDER BY`。
-- 在线模式服务端均为单线程执行 SQL，对于大数据处理，会比较慢，有可能会触发超时，可以通过在客户端配置 `--request_timeout` 来提高超时时间。
+- 在线预览模式主要用于有限数据的预览，在 OpenMLDB CLI 或者 SDKs 执行 SELECT 直接查看数据可能出现数据截断；如果数据量较大，建议使用[导出工具](https://openmldb.ai/docs/zh/main/tutorial/data_export.html)查看完整数据。
+- 在线预览模式的 SELECT 语句目前不支持 `LAST JOIN` 和 `ORDER BY` 等较复杂的查询，参考 [`SELECT`](https://openmldb.ai/docs/zh/main/openmldb_sql/dql/SELECT_STATEMENT.html)。
+- 在线预览模式服务端均为单线程执行 SQL，对于大数据处理，会比较慢，有可能会触发超时，可以通过在客户端配置 `--request_timeout` 来提高超时时间。
 - 为了防止影响线上服务，在线预览模式控制了最大访问的条数和pk个数，可以通过`--max_traverse_cnt` 和 `--max_traverse_pk_cnt` 来设置；
 同时，通过 `--scan_max_bytes_size` 来限制结果的大小。详细配置可参考[配置文件](../deploy/conf.md)。
 
-在线预览模式可以提供以下方式进行设置：
-
-- CLI： `SET @@execute_mode='online'`
-- REST APIs、Java/Python SDK：默认只支持在线模式下执行，无需进行设置。
+在线预览模式设置命令 (OpenMLDB CLI)：`SET @@execute_mode='online'`
 
 ### 在线请求模式
 
@@ -84,8 +79,8 @@ OpenMLDB CLI 启动以后的默认模式为离线模式。离线数据导入、�
 
 在线请求模式通过以下方式支持：
 
-- CLI：不支持
+- OpenMLDB CLI：不支持
 - [REST API](../sdk/rest_api.md)：支持单行或者多行 request rows 的请求
 - [Java SDK](../sdk/java_sdk.md)：支持单行或者多行 request rows 的请求
-- [Python SDK](../sdk/python_sdk.md)
-：仅支持单行的 request row 请求
+- [Python SDK](../sdk/python_sdk.md)：仅支持单行的 request row 请求
+- [C++ SDK](../sdk/cxx_sdk.md)：仅支持单行的 request row 请求
