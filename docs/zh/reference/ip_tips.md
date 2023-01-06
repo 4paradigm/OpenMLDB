@@ -13,9 +13,9 @@ OpenMLDB docker镜像或发布包内的ip配置默认都是127.0.0.1，如果是
 - onebox，所有OpenMLDB server都在一个环境下，同一物理机或一个容器内。例如，我们的[快速上手](../quickstart/openmldb_quickstart.md)，就是将所有进程都放在一个容器内。
 - 分布式，正式生产环境中常用分布式，server在不同物理机上，它们自然是需要绑定公网IP。
 
-由于容器的网络限制，onebox型的OpenMLDB常出现，IP配置错误等问题。相反，分布式由于一定要绑定公网IP，反而没有太多疑问。
+**分布式部署，除了公网IP，还需要注意网络白名单，请参考[安装部署-网络白名单]()。**
 
-下面我们将介绍**onebox型OpenMLDB**如何修改配置实现**外部访问**。
+由于容器的网络限制，onebox型的OpenMLDB常出现，IP配置错误、客户端无法连接集群等问题。下面我们将介绍**onebox型OpenMLDB**如何修改配置实现**外部访问**。
 ```{attention}
 单机版中，不只是需要改endpoint，nameserver的配置中的tablet IP `--tablet=`也需要修改。
 ```
