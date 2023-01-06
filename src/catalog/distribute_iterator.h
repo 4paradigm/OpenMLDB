@@ -82,6 +82,7 @@ class FullTableIterator : public ::hybridse::codec::ConstIterator<uint64_t, ::hy
     // the call steps in next_row_iterator are: res = GetValue() -> Next() -> return res
     bool valid_value_ = false;
     std::vector<std::shared_ptr<::google::protobuf::Message>> response_vec_;
+    std::vector<hybridse::base::RefCountedSlice> buffered_slices_;
     int64_t cnt_ = 0;
 };
 
@@ -127,6 +128,7 @@ class RemoteWindowIterator : public ::hybridse::vm::RowIterator {
     std::vector<std::shared_ptr<::google::protobuf::Message>> response_vec_;
     std::shared_ptr<openmldb::client::TabletClient> tablet_client_;
     ::hybridse::codec::Row row_;
+    std::vector<hybridse::base::RefCountedSlice> buffered_slices_;
     // use an extra flag to indicate whether the `row_` contains a valid value
     // the logic is:
     // After GetValue(): valid_value_ = true
