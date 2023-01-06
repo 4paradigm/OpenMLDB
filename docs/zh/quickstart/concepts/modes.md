@@ -18,7 +18,7 @@
 
 ## 执行模式概览
 
-由于离线和线上场景的操作数据对象不同，其底层的存储和计算节点亦不同。因此，OpenMLDB 内置了几种不同的执行模式来支持完成以上步骤。以下表格总结了各个步骤所使用的执行模式，后面将会详细介绍执行模式的概念。
+由于离线和线上场景的操作数据对象不同，其底层的存储和计算节点亦不同。因此，OpenMLDB 内置了几种不同的执行模式来支持完成以上步骤。以下表格总结了各个步骤所使用的执行模式以及开发工具，后面将会详细介绍三种执行模式。
 
 | **步骤**                | **执行模式** | **开发工具**                                                 |
 | ----------------------- | ------------ | ------------------------------------------------------------ |
@@ -32,12 +32,12 @@
 
 ### 离线模式
 
-OpenMLDB CLI 启动以后的默认模式为离线模式。离线数据导入、离线特征开发、特征方案部署上线均在离线模式下执行。离线模式的作用是对离线数据进行管理和计算。涉及的计算节点由针对特征工程优化的 [OpenMLDB Spark 发行版](./openmldbspark_distribution.md)支持，存储节点支持使用 HDFS 等常见存储系统。
+OpenMLDB CLI 启动以后的**默认模式为离线模式**。离线数据导入、离线特征开发、特征方案部署上线均在离线模式下执行。离线模式的作用是对离线数据进行管理和计算。涉及的计算节点由针对特征工程优化的 [OpenMLDB Spark 发行版](./openmldbspark_distribution.md)支持，存储节点支持使用 HDFS 等常见存储系统。
 
 离线模式有以下主要特点：
 
 - 离线模式支持大部分 OpenMLDB 提供的 SQL 语法，包括扩展优化的 `LAST JOIN`、`WINDOW UNION` 等复杂 SQL 语法。
-- 离线模式中，部分 SQL 命令以异步方式执行，如：`LOAD DATA`、`SELECT` 以及`SELECT INTO` 命令。其他 SQL 命令均为同步执行。
+- 离线模式中，部分 SQL 命令以异步方式执行，如：`LOAD DATA`、`SELECT` 以及 `SELECT INTO` 命令。其他 SQL 命令均为同步执行。
 - 异步执行的 SQL 由内部的 TaskManager 进行管理，可以通过 `SHOW JOBS`、`SHOW JOB`、`STOP JOB` 命令进行查看和管理。
 
 :::{tip}
@@ -54,7 +54,7 @@ OpenMLDB CLI 启动以后的默认模式为离线模式。离线数据导入、�
 
 在线预览模式有以下主要特点：
 
-- 在线数据导入（`LOAD DATA`），可以选择本地（load_mode='local'）或者集群（load_mode='cluster'）导入。本地导入为同步执行，集群导入为异步执行（和离线模式下一样）。其他操作均为同步执行。
+- 在线数据导入 (`LOAD DATA`)，可以选择本地 (load_mode='local') 或者集群 (load_mode='cluster') 导入。本地导入为同步执行，集群导入为异步执行（和离线模式下一样）。其他操作均为同步执行。
 - 在线预览模式主要用于有限数据的预览，在 OpenMLDB CLI 或者 SDKs 执行 SELECT 直接查看数据可能出现数据截断；如果数据量较大，建议使用[导出工具](https://openmldb.ai/docs/zh/main/tutorial/data_export.html)查看完整数据。
 - 在线预览模式的 SELECT 语句目前不支持 `LAST JOIN` 和 `ORDER BY` 等较复杂的查询，参考 [`SELECT`](https://openmldb.ai/docs/zh/main/openmldb_sql/dql/SELECT_STATEMENT.html)。
 - 在线预览模式服务端均为单线程执行 SQL，对于大数据处理，会比较慢，有可能会触发超时，可以通过在客户端配置 `--request_timeout` 来提高超时时间。
