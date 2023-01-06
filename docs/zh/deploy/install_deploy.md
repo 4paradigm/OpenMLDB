@@ -83,6 +83,12 @@ Wed Aug 22 16:33:50 CST 2018
 ```
 请确保时间是正确的
 
+## 网络白名单
+
+OpenMLDB集群的服务组件之间网络需要保证联通；client（CLI/各SDK）连接OpenMLDB集群，除了zookeeper地址的联通，还需要保证和nameserver/tabletserver/taskmanager的联通，因为client操作可能会直连某个server。
+
+如果服务仅使用apiserver作为代理，那么客户端只需保证能访问apiserver端口。（apiserver作为服务组件，必然保证和OpenMLDB集群各组件的连通性。）
+
 ## 预备测试
 
 由于linux平台的多样性，发布包可能在你的机器上不兼容，请先通过简单的运行测试。
