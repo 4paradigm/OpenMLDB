@@ -85,7 +85,7 @@ LOAD DATA INFILE 'hive://db1.t1' INTO TABLE t1 OPTIONS(deep_copy=true);
 - 如果不指定数据库名字，则会使用默认数据库名字 `default_db`
 - 如果指定数据库名字，则该数据库必须已经存在，目前不支持对于不存在的数据库进行自动创建
 - 如果不指定表格名字，则会在 Hive 内自动创建对应名字的表格
-- `OPTIONS` 参数均不生效
+- `OPTIONS` 参数只有导出模式`mode`生效，其他参数均不生效
 
 举例：
 
