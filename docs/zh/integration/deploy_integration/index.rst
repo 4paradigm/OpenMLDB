@@ -8,7 +8,7 @@
     airflow_provider_demo
     dolphinscheduler_task_demo
     OpenMLDB_Byzer_taxi
-    magic_function
+
 
 
 
