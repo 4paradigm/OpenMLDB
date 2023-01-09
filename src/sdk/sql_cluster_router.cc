@@ -3822,9 +3822,15 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteShowNameServe
 
         // TODO(aceforeverd): support connect time for ns in standalone mode
         std::vector<std::vector<std::string>> data = {{endpoint, "nameserver", "0", "online", "master"}};
-
         return ResultSetSQL::MakeResultSet(schema, data, status);
     }
+
+    auto ns_client = cluster_sdk_->GetNsClient();
+    if (!ns_client) {
+        *status = {hybridse::common::kRunError, "ns client is nullptr"};
+        return {};
+    }
+    const auto& leader = ns_client->GetEndpoint();
 
     std::string node_path = absl::StrCat(std::dynamic_pointer_cast<SQLRouterOptions>(options_)->zk_path, "/leader");
     std::vector<std::string> children;
@@ -3853,32 +3859,17 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteShowNameServe
         }
     }
 
-    std::vector<std::vector<std::string>> data(endpoint_map.size(), std::vector<std::string>(schema.size(), ""));
-
-    auto begin = endpoint_map.cbegin();
-    for (size_t i = 0; i < endpoint_map.size(); i++) {
-        auto it = std::next(begin, i);
-        // endpoint
-        data[i][0] = it->first;
-        // role
-        data[i][1] = "nameserver";
-
-        // connect time
-        data[i][2] = std::to_string(it->second);
-
-        // status
-        // offlined nameserver won't register in zookeeper, so there is only online
-        data[i][3] = "online";
-
-        // ns_role
-        // NSs runs as mater/standby mode
-        if (i == 0) {
-            data[i][4] = "master";
-        } else {
-            data[i][4] = "standby";
-        }
+    std::vector<std::vector<std::string>> data;
+    for (auto it = endpoint_map.cbegin(); it != endpoint_map.cend(); it++) {
+        std::vector<std::string> val = {
+            it->first,                      // endpoint
+            "nameserver",                   // role
+            std::to_string(it->second),     // connect time
+            "online",                       // status
+            it->first == leader ? "master" : "standby" // ns_role
+        };
+        data.push_back(std::move(val));
     }
-
     return ResultSetSQL::MakeResultSet(schema, data, status);
 }
 
