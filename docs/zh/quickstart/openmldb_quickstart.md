@@ -104,14 +104,14 @@ OpenMLDB 也支持链接形式的软拷贝来导入离线数据，无需数据�
 -- OpenMLDB CLI
 USE demo_db;
 SET @@execute_mode='offline';
-SELECT c1, c2, sum(c3) OVER w1 AS w1_c3_sum FROM demo_table1 WINDOW w1 AS (PARTITION BY demo_table1.c1 ORDER BY demo_table1.c6 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW) INTO OUTFILE '/tmp/feature_data';
+SET @@sync_job=false;
+SELECT c1, c2, sum(c3) OVER w1 AS w1_c3_sum FROM demo_table1 WINDOW w1 AS (PARTITION BY demo_table1.c1 ORDER BY demo_table1.c6 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW) INTO OUTFILE '/tmp/feature_data' OPTIONS(mode='overwrite');
 ```
 
 注意：
 
-- 和导入数据命令（`LOAD DATA`）类似，`SELECT` 命令在离线模式下默认也是异步执行
-- `SELECT` 语句用于执行 SQL 进行特征抽取，并且将生成的特征存储在文件 `feature_data` 中，供后续的机器学习模型训练使用。
-- 如果输出目录（`/tmp/feature_data`）已存在，会报错；可以增加 `SELECT INTO` 命令的导出配置 `OPTIONS(mode='overwrite')`，来覆盖已有目录。
+- 和导入数据命令（`LOAD DATA`）类似，`SELECT` 命令在离线模式下默认也是异步执行（如果同步执行，注意设置超时时间，如 `SET @@job_timeout=600000`）
+- `SELECT` 语句用于执行 SQL 进行特征抽取，并且将生成的特征存储在 `OUTFILE` 参数指定的目录 `feature_data` 中，供后续的机器学习模型训练使用。
 
 ### 步骤 4：SQL 方案上线
 
@@ -124,7 +124,7 @@ USE demo_db;
 DEPLOY demo_data_service SELECT c1, c2, sum(c3) OVER w1 AS w1_c3_sum FROM demo_table1 WINDOW w1 AS (PARTITION BY demo_table1.c1 ORDER BY demo_table1.c6 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
 ```
 
-上线后可以通过命令 `SHOW DEPLOYMENTS` 查看已部署的 SQL 方案；
+上线后可以通过命令 `SHOW DEPLOYMENTS` 查看已部署的 SQL 方案。
 
 ### 步骤 5：导入在线数据
 
