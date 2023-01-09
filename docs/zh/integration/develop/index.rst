@@ -5,4 +5,4 @@
 .. toctree::
     :maxdepth: 1
 
-    magic_function
+    jupyter_notebook
