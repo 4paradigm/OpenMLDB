@@ -22,7 +22,7 @@ docker run -it 4pdosc/openmldb:0.7.0 bash
 
 ### 下载样例数据
 
-在容器中执行以下命令，下载后续流程中使用的样例数据（0.7.0及之后的版本可跳过此步，data.parquet只有10行源数据）：
+在容器中执行以下命令，下载后续流程中使用的样例数据（0.7.0 及之后的版本可跳过此步，数据已经存放在镜像内）：
 
 ```bash
 curl https://openmldb.ai/demo/data.parquet --output /work/taxi-trip/data/data.parquet
