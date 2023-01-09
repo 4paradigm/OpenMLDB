@@ -3866,7 +3866,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteShowNameServe
             "nameserver",                   // role
             std::to_string(it->second),     // connect time
             "online",                       // status
-            it->first == leader ? "master" : "standby" // ns_role
+            it->first == leader ? "master" : "standby"  // ns_role
         };
         data.push_back(std::move(val));
     }
