@@ -23,7 +23,6 @@
 #include <string>
 #include <vector>
 
-#include "absl/random/random.h"
 #include "absl/strings/ascii.h"
 #include "absl/strings/str_replace.h"
 #include "base/file_util.h"
@@ -167,10 +166,10 @@ TEST_P(SQLSDKQueryTest, SqlSdkRequestProcedureAsynTest) {
 struct DeploymentEnv {
     explicit DeploymentEnv(std::shared_ptr<sdk::SQLRouter> sr, hybridse::sqlcase::SqlCase* sqlcase)
         : sr_(sr), sql_case_(sqlcase) {
-        dp_name_ = absl::StrCat("dp_", absl::Uniform(gen_, 0, std::numeric_limits<int32_t>::max()));
+        dp_name_ = absl::StrCat("dp_", ::openmldb::test::GenRand());
     }
 
-    virtual ~DeploymentEnv() {}
+    virtual ~DeploymentEnv() { TearDown(); }
 
     void SetUp() {
         hybridse::sdk::Status status;
@@ -195,16 +194,6 @@ struct DeploymentEnv {
 
         ::openmldb::test::ProcessSQLs(
             sr_.get(), {absl::StrCat("use ", sql_case_->db_), absl::StrCat("deploy ", dp_name_, " ", sql_str_)});
-    }
-
-    void TearDown() {
-        ::openmldb::test::ProcessSQLs(sr_.get(), {
-                                                     absl::StrCat("drop deployment ", dp_name_),
-                                                 });
-        SQLSDKTest::DropTables(*sql_case_, sr_);
-        ::openmldb::test::ProcessSQLs(sr_.get(), {
-                                                     absl::StrCat("drop database ", sql_case_->db_),
-                                                 });
     }
 
     void CallDeployProcedure() {
@@ -257,24 +246,35 @@ struct DeploymentEnv {
         }
     }
 
+ private:
+    void TearDown() {
+        ::openmldb::test::ProcessSQLs(sr_.get(), {
+                                                     absl::StrCat("drop deployment ", dp_name_),
+                                                 });
+        SQLSDKTest::DropTables(*sql_case_, sr_);
+        ::openmldb::test::ProcessSQLs(sr_.get(), {
+                                                     absl::StrCat("drop database ", sql_case_->db_),
+                                                 });
+    }
+
     std::shared_ptr<sdk::SQLRouter> sr_;
-    absl::BitGen gen_;
-    std::string dp_name_;
     hybridse::sqlcase::SqlCase* sql_case_;
+    std::string dp_name_;
     std::string sql_str_;
 };
 
 TEST_P(SQLSDKQueryTest, SqlSdkDeployTest) {
     auto sql_case = GetParam();
     if (!sql_case.deployable_) {
-        LOG(INFO) << "SKIPPED";
+        LOG(INFO) << "SKIPPED for not deployable";
         return;
     }
     ASSERT_TRUE(router_ != nullptr) << "Fail new cluster sql router";
-    DeploymentEnv env(router_, &sql_case);
-    env.SetUp();
-    env.CallDeployProcedure();
-    env.TearDown();
+    {
+        DeploymentEnv env(router_, &sql_case);
+        env.SetUp();
+        env.CallDeployProcedure();
+    }
 }
 
 TEST_P(SQLSDKBatchRequestQueryTest, SqlSdkBatchRequestTest) {
