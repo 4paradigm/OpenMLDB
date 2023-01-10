@@ -81,7 +81,6 @@ class FullTableIterator : public ::hybridse::codec::ConstIterator<uint64_t, ::hy
     // refer to next_row_iterator() in udf.cc for the reason why we must make sure the `value_` is valid
     // the call steps in next_row_iterator are: res = GetValue() -> Next() -> return res
     bool valid_value_ = false;
-    std::vector<std::shared_ptr<::google::protobuf::Message>> response_vec_;
     std::vector<hybridse::base::RefCountedSlice> buffered_slices_;
     int64_t cnt_ = 0;
 };

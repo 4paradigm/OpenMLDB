@@ -417,7 +417,6 @@ const ::hybridse::codec::Row& RemoteWindowIterator::GetValue() {
     int8_t* copyed_row_data = reinterpret_cast<int8_t*>(malloc(sz));
     memcpy(copyed_row_data, slice_row.data(), sz);
     auto shared_slice = ::hybridse::base::RefCountedSlice::CreateManaged(copyed_row_data, sz);
-    buffered_slices_.push_back(shared_slice);
     row_.Reset(shared_slice);
     DLOG(INFO) << "get value  pk " << pk_ << " ts_key " << kv_it_->GetKey() << " ts " << ts_;
     valid_value_ = true;
