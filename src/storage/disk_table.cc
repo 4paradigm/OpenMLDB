@@ -17,6 +17,7 @@
 #include "storage/disk_table.h"
 #include <snappy.h>
 #include <utility>
+#include "absl/cleanup/cleanup.h"
 #include "base/file_util.h"
 #include "base/glog_wrapper.h"
 #include "base/hash.h"
@@ -329,6 +330,7 @@ void DiskTable::GcHead() {
     uint64_t start_time = ::baidu::common::timer::get_micros() / 1000;
     auto inner_indexs = table_index_.GetAllInnerIndex();
     const rocksdb::Snapshot* snapshot = db_->GetSnapshot();
+    absl::Cleanup release_snapshot = [this, snapshot] { this->db_->ReleaseSnapshot(snapshot); };
     for (const auto& inner_index : *inner_indexs) {
         uint32_t idx = inner_index->GetId();
         rocksdb::ReadOptions ro = rocksdb::ReadOptions();
@@ -440,7 +442,6 @@ void DiskTable::GcHead() {
             }
         }
     }
-    db_->ReleaseSnapshot(snapshot);
     uint64_t time_used = ::baidu::common::timer::get_micros() / 1000 - start_time;
     PDLOG(INFO, "Gc used %lu second. tid %u pid %u", time_used / 1000, id_, pid_);
 }
