@@ -79,13 +79,7 @@ openmldb = { path = "../python/", develop = true }
    poetry install
    ```
 
-2. Enter virtual environment
-
-   ```bash
-   poetry shell
-   ```
-
-3. start openmldb exporter
+2. start openmldb exporter
 
    ```bash
    poetry run openmldb-exporter
@@ -116,7 +110,7 @@ openmldb = { path = "../python/", develop = true }
                            interval in seconds to pull metrics periodically, default 30.0
    ```
 
-4. View the available metrics, you can pull through `curl`
+3. View the available metrics, you can pull through `curl`
 
    ```bash
    curl http://127.0.0.1:8000/metrics
