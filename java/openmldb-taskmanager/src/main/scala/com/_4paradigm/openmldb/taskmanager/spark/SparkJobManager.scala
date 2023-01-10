@@ -142,6 +142,10 @@ object SparkJobManager {
       launcher.redirectError(LogManager.getJobErrorLogFile(jobInfo.getId))
     }
 
+    if(TaskManagerConfig.ENABLE_HIVE_SUPPORT) {
+      launcher.setConf("spark.sql.catalogImplementation", "hive")
+    }
+
     // Add the external function library files
     // TODO(tobe): Handle the same file names
     ExternalFunctionManager.getAllLibraryFilePaths().forEach(filePath => launcher.addFile(filePath))

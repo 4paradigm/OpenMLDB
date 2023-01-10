@@ -36,7 +36,7 @@ object LoadDataPlan {
     // get target storage
     val storage = ctx.getConf.loadDataMode
     require(storage == "offline" || storage == "online")
-    val (format, options, mode, deepCopyOpt) = HybridseUtil.parseOptions(node)
+    val (format, options, mode, deepCopyOpt) = HybridseUtil.parseOptions(node, inputFile)
     require(deepCopyOpt.nonEmpty) // PhysicalLoadDataNode must have the option deepCopy
     val deepCopy = deepCopyOpt.get
 
@@ -45,24 +45,12 @@ object LoadDataPlan {
     require(info != null && info.getName.nonEmpty, s"table $db.$table info is not existed(no table name): $info")
     logger.info("table info: {}", info)
 
-    val df = if (inputFile.toLowerCase.startsWith("hive://")) {
-      require(deepCopy, "hive soft copy is unsupported")
-      logger.info("load data to storage {}, reader[hive way], writer[mode {}], is deep? {}", storage, mode,
-        deepCopy.toString)
-      HybridseUtil.hiveLoad(ctx, inputFile, info.getColumnDescList);
-    } else {
-      // read settings
-      require(format.equals("csv") || format.equals("parquet"))
-
-      logger.info("load data to storage {}, reader[format {}, options {}], writer[mode {}], is deep? {}", storage,
-        format, options, mode, deepCopy.toString)
-
-      // we read input file even in soft copy,
-      // cause we want to check if "the input file schema == openmldb table schema"
-      HybridseUtil.autoLoad(spark, inputFile, format, options, info.getColumnDescList)
-    }
+    // we read input file even in soft copy,
+    // cause we want to check if "the input file schema == openmldb table schema"
+    val df = HybridseUtil.autoLoad(ctx.getOpenmldbSession, inputFile, format, options, info.getColumnDescList)
 
     // write
+    logger.info("write data to storage {}, writer[mode {}], is deep? {}", storage, mode, deepCopy.toString)
     if (storage == "online") {
       require(deepCopy && mode == "append", "import to online storage, can't do soft copy, and mode must be append")
 
@@ -77,9 +65,12 @@ object LoadDataPlan {
 
       val infoExists = info.hasOfflineTableInfo
       if (!deepCopy) {
-        // soft copy, no need to read files
-        require(!infoExists, "offline info has already existed, we don't know whether to delete the existing data")
-
+        require(mode!="append", "I'm not the soft-copied data owner, can't append")
+        require(!infoExists || !info.getOfflineTableInfo.getDeepCopy, "old offline info is deep-copied, " +
+          "we don't know whether to delete the existing data")
+        if (mode=="errorifexists" && infoExists){
+          throw new IllegalArgumentException("offline info exists")
+        }
         // because it's soft-copy, format+options should be the same with read settings
         val offlineBuilder = OfflineTableInfo.newBuilder().setPath(inputFile).setFormat(format).setDeepCopy(false)
           .putAllOptions(options.asJava)
@@ -108,7 +99,8 @@ object LoadDataPlan {
             // normal settings
             needUpdateInfo = true
           } else {
-            // if old offline data is deep-coped, we need to use the old info, and don't need to update info to ns
+            // if old offline data is deep-copied and mode is append/overwrite,
+            // we need to use the old info and don't need to update info to ns
             writeFormat = old.getFormat
             writeOptions = old.getOptionsMap.asScala
             writePath = old.getPath

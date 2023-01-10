@@ -21,7 +21,7 @@ import com._4paradigm.hybridse.`type`.TypeOuterClass.{ColumnDef, Database, Table
 import com._4paradigm.hybridse.node.ConstNode
 import com._4paradigm.hybridse.sdk.UnsupportedHybridSeException
 import com._4paradigm.hybridse.vm.{PhysicalLoadDataNode, PhysicalOpNode, PhysicalSelectIntoNode}
-import com._4paradigm.openmldb.batch.PlanContext
+import com._4paradigm.openmldb.batch.api.OpenmldbSession
 import com._4paradigm.openmldb.proto
 import com._4paradigm.openmldb.proto.Common
 import org.apache.spark.sql.catalyst.expressions.UnsafeRow
@@ -189,9 +189,16 @@ object HybridseUtil {
     }
   }
 
-  def parseOptions[T](node: T): (String, Map[String, String], String, Option[Boolean]) = {
+  // 'file' may change the option 'format':
+  // If file starts with 'hive', format is hive, not the detail format in hive
+  // If file starts with 'file'/'hdfs', format is the file format
+  def parseOptions[T](node: T, file: String): (String, Map[String, String], String, Option[Boolean]) = {
     // load data: read format, select into: write format
-    val format = parseOption(getOptionFromNode(node, "format"), "csv", getStringOrDefault).toLowerCase
+    val format = if (file.toLowerCase().startsWith("hive://")) {
+      "hive"
+    } else {
+      parseOption(getOptionFromNode(node, "format"), "csv", getStringOrDefault).toLowerCase
+    }
 
     // load data: read options, select into: write options
     val options: mutable.Map[String, String] = mutable.Map()
@@ -283,17 +290,35 @@ object HybridseUtil {
     actual.zip(expect).forall{case (a, b) => (a.name, a.dataType) == (b.name, b.dataType)}
   }
 
+  // TODO: soft link hive, is a new format?registerOpenmldbOfflineTable目前是format不可以空
+  // two way call load:
+  // 1. load data: hive path, default format csv? not good idea
+  // 2. register: hive path, csv format?
+  def autoLoad(openmldbSession: OpenmldbSession, file: String, format: String, options: Map[String, String],
+    columns: util.List[Common.ColumnDesc]): DataFrame = {
+    val fmt = format.toLowerCase
+    if (fmt.equals("hive")) {
+      logger.info("load data from hive table {}", file)
+      HybridseUtil.hiveLoad(openmldbSession, file, columns);
+    } else {
+      logger.info("load data from file {} reader[format {}, options {}]", file, fmt, options)
+      // we read input file even in soft copy,
+      // cause we want to check if "the input file schema == openmldb table schema"
+      HybridseUtil.autoFileLoad(openmldbSession, file, fmt, options, columns)
+    }
+  }
+
   // We want df with oriSchema, but if the file format is csv:
   // 1. we support two format of timestamp
   // 2. spark read may change the df schema to all nullable
   // So we should fix it.
-  def autoLoad(spark: SparkSession, file: String, fmt: String, options: Map[String, String], columns: util
-  .List[Common.ColumnDesc]): DataFrame = {
-    val format = fmt.toLowerCase
-    val reader = spark.read.options(options)
+  private def autoFileLoad(openmldbSession: OpenmldbSession, file: String, format: String,
+    options: Map[String, String], columns: util.List[Common.ColumnDesc]): DataFrame = {
+    require(format.equals("csv") || format.equals("parquet"))
+    val reader = openmldbSession.getSparkSession.read.options(options)
 
     val (oriSchema, readSchema, tsCols) = HybridseUtil.extractOriginAndReadSchema(columns)
-    var df = if (format != "csv") {
+    var df = if (format.equals("parquet")) {
       // When reading Parquet files, all columns are automatically converted to be nullable for compatibility reasons.
       // ref https://spark.apache.org/docs/3.2.1/sql-data-sources-parquet.html
       val df = reader.format(format).load(file)
@@ -335,16 +360,21 @@ object HybridseUtil {
     df
   }
 
-  def hiveLoad(ctx: PlanContext, file: String, columns: util.List[Common.ColumnDesc]): DataFrame = {
-    require(file.toLowerCase.startsWith("hive://"))
+  def hiveDest(path: String): String = {
+    require(path.toLowerCase.startsWith("hive://"))
     // hive://<table_pattern>
-    val deli = 6
+    val tableStartPos = 7
+    path.substring(tableStartPos)
+  }
+
+  private def hiveLoad(openmldbSession: OpenmldbSession, file: String, columns: util.List[Common.ColumnDesc]):
+    DataFrame = {
     if (logger.isDebugEnabled()) {
-      logger.debug("session catalog {}", ctx.getSparkSession.sessionState.catalog)
-      ctx.sparksql("show tables").show()
+      logger.debug("session catalog {}", openmldbSession.getSparkSession.sessionState.catalog)
+      openmldbSession.sparksql("show tables").show()
     }
     // use sparksql to read hive, no need to try openmldbsql and then fallback to sparksql
-    val df = ctx.sparksql(s"SELECT * FROM ${file.substring(deli + 1)}")
+    val df = openmldbSession.sparksql(s"SELECT * FROM ${hiveDest(file)}")
 
     val (oriSchema, readSchema, tsCols) = HybridseUtil.extractOriginAndReadSchema(columns)
     if (logger.isDebugEnabled()) {
