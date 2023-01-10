@@ -22,6 +22,6 @@ make
 ## Use
 
 1. a config example for prometheus server is `prometheus_example.yml`
-2. grafana dashboard avaiable in `dashboards_out/openmldb-overview.json`
+2. grafana dashboard avaiable in `dashboards_out/openmldb_dashboard.json`
 
 Refer  [promtheus get started](https://prometheus.io/docs/prometheus/latest/getting_started/) and [grafana get started](https://grafana.com/docs/grafana/latest/getting-started/getting-started-prometheus/) on how to configure prometheus and grafana
