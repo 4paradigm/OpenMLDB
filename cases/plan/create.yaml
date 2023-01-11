@@ -991,3 +991,25 @@ cases:
                         +-node[kPartitionMeta]
                           +-endpoint: fo2
                           +-role_type: follower
+  - id: 31
+    desc: Create table like
+    sql: |
+      create table t1 like parquet 'hdfs://path';
+    expect:
+      node_tree_str: |
+        +-node[CREATE]
+          +-table: t1
+          +-IF NOT EXIST: 0
+          +-column_desc_list: []
+          +-like:
+            +-kind: PARQUET
+            +-path: hdfs://path
+          +-table_option_list: []
+      plan_tree_str: |
+        +-[kCreatePlan]
+          +-table: t1
+          +-column_desc_list: []
+          +-like:
+            +-kind: PARQUET
+            +-path: hdfs://path
+          +-table_option_list: []

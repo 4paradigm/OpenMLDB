@@ -1799,6 +1799,17 @@ class StorageModeNode : public SqlNode {
     StorageMode storage_mode_;
 };
 
+class CreateTableLikeClause {
+ public:
+    CreateTableLikeClause() = default;
+    enum LikeKind { PARQUET = 0 };
+
+    void Print(std::ostream &, const std::string &) const;
+
+    LikeKind kind_;
+    std::string path_;
+};
+
 class CreateStmt : public SqlNode {
  public:
     CreateStmt()
@@ -1823,6 +1834,9 @@ class CreateStmt : public SqlNode {
     const NodePointVector &GetTableOptionList() const { return table_option_list_; }
 
     void Print(std::ostream &output, const std::string &org_tab) const;
+
+    // refactor later, I'd keep it simple currently
+    std::shared_ptr<CreateTableLikeClause> like_clause_ = nullptr;
 
  private:
     std::string db_name_;

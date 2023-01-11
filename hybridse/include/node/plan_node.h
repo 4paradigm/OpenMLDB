@@ -434,6 +434,8 @@ class CreatePlanNode : public LeafPlanNode {
 
     void Print(std::ostream &output, const std::string &org_tab) const;
 
+    std::shared_ptr<node::CreateTableLikeClause> like_clause_;
+
  private:
     std::string database_;
     std::string table_name_;

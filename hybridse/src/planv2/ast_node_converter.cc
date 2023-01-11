@@ -1328,7 +1328,7 @@ base::Status ConvertQueryExpr(const zetasql::ASTQueryExpression* query_expressio
 }
 
 // ASTCreateTableStatement
-//   (table_name, ASTTableElementList, ASTOptionsList, not_exist, _)
+//   (table_name, ASTTableElementList, ASTOptionsList, not_exist, like_clause)
 //     -> (ASTTableElementList -> SqlNodeList)
 //     -> (ASTOptionsList -> SqlNodeList)
 //     -> CreateStmt
@@ -1357,6 +1357,23 @@ base::Status ConvertCreateTableNode(const zetasql::ASTCreateTableStatement* ast_
         }
     }
 
+    std::shared_ptr<node::CreateTableLikeClause> like_clause = nullptr;
+    if (ast_create_stmt->like_table_clause() != nullptr) {
+        like_clause = std::make_shared<node::CreateTableLikeClause>();
+        // handling `LIKE PARQUET '...'`
+        switch (ast_create_stmt->like_table_clause()->kind()) {
+            case zetasql::ASTLikeTableClause::TableKind::PARQUET: {
+                like_clause->kind_ = node::CreateTableLikeClause::PARQUET;
+                break;
+            }
+            default: {
+                FAIL_STATUS(common::kSqlAstError, "unknown like clause kind for create table");
+            }
+        }
+
+        like_clause->path_ = ast_create_stmt->like_table_clause()->path()->string_value();
+    }
+
     const auto ast_option_list = ast_create_stmt->options_list();
     node::SqlNodeList* option_list = nullptr;
 
@@ -1372,8 +1389,9 @@ base::Status ConvertCreateTableNode(const zetasql::ASTCreateTableStatement* ast_
         }
     }
 
-    *output = static_cast<node::CreateStmt*>(
-        node_manager->MakeCreateTableNode(if_not_exist, db_name, table_name, column_desc_list, option_list));
+    auto* create = node_manager->MakeCreateTableNode(if_not_exist, db_name, table_name, column_desc_list, option_list);
+    create->like_clause_.swap(like_clause);
+    *output = create;
 
     return base::Status::OK();
 }
