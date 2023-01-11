@@ -1773,7 +1773,7 @@ class PhysicalDeleteNode : public PhysicalOpNode {
 
 class PhysicalCreateTableNode : public PhysicalOpNode {
  public:
-    explicit PhysicalCreateTableNode(node::CreatePlanNode *node)
+    explicit PhysicalCreateTableNode(const node::CreatePlanNode *node)
         : PhysicalOpNode(kPhysicalCreateTable, false), data_(node) {}
     ~PhysicalCreateTableNode() override {}
 
@@ -1784,7 +1784,7 @@ class PhysicalCreateTableNode : public PhysicalOpNode {
         return base::Status::OK();
     }
 
-    node::CreatePlanNode *data_;
+    const node::CreatePlanNode *data_;
 };
 
 class PhysicalInsertNode : public PhysicalOpNode {
