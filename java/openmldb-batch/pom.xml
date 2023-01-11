@@ -67,6 +67,12 @@
 			<version>${scala.version}</version>
 		</dependency>
 
+		<dependency>
+			<groupId>com.google.guava</groupId>
+			<artifactId>guava</artifactId>
+			<version>${guava.version}</version>
+		</dependency>
+
 		<!-- Spark -->
 		<dependency>
 			<groupId>org.apache.spark</groupId>
