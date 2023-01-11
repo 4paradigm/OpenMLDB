@@ -3,6 +3,7 @@
 ## [0.7.1] - 2023-01-13
 
 ### Features
+- Support soft import data from Hive (#2948 @vagetablechicken)
 - Improve the documents (#2904 #2921 #2932 @selenachenjingxin, #2925 #2928 #2934 @vagetablechicken, @2924 @dl239, #2945 @lumianph, #2946 @aceforeverd)
 
 ### Bug Fixes
