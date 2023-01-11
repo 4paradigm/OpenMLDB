@@ -103,7 +103,7 @@ offline endpoint ok
   flow    4   1    172.27.128.32:8541  follower  0min       no        kNoCompress    0        0           0.000
 ```
 
-执行完 `offlineendpoint` 后每一个分片都会分配新的 leader。如果某个分片执行失败可以单独对这个分片执行 `changleader`，命令格式为：`changeleader table\_name pid` （参照文档 [运维 CLI](cli.md#changeleader)）。
+执行完 `offlineendpoint` 后每一个分片都会分配新的 leader。如果某个分片执行失败可以单独对这个分片执行 `changleader`，命令格式为：`changeleader $table_name $pid` （参照文档 [运维 CLI](cli.md#changeleader)）。
 
 ### 节点恢复命令 `recoverendpoint`
 
@@ -165,7 +165,7 @@ $ ./bin/openmldb --zk_cluster=172.27.128.31:8090,172.27.128.32:8090,172.27.128.3
   flow    4   1    172.27.128.32:8541  follower  0min       yes       kNoCompress    0        0           0.000
 ```
 
-`showtable` 如果都变成 `yes` 表示已经恢复成功。如果某些分片恢复失败可以单独执行 `recovertable`，命令格式为：`recovertable table\_name $pid $endpoint`（参考文档 [运维 CLI](cli.md#recovertable)）。
+`showtable` 如果都变成 `yes` 表示已经恢复成功。如果某些分片恢复失败可以单独执行 `recovertable`，命令格式为：`recovertable table_name $pid $endpoint`（参考文档 [运维 CLI](cli.md#recovertable)）。
 
 **注：执行 `recoverendpoint` 前必须执行过一次 `offlineendpoint`  。**
 
