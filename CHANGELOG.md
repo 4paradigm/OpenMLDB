@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.7.1] - 2023-01-13
+
+### Features
+- Improve the documents (#2904 #2921 #2932 @selenachenjingxin, #2925 #2928 #2934 @vagetablechicken, @2924 @dl239, #2945 @lumianph, #2946 @aceforeverd)
+
+### Bug Fixes
+- The result of `_*_cate` is incorrect (#2939 @zhanghaohit)
+- Deploy SQL fails if the column name of main table is keyword. (#2894 @dl239)
+- Tablet will core dump if execute SQL with disk table. (#2926 @dl239)
+- There are memory leak when putting data into disk table. (#2943 @dl239)
+- The result of `Show Components` is incorrect in some cases (#2940 @dl239)
+- Offline jobs execute failed because `curator` API is incorrect (#2936 @tobegit3hub)
+
+### Code Refactoring
+#2875 #2937 @dl239
+
 ## [0.7.0] - 2022-12-30
 
 ### Features
