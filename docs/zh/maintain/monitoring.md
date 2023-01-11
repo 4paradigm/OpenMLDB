@@ -104,21 +104,13 @@ OpenMLDB exporter 是以 Python 实现的 prometheus exporter，核心是通过�
 
 ## 部署 node exporter
 
-[node_exporter](https://github.com/prometheus/node_exporter) 是 prometheus 官方实现的暴露系统指标的组件。
+[node_exporter](https://github.com/prometheus/node_exporter) 是 prometheus 官方实现的暴露系统指标的组件。 安装使用详见它的 README。
 
-进入 [release](https://github.com/prometheus/node_exporter/releases) 页面，下载并解压对应平台的压缩包。例如 linux amd64 平台下:
-```sh
-curl -SLO https://github.com/prometheus/node_exporter/releases/download/v1.5.0/node_exporter-1.5.0.linux-amd64.tar.gz
-tar xzf node_exporter-*.tar.gz
-cd node_exporter-*/
-
-# 启动 node_exporter
-./node_exporter
-```
 
 ## 部署 Prometheus 和 Grafana
 
-如何安装部署 prometheus, grafana 详见官方文档 [promtheus get started](https://prometheus.io/docs/prometheus/latest/getting_started/) 和 [grafana get started](https://grafana.com/docs/grafana/latest/getting-started/getting-started-prometheus/) 。
+如何安装部署 prometheus, grafana 详见官方文档 [promtheus get started](https://prometheus.io/docs/prometheus/latest/getting_started/) 和 [grafana get started](https://grafana.com/docs/grafana/latest/getting-started/getting-started-prometheus/) 。我们建议使用 Docker 容器快速部署, 并且 Grafana >= 8.3, Prometheus >= 1.0.0 。
+
 OpenMLDB 提供了 prometheus 和 grafana 配置文件以作参考，详见 [OpenMLDB mixin](https://github.com/4paradigm/OpenMLDB/tree/main/monitoring/openmldb_mixin/README.md):
 
 - prometheus_example.yml: prometheus 配置示例, 注意修改 `node`, `openmldb_components` 和 `openmldb_exporter` job 中的 target 地址

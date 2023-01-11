@@ -64,7 +64,7 @@ Back to openmldb exporter directory, modify `pyproject.toml` and make content li
 
 ```toml
 [tool.poetry.dependencies]
-...
+# ...
 # openmldb = "^0.6.0"
 # uncomment below to use openmldb sdk built from source
 # set develop = true so changes in python will take effect immediately
@@ -79,7 +79,7 @@ openmldb = { path = "../python/", develop = true }
    poetry install
    ```
 
-2. start openmldb exporter
+2. Start openmldb exporter
 
    ```bash
    poetry run openmldb-exporter

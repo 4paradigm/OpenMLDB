@@ -109,21 +109,11 @@ The OpenMLDB exporter is a prometheus exporter implemented in Python. The core c
 
 ## Deploy Node Exporter
 
-[node_exporter](https://github.com/prometheus/node_exporter) is an official implementation of prometheus that exposes system metrics.
-
-Go to the [release](https://github.com/prometheus/node_exporter/releases) page, download and unzip the compressed package for your platform. For example, for example with Linux AMD64:
-```sh
-curl -SLO https://github.com/prometheus/node_exporter/releases/download/v1.5.0/node_exporter-1.5.0.linux-amd64.tar.gz
-tar xzf node_exporter-*.tar.gz
-cd node_exporter-*/
-
-# Start node_exporter
-./node_exporter
-```
+[node_exporter](https://github.com/prometheus/node_exporter) is an official implementation of prometheus that exposes system metrics, read their README about setup.
 
 ## Deploy Prometheus and Grafana
 
-For installation and deployment of prometheus and grafana, please refer to the official documents [promtheus get started](https://prometheus.io/docs/prometheus/latest/getting_started/) and [grafana get started](https://grafana.com/docs/ grafana/latest/getting-started/getting-started-prometheus/).
+For installation and deployment of prometheus and grafana, please refer to the official documents [promtheus get started](https://prometheus.io/docs/prometheus/latest/getting_started/) and [grafana get started](https://grafana.com/docs/ grafana/latest/getting-started/getting-started-prometheus/). We recommend quick start with docker images, and use Grafana >= 8.3 and Prometheus >= 1.0.0 .
 
 OpenMLDB provides prometheus and grafana configuration files for reference, see [OpenMLDB mixin](https://github.com/4paradigm/OpenMLDB/tree/main/monitoring/openmldb_mixin/README.md):
 
