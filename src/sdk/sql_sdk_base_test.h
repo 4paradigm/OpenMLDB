@@ -115,6 +115,27 @@ class SQLSDKClusterOnlineBatchQueryTest : public SQLSDKTest {
                                           const std::vector<std::string>& tbEndpoints,
                                           int partition_num = 8);
 };
+
+struct DeploymentEnv {
+    explicit DeploymentEnv(std::shared_ptr<sdk::SQLRouter> sr, hybridse::sqlcase::SqlCase* sqlcase);
+
+    virtual ~DeploymentEnv() { TearDown(); }
+
+    void SetUp();
+
+    void CallDeployProcedure();
+
+    void SetCleanup(bool flag) { cleanup_ = flag; }
+
+ private:
+    virtual void TearDown();
+
+    std::shared_ptr<sdk::SQLRouter> sr_;
+    hybridse::sqlcase::SqlCase* sql_case_;
+    std::string dp_name_;
+    std::string sql_str_;
+    bool cleanup_ = true;
+};
 }  // namespace sdk
 }  // namespace openmldb
 

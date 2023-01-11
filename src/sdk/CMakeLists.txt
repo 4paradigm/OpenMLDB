@@ -39,6 +39,13 @@ if(TESTING_ENABLE)
     add_executable(sql_sdk_test sql_sdk_test.cc)
     target_link_libraries(sql_sdk_test base_test ${BIN_LIBS} ${GTEST_LIBRARIES} )
 
+    add_executable(sql_sdk_run sql_sdk_run.cc)
+    target_link_libraries(sql_sdk_run base_test ${BIN_LIBS})
+    set_target_properties(
+        sql_sdk_run
+        PROPERTIES
+        RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+
     add_executable(sql_cluster_test sql_cluster_test.cc)
     target_link_libraries(sql_cluster_test base_test ${BIN_LIBS} ${GTEST_LIBRARIES})
 
