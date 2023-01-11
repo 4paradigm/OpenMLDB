@@ -36,7 +36,7 @@ object LoadDataPlan {
     // get target storage
     val storage = ctx.getConf.loadDataMode
     require(storage == "offline" || storage == "online")
-    val (format, options, mode, deepCopyOpt) = HybridseUtil.parseOptions(node, inputFile)
+    val (format, options, mode, deepCopyOpt) = HybridseUtil.parseOptions(inputFile, node)
     require(deepCopyOpt.nonEmpty) // PhysicalLoadDataNode must have the option deepCopy
     val deepCopy = deepCopyOpt.get
 
@@ -73,7 +73,10 @@ object LoadDataPlan {
         }
         // because it's soft-copy, format+options should be the same with read settings
         val offlineBuilder = OfflineTableInfo.newBuilder().setPath(inputFile).setFormat(format).setDeepCopy(false)
-          .putAllOptions(options.asJava)
+        if (!format.equals("hive")) {
+          // hive source discard all read options
+          offlineBuilder.putAllOptions(options.asJava)
+        }
         // update to ns later
         newInfoBuilder.setOfflineTableInfo(offlineBuilder)
       } else {

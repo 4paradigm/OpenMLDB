@@ -34,7 +34,7 @@ object SelectIntoPlan {
     }
 
     // write options don't need deepCopy
-    val (format, options, mode, _) = HybridseUtil.parseOptions(node, outPath)
+    val (format, options, mode, _) = HybridseUtil.parseOptions(outPath, node)
     if (input.getDf().isEmpty) {
       throw new Exception("select empty, skip save")
     }

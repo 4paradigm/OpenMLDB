@@ -192,7 +192,7 @@ object HybridseUtil {
   // 'file' may change the option 'format':
   // If file starts with 'hive', format is hive, not the detail format in hive
   // If file starts with 'file'/'hdfs', format is the file format
-  def parseOptions[T](node: T, file: String): (String, Map[String, String], String, Option[Boolean]) = {
+  def parseOptions[T](file: String, node: T): (String, Map[String, String], String, Option[Boolean]) = {
     // load data: read format, select into: write format
     val format = if (file.toLowerCase().startsWith("hive://")) {
       "hive"
@@ -290,10 +290,13 @@ object HybridseUtil {
     actual.zip(expect).forall{case (a, b) => (a.name, a.dataType) == (b.name, b.dataType)}
   }
 
-  // TODO: soft link hive, is a new format?registerOpenmldbOfflineTable目前是format不可以空
-  // two way call load:
-  // 1. load data: hive path, default format csv? not good idea
-  // 2. register: hive path, csv format?
+  // Decide which load method to use by arg `format`, DO NOT pass `hive://a.b` with format `csv`.
+  // Use `parseOptions` in LoadData/SelectInto to get the right format(filePath & option `format`).
+  // valid pattern:
+  //   1. hive path, format must be hive, discard other options
+  //   2. file/hdfs path, format supports csv & parquet, other options take effect
+  // We use OpenmldbSession for running sparksql in hiveLoad. If in 4pd Spark distribution, SparkSession.sql
+  // will do openmldbSql first, and if DISABLE_OPENMLDB_FALLBACK, we can't use sparksql.
   def autoLoad(openmldbSession: OpenmldbSession, file: String, format: String, options: Map[String, String],
     columns: util.List[Common.ColumnDesc]): DataFrame = {
     val fmt = format.toLowerCase
@@ -302,8 +305,6 @@ object HybridseUtil {
       HybridseUtil.hiveLoad(openmldbSession, file, columns);
     } else {
       logger.info("load data from file {} reader[format {}, options {}]", file, fmt, options)
-      // we read input file even in soft copy,
-      // cause we want to check if "the input file schema == openmldb table schema"
       HybridseUtil.autoFileLoad(openmldbSession, file, fmt, options, columns)
     }
   }
