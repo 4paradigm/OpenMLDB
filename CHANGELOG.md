@@ -11,7 +11,7 @@
 - Deploy SQL fails if the column name of main table is keyword. (#2894 @dl239)
 - Tablet will core dump if execute SQL with disk table. (#2926 @dl239)
 - There are memory leak when putting data into disk table. (#2943 @dl239)
-- The result of `Show Components` is incorrect in some cases (#2940 @dl239)
+- The result of `show components` is incorrect in some cases (#2940 @dl239)
 - Offline jobs execute failed because `curator` API is incorrect (#2936 @tobegit3hub)
 
 ### Code Refactoring
