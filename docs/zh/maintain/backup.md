@@ -53,7 +53,7 @@ set auto_failover ok
   auto_failover       false
 ```
 
-**注意，auto_failover 开启的话如果一个节点下线了, showtable的is\_alive状态就会变成no，如果节点包含某个分片的leader，分片内会重新选主**
+**注意，auto_failover 开启的话如果一个节点下线了, showtable的is_alive状态就会变成no，如果节点包含某个分片的leader，分片内会重新选主**
 
 ```
 $ ./bin/openmldb --zk_cluster=172.27.128.31:8090,172.27.128.32:8090,172.27.128.33:8090 --zk_root_path=/openmldb_cluster --role=ns_client
