@@ -86,6 +86,7 @@ public class OpenMLDBStability {
                 statement.execute(curSQL);
                 logger.info(curSQL + " execute ok!");
             }
+            statement.execute("set @@SESSION.execute_mode='online';");
             String deploySQL = "DEPLOY " + pName + " " + script;
             logger.info(deploySQL);
             statement.execute(deploySQL);
