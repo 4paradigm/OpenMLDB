@@ -198,7 +198,7 @@
 #--load_table_queue_size=1000
 ```
 
-## apiserver配置文件 conf/tablet.flags
+## apiserver配置文件 conf/apiserver.flags
 ```
 # apiserver.conf
 # 配置启动apiserver的ip/域名和端口号
