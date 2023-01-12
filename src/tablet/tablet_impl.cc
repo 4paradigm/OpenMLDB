@@ -5624,7 +5624,7 @@ void TabletImpl::TryCollectDeployStats(const std::string& db, const std::string&
     if (!s.ok()) {
         LOG(ERROR) << "[ERROR] collect deploy stat: " << s;
     }
-    LOG(INFO) << "collected " << deploy_name << " for " << time;
+    DLOG(INFO) << "collected " << deploy_name << " for " << time;
 }
 
 void TabletImpl::BulkLoad(RpcController* controller, const ::openmldb::api::BulkLoadRequest* request,
