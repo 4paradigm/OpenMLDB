@@ -8,9 +8,9 @@ Notebook 与 OpenMLDB 第一个集成点就是 SQL 魔法函数 (magic function)
 
 ### 注册 OpenMLDB SQL 魔法函数
 
-- 为了在 Notebook 中支持 OpenMLDB 魔法函数，首先需要通过如下方式进行注册：
+为了在 Notebook 中支持 OpenMLDB 魔法函数，首先需要通过如下方式进行注册：
 
-- ```Python
+  ```Python
   import openmldb
   db = openmldb.dbapi.connect('demo_db','0.0.0.0:2181','/openmldb')
   openmldb.sql_magic.register(db)
@@ -34,7 +34,7 @@ Notebook 与 OpenMLDB 第一个集成点就是 SQL 魔法函数 (magic function)
 
 OpenMLDB 提供的 SQL 魔法函数，可执行所有支持的 SQL 语法，包括使用 OpenMLDB 特有的离线模式，把复杂的需要处理大数据 SQL 语句异步提交到离线执行引擎去执行，如下图所示。
 
-![img](https://openmldb.feishu.cn/space/api/box/stream/download/asynccode/?code=NDdkODE2MTBhNmFlYzNjZmU0ZjQzZDgwMWM1YmYzNDNfdVVhRjhYNm4wQTlveDY0dGxOaUw3OUlydEVqdGpvTkhfVG9rZW46Ym94Y25sV0FSMTVhZWtmM2hYTXN6Zml4aDhjXzE2NzMyNTQ3Mjc6MTY3MzI1ODMyN19WNA)
+![img](images/support_function.png)
 
 详细的 OpenMLDB 魔法函数使用方法，请参考[使用 Notebook Magic Function](https://openmldb.ai/docs/zh/main/quickstart/sdk/python_sdk.html#notebook-magic-function)。
 

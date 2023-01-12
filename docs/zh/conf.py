@@ -140,7 +140,7 @@ smv_tag_whitelist = None
 
 # Whitelist pattern for branches (set to None to ignore all branches)
 # include branch that is main or v{X}.{Y}
-smv_branch_whitelist = r"^(main|v\d+\.\d+)$"
+smv_branch_whitelist = r"^(main|magicfunction)$"
 
 # allow remote origin or upstream
 smv_remote_whitelist = r"^(origin|upstream)$"
