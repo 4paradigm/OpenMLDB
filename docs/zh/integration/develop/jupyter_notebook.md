@@ -20,13 +20,13 @@ Notebook 与 OpenMLDB 第一个集成点就是 SQL 魔法函数 (magic function)
 
 开发者可以使用提示符 `%` 来执行单行的 SQL 语句，如下图所示。
 
-![img](https://openmldb.feishu.cn/space/api/box/stream/download/asynccode/?code=MWQ4YzAwM2UzOTIwY2JjZjljMmY2MjI3MGExMDc5YjJfTHVjV3hsNUltSTd4Rll5Nmd4VXJjWHFqSG5oRUEwZW9fVG9rZW46Ym94Y25CbE9vSVBaeUJKcU9oM0p3QnNtN0NoXzE2NzMyNTQ3Mjc6MTY3MzI1ODMyN19WNA)
+![img](images/single.png)
 
 ### 执行多行 SQL 语句
 
 开发者也可以用提示符 `%%`，书写多行的 SQL 语句，如下图所示。
 
-![img](https://openmldb.feishu.cn/space/api/box/stream/download/asynccode/?code=MDkwMjkwZGNkZGU2NDNmOTU3OTI5MjQyYzIyZjhlMDJfcnh5ZXBuaUlEM0ExdnhnR3o5ZUNpUDNrM2JZMDJQdUlfVG9rZW46Ym94Y25oZzk5TkdLenVMalozaktkR3E5ZlJoXzE2NzMyNTQ3Mjc6MTY3MzI1ODMyN19WNA)
+![img](images/muti.png)
 
 注意，目前尚不支持在一个 Notebook cell 内部同时执行多条 SQL 语句，需要分开在不同 cell 内执行。
 
