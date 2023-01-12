@@ -1533,7 +1533,7 @@ void CreateStmt::Print(std::ostream &output, const std::string &org_tab) const {
 void CreateTableLikeClause::Print(std::ostream &output, const std::string &tab) const {
     output << tab << SPACE_ST << "like:";
     output << "\n";
-    PrintValue(output, tab + INDENT, "PARQUET", "kind", false);
+    PrintValue(output, tab + INDENT, ToKindString(kind_), "kind", false);
     output << "\n";
     PrintValue(output, tab + INDENT, path_, "path", false);
     output << "\n";

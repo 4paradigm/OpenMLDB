@@ -1366,6 +1366,10 @@ base::Status ConvertCreateTableNode(const zetasql::ASTCreateTableStatement* ast_
                 like_clause->kind_ = node::CreateTableLikeClause::PARQUET;
                 break;
             }
+            case zetasql::ASTLikeTableClause::TableKind::HIVE: {
+                like_clause->kind_ = node::CreateTableLikeClause::HIVE;
+                break;
+            }
             default: {
                 FAIL_STATUS(common::kSqlAstError, "unknown like clause kind for create table");
             }

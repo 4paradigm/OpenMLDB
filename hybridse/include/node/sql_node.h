@@ -1802,7 +1802,18 @@ class StorageModeNode : public SqlNode {
 class CreateTableLikeClause {
  public:
     CreateTableLikeClause() = default;
-    enum LikeKind { PARQUET = 0 };
+    enum LikeKind { PARQUET = 0, HIVE = 1 };
+
+    static std::string ToKindString(LikeKind kind) {
+        switch (kind) {
+            case PARQUET:
+                return "PARQUET";
+            case HIVE:
+                return "HIVE";
+            default:
+                return "UNKNOWN";
+        }
+    }
 
     void Print(std::ostream &, const std::string &) const;
 
