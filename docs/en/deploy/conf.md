@@ -60,7 +60,7 @@
 --system_table_replica_num=2
 ```
 
-## The Configuration File for conf/tablet.flags
+## The Configuration File for Tablet: conf/tablet.flags
 
 ```
 # tablet.conf
@@ -178,7 +178,7 @@
 #--load_table_queue_size=1000
 ```
 
-## The Configuration file for APIServer: conf/tablet.flags
+## The Configuration file for APIServer: conf/apiserver.flags
 
 ```
 # apiserver.conf
