@@ -282,9 +282,8 @@ class OpenmldbSession {
             // default offlineTableInfo required members 'path' & 'format' won't be null
             if (path != null && path.nonEmpty && format != null && format.nonEmpty) {
               // Has offline table meta, use the meta and table schema to read data
-              val df = format.toLowerCase match {
-                case "parquet" | "csv" => autoLoad(sparkSession, path, format, options, tableInfo.getColumnDescList)
-              }
+              // hive load will use sparksql
+              val df = autoLoad(this, path, format, options, tableInfo.getColumnDescList)
               registerTable(dbName, tableName, df)
             } else {
               // Register empty df for table

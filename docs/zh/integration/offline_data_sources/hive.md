@@ -9,6 +9,9 @@
 ### 安装
 
 [OpenMLDB Spark 发行版](../../tutorial/openmldbspark_distribution.md) v0.6.7 及以上版本均已经包含 Hive 依赖。如果使用其他 Spark 发行版，使用以下步骤进行安装。
+```{note}
+如果你并不想使用hive支持，并且不会在Spark依赖中添加Hive依赖包，需要在taskmanager配置中添加`enable.hive.support=false`。否则，Job会因找不到Hive相关Class而出错。
+```
 
 1. 在 Spark 中执行如下命令编译 Hive 依赖
 

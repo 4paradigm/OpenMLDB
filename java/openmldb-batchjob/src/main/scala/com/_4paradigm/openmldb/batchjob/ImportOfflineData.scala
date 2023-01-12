@@ -22,18 +22,15 @@ import org.apache.spark.sql.SparkSession
 object ImportOfflineData {
 
   def main(args: Array[String]): Unit = {
-    // sql, enable hive
-    OpenmldbJobUtil.checkArgumentSize(args, 2)
-    importOfflineData(args(0), args(1))
+    // sql
+    OpenmldbJobUtil.checkArgumentSize(args, 1)
+    importOfflineData(args(0))
   }
 
-  def importOfflineData(sqlFilePath: String, enableHive: String): Unit = {
-    // offline load may read from hive, must create hive catalog session first
-    // CAN NOT create one more hive session after a normal session
+  def importOfflineData(sqlFilePath: String): Unit = {
+    // No need to use `enableHiveSupport` create session, just enabled by config `spark.sql.catalogImplementation=hive`
+    // If spark has no hive jars, throws exception
     val builder = SparkSession.builder()
-    if (enableHive.equalsIgnoreCase("true")) {
-      builder.enableHiveSupport()
-    }
     val spark = builder.getOrCreate()
     OpenmldbJobUtil.runOpenmldbSql(spark, sqlFilePath)
   }

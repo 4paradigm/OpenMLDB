@@ -92,12 +92,36 @@ class TestLoadDataPlan extends SparkTestSuite with Matchers {
     openmldbSession.openmldbSql(s"load data infile '$testFileWithHeader' into table $db.$table " +
       "options(format='csv', deep_copy=false, null_value='123');")
     // getLatestTableInfo will refresh the table info cache
-    val softInfo = getLatestTableInfo(db, table)
+    var softInfo = getLatestTableInfo(db, table)
     assert(softInfo.hasOfflineTableInfo, s"no offline info $softInfo")
     // the offline info will be the same with load data options
     assert(softInfo.getOfflineTableInfo.getPath == testFileWithHeader)
     assert(softInfo.getOfflineTableInfo.getFormat == "csv")
     assert(softInfo.getOfflineTableInfo.getOptionsMap.get("nullValue") == "123")
+    assert(!softInfo.getOfflineTableInfo.getDeepCopy)
+
+    println("soft offline table now, soft load data with append/error_if_exists mode")
+    a[IllegalArgumentException] should be thrownBy {
+      openmldbSession.openmldbSql(s"load data infile '$testFileWithHeader' into table $db.$table " +
+        "options(deep_copy=false, mode='append');")
+      fail("unreachable")
+    }
+    a[IllegalArgumentException] should be thrownBy {
+      openmldbSession.openmldbSql(s"load data infile '$testFileWithHeader' into table $db.$table " +
+        "options(deep_copy=false, mode='error_if_exists');")
+      fail("unreachable")
+    }
+
+    println("soft offline table now, soft load data with overwrite mode, will rewrite the info")
+    openmldbSession.openmldbSql(s"load data infile '$testFileWithHeader' into table $db.$table " +
+      "options(format='csv', deep_copy=false, null_value='456', mode='overwrite');")
+    // getLatestTableInfo will refresh the table info cache
+    softInfo = getLatestTableInfo(db, table)
+    assert(softInfo.hasOfflineTableInfo, s"no offline info $softInfo")
+    // the offline info will be the same with load data options
+    assert(softInfo.getOfflineTableInfo.getPath == testFileWithHeader)
+    assert(softInfo.getOfflineTableInfo.getFormat == "csv")
+    assert(softInfo.getOfflineTableInfo.getOptionsMap.get("nullValue") == "456")
     assert(!softInfo.getOfflineTableInfo.getDeepCopy)
 
     println("soft offline table now, simple deep load data with append mode")
@@ -134,7 +158,7 @@ class TestLoadDataPlan extends SparkTestSuite with Matchers {
       // should equal("The 2th field 'c3' of input row cannot be null.")
     }
 
-    println("deep load data when offline info is exist, and with 'errorifexists' mode")
+    println("deep load data when offline info is exist, and with 'error_if_exists' mode")
     a[IllegalArgumentException] should be thrownBy {
       res = openmldbSession.openmldbSql(s"load data infile '$testFileWithHeader' into table $db.$table " +
         "options(foo='bar', mode='error_if_exists');")
