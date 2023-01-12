@@ -60,6 +60,7 @@ enum PhysicalOpType {
     kPhysicalOpDelete,
     kPhysicalOpSelectInto,
     kPhysicalOpInsert,
+    kPhysicalCreateTable,
     kPhysicalOpFake,  // not a real type, for testing only
     kPhysicalOpLast = kPhysicalOpFake,
 };
@@ -1770,6 +1771,21 @@ class PhysicalDeleteNode : public PhysicalOpNode {
     const std::string job_id_;
 };
 
+class PhysicalCreateTableNode : public PhysicalOpNode {
+ public:
+    explicit PhysicalCreateTableNode(const node::CreatePlanNode *node)
+        : PhysicalOpNode(kPhysicalCreateTable, false), data_(node) {}
+    ~PhysicalCreateTableNode() override {}
+
+    void Print(std::ostream &output, const std::string &tab) const override;
+    base::Status InitSchema(PhysicalPlanContext *) override { return base::Status::OK(); }
+    base::Status WithNewChildren(node::NodeManager *nm, const std::vector<PhysicalOpNode *> &children,
+                                 PhysicalOpNode **out) override {
+        return base::Status::OK();
+    }
+
+    const node::CreatePlanNode *data_;
+};
 
 class PhysicalInsertNode : public PhysicalOpNode {
  public:
