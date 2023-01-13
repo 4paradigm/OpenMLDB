@@ -35,6 +35,13 @@ PATH ::=
     string_literal
 ```
 
+基于Hive建表有以下已知问题。
+
+* 如果创建表失败仍然会返回SUCCEED，无法在命令行看到错误日志，需要在TaskManager日志目录查看。
+* 创建的表名必须包含DB名，`CREATE TABLE t1 LIKE HIVE`脚本会运行失败。
+* 使用命令行默认超时配置，创建表可能会显示超时，可通过`SHOW TABLES`查看最终结果。
+* Hive中表如果包含列约束（如NOT NULL），在创建的新表中不会包含这些列约束。
+
 ### 列描述ColumnDef（必要）
 
 ```SQL

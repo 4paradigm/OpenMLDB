@@ -34,6 +34,13 @@ PATH ::=
     string_literal
 ```
 
+Here is the known issues of creating tables with Hive.
+
+* The command always return SUCCEED even it fails. You can get the error log in TaskManager log directory instead of CLI.
+* Need to create table with db name, `CREATE TABLE t1 LIKE HIVE` will fail.
+* May get timeout for the default CLI config and need to show tables to check result.
+* The column constraints of Hive tables such as NOT NULL will not copy to new tables.
+
 ### ColumnDef (required)
 
 ```SQL
