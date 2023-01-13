@@ -1934,32 +1934,59 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::HandleSQLCmd(const h
 // TODO(hw): use openmldb::base::Status?
 base::Status SQLClusterRouter::HandleSQLCreateTable(hybridse::node::CreatePlanNode* create_node, const std::string& db,
                                                     std::shared_ptr<::openmldb::client::NsClient> ns_ptr) {
+    HandleSQLCreateTable(create_node, db, ns_ptr, "");
+}
+
+base::Status SQLClusterRouter::HandleSQLCreateTable(hybridse::node::CreatePlanNode* create_node, const std::string& db,
+    std::shared_ptr<::openmldb::client::NsClient> ns_ptr, const std::string& sql) {
     if (create_node == nullptr || ns_ptr == nullptr) {
         return base::Status(base::ReturnCode::kSQLCmdRunError, "fail to execute plan : null pointer");
     }
-    std::string db_name = create_node->GetDatabase().empty() ? db : create_node->GetDatabase();
-    if (db_name.empty()) {
-        return base::Status(base::ReturnCode::kSQLCmdRunError, "ERROR: Please use database first");
-    }
-    ::openmldb::nameserver::TableInfo table_info;
-    table_info.set_db(db_name);
 
-    std::vector<std::shared_ptr<::openmldb::catalog::TabletAccessor>> all_tablet;
-    all_tablet = cluster_sdk_->GetAllTablet();
-    // set dafault value
-    uint32_t default_replica_num = std::min(static_cast<uint32_t>(all_tablet.size()), FLAGS_replica_num);
+    if (create_node->like_clause_ == nullptr) {
+        std::string db_name = create_node->GetDatabase().empty() ? db : create_node->GetDatabase();
+        if (db_name.empty()) {
+            return base::Status(base::ReturnCode::kSQLCmdRunError, "ERROR: Please use database first");
+        }
+        ::openmldb::nameserver::TableInfo table_info;
+        table_info.set_db(db_name);
 
-    hybridse::base::Status sql_status;
-    bool is_cluster_mode = cluster_sdk_->IsClusterMode();
-    ::openmldb::sdk::NodeAdapter::TransformToTableDef(create_node, &table_info, default_replica_num, is_cluster_mode,
-                                                      &sql_status);
-    if (sql_status.code != 0) {
-        return base::Status(sql_status.code, sql_status.msg);
+        std::vector<std::shared_ptr<::openmldb::catalog::TabletAccessor>> all_tablet;
+        all_tablet = cluster_sdk_->GetAllTablet();
+        // set dafault value
+        uint32_t default_replica_num = std::min(static_cast<uint32_t>(all_tablet.size()), FLAGS_replica_num);
+
+        hybridse::base::Status sql_status;
+        bool is_cluster_mode = cluster_sdk_->IsClusterMode();
+        ::openmldb::sdk::NodeAdapter::TransformToTableDef(create_node, &table_info, default_replica_num,
+            is_cluster_mode, &sql_status);
+        if (sql_status.code != 0) {
+            return base::Status(sql_status.code, sql_status.msg);
+        }
+        std::string msg;
+        if (!ns_ptr->CreateTable(table_info, create_node->GetIfNotExist(), msg)) {
+            return base::Status(base::ReturnCode::kSQLCmdRunError, msg);
+        }
+    } else {
+        LOG(INFO) << "Create table like will run in offline job";
+
+        auto taskmanager_client_ptr = cluster_sdk_->GetTaskManagerClient();
+        if (!taskmanager_client_ptr) {
+            return {base::ReturnCode::kServerConnError, "Fail to get TaskManager client"};
+        }
+
+        std::map<std::string, std::string> config;
+        ::openmldb::taskmanager::JobInfo job_info;
+        int job_timeout = GetJobTimeout();
+        std::string output;
+        ::openmldb::base::Status status = taskmanager_client_ptr->RunBatchSql(sql, config, db, job_timeout, &output);
+        // TODO(tobe): Can not get actual status of Spark job, always return success if the job is submitted
+        if (!status.OK()) {
+            LOG(ERROR) << "Fail to create table, error msage: " + status.msg;
+            return base::Status(base::ReturnCode::kSQLCmdRunError, status.msg);
+        }
     }
-    std::string msg;
-    if (!ns_ptr->CreateTable(table_info, create_node->GetIfNotExist(), msg)) {
-        return base::Status(base::ReturnCode::kSQLCmdRunError, msg);
-    }
+
     return {};
 }
 
@@ -2433,7 +2460,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(
         }
         case hybridse::node::kPlanTypeCreate: {
             auto create_node = dynamic_cast<hybridse::node::CreatePlanNode*>(node);
-            auto base_status = HandleSQLCreateTable(create_node, db, ns_ptr);
+            auto base_status = HandleSQLCreateTable(create_node, db, ns_ptr, sql);
             if (base_status.OK()) {
                 RefreshCatalog();
                 *status = {};
