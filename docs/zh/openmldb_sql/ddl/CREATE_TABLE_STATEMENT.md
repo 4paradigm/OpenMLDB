@@ -22,7 +22,18 @@ TableElement ::=
 
 建表语句中需要定义`TableElementList`，即`TableElement`列表。`TableElement`分为列描述`ColumnDef`和列索引`ColumnIndex`。OpenMLDB要求`TableElement`列表中至少包含一个`ColumnDef`。
 
+或者使用基于Hive的建表语句。
 
+```sql
+CreateTableStmt ::=
+    'CREATE' 'TABLE' TableName LIKE 'HIVE' PATH
+
+TableName ::=
+    Identifier ('.' Identifier)?
+
+PATH ::=
+    string_literal
+```
 
 ### 列描述ColumnDef（必要）
 
@@ -173,6 +184,16 @@ desc t4;
  --------------
 ```
 
+**示例5：基于Hive表创建新表**
+
+首先[配置OpenMLDB支持Hive](../../integration/offline_data_sources/hive.md)，然后使用以下语句。
+
+```sql
+CREATE TABLE db1.t1 LIKE HIVE 'hive://hive_db.t1';
+-- SUCCEED
+```
+
+注意目前创建的表名必须包括DB名。
 
 ### 列索引ColumnIndex（可选）
 
