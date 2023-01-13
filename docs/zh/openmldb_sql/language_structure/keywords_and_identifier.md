@@ -2,17 +2,17 @@
 
 SQL 语句有两个基本组成部分：
 
-- **关键字**：在 SQL 中具有特定含义的单词，例如 `CREATE`、`INDEX`、`SELECT`和 `BOOL` 等。大小写不敏感的（建议大写，与标识符进行区分）。
+- **关键字**：在 SQL 中具有特定含义的单词，例如 `CREATE`、`INDEX`、`SELECT` 和 `BOOL` 等。大小写不敏感的（建议大写，与标识符进行区分）。
 - **标识符**：为 OpenMLDB 对象数据库、表或列等对象所起的名称。大小写不敏感。
 
-## **关键字**
+## 关键字
 
 关键字构成 SQL 的词汇表，在语句中具有特定的含义（OpenMLDB 中所有的关键字请参考[关键字汇总](#关键字汇总)）。OpenMLDB 支持的 SQL 关键字分两类：
 
 - 保留关键字：保留关键字具有固定含义，通常不允许用作标识符，需要经过特殊处理——使用``符号包裹起才能作为标识符。
 - 非保留关键字：在某些上下文中具有特殊含义，可以用作标识符。
 
-## **标识符**
+## 标识符
 
 标识符最常用作数据库、表或列等对象的名称。
 
@@ -31,7 +31,7 @@ SQL 语句有两个基本组成部分：
     CREATE TABLE a`b (a int);
     ```
 
-### **标识符规则**
+### 标识符规则
 
 OpenMLDB SQL 语法中标识符设定规则：以 Unicode 字母或下划线 (_) 开头。后续字符可以是字母、下划线、数字(0-9) 或美元符号 ($)。
 
@@ -57,7 +57,7 @@ USE db0;
 SELECT * FROM db1.t1;
 ```
 
-**非限定的对象名**
+**非限定标识符**
 
 非限定标识符不包含任何限定词的修饰，只包含标识符本身。在给定上下文时直接使用标识符不会引起混淆的情况下，可以使用非限定标识符来表示对象。
 
@@ -76,7 +76,7 @@ SELECT * from t1;
 
 [A](#a)|[B](#b)|[C](#c)|[D](#d)|[E](#e)|[F](#f)|[G](#G)|[H](#h)|[I](#i)|[J](#j)|[K](#k)|[L](#l)|[M](#m)|[N](#n)|[O](#o)|[P](#p)|[Q](#q)|[R](#r)|[S](#s)|[T](#t)|[U](#u)|[V](#v)|[W](#w)|[X](#x)|[Y](#y)|[Z](#z)
 
-**### A**
+#### A
 
 - ABORT
 - ACCESS
@@ -96,7 +96,7 @@ SELECT * from t1;
 - ASSERT_ROWS_MODIFIED(R)
 - AT(R)
 
-**### B**
+#### B
 
 - BATCH
 - BEGIN
@@ -106,7 +106,7 @@ SELECT * from t1;
 - BREAK
 - BY(R)
 
-**### C**
+**#### C**
 
 - CALL
 - CASCADE
@@ -133,7 +133,7 @@ SELECT * from t1;
 - CURRENT(R)
 - CURRENT_TIME
 
-**### D**
+**#### D**
 
 - DATA
 - DATABASE
@@ -156,7 +156,7 @@ SELECT * from t1;
 - DO
 - DROP
 
-**### E**
+#### E
 
 - ELSE(R)
 - ELSEIF
@@ -175,7 +175,7 @@ SELECT * from t1;
 - EXTERNAL
 - EXTRACT(R)
 
-**### F**
+#### F
 
 - FALSE(R)
 - FETCH(R)
@@ -191,7 +191,7 @@ SELECT * from t1;
 - FULL(R)
 - FUNCTION
 
-**### G**
+#### G
 
 - GENERATED
 - GLOBAL
@@ -201,13 +201,13 @@ SELECT * from t1;
 - GROUPING(R)
 - GROUPS(R)
 
-**### H**
+#### H
 
 - HASH(R)
 - HAVING(R)
 - HIDDEN
 
-**### I**
+#### I
 
 - IF(R)
 - IGNORE(R)
@@ -230,17 +230,17 @@ SELECT * from t1;
 - IS(R)
 - ISOLATION
 
-**### J**
+#### J
 
 - JOB
 - JOIN(R)
 - JSON
 
-**### K**
+#### K
 
 - KEY
 
-**### L**
+#### L
 
 - LANGUAGE
 - LAST(R)
@@ -250,18 +250,18 @@ SELECT * from t1;
 - LEVEL
 - LIKE(R)
 
-**### I**
+#### I
 
 - ILIKE(R)
 
-**### L**
+#### L
 
 - LIMIT(R)
 - LOAD
 - LOOKUP(R)
 - LOOP
 
-**### M**
+#### M
 
 - MATCH
 - MATCHED
@@ -275,7 +275,7 @@ SELECT * from t1;
 - MODULE
 - MERGE(R)
 
-**### N**
+#### N
 
 - NATURAL(R)
 - NEW(R)
@@ -285,7 +285,7 @@ SELECT * from t1;
 - NULLS(R)
 - NUMERIC
 
-**### O**
+#### O
 
 - OF(R)
 - OFFSET
@@ -300,17 +300,17 @@ SELECT * from t1;
 - OUTER(R)
 - OVER(R)
 
-**### P**
+#### P
 
 - PARTITION(R)
 - PERCENT
 - PIVOT
 
-**### U**
+#### U
 
 - UNPIVOT
 
-**### P**
+#### P
 
 - POLICIES
 - POLICY
@@ -322,11 +322,11 @@ SELECT * from t1;
 - PROTO(R)
 - PUBLIC
 
-**### Q**
+#### Q
 
 - QUALIFY
 
-**### R**
+#### R
 
 - RAISE
 - RANGE(R)
@@ -351,7 +351,7 @@ SELECT * from t1;
 - ROWS_RANGE(R)
 - RUN
 
-**### S**
+#### S
 
 - SAFE_CAST
 - SCHEMA
@@ -375,7 +375,7 @@ SELECT * from t1;
 - SYSTEM
 - SYSTEM_TIME
 
-**### T**
+#### T
 
 - TABLE
 - TABLESAMPLE(R)
@@ -393,7 +393,7 @@ SELECT * from t1;
 - TRUNCATE
 - TYPE
 
-**### U**
+#### U
 
 - UNBOUNDED(R)
 - UNION(R)
@@ -404,7 +404,7 @@ SELECT * from t1;
 - USE
 - USING(R)
 
-**### V**
+#### V
 
 - VALUE
 - VALUES
@@ -413,7 +413,7 @@ SELECT * from t1;
 - VIEW
 - VIEWS
 
-**### W**
+#### W
 
 - WEIGHT
 - WHEN(R)
@@ -424,10 +424,10 @@ SELECT * from t1;
 - WITHIN(R)
 - WRITE
 
-**### X**
+#### X
 
 - XOR(R)
 
-**### Z**
+#### Z
 
 - ZONE
