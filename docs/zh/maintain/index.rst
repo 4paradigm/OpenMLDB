@@ -8,9 +8,9 @@
     upgrade
     backup
     scale
-    status
     monitoring
     cli
+    status
     faq
     diagnose
     openmldb_ops
