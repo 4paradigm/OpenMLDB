@@ -80,6 +80,27 @@ static int ParseKeyAndTs(const rocksdb::Slice& s, rocksdb::Slice* key, uint64_t*
     return ParseKeyAndTs(false, s, key, ts, &ts_idx);
 }
 
+static inline std::string CombineKeyTs(const rocksdb::Slice& key, uint64_t ts) {
+    std::string result;
+    result.resize(key.size() + TS_LEN);
+    char* buf = reinterpret_cast<char*>(&(result[0]));
+    memrev64ifbe(static_cast<void*>(&ts));
+    memcpy(buf, key.data(), key.size());
+    memcpy(buf + key.size(), static_cast<void*>(&ts), TS_LEN);
+    return result;
+}
+
+static inline std::string CombineKeyTs(const rocksdb::Slice& key, uint64_t ts, uint32_t ts_pos) {
+    std::string result;
+    result.resize(key.size() + TS_LEN + TS_POS_LEN);
+    char* buf = reinterpret_cast<char*>(&(result[0]));
+    memrev64ifbe(static_cast<void*>(&ts));
+    memcpy(buf, key.data(), key.size());
+    memcpy(buf + key.size(), static_cast<void*>(&ts_pos), TS_POS_LEN);
+    memcpy(buf + key.size() + TS_POS_LEN, static_cast<void*>(&ts), TS_LEN);
+    return result;
+}
+
 class KeyTSComparator : public rocksdb::Comparator {
  public:
     KeyTSComparator() {}

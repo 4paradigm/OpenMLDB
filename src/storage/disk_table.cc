@@ -40,27 +40,6 @@ static rocksdb::Options ssd_option_template;
 static rocksdb::Options hdd_option_template;
 static bool options_template_initialized = false;
 
-std::string CombineKeyTs(const rocksdb::Slice& key, uint64_t ts) {
-    std::string result;
-    result.resize(key.size() + TS_LEN);
-    char* buf = reinterpret_cast<char*>(&(result[0]));
-    memrev64ifbe(static_cast<void*>(&ts));
-    memcpy(buf, key.data(), key.size());
-    memcpy(buf + key.size(), static_cast<void*>(&ts), TS_LEN);
-    return result;
-}
-
-std::string CombineKeyTs(const rocksdb::Slice& key, uint64_t ts, uint32_t ts_pos) {
-    std::string result;
-    result.resize(key.size() + TS_LEN + TS_POS_LEN);
-    char* buf = reinterpret_cast<char*>(&(result[0]));
-    memrev64ifbe(static_cast<void*>(&ts));
-    memcpy(buf, key.data(), key.size());
-    memcpy(buf + key.size(), static_cast<void*>(&ts_pos), TS_POS_LEN);
-    memcpy(buf + key.size() + TS_POS_LEN, static_cast<void*>(&ts), TS_LEN);
-    return result;
-}
-
 DiskTable::DiskTable(const std::string& name, uint32_t id, uint32_t pid, const std::map<std::string, uint32_t>& mapping,
                      uint64_t ttl, ::openmldb::type::TTLType ttl_type, ::openmldb::common::StorageMode storage_mode,
                      const std::string& table_path)
