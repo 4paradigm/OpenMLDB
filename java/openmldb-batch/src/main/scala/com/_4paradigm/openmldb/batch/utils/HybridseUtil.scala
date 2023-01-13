@@ -376,20 +376,26 @@ object HybridseUtil {
     }
     // use sparksql to read hive, no need to try openmldbsql and then fallback to sparksql
     val df = openmldbSession.sparksql(s"SELECT * FROM ${hiveDest(file)}")
-
-    val (oriSchema, readSchema, tsCols) = HybridseUtil.extractOriginAndReadSchema(columns)
     if (logger.isDebugEnabled()) {
       logger.debug(s"read dataframe schema: ${df.schema}, count: ${df.count()}")
       df.show(10)
     }
-    require(checkSchemaIgnoreNullable(df.schema, oriSchema), //df.schema == oriSchema, hive table always nullable?
+
+    if (columns != null) {
+      val (oriSchema, readSchema, tsCols) = HybridseUtil.extractOriginAndReadSchema(columns)
+
+      require(checkSchemaIgnoreNullable(df.schema, oriSchema), //df.schema == oriSchema, hive table always nullable?
         s"schema mismatch(ignore nullable), loaded hive ${df.schema}!= table $oriSchema, check $file")
 
-    if (!df.schema.equals(oriSchema)) {
-      logger.info(s"df schema: ${df.schema}, reset schema")
-      df.sqlContext.createDataFrame(df.rdd, oriSchema)
-    } else{
+      if (!df.schema.equals(oriSchema)) {
+        logger.info(s"df schema: ${df.schema}, reset schema")
+        df.sqlContext.createDataFrame(df.rdd, oriSchema)
+      } else{
+        df
+      }
+    } else {
       df
     }
+
   }
 }

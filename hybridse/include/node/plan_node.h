@@ -436,6 +436,7 @@ class CreatePlanNode : public LeafPlanNode {
 
     std::shared_ptr<node::CreateTableLikeClause> like_clause_;
 
+    // TODO: Remove these if Java can read like_clause_ with smart pointer
     node::CreateTableLikeClause::LikeKind GetLikeKind() const {
         return like_clause_->kind_;
     }
