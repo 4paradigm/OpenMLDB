@@ -1508,6 +1508,8 @@ void PhysicalCreateTableNode::Print(std::ostream &output, const std::string &tab
     PhysicalOpNode::Print(output, tab);
 }
 
+PhysicalCreateTableNode* PhysicalCreateTableNode::CastFrom(PhysicalOpNode* node) { return dynamic_cast<PhysicalCreateTableNode*>(node); }
+
 PhysicalLoadDataNode* PhysicalLoadDataNode::CastFrom(PhysicalOpNode* node) {
     return dynamic_cast<PhysicalLoadDataNode*>(node);
 }

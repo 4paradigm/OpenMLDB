@@ -1785,6 +1785,8 @@ class PhysicalCreateTableNode : public PhysicalOpNode {
     }
 
     const node::CreatePlanNode *data_;
+
+    static PhysicalCreateTableNode *CastFrom(PhysicalOpNode *node);
 };
 
 class PhysicalInsertNode : public PhysicalOpNode {

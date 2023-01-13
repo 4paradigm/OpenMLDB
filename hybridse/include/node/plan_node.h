@@ -436,6 +436,14 @@ class CreatePlanNode : public LeafPlanNode {
 
     std::shared_ptr<node::CreateTableLikeClause> like_clause_;
 
+    node::CreateTableLikeClause::LikeKind GetLikeKind() const {
+        return like_clause_->kind_;
+    }
+
+    std::string GetLikePath() const {
+        return like_clause_->path_;
+    }
+
  private:
     std::string database_;
     std::string table_name_;
