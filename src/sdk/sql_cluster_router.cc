@@ -1968,7 +1968,7 @@ base::Status SQLClusterRouter::HandleSQLCreateTable(hybridse::node::CreatePlanNo
             return base::Status(base::ReturnCode::kSQLCmdRunError, msg);
         }
     } else {
-        LOG(WARN) << "CREATE TABLE LIKE will run in offline job, please wait";
+        LOG(WARNING) << "CREATE TABLE LIKE will run in offline job, please wait";
 
         auto taskmanager_client_ptr = cluster_sdk_->GetTaskManagerClient();
         if (!taskmanager_client_ptr) {
