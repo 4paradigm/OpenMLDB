@@ -1934,7 +1934,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::HandleSQLCmd(const h
 // TODO(hw): use openmldb::base::Status?
 base::Status SQLClusterRouter::HandleSQLCreateTable(hybridse::node::CreatePlanNode* create_node, const std::string& db,
                                                     std::shared_ptr<::openmldb::client::NsClient> ns_ptr) {
-    HandleSQLCreateTable(create_node, db, ns_ptr, "");
+    return HandleSQLCreateTable(create_node, db, ns_ptr, "");
 }
 
 base::Status SQLClusterRouter::HandleSQLCreateTable(hybridse::node::CreatePlanNode* create_node, const std::string& db,
@@ -1968,7 +1968,7 @@ base::Status SQLClusterRouter::HandleSQLCreateTable(hybridse::node::CreatePlanNo
             return base::Status(base::ReturnCode::kSQLCmdRunError, msg);
         }
     } else {
-        LOG(WARNING) << "CREATE TABLE LIKE will run in offline job, please wait";
+        LOG(WARNING) << "CREATE TABLE LIKE will run in offline job, please wait.";
 
         auto taskmanager_client_ptr = cluster_sdk_->GetTaskManagerClient();
         if (!taskmanager_client_ptr) {
