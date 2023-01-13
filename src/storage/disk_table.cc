@@ -120,7 +120,6 @@ void DiskTable::initOptionTemplate() {
         ssd_option_template.level0_file_num_compaction_trigger;  // L1 size ~ L0 total size
     ssd_option_template.target_file_size_base =
         ssd_option_template.max_bytes_for_level_base >> 4;  // number of L1 files = 16
-    ssd_option_template.periodic_compaction_seconds = FLAGS_disk_gc_interval * 60;
 
     rocksdb::BlockBasedTableOptions table_options;
     // table_options.cache_index_and_filter_blocks = true;
@@ -167,7 +166,6 @@ void DiskTable::initOptionTemplate() {
     hdd_option_template.target_file_size_base = 256 << 20;
     hdd_option_template.max_bytes_for_level_base = 1024 << 20;
     hdd_option_template.table_factory.reset(rocksdb::NewBlockBasedTableFactory(table_options));
-    hdd_option_template.periodic_compaction_seconds = FLAGS_disk_gc_interval * 60;
 
     options_template_initialized = true;
 }
@@ -176,16 +174,20 @@ bool DiskTable::InitColumnFamilyDescriptor() {
     cf_ds_.clear();
     cf_ds_.push_back(
         rocksdb::ColumnFamilyDescriptor(rocksdb::kDefaultColumnFamilyName, rocksdb::ColumnFamilyOptions()));
+    if (storage_mode_ == ::openmldb::common::StorageMode::kSSD) {
+        options_ = ssd_option_template;
+    } else {
+        options_ = hdd_option_template;
+    }
+    for (const auto& index_def : table_index_.GetAllIndex()) {
+        if (index_def->GetTTLType() == ::openmldb::storage::TTLType::kAbsoluteTime) {
+            options_.periodic_compaction_seconds = FLAGS_disk_gc_interval * 60;
+            break;
+        }
+    }
     auto inner_indexs = table_index_.GetAllInnerIndex();
     for (const auto& inner_index : *inner_indexs) {
-        rocksdb::ColumnFamilyOptions cfo;
-        if (storage_mode_ == ::openmldb::common::StorageMode::kSSD) {
-            cfo = rocksdb::ColumnFamilyOptions(ssd_option_template);
-            options_ = ssd_option_template;
-        } else {
-            cfo = rocksdb::ColumnFamilyOptions(hdd_option_template);
-            options_ = hdd_option_template;
-        }
+        rocksdb::ColumnFamilyOptions cfo(options_);
         cfo.comparator = &cmp_;
         cfo.prefix_extractor.reset(new KeyTsPrefixTransform());
         const auto& indexs = inner_index->GetIndex();
