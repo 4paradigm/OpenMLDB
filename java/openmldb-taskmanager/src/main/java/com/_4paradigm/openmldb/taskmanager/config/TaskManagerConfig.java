@@ -61,6 +61,7 @@ public class TaskManagerConfig {
     public static String NAMENODE_URI;
     public static String BATCHJOB_JAR_PATH;
     public static String HADOOP_CONF_DIR;
+    public static boolean ENABLE_HIVE_SUPPORT;
 
     public static void parse() throws IOException, NumberFormatException, ConfigException {
         Properties prop = new Properties();
@@ -237,6 +238,8 @@ public class TaskManagerConfig {
             }
         }
         // TODO: Check if we can get core-site.xml
+
+        ENABLE_HIVE_SUPPORT = Boolean.parseBoolean(prop.getProperty("enable.hive.support", "true"));
     }
 
 }

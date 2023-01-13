@@ -74,6 +74,9 @@
         <scoverage.plugin.version>1.4.11</scoverage.plugin.version>
         <surefire.plugin.version>3.0.0-M5</surefire.plugin.version>
         <jacoco.plugin.version>0.8.7</jacoco.plugin.version>
+
+        <!-- Compatible with Spark 3.2.1 -->
+        <guava.version>14.0.1</guava.version>
     </properties>
 
     <dependencies>

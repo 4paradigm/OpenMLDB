@@ -23,7 +23,7 @@ DEFINE_string(glog_dir, "", "set the glog dir of CLI, default is empty, print to
 DEFINE_string(openmldb_log_dir, "./logs", "config the log dir of glog, for all log macro");
 DEFINE_string(role, "",
               "Set the openmldb role for start: tablet | nameserver | client | ns_client | sql_client | apiserver");
-DEFINE_string(cmd, "", "Set the command");
+DEFINE_string(cmd, "", "the command str, DO NOT add multi sqls");
 DEFINE_int32(zk_session_timeout, 2000,
              "config the zk session timeout of cli in milliseconds, apiserver, tablet or nameserver");
 DEFINE_uint32(tablet_heartbeat_timeout, 5 * 60 * 1000, "config the heartbeat of tablet offline. unit is milliseconds");
@@ -104,8 +104,7 @@ DEFINE_int32(put_concurrency_limit, 0, "the limit of put concurrency");
 DEFINE_int32(thread_pool_size, 16, "the size of thread pool for other api");
 DEFINE_int32(get_concurrency_limit, 0, "the limit of get concurrency");
 DEFINE_int32(request_max_retry, 3, "max retry time when request error");
-DEFINE_int32(request_timeout_ms, 20000,
-             "rpc request timeout of misc. unit is milliseconds");
+DEFINE_int32(request_timeout_ms, 20000, "rpc request timeout of misc. unit is milliseconds");
 DEFINE_int32(request_sleep_time, 1000, "the sleep time when request error. unit is milliseconds");
 
 DEFINE_uint32(max_memory_mb, 0, "max memory limit");

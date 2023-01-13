@@ -171,6 +171,10 @@ Status BatchModeTransformer::TransformPlanOp(const node::PlanNode* node, Physica
             CHECK_STATUS(TransformDeleteOp(dynamic_cast<const ::hybridse::node::DeletePlanNode*>(node), &op));
             break;
         }
+        case node::kPlanTypeCreate: {
+            CHECK_STATUS(TransformCreateTableOp(dynamic_cast<const node::CreatePlanNode*>(node), &op));
+            break;
+        }
         default: {
             FAIL_STATUS(kPlanError,
                         "Fail to transform physical plan: "
@@ -1015,6 +1019,14 @@ Status BatchModeTransformer::TransformDeleteOp(const node::DeletePlanNode* node,
     PhysicalDeleteNode* delete_op = nullptr;
     CHECK_STATUS(CreateOp<PhysicalDeleteNode>(&delete_op, node->GetTarget(), node->GetJobId()));
     *output = delete_op;
+    return Status::OK();
+}
+
+Status BatchModeTransformer::TransformCreateTableOp(const node::CreatePlanNode* create, PhysicalOpNode** output) {
+    CHECK_TRUE(create != nullptr && output != nullptr, kPlanError, "Input node or output node is null");
+    PhysicalCreateTableNode* n = nullptr;
+    CHECK_STATUS(CreateOp<PhysicalCreateTableNode>(&n, create));
+    *output = n;
     return Status::OK();
 }
 

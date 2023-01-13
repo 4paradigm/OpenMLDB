@@ -54,11 +54,8 @@ FilePathPattern
 
 
 ```{note}
-在集群版中，`LOAD DATA INFILE`语句会根据当前执行模式（execute_mode）决定将数据导入到在线或离线存储。单机版中没有存储区别，同时也不支持`deep_copy`选项。
-
-在线导入只能使用append模式。
-
-离线软拷贝导入后，OpenMLDB不应修改**软连接中的数据**，因此，如果当前离线数据是软连接，就不再支持`append`方式导入。并且，当前软连接的情况下，使用`overwrite`模式的硬拷贝，也不会删除软连接的数据。
+在集群版中，`LOAD DATA INFILE`语句会根据当前执行模式（execute_mode）决定将数据导入到在线或离线存储。单机版中没有存储区别，只会导入到在线存储中，同时也不支持`deep_copy`选项。
+具体的规则见下文。
 ```
 
 ```{warning} INFILE Path
@@ -108,3 +105,29 @@ set @@execute_mode='offline';
 LOAD DATA INFILE 'hive://db1.t1' INTO TABLE t1;
 ```
 
+## 在线导入规则
+
+在线导入只允许`mode='append'`，无法`overwrite`或`error_if_exists`。
+
+## 离线导入规则
+
+表的离线信息可通过desc <table>查看。在没有离线信息时，进行LOAD DATA离线导入，没有特别限制。
+
+但如果当前已有离线信息，再次LOAD DATA，能否成功和表之前的离线信息有关。规则为：
+- 原信息为软链接(Deep Copy列为false)，OpenMLDB应只读该地址，不应修改**软连接中的数据**
+  - 可以再次软链接，替换原软链接地址，指向别的数据地址(mode='overwrite', deep_copy=false)
+  - 可以做硬拷贝(mode='overwrite', deep_copy=true)，将丢弃原软链接地址，但不会修改软链接指向的数据
+- 原信息为硬拷贝(Deep Copy列为true)，数据地址(Offline path)为OpenMLDB所拥有的，可读可写
+  - **不可以**替换为软链接（数据还没有回收恢复机制，直接删除是危险行为，所以暂不支持）
+  - 可以再次硬拷贝(mode='overwrite'/'append', deep_copy=true)
+
+
+````{tip}
+如果你肯定原有的硬拷贝数据不再被需要，而现在想将离线数据地址修改为软链接，可以手动删除离线地址的数据，并用nameserver http请求清空表的离线信息。
+清空离线信息步骤：
+```
+curl http://<ns_endpoint>/NameServer/ShowTable -d'{"db":"<db_name>","name":"<table_name>"}' # 获得其中的表tid
+curl http://<ns_endpoint>/NameServer/UpdateOfflineTableInfo -d '{"db":"<db_name>","name":"<table_name>","tid":<tid>}'
+```
+然后，可以进行软链接导入。
+````
