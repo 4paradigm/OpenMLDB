@@ -31,7 +31,7 @@ TableName ::=
     Identifier ('.' Identifier)?
 
 PATH ::=
-    Identifier
+    string_literal
 ```
 
 ### ColumnDef (required)

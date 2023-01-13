@@ -32,7 +32,7 @@ TableName ::=
     Identifier ('.' Identifier)?
 
 PATH ::=
-    Identifier
+    string_literal
 ```
 
 ### 列描述ColumnDef（必要）
