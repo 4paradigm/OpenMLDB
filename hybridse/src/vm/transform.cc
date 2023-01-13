@@ -171,10 +171,6 @@ Status BatchModeTransformer::TransformPlanOp(const node::PlanNode* node, Physica
             CHECK_STATUS(TransformDeleteOp(dynamic_cast<const ::hybridse::node::DeletePlanNode*>(node), &op));
             break;
         }
-        case node::kPlanTypeCreate: {
-            CHECK_STATUS(TransformCreateTableOp(dynamic_cast<const node::CreatePlanNode*>(node), &op));
-            break;
-        }
         default: {
             FAIL_STATUS(kPlanError,
                         "Fail to transform physical plan: "
@@ -1837,6 +1833,11 @@ Status BatchModeTransformer::TransformPhysicalPlan(const ::hybridse::node::PlanN
             }
             case ::hybridse::node::kPlanTypeUnion: {
                 FAIL_STATUS(kPlanError, "Non-support UNION OP");
+                break;
+            }
+            case node::kPlanTypeCreate: {
+                CHECK_STATUS(TransformCreateTableOp(dynamic_cast<const node::CreatePlanNode*>(node), output),
+                    "Fail to transform create table op");
                 break;
             }
             case ::hybridse::node::kPlanTypeQuery: {

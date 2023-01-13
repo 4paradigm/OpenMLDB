@@ -436,6 +436,23 @@ class CreatePlanNode : public LeafPlanNode {
 
     std::shared_ptr<node::CreateTableLikeClause> like_clause_;
 
+    // TODO(tobe): Remove these if Java can read like_clause_ with smart pointer
+    node::CreateTableLikeClause::LikeKind GetLikeKind() const {
+        if (like_clause_ == nullptr) {
+            LOG(ERROR) << "like_clause_ is null, return data may be unexpected";
+            return node::CreateTableLikeClause::LikeKind::PARQUET;
+        }
+        return like_clause_->kind_;
+    }
+
+    std::string GetLikePath() const {
+        if (like_clause_ == nullptr) {
+            LOG(ERROR) << "like_clause_ is null, return data may be unexpected";
+            return "";
+        }
+        return like_clause_->path_;
+    }
+
  private:
     std::string database_;
     std::string table_name_;
