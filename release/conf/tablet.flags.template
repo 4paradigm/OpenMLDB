@@ -58,8 +58,9 @@
 #--snapshot_compression=off
 
 # garbage collection conf
-# 60m
---gc_interval=60
+# the unit of interval is minute
+--gc_interval=120
+--disk_gc_interval=1440
 --gc_pool_size=2
 # 1m
 #--gc_safe_offset=1
