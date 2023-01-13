@@ -4,7 +4,7 @@
 
 ### Features
 - Support data import from Hive using a symbolic link (#2948 @vagetablechicken)
-- Support the new SQL statement `CREATE TABLE LIKE` (#2949 @aceforeverd)
+- Support the new SQL statement `CREATE TABLE LIKE` (#2949 @aceforeverd, #2962 @tobegit3hub)
 - Improve the non-interactive CLI (#2898 @vagetablechicken)
 - Improve the documents (#2904 #2921 #2932 #2942 @selenachenjingxin, #2925 #2928 #2934 #2954 @vagetablechicken, @2924 @dl239, #2945 #2952 @lumianph, #2946 @aceforeverd)
 
