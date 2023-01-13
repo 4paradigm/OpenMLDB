@@ -8,7 +8,7 @@
     upgrade
     backup
     scale
-	status
+    status
     monitoring
     cli
     faq
