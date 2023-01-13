@@ -8,10 +8,10 @@
   * 目前仅支持 x86 架构，暂不支持例如 ARM 等架构。
   * 核数推荐不少于 4 核，如果 Linux 环境下 CPU 不支持 AVX2 指令集，需要从源码重新编译部署包。
 
-* 运行环境：zookeeper和taskmanager部署需要java runtime environment。其他组件无要求。
+* 运行环境：ZooKeeper和TaskManager部署需要java runtime environment。其他组件无要求。
 
 ## 部署包准备
-本说明文档中默认使用预编译好的 OpenMLDB 部署包（[Linux](https://github.com/4paradigm/OpenMLDB/releases/download/v0.7.0/openmldb-0.7.0-linux.tar.gz), [macOS](https://github.com/4paradigm/OpenMLDB/releases/download/v0.7.0/openmldb-0.7.0-darwin.tar.gz)），所支持的操作系统要求为：CentOS 7, Ubuntu 20.04, macOS >= 10.15。如果用户期望自己编译（如做 OpenMLDB 源代码开发，操作系统或者 CPU 架构不在预编译部署包的支持列表内等原因），用户可以选择在 docker 容器内编译使用或者从源码编译，具体请参照我们的[编译文档](compile.md)。
+本说明文档中默认使用预编译好的 OpenMLDB 部署包（[Linux](https://github.com/4paradigm/OpenMLDB/releases/download/v0.7.0/openmldb-0.7.0-linux.tar.gz), [macOS](https://github.com/4paradigm/OpenMLDB/releases/download/v0.7.0/openmldb-0.7.0-darwin.tar.gz)），所支持的操作系统要求为：CentOS 7, Ubuntu 20.04, macOS 12。如果用户期望自己编译（如做 OpenMLDB 源代码开发，操作系统或者 CPU 架构不在预编译部署包的支持列表内等原因），用户可以选择在 docker 容器内编译使用或者从源码编译，具体请参照我们的[编译文档](compile.md)。
 
 ## 配置环境(Linux)
 
@@ -89,9 +89,9 @@ OpenMLDB集群的服务组件之间需要保证网络连通。
 
 客户端到OpenMLDB集群则分为两种情况：
 
-- client（CLI/各SDK）连接OpenMLDB集群，除了与zookeeper的连通，还需要保证和nameserver/tabletserver/taskmanager的连通，因为client操作可能会直连某个server。
+- Client（CLI/各SDK）连接OpenMLDB集群，除了与Zookeeper的连通，还需要保证和NameServer/TabletServer/TaskManager的连通，因为Client操作可能会直连某个Server。
 
-- 如果服务仅使用apiserver作为代理，那么客户端只需保证能访问apiserver端口。（apiserver作为服务组件，必然保证和OpenMLDB集群其他组件的连通性。）
+- 如果服务仅使用APIServer作为代理，那么客户端只需保证能访问APIServer端口。（apiserver作为服务组件，必然保证和OpenMLDB集群其他组件的连通性。）
 
 ## 预备测试
 
@@ -114,7 +114,7 @@ Debug build (NDEBUG not #defined)
 下文均使用常规后台进程模式启动组件，如果想要使守护进程模式启动组件，请使用`bash bin/start.sh start <component> mon`或者`sbin/start-all.sh mon`的方式启动。守护进程模式中，`bin/<component>.pid`将是mon进程的pid，`bin/<component>.pid.child`为组件真实的pid。mon进程并不是系统服务，如果mon进程意外退出，将无法继续守护。
 
 ## 部署单机版
-OpenMLDB单机版需要部署一个nameserver和一个tablet。nameserver用于表管理和元数据存储，tablet用于数据存储。APIServer是可选的，如果要用http的方式和OpenMLDB交互需要部署此模块
+OpenMLDB单机版需要部署一个NameServer和一个TabletServer。NameServer用于表管理和元数据存储，tablet用于数据存储。APIServer是可选的，如果要用http的方式和OpenMLDB交互需要部署此模块
 
 ### 下载OpenMLDB部署包
 ```
