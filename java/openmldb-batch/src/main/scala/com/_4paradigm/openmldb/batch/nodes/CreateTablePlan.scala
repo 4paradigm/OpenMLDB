@@ -31,6 +31,9 @@ object CreateTablePlan {
     val dbName = node.getData_.GetDatabase()
 
     val likeKind = node.getData_.GetLikeKind()
+    if (node.getData_.getLike_clause_ == null) {
+      throw new UnsupportedHybridSeException(s"Only support CREATE TABLE LIKE for offline")
+    }
 
     val df = likeKind match {
       case LikeKind.HIVE =>
