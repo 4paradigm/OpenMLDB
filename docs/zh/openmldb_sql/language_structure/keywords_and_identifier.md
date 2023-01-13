@@ -80,7 +80,7 @@ SELECT * from t1;
 
 以下列出了 OpenMLDB 中所有的关键字。其中保留字用 `(R)` 来标识。
 
-[A](#a)|[B](#b)|[C](#c)|[D](#d)|[E](#e)|[F](#f)|[G](#G)|[H](#h)|[I](#i)|[J](#j)|[K](#k)|[L](#l)|[M](#m)|[N](#n)|[O](#o)|[P](#p)|[Q](#q)|[R](#r)|[S](#s)|[T](#t)|[U](#u)|[V](#v)|[W](#w)|[X](#x)|[Y](#y)|[Z](#z)
+[A](#a)|[B](#b)|[C](#c)|[D](#d)|[E](#e)|[F](#f)|[G](#g)|[H](#h)|[I](#i)|[J](#j)|[K](#k)|[L](#l)|[M](#m)|[N](#n)|[O](#o)|[P](#p)|[Q](#q)|[R](#r)|[S](#s)|[T](#t)|[U](#u)|[V](#v)|[W](#w)|[X](#x)|[Z](#z)
 
 #### A
 
@@ -112,7 +112,7 @@ SELECT * from t1;
 - BREAK
 - BY(R)
 
-**#### C**
+#### C
 
 - CALL
 - CASCADE
@@ -139,7 +139,7 @@ SELECT * from t1;
 - CURRENT(R)
 - CURRENT_TIME
 
-**#### D**
+#### D
 
 - DATA
 - DATABASE
@@ -235,6 +235,7 @@ SELECT * from t1;
 - INVOKER
 - IS(R)
 - ISOLATION
+- ILIKE(R)
 
 #### J
 
@@ -255,13 +256,6 @@ SELECT * from t1;
 - LEFT(R)
 - LEVEL
 - LIKE(R)
-
-#### I
-
-- ILIKE(R)
-
-#### L
-
 - LIMIT(R)
 - LOAD
 - LOOKUP(R)
@@ -311,13 +305,6 @@ SELECT * from t1;
 - PARTITION(R)
 - PERCENT
 - PIVOT
-
-#### U
-
-- UNPIVOT
-
-#### P
-
 - POLICIES
 - POLICY
 - PRIMARY
@@ -409,6 +396,7 @@ SELECT * from t1;
 - UPDATE
 - USE
 - USING(R)
+- UNPIVOT
 
 #### V
 
