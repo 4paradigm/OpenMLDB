@@ -6,8 +6,7 @@
 .. toctree::
     :maxdepth: 1
 
-    keywords
-    object_names_identifiers
+    keywords_and_identifier
     literals_value
     case_sensitive
     comment
