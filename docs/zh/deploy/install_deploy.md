@@ -96,7 +96,7 @@ OpenMLDB集群的服务组件之间需要保证网络连通。
 
 ## 预备测试
 
-由于linux平台的多样性，发布包可能在你的机器上不兼容，请先通过简单的运行测试。
+由于Linux平台的多样性，发布包可能在你的机器上不兼容，请先通过简单的运行测试。
 ```
 wget https://github.com/4paradigm/OpenMLDB/releases/download/v0.7.0/openmldb-0.7.0-linux.tar.gz
 tar -zxvf openmldb-0.7.0-linux.tar.gz
