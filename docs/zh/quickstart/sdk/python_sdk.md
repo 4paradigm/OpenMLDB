@@ -1,51 +1,59 @@
 # Python SDK
 
-## 1. 安装OpenMLDB Python包
+## Python SDK 包安装
 
-使用`pip`安装。
+执行以下命令安装 Python SDK 包：
 
 ```bash
 pip install openmldb
 ```
 
-## 2. 使用OpenMLDB DBAPI
+## 使用 OpenMLDB DBAPI
 
-### 2.1 创建connection
+本节演示 OpenMLDB DBAPI 的基本使用。
 
-参数db_name必须存在，请在创建connection前创建db。或者创建无db的connection，再通过`execute("USE <db>")`设置使用此db。
+### 创建连接
+
+参数 db_name 必须存在，需在创建连接前创建数据库。或者先创建无数据库的连接，再通过 `execute("USE <db>")` 命令设置使用数据库 `db`。
 
 ```python
 import openmldb.dbapi
-
-# 连接集群版OpenMLDB
 db = openmldb.dbapi.connect(zk="$zkcluster", zkPath="$zkpath")
-
-# 连接单机版OpenMLDB
-# db = openmldb.dbapi.connect(host="$host", port="$port")
-
 cursor = db.cursor()
 ```
 
-### 2.2 创建数据库
+#### 配置项详解
+
+zk 和 zkPath 配置项必填。
+
+通过 OpenMLDB DBAPI/SQLAlchemy 均可使用 Python SDK，可选配置项与 Java 客户端的配置项基本一致，请参考 [Java SDK 配置项详解](./java_sdk.md#sdk-配置项详解)。
+
+### 创建数据库
+
+创建数据库 `db1`：
 
 ```python
 cursor.execute("CREATE DATABASE db1")
 cursor.execute("USE db1")
 ```
 
-### 2.3 创建表
+### 创建表
+
+创建表 `t1`：
 
 ```python
 cursor.execute("CREATE TABLE t1 (col1 bigint, col2 date, col3 string, col4 string, col5 int, index(key=col3, ts=col1))")
 ```
 
-### 2.4 插入数据到表中
+### 插入数据到表中
+
+插入一条数据到表中：
 
 ```python
 cursor.execute("INSERT INTO t1 VALUES(1000, '2020-12-25', 'guangdon', 'shenzhen', 1)")
 ```
 
-### 2.5 执行SQL查询
+### 执行 SQL 查询
 
 ```python
 result = cursor.execute("SELECT * FROM t1")
@@ -54,54 +62,57 @@ print(result.fetchmany(10))
 print(result.fetchall())
 ```
 
-### 2.6 SQL批请求式查询
+### SQL 批请求式查询
 
 ```python
-# Batch Request模式，接口入参依次为“SQL”, “Common_Columns”, “Request_Columns”
+#Batch Request 模式，接口入参依次为“SQL”, “Common_Columns”, “Request_Columns”
 result = cursor.batch_row_request("SELECT * FROM t1", ["col1","col2"], ({"col1": 2000, "col2": '2020-12-22', "col3": 'fujian', "col4":'xiamen', "col5": 2}))
 print(result.fetchone())
 ```
 
-### 2.7 删除表
+### 删除表
+
+删除表 `t1`：
 
 ```python
 cursor.execute("DROP TABLE t1")
 ```
 
-### 2.8 删除数据库
+### 删除数据库
+
+删除数据库 `db1`：
 
 ```python
 cursor.execute("DROP DATABASE db1")
 ```
 
-### 2.9 关闭连接
+### 关闭连接
 
 ```python
 cursor.close()
 ```
 
-## 3. 使用OpenMLDB SQLAlchemy
+## 使用 OpenMLDB SQLAlchemy
 
-### 3.1 创建connection
+本节演示通过 OpenMLDB SQLAlchemy 使用 Python SDK。
 
-`create_engine('openmldb:///db_name?zk=zkcluster&zkPath=zkpath')`
-参数db_name必须存在，请在创建connection前创建db。或者创建无db的connection，再通过`execute("USE <db>")`设置使用此db。
+### 创建连接
+
+```
+create_engine('openmldb:///db_name?zk=zkcluster&zkPath=zkpath')
+```
+
+参数 db_name 必须存在，需在创建连接前创建数据库。或者先创建无数据库的连接，再通过 `execute("USE <db>")` 命令设置使用数据库 `db`。
 
 ```python
 import sqlalchemy as db
-
-# 连接集群版OpenMLDB
 engine = db.create_engine('openmldb:///?zk=127.0.0.1:2181&zkPath=/openmldb')
-
-# 连接单机版OpenMLDB
-# engine = db.create_engine('openmldb:///?host=127.0.0.1&port=6527')
-
 connection = engine.connect()
 ```
 
-### 3.2 创建数据库
+### 创建数据库
 
-使用`connection.execute()`接口创建数据库：
+使用 `connection.execute()` 接口创建数据库 `db1`：
 
 ```python
 try:
@@ -112,9 +123,9 @@ except Exception as e:
 connection.execute("USE db1")
 ```
 
-### 3.3 创建表
+### 创建表
 
-使用`connection.execute()`接口创建一张表：
+使用 `connection.execute()` 接口创建表 `t1`：
 
 ```python
 try:
@@ -123,9 +134,9 @@ except Exception as e:
     print(e)
 ```
 
-### 3.4 插入数据到表中
+### 插入数据到表中
 
-使用`connection.execute(ddl)`接口执行SQL的插入语句，可以向表中插入数据：
+使用 `connection.execute(ddl)` 接口执行 SQL 的插入语句，可以向表中插入数据：
 
 ```python
 try:
@@ -134,7 +145,7 @@ except Exception as e:
     print(e)
 ```
 
-使用`connection.execute(ddl, data)`接口执行带planceholder的SQL的插入语句，可以动态指定插入数据，也可插入多行：
+使用 `connection.execute(ddl, data)` 接口执行带 planceholder 的 SQL 的插入语句，可以动态指定插入数据，也可插入多行：
 
 ```python
 try:
@@ -145,9 +156,9 @@ except Exception as e:
     print(e)
 ```
 
-### 3.5 执行SQL批式查询
+### 执行 SQL 批式查询
 
-使用`connection.execute(sql)`接口执行SQL批式查询语句:
+使用 `connection.execute(sql)` 接口执行 SQL 批式查询语句:
 
 ```python
 try:
@@ -160,9 +171,9 @@ except Exception as e:
     print(e)
 ```
 
-### 3.6 执行SQL请求式查询
+### 执行 SQL 请求式查询
 
-使用`connection.execute(sql, request)`接口执行SQL批式查询语句:请求式查询，可以把输入数据放到execute的第二个参数中
+使用 `connection.execute(sql, request)` 接口执行 SQL 请求式查询，可以把输入数据放到 execute 函数的第二个参数中：
 
 ```python
 try:
@@ -171,9 +182,9 @@ except Exception as e:
     print(e)
 ```
 
-### 3.7 删除表
+### 删除表
 
-使用`connection.execute(ddl)`接口删除一张表：
+使用 `connection.execute(ddl)` 接口删除表 `t1`：
 
 ```python
 try:
@@ -182,9 +193,9 @@ except Exception as e:
     print(e)
 ```
 
-### 3.8 删除数据库
+### 删除数据库
 
-使用`connection.execute(ddl)`接口删除一个数据库：
+使用 `connection.execute(ddl)` 接口删除数据库 `db1`：
 
 ```python
 try:
@@ -193,44 +204,36 @@ except Exception as e:
     print(e)
 ```
 
-## 4. 使用Notebook Magic Function
+## 使用 Notebook Magic Function
 
-OpenMLDB Python SDK支持了Notebook magic function拓展，使用下面语句注册函数。
+OpenMLDB Python SDK 支持了 Notebook magic function 拓展，使用以下语句注册函数。
 
-```
+```python
 import openmldb
-
 db = openmldb.dbapi.connect(database='demo_db',zk='0.0.0.0:2181',zkPath='/openmldb')
-
 openmldb.sql_magic.register(db)
 ```
 
-然后可以在Notebook中使用line magic function `%sql`和block magic function `%%sql`。
+然后可以在 Notebook 中使用 line magic function `%sql` 和 block magic function `%%sql`。
 
 ![](./images/openmldb_magic_function.png)
 
 ## 完整使用范例
 
-见[Python quickstart demo](https://github.com/4paradigm/OpenMLDB/tree/main/demo/python_quickstart/demo.py)，包括了上文的DBAPI和SQLAlchemy用法。
+参考 [Python quickstart demo](https://github.com/4paradigm/OpenMLDB/tree/main/demo/python_quickstart/demo.py)，包括了上文的 DBAPI 和 SQLAlchemy 用法。
 
-## Option详解
+## 常见问题
 
-连接集群版必填`zk`和`zkPath`两个选项。
+- **使用 SQLAlchemy 出现 `ImportError: dlopen(.._sql_router_sdk.so, 2): initializer function 0xnnnn not in mapped image for`，怎么办？**
 
-连接单机版必填`host`和`port`两个选项。
+除了 import openmldb 外，您可能还 import 了其他第三方库，可能导致加载的顺序产生混乱。由于系统的复杂度，可以尝试使用 virtual env 环境（比如 conda），避免干扰。并且，在 import sqlalchemy 前 import openmldb，并保证这两个 import 在最前。
 
-无论是dbapi还是url启动Python客户端，可选配置项与JAVA客户端的配置项基本一致，请参考[JAVA SDK Option详解](./java_sdk.md#5-sdk-option详解)。
+如果仍然无法解决，建议使用 request http 连接 apiserver 的方式连接 OpenMLDB。
 
-## Q&A
-Q: 使用sqlalchemy出现`ImportError: dlopen(.._sql_router_sdk.so, 2): initializer function 0xnnnn not in mapped image for `，怎么办？
-A: 这个问题通常出现在，除了import openmldb外，还import了其他第三方库，可能导致加载的顺序产生混乱。
+- **Python SDK 遇到以下问题，如何解决？**
 
-由于系统的复杂度，建议你使用virtual env环境（比如conda），避免干扰。并且，在`import sqlalchemy`前`import openmldb`，并保证这两个import在最前。
+    ```plain
+    [libprotobuf FATAL /Users/runner/work/crossbow/crossbow/vcpkg/buildtrees/protobuf/src/23fa7edd52-3ba2225d30.clean/src/google/protobuf/stubs/common.cc:87] This program was compiled against version 3.6.1 of the Protocol Buffer runtime library, which is not compatible with the installed version (3.15.8).  Contact the program author for an update. ...
+    ```
 
-如果仍然无法解决，建议使用request http连接apiserver的方式连接OpenMLDB。
-
-Q: python sdk遇到以下问题，如何解决？
-```
-[libprotobuf FATAL /Users/runner/work/crossbow/crossbow/vcpkg/buildtrees/protobuf/src/23fa7edd52-3ba2225d30.clean/src/google/protobuf/stubs/common.cc:87] This program was compiled against version 3.6.1 of the Protocol Buffer runtime library, which is not compatible with the installed version (3.15.8).  Contact the program author for an update. ...
-```
-A: 该问题可能是别的库引入了protobuf的其他版本。可以尝试使用virtual env环境（比如conda）。
+该问题可能是因为别的库引入了 protobuf 的其他版本。可以尝试使用 virtual env 环境（比如 conda）。

@@ -29,8 +29,6 @@ DECLARE_uint32(max_memory_mb);
 namespace openmldb {
 namespace tablet {
 
-inline std::string GenRand() { return std::to_string(rand() % 10000000 + 1); }  // NOLINT
-
 class MockClosure : public ::google::protobuf::Closure {
  public:
     MockClosure() {}
@@ -166,6 +164,18 @@ TEST_F(TabletImplMemTest, TestMem) {
 #endif
 }
 
+TEST_F(TabletImplMemTest, TestMemStat) {
+    auto tablet = std::make_unique<TabletImpl>();
+    tablet->Init("");
+    ::openmldb::api::HttpRequest request;
+    ::openmldb::api::HttpResponse response;
+    brpc::Controller cntl;
+    MockClosure closure;
+    tablet->ShowMemPool(&cntl, &request, &response, &closure);
+    auto str = cntl.response_attachment().to_string();
+    ASSERT_TRUE(str.find("Mem Stat") != std::string::npos);
+}
+
 }  // namespace tablet
 }  // namespace openmldb
 
@@ -174,6 +184,7 @@ int main(int argc, char** argv) {
     srand(time(NULL));
     ::google::ParseCommandLineFlags(&argc, &argv, true);
     ::openmldb::base::SetLogLevel(INFO);
-    FLAGS_db_root_path = "/tmp/" + ::openmldb::tablet::GenRand();
+    ::openmldb::test::TempPath tmp_path;
+    FLAGS_db_root_path = tmp_path.GetTempPath();
     return RUN_ALL_TESTS();
 }

@@ -291,6 +291,15 @@ class DiskTableRowIterator : public ::hybridse::vm::RowIterator {
     inline bool IsSeekable() const override;
 
  private:
+    inline void ResetValue() {
+        valid_value_ = false;
+    }
+
+    inline bool ValidValue() const {
+        return valid_value_;
+    }
+
+ private:
     rocksdb::DB* db_;
     rocksdb::Iterator* it_;
     const rocksdb::Snapshot* snapshot_;
@@ -303,6 +312,7 @@ class DiskTableRowIterator : public ::hybridse::vm::RowIterator {
     uint32_t ts_idx_;
     ::hybridse::codec::Row row_;
     bool pk_valid_;
+    bool valid_value_ = false;
 };
 
 class DiskTableKeyIterator : public ::hybridse::vm::WindowIterator {

@@ -129,8 +129,7 @@ class PlanContext(tag: String, session: SparkSession, planner: SparkPlanner, con
     val datasetClass = Class.forName("org.apache.spark.sql.Dataset")
     val datasetOfRowsMethod = datasetClass
       .getDeclaredMethod(s"ofRows", classOf[SparkSession], classOf[LogicalPlan], classOf[QueryPlanningTracker])
-    val outputDataset = datasetOfRowsMethod.invoke(null, session, plan, tracker).asInstanceOf[Dataset[Row]]
-    outputDataset
+    datasetOfRowsMethod.invoke(null, session, plan, tracker).asInstanceOf[Dataset[Row]]
   }
 }
 

@@ -13,13 +13,16 @@
 # limitations under the License.
 
 if(TESTING_ENABLE)
+    set(THIRD_LIBS benchmark_main benchmark ${GTEST_LIBRARIES} yaml-cpp)
+    if(CMAKE_CXX_COMPILER_ID MATCHES "GNU" AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS "9.1")
+        # GNU implementation prior to 9.1 requires linking with -lstdc++fs
+        list(APPEND THIRD_LIBS stdc++fs)
+    endif()
     add_library(mini_cluster_bm_common mini_cluster_bm.cc)
     add_dependencies(mini_cluster_bm_common openmldb_proto)
 
     add_library(base_test sql_sdk_base_test.cc ../test/base_test.cc)
     add_dependencies(base_test hybridse_core openmldb_proto)
-
-    set(THIRD_LIBS benchmark_main benchmark ${GTEST_LIBRARIES} yaml-cpp)
 
     add_executable(db_sdk_test db_sdk_test.cc)
     target_link_libraries(db_sdk_test base_test ${BIN_LIBS} ${THIRD_LIBS})
