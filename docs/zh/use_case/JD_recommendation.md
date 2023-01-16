@@ -293,7 +293,6 @@ INTO OUTFILE '/work/oneflow_demo/out/1' OPTIONS(mode='overwrite');
 
 ```
 /work/openmldb/bin/openmldb --zk_cluster=127.0.0.1:2181 --zk_root_path=/openmldb --role=sql_client < /work/oneflow_demo/sql_scripts/sync_select_out.sql
-
 ```
 
 ### 预处理特征数据以配合 DeepFM 模型要求
@@ -330,9 +329,7 @@ saved to <demodir>/feature_preprocess/out/test
 val count: 1393
 saved to <demodir>/feature_preprocess/out/valid
 table size array:
-
  4,26,16,4,11,809,1,1,5,3,17,16,7,13916,13890,13916,10000,3674,9119,7,2,13916,5,4,4,33,2,2,7,2580,3,5,13916,10,47,13916,365,17,132,32,37
-
 saved to <demodir>/feature_preprocess/out/data_info.txt
 ```
 
@@ -363,11 +360,8 @@ out/
 ```bash
 
 cd $demodir/oneflow_process/
-
 sh train_deepfm.sh -h
-
 Usage: train_deepfm.sh DATA_DIR(abs)
-
 ​   We'll read required args in $DATA_DIR/data_info.txt, and save results in path ./
 
 ```
@@ -566,7 +560,6 @@ python $demodir/serving/predict.py
 输出范例：
 
 ```
-
 ----------------ins---------------
 
 ['200080_5505_2016-03-15 20:43:04' 1458045784000
