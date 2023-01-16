@@ -6,12 +6,13 @@
 
 如何从历史数据中找出规律，去预测用户未来的购买需求，让最合适的商品遇见最需要的人，是大数据应用在精准营销中的关键问题，也是所有电商平台在做智能化升级时所需要的核心技术。京东作为中国最大的自营式电商，沉淀了数亿的忠实用户，积累了海量的真实数据。
 
-本案例以京东商城真实的用户、商品和行为数据（脱敏后）为基础，通过数据挖掘的技术和机器学习的算法，构建用户购买商品的预测模型，输出高潜用户和目标商品的匹配结果，为精准营销提供高质量的目标群体，挖掘数据背后潜在的意义，为电商用户提供更简单、快捷、省心的购物体验。
+本案例以京东商城真实的用户、商品和行为数据（脱敏后）为基础，通过数据挖掘技术和机器学习算法，构建用户购买商品的预测模型，输出高潜用户和目标商品的匹配结果，为精准营销提供高质量的目标群体，挖掘数据背后潜在的意义，为电商用户提供更简单、快捷、省心的购物体验。
+
 本案例使用 OpenMLDB 进行数据挖掘，使用 OneFlow 中的 [DeepFM](https://github.com/OneFlow-Inc/models/tree/main/RecommenderSystems/deepfm) 模型进行高性能训练推理，提供精准的商品推荐。
 
 ```{note}
 
-注意，本文档使用的是预编译好的 docker 镜像。如果希望在自己编译和搭建的 OpenMLDB 环境下进行测试，需要配置使用[面向特征工程优化的 Spark 发行版](https://openmldb.ai/docs/zh/main/tutorial/openmldbspark_distribution.html)。请参考[针对 OpenMLDB 优化的 Spark 发行版](https://openmldb.ai/docs/zh/main/deploy/compile.html)和[安装部署文档](https://openmldb.ai/docs/zh/main/deploy/install_deploy.html)。
+注意，本文档使用的是预编译好的 Docker 镜像。如果希望在自己编译和搭建的 OpenMLDB 环境下进行测试，需要配置使用[面向特征工程优化的 Spark 发行版](https://openmldb.ai/docs/zh/main/tutorial/openmldbspark_distribution.html)。请参考[针对 OpenMLDB 优化的 Spark 发行版文档](https://openmldb.ai/docs/zh/main/deploy/compile.html#openmldb-spark)和[安装部署文档](https://openmldb.ai/docs/zh/main/deploy/install_deploy.html)。
 
 ```
 
@@ -22,22 +23,16 @@
 下载数据、脚本以及推理所需的 OneEmbedding 库（详情见[配置 OneFlow 推理服务](#配置-OneFlow-推理服务)），在后面的步骤中可以直接使用。
 
 ```
-
 wget http://openmldb.ai/download/jd-recommendation/demo.tgz
-
 tar xzf demo.tgz
-
 ls demo
-
 ```
 
 也可以 checkout GitHub 仓库中的 `demo/jd-recommendation`.
 这个 `demo` 目录定为环境变量 `demodir`，之后的脚本中多会使用这一环境变量。所以，你需要配置这一变量：
 
 ```
-
 export demodir=<your_path>/demo
-
 ```
 
 本例仅使用小数据集做演示。如果你想要使用全量数据集，请下载 [JD_data](http://openmldb.ai/download/jd-recommendation/JD_data.tgz)。
@@ -49,23 +44,16 @@ OneFlow 工具依赖 GPU 的强大算力，所以请确保部署机器具备 Nvi
 推荐使用 conda 来管理 OneFlow 环境，安装 OneFlow 开发版（支持 OneEmbedding），以及本案例演示所需的其他依赖，手动创建方法如下：
 
 ```bash
-
 conda create -y -n oneflow python=3.9.2
-
 conda activate oneflow
-
 pip install -f https://staging.oneflow.info/branch/master/cu112 --pre OneFlow
-
 pip install psutil petastorm pandas sklearn xxhash "tritonclient[all]" geventhttpclient tornado
-
 ```
 
-拉取 OneFlow-serving 镜像：
+拉取 oneflow_serving 镜像：
 
 ```bash
-
-docker pull oneflowinc/OneFlow-serving:nightly
-
+docker pull oneflowinc/oneflow_serving:nightly
 ```
 
 ```{note}
@@ -74,7 +62,7 @@ docker pull oneflowinc/OneFlow-serving:nightly
 
 OneFlow：https://github.com/OneFlow-Inc/OneFlow/tree/fcf205cf57989a5ecb7a756633a4be08444d8a28
 
-OneFlow-serving：https://github.com/OneFlow-Inc/serving/tree/ce5d667468b6b3ba66d3be6986f41f965e52cf16
+oneflow_serving：https://github.com/OneFlow-Inc/serving/tree/ce5d667468b6b3ba66d3be6986f41f965e52cf16
 
 ```
 
@@ -87,11 +75,8 @@ OneFlow-serving：https://github.com/OneFlow-Inc/serving/tree/ce5d667468b6b3ba66
 由于 OpenMLDB 集群需要和其他组件网络通信，我们直接使用 host 网络。本例将在容器中使用已下载的脚本，所以请将数据脚本所在目录 `demodir` 映射为容器中的目录：
 
 ```bash
-
 docker run -dit --name=openmldb --network=host -v $demodir:/work/oneflow_demo 4pdosc/openmldb:0.7.0 bash
-
 docker exec -it openmldb bash
-
 ```
 
 ```{note}
@@ -154,19 +139,12 @@ docker exec -it openmldb bash
 -- OpenMLDB CLI
 
 CREATE DATABASE JD_db;
-
 USE JD_db;
-
 CREATE TABLE action(reqId string, eventTime timestamp, ingestionTime timestamp, actionValue int);
-
 CREATE TABLE flattenRequest(reqId string, eventTime timestamp, main_id string, pair_id string, user_id string, sku_id string, time bigint, split_id int, time1 string);
-
 CREATE TABLE bo_user(ingestionTime timestamp, user_id string, age string, sex string, user_lv_cd string, user_reg_tm bigint);
-
 CREATE TABLE bo_action(ingestionTime timestamp, pair_id string, time bigint, model_id string, type string, cate string, br string);
-
 CREATE TABLE bo_product(ingestionTime timestamp, sku_id string, a1 string, a2 string, a3 string, cate string, br string);
-
 CREATE TABLE bo_comment(ingestionTime timestamp, dt bigint, sku_id string, comment_num int, has_bad_comment string, bad_comment_rate float);
 
 ```
@@ -175,7 +153,6 @@ CREATE TABLE bo_comment(ingestionTime timestamp, dt bigint, sku_id string, comme
 
 ```
 /work/openmldb/bin/openmldb --zk_cluster=127.0.0.1:2181 --zk_root_path=/openmldb --role=sql_client < /work/oneflow_demo/sql_scripts/create_tables.sql
-
 ```
 
 #### 导入离线数据
@@ -185,31 +162,20 @@ CREATE TABLE bo_comment(ingestionTime timestamp, dt bigint, sku_id string, comme
 ```sql
 -- OpenMLDB CLI
 USE JD_db;
-
 SET @@execute_mode='offline';
-
 LOAD DATA INFILE '/work/oneflow_demo/data/action/*.parquet' INTO TABLE action options(format='parquet', header=true, mode='overwrite');
-
 LOAD DATA INFILE '/work/oneflow_demo/data/flattenRequest_clean/*.parquet' INTO TABLE flattenRequest options(format='parquet', header=true, mode='overwrite');
-
 LOAD DATA INFILE '/work/oneflow_demo/data/JD_data/bo_user/*.parquet' INTO TABLE bo_user options(format='parquet', header=true, mode='overwrite');
-
 LOAD DATA INFILE '/work/oneflow_demo/data/JD_data/bo_action/*.parquet' INTO TABLE bo_action options(format='parquet', header=true, mode='overwrite');
-
 LOAD DATA INFILE '/work/oneflow_demo/data/JD_data/bo_product/*.parquet' INTO TABLE bo_product options(format='parquet', header=true, mode='overwrite');
-
 LOAD DATA INFILE '/work/oneflow_demo/data/JD_data/bo_comment/*.parquet' INTO TABLE bo_comment options(format='parquet', header=true, mode='overwrite');
-
 ```
 
 或直接运行脚本导入，并快速查询 jobs 状态：
 
 ```
-
 /work/openmldb/bin/openmldb --zk_cluster=127.0.0.1:2181 --zk_root_path=/openmldb --role=sql_client < /work/oneflow_demo/sql_scripts/load_offline_data.sql
-
 echo "show jobs;" | /work/openmldb/bin/openmldb --zk_cluster=127.0.0.1:2181 --zk_root_path=/openmldb --role=sql_client
-
 ```
 
 ```{important}
@@ -229,181 +195,93 @@ echo "show jobs;" | /work/openmldb/bin/openmldb --zk_cluster=127.0.0.1:2181 --zk
 源数据准备好以后，就可以进行离线特征抽取，将特征结果输出到 `'/work/oneflow_demo/out/1'` 目录下保存（对应映射为 `$demodir/out/1`，方便容器外部使用特征数据），以供后续的模型训练。`SELECT` 命令对应了基于上述特征设计所产生的 SQL 特征计算脚本。
 
 ```sql
-
 -- OpenMLDB CLI
-
 USE JD_db;
-
 select * from
-
 (
-
 select
-
-​    `reqId` as reqId_1,
-
-​    `eventTime` as flattenRequest_eventTime_original_0,
-
-​    `reqId` as flattenRequest_reqId_original_1,
-
-​    `pair_id` as flattenRequest_pair_id_original_24,
-
-​    `sku_id` as flattenRequest_sku_id_original_25,
-
-​    `user_id` as flattenRequest_user_id_original_26,
-
-​    distinct_count(`pair_id`) over flattenRequest_user_id_eventTime_0_10_ as flattenRequest_pair_id_window_unique_count_27,
-
-​    fz_top1_ratio(`pair_id`) over flattenRequest_user_id_eventTime_0_10_ as flattenRequest_pair_id_window_top1_ratio_28,
-
-​    fz_top1_ratio(`pair_id`) over flattenRequest_user_id_eventTime_0s_14d_200 as flattenRequest_pair_id_window_top1_ratio_29,
-
-​    distinct_count(`pair_id`) over flattenRequest_user_id_eventTime_0s_14d_200 as flattenRequest_pair_id_window_unique_count_32,
-
-​    case when !isnull(at(`pair_id`, 0)) over flattenRequest_user_id_eventTime_0_10_ then count_where(`pair_id`, `pair_id` = at(`pair_id`, 0)) over flattenRequest_user_id_eventTime_0_10_ else null end as flattenRequest_pair_id_window_count_35,
-
-​    dayofweek(timestamp(`eventTime`)) as flattenRequest_eventTime_dayofweek_41,
-
-​    case when 1 < dayofweek(timestamp(`eventTime`)) and dayofweek(timestamp(`eventTime`)) < 7 then 1 else 0 end as flattenRequest_eventTime_isweekday_43
-
+    `reqId` as reqId_1,
+    `eventTime` as flattenRequest_eventTime_original_0,
+    `reqId` as flattenRequest_reqId_original_1,
+    `pair_id` as flattenRequest_pair_id_original_24,
+    `sku_id` as flattenRequest_sku_id_original_25,
+    `user_id` as flattenRequest_user_id_original_26,
+    distinct_count(`pair_id`) over flattenRequest_user_id_eventTime_0_10_ as flattenRequest_pair_id_window_unique_count_27,
+    fz_top1_ratio(`pair_id`) over flattenRequest_user_id_eventTime_0_10_ as flattenRequest_pair_id_window_top1_ratio_28,
+    fz_top1_ratio(`pair_id`) over flattenRequest_user_id_eventTime_0s_14d_200 as flattenRequest_pair_id_window_top1_ratio_29,
+    distinct_count(`pair_id`) over flattenRequest_user_id_eventTime_0s_14d_200 as flattenRequest_pair_id_window_unique_count_32,
+    case when !isnull(at(`pair_id`, 0)) over flattenRequest_user_id_eventTime_0_10_ then count_where(`pair_id`, `pair_id` = at(`pair_id`, 0)) over flattenRequest_user_id_eventTime_0_10_ else null end as flattenRequest_pair_id_window_count_35,
+    dayofweek(timestamp(`eventTime`)) as flattenRequest_eventTime_dayofweek_41,
+    case when 1 < dayofweek(timestamp(`eventTime`)) and dayofweek(timestamp(`eventTime`)) < 7 then 1 else 0 end as flattenRequest_eventTime_isweekday_43
 from
-
-​    `flattenRequest`
-
-​    window flattenRequest_user_id_eventTime_0_10_ as (partition by `user_id` order by `eventTime` rows between 10 preceding and 0 preceding),
-
-​    flattenRequest_user_id_eventTime_0s_14d_200 as (partition by `user_id` order by `eventTime` rows_range between 14d preceding and 0s preceding MAXSIZE 200))
-
+    `flattenRequest`
+    window flattenRequest_user_id_eventTime_0_10_ as (partition by `user_id` order by `eventTime` rows between 10 preceding and 0 preceding),
+    flattenRequest_user_id_eventTime_0s_14d_200 as (partition by `user_id` order by `eventTime` rows_range between 14d preceding and 0s preceding MAXSIZE 200))
 as out0
-
 last join
-
 (
-
 select
-
-​    `flattenRequest`.`reqId` as reqId_3,
-
-​    `action_reqId`.`actionValue` as action_actionValue_multi_direct_2,
-
-​    `bo_product_sku_id`.`a1` as bo_product_a1_multi_direct_3,
-
-​    `bo_product_sku_id`.`a2` as bo_product_a2_multi_direct_4,
-
-​    `bo_product_sku_id`.`a3` as bo_product_a3_multi_direct_5,
-
-​    `bo_product_sku_id`.`br` as bo_product_br_multi_direct_6,
-
-​    `bo_product_sku_id`.`cate` as bo_product_cate_multi_direct_7,
-
-​    `bo_product_sku_id`.`ingestionTime` as bo_product_ingestionTime_multi_direct_8,
-
-​    `bo_user_user_id`.`age` as bo_user_age_multi_direct_9,
-
-​    `bo_user_user_id`.`ingestionTime` as bo_user_ingestionTime_multi_direct_10,
-
-​    `bo_user_user_id`.`sex` as bo_user_sex_multi_direct_11,
-
-​    `bo_user_user_id`.`user_lv_cd` as bo_user_user_lv_cd_multi_direct_12
-
+    `flattenRequest`.`reqId` as reqId_3,
+    `action_reqId`.`actionValue` as action_actionValue_multi_direct_2,
+    `bo_product_sku_id`.`a1` as bo_product_a1_multi_direct_3,
+    `bo_product_sku_id`.`a2` as bo_product_a2_multi_direct_4,
+    `bo_product_sku_id`.`a3` as bo_product_a3_multi_direct_5,
+    `bo_product_sku_id`.`br` as bo_product_br_multi_direct_6,
+    `bo_product_sku_id`.`cate` as bo_product_cate_multi_direct_7,
+    `bo_product_sku_id`.`ingestionTime` as bo_product_ingestionTime_multi_direct_8,
+    `bo_user_user_id`.`age` as bo_user_age_multi_direct_9,
+    `bo_user_user_id`.`ingestionTime` as bo_user_ingestionTime_multi_direct_10,
+    `bo_user_user_id`.`sex` as bo_user_sex_multi_direct_11,
+    `bo_user_user_id`.`user_lv_cd` as bo_user_user_lv_cd_multi_direct_12
 from
-
-​    `flattenRequest`
-
-​    last join `action` as `action_reqId` on `flattenRequest`.`reqId` = `action_reqId`.`reqId`
-
-​    last join `bo_product` as `bo_product_sku_id` on `flattenRequest`.`sku_id` = `bo_product_sku_id`.`sku_id`
-
-​    last join `bo_user` as `bo_user_user_id` on `flattenRequest`.`user_id` = `bo_user_user_id`.`user_id`)
-
+    `flattenRequest`
+    last join `action` as `action_reqId` on `flattenRequest`.`reqId` = `action_reqId`.`reqId`
+    last join `bo_product` as `bo_product_sku_id` on `flattenRequest`.`sku_id` = `bo_product_sku_id`.`sku_id`
+    last join `bo_user` as `bo_user_user_id` on `flattenRequest`.`user_id` = `bo_user_user_id`.`user_id`)
 as out1
-
 on out0.reqId_1 = out1.reqId_3
-
 last join
-
 (
-
 select
-
-​    `reqId` as reqId_14,
-
-​    max(`bad_comment_rate`) over bo_comment_sku_id_ingestionTime_0s_64d_100 as bo_comment_bad_comment_rate_multi_max_13,
-
-​    min(`bad_comment_rate`) over bo_comment_sku_id_ingestionTime_0_10_ as bo_comment_bad_comment_rate_multi_min_14,
-
-​    min(`bad_comment_rate`) over bo_comment_sku_id_ingestionTime_0s_64d_100 as bo_comment_bad_comment_rate_multi_min_15,
-
-​    distinct_count(`comment_num`) over bo_comment_sku_id_ingestionTime_0s_64d_100 as bo_comment_comment_num_multi_unique_count_22,
-
-​    distinct_count(`has_bad_comment`) over bo_comment_sku_id_ingestionTime_0s_64d_100 as bo_comment_has_bad_comment_multi_unique_count_23,
-
-​    fz_topn_frequency(`has_bad_comment`, 3) over bo_comment_sku_id_ingestionTime_0s_64d_100 as bo_comment_has_bad_comment_multi_top3frequency_30,
-
-​    fz_topn_frequency(`comment_num`, 3) over bo_comment_sku_id_ingestionTime_0s_64d_100 as bo_comment_comment_num_multi_top3frequency_33
-
+    `reqId` as reqId_14,
+    max(`bad_comment_rate`) over bo_comment_sku_id_ingestionTime_0s_64d_100 as bo_comment_bad_comment_rate_multi_max_13,
+    min(`bad_comment_rate`) over bo_comment_sku_id_ingestionTime_0_10_ as bo_comment_bad_comment_rate_multi_min_14,
+    min(`bad_comment_rate`) over bo_comment_sku_id_ingestionTime_0s_64d_100 as bo_comment_bad_comment_rate_multi_min_15,
+    distinct_count(`comment_num`) over bo_comment_sku_id_ingestionTime_0s_64d_100 as bo_comment_comment_num_multi_unique_count_22,
+    distinct_count(`has_bad_comment`) over bo_comment_sku_id_ingestionTime_0s_64d_100 as bo_comment_has_bad_comment_multi_unique_count_23,
+    fz_topn_frequency(`has_bad_comment`, 3) over bo_comment_sku_id_ingestionTime_0s_64d_100 as bo_comment_has_bad_comment_multi_top3frequency_30,
+    fz_topn_frequency(`comment_num`, 3) over bo_comment_sku_id_ingestionTime_0s_64d_100 as bo_comment_comment_num_multi_top3frequency_33
 from
-
-​    (select `eventTime` as `ingestionTime`, bigint(0) as `dt`, `sku_id` as `sku_id`, int(0) as `comment_num`, '' as `has_bad_comment`, float(0) as `bad_comment_rate`, reqId from `flattenRequest`)
-
-​    window bo_comment_sku_id_ingestionTime_0s_64d_100 as (
-
+    (select `eventTime` as `ingestionTime`, bigint(0) as `dt`, `sku_id` as `sku_id`, int(0) as `comment_num`, '' as `has_bad_comment`, float(0) as `bad_comment_rate`, reqId from `flattenRequest`)
+    window bo_comment_sku_id_ingestionTime_0s_64d_100 as (
 UNION (select `ingestionTime`, `dt`, `sku_id`, `comment_num`, `has_bad_comment`, `bad_comment_rate`, '' as reqId from `bo_comment`) partition by `sku_id` order by `ingestionTime` rows_range between 64d preceding and 0s preceding MAXSIZE 100 INSTANCE_NOT_IN_WINDOW),
-
-​    bo_comment_sku_id_ingestionTime_0_10_ as (
-
+    bo_comment_sku_id_ingestionTime_0_10_ as (
 UNION (select `ingestionTime`, `dt`, `sku_id`, `comment_num`, `has_bad_comment`, `bad_comment_rate`, '' as reqId from `bo_comment`) partition by `sku_id` order by `ingestionTime` rows between 10 preceding and 0 preceding INSTANCE_NOT_IN_WINDOW))
-
 as out2
-
 on out0.reqId_1 = out2.reqId_14
-
 last join
-
 (
-
 select
-
-​    `reqId` as reqId_17,
-
-​    fz_topn_frequency(`br`, 3) over bo_action_pair_id_ingestionTime_0s_10h_100 as bo_action_br_multi_top3frequency_16,
-
-​    fz_topn_frequency(`cate`, 3) over bo_action_pair_id_ingestionTime_0s_10h_100 as bo_action_cate_multi_top3frequency_17,
-
-​    fz_topn_frequency(`model_id`, 3) over bo_action_pair_id_ingestionTime_0s_7d_100 as bo_action_model_id_multi_top3frequency_18,
-
-​    distinct_count(`model_id`) over bo_action_pair_id_ingestionTime_0s_14d_100 as bo_action_model_id_multi_unique_count_19,
-
-​    distinct_count(`model_id`) over bo_action_pair_id_ingestionTime_0s_7d_100 as bo_action_model_id_multi_unique_count_20,
-
-​    distinct_count(`type`) over bo_action_pair_id_ingestionTime_0s_14d_100 as bo_action_type_multi_unique_count_21,
-
-​    fz_topn_frequency(`type`, 3) over bo_action_pair_id_ingestionTime_0s_7d_100 as bo_action_type_multi_top3frequency_40,
-
-​    fz_topn_frequency(`type`, 3) over bo_action_pair_id_ingestionTime_0s_14d_100 as bo_action_type_multi_top3frequency_42
-
+    `reqId` as reqId_17,
+    fz_topn_frequency(`br`, 3) over bo_action_pair_id_ingestionTime_0s_10h_100 as bo_action_br_multi_top3frequency_16,
+    fz_topn_frequency(`cate`, 3) over bo_action_pair_id_ingestionTime_0s_10h_100 as bo_action_cate_multi_top3frequency_17,
+    fz_topn_frequency(`model_id`, 3) over bo_action_pair_id_ingestionTime_0s_7d_100 as bo_action_model_id_multi_top3frequency_18,
+    distinct_count(`model_id`) over bo_action_pair_id_ingestionTime_0s_14d_100 as bo_action_model_id_multi_unique_count_19,
+    distinct_count(`model_id`) over bo_action_pair_id_ingestionTime_0s_7d_100 as bo_action_model_id_multi_unique_count_20,
+    distinct_count(`type`) over bo_action_pair_id_ingestionTime_0s_14d_100 as bo_action_type_multi_unique_count_21,
+    fz_topn_frequency(`type`, 3) over bo_action_pair_id_ingestionTime_0s_7d_100 as bo_action_type_multi_top3frequency_40,
+    fz_topn_frequency(`type`, 3) over bo_action_pair_id_ingestionTime_0s_14d_100 as bo_action_type_multi_top3frequency_42
 from
-
-​    (select `eventTime` as `ingestionTime`, `pair_id` as `pair_id`, bigint(0) as `time`, '' as `model_id`, '' as `type`, '' as `cate`, '' as `br`, reqId from `flattenRequest`)
-
-​    window bo_action_pair_id_ingestionTime_0s_10h_100 as (
-
+    (select `eventTime` as `ingestionTime`, `pair_id` as `pair_id`, bigint(0) as `time`, '' as `model_id`, '' as `type`, '' as `cate`, '' as `br`, reqId from `flattenRequest`)
+    window bo_action_pair_id_ingestionTime_0s_10h_100 as (
 UNION (select `ingestionTime`, `pair_id`, `time`, `model_id`, `type`, `cate`, `br`, '' as reqId from `bo_action`) partition by `pair_id` order by `ingestionTime` rows_range between 10h preceding and 0s preceding MAXSIZE 100 INSTANCE_NOT_IN_WINDOW),
-
-​    bo_action_pair_id_ingestionTime_0s_7d_100 as (
-
+    bo_action_pair_id_ingestionTime_0s_7d_100 as (
 UNION (select `ingestionTime`, `pair_id`, `time`, `model_id`, `type`, `cate`, `br`, '' as reqId from `bo_action`) partition by `pair_id` order by `ingestionTime` rows_range between 7d preceding and 0s preceding MAXSIZE 100 INSTANCE_NOT_IN_WINDOW),
-
-​    bo_action_pair_id_ingestionTime_0s_14d_100 as (
-
+    bo_action_pair_id_ingestionTime_0s_14d_100 as (
 UNION (select `ingestionTime`, `pair_id`, `time`, `model_id`, `type`, `cate`, `br`, '' as reqId from `bo_action`) partition by `pair_id` order by `ingestionTime` rows_range between 14d preceding and 0s preceding MAXSIZE 100 INSTANCE_NOT_IN_WINDOW))
-
 as out3
-
 on out0.reqId_1 = out3.reqId_17
-
 INTO OUTFILE '/work/oneflow_demo/out/1' OPTIONS(mode='overwrite');
-
 ```
 
 ```{note}
@@ -415,7 +293,6 @@ INTO OUTFILE '/work/oneflow_demo/out/1' OPTIONS(mode='overwrite');
 因为这里只有一个特征抽取任务，可以使用同步的运行方式，命令完成即特征抽取完成。直接运行 sql 脚本 `sync_select_out.sql`:
 
 ```
-
 /work/openmldb/bin/openmldb --zk_cluster=127.0.0.1:2181 --zk_root_path=/openmldb --role=sql_client < /work/oneflow_demo/sql_scripts/sync_select_out.sql
 
 ```
@@ -430,9 +307,9 @@ INTO OUTFILE '/work/oneflow_demo/out/1' OPTIONS(mode='overwrite');
 
 根据 [DeepFM 论文](https://arxiv.org/abs/1703.04247)，类别特征和连续特征都被当作稀疏特征对待。
 
-χ may include categorical fields (e.g., gender, location) and continuous fields (e.g., age). Each categorical field is represented as a vector of one-hot encoding, and each continuous field is represented as the value itself, or a vector of one-hot encoding after discretization.
+> χ may include categorical fields (e.g., gender, location) and continuous fields (e.g., age). Each categorical field is represented as a vector of one-hot encoding, and each continuous field is represented as the value itself, or a vector of one-hot encoding after discretization.
 
-进入 demodir 文件夹，并使用预处理脚本做特征数据预处理。运行需要 pandas、xxhash 等依赖，推荐在`OneFlow` 虚拟环境中运行。
+进入 demodir 文件夹，并使用预处理脚本做特征数据预处理。运行需要 pandas、xxhash 等依赖，推荐在 `oneflow` 虚拟环境中运行。
 
 ```bash
 
@@ -449,45 +326,29 @@ python preprocess.py $demodir/out/1
 ```
 
 feature total count: 13916
-
 train count: 11132
-
 saved to <demodir>/feature_preprocess/out/train
-
 test count: 1391
-
 saved to <demodir>/feature_preprocess/out/test
-
 val count: 1393
-
 saved to <demodir>/feature_preprocess/out/valid
-
 table size array:
 
  4,26,16,4,11,809,1,1,5,3,17,16,7,13916,13890,13916,10000,3674,9119,7,2,13916,5,4,4,33,2,2,7,2580,3,5,13916,10,47,13916,365,17,132,32,37
 
 saved to <demodir>/feature_preprocess/out/data_info.txt
-
 ```
 
 得到的文件结构类似：
 
 ```
-
 out/
-
 ├── data_info.txt
-
 ├── test
-
 │   └── test.parquet
-
 ├── train
-
 │   └── train.parquet
-
 └── valid
-
 ​    └── valid.parquet
 
 3 directories, 4 files
@@ -504,13 +365,13 @@ out/
 
 ```bash
 
-cd $demodir/OneFlow_process/
+cd $demodir/oneflow_process/
 
 sh train_deepfm.sh -h
 
 Usage: train_deepfm.sh DATA_DIR(abs)
 
-​        We'll read required args in $DATA_DIR/data_info.txt, and save results in path ./
+​   We'll read required args in $DATA_DIR/data_info.txt, and save results in path ./
 
 ```
 
@@ -522,7 +383,7 @@ bash train_deepfm.sh $demodir/feature_preprocess/out
 
 ```
 
-生成模型将存放在 `$demodir/OneFlow_process/model_out`，用来 serving 的模型存放在 `$demodir/OneFlow_process/model/embedding/1/model`。
+生成模型将存放在 `$demodir/oneflow_process/model_out`，用来 serving 的模型存放在 `$demodir/oneflow_process/model/embedding/1/model`。
 
 ## 模型上线流程
 
@@ -545,9 +406,7 @@ bash train_deepfm.sh $demodir/feature_preprocess/out
 1. 登录 OpenMLDB CLI。
 
    ```bash
-
    /work/openmldb/bin/openmldb --zk_cluster=127.0.0.1:2181 --zk_root_path=/openmldb --role=sql_client
-
    ```
 
 2. 执行 SQL 上线部署。在 OpenMLDB CLI 中部署离线特征抽取使用的 SQL（SQL 较长，见[离线特征抽取](#离线特征抽取)，此处不展示 SQL）。
@@ -555,25 +414,19 @@ bash train_deepfm.sh $demodir/feature_preprocess/out
     ```sql
     -- OpenMLDB CLI
     USE JD_db;
-
     DEPLOY demo <SQL>;
-
     ```
 
     也可以在 Docker 容器内直接运行部署脚本：
 
     ```
-
     /work/openmldb/bin/openmldb --zk_cluster=127.0.0.1:2181 --zk_root_path=/openmldb --role=sql_client < /work/oneflow_demo/sql_scripts/deploy.sql
-
     ```
 
     可使用如下命令确认部署信息:
 
     ```sql
-
     show deployment demo;
-
     ```
 
     部署后，可通过访问 OpenMLDB ApiServer `127.0.0.1:9080` 进行实时特征计算。
@@ -587,37 +440,25 @@ bash train_deepfm.sh $demodir/feature_preprocess/out
 ```sql
 -- OpenMLDB CLI
 USE JD_db;
-
 SET @@execute_mode='online';
-
 LOAD DATA INFILE '/work/oneflow_demo/data/JD_data/action/*.parquet' INTO TABLE action options(format='parquet', mode='append');
-
 LOAD DATA INFILE '/work/oneflow_demo/data/JD_data/flattenRequest_clean/*.parquet' INTO TABLE flattenRequest options(format='parquet', mode='append');
-
 LOAD DATA INFILE '/work/oneflow_demo/data/JD_data/bo_user/*.parquet' INTO TABLE bo_user options(format='parquet', mode='append');
-
 LOAD DATA INFILE '/work/oneflow_demo/data/JD_data/bo_action/*.parquet' INTO TABLE bo_action options(format='parquet', mode='append');
-
 LOAD DATA INFILE '/work/oneflow_demo/data/JD_data/bo_product/*.parquet' INTO TABLE bo_product options(format='parquet', mode='append');
-
 LOAD DATA INFILE '/work/oneflow_demo/data/JD_data/bo_comment/*.parquet' INTO TABLE bo_comment options(format='parquet', mode='append');
-
 ```
 
 也可以执行脚本：
 
 ```
-
 /work/openmldb/bin/openmldb --zk_cluster=127.0.0.1:2181 --zk_root_path=/openmldb --role=sql_client < /work/oneflow_demo/sql_scripts/load_online_data.sql
-
 ```
 
 使用以下命令快速查看 jobs 的状态：
 
 ```
-
  echo "show jobs;" | /work/openmldb/bin/openmldb --zk_cluster=127.0.0.1:2181 --zk_root_path=/openmldb --role=sql_client
-
 ```
 
 ```{note}
@@ -630,15 +471,15 @@ LOAD DATA INFILE '/work/oneflow_demo/data/JD_data/bo_comment/*.parquet' INTO TAB
 
 OneFlow 的推理服务需要 [OneEmbedding](https://docs.OneFlow.org/master/cookies/one_embedding.html)的支持。该支持目前还没有合入主框架中。
 
-我们提供预编译版本的库在 `$demodir/OneFlow_serving/` 中。若与你的环境不兼容，你需要重新编译，可参考附录 A 进行编译测试。接下来步骤默认相关支持已编译完成，并且存放在 `$demodir/OneFlow_serving/` 路径中。
+我们提供预编译版本的库在 `$demodir/oneflow_serving/` 中。若与你的环境不兼容，你需要重新编译，可参考附录 A 进行编译测试。接下来步骤默认相关支持已编译完成，并且存放在 `$demodir/OneFlow_serving/` 路径中。
 
 #### 检查
 
-1. 模型路径 (`$demodir/OneFlow_process/model`) 结果是否如下所示。
+1. 模型路径 (`$demodir/oneflow_process/model`) 结果是否如下所示。
 
 ```
 
-cd $demodir/OneFlow_process/
+cd $demodir/oneflow_process/
 
 tree -L 4 model/
 
@@ -688,7 +529,7 @@ model/
 
 ```
 
-2. 其中，`config.pbtxt` 中的 `name` 要和 config.pbtxt 所在目录的名字（本例中为 `embedding`）保持一致；`model/embedding/1/model/one_embedding_options.json` 的路径 `persistent_table.path` 会自动生成，可以再确认下路径是否正确，应为 `$demodir/OneFlow_process/persistent` 绝对路径。
+2. 其中，`config.pbtxt` 中的 `name` 要和 config.pbtxt 所在目录的名字（本例中为 `embedding`）保持一致；`model/embedding/1/model/one_embedding_options.json` 的路径 `persistent_table.path` 会自动生成，可以再确认下路径是否正确，应为 `$demodir/oneflow_process/persistent` 绝对路径。
 
 #### 启动 OneFlow 推理服务
 
@@ -698,11 +539,11 @@ model/
 
 docker run --runtime=nvidia --rm -p 8001:8001 -p8000:8000 -p 8002:8002 
 
-  -v $demodir/OneFlow_process/model:/models 
+  -v $demodir/oneflow_process/model:/models 
 
-  -v $demodir/OneFlow_process/persistent:/root/demo/persistent 
+  -v $demodir/oneflow_process/persistent:/root/demo/persistent 
 
-  OneFlowinc/OneFlow-serving:nightly 
+  OneFlowinc/oneflow_serving:nightly 
 
   bash -c '/opt/tritonserver/bin/tritonserver --model-repository=/models'
 
@@ -746,7 +587,7 @@ curl -v localhost:8000/v2/health/ready
 
 ```
 
-脚本中参数使用 `127.0.0.1:9080` 作为 OpenMLDB ApiServer 地址，`127.0.0.1:8000`作为 OneFlow Triton 地址。
+脚本中参数使用 `127.0.0.1:9080` 作为 OpenMLDB ApiServer 地址，`127.0.0.1:8000` 作为 OneFlow Triton 地址。
 
 ```bash
 
@@ -761,9 +602,7 @@ sh $demodir/serving/start_predict_server.sh
 执行 `predict.py` 脚本。该脚本发送一行请求数据到预估服务，接收返回的预估结果，并打印出来。
 
 ```bash
-
 python $demodir/serving/predict.py
-
 ```
 
 输出范例：
@@ -773,17 +612,11 @@ python $demodir/serving/predict.py
 ----------------ins---------------
 
 ['200080_5505_2016-03-15 20:43:04' 1458045784000
-
  '200080_5505_2016-03-15 20:43:04' '200080_5505' '5505' '200080' 1 1.0 1.0
-
  1 1 3 1 '200080_5505_2016-03-15 20:43:04' None '3' '1' '1' '214' '8'
-
  1603438960564 None None None None '200080_5505_2016-03-15 20:43:04'
-
  0.02879999950528145 0.0 0.0 2 2 '1,,NULL' '4,0,NULL'
-
  '200080_5505_2016-03-15 20:43:04' ',NULL,NULL' ',NULL,NULL' ',NULL,NULL'
-
  1 1 1 ',NULL,NULL' ',NULL,NULL']
 
 ---------------predict change of purchase -------------
