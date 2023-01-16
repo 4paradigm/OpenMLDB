@@ -10,6 +10,7 @@
     scale
     monitoring
     cli
+    status
     faq
     diagnose
     openmldb_ops
