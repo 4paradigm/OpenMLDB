@@ -12,7 +12,7 @@
 
 ## 部署包准备
 
-本说明文档中默认使用预编译好的 OpenMLDB 部署包（[Linux](https://github.com/4paradigm/OpenMLDB/releases/download/v0.7.0/openmldb-0.7.0-linux.tar.gz), [macOS](https://github.com/4paradigm/OpenMLDB/releases/download/v0.7.0/openmldb-0.7.0-darwin.tar.gz)），所支持的操作系统要求为：CentOS 7, Ubuntu 20.04, macOS 12。如果用户期望自己编译（如做 OpenMLDB 源代码开发，操作系统或者 CPU 架构不在预编译部署包的支持列表内等原因），用户可以选择在 docker 容器内编译使用或者从源码编译，具体请参照我们的[编译文档](compile.md)。
+本说明文档中默认使用预编译好的 OpenMLDB 部署包（[Linux](https://github.com/4paradigm/OpenMLDB/releases/download/v0.7.1/openmldb-0.7.1-linux.tar.gz), [Linux 国内镜像](https://openmldb.ai/download/v0.7.1/openmldb.tar.gz), [macOS](https://github.com/4paradigm/OpenMLDB/releases/download/v0.7.1/openmldb-0.7.1-darwin.tar.gz)），所支持的操作系统要求为：CentOS 7, Ubuntu 20.04, macOS 12。如果用户期望自己编译（如做 OpenMLDB 源代码开发，操作系统或者 CPU 架构不在预编译部署包的支持列表内等原因），用户可以选择在 docker 容器内编译使用或者从源码编译，具体请参照我们的[编译文档](compile.md)。
 
 ## 配置环境(Linux)
 
@@ -98,13 +98,13 @@ OpenMLDB集群的服务组件之间需要保证网络连通。
 
 由于Linux平台的多样性，发布包可能在你的机器上不兼容，请先通过简单的运行测试。
 ```
-wget https://github.com/4paradigm/OpenMLDB/releases/download/v0.7.0/openmldb-0.7.0-linux.tar.gz
-tar -zxvf openmldb-0.7.0-linux.tar.gz
-./openmldb-0.7.0-linux/bin/openmldb --version
+wget https://github.com/4paradigm/OpenMLDB/releases/download/v0.7.1/openmldb-0.7.1-linux.tar.gz
+tar -zxvf openmldb-0.7.1-linux.tar.gz
+./openmldb-0.7.1-linux/bin/openmldb --version
 ```
 结果应显示该程序的版本号，类似
 ```
-openmldb version 0.7.0-xxxx
+openmldb version 0.7.1-xxxx
 Debug build (NDEBUG not #defined)
 ```
 
@@ -119,16 +119,16 @@ OpenMLDB单机版需要部署一个NameServer和一个TabletServer。NameServer�
 
 ### 下载OpenMLDB部署包
 ```
-wget https://github.com/4paradigm/OpenMLDB/releases/download/v0.7.0/openmldb-0.7.0-linux.tar.gz
-tar -zxvf openmldb-0.7.0-linux.tar.gz
-cd openmldb-0.7.0-linux
+wget https://github.com/4paradigm/OpenMLDB/releases/download/v0.7.1/openmldb-0.7.1-linux.tar.gz
+tar -zxvf openmldb-0.7.1-linux.tar.gz
+cd openmldb-0.7.1-linux
 ```
 
 ### 配置
 如果只是本机访问，可以跳过此步。
 
 #### 1 配置TabletServer: conf/standalone_tablet.flags
-* 修改endpoint，endpoint是用冒号分隔的部署机器IP/域名和端口号。
+* 修改`endpoint`，`endpoint`是用冒号分隔的部署机器IP/域名和端口号。
 ```
 --endpoint=172.27.128.33:9527
 ```
@@ -137,8 +137,8 @@ cd openmldb-0.7.0-linux
 * 如果此处使用的域名, 所有使用openmldb的client所在的机器都得配上对应的host. 不然会访问不到
 
 #### 2 配置NameServer：conf/standalone_nameserver.flags。
-* 修改endpoint。endpoint是用冒号分隔的部署机器IP/域名和端口号
-* TabletServer配置项需要配置上前面启动的TabletServer的地址(配置名为tablet)
+* 修改`endpoint`。`endpoint`是用冒号分隔的部署机器IP/域名和端口号
+* 修改`tablet`，配置为前面启动的TabletServer的地址
 ```
 --endpoint=172.27.128.33:6527
 --tablet=172.27.128.33:9527
@@ -150,8 +150,8 @@ cd openmldb-0.7.0-linux
 APIServer负责接收http请求，转发给OpenMLDB并返回结果。它是无状态的，而且并不是OpenMLDB必须部署的组件。
 运行前需确保OpenMLDB其他服务已经启动，否则APIServer将初始化失败并退出进程。
 
-* 修改endpoint。endpoint是用冒号分隔的部署机器IP/域名和端口号
-* 修改NameServer为NameServer的地址
+* 修改`endpoint`。`endpoint`是用冒号分隔的部署机器IP/域名和端口号
+* 修改`nameserver`为NameServer的地址
 
 ```
 --endpoint=172.27.128.33:8080
@@ -185,9 +185,9 @@ OpenMLDB集群版需要部署ZooKeeper、NameServer、TabletServer、TaskManager
 ### 下载OpenMLDB发行版
 
 ```
-wget https://github.com/4paradigm/OpenMLDB/releases/download/v0.7.0/openmldb-0.7.0-linux.tar.gz
-tar -zxvf openmldb-0.7.0-linux.tar.gz
-cd openmldb-0.7.0-linux
+wget https://github.com/4paradigm/OpenMLDB/releases/download/v0.7.1/openmldb-0.7.1-linux.tar.gz
+tar -zxvf openmldb-0.7.1-linux.tar.gz
+cd openmldb-0.7.1-linux
 ```
 
 ### 配置
@@ -324,10 +324,10 @@ bash bin/zkCli.sh -server 172.27.128.33:7181
 ### 部署TabletServer（至少两台）
 #### 1 下载OpenMLDB部署包
 ```
-wget https://github.com/4paradigm/OpenMLDB/releases/download/v0.7.0/openmldb-0.7.0-linux.tar.gz
-tar -zxvf openmldb-0.7.0-linux.tar.gz
-mv openmldb-0.7.0-linux openmldb-tablet-0.7.0
-cd openmldb-tablet-0.7.0
+wget https://github.com/4paradigm/OpenMLDB/releases/download/v0.7.1/openmldb-0.7.1-linux.tar.gz
+tar -zxvf openmldb-0.7.1-linux.tar.gz
+mv openmldb-0.7.1-linux openmldb-tablet-0.7.1
+cd openmldb-tablet-0.7.1
 ```
 #### 2 修改配置文件`conf/tablet.flags`
 ```bash
@@ -337,9 +337,9 @@ cp conf/tablet.flags.template conf/tablet.flags
 ```{attention}
 注意，配置文件是`conf/tablet.flags`，不是其他配置文件。启动多台TabletServer时（多TabletServer目录应该独立，不可共享），依然是修改该配置文件。
 ```
-* 修改endpoint。endpoint是用冒号分隔的部署机器IP/域名和端口号（endpoint不能用0.0.0.0和127.0.0.1，必须是公网IP）。
-* 修改zk_cluster为已经启动的zk服务地址(见[ZooKeeper启动步骤](#4-记录ZooKeeper服务地址与连接测试))。如果zk服务是集群，可用逗号分隔，例如，`172.27.128.33:7181,172.27.128.32:7181,172.27.128.31:7181`。
-* 修改zk_root_path，本例中使用`/openmldb_cluster`。注意，**同一个集群下的组件`zk_root_path`是相同的**。所以本次部署中，各个组件配置的`zk_root_path`都为`/openmldb_cluster`。
+* 修改`endpoint`。`endpoint`是用冒号分隔的部署机器IP/域名和端口号（endpoint不能用0.0.0.0和127.0.0.1，必须是公网IP）。
+* 修改`zk_cluster`为已经启动的zk服务地址(见[ZooKeeper启动步骤](#4-记录ZooKeeper服务地址与连接测试))。如果zk服务是集群，可用逗号分隔，例如，`172.27.128.33:7181,172.27.128.32:7181,172.27.128.31:7181`。
+* 修改`zk_root_path`，本例中使用`/openmldb_cluster`。注意，**同一个集群下的组件`zk_root_path`是相同的**。所以本次部署中，各个组件配置的`zk_root_path`都为`/openmldb_cluster`。
 ```
 --endpoint=172.27.128.33:9527
 --role=tablet
@@ -383,12 +383,12 @@ Start tablet success
 
 在另一台机器启动下一个TabletServer只需在该机器上重复以上步骤。如果是在同一个机器上启动下一个TabletServer，请保证是在另一个目录中，不要重复使用已经启动过TabletServer的目录。
 
-比如，可以再次解压压缩包（不要cp已经启动过TabletServer的目录，启动后的生成文件会造成影响），并命名目录为`openmldb-tablet-0.7.0-2`。
+比如，可以再次解压压缩包（不要cp已经启动过TabletServer的目录，启动后的生成文件会造成影响），并命名目录为`openmldb-tablet-0.7.1-2`。
 
 ```
-tar -zxvf openmldb-0.7.0-linux.tar.gz
-mv openmldb-0.7.0-linux openmldb-tablet-0.7.0-2
-cd openmldb-tablet-0.7.0-2
+tar -zxvf openmldb-0.7.1-linux.tar.gz
+mv openmldb-0.7.1-linux openmldb-tablet-0.7.1-2
+cd openmldb-tablet-0.7.1-2
 ```
 
 再修改配置并启动。注意，TabletServer如果都在同一台机器上，请使用不同端口号，否则日志(logs/tablet.WARNING)中将会有"Fail to listen"信息。
@@ -402,10 +402,10 @@ cd openmldb-tablet-0.7.0-2
 ```
 #### 1 下载OpenMLDB部署包
 ````
-wget https://github.com/4paradigm/OpenMLDB/releases/download/v0.7.0/openmldb-0.7.0-linux.tar.gz
-tar -zxvf openmldb-0.7.0-linux.tar.gz
-mv openmldb-0.7.0-linux openmldb-ns-0.7.0
-cd openmldb-ns-0.7.0
+wget https://github.com/4paradigm/OpenMLDB/releases/download/v0.7.1/openmldb-0.7.1-linux.tar.gz
+tar -zxvf openmldb-0.7.1-linux.tar.gz
+mv openmldb-0.7.1-linux openmldb-ns-0.7.1
+cd openmldb-ns-0.7.1
 ````
 #### 2 修改配置文件conf/nameserver.flags
 ```bash
@@ -415,9 +415,9 @@ cp conf/nameserver.flags.template conf/nameserver.flags
 ```{attention}
 注意，配置文件是`conf/nameserver.flags`，不是其他配置文件。启动多台NameServert时（多NameServer目录应该独立，不可共享），依然是修改该配置文件。
 ```
-* 修改endpoint。endpoint是用冒号分隔的部署机器IP/域名和端口号（endpoint不能用0.0.0.0和127.0.0.1，必须是公网IP）。
-* 修改zk_cluster为已经启动的zk服务地址(见[ZooKeeper启动步骤](#4-记录ZooKeeper服务地址与连接测试))。如果zk服务是集群，可用逗号分隔，例如，`172.27.128.33:7181,172.27.128.32:7181,172.27.128.31:7181`。
-* 修改zk_root_path，本例中使用`/openmldb_cluster`。注意，**同一个集群下的组件`zk_root_path`是相同的**。所以本次部署中，各个组件配置的`zk_root_path`都为`/openmldb_cluster`。
+* 修改`endpoint`。`endpoint`是用冒号分隔的部署机器IP/域名和端口号（endpoint不能用0.0.0.0和127.0.0.1，必须是公网IP）。
+* 修改`zk_cluster`为已经启动的zk服务地址(见[ZooKeeper启动步骤](#4-记录ZooKeeper服务地址与连接测试))。如果zk服务是集群，可用逗号分隔，例如，`172.27.128.33:7181,172.27.128.32:7181,172.27.128.31:7181`。
+* 修改`zk_root_path`，本例中使用`/openmldb_cluster`。注意，**同一个集群下的组件`zk_root_path`是相同的**。所以本次部署中，各个组件配置的`zk_root_path`都为`/openmldb_cluster`。
 ```
 --endpoint=172.27.128.31:6527
 --zk_cluster=172.27.128.33:7181
@@ -443,12 +443,12 @@ NameServer 可以只存在一台，如果你需要高可用性，可以部署多
 
 在另一台机器启动下一个 NameServer 只需在该机器上重复以上步骤。如果是在同一个机器上启动下一个 NameServer，请保证是在另一个目录中，不要重复使用已经启动过 namserver 的目录。
 
-比如，可以再次解压压缩包（不要cp已经启动过 namserver 的目录，启动后的生成文件会造成影响），并命名目录为`openmldb-ns-0.7.0-2`。
+比如，可以再次解压压缩包（不要cp已经启动过 namserver 的目录，启动后的生成文件会造成影响），并命名目录为`openmldb-ns-0.7.1-2`。
 
 ```
-tar -zxvf openmldb-0.7.0-linux.tar.gz
-mv openmldb-0.7.0-linux openmldb-ns-0.7.0-2
-cd openmldb-ns-0.7.0-2
+tar -zxvf openmldb-0.7.1-linux.tar.gz
+mv openmldb-0.7.1-linux openmldb-ns-0.7.1-2
+cd openmldb-ns-0.7.1-2
 ```
 然后再修改配置并启动。
 
@@ -486,10 +486,10 @@ APIServer负责接收http请求，转发给OpenMLDB集群并返回结果。它�
 #### 1 下载OpenMLDB部署包
 
 ```
-wget https://github.com/4paradigm/OpenMLDB/releases/download/v0.7.0/openmldb-0.7.0-linux.tar.gz
-tar -zxvf openmldb-0.7.0-linux.tar.gz
-mv openmldb-0.7.0-linux openmldb-apiserver-0.7.0
-cd openmldb-apiserver-0.7.0
+wget https://github.com/4paradigm/OpenMLDB/releases/download/v0.7.1/openmldb-0.7.1-linux.tar.gz
+tar -zxvf openmldb-0.7.1-linux.tar.gz
+mv openmldb-0.7.1-linux openmldb-apiserver-0.7.1
+cd openmldb-apiserver-0.7.1
 ```
 
 #### 2 修改配置文件conf/apiserver.flags
@@ -498,9 +498,9 @@ cd openmldb-apiserver-0.7.0
 cp conf/apiserver.flags.template conf/apiserver.flags
 ```
 
-* 修改endpoint。endpoint是用冒号分隔的部署机器IP/域名和端口号（endpoint不能用0.0.0.0和127.0.0.1，必须是公网IP）。
-* 修改zk_cluster为已经启动的zk服务地址(见[ZooKeeper启动步骤](#4-记录ZooKeeper服务地址与连接测试))。如果zk服务是集群，可用逗号分隔，例如，`172.27.128.33:7181,172.27.128.32:7181,172.27.128.31:7181`。
-* 修改zk_root_path，本例中使用`/openmldb_cluster`。注意，**同一个集群下的组件`zk_root_path`是相同的**。所以本次部署中，各个组件配置的`zk_root_path`都为`/openmldb_cluster`。
+* 修改`endpoint`。`endpoint`是用冒号分隔的部署机器IP/域名和端口号（endpoint不能用0.0.0.0和127.0.0.1，必须是公网IP）。
+* 修改`zk_cluster`为已经启动的zk服务地址(见[ZooKeeper启动步骤](#4-记录ZooKeeper服务地址与连接测试))。如果zk服务是集群，可用逗号分隔，例如，`172.27.128.33:7181,172.27.128.32:7181,172.27.128.31:7181`。
+* 修改`zk_root_path`，本例中使用`/openmldb_cluster`。注意，**同一个集群下的组件`zk_root_path`是相同的**。所以本次部署中，各个组件配置的`zk_root_path`都为`/openmldb_cluster`。
 
 ```
 --endpoint=172.27.128.33:8080
@@ -541,18 +541,19 @@ TaskManager 可以只存在一台，如果你需要高可用性，可以部署�
 #### 1 下载 OpenMLDB 部署包和面向特征工程优化的 Spark 发行版
 
 Spark发行版：
-```
-wget https://github.com/4paradigm/spark/releases/download/v3.2.1-openmldb0.7.0/spark-3.2.1-bin-openmldbspark.tgz 
+```shell
+wget https://github.com/4paradigm/spark/releases/download/v3.2.1-openmldb0.7.1/spark-3.2.1-bin-openmldbspark.tgz 
+# 国内镜像地址 https://openmldb.ai/download/v0.7.1/spark-3.2.1-bin-openmldbspark.tgz
 tar -zxvf spark-3.2.1-bin-openmldbspark.tgz 
 export SPARK_HOME=`pwd`/spark-3.2.1-bin-openmldbspark/
 ```
 
 OpenMLDB部署包：
 ```
-wget https://github.com/4paradigm/OpenMLDB/releases/download/v0.7.0/openmldb-0.7.0-linux.tar.gz
-tar -zxvf openmldb-0.7.0-linux.tar.gz
-mv openmldb-0.7.0-linux openmldb-taskmanager-0.7.0
-cd openmldb-taskmanager-0.7.0
+wget https://github.com/4paradigm/OpenMLDB/releases/download/v0.7.1/openmldb-0.7.1-linux.tar.gz
+tar -zxvf openmldb-0.7.1-linux.tar.gz
+mv openmldb-0.7.1-linux openmldb-taskmanager-0.7.1
+cd openmldb-taskmanager-0.7.1
 ```
 
 #### 2 修改配置文件conf/taskmanager.properties
@@ -561,14 +562,14 @@ cd openmldb-taskmanager-0.7.0
 cp conf/taskmanager.properties.template conf/taskmanager.properties
 ```
 
-* 修改server.host。host是部署机器的IP/域名。
-* 修改server.port。port是部署机器的端口号。
-* 修改zk_cluster为已经启动的zk集群地址。IP为zk所在机器的IP, port为zk配置文件中clientPort配置的端口号. 如果zk是集群模式用逗号分割, 格式为ip1:port1,ip2:port2,ip3:port3。
+* 修改`server.host`。host是部署机器的IP/域名。
+* 修改`server.port`。port是部署机器的端口号。
+* 修改`zk_cluster`为已经启动的zk集群地址。IP为zk所在机器的IP, port为zk配置文件中clientPort配置的端口号. 如果zk是集群模式用逗号分割, 格式为ip1:port1,ip2:port2,ip3:port3。
 * 如果和其他OpenMLDB共用zk需要修改zookeeper.root_path。
-* 修改batchjob.jar.path为BatchJob Jar文件路径，如果设置为空会到上一级lib目录下寻找。如果使用Yarn模式需要修改为对应HDFS路径。
-* 修改offline.data.prefix为离线表存储路径，如果使用Yarn模式需要修改为对应HDFS路径。
-* 修改spark.master为离线任务运行模式，目前支持local和yarn模式。
-* 修改spark.home为Spark环境路径，如果不配置或配置为空则使用`SPARK_HOME`环境变量的配置。也可在配置文件中设置，路径为绝对路径。
+* 修改`batchjob.jar.path`为BatchJob Jar文件路径，如果设置为空会到上一级lib目录下寻找。如果使用Yarn模式需要修改为对应HDFS路径。
+* 修改`offline.data.prefix`为离线表存储路径，如果使用Yarn模式需要修改为对应HDFS路径。
+* 修改`spark.master`为离线任务运行模式，目前支持local和yarn模式。
+* 修改`spark.home`为Spark环境路径，如果不配置或配置为空则使用`SPARK_HOME`环境变量的配置。也可在配置文件中设置，路径为绝对路径。
 
 ```
 server.host=172.27.128.33
