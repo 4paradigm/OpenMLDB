@@ -28,7 +28,7 @@ tar xzf demo.tgz
 ls demo
 ```
 
-也可以 checkout GitHub 仓库中的 `demo/jd-recommendation`.
+也可以 checkout GitHub 仓库中的 `demo/jd-recommendation`。
 这个 `demo` 目录定为环境变量 `demodir`，之后的脚本中多会使用这一环境变量。所以，你需要配置这一变量：
 
 ```
@@ -137,7 +137,6 @@ docker exec -it openmldb bash
 
 ```sql
 -- OpenMLDB CLI
-
 CREATE DATABASE JD_db;
 USE JD_db;
 CREATE TABLE action(reqId string, eventTime timestamp, ingestionTime timestamp, actionValue int);
@@ -188,7 +187,7 @@ echo "show jobs;" | /work/openmldb/bin/openmldb --zk_cluster=127.0.0.1:2181 --zk
 
 通常在设计特征前，用户需要根据机器学习的目标对数据进行分析，然后根据分析设计和调研特征。然而，机器学习的数据分析和特征研究并不是本文讨论的范畴。本文假定用户具备机器学习的基本理论知识，有解决机器学习问题的能力，能够理解 SQL 语法，并能够使用 SQL 语法构建特征。针对本案例，用户经过分析和调研设计了若干特征。
 
-请注意，在实际的机器学习特征调研过程中，科学家对特征进行反复试验，寻求模型效果最好的特征集。所以会不断地重复多次“特征设计->离线特征抽取->模型训练”过程，并不断调整特征以达到预期效果。
+在实际的机器学习特征调研过程中，科学家对特征进行反复试验，寻求模型效果最好的特征集。所以会不断地重复多次“特征设计->离线特征抽取->模型训练”过程，并不断调整特征以达到预期效果。
 
 #### 离线特征抽取
 
@@ -286,7 +285,7 @@ INTO OUTFILE '/work/oneflow_demo/out/1' OPTIONS(mode='overwrite');
 
 ```{note}
 
-注意，`SELECT INTO` 为异步任务，可以使用命令 `SHOW JOBS` 查看任务运行状态，请等待任务运行成功（ `state` 转至 `FINISHED` 状态），再进行下一步操作 。耗时大概一分半。
+`SELECT INTO` 为异步任务，可以使用命令 `SHOW JOBS` 查看任务运行状态，请等待任务运行成功（ `state` 转至 `FINISHED` 状态），再进行下一步操作 。耗时大概一分半。
 
 ```
 
@@ -301,7 +300,7 @@ INTO OUTFILE '/work/oneflow_demo/out/1' OPTIONS(mode='overwrite');
 
 ```{note}
 
-注意，以下命令在 Docker 外执行，使用 OneFlow 运行环境。
+注意，以下命令在 Docker 外执行，使用准备阶段安装的 OneFlow 运行环境。
 
 ```
 
@@ -314,17 +313,15 @@ INTO OUTFILE '/work/oneflow_demo/out/1' OPTIONS(mode='overwrite');
 ```bash
 
 cd $demodir/feature_preprocess/
-
 python preprocess.py $demodir/out/1
 
 ```
 
 `$demodir/out/1` 即上一步 OpenMLDB 计算得到的特征数据目录。
 
-脚本将在 `$demodir/feature_preprocess/out` 对应生成 train、test、valid三个 Parquet 数据集，并将三者的行数和 `table_size_array` 保存在文件 `data_info.txt` 中（下一步可以直接使用 info 文件，不需要手动填写参数）。运行结果打印类似：
+脚本将在 `$demodir/feature_preprocess/out` 对应生成 train、test、valid 三个 Parquet 数据集，并将三者的行数和 `table_size_array` 保存在文件 `data_info.txt` 中（下一步可以直接使用 info 文件，不需要手动填写参数）。运行结果打印类似：
 
 ```
-
 feature total count: 13916
 train count: 11132
 saved to <demodir>/feature_preprocess/out/train
@@ -375,7 +372,7 @@ Usage: train_deepfm.sh DATA_DIR(abs)
 
 ```
 
-OneFlow 模型训练使用该目录中的 `train_deepfm.sh` 脚本，使用说明如上所示。通常情况下，不用特别配置。脚本会自动读取 `$DATA_DIR/data_info.txt` 的参数，包括`num_train_samples`、`num_val_samples`、`num_test_samples`和`table_size_array`。请使用预处理后的特征数据集（绝对路径），命令如下：
+OneFlow 模型训练使用该目录中的 `train_deepfm.sh` 脚本，使用说明如上所示。通常情况下，不用特别配置。脚本会自动读取 `$DATA_DIR/data_info.txt` 的参数，包括 `num_train_samples`、`num_val_samples`、`num_test_samples` 和 `table_size_array`。请使用预处理后的特征数据集（绝对路径），命令如下：
 
 ```bash
 
@@ -431,7 +428,7 @@ bash train_deepfm.sh $demodir/feature_preprocess/out
 
     部署后，可通过访问 OpenMLDB ApiServer `127.0.0.1:9080` 进行实时特征计算。
 
-#### 在线数据准备
+#### 导入在线数据
 
 在线执行模式下导入在线数据，用于在线特征计算。为了简单起见，我们直接导入和离线一致的数据集。生产中，通常是离线是大量的冷数据，在线是近期的热数据。
 
@@ -449,7 +446,7 @@ LOAD DATA INFILE '/work/oneflow_demo/data/JD_data/bo_product/*.parquet' INTO TAB
 LOAD DATA INFILE '/work/oneflow_demo/data/JD_data/bo_comment/*.parquet' INTO TABLE bo_comment options(format='parquet', mode='append');
 ```
 
-也可以执行脚本：
+也可以执行脚本导入：
 
 ```
 /work/openmldb/bin/openmldb --zk_cluster=127.0.0.1:2181 --zk_root_path=/openmldb --role=sql_client < /work/oneflow_demo/sql_scripts/load_online_data.sql
@@ -469,7 +466,7 @@ LOAD DATA INFILE '/work/oneflow_demo/data/JD_data/bo_comment/*.parquet' INTO TAB
 
 ### 配置 OneFlow 推理服务
 
-OneFlow 的推理服务需要 [OneEmbedding](https://docs.OneFlow.org/master/cookies/one_embedding.html)的支持。该支持目前还没有合入主框架中。
+OneFlow 的推理服务需要 [OneEmbedding](https://docs.OneFlow.org/master/cookies/one_embedding.html) 的支持。该支持目前还没有合入主框架中。
 
 我们提供预编译版本的库在 `$demodir/oneflow_serving/` 中。若与你的环境不兼容，你需要重新编译，可参考附录 A 进行编译测试。接下来步骤默认相关支持已编译完成，并且存放在 `$demodir/OneFlow_serving/` 路径中。
 
@@ -477,57 +474,33 @@ OneFlow 的推理服务需要 [OneEmbedding](https://docs.OneFlow.org/master/coo
 
 1. 模型路径 (`$demodir/oneflow_process/model`) 结果是否如下所示。
 
-```
+    ```
+    cd $demodir/oneflow_process/
+    tree -L 4 model/
+    ```
 
-cd $demodir/oneflow_process/
-
-tree -L 4 model/
-
-```
-
-```
-
-model/
-
-`-- embedding
-
-​    |-- 1
-
-​    |   `-- model
-
-​    |       |-- model.mlir
-
-​    |       |-- module.dnn_layer.linear_layers.0.bias
-
-​    |       |-- module.dnn_layer.linear_layers.0.weight
-
-​    |       |-- module.dnn_layer.linear_layers.12.bias
-
-​    |       |-- module.dnn_layer.linear_layers.12.weight
-
-​    |       |-- module.dnn_layer.linear_layers.15.bias
-
-​    |       |-- module.dnn_layer.linear_layers.15.weight
-
-​    |       |-- module.dnn_layer.linear_layers.3.bias
-
-​    |       |-- module.dnn_layer.linear_layers.3.weight
-
-​    |       |-- module.dnn_layer.linear_layers.6.bias
-
-​    |       |-- module.dnn_layer.linear_layers.6.weight
-
-​    |       |-- module.dnn_layer.linear_layers.9.bias
-
-​    |       |-- module.dnn_layer.linear_layers.9.weight
-
-​    |       |-- module.embedding_layer.one_embedding.shadow
-
-​    |       `-- one_embedding_options.json
-
-​    `-- config.pbtxt
-
-```
+    ```
+    model/
+    `-- embedding
+        |-- 1
+        |   `-- model
+        |       |-- model.mlir
+        |       |-- module.dnn_layer.linear_layers.0.bias
+        |       |-- module.dnn_layer.linear_layers.0.weight
+        |       |-- module.dnn_layer.linear_layers.12.bias
+        |       |-- module.dnn_layer.linear_layers.12.weight
+        |       |-- module.dnn_layer.linear_layers.15.bias
+        |       |-- module.dnn_layer.linear_layers.15.weight
+        |       |-- module.dnn_layer.linear_layers.3.bias
+        |       |-- module.dnn_layer.linear_layers.3.weight
+        |       |-- module.dnn_layer.linear_layers.6.bias
+        |       |-- module.dnn_layer.linear_layers.6.weight
+        |       |-- module.dnn_layer.linear_layers.9.bias
+        |       |-- module.dnn_layer.linear_layers.9.weight
+        |       |-- module.embedding_layer.one_embedding.shadow
+        |       `-- one_embedding_options.json
+        `-- config.pbtxt
+    ```
 
 2. 其中，`config.pbtxt` 中的 `name` 要和 config.pbtxt 所在目录的名字（本例中为 `embedding`）保持一致；`model/embedding/1/model/one_embedding_options.json` 的路径 `persistent_table.path` 会自动生成，可以再确认下路径是否正确，应为 `$demodir/oneflow_process/persistent` 绝对路径。
 
@@ -536,31 +509,20 @@ model/
 使用以下命令启动 OneFlow 推理服务：
 
 ```
-
-docker run --runtime=nvidia --rm -p 8001:8001 -p8000:8000 -p 8002:8002 
-
-  -v $demodir/oneflow_process/model:/models 
-
-  -v $demodir/oneflow_process/persistent:/root/demo/persistent 
-
-  OneFlowinc/oneflow_serving:nightly 
-
+docker run --runtime=nvidia --rm -p 8001:8001 -p8000:8000 -p 8002:8002 \
+  -v $demodir/oneflow_process/model:/models \
+  -v $demodir/oneflow_process/persistent:/root/demo/persistent \
+  oneflowinc/oneflow-serving:nightly \
   bash -c '/opt/tritonserver/bin/tritonserver --model-repository=/models'
-
 ```
 
 若成功，将显示如下类似输出：
 
 ```
-
 ...
-
 I0929 07:28:34.281655 1 grpc_server.cc:4117] Started GRPCInferenceService at 0.0.0.0:8001
-
 I0929 07:28:34.282343 1 http_server.cc:2815] Started HTTPService at 0.0.0.0:8000
-
 I0929 07:28:34.324662 1 http_server.cc:167] Started Metrics Service at 0.0.0.0:8002
-
 ```
 
 启动后，可访问 `http://127.0.0.1:8000` 进行推理。
@@ -568,9 +530,7 @@ I0929 07:28:34.324662 1 http_server.cc:167] Started Metrics Service at 0.0.0.0:8
 可通过以下方式测试服务是否启动，如果出现 `Connection refused`，说明服务启动失败：
 
 ```
-
 curl -v localhost:8000/v2/health/ready
-
 ```
 
 ```{note}
@@ -590,9 +550,7 @@ curl -v localhost:8000/v2/health/ready
 脚本中参数使用 `127.0.0.1:9080` 作为 OpenMLDB ApiServer 地址，`127.0.0.1:8000` 作为 OneFlow Triton 地址。
 
 ```bash
-
 sh $demodir/serving/start_predict_server.sh
-
 ```
 
 你可以通过查看日志文件 `/tmp/p.log`，获得 predict server 的运行日志。
