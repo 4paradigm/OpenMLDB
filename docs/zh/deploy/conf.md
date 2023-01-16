@@ -198,7 +198,7 @@
 #--load_table_queue_size=1000
 ```
 
-## apiserver配置文件 conf/tablet.flags
+## apiserver配置文件 conf/apiserver.flags
 ```
 # apiserver.conf
 # 配置启动apiserver的ip/域名和端口号
@@ -254,6 +254,7 @@ batchjob.jar.path=
 namenode.uri=
 offline.data.prefix=file:///tmp/openmldb_offline_storage/
 hadoop.conf.dir=
+#enable.hive.support=false
 ```
 
 * 如果没有配置`spark.home`，则需要在TaskManager运行的环境变量配置`SPARK_HOME`。

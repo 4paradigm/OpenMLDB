@@ -9,6 +9,9 @@
 ### 安装
 
 [OpenMLDB Spark 发行版](../../tutorial/openmldbspark_distribution.md) v0.6.7 及以上版本均已经包含 Hive 依赖。如果使用其他 Spark 发行版，使用以下步骤进行安装。
+```{note}
+如果你并不想使用hive支持，并且不会在Spark依赖中添加Hive依赖包，需要在taskmanager配置中添加`enable.hive.support=false`。否则，Job会因找不到Hive相关Class而出错。
+```
 
 1. 在 Spark 中执行如下命令编译 Hive 依赖
 
@@ -85,7 +88,7 @@ LOAD DATA INFILE 'hive://db1.t1' INTO TABLE t1 OPTIONS(deep_copy=true);
 - 如果不指定数据库名字，则会使用默认数据库名字 `default_db`
 - 如果指定数据库名字，则该数据库必须已经存在，目前不支持对于不存在的数据库进行自动创建
 - 如果不指定表格名字，则会在 Hive 内自动创建对应名字的表格
-- `OPTIONS` 参数均不生效
+- `OPTIONS` 参数只有导出模式`mode`生效，其他参数均不生效
 
 举例：
 

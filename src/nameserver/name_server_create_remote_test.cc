@@ -48,10 +48,6 @@ using ::openmldb::zk::ZkClient;
 namespace openmldb {
 namespace nameserver {
 
-inline std::string GenRand() {
-    return std::to_string(rand() % 10000000 + 1);  // NOLINT
-}
-
 class MockClosure : public ::google::protobuf::Closure {
  public:
     MockClosure() {}
@@ -140,7 +136,7 @@ void NameServerImplRemoteTest::CreateTableRemoteBeforeAddRepClusterFunc(
     ::openmldb::RpcClient<::openmldb::nameserver::NameServer_Stub>& name_server_client_2,
     const std::string& db) {
     bool ok = false;
-    std::string name = "test" + GenRand();
+    std::string name = "test" + ::openmldb::test::GenRand();
     {
         CreateTableRequest request;
         GeneralResponse response;
@@ -273,9 +269,10 @@ void NameServerImplRemoteTest::CreateTableRemoteBeforeAddRepClusterFunc(
 TEST_F(NameServerImplRemoteTest, CreateTableRemoteBeforeAddRepCluster) {
     // local ns and tablet
     // ns
-    FLAGS_zk_root_path = "/rtidb3" + GenRand();
+    FLAGS_zk_root_path = "/rtidb3" + ::openmldb::test::GenRand();
     FLAGS_endpoint = "127.0.0.1:9631";
-    FLAGS_db_root_path = "/tmp/" + ::openmldb::nameserver::GenRand();
+    ::openmldb::test::TempPath tmp_path;
+    FLAGS_db_root_path = tmp_path.GetTempPath();
 
     NameServerImpl* nameserver_1 = new NameServerImpl();
     brpc::Server server;
@@ -290,9 +287,9 @@ TEST_F(NameServerImplRemoteTest, CreateTableRemoteBeforeAddRepCluster) {
 
     // remote ns and tablet
     // ns
-    FLAGS_zk_root_path = "/rtidb3" + GenRand();
+    FLAGS_zk_root_path = "/rtidb3" + ::openmldb::test::GenRand();
     FLAGS_endpoint = "127.0.0.1:9632";
-    FLAGS_db_root_path = "/tmp/" + ::openmldb::nameserver::GenRand();
+    FLAGS_db_root_path = tmp_path.GetTempPath();
 
     NameServerImpl* nameserver_2 = new NameServerImpl();
     brpc::Server server2;
@@ -313,9 +310,10 @@ TEST_F(NameServerImplRemoteTest, CreateTableRemoteBeforeAddRepCluster) {
 TEST_F(NameServerImplRemoteTest, CreateTableRemoteBeforeAddRepClusterWithDb) {
     // local ns and tablet
     // ns
-    FLAGS_zk_root_path = "/rtidb3" + GenRand();
+    FLAGS_zk_root_path = "/rtidb3" + ::openmldb::test::GenRand();
     FLAGS_endpoint = "127.0.0.1:9631";
-    FLAGS_db_root_path = "/tmp/" + ::openmldb::nameserver::GenRand();
+    ::openmldb::test::TempPath tmp_path;
+    FLAGS_db_root_path = tmp_path.GetTempPath();
 
     NameServerImpl* nameserver_1 = new NameServerImpl();
     brpc::Server server;
@@ -330,9 +328,9 @@ TEST_F(NameServerImplRemoteTest, CreateTableRemoteBeforeAddRepClusterWithDb) {
 
     // remote ns and tablet
     // ns
-    FLAGS_zk_root_path = "/rtidb3" + GenRand();
+    FLAGS_zk_root_path = "/rtidb3" + ::openmldb::test::GenRand();
     FLAGS_endpoint = "127.0.0.1:9632";
-    FLAGS_db_root_path = "/tmp/" + ::openmldb::nameserver::GenRand();
+    FLAGS_db_root_path = tmp_path.GetTempPath();
 
     NameServerImpl* nameserver_2 = new NameServerImpl();
     brpc::Server server2;
@@ -346,7 +344,7 @@ TEST_F(NameServerImplRemoteTest, CreateTableRemoteBeforeAddRepClusterWithDb) {
     StartTablet(&server3);
 
     // create db
-    std::string db = "db" + GenRand();
+    std::string db = "db" + ::openmldb::test::GenRand();
     {
         ::openmldb::nameserver::CreateDatabaseRequest request;
         ::openmldb::nameserver::GeneralResponse response;
@@ -398,7 +396,7 @@ void NameServerImplRemoteTest::CreateAndDropTableRemoteFunc(
         ASSERT_EQ(0, response.code());
     }
 
-    std::string name = "test" + GenRand();
+    std::string name = "test" + ::openmldb::test::GenRand();
     {
         CreateTableRequest request;
         GeneralResponse response;
@@ -508,9 +506,10 @@ void NameServerImplRemoteTest::CreateAndDropTableRemoteFunc(
 TEST_F(NameServerImplRemoteTest, CreateAndDropTableRemoteWithDb) {
     // local ns and tablet
     // ns
-    FLAGS_zk_root_path = "/rtidb3" + GenRand();
+    FLAGS_zk_root_path = "/rtidb3" + ::openmldb::test::GenRand();
     FLAGS_endpoint = "127.0.0.1:9631";
-    FLAGS_db_root_path = "/tmp/" + ::openmldb::nameserver::GenRand();
+    ::openmldb::test::TempPath tmp_path;
+    FLAGS_db_root_path = tmp_path.GetTempPath();
 
     NameServerImpl* nameserver_1 = new NameServerImpl();
     brpc::Server server;
@@ -525,9 +524,9 @@ TEST_F(NameServerImplRemoteTest, CreateAndDropTableRemoteWithDb) {
 
     // remote ns and tablet
     // ns
-    FLAGS_zk_root_path = "/rtidb3" + GenRand();
+    FLAGS_zk_root_path = "/rtidb3" + ::openmldb::test::GenRand();
     FLAGS_endpoint = "127.0.0.1:9632";
-    FLAGS_db_root_path = "/tmp/" + ::openmldb::nameserver::GenRand();
+    FLAGS_db_root_path = tmp_path.GetTempPath();
 
     NameServerImpl* nameserver_2 = new NameServerImpl();
     brpc::Server server2;
@@ -540,16 +539,17 @@ TEST_F(NameServerImplRemoteTest, CreateAndDropTableRemoteWithDb) {
     brpc::Server server3;
     StartTablet(&server3);
 
-    std::string db = "db" + GenRand();
+    std::string db = "db" + ::openmldb::test::GenRand();
     CreateAndDropTableRemoteFunc(nameserver_1, nameserver_2, name_server_client_1, name_server_client_2, db);
 }
 
 TEST_F(NameServerImplRemoteTest, CreateAndDropTableRemote) {
     // local ns and tablet
     // ns
-    FLAGS_zk_root_path = "/rtidb3" + GenRand();
+    FLAGS_zk_root_path = "/rtidb3" + ::openmldb::test::GenRand();
     FLAGS_endpoint = "127.0.0.1:9631";
-    FLAGS_db_root_path = "/tmp/" + ::openmldb::nameserver::GenRand();
+    ::openmldb::test::TempPath tmp_path;
+    FLAGS_db_root_path = tmp_path.GetTempPath();
 
     NameServerImpl* nameserver_1 = new NameServerImpl();
     brpc::Server server;
@@ -564,9 +564,9 @@ TEST_F(NameServerImplRemoteTest, CreateAndDropTableRemote) {
 
     // remote ns and tablet
     // ns
-    FLAGS_zk_root_path = "/rtidb3" + GenRand();
+    FLAGS_zk_root_path = "/rtidb3" + ::openmldb::test::GenRand();
     FLAGS_endpoint = "127.0.0.1:9632";
-    FLAGS_db_root_path = "/tmp/" + ::openmldb::nameserver::GenRand();
+    FLAGS_db_root_path = tmp_path.GetTempPath();
 
     NameServerImpl* nameserver_2 = new NameServerImpl();
     brpc::Server server2;
@@ -585,7 +585,7 @@ TEST_F(NameServerImplRemoteTest, CreateAndDropTableRemote) {
 TEST_F(NameServerImplRemoteTest, CreateTableInfo) {
     // local ns and tablet
     // ns
-    FLAGS_zk_root_path = "/rtidb3" + GenRand();
+    FLAGS_zk_root_path = "/rtidb3" + ::openmldb::test::GenRand();
     FLAGS_endpoint = "127.0.0.1:9631";
 
     brpc::Server server;
@@ -597,23 +597,24 @@ TEST_F(NameServerImplRemoteTest, CreateTableInfo) {
 
     // tablet
     FLAGS_endpoint = "127.0.0.1:9931";
-    FLAGS_db_root_path = "/tmp/" + ::openmldb::nameserver::GenRand();
+    ::openmldb::test::TempPath tmp_path;
+    FLAGS_db_root_path = tmp_path.GetTempPath();
     brpc::Server server1;
     StartTablet(&server1);
 
     FLAGS_endpoint = "127.0.0.1:9941";
-    FLAGS_db_root_path = "/tmp/" + ::openmldb::nameserver::GenRand();
+    FLAGS_db_root_path = tmp_path.GetTempPath();
     brpc::Server server2;
     StartTablet(&server2);
 
     FLAGS_endpoint = "127.0.0.1:9951";
-    FLAGS_db_root_path = "/tmp/" + ::openmldb::nameserver::GenRand();
+    FLAGS_db_root_path = tmp_path.GetTempPath();
     brpc::Server server3;
     StartTablet(&server3);
 
     // remote ns and tablet
     // ns
-    FLAGS_zk_root_path = "/rtidb3" + GenRand();
+    FLAGS_zk_root_path = "/rtidb3" + ::openmldb::test::GenRand();
     FLAGS_endpoint = "127.0.0.1:9632";
 
     brpc::Server server4;
@@ -623,12 +624,12 @@ TEST_F(NameServerImplRemoteTest, CreateTableInfo) {
 
     // tablet
     FLAGS_endpoint = "127.0.0.1:9932";
-    FLAGS_db_root_path = "/tmp/" + ::openmldb::nameserver::GenRand();
+    FLAGS_db_root_path = tmp_path.GetTempPath();
     brpc::Server server5;
     StartTablet(&server5);
 
     FLAGS_endpoint = "127.0.0.1:9942";
-    FLAGS_db_root_path = "/tmp/" + ::openmldb::nameserver::GenRand();
+    FLAGS_db_root_path = tmp_path.GetTempPath();
     brpc::Server server6;
     StartTablet(&server6);
 
@@ -656,7 +657,7 @@ TEST_F(NameServerImplRemoteTest, CreateTableInfo) {
     }
 
     ZoneInfo* zone_info = GetZoneInfo(nameserver_1);
-    std::string name = "test" + GenRand();
+    std::string name = "test" + ::openmldb::test::GenRand();
     {
         ::openmldb::nameserver::CreateTableInfoRequest request;
         ::openmldb::nameserver::CreateTableInfoResponse response;
@@ -725,7 +726,7 @@ TEST_F(NameServerImplRemoteTest, CreateTableInfo) {
         ASSERT_EQ(1, response.table_info(0).table_partition(2).partition_meta_size());
     }
 
-    name = "test" + GenRand();
+    name = "test" + ::openmldb::test::GenRand();
     {
         ::openmldb::nameserver::CreateTableInfoRequest request;
         ::openmldb::nameserver::CreateTableInfoResponse response;
@@ -776,7 +777,7 @@ TEST_F(NameServerImplRemoteTest, CreateTableInfo) {
         ASSERT_EQ(1, response.table_info(0).table_partition(2).partition_meta_size());
     }
 
-    name = "test" + GenRand();
+    name = "test" + ::openmldb::test::GenRand();
     {
         ::openmldb::nameserver::CreateTableInfoRequest request;
         ::openmldb::nameserver::CreateTableInfoResponse response;
@@ -834,10 +835,10 @@ TEST_F(NameServerImplRemoteTest, CreateTableInfo) {
     }
 
     FLAGS_endpoint = "127.0.0.1:9952";
-    FLAGS_db_root_path = "/tmp/" + ::openmldb::nameserver::GenRand();
+    FLAGS_db_root_path = tmp_path.GetTempPath();
     brpc::Server server7;
     StartTablet(&server7);
-    name = "test" + GenRand();
+    name = "test" + ::openmldb::test::GenRand();
     {
         ::openmldb::nameserver::CreateTableInfoRequest request;
         ::openmldb::nameserver::CreateTableInfoResponse response;
@@ -906,7 +907,7 @@ TEST_F(NameServerImplRemoteTest, CreateTableInfo) {
         ASSERT_EQ(1, response.table_info(0).table_partition(2).partition_meta_size());
     }
 
-    name = "test" + GenRand();
+    name = "test" + ::openmldb::test::GenRand();
     {
         ::openmldb::nameserver::CreateTableInfoRequest request;
         ::openmldb::nameserver::CreateTableInfoResponse response;
@@ -966,7 +967,7 @@ TEST_F(NameServerImplRemoteTest, CreateTableInfo) {
         ASSERT_EQ(1, response.table_info(0).table_partition(2).partition_meta_size());
     }
 
-    name = "test" + GenRand();
+    name = "test" + ::openmldb::test::GenRand();
     {
         ::openmldb::nameserver::CreateTableInfoRequest request;
         ::openmldb::nameserver::CreateTableInfoResponse response;
@@ -1013,7 +1014,7 @@ TEST_F(NameServerImplRemoteTest, CreateTableInfo) {
 TEST_F(NameServerImplRemoteTest, CreateTableInfoSimply) {
     // local ns and tablet
     // ns
-    FLAGS_zk_root_path = "/rtidb3" + GenRand();
+    FLAGS_zk_root_path = "/rtidb3" + ::openmldb::test::GenRand();
     FLAGS_endpoint = "127.0.0.1:9631";
 
     NameServerImpl* nameserver_1 = new NameServerImpl();
@@ -1024,23 +1025,24 @@ TEST_F(NameServerImplRemoteTest, CreateTableInfoSimply) {
 
     // tablet
     FLAGS_endpoint = "127.0.0.1:9931";
-    FLAGS_db_root_path = "/tmp/" + ::openmldb::nameserver::GenRand();
+    ::openmldb::test::TempPath tmp_path;
+    FLAGS_db_root_path = tmp_path.GetTempPath();
     brpc::Server server1;
     StartTablet(&server1);
 
     FLAGS_endpoint = "127.0.0.1:9941";
-    FLAGS_db_root_path = "/tmp/" + ::openmldb::nameserver::GenRand();
+    FLAGS_db_root_path = tmp_path.GetTempPath();
     brpc::Server server2;
     StartTablet(&server2);
 
     FLAGS_endpoint = "127.0.0.1:9951";
-    FLAGS_db_root_path = "/tmp/" + ::openmldb::nameserver::GenRand();
+    FLAGS_db_root_path = tmp_path.GetTempPath();
     brpc::Server server3;
     StartTablet(&server3);
 
     // remote ns and tablet
     // ns
-    FLAGS_zk_root_path = "/rtidb3" + GenRand();
+    FLAGS_zk_root_path = "/rtidb3" + ::openmldb::test::GenRand();
     FLAGS_endpoint = "127.0.0.1:9632";
 
     brpc::Server server4;
@@ -1050,12 +1052,12 @@ TEST_F(NameServerImplRemoteTest, CreateTableInfoSimply) {
 
     // tablet
     FLAGS_endpoint = "127.0.0.1:9932";
-    FLAGS_db_root_path = "/tmp/" + ::openmldb::nameserver::GenRand();
+    FLAGS_db_root_path = tmp_path.GetTempPath();
     brpc::Server server5;
     StartTablet(&server5);
 
     FLAGS_endpoint = "127.0.0.1:9942";
-    FLAGS_db_root_path = "/tmp/" + ::openmldb::nameserver::GenRand();
+    FLAGS_db_root_path = tmp_path.GetTempPath();
     brpc::Server server6;
     StartTablet(&server6);
 
@@ -1083,7 +1085,7 @@ TEST_F(NameServerImplRemoteTest, CreateTableInfoSimply) {
     }
 
     ZoneInfo* zone_info = GetZoneInfo(nameserver_1);
-    std::string name = "test" + GenRand();
+    std::string name = "test" + ::openmldb::test::GenRand();
     {
         ::openmldb::nameserver::CreateTableInfoRequest request;
         ::openmldb::nameserver::CreateTableInfoResponse response;
@@ -1137,7 +1139,7 @@ TEST_F(NameServerImplRemoteTest, CreateTableInfoSimply) {
         ASSERT_EQ(2, (signed)response.table_info().replica_num());
     }
 
-    name = "test" + GenRand();
+    name = "test" + ::openmldb::test::GenRand();
     {
         ::openmldb::nameserver::CreateTableInfoRequest request;
         ::openmldb::nameserver::CreateTableInfoResponse response;
@@ -1173,7 +1175,7 @@ TEST_F(NameServerImplRemoteTest, CreateTableInfoSimply) {
         ASSERT_EQ(1, (signed)response.table_info().replica_num());
     }
 
-    name = "test" + GenRand();
+    name = "test" + ::openmldb::test::GenRand();
     {
         ::openmldb::nameserver::CreateTableInfoRequest request;
         ::openmldb::nameserver::CreateTableInfoResponse response;
@@ -1216,11 +1218,11 @@ TEST_F(NameServerImplRemoteTest, CreateTableInfoSimply) {
     }
 
     FLAGS_endpoint = "127.0.0.1:9952";
-    FLAGS_db_root_path = "/tmp/" + ::openmldb::nameserver::GenRand();
+    FLAGS_db_root_path = tmp_path.GetTempPath();
     brpc::Server server7;
     StartTablet(&server7);
 
-    name = "test" + GenRand();
+    name = "test" + ::openmldb::test::GenRand();
     {
         ::openmldb::nameserver::CreateTableInfoRequest request;
         ::openmldb::nameserver::CreateTableInfoResponse response;
@@ -1274,7 +1276,7 @@ TEST_F(NameServerImplRemoteTest, CreateTableInfoSimply) {
         ASSERT_EQ(3, (signed)response.table_info().replica_num());
     }
 
-    name = "test" + GenRand();
+    name = "test" + ::openmldb::test::GenRand();
     {
         ::openmldb::nameserver::CreateTableInfoRequest request;
         ::openmldb::nameserver::CreateTableInfoResponse response;
@@ -1319,7 +1321,7 @@ TEST_F(NameServerImplRemoteTest, CreateTableInfoSimply) {
         ASSERT_EQ(2, (signed)response.table_info().replica_num());
     }
 
-    name = "test" + GenRand();
+    name = "test" + ::openmldb::test::GenRand();
     {
         ::openmldb::nameserver::CreateTableInfoRequest request;
         ::openmldb::nameserver::CreateTableInfoResponse response;
@@ -1360,6 +1362,5 @@ int main(int argc, char** argv) {
     ::openmldb::base::SetLogLevel(INFO);
     ::google::ParseCommandLineFlags(&argc, &argv, true);
     FLAGS_system_table_replica_num = 0;
-    // FLAGS_db_root_path = "/tmp/" + ::openmldb::nameserver::GenRand();
     return RUN_ALL_TESTS();
 }

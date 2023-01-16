@@ -10467,6 +10467,7 @@ void NameServerImpl::UpdateOfflineTableInfo(::google::protobuf::RpcController* c
         base::SetResponseStatus(base::ReturnCode::kInvalidParameter, "empty db/name, or no tid", response);
         return;
     }
+
     auto tid = request->tid();
     {
         std::lock_guard<std::mutex> lock(mu_);
@@ -10488,7 +10489,12 @@ void NameServerImpl::UpdateOfflineTableInfo(::google::protobuf::RpcController* c
 
         // copy origin table info, do not modify origin table info until the zk update succeed
         auto new_info = std::make_shared<TableInfo>(*ori_table_info);
-        new_info->mutable_offline_table_info()->CopyFrom(request->offline_table_info());
+        if (!request->has_offline_table_info()) {
+            // a tricky way to delete offline table info
+            new_info->release_offline_table_info();
+        } else {
+            new_info->mutable_offline_table_info()->CopyFrom(request->offline_table_info());
+        }
         if (IsClusterMode()) {
             // TODO(hw): DCHECK mode_?
             std::string info_str;

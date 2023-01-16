@@ -17,6 +17,7 @@
 #include "storage/disk_table.h"
 #include <snappy.h>
 #include <utility>
+#include "absl/cleanup/cleanup.h"
 #include "base/file_util.h"
 #include "base/glog_wrapper.h"
 #include "base/hash.h"
@@ -328,20 +329,24 @@ void DiskTable::SchedGc() {
 void DiskTable::GcHead() {
     uint64_t start_time = ::baidu::common::timer::get_micros() / 1000;
     auto inner_indexs = table_index_.GetAllInnerIndex();
+    const rocksdb::Snapshot* snapshot = db_->GetSnapshot();
+    absl::Cleanup release_snapshot = [this, snapshot] { this->db_->ReleaseSnapshot(snapshot); };
     for (const auto& inner_index : *inner_indexs) {
         uint32_t idx = inner_index->GetId();
         rocksdb::ReadOptions ro = rocksdb::ReadOptions();
-        const rocksdb::Snapshot* snapshot = db_->GetSnapshot();
         ro.snapshot = snapshot;
         // ro.prefix_same_as_start = true;
         ro.pin_data = true;
-        rocksdb::Iterator* it = db_->NewIterator(ro, cf_hs_[idx + 1]);
+        std::unique_ptr<rocksdb::Iterator> it(db_->NewIterator(ro, cf_hs_[idx + 1]));
         it->SeekToFirst();
         const auto& indexs = inner_index->GetIndex();
         if (indexs.size() > 1) {
             bool need_ttl = false;
             std::map<uint32_t, uint64_t> ttl_map;
             for (const auto& index : indexs) {
+                if (index->GetTTLType() != ::openmldb::storage::TTLType::kLatestTime) {
+                    continue;
+                }
                 auto ts_col = index->GetTsColumn();
                 if (ts_col) {
                     auto lat_ttl = index->GetTTL()->lat_ttl;
@@ -405,7 +410,7 @@ void DiskTable::GcHead() {
         } else {
             auto index = indexs.front();
             auto ttl_num = index->GetTTL()->lat_ttl;
-            if (ttl_num < 1) {
+            if (ttl_num < 1 || index->GetTTLType() != ::openmldb::storage::TTLType::kLatestTime) {
                 continue;
             }
             std::string last_pk;
@@ -436,8 +441,6 @@ void DiskTable::GcHead() {
                 }
             }
         }
-        delete it;
-        db_->ReleaseSnapshot(snapshot);
     }
     uint64_t time_used = ::baidu::common::timer::get_micros() / 1000 - start_time;
     PDLOG(INFO, "Gc used %lu second. tid %u pid %u", time_used / 1000, id_, pid_);

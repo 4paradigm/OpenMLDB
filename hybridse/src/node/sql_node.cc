@@ -1524,7 +1524,19 @@ void CreateStmt::Print(std::ostream &output, const std::string &org_tab) const {
     output << "\n";
     PrintSqlVector(output, tab, column_desc_list_, "column_desc_list", false);
     output << "\n";
+    if (like_clause_ != nullptr) {
+        like_clause_->Print(output, tab);
+    }
     PrintSqlVector(output, tab, table_option_list_, "table_option_list", true);
+}
+
+void CreateTableLikeClause::Print(std::ostream &output, const std::string &tab) const {
+    output << tab << SPACE_ST << "like:";
+    output << "\n";
+    PrintValue(output, tab + INDENT, ToKindString(kind_), "kind", false);
+    output << "\n";
+    PrintValue(output, tab + INDENT, path_, "path", false);
+    output << "\n";
 }
 
 void ColumnDefNode::Print(std::ostream &output, const std::string &org_tab) const {

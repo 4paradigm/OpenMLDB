@@ -40,8 +40,6 @@ DECLARE_string(hdd_root_path);
 DECLARE_string(endpoint);
 DECLARE_int32(make_snapshot_threshold_offset);
 
-inline std::string GenRand() { return std::to_string(rand() % 10000000 + 1); }  // NOLINT
-
 namespace openmldb {
 namespace replica {
 
@@ -140,8 +138,10 @@ TEST_P(SnapshotReplicaTest, LeaderAndFollower) {
     }
 
     sleep(3);
-    FLAGS_db_root_path = "/tmp/" + ::GenRand();
-    FLAGS_hdd_root_path = "/tmp/hdd_" + GenRand();
+
+    ::openmldb::test::TempPath temp_path;
+    FLAGS_db_root_path = temp_path.GetTempPath();
+    FLAGS_hdd_root_path = temp_path.GetTempPath();
     FLAGS_endpoint = "127.0.0.1:18530";
     ::openmldb::tablet::TabletImpl* tablet1 = new ::openmldb::tablet::TabletImpl();
     tablet1->Init("");
@@ -254,8 +254,9 @@ TEST_P(SnapshotReplicaTest, SendSnapshot) {
     tablet->MakeSnapshot(NULL, &grq, &grp, &closure);
 
     sleep(3);
-    FLAGS_db_root_path = "/tmp/follower_" + ::GenRand();
-    FLAGS_hdd_root_path = "/tmp/follower_hdd_" + GenRand();
+    ::openmldb::test::TempPath temp_path;
+    FLAGS_db_root_path = temp_path.GetTempPath();
+    FLAGS_hdd_root_path = temp_path.GetTempPath();
     FLAGS_endpoint = "127.0.0.1:18530";
     ::openmldb::tablet::TabletImpl* tablet1 = new ::openmldb::tablet::TabletImpl();
     tablet1->Init("");
@@ -584,8 +585,9 @@ TEST_P(SnapshotReplicaTest, LeaderAndFollowerTS) {
     ASSERT_TRUE(ret);
 
     sleep(3);
-    FLAGS_db_root_path = "/tmp/" + ::GenRand();
-    FLAGS_hdd_root_path = "/tmp/hdd_" + GenRand();
+    ::openmldb::test::TempPath temp_path;
+    FLAGS_db_root_path = temp_path.GetTempPath();
+    FLAGS_hdd_root_path = temp_path.GetTempPath();
     FLAGS_endpoint = "127.0.0.1:18530";
     ::openmldb::tablet::TabletImpl* tablet1 = new ::openmldb::tablet::TabletImpl();
     tablet1->Init("");
@@ -640,7 +642,8 @@ int main(int argc, char** argv) {
     srand(time(NULL));
     ::openmldb::base::SetLogLevel(INFO);
     ::google::ParseCommandLineFlags(&argc, &argv, true);
-    FLAGS_db_root_path = "/tmp/" + GenRand();
-    FLAGS_hdd_root_path = "/tmp/hdd_" + GenRand();
+    ::openmldb::test::TempPath temp_path;
+    FLAGS_db_root_path = temp_path.GetTempPath();
+    FLAGS_hdd_root_path = temp_path.GetTempPath();
     return RUN_ALL_TESTS();
 }

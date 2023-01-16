@@ -1018,6 +1018,14 @@ Status BatchModeTransformer::TransformDeleteOp(const node::DeletePlanNode* node,
     return Status::OK();
 }
 
+Status BatchModeTransformer::TransformCreateTableOp(const node::CreatePlanNode* create, PhysicalOpNode** output) {
+    CHECK_TRUE(create != nullptr && output != nullptr, kPlanError, "Input node or output node is null");
+    PhysicalCreateTableNode* n = nullptr;
+    CHECK_STATUS(CreateOp<PhysicalCreateTableNode>(&n, create));
+    *output = n;
+    return Status::OK();
+}
+
 Status BatchModeTransformer::TransformQueryPlan(const ::hybridse::node::PlanNode* node,
                                                 ::hybridse::vm::PhysicalOpNode** output) {
     CHECK_TRUE(node != nullptr && output != nullptr, kPlanError, "Input node or output node is null");
@@ -1825,6 +1833,11 @@ Status BatchModeTransformer::TransformPhysicalPlan(const ::hybridse::node::PlanN
             }
             case ::hybridse::node::kPlanTypeUnion: {
                 FAIL_STATUS(kPlanError, "Non-support UNION OP");
+                break;
+            }
+            case node::kPlanTypeCreate: {
+                CHECK_STATUS(TransformCreateTableOp(dynamic_cast<const node::CreatePlanNode*>(node), output),
+                    "Fail to transform create table op");
                 break;
             }
             case ::hybridse::node::kPlanTypeQuery: {

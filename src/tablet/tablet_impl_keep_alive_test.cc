@@ -18,11 +18,11 @@
 #include <unistd.h>
 #include <string>
 
-#include "base/glog_wrapper.h"
 #include "boost/bind.hpp"
 #include "gflags/gflags.h"
 #include "gtest/gtest.h"
 #include "tablet/tablet_impl.h"
+#include "test/util.h"
 
 DECLARE_string(endpoint);
 DECLARE_string(db_root_path);
@@ -39,8 +39,6 @@ namespace tablet {
 uint32_t counter = 10;
 static bool call_invoked = false;
 static size_t endpoint_size = 1;
-
-inline std::string GenRand() { return std::to_string(rand() % 10000000 + 1); }  // NOLINT
 
 void WatchCallback(const std::vector<std::string>& endpoints) {
     if (call_invoked) {
@@ -93,6 +91,7 @@ int main(int argc, char** argv) {
     srand(time(NULL));
     ::openmldb::base::SetLogLevel(DEBUG);
     ::google::ParseCommandLineFlags(&argc, &argv, true);
-    FLAGS_db_root_path = "/tmp/" + ::openmldb::tablet::GenRand();
+    ::openmldb::test::TempPath tmp_path;
+    FLAGS_db_root_path = tmp_path.GetTempPath();
     return RUN_ALL_TESTS();
 }
