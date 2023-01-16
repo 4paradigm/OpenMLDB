@@ -1,16 +1,15 @@
 # OpenMLDB + OneFlow：高潜用户购买意向预测
 
-本文将以[京东高潜用户购买意向预测问题](https://jdata.jd.com/html/detail.html?id=1)为例，示范如何使用 OpenMLDB 和 [OneFlow](https://github.com/Oneflow-Inc/oneflow) 联合来打造一个完整的机器学习应用。
+本文将以[京东高潜用户购买意向预测问题](https://jdata.jd.com/html/detail.html?id=1)为例，示范如何使用 OpenMLDB 和 [OneFlow](https://github.com/OneFlow-Inc/OneFlow) 联合来打造一个完整的机器学习应用。
 
 ## 背景
 
 如何从历史数据中找出规律，去预测用户未来的购买需求，让最合适的商品遇见最需要的人，是大数据应用在精准营销中的关键问题，也是所有电商平台在做智能化升级时所需要的核心技术。京东作为中国最大的自营式电商，沉淀了数亿的忠实用户，积累了海量的真实数据。
 
 本案例以京东商城真实的用户、商品和行为数据（脱敏后）为基础，通过数据挖掘的技术和机器学习的算法，构建用户购买商品的预测模型，输出高潜用户和目标商品的匹配结果，为精准营销提供高质量的目标群体，挖掘数据背后潜在的意义，为电商用户提供更简单、快捷、省心的购物体验。
+本案例使用 OpenMLDB 进行数据挖掘，使用 OneFlow 中的 [DeepFM](https://github.com/OneFlow-Inc/models/tree/main/RecommenderSystems/deepfm) 模型进行高性能训练推理，提供精准的商品推荐。
 
 ```{note}
-
-本案例使用 OpenMLDB 进行数据挖掘，使用 OneFlow 中的 [DeepFM](https://github.com/Oneflow-Inc/models/tree/main/RecommenderSystems/deepfm) 模型进行高性能训练推理，提供精准的商品推荐。
 
 注意，本文档使用的是预编译好的 docker 镜像。如果希望在自己编译和搭建的 OpenMLDB 环境下进行测试，需要配置使用[面向特征工程优化的 Spark 发行版](https://openmldb.ai/docs/zh/main/tutorial/openmldbspark_distribution.html)。请参考[针对 OpenMLDB 优化的 Spark 发行版](https://openmldb.ai/docs/zh/main/deploy/compile.html)和[安装部署文档](https://openmldb.ai/docs/zh/main/deploy/install_deploy.html)。
 
@@ -20,7 +19,7 @@
 
 ### 下载数据与脚本
 
-下载数据、脚本以及推理所需的 OneEmbedding 库（详情见[配置 oneflow 推理服务](#配置-oneflow-推理服务)），在后面的步骤中可以直接使用。
+下载数据、脚本以及推理所需的 OneEmbedding 库（详情见[配置 OneFlow 推理服务](#配置-OneFlow-推理服务)），在后面的步骤中可以直接使用。
 
 ```
 
@@ -32,23 +31,22 @@ ls demo
 
 ```
 
-也可以 checkout Github 仓库中的`demo/jd-recommendation`。
-
+也可以 checkout GitHub 仓库中的 `demo/jd-recommendation`.
 这个 `demo` 目录定为环境变量 `demodir`，之后的脚本中多会使用这一环境变量。所以，你需要配置这一变量：
 
 ```
 
 export demodir=<your_path>/demo
 
-``` 
+```
 
 本例仅使用小数据集做演示。如果你想要使用全量数据集，请下载 [JD_data](http://openmldb.ai/download/jd-recommendation/JD_data.tgz)。
 
 ### 安装 OneFlow 工具包
 
-OneFlow 工具依赖 GPU 的强大算力，所以请确保部署机器具备 Nvidia GPU，并且保证驱动版本 >=460.X.X  [驱动版本需支持 CUDA 11.0](https://docs.nvidia.com/cuda/cuda-toolkit-release-notes/index.html#cuda-major-component-versions)。
+OneFlow 工具依赖 GPU 的强大算力，所以请确保部署机器具备 Nvidia GPU，并且保证驱动版本 >=460.X.X。[驱动版本需支持 CUDA 11.0](https://docs.nvidia.com/cuda/cuda-toolkit-release-notes/index.html#cuda-major-component-versions)。
 
-推荐使用 conda 来管理 oneflow 环境，安装 OneFlow 开发版（支持 oneembedding），以及本案例演示所需的其他依赖，手动创建方法如下：
+推荐使用 conda 来管理 OneFlow 环境，安装 OneFlow 开发版（支持 OneEmbedding），以及本案例演示所需的其他依赖，手动创建方法如下：
 
 ```bash
 
@@ -56,27 +54,27 @@ conda create -y -n oneflow python=3.9.2
 
 conda activate oneflow
 
-pip install -f https://staging.oneflow.info/branch/master/cu112 --pre oneflow
+pip install -f https://staging.oneflow.info/branch/master/cu112 --pre OneFlow
 
 pip install psutil petastorm pandas sklearn xxhash "tritonclient[all]" geventhttpclient tornado
 
 ```
 
-拉取 Oneflow-serving 镜像：
+拉取 OneFlow-serving 镜像：
 
 ```bash
 
-docker pull oneflowinc/oneflow-serving:nightly
+docker pull oneflowinc/OneFlow-serving:nightly
 
 ```
 
 ```{note}
 
-注意，此处安装的为 Oneflow nightly 版本。本案例使用的版本 commit 如下：
+注意，此处安装的为 OneFlow nightly 版本。本案例使用的版本 commit 如下：
 
-Oneflow：https://github.com/Oneflow-Inc/oneflow/tree/fcf205cf57989a5ecb7a756633a4be08444d8a28
+OneFlow：https://github.com/OneFlow-Inc/OneFlow/tree/fcf205cf57989a5ecb7a756633a4be08444d8a28
 
-Oneflow-serving：https://github.com/Oneflow-Inc/serving/tree/ce5d667468b6b3ba66d3be6986f41f965e52cf16
+OneFlow-serving：https://github.com/OneFlow-Inc/serving/tree/ce5d667468b6b3ba66d3be6986f41f965e52cf16
 
 ```
 
@@ -84,7 +82,7 @@ Oneflow-serving：https://github.com/Oneflow-Inc/serving/tree/ce5d667468b6b3ba66
 
 为了快速运行 OpenMLDB 集群，推荐使用镜像启动的方式。
 
- - Docker：>= 18.03
+- Docker：>= 18.03
 
 由于 OpenMLDB 集群需要和其他组件网络通信，我们直接使用 host 网络。本例将在容器中使用已下载的脚本，所以请将数据脚本所在目录 `demodir` 映射为容器中的目录：
 
@@ -124,9 +122,9 @@ docker exec -it openmldb bash
 
 ```{important}
 
-在 OpenMLDB 中，使用离线引擎的操作，默认都是非阻塞任务，包括在本次演示中将会用到的 `LOAD  DATA`（离线/在线模式均使用离线引擎），和离线 `SELECT  INTO` 命令。
+在 OpenMLDB 中，使用离线引擎的操作，默认都是异步任务，包括在本次演示中将会用到的 `LOAD DATA`（离线/在线模式均使用离线引擎），和离线 `SELECT INTO` 命令。
 
-任务提交以后，可以使用 [`SHOW JOBS`](../openmldb_sql/task_manage/SHOW_JOBS.md)、[`SHOW JOB <job_id>`](../openmldb_sql/task_manage/SHOW_JOB.md)来查看任务进度。
+任务提交以后，可以使用 [`SHOW JOBS`](../openmldb_sql/task_manage/SHOW_JOBS.md)、[`SHOW JOB <job_id>`](../openmldb_sql/task_manage/SHOW_JOB.md) 来查看任务进度。
 
 ```
 
@@ -146,9 +144,11 @@ docker exec -it openmldb bash
 
 ### 离线特征抽取
 
+以下命令均在 OpenMLDB CLI 中执行。
+
 #### 创建数据库和数据表
 
-以下命令均在 OpenMLDB CLI 中执行。
+使用以下命令创建数据库和表：
 
 ```sql
 -- OpenMLDB CLI
@@ -171,19 +171,16 @@ CREATE TABLE bo_comment(ingestionTime timestamp, dt bigint, sku_id string, comme
 
 ```
 
-也可使用sql脚本(`/work/oneflow_demo/sql_scripts/create_tables.sql`)直接运行：
+也可直接运行 sql 脚本(`/work/oneflow_demo/sql_scripts/create_tables.sql`)来创建：
 
 ```
-
 /work/openmldb/bin/openmldb --zk_cluster=127.0.0.1:2181 --zk_root_path=/openmldb --role=sql_client < /work/oneflow_demo/sql_scripts/create_tables.sql
 
 ```
 
-#### 离线数据导入
+#### 导入离线数据
 
-需要将源数据导入到 OpenMLDB 中作为离线数据，用于离线特征计算。
-
-如果你导入较大的数据集，可以使用软链接的方式，减少导入消耗时间。本次演示中仅导入很少的数据，因此使用硬拷贝。
+需要将源数据导入到 OpenMLDB 中作为离线数据，用于离线特征计算。如果你导入较大的数据集，可以使用软链接的方式，减少导入消耗时间。本次演示中仅导入很少的数据，因此使用硬拷贝。
 
 ```sql
 -- OpenMLDB CLI
@@ -205,7 +202,7 @@ LOAD DATA INFILE '/work/oneflow_demo/data/JD_data/bo_comment/*.parquet' INTO TAB
 
 ```
 
-或使用脚本执行，并快速查询 jobs 状态：
+或直接运行脚本导入，并快速查询 jobs 状态：
 
 ```
 
@@ -217,22 +214,24 @@ echo "show jobs;" | /work/openmldb/bin/openmldb --zk_cluster=127.0.0.1:2181 --zk
 
 ```{important}
 
-请等待`SHOW JOBS`中所有任务运行成功（ `state` 转至 `FINISHED` 状态），再进行下一步操作 。
+请等待 `SHOW JOBS` 中所有任务运行成功（ `state` 转至 `FINISHED` 状态），再进行下一步操作 。
 
 ```
 
 #### 特征设计
 
-通常在设计特征前，用户需要根据机器学习的目标对数据进行分析，然后根据分析设计和调研特征。机器学习的数据分析和特征研究不是本文讨论的范畴，我们将不作展开。本文假定用户具备机器学习的基本理论知识，有解决机器学习问题的能力，能够理解SQL语法，并能够使用SQL语法构建特征。针对本案例，用户经过分析和调研设计了若干特征。
+通常在设计特征前，用户需要根据机器学习的目标对数据进行分析，然后根据分析设计和调研特征。然而，机器学习的数据分析和特征研究并不是本文讨论的范畴。本文假定用户具备机器学习的基本理论知识，有解决机器学习问题的能力，能够理解 SQL 语法，并能够使用 SQL 语法构建特征。针对本案例，用户经过分析和调研设计了若干特征。
 
-请注意，在实际的机器学习特征调研过程中，科学家对特征进行反复试验，寻求模型效果最好的特征集。所以会不断的重复多次特征设计->离线特征抽取->模型训练过程，并不断调整特征以达到预期效果。
+请注意，在实际的机器学习特征调研过程中，科学家对特征进行反复试验，寻求模型效果最好的特征集。所以会不断地重复多次“特征设计->离线特征抽取->模型训练”过程，并不断调整特征以达到预期效果。
 
 #### 离线特征抽取
 
-源数据准备好以后，就可以进行离线特征抽取，将特征结果输出到`'/work/oneflow_demo/out/1'`目录下保存（对应映射为`$demodir/out/1`，方便容器外部使用特征数据），以供后续的模型训练。 `SELECT` 命令对应了基于上述特征设计所产生的 SQL 特征计算脚本。
+源数据准备好以后，就可以进行离线特征抽取，将特征结果输出到 `'/work/oneflow_demo/out/1'` 目录下保存（对应映射为 `$demodir/out/1`，方便容器外部使用特征数据），以供后续的模型训练。`SELECT` 命令对应了基于上述特征设计所产生的 SQL 特征计算脚本。
 
 ```sql
+
 -- OpenMLDB CLI
+
 USE JD_db;
 
 select * from
@@ -409,11 +408,11 @@ INTO OUTFILE '/work/oneflow_demo/out/1' OPTIONS(mode='overwrite');
 
 ```{note}
 
-注意，`SELECT INTO` 为非阻塞任务，可以使用命令 `SHOW JOBS` 查看任务运行状态，请等待任务运行成功（ `state` 转至 `FINISHED` 状态），再进行下一步操作 。耗时大概1分半。
+注意，`SELECT INTO` 为异步任务，可以使用命令 `SHOW JOBS` 查看任务运行状态，请等待任务运行成功（ `state` 转至 `FINISHED` 状态），再进行下一步操作 。耗时大概一分半。
 
 ```
 
-因为这里只有一个特征抽取任务，可以使用阻塞的运行方式，命令完成即特征抽取完成。直接运行sql脚本`sync_select_out.sql`:
+因为这里只有一个特征抽取任务，可以使用同步的运行方式，命令完成即特征抽取完成。直接运行 sql 脚本 `sync_select_out.sql`:
 
 ```
 
@@ -425,7 +424,7 @@ INTO OUTFILE '/work/oneflow_demo/out/1' OPTIONS(mode='overwrite');
 
 ```{note}
 
-注意，以下命令在 docker 外执行，使用 OneFlow 运行环境
+注意，以下命令在 Docker 外执行，使用 OneFlow 运行环境。
 
 ```
 
@@ -433,7 +432,7 @@ INTO OUTFILE '/work/oneflow_demo/out/1' OPTIONS(mode='overwrite');
 
 χ may include categorical fields (e.g., gender, location) and continuous fields (e.g., age). Each categorical field is represented as a vector of one-hot encoding, and each continuous field is represented as the value itself, or a vector of one-hot encoding after discretization.
 
-进入 demodir 文件夹，并使用预处理脚本做特征数据预处理。运行需要 pandas、xxhash 等依赖，推荐在`oneflow` 虚拟环境中运行。
+进入 demodir 文件夹，并使用预处理脚本做特征数据预处理。运行需要 pandas、xxhash 等依赖，推荐在`OneFlow` 虚拟环境中运行。
 
 ```bash
 
@@ -443,7 +442,9 @@ python preprocess.py $demodir/out/1
 
 ```
 
-`$demodir/out/1` 即上一步 OpenMLDB 计算得到的特征数据目录。脚本将在 `$demodir/feature_preprocess/out` 对应生成 train、test、valid三个 Parquet 数据集，并将三者的行数和 `table_size_array` 保存在文件 `data_info.txt` 中（下一步可以直接使用 info 文件，不需要手动填写参数）。运行结果打印类似：
+`$demodir/out/1` 即上一步 OpenMLDB 计算得到的特征数据目录。
+
+脚本将在 `$demodir/feature_preprocess/out` 对应生成 train、test、valid三个 Parquet 数据集，并将三者的行数和 `table_size_array` 保存在文件 `data_info.txt` 中（下一步可以直接使用 info 文件，不需要手动填写参数）。运行结果打印类似：
 
 ```
 
@@ -503,7 +504,7 @@ out/
 
 ```bash
 
-cd $demodir/oneflow_process/
+cd $demodir/OneFlow_process/
 
 sh train_deepfm.sh -h
 
@@ -513,7 +514,7 @@ Usage: train_deepfm.sh DATA_DIR(abs)
 
 ```
 
-OneFLow 模型训练使用该目录中的 `train_deepfm.sh` 脚本，使用说明如上所示。通常情况下，不用特别配置。脚本会自动读取 `$DATA_DIR/data_info.txt` 的参数，包括`num_train_samples`、`num_val_samples`、`num_test_samples`和`table_size_array`。请使用预处理后的特征数据集（绝对路径），命令如下：
+OneFlow 模型训练使用该目录中的 `train_deepfm.sh` 脚本，使用说明如上所示。通常情况下，不用特别配置。脚本会自动读取 `$DATA_DIR/data_info.txt` 的参数，包括`num_train_samples`、`num_val_samples`、`num_test_samples`和`table_size_array`。请使用预处理后的特征数据集（绝对路径），命令如下：
 
 ```bash
 
@@ -521,7 +522,7 @@ bash train_deepfm.sh $demodir/feature_preprocess/out
 
 ```
 
-生成模型将存放在 `$demodir/oneflow_process/model_out`，用来 serving 的模型存放在 `$demodir/oneflow_process/model/embedding/1/model`。
+生成模型将存放在 `$demodir/OneFlow_process/model_out`，用来 serving 的模型存放在 `$demodir/OneFlow_process/model/embedding/1/model`。
 
 ## 模型上线流程
 
@@ -530,8 +531,8 @@ bash train_deepfm.sh $demodir/feature_preprocess/out
 使用 OpenMLDB+OneFlow 进行模型上线，主要步骤为：
 
 1. OpenMLDB 上线： SQL 上线，准备在线数据
-2. Oneflow 上线：加载模型
-3. 启动预测服务，使用一个简单的 predict server 做展示
+2. OneFlow 上线：加载模型
+3. 启动预测服务：使用一个简单的 predict server 进行展示
 
 接下来会介绍每一个步骤的具体操作细节。
 
@@ -549,33 +550,33 @@ bash train_deepfm.sh $demodir/feature_preprocess/out
 
    ```
 
-2. 执行上线部署，在 OpenMLDB CLI 中deploy 离线特征抽取使用的SQL（SQL较长，见[离线特征抽取](#224-离线特征抽取)，此处不展示SQL）。
+2. 执行 SQL 上线部署。在 OpenMLDB CLI 中部署离线特征抽取使用的 SQL（SQL 较长，见[离线特征抽取](#离线特征抽取)，此处不展示 SQL）。
 
-```sql
--- OpenMLDB CLI
-USE JD_db;
+    ```sql
+    -- OpenMLDB CLI
+    USE JD_db;
 
-DEPLOY demo <SQL>;
+    DEPLOY demo <SQL>;
 
-```
+    ```
 
-也可以在docker容器内直接运行：
+    也可以在 Docker 容器内直接运行部署脚本：
 
-```
+    ```
 
-/work/openmldb/bin/openmldb --zk_cluster=127.0.0.1:2181 --zk_root_path=/openmldb --role=sql_client < /work/oneflow_demo/sql_scripts/deploy.sql
+    /work/openmldb/bin/openmldb --zk_cluster=127.0.0.1:2181 --zk_root_path=/openmldb --role=sql_client < /work/oneflow_demo/sql_scripts/deploy.sql
 
-```
+    ```
 
-可使用如下命令确认 deploy 信息:
+    可使用如下命令确认部署信息:
 
-```sql
+    ```sql
 
-show deployment demo;
+    show deployment demo;
 
-```
+    ```
 
-deploy 后，可通过访问 OpenMLDB ApiServer `127.0.0.1:9080` 进行实时特征计算。
+    部署后，可通过访问 OpenMLDB ApiServer `127.0.0.1:9080` 进行实时特征计算。
 
 #### 在线数据准备
 
@@ -603,7 +604,7 @@ LOAD DATA INFILE '/work/oneflow_demo/data/JD_data/bo_comment/*.parquet' INTO TAB
 
 ```
 
-也可以使用：
+也可以执行脚本：
 
 ```
 
@@ -621,23 +622,23 @@ LOAD DATA INFILE '/work/oneflow_demo/data/JD_data/bo_comment/*.parquet' INTO TAB
 
 ```{note}
 
-注意，在线 `LOAD  DATA` 也是非阻塞任务，请等待任务运行成功（ `state` 转至 `FINISHED` 状态），再进行下一步操作 。
+注意，在线 `LOAD DATA` 也是异步任务，请等待任务运行成功（ `state` 转至 `FINISHED` 状态），再进行下一步操作 。
 
 ```
 
 ### 配置 OneFlow 推理服务
 
-OneFlow 的推理服务需要 [OneEmbedding](https://docs.oneflow.org/master/cookies/one_embedding.html)的支持。该支持目前还没有合入主框架中。
+OneFlow 的推理服务需要 [OneEmbedding](https://docs.OneFlow.org/master/cookies/one_embedding.html)的支持。该支持目前还没有合入主框架中。
 
-我们提供预编译版本的库在 `$demodir/oneflow_serving/` 中。若与你的环境不兼容，你需要重新编译，可参考附录 A 进行编译测试。接下来步骤默认相关支持已编译完成，并且存放在 `$demodir/oneflow_serving/` 路径中。
+我们提供预编译版本的库在 `$demodir/OneFlow_serving/` 中。若与你的环境不兼容，你需要重新编译，可参考附录 A 进行编译测试。接下来步骤默认相关支持已编译完成，并且存放在 `$demodir/OneFlow_serving/` 路径中。
 
 #### 检查
 
-1. 模型路径 (`$demodir/oneflow_process/model`) 结果是否如下所示。
+1. 模型路径 (`$demodir/OneFlow_process/model`) 结果是否如下所示。
 
 ```
 
-cd $demodir/oneflow_process/
+cd $demodir/OneFlow_process/
 
 tree -L 4 model/
 
@@ -687,9 +688,9 @@ model/
 
 ```
 
-2. 其中，`config.pbtxt` 中的 `name` 要和 config.pbtxt 所在目录的名字（本例中为 `embedding`）保持一致；`model/embedding/1/model/one_embedding_options.json` 的路径 `persistent_table.path` 会自动生成，可以再确认下路径是否正确，应为 `$demodir/oneflow_process/persistent` 绝对路径。
+2. 其中，`config.pbtxt` 中的 `name` 要和 config.pbtxt 所在目录的名字（本例中为 `embedding`）保持一致；`model/embedding/1/model/one_embedding_options.json` 的路径 `persistent_table.path` 会自动生成，可以再确认下路径是否正确，应为 `$demodir/OneFlow_process/persistent` 绝对路径。
 
-#### 启动 OneFLow 推理服务
+#### 启动 OneFlow 推理服务
 
 使用以下命令启动 OneFlow 推理服务：
 
@@ -697,11 +698,11 @@ model/
 
 docker run --runtime=nvidia --rm -p 8001:8001 -p8000:8000 -p 8002:8002 
 
-  -v $demodir/oneflow_process/model:/models 
+  -v $demodir/OneFlow_process/model:/models 
 
-  -v $demodir/oneflow_process/persistent:/root/demo/persistent 
+  -v $demodir/OneFlow_process/persistent:/root/demo/persistent 
 
-  oneflowinc/oneflow-serving:nightly 
+  OneFlowinc/OneFlow-serving:nightly 
 
   bash -c '/opt/tritonserver/bin/tritonserver --model-repository=/models'
 
