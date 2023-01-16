@@ -70,7 +70,7 @@
 
 ## 通过 `LIKE` 语法快速建表
 
-我们支持使用 `LIKE` 语法，基于 Hive 的离线表 schema，在 OpenMLDB 便捷的建立表格，其示例如下。
+我们支持使用 `LIKE` 语法，基于 Hive 已存在的表格，在 OpenMLDB 便捷的建立相同 schema 的表格，其示例如下。
 
 
 ```sql
@@ -82,7 +82,7 @@ CREATE TABLE db1.t1 LIKE HIVE 'hive://hive_db.t1';
 
 * 如果创建表失败仍然会返回 `SUCCEED`，无法在命令行看到错误日志，需要在 TaskManager 日志目录查看
 * 创建的表名必须包含数据库名，如上例的 `db1.t1`（`db1` 不能被忽略）
-* 使用命令行默认超时配置，创建表可能会显示超时但是执行成功，可通过 `SHOW TABLES` 查看最终结果（可以通过命令 `SET @@job_timeout = "xxx"` 来设置超时）
+* 使用命令行默认超时配置，创建表可能会显示超时但是执行成功，可通过 `SHOW TABLES` 查看最终结果（也可以通过命令 `SET @@job_timeout = "xxx"` 来设置超时）
 * Hive 中表如果包含列约束（如 `NOT NULL`），在创建的新表中不会包含这些列约束
 
 ## 导入 Hive 数据到 OpenMLDB
