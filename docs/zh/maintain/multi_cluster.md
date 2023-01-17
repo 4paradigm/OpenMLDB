@@ -14,7 +14,7 @@
 - 分片 follower：从分片，只接受分片 leader 同步过来的数据，目前不接受客户端的直接写请求
 - offset：本文 offset 特指 OpenMLDB 的 binlog 所保存的数据偏移量，该值越大，说明保存有更多的新鲜数据。
 
-关于名词的进一步解释可以查看 OpenMLDB 的在线模块架构文档：https://openmldb.ai/docs/zh/main/reference/arch/online_arch.html
+关于名词的进一步解释可以查看 OpenMLDB 的 [在线模块架构文档](../reference/arch/online_arch.md) 。
 
 ### 目标
 
@@ -63,7 +63,7 @@ replicator 的具体同步逻辑如下：
 - 读取 binlog 并把数据传给 follower
 - follower 收到数据，添加到本地 binlog，同时写到本地分片表中
 
-默认情况下，replicator 会不断读取最新的 binlog，如果没有最新数据写入就会等待一小段时间（默认为 100ms），再尝试读取。在同步时效性要求比较高的场景下，可以修改默认配置（参数 `binlog_sync_wait_time`*，*详见文档[配置文件](https://openmldb.ai/docs/zh/main/deploy/conf.html)），减少等待时间，但是可能会增加 CPU 的资源消耗。
+默认情况下，replicator 会不断读取最新的 binlog，如果没有最新数据写入就会等待一小段时间（默认为 100ms），再尝试读取。在同步时效性要求比较高的场景下，可以修改默认配置（参数 `binlog_sync_wait_time`，详见文档 [配置文件](../deploy/conf.md)），减少等待时间，但是可能会增加 CPU 的资源消耗。
 
 **集群内部自动故障转移**
 
@@ -105,7 +105,7 @@ $ ./bin/openmldb --zk_cluster=172.27.2.52:12200 --zk_root_path=/onebox --role=ns
 
 其中 `zk_cluster` 是 ZooKeeper 地址，`zk_root_path` 是集群在 ZooKeeper 的根路径，`role` 是启动的角色需指定为 `ns_client`
 
-关于 NS client 的更多信息，可以参考[运维 CLI](https://openmldb.ai/docs/zh/main/maintain/cli.html)。
+关于 NS client 的更多信息，可以参考 [运维 CLI](cli.md)。
 
 **添加从集群**
 
@@ -169,7 +169,7 @@ switchmode leader
 
 5. **和业界其他主从集群方案的比较？**
 
-![img](images/tikv.png)![img](images/mysql.png)
+![img](images/tikv_mysql.png)
 
 列举了两个业界常用数据库作为比较 —— TiDB 和 MySQL，OpenMLDB 的做法和这两个在架构上比较相似。TiDB 将数据从 TiKV 传到 TiFlash 也是通过类似方式完成的，TiFlash 有一个 Learner 的概念类似于 OpenMLDB 从集群的 leader。TiKV 会把数据同步到 Learner 上面，然后再由 Learner 去做集群内的数据同步。MySQL 的主从复制，跟我们做法也是类似的，它也是通过 binlog，将数据定期地同步到从集群上面，从集群再进行 binlog 的集群内读取和同步。
 
