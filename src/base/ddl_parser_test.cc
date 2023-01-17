@@ -454,7 +454,7 @@ TEST_F(DDLParserTest, twoTable) {
     ASSERT_EQ(ttl1.ttl_type(), type::TTLType::kAbsoluteTime);
     ASSERT_EQ(ttl1.abs_ttl(), 1);
     ASSERT_EQ(ttl2.ttl_type(), type::TTLType::kLatestTime);
-    ASSERT_EQ(ttl2.abs_ttl(), 1);
+    ASSERT_EQ(ttl2.lat_ttl(), 1);
 }
 
 TEST_F(DDLParserTest, getOutputSchema) {
