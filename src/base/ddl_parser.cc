@@ -608,6 +608,10 @@ bool IndexMapBuilder::UpdateIndex(const hybridse::vm::Range& range) {
 IndexMap IndexMapBuilder::ToMap() {
     IndexMap result;
     for (auto& pair : index_map_) {
+        if (!pair.second->has_ttl_type()) {
+            pair.second->set_ttl_type(::openmldb::type::TTLType::kLatestTime);
+            pair.second->set_lat_ttl(1);
+        }
         auto dec = Decode(pair.first);
         // message owns the TTLSt
         dec.second.set_allocated_ttl(pair.second);
