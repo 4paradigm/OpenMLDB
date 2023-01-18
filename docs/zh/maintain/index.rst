@@ -11,7 +11,7 @@
     monitoring
     cli
     status
-    faq
+    multi_cluster
     diagnose
     openmldb_ops
-    data_export
+    faq
