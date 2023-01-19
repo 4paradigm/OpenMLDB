@@ -20,7 +20,7 @@
 2. [生产级机器学习特征平台](#2-生产级机器学习特征平台)
 3. [核心特性](#3-核心特性)
 4. [FAQ](#4-faq)
-5. [编译和安装](#5-编译和安装)
+5. [下载和安装](#5-下载和安装)
 6. [QuickStart](#6-quickstart)
 7. [使用案例](#7-使用案例)
 8. [OpenMLDB 文档](#8-openmldb-文档)
@@ -79,19 +79,14 @@ OpenMLDB 的整体架构设计是为了达到特征平台从开发到部署的�
    
    SQL 具备表达语法简洁且功能强大的特点，选用 SQL 和数据库开发体验一方面降低开发门槛，另一方面更易于跨部门之间的协作和共享。此外，基于 OpenMLDB 的实践经验表明，经过优化过的 SQL 在特征计算的表达上功能完备，已经经历了长时间的实践考验。
 
-## 5. 编译和安装
+## 5. 下载和安装
 
-:point_right: [点击这里](https://openmldb.ai/docs/zh/main/deploy/index.html)
+- 下载：[GitHub 发布页面](https://github.com/4paradigm/OpenMLDB/releases)，[镜像网站（香港）](https://openmldb.ai/download/)
+- [安装和部署文档](https://openmldb.ai/docs/zh/main/deploy/install_deploy.html)
 
 ## 6. QuickStart
 
-**集群版和单机版**
-
-OpenMLDB 有两种部署模式：集群版（cluster version）和单机版（standalone vesion）。集群版适合于大规模数据的生产环境，提供了良好的可扩展性和高可用性；单机版适合于小数据场景或者试用目的，更加方便部署和使用。集群版和单机版在功能上完全一致，但是在某些具体功能上会有不同限制，详细参阅[此篇说明文档](https://openmldb.ai/docs/zh/main/tutorial/standalone_vs_cluster.html)。你可以选择合适的版本开始试用。
-
-**准备开始体验 OpenMLDB**
-
-:point_right: [OpenMLDB 快速上手指南](https://openmldb.ai/docs/zh/main/quickstart/openmldb_quickstart.html)
+[OpenMLDB 快速上手指南](https://openmldb.ai/docs/zh/main/quickstart/openmldb_quickstart.html)
 
 ## 7. 使用案例
 
@@ -134,6 +129,8 @@ OpenMLDB 有两种部署模式：集群版（cluster version）和单机版（st
 - 如果你是一位新加入的贡献者，你可以从我们的这个 [good first issue](https://github.com/4paradigm/OpenMLDB/issues?q=is%3Aopen+is%3Aissue+label%3A%22good+first+issue%22) 列表开始。
 - 如果你是有一定的开发经验，可以查找 [call-for-contributions](https://github.com/4paradigm/OpenMLDB/issues?q=is%3Aopen+is%3Aissue+label%3Acall-for-contributions) 标签的 issues。
 - 也可以阅读我们[这个文档](https://go005qabor.feishu.cn/docs/doccn7oEU0AlCOGtYz09chIebzd)来了解不同层级的开发任务，参与和开发者讨论
+
+[![Open in Gitpod](https://gitpod.io/button/open-in-gitpod.svg)](https://gitpod.io/#https://github.com/4paradigm/OpenMLDB)
 
 ## 11. 加入社区
 
