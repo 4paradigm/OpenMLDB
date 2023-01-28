@@ -95,7 +95,7 @@ docker exec -it openmldb bash
 
 镜像内提供了 init.sh 脚本帮助用户快速创建集群。
 
-### 使用 OpenMLDB CLI
+### 启动 OpenMLDB CLI
 
 在 OpenMLDB CLI 内操作 OpenMLDB 集群，使用命令如下：
 
@@ -105,13 +105,10 @@ docker exec -it openmldb bash
 
 ```
 
-```{important}
+### 预备知识
 
-在 OpenMLDB 中，使用离线引擎的操作，默认都是异步任务，包括在本次演示中将会用到的 `LOAD DATA`（离线/在线模式均使用离线引擎），和离线 `SELECT INTO` 命令。
+集群版 OpenMLDB 部分命令是异步的，如：在线/离线模式的 `LOAD DATA`、`SELECT`、`SELECT INTO` 命令。提交任务以后可以使用相关的命令如 `SHOW JOBS`、`SHOW JOB` 来查看任务进度，详情参见[离线任务管理文档](../openmldb_sql/task_manage/SHOW_JOB.md)。
 
-任务提交以后，可以使用 [`SHOW JOBS`](../openmldb_sql/task_manage/SHOW_JOBS.md)、[`SHOW JOB <job_id>`](../openmldb_sql/task_manage/SHOW_JOB.md) 来查看任务进度。
-
-```
 
 ## 机器学习训练流程
 
