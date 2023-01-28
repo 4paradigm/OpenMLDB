@@ -76,7 +76,7 @@ LOAD DATA INFILE '/work/taxi-trip/data/taxi_tour_table_train_simple.snappy.parqu
 
 通常在设计特征前，用户需要根据机器学习的目标对数据进行分析，然后根据分析设计和调研特征。然而，机器学习的数据分析和特征研究并不是本文讨论的范畴。本文假定用户具备机器学习的基本理论知识，有解决机器学习问题的能力，能够理解 SQL 语法，并能够使用 SQL 语法构建特征。针对本案例，用户经过分析和调研设计了若干特征。
 
-针对本案例，用户经过分析和调研设计了若干特征：
+针对本案例，经过分析和调研设计了若干特征：
 
 | 特征名          | 特征含义                                                  | SQL特征表示                             |
 | --------------- | --------------------------------------------------------- | --------------------------------------- |
@@ -128,10 +128,10 @@ w2 AS (PARTITION BY passenger_count ORDER BY pickup_datetime ROWS_RANGE BETWEEN 
 1. 模型训练不在 OpenMLDB 内完成，因此首先通过以下 `quit` 命令退出 OpenMLDB CLI。
 
     ```
-    quit
+    quit;
     ```
 
-2. 在普通命令行下，执行 train.py(`/work/taxi-trip` 目录中)，使用开源训练工具 `lightgbm` 基于上一步生成的离线特征表进行模型训练，训练结果存放在 `/tmp/model.txt` 中。
+2. 在普通命令行下，执行 train.py（`/work/taxi-trip` 目录中），使用开源训练工具 `lightgbm` 基于上一步生成的离线特征表进行模型训练，训练结果存放在 `/tmp/model.txt` 中。
 
     ```bash
     python3 train.py /tmp/feature_data /tmp/model.txt
