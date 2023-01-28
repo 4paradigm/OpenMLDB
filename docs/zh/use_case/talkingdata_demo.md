@@ -10,20 +10,10 @@
 
 ### 拉取镜像
 
-在命令行执行以下命令拉取 OpenMLDB 镜像，并启动 Docker 容器：
+在命令行执行以下命令拉取 OpenMLDB 镜像，并启动 Docker 容器，OpenMLDB 和依赖项都已安装：
 
 ```bash
 docker run -it 4pdosc/openmldb:0.7.1 bash
-```
-
-### 在本地运行
-
-下载 OpenMLDB 服务器 pkg，版本>=0.5.0。
-
-安装所有依赖项：
-
-```
-pip install pandas xgboost==1.4.2 sklearn tornado "openmldb>=0.5.0" requests
 ```
 
 ### 准备数据
