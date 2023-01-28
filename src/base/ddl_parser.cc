@@ -747,8 +747,6 @@ bool GroupAndSortOptimizedParser::KeysOptimizedParse(const SchemasContext* root_
                 auto partition_op = dynamic_cast<hybridse::vm::PhysicalPartitionProviderNode*>(scan_op);
                 DCHECK(partition_op != nullptr);
                 auto index_name = partition_op->index_name_;
-                // Apply key columns and order column optimization with given index name
-                // Return false if given index do not match the keys and order column
                 // -- return false won't change index_name
                 LOG(WARNING) << "What if the index is not best index? Do we need to adjust index?";
                 return false;
