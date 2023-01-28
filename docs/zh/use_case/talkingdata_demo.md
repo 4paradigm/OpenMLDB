@@ -1,6 +1,6 @@
 # TalkingData 广告欺诈检测（OpenMLDB + XGboost）
 
-本文将演示如何使用 OpenMLDB 与开源软件 XGboost 联合开发一个完整的机器学习应用，完成 [TalkingData 广告欺诈检测挑战](https://www.kaggle.com/c/talkingdata-adtracking-fraud-detection/overview)）。
+本文将演示如何使用 OpenMLDB 与开源软件 XGboost 联合开发一个完整的机器学习应用，完成 [TalkingData 广告欺诈检测挑战](https://www.kaggle.com/c/talkingdata-adtracking-fraud-detection/overview)。
 
 ## 准备
 
@@ -28,7 +28,7 @@ pip install pandas xgboost==1.4.2 sklearn tornado "openmldb>=0.5.0" requests
 
 ### 准备数据
 
-本例使用 `train.csv` 的前 10000 行作为示例数据，请参见 [train\_sample.csv](https://github.com/4paradigm/OpenMLDB/tree/main/demo/talkingdata-adtracking-fraud-detection)。
+本例使用 `train.csv` 的前 10000 行作为示例数据，详情请参见代码 [train\_sample.csv](https://github.com/4paradigm/OpenMLDB/tree/main/demo/talkingdata-adtracking-fraud-detection)。
 
 如果你想要测试完整数据，请通过以下方式下载：
 
@@ -48,7 +48,7 @@ kaggle competitions download -c talkingdata-adtracking-fraud-detection
 
 ### 启动预测服务器
 
-即使还没有部署预测服务器，你也可以使用选项 `--no-init` 启动它。
+即使还没有部署预测服务器，你也可以使用选项 `--no-init` 启动。
 
 ```
 python3 /work/talkingdata/predict_server.py --no-init > predict.log 2>&1 &
@@ -88,11 +88,16 @@ python3 predict.py
 
 ## 提示
 
-预构建的 XGboost python wheel 可能与您计算机中的 openmldb python sdk 不兼容，可能会出现该报错：
-`train\_and\_serve.py core dump at SetGPUAttribute...`
+预构建的 XGboost python wheel 可能与您计算机中的 openmldb python sdk 不兼容，可能会出现该报错：`train\_and\_serve.py core dump at SetGPUAttribute...`
 
 通过源代码构建 XGboost 可解决该问题：进入 XGhboost 源代码所在的目录，并执行：
-`cd python-package && python setup.py install`
+
+```bash
+cd python-package && python setup.py install
+```
 
 或者构建 wheel：
-`python setup.py bdist_wheel`
+
+```bash
+python setup.py bdist_wheel
+``` 
