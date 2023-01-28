@@ -35,15 +35,15 @@ cd taxi-trip
 - 配置 zookeeper
 - 启动集群版 OpenMLDB
 
-### 启动 OpenMLDB CLI 客户端
+### 启动 OpenMLDB CLI
 
 ```bash
 /work/openmldb/bin/openmldb --zk_cluster=127.0.0.1:2181 --zk_root_path=/openmldb --role=sql_client
 ```
 
-### 预备知识：异步任务
+### 预备知识
 
-集群版 OpenMLDB 部分命令是异步的，如：在线/离线模式的 `LOAD DATA`、`SELECT`、`SELECT INTO` 命令。提交任务以后可以使用相关的命令如 `SHOW JOBS`, `SHOW JOB` 来查看任务进度，详情参见[离线任务管理文档](../openmldb_sql/task_manage)。
+集群版 OpenMLDB 部分命令是异步的，如：在线/离线模式的 `LOAD DATA`、`SELECT`、`SELECT INTO` 命令。提交任务以后可以使用相关的命令如 `SHOW JOBS`、`SHOW JOB` 来查看任务进度，详情参见[离线任务管理文档](../openmldb_sql/task_manage/SHOW_JOB.md)。
 
 ## 机器学习全流程
 
@@ -120,22 +120,22 @@ w2 AS (PARTITION BY passenger_count ORDER BY pickup_datetime ROWS_RANGE BETWEEN 
 ```
 
 ```{note}
-注意，集群版 `SELECT INTO` 为非阻塞任务，可以使用命令 `SHOW JOBS` 查看任务运行状态，请等待任务运行成功（ `state` 转至 `FINISHED` 状态），再进行下一步操作 。
+`SELECT INTO` 为异步任务，可以使用命令 `SHOW JOBS` 查看任务运行状态，请等待任务运行成功（ `state` 转至 `FINISHED` 状态），再进行下一步操作 。
 ```
 
 ### 步骤 5：模型训练
 
 1. 模型训练不在 OpenMLDB 内完成，因此首先通过以下 `quit` 命令退出 OpenMLDB CLI。
 
-  ```
-  quit
-  ```
+    ```
+    quit
+    ```
 
 2. 在普通命令行下，执行 train.py(`/work/taxi-trip` 目录中)，使用开源训练工具 `lightgbm` 基于上一步生成的离线特征表进行模型训练，训练结果存放在 `/tmp/model.txt` 中。
 
-  ```bash
-  python3 train.py /tmp/feature_data /tmp/model.txt
-  ```
+    ```bash
+    python3 train.py /tmp/feature_data /tmp/model.txt
+    ```
 
 ### 步骤 6：特征抽取 SQL 脚本上线
 
@@ -149,25 +149,25 @@ w2 AS (PARTITION BY passenger_count ORDER BY pickup_datetime ROWS_RANGE BETWEEN 
 
 2. 执行上线部署
 
-  ```sql
-  --OpenMLDB CLI
-  USE demo_db;
-  SET @@execute_mode='online';
-  DEPLOY demo SELECT trip_duration, passenger_count,
-  sum(pickup_latitude) OVER w AS vendor_sum_pl,
-  max(pickup_latitude) OVER w AS vendor_max_pl,
-  min(pickup_latitude) OVER w AS vendor_min_pl,
-  avg(pickup_latitude) OVER w AS vendor_avg_pl,
-  sum(pickup_latitude) OVER w2 AS pc_sum_pl,
-  max(pickup_latitude) OVER w2 AS pc_max_pl,
-  min(pickup_latitude) OVER w2 AS pc_min_pl,
-  avg(pickup_latitude) OVER w2 AS pc_avg_pl,
-  count(vendor_id) OVER w2 AS pc_cnt,
-  count(vendor_id) OVER w AS vendor_cnt
-  FROM t1
-  WINDOW w AS (PARTITION BY vendor_id ORDER BY pickup_datetime ROWS_RANGE BETWEEN 1d PRECEDING AND CURRENT ROW),
-  w2 AS (PARTITION BY passenger_count ORDER BY pickup_datetime ROWS_RANGE BETWEEN 1d PRECEDING AND CURRENT ROW);
-  ```
+    ```sql
+    --OpenMLDB CLI
+    USE demo_db;
+    SET @@execute_mode='online';
+    DEPLOY demo SELECT trip_duration, passenger_count,
+    sum(pickup_latitude) OVER w AS vendor_sum_pl,
+    max(pickup_latitude) OVER w AS vendor_max_pl,
+    min(pickup_latitude) OVER w AS vendor_min_pl,
+    avg(pickup_latitude) OVER w AS vendor_avg_pl,
+    sum(pickup_latitude) OVER w2 AS pc_sum_pl,
+    max(pickup_latitude) OVER w2 AS pc_max_pl,
+    min(pickup_latitude) OVER w2 AS pc_min_pl,
+    avg(pickup_latitude) OVER w2 AS pc_avg_pl,
+    count(vendor_id) OVER w2 AS pc_cnt,
+    count(vendor_id) OVER w AS vendor_cnt
+    FROM t1
+    WINDOW w AS (PARTITION BY vendor_id ORDER BY pickup_datetime ROWS_RANGE BETWEEN 1d PRECEDING AND CURRENT ROW),
+    w2 AS (PARTITION BY passenger_count ORDER BY pickup_datetime ROWS_RANGE BETWEEN 1d PRECEDING AND CURRENT ROW);
+    ```
 
 ### 步骤 7：导入在线数据
 
