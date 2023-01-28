@@ -1,6 +1,6 @@
 #  出租车行程时间预测（OpenMLDB + LightGBM）
 
-本文我们将以[Kaggle上的出租车行车时间预测问题为例](https://www.kaggle.com/c/nyc-taxi-trip-duration/overview)，示范如何使用[OpenMLDB](https://github.com/4paradigm/OpenMLDB)和 LightGBM 联合来打造一个完整的机器学习应用。本案例基于 OpenMLDB 集群版进行教程演示。
+本文将以[Kaggle上的出租车行车时间预测问题](https://www.kaggle.com/c/nyc-taxi-trip-duration/overview)为例，示范如何使用 OpenMLDB 和 LightGBM 联合来打造一个完整的机器学习应用。
 
 注意，本文档使用的是预编译好的 docker 镜像。如果希望在自己编译和搭建的 OpenMLDB 环境下进行测试，需要配置使用我们[面向特征工程优化的 Spark 发行版](../tutorial/openmldbspark_distribution.md)。请参考相关[编译](../deploy/compile.md)（参考章节：“针对OpenMLDB优化的Spark发行版”）和[安装部署文档](../deploy/install_deploy.md)（参考章节：“部署TaskManager” - “2 修改配置文件conf/taskmanager.properties”）。
 
