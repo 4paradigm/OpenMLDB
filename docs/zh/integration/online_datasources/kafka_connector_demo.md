@@ -193,4 +193,4 @@ rm -rf /tmp/kafka-logs /tmp/kraft-combined-logs
 ```
 /work/init.sh
 ```
-然后你可以在OpenMLDB创建database，启动Kafka。。。
+`init.sh`会启动新的OpenMLDB集群，你可以在OpenMLDB创建database，再重新启动Kafka。
