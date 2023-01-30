@@ -889,7 +889,7 @@ void MemTableTraverseIterator::NextPK() {
         it_->SeekToFirst();
         record_idx_ = 1;
         traverse_cnt_++;
-        if (traverse_cnt_ >= FLAGS_max_traverse_cnt) {
+        if (FLAGS_max_traverse_cnt > 0 && traverse_cnt_ >= FLAGS_max_traverse_cnt) {
             break;
         }
     } while (it_ == nullptr || !it_->Valid() || expire_value_.IsExpired(it_->GetKey(), record_idx_));
@@ -1005,7 +1005,7 @@ void MemTableTraverseIterator::SeekToFirst() {
             it_ = nullptr;
             pk_it_->Next();
             ticket_.Pop();
-            if (traverse_cnt_ >= FLAGS_max_traverse_cnt) {
+            if (FLAGS_max_traverse_cnt > 0 && traverse_cnt_ >= FLAGS_max_traverse_cnt) {
                 return;
             }
         }

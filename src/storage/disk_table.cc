@@ -629,7 +629,7 @@ DiskTableTraverseIterator::~DiskTableTraverseIterator() {
 uint64_t DiskTableTraverseIterator::GetCount() const { return traverse_cnt_; }
 
 bool DiskTableTraverseIterator::Valid() {
-    if (traverse_cnt_ >= FLAGS_max_traverse_cnt) {
+    if (FLAGS_max_traverse_cnt > 0 && traverse_cnt_ >= FLAGS_max_traverse_cnt) {
         return false;
     }
     return it_->Valid();
@@ -655,15 +655,7 @@ void DiskTableTraverseIterator::Next() {
             }
             record_idx_ = 1;
         }
-        if (traverse_cnt_ >= FLAGS_max_traverse_cnt) {
-            if (has_ts_idx_) {
-                uint64_t ts = 0;
-                rocksdb::Slice tmp_pk;
-                ParseKeyAndTs(has_ts_idx_, it_->key(), &tmp_pk, &ts, &cur_ts_idx);
-                if (tmp_pk.compare(rocksdb::Slice(pk_)) == 0 && cur_ts_idx < ts_idx_) {
-                    ts_ = UINT64_MAX;
-                }
-            }
+        if (FLAGS_max_traverse_cnt > 0 && traverse_cnt_ >= FLAGS_max_traverse_cnt) {
             break;
         }
         if (IsExpired()) {
@@ -688,15 +680,7 @@ void DiskTableTraverseIterator::SeekToFirst() {
     for (; it_->Valid(); it_->Next()) {
         uint32_t cur_ts_idx = UINT32_MAX;
         traverse_cnt_++;
-        if (traverse_cnt_ >= FLAGS_max_traverse_cnt) {
-            if (has_ts_idx_) {
-                uint64_t ts = 0;
-                rocksdb::Slice tmp_pk;
-                ParseKeyAndTs(has_ts_idx_, it_->key(), &tmp_pk, &ts, &cur_ts_idx);
-                if (tmp_pk.compare(rocksdb::Slice(pk_)) == 0 && cur_ts_idx < ts_idx_) {
-                    ts_ = UINT64_MAX;
-                }
-            }
+        if (FLAGS_max_traverse_cnt > 0 && traverse_cnt_ >= FLAGS_max_traverse_cnt) {
             break;
         }
         ParseKeyAndTs(has_ts_idx_, it_->key(), &pk_, &ts_, &cur_ts_idx);
@@ -723,15 +707,7 @@ void DiskTableTraverseIterator::Seek(const std::string& pk, uint64_t time) {
         for (; it_->Valid(); it_->Next()) {
             uint32_t cur_ts_idx = UINT32_MAX;
             traverse_cnt_++;
-            if (traverse_cnt_ >= FLAGS_max_traverse_cnt) {
-                if (has_ts_idx_) {
-                    rocksdb::Slice tmp_pk;
-                    uint64_t ts = 0;
-                    ParseKeyAndTs(has_ts_idx_, it_->key(), &tmp_pk, &ts, &cur_ts_idx);
-                    if (tmp_pk.compare(rocksdb::Slice(pk_)) == 0 && cur_ts_idx < ts_idx_) {
-                        ts_ = UINT64_MAX;
-                    }
-                }
+            if (FLAGS_max_traverse_cnt > 0 && traverse_cnt_ >= FLAGS_max_traverse_cnt) {
                 break;
             }
             ParseKeyAndTs(has_ts_idx_, it_->key(), &pk_, &ts_, &cur_ts_idx);
@@ -759,15 +735,7 @@ void DiskTableTraverseIterator::Seek(const std::string& pk, uint64_t time) {
         for (; it_->Valid(); it_->Next()) {
             uint32_t cur_ts_idx = UINT32_MAX;
             traverse_cnt_++;
-            if (traverse_cnt_ >= FLAGS_max_traverse_cnt) {
-                if (has_ts_idx_) {
-                    rocksdb::Slice tmp_pk;
-                    uint64_t ts = 0;
-                    ParseKeyAndTs(has_ts_idx_, it_->key(), &tmp_pk, &ts, &cur_ts_idx);
-                    if (tmp_pk.compare(rocksdb::Slice(pk_)) == 0 && cur_ts_idx < ts_idx_) {
-                        ts_ = UINT64_MAX;
-                    }
-                }
+            if (FLAGS_max_traverse_cnt > 0 && traverse_cnt_ >= FLAGS_max_traverse_cnt) {
                 break;
             }
             ParseKeyAndTs(has_ts_idx_, it_->key(), &pk_, &ts_, &cur_ts_idx);
@@ -810,15 +778,7 @@ void DiskTableTraverseIterator::NextPK() {
     while (it_->Valid()) {
         uint32_t cur_ts_idx = UINT32_MAX;
         traverse_cnt_++;
-        if (traverse_cnt_ >= FLAGS_max_traverse_cnt) {
-            if (has_ts_idx_) {
-                rocksdb::Slice tmp_pk;
-                uint64_t ts = 0;
-                ParseKeyAndTs(has_ts_idx_, it_->key(), &tmp_pk, &ts, &cur_ts_idx);
-                if (tmp_pk.compare(rocksdb::Slice(pk_)) == 0 && cur_ts_idx < ts_idx_) {
-                    ts_ = UINT64_MAX;
-                }
-            }
+        if (FLAGS_max_traverse_cnt > 0 && traverse_cnt_ >= FLAGS_max_traverse_cnt) {
             break;
         }
         ParseKeyAndTs(has_ts_idx_, it_->key(), &pk_, &ts_, &cur_ts_idx);

@@ -182,10 +182,10 @@
 #--key_entry_max_height=8
 
 # 查询配置
-# 最大扫描条数（全表扫描/全表聚合），默认：50000
-#--max_traverse_cnt=50000
-# 最大扫描pk数（批处理），默认：5000
-#--max_traverse_pk_cnt=5000
+# 最大扫描条数(全表扫描/全表聚合)，默认：0
+#--max_traverse_cnt=0
+# 最大扫描不同key的个数(批处理)，默认：0
+#--max_traverse_pk_cnt=0
 # 结果最大大小（byte)，默认：2MB
 #--scan_max_bytes_size=2097152
 
