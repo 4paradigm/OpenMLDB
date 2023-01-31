@@ -12,5 +12,8 @@ localhost:7527
 [apiserver]
 localhost:9080
 
+[taskmanager]
+localhost:9902
+
 [zookeeper]
 localhost:2181:2888:3888 /tmp/openmldb/zk-1
