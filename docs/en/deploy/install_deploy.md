@@ -171,6 +171,7 @@ which are listed below.
 
 | Environment Variables             | Default Values                                          | Definitons                                                                                            |
 |-----------------------------------|---------------------------------------------------------|-------------------------------------------------------------------------------------------------------|
+| OPENMLDB_VERSION                  | 0.7.1                                                   | OpenMLDB version                                                                                      |
 | OPENMLDB_MODE                     | standalone                                              | standalone or cluster mode                                                                            |
 | OPENMLDB_HOME                     | root directory of the release folder                    | openmldb root path                                                                                    |
 | SPARK_HOME                        | $OPENMLDB_HOME/spark                                    | the root path of openmldb spark release. if not exists, download from online                          |
@@ -200,6 +201,9 @@ node3:7527
 [apiserver]
 node3:9080
 
+[taskmanager]
+localhost:9902
+
 [zookeeper]
 node3:2181:2888:3888 /tmp/openmldb/zk-1
 ```
@@ -208,6 +212,7 @@ The configuration file is divided into four sections, identified by `[]`:
 - `[tablet]`：tablet node list
 - `[nameserver]`：nameserver node list
 - `[apiserver]`：apiserver node list
+- `[taskmanager]`：taskmanager node list
 - `[zookeeper]`：zookeeper node list
 
 For each node list, one line represents one node, with the format of `host:port WORKDIR`.
@@ -219,6 +224,10 @@ and `zk_election_port` for the leader election.
 Note that for every node configuration, only the `host` is required, while others are optional.
 If the optional parameters are not provided,
 default values are used, which are defined in `conf/openmldb-env.sh`.
+
+```{warning}
+If multiple TaskManager instances are deployed in different machines，the `offline.data.prefix` should be configured to be globally accessabile by these machines (e.g., hdfs path).
+```
 
 ### Deployment
 ```bash
