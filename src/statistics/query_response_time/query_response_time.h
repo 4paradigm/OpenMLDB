@@ -111,7 +111,7 @@ inline absl::Duration ParseDurationFromStr(absl::string_view raw, TimeUnit unit 
 }
 
 struct ResponseTimeRow {
-    ResponseTimeRow(absl::Duration time, uint32_t cnt, absl::Duration total)
+    ResponseTimeRow(absl::Duration time, uint64_t cnt, absl::Duration total)
         : time_(time), count_(cnt), total_(total) {}
     ResponseTimeRow(const ResponseTimeRow& row)
         : time_(row.time_), count_(row.count_), total_(row.total_) {}
@@ -122,7 +122,7 @@ struct ResponseTimeRow {
     std::string GetTotalAsStr(TimeUnit unit = TimeUnit::MICRO_SECOND) const { return GetDurationAsStr(total_, unit); }
 
     absl::Duration time_;
-    uint32_t count_;
+    uint64_t count_;
     absl::Duration total_;
 };
 

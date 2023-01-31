@@ -10789,7 +10789,12 @@ void NameServerImpl::SyncDeployStats() {
     while (rs->Next()) {
         auto name = rs->GetAsStringUnsafe(0);
         auto time = rs->GetAsStringUnsafe(1);
-        int32_t cnt = rs->GetInt32Unsafe(2);
+        int64_t cnt = 0;
+        if (rs->GetSchema()->GetColumnType(2) == hybridse::sdk::DataType::kTypeInt64) {
+            cnt = rs->GetInt64Unsafe(2);
+        } else {
+            cnt = rs->GetInt32Unsafe(2);
+        }
         auto total = rs->GetAsStringUnsafe(3);
 
         auto ts = statistics::ParseDurationFromStr(time, statistics::TimeUnit::SECOND);
