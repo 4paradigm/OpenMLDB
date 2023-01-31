@@ -10826,7 +10826,7 @@ void NameServerImpl::SyncDeployStats() {
         DLOG(INFO) << "sync deploy stats: executing sql: " << insert_sql;
         sr->ExecuteInsert("", insert_sql, &st);
         if (!st.IsOK()) {
-            LOG(ERROR) << "[ERROR] insert deploy stats failed: " << s.msg;
+            LOG(ERROR) << "[ERROR] insert deploy stats failed: " << st.msg;
         }
     }
     // TODO(ace): add logs for summary how many rows affected and time cost
