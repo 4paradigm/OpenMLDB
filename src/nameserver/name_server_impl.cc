@@ -5567,17 +5567,17 @@ void NameServerImpl::OnLocked() {
     CreateDatabaseOrExit(PRE_AGG_DB);
 
     CreateDatabaseOrExit(INFORMATION_SCHEMA_DB);
-
+    auto& table_infos = db_table_info_[INFORMATION_SCHEMA_DB];
     // TODO(ace): create table if not exists
-    if (FLAGS_system_table_replica_num > 0 && db_table_info_[INFORMATION_SCHEMA_DB].count(GLOBAL_VARIABLES) == 0) {
-        CreateSystemTableOrExit(SystemTableType::kGlobalVariable);
-        InitGlobalVarTable();
-    }
     if (FLAGS_system_table_replica_num > 0) {
-        if (db_table_info_[INFORMATION_SCHEMA_DB].count(DEPLOY_RESPONSE_TIME) == 0) {
+        if (table_infos.count(GLOBAL_VARIABLES) == 0) {
+            CreateSystemTableOrExit(SystemTableType::kGlobalVariable);
+            InitGlobalVarTable();
+        }
+        if (auto iter = table_infos.find(DEPLOY_RESPONSE_TIME); iter == table_infos.end()) {
             CreateSystemTableOrExit(SystemTableType::kDeployResponseTime);
-        } else {
-            LOG(INFO) << DEPLOY_RESPONSE_TIME << " table already exists";
+        } else if (iter->second->column_desc(2).data_type() != type::DataType::kBigInt) {
+            LOG(WARNING) << "the result of count in DEPLOY_RESPONSE_TIME may overflow as the type is int32";
         }
     }
 
