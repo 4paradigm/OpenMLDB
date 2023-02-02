@@ -46,7 +46,7 @@ distribute() {
 
   echo "copy $src to $host:$dest"
   if [[ "$type" = "openmldb" ]]; then
-    for folder in bin sbin conf
+    for folder in bin sbin conf taskmanager
     do
       if [[ "$use_ssh" = true ]]; then
         rsync -arz "$src/$folder"/ "$host:$dest/$folder"/
@@ -86,7 +86,7 @@ do
 
   echo "deploy tablet to $host:$port $dir"
   distribute "$host" "$dir"
-  cmd="cd $dir; OPENMLDB_HOST=$host OPENMLDB_TABLET_PORT=$port OPENMLDB_ZK_CLUSTER=${OPENMLDB_ZK_CLUSTER} OPENMLDB_ZK_ROOT_PATH=${OPENMLDB_ZK_ROOT_PATH} sbin/deploy.sh tablet"
+  cmd="cd $dir && OPENMLDB_HOST=$host OPENMLDB_TABLET_PORT=$port OPENMLDB_ZK_CLUSTER=${OPENMLDB_ZK_CLUSTER} OPENMLDB_ZK_ROOT_PATH=${OPENMLDB_ZK_ROOT_PATH} sbin/deploy.sh tablet"
   run_auto "$host" "$cmd"
 done
 
@@ -99,7 +99,7 @@ do
 
   echo "deploy nameserver to $host:$port $dir"
   distribute "$host" "$dir"
-  cmd="cd $dir; OPENMLDB_HOST=$host OPENMLDB_NAMESERVER_PORT=$port OPENMLDB_ZK_CLUSTER=${OPENMLDB_ZK_CLUSTER} OPENMLDB_ZK_ROOT_PATH=${OPENMLDB_ZK_ROOT_PATH} sbin/deploy.sh nameserver"
+  cmd="cd $dir && OPENMLDB_HOST=$host OPENMLDB_NAMESERVER_PORT=$port OPENMLDB_ZK_CLUSTER=${OPENMLDB_ZK_CLUSTER} OPENMLDB_ZK_ROOT_PATH=${OPENMLDB_ZK_ROOT_PATH} sbin/deploy.sh nameserver"
   run_auto "$host" "$cmd"
 done
 
@@ -112,7 +112,7 @@ do
 
   echo "deploy apiserver to $host:$port $dir"
   distribute "$host" "$dir"
-  cmd="cd $dir; OPENMLDB_HOST=$host OPENMLDB_APISERVER_PORT=$port OPENMLDB_ZK_CLUSTER=${OPENMLDB_ZK_CLUSTER} OPENMLDB_ZK_ROOT_PATH=${OPENMLDB_ZK_ROOT_PATH} sbin/deploy.sh apiserver"
+  cmd="cd $dir && OPENMLDB_HOST=$host OPENMLDB_APISERVER_PORT=$port OPENMLDB_ZK_CLUSTER=${OPENMLDB_ZK_CLUSTER} OPENMLDB_ZK_ROOT_PATH=${OPENMLDB_ZK_ROOT_PATH} sbin/deploy.sh apiserver"
   run_auto "$host" "$cmd"
 done
 
@@ -127,7 +127,9 @@ else
     if [[ -e "${spark_tar}" ]]; then
       echo "Skip downloading openmldbspark as ${spark_tar} already exists"
     else
-      curl -SLo ${spark_tar} "https://github.com/4paradigm/spark/releases/download/v3.2.1-openmldb0.6.6/${spark_tar}"
+      url="https://github.com/4paradigm/spark/releases/download/v3.2.1-openmldb${OPENMLDB_VERSION}/${spark_tar}"
+      echo "Download spark from $url"
+      curl -SLo ${spark_tar} "$url"
     fi
     tar -xzf ${spark_tar}
     ln -s "$(pwd)"/"${spark_name}" "${SPARK_HOME}"
@@ -136,8 +138,18 @@ else
   fi
 fi
 
-# deploy taskmanager locally
-OPENMLDB_TASKMANAGER_PORT="$OPENMLDB_TASKMANAGER_PORT" sbin/deploy.sh taskmanager
+# deploy taskmanagers
+for line in $(parse_host conf/hosts taskmanager)
+do
+  host=$(echo "$line" | awk -F ' ' '{print $1}')
+  port=$(echo "$line" | awk -F ' ' '{print $2}')
+  dir=$(echo "$line" | awk -F ' ' '{print $3}')
+
+  echo "deploy taskmanager to $host:$port $dir"
+  distribute "$host" "$dir"
+  cmd="cd $dir && OPENMLDB_HOST=$host OPENMLDB_TASKMANAGER_PORT=$port OPENMLDB_ZK_CLUSTER=${OPENMLDB_ZK_CLUSTER} OPENMLDB_ZK_ROOT_PATH=${OPENMLDB_ZK_ROOT_PATH} sbin/deploy.sh taskmanager"
+  run_auto "$host" "$cmd"
+done
 
 # deploy zookeeper
 # TODO: base on the OPENMLDB_ZK_CLUSTER and change the port
@@ -187,7 +199,7 @@ if [[ "${OPENMLDB_USE_EXISTING_ZK_CLUSTER}" != "true" ]]; then
 
     echo "deploy zookeeper to $host:$port $dir"
     distribute "$host" "$dir" "$OPENMLDB_ZK_HOME" zookeeper
-    cmd="cd $dir; OPENMLDB_ZK_HOME=$dir OPENMLDB_ZK_QUORUM=\"$quorum_config\" OPENMLDB_ZK_MYID=$i OPENMLDB_ZK_CLUSTER_CLIENT_PORT=$port sbin/deploy.sh zookeeper"
+    cmd="cd $dir && OPENMLDB_HOST=$host OPENMLDB_ZK_HOME=$dir OPENMLDB_ZK_QUORUM=\"$quorum_config\" OPENMLDB_ZK_MYID=$i OPENMLDB_ZK_CLUSTER_CLIENT_PORT=$port sbin/deploy.sh zookeeper"
     run_auto "$host" "$cmd"
     i=$((i+1))
   done

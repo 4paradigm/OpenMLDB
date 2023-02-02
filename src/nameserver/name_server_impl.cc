@@ -29,6 +29,7 @@
 #include "absl/strings/numbers.h"
 #include "absl/time/time.h"
 #include "nameserver/system_table.h"
+#include "sdk/db_sdk.h"
 #include "statistics/query_response_time/deploy_query_response_time.h"
 #ifdef DISALLOW_COPY_AND_ASSIGN
 #undef DISALLOW_COPY_AND_ASSIGN
