@@ -185,7 +185,7 @@
 # 最大扫描条数(全表扫描/全表聚合)，默认：0
 #--max_traverse_cnt=0
 # 最大扫描不同key的个数(批处理)，默认：0
-#--max_traverse_pk_cnt=0
+#--max_traverse_key_cnt=0
 # 结果最大大小（byte)，默认：2MB
 #--scan_max_bytes_size=2097152
 
