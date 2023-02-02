@@ -218,6 +218,7 @@ cd openmldb-0.7.1-linux
 
 | 环境变量                              | 默认值                                | 定义                                                                      |
 |-----------------------------------|------------------------------------|-------------------------------------------------------------------------|
+| OPENMLDB_VERSION                  | 0.7.1                              | OpenMLDB版本                                                              |
 | OPENMLDB_MODE                     | standalone                         | standalone或者cluster                                                     |
 | OPENMLDB_HOME                     | 当前发行版的根目录                          | openmldb发行版根目录                                                          |
 | SPARK_HOME                        | $OPENMLDB_HOME/spark               | openmldb spark发行版根目录，如果该目录不存在，自动从网上下载                                   |
@@ -246,6 +247,9 @@ node3:7527
 [apiserver]
 node3:9080
 
+[taskmanager]
+localhost:9902
+
 [zookeeper]
 node3:2181:2888:3888 /tmp/openmldb/zk-1
 ```
@@ -255,6 +259,7 @@ node3:2181:2888:3888 /tmp/openmldb/zk-1
 - `[tablet]`：配置部署TabletServer的节点列表
 - `[nameserver]`：配置部署NameServer的节点列表
 - `[apiserver]`：配置部署APIServer的节点列表
+- `[taskmanager]`：配置部署TaskManager的节点列表
 - `[zookeeper]`：配置部署ZooKeeper的节点列表
 
 每个区域的节点列表，每一行代表一个节点，每行格式为`host:port WORKDIR`。
@@ -263,6 +268,10 @@ node3:2181:2888:3888 /tmp/openmldb/zk-1
 其格式为`host:port:zk_peer_port:zk_election_port WORKDIR`。
 
 每一行节点列表，除了`host`是必须的，其他均为可选，如果没有提供，会使用默认配置，默认配置参考`conf/openmldb-env.sh`。
+
+```{warning}
+如果在不同机器上部署多个TaskManager，其`offline.data.prefix`配置的路径，这些机器必须可以访问，建议配置hdfs路径。
+```
 
 ### 部署
 ```bash
