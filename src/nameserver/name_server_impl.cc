@@ -5576,7 +5576,7 @@ void NameServerImpl::OnLocked() {
         if (db_table_info_[INFORMATION_SCHEMA_DB].count(DEPLOY_RESPONSE_TIME) == 0) {
             CreateSystemTableOrExit(SystemTableType::kDeployResponseTime);
         } else {
-            LOG(INFO) << "DEPLOY_RESPONSE_TIME table already exists";
+            LOG(INFO) << DEPLOY_RESPONSE_TIME << " table already exists";
         }
     }
 
