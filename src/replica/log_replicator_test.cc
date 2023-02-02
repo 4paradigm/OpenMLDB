@@ -29,6 +29,7 @@
 
 #include "base/glog_wrapper.h"
 #include "base/status.h"
+#include "codec/sdk_codec.h"
 #include "common/thread_pool.h"
 #include "common/timer.h"
 #include "proto/tablet.pb.h"

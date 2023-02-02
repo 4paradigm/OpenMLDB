@@ -27,6 +27,7 @@
 #include "base/glog_wrapper.h"
 #include "client/tablet_client.h"
 #include "codec/schema_codec.h"
+#include "codec/sdk_codec.h"
 #include "common/timer.h"
 #include "proto/tablet.pb.h"
 #include "replica/log_replicator.h"
