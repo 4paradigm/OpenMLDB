@@ -5572,8 +5572,12 @@ void NameServerImpl::OnLocked() {
         CreateSystemTableOrExit(SystemTableType::kGlobalVariable);
         InitGlobalVarTable();
     }
-    if (FLAGS_system_table_replica_num > 0 && db_table_info_[INFORMATION_SCHEMA_DB].count(DEPLOY_RESPONSE_TIME) == 0) {
-        CreateSystemTableOrExit(SystemTableType::kDeployResponseTime);
+    if (FLAGS_system_table_replica_num > 0) {
+        if (db_table_info_[INFORMATION_SCHEMA_DB].count(DEPLOY_RESPONSE_TIME) == 0) {
+            CreateSystemTableOrExit(SystemTableType::kDeployResponseTime);
+        } else {
+            LOG(INFO) << "DEPLOY_RESPONSE_TIME table already exists";
+        }
     }
 
     running_.store(true, std::memory_order_release);
@@ -10789,11 +10793,11 @@ void NameServerImpl::SyncDeployStats() {
     while (rs->Next()) {
         auto name = rs->GetAsStringUnsafe(0);
         auto time = rs->GetAsStringUnsafe(1);
-        int64_t cnt = 0;
+        uint64_t cnt = 0;
         if (rs->GetSchema()->GetColumnType(2) == hybridse::sdk::DataType::kTypeInt64) {
-            cnt = rs->GetInt64Unsafe(2);
+            cnt = static_cast<uint64_t>(rs->GetInt64Unsafe(2));
         } else {
-            cnt = rs->GetInt32Unsafe(2);
+            cnt = static_cast<uint64_t>(rs->GetInt32Unsafe(2));
         }
         auto total = rs->GetAsStringUnsafe(3);
 

@@ -203,7 +203,7 @@ class TimeCollector {
 
  private:
     TimeDistributionHelper helper_;
-    std::atomic<uint32_t> count_[TIME_DISTRIBUTION_BUCKET_COUNT];
+    std::atomic<uint64_t> count_[TIME_DISTRIBUTION_BUCKET_COUNT];
     std::atomic<uint64_t> total_[TIME_DISTRIBUTION_BUCKET_COUNT];
 };
 
