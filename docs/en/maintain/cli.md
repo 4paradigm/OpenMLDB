@@ -154,6 +154,8 @@ partition migrate ok
 partition migrate ok
 ```
 
+**Note**: leader partition cannot be migrated.
+
 ### confget
 
 Get configuration information, currently only supports auto\_failover
