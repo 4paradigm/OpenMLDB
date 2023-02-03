@@ -1413,9 +1413,9 @@ class CaseWhenExprNode : public ExprNode {
         this->AddChild(else_expr);
     }
     ~CaseWhenExprNode() {}
-    void Print(std::ostream &output, const std::string &org_tab) const;
-    const std::string GetExprString() const;
-    virtual bool Equals(const ExprNode *that) const;
+    void Print(std::ostream &output, const std::string &org_tab) const override;
+    const std::string GetExprString() const override;
+    bool Equals(const ExprNode *that) const override;
     CaseWhenExprNode *ShadowCopy(NodeManager *) const override;
 
     ExprListNode *when_expr_list() const { return dynamic_cast<ExprListNode *>(GetChild(0)); }
@@ -1436,9 +1436,9 @@ class CallExprNode : public ExprNode {
 
     ~CallExprNode() {}
 
-    void Print(std::ostream &output, const std::string &org_tab) const;
-    const std::string GetExprString() const;
-    virtual bool Equals(const ExprNode *that) const;
+    void Print(std::ostream &output, const std::string &org_tab) const override;
+    const std::string GetExprString() const override;
+    bool Equals(const ExprNode *that) const override;
 
     CallExprNode *ShadowCopy(NodeManager *) const override;
     CallExprNode *DeepCopy(NodeManager *) const override;
@@ -1515,8 +1515,8 @@ class CondExpr : public ExprNode {
         AddChild(right);
     }
     void Print(std::ostream &output, const std::string &org_tab) const override;
-    const std::string GetExprString() const;
-    virtual bool Equals(const ExprNode *node) const;
+    const std::string GetExprString() const override;
+    bool Equals(const ExprNode *node) const override;
     CondExpr *ShadowCopy(NodeManager *) const override;
 
     ExprNode *GetCondition() const;
@@ -1619,10 +1619,10 @@ class GetFieldExpr : public ExprNode {
     size_t GetColumnID() const { return column_id_; }
     ExprNode *GetRow() const { return GetChild(0); }
 
-    void Print(std::ostream &output, const std::string &org_tab) const;
-    const std::string GetExprString() const;
-    const std::string GenerateExpressionName() const;
-    virtual bool Equals(const ExprNode *node) const;
+    void Print(std::ostream &output, const std::string &org_tab) const override;
+    const std::string GetExprString() const override;
+    const std::string GenerateExpressionName() const override;
+    bool Equals(const ExprNode *node) const override;
     GetFieldExpr *ShadowCopy(NodeManager *) const override;
 
     Status InferAttr(ExprAnalysisContext *ctx) override;
@@ -2612,7 +2612,7 @@ class UdafDefNode : public FnDefNode {
 
     size_t GetArgSize() const override { return arg_types_.size(); }
 
-    const TypeNode *GetArgType(size_t i) const { return arg_types_[i]; }
+    const TypeNode *GetArgType(size_t i) const override { return arg_types_[i]; }
     const std::vector<const TypeNode *> &GetArgTypeList() const { return arg_types_; }
 
     UdafDefNode *ShadowCopy(NodeManager *) const override;

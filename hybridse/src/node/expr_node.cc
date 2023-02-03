@@ -143,6 +143,7 @@ Status GetFieldExpr::InferAttr(ExprAnalysisContext* ctx) {
 
         auto nm = ctx->node_manager();
         SetOutputType(nm->MakeTypeNode(dtype));
+        SetNullable(true);
     } else {
         return Status(common::kTypeError,
                       "Get field's input is neither tuple nor row");
