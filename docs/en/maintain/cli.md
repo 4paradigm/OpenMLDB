@@ -154,7 +154,7 @@ partition migrate ok
 partition migrate ok
 ```
 
-**Note**: leader partition cannot be migrated.
+**Note**: A leader partition cannot be migrated. If you would like to do so, you have to use the command `changeleader` first to change the role of the leader to a follower.
 
 ### confget
 
