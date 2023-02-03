@@ -131,3 +131,22 @@ curl http://<ns_endpoint>/NameServer/UpdateOfflineTableInfo -d '{"db":"<db_name>
 ```
 然后，可以进行软链接导入。
 ````
+
+## 导入源数据格式
+
+导入支持csv和parquet两种数据格式。其中，csv的格式需要特别注意。
+
+### CSV
+
+csv源数据中，需要注意空值（blank value）。例如，
+```
+c1, c2
+,
+"",""
+ab,cd
+"ef","gh"
+null,null
+```
+这个csv源数据中，第一行两个空值，cluster模式导入时会被当作`null`。第二行两列都是两个双引号，cluster模式默认quote为`"`，所以这一行是两个空字符串。
+
+local模式与cluster模式下读取csv的逻辑有所不同，具体见[issue3015](https://github.com/4paradigm/OpenMLDB/issues/3015)。

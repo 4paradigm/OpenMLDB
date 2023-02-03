@@ -153,3 +153,11 @@ We support connect Hive by metastore service.
 	</property>
 	</configuration>
 	```
+
+## Source Data Format
+
+We support csv and parquet. Be careful with the csv data.
+
+### CSV
+For example, 
+
