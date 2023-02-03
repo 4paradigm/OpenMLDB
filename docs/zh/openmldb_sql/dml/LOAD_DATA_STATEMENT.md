@@ -149,4 +149,4 @@ null,null
 ```
 这个csv源数据中，第一行两个空值，cluster模式导入时会被当作`null`。第二行两列都是两个双引号，cluster模式默认quote为`"`，所以这一行是两个空字符串。
 
-local模式与cluster模式下读取csv的逻辑有所不同，具体见[issue3015](https://github.com/4paradigm/OpenMLDB/issues/3015)。
+local模式下空值会被当作空字符串，具体见[issue3015](https://github.com/4paradigm/OpenMLDB/issues/3015)。
