@@ -148,7 +148,7 @@ partition migrate ok
 > migrate 172.27.2.52:9991 table1 1,2,3 172.27.2.52:9992
 partition migrate ok
 ```
-**注**: 该命令只能迁移从分片
+**注**: 该命令只能迁移从分片；如果需要迁移主分片，首先使用 `changeleader` 命令进行主从切换
 
 ### confget
 
