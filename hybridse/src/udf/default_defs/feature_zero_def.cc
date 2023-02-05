@@ -574,8 +574,17 @@ void DefaultUdfLibrary::InitFeatureZero() {
         .args<Nullable<StringRef>, StringRef>(
             reinterpret_cast<void*>(&FZStringOpsDef::SingleSplit))
         .doc(R"(
-            @brief Split string to list by delimeter.
-            Null values are skipped.
+            @brief Split string to list by delimeter. Null values are skipped.
+
+            @param input Input string
+            @param delimeter Delimeter of string
+
+            Example:
+
+            @code{.sql}
+            select `join`(split_by("k1:1, k2:2", ",", ":"), " ") as out;
+            -- output "k1:1 k2:2"
+            @endcode
 
             @since 0.1.0)");
 
@@ -601,9 +610,19 @@ void DefaultUdfLibrary::InitFeatureZero() {
         .args<Nullable<StringRef>, StringRef, StringRef>(
             reinterpret_cast<void*>(FZStringOpsDef::SingleSplitByKey))
         .doc(R"(
-            @brief Split string by delimeter and then
-            split each segment as kv pair, then add each 
-            key to output list. Null and illegal segments are skipped.
+            @brief Split string by delimeter and split each segment as kv pair, then add each 
+            key to output list. Null or illegal segments are skipped.
+
+            @param input Input string
+            @param delimeter Delimeter of string
+            @param kv_delimeter Delimeter of kv pair
+
+            Example:
+
+            @code{.sql}
+            select `join`(split_by_key("k1:1, k2:2", ",", ":"), " ") as out;
+            -- output "k1 k2"
+            @endcode
 
             @since 0.1.0)");
 
@@ -629,9 +648,19 @@ void DefaultUdfLibrary::InitFeatureZero() {
         .args<Nullable<StringRef>, StringRef, StringRef>(
             reinterpret_cast<void*>(FZStringOpsDef::SingleSplitByValue))
         .doc(R"(
-            @brief Split string by delimeter and then
-            split each segment as kv pair, then add each
-            value to output list. Null and illegal segments are skipped.
+            @brief Split string by delimeter and split each segment as kv pair, then add each
+            value to output list. Null or illegal segments are skipped.
+
+            @param input Input string
+            @param delimeter Delimeter of string
+            @param kv_delimeter Delimeter of kv pair
+
+            Example:
+
+            @code{.sql}
+            select `join`(split_by_value("k1:1, k2:2", ",", ":"), " ") as out;
+            -- output "1 2"
+            @endcode
 
             @since 0.1.0)");
 
@@ -639,6 +668,9 @@ void DefaultUdfLibrary::InitFeatureZero() {
         .doc(R"(
             @brief For each string value from specified
             column of window, join by delimeter. Null values are skipped.
+
+            @param input String expression to join
+            @param delimeter Join delimeter
 
             Example:
 

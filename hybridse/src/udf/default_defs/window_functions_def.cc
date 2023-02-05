@@ -166,8 +166,21 @@ void DefaultUdfLibrary::InitWindowFunctions() {
             return BuildAt(ctx, input, ctx->node_manager()->MakeConstNode(0),
                            nullptr);
         })
-        .doc(
-            R"(@brief Returns the value of expr from the first row of the window frame.
+        .doc(R"(
+        @brief Returns the value of expr from the latest row (last row) of the window frame.
+
+        Example:
+
+        @code{.sql}
+        select id, gp, ts, first_value(ts) over w as agg from t1
+        window w as (partition by gp order by ts rows between 3 preceding and current row);
+        @endcode
+
+        | id | gp | ts | agg |
+        | -- | -- | -- | --- |
+        | 1  | 100 | 98 | 98 |
+        | 2  | 100 | 99 | 99 |
+        | 3  | 100 | 100 | 100 |
 
         @since 0.1.0)");
 }
