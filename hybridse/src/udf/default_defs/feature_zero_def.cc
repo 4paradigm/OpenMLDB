@@ -582,7 +582,7 @@ void DefaultUdfLibrary::InitFeatureZero() {
             Example:
 
             @code{.sql}
-            select `join`(split_by("k1:1, k2:2", ",", ":"), " ") as out;
+            select `join`(split("k1:1, k2:2", ",", ":"), " ") as out;
             -- output "k1:1 k2:2"
             @endcode
 
