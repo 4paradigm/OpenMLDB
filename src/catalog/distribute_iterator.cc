@@ -38,7 +38,7 @@ void FullTableIterator::SeekToFirst() {
 }
 
 bool FullTableIterator::Valid() const {
-    if (FLAGS_max_traverse_cnt > 0 && cnt_ >= FLAGS_max_traverse_cnt) {
+    if (FLAGS_max_traverse_cnt > 0 && cnt_ > FLAGS_max_traverse_cnt) {
         return false;
     }
     return (it_ && it_->Valid()) || (kv_it_ && kv_it_->Valid());
@@ -48,7 +48,7 @@ void FullTableIterator::Next() {
     // reset the buffered value
     ResetValue();
     cnt_++;
-    if (FLAGS_max_traverse_cnt > 0 && cnt_ >= FLAGS_max_traverse_cnt) {
+    if (FLAGS_max_traverse_cnt > 0 && cnt_ > FLAGS_max_traverse_cnt) {
         PDLOG(WARNING, "FullTableIterator exceed the max_traverse_cnt, tid %u, cnt %lld, max_traverse_cnt %u", tid_,
               cnt_, FLAGS_max_traverse_cnt);
         return;
