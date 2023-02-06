@@ -13,7 +13,7 @@
 # limitations under the License.
 
 set(ZETASQL_HOME https://github.com/4paradigm/zetasql)
-set(ZETASQL_VERSION 0.2.13)
+set(ZETASQL_VERSION 0.2.15)
 set(ZETASQL_TAG v${ZETASQL_VERSION})
 
 function(init_zetasql_urls)
@@ -22,16 +22,16 @@ function(init_zetasql_urls)
 
     if (LSB_RELEASE_ID_SHORT STREQUAL "centos")
       set(ZETASQL_URL "${ZETASQL_HOME}/releases/download/v${ZETASQL_VERSION}/libzetasql-${ZETASQL_VERSION}-linux-gnu-x86_64-centos.tar.gz" PARENT_SCOPE)
-      set(ZETASQL_HASH 21e7f661f9fac6366b1f3c635da6101e13090c64835ddf68b363109d22efbe35 PARENT_SCOPE)
+      set(ZETASQL_HASH 8dea1b106d036f3738beeb38067588451205c43551aa69a153da2d9327c119b9 PARENT_SCOPE)
     elseif(LSB_RELEASE_ID_SHORT STREQUAL "ubuntu")
       set(ZETASQL_URL "${ZETASQL_HOME}/releases/download/v${ZETASQL_VERSION}/libzetasql-${ZETASQL_VERSION}-linux-gnu-x86_64-ubuntu.tar.gz" PARENT_SCOPE)
-      set(ZETASQL_HASH 4f69489c2984937ee6f75dcd21bae0db6937029136f0559173578864df3122cf PARENT_SCOPE)
+      set(ZETASQL_HASH 61852c480e58a6075e250c1f3dd26736c959c4118d31fd617f9777e15107fcc0 PARENT_SCOPE)
     else()
       message(FATAL_ERROR "no pre-compiled zetasql for ${LSB_RELEASE_ID_SHORT}, try compile zetasql from source with cmake flag: '-DBUILD_BUNDLED_ZETASQL=ON'")
     endif()
   elseif (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
     set(ZETASQL_URL "${ZETASQL_HOME}/releases/download/v${ZETASQL_VERSION}/libzetasql-${ZETASQL_VERSION}-darwin-x86_64.tar.gz" PARENT_SCOPE)
-    set(ZETASQL_HASH d5be3119b3e91b0468bd53852218339b8248b0f67755e4061363aa139a4de86f PARENT_SCOPE)
+    set(ZETASQL_HASH 73923b981f3b9ef6ee42cb0bf22f4282570d244438a6ec20ef1b461c83f8f2c0 PARENT_SCOPE)
   endif()
 endfunction()
 

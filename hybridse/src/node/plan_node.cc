@@ -692,6 +692,9 @@ void CreatePlanNode::Print(std::ostream &output, const std::string &org_tab) con
     output << "\n";
     PrintSqlVector(output, tab, column_desc_list_, "column_desc_list", false);
     output << "\n";
+    if (like_clause_ != nullptr) {
+        like_clause_->Print(output, tab);
+    }
     PrintSqlVector(output, tab, table_option_list_, "table_option_list", true);
 }
 void DeployPlanNode::Print(std::ostream &output, const std::string &tab) const {

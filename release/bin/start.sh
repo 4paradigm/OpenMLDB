@@ -160,7 +160,7 @@ case $OP in
                 echo "Start ${COMPONENT} success"
                 exit 0
             fi
-            echo -e "${RED}Start ${COMPONENT} failed! Please check log in ${LOG_DIR}/${COMPONENT}[_mon].log and ./taskmanager/bin/logs/taskmanager.out ${RES}"
+            echo -e "${RED}Start ${COMPONENT} failed! Please check log in ${LOG_DIR}/${COMPONENT}[_mon].log and ./taskmanager/bin/logs/taskmanager.log ${RES}"
         fi
         ;;
     stop)

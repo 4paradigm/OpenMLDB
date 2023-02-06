@@ -439,7 +439,7 @@ UnaryExpr *NodeManager::MakeUnaryExprNode(ExprNode *left, FnOperator op) {
     return RegisterNode(uexpr);
 }
 
-SqlNode *NodeManager::MakeCreateTableNode(bool op_if_not_exist, const std::string &db_name,
+CreateStmt *NodeManager::MakeCreateTableNode(bool op_if_not_exist, const std::string &db_name,
                                           const std::string &table_name, SqlNodeList *column_desc_list,
                                           SqlNodeList *table_option_list) {
     CreateStmt *node_ptr = new CreateStmt(db_name, table_name, op_if_not_exist);

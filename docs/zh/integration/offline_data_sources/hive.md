@@ -10,6 +10,10 @@
 
 [OpenMLDB Spark 发行版](../../tutorial/openmldbspark_distribution.md) v0.6.7 及以上版本均已经包含 Hive 依赖。如果使用其他 Spark 发行版，使用以下步骤进行安装。
 
+```{note}
+如果你并不想使用hive支持，并且不会在Spark依赖中添加Hive依赖包，需要在taskmanager配置中添加`enable.hive.support=false`。否则，Job会因找不到Hive相关Class而出错。
+```
+
 1. 在 Spark 中执行如下命令编译 Hive 依赖
 
 ```bash
@@ -64,18 +68,35 @@
 | DATE              | DATE          |
 | TIMESTAMP         | TIMESTAMP     |
 
+## 通过 `LIKE` 语法快速建表
+
+我们支持使用 `LIKE` 语法，基于 Hive 已存在的表格，在 OpenMLDB 便捷的建立相同 schema 的表格，其示例如下。
+
+
+```sql
+CREATE TABLE db1.t1 LIKE HIVE 'hive://hive_db.t1';
+-- SUCCEED
+```
+
+使用 `LIKE` 基于 Hive 快捷建表有以下已知问题：
+
+* 如果创建表失败仍然会返回 `SUCCEED`，无法在命令行看到错误日志，需要在 TaskManager 日志目录查看
+* 创建的表名必须包含数据库名，如上例的 `db1.t1`（`db1` 不能被忽略）
+* 使用命令行默认超时配置，创建表可能会显示超时但是执行成功，可通过 `SHOW TABLES` 查看最终结果（也可以通过命令 `SET @@job_timeout = "xxx"` 来设置超时）
+* Hive 中表如果包含列约束（如 `NOT NULL`），在创建的新表中不会包含这些列约束
+
 ## 导入 Hive 数据到 OpenMLDB
 
 对于 Hive 数据源的导入是通过 API [`LOAD DATA INFILE`](../../openmldb_sql/dml/LOAD_DATA_STATEMENT.md) 进行支持，通过使用特定的 URI 接口 `hive://[db].table` 的格式进行导入 Hive 内的数据。注意：
 
 - 离线和在线引擎均可以导入 Hive 数据源
-- 参数 `deep_copy` 仅支持取值 `true` 
+- Hive 导入支持软连接，可以减少硬拷贝并且保证 OpenMLDB 随时读取到 Hive 的最新数据。启用软链接方式进行数据导入：使用参数 `deep_copy=false` 
 - `OPTIONS` 参数仅有 `deep_copy` 和 `mode` 有效
 
 举例：
 
 ```sql
-LOAD DATA INFILE 'hive://db1.t1' INTO TABLE t1 OPTIONS(deep_copy=true);
+LOAD DATA INFILE 'hive://db1.t1' INTO TABLE t1 OPTIONS(deep_copy=false);
 ```
 
 ## 导出 OpenMLDB 数据到 Hive
@@ -85,7 +106,7 @@ LOAD DATA INFILE 'hive://db1.t1' INTO TABLE t1 OPTIONS(deep_copy=true);
 - 如果不指定数据库名字，则会使用默认数据库名字 `default_db`
 - 如果指定数据库名字，则该数据库必须已经存在，目前不支持对于不存在的数据库进行自动创建
 - 如果不指定表格名字，则会在 Hive 内自动创建对应名字的表格
-- `OPTIONS` 参数均不生效
+- `OPTIONS` 参数只有导出模式`mode`生效，其他参数均不生效
 
 举例：
 

@@ -1,5 +1,25 @@
 # Changelog
 
+## [0.7.1] - 2023-01-13
+
+### Features
+- Support data import from Hive using a symbolic link (#2948 @vagetablechicken)
+- Support the new SQL statement `CREATE TABLE LIKE` (#2949 @aceforeverd, #2962 @tobegit3hub)
+- Improve the non-interactive CLI (#2898 @vagetablechicken)
+- Improve the documents (#2904 #2921 #2932 #2942 @selenachenjingxin, #2925 #2928 #2934 #2954 @vagetablechicken, @2924 @dl239, #2945 #2952 @lumianph, #2946 @aceforeverd)
+
+### Bug Fixes
+- The result of `_*_cate` is incorrect. (#2939 @zhanghaohit)
+- The deployment of SQL fails if the column name of a major table is a keyword. (#2894 @dl239)
+- Tablet may core dump when executing SQLs with disk tables. (#2926 @dl239)
+- There is memory leak when writing data into disk tables. (#2943 @dl239)
+- The result of `show components` is incorrect in certain cases. (#2940 @dl239)
+- Offline jobs execution fails in certain cases because the `Curator` component causes an incompatible issue. (#2936 @tobegit3hub)
+- Disabling the monitor log (#2953 @dl239)
+
+### Code Refactoring
+#2875 #2937 @dl239
+
 ## [0.7.0] - 2022-12-30
 
 ### Features
@@ -479,6 +499,7 @@ Removed
 - openmldb-0.2.0-linux.tar.gz targets on x86_64
 - aarch64 artifacts consider experimental
 
+[0.7.1]: https://github.com/4paradigm/OpenMLDB/compare/v0.7.0...v0.7.1
 [0.7.0]: https://github.com/4paradigm/OpenMLDB/compare/v0.6.9...v0.7.0
 [0.6.9]: https://github.com/4paradigm/OpenMLDB/compare/v0.6.8...v0.6.9
 [0.6.8]: https://github.com/4paradigm/OpenMLDB/compare/v0.6.7...v0.6.8

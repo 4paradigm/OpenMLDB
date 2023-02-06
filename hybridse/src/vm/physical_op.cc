@@ -56,6 +56,7 @@ static absl::flat_hash_map<PhysicalOpType, absl::string_view> CreatePhysicalOpTy
         {kPhysicalOpRequestGroup, "REQUEST_GROUP"},
         {kPhysicalOpRequestGroupAndSort, "REQUEST_GROUP__SORT"},
         {kPhysicalOpInsert, "INSERT"},
+        {kPhysicalCreateTable, "CREATE_TABLE"}
     };
     for (auto kind = 0; kind < kPhysicalOpLast; ++kind) {
         DCHECK(map.find(static_cast<PhysicalOpType>(kind)) != map.end());
@@ -1499,6 +1500,14 @@ void PhysicalInsertNode::Print(std::ostream &output, const std::string &tab) con
     PhysicalOpNode::Print(output, tab);
     output << "(db=" << GetInsertStmt()->db_name_ << ", table=" << GetInsertStmt()->table_name_
            << ", is_all=" << (GetInsertStmt()->is_all_ ? "true" : "false") << ")";
+}
+
+void PhysicalCreateTableNode::Print(std::ostream &output, const std::string &tab) const {
+    PhysicalOpNode::Print(output, tab);
+}
+
+PhysicalCreateTableNode* PhysicalCreateTableNode::CastFrom(PhysicalOpNode* node) {
+    return dynamic_cast<PhysicalCreateTableNode*>(node);
 }
 
 PhysicalLoadDataNode* PhysicalLoadDataNode::CastFrom(PhysicalOpNode* node) {

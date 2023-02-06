@@ -1,5 +1,5 @@
 =============================
-生态整合
+上下游生态
 =============================
 
 .. toctree::
@@ -8,5 +8,6 @@
     online_datasources/index
     offline_data_sources/index
     deploy_integration/index
+    develop/index
 
 

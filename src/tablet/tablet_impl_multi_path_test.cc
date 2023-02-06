@@ -29,6 +29,7 @@
 #include "proto/tablet.pb.h"
 #include "storage/mem_table.h"
 #include "tablet/tablet_impl.h"
+#include "test/util.h"
 
 DECLARE_string(db_root_path);
 DECLARE_string(ssd_root_path);
@@ -56,10 +57,6 @@ class MockClosure : public ::google::protobuf::Closure {
 };
 
 using ::openmldb::api::TableStatus;
-
-inline std::string GenRand() {
-    return std::to_string(rand() % 10000000 + 1);  // NOLINT
-}
 
 class DiskTestEnvironment : public ::testing::Environment{
     virtual void SetUp() {
@@ -301,13 +298,12 @@ int main(int argc, char** argv) {
     ::testing::AddGlobalTestEnvironment(new ::openmldb::tablet::DiskTestEnvironment);
     ::testing::InitGoogleTest(&argc, argv);
     srand(time(NULL));
-    std::string k1 = ::openmldb::tablet::GenRand();
-    std::string k2 = ::openmldb::tablet::GenRand();
-    FLAGS_db_root_path = "/tmp/db" + k1 + ",/tmp/db" + k2;
-    FLAGS_ssd_root_path = "/tmp/ssd/db" + k1 + ",/tmp/ssd/db" + k2;
-    FLAGS_hdd_root_path = "/tmp/hdd/db" + k1 + ",/tmp/hdd/db" + k2;
-    FLAGS_recycle_bin_root_path = "/tmp/recycle" + k1 + ",/tmp/recycle" + k2;
-    FLAGS_recycle_bin_ssd_root_path = "/tmp/ssd/recycle" + k1 + ",/tmp/ssd/recycle" + k2;
-    FLAGS_recycle_bin_hdd_root_path = "/tmp/hdd/recycle" + k1 + ",/tmp/hdd/recycle" + k2;
+    ::openmldb::test::TempPath tmp_path;
+    FLAGS_db_root_path = absl::StrCat(tmp_path.GetTempPath(), ",", tmp_path.GetTempPath());
+    FLAGS_ssd_root_path = absl::StrCat(tmp_path.GetTempPath("ssd"), ",", tmp_path.GetTempPath("ssd"));
+    FLAGS_hdd_root_path = absl::StrCat(tmp_path.GetTempPath("hdd"), ",", tmp_path.GetTempPath("hdd"));
+    FLAGS_recycle_bin_root_path = absl::StrCat(tmp_path.GetTempPath(), ",", tmp_path.GetTempPath());
+    FLAGS_recycle_bin_ssd_root_path = absl::StrCat(tmp_path.GetTempPath("ssd"), ",", tmp_path.GetTempPath("ssd"));
+    FLAGS_recycle_bin_hdd_root_path = absl::StrCat(tmp_path.GetTempPath("hdd"), ",", tmp_path.GetTempPath("hdd"));
     return RUN_ALL_TESTS();
 }

@@ -257,3 +257,30 @@ cases:
       columns: ["count bigint","sum bigint","max bigint","min bigint","avg double"]
       rows:
         - [8,260,34,31,32.5]
+  - id: 8
+    desc: 全表聚合-*_cate
+    mode: request-unsupport
+    inputs:
+      -
+        columns: ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",20,30,1.1,2.1,1000,"2020-05-01"]
+          - [2,"aa",21,31,1.2,2.2,2000,"2020-05-02"]
+          - [3,"aa",22,32,1.3,2.3,3000,"2020-05-03"]
+          - [4,"aa",23,33,1.4,2.4,4000,"2020-05-04"]
+          - [5,"aa",24,34,1.5,2.5,5000,"2020-05-05"]
+          - [6,"bb",20,30,1.1,2.1,1000,"2020-05-01"]
+          - [7,"bb",21,31,1.2,2.2,2000,"2020-05-02"]
+          - [8,"bb",22,32,1.3,2.3,3000,"2020-05-03"]
+          - [9,"bb",23,33,1.4,2.4,4000,"2020-05-04"]
+          - [11,"cc",20,30,1.1,2.1,1000,"2020-05-01"]
+          - [12,"cc",21,31,1.2,2.2,2000,"2020-05-02"]
+          - [13,"cc",22,32,1.3,2.3,3000,"2020-05-03"]
+    sql: |
+      select count_cate(c4,c1) as count, sum_cate(c4,c1) as sum, avg_cate(c4,c1) as avg from {0};
+    expect:
+      order: id
+      columns: ["count string", "sum string", "avg string"]
+      rows:
+        - ["aa:5,bb:4,cc:3", "aa:160,bb:126,cc:93", "aa:32.000000,bb:31.500000,cc:31.000000"]

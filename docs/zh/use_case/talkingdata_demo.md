@@ -1,4 +1,4 @@
-# OpenMLDB + XGboost：TalkingData 广告欺诈检测
+# TalkingData 广告欺诈检测（OpenMLDB + XGboost）
 
 我们将演示如何使用 [OpenMLDB](https://github.com/4paradigm/OpenMLDB) 与其他开源软件一起开发一个完整的机器学习应用程序，完成 TalkingData 广告欺诈检测挑战（有关此挑战的更多信息请参阅 [Kaggle](https://www.kaggle.com/c/talkingdata-adtracking-fraud-detection/overview)）。
 
@@ -16,7 +16,7 @@
 **启动 Docker**
 
 ```
-docker run -it 4pdosc/openmldb:0.7.0 bash
+docker run -it 4pdosc/openmldb:0.7.1 bash
 ```
 
 #### 1.1.2 在本地运行

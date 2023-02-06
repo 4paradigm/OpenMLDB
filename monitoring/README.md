@@ -10,54 +10,82 @@ This directory contains
 1. OpenMLDB Exporter exposing prometheus metrics
 2. OpenMLDB mixin provides well-configured examples for prometheus server and grafana dashboard
 
-Supported versions:
+## Requirements
 
-+ OpenMLDB >= 0.5.0
+- A runnable OpenMLDB instance that is accessible from your network
+- OpenMLDB version >= 0.5.0
+- Python >= 3.8
+
+
+## Setup
+
+For those want to try, simply install from pip, it will install the latest release:
+
+```bash
+pip install openmldb-exporter
+```
+
+Then type
+
+```sh
+openmldb-exporter -h
+```
+
+To see which flags should provided.
+
+Developers may refer [Development](#development) for how to setup openmldb exporter from source code.
+
 
 ## Development
 
-### Requirements
+### Extra Requirements
 
-- Python >= 3.8 
+- Same in [Requirements](#requirements)
 - [poetry](https://github.com/python-poetry/poetry) as build tool
 - cmake (optional if want to test latest commit)
-- a runnable OpenMLDB instance that is accessible from your network
 
-### Build
+### Build python SDK (Optional)
 
-The exporter is a python project, the only thing need to built was the native library required by python sdk. To build, `cd` to root directory of OpenMLDB, and run:
+openmldb exporter depends on [openmldb python SDK](https://pypi.org/project/openmldb/). For those introducing changes in python SDK or native code as well, this steps is required in order to take the latest Python SDK locally instead of the published one.
+
+#### 1. Build native code
+
+`cd` to root directory of OpenMLDB, and run:
 
 ```bash
 make SQL_PYSDK_ENABLE=ON
 ```
 
-Note: build is only required when tesing over latest commit is needed, otherwise, it can installed directly from pip (when 0.5.0 released):
+This will generate compiled shared library in `python` source directory.
 
-```bash
-pip install openmldb-exporter==0.5.0
+#### 2. Fix dependency list
+
+Back to openmldb exporter directory, modify `pyproject.toml` and make content like below:
+
+```toml
+[tool.poetry.dependencies]
+# ...
+# openmldb = "^0.6.0"
+# uncomment below to use openmldb sdk built from source
+# set develop = true so changes in python will take effect immediately
+openmldb = { path = "../python/", develop = true }
 ```
 
 ### Run
 
-1. setup python dependencies:
+1. Setup python dependencies:
 
    ```bash
    poetry install
    ```
 
-2. enter virtual environment
-
-   ```bash
-   poetry shell
-   ```
-
-3. start openmldb exporter
+2. Start openmldb exporter
 
    ```bash
    poetry run openmldb-exporter
    ```
 
-   you need pass necessary flags after `openmldb-exporter`. run `poetry run openmldb-exporter --help` to get the help info
+   You need pass necessary flags after `openmldb-exporter`. Run `poetry run openmldb-exporter --help` to get the help info
 
    ```bash
    usage: openmldb-exporter [-h] [--log.level LOG.LEVEL] [--web.listen-address WEB.LISTEN_ADDRESS]
@@ -82,13 +110,13 @@ pip install openmldb-exporter==0.5.0
                            interval in seconds to pull metrics periodically, default 30.0
    ```
 
-4. view the available metrics, you can pull through `curl`
+3. View the available metrics, you can pull through `curl`
 
    ```bash
    curl http://127.0.0.1:8000/metrics
    ```
 
-   a example output:
+   A example output:
 
    ```bash
    # HELP openmldb_connected_seconds_total duration for a component conncted time in seconds                              

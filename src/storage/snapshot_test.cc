@@ -29,6 +29,7 @@
 #include "base/glog_wrapper.h"
 #include "base/strings.h"
 #include "codec/schema_codec.h"
+#include "codec/sdk_codec.h"
 #include "common/timer.h"
 #include "gtest/gtest.h"
 #include "log/log_writer.h"
@@ -1713,9 +1714,10 @@ int main(int argc, char** argv) {
     ::openmldb::base::SetLogLevel(DEBUG);
     int ret = 0;
     std::vector<std::string> vec{"off", "zlib", "snappy"};
+    ::openmldb::test::TempPath tmp_path;
     for (size_t i = 0; i < vec.size(); i++) {
         std::cout << "compress type: " << vec[i] << std::endl;
-        FLAGS_db_root_path = "/tmp/" + std::to_string(::openmldb::storage::GenRand());
+        FLAGS_db_root_path = tmp_path.GetTempPath();
         FLAGS_snapshot_compression = vec[i];
         ret += RUN_ALL_TESTS();
     }

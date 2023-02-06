@@ -190,6 +190,9 @@ class SQLClusterRouter : public SQLRouter {
     base::Status HandleSQLCreateTable(hybridse::node::CreatePlanNode* create_node, const std::string& db,
                                       std::shared_ptr<::openmldb::client::NsClient> ns_ptr);
 
+    base::Status HandleSQLCreateTable(hybridse::node::CreatePlanNode* create_node, const std::string& db,
+                                      std::shared_ptr<::openmldb::client::NsClient> ns_ptr, const std::string& sql);
+
     std::shared_ptr<hybridse::sdk::ResultSet> HandleSQLCmd(const hybridse::node::CmdPlanNode* cmd_node,
                                                            const std::string& db, ::hybridse::sdk::Status* status);
 
