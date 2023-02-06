@@ -49,7 +49,7 @@ The following table introduces the parameters of `LOAD DATA INFILE`.
 | header     | Boolean | true              | It indicates that whether the table to import has a header. If the value is `true`, the table has a header.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
 | null_value | String  | null              | It defines the string that will be used to replace the `NULL` value when loading data.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
 | format     | String  | csv               | It defines the format of the input file.<br />`csv` is the default format. <br />`parquet` format is supported in the cluster version.                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
-| quote      | String  | ""                | It defines the string surrounding the input data. The string length should be <= 1. The default is "", which means that the string surrounding the input data is empty. When the surrounding string is configured, the content surrounded by a pair of the quote characters will be parsed as a whole. For example, if the surrounding string is `"#"` then the original data like `1, 1.0, #This is a string, with comma#` will be converted to three field. The first field is an integer 1, the second is a float 1.0 and the third field is a string.                                          |
+| quote      | String  | "                | It defines the string surrounding the input data. The string length should be <= 1. <br />load_mode='cluster': default is `"`, the content surrounded by a pair of the quote characters will be parsed as a whole. For example, if the surrounding string is `"#"` then the original data like `1, 1.0, #This is a string, with comma#, normal_string` will be converted to four fields. The first field is an integer 1, the second is a float 1.0, the third field is a string "This is a string, with comma" and the 4th is "normal_string" even it's no quote. <br /> load_mode='local': default is `\0`, which means that the string surrounding the input data is empty. |
 | mode       | String  | "error_if_exists" | It defines the input mode.<br />`error_if_exists` is the default mode which indicates that an error will be thrown out if the offline table already has data. This input mode is only supported by the offline execution mode.<br />`overwrite` indicates that if the file already exists, the data will overwrite the contents of the original file. This input mode is only supported by the offline execution mode.<br />`append` indicates that if the table already exists, the data will be appended to the original table. Both offline and online execution modes support this input mode. |
 | deep_copy  | Boolean | true              | It defines whether `deep_copy` is used. Only offline load supports `deep_copy=false`, you can specify the `INFILE` path as the offline storage address of the table to avoid hard copy.                                                                                                                                                                                                                                                                                                                                                                                                            |
 | load_mode  | String  | cluster           | `load_mode='local'` only supports loading the `csv` local files into the `online` storage; It loads the data synchronously by the client process. <br /> `load_mode='cluster'` only supports the cluster version. It loads the data via Spark synchronously or asynchronously.                                                                                                                                                                                                                                                                                                                     |
@@ -154,10 +154,23 @@ We support connect Hive by metastore service.
 	</configuration>
 	```
 
-## Source Data Format
+## CSV Source Data Format
 
-We support csv and parquet. Be careful with the csv data.
+We support csv and parquet，but be careful with the csv format. Here is an example.
 
-### CSV
-For example, 
+```
+c1, c2
+,
+"",""
+ab,cd
+"ef","gh"
+null,null
+```
+The first row in csv data is two blank values.
+- cluster mode: `null`, whatever the null_value is.
+- local mode: empty string, see [issue3015](https://github.com/4paradigm/OpenMLDB/issues/3015)。
+
+The second row in csv data is two double quotation marks.
+- cluster mode: default quote is`"`, so it's two empty strings.
+- local mode: default quote is`\0`, so it's two strings of two double quotation marks. You can set quote to `"` in local mode，but escape rule is different with Spark, `""` means `"`，see[issue3015](https://github.com/4paradigm/OpenMLDB/issues/3015).
 

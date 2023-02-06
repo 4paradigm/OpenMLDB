@@ -45,13 +45,12 @@ FilePathPattern
 | delimiter  | String  | ,                 | 列分隔符，默认为`,`。                                                                                                                                                                                                                                                                                       |
 | header     | Boolean | true              | 是否包含表头, 默认为`true` 。                                                                                                                                                                                                                                                                               |
 | null_value | String  | null              | NULL值，默认填充`"null"`。加载时，遇到null_value的字符串将被转换为`"null"`，插入表中。                                                                                                                                                                                                                      |
-| format     | String  | csv               | 导入文件的格式:<br />`csv`:不显示指明format时，默认为该值<br />`parquet`:集群版还支持导入parquet格式文件，单机版不支持。                                                                                                                                                                                    |
-| quote      | String  | ""                | 输入数据的包围字符串。字符串长度<=1。默认为""，表示解析数据，不特别处理包围字符串。配置包围字符后，被包围字符包围的内容将作为一个整体解析。例如，当配置包围字符串为"#"时， `1, 1.0, #This is a string field, even there is a comma#`将为解析为三个filed.第一个是整数1，第二个是浮点1.0,第三个是一个字符串。 |
+| format     | String  | csv               | 导入文件的格式:<br />`csv`: 不显示指明format时，默认为该值。<br />`parquet`: 集群版还支持导入parquet格式文件，单机版不支持。                                                                                                                                                                                    |
+| quote      | String  | "                 | 输入数据的包围字符串。字符串长度<=1。<br />load_mode=`cluster`默认为双引号`"`。配置包围字符后，被包围字符包围的内容将作为一个整体解析。例如，当配置包围字符串为"#"时， `1, 1.0, #This is a string field, even there is a comma#, normal_string`将为解析为三个filed，第一个是整数1，第二个是浮点1.0，第三个是一个字符串，第四个虽然没有quote，但也是一个字符串。<br /> **local_mode=`local`默认为`\0`，不处理包围字符。**|
 | mode       | String  | "error_if_exists" | 导入模式:<br />`error_if_exists`: 仅离线模式可用，若离线表已有数据则报错。<br />`overwrite`: 仅离线模式可用，数据将覆盖离线表数据。<br />`append`：离线在线均可用，若文件已存在，数据将追加到原文件后面。                                                                                                   |
 | deep_copy  | Boolean | true              | `deep_copy=false`仅支持离线load, 可以指定`INFILE` Path为该表的离线存储地址，从而不需要硬拷贝。                                                                                                                                                                                                              |
 | load_mode  | String  | cluster           | `load_mode='local'`仅支持从csv本地文件导入在线存储, 它通过本地客户端同步插入数据；<br /> `load_mode='cluster'`仅支持集群版, 通过spark插入数据，支持同步或异步模式                                                                                                                                           |
 | thread     | Integer | 1                 | 仅在本地文件导入时生效，即`load_mode='local'`或者单机版，表示本地插入数据的线程数。 最大值为`50`。                                                                                                                                                                                                          |
-
 
 ```{note}
 在集群版中，`LOAD DATA INFILE`语句会根据当前执行模式（execute_mode）决定将数据导入到在线或离线存储。单机版中没有存储区别，只会导入到在线存储中，同时也不支持`deep_copy`选项。
@@ -132,13 +131,10 @@ curl http://<ns_endpoint>/NameServer/UpdateOfflineTableInfo -d '{"db":"<db_name>
 然后，可以进行软链接导入。
 ````
 
-## 导入源数据格式
+## CSV源数据格式说明
 
-导入支持csv和parquet两种数据格式。其中，csv的格式需要特别注意。
+导入支持csv和parquet两种数据格式，csv的格式需要特别注意，下面举例说明。
 
-### CSV
-
-csv源数据中，需要注意空值（blank value）。例如，
 ```
 c1, c2
 ,
@@ -147,6 +143,10 @@ ab,cd
 "ef","gh"
 null,null
 ```
-这个csv源数据中，第一行两个空值，cluster模式导入时会被当作`null`。第二行两列都是两个双引号，cluster模式默认quote为`"`，所以这一行是两个空字符串。
+这个csv源数据中，第一行两个空值（blank value）。
+- cluster模式空值会被当作`null`（无论null_value是什么）。
+- local模式空值会被当作空字符串，具体见[issue3015](https://github.com/4paradigm/OpenMLDB/issues/3015)。
 
-local模式下空值会被当作空字符串，具体见[issue3015](https://github.com/4paradigm/OpenMLDB/issues/3015)。
+第二行两列都是两个双引号。
+- cluster模式默认quote为`"`，所以这一行是两个空字符串。
+- local模式默认quote为`\0`，所以这一行两列都是两个双引号。local模式quote可以配置为`"`，但escape规则是`""`为单个`"`，和Spark不一致，具体见[issue3015](https://github.com/4paradigm/OpenMLDB/issues/3015)。
