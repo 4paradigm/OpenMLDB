@@ -1514,7 +1514,11 @@ void TabletImpl::Traverse(RpcController* controller, const ::openmldb::api::Trav
     if (FLAGS_max_traverse_cnt > 0 && it->GetCount() >= FLAGS_max_traverse_cnt) {
         DEBUGLOG("traverse cnt %lu is great than max %lu, key %s ts %lu", it->GetCount(), FLAGS_max_traverse_cnt,
                  last_pk.c_str(), last_time);
-        is_finish = true;
+        last_pk = it->GetPK();
+        last_time = it->GetKey();
+        if (last_pk.empty()) {
+            is_finish = true;
+        }
     } else if (scount < request->limit()) {
         is_finish = true;
     }
