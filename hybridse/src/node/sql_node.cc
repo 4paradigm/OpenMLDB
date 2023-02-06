@@ -741,7 +741,8 @@ bool FrameNode::Equals(const SqlNode *node) const {
     }
     const FrameNode *that = dynamic_cast<const FrameNode *>(node);
     return this->frame_type_ == that->frame_type_ && SqlEquals(this->frame_range_, that->frame_range_) &&
-           SqlEquals(this->frame_rows_, that->frame_rows_) && (this->frame_maxsize_ == that->frame_maxsize_);
+           SqlEquals(this->frame_rows_, that->frame_rows_) && (this->frame_maxsize_ == that->frame_maxsize_) &&
+           exclude_current_row_ == that->exclude_current_row_;
 }
 
 const std::string FrameNode::GetExprString() const {
@@ -979,7 +980,7 @@ void WindowDefNode::Print(std::ostream &output, const std::string &org_tab) cons
     if (exclude_current_time_) {
         attrs.emplace_back("exclude_current_time");
     }
-    if (exclude_current_row_) {
+    if (exclude_current_row()) {
         attrs.emplace_back("exclude_current_row");
     }
     if (instance_not_in_window_) {
@@ -1028,8 +1029,7 @@ bool WindowDefNode::CanMergeWith(const WindowDefNode *that, const bool enable_wi
 
 WindowDefNode* WindowDefNode::ShadowCopy(NodeManager *nm) const {
     return dynamic_cast<WindowDefNode *>(nm->MakeWindowDefNode(union_tables_, GetPartitions(), GetOrders(), GetFrame(),
-                                                               exclude_current_time_, exclude_current_row_,
-                                                               instance_not_in_window_));
+                                                               exclude_current_time_, instance_not_in_window_));
 }
 
 bool WindowDefNode::Equals(const SqlNode *node) const {
@@ -1038,7 +1038,6 @@ bool WindowDefNode::Equals(const SqlNode *node) const {
     }
     const WindowDefNode *that = dynamic_cast<const WindowDefNode *>(node);
     return this->window_name_ == that->window_name_ && this->exclude_current_time_ == that->exclude_current_time_ &&
-           this->exclude_current_row_ == that->exclude_current_row_ &&
            this->instance_not_in_window_ == that->instance_not_in_window_ &&
            SqlListEquals(this->union_tables_, that->union_tables_) && ExprEquals(this->orders_, that->orders_) &&
            ExprEquals(this->partitions_, that->partitions_) && SqlEquals(this->frame_ptr_, that->frame_ptr_);
