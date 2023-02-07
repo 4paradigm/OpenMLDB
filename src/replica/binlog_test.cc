@@ -121,8 +121,6 @@ TEST_F(BinlogTest, DeleteBinlog) {
 }  // namespace replica
 }  // namespace openmldb
 
-inline std::string GenRand() { return std::to_string(rand() % 10000000 + 1); }  // NOLINT
-
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
     srand(time(NULL));
@@ -130,12 +128,12 @@ int main(int argc, char** argv) {
     ::google::ParseCommandLineFlags(&argc, &argv, true);
     int ret = 0;
     std::vector<std::string> vec{"off", "zlib", "snappy"};
+    ::openmldb::test::TempPath tmp_path;
     for (size_t i = 0; i < vec.size(); i++) {
         std::cout << "compress type: " << vec[i] << std::endl;
-        FLAGS_db_root_path = "/tmp/" + GenRand();
+        FLAGS_db_root_path = tmp_path.GetTempPath();
         FLAGS_snapshot_compression = vec[i];
         ret += RUN_ALL_TESTS();
     }
     return ret;
-    // return RUN_ALL_TESTS();
 }

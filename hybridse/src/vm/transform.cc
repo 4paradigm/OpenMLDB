@@ -608,23 +608,6 @@ Status RequestModeTransformer::CreateRequestUnionNode(
         CHECK_STATUS(CreateOp<PhysicalRequestUnionNode>(&request_union_op, left, right, partition));
     } else {
         CHECK_STATUS(CreateOp<PhysicalRequestUnionNode>(&request_union_op, left, right, window_plan));
-        if (window_plan->exclude_current_row()) {
-            if (window_plan->frame_node()->frame_type() == node::FrameType::kFrameRowsRange &&
-                window_plan->frame_node()->GetHistoryRangeEnd() == 0) {
-                // flag in request union node needed for request union runner
-                request_union_op->exclude_current_row_ = true;
-                // flag in frame node needed for codegen build correct InnerRowsRangeList
-                request_union_op->window().range().frame()->exclude_current_row_ = true;
-            }
-            if (window_plan->frame_node()->frame_type() == node::FrameType::kFrameRows &&
-                window_plan->frame_node()->GetHistoryRowsEnd() == 0) {
-                // ROWS .. 0 PRECEDING EXCLUDE CURRENT_ROW is same as
-                // ROWS .. 0 OPEN PRECEDING
-                request_union_op->window().range().frame()->frame_rows()->end()->set_bound_type(
-                    node::BoundType::kOpenPreceding);
-                request_union_op->window().range().frame()->frame_rows()->end()->SetOffset(0);
-            }
-        }
     }
     *output = request_union_op;
     return Status::OK();
@@ -1096,6 +1079,14 @@ Status BatchModeTransformer::TransformDeleteOp(const node::DeletePlanNode* node,
     return Status::OK();
 }
 
+Status BatchModeTransformer::TransformCreateTableOp(const node::CreatePlanNode* create, PhysicalOpNode** output) {
+    CHECK_TRUE(create != nullptr && output != nullptr, kPlanError, "Input node or output node is null");
+    PhysicalCreateTableNode* n = nullptr;
+    CHECK_STATUS(CreateOp<PhysicalCreateTableNode>(&n, create));
+    *output = n;
+    return Status::OK();
+}
+
 Status BatchModeTransformer::TransformQueryPlan(const ::hybridse::node::QueryPlanNode* node,
                                                 ::hybridse::vm::PhysicalOpNode** output) {
     CHECK_TRUE(node != nullptr && output != nullptr, kPlanError, "Input node or output node is null");
@@ -1434,22 +1425,6 @@ Status BatchModeTransformer::CreatePhysicalProjectNode(
                 project_list->GetW()->instance_not_in_window(), append_input,
                 project_list->GetW()->exclude_current_time()));
 
-            if (project_list->GetW()->exclude_current_row()) {
-                // there is only special handling for ROWS_RANGE Current History Window
-                // - for pure history windows, exclude current_row do not matter since current row already excluded by
-                //   end frame bound
-                // - for current history ROWS window, exclude current_row is same as OPEN end frame bound
-                if (project_list->GetW()->frame_node()->frame_type() == node::FrameType::kFrameRowsRange &&
-                    project_list->GetW()->frame_node()->GetHistoryRangeEnd() == 0) {
-                    window_agg_op->set_exclude_current_row(true);
-                }
-                if (project_list->GetW()->frame_node()->frame_type() == node::FrameType::kFrameRows &&
-                    project_list->GetW()->frame_node()->GetHistoryRowsEnd() == 0) {
-                    window_agg_op->window().range().frame()->frame_rows()->end()->set_bound_type(
-                        node::BoundType::kOpenPreceding);
-                    window_agg_op->window().range().frame()->frame_rows()->end()->SetOffset(0);
-                }
-            }
             if (!project_list->GetW()->union_tables().empty()) {
                 for (auto iter = project_list->GetW()->union_tables().cbegin();
                      iter != project_list->GetW()->union_tables().cend(); iter++) {
@@ -1930,6 +1905,11 @@ Status BatchModeTransformer::TransformPhysicalPlan(const ::hybridse::node::PlanN
             }
             case ::hybridse::node::kPlanTypeUnion: {
                 FAIL_STATUS(kPlanError, "Non-support UNION OP");
+                break;
+            }
+            case node::kPlanTypeCreate: {
+                CHECK_STATUS(TransformCreateTableOp(dynamic_cast<const node::CreatePlanNode*>(node), output),
+                    "Fail to transform create table op");
                 break;
             }
             case ::hybridse::node::kPlanTypeQuery: {

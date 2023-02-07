@@ -147,8 +147,7 @@ class NodeManager {
     SqlNode *MakeWindowDefNode(ExprListNode *partitions, ExprNode *orders,
                                SqlNode *frame, bool exclude_current_time);
     SqlNode *MakeWindowDefNode(SqlNodeList *union_tables, ExprListNode *partitions, ExprNode *orders, SqlNode *frame,
-                               bool exclude_current_time, bool exclude_current_row,
-                               bool instance_not_in_window);
+                               bool exclude_current_time, bool instance_not_in_window);
     WindowDefNode *MergeWindow(const WindowDefNode *w1,
                                const WindowDefNode *w2);
     OrderExpression* MakeOrderExpression(const ExprNode* expr, const bool is_asc);
@@ -161,8 +160,7 @@ class NodeManager {
     FrameNode *MakeFrameNode(FrameType frame_type, SqlNode *node_ptr, ExprNode *frame_size);
     FrameNode *MakeFrameNode(FrameType frame_type, SqlNode *node_ptr);
     FrameNode *MakeFrameNode(FrameType frame_type, SqlNode *node_ptr, int64_t maxsize);
-    FrameNode *MakeFrameNode(FrameType frame_type, FrameExtent *frame_range,
-                           FrameExtent *frame_rows, int64_t maxsize);
+    FrameNode *MakeFrameNode(FrameType frame_type, FrameExtent *frame_range, FrameExtent *frame_rows, int64_t maxsize);
 
     FrameNode *MergeFrameNode(const FrameNode *frame1, const FrameNode *frame2);
     SqlNode *MakeLimitNode(int count);
@@ -171,7 +169,7 @@ class NodeManager {
                                  const std::string &table_name,
                                  const ExprListNode *column_names,
                                  const ExprListNode *values);
-    SqlNode *MakeCreateTableNode(bool op_if_not_exist,
+    CreateStmt *MakeCreateTableNode(bool op_if_not_exist,
                                  const std::string &db_name,
                                  const std::string &table_name,
                                  SqlNodeList *column_desc_list,

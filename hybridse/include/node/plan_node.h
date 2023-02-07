@@ -311,8 +311,8 @@ class WindowPlanNode : public LeafPlanNode {
     void set_instance_not_in_window(bool instance_not_in_window) { instance_not_in_window_ = instance_not_in_window; }
     const bool exclude_current_time() const { return exclude_current_time_; }
     void set_exclude_current_time(bool exclude_current_time) { exclude_current_time_ = exclude_current_time; }
-    bool exclude_current_row() const { return exclude_current_row_; }
-    void set_exclude_current_row(bool flag) { exclude_current_row_ = flag; }
+
+    bool exclude_current_row() const { return frame_node_ ? frame_node_->exclude_current_row_ : false; }
     virtual bool Equals(const PlanNode *node) const;
 
  private:
@@ -324,7 +324,6 @@ class WindowPlanNode : public LeafPlanNode {
     PlanNodeList union_tables_;
 
     bool exclude_current_time_ = false;
-    bool exclude_current_row_ = false;
     bool instance_not_in_window_ = false;
 };
 
@@ -453,6 +452,25 @@ class CreatePlanNode : public LeafPlanNode {
     void SetIfNotExist(bool if_not_exist) { if_not_exist_ = if_not_exist; }
 
     void Print(std::ostream &output, const std::string &org_tab) const;
+
+    std::shared_ptr<node::CreateTableLikeClause> like_clause_;
+
+    // TODO(tobe): Remove these if Java can read like_clause_ with smart pointer
+    node::CreateTableLikeClause::LikeKind GetLikeKind() const {
+        if (like_clause_ == nullptr) {
+            LOG(ERROR) << "like_clause_ is null, return data may be unexpected";
+            return node::CreateTableLikeClause::LikeKind::PARQUET;
+        }
+        return like_clause_->kind_;
+    }
+
+    std::string GetLikePath() const {
+        if (like_clause_ == nullptr) {
+            LOG(ERROR) << "like_clause_ is null, return data may be unexpected";
+            return "";
+        }
+        return like_clause_->path_;
+    }
 
  private:
     std::string database_;

@@ -184,8 +184,6 @@ void FillNullStringOffset(int8_t* buf, uint32_t start, uint32_t addr_length,
             *(reinterpret_cast<uint32_t*>(ptr)) = str_offset;
         }
     }
-
-
 }
 
 bool RowBuilder::AppendNULL() {

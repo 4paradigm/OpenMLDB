@@ -184,6 +184,8 @@ class BatchModeTransformer {
     virtual Status TransformLoadDataOp(const node::LoadDataPlanNode* node,
                                        PhysicalOpNode** output);
 
+    Status TransformCreateTableOp(const node::CreatePlanNode* create, PhysicalOpNode** output);
+
     virtual Status CreatePhysicalConstProjectNode(
         node::ProjectListNode* project_list, PhysicalOpNode** output);
 

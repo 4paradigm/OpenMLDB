@@ -1,4 +1,4 @@
-#  OpenMLDB + LightGBM：出租车行程时间预测
+#  出租车行程时间预测（OpenMLDB + LightGBM）
 
 本文我们将以[Kaggle上的出租车行车时间预测问题为例](https://www.kaggle.com/c/nyc-taxi-trip-duration/overview)，示范如何使用[OpenMLDB](https://github.com/4paradigm/OpenMLDB)和 LightGBM 联合来打造一个完整的机器学习应用。本案例基于 OpenMLDB 集群版进行教程演示。
 
@@ -12,7 +12,7 @@
 - 拉取 OpenMLDB docker 镜像，并且运行相应容器：
 
 ```bash
-docker run -it 4pdosc/openmldb:0.7.0 bash
+docker run -it 4pdosc/openmldb:0.7.1 bash
 ```
 该镜像预装了OpenMLDB，并预置了本案例所需要的所有脚本、三方库、开源工具以及训练数据。
 

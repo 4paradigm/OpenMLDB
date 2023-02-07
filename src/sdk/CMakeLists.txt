@@ -13,31 +13,36 @@
 # limitations under the License.
 
 if(TESTING_ENABLE)
+    set(THIRD_LIBS benchmark_main benchmark ${GTEST_LIBRARIES} yaml-cpp)
+    if(CMAKE_CXX_COMPILER_ID MATCHES "GNU" AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS "9.1")
+        # GNU implementation prior to 9.1 requires linking with -lstdc++fs
+        list(APPEND THIRD_LIBS stdc++fs)
+    endif()
     add_library(mini_cluster_bm_common mini_cluster_bm.cc)
     add_dependencies(mini_cluster_bm_common openmldb_proto)
 
-    add_library(base_test sql_sdk_base_test.cc ../test/base_test.cc)
-    add_dependencies(base_test hybridse_core openmldb_proto)
+    add_library(base_test sql_sdk_base_test.cc)
+    add_dependencies(base_test openmldb_test_base hybridse_core openmldb_proto)
 
-    set(THIRD_LIBS benchmark_main benchmark ${GTEST_LIBRARIES} yaml-cpp)
+    set(SDK_TEST_DEPS base_test openmldb_test_base)
 
     add_executable(db_sdk_test db_sdk_test.cc)
-    target_link_libraries(db_sdk_test base_test ${BIN_LIBS} ${THIRD_LIBS})
+    target_link_libraries(db_sdk_test ${SDK_TEST_DEPS} ${BIN_LIBS} ${THIRD_LIBS})
 
     add_executable(result_set_sql_test result_set_sql_test.cc)
-    target_link_libraries(result_set_sql_test base_test ${BIN_LIBS} ${THIRD_LIBS})
+    target_link_libraries(result_set_sql_test ${SDK_TEST_DEPS} ${BIN_LIBS} ${THIRD_LIBS})
 
     add_executable(sql_router_test sql_router_test.cc)
-    target_link_libraries(sql_router_test base_test ${BIN_LIBS} benchmark_main benchmark ${GTEST_LIBRARIES})
+    target_link_libraries(sql_router_test ${SDK_TEST_DEPS} ${BIN_LIBS} benchmark_main benchmark ${GTEST_LIBRARIES})
 
     add_executable(sql_standalone_sdk_test sql_standalone_sdk_test.cc)
-    target_link_libraries(sql_standalone_sdk_test base_test ${BIN_LIBS} ${GTEST_LIBRARIES})
+    target_link_libraries(sql_standalone_sdk_test ${SDK_TEST_DEPS} ${BIN_LIBS} ${GTEST_LIBRARIES})
 
     add_executable(node_adapter_test node_adapter_test.cc)
-    target_link_libraries(node_adapter_test base_test ${BIN_LIBS} ${GTEST_LIBRARIES})
+    target_link_libraries(node_adapter_test ${SDK_TEST_DEPS} ${BIN_LIBS} ${GTEST_LIBRARIES})
 
     add_executable(sql_sdk_test sql_sdk_test.cc)
-    target_link_libraries(sql_sdk_test base_test ${BIN_LIBS} ${GTEST_LIBRARIES} )
+    target_link_libraries(sql_sdk_test ${SDK_TEST_DEPS} ${BIN_LIBS} ${GTEST_LIBRARIES} )
 
     add_executable(sql_sdk_run sql_sdk_run.cc)
     target_link_libraries(sql_sdk_run base_test ${BIN_LIBS})
@@ -47,19 +52,22 @@ if(TESTING_ENABLE)
         RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
 
     add_executable(sql_cluster_test sql_cluster_test.cc)
-    target_link_libraries(sql_cluster_test base_test ${BIN_LIBS} ${GTEST_LIBRARIES})
+    target_link_libraries(sql_cluster_test ${SDK_TEST_DEPS} ${BIN_LIBS} ${GTEST_LIBRARIES})
 
     add_executable(sql_request_row_test sql_request_row_test.cc)
-    target_link_libraries(sql_request_row_test base_test ${BIN_LIBS} ${ZETASQL_LIBS} ${THIRD_LIBS})
+    target_link_libraries(sql_request_row_test ${SDK_TEST_DEPS} ${BIN_LIBS} ${ZETASQL_LIBS} ${THIRD_LIBS})
 
     add_executable(mini_cluster_batch_bm mini_cluster_batch_bm.cc)
-    target_link_libraries(mini_cluster_batch_bm mini_cluster_bm_common base_test ${BIN_LIBS} ${THIRD_LIBS})
+    target_link_libraries(mini_cluster_batch_bm mini_cluster_bm_common ${SDK_TEST_DEPS} ${BIN_LIBS} ${THIRD_LIBS})
 
     add_executable(mini_cluster_request_batch_bm mini_cluster_request_batch_bm.cc)
-    target_link_libraries(mini_cluster_request_batch_bm mini_cluster_bm_common base_test ${BIN_LIBS} ${THIRD_LIBS})
+    target_link_libraries(mini_cluster_request_batch_bm mini_cluster_bm_common ${SDK_TEST_DEPS} ${BIN_LIBS} ${THIRD_LIBS})
 
     add_executable(mini_cluster_request_bm mini_cluster_request_bm.cc)
-    target_link_libraries(mini_cluster_request_bm mini_cluster_bm_common base_test ${BIN_LIBS} ${THIRD_LIBS})
+    target_link_libraries(mini_cluster_request_bm mini_cluster_bm_common ${SDK_TEST_DEPS} ${BIN_LIBS} ${THIRD_LIBS})
+
+    add_executable(split_test split_test.cc)
+    target_link_libraries(split_test ${BIN_LIBS})
 endif()
 
 set(SDK_LIBS openmldb_sdk openmldb_catalog client zk_client schema openmldb_flags openmldb_codec openmldb_proto base hybridse_sdk zookeeper_mt)

@@ -32,7 +32,7 @@ do
   dir=$(echo "$line" | awk -F ' ' '{print $3}')
 
   echo "start zookeeper in $dir with endpoint $host:$port "
-  cmd="cd $dir; bin/zkServer.sh start"
+  cmd="cd $dir && bin/zkServer.sh start"
   run_auto "$host" "$cmd"
 done
 IFS="$old_IFS"

@@ -24,9 +24,9 @@ OpenMLDB Spark兼容标准的[Spark配置](https://spark.apache.org/docs/latest/
 | spark.openmldb.addIndexColumn.method         | 添加索引列方法                    | monotonicallyIncreasingId | 可选方法有zipWithUniqueId, zipWithIndex, monotonicallyIncreasingId |
 | spark.openmldb.concatjoin.jointype           | 拼接拼表方法                     | inner                     | 可选方法有inner, left, last                                      |
 | spark.openmldb.enable.native.last.join       | 是否开启NativeLastJoin优化       | true                      | 相比基于LeftJoin的实现，具有更高性能                                      |
-| spark.openmldb.enable.unsaferow.optimization | 是否开启UnsafeRow内存优化          | false                     | 开启后使用UnsafeRow编码格式，目前部分复杂类型不支持                              |
-| spark.openmldb.opt.unsaferow.project | Project节点是否开启UnsafeRow内存优化 | false                     | 开启后降低Project节点编解码开销，目前部分复杂类型不支持                             |
-| spark.openmldb.opt.unsaferow.window | Window节点是否开启UnsafeRow内存优化  | false                     | 开启后降低Window节点编解码开销，目前部分复杂类型不支持                              |
+| spark.openmldb.unsaferowopt.enable | 是否开启UnsafeRow内存优化          | false                     | 开启后使用UnsafeRow编码格式，目前部分复杂类型不支持                              |
+| spark.openmldb.unsaferowopt.project | Project节点是否开启UnsafeRow内存优化 | false                     | 开启后降低Project节点编解码开销，目前部分复杂类型不支持                             |
+| spark.openmldb.unsaferowopt.window | Window节点是否开启UnsafeRow内存优化  | false                     | 开启后降低Window节点编解码开销，目前部分复杂类型不支持                              |
 | spark.openmldb.opt.join.spark_expr | Join条件是否开启Spark表达式优化       | true                     | 开启后Join条件计算使用Spark表达式，减少编解码开销，目前部分复杂表达式不支持                  |
 | spark.openmldb.physical.plan.graphviz.path   | 导出物理计划图片的路径                | ""                        | 默认不导出图片文件                                                   |
 

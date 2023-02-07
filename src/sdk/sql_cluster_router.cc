@@ -1934,32 +1934,59 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::HandleSQLCmd(const h
 // TODO(hw): use openmldb::base::Status?
 base::Status SQLClusterRouter::HandleSQLCreateTable(hybridse::node::CreatePlanNode* create_node, const std::string& db,
                                                     std::shared_ptr<::openmldb::client::NsClient> ns_ptr) {
+    return HandleSQLCreateTable(create_node, db, ns_ptr, "");
+}
+
+base::Status SQLClusterRouter::HandleSQLCreateTable(hybridse::node::CreatePlanNode* create_node, const std::string& db,
+    std::shared_ptr<::openmldb::client::NsClient> ns_ptr, const std::string& sql) {
     if (create_node == nullptr || ns_ptr == nullptr) {
         return base::Status(base::ReturnCode::kSQLCmdRunError, "fail to execute plan : null pointer");
     }
-    std::string db_name = create_node->GetDatabase().empty() ? db : create_node->GetDatabase();
-    if (db_name.empty()) {
-        return base::Status(base::ReturnCode::kSQLCmdRunError, "ERROR: Please use database first");
-    }
-    ::openmldb::nameserver::TableInfo table_info;
-    table_info.set_db(db_name);
 
-    std::vector<std::shared_ptr<::openmldb::catalog::TabletAccessor>> all_tablet;
-    all_tablet = cluster_sdk_->GetAllTablet();
-    // set dafault value
-    uint32_t default_replica_num = std::min(static_cast<uint32_t>(all_tablet.size()), FLAGS_replica_num);
+    if (create_node->like_clause_ == nullptr) {
+        std::string db_name = create_node->GetDatabase().empty() ? db : create_node->GetDatabase();
+        if (db_name.empty()) {
+            return base::Status(base::ReturnCode::kSQLCmdRunError, "ERROR: Please use database first");
+        }
+        ::openmldb::nameserver::TableInfo table_info;
+        table_info.set_db(db_name);
 
-    hybridse::base::Status sql_status;
-    bool is_cluster_mode = cluster_sdk_->IsClusterMode();
-    ::openmldb::sdk::NodeAdapter::TransformToTableDef(create_node, &table_info, default_replica_num, is_cluster_mode,
-                                                      &sql_status);
-    if (sql_status.code != 0) {
-        return base::Status(sql_status.code, sql_status.msg);
+        std::vector<std::shared_ptr<::openmldb::catalog::TabletAccessor>> all_tablet;
+        all_tablet = cluster_sdk_->GetAllTablet();
+        // set dafault value
+        uint32_t default_replica_num = std::min(static_cast<uint32_t>(all_tablet.size()), FLAGS_replica_num);
+
+        hybridse::base::Status sql_status;
+        bool is_cluster_mode = cluster_sdk_->IsClusterMode();
+        ::openmldb::sdk::NodeAdapter::TransformToTableDef(create_node, &table_info, default_replica_num,
+            is_cluster_mode, &sql_status);
+        if (sql_status.code != 0) {
+            return base::Status(sql_status.code, sql_status.msg);
+        }
+        std::string msg;
+        if (!ns_ptr->CreateTable(table_info, create_node->GetIfNotExist(), msg)) {
+            return base::Status(base::ReturnCode::kSQLCmdRunError, msg);
+        }
+    } else {
+        LOG(WARNING) << "CREATE TABLE LIKE will run in offline job, please wait.";
+
+        auto taskmanager_client_ptr = cluster_sdk_->GetTaskManagerClient();
+        if (!taskmanager_client_ptr) {
+            return {base::ReturnCode::kServerConnError, "Fail to get TaskManager client"};
+        }
+
+        std::map<std::string, std::string> config;
+        ::openmldb::taskmanager::JobInfo job_info;
+        int job_timeout = GetJobTimeout();
+        std::string output;
+        ::openmldb::base::Status status = taskmanager_client_ptr->RunBatchSql(sql, config, db, job_timeout, &output);
+        // TODO(tobe): Can not get actual status of Spark job, always return success if the job is submitted
+        if (!status.OK()) {
+            LOG(ERROR) << "Fail to create table, error msage: " + status.msg;
+            return base::Status(base::ReturnCode::kSQLCmdRunError, status.msg);
+        }
     }
-    std::string msg;
-    if (!ns_ptr->CreateTable(table_info, create_node->GetIfNotExist(), msg)) {
-        return base::Status(base::ReturnCode::kSQLCmdRunError, msg);
-    }
+
     return {};
 }
 
@@ -2430,7 +2457,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(
         }
         case hybridse::node::kPlanTypeCreate: {
             auto create_node = dynamic_cast<hybridse::node::CreatePlanNode*>(node);
-            auto base_status = HandleSQLCreateTable(create_node, db, ns_ptr);
+            auto base_status = HandleSQLCreateTable(create_node, db, ns_ptr, sql);
             if (base_status.OK()) {
                 RefreshCatalog();
                 *status = {};
@@ -3260,7 +3287,7 @@ hybridse::sdk::Status SQLClusterRouter::HandleDeploy(const std::string& db,
         if (it == codec::DATA_TYPE_STR_MAP.end()) {
             return {StatusCode::kCmdError, "illegal data type"};
         }
-        str_stream << col.name() << " " << it->second;
+        str_stream << "`" << col.name() << "` " << it->second;
         if (idx != input_schema->size() - 1) {
             str_stream << ", ";
         }
@@ -3377,10 +3404,11 @@ hybridse::sdk::Status SQLClusterRouter::GetNewIndex(
                 auto& old_column_key = it->second;
                 // type mismatch, return here and deploy failed
                 if (old_column_key.ttl().ttl_type() != column_key.ttl().ttl_type()) {
-                    return {StatusCode::kCmdError, "new ttl type " +
-                                                       ::openmldb::type::TTLType_Name(column_key.ttl().ttl_type()) +
-                                                       " doesn't match the old ttl type " +
-                                                       ::openmldb::type::TTLType_Name(old_column_key.ttl().ttl_type())};
+                    return {StatusCode::kCmdError, absl::StrCat("new ttl type ",
+                                                       ::openmldb::type::TTLType_Name(column_key.ttl().ttl_type()),
+                                                       " doesn't match the old ttl type ",
+                                                       ::openmldb::type::TTLType_Name(old_column_key.ttl().ttl_type()),
+                                                       " in table ", table_name)};
                 } else {
                     // type match, if old ttl == 0, won't update
                     ::openmldb::type::TTLType type = column_key.ttl().ttl_type();
@@ -3813,9 +3841,15 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteShowNameServe
 
         // TODO(aceforeverd): support connect time for ns in standalone mode
         std::vector<std::vector<std::string>> data = {{endpoint, "nameserver", "0", "online", "master"}};
-
         return ResultSetSQL::MakeResultSet(schema, data, status);
     }
+
+    auto ns_client = cluster_sdk_->GetNsClient();
+    if (!ns_client) {
+        *status = {hybridse::common::kRunError, "ns client is nullptr"};
+        return {};
+    }
+    const auto& leader = ns_client->GetEndpoint();
 
     std::string node_path = absl::StrCat(std::dynamic_pointer_cast<SQLRouterOptions>(options_)->zk_path, "/leader");
     std::vector<std::string> children;
@@ -3844,32 +3878,17 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteShowNameServe
         }
     }
 
-    std::vector<std::vector<std::string>> data(endpoint_map.size(), std::vector<std::string>(schema.size(), ""));
-
-    auto begin = endpoint_map.cbegin();
-    for (size_t i = 0; i < endpoint_map.size(); i++) {
-        auto it = std::next(begin, i);
-        // endpoint
-        data[i][0] = it->first;
-        // role
-        data[i][1] = "nameserver";
-
-        // connect time
-        data[i][2] = std::to_string(it->second);
-
-        // status
-        // offlined nameserver won't register in zookeeper, so there is only online
-        data[i][3] = "online";
-
-        // ns_role
-        // NSs runs as mater/standby mode
-        if (i == 0) {
-            data[i][4] = "master";
-        } else {
-            data[i][4] = "standby";
-        }
+    std::vector<std::vector<std::string>> data;
+    for (auto it = endpoint_map.cbegin(); it != endpoint_map.cend(); it++) {
+        std::vector<std::string> val = {
+            it->first,                      // endpoint
+            "nameserver",                   // role
+            std::to_string(it->second),     // connect time
+            "online",                       // status
+            it->first == leader ? "master" : "standby"  // ns_role
+        };
+        data.push_back(std::move(val));
     }
-
     return ResultSetSQL::MakeResultSet(schema, data, status);
 }
 

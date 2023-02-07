@@ -1,5 +1,5 @@
 {
   grafanaDashboards: {
-    'openmldb-overview.json': (import 'openmldb_dashboard.json'),
+    'openmldb_dashboard.json': (import 'openmldb_dashboard.json'),
   },
 }

@@ -1,5 +1,5 @@
 {
-  "baseUrl": "/reference/sql/functions_and_operators/",
+  "baseUrl": "/openmldb_sql/functions_and_operators/",
   "indexInFolders": true,
   "linkSuffix": ".md",
   "linkLowercase": false,

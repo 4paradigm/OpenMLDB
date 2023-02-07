@@ -21,7 +21,6 @@
 #include <sys/stat.h>
 
 #include "base/file_util.h"
-#include "base/glog_wrapper.h"
 #include "base/kv_iterator.h"
 #include "base/strings.h"
 #include "brpc/channel.h"
@@ -29,13 +28,10 @@
 #include "codec/schema_codec.h"
 #include "common/timer.h"
 #include "gtest/gtest.h"
-#include "log/log_reader.h"
-#include "log/log_writer.h"
 #include "proto/tablet.pb.h"
 #include "storage/mem_table.h"
-#include "storage/ticket.h"
 #include "tablet/tablet_impl.h"
-#include "vm/engine.h"
+#include "test/util.h"
 
 DECLARE_string(db_root_path);
 DECLARE_string(ssd_root_path);
@@ -682,12 +678,11 @@ int main(int argc, char** argv) {
     ::testing::AddGlobalTestEnvironment(new ::openmldb::tablet::DiskTestEnvironment);
     ::testing::InitGoogleTest(&argc, argv);
     srand(time(NULL));
-    std::string k1 = ::openmldb::tablet::GenRand();
-    std::string k2 = ::openmldb::tablet::GenRand();
-    FLAGS_db_root_path = "/tmp/db" + k1 + ",/tmp/db" + k2;
-    FLAGS_hdd_root_path = "/tmp/hdd/db" + k1 + ",/tmp/hdd/db" + k2;
-    FLAGS_recycle_bin_root_path = "/tmp/recycle" + k1 + ",/tmp/recycle" + k2;
-    FLAGS_recycle_bin_hdd_root_path = "/tmp/hdd/recycle" + k1 + ",/tmp/hdd/recycle" + k2;
+    ::openmldb::test::TempPath tmp_path;
+    FLAGS_db_root_path = absl::StrCat(tmp_path.GetTempPath(), ",", tmp_path.GetTempPath());
+    FLAGS_hdd_root_path = absl::StrCat(tmp_path.GetTempPath(), ",", tmp_path.GetTempPath());;
+    FLAGS_recycle_bin_root_path = absl::StrCat(tmp_path.GetTempPath(), ",", tmp_path.GetTempPath());
+    FLAGS_recycle_bin_hdd_root_path = absl::StrCat(tmp_path.GetTempPath(), ",", tmp_path.GetTempPath());
     ::hybridse::vm::Engine::InitializeGlobalLLVM();
     return RUN_ALL_TESTS();
 }
