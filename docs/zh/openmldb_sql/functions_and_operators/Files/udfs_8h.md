@@ -10,145 +10,145 @@ title: udfs/udfs.h
 
 | Name          | Description    |
 | -------------- | -------------- |
-| **[abs](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-abs)**()| <br>Return the absolute value of expr. |
-| **[acos](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-acos)**()| <br>Return the arc cosine of expr. |
-| **[add](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-add)**()| <br>Compute sum of two arguments. |
-| **[array_contains](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-array-contains)**()| <br>array_contains(array, value) - Returns true if the array contains the value. |
-| **[asin](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-asin)**()| <br>Return the arc sine of expr. |
-| **[at](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-at)**()| <br>Returns value evaluated at the row that is offset rows before the current row within the partition. Offset is evaluated with respect to the current row. |
-| **[atan](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-atan)**()| <br>Return the arc tangent of expr If called with one parameter, this function returns the arc tangent of expr. If called with two parameters X and Y, this function returns the arc tangent of Y / X. |
-| **[atan2](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-atan2)**()| <br>Return the arc tangent of Y / X.. |
-| **[avg](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-avg)**()| <br>Compute average of values. |
-| **[avg_cate](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-avg-cate)**()| <br>Compute average of values grouped by category key and output string. Each group is represented as 'K:V' and separated by comma in outputs and are sorted by key in ascend order. |
-| **[avg_cate_where](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-avg-cate-where)**()| <br>Compute average of values matching specified condition grouped by category key and output string. Each group is represented as 'K:V' and separated by comma in outputs and are sorted by key in ascend order. |
-| **[avg_where](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-avg-where)**()| <br>Compute average of values match specified condition. |
-| **[bool](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-bool)**()| <br>Cast string expression to bool. |
-| **[ceil](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-ceil)**()| <br>Return the smallest integer value not less than the expr. |
-| **[ceiling](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-ceiling)**()| <br>Return the smallest integer value not less than the expr. |
-| **[char](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-char)**()| <br>Returns the ASCII character having the binary equivalent to expr. If n >= 256 the result is equivalent to char(n % 256). |
-| **[char_length](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-char-length)**()| <br>Returns the length of the string. It is measured in characters and multibyte character string is not supported. |
-| **[character_length](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-character-length)**()| <br>Returns the length of the string. It is measured in characters and multibyte character string is not supported. |
-| **[concat](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-concat)**()| <br>This function returns a string resulting from the joining of two or more string values in an end-to-end manner. (To add a separating value during joining, see concat_ws.) |
-| **[concat_ws](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-concat-ws)**()| <br>Returns a string resulting from the joining of two or more string value in an end-to-end manner. It separates those concatenated string values with the delimiter specified in the first function argument. |
-| **[cos](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-cos)**()| <br>Return the cosine of expr. |
-| **[cot](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-cot)**()| <br>Return the cotangent of expr. |
-| **[count](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-count)**()| <br>Compute number of values. |
-| **[count_cate](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-count-cate)**()| <br>Compute count of values grouped by category key and output string. Each group is represented as 'K:V' and separated by comma in outputs and are sorted by key in ascend order. |
-| **[count_cate_where](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-count-cate-where)**()| <br>Compute count of values matching specified condition grouped by category key and output string. Each group is represented as 'K:V' and separated by comma in outputs and are sorted by key in ascend order. |
-| **[count_where](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-count-where)**()| <br>Compute number of values match specified condition. |
-| **[date](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-date)**()| <br>Cast timestamp or string expression to date (date >= 1900-01-01) |
-| **[date_format](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-date-format)**()| <br>Formats the date value according to the format string. |
-| **[datediff](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-datediff)**()| <br>days difference from date1 to date2 |
-| **[day](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-day)**()| <br>Return the day of the month for a timestamp or date. |
-| **[dayofmonth](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-dayofmonth)**()| <br>Return the day of the month for a timestamp or date. |
-| **[dayofweek](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-dayofweek)**()| <br>Return the day of week for a timestamp or date. |
-| **[dayofyear](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-dayofyear)**()| <br>Return the day of year for a timestamp or date. Returns 0 given an invalid date. |
-| **[degrees](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-degrees)**()| <br>Convert radians to degrees. |
-| **[distinct_count](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-distinct-count)**()| <br>Compute number of distinct values. |
-| **[double](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-double)**()| <br>Cast string expression to double. |
-| **[exp](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-exp)**()| <br>Return the value of e (the base of natural logarithms) raised to the power of expr. |
-| **[farm_fingerprint](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-farm-fingerprint)**()| <br>Returns a hash value of the arguments. It is not a cryptographic hash function and should not be used as such. |
-| **[first_value](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-first-value)**()| <br>Returns the value of expr from the first row of the window frame. |
-| **[float](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-float)**()| <br>Cast string expression to float. |
-| **[floor](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-floor)**()| <br>Return the largest integer value not less than the expr. |
-| **[fz_join](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-fz-join)**()| <br>For each string value from specified column of window, join by delimeter. Null values are skipped. |
-| **[fz_split](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-fz-split)**()| <br>Split string to list by delimeter. Null values are skipped. |
-| **[fz_split_by_key](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-fz-split-by-key)**()| <br>Split string by delimeter and then split each segment as kv pair, then add each key to output list. Null and illegal segments are skipped. |
-| **[fz_split_by_value](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-fz-split-by-value)**()| <br>Split string by delimeter and then split each segment as kv pair, then add each value to output list. Null and illegal segments are skipped. |
-| **[fz_top1_ratio](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-fz-top1-ratio)**()| <br>Compute the top1 key's ratio. |
-| **[fz_topn_frequency](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-fz-topn-frequency)**()| <br>Return the topN keys sorted by their frequency. |
-| **[fz_window_split](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-fz-window-split)**()| <br>For each string value from specified column of window, split by delimeter and add segment to output list. Null values are skipped. |
-| **[fz_window_split_by_key](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-fz-window-split-by-key)**()| <br>For each string value from specified column of window, split by delimeter and then split each segment as kv pair, then add each key to output list. Null and illegal segments are skipped. |
-| **[fz_window_split_by_value](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-fz-window-split-by-value)**()| <br>For each string value from specified column of window, split by delimeter and then split each segment as kv pair, then add each value to output list. Null and illegal segments are skipped. |
-| **[hash64](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-hash64)**()| <br>Returns a hash value of the arguments. It is not a cryptographic hash function and should not be used as such. |
-| **[hex](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-hex)**()| <br>Convert integer to hexadecimal. |
-| **[hour](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-hour)**()| <br>Return the hour for a timestamp. |
-| **[identity](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-identity)**()| <br>Return value. |
-| **[if_null](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-if-null)**()| <br>If input is not null, return input value; else return default value. |
-| **[ifnull](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-ifnull)**()| <br>If input is not null, return input value; else return default value. |
-| **[ilike_match](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-ilike-match)**()| <br>pattern match same as ILIKE predicate |
-| **[inc](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-inc)**()| <br>Return expression + 1. |
-| **[int16](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-int16)**()| <br>Cast string expression to int16. |
-| **[int32](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-int32)**()| <br>Cast string expression to int32. |
-| **[int64](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-int64)**()| <br>Cast string expression to int64. |
-| **[is_null](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-is-null)**()| <br>Check if input value is null, return bool. |
-| **[isnull](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-isnull)**()| <br>Check if input value is null, return bool. |
-| **[join](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-join)**()| <br>For each string value from specified column of window, join by delimeter. Null values are skipped. |
-| **[lag](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-lag)**()| <br>Returns value evaluated at the row that is offset rows before the current row within the partition. Offset is evaluated with respect to the current row. |
-| **[last_day](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-last-day)**()| <br>Return the last day of the month to which the date belongs to. |
-| **[lcase](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-lcase)**()| <br>Convert all the characters to lowercase. Note that characters with values > 127 are simply returned. |
-| **[like_match](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-like-match)**()| <br>pattern match same as LIKE predicate |
-| **[ln](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-ln)**()| <br>Return the natural logarithm of expr. |
-| **[log](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-log)**()| <br>log(base, expr) If called with one parameter, this function returns the natural logarithm of expr. If called with two parameters, this function returns the logarithm of expr to the base. |
-| **[log10](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-log10)**()| <br>Return the base-10 logarithm of expr. |
-| **[log2](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-log2)**()| <br>Return the base-2 logarithm of expr. |
-| **[lower](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-lower)**()| <br>Convert all the characters to lowercase. Note that characters with values > 127 are simply returned. |
-| **[make_tuple](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-make-tuple)**()| |
-| **[max](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-max)**()| <br>Compute maximum of values. |
-| **[max_cate](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-max-cate)**()| <br>Compute maximum of values grouped by category key and output string. Each group is represented as 'K:V' and separated by comma in outputs and are sorted by key in ascend order. |
-| **[max_cate_where](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-max-cate-where)**()| <br>Compute maximum of values matching specified condition grouped by category key and output string. Each group is represented as 'K:V' and separated by comma in outputs and are sorted by key in ascend order. |
-| **[max_where](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-max-where)**()| <br>Compute maximum of values match specified condition. |
-| **[maximum](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-maximum)**()| <br>Compute maximum of two arguments. |
-| **[median](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-median)**()| <br>Compute the median of values. |
-| **[min](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-min)**()| <br>Compute minimum of values. |
-| **[min_cate](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-min-cate)**()| <br>Compute minimum of values grouped by category key and output string. Each group is represented as 'K:V' and separated by comma in outputs and are sorted by key in ascend order. |
-| **[min_cate_where](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-min-cate-where)**()| <br>Compute minimum of values matching specified condition grouped by category key and output string. Each group is represented as 'K:V' and separated by comma in outputs and are sorted by key in ascend order. |
-| **[min_where](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-min-where)**()| <br>Compute minimum of values match specified condition. |
-| **[minimum](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-minimum)**()| <br>Compute minimum of two arguments. |
-| **[minute](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-minute)**()| <br>Return the minute for a timestamp. |
-| **[month](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-month)**()| <br>Return the month part of a timestamp or date. |
-| **[nvl](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-nvl)**()| <br>If input is not null, return input value; else return default value. |
-| **[nvl2](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-nvl2)**()| <br>nvl2(expr1, expr2, expr3) - Returns expr2 if expr1 is not null, or expr3 otherwise. |
-| **[pmod](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-pmod)**()| <br>Compute pmod of two arguments. If any param is NULL, output NULL. If divisor is 0, output NULL. |
-| **[pow](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-pow)**()| <br>Return the value of expr1 to the power of expr2. |
-| **[power](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-power)**()| <br>Return the value of expr1 to the power of expr2. |
-| **[radians](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-radians)**()| <br>Returns the argument X, converted from degrees to radians. (Note that π radians equals 180 degrees.) |
-| **[regexp_like](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-regexp-like)**()| <br>pattern match same as RLIKE predicate (based on RE2) |
-| **[replace](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-replace)**()| <br>replace(str, search[, replace]) - Replaces all occurrences of `search` with `replace`|
-| **[reverse](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-reverse)**()| <br>Returns the reversed given string. |
-| **[round](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-round)**()| <br>Return the nearest integer value to expr (in floating-point format), rounding halfway cases away from zero, regardless of the current rounding mode. |
-| **[second](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-second)**()| <br>Return the second for a timestamp. |
-| **[sin](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-sin)**()| <br>Return the sine of expr. |
-| **[size](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-size)**()| <br>Get the size of a List (e.g., result of split) |
-| **[split](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-split)**()| <br>Split string to list by delimeter. Null values are skipped. |
-| **[split_array](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-split-array)**()| <br>Split string to array of string by delimeter. |
-| **[split_by_key](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-split-by-key)**()| <br>Split string by delimeter and then split each segment as kv pair, then add each key to output list. Null and illegal segments are skipped. |
-| **[split_by_value](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-split-by-value)**()| <br>Split string by delimeter and then split each segment as kv pair, then add each value to output list. Null and illegal segments are skipped. |
-| **[sqrt](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-sqrt)**()| <br>Return square root of expr. |
-| **[strcmp](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-strcmp)**()| <br>Returns 0 if the strings are the same, -1 if the first argument is smaller than the second according to the current sort order, and 1 otherwise. |
-| **[string](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-string)**()| <br>Return string converted from timestamp expression. |
-| **[substr](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-substr)**()| <br>Return a substring `len` characters long from string str, starting at position `pos`. Alias function: `substr`|
-| **[substring](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-substring)**()| <br>Return a substring `len` characters long from string str, starting at position `pos`. Alias function: `substr`|
-| **[sum](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-sum)**()| <br>Compute sum of values. |
-| **[sum_cate](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-sum-cate)**()| <br>Compute sum of values grouped by category key and output string. Each group is represented as 'K:V' and separated by comma in outputs and are sorted by key in ascend order. |
-| **[sum_cate_where](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-sum-cate-where)**()| <br>Compute sum of values matching specified condition grouped by category key and output string. Each group is represented as 'K:V' and separated by comma in outputs and are sorted by key in ascend order. |
-| **[sum_where](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-sum-where)**()| <br>Compute sum of values match specified condition. |
-| **[tan](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-tan)**()| <br>Return the tangent of expr. |
-| **[timestamp](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-timestamp)**()| <br>Cast int64, date or string expression to timestamp. |
-| **[top](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-top)**()| <br>Compute top k of values and output string separated by comma. The outputs are sorted in desc order. |
-| **[top1_ratio](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-top1-ratio)**()| <br>Compute the top1 key's ratio. |
-| **[top_n_key_avg_cate_where](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-top-n-key-avg-cate-where)**()| <br>Compute average of values matching specified condition grouped by category key. Output string for top N category keys in descend order. Each group is represented as 'K:V' and separated by comma(,). Empty string returned if no rows selected. |
-| **[top_n_key_count_cate_where](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-top-n-key-count-cate-where)**()| <br>Compute count of values matching specified condition grouped by category key. Output string for top N category keys in descend order. Each group is represented as 'K:V' and separated by comma(,). Empty string returned if no rows selected. |
-| **[top_n_key_max_cate_where](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-top-n-key-max-cate-where)**()| <br>Compute maximum of values matching specified condition grouped by category key. Output string for top N category keys in descend order. Each group is represented as 'K:V' and separated by comma(,). Empty string returned if no rows selected. |
-| **[top_n_key_min_cate_where](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-top-n-key-min-cate-where)**()| <br>Compute minimum of values matching specified condition grouped by category key. Output string for top N category keys in descend order. Each group is represented as 'K:V' and separated by comma(,). Empty string returned if no rows selected. |
-| **[top_n_key_sum_cate_where](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-top-n-key-sum-cate-where)**()| <br>Compute sum of values matching specified condition grouped by category key. Output string for top N category keys in descend order. Each group is represented as 'K:V' and separated by comma(,). Empty string returned if no rows selected. |
-| **[top_n_value_avg_cate_where](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-top-n-value-avg-cate-where)**()| <br>Compute average of values matching specified condition grouped by category key. Output string for top N aggregate values in descend order. Each group is represented as 'K:V' and separated by comma(,). Empty string returned if no rows selected. |
-| **[top_n_value_count_cate_where](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-top-n-value-count-cate-where)**()| <br>Compute count of values matching specified condition grouped by category key. Output string for top N aggregate values in descend order. Each group is represented as 'K:V' and separated by comma(,). Empty string returned if no rows selected. |
-| **[top_n_value_max_cate_where](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-top-n-value-max-cate-where)**()| <br>Compute maximum of values matching specified condition grouped by category key. Output string for top N aggregate values in descend order. Each group is represented as 'K:V' and separated by comma(,). Empty string returned if no rows selected. |
-| **[top_n_value_min_cate_where](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-top-n-value-min-cate-where)**()| <br>Compute minimum of values matching specified condition grouped by category key. Output string for top N aggregate values in descend order. Each group is represented as 'K:V' and separated by comma(,). Empty string returned if no rows selected. |
-| **[top_n_value_sum_cate_where](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-top-n-value-sum-cate-where)**()| <br>Compute sum of values matching specified condition grouped by category key. Output string for top N aggregate values in descend order. Each group is represented as 'K:V' and separated by comma(,). Empty string returned if no rows selected. |
-| **[topn_frequency](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-topn-frequency)**()| <br>Return the topN keys sorted by their frequency. |
-| **[truncate](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-truncate)**()| <br>Return the nearest integer that is not greater in magnitude than the expr. |
-| **[ucase](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-ucase)**()| <br>Convert all the characters to uppercase. Note that characters values > 127 are simply returned. |
-| **[unhex](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-unhex)**()| <br>Convert hexadecimal to binary string. |
-| **[unix_timestamp](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-unix-timestamp)**()| <br>Cast date or string expression to unix_timestamp. If empty string or NULL is provided, return current timestamp. |
-| **[upper](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-upper)**()| <br>Convert all the characters to uppercase. Note that characters values > 127 are simply returned. |
-| **[week](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-week)**()| <br>Return the week of year for a timestamp or date. |
-| **[weekofyear](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-weekofyear)**()| <br>Return the week of year for a timestamp or date. |
-| **[window_split](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-window-split)**()| <br>For each string value from specified column of window, split by delimeter and add segment to output list. Null values are skipped. |
-| **[window_split_by_key](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-window-split-by-key)**()| <br>For each string value from specified column of window, split by delimeter and then split each segment as kv pair, then add each key to output list. Null and illegal segments are skipped. |
-| **[window_split_by_value](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-window-split-by-value)**()| <br>For each string value from specified column of window, split by delimeter and then split each segment as kv pair, then add each value to output list. Null and illegal segments are skipped. |
-| **[year](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-year)**()| <br>Return the year part of a timestamp or date. |
+| **[abs](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-abs)**()| <br>Return the absolute value of expr. |
+| **[acos](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-acos)**()| <br>Return the arc cosine of expr. |
+| **[add](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-add)**()| <br>Compute sum of two arguments. |
+| **[array_contains](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-array-contains)**()| <br>array_contains(array, value) - Returns true if the array contains the value. |
+| **[asin](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-asin)**()| <br>Return the arc sine of expr. |
+| **[at](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-at)**()| <br>Returns value evaluated at the row that is offset rows before the current row within the partition. Offset is evaluated with respect to the current row. |
+| **[atan](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-atan)**()| <br>Return the arc tangent of expr If called with one parameter, this function returns the arc tangent of expr. If called with two parameters X and Y, this function returns the arc tangent of Y / X. |
+| **[atan2](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-atan2)**()| <br>Return the arc tangent of Y / X.. |
+| **[avg](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-avg)**()| <br>Compute average of values. |
+| **[avg_cate](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-avg-cate)**()| <br>Compute average of values grouped by category key and output string. Each group is represented as 'K:V' and separated by comma in outputs and are sorted by key in ascend order. |
+| **[avg_cate_where](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-avg-cate-where)**()| <br>Compute average of values matching specified condition grouped by category key and output string. Each group is represented as 'K:V' and separated by comma in outputs and are sorted by key in ascend order. |
+| **[avg_where](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-avg-where)**()| <br>Compute average of values match specified condition. |
+| **[bool](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-bool)**()| <br>Cast string expression to bool. |
+| **[ceil](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-ceil)**()| <br>Return the smallest integer value not less than the expr. |
+| **[ceiling](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-ceiling)**()| <br>Return the smallest integer value not less than the expr. |
+| **[char](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-char)**()| <br>Returns the ASCII character having the binary equivalent to expr. If n >= 256 the result is equivalent to char(n % 256). |
+| **[char_length](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-char-length)**()| <br>Returns the length of the string. It is measured in characters and multibyte character string is not supported. |
+| **[character_length](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-character-length)**()| <br>Returns the length of the string. It is measured in characters and multibyte character string is not supported. |
+| **[concat](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-concat)**()| <br>This function returns a string resulting from the joining of two or more string values in an end-to-end manner. (To add a separating value during joining, see concat_ws.) |
+| **[concat_ws](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-concat-ws)**()| <br>Returns a string resulting from the joining of two or more string value in an end-to-end manner. It separates those concatenated string values with the delimiter specified in the first function argument. |
+| **[cos](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-cos)**()| <br>Return the cosine of expr. |
+| **[cot](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-cot)**()| <br>Return the cotangent of expr. |
+| **[count](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-count)**()| <br>Compute number of values. |
+| **[count_cate](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-count-cate)**()| <br>Compute count of values grouped by category key and output string. Each group is represented as 'K:V' and separated by comma in outputs and are sorted by key in ascend order. |
+| **[count_cate_where](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-count-cate-where)**()| <br>Compute count of values matching specified condition grouped by category key and output string. Each group is represented as 'K:V' and separated by comma in outputs and are sorted by key in ascend order. |
+| **[count_where](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-count-where)**()| <br>Compute number of values match specified condition. |
+| **[date](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-date)**()| <br>Cast timestamp or string expression to date (date >= 1900-01-01) |
+| **[date_format](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-date-format)**()| <br>Formats the date value according to the format string. |
+| **[datediff](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-datediff)**()| <br>days difference from date1 to date2 |
+| **[day](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-day)**()| <br>Return the day of the month for a timestamp or date. |
+| **[dayofmonth](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-dayofmonth)**()| <br>Return the day of the month for a timestamp or date. |
+| **[dayofweek](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-dayofweek)**()| <br>Return the day of week for a timestamp or date. |
+| **[dayofyear](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-dayofyear)**()| <br>Return the day of year for a timestamp or date. Returns 0 given an invalid date. |
+| **[degrees](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-degrees)**()| <br>Convert radians to degrees. |
+| **[distinct_count](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-distinct-count)**()| <br>Compute number of distinct values. |
+| **[double](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-double)**()| <br>Cast string expression to double. |
+| **[exp](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-exp)**()| <br>Return the value of e (the base of natural logarithms) raised to the power of expr. |
+| **[farm_fingerprint](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-farm-fingerprint)**()| <br>Returns a hash value of the arguments. It is not a cryptographic hash function and should not be used as such. |
+| **[first_value](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-first-value)**()| <br>Returns the value of expr from the latest row (last row) of the window frame. |
+| **[float](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-float)**()| <br>Cast string expression to float. |
+| **[floor](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-floor)**()| <br>Return the largest integer value not less than the expr. |
+| **[fz_join](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-fz-join)**()| <br>For each string value from specified column of window, join by delimeter. Null values are skipped. |
+| **[fz_split](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-fz-split)**()| <br>Split string to list by delimeter. Null values are skipped. |
+| **[fz_split_by_key](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-fz-split-by-key)**()| <br>Split string by delimeter and split each segment as kv pair, then add each key to output list. Null or illegal segments are skipped. |
+| **[fz_split_by_value](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-fz-split-by-value)**()| <br>Split string by delimeter and split each segment as kv pair, then add each value to output list. Null or illegal segments are skipped. |
+| **[fz_top1_ratio](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-fz-top1-ratio)**()| <br>Compute the top1 key's ratio. |
+| **[fz_topn_frequency](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-fz-topn-frequency)**()| <br>Return the topN keys sorted by their frequency. |
+| **[fz_window_split](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-fz-window-split)**()| <br>For each string value from specified column of window, split by delimeter and add segment to output list. Null values are skipped. |
+| **[fz_window_split_by_key](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-fz-window-split-by-key)**()| <br>For each string value from specified column of window, split by delimeter and then split each segment as kv pair, then add each key to output list. Null and illegal segments are skipped. |
+| **[fz_window_split_by_value](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-fz-window-split-by-value)**()| <br>For each string value from specified column of window, split by delimeter and then split each segment as kv pair, then add each value to output list. Null and illegal segments are skipped. |
+| **[hash64](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-hash64)**()| <br>Returns a hash value of the arguments. It is not a cryptographic hash function and should not be used as such. |
+| **[hex](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-hex)**()| <br>Convert integer to hexadecimal. |
+| **[hour](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-hour)**()| <br>Return the hour for a timestamp. |
+| **[identity](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-identity)**()| <br>Return value. |
+| **[if_null](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-if-null)**()| <br>If input is not null, return input value; else return default value. |
+| **[ifnull](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-ifnull)**()| <br>If input is not null, return input value; else return default value. |
+| **[ilike_match](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-ilike-match)**()| <br>pattern match same as ILIKE predicate |
+| **[inc](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-inc)**()| <br>Return expression + 1. |
+| **[int16](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-int16)**()| <br>Cast string expression to int16. |
+| **[int32](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-int32)**()| <br>Cast string expression to int32. |
+| **[int64](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-int64)**()| <br>Cast string expression to int64. |
+| **[is_null](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-is-null)**()| <br>Check if input value is null, return bool. |
+| **[isnull](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-isnull)**()| <br>Check if input value is null, return bool. |
+| **[join](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-join)**()| <br>For each string value from specified column of window, join by delimeter. Null values are skipped. |
+| **[lag](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-lag)**()| <br>Returns value evaluated at the row that is offset rows before the current row within the partition. Offset is evaluated with respect to the current row. |
+| **[last_day](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-last-day)**()| <br>Return the last day of the month to which the date belongs to. |
+| **[lcase](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-lcase)**()| <br>Convert all the characters to lowercase. Note that characters with values > 127 are simply returned. |
+| **[like_match](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-like-match)**()| <br>pattern match same as LIKE predicate |
+| **[ln](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-ln)**()| <br>Return the natural logarithm of expr. |
+| **[log](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-log)**()| <br>log(base, expr) If called with one parameter, this function returns the natural logarithm of expr. If called with two parameters, this function returns the logarithm of expr to the base. |
+| **[log10](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-log10)**()| <br>Return the base-10 logarithm of expr. |
+| **[log2](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-log2)**()| <br>Return the base-2 logarithm of expr. |
+| **[lower](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-lower)**()| <br>Convert all the characters to lowercase. Note that characters with values > 127 are simply returned. |
+| **[make_tuple](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-make-tuple)**()| |
+| **[max](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-max)**()| <br>Compute maximum of values. |
+| **[max_cate](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-max-cate)**()| <br>Compute maximum of values grouped by category key and output string. Each group is represented as 'K:V' and separated by comma in outputs and are sorted by key in ascend order. |
+| **[max_cate_where](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-max-cate-where)**()| <br>Compute maximum of values matching specified condition grouped by category key and output string. Each group is represented as 'K:V' and separated by comma in outputs and are sorted by key in ascend order. |
+| **[max_where](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-max-where)**()| <br>Compute maximum of values match specified condition. |
+| **[maximum](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-maximum)**()| <br>Compute maximum of two arguments. |
+| **[median](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-median)**()| <br>Compute the median of values. |
+| **[min](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-min)**()| <br>Compute minimum of values. |
+| **[min_cate](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-min-cate)**()| <br>Compute minimum of values grouped by category key and output string. Each group is represented as 'K:V' and separated by comma in outputs and are sorted by key in ascend order. |
+| **[min_cate_where](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-min-cate-where)**()| <br>Compute minimum of values matching specified condition grouped by category key and output string. Each group is represented as 'K:V' and separated by comma in outputs and are sorted by key in ascend order. |
+| **[min_where](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-min-where)**()| <br>Compute minimum of values match specified condition. |
+| **[minimum](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-minimum)**()| <br>Compute minimum of two arguments. |
+| **[minute](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-minute)**()| <br>Return the minute for a timestamp. |
+| **[month](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-month)**()| <br>Return the month part of a timestamp or date. |
+| **[nvl](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-nvl)**()| <br>If input is not null, return input value; else return default value. |
+| **[nvl2](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-nvl2)**()| <br>nvl2(expr1, expr2, expr3) - Returns expr2 if expr1 is not null, or expr3 otherwise. |
+| **[pmod](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-pmod)**()| <br>Compute pmod of two arguments. If any param is NULL, output NULL. If divisor is 0, output NULL. |
+| **[pow](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-pow)**()| <br>Return the value of expr1 to the power of expr2. |
+| **[power](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-power)**()| <br>Return the value of expr1 to the power of expr2. |
+| **[radians](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-radians)**()| <br>Returns the argument X, converted from degrees to radians. (Note that π radians equals 180 degrees.) |
+| **[regexp_like](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-regexp-like)**()| <br>pattern match same as RLIKE predicate (based on RE2) |
+| **[replace](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-replace)**()| <br>replace(str, search[, replace]) - Replaces all occurrences of `search` with `replace`|
+| **[reverse](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-reverse)**()| <br>Returns the reversed given string. |
+| **[round](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-round)**()| <br>Return the nearest integer value to expr (in floating-point format), rounding halfway cases away from zero, regardless of the current rounding mode. |
+| **[second](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-second)**()| <br>Return the second for a timestamp. |
+| **[sin](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-sin)**()| <br>Return the sine of expr. |
+| **[size](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-size)**()| <br>Get the size of a List (e.g., result of split) |
+| **[split](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-split)**()| <br>Split string to list by delimeter. Null values are skipped. |
+| **[split_array](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-split-array)**()| <br>Split string to array of string by delimeter. |
+| **[split_by_key](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-split-by-key)**()| <br>Split string by delimeter and split each segment as kv pair, then add each key to output list. Null or illegal segments are skipped. |
+| **[split_by_value](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-split-by-value)**()| <br>Split string by delimeter and split each segment as kv pair, then add each value to output list. Null or illegal segments are skipped. |
+| **[sqrt](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-sqrt)**()| <br>Return square root of expr. |
+| **[strcmp](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-strcmp)**()| <br>Returns 0 if the strings are the same, -1 if the first argument is smaller than the second according to the current sort order, and 1 otherwise. |
+| **[string](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-string)**()| <br>Return string converted from timestamp expression. |
+| **[substr](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-substr)**()| <br>Return a substring `len` characters long from string str, starting at position `pos`. Alias function: `substr`|
+| **[substring](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-substring)**()| <br>Return a substring `len` characters long from string str, starting at position `pos`. Alias function: `substr`|
+| **[sum](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-sum)**()| <br>Compute sum of values. |
+| **[sum_cate](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-sum-cate)**()| <br>Compute sum of values grouped by category key and output string. Each group is represented as 'K:V' and separated by comma in outputs and are sorted by key in ascend order. |
+| **[sum_cate_where](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-sum-cate-where)**()| <br>Compute sum of values matching specified condition grouped by category key and output string. Each group is represented as 'K:V' and separated by comma in outputs and are sorted by key in ascend order. |
+| **[sum_where](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-sum-where)**()| <br>Compute sum of values match specified condition. |
+| **[tan](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-tan)**()| <br>Return the tangent of expr. |
+| **[timestamp](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-timestamp)**()| <br>Cast int64, date or string expression to timestamp. |
+| **[top](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-top)**()| <br>Compute top k of values and output string separated by comma. The outputs are sorted in desc order. |
+| **[top1_ratio](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-top1-ratio)**()| <br>Compute the top1 key's ratio. |
+| **[top_n_key_avg_cate_where](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-top-n-key-avg-cate-where)**()| <br>Compute average of values matching specified condition grouped by category key. Output string for top N category keys in descend order. Each group is represented as 'K:V' and separated by comma(,). Empty string returned if no rows selected. |
+| **[top_n_key_count_cate_where](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-top-n-key-count-cate-where)**()| <br>Compute count of values matching specified condition grouped by category key. Output string for top N category keys in descend order. Each group is represented as 'K:V' and separated by comma(,). Empty string returned if no rows selected. |
+| **[top_n_key_max_cate_where](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-top-n-key-max-cate-where)**()| <br>Compute maximum of values matching specified condition grouped by category key. Output string for top N category keys in descend order. Each group is represented as 'K:V' and separated by comma(,). Empty string returned if no rows selected. |
+| **[top_n_key_min_cate_where](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-top-n-key-min-cate-where)**()| <br>Compute minimum of values matching specified condition grouped by category key. Output string for top N category keys in descend order. Each group is represented as 'K:V' and separated by comma(,). Empty string returned if no rows selected. |
+| **[top_n_key_sum_cate_where](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-top-n-key-sum-cate-where)**()| <br>Compute sum of values matching specified condition grouped by category key. Output string for top N category keys in descend order. Each group is represented as 'K:V' and separated by comma(,). Empty string returned if no rows selected. |
+| **[top_n_value_avg_cate_where](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-top-n-value-avg-cate-where)**()| <br>Compute average of values matching specified condition grouped by category key. Output string for top N aggregate values in descend order. Each group is represented as 'K:V' and separated by comma(,). Empty string returned if no rows selected. |
+| **[top_n_value_count_cate_where](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-top-n-value-count-cate-where)**()| <br>Compute count of values matching specified condition grouped by category key. Output string for top N aggregate values in descend order. Each group is represented as 'K:V' and separated by comma(,). Empty string returned if no rows selected. |
+| **[top_n_value_max_cate_where](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-top-n-value-max-cate-where)**()| <br>Compute maximum of values matching specified condition grouped by category key. Output string for top N aggregate values in descend order. Each group is represented as 'K:V' and separated by comma(,). Empty string returned if no rows selected. |
+| **[top_n_value_min_cate_where](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-top-n-value-min-cate-where)**()| <br>Compute minimum of values matching specified condition grouped by category key. Output string for top N aggregate values in descend order. Each group is represented as 'K:V' and separated by comma(,). Empty string returned if no rows selected. |
+| **[top_n_value_sum_cate_where](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-top-n-value-sum-cate-where)**()| <br>Compute sum of values matching specified condition grouped by category key. Output string for top N aggregate values in descend order. Each group is represented as 'K:V' and separated by comma(,). Empty string returned if no rows selected. |
+| **[topn_frequency](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-topn-frequency)**()| <br>Return the topN keys sorted by their frequency. |
+| **[truncate](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-truncate)**()| <br>Return the nearest integer that is not greater in magnitude than the expr. |
+| **[ucase](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-ucase)**()| <br>Convert all the characters to uppercase. Note that characters values > 127 are simply returned. |
+| **[unhex](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-unhex)**()| <br>Convert hexadecimal to binary string. |
+| **[unix_timestamp](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-unix-timestamp)**()| <br>Cast date or string expression to unix_timestamp. If empty string or NULL is provided, return current timestamp. |
+| **[upper](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-upper)**()| <br>Convert all the characters to uppercase. Note that characters values > 127 are simply returned. |
+| **[week](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-week)**()| <br>Return the week of year for a timestamp or date. |
+| **[weekofyear](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-weekofyear)**()| <br>Return the week of year for a timestamp or date. |
+| **[window_split](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-window-split)**()| <br>For each string value from specified column of window, split by delimeter and add segment to output list. Null values are skipped. |
+| **[window_split_by_key](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-window-split-by-key)**()| <br>For each string value from specified column of window, split by delimeter and then split each segment as kv pair, then add each key to output list. Null and illegal segments are skipped. |
+| **[window_split_by_value](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-window-split-by-value)**()| <br>For each string value from specified column of window, split by delimeter and then split each segment as kv pair, then add each value to output list. Null and illegal segments are skipped. |
+| **[year](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-year)**()| <br>Return the year part of a timestamp or date. |
 
 
 ## Functions Documentation
@@ -342,9 +342,9 @@ Returns value evaluated at the row that is offset rows before the current row wi
   * **offset** The number of rows forwarded from the current row, must not negative
 
 
-Note: This function equals the `[at()](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-at)` function.
+Note: This function equals the `[at()](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-at)` function.
 
-The offset in window is `nth_value()`, not `[lag()](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-lag)/at()`. The old `[at()](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-at)`(version < 0.5.0) is start from the last row of window(may not be the current row), it's more like `nth_value()`
+The offset in window is `nth_value()`, not `[lag()](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-lag)/at()`. The old `[at()](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-at)`(version < 0.5.0) is start from the last row of window(may not be the current row), it's more like `nth_value()`
 
 
 Example:
@@ -902,7 +902,7 @@ SELECT COS(0);
 
 
 
-* The value returned by [cos()](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-cos) is always in the range: -1 to 1.
+* The value returned by [cos()](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-cos) is always in the range: -1 to 1.
 
 
 **Supported Types**:
@@ -1177,7 +1177,7 @@ Example:
 
 ```sql
 
-select date_format(date(1590115420000),"%Y-%m-%d");
+select date_format(date(timestamp(1590115420000)),"%Y-%m-%d");
 --output "2020-05-22"
 ```
 
@@ -1240,7 +1240,7 @@ Return the day of the month for a timestamp or date.
 0.1.0
 
 
-Note: This function equals the `[day()](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-day)` function.
+Note: This function equals the `[day()](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-day)` function.
 
 Example:
 
@@ -1274,7 +1274,7 @@ Return the day of the month for a timestamp or date.
 0.1.0
 
 
-Note: This function equals the `[day()](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-day)` function.
+Note: This function equals the `[day()](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-day)` function.
 
 Example:
 
@@ -1308,7 +1308,7 @@ Return the day of week for a timestamp or date.
 0.4.0
 
 
-Note: This function equals the `[week()](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-week)` function.
+Note: This function equals the `[week()](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-week)` function.
 
 Example:
 
@@ -1538,15 +1538,30 @@ first_value()
 
 **Description**:
 
-Returns the value of expr from the first row of the window frame. 
+Returns the value of expr from the latest row (last row) of the window frame. 
+
+**Since**:
+0.1.0
 
 
+Example:
 
+```sql
+
+select id, gp, ts, first_value(ts) over w as agg from t1
+window w as (partition by gp order by ts rows between 3 preceding and current row);
 ```
-    @since 0.1.0
-```
 
- **Supported Types**: 
+
+| id    | gp    | ts    | agg     |
+|  -------- | -------- | -------- | -------- |
+| 1    | 100    | 98    | 98     |
+| 2    | 100    | 99    | 99     |
+| 3    | 100    | 100    | 100    |
+
+
+
+**Supported Types**: 
 
 ### function float
 
@@ -1618,8 +1633,15 @@ fz_join()
 
 For each string value from specified column of window, join by delimeter. Null values are skipped. 
 
+**Parameters**: 
+
+  * **input** String expression to join 
+  * **delimeter** Join delimeter
+
+
 **Since**:
 0.1.0
+
 
 
 Example:
@@ -1645,9 +1667,24 @@ fz_split()
 
 Split string to list by delimeter. Null values are skipped. 
 
+**Parameters**: 
+
+  * **input** Input string 
+  * **delimeter** Delimeter of string
+
+
 **Since**:
 0.1.0
 
+
+
+Example:
+
+```sql
+
+select `join`(split("k1:1, k2:2", ",", ":"), " ") as out;
+-- output "k1:1 k2:2"
+```
 
 
 **Supported Types**:
@@ -1662,11 +1699,27 @@ fz_split_by_key()
 
 **Description**:
 
-Split string by delimeter and then split each segment as kv pair, then add each key to output list. Null and illegal segments are skipped. 
+Split string by delimeter and split each segment as kv pair, then add each key to output list. Null or illegal segments are skipped. 
+
+**Parameters**: 
+
+  * **input** Input string 
+  * **delimeter** Delimeter of string 
+  * **kv_delimeter** Delimeter of kv pair
+
 
 **Since**:
 0.1.0
 
+
+
+Example:
+
+```sql
+
+select `join`(split_by_key("k1:1, k2:2", ",", ":"), " ") as out;
+-- output "k1 k2"
+```
 
 
 **Supported Types**:
@@ -1681,11 +1734,27 @@ fz_split_by_value()
 
 **Description**:
 
-Split string by delimeter and then split each segment as kv pair, then add each value to output list. Null and illegal segments are skipped. 
+Split string by delimeter and split each segment as kv pair, then add each value to output list. Null or illegal segments are skipped. 
+
+**Parameters**: 
+
+  * **input** Input string 
+  * **delimeter** Delimeter of string 
+  * **kv_delimeter** Delimeter of kv pair
+
 
 **Since**:
 0.1.0
 
+
+
+Example:
+
+```sql
+
+select `join`(split_by_value("k1:1, k2:2", ",", ":"), " ") as out;
+-- output "1 2"
+```
 
 
 **Supported Types**:
@@ -2216,8 +2285,15 @@ join()
 
 For each string value from specified column of window, join by delimeter. Null values are skipped. 
 
+**Parameters**: 
+
+  * **input** String expression to join 
+  * **delimeter** Join delimeter
+
+
 **Since**:
 0.1.0
+
 
 
 Example:
@@ -2248,9 +2324,9 @@ Returns value evaluated at the row that is offset rows before the current row wi
   * **offset** The number of rows forwarded from the current row, must not negative
 
 
-Note: This function equals the `[at()](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-at)` function.
+Note: This function equals the `[at()](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-at)` function.
 
-The offset in window is `nth_value()`, not `[lag()](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-lag)/at()`. The old `[at()](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-at)`(version < 0.5.0) is start from the last row of window(may not be the current row), it's more like `nth_value()`
+The offset in window is `nth_value()`, not `[lag()](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-lag)/at()`. The old `[at()](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-at)`(version < 0.5.0) is start from the last row of window(may not be the current row), it's more like `nth_value()`
 
 
 Example:
@@ -3565,7 +3641,7 @@ SELECT SIN(0);
 
 
 
-* The value returned by [sin()](/reference/sql/functions_and_operators/Files/udfs_8h.md#function-sin) is always in the range: -1 to 1.
+* The value returned by [sin()](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-sin) is always in the range: -1 to 1.
 
 
 **Supported Types**:
@@ -3609,9 +3685,24 @@ split()
 
 Split string to list by delimeter. Null values are skipped. 
 
+**Parameters**: 
+
+  * **input** Input string 
+  * **delimeter** Delimeter of string
+
+
 **Since**:
 0.1.0
 
+
+
+Example:
+
+```sql
+
+select `join`(split("k1:1, k2:2", ",", ":"), " ") as out;
+-- output "k1:1 k2:2"
+```
 
 
 **Supported Types**:
@@ -3651,11 +3742,27 @@ split_by_key()
 
 **Description**:
 
-Split string by delimeter and then split each segment as kv pair, then add each key to output list. Null and illegal segments are skipped. 
+Split string by delimeter and split each segment as kv pair, then add each key to output list. Null or illegal segments are skipped. 
+
+**Parameters**: 
+
+  * **input** Input string 
+  * **delimeter** Delimeter of string 
+  * **kv_delimeter** Delimeter of kv pair
+
 
 **Since**:
 0.1.0
 
+
+
+Example:
+
+```sql
+
+select `join`(split_by_key("k1:1, k2:2", ",", ":"), " ") as out;
+-- output "k1 k2"
+```
 
 
 **Supported Types**:
@@ -3670,11 +3777,27 @@ split_by_value()
 
 **Description**:
 
-Split string by delimeter and then split each segment as kv pair, then add each value to output list. Null and illegal segments are skipped. 
+Split string by delimeter and split each segment as kv pair, then add each value to output list. Null or illegal segments are skipped. 
+
+**Parameters**: 
+
+  * **input** Input string 
+  * **delimeter** Delimeter of string 
+  * **kv_delimeter** Delimeter of kv pair
+
 
 **Since**:
 0.1.0
 
+
+
+Example:
+
+```sql
+
+select `join`(split_by_value("k1:1, k2:2", ",", ":"), " ") as out;
+-- output "1 2"
+```
 
 
 **Supported Types**:
