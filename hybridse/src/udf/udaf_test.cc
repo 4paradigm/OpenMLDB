@@ -264,6 +264,22 @@ TEST_F(UdafTest, AvgTest) {
     CheckUdf<Nullable<double>, ListRef<Nullable<double>>>("avg", nullptr, MakeList<Nullable<double>>({nullptr}));
 }
 
+TEST_F(UdafTest, StdTest) {
+    double expected = 1.118034;
+    CheckUdf<double, ListRef<int16_t>>("std", expected,
+                                       MakeList<int16_t>({1, 2, 3, 4}));
+    CheckUdf<double, ListRef<int32_t>>("std", expected,
+                                       MakeList<int32_t>({1, 2, 3, 4}));
+    CheckUdf<double, ListRef<int64_t>>("std", expected,
+                                       MakeList<int64_t>({1, 2, 3, 4}));
+    CheckUdf<double, ListRef<float>>("std", expected, MakeList<float>({1, 2, 3, 4}));
+    CheckUdf<double, ListRef<Nullable<double>>>("std", expected,
+                                                MakeList<Nullable<double>>({1, 2, nullptr, 3, 4}));
+    // nullable
+    CheckUdf<Nullable<double>, ListRef<double>>("std", nullptr, MakeList<double>({}));
+    CheckUdf<Nullable<double>, ListRef<Nullable<double>>>("std", nullptr, MakeList<Nullable<double>>({nullptr}));
+}
+
 TEST_F(UdafTest, SumTest) {
     CheckUdf<int16_t, ListRef<int16_t>>("sum", 10,
                                        MakeList<int16_t>({1, 2, 3, 4}));
