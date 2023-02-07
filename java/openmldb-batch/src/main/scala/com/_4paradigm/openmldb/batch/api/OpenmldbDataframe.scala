@@ -16,9 +16,18 @@
 
 package com._4paradigm.openmldb.batch.api
 
-import com._4paradigm.openmldb.batch.SchemaUtil
+import com._4paradigm.openmldb.batch.{OpenmldbBatchConfig, SchemaUtil}
 import org.apache.spark.sql.{DataFrame, Row, SparkSession}
+import org.apache.http.client.config.RequestConfig
+import org.apache.http.client.methods.HttpPost
+import org.apache.http.impl.client.HttpClientBuilder
+import org.apache.http.HttpHeaders
+import org.apache.http.entity.StringEntity
+import org.apache.commons.io.IOUtils
+import org.apache.commons.lang3.StringEscapeUtils
+import scala.collection.mutable.ArrayBuffer
 
+import java.sql.Timestamp
 
 case class OpenmldbDataframe(openmldbSession: OpenmldbSession, sparkDf: DataFrame) {
 
@@ -213,6 +222,80 @@ case class OpenmldbDataframe(openmldbSession: OpenmldbSession, sparkDf: DataFram
    */
   def printCodegen(): Unit = {
     sparkDf.queryExecution.debug.codegen
+  }
+
+  /**
+   * Send df parts to taskmanager http
+   */
+  def sendResult(): Unit = {
+    val url = openmldbSession.config.saveJobResultHttp
+    val resultId = openmldbSession.config.saveJobResultId
+    val rowPerPost = openmldbSession.config.saveJobResultRowPerPost
+    val postTimeouts = openmldbSession.config.saveJobResultPostTimeouts.split(",").map(_.toInt)
+    val schemaLine = sparkDf.schema.map(structField => { structField.name }).mkString(",")
+    println(s"send result to ${url}, result id ${resultId}")
+    sparkDf.foreachPartition { (partition: Iterator[Row]) => {
+      val client = HttpClientBuilder.create().build()
+      val post = new HttpPost(url)
+      post.setHeader("Content-type", "application/json");
+      val requestConfig = RequestConfig.custom().setConnectionRequestTimeout(postTimeouts(0))
+        .setConnectTimeout(postTimeouts(1)).setSocketTimeout(postTimeouts(2)).build()
+      post.setConfig(requestConfig);
+      while (partition.hasNext) {
+        val arr = new ArrayBuffer[String]()
+        var i = 0
+        while (i < rowPerPost && partition.hasNext) {
+          // print each column value, if null, print null, if string, print escaped string
+          arr.append(
+            partition
+              .next()
+              .toSeq
+              .map(x => {
+                if (x == null) { "null" }
+                else if(x.isInstanceOf[Timestamp]) { s""""${x.toString}"""" }
+                else if (x.isInstanceOf[String]) {
+                  s""""${StringEscapeUtils.escapeJson(x.toString)}""""
+                } else { x.toString }
+              })
+              .mkString(",")
+          )
+          i += 1
+        }
+        // use json load to rebuild two dim array?
+        // just send a raw csv string "<schema>\n<row1>\n<row2>...",
+        // so we need to quote the whole csv string(escape again)
+        val data = StringEscapeUtils.escapeJson(arr.mkString("\n"))
+        val json_str = s"""{"json_data": "${schemaLine}\\n${data}", "result_id": ${resultId}}"""
+        post.setEntity(new StringEntity(json_str))
+        val response = client.execute(post)
+        val entity = response.getEntity()
+        if( response.getStatusLine.getStatusCode() != 200) {
+          println(s"send http failed, ${response.getStatusLine.getStatusCode()}-" +
+            s"${response.getStatusLine.getReasonPhrase()}")
+        } else {
+          println(IOUtils.toString(entity.getContent()))
+        }
+        }
+      }
+    }
+
+    // send an empty data to let the result reader know that it can read now
+    val client = HttpClientBuilder.create().build()
+    val post = new HttpPost(url)
+    post.setHeader("Content-type", "application/json");
+    val requestConfig = RequestConfig.custom().setConnectionRequestTimeout(postTimeouts(0))
+      .setConnectTimeout(postTimeouts(1)).setSocketTimeout(postTimeouts(2)).build()
+    post.setConfig(requestConfig);
+    val json_str = s"""{"json_data": "", "result_id": ${resultId}}"""
+    post.setEntity(new StringEntity(json_str))
+    val response = client.execute(post)
+    val entity = response.getEntity()
+    if( response.getStatusLine.getStatusCode() != 200) {
+      println(s"send last http failed, ${response.getStatusLine.getStatusCode()}-" +
+        s"${response.getStatusLine.getReasonPhrase()}")
+    } else {
+      println("last response: " + IOUtils.toString(entity.getContent()))
+    }
   }
 
 }

@@ -164,6 +164,23 @@ class OpenmldbBatchConfig extends Serializable {
   @ConfigOption(name = "openmldb.taskmanager.external.function.dir", doc = "The absolute path of TaskManager external" +
     " function dir")
   var taskmanagerExternalFunctionDir = "/tmp/udf/"
+
+  @ConfigOption(name = "openmldb.savejobresult.http", doc = "The http url of JobResultSaver(taskmanager), " +
+    "send df to it")
+  var saveJobResultHttp = ""
+
+  @ConfigOption(name = "openmldb.savejobresult.resultid", doc = "The savejobresult id")
+  var saveJobResultId = ""
+
+  // If a post req is too large, > brpc max_body_size, it'll be reject, default is 64M.
+  @ConfigOption(name = "openmldb.savejobresult.rowperpost", doc = "The max row count of a http post request to " +
+    "savejobresult, default is 16000, if the row count is larger than this, will split it into multiple http request" +
+    " with same resultid and different row")
+  var saveJobResultRowPerPost = 16000
+
+  @ConfigOption(name = "openmldb.savejobresult.posttimeouts", doc = "ConnectionRequestTimeout,ConnectTimeout," +
+    "SocketTimeout for http post request to savejobresult, default is '10000,10000,10000', unit is ms")
+  var saveJobResultPostTimeouts = "10000,10000,10000"
 }
 
 object OpenmldbBatchConfig {
