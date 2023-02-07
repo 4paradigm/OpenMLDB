@@ -61,7 +61,7 @@ bool StartNS(const std::string& endpoint, const std::string& tb_endpoint, brpc::
 
 bool StartTablet(const std::string& endpoint, brpc::Server* server);
 
-void ProcessSQLs(sdk::SQLClusterRouter* sr, std::initializer_list<absl::string_view> sqls);
+void ProcessSQLs(sdk::SQLRouter* sr, std::initializer_list<absl::string_view> sqls);
 
 // expect object for ResultSet cell
 struct CellExpectInfo {

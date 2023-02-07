@@ -45,7 +45,7 @@ if(TESTING_ENABLE)
     target_link_libraries(sql_sdk_test ${SDK_TEST_DEPS} ${BIN_LIBS} ${GTEST_LIBRARIES} )
 
     add_executable(sql_sdk_run sql_sdk_run.cc)
-    target_link_libraries(sql_sdk_run base_test ${BIN_LIBS})
+    target_link_libraries(sql_sdk_run ${SDK_TEST_DEPS} ${BIN_LIBS})
     set_target_properties(
         sql_sdk_run
         PROPERTIES
