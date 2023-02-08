@@ -104,7 +104,7 @@ jobs:
           to: ${{ secrets.MAIL_TO }}
           from: GitHub Actions
           content_type: text/plain
-          attachments: allure-results.tar.gz
+          attachments: surefire-reports.tar.gz
 
   java-sdk-cluster-memory-task:
     if: ${{ github.event.inputs.EXEC_TEST_TYPE == 'all' || github.event.inputs.EXEC_TEST_TYPE == 'java' }}
@@ -133,7 +133,7 @@ jobs:
           comment_title: "SRC java-sdk-cluster-memory-task Report"
       - name: tar test report
         if: ${{ failure() }}
-        run: tar -zcvf allure-results.tar.gz test/integration-test/openmldb-test-java/openmldb-sdk-test/target/allure-results
+        run: tar -zcvf surefire-reports.tar.gz test/integration-test/openmldb-test-java/openmldb-sdk-test/target/surefire-reports
       - name: Send Email
         if: ${{ failure() }}
         uses: dawidd6/action-send-mail@master
@@ -147,7 +147,7 @@ jobs:
           to: ${{ secrets.MAIL_TO }}
           from: GitHub Actions
           content_type: text/plain
-          attachments: allure-results.tar.gz
+          attachments: surefire-reports.tar.gz
 
   java-sdk-cluster-memory-1:
     if: ${{ github.event.inputs.EXEC_TEST_TYPE == 'all' || github.event.inputs.EXEC_TEST_TYPE == 'java' }}
@@ -176,7 +176,7 @@ jobs:
           comment_title: SRC java-sdk-cluster-memory-1 Report
       - name: tar test report
         if: ${{ failure() }}
-        run: tar -zcvf allure-results.tar.gz test/integration-test/openmldb-test-java/openmldb-sdk-test/target/allure-results
+        run: tar -zcvf surefire-reports.tar.gz test/integration-test/openmldb-test-java/openmldb-sdk-test/target/surefire-reports
       - name: Send Email
         if: ${{ failure() }}
         uses: dawidd6/action-send-mail@master
@@ -190,7 +190,7 @@ jobs:
           to: ${{ secrets.MAIL_TO }}
           from: GitHub Actions
           content_type: text/plain
-          attachments: allure-results.tar.gz
+          attachments: surefire-reports.tar.gz
 
   java-sdk-cluster-ssd-0:
     if: ${{ github.event.inputs.EXEC_TEST_TYPE == 'all' || github.event.inputs.EXEC_TEST_TYPE == 'java' }}
@@ -219,7 +219,7 @@ jobs:
           comment_title: "SRC java-sdk-cluster-ssd-0 Report"
       - name: tar test report
         if: ${{ failure() }}
-        run: tar -zcvf allure-results.tar.gz test/integration-test/openmldb-test-java/openmldb-sdk-test/target/allure-results
+        run: tar -zcvf surefire-reports.tar.gz test/integration-test/openmldb-test-java/openmldb-sdk-test/target/surefire-reports
       - name: Send Email
         if: ${{ failure() }}
         uses: dawidd6/action-send-mail@master
@@ -233,7 +233,7 @@ jobs:
           to: ${{ secrets.MAIL_TO }}
           from: GitHub Actions
           content_type: text/plain
-          attachments: allure-results.tar.gz
+          attachments: surefire-reports.tar.gz
 
 #  java-sdk-cluster-ssd-task:
 #    if: ${{ github.event.inputs.EXEC_TEST_TYPE == 'all' || github.event.inputs.EXEC_TEST_TYPE == 'java' }}
@@ -305,7 +305,7 @@ jobs:
           comment_title: "SRC java-sdk-cluster-hdd-0 Report"
       - name: tar test report
         if: ${{ failure() }}
-        run: tar -zcvf allure-results.tar.gz test/integration-test/openmldb-test-java/openmldb-sdk-test/target/allure-results
+        run: tar -zcvf surefire-reports.tar.gz test/integration-test/openmldb-test-java/openmldb-sdk-test/target/surefire-reports
       - name: Send Email
         if: ${{ failure() }}
         uses: dawidd6/action-send-mail@master
@@ -319,7 +319,7 @@ jobs:
           to: ${{ secrets.MAIL_TO }}
           from: GitHub Actions
           content_type: text/plain
-          attachments: allure-results.tar.gz
+          attachments: surefire-reports.tar.gz
 
 #  java-sdk-cluster-hdd-task:
 #    if: ${{ github.event.inputs.EXEC_TEST_TYPE == 'all' || github.event.inputs.EXEC_TEST_TYPE == 'java' }}
