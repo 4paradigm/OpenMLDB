@@ -9,7 +9,7 @@
     ```
     cp conf/nameserver.flags conf/nameserver.flags.bak
     ```
-* 修改配置文件 conf/nameserver.flags
+* 修改配置文件
 * 重启 nameserver
     ```bash
     bash bin/start.sh restart nameserver
@@ -20,21 +20,21 @@
 
 更新过程对服务的影响:
 * 如果创建的表是单副本，用户可以选择：
-   - 通过`pre-upgrade`和`post-upgrade`，升级前自动添加副本，升级结束会自动删除新添加的副本。这样行为和多副本保持一致
-   - 如果允许单副本表在升级过程中不可用，可以在`pre-upgrade`的时候添加`--allow_single_replica`选项，在内存紧张的环境下，可以避免添加副本可能造成的OOM
-* 升级过程中，会把待升级的tablet上的leader分片迁移到其它tablets上，升级结束会迁移回来。迁移过程中，写请求会有少量的数据丢失，如果不能容忍少量写丢失，需要在升级过程中停掉写操作。
+   - 通过`pre-upgrade`和`post-upgrade`，重启前自动添加副本，重启后自动删除新添加的副本。这样行为和多副本保持一致
+   - 如果允许单副本表在重启过程中不可用，可以在`pre-upgrade`的时候添加`--allow_single_replica`选项，在内存紧张的环境下，可以避免添加副本可能造成的OOM
+* 更新过程中，会把待更新的tablet上的leader分片迁移到其它tablets上，更新结束会迁移回来。更新过程中，写请求会有少量的数据丢失，如果不能容忍少量写丢失，需要在更新过程中停掉写操作。
 
 更新步骤如下：
 * 备份配置文件
     ```
     cp conf/tablet.flags conf/tablet.flags.bak
     ```
-* 修改配置文件 conf/tablet.flags
-* 重启前准备`pre-upgrade`：为了避免对线上服务的影响，需要在升级tablet前，进行`pre-upgrade`操作，把该tablet上的leader分片迁移到其它tablets上（详细命令说明可以参考：[OpenMLDB运维工具](./openmldb_ops.md)）
+* 修改配置文件
+* 重启前准备`pre-upgrade`：为了避免对线上服务的影响，需要在重启tablet前，进行`pre-upgrade`操作，把该tablet上的leader分片迁移到其它tablets上（详细命令说明可以参考：[OpenMLDB运维工具](./openmldb_ops.md)）
     ```bash
     python tools/openmldb_ops.py --openmldb_bin_path=./bin/openmldb --zk_cluster=172.24.4.40:30481 --zk_root_path=/openmldb --cmd=pre-upgrade --endpoints=127.0.0.1:10921
     ```
-  如果允许单副本表在升级过程中不可用，可以添加`--allow_single_replica`来避免添加新的副本。
+  如果允许单副本表在升级更新中不可用，可以添加`--allow_single_replica`来避免添加新的副本。
 * 停止tablet
     ```bash
     bash bin/start.sh restart tablet
@@ -66,7 +66,7 @@
     ```
     cp conf/apiserver.flags conf/apiserver.flags.bak
     ```
-* 修改配置文件 conf/apiserver.flags
+* 修改配置文件
 * 重启 apiserver
     ```bash
     bash bin/start.sh restart apiserver
@@ -76,7 +76,7 @@
     ```
     cp conf/taskmanager.properties conf/taskmanager.properties.bak
     ```
-* 修改配置文件 conf/taskmanager.properties
+* 修改配置文件
 * 重启 taskmanager
     ```bash
     bash bin/start.sh restart taskmanager

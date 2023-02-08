@@ -19,21 +19,21 @@ We'll use the normal mode(background) to restart the components. If you want to 
 ## 2. Update Tablet Configuration
 Here is the impact when update the configuration of tablet:
 * If the table is single-replica, users can choose:
-    - add an extra replica before upgrading and delete it afterwards (achieved by `pre-upgrade` and `post-upgrade`).
+    - add an extra replica before restarting and delete it afterwards (achieved by `pre-upgrade` and `post-upgrade`).
       Then it has the same behavior as the multi-replica case
-    - if it is acceptable that the table may be unavailable during the upgrade, users can specify
+    - if it is acceptable that the table may be unavailable during the update, users can specify
       `--allow_single_replica` during `pre-upgrade`, which can avoid OOM caused by adding a replica if memory is limited
-* If the table is multi-replica, we will migrate the leader partitions in the tablet to be upgraded
+* If the table is multi-replica, we will migrate the leader partitions in the tablet to be updating
 to other tablets, and migrate back after the upgrade.
-If there is write traffic during the upgrade, there may be data loss.
+If there is write traffic during the update, there may be data loss.
 
 ### 2.1. Steps of Updating Tablet Configuration
 * Backup configuation
     ```bash
-    cp conf/tab;et.flags conf/tablet.flags.bak
+    cp conf/tablet.flags conf/tablet.flags.bak
     ```
 * Update configuation
-* `pre-upgrade`: to reduce the interruption to the online service before the upgrade (refer to [Operation Tool](./openmldb_ops.md))
+* `pre-upgrade`: to reduce the interruption to the online service before the restart (refer to [Operation Tool](./openmldb_ops.md))
     ```bash
     python tools/openmldb_ops.py --openmldb_bin_path=./bin/openmldb --zk_cluster=172.24.4.40:30481 --zk_root_path=/openmldb --cmd=pre-upgrade --endpoints=127.0.0.1:10921
     ```
