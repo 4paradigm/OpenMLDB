@@ -1,6 +1,23 @@
-# Upgrade
+# Update Configuration
 
-Here is the impact when upgrading OpenMLDB:
+```{note}
+We'll use the normal mode(background) to restart the components. If you want to restart them in daemon mode, please use `bash bin/start.sh restart <component> mon`. In daemon mode, `bin/<component>.pid` is the mon pid，`bin/<component>.pid.child` is the component pid. The mon process is not the system service, if the mon process crashed, the component process becomes the normal background process.
+```
+
+## 1. Update Nameserver Configuration
+* Backup configuation
+    ```bash
+    cp conf/nameserver.flags conf/nameserver.flags.bak
+    ```
+* Update configuation
+* Restart the nameserver
+    ```bash
+    bash bin/start.sh restart nameserver
+    ```
+* Repeat the above steps for the remaining nameservers
+
+## 2. Update Tablet Configuration
+Here is the impact when update the configuration of tablet:
 * If the table is single-replica, users can choose:
     - add an extra replica before upgrading and delete it afterwards (achieved by `pre-upgrade` and `post-upgrade`).
       Then it has the same behavior as the multi-replica case
@@ -10,43 +27,21 @@ Here is the impact when upgrading OpenMLDB:
 to other tablets, and migrate back after the upgrade.
 If there is write traffic during the upgrade, there may be data loss.
 
-```{note}
-We'll use the normal mode(background) to start the components. If you want to start them in daemon mode, please use `bash bin/start.sh start <component> mon`. In daemon mode, `bin/<component>.pid` is the mon pid，`bin/<component>.pid.child` is the component pid. The mon process is not the system service, if the mon process crashed, the component process becomes the normal background process.
-```
-
-## 1. Upgrade Nameserver
-
-* Stop nameserver
+### 2.1. Steps of Updating Tablet Configuration
+* Backup configuation
     ```bash
-    bash bin/start.sh stop nameserver
+    cp conf/tab;et.flags conf/tablet.flags.bak
     ```
-* Backup the old `bin` directory
-* Replace with the new bin
-* Start the new nameserver
-    ```bash
-    bash bin/start.sh start nameserver
-    ```
-* Repeat the above steps for the remaining nameservers
-
-## 2. Upgrade Tablets
-
-### 2.1. Steps of Upgrading Tablets
-
+* Update configuation
 * `pre-upgrade`: to reduce the interruption to the online service before the upgrade (refer to [Operation Tool](./openmldb_ops.md))
     ```bash
     python tools/openmldb_ops.py --openmldb_bin_path=./bin/openmldb --zk_cluster=172.24.4.40:30481 --zk_root_path=/openmldb --cmd=pre-upgrade --endpoints=127.0.0.1:10921
     ```
   If the unavailability of single-replica tables is ok, users can add `--allow_single_replica` to avoid adding a new replica.
 
-* Stop tablet
+* Restart tablet
     ```bash
-    bash bin/start.sh stop tablet
-    ```
-* Backup the old `bin` directory
-* Replace with the new bin
-* Start tablet
-    ```bash
-    bash bin/start.sh start tablet
+    bash bin/start.sh restart tablet
     ```
 * If `auto_failover` is off, we have to manually `recoverdata` to restore data.
     ```bash
@@ -56,7 +51,7 @@ We'll use the normal mode(background) to start the components. If you want to st
     ```bash
     python tools/openmldb_ops.py --openmldb_bin_path=./bin/openmldb --zk_cluster=172.24.4.40:30481 --zk_root_path=/openmldb --cmd=post-upgrade --endpoints=127.0.0.1:10921
     ```
-### 2.2. Confirmation of Upgrade Result
+### 2.2. Confirmation of Restart Result
 * `showopstatus` command checks whether there are operations that are `kFailed`, and check the log to troubleshoot the cause
     ```bash
     python tools/openmldb_ops.py --openmldb_bin_path=./bin/openmldb --zk_cluster=172.24.4.40:30481 --zk_root_path=/openmldb --cmd=showopstatus --filter=kFailed
@@ -65,46 +60,27 @@ We'll use the normal mode(background) to start the components. If you want to st
     ```bash
     python tools/openmldb_ops.py --openmldb_bin_path=./bin/openmldb --zk_cluster=172.24.4.40:30481 --zk_root_path=/openmldb --cmd=showtablestatus
     ```
-After a tablet node is upgraded, repeat the above steps for other tablets.
+After a tablet node is restarted, repeat the above steps for other tablets.
 
-After all tablets are upgraded, resume write operations, and run the `showtablestatus` command to check whether the `Rows` number has increased.
+After all tablets are restarted, resume write operations, and run the `showtablestatus` command to check whether the `Rows` number has increased.
 
-## 3. Upgrade APIServer
-
-* Stop apiserver
+## 3. Update APIServer Configuration
+* Backup configuation
     ```bash
-    bash bin/start.sh stop apiserver
+    cp conf/apiserver.flags conf/apiserver.flags.bak
     ```
-* Backup the old `bin` directory
-* Replace with the new `bin` directory
-* Start the new apiserver
+* Update configuation
+* Restart the apiserver
     ```bash
-    bash bin/start.sh start apiserver
+    bash bin/start.sh restart apiserver
     ```
-
-## 4. Upgrade Taskmanager
-
-* Upgrade OpenMLDB Spark Distribution: download the new version of spark distribution
-and replace with the old one located in `$SPARK_HOME`
-
-* Stop taskmanager
+## 4. Update TaskManager Configuration
+* Backup configuation
     ```bash
-    bash bin/start.sh stop taskmanager
+    cp conf/taskmanager.properties conf/taskmanager.properties.bak
     ```
-* Backup the old `bin` and `taskmanager` directories
-* Replace with the new `bin` and `taskmanager` directories
-* Start the new taskmanager
+* Update configuation
+* Restart the taskmanager
     ```bash
-    bash bin/start.sh start taskmanager
+    bash bin/start.sh restart taskmanager
     ```
-
-## 5. Upgrade the SDKs
-
-### Upgrade Java SDK
-* Update the java sdk version number in the pom file, including `openmldb-jdbc` and `openmldb-native`
-
-### Upgrade Python SDK
-* install the new python sdk
-  ```bash
-  pip install openmldb=={NEW_VERSION}
-  ```
