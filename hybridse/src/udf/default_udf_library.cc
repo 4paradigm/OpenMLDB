@@ -31,6 +31,7 @@
 #include "udf/containers.h"
 #include "udf/udf.h"
 #include "udf/udf_registry.h"
+#include "udf/default_defs/expr_def.h"
 
 using openmldb::base::Date;
 using openmldb::base::StringRef;
@@ -1619,9 +1620,8 @@ void DefaultUdfLibrary::InitMathUdf() {
             @param expr
 
             @since 0.5.0)");
-    RegisterExternal("RADIANS")
-        .args<double>(
-            static_cast<double (*)(double)>(udf::v1::degree_to_radius))
+
+    RegisterExprUdfTemplate<container::RadiansDef>("radians")
         .doc(R"(
             @brief Returns the argument X, converted from degrees to radians. (Note that π radians equals 180 degrees.)
 
@@ -1631,7 +1631,9 @@ void DefaultUdfLibrary::InitMathUdf() {
                 SELECT RADIANS(90.0);
                 --output 1.570796326794896619231
             @endcode
-            @since 0.6.0)");
+
+            @since 0.6.0)")
+        .args_in<int16_t, int32_t, int64_t, float, double>();
 
     RegisterExternalTemplate<v1::Hash64>("hash64")
         .doc(R"(

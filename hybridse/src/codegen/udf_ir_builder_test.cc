@@ -1206,8 +1206,13 @@ TEST_F(UdfIRBuilderTest, CharLengthUdfTest) {
 }
 TEST_F(UdfIRBuilderTest, DegreeToRadiusCheck) {
     auto udf_name = "radians";
-    CheckUdf<double, double>(udf_name, 3.141592653589793238463, 180);
-    CheckUdf<double, double>(udf_name, 1.570796326794896619231, 90);
+    CheckUdf<double, double>(udf_name, M_PI, 180);
+    CheckUdf<double, double>(udf_name, M_PI / 2 , 90);
+    CheckUdf<double, int16_t>(udf_name, M_PI / 2 , 90);
+    CheckUdf<double, int32_t>(udf_name, M_PI / 2 , 90);
+    CheckUdf<double, int64_t>(udf_name, M_PI / 2 , 90);
+    CheckUdf<double, float>(udf_name, M_PI / 2 , 90);
+    CheckUdf<double, double>(udf_name, M_PI / 2 , 90);
     CheckUdf<double, double>(udf_name, 0, 0);
     CheckUdf<Nullable<double>, Nullable<double>>(udf_name, nullptr, nullptr);
 }
