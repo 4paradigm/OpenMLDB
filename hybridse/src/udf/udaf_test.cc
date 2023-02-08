@@ -992,7 +992,32 @@ TEST_F(UdafTest, TopNValueAvgCateWhereTest) {
                                MakeList<int32_t>({2, 2, 2, 2, 2, 2, 2}));
 }
 
+TEST_F(UdafTest, DrawdownTest) {
+    double expected = 0.75;
+    CheckUdf<double, ListRef<int16_t>>("drawdown", expected, MakeList<int16_t>({1, 8, 5, 2, 10, 4}));
+    CheckUdf<double, ListRef<int32_t>>("drawdown", expected, MakeList<int32_t>({1, 8, 5, 2, 10, 4}));
+    CheckUdf<double, ListRef<int64_t>>("drawdown", expected, MakeList<int64_t>({1, 8, 5, 2, 10, 4}));
+    CheckUdf<double, ListRef<float>>("drawdown", expected, MakeList<float>({1, 8, 5, 2, 10, 4}));
+    CheckUdf<double, ListRef<Nullable<double>>>("drawdown", expected,
+                                                MakeList<Nullable<double>>({1, 8, 5, 2, nullptr, 10, 4}));
 
+    CheckUdf<double, ListRef<Nullable<double>>>("drawdown", 0, MakeList<Nullable<double>>({1}));
+    CheckUdf<double, ListRef<Nullable<double>>>("drawdown", 0, MakeList<Nullable<double>>({1, 8}));
+    CheckUdf<double, ListRef<Nullable<double>>>("drawdown", 1, MakeList<Nullable<double>>({1, 0.0}));
+    CheckUdf<double, ListRef<Nullable<double>>>("drawdown", 0, MakeList<Nullable<double>>({0.0, 0.0}));
+    CheckUdf<double, ListRef<Nullable<double>>>("drawdown", 0, MakeList<Nullable<double>>({1, 1}));
+    CheckUdf<double, ListRef<Nullable<double>>>("drawdown", 1, MakeList<Nullable<double>>({10, 1, 0.0, 20, 20, 10}));
+    CheckUdf<double, ListRef<Nullable<double>>>("drawdown", 0.8, MakeList<Nullable<double>>({10, 4, 5, 20, 50, 10}));
+
+    // nullable
+    CheckUdf<Nullable<double>, ListRef<double>>("drawdown", nullptr, MakeList<double>({}));
+    CheckUdf<Nullable<double>, ListRef<Nullable<double>>>("drawdown", nullptr, MakeList<Nullable<double>>({nullptr}));
+
+    // negative value will be skipped
+    CheckUdf<double, ListRef<Nullable<double>>>("drawdown", 0.5, MakeList<Nullable<double>>({-1, 2, -2, 1}));
+    CheckUdf<Nullable<double>, ListRef<Nullable<double>>>("drawdown", nullptr,
+                                                          MakeList<Nullable<double>>({-1, -2, -1}));
+}
 
 }  // namespace udf
 }  // namespace hybridse
