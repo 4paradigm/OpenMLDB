@@ -1217,6 +1217,15 @@ TEST_F(UdfIRBuilderTest, DegreeToRadiusCheck) {
     CheckUdf<Nullable<double>, Nullable<double>>(udf_name, nullptr, nullptr);
 }
 
+
+TEST_F(UdfIRBuilderTest, DegreeToRadiusFail) {
+    auto udf_name = "radians";
+    CheckUdfFail<double, StringRef>(udf_name, 0, "0");
+    CheckUdfFail<double, Timestamp>(udf_name, 0, Timestamp(12000));
+    CheckUdfFail<double, Date>(udf_name, 0, Date(2012, 12, 12));
+    CheckUdfFail<double, bool>(udf_name, 0, false);
+}
+
 TEST_F(UdfIRBuilderTest, Replace) {
     auto fn_name = "replace";
 
