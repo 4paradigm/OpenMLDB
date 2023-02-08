@@ -89,6 +89,7 @@ class TypeNode : public SqlNode {
     TypeNode *ShadowCopy(NodeManager *) const override;
     TypeNode *DeepCopy(NodeManager *) const override;
 
+    bool IsBaseOrNullType() const;
     bool IsBaseType() const;
     bool IsTuple() const;
     bool IsTupleNumbers() const;

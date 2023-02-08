@@ -1011,10 +1011,8 @@ Status ExprIRBuilder::BuildGetFieldExpr(
     return Status::OK();
 }
 
-Status ExprIRBuilder::BuildCaseExpr(
-    const ::hybridse::node::CaseWhenExprNode* node, NativeValue* output) {
-    CHECK_TRUE(nullptr != node && nullptr != node->when_expr_list() &&
-                   node->when_expr_list()->GetChildNum() > 0,
+Status ExprIRBuilder::BuildCaseExpr(const ::hybridse::node::CaseWhenExprNode* node, NativeValue* output) {
+    CHECK_TRUE(nullptr != node && nullptr != node->when_expr_list() && node->when_expr_list()->GetChildNum() > 0,
                kCodegenError);
     node::NodeManager* nm = ctx_->node_manager();
     node::ExprNode* expr =
@@ -1025,8 +1023,13 @@ Status ExprIRBuilder::BuildCaseExpr(
         expr = nm->MakeCondExpr(when_expr->when_expr(), when_expr->then_expr(),
                                 expr);
     }
-    return BuildCondExpr(dynamic_cast<::hybridse::node::CondExpr*>(expr),
-                         output);
+
+    auto library = udf::DefaultUdfLibrary::get();
+    node::ExprAnalysisContext analysis_ctx(ctx_->node_manager(), library, ctx_->schemas_context(), nullptr);
+    passes::ResolveFnAndAttrs resolver(&analysis_ctx);
+    node::ExprNode* transformed = nullptr;
+    CHECK_STATUS(resolver.VisitExpr(expr, &transformed));
+    return Build(transformed, output);
 }
 
 Status ExprIRBuilder::BuildCondExpr(const ::hybridse::node::CondExpr* node,
@@ -1035,13 +1038,30 @@ Status ExprIRBuilder::BuildCondExpr(const ::hybridse::node::CondExpr* node,
     NativeValue cond_value;
     CHECK_STATUS(this->Build(node->GetCondition(), &cond_value));
 
+    auto* out_type = node->GetOutputType();
+    ::llvm::Type* llvm_out_type = nullptr;
+    CHECK_TRUE(GetLlvmType(ctx_->GetModule(), out_type, &llvm_out_type),
+               kCodegenError, "unsupported casting type: ", out_type->DebugString());
+    CastExprIRBuilder cast_builder(ctx_->GetCurrentBlock());
+
     // build left
     NativeValue left_value;
     CHECK_STATUS(this->Build(node->GetLeft(), &left_value));
 
+    // FIXME: sometimes built NativeValue may not have type information (GetType() returns NULL),
+    // this may happen inside some udaf functions (e.g sum), so we skip the case in favor of the
+    // old approach that still work. However it is better to correct it so every NativeValue has
+    // its type information resolved correctly during codegen.
+    if (left_value.GetType() != nullptr && left_value.GetType() != llvm_out_type) {
+        CHECK_STATUS(cast_builder.Cast(left_value, llvm_out_type, &left_value));
+    }
+
     // build right
     NativeValue right_value;
     CHECK_STATUS(this->Build(node->GetRight(), &right_value));
+    if (right_value.GetType() != nullptr && right_value.GetType() != llvm_out_type) {
+        CHECK_STATUS(cast_builder.Cast(right_value, llvm_out_type, &right_value));
+    }
 
     CondSelectIRBuilder cond_select_builder;
     return cond_select_builder.Select(ctx_->GetCurrentBlock(), cond_value,

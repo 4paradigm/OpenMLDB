@@ -420,7 +420,7 @@ class ExprNode : public SqlNode {
     ExprNode *DeepCopy(NodeManager *) const override;
 
     // Get the compatible type that lhs and rhs can both casted into
-    static const TypeNode *CompatibleType(NodeManager *, const TypeNode *, const TypeNode *);
+    static absl::StatusOr<const TypeNode *> CompatibleType(NodeManager *, const TypeNode *, const TypeNode *);
 
     static bool IsSafeCast(const TypeNode *from_type, const TypeNode *target_type);
 
