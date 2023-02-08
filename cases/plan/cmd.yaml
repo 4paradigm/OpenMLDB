@@ -576,3 +576,11 @@ cases:
           +-cmd_type: drop function
           +-if_exists: true
           +-args: [func1]
+  - id: exit_stmt
+    desc: exit statement
+    sql: EXIT;
+    expect:
+      node_tree_str: |
+        +-node[CMD]
+          +-cmd_type: exit
+          +-args: []
