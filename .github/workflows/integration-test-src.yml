@@ -90,7 +90,7 @@ jobs:
           comment_title: "SRC java-sdk-cluster-memory-0 Report"
       - name: tar test report
         if: ${{ failure() }}
-        run: tar -zcvf allure-results.tar.gz test/integration-test/openmldb-test-java/openmldb-sdk-test/target/allure-results
+        run: tar -zcvf surefire-reports.tar.gz test/integration-test/openmldb-test-java/openmldb-sdk-test/target/surefire-reports
       - name: Send Email
         if: ${{ failure() }}
         uses: dawidd6/action-send-mail@master
