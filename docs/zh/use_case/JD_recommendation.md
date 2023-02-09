@@ -167,6 +167,12 @@ LOAD DATA INFILE '/work/oneflow_demo/data/JD_data/bo_product/*.parquet' INTO TAB
 LOAD DATA INFILE '/work/oneflow_demo/data/JD_data/bo_comment/*.parquet' INTO TABLE bo_comment options(format='parquet', header=true, mode='overwrite');
 ```
 
+```{important}
+
+请等待 `SHOW JOBS` 中所有任务运行成功（ `state` 转至 `FINISHED` 状态），再进行下一步操作 。
+
+```
+
 或直接运行脚本导入，并快速查询 jobs 状态：
 
 ```
@@ -174,11 +180,6 @@ LOAD DATA INFILE '/work/oneflow_demo/data/JD_data/bo_comment/*.parquet' INTO TAB
 echo "show jobs;" | /work/openmldb/bin/openmldb --zk_cluster=127.0.0.1:2181 --zk_root_path=/openmldb --role=sql_client
 ```
 
-```{important}
-
-请等待 `SHOW JOBS` 中所有任务运行成功（ `state` 转至 `FINISHED` 状态），再进行下一步操作 。
-
-```
 
 #### 特征设计
 
