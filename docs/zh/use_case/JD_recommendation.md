@@ -53,7 +53,7 @@ pip install psutil petastorm pandas sklearn xxhash "tritonclient[all]" geventhtt
 拉取 oneflow_serving 镜像：
 
 ```bash
-docker pull oneflowinc/oneflow_serving:nightly
+docker pull oneflowinc/oneflow-serving:nightly
 ```
 
 ```{note}
