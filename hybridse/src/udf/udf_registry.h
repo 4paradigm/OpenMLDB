@@ -282,6 +282,12 @@ struct UdfLibraryEntry {
 
     // record whether always return list
     bool always_return_list = false;
+
+    // canonical funtion name
+    std::string fn_name_;
+
+    // alias name to the function
+    std::set<std::string> alias_;
 };
 
 struct ExprUdfGenBase {

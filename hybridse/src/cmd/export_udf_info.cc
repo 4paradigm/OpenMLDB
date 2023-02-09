@@ -17,7 +17,6 @@
 #include <iostream>
 #include <string>
 
-#include "absl/cleanup/cleanup.h"
 #include "gflags/gflags.h"
 #include "glog/logging.h"
 #include "passes/resolve_fn_and_attrs.h"
@@ -113,8 +112,6 @@ int ExportUdfInfo(const std::string& dir, const std::string& filename) {
     auto library = udf::DefaultUdfLibrary::get();
     auto registries = library->GetAllRegistries();
 
-    std::map<std::shared_ptr<udf::UdfLibraryEntry>, std::string> known_entries;
-
     YAML::Emitter yaml_out;
 
     UdfTypeExtractor udf_extractor;
@@ -126,14 +123,11 @@ int ExportUdfInfo(const std::string& dir, const std::string& filename) {
 
         yaml_out << YAML::Key << name;
 
-        if (known_entries.count(pair.second) != 0) {
+        if (name != pair.second->fn_name_) {
             // alias
-            yaml_out << YAML::Value << absl::StrCat("alias to ", known_entries[pair.second]);
+            yaml_out << YAML::Value << absl::StrCat("alias to ", pair.second->fn_name_);
             continue;
         }
-        absl::Cleanup insert = [&known_entries, &pair]() {
-            known_entries.emplace(pair.second, pair.first);
-        };
 
         yaml_out << YAML::Value;
         yaml_out << YAML::BeginSeq;
