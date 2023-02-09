@@ -129,7 +129,15 @@ def make_header():
         for name in sorted(udf_defs.keys()):
             content = "/**\n"
             items = udf_defs[name]
-            # print("Found %d registries for \"%s\"" % (len(items), name))
+
+            if isinstance(items, str):
+                # alilas function
+                content += items
+                content += "\n*/\n"
+                content += name + "();\n"
+                header_file.write(content)
+                continue
+
             for item in items:
                 doc = item["doc"]
                 if doc.strip() != "":

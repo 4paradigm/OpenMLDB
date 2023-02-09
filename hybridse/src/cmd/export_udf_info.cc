@@ -16,13 +16,14 @@
 #include <fstream>
 #include <iostream>
 #include <string>
+
+#include "absl/cleanup/cleanup.h"
 #include "gflags/gflags.h"
 #include "glog/logging.h"
-#include "yaml-cpp/yaml.h"
-
 #include "passes/resolve_fn_and_attrs.h"
 #include "udf/default_udf_library.h"
 #include "udf/udf_registry.h"
+#include "yaml-cpp/yaml.h"
 
 DEFINE_string(output_dir, ".", "Output directory path");
 DEFINE_string(output_file, "udf_defs.yaml", "Output yaml filename");
@@ -111,16 +112,29 @@ class UdfTypeExtractor {
 int ExportUdfInfo(const std::string& dir, const std::string& filename) {
     auto library = udf::DefaultUdfLibrary::get();
     auto registries = library->GetAllRegistries();
+
+    std::map<std::shared_ptr<udf::UdfLibraryEntry>, std::string> known_entries;
+
     YAML::Emitter yaml_out;
 
     UdfTypeExtractor udf_extractor;
 
     yaml_out << YAML::BeginMap;
     for (auto& pair : registries) {
-        std::string name = pair.first;
+        const std::string& name = pair.first;
         auto signature_table = pair.second->signature_table.GetTable();
 
         yaml_out << YAML::Key << name;
+
+        if (known_entries.count(pair.second) != 0) {
+            // alias
+            yaml_out << YAML::Value << absl::StrCat("alias to ", known_entries[pair.second]);
+            continue;
+        }
+        absl::Cleanup insert = [&known_entries, &pair]() {
+            known_entries.emplace(pair.second, pair.first);
+        };
+
         yaml_out << YAML::Value;
         yaml_out << YAML::BeginSeq;
 
