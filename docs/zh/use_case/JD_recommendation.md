@@ -1,6 +1,6 @@
 # OpenMLDB + OneFlow：高潜用户购买意向预测
 
-本文将以[京东高潜用户购买意向预测问题](https://jdata.jd.com/html/detail.html?id=1)为例，示范如何使用 OpenMLDB 和 [OneFlow](https://github.com/OneFlow-Inc/oneflow) 联合来打造一个完整的机器学习应用。
+本文将以[京东高潜用户购买意向预测问题](https://jdata.jd.com/html/detail.html?id=1)为例，示范如何使用 OpenMLDB 和 [OneFlow](https://github.com/Oneflow-Inc/oneflow) 联合来打造一个完整的机器学习应用。
 
 ## 背景
 
