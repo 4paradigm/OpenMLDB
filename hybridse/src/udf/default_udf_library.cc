@@ -17,6 +17,7 @@
 #include "udf/default_udf_library.h"
 
 #include <algorithm>
+#include <limits>
 #include <string>
 #include <tuple>
 #include <unordered_set>
@@ -555,6 +556,7 @@ struct TopKDef {
 
 template <typename T>
 struct DrawdownUdafDef {
+    // <drawdown, current peak>
     using ContainerT = std::pair<double, T>;
     void operator()(UdafRegistryHelper& helper) {  // NOLINT
         std::string suffix = ".opaque_std_pair_double_" + DataTypeTrait<T>::to_string();
@@ -565,20 +567,21 @@ struct DrawdownUdafDef {
     }
 
     static void Init(ContainerT* ptr) {
-        new (ptr) ContainerT(-1, 0);
+        new (ptr) ContainerT(-1, std::numeric_limits<T>::max());
     }
 
+    // data is fed in the reverse order of timestamp. Newer data comes first
     static ContainerT* Update(ContainerT* ptr, T t, bool is_null) {
         if (!is_null) {
             if (t < 0) {
-                LOG(ERROR) << "drawdown only supports positive values";
+                LOG_FIRST_N(ERROR, 1) << "drawdown only supports positive values";
                 return ptr;
             }
 
             double curr_max_d = 0;
-            if (ptr->second > t) {
-                if (ptr->second != 0) {
-                    curr_max_d = static_cast<double>(ptr->second - t) / ptr->second;
+            if (ptr->second < t) {
+                if (t != 0) {
+                    curr_max_d = static_cast<double>(t - ptr->second) / t;
                 }
             } else {
                 ptr->second = t;
