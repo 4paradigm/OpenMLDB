@@ -4,7 +4,7 @@
 下文均使用常规后台进程模式启动组件，如果想要使守护进程模式启动组件，请使用`bash bin/start.sh restart <component> mon`的方式启动。守护进程模式中，`bin/<component>.pid`将是mon进程的pid，`bin/<component>.pid.child`为组件真实的pid。mon进程并不是系统服务，如果mon进程意外退出，将无法继续守护。
 ```
 
-## 1. 更新 nameserver 配置文件
+## 更新 nameserver 配置文件
 * 备份配置文件
     ```
     cp conf/nameserver.flags conf/nameserver.flags.bak
@@ -16,7 +16,7 @@
     ```
 * 对剩余nameserver重复以上步骤
 
-## 2. 更新 tablet 配置文件
+## 更新 tablet 配置文件
 
 更新过程对服务的影响:
 * 如果创建的表是单副本，用户可以选择：
@@ -61,23 +61,23 @@
 
 所有节点更新完成后恢复写操作, 执行`showtablestatus`命令查看`Rows`是否增加。
 
-## 3. 更新 apiserver 配置文件
+## 更新 APIServer 配置文件
 * 备份配置文件
     ```
     cp conf/apiserver.flags conf/apiserver.flags.bak
     ```
 * 修改配置文件
-* 重启 apiserver
+* 重启 APIServer
     ```bash
     bash bin/start.sh restart apiserver
     ```
-## 4. 更新 taskmanager 配置文件
+## 更新 TaskManager 配置文件
 * 备份配置文件
     ```
     cp conf/taskmanager.properties conf/taskmanager.properties.bak
     ```
 * 修改配置文件
-* 重启 taskmanager
+* 重启 TaskManager
     ```bash
     bash bin/start.sh restart taskmanager
     ```
