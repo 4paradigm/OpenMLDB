@@ -30,7 +30,7 @@ docker run -it 4pdosc/openmldb:0.7.1 bash
 ./init.sh
 cd taxi-trip
 ```
-镜像内提供了 init.sh 脚本帮助用户快速初始化环境，包括：
+镜像内提供的 init.sh 脚本帮助用户快速初始化环境，包括：
 
 - 配置 zookeeper
 - 启动集群版 OpenMLDB
@@ -43,7 +43,7 @@ cd taxi-trip
 
 ### 预备知识
 
-集群版 OpenMLDB 部分命令是异步的，如：在线/离线模式的 `LOAD DATA`、`SELECT`、`SELECT INTO` 命令。提交任务以后可以使用相关的命令如 `SHOW JOBS`、`SHOW JOB` 来查看任务进度，详情参见[离线任务管理文档](../openmldb_sql/task_manage/SHOW_JOB.md)。
+OpenMLDB 部分命令是异步的，如：在线/离线模式的 `LOAD DATA`、`SELECT`、`SELECT INTO` 命令。提交任务以后可以使用相关命令如 `SHOW JOBS`、`SHOW JOB` 来查看任务进度，详情参见[离线任务管理文档](../openmldb_sql/task_manage/SHOW_JOB.md)。
 
 ## 机器学习全流程
 
@@ -60,7 +60,7 @@ CREATE TABLE t1(id string, vendor_id int, pickup_datetime timestamp, dropoff_dat
 
 ### 步骤 2：导入离线数据
 
-首先，切换到离线执行模式。接着，导入样例数据 `/work/taxi-trip/data/taxi_tour_table_train_simple.csv` 作为离线数据，用于离线特征计算。
+首先，切换到离线执行模式。接着，导入样例数据 `/work/taxi-trip/data/taxi_tour_table_train_simple.snappy.parquet` 作为离线数据，用于离线特征计算。
 
 ```sql
 --OpenMLDB CLI
@@ -69,7 +69,7 @@ SET @@execute_mode='offline';
 LOAD DATA INFILE '/work/taxi-trip/data/taxi_tour_table_train_simple.snappy.parquet' INTO TABLE t1 options(format='parquet', header=true, mode='append');
 ```
 ```{note}
-`LOAD DATA` 为异步任务，可以使用命令 `SHOW JOBS` 查看任务运行状态，请等待任务运行成功（ `state` 转至 `FINISHED` 状态），再进行下一步操作 。
+`LOAD DATA` 为异步任务，请使用命令 `SHOW JOBS` 查看任务运行状态，等待任务运行成功（ `state` 转至 `FINISHED` 状态），再进行下一步操作 。
 ```
 
 ### 步骤 3：特征设计
@@ -120,7 +120,7 @@ w2 AS (PARTITION BY passenger_count ORDER BY pickup_datetime ROWS_RANGE BETWEEN 
 ```
 
 ```{note}
-`SELECT INTO` 为异步任务，可以使用命令 `SHOW JOBS` 查看任务运行状态，请等待任务运行成功（ `state` 转至 `FINISHED` 状态），再进行下一步操作 。
+`SELECT INTO` 为异步任务，请使用命令 `SHOW JOBS` 查看任务运行状态，等待任务运行成功（ `state` 转至 `FINISHED` 状态），再进行下一步操作 。
 ```
 
 ### 步骤 5：模型训练
@@ -141,13 +141,13 @@ w2 AS (PARTITION BY passenger_count ORDER BY pickup_datetime ROWS_RANGE BETWEEN 
 
 假定[步骤 3 所设计的特征](#步骤-3特征设计)在上一步的模型训练中产出的模型符合预期，那么下一步就是将该特征抽取 SQL 脚本部署到线上去，以提供在线特征抽取服务。
 
-1. 重新启动 OpenMLDB CLI，以进行 SQL 上线部署
+1. 重新启动 OpenMLDB CLI，以进行 SQL 上线部署：
 
    ```bash
    /work/openmldb/bin/openmldb --zk_cluster=127.0.0.1:2181 --zk_root_path=/openmldb --role=sql_client
    ```
 
-2. 执行上线部署
+2. 执行上线部署：
 
     ```sql
     --OpenMLDB CLI
@@ -181,17 +181,21 @@ LOAD DATA INFILE 'file:///work/taxi-trip/data/taxi_tour_table_train_simple.csv' 
 ```
 
 ```{note}
-`LOAD DATA` 为异步任务，可以使用命令 `SHOW JOBS` 查看任务运行状态，请等待任务运行成功（ `state` 转至 `FINISHED` 状态），再进行下一步操作。
+`LOAD DATA` 为异步任务，请使用命令 `SHOW JOBS` 查看任务运行状态，等待任务运行成功（ `state` 转至 `FINISHED` 状态），再进行下一步操作。
 ```
 
 ### 步骤 8：启动预估服务
 
-1. 如果尚未退出 OpenMLDB CLI，请使用 `quit` 命令退出 OpenMLDB CLI。
+1. 如果尚未退出 OpenMLDB CLI，先退出 OpenMLDB CLI。
+
+    ```
+    quit;
+    ```
 2. 在普通命令行下启动预估服务：
 
-```bash
-./start_predict_server.sh 127.0.0.1:9080 /tmp/model.txt
-```
+    ```bash
+    ./start_predict_server.sh 127.0.0.1:9080 /tmp/model.txt
+    ```
 ### 步骤 9：发送预估请求
 
 在普通命令行下执行内置的 `predict.py` 脚本。该脚本发送一行请求数据到预估服务，接收返回的预估结果，并打印出来。
