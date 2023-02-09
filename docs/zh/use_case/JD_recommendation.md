@@ -46,7 +46,7 @@ OneFlow 工具依赖 GPU 的强大算力，所以请确保部署机器具备 Nvi
 ```bash
 conda create -y -n oneflow python=3.9.2
 conda activate oneflow
-pip install -f https://staging.oneflow.info/branch/master/cu112 --pre OneFlow
+pip install -f https://staging.oneflow.info/branch/master/cu112 --pre oneflow
 pip install psutil petastorm pandas sklearn xxhash "tritonclient[all]" geventhttpclient tornado
 ```
 
@@ -60,9 +60,9 @@ docker pull oneflowinc/oneflow_serving:nightly
 
 注意，此处安装的为 OneFlow nightly 版本。本案例使用的版本 commit 如下：
 
-OneFlow：https://github.com/OneFlow-Inc/OneFlow/tree/fcf205cf57989a5ecb7a756633a4be08444d8a28
+Oneflow：https://github.com/Oneflow-Inc/oneflow/tree/fcf205cf57989a5ecb7a756633a4be08444d8a28
 
-oneflow_serving：https://github.com/OneFlow-Inc/serving/tree/ce5d667468b6b3ba66d3be6986f41f965e52cf16
+Oneflow-serving：https://github.com/Oneflow-Inc/serving/tree/ce5d667468b6b3ba66d3be6986f41f965e52cf16
 
 ```
 
