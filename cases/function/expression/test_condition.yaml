@@ -425,9 +425,9 @@ cases:
     sql: |
       select
         col1,
-        ifnull(col1, cast(NULL as int)) as out1,
+        ifnull(col1, NULL) as out1,
         ifnull(col2, 24) as out2,
-        ifnull(cast(NULL as int), col1) as out3,
+        ifnull(NULL, col1) as out3,
         nvl2(true, "str", 34) as out4,
         nvl2(NULL, col2, col3) as out5
         from {0};
