@@ -1970,16 +1970,12 @@ base::Status SQLClusterRouter::HandleSQLCreateTable(hybridse::node::CreatePlanNo
     } else {
         LOG(WARNING) << "CREATE TABLE LIKE will run in offline job, please wait.";
 
-        auto taskmanager_client_ptr = cluster_sdk_->GetTaskManagerClient();
-        if (!taskmanager_client_ptr) {
-            return {base::ReturnCode::kServerConnError, "Fail to get TaskManager client"};
-        }
-
         std::map<std::string, std::string> config;
         ::openmldb::taskmanager::JobInfo job_info;
         int job_timeout = GetJobTimeout();
         std::string output;
-        ::openmldb::base::Status status = taskmanager_client_ptr->RunBatchSql(sql, config, db, job_timeout, &output);
+        
+        ::openmldb::base::Status status = ExecuteOfflineQueryGetOutput(sql, config, db, job_timeout, &output);
         // TODO(tobe): Can not get actual status of Spark job, always return success if the job is submitted
         if (!status.OK()) {
             LOG(ERROR) << "Fail to create table, error msage: " + status.msg;
@@ -2658,6 +2654,9 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteOfflineQuery(
     if (is_sync_job) {
         // Run offline sql and wait to get output
         std::string output;
+        LOG(WARNING) << "offline sync SELECT will show output without the data integrity promise. And it will use "
+                        "local filesystem of TaskManager, it's dangerous to select a large result. You'd better use "
+                        "SELECT INTO to get the correct result.";
         auto base_status = ExecuteOfflineQueryGetOutput(sql, config, db, job_timeout, &output);
         if (!base_status.OK()) {
             APPEND_FROM_BASE_AND_WARN(status, base_status, "sync offline query failed");

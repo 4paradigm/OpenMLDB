@@ -265,8 +265,8 @@ case class OpenmldbDataframe(openmldbSession: OpenmldbSession, sparkDf: DataFram
         // just send a raw csv string "<schema>\n<row1>\n<row2>...",
         // so we need to quote the whole csv string(escape again)
         val data = StringEscapeUtils.escapeJson(arr.mkString("\n"))
-        val json_str = s"""{"json_data": "${schemaLine}\\n${data}", "result_id": ${resultId}}"""
-        post.setEntity(new StringEntity(json_str))
+        val jsonStr = s"""{"json_data": "${schemaLine}\\n${data}", "result_id": ${resultId}}"""
+        post.setEntity(new StringEntity(jsonStr))
         val response = client.execute(post)
         val entity = response.getEntity()
         if( response.getStatusLine.getStatusCode() != 200) {
@@ -286,8 +286,8 @@ case class OpenmldbDataframe(openmldbSession: OpenmldbSession, sparkDf: DataFram
     val requestConfig = RequestConfig.custom().setConnectionRequestTimeout(postTimeouts(0))
       .setConnectTimeout(postTimeouts(1)).setSocketTimeout(postTimeouts(2)).build()
     post.setConfig(requestConfig);
-    val json_str = s"""{"json_data": "", "result_id": ${resultId}}"""
-    post.setEntity(new StringEntity(json_str))
+    val jsonStr = s"""{"json_data": "", "result_id": ${resultId}}"""
+    post.setEntity(new StringEntity(jsonStr))
     val response = client.execute(post)
     val entity = response.getEntity()
     if( response.getStatusLine.getStatusCode() != 200) {
