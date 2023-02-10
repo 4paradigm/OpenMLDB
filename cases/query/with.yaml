@@ -65,7 +65,7 @@ cases:
           C, 3, 3
       - name: t2
         schema: c0:string, c1:int32, c5:int64
-        index: index1:c1:c5
+        index: index1:c1:c5:10:latest
         data: |
           O, 1, 1
           P, 2, 2
@@ -74,7 +74,7 @@ cases:
           S, 5, 5
       - name: t3
         schema: column0:string, column1:int32, column5:int64
-        index: index1:column1:column5
+        index: index1:column1:column5:10:latest
         data: |
           X, 1, 1
           Y, 2, 2
