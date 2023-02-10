@@ -276,7 +276,7 @@ template <typename T>
 struct StdUdafDef {
     using ContainerT = std::pair<std::vector<T>, double>;
     void operator()(UdafRegistryHelper& helper) {  // NOLINT
-        std::string suffix = ".opaque_std_pair_std_vector_double_" + DataTypeTrait<T>::to_string();
+        std::string suffix = absl::StrCat(".opaque_std_pair_std_vector_double_", DataTypeTrait<T>::to_string());
         helper.templates<Nullable<double>, Opaque<ContainerT>, Nullable<T>>()
             .init("std_init" + suffix, Init)
             .update("std_update" + suffix, Update)
@@ -295,17 +295,47 @@ struct StdUdafDef {
         return ptr;
     }
 
+    static double SumStd(ContainerT* ptr) {
+        size_t cnt = ptr->first.size();
+        double avg = ptr->second / cnt;
+        double stddev = 0;
+        for (size_t i = 0; i < cnt; i++) {
+            stddev += std::pow(ptr->first[i] - avg, 2);
+        }
+        return stddev;
+    }
+
     static void Output(ContainerT* ptr, double* ret, bool* is_null) {
-        if (ptr->first.size() == 0) {
+        size_t cnt = ptr->first.size();
+        if (cnt == 0) {
             *is_null = true;
         } else {
-            size_t cnt = ptr->first.size();
-            double avg = ptr->second / cnt;
-            double stddev = 0;
-            for (size_t i = 0; i < cnt; i++) {
-                stddev += std::pow(ptr->first[i] - avg, 2);
-            }
-            stddev = std::sqrt(stddev / cnt);
+            double stddev = std::sqrt(SumStd(ptr) / cnt);
+            *ret = stddev;
+            *is_null = false;
+        }
+        ptr->~ContainerT();
+    }
+};
+
+template <typename T>
+struct StdSampUdafDef {
+    using ContainerT = std::pair<std::vector<T>, double>;
+    void operator()(UdafRegistryHelper& helper) {  // NOLINT
+        std::string suffix = absl::StrCat(".opaque_std_pair_std_vector_double_", DataTypeTrait<T>::to_string());
+        helper.templates<Nullable<double>, Opaque<ContainerT>, Nullable<T>>()
+            .init("std_samp_init" + suffix, StdUdafDef<T>::Init)
+            .update("std_samp_update" + suffix, StdUdafDef<T>::Update)
+            .output("std_samp_output" + suffix, reinterpret_cast<void *>(Output), true);
+    }
+
+    static void Output(ContainerT* ptr, double* ret, bool* is_null) {
+        size_t cnt = ptr->first.size();
+        if (cnt == 0 || cnt == 1) {
+            *is_null = true;
+        } else {
+            double stddev = StdUdafDef<T>::SumStd(ptr);
+            stddev = std::sqrt(StdUdafDef<T>::SumStd(ptr) / (cnt - 1));
             *ret = stddev;
             *is_null = false;
         }
@@ -2722,7 +2752,9 @@ void DefaultUdfLibrary::InitUdaf() {
 
     RegisterUdafTemplate<StdUdafDef>("std")
         .doc(R"(
-            @brief Compute standard deviation of values (sqrt( sum((x_i - avg)^2) / n ))
+            @brief Compute population standard deviation of values, i.e., `sqrt( sum((x_i - avg)^2) / n )`
+
+            Alias function: `stddev`
 
             @param value  Specify value column to aggregate on.
 
@@ -2741,6 +2773,34 @@ void DefaultUdfLibrary::InitUdaf() {
             @since 0.7.2
         )")
         .args_in<int16_t, int32_t, int64_t, float, double>();
+
+    RegisterAlias("stddev", "std");
+
+    RegisterUdafTemplate<StdSampUdafDef>("std_samp")
+        .doc(R"(
+            @brief Compute sample standard deviation of values, i.e., `sqrt( sum((x_i - avg)^2) / (n-1) )`
+
+            Alias function: `stddev_samp`
+
+            @param value  Specify value column to aggregate on.
+
+            Example:
+
+            |value|
+            |--|
+            |1|
+            |2|
+            |3|
+            |4|
+            @code{.sql}
+                SELECT std_samp(value) OVER w;
+                -- output 1.290994
+            @endcode
+            @since 0.7.2
+        )")
+        .args_in<int16_t, int32_t, int64_t, float, double>();
+
+    RegisterAlias("stddev_samp", "std_samp");
 
     RegisterUdafTemplate<DistinctCountDef>("distinct_count")
         .doc(R"(
