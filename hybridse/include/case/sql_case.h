@@ -68,6 +68,12 @@ class SqlCase {
         int code_ = -1;
         std::string msg_;
     };
+    struct Deployment {
+        // deployment name, if empty, generated randomly at runtime
+        std::string name_;
+    };
+
+
     SqlCase() {}
     virtual ~SqlCase() {}
 
@@ -317,6 +323,7 @@ class SqlCase {
 
     // also generate deployment test for the query
     bool deployable_ = false;
+    Deployment deployment_;
 };
 std::string FindSqlCaseBaseDirPath();
 

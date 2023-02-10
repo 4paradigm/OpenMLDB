@@ -382,12 +382,17 @@ bool SqlCase::BuildCreateSqlFromSchema(const type::TableDef& table,
         }
         // end each index
     }
-    if (1 != partition_num) {
-        sql.append(") options(partitionnum=");
-        sql.append(std::to_string(partition_num));
-        sql.append(");");
+    if (partition_num != 0) {
+        // partition_num = 0 -> unset, respect the cluster environment
+        if (1 != partition_num) {
+            sql.append(") options(partitionnum=");
+            sql.append(std::to_string(partition_num));
+            sql.append(");");
+        } else {
+            sql.append(") options(partitionnum=1, replicanum=1);");
+        }
     } else {
-        sql.append(") options(partitionnum=1, replicanum=1);");
+        sql.append(");");
     }
     *create_sql = sql;
     return true;
@@ -1208,6 +1213,12 @@ static bool ParseSqlCaseNode(const YAML::Node& sql_case_node,
     }
     if (sql_case_node["deployable"]) {
         sql_case.deployable_ = sql_case_node["deployable"].as<bool>();
+    }
+    if (sql_case_node["deployment"]) {
+        auto& dep = sql_case_node["deployment"];
+        if (dep["name"]) {
+            sql_case.deployment_.name_ = dep["name"].as<std::string>();
+        }
     }
     if (sql_case_node["tags"]) {
         if (!SqlCase::CreateStringListFromYamlNode(sql_case_node["tags"],

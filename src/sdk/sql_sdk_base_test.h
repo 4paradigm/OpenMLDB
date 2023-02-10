@@ -27,6 +27,7 @@
 
 #include "sdk/sql_router.h"
 #include "test/base_test.h"
+#include "absl/base/attributes.h"
 
 namespace openmldb {
 namespace sdk {
@@ -117,15 +118,19 @@ class SQLSDKClusterOnlineBatchQueryTest : public SQLSDKTest {
 };
 
 struct DeploymentEnv {
-    explicit DeploymentEnv(std::shared_ptr<sdk::SQLRouter> sr, hybridse::sqlcase::SqlCase* sqlcase);
+    explicit DeploymentEnv(std::shared_ptr<sdk::SQLRouter> sr, hybridse::sqlcase::SqlCase* sqlcase)
+        ABSL_ATTRIBUTE_NONNULL();
 
     virtual ~DeploymentEnv() { TearDown(); }
 
     void SetUp();
 
-    void CallDeployProcedure();
+    void CallDeployProcedure() const;
+    // calls deployment, without logs, without result check, simply
+    void CallDeployProcedureTiny() const;
 
     void SetCleanup(bool flag) { cleanup_ = flag; }
+    void SetPureDeploy(bool flag) { pure_deploy_ = flag; }
 
  private:
     virtual void TearDown();
@@ -135,6 +140,10 @@ struct DeploymentEnv {
     std::string dp_name_;
     std::string sql_str_;
     bool cleanup_ = true;
+
+    // when setted true, request row won't inserted into main table after deployment query
+    // be careful turning on, for sql case where main table has multiple row, result might as your expected
+    bool pure_deploy_ = false;
 };
 }  // namespace sdk
 }  // namespace openmldb

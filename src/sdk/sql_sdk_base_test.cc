@@ -746,13 +746,17 @@ void SQLSDKClusterOnlineBatchQueryTest::DistributeRunBatchModeSDK(hybridse::sqlc
 
 DeploymentEnv::DeploymentEnv(std::shared_ptr<sdk::SQLRouter> sr, hybridse::sqlcase::SqlCase* sqlcase)
     : sr_(sr), sql_case_(sqlcase) {
-    dp_name_ = absl::StrCat("dp_", ::openmldb::test::GenRand());
+    if (sqlcase->deployment_.name_.empty()) {
+        dp_name_ = absl::StrCat("dp_", ::openmldb::test::GenRand());
+    } else {
+        dp_name_ = sqlcase->deployment_.name_;
+    }
 }
 
 void DeploymentEnv::SetUp() {
     hybridse::sdk::Status status;
     SQLSDKTest::CreateDB(*sql_case_, sr_);
-    SQLSDKTest::CreateTables(*sql_case_, sr_);
+    SQLSDKTest::CreateTables(*sql_case_, sr_, 0);
     SQLSDKTest::InsertTables(*sql_case_, sr_, kNotInsertFirstInput);
 
     if (sql_case_->inputs()[0].name_.empty()) {
@@ -774,7 +778,7 @@ void DeploymentEnv::SetUp() {
         sr_.get(), {absl::StrCat("use ", sql_case_->db_), absl::StrCat("deploy ", dp_name_, " ", sql_str_)});
 }
 
-void DeploymentEnv::CallDeployProcedure() {
+void DeploymentEnv::CallDeployProcedure() const {
     hybridse::sdk::Status s;
     auto request_row = sr_->GetRequestRowByProcedure(sql_case_->db_, dp_name_, &s);
     ASSERT_TRUE(s.IsOK());
@@ -802,9 +806,11 @@ void DeploymentEnv::CallDeployProcedure() {
         }
         results.push_back(rs);
 
-        LOG(INFO) << "insert request: \n" << inserts[i];
-        bool ok = sr_->ExecuteInsert(insert_table.catalog(), inserts[i], &s);
-        ASSERT_TRUE(ok);
+        if (!pure_deploy_) {
+            LOG(INFO) << "insert request: \n" << inserts[i];
+            bool ok = sr_->ExecuteInsert(insert_table.catalog(), inserts[i], &s);
+            ASSERT_TRUE(ok);
+        }
     }
     ASSERT_FALSE(results.empty());
     std::vector<hybridse::codec::Row> rows;
@@ -821,6 +827,28 @@ void DeploymentEnv::CallDeployProcedure() {
 
     if (sql_case_->expect().count_ > 0) {
         ASSERT_EQ(sql_case_->expect().count_, static_cast<int64_t>(results.size()));
+    }
+}
+
+void DeploymentEnv::CallDeployProcedureTiny() const {
+    hybridse::sdk::Status s;
+    auto request_row = sr_->GetRequestRowByProcedure(sql_case_->db_, dp_name_, &s);
+    ASSERT_TRUE(s.IsOK());
+
+    hybridse::type::TableDef insert_table;
+    std::vector<hybridse::codec::Row> insert_rows;
+    ASSERT_TRUE(sql_case_->ExtractInputTableDef(insert_table, 0));
+    ASSERT_TRUE(sql_case_->ExtractInputData(insert_rows, 0));
+
+    hybridse::codec::RowView row_view(insert_table.columns());
+    for (size_t i = 0; i < insert_rows.size(); i++) {
+        row_view.Reset(insert_rows[i].buf());
+        SQLSDKTest::CovertHybridSERowToRequestRow(&row_view, request_row);
+        std::shared_ptr<hybridse::sdk::ResultSet> rs;
+        rs = sr_->CallProcedure(sql_case_->db_, dp_name_, request_row, &s);
+        if (!rs || s.code != 0) {
+            FAIL() << "sql case expect success == true" << s.msg;
+        }
     }
 }
 
