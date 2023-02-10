@@ -2872,6 +2872,9 @@ void DefaultUdfLibrary::InitUdaf() {
             @brief Compute exponentially-weighted average of values.
             It's equivalent to pandas ewm(alpha=<alpha>, adjust=True, ignore_na=True, com=None, span=None, halflife=None, min_periods=0)
 
+            It requires that values are ordered so that it can only be used with WINDOW (PARTITION BY xx ORDER BY xx).
+            Undefined behaviour if it is used with GROUP BY and full table aggregation.
+
             @param value  Specify value column to aggregate on.
             @param alpha  Specify smoothing factor alpha (0 < alpha <= 1).
 
