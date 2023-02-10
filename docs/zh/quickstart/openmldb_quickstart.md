@@ -30,7 +30,7 @@ docker run -it 4pdosc/openmldb:0.7.1 bash
 
 ### 下载样例数据
 
-在容器中执行以下命令，下载后续流程中使用的样例数据（0.7.0 及之后的版本可跳过此步，数据已经存放在镜像内）：
+在容器中执行以下命令，下载后续流程中使用的样例数据（**0.7.0 及之后的版本可跳过此步**，数据已经存放在镜像内）：
 
 ```bash
 curl https://openmldb.ai/demo/data.parquet --output /work/taxi-trip/data/data.parquet
@@ -92,7 +92,6 @@ LOAD DATA INFILE 'file:///work/taxi-trip/data/data.parquet' INTO TABLE demo_tabl
 
 这里使用 `SHOW JOBS` 查看任务状态，请等待任务运行成功（ `state` 转至 `FINISHED` 状态），再进行下面步骤。
 
-
 任务完成以后，如果希望预览数据，可以使用 `SELECT * FROM demo_table1` 语句，推荐先将离线命令设置为同步模式（`SET @@sync_job=true`）；否则该命令会提交一个异步任务，结果会保存在 Spark 任务的日志文件中，查看较不方便。
 
 ```{note}
@@ -141,7 +140,7 @@ SET @@execute_mode='online';
 LOAD DATA INFILE 'file:///work/taxi-trip/data/data.parquet' INTO TABLE demo_table1 options(format='parquet', header=true, mode='append');
 ```
 
-`LOAD DATA` 默认是异步命令，可以通过 `SHOW JOBS` 等离线任务管理命令来查看运行进度，请等待任务运行成功（ state 转至 FINISHED 状态），再进行下面步骤。
+`LOAD DATA` 默认是异步命令，通过 `SHOW JOBS` 等离线任务管理命令来查看运行进度，请等待任务运行成功（ state 转至 FINISHED 状态），再进行下面步骤。
 
 等待任务完成以后，可以预览在线数据：
 
