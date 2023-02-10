@@ -101,6 +101,7 @@ jobs:
           password: ${{ secrets.MAIL_PASSWORD }}
           subject: OpenMLDB Memory Test
           body: OpenMLDB Memory Test Failed
+          html_body: test/integration-test/openmldb-test-java/openmldb-sdk-test/target/surefire-reports/html/overview.html
           to: ${{ secrets.MAIL_TO }}
           from: GitHub Actions
           content_type: text/plain
@@ -144,6 +145,7 @@ jobs:
           password: ${{ secrets.MAIL_PASSWORD }}
           subject: OpenMLDB Memory Task Test
           body: OpenMLDB Memory Task Test Failed
+          html_body: file://test/integration-test/openmldb-test-java/openmldb-sdk-test/target/surefire-reports/html/overview.html
           to: ${{ secrets.MAIL_TO }}
           from: GitHub Actions
           content_type: text/plain
