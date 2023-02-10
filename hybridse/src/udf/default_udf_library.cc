@@ -2931,6 +2931,9 @@ void DefaultUdfLibrary::InitUdaf() {
             Drawdown is defined as the max decline percentage from a historical peak to a subsequent valley.
             It is commonly used as an indicator of risk in quant-trading to measure the max loss.
 
+            It requires that values are ordered so that it can only be used with WINDOW (PARTITION BY xx ORDER BY xx).
+            GROUP BY and full table aggregation are not supported.
+
             @param value  Specify value column to aggregate on.
 
             It requires that all values are non-negative. Negative values will be ignored.
