@@ -14,10 +14,7 @@
 
 if(TESTING_ENABLE)
     set(THIRD_LIBS benchmark_main benchmark ${GTEST_LIBRARIES} yaml-cpp)
-    if(CMAKE_CXX_COMPILER_ID MATCHES "GNU" AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS "9.1")
-        # GNU implementation prior to 9.1 requires linking with -lstdc++fs
-        list(APPEND THIRD_LIBS stdc++fs)
-    endif()
+
     add_library(mini_cluster_bm_common mini_cluster_bm.cc)
     add_dependencies(mini_cluster_bm_common openmldb_proto)
 
