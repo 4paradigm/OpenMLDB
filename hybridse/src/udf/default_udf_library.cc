@@ -273,14 +273,14 @@ struct AvgUdafDef {
 };
 
 template <typename T>
-struct StdUdafDef {
+struct StdPopUdafDef {
     using ContainerT = std::pair<std::vector<T>, double>;
     void operator()(UdafRegistryHelper& helper) {  // NOLINT
         std::string suffix = absl::StrCat(".opaque_std_pair_std_vector_double_", DataTypeTrait<T>::to_string());
         helper.templates<Nullable<double>, Opaque<ContainerT>, Nullable<T>>()
-            .init("std_init" + suffix, Init)
-            .update("std_update" + suffix, Update)
-            .output("std_output" + suffix, reinterpret_cast<void *>(Output), true);
+            .init("std_pop_init" + suffix, Init)
+            .update("std_pop_update" + suffix, Update)
+            .output("std_pop_output" + suffix, reinterpret_cast<void *>(Output), true);
     }
 
     static void Init(ContainerT* ptr) {
@@ -324,8 +324,8 @@ struct StdSampUdafDef {
     void operator()(UdafRegistryHelper& helper) {  // NOLINT
         std::string suffix = absl::StrCat(".opaque_std_pair_std_vector_double_", DataTypeTrait<T>::to_string());
         helper.templates<Nullable<double>, Opaque<ContainerT>, Nullable<T>>()
-            .init("std_samp_init" + suffix, StdUdafDef<T>::Init)
-            .update("std_samp_update" + suffix, StdUdafDef<T>::Update)
+            .init("std_samp_init" + suffix, StdPopUdafDef<T>::Init)
+            .update("std_samp_update" + suffix, StdPopUdafDef<T>::Update)
             .output("std_samp_output" + suffix, reinterpret_cast<void *>(Output), true);
     }
 
@@ -334,8 +334,8 @@ struct StdSampUdafDef {
         if (cnt == 0 || cnt == 1) {
             *is_null = true;
         } else {
-            double stddev = StdUdafDef<T>::SumStd(ptr);
-            stddev = std::sqrt(StdUdafDef<T>::SumStd(ptr) / (cnt - 1));
+            double stddev = StdPopUdafDef<T>::SumStd(ptr);
+            stddev = std::sqrt(StdPopUdafDef<T>::SumStd(ptr) / (cnt - 1));
             *ret = stddev;
             *is_null = false;
         }
@@ -2750,11 +2750,9 @@ void DefaultUdfLibrary::InitUdaf() {
         )")
         .args_in<int16_t, int32_t, int64_t, float, double>();
 
-    RegisterUdafTemplate<StdUdafDef>("std")
+    RegisterUdafTemplate<StdPopUdafDef>("stddev_pop")
         .doc(R"(
             @brief Compute population standard deviation of values, i.e., `sqrt( sum((x_i - avg)^2) / n )`
-
-            Alias function: `stddev`
 
             @param value  Specify value column to aggregate on.
 
@@ -2767,20 +2765,18 @@ void DefaultUdfLibrary::InitUdaf() {
             |3|
             |4|
             @code{.sql}
-                SELECT std(value) OVER w;
+                SELECT stddev_pop(value) OVER w;
                 -- output 1.118034
             @endcode
             @since 0.7.2
         )")
         .args_in<int16_t, int32_t, int64_t, float, double>();
 
-    RegisterAlias("stddev", "std");
-
-    RegisterUdafTemplate<StdSampUdafDef>("std_samp")
+    RegisterUdafTemplate<StdSampUdafDef>("stddev")
         .doc(R"(
             @brief Compute sample standard deviation of values, i.e., `sqrt( sum((x_i - avg)^2) / (n-1) )`
 
-            Alias function: `stddev_samp`
+            Alias function: `std`, `stddev_samp`
 
             @param value  Specify value column to aggregate on.
 
@@ -2793,14 +2789,15 @@ void DefaultUdfLibrary::InitUdaf() {
             |3|
             |4|
             @code{.sql}
-                SELECT std_samp(value) OVER w;
+                SELECT stddev(value) OVER w;
                 -- output 1.290994
             @endcode
             @since 0.7.2
         )")
         .args_in<int16_t, int32_t, int64_t, float, double>();
 
-    RegisterAlias("stddev_samp", "std_samp");
+    RegisterAlias("std", "stddev");
+    RegisterAlias("stddev_samp", "stddev");
 
     RegisterUdafTemplate<DistinctCountDef>("distinct_count")
         .doc(R"(
