@@ -272,75 +272,66 @@ struct AvgUdafDef {
     }
 };
 
-template <typename T>
-struct StdPopUdafDef {
-    using ContainerT = std::pair<std::vector<T>, double>;
-    void operator()(UdafRegistryHelper& helper) {  // NOLINT
-        std::string suffix = absl::StrCat(".opaque_std_pair_std_vector_double_", DataTypeTrait<T>::to_string());
-        helper.templates<Nullable<double>, Opaque<ContainerT>, Nullable<T>>()
-            .init("std_pop_init" + suffix, Init)
-            .update("std_pop_update" + suffix, Update)
-            .output("std_pop_output" + suffix, reinterpret_cast<void *>(Output), true);
-    }
-
-    static void Init(ContainerT* ptr) {
-        new (ptr) ContainerT(std::vector<T>(), 0.0);
-    }
-
-    static ContainerT* Update(ContainerT* ptr, T t, bool is_null) {
-        if (!is_null) {
-            ptr->first.emplace_back(t);
-            ptr->second += t;
-        }
-        return ptr;
-    }
-
-    static double SumStd(ContainerT* ptr) {
-        size_t cnt = ptr->first.size();
-        double avg = ptr->second / cnt;
-        double stddev = 0;
-        for (size_t i = 0; i < cnt; i++) {
-            stddev += std::pow(ptr->first[i] - avg, 2);
-        }
-        return stddev;
-    }
-
-    static void Output(ContainerT* ptr, double* ret, bool* is_null) {
-        size_t cnt = ptr->first.size();
-        if (cnt == 0) {
+struct StdSampleOut {
+    static void Output(double total, size_t cnt, double* ret, bool* is_null) {
+        if (cnt <= 1) {
             *is_null = true;
-        } else {
-            double stddev = std::sqrt(SumStd(ptr) / cnt);
-            *ret = stddev;
-            *is_null = false;
+            return;
         }
-        ptr->~ContainerT();
+
+        *ret = std::sqrt(total / (cnt - 1));
+        *is_null = false;
     }
 };
 
-template <typename T>
-struct StdSampUdafDef {
-    using ContainerT = std::pair<std::vector<T>, double>;
-    void operator()(UdafRegistryHelper& helper) {  // NOLINT
-        std::string suffix = absl::StrCat(".opaque_std_pair_std_vector_double_", DataTypeTrait<T>::to_string());
-        helper.templates<Nullable<double>, Opaque<ContainerT>, Nullable<T>>()
-            .init("std_samp_init" + suffix, StdPopUdafDef<T>::Init)
-            .update("std_samp_update" + suffix, StdPopUdafDef<T>::Update)
-            .output("std_samp_output" + suffix, reinterpret_cast<void *>(Output), true);
+struct StdPopOut {
+    static void Output(double total, size_t cnt, double* ret, bool* is_null) {
+        *ret = std::sqrt(total / cnt);
+        *is_null = false;
     }
+};
 
-    static void Output(ContainerT* ptr, double* ret, bool* is_null) {
-        size_t cnt = ptr->first.size();
-        if (cnt == 0 || cnt == 1) {
-            *is_null = true;
-        } else {
-            double stddev = StdPopUdafDef<T>::SumStd(ptr);
-            stddev = std::sqrt(StdPopUdafDef<T>::SumStd(ptr) / (cnt - 1));
-            *ret = stddev;
-            *is_null = false;
+// stdev_samp, stddev_pop, var_samp, var_pop
+template <typename StatisticTrait>
+struct StdTemplate {
+    template <typename T>
+    struct Impl {
+        using ContainerT = std::pair<std::vector<T>, double>;
+
+        void operator()(UdafRegistryHelper& helper) {  // NOLINT
+            std::string suffix = absl::StrCat(".opaque_std_pair_std_vector_double_", DataTypeTrait<T>::to_string());
+            std::string prefix = helper.name();
+            helper.templates<Nullable<double>, Opaque<ContainerT>, Nullable<T>>()
+                .init(prefix + "_init" + suffix, Init)
+                .update(prefix + "_update" + suffix, Update)
+                .output(prefix + "_output" + suffix, reinterpret_cast<void*>(Output), true);
         }
-        ptr->~ContainerT();
-    }
+
+        static void Init(ContainerT* ptr) { new (ptr) ContainerT(std::vector<T>(), 0.0); }
+
+        static ContainerT* Update(ContainerT* ptr, T t, bool is_null) {
+            if (!is_null) {
+                ptr->first.emplace_back(t);
+                ptr->second += t;
+            }
+            return ptr;
+        }
+
+        static void Output(ContainerT* ptr, double* ret, bool* is_null) {
+            size_t cnt = ptr->first.size();
+            if (cnt == 0) {
+                *is_null = true;
+            } else {
+                double avg = ptr->second / cnt;
+                double total = 0;
+                for (size_t i = 0; i < cnt; i++) {
+                    total += std::pow(ptr->first[i] - avg, 2);
+                }
+                StatisticTrait::Output(total, cnt, ret, is_null);
+            }
+            ptr->~ContainerT();
+        }
+    };
 };
 
 template <typename T>
@@ -2798,7 +2789,7 @@ void DefaultUdfLibrary::InitUdaf() {
         )")
         .args_in<int16_t, int32_t, int64_t, float, double>();
 
-    RegisterUdafTemplate<StdPopUdafDef>("stddev_pop")
+    RegisterUdafTemplate<StdTemplate<StdPopOut>::Impl>("stddev_pop")
         .doc(R"(
             @brief Compute population standard deviation of values, i.e., `sqrt( sum((x_i - avg)^2) / n )`
 
@@ -2820,7 +2811,7 @@ void DefaultUdfLibrary::InitUdaf() {
         )")
         .args_in<int16_t, int32_t, int64_t, float, double>();
 
-    RegisterUdafTemplate<StdSampUdafDef>("stddev")
+    RegisterUdafTemplate<StdTemplate<StdSampleOut>::Impl>("stddev")
         .doc(R"(
             @brief Compute sample standard deviation of values, i.e., `sqrt( sum((x_i - avg)^2) / (n-1) )`
 
