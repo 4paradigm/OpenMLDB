@@ -273,6 +273,77 @@ struct AvgUdafDef {
 };
 
 template <typename T>
+struct StdPopUdafDef {
+    using ContainerT = std::pair<std::vector<T>, double>;
+    void operator()(UdafRegistryHelper& helper) {  // NOLINT
+        std::string suffix = absl::StrCat(".opaque_std_pair_std_vector_double_", DataTypeTrait<T>::to_string());
+        helper.templates<Nullable<double>, Opaque<ContainerT>, Nullable<T>>()
+            .init("std_pop_init" + suffix, Init)
+            .update("std_pop_update" + suffix, Update)
+            .output("std_pop_output" + suffix, reinterpret_cast<void *>(Output), true);
+    }
+
+    static void Init(ContainerT* ptr) {
+        new (ptr) ContainerT(std::vector<T>(), 0.0);
+    }
+
+    static ContainerT* Update(ContainerT* ptr, T t, bool is_null) {
+        if (!is_null) {
+            ptr->first.emplace_back(t);
+            ptr->second += t;
+        }
+        return ptr;
+    }
+
+    static double SumStd(ContainerT* ptr) {
+        size_t cnt = ptr->first.size();
+        double avg = ptr->second / cnt;
+        double stddev = 0;
+        for (size_t i = 0; i < cnt; i++) {
+            stddev += std::pow(ptr->first[i] - avg, 2);
+        }
+        return stddev;
+    }
+
+    static void Output(ContainerT* ptr, double* ret, bool* is_null) {
+        size_t cnt = ptr->first.size();
+        if (cnt == 0) {
+            *is_null = true;
+        } else {
+            double stddev = std::sqrt(SumStd(ptr) / cnt);
+            *ret = stddev;
+            *is_null = false;
+        }
+        ptr->~ContainerT();
+    }
+};
+
+template <typename T>
+struct StdSampUdafDef {
+    using ContainerT = std::pair<std::vector<T>, double>;
+    void operator()(UdafRegistryHelper& helper) {  // NOLINT
+        std::string suffix = absl::StrCat(".opaque_std_pair_std_vector_double_", DataTypeTrait<T>::to_string());
+        helper.templates<Nullable<double>, Opaque<ContainerT>, Nullable<T>>()
+            .init("std_samp_init" + suffix, StdPopUdafDef<T>::Init)
+            .update("std_samp_update" + suffix, StdPopUdafDef<T>::Update)
+            .output("std_samp_output" + suffix, reinterpret_cast<void *>(Output), true);
+    }
+
+    static void Output(ContainerT* ptr, double* ret, bool* is_null) {
+        size_t cnt = ptr->first.size();
+        if (cnt == 0 || cnt == 1) {
+            *is_null = true;
+        } else {
+            double stddev = StdPopUdafDef<T>::SumStd(ptr);
+            stddev = std::sqrt(StdPopUdafDef<T>::SumStd(ptr) / (cnt - 1));
+            *ret = stddev;
+            *is_null = false;
+        }
+        ptr->~ContainerT();
+    }
+};
+
+template <typename T>
 struct DistinctCountDef {
     using ArgT = typename DataTypeTrait<T>::CCallArgType;
     using SetT = std::unordered_set<T>;
@@ -2678,6 +2749,55 @@ void DefaultUdfLibrary::InitUdaf() {
             @since 0.1.0
         )")
         .args_in<int16_t, int32_t, int64_t, float, double>();
+
+    RegisterUdafTemplate<StdPopUdafDef>("stddev_pop")
+        .doc(R"(
+            @brief Compute population standard deviation of values, i.e., `sqrt( sum((x_i - avg)^2) / n )`
+
+            @param value  Specify value column to aggregate on.
+
+            Example:
+
+            |value|
+            |--|
+            |1|
+            |2|
+            |3|
+            |4|
+            @code{.sql}
+                SELECT stddev_pop(value) OVER w;
+                -- output 1.118034
+            @endcode
+            @since 0.7.2
+        )")
+        .args_in<int16_t, int32_t, int64_t, float, double>();
+
+    RegisterUdafTemplate<StdSampUdafDef>("stddev")
+        .doc(R"(
+            @brief Compute sample standard deviation of values, i.e., `sqrt( sum((x_i - avg)^2) / (n-1) )`
+
+            Alias function: `std`, `stddev_samp`
+
+            @param value  Specify value column to aggregate on.
+
+            Example:
+
+            |value|
+            |--|
+            |1|
+            |2|
+            |3|
+            |4|
+            @code{.sql}
+                SELECT stddev(value) OVER w;
+                -- output 1.290994
+            @endcode
+            @since 0.7.2
+        )")
+        .args_in<int16_t, int32_t, int64_t, float, double>();
+
+    RegisterAlias("std", "stddev");
+    RegisterAlias("stddev_samp", "stddev");
 
     RegisterUdafTemplate<DistinctCountDef>("distinct_count")
         .doc(R"(
