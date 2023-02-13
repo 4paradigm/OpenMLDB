@@ -270,7 +270,8 @@ TEST_F(UdafTest, StdPopTest) {
     CheckUdf<double, ListRef<int32_t>>("stddev_pop", expected, MakeList<int32_t>({1, 2, 3, 4}));
     CheckUdf<double, ListRef<int64_t>>("stddev_pop", expected, MakeList<int64_t>({1, 2, 3, 4}));
     CheckUdf<double, ListRef<float>>("stddev_pop", expected, MakeList<float>({1, 2, 3, 4}));
-    CheckUdf<double, ListRef<Nullable<double>>>("stddev_pop", expected, MakeList<Nullable<double>>({1, 2, nullptr, 3, 4}));
+    CheckUdf<double, ListRef<Nullable<double>>>("stddev_pop", expected,
+                                                MakeList<Nullable<double>>({1, 2, nullptr, 3, 4}));
     // nullable
     CheckUdf<Nullable<double>, ListRef<double>>("stddev_pop", nullptr, MakeList<double>({}));
     CheckUdf<Nullable<double>, ListRef<Nullable<double>>>("stddev_pop", nullptr, MakeList<Nullable<double>>({nullptr}));
@@ -287,7 +288,8 @@ TEST_F(UdafTest, StdSampTest) {
     // nullable
     CheckUdf<Nullable<double>, ListRef<double>>("stddev_samp", nullptr, MakeList<double>({1}));
     CheckUdf<Nullable<double>, ListRef<double>>("stddev_samp", nullptr, MakeList<double>({}));
-    CheckUdf<Nullable<double>, ListRef<Nullable<double>>>("stddev_samp", nullptr, MakeList<Nullable<double>>({nullptr}));
+    CheckUdf<Nullable<double>, ListRef<Nullable<double>>>("stddev_samp", nullptr,
+                                                          MakeList<Nullable<double>>({nullptr}));
 }
 
 TEST_F(UdafTest, SumTest) {
