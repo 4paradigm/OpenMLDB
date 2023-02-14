@@ -2503,7 +2503,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(
             if (ns_ptr->AddIndex(db_name, create_index_node->table_name_, column_key, nullptr, msg)) {
                 *status = {};
             } else {
-                COPY_PREPEND_AND_WARN(status, base_status, "ns add index failed");
+                SET_STATUS_AND_WARN(status, StatusCode::kCmdError, "ns add index failed");
             }
             return {};
         }
