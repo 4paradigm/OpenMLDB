@@ -3123,6 +3123,7 @@ void DefaultUdfLibrary::InitUdaf() {
 
 
     InitAggByCateUdafs();
+    InitStatisticsUdafs();
 }
 
 }  // namespace udf

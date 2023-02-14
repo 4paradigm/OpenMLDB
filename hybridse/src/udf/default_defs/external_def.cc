@@ -14,12 +14,14 @@
  * limitations under the License.
  */
 
+#include <cmath>
 #include <cstdint>
 #include <map>
-#include <cmath>
 
-#include "udf/udf_registry.h"
 #include "absl/strings/str_cat.h"
+#include "udf/containers.h"
+#include "udf/default_udf_library.h"
+#include "udf/udf_registry.h"
 
 namespace hybridse {
 namespace udf {
@@ -45,29 +47,59 @@ struct ShannonEntropy {
         if (is_null) {
             return ctr;
         }
-        if (ctr->first.count(value) == 0) {
-            ctr->first.emplace(value, 1);
+        auto val = container::ContainerStorageTypeTrait<T>::to_stored_value(value);
+        if (ctr->first.count(val) == 0) {
+            ctr->first.emplace(val, 1);
         } else {
-            ctr->first.at(value)++;
+            ctr->first.at(val)++;
         }
         ctr->second++;
+
+        return ctr;
     }
 
     static void Output(ContainerT* ctr, double* ret, bool* is_null) {
         if (ctr->second == 0) {
             *is_null = true;
-            return;
+        } else {
+            double agg = 0.0;
+            double cnt = ctr->second;
+            for (auto& kv : ctr->first) {
+                double p_x = kv.second / cnt;
+                agg -= p_x * log2(p_x);
+            }
+            *ret = agg;
+            *is_null = false;
         }
-        double agg = 0.0;
-        auto cnt = ctr->second;
-        for (auto& kv : ctr->first) {
-            double p_x = kv.second / cnt;
-            agg -= p_x * log2(p_x);
-        }
-        *ret = agg;
-        *is_null = false;
+
+        ctr->~ContainerT();
     }
 };
+
+void DefaultUdfLibrary::InitStatisticsUdafs() {
+    RegisterUdafTemplate<ShannonEntropy>("entropy")
+        .doc(R"(
+            @brief Calculate Shannon entropy of a column of values. Null values are skipped.
+
+            @param value Specify value column to aggregate on.
+
+            Example:
+
+            | t1 |
+            |  1 |
+            |  1 |
+            |  2 |
+            |  3 |
+            @code{.sql}
+             select entropy(col1) from t1
+             -- output 1.5
+            @endcode
+
+            @since 0.7.2
+             )")
+        .args_in<bool, int16_t, int32_t, int64_t, float, double, StringRef, openmldb::base::Timestamp,
+                 openmldb::base::Date>();
+}
 
 }  // namespace udf
 }  // namespace hybridse

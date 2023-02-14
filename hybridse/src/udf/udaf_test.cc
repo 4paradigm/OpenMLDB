@@ -1073,6 +1073,14 @@ TEST_F(UdafTest, TopNValueAvgCateWhereTest) {
                                MakeList<int32_t>({2, 2, 2, 2, 2, 2, 2}));
 }
 
+TEST_F(UdafTest, Entropy) {
+    CheckUdf<double, ListRef<codec::StringRef>>("entropy", 1.0, MakeList<codec::StringRef>({"A", "A", "B", "B"}));
+    CheckUdf<double, ListRef<openmldb::base::Date>>(
+        "entropy", 1.5, MakeList<openmldb::base::Date>({Date(1999), Date(1999), Date(2000), Date(2001)}));
+    CheckUdf<Nullable<double>, ListRef<codec::StringRef>>("entropy", nullptr, MakeList<codec::StringRef>({}));
+    CheckUdf<Nullable<double>, ListRef<Nullable<int64_t>>>("entropy", nullptr, MakeList<Nullable<int64_t>>({nullptr}));
+}
+
 
 
 }  // namespace udf
