@@ -670,6 +670,12 @@ base::Status ConvertStatement(const zetasql::ASTStatement* statement, node::Node
             *output = node_manager->MakeCmdNode(node::CmdType::kCmdUseDatabase, db_name);
             break;
         }
+        case zetasql::AST_EXIT_STATEMENT: {
+            const auto exit_stmt = statement->GetAsOrNull<zetasql::ASTExitStatement>();
+            CHECK_TRUE(nullptr != exit_stmt, common::kSqlAstError, "not an ASTExitStatement");
+            *output = node_manager->MakeCmdNode(node::CmdType::kCmdExit);
+            break;
+        }
         case zetasql::AST_SYSTEM_VARIABLE_ASSIGNMENT: {
             /// support system variable setting and showing in OpenMLDB since v0.4.0
             /// non-support local variable setting in v0.4.0

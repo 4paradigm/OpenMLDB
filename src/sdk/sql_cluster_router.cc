@@ -1812,6 +1812,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::HandleSQLCmd(const h
             return rs;
         }
         case hybridse::node::kCmdExit: {
+            std::cout << "Bye" << std::endl;
             exit(0);
         }
         case hybridse::node::kCmdShowJobs: {
