@@ -355,7 +355,7 @@ struct EwAvgUdafDef {
     using ContainerT = EwState;
     void operator()(UdafRegistryHelper& helper) {  // NOLINT
         std::string suffix = ".opaque_ewstate_" + DataTypeTrait<T>::to_string();
-        helper.templates<Nullable<double>, Opaque<ContainerT>, Nullable<T>, double>()
+        helper.templates<Nullable<double>, Opaque<ContainerT>, Nullable<T>, Nullable<double>>()
             .init("ew_avg_init" + suffix, Init)
             .update("ew_avg_update" + suffix, Update)
             .output("ew_avg_output" + suffix, reinterpret_cast<void *>(Output), true);
@@ -366,7 +366,11 @@ struct EwAvgUdafDef {
     }
 
     // data is fed in the reverse order of timestamp. Newer data comes first
-    static ContainerT* Update(ContainerT* ptr, T t, bool is_null, double alpha) {
+    static ContainerT* Update(ContainerT* ptr, T t, bool is_null, double alpha, bool alpha_is_null) {
+        if (alpha_is_null) {
+            alpha = 0;
+        }
+
         if (!is_null) {
             ptr->sum += ptr->weight * t;
             ptr->cnt += ptr->weight;
@@ -2876,7 +2880,7 @@ void DefaultUdfLibrary::InitUdaf() {
             Undefined behaviour if it is used with GROUP BY and full table aggregation.
 
             @param value  Specify value column to aggregate on.
-            @param alpha  Specify smoothing factor alpha (0 < alpha <= 1).
+            @param alpha  Specify smoothing factor alpha (0 <= alpha <= 1). If NULL or 0, fall back to normal `avg`
 
             Example:
 

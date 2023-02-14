@@ -316,6 +316,13 @@ TEST_F(UdafTest, EwAvgTest) {
     CheckUdf<double, ListRef<Nullable<double>>, ListRef<double>>(
         "ew_avg", 4, MakeList<Nullable<double>>({4, 3, 2, 1}), MakeList<double>({1, 1, 1, 1}));
 
+    // NULL alpha will fall back to nornal avg
+    CheckUdf<double, ListRef<Nullable<double>>, ListRef<Nullable<double>>>(
+        "ew_avg", 2.5, MakeList<Nullable<double>>({4, 3, 2, 1}),
+        MakeList<Nullable<double>>({nullptr, nullptr, nullptr, nullptr}));
+    CheckUdf<double, ListRef<Nullable<double>>, ListRef<Nullable<double>>>(
+        "ew_avg", 2.5, MakeList<Nullable<double>>({4, 3, 2, 1}), MakeList<Nullable<double>>({0.0, 0.0, 0.0, 0.0}));
+
     // nullable
     CheckUdf<Nullable<double>, ListRef<double>, ListRef<double>>("ew_avg", nullptr, MakeList<double>({}), alpha_list);
     CheckUdf<Nullable<double>, ListRef<Nullable<double>>, ListRef<double>>(
