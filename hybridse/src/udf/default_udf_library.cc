@@ -556,7 +556,7 @@ struct TopKDef {
 
 template <typename T>
 struct DrawdownUdafDef {
-    // <drawdown, current peak>
+    // <current drawdown, current min>
     using ContainerT = std::pair<double, T>;
     void operator()(UdafRegistryHelper& helper) {  // NOLINT
         std::string suffix = ".opaque_std_pair_double_" + DataTypeTrait<T>::to_string();
