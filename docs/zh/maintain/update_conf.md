@@ -35,7 +35,7 @@
     python tools/openmldb_ops.py --openmldb_bin_path=./bin/openmldb --zk_cluster=172.24.4.40:30481 --zk_root_path=/openmldb --cmd=pre-upgrade --endpoints=127.0.0.1:10921
     ```
   如果允许单副本表在升级更新中不可用，可以添加`--allow_single_replica`来避免添加新的副本。
-* 停止tablet
+* 重启tablet
     ```bash
     bash bin/start.sh restart tablet
     ```
@@ -59,7 +59,7 @@
     ```
 一个tablet节点更新完成后，对其他tablet重复上述步骤。
 
-所有节点更新完成后恢复写操作, 执行`showtablestatus`命令查看`Rows`是否增加。
+所有节点更新完成后恢复写操作，可以通过执行`showtablestatus`命令查看列 `Rows`，确认是否有新数据成功写入。
 
 ## 更新 APIServer 配置文件
 * 备份配置文件
