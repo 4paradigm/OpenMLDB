@@ -18,6 +18,7 @@
 #define HYBRIDSE_SRC_UDF_UDF_REGISTRY_H_
 
 #include <memory>
+#include <set>
 #include <sstream>
 #include <string>
 #include <tuple>
