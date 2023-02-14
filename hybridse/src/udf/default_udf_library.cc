@@ -344,6 +344,54 @@ struct StdSampUdafDef {
 };
 
 template <typename T>
+struct EwAvgUdafDef {
+    struct EwState {
+        double sum = 0;
+        double cnt = 0;
+        double weight = 1.0;
+        bool is_null = true;
+    };
+
+    using ContainerT = EwState;
+    void operator()(UdafRegistryHelper& helper) {  // NOLINT
+        std::string suffix = ".opaque_ewstate_" + DataTypeTrait<T>::to_string();
+        helper.templates<Nullable<double>, Opaque<ContainerT>, Nullable<T>, Nullable<double>>()
+            .init("ew_avg_init" + suffix, Init)
+            .update("ew_avg_update" + suffix, Update)
+            .output("ew_avg_output" + suffix, reinterpret_cast<void *>(Output), true);
+    }
+
+    static void Init(ContainerT* ptr) {
+        new (ptr) ContainerT();
+    }
+
+    // data is fed in the reverse order of timestamp. Newer data comes first
+    static ContainerT* Update(ContainerT* ptr, T t, bool is_null, double alpha, bool alpha_is_null) {
+        if (alpha_is_null) {
+            alpha = 0;
+        }
+
+        if (!is_null) {
+            ptr->sum += ptr->weight * t;
+            ptr->cnt += ptr->weight;
+            ptr->weight = ptr->weight * (1 - alpha);
+            ptr->is_null = false;
+        }
+        return ptr;
+    }
+
+    static void Output(ContainerT* ptr, double* ret, bool* is_null) {
+        if (ptr->is_null || ptr->cnt == 0) {
+            *is_null = true;
+        } else {
+            *ret = ptr->sum / ptr->cnt;
+            *is_null = false;
+        }
+        ptr->~ContainerT();
+    }
+};
+
+template <typename T>
 struct DistinctCountDef {
     using ArgT = typename DataTypeTrait<T>::CCallArgType;
     using SetT = std::unordered_set<T>;
@@ -2822,6 +2870,34 @@ void DefaultUdfLibrary::InitUdaf() {
         )")
         .args_in<bool, int16_t, int32_t, int64_t, float, double, Timestamp,
                  Date, StringRef>();
+
+    RegisterUdafTemplate<EwAvgUdafDef>("ew_avg")
+        .doc(R"(
+            @brief Compute exponentially-weighted average of values.
+            It's equivalent to pandas ewm(alpha=<alpha>, adjust=True, ignore_na=True, com=None, span=None, halflife=None, min_periods=0)
+
+            It requires that values are ordered so that it can only be used with WINDOW (PARTITION BY xx ORDER BY xx).
+            Undefined behaviour if it is used with GROUP BY and full table aggregation.
+
+            @param value  Specify value column to aggregate on.
+            @param alpha  Specify smoothing factor alpha (0 <= alpha <= 1). If NULL or 0, fall back to normal `avg`
+
+            Example:
+
+            |value|
+            |--|
+            |0|
+            |1|
+            |2|
+            |3|
+            |4|
+            @code{.sql}
+                SELECT ew_avg(value, 0.5) OVER w;
+                -- output 3.161290
+            @endcode
+            @since 0.7.2
+        )")
+        .args_in<int16_t, int32_t, int64_t, float, double>();
 
     RegisterUdafTemplate<SumWhereDef>("sum_where")
         .doc(R"(
