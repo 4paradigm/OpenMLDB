@@ -175,3 +175,6 @@ DEFINE_uint32(block_cache_shardbits, 8, "Divide block cache into 2^8 shards to a
 DEFINE_bool(verify_compression, false, "For debug");
 DEFINE_uint32(max_log_file_size, 100 * 1024 * 1024, "Specify the maximal size of the rocksdb info log file");
 DEFINE_uint32(keep_log_file_num, 5, "Maximal info log files to be kept");
+
+DEFINE_int32(sync_job_timeout, 30 * 60 * 1000,
+             "sync job timeout, unit is milliseconds, should <= server.channel_keep_alive_time in TaskManager");

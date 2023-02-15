@@ -95,6 +95,7 @@ class APIServerImpl : public APIServer {
 
 struct QueryReq {
     std::string mode;
+    int timeout = -1; // only for offline jobs
     std::string sql;
     std::shared_ptr<openmldb::sdk::SQLRequestRow> parameter;
 };

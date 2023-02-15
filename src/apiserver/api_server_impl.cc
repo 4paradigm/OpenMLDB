@@ -89,7 +89,7 @@ struct ExecContext {
  public:
     bool is_online = false;
     bool is_sync = true;
-    int job_timeout = 600000;  // ms
+    int job_timeout = 600000;  // ms, equal with the default value in client vars
     ExecContext() = default;
     ExecContext(bool online, bool sync) : is_online(online), is_sync(sync) {}
 
@@ -101,7 +101,11 @@ struct ExecContext {
 };
 
 std::map<std::string, ExecContext> mode_map{
-    {"offsync", {false, true}}, {"offasync", {false, false}}, {"online", {true, false}}};
+    {"offsync", {false, true}},
+    {"offasync", {false, false}},
+    {"online", {true, false}},
+    {"onsync", {true, true}}  // special mode for online load data
+};
 
 void APIServerImpl::RegisterQuery() {
     provider_.post("/dbs/:db_name", [this](const InterfaceProvider::Params& param, const butil::IOBuf& req_body,
@@ -114,7 +118,6 @@ void APIServerImpl::RegisterQuery() {
         }
         auto db = db_it->second;
 
-        // default mode is offsync
         QueryReq req;
         JsonReader query_reader(req_body.to_string().c_str());
         query_reader >> req;
@@ -129,6 +132,9 @@ void APIServerImpl::RegisterQuery() {
             return;
         }
         ExecContext ctx = it->second;
+        if (req.timeout != -1) {
+            ctx.job_timeout = req.timeout;
+        }
 
         const auto& sql = req.sql;
         const auto parameter = req.parameter;
@@ -708,6 +714,9 @@ JsonReader& operator&(JsonReader& ar, QueryReq& s) {  // NOLINT
     // mode is not optional
     ar.Member("mode") & s.mode;
     ar.Member("sql") & s.sql;
+    if (ar.HasMember("timeout")) {
+        ar.Member("timeout") & s.timeout;
+    }
     if (ar.HasMember("input")) {
         ar.Member("input") & s.parameter;
     }
