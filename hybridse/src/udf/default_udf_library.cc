@@ -291,6 +291,24 @@ struct StdPopOut {
     }
 };
 
+struct VarPopOut {
+    static void Output(double total, size_t cnt, double* ret, bool* is_null) {
+        *ret = total / cnt;
+        *is_null = false;
+    }
+};
+
+struct VarSampleOut {
+    static void Output(double total, size_t cnt, double* ret, bool* is_null) {
+        if (cnt <= 1) {
+            *is_null = true;
+            return;
+        }
+        *ret = total / (cnt - 1);
+        *is_null = false;
+    }
+};
+
 // stdev_samp, stddev_pop, var_samp, var_pop
 template <typename StatisticTrait>
 struct StdTemplate {
@@ -2835,8 +2853,51 @@ void DefaultUdfLibrary::InitUdaf() {
         )")
         .args_in<int16_t, int32_t, int64_t, float, double>();
 
+    RegisterUdafTemplate<StdTemplate<VarPopOut>::Impl>("var_pop")
+        .doc(R"(
+            @brief Compute population variance of values, i.e., `sum((x_i - avg)^2) / n`
+
+            @param value  Specify value column to aggregate on.
+
+            Example:
+
+            |value|
+            |--|
+            |0|
+            |3|
+            |6|
+            @code{.sql}
+                SELECT var_pop(value) OVER w;
+                -- output 6.0
+            @endcode
+            @since 0.7.2
+        )")
+        .args_in<int16_t, int32_t, int64_t, float, double>();
+
+    RegisterUdafTemplate<StdTemplate<VarSampleOut>::Impl>("var_samp")
+        .doc(R"(
+            @brief Compute population variance of values, i.e., `sum((x_i - avg)^2) / (n-1)`
+
+            @param value  Specify value column to aggregate on.
+
+            Example:
+
+            |value|
+            |--|
+            |0|
+            |3|
+            |6|
+            @code{.sql}
+                SELECT var_samp(value) OVER w;
+                -- output 9.0
+            @endcode
+            @since 0.7.2
+        )")
+        .args_in<int16_t, int32_t, int64_t, float, double>();
+
     RegisterAlias("std", "stddev");
     RegisterAlias("stddev_samp", "stddev");
+    RegisterAlias("variance", "var_samp");
 
     RegisterUdafTemplate<DistinctCountDef>("distinct_count")
         .doc(R"(
