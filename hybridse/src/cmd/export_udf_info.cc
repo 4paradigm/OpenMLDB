@@ -123,9 +123,9 @@ int ExportUdfInfo(const std::string& dir, const std::string& filename) {
 
         yaml_out << YAML::Key << name;
 
-        if (name != pair.second->fn_name_) {
+        if (name != pair.second->fn_name) {
             // alias
-            yaml_out << YAML::Value << absl::StrCat("alias to ", pair.second->fn_name_);
+            yaml_out << YAML::Value << absl::StrCat("alias to ", pair.second->fn_name);
             continue;
         }
 

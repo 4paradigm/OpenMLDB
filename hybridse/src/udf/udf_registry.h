@@ -285,10 +285,10 @@ struct UdfLibraryEntry {
     bool always_return_list = false;
 
     // canonical funtion name
-    std::string fn_name_;
+    std::string fn_name;
 
     // alias name to the function
-    std::set<std::string> alias_;
+    std::set<std::string> alias;
 };
 
 struct ExprUdfGenBase {
