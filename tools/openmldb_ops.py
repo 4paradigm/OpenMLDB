@@ -240,8 +240,8 @@ def BalanceInDatabase(executor : Executor, endpoints : list, db : str) -> Status
     log.info(f"start to balance {db}")
     status, result = executor.GetTableInfo(db)
     if not status.OK():
-        log.error("get table failed from {db}")
-        return Status(-1, "get table failed from {db}")
+        log.error(f"get table failed from {db}")
+        return Status(-1, f"get table failed from {db}")
     all_dict : dict[str, list[Partition]] = {}
     total_partitions = 0
     endpoint_partition_map : dict[str, set] = {}
