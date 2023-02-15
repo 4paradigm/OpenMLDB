@@ -141,7 +141,7 @@ object DataTypeUtil {
     dataType match {
       case ShortType => "short"
       case IntegerType => "int"
-      case LongType => "long"
+      case LongType => "int64"
       case FloatType => "float"
       case DoubleType => "double"
       case BooleanType => "bool"
