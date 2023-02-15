@@ -2599,6 +2599,7 @@ cases:
 
   - id: 63
     desc: entropy
+    mode: request-unsupport
     inputs:
       - name: t1
         schema: id:int32, col1:int32, col2:int16, col3:string, col4 double, std_ts:timestamp

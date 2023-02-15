@@ -693,6 +693,7 @@ void DefaultUdfLibrary::Init() {
     InitFeatureZero();
 
     InitArrayUdfs();
+    InitEarthDistanceUdf();
 
     AddExternalFunction("init_udfcontext.opaque",
             reinterpret_cast<void*>(static_cast<void (*)(UDFContext* context)>(udf::v1::init_udfcontext)));
@@ -2870,7 +2871,7 @@ void DefaultUdfLibrary::InitUdaf() {
                 SELECT var_pop(value) OVER w;
                 -- output 6.0
             @endcode
-            @since 0.7.2
+            @since 0.8.0
         )")
         .args_in<int16_t, int32_t, int64_t, float, double>();
 
@@ -2891,7 +2892,7 @@ void DefaultUdfLibrary::InitUdaf() {
                 SELECT var_samp(value) OVER w;
                 -- output 9.0
             @endcode
-            @since 0.7.2
+            @since 0.8.0
         )")
         .args_in<int16_t, int32_t, int64_t, float, double>();
 

@@ -54,6 +54,9 @@ class DefaultUdfLibrary : public UdfLibrary {
 
     // aggregate functions for statistic
     void InitStatisticsUdafs();
+
+    // earth distance udfs
+    void InitEarthDistanceUdf();
 };
 
 }  // namespace udf

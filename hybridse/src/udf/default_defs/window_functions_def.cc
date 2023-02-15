@@ -274,7 +274,7 @@ void DefaultUdfLibrary::InitWindowFunctions() {
         | 3    | NULL |  100 | NULL |
         | 4    | true |  100 | 4    |
 
-        @since 0.7.2
+        @since 0.8.0
              )")
         // value type
         .args_in<bool, int16_t, int32_t, int64_t, float, double, StringRef, Timestamp, Date>();

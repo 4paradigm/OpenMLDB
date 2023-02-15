@@ -313,3 +313,31 @@ cases:
 #            - [1, null]
 #            - [2, null]
 #            - [3, null]
+#
+  - id: 6
+    desc: earth_distance
+    inputs:
+      -
+        name: t1
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1, "aa", 40, 73, 73, 41.0, 74.0, 1590738990000]
+    sql: |
+      select
+        id,
+        earth_distance(40.0, 73.0, 41.0, 74.0) as dis1,
+        earth_distance(c2, c3, 41.0, 74.0) as dis2,
+        earth_distance(c2, c3, c5, c6) as dis3,
+        earth_distance(c2, c4, c5, c6) as dis4,
+      from t1;
+    expect:
+      order: id
+      columns:
+        - id int
+        - dis1 double
+        - dis2 double
+        - dis3 double
+        - dis4 double
+      data: |
+        1, 139.72810080682342, 139.72810080682342, 139.72810080682342, 139.72810080682342

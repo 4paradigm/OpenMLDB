@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2022 4Paradigm Authors
+ * Copyright (c) 2023 4Paradigm Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -98,7 +98,7 @@ void DefaultUdfLibrary::InitStatisticsUdafs() {
              -- output 1.5
             @endcode
 
-            @since 0.7.2
+            @since 0.8.0
              )")
         .args_in<bool, int16_t, int32_t, int64_t, float, double, StringRef, openmldb::base::Timestamp,
                  openmldb::base::Date>();
