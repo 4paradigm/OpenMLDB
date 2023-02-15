@@ -113,8 +113,9 @@ def RecoverPartition(executor : Executor, db, partitions : list, endpoint_status
     # recover leader
     if f"{tid}_{pid}" not in endpoint_status[leader_endpoint]:
         log.info(f"leader partition is not in tablet, db {db} name {table_name} pid {pid} endpoint {leader_endpoint}. start loading data...")
-        if not executor.LoadTable(leader_endpoint, table_name, tid, pid).OK():
-            log.error(f"load table failed. db {db} name {table_name} pid {pid} endpoint {leader_endpoint}")
+        load_ret = executor.LoadTable(leader_endpoint, table_name, tid, pid)
+        if not load_ret.OK():
+            log.error(f"load table failed. db {db} name {table_name} tid {tid} pid {pid} endpoint {leader_endpoint} msg {status.GetMsg()}")
             return Status(-1, "recover partition failed")
     if not partitions[leader_pos].IsAlive():
         status =  executor.UpdateTableAlive(db, table_name, pid, leader_endpoint, "yes")

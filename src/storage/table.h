@@ -189,7 +189,7 @@ class Table {
     std::atomic<uint64_t> diskused_;
     bool is_leader_;
     uint64_t ttl_offset_;
-    std::atomic<uint32_t> table_status_;
+    std::atomic<uint32_t> table_status_ = ::openmldb::storage::TableStat::kUndefined;
     TableIndex table_index_;
     ::openmldb::type::CompressType compress_type_;
     std::shared_ptr<::openmldb::api::TableMeta> table_meta_;
