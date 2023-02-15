@@ -26,6 +26,9 @@
 namespace hybridse {
 namespace udf {
 
+// Shannon entropy
+// Given the discrete random variable X that is of *N* symbols total consisting of *n* different values:
+// H2(X) = - SUM ( (count[i] / N) * log2(count[i] / N) , for i in 1 -> n)
 template <typename T>
 struct ShannonEntropy {
     using CType = typename DataTypeTrait<T>::CCallArgType;
@@ -85,7 +88,7 @@ void DefaultUdfLibrary::InitStatisticsUdafs() {
 
             Example:
 
-            | t1 |
+            | col1 |
             |  1 |
             |  1 |
             |  2 |
