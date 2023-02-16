@@ -1,5 +1,27 @@
 # Changelog
 
+## [0.7.2] - 2023-02-17
+
+### Features
+- Suport `with` clause (#2846 @aceforeverd)
+- Support deploying multiple taskmanagers (#3004 @zhanghaohit)
+- Support the new built-in functions `std`, `stddev`, `stddev_samp`, `stddev_pop` and `ew_avg` (#3025 #3032 @zhanghaohit)
+- Add new configurations to specify the maximal size of rocksdb log file (#2991 @dl239)
+- Support `create table like parquet` statement in offline mode (#2996 @tobegit3hub)
+- Improve the documents (#2938 #2984 @vagetablechicken, #2958 #2973 #2980 #2987 #2988 @lumianph, #2990 @lukeAyin, #2997 @tobegit3hub, #3011 @dl239, #3020 @aceforeverd, #3033 #3036 @selenachenjingxin)
+
+### Bug Fixes
+- Disk table does not clean the expired data (#2963 @dl239)
+- Incorrect index will be added if there is `last join` statement in deployment SQL. (#2979 @dl239)
+- The result is incorrect if a window frame is specified by `exclude current row` (#2930 @aceforeverd)
+- A SQL compiling fails if there is udf function in a udaf expression. (#3018 @aceforeverd)
+- The result is success when creating index fails (#3042 @vagetablechicken)
+- `recoverdata` command in the operation tool execution fails if there are many records in memory table. (#3060 @dl239)
+- Other minor bug fixes (#2970 #3028 #3026 #3003 @dl239)
+
+### Code Refactoring
+#2995 #3030 @aceforeverd
+
 ## [0.7.1] - 2023-01-13
 
 ### Features
@@ -499,6 +521,7 @@ Removed
 - openmldb-0.2.0-linux.tar.gz targets on x86_64
 - aarch64 artifacts consider experimental
 
+[0.7.2]: https://github.com/4paradigm/OpenMLDB/compare/v0.7.1...v0.7.2
 [0.7.1]: https://github.com/4paradigm/OpenMLDB/compare/v0.7.0...v0.7.1
 [0.7.0]: https://github.com/4paradigm/OpenMLDB/compare/v0.6.9...v0.7.0
 [0.6.9]: https://github.com/4paradigm/OpenMLDB/compare/v0.6.8...v0.6.9
