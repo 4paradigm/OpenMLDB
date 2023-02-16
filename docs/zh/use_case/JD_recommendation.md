@@ -458,7 +458,7 @@ LOAD DATA INFILE '/work/oneflow_demo/data/JD_data/bo_comment/*.parquet' INTO TAB
 
 ### 配置 OneFlow 推理服务
 
-OneFlow 的推理服务需要 [OneEmbedding](https://docs.OneFlow.org/master/cookies/one_embedding.html) 的支持。该支持目前还没有合入主框架中。
+OneFlow 的推理服务需要 [OneEmbedding](https://docs.oneflow.org/master/cookies/one_embedding.html) 的支持。该支持目前还没有合入主框架中。
 
 我们提供预编译版本的库在 `$demodir/oneflow_serving/` 中。若与你的环境不兼容，你需要重新编译，可参考附录 A 进行编译测试。接下来步骤默认相关支持已编译完成，并且存放在 `$demodir/OneFlow_serving/` 路径中。
 
