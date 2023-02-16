@@ -20,10 +20,10 @@
 #include "node/type_node.h"
 #include "passes/resolve_fn_and_attrs.h"
 
-using hybridse::node::ExprAttrNode;
-
 namespace hybridse {
 namespace passes {
+
+using hybridse::node::ExprAttrNode;
 
 Status ExprInplaceTransformUp::Apply(ExprAnalysisContext* ctx, ExprNode* expr,
                                      ExprNode** out) {

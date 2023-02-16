@@ -44,7 +44,7 @@ base::Status SimplePlannerV2::CreateASTScriptPlan(const zetasql::ASTScript *scri
     CHECK_STATUS(CreatePlanTree(resolved_trees->GetList(), plan_trees));
     DLOG(INFO) << "PlanNode:";
     for (decltype(plan_trees.size()) i = 0; i < plan_trees.size(); ++i) {
-        DLOG(INFO) << i << "=>" << plan_trees[i]->GetTreeString();
+        DLOG(INFO) << i << "=>\n" << plan_trees[i]->GetTreeString();
     }
     return base::Status::OK();
 }

@@ -265,13 +265,13 @@ class Executor:
                     table_stat = result[key][4]
                     if table_stat == "kTableNormal":
                         return Status()
-                    elif table_stat == "kLoading" or table_stat == "kTableUndefined":
+                    elif table_stat == "kTableLoading" or table_stat == "kTableUndefined":
                         log.info(f"table is loading... tid {tid} pid {pid}")
-                        time.sleep(2)
                     else:
-                        return Status(-1, "load table failed")
+                        return Status(-1, f"table stat is {table_stat}")
+                time.sleep(2)
 
-        return Status(-1, "load table failed")
+        return Status(-1, "execute load table failed")
 
     def GetLeaderFollowerOffset(self, endpoint, tid, pid) -> tuple([Status, List]):
         cmd = list(self.tablet_base_cmd)
@@ -295,7 +295,7 @@ class Executor:
 
     def UpdateTableAlive(self, database, name, pid, endpoint, is_alive) -> Status:
         if is_alive not in ["yes", "no"]:
-            return Status(-1, "invalid argument {is_alive}")
+            return Status(-1, f"invalid argument {is_alive}")
         cmd = list(self.ns_base_cmd)
         cmd.append("--cmd=updatetablealive {} {} {} {}".format(name, pid, endpoint, is_alive))
         cmd.append("--database=" + database)
@@ -388,7 +388,7 @@ class Executor:
                 log.info(f"waiting {value}")
                 time.sleep(2)
             elif record[4] == 'kFailed':
-                return Status(-1, "job {record[0]} execute failed")
+                return Status(-1, f"job {record[0]} execute failed")
             else:
                 break
         return Status()

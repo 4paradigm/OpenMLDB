@@ -178,7 +178,7 @@ bool StartTablet(const std::string& endpoint, brpc::Server* server) {
     return true;
 }
 
-void ProcessSQLs(sdk::SQLClusterRouter* sr, std::initializer_list<absl::string_view> sqls) {
+void ProcessSQLs(sdk::SQLRouter* sr, std::initializer_list<absl::string_view> sqls) {
     hybridse::sdk::Status status;
     for (auto sql : sqls) {
         sr->ExecuteSQL(std::string(sql), &status);

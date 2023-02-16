@@ -873,30 +873,15 @@ PlanNode *NodeManager::MakeJoinNode(PlanNode *left, PlanNode *right, JoinType jo
     node::JoinPlanNode *node_ptr = new JoinPlanNode(left, right, join_type, order_by, condition);
     return RegisterNode(node_ptr);
 }
-PlanNode *NodeManager::MakeSelectPlanNode(PlanNode *node) {
-    node::QueryPlanNode *select_plan_ptr = new QueryPlanNode(node);
-    return RegisterNode(select_plan_ptr);
-}
 PlanNode *NodeManager::MakeGroupPlanNode(PlanNode *node, const ExprListNode *by_list) {
     node::GroupPlanNode *node_ptr = new GroupPlanNode(node, by_list);
-    return RegisterNode(node_ptr);
-}
-PlanNode *NodeManager::MakeProjectPlanNode(PlanNode *node, const std::string &table,
-                                           const PlanNodeList &projection_list,
-                                           const std::vector<std::pair<uint32_t, uint32_t>> &pos_mapping) {
-    node::ProjectPlanNode *node_ptr = new ProjectPlanNode(node, table, projection_list, pos_mapping);
     return RegisterNode(node_ptr);
 }
 PlanNode *NodeManager::MakeLimitPlanNode(PlanNode *node, int limit_cnt) {
     node::LimitPlanNode *node_ptr = new LimitPlanNode(node, limit_cnt);
     return RegisterNode(node_ptr);
 }
-ProjectNode *NodeManager::MakeProjectNode(const int32_t pos, const std::string &name, const bool is_aggregation,
-                                          node::ExprNode *expression, node::FrameNode *frame) {
-    node::ProjectNode *node_ptr = new ProjectNode(pos, name, is_aggregation, expression, frame);
-    RegisterNode(node_ptr);
-    return node_ptr;
-}
+
 CreatePlanNode *NodeManager::MakeCreateTablePlanNode(const std::string &db_name, const std::string &table_name,
                                                      const NodePointVector &column_list,
                                                      const NodePointVector &table_option_list,
@@ -948,10 +933,6 @@ PlanNode *NodeManager::MakeSortPlanNode(PlanNode *node, const OrderByNode *order
     node::SortPlanNode *node_ptr = new SortPlanNode(node, order_list);
     return RegisterNode(node_ptr);
 }
-PlanNode *NodeManager::MakeUnionPlanNode(PlanNode *left, PlanNode *right, const bool is_all) {
-    node::UnionPlanNode *node_ptr = new UnionPlanNode(left, right, is_all);
-    return RegisterNode(node_ptr);
-}
 PlanNode *NodeManager::MakeDistinctPlanNode(PlanNode *node) {
     node::DistinctPlanNode *node_ptr = new DistinctPlanNode(node);
     return RegisterNode(node_ptr);
@@ -962,10 +943,10 @@ SqlNode *NodeManager::MakeExplainNode(const QueryNode *query, ExplainType explai
 }
 ProjectNode *NodeManager::MakeAggProjectNode(const int32_t pos, const std::string &name, node::ExprNode *expression,
                                              node::FrameNode *frame) {
-    return MakeProjectNode(pos, name, true, expression, frame);
+    return MakeNode<ProjectNode>(pos, name, true, expression, frame);
 }
 ProjectNode *NodeManager::MakeRowProjectNode(const int32_t pos, const std::string &name, node::ExprNode *expression) {
-    return MakeProjectNode(pos, name, false, expression, nullptr);
+    return MakeNode<ProjectNode>(pos, name, false, expression, nullptr);
 }
 
 BetweenExpr *NodeManager::MakeBetweenExpr(ExprNode *expr, ExprNode *left, ExprNode *right, const bool is_not) {

@@ -15,16 +15,15 @@
  */
 
 #include "vm/transform.h"
+
 #include <set>
 #include <stack>
 #include <unordered_map>
+
+#include "absl/cleanup/cleanup.h"
 #include "codegen/context.h"
 #include "codegen/fn_ir_builder.h"
 #include "codegen/fn_let_ir_builder.h"
-#include "passes/physical/transform_up_physical_pass.h"
-#include "vm/physical_op.h"
-#include "vm/schemas_context.h"
-
 #include "passes/expression/expr_pass.h"
 #include "passes/lambdafy_projects.h"
 #include "passes/physical/batch_request_optimize.h"
@@ -36,7 +35,12 @@
 #include "passes/physical/long_window_optimized.h"
 #include "passes/physical/simple_project_optimized.h"
 #include "passes/physical/split_aggregation_optimized.h"
+#include "passes/physical/transform_up_physical_pass.h"
 #include "passes/physical/window_column_pruning.h"
+#include "plan/planner.h"
+#include "vm/physical_op.h"
+#include "vm/schemas_context.h"
+#include "vm/internal/node_helper.h"
 
 namespace hybridse {
 namespace vm {
@@ -80,20 +84,20 @@ BatchModeTransformer::BatchModeTransformer(node::NodeManager* node_manager, cons
     : node_manager_(node_manager),
       db_(db),
       catalog_(catalog),
+      plan_ctx_(node_manager, library, db, catalog, parameter_types, enable_expr_opt, options),
       module_(module),
       id_(0),
       cluster_optimized_mode_(cluster_optimized_mode),
       enable_batch_window_parallelization_(enable_window_parallelization),
       enable_batch_window_column_pruning_(enable_window_column_pruning),
-      library_(library),
-      plan_ctx_(node_manager, library, db, catalog, parameter_types, enable_expr_opt, options) {}
+      library_(library) {}
 
 BatchModeTransformer::~BatchModeTransformer() {}
 
 Status BatchModeTransformer::TransformPlanOp(const node::PlanNode* node, PhysicalOpNode** output) {
     CHECK_TRUE(node != nullptr && output != nullptr, kPlanError, "Input node or output node is null");
 
-    LogicalOp logical_op = LogicalOp(node);
+    LogicalOp logical_op = LogicalOp(node, closure_);
     auto map_iter = op_map_.find(logical_op);
     // logical plan node already exist
     if (map_iter != op_map_.cend()) {
@@ -171,6 +175,11 @@ Status BatchModeTransformer::TransformPlanOp(const node::PlanNode* node, Physica
             CHECK_STATUS(TransformDeleteOp(dynamic_cast<const ::hybridse::node::DeletePlanNode*>(node), &op));
             break;
         }
+        case node::kPlanTypeWithClauseEntry: {
+            CHECK_STATUS(
+                TransformWithClauseEntry(dynamic_cast<const ::hybridse::node::WithClauseEntryPlanNode*>(node), &op));
+            break;
+        }
         default: {
             FAIL_STATUS(kPlanError,
                         "Fail to transform physical plan: "
@@ -178,6 +187,7 @@ Status BatchModeTransformer::TransformPlanOp(const node::PlanNode* node, Physica
                         node::NameOfPlanNodeType(node->type_));
         }
     }
+
     op_map_[logical_op] = op;
     *output = op;
     return base::Status::OK();
@@ -559,7 +569,7 @@ static bool CheckUnionAvailable(const PhysicalOpNode* left,
     return true;
 }
 
-Status BatchModeTransformer::CreateRequestUnionNode(
+Status RequestModeTransformer::CreateRequestUnionNode(
     PhysicalOpNode* request, PhysicalOpNode* right,
     const std::string& db_name,
     const std::string& primary_name, const codec::Schema* primary_schema,
@@ -687,8 +697,71 @@ Status RequestModeTransformer::OptimizeSimpleProjectAsWindowProducer(PhysicalSim
     // - SimpleProject(DataProvider) -> RequestUnion(Request, DataSource)
     // - SimpleProject(RequestJoin) -> Join(RequestUnion, DataSource)
     // - SimpleProject(SimpleProject)
-    auto op_type = prj_node->GetProducer(0)->GetOpType();
+    // - SimpleProject(Rename)
+    auto* depend = prj_node->GetProducer(0);
+    auto op_type = depend->GetOpType();
+
+    PhysicalOpNode* new_depend = nullptr;
+
+    // TODO(ace): rename(last join) unsupported
+    std::shared_ptr<TableHandler> table = nullptr;
+
+    auto func = [this, &table](PhysicalOpNode* in, PhysicalOpNode** out) {
+        // PhysicalRequestProviderNode -> PhysicalTableProviderNode
+        switch (in->GetOpType()) {
+            case kPhysicalOpDataProvider: {
+                auto* data_op = dynamic_cast<PhysicalRequestProviderNode*>(in);
+                CHECK_TRUE(data_op != nullptr, kPlanError, "not PhysicalRequestProviderNode: ", in->GetTreeString());
+
+                auto name = data_op->table_handler_->GetName();
+                auto db_name = data_op->table_handler_->GetDatabase();
+                db_name = db_name.empty() ? db_ : db_name;
+                auto tb = catalog_->GetTable(db_name, name);
+                CHECK_TRUE(tb != nullptr, kPlanError,
+                           "Fail to transform data provider op: table " + name + "not exists");
+                CHECK_TRUE(table == nullptr, kPlanError, "multiple table provider found in single window");
+                table = tb;
+
+                PhysicalTableProviderNode* right = nullptr;
+                CHECK_STATUS(CreateOp<PhysicalTableProviderNode>(&right, tb));
+                *out = right;
+                break;
+            }
+            case kPhysicalOpJoin:
+            case kPhysicalOpRequestJoin: {
+                FAIL_STATUS(common::kPhysicalPlanError, "Unsupported window over (rename(last join))");
+            }
+            default: {
+                *out = in;
+                break;
+            }
+        }
+        return Status::OK();
+    };
     switch (op_type) {
+        case kPhysicalOpRename: {
+            PhysicalOpNode* right_table = nullptr;
+            CHECK_STATUS(internal::MapNode(&plan_ctx_, prj_node, &right_table, func));
+
+            // request union
+            PhysicalRequestUnionNode* request_union_op = nullptr;
+            CHECK_STATUS(CreateRequestUnionNode(prj_node, right_table, table->GetDatabase(), table->GetName(),
+                                                table->GetSchema(), nullptr, w_ptr, &request_union_op));
+            if (!w_ptr->union_tables().empty()) {
+                for (auto iter = w_ptr->union_tables().cbegin(); iter != w_ptr->union_tables().cend(); iter++) {
+                    PhysicalOpNode* union_table_op;
+                    CHECK_STATUS(TransformPlanOp(*iter, &union_table_op));
+                    PhysicalRenameNode* rename_union_op = nullptr;
+                    CHECK_STATUS(CreateOp<PhysicalRenameNode>(&rename_union_op, union_table_op,
+                                                              prj_node->schemas_ctx()->GetName()));
+                    CHECK_TRUE(request_union_op->AddWindowUnion(rename_union_op), kPlanError,
+                               "Fail to add request window union table");
+                }
+            }
+            *output = request_union_op;
+
+            return Status::OK();
+        }
         case kPhysicalOpDataProvider: {
             auto data_op = dynamic_cast<PhysicalDataProviderNode*>(prj_node->GetProducer(0));
             CHECK_TRUE(data_op != nullptr, kPlanError, "not PhysicalDataProviderNode");
@@ -725,35 +798,27 @@ Status RequestModeTransformer::OptimizeSimpleProjectAsWindowProducer(PhysicalSim
                 }
             }
             *output = request_union_op;
-            break;
+            return Status::OK();
         }
         case kPhysicalOpRequestJoin: {
             auto join_op = dynamic_cast<PhysicalRequestJoinNode*>(prj_node->GetProducer(0));
             CHECK_TRUE(join_op != nullptr, kPlanError, "not PhysicalRequestJoinNode");
-
-            PhysicalOpNode* out = nullptr;
-            CHECK_STATUS(OptimizeRequestJoinAsWindowProducer(join_op, window_depend_sc, w_ptr, &out));
-
-            PhysicalSimpleProjectNode* simple_proj = nullptr;
-            CHECK_STATUS(CreateOp<PhysicalSimpleProjectNode>(&simple_proj, out, prj_node->project()));
-            *output = simple_proj;
+            CHECK_STATUS(OptimizeRequestJoinAsWindowProducer(join_op, window_depend_sc, w_ptr, &new_depend));
             break;
         }
         case kPhysicalOpSimpleProject: {
             auto simple_prj_node = dynamic_cast<PhysicalSimpleProjectNode*>(prj_node->GetProducer(0));
-            CHECK_TRUE(simple_prj_node!= nullptr, kPlanError, "not PhysicalSimpleProjectNode");
-            PhysicalOpNode* producer = nullptr;
-            CHECK_STATUS(OptimizeSimpleProjectAsWindowProducer(simple_prj_node, window_depend_sc, w_ptr, &producer));
-
-            PhysicalSimpleProjectNode* simple_proj = nullptr;
-            CHECK_STATUS(CreateOp<PhysicalSimpleProjectNode>(&simple_proj, producer, prj_node->project()));
-            *output = simple_proj;
+            CHECK_TRUE(simple_prj_node != nullptr, kPlanError, "not PhysicalSimpleProjectNode");
+            CHECK_STATUS(OptimizeSimpleProjectAsWindowProducer(simple_prj_node, window_depend_sc, w_ptr, &new_depend));
             break;
         }
         default: {
             FAIL_STATUS(kPlanError, "Do not support window on\n", prj_node->GetTreeString());
         }
     }
+    PhysicalSimpleProjectNode* simple_proj = nullptr;
+    CHECK_STATUS(CreateOp<PhysicalSimpleProjectNode>(&simple_proj, new_depend, prj_node->project()));
+    *output = simple_proj;
     return Status::OK();
 }
 
@@ -954,6 +1019,19 @@ Status BatchModeTransformer::TransformScanOp(const node::TablePlanNode* node,
                                              PhysicalOpNode** output) {
     CHECK_TRUE(node != nullptr && output != nullptr, kPlanError,
                "Input node or output node is null");
+
+    if (node->db_.empty()) {
+        auto res = ResolveCTERef(node->table_, false);
+        if (res.ok()) {
+            *output = res.value();
+            return Status::OK();
+        }
+
+        if (!absl::IsNotFound(res.status())) {
+            FAIL_STATUS(common::kPlanError, res.status().ToString());
+        }
+    }
+
     std::string db_name = node->db_.empty() ? db_ : node->db_;
     auto table = catalog_->GetTable(db_name, node->table_);
     CHECK_TRUE(table != nullptr, kPlanError,
@@ -1009,9 +1087,36 @@ Status BatchModeTransformer::TransformCreateTableOp(const node::CreatePlanNode* 
     return Status::OK();
 }
 
-Status BatchModeTransformer::TransformQueryPlan(const ::hybridse::node::PlanNode* node,
+Status BatchModeTransformer::TransformQueryPlan(const ::hybridse::node::QueryPlanNode* node,
                                                 ::hybridse::vm::PhysicalOpNode** output) {
     CHECK_TRUE(node != nullptr && output != nullptr, kPlanError, "Input node or output node is null");
+
+    auto* parent_closure = closure_;
+    internal::CTEEnv env;
+    // empty new Closure may pushed as a repect to with clause
+    PushCTEEnv(env);
+
+    absl::Cleanup pop_closure = [this]() {
+            auto s = PopCTEs();
+            if (!s.isOK()) {
+                LOG(ERROR) << s;
+            }
+    };
+
+    for (auto with_entry : node->with_clauses_) {
+        // lazy evaluate WITH clause
+
+        // update CTE environment for next iterating
+        if (env.ctes.contains(with_entry->alias_)) {
+            FAIL_STATUS(common::kPlanError, "multiple CTEs in the same WITH clause can't have same name: ",
+                        with_entry->alias_);
+        }
+
+        auto* cte_entry = node_manager_->MakeObj<internal::CTEEntry>(with_entry, closure_);
+        env.ctes.emplace(with_entry->alias_, cte_entry);
+        ReplaceClosure(node_manager_->MakeObj<internal::Closure>(parent_closure, env));
+    }
+
     return TransformPlanOp(node->GetChildren()[0], output);
 }
 
@@ -1072,7 +1177,7 @@ Status BatchModeTransformer::InstantiateLLVMFunction(const FnInfo* fn_info) {
 }
 
 bool BatchModeTransformer::AddDefaultPasses() {
-    AddPass(PhysicalPlanPassType::kPassColumnProjectsOptimized);
+    AddPass(PhysicalPlanPassType::kPassSimpleProjectsOptimized);
     AddPass(PhysicalPlanPassType::kPassFilterOptimized);
     AddPass(PhysicalPlanPassType::kPassLeftJoinOptimized);
     AddPass(PhysicalPlanPassType::kPassGroupAndSortOptimized);
@@ -1399,7 +1504,7 @@ void BatchModeTransformer::ApplyPasses(PhysicalOpNode* node,
         bool transformed = false;
         PhysicalOpNode* new_op = nullptr;
         switch (type) {
-            case PhysicalPlanPassType::kPassColumnProjectsOptimized: {
+            case PhysicalPlanPassType::kPassSimpleProjectsOptimized: {
                 SimpleProjectOptimized pass(&plan_ctx_);
                 transformed = pass.Apply(cur_op, &new_op);
                 break;
@@ -1809,7 +1914,9 @@ Status BatchModeTransformer::TransformPhysicalPlan(const ::hybridse::node::PlanN
             }
             case ::hybridse::node::kPlanTypeQuery: {
                 PhysicalOpNode* physical_plan = nullptr;
-                CHECK_STATUS(TransformQueryPlan(node, &physical_plan), "Fail to transform query statement");
+                CHECK_STATUS(
+                    TransformQueryPlan(dynamic_cast<const ::hybridse::node::QueryPlanNode*>(node), &physical_plan),
+                    "Fail to transform query statement");
 
                 DLOG(INFO) << "Before optimization: \n" << physical_plan->GetTreeString();
 
@@ -2276,6 +2383,18 @@ Status RequestModeTransformer::TransformScanOp(const node::TablePlanNode* node,
     CHECK_TRUE(node != nullptr && output != nullptr, kPlanError,
                "Input node or output node is null");
 
+    if (node->db_.empty()) {
+        auto res = ResolveCTERef(node->table_, node->IsPrimary());
+        if (res.ok()) {
+            *output = res.value();
+            return Status::OK();
+        }
+
+        if (!absl::IsNotFound(res.status())) {
+            FAIL_STATUS(common::kPlanError, res.status().ToString());
+        }
+    }
+
     if (node->IsPrimary()) {
         auto table = catalog_->GetTable(node->db_.empty() ? db_ : node->db_, node->table_);
         CHECK_TRUE(table != nullptr, common::kTableNotFound, "Fail to transform data_provider op: table ",
@@ -2298,11 +2417,10 @@ Status RequestModeTransformer::ValidateRequestTable(
 
     switch (in->GetOpType()) {
         case vm::kPhysicalOpDataProvider: {
-            CHECK_TRUE(kProviderTypeRequest ==
-                           dynamic_cast<PhysicalDataProviderNode*>(in)
-                               ->provider_type_, kPlanError,
+            CHECK_TRUE(kProviderTypeRequest == dynamic_cast<PhysicalDataProviderNode*>(in)->provider_type_, kPlanError,
                        "Expect a request table but a ",
-                       vm::DataProviderTypeName(dynamic_cast<PhysicalDataProviderNode*>(in)->provider_type_))
+                       vm::DataProviderTypeName(dynamic_cast<PhysicalDataProviderNode*>(in)->provider_type_),
+                       in->GetTreeString())
             *request_table = in;
             return Status::OK();
         }
@@ -2335,10 +2453,8 @@ Status RequestModeTransformer::ValidateRequestTable(
             // binary_node
             //      + Left <-- SamePrimarySource1
             //      + Right <-- SamePrimarySource1
-            CHECK_TRUE(
-                left_primary_source->Equals(right_primary_source), kPlanError,
-                "left path and right path has "
-                "different request table")
+            CHECK_TRUE(left_primary_source->Equals(right_primary_source), kPlanError,
+                       "left path and right path has different request table")
             *request_table = left_primary_source;
             return Status::OK();
         }
@@ -2426,6 +2542,87 @@ void RequestModeTransformer::ApplyPasses(PhysicalOpNode* node,
 
 Status RequestModeTransformer::TransformLoadDataOp(const node::LoadDataPlanNode* node, PhysicalOpNode** output) {
     FAIL_STATUS(common::kPlanError, "Non-support LoadData in request mode");
+}
+
+Status BatchModeTransformer::TransformWithClauseEntry(const node::WithClauseEntryPlanNode* node, PhysicalOpNode** out) {
+    CHECK_TRUE(node != nullptr, common::kNullInputPointer);
+
+    PhysicalOpNode* transformed = nullptr;
+    CHECK_STATUS(TransformPlanOp(node->query_, &transformed));
+
+    PhysicalRenameNode* rename = nullptr;
+    CHECK_STATUS(CreateOp(&rename, transformed, node->alias_));
+    *out = rename;
+    return Status::OK();
+}
+
+void BatchModeTransformer::PushCTEEnv(const internal::CTEEnv& env) {
+    closure_ = node_manager_->MakeObj<internal::Closure>(closure_, env);
+}
+
+void BatchModeTransformer::ReplaceClosure(internal::Closure* clu) {
+    closure_ = clu;
+}
+
+Status BatchModeTransformer::PopCTEs() {
+    CHECK_TRUE(closure_ != nullptr, common::kPlanError, "closure is null");
+    closure_ = closure_->parent;
+    return Status::OK();
+}
+
+absl::StatusOr<PhysicalOpNode*> BatchModeTransformer::ResolveCTERef(absl::string_view tb_name, bool is_primary_path) {
+    return ResolveCTERefImpl(tb_name, false, false);
+}
+
+absl::StatusOr<PhysicalOpNode*> BatchModeTransformer::ResolveCTERefImpl(absl::string_view tb_name, bool request_mode,
+                                                                        bool is_primary_path) {
+    auto* cur_closure = closure_;
+    auto it = cur_closure->cte_map.find(tb_name);
+    if (it != cur_closure->cte_map.end()) {
+        auto* entry = it->second.top();
+
+        if (entry->transformed_op == nullptr) {
+            if (request_mode) {
+                // - for a primary table plan node refer to a WITH clause entry, query inside WITH clause entry
+                //   must have a request table
+                // - for a non-primary table plan node refer to a WITH clause entry, query inside WITH clause
+                //   will have a request table only if it is not a simple reference to a physical table. Whether
+                //   the extracted request table is the same as outside WITH clause, is checked later in
+                //   `RequestModeTransformer::ValidatePlan`, and hence is not necessary to verify here.
+                //   see more in `Planner::IsTable`
+                auto s = ::hybridse::plan::Planner::ValidPlanForRequestMode(entry->node->query_, is_primary_path);
+                if (!s.isOK()) {
+                    return absl::InternalError(s.str());
+                }
+            }
+
+            {
+                // transform physical node for with clause only when actually need it
+                PhysicalOpNode* transformed = nullptr;
+                // update closure for the WithClauseEntry query transformation
+                auto* old_closure = closure_;
+                ReplaceClosure(entry->closure);
+                absl::Cleanup restore_clu = [this, old_closure]() { ReplaceClosure(old_closure); };
+
+                auto s = TransformPlanOp(entry->node, &transformed);
+                if (s.isOK()) {
+                    entry->transformed_op = transformed;
+                    return transformed;
+                }
+
+                return absl::InternalError(s.str());
+            }
+
+        } else {
+            return entry->transformed_op;
+        }
+    }
+
+    return absl::NotFoundError(absl::StrCat(tb_name, " not found"));
+}
+
+absl::StatusOr<PhysicalOpNode*> RequestModeTransformer::ResolveCTERef(absl::string_view tb_name, bool is_primary_path) {
+    return ResolveCTERefImpl(tb_name, true, is_primary_path);
 }
 
 }  // namespace vm

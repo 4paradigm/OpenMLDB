@@ -566,3 +566,80 @@ cases:
           |      +-name: c3
           +-tableref_list: []
           +-window_list: []
+
+  - id: with-clause-0
+    mode: physical-plan-unsupport
+    desc: |
+      with clause 0
+    sql: |
+      with t1 as (select * from t)
+      select * from t1;
+    expect:
+      node_tree_str: |
+        +-node[kQuery]: kQuerySelect
+          +-with_clause[list]:
+            +-0:
+            |  +-node[kWithClauseEntry]
+            |    +-alias: t1
+            |    +-query:
+            |      +-node[kQuery]: kQuerySelect
+            |        +-distinct_opt: false
+            |        +-where_expr: null
+            |        +-group_expr_list: null
+            |        +-having_expr: null
+            |        +-order_expr_list: null
+            |        +-limit: null
+            |        +-select_list[list]:
+            |        |  +-0:
+            |        |    +-node[kResTarget]
+            |        |      +-val:
+            |        |      |  +-expr[all]
+            |        |      +-name: <nil>
+            |        +-tableref_list[list]:
+            |        |  +-0:
+            |        |    +-node[kTableRef]: kTable
+            |        |      +-table: t
+            |        |      +-alias: <nil>
+            |        +-window_list: []
+          +-distinct_opt: false
+          +-where_expr: null
+          +-group_expr_list: null
+          +-having_expr: null
+          +-order_expr_list: null
+          +-limit: null
+          +-select_list[list]:
+          |  +-0:
+          |    +-node[kResTarget]
+          |      +-val:
+          |      |  +-expr[all]
+          |      +-name: <nil>
+          +-tableref_list[list]:
+          |  +-0:
+          |    +-node[kTableRef]: kTable
+          |      +-table: t1
+          |      +-alias: <nil>
+          +-window_list: []
+      plan_tree_str: |
+        +-[kQueryPlan]
+          +-[kProjectPlan]
+            +-table: t1
+            +-project_list_vec[list]:
+              +-[kProjectList]
+                +-projects on table [list]:
+                  +-[kProjectNode]
+                    +-[0]*: *
+            +-[kTablePlan]
+              +-table: t1
+          +-with_clause[list]:
+            +-[kPlanTypeWithClauseEntry]
+              +-[kQueryPlan]
+                +-[kProjectPlan]
+                  +-table: t
+                  +-project_list_vec[list]:
+                    +-[kProjectList]
+                      +-projects on table [list]:
+                        +-[kProjectNode]
+                          +-[0]*: *
+                  +-[kTablePlan]
+                    +-table: t
+              +-alias: t1
