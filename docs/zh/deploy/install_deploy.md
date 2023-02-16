@@ -206,7 +206,7 @@ node3:2181:2888:3888 /tmp/openmldb/zk-1
 - `[tablet]`：配置部署TabletServer的节点列表
 - `[nameserver]`：配置部署NameServer的节点列表
 - `[apiserver]`：配置部署APIServer的节点列表
--  `[taskmanager]`：配置部署TaskManager的节点列表
+- `[taskmanager]`：配置部署TaskManager的节点列表
 - `[zookeeper]`：配置部署ZooKeeper的节点列表
 
 每个区域的节点列表，每一行代表一个节点，每行格式为`host:port WORKDIR`。
