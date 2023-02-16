@@ -17,6 +17,7 @@
 - A SQL compiling fails if there is udf function in a udaf expression. (#3018 @aceforeverd)
 - The result is success when creating index fails (#3042 @vagetablechicken)
 - `recoverdata` command in the operation tool execution fails if there are many records in memory table. (#3060 @dl239)
+- The `deploy-all` tool only deploys Spark release to local node (#3022 @zhanghaohit)
 - Other minor bug fixes (#2970 #3028 #3026 #3003 @dl239)
 
 ### Code Refactoring
