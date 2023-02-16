@@ -20,6 +20,7 @@
 #include <utility>
 #include <vector>
 
+#include "absl/cleanup/cleanup.h"
 #include "udf/containers.h"
 #include "udf/default_udf_library.h"
 #include "udf/udf_registry.h"
@@ -106,9 +107,6 @@ struct NthValueWhere {
 
     template <typename NthType>
     struct Impl {
-        // (nth idx, [(value, value_is_null)])
-        using ContainerT = std::pair<NthType, std::vector<std::pair<T, bool>>>;
-
         void operator()(UdafRegistryHelper& helper) {  // NOLINT
             std::string prefix = absl::StrCat(helper.name(), "_", DataTypeTrait<T>::to_string(), "_",
                                               DataTypeTrait<NthType>::to_string());
@@ -118,44 +116,78 @@ struct NthValueWhere {
                 .output(prefix + "_output", reinterpret_cast<void*>(Output), true);
         }
 
-        static void Init(ContainerT* ctr) { new (ctr) ContainerT(0, {}); }
+     private:
+        struct ContainerT {
+            ContainerT() : nth(0), cur_pos(0) {}
+
+            // given nth value, be negative or positive
+            NthType nth;
+
+            // current iterator pos (start from 1), non-negative
+            NthType cur_pos;
+
+            // saved value list, only updated if `nth` > 0
+            std::vector<std::pair<T, bool>> data;
+        };
+
+        // (nth idx, [(value, value_is_null)])
+        // using ContainerT = std::pair<NthType, std::vector<std::pair<T, bool>>>;
+
+        static void Init(ContainerT* ctr) { new (ctr) ContainerT(); }
 
         static ContainerT* Update(ContainerT* ctr, CType value, bool value_is_null, NthType nth, bool cond,
                                   bool cond_is_null) {
             // by default, update is iterated from window end to window start
-            if (ctr->first == 0) {
-                ctr->first = nth;
+            if (ctr->nth == 0) {
+                // update only once, we treat nth as constant
+                ctr->nth = nth;
             }
             if (cond && !cond_is_null) {
-                ctr->second.emplace_back(container::ContainerStorageTypeTrait<T>::to_stored_value(value),
-                                         value_is_null);
+                if (ctr->nth > 0) {
+                    // nth from window start
+                    ctr->data.emplace_back(container::ContainerStorageTypeTrait<T>::to_stored_value(value),
+                                           value_is_null);
+                } else {
+                    // nth from window end
+                    ctr->cur_pos++;
+                    if (ctr->cur_pos + ctr->nth == 0) {
+                        // reaches nth
+                        ctr->data.emplace_back(container::ContainerStorageTypeTrait<T>::to_stored_value(value),
+                                               value_is_null);
+                    }
+                }
             }
             return ctr;
         }
 
         static void Output(ContainerT* ctr, T* value, bool* is_null) {
-            if (ctr->first == 0) {
+            absl::Cleanup clean = [ctr]() { ctr->~ContainerT(); };
+
+            if (ctr->nth == 0) {
                 *is_null = true;
                 return;
             }
 
-            if (ctr->second.size() < abs(ctr->first)) {
-                // no enough elements
-                *is_null = true;
-                return;
-            }
-
-            size_t sz = ctr->second.size();
-            if (ctr->first > 0) {
+            if (ctr->nth > 0) {
                 // count from window start to window end
-                *value = ctr->second[sz - ctr->first].first;
-                *is_null = ctr->second[sz - ctr->first].second;
+                size_t sz = ctr->data.size();
+                if (sz < ctr->nth) {
+                    *is_null = true;
+                    return;
+                }
+                *value = ctr->data[sz - ctr->nth].first;
+                *is_null = ctr->data[sz - ctr->nth].second;
+                return;
+            }
+
+            if (ctr->data.empty()) {
+                *is_null = true;
                 return;
             }
 
             // count from window end
-            *value = ctr->second[-ctr->first - 1].first;
-            *is_null = ctr->second[-ctr->first - 1].second;
+            *value = ctr->data[0].first;
+            *is_null = ctr->data[0].second;
         }
     };
 };

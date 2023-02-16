@@ -1296,6 +1296,12 @@ TEST_F(UdfIRBuilderTest, TestPMod) {
     CheckUdf<Nullable<int64_t>, Nullable<int64_t>, Nullable<int16_t>>(fn_name, 2, -10, 3);
 }
 
+TEST_F(UdfIRBuilderTest, EarthDistanceError) {
+    CheckUdf<Nullable<double>, double, double, double, double>("earth_distance", nullptr, 100, 44, 44, 44);
+    CheckUdf<Nullable<double>, double, double, double, double>("earth_distance", nullptr, 77, 181, 44, 44);
+    CheckUdf<Nullable<double>, double, double, double, double>("earth_distance", nullptr, 77, 99, -91, -184);
+}
+
 }  // namespace codegen
 }  // namespace hybridse
 

@@ -2602,14 +2602,14 @@ cases:
     mode: request-unsupport
     inputs:
       - name: t1
-        schema: id:int32, col1:int32, col2:int16, col3:string, col4 double, std_ts:timestamp
+        schema: id:int32, col1:int32, col2:int16, col3:string, col4 double, std_ts:timestamp, de:date, flag:bool
         index: index2:col2:std_ts
         data: |
-          0, 1,    55, g1,   2.0,  1590115420000
-          1, 2,    55, NULL, 2.0,  1590115421000
-          2, 3,    55, g2,   NULL, 1590115422000
-          3, 4,    55, g1,   4.0,  1590115423000
-          4, NULL, 55, g2,   4.0,  1590115424000
+          0, 1,    55, g1,   2.0,  1590115420000, 2012-12-12, true
+          1, 2,    55, NULL, 2.0,  1590115421000, 2012-12-13, true
+          2, 3,    55, g2,   NULL, 1590115422000, 2012-12-14, false
+          3, 4,    55, g1,   4.0,  1590115423000, 2012-12-15, false
+          4, NULL, 55, g2,   4.0,  1590115424000, NULL,       NULL
     sql: |
       select
         entropy(col1) as agg1,
@@ -2617,6 +2617,8 @@ cases:
         entropy(col3) as agg3,
         entropy(col4) as agg4,
         entropy(std_ts) as agg5,
+        entropy(de) as agg6,
+        entropy(flag) as agg7,
       from t1
     expect:
       columns:
@@ -2625,9 +2627,10 @@ cases:
         - agg3 double
         - agg4 double
         - agg5 double
+        - agg6 double
+        - agg7 double
       data: |
-        2.0, 0.0, 1.0, 1.0, 2.3219280948873622
-
+        2.0, 0.0, 1.0, 1.0, 2.3219280948873622, 2.0, 1.0
 
   - id: 64
     desc: nth_value_where

@@ -35,12 +35,20 @@ class Earth {
 
     double Longitude() const { return longitude_; }
 
+    bool Valid() const {
+        return abs(latitude_) <= 90.0 && abs(longitude_) <= 180.0;
+    }
+
  private:
     double latitude_;
     double longitude_;
 };
 
-double haversine_distance(const Earth& p1, const Earth& p2) {
+absl::StatusOr<double> haversine_distance(const Earth& p1, const Earth& p2) {
+    if (!p1.Valid() || !p2.Valid()) {
+        return absl::InvalidArgumentError("invalid latitude or longitude range");
+    }
+
     double latRad1 = degree_2_radian(p1.Latitude());
     double latRad2 = degree_2_radian(p2.Latitude());
     double lonRad1 = degree_2_radian(p1.Longitude());
@@ -55,8 +63,12 @@ double haversine_distance(const Earth& p1, const Earth& p2) {
 }
 
 void haversine_distance_d4(double ll1, double ll2, double rl1, double rl2, double* output, bool* is_null) {
-    *output = haversine_distance(Earth(ll1, ll2), Earth(rl1, rl2));
-    *is_null = false;
+    auto res = haversine_distance(Earth(ll1, ll2), Earth(rl1, rl2));
+    if (res.ok()) {
+        *output = res.value();
+        *is_null = false;
+    }
+    *is_null = true;
 }
 
 void DefaultUdfLibrary::InitEarthDistanceUdf() {
