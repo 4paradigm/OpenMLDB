@@ -18,17 +18,19 @@ TableElement ::=
     ColumnDef | ColumnIndex
 ```
 
-
 The `TableElementList` needs to be defined in the `CREATE TABLE` statement. `TableElementList` consists of `ColumnDef` (column definition) and `ColumnIndex`. OpenMLDB requires at least one `ColumnDef` in the `TableElementList`.
 
-Or use Hive tables to create new tables.
+Or use Hive tables and Parquet files to create new tables.
 
 ```sql
 CreateTableStmt ::=
-    'CREATE' 'TABLE' TableName LIKE 'HIVE' PATH
+    'CREATE' 'TABLE' TableName LIKE LikeType PATH
 
 TableName ::=
     Identifier ('.' Identifier)?
+
+LikeType ::=
+    ('HIVE' 'PARQUET')?
 
 PATH ::=
     string_literal
@@ -196,6 +198,15 @@ At first [configure OpenMLDB to support Hive](../../integration/offline_data_sou
 
 ```sql
 CREATE TABLE db1.t1 LIKE HIVE 'hive://hive_db.t1';
+-- SUCCEED
+```
+
+Notice that the table name should include database name at present.
+
+**Example 6: Create a Table from the Parquet files**
+
+```sql
+CREATE TABLE db1.t1 LIKE PARQUET 'file://t1.parquet';
 -- SUCCEED
 ```
 
