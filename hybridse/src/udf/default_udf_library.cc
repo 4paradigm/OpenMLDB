@@ -16,6 +16,8 @@
 
 #include "udf/default_udf_library.h"
 
+#include <algorithm>
+#include <limits>
 #include <string>
 #include <tuple>
 #include <unordered_set>
@@ -669,6 +671,55 @@ struct TopKDef {
             .init("topk_init" + suffix, ContainerT::Init)
             .update("topk_update" + suffix, ContainerT::Push)
             .output("topk_output" + suffix, ContainerT::Output);
+    }
+};
+
+template <typename T>
+struct DrawdownUdafDef {
+    // <current drawdown, current min>
+    using ContainerT = std::pair<double, T>;
+    void operator()(UdafRegistryHelper& helper) {  // NOLINT
+        std::string suffix = ".opaque_std_pair_double_" + DataTypeTrait<T>::to_string();
+        helper.templates<Nullable<double>, Opaque<ContainerT>, Nullable<T>>()
+            .init("draw_init" + suffix, Init)
+            .update("draw_update" + suffix, Update)
+            .output("draw_output" + suffix, reinterpret_cast<void *>(Output), true);
+    }
+
+    static void Init(ContainerT* ptr) {
+        new (ptr) ContainerT(-1, std::numeric_limits<T>::max());
+    }
+
+    // data is fed in the reverse order of timestamp. Newer data comes first
+    static ContainerT* Update(ContainerT* ptr, T t, bool is_null) {
+        if (!is_null) {
+            if (t < 0) {
+                LOG_FIRST_N(ERROR, 1) << "drawdown only supports positive values";
+                return ptr;
+            }
+
+            double curr_max_d = 0;
+            if (ptr->second < t) {
+                if (t != 0) {
+                    curr_max_d = static_cast<double>(t - ptr->second) / t;
+                }
+            } else {
+                ptr->second = t;
+            }
+
+            ptr->first = std::max(ptr->first, curr_max_d);
+        }
+        return ptr;
+    }
+
+    static void Output(ContainerT* ptr, double* ret, bool* is_null) {
+        if (ptr->first < 0) {
+            *is_null = true;
+        } else {
+            *ret = ptr->first;
+            *is_null = false;
+        }
+        ptr->~ContainerT();
     }
 };
 
@@ -3056,6 +3107,37 @@ void DefaultUdfLibrary::InitUdaf() {
         )")
         .args_in<int16_t, int32_t, int64_t, float, double>();
 
+    RegisterUdafTemplate<DrawdownUdafDef>("drawdown")
+        .doc(R"(
+            @brief Compute drawdown of values.
+
+            Drawdown is defined as the max decline percentage from a historical peak to a subsequent valley.
+            It is commonly used as an indicator of risk in quant-trading to measure the max loss.
+
+            It requires that values are ordered so that it can only be used with WINDOW (PARTITION BY xx ORDER BY xx).
+            GROUP BY and full table aggregation are not supported.
+
+            @param value  Specify value column to aggregate on.
+
+            It requires that all values are non-negative. Negative values will be ignored.
+
+            Example:
+
+            |value|
+            |--|
+            |1|
+            |8|
+            |5|
+            |2|
+            |10|
+            |4|
+            @code{.sql}
+                SELECT drawdown(value) OVER w;
+                -- output 0.75 (decline from 8 to 2)
+            @endcode
+            @since 0.7.2
+        )")
+        .args_in<int16_t, int32_t, int64_t, float, double>();
 
     InitAggByCateUdafs();
 }
