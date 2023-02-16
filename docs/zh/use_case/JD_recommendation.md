@@ -75,7 +75,7 @@ Oneflow-serving：https://github.com/Oneflow-Inc/serving/tree/ce5d667468b6b3ba66
 由于 OpenMLDB 集群需要和其他组件网络通信，我们直接使用 host 网络。本例将在容器中使用已下载的脚本，所以请将数据脚本所在目录 `demodir` 映射为容器中的目录：
 
 ```bash
-docker run -dit --name=openmldb --network=host -v $demodir:/work/oneflow_demo 4pdosc/openmldb:0.7.0 bash
+docker run -dit --name=openmldb --network=host -v $demodir:/work/oneflow_demo 4pdosc/openmldb:0.7.1 bash
 docker exec -it openmldb bash
 ```
 
@@ -145,7 +145,7 @@ CREATE TABLE bo_comment(ingestionTime timestamp, dt bigint, sku_id string, comme
 
 ```
 
-也可直接运行 sql 脚本(`/work/oneflow_demo/sql_scripts/create_tables.sql`)来创建：
+也可直接运行 SQL 脚本(`/work/oneflow_demo/sql_scripts/create_tables.sql`)来创建：
 
 ```
 /work/openmldb/bin/openmldb --zk_cluster=127.0.0.1:2181 --zk_root_path=/openmldb --role=sql_client < /work/oneflow_demo/sql_scripts/create_tables.sql
@@ -169,7 +169,7 @@ LOAD DATA INFILE '/work/oneflow_demo/data/JD_data/bo_comment/*.parquet' INTO TAB
 
 ```{important}
 
-请等待 `SHOW JOBS` 中所有任务运行成功（ `state` 转至 `FINISHED` 状态），再进行下一步操作 。
+运行 `SHOW JOBS`，等待所有任务运行成功（ `state` 转至 `FINISHED` 状态），再进行下一步操作。
 
 ```
 
@@ -283,11 +283,11 @@ INTO OUTFILE '/work/oneflow_demo/out/1' OPTIONS(mode='overwrite');
 
 ```{note}
 
-`SELECT INTO` 为异步任务，可以使用命令 `SHOW JOBS` 查看任务运行状态，请等待任务运行成功（ `state` 转至 `FINISHED` 状态），再进行下一步操作 。耗时大概一分半。
+`SELECT INTO` 为异步任务，使用命令 `SHOW JOBS` 查看任务运行状态，请等待任务运行成功（ `state` 转至 `FINISHED` 状态），再进行下一步操作。耗时大概一分半。
 
 ```
 
-因为这里只有一个特征抽取任务，可以使用同步的运行方式，命令完成即特征抽取完成。直接运行 sql 脚本 `sync_select_out.sql`:
+因为这里只有一个特征抽取任务，可以使用同步的运行方式，命令完成即特征抽取完成。直接运行 SQL 脚本 `sync_select_out.sql`:
 
 ```
 /work/openmldb/bin/openmldb --zk_cluster=127.0.0.1:2181 --zk_root_path=/openmldb --role=sql_client < /work/oneflow_demo/sql_scripts/sync_select_out.sql
