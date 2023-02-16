@@ -3,21 +3,21 @@
 ## [0.7.2] - 2023-02-17
 
 ### Features
-- Suport `with` clause (#2846 @aceforeverd)
-- Support deploying multiple taskmanagers (#3004 @zhanghaohit)
+- Support the new SQL clause `WITH` (#2846 @aceforeverd)
+- Support deploying multiple TaskManagers (#3004 @zhanghaohit)
 - Support the new built-in functions `std`, `stddev`, `stddev_samp`, `stddev_pop`, `ew_avg` and `drawdown` (#3025 #3032 #3029 @zhanghaohit)
-- Add new configurations to specify the maximal size of rocksdb log file (#2991 @dl239)
-- Support `create table like parquet` statement in offline mode (#2996 @tobegit3hub)
+- Add the new configurations to specify the maximum size of RocksDB's log files (#2991 @dl239)
+- The `CREATE TABLE ... LIKE ...` statement supports a parquet file as the input in the offline mode (#2996 @tobegit3hub)
 - Improve the documents (#2938 #2984 @vagetablechicken, #2958 #2973 #2980 #2987 #2988 @lumianph, #2990 @lukeAyin, #2997 @tobegit3hub, #3011 @dl239, #3020 @aceforeverd, #3033 #3036 @selenachenjingxin)
 
 ### Bug Fixes
-- Disk table does not clean the expired data (#2963 @dl239)
-- Incorrect index will be added if there is `last join` statement in deployment SQL. (#2979 @dl239)
-- The result is incorrect if a window frame is specified by `exclude current row` (#2930 @aceforeverd)
-- A SQL compiling fails if there is udf function in a udaf expression. (#3018 @aceforeverd)
-- The result is success when creating index fails (#3042 @vagetablechicken)
-- `recoverdata` command in the operation tool execution fails if there are many records in memory table. (#3060 @dl239)
-- The `deploy-all` tool only deploys Spark release to local node (#3022 @zhanghaohit)
+- Disk table does not clean the expired data. (#2963 @dl239)
+- Incorrect index will be added if there is `LAST JOIN` statement in deployed SQL. (#2979 @dl239)
+- The result is incorrect if a window frame is specified by `EXCLUDE CURRENT_ROW` (#2930 @aceforeverd)
+- SQL compiling fails if there is a UDF function in an UDAF expression. (#3018 @aceforeverd)
+- The result is success though creating index fails in some cases. (#3042 @vagetablechicken)
+- The `recoverdata` command fails if there are a large number of records in a memory table. (#3060 @dl239)
+- The `deploy-all` tool deploys the Spark package to local nodes only. (#3022 @zhanghaohit)
 - Other minor bug fixes (#2970 #3028 #3026 #3003 @dl239)
 
 ### Code Refactoring
