@@ -346,7 +346,7 @@ Status UdfLibrary::Transform(const std::string& name, UdfResolveContext* ctx,
         ctx->GetArgSignature(), ">");
 
     DLOG(INFO) << "Resolve '" << canonical_name << "'<"
-               << ctx->GetArgSignature() << ">to " << canonical_name << "("
+               << ctx->GetArgSignature() << "> to " << canonical_name << "("
                << signature << ")";
     CHECK_TRUE(registry != nullptr, kCodegenError);
     return registry->Transform(ctx, result);
@@ -375,7 +375,7 @@ Status UdfLibrary::ResolveFunction(const std::string& name,
         ctx->GetArgSignature(), ">");
 
     DLOG(INFO) << "Resolve '" << canonical_name << "'<"
-               << ctx->GetArgSignature() << ">to " << canonical_name << "("
+               << ctx->GetArgSignature() << "> to " << canonical_name << "("
                << signature << ")";
     CHECK_TRUE(registry != nullptr, kCodegenError);
     return registry->ResolveFunction(ctx, result);

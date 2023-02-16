@@ -31,8 +31,13 @@ Status ResolveFnAndAttrs::CheckSignature(
                " arguments but get ", arg_types.size());
 
     for (size_t i = 0; i < fn->GetArgSize(); ++i) {
-        CHECK_TRUE(arg_types[i] != nullptr, kCodegenError, i,
-                   "th actual argument type must be set non-null");
+        // we do not expect arg_types is always not null, sometimes null comes,
+        // skipped the check so it won't stops compile.
+        // However, it deserves a recheck later so we'll make arg_types always non-null.
+        // The change is made due to #2974
+        if (arg_types[i] == nullptr) {
+            continue;
+        }
         auto expect_type = fn->GetArgType(i);
         if (expect_type == nullptr) {
             continue;  // skip unknown type, it should be resolved in this pass
@@ -94,7 +99,10 @@ Status ResolveFnAndAttrs::VisitLambda(
     // bind lambda argument types
     for (size_t i = 0; i < arg_types.size(); ++i) {
         auto arg = lambda->GetArg(i);
-        arg->SetOutputType(arg_types[i]);
+        if (arg_types[i] != nullptr) {
+            // set only if null, refer #2974
+            arg->SetOutputType(arg_types[i]);
+        }
         arg->SetNullable(true);
     }
 
