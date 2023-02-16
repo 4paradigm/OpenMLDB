@@ -607,7 +607,7 @@ std::shared_ptr<hybridse::sdk::ProcedureInfo> DBSDK::GetProcedureInfo(const std:
 std::vector<std::shared_ptr<hybridse::sdk::ProcedureInfo>> DBSDK::GetProcedureInfo(std::string* msg) {
     std::vector<std::shared_ptr<hybridse::sdk::ProcedureInfo>> sp_infos;
     if (msg == nullptr) {
-        return std::move(sp_infos);
+        return sp_infos;
     }
     std::lock_guard<::openmldb::base::SpinMutex> lock(mu_);
     auto& db_sp_map = catalog_->GetProcedures();
@@ -618,9 +618,9 @@ std::vector<std::shared_ptr<hybridse::sdk::ProcedureInfo>> DBSDK::GetProcedureIn
     }
     if (sp_infos.empty()) {
         *msg = "procedure set is empty";
-        return std::move(sp_infos);
+        return sp_infos;
     }
-    return std::move(sp_infos);
+    return sp_infos;
 }
 
 bool StandAloneSDK::Init() {

@@ -25,6 +25,15 @@
 
 namespace hybridse {
 namespace plan {
+// ======================================================================================= //
+//                Public Interface
+// ======================================================================================= //
+base::Status ConvertASTScript(const zetasql::ASTScript* body, node::NodeManager* node_manager,
+                              node::SqlNodeList** output);
+
+// ======================================================================================= //
+// all interfaces below not consider public, which might moved later
+// ======================================================================================= //
 base::Status ConvertExprNode(const zetasql::ASTExpression* ast_expression, node::NodeManager* node_manager,
                              node::ExprNode** output);
 
@@ -76,8 +85,6 @@ base::Status ConvertCreateFunctionNode(const zetasql::ASTCreateFunctionStatement
 base::Status ConvertParamter(const zetasql::ASTFunctionParameter* params, node::NodeManager* node_manager,
                              node::SqlNode** output);
 
-base::Status ConvertASTScript(const zetasql::ASTScript* body, node::NodeManager* node_manager,
-                              node::SqlNodeList** output);
 base::Status ConvertProcedureBody(const zetasql::ASTScript* body, node::NodeManager* node_manager,
                                   node::SqlNodeList** output);
 /// transform zetasql::ASTTableElement into corresponding SqlNode
@@ -93,6 +100,9 @@ base::Status ConvertIndexOption(const zetasql::ASTOptionsEntry* entry, node::Nod
 
 base::Status ConvertTableOption(const zetasql::ASTOptionsEntry* entry, node::NodeManager* node_manager,
                                 node::SqlNode** output);
+
+base::Status ConvertWithClause(const zetasql::ASTWithClause* with_clause, node::NodeManager* nm,
+                               base::BaseList<node::WithClauseEntry>* out);
 
 // utility function
 base::Status AstStringLiteralToString(const zetasql::ASTExpression* ast_expr, std::string* str);

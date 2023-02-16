@@ -2062,12 +2062,9 @@ base::Status SQLClusterRouter::HandleSQLCreateProcedure(hybridse::node::CreatePr
     sp_info.mutable_output_schema()->CopyFrom(rtidb_output_schema);
     sp_info.set_main_db(explain_output.request_db_name);
     sp_info.set_main_table(explain_output.request_name);
-    // get dependent tables, and fill sp_info
-    std::set<std::pair<std::string, std::string>> tables;
-    ::hybridse::base::Status status;
-    if (!cluster_sdk_->GetEngine()->GetDependentTables(sql, db, ::hybridse::vm::kRequestMode, &tables, status)) {
-        return base::Status(base::ReturnCode::kSQLCmdRunError, "fail to get dependent tables: " + status.msg);
-    }
+
+    auto& tables = explain_output.dependent_tables;
+    DLOG(INFO) << "dependent tables: [" << absl::StrJoin(tables, ",", absl::PairFormatter("=")) << "]";
     for (auto& table : tables) {
         auto pair = sp_info.add_tables();
         pair->set_db_name(table.first);
@@ -3272,12 +3269,7 @@ hybridse::sdk::Status SQLClusterRouter::HandleDeploy(const std::string& db,
         return {StatusCode::kCmdError, "convert schema failed"};
     }
 
-    std::set<std::pair<std::string, std::string>> table_pair;
-    if (!cluster_sdk_->GetEngine()->GetDependentTables(select_sql, db, ::hybridse::vm::kBatchMode, &table_pair,
-                                                       sql_status)) {
-        COPY_PREPEND_AND_WARN(&status, sql_status, "GetDependentTables failed");
-        return status;
-    }
+    auto& table_pair = explain_output.dependent_tables;
     std::set<std::string> db_set;
     for (auto& table : table_pair) {
         db_set.insert(table.first);

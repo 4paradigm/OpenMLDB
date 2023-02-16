@@ -1530,9 +1530,8 @@ class RunnerBuilder {
     }
 
     template <typename Op, typename... Args>
-    void CreateRunner(Op** result_runner, Args&&... args) {
-        Op* runner = new Op(std::forward<Args>(args)...);
-        *result_runner = nm_->RegisterNode(runner);
+    Op* CreateRunner(Args&&... args) {
+        return nm_->MakeNode<Op>(std::forward<Args>(args)...);
     }
 
  private:

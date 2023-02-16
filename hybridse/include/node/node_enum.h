@@ -94,6 +94,7 @@ enum SqlNodeType {
     kCreateFunctionStmt,
     kDynamicUdfFnDef,
     kDynamicUdafFnDef,
+    kWithClauseEntry,
     kUnknow = -1
 };
 
@@ -311,6 +312,7 @@ enum PlanType {
     kPlanTypeSet,
     kPlanTypeDelete,
     kPlanTypeCreateFunction,
+    kPlanTypeWithClauseEntry,
     kUnknowPlan = -1,
 };
 
