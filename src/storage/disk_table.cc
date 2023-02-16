@@ -32,6 +32,8 @@ DECLARE_uint32(write_buffer_mb);
 DECLARE_uint32(block_cache_shardbits);
 DECLARE_bool(verify_compression);
 DECLARE_int32(disk_gc_interval);
+DECLARE_uint32(max_log_file_size);
+DECLARE_uint32(keep_log_file_num);
 
 namespace openmldb {
 namespace storage {
@@ -158,23 +160,27 @@ bool DiskTable::InitColumnFamilyDescriptor() {
     } else {
         options_ = hdd_option_template;
     }
-    for (const auto& index_def : table_index_.GetAllIndex()) {
-        if (index_def->GetTTLType() == ::openmldb::storage::TTLType::kAbsoluteTime) {
-            options_.periodic_compaction_seconds = FLAGS_disk_gc_interval * 60;
-            break;
-        }
-    }
+    options_.max_log_file_size = FLAGS_max_log_file_size;
+    options_.keep_log_file_num = FLAGS_keep_log_file_num;
     auto inner_indexs = table_index_.GetAllInnerIndex();
     for (const auto& inner_index : *inner_indexs) {
-        rocksdb::ColumnFamilyOptions cfo(options_);
+        rocksdb::Options cur_options = options_;
+        bool use_compaction_filter = false;
+        for (const auto& index_def : inner_index->GetIndex()) {
+            if (index_def->GetTTLType() == ::openmldb::storage::TTLType::kAbsoluteTime) {
+                cur_options.periodic_compaction_seconds = FLAGS_disk_gc_interval * 60;
+                use_compaction_filter = true;
+                break;
+            }
+        }
+        rocksdb::ColumnFamilyOptions cfo(cur_options);
         cfo.comparator = &cmp_;
         cfo.prefix_extractor.reset(new KeyTsPrefixTransform());
-        const auto& indexs = inner_index->GetIndex();
-        auto index_def = indexs.front();
-        if (index_def->GetTTLType() == ::openmldb::storage::TTLType::kAbsoluteTime ||
-            index_def->GetTTLType() == ::openmldb::storage::TTLType::kAbsOrLat) {
+        if (use_compaction_filter) {
             cfo.compaction_filter_factory = std::make_shared<AbsoluteTTLFilterFactory>(inner_index);
         }
+        const auto& indexs = inner_index->GetIndex();
+        auto index_def = indexs.front();
         cf_ds_.push_back(rocksdb::ColumnFamilyDescriptor(index_def->GetName(), cfo));
         DEBUGLOG("add cf_name %s. tid %u pid %u", index_def->GetName().c_str(), id_, pid_);
     }

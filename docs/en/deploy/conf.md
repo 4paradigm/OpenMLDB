@@ -191,6 +191,16 @@
 #--load_table_thread_num=3
 # The maximum queue length of the load thread pool
 #--load_table_queue_size=1000
+
+# for rocksdb
+#--disable_wal=true
+# Type of compression, can be off, pz, lz4, zlib
+#--file_compression=off
+#--block_cache_mb=4096
+#--block_cache_shardbits=8
+#--verify_compression=false
+#--max_log_file_size=100 * 1024 * 1024
+#--keep_log_file_num=5
 ```
 
 ## The Configuration file for APIServer: conf/apiserver.flags

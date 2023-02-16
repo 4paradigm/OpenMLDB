@@ -39,7 +39,9 @@ object CreateTablePlan {
       case LikeKind.HIVE =>
         val hivePath = node.getData_.GetLikePath()
         HybridseUtil.autoLoad(ctx.getOpenmldbSession, hivePath, "hive", Map[String, String](), null)
-      // TODO: Support LikeKind.PARQUET in the future
+      case LikeKind.PARQUET =>
+        val parquetPath = node.getData_.GetLikePath()
+        ctx.getSparkSession.read.parquet(parquetPath)
       case _ => throw new UnsupportedHybridSeException(s"The LikeKind type $likeKind is not supported")
     }
 
