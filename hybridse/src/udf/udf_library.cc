@@ -87,6 +87,7 @@ void UdfLibrary::InsertRegistry(
             entry = iter->second;
         }
     }
+    entry->fn_name = canonical_name;
     // set return list property
     if (always_return_list) {
         if (entry->signature_table.GetTable().size() == 0) {
@@ -259,6 +260,9 @@ Status UdfLibrary::RegisterAlias(const std::string& alias,
     iter = table_.find(canonical_name);
     CHECK_TRUE(iter != table_.end(), kCodegenError,
                "Alias target Function name '", canonical_name, "' not found");
+    // update alias info
+    iter->second->alias.insert(canonical_name);
+
     table_[canonical_alias] = iter->second;
     return Status::OK();
 }

@@ -31,6 +31,7 @@
 #include "udf/containers.h"
 #include "udf/udf.h"
 #include "udf/udf_registry.h"
+#include "udf/default_defs/expr_def.h"
 
 using openmldb::base::Date;
 using openmldb::base::StringRef;
@@ -1738,9 +1739,8 @@ void DefaultUdfLibrary::InitMathUdf() {
             @param expr
 
             @since 0.5.0)");
-    RegisterExternal("RADIANS")
-        .args<double>(
-            static_cast<double (*)(double)>(udf::v1::degree_to_radius))
+
+    RegisterExprUdfTemplate<container::RadiansDef>("radians")
         .doc(R"(
             @brief Returns the argument X, converted from degrees to radians. (Note that π radians equals 180 degrees.)
 
@@ -1750,7 +1750,9 @@ void DefaultUdfLibrary::InitMathUdf() {
                 SELECT RADIANS(90.0);
                 --output 1.570796326794896619231
             @endcode
-            @since 0.6.0)");
+
+            @since 0.6.0)")
+        .args_in<int16_t, int32_t, int64_t, float, double>();
 
     RegisterExternalTemplate<v1::Hash64>("hash64")
         .doc(R"(
@@ -1992,20 +1994,10 @@ void DefaultUdfLibrary::InitLogicalUdf() {
     RegisterAlias("isnull", "is_null");
 
     RegisterExprUdf("if_null")
-        .args<AnyArg, AnyArg>([](UdfResolveContext* ctx, ExprNode* input,
-                                 ExprNode* default_val) {
-            if (!node::TypeEquals(input->GetOutputType(),
-                                  default_val->GetOutputType())) {
-                ctx->SetError(
-                    "Default value should take same type with input, expect " +
-                    input->GetOutputType()->GetName() + " but get " +
-                    default_val->GetOutputType()->GetName());
-            }
+        .args<AnyArg, AnyArg>([](UdfResolveContext* ctx, ExprNode* input, ExprNode* default_val) {
             auto nm = ctx->node_manager();
             auto is_null = nm->MakeUnaryExprNode(input, node::kFnOpIsNull);
-            return nm->MakeCondExpr(
-                is_null, default_val,
-                nm->MakeUnaryExprNode(input, node::kFnOpNonNull));
+            return nm->MakeCondExpr(is_null, default_val, nm->MakeUnaryExprNode(input, node::kFnOpNonNull));
         })
         .doc(R"(
             @brief If input is not null, return input value; else return default value.
@@ -2026,11 +2018,6 @@ void DefaultUdfLibrary::InitLogicalUdf() {
     RegisterAlias("nvl", "if_null");
     RegisterExprUdf("nvl2")
         .args<AnyArg, AnyArg, AnyArg>([](UdfResolveContext* ctx, ExprNode* expr1, ExprNode* expr2, ExprNode* expr3) {
-            if (!node::TypeEquals(expr2->GetOutputType(), expr3->GetOutputType())) {
-                ctx->SetError(absl::StrCat("expr3 should take same type with expr2, expect ",
-                                           expr2->GetOutputType()->GetName(), " but get ",
-                                           expr3->GetOutputType()->GetName()));
-            }
             auto nm = ctx->node_manager();
             return nm->MakeCondExpr(nm->MakeUnaryExprNode(expr1, node::kFnOpIsNull), expr3, expr2);
         })
