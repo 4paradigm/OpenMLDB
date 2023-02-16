@@ -5,7 +5,7 @@
 ### Features
 - Suport `with` clause (#2846 @aceforeverd)
 - Support deploying multiple taskmanagers (#3004 @zhanghaohit)
-- Support the new built-in functions `std`, `stddev`, `stddev_samp`, `stddev_pop` and `ew_avg` (#3025 #3032 @zhanghaohit)
+- Support the new built-in functions `std`, `stddev`, `stddev_samp`, `stddev_pop`, `ew_avg` and `drawdown` (#3025 #3032 #3029 @zhanghaohit)
 - Add new configurations to specify the maximal size of rocksdb log file (#2991 @dl239)
 - Support `create table like parquet` statement in offline mode (#2996 @tobegit3hub)
 - Improve the documents (#2938 #2984 @vagetablechicken, #2958 #2973 #2980 #2987 #2988 @lumianph, #2990 @lukeAyin, #2997 @tobegit3hub, #3011 @dl239, #3020 @aceforeverd, #3033 #3036 @selenachenjingxin)
