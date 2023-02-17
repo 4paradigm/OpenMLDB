@@ -10,7 +10,7 @@
 - The `CREATE TABLE ... LIKE ...` statement supports a parquet file as the input in the offline mode (#2996 @tobegit3hub)
 - Cache and show the output of synchronization jobs in Taskmanager (#3034 @vagetablechicken)
 - Set the timeout of offline synchronization jobs automatically (#3061 @vagetablechicken)
-- Improve the documents (#2938 #2984 #3016 @vagetablechicken, #2958 #2973 #2980 #2987 #2988 #3035 @lumianph, #2990 @lukeAyin, #2997 #3065 @tobegit3hub, #3011 #3027 @dl239, #3020 #3066 @aceforeverd, #3033 #3036 @selenachenjingxin)
+- Improve the documents (#2938 #2984 #3016 @vagetablechicken, #2958 #2973 #2980 #2987 #2988 #3035 @lumianph, #2990 @lukeAyin, #2997 #3065 @tobegit3hub, #3011 #3027 @dl239, #3020 #3066 #3071 @aceforeverd, #3033 #3036 @selenachenjingxin)
 
 ### Bug Fixes
 - Disk table does not clean the expired data. (#2963 @dl239)
