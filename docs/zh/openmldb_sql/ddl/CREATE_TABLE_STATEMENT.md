@@ -22,7 +22,23 @@ TableElement ::=
 
 建表语句中需要定义`TableElementList`，即`TableElement`列表。`TableElement`分为列描述`ColumnDef`和列索引`ColumnIndex`。OpenMLDB要求`TableElement`列表中至少包含一个`ColumnDef`。
 
-基于 `LIKE` 语法建表目前仅支持基于 Hive 的表格，详情查看文档 [Hive 数据源支持](../../integration/offline_data_sources/hive.md)。
+或者基于 `LIKE` 语法建表，目前支持基于 Hive 和 Parquet 格式。
+
+```sql
+CreateTableStmt ::=
+    'CREATE' 'TABLE' TableName LIKE LikeType PATH
+
+TableName ::=
+    Identifier ('.' Identifier)?
+
+LikeType ::=
+    'HIVE' | 'PARQUET'
+
+PATH ::=
+    string_literal
+```
+
+基于 Hive 建表的详情可查看文档 [Hive 数据源支持](../../integration/offline_data_sources/hive.md)。
 
 ### 列描述ColumnDef（必要）
 
@@ -173,12 +189,21 @@ desc t4;
  --------------
 ```
 
-**示例5：基于Hive表创建新表**
+**示例5：基于 Hive 表创建新表**
 
 首先[配置OpenMLDB支持Hive](../../integration/offline_data_sources/hive.md)，然后使用以下语句。
 
 ```sql
 CREATE TABLE db1.t1 LIKE HIVE 'hive://hive_db.t1';
+-- SUCCEED
+```
+
+注意目前创建的表名必须包括DB名。
+
+**示例6：基于 Parquet 文件创建新表**
+
+```sql
+CREATE TABLE db1.t1 LIKE PARQUET 'file://t1.parquet';
 -- SUCCEED
 ```
 
