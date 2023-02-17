@@ -39,6 +39,9 @@ class SqlCase {
         std::string index_;
         std::string data_;
         std::string order_;
+        // resource file name of the table data.
+        // absolute path or relative to current yaml file
+        std::string csv_data_file_;
         std::vector<std::string> indexs_;
         std::vector<std::string> columns_;
         std::vector<std::vector<std::string>> rows_;
@@ -65,6 +68,12 @@ class SqlCase {
         int code_ = -1;
         std::string msg_;
     };
+    struct Deployment {
+        // deployment name, if empty, generated randomly at runtime
+        std::string name_;
+    };
+
+
     SqlCase() {}
     virtual ~SqlCase() {}
 
@@ -297,7 +306,7 @@ class SqlCase {
     std::string db_;
     std::string sql_str_;
     std::vector<std::string> sql_strs_;
-    bool debug_;
+    bool debug_ = false;
     bool standard_sql_;
     bool standard_sql_compatible_;
     bool batch_request_optimized_;
@@ -311,6 +320,10 @@ class SqlCase {
     YAML::Node raw_node_;
     std::string sp_name_;
     int level_ = 0;
+
+    // also generate deployment test for the query
+    bool deployable_ = false;
+    Deployment deployment_;
 };
 std::string FindSqlCaseBaseDirPath();
 

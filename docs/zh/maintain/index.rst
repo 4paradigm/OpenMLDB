@@ -6,11 +6,13 @@
     :maxdepth: 1
 
     upgrade
+    update_conf
     backup
     scale
     monitoring
     cli
-    faq
+    status
+    multi_cluster
     diagnose
     openmldb_ops
-    data_export
+    faq

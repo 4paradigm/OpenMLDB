@@ -32,11 +32,10 @@ namespace hybridse {
 namespace udf {
 
 template <class V>
-void AtList(::hybridse::codec::ListRef<V>* list_ref, int64_t pos, V* v,
-            bool* is_null) {
+void AtList(::hybridse::codec::ListRef<V>* list_ref, int64_t pos, V* v, bool* is_null) {
     if (pos < 0) {
         *is_null = true;
-        *v = V(DataTypeTrait<V>::zero_value());
+        *v = static_cast<V>(DataTypeTrait<V>::zero_value());
         return;
     }
     auto list = reinterpret_cast<codec::ListV<V>*>(list_ref->list);
@@ -45,7 +44,7 @@ void AtList(::hybridse::codec::ListRef<V>* list_ref, int64_t pos, V* v,
         auto row = column->root()->At(pos);
         if (row.empty()) {
             *is_null = true;
-            *v = V(DataTypeTrait<V>::zero_value());
+            *v = static_cast<V>(DataTypeTrait<V>::zero_value());
         } else {
             column->GetField(row, v, is_null);
         }
@@ -166,8 +165,21 @@ void DefaultUdfLibrary::InitWindowFunctions() {
             return BuildAt(ctx, input, ctx->node_manager()->MakeConstNode(0),
                            nullptr);
         })
-        .doc(
-            R"(@brief Returns the value of expr from the first row of the window frame.
+        .doc(R"(
+        @brief Returns the value of expr from the latest row (last row) of the window frame.
+
+        Example:
+
+        @code{.sql}
+        select id, gp, ts, first_value(ts) over w as agg from t1
+        window w as (partition by gp order by ts rows between 3 preceding and current row);
+        @endcode
+
+        | id | gp | ts | agg |
+        | -- | -- | -- | --- |
+        | 1  | 100 | 98 | 98 |
+        | 2  | 100 | 99 | 99 |
+        | 3  | 100 | 100 | 100 |
 
         @since 0.1.0)");
 }

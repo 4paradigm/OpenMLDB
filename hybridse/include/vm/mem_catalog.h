@@ -277,12 +277,8 @@ class Window : public MemTimeTableHandler {
     bool exclude_current_time() const { return exclude_current_time_; }
     void set_exclude_current_time(bool flag) { exclude_current_time_ = flag; }
 
-    bool exclude_current_row() const { return exclude_current_row_; }
-    void set_exclude_current_row(bool flag) { exclude_current_row_ = flag; }
-
  protected:
     bool exclude_current_time_ = false;
-    bool exclude_current_row_ = false;
     bool instance_not_in_window_ = false;
 };
 class WindowRange {
@@ -491,22 +487,6 @@ class HistoryWindow : public Window {
     }
 
     bool BufferCurrentTimeBuffer(uint64_t key, const Row& row, uint64_t start_ts) {
-        if (exclude_current_row_) {
-            // slide window first so current row kept in `current_history_buffer_`
-            // and will go into window in next action
-            if (exclude_current_time_) {
-                if (key == 0) {
-                    SlideWindow(start_ts, {});
-                } else {
-                    SlideWindow(start_ts, key - 1);
-                }
-            } else {
-                SlideWindow(start_ts, key);
-            }
-            current_history_buffer_.emplace_front(key, row);
-            return true;
-        }
-
         if (exclude_current_time_) {
             // except `exclude current_row`, the current row is always added to the effective window
             // but for next buffer action, previous current row already buffered in `current_history_buffer_`

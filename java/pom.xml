@@ -66,7 +66,7 @@
         <!-- the version for hybridse-native & openmldb-native
              override this to publish a variant release e.g. macOS variant
              checkout java/prepare_release.sh how to prepare a variant release -->
-        <variant.native.version>0.6.5-SNAPSHOT</variant.native.version>
+        <variant.native.version>0.7.0-SNAPSHOT</variant.native.version>
 
         <plugin.violationSeverity>error</plugin.violationSeverity>
         <spotless-maven-plugin.version>2.9.0</spotless-maven-plugin.version>

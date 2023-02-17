@@ -24,6 +24,8 @@
 #include <utility>
 #include <vector>
 
+#include "absl/base/attributes.h"
+#include "base/fe_hash.h"
 #include "base/fe_status.h"
 #include "base/graph.h"
 #include "llvm/Bitcode/BitcodeWriter.h"
@@ -44,15 +46,20 @@ using hybridse::passes::PhysicalPlanPassType;
 
 class LogicalOp {
  public:
-    explicit LogicalOp(const node::PlanNode* node) : node_(node) {}
+    // param node can't be null
+    explicit LogicalOp(const node::PlanNode* node, const internal::Closure* ctx) ABSL_ATTRIBUTE_NONNULL(2)
+        : node_(node), ctx_(ctx) {}
+
     const size_t Hash() const { return static_cast<size_t>(node_->GetType()); }
+
     const bool Equals(const LogicalOp& that) const {
-        return node::PlanEquals(node_, that.node_);
+        return node::PlanEquals(node_, that.node_) && base::GeneralPtrEq(ctx_, that.ctx_);
     }
 
     friend std::ostream& operator<<(std::ostream& output,
                                     const LogicalOp& thiz);
     const node::PlanNode* node_;
+    const internal::Closure* ctx_;
 };
 
 struct HashLogicalOp {
@@ -109,17 +116,13 @@ class BatchModeTransformer {
     virtual ~BatchModeTransformer();
     bool AddDefaultPasses();
 
-    virtual Status TransformPhysicalPlan(const ::hybridse::node::PlanNodeList& trees,
-                                         ::hybridse::vm::PhysicalOpNode** output);
-    virtual Status TransformQueryPlan(const ::hybridse::node::PlanNode* node,
-                                      ::hybridse::vm::PhysicalOpNode** output);
+    Status TransformPhysicalPlan(const ::hybridse::node::PlanNodeList& trees, ::hybridse::vm::PhysicalOpNode** output);
+    ABSL_MUST_USE_RESULT
+    Status TransformQueryPlan(const ::hybridse::node::QueryPlanNode*, ::hybridse::vm::PhysicalOpNode**);
+
     virtual Status ValidatePlan(PhysicalOpNode* in);
 
     bool AddPass(PhysicalPlanPassType type);
-
-    typedef std::unordered_map<LogicalOp, ::hybridse::vm::PhysicalOpNode*,
-                               HashLogicalOp, EqualLogicalOp>
-        LogicalOpMap;
 
     // Generate function info for node's all components
     Status InitFnInfo(PhysicalOpNode* node, std::set<PhysicalOpNode*>* visited);
@@ -153,12 +156,12 @@ class BatchModeTransformer {
     PhysicalPlanContext* GetPlanContext() { return &plan_ctx_; }
 
  protected:
-    virtual Status TransformPlanOp(const ::hybridse::node::PlanNode* node,
-                                   ::hybridse::vm::PhysicalOpNode** ouput);
+    Status TransformPlanOp(const ::hybridse::node::PlanNode* node, ::hybridse::vm::PhysicalOpNode** ouput);
+
     virtual Status TransformLimitOp(const node::LimitPlanNode* node,
                                     PhysicalOpNode** output);
-    virtual Status TransformProjectPlanOp(const node::ProjectPlanNode* node,
-                                          PhysicalOpNode** output);
+    virtual Status TransformProjectPlanOp(const node::ProjectPlanNode*, PhysicalOpNode**);
+
     virtual Status TransformJoinOp(const node::JoinPlanNode* node,
                                    PhysicalOpNode** output);
     virtual Status TransformGroupOp(const node::GroupPlanNode* node,
@@ -186,14 +189,8 @@ class BatchModeTransformer {
     virtual Status CreatePhysicalConstProjectNode(
         node::ProjectListNode* project_list, PhysicalOpNode** output);
 
-    base::Status CreateRequestUnionNode(PhysicalOpNode* request,
-                                        PhysicalOpNode* right,
-                                        const std::string& db_name,
-                                        const std::string& primary_name,
-                                        const codec::Schema* primary_schema,
-                                        const node::ExprListNode* partition,
-                                        const node::WindowPlanNode* window_plan,
-                                        PhysicalRequestUnionNode** output);
+    Status TransformWithClauseEntry(const node::WithClauseEntryPlanNode* node, PhysicalOpNode** out);
+
     virtual Status CreatePhysicalProjectNode(
         const ProjectType project_type, PhysicalOpNode* node,
         node::ProjectListNode* project_list, bool append_input,
@@ -237,9 +234,34 @@ class BatchModeTransformer {
     base::Status ExtractGroupKeys(vm::PhysicalOpNode* depend, const node::ExprListNode** keys);
     Status CompleteProjectList(const node::ProjectPlanNode* project_node, PhysicalOpNode* depend) const;
 
+    // in stack the new CTE environment and replace the current closure as `Closure(old_closure, cte_env)`
+    void PushCTEEnv(const internal::CTEEnv& clu);
+
+    // Replace `closure_` with new `clu` as the current captured CTEs
+    void ReplaceClosure(internal::Closure* clu);
+
+    // Pop all `CTEContext`s who all has the same parent
+    ABSL_MUST_USE_RESULT
+    Status PopCTEs();
+
+    virtual absl::StatusOr<PhysicalOpNode*> ResolveCTERef(absl::string_view tb_name, bool is_primary_path);
+
+    absl::StatusOr<PhysicalOpNode*> ResolveCTERefImpl(absl::string_view tb_name, bool request_mode,
+                                                      bool is_primary_path);
+
+ protected:
     node::NodeManager* node_manager_;
     const std::string db_;
     const std::shared_ptr<Catalog> catalog_;
+
+    typedef std::unordered_map<LogicalOp, ::hybridse::vm::PhysicalOpNode*, HashLogicalOp, EqualLogicalOp> LogicalOpMap;
+
+    // Captured CTEs during the transform process
+    //   pointer value changes between different transform steps internally
+    //   lifetime of all `Closure`s managed by NodeManager
+    internal::Closure* closure_ = nullptr;
+
+    PhysicalPlanContext plan_ctx_;
 
  private:
     virtual Status TransformProjectPlanOpWithWindowParallel(const node::ProjectPlanNode* node, PhysicalOpNode** output);
@@ -256,7 +278,6 @@ class BatchModeTransformer {
     std::vector<PhysicalPlanPassType> passes;
     LogicalOpMap op_map_;
     const udf::UdfLibrary* library_;
-    PhysicalPlanContext plan_ctx_;
 };
 class RequestModeTransformer : public BatchModeTransformer {
  public:
@@ -276,8 +297,6 @@ class RequestModeTransformer : public BatchModeTransformer {
         return batch_request_info_;
     }
     Status ValidatePlan(PhysicalOpNode* in) override;
-    Status ValidateRequestTable(PhysicalOpNode* in,
-                               PhysicalOpNode** request_table);
 
  protected:
     void ApplyPasses(PhysicalOpNode* node, PhysicalOpNode** output) override;
@@ -291,6 +310,15 @@ class RequestModeTransformer : public BatchModeTransformer {
     Status TransformLoadDataOp(const node::LoadDataPlanNode* node, PhysicalOpNode** output) override;
 
     Status TransformWindowOp(PhysicalOpNode* depend, const node::WindowPlanNode* w_ptr, PhysicalOpNode** output);
+
+    base::Status CreateRequestUnionNode(PhysicalOpNode* request, PhysicalOpNode* right, const std::string& db_name,
+                                        const std::string& primary_name, const codec::Schema* primary_schema,
+                                        const node::ExprListNode* partition, const node::WindowPlanNode* window_plan,
+                                        PhysicalRequestUnionNode** output);
+
+    absl::StatusOr<PhysicalOpNode*> ResolveCTERef(absl::string_view tb_name, bool is_primary_path) override;
+
+    Status ValidateRequestTable(PhysicalOpNode* in, PhysicalOpNode** request_table);
 
  private:
     // Optimize simple project node which is the producer of window project

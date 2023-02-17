@@ -91,15 +91,14 @@ SqlNode *NodeManager::MakeLimitNode(int count) {
     return RegisterNode(node_ptr);
 }
 SqlNode *NodeManager::MakeWindowDefNode(ExprListNode *partitions, ExprNode *orders, SqlNode *frame) {
-    return MakeWindowDefNode(nullptr, partitions, orders, frame, false, false, false);
+    return MakeWindowDefNode(nullptr, partitions, orders, frame, false, false);
 }
 SqlNode *NodeManager::MakeWindowDefNode(ExprListNode *partitions, ExprNode *orders, SqlNode *frame,
                                         bool exclude_current_time) {
-    return MakeWindowDefNode(nullptr, partitions, orders, frame, exclude_current_time, false, false);
+    return MakeWindowDefNode(nullptr, partitions, orders, frame, exclude_current_time, false);
 }
 SqlNode *NodeManager::MakeWindowDefNode(SqlNodeList *union_tables, ExprListNode *partitions, ExprNode *orders,
-                                        SqlNode *frame, bool exclude_current_time, bool exclude_current_row,
-                                        bool instance_not_in_window) {
+                                        SqlNode *frame, bool exclude_current_time, bool instance_not_in_window) {
     WindowDefNode *node_ptr = new WindowDefNode();
     if (nullptr != orders) {
         if (node::kExprOrder != orders->GetExprType()) {
@@ -111,7 +110,6 @@ SqlNode *NodeManager::MakeWindowDefNode(SqlNodeList *union_tables, ExprListNode 
         node_ptr->SetOrders(dynamic_cast<OrderByNode *>(orders));
     }
     node_ptr->set_exclude_current_time(exclude_current_time);
-    node_ptr->set_exclude_current_row(exclude_current_row);
     node_ptr->set_instance_not_in_window(instance_not_in_window);
     node_ptr->set_union_tables(union_tables);
     node_ptr->SetPartitions(partitions);
@@ -130,9 +128,9 @@ WindowDefNode *NodeManager::MergeWindow(const WindowDefNode *w1, const WindowDef
         LOG(WARNING) << "Fail to Merge Window: input windows are null";
         return nullptr;
     }
-    return dynamic_cast<WindowDefNode *>(MakeWindowDefNode(
-        w1->union_tables(), w1->GetPartitions(), w1->GetOrders(), MergeFrameNode(w1->GetFrame(), w2->GetFrame()),
-        w1->exclude_current_time(), w1->exclude_current_row(), w1->instance_not_in_window()));
+    return dynamic_cast<WindowDefNode *>(MakeWindowDefNode(w1->union_tables(), w1->GetPartitions(), w1->GetOrders(),
+                                                           MergeFrameNode(w1->GetFrame(), w2->GetFrame()),
+                                                           w1->exclude_current_time(), w1->instance_not_in_window()));
 }
 FrameNode *NodeManager::MergeFrameNodeWithCurrentHistoryFrame(FrameNode *frame1) {
     if (nullptr == frame1) {
@@ -142,11 +140,8 @@ FrameNode *NodeManager::MergeFrameNodeWithCurrentHistoryFrame(FrameNode *frame1)
     switch (frame1->frame_type()) {
         case kFrameRows: {
             return MergeFrameNode(
-                frame1,
-                dynamic_cast<FrameNode *>(MakeFrameNode(
-                    kFrameRows, nullptr,
-                    dynamic_cast<FrameExtent *>(MakeFrameExtent(MakeFrameBound(kCurrent), MakeFrameBound(kCurrent))),
-                    0)));
+                frame1, MakeFrameNode(kFrameRows, nullptr,
+                                      MakeFrameExtent(MakeFrameBound(kCurrent), MakeFrameBound(kCurrent)), 0));
         }
         default: {
             return frame1;
@@ -177,7 +172,7 @@ FrameNode *NodeManager::MergeFrameNode(const FrameNode *frame1, const FrameNode 
         int end_compared = FrameBound::Compare(end1, end2);
         FrameBound *start = start_compared < 1 ? start1 : start2;
         FrameBound *end = end_compared >= 1 ? end1 : end2;
-        frame_range = dynamic_cast<FrameExtent *>(MakeFrameExtent(start, end));
+        frame_range = MakeFrameExtent(start, end);
     }
 
     FrameExtent *frame_rows = nullptr;
@@ -195,11 +190,13 @@ FrameNode *NodeManager::MergeFrameNode(const FrameNode *frame1, const FrameNode 
         FrameBound *end2 = frame2->frame_rows()->end();
         int end_compared = FrameBound::Compare(end1, end2);
         FrameBound *end = end_compared >= 1 ? end1 : end2;
-        frame_rows = dynamic_cast<FrameExtent *>(MakeFrameExtent(start, end));
+        frame_rows = MakeFrameExtent(start, end);
     }
     int64_t maxsize = frame1->frame_maxsize() == 0 ? frame2->frame_maxsize() : frame1->frame_maxsize();
 
-    return dynamic_cast<FrameNode *>(MakeFrameNode(frame_type, frame_range, frame_rows, maxsize));
+    auto *fm = MakeFrameNode(frame_type, frame_range, frame_rows, maxsize);
+    fm->exclude_current_row_ = frame1->exclude_current_row_;
+    return fm;
 }
 SqlNode *NodeManager::MakeFrameBound(BoundType bound_type) {
     FrameBound *node_ptr = new FrameBound(bound_type);
@@ -245,11 +242,11 @@ FrameExtent *NodeManager::MakeFrameExtent(SqlNode *start, SqlNode *end) {
     FrameExtent *node_ptr = new FrameExtent(dynamic_cast<FrameBound *>(start), dynamic_cast<FrameBound *>(end));
     return RegisterNode(node_ptr);
 }
-SqlNode *NodeManager::MakeFrameNode(FrameType frame_type, SqlNode *frame_extent) {
+FrameNode *NodeManager::MakeFrameNode(FrameType frame_type, SqlNode *frame_extent) {
     int64_t max_size = 0;
     return MakeFrameNode(frame_type, frame_extent, max_size);
 }
-SqlNode *NodeManager::MakeFrameNode(FrameType frame_type, SqlNode *frame_extent, ExprNode *frame_size) {
+FrameNode *NodeManager::MakeFrameNode(FrameType frame_type, SqlNode *frame_extent, ExprNode *frame_size) {
     if (nullptr != frame_extent && node::kFrameExtent != frame_extent->type_) {
         LOG(WARNING) << "Fail Make Frame Node: 2nd arg isn't frame extent";
         return nullptr;
@@ -272,7 +269,7 @@ SqlNode *NodeManager::MakeFrameNode(FrameType frame_type, SqlNode *frame_extent,
     return MakeFrameNode(frame_type, frame_extent, max_size);
 }
 
-SqlNode *NodeManager::MakeFrameNode(FrameType frame_type, SqlNode *frame_extent, int64_t maxsize) {
+FrameNode *NodeManager::MakeFrameNode(FrameType frame_type, SqlNode *frame_extent, int64_t maxsize) {
     if (nullptr != frame_extent && node::kFrameExtent != frame_extent->type_) {
         LOG(WARNING) << "Fail Make Frame Node: 2nd arg isn't frame extent";
         return nullptr;
@@ -295,8 +292,8 @@ SqlNode *NodeManager::MakeFrameNode(FrameType frame_type, SqlNode *frame_extent,
     return nullptr;
 }
 
-SqlNode *NodeManager::MakeFrameNode(FrameType frame_type, FrameExtent *frame_range, FrameExtent *frame_rows,
-                                    int64_t maxsize) {
+FrameNode *NodeManager::MakeFrameNode(FrameType frame_type, FrameExtent *frame_range, FrameExtent *frame_rows,
+                                      int64_t maxsize) {
     FrameNode *node_ptr = new FrameNode(frame_type, frame_range, frame_rows, maxsize);
     return RegisterNode(node_ptr);
 }
@@ -876,30 +873,15 @@ PlanNode *NodeManager::MakeJoinNode(PlanNode *left, PlanNode *right, JoinType jo
     node::JoinPlanNode *node_ptr = new JoinPlanNode(left, right, join_type, order_by, condition);
     return RegisterNode(node_ptr);
 }
-PlanNode *NodeManager::MakeSelectPlanNode(PlanNode *node) {
-    node::QueryPlanNode *select_plan_ptr = new QueryPlanNode(node);
-    return RegisterNode(select_plan_ptr);
-}
 PlanNode *NodeManager::MakeGroupPlanNode(PlanNode *node, const ExprListNode *by_list) {
     node::GroupPlanNode *node_ptr = new GroupPlanNode(node, by_list);
-    return RegisterNode(node_ptr);
-}
-PlanNode *NodeManager::MakeProjectPlanNode(PlanNode *node, const std::string &table,
-                                           const PlanNodeList &projection_list,
-                                           const std::vector<std::pair<uint32_t, uint32_t>> &pos_mapping) {
-    node::ProjectPlanNode *node_ptr = new ProjectPlanNode(node, table, projection_list, pos_mapping);
     return RegisterNode(node_ptr);
 }
 PlanNode *NodeManager::MakeLimitPlanNode(PlanNode *node, int limit_cnt) {
     node::LimitPlanNode *node_ptr = new LimitPlanNode(node, limit_cnt);
     return RegisterNode(node_ptr);
 }
-ProjectNode *NodeManager::MakeProjectNode(const int32_t pos, const std::string &name, const bool is_aggregation,
-                                          node::ExprNode *expression, node::FrameNode *frame) {
-    node::ProjectNode *node_ptr = new ProjectNode(pos, name, is_aggregation, expression, frame);
-    RegisterNode(node_ptr);
-    return node_ptr;
-}
+
 CreatePlanNode *NodeManager::MakeCreateTablePlanNode(const std::string &db_name, const std::string &table_name,
                                                      const NodePointVector &column_list,
                                                      const NodePointVector &table_option_list,
@@ -951,10 +933,6 @@ PlanNode *NodeManager::MakeSortPlanNode(PlanNode *node, const OrderByNode *order
     node::SortPlanNode *node_ptr = new SortPlanNode(node, order_list);
     return RegisterNode(node_ptr);
 }
-PlanNode *NodeManager::MakeUnionPlanNode(PlanNode *left, PlanNode *right, const bool is_all) {
-    node::UnionPlanNode *node_ptr = new UnionPlanNode(left, right, is_all);
-    return RegisterNode(node_ptr);
-}
 PlanNode *NodeManager::MakeDistinctPlanNode(PlanNode *node) {
     node::DistinctPlanNode *node_ptr = new DistinctPlanNode(node);
     return RegisterNode(node_ptr);
@@ -965,10 +943,10 @@ SqlNode *NodeManager::MakeExplainNode(const QueryNode *query, ExplainType explai
 }
 ProjectNode *NodeManager::MakeAggProjectNode(const int32_t pos, const std::string &name, node::ExprNode *expression,
                                              node::FrameNode *frame) {
-    return MakeProjectNode(pos, name, true, expression, frame);
+    return MakeNode<ProjectNode>(pos, name, true, expression, frame);
 }
 ProjectNode *NodeManager::MakeRowProjectNode(const int32_t pos, const std::string &name, node::ExprNode *expression) {
-    return MakeProjectNode(pos, name, false, expression, nullptr);
+    return MakeNode<ProjectNode>(pos, name, false, expression, nullptr);
 }
 
 BetweenExpr *NodeManager::MakeBetweenExpr(ExprNode *expr, ExprNode *left, ExprNode *right, const bool is_not) {

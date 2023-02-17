@@ -23,7 +23,7 @@
 #--binlog_coffee_time=1000
 #--binlog_match_logoffset_interval=1000
 --binlog_notify_on_put=true
---binlog_single_file_max_size=2048
+--binlog_single_file_max_size=1024
 #--binlog_sync_batch_size=32
 --binlog_sync_to_disk_interval=5000
 #--binlog_sync_wait_time=100
@@ -58,8 +58,9 @@
 #--snapshot_compression=off
 
 # garbage collection conf
-# 60m
---gc_interval=60
+# the unit of interval is minute
+--gc_interval=120
+--disk_gc_interval=1440
 --gc_pool_size=2
 # 1m
 #--gc_safe_offset=1

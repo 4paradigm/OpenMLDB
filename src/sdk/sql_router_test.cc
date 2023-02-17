@@ -1136,7 +1136,7 @@ TEST_F(SQLRouterTest, DDLParseMethods) {
     // sorted by table name, so adinfo is the first table
     EXPECT_EQ(
         "CREATE TABLE IF NOT EXISTS adinfo(\n\tid string,\n\tbrandName string,\n\tbrandId string,\n\tname "
-        "string,\n\tingestionTime timestamp,\n\tindex(key=(id), ttl=0m, ttl_type=absolute)\n);",
+        "string,\n\tingestionTime timestamp,\n\tindex(key=(id), ttl=1, ttl_type=latest)\n);",
         ddl_list.at(0));
 
     auto output_schema = GenOutputSchema(sql, table_map);

@@ -5,7 +5,7 @@
 为了用户更方便的维护OpenMLDB，我们提供了OpenMLDB运维工具，主要包括以下功能:
 - 一键数据恢复：`recoverdata`
 - 自动分片均衡: `scaleout`
-- 将缩容节点的分片迁移到其他机器上: `scaleint`
+- 将缩容节点的分片迁移到其他机器上: `scalein`
 - 升级tablet前处理和后处理：`pre-upgrade`和`post-upgrade`
 - 查询操作状态：`showopstatus`
 - 查询表状态：`showtablestatus`

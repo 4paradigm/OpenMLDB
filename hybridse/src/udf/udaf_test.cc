@@ -264,6 +264,71 @@ TEST_F(UdafTest, AvgTest) {
     CheckUdf<Nullable<double>, ListRef<Nullable<double>>>("avg", nullptr, MakeList<Nullable<double>>({nullptr}));
 }
 
+TEST_F(UdafTest, StdPopTest) {
+    double expected = 1.118034;
+    CheckUdf<double, ListRef<int16_t>>("stddev_pop", expected, MakeList<int16_t>({1, 2, 3, 4}));
+    CheckUdf<double, ListRef<int32_t>>("stddev_pop", expected, MakeList<int32_t>({1, 2, 3, 4}));
+    CheckUdf<double, ListRef<int64_t>>("stddev_pop", expected, MakeList<int64_t>({1, 2, 3, 4}));
+    CheckUdf<double, ListRef<float>>("stddev_pop", expected, MakeList<float>({1, 2, 3, 4}));
+    CheckUdf<double, ListRef<Nullable<double>>>("stddev_pop", expected,
+                                                MakeList<Nullable<double>>({1, 2, nullptr, 3, 4}));
+    // nullable
+    CheckUdf<Nullable<double>, ListRef<double>>("stddev_pop", nullptr, MakeList<double>({}));
+    CheckUdf<Nullable<double>, ListRef<Nullable<double>>>("stddev_pop", nullptr, MakeList<Nullable<double>>({nullptr}));
+}
+
+TEST_F(UdafTest, StdSampTest) {
+    double expected = 1.290994;
+    CheckUdf<double, ListRef<int16_t>>("std", expected, MakeList<int16_t>({1, 2, 3, 4}));
+    CheckUdf<double, ListRef<int32_t>>("stddev", expected, MakeList<int32_t>({1, 2, 3, 4}));
+    CheckUdf<double, ListRef<int64_t>>("stddev_samp", expected, MakeList<int64_t>({1, 2, 3, 4}));
+    CheckUdf<double, ListRef<float>>("stddev_samp", expected, MakeList<float>({1, 2, 3, 4}));
+    CheckUdf<double, ListRef<Nullable<double>>>("stddev_samp", expected,
+                                                MakeList<Nullable<double>>({1, 2, nullptr, 3, 4}));
+    // nullable
+    CheckUdf<Nullable<double>, ListRef<double>>("stddev_samp", nullptr, MakeList<double>({1}));
+    CheckUdf<Nullable<double>, ListRef<double>>("stddev_samp", nullptr, MakeList<double>({}));
+    CheckUdf<Nullable<double>, ListRef<Nullable<double>>>("stddev_samp", nullptr,
+                                                          MakeList<Nullable<double>>({nullptr}));
+}
+
+TEST_F(UdafTest, EwAvgTest) {
+    double expect = 3.161290;
+    auto alpha_list = MakeList<double>({0.5, 0.5, 0.5, 0.5, 0.5, 0.5});
+    CheckUdf<double, ListRef<int16_t>, ListRef<double>>("ew_avg", expect, MakeList<int16_t>({4, 3, 2, 1, 0}),
+                                                        alpha_list);
+    CheckUdf<double, ListRef<Nullable<int32_t>>, ListRef<double>>(
+        "ew_avg", expect, MakeList<Nullable<int32_t>>({4, 3, 2, 1, 0}), alpha_list);
+    CheckUdf<double, ListRef<int64_t>, ListRef<double>>("ew_avg", expect, MakeList<int64_t>({4, 3, 2, 1, 0}),
+                                                        alpha_list);
+    CheckUdf<double, ListRef<float>, ListRef<double>>("ew_avg", expect, MakeList<float>({4, 3, 2, 1, 0}), alpha_list);
+    CheckUdf<double, ListRef<Nullable<double>>, ListRef<double>>(
+        "ew_avg", expect, MakeList<Nullable<double>>({4, 3, 2, nullptr, 1, 0.0}), alpha_list);
+
+    CheckUdf<double, ListRef<Nullable<double>>, ListRef<double>>(
+        "ew_avg", 1.733333, MakeList<Nullable<double>>({1, 2, 3, 4}), alpha_list);
+    CheckUdf<double, ListRef<Nullable<double>>, ListRef<double>>(
+        "ew_avg", 1, MakeList<Nullable<double>>({1}), alpha_list);
+    CheckUdf<double, ListRef<Nullable<double>>, ListRef<double>>(
+        "ew_avg", 0, MakeList<Nullable<double>>({0.0}), alpha_list);
+    CheckUdf<double, ListRef<Nullable<double>>, ListRef<double>>(
+        "ew_avg", 2.224932, MakeList<Nullable<double>>({1, 2, 3, 4}), MakeList<double>({0.2, 0.2, 0.2, 0.2}));
+    CheckUdf<double, ListRef<Nullable<double>>, ListRef<double>>(
+        "ew_avg", 4, MakeList<Nullable<double>>({4, 3, 2, 1}), MakeList<double>({1, 1, 1, 1}));
+
+    // NULL alpha will fall back to nornal avg
+    CheckUdf<double, ListRef<Nullable<double>>, ListRef<Nullable<double>>>(
+        "ew_avg", 2.5, MakeList<Nullable<double>>({4, 3, 2, 1}),
+        MakeList<Nullable<double>>({nullptr, nullptr, nullptr, nullptr}));
+    CheckUdf<double, ListRef<Nullable<double>>, ListRef<Nullable<double>>>(
+        "ew_avg", 2.5, MakeList<Nullable<double>>({4, 3, 2, 1}), MakeList<Nullable<double>>({0.0, 0.0, 0.0, 0.0}));
+
+    // nullable
+    CheckUdf<Nullable<double>, ListRef<double>, ListRef<double>>("ew_avg", nullptr, MakeList<double>({}), alpha_list);
+    CheckUdf<Nullable<double>, ListRef<Nullable<double>>, ListRef<double>>(
+        "ew_avg", nullptr, MakeList<Nullable<double>>({nullptr}), alpha_list);
+}
+
 TEST_F(UdafTest, SumTest) {
     CheckUdf<int16_t, ListRef<int16_t>>("sum", 10,
                                        MakeList<int16_t>({1, 2, 3, 4}));
@@ -992,7 +1057,32 @@ TEST_F(UdafTest, TopNValueAvgCateWhereTest) {
                                MakeList<int32_t>({2, 2, 2, 2, 2, 2, 2}));
 }
 
+TEST_F(UdafTest, DrawdownTest) {
+    double expected = 0.75;
+    CheckUdf<double, ListRef<int16_t>>("drawdown", expected, MakeList<int16_t>({4, 10, 2, 5, 8, 1}));
+    CheckUdf<double, ListRef<int32_t>>("drawdown", expected, MakeList<int32_t>({4, 10, 2, 5, 8, 1}));
+    CheckUdf<double, ListRef<int64_t>>("drawdown", expected, MakeList<int64_t>({4, 10, 2, 5, 8, 1}));
+    CheckUdf<double, ListRef<float>>("drawdown", expected, MakeList<float>({4, 10, 2, 5, 8, 1}));
+    CheckUdf<double, ListRef<Nullable<double>>>("drawdown", expected,
+                                                MakeList<Nullable<double>>({4, 10, nullptr, 2, 5, 8, 1}));
 
+    CheckUdf<double, ListRef<Nullable<double>>>("drawdown", 0, MakeList<Nullable<double>>({1}));
+    CheckUdf<double, ListRef<Nullable<double>>>("drawdown", 0, MakeList<Nullable<double>>({8, 1}));
+    CheckUdf<double, ListRef<Nullable<double>>>("drawdown", 1, MakeList<Nullable<double>>({0.0, 1}));
+    CheckUdf<double, ListRef<Nullable<double>>>("drawdown", 0, MakeList<Nullable<double>>({0.0, 0.0}));
+    CheckUdf<double, ListRef<Nullable<double>>>("drawdown", 0, MakeList<Nullable<double>>({1, 1}));
+    CheckUdf<double, ListRef<Nullable<double>>>("drawdown", 1, MakeList<Nullable<double>>({10, 20, 20, 0.0, 1, 10}));
+    CheckUdf<double, ListRef<Nullable<double>>>("drawdown", 0.8, MakeList<Nullable<double>>({10, 50, 20, 5, 4, 10}));
+
+    // nullable
+    CheckUdf<Nullable<double>, ListRef<double>>("drawdown", nullptr, MakeList<double>({}));
+    CheckUdf<Nullable<double>, ListRef<Nullable<double>>>("drawdown", nullptr, MakeList<Nullable<double>>({nullptr}));
+
+    // negative value will be skipped
+    CheckUdf<double, ListRef<Nullable<double>>>("drawdown", 0.5, MakeList<Nullable<double>>({1, -2, 2, -1}));
+    CheckUdf<Nullable<double>, ListRef<Nullable<double>>>("drawdown", nullptr,
+                                                          MakeList<Nullable<double>>({-1, -2, -1}));
+}
 
 }  // namespace udf
 }  // namespace hybridse

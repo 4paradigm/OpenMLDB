@@ -905,7 +905,7 @@ cases:
           - [3,3,2,2,32,1.3,2.3,1590738992000,"2020-05-02","b",false]
           - [4,4,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL]
     dataProvider:
-      - ["avg_cate","sum_cate","max_cate","min_cate","count_cate"]
+      - ["avg_cate","sum_cate","max_cate","min_cate"]
       - ["{0}.c7","{0}.c8","{0}.c9","{0}.c10"]
       - ["{1}.c2","{1}.c3","{1}.c4","{1}.c5","{1}.c6","{1}.c7","{1}.c8","{1}.c9","{1}.c10"]
     sql: |
@@ -1336,7 +1336,7 @@ cases:
           - [3,3,2,2,32,1.3,2.3,1590738992000,"2020-05-02","b",false]
           - [4,4,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL]
     dataProvider:
-      - ["avg_cate_where","sum_cate_where","max_cate_where","min_cate_where","count_cate_where"]
+      - ["avg_cate_where","sum_cate_where","max_cate_where","min_cate_where"]
       - ["{0}.c7","{0}.c8","{0}.c9","{0}.c10"]
       - ["{1}.c2","{1}.c3","{1}.c4","{1}.c5","{1}.c6","{1}.c7","{1}.c8","{1}.c9","{1}.c10"]
     sql: |
