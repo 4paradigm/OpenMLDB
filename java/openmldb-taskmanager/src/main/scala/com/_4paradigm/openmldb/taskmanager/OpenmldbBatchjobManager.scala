@@ -44,17 +44,15 @@ object OpenmldbBatchjobManager {
    * @param sql the SQL text
    * @return the Yarn AppId in String format
    */
-  def runBatchSql(sql: String, sparkConf: java.util.Map[String, String], defaultDb: String): String = {
+  def runBatchSql(sql: String, sparkConf: java.util.Map[String, String], defaultDb: String): JobInfo = {
     val jobType = "RunBatchSql"
     val mainClass = "com._4paradigm.openmldb.batchjob.RunBatchSql"
 
     val tempSqlFile = SqlFileUtil.createTempSqlFile(sql)
     val args = List(tempSqlFile.getAbsolutePath)
 
-    val jobInfo = SparkJobManager.submitSparkJob(jobType, mainClass, args, tempSqlFile.getAbsolutePath,
+    SparkJobManager.submitSparkJob(jobType, mainClass, args, tempSqlFile.getAbsolutePath,
       sparkConf.asScala.toMap, defaultDb, blocking=true)
-
-    LogManager.getJobLog(jobInfo.getId)
   }
 
   def runBatchAndShow(sql: String, sparkConf: java.util.Map[String, String], defaultDb: String): JobInfo = {

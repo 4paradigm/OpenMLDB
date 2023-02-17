@@ -202,11 +202,11 @@ object HybridseUtil {
 
     // load data: read options, select into: write options
     val options: mutable.Map[String, String] = mutable.Map()
-    // default values:
-    // delimiter -> sep: ,
+    // default values: https://spark.apache.org/docs/3.2.1/sql-data-sources-csv.html
+    // delimiter -> sep: ,(the same with spark3 default sep)
     // header: true(different with spark)
     // null_value -> nullValue: null(different with spark)
-    // quote: '\0'(means no quote, the same with spark quote "empty string")
+    // quote: `"`(the same with spark3 default quote)
     options += ("header" -> "true")
     options += ("nullValue" -> "null")
     updateOptionsMap(options, getOptionFromNode(node, "delimiter"), "sep", getStr)

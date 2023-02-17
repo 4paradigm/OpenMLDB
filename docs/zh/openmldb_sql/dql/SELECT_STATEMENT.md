@@ -130,3 +130,27 @@ TableAsName
 
 在线模式或单机版都不适合做大数据的扫描，推荐使用集群版的离线模式。如果一定要调大扫描量，需要对每台tablet配置`--scan_max_bytes_size=xxx`，并重启tablet生效。
 ```
+
+## 离线同步模式 SELECT
+
+设置`SET @@sync_job=true`后的`SELECT`语句，就是离线同步模式下的`SELECT`。在这个状态下的`SELECT`会展示结果到CLI（不建议在SDK中使用这种模式，不会得到正常的ResultSet）。
+
+原理：SELECT执行完成后各worker通过HTTP发送结果到TaskManager，TaskManager收集各个结果分片并保存到本地文件系统中。结果收集完成后，再从本地文件系统读取，读取后删除本地缓存的结果。
+
+```{attention}
+离线同步模式 SELECT 仅用于展示，不保证结果完整。整个结果收集中可能出现文件写入失败，丢失HTTP包等问题，我们允许结果缺失。
+```
+### 相关配置参数
+
+TaskManager配置`batch.job.result.max.wait.time`，在`SELECT` job完成后，我们会等待所有结果被收集并保存在TaskManager所在主机的文件系统中，超过这一时间将结束等待，返回错误。如果认为整个收集结果的过程没有问题，仅仅是等待时间不够，可以调大这一配置项，单位为ms，默认为10min。
+
+Batch配置(spark.default.conf):
+- spark.openmldb.savejobresult.rowperpost: 为了防止HTTP传送过多数据，我们对数据进行切割，默认为16000行。如果单行数据量较大，可以调小该值。
+- spark.openmldb.savejobresult.posttimeouts: HTTP传送数据的超时配置，共三个超时配置项，用`,`分隔，分别为`ConnectionRequestTimeout,ConnectTimeout,SocketTimeout`，默认为`10000,10000,10000`。如果出现HTTP传输超时，可调整这一参数。
+
+### 重置
+
+如果使用过程中出现错误，可能导致Result Id无法正确重置。所有Result Id都被虚假占用时，会出现错误"too much running jobs to save job result, reject this spark job"。这时可以通过HTTP请求TaskManager来重置，POST内容如下：
+```
+curl -H "Content-Type:application/json" http://0.0.0.0:9902/openmldb.taskmanager.TaskManagerServer/SaveJobResult -X POST -d '{"result_id":-1, "json_data": "reset"}'
+```
