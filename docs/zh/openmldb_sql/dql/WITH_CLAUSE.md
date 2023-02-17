@@ -33,11 +33,10 @@ WITH 子句实现了层次化的数据模型，在实现上等价于子查询，
 ## Example
 
 1. CTE overrides table name
-
-  ```sql
-  WITH t1 as (select col1 + 1 as id, std_ts from t1)
-  select * from t1;
-  ```
+   ```sql
+   WITH t1 as (select col1 + 1 as id, std_ts from t1)
+   select * from t1;
+   ```
 
 2. nested WITH clause
    ```sql
