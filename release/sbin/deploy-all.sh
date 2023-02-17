@@ -55,7 +55,8 @@ distribute() {
     rsync -arz "$home"/sbin/deploy.sh "$full_dest"/sbin/
   else
     if [[ "$type" = "taskmanager" ]]; then
-      dir_list=(bin sbin conf taskmanager spark)
+      dir_list=(bin sbin conf taskmanager)
+      rsync -arz "${SPARK_HOME}/" "$host:${SPARK_HOME}/"
     else
       dir_list=(bin sbin conf)
     fi
