@@ -6,7 +6,13 @@
 
 ```sql
 SelectStmt
-         ::= ( NoTableSelectClause | SelectStmtFromTable) 
+         ::= WithClause ( NoTableSelectClause | SelectStmtFromTable) 
+
+WithClause
+         ::= 'WITH' non_recursive_cte [, ...]
+
+non_recursive_cte
+         ::= cte_name 'AS' '(' SelectStmt ')'
 
 NoTableSelectClause
          ::= 'SELECT' SelectExprList      
