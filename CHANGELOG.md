@@ -14,10 +14,10 @@
 
 ### Bug Fixes
 - Disk table does not clean the expired data. (#2963 @dl239)
-- Incorrect index will be added if there is `LAST JOIN` statement in deployed SQL. (#2979 @dl239)
+- Incorrect index will be added if there is `LAST JOIN` statement in a deployed SQL. (#2979 @dl239)
 - The result is incorrect if a window frame is specified by `EXCLUDE CURRENT_ROW` (#2930 @aceforeverd)
-- SQL compiling fails if there is a UDF function in an UDAF expression. (#3018 @aceforeverd)
-- The result is success though creating index fails in some cases. (#3042 @vagetablechicken)
+- SQL compiling fails if there is an UDF function in an UDAF expression. (#3018 @aceforeverd)
+- Although the return information indicates success, index creation may still fail in some cases. (#3042 @vagetablechicken)
 - The `recoverdata` command fails if there are a large number of records in a memory table. (#3060 @dl239)
 - The `deploy-all` tool deploys the Spark package to local nodes only. (#3022 @zhanghaohit)
 - Other minor bug fixes (#2970 #3028 #3026 #3003 #3064 @dl239)
