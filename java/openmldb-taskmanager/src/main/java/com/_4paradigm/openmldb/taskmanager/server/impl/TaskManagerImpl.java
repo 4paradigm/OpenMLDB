@@ -213,9 +213,19 @@ public class TaskManagerImpl implements TaskManagerInterface {
             confMap.put("spark.openmldb.savejobresult.resultid", String.valueOf(resultId));
             JobInfo jobInfo = OpenmldbBatchjobManager.runBatchSql(request.getSql(), confMap,
                     request.getDefaultDb());
-            // wait for all files of result saved and read them, large timeout
-            String output = jobResultSaver.readResult(resultId, TaskManagerConfig.BATCH_JOB_RESULT_MAX_WAIT_TIME);
-            return TaskManager.RunBatchSqlResponse.newBuilder().setCode(StatusCode.SUCCESS).setOutput(output).build();
+
+            // Check job state and return failed status code if the Spark job failed
+            int jobId = jobInfo.getId();
+            JobInfo finalJobInfo = JobInfoManager.getJob(jobId).get();
+            if (finalJobInfo.isSuccess()) {
+                // wait for all files of result saved and read them, large timeout
+                String output = jobResultSaver.readResult(resultId, TaskManagerConfig.BATCH_JOB_RESULT_MAX_WAIT_TIME);
+                return TaskManager.RunBatchSqlResponse.newBuilder().setCode(StatusCode.SUCCESS).setOutput(output).build();
+            } else {
+                String errorMsg = String.format("The job %d fail and use 'SHOW JOBLOG %d' for more info", jobId, jobId);
+                return TaskManager.RunBatchSqlResponse.newBuilder().setCode(StatusCode.FAILED).setMsg(errorMsg)
+                        .build();
+            }
         } catch (Exception e) {
             e.printStackTrace();
             return TaskManager.RunBatchSqlResponse.newBuilder().setCode(StatusCode.FAILED).setMsg(e.getMessage())
