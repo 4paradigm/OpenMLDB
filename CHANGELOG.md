@@ -8,7 +8,7 @@
 - Support the new built-in functions `std`, `stddev`, `stddev_samp`, `stddev_pop`, `ew_avg` and `drawdown` (#3025 #3032 #3029 @zhanghaohit)
 - Add the new configurations to specify the maximum size of RocksDB's log files (#2991 @dl239)
 - The `CREATE TABLE ... LIKE PARQUET ...` statement supports a parquet file as the input in the offline mode. (#2996 @tobegit3hub)
-- Support the output of synchronous jobs in TaskManager (#3034 @vagetablechicken)
+- Support showing query results of synchronous jobs in TaskManager (#3034 @vagetablechicken)
 - Change the default timeout of synchronous jobs to 30 minutes, and add a corresponding CLI parameter for configuration (#3061 @vagetablechicken)
 - Improve the documents (#2938 #2984 #3016 @vagetablechicken, #2958 #2973 #2980 #2987 #2988 #3035 @lumianph, #2990 @lukeAyin, #2997 #3065 @tobegit3hub, #3011 #3027 @dl239, #3020 #3066 #3071 @aceforeverd, #3033 #3036 @selenachenjingxin)
 
