@@ -58,7 +58,7 @@ SELECT substr(COL7, 3, 6) FROM t1;
 ### 在线请求模式下 `LAST JOIN` 的使用规范
 
 - 仅支持`LAST JOIN`类型。
-- 至少有一个JOIN条件是形如`left_source.column=right_source.column`的EQUAL条件，**并且`rgith_source.column`列需要命中右表的索引（key 列）**。
+- 至少有一个JOIN条件是形如`left_source.column=right_source.column`的EQUAL条件，**并且`right_source.column`列需要命中右表的索引（key 列）**。
 - 带排序LAST JOIN的情况下，`ORDER BY`只支持单列的列引用表达式，**并且列需要命中右表索引的时间列**。
 
 **Example: 支持上线的 `LAST JOIN` 语句范例**
