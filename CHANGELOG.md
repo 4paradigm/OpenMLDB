@@ -10,7 +10,7 @@
 - The `CREATE TABLE ... LIKE PARQUET ...` statement supports a parquet file as the input in the offline mode. (#2996 @tobegit3hub)
 - Support showing query results of synchronous jobs in TaskManager (#3034 @vagetablechicken)
 - Change the default timeout of synchronous jobs to 30 minutes, and add a corresponding CLI parameter for configuration (#3061 @vagetablechicken)
-- Improve the documents (#2938 #2984 #3016 @vagetablechicken, #2958 #2973 #2980 #2987 #2988 #3035 @lumianph, #2990 @lukeAyin, #2997 #3065 @tobegit3hub, #3011 #3027 @dl239, #3020 #3066 #3071 @aceforeverd, #3033 #3036 @selenachenjingxin)
+- Improve the documents (#2938 #2984 #3016 @vagetablechicken, #2958 #2973 #2980 #2987 #2988 #3035 @lumianph, #2990 @lukeAyin, #2997 #3065 @tobegit3hub, #3011 #3027 @dl239, #3020 #3066 #3071 #3074 @aceforeverd, #3033 #3036 @selenachenjingxin)
 
 ### Bug Fixes
 - Disk table does not clean the expired data. (#2963 @dl239)
