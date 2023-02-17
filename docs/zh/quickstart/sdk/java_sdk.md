@@ -81,11 +81,9 @@ res = stmt.executeQuery("SELECT * from t1"); // 在线 select, executeQuery 可�
 
 ```SQL
 SET @@sync_job=true;
-SET @@job_timeout=60000; --单位为毫秒，如果数据较多容易超时（默认1钟），请调大job timeout: SET @@job_timeout=600000;
 ```
 
-如果同步命令实际耗时超过连接空闲默认的最大等待时间 0.5 小时，请[调整 taskmanager 的 keepAliveTime](/zh/maintain/faq#2-为什么收到-got-eof-of-socket-的警告日志)。
-
+如果同步命令实际耗时超过连接空闲默认的最大等待时间 0.5 小时，请[调整配置](../../openmldb_sql/ddl/SET_STATEMENT.md#离线命令配置详情)。
 ### PreparedStatement
 
 `PreparedStatement` 可支持 `SELECT`、`INSERT` 和 `DELETE`，`INSERT` 仅支持插入到在线。

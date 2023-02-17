@@ -75,6 +75,9 @@ INSTANTIATE_TEST_SUITE_P(
 INSTANTIATE_TEST_SUITE_P(
     BatchRequestBatchHavingQuery, BatchRequestOptimizeTest,
     testing::ValuesIn(sqlcase::InitCases("/cases/query/having_query.yaml")));
+INSTANTIATE_TEST_SUITE_P(WithClause, BatchRequestOptimizeTest,
+                         testing::ValuesIn(sqlcase::InitCases("/cases/query/with.yaml")));
+
 INSTANTIATE_TEST_SUITE_P(
     BatchRequestTestWindowRowQuery, BatchRequestOptimizeTest,
     testing::ValuesIn(

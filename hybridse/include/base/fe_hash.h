@@ -21,6 +21,21 @@
 namespace hybridse {
 namespace base {
 
+// simple wrapper for pointer type equal.
+//  include NULL == NULL = true
+template <typename T>
+bool GeneralPtrEq(const T *lhs, const T *rhs) {
+    if (lhs == rhs) {
+        return true;
+    }
+
+    if (lhs == nullptr || rhs == nullptr) {
+        return false;
+    }
+
+    return *lhs == *rhs;
+}
+
 static inline uint32_t hash(const void *key, uint32_t len, uint32_t seed) {
     const uint32_t m = 0x5bd1e995;
     const uint32_t r = 24;

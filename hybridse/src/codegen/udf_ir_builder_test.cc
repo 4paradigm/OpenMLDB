@@ -852,7 +852,7 @@ TEST_F(UdfIRBuilderTest, StrcmpUdfTest) {
         "strcmp", nullptr, nullptr, StringRef(""));
 }
 
-TEST_F(UdfIRBuilderTest, NullProcessTest) {
+TEST_F(UdfIRBuilderTest, IfNull) {
     CheckUdf<bool, Nullable<double>>("is_null", true, nullptr);
     CheckUdf<bool, Nullable<double>>("is_null", false, 1.0);
 
@@ -867,12 +867,26 @@ TEST_F(UdfIRBuilderTest, NullProcessTest) {
     // nvl is synonym to is_null
     CheckUdf<double, Nullable<double>, Nullable<double>>("nvl", 2.0, nullptr, 2.0);
     CheckUdf<double, Nullable<double>, Nullable<double>>("nvl", 1.0, 1.0, 2.0);
+}
 
-    // nvl2
+TEST_F(UdfIRBuilderTest, Nvl2) {
     CheckUdf<double, Nullable<double>, double, double>("nvl2", 2.0, nullptr, 1.0, 2.0);
     CheckUdf<double, Nullable<double>, double, double>("nvl2", 1.0, 12.0, 1.0, 2.0);
     CheckUdf<StringRef, Nullable<int>, StringRef, StringRef>("nvl2", StringRef("abc"), 12, StringRef("abc"),
                                                              StringRef("def"));
+}
+
+// a cond expr (nvl/nvl2) returns compatiable type if left and right not same
+TEST_F(UdfIRBuilderTest, CondCompatiableType) {
+    CheckUdf<int64_t, int64_t, int32_t>("if_null", 12, 12, 1);
+    CheckUdf<int64_t, Nullable<int32_t>, int64_t>("if_null", 1, nullptr, 1);
+
+    CheckUdf<double, float, int64_t>("if_null", 20.0, 20.0, 9);
+    CheckUdf<double, Nullable<float>, int64_t>("if_null", 20.0, nullptr, 20);
+
+    CheckUdf<StringRef, Nullable<int16_t>, StringRef>("if_null", "20", nullptr, "20");
+
+    CheckUdf<StringRef, bool, int64_t, StringRef>("nvl2", "100", true, 100, "88");
 }
 
 TEST_F(UdfIRBuilderTest, DateToTimestampTest0) {
@@ -1206,10 +1220,24 @@ TEST_F(UdfIRBuilderTest, CharLengthUdfTest) {
 }
 TEST_F(UdfIRBuilderTest, DegreeToRadiusCheck) {
     auto udf_name = "radians";
-    CheckUdf<double, double>(udf_name, 3.141592653589793238463, 180);
-    CheckUdf<double, double>(udf_name, 1.570796326794896619231, 90);
+    CheckUdf<double, double>(udf_name, M_PI, 180);
+    CheckUdf<double, double>(udf_name, M_PI / 2 , 90);
+    CheckUdf<double, int16_t>(udf_name, M_PI / 2 , 90);
+    CheckUdf<double, int32_t>(udf_name, M_PI / 2 , 90);
+    CheckUdf<double, int64_t>(udf_name, M_PI / 2 , 90);
+    CheckUdf<double, float>(udf_name, M_PI / 2 , 90);
+    CheckUdf<double, double>(udf_name, M_PI / 2 , 90);
     CheckUdf<double, double>(udf_name, 0, 0);
     CheckUdf<Nullable<double>, Nullable<double>>(udf_name, nullptr, nullptr);
+}
+
+
+TEST_F(UdfIRBuilderTest, DegreeToRadiusFail) {
+    auto udf_name = "radians";
+    CheckUdfFail<double, StringRef>(udf_name, 0, "0");
+    CheckUdfFail<double, Timestamp>(udf_name, 0, Timestamp(12000));
+    CheckUdfFail<double, Date>(udf_name, 0, Date(2012, 12, 12));
+    CheckUdfFail<double, bool>(udf_name, 0, false);
 }
 
 TEST_F(UdfIRBuilderTest, Replace) {

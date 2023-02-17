@@ -76,10 +76,9 @@ The offline sql and online `LOAD DATA` are async in default, so the result is th
 The job can be set to sync：
 ```
 SET @@sync_job=true;
-SET @@job_timeout=60000; // ms, timeout is 1min in default(async job timeout), you should set it bigger for sync job
 ```
 ```{tip}
-If the sync job takes more than 0.5h, you should [increase keepAliveTime in Taskmanager](../maintain/faq.md#2-why-am-i-getting-the-warning-log-of-got-eof-of-socket).
+If the sync job takes more than 0.5h, you should [change the config](../reference/sql/ddl/SET_STATEMENT.md#offline-commands-configuration-details).
 ```
 
 #### PreparedStatement

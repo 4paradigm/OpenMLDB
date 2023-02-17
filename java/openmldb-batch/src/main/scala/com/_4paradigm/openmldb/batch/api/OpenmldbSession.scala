@@ -45,7 +45,7 @@ class OpenmldbSession {
   val registeredTables: mutable.Map[String, mutable.Map[String, DataFrame]] =
     mutable.HashMap[String, mutable.Map[String, DataFrame]]()
 
-  private var config: OpenmldbBatchConfig = _
+  var config: OpenmldbBatchConfig = _
 
   var planner: SparkPlanner = _
 

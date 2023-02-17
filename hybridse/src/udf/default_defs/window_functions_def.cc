@@ -32,11 +32,10 @@ namespace hybridse {
 namespace udf {
 
 template <class V>
-void AtList(::hybridse::codec::ListRef<V>* list_ref, int64_t pos, V* v,
-            bool* is_null) {
+void AtList(::hybridse::codec::ListRef<V>* list_ref, int64_t pos, V* v, bool* is_null) {
     if (pos < 0) {
         *is_null = true;
-        *v = V(DataTypeTrait<V>::zero_value());
+        *v = static_cast<V>(DataTypeTrait<V>::zero_value());
         return;
     }
     auto list = reinterpret_cast<codec::ListV<V>*>(list_ref->list);
@@ -45,7 +44,7 @@ void AtList(::hybridse::codec::ListRef<V>* list_ref, int64_t pos, V* v,
         auto row = column->root()->At(pos);
         if (row.empty()) {
             *is_null = true;
-            *v = V(DataTypeTrait<V>::zero_value());
+            *v = static_cast<V>(DataTypeTrait<V>::zero_value());
         } else {
             column->GetField(row, v, is_null);
         }

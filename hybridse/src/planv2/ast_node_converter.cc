@@ -670,6 +670,12 @@ base::Status ConvertStatement(const zetasql::ASTStatement* statement, node::Node
             *output = node_manager->MakeCmdNode(node::CmdType::kCmdUseDatabase, db_name);
             break;
         }
+        case zetasql::AST_EXIT_STATEMENT: {
+            const auto exit_stmt = statement->GetAsOrNull<zetasql::ASTExitStatement>();
+            CHECK_TRUE(nullptr != exit_stmt, common::kSqlAstError, "not an ASTExitStatement");
+            *output = node_manager->MakeCmdNode(node::CmdType::kCmdExit);
+            break;
+        }
         case zetasql::AST_SYSTEM_VARIABLE_ASSIGNMENT: {
             /// support system variable setting and showing in OpenMLDB since v0.4.0
             /// non-support local variable setting in v0.4.0
@@ -1238,6 +1244,14 @@ base::Status ConvertQueryNode(const zetasql::ASTQuery* root, node::NodeManager* 
 
     node::QueryNode* query_node = nullptr;
     CHECK_STATUS(ConvertQueryExpr(query_expression, node_manager, &query_node));
+
+    if (root->with_clause() != nullptr) {
+        auto* list = node_manager->MakeList<node::WithClauseEntry>();
+        CHECK_STATUS(ConvertWithClause(root->with_clause(), node_manager, list));
+        auto span = absl::MakeSpan(list->data_);
+        query_node->SetWithClauses(span);
+    }
+
     // HACK: set SelectQueryNode's limit and order
     //   UnionQueryNode do not match zetasql's union stmt
     if (query_node->query_type_ == node::kQuerySelect) {
@@ -2243,6 +2257,19 @@ base::Status ConvertASTType(const zetasql::ASTType* ast_type, node::NodeManager*
         default: {
             return base::Status(common::kSqlAstError, "Un-support type: " + ast_type->GetNodeKindString());
         }
+    }
+    return base::Status::OK();
+}
+
+base::Status ConvertWithClause(const zetasql::ASTWithClause* with_clause, node::NodeManager* nm,
+                               base::BaseList<node::WithClauseEntry>* out) {
+    for (auto clause : with_clause->with()) {
+        node::QueryNode* query = nullptr;
+        CHECK_STATUS(ConvertQueryNode(clause->query(), nm, &query));
+
+        auto* with_entry = nm->MakeNode<node::WithClauseEntry>(clause->alias()->GetAsString(), query);
+
+        out->data_.push_back(with_entry);
     }
     return base::Status::OK();
 }

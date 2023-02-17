@@ -196,13 +196,6 @@ void Shell() {
         // trim space after last semicolon in sql
         StripStartingSpaceOfLastStmt(buffer, &sql);
 
-        if (sql.length() == 4 || sql.length() == 5) {
-            if (absl::EqualsIgnoreCase(sql, "quit;") || absl::EqualsIgnoreCase(sql, "exit;") ||
-                absl::EqualsIgnoreCase(sql, "quit") || absl::EqualsIgnoreCase(sql, "exit")) {
-                std::cout << "Bye" << std::endl;
-                return;
-            }
-        }
         if (sql.back() == ';') {
             HandleSQL(sql);
             multi_line = false;
