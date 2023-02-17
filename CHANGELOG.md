@@ -3,7 +3,7 @@
 ## [0.7.2] - 2023-02-17
 
 ### Features
-- Support the new SQL clause `WITH` (#2846 @aceforeverd)
+- [Alpha] Support the new SQL clause `WITH` (#2846 @aceforeverd)
 - Support deploying multiple TaskManagers (#3004 @zhanghaohit)
 - Support the new built-in functions `std`, `stddev`, `stddev_samp`, `stddev_pop`, `ew_avg` and `drawdown` (#3025 #3032 #3029 @zhanghaohit)
 - Add the new configurations to specify the maximum size of RocksDB's log files (#2991 @dl239)
@@ -24,6 +24,9 @@
 
 ### Code Refactoring
 #2995 #3030 @aceforeverd
+
+Note:  
+Although we have fixed the overflow issue in monitor component #3003, the problem already persists if upgrading from an older version.
 
 ## [0.7.1] - 2023-01-13
 
