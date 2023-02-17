@@ -8,7 +8,9 @@
 - Support the new built-in functions `std`, `stddev`, `stddev_samp`, `stddev_pop`, `ew_avg` and `drawdown` (#3025 #3032 #3029 @zhanghaohit)
 - Add the new configurations to specify the maximum size of RocksDB's log files (#2991 @dl239)
 - The `CREATE TABLE ... LIKE ...` statement supports a parquet file as the input in the offline mode (#2996 @tobegit3hub)
-- Improve the documents (#2938 #2984 @vagetablechicken, #2958 #2973 #2980 #2987 #2988 @lumianph, #2990 @lukeAyin, #2997 @tobegit3hub, #3011 @dl239, #3020 @aceforeverd, #3033 #3036 @selenachenjingxin)
+- Cache and show the output of synchronization jobs in Taskmanager (#3034 @vagetablechicken)
+- Set the timeout of offline synchronization jobs automatically (#3061 @vagetablechicken)
+- Improve the documents (#2938 #2984 #3016 @vagetablechicken, #2958 #2973 #2980 #2987 #2988 #3035 @lumianph, #2990 @lukeAyin, #2997 #3065 @tobegit3hub, #3011 #3027 @dl239, #3020 #3066 @aceforeverd, #3033 #3036 @selenachenjingxin)
 
 ### Bug Fixes
 - Disk table does not clean the expired data. (#2963 @dl239)
@@ -18,7 +20,7 @@
 - The result is success though creating index fails in some cases. (#3042 @vagetablechicken)
 - The `recoverdata` command fails if there are a large number of records in a memory table. (#3060 @dl239)
 - The `deploy-all` tool deploys the Spark package to local nodes only. (#3022 @zhanghaohit)
-- Other minor bug fixes (#2970 #3028 #3026 #3003 @dl239)
+- Other minor bug fixes (#2970 #3028 #3026 #3003 #3064 @dl239)
 
 ### Code Refactoring
 #2995 #3030 @aceforeverd
