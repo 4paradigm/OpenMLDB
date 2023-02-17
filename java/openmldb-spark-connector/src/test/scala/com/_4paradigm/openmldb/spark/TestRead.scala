@@ -33,21 +33,18 @@ class TestRead extends FunSuite {
     prop.load(getClass.getResourceAsStream("/test.properties"))
     val zkCluster = prop.getProperty("openmldb.zk.cluster", "127.0.0.1:6181")
     val zkPath = prop.getProperty("openmldb.zk.root.path", "/onebox")
-
     val db = "db"
     val table = "spark_read_test"
     val options = Map("db" -> db, "table" -> table, "zkCluster" -> zkCluster, "zkPath" -> zkPath)
 
-    // create db.t1 for saving, openmldb table column type accepts bool, not boolean
     val option = new SdkOption
     option.setZkCluster(zkCluster)
     option.setZkPath(zkPath)
     val executor = new SqlClusterExecutor(option)
     executor.createDB(db)
-    //executor.executeDDL(db, s"drop table $table")
+    executor.executeDDL(db, s"drop table $table")
     executor.executeDDL(db, s"create table $table(c2 smallint, c3 int, c4 bigint, c5 float, c6 double," +
       "c7 string)")
-
     executor.executeSQL(db, "set @@SESSION.execute_mode='online'")
     executor.executeSQL(db, s"insert into $table values(1, 2, 3, 4.0, 5.0, 'foo')")
 
