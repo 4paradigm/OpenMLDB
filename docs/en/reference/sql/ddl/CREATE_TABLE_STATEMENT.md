@@ -30,7 +30,7 @@ TableName ::=
     Identifier ('.' Identifier)?
 
 LikeType ::=
-    ('HIVE' 'PARQUET')?
+    ('HIVE' | 'PARQUET')?
 
 PATH ::=
     string_literal
