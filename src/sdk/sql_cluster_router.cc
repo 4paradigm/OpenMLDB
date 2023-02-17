@@ -58,6 +58,7 @@
 
 DECLARE_string(bucket_size);
 DECLARE_uint32(replica_num);
+DECLARE_int32(sync_job_timeout);
 
 namespace openmldb {
 namespace sdk {
@@ -1232,7 +1233,7 @@ std::shared_ptr<::hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQLParamete
     }
     auto cntl = std::make_shared<::brpc::Controller>();
     cntl->set_timeout_ms(options_->request_timeout);
-    DLOG(INFO) << " send query to tablet " << client->GetEndpoint();
+    DLOG(INFO) << "send query to tablet " << client->GetEndpoint();
     auto response = std::make_shared<::openmldb::api::QueryResponse>();
     if (!client->Query(db, sql, parameter_types, parameter ? parameter->GetRow() : "", cntl.get(), response.get(),
                        options_->enable_debug)) {
@@ -2404,7 +2405,10 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(const std
 
 std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(const std::string& db, const std::string& sql,
                                                                        hybridse::sdk::Status* status) {
-    return ExecuteSQL(db, sql, IsOnlineMode(), IsSyncJob(), GetJobTimeout(), status);
+    // To avoid setting sync job timeout by user, we set offline_job_timeout to the biggest value
+    auto sync_job = IsSyncJob();
+    auto timeout = sync_job? FLAGS_sync_job_timeout : GetJobTimeout();
+    return ExecuteSQL(db, sql, IsOnlineMode(), sync_job, timeout, status);
 }
 
 std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(const std::string& db, const std::string& sql,
