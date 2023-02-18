@@ -67,8 +67,9 @@ void haversine_distance_d4(double ll1, double ll2, double rl1, double rl2, doubl
     if (res.ok()) {
         *output = res.value();
         *is_null = false;
+    } else {
+        *is_null = true;
     }
-    *is_null = true;
 }
 
 void DefaultUdfLibrary::InitEarthDistanceUdf() {
