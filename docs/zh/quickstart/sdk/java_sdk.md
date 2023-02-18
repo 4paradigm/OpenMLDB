@@ -10,12 +10,12 @@
     <dependency>
         <groupId>com.4paradigm.openmldb</groupId>
         <artifactId>openmldb-jdbc</artifactId>
-        <version>0.7.1</version>
+        <version>0.7.2</version>
     </dependency>
     <dependency>
         <groupId>com.4paradigm.openmldb</groupId>
         <artifactId>openmldb-native</artifactId>
-        <version>0.7.1</version>
+        <version>0.7.2</version>
     </dependency>
     ```
 
@@ -27,16 +27,16 @@
     <dependency>
         <groupId>com.4paradigm.openmldb</groupId>
         <artifactId>openmldb-jdbc</artifactId>
-        <version>0.7.1</version>
+        <version>0.7.2</version>
     </dependency>
     <dependency>
         <groupId>com.4paradigm.openmldb</groupId>
         <artifactId>openmldb-native</artifactId>
-        <version>0.7.1-macos</version>
+        <version>0.7.2-macos</version>
     </dependency>
     ```
 
-注意：由于 openmldb-native 中包含了 OpenMLDB 编译的 C++ 静态库，默认是 Linux 静态库，macOS 上需将上述 openmldb-native 的 version 改成 `0.7.1-macos`，openmldb-jdbc 的版本保持不变。
+注意：由于 openmldb-native 中包含了 OpenMLDB 编译的 C++ 静态库，默认是 Linux 静态库，macOS 上需将上述 openmldb-native 的 version 改成 `0.7.2-macos`，openmldb-jdbc 的版本保持不变。
 
 openmldb-native 的 macOS 版本只支持 macOS 12，如需在 macOS 11 或 macOS 10.15上运行，需在相应 OS 上源码编译 openmldb-native 包，详细编译方法见[并发编译 Java SDK](https://openmldb.ai/docs/zh/main/deploy/compile.html#java-sdk)。
 
@@ -81,11 +81,9 @@ res = stmt.executeQuery("SELECT * from t1"); // 在线 select, executeQuery 可�
 
 ```SQL
 SET @@sync_job=true;
-SET @@job_timeout=60000; --单位为毫秒，如果数据较多容易超时（默认1钟），请调大job timeout: SET @@job_timeout=600000;
 ```
 
-如果同步命令实际耗时超过连接空闲默认的最大等待时间 0.5 小时，请[调整 taskmanager 的 keepAliveTime](/zh/maintain/faq#2-为什么收到-got-eof-of-socket-的警告日志)。
-
+如果同步命令实际耗时超过连接空闲默认的最大等待时间 0.5 小时，请[调整配置](../../openmldb_sql/ddl/SET_STATEMENT.md#离线命令配置详情)。
 ### PreparedStatement
 
 `PreparedStatement` 可支持 `SELECT`、`INSERT` 和 `DELETE`，`INSERT` 仅支持插入到在线。

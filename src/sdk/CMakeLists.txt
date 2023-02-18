@@ -298,14 +298,8 @@ COMMENT "pack static cxx sdk and all depend static libs into one"
 )
 
 if(TESTING_ENABLE)
-    add_library(openmldb_cxx_sdk STATIC IMPORTED GLOBAL)
-    add_dependencies(openmldb_cxx_sdk pack_openmldbsdk)
-    set_target_properties(openmldb_cxx_sdk PROPERTIES
-    IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/libopenmldbsdk.a
-    )
     add_executable(openmldb_api_test openmldb_api_test.cc)
-    # add ${BIN_LIBS} because minicluster
-    target_link_libraries(openmldb_api_test openmldb_cxx_sdk ${BIN_LIBS} ${GTEST_LIBRARIES})
+    target_link_libraries(openmldb_api_test ${BIN_LIBS} ${GTEST_LIBRARIES})
 endif()
 
 FILE(GLOB USER_HEADER 

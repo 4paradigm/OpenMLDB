@@ -21,7 +21,7 @@ OpenMLDB 的主要使用场景为作为机器学习的实时特征平台。其�
 在命令行执行以下命令拉取 OpenMLDB 镜像，并启动 Docker 容器：
 
 ```bash
-docker run -it 4pdosc/openmldb:0.7.1 bash
+docker run -it 4pdosc/openmldb:0.7.2 bash
 ```
 
 ```{note}
@@ -113,7 +113,7 @@ SELECT c1, c2, sum(c3) OVER w1 AS w1_c3_sum FROM demo_table1 WINDOW w1 AS (PARTI
 
 注意：
 
-- 和导入数据命令（`LOAD DATA`）类似，`SELECT` 命令在离线模式下默认也是异步执行（如果同步执行，注意设置超时时间，如 `SET @@job_timeout=600000`）
+- 和导入数据命令（`LOAD DATA`）类似，`SELECT` 命令在离线模式下默认也是异步执行
 - `SELECT` 语句用于执行 SQL 进行特征抽取，并且将生成的特征存储在 `OUTFILE` 参数指定的目录 `feature_data` 中，供后续的机器学习模型训练使用。
 
 ### 步骤 4：SQL 方案上线

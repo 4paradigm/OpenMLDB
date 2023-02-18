@@ -62,6 +62,7 @@ public class TaskManagerConfig {
     public static String BATCHJOB_JAR_PATH;
     public static String HADOOP_CONF_DIR;
     public static boolean ENABLE_HIVE_SUPPORT;
+    public static long BATCH_JOB_RESULT_MAX_WAIT_TIME;
 
     public static void parse() throws IOException, NumberFormatException, ConfigException {
         Properties prop = new Properties();
@@ -240,6 +241,8 @@ public class TaskManagerConfig {
         // TODO: Check if we can get core-site.xml
 
         ENABLE_HIVE_SUPPORT = Boolean.parseBoolean(prop.getProperty("enable.hive.support", "true"));
+
+        BATCH_JOB_RESULT_MAX_WAIT_TIME = Long.parseLong(prop.getProperty("batch.job.result.max.wait.time", "600000")); // 10min
     }
 
 }
