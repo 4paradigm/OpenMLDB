@@ -727,29 +727,28 @@ void string_to_bigint(StringRef *str, int64_t *out, bool *is_null_ptr) {
     if (0 == str->size_) {
         return;
     }
-    try {
-        // string -> integer
-        // std::string::size_type sz;  // alias of size_t
-        // *out = std::stol(str->ToString(), &sz);
-        // if (sz < str->size_) {
-        //   *out = 0;
-        //    *is_null_ptr = true;
-        //    return;
-        // }
-        std::string str_obj = str->ToString();
-        const char *c_str = str_obj.c_str();
-        char *end;
-        *out = strtoll(c_str, &end, 0);
-        if (end < c_str + str->size_) {
-            *out = 0;
-            *is_null_ptr = true;
-            return;
-        }
-        *is_null_ptr = false;
-    } catch (...) {
-        // error management
+    // string -> integer
+    // std::string::size_type sz;  // alias of size_t
+    // *out = std::stol(str->ToString(), &sz);
+    // if (sz < str->size_) {
+    //   *out = 0;
+    //    *is_null_ptr = true;
+    //    return;
+    // }
+    std::string str_obj = str->ToString();
+    const char *c_str = str_obj.c_str();
+    char *end;
+    *out = strtoll(c_str, &end, 0);
+    if (end < c_str + str->size_) {
+        *out = 0;
         return;
     }
+    if (errno == ERANGE){
+        *out =0;
+        errno = 0;
+        return;
+    }
+    *is_null_ptr = false;
     return;
 }
 void string_to_float(StringRef *str, float *out, bool *is_null_ptr) {
