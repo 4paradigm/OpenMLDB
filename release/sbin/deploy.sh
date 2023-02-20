@@ -73,7 +73,7 @@ common_config() {
     elif grep -q "server.host" < "${config_file}"; then  # taskmanager
       exchange "server.host" "${host}" "${config_file}"
       exchange "server.port" "${port}" "${config_file}"
-      exchange "spark.home" "${SPARK_HOME}"
+      exchange "spark.home" "${SPARK_HOME}" "${config_file}"
     elif grep -q "clientPort" < "${config_file}"; then  # zookeeper
       exchange "clientPort" "${port}" "${zk_conf}"
     fi
