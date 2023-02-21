@@ -55,7 +55,8 @@ distribute() {
     rsync -arz "$home"/sbin/deploy.sh "$full_dest"/sbin/
   else
     if [[ "$type" = "taskmanager" ]]; then
-      dir_list=(bin sbin conf taskmanager spark)
+      dir_list=(bin sbin conf taskmanager)
+      rsync -arz "${SPARK_HOME}/" "$host:${SPARK_HOME}/"
     else
       dir_list=(bin sbin conf)
     fi
@@ -148,7 +149,6 @@ do
 
   echo "deploy taskmanager to $host:$port $dir"
   distribute "$host" "$dir" "$home" taskmanager
-  SPARK_HOME="$dir/spark"
   cmd="cd $dir && OPENMLDB_VERSION=${OPENMLDB_VERSION} SPARK_HOME=${SPARK_HOME} OPENMLDB_HOST=$host OPENMLDB_TASKMANAGER_PORT=$port OPENMLDB_ZK_CLUSTER=${OPENMLDB_ZK_CLUSTER} OPENMLDB_ZK_ROOT_PATH=${OPENMLDB_ZK_ROOT_PATH} sbin/deploy.sh taskmanager"
   run_auto "$host" "$cmd"
 done
