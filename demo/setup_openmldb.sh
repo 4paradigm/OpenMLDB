@@ -50,6 +50,11 @@ tar xzf spark-3.2.1-bin-openmldbspark.tgz -C "${WORKDIR}/openmldb/spark-3.2.1-bi
 pushd "${WORKDIR}/openmldb"
 ln -s "${WORKDIR}/zookeeper-3.4.14" zookeeper
 ln -s spark-3.2.1-bin-openmldbspark spark
+
+curl -SLo openmldb-batch-0.7.0-SNAPSHOT.jar http://topic-land.com:39137/openmldb-batch-0.7.0-SNAPSHOT.jar
+rm spark/jars/openmldb-batch*
+cp openmldb-batch-0.7.0-SNAPSHOT.jar spark/jars/
+rm openmldb-batch-0.7.0-SNAPSHOT.jar
 popd
 
 rm -f ./*.tar.gz
