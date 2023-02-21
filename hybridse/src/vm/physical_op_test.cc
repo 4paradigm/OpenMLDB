@@ -38,7 +38,7 @@ TEST_F(PhysicalOpTest, PhysicalAggregationNodeWithNewChildrenTest) {
     auto catalog = BuildSimpleCatalog(db);
 
     vm::PhysicalPlanContext plan_ctx(&nm, udf::DefaultUdfLibrary::get(), "db", catalog, nullptr, false);
-    vm::PhysicalAggregationNode* aggreration_node;
+    vm::PhysicalAggregationNode* aggreration_node = nullptr;
     vm::PhysicalTableProviderNode* table_node;
     plan_ctx.CreateOp(&table_node, catalog->GetTable("db", "t1"));
     ColumnProjects projects;
@@ -100,7 +100,7 @@ TEST_F(PhysicalOpTest, PhysicalGroupAggrerationNodeWithNewChildrenTest) {
     vm::PhysicalTableProviderNode* table_node;
     plan_ctx.CreateOp(&table_node, catalog->GetTable("db", "t1"));
 
-    vm::PhysicalGroupNode* group_node;
+    vm::PhysicalGroupNode* group_node = nullptr;
     auto group_keys = nm.MakeExprList();
     group_keys->AddChild(nm.MakeColumnRefNode("col0", "t1"));
     plan_ctx.CreateOp(&group_node, table_node, group_keys);
@@ -123,7 +123,7 @@ TEST_F(PhysicalOpTest, PhysicalGroupAggrerationNodeWithNewChildrenTest) {
         condition = nm.MakeBinaryExprNode(nm.MakeFuncNode("sum", &args, nullptr), nm.MakeConstNode(0), node::kFnOpGt);
     }
 
-    vm::PhysicalGroupAggrerationNode* group_aggreration_node;
+    vm::PhysicalGroupAggrerationNode* group_aggreration_node = nullptr;
     plan_ctx.CreateOp(&group_aggreration_node, group_node, projects, condition, group_keys);
     ASSERT_TRUE(nullptr != group_aggreration_node);
     ASSERT_EQ(

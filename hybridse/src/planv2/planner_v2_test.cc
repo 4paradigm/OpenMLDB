@@ -663,6 +663,18 @@ TEST_F(PlannerV2Test, CmdStmtPlanTest) {
         ASSERT_EQ(node::kCmdShowDatabases, cmd_plan->GetCmdType());
     }
     {
+        const std::string sql_str = "exit;";
+        node::PlanNodeList trees;
+        base::Status status;
+        ASSERT_TRUE(plan::PlanAPI::CreatePlanTreeFromScript(sql_str, trees, manager_, status)) << status;
+        ASSERT_EQ(1u, trees.size());
+        PlanNode *plan_ptr = trees[0];
+        // validate create plan
+        ASSERT_EQ(node::kPlanTypeCmd, plan_ptr->GetType());
+        node::CmdPlanNode *cmd_plan = (node::CmdPlanNode *)plan_ptr;
+        ASSERT_EQ(node::kCmdExit, cmd_plan->GetCmdType());
+    }
+    {
         const std::string sql_str = "show tables;";
         node::PlanNodeList trees;
         base::Status status;

@@ -100,7 +100,7 @@ connection.execute(f'USE {DB_NAME}')
 connection.execute("SET @@execute_mode='offline';")
 # use sync offline job, to make sure `LOAD DATA` finished
 connection.execute('SET @@sync_job=true;')
-connection.execute('SET @@job_timeout=1200000;')
+
 connection.execute(f"LOAD DATA INFILE 'file://{os.path.abspath('train_sample.csv')}' "
                    f"INTO TABLE {TABLE_NAME} OPTIONS(format='csv',header=true, deep_copy=true);")
 

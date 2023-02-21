@@ -196,6 +196,16 @@
 #--load_table_thread_num=3
 # load线程池的最大队列长度
 #--load_table_queue_size=1000
+
+# rocksdb相关配置
+#--disable_wal=true
+# 文件是否压缩, 支持的压缩格式为pz, lz4, zlib
+#--file_compression=off
+#--block_cache_mb=4096
+#--block_cache_shardbits=8
+#--verify_compression=false
+#--max_log_file_size=100 * 1024 * 1024
+#--keep_log_file_num=5
 ```
 
 ## apiserver配置文件 conf/apiserver.flags

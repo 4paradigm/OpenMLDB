@@ -18,6 +18,7 @@
 #define HYBRIDSE_SRC_UDF_UDF_REGISTRY_H_
 
 #include <memory>
+#include <set>
 #include <sstream>
 #include <string>
 #include <tuple>
@@ -282,6 +283,12 @@ struct UdfLibraryEntry {
 
     // record whether always return list
     bool always_return_list = false;
+
+    // canonical funtion name
+    std::string fn_name;
+
+    // alias name to the function
+    std::set<std::string> alias;
 };
 
 struct ExprUdfGenBase {
@@ -1781,10 +1788,8 @@ class UdafRegistryHelperImpl : UdfRegistryHelper {
 
     UdafRegistryHelperImpl& output(const std::string& fname, void* fn_ptr,
                                    bool return_by_arg = false) {
-        auto fn = dynamic_cast<node::ExternalFnDefNode*>(
-            library()->node_manager()->MakeExternalFnDefNode(
-                fname, fn_ptr, output_ty_, output_nullable_, {state_ty_},
-                {state_nullable_}, -1, return_by_arg));
+        auto fn = library()->node_manager()->MakeExternalFnDefNode(fname, fn_ptr, output_ty_, output_nullable_,
+                                                                   {state_ty_}, {state_nullable_}, -1, return_by_arg);
         auto registry = std::make_shared<ExternalFuncRegistry>(fname, fn);
         auto state_tag = state_ty_->GetName();
         udaf_gen_.output_gen = registry;

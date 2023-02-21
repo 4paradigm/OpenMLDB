@@ -746,13 +746,13 @@ Status RequestWindowOp::ReplaceExpr(const passes::ExprReplacer& replacer, node::
 void PhysicalWindowAggrerationNode::Print(std::ostream& output, const std::string& tab) const {
     PhysicalOpNode::Print(output, tab);
     output << "(type=" << ProjectTypeName(project_type_);
-    if (exclude_current_time_) {
+    if (exclude_current_time()) {
         output << ", EXCLUDE_CURRENT_TIME";
     }
-    if (exclude_current_row_) {
+    if (exclude_current_row()) {
         output << ", EXCLUDE_CURRENT_ROW";
     }
-    if (instance_not_in_window_) {
+    if (instance_not_in_window()) {
         output << ", INSTANCE_NOT_IN_WINDOW";
     }
     if (need_append_input()) {
@@ -827,6 +827,14 @@ Status PhysicalWindowAggrerationNode::InitJoinList(PhysicalPlanContext* plan_ctx
         cur = joined;
     }
     return Status::OK();
+}
+
+std::vector<PhysicalOpNode*> PhysicalWindowAggrerationNode::GetDependents() const {
+    auto list = GetProducers();
+    for (auto& [node, window] : window_unions_.window_unions_) {
+        list.push_back(node);
+    }
+    return list;
 }
 
 bool PhysicalWindowAggrerationNode::AddWindowUnion(PhysicalOpNode* node) {
@@ -1055,6 +1063,19 @@ Status PhysicalDataProviderNode::InitSchema(PhysicalPlanContext* ctx) {
     return Status::OK();
 }
 
+bool PhysicalDataProviderNode::Equals(const PhysicalOpNode *other) const {
+    if (other == nullptr) {
+        return false;
+    }
+
+    if (other->GetOpType() != kConcreteNodeKind) {
+        return false;
+    }
+
+    auto* rhs = dynamic_cast<const PhysicalDataProviderNode*>(other);
+    return rhs != nullptr && GetDb() == rhs->GetDb() && GetName() == rhs->GetName();
+}
+
 Status PhysicalRequestProviderNode::InitSchema(PhysicalPlanContext* ctx) {
     CHECK_TRUE(table_handler_ != nullptr, common::kPlanError, "InitSchema fail: table handler is null");
     const std::string request_name = table_handler_->GetName();
@@ -1192,6 +1213,8 @@ std::string PhysicalOpNode::SchemaToString(const std::string& tab) const {
     return ss.str();
 }
 
+std::vector<PhysicalOpNode*> PhysicalOpNode::GetDependents() const { return GetProducers(); }
+
 Status PhysicalUnionNode::InitSchema(PhysicalPlanContext* ctx) {
     CHECK_TRUE(!producers_.empty(), common::kPlanError, "Empty union");
     schemas_ctx_.Clear();
@@ -1244,8 +1267,6 @@ Status PhysicalRequestUnionNode::WithNewChildren(node::NodeManager* nm, const st
     CHECK_TRUE(children.size() == 2, common::kPlanError);
     auto new_union_op = new PhysicalRequestUnionNode(children[0], children[1], window_, instance_not_in_window_,
                                                      exclude_current_time_, output_request_row_);
-    new_union_op->exclude_current_row_ = exclude_current_row_;
-
     std::vector<const node::ExprNode*> depend_columns;
     window_.ResolvedRelatedColumns(&depend_columns);
     passes::ExprReplacer replacer;
@@ -1274,7 +1295,7 @@ void PhysicalRequestUnionNode::Print(std::ostream& output, const std::string& ta
     if (exclude_current_time_) {
         output << "EXCLUDE_CURRENT_TIME, ";
     }
-    if (exclude_current_row_) {
+    if (exclude_current_row()) {
         output << "EXCLUDE_CURRENT_ROW, ";
     }
     if (instance_not_in_window_) {
@@ -1299,6 +1320,14 @@ void PhysicalRequestUnionNode::Print(std::ostream& output, const std::string& ta
     //    }
     output << "\n";
     PrintChildren(output, tab);
+}
+
+std::vector<PhysicalOpNode*> PhysicalRequestUnionNode::GetDependents() const {
+    auto list = GetProducers();
+    for (auto& [node, window] : window_unions().window_unions_) {
+        list.push_back(node);
+    }
+    return list;
 }
 
 base::Status PhysicalRequestUnionNode::InitSchema(PhysicalPlanContext* ctx) {

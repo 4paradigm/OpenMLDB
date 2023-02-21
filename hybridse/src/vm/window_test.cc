@@ -1054,7 +1054,7 @@ void CHECK_REQUEST_UNION_WINDOW(const WindowRange& window_range,
     }
     auto union_table =
         RequestUnionRunner::RequestUnionWindow(row, std::vector<std::shared_ptr<TableHandler>>({table}), current_key,
-                                               window_range, true, exclude_current_time, false);
+                                               window_range, true, exclude_current_time);
     CHECK_TABLE_KEY(union_table, exp_keys);
 }
 void CHECK_BUFFER_WINDOW(const WindowRange& window_range,

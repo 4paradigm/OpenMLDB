@@ -1,4 +1,5 @@
 #! /usr/bin/env bash
+export OPENMLDB_VERSION=0.7.2
 # openmldb mode: standalone / cluster
 export OPENMLDB_MODE=${OPENMLDB_MODE:=standalone}
 # tablet port

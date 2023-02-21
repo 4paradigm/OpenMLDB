@@ -23,5 +23,22 @@ sbin="$(cd "$(dirname "$0")" || exit 1; pwd)"
 . "$sbin"/init.sh
 cd "$home" || exit 1
 
-# start taskmanager
-bin/start.sh start taskmanager "$@"
+
+if [[ ${OPENMLDB_MODE} == "standalone" ]]; then
+  echo "No need to start taskmanager in Standalone Mode"
+  pass
+else
+  old_IFS="$IFS"
+  IFS=$'\n'
+  for line in $(parse_host conf/hosts taskmanager)
+  do
+    host=$(echo "$line" | awk -F ' ' '{print $1}')
+    port=$(echo "$line" | awk -F ' ' '{print $2}')
+    dir=$(echo "$line" | awk -F ' ' '{print $3}')
+
+    echo "start taskmanager in $dir with endpoint $host:$port "
+    cmd="cd $dir && SPARK_HOME=${dir}/spark bin/start.sh start taskmanager $*"
+    run_auto "$host" "$cmd"
+  done
+  IFS="$old_IFS"
+fi
