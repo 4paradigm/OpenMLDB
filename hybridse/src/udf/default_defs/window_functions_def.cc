@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+#include <list>
+#include <queue>
 #include <string>
 #include <tuple>
 #include <unordered_set>
@@ -92,26 +94,6 @@ node::ExprNode* BuildAt(UdfResolveContext* ctx, ExprNode* input, ExprNode* idx,
     return res;
 }
 
-
-template <typename T>
-struct RingBuffer {
-    explicit RingBuffer(size_t sz, const T& default_val) : idx(0), sz(sz), data(sz, default_val) {}
-
-    template <typename... Arg>
-    void Emplace(Arg&&... val) {
-        data[idx % sz] = T(std::forward<Arg>(val)...);
-        idx++;
-    }
-
-    const T& At(size_t idx) const {
-        return data[idx % sz];
-    }
-
-    size_t idx;
-    const size_t sz;
-    std::vector<T> data;
-};
-
 template <typename T>
 struct NthValueWhere {
     // C type for value
@@ -137,20 +119,17 @@ struct NthValueWhere {
 
      private:
         struct ContainerT {
-            ContainerT() : nth(0) {}
-            ~ContainerT() {
-                if (data != nullptr) {
-                    delete data;
-                }
-            }
+            ContainerT() : nth(0), cur_idx(0) {}
 
             // given nth value, be negative or positive
             NthType nth;
 
+            NthType cur_idx;
+
             // saved value list
             // if `nth` > 0, work like a ring buffer
             // if `nth < 0`, have one value at most
-            RingBuffer<std::pair<T, bool>>* data = nullptr;
+            std::queue<std::pair<T, bool>, std::list<std::pair<T, bool>>> data;
         };
 
         // (nth idx, [(value, value_is_null)])
@@ -168,25 +147,21 @@ struct NthValueWhere {
             if (ctr->nth == 0) {
                 // update only once, we treat nth as constant
                 ctr->nth = nth;
-
-                // construct ring buffer
-                if (ctr->nth > 0) {
-                    ctr->data = new RingBuffer<std::pair<T, bool>>(ctr->nth, {T{}, true});
-                } else {
-                    ctr->data = new RingBuffer<std::pair<T, bool>>(1, {T{}, true});
-                }
             }
 
             if (cond && !cond_is_null) {
                 if (ctr->nth > 0) {
                     // nth from window start
-                    ctr->data->Emplace(container::ContainerStorageTypeTrait<T>::to_stored_value(value), value_is_null);
+                    ctr->data.emplace(container::ContainerStorageTypeTrait<T>::to_stored_value(value), value_is_null);
+                    if (ctr->data.size() > ctr->nth) {
+                        ctr->data.pop();
+                    }
                 } else {
                     // nth from window end
-                    ctr->data->idx++;
-                    if (ctr->data->idx + ctr->nth == 0) {
+                    ctr->cur_idx++;
+                    if (ctr->cur_idx + ctr->nth == 0) {
                         // reaches nth
-                        ctr->data->Emplace(container::ContainerStorageTypeTrait<T>::to_stored_value(value),
+                        ctr->data.emplace(container::ContainerStorageTypeTrait<T>::to_stored_value(value),
                                            value_is_null);
                     }
                 }
@@ -204,15 +179,23 @@ struct NthValueWhere {
 
             if (ctr->nth > 0) {
                 // count from window start to window end
-                size_t nth_pos = ctr->data->idx;
-                *value = ctr->data->At(nth_pos).first;
-                *is_null = ctr->data->At(nth_pos).second;
+                if (ctr->data.size() < ctr->nth) {
+                    // window size < nth -> NULL
+                    *is_null = true;
+                    return;
+                }
+                *value = ctr->data.front().first;
+                *is_null = ctr->data.front().second;
                 return;
             }
 
             // count from window end
-            *value = ctr->data->At(0).first;
-            *is_null = ctr->data->At(0).second;
+            if (ctr->data.empty()) {
+                *is_null = true;
+                return;
+            }
+            *value = ctr->data.front().first;
+            *is_null = ctr->data.front().second;
         }
     };
 };
