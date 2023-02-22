@@ -1,6 +1,6 @@
 # 实时引擎核心数据结构和优化解析
 
-[实时引擎性能测试报告（第一版）](https://openmldb.feishu.cn/wiki/wikcnZRB9VRkqgD1vDFu1F9AaTh)显示 OpenMLDB 的实时 SQL 引擎可以达到毫秒级的延迟。本篇文章将介绍 OpenMLDB 如何在实时计算中达到毫秒级延迟的核心技术架构。实时引擎包含两个关键技术：双层跳表索引（针对时序数据优化）和查询预聚合技术。
+[实时引擎性能测试报告（第一版）](https://openmldb.feishu.cn/wiki/wikcnZRB9VRkqgD1vDFu1F9AaTh)显示 OpenMLDB 的实时 SQL 引擎可以达到毫秒级的延迟。本篇文章将介绍 OpenMLDB 如何在实时计算中达到毫秒级延迟的核心技术架构。实时引擎包含两个关键技术：双层跳表索引（针对时序数据优化）和查询预聚合技术。本文将详细介绍这两个关键技术。
 
 ## 背景介绍
 
@@ -13,10 +13,10 @@ OpenMLDB 内部整合了批处理和实时两套 SQL 引擎，分别用于应对
 
 ### 跳表
 
-跳表（skip list）由 William Pugh 在 1990 年提出，其论文为：[Skip Lists: A Probabilistic Alternative to Balanced Trees](https://15721.courses.cs.cmu.edu/spring2018/papers/08-oltpindexes1/pugh-skiplists-cacm1990.pdf)。跳表采用的是概率均衡而非严格均衡策略，从而相对于平衡树，大大简化和加速了元素的插入和删除。跳表可以看做是在链表的基础数据结构上进行了扩展，通过添加多级索引，来达到快速定位查找的操作。其既有链表的灵活数据管理优势，同时对于数据查找和插入的时间复杂度均为 O(logn)。
+跳表 (skip list) 由 William Pugh 在 1990 年提出，其论文为：[Skip Lists: A Probabilistic Alternative to Balanced Trees](https://15721.courses.cs.cmu.edu/spring2018/papers/08-oltpindexes1/pugh-skiplists-cacm1990.pdf)。跳表采用的是概率均衡而非严格均衡策略，从而相对于平衡树，大大简化和加速了元素的插入和删除。跳表可以看做是在链表的基础数据结构上进行了扩展，通过添加多级索引，来达到快速定位查找的操作。其既有链表的灵活数据管理优势，同时对于数据查找和插入的时间复杂度均为 O(logn)。
 ![img](images/core_data_structure/1.png)
 
-上图(source: [https://en.wikipedia.org/wiki/Skip_list](https://en.wikipedia.org/wiki/Skip_list))显示了一个具有四级索引的跳表结构。可以看到，在底层的已排序的数据上，每一个值都有一个对应的指针数组。查找某个具体值时，搜索会从顶层最稀疏的索引开始，通过索引内的向右的指针以及向下的指针数组，逐级往下查找，直到查找到所需要的值。关于跳表的操作和实现的详细解读，可以参照：[https://en.wikipedia.org/wiki/Skip_list](https://en.wikipedia.org/wiki/Skip_list)
+上图 (source: [https://en.wikipedia.org/wiki/Skip_list](https://en.wikipedia.org/wiki/Skip_list)) 显示了一个具有四级索引的跳表结构。可以看到，在底层的已排序的数据上，每一个值都有一个对应的指针数组。查找某个具体值时，搜索会从顶层最稀疏的索引开始，通过索引内的向右的指针以及向下的指针数组，逐级往下查找，直到查找到所需要的值。关于跳表的操作和实现的详细解读，可以参照：[https://en.wikipedia.org/wiki/Skip_list](https://en.wikipedia.org/wiki/Skip_list)
 
 目前，许多开源产品都采用了跳表作为其核心数据结构，来实现快速的查找和插入操作，比如：
 
@@ -42,6 +42,7 @@ OpenMLDB 内部整合了批处理和实时两套 SQL 引擎，分别用于应对
 在一些典型场景中（比如画像系统），时序特征的窗口内数据量可能很大（比如窗口的时间跨度横跨三年），我们把这种时序特征称之为“长窗口”特征。对于长窗口的特征计算，传统的实时计算模式，需要遍历所有的窗口数据，并对所有数据进行聚合计算，随着数据量增大计算时间线性增加，很难满足在线性能要求。另一方面，多次相邻特征计算，很大概率会包含重复计算（即窗口重叠），浪费了计算资源。
 为了改善长窗口的性能，我们引入了预聚合技术。通过预聚合，聚合特征的部分结果，会在数据插入的时候，提前计算好；线上实时特征计算时，只需要把计算好的预聚合结果进行规约，就可以快速得到最终的聚合特征。预聚合数据相比原始数据，数据量极大地降低，可以达到毫秒级的计算延迟。
 预聚合逻辑如下图所示：
+
 ![img](images/core_data_structure/3.png)
 
 基于原始数据，我们会构造多层预聚合，预聚合是基于上一层的预聚合结果进行的再次预聚合。例如第一层预聚合可以为小时级别的预聚合，第二层可以为基于第一层预聚合结果的天级别的预聚合。当我们需要计算一个长窗口特征时，如上图所示，计算最近一年的数据的聚合特征，我们可以利用已经聚合好的特征，通过累计以下所有预聚合和实时数据结果得到：
@@ -73,6 +74,7 @@ OpenMLDB 内部整合了批处理和实时两套 SQL 引擎，分别用于应对
 ### 预聚合技术的性能提升
 
 对于窗口内数据特别多的情况，我们考察打开预聚合以后的性能提升。我们同样设计了一个典型的基于时序窗口的特征计算查询，通过变化窗口内的数据条数，来观察预聚合优化打开和关闭情况下的性能。
+
 ![img](images/core_data_structure/7.png) 
 ![img](images/core_data_structure/8.png)
 
