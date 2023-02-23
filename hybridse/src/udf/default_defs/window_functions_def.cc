@@ -172,25 +172,11 @@ struct NthValueWhere {
         static void Output(ContainerT* ctr, T* value, bool* is_null) {
             absl::Cleanup clean = [ctr]() { ctr->~ContainerT(); };
 
-            if (ctr->nth == 0) {
-                *is_null = true;
-                return;
-            }
-
-            if (ctr->nth > 0) {
-                // count from window start to window end
-                if (ctr->data.size() < ctr->nth) {
-                    // window size < nth -> NULL
-                    *is_null = true;
-                    return;
-                }
-                *value = ctr->data.front().first;
-                *is_null = ctr->data.front().second;
-                return;
-            }
-
             // count from window end
-            if (ctr->data.empty()) {
+            if (ctr->nth == 0 || ctr->data.empty() || (ctr->nth > 0 && ctr->data.size() < ctr->nth)) {
+                // 1. invalid input: nth = 0
+                // 2. queue empty when nth < 0
+                // 3. queue size not equal to nth (when nth > 0)
                 *is_null = true;
                 return;
             }
