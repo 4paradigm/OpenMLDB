@@ -42,22 +42,34 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * The implementation of protobuf APIs.
+ */
 @Slf4j
 public class TaskManagerImpl implements TaskManagerInterface {
     private static final Log logger = LogFactory.getLog(TaskManagerImpl.class);
 
-    private volatile static JobResultSaver jobResultSaver;
+    private volatile JobResultSaver jobResultSaver;
 
-    static {
-        jobResultSaver = new JobResultSaver();
-    }
-
+    /**
+     * Constructor of TaskManagerImpl.
+     *
+     * @throws InterruptedException
+     * @throws ConfigException
+     */
     public TaskManagerImpl() throws InterruptedException, ConfigException {
+        jobResultSaver = new JobResultSaver();
+
         TaskManagerConfig.parse();
 
         initExternalFunction();
     }
 
+    /**
+     * Read ZooKeeper path and load UDF libraries.
+     *
+     * @throws InterruptedException
+     */
     private void initExternalFunction() throws InterruptedException {
         ZKClient zkClient = new ZKClient(ZKConfig.builder()
                 .cluster(TaskManagerConfig.ZK_CLUSTER)
@@ -147,12 +159,14 @@ public class TaskManagerImpl implements TaskManagerInterface {
     @Override
     public TaskManager.ShowJobResponse ShowJob(TaskManager.ShowJobRequest request) {
         try {
+            TaskManager.ShowJobResponse.Builder responseBuilder = TaskManager.ShowJobResponse.newBuilder();
+
             Option<JobInfo> jobInfo = JobInfoManager.getJob(request.getId());
 
-            TaskManager.ShowJobResponse.Builder responseBuilder = TaskManager.ShowJobResponse.newBuilder()
-                    .setCode(StatusCode.SUCCESS);
-            if (jobInfo.nonEmpty()) {
-                responseBuilder.setJob(jobInfoToProto(jobInfo.get()));
+            if (jobInfo.isEmpty()) {
+                responseBuilder.setCode(StatusCode.FAILED).setMsg("Fail to get job with id: " + request.getId());
+            } else {
+                responseBuilder.setCode(StatusCode.SUCCESS).setJob(jobInfoToProto(jobInfo.get()));;
             }
 
             return responseBuilder.build();
