@@ -18,11 +18,14 @@ package com._4paradigm.openmldb.taskmanager;
 
 import com._4paradigm.openmldb.proto.TaskManager;
 import com._4paradigm.openmldb.taskmanager.client.TaskManagerClient;
+import com._4paradigm.openmldb.taskmanager.config.ConfigException;
 import com._4paradigm.openmldb.taskmanager.server.TaskManagerServer;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.Ignore;
 import org.testng.annotations.Test;
 import org.testng.annotations.BeforeClass;
+
+import java.io.IOException;
 import java.util.List;
 
 @Ignore
@@ -31,23 +34,16 @@ public class TestTaskManagerClient {
     TaskManagerClient client;
 
     @BeforeClass
-    public void setUp() {
+    public void setUp() throws ConfigException, IOException {
         server = new TaskManagerServer();
-        Thread serverThread = new Thread() {
-            public void run(){
-                server.start();
-            }
-        };
-        serverThread.start();
-        client = new TaskManagerClient("127.0.0.1:9902");
+        server.startRpcServer(false);
+        client = new TaskManagerClient("127.0.0.1:9999");
     }
 
     @AfterClass
     public void tearDownAfterClass() {
         client.close();
-        client = null;
-        server.shutdown();
-        server = null;
+        server.close();
     }
 
     @Test

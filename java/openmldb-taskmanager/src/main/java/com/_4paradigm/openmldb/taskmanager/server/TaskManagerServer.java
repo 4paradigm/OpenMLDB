@@ -75,7 +75,7 @@ public class TaskManagerServer {
             }
 
             // Start brpc server
-            startBrpcServer(blocking);
+            startRpcServer(blocking);
         }
         failoverWatcher.close();
         logger.info("The server exits after running business logic");
@@ -84,15 +84,15 @@ public class TaskManagerServer {
     /**
      * Start the underlying bRPC server.
      */
-    public void startBrpcServer() {
-        this.startBrpcServer(true);
+    public void startRpcServer() {
+        this.startRpcServer(true);
     }
     /**
      * Start the underlying bRPC server.
      *
      * @param blocking if it will block the current thread.
      */
-    public void startBrpcServer(Boolean blocking) {
+    public void startRpcServer(Boolean blocking) {
         RpcServerOptions options = new RpcServerOptions();
         options.setReceiveBufferSize(64 * 1024 * 1024);
         options.setSendBufferSize(64 * 1024 * 1024);
