@@ -70,12 +70,13 @@ object ConstProjectPlan {
   def stringToTimestamp: String => Timestamp = (input: String) => {
     if (input == null) {
       null.asInstanceOf[Timestamp]
+    } else if (!Array(19, 10,8).contains(input.length)) {
+      null.asInstanceOf[Timestamp]
     } else {
       val stringPattern = input.length match {
         case 19 => "yyyy-MM-dd HH:mm:ss"
         case 10 => "yyyy-MM-dd"
         case 8 => "yyyyMMdd"
-        case _ => throw new Exception(s"Unsupported timestamp format for string $input")
       }
 
       val format = new java.text.SimpleDateFormat(stringPattern)

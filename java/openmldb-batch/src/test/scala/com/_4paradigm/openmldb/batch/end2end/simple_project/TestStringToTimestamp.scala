@@ -32,6 +32,7 @@ class TestStringToTimestamp extends SparkTestSuite {
       Row("2022-01-22"),
       Row("2022-01-23 22:22:22"),
       Row("20220124"),
+      Row("2022"),
       Row(null))
     val schema = StructType(List(
       StructField("str_timestamp", StringType)))
@@ -47,6 +48,7 @@ class TestStringToTimestamp extends SparkTestSuite {
     assert(Timestamp.valueOf("2022-01-23 22:22:22") == rows(1).getTimestamp(0))
     assert(Timestamp.valueOf("2022-01-24 0:0:0") == rows(2).getTimestamp(0))
     assert(null == rows(3).getTimestamp(0))
+    assert(null == rows(4).getTimestamp(0))
   }
 
 }
