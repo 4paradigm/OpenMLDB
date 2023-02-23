@@ -64,9 +64,13 @@ public class TaskManagerConfig {
     public static boolean ENABLE_HIVE_SUPPORT;
     public static long BATCH_JOB_RESULT_MAX_WAIT_TIME;
 
-    public static void parse() throws IOException, NumberFormatException, ConfigException {
+    public static void parse() throws ConfigException {
         Properties prop = new Properties();
-        prop.load(TaskManagerConfig.class.getClassLoader().getResourceAsStream("taskmanager.properties"));
+        try {
+            prop.load(TaskManagerConfig.class.getClassLoader().getResourceAsStream("taskmanager.properties"));
+        } catch (IOException e) {
+            throw new ConfigException(String.format("Fail to load taskmanager.properties, message: ", e.getMessage()));
+        }
 
         HOST = prop.getProperty("server.host", "0.0.0.0");
         PORT = Integer.parseInt(prop.getProperty("server.port", "9902"));
