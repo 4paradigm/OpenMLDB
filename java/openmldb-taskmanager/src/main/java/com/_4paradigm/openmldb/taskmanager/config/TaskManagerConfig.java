@@ -64,7 +64,16 @@ public class TaskManagerConfig {
     public static boolean ENABLE_HIVE_SUPPORT;
     public static long BATCH_JOB_RESULT_MAX_WAIT_TIME;
 
+    private static volatile boolean isParsed = false;
+
     public static void parse() throws ConfigException {
+        if (!isParsed) {
+            doParse();
+            isParsed = true;
+        }
+    }
+
+    public static void doParse() throws ConfigException {
         Properties prop = new Properties();
         try {
             prop.load(TaskManagerConfig.class.getClassLoader().getResourceAsStream("taskmanager.properties"));

@@ -34,7 +34,7 @@ public class TestTaskManagerClient {
     TaskManagerClient client;
 
     @BeforeClass
-    public void setUp() throws ConfigException, IOException {
+    public void setUp() throws ConfigException, InterruptedException {
         server = new TaskManagerServer();
         server.startRpcServer(false);
         client = new TaskManagerClient("127.0.0.1:9999");

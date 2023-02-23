@@ -23,6 +23,7 @@ import com._4paradigm.openmldb.proto.Common;
 import com._4paradigm.openmldb.taskmanager.JobInfoManager;
 import com._4paradigm.openmldb.taskmanager.LogManager;
 import com._4paradigm.openmldb.taskmanager.OpenmldbBatchjobManager;
+import com._4paradigm.openmldb.taskmanager.config.ConfigException;
 import com._4paradigm.openmldb.taskmanager.config.TaskManagerConfig;
 import com._4paradigm.openmldb.taskmanager.dao.JobInfo;
 import com._4paradigm.openmldb.taskmanager.server.JobResultSaver;
@@ -45,33 +46,30 @@ import java.util.Map;
 public class TaskManagerImpl implements TaskManagerInterface {
     private static final Log logger = LogFactory.getLog(TaskManagerImpl.class);
 
-    private volatile static ZKClient zkClient;
     private volatile static JobResultSaver jobResultSaver;
 
     static {
-        try {
-            zkClient = new ZKClient(ZKConfig.builder()
-                    .cluster(TaskManagerConfig.ZK_CLUSTER)
-                    .namespace(TaskManagerConfig.ZK_ROOT_PATH)
-                    .sessionTimeout(TaskManagerConfig.ZK_SESSION_TIMEOUT)
-                    .baseSleepTime(TaskManagerConfig.ZK_BASE_SLEEP_TIME)
-                    .connectionTimeout(TaskManagerConfig.ZK_CONNECTION_TIMEOUT)
-                    .maxConnectWaitTime(TaskManagerConfig.ZK_MAX_CONNECT_WAIT_TIME)
-                    .maxRetries(TaskManagerConfig.ZK_MAX_RETRIES)
-                    .build());
-            zkClient.connect();
-        } catch (Exception e) {
-            zkClient = null;
-            e.printStackTrace();
-        }
         jobResultSaver = new JobResultSaver();
     }
 
-    public TaskManagerImpl() {
+    public TaskManagerImpl() throws InterruptedException, ConfigException {
+        TaskManagerConfig.parse();
+
         initExternalFunction();
     }
 
-    private void initExternalFunction() {
+    private void initExternalFunction() throws InterruptedException {
+        ZKClient zkClient = new ZKClient(ZKConfig.builder()
+                .cluster(TaskManagerConfig.ZK_CLUSTER)
+                .namespace(TaskManagerConfig.ZK_ROOT_PATH)
+                .sessionTimeout(TaskManagerConfig.ZK_SESSION_TIMEOUT)
+                .baseSleepTime(TaskManagerConfig.ZK_BASE_SLEEP_TIME)
+                .connectionTimeout(TaskManagerConfig.ZK_CONNECTION_TIMEOUT)
+                .maxConnectWaitTime(TaskManagerConfig.ZK_MAX_CONNECT_WAIT_TIME)
+                .maxRetries(TaskManagerConfig.ZK_MAX_RETRIES)
+                .build());
+        zkClient.connect();
+
         String funPath = TaskManagerConfig.ZK_ROOT_PATH + "/data/function";
         try {
             List<String> funNames = zkClient.getChildren(funPath);
@@ -342,16 +340,23 @@ public class TaskManagerImpl implements TaskManagerInterface {
 
     @Override
     public TaskManager.GetVersionResponse GetVersion(TaskManager.EmptyMessage request) {
+        String taskmanagerVersion = "unknown";
+        String batchVersion = "unknown";
+
         try {
-            String taskmanagerVersion = VersionCli.getVersion();
-            String batchVersion = VersionUtil.getBatchVersion();
-            return TaskManager.GetVersionResponse.newBuilder().setTaskmanagerVersion(taskmanagerVersion)
-                    .setBatchVersion(batchVersion).build();
+            taskmanagerVersion = VersionCli.getVersion();
         } catch (Exception e) {
-            return TaskManager.GetVersionResponse.newBuilder().setTaskmanagerVersion("unknown")
-                    .setBatchVersion("unknown").build();
+            logger.warn("Fail to get TaskManager version, message: " + e.getMessage());
         }
 
+        try {
+            batchVersion = VersionUtil.getBatchVersion();
+        } catch (Exception e) {
+            logger.warn("Fail to get batch engine version, message: " + e.getMessage());
+        }
+
+        return TaskManager.GetVersionResponse.newBuilder().setTaskmanagerVersion(taskmanagerVersion)
+                .setBatchVersion(batchVersion).build();
     }
 
     @Override

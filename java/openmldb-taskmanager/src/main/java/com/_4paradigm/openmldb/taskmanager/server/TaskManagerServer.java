@@ -53,7 +53,7 @@ public class TaskManagerServer {
      *
      * @throws IOException if it fails to start.
      */
-    public void start() throws IOException {
+    public void start() throws ConfigException, IOException, InterruptedException {
         this.start(true);
     }
 
@@ -63,7 +63,7 @@ public class TaskManagerServer {
      * @param blocking if it will block the current thread.
      * @throws IOException if it fails to start.
      */
-    public void start(Boolean blocking) throws IOException {
+    public void start(Boolean blocking) throws ConfigException, IOException, InterruptedException {
         FailoverWatcher failoverWatcher = new FailoverWatcher();
 
         logger.info("The server runs and prepares for leader election");
@@ -84,15 +84,16 @@ public class TaskManagerServer {
     /**
      * Start the underlying bRPC server.
      */
-    public void startRpcServer() {
+    public void startRpcServer() throws ConfigException, InterruptedException {
         this.startRpcServer(true);
     }
+
     /**
      * Start the underlying bRPC server.
      *
      * @param blocking if it will block the current thread.
      */
-    public void startRpcServer(Boolean blocking) {
+    public void startRpcServer(Boolean blocking) throws ConfigException, InterruptedException {
         RpcServerOptions options = new RpcServerOptions();
         options.setReceiveBufferSize(64 * 1024 * 1024);
         options.setSendBufferSize(64 * 1024 * 1024);
