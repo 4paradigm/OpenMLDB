@@ -163,7 +163,7 @@ SELECT * FROM demo_table1 LIMIT 10;
 
 ```sql
 -- OpenMLDB CLI
-quit
+quit;
 ```
 
 按照默认的部署配置，APIServer 部署的 http 端口为 9080。实时线上服务可以通过如下 Web API 提供服务：
