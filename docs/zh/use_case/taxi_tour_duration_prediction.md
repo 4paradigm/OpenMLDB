@@ -2,7 +2,7 @@
 
 本文将以 [Kaggle 上的出租车行车时间预测问题](https://www.kaggle.com/c/nyc-taxi-trip-duration/overview)为例，示范如何使用 OpenMLDB 和 LightGBM 联合来打造一个完整的机器学习应用。
 
-注意，本文档使用的是预编译好的 Docker 镜像。如果希望在自己编译和搭建的 OpenMLDB 环境下进行测试，需要配置使用[面向特征工程优化的 Spark 发行版](https://openmldb.ai/docs/zh/main/tutorial/openmldbspark_distribution.html)。请参考[针对 OpenMLDB 优化的 Spark 发行版文档](https://openmldb.ai/docs/zh/main/deploy/compile.html#openmldb-spark)和[安装部署文档](https://openmldb.ai/docs/zh/main/deploy/install_deploy.html)。
+注意，本文档使用的是预编译好的 Docker 镜像。如果希望在自己编译和搭建的 OpenMLDB 环境下进行测试，需要配置使用[面向特征工程优化的 Spark 发行版](https://openmldb.ai/docs/zh/main/tutorial/openmldbspark_distribution.html)。请参考[针对 OpenMLDB 优化的 Spark 发行版文档](../tutorial/openmldbspark_distribution.md#openmldb-spark-发行版)和[安装部署文档](../deploy/install_deploy.md#2-修改配置文件conftaskmanagerproperties)。
 
 ## 准备和预备知识
 
@@ -21,7 +21,7 @@ docker run -it 4pdosc/openmldb:0.7.1 bash
 该镜像预装了OpenMLDB，并预置了本案例所需要的所有脚本、三方库、开源工具以及训练数据。
 
 ```{note}
-注意，本教程以下的 OpenMLDB 部分的演示命令默认均在启动的 Docker 容器 `openmldb` 内运行。
+注意，本教程以下的 OpenMLDB 部分的演示命令默认均在启动的 Docker 容器内运行。
 ```
 
 ### 初始化环境
@@ -41,9 +41,9 @@ cd taxi-trip
 /work/openmldb/bin/openmldb --zk_cluster=127.0.0.1:2181 --zk_root_path=/openmldb --role=sql_client
 ```
 
-### 预备知识
+### 预备知识：异步任务
 
-OpenMLDB 部分命令是异步的，如：在线/离线模式的 `LOAD DATA`、`SELECT`、`SELECT INTO` 命令。提交任务以后可以使用相关命令如 `SHOW JOBS`、`SHOW JOB` 来查看任务进度，详情参见[离线任务管理文档](../openmldb_sql/task_manage/SHOW_JOB.md)。
+OpenMLDB 部分命令是异步的，如：在线/离线模式的 `LOAD DATA`、`SELECT`、`SELECT INTO` 命令。提交任务以后可以使用相关命令如 `SHOW JOBS`、`SHOW JOB` 来查看任务进度，详情参见[离线任务管理文档](../openmldb_sql/task_manage/index.rst)。
 
 ## 机器学习全流程
 
@@ -74,9 +74,7 @@ LOAD DATA INFILE '/work/taxi-trip/data/taxi_tour_table_train_simple.snappy.parqu
 
 ### 步骤 3：特征设计
 
-通常在设计特征前，用户需要根据机器学习的目标对数据进行分析，然后根据分析设计和调研特征。然而，机器学习的数据分析和特征研究并不是本文讨论的范畴。本文假定用户具备机器学习的基本理论知识，有解决机器学习问题的能力，能够理解 SQL 语法，并能够使用 SQL 语法构建特征。针对本案例，用户经过分析和调研设计了若干特征。
-
-针对本案例，经过分析和调研设计了若干特征：
+通常在设计特征前，用户需要根据机器学习的目标对数据进行分析，然后根据分析设计和调研特征。然而，机器学习的数据分析和特征研究并不是本文讨论的范畴。本文假定用户具备机器学习的基本理论知识，有解决机器学习问题的能力，能够理解 SQL 语法，并能够使用 SQL 语法构建特征。针对本案例，假设用户经过分析和调研设计了以下若干特征：
 
 | 特征名          | 特征含义                                                  | SQL特征表示                             |
 | --------------- | --------------------------------------------------------- | --------------------------------------- |
@@ -131,7 +129,7 @@ w2 AS (PARTITION BY passenger_count ORDER BY pickup_datetime ROWS_RANGE BETWEEN 
     quit;
     ```
 
-2. 在普通命令行下，执行 train.py（`/work/taxi-trip` 目录中），使用开源训练工具 `lightgbm` 基于上一步生成的离线特征表进行模型训练，训练结果存放在 `/tmp/model.txt` 中。
+2. 在普通命令行下，执行 train.py（`/work/taxi-trip` 目录中），使用开源训练工具 `LightGBM` 基于上一步生成的离线特征表进行模型训练，训练结果存放在 `/tmp/model.txt` 中。
 
     ```bash
     python3 train.py /tmp/feature_data /tmp/model.txt
