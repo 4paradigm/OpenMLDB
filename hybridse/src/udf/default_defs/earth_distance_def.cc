@@ -105,9 +105,9 @@ void DefaultUdfLibrary::InitEarthDistanceUdf() {
                 }
                 if (ll2->GetOutputType()->base() != node::kDouble) {
                     ll2 = nm->MakeCastNode(node::kDouble, ll2);
-                    if (rl1->GetOutputType()->base() != node::kDouble) {
-                        rl1 = nm->MakeCastNode(node::kDouble, rl1);
-                    }
+                }
+                if (rl1->GetOutputType()->base() != node::kDouble) {
+                    rl1 = nm->MakeCastNode(node::kDouble, rl1);
                 }
                 if (rl2->GetOutputType()->base() != node::kDouble) {
                     rl2 = nm->MakeCastNode(node::kDouble, rl2);

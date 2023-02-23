@@ -330,6 +330,7 @@ cases:
         earth_distance(c2, c3, 41.0, 74.0) as dis2,
         earth_distance(c2, c3, c5, c6) as dis3,
         earth_distance(c2, c4, c5, c6) as dis4,
+        earth_distance(c2, 73.0, c5, c6) as dis5,
       from t1;
     expect:
       order: id
@@ -339,5 +340,6 @@ cases:
         - dis2 double
         - dis3 double
         - dis4 double
+        - dis5 double
       data: |
-        1, 139.72810080682342, 139.72810080682342, 139.72810080682342, 139.72810080682342
+        1, 139.72810080682342, 139.72810080682342, 139.72810080682342, 139.72810080682342, 139.72810080682342
