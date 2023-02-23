@@ -16,6 +16,7 @@ services:
       - /bin/bash
       - -cx
       - |
+        # TODO(tobe): Remove this after 0.7.3 is released
         rm -f /work/openmldb/spark-3.2.1-bin-openmldbspark/jars/curator-* # curator NoSuchMethodError error
         ./init.sh
         sleep 5
