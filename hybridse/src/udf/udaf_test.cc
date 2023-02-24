@@ -328,6 +328,22 @@ TEST_F(UdafTest, EwAvgTest) {
     CheckUdf<Nullable<double>, ListRef<Nullable<double>>, ListRef<double>>(
         "ew_avg", nullptr, MakeList<Nullable<double>>({nullptr}), alpha_list);
 }
+TEST_F(UdafTest, VarSampTest) {
+    CheckUdf<double, ListRef<int16_t>>("variance", 4.0, MakeList<int16_t>({0, 2, 4}));
+    CheckUdf<double, ListRef<int32_t>>("var_samp", 4.0, MakeList<int32_t>({0, 2, 4}));
+    CheckUdf<double, ListRef<Nullable<double>>>("var_samp", 4.0, MakeList<Nullable<double>>({0.0, 2, nullptr, 4}));
+    CheckUdf<Nullable<double>, ListRef<double>>("var_samp", nullptr, MakeList<double>({4}));
+    CheckUdf<Nullable<double>, ListRef<double>>("var_samp", nullptr, MakeList<double>({}));
+    CheckUdf<Nullable<double>, ListRef<Nullable<double>>>("var_samp", nullptr, MakeList<Nullable<double>>({nullptr}));
+}
+
+TEST_F(UdafTest, VarPopTest) {
+    CheckUdf<double, ListRef<int32_t>>("var_pop", 6.0, MakeList<int32_t>({0, 3, 6}));
+    CheckUdf<double, ListRef<Nullable<double>>>("var_pop", 6.0, MakeList<Nullable<double>>({0.0, 3, nullptr, 6}));
+    CheckUdf<Nullable<double>, ListRef<double>>("var_pop", 0.0, MakeList<double>({2}));
+    CheckUdf<Nullable<double>, ListRef<double>>("var_pop", nullptr, MakeList<double>({}));
+    CheckUdf<Nullable<double>, ListRef<Nullable<double>>>("var_pop", nullptr, MakeList<Nullable<double>>({nullptr}));
+}
 
 TEST_F(UdafTest, SumTest) {
     CheckUdf<int16_t, ListRef<int16_t>>("sum", 10,
@@ -1055,6 +1071,14 @@ TEST_F(UdafTest, TopNValueAvgCateWhereTest) {
                                MakeList<Nullable<bool>>({false, nullptr, true, true, true, true, true}),
                                MakeList<Nullable<StringRef>>({"x", "y", "z", "x", "y", nullptr, "x"}),
                                MakeList<int32_t>({2, 2, 2, 2, 2, 2, 2}));
+}
+
+TEST_F(UdafTest, Entropy) {
+    CheckUdf<double, ListRef<codec::StringRef>>("entropy", 1.0, MakeList<codec::StringRef>({"A", "A", "B", "B"}));
+    CheckUdf<double, ListRef<openmldb::base::Date>>(
+        "entropy", 1.5, MakeList<openmldb::base::Date>({Date(1999), Date(1999), Date(2000), Date(2001)}));
+    CheckUdf<Nullable<double>, ListRef<codec::StringRef>>("entropy", nullptr, MakeList<codec::StringRef>({}));
+    CheckUdf<Nullable<double>, ListRef<Nullable<int64_t>>>("entropy", nullptr, MakeList<Nullable<int64_t>>({nullptr}));
 }
 
 TEST_F(UdafTest, DrawdownTest) {
