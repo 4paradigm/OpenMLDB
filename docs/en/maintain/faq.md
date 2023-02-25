@@ -106,7 +106,7 @@ zk log：
 1. CLI：set before running, `--zk_log_level`(int) to set zk log level,`--zk_log_file` to set log file(just file, not dir)
 2. JAVA/Python SDK：in option or url, set `zkLogLevel` and `zkLogFile`
 
-- `zk_log_level`(int, default=3, which is INFO): 
+- `zk_log_level`(int, default=0, which is DISABLE_): 
 Log messages at or **below** this level. 0-disable all zk log, 1-error, 2-warn, 3-info, 4-debug.
 
 sdk log(glog):
