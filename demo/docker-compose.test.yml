@@ -52,3 +52,11 @@ services:
         cat sql_order | xargs cat | /work/openmldb/bin/openmldb --zk_cluster=127.0.0.1:2181 --zk_root_path=/openmldb --role=sql_client
 
         python3 /work/job_checker.py
+
+        # open it after new diag tool released, or you can test in local by USE_ADD_WHL
+        # cd /work
+        # openmldb_tool status --diff -f /work/openmldb/conf/hosts 
+        # openmldb_tool inspect
+        # openmldb_tool test
+        # openmldb_tool static-check --conf_file=/work/openmldb/conf/hosts -VCL --local
+        

@@ -14,122 +14,268 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from diagnostic_tool.collector import Collector, LocalCollector
-from diagnostic_tool.dist_conf import DistConfReader, ConfParser, DistConf
-from diagnostic_tool.conf_validator import YamlConfValidator, StandaloneConfValidator, ClusterConfValidator, TaskManagerConfValidator
-from diagnostic_tool.log_analysis import LogAnalysis
-from diagnostic_tool.server_checker import ServerChecker
-import diagnostic_tool.util as util
-import sys
-import logging
+import argparse
+import textwrap
+from diagnostic_tool.connector import Connector
+from diagnostic_tool.dist_conf import read_conf
+from diagnostic_tool.conf_validator import (
+    DistConfValidator,
+    ClusterConfValidator,
+)
+from diagnostic_tool.log_analyzer import LogAnalyzer
+from diagnostic_tool.collector import Collector
+import diagnostic_tool.server_checker as checker
+
 from absl import app
-from diagnostic_tool.conf_option import ConfOption
+from absl import flags
+from absl.flags import argparse_flags
+from absl import logging  # --verbosity --log_dir
 
-log = logging.getLogger(__name__)
+# only some sub cmd needs dist file
+flags.DEFINE_string(
+    "conf_file",
+    "",
+    "Cluster config file, supports two styles: yaml and hosts.",
+    short_name="f",
+)
+flags.DEFINE_bool(
+    "local",
+    False,
+    "If set, all server in config file will be treated as local server, skip ssh.",
+)
 
-def check_version(version_map : dict):
-    f_version = ''
-    f_endpoint = ''
-    f_role = ''
+flags.DEFINE_string("collect_dir", "/tmp/diag_collect", "...")
+
+
+def check_version(version_map: dict):
+    # cluster must have nameserver, so we use nameserver version to be the right version
+    version = version_map["nameserver"][0][1]
     flag = True
-    for k, v in version_map.items():
-        for endpoint, cur_version in v:
-            if f_version == '':
-                f_version = cur_version
-                f_endpoint = endpoint
-                f_role = k
-            if cur_version != f_version:
-                log.warn(f'version mismatch. {k} {endpoint} version {cur_version}, {f_role} {f_endpoint} version {f_version}')
+    for role, servers in version_map.items():
+        for endpoint, cur_version in servers:
+            if cur_version != version:
+                logging.warning(
+                    f"version mismatch. {role} {endpoint} version {cur_version} != {version}"
+                )
                 flag = False
-    return flag, f_version
+    return version, flag
 
-def check_conf(yaml_conf_dict, conf_map):
-    detail_conf_map = {}
-    flag = True
-    for role, v in conf_map.items():
-        for endpoint, values in v.items():
-            for _, path in values:
-                detail_conf_map.setdefault(role, [])
-                cur_conf = ConfParser(path).conf()
-                detail_conf_map[role].append(cur_conf)
-                if yaml_conf_dict['mode'] == 'cluster' and role == 'taskmanager':
-                    taskmanager_validator = TaskManagerConfValidator(cur_conf)
-                    if not taskmanager_validator.validate():
-                        log.warn(f'taskmanager {endpoint} conf check failed')
-                        flag = False
 
-    if yaml_conf_dict['mode'] == 'standalone':
-        conf_validator = StandaloneConfValidator(detail_conf_map['nameserver'][0], detail_conf_map['tablet'][0])
+def status(args):
+    """use OpenMLDB Python SDK to connect OpenMLDB"""
+    conn = Connector()
+    status_checker = checker.StatusChecker(conn)
+    assert status_checker.check_components(), "some components is offline"
+
+    # --diff with dist conf file, conf_file is required
+    if args.diff:
+        assert flags.FLAGS.conf_file, "need --conf_file"
+        print(
+            "only check components in conf file, if cluster has more components, ignore them"
+        )
+        dist_conf = read_conf(flags.FLAGS.conf_file)
+        assert status_checker.check_startup(
+            dist_conf
+        ), f"not all components in conf file are online, check the previous output"
+        print(f"all components in conf file are online")
+
+
+def inspect(args):
+    insepct_online(args)
+    inspect_offline(args)
+
+
+def insepct_online(args):
+    """show table status"""
+    conn = Connector()
+    # scan all db include system db
+    # INTERNAL_DB
+    # INFORMATION_SCHEMA_DB
+    # PRE_AGG_DB
+    dbs = ["__INTERNAL_DB", "INFORMATION_SCHEMA", "__PRE_AGG_DB"] + [
+        r[0] for r in conn.execfetch("SHOW DATABASES")
+    ]
+    table_cnt, fails = 0, []
+    for db in dbs:
+        conn.execute(f"USE {db}")
+        rs = conn.execfetch("SHOW TABLE STATUS")
+        table_cnt += 1
+        for t in rs:
+            if t[13]:
+                print(f"unhealthy table {t[2]}.{t[1]}:\n {t[:13]}")
+                # sqlalchemy truncated ref https://github.com/sqlalchemy/sqlalchemy/commit/591e0cf08a798fb16e0ee9b56df5c3141aa48959
+                # so we print warnings alone
+                print(f"full warnings:\n{t[13]}")
+                fails.append(f"{t[2]}.{t[1]}")
+    print(f"check {table_cnt} online tables(including system tables)")
+    assert not fails, f"unhealthy tables: {fails}"
+    print(f"all tables are healthy")
+
+
+def inspect_offline(args):
+    """scan jobs status, show job log if failed"""
+    assert checker.StatusChecker(Connector()).offline_support()
+    conn = Connector()
+    jobs = conn.execfetch("SHOW JOBS")
+    # TODO some failed jobs are known, what if we want skip them?
+    print(f"inspect {len(jobs)} offline jobs")
+    fails = []
+    # jobs sorted by id
+    jobs.sort(key=lambda x: x[0])
+    # only FINAL_STATE "finished", "failed", "killed", "lost"
+    final_failed = ["failed", "killed", "lost"]
+    for row in jobs:
+        if row[2].lower() in final_failed:
+            fails.append(" ".join([str(x) for x in row]))
+            # DO NOT try to print rs in execfetch, it's too long
+            std_output = conn.execfetch(f"SHOW JOBLOG {row[0]}")
+            # log rs schema is FORMAT_STRING_KEY
+            assert len(std_output) == 1 and len(std_output[0]) == 1
+            print(f"{row[0]}-{row[1]} failed, job log:\n{std_output[0][0]}")
+    fails_total = "\n".join(fails)
+    assert not fails, f"failed jobs:\n{fails_total}"
+    print("all offline final jobs are finished")
+
+
+def test_sql(args):
+    conn = Connector()
+    status_checker = checker.StatusChecker(conn)
+    if not status_checker.check_components():
+        logging.warning("some server is unalive, be careful")
+    tester = checker.SQLTester(conn)
+    tester.setup()
+    print("test online")
+    tester.online()
+    if status_checker.offline_support():
+        print("test offline")
+        tester.offline()
     else:
-        conf_validator = ClusterConfValidator(yaml_conf_dict, detail_conf_map)
-    if conf_validator.validate() and flag:
-        log.info('check conf ok')
-    else:
-        log.warn('check conf failed')
+        print("no taskmanager, can't test offline")
+    tester.teardown()
+    print("all test passed")
 
-def check_log(yaml_conf_dict, log_map):
-    flag = True
-    for role, v in log_map.items():
-        for endpoint, values in v.items():
-            log_analysis = LogAnalysis(role, endpoint, values)
-            if not log_analysis.analysis_log() : flag = False
-    if flag:
-        log.info('check log ok')
 
-def run_test_sql(dist_conf : DistConf, print_sdk_log):
-    checker = ServerChecker(dist_conf.full_conf, print_sdk_log)
-    if checker.run_test_sql():
-        log.info('test sql execute ok.')
-
-def main(argv):
-    conf_opt = ConfOption()
-    if not conf_opt.init():
+def static_check(args):
+    assert flags.FLAGS.conf_file, "static check needs dist conf file"
+    if not (args.version or args.conf or args.log):
+        print("at least one arg to check, check `openmldb_tool static-check -h`")
         return
-    util.clean_dir(conf_opt.data_dir)
-    dist_conf = DistConfReader(conf_opt.dist_conf).conf()
-    yaml_validator = YamlConfValidator(dist_conf.full_conf)
-    if not yaml_validator.validate():
-        log.warning("check yaml conf failed")
-        sys.exit()
-    log.info("check yaml conf ok")
-
-    log.info("mode is {}".format(dist_conf.mode))
-    if dist_conf.mode == 'cluster' and conf_opt.env != 'onebox':
-        collector = Collector(dist_conf)
-        if conf_opt.check_version():
-            version_map = collector.collect_version()
-        if conf_opt.check_conf():
-            collector.pull_config_files(f'{conf_opt.data_dir}/conf')
-        if conf_opt.check_log():
-            collector.pull_log_files(f'{conf_opt.data_dir}/log')
-        if conf_opt.check_conf() or conf_opt.check_log():
-            file_map = util.get_files(conf_opt.data_dir)
-            log.debug("file_map: %s", file_map)
-    else:
-        collector = LocalCollector(dist_conf)
-        if conf_opt.check_version():
-            version_map = collector.collect_version()
-        if conf_opt.check_conf() or conf_opt.check_log():
-            file_map = collector.collect_files()
-            log.debug("file_map: %s", file_map)
-
-    if conf_opt.check_version():
-        flag, version = check_version(version_map)
-        if flag:
-            log.info(f'openmldb version is {version}')
-            log.info('check version ok')
+    dist_conf = read_conf(flags.FLAGS.conf_file)
+    # the deploy path of servers may be flags.default_dir, we won't check if it's valid here.
+    assert DistConfValidator(dist_conf).validate(), "conf file is invalid"
+    collector = Collector(dist_conf)
+    if args.version:
+        versions = collector.collect_version()
+        print(f"version:\n{versions}")  # TODO pretty print
+        version, ok = check_version(versions)
+        assert ok, f"all servers version should be {version}"
+        print(f"version check passed, all {version}")
+    if args.conf:
+        collector.pull_config_files(flags.FLAGS.collect_dir)
+        # config validate, read flags.FLAGS.collect_dir/<server-name>/conf
+        if dist_conf.is_cluster():
+            assert ClusterConfValidator(dist_conf, flags.FLAGS.collect_dir).validate()
         else:
-            log.warn('check version failed')
+            assert False, "standalone unsupported"
+    if args.log:
+        collector.pull_log_files(flags.FLAGS.collect_dir)
+        # log check, read flags.FLAGS.collect_dir/logs
+        # glog parse & java log
+        LogAnalyzer(dist_conf, flags.FLAGS.collect_dir).run()
 
-    if conf_opt.check_conf():
-        check_conf(dist_conf.full_conf, file_map['conf'])
-    if conf_opt.check_log():
-        check_log(dist_conf.full_conf, file_map['log'])
-    if conf_opt.check_sql():
-        run_test_sql(dist_conf, conf_opt.print_sdk_log())
+
+def parse_arg(argv):
+    """parser definition, absl.flags + argparse"""
+    parser = argparse_flags.ArgumentParser(
+        formatter_class=argparse.RawTextHelpFormatter
+    )
+    # use args.header returned by parser.parse_args
+    subparsers = parser.add_subparsers(help="OpenMLDB Tool")
+
+    # sub status
+    status_parser = subparsers.add_parser(
+        "status", help="check the OpenMLDB server status"
+    )
+    status_parser.add_argument(
+        "--diff",
+        action="store_true",
+        help="check if all endpoints in conf are in cluster. If set, need to set `--conf_file`",
+    )  # TODO action support in all python 3.x?
+    status_parser.set_defaults(command=status)
+
+    # sub inspect
+    inspect_parser = subparsers.add_parser(
+        "inspect",
+        help="Inspect online and offline. Use `inspect [online/offline]` to inspect one.",
+    )
+    # inspect online & offline
+    inspect_parser.set_defaults(command=inspect)
+    inspect_sub = inspect_parser.add_subparsers()
+    # inspect online
+    online = inspect_sub.add_parser("online", help="only inspect online table")
+    online.set_defaults(command=insepct_online)
+    # inspect offline
+    offline = inspect_sub.add_parser(
+        "offline", help="only inspect offline jobs, check the job log"
+    )
+    offline.set_defaults(command=inspect_offline)
+
+    # sub test
+    test_parser = subparsers.add_parser(
+        "test",
+        help="Do simple create&insert&select test in online, select in offline(if taskmanager exists)",
+    )
+    test_parser.set_defaults(command=test_sql)
+
+    # sub static-check
+    static_check_parser = subparsers.add_parser(
+        "static-check",
+        help=textwrap.dedent(
+            """ \
+        Static check on remote host, version/conf/log, -h to show the arguments, --conf_file is required.
+        Use -VCL to check all.
+        You can check version or config before cluster running.
+        If servers are remote, need Passwordless SSH Login.
+        """
+        ),
+    )
+    static_check_parser.add_argument(
+        "--version", "-V", action="store_true", help="check version"
+    )
+    static_check_parser.add_argument(
+        "--conf", "-C", action="store_true", help="check conf"
+    )
+    static_check_parser.add_argument(
+        "--log", "-L", action="store_true", help="check log"
+    )
+    static_check_parser.set_defaults(command=static_check)
+
+    def help(args):
+        parser.print_help()
+
+    parser.set_defaults(command=help)
+
+    args = parser.parse_args(argv[1:])
+    tool_flags = {
+        k: [flag.serialize() for flag in v]
+        for k, v in flags.FLAGS.flags_by_module_dict().items()
+        if "diagnostic_tool" in k
+    }
+    logging.debug(f"args:{args}, flags: {tool_flags}")
+
+    return args
+
+
+def main(args):
+    # TODO: adjust args, e.g. if conf_file, we can get zk addr from conf file, no need to --cluster
+    # run the command
+    print(f"diagnosing cluster {Connector().address()}")
+    args.command(args)
+
 
 def run():
-    app.run(main)
+    app.run(main, flags_parser=parse_arg)
 
-if __name__ == '__main__':
-    app.run(main)
+
+if __name__ == "__main__":
+    app.run(main, flags_parser=parse_arg)

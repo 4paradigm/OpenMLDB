@@ -124,7 +124,7 @@ enum StatusCode {
     kRequestError = 1502;
     // error with rpc, invalid rpc response
     kResponseError = 1503;
-    // error with rpc, time out
+    // error with rpc, time out -- unused
     kTimeoutError = 1504;
     // error with rpc, fail to invoke remote call
     kCallRpcMethodError = 1505;
