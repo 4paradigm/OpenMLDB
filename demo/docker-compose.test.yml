@@ -59,4 +59,3 @@ services:
         # openmldb_tool inspect
         # openmldb_tool test
         # openmldb_tool static-check --conf_file=/work/openmldb/conf/hosts -VCL --local
-        

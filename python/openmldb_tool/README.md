@@ -2,11 +2,16 @@
 
 In `diagnostic_tool/`:
 
-main: diagnose.py
-
-collect version/config/logs by collector.py (local or remote ssh/scp)
-
-read distribution yaml/hosts by dist_conf.py
+```
+|-- collector.py # collect version/config/logs (local or remote ssh/scp, defined by distribution conf file)
+|-- conf_validator.py
+|-- connector.py # openmldb singleton connection
+|-- diagnose.py # main
+|-- dist_conf.py # read distribution conf file, dist.yml or hosts
+|-- log_analyzer.py # analyze log, you can add your own rules
+|-- server_checker.py # server status checker, sql tester, you can add more checks
+`-- util.py
+```
 
 ## Subcommands
 
@@ -41,9 +46,10 @@ optional arguments:
 
 Use `show components` to show servers(no apiserver now).
 
-TODO: online servers version, we can get from brpc http://<endpoint>/version. (ns,tablet, apiserver set_version in brpc server)
-brpc /health to check ok
-brpc /flags to get all gflags(including openmldb), `--enable_flags_service=true` required
+TODO: 
+- ping all servers, brpc /health to check ok
+- online servers version, we can get from brpc http://<endpoint>/version. (ns,tablet, apiserver set_version in brpc server)
+- brpc /flags to get all gflags(including openmldb), `--enable_flags_service=true` required
 
 ## Inspect
 
@@ -66,7 +72,9 @@ Check the onebox/distribute cluster.
 
 collector.py collects version, config and log.
 
-TODO: `<cluster-name>-conf` is better than custom dest name?
+TODO: 
+- `<cluster-name>-conf` is better than custom dest name?
+- more analysis rules of conf and log
 
 ### version
 
@@ -92,8 +100,6 @@ find spark home from remote taskmanager config file.
 ### log
 Find log path in remote config file.
 
-Get last 2 files.
-
 ```
 <dest>/
   <ip:port>-nameserver/
@@ -108,8 +114,11 @@ Get last 2 files.
     ...
 ```
 
+TODO: custom filter, do not copy all logs
+
 ### analysis
 
-log_analysis.py read logs from local path `<dest>`. 
+log_analysis.py read logs from local collection path `<dest>`. 
 
-NOTE: if diag local cluster/standalone, directory structure is different.
+- show warning logs in `nameserver.info.log`, `tablet.info.log`
+- show warning logs and exceptions in `taskmanager.log`

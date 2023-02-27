@@ -97,6 +97,7 @@ class LogAnalyzer:
         return False
 
     def analysis_log(self):
+        """deprecated, use run() instead"""
         flag = True
         for name, full_path in self.file_list:
             msg = "----------------------------------------\n"
