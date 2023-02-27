@@ -263,6 +263,7 @@ void DefaultUdfLibrary::InitStatisticsUdafs() {
             |  1 |
             |  2 |
             |  3 |
+
             @code{.sql}
              select entropy(col1) from t1
              -- output 1.5
