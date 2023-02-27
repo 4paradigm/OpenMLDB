@@ -36,6 +36,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import scala.Option;
 
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -382,13 +383,21 @@ public class TaskManagerImpl implements TaskManagerInterface {
     @Override
     public TaskManager.SaveJobResultResponse SaveJobResult(TaskManager.SaveJobResultRequest request) {
         if (request.getResultId() == -1 && request.getJsonData().equals("reset")) {
-            jobResultSaver.reset();
-            return TaskManager.SaveJobResultResponse.newBuilder().setCode(StatusCode.SUCCESS)
-                    .setMsg("reset job result saver ok").build();
+            try {
+                jobResultSaver.reset();
+                return TaskManager.SaveJobResultResponse.newBuilder().setCode(StatusCode.SUCCESS)
+                        .setMsg("reset job result saver ok").build();
+            } catch (IOException e) {
+                e.printStackTrace();
+                return TaskManager.SaveJobResultResponse.newBuilder().setCode(StatusCode.FAILED)
+                        .setMsg("reset job result saver failed, " + e.getMessage()).build();
+            }
         }
         // log if save failed
         if (!jobResultSaver.saveFile(request.getResultId(), request.getJsonData())) {
             log.error("save job result failed(write to local file) for resultId: {}", request.getResultId());
+            return TaskManager.SaveJobResultResponse.newBuilder().setCode(StatusCode.FAILED)
+                    .setMsg("save job result failed(write to local file)").build();
         }
         return TaskManager.SaveJobResultResponse.newBuilder().setCode(StatusCode.SUCCESS).setMsg("ok").build();
     }

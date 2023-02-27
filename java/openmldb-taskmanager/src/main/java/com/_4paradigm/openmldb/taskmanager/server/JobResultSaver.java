@@ -24,6 +24,7 @@ import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.csv.CSVRecord;
 import org.apache.commons.csv.QuoteMode;
+import org.apache.commons.io.FileUtils;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -87,7 +88,7 @@ public class JobResultSaver {
     public boolean saveFile(int resultId, String jsonData) {
         // No need to wait, cuz id status must have been changed by genResultId before.
         // It's a check.
-        if(log.isDebugEnabled()){
+        if (log.isDebugEnabled()) {
             log.debug("save result " + resultId + ", data " + jsonData);
         }
         int status = idStatus.get(resultId);
@@ -124,19 +125,19 @@ public class JobResultSaver {
             return false;
         }
 
-        try(FileWriter wr = new FileWriter(fileFullPath)) {
+        try (FileWriter wr = new FileWriter(fileFullPath)) {
             wr.write(jsonData);
             wr.flush();
         } catch (IOException e) {
-            // Write failed, we'll lost a part of result, but it's ok for show sync job output.
-            // So we just log it, and response the http request.
+            // Write failed, we'll lost a part of result, but it's ok for show sync job
+            // output. So we just log it, and response the http request.
             log.error("write result to file failed, path " + fileFullPath, e);
             return false;
         }
         return true;
     }
 
-    // if exception, how to recover?
+    // if exception, reset manually by http
     public String readResult(int resultId, long timeoutMs) throws InterruptedException, IOException {
         long timeoutExpiredMs = System.currentTimeMillis() + timeoutMs;
         // wait for idStatus[resultId] == 2
@@ -152,13 +153,11 @@ public class JobResultSaver {
         // all finished, read csv from savePath
         String savePath = String.format("%s/tmp_result/%d", TaskManagerConfig.JOB_LOG_PATH, resultId);
         File saveP = new File(savePath);
-        // If saveP not exists, means no real result saved. But it may use a uncleaned path, 
-        // whether read result succeed or not, we should delete it.
+        // If saveP not exists, means no real result saved. But it may use a uncleaned
+        // path, whether read result succeed or not, we should delete it.
         if (saveP.exists()) {
             output = printFilesTostr(savePath);
-            if(!saveP.delete()){
-                log.warn("delete tmp result dir failed, plz remove it manually, path " + savePath);
-            }
+            FileUtils.forceDelete(saveP);
         } else {
             log.info("empty result for " + resultId + ", show empty string");
         }
@@ -170,10 +169,9 @@ public class JobResultSaver {
         return output;
     }
 
-    // if exception, how to recover?
     public String printFilesTostr(String fileDir) {
         try (StringWriter stringWriter = new StringWriter();
-            Stream<Path> paths = Files.walk(Paths.get(fileDir))) {
+                Stream<Path> paths = Files.walk(Paths.get(fileDir))) {
             List<String> csvFiles = paths.filter(Files::isRegularFile).map(f -> f.toString())
                     .filter(f -> f.endsWith(".csv"))
                     .collect(Collectors.toList());
@@ -196,13 +194,22 @@ public class JobResultSaver {
     // CSVPrinter can't do pretty print
     private void printFile(String file, StringWriter stringWriter, boolean printHeader) {
         // QuoteMode.MINIMAL is more simillary to spark dataframe output? or None?
-        CSVFormat.Builder formatBuilder = CSVFormat.Builder.create(CSVFormat.DEFAULT).setEscape('\\')
-                .setQuoteMode(QuoteMode.MINIMAL).setNullString("null");
+        CSVFormat.Builder baseFormat = CSVFormat.Builder.create(CSVFormat.DEFAULT).setEscape('\\')
+        .setQuoteMode(QuoteMode.MINIMAL).setNullString("null");
+        // DEFAULT header is null, skip print header by printer ctor(we don't want)
+        CSVFormat printFormat = baseFormat.build();
+        // to auto parse header
+        CSVFormat parseFormat = baseFormat.setHeader().build();
+
         try (BufferedReader br = new BufferedReader(new FileReader(file));
-                CSVParser parser = new CSVParser(br, formatBuilder.build());
-                CSVPrinter csvPrinter = new CSVPrinter(stringWriter,
-                        formatBuilder.setHeader(parser.getHeaderNames().stream().toArray(String[]::new))
-                                .setSkipHeaderRecord(!printHeader).build())) {
+                CSVParser parser = new CSVParser(br, parseFormat);
+                CSVPrinter csvPrinter = new CSVPrinter(stringWriter, printFormat)) {
+            // When create the CSVPrinter, we don't know the header, so it won't print header by header is null in format.
+            // And we get header by parser, it'll parse header automatically by setHeader(), so we print it manually
+            if (printHeader) {
+                csvPrinter.printRecord(parser.getHeaderNames());
+            }
+
             Iterator<CSVRecord> iter = parser.iterator();
             while (iter.hasNext()) {
                 csvPrinter.printRecord(iter.next());
@@ -214,13 +221,12 @@ public class JobResultSaver {
     }
 
     // To reset the idStatus and remove tmp result dir
-    public void reset() {
+    public void reset() throws IOException {
         synchronized (idStatus) {
             Collections.fill(idStatus, 0);
         }
         String tmpResultDir = String.format("%s/tmp_result", TaskManagerConfig.JOB_LOG_PATH);
-        File tmpResult = new File(tmpResultDir);
         // delete anyway
-        tmpResult.delete();
+        FileUtils.forceDelete(new File(tmpResultDir));
     }
 }

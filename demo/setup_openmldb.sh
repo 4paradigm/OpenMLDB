@@ -50,6 +50,7 @@ tar xzf spark-3.2.1-bin-openmldbspark.tgz -C "${WORKDIR}/openmldb/spark-3.2.1-bi
 pushd "${WORKDIR}/openmldb"
 ln -s "${WORKDIR}/zookeeper-3.4.14" zookeeper
 ln -s spark-3.2.1-bin-openmldbspark spark
+rm -f spark-3.2.1-bin-openmldbspark/jars/curator-* # curator NoSuchMethodError error
 popd
 
 rm -f ./*.tar.gz
