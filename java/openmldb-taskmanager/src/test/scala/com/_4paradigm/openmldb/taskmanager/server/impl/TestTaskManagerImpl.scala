@@ -38,7 +38,7 @@ class TestTaskManagerImpl extends FunSuite {
     val response = impl.GetVersion(request)
 
     assert(!response.getBatchVersion.equals("unknown"))
-    // Notice that we can not get taskmanager version in unit test
+    // Notice that we can not get TaskManager version in unit test
     assert(response.getTaskmanagerVersion.equals("unknown"))
   }
 
@@ -46,7 +46,7 @@ class TestTaskManagerImpl extends FunSuite {
     val impl = new TaskManagerImpl()
 
     val jobId = -1
-    val request = TaskManager.ShowJobRequest.newBuilder.setId(jobId).build
+    val request = TaskManager.ShowJobRequest.newBuilder.setId(jobId).build()
     val response = impl.ShowJob(request)
 
     assert(response.getCode() == StatusCode.FAILED)
