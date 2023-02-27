@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
+"""
+generate udf document from native source
+"""
+
 # -*- coding: utf-8 -*-
-# Copyright 2021 4Paradigm
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,13 +18,14 @@
 # limitations under the License.
 
 import os
+import sys
 import subprocess
 import yaml
 
 DOXYGEN_DIR = os.path.abspath(os.path.dirname(__file__))
 HOME_DIR = os.path.join(DOXYGEN_DIR, "../../../..")
 BUILD_DIR = os.path.abspath(os.path.join(HOME_DIR, "build"))
-TMP_DIR = os.path.join(BUILD_DIR, "hybridse/docs/tmp")
+TMP_DIR = DOXYGEN_DIR
 
 
 def export_yaml():
@@ -33,7 +37,7 @@ def export_yaml():
     ])
     if ret != 0:
         print("Invoke native export udf binary failed")
-        exit(ret)
+        sys.exit(ret)
 
 
 def process_doc(doc):
@@ -58,7 +62,6 @@ def merge_arith_types(signature_set):
     def __find_and_merge(arg_types, idx, list_ty, merge_ty):
         merge_keys = []
         if arg_types[idx] in list_ty:
-            # print("check for " + ", ".join(arg_types))
             for dtype in list_ty:
                 origin = arg_types[idx]
                 arg_types[idx] = dtype
@@ -66,7 +69,6 @@ def merge_arith_types(signature_set):
                 arg_types[idx] = origin
                 merge_keys.append(cur_key)
                 if not cur_key in signature_set:
-                    # print(cur_key + " not defined: " + str(idx))
                     break
             else:
                 for key in merge_keys:
@@ -95,7 +97,7 @@ def merge_arith_types(signature_set):
 
 
 def make_header():
-    with open(os.path.join(TMP_DIR, "udf_defs.yaml")) as yaml_file:
+    with open(os.path.join(TMP_DIR, "udf_defs.yaml"), mode = "r", encoding = "utf-8") as yaml_file:
         udf_defs = yaml.safe_load(yaml_file.read())
 
     if not os.path.exists(DOXYGEN_DIR + "/udfs"):
@@ -125,7 +127,7 @@ def make_header():
         "list_double": "`list<double>`",
         "list_string": "`list<string>`",
     }
-    with open(fake_header, "w") as header_file:
+    with open(fake_header, "w", encoding = "utf-8") as header_file:
         for name in sorted(udf_defs.keys()):
             content = "/**\n"
             items = udf_defs[name]
@@ -144,7 +146,7 @@ def make_header():
                     content += process_doc(doc)
                     break
             content += "\n\n\*\*Supported Types**:\n"
-            sig_set = dict()
+            sig_set = {}
             sig_list = []
             for item in items:
                 is_variadic = item["is_variadic"]
@@ -154,7 +156,6 @@ def make_header():
                         arg_types.append("...")
                     return_type = sig["return_type"]
                     for i in range(len(arg_types)):
-                        print("arg_types[i]: " + arg_types[i])
                         if arg_types[i] in types_map:
                             arg_types[i] = types_map[arg_types[i]]
                     key = ", ".join(arg_types)
@@ -166,7 +167,6 @@ def make_header():
 
             sig_list = sorted([_ for _ in sig_set])
             for sig in sig_list:
-                print("sig: " + sig)
                 content += "- [" + sig + "]\n"
 
             content += "\n*/\n"
@@ -178,7 +178,7 @@ def doxygen():
     ret = subprocess.call(["doxygen"], cwd=DOXYGEN_DIR)
     if ret != 0:
         print("Invoke doxygen failed")
-        exit(ret)
+        sys.exit(ret)
 
 
 if __name__ == "__main__":
