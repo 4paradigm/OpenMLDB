@@ -7,7 +7,6 @@ OpenMLDB 的主要使用场景为作为机器学习的实时特征平台。其�
 ![modes-flow](concepts/images/modes-flow.png)
 
 
-
 可以看到，OpenMLDB 会覆盖机器学习的特征计算环节，从离线开发到线上实时请求服务的完整流程。可以参考文档 [使用流程和执行模式](concepts/modes.md) 来详细了解。本文将按照基本使用流程，逐步演示一个快速上手的例子。
 
 ## 准备
@@ -52,7 +51,7 @@ curl https://openmldb.ai/demo/data.parquet --output /work/taxi-trip/data/data.pa
 
 成功启动 OpenMLDB CLI 后如下图显示：
 
-![image-20220111141358808](./images/cli_cluster.png)
+![image](./images/cli_cluster.png)
 
 ## 使用流程
 
@@ -91,6 +90,7 @@ LOAD DATA INFILE 'file:///work/taxi-trip/data/data.parquet' INTO TABLE demo_tabl
 - 显示任务运行日志：SHOW JOBLOG job_id
 
 这里使用 `SHOW JOBS` 查看任务状态，请等待任务运行成功（ `state` 转至 `FINISHED` 状态），再进行下面步骤。
+![image-20220111141358808](./images/state_finished.png)
 
 任务完成以后，如果希望预览数据，可以使用 `SELECT * FROM demo_table1` 语句，推荐先将离线命令设置为同步模式（`SET @@sync_job=true`）；否则该命令会提交一个异步任务，结果会保存在 Spark 任务的日志文件中，查看较不方便。
 
@@ -109,7 +109,7 @@ SET @@execute_mode='offline';
 SET @@sync_job=false;
 SELECT c1, c2, sum(c3) OVER w1 AS w1_c3_sum FROM demo_table1 WINDOW w1 AS (PARTITION BY demo_table1.c1 ORDER BY demo_table1.c6 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW) INTO OUTFILE '/tmp/feature_data' OPTIONS(mode='overwrite');
 ```
-`SELECT INTO` 为异步任务，使用命令 `SHOW JOBS` 查看任务运行状态，请等待任务运行成功（ state 转至 FINISHED 状态），再进行下一步操作 。
+`SELECT INTO` 为异步任务，使用命令 `SHOW JOBS` 查看任务运行状态，请等待任务运行成功（ `state` 转至 `FINISHED` 状态），再进行下一步操作 。
 
 注意：
 
@@ -140,7 +140,7 @@ SET @@execute_mode='online';
 LOAD DATA INFILE 'file:///work/taxi-trip/data/data.parquet' INTO TABLE demo_table1 options(format='parquet', header=true, mode='append');
 ```
 
-`LOAD DATA` 默认是异步命令，通过 `SHOW JOBS` 等离线任务管理命令来查看运行进度，请等待任务运行成功（ state 转至 FINISHED 状态），再进行下面步骤。
+`LOAD DATA` 默认是异步命令，通过 `SHOW JOBS` 等离线任务管理命令来查看运行进度，请等待任务运行成功（ `state` 转至 `FINISHED` 状态），再进行下面步骤。
 
 等待任务完成以后，可以预览在线数据：
 
@@ -163,7 +163,7 @@ SELECT * FROM demo_table1 LIMIT 10;
 
 ```sql
 -- OpenMLDB CLI
-quit
+quit;
 ```
 
 按照默认的部署配置，APIServer 部署的 http 端口为 9080。实时线上服务可以通过如下 Web API 提供服务：
