@@ -582,7 +582,7 @@ void DefaultUdfLibrary::InitFeatureZero() {
             Example:
 
             @code{.sql}
-            select `join`(split("k1:1, k2:2", ",", ":"), " ") as out;
+            select `join`(split("k1:1,k2:2", ","), " ") as out;
             -- output "k1:1 k2:2"
             @endcode
 
@@ -669,7 +669,7 @@ void DefaultUdfLibrary::InitFeatureZero() {
             @brief For each string value from specified
             column of window, join by delimeter. Null values are skipped.
 
-            @param input String expression to join
+            @param input List of string to join
             @param delimeter Join delimeter
 
             Example:

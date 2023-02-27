@@ -45,7 +45,7 @@ class OpenmldbSession {
   val registeredTables: mutable.Map[String, mutable.Map[String, DataFrame]] =
     mutable.HashMap[String, mutable.Map[String, DataFrame]]()
 
-  private var config: OpenmldbBatchConfig = _
+  var config: OpenmldbBatchConfig = _
 
   var planner: SparkPlanner = _
 
@@ -226,6 +226,14 @@ class OpenmldbSession {
   }
 
   def registerTable(dbName: String, tableName: String, df: DataFrame): Unit = {
+    // Register in OpenMLDB session
+    registerTableInOpenmldbSession(dbName, tableName, df)
+
+    // Register in Spark catalog
+    df.createOrReplaceTempView(tableName)
+  }
+
+  def registerTableInOpenmldbSession(dbName: String, tableName: String, df: DataFrame): Unit = {
     if (!registeredTables.contains(dbName)) {
       registeredTables.put(dbName, new mutable.HashMap[String, DataFrame]())
     }

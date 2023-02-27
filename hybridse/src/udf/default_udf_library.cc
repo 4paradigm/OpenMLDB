@@ -16,6 +16,8 @@
 
 #include "udf/default_udf_library.h"
 
+#include <algorithm>
+#include <limits>
 #include <string>
 #include <tuple>
 #include <unordered_set>
@@ -270,77 +272,6 @@ struct AvgUdafDef {
                                         nm->MakeCastNode(node::DataType::kDouble, nm->MakeConstNode()),
                                         nm->MakeBinaryExprNode(sum, cnt, node::kFnOpFDiv));
             });
-    }
-};
-
-template <typename T>
-struct StdPopUdafDef {
-    using ContainerT = std::pair<std::vector<T>, double>;
-    void operator()(UdafRegistryHelper& helper) {  // NOLINT
-        std::string suffix = absl::StrCat(".opaque_std_pair_std_vector_double_", DataTypeTrait<T>::to_string());
-        helper.templates<Nullable<double>, Opaque<ContainerT>, Nullable<T>>()
-            .init("std_pop_init" + suffix, Init)
-            .update("std_pop_update" + suffix, Update)
-            .output("std_pop_output" + suffix, reinterpret_cast<void *>(Output), true);
-    }
-
-    static void Init(ContainerT* ptr) {
-        new (ptr) ContainerT(std::vector<T>(), 0.0);
-    }
-
-    static ContainerT* Update(ContainerT* ptr, T t, bool is_null) {
-        if (!is_null) {
-            ptr->first.emplace_back(t);
-            ptr->second += t;
-        }
-        return ptr;
-    }
-
-    static double SumStd(ContainerT* ptr) {
-        size_t cnt = ptr->first.size();
-        double avg = ptr->second / cnt;
-        double stddev = 0;
-        for (size_t i = 0; i < cnt; i++) {
-            stddev += std::pow(ptr->first[i] - avg, 2);
-        }
-        return stddev;
-    }
-
-    static void Output(ContainerT* ptr, double* ret, bool* is_null) {
-        size_t cnt = ptr->first.size();
-        if (cnt == 0) {
-            *is_null = true;
-        } else {
-            double stddev = std::sqrt(SumStd(ptr) / cnt);
-            *ret = stddev;
-            *is_null = false;
-        }
-        ptr->~ContainerT();
-    }
-};
-
-template <typename T>
-struct StdSampUdafDef {
-    using ContainerT = std::pair<std::vector<T>, double>;
-    void operator()(UdafRegistryHelper& helper) {  // NOLINT
-        std::string suffix = absl::StrCat(".opaque_std_pair_std_vector_double_", DataTypeTrait<T>::to_string());
-        helper.templates<Nullable<double>, Opaque<ContainerT>, Nullable<T>>()
-            .init("std_samp_init" + suffix, StdPopUdafDef<T>::Init)
-            .update("std_samp_update" + suffix, StdPopUdafDef<T>::Update)
-            .output("std_samp_output" + suffix, reinterpret_cast<void *>(Output), true);
-    }
-
-    static void Output(ContainerT* ptr, double* ret, bool* is_null) {
-        size_t cnt = ptr->first.size();
-        if (cnt == 0 || cnt == 1) {
-            *is_null = true;
-        } else {
-            double stddev = StdPopUdafDef<T>::SumStd(ptr);
-            stddev = std::sqrt(StdPopUdafDef<T>::SumStd(ptr) / (cnt - 1));
-            *ret = stddev;
-            *is_null = false;
-        }
-        ptr->~ContainerT();
     }
 };
 
@@ -672,6 +603,55 @@ struct TopKDef {
     }
 };
 
+template <typename T>
+struct DrawdownUdafDef {
+    // <current drawdown, current min>
+    using ContainerT = std::pair<double, T>;
+    void operator()(UdafRegistryHelper& helper) {  // NOLINT
+        std::string suffix = ".opaque_std_pair_double_" + DataTypeTrait<T>::to_string();
+        helper.templates<Nullable<double>, Opaque<ContainerT>, Nullable<T>>()
+            .init("draw_init" + suffix, Init)
+            .update("draw_update" + suffix, Update)
+            .output("draw_output" + suffix, reinterpret_cast<void *>(Output), true);
+    }
+
+    static void Init(ContainerT* ptr) {
+        new (ptr) ContainerT(-1, std::numeric_limits<T>::max());
+    }
+
+    // data is fed in the reverse order of timestamp. Newer data comes first
+    static ContainerT* Update(ContainerT* ptr, T t, bool is_null) {
+        if (!is_null) {
+            if (t < 0) {
+                LOG_FIRST_N(ERROR, 1) << "drawdown only supports positive values";
+                return ptr;
+            }
+
+            double curr_max_d = 0;
+            if (ptr->second < t) {
+                if (t != 0) {
+                    curr_max_d = static_cast<double>(t - ptr->second) / t;
+                }
+            } else {
+                ptr->second = t;
+            }
+
+            ptr->first = std::max(ptr->first, curr_max_d);
+        }
+        return ptr;
+    }
+
+    static void Output(ContainerT* ptr, double* ret, bool* is_null) {
+        if (ptr->first < 0) {
+            *is_null = true;
+        } else {
+            *ret = ptr->first;
+            *is_null = false;
+        }
+        ptr->~ContainerT();
+    }
+};
+
 void DefaultUdfLibrary::Init() {
     udf::RegisterNativeUdfToModule(this);
     InitLogicalUdf();
@@ -685,6 +665,7 @@ void DefaultUdfLibrary::Init() {
     InitFeatureZero();
 
     InitArrayUdfs();
+    InitEarthDistanceUdf();
 
     AddExternalFunction("init_udfcontext.opaque",
             reinterpret_cast<void*>(static_cast<void (*)(UDFContext* context)>(udf::v1::init_udfcontext)));
@@ -2785,55 +2766,6 @@ void DefaultUdfLibrary::InitUdaf() {
         )")
         .args_in<int16_t, int32_t, int64_t, float, double>();
 
-    RegisterUdafTemplate<StdPopUdafDef>("stddev_pop")
-        .doc(R"(
-            @brief Compute population standard deviation of values, i.e., `sqrt( sum((x_i - avg)^2) / n )`
-
-            @param value  Specify value column to aggregate on.
-
-            Example:
-
-            |value|
-            |--|
-            |1|
-            |2|
-            |3|
-            |4|
-            @code{.sql}
-                SELECT stddev_pop(value) OVER w;
-                -- output 1.118034
-            @endcode
-            @since 0.7.2
-        )")
-        .args_in<int16_t, int32_t, int64_t, float, double>();
-
-    RegisterUdafTemplate<StdSampUdafDef>("stddev")
-        .doc(R"(
-            @brief Compute sample standard deviation of values, i.e., `sqrt( sum((x_i - avg)^2) / (n-1) )`
-
-            Alias function: `std`, `stddev_samp`
-
-            @param value  Specify value column to aggregate on.
-
-            Example:
-
-            |value|
-            |--|
-            |1|
-            |2|
-            |3|
-            |4|
-            @code{.sql}
-                SELECT stddev(value) OVER w;
-                -- output 1.290994
-            @endcode
-            @since 0.7.2
-        )")
-        .args_in<int16_t, int32_t, int64_t, float, double>();
-
-    RegisterAlias("std", "stddev");
-    RegisterAlias("stddev_samp", "stddev");
-
     RegisterUdafTemplate<DistinctCountDef>("distinct_count")
         .doc(R"(
             @brief Compute number of distinct values.
@@ -3056,8 +2988,40 @@ void DefaultUdfLibrary::InitUdaf() {
         )")
         .args_in<int16_t, int32_t, int64_t, float, double>();
 
+    RegisterUdafTemplate<DrawdownUdafDef>("drawdown")
+        .doc(R"(
+            @brief Compute drawdown of values.
+
+            Drawdown is defined as the max decline percentage from a historical peak to a subsequent valley.
+            It is commonly used as an indicator of risk in quant-trading to measure the max loss.
+
+            It requires that values are ordered so that it can only be used with WINDOW (PARTITION BY xx ORDER BY xx).
+            GROUP BY and full table aggregation are not supported.
+
+            @param value  Specify value column to aggregate on.
+
+            It requires that all values are non-negative. Negative values will be ignored.
+
+            Example:
+
+            |value|
+            |--|
+            |1|
+            |8|
+            |5|
+            |2|
+            |10|
+            |4|
+            @code{.sql}
+                SELECT drawdown(value) OVER w;
+                -- output 0.75 (decline from 8 to 2)
+            @endcode
+            @since 0.7.2
+        )")
+        .args_in<int16_t, int32_t, int64_t, float, double>();
 
     InitAggByCateUdafs();
+    InitStatisticsUdafs();
 }
 
 }  // namespace udf

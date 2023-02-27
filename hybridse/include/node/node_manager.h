@@ -37,6 +37,11 @@
 namespace hybridse {
 namespace node {
 
+// NodeManager
+//
+// Manual lifetime management for `base::FeBaseObject`s, including
+//   `node::SqlNode`, `node::PlanNode`, `vm::PhysicalOpNode`, `vm::Runner`,
+//   and any other `base::FeBaseObject`s like `vm::internal::CTEClosure`
 class NodeManager {
  public:
     NodeManager();
@@ -48,6 +53,28 @@ class NodeManager {
         DLOG(INFO) << "GetNodeListSize: " << node_size;
         return node_size;
     }
+
+    template <typename T>
+    base::BaseList<T> *MakeList() {
+        auto *list = new base::BaseList<T>();
+        RegisterNode(list);
+        return list;
+    }
+
+    template <typename T, typename... Arg>
+    T *MakeNode(Arg &&...arg) {
+        T* node = new T(std::forward<Arg>(arg)...);
+        return RegisterNode(node);
+    }
+
+    // TODO(ace): merge into `MakeNode`
+    template <typename T, typename... Arg>
+    T* MakeObj(Arg && ... arg) {
+        T* obj = new T(std::forward<Arg>(arg)...);
+        node_list_.push_back(obj);
+        return obj;
+    }
+
 
     // Make xxxPlanNode
     //    PlanNode *MakePlanNode(const PlanType &type);
@@ -298,14 +325,7 @@ class NodeManager {
     node::FnForInBlock *MakeForInBlock(FnForInNode *for_in_node,
                                        FnNodeList *block);
 
-    PlanNode *MakeSelectPlanNode(PlanNode *node);
-
     PlanNode *MakeGroupPlanNode(PlanNode *node, const ExprListNode *by_list);
-
-    PlanNode *MakeProjectPlanNode(
-        PlanNode *node, const std::string &table,
-        const PlanNodeList &project_list,
-        const std::vector<std::pair<uint32_t, uint32_t>> &pos_mapping);
 
     PlanNode *MakeLimitPlanNode(PlanNode *node, int limit_cnt);
 
@@ -334,9 +354,6 @@ class NodeManager {
     PlanNode *MakeRenamePlanNode(PlanNode *node, const std::string alias_name);
 
     PlanNode *MakeSortPlanNode(PlanNode *node, const OrderByNode *order_list);
-
-    PlanNode *MakeUnionPlanNode(PlanNode *left, PlanNode *right,
-                                const bool is_all);
 
     PlanNode *MakeDistinctPlanNode(PlanNode *node);
 
@@ -404,11 +421,6 @@ class NodeManager {
     }
 
  private:
-    ProjectNode *MakeProjectNode(const int32_t pos, const std::string &name,
-                                 const bool is_aggregation,
-                                 node::ExprNode *expression,
-                                 node::FrameNode *frame);
-
     void SetNodeUniqueId(ExprNode *node);
     void SetNodeUniqueId(TypeNode *node);
     void SetNodeUniqueId(PlanNode *node);

@@ -16,6 +16,8 @@
 #include "passes/physical/simple_project_optimized.h"
 #include <vector>
 
+#include "absl/base/attributes.h"
+
 namespace hybridse {
 namespace passes {
 
@@ -24,77 +26,67 @@ static Status BuildColumnMapping(
     const std::vector<node::ExprNode*>& inner_projects,
     const vm::SchemasContext* schemas_ctx, passes::ExprReplacer* replacer);
 
-bool SimpleProjectOptimized::Transform(PhysicalOpNode* in,
-                                       PhysicalOpNode** output) {
+bool SimpleProjectOptimized::Transform(PhysicalOpNode* in, PhysicalOpNode** output) {
     *output = in;
-    switch (in->GetOpType()) {
-        case vm::kPhysicalOpSimpleProject: {
-            if (nullptr != in->producers()[0] &&
-                vm::kPhysicalOpSimpleProject ==
-                    in->producers()[0]->GetOpType()) {
-                DLOG(INFO) << "Find consecutive simple projects";
-                auto nm = plan_ctx_->node_manager();
-                auto outer_project_op =
-                    dynamic_cast<vm::PhysicalSimpleProjectNode*>(in);
-                auto inner_project_op =
-                    dynamic_cast<vm::PhysicalSimpleProjectNode*>(
-                        in->GetProducer(0));
 
-                auto outer_projects = outer_project_op->project();
-                std::vector<node::ExprNode*> outer_exprs;
-                for (size_t i = 0; i < outer_projects.size(); ++i) {
-                    outer_exprs.push_back(
-                        outer_projects.GetExpr(i)->DeepCopy(nm));
-                }
+    if (in->GetProducerCnt() > 0 && nullptr != in->producers()[0]) {
+        if (in->GetOpType() == vm::kPhysicalOpSimpleProject) {
+            switch (in->producers()[0]->GetOpType()) {
+                case vm::kPhysicalOpSimpleProject: {
+                    DLOG(INFO) << "Find consecutive simple projects";
+                    auto nm = plan_ctx_->node_manager();
+                    auto outer_project_op = dynamic_cast<vm::PhysicalSimpleProjectNode*>(in);
+                    auto inner_project_op = dynamic_cast<vm::PhysicalSimpleProjectNode*>(in->GetProducer(0));
 
-                auto inner_projects = inner_project_op->project();
-                std::vector<node::ExprNode*> inner_exprs;
-                for (size_t i = 0; i < inner_projects.size(); ++i) {
-                    inner_exprs.push_back(
-                        inner_projects.GetExpr(i)->DeepCopy(nm));
-                }
+                    auto outer_projects = outer_project_op->project();
+                    std::vector<node::ExprNode*> outer_exprs;
+                    for (size_t i = 0; i < outer_projects.size(); ++i) {
+                        outer_exprs.push_back(outer_projects.GetExpr(i)->DeepCopy(nm));
+                    }
 
-                Status status;
-                passes::ExprReplacer replacer;
-                for (size_t i = 0; i < outer_projects.size(); ++i) {
-                    status = BuildColumnMapping(outer_exprs[i], inner_exprs,
-                                                inner_project_op->schemas_ctx(),
-                                                &replacer);
+                    auto inner_projects = inner_project_op->project();
+                    std::vector<node::ExprNode*> inner_exprs;
+                    for (size_t i = 0; i < inner_projects.size(); ++i) {
+                        inner_exprs.push_back(inner_projects.GetExpr(i)->DeepCopy(nm));
+                    }
+
+                    Status status;
+                    passes::ExprReplacer replacer;
+                    for (size_t i = 0; i < outer_projects.size(); ++i) {
+                        status =
+                            BuildColumnMapping(outer_exprs[i], inner_exprs, inner_project_op->schemas_ctx(), &replacer);
+                        if (!status.isOK()) {
+                            LOG(WARNING) << "Fail to merge simple projects: " << status;
+                            return false;
+                        }
+                    }
+
+                    vm::ColumnProjects new_projects;
+                    for (size_t i = 0; i < outer_projects.size(); ++i) {
+                        node::ExprNode* new_expr;
+                        status = replacer.Replace(outer_exprs[i], &new_expr);
+                        if (!status.isOK()) {
+                            LOG(WARNING) << "Fail to merge simple projects: " << status;
+                            return false;
+                        }
+                        new_projects.Add(outer_projects.GetName(i), new_expr, outer_projects.GetFrame(i));
+                    }
+                    vm::PhysicalSimpleProjectNode* new_project_op = nullptr;
+                    status = plan_ctx_->CreateOp<vm::PhysicalSimpleProjectNode>(
+                        &new_project_op, inner_project_op->GetProducer(0), new_projects);
                     if (!status.isOK()) {
-                        LOG(WARNING)
-                            << "Fail to merge simple projects: " << status;
+                        LOG(WARNING) << "Fail to merge simple projects: " << status;
                         return false;
                     }
+                    *output = new_project_op;
+                    return true;
                 }
-
-                vm::ColumnProjects new_projects;
-                for (size_t i = 0; i < outer_projects.size(); ++i) {
-                    node::ExprNode* new_expr;
-                    status = replacer.Replace(outer_exprs[i], &new_expr);
-                    if (!status.isOK()) {
-                        LOG(WARNING)
-                            << "Fail to merge simple projects: " << status;
-                        return false;
-                    }
-                    new_projects.Add(outer_projects.GetName(i), new_expr,
-                                     outer_projects.GetFrame(i));
-                }
-                vm::PhysicalSimpleProjectNode* new_project_op = nullptr;
-                status = plan_ctx_->CreateOp<vm::PhysicalSimpleProjectNode>(
-                    &new_project_op, inner_project_op->GetProducer(0),
-                    new_projects);
-                if (!status.isOK()) {
-                    LOG(WARNING) << "Fail to merge simple projects: " << status;
-                    return false;
-                }
-                *output = new_project_op;
-                return true;
+                default:
+                    break;
             }
         }
-        default: {
-            return false;
-        }
     }
+    return false;
 }
 
 static Status BuildColumnMapping(

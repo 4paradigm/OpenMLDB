@@ -829,6 +829,14 @@ Status PhysicalWindowAggrerationNode::InitJoinList(PhysicalPlanContext* plan_ctx
     return Status::OK();
 }
 
+std::vector<PhysicalOpNode*> PhysicalWindowAggrerationNode::GetDependents() const {
+    auto list = GetProducers();
+    for (auto& [node, window] : window_unions_.window_unions_) {
+        list.push_back(node);
+    }
+    return list;
+}
+
 bool PhysicalWindowAggrerationNode::AddWindowUnion(PhysicalOpNode* node) {
     if (nullptr == node) {
         LOG(WARNING) << "Fail to add window union : table is null";
@@ -1055,6 +1063,19 @@ Status PhysicalDataProviderNode::InitSchema(PhysicalPlanContext* ctx) {
     return Status::OK();
 }
 
+bool PhysicalDataProviderNode::Equals(const PhysicalOpNode *other) const {
+    if (other == nullptr) {
+        return false;
+    }
+
+    if (other->GetOpType() != kConcreteNodeKind) {
+        return false;
+    }
+
+    auto* rhs = dynamic_cast<const PhysicalDataProviderNode*>(other);
+    return rhs != nullptr && GetDb() == rhs->GetDb() && GetName() == rhs->GetName();
+}
+
 Status PhysicalRequestProviderNode::InitSchema(PhysicalPlanContext* ctx) {
     CHECK_TRUE(table_handler_ != nullptr, common::kPlanError, "InitSchema fail: table handler is null");
     const std::string request_name = table_handler_->GetName();
@@ -1192,6 +1213,8 @@ std::string PhysicalOpNode::SchemaToString(const std::string& tab) const {
     return ss.str();
 }
 
+std::vector<PhysicalOpNode*> PhysicalOpNode::GetDependents() const { return GetProducers(); }
+
 Status PhysicalUnionNode::InitSchema(PhysicalPlanContext* ctx) {
     CHECK_TRUE(!producers_.empty(), common::kPlanError, "Empty union");
     schemas_ctx_.Clear();
@@ -1297,6 +1320,14 @@ void PhysicalRequestUnionNode::Print(std::ostream& output, const std::string& ta
     //    }
     output << "\n";
     PrintChildren(output, tab);
+}
+
+std::vector<PhysicalOpNode*> PhysicalRequestUnionNode::GetDependents() const {
+    auto list = GetProducers();
+    for (auto& [node, window] : window_unions().window_unions_) {
+        list.push_back(node);
+    }
+    return list;
 }
 
 base::Status PhysicalRequestUnionNode::InitSchema(PhysicalPlanContext* ctx) {

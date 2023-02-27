@@ -328,6 +328,22 @@ TEST_F(UdafTest, EwAvgTest) {
     CheckUdf<Nullable<double>, ListRef<Nullable<double>>, ListRef<double>>(
         "ew_avg", nullptr, MakeList<Nullable<double>>({nullptr}), alpha_list);
 }
+TEST_F(UdafTest, VarSampTest) {
+    CheckUdf<double, ListRef<int16_t>>("variance", 4.0, MakeList<int16_t>({0, 2, 4}));
+    CheckUdf<double, ListRef<int32_t>>("var_samp", 4.0, MakeList<int32_t>({0, 2, 4}));
+    CheckUdf<double, ListRef<Nullable<double>>>("var_samp", 4.0, MakeList<Nullable<double>>({0.0, 2, nullptr, 4}));
+    CheckUdf<Nullable<double>, ListRef<double>>("var_samp", nullptr, MakeList<double>({4}));
+    CheckUdf<Nullable<double>, ListRef<double>>("var_samp", nullptr, MakeList<double>({}));
+    CheckUdf<Nullable<double>, ListRef<Nullable<double>>>("var_samp", nullptr, MakeList<Nullable<double>>({nullptr}));
+}
+
+TEST_F(UdafTest, VarPopTest) {
+    CheckUdf<double, ListRef<int32_t>>("var_pop", 6.0, MakeList<int32_t>({0, 3, 6}));
+    CheckUdf<double, ListRef<Nullable<double>>>("var_pop", 6.0, MakeList<Nullable<double>>({0.0, 3, nullptr, 6}));
+    CheckUdf<Nullable<double>, ListRef<double>>("var_pop", 0.0, MakeList<double>({2}));
+    CheckUdf<Nullable<double>, ListRef<double>>("var_pop", nullptr, MakeList<double>({}));
+    CheckUdf<Nullable<double>, ListRef<Nullable<double>>>("var_pop", nullptr, MakeList<Nullable<double>>({nullptr}));
+}
 
 TEST_F(UdafTest, SumTest) {
     CheckUdf<int16_t, ListRef<int16_t>>("sum", 10,
@@ -1057,7 +1073,40 @@ TEST_F(UdafTest, TopNValueAvgCateWhereTest) {
                                MakeList<int32_t>({2, 2, 2, 2, 2, 2, 2}));
 }
 
+TEST_F(UdafTest, Entropy) {
+    CheckUdf<double, ListRef<codec::StringRef>>("entropy", 1.0, MakeList<codec::StringRef>({"A", "A", "B", "B"}));
+    CheckUdf<double, ListRef<openmldb::base::Date>>(
+        "entropy", 1.5, MakeList<openmldb::base::Date>({Date(1999), Date(1999), Date(2000), Date(2001)}));
+    CheckUdf<Nullable<double>, ListRef<codec::StringRef>>("entropy", nullptr, MakeList<codec::StringRef>({}));
+    CheckUdf<Nullable<double>, ListRef<Nullable<int64_t>>>("entropy", nullptr, MakeList<Nullable<int64_t>>({nullptr}));
+}
 
+TEST_F(UdafTest, DrawdownTest) {
+    double expected = 0.75;
+    CheckUdf<double, ListRef<int16_t>>("drawdown", expected, MakeList<int16_t>({4, 10, 2, 5, 8, 1}));
+    CheckUdf<double, ListRef<int32_t>>("drawdown", expected, MakeList<int32_t>({4, 10, 2, 5, 8, 1}));
+    CheckUdf<double, ListRef<int64_t>>("drawdown", expected, MakeList<int64_t>({4, 10, 2, 5, 8, 1}));
+    CheckUdf<double, ListRef<float>>("drawdown", expected, MakeList<float>({4, 10, 2, 5, 8, 1}));
+    CheckUdf<double, ListRef<Nullable<double>>>("drawdown", expected,
+                                                MakeList<Nullable<double>>({4, 10, nullptr, 2, 5, 8, 1}));
+
+    CheckUdf<double, ListRef<Nullable<double>>>("drawdown", 0, MakeList<Nullable<double>>({1}));
+    CheckUdf<double, ListRef<Nullable<double>>>("drawdown", 0, MakeList<Nullable<double>>({8, 1}));
+    CheckUdf<double, ListRef<Nullable<double>>>("drawdown", 1, MakeList<Nullable<double>>({0.0, 1}));
+    CheckUdf<double, ListRef<Nullable<double>>>("drawdown", 0, MakeList<Nullable<double>>({0.0, 0.0}));
+    CheckUdf<double, ListRef<Nullable<double>>>("drawdown", 0, MakeList<Nullable<double>>({1, 1}));
+    CheckUdf<double, ListRef<Nullable<double>>>("drawdown", 1, MakeList<Nullable<double>>({10, 20, 20, 0.0, 1, 10}));
+    CheckUdf<double, ListRef<Nullable<double>>>("drawdown", 0.8, MakeList<Nullable<double>>({10, 50, 20, 5, 4, 10}));
+
+    // nullable
+    CheckUdf<Nullable<double>, ListRef<double>>("drawdown", nullptr, MakeList<double>({}));
+    CheckUdf<Nullable<double>, ListRef<Nullable<double>>>("drawdown", nullptr, MakeList<Nullable<double>>({nullptr}));
+
+    // negative value will be skipped
+    CheckUdf<double, ListRef<Nullable<double>>>("drawdown", 0.5, MakeList<Nullable<double>>({1, -2, 2, -1}));
+    CheckUdf<Nullable<double>, ListRef<Nullable<double>>>("drawdown", nullptr,
+                                                          MakeList<Nullable<double>>({-1, -2, -1}));
+}
 
 }  // namespace udf
 }  // namespace hybridse

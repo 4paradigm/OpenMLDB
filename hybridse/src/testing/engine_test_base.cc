@@ -548,6 +548,9 @@ INSTANTIATE_TEST_SUITE_P(EngineBatchHavingQuery, EngineTest,
                          testing::ValuesIn(sqlcase::InitCases("/cases/query/having_query.yaml")));
 INSTANTIATE_TEST_SUITE_P(EngineBatchWhereGroupQuery, EngineTest,
                          testing::ValuesIn(sqlcase::InitCases("/cases/query/where_group_query.yaml")));
+INSTANTIATE_TEST_SUITE_P(WithClause, EngineTest,
+                         testing::ValuesIn(sqlcase::InitCases("/cases/query/with.yaml")));
+
 INSTANTIATE_TEST_SUITE_P(EngineTestWindowRowQuery, EngineTest,
                         testing::ValuesIn(sqlcase::InitCases("/cases/function/window/test_window_row.yaml")));
 

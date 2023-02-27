@@ -44,24 +44,26 @@ distribute() {
   local cmd="mkdir -p $dest > /dev/null 2>&1"
   run_auto "$host" "$cmd"
 
-  echo "copy $src to $host:$dest"
-  if [[ "$type" = "openmldb" ]]; then
-    for folder in bin sbin conf taskmanager
-    do
-      if [[ "$use_ssh" = true ]]; then
-        rsync -arz "$src/$folder"/ "$host:$dest/$folder"/
-      else
-        rsync -arz "$src/$folder"/ "$dest/$folder"/
-      fi
-    done
+  if [[ "$use_ssh" = true ]]; then
+    full_dest="$host:$dest"
   else
-    if [[ "$use_ssh" = true ]]; then
-      rsync -arz "$src"/* "$host:$dest"/
-      rsync -arz "$home"/sbin/deploy.sh "$host:$dest"/sbin/
+    full_dest=$dest
+  fi
+  echo "copy $src to $host:$dest"
+  if [[ "$type" = "zookeeper" ]]; then
+    rsync -arz "$src"/* "$full_dest"/
+    rsync -arz "$home"/sbin/deploy.sh "$full_dest"/sbin/
+  else
+    if [[ "$type" = "taskmanager" ]]; then
+      dir_list=(bin sbin conf taskmanager)
+      rsync -arz "${SPARK_HOME}/" "$host:${SPARK_HOME}/"
     else
-      rsync -arz "$src"/* "$dest"/
-      rsync -arz "$home"/sbin/deploy.sh "$dest"/sbin/
+      dir_list=(bin sbin conf)
     fi
+    for folder in "${dir_list[@]}"
+    do
+      rsync -arz "$src/$folder"/ "$full_dest/$folder"/
+    done
   fi
 }
 
@@ -134,7 +136,7 @@ else
     tar -xzf ${spark_tar}
     ln -s "$(pwd)"/"${spark_name}" "${SPARK_HOME}"
   else
-    echo "${SPARK_HOME} already exists. Skip deploy spark."
+    echo "${SPARK_HOME} already exists. Skip deploy spark locally"
   fi
 fi
 
@@ -146,8 +148,8 @@ do
   dir=$(echo "$line" | awk -F ' ' '{print $3}')
 
   echo "deploy taskmanager to $host:$port $dir"
-  distribute "$host" "$dir"
-  cmd="cd $dir && OPENMLDB_HOST=$host OPENMLDB_TASKMANAGER_PORT=$port OPENMLDB_ZK_CLUSTER=${OPENMLDB_ZK_CLUSTER} OPENMLDB_ZK_ROOT_PATH=${OPENMLDB_ZK_ROOT_PATH} sbin/deploy.sh taskmanager"
+  distribute "$host" "$dir" "$home" taskmanager
+  cmd="cd $dir && OPENMLDB_VERSION=${OPENMLDB_VERSION} SPARK_HOME=${SPARK_HOME} OPENMLDB_HOST=$host OPENMLDB_TASKMANAGER_PORT=$port OPENMLDB_ZK_CLUSTER=${OPENMLDB_ZK_CLUSTER} OPENMLDB_ZK_ROOT_PATH=${OPENMLDB_ZK_ROOT_PATH} sbin/deploy.sh taskmanager"
   run_auto "$host" "$cmd"
 done
 
