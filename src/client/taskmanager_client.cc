@@ -107,7 +107,7 @@ namespace openmldb::client {
         if (response.code() == 0) {
             *output = response.output();
         }
-        return {response.code(), ""};
+        return {response.code(), response.msg()};
     }
     return st;
 }
