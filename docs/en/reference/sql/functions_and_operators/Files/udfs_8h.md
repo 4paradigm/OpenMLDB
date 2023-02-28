@@ -47,7 +47,9 @@ title: udfs/udfs.h
 | **[distinct_count](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-distinct-count)**()| <br>Compute number of distinct values. |
 | **[double](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-double)**()| <br>Cast string expression to double. |
 | **[drawdown](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-drawdown)**()| <br>Compute drawdown of values. |
-| **[ew_avg](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-ew-avg)**()| <br>Compute exponentially-weighted average of values. It's equivalent to pandas ewm(alpha=<alpha>, adjust=True, ignore_na=True, com=None, span=None, halflife=None, min_periods=0) |
+| **[earth_distance](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-earth-distance)**()| <br>Returns the great circle distance between two points on the surface of the Earth. Km as return unit. add a minus (-) sign if heading west (W) or south (S). |
+| **[entropy](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-entropy)**()| <br>Calculate Shannon entropy of a column of values. Null values are skipped. |
+| **[ew_avg](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-ew-avg)**()| <br>Compute exponentially-weighted average of values. It's equivalent to pandas ewm(alpha={alpha}, adjust=True, ignore_na=True, com=None, span=None, halflife=None, min_periods=0) |
 | **[exp](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-exp)**()| <br>Return the value of e (the base of natural logarithms) raised to the power of expr. |
 | **[farm_fingerprint](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-farm-fingerprint)**()| |
 | **[first_value](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-first-value)**()| <br>Returns the value of expr from the latest row (last row) of the window frame. |
@@ -99,6 +101,7 @@ title: udfs/udfs.h
 | **[minimum](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-minimum)**()| <br>Compute minimum of two arguments. |
 | **[minute](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-minute)**()| <br>Return the minute for a timestamp. |
 | **[month](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-month)**()| <br>Return the month part of a timestamp or date. |
+| **[nth_value_where](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-nth-value-where)**()| <br>Returns the value of expr from the idx th row matches the condition. |
 | **[nvl](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-nvl)**()| |
 | **[nvl2](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-nvl2)**()| <br>nvl2(expr1, expr2, expr3) - Returns expr2 if expr1 is not null, or expr3 otherwise. |
 | **[pmod](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-pmod)**()| <br>Compute pmod of two arguments. If any param is NULL, output NULL. If divisor is 0, output NULL. |
@@ -149,6 +152,9 @@ title: udfs/udfs.h
 | **[unhex](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-unhex)**()| <br>Convert hexadecimal to binary string. |
 | **[unix_timestamp](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-unix-timestamp)**()| <br>Cast date or string expression to unix_timestamp. If empty string or NULL is provided, return current timestamp. |
 | **[upper](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-upper)**()| |
+| **[var_pop](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-var-pop)**()| <br>Compute population variance of values, i.e., `sum((x_i - avg)^2) / n`|
+| **[var_samp](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-var-samp)**()| <br>Compute population variance of values, i.e., `sum((x_i - avg)^2) / (n-1)`|
+| **[variance](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-variance)**()| |
 | **[week](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-week)**()| |
 | **[weekofyear](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-weekofyear)**()| <br>Return the week of year for a timestamp or date. |
 | **[window_split](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-window-split)**()| <br>For each string value from specified column of window, split by delimeter and add segment to output list. Null values are skipped. |
@@ -159,8 +165,17 @@ title: udfs/udfs.h
 
 ## Functions Documentation
 -->
-## Built-in Functions
+## Must read
 
+Types in documents here may a little different from real types in OpenMLDB SQL, for the purpose of simplify. Those type are synonymics.
+
+| Type literal | Same as any of those types in OpenMLDB SQL |
+| ---------    | --------------------------------------     |
+| number       | `int16, int32, int64, float, double`  |
+| any          | `bool, int16, int32, int64, float, double, string, timestamp, date` |
+| list<number> | `list<int16>, list<int32>, list<int64>, list<float>, list<double>` |
+
+## Built-in Functions
 
 ### function abs
 
@@ -784,11 +799,7 @@ select concat_ws("-", "1", 2, 3, 4, 5.6, 7.8, Timestamp(1590115420000L));
 
 **Supported Types**:
 
-* [`bool`, ...]
-* [`date`, ...]
-* [`number`, ...]
-* [`string`, ...]
-* [`timestamp`, ...] 
+* [`any`, ...] 
 
 ### function cos
 
@@ -1461,6 +1472,81 @@ SELECT drawdown(value) OVER w;
 
 * [`list<number>`] 
 
+### function earth_distance
+
+```cpp
+earth_distance()
+```
+
+**Description**:
+
+Returns the great circle distance between two points on the surface of the Earth. Km as return unit. add a minus (-) sign if heading west (W) or south (S). 
+
+**Parameters**: 
+
+  * **ll1** First latitude in degree 
+  * **ll2** First longitude in degree 
+  * **rl1** second latitude in degree 
+  * **rl2** Second longitude in degree
+
+
+**Since**:
+0.8.0
+
+
+
+Example:
+
+```sql
+
+select earth_distance(40, 73, 41, 74)
+-- output 139.7
+```
+
+
+**Supported Types**:
+
+* [`any`, `any`, `any`, `any`] 
+
+### function entropy
+
+```cpp
+entropy()
+```
+
+**Description**:
+
+Calculate Shannon entropy of a column of values. Null values are skipped. 
+
+**Parameters**: 
+
+  * **value** Specify value column to aggregate on.
+
+
+**Since**:
+0.8.0
+
+
+
+Example:
+
+| col1 | | 1 | | 1 | | 2 | | 3 |
+
+```sql
+
+select entropy(col1) from t1
+-- output 1.5
+```
+
+
+**Supported Types**:
+
+* [`list<bool>`]
+* [`list<date>`]
+* [`list<number>`]
+* [`list<string>`]
+* [`list<timestamp>`] 
+
 ### function ew_avg
 
 ```cpp
@@ -1469,7 +1555,7 @@ ew_avg()
 
 **Description**:
 
-Compute exponentially-weighted average of values. It's equivalent to pandas ewm(alpha=<alpha>, adjust=True, ignore_na=True, com=None, span=None, halflife=None, min_periods=0) 
+Compute exponentially-weighted average of values. It's equivalent to pandas ewm(alpha={alpha}, adjust=True, ignore_na=True, com=None, span=None, halflife=None, min_periods=0) 
 
 **Parameters**: 
 
@@ -1765,11 +1851,7 @@ SELECT hash64(cast(90 as int));
 
 **Supported Types**:
 
-* [`bool`]
-* [`date`]
-* [`number`]
-* [`string`]
-* [`timestamp`] 
+* [`any`] 
 
 ### function hex
 
@@ -1852,11 +1934,7 @@ select identity(1);
 
 **Supported Types**:
 
-* [`bool`]
-* [`date`]
-* [`number`]
-* [`string`]
-* [`timestamp`] 
+* [`any`] 
 
 ### function if_null
 
@@ -1889,31 +1967,7 @@ SELECT if_null("hello", "default"), if_null(cast(null as string), "default");
 
 **Supported Types**:
 
-* [`bool`, `bool`]
-* [`bool`, `date`]
-* [`bool`, `number`]
-* [`bool`, `string`]
-* [`bool`, `timestamp`]
-* [`date`, `bool`]
-* [`date`, `date`]
-* [`date`, `number`]
-* [`date`, `string`]
-* [`date`, `timestamp`]
-* [`number`, `bool`]
-* [`number`, `date`]
-* [`number`, `number`]
-* [`number`, `string`]
-* [`number`, `timestamp`]
-* [`string`, `bool`]
-* [`string`, `date`]
-* [`string`, `number`]
-* [`string`, `string`]
-* [`string`, `timestamp`]
-* [`timestamp`, `bool`]
-* [`timestamp`, `date`]
-* [`timestamp`, `number`]
-* [`timestamp`, `string`]
-* [`timestamp`, `timestamp`] 
+* [`any`, `any`] 
 
 ### function ifnull
 
@@ -2103,11 +2157,7 @@ Check if input value is null, return bool.
 
 **Supported Types**:
 
-* [`bool`]
-* [`date`]
-* [`number`]
-* [`string`]
-* [`timestamp`] 
+* [`any`] 
 
 ### function isnull
 
@@ -2390,17 +2440,9 @@ SELECT LOG(10,100);
 **Supported Types**:
 
 * [`bool`]
-* [`bool`, `bool`]
-* [`bool`, `date`]
-* [`bool`, `number`]
-* [`bool`, `string`]
-* [`bool`, `timestamp`]
+* [`bool`, `any`]
 * [`number`]
-* [`number`, `bool`]
-* [`number`, `date`]
-* [`number`, `number`]
-* [`number`, `string`]
-* [`number`, `timestamp`] 
+* [`number`, `any`] 
 
 ### function log10
 
@@ -2688,20 +2730,16 @@ Compute maximum of two arguments.
 
 **Supported Types**:
 
+* [`any`, `string`]
 * [`bool`, `bool`]
 * [`bool`, `number`]
-* [`bool`, `string`]
 * [`date`, `date`]
-* [`date`, `string`]
 * [`number`, `bool`]
 * [`number`, `number`]
-* [`number`, `string`]
 * [`string`, `bool`]
 * [`string`, `date`]
 * [`string`, `number`]
-* [`string`, `string`]
 * [`string`, `timestamp`]
-* [`timestamp`, `string`]
 * [`timestamp`, `timestamp`] 
 
 ### function median
@@ -2943,20 +2981,16 @@ Compute minimum of two arguments.
 
 **Supported Types**:
 
+* [`any`, `string`]
 * [`bool`, `bool`]
 * [`bool`, `number`]
-* [`bool`, `string`]
 * [`date`, `date`]
-* [`date`, `string`]
 * [`number`, `bool`]
 * [`number`, `number`]
-* [`number`, `string`]
 * [`string`, `bool`]
 * [`string`, `date`]
 * [`string`, `number`]
-* [`string`, `string`]
 * [`string`, `timestamp`]
-* [`timestamp`, `string`]
 * [`timestamp`, `timestamp`] 
 
 ### function minute
@@ -3016,6 +3050,63 @@ select month(timestamp(1590115420000));
 * [`int64`]
 * [`timestamp`] 
 
+### function nth_value_where
+
+```cpp
+nth_value_where()
+```
+
+**Description**:
+
+Returns the value of expr from the idx th row matches the condition. 
+
+**Parameters**: 
+
+  * **value** Expr of the matched row 
+  * **idx** Idx th matched row (start from 1 or -1). If positive, count from first row of window; if negative, count from last row of window; 0 is invalid, results NULL. 
+  * **cond** Match expression of the row.
+
+
+**Since**:
+0.8.0
+
+
+
+Example:
+
+```sql
+
+select col1, cond, gp, nth_value_where(col1, 2, cond) over (partition by gp order by col1 rows between 10 preceding and current row) as agg from t1;
+```
+
+
+| col1    | cond    | gp    | agg     |
+|  -------- | -------- | -------- | -------- |
+| 1    | true    | 100    | NULL     |
+| 2    | false    | 100    | NULL     |
+| 3    | NULL    | 100    | NULL     |
+| 4    | true    | 100    | 4    |
+
+
+
+**Supported Types**:
+
+* [`list<bool>`, `list<int16>`, `list<bool>`]
+* [`list<bool>`, `list<int32>`, `list<bool>`]
+* [`list<bool>`, `list<int64>`, `list<bool>`]
+* [`list<date>`, `list<int16>`, `list<bool>`]
+* [`list<date>`, `list<int32>`, `list<bool>`]
+* [`list<date>`, `list<int64>`, `list<bool>`]
+* [`list<number>`, `list<int16>`, `list<bool>`]
+* [`list<number>`, `list<int32>`, `list<bool>`]
+* [`list<number>`, `list<int64>`, `list<bool>`]
+* [`list<string>`, `list<int16>`, `list<bool>`]
+* [`list<string>`, `list<int32>`, `list<bool>`]
+* [`list<string>`, `list<int64>`, `list<bool>`]
+* [`list<timestamp>`, `list<int16>`, `list<bool>`]
+* [`list<timestamp>`, `list<int32>`, `list<bool>`]
+* [`list<timestamp>`, `list<int64>`, `list<bool>`] 
+
 ### function nvl
 
 ```cpp
@@ -3059,131 +3150,7 @@ SELECT nvl2(NULL, 2, 1);
 
 **Supported Types**:
 
-* [`bool`, `bool`, `bool`]
-* [`bool`, `bool`, `date`]
-* [`bool`, `bool`, `number`]
-* [`bool`, `bool`, `string`]
-* [`bool`, `bool`, `timestamp`]
-* [`bool`, `date`, `bool`]
-* [`bool`, `date`, `date`]
-* [`bool`, `date`, `number`]
-* [`bool`, `date`, `string`]
-* [`bool`, `date`, `timestamp`]
-* [`bool`, `number`, `bool`]
-* [`bool`, `number`, `date`]
-* [`bool`, `number`, `number`]
-* [`bool`, `number`, `string`]
-* [`bool`, `number`, `timestamp`]
-* [`bool`, `string`, `bool`]
-* [`bool`, `string`, `date`]
-* [`bool`, `string`, `number`]
-* [`bool`, `string`, `string`]
-* [`bool`, `string`, `timestamp`]
-* [`bool`, `timestamp`, `bool`]
-* [`bool`, `timestamp`, `date`]
-* [`bool`, `timestamp`, `number`]
-* [`bool`, `timestamp`, `string`]
-* [`bool`, `timestamp`, `timestamp`]
-* [`date`, `bool`, `bool`]
-* [`date`, `bool`, `date`]
-* [`date`, `bool`, `number`]
-* [`date`, `bool`, `string`]
-* [`date`, `bool`, `timestamp`]
-* [`date`, `date`, `bool`]
-* [`date`, `date`, `date`]
-* [`date`, `date`, `number`]
-* [`date`, `date`, `string`]
-* [`date`, `date`, `timestamp`]
-* [`date`, `number`, `bool`]
-* [`date`, `number`, `date`]
-* [`date`, `number`, `number`]
-* [`date`, `number`, `string`]
-* [`date`, `number`, `timestamp`]
-* [`date`, `string`, `bool`]
-* [`date`, `string`, `date`]
-* [`date`, `string`, `number`]
-* [`date`, `string`, `string`]
-* [`date`, `string`, `timestamp`]
-* [`date`, `timestamp`, `bool`]
-* [`date`, `timestamp`, `date`]
-* [`date`, `timestamp`, `number`]
-* [`date`, `timestamp`, `string`]
-* [`date`, `timestamp`, `timestamp`]
-* [`number`, `bool`, `bool`]
-* [`number`, `bool`, `date`]
-* [`number`, `bool`, `number`]
-* [`number`, `bool`, `string`]
-* [`number`, `bool`, `timestamp`]
-* [`number`, `date`, `bool`]
-* [`number`, `date`, `date`]
-* [`number`, `date`, `number`]
-* [`number`, `date`, `string`]
-* [`number`, `date`, `timestamp`]
-* [`number`, `number`, `bool`]
-* [`number`, `number`, `date`]
-* [`number`, `number`, `number`]
-* [`number`, `number`, `string`]
-* [`number`, `number`, `timestamp`]
-* [`number`, `string`, `bool`]
-* [`number`, `string`, `date`]
-* [`number`, `string`, `number`]
-* [`number`, `string`, `string`]
-* [`number`, `string`, `timestamp`]
-* [`number`, `timestamp`, `bool`]
-* [`number`, `timestamp`, `date`]
-* [`number`, `timestamp`, `number`]
-* [`number`, `timestamp`, `string`]
-* [`number`, `timestamp`, `timestamp`]
-* [`string`, `bool`, `bool`]
-* [`string`, `bool`, `date`]
-* [`string`, `bool`, `number`]
-* [`string`, `bool`, `string`]
-* [`string`, `bool`, `timestamp`]
-* [`string`, `date`, `bool`]
-* [`string`, `date`, `date`]
-* [`string`, `date`, `number`]
-* [`string`, `date`, `string`]
-* [`string`, `date`, `timestamp`]
-* [`string`, `number`, `bool`]
-* [`string`, `number`, `date`]
-* [`string`, `number`, `number`]
-* [`string`, `number`, `string`]
-* [`string`, `number`, `timestamp`]
-* [`string`, `string`, `bool`]
-* [`string`, `string`, `date`]
-* [`string`, `string`, `number`]
-* [`string`, `string`, `string`]
-* [`string`, `string`, `timestamp`]
-* [`string`, `timestamp`, `bool`]
-* [`string`, `timestamp`, `date`]
-* [`string`, `timestamp`, `number`]
-* [`string`, `timestamp`, `string`]
-* [`string`, `timestamp`, `timestamp`]
-* [`timestamp`, `bool`, `bool`]
-* [`timestamp`, `bool`, `date`]
-* [`timestamp`, `bool`, `number`]
-* [`timestamp`, `bool`, `string`]
-* [`timestamp`, `bool`, `timestamp`]
-* [`timestamp`, `date`, `bool`]
-* [`timestamp`, `date`, `date`]
-* [`timestamp`, `date`, `number`]
-* [`timestamp`, `date`, `string`]
-* [`timestamp`, `date`, `timestamp`]
-* [`timestamp`, `number`, `bool`]
-* [`timestamp`, `number`, `date`]
-* [`timestamp`, `number`, `number`]
-* [`timestamp`, `number`, `string`]
-* [`timestamp`, `number`, `timestamp`]
-* [`timestamp`, `string`, `bool`]
-* [`timestamp`, `string`, `date`]
-* [`timestamp`, `string`, `number`]
-* [`timestamp`, `string`, `string`]
-* [`timestamp`, `string`, `timestamp`]
-* [`timestamp`, `timestamp`, `bool`]
-* [`timestamp`, `timestamp`, `date`]
-* [`timestamp`, `timestamp`, `number`]
-* [`timestamp`, `timestamp`, `string`]
-* [`timestamp`, `timestamp`, `timestamp`] 
+* [`any`, `any`, `any`] 
 
 ### function pmod
 
@@ -5052,6 +5019,99 @@ upper()
 
 
 alias to ucase 
+
+### function var_pop
+
+```cpp
+var_pop()
+```
+
+**Description**:
+
+Compute population variance of values, i.e., `sum((x_i - avg)^2) / n`
+
+**Parameters**: 
+
+  * **value** Specify value column to aggregate on.
+
+
+**Since**:
+0.8.0
+
+
+
+Example:
+
+
+| value     |
+|  -------- |
+| 0     |
+| 3     |
+| 6    |
+
+
+```sql
+
+SELECT var_pop(value) OVER w;
+-- output 6.0
+```
+
+
+**Supported Types**:
+
+* [`list<number>`] 
+
+### function var_samp
+
+```cpp
+var_samp()
+```
+
+**Description**:
+
+Compute population variance of values, i.e., `sum((x_i - avg)^2) / (n-1)`
+
+**Parameters**: 
+
+  * **value** Specify value column to aggregate on.
+
+
+**Since**:
+0.8.0
+
+
+
+Example:
+
+
+| value     |
+|  -------- |
+| 0     |
+| 3     |
+| 6    |
+
+
+```sql
+
+SELECT var_samp(value) OVER w;
+-- output 9.0
+```
+
+
+**Supported Types**:
+
+* [`list<number>`] 
+
+### function variance
+
+```cpp
+variance()
+```
+
+**Description**:
+
+
+alias to var_samp 
 
 ### function week
 
