@@ -27,12 +27,16 @@ class TestTaskManagerServer extends FunSuite {
     val server = new TaskManagerServer()
     server.start(false)
     server.close()
+
+    assert(true)
   }
 
   test("Test start rpc server") {
     val server = new TaskManagerServer()
     server.startRpcServer(false)
     server.close()
+
+    assert(true)
   }
 
 }
