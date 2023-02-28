@@ -23,6 +23,7 @@ import com._4paradigm.openmldb.proto.Common;
 import com._4paradigm.openmldb.taskmanager.JobInfoManager;
 import com._4paradigm.openmldb.taskmanager.LogManager;
 import com._4paradigm.openmldb.taskmanager.OpenmldbBatchjobManager;
+import com._4paradigm.openmldb.taskmanager.config.ConfigException;
 import com._4paradigm.openmldb.taskmanager.config.TaskManagerConfig;
 import com._4paradigm.openmldb.taskmanager.dao.JobInfo;
 import com._4paradigm.openmldb.taskmanager.server.JobResultSaver;
@@ -41,37 +42,46 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * The implementation of protobuf APIs.
+ */
 @Slf4j
 public class TaskManagerImpl implements TaskManagerInterface {
     private static final Log logger = LogFactory.getLog(TaskManagerImpl.class);
 
-    private volatile static ZKClient zkClient;
-    private volatile static JobResultSaver jobResultSaver;
+    private volatile JobResultSaver jobResultSaver;
 
-    static {
-        try {
-            zkClient = new ZKClient(ZKConfig.builder()
-                    .cluster(TaskManagerConfig.ZK_CLUSTER)
-                    .namespace(TaskManagerConfig.ZK_ROOT_PATH)
-                    .sessionTimeout(TaskManagerConfig.ZK_SESSION_TIMEOUT)
-                    .baseSleepTime(TaskManagerConfig.ZK_BASE_SLEEP_TIME)
-                    .connectionTimeout(TaskManagerConfig.ZK_CONNECTION_TIMEOUT)
-                    .maxConnectWaitTime(TaskManagerConfig.ZK_MAX_CONNECT_WAIT_TIME)
-                    .maxRetries(TaskManagerConfig.ZK_MAX_RETRIES)
-                    .build());
-            zkClient.connect();
-        } catch (Exception e) {
-            zkClient = null;
-            e.printStackTrace();
-        }
+    /**
+     * Constructor of TaskManagerImpl.
+     *
+     * @throws InterruptedException
+     * @throws ConfigException
+     */
+    public TaskManagerImpl() throws InterruptedException, ConfigException {
         jobResultSaver = new JobResultSaver();
-    }
 
-    public TaskManagerImpl() {
+        TaskManagerConfig.parse();
+
         initExternalFunction();
     }
 
-    private void initExternalFunction() {
+    /**
+     * Read ZooKeeper path and load UDF libraries.
+     *
+     * @throws InterruptedException
+     */
+    private void initExternalFunction() throws InterruptedException {
+        ZKClient zkClient = new ZKClient(ZKConfig.builder()
+                .cluster(TaskManagerConfig.ZK_CLUSTER)
+                .namespace(TaskManagerConfig.ZK_ROOT_PATH)
+                .sessionTimeout(TaskManagerConfig.ZK_SESSION_TIMEOUT)
+                .baseSleepTime(TaskManagerConfig.ZK_BASE_SLEEP_TIME)
+                .connectionTimeout(TaskManagerConfig.ZK_CONNECTION_TIMEOUT)
+                .maxConnectWaitTime(TaskManagerConfig.ZK_MAX_CONNECT_WAIT_TIME)
+                .maxRetries(TaskManagerConfig.ZK_MAX_RETRIES)
+                .build());
+        zkClient.connect();
+
         String funPath = TaskManagerConfig.ZK_ROOT_PATH + "/data/function";
         try {
             List<String> funNames = zkClient.getChildren(funPath);
@@ -149,12 +159,14 @@ public class TaskManagerImpl implements TaskManagerInterface {
     @Override
     public TaskManager.ShowJobResponse ShowJob(TaskManager.ShowJobRequest request) {
         try {
+            TaskManager.ShowJobResponse.Builder responseBuilder = TaskManager.ShowJobResponse.newBuilder();
+
             Option<JobInfo> jobInfo = JobInfoManager.getJob(request.getId());
 
-            TaskManager.ShowJobResponse.Builder responseBuilder = TaskManager.ShowJobResponse.newBuilder()
-                    .setCode(StatusCode.SUCCESS);
-            if (jobInfo.nonEmpty()) {
-                responseBuilder.setJob(jobInfoToProto(jobInfo.get()));
+            if (jobInfo.isEmpty()) {
+                responseBuilder.setCode(StatusCode.FAILED).setMsg("Fail to get job with id: " + request.getId());
+            } else {
+                responseBuilder.setCode(StatusCode.SUCCESS).setJob(jobInfoToProto(jobInfo.get()));;
             }
 
             return responseBuilder.build();
@@ -214,9 +226,19 @@ public class TaskManagerImpl implements TaskManagerInterface {
             confMap.put("spark.openmldb.savejobresult.resultid", String.valueOf(resultId));
             JobInfo jobInfo = OpenmldbBatchjobManager.runBatchSql(request.getSql(), confMap,
                     request.getDefaultDb());
-            // wait for all files of result saved and read them, large timeout
-            String output = jobResultSaver.readResult(resultId, TaskManagerConfig.BATCH_JOB_RESULT_MAX_WAIT_TIME);
-            return TaskManager.RunBatchSqlResponse.newBuilder().setCode(StatusCode.SUCCESS).setOutput(output).build();
+
+            // Check job state and return failed status code if the Spark job failed
+            int jobId = jobInfo.getId();
+            JobInfo finalJobInfo = JobInfoManager.getJob(jobId).get();
+            if (finalJobInfo.isSuccess()) {
+                // wait for all files of result saved and read them, large timeout
+                String output = jobResultSaver.readResult(resultId, TaskManagerConfig.BATCH_JOB_RESULT_MAX_WAIT_TIME);
+                return TaskManager.RunBatchSqlResponse.newBuilder().setCode(StatusCode.SUCCESS).setOutput(output).build();
+            } else {
+                String errorMsg = String.format("The job %d fail and use 'SHOW JOBLOG %d' for more info", jobId, jobId);
+                return TaskManager.RunBatchSqlResponse.newBuilder().setCode(StatusCode.FAILED).setMsg(errorMsg)
+                        .build();
+            }
         } catch (Exception e) {
             e.printStackTrace();
             return TaskManager.RunBatchSqlResponse.newBuilder().setCode(StatusCode.FAILED).setMsg(e.getMessage())
@@ -342,16 +364,23 @@ public class TaskManagerImpl implements TaskManagerInterface {
 
     @Override
     public TaskManager.GetVersionResponse GetVersion(TaskManager.EmptyMessage request) {
+        String taskmanagerVersion = "unknown";
+        String batchVersion = "unknown";
+
         try {
-            String taskmanagerVersion = VersionCli.getVersion();
-            String batchVersion = VersionUtil.getBatchVersion();
-            return TaskManager.GetVersionResponse.newBuilder().setTaskmanagerVersion(taskmanagerVersion)
-                    .setBatchVersion(batchVersion).build();
+            taskmanagerVersion = VersionCli.getVersion();
         } catch (Exception e) {
-            return TaskManager.GetVersionResponse.newBuilder().setTaskmanagerVersion("unknown")
-                    .setBatchVersion("unknown").build();
+            logger.warn("Fail to get TaskManager version, message: " + e.getMessage());
         }
 
+        try {
+            batchVersion = VersionUtil.getBatchVersion();
+        } catch (Exception e) {
+            logger.warn("Fail to get batch engine version, message: " + e.getMessage());
+        }
+
+        return TaskManager.GetVersionResponse.newBuilder().setTaskmanagerVersion(taskmanagerVersion)
+                .setBatchVersion(batchVersion).build();
     }
 
     @Override

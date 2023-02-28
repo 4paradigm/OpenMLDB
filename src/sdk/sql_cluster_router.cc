@@ -1976,11 +1976,11 @@ base::Status SQLClusterRouter::HandleSQLCreateTable(hybridse::node::CreatePlanNo
         ::openmldb::taskmanager::JobInfo job_info;
         int job_timeout = GetJobTimeout();
         std::string output;
-        
+
         ::openmldb::base::Status status = ExecuteOfflineQueryGetOutput(sql, config, db, job_timeout, &output);
-        // TODO(tobe): Can not get actual status of Spark job, always return success if the job is submitted
+
         if (!status.OK()) {
-            LOG(ERROR) << "Fail to create table, error msage: " + status.msg;
+            LOG(ERROR) << "Fail to create table, error message: " + status.msg;
             return base::Status(base::ReturnCode::kSQLCmdRunError, status.msg);
         }
     }

@@ -16,11 +16,6 @@ src/fe_version.h
 src/hyhridse_version.h
 
 # ignore docgen
-tools/documentation/udf_doxygen/html
-tools/documentation/udf_doxygen/udfs
-tools/documentation/udf_doxygen/udf
-tools/documentation/udf_doxygen/udfgen
-tools/documentation/udf_doxygen/xml
 style.xml
 hybridse_version.h
 intermediate_cicd_artifact_.tar.gz

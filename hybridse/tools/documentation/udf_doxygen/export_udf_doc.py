@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
+"""
+generate udf document from native source
+"""
+
 # -*- coding: utf-8 -*-
-# Copyright 2021 4Paradigm
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,25 +18,27 @@
 # limitations under the License.
 
 import os
+import sys
 import subprocess
 import yaml
 
 DOXYGEN_DIR = os.path.abspath(os.path.dirname(__file__))
 HOME_DIR = os.path.join(DOXYGEN_DIR, "../../../..")
 BUILD_DIR = os.path.abspath(os.path.join(HOME_DIR, "build"))
-TMP_DIR = os.path.join(BUILD_DIR, "hybridse/docs/tmp")
+TMP_DIR = DOXYGEN_DIR
 
 
 def export_yaml():
     if not os.path.exists(TMP_DIR):
         os.makedirs(TMP_DIR)
     ret = subprocess.call([
-        os.path.join(BUILD_DIR, "hybridse/src/export_udf_info"), "--output_dir", TMP_DIR, "--output_file",
+        os.path.join(
+            BUILD_DIR, "hybridse/src/export_udf_info"), "--output_dir", TMP_DIR, "--output_file",
         "udf_defs.yaml"
     ])
     if ret != 0:
         print("Invoke native export udf binary failed")
-        exit(ret)
+        sys.exit(ret)
 
 
 def process_doc(doc):
@@ -53,12 +58,13 @@ def process_doc(doc):
 def merge_arith_types(signature_set):
     arith_types = frozenset(["`int16`", "`int32`", "`int64`", "`float`", "`double`"])
     arith_list_types = frozenset(["`list<int16>`", "`list<int32>`", "`list<int64>`", "`list<float>`", "`list<double>`"])
+    all_basic_types = frozenset(["`bool`", "`int16`", "`int32`", "`int64`",
+                                "`float`", "`double`", "`string`", "`timestamp`", "`date`"])
     found = True
 
-    def __find_and_merge(arg_types, idx, list_ty, merge_ty):
+    def _find_and_merge(arg_types, idx, list_ty, merge_ty):
         merge_keys = []
         if arg_types[idx] in list_ty:
-            # print("check for " + ", ".join(arg_types))
             for dtype in list_ty:
                 origin = arg_types[idx]
                 arg_types[idx] = dtype
@@ -66,7 +72,6 @@ def merge_arith_types(signature_set):
                 arg_types[idx] = origin
                 merge_keys.append(cur_key)
                 if not cur_key in signature_set:
-                    # print(cur_key + " not defined: " + str(idx))
                     break
             else:
                 for key in merge_keys:
@@ -82,10 +87,14 @@ def merge_arith_types(signature_set):
         for key in signature_set:
             arg_types = [_ for _ in signature_set[key]]
             for i in range(len(arg_types)):
-                if __find_and_merge(arg_types, i, arith_types, "`number`"):
+                if _find_and_merge(arg_types, i, all_basic_types, "`any`"):
+                    # NOTE: must merge any before number
                     found = True
                     break
-                elif __find_and_merge(arg_types, i, arith_list_types, "`list<number>`"):
+                elif _find_and_merge(arg_types, i, arith_types, "`number`"):
+                    found = True
+                    break
+                elif _find_and_merge(arg_types, i, arith_list_types, "`list<number>`"):
                     found = True
                     break
             if found:
@@ -94,38 +103,42 @@ def merge_arith_types(signature_set):
     return signature_set
 
 
+types_map = {
+    "bool": "`bool`",
+    "int16": "`int16`",
+    "int32": "`int32`",
+    "int64": "`int64`",
+    "float": "`float`",
+    "double": "`double`",
+    "timestamp": "`timestamp`",
+    "date": "`date`",
+    "row": "`row`",
+    "string": "`string`",
+    "list_bool": "`list<bool>`",
+    "list_number": "`list<number>`",
+    "list_timestamp": "`list<timestamp>`",
+    "list_date": "`list<date>`",
+    "list_row": "`list<row>`",
+    "list_int16": "`list<int16>`",
+    "list_int32": "`list<int32>`",
+    "list_int64": "`list<int64>`",
+    "list_float": "`list<float>`",
+    "list_double": "`list<double>`",
+    "list_string": "`list<string>`",
+}
+
+
 def make_header():
-    with open(os.path.join(TMP_DIR, "udf_defs.yaml")) as yaml_file:
+    with open(os.path.join(TMP_DIR, "udf_defs.yaml"), mode="r", encoding="utf-8") as yaml_file:
         udf_defs = yaml.safe_load(yaml_file.read())
 
     if not os.path.exists(DOXYGEN_DIR + "/udfs"):
         os.makedirs(DOXYGEN_DIR + "/udfs")
-    fake_header = os.path.join(DOXYGEN_DIR + "/udfs/udfs.h")
 
-    types_map = {
-        "bool": "`bool`",
-        "int16": "`int16`",
-        "int32": "`int32`",
-        "int64": "`int64`",
-        "float": "`float`",
-        "double": "`double`",
-        "timestamp": "`timestamp`",
-        "date": "`date`",
-        "row": "`row`",
-        "string": "`string`",
-        "list_bool": "`list<bool>`",
-        "list_number": "`list<number>`",
-        "list_timestamp": "`list<timestamp>`",
-        "list_date": "`list<date>`",
-        "list_row": "`list<row>`",
-        "list_int16": "`list<int16>`",
-        "list_int32": "`list<int32>`",
-        "list_int64": "`list<int64>`",
-        "list_float": "`list<float>`",
-        "list_double": "`list<double>`",
-        "list_string": "`list<string>`",
-    }
-    with open(fake_header, "w") as header_file:
+    fake_header = os.path.join(DOXYGEN_DIR + "/udfs/udfs.h")
+    with open(fake_header, "w", encoding="utf-8") as header_file:
+        # generate the helper function entry first
+
         for name in sorted(udf_defs.keys()):
             content = "/**\n"
             items = udf_defs[name]
@@ -143,8 +156,10 @@ def make_header():
                 if doc.strip() != "":
                     content += process_doc(doc)
                     break
+            # \*\* is required to generate bold style line in markdown
+            # pylint: disable=anomalous-backslash-in-string
             content += "\n\n\*\*Supported Types**:\n"
-            sig_set = dict()
+            sig_set = {}
             sig_list = []
             for item in items:
                 is_variadic = item["is_variadic"]
@@ -154,7 +169,6 @@ def make_header():
                         arg_types.append("...")
                     return_type = sig["return_type"]
                     for i in range(len(arg_types)):
-                        print("arg_types[i]: " + arg_types[i])
                         if arg_types[i] in types_map:
                             arg_types[i] = types_map[arg_types[i]]
                     key = ", ".join(arg_types)
@@ -166,7 +180,6 @@ def make_header():
 
             sig_list = sorted([_ for _ in sig_set])
             for sig in sig_list:
-                print("sig: " + sig)
                 content += "- [" + sig + "]\n"
 
             content += "\n*/\n"
@@ -178,7 +191,7 @@ def doxygen():
     ret = subprocess.call(["doxygen"], cwd=DOXYGEN_DIR)
     if ret != 0:
         print("Invoke doxygen failed")
-        exit(ret)
+        sys.exit(ret)
 
 
 if __name__ == "__main__":

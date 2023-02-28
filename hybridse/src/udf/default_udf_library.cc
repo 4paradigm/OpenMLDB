@@ -2793,7 +2793,7 @@ void DefaultUdfLibrary::InitUdaf() {
     RegisterUdafTemplate<EwAvgUdafDef>("ew_avg")
         .doc(R"(
             @brief Compute exponentially-weighted average of values.
-            It's equivalent to pandas ewm(alpha=<alpha>, adjust=True, ignore_na=True, com=None, span=None, halflife=None, min_periods=0)
+            It's equivalent to pandas ewm(alpha={alpha}, adjust=True, ignore_na=True, com=None, span=None, halflife=None, min_periods=0)
 
             It requires that values are ordered so that it can only be used with WINDOW (PARTITION BY xx ORDER BY xx).
             Undefined behaviour if it is used with GROUP BY and full table aggregation.
