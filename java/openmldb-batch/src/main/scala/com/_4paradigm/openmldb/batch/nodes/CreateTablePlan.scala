@@ -28,7 +28,13 @@ object CreateTablePlan {
   def gen(ctx: PlanContext, node: PhysicalCreateTableNode): SparkInstance = {
 
     val tableName = node.getData_.GetTableName()
-    val dbName = node.getData_.GetDatabase()
+
+    val dbName = if (!node.getData_.GetDatabase().equals("")) {
+      node.getData_.GetDatabase()
+    } else {
+      logger.info(s"Use the default db name: ${ctx.getConf.defaultDb}")
+      ctx.getConf.defaultDb
+    }
 
     val likeKind = node.getData_.GetLikeKind()
     if (node.getData_.getLike_clause_ == null) {
