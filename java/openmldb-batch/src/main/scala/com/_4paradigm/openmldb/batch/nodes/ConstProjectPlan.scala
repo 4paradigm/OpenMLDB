@@ -21,10 +21,11 @@ import com._4paradigm.hybridse.node.{ConstNode, ExprType, DataType => HybridseDa
 import com._4paradigm.hybridse.vm.PhysicalConstProjectNode
 import com._4paradigm.openmldb.batch.{PlanContext, SparkInstance}
 import com._4paradigm.openmldb.batch.utils.{DataTypeUtil, ExpressionUtil}
-import org.apache.spark.sql.Column
-import org.apache.spark.sql.functions.{to_date, to_timestamp, when}
+import org.apache.spark.sql.{Column, SparkSession}
+import org.apache.spark.sql.functions.{to_date, when}
 import org.apache.spark.sql.types.{BooleanType, DateType, DoubleType, FloatType, IntegerType, LongType, ShortType,
   StringType, TimestampType}
+import java.sql.Timestamp
 import scala.collection.JavaConverters.asScalaBufferConverter
 
 object ConstProjectPlan {
@@ -52,7 +53,7 @@ object ConstProjectPlan {
           val column = ExpressionUtil.constExprToSparkColumn(constNode)
 
           // Match column type for output type
-          castSparkOutputCol(column, constNode.GetDataType(), outputColTypeList(i))
+          castSparkOutputCol(ctx.getSparkSession, column, constNode.GetDataType(), outputColTypeList(i))
             .alias(outputColName)
 
         case _ => throw new UnsupportedHybridSeException(
@@ -66,9 +67,25 @@ object ConstProjectPlan {
     SparkInstance.createConsideringIndex(ctx, node.GetNodeId(), result)
   }
 
+  def stringToTimestamp: String => Timestamp = (input: String) => {
+    if (input == null) {
+      null.asInstanceOf[Timestamp]
+    } else if (!Array(19, 10,8).contains(input.length)) {
+      null.asInstanceOf[Timestamp]
+    } else {
+      val stringPattern = input.length match {
+        case 19 => "yyyy-MM-dd HH:mm:ss"
+        case 10 => "yyyy-MM-dd"
+        case 8 => "yyyyMMdd"
+      }
 
+      val format = new java.text.SimpleDateFormat(stringPattern)
+      new Timestamp(format.parse(input).getTime)
+    }
+  }
 
-  def castSparkOutputCol(inputCol: Column,
+  def castSparkOutputCol(spark: SparkSession,
+                         inputCol: Column,
                          fromType: HybridseDataType,
                          targetType: HybridseDataType): Column = {
     if (fromType == targetType) {
@@ -184,7 +201,9 @@ object ConstProjectPlan {
             inputCol.cast(LongType).divide(1000).cast(TimestampType)
           case HybridseDataType.kDate => inputCol.cast(TimestampType)
           case HybridseDataType.kVarchar =>
-            to_timestamp(inputCol)
+            val stringToTimestampUdf = spark.udf.register("timestamp", stringToTimestamp)
+            stringToTimestampUdf(inputCol)
+
           case _ => throw new UnsupportedHybridSeException(
             s"HybridSE type from $fromType to $targetType is not supported")
         }
