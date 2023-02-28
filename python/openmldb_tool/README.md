@@ -53,7 +53,7 @@ TODO:
 
 ## Inspect
 
-Use `show table status` in all dbs, even the hidden db(system db).
+Use `show table status like '%';` in all dbs, even the hidden db(system db).
 
 If you found some online tables are not behaving properly, do inspect online.
 

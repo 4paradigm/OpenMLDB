@@ -89,25 +89,18 @@ def insepct_online(args):
     """show table status"""
     conn = Connector()
     # scan all db include system db
-    # INTERNAL_DB
-    # INFORMATION_SCHEMA_DB
-    # PRE_AGG_DB
-    dbs = ["__INTERNAL_DB", "INFORMATION_SCHEMA", "__PRE_AGG_DB"] + [
-        r[0] for r in conn.execfetch("SHOW DATABASES")
-    ]
-    table_cnt, fails = 0, []
-    for db in dbs:
-        conn.execute(f"USE {db}")
-        rs = conn.execfetch("SHOW TABLE STATUS")
-        table_cnt += 1
-        for t in rs:
-            if t[13]:
-                print(f"unhealthy table {t[2]}.{t[1]}:\n {t[:13]}")
-                # sqlalchemy truncated ref https://github.com/sqlalchemy/sqlalchemy/commit/591e0cf08a798fb16e0ee9b56df5c3141aa48959
-                # so we print warnings alone
-                print(f"full warnings:\n{t[13]}")
-                fails.append(f"{t[2]}.{t[1]}")
-    print(f"check {table_cnt} online tables(including system tables)")
+    fails = []
+    rs = conn.execfetch("show table status like '%';")
+    rs.sort(key=lambda x: x[0])
+    print(f"inspect {len(rs)} online tables(including system tables)")
+    for t in rs:
+        if t[13]:
+            print(f"unhealthy table {t[2]}.{t[1]}:\n {t[:13]}")
+            # sqlalchemy truncated ref https://github.com/sqlalchemy/sqlalchemy/commit/591e0cf08a798fb16e0ee9b56df5c3141aa48959
+            # so we print warnings alone
+            print(f"full warnings:\n{t[13]}")
+            fails.append(f"{t[2]}.{t[1]}")
+    
     assert not fails, f"unhealthy tables: {fails}"
     print(f"all tables are healthy")
 

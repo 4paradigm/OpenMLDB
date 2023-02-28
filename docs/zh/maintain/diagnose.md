@@ -139,6 +139,8 @@ taskmanager:
 
 如果是分布式部署，诊断工具需要到部署节点上拉取文件，所以需要添加机器互信免密。设置方法参考[这里](https://www.itzgeek.com/how-tos/linux/centos-how-tos/ssh-passwordless-login-centos-7-rhel-7.html)。
 
+如果hosts/yaml中某些组件没有配置path，将会使用`--default_dir`作为部署目录，默认值为`/work/openmldb`。如果你的部署目录不是这个，可以通过`--default_dir`指定。
+
 如果是onebox部署，可以指定`--local`，我们会把所有节点当作本地节点，不会尝试ssh登录。如果部分节点是本地节点，只能使用yaml格式的部署配置文件，对本地节点配置`is_local: true`。例如：
 ```yaml
 nameserver:
