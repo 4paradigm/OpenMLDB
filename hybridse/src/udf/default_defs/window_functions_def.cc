@@ -285,7 +285,7 @@ void DefaultUdfLibrary::InitWindowFunctions() {
 
         @param value Expr of the matched row
         @param idx Idx th matched row (start from 1 or -1). If positive, count from first row of window; if negative, count from last row of window; 0 is invalid, results NULL.
-        @cond Match expression of the row.
+        @param cond Match expression of the row.
 
         Example:
 
