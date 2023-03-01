@@ -1,4 +1,4 @@
-# OpenMLDB SQL 与标准 SQL 的主要差异
+# 与标准 SQL 的主要差异
 
 本文将 OpenMLDB SQL 的主要使用方式（SELECT 查询语句）与标准 SQL （以 MySQL 支持的语法为例）进行比较，让有 SQL 使用经验的开发者快速上手 OpenMLDB SQL。
 
@@ -13,7 +13,7 @@
 ```{image} image/difference.png
 :alt: difference
 :class: bg-primary
-:width: 700px
+:width: 800px
 :align: center
 ```
 
@@ -24,8 +24,7 @@
 与标准 SQL 比较，OpenMLDB SQL 的差异性主要会从三个维度进行说明：
 
 1. 执行模式：在三种不同执行模式下（离线模式，在线预览模式，在线请求模式），不同的 SQL 的支持程度不一样，需要分开考察。普遍的，为了最终可以让 SQL 实现实时计算，**最终需要上线的业务 SQL 需要符合在线请求模式的要求**。
-2. 子句组合：不同子句的组合会带来额外的限制，下文描述形式 A 应用于 B，表示 A 子句在 B 子句的结果上运行。比如 LIMIT 应用于 WHERE，则其 SQL 类似为：`SELECT * FROM (SELECT * FROM t1 WHERE id >= 2) LIMIT 2`。
-   1. 下文中的“表引用”是指`FROM TableRef`，不是 subquery 也不是带有 join/union的复杂FROM子句。
+2. 子句组合：不同子句的组合会带来额外的限制，下文描述形式 A 应用于 B，表示 A 子句在 B 子句的结果上运行。比如 LIMIT 应用于 WHERE，则其 SQL 类似为：`SELECT * FROM (SELECT * FROM t1 WHERE id >= 2) LIMIT 2`。下文中的“表引用”是指 `FROM TableRef`，不是 subquery 也不是带有 JOIN/UNION 的复杂 FROM 子句。
 3. 特殊限制：不归于以上两类的特殊限制，会进行单独说明，一般是由于功能支持不完善或者程序已知问题所引起。
 
 ### 扫描限制的配置
@@ -69,7 +68,7 @@ WINDOW 子句和 GROUP BY & HAVING 子句不支持同时使用。上线时 WINDO
 | 表引用                                                       | ✓            | ✓                | ✓                |
 | GROUP BY & HAVING                                            | ✕            | ✕                | ✕                |
 | LAST JOIN                                                    | ✓            | ✓                | ✓                |
-| 子查询，仅以下情况：单表简单列筛选多表 last join双表 last join 后的简单列筛选 | ✓            | ✓                | ✓                |
+| 子查询，仅以下情况：1. 单表简单列筛选<br>2.多表 last join<br> 3.双表 last join 后的简单列筛选 | ✓            | ✓                | ✓                |
 
 特殊限制：
 
@@ -93,12 +92,12 @@ OpenMLDB 仅支持 LAST JOIN 一种 JOIN 语法，详细描述参考扩展语法
 | **应用于**                                                   | **离线模式** | **在线预览模式** | **在线请求模式** |
 | ------------------------------------------------------------ | ------------ | ---------------- | ---------------- |
 | 两个表引用                                                   | ✓            | ✕                | ✓                |
-| 子查询, 仅包括：左右表均为简单列筛选左右表为 WINDOW 或 LAST JOIN 操作 | ✓            | ✓                | ✓                |
+| 子查询, 仅包括：<br>左右表均为简单列筛选<br>左右表为 WINDOW 或 LAST JOIN 操作 | ✓            | ✓                | ✓                |
 
 特殊限制：
 
 - 关于特定子查询的 LAST JOIN 上线，还有额外要求，详见[上线要求](../openmldb_sql/deployment_manage/ONLINE_REQUEST_REQUIREMENTS.md#在线请求模式下-last-join-的使用规范) 。
-- 在线预览模式下不支持 LAST JOIN, 见 issue： https://github.com/4paradigm/OpenMLDB/issues/2976。
+- 在线预览模式下不支持 LAST JOIN, 见 issue： https://github.com/4paradigm/OpenMLDB/issues/2976
 
 ### WITH 子句
 
@@ -114,8 +113,8 @@ OpenMLDB (>= v0.7.2) 支持非递归的 WITH 子句。WITH 子句等价于其它
 
 特殊限制：
 
-- OpenMLDB v0.6.0 开始支持在线预览模式的全表聚合，但注意所描述的 [扫描限制配置](https://openmldb.feishu.cn/wiki/wikcnhBl4NsKcAX6BO9NDtKAxDf#doxcnLWICKzccMuPiWwdpVjSaIe)。
-- OpenMLDB 有自己的聚合函数列表，请查看产品文档具体查询所支持的函数 [OpenMLDB 内置函数](../openmldb_sql/functions_and_operators/Files/udfs_8h.md)。
+- OpenMLDB v0.6.0 开始支持在线预览模式的全表聚合，但注意所描述的[扫描限制配置](https://openmldb.feishu.cn/wiki/wikcnhBl4NsKcAX6BO9NDtKAxDf#doxcnLWICKzccMuPiWwdpVjSaIe)。
+- OpenMLDB 有自己的聚合函数列表，请查看产品文档具体查询所支持的函数[OpenMLDB 内置函数](../openmldb_sql/functions_and_operators/Files/udfs_8h.md)。
 
 ## 扩展语法
 
@@ -134,15 +133,15 @@ OpenMLDB 主要对 WINDOW 以及 LAST JOIN 语句进行了深度定制化开发�
 
 关于 WINDOW 详细语法，请参考 [WINDOW 文档](../openmldb_sql/dql/WINDOW_CLAUSE.md)。
 
-| **语句元素**     | **支持语法**                                                 | **说明**                                                     | **必需 ？** |
+<p>| <strong>语句元素</strong>     | <strong>支持语法</strong>                                                 | <strong>说明</strong>                                                     | <strong>必需 ？</strong> |
 | ---------------- | ------------------------------------------------------------ | ------------------------------------------------------------ | ----------- |
 | 数据定义         | PARTITION BY                                                 | 可支持多列支持的列数据类型: bool, int16, int32, int64, string, date, timestamp | ✓           |
-| 数据排序         | ORDER BY                                                     | 仅支持对单一列排序可支持数据类型: int16, int32, int64, timestamp不支持倒序 `DESC` | ✓           |
-| 范围定义         | 基本上下界定义语法：ROWS/ROWS_RANGE BETWEEN ... AND ...支持范围定义关键字 PRECEDING, OPEN PRECEDING, CURRENT ROW, UNBOUNDED | 必须给定上下边界不支持边界关键字 FOLLOWING在线请求模式中，CURRENT ROW 为当前的请求行。在表格视角下，当前行将会被虚拟的插入到表格根据 ORDER BY 排序的正确位置上。 | ✓           |
-| 范围单位         | ROWSROWS_RANGE（扩展）                                       | ROWS_RANGE 为扩展语法，其定义的窗口边界属性等价于标准 SQL 的 RANGE 类型窗口，支持用数值或者带时间单位的数值定义窗口边界，后者为拓展语法。带时间单位定义的窗口范围，等价于时间转化成毫秒数值后的窗口定义。例如 `ROWS_RANGE 10s PRCEDING ...` 和 `ROWS_RANGE 10000 PRECEDNG ...` 是等价的。 | ✓           |
-| 窗口属性（扩展） | MAXSIZE EXCLUDE CURRENT_ROWEXCLUDE CURRENT_TIMEINSTANCE_NOT_IN_WINDOW | MAXSIZE  只对 ROWS_RANGE 有效                                | -           |
-| 多表定义（扩展） | 实际使用中语法形态较为复杂，参考：[跨表特征开发教程](../tutorial/tutorial_sql_2.md)[WINDOW UNION 语法文档](../openmldb_sql/dql/WINDOW_CLAUSE.md#1-window--union) | 允许合并多个表允许联合简单子查询实践中，一般和聚合函数搭配使用，实现跨表的聚合操作 | -           |
-| 匿名窗口         | -                                                            | 必须包括 PARTITION BY、ORDER BY、以及窗口范围定义            | -           |
+| 数据排序         | ORDER BY                                                     | 仅支持对单一列排序可支持数据类型: int16, int32, int64, timestamp不支持倒序 <code>DESC</code> | ✓           |
+| 范围定义         | 基本上下界定义语法：ROWS/ROWS<em>RANGE BETWEEN ... AND ...支持范围定义关键字 PRECEDING, OPEN PRECEDING, CURRENT ROW, UNBOUNDED | 必须给定上下边界不支持边界关键字 FOLLOWING在线请求模式中，CURRENT ROW 为当前的请求行。在表格视角下，当前行将会被虚拟的插入到表格根据 ORDER BY 排序的正确位置上。 | ✓           |
+| 范围单位         | ROWSROWS</em>RANGE（扩展）                                       | ROWS<em>RANGE 为扩展语法，其定义的窗口边界属性等价于标准 SQL 的 RANGE 类型窗口，支持用数值或者带时间单位的数值定义窗口边界，后者为拓展语法。带时间单位定义的窗口范围，等价于时间转化成毫秒数值后的窗口定义。例如 <code>ROWS_RANGE 10s PRCEDING ...</code> 和 <code>ROWS_RANGE 10000 PRECEDNG ...</code> 是等价的。 | ✓           |
+| 窗口属性（扩展） | MAXSIZE EXCLUDE CURRENT</em>ROWEXCLUDE CURRENT<em>TIMEINSTANCE</em>NOT<em>IN</em>WINDOW | MAXSIZE 只对 ROWS_RANGE 有效                                 | -           |
+| 多表定义（扩展） | 实际使用中语法形态较为复杂，参考：<a href="https://openmldb.ai/docs/zh/main/tutorial/tutorial_sql_2.html">跨表特征开发教程</a><a href="https://openmldb.ai/docs/zh/main/openmldb_sql/dql/WINDOW_CLAUSE.html#window-union">WINDOW UNION 语法的产品文档</a> | 允许合并多个表允许联合简单子查询实践中，一般和聚合函数搭配使用，实现跨表的聚合操作 | -           |
+| 匿名窗口         | -                                                            | 必须包括 PARTITION BY、ORDER BY、以及窗口范围定义            | -           |</p>
 
 #### 特殊限制
 
