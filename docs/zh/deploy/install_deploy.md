@@ -151,6 +151,8 @@ OpenMLDB集群版需要部署ZooKeeper、NameServer、TabletServer、TaskManager
 
 - 部署机器（执行部署脚本的机器）可以免密登录其他部署节点
 - 部署机器安装 `rsync` 工具
+- 部署机器安装 Python3
+- 部署Zookeeper的机器安装 Java (如果复用已有Zookeeper，不要求部署Java)
 
 ### 下载OpenMLDB发行版
 
