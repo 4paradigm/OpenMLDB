@@ -41,7 +41,7 @@
 
 ### WHERE 子句
 
-| **WHERE 应用于**   | **离线模式** | **在线预览模式** | **在线请求模式** |
+| **应用于**   | **离线模式** | **在线预览模式** | **在线请求模式** |
 | ------------------ | ------------ | ---------------- | ---------------- |
 | 表引用             | ✓            | ✓                | ✕                |
 | LAST JOIN          | ✓            | ✓                | ✕                |
@@ -114,7 +114,7 @@ OpenMLDB (>= v0.7.2) 支持非递归的 WITH 子句。WITH 子句等价于其它
 特殊限制：
 
 - OpenMLDB v0.6.0 开始支持在线预览模式的全表聚合，但注意所描述的[扫描限制配置](https://openmldb.feishu.cn/wiki/wikcnhBl4NsKcAX6BO9NDtKAxDf#doxcnLWICKzccMuPiWwdpVjSaIe)。
-- OpenMLDB 有自己的聚合函数列表，请查看产品文档具体查询所支持的函数[OpenMLDB 内置函数](../openmldb_sql/functions_and_operators/Files/udfs_8h.md)。
+- OpenMLDB 有自己的聚合函数列表，请查看产品文档具体查询所支持的函数 [OpenMLDB 内置函数](../openmldb_sql/functions_and_operators/Files/udfs_8h.md)。
 
 ## 扩展语法
 
@@ -223,7 +223,7 @@ SELECT
 
 #### WINDOW ... UNION 举例
 
-在实际开发中，较多的应用的数据是存放在多个表格中，在这种情况下，一般会使用 WINDOW ... UNION 的语法进行跨表的聚合操作。请参考 [跨表特征开发教程](../tutorial/tutorial_sql_2.md)
+在实际开发中，较多的应用的数据是存放在多个表格中，在这种情况下，一般会使用 WINDOW ... UNION 的语法进行跨表的聚合操作。请参考[跨表特征开发教程](../tutorial/tutorial_sql_2.md)。
 
 ### LAST JOIN 子句
 
@@ -233,7 +233,7 @@ SELECT
 | ------------ | ------------ | ------------------------------------------------------------ | ---------- |
 | ON           | ✓            | 列类型支持：BOOL, INT16, INT32, INT64, STRING, DATE, TIMESTAMP | ✓          |
 | USING        | 不支持       | -                                                            | -          |
-| ORDER BY     | ✓            | 后面只能接单列列类型 : INT16, INT32, INT64, TIMESTAMP不支持倒序关键字 DESC | -          |
+| ORDER BY     | ✓            | 后面只能接单列列类型 : INT16, INT32, INT64, TIMESTAMP<br>不支持倒序关键字 DESC | -          |
 
 #### LAST JOIN 举例
 
