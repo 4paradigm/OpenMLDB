@@ -14,6 +14,7 @@ OpenMLDB 内部整合了批处理和实时两套 SQL 引擎，分别用于应对
 ### 跳表
 
 跳表 (skip list) 由 William Pugh 在 1990 年提出，其论文为：[Skip Lists: A Probabilistic Alternative to Balanced Trees](https://15721.courses.cs.cmu.edu/spring2018/papers/08-oltpindexes1/pugh-skiplists-cacm1990.pdf)。跳表采用的是概率均衡而非严格均衡策略，从而相对于平衡树，大大简化和加速了元素的插入和删除。跳表可以看做是在链表的基础数据结构上进行了扩展，通过添加多级索引，来达到快速定位查找的操作。其既有链表的灵活数据管理优势，同时对于数据查找和插入的时间复杂度均为 O(logn)。
+
 ![img](images/core_data_structure/1.png)
 
 上图 (source: [https://en.wikipedia.org/wiki/Skip_list](https://en.wikipedia.org/wiki/Skip_list)) 显示了一个具有四级索引的跳表结构。可以看到，在底层的已排序的数据上，每一个值都有一个对应的指针数组。查找某个具体值时，搜索会从顶层最稀疏的索引开始，通过索引内的向右的指针以及向下的指针数组，逐级往下查找，直到查找到所需要的值。关于跳表的操作和实现的详细解读，可以参照：[https://en.wikipedia.org/wiki/Skip_list](https://en.wikipedia.org/wiki/Skip_list)
@@ -28,7 +29,13 @@ OpenMLDB 内部整合了批处理和实时两套 SQL 引擎，分别用于应对
 
 在开发机器学习应用的过程中，很多特征是和时序窗口的计算相关。如反欺诈场景中需要统计一个特定卡号最近一段时间内（比如三天内）的交易总次数、平均交易金额等。在很多实时场景需求中（比如风控、反欺诈、实时推荐等），对延时会有非常高的要求，一般对于特征算的延迟要求会小于 20 毫秒。如何以毫秒级的延迟访问特定维度值一段时间内的历史数据，是这类数据库所面临的技术挑战。
 为了达到高效的访问时序数据，OpenMLDB 实现了一个分布式的内存存储引擎，核心索引数据结构采用了双层跳表（double-layer skip list），其基于跳表结构做了延伸优化。如下图 (source: [http://vldb.org/pvldb/vol14/p799-chen.pdf](http://vldb.org/pvldb/vol14/p799-chen.pdf)) 所示：
-![img](images/core_data_structure/2.png)
+
+```{image} images/core_data_structure/2.png
+:alt: double-layer skip list
+:class: bg-primary
+:width: 600px
+:align: center
+```
 
 可以看到，这个索引结构针对每一个被索引列维护了两层的跳表：
 
