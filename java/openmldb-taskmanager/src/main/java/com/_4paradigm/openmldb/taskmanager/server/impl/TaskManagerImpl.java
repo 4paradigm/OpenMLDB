@@ -200,7 +200,7 @@ public class TaskManagerImpl implements TaskManagerInterface {
     }
 
     @Override
-    public TaskManager.ShowJobResponse ShowBatchVersion(TaskManager.ShowBatchVersionRequest request) {
+    public TaskManager.ShowJobResponse ShowBatchVersion(TaskManager.EmptyMessage request) {
         try {
             JobInfo jobInfo = OpenmldbBatchjobManager.showBatchVersion();
             return TaskManager.ShowJobResponse.newBuilder().setCode(StatusCode.SUCCESS).setJob(jobInfoToProto(jobInfo))

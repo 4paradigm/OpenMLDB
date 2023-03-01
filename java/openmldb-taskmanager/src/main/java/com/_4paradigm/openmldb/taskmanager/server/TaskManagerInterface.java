@@ -33,7 +33,7 @@ public interface TaskManagerInterface {
     TaskManager.DeleteJobResponse DeleteJob(TaskManager.DeleteJobRequest request);
 
     @BrpcMeta(serviceName = "openmldb.taskmanager.TaskManagerServer", methodName = "ShowBatchVersion")
-    TaskManager.ShowJobResponse ShowBatchVersion(TaskManager.ShowBatchVersionRequest request);
+    TaskManager.ShowJobResponse ShowBatchVersion(TaskManager.EmptyMessage request);
 
     @BrpcMeta(serviceName = "openmldb.taskmanager.TaskManagerServer", methodName = "RunBatchSql")
     TaskManager.RunBatchSqlResponse RunBatchSql(TaskManager.RunBatchSqlRequest request);

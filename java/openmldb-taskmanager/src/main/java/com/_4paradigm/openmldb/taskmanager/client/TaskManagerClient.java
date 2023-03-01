@@ -353,7 +353,7 @@ public class TaskManagerClient {
      * Submit job to show batch version.
      */
     public int showBatchVersion() throws Exception {
-        TaskManager.ShowBatchVersionRequest request = TaskManager.ShowBatchVersionRequest.newBuilder()
+        TaskManager.EmptyMessage request = TaskManager.EmptyMessage.newBuilder()
                 .build();
         TaskManager.ShowJobResponse response = taskManagerInterface.ShowBatchVersion(request);
         if (response.getCode() != 0) {

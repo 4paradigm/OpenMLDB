@@ -61,8 +61,6 @@ message DeleteJobResponse {
     optional string msg = 2;
 };
 
-message ShowBatchVersionRequest {};
-
 message RunBatchSqlRequest {
     required string sql = 1;
     map<string, string> conf = 2;
@@ -166,7 +164,7 @@ service TaskManagerServer {
     rpc DeleteJob(DeleteJobRequest) returns (DeleteJobResponse);
 
     // Spark jobs
-    rpc ShowBatchVersion(ShowBatchVersionRequest) returns (ShowJobResponse);
+    rpc ShowBatchVersion(EmptyMessage) returns (ShowJobResponse);
     rpc RunBatchSql(RunBatchSqlRequest) returns (RunBatchSqlResponse);
     rpc RunBatchAndShow(RunBatchAndShowRequest) returns (ShowJobResponse);
     rpc ImportOnlineData(ImportOnlineDataRequest) returns (ShowJobResponse);
