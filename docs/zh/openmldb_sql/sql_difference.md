@@ -6,22 +6,16 @@
 
 ## 支持总览
 
-下表根据 SELECT 语句元素对 OpenMLDB SQL 在三种执行模式下（关于执行模式参考 [使用流程和执行模式](../quickstart/concepts/modes.md)）与标准 SQL 整体性的差异做了汇总。OpenMLDB SQL 目前部分兼容标准 SQL，但考虑实际业务场景需求新增了部分语法，下表加粗部分为新增语法。
+下表根据 SELECT 语句元素对 OpenMLDB SQL 在三种执行模式下（关于执行模式参考[使用流程和执行模式](../quickstart/concepts/modes.md)）与标准 SQL 整体性的差异做了汇总。OpenMLDB SQL 目前部分兼容标准 SQL，但考虑实际业务场景需求新增了部分语法，下表加粗部分为新增语法。
 
 注：✓ 表示**支持**该语句，✕ 表示**不支持**。
 
-|                | **OpenMLDB SQL** | **标准 SQL**     | **备注** |      |                                                              |
-| -------------- | ---------------- | ---------------- | -------- | ---- | ------------------------------------------------------------ |
-| **离线模式**   | **在线预览模式** | **在线请求模式** |          |      |                                                              |
-| WHERE 子句     | ✓                | ✓                | ✕        | ✓    |                                                              |
-| HAVING 子句    | ✓                | ✓                | X        | ✓    |                                                              |
-| JOIN 子句      | ✓                | ✕                | ✓        | ✓    | OpenMLDB 仅支持特有的 **LAST JOIN**                          |
-| GROUP BY 分组  | ✓                | ✕                | ✕        | ✓    |                                                              |
-| ORDER BY 排序  | ✕                | ✕                | ✕        | ✓    |                                                              |
-| LIMIT 限制行数 | ✓                | ✓                | ✕        | ✓    |                                                              |
-| WINDOW 子句    | ✓                | ✓                | ✓        | ✓    | OpenMLDB 增加了特有的 **WINDOW ... UNION** 和 **WINDOW ATTRIBUTES** 语法 |
-| WITH 子句      | ✕                | ✕                | ✕        | ✓    | OpenMLDB 将会在版本 v0.8.0开始支持                           |
-| 聚合函数       | ✓                | ✓                | ✓        | ✓    | OpenMLDB 有较多扩展函数，见[详细说明](./functions_and_operators/Files/udfs_8h.md) |
+```{image} image/difference.png
+:alt: difference
+:class: bg-primary
+:width: 700px
+:align: center
+```
 
 ## 差异详解
 
@@ -30,7 +24,7 @@
 与标准 SQL 比较，OpenMLDB SQL 的差异性主要会从三个维度进行说明：
 
 1. 执行模式：在三种不同执行模式下（离线模式，在线预览模式，在线请求模式），不同的 SQL 的支持程度不一样，需要分开考察。普遍的，为了最终可以让 SQL 实现实时计算，**最终需要上线的业务 SQL 需要符合在线请求模式的要求**。
-2. 子句组合：不同子句的组合会带来额外的限制，下文描述形式 A 应用于 B，表示 A 子句在 B 子句的结果上运行。比如 LIMIT 应用于 WHERE，则其 SQL 类似为：`SELECT`` * FROM`` ``(SELECT ``* FROM t1 ``WHERE`` id >= 2``)`` ``LIMIT`` 2` 。
+2. 子句组合：不同子句的组合会带来额外的限制，下文描述形式 A 应用于 B，表示 A 子句在 B 子句的结果上运行。比如 LIMIT 应用于 WHERE，则其 SQL 类似为：`SELECT * FROM (SELECT * FROM t1 WHERE id >= 2) LIMIT 2`。
    1. 下文中的“表引用”是指`FROM TableRef`，不是 subquery 也不是带有 join/union的复杂FROM子句。
 3. 特殊限制：不归于以上两类的特殊限制，会进行单独说明，一般是由于功能支持不完善或者程序已知问题所引起。
 
