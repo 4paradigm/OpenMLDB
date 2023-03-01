@@ -1837,7 +1837,13 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::HandleSQLCmd(const h
                 *status = {StatusCode::kCmdError, "Failed to parse job id: " + cmd_node->GetArgs()[0]};
                 return {};
             }
-            return this->GetJobResultSet(job_id);
+
+            auto rs = this->GetJobResultSet(job_id, status);
+            if (status->IsOK()) {
+                return rs;
+            } else {
+                return {};
+            }
         }
         case hybridse::node::kCmdShowJobLog: {
             int job_id;
@@ -1873,7 +1879,13 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::HandleSQLCmd(const h
 
             ::openmldb::taskmanager::JobInfo job_info;
             StopJob(job_id, &job_info);
-            return this->GetJobResultSet(job_id);
+
+            auto rs = this->GetJobResultSet(job_id, status);
+            if (status->IsOK()) {
+                return rs;
+            } else {
+                return {};
+            }
         }
         case hybridse::node::kCmdDropTable: {
             *status = {};
@@ -2563,7 +2575,12 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(
                 ReadSparkConfFromFile(std::dynamic_pointer_cast<SQLRouterOptions>(options_)->spark_conf_path, &config);
                 auto base_status = ExportOfflineData(sql, config, db, is_sync_job, offline_job_timeout, &job_info);
                 if (base_status.OK()) {
-                    return this->GetJobResultSet(job_info.id());
+                    auto rs = this->GetJobResultSet(job_info.id(), status);
+                    if (status->IsOK()) {
+                        return rs;
+                    } else {
+                        return {};
+                    }
                 } else {
                     *status = {StatusCode::kCmdError, base_status.msg};
                 }
@@ -2617,7 +2634,12 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(
                     base_status = ImportOfflineData(sql, config, database, is_sync_job, offline_job_timeout, &job_info);
                 }
                 if (base_status.OK() && job_info.id() > 0) {
-                    return this->GetJobResultSet(job_info.id());
+                    auto rs = this->GetJobResultSet(job_info.id(), status);
+                    if (status->IsOK()) {
+                        return rs;
+                    } else {
+                        return {};
+                    }
                 } else {
                     APPEND_FROM_BASE_AND_WARN(status, base_status, "taskmanager load data failed");
                 }
@@ -2675,7 +2697,13 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteOfflineQuery(
             APPEND_FROM_BASE_AND_WARN(status, base_status, "async offline query failed");
             return {};
         }
-        return this->GetJobResultSet(job_info.id());
+
+        auto rs = this->GetJobResultSet(job_info.id(), status);
+        if (status->IsOK()) {
+            return rs;
+        } else {
+            return {};
+        }
     }
 }
 
@@ -4191,19 +4219,18 @@ void SQLClusterRouter::ReadSparkConfFromFile(std::string conf_file_path, std::ma
     }
 }
 
-std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::GetJobResultSet(int job_id) {
-    hybridse::sdk::Status status;
-
+std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::GetJobResultSet(int job_id,
+                                                                            ::hybridse::sdk::Status* status) {
     std::string db = openmldb::nameserver::INTERNAL_DB;
     std::string sql = "SELECT * FROM JOB_INFO WHERE id = " + std::to_string(job_id);
 
-    auto rs = ExecuteSQLParameterized(db, sql, {}, &status);
-    if (!status.IsOK()) {
+    auto rs = ExecuteSQLParameterized(db, sql, {}, status);
+    if (!status->IsOK()) {
         return {};
     }
     if (rs->Size() == 0) {
-        status.code = ::hybridse::common::StatusCode::kCmdError;
-        status.msg = "Job not found: " + std::to_string(job_id);
+        status->SetCode(::hybridse::common::StatusCode::kCmdError);
+        status->SetMsg("Job not found: " + std::to_string(job_id));
         return {};
     }
     if (FLAGS_role == "sql_client") {

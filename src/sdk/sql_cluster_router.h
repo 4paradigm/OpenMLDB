@@ -367,7 +367,7 @@ class SQLClusterRouter : public SQLRouter {
                                                                      const std::string& pattern,
                                                                      hybridse::sdk::Status* status);
 
-    std::shared_ptr<hybridse::sdk::ResultSet> GetJobResultSet(int job_id);
+    std::shared_ptr<hybridse::sdk::ResultSet> GetJobResultSet(int job_id, ::hybridse::sdk::Status* status);
 
     bool CheckTableStatus(const std::string& db, const std::string& table_name, uint32_t tid,
                           const nameserver::TablePartition& partition_info, uint32_t replica_num,
