@@ -133,15 +133,15 @@ OpenMLDB 主要对 WINDOW 以及 LAST JOIN 语句进行了深度定制化开发�
 
 关于 WINDOW 详细语法，请参考 [WINDOW 文档](../openmldb_sql/dql/WINDOW_CLAUSE.md)。
 
-<p>| <strong>语句元素</strong>     | <strong>支持语法</strong>                                                 | <strong>说明</strong>                                                     | <strong>必需 ？</strong> |
+| **语句元素**     | **支持语法**                                                 | **说明**                                                     | **必需 ？** |
 | ---------------- | ------------------------------------------------------------ | ------------------------------------------------------------ | ----------- |
-| 数据定义         | PARTITION BY                                                 | 可支持多列支持的列数据类型: bool, int16, int32, int64, string, date, timestamp | ✓           |
-| 数据排序         | ORDER BY                                                     | 仅支持对单一列排序可支持数据类型: int16, int32, int64, timestamp不支持倒序 <code>DESC</code> | ✓           |
-| 范围定义         | 基本上下界定义语法：ROWS/ROWS<em>RANGE BETWEEN ... AND ...支持范围定义关键字 PRECEDING, OPEN PRECEDING, CURRENT ROW, UNBOUNDED | 必须给定上下边界不支持边界关键字 FOLLOWING在线请求模式中，CURRENT ROW 为当前的请求行。在表格视角下，当前行将会被虚拟的插入到表格根据 ORDER BY 排序的正确位置上。 | ✓           |
-| 范围单位         | ROWSROWS</em>RANGE（扩展）                                       | ROWS<em>RANGE 为扩展语法，其定义的窗口边界属性等价于标准 SQL 的 RANGE 类型窗口，支持用数值或者带时间单位的数值定义窗口边界，后者为拓展语法。带时间单位定义的窗口范围，等价于时间转化成毫秒数值后的窗口定义。例如 <code>ROWS_RANGE 10s PRCEDING ...</code> 和 <code>ROWS_RANGE 10000 PRECEDNG ...</code> 是等价的。 | ✓           |
-| 窗口属性（扩展） | MAXSIZE EXCLUDE CURRENT</em>ROWEXCLUDE CURRENT<em>TIMEINSTANCE</em>NOT<em>IN</em>WINDOW | MAXSIZE 只对 ROWS_RANGE 有效                                 | -           |
-| 多表定义（扩展） | 实际使用中语法形态较为复杂，参考：<a href="https://openmldb.ai/docs/zh/main/tutorial/tutorial_sql_2.html">跨表特征开发教程</a><a href="https://openmldb.ai/docs/zh/main/openmldb_sql/dql/WINDOW_CLAUSE.html#window-union">WINDOW UNION 语法的产品文档</a> | 允许合并多个表允许联合简单子查询实践中，一般和聚合函数搭配使用，实现跨表的聚合操作 | -           |
-| 匿名窗口         | -                                                            | 必须包括 PARTITION BY、ORDER BY、以及窗口范围定义            | -           |</p>
+| 数据定义         | PARTITION BY                                                 | 可支持多列<br>支持的列数据类型: bool, int16, int32, int64, string, date, timestamp | ✓           |
+| 数据排序         | ORDER BY                                                     | 仅支持对单一列排序<br>可支持数据类型: int16, int32, int64, timestamp<br>不支持倒序 `DESC` | ✓           |
+| 范围定义         | <br>基本上下界定义语法：ROWS/ROWS_RANGE BETWEEN ... AND ...<br>支持范围定义关键字 PRECEDING, OPEN PRECEDING, CURRENT ROW, UNBOUNDED | 必须给定上下边界<br>不支持边界关键字 FOLLOWING<br>在线请求模式中，CURRENT ROW 为当前的请求行。在表格视角下，当前行将会被虚拟的插入到表格根据 ORDER BY 排序的正确位置上。 | ✓           |
+| 范围单位         | ROWS<br>ROWSROWS_RANGE（扩展）                                       | ROWS_RANGE 为扩展语法，其定义的窗口边界属性等价于标准 SQL 的 RANGE 类型窗口，支持用数值或者带时间单位的数值定义窗口边界，后者为拓展语法。<br>带时间单位定义的窗口范围，等价于时间转化成毫秒数值后的窗口定义。例如 `ROWS_RANGE 10s PRCEDING ...` 和 `ROWS_RANGE 10000 PRECEDNG ...` 是等价的。 | ✓           |
+| 窗口属性（扩展） | MAXSIZE <br>EXCLUDE CURRENT_ROW<br>EXCLUDE CURRENT_TIME<br>INSTANCE_NOT_IN_WINDOW | MAXSIZE  只对 ROWS_RANGE 有效                                | -           |
+| 多表定义（扩展） | 实际使用中语法形态较为复杂，参考：<br>[跨表特征开发教程](../tutorial/tutorial_sql_2.md)<br>[WINDOW UNION 语法文档](../openmldb_sql/dql/WINDOW_CLAUSE.md#1-window--union) | 允许合并多个表<br>允许联合简单子查询<br>实践中，一般和聚合函数搭配使用，实现跨表的聚合操作 | -           |
+| 匿名窗口         | -                                                            | 必须包括 PARTITION BY、ORDER BY、以及窗口范围定义            | -           |
 
 #### 特殊限制
 
