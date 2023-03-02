@@ -1838,12 +1838,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::HandleSQLCmd(const h
                 return {};
             }
 
-            auto rs = this->GetJobResultSet(job_id, status);
-            if (status->IsOK()) {
-                return rs;
-            } else {
-                return {};
-            }
+            return this->GetJobResultSet(job_id, status);
         }
         case hybridse::node::kCmdShowJobLog: {
             int job_id;
@@ -1880,12 +1875,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::HandleSQLCmd(const h
             ::openmldb::taskmanager::JobInfo job_info;
             StopJob(job_id, &job_info);
 
-            auto rs = this->GetJobResultSet(job_id, status);
-            if (status->IsOK()) {
-                return rs;
-            } else {
-                return {};
-            }
+            return this->GetJobResultSet(job_id, status);
         }
         case hybridse::node::kCmdDropTable: {
             *status = {};
@@ -2575,12 +2565,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(
                 ReadSparkConfFromFile(std::dynamic_pointer_cast<SQLRouterOptions>(options_)->spark_conf_path, &config);
                 auto base_status = ExportOfflineData(sql, config, db, is_sync_job, offline_job_timeout, &job_info);
                 if (base_status.OK()) {
-                    auto rs = this->GetJobResultSet(job_info.id(), status);
-                    if (status->IsOK()) {
-                        return rs;
-                    } else {
-                        return {};
-                    }
+                    return this->GetJobResultSet(job_info.id(), status);
                 } else {
                     *status = {StatusCode::kCmdError, base_status.msg};
                 }
@@ -2634,12 +2619,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(
                     base_status = ImportOfflineData(sql, config, database, is_sync_job, offline_job_timeout, &job_info);
                 }
                 if (base_status.OK() && job_info.id() > 0) {
-                    auto rs = this->GetJobResultSet(job_info.id(), status);
-                    if (status->IsOK()) {
-                        return rs;
-                    } else {
-                        return {};
-                    }
+                    return this->GetJobResultSet(job_info.id(), status);
                 } else {
                     APPEND_FROM_BASE_AND_WARN(status, base_status, "taskmanager load data failed");
                 }
@@ -2698,12 +2678,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteOfflineQuery(
             return {};
         }
 
-        auto rs = this->GetJobResultSet(job_info.id(), status);
-        if (status->IsOK()) {
-            return rs;
-        } else {
-            return {};
-        }
+        return this->GetJobResultSet(job_info.id(), status);
     }
 }
 
