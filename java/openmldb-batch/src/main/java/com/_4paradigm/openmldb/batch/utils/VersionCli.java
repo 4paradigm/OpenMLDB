@@ -17,6 +17,7 @@ package com._4paradigm.openmldb.batch.utils;
 
 import org.apache.commons.io.IOUtils;
 
+import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
 
@@ -30,11 +31,11 @@ public class VersionCli {
         }
     }
 
-    public static String getVersion() throws Exception {
+    public static String getVersion() throws IOException {
 
         InputStream stream = VersionCli.class.getClassLoader().getResourceAsStream("openmldb_git.properties");
         if (stream == null) {
-            throw new Exception("Fail to get version from file of openmldb_git.properties");
+            throw new IOException("Fail to get version from file of openmldb_git.properties");
         }
         List<String> gitVersionStrList = IOUtils.readLines(stream, "UTF-8");
 
