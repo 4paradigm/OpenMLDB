@@ -236,6 +236,9 @@ try {
 1. 使用 `SqlClusterExecutor::getInsertPreparedStmt(db, insertSqlWithPlaceHolder)` 接口获取 InsertPrepareStatement。
 2. 调用 `PreparedStatement::setType(index, value)` 接口，填充数据到 InsertPrepareStatement中。注意 index 从 1 开始。
 3. 使用 `PreparedStatement::execute()` 接口执行 insert 语句。
+```{note}
+PreparedStatment条件相同时，可以对同一个对象反复set填充数据后，再执行execute，不需要重新创建PreparedStatement。
+```
 
 ```java
 String insertSqlWithPlaceHolder = "insert into trans values(\"aa\", ?, 33, ?, 2.4, 1590738993000, \"2020-05-04\");";

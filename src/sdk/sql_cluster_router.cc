@@ -1104,32 +1104,40 @@ std::shared_ptr<::openmldb::client::TabletClient> SQLClusterRouter::GetTabletCli
     hybridse::sdk::Status* status) {
     RET_IF_NULL_AND_WARN(status, "output status is nullptr");
     auto cache = GetSQLCache(db, sql, hybridse::vm::kBatchMode, parameter, status);
-    if (0 != status->code) {
+    WARN_NOT_OK_AND_RET(status, "sql plan failed(get/create cache failed)", nullptr);
+    if (!cache) {
+        SET_STATUS_AND_WARN(status, StatusCode::kRuntimeError, "get sql cache but it's nullptr");
         return {};
     }
-    if (cache) {
-        auto router_cache = std::dynamic_pointer_cast<RouterSQLCache>(cache);
-        if (router_cache) {
-            const auto& router = router_cache->GetRouter();
-            const std::string& main_table = router.GetMainTable();
-            const std::string main_db = router.GetMainDb().empty() ? db : router.GetMainDb();
-            if (!main_table.empty()) {
-                DLOG(INFO) << "get main table " << main_table;
-                auto tablet_accessor = cluster_sdk_->GetTablet(main_db, main_table);
-                if (tablet_accessor) {
-                    *status = {};
-                    return tablet_accessor->GetClient();
-                }
-            } else {
-                auto tablet_accessor = cluster_sdk_->GetTablet();
-                if (tablet_accessor) {
-                    *status = {};
-                    return tablet_accessor->GetClient();
-                }
-            }
+
+    auto router_cache = std::dynamic_pointer_cast<RouterSQLCache>(cache);
+    if (!router_cache) {
+        SET_STATUS_AND_WARN(status, StatusCode::kRuntimeError, "cast to RouterSQLCache failed");
+        return {};
+    }
+
+    const auto& router = router_cache->GetRouter();
+    const std::string& main_table = router.GetMainTable();
+    const std::string main_db = router.GetMainDb().empty() ? db : router.GetMainDb();
+    if (!main_table.empty()) {
+        DLOG(INFO) << "get main table " << main_table;
+        auto tablet_accessor = cluster_sdk_->GetTablet(main_db, main_table);
+        if (tablet_accessor) {
+            *status = {};
+            return tablet_accessor->GetClient();
+        } else {
+            SET_STATUS_AND_WARN(status, StatusCode::kRuntimeError,
+                                absl::StrCat("main table ", main_db, ".", main_table, " tablet accessor is null"));
+        }
+    } else {
+        auto tablet_accessor = cluster_sdk_->GetTablet();
+        if (tablet_accessor) {
+            *status = {};
+            return tablet_accessor->GetClient();
+        } else {
+            SET_STATUS_AND_WARN(status, StatusCode::kRuntimeError, "random tablet accessor is null");
         }
     }
-    SET_STATUS_AND_WARN(status, StatusCode::kRuntimeError, "fail to get tablet from cache");
     return {};
 }
 
@@ -1524,7 +1532,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::HandleSQLCmd(const h
                                                                          ::hybridse::sdk::Status* status) {
     RET_IF_NULL_AND_WARN(status, "output status is nullptr");
     if (cmd_node == nullptr) {
-        SET_STATUS_AND_WARN(status, StatusCode::kNullInputPointer, " node is nullptr");
+        SET_STATUS_AND_WARN(status, StatusCode::kNullInputPointer, "node is nullptr");
         return {};
     }
     auto ns_ptr = cluster_sdk_->GetNsClient();

@@ -1,7 +1,8 @@
 mode: cluster
 zookeeper:
-  zk_cluster: 127.0.0.1:2181
-  zk_root_path: /openmldb
+  # zk cluster is supported, `ip1,ip2,ip3/path`
+  - endpoint: 127.0.0.1:8181/hw
+  # path: /work/zookeeper
 nameserver:
   -
     endpoint: 127.0.0.1:6527
