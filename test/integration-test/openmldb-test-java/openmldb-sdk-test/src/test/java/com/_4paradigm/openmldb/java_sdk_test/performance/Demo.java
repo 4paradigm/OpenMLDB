@@ -280,6 +280,10 @@ public class Demo {
         CallablePreparedStatement pstmt = null;
         ResultSet resultSet = null;
         try {
+            // pstmt can be reused
+            // while:
+            //    setData
+            //    executeQuery
             pstmt = sqlExecutor.getCallablePreparedStmt(db, sp);
             ResultSetMetaData metaData = pstmt.getMetaData();
             setData(pstmt, metaData);

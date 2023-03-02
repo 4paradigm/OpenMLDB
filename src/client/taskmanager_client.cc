@@ -61,9 +61,9 @@ namespace openmldb::client {
             }
         }
         return {response.code(), response.msg()};
-    } else {
-        return {base::ReturnCode::kServerConnError, "RPC request (to TaskManager) failed(stub is null)"};
     }
+
+    return st;
 }
 
 ::openmldb::base::Status TaskManagerClient::StopJob(const int id, int job_timeout,
