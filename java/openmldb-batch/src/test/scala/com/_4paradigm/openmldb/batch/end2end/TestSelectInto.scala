@@ -29,8 +29,14 @@ class TestSelectInto extends SparkTestSuite {
     val spark = getSparkSession
     val sess = new OpenmldbSession(spark)
 
-    val sqlText = "SELECT 1 INTO OUTFILE 'file:///tmp/openmldb_output/' OPTIONS (mode='overwrite')"
+    val csvFilePath = "file:///tmp/openmldb_output/"
+    val sqlText = s"SELECT 1 INTO OUTFILE '$csvFilePath' OPTIONS (mode='overwrite')"
     sess.sql(sqlText)
+
+    val csvDf = spark.read.option("header", true).csv(csvFilePath)
+    assert(csvDf.isEmpty)
+    assert(csvDf.schema.size == 1)
+    assert(csvDf.schema.fields(0).name.equals("1"))
   }
 
 }
