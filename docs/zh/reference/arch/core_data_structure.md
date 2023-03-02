@@ -28,7 +28,7 @@ OpenMLDB 内部整合了批处理和实时两套 SQL 引擎，分别用于应对
 ### 双层跳表
 
 在开发机器学习应用的过程中，很多特征是和时序窗口的计算相关。如反欺诈场景中需要统计一个特定卡号最近一段时间内（比如三天内）的交易总次数、平均交易金额等。在很多实时场景需求中（比如风控、反欺诈、实时推荐等），对延时会有非常高的要求，一般对于特征算的延迟要求会小于 20 毫秒。如何以毫秒级的延迟访问特定维度值一段时间内的历史数据，是这类数据库所面临的技术挑战。
-为了达到高效的访问时序数据，OpenMLDB 实现了一个分布式的内存存储引擎，核心索引数据结构采用了双层跳表（double-layer skip list），其基于跳表结构做了延伸优化。如下图 (source: [http://vldb.org/pvldb/vol14/p799-chen.pdf](http://vldb.org/pvldb/vol14/p799-chen.pdf)) 所示：
+为了达到高效的访问时序数据，OpenMLDB 实现了一个分布式的内存存储引擎，核心索引数据结构采用了双层跳表（double-layer skip list），其基于跳表结构做了延伸优化。如下图所示：
 
 ```{image} images/core_data_structure/2.png
 :alt: double-layer skip list
