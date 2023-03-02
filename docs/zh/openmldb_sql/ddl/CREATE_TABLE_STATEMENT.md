@@ -194,20 +194,16 @@ desc t4;
 首先[配置OpenMLDB支持Hive](../../integration/offline_data_sources/hive.md)，然后使用以下语句。
 
 ```sql
-CREATE TABLE db1.t1 LIKE HIVE 'hive://hive_db.t1';
+CREATE TABLE t1 LIKE HIVE 'hive://hive_db.t1';
 -- SUCCEED
 ```
-
-注意目前创建的表名必须包括DB名。
 
 **示例6：基于 Parquet 文件创建新表**
 
 ```sql
-CREATE TABLE db1.t1 LIKE PARQUET 'file://t1.parquet';
+CREATE TABLE t1 LIKE PARQUET 'file://t1.parquet';
 -- SUCCEED
 ```
-
-注意目前创建的表名必须包括DB名。
 
 ### 列索引ColumnIndex（可选）
 
