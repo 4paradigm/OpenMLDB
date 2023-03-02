@@ -10,12 +10,19 @@
 
 注：✓ 表示**支持**该语句，✕ 表示**不支持**。
 
-```{image} image/difference.png
-:alt: difference
-:class: bg-primary
-:width: 800px
-:align: center
-```
+|                | **OpenMLDB SQL****离线模式** | **OpenMLDB SQL****在线预览模式** | **OpenMLDB SQL****在线请求模式** | **标准 SQL** | **备注**                                                     |
+| -------------- | ---------------------------- | -------------------------------- | -------------------------------- | ------------ | ------------------------------------------------------------ |
+| WHERE 子句     | ✓                            | ✓                                | ✕                                | ✓            |                                                              |
+| HAVING 子句    | ✓                            | ✓                                | X                                | ✓            |                                                              |
+| JOIN 子句      | ✓                            | ✕                                | ✓                                | ✓            | OpenMLDB 仅支持特有的 **LAST JOIN**                          |
+| GROUP BY 分组  | ✓                            | ✕                                | ✕                                | ✓            |                                                              |
+| ORDER BY 排序  | ✕                            | ✕                                | ✕                                | ✓            |                                                              |
+| LIMIT 限制行数 | ✓                            | ✓                                | ✕                                | ✓            |                                                              |
+| WINDOW 子句    | ✓                            | ✓                                | ✓                                | ✓            | OpenMLDB 增加了特有的 **WINDOW ... UNION** 和 **WINDOW ATTRIBUTES** 语法 |
+| WITH 子句      | ✕                            | ✕                                | ✕                                | ✓            | OpenMLDB 将会在版本 v0.8.0开始支持                           |
+| 聚合函数       | ✓                            | ✓                                | ✓                                | ✓            | OpenMLDB 有较多扩展函数                                      |
+
+
 
 ## 差异详解
 
