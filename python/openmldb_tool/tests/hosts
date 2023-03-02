@@ -12,8 +12,8 @@ localhost:7527
 [apiserver]
 localhost:9080
 
-[zookeeper]
-localhost:2181:2888:3888 /tmp/openmldb/zk-1
-# no taskmanager, wait https://github.com/4paradigm/OpenMLDB/issues/2933
 [taskmanager]
 localhost:9902
+
+[zookeeper]
+localhost:2181:2888:3888 /tmp/openmldb/zk-1
