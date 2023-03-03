@@ -19,7 +19,7 @@
 | ORDER BY 排序  | ✕                            | ✕                                | ✕                                | ✓            |                                                              |
 | LIMIT 限制行数 | ✓                            | ✓                                | ✕                                | ✓            |                                                              |
 | WINDOW 子句    | ✓                            | ✓                                | ✓                                | ✓            | OpenMLDB 增加了特有的 **WINDOW ... UNION** 和 **WINDOW ATTRIBUTES** 语法 |
-| WITH 子句      | ✕                            | ✕                                | ✕                                | ✓            | OpenMLDB 将会在版本 v0.8.0开始支持                           |
+| WITH 子句      | ✕                            | ✕                                | ✕                                | ✓            | OpenMLDB 从版本 v0.7.2 开始支持                           |
 | 聚合函数       | ✓                            | ✓                                | ✓                                | ✓            | OpenMLDB 有较多扩展函数                                      |
 
 
