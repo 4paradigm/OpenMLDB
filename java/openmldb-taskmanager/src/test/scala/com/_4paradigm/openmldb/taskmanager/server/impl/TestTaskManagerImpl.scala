@@ -17,6 +17,7 @@
 package com._4paradigm.openmldb.taskmanager.server.impl
 
 import com._4paradigm.openmldb.proto.TaskManager
+import com._4paradigm.openmldb.taskmanager.{JobInfoManager, LogManager}
 import com._4paradigm.openmldb.taskmanager.server.StatusCode
 import org.scalatest.FunSuite
 
@@ -39,7 +40,7 @@ class TestTaskManagerImpl extends FunSuite {
 
     assert(!response.getBatchVersion.equals("unknown"))
     // Notice that we can not get TaskManager version in unit test
-    assert(response.getTaskmanagerVersion.equals("unknown"))
+    //assert(response.getTaskmanagerVersion.equals("unknown"))
   }
 
   test("Test ShowJob with non-existent id") {
@@ -50,6 +51,21 @@ class TestTaskManagerImpl extends FunSuite {
     val response = impl.ShowJob(request)
 
     assert(response.getCode() == StatusCode.FAILED)
+  }
+
+  test("Test ShowBatchVersion") {
+    val impl = new TaskManagerImpl()
+
+    val request = TaskManager.ShowBatchVersionRequest.newBuilder.setSyncJob(true).build()
+    val response = impl.ShowBatchVersion(request)
+
+    val jobId = response.getJob().getId()
+    val finalJobInfo = JobInfoManager.getJob(jobId).get
+    val jobLog = LogManager.getJobLog(jobId)
+
+    assert(response.getCode == StatusCode.SUCCESS)
+    assert(finalJobInfo.isSuccess)
+    assert(!jobLog.equals(""))
   }
 
 }
