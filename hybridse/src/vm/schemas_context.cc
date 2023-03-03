@@ -168,7 +168,15 @@ void SchemasContext::Merge(size_t child_idx, const SchemasContext* child) {
         auto new_source = this->AddSource();
         new_source->SetSchema(source->GetSchema());
         // source can take the child name for detail showing
-        new_source->SetSourceDBAndTableName(child->GetDBName(), child->GetName());
+        std::string db_name = child->GetDBName();
+        if (db_name.empty() && !source->GetSourceDB().empty()) {
+            db_name = source->GetSourceDB();
+        }
+        std::string rel_name = child->GetName();
+        if (rel_name.empty()&& !source->GetSourceName().empty()) {
+            rel_name = source->GetSourceName();
+        }
+        new_source->SetSourceDBAndTableName(db_name, rel_name);
         for (size_t j = 0; j < source->size(); ++j) {
             // inherit child column id
             new_source->SetColumnID(j, source->GetColumnID(j));
@@ -185,7 +193,17 @@ void SchemasContext::MergeWithNewID(size_t child_idx,
         auto new_source = this->AddSource();
         new_source->SetSchema(source->GetSchema());
         // source can take the child name for detail showing
-        new_source->SetSourceDBAndTableName(child->GetDBName(), child->GetName());
+        // take the first one db/relation name from SchemasContext & SchemaSource,
+        // SchemasContext has higher priority
+        std::string db_name = child->GetDBName();
+        if (db_name.empty() && !source->GetSourceDB().empty()) {
+            db_name = source->GetSourceDB();
+        }
+        std::string rel_name = child->GetName();
+        if (rel_name.empty()&& !source->GetSourceName().empty()) {
+            rel_name = source->GetSourceName();
+        }
+        new_source->SetSourceDBAndTableName(db_name, rel_name);
         for (size_t j = 0; j < source->size(); ++j) {
             // use new column id but record source child column id
             new_source->SetColumnID(j, plan_ctx->GetNewColumnID());
