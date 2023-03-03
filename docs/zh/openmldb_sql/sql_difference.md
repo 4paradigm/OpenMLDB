@@ -104,7 +104,7 @@ OpenMLDB 仅支持 LAST JOIN 一种 JOIN 语法，详细描述参考扩展语法
 特殊限制：
 
 - 关于特定子查询的 LAST JOIN 上线，还有额外要求，详见[上线要求](../openmldb_sql/deployment_manage/ONLINE_REQUEST_REQUIREMENTS.md#在线请求模式下-last-join-的使用规范) 。
-- 在线预览模式下不支持 LAST JOIN, 见 issue： https://github.com/4paradigm/OpenMLDB/issues/2976
+- 在线预览模式下暂不支持 LAST JOIN
 
 ### WITH 子句
 
@@ -121,11 +121,11 @@ OpenMLDB (>= v0.7.2) 支持非递归的 WITH 子句。WITH 子句等价于其它
 特殊限制：
 
 - OpenMLDB v0.6.0 开始支持在线预览模式的全表聚合，但注意所描述的[扫描限制配置](https://openmldb.feishu.cn/wiki/wikcnhBl4NsKcAX6BO9NDtKAxDf#doxcnLWICKzccMuPiWwdpVjSaIe)。
-- OpenMLDB 有自己的聚合函数列表，请查看产品文档具体查询所支持的函数 [OpenMLDB 内置函数](../openmldb_sql/functions_and_operators/Files/udfs_8h.md)。
+- OpenMLDB 有较多的聚合函数扩展，请查看产品文档具体查询所支持的函数 [OpenMLDB 内置函数](../openmldb_sql/functions_and_operators/Files/udfs_8h.md)。
 
 ## 扩展语法
 
-OpenMLDB 主要对 WINDOW 以及 LAST JOIN 语句进行了深度定制化开发，本节将对这两个语法进行详细说明。
+OpenMLDB 主要对 `WINDOW` 以及 `LAST JOIN` 语句进行了深度定制化开发，本节将对这两个语法进行详细说明。
 
 ### WINDOW 子句
 
@@ -152,11 +152,11 @@ OpenMLDB 主要对 WINDOW 以及 LAST JOIN 语句进行了深度定制化开发�
 
 #### 特殊限制
 
-- 在线预览模式或者离线模式下，WINDOW 的输入是 LIMIT 或者 WHERE 子句，得到的计算结果可能不正确, 不建议使用。
+- 在线预览模式或者离线模式下，WINDOW 的输入是 LIMIT 或者 WHERE 子句时，得到的计算结果可能不正确, 不建议使用。
 
 #### 窗口定义举例
 
-定义 ROWS 类型窗口，窗口范围是前 1000 行到当前行：
+定义 `ROWS` 类型窗口，窗口范围是前 1000 行到当前行：
 
 ```SQL
 SELECT 
@@ -170,7 +170,7 @@ FROM
   );
 ```
 
-定义 ROWS_RANGE 类型窗口，窗口范围是当前行前 10 秒的所有行，以及当前行：
+定义 `ROWS_RANGE` 类型窗口，窗口范围是当前行前 10 秒的所有行，以及当前行：
 
 ```SQL
 SELECT 
@@ -184,7 +184,7 @@ FROM
   );
 ```
 
-定义一个 ROWS 类型窗口，窗口范围是前1000行到当前行。 除了当前行以外窗口内不包含当前时刻的其他数据：
+定义一个 `ROWS` 类型窗口，窗口范围是前1000行到当前行。 除了当前行以外窗口内不包含当前时刻的其他数据：
 
 ```SQL
 SELECT 
@@ -198,7 +198,7 @@ FROM
   );
 ```
 
-定义一个 ROWS_RANGE 类型窗口，窗口范围为当前时间到过去 10 秒，但是不包含当前请求行：
+定义一个 `ROWS_RANGE` 类型窗口，窗口范围为当前时间到过去 10 秒，但是不包含当前请求行：
 
 ```SQL
 SELECT 
