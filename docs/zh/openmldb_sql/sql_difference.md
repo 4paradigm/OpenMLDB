@@ -230,7 +230,7 @@ SELECT
 
 #### WINDOW ... UNION 举例
 
-在实际开发中，较多的应用的数据是存放在多个表格中，在这种情况下，一般会使用 WINDOW ... UNION 的语法进行跨表的聚合操作。请参考[跨表特征开发教程](../tutorial/tutorial_sql_2.md)。
+在实际开发中，较多的应用的数据是存放在多个表格中，在这种情况下，一般会使用 WINDOW ... UNION 的语法进行跨表的聚合操作。请参考[跨表特征开发教程](../tutorial/tutorial_sql_2.md)关于“ 副表多行聚合特征”部分。
 
 ### LAST JOIN 子句
 
