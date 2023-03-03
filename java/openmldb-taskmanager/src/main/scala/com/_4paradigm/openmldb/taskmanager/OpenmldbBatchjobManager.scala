@@ -31,11 +31,11 @@ object OpenmldbBatchjobManager {
   /**
    * Run the Spark job to print the OpenMLDB Spark version.
    */
-  def showBatchVersion(): JobInfo = {
+  def showBatchVersion(blocking: Boolean): JobInfo = {
     val jobType = "ShowBatchVersion"
     val mainClass = "com._4paradigm.openmldb.batchjob.ShowBatchVersion"
 
-    SparkJobManager.submitSparkJob(jobType, mainClass)
+    SparkJobManager.submitSparkJob(jobType, mainClass, blocking=blocking)
   }
 
   /**
