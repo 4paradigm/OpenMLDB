@@ -2,7 +2,7 @@
 
 本文将 OpenMLDB SQL 的主要使用方式（SELECT 查询语句）与标准 SQL （以 MySQL 支持的语法为例）进行比较，让有 SQL 使用经验的开发者快速上手 OpenMLDB SQL。
 
-面向 OpenMLDB 版本：>= v0.7.1
+以下如无特殊说明，默认均为 OpenMLDB 版本：>= v0.7.1
 
 ## 支持总览
 
