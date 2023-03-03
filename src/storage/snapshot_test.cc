@@ -29,6 +29,7 @@
 #include "base/glog_wrapper.h"
 #include "base/strings.h"
 #include "codec/schema_codec.h"
+#include "codec/sdk_codec.h"
 #include "common/timer.h"
 #include "gtest/gtest.h"
 #include "log/log_writer.h"

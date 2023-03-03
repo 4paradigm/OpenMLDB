@@ -29,6 +29,7 @@
 #include "absl/strings/numbers.h"
 #include "absl/time/time.h"
 #include "nameserver/system_table.h"
+#include "sdk/db_sdk.h"
 #include "statistics/query_response_time/deploy_query_response_time.h"
 #ifdef DISALLOW_COPY_AND_ASSIGN
 #undef DISALLOW_COPY_AND_ASSIGN
@@ -5566,14 +5567,18 @@ void NameServerImpl::OnLocked() {
     CreateDatabaseOrExit(PRE_AGG_DB);
 
     CreateDatabaseOrExit(INFORMATION_SCHEMA_DB);
-
+    auto& table_infos = db_table_info_[INFORMATION_SCHEMA_DB];
     // TODO(ace): create table if not exists
-    if (FLAGS_system_table_replica_num > 0 && db_table_info_[INFORMATION_SCHEMA_DB].count(GLOBAL_VARIABLES) == 0) {
-        CreateSystemTableOrExit(SystemTableType::kGlobalVariable);
-        InitGlobalVarTable();
-    }
-    if (FLAGS_system_table_replica_num > 0 && db_table_info_[INFORMATION_SCHEMA_DB].count(DEPLOY_RESPONSE_TIME) == 0) {
-        CreateSystemTableOrExit(SystemTableType::kDeployResponseTime);
+    if (FLAGS_system_table_replica_num > 0) {
+        if (table_infos.count(GLOBAL_VARIABLES) == 0) {
+            CreateSystemTableOrExit(SystemTableType::kGlobalVariable);
+            InitGlobalVarTable();
+        }
+        if (auto iter = table_infos.find(DEPLOY_RESPONSE_TIME); iter == table_infos.end()) {
+            CreateSystemTableOrExit(SystemTableType::kDeployResponseTime);
+        } else if (iter->second->column_desc(2).data_type() != type::DataType::kBigInt) {
+            LOG(WARNING) << "the result of count in DEPLOY_RESPONSE_TIME may overflow as the type is int32";
+        }
     }
 
     running_.store(true, std::memory_order_release);
@@ -10467,6 +10472,7 @@ void NameServerImpl::UpdateOfflineTableInfo(::google::protobuf::RpcController* c
         base::SetResponseStatus(base::ReturnCode::kInvalidParameter, "empty db/name, or no tid", response);
         return;
     }
+
     auto tid = request->tid();
     {
         std::lock_guard<std::mutex> lock(mu_);
@@ -10488,7 +10494,12 @@ void NameServerImpl::UpdateOfflineTableInfo(::google::protobuf::RpcController* c
 
         // copy origin table info, do not modify origin table info until the zk update succeed
         auto new_info = std::make_shared<TableInfo>(*ori_table_info);
-        new_info->mutable_offline_table_info()->CopyFrom(request->offline_table_info());
+        if (!request->has_offline_table_info()) {
+            // a tricky way to delete offline table info
+            new_info->release_offline_table_info();
+        } else {
+            new_info->mutable_offline_table_info()->CopyFrom(request->offline_table_info());
+        }
         if (IsClusterMode()) {
             // TODO(hw): DCHECK mode_?
             std::string info_str;
@@ -10783,7 +10794,12 @@ void NameServerImpl::SyncDeployStats() {
     while (rs->Next()) {
         auto name = rs->GetAsStringUnsafe(0);
         auto time = rs->GetAsStringUnsafe(1);
-        int32_t cnt = rs->GetInt32Unsafe(2);
+        uint64_t cnt = 0;
+        if (rs->GetSchema()->GetColumnType(2) == hybridse::sdk::DataType::kTypeInt64) {
+            cnt = static_cast<uint64_t>(rs->GetInt64Unsafe(2));
+        } else {
+            cnt = static_cast<uint64_t>(rs->GetInt32Unsafe(2));
+        }
         auto total = rs->GetAsStringUnsafe(3);
 
         auto ts = statistics::ParseDurationFromStr(time, statistics::TimeUnit::SECOND);
@@ -10815,7 +10831,7 @@ void NameServerImpl::SyncDeployStats() {
         DLOG(INFO) << "sync deploy stats: executing sql: " << insert_sql;
         sr->ExecuteInsert("", insert_sql, &st);
         if (!st.IsOK()) {
-            LOG(ERROR) << "[ERROR] insert deploy stats failed: " << s.msg;
+            LOG(ERROR) << "[ERROR] insert deploy stats failed: " << st.msg;
         }
     }
     // TODO(ace): add logs for summary how many rows affected and time cost

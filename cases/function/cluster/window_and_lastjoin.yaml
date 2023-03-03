@@ -293,7 +293,7 @@ cases:
         window w4 as (PARTITION BY {0}.c4 ORDER BY {0}.c7 ROWS_RANGE BETWEEN 10d PRECEDING AND CURRENT ROW)
       ) as out4 on out1_id=out4_id;
     request_plan: |
-      SIMPLE_PROJECT(sources=(out1_id, c1, w1_sum_c6, out2_id, c2, w2_sum_c6, out3_id, c3, w3_sum_c6, out4.out4_id, out4.c4, out4.w4_sum_c6))
+      SIMPLE_PROJECT(sources=(out1.out1_id, out1.c1, out1.w1_sum_c6, out2.out2_id, out2.c2, out2.w2_sum_c6, out3.out3_id, out3.c3, out3.w3_sum_c6, out4.out4_id, out4.c4, out4.w4_sum_c6))
         REQUEST_JOIN(type=LastJoin, condition=, left_keys=(out1_id), right_keys=(out4_id), index_keys=)
           REQUEST_JOIN(type=LastJoin, condition=, left_keys=(out1_id), right_keys=(out3_id), index_keys=)
             REQUEST_JOIN(type=LastJoin, condition=, left_keys=(out1_id), right_keys=(out2_id), index_keys=)
@@ -319,7 +319,7 @@ cases:
                 DATA_PROVIDER(type=Partition, table=auto_t0, index=index4)
 
     cluster_request_plan: |
-      SIMPLE_PROJECT(sources=(out1_id, c1, w1_sum_c6, out2_id, c2, w2_sum_c6, out3_id, c3, w3_sum_c6, out4.out4_id, out4.c4, out4.w4_sum_c6))
+      SIMPLE_PROJECT(sources=(out1.out1_id, out1.c1, out1.w1_sum_c6, out2.out2_id, out2.c2, out2.w2_sum_c6, out3.out3_id, out3.c3, out3.w3_sum_c6, out4.out4_id, out4.c4, out4.w4_sum_c6))
         REQUEST_JOIN(type=LastJoin, condition=, left_keys=(out1_id), right_keys=(out4_id), index_keys=)
           REQUEST_JOIN(type=LastJoin, condition=, left_keys=(out1_id), right_keys=(out3_id), index_keys=)
             REQUEST_JOIN(type=LastJoin, condition=, left_keys=(out1_id), right_keys=(out2_id), index_keys=)

@@ -9,7 +9,7 @@
   * The number of cores is recommended to be no less than 4 cores. If the CPU does not support the AVX2 instruction set in the Linux environment, the deployment package needs to be recompiled from the source code.
 
 ## Deployment Package
-The precompiled OpenMLDB deployment package is used by default in this documentation ([Linux](https://github.com/4paradigm/OpenMLDB/releases/download/v0.7.0/openmldb-0.7.0-linux.tar.gz) , [macOS](https://github.com/4paradigm/OpenMLDB/releases/download/v0.7.0/openmldb-0.7.0-darwin.tar.gz)), the supported operating system requirements are: CentOS 7, Ubuntu 20.04, macOS >= 10.15. If the user wishes to compile by himself (for example, for OpenMLDB source code development, the operating system or CPU architecture is not in the support list of the precompiled deployment package, etc.), the user can choose to compile and use in the docker container or compile from the source code. For details, please refer to our [compile documentation](compile.md).
+The precompiled OpenMLDB deployment package is used by default in this documentation ([Linux](https://github.com/4paradigm/OpenMLDB/releases/download/v0.7.2/openmldb-0.7.2-linux.tar.gz) , [macOS](https://github.com/4paradigm/OpenMLDB/releases/download/v0.7.2/openmldb-0.7.2-darwin.tar.gz)), the supported operating system requirements are: CentOS 7, Ubuntu 20.04, macOS >= 10.15. If the user wishes to compile by himself (for example, for OpenMLDB source code development, the operating system or CPU architecture is not in the support list of the precompiled deployment package, etc.), the user can choose to compile and use in the docker container or compile from the source code. For details, please refer to our [compile documentation](compile.md).
 
 ## Configure Environment (Linux)
 
@@ -89,9 +89,9 @@ OpenMLDB standalone version needs to deploy a nameserver and a tablet. The names
 ### Download the OpenMLDB Release Package
 
 ```
-wget https://github.com/4paradigm/OpenMLDB/releases/download/v0.7.0/openmldb-0.7.0-linux.tar.gz
-tar -zxvf openmldb-0.7.0-linux.tar.gz
-cd openmldb-0.7.0-linux
+wget https://github.com/4paradigm/OpenMLDB/releases/download/v0.7.2/openmldb-0.7.2-linux.tar.gz
+tar -zxvf openmldb-0.7.2-linux.tar.gz
+cd openmldb-0.7.2-linux
 ```
 
 ### Configuration
@@ -159,9 +159,9 @@ Environment Requirements:
 ### Download the OpenMLDB Deployment Package
 
 ```
-wget https://github.com/4paradigm/OpenMLDB/releases/download/v0.7.0/openmldb-0.7.0-linux.tar.gz
-tar -zxvf openmldb-0.7.0-linux.tar.gz
-cd openmldb-0.7.0-linux
+wget https://github.com/4paradigm/OpenMLDB/releases/download/v0.7.2/openmldb-0.7.2-linux.tar.gz
+tar -zxvf openmldb-0.7.2-linux.tar.gz
+cd openmldb-0.7.2-linux
 ```
 
 ### Configuration
@@ -171,6 +171,7 @@ which are listed below.
 
 | Environment Variables             | Default Values                                          | Definitons                                                                                            |
 |-----------------------------------|---------------------------------------------------------|-------------------------------------------------------------------------------------------------------|
+| OPENMLDB_VERSION                  | 0.7.2                                                   | OpenMLDB version                                                                                      |
 | OPENMLDB_MODE                     | standalone                                              | standalone or cluster mode                                                                            |
 | OPENMLDB_HOME                     | root directory of the release folder                    | openmldb root path                                                                                    |
 | SPARK_HOME                        | $OPENMLDB_HOME/spark                                    | the root path of openmldb spark release. if not exists, download from online                          |
@@ -200,6 +201,9 @@ node3:7527
 [apiserver]
 node3:9080
 
+[taskmanager]
+localhost:9902
+
 [zookeeper]
 node3:2181:2888:3888 /tmp/openmldb/zk-1
 ```
@@ -208,6 +212,7 @@ The configuration file is divided into four sections, identified by `[]`:
 - `[tablet]`：tablet node list
 - `[nameserver]`：nameserver node list
 - `[apiserver]`：apiserver node list
+- `[taskmanager]`：taskmanager node list
 - `[zookeeper]`：zookeeper node list
 
 For each node list, one line represents one node, with the format of `host:port WORKDIR`.
@@ -219,6 +224,10 @@ and `zk_election_port` for the leader election.
 Note that for every node configuration, only the `host` is required, while others are optional.
 If the optional parameters are not provided,
 default values are used, which are defined in `conf/openmldb-env.sh`.
+
+```{warning}
+If multiple TaskManager instances are deployed in different machines，the `offline.data.prefix` should be configured to be globally accessabile by these machines (e.g., hdfs path).
+```
 
 ### Deployment
 ```bash
@@ -289,10 +298,10 @@ Deploy the Zookeeper cluster [refer to here](https://zookeeper.apache.org/doc/r3
 #### 1. Download the OpenMLDB Deployment Package
 
 ```
-wget https://github.com/4paradigm/OpenMLDB/releases/download/v0.7.0/openmldb-0.7.0-linux.tar.gz
-tar -zxvf openmldb-0.7.0-linux.tar.gz
-mv openmldb-0.7.0-linux openmldb-tablet-0.7.0
-cd openmldb-tablet-0.7.0
+wget https://github.com/4paradigm/OpenMLDB/releases/download/v0.7.2/openmldb-0.7.2-linux.tar.gz
+tar -zxvf openmldb-0.7.2-linux.tar.gz
+mv openmldb-0.7.2-linux openmldb-tablet-0.7.2
+cd openmldb-tablet-0.7.2
 ```
 
 #### 2. Modify the Configuration File: conf/tablet.flags
@@ -339,10 +348,10 @@ Repeat the above steps to deploy multiple tablets.
 #### 1. Download the OpenMLDB Deployment Package
 
 ```
-wget https://github.com/4paradigm/OpenMLDB/releases/download/v0.7.0/openmldb-0.7.0-linux.tar.gz
-tar -zxvf openmldb-0.7.0-linux.tar.gz
-mv openmldb-0.7.0-linux openmldb-ns-0.7.0
-cd openmldb-ns-0.7.0
+wget https://github.com/4paradigm/OpenMLDB/releases/download/v0.7.2/openmldb-0.7.2-linux.tar.gz
+tar -zxvf openmldb-0.7.2-linux.tar.gz
+mv openmldb-0.7.2-linux openmldb-ns-0.7.2
+cd openmldb-ns-0.7.2
 ```
 
 #### 2. Modify the Configuration File: conf/nameserver.flags
@@ -389,10 +398,10 @@ Before running, make sure that the OpenMLDB cluster has been started, otherwise 
 #### 1. Download the OpenMLDB Deployment Package
 
 ```
-wget https://github.com/4paradigm/OpenMLDB/releases/download/v0.7.0/openmldb-0.7.0-linux.tar.gz
-tar -zxvf openmldb-0.7.0-linux.tar.gz
-mv openmldb-0.7.0-linux openmldb-apiserver-0.7.0
-cd openmldb-apiserver-0.7.0
+wget https://github.com/4paradigm/OpenMLDB/releases/download/v0.7.2/openmldb-0.7.2-linux.tar.gz
+tar -zxvf openmldb-0.7.2-linux.tar.gz
+mv openmldb-0.7.2-linux openmldb-apiserver-0.7.2
+cd openmldb-apiserver-0.7.2
 ```
 
 #### 2. Modify the Configuration File: conf/apiserver.flags
@@ -432,12 +441,12 @@ TaskManager can be deployed in single server. You can deploy multiple instances 
 #### 1. Download the OpenMLDB Spark Distribution that is Optimized for Feature Engineering
 
 ```
-wget https://github.com/4paradigm/spark/releases/download/v3.2.1-openmldb0.7.0/spark-3.2.1-bin-openmldbspark.tgz
+wget https://github.com/4paradigm/spark/releases/download/v3.2.1-openmldb0.7.2/spark-3.2.1-bin-openmldbspark.tgz
 tar -zxvf spark-3.2.1-bin-openmldbspark.tgz
-wget https://github.com/4paradigm/OpenMLDB/releases/download/v0.7.0/openmldb-0.7.0-linux.tar.gz
-tar -zxvf openmldb-0.7.0-linux.tar.gz
-mv openmldb-0.7.0-linux openmldb-taskmanager-0.7.0
-cd openmldb-taskmanager-0.7.0
+wget https://github.com/4paradigm/OpenMLDB/releases/download/v0.7.2/openmldb-0.7.2-linux.tar.gz
+tar -zxvf openmldb-0.7.2-linux.tar.gz
+mv openmldb-0.7.2-linux openmldb-taskmanager-0.7.2
+cd openmldb-taskmanager-0.7.2
 ```
 
 #### 2. Modify the Configuration File conf/taskmanager.properties

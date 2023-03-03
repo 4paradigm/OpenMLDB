@@ -1,0 +1,17 @@
+# This file is generated automatically from conf/apiserver.flags.template
+
+# apiserver.conf
+# --endpoint=127.0.0.1:9080
+--role=apiserver
+# --zk_cluster=127.0.0.1:2181
+# --zk_root_path=/openmldb
+
+--openmldb_log_dir=./logs
+--log_level=info
+
+#--thread_pool_size=16
+
+# below configs are generated automatically
+--zk_cluster=localhost:2181
+--zk_root_path=/openmldb
+--endpoint=localhost:9080

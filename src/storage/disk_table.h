@@ -23,7 +23,6 @@
 #include <vector>
 #include "base/endianconv.h"
 #include "base/slice.h"
-#include "boost/lexical_cast.hpp"
 #include "common/timer.h"
 #include "gflags/gflags.h"
 #include "proto/common.pb.h"
@@ -43,60 +42,59 @@
 namespace openmldb {
 namespace storage {
 
-static const uint32_t TS_LEN = sizeof(uint64_t);
-static const uint32_t TS_POS_LEN = sizeof(uint32_t);
+static constexpr uint32_t TS_LEN = sizeof(uint64_t);
+static constexpr uint32_t TS_POS_LEN = sizeof(uint32_t);
 
-__attribute__((unused)) static int ParseKeyAndTs(bool has_ts_idx, const rocksdb::Slice& s,
-                                                 std::string& key,   // NOLINT
-                                                 uint64_t& ts,       // NOLINT
-                                                 uint32_t& ts_idx) {  // NOLINT
+__attribute__((unused))
+static int ParseKeyAndTs(bool has_ts_idx, const rocksdb::Slice& s,
+        rocksdb::Slice* key, uint64_t* ts, uint32_t* ts_idx) {
     auto len = TS_LEN;
     if (has_ts_idx) {
         len += TS_POS_LEN;
     }
-    key.clear();
     if (s.size() < len) {
         return -1;
     } else if (s.size() > len) {
-        key.assign(s.data(), s.size() - len);
+        *key = {s.data(), s.size() - len};
     }
     if (has_ts_idx) {
-        memcpy(static_cast<void*>(&ts_idx), s.data() + s.size() - len, TS_POS_LEN);
+        memcpy(reinterpret_cast<void*>(ts_idx), s.data() + s.size() - len, TS_POS_LEN);
     }
-    memcpy(static_cast<void*>(&ts), s.data() + s.size() - TS_LEN, TS_LEN);
-    memrev64ifbe(static_cast<void*>(&ts));
+    memcpy(reinterpret_cast<void*>(ts), s.data() + s.size() - TS_LEN, TS_LEN);
+    memrev64ifbe(reinterpret_cast<void*>(ts));
     return 0;
 }
 
-static int ParseKeyAndTs(const rocksdb::Slice& s, std::string& key,  // NOLINT
-                         uint64_t& ts) {                             // NOLINT
-    key.clear();
-    if (s.size() < TS_LEN) {
-        return -1;
-    } else if (s.size() > TS_LEN) {
-        key.assign(s.data(), s.size() - TS_LEN);
-    }
-    memcpy(static_cast<void*>(&ts), s.data() + s.size() - TS_LEN, TS_LEN);
-    memrev64ifbe(static_cast<void*>(&ts));
-    return 0;
+__attribute__((unused))
+static int ParseKeyAndTs(bool has_ts_idx, const rocksdb::Slice& s,
+        std::string* key, uint64_t* ts, uint32_t* ts_idx) {
+    rocksdb::Slice tmp_key;
+    int ret = ParseKeyAndTs(has_ts_idx, s, &tmp_key, ts, ts_idx);
+    key->assign(tmp_key.data(), tmp_key.size());
+    return ret;
 }
 
-static inline std::string CombineKeyTs(const std::string& key, uint64_t ts) {
+static int ParseKeyAndTs(const rocksdb::Slice& s, rocksdb::Slice* key, uint64_t* ts) {
+    uint32_t ts_idx = 0;
+    return ParseKeyAndTs(false, s, key, ts, &ts_idx);
+}
+
+static inline std::string CombineKeyTs(const rocksdb::Slice& key, uint64_t ts) {
     std::string result;
     result.resize(key.size() + TS_LEN);
     char* buf = reinterpret_cast<char*>(&(result[0]));
     memrev64ifbe(static_cast<void*>(&ts));
-    memcpy(buf, key.c_str(), key.size());
+    memcpy(buf, key.data(), key.size());
     memcpy(buf + key.size(), static_cast<void*>(&ts), TS_LEN);
     return result;
 }
 
-static inline std::string CombineKeyTs(const std::string& key, uint64_t ts, uint32_t ts_pos) {
+static inline std::string CombineKeyTs(const rocksdb::Slice& key, uint64_t ts, uint32_t ts_pos) {
     std::string result;
     result.resize(key.size() + TS_LEN + TS_POS_LEN);
     char* buf = reinterpret_cast<char*>(&(result[0]));
     memrev64ifbe(static_cast<void*>(&ts));
-    memcpy(buf, key.c_str(), key.size());
+    memcpy(buf, key.data(), key.size());
     memcpy(buf + key.size(), static_cast<void*>(&ts_pos), TS_POS_LEN);
     memcpy(buf + key.size() + TS_POS_LEN, static_cast<void*>(&ts), TS_LEN);
     return result;
@@ -108,10 +106,10 @@ class KeyTSComparator : public rocksdb::Comparator {
     const char* Name() const override { return "KeyTSComparator"; }
 
     int Compare(const rocksdb::Slice& a, const rocksdb::Slice& b) const override {
-        std::string key1, key2;
+        rocksdb::Slice key1, key2;  // may contain the ts_pos
         uint64_t ts1 = 0, ts2 = 0;
-        ParseKeyAndTs(a, key1, ts1);
-        ParseKeyAndTs(b, key2, ts2);
+        ParseKeyAndTs(a, &key1, &ts1);
+        ParseKeyAndTs(b, &key2, &ts2);
 
         int ret = key1.compare(key2);
         if (ret != 0) {
@@ -169,7 +167,8 @@ class AbsoluteTTLCompactionFilter : public rocksdb::CompactionFilter {
                 if (!ts_col) {
                     return false;
                 }
-                if (ts_col->GetId() == ts_idx) {
+                if (ts_col->GetId() == ts_idx &&
+                        index->GetTTL()->ttl_type == openmldb::storage::TTLType::kAbsoluteTime) {
                     real_ttl = index->GetTTL()->abs_ttl;
                     has_found = true;
                     break;

@@ -21,7 +21,7 @@ OpenMLDB Kafka Connector实现见[extensions/kafka-connect-jdbc](https://github.
 
 我们推荐你将下载的三个文件包都绑定到文件目录`kafka`。当然，也可以在启动容器后，再进行文件包的下载。我们假设文件包都在`/work/kafka`目录中。
 ```
-docker run -it -v `pwd`:/work/kafka --name openmldb 4pdosc/openmldb:0.7.0 bash
+docker run -it -v `pwd`:/work/kafka --name openmldb 4pdosc/openmldb:0.7.2 bash
 ```
 
 ### 流程
@@ -193,4 +193,4 @@ rm -rf /tmp/kafka-logs /tmp/kraft-combined-logs
 ```
 /work/init.sh
 ```
-然后你可以在OpenMLDB创建database，启动Kafka。。。
+`init.sh`会启动新的OpenMLDB集群，你可以在OpenMLDB创建database，再重新启动Kafka。

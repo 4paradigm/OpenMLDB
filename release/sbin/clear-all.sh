@@ -34,7 +34,7 @@ else
     dir=$(echo "$line" | awk -F ' ' '{print $3}')
 
     echo "clear tablet data and log in $dir with endpoint $host:$port "
-    cmd="cd $dir; rm -rf recycle db logs"
+    cmd="cd $dir && rm -rf recycle db logs"
     run_auto "$host" "$cmd"
   done
 
@@ -46,7 +46,7 @@ else
     dir=$(echo "$line" | awk -F ' ' '{print $3}')
 
     echo "clear apiserver log in $dir with endpoint $host:$port "
-    cmd="cd $dir; rm -rf logs"
+    cmd="cd $dir && rm -rf logs"
     run_auto "$host" "$cmd"
   done
 
@@ -58,15 +58,25 @@ else
     dir=$(echo "$line" | awk -F ' ' '{print $3}')
 
     echo "clear nameserver log in $dir with endpoint $host:$port "
-    cmd="cd $dir; rm -rf logs"
+    cmd="cd $dir && rm -rf logs"
     run_auto "$host" "$cmd"
   done
 
   # delete taskmanager data and log
-  echo "clear taskmanager data and log in /tmp/openmldb_offline_storage/ and $home/logs"
-  rm -rf "$home"/logs
-  rm -rf "$home"/taskmanager/bin/logs
-  rm -rf /tmp/openmldb_offline_storage/
+  for line in $(parse_host conf/hosts taskmanager)
+  do
+    host=$(echo "$line" | awk -F ' ' '{print $1}')
+    port=$(echo "$line" | awk -F ' ' '{print $2}')
+    dir=$(echo "$line" | awk -F ' ' '{print $3}')
+
+    echo "clear taskmanager log in $dir with endpoint $host:$port "
+    cmd="cd $dir && rm -rf logs taskmanager/bin/logs"
+    run_auto "$host" "$cmd"
+    # TODO(zhanghao): support to delete file:// or hdfs:// style path
+    cmd="cd $dir && rm -rf /tmp/openmldb_offline_storage/"
+    echo "clear taskmanager data in $dir with endpoint $host:$port "
+    run_auto "$host" "$cmd"
+  done
 
   # delete zk data
   if [[ "${OPENMLDB_USE_EXISTING_ZK_CLUSTER}" != "true" ]]; then
@@ -77,7 +87,7 @@ else
       dir=$(echo "$line" | awk -F ' ' '{print $3}')
 
       echo "clear zookeeper data and log in $dir with endpoint $host:$port"
-      cmd="cd $dir; rm zookeeper.out > /dev/null 2>&1"
+      cmd="cd $dir && rm zookeeper.out > /dev/null 2>&1"
       run_auto "$host" "$cmd"
       cmd="cd $dir/data; find -type d -not -path '.' -exec rm -rf {} +"
       run_auto "$host" "$cmd"

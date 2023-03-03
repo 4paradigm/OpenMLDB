@@ -34,13 +34,15 @@ object SelectIntoPlan {
     }
 
     // write options don't need deepCopy
-    val (format, options, mode, _) = HybridseUtil.parseOptions(node)
-    if (input.getDf().isEmpty) {
+    val (format, options, mode, _) = HybridseUtil.parseOptions(outPath, node)
+    if (input.getSchema.size == 0 && input.getDf().isEmpty) {
       throw new Exception("select empty, skip save")
-    } else if (outPath.toLowerCase.startsWith("hive://")) {
+    }
+
+    if (format == "hive") {
       // we won't check if the database exists, if not, save will throw exception
       // DO NOT create database in here(the table location will be spark warehouse)
-      val dbt = outPath.substring(7) // hive://<[db.]table>
+      val dbt = HybridseUtil.hiveDest(outPath)
       logger.info(s"offline select into: hive way, write mode[${mode}], out table ${dbt}")
       input.getDf().write.format("hive").mode(mode).saveAsTable(dbt)
     } else {

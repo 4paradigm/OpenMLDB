@@ -18,8 +18,8 @@ package com._4paradigm.openmldb.batch.utils
 
 import com._4paradigm.openmldb.batch.PlanContext
 import com._4paradigm.openmldb.batch.SparkTestSuite
+import com._4paradigm.openmldb.batch.api.OpenmldbSession
 import com._4paradigm.openmldb.batch.utils.HybridseUtil.autoLoad
-import com._4paradigm.openmldb.batch.utils.HybridseUtil.hiveLoad
 import com._4paradigm.openmldb.proto.{Common, Type}
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.SparkConf
@@ -28,6 +28,12 @@ import org.apache.spark.sql.AnalysisException
 import org.scalatest.Matchers
 
 class HybridseUtilTest extends SparkTestSuite with Matchers {
+  var openmldbSession: OpenmldbSession = _
+
+  override def customizedBefore(): Unit = {
+    // autoLoad data use openmldbsession
+    openmldbSession = new OpenmldbSession(getSparkSession)
+  }
 
   def checkTsColResult(df: DataFrame, expected: String): Unit = {
     df.show()
@@ -42,7 +48,7 @@ class HybridseUtilTest extends SparkTestSuite with Matchers {
     val testFile = "file://" + getClass.getResource("/load_data_test_src/sql_timestamp.csv").getPath
 
     // test format with upper case
-    val df = autoLoad(getSparkSession, testFile, "Csv", Map(("header", "true"), ("nullValue", "null")), cols)
+    val df = autoLoad(openmldbSession, testFile, "Csv", Map(("header", "true"), ("nullValue", "null")), cols)
     checkTsColResult(df, "List(null, 1970-01-01 00:00:00.0, null, null, 2022-02-01 09:00:00.0)")
   }
 
@@ -54,7 +60,7 @@ class HybridseUtilTest extends SparkTestSuite with Matchers {
     // but the source col 'ts' is timestamp
     val testFile = "file://" + getClass.getResource("/load_data_test_src/timestamp.parquet").getPath
     val thrown = the[IllegalArgumentException] thrownBy {
-      val df = autoLoad(getSparkSession, testFile, "parquet", Map(("header", "true"), ("nullValue", "null")), cols)
+      val df = autoLoad(openmldbSession, testFile, "parquet", Map(("header", "true"), ("nullValue", "null")), cols)
       fail("unreachable")
     }
     thrown.getMessage should startWith ("requirement failed: schema mismatch")
@@ -66,17 +72,17 @@ class HybridseUtilTest extends SparkTestSuite with Matchers {
     cols.add(col)
 
     val testFile = "file://" + getClass.getResource("/load_data_test_src/sql_timestamp.csv").getPath
-    val df = autoLoad(getSparkSession, testFile, "csv", Map(("header", "true"), ("nullValue", "null")), cols)
+    val df = autoLoad(openmldbSession, testFile, "csv", Map(("header", "true"), ("nullValue", "null")), cols)
     checkTsColResult(df, "List(null, 1970-01-01 00:00:00.0, null, null, 2022-02-01 09:00:00.0)")
 
     val testFile2 = "file://" + getClass.getResource("/load_data_test_src/long_timestamp.csv").getPath
-    val df2 = autoLoad(getSparkSession, testFile2, "csv", Map(("header", "true"), ("nullValue", "null")), cols)
+    val df2 = autoLoad(openmldbSession, testFile2, "csv", Map(("header", "true"), ("nullValue", "null")), cols)
     checkTsColResult(df2, "List(null, null, 2022-02-01 09:00:00.0, null)")
 
     // won't try to parse timestamp format when loading parquet
     val testFile3 = "file://" + getClass.getResource("/load_data_test_src/timestamp.parquet").getPath
     // the format setting in options won't work, autoLoad will use arg2 `format` to load file
-    val df3 = autoLoad(getSparkSession, testFile3, "parquet", Map(("header", "true"), ("nullValue", "null"),
+    val df3 = autoLoad(openmldbSession, testFile3, "parquet", Map(("header", "true"), ("nullValue", "null"),
       ("format", "csv")), cols)
     checkTsColResult(df3, "List(null, 1970-01-01 08:00:00.0, 2022-02-01 17:00:00.0)")
   }
@@ -111,7 +117,7 @@ class HybridseUtilTest extends SparkTestSuite with Matchers {
     // <hive-table-pattern>: db.table or table
     val testFile = "hive://src1"
     val ctx = new PlanContext("test-hive-tag", hiveSession, null, null)
-    val df1 = hiveLoad(ctx, testFile, cols)
+    val df1 = autoLoad(ctx.getOpenmldbSession, testFile, "hive", Map(), cols)
     df1.show()
     assert(SparkUtil.approximateDfEqual(df, df1))
 

@@ -17,7 +17,7 @@ If you wan to compile and install it by yourself, you can refer to our [installa
 Pull the image (image download size is about 1GB, after decompression is about 1.7 GB) and start the docker container:
 
 ```bash
-docker run -it 4pdosc/openmldb:0.7.0 bash
+docker run -it 4pdosc/openmldb:0.7.2 bash
 ```
 
 ```{important}

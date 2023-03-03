@@ -251,13 +251,12 @@ void DefaultUdfLibrary::InitAvgByCateUdafs() {
 
     RegisterUdafTemplate<AvgCateWhereDef>("avg_cate_where")
         .doc(R"(
-            @brief Compute average of values matching specified condition grouped by
-    category key and output string. Each group is represented as 'K:V' and
-    separated by comma in outputs and are sorted by key in ascend order.
+            @brief Compute average of values matching specified condition grouped by category key and output string.
+            Each group is represented as 'K:V', separated by comma, and sorted by key in ascend order.
 
-            @param catagory  Specify catagory column to group by.
             @param value  Specify value column to aggregate on.
             @param condition  Specify condition column.
+            @param catagory  Specify catagory column to group by.
 
             Example:
 
@@ -269,7 +268,7 @@ void DefaultUdfLibrary::InitAvgByCateUdafs() {
             3|true|y
             4|true|x
             @code{.sql}
-                SELECT avg_cate_where(catagory, value, condition) OVER w;
+                SELECT avg_cate_where(value, condition, category) OVER w;
                 -- output "x:2,y:3"
             @endcode
             )")
