@@ -22,6 +22,9 @@ import org.apache.spark.sql.SparkSession
 
 class OpenmldbBatchConfig extends Serializable {
 
+  @ConfigOption(name = "openmldb.print.version", doc = "Print the OpenMLDB version or not")
+  var printVersion: Boolean = true
+
   // The integration like WindowAgg and GroupBy will use this config to set partition number
   @ConfigOption(name = "openmldb.groupby.partitions", doc = "Default partition number used in group by")
   var groupbyPartitions: Int = -1

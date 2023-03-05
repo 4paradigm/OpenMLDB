@@ -20,7 +20,6 @@ import com._4paradigm.openmldb.batch.catalog.OpenmldbCatalogService
 import com._4paradigm.openmldb.batch.utils.{DataTypeUtil, VersionCli}
 import com._4paradigm.openmldb.batch.utils.HybridseUtil.autoLoad
 import com._4paradigm.openmldb.batch.{OpenmldbBatchConfig, SparkPlanner}
-import org.apache.commons.io.IOUtils
 import org.apache.log4j.{Level, Logger}
 import org.apache.spark.{SPARK_VERSION, SparkConf}
 import org.apache.spark.sql.catalyst.QueryPlanningTracker
@@ -28,7 +27,7 @@ import org.apache.spark.sql.catalyst.plans.logical.LogicalPlan
 import org.apache.spark.sql.types.{StructField, StructType}
 import org.apache.spark.sql.{DataFrame, Dataset, Row, SparkSession}
 import org.slf4j.LoggerFactory
-
+import java.io.IOException
 import scala.collection.mutable
 import scala.collection.JavaConverters.{asScalaBufferConverter, mapAsScalaMap, mapAsScalaMapConverter}
 
@@ -61,6 +60,11 @@ class OpenmldbSession {
     this.sparkSession = sparkSession
     this.config = OpenmldbBatchConfig.fromSparkSession(sparkSession)
     this.setDefaultSparkConfig()
+
+    if (this.config.printVersion) {
+      logger.info("Print OpenMLDB version")
+      logger.info(version())
+    }
 
     if (this.config.openmldbZkCluster.nonEmpty && this.config.openmldbZkRootPath.nonEmpty) {
       logger.info(s"Try to connect OpenMLDB with zk ${this.config.openmldbZkCluster} and root path " +
@@ -216,10 +220,10 @@ class OpenmldbSession {
     // Read OpenMLDB git properties which is added by maven plugin
     try {
       val openmldbBatchVersion = VersionCli.getVersion()
-      s"$SPARK_VERSION\n$openmldbBatchVersion"
+      s"Spark: $SPARK_VERSION, OpenMLDB: $openmldbBatchVersion"
     } catch {
-      case e: Exception => {
-        logger.error("Fail to load OpenMLDB git properties " + e.getMessage)
+      case e: IOException => {
+        logger.warn("Fail to load OpenMLDB git properties " + e.getMessage)
         SPARK_VERSION
       }
     }
