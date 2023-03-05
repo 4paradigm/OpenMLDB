@@ -105,14 +105,14 @@ zk日志：
 1. CLI：启动时配置`--zk_log_level`调整level,`--zk_log_file`配置日志保存文件。
 2. JAVA/Python SDK：Option或url中使用`zkLogLevel`调整level，`zkLogFile`配置日志保存文件。
 
-- `zk_log_level`(int, 默认=3, 即INFO): 
+- `zk_log_level`(int, 默认=0, 即DISABLE_LOGGING): 
 打印这个等级及**以下**等级的日志。0-禁止所有zk log, 1-error, 2-warn, 3-info, 4-debug。
 
 sdk日志（glog日志）：
 1. CLI：启动时配置`--glog_level`调整level,`--glog_dir`配置日志保存文件。
 2. JAVA/Python SDK：Option或url中使用`glogLevel`调整level，`glogDir`配置日志保存文件。
 
-- `glog_level`(int, 默认=0, 即INFO):
+- `glog_level`(int, 默认=1, 即WARNING):
 打印这个等级及**以上**等级的日志。 INFO, WARNING, ERROR, and FATAL日志分别对应 0, 1, 2, and 3。
 
 
