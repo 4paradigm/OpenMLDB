@@ -43,10 +43,17 @@ config_zk() {
 
 common_config() {
   local config_file=$1
+  local host=$2
+  local port=$3
   local tmp_config="${config_file}".template
-  if [[ $# -ge 2 ]]; then
-    tmp_config=$2
+  if [[ $# -ge 4 ]]; then
+    tmp_config=$4
   fi
+  local with_zk=true
+  if [[ $# -ge 5 ]]; then
+    with_zk=$5
+  fi
+
   printf "# This file is generated automatically from %s\n\n" "${tmp_config}" > "${config_file}"
   cat "${tmp_config}" >> "${config_file}"
 
@@ -54,7 +61,23 @@ common_config() {
   echo "# below configs are generated automatically" >> "$config_file"
 
   # configure zookeeper
-  config_zk "${config_file}"
+  if [[ -n ${with_zk} && ${with_zk} != "false" ]]; then
+    config_zk "${config_file}"
+  fi
+
+  # configure host:port
+  if [[ -n ${port} ]]; then
+    # tablet/nameserver
+    if grep -q "\-\-endpoint=" < "${config_file}"; then
+      exchange "--endpoint" "${host}:${port}" "${config_file}"
+    elif grep -q "server.host" < "${config_file}"; then  # taskmanager
+      exchange "server.host" "${host}" "${config_file}"
+      exchange "server.port" "${port}" "${config_file}"
+      exchange "spark.home" "${SPARK_HOME}" "${config_file}"
+    elif grep -q "clientPort" < "${config_file}"; then  # zookeeper
+      exchange "clientPort" "${port}" "${zk_conf}"
+    fi
+  fi
 }
 
 component=$1
@@ -62,43 +85,28 @@ case $component in
   tablet)
     # configure tablet
     tablet_conf=conf/tablet.flags
-    common_config ${tablet_conf}
-    if [[ -n ${OPENMLDB_TABLET_PORT} ]]; then
-      exchange "--endpoint" "${OPENMLDB_HOST}:${OPENMLDB_TABLET_PORT}" ${tablet_conf}
-    fi
+    common_config ${tablet_conf} "${OPENMLDB_HOST}" "${OPENMLDB_TABLET_PORT}"
     ;;
   nameserver)
     # configure nameserver
     ns_conf=conf/nameserver.flags
-    common_config ${ns_conf}
-    if [[ -n ${OPENMLDB_NAMESERVER_PORT} ]]; then
-      exchange "--endpoint" "${OPENMLDB_HOST}:${OPENMLDB_NAMESERVER_PORT}" ${ns_conf}
-    fi
+    common_config ${ns_conf} "${OPENMLDB_HOST}" "${OPENMLDB_NAMESERVER_PORT}"
     ;;
   apiserver)
     # configure apiserver
     api_conf=conf/apiserver.flags
-    common_config ${api_conf}
-    if [[ -n ${OPENMLDB_APISERVER_PORT} ]]; then
-      exchange "--endpoint" "${OPENMLDB_HOST}:${OPENMLDB_APISERVER_PORT}" ${api_conf}
-    fi
+    common_config ${api_conf} "${OPENMLDB_HOST}" "${OPENMLDB_APISERVER_PORT}"
     ;;
   taskmanager)
     # configure taskmanager
     taskmanager_conf=conf/taskmanager.properties
-    common_config  ${taskmanager_conf}
-    if [[ -n ${OPENMLDB_TASKMANAGER_PORT} ]]; then
-      exchange "server.port" "${OPENMLDB_TASKMANAGER_PORT}" ${taskmanager_conf}
-    fi
+    common_config ${taskmanager_conf} "${OPENMLDB_HOST}" "${OPENMLDB_TASKMANAGER_PORT}"
     ;;
   zookeeper)
     # configure zookeeper
     zk_conf=conf/zoo.cfg
     zk_tmp_conf=conf/zoo_sample.cfg
-    common_config "$zk_conf" "$zk_tmp_conf"
-    if [[ -n ${OPENMLDB_ZK_CLUSTER_CLIENT_PORT} ]]; then
-      exchange "clientPort" "${OPENMLDB_ZK_CLUSTER_CLIENT_PORT}" ${zk_conf}
-    fi
+    common_config "$zk_conf" "${OPENMLDB_HOST}" "${OPENMLDB_ZK_CLUSTER_CLIENT_PORT}" "$zk_tmp_conf" "false"
     data_dir="${OPENMLDB_ZK_HOME}/data"
     exchange "dataDir" "$data_dir" ${zk_conf}
     echo "initLimit=5" >> ${zk_conf}

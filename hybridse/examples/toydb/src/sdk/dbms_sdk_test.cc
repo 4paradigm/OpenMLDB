@@ -664,6 +664,7 @@ void CheckRows(const vm::Schema &schema, const std::string &order_col,
         }
     }
 }
+GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(DBMSSdkTest);
 INSTANTIATE_TEST_SUITE_P(
     SdkMultiInsert, DBMSSdkTest,
     testing::ValuesIn(sqlcase::InitCases("/cases/function/dml/multi_insert.yaml")));

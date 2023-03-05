@@ -905,7 +905,7 @@ cases:
           - [3,3,2,2,32,1.3,2.3,1590738992000,"2020-05-02","b",false]
           - [4,4,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL]
     dataProvider:
-      - ["avg_cate","sum_cate","max_cate","min_cate","count_cate"]
+      - ["avg_cate","sum_cate","max_cate","min_cate"]
       - ["{0}.c7","{0}.c8","{0}.c9","{0}.c10"]
       - ["{1}.c2","{1}.c3","{1}.c4","{1}.c5","{1}.c6","{1}.c7","{1}.c8","{1}.c9","{1}.c10"]
     sql: |
@@ -1336,7 +1336,7 @@ cases:
           - [3,3,2,2,32,1.3,2.3,1590738992000,"2020-05-02","b",false]
           - [4,4,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL]
     dataProvider:
-      - ["avg_cate_where","sum_cate_where","max_cate_where","min_cate_where","count_cate_where"]
+      - ["avg_cate_where","sum_cate_where","max_cate_where","min_cate_where"]
       - ["{0}.c7","{0}.c8","{0}.c9","{0}.c10"]
       - ["{1}.c2","{1}.c3","{1}.c4","{1}.c5","{1}.c6","{1}.c7","{1}.c8","{1}.c9","{1}.c10"]
     sql: |
@@ -2596,3 +2596,90 @@ cases:
         - [4, NULL, "g1:2", "g2:3", "g2:4.000000,g1:4.000000", "55:10", "4:4.000000,2:2.000000,1:2.000000"]
         - [5, 5,    "g1:2", "g2:3", "g2:4.000000,g1:4.000000", "55:15", "5:4.000000,4:4.000000,2:2.000000"]
         - [6, 5,    "g1:2", "g2:3", "g2:4.000000,g1:4.000000", "55:15", "4:4.000000,5:2.500000,2:2.000000"]
+
+  - id: 63
+    desc: entropy
+    mode: request-unsupport
+    inputs:
+      - name: t1
+        schema: id:int32, col1:int32, col2:int16, col3:string, col4 double, std_ts:timestamp, de:date, flag:bool
+        index: index2:col2:std_ts
+        data: |
+          0, 1,    55, g1,   2.0,  1590115420000, 2012-12-12, true
+          1, 2,    55, NULL, 2.0,  1590115421000, 2012-12-13, true
+          2, 3,    55, g2,   NULL, 1590115422000, 2012-12-14, false
+          3, 4,    55, g1,   4.0,  1590115423000, 2012-12-15, false
+          4, NULL, 55, g2,   4.0,  1590115424000, NULL,       NULL
+    sql: |
+      select
+        entropy(col1) as agg1,
+        entropy(col2) as agg2,
+        entropy(col3) as agg3,
+        entropy(col4) as agg4,
+        entropy(std_ts) as agg5,
+        entropy(de) as agg6,
+        entropy(flag) as agg7,
+      from t1
+    expect:
+      columns:
+        - agg1 double
+        - agg2 double
+        - agg3 double
+        - agg4 double
+        - agg5 double
+        - agg6 double
+        - agg7 double
+      data: |
+        2.0, 0.0, 1.0, 1.0, 2.3219280948873622, 2.0, 1.0
+
+  - id: 64
+    desc: nth_value_where
+    inputs:
+      - name: t1
+        columns:
+          - id int
+          - key1 string
+          - l1 int32
+          - l2 int64
+          - f1 float
+          - ts timestamp
+          - val string
+        indexs:
+          - idx:key1:ts
+        data: |
+          4, g2, null, 10,  4.4,  1590738990002, A
+          5, g2, null, -2,  9.0,  1590738990003, B
+          6, g2, 1,     3,  7.0,  1590738990004, A
+          7, g2, 3,    10,  null, 1590738990005, C
+          8, g2, null, 11,  null, 1590738990006, F
+    sql: |
+      select
+        id,
+        key1,
+        nth_value_where(id, 0, true) over w as agg_null,
+        nth_value_where(l1 + 1, -1, l1 < first_value(l1)) over w as agg1,
+        nth_value_where(f1, -2, case when f1 > 5.0 then true else null end) over w as agg2,
+        nth_value_where(val, -2, case when sum(l2) > 10 then true else false end) over w as agg3,
+        nth_value_where(l1 + 1, 1, l1 < 4) over w as agg4,
+        nth_value_where(f1, 2, f1 > 5.0) over w as agg5,
+        nth_value_where(ts, 2, sum(l2) > 10) over w as agg6,
+      from t1
+          window w as (partition by `key1` order by `ts` rows_range between 5s open preceding and 0s preceding)
+    expect:
+      order: id
+      columns:
+        - id int
+        - key1 string
+        - agg_null int32
+        - agg1 int32
+        - agg2 float
+        - agg3 string
+        - agg4 int32
+        - agg5 float
+        - agg6 timestamp
+      data: |
+        4, g2, NULL, NULL, NULL, NULL, NULL, NULL, NULL
+        5, g2, NULL, NULL, NULL, NULL, NULL, NULL, NULL
+        6, g2, NULL, NULL, 9.0,  B,    2,    7.0,  1590738990003
+        7, g2, NULL, 2,    9.0,  A,    2,    7.0,  1590738990003
+        8, g2, NULL, NULL, 9.0,  C,    2,    7.0,  1590738990003

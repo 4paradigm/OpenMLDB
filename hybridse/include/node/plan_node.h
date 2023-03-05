@@ -29,6 +29,8 @@
 namespace hybridse {
 namespace node {
 
+class WithClauseEntryPlanNode;
+
 std::string NameOfPlanNodeType(const PlanType &type);
 
 class PlanNode : public NodeBase<PlanNode> {
@@ -116,6 +118,8 @@ class RenamePlanNode : public UnaryPlanNode {
 
     const std::string table_;
 };
+
+// Refer to a table or a CTE name in with clause
 class TablePlanNode : public LeafPlanNode {
  public:
     TablePlanNode(const std::string &db, const std::string &table)
@@ -185,13 +189,47 @@ class GroupPlanNode : public UnaryPlanNode {
     const ExprListNode *by_list_;
 };
 
+class ProjectPlanNode : public UnaryPlanNode {
+ public:
+    explicit ProjectPlanNode(PlanNode *node, const std::string &table, const PlanNodeList &project_list_vec,
+                             const std::vector<std::pair<uint32_t, uint32_t>> &pos_mapping)
+        : UnaryPlanNode(node, kPlanTypeProject),
+          table_(table),
+          project_list_vec_(project_list_vec),
+          pos_mapping_(pos_mapping) {}
+    void Print(std::ostream &output, const std::string &org_tab) const;
+    virtual bool Equals(const PlanNode *node) const;
+
+    const std::string table_;
+    const PlanNodeList project_list_vec_;
+    // final output column index -> (index of of project_list_vec_, index of project of that project list node)
+    const std::vector<std::pair<uint32_t, uint32_t>> pos_mapping_;
+    bool IsSimpleProjectPlan();
+};
+
 class QueryPlanNode : public UnaryPlanNode {
  public:
     explicit QueryPlanNode(PlanNode *node) : UnaryPlanNode(node, kPlanTypeQuery) {}
     ~QueryPlanNode() {}
     void Print(std::ostream &output, const std::string &org_tab) const override;
-    virtual bool Equals(const PlanNode *node) const;
+    bool Equals(const PlanNode *node) const override;
+
+    absl::Span<WithClauseEntryPlanNode*> with_clauses_;
     std::shared_ptr<OptionsMap> config_options_;
+};
+
+class WithClauseEntryPlanNode : public UnaryPlanNode {
+ public:
+    WithClauseEntryPlanNode(std::string alias, QueryPlanNode *query)
+        : UnaryPlanNode(query, kPlanTypeWithClauseEntry), alias_(alias), query_(query) {}
+
+    ~WithClauseEntryPlanNode() override {}
+
+    void Print(std::ostream &output, const std::string &org_tab) const override;
+    bool Equals(const PlanNode *node) const override;
+
+    std::string alias_;
+    QueryPlanNode *query_;
 };
 
 class FilterPlanNode : public UnaryPlanNode {
@@ -273,8 +311,8 @@ class WindowPlanNode : public LeafPlanNode {
     void set_instance_not_in_window(bool instance_not_in_window) { instance_not_in_window_ = instance_not_in_window; }
     const bool exclude_current_time() const { return exclude_current_time_; }
     void set_exclude_current_time(bool exclude_current_time) { exclude_current_time_ = exclude_current_time; }
-    bool exclude_current_row() const { return exclude_current_row_; }
-    void set_exclude_current_row(bool flag) { exclude_current_row_ = flag; }
+
+    bool exclude_current_row() const { return frame_node_ ? frame_node_->exclude_current_row_ : false; }
     virtual bool Equals(const PlanNode *node) const;
 
  private:
@@ -286,7 +324,6 @@ class WindowPlanNode : public LeafPlanNode {
     PlanNodeList union_tables_;
 
     bool exclude_current_time_ = false;
-    bool exclude_current_row_ = false;
     bool instance_not_in_window_ = false;
 };
 
@@ -342,24 +379,6 @@ class ProjectListNode : public LeafPlanNode {
     const WindowPlanNode *w_ptr_;
     const ExprNode* having_condition_;
     PlanNodeList projects_;
-};
-
-class ProjectPlanNode : public UnaryPlanNode {
- public:
-    explicit ProjectPlanNode(PlanNode *node, const std::string &table, const PlanNodeList &project_list_vec,
-                             const std::vector<std::pair<uint32_t, uint32_t>> &pos_mapping)
-        : UnaryPlanNode(node, kPlanTypeProject),
-          table_(table),
-          project_list_vec_(project_list_vec),
-          pos_mapping_(pos_mapping) {}
-    void Print(std::ostream &output, const std::string &org_tab) const;
-    virtual bool Equals(const PlanNode *node) const;
-
-    const std::string table_;
-    const PlanNodeList project_list_vec_;
-    // final output column index -> (index of of project_list_vec_, index of project of that project list node)
-    const std::vector<std::pair<uint32_t, uint32_t>> pos_mapping_;
-    bool IsSimpleProjectPlan();
 };
 
 class CreatePlanNode : public LeafPlanNode {

@@ -93,7 +93,7 @@ Status RowFnLetIRBuilder::Build(
     ::llvm::BasicBlock* block = ctx_->GetCurrentBlock();
     VariableIRBuilder variable_ir_builder(block, sv);
 
-    if (primary_frame != nullptr && !primary_frame->IsPureHistoryFrame()) {
+    if (primary_frame != nullptr && !primary_frame->IsPureHistoryFrame() && !primary_frame->exclude_current_row_) {
         NativeValue window;
         CHECK_TRUE(variable_ir_builder.LoadWindow("", &window, status), kCodegenError);
         CHECK_TRUE(variable_ir_builder.StoreWindow(primary_frame->GetExprString(), window.GetRaw(), status),

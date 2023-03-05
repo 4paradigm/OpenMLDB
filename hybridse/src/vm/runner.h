@@ -156,6 +156,11 @@ class RangeGenerator {
             window_range_.start_row_ = (-1 * range.frame_->GetHistoryRowsStart());
             window_range_.end_row_ = (-1 * range.frame_->GetHistoryRowsEnd());
             window_range_.max_size_ = range.frame_->frame_maxsize();
+            if (window_range_.max_size_ > 0 && range.frame_->exclude_current_row_ &&
+                range.frame_->GetHistoryRangeEnd() == 0) {
+                // codegen EXCLUDE CURRENT ROW droped one row, increate maxsize early
+                window_range_.max_size_++;
+            }
         }
     }
     virtual ~RangeGenerator() {}
@@ -923,12 +928,10 @@ class WindowAggRunner : public Runner {
                     const FnInfo& fn_info,
                     bool instance_not_in_window,
                     bool exclude_current_time,
-                    bool exclude_current_row,
                     size_t append_slices)
         : Runner(id, kRunnerWindowAgg, schema, limit_cnt),
           instance_not_in_window_(instance_not_in_window),
           exclude_current_time_(exclude_current_time),
-          exclude_current_row_(exclude_current_row),
           append_slices_(append_slices),
           instance_window_gen_(window_op),
           windows_union_gen_(),
@@ -954,7 +957,6 @@ class WindowAggRunner : public Runner {
 
     const bool instance_not_in_window_;
     const bool exclude_current_time_;
-    const bool exclude_current_row_ = false;
 
     // slice size outputed of the first producer node
     const size_t append_slices_;
@@ -981,15 +983,13 @@ class RequestUnionRunner : public Runner {
     static std::shared_ptr<TableHandler> RequestUnionWindow(const Row& request,
                                                             std::vector<std::shared_ptr<TableHandler>> union_segments,
                                                             int64_t request_ts, const WindowRange& window_range,
-                                                            bool output_request_row, bool exclude_current_time,
-                                                            bool exclude_current_row);
+                                                            bool output_request_row, bool exclude_current_time);
     void AddWindowUnion(const RequestWindowOp& window, Runner* runner) {
         windows_union_gen_.AddWindowUnion(window, runner);
     }
     RequestWindowUnionGenerator windows_union_gen_;
     RangeGenerator range_gen_;
     bool exclude_current_time_;
-    bool exclude_current_row_ = false;
     bool output_request_row_;
 };
 
@@ -1530,9 +1530,8 @@ class RunnerBuilder {
     }
 
     template <typename Op, typename... Args>
-    void CreateRunner(Op** result_runner, Args&&... args) {
-        Op* runner = new Op(std::forward<Args>(args)...);
-        *result_runner = nm_->RegisterNode(runner);
+    Op* CreateRunner(Args&&... args) {
+        return nm_->MakeNode<Op>(std::forward<Args>(args)...);
     }
 
  private:

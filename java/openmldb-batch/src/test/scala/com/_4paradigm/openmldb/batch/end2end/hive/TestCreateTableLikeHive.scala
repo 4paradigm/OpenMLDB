@@ -23,7 +23,7 @@ import org.scalatest.{FunSuite, Ignore}
 @Ignore
 class TestCreateTableLikeHive extends FunSuite {
 
-  test("Test CREATE TABLE LIKE HIVE ") {
+  test("Test CREATE TABLE LIKE HIVE") {
     // TODO: Need to setup hive metastore for testing
 
     val zkHost = "localhost:2181"
@@ -40,7 +40,27 @@ class TestCreateTableLikeHive extends FunSuite {
     val sess = new OpenmldbSession(spark)
 
     val sql = "CREATE TABLE db1.t1 LIKE HIVE 'hive://hive_db.t1'"
+    sess.sql(sql)
+  }
 
+  test("Test CREATE TABLE LIKE HIVE with default db") {
+    // TODO: Need to setup hive metastore for testing
+
+    val zkHost = "localhost:2181"
+    val zkPath = "/openmldb"
+
+    val spark = SparkSession.builder()
+      .master("local")
+      .config("spark.hadoop.hive.metastore.uris", "thrift://localhost:9083")
+      .config("spark.sql.catalogImplementation", "hive")
+      .config("openmldb.zk.cluster", zkHost)
+      .config("openmldb.zk.root.path", zkPath)
+      .config("openmldb.default.db", "db1")
+      .getOrCreate()
+
+    val sess = new OpenmldbSession(spark)
+
+    val sql = "CREATE TABLE t2 LIKE HIVE 'hive://hive_db.t1'"
     sess.sql(sql)
   }
 

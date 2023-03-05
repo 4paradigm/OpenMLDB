@@ -26,12 +26,12 @@
 #include "node/plan_node.h"
 #include "passes/expression/expr_pass.h"
 #include "vm/catalog.h"
+#include "vm/internal/cte_context.h"
 #include "vm/schemas_context.h"
 namespace hybridse {
 namespace vm {
 
 using hybridse::base::Status;
-using hybridse::vm::SchemasContext;
 
 // new and delete physical node managef
 enum PhysicalOpType {
@@ -366,6 +366,9 @@ class PhysicalOpNode : public node::NodeBase<PhysicalOpNode> {
     virtual void PrintChildren(std::ostream &output,
                                const std::string &tab) const;
 
+    // construct the same type physical node with all members copied,
+    // except producers are taken by `children` parameter.
+    // output to `out`.
     virtual base::Status WithNewChildren(
         node::NodeManager *nm, const std::vector<PhysicalOpNode *> &children,
         PhysicalOpNode **out) = 0;
@@ -380,6 +383,9 @@ class PhysicalOpNode : public node::NodeBase<PhysicalOpNode> {
     virtual void PrintSchema() const;
 
     virtual std::string SchemaToString(const std::string &tab) const;
+
+    // get a list of PhysicalOpNodes that current node depends on
+    virtual std::vector<PhysicalOpNode*> GetDependents() const;
 
     const std::vector<PhysicalOpNode *> &GetProducers() const {
         return producers_;
@@ -526,14 +532,17 @@ inline const std::string DataProviderTypeName(const DataProviderType &type) {
 
 class PhysicalDataProviderNode : public PhysicalOpNode {
  public:
+    static constexpr PhysicalOpType kConcreteNodeKind = kPhysicalOpDataProvider;
+
     PhysicalDataProviderNode(const std::shared_ptr<TableHandler> &table_handler,
                              DataProviderType provider_type)
-        : PhysicalOpNode(kPhysicalOpDataProvider, true),
+        : PhysicalOpNode(kConcreteNodeKind, true),
           provider_type_(provider_type),
           table_handler_(table_handler) {}
     ~PhysicalDataProviderNode() {}
 
     base::Status InitSchema(PhysicalPlanContext *) override;
+    bool Equals(const PhysicalOpNode *other) const override;
 
     static PhysicalDataProviderNode *CastFrom(PhysicalOpNode *node);
     const std::string &GetName() const;
@@ -1124,6 +1133,7 @@ class PhysicalWindowAggrerationNode : public PhysicalProjectNode {
         fn_infos_.push_back(&window_join.condition_.fn_info());
     }
 
+    std::vector<PhysicalOpNode *> GetDependents() const override;
     bool AddWindowUnion(PhysicalOpNode *node);
 
     const bool instance_not_in_window() const {
@@ -1131,9 +1141,22 @@ class PhysicalWindowAggrerationNode : public PhysicalProjectNode {
     }
 
     const bool exclude_current_time() const { return exclude_current_time_; }
-    const bool exclude_current_row() const { return exclude_current_row_; }
-    void set_exclude_current_row(bool flag) { exclude_current_row_ = flag; }
     bool need_append_input() const { return need_append_input_; }
+
+    // EXCLUDE CURRENT_ROW window attribute in physical node, exists in two nodes:
+    // - PhysicalWindowAggrerationNode
+    // - PhysicalRequestUnionNode
+    //
+    // Both inhert the attribute from Window definition node, unchanged. Whether exclude current_row
+    // attribute take effect depends, refer `ExprIRBuilder::BuildWindow`.
+    //
+    // Besides, the attribute affect the max size value in Runner phase, possibly plus one.
+    const bool exclude_current_row() const {
+        if (window_.range_.frame_ == nullptr) {
+            return false;
+        }
+        return window_.range_.frame_->exclude_current_row_;
+    }
 
     WindowOp &window() { return window_; }
     WindowJoinList &window_joins() { return window_joins_; }
@@ -1148,6 +1171,7 @@ class PhysicalWindowAggrerationNode : public PhysicalProjectNode {
      * Initialize inner state for window joins
      */
     base::Status InitJoinList(PhysicalPlanContext *plan_ctx);
+
     std::vector<PhysicalOpNode *> joined_op_list_;
 
     WindowOp window_;
@@ -1157,7 +1181,6 @@ class PhysicalWindowAggrerationNode : public PhysicalProjectNode {
     const bool need_append_input_;
     const bool instance_not_in_window_;
     const bool exclude_current_time_;
-    bool exclude_current_row_ = false;
 };
 
 class PhysicalJoinNode : public PhysicalBinaryNode {
@@ -1464,6 +1487,9 @@ class PhysicalRequestUnionNode : public PhysicalBinaryNode {
         fn_infos_.push_back(&window_union.index_key_.fn_info());
         return true;
     }
+
+    std::vector<PhysicalOpNode *> GetDependents() const override;
+
     const bool instance_not_in_window() const {
         return instance_not_in_window_;
     }
@@ -1478,13 +1504,18 @@ class PhysicalRequestUnionNode : public PhysicalBinaryNode {
                                  const std::vector<PhysicalOpNode *> &children,
                                  PhysicalOpNode **out) override;
 
+    const bool exclude_current_row() const {
+        if (window_.range_.frame_ == nullptr) {
+            return false;
+        }
+        return window_.range_.frame_->exclude_current_row_;
+    }
+
     RequestWindowOp window_;
     const bool instance_not_in_window_;
     const bool exclude_current_time_;
     const bool output_request_row_;
     RequestWindowUnionList window_unions_;
-
-    bool exclude_current_row_ = false;
 };
 
 class PhysicalRequestAggUnionNode : public PhysicalOpNode {
@@ -1637,7 +1668,7 @@ class PhysicalLimitNode : public PhysicalUnaryNode {
 
 class PhysicalRenameNode : public PhysicalUnaryNode {
  public:
-    PhysicalRenameNode(PhysicalOpNode *node, const std::string &name)
+    PhysicalRenameNode(PhysicalOpNode *node, absl::string_view name)
         : PhysicalUnaryNode(node, kPhysicalOpRename, false), name_(name) {
         output_type_ = node->GetOutputType();
     }
@@ -1650,7 +1681,7 @@ class PhysicalRenameNode : public PhysicalUnaryNode {
                                  const std::vector<PhysicalOpNode *> &children,
                                  PhysicalOpNode **out) override;
 
-    const std::string &name_;
+    const std::string name_;
 };
 
 class PhysicalDistinctNode : public PhysicalUnaryNode {

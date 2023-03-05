@@ -33,6 +33,9 @@ setup(
         "pyyaml",
         "paramiko",
     ],
+    extras_require={'test': [
+        "pytest",
+    ]},
     packages=find_packages(),
     entry_points={
         'console_scripts': ['openmldb_tool = diagnostic_tool.diagnose:run'],

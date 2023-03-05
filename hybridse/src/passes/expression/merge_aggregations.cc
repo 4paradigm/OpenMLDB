@@ -15,8 +15,10 @@
  */
 
 #include "passes/expression/merge_aggregations.h"
+
 #include <set>
 #include <utility>
+
 #include "passes/expression/window_iter_analysis.h"
 
 namespace hybridse {

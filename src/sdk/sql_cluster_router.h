@@ -105,9 +105,11 @@ class SQLClusterRouter : public SQLRouter {
     std::shared_ptr<hybridse::sdk::ResultSet> ExecuteSQL(const std::string& sql,
                                                          ::hybridse::sdk::Status* status) override;
 
+    // Execute batch SQL, if offline job, get config from session variables and user-friendly timeout
     std::shared_ptr<hybridse::sdk::ResultSet> ExecuteSQL(const std::string& db, const std::string& sql,
                                                          ::hybridse::sdk::Status* status) override;
 
+    // The raw API for execute batch SQL, offline_job_timeout can be set when execute offline sync job
     std::shared_ptr<hybridse::sdk::ResultSet> ExecuteSQL(const std::string& db, const std::string& sql,
                                                          bool is_online_mode, bool is_sync_job, int offline_job_timeout,
                                                          hybridse::sdk::Status* status) override;
@@ -365,7 +367,7 @@ class SQLClusterRouter : public SQLRouter {
                                                                      const std::string& pattern,
                                                                      hybridse::sdk::Status* status);
 
-    std::shared_ptr<hybridse::sdk::ResultSet> GetJobResultSet(int job_id);
+    std::shared_ptr<hybridse::sdk::ResultSet> GetJobResultSet(int job_id, ::hybridse::sdk::Status* status);
 
     bool CheckTableStatus(const std::string& db, const std::string& table_name, uint32_t tid,
                           const nameserver::TablePartition& partition_info, uint32_t replica_num,

@@ -23,7 +23,6 @@
 #include <vector>
 #include "base/endianconv.h"
 #include "base/slice.h"
-#include "boost/lexical_cast.hpp"
 #include "common/timer.h"
 #include "gflags/gflags.h"
 #include "proto/common.pb.h"

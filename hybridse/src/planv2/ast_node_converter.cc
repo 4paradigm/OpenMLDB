@@ -670,6 +670,12 @@ base::Status ConvertStatement(const zetasql::ASTStatement* statement, node::Node
             *output = node_manager->MakeCmdNode(node::CmdType::kCmdUseDatabase, db_name);
             break;
         }
+        case zetasql::AST_EXIT_STATEMENT: {
+            const auto exit_stmt = statement->GetAsOrNull<zetasql::ASTExitStatement>();
+            CHECK_TRUE(nullptr != exit_stmt, common::kSqlAstError, "not an ASTExitStatement");
+            *output = node_manager->MakeCmdNode(node::CmdType::kCmdExit);
+            break;
+        }
         case zetasql::AST_SYSTEM_VARIABLE_ASSIGNMENT: {
             /// support system variable setting and showing in OpenMLDB since v0.4.0
             /// non-support local variable setting in v0.4.0
@@ -979,8 +985,7 @@ base::Status ConvertFrameNode(const zetasql::ASTWindowFrame* window_frame, node:
     auto* frame_ext = node_manager->MakeFrameExtent(start, end);
     CHECK_TRUE(frame_ext->Valid(), common::kSqlAstError,
                "The lower bound of a window frame must be less than or equal to the upper bound");
-    *output = dynamic_cast<node::FrameNode*>(
-        node_manager->MakeFrameNode(frame_type, frame_ext, frame_max_size));
+    *output = node_manager->MakeFrameNode(frame_type, frame_ext, frame_max_size);
     return base::Status::OK();
 }
 base::Status ConvertWindowDefinition(const zetasql::ASTWindowDefinition* window_definition,
@@ -1009,7 +1014,9 @@ base::Status ConvertWindowSpecification(const zetasql::ASTWindowSpecification* w
         CHECK_STATUS(ConvertOrderBy(window_spec->order_by(), node_manager, &order_by))
     }
     if (nullptr != window_spec->window_frame()) {
-        CHECK_STATUS(ConvertFrameNode(window_spec->window_frame(), node_manager, &frame_node))
+        CHECK_STATUS(ConvertFrameNode(window_spec->window_frame(), node_manager, &frame_node));
+        CHECK_TRUE(frame_node != nullptr, common::kPlanError);
+        frame_node->exclude_current_row_ = window_spec->is_exclude_current_row();
     }
 
     node::SqlNodeList* union_tables = nullptr;
@@ -1024,7 +1031,7 @@ base::Status ConvertWindowSpecification(const zetasql::ASTWindowSpecification* w
     }
     *output = dynamic_cast<node::WindowDefNode*>(node_manager->MakeWindowDefNode(
         union_tables, partition_by, order_by, frame_node, window_spec->is_exclude_current_time(),
-        window_spec->is_exclude_current_row(), window_spec->is_instance_not_in_window()));
+        window_spec->is_instance_not_in_window()));
     if (nullptr != window_spec->base_window_name()) {
         (*output)->SetName(window_spec->base_window_name()->GetAsString());
     }
@@ -1237,6 +1244,14 @@ base::Status ConvertQueryNode(const zetasql::ASTQuery* root, node::NodeManager* 
 
     node::QueryNode* query_node = nullptr;
     CHECK_STATUS(ConvertQueryExpr(query_expression, node_manager, &query_node));
+
+    if (root->with_clause() != nullptr) {
+        auto* list = node_manager->MakeList<node::WithClauseEntry>();
+        CHECK_STATUS(ConvertWithClause(root->with_clause(), node_manager, list));
+        auto span = absl::MakeSpan(list->data_);
+        query_node->SetWithClauses(span);
+    }
+
     // HACK: set SelectQueryNode's limit and order
     //   UnionQueryNode do not match zetasql's union stmt
     if (query_node->query_type_ == node::kQuerySelect) {
@@ -2242,6 +2257,19 @@ base::Status ConvertASTType(const zetasql::ASTType* ast_type, node::NodeManager*
         default: {
             return base::Status(common::kSqlAstError, "Un-support type: " + ast_type->GetNodeKindString());
         }
+    }
+    return base::Status::OK();
+}
+
+base::Status ConvertWithClause(const zetasql::ASTWithClause* with_clause, node::NodeManager* nm,
+                               base::BaseList<node::WithClauseEntry>* out) {
+    for (auto clause : with_clause->with()) {
+        node::QueryNode* query = nullptr;
+        CHECK_STATUS(ConvertQueryNode(clause->query(), nm, &query));
+
+        auto* with_entry = nm->MakeNode<node::WithClauseEntry>(clause->alias()->GetAsString(), query);
+
+        out->data_.push_back(with_entry);
     }
     return base::Status::OK();
 }

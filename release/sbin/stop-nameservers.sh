@@ -35,7 +35,7 @@ else
     dir=$(echo "$line" | awk -F ' ' '{print $3}')
 
     echo "stop nameserver in $dir with endpoint $host:$port "
-    cmd="cd $dir; bin/start.sh stop nameserver"
+    cmd="cd $dir && bin/start.sh stop nameserver"
     run_auto "$host" "$cmd"
     sleep 2
   done

@@ -1,3 +1,4 @@
+# replace with diag tool later
 import sqlalchemy as db
 ZK = '127.0.0.1:2181'
 ZK_PATH = '/openmldb'

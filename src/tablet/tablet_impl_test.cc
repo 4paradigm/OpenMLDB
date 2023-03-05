@@ -35,6 +35,7 @@
 #include "codec/codec.h"
 #include "codec/row_codec.h"
 #include "codec/schema_codec.h"
+#include "codec/sdk_codec.h"
 #include "common/timer.h"
 #include "gtest/gtest.h"
 #include "log/log_reader.h"
@@ -5451,9 +5452,9 @@ TEST_P(TabletImplTest, PutCompress) {
     }
 }
 
-INSTANTIATE_TEST_CASE_P(TabletMemAndHDD, TabletImplTest,
-                        ::testing::Values(::openmldb::common::kMemory,/*::openmldb::common::kSSD,*/
-                                          ::openmldb::common::kHDD));
+INSTANTIATE_TEST_SUITE_P(TabletMemAndHDD, TabletImplTest,
+                         ::testing::Values(::openmldb::common::kMemory, /*::openmldb::common::kSSD,*/
+                                           ::openmldb::common::kHDD));
 
 TEST_F(TabletImplTest, CreateAggregator) {
     TabletImpl tablet;

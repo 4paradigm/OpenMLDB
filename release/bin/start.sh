@@ -134,6 +134,7 @@ case $OP in
             fi
             echo -e "${RED}Start ${COMPONENT} failed! Please check log in ${LOG_DIR}/${COMPONENT}[_mon].log and ${LOG_DIR}/${COMPONENT}.INFO ${RES}"
         else
+            echo "SPARK_HOME: ${SPARK_HOME}"
             if [ -f "./conf/taskmanager.properties" ]; then
                 cp ./conf/taskmanager.properties ./taskmanager/conf/taskmanager.properties
             fi
@@ -160,7 +161,7 @@ case $OP in
                 echo "Start ${COMPONENT} success"
                 exit 0
             fi
-            echo -e "${RED}Start ${COMPONENT} failed! Please check log in ${LOG_DIR}/${COMPONENT}[_mon].log and ./taskmanager/bin/logs/taskmanager.out ${RES}"
+            echo -e "${RED}Start ${COMPONENT} failed! Please check log in ${LOG_DIR}/${COMPONENT}[_mon].log and ./taskmanager/bin/logs/taskmanager.log ${RES}"
         fi
         ;;
     stop)
