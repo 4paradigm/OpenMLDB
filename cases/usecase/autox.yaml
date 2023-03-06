@@ -65,7 +65,7 @@ cases:
     lag(label, 1) over w1 as last_label,
 
     -- top_ratio特征：对uid聚合，求窗口内iid count最大的count数占窗口的比例
-    top1_ratio(iid) over w1 as w1_top1_ratio,
+    fz_top1_ratio(iid) over w1 as w1_top1_ratio,
 
     -- cum_count：当前样本 是 窗口内 第几条消费
     count(uid) over w1 - 1 as cum_count,

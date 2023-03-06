@@ -158,10 +158,10 @@ select
     max(`SK_DPD_DEF`) over POS_CASH_balance_SK_ID_CURR_ingestionTime_0s_32d as POS_CASH_balance_SK_DPD_DEF_multi_max_134,
     min(`SK_DPD_DEF`) over POS_CASH_balance_SK_ID_CURR_ingestionTime_0s_32d as POS_CASH_balance_SK_DPD_DEF_multi_min_135,
     distinct_count(`NAME_CONTRACT_STATUS`) over POS_CASH_balance_SK_ID_CURR_ingestionTime_0s_32d as POS_CASH_balance_NAME_CONTRACT_STATUS_multi_unique_count_136,
-    topn_frequency(`NAME_CONTRACT_STATUS`, 3) over POS_CASH_balance_SK_ID_CURR_ingestionTime_0s_32d as POS_CASH_balance_NAME_CONTRACT_STATUS_multi_top3frequency_137,
+    fz_topn_frequency(`NAME_CONTRACT_STATUS`, 3) over POS_CASH_balance_SK_ID_CURR_ingestionTime_0s_32d as POS_CASH_balance_NAME_CONTRACT_STATUS_multi_top3frequency_137,
     distinct_count(`SK_ID_CURR_1`) over POS_CASH_balance_SK_ID_CURR_ingestionTime_0s_32d as POS_CASH_balance_SK_ID_CURR_1_multi_unique_count_138,
-    topn_frequency(`SK_ID_CURR_1`, 3) over POS_CASH_balance_SK_ID_CURR_ingestionTime_0s_32d as POS_CASH_balance_SK_ID_CURR_1_multi_top3frequency_139,
-    topn_frequency(`SK_ID_PREV`, 3) over POS_CASH_balance_SK_ID_CURR_ingestionTime_0s_32d as POS_CASH_balance_SK_ID_PREV_multi_top3frequency_140,
+    fz_topn_frequency(`SK_ID_CURR_1`, 3) over POS_CASH_balance_SK_ID_CURR_ingestionTime_0s_32d as POS_CASH_balance_SK_ID_CURR_1_multi_top3frequency_139,
+    fz_topn_frequency(`SK_ID_PREV`, 3) over POS_CASH_balance_SK_ID_CURR_ingestionTime_0s_32d as POS_CASH_balance_SK_ID_PREV_multi_top3frequency_140,
     distinct_count(`SK_ID_PREV`) over POS_CASH_balance_SK_ID_CURR_ingestionTime_0s_32d as POS_CASH_balance_SK_ID_PREV_multi_unique_count_141
 from
     (select `eventTime` as `ingestionTime`, timestamp('2019-07-18 09:20:20') as `eventTime`, timestamp('2019-07-18 09:20:20') as `previousTime`, '' as `SK_ID_CURR_1`, '' as `SK_ID_PREV`, `SK_ID_CURR` as `SK_ID_CURR`, int(0) as `MONTHS_BALANCE`, double(0) as `CNT_INSTALMENT`, double(0) as `CNT_INSTALMENT_FUTURE`, '' as `NAME_CONTRACT_STATUS`, int(0) as `SK_DPD`, int(0) as `SK_DPD_DEF`, reqId from `batch100680_flatten_request`)
@@ -199,11 +199,11 @@ select
     min(`DAYS_ENDDATE_FACT`) over bureau_SK_ID_CURR_ingestionTime_0s_32d as bureau_DAYS_ENDDATE_FACT_multi_min_165,
     min(`SK_ID_BUREAU`) over bureau_SK_ID_CURR_ingestionTime_0s_32d as bureau_SK_ID_BUREAU_multi_min_166,
     max(`SK_ID_BUREAU`) over bureau_SK_ID_CURR_ingestionTime_0s_32d as bureau_SK_ID_BUREAU_multi_max_167,
-    topn_frequency(`CREDIT_ACTIVE`, 3) over bureau_SK_ID_CURR_ingestionTime_0s_32d as bureau_CREDIT_ACTIVE_multi_top3frequency_168,
+    fz_topn_frequency(`CREDIT_ACTIVE`, 3) over bureau_SK_ID_CURR_ingestionTime_0s_32d as bureau_CREDIT_ACTIVE_multi_top3frequency_168,
     distinct_count(`CREDIT_ACTIVE`) over bureau_SK_ID_CURR_ingestionTime_0s_32d as bureau_CREDIT_ACTIVE_multi_unique_count_169,
-    topn_frequency(`CREDIT_CURRENCY`, 3) over bureau_SK_ID_CURR_ingestionTime_0s_32d as bureau_CREDIT_CURRENCY_multi_top3frequency_170,
+    fz_topn_frequency(`CREDIT_CURRENCY`, 3) over bureau_SK_ID_CURR_ingestionTime_0s_32d as bureau_CREDIT_CURRENCY_multi_top3frequency_170,
     distinct_count(`CREDIT_CURRENCY`) over bureau_SK_ID_CURR_ingestionTime_0s_32d as bureau_CREDIT_CURRENCY_multi_unique_count_171,
-    topn_frequency(`CREDIT_TYPE`, 3) over bureau_SK_ID_CURR_ingestionTime_0s_32d as bureau_CREDIT_TYPE_multi_top3frequency_172,
+    fz_topn_frequency(`CREDIT_TYPE`, 3) over bureau_SK_ID_CURR_ingestionTime_0s_32d as bureau_CREDIT_TYPE_multi_top3frequency_172,
     distinct_count(`CREDIT_TYPE`) over bureau_SK_ID_CURR_ingestionTime_0s_32d as bureau_CREDIT_TYPE_multi_unique_count_173
 from
     (select `eventTime` as `ingestionTime`, timestamp('2019-07-18 09:20:20') as `eventTime`, `SK_ID_CURR` as `SK_ID_CURR`, int(0) as `SK_ID_BUREAU`, '' as `CREDIT_ACTIVE`, '' as `CREDIT_CURRENCY`, int(0) as `DAYS_CREDIT`, int(0) as `CREDIT_DAY_OVERDUE`, double(0) as `DAYS_CREDIT_ENDDATE`, double(0) as `DAYS_ENDDATE_FACT`, double(0) as `AMT_CREDIT_MAX_OVERDUE`, int(0) as `CNT_CREDIT_PROLONG`, double(0) as `AMT_CREDIT_SUM`, double(0) as `AMT_CREDIT_SUM_DEBT`, double(0) as `AMT_CREDIT_SUM_LIMIT`, double(0) as `AMT_CREDIT_SUM_OVERDUE`, '' as `CREDIT_TYPE`, int(0) as `DAYS_CREDIT_UPDATE`, double(0) as `AMT_ANNUITY`, reqId from `batch100680_flatten_request`)
@@ -220,7 +220,7 @@ select
     max(`SK_ID_BUREAU`) over bureau_balance_SK_ID_CURR_ingestionTime_0s_32d as bureau_balance_SK_ID_BUREAU_multi_max_176,
     avg(`SK_ID_BUREAU`) over bureau_balance_SK_ID_CURR_ingestionTime_0s_32d as bureau_balance_SK_ID_BUREAU_multi_avg_177,
     distinct_count(`STATUS`) over bureau_balance_SK_ID_CURR_ingestionTime_0s_32d as bureau_balance_STATUS_multi_unique_count_178,
-    topn_frequency(`STATUS`, 3) over bureau_balance_SK_ID_CURR_ingestionTime_0s_32d as bureau_balance_STATUS_multi_top3frequency_179
+    fz_topn_frequency(`STATUS`, 3) over bureau_balance_SK_ID_CURR_ingestionTime_0s_32d as bureau_balance_STATUS_multi_top3frequency_179
 from
     (select `eventTime` as `ingestionTime`, timestamp('2019-07-18 09:20:20') as `eventTime`, timestamp('2019-07-18 09:20:20') as `bureauTime`, `SK_ID_CURR` as `SK_ID_CURR`, int(0) as `SK_ID_BUREAU`, int(0) as `MONTHS_BALANCE`, '' as `STATUS`, reqId from `batch100680_flatten_request`)
     window bureau_balance_SK_ID_CURR_ingestionTime_0s_32d as (
@@ -272,11 +272,11 @@ select
     max(`SK_DPD_DEF`) over credit_card_balance_SK_ID_CURR_ingestionTime_0s_32d as credit_card_balance_SK_DPD_DEF_multi_max_218,
     avg(`SK_DPD_DEF`) over credit_card_balance_SK_ID_CURR_ingestionTime_0s_32d as credit_card_balance_SK_DPD_DEF_multi_avg_219,
     distinct_count(`NAME_CONTRACT_STATUS`) over credit_card_balance_SK_ID_CURR_ingestionTime_0s_32d as credit_card_balance_NAME_CONTRACT_STATUS_multi_unique_count_220,
-    topn_frequency(`NAME_CONTRACT_STATUS`, 3) over credit_card_balance_SK_ID_CURR_ingestionTime_0s_32d as credit_card_balance_NAME_CONTRACT_STATUS_multi_top3frequency_221,
+    fz_topn_frequency(`NAME_CONTRACT_STATUS`, 3) over credit_card_balance_SK_ID_CURR_ingestionTime_0s_32d as credit_card_balance_NAME_CONTRACT_STATUS_multi_top3frequency_221,
     distinct_count(`SK_ID_CURR_1`) over credit_card_balance_SK_ID_CURR_ingestionTime_0s_32d as credit_card_balance_SK_ID_CURR_1_multi_unique_count_222,
-    topn_frequency(`SK_ID_CURR_1`, 3) over credit_card_balance_SK_ID_CURR_ingestionTime_0s_32d as credit_card_balance_SK_ID_CURR_1_multi_top3frequency_223,
+    fz_topn_frequency(`SK_ID_CURR_1`, 3) over credit_card_balance_SK_ID_CURR_ingestionTime_0s_32d as credit_card_balance_SK_ID_CURR_1_multi_top3frequency_223,
     distinct_count(`SK_ID_PREV`) over credit_card_balance_SK_ID_CURR_ingestionTime_0s_32d as credit_card_balance_SK_ID_PREV_multi_unique_count_224,
-    topn_frequency(`SK_ID_PREV`, 3) over credit_card_balance_SK_ID_CURR_ingestionTime_0s_32d as credit_card_balance_SK_ID_PREV_multi_top3frequency_225
+    fz_topn_frequency(`SK_ID_PREV`, 3) over credit_card_balance_SK_ID_CURR_ingestionTime_0s_32d as credit_card_balance_SK_ID_PREV_multi_top3frequency_225
 from
     (select `eventTime` as `ingestionTime`, timestamp('2019-07-18 09:20:20') as `eventTime`, timestamp('2019-07-18 09:20:20') as `previousTime`, '' as `SK_ID_CURR_1`, '' as `SK_ID_PREV`, `SK_ID_CURR` as `SK_ID_CURR`, int(0) as `MONTHS_BALANCE`, double(0) as `AMT_BALANCE`, int(0) as `AMT_CREDIT_LIMIT_ACTUAL`, double(0) as `AMT_DRAWINGS_ATM_CURRENT`, double(0) as `AMT_DRAWINGS_CURRENT`, double(0) as `AMT_DRAWINGS_OTHER_CURRENT`, double(0) as `AMT_DRAWINGS_POS_CURRENT`, double(0) as `AMT_INST_MIN_REGULARITY`, double(0) as `AMT_PAYMENT_CURRENT`, double(0) as `AMT_PAYMENT_TOTAL_CURRENT`, double(0) as `AMT_RECEIVABLE_PRINCIPAL`, double(0) as `AMT_RECIVABLE`, double(0) as `AMT_TOTAL_RECEIVABLE`, double(0) as `CNT_DRAWINGS_ATM_CURRENT`, int(0) as `CNT_DRAWINGS_CURRENT`, double(0) as `CNT_DRAWINGS_OTHER_CURRENT`, double(0) as `CNT_DRAWINGS_POS_CURRENT`, double(0) as `CNT_INSTALMENT_MATURE_CUM`, '' as `NAME_CONTRACT_STATUS`, int(0) as `SK_DPD`, int(0) as `SK_DPD_DEF`, reqId from `batch100680_flatten_request`)
     window credit_card_balance_SK_ID_CURR_ingestionTime_0s_32d as (
@@ -300,8 +300,8 @@ select
     avg(`NUM_INSTALMENT_VERSION`) over installments_payments_SK_ID_CURR_ingestionTime_0s_32d as installments_payments_NUM_INSTALMENT_VERSION_multi_avg_236,
     min(`NUM_INSTALMENT_VERSION`) over installments_payments_SK_ID_CURR_ingestionTime_0s_32d as installments_payments_NUM_INSTALMENT_VERSION_multi_min_237,
     distinct_count(`SK_ID_CURR_1`) over installments_payments_SK_ID_CURR_ingestionTime_0s_32d as installments_payments_SK_ID_CURR_1_multi_unique_count_238,
-    topn_frequency(`SK_ID_CURR_1`, 3) over installments_payments_SK_ID_CURR_ingestionTime_0s_32d as installments_payments_SK_ID_CURR_1_multi_top3frequency_239,
-    topn_frequency(`SK_ID_PREV`, 3) over installments_payments_SK_ID_CURR_ingestionTime_0s_32d as installments_payments_SK_ID_PREV_multi_top3frequency_240,
+    fz_topn_frequency(`SK_ID_CURR_1`, 3) over installments_payments_SK_ID_CURR_ingestionTime_0s_32d as installments_payments_SK_ID_CURR_1_multi_top3frequency_239,
+    fz_topn_frequency(`SK_ID_PREV`, 3) over installments_payments_SK_ID_CURR_ingestionTime_0s_32d as installments_payments_SK_ID_PREV_multi_top3frequency_240,
     distinct_count(`SK_ID_PREV`) over installments_payments_SK_ID_CURR_ingestionTime_0s_32d as installments_payments_SK_ID_PREV_multi_unique_count_241
 from
     (select `eventTime` as `ingestionTime`, timestamp('2019-07-18 09:20:20') as `eventTime`, timestamp('2019-07-18 09:20:20') as `previousTime`, timestamp('2019-07-18 09:20:20') as `planTime`, '' as `SK_ID_CURR_1`, '' as `SK_ID_PREV`, `SK_ID_CURR` as `SK_ID_CURR`, double(0) as `NUM_INSTALMENT_VERSION`, int(0) as `NUM_INSTALMENT_NUMBER`, double(0) as `DAYS_INSTALMENT`, double(0) as `DAYS_ENTRY_PAYMENT`, double(0) as `AMT_INSTALMENT`, double(0) as `AMT_PAYMENT`, reqId from `batch100680_flatten_request`)
@@ -351,39 +351,39 @@ select
     min(`RATE_INTEREST_PRIVILEGED`) over previous_application_SK_ID_CURR_ingestionTime_0s_32d as previous_application_RATE_INTEREST_PRIVILEGED_multi_min_277,
     min(`SELLERPLACE_AREA`) over previous_application_SK_ID_CURR_ingestionTime_0s_32d as previous_application_SELLERPLACE_AREA_multi_min_278,
     avg(`SELLERPLACE_AREA`) over previous_application_SK_ID_CURR_ingestionTime_0s_32d as previous_application_SELLERPLACE_AREA_multi_avg_279,
-    topn_frequency(`CHANNEL_TYPE`, 3) over previous_application_SK_ID_CURR_ingestionTime_0s_32d as previous_application_CHANNEL_TYPE_multi_top3frequency_280,
+    fz_topn_frequency(`CHANNEL_TYPE`, 3) over previous_application_SK_ID_CURR_ingestionTime_0s_32d as previous_application_CHANNEL_TYPE_multi_top3frequency_280,
     case when !isnull(at(`CHANNEL_TYPE`, 1)) over previous_application_SK_ID_CURR_ingestionTime_0s_32d then count(`CHANNEL_TYPE`) over previous_application_SK_ID_CURR_ingestionTime_0s_32d else null end as previous_application_CHANNEL_TYPE_multi_count_281,
     distinct_count(`CODE_REJECT_REASON`) over previous_application_SK_ID_CURR_ingestionTime_0s_32d as previous_application_CODE_REJECT_REASON_multi_unique_count_282,
-    topn_frequency(`CODE_REJECT_REASON`, 3) over previous_application_SK_ID_CURR_ingestionTime_0s_32d as previous_application_CODE_REJECT_REASON_multi_top3frequency_283,
-    topn_frequency(`FLAG_LAST_APPL_PER_CONTRACT`, 3) over previous_application_SK_ID_CURR_ingestionTime_0s_32d as previous_application_FLAG_LAST_APPL_PER_CONTRACT_multi_top3frequency_284,
+    fz_topn_frequency(`CODE_REJECT_REASON`, 3) over previous_application_SK_ID_CURR_ingestionTime_0s_32d as previous_application_CODE_REJECT_REASON_multi_top3frequency_283,
+    fz_topn_frequency(`FLAG_LAST_APPL_PER_CONTRACT`, 3) over previous_application_SK_ID_CURR_ingestionTime_0s_32d as previous_application_FLAG_LAST_APPL_PER_CONTRACT_multi_top3frequency_284,
     case when !isnull(at(`FLAG_LAST_APPL_PER_CONTRACT`, 1)) over previous_application_SK_ID_CURR_ingestionTime_0s_32d then count(`FLAG_LAST_APPL_PER_CONTRACT`) over previous_application_SK_ID_CURR_ingestionTime_0s_32d else null end as previous_application_FLAG_LAST_APPL_PER_CONTRACT_multi_count_285,
-    topn_frequency(`NAME_CASH_LOAN_PURPOSE`, 3) over previous_application_SK_ID_CURR_ingestionTime_0s_32d as previous_application_NAME_CASH_LOAN_PURPOSE_multi_top3frequency_286,
+    fz_topn_frequency(`NAME_CASH_LOAN_PURPOSE`, 3) over previous_application_SK_ID_CURR_ingestionTime_0s_32d as previous_application_NAME_CASH_LOAN_PURPOSE_multi_top3frequency_286,
     distinct_count(`NAME_CASH_LOAN_PURPOSE`) over previous_application_SK_ID_CURR_ingestionTime_0s_32d as previous_application_NAME_CASH_LOAN_PURPOSE_multi_unique_count_287,
-    topn_frequency(`NAME_CLIENT_TYPE`, 3) over previous_application_SK_ID_CURR_ingestionTime_0s_32d as previous_application_NAME_CLIENT_TYPE_multi_top3frequency_288,
+    fz_topn_frequency(`NAME_CLIENT_TYPE`, 3) over previous_application_SK_ID_CURR_ingestionTime_0s_32d as previous_application_NAME_CLIENT_TYPE_multi_top3frequency_288,
     case when !isnull(at(`NAME_CLIENT_TYPE`, 1)) over previous_application_SK_ID_CURR_ingestionTime_0s_32d then count(`NAME_CLIENT_TYPE`) over previous_application_SK_ID_CURR_ingestionTime_0s_32d else null end as previous_application_NAME_CLIENT_TYPE_multi_count_289,
     distinct_count(`NAME_CONTRACT_STATUS`) over previous_application_SK_ID_CURR_ingestionTime_0s_32d as previous_application_NAME_CONTRACT_STATUS_multi_unique_count_290,
-    topn_frequency(`NAME_CONTRACT_STATUS`, 3) over previous_application_SK_ID_CURR_ingestionTime_0s_32d as previous_application_NAME_CONTRACT_STATUS_multi_top3frequency_291,
+    fz_topn_frequency(`NAME_CONTRACT_STATUS`, 3) over previous_application_SK_ID_CURR_ingestionTime_0s_32d as previous_application_NAME_CONTRACT_STATUS_multi_top3frequency_291,
     distinct_count(`NAME_CONTRACT_TYPE`) over previous_application_SK_ID_CURR_ingestionTime_0s_32d as previous_application_NAME_CONTRACT_TYPE_multi_unique_count_292,
-    topn_frequency(`NAME_CONTRACT_TYPE`, 3) over previous_application_SK_ID_CURR_ingestionTime_0s_32d as previous_application_NAME_CONTRACT_TYPE_multi_top3frequency_293,
-    topn_frequency(`NAME_GOODS_CATEGORY`, 3) over previous_application_SK_ID_CURR_ingestionTime_0s_32d as previous_application_NAME_GOODS_CATEGORY_multi_top3frequency_294,
+    fz_topn_frequency(`NAME_CONTRACT_TYPE`, 3) over previous_application_SK_ID_CURR_ingestionTime_0s_32d as previous_application_NAME_CONTRACT_TYPE_multi_top3frequency_293,
+    fz_topn_frequency(`NAME_GOODS_CATEGORY`, 3) over previous_application_SK_ID_CURR_ingestionTime_0s_32d as previous_application_NAME_GOODS_CATEGORY_multi_top3frequency_294,
     distinct_count(`NAME_GOODS_CATEGORY`) over previous_application_SK_ID_CURR_ingestionTime_0s_32d as previous_application_NAME_GOODS_CATEGORY_multi_unique_count_295,
-    topn_frequency(`NAME_PAYMENT_TYPE`, 3) over previous_application_SK_ID_CURR_ingestionTime_0s_32d as previous_application_NAME_PAYMENT_TYPE_multi_top3frequency_296,
+    fz_topn_frequency(`NAME_PAYMENT_TYPE`, 3) over previous_application_SK_ID_CURR_ingestionTime_0s_32d as previous_application_NAME_PAYMENT_TYPE_multi_top3frequency_296,
     case when !isnull(at(`NAME_PAYMENT_TYPE`, 1)) over previous_application_SK_ID_CURR_ingestionTime_0s_32d then count(`NAME_PAYMENT_TYPE`) over previous_application_SK_ID_CURR_ingestionTime_0s_32d else null end as previous_application_NAME_PAYMENT_TYPE_multi_count_297,
     distinct_count(`NAME_PORTFOLIO`) over previous_application_SK_ID_CURR_ingestionTime_0s_32d as previous_application_NAME_PORTFOLIO_multi_unique_count_298,
-    topn_frequency(`NAME_PORTFOLIO`, 3) over previous_application_SK_ID_CURR_ingestionTime_0s_32d as previous_application_NAME_PORTFOLIO_multi_top3frequency_299,
+    fz_topn_frequency(`NAME_PORTFOLIO`, 3) over previous_application_SK_ID_CURR_ingestionTime_0s_32d as previous_application_NAME_PORTFOLIO_multi_top3frequency_299,
     distinct_count(`NAME_PRODUCT_TYPE`) over previous_application_SK_ID_CURR_ingestionTime_0s_32d as previous_application_NAME_PRODUCT_TYPE_multi_unique_count_300,
-    topn_frequency(`NAME_PRODUCT_TYPE`, 3) over previous_application_SK_ID_CURR_ingestionTime_0s_32d as previous_application_NAME_PRODUCT_TYPE_multi_top3frequency_301,
-    topn_frequency(`NAME_SELLER_INDUSTRY`, 3) over previous_application_SK_ID_CURR_ingestionTime_0s_32d as previous_application_NAME_SELLER_INDUSTRY_multi_top3frequency_302,
+    fz_topn_frequency(`NAME_PRODUCT_TYPE`, 3) over previous_application_SK_ID_CURR_ingestionTime_0s_32d as previous_application_NAME_PRODUCT_TYPE_multi_top3frequency_301,
+    fz_topn_frequency(`NAME_SELLER_INDUSTRY`, 3) over previous_application_SK_ID_CURR_ingestionTime_0s_32d as previous_application_NAME_SELLER_INDUSTRY_multi_top3frequency_302,
     case when !isnull(at(`NAME_SELLER_INDUSTRY`, 1)) over previous_application_SK_ID_CURR_ingestionTime_0s_32d then count(`NAME_SELLER_INDUSTRY`) over previous_application_SK_ID_CURR_ingestionTime_0s_32d else null end as previous_application_NAME_SELLER_INDUSTRY_multi_count_303,
-    topn_frequency(`NAME_TYPE_SUITE`, 3) over previous_application_SK_ID_CURR_ingestionTime_0s_32d as previous_application_NAME_TYPE_SUITE_multi_top3frequency_304,
+    fz_topn_frequency(`NAME_TYPE_SUITE`, 3) over previous_application_SK_ID_CURR_ingestionTime_0s_32d as previous_application_NAME_TYPE_SUITE_multi_top3frequency_304,
     case when !isnull(at(`NAME_TYPE_SUITE`, 1)) over previous_application_SK_ID_CURR_ingestionTime_0s_32d then count(`NAME_TYPE_SUITE`) over previous_application_SK_ID_CURR_ingestionTime_0s_32d else null end as previous_application_NAME_TYPE_SUITE_multi_count_305,
-    topn_frequency(`NAME_YIELD_GROUP`, 3) over previous_application_SK_ID_CURR_ingestionTime_0s_32d as previous_application_NAME_YIELD_GROUP_multi_top3frequency_306,
+    fz_topn_frequency(`NAME_YIELD_GROUP`, 3) over previous_application_SK_ID_CURR_ingestionTime_0s_32d as previous_application_NAME_YIELD_GROUP_multi_top3frequency_306,
     case when !isnull(at(`NAME_YIELD_GROUP`, 1)) over previous_application_SK_ID_CURR_ingestionTime_0s_32d then count(`NAME_YIELD_GROUP`) over previous_application_SK_ID_CURR_ingestionTime_0s_32d else null end as previous_application_NAME_YIELD_GROUP_multi_count_307,
-    topn_frequency(`PRODUCT_COMBINATION`, 3) over previous_application_SK_ID_CURR_ingestionTime_0s_32d as previous_application_PRODUCT_COMBINATION_multi_top3frequency_308,
+    fz_topn_frequency(`PRODUCT_COMBINATION`, 3) over previous_application_SK_ID_CURR_ingestionTime_0s_32d as previous_application_PRODUCT_COMBINATION_multi_top3frequency_308,
     case when !isnull(at(`PRODUCT_COMBINATION`, 1)) over previous_application_SK_ID_CURR_ingestionTime_0s_32d then count(`PRODUCT_COMBINATION`) over previous_application_SK_ID_CURR_ingestionTime_0s_32d else null end as previous_application_PRODUCT_COMBINATION_multi_count_309,
-    topn_frequency(`SK_ID_PREV`, 3) over previous_application_SK_ID_CURR_ingestionTime_0s_32d as previous_application_SK_ID_PREV_multi_top3frequency_310,
+    fz_topn_frequency(`SK_ID_PREV`, 3) over previous_application_SK_ID_CURR_ingestionTime_0s_32d as previous_application_SK_ID_PREV_multi_top3frequency_310,
     distinct_count(`SK_ID_PREV`) over previous_application_SK_ID_CURR_ingestionTime_0s_32d as previous_application_SK_ID_PREV_multi_unique_count_311,
-    topn_frequency(`WEEKDAY_APPR_PROCESS_START`, 3) over previous_application_SK_ID_CURR_ingestionTime_0s_32d as previous_application_WEEKDAY_APPR_PROCESS_START_multi_top3frequency_312,
+    fz_topn_frequency(`WEEKDAY_APPR_PROCESS_START`, 3) over previous_application_SK_ID_CURR_ingestionTime_0s_32d as previous_application_WEEKDAY_APPR_PROCESS_START_multi_top3frequency_312,
     case when !isnull(at(`WEEKDAY_APPR_PROCESS_START`, 1)) over previous_application_SK_ID_CURR_ingestionTime_0s_32d then count(`WEEKDAY_APPR_PROCESS_START`) over previous_application_SK_ID_CURR_ingestionTime_0s_32d else null end as previous_application_WEEKDAY_APPR_PROCESS_START_multi_count_313
 from
     (select `eventTime` as `ingestionTime`, timestamp('2019-07-18 09:20:20') as `eventTime`, '' as `SK_ID_PREV`, `SK_ID_CURR` as `SK_ID_CURR`, '' as `NAME_CONTRACT_TYPE`, double(0) as `AMT_ANNUITY`, double(0) as `AMT_APPLICATION`, double(0) as `AMT_CREDIT`, double(0) as `AMT_DOWN_PAYMENT`, double(0) as `AMT_GOODS_PRICE`, '' as `WEEKDAY_APPR_PROCESS_START`, int(0) as `HOUR_APPR_PROCESS_START`, '' as `FLAG_LAST_APPL_PER_CONTRACT`, int(0) as `NFLAG_LAST_APPL_IN_DAY`, double(0) as `RATE_DOWN_PAYMENT`, double(0) as `RATE_INTEREST_PRIMARY`, double(0) as `RATE_INTEREST_PRIVILEGED`, '' as `NAME_CASH_LOAN_PURPOSE`, '' as `NAME_CONTRACT_STATUS`, int(0) as `DAYS_DECISION`, '' as `NAME_PAYMENT_TYPE`, '' as `CODE_REJECT_REASON`, '' as `NAME_TYPE_SUITE`, '' as `NAME_CLIENT_TYPE`, '' as `NAME_GOODS_CATEGORY`, '' as `NAME_PORTFOLIO`, '' as `NAME_PRODUCT_TYPE`, '' as `CHANNEL_TYPE`, int(0) as `SELLERPLACE_AREA`, '' as `NAME_SELLER_INDUSTRY`, double(0) as `CNT_PAYMENT`, '' as `NAME_YIELD_GROUP`, '' as `PRODUCT_COMBINATION`, double(0) as `DAYS_FIRST_DRAWING`, double(0) as `DAYS_FIRST_DUE`, double(0) as `DAYS_LAST_DUE_1ST_VERSION`, double(0) as `DAYS_LAST_DUE`, double(0) as `DAYS_TERMINATION`, double(0) as `NFLAG_INSURED_ON_APPROVAL`, reqId from `batch100680_flatten_request`)

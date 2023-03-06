@@ -35,11 +35,11 @@ last join
 select
     reqId as reqId_13,
     distinct_count(`trx_typ`) over bo_detail_new_user_id_ingestionTime_0s_5529600s_100 as bo_detail_trx_typ_multi_unique_count_12,
-    topn_frequency(`trx_typ`, 3) over bo_detail_new_user_id_ingestionTime_0s_5529600s_100 as bo_detail_trx_typ_multi_top3frequency_13,
+    fz_topn_frequency(`trx_typ`, 3) over bo_detail_new_user_id_ingestionTime_0s_5529600s_100 as bo_detail_trx_typ_multi_top3frequency_13,
     max(`trx_amt`) over bo_detail_new_user_id_ingestionTime_0s_5529600s_100 as bo_detail_trx_amt_multi_max_14,
-    topn_frequency(`is_slry`, 3) over bo_detail_new_user_id_ingestionTime_0s_5529600s_100 as bo_detail_is_slry_multi_top3frequency_15,
+    fz_topn_frequency(`is_slry`, 3) over bo_detail_new_user_id_ingestionTime_0s_5529600s_100 as bo_detail_is_slry_multi_top3frequency_15,
     max(`trx_amt`) over bo_detail_new_user_id_ingestionTime_0s_2764800s_100 as bo_detail_trx_amt_multi_max_16,
-    topn_frequency(`is_slry`, 3) over bo_detail_new_user_id_ingestionTime_0s_2764800s_100 as bo_detail_is_slry_multi_top3frequency_17
+    fz_topn_frequency(`is_slry`, 3) over bo_detail_new_user_id_ingestionTime_0s_2764800s_100 as bo_detail_is_slry_multi_top3frequency_17
 from
     (select `eventTime` as `ingestionTime`, `new_user_id` as `new_user_id`, bigint(0) as `trx_ts`, '' as `trx_typ`, double(0) as `trx_amt`, '' as `is_slry`, reqId from `batch100504_flatten_request`)
     window bo_detail_new_user_id_ingestionTime_0s_5529600s_100 as (
@@ -60,7 +60,7 @@ select
     min(`buy_cnt`) over bo_bill_detail_new_user_id_ingestionTime_0s_5529600s_100 as bo_bill_detail_buy_cnt_multi_min_23,
     max(`cur_bill_amt`) over bo_bill_detail_new_user_id_ingestionTime_0s_5529600s_100 as bo_bill_detail_cur_bill_amt_multi_max_24,
     avg(`advc_limit`) over bo_bill_detail_new_user_id_ingestionTime_0s_5529600s_100 as bo_bill_detail_advc_limit_multi_avg_25,
-    topn_frequency(`repay_status`, 3) over bo_bill_detail_new_user_id_ingestionTime_0s_5529600s_100 as bo_bill_detail_repay_status_multi_top3frequency_26,
+    fz_topn_frequency(`repay_status`, 3) over bo_bill_detail_new_user_id_ingestionTime_0s_5529600s_100 as bo_bill_detail_repay_status_multi_top3frequency_26,
     distinct_count(`bank_id`) over bo_bill_detail_new_user_id_ingestionTime_0s_2764800s_100 as bo_bill_detail_bank_id_multi_unique_count_27,
     avg(`lst_bill_amt`) over bo_bill_detail_new_user_id_ingestionTime_0s_2764800s_100 as bo_bill_detail_lst_bill_amt_multi_avg_28,
     avg(`lst_repay_amt`) over bo_bill_detail_new_user_id_ingestionTime_0s_2764800s_100 as bo_bill_detail_lst_repay_amt_multi_avg_29,
@@ -77,7 +77,7 @@ select
     max(`avl_amt`) over bo_bill_detail_new_user_id_ingestionTime_0s_2764800s_100 as bo_bill_detail_avl_amt_multi_max_40,
     avg(`avl_amt`) over bo_bill_detail_new_user_id_ingestionTime_0s_2764800s_100 as bo_bill_detail_avl_amt_multi_avg_41,
     avg(`advc_limit`) over bo_bill_detail_new_user_id_ingestionTime_0s_2764800s_100 as bo_bill_detail_advc_limit_multi_avg_42,
-    topn_frequency(`repay_status`, 3) over bo_bill_detail_new_user_id_ingestionTime_0s_2764800s_100 as bo_bill_detail_repay_status_multi_top3frequency_43
+    fz_topn_frequency(`repay_status`, 3) over bo_bill_detail_new_user_id_ingestionTime_0s_2764800s_100 as bo_bill_detail_repay_status_multi_top3frequency_43
 from
     (select `eventTime` as `ingestionTime`, `new_user_id` as `new_user_id`, bigint(0) as `bill_ts`, '' as `bank_id`, double(0) as `lst_bill_amt`, double(0) as `lst_repay_amt`, double(0) as `card_limit`, double(0) as `cur_blc`, double(0) as `cur_bill_min_repay`, double(0) as `buy_cnt`, double(0) as `cur_bill_amt`, double(0) as `adj_amt`, double(0) as `rev_credit`, double(0) as `avl_amt`, double(0) as `advc_limit`, '' as `repay_status`, reqId from `batch100504_flatten_request`)
     window bo_bill_detail_new_user_id_ingestionTime_0s_5529600s_100 as (
@@ -92,7 +92,7 @@ select
     reqId as reqId_45,
     distinct_count(`action`) over bo_browse_history_new_user_id_ingestionTime_0s_5529600s_100 as bo_browse_history_action_multi_unique_count_44,
     distinct_count(`subaction`) over bo_browse_history_new_user_id_ingestionTime_0s_5529600s_100 as bo_browse_history_subaction_multi_unique_count_45,
-    topn_frequency(`action`, 3) over bo_browse_history_new_user_id_ingestionTime_0s_2764800s_100 as bo_browse_history_action_multi_top3frequency_46,
+    fz_topn_frequency(`action`, 3) over bo_browse_history_new_user_id_ingestionTime_0s_2764800s_100 as bo_browse_history_action_multi_top3frequency_46,
     distinct_count(`subaction`) over bo_browse_history_new_user_id_ingestionTime_0s_2764800s_100 as bo_browse_history_subaction_multi_unique_count_47
 from
     (select `eventTime` as `ingestionTime`, `new_user_id` as `new_user_id`, bigint(0) as `bws_ts`, '' as `action`, '' as `subaction`, reqId from `batch100504_flatten_request`)

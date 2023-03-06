@@ -859,10 +859,10 @@ cases:
         id as id_35,
         min(`tx_amt_to_rmb`) over t4_cust_id_an_tx_time_0s_1d as t4_tx_amt_to_rmb_multi_min_34,
         avg(`tx_amt_to_rmb`) over t4_cust_id_an_tx_time_0s_1d as t4_tx_amt_to_rmb_multi_avg_35,
-        topn_frequency(`crdt_card_tx_cd`, 3) over t4_cust_id_an_tx_time_0_100 as t4_crdt_card_tx_cd_multi_top3frequency_36,
+        fz_topn_frequency(`crdt_card_tx_cd`, 3) over t4_cust_id_an_tx_time_0_100 as t4_crdt_card_tx_cd_multi_top3frequency_36,
         distinct_count(`crdt_card_tx_cd`) over t4_cust_id_an_tx_time_0_100 as t4_crdt_card_tx_cd_multi_unique_count_37,
         distinct_count(`cross_bord_ind`) over t4_cust_id_an_tx_time_0_100 as t4_cross_bord_ind_multi_unique_count_38,
-        topn_frequency(`cross_bord_ind`, 3) over t4_cust_id_an_tx_time_0_100 as t4_cross_bord_ind_multi_top3frequency_39,
+        fz_topn_frequency(`cross_bord_ind`, 3) over t4_cust_id_an_tx_time_0_100 as t4_cross_bord_ind_multi_top3frequency_39,
         distinct_count(`mercht_typ_cd`) over t4_cust_id_an_tx_time_0_10 as t4_mercht_typ_cd_multi_unique_count_40,
         distinct_count(`mercht_typ_cd`) over t4_cust_id_an_tx_time_0_100 as t4_mercht_typ_cd_multi_unique_count_41,
         distinct_count(`tx_desc_an`) over t4_cust_id_an_tx_time_0_10 as t4_tx_desc_an_multi_unique_count_42,
@@ -887,30 +887,30 @@ cases:
         avg(`card_agmt_id_an`) over t6_cust_id_an_actv_dt_0_10 as t6_card_agmt_id_an_multi_avg_47,
         min(`pri_acct_id_an`) over t6_cust_id_an_actv_dt_0_100 as t6_pri_acct_id_an_multi_min_48,
         min(`pri_acct_id_an`) over t6_cust_id_an_actv_dt_0_10 as t6_pri_acct_id_an_multi_min_49,
-        topn_frequency(`actv_chnl_cd`, 3) over t6_cust_id_an_actv_dt_0_100 as t6_actv_chnl_cd_multi_top3frequency_50,
-        topn_frequency(`actv_chnl_cd`, 3) over t6_cust_id_an_actv_dt_0_10 as t6_actv_chnl_cd_multi_top3frequency_51,
+        fz_topn_frequency(`actv_chnl_cd`, 3) over t6_cust_id_an_actv_dt_0_100 as t6_actv_chnl_cd_multi_top3frequency_50,
+        fz_topn_frequency(`actv_chnl_cd`, 3) over t6_cust_id_an_actv_dt_0_10 as t6_actv_chnl_cd_multi_top3frequency_51,
         distinct_count(`atta_card_ind`) over t6_cust_id_an_actv_dt_0s_32d as t6_atta_card_ind_multi_unique_count_52,
-        topn_frequency(`atta_card_ind`, 3) over t6_cust_id_an_actv_dt_0s_32d as t6_atta_card_ind_multi_top3frequency_53,
-        topn_frequency(`bus_card_ind`, 3) over t6_cust_id_an_actv_dt_0s_32d as t6_bus_card_ind_multi_top3frequency_54,
+        fz_topn_frequency(`atta_card_ind`, 3) over t6_cust_id_an_actv_dt_0s_32d as t6_atta_card_ind_multi_top3frequency_53,
+        fz_topn_frequency(`bus_card_ind`, 3) over t6_cust_id_an_actv_dt_0s_32d as t6_bus_card_ind_multi_top3frequency_54,
         distinct_count(`bus_card_ind`) over t6_cust_id_an_actv_dt_0s_32d as t6_bus_card_ind_multi_unique_count_55,
         distinct_count(`camp_org_id`) over t6_cust_id_an_actv_dt_0_100 as t6_camp_org_id_multi_unique_count_56,
         distinct_count(`camp_org_id`) over t6_cust_id_an_actv_dt_0_10 as t6_camp_org_id_multi_unique_count_57,
-        topn_frequency(`card_matr_yr_mth`, 3) over t6_cust_id_an_actv_dt_0_100 as t6_card_matr_yr_mth_multi_top3frequency_58,
-        topn_frequency(`card_matr_yr_mth`, 3) over t6_cust_id_an_actv_dt_0_10 as t6_card_matr_yr_mth_multi_top3frequency_59,
-        topn_frequency(`card_org_cd`, 3) over t6_cust_id_an_actv_dt_0s_32d as t6_card_org_cd_multi_top3frequency_60,
+        fz_topn_frequency(`card_matr_yr_mth`, 3) over t6_cust_id_an_actv_dt_0_100 as t6_card_matr_yr_mth_multi_top3frequency_58,
+        fz_topn_frequency(`card_matr_yr_mth`, 3) over t6_cust_id_an_actv_dt_0_10 as t6_card_matr_yr_mth_multi_top3frequency_59,
+        fz_topn_frequency(`card_org_cd`, 3) over t6_cust_id_an_actv_dt_0s_32d as t6_card_org_cd_multi_top3frequency_60,
         distinct_count(`card_org_cd`) over t6_cust_id_an_actv_dt_0s_32d as t6_card_org_cd_multi_unique_count_61,
         distinct_count(`crdt_card_lvl_cd`) over t6_cust_id_an_actv_dt_0_100 as t6_crdt_card_lvl_cd_multi_unique_count_62,
         distinct_count(`crdt_card_lvl_cd`) over t6_cust_id_an_actv_dt_0_10 as t6_crdt_card_lvl_cd_multi_unique_count_63,
-        topn_frequency(`free_annl_fee_ind`, 3) over t6_cust_id_an_actv_dt_0s_32d as t6_free_annl_fee_ind_multi_top3frequency_64,
+        fz_topn_frequency(`free_annl_fee_ind`, 3) over t6_cust_id_an_actv_dt_0s_32d as t6_free_annl_fee_ind_multi_top3frequency_64,
         distinct_count(`free_annl_fee_ind`) over t6_cust_id_an_actv_dt_0s_32d as t6_free_annl_fee_ind_multi_unique_count_65,
-        topn_frequency(`matr_contn_card_ind`, 3) over t6_cust_id_an_actv_dt_0s_32d as t6_matr_contn_card_ind_multi_top3frequency_66,
+        fz_topn_frequency(`matr_contn_card_ind`, 3) over t6_cust_id_an_actv_dt_0s_32d as t6_matr_contn_card_ind_multi_top3frequency_66,
         distinct_count(`matr_contn_card_ind`) over t6_cust_id_an_actv_dt_0s_32d as t6_matr_contn_card_ind_multi_unique_count_67,
         distinct_count(`prod_id`) over t6_cust_id_an_actv_dt_0_100 as t6_prod_id_multi_unique_count_68,
-        topn_frequency(`prod_id`, 3) over t6_cust_id_an_actv_dt_0_10 as t6_prod_id_multi_top3frequency_69,
-        topn_frequency(`sell_chnl_cd`, 3) over t6_cust_id_an_actv_dt_0_10 as t6_sell_chnl_cd_multi_top3frequency_70,
-        topn_frequency(`sell_chnl_cd`, 3) over t6_cust_id_an_actv_dt_0_100 as t6_sell_chnl_cd_multi_top3frequency_71,
-        topn_frequency(`snp_gage_cd`, 3) over t6_cust_id_an_actv_dt_0_10 as t6_snp_gage_cd_multi_top3frequency_72,
-        topn_frequency(`snp_gage_cd`, 3) over t6_cust_id_an_actv_dt_0_100 as t6_snp_gage_cd_multi_top3frequency_73
+        fz_topn_frequency(`prod_id`, 3) over t6_cust_id_an_actv_dt_0_10 as t6_prod_id_multi_top3frequency_69,
+        fz_topn_frequency(`sell_chnl_cd`, 3) over t6_cust_id_an_actv_dt_0_10 as t6_sell_chnl_cd_multi_top3frequency_70,
+        fz_topn_frequency(`sell_chnl_cd`, 3) over t6_cust_id_an_actv_dt_0_100 as t6_sell_chnl_cd_multi_top3frequency_71,
+        fz_topn_frequency(`snp_gage_cd`, 3) over t6_cust_id_an_actv_dt_0_10 as t6_snp_gage_cd_multi_top3frequency_72,
+        fz_topn_frequency(`snp_gage_cd`, 3) over t6_cust_id_an_actv_dt_0_100 as t6_snp_gage_cd_multi_top3frequency_73
     from
         (select `cust_id_an` as `cust_id_an`, int(0) as `card_agmt_id_an`, int(0) as `pri_acct_id_an`, '' as `atta_card_ind`, '' as `camp_org_id`, '' as `prod_id`, '' as `snp_gage_cd`, '' as `crdt_card_lvl_cd`, date('2019-07-18') as `pin_card_dt`, '' as `card_matr_yr_mth`, '' as `sell_chnl_cd`, '' as `card_org_cd`, '' as `actv_chnl_cd`, '' as `free_annl_fee_ind`, double(0) as `annl_fee`, '' as `bus_card_ind`, '' as `matr_contn_card_ind`, timestamp('2019-07-18 09:20:20') as `issu_card_dt`, `ins_date` as `actv_dt`, id from `t1`)
         window t6_cust_id_an_actv_dt_0_100 as (
@@ -925,9 +925,9 @@ cases:
     (
     select
         id as id_75,
-        topn_frequency(`card_agmt_id_an`, 3) over t7_cust_id_an_data_date_0s_1d as t7_card_agmt_id_an_multi_top3frequency_74,
-        topn_frequency(`card_agmt_id_an`, 3) over t7_cust_id_an_data_date_0s_32d as t7_card_agmt_id_an_multi_top3frequency_75,
-        topn_frequency(`card_stat_cd`, 3) over t7_cust_id_an_data_date_0_100 as t7_card_stat_cd_multi_top3frequency_76,
+        fz_topn_frequency(`card_agmt_id_an`, 3) over t7_cust_id_an_data_date_0s_1d as t7_card_agmt_id_an_multi_top3frequency_74,
+        fz_topn_frequency(`card_agmt_id_an`, 3) over t7_cust_id_an_data_date_0s_32d as t7_card_agmt_id_an_multi_top3frequency_75,
+        fz_topn_frequency(`card_stat_cd`, 3) over t7_cust_id_an_data_date_0_100 as t7_card_stat_cd_multi_top3frequency_76,
         distinct_count(`card_stat_cd`) over t7_cust_id_an_data_date_0_100 as t7_card_stat_cd_multi_unique_count_77
     from
         (select `cust_id_an` as `cust_id_an`, int(0) as `card_agmt_id_an`, date('2019-07-18') as `fst_use_card_dt`, date('2019-07-18') as `ltst_use_card_dt`, '' as `card_stat_cd`, `ins_date` as `data_date`, id from `t1`)
@@ -945,7 +945,7 @@ cases:
         id as id_79,
         min(`agmt_id_an`) over t8_cust_id_an_open_acct_dt_0_10 as t8_agmt_id_an_multi_min_78,
         max(`agmt_id_an`) over t8_cust_id_an_open_acct_dt_0_10 as t8_agmt_id_an_multi_max_79,
-        topn_frequency(`atta_acct_ind`, 3) over t8_cust_id_an_open_acct_dt_0s_32d as t8_atta_acct_ind_multi_top3frequency_80,
+        fz_topn_frequency(`atta_acct_ind`, 3) over t8_cust_id_an_open_acct_dt_0s_32d as t8_atta_acct_ind_multi_top3frequency_80,
         distinct_count(`atta_acct_ind`) over t8_cust_id_an_open_acct_dt_0s_32d as t8_atta_acct_ind_multi_unique_count_81
     from
         (select `cust_id_an` as `cust_id_an`, int(0) as `agmt_id_an`, '' as `atta_acct_ind`, date('2019-07-18') as `stmt_dt`, `ins_date` as `open_acct_dt`, timestamp('2019-07-18 09:20:20') as `clos_acct_dt`, id from `t1`)
@@ -987,14 +987,14 @@ cases:
         avg(`ovrd_bal`) over t9_cust_id_an_data_date_0_10 as t9_ovrd_bal_multi_avg_107,
         max(`spl_pay_bal`) over t9_cust_id_an_data_date_0_100 as t9_spl_pay_bal_multi_max_108,
         max(`spl_pay_bal`) over t9_cust_id_an_data_date_0_10 as t9_spl_pay_bal_multi_max_109,
-        topn_frequency(`acct_stat_cd`, 3) over t9_cust_id_an_data_date_0_100 as t9_acct_stat_cd_multi_top3frequency_110,
+        fz_topn_frequency(`acct_stat_cd`, 3) over t9_cust_id_an_data_date_0_100 as t9_acct_stat_cd_multi_top3frequency_110,
         distinct_count(`acct_stat_cd`) over t9_cust_id_an_data_date_0_100 as t9_acct_stat_cd_multi_unique_count_111,
-        topn_frequency(`agmt_id_an`, 3) over t9_cust_id_an_data_date_0s_1d as t9_agmt_id_an_multi_top3frequency_112,
-        topn_frequency(`agmt_id_an`, 3) over t9_cust_id_an_data_date_0s_32d as t9_agmt_id_an_multi_top3frequency_113,
-        topn_frequency(`curr_ovrd_stat_cd`, 3) over t9_cust_id_an_data_date_0_100 as t9_curr_ovrd_stat_cd_multi_top3frequency_114,
-        topn_frequency(`curr_ovrd_stat_cd`, 3) over t9_cust_id_an_data_date_0_10 as t9_curr_ovrd_stat_cd_multi_top3frequency_115,
-        topn_frequency(`curr_yr_ovrd_cnt`, 3) over t9_cust_id_an_data_date_0_100 as t9_curr_yr_ovrd_cnt_multi_top3frequency_116,
-        topn_frequency(`curr_yr_ovrd_cnt`, 3) over t9_cust_id_an_data_date_0_10 as t9_curr_yr_ovrd_cnt_multi_top3frequency_117
+        fz_topn_frequency(`agmt_id_an`, 3) over t9_cust_id_an_data_date_0s_1d as t9_agmt_id_an_multi_top3frequency_112,
+        fz_topn_frequency(`agmt_id_an`, 3) over t9_cust_id_an_data_date_0s_32d as t9_agmt_id_an_multi_top3frequency_113,
+        fz_topn_frequency(`curr_ovrd_stat_cd`, 3) over t9_cust_id_an_data_date_0_100 as t9_curr_ovrd_stat_cd_multi_top3frequency_114,
+        fz_topn_frequency(`curr_ovrd_stat_cd`, 3) over t9_cust_id_an_data_date_0_10 as t9_curr_ovrd_stat_cd_multi_top3frequency_115,
+        fz_topn_frequency(`curr_yr_ovrd_cnt`, 3) over t9_cust_id_an_data_date_0_100 as t9_curr_yr_ovrd_cnt_multi_top3frequency_116,
+        fz_topn_frequency(`curr_yr_ovrd_cnt`, 3) over t9_cust_id_an_data_date_0_10 as t9_curr_yr_ovrd_cnt_multi_top3frequency_117
     from
         (select `cust_id_an` as `cust_id_an`, int(0) as `agmt_id_an`, '' as `curr_ovrd_stat_cd`, int(0) as `curr_yr_ovrd_cnt`, double(0) as `curr_yr_crdt_card_point`, double(0) as `crdt_card_point`, '' as `acct_stat_cd`, double(0) as `consm_od_bal`, double(0) as `cash_od_bal`, double(0) as `amtbl_od_bal`, double(0) as `spl_pay_bal`, double(0) as `ovrd_bal`, double(0) as `last_mth_stmt_amt`, int(0) as `last_mth_consm_cnt`, double(0) as `m_consm_amt_accm`, double(0) as `m_cash_amt_accm`, double(0) as `m_amtbl_amt_accm`, double(0) as `m_spl_pay_amt_accm`, double(0) as `m_ovrd_bal_accm`, `ins_date` as `data_date`, id from `t1`)
         window t9_cust_id_an_data_date_0s_32d as (

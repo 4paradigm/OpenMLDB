@@ -90,10 +90,10 @@ cases:
     \    max(`lst_repay_amt`) over bo_bill_detail_new_user_id_ingestionTime_0s_2764801s\
     \ as bo_bill_detail_lst_repay_amt_multi_max_30,\n    min(`rev_credit`) over bo_bill_detail_new_user_id_ingestionTime_0s_2764801s\
     \ as bo_bill_detail_rev_credit_multi_min_31,\n    avg(`rev_credit`) over bo_bill_detail_new_user_id_ingestionTime_0s_2764801s\
-    \ as bo_bill_detail_rev_credit_multi_avg_32,\n    topn_frequency(`bank_id`,\
+    \ as bo_bill_detail_rev_credit_multi_avg_32,\n    fz_topn_frequency(`bank_id`,\
     \ 3) over bo_bill_detail_new_user_id_ingestionTime_0s_2764801s as bo_bill_detail_bank_id_multi_top3frequency_33,\n\
     \    distinct_count(`bank_id`) over bo_bill_detail_new_user_id_ingestionTime_0s_2764801s\
-    \ as bo_bill_detail_bank_id_multi_unique_count_34,\n    topn_frequency(`repay_status`,\
+    \ as bo_bill_detail_bank_id_multi_unique_count_34,\n    fz_topn_frequency(`repay_status`,\
     \ 3) over bo_bill_detail_new_user_id_ingestionTime_0s_2764801s as bo_bill_detail_repay_status_multi_top3frequency_35,\n\
     \    distinct_count(`repay_status`) over bo_bill_detail_new_user_id_ingestionTime_0s_2764801s\
     \ as bo_bill_detail_repay_status_multi_unique_count_36\nfrom\n    (select `eventTime`\
