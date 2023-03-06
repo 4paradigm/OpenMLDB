@@ -2242,7 +2242,7 @@ cases:
       avg_where(col1, std_ts > timestamp(1590115440000)) OVER w as a5,
       sum(col1) OVER w as a6,
       count(col1) OVER w as a7,
-      fz_topn_frequency(id, 3) OVER w as a8
+      topn_frequency(id, 3) OVER w as a8
       FROM {0} WINDOW
         w AS (PARTITION BY pk ORDER BY std_ts ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
     inputs:
