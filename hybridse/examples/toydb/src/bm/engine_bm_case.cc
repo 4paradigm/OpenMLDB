@@ -447,11 +447,11 @@ void EngineWindowTop1RatioFeature(benchmark::State* state, MODE mode,
                                   int64_t size) {  // NOLINT
     const std::string sql =
         "SELECT "
-        "fz_top1_ratio(col6) OVER  w1  as top1, "
-        "fz_top1_ratio(col6) OVER  w1  as top2, "
-        "fz_top1_ratio(col6) OVER  w1  as top3, "
-        "fz_top1_ratio(col6) OVER  w1  as top4, "
-        "fz_top1_ratio(col6) OVER  w1  as top5 "
+        "top1_ratio(col6) OVER  w1  as top1, "
+        "top1_ratio(col6) OVER  w1  as top2, "
+        "top1_ratio(col6) OVER  w1  as top3, "
+        "top1_ratio(col6) OVER  w1  as top4, "
+        "top1_ratio(col6) OVER  w1  as top5 "
         "FROM t1 WINDOW w1 AS (PARTITION BY col0 ORDER BY col5 ROWS_RANGE "
         "BETWEEN "
         "30d PRECEDING AND CURRENT ROW) limit " +

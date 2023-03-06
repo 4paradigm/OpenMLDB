@@ -8,8 +8,8 @@ select
     `sku_id` as sample_sku_id_original_1,
     `date` as sample_date_original_2,
     `label` as sample_label_original_3,
-    fz_top1_ratio(`user_id`) over sample_sku_id_date_0s_5529600s as sample_user_id_window_top1_ratio_37,
-    fz_top1_ratio(`user_id`) over sample_sku_id_date_0s_2764800s as sample_user_id_window_top1_ratio_38,
+    top1_ratio(`user_id`) over sample_sku_id_date_0s_5529600s as sample_user_id_window_top1_ratio_37,
+    top1_ratio(`user_id`) over sample_sku_id_date_0s_2764800s as sample_user_id_window_top1_ratio_38,
     distinct_count(`user_id`) over sample_sku_id_date_0s_5529600s as sample_user_id_window_unique_count_39,
     distinct_count(`user_id`) over sample_sku_id_date_0s_2764800s as sample_user_id_window_unique_count_40
 from
@@ -43,15 +43,15 @@ select
     min(`x2`) over action_user_id_sku_id_time_0s_1d as action_x2_multi_min_14,
     min(`x3`) over action_user_id_sku_id_time_0s_1d as action_x3_multi_min_15,
     distinct_count(`brand`) over action_user_id_sku_id_time_0s_1d as action_brand_multi_unique_count_16,
-    fz_topn_frequency(`brand`, 3) over action_user_id_sku_id_time_0s_1d as action_brand_multi_top3frequency_17,
+    topn_frequency(`brand`, 3) over action_user_id_sku_id_time_0s_1d as action_brand_multi_top3frequency_17,
     distinct_count(`cate`) over action_user_id_sku_id_time_0s_1d as action_cate_multi_unique_count_18,
-    fz_topn_frequency(`cate`, 3) over action_user_id_sku_id_time_0s_1d as action_cate_multi_top3frequency_19,
+    topn_frequency(`cate`, 3) over action_user_id_sku_id_time_0s_1d as action_cate_multi_top3frequency_19,
     distinct_count(`if_succ`) over action_user_id_sku_id_time_0s_1d as action_if_succ_multi_unique_count_20,
-    fz_topn_frequency(`if_succ`, 3) over action_user_id_sku_id_time_0s_1d as action_if_succ_multi_top3frequency_21,
+    topn_frequency(`if_succ`, 3) over action_user_id_sku_id_time_0s_1d as action_if_succ_multi_top3frequency_21,
     distinct_count(`model_id`) over action_user_id_sku_id_time_0s_1d as action_model_id_multi_unique_count_22,
-    fz_topn_frequency(`model_id`, 3) over action_user_id_sku_id_time_0s_1d as action_model_id_multi_top3frequency_23,
+    topn_frequency(`model_id`, 3) over action_user_id_sku_id_time_0s_1d as action_model_id_multi_top3frequency_23,
     distinct_count(`order_amt`) over action_user_id_sku_id_time_0s_1d as action_order_amt_multi_unique_count_24,
-    fz_topn_frequency(`order_amt`, 3) over action_user_id_sku_id_time_0s_1d as action_order_amt_multi_top3frequency_25
+    topn_frequency(`order_amt`, 3) over action_user_id_sku_id_time_0s_1d as action_order_amt_multi_top3frequency_25
 from
     (select `user_id` as `user_id`, `sku_id` as `sku_id`, `date` as `time`, '' as `model_id`, '' as `type`, '' as `cate`, '' as `brand`, '' as `if_succ`, '' as `order_amt`, double(0) as `x1`, double(0) as `x2`, double(0) as `x3`, double(0) as `p1`, double(0) as `p2` from `sample`)
     window action_user_id_sku_id_time_0s_1d as (
@@ -81,7 +81,7 @@ select
     min(`a3`) over product_sku_id_dt_0s_1d as product_a3_multi_min_32,
     min(`brand`) over product_sku_id_dt_0s_1d as product_brand_multi_min_33,
     min(`cate`) over product_sku_id_dt_0s_1d as product_cate_multi_min_34,
-    fz_topn_frequency(`att1`, 3) over product_sku_id_dt_0s_1d as product_att1_multi_top3frequency_35,
+    topn_frequency(`att1`, 3) over product_sku_id_dt_0s_1d as product_att1_multi_top3frequency_35,
     distinct_count(`att1`) over product_sku_id_dt_0s_1d as product_att1_multi_unique_count_36
 from
     (select `sku_id` as `sku_id`, double(0) as `a1`, double(0) as `a2`, double(0) as `a3`, double(0) as `cate`, double(0) as `brand`, '' as `att1`, `date` as `dt`, user_id from `sample`)
