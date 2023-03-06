@@ -28,14 +28,14 @@ cases:
           - [5, 0, "k5:v5,k5:v3"]
     sql: |
       SELECT id,
-        identity(case when !isnull(lag(c1, 0)) then distinct_count(fz_window_split(c1,  ",")) else null end) over w1 as table_2_kn_0,
-        identity(case when !isnull(lag(c1, 0)) then distinct_count(fz_window_split_by_key(c1,  ",",  ":")) else null end) over w1 as table_2_kn_1,
-        identity(case when !isnull(lag(c1, 0)) then distinct_count(fz_window_split_by_value(c1,  ",",  ":")) else null end) over w1 as table_2_kn_2,
-        fz_join(fz_window_split(c1, ","), " ") OVER w1 AS split_and_join,
-        fz_join(fz_window_split_by_key(c1, ",", ":"), " ") OVER w1 AS split_key_and_join,
-        fz_join(fz_window_split_by_value(c1, ",", ":"), " ") OVER w1 AS split_value_and_join,
-        count(fz_window_split_by_key(c1, ",", ":")) OVER w1 AS split_key_and_count,
-        distinct_count(fz_window_split_by_key(c1, ",", ":")) OVER w1 AS split_key_and_distinct_count
+        identity(case when !isnull(lag(c1, 0)) then distinct_count(window_split(c1,  ",")) else null end) over w1 as table_2_kn_0,
+        identity(case when !isnull(lag(c1, 0)) then distinct_count(window_split_by_key(c1,  ",",  ":")) else null end) over w1 as table_2_kn_1,
+        identity(case when !isnull(lag(c1, 0)) then distinct_count(window_split_by_value(c1,  ",",  ":")) else null end) over w1 as table_2_kn_2,
+        join(window_split(c1, ","), " ") OVER w1 AS split_and_join,
+        join(window_split_by_key(c1, ",", ":"), " ") OVER w1 AS split_key_and_join,
+        join(window_split_by_value(c1, ",", ":"), " ") OVER w1 AS split_value_and_join,
+        count(window_split_by_key(c1, ",", ":")) OVER w1 AS split_key_and_count,
+        distinct_count(window_split_by_key(c1, ",", ":")) OVER w1 AS split_key_and_distinct_count
       FROM {0}
       WINDOW w1 AS (PARTITION BY {0}.pk ORDER BY {0}.id ROWS BETWEEN 10 PRECEDING AND CURRENT ROW);
     expect:
@@ -62,9 +62,9 @@ cases:
           - [5, 0, "k5:v5,k3:v3"]
     sql: |
       SELECT id,
-        fz_join(fz_split(c1, ","), " ") AS split_and_join,
-        fz_join(fz_split_by_key(c1, ",", ":"), " ") AS split_key_and_join,
-        fz_join(fz_split_by_value(c1, ",", ":"), " ") AS split_value_and_join
+        join(split(c1, ","), " ") AS split_and_join,
+        join(split_by_key(c1, ",", ":"), " ") AS split_key_and_join,
+        join(split_by_value(c1, ",", ":"), " ") AS split_value_and_join
       FROM main;
     expect:
       order: id
@@ -91,13 +91,13 @@ cases:
           - [5, 2, 5, 4, 1, 1.5, 2.5, "1:2 1:3"]
     sql: |
       SELECT id, 
-      fz_top1_ratio(c1) OVER w1 as r1,
-      fz_top1_ratio(c2) OVER w1 as r2,
-      fz_top1_ratio(c3) OVER w1 as r3,
-      fz_top1_ratio(c4) OVER w1 as r4,
-      fz_top1_ratio(c5) OVER w1 as r5,
-      fz_top1_ratio(fz_window_split_by_value(c6, " ", ":")) OVER w1 as r6,
-      fz_join(fz_window_split_by_value(c6, " ", ":")," ") OVER w1 as r7
+      top1_ratio(c1) OVER w1 as r1,
+      top1_ratio(c2) OVER w1 as r2,
+      top1_ratio(c3) OVER w1 as r3,
+      top1_ratio(c4) OVER w1 as r4,
+      top1_ratio(c5) OVER w1 as r5,
+      top1_ratio(window_split_by_value(c6, " ", ":")) OVER w1 as r6,
+      join(window_split_by_value(c6, " ", ":")," ") OVER w1 as r7
       FROM {0} 
       WINDOW w1 AS (PARTITION BY {0}.pk ORDER BY {0}.id ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
     expect:
@@ -125,13 +125,13 @@ cases:
           - [5, 2, "1:2 1:3", 5, "1:8 1:3", 1, 1.5, "1:2 1:3"]
     sql: |
       SELECT id, 
-      fz_topn_frequency(fz_window_split_by_key(c1, " ", ":"), 3) OVER w1 as r1,
-      fz_topn_frequency(c2, 3) OVER w1 as r2,
-      fz_topn_frequency(fz_window_split(c3, ","), 3) OVER w1 as r3,
-      fz_topn_frequency(c4, 3) OVER w1 as r4,
-      fz_topn_frequency(c5, 3) OVER w1 as r5,
-      fz_topn_frequency(fz_window_split_by_value(c6, " ", ":"), 3) OVER w1 as r6,
-      fz_join(fz_window_split_by_value(c6, " ", ":")," ") OVER w1 as r7
+      topn_frequency(window_split_by_key(c1, " ", ":"), 3) OVER w1 as r1,
+      topn_frequency(c2, 3) OVER w1 as r2,
+      topn_frequency(window_split(c3, ","), 3) OVER w1 as r3,
+      topn_frequency(c4, 3) OVER w1 as r4,
+      topn_frequency(c5, 3) OVER w1 as r5,
+      topn_frequency(window_split_by_value(c6, " ", ":"), 3) OVER w1 as r6,
+      join(window_split_by_value(c6, " ", ":")," ") OVER w1 as r7
       FROM {0} 
       WINDOW w1 AS (PARTITION BY {0}.pk ORDER BY {0}.id ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
     expect:
@@ -157,12 +157,12 @@ cases:
           - [5, 0, "e"]
     sql: |
       SELECT id,
-        fz_join(fz_split(c1, ""), "") OVER w1 AS r1,
-        fz_join(fz_split_by_key(c1, "", ""), "") OVER w1 AS r2,
-        fz_join(fz_split_by_value(c1, "", ""), "") OVER w1 AS r3,
-        fz_join(fz_window_split(c1, ""), " ") OVER w1 AS r4,
-        fz_join(fz_window_split_by_key(c1, "", ""), " ") OVER w1 AS r5,
-        fz_join(fz_window_split_by_value(c1, "", ""), " ") OVER w1 AS r6
+        join(split(c1, ""), "") OVER w1 AS r1,
+        join(split_by_key(c1, "", ""), "") OVER w1 AS r2,
+        join(split_by_value(c1, "", ""), "") OVER w1 AS r3,
+        join(window_split(c1, ""), " ") OVER w1 AS r4,
+        join(window_split_by_key(c1, "", ""), " ") OVER w1 AS r5,
+        join(window_split_by_value(c1, "", ""), " ") OVER w1 AS r6
       FROM {0}
       WINDOW w1 AS (PARTITION BY {0}.pk ORDER BY {0}.id ROWS BETWEEN 10 PRECEDING AND CURRENT ROW);
     expect:
