@@ -2889,7 +2889,7 @@ std::shared_ptr<TableHandler> RequestAggUnionRunner::RequestUnionWindow(
     auto window_table = std::make_shared<MemTimeTableHandler>();
     auto base_it = union_segments[0]->GetIterator();
     if (!base_it) {
-        LOG(WARNING) << "Base window is empty.";
+        LOG(INFO) << "Base window is empty.";
         window_table->AddRow(start, aggregator->Output());
         DLOG(INFO) << "REQUEST AGG UNION cnt = " << window_table->GetCount();
         return window_table;
@@ -2900,7 +2900,7 @@ std::shared_ptr<TableHandler> RequestAggUnionRunner::RequestUnionWindow(
     if (agg_it) {
         agg_it->Seek(end);
     } else {
-        LOG(WARNING) << "Agg window is empty. Use base window only";
+        LOG(INFO) << "Agg window is empty. Use base window only";
     }
 
     // we'll iterate over the following ranges:
