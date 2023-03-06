@@ -89,6 +89,12 @@
     bash bin/start.sh start taskmanager
     ```
 
+### Yarn模式下的升级
+
+Yarn模式下，第一步替换Spark时，还需要注意`spark.yarn.jars`和`batchjob.jar.path`的配置，如果指向HDFS路径，那么HDFS路径上的包也需要更新。这种情况下，更新TaskMananger的本地`$SPARK_HOME`目录不会影响到Yarn模式下的Spark。
+
+剩下的TaskManager升级步骤和上文的步骤一致。
+
 ## 5. 升级SDK
 
 ### 升级Java SDK
