@@ -622,6 +622,7 @@ base::Status Planner::ValidateClusterOnlineTrainingOp(node::PlanNode *node) {
 
     return base::Status::OK();
 }
+
 /**
  * Validate there is one and only one request table existing in the Plan tree
  * @param node
