@@ -46,7 +46,14 @@
   </configuration>
   ```
 
-除了Hive连接配置，还需要在Hive中给TaskMananger的启动用户（OS用户和组）授予创建/读/写等权限。
+除了Hive连接配置，还需要在Hive中给TaskMananger的启动用户（OS用户和组）授予创建/读/写等权限，以及Hive表的HDFS路径的Read/Write/Execute权限。
+
+如果权限不够，可能出现如下错误：
+```
+org.apache.hadoop.security.AccessControlException: Permission denied: user=xx, access=xxx, inode="xxx":xxx:supergroup:drwxr-xr-x
+```
+这个错误是指用户没有权限访问Hive表的HDFS路径，需要给用户授予HDFS路径的Read/Write/Execute权限。
+
 ```{seealso}
 如有疑问，请确认你的Hive集群使用了哪种权限管理方式，参考[权限管理](https://cwiki.apache.org/confluence/display/Hive/LanguageManual+Authorization#LanguageManualAuthorization-OverviewofAuthorizationModes)。
 ```
