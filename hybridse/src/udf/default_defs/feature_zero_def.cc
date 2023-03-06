@@ -597,8 +597,8 @@ void DefaultUdfLibrary::InitFeatureZero() {
         .output("window_split_by_key_output", FZStringOpsDef::OutputList)
         .doc(R"(
             @brief For each string value from specified
-            column of window, split by delimeter and then split each segment 
-            as kv pair, then add each key to output list. Null and 
+            column of window, split by delimeter and then split each segment
+            as kv pair, then add each key to output list. Null and
             illegal segments are skipped.
 
             @since 0.1.0)");
@@ -635,8 +635,8 @@ void DefaultUdfLibrary::InitFeatureZero() {
         .output("window_split_by_value_output", FZStringOpsDef::OutputList)
         .doc(R"(
             @brief For each string value from specified
-            column of window, split by delimeter and then split each segment 
-            as kv pair, then add each value to output list. Null and 
+            column of window, split by delimeter and then split each segment
+            as kv pair, then add each value to output list. Null and
             illegal segments are skipped.
 
             @since 0.1.0)");
@@ -675,7 +675,7 @@ void DefaultUdfLibrary::InitFeatureZero() {
             Example:
 
             @code{.sql}
-                select fz_join(fz_split("k1:v1,k2:v2", ","), " ");
+                select join(split("k1:v1,k2:v2", ","), " ");
                 --  "k1:v1 k2:v2"
             @endcode
             @since 0.1.0
@@ -712,16 +712,6 @@ void DefaultUdfLibrary::InitFeatureZero() {
 
             @endcode
             @since 0.7.0)");
-
-    RegisterAlias("fz_window_split", "window_split");
-    RegisterAlias("fz_split", "split");
-    RegisterAlias("fz_split_by_key", "split_by_key");
-    RegisterAlias("fz_split_by_value", "split_by_value");
-    RegisterAlias("fz_window_split_by_key", "window_split_by_key");
-    RegisterAlias("fz_window_split_by_value", "window_split_by_value");
-    RegisterAlias("fz_join", "join");
-    RegisterAlias("fz_top1_ratio", "top1_ratio");
-    RegisterAlias("fz_topn_frequency", "topn_frequency");
 }
 
 }  // namespace udf
