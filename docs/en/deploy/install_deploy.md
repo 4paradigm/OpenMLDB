@@ -156,6 +156,8 @@ Notice: It is best to deploy different components in different directories for e
 Environment Requirements:
 - the deploy node has password-free login to other nodes
 - `rsync` is required
+- Python3 is required
+- JRE (Java Runtime Environment) is required on the node where Zookeeper and TaskManager are deployed
 
 
 ### Download the OpenMLDB Deployment Package
