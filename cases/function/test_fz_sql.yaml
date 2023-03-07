@@ -31,9 +31,9 @@ cases:
         identity(case when !isnull(lag(c1, 0)) then distinct_count(window_split(c1,  ",")) else null end) over w1 as table_2_kn_0,
         identity(case when !isnull(lag(c1, 0)) then distinct_count(window_split_by_key(c1,  ",",  ":")) else null end) over w1 as table_2_kn_1,
         identity(case when !isnull(lag(c1, 0)) then distinct_count(window_split_by_value(c1,  ",",  ":")) else null end) over w1 as table_2_kn_2,
-        join(window_split(c1, ","), " ") OVER w1 AS split_and_join,
-        join(window_split_by_key(c1, ",", ":"), " ") OVER w1 AS split_key_and_join,
-        join(window_split_by_value(c1, ",", ":"), " ") OVER w1 AS split_value_and_join,
+        `join`(window_split(c1, ","), " ") OVER w1 AS split_and_join,
+        `join`(window_split_by_key(c1, ",", ":"), " ") OVER w1 AS split_key_and_join,
+        `join`(window_split_by_value(c1, ",", ":"), " ") OVER w1 AS split_value_and_join,
         count(window_split_by_key(c1, ",", ":")) OVER w1 AS split_key_and_count,
         distinct_count(window_split_by_key(c1, ",", ":")) OVER w1 AS split_key_and_distinct_count
       FROM {0}
@@ -62,9 +62,9 @@ cases:
           - [5, 0, "k5:v5,k3:v3"]
     sql: |
       SELECT id,
-        join(split(c1, ","), " ") AS split_and_join,
-        join(split_by_key(c1, ",", ":"), " ") AS split_key_and_join,
-        join(split_by_value(c1, ",", ":"), " ") AS split_value_and_join
+        `join`(split(c1, ","), " ") AS split_and_join,
+        `join`(split_by_key(c1, ",", ":"), " ") AS split_key_and_join,
+        `join`(split_by_value(c1, ",", ":"), " ") AS split_value_and_join
       FROM main;
     expect:
       order: id
