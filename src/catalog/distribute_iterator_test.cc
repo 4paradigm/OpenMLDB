@@ -33,7 +33,7 @@
 DECLARE_string(db_root_path);
 DECLARE_uint32(traverse_cnt_limit);
 DECLARE_uint32(max_traverse_cnt);
-DECLARE_uint32(max_traverse_pk_cnt);
+DECLARE_uint32(max_traverse_key_cnt);
 
 namespace openmldb {
 namespace catalog {
@@ -785,7 +785,7 @@ TEST_F(DistributeIteratorTest, TraverseSameTs) {
 }
 
 TEST_F(DistributeIteratorTest, WindowIteratorLimit) {
-    uint32_t old_max_pk_cnt = FLAGS_max_traverse_pk_cnt;
+    uint32_t old_max_pk_cnt = FLAGS_max_traverse_key_cnt;
     uint32_t tid = 3;
     ::openmldb::test::TempPath tmp_path;
     FLAGS_db_root_path = tmp_path.GetTempPath();
@@ -817,7 +817,7 @@ TEST_F(DistributeIteratorTest, WindowIteratorLimit) {
         }
     }
 
-    FLAGS_max_traverse_pk_cnt = 10;
+    FLAGS_max_traverse_key_cnt = 10;
     {
         DistributeWindowIterator w_it(tid, 4, tables, 0, "card", tablet_clients);
         for (int i = 0; i < 20; i++) {
@@ -840,24 +840,24 @@ TEST_F(DistributeIteratorTest, WindowIteratorLimit) {
             count++;
             w_it.Next();
         }
-        ASSERT_EQ(count, FLAGS_max_traverse_pk_cnt);
+        ASSERT_EQ(count, FLAGS_max_traverse_key_cnt);
         w_it.Seek("card11");
         count = 0;
         while (w_it.Valid()) {
             count++;
             w_it.Next();
         }
-        ASSERT_EQ(count, FLAGS_max_traverse_pk_cnt);
+        ASSERT_EQ(count, FLAGS_max_traverse_key_cnt);
         w_it.Seek("card15");
         count = 0;
         while (w_it.Valid()) {
             count++;
             w_it.Next();
         }
-        ASSERT_EQ(count, FLAGS_max_traverse_pk_cnt);
+        ASSERT_EQ(count, FLAGS_max_traverse_key_cnt);
     }
 
-    FLAGS_max_traverse_pk_cnt = 20;
+    FLAGS_max_traverse_key_cnt = 20;
     {
         DistributeWindowIterator w_it(tid, 4, tables, 0, "card", tablet_clients);
         for (int i = 0; i < 20; i++) {
@@ -880,7 +880,7 @@ TEST_F(DistributeIteratorTest, WindowIteratorLimit) {
             count++;
             w_it.Next();
         }
-        ASSERT_EQ(count, FLAGS_max_traverse_pk_cnt);
+        ASSERT_EQ(count, FLAGS_max_traverse_key_cnt);
         w_it.Seek("card11");
         count = 0;
         while (w_it.Valid()) {
@@ -897,7 +897,7 @@ TEST_F(DistributeIteratorTest, WindowIteratorLimit) {
         ASSERT_EQ(count, 10);
     }
 
-    FLAGS_max_traverse_pk_cnt = old_max_pk_cnt;
+    FLAGS_max_traverse_key_cnt = old_max_pk_cnt;
 }
 
 TEST_F(DistributeIteratorTest, IteratorZero) {
