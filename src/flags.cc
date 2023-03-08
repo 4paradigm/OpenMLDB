@@ -109,8 +109,8 @@ DEFINE_int32(request_sleep_time, 1000, "the sleep time when request error. unit 
 
 DEFINE_uint32(max_memory_mb, 0, "max memory limit");
 
-DEFINE_uint32(max_traverse_pk_cnt, 5000, "max traverse iter pk cnt");
-DEFINE_uint32(max_traverse_cnt, 50000, "max traverse iter loop cnt");
+DEFINE_uint32(max_traverse_key_cnt, 0, "max traverse iter key cnt");
+DEFINE_uint32(max_traverse_cnt, 0, "max traverse iter loop cnt");
 DEFINE_uint32(traverse_cnt_limit, 1000, "limit traverse cnt");
 DEFINE_string(ssd_root_path, "", "the root ssd path of db");
 DEFINE_string(hdd_root_path, "", "the root hdd path of db");
