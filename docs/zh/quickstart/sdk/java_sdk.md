@@ -40,7 +40,7 @@
 
 openmldb-native 的 macOS 版本只支持 macOS 12，如需在 macOS 11 或 macOS 10.15上运行，需在相应 OS 上源码编译 openmldb-native 包，详细编译方法见[并发编译 Java SDK](https://openmldb.ai/docs/zh/main/deploy/compile.html#java-sdk)。
 
-Java SDK 连接 OpenMLDB 服务，可以使用 JDBC 的方式（推荐），也可以通过 SqlClusterExecutor 的方式直连。下面将依次演示两种连接方式。
+Java SDK 连接 OpenMLDB 服务，可以使用 JDBC 的方式（推荐），也可以通过 SqlClusterExecutor 的方式直连。如果需要使用在线请求模式，只能使用 SqlClusterExecutor 。下面将依次演示两种连接方式。
 
 ## JDBC 方式
 
@@ -308,7 +308,7 @@ executeBatch 后，缓存的所有数据将被清除，无法重试 executeBatch
 
 ### 执行 SQL 请求式查询
 
-`RequestPreparedStmt` 是一个独特的查询模式（JDBC 不支持此模式）。此模式需要 selectSql 与一条请求数据，所以需要在 `getRequestPreparedStmt` 时填入 SQL，也需要 `setType` 设置请求数据。
+`RequestPreparedStmt` 是一个独特的查询模式（JDBC Connection不支持创建这种查询）。此模式需要 selectSql 与一条请求数据，所以需要在 `getRequestPreparedStmt` 时填入 SQL，也需要 `setType` 设置请求数据。
 
 执行 SQL 请求式查询有以下三步：
 
