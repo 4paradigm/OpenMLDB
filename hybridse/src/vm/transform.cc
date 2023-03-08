@@ -1699,7 +1699,7 @@ Status BatchModeTransformer::ValidateWindowIndexOptimization(
 
 // 1. validate plan is currently supported
 //    - the right key used for partition, whose type should be one of: [bool, intxx, string, date, timestamp]
-// 2. validate if plan is optimized for performance sensitive mode
+// 2. validate if plan is optimized for performance_sensitive
 //    - query condition hit to a table index
 //    - not aggregation over table
 Status BatchModeTransformer::ValidatePlan(PhysicalOpNode* node) {
@@ -1786,7 +1786,7 @@ Status BatchModeTransformer::ValidatePlanSupported(const PhysicalOpNode* in) {
 
 // Override validate plan
 // Validate plan with basic rules defined for general batch mode SQL
-// Validate plan with specific rules designed for request mode SQL, including
+// Validate plan with specific rules designed for performance_sensitive:
 //  - ValidateRequestTable
 //  - ValidateIndexOptimization
 //  - ValidateNotAggregationOverTable

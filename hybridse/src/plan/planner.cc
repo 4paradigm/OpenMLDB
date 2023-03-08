@@ -449,36 +449,34 @@ base::Status Planner::CreateCreateTablePlan(const node::SqlNode *root, node::Pla
     *output = out;
     return base::Status::OK();
 }
-/// Check if current plan node is depend on a [table|simple select table/rename table/ sub query table)
+
+/// Check if current plan node is depend on a (table|simple select table/rename table/sub query table)
 /// Store TablePlanNode into output if true
-bool Planner::IsTable(node::PlanNode *node, node::PlanNode** output) {
+absl::StatusOr<node::TablePlanNode*> Planner::IsTable(node::PlanNode *node) {
     if (nullptr == node) {
-        return false;
+        return absl::InvalidArgumentError("null node");
     }
 
     switch (node->type_) {
         case node::kPlanTypeTable: {
-            *output = node;
-            return true;
+            return dynamic_cast<node::TablePlanNode*>(node);
         }
         case node::kPlanTypeRename: {
-            return IsTable(node->GetChildren()[0], output);
+            return IsTable(node->GetChildren()[0]);
         }
         case node::kPlanTypeQuery: {
-            return IsTable(dynamic_cast<node::QueryPlanNode *>(node)->GetChildren()[0], output);
+            return IsTable(dynamic_cast<node::QueryPlanNode *>(node)->GetChildren()[0]);
         }
         case node::kPlanTypeProject: {
             if ((dynamic_cast<node::ProjectPlanNode *>(node))->IsSimpleProjectPlan()) {
-                return IsTable(node->GetChildren()[0], output);
-            } else {
-                return false;
+                return IsTable(node->GetChildren()[0]);
             }
+            break;
         }
-        default: {
-            return false;
-        }
+        default:
+            break;
     }
-    return false;
+    return absl::NotFoundError("not found");
 }
 
 // Validate online serving op with given plan tree
@@ -570,10 +568,9 @@ int Planner::GetPlanTreeLimitCount(node::PlanNode *node) {
 }
 
 base::Status Planner::ValidPlanForRequestMode(node::PlanNode *node, bool is_primary_path) {
-    node::PlanNode* tb_node = nullptr;
     // non-primary path and is SimpleOps(table), not necessary to have a request table
     // otherwise, one and only request table must exist
-    if (!is_primary_path && IsTable(node, &tb_node)) {
+    if (!is_primary_path && IsTable(node).ok()) {
         return Status::OK();
     }
 
@@ -625,9 +622,6 @@ base::Status Planner::ValidateClusterOnlineTrainingOp(node::PlanNode *node) {
 
 /**
  * Validate there is one and only one request table existing in the Plan tree
- * @param node
- * @param outputs
- * @return
  */
 base::Status Planner::ValidateRequestTable(node::PlanNode *node,
                                            std::vector<node::PlanNode *> &outputs) {
@@ -643,14 +637,14 @@ base::Status Planner::ValidateRequestTable(node::PlanNode *node,
                        "is null")
             CHECK_STATUS(ValidateRequestTable(binary_op->GetLeft(), outputs))
             CHECK_TRUE(!outputs.empty(), common::kPlanError, "PLAN error: No request/primary table exist in left tree");
-            node::PlanNode *right_table = nullptr;
 
             // If right side is a table|simple select table|rename table
             // It isn't necessary to be validate request
-            if (IsTable(binary_op->GetRight(), &right_table)) {
+            auto res = IsTable(binary_op->GetRight());
+            if (res.ok()) {
                 // Collect table if it is equal with primary table node
-                if (node::PlanEquals(right_table, outputs[0])) {
-                    outputs.push_back(right_table);
+                if (node::PlanEquals(res.value(), outputs[0])) {
+                    outputs.push_back(res.value());
                 }
             } else {
                 CHECK_STATUS(ValidateRequestTable(binary_op->GetRight(), outputs))
