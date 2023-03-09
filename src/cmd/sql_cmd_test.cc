@@ -209,18 +209,67 @@ TEST_P(DBSDKTest, CreateDatabase) {
     cs = cli->cs;
     sr = cli->sr;
     hybridse::sdk::Status status;
-
     auto db1 = absl::StrCat("db_", GenRand());
-
+    auto db2 = absl::StrCat("db_", GenRand());
+    auto rs = sr->ExecuteSQL("SHOW DATABASES", &status);
+    ASSERT_FALSE(rs->Next());
     ProcessSQLs(sr, {
                         absl::StrCat("CREATE DATABASE ", db1),
+                        absl::StrCat("CREATE DATABASE ", db2),
                         absl::StrCat("CREATE DATABASE IF NOT EXISTS ", db1),
                     });
-
     sr->ExecuteSQL(absl::StrCat("CREATE DATABASE ", db1), &status);
     EXPECT_FALSE(status.IsOK());
+    rs = sr->ExecuteSQL("SHOW DATABASES", &status);
+    rs->Next();
+    std::set<std::string> dbs = {db1, db2};
+    std::string val;
+    rs->GetString(0, &val);
+    ASSERT_EQ(dbs.count(val), 1);
+    rs->Next();
+    val.clear();
+    rs->GetString(0, &val);
+    ASSERT_EQ(dbs.count(val), 1);
+    ASSERT_FALSE(rs->Next());
 
-    ProcessSQLs(sr, {absl::StrCat("DROP DATABASE ", db1)});
+    ProcessSQLs(sr, {absl::StrCat("DROP DATABASE ", db1),
+                     absl::StrCat("DROP DATABASE ", db2)});
+}
+
+TEST_P(DBSDKTest, CreateAndShowTable) {
+    auto cli = GetParam();
+    cs = cli->cs;
+    sr = cli->sr;
+    auto db = absl::StrCat("db_", GenRand());
+    auto t1 = absl::StrCat("table_", GenRand());
+    auto t2 = absl::StrCat("table_", GenRand());
+    ProcessSQLs(sr, {
+                        absl::StrCat("CREATE DATABASE ", db),
+                        absl::StrCat("USE ", db),
+                        absl::StrCat("CREATE TABLE ", t1, " (col1 string);"),
+                        absl::StrCat("CREATE TABLE ", t2, " (col1 string);"),
+                    });
+    std::set<std::string> dbs = {t1, t2};
+    hybridse::sdk::Status status;
+    auto rs = sr->ExecuteSQL("SHOW TABLES", &status);
+    rs->Next();
+    std::string val;
+    rs->GetString(0, &val);
+    ASSERT_EQ(dbs.count(val), 1);
+    rs->Next();
+    val.clear();
+    rs->GetString(0, &val);
+    ASSERT_EQ(dbs.count(val), 1);
+    ASSERT_FALSE(rs->Next());
+    ProcessSQLs(sr, {absl::StrCat("DROP TABLE ", t1)});
+    rs = sr->ExecuteSQL("SHOW TABLES", &status);
+    rs->Next();
+    val.clear();
+    rs->GetString(0, &val);
+    ASSERT_EQ(val, t2);
+    ASSERT_FALSE(rs->Next());
+    ProcessSQLs(sr, {absl::StrCat("DROP TABLE ", t2),
+                     absl::StrCat("DROP DATABASE ", db)});
 }
 
 TEST_P(DBSDKTest, Select) {
