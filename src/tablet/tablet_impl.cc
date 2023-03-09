@@ -1504,14 +1504,14 @@ void TabletImpl::Traverse(RpcController* controller, const ::openmldb::api::Trav
         map_it->second.emplace_back(it->GetKey(), value);
         total_block_size += last_pk.length() + value.size();
         scount++;
-        if (it->GetCount() >= FLAGS_max_traverse_cnt) {
+        if (FLAGS_max_traverse_cnt > 0 && it->GetCount() >= FLAGS_max_traverse_cnt) {
             DEBUGLOG("traverse cnt %lu max %lu, key %s ts %lu", it->GetCount(), FLAGS_max_traverse_cnt, last_pk.c_str(),
                      last_time);
             break;
         }
     }
     bool is_finish = false;
-    if (it->GetCount() >= FLAGS_max_traverse_cnt) {
+    if (FLAGS_max_traverse_cnt > 0 && it->GetCount() >= FLAGS_max_traverse_cnt) {
         DEBUGLOG("traverse cnt %lu is great than max %lu, key %s ts %lu", it->GetCount(), FLAGS_max_traverse_cnt,
                  last_pk.c_str(), last_time);
         last_pk = it->GetPK();

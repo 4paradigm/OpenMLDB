@@ -112,8 +112,8 @@ All the other commands are executed synchronously.
 - `Last Join ` and `Order By` commands are not supported in online preview mode currently.
 - As SQL is executed in a single thread in online engine, it may run for long time for big data，
 which may trigger timeout. The timeout can be configured by `--request_timeout` in the client side;
-- In order not to degrade the performance of online request, we limit the max traverse number and pk numbers,
-which can be configured by `--max_traverse_cnt` and `--max_traverse_pk_cnt`.
+- In order not to degrade the performance of online request, we limit the max traverse number and unique key numbers,
+which can be configured by `--max_traverse_cnt` and `--max_traverse_key_cnt`.
 In additional, the result size is limited by `--scan_max_bytes_size`. Details can be found in [Configuration File](../deploy/conf.md).
 
 The online preview mode can be set in following ways:

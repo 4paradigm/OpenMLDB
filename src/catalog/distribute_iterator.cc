@@ -19,7 +19,7 @@
 
 DECLARE_uint32(traverse_cnt_limit);
 DECLARE_uint32(max_traverse_cnt);
-DECLARE_uint32(max_traverse_pk_cnt);
+DECLARE_uint32(max_traverse_key_cnt);
 
 namespace openmldb {
 namespace catalog {
@@ -38,14 +38,17 @@ void FullTableIterator::SeekToFirst() {
 }
 
 bool FullTableIterator::Valid() const {
-    return (cnt_ <= FLAGS_max_traverse_cnt) && ((it_ && it_->Valid()) || (kv_it_ && kv_it_->Valid()));
+    if (FLAGS_max_traverse_cnt > 0 && cnt_ > FLAGS_max_traverse_cnt) {
+        return false;
+    }
+    return (it_ && it_->Valid()) || (kv_it_ && kv_it_->Valid());
 }
 
 void FullTableIterator::Next() {
     // reset the buffered value
     ResetValue();
     cnt_++;
-    if (cnt_ > FLAGS_max_traverse_cnt) {
+    if (FLAGS_max_traverse_cnt > 0 && cnt_ > FLAGS_max_traverse_cnt) {
         PDLOG(WARNING, "FullTableIterator exceed the max_traverse_cnt, tid %u, cnt %lld, max_traverse_cnt %u", tid_,
               cnt_, FLAGS_max_traverse_cnt);
         return;
@@ -298,10 +301,10 @@ DistributeWindowIterator::ItStat DistributeWindowIterator::SeekByKey(const std::
 
 void DistributeWindowIterator::Next() {
     pk_cnt_++;
-    if (pk_cnt_ >= FLAGS_max_traverse_pk_cnt) {
+    if (FLAGS_max_traverse_key_cnt > 0 && pk_cnt_ >= FLAGS_max_traverse_key_cnt) {
         PDLOG(WARNING,
-              "DistributeWindowIterator exceeds the max_traverse_pk_cnt, tid %u, cnt %lld, max_traverse_pk_cnt %u",
-              tid_, pk_cnt_, FLAGS_max_traverse_pk_cnt);
+              "DistributeWindowIterator exceeds the max_traverse_key_cnt, tid %u, cnt %lld, max_traverse_key_cnt %u",
+              tid_, pk_cnt_, FLAGS_max_traverse_key_cnt);
         return;
     }
     if (it_ && it_->Valid()) {
@@ -373,7 +376,10 @@ void DistributeWindowIterator::Next() {
 }
 
 bool DistributeWindowIterator::Valid() {
-    return (pk_cnt_ < FLAGS_max_traverse_pk_cnt) && ((it_ && it_->Valid()) || (kv_it_ && kv_it_->Valid()));
+    if (FLAGS_max_traverse_key_cnt > 0 && pk_cnt_ >= FLAGS_max_traverse_key_cnt) {
+        return false;
+    }
+    return (it_ && it_->Valid()) || (kv_it_ && kv_it_->Valid());
 }
 
 std::unique_ptr<::hybridse::codec::RowIterator> DistributeWindowIterator::GetValue() {
