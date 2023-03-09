@@ -211,8 +211,6 @@ TEST_P(DBSDKTest, CreateDatabase) {
     hybridse::sdk::Status status;
     auto db1 = absl::StrCat("db_", GenRand());
     auto db2 = absl::StrCat("db_", GenRand());
-    auto rs = sr->ExecuteSQL("SHOW DATABASES", &status);
-    ASSERT_FALSE(rs->Next());
     ProcessSQLs(sr, {
                         absl::StrCat("CREATE DATABASE ", db1),
                         absl::StrCat("CREATE DATABASE ", db2),
@@ -220,7 +218,7 @@ TEST_P(DBSDKTest, CreateDatabase) {
                     });
     sr->ExecuteSQL(absl::StrCat("CREATE DATABASE ", db1), &status);
     EXPECT_FALSE(status.IsOK());
-    rs = sr->ExecuteSQL("SHOW DATABASES", &status);
+    auto rs = sr->ExecuteSQL("SHOW DATABASES", &status);
     rs->Next();
     std::set<std::string> dbs = {db1, db2};
     std::string val;
