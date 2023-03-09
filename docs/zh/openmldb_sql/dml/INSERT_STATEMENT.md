@@ -14,6 +14,9 @@ value_list:
     value [, value] ...
 ```
 
+**说明**
+- `INSERT` 只能插入到在线表
+
 ## Examples
 
 ```SQL

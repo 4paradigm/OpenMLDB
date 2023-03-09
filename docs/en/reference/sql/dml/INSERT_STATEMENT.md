@@ -14,6 +14,9 @@ value_list:
     value [, value] ...
 ```
 
+**Description**
+- `INSERT` statement will insert data to online tables
+
 ## Examples
 
 ```SQL

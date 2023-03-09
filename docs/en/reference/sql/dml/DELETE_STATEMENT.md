@@ -12,8 +12,8 @@ TableName ::=
 
 **Description**
 
-`DELETE` statement will delete all data from the first index of specific column value. 
-
+- `DELETE` statement will delete all data from the index of specific column value of online table.
+- The filter columns sepcified by `WHERE` must be an index column and the condition can only be `=`.
 
 ## Examples
 
