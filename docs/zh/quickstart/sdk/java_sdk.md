@@ -61,7 +61,7 @@ Connection 地址指定的 db 在创建连接时必须存在。
 JDBC Connection 的默认执行模式为`online`。
 ```
 
-### 使用概览
+### Statement
 
 通过 `Statement` 的方式可以执行所有的 SQL 命令，离线在线模式下都可以。切换离线/在线模式，需执行 `SET @@execute_mode='...';`。例如：
 
@@ -84,9 +84,19 @@ SET @@sync_job=true;
 ```
 
 如果同步命令实际耗时超过连接空闲默认的最大等待时间 0.5 小时，请[调整配置](../../openmldb_sql/ddl/SET_STATEMENT.md#离线命令配置详情)。
+
+```{caution}
+`Statement`执行`SET @@execute_mode='offline'`不仅会影响当前`Statement`，还会影响该`Connection`已创建和未创建的所有`Statement`。所以，不建议创建多个`Statement`，并期望它们在不同的模式下执行。如果需要在不同模式下执行SQL，建议创建多个Connection。
+```
 ### PreparedStatement
 
-`PreparedStatement` 可支持 `SELECT`、`INSERT` 和 `DELETE`，`INSERT` 仅支持插入到在线。
+`PreparedStatement` 可支持 `SELECT`、`INSERT` 和 `DELETE`。
+
+```{warning}
+任何`PreparedStatement`都只在**在线模式**下执行，不受创建`PreparedStatement`前的任何状态影响。`PreparedStatement`不支持切换到离线模式，如果需要在离线模式下执行SQL，可以使用`Statement`。
+
+Connection创建的三种`PreparedStatement`，分别对应SqlClusterExecutor中的`getPreparedStatement`，`getInsertPreparedStmt`，`getDeletePreparedStmt`。
+```
 
 ```java
 PreparedStatement selectStatement = connection.prepareStatement("SELECT * FROM t1 WHERE id=?");
@@ -201,8 +211,8 @@ try {
 
 `SqlClusterExecutor` 也可以获得 `PreparedStatement`，但需要指定获得哪种 `PreparedStatement`。例如，使用 InsertPreparedStmt 进行插入操作，可以有三种方式。
 
-```{note}
-插入操作仅支持在线，不受执行模式影响，一定是插入数据到在线。
+```{warning}
+任何`PreparedStatement`都只在**在线模式**下执行，不受创建`PreparedStatement`时的`SqlClusterExecutor`状态影响。`PreparedStatement`不支持切换到离线模式，如果需要在离线模式下执行SQL，可以使用`Statement`。
 ```
 
 #### 普通 Insert
@@ -313,7 +323,7 @@ executeBatch 后，缓存的所有数据将被清除，无法重试 executeBatch
 执行 SQL 请求式查询有以下三步：
 
 ```{note}
-请求式查询仅支持在线，不受执行模式影响，一定是进行在线的请求式查询。
+请求式查询仅支持在线，不受`SqlClusterExecutor`的当前执行模式影响，一定是进行在线的请求式查询。
 ```
 
 1. 使用 `SqlClusterExecutor::getRequestPreparedStmt(db, selectSql)` 接口获取RequestPrepareStatement。
