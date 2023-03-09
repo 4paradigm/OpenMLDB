@@ -225,6 +225,9 @@ class TestTaskManagerImpl extends FunSuite {
     val spark = SparkSession.builder().master("local").getOrCreate()
     val df = spark.read.parquet(offlinePath)
     assert(df.count() == 5)
+    df.collect().sortBy(_.getInt(0)).zipWithIndex.foreach { case (elem, index) =>
+      assert(elem.getInt(0) == index + 1)
+    }
 
     executor.executeDDL(testDb, s"drop table $testTable")
   }
@@ -278,6 +281,9 @@ class TestTaskManagerImpl extends FunSuite {
     val spark = SparkSession.builder().master("local").getOrCreate()
     val df = spark.read.parquet(outputPath)
     assert(df.count() == 5)
+    df.collect().sortBy(_.getInt(0)).zipWithIndex.foreach { case (elem, index) =>
+      assert(elem.getInt(0) == index + 1)
+    }
 
     executor.executeDDL(testDb, s"drop table $testTable")
   }
