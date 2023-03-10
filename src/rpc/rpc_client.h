@@ -147,7 +147,14 @@ class RpcClient {
 
     template <class Request, class Response, class Callback>
     base::Status SendRequestSt(void (T::*func)(google::protobuf::RpcController*, const Request*, Response*, Callback*),
-                     const Request* request, Response* response, uint64_t rpc_timeout, int retry_times) {
+                               const Request* request, Response* response, uint64_t rpc_timeout, int retry_times) {
+        return SendRequestSt(func, [](brpc::Controller* cntl) {}, request, response, rpc_timeout, retry_times);
+    }
+
+    template <class Request, class Response, class Callback, typename Func>
+    base::Status SendRequestSt(void (T::*func)(google::protobuf::RpcController*, const Request*, Response*, Callback*),
+                               Func manual_set_cntl, const Request* request, Response* response, uint64_t rpc_timeout,
+                               int retry_times) {
         base::Status status;
         brpc::Controller cntl;
         cntl.set_log_id(log_id_++);
@@ -157,6 +164,8 @@ class RpcClient {
         if (retry_times > 0) {
             cntl.set_max_retry(retry_times);
         }
+        manual_set_cntl(&cntl);
+        LOG(INFO) << "request attachment size: " << cntl.request_attachment().size();
         if (stub_ == NULL) {
             PDLOG(WARNING, "stub is null. client must be init before send request");
             return {base::ReturnCode::kServerConnError, "stub is null"};

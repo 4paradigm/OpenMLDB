@@ -1,0 +1,120 @@
+/*
+ * Copyright 2021 4Paradigm
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+syntax = "proto2";
+
+// datasync is a tool to sync data from online to offline
+// need java package cus SyncTool is a java class
+package openmldb.datasync;
+option java_package = "com._4paradigm.openmldb.proto";
+option java_outer_classname = "DataSync";
+option cc_generic_services = true;
+
+enum SyncType {
+    SNAPSHOT = 0;
+    BINLOG = 1;
+}
+
+enum SyncMode {
+    FULL = 0;
+    INCREMENTAL_BY_TIMESTAMP = 1;
+    FULL_AND_CONTINUOUS = 2;
+}
+
+message GeneralResponse {
+    optional int32 code = 1;
+    optional string msg = 2;
+}
+
+message SyncPoint {
+    required SyncType type = 1;
+    optional string pk = 2;
+    optional uint64 ts = 3;
+    optional uint64 offset = 4;
+}
+
+message AddSyncTaskRequest {
+    optional uint32 tid = 1;
+    optional uint32 pid = 2;
+    optional SyncMode mode = 3; // 3 modes
+    optional uint64 start_ts = 4; // mode 1 INCREMENTAL_BY_TIMESTAMP start ts
+    optional SyncPoint sync_point = 5; // DataCollector should read data from this point, include it
+    optional string tablet_endpoint = 6; // the tablet server connect to
+    optional string des_endpoint = 7; // SyncTool address(which SendData to), may be worker
+    optional string token = 8; // token, DataCollector sends data with it, SyncTool will check it
+    optional string dest = 9; // offline path for sync tool persistency, data collector won't use it
+}
+
+message CreateSyncTaskRequest {
+    optional string db = 1;
+    optional string name = 2;
+    optional SyncMode mode = 3; // 3 modes
+    optional uint64 start_ts = 4; // mode 1 INCREMENTAL_BY_TIMESTAMP start ts
+    optional string dest = 5; // offline path
+}
+
+// only one sync task per table
+message DeleteSyncTaskRequest {
+    optional string db = 1;
+    optional string name = 2;
+}
+
+message TaskStatusRequest {
+    optional bool clear_all = 1;
+}
+
+// used as backup data
+message Task {
+    optional AddSyncTaskRequest progress = 1;
+    optional string data_collector = 2;
+    optional uint64 count = 3;
+    optional string status = 4;
+}
+
+message TaskStatusResponse {
+    optional GeneralResponse response = 1;
+    // all tid-pid tasks
+    repeated Task task = 2;
+    repeated string readableInfo = 3;
+}
+
+message SendDataRequest {
+    optional uint32 tid = 1;
+    optional uint32 pid = 2;
+    optional SyncPoint start_point = 3; // The start point of this data
+    optional uint64 count = 4; // 本次传输的数据条数
+    optional string token = 5;
+    optional bool finished = 6; // 全量同步mode会停止，由DataCollector告知SyncTool
+    optional SyncPoint next_point = 7; // The NEXT point of this partition, to let SyncTool know the next start point
+    // 实际数据通过附件传输
+}
+
+message SendDataResponse {
+    required GeneralResponse response = 1; 
+    optional bool delete_task = 2; // TODO delete task here or send a rpc to delete
+}
+
+service DataCollector {
+    rpc AddSyncTask(AddSyncTaskRequest) returns (GeneralResponse);
+    // TODO GetTaskInfo?
+};
+
+service SyncTool {
+    rpc CreateSyncTask(CreateSyncTaskRequest) returns (GeneralResponse);
+    rpc DelelteSyncTask(DeleteSyncTaskRequest) returns (GeneralResponse);
+    rpc TaskStatus(TaskStatusRequest) returns (TaskStatusResponse);
+    rpc SendData(SendDataRequest) returns (SendDataResponse);
+}

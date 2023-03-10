@@ -324,6 +324,7 @@ __attribute__((unused)) static bool CopyFile(const std::string& src_file, const 
 
 inline static int HardLinkDir(const std::string& src, const std::string& dest) {
     if (!IsExists(src)) {
+        LOG(WARNING) << "src not exists " << src;
         return -2;
     }
 
@@ -331,12 +332,20 @@ inline static int HardLinkDir(const std::string& src, const std::string& dest) {
         RemoveDirRecursive(dest);
     }
 
-    MkdirRecur(dest);
+    if (!MkdirRecur(dest)) {
+        LOG(WARNING) << "mkdir failed " << dest;
+        return -3;
+    }
     std::vector<std::string> files;
-    GetSubFiles(src, files);
+    if (GetSubFiles(src, files)!=0) {
+        LOG(WARNING) << "get sub files failed " << src;
+        return -4;
+    }
+
     for (const auto& file : files) {
         int ret = link((src + "/" + file).c_str(), (dest + "/" + file).c_str());
         if (ret) {
+            LOG(WARNING) << "link failed " << src << "/" << file << " " << dest << "/" << file;
             return ret;
         }
     }

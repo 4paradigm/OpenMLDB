@@ -18,6 +18,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <filesystem>
 #include <memory>
 #include "absl/time/clock.h"
 #include "absl/time/time.h"
@@ -2434,6 +2435,31 @@ void TabletImpl::GetTableStatus(RpcController* controller, const ::openmldb::api
                         delete[] stats;
                     }
                     status->set_idx_cnt(record_idx_cnt);
+                }
+            } else {
+                // status about disk table's data paths
+                // snapshot path from DiskTableSnapshot
+                auto snapshot = GetSnapshotUnLock(table->GetId(), table->GetPid());
+                if (snapshot) {
+                    status->set_snapshot_path(snapshot->GetSnapshotPath());
+                } else {
+                    LOG(WARNING) << "snapshot is null. tid " << table->GetId() << " pid " << table->GetPid();
+                }
+                
+                // binlog path from LogReplicator
+                auto log_rep = GetReplicatorUnLock(table->GetId(), table->GetPid());
+                if(log_rep) {
+                    // LogPath may be relative path, so we need to convert it to absolute path
+                    std::filesystem::path p = log_rep->GetLogPath();
+                    std::error_code ec;
+                    auto abs_path = std::filesystem::absolute(p, ec);
+                    if (ec) {
+                        LOG(WARNING) << "log_rep path is not absolute path. tid " << table->GetId() << " pid " << table->GetPid();
+                    } else {
+                        status->set_binlog_path(abs_path);
+                    }
+                } else {
+                    LOG(WARNING) << "log_rep is null. tid " << table->GetId() << " pid " << table->GetPid();
                 }
             }
         }

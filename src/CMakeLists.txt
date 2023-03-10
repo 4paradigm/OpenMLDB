@@ -31,6 +31,7 @@ function(compile_proto proto_name project_dir)
         --java_out=${project_dir}/java/openmldb-import/src/main/java
         --java_out=${project_dir}/java/openmldb-taskmanager/src/main/java
         --java_out=${project_dir}/java/openmldb-common/src/main/java
+        --java_out=${project_dir}/java/openmldb-synctool/src/main/java
         ${project_dir}/src/proto/${proto_name}.proto
         DEPENDS ${project_dir}/src/proto/${proto_name}.proto)
     list(APPEND PROTO_FILES ${CMAKE_BINARY_DIR}/src/proto/${proto_name}.pb.cc)
@@ -50,7 +51,7 @@ function(compile_lib LIB_NAME DIR DEPEND_FILE_LIST)
     add_library(${LIB_NAME} STATIC ${FILE_LIST} $<TARGET_OBJECTS:openmldb_proto>)
 endfunction(compile_lib)
 
-function(compile_test DIR)
+function(compile_test_with_extra DIR DEPEND_FILE_LIST)
     set(TEST_LIBS
         openmldb_test_base
         apiserver nameserver tablet query_response_time openmldb_sdk openmldb_catalog
@@ -68,7 +69,10 @@ function(compile_test DIR)
             file(RELATIVE_PATH RELATIVE_TEST_PATH ${CMAKE_CURRENT_SOURCE_DIR} ${SRC_FILE})
             get_filename_component(TEST_TARGET_DIR ${RELATIVE_TEST_PATH} DIRECTORY)
             get_filename_component(TEST_TARGET_NAME ${RELATIVE_TEST_PATH} NAME_WE)
-            add_executable(${TEST_TARGET_NAME} ${SRC_FILE} $<TARGET_OBJECTS:openmldb_proto>)
+            if(DEPEND_FILE_LIST)
+                message(STATUS "add extra depend file ${DEPEND_FILE_LIST}")
+            endif()
+            add_executable(${TEST_TARGET_NAME} ${SRC_FILE} $<TARGET_OBJECTS:openmldb_proto> ${DEPEND_FILE_LIST})
             if (${TEST_TARGET_NAME} STREQUAL "single_tablet_test")
                 add_dependencies(${TEST_TARGET_NAME} test_udf)
             endif()
@@ -87,6 +91,9 @@ function(compile_test DIR)
         endif()
     endforeach()
     set(test_list ${test_list} PARENT_SCOPE)
+endfunction(compile_test_with_extra)
+function(compile_test DIR)
+    compile_test_with_extra(${DIR} "")
 endfunction(compile_test)
 
 compile_proto(type ${PROJECT_SOURCE_DIR})
@@ -96,6 +103,7 @@ compile_proto(name_server ${PROJECT_SOURCE_DIR})
 compile_proto(sql_procedure ${PROJECT_SOURCE_DIR})
 compile_proto(api_server ${PROJECT_SOURCE_DIR})
 compile_proto(taskmanager ${PROJECT_SOURCE_DIR})
+compile_proto(data_sync ${PROJECT_SOURCE_DIR})
 
 add_library(openmldb_proto STATIC ${PROTO_FILES})
 add_library(openmldb_flags STATIC flags.cc)
@@ -139,6 +147,8 @@ if(TESTING_ENABLE)
     compile_test(schema)
     compile_test(log)
     compile_test(apiserver)
+    # abs path
+    compile_test_with_extra(datacollector ${CMAKE_CURRENT_SOURCE_DIR}/datacollector/data_collector.cc)
     add_library(test_udf SHARED examples/test_udf.cc)
 endif()
 
@@ -158,10 +168,14 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "GNU" AND CMAKE_CXX_COMPILER_VERSION VERSION_LE
 endif()
 target_link_libraries(data_exporter ${EXPORTER_LIBS})
 add_executable(openmldb cmd/openmldb.cc base/linenoise.cc)
-target_link_libraries(openmldb ${BIN_LIBS})
+# tablet needs std::filesystem(stdc++fs)
+target_link_libraries(openmldb ${EXPORTER_LIBS})
+
+add_executable(data_collector datacollector/data_collector_server.cc datacollector/data_collector.cc)
+target_link_libraries(data_collector ${EXPORTER_LIBS})
 
 install(
-    TARGETS openmldb
+    TARGETS openmldb data_collector
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
 )
 
