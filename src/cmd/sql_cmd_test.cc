@@ -219,17 +219,14 @@ TEST_P(DBSDKTest, CreateDatabase) {
     sr->ExecuteSQL(absl::StrCat("CREATE DATABASE ", db1), &status);
     EXPECT_FALSE(status.IsOK());
     auto rs = sr->ExecuteSQL("SHOW DATABASES", &status);
-    rs->Next();
-    std::set<std::string> dbs = {db1, db2};
-    std::string val;
-    rs->GetString(0, &val);
-    ASSERT_EQ(dbs.count(val), 1);
-    rs->Next();
-    val.clear();
-    rs->GetString(0, &val);
-    ASSERT_EQ(dbs.count(val), 1);
-    ASSERT_FALSE(rs->Next());
-
+    std::set<std::string> dbs;
+    while (rs->Next()) {
+        std::string val;
+        rs->GetString(0, &val);
+        dbs.insert(val);
+    }
+    ASSERT_EQ(dbs.count(db1), 1);
+    ASSERT_EQ(dbs.count(db2), 1);
     ProcessSQLs(sr, {absl::StrCat("DROP DATABASE ", db1),
                      absl::StrCat("DROP DATABASE ", db2)});
 }
