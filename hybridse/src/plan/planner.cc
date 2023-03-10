@@ -496,8 +496,7 @@ absl::StatusOr<node::TablePlanNode*> Planner::IsTable(node::PlanNode *node) {
 //   - Order By
 base::Status Planner::ValidateOnlineServingOp(node::PlanNode *node) {
     CHECK_TRUE(nullptr != node, common::kNullInputPointer,
-               "Fail to validate request table: input node is "
-               "null")
+               "Fail to validate request table: input node is null")
     switch (node->type_) {
         case node::kPlanTypeProject: {
             auto project_node = dynamic_cast<node::ProjectPlanNode *>(node);
@@ -567,25 +566,7 @@ int Planner::GetPlanTreeLimitCount(node::PlanNode *node) {
     return limit_cnt;
 }
 
-base::Status Planner::ValidPlanForRequestMode(node::PlanNode *node, bool is_primary_path) {
-    // non-primary path and is SimpleOps(table), not necessary to have a request table
-    // otherwise, one and only request table must exist
-    if (!is_primary_path && IsTable(node).ok()) {
-        return Status::OK();
-    }
-
-    // Validate there is one and only request table in the SQL
-    std::vector<::hybridse::node::PlanNode *> request_tables;
-    CHECK_STATUS(ValidateRequestTable(node, request_tables))
-    CHECK_TRUE(!request_tables.empty(), common::kPlanError,
-               "Invalid SQL for online serving: There ia no request table exist!")
-    for (auto request_table : request_tables) {
-        dynamic_cast<node::TablePlanNode *>(request_table)->SetIsPrimary(true);
-    }
-
-    CHECK_STATUS(ValidateOnlineServingOp(node));
-    return base::Status::OK();
-}
+base::Status Planner::PreparePlanForRequestMode(node::PlanNode *node) { return ValidateOnlineServingOp(node); }
 
 // Un-support Ops:
 // - Last Join
@@ -620,11 +601,9 @@ base::Status Planner::ValidateClusterOnlineTrainingOp(node::PlanNode *node) {
     return base::Status::OK();
 }
 
-/**
- * Validate there is one and only one request table existing in the Plan tree
- */
-base::Status Planner::ValidateRequestTable(node::PlanNode *node,
-                                           std::vector<node::PlanNode *> &outputs) {
+// extract request table plan node( always the first table plan node visited / the first LeafNode by DFS )
+// also set else table plan node requested by the request node
+base::Status Planner::PrepareRequestTable(node::PlanNode *node, std::vector<node::TablePlanNode *> &outputs) {
     CHECK_TRUE(nullptr != node, common::kNullInputPointer,
                "Fail to validate request table: input node is "
                "null")
@@ -633,34 +612,26 @@ base::Status Planner::ValidateRequestTable(node::PlanNode *node,
         case node::kPlanTypeJoin:
         case node::kPlanTypeUnion: {
             auto binary_op = dynamic_cast<node::BinaryPlanNode *>(node);
-            CHECK_TRUE(nullptr != binary_op->GetLeft(), common::kPlanError, "Left child of ", node->GetTypeName(), " "
-                       "is null")
-            CHECK_STATUS(ValidateRequestTable(binary_op->GetLeft(), outputs))
+            CHECK_TRUE(nullptr != binary_op->GetLeft(), common::kPlanError, "Left child of ", node->GetTypeName(),
+                       " is null")
+            CHECK_STATUS(PrepareRequestTable(binary_op->GetLeft(), outputs))
             CHECK_TRUE(!outputs.empty(), common::kPlanError, "PLAN error: No request/primary table exist in left tree");
 
             // If right side is a table|simple select table|rename table
             // It isn't necessary to be validate request
             auto res = IsTable(binary_op->GetRight());
-            if (res.ok()) {
-                // Collect table if it is equal with primary table node
-                if (node::PlanEquals(res.value(), outputs[0])) {
-                    outputs.push_back(res.value());
-                }
-            } else {
-                CHECK_STATUS(ValidateRequestTable(binary_op->GetRight(), outputs))
+            if (!res.ok()) {
+                CHECK_STATUS(PrepareRequestTable(binary_op->GetRight(), outputs))
             }
             return base::Status::OK();
         }
         case node::kPlanTypeTable: {
             // nodes inside with clause not verify, those nodes are checked later during physical plan transforming
-            // here we just mark the table node (probably reference to a CTE in with clause)
+            // here we just mark the table node (probably reference to a CTE in WITH clause)
+            auto request_node = dynamic_cast<node::TablePlanNode *>(node);
             if (outputs.empty()) {
-                outputs.push_back(node);
-            } else {
-                // Validate there is only one request table existing in the plan tree
-                CHECK_TRUE(node::PlanEquals(node, outputs[0]), common::kPlanError,
-                           "Non-support multiple request tables")
-                outputs.push_back(node);
+                // first and only request node
+                outputs.push_back(request_node);
             }
             return base::Status::OK();
         }
@@ -674,7 +645,7 @@ base::Status Planner::ValidateRequestTable(node::PlanNode *node,
         }
         default: {
             CHECK_TRUE(node->GetChildrenSize() > 0, common::kPlanError, "node do not have any kid");
-            CHECK_STATUS(ValidateRequestTable(node->GetChildren()[0], outputs));
+            CHECK_STATUS(PrepareRequestTable(node->GetChildren()[0], outputs));
             return base::Status::OK();
         }
     }
@@ -689,7 +660,7 @@ base::Status SimplePlanner::CreatePlanTree(const NodePointVector &parser_trees, 
 
                 if (!is_batch_mode_) {
                     // Validate there is one and only request table in the SQL
-                    CHECK_STATUS(ValidPlanForRequestMode(query_plan));
+                    CHECK_STATUS(PreparePlanForRequestMode(query_plan));
                 } else {
                     if (is_cluster_optimized_) {
                         CHECK_STATUS(ValidateClusterOnlineTrainingOp(query_plan));

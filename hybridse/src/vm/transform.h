@@ -244,10 +244,9 @@ class BatchModeTransformer {
     ABSL_MUST_USE_RESULT
     Status PopCTEs();
 
-    virtual absl::StatusOr<PhysicalOpNode*> ResolveCTERef(absl::string_view tb_name, bool is_primary_path);
+    virtual absl::StatusOr<PhysicalOpNode*> ResolveCTERef(absl::string_view tb_name);
 
-    absl::StatusOr<PhysicalOpNode*> ResolveCTERefImpl(absl::string_view tb_name, bool request_mode,
-                                                      bool is_primary_path);
+    absl::StatusOr<PhysicalOpNode*> ResolveCTERefImpl(absl::string_view tb_name, bool request_mode);
 
  protected:
     node::NodeManager* node_manager_;
@@ -279,6 +278,7 @@ class BatchModeTransformer {
     LogicalOpMap op_map_;
     const udf::UdfLibrary* library_;
 };
+
 class RequestModeTransformer : public BatchModeTransformer {
  public:
     RequestModeTransformer(node::NodeManager* node_manager, const std::string& db,
@@ -316,7 +316,7 @@ class RequestModeTransformer : public BatchModeTransformer {
                                         const node::ExprListNode* partition, const node::WindowPlanNode* window_plan,
                                         PhysicalRequestUnionNode** output);
 
-    absl::StatusOr<PhysicalOpNode*> ResolveCTERef(absl::string_view tb_name, bool is_primary_path) override;
+    absl::StatusOr<PhysicalOpNode*> ResolveCTERef(absl::string_view tb_name) override;
 
     Status ValidateRequestTable(PhysicalOpNode* in, PhysicalOpNode** request_table);
 
@@ -336,6 +336,7 @@ class RequestModeTransformer : public BatchModeTransformer {
     std::string request_name_ = "";
     std::string request_db_name_ = "";
     BatchRequestInfo batch_request_info_;
+    node::TablePlanNode* request_table_ = nullptr;
 };
 
 inline bool SchemaType2DataType(const ::hybridse::type::Type type,

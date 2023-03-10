@@ -56,20 +56,15 @@ class Planner {
     static int GetPlanTreeLimitCount(node::PlanNode *node);
 
     /// Prepare plan node for request mode (or batch request mode):
-    /// 1. extract TablePlanNode that is request table, and set `is_primary = true`
-    /// 2. traverse all nodes in tree and check if OP is supported for request mode
-    /// function returns error status if steps fails inside
+    /// - verify the plan node for supported OPs
     ///
     /// \param node Plan node tree going to validate.
-    /// \param is_primary_path Whether the `node` is in the primary path of whole SQL, default to true.
-    ///    for queries without WITH clause, it is always true, for queries inside WITH clause, the parameter
-    ///    should be false when the referenced table node is not a primary node
-    static base::Status ValidPlanForRequestMode(node::PlanNode *node, bool is_primary_path = true)
-        ABSL_ATTRIBUTE_NONNULL();
+    static base::Status PreparePlanForRequestMode(node::PlanNode *node) ABSL_ATTRIBUTE_NONNULL();
 
  protected:
     static absl::StatusOr<node::TablePlanNode *> IsTable(node::PlanNode *node);
-    static base::Status ValidateRequestTable(node::PlanNode *node, std::vector<node::PlanNode *> &request_tables);  // NOLINT
+    static base::Status PrepareRequestTable(node::PlanNode *node,
+                                            std::vector<node::TablePlanNode *> &request_tables);  // NOLINT
     static base::Status ValidateOnlineServingOp(node::PlanNode *node);
     static base::Status ValidateClusterOnlineTrainingOp(node::PlanNode *node);
 

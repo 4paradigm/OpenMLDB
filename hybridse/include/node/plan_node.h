@@ -119,31 +119,19 @@ class RenamePlanNode : public UnaryPlanNode {
     const std::string table_;
 };
 
-// Refer to a physical table or a CTE name in with clause
+// Refer to a physical table or a CTE entry in with clause
 class TablePlanNode : public LeafPlanNode {
  public:
     TablePlanNode(const std::string &db, const std::string &table)
-        : LeafPlanNode(kPlanTypeTable), db_(db), table_(table), is_primary_(false) {}
+        : LeafPlanNode(kPlanTypeTable), db_(db), table_(table) {}
     void Print(std::ostream &output, const std::string &org_tab) const override;
     bool Equals(const PlanNode *that) const override;
-    const bool IsPrimary() const { return is_primary_; }
-    void SetIsPrimary(bool is_primary) { is_primary_ = is_primary; }
     const std::string GetPathString() const {
         return db_.empty() ? table_ : db_ + "." + table_;
     }
 
     const std::string db_;
     const std::string table_;
-
- private:
-    // set true only in request/batchrequest mode based on tree structure
-    // during physical plan transformation
-    // - refer to physical table -> PhysicalRequestProviderNode
-    // - refer to CTE entry      -> refered CTE node transformed with `primary` flag info
-    //
-    // NOTE: for lazyness, nodes inside WITH clause does not set `primary` flag during logic
-    // plan transformation, it is made only required by others during physical plan transformation
-    bool is_primary_;
 };
 
 class DistinctPlanNode : public UnaryPlanNode {
