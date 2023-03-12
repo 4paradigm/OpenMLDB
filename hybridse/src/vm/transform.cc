@@ -33,6 +33,7 @@
 #include "passes/physical/left_join_optimized.h"
 #include "passes/physical/limit_optimized.h"
 #include "passes/physical/long_window_optimized.h"
+#include "passes/physical/request_join_optimize.h"
 #include "passes/physical/simple_project_optimized.h"
 #include "passes/physical/split_aggregation_optimized.h"
 #include "passes/physical/transform_up_physical_pass.h"
@@ -2520,6 +2521,21 @@ void RequestModeTransformer::ApplyPasses(PhysicalOpNode* node,
         DLOG(WARNING) << "Final optimized result is null";
         return;
     }
+
+    // request optimizers
+    passes::RequestJoinOptimize reorder(&plan_ctx_);
+    PhysicalOpNode* request_optimzied = nullptr;
+    reorder.Apply(optimized, &request_optimzied);
+
+    if (reorder.Sucess().ok()) {
+        optimized = request_optimzied;
+    } else {
+        LOG(ERROR) << reorder.Sucess();
+        *output = optimized;
+        return;
+    }
+
+
     if (!enable_batch_request_opt_ ||
         batch_request_info_.common_column_indices.empty()) {
         *output = optimized;

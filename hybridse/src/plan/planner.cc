@@ -516,6 +516,7 @@ base::Status Planner::ValidateOnlineServingOp(node::PlanNode *node) {
         case node::kPlanTypeLimit:
         case node::kPlanTypeWindow:
         case node::kPlanTypeQuery:
+        case node::kPlanTypeFilter:
         case node::kPlanTypeJoin: {
             break;
         }

@@ -1632,7 +1632,7 @@ class PhysicalFilterNode : public PhysicalUnaryNode {
         fn_infos_.push_back(&filter_.index_key_.fn_info());
     }
     virtual ~PhysicalFilterNode() {}
-    virtual void Print(std::ostream &output, const std::string &tab) const;
+    void Print(std::ostream &output, const std::string &tab) const override;
     bool Valid() { return filter_.Valid(); }
     const Filter &filter() const { return filter_; }
 
@@ -1675,7 +1675,7 @@ class PhysicalRenameNode : public PhysicalUnaryNode {
     base::Status InitSchema(PhysicalPlanContext *) override;
     virtual ~PhysicalRenameNode() {}
     static PhysicalRenameNode *CastFrom(PhysicalOpNode *node);
-    virtual void Print(std::ostream &output, const std::string &tab) const;
+    void Print(std::ostream &output, const std::string &tab) const override;
 
     base::Status WithNewChildren(node::NodeManager *nm,
                                  const std::vector<PhysicalOpNode *> &children,

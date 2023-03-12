@@ -214,7 +214,7 @@ Status PhysicalGroupNode::WithNewChildren(node::NodeManager* nm, const std::vect
     std::vector<const node::ExprNode*> depend_columns;
     group_.ResolvedRelatedColumns(&depend_columns);
 
-    auto new_group_op = new PhysicalGroupNode(children[0], group_.keys());
+    auto new_group_op = nm->RegisterNode(new PhysicalGroupNode(children[0], group_.keys()));
 
     passes::ExprReplacer replacer;
     for (auto col_expr : depend_columns) {
@@ -222,7 +222,7 @@ Status PhysicalGroupNode::WithNewChildren(node::NodeManager* nm, const std::vect
             BuildColumnReplacement(col_expr, GetProducer(0)->schemas_ctx(), children[0]->schemas_ctx(), nm, &replacer));
     }
     CHECK_STATUS(group_.ReplaceExpr(replacer, nm, &new_group_op->group_));
-    *out = nm->RegisterNode(new_group_op);
+    *out = new_group_op;
     return Status::OK();
 }
 
@@ -1433,7 +1433,8 @@ Status PhysicalRequestJoinNode::WithNewChildren(node::NodeManager* nm, const std
     std::vector<const node::ExprNode*> depend_columns;
     join_.ResolvedRelatedColumns(&depend_columns);
 
-    auto new_join_op = new PhysicalRequestJoinNode(children[0], children[1], join_, output_right_only_);
+    auto new_join_op =
+        nm->RegisterNode(new PhysicalRequestJoinNode(children[0], children[1], join_, output_right_only_));
 
     passes::ExprReplacer replacer;
     for (auto col_expr : depend_columns) {
@@ -1447,7 +1448,7 @@ Status PhysicalRequestJoinNode::WithNewChildren(node::NodeManager* nm, const std
             BuildColumnReplacement(col_expr, this->joined_schemas_ctx(), children[1]->schemas_ctx(), nm, &replacer));
     }
     CHECK_STATUS(join_.ReplaceExpr(replacer, nm, &new_join_op->join_));
-    *out = nm->RegisterNode(new_join_op);
+    *out = new_join_op;
     return Status::OK();
 }
 

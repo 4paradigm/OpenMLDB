@@ -14,10 +14,37 @@
  * limitations under the License.
  */
 #include "passes/physical/transform_up_physical_pass.h"
+
 #include <set>
 
 namespace hybridse {
 namespace passes {
+
+
+std::string PhysicalPlanPassTypeName(PhysicalPlanPassType type) {
+    switch (type) {
+        case kPassSimpleProjectsOptimized:
+            return "PassSimpleProjectsOptimized";
+        case kPassFilterOptimized:
+            return "PassFilterOptimized";
+        case kPassGroupAndSortOptimized:
+            return "PassGroupByOptimized";
+        case kPassLeftJoinOptimized:
+            return "PassLeftJoinOptimized";
+        case kPassLimitOptimized:
+            return "PassLimitOptimized";
+        case kPassClusterOptimized:
+            return "PassClusterOptimized";
+        case kPassLongWindowOptimized:
+            return "PassLongWindowOptimized";
+        case kPassSplitAggregationOptimized:
+            return "SplitAggregationOptimized";
+        case kPassRequestJoinOptimze:
+            return "PassRequestJoinOptimize";
+        default:
+            return "unknowPass";
+    }
+}
 
 /// Transform every node with a optimization strategy in a post-DFS order
 /// the parent will update it's producer list and SchemasContext after one

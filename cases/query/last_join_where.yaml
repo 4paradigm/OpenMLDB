@@ -1,0 +1,142 @@
+# last join over where subquery
+
+cases:
+  - id: 0
+    desc: LASTJOIN(FILTER<optimized>)
+    sql: |
+      SELECT
+        t1.c1,
+        t1.c2,
+        t2.c1 as c21
+      FROM t1 last join (select * from t2 where c1 = 'aa') t2
+      on t2.c1 = t1.c1;
+    inputs:
+      - name: t1
+        columns: ["c1 string","c2 int","c3 bigint","c4 timestamp"]
+        indexs: ["index1:c1:c4"]
+        rows:
+          - ["aa",2,3,1590738989000]
+          - ["bb",21,31,1590738990000]
+          - ["cc",41,51,1590738991000]
+      - name: t2
+        columns: ["c1 string","c2 int","c3 bigint","c4 timestamp"]
+        indexs: ["index1:c1:c4"]
+        rows:
+          - ["aa",2,13,1590738989000]
+          - ["bb",21,131,1590738990000]
+          - ["dd",41,151,1590738991000]
+    expect:
+      columns:
+        - c1 string
+        - c2 int
+        - c21 string
+      order: c1
+      data: |
+        aa, 2, aa
+        bb, 21, NULL
+        cc, 41, NULL
+
+  - id: 1
+    desc: LASTJOIN(SimpleOPS(FILTER<optimized>))
+    sql: |
+      SELECT
+        t1.c1,
+        t1.c2,
+        t2.c1 as c21
+      FROM t1 last join (select c1 as c1a, c2, c4, c4 from t2 where c1 = 'aa') t2
+      on t2.c1a = t1.c1;
+    inputs:
+      - name: t1
+        columns: ["c1 string","c2 int","c3 bigint","c4 timestamp"]
+        indexs: ["index1:c1:c4"]
+        rows:
+          - ["aa",2,3,1590738989000]
+          - ["bb",21,31,1590738990000]
+          - ["cc",41,51,1590738991000]
+      - name: t2
+        columns: ["c1 string","c2 int","c3 bigint","c4 timestamp"]
+        indexs: ["index1:c1:c4"]
+        rows:
+          - ["aa",2,13,1590738989000]
+          - ["bb",21,131,1590738990000]
+          - ["dd",41,151,1590738991000]
+    expect:
+      columns:
+        - c1 string
+        - c2 int
+        - c21 string
+      order: c1
+      data: |
+        aa, 2, aa
+        bb, 21, NULL
+        cc, 41, NULL
+
+  - id: 2
+    desc: LASTJOIN(FILTER<not optimized>)
+    sql: |
+      SELECT
+        t1.c1,
+        t1.c2,
+        t2.c1 as c21
+      FROM t1 last join (select * from t2 where c1 != 'aa') t2
+      on t2.c1 = t1.c1;
+    inputs:
+      - name: t1
+        columns: ["c1 string","c2 int","c3 bigint","c4 timestamp"]
+        indexs: ["index1:c1:c4"]
+        rows:
+          - ["aa",2,3,1590738989000]
+          - ["bb",21,31,1590738990000]
+          - ["cc",41,51,1590738991000]
+      - name: t2
+        columns: ["c1 string","c2 int","c3 bigint","c4 timestamp"]
+        indexs: ["index1:c1:c4"]
+        rows:
+          - ["aa",2,13,1590738989000]
+          - ["bb",21,131,1590738990000]
+          - ["dd",41,151,1590738991000]
+    expect:
+      columns:
+        - c1 string
+        - c2 int
+        - c21 string
+      order: c1
+      data: |
+        aa, 2, NULL
+        bb, 21, bb
+        cc, 41, NULL
+
+  - id: 3
+    desc: LASTJOIN(FILTER<partial optimzied>)
+    sql: |
+      SELECT
+        t1.c1,
+        t1.c2,
+        t2.c1 as c21
+      FROM t1 last join (select * from t2 where c1 == 'aa' AND c2 > 0) t2
+      on t2.c1 = t1.c1;
+    inputs:
+      - name: t1
+        columns: ["c1 string","c2 int","c3 bigint","c4 timestamp"]
+        indexs: ["index1:c1:c4"]
+        rows:
+          - ["aa",2,3,1590738989000]
+          - ["bb",21,31,1590738990000]
+          - ["cc",41,51,1590738991000]
+      - name: t2
+        columns: ["c1 string","c2 int","c3 bigint","c4 timestamp"]
+        indexs: ["index1:c1:c4"]
+        rows:
+          - ["aa",2,13,1590738989000]
+          - ["bb",21,131,1590738990000]
+          - ["dd",41,151,1590738991000]
+    expect:
+      columns:
+        - c1 string
+        - c2 int
+        - c21 string
+      order: c1
+      data: |
+        aa, 2, aa
+        bb, 21, NULL
+        cc, 41, NULL

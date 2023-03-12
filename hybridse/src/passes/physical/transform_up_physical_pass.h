@@ -39,31 +39,11 @@ enum PhysicalPlanPassType {
     kPassClusterOptimized,
     kPassLimitOptimized,
     kPassLongWindowOptimized,
-    kPassSplitAggregationOptimized
+    kPassSplitAggregationOptimized,
+    kPassRequestJoinOptimze,
 };
 
-inline std::string PhysicalPlanPassTypeName(PhysicalPlanPassType type) {
-    switch (type) {
-        case kPassSimpleProjectsOptimized:
-            return "PassSimpleProjectsOptimized";
-        case kPassFilterOptimized:
-            return "PassFilterOptimized";
-        case kPassGroupAndSortOptimized:
-            return "PassGroupByOptimized";
-        case kPassLeftJoinOptimized:
-            return "PassLeftJoinOptimized";
-        case kPassLimitOptimized:
-            return "PassLimitOptimized";
-        case kPassClusterOptimized:
-            return "PassClusterOptimized";
-        case kPassLongWindowOptimized:
-            return "PassLongWindowOptimized";
-        case kPassSplitAggregationOptimized:
-            return "SplitAggregationOptimized";
-        default:
-            return "unknowPass";
-    }
-}
+std::string PhysicalPlanPassTypeName(PhysicalPlanPassType type);
 
 struct ExprPair {
     node::ExprNode* left_expr_ = nullptr;
