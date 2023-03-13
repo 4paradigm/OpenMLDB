@@ -16,7 +16,7 @@
 | HAVING 子句    | ✓                            | ✓                                | X                                | ✓            |                                                              |
 | JOIN 子句      | ✓                            | ✕                                | ✓                                | ✓            | OpenMLDB 仅支持特有的 **LAST JOIN**                          |
 | GROUP BY 分组  | ✓                            | ✕                                | ✕                                | ✓            |                                                              |
-| ORDER BY 关键字 | ✓                           | ✕                                | ✓                               | ✓            | 仅支持在 `WINDOW` 和 `LAST JOIN` 子句内部使用，不支持倒排序 `DESC` |
+| ORDER BY 关键字 | ✓                           | ✓                                | ✓                               | ✓            | 仅支持在 `WINDOW` 和 `LAST JOIN` 子句内部使用，不支持倒排序 `DESC` |
 | LIMIT 限制行数 | ✓                            | ✓                                | ✕                                | ✓            |                                                              |
 | WINDOW 子句    | ✓                            | ✓                                | ✓                                | ✓            | OpenMLDB 增加了特有的 **WINDOW ... UNION** 和 **WINDOW ATTRIBUTES** 语法 |
 | WITH 子句      | ✕                            | ✕                                | ✕                                | ✓            | OpenMLDB 从版本 v0.7.2 开始支持                           |
