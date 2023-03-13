@@ -15,7 +15,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-user=`whoami`
+user=$(whoami)
 if [[ ${user} != "root" ]]; then
   echo "please switch to 'root' user to run this script"
   exit
