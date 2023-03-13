@@ -72,7 +72,7 @@ $ cat /sys/kernel/mm/transparent_hugepage/defrag
 always madvise [never]
 ```
 
-Note: You can also use script to modify the above configurations, refer [here](#configure-node-environment-optional)
+Note: You can also use the script to modify the above configurations, refer [here](#configure-node-environment-optional)
 
 ### Time and zone settings
 
