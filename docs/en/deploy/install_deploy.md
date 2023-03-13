@@ -72,6 +72,8 @@ $ cat /sys/kernel/mm/transparent_hugepage/defrag
 always madvise [never]
 ```
 
+Note: You can also use script to modify the above configurations, refer [here](#configure-node-environment-optional)
+
 ### Time and zone settings
 
 The OpenMLDB data expiration deletion mechanism relies on the system clock. If the system clock is incorrect, the expired data will not be deleted or the data that has not expired will be deleted.
@@ -230,6 +232,15 @@ default values are used, which are defined in `conf/openmldb-env.sh`.
 ```{warning}
 If multiple TaskManager instances are deployed in different machines，the `offline.data.prefix` should be configured to be globally accessabile by these machines (e.g., hdfs path).
 ```
+
+### Configure Node Environment (Optional)
+```
+bash sbin/init_env.sh
+```
+Note:
+- The script needs to be executed by the `root` user.
+- The script will modify the `limit`, disable the `swap` and `THP`. 
+
 
 ### Deployment
 ```bash

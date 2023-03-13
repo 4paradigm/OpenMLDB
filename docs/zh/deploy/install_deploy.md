@@ -114,6 +114,8 @@ $ cat /sys/kernel/mm/transparent_hugepage/defrag
 always madvise [never]
 ```
 
+注：以上三项也可以通过脚本一键修改，参考[修改机器环境配置](#修改机器环境配置-可选)
+
 ### 时间和时区设置
 
 OpenMLDB 数据过期删除机制依赖于系统时钟, 如果系统时钟不正确会导致过期数据没有删掉或者删掉了没有过期的数据。
@@ -220,6 +222,14 @@ node3:2181:2888:3888 /tmp/openmldb/zk-1
 ```{warning}
 如果在不同机器上部署多个 TaskManager，其 `offline.data.prefix` 配置的路径，这些机器必须可以访问，建议配置hdfs路径。
 ```
+
+### 修改机器环境配置 (可选)
+```
+bash sbin/init_env.sh
+```
+说明:
+- 需要用root用户执行此脚本。执行其他脚本不需要root
+- 此脚本只修改limit配置，关闭swap和关闭THP
 
 ### 部署
 
