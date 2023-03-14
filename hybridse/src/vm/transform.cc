@@ -2523,22 +2523,6 @@ void RequestModeTransformer::ApplyPasses(PhysicalOpNode* node,
     }
     DLOG(INFO) << "general optimize:\n" << optimized->GetTreeString();
 
-    // request optimizers
-    // passes::RequestJoinOptimize reorder(&plan_ctx_);
-    // PhysicalOpNode* request_join_optimzied = nullptr;
-    // auto transformed = reorder.Apply(optimized, &request_join_optimzied);
-    //
-    // if (!reorder.Sucess().ok()) {
-    //     LOG(ERROR) << reorder.Sucess();
-    //     *output = optimized;
-    //     return;
-    // }
-    //
-    // if (transformed && request_join_optimzied != nullptr) {
-    //     optimized = request_join_optimzied;
-    //     DLOG(INFO) << "request join optimize:\n" << optimized->GetTreeString();
-    // }
-
     if (!enable_batch_request_opt_ ||
         batch_request_info_.common_column_indices.empty()) {
         *output = optimized;

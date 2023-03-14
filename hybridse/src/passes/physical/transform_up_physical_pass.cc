@@ -39,8 +39,6 @@ std::string PhysicalPlanPassTypeName(PhysicalPlanPassType type) {
             return "PassLongWindowOptimized";
         case kPassSplitAggregationOptimized:
             return "SplitAggregationOptimized";
-        case kPassRequestJoinOptimze:
-            return "PassRequestJoinOptimize";
         default:
             return "unknowPass";
     }

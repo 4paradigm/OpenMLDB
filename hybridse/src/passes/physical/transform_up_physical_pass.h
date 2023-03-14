@@ -39,8 +39,7 @@ enum PhysicalPlanPassType {
     kPassClusterOptimized,
     kPassLimitOptimized,
     kPassLongWindowOptimized,
-    kPassSplitAggregationOptimized,
-    kPassRequestJoinOptimze,
+    kPassSplitAggregationOptimized
 };
 
 std::string PhysicalPlanPassTypeName(PhysicalPlanPassType type);
