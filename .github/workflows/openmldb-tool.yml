@@ -1,0 +1,56 @@
+# OpenMLDB tool jobs
+name: openmldb-tool
+
+on:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - 'docs/**'
+      - 'demo/**'
+      - 'docker/**'
+      - 'image/**'
+      - 'release/**'
+      - 'tools/**'
+      - '*.md'
+    tags:
+      - v*
+  pull_request:
+    paths-ignore:
+      - 'docs/**'
+      - 'demo/**'
+      - 'docker/**'
+      - 'image/**'
+      - 'release/**'
+      - 'tools/**'
+      - '*.md'
+  workflow_dispatch:
+
+env:
+  GIT_SUBMODULE_STRATEGY: recursive
+  NPROC: 2 # default Parallel build number for GitHub's Linux runner
+  EXAMPLES_ENABLE: OFF # turn off hybridse's example code
+  HYBRIDSE_TESTING_ENABLE: OFF # turn off hybridse's test code
+
+jobs:
+  deploy:
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: prepare env
+        run: |
+          VERSION="snapshot"
+          if [[ ${{ github.ref }} == "refs/tags/v"* ]]; then
+            VERSION=$(echo "${{ github.ref }}" | sed -e 's,.*/\(.*\),\1,')
+            VERSION=${VERSION#v}
+          fi
+          echo "OPENMLDB_VETSION=$VERSION" >> $GITHUB_ENV
+      - name: generate config
+        run: |
+          BASE_DIR=${{ vars.DEPLOY_DIR }} bash test/test-tool/openmldb-deploy/gen_conf.sh ${{ vars.NODE_LIST }} > hosts
+      - name: install openmldb
+        env:
+          OPENMLDB_VETSION: ${{ env.OPENMLDB_VETSION }}
+        run: |
+          bash test/test-tool/openmldb-deploy/install.sh ${{ env.OPENMLDB_VETSION }}
