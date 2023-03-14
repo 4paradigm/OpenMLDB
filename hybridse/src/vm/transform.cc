@@ -1600,8 +1600,8 @@ bool BatchModeTransformer::isSourceFromTableOrPartition(PhysicalOpNode* in) {
         DLOG(WARNING) << "Invalid physical node: null";
         return false;
     }
-    if (kPhysicalOpSimpleProject == in->GetOpType() ||
-        kPhysicalOpRename == in->GetOpType()) {
+    if (kPhysicalOpSimpleProject == in->GetOpType() || kPhysicalOpRename == in->GetOpType() ||
+        kPhysicalOpFilter == in->GetOpType()) {
         return isSourceFromTableOrPartition(in->GetProducer(0));
     } else if (kPhysicalOpDataProvider == in->GetOpType()) {
         return kProviderTypePartition ==
@@ -1649,7 +1649,7 @@ Status BatchModeTransformer::ValidateRequestDataProvider(PhysicalOpNode* in) {
 Status BatchModeTransformer::ValidatePartitionDataProvider(PhysicalOpNode* in) {
     CHECK_TRUE(nullptr != in, kPlanError, "Invalid physical node: null");
     if (kPhysicalOpSimpleProject == in->GetOpType() ||
-        kPhysicalOpRename == in->GetOpType()) {
+        kPhysicalOpRename == in->GetOpType() || kPhysicalOpFilter == in->GetOpType()) {
         CHECK_STATUS(ValidatePartitionDataProvider(in->GetProducer(0)))
     } else {
         CHECK_TRUE(
@@ -2426,7 +2426,7 @@ Status RequestModeTransformer::ValidateRequestTable(
         case vm::kPhysicalOpDataProvider: {
             CHECK_TRUE(kProviderTypeRequest == dynamic_cast<PhysicalDataProviderNode*>(in)->provider_type_, kPlanError,
                        "Expect a request table but a ",
-                       vm::DataProviderTypeName(dynamic_cast<PhysicalDataProviderNode*>(in)->provider_type_),
+                       vm::DataProviderTypeName(dynamic_cast<PhysicalDataProviderNode*>(in)->provider_type_), " ",
                        in->GetTreeString())
             *request_table = in;
             return Status::OK();
@@ -2521,20 +2521,23 @@ void RequestModeTransformer::ApplyPasses(PhysicalOpNode* node,
         DLOG(WARNING) << "Final optimized result is null";
         return;
     }
+    DLOG(INFO) << "general optimize:\n" << optimized->GetTreeString();
 
     // request optimizers
-    passes::RequestJoinOptimize reorder(&plan_ctx_);
-    PhysicalOpNode* request_optimzied = nullptr;
-    reorder.Apply(optimized, &request_optimzied);
-
-    if (reorder.Sucess().ok()) {
-        optimized = request_optimzied;
-    } else {
-        LOG(ERROR) << reorder.Sucess();
-        *output = optimized;
-        return;
-    }
-
+    // passes::RequestJoinOptimize reorder(&plan_ctx_);
+    // PhysicalOpNode* request_join_optimzied = nullptr;
+    // auto transformed = reorder.Apply(optimized, &request_join_optimzied);
+    //
+    // if (!reorder.Sucess().ok()) {
+    //     LOG(ERROR) << reorder.Sucess();
+    //     *output = optimized;
+    //     return;
+    // }
+    //
+    // if (transformed && request_join_optimzied != nullptr) {
+    //     optimized = request_join_optimzied;
+    //     DLOG(INFO) << "request join optimize:\n" << optimized->GetTreeString();
+    // }
 
     if (!enable_batch_request_opt_ ||
         batch_request_info_.common_column_indices.empty()) {

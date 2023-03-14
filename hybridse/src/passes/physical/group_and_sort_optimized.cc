@@ -51,6 +51,21 @@ static bool ResolveColumnToSourceColumnName(const node::ColumnRefNode* col,
                                             const SchemasContext* schemas_ctx,
                                             std::string* source_name);
 
+// fixme: standalone online module
+static Status ValidatePartitionDataProvider(PhysicalOpNode* in) {
+    if (vm::kPhysicalOpSimpleProject == in->GetOpType() ||
+        vm::kPhysicalOpRename == in->GetOpType()) {
+        CHECK_STATUS(ValidatePartitionDataProvider(in->GetProducer(0)))
+    } else {
+        CHECK_TRUE(
+            vm::kPhysicalOpDataProvider == in->GetOpType() &&
+                vm::kProviderTypePartition ==
+                    dynamic_cast<PhysicalDataProviderNode*>(in)->provider_type_,
+            common::kPlanError, "Isn't partition provider");
+    }
+    return Status::OK();
+}
+
 bool GroupAndSortOptimized::Transform(PhysicalOpNode* in,
                                       PhysicalOpNode** output) {
     *output = in;
@@ -369,6 +384,26 @@ bool GroupAndSortOptimized::KeysOptimized(const SchemasContext* root_schemas_ctx
             return false;
         }
         *new_in = new_op;
+        return true;
+    } else if (PhysicalOpType::kPhysicalOpFilter == in->GetOpType()) {
+        // respect filters optimize result, try optimize only if not optimized
+        PhysicalFilterNode* filter_op = dynamic_cast<PhysicalFilterNode*>(in);
+        auto s = ValidatePartitionDataProvider(filter_op->GetProducer(0));
+        if (s.isOK()) {
+            return false;
+        }
+
+        PhysicalOpNode* new_depend;
+        if (!KeysOptimized(root_schemas_ctx, in->producers()[0], left_key, index_key, right_key, sort, &new_depend)) {
+            return false;
+        }
+        PhysicalOpNode* new_filter = nullptr;
+        auto status = in->WithNewChildren(plan_ctx_->node_manager(), {new_depend}, &new_filter);
+        if (!status.isOK()) {
+            LOG(WARNING) << "Fail to create filter op: " << status;
+            return false;
+        }
+        *new_in = new_filter;
         return true;
     }
     return false;

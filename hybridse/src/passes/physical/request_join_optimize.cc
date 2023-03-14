@@ -42,8 +42,8 @@ bool RequestJoinOptimize::Transform(PhysicalOpNode* in, PhysicalOpNode** output)
 
             RightParseInfo info;
             auto s = CollectKidsInfo(request_join->GetProducer(1), &info);
-            status_.Update(s);
             if (!s.ok()) {
+                // collect fail won't fails compile
                 return false;
             }
 
@@ -62,6 +62,7 @@ bool RequestJoinOptimize::Transform(PhysicalOpNode* in, PhysicalOpNode** output)
             auto new_schema_ctx = request_join->GetProducer(1)->schemas_ctx();
             auto old_schema_ctx = filter->schemas_ctx();
 
+            bool updated = false;
             if (filter != nullptr && filter->filter().condition().condition() != nullptr) {
                 auto filter_cond = filter->filter().condition().condition();
 
@@ -80,6 +81,7 @@ bool RequestJoinOptimize::Transform(PhysicalOpNode* in, PhysicalOpNode** output)
 
                 // update join condition
                 const_cast<vm::ConditionFilter&>(request_join->join().condition()).set_condition(new_cond_expr);
+                updated = true;
             }
 
             if (filter != nullptr && filter->filter().index_key().keys() != nullptr) {
@@ -100,11 +102,14 @@ bool RequestJoinOptimize::Transform(PhysicalOpNode* in, PhysicalOpNode** output)
 
                 // update index key
                 const_cast<vm::Key&>(request_join->join().index_key()).set_keys(new_index_expr);
+                updated = true;
             }
 
-            *output = request_join;
-
-            return true;
+            if (updated) {
+                *output = request_join;
+                return true;
+            }
+            break;
         }
         case vm::kPhysicalOpFilter: {
             // only LASTJOIN(REQUEST, FILTER) is supported online, standalone FILTER is not
@@ -129,7 +134,9 @@ absl::Status RequestJoinOptimize::CollectKidsInfo(PhysicalOpNode* kid, RightPars
 
     switch (kid->GetOpType()) {
         case vm::kPhysicalOpRename:
-        case vm::kPhysicalOpSimpleProject:
+        case vm::kPhysicalOpSimpleProject: {
+            break;
+        }
         case vm::kPhysicalOpDataProvider: {
             info->data = dynamic_cast<vm::PhysicalDataProviderNode*>(kid);
             break;

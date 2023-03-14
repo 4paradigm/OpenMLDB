@@ -140,17 +140,18 @@ class BatchModeTransformer {
     Status GenSort(Sort* sort, const SchemasContext* schemas_ctx);
     Status GenRange(Range* sort, const SchemasContext* schemas_ctx);
 
-    bool isSourceFromTableOrPartition(PhysicalOpNode* in);
+    static bool isSourceFromTableOrPartition(PhysicalOpNode* in);
     bool isSourceFromTable(PhysicalOpNode* in);
-    Status ValidateTableProvider(PhysicalOpNode* physical_plan);
-    Status ValidatePartitionDataProvider(PhysicalOpNode* physical_plan);
     std::string ExtractSchemaName(PhysicalOpNode* in);
-    Status ValidateRequestDataProvider(PhysicalOpNode* physical_plan);
-    Status ValidateWindowIndexOptimization(const WindowOp& window,
-                                           PhysicalOpNode* in);
-    Status ValidateJoinIndexOptimization(const Join& join, PhysicalOpNode* in);
-    Status ValidateRequestJoinIndexOptimization(const Join& join, PhysicalOpNode* in);
-    Status ValidateIndexOptimization(PhysicalOpNode* physical_plan);
+
+    static Status ValidateIndexOptimization(PhysicalOpNode* physical_plan);
+    static Status ValidateRequestDataProvider(PhysicalOpNode* physical_plan);
+    static Status ValidateWindowIndexOptimization(const WindowOp& window, PhysicalOpNode* in);
+    static Status ValidateJoinIndexOptimization(const Join& join, PhysicalOpNode* in);
+    static Status ValidateRequestJoinIndexOptimization(const Join& join, PhysicalOpNode* in);
+    static Status ValidateTableProvider(PhysicalOpNode* physical_plan);
+    static Status ValidatePartitionDataProvider(PhysicalOpNode* physical_plan);
+
     Status ValidateOnlyFullGroupBy(const node::ProjectListNode* project_list, const node::ExprListNode* group_keys,
                                    const SchemasContext* schemas_ctx);
     PhysicalPlanContext* GetPlanContext() { return &plan_ctx_; }

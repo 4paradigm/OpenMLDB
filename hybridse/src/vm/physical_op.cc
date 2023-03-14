@@ -1012,7 +1012,7 @@ Status PhysicalFilterNode::WithNewChildren(node::NodeManager* nm, const std::vec
     std::vector<const node::ExprNode*> depend_columns;
     filter_.ResolvedRelatedColumns(&depend_columns);
 
-    auto new_filter_op = new PhysicalFilterNode(children[0], filter_.condition_.condition());
+    auto new_filter_op = nm->RegisterNode(new PhysicalFilterNode(children[0], filter_.condition_.condition()));
 
     passes::ExprReplacer replacer;
     for (auto col_expr : depend_columns) {
@@ -1020,7 +1020,7 @@ Status PhysicalFilterNode::WithNewChildren(node::NodeManager* nm, const std::vec
             BuildColumnReplacement(col_expr, GetProducer(0)->schemas_ctx(), children[0]->schemas_ctx(), nm, &replacer));
     }
     CHECK_STATUS(filter_.ReplaceExpr(replacer, nm, &new_filter_op->filter_));
-    *out = nm->RegisterNode(new_filter_op);
+    *out = new_filter_op;
     return Status::OK();
 }
 
