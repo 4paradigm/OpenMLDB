@@ -40,11 +40,11 @@ jobs:
 
       - name: prepare env
         run: |
-          VERSION="snapshot"
-          if [[ ${{ github.ref }} == "refs/tags/v"* ]]; then
-            VERSION=$(echo "${{ github.ref }}" | sed -e 's,.*/\(.*\),\1,')
-            VERSION=${VERSION#v}
-          fi
+          VERSION="0.7.2"
+          #if [[ ${{ github.ref }} == "refs/tags/v"* ]]; then
+          #  VERSION=$(echo "${{ github.ref }}" | sed -e 's,.*/\(.*\),\1,')
+          #  VERSION=${VERSION#v}
+          #fi
           echo "OPENMLDB_VETSION=$VERSION" >> $GITHUB_ENV
       - name: generate config
         run: |
