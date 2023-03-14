@@ -16,6 +16,8 @@
 
 # start_predict_server.sh
 
+cd "$(dirname "$0")"
+
 echo "start predict server"
 
 cd $(dirname $0)
