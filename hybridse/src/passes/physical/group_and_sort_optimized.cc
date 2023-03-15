@@ -51,24 +51,10 @@ static bool ResolveColumnToSourceColumnName(const node::ColumnRefNode* col,
                                             const SchemasContext* schemas_ctx,
                                             std::string* source_name);
 
-// fixme: standalone online module
-static Status ValidatePartitionDataProvider(PhysicalOpNode* in) {
-    if (vm::kPhysicalOpSimpleProject == in->GetOpType() ||
-        vm::kPhysicalOpRename == in->GetOpType()) {
-        CHECK_STATUS(ValidatePartitionDataProvider(in->GetProducer(0)))
-    } else {
-        CHECK_TRUE(
-            vm::kPhysicalOpDataProvider == in->GetOpType() &&
-                vm::kProviderTypePartition ==
-                    dynamic_cast<PhysicalDataProviderNode*>(in)->provider_type_,
-            common::kPlanError, "Isn't partition provider");
-    }
-    return Status::OK();
-}
-
 bool GroupAndSortOptimized::Transform(PhysicalOpNode* in,
                                       PhysicalOpNode** output) {
     *output = in;
+    TransformCxtGuard<decltype(ctx_)> guard(&ctx_, KeysInfo(in->GetOpType(), nullptr, nullptr, nullptr, nullptr));
     switch (in->GetOpType()) {
         case PhysicalOpType::kPhysicalOpGroupBy: {
             PhysicalGroupNode* group_op = dynamic_cast<PhysicalGroupNode*>(in);
@@ -265,6 +251,8 @@ bool GroupAndSortOptimized::KeysOptimized(const SchemasContext* root_schemas_ctx
                                           Key* right_key,
                                           Sort* sort,
                                           PhysicalOpNode** new_in) {
+    TransformCxtGuard<decltype(ctx_)> guard(&ctx_, KeysInfo(in->GetOpType(), left_key, right_key, index_key, sort));
+
     if (nullptr == left_key || nullptr == index_key || !left_key->ValidKey()) {
         return false;
     }
@@ -273,7 +261,6 @@ bool GroupAndSortOptimized::KeysOptimized(const SchemasContext* root_schemas_ctx
         return false;
     }
 
-    TransformCxtGuard<decltype(ctx_)> guard(&ctx_, KeysInfo(left_key, right_key, index_key, sort));
 
     if (PhysicalOpType::kPhysicalOpDataProvider == in->GetOpType()) {
         auto scan_op = dynamic_cast<PhysicalDataProviderNode*>(in);
@@ -341,7 +328,28 @@ bool GroupAndSortOptimized::KeysOptimized(const SchemasContext* root_schemas_ctx
             }
 
             // write new keys
-            if (DataProviderType::kProviderTypeTable == scan_op->provider_type_ || ctx_.size() == 1) {
+            // FIXME:(#2457) last join (filter op<optimized>) not supported in iterator
+            bool has_filter = false;
+            bool has_join = false;
+            for (auto it = ctx_.rbegin(); it != ctx_.rend(); ++it) {
+                switch (it->type) {
+                    case vm::kPhysicalOpJoin:
+                    case vm::kPhysicalOpRequestJoin: {
+                        if (has_filter) {
+                            has_join = true;
+                        }
+                        break;
+                    }
+                    case vm::kPhysicalOpFilter: {
+                        has_filter = true;
+                        break;
+                    }
+                    default:
+                        break;
+                }
+            }
+            bool support_opt = !(has_filter && has_join);
+            if (scan_op->provider_type_ == vm::kProviderTypeTable || support_opt) {
                 // key update is skipped if optimized scan op already and ctx size >= 2
 
                 // consider the case when a REQUEST_JOIN(, FILTER(DATA)) tree, both REQUEST_JOIN and FILTER node
@@ -354,6 +362,7 @@ bool GroupAndSortOptimized::KeysOptimized(const SchemasContext* root_schemas_ctx
                 index_key->set_keys(new_index_keys);
                 left_key->set_keys(new_left_keys);
             }
+
             // Clear order expr list if we optimized orders
             auto* mut_sort = sort;
             if (mut_sort == nullptr) {

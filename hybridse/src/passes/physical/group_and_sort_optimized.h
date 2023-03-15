@@ -61,8 +61,9 @@ class GroupAndSortOptimized : public TransformUpPysicalPass {
     };
 
     struct KeysInfo {
-        KeysInfo(vm::Key* left_key, vm::Key* right_key, vm::Key* index_key, vm::Sort* sort)
-            : left_key(left_key), right_key(right_key), index_key(index_key), right_sort(sort) {}
+        KeysInfo(vm::PhysicalOpType type, vm::Key* left_key, vm::Key* right_key, vm::Key* index_key, vm::Sort* sort)
+            : type(type), left_key(left_key), right_key(right_key), index_key(index_key), right_sort(sort) {}
+        vm::PhysicalOpType type;
         Key* left_key;
         Key* right_key;
         Key* index_key;
