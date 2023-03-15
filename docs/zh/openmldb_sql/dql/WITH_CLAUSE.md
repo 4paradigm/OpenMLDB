@@ -1,10 +1,6 @@
-# With Clause
+# [Alpha] With Clause
 
-OpenMLDB 在 0.7.2 开始支持 WITH 子句，目前作为一个实验特性，可能在未来版本中稳定。
-
-WITH 子句借鉴了 [WITH Clause in BigQuery](https://cloud.google.com/bigquery/docs/reference/standard-sql/query-syntax#with_clause) 的语法，但仅支持非递归形式。
-
-一个 WITH 子句包括一个或多个 common table expressions (CTEs). 在同一个查询语句内, CTE 的作用类似一张临时表, 可以被后续子句引用。
+OpenMLDB 在 0.7.2 开始支持 WITH 子句。WITH 子句借鉴了 [WITH Clause in BigQuery](https://cloud.google.com/bigquery/docs/reference/standard-sql/query-syntax#with_clause) 的语法，但仅支持非递归形式。一个 WITH 子句包括一个或多个 common table expressions (CTEs). 在同一个查询语句内, CTE 的作用类似一张临时表, 可以被后续子句引用。
 
 ## Syntax
 
