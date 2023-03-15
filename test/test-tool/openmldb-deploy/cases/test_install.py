@@ -18,6 +18,7 @@ import pytest
 import case_conf 
 import openmldb.dbapi
 import os
+import requests
 import sys
 
 class TestInstall:
@@ -28,7 +29,6 @@ class TestInstall:
     def setup_class(cls):
         cls.db = openmldb.dbapi.connect(zk=case_conf.conf["zk_cluster"], zkPath=case_conf.conf["zk_root_path"])
         cls.cursor = cls.db.cursor()
-        pass
 
     def test_component(self):
         COMPONENTS = case_conf.conf["components"]
@@ -45,18 +45,25 @@ class TestInstall:
         assert len(COMPONENTS["nameserver"]) == len(components["nameserver"])
         for endpoint in COMPONENTS["nameserver"]:
             assert endpoint in components["nameserver"]
-        if len(COMPONENTS["apiserver"]) > 0:
-            assert len(COMPONENTS["apiserver"]) == len(components["apiserver"])
-            for endpoint in COMPONENTS["apiserver"]:
-                assert endpoint in components["apiserver"]
-        else:
-            assert "apiserver" not in components
-        if len(COMPONENTS["taskmanager"]) > 0:
+        if "taskmanager" in COMPONENTS and len(COMPONENTS["taskmanager"]) > 0:
             assert len(components["taskmanager"]) > 0
             for endpoint in components["taskmanager"]:
                 assert endpoint in COMPONENTS["taskmanager"]
         else:
             assert "taskmanager" not in components
+
+    def test_http(self):
+        for k, v in case_conf.conf["components"].items():
+            if k == "taskmanager" or len(v) == 0:
+                continue
+            for endpoint in v:
+                url = f"http://{endpoint}/status"
+                try:
+                    r = requests.get(url)
+                    assert r.status_code == 200
+                except Exception as e:
+                    assert False
+
 
 if __name__ == "__main__":
     sys.exit(pytest.main(["-vv", os.path.abspath(__file__)]))
