@@ -37,7 +37,7 @@ class TestK8sJobManager extends FunSuite {
   test("Test submitJob") {
     val manager = new K8sJobManager()
 
-    val jobConfig = OpenmldbOfflineJobConfig(
+    val jobConfig = K8sJobConfig(
       jobName = "job",
       mainClass = "com._4paradigm.openmldb.batch.tools.RunOpenmldbSql",
       mainJarFile = "local:///opt/spark/jars/openmldb-batch-0.7.2.jar",

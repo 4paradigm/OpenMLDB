@@ -16,7 +16,7 @@
 
 package com._4paradigm.openmldb.taskmanager.k8s
 
-case class OpenmldbOfflineJobConfig(
+case class K8sJobConfig(
   jobName: String,
   mainClass: String,
   mainJarFile: String,

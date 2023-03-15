@@ -42,41 +42,7 @@ class K8sJobManager(val namespace:String = "default",
     }
   }
 
-  def constructArgumentsString(arguments: List[String]): String = {
-    var argumentString = "["
-
-    for (argument <- arguments) {
-      argumentString += s""" "$argument", """.trim
-    }
-
-    if (argumentString.endsWith(",")) {
-      argumentString = argumentString.dropRight(1)
-    }
-
-    argumentString += "]"
-
-    argumentString
-  }
-
-  def constructSparkConfString(sparkConf: Map[String, String]): String = {
-    var sparkConfString = "{"
-
-    sparkConf.foreach { case (key, value) =>
-
-      sparkConfString += s""" $key: "$value", """.trim
-    }
-
-    if (sparkConfString.endsWith(",")) {
-      sparkConfString = sparkConfString.dropRight(1)
-    }
-
-    sparkConfString += "}"
-
-    sparkConfString
-  }
-
-
-  def submitJob(jobConfig: OpenmldbOfflineJobConfig): Unit = {
+  def submitJob(jobConfig: K8sJobConfig): Unit = {
     // Define the SparkApplication YAML
     val sparkApplicationYaml =
       s"""
@@ -92,8 +58,8 @@ class K8sJobManager(val namespace:String = "default",
         |  imagePullPolicy: Always
         |  mainClass: ${jobConfig.mainClass}
         |  mainApplicationFile: ${jobConfig.mainJarFile}
-        |  arguments: ${constructArgumentsString(jobConfig.arguments)}
-        |  sparkConf: ${constructSparkConfString(jobConfig.sparkConf)}
+        |  arguments: ${K8sYamlUtil.generateArgumentsString(jobConfig.arguments)}
+        |  sparkConf: ${K8sYamlUtil.generateSparkConfString(jobConfig.sparkConf)}
         |  sparkVersion: "3.1.1"
         |  restartPolicy:
         |    type: Never
