@@ -910,10 +910,7 @@ class RequestWindowOp : public WindowOp {
 class Filter {
  public:
     explicit Filter(const node::ExprNode *condition)
-        : condition_(condition),
-          left_key_(nullptr),
-          right_key_(nullptr),
-          index_key_(nullptr) {}
+        : condition_(condition), left_key_(nullptr), right_key_(nullptr), index_key_(nullptr) {}
     Filter(const node::ExprNode *condition, const node::ExprListNode *left_keys,
            const node::ExprListNode *right_keys)
         : condition_(condition),
@@ -921,6 +918,9 @@ class Filter {
           right_key_(right_keys),
           index_key_(nullptr) {}
     virtual ~Filter() {}
+
+    Filter(const Filter &) = default;
+    Filter &operator=(const Filter &) = default;
 
     bool Valid() {
         return index_key_.ValidKey() || condition_.ValidCondition();
@@ -1631,7 +1631,15 @@ class PhysicalFilterNode : public PhysicalUnaryNode {
         fn_infos_.push_back(&filter_.condition_.fn_info());
         fn_infos_.push_back(&filter_.index_key_.fn_info());
     }
+    PhysicalFilterNode(PhysicalOpNode *node, Filter filter)
+        : PhysicalUnaryNode(node, kPhysicalOpFilter, true), filter_(filter) {
+        output_type_ = node->GetOutputType();
+
+        fn_infos_.push_back(&filter_.condition_.fn_info());
+        fn_infos_.push_back(&filter_.index_key_.fn_info());
+    }
     virtual ~PhysicalFilterNode() {}
+
     void Print(std::ostream &output, const std::string &tab) const override;
     bool Valid() { return filter_.Valid(); }
     const Filter &filter() const { return filter_; }

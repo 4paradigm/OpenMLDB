@@ -273,6 +273,8 @@ bool GroupAndSortOptimized::KeysOptimized(const SchemasContext* root_schemas_ctx
         return false;
     }
 
+    TransformCxtGuard<decltype(ctx_)> guard(&ctx_, KeysInfo(left_key, right_key, index_key, sort));
+
     if (PhysicalOpType::kPhysicalOpDataProvider == in->GetOpType()) {
         auto scan_op = dynamic_cast<PhysicalDataProviderNode*>(in);
         // Do not optimize with Request DataProvider (no index has been provided)
@@ -338,17 +340,33 @@ bool GroupAndSortOptimized::KeysOptimized(const SchemasContext* root_schemas_ctx
                 DCHECK(expr != nullptr);
             }
 
-            if (right_key != nullptr) {
-                right_key->set_keys(new_right_keys);
+            // write new keys
+            if (DataProviderType::kProviderTypeTable == scan_op->provider_type_ || ctx_.size() == 1) {
+                // key update is skipped if optimized scan op already and ctx size >= 2
+
+                // consider the case when a REQUEST_JOIN(, FILTER(DATA)) tree, both REQUEST_JOIN and FILTER node
+                // can optimize DATA node, if the FILTER node optimzed data node already, request join node
+                // should be aware of the optimization
+
+                if (right_key != nullptr) {
+                    right_key->set_keys(new_right_keys);
+                }
+                index_key->set_keys(new_index_keys);
+                left_key->set_keys(new_left_keys);
             }
-            index_key->set_keys(new_index_keys);
-            left_key->set_keys(new_left_keys);
             // Clear order expr list if we optimized orders
-            if (nullptr != sort && nullptr != sort->orders_ && nullptr != sort->orders_->GetOrderExpression(0)) {
-                auto first_order_expression = sort->orders_->GetOrderExpression(0);
-                sort->set_orders(dynamic_cast<node::OrderByNode*>(
-                    node_manager_->MakeOrderByNode(
-                        node_manager_->MakeExprList(
+            auto* mut_sort = sort;
+            if (mut_sort == nullptr) {
+                if (ctx_.size() >= 2) {
+                    auto it = std::next(ctx_.crbegin());
+                    mut_sort = (*it).right_sort;
+                }
+            }
+            if (nullptr != mut_sort && nullptr != mut_sort->orders_ &&
+                nullptr != mut_sort->orders_->GetOrderExpression(0)) {
+                auto first_order_expression = mut_sort->orders_->GetOrderExpression(0);
+                mut_sort->set_orders(
+                    dynamic_cast<node::OrderByNode*>(node_manager_->MakeOrderByNode(node_manager_->MakeExprList(
                         node_manager_->MakeOrderExpression(nullptr, first_order_expression->is_asc())))));
             }
             *new_in = partition_op;
@@ -386,19 +404,16 @@ bool GroupAndSortOptimized::KeysOptimized(const SchemasContext* root_schemas_ctx
         *new_in = new_op;
         return true;
     } else if (PhysicalOpType::kPhysicalOpFilter == in->GetOpType()) {
-        // respect filters optimize result, try optimize only if not optimized
+        // respect filter's optimize result, try optimize only if not optimized
         PhysicalFilterNode* filter_op = dynamic_cast<PhysicalFilterNode*>(in);
-        auto s = ValidatePartitionDataProvider(filter_op->GetProducer(0));
-        if (s.isOK()) {
-            return false;
-        }
 
         PhysicalOpNode* new_depend;
         if (!KeysOptimized(root_schemas_ctx, in->producers()[0], left_key, index_key, right_key, sort, &new_depend)) {
             return false;
         }
-        PhysicalOpNode* new_filter = nullptr;
-        auto status = in->WithNewChildren(plan_ctx_->node_manager(), {new_depend}, &new_filter);
+        PhysicalFilterNode* new_filter = nullptr;
+        auto status = plan_ctx_->CreateOp<PhysicalFilterNode>(&new_filter, new_depend,
+                                                              filter_op->filter());
         if (!status.isOK()) {
             LOG(WARNING) << "Fail to create filter op: " << status;
             return false;

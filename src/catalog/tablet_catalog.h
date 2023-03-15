@@ -63,8 +63,8 @@ class TabletSegmentHandler : public ::hybridse::vm::TableHandler {
 
     ::hybridse::vm::RowIterator *GetRawIterator() override;
 
-    std::unique_ptr<::hybridse::vm::WindowIterator> GetWindowIterator(const std::string &idx_name) override {
-        return std::unique_ptr<::hybridse::vm::WindowIterator>();
+    std::unique_ptr<::hybridse::codec::WindowIterator> GetWindowIterator(const std::string &idx_name) override {
+        return std::unique_ptr<::hybridse::codec::WindowIterator>();
     }
 
     const uint64_t GetCount() override;
@@ -104,7 +104,7 @@ class TabletPartitionHandler : public ::hybridse::vm::PartitionHandler,
 
     const ::hybridse::vm::IndexHint &GetIndex() override { return table_handler_->GetIndex(); }
 
-    std::unique_ptr<::hybridse::vm::WindowIterator> GetWindowIterator() override {
+    std::unique_ptr<::hybridse::codec::WindowIterator> GetWindowIterator() override {
         DLOG(INFO) << "get window it with name " << index_name_;
         return table_handler_->GetWindowIterator(index_name_);
     }
