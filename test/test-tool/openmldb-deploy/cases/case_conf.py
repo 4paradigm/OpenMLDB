@@ -22,7 +22,8 @@ import sys
 
 abs_path=os.path.abspath(__file__)
 dirname,filename=os.path.split(abs_path)
-host_file = os.path.dirname(dirname) + "/hosts"
+#host_file = os.path.dirname(dirname) + "/hosts"
+host_file = dirname + "/hosts"
 
 conf = {}
 conf["zk_cluster"] = ""
