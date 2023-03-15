@@ -12,11 +12,11 @@
 
 |                | **OpenMLDB SQL**<br>**离线模式** | **OpenMLDB SQL**<br>**在线预览模式** | **OpenMLDB SQL**<br>**在线请求模式** | **标准 SQL** | **备注**                                                     |
 | -------------- | ---------------------------- | -------------------------------- | -------------------------------- | ------------ | ------------------------------------------------------------ |
-| WHERE 子句     | ✓                            | ✓                                | ✕                                | ✓            |                                                              |
+| WHERE 子句     | ✓                            | ✓                                | ✕                                | ✓            | 部分功能可以通过带有 `_where` 后缀的内置函数实现 |
 | HAVING 子句    | ✓                            | ✓                                | X                                | ✓            |                                                              |
 | JOIN 子句      | ✓                            | ✕                                | ✓                                | ✓            | OpenMLDB 仅支持特有的 **LAST JOIN**                          |
 | GROUP BY 分组  | ✓                            | ✕                                | ✕                                | ✓            |                                                              |
-| ORDER BY 排序  | ✕                            | ✕                                | ✕                                | ✓            |                                                              |
+| ORDER BY 关键字 | ✓                           | ✓                                | ✓                               | ✓            | 仅支持在 `WINDOW` 和 `LAST JOIN` 子句内部使用，不支持倒排序 `DESC` |
 | LIMIT 限制行数 | ✓                            | ✓                                | ✕                                | ✓            |                                                              |
 | WINDOW 子句    | ✓                            | ✓                                | ✓                                | ✓            | OpenMLDB 增加了特有的 **WINDOW ... UNION** 和 **WINDOW ATTRIBUTES** 语法 |
 | WITH 子句      | ✕                            | ✕                                | ✕                                | ✓            | OpenMLDB 从版本 v0.7.2 开始支持                           |
@@ -53,6 +53,8 @@
 | 表引用             | ✓            | ✓                | ✕                |
 | LAST JOIN          | ✓            | ✓                | ✕                |
 | 子查询 / WITH 子句 | ✓            | ✓                | ✕                |
+
+虽然在线请求模式无法支持支持 `WHERE` 子句，但是部分功能可以通过带有 `_where` 后缀的计算函数实现，比如 `count_where`, `avg_wgere` 等，详情查看[内置计算函数文档](functions_and_operators/Files/udfs_8h.md)。
 
 ### LIMIT 子句
 
@@ -113,6 +115,10 @@ OpenMLDB (>= v0.7.2) 支持非递归的 WITH 子句。WITH 子句等价于其它
 特殊限制：
 
 - 无
+
+### ORDER BY 关键字
+
+排序关键字 `ORDER BY` 仅在窗口定义 `WINDOW` 和拼表操作 `LAST JOIN` 子句内部被支持，并且不支持倒排序关键字 `DESC`。参见 WINDOW 子句和 LAST JOIN 子句内的相关说明。
 
 ### 聚合函数
 
