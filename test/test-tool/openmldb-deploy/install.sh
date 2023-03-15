@@ -32,8 +32,8 @@ mv ../hosts conf/hosts
 sed -i"" -e "s/OPENMLDB_VERSION=[0-9]\.[0-9]\.[0-9]/OPENMLDB_VERSION=${VERSION}/g" conf/openmldb-env.sh
 sed -i"" -e "s/OPENMLDB_MODE:=standalone/OPENMLDB_MODE:=cluster/g" conf/openmldb-env.sh
 sed -i"" -e "s/CLEAR_OPENMLDB_INSTALL_DIR=false/CLEAR_OPENMLDB_INSTALL_DIR=true/g" conf/openmldb-env.sh
-sh sbin/stop-all.sh
-sh sbin/clear-all.sh
-sh sbin/deploy-all.sh
-sh sbin/start-all.sh
+#sh sbin/stop-all.sh
+#sh sbin/clear-all.sh
+#sh sbin/deploy-all.sh
+#sh sbin/start-all.sh
 popd
