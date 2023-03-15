@@ -45,6 +45,7 @@ jobs:
           echo "OPENMLDB_VETSION=$VERSION" >> $GITHUB_ENV
           BASE_DIR=${{ vars.DEPLOY_DIR }} bash test/test-tool/openmldb-deploy/gen_conf.sh ${{ vars.NODE_LIST }} > hosts
           cp hosts test/test-tool/openmldb-deploy/cases
+          pip3 install requests openmldb pytest
       - name: install openmldb
         env:
           OPENMLDB_VETSION: ${{ env.OPENMLDB_VETSION }}
