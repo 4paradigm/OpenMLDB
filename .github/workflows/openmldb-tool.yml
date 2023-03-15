@@ -56,5 +56,4 @@ jobs:
           python3 -m pytest test/test-tool/cases/test_install.py
       - name: clear env
         run: |
-          echo "aa"
-          #cd test/test-tool/openmldb-deploy/openmldb && sh sbin/stop-all.sh && sh sbin/clear-all.sh
+          bash openmldb/sbin/stop-all.sh && bash openmldb/sbin/clear-all.sh
