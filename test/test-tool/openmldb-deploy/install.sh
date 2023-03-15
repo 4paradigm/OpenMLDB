@@ -25,6 +25,8 @@ curl -SLo openmldb.tar.gz "https://github.com/4paradigm/OpenMLDB/releases/downlo
 mkdir -p "openmldb"
 tar xzf openmldb.tar.gz -C "openmldb" --strip-components 1
 pushd "openmldb"
+rm -rf sbin conf
+cp -r ../../../../release/sbin ../../../../release/conf ./
 
 mv ../hosts conf/hosts
 sed -i"" -e "s/OPENMLDB_VERSION=[0-9]\.[0-9]\.[0-9]/OPENMLDB_VERSION=${VERSION}/g" conf/openmldb-env.sh
