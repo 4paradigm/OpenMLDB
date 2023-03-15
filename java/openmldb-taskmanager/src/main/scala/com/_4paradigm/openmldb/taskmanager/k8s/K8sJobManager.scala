@@ -16,11 +16,92 @@
 
 package com._4paradigm.openmldb.taskmanager.k8s
 
+import com._4paradigm.openmldb.taskmanager.JobInfoManager
+import com._4paradigm.openmldb.taskmanager.config.TaskManagerConfig
+import com._4paradigm.openmldb.taskmanager.dao.JobInfo
 import io.fabric8.kubernetes.api.model.Pod
 import io.fabric8.kubernetes.client.dsl.base.CustomResourceDefinitionContext
 import io.fabric8.kubernetes.client.{Config, DefaultKubernetesClient}
 import org.slf4j.LoggerFactory
+import scala.collection.mutable
 
+object K8sJobManager {
+  private val logger = LoggerFactory.getLogger(this.getClass)
+
+  def submitSparkJob(jobType: String, mainClass: String,
+    args: List[String] = List(),
+    localSqlFile: String = "",
+    sparkConf: Map[String, String] = Map(),
+    defaultDb: String = "",
+    blocking: Boolean = false): JobInfo = {
+
+    val jobInfo = JobInfoManager.createJobInfo(jobType, args, sparkConf)
+
+    val jobName = s"openmldb-job-${jobInfo.getId}"
+
+    val finalSparkConf: mutable.Map[String, String] = mutable.Map(sparkConf.toSeq: _*)
+
+    val defaultSparkConfs = TaskManagerConfig.SPARK_DEFAULT_CONF.split(";")
+    defaultSparkConfs.map(sparkConf => {
+      if (sparkConf.nonEmpty) {
+        val kvList = sparkConf.split("=")
+        val key = kvList(0)
+        val value = kvList.drop(1).mkString("=")
+        finalSparkConf.put(key, value)
+      }
+    })
+
+    if (TaskManagerConfig.SPARK_EVENTLOG_DIR.nonEmpty) {
+      finalSparkConf.put("spark.eventLog.enabled", "true")
+      finalSparkConf.put("spark.eventLog.dir", TaskManagerConfig.SPARK_EVENTLOG_DIR)
+    }
+
+    // Set ZooKeeper config for openmldb-batch jobs
+    if (TaskManagerConfig.ZK_CLUSTER.nonEmpty && TaskManagerConfig.ZK_ROOT_PATH.nonEmpty) {
+      finalSparkConf.put("spark.openmldb.zk.cluster", TaskManagerConfig.ZK_CLUSTER)
+      finalSparkConf.put("spark.openmldb.zk.root.path", TaskManagerConfig.ZK_ROOT_PATH)
+    }
+
+    if (defaultDb.nonEmpty) {
+      finalSparkConf.put("spark.openmldb.default.db", defaultDb)
+    }
+
+    if(TaskManagerConfig.ENABLE_HIVE_SUPPORT) {
+      finalSparkConf.put("spark.sql.catalogImplementation", "hive")
+    }
+
+    val manager = new K8sJobManager()
+
+    // TODO: Support hdfs later
+    val mountLocalPath = if (TaskManagerConfig.OFFLINE_DATA_PREFIX.startsWith("file://")) {
+      TaskManagerConfig.OFFLINE_DATA_PREFIX.drop(7)
+    } else {
+      logger.warn("offline data prefix should start with file:// for K8S jobs, mount /tmp instead")
+      "/tmp"
+    }
+
+    val jobConfig = K8sJobConfig(
+      jobName = jobName,
+      mainClass = mainClass,
+      mainJarFile = "local:///opt/spark/jars/openmldb-batchjob-0.7.2-SNAPSHOT.jar",
+      arguments = args,
+      sparkConf = finalSparkConf.toMap,
+      mountLocalPath = mountLocalPath
+    )
+    manager.submitJob(jobConfig)
+
+    if (blocking) {
+      // TODO: Get K8S status and block
+      logger.warn("blocking is not supported for K8S jobs")
+    }
+
+    // TODO: Update K8S job status in another thread
+
+    manager.close()
+
+    jobInfo
+  }
+}
 
 class K8sJobManager(val namespace:String = "default",
                     val dockerImage: String = "registry.cn-shenzhen.aliyuncs.com/tobegit3hub/openmldb-spark") {
@@ -101,7 +182,7 @@ class K8sJobManager(val namespace:String = "default",
     val createdResource = client.customResource(crdContext).create(namespace, sparkApplicationYaml)
 
     // Print the created SparkApplication
-    logger.info(s"SparkApplication created: ${createdResource}")
+    logger.info(s"SparkApplication created: $createdResource")
   }
 
   def close(): Unit = {
