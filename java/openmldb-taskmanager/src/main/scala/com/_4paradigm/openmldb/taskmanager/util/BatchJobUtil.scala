@@ -35,7 +35,12 @@ object BatchJobUtil {
     if (jarPath == null) {
       jarPath = findBatchJobJar("./openmldb-batchjob/target/")
       if (jarPath == null) {
-        throw new IOException("Fail to find default batch job jar")
+        // Add the test resource path to run unit tests with test jar
+        val resourcesDirectory = new File("openmldb-taskmanager/src/test/resources/")
+        jarPath = findBatchJobJar(resourcesDirectory.getAbsolutePath)
+        if (jarPath == null) {
+          throw new IOException("Fail to find default batch job jar")
+        }
       }
     }
 

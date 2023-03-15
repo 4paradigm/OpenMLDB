@@ -61,7 +61,9 @@ message DeleteJobResponse {
     optional string msg = 2;
 };
 
-message ShowBatchVersionRequest {};
+message ShowBatchVersionRequest {
+    optional bool sync_job = 1 [default = false];
+};
 
 message RunBatchSqlRequest {
     required string sql = 1;
