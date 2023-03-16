@@ -109,10 +109,10 @@ public class TaskManagerConfig {
         ZK_MAX_RETRIES = Integer.parseInt(prop.getProperty("zookeeper.max_retries", "10"));
         ZK_MAX_CONNECT_WAIT_TIME = Integer.parseInt(prop.getProperty("zookeeper.max_connect_waitTime", "30000"));
 
-        SPARK_MASTER = prop.getProperty("spark.master", "local").toLowerCase();
+        SPARK_MASTER = prop.getProperty("spark.master", "local[*]").toLowerCase();
         if (!SPARK_MASTER.startsWith("local")) {
-            if (!Arrays.asList("yarn", "yarn-cluster", "yarn-client").contains(SPARK_MASTER)) {
-                throw new ConfigException("spark.master", "should be local, yarn, yarn-cluster or yarn-client");
+            if (!Arrays.asList("yarn", "yarn-cluster", "yarn-client", "k8s", "kubernetes").contains(SPARK_MASTER)) {
+                throw new ConfigException("spark.master", "should be local, yarn, yarn-cluster, yarn-client, k8s or kubernetes");
             }
         }
         boolean isLocal = SPARK_MASTER.startsWith("local");
@@ -258,4 +258,8 @@ public class TaskManagerConfig {
         BATCH_JOB_RESULT_MAX_WAIT_TIME = Long.parseLong(prop.getProperty("batch.job.result.max.wait.time", "600000")); // 10min
     }
 
+    public static boolean isK8s() throws ConfigException {
+        parse();
+        return SPARK_MASTER.equals("k8s") || SPARK_MASTER.equals("kubernetes");
+    }
 }

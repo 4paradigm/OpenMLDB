@@ -232,6 +232,7 @@ public class TaskManagerImpl implements TaskManagerInterface {
             JobInfo finalJobInfo = JobInfoManager.getJob(jobId).get();
             if (finalJobInfo.isSuccess()) {
                 // wait for all files of result saved and read them, large timeout
+                // TODO: Test for K8S backend
                 String output = jobResultSaver.readResult(resultId, TaskManagerConfig.BATCH_JOB_RESULT_MAX_WAIT_TIME);
                 return TaskManager.RunBatchSqlResponse.newBuilder().setCode(StatusCode.SUCCESS).setOutput(output).build();
             } else {
