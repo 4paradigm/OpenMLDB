@@ -144,7 +144,7 @@
         <dependency>
             <groupId>io.fabric8</groupId>
             <artifactId>kubernetes-client</artifactId>
-            <version>5.11.0</version>
+            <version>5.11.2</version>
         </dependency>
 
         <!-- OpenMLDB -->
