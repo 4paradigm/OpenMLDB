@@ -16,7 +16,7 @@
 
 # start_predict_server.sh
 
-cd "$(dirname "$0")"
+cd "$(dirname "$0")" || exit 1
 
 echo "start predict server"
 nohup python3 predict_server.py "$1" "$2" >/tmp/p.log 2>&1 &
