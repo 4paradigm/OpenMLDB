@@ -19,18 +19,18 @@ OpenMLDB Cluster config
 import configparser
 import os
 import sys
+from os import path
 
-abs_path=os.path.abspath(__file__)
-dirname,filename=os.path.split(abs_path)
-#host_file = os.path.dirname(dirname) + "/hosts"
-host_file = dirname + "/hosts"
+abs_path=path.abspath(__file__)
+dirname,filename=path.split(abs_path)
 
 conf = {}
 conf["zk_cluster"] = ""
 conf["zk_root_path"] = "/openmldb"
-conf["openmldb_bin_path"] = "../openmldb/bin/openmldb"
+conf["base_dir"] = path.dirname(path.dirname(path.dirname(path.dirname(dirname))))
 conf["components"] = {}
 cf = configparser.ConfigParser(strict=False, delimiters=" ", allow_no_value=True)
+host_file = conf["base_dir"] + "/openmldb/conf/hosts"
 cf.read(host_file)
 for sec in cf.sections():
     if sec != "zookeeper":
@@ -43,3 +43,4 @@ for sec in cf.sections():
                conf["zk_cluster"] = endpoint
             else:
                conf["zk_cluster"] = conf["zk_cluster"] + "," + endpoint
+#print(conf)

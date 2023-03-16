@@ -17,22 +17,22 @@
 
 if [[ $BASE_DIR == "" ]]; then
     echo "please set 'BASE_DIR' when run script"
-    exit -1
+    exit 1
 fi
 
 if [[ $# -lt 1 ]]; then
     echo "at lease one node is required"
-    exit -1
+    exit 1
 fi
 echo "[tablet]"
 for host in "$@"; do
-    echo $host:30221 $BASE_DIR/tablet
+    echo "${host}:30221" "${BASE_DIR}/tablet"
 done
 
 num=0
 echo -e  "\n[nameserver]"
 for host in "$@"; do
-    echo $host:30321 $BASE_DIR/nameserver
+    echo "${host}:30321" "${BASE_DIR}/nameserver"
     let num=num+1
     if [[ $num -eq 2 ]]; then
         break
@@ -41,14 +41,14 @@ done
 
 echo -e "\n[apiserver]"
 for host in "$@"; do
-    echo $host:39080 $BASE_DIR/apiserver
+    echo "${host}:39080" "${BASE_DIR}/apiserver"
     break
 done
 
 num=0
 echo -e "\n[taskmanager]"
 for host in "$@"; do
-    echo $host:39902 $BASE_DIR/taskmanager
+    echo "${host}:39902" "${BASE_DIR}/taskmanager"
     let num=num+1
     if [[ $num -eq 2 ]]; then
         break
@@ -58,7 +58,7 @@ done
 num=0
 echo -e "\n[zookeeper]"
 for host in "$@"; do
-    echo $host:32181:32888:33888 $BASE_DIR/zookeeper
+    echo "${host}:32181:32888:33888" "${BASE_DIR}/zookeeper"
     let num=num+1
     if [[ $num -eq 3 ]]; then
         break
