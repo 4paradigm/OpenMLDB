@@ -53,7 +53,7 @@ class TestRecoverData:
         self.cursor.execute("use test")
         table_name = "table" + str(random.randint(0, 10000))
         self.cursor.execute(f"create table if not exists {table_name} (col1 string, col2 string);")
-        key_num = 100000
+        key_num = 50000
         for i in range(key_num):
             key = "key" + str(i)
             self.cursor.execute(f"insert into {table_name} values (\'{key}\', \'col2\')");

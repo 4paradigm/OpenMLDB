@@ -45,7 +45,7 @@ else
     dir=$(echo "$line" | awk -F ' ' '{print $3}')
     if [[ ${CLEAR_OPENMLDB_INSTALL_DIR} == "true" ]]; then
       echo "clear $dir with endpoint $host:$port "
-      rm_dir "$host" $dir
+      rm_dir "$host" "$dir"
     else
       echo "clear tablet data and log in $dir with endpoint $host:$port "
       cmd="cd $dir && rm -rf recycle db logs"
@@ -61,7 +61,7 @@ else
     dir=$(echo "$line" | awk -F ' ' '{print $3}')
     if [[ ${CLEAR_OPENMLDB_INSTALL_DIR} == "true" ]]; then
       echo "clear $dir with endpoint $host:$port "
-      rm_dir "$host" $dir
+      rm_dir "$host" "$dir"
     else
       echo "clear apiserver log in $dir with endpoint $host:$port "
       cmd="cd $dir && rm -rf logs"
@@ -77,7 +77,7 @@ else
     dir=$(echo "$line" | awk -F ' ' '{print $3}')
     if [[ ${CLEAR_OPENMLDB_INSTALL_DIR} == "true" ]]; then
       echo "clear $dir with endpoint $host:$port "
-      rm_dir "$host" $dir
+      rm_dir "$host" "$dir"
     else
       echo "clear nameserver log in $dir with endpoint $host:$port "
       cmd="cd $dir && rm -rf logs"
@@ -94,7 +94,7 @@ else
 
     if [[ ${CLEAR_OPENMLDB_INSTALL_DIR} == "true" ]]; then
       echo "clear $dir with endpoint $host:$port "
-      rm_dir "$host" $dir
+      rm_dir "$host" "$dir"
       cmd="cd $dir && rm -rf /tmp/openmldb_offline_storage/"
       echo "clear taskmanager data in $dir with endpoint $host:$port "
       run_auto "$host" "$cmd"
@@ -118,7 +118,7 @@ else
       dir=$(echo "$line" | awk -F ' ' '{print $3}')
       if [[ ${CLEAR_OPENMLDB_INSTALL_DIR} == "true" ]]; then
         echo "clear $dir with endpoint $host:$port "
-        rm_dir "$host" $dir
+        rm_dir "$host" "$dir"
       else
 
         echo "clear zookeeper data and log in $dir with endpoint $host:$port"

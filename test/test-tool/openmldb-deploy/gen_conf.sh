@@ -33,7 +33,7 @@ num=0
 echo -e  "\n[nameserver]"
 for host in "$@"; do
     echo "${host}:30321" "${BASE_DIR}/nameserver"
-    let num=num+1
+    (( num=num+1 ))
     if [[ $num -eq 2 ]]; then
         break
     fi
@@ -49,7 +49,7 @@ num=0
 echo -e "\n[taskmanager]"
 for host in "$@"; do
     echo "${host}:39902" "${BASE_DIR}/taskmanager"
-    let num=num+1
+    (( num=num+1 ))
     if [[ $num -eq 2 ]]; then
         break
     fi
@@ -59,7 +59,7 @@ num=0
 echo -e "\n[zookeeper]"
 for host in "$@"; do
     echo "${host}:32181:32888:33888" "${BASE_DIR}/zookeeper"
-    let num=num+1
+    (( num=num+1 ))
     if [[ $num -eq 3 ]]; then
         break
     fi

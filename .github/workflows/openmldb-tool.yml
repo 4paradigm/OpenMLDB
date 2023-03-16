@@ -5,25 +5,15 @@ on:
   push:
     branches:
       - main
-    paths-ignore:
-      - 'docs/**'
-      - 'demo/**'
-      - 'docker/**'
-      - 'image/**'
+    paths:
       - 'release/**'
       - 'tools/**'
-      - '*.md'
     tags:
       - v*
   pull_request:
-    paths-ignore:
-      - 'docs/**'
-      - 'demo/**'
-      - 'docker/**'
-      - 'image/**'
+    paths:
       - 'release/**'
       - 'tools/**'
-      - '*.md'
   workflow_dispatch:
 
 env:
@@ -55,5 +45,4 @@ jobs:
           python3 -m pytest test/test-tool/openmldb-deploy/cases
       - name: clear env
         run: |
-            echo "aaa"
-            #bash openmldb/sbin/stop-all.sh && bash openmldb/sbin/clear-all.sh
+            bash openmldb/sbin/stop-all.sh && bash openmldb/sbin/clear-all.sh
