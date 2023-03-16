@@ -331,12 +331,14 @@ bool GroupAndSortOptimized::KeysOptimized(const SchemasContext* root_schemas_ctx
             // FIXME:(#2457) last join (filter op<optimized>) not supported in iterator
             bool has_filter = false;
             bool has_join = false;
+            Sort* join_sort = nullptr;
             for (auto it = ctx_.rbegin(); it != ctx_.rend(); ++it) {
                 switch (it->type) {
                     case vm::kPhysicalOpJoin:
                     case vm::kPhysicalOpRequestJoin: {
                         if (has_filter) {
                             has_join = true;
+                            join_sort = it->right_sort;
                         }
                         break;
                     }
@@ -366,10 +368,7 @@ bool GroupAndSortOptimized::KeysOptimized(const SchemasContext* root_schemas_ctx
             // Clear order expr list if we optimized orders
             auto* mut_sort = sort;
             if (mut_sort == nullptr) {
-                if (ctx_.size() >= 2) {
-                    auto it = std::next(ctx_.crbegin());
-                    mut_sort = (*it).right_sort;
-                }
+                mut_sort = join_sort;
             }
             if (nullptr != mut_sort && nullptr != mut_sort->orders_ &&
                 nullptr != mut_sort->orders_->GetOrderExpression(0)) {
