@@ -224,7 +224,7 @@ def ChangeLeader(db: str, partition: Partition, src_endpoint: str, desc_endpoint
 
 def MigratePartition(db : str, partition : Partition, src_endpoint : str, desc_endpoint : str, one_replica : bool) -> Status:
     if partition.IsLeader():
-        status = ChangeLeader(db, partition, src_endpoint, desc_endpoint, one_replica, True)
+        status = ChangeLeader(db, partition, src_endpoint, "", one_replica, True)
         if not status.OK():
             log.error(status.GetMsg())
             return status
