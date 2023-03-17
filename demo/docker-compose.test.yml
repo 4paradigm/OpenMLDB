@@ -50,6 +50,8 @@ services:
         cd /work/oneflow_demo/sql_scripts
         # 10 min
         cat sql_order | xargs cat | /work/openmldb/bin/openmldb --zk_cluster=127.0.0.1:2181 --zk_root_path=/openmldb --role=sql_client
+        # check deployment, jobs will be checked by job_checker.py
+        curl http://127.0.0.1:9080/dbs/JD_db/deployments/demo | grep "ok" || return -1
 
         python3 /work/job_checker.py
 
