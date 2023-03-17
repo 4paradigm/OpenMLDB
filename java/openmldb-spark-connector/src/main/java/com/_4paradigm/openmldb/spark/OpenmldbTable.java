@@ -22,10 +22,14 @@ import com._4paradigm.openmldb.sdk.SdkOption;
 import com._4paradigm.openmldb.sdk.SqlException;
 import com._4paradigm.openmldb.sdk.SqlExecutor;
 import com._4paradigm.openmldb.sdk.impl.SqlClusterExecutor;
+import com._4paradigm.openmldb.spark.read.OpenmldbReadConfig;
+import com._4paradigm.openmldb.spark.read.OpenmldbScanBuilder;
 import com._4paradigm.openmldb.spark.write.OpenmldbWriteBuilder;
 import com._4paradigm.openmldb.spark.write.OpenmldbWriteConfig;
+import org.apache.spark.sql.connector.catalog.SupportsRead;
 import org.apache.spark.sql.connector.catalog.SupportsWrite;
 import org.apache.spark.sql.connector.catalog.TableCapability;
+import org.apache.spark.sql.connector.read.ScanBuilder;
 import org.apache.spark.sql.connector.write.LogicalWriteInfo;
 import org.apache.spark.sql.connector.write.WriteBuilder;
 import org.apache.spark.sql.types.DataType;
@@ -33,21 +37,20 @@ import org.apache.spark.sql.types.DataTypes;
 import org.apache.spark.sql.types.Metadata;
 import org.apache.spark.sql.types.StructField;
 import org.apache.spark.sql.types.StructType;
-
+import org.apache.spark.sql.util.CaseInsensitiveStringMap;
 import java.sql.SQLException;
 import java.sql.Types;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-public class OpenmldbTable implements SupportsWrite {
+public class OpenmldbTable implements SupportsWrite, SupportsRead {
     private final String dbName;
     private final String tableName;
     private final SdkOption option;
     private SqlExecutor executor = null;
 
     private Set<TableCapability> capabilities;
-
 
     public OpenmldbTable(String dbName, String tableName, SdkOption option) {
         this.dbName = dbName;
@@ -106,7 +109,8 @@ public class OpenmldbTable implements SupportsWrite {
             StructField[] fields = new StructField[schemaList.size()];
             for (int i = 0; i < schemaList.size(); i++) {
                 Column column = schemaList.get(i);
-                fields[i] = new StructField(column.getColumnName(), sdkTypeToSparkType(column.getSqlType()), !column.isNotNull(), Metadata.empty());
+                fields[i] = new StructField(column.getColumnName(), sdkTypeToSparkType(column.getSqlType()),
+                        !column.isNotNull(), Metadata.empty());
             }
             return new StructType(fields);
         } catch (SQLException e) {
@@ -119,9 +123,15 @@ public class OpenmldbTable implements SupportsWrite {
     public Set<TableCapability> capabilities() {
         if (capabilities == null) {
             this.capabilities = new HashSet<>();
-//            capabilities.add(TableCapability.BATCH_READ);
             capabilities.add(TableCapability.BATCH_WRITE);
+            capabilities.add(TableCapability.BATCH_READ);
         }
         return capabilities;
+    }
+
+    @Override
+    public ScanBuilder newScanBuilder(CaseInsensitiveStringMap caseInsensitiveStringMap) {
+        OpenmldbReadConfig config = new OpenmldbReadConfig(dbName, tableName, option);
+        return new OpenmldbScanBuilder(config);
     }
 }

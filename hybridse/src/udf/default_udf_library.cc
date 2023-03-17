@@ -16,6 +16,8 @@
 
 #include "udf/default_udf_library.h"
 
+#include <algorithm>
+#include <limits>
 #include <string>
 #include <tuple>
 #include <unordered_set>
@@ -31,6 +33,7 @@
 #include "udf/containers.h"
 #include "udf/udf.h"
 #include "udf/udf_registry.h"
+#include "udf/default_defs/expr_def.h"
 
 using openmldb::base::Date;
 using openmldb::base::StringRef;
@@ -269,6 +272,54 @@ struct AvgUdafDef {
                                         nm->MakeCastNode(node::DataType::kDouble, nm->MakeConstNode()),
                                         nm->MakeBinaryExprNode(sum, cnt, node::kFnOpFDiv));
             });
+    }
+};
+
+template <typename T>
+struct EwAvgUdafDef {
+    struct EwState {
+        double sum = 0;
+        double cnt = 0;
+        double weight = 1.0;
+        bool is_null = true;
+    };
+
+    using ContainerT = EwState;
+    void operator()(UdafRegistryHelper& helper) {  // NOLINT
+        std::string suffix = ".opaque_ewstate_" + DataTypeTrait<T>::to_string();
+        helper.templates<Nullable<double>, Opaque<ContainerT>, Nullable<T>, Nullable<double>>()
+            .init("ew_avg_init" + suffix, Init)
+            .update("ew_avg_update" + suffix, Update)
+            .output("ew_avg_output" + suffix, reinterpret_cast<void *>(Output), true);
+    }
+
+    static void Init(ContainerT* ptr) {
+        new (ptr) ContainerT();
+    }
+
+    // data is fed in the reverse order of timestamp. Newer data comes first
+    static ContainerT* Update(ContainerT* ptr, T t, bool is_null, double alpha, bool alpha_is_null) {
+        if (alpha_is_null) {
+            alpha = 0;
+        }
+
+        if (!is_null) {
+            ptr->sum += ptr->weight * t;
+            ptr->cnt += ptr->weight;
+            ptr->weight = ptr->weight * (1 - alpha);
+            ptr->is_null = false;
+        }
+        return ptr;
+    }
+
+    static void Output(ContainerT* ptr, double* ret, bool* is_null) {
+        if (ptr->is_null || ptr->cnt == 0) {
+            *is_null = true;
+        } else {
+            *ret = ptr->sum / ptr->cnt;
+            *is_null = false;
+        }
+        ptr->~ContainerT();
     }
 };
 
@@ -552,6 +603,55 @@ struct TopKDef {
     }
 };
 
+template <typename T>
+struct DrawdownUdafDef {
+    // <current drawdown, current min>
+    using ContainerT = std::pair<double, T>;
+    void operator()(UdafRegistryHelper& helper) {  // NOLINT
+        std::string suffix = ".opaque_std_pair_double_" + DataTypeTrait<T>::to_string();
+        helper.templates<Nullable<double>, Opaque<ContainerT>, Nullable<T>>()
+            .init("draw_init" + suffix, Init)
+            .update("draw_update" + suffix, Update)
+            .output("draw_output" + suffix, reinterpret_cast<void *>(Output), true);
+    }
+
+    static void Init(ContainerT* ptr) {
+        new (ptr) ContainerT(-1, std::numeric_limits<T>::max());
+    }
+
+    // data is fed in the reverse order of timestamp. Newer data comes first
+    static ContainerT* Update(ContainerT* ptr, T t, bool is_null) {
+        if (!is_null) {
+            if (t < 0) {
+                LOG_FIRST_N(ERROR, 1) << "drawdown only supports positive values";
+                return ptr;
+            }
+
+            double curr_max_d = 0;
+            if (ptr->second < t) {
+                if (t != 0) {
+                    curr_max_d = static_cast<double>(t - ptr->second) / t;
+                }
+            } else {
+                ptr->second = t;
+            }
+
+            ptr->first = std::max(ptr->first, curr_max_d);
+        }
+        return ptr;
+    }
+
+    static void Output(ContainerT* ptr, double* ret, bool* is_null) {
+        if (ptr->first < 0) {
+            *is_null = true;
+        } else {
+            *ret = ptr->first;
+            *is_null = false;
+        }
+        ptr->~ContainerT();
+    }
+};
+
 void DefaultUdfLibrary::Init() {
     udf::RegisterNativeUdfToModule(this);
     InitLogicalUdf();
@@ -565,6 +665,7 @@ void DefaultUdfLibrary::Init() {
     InitFeatureZero();
 
     InitArrayUdfs();
+    InitEarthDistanceUdf();
 
     AddExternalFunction("init_udfcontext.opaque",
             reinterpret_cast<void*>(static_cast<void (*)(UDFContext* context)>(udf::v1::init_udfcontext)));
@@ -1619,9 +1720,8 @@ void DefaultUdfLibrary::InitMathUdf() {
             @param expr
 
             @since 0.5.0)");
-    RegisterExternal("RADIANS")
-        .args<double>(
-            static_cast<double (*)(double)>(udf::v1::degree_to_radius))
+
+    RegisterExprUdfTemplate<container::RadiansDef>("radians")
         .doc(R"(
             @brief Returns the argument X, converted from degrees to radians. (Note that π radians equals 180 degrees.)
 
@@ -1631,7 +1731,9 @@ void DefaultUdfLibrary::InitMathUdf() {
                 SELECT RADIANS(90.0);
                 --output 1.570796326794896619231
             @endcode
-            @since 0.6.0)");
+
+            @since 0.6.0)")
+        .args_in<int16_t, int32_t, int64_t, float, double>();
 
     RegisterExternalTemplate<v1::Hash64>("hash64")
         .doc(R"(
@@ -1873,20 +1975,10 @@ void DefaultUdfLibrary::InitLogicalUdf() {
     RegisterAlias("isnull", "is_null");
 
     RegisterExprUdf("if_null")
-        .args<AnyArg, AnyArg>([](UdfResolveContext* ctx, ExprNode* input,
-                                 ExprNode* default_val) {
-            if (!node::TypeEquals(input->GetOutputType(),
-                                  default_val->GetOutputType())) {
-                ctx->SetError(
-                    "Default value should take same type with input, expect " +
-                    input->GetOutputType()->GetName() + " but get " +
-                    default_val->GetOutputType()->GetName());
-            }
+        .args<AnyArg, AnyArg>([](UdfResolveContext* ctx, ExprNode* input, ExprNode* default_val) {
             auto nm = ctx->node_manager();
             auto is_null = nm->MakeUnaryExprNode(input, node::kFnOpIsNull);
-            return nm->MakeCondExpr(
-                is_null, default_val,
-                nm->MakeUnaryExprNode(input, node::kFnOpNonNull));
+            return nm->MakeCondExpr(is_null, default_val, nm->MakeUnaryExprNode(input, node::kFnOpNonNull));
         })
         .doc(R"(
             @brief If input is not null, return input value; else return default value.
@@ -1907,11 +1999,6 @@ void DefaultUdfLibrary::InitLogicalUdf() {
     RegisterAlias("nvl", "if_null");
     RegisterExprUdf("nvl2")
         .args<AnyArg, AnyArg, AnyArg>([](UdfResolveContext* ctx, ExprNode* expr1, ExprNode* expr2, ExprNode* expr3) {
-            if (!node::TypeEquals(expr2->GetOutputType(), expr3->GetOutputType())) {
-                ctx->SetError(absl::StrCat("expr3 should take same type with expr2, expect ",
-                                           expr2->GetOutputType()->GetName(), " but get ",
-                                           expr3->GetOutputType()->GetName()));
-            }
             auto nm = ctx->node_manager();
             return nm->MakeCondExpr(nm->MakeUnaryExprNode(expr1, node::kFnOpIsNull), expr3, expr2);
         })
@@ -2703,6 +2790,34 @@ void DefaultUdfLibrary::InitUdaf() {
         .args_in<bool, int16_t, int32_t, int64_t, float, double, Timestamp,
                  Date, StringRef>();
 
+    RegisterUdafTemplate<EwAvgUdafDef>("ew_avg")
+        .doc(R"(
+            @brief Compute exponentially-weighted average of values.
+            It's equivalent to pandas ewm(alpha={alpha}, adjust=True, ignore_na=True, com=None, span=None, halflife=None, min_periods=0)
+
+            It requires that values are ordered so that it can only be used with WINDOW (PARTITION BY xx ORDER BY xx).
+            Undefined behaviour if it is used with GROUP BY and full table aggregation.
+
+            @param value  Specify value column to aggregate on.
+            @param alpha  Specify smoothing factor alpha (0 <= alpha <= 1). If NULL or 0, fall back to normal `avg`
+
+            Example:
+
+            |value|
+            |--|
+            |0|
+            |1|
+            |2|
+            |3|
+            |4|
+            @code{.sql}
+                SELECT ew_avg(value, 0.5) OVER w;
+                -- output 3.161290
+            @endcode
+            @since 0.7.2
+        )")
+        .args_in<int16_t, int32_t, int64_t, float, double>();
+
     RegisterUdafTemplate<SumWhereDef>("sum_where")
         .doc(R"(
             @brief Compute sum of values match specified condition
@@ -2873,8 +2988,40 @@ void DefaultUdfLibrary::InitUdaf() {
         )")
         .args_in<int16_t, int32_t, int64_t, float, double>();
 
+    RegisterUdafTemplate<DrawdownUdafDef>("drawdown")
+        .doc(R"(
+            @brief Compute drawdown of values.
+
+            Drawdown is defined as the max decline percentage from a historical peak to a subsequent valley.
+            It is commonly used as an indicator of risk in quant-trading to measure the max loss.
+
+            It requires that values are ordered so that it can only be used with WINDOW (PARTITION BY xx ORDER BY xx).
+            GROUP BY and full table aggregation are not supported.
+
+            @param value  Specify value column to aggregate on.
+
+            It requires that all values are non-negative. Negative values will be ignored.
+
+            Example:
+
+            |value|
+            |--|
+            |1|
+            |8|
+            |5|
+            |2|
+            |10|
+            |4|
+            @code{.sql}
+                SELECT drawdown(value) OVER w;
+                -- output 0.75 (decline from 8 to 2)
+            @endcode
+            @since 0.7.2
+        )")
+        .args_in<int16_t, int32_t, int64_t, float, double>();
 
     InitAggByCateUdafs();
+    InitStatisticsUdafs();
 }
 
 }  // namespace udf

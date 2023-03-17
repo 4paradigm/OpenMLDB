@@ -62,10 +62,24 @@ public class TaskManagerConfig {
     public static String BATCHJOB_JAR_PATH;
     public static String HADOOP_CONF_DIR;
     public static boolean ENABLE_HIVE_SUPPORT;
+    public static long BATCH_JOB_RESULT_MAX_WAIT_TIME;
 
-    public static void parse() throws IOException, NumberFormatException, ConfigException {
+    private static volatile boolean isParsed = false;
+
+    public static void parse() throws ConfigException {
+        if (!isParsed) {
+            doParse();
+            isParsed = true;
+        }
+    }
+
+    public static void doParse() throws ConfigException {
         Properties prop = new Properties();
-        prop.load(TaskManagerConfig.class.getClassLoader().getResourceAsStream("taskmanager.properties"));
+        try {
+            prop.load(TaskManagerConfig.class.getClassLoader().getResourceAsStream("taskmanager.properties"));
+        } catch (IOException e) {
+            throw new ConfigException(String.format("Fail to load taskmanager.properties, message: ", e.getMessage()));
+        }
 
         HOST = prop.getProperty("server.host", "0.0.0.0");
         PORT = Integer.parseInt(prop.getProperty("server.port", "9902"));
@@ -95,10 +109,10 @@ public class TaskManagerConfig {
         ZK_MAX_RETRIES = Integer.parseInt(prop.getProperty("zookeeper.max_retries", "10"));
         ZK_MAX_CONNECT_WAIT_TIME = Integer.parseInt(prop.getProperty("zookeeper.max_connect_waitTime", "30000"));
 
-        SPARK_MASTER = prop.getProperty("spark.master", "local").toLowerCase();
+        SPARK_MASTER = prop.getProperty("spark.master", "local[*]").toLowerCase();
         if (!SPARK_MASTER.startsWith("local")) {
-            if (!Arrays.asList("yarn", "yarn-cluster", "yarn-client").contains(SPARK_MASTER)) {
-                throw new ConfigException("spark.master", "should be local, yarn, yarn-cluster or yarn-client");
+            if (!Arrays.asList("yarn", "yarn-cluster", "yarn-client", "k8s", "kubernetes").contains(SPARK_MASTER)) {
+                throw new ConfigException("spark.master", "should be local, yarn, yarn-cluster, yarn-client, k8s or kubernetes");
             }
         }
         boolean isLocal = SPARK_MASTER.startsWith("local");
@@ -240,6 +254,12 @@ public class TaskManagerConfig {
         // TODO: Check if we can get core-site.xml
 
         ENABLE_HIVE_SUPPORT = Boolean.parseBoolean(prop.getProperty("enable.hive.support", "true"));
+
+        BATCH_JOB_RESULT_MAX_WAIT_TIME = Long.parseLong(prop.getProperty("batch.job.result.max.wait.time", "600000")); // 10min
     }
 
+    public static boolean isK8s() throws ConfigException {
+        parse();
+        return SPARK_MASTER.equals("k8s") || SPARK_MASTER.equals("kubernetes");
+    }
 }

@@ -15,7 +15,7 @@ RUN  apt-get update \
      && apt-get install -y --no-install-recommends libgomp1 curl binutils procps python3 python3-pip python3-numpy vim rsync \
      && rm -rf /var/lib/apt/lists/*
 
-RUN if [ -f "/additions/pypi.txt" ] ; then pip config set global.index-url $(</additions/pypi.txt); fi
+RUN if [ -f "/additions/pypi.txt" ] ; then pip config set global.index-url $(cat /additions/pypi.txt) ; fi
 RUN pip install --no-cache-dir py4j==0.10.9 numpy lightgbm tornado requests pandas xgboost==1.4.2
 
 COPY init.sh /work/
@@ -25,7 +25,7 @@ COPY *_dist.yml /work/
 
 ENV LANG=en_US.UTF-8
 ENV SPARK_HOME=/work/openmldb/spark-3.2.1-bin-openmldbspark
-ARG OPENMLDB_VERSION=0.7.1
+ARG OPENMLDB_VERSION=0.7.2
 ENV OPENMLDB_VERSION="${OPENMLDB_VERSION}"
 
 RUN  if [ "${USE_ADD_WHL}" = "true" ] ; then \

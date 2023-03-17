@@ -177,10 +177,10 @@
 #--key_entry_max_height=8
 
 # query conf
-# max table traverse iteration（full table scan/aggregation）,default: 50000
-#--max_traverse_cnt=50000
-# max table traverse pk number（batch query）, default: 5000
-#--max_traverse_pk_cnt=5000
+# max table traverse iteration(full table scan/aggregation),default: 0
+#--max_traverse_cnt=0
+# max table traverse unique key number(batch query), default: 0
+#--max_traverse_key_cnt=0
 # max result size in byte (default: 2MB)
 #--scan_max_bytes_size=2097152
 
@@ -191,6 +191,16 @@
 #--load_table_thread_num=3
 # The maximum queue length of the load thread pool
 #--load_table_queue_size=1000
+
+# for rocksdb
+#--disable_wal=true
+# Type of compression, can be off, pz, lz4, zlib
+#--file_compression=off
+#--block_cache_mb=4096
+#--block_cache_shardbits=8
+#--verify_compression=false
+#--max_log_file_size=100 * 1024 * 1024
+#--keep_log_file_num=5
 ```
 
 ## The Configuration file for APIServer: conf/apiserver.flags

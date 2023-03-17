@@ -32,6 +32,8 @@ DECLARE_uint32(write_buffer_mb);
 DECLARE_uint32(block_cache_shardbits);
 DECLARE_bool(verify_compression);
 DECLARE_int32(disk_gc_interval);
+DECLARE_uint32(max_log_file_size);
+DECLARE_uint32(keep_log_file_num);
 
 namespace openmldb {
 namespace storage {
@@ -158,23 +160,27 @@ bool DiskTable::InitColumnFamilyDescriptor() {
     } else {
         options_ = hdd_option_template;
     }
-    for (const auto& index_def : table_index_.GetAllIndex()) {
-        if (index_def->GetTTLType() == ::openmldb::storage::TTLType::kAbsoluteTime) {
-            options_.periodic_compaction_seconds = FLAGS_disk_gc_interval * 60;
-            break;
-        }
-    }
+    options_.max_log_file_size = FLAGS_max_log_file_size;
+    options_.keep_log_file_num = FLAGS_keep_log_file_num;
     auto inner_indexs = table_index_.GetAllInnerIndex();
     for (const auto& inner_index : *inner_indexs) {
-        rocksdb::ColumnFamilyOptions cfo(options_);
+        rocksdb::Options cur_options = options_;
+        bool use_compaction_filter = false;
+        for (const auto& index_def : inner_index->GetIndex()) {
+            if (index_def->GetTTLType() == ::openmldb::storage::TTLType::kAbsoluteTime) {
+                cur_options.periodic_compaction_seconds = FLAGS_disk_gc_interval * 60;
+                use_compaction_filter = true;
+                break;
+            }
+        }
+        rocksdb::ColumnFamilyOptions cfo(cur_options);
         cfo.comparator = &cmp_;
         cfo.prefix_extractor.reset(new KeyTsPrefixTransform());
-        const auto& indexs = inner_index->GetIndex();
-        auto index_def = indexs.front();
-        if (index_def->GetTTLType() == ::openmldb::storage::TTLType::kAbsoluteTime ||
-            index_def->GetTTLType() == ::openmldb::storage::TTLType::kAbsOrLat) {
+        if (use_compaction_filter) {
             cfo.compaction_filter_factory = std::make_shared<AbsoluteTTLFilterFactory>(inner_index);
         }
+        const auto& indexs = inner_index->GetIndex();
+        auto index_def = indexs.front();
         cf_ds_.push_back(rocksdb::ColumnFamilyDescriptor(index_def->GetName(), cfo));
         DEBUGLOG("add cf_name %s. tid %u pid %u", index_def->GetName().c_str(), id_, pid_);
     }
@@ -629,7 +635,7 @@ DiskTableTraverseIterator::~DiskTableTraverseIterator() {
 uint64_t DiskTableTraverseIterator::GetCount() const { return traverse_cnt_; }
 
 bool DiskTableTraverseIterator::Valid() {
-    if (traverse_cnt_ >= FLAGS_max_traverse_cnt) {
+    if (FLAGS_max_traverse_cnt > 0 && traverse_cnt_ >= FLAGS_max_traverse_cnt) {
         return false;
     }
     return it_->Valid();
@@ -655,15 +661,7 @@ void DiskTableTraverseIterator::Next() {
             }
             record_idx_ = 1;
         }
-        if (traverse_cnt_ >= FLAGS_max_traverse_cnt) {
-            if (has_ts_idx_) {
-                uint64_t ts = 0;
-                rocksdb::Slice tmp_pk;
-                ParseKeyAndTs(has_ts_idx_, it_->key(), &tmp_pk, &ts, &cur_ts_idx);
-                if (tmp_pk.compare(rocksdb::Slice(pk_)) == 0 && cur_ts_idx < ts_idx_) {
-                    ts_ = UINT64_MAX;
-                }
-            }
+        if (FLAGS_max_traverse_cnt > 0 && traverse_cnt_ >= FLAGS_max_traverse_cnt) {
             break;
         }
         if (IsExpired()) {
@@ -688,15 +686,7 @@ void DiskTableTraverseIterator::SeekToFirst() {
     for (; it_->Valid(); it_->Next()) {
         uint32_t cur_ts_idx = UINT32_MAX;
         traverse_cnt_++;
-        if (traverse_cnt_ >= FLAGS_max_traverse_cnt) {
-            if (has_ts_idx_) {
-                uint64_t ts = 0;
-                rocksdb::Slice tmp_pk;
-                ParseKeyAndTs(has_ts_idx_, it_->key(), &tmp_pk, &ts, &cur_ts_idx);
-                if (tmp_pk.compare(rocksdb::Slice(pk_)) == 0 && cur_ts_idx < ts_idx_) {
-                    ts_ = UINT64_MAX;
-                }
-            }
+        if (FLAGS_max_traverse_cnt > 0 && traverse_cnt_ >= FLAGS_max_traverse_cnt) {
             break;
         }
         ParseKeyAndTs(has_ts_idx_, it_->key(), &pk_, &ts_, &cur_ts_idx);
@@ -723,15 +713,7 @@ void DiskTableTraverseIterator::Seek(const std::string& pk, uint64_t time) {
         for (; it_->Valid(); it_->Next()) {
             uint32_t cur_ts_idx = UINT32_MAX;
             traverse_cnt_++;
-            if (traverse_cnt_ >= FLAGS_max_traverse_cnt) {
-                if (has_ts_idx_) {
-                    rocksdb::Slice tmp_pk;
-                    uint64_t ts = 0;
-                    ParseKeyAndTs(has_ts_idx_, it_->key(), &tmp_pk, &ts, &cur_ts_idx);
-                    if (tmp_pk.compare(rocksdb::Slice(pk_)) == 0 && cur_ts_idx < ts_idx_) {
-                        ts_ = UINT64_MAX;
-                    }
-                }
+            if (FLAGS_max_traverse_cnt > 0 && traverse_cnt_ >= FLAGS_max_traverse_cnt) {
                 break;
             }
             ParseKeyAndTs(has_ts_idx_, it_->key(), &pk_, &ts_, &cur_ts_idx);
@@ -759,15 +741,7 @@ void DiskTableTraverseIterator::Seek(const std::string& pk, uint64_t time) {
         for (; it_->Valid(); it_->Next()) {
             uint32_t cur_ts_idx = UINT32_MAX;
             traverse_cnt_++;
-            if (traverse_cnt_ >= FLAGS_max_traverse_cnt) {
-                if (has_ts_idx_) {
-                    rocksdb::Slice tmp_pk;
-                    uint64_t ts = 0;
-                    ParseKeyAndTs(has_ts_idx_, it_->key(), &tmp_pk, &ts, &cur_ts_idx);
-                    if (tmp_pk.compare(rocksdb::Slice(pk_)) == 0 && cur_ts_idx < ts_idx_) {
-                        ts_ = UINT64_MAX;
-                    }
-                }
+            if (FLAGS_max_traverse_cnt > 0 && traverse_cnt_ >= FLAGS_max_traverse_cnt) {
                 break;
             }
             ParseKeyAndTs(has_ts_idx_, it_->key(), &pk_, &ts_, &cur_ts_idx);
@@ -810,15 +784,7 @@ void DiskTableTraverseIterator::NextPK() {
     while (it_->Valid()) {
         uint32_t cur_ts_idx = UINT32_MAX;
         traverse_cnt_++;
-        if (traverse_cnt_ >= FLAGS_max_traverse_cnt) {
-            if (has_ts_idx_) {
-                rocksdb::Slice tmp_pk;
-                uint64_t ts = 0;
-                ParseKeyAndTs(has_ts_idx_, it_->key(), &tmp_pk, &ts, &cur_ts_idx);
-                if (tmp_pk.compare(rocksdb::Slice(pk_)) == 0 && cur_ts_idx < ts_idx_) {
-                    ts_ = UINT64_MAX;
-                }
-            }
+        if (FLAGS_max_traverse_cnt > 0 && traverse_cnt_ >= FLAGS_max_traverse_cnt) {
             break;
         }
         ParseKeyAndTs(has_ts_idx_, it_->key(), &pk_, &ts_, &cur_ts_idx);

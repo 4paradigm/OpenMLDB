@@ -566,7 +566,7 @@ void DefaultUdfLibrary::InitFeatureZero() {
             column of window, split by delimeter and add segment
             to output list. Null values are skipped.
 
-            @since 0.1.0)");
+            @since 0.6.5)");
 
     RegisterExternal("split")
         .returns<ListRef<StringRef>>()
@@ -582,11 +582,11 @@ void DefaultUdfLibrary::InitFeatureZero() {
             Example:
 
             @code{.sql}
-            select `join`(split("k1:1, k2:2", ",", ":"), " ") as out;
+            select `join`(split("k1:1,k2:2", ","), " ") as out;
             -- output "k1:1 k2:2"
             @endcode
 
-            @since 0.1.0)");
+            @since 0.6.5)");
 
     RegisterUdaf("window_split_by_key")
         .templates<ListRef<StringRef>, Opaque<StringSplitState>,
@@ -597,11 +597,11 @@ void DefaultUdfLibrary::InitFeatureZero() {
         .output("window_split_by_key_output", FZStringOpsDef::OutputList)
         .doc(R"(
             @brief For each string value from specified
-            column of window, split by delimeter and then split each segment 
-            as kv pair, then add each key to output list. Null and 
+            column of window, split by delimeter and then split each segment
+            as kv pair, then add each key to output list. Null and
             illegal segments are skipped.
 
-            @since 0.1.0)");
+            @since 0.6.5)");
 
     // single line version
     RegisterExternal("split_by_key")
@@ -624,7 +624,7 @@ void DefaultUdfLibrary::InitFeatureZero() {
             -- output "k1 k2"
             @endcode
 
-            @since 0.1.0)");
+            @since 0.6.5)");
 
     RegisterUdaf("window_split_by_value")
         .templates<ListRef<StringRef>, Opaque<StringSplitState>,
@@ -635,11 +635,11 @@ void DefaultUdfLibrary::InitFeatureZero() {
         .output("window_split_by_value_output", FZStringOpsDef::OutputList)
         .doc(R"(
             @brief For each string value from specified
-            column of window, split by delimeter and then split each segment 
-            as kv pair, then add each value to output list. Null and 
+            column of window, split by delimeter and then split each segment
+            as kv pair, then add each value to output list. Null and
             illegal segments are skipped.
 
-            @since 0.1.0)");
+            @since 0.6.5)");
 
     // single line version
     RegisterExternal("split_by_value")
@@ -662,23 +662,23 @@ void DefaultUdfLibrary::InitFeatureZero() {
             -- output "1 2"
             @endcode
 
-            @since 0.1.0)");
+            @since 0.6.5)");
 
     RegisterExternal("join")
         .doc(R"(
             @brief For each string value from specified
             column of window, join by delimeter. Null values are skipped.
 
-            @param input String expression to join
+            @param input List of string to join
             @param delimeter Join delimeter
 
             Example:
 
             @code{.sql}
-                select fz_join(fz_split("k1:v1,k2:v2", ","), " ");
+                select `join`(split("k1:v1,k2:v2", ","), " ");
                 --  "k1:v1 k2:v2"
             @endcode
-            @since 0.1.0
+            @since 0.6.5
         )")
         .list_argument_at(0)
         .args<ListRef<StringRef>, StringRef>(FZStringOpsDef::StringJoin);
@@ -686,14 +686,14 @@ void DefaultUdfLibrary::InitFeatureZero() {
     RegisterUdafTemplate<FZTop1Ratio>("top1_ratio")
         .doc(R"(@brief Compute the top1 key's ratio
 
-        @since 0.1.0)")
+        @since 0.6.5)")
         .args_in<int16_t, int32_t, int64_t, float, double, Date, Timestamp,
                  StringRef>();
 
     RegisterUdafTemplate<FZTopNFrequency>("topn_frequency")
         .doc(R"(@brief Return the topN keys sorted by their frequency
 
-        @since 0.1.0)")
+        @since 0.6.5)")
         .args_in<int16_t, int32_t, int64_t, float, double, Date, Timestamp,
                  StringRef>();
 
@@ -712,16 +712,6 @@ void DefaultUdfLibrary::InitFeatureZero() {
 
             @endcode
             @since 0.7.0)");
-
-    RegisterAlias("fz_window_split", "window_split");
-    RegisterAlias("fz_split", "split");
-    RegisterAlias("fz_split_by_key", "split_by_key");
-    RegisterAlias("fz_split_by_value", "split_by_value");
-    RegisterAlias("fz_window_split_by_key", "window_split_by_key");
-    RegisterAlias("fz_window_split_by_value", "window_split_by_value");
-    RegisterAlias("fz_join", "join");
-    RegisterAlias("fz_top1_ratio", "top1_ratio");
-    RegisterAlias("fz_topn_frequency", "topn_frequency");
 }
 
 }  // namespace udf

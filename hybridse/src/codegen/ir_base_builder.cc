@@ -372,6 +372,28 @@ bool GetLlvmType(::llvm::Module* m, const hybridse::node::TypeNode* data_type,
 
             return true;
         }
+        case hybridse::node::kTuple: {
+            std::string name = absl::StrCat("fe.", data_type->GetName());
+            ::llvm::StringRef sr(name);
+            ::llvm::StructType* stype = m->getTypeByName(sr);
+            if (stype != nullptr) {
+                *llvm_type = stype;
+                return true;
+            }
+            stype = ::llvm::StructType::create(m->getContext(), name);
+
+            std::vector<::llvm::Type*> fields;
+            for (auto field : data_type->generics()) {
+                ::llvm::Type* tp = nullptr;
+                if (!GetLlvmType(m, field, &tp)) {
+                    return false;
+                }
+                fields.push_back(tp);
+            }
+            stype->setBody(fields);
+            *llvm_type = stype;
+            return true;
+        }
         default:
             break;
     }
@@ -889,8 +911,10 @@ base::Status TypeIRBuilder::BinaryOpTypeInfer(
     const node::TypeNode* left_type = nullptr;
     const node::TypeNode* right_type = nullptr;
     node::NodeManager tmp_node_manager;
-    CHECK_TRUE(GetFullType(&tmp_node_manager, lhs, &left_type), common::kTypeError, "invalid op type")
-    CHECK_TRUE(GetFullType(&tmp_node_manager, rhs, &right_type), common::kTypeError, "invalid op type")
+    CHECK_TRUE(GetFullType(&tmp_node_manager, lhs, &left_type), common::kTypeError,
+               "invalid op type: ", GetLlvmObjectString(lhs))
+    CHECK_TRUE(GetFullType(&tmp_node_manager, rhs, &right_type), common::kTypeError,
+               "invalid op type: ", GetLlvmObjectString(rhs))
     const node::TypeNode* output_type = nullptr;
     CHECK_STATUS(func(&tmp_node_manager, left_type, right_type, &output_type))
     return Status::OK();

@@ -252,7 +252,13 @@ cases:
     sql: |
       select col1,ifnull(col2,"abc") as e1 from {0};
     expect:
-      success: false
+      columns: ["col1 int", "e1 string"]
+      order: col1
+      rows:
+        - [1, "0"]
+        - [2, "abc"]
+        - [3, "1"]
+
   - id: 10
     desc: IFNULL-表达式
     sqlDialect: ["HybridSQL"]
@@ -285,7 +291,13 @@ cases:
     sql: |
       select col1,ifnull(col2 /0 ,100) as e3 from {0};
     expect:
-      success: false
+      columns: ["col1 int", "e3 double"]
+      order: col1
+      rows:
+        - [1, 100.0]
+        - [2, 100.0]
+        - [3, 100.0]
+
   - id: 11-2
     mode: cli-unsupport
     desc: NVL is synonyms to ifnull
@@ -305,19 +317,7 @@ cases:
         - [1, "aa"]
         - [2, "abc"]
         - [3, ""]
-  - id: 11-3
-    desc: NVL-表达式-/0
-    inputs:
-      - columns: ["col1 int","col2 int", "col4 timestamp"]
-        indexs: ["index1:col1:col4"]
-        rows:
-          - [1, 0,1590738989000]
-          - [2, null,1590738989000]
-          - [3, 1,1590738989000]
-    sql: |
-      select col1,nvl(col2 /0 ,100) as e3 from {0};
-    expect:
-      success: false
+
   - id: 12
     desc: IFNULL-兼容类型
     sqlDialect: ["HybridSQL"]
@@ -331,7 +331,13 @@ cases:
     sql: |
       select col1,ifnull(col2,100) as e1 from {0};
     expect:
-      success: false
+      columns: ["col1 int", "e1 bigint"]
+      order: col1
+      rows:
+        - [1, 0]
+        - [2, 100]
+        - [3, 1]
+
   - id: 13
     desc: IFNULL-浮点型
     sqlDialect: ["HybridSQL"]
@@ -345,7 +351,12 @@ cases:
     sql: |
       select col1,ifnull(col2,1.1) as e2 from {0};
     expect:
-      success: false
+      columns: ["col1 int", "e2 double"]
+      order: col1
+      rows:
+        - [1, 0]
+        - [2, 1.1]
+        - [3, 1]
 
   - id: NVL2-1
     desc: NVL2
@@ -378,7 +389,12 @@ cases:
     sql: |
       select col1,nvl2(col2, "abc", col1 + 1) as e1 from {0};
     expect:
-      success: false
+      columns: ["col1 int", "e1 string"]
+      order: col1
+      rows:
+        - [1, "abc"]
+        - [2, "3"]
+        - [3, "abc"]
 
   - id: NVL2-3
     desc: NVL2, sub expression
@@ -398,3 +414,45 @@ cases:
         - [1, 1]
         - [2, 3]
         - [3, 9]
+
+  - id: 14
+    desc: compatible type casting for nvl/nvl2/ifnull
+    inputs:
+      - columns: ["col1 int","col2 int64", "col3 float"]
+        indexs: ["index1:col1"]
+        rows:
+          - [1, NULL, 4.0]
+    sql: |
+      select
+        col1,
+        ifnull(col1, NULL) as out1,
+        ifnull(col2, 24) as out2,
+        ifnull(NULL, col1) as out3,
+        nvl2(true, "str", 34) as out4,
+        nvl2(NULL, col2, col3) as out5
+        from {0};
+    expect:
+      columns: ["col1 int", "out1 int", "out2 int64", "out3 int", "out4 string", "out5 double"]
+      order: col1
+      rows:
+        - [1, 1, 24, 1, "str", 4.0]
+
+  - id: 15
+    desc: compatible output type casting for case when
+    inputs:
+      - columns: ["col1 int","col2 int64", "col3 float"]
+        indexs: ["index1:col1"]
+        rows:
+          - [1, NULL, 4.0]
+    sql: |
+      select
+        col1,
+        case col1 when 1 then "abc" else 12 end as out1,
+        case when col2 > 10 then 7.0 else 100 end as out2,
+        case when col2 > 10 then col3 else 100 end as out3,
+        from {0};
+    expect:
+      columns: ["col1 int", "out1 string", "out2 double", "out3 float"]
+      order: col1
+      rows:
+        - [1, "abc", 100.0, 100.0]

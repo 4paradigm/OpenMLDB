@@ -124,6 +124,7 @@ void HandleSQL(const std::string& sql) {
             }
         } else {
             if (status.msg != "ok") {
+                // status is ok, but we want to print more info by msg
                 std::cout << "SUCCEED: " << status.msg << std::endl;
             } else {
                 std::cout << "SUCCEED" << std::endl;
@@ -138,8 +139,7 @@ void HandleSQL(const std::string& sql) {
     }
 }
 
-// cluster mode: if zk_cluster is not empty,
-// standalone mode:
+// cluster mode if zk_cluster is not empty, otherwise standalone mode
 void Shell() {
     DCHECK(cs);
     DCHECK(sr);
@@ -196,13 +196,6 @@ void Shell() {
         // trim space after last semicolon in sql
         StripStartingSpaceOfLastStmt(buffer, &sql);
 
-        if (sql.length() == 4 || sql.length() == 5) {
-            if (absl::EqualsIgnoreCase(sql, "quit;") || absl::EqualsIgnoreCase(sql, "exit;") ||
-                absl::EqualsIgnoreCase(sql, "quit") || absl::EqualsIgnoreCase(sql, "exit")) {
-                std::cout << "Bye" << std::endl;
-                return;
-            }
-        }
         if (sql.back() == ';') {
             HandleSQL(sql);
             multi_line = false;

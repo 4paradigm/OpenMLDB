@@ -14,10 +14,7 @@
 
 if(TESTING_ENABLE)
     set(THIRD_LIBS benchmark_main benchmark ${GTEST_LIBRARIES} yaml-cpp)
-    if(CMAKE_CXX_COMPILER_ID MATCHES "GNU" AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS "9.1")
-        # GNU implementation prior to 9.1 requires linking with -lstdc++fs
-        list(APPEND THIRD_LIBS stdc++fs)
-    endif()
+
     add_library(mini_cluster_bm_common mini_cluster_bm.cc)
     add_dependencies(mini_cluster_bm_common openmldb_proto)
 
@@ -43,6 +40,13 @@ if(TESTING_ENABLE)
 
     add_executable(sql_sdk_test sql_sdk_test.cc)
     target_link_libraries(sql_sdk_test ${SDK_TEST_DEPS} ${BIN_LIBS} ${GTEST_LIBRARIES} )
+
+    add_executable(sql_sdk_run sql_sdk_run.cc)
+    target_link_libraries(sql_sdk_run ${SDK_TEST_DEPS} ${BIN_LIBS})
+    set_target_properties(
+        sql_sdk_run
+        PROPERTIES
+        RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
 
     add_executable(sql_cluster_test sql_cluster_test.cc)
     target_link_libraries(sql_cluster_test ${SDK_TEST_DEPS} ${BIN_LIBS} ${GTEST_LIBRARIES})
@@ -294,14 +298,8 @@ COMMENT "pack static cxx sdk and all depend static libs into one"
 )
 
 if(TESTING_ENABLE)
-    add_library(openmldb_cxx_sdk STATIC IMPORTED GLOBAL)
-    add_dependencies(openmldb_cxx_sdk pack_openmldbsdk)
-    set_target_properties(openmldb_cxx_sdk PROPERTIES
-    IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/libopenmldbsdk.a
-    )
     add_executable(openmldb_api_test openmldb_api_test.cc)
-    # add ${BIN_LIBS} because minicluster
-    target_link_libraries(openmldb_api_test openmldb_cxx_sdk ${BIN_LIBS} ${GTEST_LIBRARIES})
+    target_link_libraries(openmldb_api_test ${BIN_LIBS} ${GTEST_LIBRARIES})
 endif()
 
 FILE(GLOB USER_HEADER 

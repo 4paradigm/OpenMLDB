@@ -22,6 +22,7 @@
 #include <unordered_map>
 #include <utility>
 
+#include "absl/algorithm/container.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/str_join.h"
@@ -366,6 +367,17 @@ bool SqlNodeList::Equals(const SqlNodeList *that) const {
 void QueryNode::Print(std::ostream &output, const std::string &org_tab) const {
     SqlNode::Print(output, org_tab);
     output << ": " << QueryTypeName(query_type_);
+
+    std::string new_tab = org_tab + INDENT;
+    if (!with_clauses_.empty()) {
+        output << "\n" << new_tab << SPACE_ST << "with_clause[list]:";
+        for (size_t i = 0; i <  with_clauses_.size(); i++) {
+            auto node = with_clauses_[i];
+            output << "\n";
+            PrintSqlNode(output, new_tab + INDENT, node, std::to_string(i), false);
+        }
+    }
+
     if (config_options_.get() != nullptr) {
         output << "\n";
         PrintValue(output, org_tab + INDENT + SPACE_ED, config_options_.get(), "config_options", false);
@@ -377,7 +389,9 @@ bool QueryNode::Equals(const SqlNode *node) const {
     }
 
     const QueryNode *that = dynamic_cast<const QueryNode *>(node);
-    return this->query_type_ == that->query_type_;
+    return that != nullptr && this->query_type_ == that->query_type_ &&
+           absl::c_equal(with_clauses_, that->with_clauses_,
+                         [](WithClauseEntry *lhs, WithClauseEntry *rhs) { return SqlEquals(lhs, rhs); });
 }
 
 const std::string AllNode::GetExprString() const {
@@ -1294,6 +1308,9 @@ std::string NameOfSqlNodeType(const SqlNodeType &type) {
             break;
         case kDynamicUdafFnDef:
             output = "kDynamicUdafFnDef";
+            break;
+        case kWithClauseEntry:
+            output = "kWithClauseEntry";
             break;
         case kUnknow:
             output = "kUnknow";
@@ -2751,6 +2768,24 @@ Status StringToDataType(const std::string identifier, DataType *type) {
 
     *type = it->second;
     return Status::OK();
+}
+
+void WithClauseEntry::Print(std::ostream &output, const std::string &org_tab) const {
+    SqlNode::Print(output, org_tab);
+    const std::string tab = org_tab + INDENT + SPACE_ED;
+    output << "\n";
+    PrintValue(output, tab, alias_, "alias", false);
+    output << "\n";
+    PrintSqlNode(output, tab, query_, "query", true);
+}
+
+bool WithClauseEntry::Equals(const SqlNode *node) const {
+    if (!SqlNode::Equals(node)) {
+        return false;
+    }
+
+    auto rhs = dynamic_cast<const WithClauseEntry*>(node);
+    return rhs != nullptr && alias_ == rhs->alias_ && SqlEquals(this, rhs);
 }
 
 }  // namespace node

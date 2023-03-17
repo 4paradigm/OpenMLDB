@@ -10,12 +10,12 @@
     <dependency>
         <groupId>com.4paradigm.openmldb</groupId>
         <artifactId>openmldb-jdbc</artifactId>
-        <version>0.7.1</version>
+        <version>0.7.2</version>
     </dependency>
     <dependency>
         <groupId>com.4paradigm.openmldb</groupId>
         <artifactId>openmldb-native</artifactId>
-        <version>0.7.1</version>
+        <version>0.7.2</version>
     </dependency>
     ```
 
@@ -27,20 +27,20 @@
     <dependency>
         <groupId>com.4paradigm.openmldb</groupId>
         <artifactId>openmldb-jdbc</artifactId>
-        <version>0.7.1</version>
+        <version>0.7.2</version>
     </dependency>
     <dependency>
         <groupId>com.4paradigm.openmldb</groupId>
         <artifactId>openmldb-native</artifactId>
-        <version>0.7.1-macos</version>
+        <version>0.7.2-macos</version>
     </dependency>
     ```
 
-注意：由于 openmldb-native 中包含了 OpenMLDB 编译的 C++ 静态库，默认是 Linux 静态库，macOS 上需将上述 openmldb-native 的 version 改成 `0.7.1-macos`，openmldb-jdbc 的版本保持不变。
+注意：由于 openmldb-native 中包含了 OpenMLDB 编译的 C++ 静态库，默认是 Linux 静态库，macOS 上需将上述 openmldb-native 的 version 改成 `0.7.2-macos`，openmldb-jdbc 的版本保持不变。
 
 openmldb-native 的 macOS 版本只支持 macOS 12，如需在 macOS 11 或 macOS 10.15上运行，需在相应 OS 上源码编译 openmldb-native 包，详细编译方法见[并发编译 Java SDK](https://openmldb.ai/docs/zh/main/deploy/compile.html#java-sdk)。
 
-Java SDK 连接 OpenMLDB 服务，可以使用 JDBC 的方式（推荐），也可以通过 SqlClusterExecutor 的方式直连。下面将依次演示两种连接方式。
+Java SDK 连接 OpenMLDB 服务，可以使用 JDBC 的方式（推荐），也可以通过 SqlClusterExecutor 的方式直连。如果需要使用在线请求模式，只能使用 SqlClusterExecutor 。下面将依次演示两种连接方式。
 
 ## JDBC 方式
 
@@ -61,7 +61,7 @@ Connection 地址指定的 db 在创建连接时必须存在。
 JDBC Connection 的默认执行模式为`online`。
 ```
 
-### 使用概览
+### Statement
 
 通过 `Statement` 的方式可以执行所有的 SQL 命令，离线在线模式下都可以。切换离线/在线模式，需执行 `SET @@execute_mode='...';`。例如：
 
@@ -81,14 +81,22 @@ res = stmt.executeQuery("SELECT * from t1"); // 在线 select, executeQuery 可�
 
 ```SQL
 SET @@sync_job=true;
-SET @@job_timeout=60000; --单位为毫秒，如果数据较多容易超时（默认1钟），请调大job timeout: SET @@job_timeout=600000;
 ```
 
-如果同步命令实际耗时超过连接空闲默认的最大等待时间 0.5 小时，请[调整 taskmanager 的 keepAliveTime](/zh/maintain/faq#2-为什么收到-got-eof-of-socket-的警告日志)。
+如果同步命令实际耗时超过连接空闲默认的最大等待时间 0.5 小时，请[调整配置](../../openmldb_sql/ddl/SET_STATEMENT.md#离线命令配置详情)。
 
+```{caution}
+`Statement`执行`SET @@execute_mode='offline'`不仅会影响当前`Statement`，还会影响该`Connection`已创建和未创建的所有`Statement`。所以，不建议创建多个`Statement`，并期望它们在不同的模式下执行。如果需要在不同模式下执行SQL，建议创建多个Connection。
+```
 ### PreparedStatement
 
-`PreparedStatement` 可支持 `SELECT`、`INSERT` 和 `DELETE`，`INSERT` 仅支持插入到在线。
+`PreparedStatement` 可支持 `SELECT`、`INSERT` 和 `DELETE`。
+
+```{warning}
+任何`PreparedStatement`都只在**在线模式**下执行，不受创建`PreparedStatement`前的任何状态影响。`PreparedStatement`不支持切换到离线模式，如果需要在离线模式下执行SQL，可以使用`Statement`。
+
+Connection创建的三种`PreparedStatement`，分别对应SqlClusterExecutor中的`getPreparedStatement`，`getInsertPreparedStmt`，`getDeletePreparedStmt`。
+```
 
 ```java
 PreparedStatement selectStatement = connection.prepareStatement("SELECT * FROM t1 WHERE id=?");
@@ -203,8 +211,8 @@ try {
 
 `SqlClusterExecutor` 也可以获得 `PreparedStatement`，但需要指定获得哪种 `PreparedStatement`。例如，使用 InsertPreparedStmt 进行插入操作，可以有三种方式。
 
-```{note}
-插入操作仅支持在线，不受执行模式影响，一定是插入数据到在线。
+```{warning}
+任何`PreparedStatement`都只在**在线模式**下执行，不受创建`PreparedStatement`时的`SqlClusterExecutor`状态影响。`PreparedStatement`不支持切换到离线模式，如果需要在离线模式下执行SQL，可以使用`Statement`。
 ```
 
 #### 普通 Insert
@@ -238,6 +246,9 @@ try {
 1. 使用 `SqlClusterExecutor::getInsertPreparedStmt(db, insertSqlWithPlaceHolder)` 接口获取 InsertPrepareStatement。
 2. 调用 `PreparedStatement::setType(index, value)` 接口，填充数据到 InsertPrepareStatement中。注意 index 从 1 开始。
 3. 使用 `PreparedStatement::execute()` 接口执行 insert 语句。
+```{note}
+PreparedStatment条件相同时，可以对同一个对象反复set填充数据后，再执行execute，不需要重新创建PreparedStatement。
+```
 
 ```java
 String insertSqlWithPlaceHolder = "insert into trans values(\"aa\", ?, 33, ?, 2.4, 1590738993000, \"2020-05-04\");";
@@ -307,12 +318,12 @@ executeBatch 后，缓存的所有数据将被清除，无法重试 executeBatch
 
 ### 执行 SQL 请求式查询
 
-`RequestPreparedStmt` 是一个独特的查询模式（JDBC 不支持此模式）。此模式需要 selectSql 与一条请求数据，所以需要在 `getRequestPreparedStmt` 时填入 SQL，也需要 `setType` 设置请求数据。
+`RequestPreparedStmt` 是一个独特的查询模式（JDBC Connection不支持创建这种查询）。此模式需要 selectSql 与一条请求数据，所以需要在 `getRequestPreparedStmt` 时填入 SQL，也需要 `setType` 设置请求数据。
 
 执行 SQL 请求式查询有以下三步：
 
 ```{note}
-请求式查询仅支持在线，不受执行模式影响，一定是进行在线的请求式查询。
+请求式查询仅支持在线，不受`SqlClusterExecutor`的当前执行模式影响，一定是进行在线的请求式查询。
 ```
 
 1. 使用 `SqlClusterExecutor::getRequestPreparedStmt(db, selectSql)` 接口获取RequestPrepareStatement。
@@ -377,7 +388,7 @@ try {
 }
 ```
 
-###  删除指定索引下某个 pk 的所有数据
+###  删除指定索引下某个 key 的所有数据
 
 通过 Java SDK 可以有以下两种方式删除数据:
 

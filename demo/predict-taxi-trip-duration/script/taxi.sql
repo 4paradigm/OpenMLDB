@@ -2,7 +2,6 @@ CREATE DATABASE demo_db;
 USE demo_db;
 CREATE TABLE t1(id string, vendor_id int, pickup_datetime timestamp, dropoff_datetime timestamp, passenger_count int, pickup_longitude double, pickup_latitude double, dropoff_longitude double, dropoff_latitude double, store_and_fwd_flag string, trip_duration int);
 SET @@sync_job=true;
-SET @@job_timeout=600000;
 SET @@execute_mode='offline';
 LOAD DATA INFILE '/work/taxi-trip/data/taxi_tour_table_train_simple.snappy.parquet' INTO TABLE t1 options(format='parquet', mode='overwrite');
 
