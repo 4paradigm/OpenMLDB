@@ -23,7 +23,7 @@ from tool import Partition
 from tool import Status
 from tool import Util
 
-class TestScale:
+class TestUpgrade:
     db = None
     cursor = None
 
@@ -37,20 +37,41 @@ class TestScale:
         cls.bin_path = cls.openmldb_path + "/bin/openmldb"
         cls.executor = Executor(cls.bin_path, case_conf.conf["zk_cluster"], case_conf.conf["zk_root_path"])
 
-    def execute_scale(self, scale_cmd : str, endpoint : str = ""):
+    def execute_upgrade(self, upgrade_cmd : str, endpoint : str):
         cmd = ["python3"]
         cmd.append(f"{self.base_dir}/tools/openmldb_ops.py")
         cmd.append(f"--openmldb_bin_path={self.bin_path}")
         cmd.append("--zk_cluster=" + case_conf.conf["zk_cluster"])
         cmd.append("--zk_root_path=" + case_conf.conf["zk_root_path"])
-        cmd.append(f"--cmd={scale_cmd}")
-        if scale_cmd == "scalein":
-            cmd.append(f"--endpoint={endpoint}")
+        cmd.append(f"--cmd={upgrade_cmd}")
+        cmd.append(f"--endpoint={endpoint}")
+        cmd.append(f"--statfile={self.base_dir}/.stat")
         status, output = self.executor.RunWithRetuncode(cmd)
         return status
 
-    @pytest.mark.parametrize("replica_num, partition_num", [(2, 8), (1, 10)])
-    def test_scalein(self, replica_num, partition_num):
+    def get_leader_cnt(self, db, table_name, endpoint) -> (Status, int):
+        status, result = self.executor.GetTableInfo(db, table_name)
+        if not status.OK():
+            return status, 0
+        leader_cnt = 0
+        for item in result:
+            if item[3] == endpoint and item[4] == "leader":
+                leader_cnt += 1
+        return Status(), leader_cnt
+
+    def get_unalive_cnt(self, db, table_name) -> (Status, int):
+        status, result = self.executor.GetTableInfo(db, table_name)
+        if not status.OK():
+            return status, 0
+        unalive_cnt = 0
+        for item in result:
+            if item[5] == "no":
+                unalive_cnt += 1
+        return Status(), unalive_cnt
+
+
+    @pytest.mark.parametrize("replica_num, partition_num", [(3, 10), (2, 10), (1, 10)])
+    def test_upgrade(self, replica_num, partition_num):
         assert len(case_conf.conf["components"]["tablet"]) > 2
         status, distribution = Util.gen_distribution(case_conf.conf["components"]["tablet"], replica_num, partition_num)
         assert status.OK()
@@ -66,62 +87,30 @@ class TestScale:
         data = result.fetchall()
         assert len(data) == key_num
 
-        status, result = self.executor.GetTableInfo("test", "")
-        assert status.OK()
-        endpoints = set()
-        for item in result:
-            endpoints.add(item[3])
-            assert item[5] == "yes"
-        assert len(endpoints) == len(case_conf.conf["components"]["tablet"])
+        status, cnt = self.get_leader_cnt("test", table_name, case_conf.conf["components"]["tablet"][0])
+        assert status.OK() and cnt > 0
+        status, unalive_cnt = self.get_unalive_cnt("test", table_name)
+        assert status.OK() and unalive_cnt == 0
 
-        assert self.execute_scale("scalein", case_conf.conf["components"]["tablet"][0]).OK()
+        assert self.execute_upgrade("pre-upgrade", case_conf.conf["components"]["tablet"][0]).OK()
 
-        status, result = self.executor.GetTableInfo("test", "")
-        assert status.OK()
-        endpoints = set()
-        for item in result:
-            endpoints.add(item[3])
-            assert item[5] == "yes"
-        assert len(endpoints) == len(case_conf.conf["components"]["tablet"]) - 1
-        assert case_conf.conf["components"]["tablet"][0] not in endpoints
-
-        self.cursor.execute(f"drop table {table_name}")
-
-    @pytest.mark.parametrize("replica_num, partition_num", [(2, 8), (1, 10)])
-    def test_scaleout(self, replica_num, partition_num):
-        assert len(case_conf.conf["components"]["tablet"]) > 2
-        status, distribution = Util.gen_distribution(case_conf.conf["components"]["tablet"][1:], replica_num, partition_num)
-        assert status.OK()
-        self.cursor.execute("create database if not exists test")
-        self.cursor.execute("use test")
-        table_name = "table" + str(random.randint(0, 10000))
-        self.cursor.execute(f"create table if not exists {table_name} (col1 string, col2 string) options (DISTRIBUTION={distribution});")
-        key_num = 50000
-        for i in range(key_num):
-            key = "key" + str(i)
-            self.cursor.execute(f"insert into {table_name} values (\'{key}\', \'col2\')");
+        status, cnt1 = self.get_leader_cnt("test", table_name, case_conf.conf["components"]["tablet"][0])
+        assert status.OK() and cnt1 == 0
         result = self.cursor.execute(f"select * from {table_name}")
+        status, unalive_cnt = self.get_unalive_cnt("test", table_name)
+        assert status.OK() and unalive_cnt == 0
         data = result.fetchall()
         assert len(data) == key_num
 
-        status, result = self.executor.GetTableInfo("test", "")
-        assert status.OK()
-        endpoints = set()
-        for item in result:
-            endpoints.add(item[3])
-            assert item[5] == "yes"
-        assert len(endpoints) == len(case_conf.conf["components"]["tablet"]) - 1
-        assert case_conf.conf["components"]["tablet"][0] not in endpoints
+        assert self.execute_upgrade("post-upgrade", case_conf.conf["components"]["tablet"][0]).OK()
 
-        assert self.execute_scale("scaleout").OK()
-
-        status, result = self.executor.GetTableInfo("test", "")
-        assert status.OK()
-        endpoints = set()
-        for item in result:
-            endpoints.add(item[3])
-            assert item[5] == "yes"
-        assert len(endpoints) == len(case_conf.conf["components"]["tablet"])
+        status, cnt2 = self.get_leader_cnt("test", table_name, case_conf.conf["components"]["tablet"][0])
+        assert status.OK() and cnt2 == cnt
+        status, unalive_cnt = self.get_unalive_cnt("test", table_name)
+        assert status.OK() and unalive_cnt == 0
+        result = self.cursor.execute(f"select * from {table_name}")
+        data = result.fetchall()
+        assert len(data) == key_num
 
         self.cursor.execute(f"drop table {table_name}")
 

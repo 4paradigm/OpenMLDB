@@ -95,18 +95,15 @@ else
     if [[ ${CLEAR_OPENMLDB_INSTALL_DIR} == "true" ]]; then
       echo "clear $dir with endpoint $host:$port "
       rm_dir "$host" "$dir"
-      cmd="cd $dir && rm -rf /tmp/openmldb_offline_storage/"
-      echo "clear taskmanager data in $dir with endpoint $host:$port "
-      run_auto "$host" "$cmd"
     else
       echo "clear taskmanager log in $dir with endpoint $host:$port "
       cmd="cd $dir && rm -rf logs taskmanager/bin/logs"
       run_auto "$host" "$cmd"
-      # TODO(zhanghao): support to delete file:// or hdfs:// style path
-      cmd="cd $dir && rm -rf /tmp/openmldb_offline_storage/"
-      echo "clear taskmanager data in $dir with endpoint $host:$port "
-      run_auto "$host" "$cmd"
     fi
+    # TODO(zhanghao): support to delete file:// or hdfs:// style path
+    cmd="rm -rf /tmp/openmldb_offline_storage/"
+    echo "clear taskmanager data in $dir with endpoint $host:$port "
+    run_auto "$host" "$cmd"
   done
 
   # delete zk data

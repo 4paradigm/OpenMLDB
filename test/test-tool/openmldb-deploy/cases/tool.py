@@ -13,6 +13,7 @@
 # limitations under the License.
 import logging
 import os
+import random
 import subprocess
 import sys
 import time
@@ -393,3 +394,25 @@ class Executor:
             else:
                 break
         return Status()
+
+class Util:
+    def gen_distribution(tablets : list, replica_num: int = 3, partition_num : int = 8) -> (Status, str):
+        if replica_num < 1 or len(tablets) < replica_num:
+            return Status(-1, "invalid args")
+        distribution = "["
+        for i in range(partition_num):
+            if i > 0:
+                distribution += ","
+            endpoints = random.sample(tablets, replica_num)
+            distribution += f"(\'{endpoints[0]}\'"
+            if (replica_num) > 1:
+                distribution += ", ["
+            for endpoint in endpoints[1:]:
+                distribution += f"\'{endpoint}\',"
+            if (replica_num) > 1:
+                distribution = distribution[:-1]
+            if (replica_num) > 1:
+                distribution += "]"
+            distribution += ")"
+        distribution += "]"
+        return Status(), distribution

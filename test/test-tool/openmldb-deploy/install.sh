@@ -18,7 +18,7 @@
 set -eE -x
 VERSION="$1"
 if [[ -z ${VERSION} ]]; then
-    VERSION=0.6.3
+    VERSION=0.7.2
 fi
 echo "version: ${VERSION}"
 curl -SLo openmldb.tar.gz "https://github.com/4paradigm/OpenMLDB/releases/download/v${VERSION}/openmldb-${VERSION}-linux.tar.gz"
