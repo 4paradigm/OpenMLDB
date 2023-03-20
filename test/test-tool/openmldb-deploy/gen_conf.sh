@@ -15,23 +15,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-if [[ $BASE_DIR == "" ]]; then
-    echo "please set 'BASE_DIR' when run script"
+if [[ $# -lt 2 ]]; then
+    echo "invalid args"
     exit 1
 fi
+BASE_DIR=$1
+OLD_IFS="$IFS"
+IFS=","
+hosts=($2)
+IFS="$OLD_IFS"
 
-if [[ $# -lt 1 ]]; then
-    echo "at lease one node is required"
-    exit 1
-fi
 echo "[tablet]"
-for host in "$@"; do
+for host in "${hosts[@]}"; do
     echo "${host}:30221" "${BASE_DIR}/tablet"
 done
 
 num=0
 echo -e  "\n[nameserver]"
-for host in "$@"; do
+for host in "${hosts[@]}"; do
     echo "${host}:30321" "${BASE_DIR}/nameserver"
     (( num=num+1 ))
     if [[ $num -eq 2 ]]; then
@@ -40,14 +41,14 @@ for host in "$@"; do
 done
 
 echo -e "\n[apiserver]"
-for host in "$@"; do
+for host in "${hosts[@]}"; do
     echo "${host}:39080" "${BASE_DIR}/apiserver"
     break
 done
 
 num=0
 echo -e "\n[taskmanager]"
-for host in "$@"; do
+for host in "${hosts[@]}"; do
     echo "${host}:39902" "${BASE_DIR}/taskmanager"
     (( num=num+1 ))
     if [[ $num -eq 2 ]]; then
@@ -57,7 +58,7 @@ done
 
 num=0
 echo -e "\n[zookeeper]"
-for host in "$@"; do
+for host in "${hosts[@]}"; do
     echo "${host}:32181:32888:33888" "${BASE_DIR}/zookeeper"
     (( num=num+1 ))
     if [[ $num -eq 3 ]]; then

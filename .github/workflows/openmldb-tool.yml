@@ -8,8 +8,6 @@ on:
     paths:
       - 'release/**'
       - 'tools/**'
-    tags:
-      - v*
   pull_request:
     paths:
       - 'release/**'
@@ -18,10 +16,12 @@ on:
 
 env:
   GIT_SUBMODULE_STRATEGY: recursive
+  DEPLOY_DIR: /mnt/hdd0/denglong/openmldb_env
+  NODE_LIST: node-1,node-2,node-3
 
 jobs:
   deploy:
-    runs-on: self-hosted
+    runs-on: [self-hosted,seq-task,node-4]
     steps:
       - uses: actions/checkout@v2
 
@@ -30,7 +30,7 @@ jobs:
           VERSION=`git fetch --tags | git tag -l v[0-9].* | tail -n1`
           VERSION=${VERSION#v}
           echo "OPENMLDB_VETSION=$VERSION" >> $GITHUB_ENV
-          BASE_DIR=${{ vars.DEPLOY_DIR }} bash test/test-tool/openmldb-deploy/gen_conf.sh ${{ vars.NODE_LIST }} > hosts
+          bash test/test-tool/openmldb-deploy/gen_conf.sh ${{ env.DEPLOY_DIR }} ${{ env.NODE_LIST }} > hosts
           pip3 install requests openmldb pytest
       - name: install openmldb
         env:
