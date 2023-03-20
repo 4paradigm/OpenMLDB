@@ -16,9 +16,6 @@
 
 #include "tablet/tablet_impl.h"
 
-#include <gflags/gflags.h>
-#include <google/protobuf/io/zero_copy_stream_impl.h>
-#include <google/protobuf/text_format.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <memory>
@@ -35,15 +32,17 @@
 #include <vector>
 #include <unordered_map>
 
+#include "absl/cleanup/cleanup.h"
 #include "boost/bind.hpp"
 #include "boost/container/deque.hpp"
-#include "config.h"  // NOLINT
+#include "config.h" // NOLINT
 #ifdef TCMALLOC_ENABLE
 #include "gperftools/malloc_extension.h"
 #endif
 #include "base/file_util.h"
 #include "base/glog_wrapper.h"
 #include "base/hash.h"
+#include "base/memory_stat.h"
 #include "base/proto_util.h"
 #include "base/status.h"
 #include "base/strings.h"
@@ -53,14 +52,16 @@
 #include "codec/row_codec.h"
 #include "codec/sql_rpc_row_codec.h"
 #include "common/timer.h"
+#include "gflags/gflags.h"
 #include "glog/logging.h"
+#include "google/protobuf/io/zero_copy_stream_impl.h"
+#include "google/protobuf/text_format.h"
 #include "schema/schema_adapter.h"
 #include "storage/binlog.h"
 #include "storage/segment.h"
 #include "tablet/file_sender.h"
 #include "storage/table.h"
 #include "storage/disk_table_snapshot.h"
-#include "absl/cleanup/cleanup.h"
 
 using google::protobuf::RepeatedPtrField;
 using ::openmldb::base::ReturnCode;
@@ -75,6 +76,7 @@ DECLARE_int32(disk_gc_interval);
 DECLARE_int32(statdb_ttl);
 DECLARE_uint32(scan_max_bytes_size);
 DECLARE_uint32(scan_reserve_size);
+DECLARE_uint32(max_memory_mb);
 DECLARE_double(mem_release_rate);
 DECLARE_string(db_root_path);
 DECLARE_string(ssd_root_path);
@@ -92,6 +94,7 @@ DECLARE_string(recycle_bin_ssd_root_path);
 DECLARE_string(recycle_bin_hdd_root_path);
 DECLARE_int32(make_snapshot_threshold_offset);
 DECLARE_uint32(get_table_diskused_interval);
+DECLARE_uint32(get_memory_stat_interval);
 DECLARE_uint32(task_check_interval);
 DECLARE_uint32(load_index_max_wait_time);
 DECLARE_bool(use_name);
@@ -131,7 +134,7 @@ TabletImpl::TabletImpl()
       gc_pool_(FLAGS_gc_pool_size),
       replicators_(),
       snapshots_(),
-      zk_client_(NULL),
+      zk_client_(nullptr),
       keep_alive_pool_(1),
       task_pool_(FLAGS_task_pool_size),
       io_pool_(FLAGS_io_pool_size),
@@ -299,6 +302,10 @@ bool TabletImpl::Init(const std::string& zk_cluster, const std::string& zk_path,
 
     snapshot_pool_.DelayTask(FLAGS_make_snapshot_check_interval, boost::bind(&TabletImpl::SchedMakeSnapshot, this));
     task_pool_.AddTask(boost::bind(&TabletImpl::GetDiskused, this));
+    if (FLAGS_max_memory_mb > 0) {
+        LOG(INFO) << "max memory is " << FLAGS_max_memory_mb << " MB";
+        task_pool_.AddTask(boost::bind(&TabletImpl::GetMemoryStat, this));
+    }
     if (FLAGS_recycle_ttl != 0) {
         task_pool_.DelayTask(FLAGS_recycle_ttl * 60 * 1000, boost::bind(&TabletImpl::SchedDelRecycle, this));
     }
@@ -710,10 +717,12 @@ void TabletImpl::Put(RpcController* controller, const ::openmldb::api::PutReques
         response->set_msg("is follower cluster");
         return;
     }
+    uint32_t tid = request->tid();
+    uint32_t pid = request->pid();
     uint64_t start_time = ::baidu::common::timer::get_micros();
-    std::shared_ptr<Table> table = GetTable(request->tid(), request->pid());
+    std::shared_ptr<Table> table = GetTable(tid, pid);
     if (!table) {
-        PDLOG(WARNING, "table does not exist. tid %u, pid %u", request->tid(), request->pid());
+        PDLOG(WARNING, "table does not exist. tid %u, pid %u", tid, pid);
         response->set_code(::openmldb::base::ReturnCode::kTableIsNotExist);
         response->set_msg("table does not exist");
         return;
@@ -725,9 +734,17 @@ void TabletImpl::Put(RpcController* controller, const ::openmldb::api::PutReques
         return;
     }
     if (table->GetTableStat() == ::openmldb::storage::kLoading) {
-        PDLOG(WARNING, "table is loading. tid %u, pid %u", request->tid(), request->pid());
+        PDLOG(WARNING, "table is loading. tid %u, pid %u", tid, pid);
         response->set_code(::openmldb::base::ReturnCode::kTableIsLoading);
         response->set_msg("table is loading");
+        return;
+    }
+    if (table->GetStorageMode() == ::openmldb::common::StorageMode::kMemory &&
+            memory_used_.load(std::memory_order_relaxed) > FLAGS_max_memory_mb) {
+        PDLOG(WARNING, "current memory %lu MB exceed max memory limit %lu MB. tid %u, pid %u",
+                memory_used_.load(std::memory_order_relaxed), FLAGS_max_memory_mb, tid, pid);
+        response->set_code(::openmldb::base::ReturnCode::kExceedMaxMemory);
+        response->set_msg("exceed max memory");
         return;
     }
     bool ok = false;
@@ -738,7 +755,7 @@ void TabletImpl::Put(RpcController* controller, const ::openmldb::api::PutReques
             response->set_msg("invalid dimension parameter");
             return;
         }
-        DLOG(INFO) << "put data to tid " << request->tid() << " pid " << request->pid() << " with key "
+        DLOG(INFO) << "put data to tid " << tid << " pid " << pid << " with key "
                    << request->dimensions(0).key();
         ok = table->Put(request->time(), request->value(), request->dimensions());
     }
@@ -754,7 +771,7 @@ void TabletImpl::Put(RpcController* controller, const ::openmldb::api::PutReques
     do {
         replicator = GetReplicator(request->tid(), request->pid());
         if (!replicator) {
-            PDLOG(WARNING, "fail to find table tid %u pid %u leader's log replicator", request->tid(), request->pid());
+            PDLOG(WARNING, "fail to find table tid %u pid %u leader's log replicator", tid, pid);
             break;
         }
         entry.set_pk(request->pk());
@@ -773,7 +790,7 @@ void TabletImpl::Put(RpcController* controller, const ::openmldb::api::PutReques
         // in case there will be other Put jump into the middle
         auto update_aggr = [this, &request, &ok, &entry]() {
             ok = UpdateAggrs(request->tid(), request->pid(), request->value(),
-                               request->dimensions(), entry.log_index());
+                    request->dimensions(), entry.log_index());
         };
         UpdateAggrClosure closure(update_aggr);
         replicator->AppendEntry(entry, &closure);
@@ -799,8 +816,7 @@ void TabletImpl::Put(RpcController* controller, const ::openmldb::api::PutReques
         } else {
             key = request->pk();
         }
-        PDLOG(INFO, "slow log[put]. key %s time %lu. tid %u, pid %u", key.c_str(), end_time - start_time,
-              request->tid(), request->pid());
+        PDLOG(INFO, "slow log[put]. key %s time %lu. tid %u, pid %u", key.c_str(), end_time - start_time, tid, pid);
     }
 
     if (replicator) {
@@ -1082,7 +1098,7 @@ int32_t TabletImpl::CountIndex(uint64_t expire_time, uint64_t expire_cnt, ::open
     const openmldb::api::GetType& et_type = request->et_type();
     bool remove_duplicated_record =
         request->has_enable_remove_duplicated_record() && request->enable_remove_duplicated_record();
-    if (it == NULL || count == NULL) {
+    if (it == nullptr || count == nullptr) {
         PDLOG(WARNING, "invalid args");
         return -1;
     }
@@ -1348,7 +1364,7 @@ void TabletImpl::Count(RpcController* controller, const ::openmldb::api::CountRe
     }
     ::openmldb::storage::Ticket ticket;
     ::openmldb::storage::TableIterator* it = table->NewIterator(index, request->key(), ticket);
-    if (it == NULL) {
+    if (it == nullptr) {
         response->set_code(::openmldb::base::ReturnCode::kTsNameNotFound);
         response->set_msg("ts name not found");
         return;
@@ -1415,7 +1431,7 @@ void TabletImpl::Traverse(RpcController* controller, const ::openmldb::api::Trav
         return;
     }
     ::openmldb::storage::TableIterator* it = table->NewTraverseIterator(index_def->GetId());
-    if (it == NULL) {
+    if (it == nullptr) {
         response->set_code(::openmldb::base::ReturnCode::kTsNameNotFound);
         response->set_msg("create iterator failed");
         return;
@@ -1488,14 +1504,14 @@ void TabletImpl::Traverse(RpcController* controller, const ::openmldb::api::Trav
         map_it->second.emplace_back(it->GetKey(), value);
         total_block_size += last_pk.length() + value.size();
         scount++;
-        if (it->GetCount() >= FLAGS_max_traverse_cnt) {
+        if (FLAGS_max_traverse_cnt > 0 && it->GetCount() >= FLAGS_max_traverse_cnt) {
             DEBUGLOG("traverse cnt %lu max %lu, key %s ts %lu", it->GetCount(), FLAGS_max_traverse_cnt, last_pk.c_str(),
                      last_time);
             break;
         }
     }
     bool is_finish = false;
-    if (it->GetCount() >= FLAGS_max_traverse_cnt) {
+    if (FLAGS_max_traverse_cnt > 0 && it->GetCount() >= FLAGS_max_traverse_cnt) {
         DEBUGLOG("traverse cnt %lu is great than max %lu, key %s ts %lu", it->GetCount(), FLAGS_max_traverse_cnt,
                  last_pk.c_str(), last_time);
         last_pk = it->GetPK();
@@ -2406,7 +2422,7 @@ void TabletImpl::GetTableStatus(RpcController* controller, const ::openmldb::api
                     for (const auto& index_def : indexs) {
                         ::openmldb::api::TsIdxStatus* ts_idx_status = status->add_ts_idx_status();
                         ts_idx_status->set_idx_name(index_def->GetName());
-                        uint64_t* stats = NULL;
+                        uint64_t* stats = nullptr;
                         uint32_t size = 0;
                         bool ok = mem_table->GetRecordIdxCnt(index_def->GetId(), &stats, &size);
                         if (ok) {
@@ -2437,7 +2453,7 @@ void TabletImpl::SetExpire(RpcController* controller, const ::openmldb::api::Set
     }
     if (table->GetStorageMode() == common::kMemory) {
         MemTable* mem_table = dynamic_cast<MemTable*>(table.get());
-        if (mem_table != NULL) {
+        if (mem_table != nullptr) {
             mem_table->SetExpire(request->is_expire());
             PDLOG(INFO, "set table expire[%d]. tid[%u] pid[%u]", request->is_expire(), request->tid(), request->pid());
         }
@@ -3194,7 +3210,7 @@ int TabletImpl::LoadDiskTableInternal(uint32_t tid, uint32_t pid, const ::openml
             break;
         }
         DiskTable* disk_table = dynamic_cast<DiskTable*>(table.get());
-        if (disk_table == NULL) {
+        if (disk_table == nullptr) {
             break;
         }
         std::shared_ptr<Snapshot> snapshot = GetSnapshot(tid, pid);
@@ -3767,7 +3783,7 @@ int TabletImpl::WriteTableMeta(const std::string& path, const ::openmldb::api::T
     std::string table_meta_info;
     google::protobuf::TextFormat::PrintToString(*table_meta, &table_meta_info);
     FILE* fd_write = fopen(full_path.c_str(), "w");
-    if (fd_write == NULL) {
+    if (fd_write == nullptr) {
         PDLOG(WARNING, "fail to open file %s. err[%d: %s]", full_path.c_str(), errno, strerror(errno));
         return -1;
     }
@@ -4206,8 +4222,8 @@ bool TabletImpl::UpdateAggrs(uint32_t tid, uint32_t pid, const std::string& valu
 void TabletImpl::ShowMemPool(RpcController* controller, const ::openmldb::api::HttpRequest* request,
                              ::openmldb::api::HttpResponse* response, Closure* done) {
     brpc::ClosureGuard done_guard(done);
-#ifdef TCMALLOC_ENABLE
     brpc::Controller* cntl = static_cast<brpc::Controller*>(controller);
+#ifdef TCMALLOC_ENABLE
     MallocExtension* tcmalloc = MallocExtension::instance();
     std::string stat;
     stat.resize(1024);
@@ -4216,6 +4232,8 @@ void TabletImpl::ShowMemPool(RpcController* controller, const ::openmldb::api::H
     cntl->response_attachment().append("<html><head><title>Mem Stat</title></head><body><pre>");
     cntl->response_attachment().append(stat);
     cntl->response_attachment().append("</pre></body></html>");
+#else
+    cntl->response_attachment().append("TCMALLOC_ENABLE is not defined\n");
 #endif
 }
 
@@ -4615,6 +4633,12 @@ void TabletImpl::GetDiskused() {
     task_pool_.DelayTask(FLAGS_get_table_diskused_interval, boost::bind(&TabletImpl::GetDiskused, this));
 }
 
+void TabletImpl::GetMemoryStat() {
+    auto size = base::GetRSS() >> 20;
+    memory_used_.store(size, std::memory_order_relaxed);
+    task_pool_.DelayTask(FLAGS_get_memory_stat_interval, boost::bind(&TabletImpl::GetMemoryStat, this));
+}
+
 void TabletImpl::SetMode(RpcController* controller, const ::openmldb::api::SetModeRequest* request,
                          ::openmldb::api::GeneralResponse* response, Closure* done) {
     brpc::ClosureGuard done_guard(done);
@@ -4689,7 +4713,7 @@ void TabletImpl::SendIndexData(RpcController* controller, const ::openmldb::api:
             return;
         }
         MemTable* mem_table = dynamic_cast<MemTable*>(table.get());
-        if (mem_table == NULL) {
+        if (mem_table == nullptr) {
             PDLOG(WARNING, "table is not memtable. tid %u, pid %u", request->tid(), request->pid());
             response->set_code(::openmldb::base::ReturnCode::kTableTypeMismatch);
             response->set_msg("table is not memtable");
@@ -4890,12 +4914,12 @@ void TabletImpl::DumpIndexDataInternal(std::shared_ptr<::openmldb::storage::Tabl
         std::string index_file_name = std::to_string(pid) + "_" + std::to_string(i) + "_index.data";
         std::string index_data_path = index_path + index_file_name;
         FILE* fd = fopen(index_data_path.c_str(), "wb+");
-        if (fd == NULL) {
+        if (fd == nullptr) {
             LOG(WARNING) << "fail to create file " << index_data_path << ". tid " << tid << " pid " << pid;
             SetTaskStatus(task, ::openmldb::api::kFailed);
             for (auto& wh : whs) {
                 delete wh;
-                wh = NULL;
+                wh = nullptr;
             }
             return;
         }
@@ -4912,7 +4936,7 @@ void TabletImpl::DumpIndexDataInternal(std::shared_ptr<::openmldb::storage::Tabl
     for (auto& wh : whs) {
         wh->EndLog();
         delete wh;
-        wh = NULL;
+        wh = nullptr;
     }
 }
 
@@ -5011,13 +5035,13 @@ void TabletImpl::LoadIndexDataInternal(uint32_t tid, uint32_t pid, uint32_t cur_
         return;
     }
     FILE* fd = fopen(index_file_path.c_str(), "rb");
-    if (fd == NULL) {
+    if (fd == nullptr) {
         PDLOG(WARNING, "fail to open index file %s. tid %u, pid %u", index_file_path.c_str(), tid, pid);
         SetTaskStatus(task, ::openmldb::api::TaskStatus::kFailed);
         return;
     }
     ::openmldb::log::SequentialFile* seq_file = ::openmldb::log::NewSeqFile(index_file_path, fd);
-    ::openmldb::log::Reader reader(seq_file, NULL, false, 0, false);
+    ::openmldb::log::Reader reader(seq_file, nullptr, false, 0, false);
     std::string buffer;
     uint64_t succ_cnt = 0;
     uint64_t failed_cnt = 0;
@@ -5216,7 +5240,7 @@ void TabletImpl::AddIndex(RpcController* controller, const ::openmldb::api::AddI
         return;
     }
     auto* mem_table = dynamic_cast<MemTable*>(table.get());
-    if (mem_table == NULL) {
+    if (mem_table == nullptr) {
         PDLOG(WARNING, "table is not memtable. tid %u, pid %u", tid, pid);
         base::SetResponseStatus(base::ReturnCode::kTableTypeMismatch, "table is not memtable", response);
         return;
@@ -5600,7 +5624,7 @@ void TabletImpl::TryCollectDeployStats(const std::string& db, const std::string&
     if (!s.ok()) {
         LOG(ERROR) << "[ERROR] collect deploy stat: " << s;
     }
-    LOG(INFO) << "collected " << deploy_name << " for " << time;
+    DLOG(INFO) << "collected " << deploy_name << " for " << time;
 }
 
 void TabletImpl::BulkLoad(RpcController* controller, const ::openmldb::api::BulkLoadRequest* request,
@@ -5795,7 +5819,7 @@ void TabletImpl::CreateAggregator(RpcController* controller, const ::openmldb::a
     std::string aggr_info_path = aggr_table_path + "/aggr_info.txt";
 
     FILE* fd_write = fopen(aggr_info_path.c_str(), "w");
-    if (fd_write == NULL) {
+    if (fd_write == nullptr) {
         PDLOG(WARNING, "fail to open file %s. err[%d: %s]", aggr_info_path.c_str(), errno, strerror(errno));
         response->set_code(::openmldb::base::ReturnCode::kError);
         response->set_msg("open aggr info file failed");

@@ -372,6 +372,28 @@ bool GetLlvmType(::llvm::Module* m, const hybridse::node::TypeNode* data_type,
 
             return true;
         }
+        case hybridse::node::kTuple: {
+            std::string name = absl::StrCat("fe.", data_type->GetName());
+            ::llvm::StringRef sr(name);
+            ::llvm::StructType* stype = m->getTypeByName(sr);
+            if (stype != nullptr) {
+                *llvm_type = stype;
+                return true;
+            }
+            stype = ::llvm::StructType::create(m->getContext(), name);
+
+            std::vector<::llvm::Type*> fields;
+            for (auto field : data_type->generics()) {
+                ::llvm::Type* tp = nullptr;
+                if (!GetLlvmType(m, field, &tp)) {
+                    return false;
+                }
+                fields.push_back(tp);
+            }
+            stype->setBody(fields);
+            *llvm_type = stype;
+            return true;
+        }
         default:
             break;
     }

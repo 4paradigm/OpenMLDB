@@ -273,10 +273,6 @@ int32_t char_length(StringRef *str) {
 
 float Cotf(float x) { return cosf(x) / sinf(x); }
 
-double degree_to_radius(double degree) {
-    return degree/180.0L*M_PI;
-}
-
 double Degrees(double x) { return x * (180 / M_PI); }
 
 void date_format(Timestamp *timestamp,

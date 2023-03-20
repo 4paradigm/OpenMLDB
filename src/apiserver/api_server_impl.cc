@@ -89,7 +89,7 @@ struct ExecContext {
  public:
     bool is_online = false;
     bool is_sync = true;
-    int job_timeout = 600000;  // ms
+    int job_timeout = 600000;  // ms, equal with the default value in client vars
     ExecContext() = default;
     ExecContext(bool online, bool sync) : is_online(online), is_sync(sync) {}
 
@@ -101,7 +101,11 @@ struct ExecContext {
 };
 
 std::map<std::string, ExecContext> mode_map{
-    {"offsync", {false, true}}, {"offasync", {false, false}}, {"online", {true, false}}};
+    {"offsync", {false, true}},
+    {"offasync", {false, false}},
+    {"online", {true, false}},
+    {"onsync", {true, true}}  // special mode for online load data
+};
 
 void APIServerImpl::RegisterQuery() {
     provider_.post("/dbs/:db_name", [this](const InterfaceProvider::Params& param, const butil::IOBuf& req_body,
@@ -114,7 +118,6 @@ void APIServerImpl::RegisterQuery() {
         }
         auto db = db_it->second;
 
-        // default mode is offsync
         QueryReq req;
         JsonReader query_reader(req_body.to_string().c_str());
         query_reader >> req;
@@ -129,6 +132,9 @@ void APIServerImpl::RegisterQuery() {
             return;
         }
         ExecContext ctx = it->second;
+        if (req.timeout != -1) {
+            ctx.job_timeout = req.timeout;
+        }
 
         const auto& sql = req.sql;
         const auto parameter = req.parameter;
@@ -257,10 +263,11 @@ bool APIServerImpl::AppendJsonValue(const butil::rapidjson::Value& v, hybridse::
             if (parts.size() != 3) {
                 return false;
             }
-            auto year = boost::lexical_cast<int32_t>(parts[0]);
-            auto mon = boost::lexical_cast<int32_t>(parts[1]);
-            auto day = boost::lexical_cast<int32_t>(parts[2]);
-            return row->AppendDate(year, mon, day);
+            int32_t year, mon, day;
+            if (FromString(parts[0], year) && FromString(parts[1], mon) && FromString(parts[2], day)) {
+                return row->AppendDate(year, mon, day);
+            }
+            return false;
         }
         case hybridse::sdk::kTypeTimestamp: {
             if (!v.IsInt64()) {
@@ -372,11 +379,16 @@ void APIServerImpl::RegisterPut() {
             return;
         }
 
+        // TODO(hw): check all value json type with table schema?
         // scan all strings , calc the sum, to init SQLInsertRow's string length
         decltype(arr.Size()) str_len_sum = 0;
         for (int i = 0; i < cnt; ++i) {
-            // if null, GetStringLength() will get 0
-            if (schema->GetColumnType(i) == hybridse::sdk::kTypeString) {
+            // if null, it's not string json type and can't GetStringLength()
+            if (!arr[i].IsNull() && schema->GetColumnType(i) == hybridse::sdk::kTypeString) {
+                if (!arr[i].IsString()) {
+                    writer << resp.Set("value is not string for col " + schema->GetColumnName(i));
+                    return;
+                }
                 str_len_sum += arr[i].GetStringLength();
             }
         }
@@ -384,7 +396,7 @@ void APIServerImpl::RegisterPut() {
 
         for (int i = 0; i < cnt; ++i) {
             if (!AppendJsonValue(arr[i], schema->GetColumnType(i), schema->IsColumnNotNull(i), row)) {
-                writer << resp.Set("Translate to insert row failed");
+                writer << resp.Set("convertion failed for col " + schema->GetColumnName(i));
                 return;
             }
         }
@@ -702,6 +714,9 @@ JsonReader& operator&(JsonReader& ar, QueryReq& s) {  // NOLINT
     // mode is not optional
     ar.Member("mode") & s.mode;
     ar.Member("sql") & s.sql;
+    if (ar.HasMember("timeout")) {
+        ar.Member("timeout") & s.timeout;
+    }
     if (ar.HasMember("input")) {
         ar.Member("input") & s.parameter;
     }

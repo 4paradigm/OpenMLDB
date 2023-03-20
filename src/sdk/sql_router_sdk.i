@@ -44,6 +44,7 @@
 %shared_ptr(hybridse::sdk::ProcedureInfo);
 %shared_ptr(openmldb::sdk::QueryFuture);
 %shared_ptr(openmldb::sdk::TableReader);
+%shared_ptr(hybridse::node::CreateTableLikeClause);
 %template(VectorUint32) std::vector<uint32_t>;
 %template(VectorString) std::vector<std::string>;
 

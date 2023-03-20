@@ -327,7 +327,8 @@ struct ExplainOutput {
     std::string ir;               ///< Codegen IR String
     vm::Schema output_schema;     ///< The schema of query result
     vm::Router router;            ///< The Router for request-mode query
-    uint32_t limit_cnt;                ///< The limit count
+    uint32_t limit_cnt;           ///< The limit count
+    std::set<std::pair<std::string, std::string>> dependent_tables;
 };
 
 
@@ -372,7 +373,6 @@ class Engine {
     ///
     /// The tables' names are returned in tables
     bool GetDependentTables(const std::string& sql, const std::string& db,
-                            EngineMode engine_mode,
                             std::set<std::pair<std::string, std::string>>* db_tables,
                             base::Status& status);  // NOLINT
 
@@ -397,7 +397,7 @@ class Engine {
                                      const std::vector<node::DataType>& arg_types, bool arg_nullable,
                                      bool is_aggregate, const std::string& file);
 
-    base::Status RemoveExternalFunction(const std::string& name,
+    static base::Status RemoveExternalFunction(const std::string& name,
                                      const std::vector<node::DataType>& arg_types,
                                      const std::string& file);
 
@@ -419,8 +419,9 @@ class Engine {
     EngineOptions GetEngineOptions();
 
  private:
-    bool GetDependentTables(const node::PlanNode* node, const std::string& default_db,
-                            std::set<std::pair<std::string, std::string>>* db_tables, base::Status& status);  // NOLINT
+    // Get all dependent (db, table) info from physical plan
+    Status GetDependentTables(const PhysicalOpNode*, std::set<std::pair<std::string, std::string>>*);
+
     std::shared_ptr<CompileInfo> GetCacheLocked(const std::string& db,
                                                 const std::string& sql,
                                                 EngineMode engine_mode);

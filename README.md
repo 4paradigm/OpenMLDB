@@ -20,12 +20,12 @@
 2. [A Feature Platform for ML Applications](#2-a-feature-platform-for-ml-applications)
 3. [Highlights](#3-highlights)
 4. [FAQ](#4-faq)
-5. [Build and Install](#5-build-and-install)
+5. [Download and Install](#5-download-and-install)
 6. [QuickStart](#6-quickstart)
 7. [Use Cases](#7-use-cases)
 8. [Documentation](#8-documentation)
 9. [Roadmap](#9-roadmap)
-10. [Contributors](#10-contributors)
+10. [Contribution](#10-contribution)
 11. [Community](#11-community)
 12. [Publications](#12-publications)
 13. [The User List](#13-the-user-list)
@@ -82,23 +82,14 @@ In order to achieve the goal of Development as Deployment, OpenMLDB is designed 
    
    SQL (with extension) has the elegant syntax but yet powerful expression ability. SQL based programming experience flattens the learning curve of using OpenMLDB, and further makes it easier for collaboration and sharing.
 
-## 5. Build and Install
+## 5. Download and Install
 
-:point_right: [Read more](https://openmldb.ai/docs/en/main/deploy/index.html)
-
-Or you can directly start working on this repository by clicking on the following button
-
-[![Open in Gitpod](https://gitpod.io/button/open-in-gitpod.svg)](https://gitpod.io/#https://github.com/4paradigm/OpenMLDB)
+- Download: [GitHub release](https://github.com/4paradigm/OpenMLDB/releases), [mirror site (Hong Kong)](https://openmldb.ai/download/)
+- Install and deploy: [English](https://openmldb.ai/docs/en/main/deploy/install_deploy.html), [Chinese](https://openmldb.ai/docs/zh/main/deploy/install_deploy.html)
 
 ## 6. QuickStart
 
-**Cluster and Standalone Versions**
-
-OpenMLDB has two versions with different deployment options, which are *cluster version* and *standalone version*. The cluster version is suitable for large-scale applications and ready for production. On the other hand, the lightweight standalone version running on a single node is ideal for evaluation and demonstration. The cluster and standalone versions have the same functionalities but with different limitations for particular functions. Please refer to [this document](https://openmldb.ai/docs/en/main/tutorial/standalone_vs_cluster.html)  for details. 
-
-**Getting Started with OpenMLDB**
-
-:point_right: [OpenMLDB QuickStart](https://openmldb.ai/docs/en/main/quickstart/openmldb_quickstart.html)
+[OpenMLDB QuickStart](https://openmldb.ai/docs/en/main/quickstart/openmldb_quickstart.html)
 
 ## 7. Use Cases
 
@@ -107,14 +98,14 @@ We are building a list of real-world use cases based on OpenMLDB to demonstrate 
 | Use Cases                                                    | Tools                                                        | Brief Introduction                                           |
 | ------------------------------------------------------------ | ------------------------------------------------------------ | ------------------------------------------------------------ |
 | [New York City Taxi Trip Duration](https://openmldb.ai/docs/en/main/use_case/lightgbm_demo.html) | OpenMLDB, LightGBM                                           | This is a challenge from Kaggle to predict the total ride duration of taxi trips in New York City. You can read [more detail here](https://www.kaggle.com/c/nyc-taxi-trip-duration/). It demonstrates using the open-source tools OpenMLDB + LightGBM to build an end-to-end machine learning applications easily. |
-| [Importing real-time data streams from Pulsar](https://openmldb.ai/docs/en/main/use_case/pulsar_openmldb_connector_demo.html) | OpenMLDB, Pulsar, [OpenMLDB-Pulsar connector](https://pulsar.apache.org/docs/next/io-connectors/#jdbc-openmldb) | Apache Pulsar is a cloud-native streaming platform. Based on the OpenMLDB-Kafka connector , we are able to seamlessly import real-time data streams from Pulsar to OpenMLDB as the online data sources. |
+| [Importing real-time data streams from Pulsar](https://openmldb.ai/docs/en/main/use_case/pulsar_connector_demo.html) | OpenMLDB, Pulsar, [OpenMLDB-Pulsar connector](https://pulsar.apache.org/docs/next/io-connectors/#jdbc-openmldb) | Apache Pulsar is a cloud-native streaming platform. Based on the OpenMLDB-Kafka connector , we are able to seamlessly import real-time data streams from Pulsar to OpenMLDB as the online data sources. |
 | [Importing real-time data streams from Kafka](https://openmldb.ai/docs/en/main/use_case/kafka_connector_demo.html) | OpenMLDB, Kafka, [OpenMLDB-Kafka connector](https://github.com/4paradigm/OpenMLDB/tree/main/extensions/kafka-connect-jdbc) | Apache Kafka is a distributed event streaming platform. With the OpenMLDB-Kafka connector, the real-time data streams can be imported from Kafka as the online data sources for OpenMLDB. |
-| [Importing real-time data streams from RocketMQ](https://openmldb.ai/docs/zh/main/use_case/rocketmq_connector.html) | OpenMLDB, RocketMQ, [OpenMLDB-RocketMQ connector](https://github.com/apache/rocketmq-connect/blob/master/connectors/rocketmq-connect-jdbc/src/main/java/org/apache/rocketmq/connect/jdbc/dialect/impl/OpenMLDBDatabaseDialect.java) | Apache RocketMQ is a distributed messaging and streaming platform. The OpenMLDB-RocketMQ connector is used to efficiently import real-data streams from RocketMQ to OpenMLDB. |
+| [Importing real-time data streams from RocketMQ](https://openmldb.ai/docs/zh/main/integration/online_datasources/rocketmq_connector.html) | OpenMLDB, RocketMQ, [OpenMLDB-RocketMQ connector](https://github.com/apache/rocketmq-connect/tree/master/connectors/rocketmq-connect-jdbc/rocketmq-connect-jdbc-openmldb) | Apache RocketMQ is a distributed messaging and streaming platform. The OpenMLDB-RocketMQ connector is used to efficiently import real-data streams from RocketMQ to OpenMLDB. |
 | [Building end-to-end ML pipelines in DolphinScheduler](https://openmldb.ai/docs/en/main/use_case/dolphinscheduler_task_demo.html) | OpenMLDB, DolphinScheduler, [OpenMLDB task plugin](https://dolphinscheduler.apache.org/zh-cn/docs/dev/user_doc/guide/task/openmldb.html) | We demonstrate to build an end-to-end machine learning pipeline based on OpenMLDB and DolphinScheduler (an open-source workflow scheduler platform). It consists of feature engineering, model training, and deployment. |
-| [Ad Tracking Fraud Detection](https://openmldb.ai/docs/zh/main/use_case/talkingdata_demo.html) | OpenMLDB, XGBoost                                            | This demo uses OpenMLDB and XGBoost to [detect click fraud](https://www.kaggle.com/c/talkingdata-adtracking-fraud-detection/) for online advertisements. |
-| [SQL-based ML pipelines](https://openmldb.ai/docs/zh/main/use_case/OpenMLDB_Byzer_taxi.html) | OpenMLDB, Byzer, [OpenMLDB Plugin for Byzer](https://github.com/byzer-org/byzer-extension/tree/master/byzer-openmldb) | Byzer is a low-code open-source programming language for data pipeline, analytics and AI. Byzer has integrated OpenMLDB to deliver the capability of building ML pipelines with SQL. |
-| [Building end-to-end ML pipelines in Airflow](https://openmldb.ai/docs/zh/main/use_case/airflow_provider_demo.html) | OpenMLDB, Airflow, [Airflow OpenMLDB Provider](https://github.com/4paradigm/OpenMLDB/tree/main/extensions/airflow-provider-openmldb), XGBoost | Airflow is a popular workflow management and scheduling tool. This demo shows how to effectively schedule OpenMLDB tasks in the Airflow through the provider package. |
-| [Precision marketing](https://openmldb.ai/docs/zh/main/use_case/JD_recommendation.html) | OpenMLDB, OneFlow                                            | OneFlow is a deep learning framework designed to be user-friendly, scalable and efficient. This use case demonstrates to use OpenMLDB for feature engineering and OneFlow for model training/inference, to build an application for [precision marketing](https://jdata.jd.com/html/detail.html?id=1). |
+| [Ad Tracking Fraud Detection](https://openmldb.ai/docs/en/main/use_case/talkingdata_demo.html) | OpenMLDB, XGBoost                                            | This demo uses OpenMLDB and XGBoost to [detect click fraud](https://www.kaggle.com/c/talkingdata-adtracking-fraud-detection/) for online advertisements. |
+| [SQL-based ML pipelines](https://openmldb.ai/docs/en/main/use_case/OpenMLDB_Byzer_taxi.html) | OpenMLDB, Byzer, [OpenMLDB Plugin for Byzer](https://github.com/byzer-org/byzer-extension/tree/master/byzer-openmldb) | Byzer is a low-code open-source programming language for data pipeline, analytics and AI. Byzer has integrated OpenMLDB to deliver the capability of building ML pipelines with SQL. |
+| [Building end-to-end ML pipelines in Airflow](https://openmldb.ai/docs/en/main/use_case/airflow_provider_demo.html) | OpenMLDB, Airflow, [Airflow OpenMLDB Provider](https://github.com/4paradigm/OpenMLDB/tree/main/extensions/airflow-provider-openmldb), XGBoost | Airflow is a popular workflow management and scheduling tool. This demo shows how to effectively schedule OpenMLDB tasks in the Airflow through the provider package. |
+| [Precision marketing](https://openmldb.ai/docs/en/main/use_case/JD_recommendation_en.html) | OpenMLDB, OneFlow                                            | OneFlow is a deep learning framework designed to be user-friendly, scalable and efficient. This use case demonstrates to use OpenMLDB for feature engineering and OneFlow for model training/inference, to build an application for [precision marketing](https://jdata.jd.com/html/detail.html?id=1). |
 
 ## 8. Documentation
 
@@ -139,6 +130,8 @@ We really appreciate the contribution from our community.
 - If you are interested to contribute, please read our [Contribution Guideline](CONTRIBUTING.md) for more details. 
 - If you are a new contributor, you may get start with [the list of issues labeled with `good first issue`](https://github.com/4paradigm/OpenMLDB/issues?q=is%3Aopen+is%3Aissue+label%3A%22good+first+issue%22).
 - If you have experience of OpenMLDB development, or want to tackle a challenge that may take 1-2 weeks, you may find [the list of issues labeled with `call-for-contributions`](https://github.com/4paradigm/OpenMLDB/issues?q=is%3Aopen+is%3Aissue+label%3Acall-for-contributions).
+
+[![Open in Gitpod](https://gitpod.io/button/open-in-gitpod.svg)](https://gitpod.io/#https://github.com/4paradigm/OpenMLDB)
 
 ## 11. Community
 

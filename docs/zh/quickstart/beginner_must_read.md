@@ -71,13 +71,11 @@ create table t1(c1 int;
 
 如果是集群离线命令，默认异步模式下，发送命令会得到job id的返回。可使用`show job <id>`来查询job执行情况。
 
-离线job如果是异步SELECT（并不INTO保存结果），也不会将结果打印在客户端（同步SELECT将会打印结果）。需要从日志中获得结果，日志默认在`/work/openmldb/taskmanager/bin/logs/job_x.log`。
-
-如果发现job failed或者其他状态，不符合你的预期，请查询日志。日志默认在`/work/openmldb/taskmanager/bin/logs/job_x_error.log`(注意有error后缀)，
-
-日志地址由taskmanager.properties的`job.log.path`配置，如果你改变了此配置项，需要到配置的目的地寻找日志。
+离线job如果是异步SELECT（并不INTO保存结果），也不会将结果打印在客户端（同步SELECT将会打印结果）。可以通过`show joblog <id>`来获得结果，结果中包含stdout和stderr两部分，stdout为查询结果，stderr为job运行日志。如果发现job failed或者其他状态，不符合你的预期，请仔细查看job运行日志。
 
 ```{note}
+日志地址由taskmanager.properties的`job.log.path`配置，如果你改变了此配置项，需要到配置的目的地寻找日志。stdout日志默认在`/work/openmldb/taskmanager/bin/logs/job_x.log`，job运行日志默认在`/work/openmldb/taskmanager/bin/logs/job_x_error.log`(注意有error后缀)，
+
 如果taskmanager是yarn模式，而不是local模式，`job_x_error.log`中的信息会较少，不会有job错误的详细信息。需要通过`job_x_error.log`中记录的yarn app id，去yarn系统中查询job的真正错误原因。
 ```
 
@@ -126,13 +124,13 @@ set @@execute_mode='';
 
 docker或本地的集群（服务端所有进程都在本地），可以使用诊断工具快速获取配置、日志等信息。
 
-使用init.sh/start-all.sh脚本启动的OpenMLDB服务端，可以使用以下命令进行诊断，分别对应集群版和单机版。
+使用`init.sh`/`start-all.sh`和`init.sh standalone`/`start-standalone.sh`脚本启动的OpenMLDB服务端，可以使用以下命令进行诊断，分别对应集群版和单机版。
 
 ```
 openmldb_tool --env=onebox --dist_conf=cluster_dist.yml
-openmldb_tool --env=onebox --dist_conf=stadnalone_dist.yml
+openmldb_tool --env=onebox --dist_conf=standalone_dist.yml
 ```
-`cluster_dist.yml`和`stadnalone_dist.yml`，可在docker容器`/work/diag`目录中找到，或将[github目录](https://github.com/4paradigm/OpenMLDB/tree/main/demo)中的yml文件复制下来使用。
+`cluster_dist.yml`和`stadnalone_dist.yml`，可在docker容器`/work/`目录中找到，或将[github目录](https://github.com/4paradigm/OpenMLDB/tree/main/demo)中的yml文件复制下来使用。
 
 如果是分布式的集群，需要配置ssh免密才能顺利使用诊断工具，参考文档[诊断工具](../maintain/diagnose.md)。
 

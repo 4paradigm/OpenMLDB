@@ -16,6 +16,7 @@
         <module>openmldb-deploy</module>
         <module>openmldb-devops-test</module>
         <module>openmldb-ecosystem</module>
+        <module>openmldb-command-tool</module>
     </modules>
 
     <properties>
@@ -91,12 +92,12 @@
         <dependency>
             <groupId>org.testng</groupId>
             <artifactId>testng</artifactId>
-            <version>6.14.3</version>
+            <version>7.7.0</version>
         </dependency>
         <dependency>
             <groupId>org.yaml</groupId>
             <artifactId>snakeyaml</artifactId>
-            <version>1.31</version>
+            <version>1.32</version>
         </dependency>
     </dependencies>
 

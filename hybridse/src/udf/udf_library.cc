@@ -87,6 +87,7 @@ void UdfLibrary::InsertRegistry(
             entry = iter->second;
         }
     }
+    entry->fn_name = canonical_name;
     // set return list property
     if (always_return_list) {
         if (entry->signature_table.GetTable().size() == 0) {
@@ -293,6 +294,9 @@ Status UdfLibrary::RegisterAlias(const std::string& alias,
     iter = table_.find(canonical_name);
     CHECK_TRUE(iter != table_.end(), kCodegenError,
                "Alias target Function name '", canonical_name, "' not found");
+    // update alias info
+    iter->second->alias.insert(canonical_name);
+
     table_[canonical_alias] = iter->second;
     return Status::OK();
 }
@@ -376,7 +380,7 @@ Status UdfLibrary::Transform(const std::string& name, UdfResolveContext* ctx,
         ctx->GetArgSignature(), ">");
 
     DLOG(INFO) << "Resolve '" << canonical_name << "'<"
-               << ctx->GetArgSignature() << ">to " << canonical_name << "("
+               << ctx->GetArgSignature() << "> to " << canonical_name << "("
                << signature << ")";
     CHECK_TRUE(registry != nullptr, kCodegenError);
     return registry->Transform(ctx, result);
@@ -405,7 +409,7 @@ Status UdfLibrary::ResolveFunction(const std::string& name,
         ctx->GetArgSignature(), ">");
 
     DLOG(INFO) << "Resolve '" << canonical_name << "'<"
-               << ctx->GetArgSignature() << ">to " << canonical_name << "("
+               << ctx->GetArgSignature() << "> to " << canonical_name << "("
                << signature << ")";
     CHECK_TRUE(registry != nullptr, kCodegenError);
     return registry->ResolveFunction(ctx, result);

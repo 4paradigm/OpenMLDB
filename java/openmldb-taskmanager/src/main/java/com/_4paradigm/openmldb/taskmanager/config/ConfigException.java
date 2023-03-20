@@ -9,4 +9,8 @@ public class ConfigException extends Exception {
         super(String.format("Error of config '%s': %s", config, message));
     }
 
+    public ConfigException(String message) {
+        super(message);
+    }
+
 }

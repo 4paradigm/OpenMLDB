@@ -35,6 +35,7 @@
 #include "codec/codec.h"
 #include "codec/row_codec.h"
 #include "codec/schema_codec.h"
+#include "codec/sdk_codec.h"
 #include "common/timer.h"
 #include "gtest/gtest.h"
 #include "log/log_reader.h"
@@ -73,10 +74,6 @@ using ::openmldb::type::TTLType::kAbsOrLat;
 
 uint32_t counter = 10;
 static const ::openmldb::base::DefaultComparator scmp;
-
-inline std::string GenRand() {
-    return std::to_string(rand() % 10000000 + 1);  // NOLINT
-}
 
 class MockClosure : public ::google::protobuf::Closure {
  public:
@@ -328,10 +325,10 @@ TEST_F(TabletImplTest, Init) {
         ASSERT_TRUE(tablet.Init(""));
         create_and_drop_table(&tablet, counter++);
     }
-
+    ::openmldb::test::TempPath tmp_path;
     {
         TabletImpl tablet;
-        FLAGS_recycle_bin_root_path = "/tmp/recycle/" + ::openmldb::tablet::GenRand();
+        FLAGS_recycle_bin_root_path = tmp_path.GetTempPath();
         ASSERT_TRUE(tablet.Init(""));
         create_and_drop_table(&tablet, counter++, common::kMemory, true);
     }
@@ -345,7 +342,7 @@ TEST_F(TabletImplTest, Init) {
 
     {
         TabletImpl tablet;
-        FLAGS_recycle_bin_hdd_root_path = "/tmp/recycle/" + ::openmldb::tablet::GenRand();
+        FLAGS_recycle_bin_hdd_root_path = tmp_path.GetTempPath();
         ASSERT_TRUE(tablet.Init(""));
         create_and_drop_table(&tablet, counter++, common::kHDD, true);
     }
@@ -359,7 +356,7 @@ TEST_F(TabletImplTest, Init) {
 
     {
         TabletImpl tablet;
-        FLAGS_recycle_bin_ssd_root_path = "/tmp/recycle/" + ::openmldb::tablet::GenRand();
+        FLAGS_recycle_bin_ssd_root_path = tmp_path.GetTempPath();
         ASSERT_TRUE(tablet.Init(""));
         create_and_drop_table(&tablet, counter++, common::kSSD, true);
     }
@@ -2029,9 +2026,9 @@ TEST_F(TabletImplTest, DropTableNoRecycleMem) {
     std::string tmp_recycle_bin_root_path = FLAGS_recycle_bin_root_path;
     std::vector<std::string> file_vec;
     FLAGS_recycle_bin_enabled = false;
-    FLAGS_db_root_path = "/tmp/gtest/db";
-    FLAGS_recycle_bin_root_path = "/tmp/gtest/recycle";
-    ::openmldb::base::RemoveDirRecursive("/tmp/gtest");
+    ::openmldb::test::TempPath tmp_path;
+    FLAGS_db_root_path = tmp_path.GetTempPath();
+    FLAGS_recycle_bin_root_path = tmp_path.GetTempPath();
     TabletImpl tablet;
     uint32_t id = counter++;
     tablet.Init("");
@@ -2063,7 +2060,6 @@ TEST_F(TabletImplTest, DropTableNoRecycleMem) {
     ::openmldb::base::GetChildFileName(FLAGS_recycle_bin_root_path, file_vec);
     ASSERT_TRUE(file_vec.empty());
     ASSERT_EQ(0, CreateDefaultTable("", "t0", id, 1, 1, 0, kAbsoluteTime, openmldb::common::kMemory, &tablet));
-    ::openmldb::base::RemoveDirRecursive("/tmp/gtest");
     FLAGS_recycle_bin_enabled = tmp_recycle_bin_enabled;
     FLAGS_db_root_path = tmp_db_root_path;
     FLAGS_recycle_bin_root_path = tmp_recycle_bin_root_path;
@@ -2075,9 +2071,9 @@ TEST_F(TabletImplTest, DropTableNoRecycleDisk) {
     std::string tmp_recycle_bin_hdd_root_path = FLAGS_recycle_bin_hdd_root_path;
     std::vector<std::string> file_vec;
     FLAGS_recycle_bin_enabled = false;
-    FLAGS_hdd_root_path = "/tmp/gtest/db/hdd";
-    FLAGS_recycle_bin_hdd_root_path = "/tmp/gtest/recycle/hdd";
-    ::openmldb::base::RemoveDirRecursive("/tmp/gtest");
+    ::openmldb::test::TempPath tmp_path;
+    FLAGS_hdd_root_path = tmp_path.GetTempPath();
+    FLAGS_recycle_bin_hdd_root_path = tmp_path.GetTempPath();
     TabletImpl tablet;
     uint32_t id = counter++;
     tablet.Init("");
@@ -2109,7 +2105,6 @@ TEST_F(TabletImplTest, DropTableNoRecycleDisk) {
     ::openmldb::base::GetChildFileName(FLAGS_recycle_bin_hdd_root_path, file_vec);
     ASSERT_TRUE(file_vec.empty());
     ASSERT_EQ(0, CreateDefaultTable("", "t0", id, 1, 1, 0, kAbsoluteTime, openmldb::common::kHDD, &tablet));
-    ::openmldb::base::RemoveDirRecursive("/tmp/gtest");
     FLAGS_recycle_bin_enabled = tmp_recycle_bin_enabled;
     FLAGS_hdd_root_path = tmp_hdd_root_path;
     FLAGS_recycle_bin_hdd_root_path = tmp_recycle_bin_hdd_root_path;
@@ -3035,7 +3030,7 @@ TEST_P(TabletImplTest, GetTermPair) {
     ::openmldb::common::StorageMode storage_mode = GetParam();
     uint32_t id = counter++;
     FLAGS_zk_cluster = "127.0.0.1:6181";
-    FLAGS_zk_root_path = "/rtidb3" + GenRand();
+    FLAGS_zk_root_path = "/rtidb3" + ::openmldb::test::GenRand();
     int offset = FLAGS_make_snapshot_threshold_offset;
     FLAGS_make_snapshot_threshold_offset = 0;
     MockClosure closure;
@@ -4933,19 +4928,12 @@ TEST_P(TabletImplTest, AbsOrLat) {
 }
 
 TEST_F(TabletImplTest, DelRecycleMem) {
-    uint32_t tmp_recycle_ttl = FLAGS_recycle_ttl;
     std::string tmp_recycle_bin_root_path = FLAGS_recycle_bin_root_path;
-    absl::Cleanup clean = [&]() {
-        ::openmldb::base::RemoveDirRecursive("/tmp/gtest");
-        FLAGS_recycle_ttl = tmp_recycle_ttl;
-        FLAGS_recycle_bin_root_path = tmp_recycle_bin_root_path;
-    };
-
     FLAGS_recycle_ttl = 1;
-    FLAGS_recycle_bin_root_path = "/tmp/gtest/recycle";
-    ::openmldb::base::RemoveDirRecursive(FLAGS_recycle_bin_root_path);
-    ::openmldb::base::MkdirRecur("/tmp/gtest/recycle/99_1_binlog_20191111070955/binlog/");
-    ::openmldb::base::MkdirRecur("/tmp/gtest/recycle/100_2_20191111115149/binlog/");
+    ::openmldb::test::TempPath tmp_path;
+    FLAGS_recycle_bin_root_path = tmp_path.GetTempPath("recycle");
+    ::openmldb::base::MkdirRecur(FLAGS_recycle_bin_root_path + "/99_1_binlog_20191111070955/binlog/");
+    ::openmldb::base::MkdirRecur(FLAGS_recycle_bin_root_path + "/100_2_20191111115149/binlog/");
     TabletImpl tablet;
     tablet.Init("");
 
@@ -4959,8 +4947,8 @@ TEST_F(TabletImplTest, DelRecycleMem) {
         LOG(INFO) << "sleep for 30s" << std::endl;
         sleep(30);
         std::string now_time = ::openmldb::base::GetNowTime();
-        ::openmldb::base::MkdirRecur("/tmp/gtest/recycle/99_3_" + now_time + "/binlog/");
-        ::openmldb::base::MkdirRecur("/tmp/gtest/recycle/100_4_binlog_" + now_time + "/binlog/");
+        ::openmldb::base::MkdirRecur(absl::StrCat(FLAGS_recycle_bin_root_path, "/99_3_", now_time, "/binlog/"));
+        ::openmldb::base::MkdirRecur(absl::StrCat(FLAGS_recycle_bin_root_path, "/100_4_binlog_", now_time, "/binlog/"));
         std::vector<std::string> file_vec;
         ::openmldb::base::GetChildFileName(FLAGS_recycle_bin_root_path, file_vec);
         ASSERT_EQ(4, (signed)file_vec.size());
@@ -4984,19 +4972,12 @@ TEST_F(TabletImplTest, DelRecycleMem) {
 }
 
 TEST_F(TabletImplTest, DelRecycleDisk) {
-    uint32_t tmp_recycle_ttl = FLAGS_recycle_ttl;
     std::string tmp_recycle_bin_hdd_root_path = FLAGS_recycle_bin_hdd_root_path;
-    absl::Cleanup clean = [&]() {
-        ::openmldb::base::RemoveDirRecursive("/tmp/hdd/gtest");
-        FLAGS_recycle_ttl = tmp_recycle_ttl;
-        FLAGS_recycle_bin_hdd_root_path = tmp_recycle_bin_hdd_root_path;
-    };
-
     FLAGS_recycle_ttl = 1;
-    FLAGS_recycle_bin_hdd_root_path = "/tmp/hdd/gtest/recycle/";
-    ::openmldb::base::RemoveDirRecursive(FLAGS_recycle_bin_hdd_root_path);
-    ::openmldb::base::MkdirRecur("/tmp/hdd/gtest/recycle//99_1_binlog_20191111070955/binlog/");
-    ::openmldb::base::MkdirRecur("/tmp/hdd/gtest/recycle//100_2_20191111115149/binlog/");
+    ::openmldb::test::TempPath tmp_path;
+    FLAGS_recycle_bin_hdd_root_path = tmp_path.GetTempPath("recycle");
+    ::openmldb::base::MkdirRecur(absl::StrCat(FLAGS_recycle_bin_hdd_root_path, "/99_1_binlog_20191111070955/binlog/"));
+    ::openmldb::base::MkdirRecur(absl::StrCat(FLAGS_recycle_bin_hdd_root_path, "/100_2_20191111115149/binlog/"));
     TabletImpl tablet;
     tablet.Init("");
 
@@ -5010,8 +4991,9 @@ TEST_F(TabletImplTest, DelRecycleDisk) {
         sleep(30);
 
         std::string now_time = ::openmldb::base::GetNowTime();
-        ::openmldb::base::MkdirRecur("/tmp/hdd/gtest/recycle//99_3_" + now_time + "/binlog/");
-        ::openmldb::base::MkdirRecur("/tmp/hdd/gtest/recycle//100_4_binlog_" + now_time + "/binlog/");
+        ::openmldb::base::MkdirRecur(absl::StrCat(FLAGS_recycle_bin_hdd_root_path, "/99_3_", now_time, "/binlog/"));
+        ::openmldb::base::MkdirRecur(absl::StrCat(FLAGS_recycle_bin_hdd_root_path,
+                    "/100_4_binlog_", now_time, "/binlog/"));
 
         std::vector<std::string> file_vec;
         ::openmldb::base::GetChildFileName(FLAGS_recycle_bin_hdd_root_path, file_vec);
@@ -5198,7 +5180,6 @@ TEST_P(TabletImplTest,  SendIndexData) {
     ::openmldb::base::GetFileSize(des_index_file, des_size);
     ASSERT_TRUE(::openmldb::base::IsExists(des_index_file));
     ASSERT_EQ(src_size, des_size);
-    ::openmldb::base::RemoveDirRecursive(FLAGS_db_root_path);
 }
 
 TEST_P(TabletImplTest, BulkLoad) {
@@ -5471,9 +5452,9 @@ TEST_P(TabletImplTest, PutCompress) {
     }
 }
 
-INSTANTIATE_TEST_CASE_P(TabletMemAndHDD, TabletImplTest,
-                        ::testing::Values(::openmldb::common::kMemory,/*::openmldb::common::kSSD,*/
-                                          ::openmldb::common::kHDD));
+INSTANTIATE_TEST_SUITE_P(TabletMemAndHDD, TabletImplTest,
+                         ::testing::Values(::openmldb::common::kMemory, /*::openmldb::common::kSSD,*/
+                                           ::openmldb::common::kHDD));
 
 TEST_F(TabletImplTest, CreateAggregator) {
     TabletImpl tablet;
@@ -6163,12 +6144,13 @@ int main(int argc, char** argv) {
     srand(time(NULL));
     ::openmldb::base::SetLogLevel(INFO);
     ::google::ParseCommandLineFlags(&argc, &argv, true);
-    FLAGS_db_root_path = "/tmp/" + ::openmldb::tablet::GenRand();
-    FLAGS_ssd_root_path = "/tmp/ssd/" + ::openmldb::tablet::GenRand();
-    FLAGS_hdd_root_path = "/tmp/hdd/" + ::openmldb::tablet::GenRand();
-    FLAGS_recycle_bin_root_path = "/tmp/recycle/" + ::openmldb::tablet::GenRand();
-    FLAGS_recycle_bin_ssd_root_path = "/tmp/ssd/recycle/" + ::openmldb::tablet::GenRand();
-    FLAGS_recycle_bin_hdd_root_path = "/tmp/hdd/recycle/" + ::openmldb::tablet::GenRand();
+    ::openmldb::test::TempPath tmp_path;
+    FLAGS_db_root_path = tmp_path.GetTempPath();
+    FLAGS_ssd_root_path = tmp_path.GetTempPath("ssd");
+    FLAGS_hdd_root_path = tmp_path.GetTempPath("hdd");
+    FLAGS_recycle_bin_root_path = tmp_path.GetTempPath("recycle");
+    FLAGS_recycle_bin_ssd_root_path = tmp_path.GetTempPath("recycle");
+    FLAGS_recycle_bin_hdd_root_path = tmp_path.GetTempPath("recycle");
     FLAGS_recycle_bin_enabled = true;
     return RUN_ALL_TESTS();
 }

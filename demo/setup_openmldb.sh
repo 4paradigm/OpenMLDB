@@ -22,9 +22,13 @@ if [[ -z ${VERSION} ]]; then
 fi
 echo "version: ${VERSION}"
 
-curl -SLo zookeeper.tar.gz https://archive.apache.org/dist/zookeeper/zookeeper-3.4.14/zookeeper-3.4.14.tar.gz
-curl -SLo openmldb.tar.gz "https://github.com/4paradigm/OpenMLDB/releases/download/v${VERSION}/openmldb-${VERSION}-linux.tar.gz"
-curl -SLo spark-3.2.1-bin-openmldbspark.tgz "https://github.com/4paradigm/spark/releases/download/v3.2.1-openmldb${VERSION}/spark-3.2.1-bin-openmldbspark.tgz"
+if [ $# -gt 1 ] && [ "$2" = "skip_download" ]; then
+    echo "skip download packages, the 3 packages should in current dir"
+else
+    curl -SLo zookeeper.tar.gz https://archive.apache.org/dist/zookeeper/zookeeper-3.4.14/zookeeper-3.4.14.tar.gz
+    curl -SLo openmldb.tar.gz "https://github.com/4paradigm/OpenMLDB/releases/download/v${VERSION}/openmldb-${VERSION}-linux.tar.gz"
+    curl -SLo spark-3.2.1-bin-openmldbspark.tgz "https://github.com/4paradigm/spark/releases/download/v3.2.1-openmldb${VERSION}/spark-3.2.1-bin-openmldbspark.tgz"
+fi
 
 WORKDIR=/work
 
@@ -46,6 +50,7 @@ tar xzf spark-3.2.1-bin-openmldbspark.tgz -C "${WORKDIR}/openmldb/spark-3.2.1-bi
 pushd "${WORKDIR}/openmldb"
 ln -s "${WORKDIR}/zookeeper-3.4.14" zookeeper
 ln -s spark-3.2.1-bin-openmldbspark spark
+rm -f spark-3.2.1-bin-openmldbspark/jars/curator-* # curator NoSuchMethodError error
 popd
 
 rm -f ./*.tar.gz

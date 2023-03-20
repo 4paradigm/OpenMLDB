@@ -22,6 +22,7 @@
 #include <unordered_map>
 #include <utility>
 
+#include "absl/algorithm/container.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/str_join.h"
@@ -366,6 +367,17 @@ bool SqlNodeList::Equals(const SqlNodeList *that) const {
 void QueryNode::Print(std::ostream &output, const std::string &org_tab) const {
     SqlNode::Print(output, org_tab);
     output << ": " << QueryTypeName(query_type_);
+
+    std::string new_tab = org_tab + INDENT;
+    if (!with_clauses_.empty()) {
+        output << "\n" << new_tab << SPACE_ST << "with_clause[list]:";
+        for (size_t i = 0; i <  with_clauses_.size(); i++) {
+            auto node = with_clauses_[i];
+            output << "\n";
+            PrintSqlNode(output, new_tab + INDENT, node, std::to_string(i), false);
+        }
+    }
+
     if (config_options_.get() != nullptr) {
         output << "\n";
         PrintValue(output, org_tab + INDENT + SPACE_ED, config_options_.get(), "config_options", false);
@@ -377,7 +389,9 @@ bool QueryNode::Equals(const SqlNode *node) const {
     }
 
     const QueryNode *that = dynamic_cast<const QueryNode *>(node);
-    return this->query_type_ == that->query_type_;
+    return that != nullptr && this->query_type_ == that->query_type_ &&
+           absl::c_equal(with_clauses_, that->with_clauses_,
+                         [](WithClauseEntry *lhs, WithClauseEntry *rhs) { return SqlEquals(lhs, rhs); });
 }
 
 const std::string AllNode::GetExprString() const {
@@ -741,7 +755,8 @@ bool FrameNode::Equals(const SqlNode *node) const {
     }
     const FrameNode *that = dynamic_cast<const FrameNode *>(node);
     return this->frame_type_ == that->frame_type_ && SqlEquals(this->frame_range_, that->frame_range_) &&
-           SqlEquals(this->frame_rows_, that->frame_rows_) && (this->frame_maxsize_ == that->frame_maxsize_);
+           SqlEquals(this->frame_rows_, that->frame_rows_) && (this->frame_maxsize_ == that->frame_maxsize_) &&
+           exclude_current_row_ == that->exclude_current_row_;
 }
 
 const std::string FrameNode::GetExprString() const {
@@ -979,7 +994,7 @@ void WindowDefNode::Print(std::ostream &output, const std::string &org_tab) cons
     if (exclude_current_time_) {
         attrs.emplace_back("exclude_current_time");
     }
-    if (exclude_current_row_) {
+    if (exclude_current_row()) {
         attrs.emplace_back("exclude_current_row");
     }
     if (instance_not_in_window_) {
@@ -1028,8 +1043,7 @@ bool WindowDefNode::CanMergeWith(const WindowDefNode *that, const bool enable_wi
 
 WindowDefNode* WindowDefNode::ShadowCopy(NodeManager *nm) const {
     return dynamic_cast<WindowDefNode *>(nm->MakeWindowDefNode(union_tables_, GetPartitions(), GetOrders(), GetFrame(),
-                                                               exclude_current_time_, exclude_current_row_,
-                                                               instance_not_in_window_));
+                                                               exclude_current_time_, instance_not_in_window_));
 }
 
 bool WindowDefNode::Equals(const SqlNode *node) const {
@@ -1038,7 +1052,6 @@ bool WindowDefNode::Equals(const SqlNode *node) const {
     }
     const WindowDefNode *that = dynamic_cast<const WindowDefNode *>(node);
     return this->window_name_ == that->window_name_ && this->exclude_current_time_ == that->exclude_current_time_ &&
-           this->exclude_current_row_ == that->exclude_current_row_ &&
            this->instance_not_in_window_ == that->instance_not_in_window_ &&
            SqlListEquals(this->union_tables_, that->union_tables_) && ExprEquals(this->orders_, that->orders_) &&
            ExprEquals(this->partitions_, that->partitions_) && SqlEquals(this->frame_ptr_, that->frame_ptr_);
@@ -1293,6 +1306,9 @@ std::string NameOfSqlNodeType(const SqlNodeType &type) {
         case kDynamicUdfFnDef:
             output = "kDynamicUdfFnDef";
             break;
+        case kWithClauseEntry:
+            output = "kWithClauseEntry";
+            break;
         case kUnknow:
             output = "kUnknow";
             break;
@@ -1521,7 +1537,19 @@ void CreateStmt::Print(std::ostream &output, const std::string &org_tab) const {
     output << "\n";
     PrintSqlVector(output, tab, column_desc_list_, "column_desc_list", false);
     output << "\n";
+    if (like_clause_ != nullptr) {
+        like_clause_->Print(output, tab);
+    }
     PrintSqlVector(output, tab, table_option_list_, "table_option_list", true);
+}
+
+void CreateTableLikeClause::Print(std::ostream &output, const std::string &tab) const {
+    output << tab << SPACE_ST << "like:";
+    output << "\n";
+    PrintValue(output, tab + INDENT, ToKindString(kind_), "kind", false);
+    output << "\n";
+    PrintValue(output, tab + INDENT, path_, "path", false);
+    output << "\n";
 }
 
 void ColumnDefNode::Print(std::ostream &output, const std::string &org_tab) const {
@@ -2737,6 +2765,24 @@ Status StringToDataType(const std::string identifier, DataType *type) {
 
     *type = it->second;
     return Status::OK();
+}
+
+void WithClauseEntry::Print(std::ostream &output, const std::string &org_tab) const {
+    SqlNode::Print(output, org_tab);
+    const std::string tab = org_tab + INDENT + SPACE_ED;
+    output << "\n";
+    PrintValue(output, tab, alias_, "alias", false);
+    output << "\n";
+    PrintSqlNode(output, tab, query_, "query", true);
+}
+
+bool WithClauseEntry::Equals(const SqlNode *node) const {
+    if (!SqlNode::Equals(node)) {
+        return false;
+    }
+
+    auto rhs = dynamic_cast<const WithClauseEntry*>(node);
+    return rhs != nullptr && alias_ == rhs->alias_ && SqlEquals(this, rhs);
 }
 
 }  // namespace node

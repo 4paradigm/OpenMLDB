@@ -21,7 +21,7 @@ import com._4paradigm.hybridse.node.{CastExprNode, ConstNode, ExprNode, ExprType
 import com._4paradigm.hybridse.vm.{CoreAPI, PhysicalSimpleProjectNode}
 import com._4paradigm.openmldb.batch.utils.{DataTypeUtil, ExpressionUtil, HybridseUtil, SparkColumnUtil}
 import com._4paradigm.openmldb.batch.{PlanContext, SparkInstance}
-import org.apache.spark.sql.{Column, DataFrame}
+import org.apache.spark.sql.{Column, DataFrame, SparkSession}
 import org.slf4j.LoggerFactory
 
 import scala.collection.JavaConverters.asScalaBufferConverter
@@ -55,9 +55,9 @@ object SimpleProjectPlan {
 
     for (i <- 0 until node.project().size.toInt) {
       val expr = node.project().GetExpr(i)
-      val (col, innerType) = createSparkColumn(inputDf, node, expr)
+      val (col, innerType) = createSparkColumn(ctx.getSparkSession, inputDf, node, expr)
       val castOutputCol = ConstProjectPlan.castSparkOutputCol(
-        col, outputColTypeList(i), innerType)
+        ctx.getSparkSession, col, outputColTypeList(i), innerType)
       castOutputCol.alias(outputColNameList(i))
 
       selectColList.append(castOutputCol.alias(outputColNameList(i)))
@@ -79,7 +79,8 @@ object SimpleProjectPlan {
     * @param expr    Simple project expression
     * @return   Spark column instance compatible with inner expression
     */
-  def createSparkColumn(inputDf: DataFrame,
+  def createSparkColumn(spark: SparkSession,
+                        inputDf: DataFrame,
                         node: PhysicalSimpleProjectNode,
                         expr: ExprNode): (Column, HybridseDataType) = {
     expr.GetExprType() match {
@@ -106,9 +107,9 @@ object SimpleProjectPlan {
         val cast = CastExprNode.CastFrom(expr)
         val castType = cast.getCast_type_
         val (childCol, childType) =
-          createSparkColumn(inputDf, node, cast.GetChild(0))
+          createSparkColumn(spark, inputDf, node, cast.GetChild(0))
         val castColumn = ConstProjectPlan.castSparkOutputCol(
-          childCol, childType, castType)
+          spark, childCol, childType, castType)
         castColumn -> castType
 
       case _ => throw new UnsupportedHybridSeException(

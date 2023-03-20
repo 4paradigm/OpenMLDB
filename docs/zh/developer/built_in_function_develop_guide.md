@@ -79,6 +79,9 @@ OpenMLDB内置了上百个SQL函数，以供数据科学家作数据分析和特
 | STRING    | `StringRef` |
 | TIMESTAMP | `Timestamp` |
 | DATE      | `Date`      |
+| ARRAY     | `ArrayRef`  |
+
+*注意 ARRAY 类型尚不支持在存储中作为表的列类型或者作为 SQL 查询的输出列格式*
 
 #### 2.1.4 函数参数和返回值
 
@@ -95,14 +98,14 @@ OpenMLDB内置了上百个SQL函数，以供数据科学家作数据分析和特
       double func_return_double(int); 
       ```
 
-  - 当SQL函数返回值为**STRING**, **TIMESTAMP**或**DATE**时，要求C++函数通过参数来输出结果。这意味着，C++的**输入参数**后额外有一个指针类型的**输出参数**（`StringRef*`, `Timestamp*`或 `Date*`)用来存放和返回结果值
+  - 当SQL函数返回值为**STRING**, **TIMESTAMP**, **DATE**或者**ArrayRef**时，要求C++函数通过参数来输出结果。这意味着，C++的**输入参数**后额外有一个指针类型的**输出参数**（`StringRef*`, `Timestamp*`或 `Date*`)用来存放和返回结果值
 
     - ```c++
       // SQL: STRING FUNC_STR(INT)
       void func_output_str(int32_t, StringRef*); 
       ```
 
-  - 当SQL函数的返回值可能为空(**Nullable**)时，额外要有一个`bool*`类型的**输出参数**来存放结果为空与否
+  - 当SQL函数的返回值可能为 NULL (**Nullable**)时，额外要有一个`bool*`类型的**输出参数**来存放结果为空与否
 
     - ```c++
       // SQL: Nullable<DATE> FUNC_NULLABLE_DATE(BIGINT)
@@ -113,16 +116,18 @@ OpenMLDB内置了上百个SQL函数，以供数据科学家作数据分析和特
   
 - 参数Nullable的处理方式：
 
-  - 一般地，OpenMLDB对所有内置的单行函数采取统一的NULL参数处理方式。即任意一个参数为NULL时，直接返回NULL。
+  - 一般地，OpenMLDB对所有内置的单行函数采取统一的NULL参数处理方式。即任意一个输入参数为NULL时，直接返回NULL。
   - 但需要对NULL参数做特殊处理的单行函数或者聚合函数，那么可以将参数配置为`Nullable<ArgType>`，然后在C++ function中将使用ArgType对应的C++类型和`bool*`来表达这个参数。详情参见[3.2.4 SQL函数参数是Nullable](#3.2.4-SQL函数参数是Nullable)。
 
 #### 2.1.5 内存管理
 
 - C++内置单行函数中，不允许使用`new`操作符或者`malloc`函数开辟空间。 
 - C++内置聚合函数，可以在初始化的时候使用`new`或者`malloc`函数开辟空间，但需要保证在`output`生成最终结果的时候，将空间释放。
-- 单行函数和聚合函数中也可以使用OpenMLDB提供的内存管理接口`hybridse::udf::v1::AllocManagedStringBuf(size)`。系统会从内存池`ByteMemoryPool`中分配指定大小的连续空间给该函数，并在安全的时候自动释放空间。
-  - 若空间size大于2M字节，则分配失败，返回nullptr。
-  - 若空间size < 0，则分配失败，返回nullptr。
+- 涉及到为 UDF 输出参数分配内存的，必须使用OpenMLDB提供的内存管理接口:
+  - `hybridse::udf::v1::AllocManagedStringBuf(size)`: 系统会从内存池`ByteMemoryPool`中分配指定大小的连续空间给该函数，并在安全的时候自动释放空间。
+    - 若空间size大于2M字节，则分配失败，返回nullptr。
+    - 若空间size < 0，则分配失败，返回nullptr。
+  - `hybridse::udf::v1::AllocManagedArray(ArrayRef<T>*, uint64_t)`: 为 array 输出类型分配空间
 
 **例子:**
 
@@ -393,7 +398,7 @@ RegisterExternalTemplate<v1::Abs>("abs")
 我们按内置函数的返回类型将函数基本分为三种类型：
 
 - SQL函数返回值为布尔或数值类型
-- SQL函数返回值为**STRING**, **TIMESTAMP**或**DATE**
+- SQL函数返回值为**STRING**, **TIMESTAMP**,**DATE**, **ArrayRef**
 - SQL函数的返回值可能为空
 
 我们将详细介绍这几种类型的函数的开发和注册的基本流程。

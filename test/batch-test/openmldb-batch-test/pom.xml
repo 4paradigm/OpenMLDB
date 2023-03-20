@@ -79,7 +79,7 @@
         <dependency>
             <groupId>org.yaml</groupId>
             <artifactId>snakeyaml</artifactId>
-            <version>1.31</version>
+            <version>1.32</version>
         </dependency>
 
         <dependency>
@@ -91,7 +91,7 @@
         <dependency>
             <groupId>org.testng</groupId>
             <artifactId>testng</artifactId>
-            <version>6.14.3</version>
+            <version>7.7.0</version>
             <scope>test</scope>
         </dependency>
         <!-- required by scalatest-maven-plugin to generate HTML report -->

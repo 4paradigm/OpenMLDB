@@ -31,7 +31,7 @@ object OpenmldbJobUtil {
 
   def getSqlFromFile(spark: SparkSession, sqlFilePath: String): String = {
     val sparkMaster = spark.conf.get("spark.master")
-    val sparkDeployMode = spark.conf.get("spark.submit.deployMode")
+    val sparkDeployMode = spark.conf.get("spark.submit.deployMode", "client")
 
     val actualSqlFilePath = if (sparkMaster.equalsIgnoreCase("yarn") &&
       sparkDeployMode.equalsIgnoreCase("cluster")) {

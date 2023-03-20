@@ -245,6 +245,9 @@ TEST_P(DBSDKTest, Select) {
     std::string insert_sql = "insert into trans values ('aaa', 11, 22, 1.2, 1.3, 1635247427000, \"2021-05-20\");";
     sr->ExecuteSQL(insert_sql, &status);
     ASSERT_TRUE(status.IsOK());
+    insert_sql = "insert into trans values ('aaa', 11, 22, 1.2, 1.3, -123, \"2021-05-20\");";
+    sr->ExecuteSQL(insert_sql, &status);
+    ASSERT_FALSE(status.IsOK());
     auto rs = sr->ExecuteSQL("select * from trans", &status);
     ASSERT_TRUE(status.IsOK());
     ASSERT_EQ(1, rs->Size());
@@ -614,10 +617,10 @@ TEST_P(DBSDKTest, Deploy) {
     HandleSQL("use test1;");
     std::string create_sql =
         "create table trans (c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, "
-        "c8 date, index(key=c3, ts=c7, abs_ttl=0, ttl_type=absolute));";
+        "c8 date, `index` bigint, index(key=c3, ts=c7, abs_ttl=0, ttl_type=absolute));";
     HandleSQL(create_sql);
     if (!cs->IsClusterMode()) {
-        HandleSQL("insert into trans values ('aaa', 11, 22, 1.2, 1.3, 1635247427000, \"2021-05-20\");");
+        HandleSQL("insert into trans values ('aaa', 11, 22, 1.2, 1.3, 1635247427000, \"2021-05-20\", 113);");
     }
 
     std::string deploy_sql =
@@ -711,7 +714,7 @@ TEST_P(DBSDKTest, DeployWithSameIndex) {
         " WINDOW w1 AS (PARTITION BY trans1.c1 ORDER BY trans1.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);";
     sr->ExecuteSQL(deploy_sql, &status);
     ASSERT_FALSE(status.IsOK());
-    ASSERT_EQ(status.msg, "new ttl type kLatestTime doesn't match the old ttl type kAbsoluteTime");
+    ASSERT_EQ(status.msg, "new ttl type kLatestTime doesn't match the old ttl type kAbsoluteTime in table trans1");
 
     ASSERT_FALSE(cs->GetNsClient()->DropTable("test1", "trans", msg));
     ASSERT_TRUE(cs->GetNsClient()->DropProcedure("test1", "demo", msg));

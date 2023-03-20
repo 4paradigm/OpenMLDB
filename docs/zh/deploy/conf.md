@@ -87,6 +87,9 @@
 # 日志文件路径
 --openmldb_log_dir=./logs
 
+# 配置tablet最大内存使用, 如果超过配置的值写入就会失败. 默认值为0即不限制
+#--max_memory_mb=0
+
 # binlog conf
 # binlog没有新数据添加时的等待时间，单位是毫秒
 #--binlog_coffee_time=1000
@@ -179,10 +182,10 @@
 #--key_entry_max_height=8
 
 # 查询配置
-# 最大扫描条数（全表扫描/全表聚合），默认：50000
-#--max_traverse_cnt=50000
-# 最大扫描pk数（批处理），默认：5000
-#--max_traverse_pk_cnt=5000
+# 最大扫描条数(全表扫描/全表聚合)，默认：0
+#--max_traverse_cnt=0
+# 最大扫描不同key的个数(批处理)，默认：0
+#--max_traverse_key_cnt=0
 # 结果最大大小（byte)，默认：2MB
 #--scan_max_bytes_size=2097152
 
@@ -193,9 +196,19 @@
 #--load_table_thread_num=3
 # load线程池的最大队列长度
 #--load_table_queue_size=1000
+
+# rocksdb相关配置
+#--disable_wal=true
+# 文件是否压缩, 支持的压缩格式为pz, lz4, zlib
+#--file_compression=off
+#--block_cache_mb=4096
+#--block_cache_shardbits=8
+#--verify_compression=false
+#--max_log_file_size=100 * 1024 * 1024
+#--keep_log_file_num=5
 ```
 
-## apiserver配置文件 conf/tablet.flags
+## apiserver配置文件 conf/apiserver.flags
 ```
 # apiserver.conf
 # 配置启动apiserver的ip/域名和端口号
@@ -251,6 +264,7 @@ batchjob.jar.path=
 namenode.uri=
 offline.data.prefix=file:///tmp/openmldb_offline_storage/
 hadoop.conf.dir=
+#enable.hive.support=false
 ```
 
 * 如果没有配置`spark.home`，则需要在TaskManager运行的环境变量配置`SPARK_HOME`。

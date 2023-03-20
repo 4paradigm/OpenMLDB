@@ -147,7 +147,7 @@ class SystemTable {
                 // upper bound of the bucket, in seconds
                 SetColumnDesc("TIME", type::DataType::kString, table_info->add_column_desc());
                 // total count of queries in the current bucket
-                SetColumnDesc("COUNT", type::DataType::kInt, table_info->add_column_desc());
+                SetColumnDesc("COUNT", type::DataType::kBigInt, table_info->add_column_desc());
                 // sum of queries times in the current bucket, in seconds
                 SetColumnDesc("TOTAL", type::DataType::kString, table_info->add_column_desc());
                 auto index = table_info->add_column_key();

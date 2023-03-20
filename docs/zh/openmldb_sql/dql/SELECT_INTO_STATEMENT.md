@@ -41,22 +41,19 @@ SelectInfoOptionItem
 请注意，目前仅有集群版支持quote字符的转义。所以，如果您使用的是单机版，请谨慎选择quote字符，保证原始字符串内并不包含quote字符。
 ````
 
-## FilePath
-
-FilePath支持'file://', 'hdfs://', 'hive://'三种。
-
-### 导出到Hive
-
-路径格式：'hive://[db.]table'。不指定db则导入到Hive的'default_db'。表可以不存在，但如果指定db，db必须存在。
-
-- Hive需要Spark支持与连接到Hive的配置，请参考[Hive 支持](../dml/LOAD_DATA_STATEMENT.md#hive-支持)。
-- 不支持导出到Hive不存在的数据库。如果指定的Hive数据库不存在，OpenMLDB不会为此在Hive中创建该数据库。（OpenMLDB创建Hive数据库，会导致该数据库的表存储路径变化。）
-
 ## SQL语句模版
 
 ```sql
 SELECT ... INTO OUTFILE 'file_path' OPTIONS (key = value, ...)
 ```
+
+## FilePath
+
+FilePath支持'file://', 'hdfs://', 'hive://'三种。
+
+## Hive 支持
+
+OpenMLDB 支持导出数据到 Hive，但需要额外的设置和功能限制，详情见 [Hive 支持](../../integration/offline_data_sources/hive.md)。
 
 ## Examples
 
@@ -70,6 +67,12 @@ SELECT col1, col2, col3 FROM t1 INTO OUTFILE 'data.csv' OPTIONS ( delimiter = ',
 
 ```SQL
 SELECT col1, col2, col3 FROM t1 INTO OUTFILE 'data2.csv' OPTIONS ( delimiter = '|', null_value='NA');
+```
+
+- 导出表格 t1 到 Hive 数据库
+
+```sql
+SELECT col1, col2, col3 FROM t1 INTO OUTFILE 'hive://db1.t1';
 ```
 
 ## Q&A

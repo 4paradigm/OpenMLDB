@@ -1,5 +1,76 @@
 # Changelog
 
+## [0.7.2] - 2023-02-17
+
+### Features
+- [Alpha] Support the new SQL clause `WITH` (#2846 @aceforeverd)
+- Support deploying multiple TaskManagers (#3004 @zhanghaohit)
+- Support the new built-in functions `std`, `stddev`, `stddev_samp`, `stddev_pop`, `ew_avg` and `drawdown` (#3025 #3032 #3029 @zhanghaohit)
+- Add the new configurations to specify the maximum size of RocksDB's log files (#2991 @dl239)
+- The `CREATE TABLE ... LIKE PARQUET ...` statement supports a parquet file as the input in the offline mode. (#2996 @tobegit3hub)
+- Support showing query results of synchronous jobs in TaskManager (#3034 @vagetablechicken)
+- Change the default timeout of synchronous jobs to 30 minutes, and add a corresponding CLI parameter for configuration (#3061 @vagetablechicken)
+- Improve the documents (#2938 #2984 #3016 @vagetablechicken, #2958 #2973 #2980 #2987 #2988 #3035 @lumianph, #2990 @lukeAyin, #2997 #3065 @tobegit3hub, #3011 #3027 @dl239, #3020 #3066 #3071 #3074 @aceforeverd, #3033 #3036 @selenachenjingxin)
+
+### Bug Fixes
+- Disk table does not clean the expired data. (#2963 @dl239)
+- Incorrect index will be added if there is `LAST JOIN` statement in a deployed SQL. (#2979 @dl239)
+- The result is incorrect if a window frame is specified by `EXCLUDE CURRENT_ROW` (#2930 @aceforeverd)
+- SQL compiling fails if there is an UDF function in an UDAF expression. (#3018 @aceforeverd)
+- Although the return information indicates success, index creation may still fail in some cases. (#3042 @vagetablechicken)
+- The `recoverdata` command fails if there are a large number of records in a memory table. (#3060 @dl239)
+- The `deploy-all` tool deploys the Spark package to local nodes only. (#3022 @zhanghaohit)
+- Other minor bug fixes (#2970 #3028 #3026 #3003 #3064 @dl239)
+
+### Code Refactoring
+#2995 #3030 @aceforeverd
+
+Note:  
+While we have resolved the overflow issue in the current version of the monitor component #3003, it may still persist when upgrading from an older version.
+
+## [0.7.1] - 2023-01-13
+
+### Features
+- Support data import from Hive using a symbolic link (#2948 @vagetablechicken)
+- Support the new SQL statement `CREATE TABLE LIKE` (#2949 @aceforeverd, #2962 @tobegit3hub)
+- Improve the non-interactive CLI (#2898 @vagetablechicken)
+- Improve the documents (#2904 #2921 #2932 #2942 @selenachenjingxin, #2925 #2928 #2934 #2954 @vagetablechicken, @2924 @dl239, #2945 #2952 @lumianph, #2946 @aceforeverd)
+
+### Bug Fixes
+- The result of `_*_cate` is incorrect. (#2939 @zhanghaohit)
+- The deployment of SQL fails if the column name of a major table is a keyword. (#2894 @dl239)
+- Tablet may core dump when executing SQLs with disk tables. (#2926 @dl239)
+- There is memory leak when writing data into disk tables. (#2943 @dl239)
+- The result of `show components` is incorrect in certain cases. (#2940 @dl239)
+- Offline jobs execution fails in certain cases because the `Curator` component causes an incompatible issue. (#2936 @tobegit3hub)
+- Disabling the monitor log (#2953 @dl239)
+
+### Code Refactoring
+#2875 #2937 @dl239
+
+## [0.7.0] - 2022-12-30
+
+### Features
+- Improve the messages and errors when inserting rows (#2834 @vagetablechicken)
+- Add a new configuration `max_memory` to limit the memory usage of a tablet (#2815 @dl239)
+- Add new maintenance tools `deploy-all` and `start-all` (#2809 @zhanghaohit)
+- Insertion returns errors if the value of timestamp field is negative (#2776 @dl239)
+- Support the new built-in functions `unix_timestamp`, `pmod`, `datediff`, and `size` (#2843 #2839 #2847 #2864 @zhanghaohit)
+- Add the new data type of `ARRAY` in UDFs (#2817 @aceforeverd)
+- Improve the documents (#2868 @haseeb-xd, #2878 @Jake-00, #2879 #2876 #2889 #2890 @vagetablechicken, #2881 #2907 #2908 #2897 @selenachenjingxin, #2859 @AdvancedUno, #2893 @lumianph, #2916 @aceforeverd)
+
+### Bug Fixes
+- Window over a subquery(t1 LAST JOIN t2) fails due to column renaming in the subquery. (#2739 @aceforeverd)
+- `SHOW JOBLOG` fails under certain circumstances. (#2874 @tobegit3hub)
+- `OP` is not deleted if the related table has been dropped. (#2548 @dl239)
+- Memory is not released when deleting an index in some cases. (#2806 @dl239)
+- Changing a leader to a specified endpoint fails if there are data writing. (#2858 @dl239)
+- UDFs do not work for `yarn-client` and `yarn-cluster` in the offline mode. (#2802 @tobegit3hub)
+- Other minor bug fixes (#2828 #2903 #2906 @vagetablechicken, #2867 #2912 @dl239)
+
+### Code Refactoring
+#2860 @mammar11, #2865 #2863 @vagetablechicken, #2861 #2862 #2871 @Ziy1-Tan
+
 ## [0.6.9] - 2022-12-08
 
 ### Features
@@ -456,6 +527,9 @@ Removed
 - openmldb-0.2.0-linux.tar.gz targets on x86_64
 - aarch64 artifacts consider experimental
 
+[0.7.2]: https://github.com/4paradigm/OpenMLDB/compare/v0.7.1...v0.7.2
+[0.7.1]: https://github.com/4paradigm/OpenMLDB/compare/v0.7.0...v0.7.1
+[0.7.0]: https://github.com/4paradigm/OpenMLDB/compare/v0.6.9...v0.7.0
 [0.6.9]: https://github.com/4paradigm/OpenMLDB/compare/v0.6.8...v0.6.9
 [0.6.8]: https://github.com/4paradigm/OpenMLDB/compare/v0.6.7...v0.6.8
 [0.6.7]: https://github.com/4paradigm/OpenMLDB/compare/v0.6.6...v0.6.7

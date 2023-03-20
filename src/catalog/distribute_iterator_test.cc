@@ -33,7 +33,7 @@
 DECLARE_string(db_root_path);
 DECLARE_uint32(traverse_cnt_limit);
 DECLARE_uint32(max_traverse_cnt);
-DECLARE_uint32(max_traverse_pk_cnt);
+DECLARE_uint32(max_traverse_key_cnt);
 
 namespace openmldb {
 namespace catalog {
@@ -150,7 +150,8 @@ TEST_F(DistributeIteratorTest, Empty) {
 
 TEST_F(DistributeIteratorTest, AllInRemote) {
     uint32_t tid = 3;
-    FLAGS_db_root_path = "/tmp/" + ::openmldb::test::GenRand();
+    ::openmldb::test::TempPath tmp_path;
+    FLAGS_db_root_path = tmp_path.GetTempPath();
     std::vector<std::string> endpoints = {"127.0.0.1:9230", "127.0.0.1:9231"};
     brpc::Server tablet1;
     ASSERT_TRUE(::openmldb::test::StartTablet(endpoints[0], &tablet1));
@@ -187,7 +188,8 @@ TEST_F(DistributeIteratorTest, AllInRemote) {
 
 TEST_F(DistributeIteratorTest, Hybrid) {
     uint32_t tid = 3;
-    FLAGS_db_root_path = "/tmp/" + ::openmldb::test::GenRand();
+    ::openmldb::test::TempPath tmp_path;
+    FLAGS_db_root_path = tmp_path.GetTempPath();
     auto tables = std::make_shared<Tables>();
     auto table1 = CreateTable(tid, 3);
     auto table2 = CreateTable(tid, 7);
@@ -246,7 +248,8 @@ TEST_F(DistributeIteratorTest, FullTableTraverseLimit) {
     uint32_t old_limit = FLAGS_max_traverse_cnt;
     FLAGS_max_traverse_cnt = 100;
     uint32_t tid = 3;
-    FLAGS_db_root_path = "/tmp/" + ::openmldb::test::GenRand();
+    ::openmldb::test::TempPath tmp_path;
+    FLAGS_db_root_path = tmp_path.GetTempPath();
     auto tables = std::make_shared<Tables>();
     auto table1 = CreateTable(tid, 3);
     auto table2 = CreateTable(tid, 7);
@@ -306,7 +309,8 @@ TEST_F(DistributeIteratorTest, TraverseLimitSingle) {
     uint32_t old_limit = FLAGS_traverse_cnt_limit;
     FLAGS_traverse_cnt_limit = 3;
     uint32_t tid = 3;
-    FLAGS_db_root_path = "/tmp/" + ::openmldb::test::GenRand();
+    ::openmldb::test::TempPath tmp_path;
+    FLAGS_db_root_path = tmp_path.GetTempPath();
     brpc::Server tablet1;
     std::vector<std::string> endpoints = {"127.0.0.1:9230", "127.0.0.1:9231"};
     ASSERT_TRUE(::openmldb::test::StartTablet(endpoints[0], &tablet1));
@@ -334,7 +338,8 @@ TEST_F(DistributeIteratorTest, TraverseLimit) {
     uint32_t old_limit = FLAGS_traverse_cnt_limit;
     FLAGS_traverse_cnt_limit = 100;
     uint32_t tid = 3;
-    FLAGS_db_root_path = "/tmp/" + ::openmldb::test::GenRand();
+    ::openmldb::test::TempPath tmp_path;
+    FLAGS_db_root_path = tmp_path.GetTempPath();
     auto tables = std::make_shared<Tables>();
     auto table1 = CreateTable(tid, 0);
     auto table2 = CreateTable(tid, 2);
@@ -377,7 +382,8 @@ TEST_F(DistributeIteratorTest, TraverseLimit) {
 
 TEST_F(DistributeIteratorTest, WindowIterator) {
     uint32_t tid = 3;
-    FLAGS_db_root_path = "/tmp/" + ::openmldb::test::GenRand();
+    ::openmldb::test::TempPath tmp_path;
+    FLAGS_db_root_path = tmp_path.GetTempPath();
     auto tables = std::make_shared<Tables>();
     auto table1 = CreateTable(tid, 0);
     auto table2 = CreateTable(tid, 2);
@@ -448,7 +454,8 @@ TEST_F(DistributeIteratorTest, RemoteIterator) {
     FLAGS_traverse_cnt_limit = 7;
     uint32_t tid = 3;
     auto tables = std::make_shared<Tables>();
-    FLAGS_db_root_path = "/tmp/" + ::openmldb::test::GenRand();
+    ::openmldb::test::TempPath tmp_path;
+    FLAGS_db_root_path = tmp_path.GetTempPath();
     std::vector<std::string> endpoints = {"127.0.0.1:9230"};
     brpc::Server tablet1;
     ASSERT_TRUE(::openmldb::test::StartTablet(endpoints[0], &tablet1));
@@ -525,7 +532,8 @@ TEST_F(DistributeIteratorTest, RemoteIteratorSecondIndex) {
     FLAGS_traverse_cnt_limit = 7;
     uint32_t tid = 3;
     auto tables = std::make_shared<Tables>();
-    FLAGS_db_root_path = "/tmp/" + ::openmldb::test::GenRand();
+    ::openmldb::test::TempPath tmp_path;
+    FLAGS_db_root_path = tmp_path.GetTempPath();
     std::vector<std::string> endpoints = {"127.0.0.1:9230"};
     brpc::Server tablet1;
     ASSERT_TRUE(::openmldb::test::StartTablet(endpoints[0], &tablet1));
@@ -653,7 +661,8 @@ TEST_F(DistributeIteratorTest, MoreTsCnt) {
     uint32_t old_limit = FLAGS_traverse_cnt_limit;
     FLAGS_traverse_cnt_limit = 7;
     uint32_t tid = 3;
-    FLAGS_db_root_path = "/tmp/" + ::openmldb::test::GenRand();
+    ::openmldb::test::TempPath tmp_path;
+    FLAGS_db_root_path = tmp_path.GetTempPath();
     auto tables = std::make_shared<Tables>();
     auto table1 = CreateTable(tid, 0);
     auto table2 = CreateTable(tid, 2);
@@ -733,7 +742,8 @@ TEST_F(DistributeIteratorTest, TraverseSameTs) {
     uint32_t old_limit = FLAGS_traverse_cnt_limit;
     FLAGS_traverse_cnt_limit = 7;
     uint32_t tid = 3;
-    FLAGS_db_root_path = "/tmp/" + ::openmldb::test::GenRand();
+    ::openmldb::test::TempPath tmp_path;
+    FLAGS_db_root_path = tmp_path.GetTempPath();
     auto tables = std::make_shared<Tables>();
     auto table1 = CreateTable(tid, 0);
     auto table2 = CreateTable(tid, 2);
@@ -775,9 +785,10 @@ TEST_F(DistributeIteratorTest, TraverseSameTs) {
 }
 
 TEST_F(DistributeIteratorTest, WindowIteratorLimit) {
-    uint32_t old_max_pk_cnt = FLAGS_max_traverse_pk_cnt;
+    uint32_t old_max_pk_cnt = FLAGS_max_traverse_key_cnt;
     uint32_t tid = 3;
-    FLAGS_db_root_path = "/tmp/" + ::openmldb::test::GenRand();
+    ::openmldb::test::TempPath tmp_path;
+    FLAGS_db_root_path = tmp_path.GetTempPath();
     auto tables = std::make_shared<Tables>();
     auto table1 = CreateTable(tid, 0);
     auto table2 = CreateTable(tid, 2);
@@ -806,7 +817,7 @@ TEST_F(DistributeIteratorTest, WindowIteratorLimit) {
         }
     }
 
-    FLAGS_max_traverse_pk_cnt = 10;
+    FLAGS_max_traverse_key_cnt = 10;
     {
         DistributeWindowIterator w_it(tid, 4, tables, 0, "card", tablet_clients);
         for (int i = 0; i < 20; i++) {
@@ -829,24 +840,24 @@ TEST_F(DistributeIteratorTest, WindowIteratorLimit) {
             count++;
             w_it.Next();
         }
-        ASSERT_EQ(count, FLAGS_max_traverse_pk_cnt);
+        ASSERT_EQ(count, FLAGS_max_traverse_key_cnt);
         w_it.Seek("card11");
         count = 0;
         while (w_it.Valid()) {
             count++;
             w_it.Next();
         }
-        ASSERT_EQ(count, FLAGS_max_traverse_pk_cnt);
+        ASSERT_EQ(count, FLAGS_max_traverse_key_cnt);
         w_it.Seek("card15");
         count = 0;
         while (w_it.Valid()) {
             count++;
             w_it.Next();
         }
-        ASSERT_EQ(count, FLAGS_max_traverse_pk_cnt);
+        ASSERT_EQ(count, FLAGS_max_traverse_key_cnt);
     }
 
-    FLAGS_max_traverse_pk_cnt = 20;
+    FLAGS_max_traverse_key_cnt = 20;
     {
         DistributeWindowIterator w_it(tid, 4, tables, 0, "card", tablet_clients);
         for (int i = 0; i < 20; i++) {
@@ -869,7 +880,7 @@ TEST_F(DistributeIteratorTest, WindowIteratorLimit) {
             count++;
             w_it.Next();
         }
-        ASSERT_EQ(count, FLAGS_max_traverse_pk_cnt);
+        ASSERT_EQ(count, FLAGS_max_traverse_key_cnt);
         w_it.Seek("card11");
         count = 0;
         while (w_it.Valid()) {
@@ -886,14 +897,15 @@ TEST_F(DistributeIteratorTest, WindowIteratorLimit) {
         ASSERT_EQ(count, 10);
     }
 
-    FLAGS_max_traverse_pk_cnt = old_max_pk_cnt;
+    FLAGS_max_traverse_key_cnt = old_max_pk_cnt;
 }
 
 TEST_F(DistributeIteratorTest, IteratorZero) {
     uint32_t old_limit = FLAGS_traverse_cnt_limit;
     FLAGS_traverse_cnt_limit = 7;
     uint32_t tid = 3;
-    FLAGS_db_root_path = "/tmp/" + ::openmldb::test::GenRand();
+    ::openmldb::test::TempPath tmp_path;
+    FLAGS_db_root_path = tmp_path.GetTempPath();
     auto tables = std::make_shared<Tables>();
     auto table1 = CreateTable(tid, 0);
     auto table2 = CreateTable(tid, 2);
