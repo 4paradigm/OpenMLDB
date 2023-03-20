@@ -20,7 +20,7 @@ env:
   NODE_LIST: node-1,node-2,node-3
 
 jobs:
-  deploy:
+  openmldb-tool-test:
     runs-on: [self-hosted,seq-task,node-4]
     steps:
       - uses: actions/checkout@v2

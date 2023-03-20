@@ -21,8 +21,7 @@ if [[ $# -lt 2 ]]; then
 fi
 BASE_DIR=$1
 OLD_IFS="$IFS"
-IFS=","
-hosts=($2)
+IFS="," read -r -a hosts <<< "$2"
 IFS="$OLD_IFS"
 
 echo "[tablet]"
