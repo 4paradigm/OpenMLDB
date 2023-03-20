@@ -16,7 +16,7 @@ on:
 
 env:
   GIT_SUBMODULE_STRATEGY: recursive
-  DEPLOY_DIR: /mnt/hdd0/denglong/openmldb_env
+  DEPLOY_DIR: /mnt/hdd0/openmldb_runner_work/openmldb_env
   NODE_LIST: node-1,node-2,node-3
 
 jobs:
