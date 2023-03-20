@@ -15,7 +15,7 @@ value_list:
 ```
 
 **说明**
-- `INSERT` 只能插入到在线表
+- `INSERT` 只能用在在线模式
 
 ## Examples
 

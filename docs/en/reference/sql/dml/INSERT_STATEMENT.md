@@ -15,7 +15,7 @@ value_list:
 ```
 
 **Description**
-- `INSERT` statement will insert data to online tables
+- `INSERT` statement only works in online execute mode
 
 ## Examples
 
