@@ -1,7 +1,7 @@
 # UDF Function Development Guideline
 ## 1. Background
 Although there are already hundreds of built-in functions, they can not satisfy the needs in some cases. In the past, this could only be done by developing new built-in functions. Built-in function development requires a relatively long cycle because it needs to recompile binary files and users have to wait for new version release.
-In order to help users to quickly develop computing functions that are not provided by OpenMLDB, we develop the mechanism of user dynamic registration function.
+In order to help users to quickly develop computing functions that are not provided by OpenMLDB, we develop the mechanism of user dynamic registration function. OpenMLDB will load the compiled library contains user defined function when executing `Create Function` statement. 
 
 SQL functions can be categorised into scalar functions and aggregate functions. An introduction to scalar functions and aggregate functions can be seen [here](./built_in_function_develop_guide.md).
 ## 2. Development Procedures
@@ -56,7 +56,7 @@ The SQL types corresponding to C++ types are shown as follows:
 For instance, declare a UDF function that input is nullable and return value is nullable.
 ```c++
 extern "C"
-void sum(UDFContext* ctx, int64_t input1, bool is_null, int64_t input2, bool is_null, int64_t* output, bool* is_null);
+void sum(::openmldb::base::UDFContext* ctx, int64_t input1, bool is_null, int64_t input2, bool is_null, int64_t* output, bool* is_null);
 ```
 
 **Function Declaration**:
@@ -85,7 +85,7 @@ void sum(UDFContext* ctx, int64_t input1, bool is_null, int64_t input2, bool is_
  
 // Develop a UDF which slices the first 2 characters of a given string. 
 extern "C"
-void cut2(UDFContext* ctx, StringRef* input, StringRef* output) {
+void cut2(::openmldb::base::UDFContext* ctx, ::openmldb::base::StringRef* input, ::openmldb::base::StringRef* output) {
     if (input == nullptr || output == nullptr) {
         return;
     }
@@ -114,7 +114,7 @@ It need to develop three functions as below:
 #include "udf/openmldb_udf.h" 
 
 extern "C"
-UDFContext* special_sum_init(UDFContext* ctx) {
+::openmldb::base::UDFContext* special_sum_init(::openmldb::base::UDFContext* ctx) {
     // allocte memory by memory poll
     ctx->ptr = ctx->pool->Alloc(sizeof(int64_t));
     // init the value
@@ -124,7 +124,7 @@ UDFContext* special_sum_init(UDFContext* ctx) {
 }
 
 extern "C"
-UDFContext* special_sum_update(UDFContext* ctx, int64_t input) {
+::openmldb::base::UDFContext* special_sum_update(::openmldb::base::UDFContext* ctx, int64_t input) {
     // get the value from ptr in UDFContext
     int64_t cur = *(reinterpret_cast<int64_t*>(ctx->ptr));
     cur += input;
@@ -135,7 +135,7 @@ UDFContext* special_sum_update(UDFContext* ctx, int64_t input) {
 
 // get the result from ptr in UDFcontext and return
 extern "C"
-int64_t special_sum_output(UDFContext* ctx) {
+int64_t special_sum_output(::openmldb::base::UDFContext* ctx) {
     return *(reinterpret_cast<int64_t*>(ctx->ptr)) + 5;
 }
 

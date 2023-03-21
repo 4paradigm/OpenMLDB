@@ -1,6 +1,6 @@
 # 自定义函数开发
 ## 1. 背景
-虽然OpenMLDB内置了上百个函数，以供数据科学家作数据分析和特征抽取。但是在某些场景下还是不能很好的满足要求，以往只能通过开发内置函数来实现。内置函数开发需要重新编译二进制文件等待版本发布，周期相对较长。为了便于用户快速灵活实现特定的特征计算需求，我们实现了用户动态注册函数的机制。
+虽然OpenMLDB内置了上百个函数，以供数据科学家作数据分析和特征抽取。但是在某些场景下还是不能很好的满足要求，以往只能通过开发内置函数来实现。内置函数开发需要重新编译二进制文件等待版本发布，周期相对较长。为了便于用户快速灵活实现特定的特征计算需求，我们实现了用户动态注册函数的机制。当用户执行`Create Function`语句时会动态加载包含用户自定义函数的动态库。
 
 一般SQL函数分为单行函数和聚合函数，关于单行函数和聚合函数的介绍可以参考[这里](./built_in_function_develop_guide.md)
 ## 2. 开发步骤
@@ -60,7 +60,7 @@
 如函数sum有俩个参数，如果参数和返回值设置为nullable的话，单行函数原型如下:
 ```c++
 extern "C"
-void sum(UDFContext* ctx, int64_t input1, bool is_null, int64_t input2, bool is_null, int64_t* output, bool* is_null) {
+void sum(::openmldb::base::UDFContext* ctx, int64_t input1, bool is_null, int64_t input2, bool is_null, int64_t* output, bool* is_null) {
 ```
 
 #### 2.1.5 单行函数开发
@@ -71,7 +71,7 @@ void sum(UDFContext* ctx, int64_t input1, bool is_null, int64_t input2, bool is_
  
 // 实现一个udf，截取字符串的前两个字符
 extern "C"
-void cut2(UDFContext* ctx, StringRef* input, StringRef* output) {
+void cut2(::openmldb::base::UDFContext* ctx, ::openmldb::base::StringRef* input, ::openmldb::base::StringRef* output) {
     if (input == nullptr || output == nullptr) {
         return;
     }
@@ -100,7 +100,7 @@ void cut2(UDFContext* ctx, StringRef* input, StringRef* output) {
 // 实现名称为special_sum的聚合函数
 
 extern "C"
-UDFContext* special_sum_init(UDFContext* ctx) {
+::openmldb::base::UDFContext* special_sum_init(::openmldb::base::UDFContext* ctx) {
     // 开辟中间变量空间，并赋值給UDFContext中的ptr
     ctx->ptr = ctx->pool->Alloc(sizeof(int64_t));
     // 初始化中间变量的值
@@ -110,7 +110,7 @@ UDFContext* special_sum_init(UDFContext* ctx) {
 }
 
 extern "C"
-UDFContext* special_sum_update(UDFContext* ctx, int64_t input) {
+::openmldb::base::UDFContext* special_sum_update(::openmldb::base::UDFContext* ctx, int64_t input) {
     // 从UDFContext中的ptr取出中间变量并更新
     int64_t cur = *(reinterpret_cast<int64_t*>(ctx->ptr));
     cur += input;
@@ -121,7 +121,7 @@ UDFContext* special_sum_update(UDFContext* ctx, int64_t input) {
 
 // 在output函数中处理聚合计算结果，并返回
 extern "C"
-int64_t special_sum_output(UDFContext* ctx) {
+int64_t special_sum_output(::openmldb::base::UDFContext* ctx) {
     return *(reinterpret_cast<int64_t*>(ctx->ptr)) + 5;
 }
 
