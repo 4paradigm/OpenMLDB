@@ -363,7 +363,7 @@ Status DynamicUdfRegistryHelper::Register() {
         return Status(kCodegenError, "No return type specified for udf registry");;
     }
     std::string init_context_fn_name = "init_udfcontext.opaque";
-    auto type_node = node_manager()->MakeOpaqueType(sizeof(UDFContext));
+    auto type_node = node_manager()->MakeOpaqueType(sizeof(::openmldb::base::UDFContext));
     auto init_context_node = node_manager()->MakeExternalFnDefNode(
             init_context_fn_name, udfcontext_fun_ptr_, type_node, false, {}, {}, -1, true);
     auto def = node_manager()->MakeDynamicUdfFnDefNode(
@@ -380,7 +380,7 @@ DynamicUdafRegistryHelperImpl::DynamicUdafRegistryHelperImpl(const std::string& 
         node::DataType return_type, bool return_nullable,
         const std::vector<node::DataType>& arg_types, bool arg_nullable) : UdfRegistryHelper(name, library) {
     auto nm = node_manager();
-    state_ty_ = nm->MakeOpaqueType(sizeof(UDFContext));
+    state_ty_ = nm->MakeOpaqueType(sizeof(::openmldb::base::UDFContext));
     state_nullable_ = false;
     update_tys_.push_back(state_ty_);
     update_nullable_.push_back(state_nullable_);
