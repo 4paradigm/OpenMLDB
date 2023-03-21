@@ -19,14 +19,26 @@ package com._4paradigm.openmldb.taskmanager.k8s
 import com._4paradigm.openmldb.taskmanager.JobInfoManager
 import com._4paradigm.openmldb.taskmanager.config.TaskManagerConfig
 import com._4paradigm.openmldb.taskmanager.dao.JobInfo
+import com._4paradigm.openmldb.taskmanager.k8s.K8sJobManager.getDrvierPodName
 import io.fabric8.kubernetes.api.model.Pod
 import io.fabric8.kubernetes.client.dsl.base.CustomResourceDefinitionContext
-import io.fabric8.kubernetes.client.{Config, DefaultKubernetesClient}
+import io.fabric8.kubernetes.client.{Config, DefaultKubernetesClient, Watcher, WatcherException}
 import org.slf4j.LoggerFactory
+
+import java.util.Calendar
 import scala.collection.mutable
+
 
 object K8sJobManager {
   private val logger = LoggerFactory.getLogger(this.getClass)
+
+  def getK8sJobName(jobId: Int): String = {
+    s"openmldb-job-tobe1-$jobId"
+  }
+
+  def getDrvierPodName(jobId: Int): String = {
+    s"${getK8sJobName(jobId)}-driver"
+  }
 
   def submitSparkJob(jobType: String, mainClass: String,
     args: List[String] = List(),
@@ -37,7 +49,8 @@ object K8sJobManager {
 
     val jobInfo = JobInfoManager.createJobInfo(jobType, args, sparkConf)
 
-    val jobName = s"openmldb-job-${jobInfo.getId}"
+    val jobName = getK8sJobName(jobInfo.getId)
+    jobInfo.setApplicationId(jobName)
 
     val finalSparkConf: mutable.Map[String, String] = mutable.Map(sparkConf.toSeq: _*)
 
@@ -90,14 +103,8 @@ object K8sJobManager {
     )
     manager.submitJob(jobConfig)
 
-    if (blocking) {
-      // TODO: Get K8S status and block
-      logger.warn("blocking is not supported for K8S jobs")
-    }
-
-    // TODO: Update K8S job status in another thread
-
-    manager.close()
+    // Update K8S job status
+    manager.waitAndWatch(jobInfo: JobInfo)
 
     jobInfo
   }
@@ -108,9 +115,9 @@ class K8sJobManager(val namespace:String = "default",
 
   private val logger = LoggerFactory.getLogger(this.getClass)
 
-  // Configure and create a Kubernetes client
+  // TODO: Configure and create a Kubernetes client from TaskManagerConfig
   val k8sConfig = Config.autoConfigure(null)
-  val client = new DefaultKubernetesClient(k8sConfig)
+  val client =   new DefaultKubernetesClient(k8sConfig)
 
   def listAllPods(): Unit = {
     // List Pods in the specified namespace
@@ -188,6 +195,88 @@ class K8sJobManager(val namespace:String = "default",
   def close(): Unit = {
     // Close the Kubernetes client
     client.close()
+  }
+
+  def waitAndWatch(jobInfo: JobInfo, timeout: Long = 5000): Unit = {
+    val startTime = System.currentTimeMillis()
+
+    val podName = getDrvierPodName(jobInfo.getId)
+    var pod = client.pods().inNamespace(namespace).withName(podName).get()
+
+    while (pod == null) {
+      // Sleep to wait pod to be created
+      if (System.currentTimeMillis() - startTime >= timeout) {
+        close()
+        throw new Exception(s"Pod $podName not found when timeout")
+      } else {
+        logger.info(s"Sleep 1 second and wait for pod $podName to be created")
+        Thread.sleep(1000)
+        pod = client.pods().inNamespace(namespace).withName(podName).get()
+      }
+    }
+
+    watchPodStatus(jobInfo)
+  }
+
+  /**
+   * Watch the status of the pod.
+   * Notice that we should not close the client when updating the status of the job.
+   *
+   * @param jobInfo
+   */
+  def watchPodStatus(jobInfo: JobInfo): Unit = {
+
+    val podName = getDrvierPodName(jobInfo.getId)
+    val pod = client.pods().inNamespace(namespace).withName(podName).get()
+
+    if (pod == null) {
+      //close()
+      throw new Exception(s"Pod $podName not found")
+    }
+
+    client.pods().inNamespace(namespace).withName(podName).watch(new Watcher[Pod] {
+      override def eventReceived(action: Watcher.Action, resource: Pod): Unit = {
+        // handle pod status change event
+        if (resource.getStatus.getPhase.equals("Succeeded")) {
+          jobInfo.setState("finished")
+          client.close()
+        } else if (resource.getStatus.getPhase.equals("Failed")) {
+          jobInfo.setState("failed")
+          client.close()
+        } else if (resource.getStatus.getPhase.equals("Pending")) {
+          jobInfo.setState("pending")
+        } else if (resource.getStatus.getPhase.equals("Running")) {
+          jobInfo.setState("running")
+        } else {
+          logger.warn(s"Pod ${resource.getMetadata.getName} status changed to ${resource.getStatus.getPhase} " +
+            s"but not update job state")
+        }
+
+        logger.info("Job(id=%d) state change to %s".format(jobInfo.getId, jobInfo.getState))
+
+        if (jobInfo.isFinished) {
+          // Set end time
+          val endTime = new java.sql.Timestamp(Calendar.getInstance.getTime().getTime())
+          jobInfo.setEndTime(endTime)
+
+          // TODO: Get error message to set
+
+          jobInfo.sync()
+        }
+
+      }
+
+       def onClose(e: WatcherException): Unit = {
+         // handle watch close event
+         if (e != null) {
+           println("Pod watch closed with error: " + e.getMessage)
+         } else {
+           println("Pod watch closed normally")
+         }
+      }
+
+    })
+
   }
 
 }
