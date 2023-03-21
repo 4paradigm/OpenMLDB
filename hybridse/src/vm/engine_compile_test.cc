@@ -664,7 +664,8 @@ TEST_F(EngineCompileTest, EngineCompileWithoutDefaultDBTest) {
     }
 }
 
-void cut2(UDFContext* ctx, ::openmldb::base::StringRef* input, ::openmldb::base::StringRef* output, bool* is_null) {
+void cut2(::openmldb::base::UDFContext* ctx, ::openmldb::base::StringRef* input,
+        ::openmldb::base::StringRef* output, bool* is_null) {
     if (input == nullptr || output == nullptr) {
         *is_null = true;
     }
