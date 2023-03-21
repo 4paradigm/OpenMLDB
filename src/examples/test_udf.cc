@@ -76,7 +76,8 @@ extern "C"
 }
 
 extern "C"
-::openmldb::base::UDFContext* count_null_update(::openmldb::base::UDFContext* ctx, ::openmldb::base::StringRef* input, bool is_null) {
+::openmldb::base::UDFContext* count_null_update(::openmldb::base::UDFContext* ctx,
+        ::openmldb::base::StringRef* input, bool is_null) {
     int64_t cur = *(reinterpret_cast<int64_t*>(ctx->ptr));
     if (is_null) {
         cur++;
