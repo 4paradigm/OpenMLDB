@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.7.3] - 2023-03-22
+
+### Features
+- Support C/C++ based User-Defined Aggregated Functions (UDAFs) (#2825 @dl239)
+- Add sub-commands to diagnostic tool (#3106 @vagetablechicken)
+- Add new script to modify the node environment configuration (#3142 @dl239)
+- Modify the default value of `max_traverse_cnt` to unlimited (#2999 @dl239)
+
+### Bug Fixes
+- User-provided `SPARK_HOME` does not works in the deploy scripts (#3085 @zhanghaohit)
+- The result of `Select timestamp(string_val)` is incorrect in offline mode. (#3088 @tobegit3hub)
+
+Note:
+If the config of Tablet has not updated when upgrading to new version, the result of select will be truncated as the old version (#2999).
+
 ## [0.7.2] - 2023-02-17
 
 ### Features
@@ -527,6 +542,7 @@ Removed
 - openmldb-0.2.0-linux.tar.gz targets on x86_64
 - aarch64 artifacts consider experimental
 
+[0.7.3]: https://github.com/4paradigm/OpenMLDB/compare/v0.7.2...v0.7.3
 [0.7.2]: https://github.com/4paradigm/OpenMLDB/compare/v0.7.1...v0.7.2
 [0.7.1]: https://github.com/4paradigm/OpenMLDB/compare/v0.7.0...v0.7.1
 [0.7.0]: https://github.com/4paradigm/OpenMLDB/compare/v0.6.9...v0.7.0
