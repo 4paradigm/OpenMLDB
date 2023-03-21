@@ -3,7 +3,7 @@
 Although there are already hundreds of built-in functions, they can not satisfy the needs in some cases. In the past, this could only be done by developing new built-in functions. Built-in function development requires a relatively long cycle because it needs to recompile binary files and users have to wait for new version release.
 In order to help users to quickly develop computing functions that are not provided by OpenMLDB, we develop the mechanism of user dynamic registration function.
 
-SQL functions can be categorised into single-line functions and aggregate functions. An introduction to single-line functions and aggregate functions can be seen [here](./built_in_function_develop_guide.md).
+SQL functions can be categorised into scalar functions and aggregate functions. An introduction to scalar functions and aggregate functions can be seen [here](./built_in_function_develop_guide.md).
 ## 2. Development Procedures
 ### 2.1 Develop UDF functions
 #### 2.1.1 Naming Specification of C++ Built-in Function
@@ -65,8 +65,8 @@ void sum(UDFContext* ctx, int64_t input1, bool is_null, int64_t input2, bool is_
 
 #### 2.1.4 Memory Management
 
-- It is not allowed to use `new` operator or `malloc` function to request new memory space in UDF functions.
-- If you use `new` operator or `malloc` function to request new memory space in UDAF init functions, it need to be freed in output function mannually.
+- It is not allowed to use `new` operator or `malloc` function to allocate memory for input and output argument in UDF functions.
+- If you use `new` operator or `malloc` function to allocate memory for UDFContext::ptr in UDAF init functions, it need to be freed in output function mannually.
 - If you need to request additional memory space dynamically, please use the memory management interface provided by OpenMLDB. OpenMLDB will automatically free the memory space after the function is executed. 
 
 ```c++
