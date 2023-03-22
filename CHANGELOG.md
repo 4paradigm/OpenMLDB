@@ -7,10 +7,14 @@
 - Add sub-commands to diagnostic tool (#3106 @vagetablechicken)
 - Add new script to modify the node environment configuration (#3142 @dl239)
 - Modify the default value of `max_traverse_cnt` to unlimited (#2999 @dl239)
+- Improve the documents (#3111 #3093 #3119 @selenachenjingxin, #3105 #3125 #3120 @vagetablechicken, #3114 #3126 @dl239, #3128 @lumianph)
 
 ### Bug Fixes
 - User-provided `SPARK_HOME` does not works in the deploy scripts (#3085 @zhanghaohit)
 - The result of `Select timestamp(string_val)` is incorrect in offline mode. (#3088 @tobegit3hub)
+
+### Code Refactoring
+#3122 @haseeb-xd
 
 Note:
 If the config of Tablet has not updated when upgrading to new version, the result of select will be truncated as the old version (#2999).
