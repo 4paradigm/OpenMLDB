@@ -8,6 +8,7 @@ cases:
   - id: 0
     desc: LASTJOIN(FILTER<optimized>)
     deployable: true
+    mode: batch-request-unsupport
     sql: |
       SELECT
         t1.c1,
@@ -50,6 +51,7 @@ cases:
 
   - id: 1
     desc: LASTJOIN(SimpleOPS(FILTER<optimized>))
+    mode: batch-request-unsupport
     deployable: true
     sql: |
       SELECT
@@ -94,6 +96,7 @@ cases:
 
   - id: 2
     desc: LASTJOIN(FILTER<not optimized>)
+    # unoptimized filter node should fine in batch request
     deployable: true
     sql: |
       SELECT
@@ -137,6 +140,7 @@ cases:
 
   - id: 3
     desc: LASTJOIN(FILTER<partial optimzied>)
+    mode: batch-request-unsupport
     deployable: true
     sql: |
       SELECT
@@ -180,6 +184,7 @@ cases:
 
   - id: 4
     desc: LASTJOIN(SimpleOps(FILTER<not optimized>))
+    # unoptimized filter node should fine in batch request
     deployable: true
     sql: |
       SELECT
@@ -223,8 +228,11 @@ cases:
         cc, 41, NULL
 
   - id: 5
-    desc: LASTJOIN(SimpleOps(FILTER<optimized>)), different index with join
+    desc: |
+      LASTJOIN(SimpleOps(FILTER<optimized>)), different index with join, fine to
+      online if there is no order by of last join
     deployable: true
+    mode: batch-request-unsupport
     sql: |
       SELECT
         t1.c1,
@@ -314,6 +322,7 @@ cases:
 
   - id: 7
     desc: LASTJOIN(SimpleOps(FILTER<optimized>)) hit same index with order by
+    mode: batch-request-unsupport
     deployable: true
     sql: |
       SELECT
