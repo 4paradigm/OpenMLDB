@@ -24,7 +24,6 @@ import io.fabric8.kubernetes.api.model.Pod
 import io.fabric8.kubernetes.client.dsl.base.CustomResourceDefinitionContext
 import io.fabric8.kubernetes.client.{Config, DefaultKubernetesClient, Watcher, WatcherException}
 import org.slf4j.LoggerFactory
-
 import java.util.Calendar
 import scala.collection.mutable
 
@@ -85,21 +84,13 @@ object K8sJobManager {
 
     val manager = new K8sJobManager()
 
-    // TODO: Support hdfs later
-    val mountLocalPath = if (TaskManagerConfig.OFFLINE_DATA_PREFIX.startsWith("file://")) {
-      TaskManagerConfig.OFFLINE_DATA_PREFIX.drop(7)
-    } else {
-      logger.warn("offline data prefix should start with file:// for K8S jobs, mount /tmp instead")
-      "/tmp"
-    }
-
     val jobConfig = K8sJobConfig(
       jobName = jobName,
       mainClass = mainClass,
       mainJarFile = "local:///opt/spark/jars/openmldb-batchjob-0.7.2-SNAPSHOT.jar",
       arguments = args,
       sparkConf = finalSparkConf.toMap,
-      mountLocalPath = mountLocalPath
+      mountLocalPath = TaskManagerConfig.K8S_MOUNT_LOCAL_PATH
     )
     manager.submitJob(jobConfig)
 
@@ -117,7 +108,7 @@ class K8sJobManager(val namespace:String = "default",
 
   // TODO: Configure and create a Kubernetes client from TaskManagerConfig
   val k8sConfig = Config.autoConfigure(null)
-  val client =   new DefaultKubernetesClient(k8sConfig)
+  val client = new DefaultKubernetesClient(k8sConfig)
 
   def listAllPods(): Unit = {
     // List Pods in the specified namespace
@@ -158,7 +149,7 @@ class K8sJobManager(val namespace:String = "default",
         |        type: Directory
         |    - name: hadoop-config
         |      configMap:
-        |        name: hadoop-config
+        |        name: ${TaskManagerConfig.K8S_HADOOP_CONFIGMAP_NAME}
         |  driver:
         |    cores: ${jobConfig.driverCores}
         |    memory: "${jobConfig.driverMemory}"

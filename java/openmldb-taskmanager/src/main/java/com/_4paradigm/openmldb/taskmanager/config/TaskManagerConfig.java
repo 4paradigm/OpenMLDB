@@ -63,6 +63,8 @@ public class TaskManagerConfig {
     public static String HADOOP_CONF_DIR;
     public static boolean ENABLE_HIVE_SUPPORT;
     public static long BATCH_JOB_RESULT_MAX_WAIT_TIME;
+    public static String K8S_HADOOP_CONFIGMAP_NAME;
+    public static String K8S_MOUNT_LOCAL_PATH;
 
     private static volatile boolean isParsed = false;
 
@@ -256,6 +258,10 @@ public class TaskManagerConfig {
         ENABLE_HIVE_SUPPORT = Boolean.parseBoolean(prop.getProperty("enable.hive.support", "true"));
 
         BATCH_JOB_RESULT_MAX_WAIT_TIME = Long.parseLong(prop.getProperty("batch.job.result.max.wait.time", "600000")); // 10min
+
+        K8S_HADOOP_CONFIGMAP_NAME = prop.getProperty("k8s.hadoop.configmap", "hadoop-config");
+
+        K8S_MOUNT_LOCAL_PATH = prop.getProperty("k8s.mount.local.path", "/tmp");
     }
 
     public static boolean isK8s() throws ConfigException {
