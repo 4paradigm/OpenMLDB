@@ -217,14 +217,14 @@ bool Engine::Get(const std::string& sql, const std::string& db, RunSession& sess
     return true;
 }
 
-base::Status Engine::RegisterExternalFunction(const std::string& name, node::DataType return_type,
-                                         const std::vector<node::DataType>& arg_types, bool is_aggregate,
-                                         const std::string& file) {
+base::Status Engine::RegisterExternalFunction(const std::string& name, node::DataType return_type, bool return_nullable,
+                                         const std::vector<node::DataType>& arg_types, bool arg_nullable,
+                                         bool is_aggregate, const std::string& file) {
     if (name.empty()) {
         return {common::kExternalUDFError, "function name is empty"};
     }
     auto lib = udf::DefaultUdfLibrary::get();
-    return lib->RegisterDynamicUdf(name, return_type, arg_types, is_aggregate, file);
+    return lib->RegisterDynamicUdf(name, return_type, return_nullable, arg_types, arg_nullable, is_aggregate, file);
 }
 
 base::Status Engine::RemoveExternalFunction(const std::string& name,
