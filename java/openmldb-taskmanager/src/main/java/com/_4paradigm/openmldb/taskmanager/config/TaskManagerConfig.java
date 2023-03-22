@@ -61,6 +61,7 @@ public class TaskManagerConfig {
     public static String NAMENODE_URI;
     public static String BATCHJOB_JAR_PATH;
     public static String HADOOP_CONF_DIR;
+    public static String HADOOP_USER_NAME;
     public static boolean ENABLE_HIVE_SUPPORT;
     public static long BATCH_JOB_RESULT_MAX_WAIT_TIME;
     public static String K8S_HADOOP_CONFIGMAP_NAME;
@@ -240,6 +241,8 @@ public class TaskManagerConfig {
                 throw new ConfigException("batchjob.jar.path", "config is null and fail to load default openmldb-batchjob jar");
             }
         }
+
+        HADOOP_USER_NAME = prop.getProperty("hadoop.user.name", "root");
 
         HADOOP_CONF_DIR = prop.getProperty("hadoop.conf.dir", "");
         if (isYarn && HADOOP_CONF_DIR.isEmpty()) {

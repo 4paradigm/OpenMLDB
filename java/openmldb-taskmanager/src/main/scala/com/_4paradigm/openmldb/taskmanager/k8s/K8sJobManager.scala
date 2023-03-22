@@ -24,6 +24,8 @@ import io.fabric8.kubernetes.api.model.Pod
 import io.fabric8.kubernetes.client.dsl.base.CustomResourceDefinitionContext
 import io.fabric8.kubernetes.client.{Config, DefaultKubernetesClient, Watcher, WatcherException}
 import org.slf4j.LoggerFactory
+
+import java.nio.file.Paths
 import java.util.Calendar
 import scala.collection.mutable
 
@@ -77,6 +79,20 @@ object K8sJobManager {
     if (defaultDb.nonEmpty) {
       finalSparkConf.put("spark.openmldb.default.db", defaultDb)
     }
+
+    if (TaskManagerConfig.OFFLINE_DATA_PREFIX.nonEmpty) {
+      finalSparkConf.put("spark.openmldb.offline.data.prefix", TaskManagerConfig.OFFLINE_DATA_PREFIX)
+    }
+
+    // Set external function dir for offline jobs
+    val absoluteExternalFunctionDir = if (TaskManagerConfig.EXTERNAL_FUNCTION_DIR.startsWith("/")) {
+      TaskManagerConfig.EXTERNAL_FUNCTION_DIR
+    } else {
+      // TODO: The current path is incorrect if running in IDE, please set `external.function.dir` with absolute path
+      // Concat to generate absolute path
+      Paths.get(Paths.get(".").toAbsolutePath.toString, TaskManagerConfig.EXTERNAL_FUNCTION_DIR).toString
+    }
+    finalSparkConf.put("spark.openmldb.taskmanager.external.function.dir", absoluteExternalFunctionDir)
 
     if(TaskManagerConfig.ENABLE_HIVE_SUPPORT) {
       finalSparkConf.put("spark.sql.catalogImplementation", "hive")
@@ -164,6 +180,8 @@ class K8sJobManager(val namespace:String = "default",
         |    env:
         |      - name: HADOOP_CONF_DIR
         |        value: /etc/hadoop/conf
+        |      - name: HADOOP_USER_NAME
+        |        value: ${TaskManagerConfig.HADOOP_USER_NAME}
         |  executor:
         |    cores: ${jobConfig.executorCores}
         |    instances: ${jobConfig.executorNum}
@@ -178,6 +196,8 @@ class K8sJobManager(val namespace:String = "default",
         |    env:
         |      - name: HADOOP_CONF_DIR
         |        value: /etc/hadoop/conf
+        |      - name: HADOOP_USER_NAME
+        |        value: ${TaskManagerConfig.HADOOP_USER_NAME}
       """.stripMargin
 
     // Create a CustomResourceDefinitionContext for the SparkApplication
