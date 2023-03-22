@@ -546,6 +546,7 @@ Removed
 - openmldb-0.2.0-linux.tar.gz targets on x86_64
 - aarch64 artifacts consider experimental
 
+[0.7.3]: https://github.com/4paradigm/OpenMLDB/compare/v0.7.2...v0.7.3
 [0.7.2]: https://github.com/4paradigm/OpenMLDB/compare/v0.7.1...v0.7.2
 [0.7.1]: https://github.com/4paradigm/OpenMLDB/compare/v0.7.0...v0.7.1
 [0.7.0]: https://github.com/4paradigm/OpenMLDB/compare/v0.6.9...v0.7.0
