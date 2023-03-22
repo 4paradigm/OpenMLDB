@@ -51,7 +51,6 @@ class UdafRegistry;
 class CompositeRegistry;
 class UdfResolveContext;
 
-template <typename T>
 class ArgSignatureTable;
 
 template <template <typename> typename FTemplate>
@@ -101,8 +100,7 @@ class UdfLibrary {
 
     bool HasFunction(const std::string& name) const;
 
-    std::shared_ptr<ArgSignatureTable<std::shared_ptr<UdfRegistry>>> FindAll(
-        const std::string& name) const;
+    std::shared_ptr<ArgSignatureTable> FindAll(const std::string& name) const;
 
     bool IsUdaf(const std::string& name, size_t args) const;
     bool IsUdaf(const std::string& name) const;
@@ -111,8 +109,9 @@ class UdfLibrary {
     bool RequireListAt(const std::string& name, size_t index) const;
     bool IsListReturn(const std::string& name) const;
 
-    Status RegisterDynamicUdf(const std::string& name, node::DataType return_type,
-            const std::vector<node::DataType>& arg_types, bool is_aggregate, const std::string& file);
+    Status RegisterDynamicUdf(const std::string& name, node::DataType return_type, bool return_nullable,
+            const std::vector<node::DataType>& arg_types, bool arg_nullable,
+            bool is_aggregate, const std::string& file);
 
     Status RemoveDynamicUdf(const std::string& name, const std::vector<node::DataType>& arg_types,
             const std::string& file);

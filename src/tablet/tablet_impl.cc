@@ -5758,7 +5758,8 @@ base::Status TabletImpl::CreateFunctionInternal(const ::openmldb::common::Extern
         openmldb::schema::SchemaAdapter::ConvertType(fun.arg_type(idx), &data_type);
         arg_types.emplace_back(data_type);
     }
-    auto status = engine_->RegisterExternalFunction(fun.name(), return_type, arg_types, fun.is_aggregate(), fun.file());
+    auto status = engine_->RegisterExternalFunction(fun.name(), return_type, fun.return_nullable(),
+            arg_types, fun.arg_nullable(), fun.is_aggregate(), fun.file());
     if (status.isOK()) {
         LOG(INFO) << "create function success. name " << fun.name() << " path " << fun.file();
         return {};

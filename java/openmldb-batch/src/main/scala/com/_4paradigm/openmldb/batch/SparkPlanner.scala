@@ -369,7 +369,8 @@ class SparkPlanner(session: SparkSession, config: OpenmldbBatchConfig, sparkAppN
           logger.warn("Get driver so file path: " + driverSoFilePath)
 
           if (File(driverSoFilePath).exists) {
-            Engine.RegisterExternalFunction(functionName, returnDataType, argsDataType, functionProto.getIsAggregate,
+            Engine.RegisterExternalFunction(functionName, returnDataType, functionProto.getReturnNullable,
+              argsDataType, functionProto.getArgNullable, functionProto.getIsAggregate,
               driverSoFilePath)
           } else {
             logger.warn("The dynamic library file does not exit in " + driverSoFilePath)
