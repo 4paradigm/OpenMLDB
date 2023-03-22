@@ -33,7 +33,7 @@ object K8sJobManager {
   private val logger = LoggerFactory.getLogger(this.getClass)
 
   def getK8sJobName(jobId: Int): String = {
-    s"openmldb-job-tobe1-$jobId"
+    s"openmldb-job-$jobId"
   }
 
   def getDrvierPodName(jobId: Int): String = {
@@ -152,10 +152,13 @@ class K8sJobManager(val namespace:String = "default",
         |  restartPolicy:
         |    type: Never
         |  volumes:
-        |    - name: "host-local"
+        |    - name: host-local
         |      hostPath:
         |        path: ${jobConfig.mountLocalPath}
         |        type: Directory
+        |    - name: hadoop-config
+        |      configMap:
+        |        name: hadoop-config
         |  driver:
         |    cores: ${jobConfig.driverCores}
         |    memory: "${jobConfig.driverMemory}"
@@ -163,8 +166,13 @@ class K8sJobManager(val namespace:String = "default",
         |      version: 3.1.1
         |    serviceAccount: spark
         |    volumeMounts:
-        |      - name: "host-local"
+        |      - name: host-local
         |        mountPath: ${jobConfig.mountLocalPath}
+        |      - name: hadoop-config
+        |        mountPath: /etc/hadoop/conf
+        |    env:
+        |      - name: HADOOP_CONF_DIR
+        |        value: /etc/hadoop/conf
         |  executor:
         |    cores: ${jobConfig.executorCores}
         |    instances: ${jobConfig.executorNum}
@@ -172,8 +180,13 @@ class K8sJobManager(val namespace:String = "default",
         |    labels:
         |      version: 3.1.1
         |    volumeMounts:
-        |      - name: "host-local"
+        |      - name: host-local
         |        mountPath: ${jobConfig.mountLocalPath}
+        |      - name: hadoop-config
+        |        mountPath: /etc/hadoop/conf
+        |    env:
+        |      - name: HADOOP_CONF_DIR
+        |        value: /etc/hadoop/conf
       """.stripMargin
 
     // Create a CustomResourceDefinitionContext for the SparkApplication
