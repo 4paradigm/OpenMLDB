@@ -158,6 +158,9 @@ class K8sJobManager(val namespace:String = "default",
         |  sparkVersion: "3.1.1"
         |  restartPolicy:
         |    type: Never
+        |  env:
+        |    - name: SPARK_USER
+        |      value: ${TaskManagerConfig.HADOOP_USER_NAME}
         |  volumes:
         |    - name: host-local
         |      hostPath:
