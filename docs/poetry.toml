@@ -1,0 +1,6 @@
+[installer]
+# disable the default modern installer since poetry 1.4.0
+# see https://github.com/python-poetry/poetry/pull/7358
+# modern installer fails in pydata-sphinx-theme,
+# rm this config after https://github.com/pydata/pydata-sphinx-theme/issues/1253 closed
+modern-installation = false
