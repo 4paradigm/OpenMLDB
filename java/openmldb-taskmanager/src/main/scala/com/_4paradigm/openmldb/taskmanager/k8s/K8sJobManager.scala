@@ -16,15 +16,17 @@
 
 package com._4paradigm.openmldb.taskmanager.k8s
 
-import com._4paradigm.openmldb.taskmanager.JobInfoManager
+import com._4paradigm.openmldb.taskmanager.{JobInfoManager, LogManager}
 import com._4paradigm.openmldb.taskmanager.config.TaskManagerConfig
 import com._4paradigm.openmldb.taskmanager.dao.JobInfo
 import com._4paradigm.openmldb.taskmanager.k8s.K8sJobManager.getDrvierPodName
 import io.fabric8.kubernetes.api.model.Pod
+import io.fabric8.kubernetes.client.dsl.LogWatch
 import io.fabric8.kubernetes.client.dsl.base.CustomResourceDefinitionContext
 import io.fabric8.kubernetes.client.{Config, DefaultKubernetesClient, Watcher, WatcherException}
 import org.slf4j.LoggerFactory
 
+import java.io.{File, FileOutputStream}
 import java.nio.file.Paths
 import java.util.Calendar
 import scala.collection.mutable
@@ -115,6 +117,7 @@ object K8sJobManager {
 
     jobInfo
   }
+
 }
 
 class K8sJobManager(val namespace:String = "default",
@@ -125,6 +128,7 @@ class K8sJobManager(val namespace:String = "default",
   // TODO: Configure and create a Kubernetes client from TaskManagerConfig
   val k8sConfig = Config.autoConfigure(null)
   val client = new DefaultKubernetesClient(k8sConfig)
+  var podLogWatch: LogWatch = null
 
   def listAllPods(): Unit = {
     // List Pods in the specified namespace
@@ -221,7 +225,13 @@ class K8sJobManager(val namespace:String = "default",
 
   def close(): Unit = {
     // Close the Kubernetes client
-    client.close()
+    if (client != null) {
+      client.close()
+    }
+
+    if (podLogWatch != null) {
+      podLogWatch.close()
+    }
   }
 
   def waitAndWatch(jobInfo: JobInfo, timeout: Long = 5000): Unit = {
@@ -242,6 +252,7 @@ class K8sJobManager(val namespace:String = "default",
       }
     }
 
+    redirectPodLog(jobInfo)
     watchPodStatus(jobInfo)
   }
 
@@ -257,7 +268,7 @@ class K8sJobManager(val namespace:String = "default",
     val pod = client.pods().inNamespace(namespace).withName(podName).get()
 
     if (pod == null) {
-      //close()
+      close()
       throw new Exception(s"Pod $podName not found")
     }
 
@@ -303,7 +314,14 @@ class K8sJobManager(val namespace:String = "default",
       }
 
     })
+  }
 
+  // Redirect pod log to local file
+  def redirectPodLog(jobInfo: JobInfo): Unit = {
+    val podName = getDrvierPodName(jobInfo.getId)
+    val jobLogFile = LogManager.getJobLogFile(jobInfo.getId)
+
+    podLogWatch = client.pods().inNamespace(namespace).withName(podName).watchLog(new FileOutputStream(jobLogFile))
   }
 
 }
