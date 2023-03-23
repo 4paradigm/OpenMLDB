@@ -32,6 +32,7 @@ import com._4paradigm.openmldb.taskmanager.server.TaskManagerInterface;
 import com._4paradigm.openmldb.taskmanager.udf.ExternalFunctionManager;
 import com._4paradigm.openmldb.taskmanager.util.VersionUtil;
 import com._4paradigm.openmldb.taskmanager.utils.VersionCli;
+import com._4paradigm.openmldb.taskmanager.yarn.YarnClientUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -356,6 +357,17 @@ public class TaskManagerImpl implements TaskManagerInterface {
             String outLog = LogManager.getJobLog(request.getId());
             String errorLog = LogManager.getJobErrorLog(request.getId());
             String log = String.format("Stdout:\n%s\n\nStderr:\n%s", outLog, errorLog);
+
+            try {
+                JobInfo jobInfo = JobInfoManager.getJob(request.getId()).get();
+                if (TaskManagerConfig.isYarnCluster() && jobInfo.isFinished()) {
+                    log += "\n\nYarn log: " + YarnClientUtil.getAppLog(jobInfo.getApplicationId());
+                }
+            } catch (Exception e) {
+                logger.error("Fail to get yarn log for job " + request.getId());
+                e.printStackTrace();
+            }
+
             return TaskManager.GetJobLogResponse.newBuilder().setCode(StatusCode.SUCCESS).setLog(log).build();
         } catch (Exception e) {
             e.printStackTrace();
