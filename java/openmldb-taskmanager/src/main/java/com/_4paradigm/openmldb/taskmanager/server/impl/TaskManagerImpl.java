@@ -361,6 +361,7 @@ public class TaskManagerImpl implements TaskManagerInterface {
             try {
                 JobInfo jobInfo = JobInfoManager.getJob(request.getId()).get();
                 if (TaskManagerConfig.isYarnCluster() && jobInfo.isFinished()) {
+                    // TODO: The yarn log is printed in front of the string
                     log += "\n\nYarn log: " + YarnClientUtil.getAppLog(jobInfo.getApplicationId());
                 }
             } catch (Exception e) {
