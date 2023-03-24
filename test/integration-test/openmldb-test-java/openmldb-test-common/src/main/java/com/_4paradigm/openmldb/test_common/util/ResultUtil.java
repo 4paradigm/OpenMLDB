@@ -41,7 +41,7 @@ public class ResultUtil {
         List<List<Object>> result = openMLDBResult.getResult();
         String[] ss = String.valueOf(result.get(0)).trim().split(",");
         openMLDBJob.setId(Integer.parseInt(ss[0].substring(1)));
-        openMLDBJob.setJobType(ss[1]);
+        openMLDBJob.setJobType(ss[1].substring(1));
         openMLDBJob.setState(ss[2].substring(1));
         SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd hh:mm:ss.SSS");
         Timestamp start_time = new java.sql.Timestamp(0);
