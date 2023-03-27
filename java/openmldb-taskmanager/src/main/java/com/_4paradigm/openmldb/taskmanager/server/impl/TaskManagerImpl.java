@@ -264,6 +264,7 @@ public class TaskManagerImpl implements TaskManagerInterface {
             }
             Thread.sleep(10000);
         }
+        throw new RuntimeException("wait for job " + jobId + " timeout");
     }
 
     private JobInfo waitJobInfoWrapper(int jobId) throws Exception {
