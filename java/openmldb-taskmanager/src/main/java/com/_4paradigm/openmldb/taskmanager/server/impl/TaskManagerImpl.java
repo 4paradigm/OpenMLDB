@@ -166,7 +166,8 @@ public class TaskManagerImpl implements TaskManagerInterface {
             if (jobInfo.isEmpty()) {
                 responseBuilder.setCode(StatusCode.FAILED).setMsg("Fail to get job with id: " + request.getId());
             } else {
-                responseBuilder.setCode(StatusCode.SUCCESS).setJob(jobInfoToProto(jobInfo.get()));;
+                responseBuilder.setCode(StatusCode.SUCCESS).setJob(jobInfoToProto(jobInfo.get()));
+                ;
             }
 
             return responseBuilder.build();
@@ -234,7 +235,8 @@ public class TaskManagerImpl implements TaskManagerInterface {
                 // wait for all files of result saved and read them, large timeout
                 // TODO: Test for K8S backend
                 String output = jobResultSaver.readResult(resultId, TaskManagerConfig.BATCH_JOB_RESULT_MAX_WAIT_TIME);
-                return TaskManager.RunBatchSqlResponse.newBuilder().setCode(StatusCode.SUCCESS).setOutput(output).build();
+                return TaskManager.RunBatchSqlResponse.newBuilder().setCode(StatusCode.SUCCESS).setOutput(output)
+                        .build();
             } else {
                 String errorMsg = String.format("The job %d fail and use 'SHOW JOBLOG %d' for more info", jobId, jobId);
                 return TaskManager.RunBatchSqlResponse.newBuilder().setCode(StatusCode.FAILED).setMsg(errorMsg)
@@ -250,10 +252,11 @@ public class TaskManagerImpl implements TaskManagerInterface {
     // waitSeconds: 0 means wait max time
     // rpc max time is CHANNEL_KEEP_ALIVE_TIME, so we don't need to wait too long
     private JobInfo busyWaitJobInfo(int jobId, int waitSeconds) throws InterruptedException {
-        int maxWaitEnd = System.currentTimeMillis() + (waitSeconds==0?TaskManagerConfig.CHANNEL_KEEP_ALIVE_TIME:waitSeconds) * 1000;
+        long maxWaitEnd = System.currentTimeMillis()
+                + (waitSeconds == 0 ? TaskManagerConfig.CHANNEL_KEEP_ALIVE_TIME : waitSeconds) * 1000;
         while (System.currentTimeMillis() < maxWaitEnd) {
             Option<JobInfo> info = JobInfoManager.getJob(jobId);
-            if(info.isEmpty()) {
+            if (info.isEmpty()) {
                 throw new RuntimeException("job " + jobId + " not found in job_info table");
             }
             if (info.get().isFinished()) {
