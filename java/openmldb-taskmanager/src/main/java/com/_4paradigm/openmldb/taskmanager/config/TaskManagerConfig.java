@@ -86,7 +86,7 @@ public class TaskManagerConfig {
         if (PORT < 1 || PORT > 65535) {
             throw new ConfigException("server.port", "invalid port, should be in range of 1 through 65535");
         }
-        WORKER_THREAD = Integer.parseInt(prop.getProperty("server.worker_threads", "4"));
+        WORKER_THREAD = Integer.parseInt(prop.getProperty("server.worker_threads", "16"));
         IO_THREAD = Integer.parseInt(prop.getProperty("server.io_threads", "4"));
         // alive time seconds
         CHANNEL_KEEP_ALIVE_TIME = Integer.parseInt(prop.getProperty("server.channel_keep_alive_time", "1800"));

@@ -247,11 +247,16 @@ public class TaskManagerImpl implements TaskManagerInterface {
         }
     }
 
-    // no max wait time
-    private JobInfo busyWaitJobInfo(int jobId) throws InterruptedException {
-        while (true) {
+    // waitSeconds: 0 means wait max time
+    // rpc max time is CHANNEL_KEEP_ALIVE_TIME, so we don't need to wait too long
+    private JobInfo busyWaitJobInfo(int jobId, int waitSeconds) throws InterruptedException {
+        int maxWaitEnd = System.currentTimeMillis() + (waitSeconds==0?TaskManagerConfig.CHANNEL_KEEP_ALIVE_TIME:waitSeconds) * 1000;
+        while (System.currentTimeMillis() < maxWaitEnd) {
             Option<JobInfo> info = JobInfoManager.getJob(jobId);
-            if (info.nonEmpty() && info.get().isFinished()) {
+            if(info.isEmpty()) {
+                throw new RuntimeException("job " + jobId + " not found in job_info table");
+            }
+            if (info.get().isFinished()) {
                 return info.get();
             }
             Thread.sleep(10000);
@@ -260,13 +265,15 @@ public class TaskManagerImpl implements TaskManagerInterface {
 
     private JobInfo waitJobInfoWrapper(int jobId) throws Exception {
         try {
-            busyWaitJobInfo(jobId);
+            busyWaitJobInfo(jobId, 0);
             // Ref https://github.com/4paradigm/OpenMLDB/issues/1436#issuecomment-1066314684
+            // wait for 2s to avoid state jump from FINISHED to FAILED
             Thread.sleep(2000);
-            return busyWaitJobInfo(jobId);
-        } catch (InterruptedException e) {
+            // check the job state again, just check one time
+            return busyWaitJobInfo(jobId, 2);
+        } catch (Exception e) {
             e.printStackTrace();
-            throw new Exception("wait for job failed, use show job to get the job status. Job " + jobId);
+            throw new RuntimeException("wait for job failed, use show job to get the job status. Job " + jobId, e);
         }
     }
 
