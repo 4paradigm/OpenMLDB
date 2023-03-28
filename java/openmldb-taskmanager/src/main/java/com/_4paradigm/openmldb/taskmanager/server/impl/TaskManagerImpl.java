@@ -167,7 +167,6 @@ public class TaskManagerImpl implements TaskManagerInterface {
                 responseBuilder.setCode(StatusCode.FAILED).setMsg("Fail to get job with id: " + request.getId());
             } else {
                 responseBuilder.setCode(StatusCode.SUCCESS).setJob(jobInfoToProto(jobInfo.get()));
-                ;
             }
 
             return responseBuilder.build();
