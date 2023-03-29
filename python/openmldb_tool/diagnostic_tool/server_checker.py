@@ -14,165 +14,124 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import logging
+from absl import flags
+from absl import logging
 import time
-import openmldb.dbapi
 
-log = logging.getLogger(__name__)
+from .connector import Connector
+from .dist_conf import DistConf, COMPONENT_ROLES, ServerInfo
+
+# rename to checker?
 
 
-class ServerChecker:
-    def __init__(self, conf_dict, print_sdk_log):
-        self.conf_dict = conf_dict
-        self.db_name = "__test_db_xxx_aaa_diagnostic_tool__"
-        self.table_name = "__test_table_xxx_aaa_diagnostic_tool__"
-        connect_args = (
-            {}
-        )  # {'database': self.db_name} the db is not guaranteed to exist
-        if not print_sdk_log:
-            connect_args["zkLogLevel"] = 0
-            connect_args["glogLevel"] = 2
+class StatusChecker:
+    def __init__(self, conn: Connector):
+        self.conn = conn
 
-        if conf_dict["mode"] == "cluster":
-            connect_args["zk"] = conf_dict["zookeeper"]["zk_cluster"]
-            connect_args["zkPath"] = conf_dict["zookeeper"]["zk_root_path"]
-        else:
-            connect_args["host"], connect_args["port"] = conf_dict["nameserver"][0][
-                "endpoint"
-            ].split(":")
-        self.db = openmldb.dbapi.connect(**connect_args)
-        self.cursor = self.db.cursor()
+    def check_components(self):
+        """ensure all components in cluster is online"""
+        components_map = self._get_components(show=True)
+        return self._check_status(components_map)
 
-    def parse_component(self, component_list):
+    def offline_support(self):
+        """True if have taskmanager, else False"""
+        components_map = self._get_components(show=False)
+        return "taskmanager" in components_map
+
+    def _get_components(self, show=False):
+        component_list = self.conn.execfetch("SHOW COMPONENTS", show=show)
         component_map = {}
-        for (endpoint, component, _, status, role) in component_list:
+        for (endpoint, component, _, status, _) in component_list:
             component_map.setdefault(component, [])
             component_map[component].append((endpoint, status))
         return component_map
 
-    def check_status(self, component_map):
+    def _check_status(self, component_map):
         for component, value_list in component_map.items():
             for endpoint, status in value_list:
                 if status != "online":
-                    log.warning(f"{component} endpoint {endpoint} is offline")
+                    logging.warning(f"{component} endpoint {endpoint} is offline")
+                    return False
+        return True
 
-    def check_startup(self, component_map):
-        for component in ["nameserver", "tablet", "taskmanager"]:
-            if self.conf_dict["mode"] != "cluster":
-                if component == "taskmanager":
-                    continue
-                if len(self.conf_dict[component]) > 1:
-                    log.warning(f"{component} number is greater than 1")
+    def check_startup(self, dist_conf: DistConf) -> bool:
+        """
+        Check if all components in conf file are exist in cluster
+        Components don't include apiserver
+        """
+        components_in_cluster = self._get_components(show=False)
 
-            for item in self.conf_dict[component]:
-                endpoint = item["endpoint"]
-                has_found = False
-                for cur_endpoint, _ in component_map[component]:
-                    if endpoint == cur_endpoint:
-                        has_found = True
-                        break
-                if not has_found:
-                    log.warning(f"{component} endpoint {endpoint} has not startup")
-
-    def check_component(self):
-        result = self.cursor.execute("SHOW COMPONENTS;").fetchall()
-        component_map = self.parse_component(result)
-        self.check_status(component_map)
-        self.check_startup(component_map)
-
-    def is_exist(self, data, name):
-        for item in data:
-            if item[0] == name:
-                return True
-        return False
-
-    def get_job_status(self, job_id):
-        try:
-            result = self.cursor.execute("SHOW JOB {};".format(job_id)).fetchall()
-            return result[0][2]
-        except Exception as e:
-            log.warning(e)
-            return None
-
-    def check_offline_select(self) -> bool:
-        if "taskmanager" not in self.conf_dict:
-            log.info("no taskmanager installed. skip job test")
-            return True
-        self.cursor.execute("SET @@execute_mode='offline';")
-        # make sure it's an async job, to get the job id, not the select result
-        self.cursor.execute("SET @@sync_job=false;")
-        result = self.cursor.execute(
-            "SELECT * FROM {};".format(self.table_name)
-        ).fetchall()
-        if len(result) != 1:
-            log.warning(f"result is invalid, expect a job info: {result}")
-            return False
-        # see system table JOB_INFO schema, job id idx is 0
-        job_id, try_time = result[0][0], 0
-        # it's an empty table in offline, shouldn't wait too long for final states
-        while try_time < 60:
-            time.sleep(2)
-            status = self.get_job_status(job_id)
-            if status is None:
-                return False
-            elif status == "FINISHED":
-                return True
-            elif status == "FAILED":
-                log.warning(f"job execute failed, check job {job_id}")
-                return False
-            try_time += 1
-        return False
-
-    def run_test_sql(self) -> bool:
-        self.check_component()
-        self.cursor.execute("CREATE DATABASE IF NOT EXISTS {};".format(self.db_name))
-        result = self.cursor.execute("SHOW DATABASES;").fetchall()
-        if not self.is_exist(result, self.db_name):
-            log.warning("create database failed")
-            return False
-        self.cursor.execute("USE {};".format(self.db_name)).fetchall()
-        # If table exists, recreate it, to avoid online check failed.
-        # If we added deployment test later, delete deployments too
-        if self.table_name in self.cursor.get_tables(self.db_name):
-            log.info("table exists, recreate it")
-            self.cursor.execute(f"drop table {self.table_name}")
-        self.cursor.execute(
-            f"CREATE TABLE {self.table_name} (col1 string, col2 string);"
-        )
-        result = self.cursor.execute("SHOW TABLES;").fetchall()
-        if not self.is_exist(result, self.table_name):
-            log.warning("create table failed")
+        def is_exist(server_info: ServerInfo) -> bool:
+            finds = [
+                server_in_cluster
+                for server_in_cluster in components_in_cluster[server_info.role]
+                if server_in_cluster[0] == server_info.endpoint
+            ]
+            if len(finds) == 0:
+                print(f"server {server_info.endpoint} is not exist in cluster")
+            elif len(finds) > 1:
+                print(
+                    f"server {server_info.endpoint} is exist in cluster more than once"
+                )
+            else:
+                if finds[0][1] != "online":
+                    print(
+                        f"server {server_info.endpoint} is exist in cluster, but status is {finds[0][1]}"
+                    )
+                else:
+                    return True
             return False
 
-        flag = True
-        # offline check
-        if self.conf_dict["mode"] == "cluster" and not self.check_offline_select():
-            flag = False
+        return dist_conf.server_info_map.for_each(is_exist, roles=COMPONENT_ROLES)
 
-        # online check
-        self.cursor.execute("SET @@execute_mode='online';")
-        self.cursor.execute(
-            "INSERT INTO {} VALUES ('aa', 'bb');".format(self.table_name)
-        )
-        result = self.cursor.execute(
-            "SELECT * FROM {};".format(self.table_name)
-        ).fetchall()
-        if len(result) != 1:
-            log.warning("check select data failed")
-            flag = False
 
-        self.cursor.execute("DROP TABLE {};".format(self.table_name))
-        result = self.cursor.execute("SHOW TABLES;").fetchall()
-        if self.is_exist(result, self.table_name):
-            log.warning(f"drop table {self.table_name} failed")
-            flag = False
-        # precheck to avoid the exception of dropping db with tables
-        if self.cursor.get_tables(self.db_name):
-            log.warning(f"{self.db_name} has tables, skip dropping db")
-        else:
-            self.cursor.execute("DROP DATABASE {};".format(self.db_name))
-        result = self.cursor.execute("SHOW DATABASES;").fetchall()
-        if self.is_exist(result, self.db_name):
-            log.warning(f"drop database {self.db_name} failed")
-            flag = False
-        return flag
+class SQLTester:
+    def __init__(self, conn: Connector):
+        self.db_name = "__test_db_xxx_aaa_diagnostic_tool__"
+        self.table_name = "__test_table_xxx_aaa_diagnostic_tool__"
+        self.conn = conn
+
+    def setup(self):
+        """create db and table"""
+        self.conn.execute(f"CREATE DATABASE IF NOT EXISTS {self.db_name}")
+        # ensure empty db, test won't create sp/deployment, so it's ok to delete directly
+        self.conn.execute(f"USE {self.db_name}")
+        tables = self.conn.execfetch(f"SHOW TABLES")
+        for t in tables:
+            self.conn.execute(f"DROP TABLE {t[0]}")
+        assert not self.conn.execfetch(f"SHOW TABLES")
+        self.conn.execute(f"CREATE TABLE {self.table_name}(col1 string, col2 string)")
+        tables = self.conn.execfetch(f"SHOW TABLES")
+        assert (
+            len(tables) == 1 and tables[0][0] == self.table_name
+        ), f"cur tables: {tables}, > 1 table or not {self.table_name}"
+
+    def online(self):
+        """test create, insert, select in online mode"""
+        self.conn.execute(f"USE {self.db_name}")
+        self.conn.execute("SET @@execute_mode='online';")
+        self.conn.execute(f"INSERT INTO {self.table_name} VALUES ('aa', 'bb');")
+        result = self.conn.execfetch(f"SELECT * FROM {self.table_name};")
+        assert len(result) == 1, f"should be 1 row, but {result}"
+
+    def offline(self):
+        """test select in offline mode. We don't load data, so it will be empty"""
+        # taskmanager must exist?
+        self.conn.execute(f"USE {self.db_name}")
+        self.conn.execute("SET @@execute_mode='offline';")
+        self.conn.execute("SET @@sync_job=true;")
+        result = self.conn.execfetch(f"SELECT * FROM {self.table_name};")
+        # empty select still has a result table
+        print(result)
+        # after 0.7.2, empty select will return empty result, no header
+        assert "" == result[0][0]  # more flexible?
+
+    def teardown(self):
+        """cleanup test db"""
+        self.conn.execute(f"USE {self.db_name}")
+        tables = self.conn.execfetch(f"SHOW TABLES")
+        for t in tables:
+            self.conn.execute(f"DROP TABLE {t[0]}")
+        tables = self.conn.execfetch(f"SHOW TABLES")
+        assert not tables
+        self.conn.execute(f"DROP DATABASE {self.db_name}")  # no need to check

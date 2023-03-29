@@ -26,14 +26,14 @@
 
 ### 配置
 
-目前 OpenMLDB 只支持使用 metastore 服务来连接Hive。你需要进行以下相关配置以正确访问 Hive 数据源。
+目前 OpenMLDB 只支持使用 metastore 服务来连接Hive。你可以在以下两种配置方式中选择一种，来访问 Hive 数据源。
 
 - spark.conf：你可以在 spark conf 中配置 `spark.hadoop.hive.metastore.uris`。有两种方式：
 
   - taskmanager.properties: 在配置项 `spark.default.conf` 中加入`spark.hadoop.hive.metastore.uris=thrift://...` ，随后重启taskmanager。
   - CLI: 在 ini conf 中加入此配置项，并使用`--spark_conf`启动CLI，参考[客户端Spark配置文件](../../reference/client_config/client_spark_config.md)。
   
-- hive-site.xml：你可以配置 `hive-site.xml` 中的 `hive.metastore.uris`，并将配置文件放入 Spark home的`conf/`。`hive-site.xml` 样例：
+- hive-site.xml：你可以配置 `hive-site.xml` 中的 `hive.metastore.uris`，并将配置文件放入 Spark home的`conf/`（如果已配置`HADOOP_CONF_DIR`环境变量，也可以将配置文件放入`HADOOP_CONF_DIR`中）。`hive-site.xml` 样例：
 
   ```xml
   <configuration>
@@ -45,6 +45,18 @@
   	</property>
   </configuration>
   ```
+
+除了Hive连接配置，还需要在Hive中给TaskMananger的启动用户（OS用户和组）授予创建/读/写等权限，以及Hive表的HDFS路径的Read/Write/Execute权限。
+
+如果权限不够，可能出现如下错误：
+```
+org.apache.hadoop.security.AccessControlException: Permission denied: user=xx, access=xxx, inode="xxx":xxx:supergroup:drwxr-xr-x
+```
+这个错误是指用户没有权限访问Hive表的HDFS路径，需要给用户授予HDFS路径的Read/Write/Execute权限。
+
+```{seealso}
+如有疑问，请确认你的Hive集群使用了哪种权限管理方式，参考[权限管理](https://cwiki.apache.org/confluence/display/Hive/LanguageManual+Authorization#LanguageManualAuthorization-OverviewofAuthorizationModes)。
+```
 
 ### 调试信息
 
@@ -80,9 +92,7 @@ CREATE TABLE db1.t1 LIKE HIVE 'hive://hive_db.t1';
 
 使用 `LIKE` 基于 Hive 快捷建表有以下已知问题：
 
-* 如果创建表失败仍然会返回 `SUCCEED`，无法在命令行看到错误日志，需要在 TaskManager 日志目录查看
-* 创建的表名必须包含数据库名，如上例的 `db1.t1`（`db1` 不能被忽略）
-* 使用命令行默认超时配置，创建表可能会显示超时但是执行成功，可通过 `SHOW TABLES` 查看最终结果（也可以通过命令 `SET @@job_timeout = "xxx"` 来设置超时）
+* 使用命令行默认超时配置，创建表可能会显示超时但是执行成功，可通过 `SHOW TABLES` 查看最终结果。调整超时时间，见[调整配置](../../openmldb_sql/ddl/SET_STATEMENT.md#离线命令配置详情)。
 * Hive 中表如果包含列约束（如 `NOT NULL`），在创建的新表中不会包含这些列约束
 
 ## 导入 Hive 数据到 OpenMLDB
@@ -105,7 +115,7 @@ LOAD DATA INFILE 'hive://db1.t1' INTO TABLE t1 OPTIONS(deep_copy=false);
 
 - 如果不指定数据库名字，则会使用默认数据库名字 `default_db`
 - 如果指定数据库名字，则该数据库必须已经存在，目前不支持对于不存在的数据库进行自动创建
-- 如果不指定表格名字，则会在 Hive 内自动创建对应名字的表格
+- 如果指定的Hive表名不存在，则会在 Hive 内自动创建对应名字的表
 - `OPTIONS` 参数只有导出模式`mode`生效，其他参数均不生效
 
 举例：

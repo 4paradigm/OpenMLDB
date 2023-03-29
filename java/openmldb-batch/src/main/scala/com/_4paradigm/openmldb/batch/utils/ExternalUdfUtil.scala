@@ -79,7 +79,8 @@ object ExternalUdfUtil {
         logger.warn("Get executor so file path: " + executorSoFilePath)
 
         if (File(executorSoFilePath).exists) {
-          Engine.RegisterExternalFunction(functionName, returnDataType, argsDataType, functionProto.getIsAggregate,
+          Engine.RegisterExternalFunction(functionName, returnDataType, functionProto.getReturnNullable,
+            argsDataType, functionProto.getArgNullable, functionProto.getIsAggregate,
             executorSoFilePath)
         } else {
           logger.error("The dynamic library file does not exit in " + executorSoFilePath)

@@ -36,7 +36,7 @@ TEST_F(WindowIterAnalysisTest, Test) {
         {"sum(col_0 + sum(col_1)) over w1", 2},
         {"sum(col_0 + sum(col_1 + sum(col_2))) over w1", 3},
         {"lag(col_0, 1) over w1", 1},
-        {"count(fz_window_split(cast(col_0 as string), \",\")) over w1 ", 1},
+        {"count(window_split(cast(col_0 as string), \",\")) over w1 ", 1},
     };
 
     std::string sql = "select \n";

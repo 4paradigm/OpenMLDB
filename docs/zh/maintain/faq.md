@@ -63,27 +63,19 @@ setttl table_name ttl_type ttl [ttl] [index_name]
 ```
 rpc_client.h:xxx] request error. [E1008] Reached timeout=xxxms
 ```
-这是由于client端本身发送的rpc request的timeout设置小了，client端自己主动断开。注意，这是rpc的超时。
-
-分为以下情况处理：
-#### 同步的离线job
-在使用同步的离线命令时，容易出现这个情况。你可以使用
-```sql
-> SET @@job_timeout = "600000";
-```
-来调大rpc的timeout时间，单位为ms。
-#### 普通请求
-如果是简单的query或insert，都会出现超时，需要更改通用的`request_timeout`配置。
+这是由于client端本身发送的rpc request的timeout设置小了，client端自己主动断开，注意这是rpc的超时。需要更改通用的`request_timeout`配置。
 1. CLI: 启动时配置`--request_timeout_ms`
 2. JAVA/Python SDK: Option或url中调整`SdkOption.requestTimeout`
-
+```{note}
+同步的离线命令通常不会出现这个错误，因为同步离线命令的timeout设置为了TaskManager可接受的最长时间。
+```
 ### 2. 为什么收到 Got EOF of Socket 的警告日志？
 ```
 rpc_client.h:xxx] request error. [E1014]Got EOF of Socket{id=x fd=x addr=xxx} (xx)
 ```
-这是因为`addr`端主动断开了连接，`addr`的地址大概率是taskmanager。这不代表taskmanager不正常，而是taskmanager端认为这个连接没有活动，超过keepAliveTime了，而主动断开通信channel。
-在0.5.0及以后的版本中，可以调大taskmanager的`server.channel_keep_alive_time`来提高对不活跃channel的容忍度。默认值为1800s(0.5h)，特别是使用同步的离线命令时，这个值可能需要适当调大。
-在0.5.0以前的版本中，无法更改此配置，请升级taskmanager版本。
+这是因为`addr`端主动断开了连接，`addr`的地址大概率是TaskManager。这不代表TaskManager不正常，而是TaskManager端认为这个连接没有活动，超过keepAliveTime了，而主动断开通信channel。
+在0.5.0及以后的版本中，可以调大TaskManager的`server.channel_keep_alive_time`来提高对不活跃channel的容忍度。默认值为1800s(0.5h)，特别是使用同步的离线命令时，这个值可能需要适当调大。
+在0.5.0以前的版本中，无法更改此配置，请升级TaskManager版本。
 
 ### 3. 离线查询结果显示中文为什么乱码？
 
@@ -113,14 +105,14 @@ zk日志：
 1. CLI：启动时配置`--zk_log_level`调整level,`--zk_log_file`配置日志保存文件。
 2. JAVA/Python SDK：Option或url中使用`zkLogLevel`调整level，`zkLogFile`配置日志保存文件。
 
-- `zk_log_level`(int, 默认=3, 即INFO): 
+- `zk_log_level`(int, 默认=0, 即DISABLE_LOGGING): 
 打印这个等级及**以下**等级的日志。0-禁止所有zk log, 1-error, 2-warn, 3-info, 4-debug。
 
 sdk日志（glog日志）：
 1. CLI：启动时配置`--glog_level`调整level,`--glog_dir`配置日志保存文件。
 2. JAVA/Python SDK：Option或url中使用`glogLevel`调整level，`glogDir`配置日志保存文件。
 
-- `glog_level`(int, 默认=0, 即INFO):
+- `glog_level`(int, 默认=1, 即WARNING):
 打印这个等级及**以上**等级的日志。 INFO, WARNING, ERROR, and FATAL日志分别对应 0, 1, 2, and 3。
 
 

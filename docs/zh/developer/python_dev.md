@@ -29,7 +29,7 @@ pytest tests/xxx.py::<test_class>::<test_func>
 
 ## Tool 测试
 
-由于Tool中的诊断工具需要ssh免密，所以，即使在本地测试（本地ssh到本地），也需要将当前用户的ssh pub key写入当前用户的authorized_keys。
+由于Tool中的诊断工具静态诊断需要ssh免密（其他子命令不需要ssh），所以，即使在本地测试（本地ssh到本地），也需要将当前用户的ssh pub key写入当前用户的authorized_keys。
 
 普通测试：
 ```

@@ -44,3 +44,13 @@ Create a function whose input parameter type is two ints, the return type is int
 ```sql
 CREATE FUNCTION add_one(x int, y int) RETURNS INT OPTIONS (FILE = 'libtest_udf.so');
 ```
+
+Create an aggregate function whose input parameter type is bigint, the return type is bigint, and the dynamic library file is libtest_udf.so
+```sql
+CREATE AGGREGATE FUNCTION special_sum(x BIGINT) RETURNS BIGINT OPTIONS (FILE = 'libtest_udf.so');
+```
+
+Create an aggregate function whose input parameter type is bigint and nullable, the return type is bigint and nullable, and the dynamic library file is libtest_udf.so
+```sql
+CREATE AGGREGATE FUNCTION count_null(x BIGINT) RETURNS BIGINT OPTIONS (FILE = 'libtest_udf.so', ARG_NULLABLE=true, RETURN_NULLABLE=true);
+```

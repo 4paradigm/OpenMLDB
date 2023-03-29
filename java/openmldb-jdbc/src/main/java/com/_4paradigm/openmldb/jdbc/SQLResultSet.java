@@ -80,7 +80,8 @@ public class SQLResultSet implements ResultSet {
 
     private void checkDataType(int i, DataType type) throws SQLException {
         if (schema.GetColumnType(i - 1) != type) {
-            throw new SQLException("data type not match");
+            throw new SQLException(String.format("data type not match, get %s and expect %s",
+                    schema.GetColumnType(i - 1), type));
         }
     }
 

@@ -17,7 +17,7 @@
 #include "udf/openmldb_udf.h"
 
 extern "C"
-void cut2(UDFContext* ctx, StringRef* input, StringRef* output) {
+void cut2(::openmldb::base::UDFContext* ctx, ::openmldb::base::StringRef* input, ::openmldb::base::StringRef* output) {
     if (input == nullptr || output == nullptr) {
         return;
     }
@@ -29,7 +29,7 @@ void cut2(UDFContext* ctx, StringRef* input, StringRef* output) {
 }
 
 extern "C"
-int strlength(UDFContext* ctx, StringRef* input) {
+int strlength(::openmldb::base::UDFContext* ctx, ::openmldb::base::StringRef* input) {
     if (input == nullptr) {
         return 0;
     }
@@ -37,10 +37,85 @@ int strlength(UDFContext* ctx, StringRef* input) {
 }
 
 extern "C"
-void int2str(UDFContext* ctx, int32_t input, StringRef* output) {
+void int2str(::openmldb::base::UDFContext* ctx, int32_t input, ::openmldb::base::StringRef* output) {
     std::string tmp = std::to_string(input);
     char *buffer = ctx->pool->Alloc(tmp.length());
     memcpy(buffer, tmp.data(), tmp.length());
     output->size_ = tmp.length();
     output->data_ = buffer;
+}
+
+
+// udaf example
+extern "C"
+::openmldb::base::UDFContext* special_sum_init(::openmldb::base::UDFContext* ctx) {
+    ctx->ptr = ctx->pool->Alloc(sizeof(int64_t));
+    *(reinterpret_cast<int64_t*>(ctx->ptr)) = 10;
+    return ctx;
+}
+
+extern "C"
+::openmldb::base::UDFContext* special_sum_update(::openmldb::base::UDFContext* ctx, int64_t input) {
+    int64_t cur = *(reinterpret_cast<int64_t*>(ctx->ptr));
+    cur += input;
+    *(reinterpret_cast<int*>(ctx->ptr)) = cur;
+    return ctx;
+}
+
+extern "C"
+int64_t special_sum_output(::openmldb::base::UDFContext* ctx) {
+    return *(reinterpret_cast<int64_t*>(ctx->ptr)) + 5;
+}
+
+// count the number of null value
+extern "C"
+::openmldb::base::UDFContext* count_null_init(::openmldb::base::UDFContext* ctx) {
+    ctx->ptr = ctx->pool->Alloc(sizeof(int64_t));
+    *(reinterpret_cast<int64_t*>(ctx->ptr)) = 0;
+    return ctx;
+}
+
+extern "C"
+::openmldb::base::UDFContext* count_null_update(::openmldb::base::UDFContext* ctx,
+        ::openmldb::base::StringRef* input, bool is_null) {
+    int64_t cur = *(reinterpret_cast<int64_t*>(ctx->ptr));
+    if (is_null) {
+        cur++;
+    }
+    *(reinterpret_cast<int*>(ctx->ptr)) = cur;
+    return ctx;
+}
+
+extern "C"
+int64_t count_null_output(::openmldb::base::UDFContext* ctx) {
+    return *(reinterpret_cast<int64_t*>(ctx->ptr));
+}
+
+// Get the second non-null value of all values
+extern "C"
+::openmldb::base::UDFContext* third_init(::openmldb::base::UDFContext* ctx) {
+    ctx->ptr = reinterpret_cast<void*>(new std::vector<int64_t>());
+    return ctx;
+}
+
+extern "C"
+::openmldb::base::UDFContext* third_update(::openmldb::base::UDFContext* ctx, int64_t input, bool is_null) {
+    auto vec = reinterpret_cast<std::vector<int64_t>*>(ctx->ptr);
+    if (!is_null && vec->size() < 3) {
+        vec->push_back(input);
+    }
+    return ctx;
+}
+
+extern "C"
+void third_output(::openmldb::base::UDFContext* ctx, int64_t* output, bool* is_null) {
+    auto vec = reinterpret_cast<std::vector<int64_t>*>(ctx->ptr);
+    if (vec->size() != 3) {
+        *is_null = true;
+    } else {
+        *is_null = false;
+        *output = vec->at(3);
+    }
+    // free the memory allocated in init function with new/malloc
+    delete vec;
 }

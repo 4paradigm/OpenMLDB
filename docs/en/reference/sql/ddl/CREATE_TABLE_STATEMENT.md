@@ -18,17 +18,19 @@ TableElement ::=
     ColumnDef | ColumnIndex
 ```
 
-
 The `TableElementList` needs to be defined in the `CREATE TABLE` statement. `TableElementList` consists of `ColumnDef` (column definition) and `ColumnIndex`. OpenMLDB requires at least one `ColumnDef` in the `TableElementList`.
 
-Or use Hive tables to create new tables.
+Or use Hive tables and Parquet files to create new tables.
 
 ```sql
 CreateTableStmt ::=
-    'CREATE' 'TABLE' TableName LIKE 'HIVE' PATH
+    'CREATE' 'TABLE' TableName LIKE LikeType PATH
 
 TableName ::=
     Identifier ('.' Identifier)?
+
+LikeType ::=
+    'HIVE' | 'PARQUET'
 
 PATH ::=
     string_literal
@@ -36,10 +38,8 @@ PATH ::=
 
 Here is the known issues of creating tables with Hive.
 
-* The command always return SUCCEED even it fails. You can get the error log in TaskManager log directory instead of CLI.
-* Need to create table with db name, `CREATE TABLE t1 LIKE HIVE` will fail.
 * May get timeout for the default CLI config and need to show tables to check result.
-* The column constraints of Hive tables such as NOT NULL will not copy to new tables.
+* The column constraints of Hive tables such as `NOT NULL` will not copy to new tables.
 
 ### ColumnDef (required)
 
@@ -192,14 +192,19 @@ desc t3;
 
 **Example 5: Create a Table from the Hive table**
 
-At first [configure OpenMLDB to support Hive](../../integration/offline_data_sources/hive.md), then create table with the following SQL.
+At first configure OpenMLDB to support Hive, then create table with the following SQL.
 
 ```sql
-CREATE TABLE db1.t1 LIKE HIVE 'hive://hive_db.t1';
+CREATE TABLE t1 LIKE HIVE 'hive://hive_db.t1';
 -- SUCCEED
 ```
 
-Notice that the table name should include database name at present.
+**Example 6: Create a Table from the Parquet files**
+
+```sql
+CREATE TABLE t1 LIKE PARQUET 'file://t1.parquet';
+-- SUCCEED
+```
 
 ### ColumnIndex (optional）
 

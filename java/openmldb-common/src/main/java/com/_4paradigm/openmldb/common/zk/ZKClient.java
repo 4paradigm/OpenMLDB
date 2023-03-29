@@ -43,7 +43,7 @@ public class ZKClient {
         return client;
     }
 
-    public boolean connect() throws Exception {
+    public boolean connect() throws InterruptedException {
         log.info("ZKClient connect with config: {}", config);
         RetryPolicy retryPolicy = new ExponentialBackoffRetry(config.getBaseSleepTime(), config.getMaxRetries());
         CuratorFramework client = CuratorFrameworkFactory.builder()

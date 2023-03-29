@@ -138,6 +138,10 @@ public class JobInfo {
         return Arrays.asList(FINAL_STATE).contains(state.toLowerCase());
     }
 
+    public boolean isSuccess() {
+        return state.toLowerCase().equals("finished");
+    }
+
     public boolean isYarnJob() {
         return cluster.toLowerCase().startsWith("yarn");
     }

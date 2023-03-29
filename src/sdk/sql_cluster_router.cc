@@ -58,6 +58,7 @@
 
 DECLARE_string(bucket_size);
 DECLARE_uint32(replica_num);
+DECLARE_int32(sync_job_timeout);
 
 namespace openmldb {
 namespace sdk {
@@ -1103,32 +1104,40 @@ std::shared_ptr<::openmldb::client::TabletClient> SQLClusterRouter::GetTabletCli
     hybridse::sdk::Status* status) {
     RET_IF_NULL_AND_WARN(status, "output status is nullptr");
     auto cache = GetSQLCache(db, sql, hybridse::vm::kBatchMode, parameter, status);
-    if (0 != status->code) {
+    WARN_NOT_OK_AND_RET(status, "sql plan failed(get/create cache failed)", nullptr);
+    if (!cache) {
+        SET_STATUS_AND_WARN(status, StatusCode::kRuntimeError, "get sql cache but it's nullptr");
         return {};
     }
-    if (cache) {
-        auto router_cache = std::dynamic_pointer_cast<RouterSQLCache>(cache);
-        if (router_cache) {
-            const auto& router = router_cache->GetRouter();
-            const std::string& main_table = router.GetMainTable();
-            const std::string main_db = router.GetMainDb().empty() ? db : router.GetMainDb();
-            if (!main_table.empty()) {
-                DLOG(INFO) << "get main table " << main_table;
-                auto tablet_accessor = cluster_sdk_->GetTablet(main_db, main_table);
-                if (tablet_accessor) {
-                    *status = {};
-                    return tablet_accessor->GetClient();
-                }
-            } else {
-                auto tablet_accessor = cluster_sdk_->GetTablet();
-                if (tablet_accessor) {
-                    *status = {};
-                    return tablet_accessor->GetClient();
-                }
-            }
+
+    auto router_cache = std::dynamic_pointer_cast<RouterSQLCache>(cache);
+    if (!router_cache) {
+        SET_STATUS_AND_WARN(status, StatusCode::kRuntimeError, "cast to RouterSQLCache failed");
+        return {};
+    }
+
+    const auto& router = router_cache->GetRouter();
+    const std::string& main_table = router.GetMainTable();
+    const std::string main_db = router.GetMainDb().empty() ? db : router.GetMainDb();
+    if (!main_table.empty()) {
+        DLOG(INFO) << "get main table " << main_table;
+        auto tablet_accessor = cluster_sdk_->GetTablet(main_db, main_table);
+        if (tablet_accessor) {
+            *status = {};
+            return tablet_accessor->GetClient();
+        } else {
+            SET_STATUS_AND_WARN(status, StatusCode::kRuntimeError,
+                                absl::StrCat("main table ", main_db, ".", main_table, " tablet accessor is null"));
+        }
+    } else {
+        auto tablet_accessor = cluster_sdk_->GetTablet();
+        if (tablet_accessor) {
+            *status = {};
+            return tablet_accessor->GetClient();
+        } else {
+            SET_STATUS_AND_WARN(status, StatusCode::kRuntimeError, "random tablet accessor is null");
         }
     }
-    SET_STATUS_AND_WARN(status, StatusCode::kRuntimeError, "fail to get tablet from cache");
     return {};
 }
 
@@ -1232,7 +1241,7 @@ std::shared_ptr<::hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQLParamete
     }
     auto cntl = std::make_shared<::brpc::Controller>();
     cntl->set_timeout_ms(options_->request_timeout);
-    DLOG(INFO) << " send query to tablet " << client->GetEndpoint();
+    DLOG(INFO) << "send query to tablet " << client->GetEndpoint();
     auto response = std::make_shared<::openmldb::api::QueryResponse>();
     if (!client->Query(db, sql, parameter_types, parameter ? parameter->GetRow() : "", cntl.get(), response.get(),
                        options_->enable_debug)) {
@@ -1523,7 +1532,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::HandleSQLCmd(const h
                                                                          ::hybridse::sdk::Status* status) {
     RET_IF_NULL_AND_WARN(status, "output status is nullptr");
     if (cmd_node == nullptr) {
-        SET_STATUS_AND_WARN(status, StatusCode::kNullInputPointer, " node is nullptr");
+        SET_STATUS_AND_WARN(status, StatusCode::kNullInputPointer, "node is nullptr");
         return {};
     }
     auto ns_ptr = cluster_sdk_->GetNsClient();
@@ -1645,10 +1654,9 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::HandleSQLCmd(const h
             }
             std::vector<std::vector<std::string>> lines;
             for (auto& fun_info : funs) {
-                std::string is_aggregate = "false";
-                if (fun_info.is_aggregate()) {
-                    is_aggregate = "true";
-                }
+                std::string is_aggregate = fun_info.is_aggregate() ? "true" : "false";
+                std::string return_nullable = fun_info.return_nullable() ? "true" : "false";
+                std::string arg_nullable = fun_info.arg_nullable() ? "true" : "false";
                 std::string arg_type = "";
                 for (int i = 0; i < fun_info.arg_type_size(); i++) {
                     arg_type = absl::StrCat(arg_type, openmldb::type::DataType_Name(fun_info.arg_type(i)).substr(1));
@@ -1658,11 +1666,13 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::HandleSQLCmd(const h
                 }
                 std::vector<std::string> vec = {fun_info.name(),
                                                 openmldb::type::DataType_Name(fun_info.return_type()).substr(1),
-                                                arg_type, is_aggregate, fun_info.file()};
+                                                arg_type, is_aggregate, fun_info.file(),
+                                                return_nullable, arg_nullable};
                 lines.push_back(vec);
             }
-            return ResultSetSQL::MakeResultSet({"Name", "Return_type", "Arg_type", "Is_aggregate", "File"}, lines,
-                                               status);
+            return ResultSetSQL::MakeResultSet(
+                    {"Name", "Return_type", "Arg_type", "Is_aggregate", "File", "Return_nullable", "Arg_nullable"},
+                    lines, status);
         }
         case hybridse::node::kCmdDropFunction: {
             std::string name = cmd_node->GetArgs()[0];
@@ -1836,7 +1846,8 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::HandleSQLCmd(const h
                 *status = {StatusCode::kCmdError, "Failed to parse job id: " + cmd_node->GetArgs()[0]};
                 return {};
             }
-            return this->GetJobResultSet(job_id);
+
+            return this->GetJobResultSet(job_id, status);
         }
         case hybridse::node::kCmdShowJobLog: {
             int job_id;
@@ -1872,7 +1883,8 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::HandleSQLCmd(const h
 
             ::openmldb::taskmanager::JobInfo job_info;
             StopJob(job_id, &job_info);
-            return this->GetJobResultSet(job_id);
+
+            return this->GetJobResultSet(job_id, status);
         }
         case hybridse::node::kCmdDropTable: {
             *status = {};
@@ -1971,19 +1983,15 @@ base::Status SQLClusterRouter::HandleSQLCreateTable(hybridse::node::CreatePlanNo
     } else {
         LOG(WARNING) << "CREATE TABLE LIKE will run in offline job, please wait.";
 
-        auto taskmanager_client_ptr = cluster_sdk_->GetTaskManagerClient();
-        if (!taskmanager_client_ptr) {
-            return {base::ReturnCode::kServerConnError, "Fail to get TaskManager client"};
-        }
-
         std::map<std::string, std::string> config;
         ::openmldb::taskmanager::JobInfo job_info;
         int job_timeout = GetJobTimeout();
         std::string output;
-        ::openmldb::base::Status status = taskmanager_client_ptr->RunBatchSql(sql, config, db, job_timeout, &output);
-        // TODO(tobe): Can not get actual status of Spark job, always return success if the job is submitted
+
+        ::openmldb::base::Status status = ExecuteOfflineQueryGetOutput(sql, config, db, job_timeout, &output);
+
         if (!status.OK()) {
-            LOG(ERROR) << "Fail to create table, error msage: " + status.msg;
+            LOG(ERROR) << "Fail to create table, error message: " + status.msg;
             return base::Status(base::ReturnCode::kSQLCmdRunError, status.msg);
         }
     }
@@ -2408,7 +2416,10 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(const std
 
 std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(const std::string& db, const std::string& sql,
                                                                        hybridse::sdk::Status* status) {
-    return ExecuteSQL(db, sql, IsOnlineMode(), IsSyncJob(), GetJobTimeout(), status);
+    // To avoid setting sync job timeout by user, we set offline_job_timeout to the biggest value
+    auto sync_job = IsSyncJob();
+    auto timeout = sync_job? FLAGS_sync_job_timeout : GetJobTimeout();
+    return ExecuteSQL(db, sql, IsOnlineMode(), sync_job, timeout, status);
 }
 
 std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(const std::string& db, const std::string& sql,
@@ -2563,7 +2574,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(
                 ReadSparkConfFromFile(std::dynamic_pointer_cast<SQLRouterOptions>(options_)->spark_conf_path, &config);
                 auto base_status = ExportOfflineData(sql, config, db, is_sync_job, offline_job_timeout, &job_info);
                 if (base_status.OK()) {
-                    return this->GetJobResultSet(job_info.id());
+                    return this->GetJobResultSet(job_info.id(), status);
                 } else {
                     *status = {StatusCode::kCmdError, base_status.msg};
                 }
@@ -2617,7 +2628,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(
                     base_status = ImportOfflineData(sql, config, database, is_sync_job, offline_job_timeout, &job_info);
                 }
                 if (base_status.OK() && job_info.id() > 0) {
-                    return this->GetJobResultSet(job_info.id());
+                    return this->GetJobResultSet(job_info.id(), status);
                 } else {
                     APPEND_FROM_BASE_AND_WARN(status, base_status, "taskmanager load data failed");
                 }
@@ -2656,6 +2667,9 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteOfflineQuery(
     if (is_sync_job) {
         // Run offline sql and wait to get output
         std::string output;
+        LOG(WARNING) << "offline sync SELECT will show output without the data integrity promise. And it will use "
+                        "local filesystem of TaskManager, it's dangerous to select a large result. You'd better use "
+                        "SELECT INTO to get the correct result.";
         auto base_status = ExecuteOfflineQueryGetOutput(sql, config, db, job_timeout, &output);
         if (!base_status.OK()) {
             APPEND_FROM_BASE_AND_WARN(status, base_status, "sync offline query failed");
@@ -2672,7 +2686,8 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteOfflineQuery(
             APPEND_FROM_BASE_AND_WARN(status, base_status, "async offline query failed");
             return {};
         }
-        return this->GetJobResultSet(job_info.id());
+
+        return this->GetJobResultSet(job_info.id(), status);
     }
 }
 
@@ -3207,15 +3222,24 @@ hybridse::sdk::Status SQLClusterRouter::HandleCreateFunction(const hybridse::nod
         }
         fun->add_arg_type(data_type);
     }
-    if (node->IsAggregate()) {
-        return {StatusCode::kCmdError, "unsupport udaf function"};
-    }
     fun->set_is_aggregate(node->IsAggregate());
     auto option = node->Options();
     if (!option || option->find("FILE") == option->end()) {
         return {StatusCode::kCmdError, "missing FILE option"};
     }
     fun->set_file((*option)["FILE"]->GetExprString());
+    if (auto iter = option->find("RETURN_NULLABLE"); iter != option->end()) {
+        if (iter->second->GetDataType() != hybridse::node::kBool) {
+            return {StatusCode::kCmdError, "return_nullable should be bool"};
+        }
+        fun->set_return_nullable(iter->second->GetBool());
+    }
+    if (auto iter = option->find("ARG_NULLABLE"); iter != option->end()) {
+        if (iter->second->GetDataType() != hybridse::node::kBool) {
+            return {StatusCode::kCmdError, "arg_nullable should be bool"};
+        }
+        fun->set_arg_nullable(iter->second->GetBool());
+    }
     if (cluster_sdk_->IsClusterMode()) {
         auto taskmanager_client = cluster_sdk_->GetTaskManagerClient();
         if (taskmanager_client) {
@@ -4188,19 +4212,18 @@ void SQLClusterRouter::ReadSparkConfFromFile(std::string conf_file_path, std::ma
     }
 }
 
-std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::GetJobResultSet(int job_id) {
-    hybridse::sdk::Status status;
-
+std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::GetJobResultSet(int job_id,
+                                                                            ::hybridse::sdk::Status* status) {
     std::string db = openmldb::nameserver::INTERNAL_DB;
     std::string sql = "SELECT * FROM JOB_INFO WHERE id = " + std::to_string(job_id);
 
-    auto rs = ExecuteSQLParameterized(db, sql, {}, &status);
-    if (!status.IsOK()) {
+    auto rs = ExecuteSQLParameterized(db, sql, {}, status);
+    if (!status->IsOK()) {
         return {};
     }
     if (rs->Size() == 0) {
-        status.code = ::hybridse::common::StatusCode::kCmdError;
-        status.msg = "Job not found: " + std::to_string(job_id);
+        status->SetCode(::hybridse::common::StatusCode::kCmdError);
+        status->SetMsg("Job not found: " + std::to_string(job_id));
         return {};
     }
     if (FLAGS_role == "sql_client") {
