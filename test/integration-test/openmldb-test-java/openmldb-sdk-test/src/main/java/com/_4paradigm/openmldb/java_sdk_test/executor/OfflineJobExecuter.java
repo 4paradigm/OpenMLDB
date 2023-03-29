@@ -168,8 +168,7 @@ public class OfflineJobExecuter extends BaseSQLExecutor {
             for (String sql : sqls) {
                 sql = MapUtils.isNotEmpty(openMLDBInfoMap)?SQLUtil.formatSql(sql, tableNames, openMLDBInfoMap.get(version)):SQLUtil.formatSql(sql, tableNames);
                 sql = SQLUtil.formatSql(sql);
-                String l = sql.substring(0, sql.length()-1);
-                sql = l+" INTO OUTFILE '"+outDirPath+"' OPTIONS ( format = 'parquet' );";
+                sql = sql.split(";")[0] +" INTO OUTFILE '"+outDirPath+"' OPTIONS ( format = 'parquet' );";
                 openMLDBResult = sdkClient.execute(sql);
             }
         }
@@ -177,8 +176,7 @@ public class OfflineJobExecuter extends BaseSQLExecutor {
         if (StringUtils.isNotEmpty(sql)) {
             sql = MapUtils.isNotEmpty(openMLDBInfoMap)?SQLUtil.formatSql(sql, tableNames, openMLDBInfoMap.get(version)):SQLUtil.formatSql(sql, tableNames);
             sql = SQLUtil.formatSql(sql);
-            String l = sql.substring(0, sql.length()-1);
-            sql = l+" INTO OUTFILE '"+outDirPath+"' OPTIONS ( format = 'parquet' );";
+            sql = sql.split(";")[0] +" INTO OUTFILE '"+outDirPath+"' OPTIONS ( format = 'parquet' );";
             openMLDBResult = sdkClient.execute(sql);
         }
 
