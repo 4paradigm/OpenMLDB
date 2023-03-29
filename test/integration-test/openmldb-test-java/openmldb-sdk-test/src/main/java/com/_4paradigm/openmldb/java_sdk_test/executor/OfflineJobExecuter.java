@@ -24,27 +24,25 @@ import com._4paradigm.openmldb.test_common.model.SQLCase;
 import com._4paradigm.openmldb.test_common.model.SQLCaseType;
 import com._4paradigm.openmldb.test_common.openmldb.OpenMLDBGlobalVar;
 import com._4paradigm.openmldb.test_common.openmldb.SDKClient;
-import com._4paradigm.openmldb.test_common.util.SDKUtil;
 import com._4paradigm.openmldb.test_common.util.SQLUtil;
 import com._4paradigm.test_tool.command_tool.common.ExecUtil;
+import com._4paradigm.test_tool.command_tool.common.ExecutorUtil;
 import com._4paradigm.qa.openmldb_deploy.bean.OpenMLDBInfo;
-import com._4paradigm.openmldb.java_sdk_test.checker.Checker;
-import com._4paradigm.openmldb.java_sdk_test.checker.CheckerStrategy;
-import com._4paradigm.openmldb.java_sdk_test.checker.DiffVersionChecker;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.collections4.MapUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.avro.generic.GenericRecord;
+import org.apache.parquet.avro.AvroParquetReader;
+import org.apache.parquet.hadoop.ParquetReader;
+import org.apache.hadoop.fs.Path;
 
-import java.util.HashSet;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.io.BufferedWriter;
 import java.io.OutputStreamWriter;
 import java.io.FileOutputStream;
-
-import static com._4paradigm.openmldb.test_common.util.SDKUtil.createTable;
 
 
 @Slf4j
@@ -91,6 +89,7 @@ public class OfflineJobExecuter extends BaseSQLExecutor {
         sdkClient.execute("SET @@global.sync_job = 'true';");
         sdkClient.execute("SET @@global.job_timeout = '600000';");
         sdkClient.setOffline();
+        ExecUtil.exeCommand("touch "+offlineDataPrefix);
 
         List<InputDesc> inputs = sqlCase.getInputs();
 
@@ -162,10 +161,14 @@ public class OfflineJobExecuter extends BaseSQLExecutor {
         sdkClient.useDB(dbName);
         OpenMLDBResult openMLDBResult = null;
         List<String> sqls = sqlCase.getSqls();
+        long totalMilliSeconds = System.currentTimeMillis();
+        String outDirPath = offlineDataPrefix+Long.toString(totalMilliSeconds);
+//        ExecUtil.exeCommand("touch "+outDirPath);
         if (CollectionUtils.isNotEmpty(sqls)) {
             for (String sql : sqls) {
                 sql = MapUtils.isNotEmpty(openMLDBInfoMap)?SQLUtil.formatSql(sql, tableNames, openMLDBInfoMap.get(version)):SQLUtil.formatSql(sql, tableNames);
                 sql = SQLUtil.formatSql(sql);
+                sql = sql.split(";")[0] +" INTO OUTFILE '"+outDirPath+"' OPTIONS ( format = 'parquet' );";
                 openMLDBResult = sdkClient.execute(sql);
             }
         }
@@ -173,7 +176,46 @@ public class OfflineJobExecuter extends BaseSQLExecutor {
         if (StringUtils.isNotEmpty(sql)) {
             sql = MapUtils.isNotEmpty(openMLDBInfoMap)?SQLUtil.formatSql(sql, tableNames, openMLDBInfoMap.get(version)):SQLUtil.formatSql(sql, tableNames);
             sql = SQLUtil.formatSql(sql);
+            String l = sql.substring(0, sql.length()-1);
+            sql = l+" INTO OUTFILE '"+outDirPath+"' OPTIONS ( format = 'parquet' );";
             openMLDBResult = sdkClient.execute(sql);
+        }
+
+        //add parquet results to openMLDBResult
+        if (openMLDBResult.isOk()){
+            log.info("start parse parquet");
+            String parquetFile = ExecutorUtil.run("ls "+ outDirPath +" | grep .snappy.parquet").get(0);
+            Path file = new Path(outDirPath+"/"+parquetFile);
+            List<String> columns = new ArrayList<String>();
+            List<List<Object>> offlineResult = new ArrayList<>();
+            try {        
+                ParquetReader<GenericRecord> reader = AvroParquetReader.<GenericRecord>builder(file).build();
+                GenericRecord record;
+                int len = 0;
+                int pos = 0;
+                         
+                while((record = reader.read()) != null) {
+                    // set schema
+                    if (pos==0){
+                        len = record.getSchema().getFields().size(); 
+                        for (int i=0;i<len;i++) {
+                            columns.add(record.getSchema().getFields().get(i).name());
+                        }
+                    }
+                    pos++;
+                    List<Object> offlineRow = new ArrayList<>();                   
+                    for (int i=0;i<len;i++){
+                        offlineRow.add(record.get(i));
+                    }
+                    offlineResult.add(offlineRow);
+                }
+                reader.close();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+            openMLDBResult.setOfflineResult(offlineResult);
+            openMLDBResult.setResult(offlineResult);
+            openMLDBResult.setOfflineColumns(columns);
         }
         log.info("version:{} execute end",version);
         return openMLDBResult;
@@ -181,12 +223,5 @@ public class OfflineJobExecuter extends BaseSQLExecutor {
 
     // @Override
     // public void check() throws Exception {
-    //     List<Checker> strategyList = CheckerStrategy.build(executor, sqlCase, mainResult, executorType);
-    //     if(MapUtils.isNotEmpty(resultMap)) {
-    //         strategyList.add(new DiffVersionChecker(mainResult, resultMap));
-    //     }
-    //     for (Checker checker : strategyList) {
-    //         checker.check();
-    //     }
     // }
 }
