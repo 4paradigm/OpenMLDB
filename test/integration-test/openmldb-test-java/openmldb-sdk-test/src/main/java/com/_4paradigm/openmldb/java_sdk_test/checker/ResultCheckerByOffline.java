@@ -51,8 +51,9 @@ public class ResultCheckerByOffline extends BaseChecker {
         }
 //        List<List<Object>> expectRows = DataUtil.convertRows(expect.getOfflineRows(), expect.getOfflineColumns());
         List<List<Object>> expectRows = DataUtil.convertRows(expect.getRows(),
-            expect.getColumns());
-        List<List<Object>> actual = DataUtil.convertRows(openMLDBResult.getOfflineResult(),expect.getColumns());
+        expect.getColumns());
+//       List<List<Object>> actual = DataUtil.convertRows(openMLDBResult.getOfflineResult(),expect.getColumns());
+        List<List<Object>> actual = openMLDBResult.getOfflineResult();
         String orderName = expect.getOrder();
         if (StringUtils.isNotEmpty(orderName)) {
            int index = SchemaUtil.getIndexByColumnName(openMLDBResult.getOfflineColumns(),orderName);
