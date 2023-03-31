@@ -116,7 +116,10 @@ class OpenmldbDialect(default.DefaultDialect):
 
     def get_table_names(self, connection, schema=None, **kw):
         """Return a list of table names for `schema`."""
-        return list(connection.connection.cursor().get_all_tables())
+        all_tables = connection.connection.cursor().get_all_tables()
+        system_tables = ["DEPLOY_RESPONSE_TIME", "GLOBAL_VARIABLES", "JOB_INFO", "PRE_AGG_META_INFO"]
+        user_tables = [name for name in all_tables if name not in system_tables]
+        return user_tables
 
     def get_pk_constraint(self, connection, table_name, schema=None, **kw):
         return []
