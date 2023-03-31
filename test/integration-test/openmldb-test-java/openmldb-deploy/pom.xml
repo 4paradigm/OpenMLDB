@@ -21,7 +21,7 @@
     <dependencies>
         <dependency>
             <groupId>com.4paradigm.openmldb.test-tool</groupId>
-            <artifactId>openmldb-command-tool</artifactId>
+            <artifactId>command-tool</artifactId>
             <version>1.0-SNAPSHOT</version>
         </dependency>
         <dependency>
