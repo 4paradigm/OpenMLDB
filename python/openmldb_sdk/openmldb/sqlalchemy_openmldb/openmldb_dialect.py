@@ -20,6 +20,8 @@ from pathlib import Path
 
 # add parent directory
 sys.path.append(Path(__file__).parent.parent.as_posix())
+
+import sqlalchemy
 from ..dbapi import dbapi as module
 from sqlalchemy.engine import default
 from sqlalchemy import pool
@@ -111,3 +113,33 @@ class OpenmldbDialect(default.DefaultDialect):
         if schema is not None:
             raise Exception("schema unsupported in OpenMLDB")
         return table_name in connection.connection.cursor().get_all_tables()
+
+    def get_table_names(self, connection, schema=None, **kw):
+        """Return a list of table names for `schema`."""
+        return list(connection.connection.cursor().get_all_tables())
+
+    def get_pk_constraint(self, connection, table_name, schema=None, **kw):
+        return []
+
+    def get_foreign_keys(self, connection, table_name, schema=None, **kw):
+        return []
+
+    def get_indexes(self, connection, table_name, schema=None, **kw):
+        return []
+
+    def get_columns(self, connection, table_name, schema=None, **kw):
+        """
+        columns_info = [
+            {
+                'name': 'name',
+                'type': sqlalchemy.String(),
+                'nullable': False,
+                'default': None,
+                'primary_key': False,
+                'autoincrement': False,
+                'comment': 'Unique identifier for the row'
+            }
+        ]
+        return columns_info
+        """
+        raise NotImplementedError()
