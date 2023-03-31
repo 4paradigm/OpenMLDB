@@ -86,6 +86,7 @@ object YarnClientUtil {
    */
   def getAppLog(appIdStr: String): String = {
     val appId = parseAppIdStr(appIdStr)
+    logger.info(s"Try to get yarn log for app $appId")
 
     val config = new YarnConfiguration()
     // TODO: Load config file in better way
@@ -112,7 +113,7 @@ object YarnClientUtil {
       val baos = new ByteArrayOutputStream()
       content = new String(baos.toByteArray, StandardCharsets.UTF_8)
     } catch {
-      case e: Exception => logger.error(s"Fail to get yarn job log for app id $appId")
+      case e: Exception => logger.error(s"Fail to get yarn job log for app id $appId, get error $e")
     }
 
     content
