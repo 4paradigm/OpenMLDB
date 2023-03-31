@@ -114,6 +114,13 @@ object K8sJobManager {
 
     // Update K8S job status
     manager.waitAndWatch(jobInfo: JobInfo)
+    
+    if (blocking) {
+      while (JobInfoManager.getJob(jobInfo.getId).get.isFinished) {
+        // TODO: Make this configurable
+        Thread.sleep(3000L)
+      }
+    }
 
     jobInfo
   }
@@ -298,9 +305,9 @@ class K8sJobManager(val namespace:String = "default",
           jobInfo.setEndTime(endTime)
 
           // TODO: Get error message to set
-
-          jobInfo.sync()
         }
+
+        jobInfo.sync()
 
       }
 
