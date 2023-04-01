@@ -32,3 +32,5 @@ export OPENMLDB_HOME=
 # the root path of openmldb spark release, default is $OPENMLDB_HOME/spark
 # if not exists, download from online
 export SPARK_HOME=
+# if CLEAR_OPENMLDB_INSTALL_DIR is set, all files in the WORKDIR will be deleted when running sbin/clear-all.sh
+export CLEAR_OPENMLDB_INSTALL_DIR=false

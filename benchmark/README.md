@@ -2,6 +2,8 @@
 
 OpenMLDB Benchmak tool is used for tesing the performance of OpenMLDB's online SQL engine.
 
+**You may also refer to FEBench (https://github.com/decis-bench/febench), which is a more comprehensive benchmark for real-time feature extraction developed by a third-party, comparing the performance between OpenMLDB and Flink.**
+
 ## Requirements
 
 - CentOS 7 / macOS >= 10.15
