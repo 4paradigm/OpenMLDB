@@ -32,7 +32,7 @@ do
   dir=$(echo "$line" | awk -F ' ' '{print $3}')
 
   echo "stop zookeeper in $dir with endpoint $host:$port "
-  cmd="cd $dir && bin/zkServer.sh stop"
+  cmd="if [[ -d $dir ]]; then cd $dir && bin/zkServer.sh stop ; else echo $dir is not exist; fi"
   run_auto "$host" "$cmd"
 done
 IFS="$old_IFS"
