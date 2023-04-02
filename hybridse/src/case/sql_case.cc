@@ -1263,8 +1263,21 @@ static bool ParseSqlCaseNode(const YAML::Node& sql_case_node,
     }
 
     if (sql_case_node["sql"]) {
-        sql_case.sql_str_ = sql_case_node["sql"].as<std::string>();
-        boost::trim(sql_case.sql_str_);
+        auto& sql_node = sql_case_node["sql"];
+        if (sql_node.IsScalar()) {
+            sql_case.sql_str_ = sql_case_node["sql"].as<std::string>();
+            boost::trim(sql_case.sql_str_);
+        } else if (sql_node.IsMap()) {
+            if (sql_node["file"].IsScalar()) {
+                std::string fn = sql_node["file"].as<std::string>();
+                std::ifstream ifs(fn);
+                sql_case.sql_str_.assign((std::istreambuf_iterator<char>(ifs)), std::istreambuf_iterator<char>());
+            } else {
+                return false;
+            }
+        } else {
+            return false;
+        }
     }
     if (sql_case_node["sqls"]) {
         sql_case.sql_strs_.clear();
