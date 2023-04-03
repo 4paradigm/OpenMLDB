@@ -985,3 +985,12 @@ cases:
       data: |
         1, 10, 1000
         2, 30, 2000
+  - id: 108
+    inputs:
+      - name: t1
+        columns: ["id int32", "b int32", "ts int64", "de date"]
+        indexs: ["idx1:id:ts", "idx2:b:ts"]
+        data: |
+          1, 10, 1000, 2022-04-04
+    sql: |
+      select de <= date(unix_timestamp("")) as out from t1;

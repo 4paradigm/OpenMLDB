@@ -2612,6 +2612,26 @@ void DefaultUdfLibrary::InitTimeAndDateUdf() {
             reinterpret_cast<void*>(static_cast<void (*)(StringRef*, int64_t*, bool*)>(v1::string_to_unix_timestamp)))
         .return_by_arg(true)
         .returns<Nullable<int64_t>>();
+
+    RegisterExternalTemplate<>("add_months")
+        .doc(R"s(
+             @brief adds an integer months to a given date (DATE or TIMESTAMP), returning the resulting date.
+
+             The resulting day component will remain the same as that specified in date, unless the resulting month has fewer days than the day component of the given date,
+             in which case the day will be the last day of the resulting month. Returns NULL if given an invalid date, or a NULL argument.
+
+             @param start_date Date or Timestamp value to add
+             @param num_months Integer value as number of months to add, can be positive or negative
+
+             @code{.sql}
+               SELECT add_months('2016-08-31', 1);
+               -- 2016-09-30
+               SELECT add_months('2016-08-31', -1);
+               -- 2016-07-31
+             @endcode
+
+             @since 0.8.0
+             )s");
 }
 
 void DefaultUdfLibrary::InitUdaf() {
