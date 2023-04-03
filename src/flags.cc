@@ -109,8 +109,8 @@ DEFINE_int32(request_sleep_time, 1000, "the sleep time when request error. unit 
 
 DEFINE_uint32(max_memory_mb, 0, "max memory limit");
 
-DEFINE_uint32(max_traverse_pk_cnt, 5000, "max traverse iter pk cnt");
-DEFINE_uint32(max_traverse_cnt, 50000, "max traverse iter loop cnt");
+DEFINE_uint32(max_traverse_key_cnt, 0, "max traverse iter key cnt");
+DEFINE_uint32(max_traverse_cnt, 0, "max traverse iter loop cnt");
 DEFINE_uint32(traverse_cnt_limit, 1000, "limit traverse cnt");
 DEFINE_string(ssd_root_path, "", "the root ssd path of db");
 DEFINE_string(hdd_root_path, "", "the root hdd path of db");
@@ -175,3 +175,6 @@ DEFINE_uint32(block_cache_shardbits, 8, "Divide block cache into 2^8 shards to a
 DEFINE_bool(verify_compression, false, "For debug");
 DEFINE_uint32(max_log_file_size, 100 * 1024 * 1024, "Specify the maximal size of the rocksdb info log file");
 DEFINE_uint32(keep_log_file_num, 5, "Maximal info log files to be kept");
+
+DEFINE_int32(sync_job_timeout, 30 * 60 * 1000,
+             "sync job timeout, unit is milliseconds, should <= server.channel_keep_alive_time in TaskManager");

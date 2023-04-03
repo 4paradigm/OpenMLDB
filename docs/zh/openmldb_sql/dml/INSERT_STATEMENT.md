@@ -14,6 +14,9 @@ value_list:
     value [, value] ...
 ```
 
+**说明**
+- `INSERT` 只能用在在线模式
+
 ## Examples
 
 ```SQL

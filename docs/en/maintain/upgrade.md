@@ -69,7 +69,7 @@ After a tablet node is upgraded, repeat the above steps for other tablets.
 
 After all tablets are upgraded, resume write operations, and run the `showtablestatus` command to check whether the `Rows` number has increased.
 
-## 3. Upgrade apiserver
+## 3. Upgrade APIServer
 
 * Stop apiserver
     ```bash
@@ -82,7 +82,7 @@ After all tablets are upgraded, resume write operations, and run the `showtables
     bash bin/start.sh start apiserver
     ```
 
-## 4. Upgrade taskmanager
+## 4. Upgrade Taskmanager
 
 * Upgrade OpenMLDB Spark Distribution: download the new version of spark distribution
 and replace with the old one located in `$SPARK_HOME`

@@ -1504,14 +1504,14 @@ void TabletImpl::Traverse(RpcController* controller, const ::openmldb::api::Trav
         map_it->second.emplace_back(it->GetKey(), value);
         total_block_size += last_pk.length() + value.size();
         scount++;
-        if (it->GetCount() >= FLAGS_max_traverse_cnt) {
+        if (FLAGS_max_traverse_cnt > 0 && it->GetCount() >= FLAGS_max_traverse_cnt) {
             DEBUGLOG("traverse cnt %lu max %lu, key %s ts %lu", it->GetCount(), FLAGS_max_traverse_cnt, last_pk.c_str(),
                      last_time);
             break;
         }
     }
     bool is_finish = false;
-    if (it->GetCount() >= FLAGS_max_traverse_cnt) {
+    if (FLAGS_max_traverse_cnt > 0 && it->GetCount() >= FLAGS_max_traverse_cnt) {
         DEBUGLOG("traverse cnt %lu is great than max %lu, key %s ts %lu", it->GetCount(), FLAGS_max_traverse_cnt,
                  last_pk.c_str(), last_time);
         last_pk = it->GetPK();
@@ -5758,7 +5758,8 @@ base::Status TabletImpl::CreateFunctionInternal(const ::openmldb::common::Extern
         openmldb::schema::SchemaAdapter::ConvertType(fun.arg_type(idx), &data_type);
         arg_types.emplace_back(data_type);
     }
-    auto status = engine_->RegisterExternalFunction(fun.name(), return_type, arg_types, fun.is_aggregate(), fun.file());
+    auto status = engine_->RegisterExternalFunction(fun.name(), return_type, fun.return_nullable(),
+            arg_types, fun.arg_nullable(), fun.is_aggregate(), fun.file());
     if (status.isOK()) {
         LOG(INFO) << "create function success. name " << fun.name() << " path " << fun.file();
         return {};

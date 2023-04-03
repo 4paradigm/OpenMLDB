@@ -198,9 +198,9 @@ UdafRegistryHelper UdfLibrary::RegisterUdaf(const std::string& name) {
     return UdafRegistryHelper(GetCanonicalName(name), this);
 }
 
-Status UdfLibrary::RegisterDynamicUdf(const std::string& name, node::DataType return_type,
-        const std::vector<node::DataType>& arg_types, bool is_aggregate, const std::string& file) {
-    CHECK_TRUE(!is_aggregate, kCodegenError, "unsupport register udaf")
+Status UdfLibrary::RegisterDynamicUdf(const std::string& name, node::DataType return_type, bool return_nullable,
+        const std::vector<node::DataType>& arg_types, bool arg_nullable,
+        bool is_aggregate, const std::string& file) {
     std::string canon_name = GetCanonicalName(name);
 
     // TODO(tobe): openmldb-batch will register function twice, remove warning if it is fixed
@@ -209,7 +209,6 @@ Status UdfLibrary::RegisterDynamicUdf(const std::string& name, node::DataType re
         if (file.empty()) {
             return {kCodegenError, name + " has exist"};
         }
-
         LOG(WARNING) << "Function " + name + " has been registered, remove before overwrite";
         RemoveDynamicUdf(name, arg_types, "");
     }
@@ -217,15 +216,31 @@ Status UdfLibrary::RegisterDynamicUdf(const std::string& name, node::DataType re
     std::vector<void*> funs;
     if (file.empty()) {
         // use trivial_fun for compile only
-        funs.emplace_back(reinterpret_cast<void*>(udf::v1::trivial_fun));
+        void* fun = reinterpret_cast<void*>(udf::v1::trivial_fun);
+        funs = {fun, fun, fun};
     }  else {
         CHECK_STATUS(lib_manager_.ExtractFunction(canon_name, is_aggregate, file, &funs))
     }
-    CHECK_TRUE(!funs.empty() && funs[0] != nullptr, kCodegenError, name + " is nullptr")
-    void* fn = funs[0];
-    DynamicUdfRegistryHelper helper(canon_name, this, fn, return_type, arg_types,
-            reinterpret_cast<void*>(static_cast<void (*)(UDFContext* context)>(udf::v1::init_udfcontext)));
-    auto status = helper.Register();
+    Status status;
+    void* init_context_ptr =
+        reinterpret_cast<void*>(static_cast<void (*)(UDFContext* context)>(udf::v1::init_udfcontext));
+    if (is_aggregate) {
+        CHECK_TRUE(funs.size() == 3, kCodegenError, "cannot find function in so")
+        DynamicUdafRegistryHelperImpl helper(canon_name, this, return_type, return_nullable, arg_types, arg_nullable);
+        std::string lib_name = canon_name;
+        for (const auto type : arg_types) {
+            lib_name.append(".").append(node::DataTypeName(type));
+        }
+        helper.init(lib_name + ".init", init_context_ptr, funs[0])
+            .update(lib_name + ".update", funs[1])
+            .output(lib_name + ".output", funs[2]);
+    } else {
+        CHECK_TRUE(!funs.empty() && funs[0] != nullptr, kCodegenError, name + " is nullptr")
+        void* fn = funs[0];
+        DynamicUdfRegistryHelper helper(canon_name, this, fn, return_type, return_nullable,
+                arg_types, arg_nullable, init_context_ptr);
+        status = helper.Register();
+    }
     if (!status.isOK()) {
         lib_manager_.RemoveHandler(file);
         return status;
@@ -240,12 +255,31 @@ Status UdfLibrary::RemoveDynamicUdf(const std::string& name, const std::vector<n
     for (const auto type : arg_types) {
         lib_name.append(".").append(node::DataTypeName(type));
     }
-    std::lock_guard<std::mutex> lock(mu_);
-    if (table_.erase(canonical_name) <= 0) {
+    if (!HasFunction(canonical_name)) {
         return Status(kCodegenError, "can not find the function " + canonical_name);
     }
-    if (external_symbols_.erase(lib_name) <= 0) {
-        return Status(kCodegenError, "can not find the function " + lib_name);
+    if (IsUdaf(canonical_name)) {
+        std::lock_guard<std::mutex> lock(mu_);
+        if (table_.erase(canonical_name) <= 0) {
+            return Status(kCodegenError, "can not find the function " + canonical_name);
+        }
+        if (external_symbols_.erase(lib_name + ".init") <= 0) {
+            return Status(kCodegenError, "can not find the init function " + lib_name);
+        }
+        if (external_symbols_.erase(lib_name + ".update") <= 0) {
+            return Status(kCodegenError, "can not find the update function " + lib_name);
+        }
+        if (external_symbols_.erase(lib_name + ".output") <= 0) {
+            return Status(kCodegenError, "can not find the output function " + lib_name);
+        }
+    } else {
+        std::lock_guard<std::mutex> lock(mu_);
+        if (table_.erase(canonical_name) <= 0) {
+            return Status(kCodegenError, "can not find the function " + canonical_name);
+        }
+        if (external_symbols_.erase(lib_name) <= 0) {
+            return Status(kCodegenError, "can not find the function " + lib_name);
+        }
     }
     return lib_manager_.RemoveHandler(file);
 }

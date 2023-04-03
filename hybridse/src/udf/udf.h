@@ -35,6 +35,7 @@ namespace udf {
 using openmldb::base::StringRef;
 using openmldb::base::Date;
 using openmldb::base::Timestamp;
+using openmldb::base::UDFContext;
 
 namespace v1 {
 

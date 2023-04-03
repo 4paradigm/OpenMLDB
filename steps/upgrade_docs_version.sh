@@ -57,6 +57,8 @@ upgrade_install_doc() {
     sed -i"" -e "s/openmldb-[0-9]\.[0-9]\.[0-9]-linux/openmldb-${VERSION}-linux/g" "$1"
     sed -i"" -e "s/openmldb-[0-9]\.[0-9]\.[0-9]-darwin/openmldb-${VERSION}-darwin/g" "$1"
     sed -i"" -e "s/-openmldb[0-9]\.[0-9]\.[0-9]\//-openmldb${VERSION}\//g" "$1"
+    sed -i"" -e "s/[0-9]\.[0-9]\.[0-9]-xxxx/${VERSION}-xxxx/g" "$1"
+    sed -i"" -e "s/| [0-9]\.[0-9]\.[0-9]/| ${VERSION}/g" "$1"
     components=("ns" "tablet" "apiserver" "taskmanager")
     for component in "${components[@]}"
     do
@@ -89,5 +91,7 @@ upgrade_install_doc "docs/zh/deploy/install_deploy.md"
 
 upgrade_compile_doc "docs/en/deploy/compile.md"
 upgrade_compile_doc "docs/zh/deploy/compile.md"
+
+sed -i"" -e "s/[0-9]\.[0-9]\.[0-9]/${VERSION}/g" release/conf/openmldb-env.sh
 
 echo "update version success"

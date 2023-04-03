@@ -124,6 +124,7 @@ void HandleSQL(const std::string& sql) {
             }
         } else {
             if (status.msg != "ok") {
+                // status is ok, but we want to print more info by msg
                 std::cout << "SUCCEED: " << status.msg << std::endl;
             } else {
                 std::cout << "SUCCEED" << std::endl;
@@ -138,8 +139,7 @@ void HandleSQL(const std::string& sql) {
     }
 }
 
-// cluster mode: if zk_cluster is not empty,
-// standalone mode:
+// cluster mode if zk_cluster is not empty, otherwise standalone mode
 void Shell() {
     DCHECK(cs);
     DCHECK(sr);

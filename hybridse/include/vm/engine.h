@@ -393,9 +393,10 @@ class Engine {
                  ExplainOutput* explain_output,
                  base::Status* status);
 
-    static base::Status RegisterExternalFunction(const std::string& name, node::DataType return_type,
-                                     const std::vector<node::DataType>& arg_types, bool is_aggregate,
-                                     const std::string& file);
+    static base::Status RegisterExternalFunction(const std::string& name,
+                                     node::DataType return_type, bool return_nullable,
+                                     const std::vector<node::DataType>& arg_types, bool arg_nullable,
+                                     bool is_aggregate, const std::string& file);
 
     static base::Status RemoveExternalFunction(const std::string& name,
                                      const std::vector<node::DataType>& arg_types,

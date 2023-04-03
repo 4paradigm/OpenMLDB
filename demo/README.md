@@ -26,6 +26,10 @@ If you want to run demos on the unreleased version of OpenMLDB server, you can s
 If you want to test the unreleased version of OpenMLDB Python SDK, you can set `USE_ADD_WHL` to `true`, and prepare the whl in `/demo/additions`.
 OpenMLDB Tool is the same. You can add multi whl files.
 
+```
+docker-compose -f docker-compose.test.yml -- build --build-arg SKIP_DOWNLOAD="skip_download" --build-arg USE_ADD_WHL="true"
+```
+
 If apt is slow, copy the `sources.list` to `/demo/additions`.
 
 If pip is slow, create a file `/demo/additions/pypi.txt` and add index url in it.

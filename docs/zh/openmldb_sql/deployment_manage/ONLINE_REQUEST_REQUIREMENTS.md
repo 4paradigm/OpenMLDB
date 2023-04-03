@@ -23,7 +23,7 @@ OpenMLDB仅支持上线[SELECT查询语句](../dql/SELECT_STATEMENT.md)。
 ### 在线请求模式下单表查询的使用规范
 
 - 仅支持列运算，表达式，以及单行处理函数（Scalar Function)以及它们的组合表达式运算。
-- 单表查询不包含[GROUP BY子句](../dql/JOIN_CLAUSE.md)，[WHERE子句](../dql/WHERE_CLAUSE.md)，[HAVING子句](../dql/HAVING_CLAUSE.md)以及[WINDOW子句](../dql/WINDOW_CLAUSE.md)。
+- 单表查询不包含[GROUP BY子句](../dql/JOIN_CLAUSE.md)，[WHERE子句](../dql/WHERE_CLAUSE.md)，[HAVING子句](../dql/HAVING_CLAUSE.md)、[WINDOW子句](../dql/WINDOW_CLAUSE.md)， [LIMIT 子句](../dql/LIMIT_CLAUSE.md)。
 - 单表查询只涉及单张表的计算，不涉及[JOIN](../dql/JOIN_CLAUSE.md)多张表的计算。
 
 **Example: 支持上线的简单SELECT查询语句范例**
@@ -58,11 +58,12 @@ SELECT substr(COL7, 3, 6) FROM t1;
 ### 在线请求模式下 `LAST JOIN` 的使用规范
 
 - 仅支持`LAST JOIN`类型。
-- 至少有一个JOIN条件是形如`left_table.column=right_table.column`的EQUAL条件，**并且`rgith_table.column`列需要命中右表的索引**。
-- 带排序LAST JOIN的情况下，`ORDER BY`只支持列表达式，**并且列需要命中右表索引的时间列**。
+- 至少有一个JOIN条件是形如`left_source.column=right_source.column`的EQUAL条件，**并且`right_source.column`列需要命中右表的索引（key 列）**。
+- 带排序LAST JOIN的情况下，`ORDER BY`只支持单列的列引用表达式，**并且列需要命中右表索引的时间列**。
 
 **Example: 支持上线的 `LAST JOIN` 语句范例**
 创建两张表以供后续`LAST JOIN`。
+
 ```sql
 CREATE DATABASE db1;
 -- SUCCEED
@@ -99,7 +100,7 @@ desc t1;
    t1.col1 + t2.col1 + 1 as test_col1,
  FROM t1
  LAST JOIN t2 ON t1.col1=t2.col1;
- ```
+```
 在刚刚创建的两张表上进行排序的`LAST JOIN`，`col1`命中了索引，`std_time`命中了右表的索引的时间列。
 ```sql
  -- last join wit order by, 'col1:std_time' hit index

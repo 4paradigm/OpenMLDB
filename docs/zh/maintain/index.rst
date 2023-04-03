@@ -6,6 +6,7 @@
     :maxdepth: 1
 
     upgrade
+    update_conf
     backup
     scale
     monitoring
