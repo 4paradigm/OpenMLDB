@@ -271,4 +271,9 @@ public class TaskManagerConfig {
         parse();
         return SPARK_MASTER.equals("k8s") || SPARK_MASTER.equals("kubernetes");
     }
+
+    public static boolean isYarnCluster() throws ConfigException {
+        parse();
+        return SPARK_MASTER.equals("yarn") || SPARK_MASTER.equals("yarn-cluster");
+    }
 }
