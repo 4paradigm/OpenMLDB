@@ -25,26 +25,18 @@ WindowOrderByClause
         ::= ( 'ORDER' 'BY' ByList )
 
 WindowFrameClause
-        ::= ( WindowFrameUnits WindowFrameExtent [WindowFrameMaxSize])
+        ::= ( WindowFrameUnits WindowFrameBounds [WindowFrameMaxSize] )
 
 WindowFrameUnits
         ::= 'ROWS'
           | 'ROWS_RANGE'
 
-WindowFrameExtent
-        ::= WindowFrameStart
-          | WindowFrameBetween
-
-WindowFrameStart
-        ::= ( 'UNBOUNDED' | NumLiteral | IntervalLiteral ) ['OPEN'] 'PRECEDING'
-          | 'CURRENT' 'ROW'
-
-WindowFrameBetween
+WindowFrameBounds
         ::= 'BETWEEN' WindowFrameBound 'AND' WindowFrameBound
 
 WindowFrameBound
-        ::= WindowFrameStart
-          | ( 'UNBOUNDED' | NumLiteral | IntervalLiteral ) ['OPEN'] 'FOLLOWING'
+        ::= ( 'UNBOUNDED' | NumLiteral | IntervalLiteral ) ['OPEN'] 'PRECEDING'
+          | 'CURRENT' 'ROW'
 
 WindowAttribute
         ::= WindowExcludeCurrentTime
@@ -109,7 +101,30 @@ The `PARTITION BY` option groups the rows of the query into *partitions*, which 
 
 The `ORDER BY` option determines the order in which the rows in the partition are processed by the window function. It does a similar job as a query-level `ORDER BY` clause, but again it cannot be used as an output column name or number. Likewise, OpenMLDB requires that `ORDER BY` must be configured. And currently **only supports sorting by column**, and cannot support sorting by operation and function expression.
 
-### Window Frame Units
+### Window Frame Clause
+
+```
+WindowFrameClause
+        ::= ( WindowFrameUnits WindowFrameBounds [WindowFrameMaxSize] )
+
+WindowFrameUnits
+        ::= 'ROWS'
+          | 'ROWS_RANGE'
+
+WindowFrameBounds
+        ::= 'BETWEEN' WindowFrameBound 'AND' WindowFrameBound
+
+WindowFrameBound
+        ::= ( 'UNBOUNDED' | NumLiteral | IntervalLiteral ) ['OPEN'] 'PRECEDING'
+          | 'CURRENT' 'ROW'
+```
+
+In three parts:
+1. WindowFrameUnits: window type
+2. WindowFrameBounds: lower and upper bound
+3. WindowFrameMaxSize (Optional) refer [Window With MAXSIZE](#4.-window-with-maxsize)
+
+#### Window Frame Units
 
 ```sql
 WindowFrameUnits
@@ -127,21 +142,9 @@ The SQL standard RANGE class window OpenMLDB system does not currently support i
 - ROWS_RANGE: The window is drawn into the window by rows, and slides out of the window according to the time interval
 - RANGE: The window is divided into the window according to the time granularity (may slide in multiple data rows at the same time at a time), and slide out of the window according to the time interval
 
-### Window Frame Extent
+#### Window Frame Bounds
 
-```sql
-WindowFrameExtent
-        ::= WindowFrameStart
-          | WindowFrameBetween
-WindowFrameBetween
-        ::= 'BETWEEN' WindowFrameBound 'AND' WindowFrameBound
-WindowFrameBound
-        ::= ( 'UNBOUNDED' | NumLiteral | IntervalLiteral ) ['OPEN'] 'PRECEDING'
-          | 'CURRENT' 'ROW'
-```
-
- **WindowFrameExtent** defines the upper and lower bounds of a window. The window type can be defined by `ROWS` or `ROWS_RANGE`.
-
+ **WindowFrameBounds** defines the upper and lower bounds of a window.
 
 - `CURRENT ROW` is the row currently being computed.
 - `UNBOUNDED PRECEDING` indicates the upper bound of this window is unlimited.
@@ -155,7 +158,8 @@ WindowFrameBound
 Standard SQL also supports `FOLLOWING` keyword, but OpenMLDB doesn't support it currently.
 ````
 
-#### Example
+#### Examples
+
 - **Named Window**
 
 ```SQL
