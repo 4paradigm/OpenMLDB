@@ -354,8 +354,20 @@ public class TaskManagerImpl implements TaskManagerInterface {
     @Override
     public TaskManager.GetJobLogResponse GetJobLog(TaskManager.GetJobLogRequest request) {
         try {
-            String outLog = LogManager.getJobLog(request.getId());
-            String errorLog = LogManager.getJobErrorLog(request.getId());
+            String outLog = "";
+            try {
+                outLog = LogManager.getJobLog(request.getId());
+            } catch (Exception e) {
+                logger.warn(String.format("Fail to to get job log of job %s", request.getId()));
+            }
+
+            String errorLog = "";
+            try {
+                errorLog = LogManager.getJobErrorLog(request.getId());
+            } catch (Exception e) {
+                logger.warn(String.format("Fail to to get job error log of job %s", request.getId()));
+            }
+
             String log = String.format("Stdout:\n%s\n\nStderr:\n%s", outLog, errorLog);
 
             try {

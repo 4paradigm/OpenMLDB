@@ -61,8 +61,11 @@ public class TaskManagerConfig {
     public static String NAMENODE_URI;
     public static String BATCHJOB_JAR_PATH;
     public static String HADOOP_CONF_DIR;
+    public static String HADOOP_USER_NAME;
     public static boolean ENABLE_HIVE_SUPPORT;
     public static long BATCH_JOB_RESULT_MAX_WAIT_TIME;
+    public static String K8S_HADOOP_CONFIGMAP_NAME;
+    public static String K8S_MOUNT_LOCAL_PATH;
 
     private static volatile boolean isParsed = false;
 
@@ -239,6 +242,8 @@ public class TaskManagerConfig {
             }
         }
 
+        HADOOP_USER_NAME = prop.getProperty("hadoop.user.name", "root");
+
         HADOOP_CONF_DIR = prop.getProperty("hadoop.conf.dir", "");
         if (isYarn && HADOOP_CONF_DIR.isEmpty()) {
             try {
@@ -256,6 +261,10 @@ public class TaskManagerConfig {
         ENABLE_HIVE_SUPPORT = Boolean.parseBoolean(prop.getProperty("enable.hive.support", "true"));
 
         BATCH_JOB_RESULT_MAX_WAIT_TIME = Long.parseLong(prop.getProperty("batch.job.result.max.wait.time", "600000")); // 10min
+
+        K8S_HADOOP_CONFIGMAP_NAME = prop.getProperty("k8s.hadoop.configmap", "hadoop-config");
+
+        K8S_MOUNT_LOCAL_PATH = prop.getProperty("k8s.mount.local.path", "/tmp");
     }
 
     public static boolean isK8s() throws ConfigException {
