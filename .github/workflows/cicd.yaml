@@ -34,7 +34,7 @@ env:
 
 jobs:
   cpp:
-    runs-on: [self-hosted, generic]
+    runs-on: [self-hosted,generic]
     if: github.repository == '4paradigm/OpenMLDB'
     container:
       image: ghcr.io/4paradigm/hybridsql:latest
