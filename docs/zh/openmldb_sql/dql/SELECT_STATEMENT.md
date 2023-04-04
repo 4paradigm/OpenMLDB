@@ -4,7 +4,7 @@
 
 ### SelectStmt
 
-```sql
+```yacc
 SelectStmt
          ::= WithClause ( NoTableSelectClause | SelectStmtFromTable) 
 
@@ -44,7 +44,6 @@ ByItem   ::= Expression Order
 
 Order    ::= ( 'ASC' | 'DESC' )?
 
-
 WindowClauseOptional
          ::= ( 'WINDOW' WindowDefinition ( ',' WindowDefinition )* )?
 WindowDefinition
@@ -54,40 +53,47 @@ WindowSpec
          ::= '(' WindowSpecDetails ')'   
          
 WindowSpecDetails
-         ::= [ExistingWindowName] [WindowUnionClause] WindowPartitionClause WindowFrameClause [WindowExcludeCurrentTime] [WindowInstanceNotInWindow]
-
+         ::= [ExistingWindowName] [WindowUnionClause] WindowPartitionClause WindowOrderByClause WindowFrameClause (WindowAttribute)*
 
 WindowUnionClause
-				 :: = ( 'UNION' TableRefs)
+        :: = ( 'UNION' TableRefs)
 
 WindowPartitionClause
          ::= ( 'PARTITION' 'BY' ByList ) 
 
+WindowOrderByClause
+        ::= ( 'ORDER' 'BY' ByList )
+
 WindowFrameClause
-         ::= ( WindowFrameUnits WindowFrameExtent [WindowFrameMaxSize]) 
+        ::= ( WindowFrameUnits WindowFrameBounds [WindowFrameMaxSize] )
 
 WindowFrameUnits
-         ::= 'ROWS'
-           | 'ROWS_RANGE'         
+        ::= 'ROWS'
+          | 'ROWS_RANGE'
 
-WindowFrameExtent
-         ::= WindowFrameStart
-           | WindowFrameBetween
-WindowFrameStart
-         ::= ( 'UNBOUNDED' | NumLiteral | IntervalLiteral ) ['OPEN'] 'PRECEDING'
-           | 'CURRENT' 'ROW'
-WindowFrameBetween
-         ::= 'BETWEEN' WindowFrameBound 'AND' WindowFrameBound
+WindowFrameBounds
+        ::= 'BETWEEN' WindowFrameBound 'AND' WindowFrameBound
+
 WindowFrameBound
-         ::= WindowFrameStart
-           | ( 'UNBOUNDED' | NumLiteral | IntervalLiteral ) ['OPEN'] 'FOLLOWING'  
-           
-WindowExcludeCurrentTime 
-				::= 'EXCLUDE' 'CURRENT_TIME'      
+        ::= ( 'UNBOUNDED' | NumLiteral | IntervalLiteral ) ['OPEN'] 'PRECEDING'
+          | 'CURRENT' 'ROW'
+
+WindowAttribute
+        ::= WindowExcludeCurrentTime
+          | WindowExcludeCurrentRow
+          | WindowInstanceNotInWindow
+
+WindowExcludeCurrentTime
+        ::= 'EXCLUDE' 'CURRENT_TIME'
+
+WindowExcludeCurrentRow
+        ::= 'EXCLUDE' 'CURRENT_ROW'
 
 WindowInstanceNotInWindow
-				:: = 'INSTANCE_NOT_IN_WINDOW'
-				
+        :: = 'INSTANCE_NOT_IN_WINDOW'
+
+WindowFrameMaxSize
+        :: = 'MAXSIZE' NumLiteral
 ```
 
 ### SelectExprList
