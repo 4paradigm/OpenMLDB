@@ -493,6 +493,11 @@ struct CCallDataTypeTrait<ArrayRef<T>*> {
 };
 
 template <>
+struct CCallDataTypeTrait<void> {
+    using LiteralTag = void;
+};
+
+template <>
 struct CCallDataTypeTrait<openmldb::base::Timestamp*> {
     using LiteralTag = openmldb::base::Timestamp;
 

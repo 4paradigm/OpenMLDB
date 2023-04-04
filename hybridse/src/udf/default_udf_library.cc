@@ -34,6 +34,7 @@
 #include "udf/udf.h"
 #include "udf/udf_registry.h"
 #include "udf/default_defs/expr_def.h"
+#include "udf/default_defs/date_and_time_def.h"
 
 using openmldb::base::Date;
 using openmldb::base::StringRef;
@@ -2613,7 +2614,7 @@ void DefaultUdfLibrary::InitTimeAndDateUdf() {
         .return_by_arg(true)
         .returns<Nullable<int64_t>>();
 
-    RegisterExternalTemplate<>("add_months")
+    RegisterExternalTemplate<AddMonths>("add_months")
         .doc(R"s(
              @brief adds an integer months to a given date (DATE or TIMESTAMP), returning the resulting date.
 
@@ -2631,7 +2632,10 @@ void DefaultUdfLibrary::InitTimeAndDateUdf() {
              @endcode
 
              @since 0.8.0
-             )s");
+             )s")
+        .returns<Nullable<openmldb::base::Date>>()
+        .args_in<openmldb::base::Date>()
+        .return_by_arg(true);
 }
 
 void DefaultUdfLibrary::InitUdaf() {

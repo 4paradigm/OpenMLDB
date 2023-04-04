@@ -1330,6 +1330,11 @@ TEST_F(UdfIRBuilderTest, EarthDistanceError) {
     CheckUdf<Nullable<double>, double, double, double, double>("earth_distance", nullptr, 77, 99, -91, -184);
 }
 
+TEST_F(UdfIRBuilderTest, AddMonths) {
+    CheckUdf<Nullable<Date>, Date, int32_t>("add_months", Date(2016, 9, 30), Date(2016, 8, 31), 1);
+    CheckUdf<Nullable<Date>, Date, int32_t>("add_months", Date(2011, 8, 31), Date(2012, 1, 31), -5);
+}
+
 }  // namespace codegen
 }  // namespace hybridse
 
