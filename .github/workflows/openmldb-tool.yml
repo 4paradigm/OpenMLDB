@@ -21,7 +21,8 @@ env:
 
 jobs:
   openmldb-tool-test:
-    runs-on: [self-hosted,seq-task,node-4]
+    runs-on: [self-hosted,seq-task]
+    if: github.repository == '4paradigm/OpenMLDB'
     steps:
       - uses: actions/checkout@v2
 
