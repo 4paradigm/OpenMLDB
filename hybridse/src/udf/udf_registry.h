@@ -779,6 +779,9 @@ struct FuncArgTypeCheckHelper {
         std::is_same<Arg, typename CCallDataTypeTrait<CArg>::LiteralTag>::value;
 };
 
+// FuncRetTypeCheckHelper
+// checker for void functions that writes return values to last one or two parameters
+// intend to used for void funtions only
 template <typename Ret, typename>
 struct FuncRetTypeCheckHelper {
     static const bool value = false;

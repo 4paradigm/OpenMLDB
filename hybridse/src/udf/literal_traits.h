@@ -484,7 +484,9 @@ struct CCallDataTypeTrait {
 
 template <typename V>
 struct CCallDataTypeTrait<V*> {
-    using LiteralTag = Opaque<V>;
+    using LiteralTag = std::conditional_t<std::is_integral_v<V> || std::is_same_v<bool, V> ||
+                                              std::is_same_v<float, V> || std::is_same_v<double, V>,
+                                          V, Opaque<V>>;
 };
 
 template <typename T>
