@@ -1306,25 +1306,19 @@ class ExternalTemplateFuncRegistryHelper {
     template <typename... Args>
     ExternalTemplateFuncRegistryHelper& args_in() {
         cur_defs_ = {RegisterSingle<Args, typename FTemplate<Args>::Args>()(helper_, &FTemplate<Args>::operator())...};
-        for (auto def : cur_defs_) {
-            def->SetReturnByArg(return_by_arg_);
+        if (return_by_arg_.has_value()) {
+            for (auto def : cur_defs_) {
+                def->SetReturnByArg(return_by_arg_.value());
+            }
         }
         return *this;
     }
 
-    // set return_by_arg flag for already registered ExternalFuncDefNode
-    // must invoked after args_in
     ExternalTemplateFuncRegistryHelper& return_by_arg(bool flag) {
         return_by_arg_ = flag;
         for (auto def : cur_defs_) {
             def->SetReturnByArg(flag);
         }
-        return *this;
-    }
-
-    template <typename Ret>
-    auto& returns() {
-        helper_.returns<Ret>();
         return *this;
     }
 
@@ -1367,7 +1361,7 @@ class ExternalTemplateFuncRegistryHelper {
 
     std::string name_;
     UdfLibrary* library_;
-    bool return_by_arg_ = false;
+    std::optional<bool> return_by_arg_;
     std::vector<node::ExternalFnDefNode*> cur_defs_;
     ExternalFuncRegistryHelper helper_;
 };

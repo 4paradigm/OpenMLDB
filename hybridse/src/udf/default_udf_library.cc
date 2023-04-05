@@ -2633,9 +2633,7 @@ void DefaultUdfLibrary::InitTimeAndDateUdf() {
 
              @since 0.8.0
              )s")
-        .returns<Nullable<openmldb::base::Date>>()
-        .args_in<openmldb::base::Date>()
-        .return_by_arg(true);
+        .args_in<openmldb::base::Date>();
 }
 
 void DefaultUdfLibrary::InitUdaf() {

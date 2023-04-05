@@ -1331,8 +1331,16 @@ TEST_F(UdfIRBuilderTest, EarthDistanceError) {
 }
 
 TEST_F(UdfIRBuilderTest, AddMonths) {
+    CheckUdf<Nullable<Date>, Date, int32_t>("add_months", Date(2022, 5, 5), Date(2022, 4, 5), 1);
+    CheckUdf<Nullable<Date>, Date, int32_t>("add_months", Date(2022, 4, 5), Date(2022, 4, 5), 0);
+    CheckUdf<Nullable<Date>, Date, int32_t>("add_months", Date(2022, 3, 5), Date(2022, 4, 5), -1);
+
     CheckUdf<Nullable<Date>, Date, int32_t>("add_months", Date(2016, 9, 30), Date(2016, 8, 31), 1);
     CheckUdf<Nullable<Date>, Date, int32_t>("add_months", Date(2011, 8, 31), Date(2012, 1, 31), -5);
+    CheckUdf<Nullable<Date>, Date, int32_t>("add_months", Date(2012, 2, 29), Date(2012, 1, 31), 1);
+    CheckUdf<Nullable<Date>, Date, int32_t>("add_months", Date(2011, 2, 28), Date(2011, 1, 31), 1);
+    CheckUdf<Nullable<Date>, Date, int32_t>("add_months", Date(2010, 11, 30), Date(2012, 1, 31), -14);
+    CheckUdf<Nullable<Date>, Date, int32_t>("add_months", Date(2013, 3, 31), Date(2012, 1, 31), 14);
 }
 
 }  // namespace codegen
