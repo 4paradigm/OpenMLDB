@@ -27,13 +27,11 @@
 namespace hybridse {
 namespace udf {
 
-template <typename DateType>
+template <typename Integer>
 struct AddMonths {
-    using Args = std::tuple<DateType, int32_t>;
-    using CDateType = typename DataTypeTrait<DateType>::CCallArgType;
+    using Args = std::tuple<openmldb::base::Date, Integer>;
 
-    template <typename T = DateType, std::enable_if_t<std::is_same_v<openmldb::base::Date, T>, int>* = nullptr>
-    void operator()(CDateType date, int32_t num_months, openmldb::base::Date* ret, bool* is_null) {
+    void operator()(openmldb::base::Date* date, Integer num_months, openmldb::base::Date* ret, bool* is_null) {
         int32_t year = 0, month = 0, day = 0;
         if (!openmldb::base::Date::Decode(date->date_, &year, &month, &day)) {
             *is_null = true;

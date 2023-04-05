@@ -2616,12 +2616,12 @@ void DefaultUdfLibrary::InitTimeAndDateUdf() {
 
     RegisterExternalTemplate<AddMonths>("add_months")
         .doc(R"s(
-             @brief adds an integer months to a given date (DATE or TIMESTAMP), returning the resulting date.
+             @brief adds an integer months to a given date, returning the resulting date.
 
              The resulting day component will remain the same as that specified in date, unless the resulting month has fewer days than the day component of the given date,
              in which case the day will be the last day of the resulting month. Returns NULL if given an invalid date, or a NULL argument.
 
-             @param start_date Date or Timestamp value to add
+             @param start_date Date value to add
              @param num_months Integer value as number of months to add, can be positive or negative
 
              @code{.sql}
@@ -2629,11 +2629,13 @@ void DefaultUdfLibrary::InitTimeAndDateUdf() {
                -- 2016-09-30
                SELECT add_months('2016-08-31', -1);
                -- 2016-07-31
+               SELECT add_months('2012-01-31', 1);
+               -- 2012-02-29
              @endcode
 
              @since 0.8.0
              )s")
-        .args_in<openmldb::base::Date>();
+        .args_in<int32_t, int16_t, int64_t>();
 }
 
 void DefaultUdfLibrary::InitUdaf() {
