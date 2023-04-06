@@ -57,6 +57,7 @@
 - 一次分配空间的最大长度不能超过2M字节
 
 **注**：
+
 - 如果参数声明为nullable的，那么所有参数都是nullable的，每一个输入参数都添加is_null参数
 - 如果返回值声明为nullable的，那么通过参数来返回，并且添加is_null的参数来表示返回值是否为null
 
@@ -200,12 +201,13 @@ CREATE AGGREGATE FUNCTION third(x BIGINT) RETURNS BIGINT OPTIONS (FILE='libtest_
 - 一个udf函数只能对一种类型起作用。如果想用于多种类型，需要创建多个函数
 - `FILE` 指定动态库的文件名，不需要包含路径
 
-成功注册后就可openmldb_sql
-SELECT cut2(c1) FROM t1;
+成功注册后就可在 OpenMLDB 中使用该自定义函数：`SELECT cut2(c1) FROM t1` 
+
+可以通过 `SHOW FUNCTIONS` 查看已注册的 UDF
 ```
-可以通过SHOW FUNCTIONS查openmldb_sql
 SHOW FUNCTIONS;
 ```
-通过DROP FUNCTION删除已openmldb_sql
+通过 `DROP FUNCTION` 删除已注册的 UDF
+```
 DROP FUNCTION cut2;
 ```
