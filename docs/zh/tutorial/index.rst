@@ -17,3 +17,4 @@
     udf_develop_guide
     standalone_vs_cluster 
     standalone_use
+    common architecture
