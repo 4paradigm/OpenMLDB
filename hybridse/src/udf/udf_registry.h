@@ -779,6 +779,12 @@ struct FuncArgTypeCheckHelper {
         std::is_same<Arg, typename CCallDataTypeTrait<CArg>::LiteralTag>::value;
 };
 
+template <typename, typename>
+struct FuncTupleRetTypeCheckHelper {
+    using Remain = void;
+    static const bool value = false;
+};
+
 // FuncRetTypeCheckHelper
 // checker for void functions that writes return values to last one or two parameters
 // intend to used for void funtions only
@@ -807,10 +813,14 @@ struct FuncRetTypeCheckHelper<Opaque<Ret>, std::tuple<Ret*>> {
     using RetType = Opaque<Ret>;
 };
 
-template <typename, typename>
-struct FuncTupleRetTypeCheckHelper {
-    using Remain = void;
-    static const bool value = false;
+template <typename... TupleArgs, typename... CArgs>
+struct FuncRetTypeCheckHelper<Tuple<TupleArgs...>, std::tuple<CArgs...>> {
+    using RecCheck = FuncTupleRetTypeCheckHelper<std::tuple<TupleArgs...>,
+                                                 std::tuple<CArgs...>>;
+    using RetType = Tuple<TupleArgs...>;
+    static const bool value =
+        ConditionAnd<RecCheck::value, std::is_same<typename RecCheck::Remain,
+                                                   std::tuple<>>::value>::value;
 };
 
 template <typename TupleHead, typename... TupleTail, typename CArgHead,
@@ -831,6 +841,7 @@ struct FuncTupleRetTypeCheckHelper<
     std::tuple<Nullable<TupleHead>, TupleTail...>,
     std::tuple<CArgHead, bool*, CArgTail...>> {
     using HeadCheck = FuncRetTypeCheckHelper<TupleHead, std::tuple<CArgHead>>;
+
     using TailCheck = FuncTupleRetTypeCheckHelper<std::tuple<TupleTail...>,
                                                   std::tuple<CArgTail...>>;
     using Remain = typename TailCheck::Remain;
@@ -858,15 +869,6 @@ template <typename... CArgs>
 struct FuncTupleRetTypeCheckHelper<std::tuple<>, std::tuple<CArgs...>> {
     static const bool value = true;
     using Remain = std::tuple<CArgs...>;
-};
-
-template <typename... TupleArgs, typename... CArgs>
-struct FuncRetTypeCheckHelper<Tuple<TupleArgs...>, std::tuple<CArgs...>> {
-    using RecCheck = FuncTupleRetTypeCheckHelper<std::tuple<TupleArgs...>,
-                                                 std::tuple<CArgs...>>;
-    static const bool value =
-        ConditionAnd<RecCheck::value, std::is_same<typename RecCheck::Remain,
-                                                   std::tuple<>>::value>::value;
 };
 
 template <typename, typename>
@@ -928,6 +930,8 @@ struct FuncTupleArgTypeCheckHelper<std::tuple<>, std::tuple<CArgs...>> {
 template <typename Ret, typename Args, typename CRet, typename CArgs>
 struct FuncTypeCheckHelper {
     static const bool value = false;
+    using RetType = void;
+    static const bool return_by_arg = false;
 };
 
 // Ret (ArgHead, ArgTail...)
@@ -1001,6 +1005,20 @@ struct FuncTypeCheckHelper<void, std::tuple<>, void,
 
     static const bool value = RetCheck::value;
     using RetType = typename RetCheck::RetType;
+    static const bool return_by_arg = true;
+};
+
+// Ret ()
+// <->
+// void (CArgHead, CArgTail...)
+template <typename Ret, typename CArgHead, typename... CArgTail>
+struct FuncTypeCheckHelper<Ret, std::tuple<>, void,
+                           std::tuple<CArgHead, CArgTail...>> {
+    using RetCheck =
+        FuncRetTypeCheckHelper<Ret, std::tuple<CArgHead, CArgTail...>>;
+
+    static const bool value = RetCheck::value;
+    using RetType = Ret;
     static const bool return_by_arg = true;
 };
 
