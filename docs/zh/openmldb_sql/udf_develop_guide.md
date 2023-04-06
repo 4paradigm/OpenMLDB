@@ -67,8 +67,14 @@ void sum(::openmldb::base::UDFContext* ctx, int64_t input1, bool is_null, int64_
 ```
 
 #### 2.1.5 单行函数开发
-- 包含头文件udf/openmldb_udf.h 
-- 实现自定义函数逻辑
+
+单行函数（scalar function）对单行数据进行处理，返回单个值，比如 `abs`, `sin`, `cos`, `date`, `year` 等。
+
+具体开发步骤为：
+
+1. 包含头文件udf/openmldb_udf.h 
+2. 实现自定义函数逻辑
+
 ```c++
 #include "udf/openmldb_udf.h"  // 必须包含此头文件
  
@@ -88,8 +94,13 @@ void cut2(::openmldb::base::UDFContext* ctx, ::openmldb::base::StringRef* input,
 ```
 
 #### 2.1.6 聚合函数开发
-- 包含头文件udf/openmldb_udf.h 
-- 实现自定义函数逻辑
+
+聚合函数（aggregate function）对一个数据集（比如一列数据）执行计算，返回单个值，比如 `sum`, `avg`, `max`, `min`, `count` 等。
+
+具体开发步骤为：
+
+1. 包含头文件udf/openmldb_udf.h 
+2. 实现自定义函数逻辑
 
 开发一个聚合函数需要实现如下三个C++方法：
 - init函数。 在init函数中做一些初始化工作，如开辟中间变量的空间等。函数命名格式为："聚合函数名_init"。
