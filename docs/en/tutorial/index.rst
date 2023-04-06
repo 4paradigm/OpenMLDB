@@ -12,3 +12,4 @@ Tutorials
     data_import
     openmldbspark_distribution
     autofe
+    common architecture
