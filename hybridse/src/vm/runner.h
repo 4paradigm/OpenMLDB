@@ -687,6 +687,10 @@ class JoinGenerator {
 
     Row RowLastJoin(const Row& left_row, std::shared_ptr<DataHandler> right, const Row& parameter);
     Row RowLastJoinDropLeftSlices(const Row& left_row, std::shared_ptr<DataHandler> right, const Row& parameter);
+
+    std::shared_ptr<PartitionHandler> LazyLastJoin(std::shared_ptr<PartitionHandler> left,
+                                                   std::shared_ptr<PartitionHandler> right, const Row& parameter);
+
     ConditionGenerator condition_gen_;
     KeyGenerator left_key_gen_;
     PartitionGenerator right_group_gen_;

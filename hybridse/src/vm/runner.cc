@@ -1530,17 +1530,21 @@ std::shared_ptr<DataHandler> RequestLastJoinRunner::Run(
     if (!left || !right) {
         return std::shared_ptr<DataHandler>();
     }
-    if (kRowHandler != left->GetHandlerType()) {
-        return std::shared_ptr<DataHandler>();
-    }
-    auto left_row = std::dynamic_pointer_cast<RowHandler>(left)->GetValue();
-    auto &parameter = ctx.GetParameterRow();
-    if (output_right_only_) {
-        return std::shared_ptr<RowHandler>(new MemRowHandler(
-            join_gen_.RowLastJoinDropLeftSlices(left_row, right, parameter)));
+    if (kRowHandler == left->GetHandlerType()) {
+        // row last join table, compute in place
+        auto left_row = std::dynamic_pointer_cast<RowHandler>(left)->GetValue();
+        auto& parameter = ctx.GetParameterRow();
+        if (output_right_only_) {
+            return std::shared_ptr<RowHandler>(
+                new MemRowHandler(join_gen_.RowLastJoinDropLeftSlices(left_row, right, parameter)));
+        } else {
+            return std::shared_ptr<RowHandler>(new MemRowHandler(join_gen_.RowLastJoin(left_row, right, parameter)));
+        }
+    } else if (kPartitionHandler == left->GetHandlerType()) {
+        auto left_part = std::dynamic_pointer_cast<PartitionHandler>(left);
     } else {
-        return std::shared_ptr<RowHandler>(
-            new MemRowHandler(join_gen_.RowLastJoin(left_row, right, parameter)));
+        // partition join partition, lazy compute
+        return std::shared_ptr<DataHandler>();
     }
 }
 
@@ -1849,6 +1853,12 @@ Row JoinGenerator::RowLastJoinDropLeftSlices(
     }
     return right_row;
 }
+
+    std::shared_ptr<PartitionHandler> JoinGenerator::LazyLastJoin(std::shared_ptr<PartitionHandler> left,
+                                                   std::shared_ptr<PartitionHandler> right, const Row& parameter) {
+
+}
+
 Row JoinGenerator::RowLastJoin(const Row& left_row,
                                std::shared_ptr<DataHandler> right,
                                const Row& parameter) {

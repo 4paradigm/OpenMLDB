@@ -778,3 +778,39 @@ cases:
           - ["1", "CCC", 55, 3]
     expect:
       success: true
+  - id: 22
+    sql: |
+      select
+        account_no,
+         -- check if there exists in window that agreement_no is null
+         count(account_no) over w as cnt,
+         nth_value_where(account_no, 1, isnull(agreement_no)) over w as feat
+      from (select account_no, 0 as agreement_no, cast(90000 as timestamp) as ts from request)
+      window w as (
+         union (select t14.account_no, t16.agreement_nox as agreement_no, t14.ts from t14 last join t16 on t14.agreement_no = t16.agreement_nox)
+         partition by account_no order by ts
+         rows between unbounded preceding and current row
+         exclude current_row instance_not_in_window
+      )
+    inputs:
+      - name: request
+        columns: ["account_no int"]
+        indexs: ['idx:account_no']
+        data:
+          100
+      - name: t14
+        columns:
+          - account_no int
+          - agreement_no int
+          - ts timestamp
+        indexs: ["idx1:account_no:ts", "idx2:agreement_no:ts"]
+        data: |
+          101, 201, 1000
+          101, 202, 1000
+      - name: t16
+        columns:
+          - agreement_nox int
+          - ts timestamp
+        indexs: ["idx3:agreement_nox:ts"]
+        data: |
+          202, 1000
