@@ -31,7 +31,7 @@ public class BenchmarkConfig {
     public static int WINDOW_SIZE = 1000;
     public static int JOIN_NUM = 2;
     public static int PK_BASE = 1000000;
-    public static long TS_BASE = 1652232079000l;
+    public static long TS_BASE = System.currentTimeMillis();
     public static String DEPLOY_NAME;
     public static String CSV_PATH;
 
