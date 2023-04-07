@@ -124,4 +124,7 @@ sdk日志（glog日志）：
 
 ### 7. 离线命令错误`java.lang.OutOfMemoryError: Java heap space`
 
-离线命令的spark配置默认为`local[*]`，并发较高可能出现OutOfMemoryError错误，请调整`spark.driver.memory`和`spark.executor.memory`两个spark配置项。可以写在taskmanager运行目录的`conf/taskmanager.properties`内并重启taskmanager，或者使用CLI客户端进行配置，参考[客户端Spark配置文件](../reference/client_config/client_spark_config.md#)。
+离线命令的spark配置默认为`local[*]`，并发较高可能出现OutOfMemoryError错误，请调整`spark.driver.memory`和`spark.executor.memory`两个spark配置项。可以写在taskmanager运行目录的`conf/taskmanager.properties`的`spark.default.conf`并重启taskmanager，或者使用CLI客户端进行配置，参考[客户端Spark配置文件](../reference/client_config/client_spark_config.md)。
+```
+spark.default.conf=spark.driver.memory=16g;spark.executor.memory=16g
+```
