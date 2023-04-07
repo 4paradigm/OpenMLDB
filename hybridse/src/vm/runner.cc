@@ -1854,8 +1854,9 @@ Row JoinGenerator::RowLastJoinDropLeftSlices(
     return right_row;
 }
 
-    std::shared_ptr<PartitionHandler> JoinGenerator::LazyLastJoin(std::shared_ptr<PartitionHandler> left,
-                                                   std::shared_ptr<PartitionHandler> right, const Row& parameter) {
+std::shared_ptr<PartitionHandler> JoinGenerator::LazyLastJoin(std::shared_ptr<PartitionHandler> left,
+                                                              std::shared_ptr<PartitionHandler> right,
+                                                              const Row& parameter) {
 
 }
 
