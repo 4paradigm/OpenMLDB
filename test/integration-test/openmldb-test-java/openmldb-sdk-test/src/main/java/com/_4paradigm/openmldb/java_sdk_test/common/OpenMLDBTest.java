@@ -51,7 +51,7 @@ public class OpenMLDBTest extends BaseTest {
     public void beforeTest(@Optional("qa") String env,@Optional("main") String version,@Optional("")String openMLDBPath) throws Exception {
         OpenMLDBGlobalVar.env = env;
         if(env.equalsIgnoreCase("cluster")){
-            OpenMLDBDeploy openMLDBDeploy = new OpenMLDBDeploy(version);;
+            OpenMLDBDeploy openMLDBDeploy = new OpenMLDBDeploy(version);
             openMLDBDeploy.setOpenMLDBPath(openMLDBPath);
             openMLDBDeploy.setCluster(true);
             OpenMLDBGlobalVar.mainInfo = openMLDBDeploy.deployCluster(2, 3);
@@ -62,12 +62,18 @@ public class OpenMLDBTest extends BaseTest {
             OpenMLDBGlobalVar.mainInfo = openMLDBDeploy.deployCluster(2, 3);
         }else if(env.equalsIgnoreCase("deploy")){
             OpenMLDBGlobalVar.mainInfo = YamlUtil.getObject("out/openmldb_info.yaml",OpenMLDBInfo.class);
-        }else{
+        } else if(env.equalsIgnoreCase("yarn")) {
+            OpenMLDBDeploy openMLDBDeploy = new OpenMLDBDeploy(version);
+            openMLDBDeploy.setOpenMLDBPath(openMLDBPath);
+            openMLDBDeploy.setCluster(true);
+            OpenMLDBGlobalVar.mainInfo = openMLDBDeploy.deployCluster(2, 3);
+        } else {
             OpenMLDBInfo openMLDBInfo = new OpenMLDBInfo();
             openMLDBInfo.setDeployType(OpenMLDBDeployType.CLUSTER);
             openMLDBInfo.setNsNum(2);
             openMLDBInfo.setTabletNum(3);
             openMLDBInfo.setBasePath("/home/zhaowei01/openmldb-auto-test/tmp");
+            //openMLDBInfo.setZk_cluster("0.0.0.0:2181");
             openMLDBInfo.setZk_cluster("172.24.4.55:30000");
             openMLDBInfo.setZk_root_path("/openmldb");
             openMLDBInfo.setNsEndpoints(Lists.newArrayList("172.24.4.55:30004", "172.24.4.55:30005"));
