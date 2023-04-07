@@ -475,8 +475,9 @@ void TablePlanNode::Print(std::ostream &output,
                           const std::string &org_tab) const {
     PlanNode::Print(output, org_tab);
     output << "\n";
-    PrintValue(output, org_tab + INDENT, GetPathString(), is_primary_ ? "primary_table" : "table", true);
+    PrintValue(output, org_tab + INDENT, GetPathString(), "table", true);
 }
+
 bool TablePlanNode::Equals(const PlanNode *node) const {
     if (nullptr == node) {
         return false;
@@ -490,9 +491,9 @@ bool TablePlanNode::Equals(const PlanNode *node) const {
         return false;
     }
     const TablePlanNode *that = dynamic_cast<const TablePlanNode *>(node);
-    return is_primary_ == that->is_primary_ &&
-           db_ == that->db_ && table_ == that->table_ && LeafPlanNode::Equals(that);
+    return db_ == that->db_ && table_ == that->table_ && LeafPlanNode::Equals(that);
 }
+
 void RenamePlanNode::Print(std::ostream &output,
                            const std::string &org_tab) const {
     PlanNode::Print(output, org_tab);
