@@ -647,28 +647,37 @@ ClusterTask RunnerBuilder::BuildClusterTaskForBinaryRunner(
                          << ": can't handler local task with index key";
             return ClusterTask();
         }
-        if (right.IsCompletedClusterTask()) {
+        if (right.IsCompletedClusterTask() && node::ExprEquals(right.GetIndexKey().keys(), index_key.keys())) {
+            // completed with same index key
+            std::stringstream ss;
+            right.Print(ss, " ");
             LOG(WARNING) << "Fail to complete cluster task for "
                          << "[" << runner->id_ << "]"
                          << RunnerTypeName(runner->type_)
-                         << ": task is completed already";
+                         << ": task is completed already:\n" << ss.str();
+            LOG(WARNING) << "index key is " << index_key.ToString();
             return ClusterTask();
         }
         RequestRunner* request_runner = CreateRunner<RequestRunner>(id_++, left_runner->output_schemas());
         runner->AddProducer(request_runner);
-        runner->AddProducer(right_runner);
         // build complete cluster task
-        const RouteInfo& right_route_info = new_right.GetRouteInfo();
-        ClusterTask cluster_task(
-            runner, std::vector<Runner*>({runner}),
-            RouteInfo(right_route_info.index_, index_key,
-                      std::make_shared<ClusterTask>(new_left),
-                      right_route_info.table_handler_));
-        // TODO(chenjing): opt
-        if (new_left.IsCompletedClusterTask()) {
-            return BuildProxyRunnerForClusterTask(cluster_task);
+        if (!right.GetIndexKey().ValidKey()) {
+            runner->AddProducer(right_runner);
+
+            const RouteInfo& right_route_info = new_right.GetRouteInfo();
+            ClusterTask cluster_task(
+                runner, std::vector<Runner*>({runner}),
+                RouteInfo(right_route_info.index_, index_key, std::make_shared<ClusterTask>(new_left),
+                          right_route_info.table_handler_));
+
+            if (new_left.IsCompletedClusterTask()) {
+                return BuildProxyRunnerForClusterTask(cluster_task);
+            } else {
+                return cluster_task;
+            }
         } else {
-            return cluster_task;
+            // current runner and right have two different route info
+            // FIXME
         }
     }
 
