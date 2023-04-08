@@ -16,7 +16,6 @@
         <module>openmldb-deploy</module>
         <module>openmldb-devops-test</module>
         <module>openmldb-ecosystem</module>
-        <module>openmldb-command-tool</module>
     </modules>
 
     <properties>
@@ -97,7 +96,6 @@
         <dependency>
             <groupId>org.testng</groupId>
             <artifactId>testng</artifactId>
-            <!-- tobedev -->
             <version>6.14.3</version>
         </dependency>
         <dependency>

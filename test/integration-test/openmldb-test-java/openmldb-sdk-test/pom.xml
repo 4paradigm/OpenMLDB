@@ -152,7 +152,16 @@
                     </argLine>
                     <!-- 使allure-results在target文件夹下（很重要） -->
                     <workingDirectory>target/</workingDirectory>
-
+                    <properties>
+                        <property>
+                            <name>usedefaultlisteners</name>
+                            <value>false</value>
+                        </property>
+                        <property>
+                            <name>listener</name>
+                            <value>org.uncommons.reportng.HTMLReporter, org.uncommons.reportng.JUnitXMLReporter</value>
+                        </property>
+                    </properties>
                     <systemProperties>
                         <property>
                             <name>caseName</name>
