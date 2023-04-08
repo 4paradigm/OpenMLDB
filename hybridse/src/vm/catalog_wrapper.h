@@ -23,8 +23,6 @@
 namespace hybridse {
 namespace vm {
 
-class JoinGenerator;
-
 class ProjectFun {
  public:
     virtual Row operator()(const Row& row, const Row& parameter) const = 0;
@@ -139,9 +137,6 @@ class LimitIterator : public RowIterator {
     int32_t cnt_ = 1;
     // limit_ inherited from sql limit clause, 0 means no no rows will return
     const int32_t limit_ = 0;
-};
-
-class LazyLastJoinIterator : public RowIterator {
 };
 
 class WindowIteratorProjectWrapper : public WindowIterator {
@@ -333,81 +328,6 @@ class PartitionFilterWrapper : public PartitionHandler {
     std::shared_ptr<PartitionHandler> partition_handler_;
     const Row& parameter_;
     const PredicateFun* fun_;
-};
-
-class LazyLastJoinPartitionHandler;
-
-class LazyLastJoinTableHandler : public TableHandler {
- public:
-    LazyLastJoinTableHandler(std::shared_ptr<TableHandler> left, std::shared_ptr<PartitionHandler> right,
-                                const Row& param, std::shared_ptr<JoinGenerator> join);
-    ~LazyLastJoinTableHandler() override {}
-
-    std::unique_ptr<RowIterator> GetIterator() override {
-        // un-implemented
-        return nullptr;
-    }
-    const Types& GetTypes() override { return left_->GetTypes(); }
-    const IndexHint& GetIndex() override { return left_->GetIndex(); }
-
-    const Schema* GetSchema() override { return nullptr; }
-    const std::string& GetName() override { return ""; }
-    const std::string& GetDatabase() override { return ""; }
-
-    base::ConstIterator<uint64_t, Row>* GetRawIterator() override {
-        return nullptr;
-    }
-
-    Row At(uint64_t pos) override {
-        return value_;
-    }
-
-    const uint64_t GetCount() override { return left_->GetCount(); }
-
-    std::shared_ptr<PartitionHandler> GetPartition(const std::string& index_name) override {
-        return std::shared_ptr<PartitionHandler>(
-            new LazyLastJoinPartitionHandler(left_->GetPartition(index_name), right_, parameter_, join_));
-    }
-
-    const OrderType GetOrderType() const override { return left_->GetOrderType(); }
-
-    const std::string GetHandlerTypeName() override {
-        return "TableHandler";
-    }
-
-    std::shared_ptr<TableHandler> left_;
-    std::shared_ptr<PartitionHandler> right_;
-    const Row& parameter_;
-    std::shared_ptr<JoinGenerator> join_;
-
- private:
-    Row value_;
-};
-
-class LazyLastJoinPartitionHandler final : public PartitionHandler {
- public:
-    LazyLastJoinPartitionHandler(std::shared_ptr<PartitionHandler> left, std::shared_ptr<PartitionHandler> right,
-                                const Row& param, std::shared_ptr<JoinGenerator> join);
-    ~LazyLastJoinPartitionHandler() override {}
-
-    // NOTE: only support get segement by key from left source
-    std::shared_ptr<TableHandler> GetSegment(const std::string& key) override {
-        auto left_seg =  left_->GetSegment(key);
-        return std::make_shared<LazyLastJoinTableHandler>(left_seg, right_, parameter_, join_);
-    }
-
-    std::unique_ptr<WindowIterator> GetWindowIterator() override {
-        return left_->GetWindowIterator();
-    }
-
-    const std::string GetHandlerTypeName() override {
-        return "PartitionHandler";
-    }
-
-    std::shared_ptr<PartitionHandler> left_;
-    std::shared_ptr<PartitionHandler> right_;
-    const Row& parameter_;
-    std::shared_ptr<JoinGenerator> join_;
 };
 
 class TableProjectWrapper : public TableHandler {

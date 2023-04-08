@@ -446,7 +446,7 @@ bool GroupAndSortOptimized::KeysOptimized(const SchemasContext* root_schemas_ctx
             return false;
         }
 
-        *new_in = new_depend;
+        *new_in = request_join;
         return true;
     }
     return false;

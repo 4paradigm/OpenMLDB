@@ -658,17 +658,14 @@ class RequestWindowUnionGenerator : public InputsGenerator {
     }
     std::vector<RequestWindowGenertor> windows_gen_;
 };
-class JoinGenerator {
+
+class JoinGenerator : public std::enable_shared_from_this<JoinGenerator> {
  public:
-    explicit JoinGenerator(const Join& join, size_t left_slices,
-                           size_t right_slices)
-        : condition_gen_(join.condition_.fn_info()),
-          left_key_gen_(join.left_key_.fn_info()),
-          right_group_gen_(join.right_key_),
-          index_key_gen_(join.index_key_.fn_info()),
-          right_sort_gen_(join.right_sort_),
-          left_slices_(left_slices),
-          right_slices_(right_slices) {}
+    [[nodiscard]]
+    static std::shared_ptr<JoinGenerator> Create(const Join& join, size_t left_slices, size_t right_slices) {
+        return std::shared_ptr<JoinGenerator>(new JoinGenerator(join, left_slices, right_slices));
+    }
+
     virtual ~JoinGenerator() {}
     bool TableJoin(std::shared_ptr<TableHandler> left, std::shared_ptr<TableHandler> right,
                    const Row& parameter,
@@ -698,6 +695,15 @@ class JoinGenerator {
     SortGenerator right_sort_gen_;
 
  private:
+    explicit JoinGenerator(const Join& join, size_t left_slices, size_t right_slices)
+        : condition_gen_(join.condition_.fn_info()),
+          left_key_gen_(join.left_key_.fn_info()),
+          right_group_gen_(join.right_key_),
+          index_key_gen_(join.index_key_.fn_info()),
+          right_sort_gen_(join.right_sort_),
+          left_slices_(left_slices),
+          right_slices_(right_slices) {}
+
     Row RowLastJoinPartition(
         const Row& left_row,
         std::shared_ptr<PartitionHandler> partition,
@@ -709,13 +715,14 @@ class JoinGenerator {
     size_t left_slices_;
     size_t right_slices_;
 };
+
 class WindowJoinGenerator : public InputsGenerator {
  public:
     WindowJoinGenerator() : InputsGenerator() {}
     virtual ~WindowJoinGenerator() {}
     void AddWindowJoin(const Join& join, size_t left_slices, Runner* runner) {
         size_t right_slices = runner->output_schemas()->GetSchemaSourceSize();
-        joins_gen_.push_back(JoinGenerator(join, left_slices, right_slices));
+        joins_gen_.push_back(JoinGenerator::Create(join, left_slices, right_slices));
         AddInput(runner);
     }
     std::vector<std::shared_ptr<DataHandler>> RunInputs(
@@ -724,7 +731,7 @@ class WindowJoinGenerator : public InputsGenerator {
         const Row& left_row,
         const std::vector<std::shared_ptr<DataHandler>>& join_right_tables,
         const Row& parameter);
-    std::vector<JoinGenerator> joins_gen_;
+    std::vector<std::shared_ptr<JoinGenerator>> joins_gen_;
 };
 
 class DataRunner : public Runner {
@@ -1097,28 +1104,27 @@ class PostRequestUnionRunner : public Runner {
 
 class LastJoinRunner : public Runner {
  public:
-    LastJoinRunner(const int32_t id, const SchemasContext* schema,
-                   const std::optional<int32_t> limit_cnt, const Join& join,
-                   size_t left_slices, size_t right_slices)
-        : Runner(id, kRunnerLastJoin, schema, limit_cnt),
-          join_gen_(join, left_slices, right_slices) {}
+    LastJoinRunner(const int32_t id, const SchemasContext* schema, const std::optional<int32_t> limit_cnt,
+                   const Join& join, size_t left_slices, size_t right_slices)
+        : Runner(id, kRunnerLastJoin, schema, limit_cnt) {
+        join_gen_ = JoinGenerator::Create(join, left_slices, right_slices);
+    }
     ~LastJoinRunner() {}
     std::shared_ptr<DataHandler> Run(
         RunnerContext& ctx,  // NOLINT
         const std::vector<std::shared_ptr<DataHandler>>& inputs)
         override;  // NOLINT
 
-    JoinGenerator join_gen_;
+    std::shared_ptr<JoinGenerator> join_gen_;
 };
 class RequestLastJoinRunner : public Runner {
  public:
-    RequestLastJoinRunner(const int32_t id, const SchemasContext* schema,
-                          const std::optional<int32_t> limit_cnt, const Join& join,
-                          const size_t left_slices, const size_t right_slices,
+    RequestLastJoinRunner(const int32_t id, const SchemasContext* schema, const std::optional<int32_t> limit_cnt,
+                          const Join& join, const size_t left_slices, const size_t right_slices,
                           const bool output_right_only)
-        : Runner(id, kRunnerRequestLastJoin, schema, limit_cnt),
-          join_gen_(join, left_slices, right_slices),
-          output_right_only_(output_right_only) {}
+        : Runner(id, kRunnerRequestLastJoin, schema, limit_cnt), output_right_only_(output_right_only) {
+        join_gen_ = JoinGenerator::Create(join, left_slices, right_slices);
+    }
     ~RequestLastJoinRunner() {}
 
     std::shared_ptr<DataHandler> Run(
@@ -1134,7 +1140,7 @@ class RequestLastJoinRunner : public Runner {
             output << " OUTPUT_RIGHT_ONLY";
         }
     }
-    JoinGenerator join_gen_;
+    std::shared_ptr<JoinGenerator> join_gen_;
     const bool output_right_only_;
 };
 class ConcatRunner : public Runner {
@@ -1640,6 +1646,153 @@ class RunnerContext {
     std::map<int64_t, std::shared_ptr<DataHandler>> cache_;
     std::map<int64_t, std::shared_ptr<DataHandlerList>> batch_cache_;
 };
+
+class LazyLastJoinIterator : public RowIterator {
+ public:
+    LazyLastJoinIterator(std::unique_ptr<RowIterator>&& left, std::shared_ptr<PartitionHandler> right, const Row& param,
+                         std::shared_ptr<JoinGenerator> join)
+        : left_it_(std::move(left)), right_(right), parameter_(param), join_(join) {}
+
+    ~LazyLastJoinIterator() override {}
+
+    bool Valid() const override {
+        return left_it_->Valid();
+    }
+    void Next() override {
+        left_it_->Next();
+    }
+    const uint64_t& GetKey() const override {
+        return left_it_->GetKey();
+    }
+    const Row& GetValue() override {
+        value_ = join_->RowLastJoin(left_it_->GetValue(), right_, parameter_);
+        return value_;
+    }
+
+    bool IsSeekable() const override {
+        return true;
+    };
+
+    void Seek(const uint64_t& key) override {
+        left_it_->Seek(key);
+    }
+
+    void SeekToFirst() override {
+        left_it_->SeekToFirst();
+    };
+
+ private:
+    std::unique_ptr<RowIterator> left_it_;
+    std::shared_ptr<PartitionHandler> right_;
+    const Row& parameter_;
+    std::shared_ptr<JoinGenerator> join_;
+
+    Row value_;
+};
+
+class LazyLastJoinPartitionHandler final : public PartitionHandler {
+ public:
+    LazyLastJoinPartitionHandler(std::shared_ptr<PartitionHandler> left, std::shared_ptr<PartitionHandler> right,
+                                const Row& param, std::shared_ptr<JoinGenerator> join);
+    ~LazyLastJoinPartitionHandler() override {}
+
+    // NOTE: only support get segement by key from left source
+    std::shared_ptr<TableHandler> GetSegment(const std::string& key) override;
+
+    std::unique_ptr<WindowIterator> GetWindowIterator() override {
+        return left_->GetWindowIterator();
+    }
+
+    const std::string GetHandlerTypeName() override {
+        return "PartitionHandler";
+    }
+    std::unique_ptr<RowIterator> GetIterator() override {
+        auto iter = left_->GetIterator();
+        if (!iter) {
+            return std::unique_ptr<RowIterator>();
+        }
+        return std::unique_ptr<RowIterator>(new LazyLastJoinIterator(std::move(iter), right_, parameter_, join_));
+    }
+    const Types& GetTypes() override { return left_->GetTypes(); }
+    const IndexHint& GetIndex() override { return left_->GetIndex(); }
+
+    const Schema* GetSchema() override { return nullptr; }
+    const std::string& GetName() override { return name_; }
+    const std::string& GetDatabase() override { return db_; }
+
+    base::ConstIterator<uint64_t, Row>* GetRawIterator() override {
+        return nullptr;
+    }
+
+ private:
+    std::shared_ptr<PartitionHandler> left_;
+    std::shared_ptr<PartitionHandler> right_;
+    const Row& parameter_;
+    std::shared_ptr<JoinGenerator> join_;
+
+    std::string name_ = "";
+    std::string db_ = "";
+};
+
+class LazyLastJoinTableHandler final : public TableHandler {
+ public:
+    LazyLastJoinTableHandler(std::shared_ptr<TableHandler> left, std::shared_ptr<PartitionHandler> right,
+                                const Row& param, std::shared_ptr<JoinGenerator> join);
+    ~LazyLastJoinTableHandler() override {}
+
+    std::unique_ptr<RowIterator> GetIterator() override {
+        auto iter = left_->GetIterator();
+        if (!iter) {
+            return std::unique_ptr<RowIterator>();
+        }
+
+        return std::unique_ptr<RowIterator>(new LazyLastJoinIterator(std::move(iter), right_, parameter_, join_));
+    }
+
+    const Types& GetTypes() override { return left_->GetTypes(); }
+    const IndexHint& GetIndex() override { return left_->GetIndex(); }
+
+    std::unique_ptr<WindowIterator> GetWindowIterator(
+        const std::string& idx_name) override {
+        return nullptr;
+    }
+
+    const Schema* GetSchema() override { return nullptr; }
+    const std::string& GetName() override { return name_; }
+    const std::string& GetDatabase() override { return db_; }
+
+    base::ConstIterator<uint64_t, Row>* GetRawIterator() override {
+        return nullptr;
+    }
+
+    Row At(uint64_t pos) override {
+        return value_;
+    }
+
+    const uint64_t GetCount() override { return left_->GetCount(); }
+
+    std::shared_ptr<PartitionHandler> GetPartition(const std::string& index_name) override {
+        return std::shared_ptr<PartitionHandler>(
+            new LazyLastJoinPartitionHandler(left_->GetPartition(index_name), right_, parameter_, join_));
+    }
+
+    const OrderType GetOrderType() const override { return left_->GetOrderType(); }
+
+    const std::string GetHandlerTypeName() override {
+        return "TableHandler";
+    }
+
+ private:
+    std::shared_ptr<TableHandler> left_;
+    std::shared_ptr<PartitionHandler> right_;
+    const Row& parameter_;
+    std::shared_ptr<JoinGenerator> join_;
+
+    Row value_;
+    std::string name_ = "";
+    std::string db_ = "";
+};
+
 }  // namespace vm
 }  // namespace hybridse
 #endif  // HYBRIDSE_SRC_VM_RUNNER_H_

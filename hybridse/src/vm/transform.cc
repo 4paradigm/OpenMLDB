@@ -1650,12 +1650,15 @@ Status BatchModeTransformer::ValidatePartitionDataProvider(PhysicalOpNode* in) {
     if (kPhysicalOpSimpleProject == in->GetOpType() ||
         kPhysicalOpRename == in->GetOpType() || kPhysicalOpFilter == in->GetOpType()) {
         CHECK_STATUS(ValidatePartitionDataProvider(in->GetProducer(0)))
+    } else if (kPhysicalOpRequestJoin == in->GetOpType()) {
+        CHECK_STATUS(ValidatePartitionDataProvider(in->GetProducer(0)));
+        CHECK_STATUS(ValidatePartitionDataProvider(in->GetProducer(1)));
     } else {
         CHECK_TRUE(
             kPhysicalOpDataProvider == in->GetOpType() &&
                 kProviderTypePartition ==
                     dynamic_cast<PhysicalDataProviderNode*>(in)->provider_type_,
-            kPlanError, "Isn't partition provider");
+            kPlanError, "Isn't partition provider:", in->GetTreeString());
     }
     return Status::OK();
 }

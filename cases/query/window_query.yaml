@@ -782,9 +782,10 @@ cases:
     sql: |
       select
         account_no,
-         -- check if there exists in window that agreement_no is null
-         count(account_no) over w as cnt,
-         nth_value_where(account_no, 1, isnull(agreement_no)) over w as feat
+        count(account_no) over w as cnt,
+         -- check if there exists in window that right source agreement_no is null
+         nvl2(nth_value_where(account_no, 1, isnull(agreement_no)) over w, 1, 0) as feat1,
+         case when count_where(account_no, isnull(agreement_no)) over w > 0 then 1 else 0 end as feat2
       from (select account_no, 0 as agreement_no, cast(90000 as timestamp) as ts from request)
       window w as (
          union (select t14.account_no, t16.agreement_nox as agreement_no, t14.ts from t14 last join t16 on t14.agreement_no = t16.agreement_nox)
@@ -796,17 +797,22 @@ cases:
       - name: request
         columns: ["account_no int"]
         indexs: ['idx:account_no']
-        data:
+        data: |
           100
+          200
+          300
+          400
       - name: t14
         columns:
           - account_no int
           - agreement_no int
           - ts timestamp
-        indexs: ["idx1:account_no:ts", "idx2:agreement_no:ts"]
+        indexs: ["idx1:account_no:ts"]
         data: |
-          101, 201, 1000
-          101, 202, 1000
+          100, 201, 1000
+          100, 202, 1000
+          200, 203, 4000
+          400, 204, 4000
       - name: t16
         columns:
           - agreement_nox int
@@ -814,3 +820,16 @@ cases:
         indexs: ["idx3:agreement_nox:ts"]
         data: |
           202, 1000
+          204, 1000
+    expect:
+      columns:
+        - account_no int
+        - cnt int64
+        - feat1 int
+        - feat2 int
+      order: account_no
+      data: |
+        100, 2, 1, 1
+        200, 1, 1, 1
+        300, 0, 0, 0
+        400, 1, 0, 0
