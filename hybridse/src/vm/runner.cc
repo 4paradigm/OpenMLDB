@@ -301,6 +301,10 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
             if (!op->window_unions_.Empty()) {
                 for (auto window_union : op->window_unions_.window_unions_) {
                     auto union_task = Build(window_union.first, status);
+                    if (!status.isOK()) {
+                        LOG(WARNING) << status;
+                        return fail;
+                    }
                     auto union_table = union_task.GetRoot();
                     if (nullptr == union_table) {
                         return RegisterTask(node, fail);
@@ -635,10 +639,8 @@ ClusterTask RunnerBuilder::BuildClusterTaskForBinaryRunner(
     ClusterTask new_left = left;
     ClusterTask new_right = right;
 
-    Runner* right_runner = new_right.GetRoot();
     Runner* left_runner = new_left.GetRoot();
-    // if index key is valid, try to complete route info of right cluster
-    // task
+    // if index key is valid, try to complete route info of right cluster task
     if (index_key.ValidKey()) {
         if (!right.IsClusterTask()) {
             LOG(WARNING) << "Fail to build cluster task for "
@@ -647,37 +649,35 @@ ClusterTask RunnerBuilder::BuildClusterTaskForBinaryRunner(
                          << ": can't handler local task with index key";
             return ClusterTask();
         }
-        if (right.IsCompletedClusterTask() && node::ExprEquals(right.GetIndexKey().keys(), index_key.keys())) {
-            // completed with same index key
-            std::stringstream ss;
-            right.Print(ss, " ");
-            LOG(WARNING) << "Fail to complete cluster task for "
-                         << "[" << runner->id_ << "]"
-                         << RunnerTypeName(runner->type_)
-                         << ": task is completed already:\n" << ss.str();
-            LOG(WARNING) << "index key is " << index_key.ToString();
-            return ClusterTask();
+        if (right.IsCompletedClusterTask()) {
+            if (node::ExprEquals(right.GetIndexKey().keys(), index_key.keys())) {
+                // completed with same index key
+                std::stringstream ss;
+                right.Print(ss, " ");
+                LOG(WARNING) << "Fail to complete cluster task for "
+                             << "[" << runner->id_ << "]" << RunnerTypeName(runner->type_)
+                             << ": task is completed already:\n"
+                             << ss.str();
+                LOG(WARNING) << "index key is " << index_key.ToString();
+                return ClusterTask();
+            }
+
+            // current runner and right have two different route info
+            // new_right = BuildProxyRunnerForClusterTask(new_right);
         }
         RequestRunner* request_runner = CreateRunner<RequestRunner>(id_++, left_runner->output_schemas());
         runner->AddProducer(request_runner);
-        // build complete cluster task
-        if (!right.GetIndexKey().ValidKey()) {
-            runner->AddProducer(right_runner);
+        runner->AddProducer(new_right.GetRoot());
 
-            const RouteInfo& right_route_info = new_right.GetRouteInfo();
-            ClusterTask cluster_task(
-                runner, std::vector<Runner*>({runner}),
-                RouteInfo(right_route_info.index_, index_key, std::make_shared<ClusterTask>(new_left),
-                          right_route_info.table_handler_));
+        const RouteInfo& right_route_info = new_right.GetRouteInfo();
+        ClusterTask cluster_task(runner, std::vector<Runner*>({runner}),
+                                 RouteInfo(right_route_info.index_, index_key, std::make_shared<ClusterTask>(new_left),
+                                           right_route_info.table_handler_));
 
-            if (new_left.IsCompletedClusterTask()) {
-                return BuildProxyRunnerForClusterTask(cluster_task);
-            } else {
-                return cluster_task;
-            }
+        if (new_left.IsCompletedClusterTask()) {
+            return BuildProxyRunnerForClusterTask(cluster_task);
         } else {
-            // current runner and right have two different route info
-            // FIXME
+            return cluster_task;
         }
     }
 
@@ -3485,8 +3485,7 @@ std::shared_ptr<DataHandler> ProxyRequestRunner::Run(
             }
         }
         default: {
-            LOG(WARNING)
-                << "fail to run proxy runner: handler type unsupported";
+            LOG(WARNING) << "fail to run proxy runner: handler type unsupported: " << input->GetHandlerTypeName();
             return fail_ptr;
         }
     }

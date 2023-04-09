@@ -1704,7 +1704,7 @@ class LazyLastJoinPartitionHandler final : public PartitionHandler {
     }
 
     const std::string GetHandlerTypeName() override {
-        return "PartitionHandler";
+        return "LazyLastJoinPartitionHandler";
     }
     std::unique_ptr<RowIterator> GetIterator() override {
         auto iter = left_->GetIterator();
