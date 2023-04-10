@@ -153,5 +153,8 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
+    hybridse::sdk::Status s;
+    router->ExecuteSQL("set @@execute_mode = 'online'", &s);
+
     return ::openmldb::sdk::Run(router, FLAGS_yaml_path, !FLAGS_keep_data);
 }
