@@ -26,6 +26,7 @@ import io.qameta.allure.Story;
 import lombok.extern.slf4j.Slf4j;
 import org.testng.annotations.Test;
 
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 
@@ -35,7 +36,7 @@ import java.sql.Statement;
 public class Select extends OpenMLDBTest {
 
     @Story("Function")
-    @Test(dataProvider = "getCase",enabled = false)
+    @Test(dataProvider = "getCase",enabled = true)
     @Yaml(filePaths = "integration_test/yarn/")
     public void testFunction(SQLCase testCase) throws Exception {
         ExecutorFactory.build(executor, testCase, SQLCaseType.KOfflineJob).run();
@@ -48,13 +49,57 @@ public class Select extends OpenMLDBTest {
 
         try {
             statement.execute("SET @@execute_mode='offline'");
-            //statement.execute("SELECT 1");
-            statement.execute("SHOW JOBLOG 1000");
+            statement.execute("SELECT 1");
+            statement.execute("SHOW JOBLOG 1");
             assert(true);
         } catch (SQLException e) {
             e.printStackTrace();
             assert(false);
         }
+    }
+
+
+    @Story("ExternalUDF")
+    @Test(enabled = false)
+    public void testFunctionMethods() {
+        Statement statement = executor.getStatement();
+
+        try {
+            String sql = "CREATE FUNCTION cut2(x STRING) RETURNS STRING OPTIONS (FILE='/Users/tobe/code/4pd/openMLDB/tobe_udf/libtest_udf.so')";
+            statement.execute(sql);
+
+            statement.execute("SHOW FUNCTIONS");
+
+            statement.execute("set @@execute_mode='online'");
+            statement.execute("select cut2('hello')");
+            ResultSet resultset = statement.getResultSet();
+            resultset.next();
+            String result = resultset.getString(1);
+            assert(result.equals("he"));
+
+            statement.execute("DROP FUNCTION cut2");
+            assert(true);
+        } catch (SQLException e) {
+            e.printStackTrace();
+            assert(false);
+        }
+    }
+
+    @Story("tobedev")
+    @Test(enabled = false)
+    public void testTobedev() throws SQLException {
+        Statement statement = executor.getStatement();
+
+        statement.execute("set @@execute_mode='online'");
+        statement.execute("select 'ha'");
+
+        ResultSet resultset = statement.getResultSet();
+        resultset.next();
+        String result = resultset.getString(1);
+        System.out.println(result);
+        System.out.println("tobedev");
+
+
     }
 
 }
