@@ -66,6 +66,8 @@ public class OpenMLDBTest extends BaseTest {
             OpenMLDBDeploy openMLDBDeploy = new OpenMLDBDeploy(version);
             openMLDBDeploy.setOpenMLDBPath(openMLDBPath);
             openMLDBDeploy.setCluster(true);
+            openMLDBDeploy.setSparkMaster("yarn");
+            openMLDBDeploy.setOfflineDataPrefix("hdfs:///openmldb_integration_test/");
             OpenMLDBGlobalVar.mainInfo = openMLDBDeploy.deployCluster(2, 3);
         } else {
             OpenMLDBInfo openMLDBInfo = new OpenMLDBInfo();
@@ -73,8 +75,8 @@ public class OpenMLDBTest extends BaseTest {
             openMLDBInfo.setNsNum(2);
             openMLDBInfo.setTabletNum(3);
             openMLDBInfo.setBasePath("/home/zhaowei01/openmldb-auto-test/tmp");
-            //openMLDBInfo.setZk_cluster("0.0.0.0:2181");
-            openMLDBInfo.setZk_cluster("172.24.4.55:30000");
+            openMLDBInfo.setZk_cluster("0.0.0.0:2181");
+            //openMLDBInfo.setZk_cluster("172.24.4.55:30000");
             openMLDBInfo.setZk_root_path("/openmldb");
             openMLDBInfo.setNsEndpoints(Lists.newArrayList("172.24.4.55:30004", "172.24.4.55:30005"));
             openMLDBInfo.setNsNames(Lists.newArrayList());
