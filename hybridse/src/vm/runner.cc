@@ -40,6 +40,18 @@ namespace vm {
 #define MAX_DEBUG_LINES_CNT 20
 #define MAX_DEBUG_COLUMN_MAX 20
 
+static bool IsPartitionProvider(vm::PhysicalOpNode* n) {
+    switch (n->GetOpType()) {
+        case kPhysicalOpSimpleProject:
+        case kPhysicalOpRename:
+            return IsPartitionProvider(n->GetProducer(0));
+        case kPhysicalOpDataProvider:
+            return dynamic_cast<vm::PhysicalDataProviderNode*>(n)->provider_type_ == kProviderTypePartition;
+        default:
+            return false;
+    }
+}
+
 // Build Runner for each physical node
 // return cluster task of given runner
 //
@@ -351,9 +363,15 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                         left->output_schemas()->GetSchemaSourceSize(), right->output_schemas()->GetSchemaSourceSize(),
                         op->output_right_only());
 
-                    return RegisterTask(
-                        node, BinaryInherit(left_task, right_task, runner,
-                                            op->join().index_key(), kLeftBias));
+                    if (IsPartitionProvider(node->GetProducer(0))) {
+                        auto& route_info = left_task.GetRouteInfo();
+                        runner->AddProducer(left_task.GetRoot());
+                        runner->AddProducer(right_task.GetRoot());
+                        return UnCompletedClusterTask(runner, route_info.table_handler_, route_info.index_);
+                    } else {
+                        return RegisterTask(
+                            node, BinaryInherit(left_task, right_task, runner, op->join().index_key(), kLeftBias));
+                    }
                 }
                 case node::kJoinTypeConcat: {
                     ConcatRunner* runner = CreateRunner<ConcatRunner>(id_++, node->schemas_ctx(), op->GetLimitCnt());

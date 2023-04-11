@@ -638,21 +638,16 @@ class RequestWindowUnionGenerator : public InputsGenerator {
     RequestWindowUnionGenerator() : InputsGenerator() {}
     virtual ~RequestWindowUnionGenerator() {}
 
-    std::vector<std::shared_ptr<PartitionHandler>> PartitionEach(
-        std::vector<std::shared_ptr<DataHandler>> union_inputs);
     void AddWindowUnion(const RequestWindowOp& window_op, Runner* runner) {
         windows_gen_.push_back(RequestWindowGenertor(window_op));
         AddInput(runner);
     }
+
     std::vector<std::shared_ptr<TableHandler>> GetRequestWindows(
-        const Row& row, const Row& parameter,
-        std::vector<std::shared_ptr<DataHandler>> union_inputs) {
+        const Row& row, const Row& parameter, std::vector<std::shared_ptr<DataHandler>> union_inputs) {
         std::vector<std::shared_ptr<TableHandler>> union_segments(union_inputs.size());
-        if (!windows_gen_.empty()) {
-            for (size_t i = 0; i < union_inputs.size(); i++) {
-                union_segments[i] =
-                    windows_gen_[i].GetRequestWindow(row, parameter, union_inputs[i]);
-            }
+        for (size_t i = 0; i < union_inputs.size(); i++) {
+            union_segments[i] = windows_gen_[i].GetRequestWindow(row, parameter, union_inputs[i]);
         }
         return union_segments;
     }
@@ -998,6 +993,16 @@ class RequestUnionRunner : public Runner {
     void AddWindowUnion(const RequestWindowOp& window, Runner* runner) {
         windows_union_gen_.AddWindowUnion(window, runner);
     }
+
+    void Print(std::ostream& output, const std::string& tab,
+                       std::set<int32_t>* visited_ids) const override {
+        Runner::Print(output, tab, visited_ids);
+        output << "\n" << tab << "window unions:\n";
+        for (auto& r : windows_union_gen_.input_runners_) {
+            r->Print(output, tab + "  ", visited_ids);
+        }
+    }
+
     RequestWindowUnionGenerator windows_union_gen_;
     RangeGenerator range_gen_;
     bool exclude_current_time_;
@@ -1656,7 +1661,7 @@ class LazyLastJoinIterator : public RowIterator {
     ~LazyLastJoinIterator() override {}
 
     bool Valid() const override {
-        return left_it_->Valid();
+        return left_it_ && left_it_->Valid();
     }
     void Next() override {
         left_it_->Next();
@@ -1779,7 +1784,7 @@ class LazyLastJoinTableHandler final : public TableHandler {
     const OrderType GetOrderType() const override { return left_->GetOrderType(); }
 
     const std::string GetHandlerTypeName() override {
-        return "TableHandler";
+        return "LazyLastJoinTableHandler";
     }
 
  private:
