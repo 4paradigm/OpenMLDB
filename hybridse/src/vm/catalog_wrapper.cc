@@ -75,5 +75,20 @@ std::shared_ptr<PartitionHandler> TableFilterWrapper::GetPartition(
             new PartitionFilterWrapper(partition, parameter_, fun_));
     }
 }
+
+LazyLastJoinTableHandler::LazyLastJoinTableHandler(std::shared_ptr<TableHandler> left,
+                                                   std::shared_ptr<PartitionHandler> right, const Row& param,
+                                                   std::shared_ptr<JoinGenerator> join)
+    : left_(left), right_(right), parameter_(param), join_(join) {}
+
+LazyLastJoinPartitionHandler::LazyLastJoinPartitionHandler(std::shared_ptr<PartitionHandler> left,
+                                                         std::shared_ptr<PartitionHandler> right, const Row& param,
+                                                         std::shared_ptr<JoinGenerator> join)
+    : left_(left), right_(right), parameter_(param), join_(join) {}
+
+std::shared_ptr<TableHandler> LazyLastJoinPartitionHandler::GetSegment(const std::string& key) {
+    auto left_seg = left_->GetSegment(key);
+    return std::shared_ptr<TableHandler>(new LazyLastJoinTableHandler(left_seg, right_, parameter_, join_));
+}
 }  // namespace vm
 }  // namespace hybridse
