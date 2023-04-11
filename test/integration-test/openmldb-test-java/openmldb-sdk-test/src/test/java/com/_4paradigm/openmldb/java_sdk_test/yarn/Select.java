@@ -58,15 +58,13 @@ public class Select extends OpenMLDBTest {
         }
     }
 
-
     @Story("ExternalUDF")
-    @Test(enabled = false)
+    @Test(enabled = true)
     public void testFunctionMethods() {
         Statement statement = executor.getStatement();
 
         try {
-            String sql = "CREATE FUNCTION cut2(x STRING) RETURNS STRING OPTIONS (FILE='/Users/tobe/code/4pd/openMLDB/tobe_udf/libtest_udf.so')";
-            statement.execute(sql);
+            statement.execute("CREATE FUNCTION cut2(x STRING) RETURNS STRING OPTIONS (FILE='/tmp/libetest_udf.so')");
 
             statement.execute("SHOW FUNCTIONS");
 
@@ -83,23 +81,6 @@ public class Select extends OpenMLDBTest {
             e.printStackTrace();
             assert(false);
         }
-    }
-
-    @Story("tobedev")
-    @Test(enabled = false)
-    public void testTobedev() throws SQLException {
-        Statement statement = executor.getStatement();
-
-        statement.execute("set @@execute_mode='online'");
-        statement.execute("select 'ha'");
-
-        ResultSet resultset = statement.getResultSet();
-        resultset.next();
-        String result = resultset.getString(1);
-        System.out.println(result);
-        System.out.println("tobedev");
-
-
     }
 
 }

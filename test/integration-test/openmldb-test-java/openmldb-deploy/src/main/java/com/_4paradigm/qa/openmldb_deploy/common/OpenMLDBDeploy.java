@@ -425,7 +425,35 @@ public class OpenMLDBDeploy {
                     "sed -i "+sedSeparator+" 's@namenode.uri=.*@namenode.uri=" + nameNodeUri + "@' "+testPath + task_manager_name+ "/conf/taskmanager.properties"
             );
             commands.forEach(ExecutorUtil::run);
-            ExecutorUtil.run("sh "+testPath+task_manager_name+"/bin/start.sh start taskmanager");
+
+            // Download dynamic library file
+            ExecutorUtil.run("curl -o /tmp/libetest_udf.so https://openmldb.ai/download/self_host_hadoop_config/libtest_udf.so");
+            String taskmanagerUdfPath = testPath + task_manager_name + "/bin/udf/";
+            ExecutorUtil.run("touch " + taskmanagerUdfPath);
+            ExecutorUtil.run("cp /tmp/libetest_udf.so " + taskmanagerUdfPath);
+
+            String tabletUdfPath = testPath + "/openmldb-tablet-1/udf/";
+            ExecutorUtil.run("touch " + tabletUdfPath);
+            ExecutorUtil.run("cp /tmp/libetest_udf.so " + tabletUdfPath);
+
+            tabletUdfPath = testPath + "/openmldb-tablet-2/udf/";
+            ExecutorUtil.run("touch " + tabletUdfPath);
+            ExecutorUtil.run("cp /tmp/libetest_udf.so " + tabletUdfPath);
+
+            tabletUdfPath = testPath + "/openmldb-tablet-3/udf/";
+            ExecutorUtil.run("touch " + tabletUdfPath);
+            ExecutorUtil.run("cp /tmp/libetest_udf.so " + tabletUdfPath);
+
+
+            if (sparkMaster.startsWith("yarn")) {
+                log.info("Try to deploy TaskManager with yarn mode");
+                //"curl -o /tmp/hadoop_conf.tar.gz https://openmldb.ai/download/self_host_hadoop_config/hadoop_conf.tar.gz";
+                //"tar xzf /tmp/hadoop_conf.tar.gz -C /tmp"
+                ExecutorUtil.run("HADOOP_CONF_DIR=/tmp/hadoop/ sh "+testPath+task_manager_name+"/bin/start.sh start taskmanager");
+            } else {
+                ExecutorUtil.run("sh "+testPath+task_manager_name+"/bin/start.sh start taskmanager");
+            }
+
             boolean used = LinuxUtil.checkPortIsUsed(port,3000,30);
             if(used){
                 log.info("task manager部署成功，port："+port);
