@@ -927,10 +927,17 @@ struct FuncTupleArgTypeCheckHelper<std::tuple<>, std::tuple<CArgs...>> {
 //==================================================================//
 //             FuncTypeCheckHelper                                  //
 //==================================================================//
+//
+//  compile time assertion between Group 1 types and Group 2 types
+//  provided by a external registered bultin function.
 template <typename Ret, typename Args, typename CRet, typename CArgs>
 struct FuncTypeCheckHelper {
+    // true if two group types are compatible
     static const bool value = false;
+    // return type in Group 1
     using RetType = void;
+    // true if return value is stored in last parameters in C signature.
+    // e.g void fn(CArgs..., CRet ret)
     static const bool return_by_arg = false;
 };
 
@@ -1033,11 +1040,11 @@ struct FuncTypeCheckHelper<Ret, std::tuple<>, CRet, std::tuple<>> {
 template <typename>
 struct TypeAnnotatedFuncPtrImpl;  // primitive decl
 
-// two group of type system required here
-// - group 1: type system in udf registry
-//   they are pre-defined types that linked to SQL data type,
-// - group 2: type system appear in external udf function
-//   the actual paramter types that in C function
+// Category of type systems:
+// - (group 0): the SQL types, int16, int32, bool, string, date...,
+//   we represent those types in CPP source with the group 1 types below
+// - (group 1) SQL types represented by CPP.
+// - (group 2) C/CPP types: the actual paramter or return types in C functions.
 //
 // Till this moment, those types are, from
 //   function param type (group 2) -> udf registry type (group 1) -> SQL data type:
