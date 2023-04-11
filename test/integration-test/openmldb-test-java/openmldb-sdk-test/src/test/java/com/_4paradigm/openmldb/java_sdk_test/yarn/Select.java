@@ -59,7 +59,7 @@ public class Select extends OpenMLDBTest {
     }
 
     @Story("ExternalUDF")
-    @Test(enabled = false)
+    @Test(enabled = true)
     public void testFunctionMethods() {
         Statement statement = executor.getStatement();
 
