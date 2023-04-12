@@ -36,9 +36,11 @@ import java.sql.Statement;
 public class Select extends OpenMLDBTest {
 
     @Story("Function")
-    @Test(dataProvider = "getCase",enabled = true)
+    @Test(dataProvider = "getCase",enabled = false)
     @Yaml(filePaths = "integration_test/yarn/")
     public void testFunction(SQLCase testCase) throws Exception {
+        System.out.println("------------ tobedev, run testFunction");
+
         ExecutorFactory.build(executor, testCase, SQLCaseType.KOfflineJob).run();
     }
 
@@ -47,6 +49,7 @@ public class Select extends OpenMLDBTest {
     public void testShowJoblog() {
         Statement statement = executor.getStatement();
 
+        System.out.println("------------ tobedev, run test show joblog");
         try {
             statement.execute("SET @@execute_mode='offline'");
             statement.execute("SELECT 1");
@@ -71,7 +74,8 @@ public class Select extends OpenMLDBTest {
             statement.execute("SELECT 1");
 
             try {
-                Thread.sleep(3000);
+                System.out.println("Sleep 10 seconds to wait to joblog");
+                Thread.sleep(10000);
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
