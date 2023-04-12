@@ -1,5 +1,5 @@
 # This workflow runs SDK related jobs for OpenMLDB
-name: SDK
+name: integration-test
 
 on:
   push:
