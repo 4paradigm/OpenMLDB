@@ -55,8 +55,8 @@ public class Select extends OpenMLDBTest {
             statement.execute("SELECT 1");
 
             try {
-                System.out.println("Sleep 10 seconds to wait to joblog");
-                Thread.sleep(10000);
+                System.out.println("Sleep 30 seconds to wait to joblog");
+                Thread.sleep(30000);
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
