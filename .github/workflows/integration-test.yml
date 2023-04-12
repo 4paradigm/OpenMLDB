@@ -45,7 +45,7 @@ jobs:
         run: bash test/integration-test/openmldb-test-python/install.sh
       - name: run test
         run: |
-          pip3 install requests openmldb pytest
+          pip install requests openmldb pytest
           python3 -m pytest test/integration-test/openmldb-test-python --junit-xml=pytest.xml
 
       - name: upload ut results
