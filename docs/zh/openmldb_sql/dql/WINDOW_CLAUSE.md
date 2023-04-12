@@ -25,26 +25,18 @@ WindowOrderByClause
         ::= ( 'ORDER' 'BY' ByList )
 
 WindowFrameClause
-        ::= ( WindowFrameUnits WindowFrameExtent [WindowFrameMaxSize])
+        ::= ( WindowFrameUnits WindowFrameBounds [WindowFrameMaxSize] )
 
 WindowFrameUnits
         ::= 'ROWS'
           | 'ROWS_RANGE'
 
-WindowFrameExtent
-        ::= WindowFrameStart
-         | WindowFrameBetween
-
-WindowFrameStart
-        ::= ( 'UNBOUNDED' | NumLiteral | IntervalLiteral ) ['OPEN'] 'PRECEDING'
-          | 'CURRENT' 'ROW'
-
-WindowFrameBetween
+WindowFrameBounds
         ::= 'BETWEEN' WindowFrameBound 'AND' WindowFrameBound
 
 WindowFrameBound
-        ::= WindowFrameStart
-          | ( 'UNBOUNDED' | NumLiteral | IntervalLiteral ) ['OPEN'] 'FOLLOWING'
+        ::= ( 'UNBOUNDED' | NumLiteral | IntervalLiteral ) ['OPEN'] 'PRECEDING'
+          | 'CURRENT' 'ROW'
 
 WindowAttribute
         ::= WindowExcludeCurrentTime
@@ -59,6 +51,9 @@ WindowExcludeCurrentRow
 
 WindowInstanceNotInWindow
         :: = 'INSTANCE_NOT_IN_WINDOW'
+
+WindowFrameMaxSize
+        :: = 'MAXSIZE' NumLiteral
 ```
 
 *窗口调用函数*实现了类似于聚合函数的功能。 不同的是，窗口调用函数不需要将查询结果打包成一行输出—在查询输出中，每一行都是分开的。 然而，窗口调用函数可以扫描所有的行，根据窗口调用函数的分组规范(`PARTITION BY`列)， 这些行可能会是当前行所在组的一部分。一个窗口调用函数的语法是下列之一：
@@ -138,13 +133,30 @@ WindowOrderByClause
 
 `ORDER BY` 选项决定分区中的行被窗口函数处理的顺序。它和查询级别`ORDER BY`子句做相似的工作， 但是同样的它不能作为输出列的名字或数。同样，OpenMLDB要求必须配置`ORDER BY`。并且目前**仅支持按列排序**，无法支持按运算和函数表达式排序。
 
-### Window Frame Units
+### Window Frame Clause
 
-```sql
+```
+WindowFrameClause
+        ::= ( WindowFrameUnits WindowFrameBounds [WindowFrameMaxSize] )
+
 WindowFrameUnits
         ::= 'ROWS'
-         | 'ROWS_RANGE' 
+          | 'ROWS_RANGE'
+
+WindowFrameBounds
+        ::= 'BETWEEN' WindowFrameBound 'AND' WindowFrameBound
+
+WindowFrameBound
+        ::= ( 'UNBOUNDED' | NumLiteral | IntervalLiteral ) ['OPEN'] 'PRECEDING'
+          | 'CURRENT' 'ROW'
 ```
+
+共三部分：
+1. WindowFrameUnits: 窗口类型
+2. WindowFrameBounds: 窗口边界
+3. WindowFrameMaxSize (Optional) 窗口最大行数, 见 [Window With MAXSIZE](#4.-window-with-maxsize)
+
+#### Window Frame Units
 
 WindowFrameUnits定义了窗口的框架类型。OpenMLDB支持两类窗口框架：ROWS和ROWS_RANGE。
 
@@ -156,33 +168,21 @@ SQL标准的RANGE类窗口OpenMLDB系统目前暂不支持。他们直接的对�
 - ROWS_RANGE：窗口按行划入窗口，根据**时间区间**滑出窗口
 - RANGE: 窗口按时间粒度划入窗口（一次可能滑入多条同一时刻的数据行），按时间区间滑出窗口
 
-### Window Frame Extent
+#### Window Frame Bounds
 
-```sql
-WindowFrameExtent
-        ::= WindowFrameStart
-          | WindowFrameBetween
-
-WindowFrameBetween
-        ::= 'BETWEEN' WindowFrameBound 'AND' WindowFrameBound
-
-WindowFrameBound
-        ::= ( 'UNBOUNDED' | NumLiteral | IntervalLiteral ) ['OPEN'] 'PRECEDING'
-          | 'CURRENT' 'ROW'
-```
-
- **WindowFrameExtent**定义了窗口的上界和下界。框架类型可以用 `ROWS`或`ROWS_RANGE`声明；
+ **WindowFrameBounds**定义了窗口的上界和下界, 用 `BETWEEN .. AND .. ` 的方式串联:
 
 - CURRENT ROW: 表示当前行
 - UNBOUNDED PRECEDING: 表示无限制上界
 - `expr` PRECEDING
-  - 窗口类型为ROWS时，`expr`必须为一个正整数。它表示边界为当前行往前`expr`行。
-  - 窗口类型为ROWS_RANGE时,`expr`一般为时间区间（例如`10s`, `10m`,`10h`, `10d`)，它表示边界为当前行往前移expr时间段（例如，10秒，10分钟，10小时，10天）
+  - 窗口类型为ROWS时，`expr`必须为一个非负整数。它表示边界为当前行往前`expr`行。
+  - 窗口类型为ROWS_RANGE时,`expr` 可以为时间区间（例如`10s`, `10m`,`10h`, `10d`)，它表示边界为当前行往前移expr时间段（例如，10秒，10分钟，10小时，10天）
     - 也可以写成正整数，单位为 ms, 例如 `1000` 等价于 `1s`
 - OpenMLDB支持默认边界是闭合的。但支持OPEN关键字来修饰边界开区间
 - 请注意：标准SQL中，还支持FOLLOWING的边界，当OpenMLDB并不支持。
 
-#### Example
+#### Examples
+
 - **有名窗口（Named Window）**
 
 ```SQL

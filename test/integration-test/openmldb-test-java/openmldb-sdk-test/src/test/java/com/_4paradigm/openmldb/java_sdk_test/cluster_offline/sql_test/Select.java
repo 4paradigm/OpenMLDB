@@ -42,13 +42,6 @@
     //     ExecutorFactory.build(executor, testCase, SQLCaseType.KOfflineJob).run();
     // }
 
-     @Story("Function")
-     @Test(dataProvider = "getCase",enabled = true)
-     @Yaml(filePaths = "integration_test/function_tobedev/")
-     public void testFunctionTobedev(SQLCase testCase) throws Exception {
-         ExecutorFactory.build(executor, testCase, SQLCaseType.KOfflineJob).run();
-     }
-
     @Story("Function")
     @Test(dataProvider = "getCase",enabled = false)
     @Yaml(filePaths = "integration_test/function/")

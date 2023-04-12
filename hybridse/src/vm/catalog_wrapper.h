@@ -402,6 +402,7 @@ class TableFilterWrapper : public TableHandler {
     }
     const Types& GetTypes() override { return table_hander_->GetTypes(); }
     const IndexHint& GetIndex() override { return table_hander_->GetIndex(); }
+
     std::unique_ptr<WindowIterator> GetWindowIterator(const std::string& idx_name) override {
         auto iter = table_hander_->GetWindowIterator(idx_name);
         if (!iter) {

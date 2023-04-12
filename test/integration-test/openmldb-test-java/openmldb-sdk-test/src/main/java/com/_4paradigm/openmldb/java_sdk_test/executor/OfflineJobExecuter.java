@@ -52,9 +52,6 @@ public class OfflineJobExecuter extends BaseSQLExecutor {
     private Map<String, OpenMLDBResult> resultMap;
     private String offlineDataPrefix = "/tmp/openmldb_offline_storage/";
 
-    //private String offlineDataPrefix = "file:///tmp/openmldb_offline_storage/";
-
-
     public OfflineJobExecuter(SqlExecutor executor, SQLCase sqlCase, SQLCaseType executorType) {
         super(executor, sqlCase, executorType);
         sdkClient = SDKClient.of(executor);
@@ -95,7 +92,8 @@ public class OfflineJobExecuter extends BaseSQLExecutor {
         // tobedev, fix for hadoop
         //ExecUtil.exeCommand("touch "+offlineDataPrefix);
         System.out.println("--------- tobedev Try to run touch comamnd, offlineDataPrefix: " + offlineDataPrefix);
-        ExecUtil.exeCommand("touch /tmp/openmldb_offline_storage/");
+        //ExecUtil.exeCommand("touch /tmp/openmldb_offline_storage/");
+        ExecUtil.exeCommand("touch "+offlineDataPrefix);
 
         List<InputDesc> inputs = sqlCase.getInputs();
 
@@ -168,7 +166,7 @@ public class OfflineJobExecuter extends BaseSQLExecutor {
         OpenMLDBResult openMLDBResult = null;
         List<String> sqls = sqlCase.getSqls();
         long totalMilliSeconds = System.currentTimeMillis();
-        // tobedev
+
         String localOutDirPath = "file://" + offlineDataPrefix+Long.toString(totalMilliSeconds);
 
         String outDirPath = offlineDataPrefix+Long.toString(totalMilliSeconds);

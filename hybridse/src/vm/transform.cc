@@ -1021,7 +1021,7 @@ Status BatchModeTransformer::TransformScanOp(const node::TablePlanNode* node,
                "Input node or output node is null");
 
     if (node->db_.empty()) {
-        auto res = ResolveCTERef(node->table_, false);
+        auto res = ResolveCTERef(node->table_);
         if (res.ok()) {
             *output = res.value();
             return Status::OK();
@@ -1599,8 +1599,8 @@ bool BatchModeTransformer::isSourceFromTableOrPartition(PhysicalOpNode* in) {
         DLOG(WARNING) << "Invalid physical node: null";
         return false;
     }
-    if (kPhysicalOpSimpleProject == in->GetOpType() ||
-        kPhysicalOpRename == in->GetOpType()) {
+    if (kPhysicalOpSimpleProject == in->GetOpType() || kPhysicalOpRename == in->GetOpType() ||
+        kPhysicalOpFilter == in->GetOpType()) {
         return isSourceFromTableOrPartition(in->GetProducer(0));
     } else if (kPhysicalOpDataProvider == in->GetOpType()) {
         return kProviderTypePartition ==
@@ -1648,7 +1648,7 @@ Status BatchModeTransformer::ValidateRequestDataProvider(PhysicalOpNode* in) {
 Status BatchModeTransformer::ValidatePartitionDataProvider(PhysicalOpNode* in) {
     CHECK_TRUE(nullptr != in, kPlanError, "Invalid physical node: null");
     if (kPhysicalOpSimpleProject == in->GetOpType() ||
-        kPhysicalOpRename == in->GetOpType()) {
+        kPhysicalOpRename == in->GetOpType() || kPhysicalOpFilter == in->GetOpType()) {
         CHECK_STATUS(ValidatePartitionDataProvider(in->GetProducer(0)))
     } else {
         CHECK_TRUE(
@@ -1699,7 +1699,7 @@ Status BatchModeTransformer::ValidateWindowIndexOptimization(
 
 // 1. validate plan is currently supported
 //    - the right key used for partition, whose type should be one of: [bool, intxx, string, date, timestamp]
-// 2. validate if plan is optimized for performance sensitive mode
+// 2. validate if plan is optimized for performance_sensitive
 //    - query condition hit to a table index
 //    - not aggregation over table
 Status BatchModeTransformer::ValidatePlan(PhysicalOpNode* node) {
@@ -1786,7 +1786,7 @@ Status BatchModeTransformer::ValidatePlanSupported(const PhysicalOpNode* in) {
 
 // Override validate plan
 // Validate plan with basic rules defined for general batch mode SQL
-// Validate plan with specific rules designed for request mode SQL, including
+// Validate plan with specific rules designed for performance_sensitive:
 //  - ValidateRequestTable
 //  - ValidateIndexOptimization
 //  - ValidateNotAggregationOverTable
@@ -2384,7 +2384,8 @@ Status RequestModeTransformer::TransformScanOp(const node::TablePlanNode* node,
                "Input node or output node is null");
 
     if (node->db_.empty()) {
-        auto res = ResolveCTERef(node->table_, node->IsPrimary());
+        // node might refer to a CTE entry
+        auto res = ResolveCTERef(node->table_);
         if (res.ok()) {
             *output = res.value();
             return Status::OK();
@@ -2395,7 +2396,8 @@ Status RequestModeTransformer::TransformScanOp(const node::TablePlanNode* node,
         }
     }
 
-    if (node->IsPrimary()) {
+    // node refer to a real table
+    if (request_table_ == nullptr || request_table_->Equals(node)) {
         auto table = catalog_->GetTable(node->db_.empty() ? db_ : node->db_, node->table_);
         CHECK_TRUE(table != nullptr, common::kTableNotFound, "Fail to transform data_provider op: table ",
                    (node->db_.empty() ? db_ : node->db_), ".", node->table_, " not exist!");
@@ -2406,6 +2408,10 @@ Status RequestModeTransformer::TransformScanOp(const node::TablePlanNode* node,
         request_schema_ = *(*output)->GetOutputSchema();
         request_name_ = table->GetName();
         request_db_name_ = table->GetDatabase();
+        // knowns request table only once
+        if (request_table_ == nullptr) {
+            request_table_ = const_cast<node::TablePlanNode*>(node);
+        }
         return Status::OK();
     } else {
         return BatchModeTransformer::TransformScanOp(node, output);
@@ -2419,7 +2425,7 @@ Status RequestModeTransformer::ValidateRequestTable(
         case vm::kPhysicalOpDataProvider: {
             CHECK_TRUE(kProviderTypeRequest == dynamic_cast<PhysicalDataProviderNode*>(in)->provider_type_, kPlanError,
                        "Expect a request table but a ",
-                       vm::DataProviderTypeName(dynamic_cast<PhysicalDataProviderNode*>(in)->provider_type_),
+                       vm::DataProviderTypeName(dynamic_cast<PhysicalDataProviderNode*>(in)->provider_type_), " ",
                        in->GetTreeString())
             *request_table = in;
             return Status::OK();
@@ -2514,6 +2520,7 @@ void RequestModeTransformer::ApplyPasses(PhysicalOpNode* node,
         DLOG(WARNING) << "Final optimized result is null";
         return;
     }
+
     if (!enable_batch_request_opt_ ||
         batch_request_info_.common_column_indices.empty()) {
         *output = optimized;
@@ -2570,12 +2577,11 @@ Status BatchModeTransformer::PopCTEs() {
     return Status::OK();
 }
 
-absl::StatusOr<PhysicalOpNode*> BatchModeTransformer::ResolveCTERef(absl::string_view tb_name, bool is_primary_path) {
-    return ResolveCTERefImpl(tb_name, false, false);
+absl::StatusOr<PhysicalOpNode*> BatchModeTransformer::ResolveCTERef(absl::string_view tb_name) {
+    return ResolveCTERefImpl(tb_name, false);
 }
 
-absl::StatusOr<PhysicalOpNode*> BatchModeTransformer::ResolveCTERefImpl(absl::string_view tb_name, bool request_mode,
-                                                                        bool is_primary_path) {
+absl::StatusOr<PhysicalOpNode*> BatchModeTransformer::ResolveCTERefImpl(absl::string_view tb_name, bool request_mode) {
     auto* cur_closure = closure_;
     auto it = cur_closure->cte_map.find(tb_name);
     if (it != cur_closure->cte_map.end()) {
@@ -2590,7 +2596,7 @@ absl::StatusOr<PhysicalOpNode*> BatchModeTransformer::ResolveCTERefImpl(absl::st
                 //   the extracted request table is the same as outside WITH clause, is checked later in
                 //   `RequestModeTransformer::ValidatePlan`, and hence is not necessary to verify here.
                 //   see more in `Planner::IsTable`
-                auto s = ::hybridse::plan::Planner::ValidPlanForRequestMode(entry->node->query_, is_primary_path);
+                auto s = ::hybridse::plan::Planner::PreparePlanForRequestMode(entry->node->query_);
                 if (!s.isOK()) {
                     return absl::InternalError(s.str());
                 }
@@ -2621,8 +2627,8 @@ absl::StatusOr<PhysicalOpNode*> BatchModeTransformer::ResolveCTERefImpl(absl::st
     return absl::NotFoundError(absl::StrCat(tb_name, " not found"));
 }
 
-absl::StatusOr<PhysicalOpNode*> RequestModeTransformer::ResolveCTERef(absl::string_view tb_name, bool is_primary_path) {
-    return ResolveCTERefImpl(tb_name, true, is_primary_path);
+absl::StatusOr<PhysicalOpNode*> RequestModeTransformer::ResolveCTERef(absl::string_view tb_name) {
+    return ResolveCTERefImpl(tb_name, true);
 }
 
 }  // namespace vm
