@@ -363,7 +363,8 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                         left->output_schemas()->GetSchemaSourceSize(), right->output_schemas()->GetSchemaSourceSize(),
                         op->output_right_only());
 
-                    if (IsPartitionProvider(node->GetProducer(0))) {
+                    if (support_cluster_optimized_ && IsPartitionProvider(node->GetProducer(0))) {
+                        // Partion left join partition, route by index of the left source, and it should uncompleted
                         auto& route_info = left_task.GetRouteInfo();
                         runner->AddProducer(left_task.GetRoot());
                         runner->AddProducer(right_task.GetRoot());
@@ -657,7 +658,6 @@ ClusterTask RunnerBuilder::BuildClusterTaskForBinaryRunner(
     ClusterTask new_left = left;
     ClusterTask new_right = right;
 
-    Runner* left_runner = new_left.GetRoot();
     // if index key is valid, try to complete route info of right cluster task
     if (index_key.ValidKey()) {
         if (!right.IsClusterTask()) {
@@ -668,22 +668,17 @@ ClusterTask RunnerBuilder::BuildClusterTaskForBinaryRunner(
             return ClusterTask();
         }
         if (right.IsCompletedClusterTask()) {
-            if (node::ExprEquals(right.GetIndexKey().keys(), index_key.keys())) {
-                // completed with same index key
-                std::stringstream ss;
-                right.Print(ss, " ");
-                LOG(WARNING) << "Fail to complete cluster task for "
-                             << "[" << runner->id_ << "]" << RunnerTypeName(runner->type_)
-                             << ": task is completed already:\n"
-                             << ss.str();
-                LOG(WARNING) << "index key is " << index_key.ToString();
-                return ClusterTask();
-            }
-
-            // current runner and right have two different route info
-            // new_right = BuildProxyRunnerForClusterTask(new_right);
+            // completed with same index key
+            std::stringstream ss;
+            right.Print(ss, " ");
+            LOG(WARNING) << "Fail to complete cluster task for "
+                         << "[" << runner->id_ << "]" << RunnerTypeName(runner->type_)
+                         << ": task is completed already:\n"
+                         << ss.str();
+            LOG(WARNING) << "index key is " << index_key.ToString();
+            return ClusterTask();
         }
-        RequestRunner* request_runner = CreateRunner<RequestRunner>(id_++, left_runner->output_schemas());
+        RequestRunner* request_runner = CreateRunner<RequestRunner>(id_++, new_left.GetRoot()->output_schemas());
         runner->AddProducer(request_runner);
         runner->AddProducer(new_right.GetRoot());
 
