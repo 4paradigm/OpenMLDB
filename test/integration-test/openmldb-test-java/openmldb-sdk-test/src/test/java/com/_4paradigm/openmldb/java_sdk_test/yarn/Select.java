@@ -39,17 +39,13 @@ public class Select extends OpenMLDBTest {
     @Test(dataProvider = "getCase",enabled = false)
     @Yaml(filePaths = "integration_test/yarn/")
     public void testFunction(SQLCase testCase) throws Exception {
-        System.out.println("------------ tobedev, run testFunction");
-
         ExecutorFactory.build(executor, testCase, SQLCaseType.KOfflineJob).run();
     }
 
     @Story("ShowJoblog")
-    @Test(enabled = true)
+    @Test(enabled = false)
     public void testShowJoblog() {
         Statement statement = executor.getStatement();
-
-        System.out.println("------------ tobedev, run test show joblog");
         try {
             statement.execute("SET @@execute_mode='offline'");
             statement.execute("SELECT 1");
@@ -61,15 +57,11 @@ public class Select extends OpenMLDBTest {
                 e.printStackTrace();
             }
 
-
             statement.execute("SHOW JOBLOG 1");
             ResultSet resultset = statement.getResultSet();
             resultset.next();
             String result = resultset.getString(1);
-
             System.out.println(result);
-
-
             assert(!result.isEmpty());
         } catch (SQLException e) {
             e.printStackTrace();
@@ -78,7 +70,7 @@ public class Select extends OpenMLDBTest {
     }
 
     @Story("ExternalUDF")
-    @Test(enabled = false)
+    @Test(enabled = true)
     public void testFunctionMethods() {
 
         System.out.println("------------ tobedev, run testFunctionMethods");
@@ -86,7 +78,7 @@ public class Select extends OpenMLDBTest {
         Statement statement = executor.getStatement();
 
         try {
-            statement.execute("CREATE FUNCTION cut2(x STRING) RETURNS STRING OPTIONS (FILE='/tmp/libetest_udf.so')");
+            statement.execute("CREATE FUNCTION cut2(x STRING) RETURNS STRING OPTIONS (FILE='/tmp/libtest_udf.so')");
 
             statement.execute("SHOW FUNCTIONS");
 
