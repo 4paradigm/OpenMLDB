@@ -429,22 +429,22 @@ public class OpenMLDBDeploy {
             commands.forEach(ExecutorUtil::run);
 
             // Download dynamic library file
-            ExecutorUtil.run("curl -o /tmp/libetest_udf.so https://openmldb.ai/download/self_host_hadoop_config/libtest_udf.so");
+            ExecutorUtil.run("curl -o /tmp/libtest_udf.so https://openmldb.ai/download/self_host_hadoop_config/libtest_udf.so");
             String taskmanagerUdfPath = testPath + task_manager_name + "/bin/udf/";
             ExecutorUtil.run("touch " + taskmanagerUdfPath);
-            ExecutorUtil.run("cp /tmp/libetest_udf.so " + taskmanagerUdfPath);
+            ExecutorUtil.run("cp /tmp/libtest_udf.so " + taskmanagerUdfPath);
 
             String tabletUdfPath = testPath + "/openmldb-tablet-1/udf/";
             ExecutorUtil.run("touch " + tabletUdfPath);
-            ExecutorUtil.run("cp /tmp/libetest_udf.so " + tabletUdfPath);
+            ExecutorUtil.run("cp /tmp/libtest_udf.so " + tabletUdfPath);
 
             tabletUdfPath = testPath + "/openmldb-tablet-2/udf/";
             ExecutorUtil.run("touch " + tabletUdfPath);
-            ExecutorUtil.run("cp /tmp/libetest_udf.so " + tabletUdfPath);
+            ExecutorUtil.run("cp /tmp/libtest_udf.so " + tabletUdfPath);
 
             tabletUdfPath = testPath + "/openmldb-tablet-3/udf/";
             ExecutorUtil.run("touch " + tabletUdfPath);
-            ExecutorUtil.run("cp /tmp/libetest_udf.so " + tabletUdfPath);
+            ExecutorUtil.run("cp /tmp/libtest_udf.so " + tabletUdfPath);
 
             if (sparkMaster.startsWith("yarn")) {
                 log.info("Try to deploy TaskManager with yarn mode");
