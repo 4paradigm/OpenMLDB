@@ -135,6 +135,17 @@ class Executor:
                     return Status(), record[0]
         return Status(-1, "get ns leader falied"), None
 
+    def GetNs(self) -> tuple([Status, list]):
+        cmd = list(self.ns_base_cmd)
+        cmd.append("--cmd=showns")
+        status, output = self.RunWithRetuncode(cmd)
+        if status.OK():
+            result = self.ParseResult(output)
+            for record in result:
+                if record[2] == "leader":
+                    return Status(), record[0]
+        return Status(-1, "get ns leader falied"), None
+
 
     def ParseResult(self, output) -> list:
         result = []
@@ -388,9 +399,9 @@ class Executor:
             return Status()
         return Status(-1, "del replica failed")
 
-    def MakeSnashot(self, database, name, pid) -> Status:
+    def MakeSnashot(self, database, name, pid, sync = False) -> Status:
         cmd = list(self.ns_base_cmd)
-        cmd.append(f"--cmd=makesnaphsot {name} {pid}")
+        cmd.append(f"--cmd=makesnapshot {name} {pid}")
         cmd.append("--database=" + database)
         status, output = self.RunWithRetuncode(cmd)
         if status.OK() and output.find("ok") != -1:

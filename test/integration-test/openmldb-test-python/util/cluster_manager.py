@@ -80,6 +80,11 @@ class ClusterManager:
                 return endpoint
             i += 1
 
+    def GetComponents(self, role: str) -> list:
+        if role not in self.conf:
+            return None
+        return list(self.conf[role].keys())
+
     def OperateComponent(self, role: str, endpoint: str, op: str) -> Status:
         if role not in self.conf:
             return Status(-1, f"{role} is not exist in conf")

@@ -24,7 +24,7 @@ from tool import Executor
 from tool import Status
 import openmldb.dbapi
 
-class TestHA:
+class TestAddReplica:
     manager = None
     db = None
     cursor = None
@@ -39,21 +39,22 @@ class TestHA:
         cls.executor = Executor(cls.manager.GetBinPath(), cls.conf["zk_cluster"], cls.conf["zk_root_path"])
 
     @pytest.mark.parametrize("storage_mode, snapshot", [("memory", True), ("hdd", True), ("memory", False), ("hdd", False)])
-    def test_restart_tablet(self, storage_mode, snapshot):
+    def test_add_replica(self, storage_mode, snapshot):
         database = "test"
+        tablets = self.manager.GetComponents("tablet")
         self.cursor.execute(f"create database if not exists {database}")
         self.cursor.execute(f"use {database}")
         table_name = "table" + str(random.randint(0, 10000))
-        partition_num = 8
-        ddl = f"create table if not exists {table_name} (col1 string, col2 string) OPTIONS (partitionnum={partition_num}, storage_mode='{storage_mode}');"
+        ddl = f"create table if not exists {table_name} (col1 string, col2 string) OPTIONS (storage_mode='{storage_mode}', DISTRIBUTION=[('{tablets[0]}')]);"
         self.cursor.execute(ddl)
+        status, table_info = self.executor.GetTableInfo(database, table_name)
+        assert status.OK()
+        assert len(table_info) == 1
         key_num = 100
+        partition_num = 1
         for i in range(key_num):
             key = "key" + str(i)
             self.cursor.execute(f"insert into {table_name} values (\'{key}\', \'col2\')");
-        result = self.cursor.execute(f"select * from {table_name}")
-        data = result.fetchall()
-        assert len(data) == key_num
         if snapshot:
             for pid in range(partition_num):
                 self.executor.MakeSnashot(database, table_name, pid)
@@ -61,69 +62,51 @@ class TestHA:
             for i in range(key_num):
                 key = "key" + str(i)
                 self.cursor.execute(f"insert into {table_name} values (\'{key}\', \'col2\')");
-        assert self.manager.RestartComponent("tablet", self.manager.GetComponent("tablet")).OK()
-        time.sleep(5)
-
-        assert self.executor.WaitingTableOP(database, table_name, partition_num).OK()
-        assert self.executor.CheckTableAlive(database, table_name).OK()
-
         result = self.cursor.execute(f"select * from {table_name}")
         data = result.fetchall()
         assert len(data) == key_num * 2 if snapshot else key_num
+
+        assert self.executor.AddReplica(database, table_name, 0, tablets[1], True).OK()
+        status, table_info = self.executor.GetTableInfo(database, table_name)
+        assert status.OK()
+        assert len(table_info) == 2
+        time.sleep(3)
+        # assert offset
+        assert table_info[0][6] == table_info[1][6]
+
         self.cursor.execute(f"drop table {table_name}")
 
-    def test_restart_ns(self):
+    @pytest.mark.parametrize("storage_mode, snapshot", [("memory", True), ("hdd", True), ("memory", False), ("hdd", False)])
+    def test_del_replica(self, storage_mode, snapshot):
         database = "test"
+        tablets = self.manager.GetComponents("tablet")
         self.cursor.execute(f"create database if not exists {database}")
         self.cursor.execute(f"use {database}")
         table_name = "table" + str(random.randint(0, 10000))
-        ddl = f"create table if not exists {table_name} (col1 string, col2 string);"
+        ddl = f"create table if not exists {table_name} (col1 string, col2 string) OPTIONS (storage_mode='{storage_mode}', DISTRIBUTION=[('{tablets[0]}', ['{tablets[1]}'])]);"
         self.cursor.execute(ddl)
+        status, table_info = self.executor.GetTableInfo(database, table_name)
+        assert status.OK()
+        assert len(table_info) == 2
         key_num = 100
+        partition_num = 1
         for i in range(key_num):
             key = "key" + str(i)
             self.cursor.execute(f"insert into {table_name} values (\'{key}\', \'col2\')");
+        if snapshot:
+            for pid in range(partition_num):
+                self.executor.MakeSnashot(database, table_name, pid)
+            assert self.executor.WaitingTableOP(database, table_name, partition_num).OK()
+            for i in range(key_num):
+                key = "key" + str(i)
+                self.cursor.execute(f"insert into {table_name} values (\'{key}\', \'col2\')");
         result = self.cursor.execute(f"select * from {table_name}")
         data = result.fetchall()
-        assert len(data) == key_num
-        status, old_leader = self.executor.GetNsLeader()
-        assert status.OK()
-        assert self.manager.RestartComponent("nameserver", old_leader).OK()
-        result = self.cursor.execute(f"select * from {table_name}")
-        data = result.fetchall()
-        assert len(data) == key_num
-        status, new_leader = self.executor.GetNsLeader()
-        assert status.OK()
-        assert new_leader != old_leader
-        self.cursor.execute(f"drop table {table_name}")
+        assert len(data) == key_num * 2 if snapshot else key_num
 
-    def test_restart_ns_standby(self):
-        database = "test"
-        self.cursor.execute(f"create database if not exists {database}")
-        self.cursor.execute(f"use {database}")
-        table_name = "table" + str(random.randint(0, 10000))
-        ddl = f"create table if not exists {table_name} (col1 string, col2 string);"
-        self.cursor.execute(ddl)
-        key_num = 100
-        for i in range(key_num):
-            key = "key" + str(i)
-            self.cursor.execute(f"insert into {table_name} values (\'{key}\', \'col2\')");
-        result = self.cursor.execute(f"select * from {table_name}")
-        data = result.fetchall()
-        assert len(data) == key_num
-        status, old_leader = self.executor.GetNsLeader()
+        assert self.executor.DelReplica(database, table_name, 0, tablets[1], True).OK()
+        status, table_info = self.executor.GetTableInfo(database, table_name)
         assert status.OK()
-        ns = self.manager.GetComponents("nameserver")
-        standby = ""
-        for endpoint in ns:
-            if endpoint != old_leader:
-                standby = endpoint
-                break
-        assert self.manager.RestartComponent("nameserver", standby).OK()
-        result = self.cursor.execute(f"select * from {table_name}")
-        data = result.fetchall()
-        assert len(data) == key_num
-        status, new_leader = self.executor.GetNsLeader()
-        assert status.OK()
-        assert new_leader == old_leader
+        assert len(table_info) == 1
+
         self.cursor.execute(f"drop table {table_name}")
