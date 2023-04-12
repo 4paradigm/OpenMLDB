@@ -17,6 +17,7 @@ on:
       - 'release/**'
       - 'tools/**'
       - '*.md'
+      - 'benchmark/**'
   pull_request:
     paths-ignore:
       - 'docs/**'
