@@ -53,6 +53,15 @@ public class Select extends OpenMLDBTest {
         try {
             statement.execute("SET @@execute_mode='offline'");
             statement.execute("SELECT 1");
+
+            try {
+                System.out.println("Sleep 10 seconds to wait to joblog");
+                Thread.sleep(10000);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+
+
             statement.execute("SHOW JOBLOG 1");
             ResultSet resultset = statement.getResultSet();
             resultset.next();
@@ -67,30 +76,10 @@ public class Select extends OpenMLDBTest {
     @Story("ExternalUDF")
     @Test(enabled = true)
     public void testFunctionMethods() {
+
+        System.out.println("------------ tobedev, run testFunctionMethods");
+
         Statement statement = executor.getStatement();
-
-        try {
-            statement.execute("SET @@execute_mode='offline'");
-            statement.execute("SELECT 1");
-
-            try {
-                System.out.println("Sleep 10 seconds to wait to joblog");
-                Thread.sleep(10000);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
-
-            statement.execute("SHOW JOBLOG 1");
-            ResultSet resultset = statement.getResultSet();
-            resultset.next();
-            String result = resultset.getString(1);
-            System.out.println(result);
-
-            assert(true);
-        } catch (SQLException e) {
-            e.printStackTrace();
-            assert(false);
-        }
 
         try {
             statement.execute("CREATE FUNCTION cut2(x STRING) RETURNS STRING OPTIONS (FILE='/tmp/libetest_udf.so')");

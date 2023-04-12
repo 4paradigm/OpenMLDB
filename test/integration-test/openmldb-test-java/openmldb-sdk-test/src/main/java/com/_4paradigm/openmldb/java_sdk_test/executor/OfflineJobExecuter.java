@@ -92,8 +92,10 @@ public class OfflineJobExecuter extends BaseSQLExecutor {
         sdkClient.execute("SET @@global.job_timeout = '600000';");
         sdkClient.setOffline();
 
-        // tobedev
-        ExecUtil.exeCommand("touch "+offlineDataPrefix);
+        // tobedev, fix for hadoop
+        //ExecUtil.exeCommand("touch "+offlineDataPrefix);
+        System.out.println("--------- tobedev Try to run touch comamnd, offlineDataPrefix: " + offlineDataPrefix);
+        ExecUtil.exeCommand("touch /tmp/openmldb_offline_storage/");
 
         List<InputDesc> inputs = sqlCase.getInputs();
 
