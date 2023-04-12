@@ -52,7 +52,9 @@ public class OpenMLDBDeploy {
     private String nameNodeUri = "172.27.12.215:8020";
     private int systemTableReplicaNum = 2;
     private String sparkDefaultConf = "";
-    private String externalFunctionDir = "/tmp/";
+    private String externalFunctionDir = "./udf/";
+    private String hadoopConfDir = "";
+    private String hadoopUserName = "root";
 
     public static final int SLEEP_TIME = 10*1000;
 
@@ -426,7 +428,10 @@ public class OpenMLDBDeploy {
                     "sed -i "+sedSeparator+" 's@offline.data.prefix=.*@offline.data.prefix=" + offlineDataPrefix + "@' "+testPath + task_manager_name+ "/conf/taskmanager.properties",
                     "sed -i "+sedSeparator+" 's@namenode.uri=.*@namenode.uri=" + nameNodeUri + "@' "+testPath + task_manager_name+ "/conf/taskmanager.properties",
                     "sed -i "+sedSeparator+" 's@spark.default.conf=.*@spark.default.conf=" + sparkDefaultConf + "@' "+testPath + task_manager_name+ "/conf/taskmanager.properties",
-                    "echo -e \"\nexternal.function.dir=" + externalFunctionDir + "\" >> " +testPath + task_manager_name + "/conf/taskmanager.properties"
+                    "echo -e \"\nexternal.function.dir=" + externalFunctionDir + "\" >> " +testPath + task_manager_name + "/conf/taskmanager.properties",
+                    "echo -e \"\nhadoop.conf.dir=" + hadoopConfDir + "\" >> " +testPath + task_manager_name + "/conf/taskmanager.properties",
+                    "echo -e \"\nhadoop.user.name=" + hadoopUserName + "\" >> " +testPath + task_manager_name + "/conf/taskmanager.properties"
+
             );
 
 
@@ -457,6 +462,7 @@ public class OpenMLDBDeploy {
                 log.info("Try to deploy TaskManager with yarn mode");
                 ExecutorUtil.run("echo -e \"\n172.29.0.21\tnode-1.sg.4pd.io\n172.29.0.22\tnode-2.sg.4pd.io\n172.29.0.23\tnode-3.sg.4pd.io\" >> /etc/hosts");
                 // TODO: ipc.Client: Retrying connect to server: node-1.sg.4pd.io/172.29.0.21:8032. Already tried 0 time(s); maxRetries=45
+                // 23/04/12 16:16:44 INFO client.RMProxy:                     Connecting to ResourceManager at node-1.sg.4pd.io/172.29.0.21:8032
                 // 23/04/12 10:39:35 INFO DefaultNoHARMFailoverProxyProvider: Connecting to ResourceManager at node-1.sg.4pd.io/172.29.0.21:8032
                 ExecutorUtil.run("curl -o /tmp/hadoop_conf.tar.gz https://openmldb.ai/download/self_host_hadoop_config/hadoop_conf.tar.gz");
                 ExecutorUtil.run("tar xzf /tmp/hadoop_conf.tar.gz -C /tmp");
