@@ -426,7 +426,7 @@ public class OpenMLDBDeploy {
                     "sed -i "+sedSeparator+" 's@offline.data.prefix=.*@offline.data.prefix=" + offlineDataPrefix + "@' "+testPath + task_manager_name+ "/conf/taskmanager.properties",
                     "sed -i "+sedSeparator+" 's@namenode.uri=.*@namenode.uri=" + nameNodeUri + "@' "+testPath + task_manager_name+ "/conf/taskmanager.properties",
                     "sed -i "+sedSeparator+" 's@spark.default.conf=.*@spark.default.conf=" + sparkDefaultConf + "@' "+testPath + task_manager_name+ "/conf/taskmanager.properties",
-                    "echo -e " + "\nexternal.function.dir=" + externalFunctionDir + " >> " +testPath + task_manager_name + "/conf/taskmanager.properties"
+                    "echo -e \"\nexternal.function.dir=" + externalFunctionDir + "\" >> " +testPath + task_manager_name + "/conf/taskmanager.properties"
             );
 
 
