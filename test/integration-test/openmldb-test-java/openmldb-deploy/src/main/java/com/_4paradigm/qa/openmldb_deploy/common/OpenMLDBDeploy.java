@@ -432,9 +432,12 @@ public class OpenMLDBDeploy {
 
             // Download dynamic library file
             ExecutorUtil.run("curl -o /tmp/libtest_udf.so https://openmldb.ai/download/self_host_hadoop_config/libtest_udf.so");
+
+
             String taskmanagerUdfPath = testPath + task_manager_name + "/taskmanager/bin/udf/";
             ExecutorUtil.run("touch " + taskmanagerUdfPath);
             ExecutorUtil.run("cp /tmp/libtest_udf.so " + taskmanagerUdfPath);
+            ExecutorUtil.run("curl -o " + taskmanagerUdfPath + "libtest_udf.so" + " https://openmldb.ai/download/self_host_hadoop_config/libtest_udf.so");
 
             String tabletUdfPath = testPath + "/openmldb-tablet-1/udf/";
             ExecutorUtil.run("touch " + tabletUdfPath);
