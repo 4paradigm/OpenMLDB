@@ -1,0 +1,56 @@
+# This workflow runs SDK related jobs for OpenMLDB
+name: SDK
+
+on:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - "docs/**"
+      - "demo/**"
+      - "docker/**"
+      - "image/**"
+      - "release/**"
+      - "tools/**"
+      - "*.md"
+    tags:
+      - v*
+  pull_request:
+    paths:
+      - "src/**"
+      - "release/**"
+      - "test/integration-test/openmldb-test-python/**"
+  workflow_dispatch:
+
+env:
+  GIT_SUBMODULE_STRATEGY: recursive
+  NPROC: 2 # default Parallel build number for GitHub's Linux runner
+  EXAMPLES_ENABLE: OFF # turn off hybridse's example code
+  HYBRIDSE_TESTING_ENABLE: OFF # turn off hybridse's test code
+
+jobs:
+  openmldb-test-python:
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/4paradigm/hybridsql:latest
+    env:
+      OPENMLDB_BUILD_TARGET: "openmldb"
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: build openmldb
+        run: |
+          make build
+      - name: install openmldb
+        run: bash test/integration-test/openmldb-test-python/install.sh
+      - name: run test
+        run: |
+          pip3 install requests openmldb pytest
+          python3 -m pytest test/integration-test/openmldb-test-python --junit-xml=pytest.xml
+
+      - name: upload ut results
+        if: always()
+        uses: actions/upload-artifact@v2
+        with:
+          name: openmldb-test-python-${{ github.sha }}
+          path: pytest.xml

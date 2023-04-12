@@ -17,8 +17,10 @@
 import pytest
 import sys
 import random
+import os
 import time
-sys.path.append("../util")
+cur_path = os.path.dirname(os.path.abspath(__file__))
+sys.path.append(f"{cur_path}/../util")
 from cluster_manager import ClusterManager
 from tool import Executor
 from tool import Status
@@ -32,7 +34,7 @@ class TestMigrate:
 
     @classmethod
     def setup_class(cls):
-        cls.manager = ClusterManager("../openmldb/conf/hosts")
+        cls.manager = ClusterManager(f"{cur_path}/../openmldb/conf/hosts")
         cls.conf = cls.manager.GetConf()
         cls.db = openmldb.dbapi.connect(zk=cls.conf["zk_cluster"], zkPath=cls.conf["zk_root_path"])
         cls.cursor = cls.db.cursor()

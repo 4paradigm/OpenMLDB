@@ -14,11 +14,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
+import os
 import pytest
 import sys
 import random
 import time
-sys.path.append("../util")
+cur_path = os.path.dirname(os.path.abspath(__file__))
+sys.path.append(f"{cur_path}/../util")
 from cluster_manager import ClusterManager
 from tool import Executor
 from tool import Status
@@ -32,7 +34,7 @@ class TestAddReplica:
 
     @classmethod
     def setup_class(cls):
-        cls.manager = ClusterManager("../openmldb/conf/hosts")
+        cls.manager = ClusterManager(f"{cur_path}/../openmldb/conf/hosts")
         cls.conf = cls.manager.GetConf()
         cls.db = openmldb.dbapi.connect(zk=cls.conf["zk_cluster"], zkPath=cls.conf["zk_root_path"])
         cls.cursor = cls.db.cursor()
@@ -70,7 +72,14 @@ class TestAddReplica:
         status, table_info = self.executor.GetTableInfo(database, table_name)
         assert status.OK()
         assert len(table_info) == 2
-        time.sleep(3)
+        check_cnt = 10
+        while check_cnt > 0:
+            if table_info[0][6] != '-' and table_info[1][6] != '-':
+                break
+            time.sleep(1)
+            status, table_info = self.executor.GetTableInfo(database, table_name)
+            assert status.OK()
+            check_cnt -= 1
         # assert offset
         assert table_info[0][6] == table_info[1][6]
 
