@@ -52,6 +52,7 @@ public class OpenMLDBDeploy {
     private String nameNodeUri = "172.27.12.215:8020";
     private int systemTableReplicaNum = 2;
     private String sparkDefaultConf = "";
+    private String externalFunctionDir = "./udf/";
 
     public static final int SLEEP_TIME = 10*1000;
 
@@ -424,7 +425,8 @@ public class OpenMLDBDeploy {
                     "sed -i "+sedSeparator+" 's@spark.yarn.jars=.*@spark.yarn.jars=" + sparkYarnJars + "@' "+testPath + task_manager_name+ "/conf/taskmanager.properties",
                     "sed -i "+sedSeparator+" 's@offline.data.prefix=.*@offline.data.prefix=" + offlineDataPrefix + "@' "+testPath + task_manager_name+ "/conf/taskmanager.properties",
                     "sed -i "+sedSeparator+" 's@namenode.uri=.*@namenode.uri=" + nameNodeUri + "@' "+testPath + task_manager_name+ "/conf/taskmanager.properties",
-                    "sed -i "+sedSeparator+" 's@spark.default.conf=.*@spark.default.conf=" + sparkDefaultConf + "@' "+testPath + task_manager_name+ "/conf/taskmanager.properties"
+                    "sed -i "+sedSeparator+" 's@spark.default.conf=.*@spark.default.conf=" + sparkDefaultConf + "@' "+testPath + task_manager_name+ "/conf/taskmanager.properties",
+                    "sed -i "+sedSeparator+" 's@external.function.dir=.*@external.function.dir=" + externalFunctionDir + "@' "+testPath + task_manager_name+ "/conf/taskmanager.properties"
             );
             commands.forEach(ExecutorUtil::run);
 

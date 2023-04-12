@@ -69,6 +69,7 @@ public class OpenMLDBTest extends BaseTest {
             openMLDBDeploy.setSparkMaster("yarn");
             openMLDBDeploy.setOfflineDataPrefix("hdfs:///openmldb_integration_test/");
             openMLDBDeploy.setSparkDefaultConf("spark.hadoop.yarn.timeline-service.enabled=false");
+            openMLDBDeploy.setExternalFunctionDir("/tmp/");
             OpenMLDBGlobalVar.mainInfo = openMLDBDeploy.deployCluster(2, 3);
         } else {
             OpenMLDBInfo openMLDBInfo = new OpenMLDBInfo();
