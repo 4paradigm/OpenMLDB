@@ -52,7 +52,7 @@ public class OpenMLDBDeploy {
     private String nameNodeUri = "172.27.12.215:8020";
     private int systemTableReplicaNum = 2;
     private String sparkDefaultConf = "";
-    private String externalFunctionDir = "./udf/";
+    private String externalFunctionDir = "/tmp/";
 
     public static final int SLEEP_TIME = 10*1000;
 
