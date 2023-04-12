@@ -23,7 +23,7 @@ mkdir -p "openmldb"
 cp -r ../../../release/* ./openmldb/
 cp -f ../../../build/bin/openmldb ./openmldb/bin/
 sed -i"" -e "s/OPENMLDB_MODE:=standalone/OPENMLDB_MODE:=cluster/g" openmldb/conf/openmldb-env.sh
-sed -i"" -e "s/.*make_snapshot_threshold_offset.*/--make_snapshot_threshold_offset=1/g" release/conf/tablet.flags.template
+sed -i"" -e "s/.*make_snapshot_threshold_offset.*/--make_snapshot_threshold_offset=1/g" openmldb/conf/tablet.flags.template
 python3 genhost.py
 sh openmldb/sbin/deploy-all.sh
 sh openmldb/sbin/start-all.sh
