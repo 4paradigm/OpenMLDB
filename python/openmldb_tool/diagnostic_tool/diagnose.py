@@ -16,8 +16,6 @@
 
 import argparse
 import textwrap
-import re
-import requests
 
 from diagnostic_tool.connector import Connector
 from diagnostic_tool.dist_conf import read_conf
@@ -33,8 +31,6 @@ from absl import app
 from absl import flags
 from absl.flags import argparse_flags
 from absl import logging  # --verbosity --log_dir
-
-from prettytable import PrettyTable
 
 # only some sub cmd needs dist file
 flags.DEFINE_string(
@@ -68,8 +64,8 @@ def check_version(version_map: dict):
 
 def status(args):
     """use OpenMLDB Python SDK to connect OpenMLDB"""
-    conn = Connector()
-    status_checker = checker.StatusChecker(conn)
+    connect = Connector()
+    status_checker = checker.StatusChecker(connect)
     if not status_checker.check_components(): print("some components is offline")
 
     # --diff with dist conf file, conf_file is required
@@ -85,36 +81,7 @@ def status(args):
         print(f"all components in conf file are online")
 
     if args.conn:
-        component_list = conn.execfetch("SHOW COMPONENTS", show=False)
-        t = PrettyTable()
-        t.title = "Connections"
-        t.field_names = ["Endpoint", "version", "cost_time", "extra"]
-        err = ""
-        for component in component_list:
-            try:
-                if component[1] == "taskmanager":
-                    response = requests.post(f"http://{component[0]}/openmldb.taskmanager.TaskManagerServer/GetVersion", json={}, timeout=1)
-                    response.raise_for_status()
-                    js = response.json()
-                    ver = js["taskmanagerVersion"]
-                    ex = "batchVersion: " + js["batchVersion"][:-1]
-                    response = requests.get(f"http://{component[0]}", timeout=1)
-                else:
-                    response = requests.get(f"http://{component[0]}/status", timeout=1)
-                    response.raise_for_status()
-                    text = response.text
-                    regex = re.compile("version: (.*?)\\n")
-                    match = re.search(regex, text)
-                    ver = match.group(1)
-                    ex = ""
-                response_time = response.elapsed.microseconds / 1000
-                t.add_row([component[0], ver, str(response_time) + "ms", ex])
-            except Exception as e:
-                t.add_row([component[0], "-", "timeout", "Error: see below"])
-                err += component[0] + "\n" + str(e)
-        print(t)
-        if err:
-            print(err)
+        status_checker.check_connection()
 
 
 def inspect(args):
