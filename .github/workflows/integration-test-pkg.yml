@@ -24,7 +24,7 @@ on:
         required: false
         default: '0.4.0'
       EXEC_TEST_TYPE:
-        description: 'Which tests need to be executed? The options are all, python, java, batch, cli, standalone-cli and apiserver'
+        description: 'Which tests need to be executed? The options are all, python, java, batch, cli, standalone-cli, apiserver, yarn'
         required: true
         default: 'all'
 
@@ -90,6 +90,28 @@ jobs:
         run: sh test/steps/modify-properties.sh ${{ github.event.inputs.JAVA_SDK_VERSION }} ${{ github.event.inputs.OPENMLDB_SERVER_VERSION }} ${{ github.event.inputs.PYTHON_SDK_VERSION }} ${{ github.event.inputs.BATCH_VERSION }} ${{ github.event.inputs.DIFF_VERSIONS }}
       - name: test
         run: source /root/.bashrc && bash test/steps/openmldb-sdk-test-java.sh -b PKG -c test_all.xml -d cluster -l "0"
+      - name: TEST Results
+        if: always()
+        uses: EnricoMi/publish-unit-test-result-action@v1
+        with:
+          files: test/integration-test/openmldb-test-java/openmldb-sdk-test/target/surefire-reports/TEST-*.xml
+          comment_mode: "create new"
+          check_name: Java SDK Test Cluster0 PKG Report
+          comment_title: Java SDK Test Cluster0 PKG Report
+
+  java-sdk-yarn:
+    if: ${{ github.event.inputs.EXEC_TEST_TYPE == 'all' || github.event.inputs.EXEC_TEST_TYPE == 'yarn' }}
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/4paradigm/hybridsql:latest
+    env:
+      OS: linux
+    steps:
+      - uses: actions/checkout@v2
+      - name: modify-properties
+        run: sh test/steps/modify-properties.sh ${{ github.event.inputs.JAVA_SDK_VERSION }} ${{ github.event.inputs.OPENMLDB_SERVER_VERSION }} ${{ github.event.inputs.PYTHON_SDK_VERSION }} ${{ github.event.inputs.BATCH_VERSION }} ${{ github.event.inputs.DIFF_VERSIONS }}
+      - name: test
+        run: source /root/.bashrc && bash test/steps/openmldb-sdk-test-java.sh -b PKG -c test_yarn.xml -d yarn -l "0"
       - name: TEST Results
         if: always()
         uses: EnricoMi/publish-unit-test-result-action@v1
