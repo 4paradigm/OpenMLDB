@@ -43,7 +43,7 @@ public class Select extends OpenMLDBTest {
     }
 
     @Story("ShowJoblog")
-    @Test(enabled = false)
+    @Test(enabled = true)
     public void testShowJoblog() {
         Statement statement = executor.getStatement();
         try {
@@ -51,8 +51,8 @@ public class Select extends OpenMLDBTest {
             statement.execute("SELECT 1");
 
             try {
-                System.out.println("Sleep 30 seconds to wait to joblog");
-                Thread.sleep(30000);
+                System.out.println("Sleep 60 seconds to wait to joblog");
+                Thread.sleep(60000);
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
@@ -70,11 +70,8 @@ public class Select extends OpenMLDBTest {
     }
 
     @Story("ExternalUDF")
-    @Test(enabled = true)
+    @Test(enabled = false)
     public void testFunctionMethods() {
-
-        System.out.println("------------ tobedev, run testFunctionMethods");
-
         Statement statement = executor.getStatement();
 
         try {
