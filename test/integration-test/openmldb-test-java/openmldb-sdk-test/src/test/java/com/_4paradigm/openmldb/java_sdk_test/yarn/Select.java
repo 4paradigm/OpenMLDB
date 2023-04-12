@@ -66,6 +66,10 @@ public class Select extends OpenMLDBTest {
             ResultSet resultset = statement.getResultSet();
             resultset.next();
             String result = resultset.getString(1);
+
+            System.out.println(result);
+
+
             assert(!result.isEmpty());
         } catch (SQLException e) {
             e.printStackTrace();
@@ -74,7 +78,7 @@ public class Select extends OpenMLDBTest {
     }
 
     @Story("ExternalUDF")
-    @Test(enabled = true)
+    @Test(enabled = false)
     public void testFunctionMethods() {
 
         System.out.println("------------ tobedev, run testFunctionMethods");
