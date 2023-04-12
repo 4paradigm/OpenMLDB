@@ -24,6 +24,7 @@ on:
       - 'release/**'
       - 'tools/**'
       - '*.md'
+      - 'benchmark/**'
   workflow_dispatch:
 
 env:
