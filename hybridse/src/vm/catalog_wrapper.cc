@@ -126,7 +126,14 @@ std::unique_ptr<RowIterator> LazyLastJoinPartitionHandler::GetIterator() {
     return std::unique_ptr<RowIterator>(new LazyLastJoinIterator(std::move(iter), right_, parameter_, join_));
 }
 
-std::unique_ptr<WindowIterator> LazyLastJoinPartitionHandler::GetWindowIterator() { return left_->GetWindowIterator(); }
+std::unique_ptr<WindowIterator> LazyLastJoinPartitionHandler::GetWindowIterator() {
+    auto wi = left_->GetWindowIterator();
+    if (wi == nullptr) {
+        return std::unique_ptr<WindowIterator>();
+    }
+
+    return std::unique_ptr<WindowIterator>(new LazyLastJoinWindowIterator(std::move(wi), right_, parameter_, join_));
+}
 
 const Row& LazyLastJoinIterator::GetValue() {
     value_ = join_->RowLastJoin(left_it_->GetValue(), right_, parameter_);
@@ -135,6 +142,27 @@ const Row& LazyLastJoinIterator::GetValue() {
 
 std::unique_ptr<WindowIterator> LazyLastJoinTableHandler::GetWindowIterator(const std::string& idx_name) {
     return nullptr;
+}
+
+LazyLastJoinWindowIterator::LazyLastJoinWindowIterator(std::unique_ptr<WindowIterator>&& iter,
+                                                       std::shared_ptr<PartitionHandler> right, const Row& param,
+                                                       std::shared_ptr<JoinGenerator> join)
+    : left_(std::move(iter)), right_(right), parameter_(param), join_(join) {}
+std::unique_ptr<RowIterator> LazyLastJoinWindowIterator::GetValue() {
+    auto iter = left_->GetValue();
+    if (!iter) {
+        return std::unique_ptr<RowIterator>();
+    }
+
+    return std::unique_ptr<RowIterator>(new LazyLastJoinIterator(std::move(iter), right_, parameter_, join_));
+}
+RowIterator* LazyLastJoinWindowIterator::GetRawValue() {
+    auto iter = left_->GetValue();
+    if (!iter) {
+        return nullptr;
+    }
+
+    return new LazyLastJoinIterator(std::move(iter), right_, parameter_, join_);
 }
 }  // namespace vm
 }  // namespace hybridse
