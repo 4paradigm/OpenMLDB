@@ -448,6 +448,9 @@ public class OpenMLDBDeploy {
 
             if (sparkMaster.startsWith("yarn")) {
                 log.info("Try to deploy TaskManager with yarn mode");
+
+                ExecutorUtil.run("echo -e \"\n172.29.0.21\tnode-1.sg.4pd.io\n172.29.0.22\tnode-2.sg.4pd.io\n172.29.0.23\tnode-3.sg.4pd.io\" >> /etc/hosts");
+
                 ExecutorUtil.run("curl -o /tmp/hadoop_conf.tar.gz https://openmldb.ai/download/self_host_hadoop_config/hadoop_conf.tar.gz");
                 ExecutorUtil.run("tar xzf /tmp/hadoop_conf.tar.gz -C /tmp");
                 ExecutorUtil.run("HADOOP_CONF_DIR=/tmp/hadoop/ sh "+testPath+task_manager_name+"/bin/start.sh start taskmanager");
