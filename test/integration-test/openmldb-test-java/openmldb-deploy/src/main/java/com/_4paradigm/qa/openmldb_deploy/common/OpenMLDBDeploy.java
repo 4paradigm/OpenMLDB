@@ -397,7 +397,7 @@ public class OpenMLDBDeploy {
             String sparkPath = testPath+"/"+sparkDirectoryName;
 
             // tobedev: delete curator packages
-            ExecutorUtil.run("rm -rf " + sparkPath + "/jars/curator*jar");
+            //ExecutorUtil.run("rm -rf " + sparkPath + "/jars/curator*jar");
 
             this.sparkHome = sparkPath;
             return sparkPath;

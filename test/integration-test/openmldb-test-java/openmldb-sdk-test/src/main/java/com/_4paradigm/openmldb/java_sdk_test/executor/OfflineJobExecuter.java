@@ -90,6 +90,7 @@ public class OfflineJobExecuter extends BaseSQLExecutor {
         sdkClient.setOffline();
 
         // TODO: Handle for yarn cases
+        System.out.println("----------- tobedev, offlineDataPrefix: " + offlineDataPrefix);
         ExecUtil.exeCommand("touch "+offlineDataPrefix);
 
         List<InputDesc> inputs = sqlCase.getInputs();
