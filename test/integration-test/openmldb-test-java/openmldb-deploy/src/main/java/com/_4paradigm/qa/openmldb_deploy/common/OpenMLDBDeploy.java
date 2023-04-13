@@ -395,10 +395,6 @@ public class OpenMLDBDeploy {
             // tar -zxvf /github/home/openmldb-auto-test/0.7.2/spark-3.2.1-bin-openmldbspark.tgz -C /github/home/openmldb-auto-test/0.7.2
             String sparkDirectoryName = ExecutorUtil.run("ls "+ testPath +" | grep spark | grep  -v .tgz ").get(0);
             String sparkPath = testPath+"/"+sparkDirectoryName;
-
-            // tobedev: delete curator packages
-            //ExecutorUtil.run("rm -rf " + sparkPath + "/jars/curator*jar");
-
             this.sparkHome = sparkPath;
             return sparkPath;
         }catch (Exception e){
@@ -432,11 +428,10 @@ public class OpenMLDBDeploy {
                     "sed -i "+sedSeparator+" 's@spark.yarn.jars=.*@spark.yarn.jars=" + sparkYarnJars + "@' "+testPath + task_manager_name+ "/conf/taskmanager.properties",
                     "sed -i "+sedSeparator+" 's@offline.data.prefix=.*@offline.data.prefix=" + offlineDataPrefix + "@' "+testPath + task_manager_name+ "/conf/taskmanager.properties",
                     "sed -i "+sedSeparator+" 's@namenode.uri=.*@namenode.uri=" + nameNodeUri + "@' "+testPath + task_manager_name+ "/conf/taskmanager.properties",
-                    "sed -i "+sedSeparator+" 's@spark.default.conf=.*@spark.default.conf=" + sparkDefaultConf + "@' "+testPath + task_manager_name+ "/conf/taskmanager.properties",
-                    "echo -e \"\nexternal.function.dir=" + externalFunctionDir + "\" >> " +testPath + task_manager_name + "/conf/taskmanager.properties",
-                    "echo -e \"\nhadoop.conf.dir=" + hadoopConfDir + "\" >> " +testPath + task_manager_name + "/conf/taskmanager.properties",
-                    "echo -e \"\nhadoop.user.name=" + hadoopUserName + "\" >> " +testPath + task_manager_name + "/conf/taskmanager.properties"
-
+                    "sed -i "+sedSeparator+" 's@spark.default.conf=.*@spark.default.conf=" + sparkDefaultConf + "@' "+testPath + task_manager_name+ "/conf/taskmanager.properties"//,
+                    //"echo -e \"\nexternal.function.dir=" + externalFunctionDir + "\" >> " +testPath + task_manager_name + "/conf/taskmanager.properties",
+                    //"echo -e \"\nhadoop.conf.dir=" + hadoopConfDir + "\" >> " +testPath + task_manager_name + "/conf/taskmanager.properties",
+                    //"echo -e \"\nhadoop.user.name=" + hadoopUserName + "\" >> " +testPath + task_manager_name + "/conf/taskmanager.properties"
             );
 
 
@@ -445,11 +440,9 @@ public class OpenMLDBDeploy {
             // Download dynamic library file
             ExecutorUtil.run("curl -o /tmp/libtest_udf.so https://openmldb.ai/download/self_host_hadoop_config/libtest_udf.so");
 
-
             String taskmanagerUdfPath = testPath + task_manager_name + "/taskmanager/bin/udf/";
-            ExecutorUtil.run("touch " + taskmanagerUdfPath);
-            ExecutorUtil.run("cp /tmp/libtest_udf.so " + taskmanagerUdfPath);
-            ExecutorUtil.run("curl -o " + taskmanagerUdfPath + "libtest_udf.so" + " https://openmldb.ai/download/self_host_hadoop_config/libtest_udf.so");
+            //ExecutorUtil.run("touch " + taskmanagerUdfPath);
+            //ExecutorUtil.run("cp /tmp/libtest_udf.so " + taskmanagerUdfPath);
 
             String tabletUdfPath = testPath + "/openmldb-tablet-1/udf/";
             ExecutorUtil.run("touch " + tabletUdfPath);
