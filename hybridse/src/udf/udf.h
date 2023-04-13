@@ -18,6 +18,7 @@
 #define HYBRIDSE_SRC_UDF_UDF_H_
 #include <stdint.h>
 
+#include <iomanip>
 #include <string>
 #include <tuple>
 
@@ -218,16 +219,20 @@ struct Pow {
 
 template <class V>
 struct Round {
-    using Args = std::tuple<V>;
+    using Args = std::tuple<double, V>;
 
-    V operator()(V r) { return static_cast<V>(round(r)); }
-};
+    void operator()(double val, V decimal_number, StringRef *out) {
+        std::stringstream ss;
+        ss << std::setprecision(decimal_number) << val;
 
-template <class V>
-struct Round32 {
-    using Args = std::tuple<V>;
+        std::string str = ss.str();
+        auto sz = str.size();
+        char *buf = AllocManagedStringBuf(sz);
+        memcpy(buf, str.data(), sz);
 
-    int32_t operator()(V r) { return static_cast<int32_t>(round(r)); }
+        out->data_ = buf;
+        out->size_ = sz;
+    }
 };
 
 template <class V>
