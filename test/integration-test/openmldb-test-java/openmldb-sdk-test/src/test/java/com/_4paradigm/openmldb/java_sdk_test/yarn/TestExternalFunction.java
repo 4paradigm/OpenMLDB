@@ -17,60 +17,21 @@
 package com._4paradigm.openmldb.java_sdk_test.yarn;
 
 import com._4paradigm.openmldb.java_sdk_test.common.OpenMLDBTest;
-import com._4paradigm.openmldb.java_sdk_test.executor.ExecutorFactory;
-import com._4paradigm.openmldb.test_common.model.SQLCase;
-import com._4paradigm.openmldb.test_common.model.SQLCaseType;
-import com._4paradigm.openmldb.test_common.provider.Yaml;
 import io.qameta.allure.Feature;
 import io.qameta.allure.Story;
 import lombok.extern.slf4j.Slf4j;
 import org.testng.annotations.Test;
-
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 
 
 @Slf4j
-@Feature("YarnOfflineClusterSelect")
-public class Select extends OpenMLDBTest {
+@Feature("ExternalFunction")
+public class TestExternalFunction extends OpenMLDBTest {
 
-    @Story("Function")
-    @Test(dataProvider = "getCase",enabled = false)
-    @Yaml(filePaths = "integration_test/yarn/")
-    public void testFunction(SQLCase testCase) throws Exception {
-        ExecutorFactory.build(executor, testCase, SQLCaseType.KOfflineJob).run();
-    }
-
-    @Story("ShowJoblog")
+    @Story("ExternalFunction")
     @Test(enabled = true)
-    public void testShowJoblog() {
-        Statement statement = executor.getStatement();
-        try {
-            statement.execute("SET @@execute_mode='offline'");
-            statement.execute("SELECT 1");
-
-            try {
-                System.out.println("Sleep 60 seconds to wait to joblog");
-                Thread.sleep(60000);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
-
-            statement.execute("SHOW JOBLOG 1");
-            ResultSet resultset = statement.getResultSet();
-            resultset.next();
-            String result = resultset.getString(1);
-            System.out.println(result);
-            assert(!result.isEmpty());
-        } catch (SQLException e) {
-            e.printStackTrace();
-            assert(false);
-        }
-    }
-
-    @Story("ExternalUDF")
-    @Test(enabled = false)
     public void testFunctionMethods() {
         Statement statement = executor.getStatement();
 
