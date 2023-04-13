@@ -59,7 +59,7 @@
 
 | OpenMLDB 数据格式 | Hive 数据格式 |
 | ----------------- | ------------- |
-| BOOL              | BOOLEAN       |
+| BOOL              | BOOL       |
 | SMALLINT          | SMALLINT      |
 | INT               | INT           |
 | BIGINT            | BIGINT        |
