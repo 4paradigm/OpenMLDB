@@ -35,6 +35,18 @@ rm_dir() {
 if [[ ${OPENMLDB_MODE} == "standalone" ]]; then
   rm -rf standalone_db standalone_logs
 else
+  conf_file="conf/tablet.flags.template"
+  dirname=""
+  while IFS= read -r line
+  do
+    if echo $line | grep -q '^#'; then
+      continue
+    fi
+    if echo $line | grep -v "zk_root_path" | grep -q "root_path"; then
+      cur_dirname=$(echo "${line}" | awk -F '=' '{print $2}')
+      dirname="${dirname} ${cur_dirname}"
+    fi
+  done < "$conf_file"
   old_IFS="$IFS"
   IFS=$'\n'
   # delete tablet data and log
@@ -48,7 +60,7 @@ else
       rm_dir "$host" "$dir"
     else
       echo "clear tablet data and log in $dir with endpoint $host:$port "
-      cmd="cd $dir && rm -rf recycle db logs"
+      cmd="cd $dir && rm -rf ${dirname} logs"
       run_auto "$host" "$cmd"
     fi
   done
