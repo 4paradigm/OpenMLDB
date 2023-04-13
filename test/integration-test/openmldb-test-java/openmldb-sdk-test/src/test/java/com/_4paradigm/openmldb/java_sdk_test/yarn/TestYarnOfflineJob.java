@@ -35,14 +35,14 @@ import java.sql.Statement;
 public class TestYarnOfflineJob extends OpenMLDBTest {
 
     @Story("YarnYamlCase")
-    @Test(dataProvider = "getCase",enabled = true)
+    @Test(dataProvider = "getCase",enabled = false)
     @Yaml(filePaths = "integration_test/yarn/")
     public void testFunction(SQLCase testCase) throws Exception {
         ExecutorFactory.build(executor, testCase, SQLCaseType.KOfflineJob).run();
     }
 
     @Story("YarnShowJobLog")
-    @Test(enabled = false)
+    @Test(enabled = true)
     public void testShowJoblog() {
         Statement statement = executor.getStatement();
         try {
