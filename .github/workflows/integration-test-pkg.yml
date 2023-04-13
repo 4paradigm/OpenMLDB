@@ -101,7 +101,7 @@ jobs:
 
   java-sdk-yarn:
     if: ${{ github.event.inputs.EXEC_TEST_TYPE == 'all' || github.event.inputs.EXEC_TEST_TYPE == 'yarn' }}
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     container:
       image: ghcr.io/4paradigm/hybridsql:latest
     env:
