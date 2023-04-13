@@ -36,11 +36,7 @@ jobs:
     env:
       OPENMLDB_BUILD_TARGET: "openmldb"
     steps:
-      - uses: actions/checkout@v3
-      - name: Set up Python 3.8
-        uses: actions/setup-python@v3
-        with:
-          python-version: 3.8
+      - uses: actions/checkout@v2
         #- name: build openmldb
         #- run: |
         #-   make build
@@ -48,9 +44,9 @@ jobs:
       #- run: bash test/integration-test/openmldb-test-python/install.sh
       - name: run test
         run: |
-          python -m pip install --upgrade pip
-          python -m pip install requests openmldb pytest
-          python -m pytest test/integration-test/openmldb-test-python --junit-xml=pytest.xml
+          python3 -m easy_install pip
+          python3 -m pip install requests openmldb pytest
+          python3 -m pytest test/integration-test/openmldb-test-python --junit-xml=pytest.xml
 
       - name: upload ut results
         if: always()
