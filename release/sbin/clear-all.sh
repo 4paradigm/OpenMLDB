@@ -39,10 +39,10 @@ else
   dirname=""
   while IFS= read -r line
   do
-    if echo $line | grep -q '^#'; then
+    if echo "$line" | grep -q '^#'; then
       continue
     fi
-    if echo $line | grep -v "zk_root_path" | grep -q "root_path"; then
+    if echo "$line" | grep -v "zk_root_path" | grep -q "root_path"; then
       cur_dirname=$(echo "${line}" | awk -F '=' '{print $2}')
       dirname="${dirname} ${cur_dirname}"
     fi
