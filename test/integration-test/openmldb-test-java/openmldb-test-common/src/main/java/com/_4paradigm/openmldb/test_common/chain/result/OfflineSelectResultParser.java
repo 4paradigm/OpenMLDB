@@ -33,6 +33,9 @@ public class OfflineSelectResultParser extends AbstractResultHandler {
                 offlineResult.add(offlineRow);
             }
             openMLDBResult.setOfflineResult(offlineResult);
+        } else {
+            openMLDBResult.setOk(false);
+            openMLDBResult.setMsg("Select result is null");
         }
     }
 }

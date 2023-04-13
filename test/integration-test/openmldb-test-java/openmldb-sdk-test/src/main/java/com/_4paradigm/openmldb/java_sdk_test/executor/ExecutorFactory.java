@@ -99,6 +99,8 @@ public class ExecutorFactory {
                 return new LongWindowExecutor(executor,sqlCase,false,false,type);
             case kJob:
                 return new JobExecutor(executor,sqlCase,type);
+            case KOfflineJob:
+                return new OfflineJobExecuter(executor,sqlCase,type);
         }
         return null;
     }
