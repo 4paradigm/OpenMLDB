@@ -392,8 +392,13 @@ public class OpenMLDBDeploy {
             ExecutorUtil.run("wget -P "+testPath+" -q "+ OpenMLDBDeployConfig.getSparkUrl(version));
             String tarName = ExecutorUtil.run("ls "+ testPath +" | grep spark.tgz").get(0);
             ExecutorUtil.run("tar -zxvf " + testPath + "/"+tarName+" -C "+testPath);
+            // tar -zxvf /github/home/openmldb-auto-test/0.7.2/spark-3.2.1-bin-openmldbspark.tgz -C /github/home/openmldb-auto-test/0.7.2
             String sparkDirectoryName = ExecutorUtil.run("ls "+ testPath +" | grep spark | grep  -v .tgz ").get(0);
             String sparkPath = testPath+"/"+sparkDirectoryName;
+
+            // tobedev: delete curator packages
+            ExecutorUtil.run("rm -rf " + sparkPath + "/jars/curator*jar");
+
             this.sparkHome = sparkPath;
             return sparkPath;
         }catch (Exception e){
