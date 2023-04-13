@@ -35,7 +35,7 @@ import java.sql.Statement;
 public class TestYarnOfflineJob extends OpenMLDBTest {
 
     @Story("YarnYamlCase")
-    @Test(dataProvider = "getCase",enabled = false)
+    @Test(dataProvider = "getCase",enabled = true)
     @Yaml(filePaths = "integration_test/yarn/")
     public void testFunction(SQLCase testCase) throws Exception {
         ExecutorFactory.build(executor, testCase, SQLCaseType.KOfflineJob).run();
