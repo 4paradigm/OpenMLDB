@@ -44,7 +44,7 @@ jobs:
       - name: run test
         run: |
           python3 -m easy_install pip
-          python3 -m pip install requests openmldb pytest
+          python3 -m pip install requests zookeeper openmldb pytest
           python3 -m pytest test/integration-test/openmldb-test-python --junit-xml=pytest.xml
 
       - name: upload ut results

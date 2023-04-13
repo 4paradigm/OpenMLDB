@@ -17,8 +17,7 @@
 
 set -eE -x
 CURRENT_DIR=$(dirname "$0")
-echo ${CURRENT_DIR}
-pushd ${CURRENT_DIR}
+pushd "${CURRENT_DIR}"
 mkdir -p "openmldb"
 cp -r ../../../release/* ./openmldb/
 cp -f ../../../build/bin/openmldb ./openmldb/bin/
