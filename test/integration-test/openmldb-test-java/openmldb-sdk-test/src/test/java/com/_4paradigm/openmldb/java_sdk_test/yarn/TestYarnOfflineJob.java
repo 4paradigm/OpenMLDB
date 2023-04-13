@@ -35,32 +35,23 @@ import java.sql.Statement;
 public class TestYarnOfflineJob extends OpenMLDBTest {
 
     @Story("YarnYamlCase")
-    @Test(dataProvider = "getCase",enabled = false)
+    @Test(dataProvider = "getCase",enabled = true)
     @Yaml(filePaths = "integration_test/yarn/")
     public void testFunction(SQLCase testCase) throws Exception {
         ExecutorFactory.build(executor, testCase, SQLCaseType.KOfflineJob).run();
     }
 
     @Story("YarnShowJobLog")
-    @Test(enabled = true)
+    @Test(enabled = false)
     public void testShowJoblog() {
         Statement statement = executor.getStatement();
         try {
             statement.execute("SET @@execute_mode='offline'");
             statement.execute("SELECT 1");
-
-            try {
-                System.out.println("Sleep 60 seconds to wait to joblog");
-                Thread.sleep(60000);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
-
             statement.execute("SHOW JOBLOG 1");
             ResultSet resultset = statement.getResultSet();
             resultset.next();
             String result = resultset.getString(1);
-            System.out.println(result);
             assert(!result.isEmpty());
         } catch (SQLException e) {
             e.printStackTrace();
