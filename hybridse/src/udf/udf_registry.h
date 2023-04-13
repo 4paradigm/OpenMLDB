@@ -779,6 +779,15 @@ struct FuncArgTypeCheckHelper {
         std::is_same<Arg, typename CCallDataTypeTrait<CArg>::LiteralTag>::value;
 };
 
+template <typename, typename>
+struct FuncTupleRetTypeCheckHelper {
+    using Remain = void;
+    static const bool value = false;
+};
+
+// FuncRetTypeCheckHelper
+// checker for void functions that writes return values to last one or two parameters
+// intend to used for void funtions only
 template <typename Ret, typename>
 struct FuncRetTypeCheckHelper {
     static const bool value = false;
@@ -786,20 +795,32 @@ struct FuncRetTypeCheckHelper {
 template <typename Ret>
 struct FuncRetTypeCheckHelper<Ret, std::tuple<Ret*>> {
     static const bool value = true;
+    using RetType = Ret;
+};
+template <typename Ret>
+struct FuncRetTypeCheckHelper<Ret, std::tuple<Ret*, bool*>> {
+    static const bool value = true;
+    using RetType = Nullable<Ret>;
 };
 template <typename Ret>
 struct FuncRetTypeCheckHelper<Nullable<Ret>, std::tuple<Ret*, bool*>> {
     static const bool value = true;
+    using RetType = Nullable<Ret>;
 };
 template <typename Ret>
 struct FuncRetTypeCheckHelper<Opaque<Ret>, std::tuple<Ret*>> {
     static const bool value = true;
+    using RetType = Opaque<Ret>;
 };
 
-template <typename, typename>
-struct FuncTupleRetTypeCheckHelper {
-    using Remain = void;
-    static const bool value = false;
+template <typename... TupleArgs, typename... CArgs>
+struct FuncRetTypeCheckHelper<Tuple<TupleArgs...>, std::tuple<CArgs...>> {
+    using RecCheck = FuncTupleRetTypeCheckHelper<std::tuple<TupleArgs...>,
+                                                 std::tuple<CArgs...>>;
+    using RetType = Tuple<TupleArgs...>;
+    static const bool value =
+        ConditionAnd<RecCheck::value, std::is_same<typename RecCheck::Remain,
+                                                   std::tuple<>>::value>::value;
 };
 
 template <typename TupleHead, typename... TupleTail, typename CArgHead,
@@ -820,6 +841,7 @@ struct FuncTupleRetTypeCheckHelper<
     std::tuple<Nullable<TupleHead>, TupleTail...>,
     std::tuple<CArgHead, bool*, CArgTail...>> {
     using HeadCheck = FuncRetTypeCheckHelper<TupleHead, std::tuple<CArgHead>>;
+
     using TailCheck = FuncTupleRetTypeCheckHelper<std::tuple<TupleTail...>,
                                                   std::tuple<CArgTail...>>;
     using Remain = typename TailCheck::Remain;
@@ -847,15 +869,6 @@ template <typename... CArgs>
 struct FuncTupleRetTypeCheckHelper<std::tuple<>, std::tuple<CArgs...>> {
     static const bool value = true;
     using Remain = std::tuple<CArgs...>;
-};
-
-template <typename... TupleArgs, typename... CArgs>
-struct FuncRetTypeCheckHelper<Tuple<TupleArgs...>, std::tuple<CArgs...>> {
-    using RecCheck = FuncTupleRetTypeCheckHelper<std::tuple<TupleArgs...>,
-                                                 std::tuple<CArgs...>>;
-    static const bool value =
-        ConditionAnd<RecCheck::value, std::is_same<typename RecCheck::Remain,
-                                                   std::tuple<>>::value>::value;
 };
 
 template <typename, typename>
@@ -914,11 +927,23 @@ struct FuncTupleArgTypeCheckHelper<std::tuple<>, std::tuple<CArgs...>> {
 //==================================================================//
 //             FuncTypeCheckHelper                                  //
 //==================================================================//
+//
+//  compile time assertion between Group 1 types and Group 2 types
+//  provided by a external registered bultin function.
 template <typename Ret, typename Args, typename CRet, typename CArgs>
 struct FuncTypeCheckHelper {
+    // true if two group types are compatible
     static const bool value = false;
+    // return type in Group 1
+    using RetType = void;
+    // true if return value is stored in last parameters in C signature.
+    // e.g void fn(CArgs..., CRet ret)
+    static const bool return_by_arg = false;
 };
 
+// Ret (ArgHead, ArgTail...)
+// <->
+// CRet (CArgHead, CArgTail...)
 template <typename Ret, typename ArgHead, typename... ArgTail, typename CRet,
           typename CArgHead, typename... CArgTail>
 struct FuncTypeCheckHelper<Ret, std::tuple<ArgHead, ArgTail...>, CRet,
@@ -928,10 +953,17 @@ struct FuncTypeCheckHelper<Ret, std::tuple<ArgHead, ArgTail...>, CRet,
     using TailCheck = FuncTypeCheckHelper<Ret, std::tuple<ArgTail...>, CRet,
                                           std::tuple<CArgTail...>>;
 
+    using RetType = typename TailCheck::RetType;
+
+    static const bool return_by_arg = TailCheck::return_by_arg;
+
     static const bool value =
         ConditionAnd<HeadCheck::value, TailCheck::value>::value;
 };
 
+// Ret (Nullable<ArgHead>, ArgTail...)
+// <->
+// CRet (CArgHead, bool, CArgTail...)
 template <typename Ret, typename ArgHead, typename... ArgTail, typename CRet,
           typename CArgHead, typename... CArgTail>
 struct FuncTypeCheckHelper<Ret, std::tuple<Nullable<ArgHead>, ArgTail...>, CRet,
@@ -941,10 +973,17 @@ struct FuncTypeCheckHelper<Ret, std::tuple<Nullable<ArgHead>, ArgTail...>, CRet,
     using TailCheck = FuncTypeCheckHelper<Ret, std::tuple<ArgTail...>, CRet,
                                           std::tuple<CArgTail...>>;
 
+    using RetType = typename TailCheck::RetType;
+
+    static const bool return_by_arg = TailCheck::return_by_arg;
+
     static const bool value =
         ConditionAnd<HeadCheck::value, TailCheck::value>::value;
 };
 
+// Ret (Tuple<TupleArgs...>, ArgTail...)
+// <->
+// CRet ([CArgHead, CArgTail1...], CArgTail2...)
 template <typename Ret, typename... TupleArgs, typename... ArgTail,
           typename CRet, typename CArgHead, typename... CArgTail>
 struct FuncTypeCheckHelper<Ret, std::tuple<Tuple<TupleArgs...>, ArgTail...>,
@@ -956,32 +995,56 @@ struct FuncTypeCheckHelper<Ret, std::tuple<Tuple<TupleArgs...>, ArgTail...>,
     using TailCheck = FuncTypeCheckHelper<Ret, std::tuple<ArgTail...>, CRet,
                                           typename HeadCheck::Remain>;
 
+    using RetType = typename TailCheck::RetType;
+
+    static const bool return_by_arg = TailCheck::return_by_arg;
+
     static const bool value =
         ConditionAnd<HeadCheck::value, TailCheck::value>::value;
 };
 
 // All input arg check passed, check return by arg convention
+template <typename CArgHead, typename... CArgTail>
+struct FuncTypeCheckHelper<void, std::tuple<>, void,
+                           std::tuple<CArgHead, CArgTail...>> {
+    using RetCheck =
+        FuncRetTypeCheckHelper<typename CCallDataTypeTrait<CArgHead>::LiteralTag, std::tuple<CArgHead, CArgTail...>>;
+
+    static const bool value = RetCheck::value;
+    using RetType = typename RetCheck::RetType;
+    static const bool return_by_arg = true;
+};
+
+// Ret ()
+// <->
+// void (CArgHead, CArgTail...)
 template <typename Ret, typename CArgHead, typename... CArgTail>
 struct FuncTypeCheckHelper<Ret, std::tuple<>, void,
                            std::tuple<CArgHead, CArgTail...>> {
-    static const bool value =
-        FuncRetTypeCheckHelper<Ret, std::tuple<CArgHead, CArgTail...>>::value;
+    using RetCheck =
+        FuncRetTypeCheckHelper<Ret, std::tuple<CArgHead, CArgTail...>>;
+
+    static const bool value = RetCheck::value;
+    using RetType = Ret;
+    static const bool return_by_arg = true;
 };
 
 // All input arg check passed, check simple return
 template <typename Ret, typename CRet>
 struct FuncTypeCheckHelper<Ret, std::tuple<>, CRet, std::tuple<>> {
     static const bool value = FuncArgTypeCheckHelper<Ret, CRet>::value;
+    using RetType = Ret;
+    static const bool return_by_arg = false;
 };
 
 template <typename>
 struct TypeAnnotatedFuncPtrImpl;  // primitive decl
 
-// two group of type system required here
-// - group 1: type system in udf registry
-//   they are pre-defined types that linked to SQL data type,
-// - group 2: type system appear in external udf function
-//   the actual paramter types that in C function
+// Category of type systems:
+// - (group 0): the SQL types, int16, int32, bool, string, date...,
+//   we represent those types in CPP source with the group 1 types below
+// - (group 1) SQL types represented by CPP.
+// - (group 2) C/CPP types: the actual paramter or return types in C functions.
 //
 // Till this moment, those types are, from
 //   function param type (group 2) -> udf registry type (group 1) -> SQL data type:
@@ -1006,8 +1069,9 @@ struct TypeAnnotatedFuncPtrImpl;  // primitive decl
 // Ret and EnvArgs belong to udf registry type (group 1), CRet and CArgs belong to function type (group 2)
 template <typename Ret, typename EnvArgs, typename CRet, typename CArgs>
 struct StaticFuncTypeCheck {
+    using Checker = FuncTypeCheckHelper<Ret, EnvArgs, CRet, CArgs>;
+
     static void check() {
-        using Checker = FuncTypeCheckHelper<Ret, EnvArgs, CRet, CArgs>;
         static_assert(Checker::value,
                       "C function can not match expect abstract types");
     }
@@ -1029,60 +1093,18 @@ struct TypeAnnotatedFuncPtrImpl<std::tuple<Args...>> {
     template <typename CRet, typename... CArgs>
     TypeAnnotatedFuncPtrImpl(CRet (*fn)(CArgs...)) {  // NOLINT
         // Check signature, assume return type is same
-        StaticFuncTypeCheck<typename CCallDataTypeTrait<CRet>::LiteralTag,
-                            std::tuple<Args...>, CRet,
-                            std::tuple<CArgs...>>::check();
+        using CheckType = StaticFuncTypeCheck<typename CCallDataTypeTrait<CRet>::LiteralTag, std::tuple<Args...>, CRet,
+                                              std::tuple<CArgs...>>;
+        CheckType::check();
+
+        using RetType = typename CheckType::Checker::RetType;
 
         this->ptr = reinterpret_cast<void*>(fn);
-        this->return_by_arg = false;
-        this->return_nullable = false;
-        this->get_ret_type_func = [](node::NodeManager* nm,
-                                     node::TypeNode** ret) {
-            *ret =
-                DataTypeTrait<typename CCallDataTypeTrait<CRet>::LiteralTag>::
-                    to_type_node(nm);
+        this->return_by_arg = CheckType::Checker::return_by_arg;
+        this->return_nullable = IsNullableTrait<RetType>::value;
+        this->get_ret_type_func = [](node::NodeManager* nm, node::TypeNode** ret) {
+            *ret = DataTypeTrait<RetType>::to_type_node(nm);
         };
-    }
-
-    // Create checked instance given abstract literal return type
-    template <typename Ret, typename... CArgs>
-    static auto RBA(void (*fn)(CArgs...)) {  // NOLINT
-        // Check signature
-        StaticFuncTypeCheck<Ret, std::tuple<Args...>, void,
-                            std::tuple<CArgs...>>::check();
-
-        TypeAnnotatedFuncPtrImpl<std::tuple<Args...>> res;
-        res.ptr = reinterpret_cast<void*>(fn);
-        res.return_by_arg = true;
-        res.return_nullable = IsNullableTrait<Ret>::value;
-        res.get_ret_type_func = [](node::NodeManager* nm,
-                                   node::TypeNode** ret) {
-            *ret = DataTypeTrait<Ret>::to_type_node(nm);
-        };
-        return res;
-    }
-
-    template <typename A1>
-    TypeAnnotatedFuncPtrImpl(void (*fn)(A1*)) {  // NOLINT
-        *this = RBA<typename CCallDataTypeTrait<A1*>::LiteralTag, A1*>(fn);
-    }
-
-    template <typename A1, typename A2>
-    TypeAnnotatedFuncPtrImpl(void (*fn)(A1, A2*)) {  // NOLINT
-        *this = RBA<typename CCallDataTypeTrait<A2*>::LiteralTag, A1, A2*>(fn);
-    }
-
-    template <typename A1, typename A2, typename A3>
-    TypeAnnotatedFuncPtrImpl(void (*fn)(A1, A2, A3*)) {  // NOLINT
-        *this =
-            RBA<typename CCallDataTypeTrait<A3*>::LiteralTag, A1, A2, A3*>(fn);
-    }
-
-    template <typename A1, typename A2, typename A3, typename A4>
-    TypeAnnotatedFuncPtrImpl(void (*fn)(A1, A2, A3, A4*)) {  // NOLINT
-        *this =
-            RBA<typename CCallDataTypeTrait<A4*>::LiteralTag, A1, A2, A3, A4*>(
-                fn);
     }
 
     TypeAnnotatedFuncPtrImpl() {}
@@ -1312,8 +1334,10 @@ class ExternalTemplateFuncRegistryHelper {
     template <typename... Args>
     ExternalTemplateFuncRegistryHelper& args_in() {
         cur_defs_ = {RegisterSingle<Args, typename FTemplate<Args>::Args>()(helper_, &FTemplate<Args>::operator())...};
-        for (auto def : cur_defs_) {
-            def->SetReturnByArg(return_by_arg_);
+        if (return_by_arg_.has_value()) {
+            for (auto def : cur_defs_) {
+                def->SetReturnByArg(return_by_arg_.value());
+            }
         }
         return *this;
     }
@@ -1365,7 +1389,7 @@ class ExternalTemplateFuncRegistryHelper {
 
     std::string name_;
     UdfLibrary* library_;
-    bool return_by_arg_ = false;
+    std::optional<bool> return_by_arg_;
     std::vector<node::ExternalFnDefNode*> cur_defs_;
     ExternalFuncRegistryHelper helper_;
 };
