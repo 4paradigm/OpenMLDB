@@ -76,7 +76,7 @@ class StatusChecker:
     def _get_information_taskmanager(self, endpoint):
         """get informations from taskmanager"""
         try:
-            response = requests.post(f"http://{endpoint}/openmldb.taskmanager.TaskManagerServer/GetVersion", json={}, timeout=1)  # the connection timeout is 1 second
+            response = requests.post(f"http://{endpoint}/openmldb.taskmanager.TaskManagerServer/GetVersion", json={})  # the connection timeout is 1 second
             response.raise_for_status()
         except Exception as e:
             err = endpoint + "\n" + str(e) + "\n"
