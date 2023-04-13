@@ -223,7 +223,15 @@ struct Round {
 
     void operator()(double val, V decimal_number, StringRef *out) {
         std::stringstream ss;
-        ss << std::setprecision(decimal_number) << val;
+
+        if (decimal_number > 0) {
+            double integer = std::trunc(val);
+            double abs_left = std::abs(val - integer);
+            ss << integer << "." << std::setfill('0') << std::right << std::setw(decimal_number)
+               << std::round(abs_left * std::pow(10, decimal_number));
+        } else {
+            ss << std::round(val * std::pow(10, decimal_number)) / std::pow(10, decimal_number);
+        }
 
         std::string str = ss.str();
         auto sz = str.size();

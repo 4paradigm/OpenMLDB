@@ -1627,6 +1627,11 @@ void DefaultUdfLibrary::InitMathUdf() {
         .doc(R"(
             @brief Returns expr rounded to d decimal places using HALF_UP rounding mode.
 
+            @param numeric_expr Expression evaluated to double or can be casted to
+            @param d Integer decimal place
+
+            When `d` is a positive, `numeric_expr` is rounded to the number of decimal positions specified by `d`. When `d` is a negative , `numeric_expr` is rounded on the left side of the decimal point.
+
             Example:
 
             @code{.sql}
@@ -1639,9 +1644,6 @@ void DefaultUdfLibrary::InitMathUdf() {
                 SELECT round(123, -1)
                 -- 120
             @endcode
-
-            @param expr Expr evaluated to double or can be casted to
-            @param d Integer decimal place
 
             @since 0.1.0)")
         .args_in<int64_t, int16_t, int32_t>();

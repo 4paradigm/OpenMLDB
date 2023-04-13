@@ -609,12 +609,20 @@ TEST_F(UdfIRBuilderTest, PowerUdfTest) {
                                       2147483648, 65536);
 }
 
-TEST_F(UdfIRBuilderTest, RoundUdfTest) {
-    CheckUdf<int32_t, int16_t>("round", round(5), 5);
-    CheckUdf<int32_t, int32_t>("round", round(65536), 65536);
-    CheckUdf<int64_t, int64_t>("round", round(2147483648), 2147483648);
-    CheckUdf<double, float>("round", roundf(0.5f), 0.5f);
-    CheckUdf<double, double>("round", round(0.5), 0.5);
+TEST_F(UdfIRBuilderTest, RoundWithPositiveD) {
+    std::initializer_list<std::pair<double, std::string>> cases = {
+        // before decimal position = 0
+        {0.5, "0.50"}, {0.12, "0.12"}, {0.123, "0.12"}, {0.1478, "0.15"},
+        {0, "0.00"}, {0.012, "0.01"}, {0.0012, "0.00"}, {0.0078, "0.01"},
+        // before decimal position > 0
+        {1.1, "1.10" }, {1.14, "1.14"}, {1.177, "1.18"}, {1.171, "1.17"},
+        {21.1, "21.10" }, {21.14, "21.14"}, {21.177, "21.18"}, {21.171, "21.17"},
+        {1889, "1889.00"}
+    };
+
+    for (auto& val : cases) {
+        CheckUdf<StringRef, double, int32_t>("round", val.second, val.first, 2);
+    }
 }
 
 TEST_F(UdfIRBuilderTest, SinUdfTest) {
