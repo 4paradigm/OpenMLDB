@@ -79,7 +79,7 @@ jobs:
 
   java-sdk-test-cluster-0:
     if: ${{ github.event.inputs.EXEC_TEST_TYPE == 'all' || github.event.inputs.EXEC_TEST_TYPE == 'java' }}
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     container:
       image: ghcr.io/4paradigm/hybridsql:latest
     env:
@@ -101,7 +101,7 @@ jobs:
 
   java-sdk-yarn:
     if: ${{ github.event.inputs.EXEC_TEST_TYPE == 'all' || github.event.inputs.EXEC_TEST_TYPE == 'yarn' }}
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     container:
       image: ghcr.io/4paradigm/hybridsql:latest
     env:
