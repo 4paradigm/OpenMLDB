@@ -464,6 +464,14 @@ public class OpenMLDBDeploy {
                 ExecutorUtil.run("sh "+testPath+task_manager_name+"/bin/start.sh start taskmanager");
             }
 
+            // sh /github/home/openmldb-auto-test/0.7.2/openmldb-task_manager-1/bin/start.sh
+            String command = "cat " +testPath+task_manager_name + "/taskmanager/bin/logs/taskmanager.log";
+            List<String> result = ExecutorUtil.run(command);
+            System.out.println("----------------- tobedev Try to print taskmanager log:");
+            for (String line : result) {
+                System.out.println(line);
+            }
+
             boolean used = LinuxUtil.checkPortIsUsed(port,3000,30);
             if(used){
                 log.info("task manager部署成功，port："+port);
@@ -472,6 +480,9 @@ public class OpenMLDBDeploy {
         }catch (Exception e){
             e.printStackTrace();
         }
+
+
+
         throw new RuntimeException("task manager部署失败");
     }
 
