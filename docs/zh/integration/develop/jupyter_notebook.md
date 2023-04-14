@@ -12,7 +12,7 @@ Notebook 与 OpenMLDB 第一个集成点就是 SQL 魔法函数 (magic function)
 
   ```Python
   import openmldb
-  db = openmldb.dbapi.connect('demo_db','0.0.0.0:2181','/openmldb')
+  db = openmldb.dbapi.connect(database='demo_db',zk='0.0.0.0:2181',zkPath='/openmldb')
   openmldb.sql_magic.register(db)
   ```
 
