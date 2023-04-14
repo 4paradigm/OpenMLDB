@@ -59,7 +59,7 @@
 
 | OpenMLDB 数据格式 | Hive 数据格式 |
 | ----------------- | ------------- |
-| BOOL              | BOOL       |
+| BOOL              | BOOL          |
 | SMALLINT          | SMALLINT      |
 | INT               | INT           |
 | BIGINT            | BIGINT        |
@@ -67,6 +67,7 @@
 | DOUBLE            | DOUBLE        |
 | DATE              | DATE          |
 | TIMESTAMP         | TIMESTAMP     |
+| STRING            | STRING        |
 
 ## 通过 `LIKE` 语法快速建表
 
