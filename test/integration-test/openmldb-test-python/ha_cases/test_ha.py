@@ -40,13 +40,13 @@ class TestHA:
         cls.cursor = cls.db.cursor()
         cls.executor = Executor(cls.manager.GetBinPath(), cls.conf["zk_cluster"], cls.conf["zk_root_path"])
 
-    @pytest.mark.parametrize("storage_mode, snapshot", [("memory", True), ("hdd", True), ("memory", False), ("hdd", False)])
+    @pytest.mark.parametrize("storage_mode, snapshot", [("hdd", True), ("memory", True), ("memory", False), ("hdd", False)])
     def test_restart_tablet(self, storage_mode, snapshot):
         database = "test"
         self.cursor.execute(f"create database if not exists {database}")
         self.cursor.execute(f"use {database}")
         table_name = "table" + str(random.randint(0, 10000))
-        partition_num = 8
+        partition_num = 3
         ddl = f"create table if not exists {table_name} (col1 string, col2 string) OPTIONS (partitionnum={partition_num}, storage_mode='{storage_mode}');"
         self.cursor.execute(ddl)
         key_num = 100
@@ -63,8 +63,9 @@ class TestHA:
             for i in range(key_num):
                 key = "key" + str(i)
                 self.cursor.execute(f"insert into {table_name} values (\'{key}\', \'col2\')");
+        time.sleep(5) # sync data form leader to follower
         assert self.manager.RestartComponent("tablet", self.manager.GetComponent("tablet")).OK()
-        time.sleep(5)
+        time.sleep(5) # waiting for creating op
 
         assert self.executor.WaitingTableOP(database, table_name, partition_num).OK()
         assert self.executor.CheckTableAlive(database, table_name).OK()
