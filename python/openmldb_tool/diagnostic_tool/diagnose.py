@@ -104,7 +104,7 @@ def insepct_online(args):
             # so we print warnings alone
             print(f"full warnings:\n{t[13]}")
             fails.append(f"{t[2]}.{t[1]}")
-    
+
     assert not fails, f"unhealthy tables: {fails}"
     print(f"all tables are healthy")
 

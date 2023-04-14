@@ -41,7 +41,7 @@ class StatusChecker:
         component_map = self._get_components(show=False)
         t = PrettyTable()
         t.title = "Connections"
-        t.field_names = ["Endpoint", "version", "cost_time", "extra"]
+        t.field_names = ["Endpoint", "Version", "Cost_time", "Extra"]
         err = ""
         taskmanager = component_map.pop("taskmanager")  # extract taskmanager
         other_components = [component for role in component_map.values() for component in role]  # extract other components
