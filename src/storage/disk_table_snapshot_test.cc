@@ -17,50 +17,27 @@
 #include <gflags/gflags.h>
 #include <google/protobuf/io/zero_copy_stream_impl.h>
 #include <google/protobuf/text_format.h>
-#include <sched.h>
-#include <sys/stat.h>
-#include <sys/types.h>
-#include <time.h>
 #include <unistd.h>
-
-#include <iostream>
 
 #include "base/file_util.h"
 #include "base/glog_wrapper.h"
-#include "base/strings.h"
-#include "codec/schema_codec.h"
-#include "codec/sdk_codec.h"
-#include "common/timer.h"
 #include "gtest/gtest.h"
-#include "log/log_writer.h"
-#include "log/status.h"
 #include "proto/tablet.pb.h"
-#include "storage/binlog.h"
 #include "storage/disk_table.h"
 #include "storage/disk_table_snapshot.h"
-#include "storage/ticket.h"
 #include "test/util.h"
 
 DECLARE_string(hdd_root_path);
 
 using ::openmldb::api::LogEntry;
 namespace openmldb {
-namespace log {
-class WritableFile;
-}
 namespace storage {
-
-static const ::openmldb::base::DefaultComparator scmp;
-
-using ::openmldb::codec::SchemaCodec;
 
 class SnapshotTest : public ::testing::Test {
  public:
     SnapshotTest() {}
     ~SnapshotTest() {}
 };
-
-inline uint32_t GenRand() { return rand() % 10000000 + 1; }
 
 int GetManifest(const std::string file, ::openmldb::api::Manifest* manifest) {
     int fd = open(file.c_str(), O_RDONLY);
@@ -130,9 +107,7 @@ TEST_F(SnapshotTest, MakeSnapshot) {
 
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
-    srand(time(NULL));
     ::google::ParseCommandLineFlags(&argc, &argv, true);
-    ::openmldb::base::SetLogLevel(DEBUG);
     ::openmldb::test::TempPath tmp_path;
     FLAGS_hdd_root_path = tmp_path.GetTempPath();
     return RUN_ALL_TESTS();
