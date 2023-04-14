@@ -119,24 +119,19 @@ class RenamePlanNode : public UnaryPlanNode {
     const std::string table_;
 };
 
-// Refer to a table or a CTE name in with clause
+// Refer to a physical table or a CTE entry in with clause
 class TablePlanNode : public LeafPlanNode {
  public:
     TablePlanNode(const std::string &db, const std::string &table)
-        : LeafPlanNode(kPlanTypeTable), db_(db), table_(table), is_primary_(false) {}
+        : LeafPlanNode(kPlanTypeTable), db_(db), table_(table) {}
     void Print(std::ostream &output, const std::string &org_tab) const override;
-    virtual bool Equals(const PlanNode *that) const;
-    const bool IsPrimary() const { return is_primary_; }
-    void SetIsPrimary(bool is_primary) { is_primary_ = is_primary; }
+    bool Equals(const PlanNode *that) const override;
     const std::string GetPathString() const {
         return db_.empty() ? table_ : db_ + "." + table_;
     }
 
     const std::string db_;
     const std::string table_;
-
- private:
-    bool is_primary_;
 };
 
 class DistinctPlanNode : public UnaryPlanNode {
@@ -238,7 +233,7 @@ class FilterPlanNode : public UnaryPlanNode {
         : UnaryPlanNode(node, kPlanTypeFilter), condition_(condition) {}
     ~FilterPlanNode() {}
     void Print(std::ostream &output, const std::string &org_tab) const override;
-    virtual bool Equals(const PlanNode *node) const;
+    bool Equals(const PlanNode *node) const override;
     const ExprNode *condition_;
 };
 
@@ -249,7 +244,7 @@ class LimitPlanNode : public UnaryPlanNode {
     ~LimitPlanNode() {}
     const int GetLimitCnt() const { return limit_cnt_; }
     void Print(std::ostream &output, const std::string &org_tab) const override;
-    virtual bool Equals(const PlanNode *node) const;
+    bool Equals(const PlanNode *node) const override;
     const int32_t limit_cnt_;
 };
 

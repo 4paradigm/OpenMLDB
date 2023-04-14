@@ -54,6 +54,7 @@ static bool ResolveColumnToSourceColumnName(const node::ColumnRefNode* col,
 bool GroupAndSortOptimized::Transform(PhysicalOpNode* in,
                                       PhysicalOpNode** output) {
     *output = in;
+    TransformCxtGuard<decltype(ctx_)> guard(&ctx_, KeysInfo(in->GetOpType(), nullptr, nullptr, nullptr, nullptr));
     switch (in->GetOpType()) {
         case PhysicalOpType::kPhysicalOpGroupBy: {
             PhysicalGroupNode* group_op = dynamic_cast<PhysicalGroupNode*>(in);
@@ -250,6 +251,8 @@ bool GroupAndSortOptimized::KeysOptimized(const SchemasContext* root_schemas_ctx
                                           Key* right_key,
                                           Sort* sort,
                                           PhysicalOpNode** new_in) {
+    TransformCxtGuard<decltype(ctx_)> guard(&ctx_, KeysInfo(in->GetOpType(), left_key, right_key, index_key, sort));
+
     if (nullptr == left_key || nullptr == index_key || !left_key->ValidKey()) {
         return false;
     }
@@ -257,6 +260,7 @@ bool GroupAndSortOptimized::KeysOptimized(const SchemasContext* root_schemas_ctx
     if (right_key != nullptr && !right_key->ValidKey()) {
         return false;
     }
+
 
     if (PhysicalOpType::kPhysicalOpDataProvider == in->GetOpType()) {
         auto scan_op = dynamic_cast<PhysicalDataProviderNode*>(in);
@@ -323,17 +327,54 @@ bool GroupAndSortOptimized::KeysOptimized(const SchemasContext* root_schemas_ctx
                 DCHECK(expr != nullptr);
             }
 
-            if (right_key != nullptr) {
-                right_key->set_keys(new_right_keys);
+            // write new keys
+            // FIXME:(#2457) last join (filter op<optimized>) not supported in iterator
+            bool has_filter = false;
+            bool has_join = false;
+            Sort* join_sort = nullptr;
+            for (auto it = ctx_.rbegin(); it != ctx_.rend(); ++it) {
+                switch (it->type) {
+                    case vm::kPhysicalOpJoin:
+                    case vm::kPhysicalOpRequestJoin: {
+                        if (has_filter) {
+                            has_join = true;
+                            join_sort = it->right_sort;
+                        }
+                        break;
+                    }
+                    case vm::kPhysicalOpFilter: {
+                        has_filter = true;
+                        break;
+                    }
+                    default:
+                        break;
+                }
             }
-            index_key->set_keys(new_index_keys);
-            left_key->set_keys(new_left_keys);
+            bool support_opt = !(has_filter && has_join);
+            if (scan_op->provider_type_ == vm::kProviderTypeTable || support_opt) {
+                // key update is skipped if optimized scan op already and ctx size >= 2
+
+                // consider the case when a REQUEST_JOIN(, FILTER(DATA)) tree, both REQUEST_JOIN and FILTER node
+                // can optimize DATA node, if the FILTER node optimzed data node already, request join node
+                // should be aware of the optimization
+
+                if (right_key != nullptr) {
+                    right_key->set_keys(new_right_keys);
+                }
+                index_key->set_keys(new_index_keys);
+                left_key->set_keys(new_left_keys);
+            }
+
             // Clear order expr list if we optimized orders
-            if (nullptr != sort && nullptr != sort->orders_ && nullptr != sort->orders_->GetOrderExpression(0)) {
-                auto first_order_expression = sort->orders_->GetOrderExpression(0);
-                sort->set_orders(dynamic_cast<node::OrderByNode*>(
-                    node_manager_->MakeOrderByNode(
-                        node_manager_->MakeExprList(
+            auto* mut_sort = sort;
+            if (mut_sort == nullptr) {
+                mut_sort = join_sort;
+            }
+            if (nullptr != mut_sort && nullptr != mut_sort->orders_ &&
+                nullptr != mut_sort->orders_->GetOrderExpression(0)) {
+                auto first_order_expression = mut_sort->orders_->GetOrderExpression(0);
+                mut_sort->set_orders(
+                    dynamic_cast<node::OrderByNode*>(node_manager_->MakeOrderByNode(node_manager_->MakeExprList(
                         node_manager_->MakeOrderExpression(nullptr, first_order_expression->is_asc())))));
             }
             *new_in = partition_op;
@@ -369,6 +410,23 @@ bool GroupAndSortOptimized::KeysOptimized(const SchemasContext* root_schemas_ctx
             return false;
         }
         *new_in = new_op;
+        return true;
+    } else if (PhysicalOpType::kPhysicalOpFilter == in->GetOpType()) {
+        // respect filter's optimize result, try optimize only if not optimized
+        PhysicalFilterNode* filter_op = dynamic_cast<PhysicalFilterNode*>(in);
+
+        PhysicalOpNode* new_depend;
+        if (!KeysOptimized(root_schemas_ctx, in->producers()[0], left_key, index_key, right_key, sort, &new_depend)) {
+            return false;
+        }
+        PhysicalFilterNode* new_filter = nullptr;
+        auto status = plan_ctx_->CreateOp<PhysicalFilterNode>(&new_filter, new_depend,
+                                                              filter_op->filter());
+        if (!status.isOK()) {
+            LOG(WARNING) << "Fail to create filter op: " << status;
+            return false;
+        }
+        *new_in = new_filter;
         return true;
     }
     return false;
