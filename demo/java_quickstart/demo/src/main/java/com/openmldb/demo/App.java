@@ -21,6 +21,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.sql.Timestamp;
 import java.sql.Types;
 import java.util.ArrayList;
@@ -39,14 +40,20 @@ public class App {
     private String zkPath = "/openmldb";
     private String db = "mydb16";
     private String table = "trans";
+    private String deploymentName = "d1";
 
     public static void main(String[] args) {
+        // 如果中途出现异常，将无法清理掉创建的数据库和表，需要手动清理，否则重试将会与预期不符
         App demo = new App();
         try {
-            // 初始化构造SqlExecutor
+            // 初始化构造 SqlExecutor
             demo.init();
             demo.createDatabase();
+            // set online and default db in SqlExecutor, no need to set in the below sql
+            demo.setOnlineAndDB();
+
             demo.createTable();
+            demo.createDeployment();
             // 通过insert语句插入
             demo.insertWithoutPlaceholder();
             // 通过placeholder的方式插入。placeholder方式不会重复编译sql, 在性能上会比直接insert好很多
@@ -57,6 +64,7 @@ public class App {
             demo.requestSelect();
             // 执行 deployment
             demo.executeDeployment();
+            demo.dropDeployment();
             // 删除表
             demo.dropTable();
             // 删除数据库
@@ -95,6 +103,16 @@ public class App {
         }
     }
 
+    private void setOnlineAndDB() {
+        java.sql.Statement state = sqlExecutor.getStatement();
+        try {
+            state.execute("SET @@execute_mode='online';");
+            state.execute("use " + db + ";");
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
     private void createTable() {
         String createTableSql = "create table " + table + "(c1 string,\n" +
                 "                   c3 int,\n" +
@@ -106,7 +124,6 @@ public class App {
                 "                   index(key=c1, ts=c7));";
         java.sql.Statement state = sqlExecutor.getStatement();
         try {
-            state.execute("use " + db + ";");
             state.execute(createTableSql);
         } catch (Exception e) {
             e.printStackTrace();
@@ -117,6 +134,30 @@ public class App {
         java.sql.Statement state = sqlExecutor.getStatement();
         try {
             state.execute("drop table " + table);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void createDeployment() {
+        java.sql.Statement state = sqlExecutor.getStatement();
+        try {
+            String selectSql = String.format("SELECT c1, c3, sum(c4) OVER w1 as w1_c4_sum FROM %s WINDOW w1 AS " +
+                    "(PARTITION BY %s.c1 ORDER BY %s.c7 ROWS_RANGE BETWEEN 2d PRECEDING AND CURRENT ROW);", table,
+                    table, table);
+            // 上线一个Deployment
+            String deploySql = String.format("DEPLOY %s %s", deploymentName, selectSql);
+            // set return null rs, don't check the returned value, it's false
+            state.execute(deploySql);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void dropDeployment() {
+        java.sql.Statement state = sqlExecutor.getStatement();
+        try {
+            state.execute("DROP DEPLOYMENT " + deploymentName + ";");
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -173,7 +214,6 @@ public class App {
         int num = 0;
         java.sql.Statement state = sqlExecutor.getStatement();
         try {
-            state.execute("SET @@execute_mode='online';");
             boolean ret = state.execute(selectSql);
             Assert.assertTrue(ret);
             result = state.getResultSet();
@@ -237,16 +277,9 @@ public class App {
     }
 
     private void executeDeployment() {
-        String selectSql = String.format("SELECT c1, c3, sum(c4) OVER w1 as w1_c4_sum FROM %s WINDOW w1 AS " +
-                "(PARTITION BY %s.c1 ORDER BY %s.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);", table, table, table);
         PreparedStatement pstmt = null;
         ResultSet resultSet = null;
         try {
-            // 上线一个Deployment（此处使用上文的selectSql），实际生产环境通常已经上线成功
-            String deploymentName = "testDeployment";
-            String deploySql = String.format("DEPLOY %s %s;", selectSql, deploymentName);
-            sqlExecutor.executeSQL(db, deploySql);
-
             pstmt = sqlExecutor.getCallablePreparedStmt(db, deploymentName);
             // 如果是执行deployment, 可以通过名字获取preparedstatement
             // pstmt = sqlExecutor.getCallablePreparedStmt(db, deploymentName);
@@ -262,6 +295,13 @@ public class App {
             Assert.assertEquals(resultSet.getInt(2), 24);
             Assert.assertEquals(resultSet.getLong(3), 34);
             Assert.assertFalse(resultSet.next());
+
+            // reuse way
+            for (int i = 0; i < 5; i++) {
+                setData(pstmt, metaData);
+                pstmt.executeQuery();
+                // skip result check
+            }
         } catch (SQLException e) {
             e.printStackTrace();
             Assert.fail();
@@ -277,7 +317,7 @@ public class App {
             } catch (SQLException throwables) {
                 throwables.printStackTrace();
             }
-        }  
+        }
     }
 
     private void batchRequestSelect() {

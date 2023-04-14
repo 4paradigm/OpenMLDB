@@ -394,12 +394,68 @@ try {
 
 执行 Deployment ，是通过 `SqlClusterExecutor::getCallablePreparedStmt(db, deploymentName)` 接口获取 CallablePreparedStatement 。区别于上文的 SQL 请求式查询，Deployment 在服务端已上线，速度会快于 SQL 请求式查询。
 
-执行 Deployment 有以下几步：
+Deployment 使用过程分为两步：
+
+- 上线Deployment
 ```java
 // 上线一个Deployment（此处使用上文的selectSql），实际生产环境通常已经上线成功
-selectSql
+java.sql.Statement state = sqlExecutor.getStatement();
+try {
+    String selectSql = String.format("SELECT c1, c3, sum(c4) OVER w1 as w1_c4_sum FROM %s WINDOW w1 AS " +
+            "(PARTITION BY %s.c1 ORDER BY %s.c7 ROWS_RANGE BETWEEN 2d PRECEDING AND CURRENT ROW);", table,
+            table, table);
+    // 上线一个Deployment
+    String deploySql = String.format("DEPLOY %s %s", deploymentName, selectSql);
+    // set return null rs, don't check the returned value, it's false
+    state.execute(deploySql);
+} catch (Exception e) {
+    e.printStackTrace();
+}
+```
+- 执行Deployment。可以复用该 CallablePreparedStmt，`executeQuery()`将会自动清除`setXX`的请求行缓存。
+```java
+// 执行Deployment
+PreparedStatement pstmt = null;
+ResultSet resultSet = null;
+try {
+    pstmt = sqlExecutor.getCallablePreparedStmt(db, deploymentName);
+    // 如果是执行deployment, 可以通过名字获取preparedstatement
+    // pstmt = sqlExecutor.getCallablePreparedStmt(db, deploymentName);
+    ResultSetMetaData metaData = pstmt.getMetaData();
+    // 执行request模式需要在RequestPreparedStatement设置一行请求数据
+    setData(pstmt, metaData);
+    // 调用executeQuery会执行这个select sql, 然后将结果放在了resultSet中
+    resultSet = pstmt.executeQuery();
 
-// 第一步，获取CallablePreparedStatement
+    Assert.assertTrue(resultSet.next());
+    Assert.assertEquals(resultSet.getMetaData().getColumnCount(), 3);
+    Assert.assertEquals(resultSet.getString(1), "bb");
+    Assert.assertEquals(resultSet.getInt(2), 24);
+    Assert.assertEquals(resultSet.getLong(3), 34);
+    Assert.assertFalse(resultSet.next());
+
+    // reuse way
+    for (int i = 0; i < 5; i++) {
+        setData(pstmt, metaData);
+        pstmt.executeQuery();
+        // skip result check
+    }
+} catch (SQLException e) {
+    e.printStackTrace();
+    Assert.fail();
+} finally {
+    try {
+        if (resultSet != null) {
+            // result用完之后需要close
+            resultSet.close();
+        }
+        if (pstmt != null) {
+            pstmt.close();
+        }
+    } catch (SQLException throwables) {
+        throwables.printStackTrace();
+    }
+}
 ```
 
 ###  删除指定索引下某个 key 的所有数据

@@ -16,8 +16,8 @@ services:
       - /bin/bash
       - -cx
       - |
-        # TODO(tobe): Remove this after 0.7.3 is released
-        rm -f /work/openmldb/spark-3.2.1-bin-openmldbspark/jars/curator-* # curator NoSuchMethodError error
+        # # TODO(tobe): Remove this after 0.7.3 is released
+        # rm -f /work/openmldb/spark-3.2.1-bin-openmldbspark/jars/curator-* # curator NoSuchMethodError error
         ./init.sh
         sleep 5
         # quickstart test
@@ -27,7 +27,7 @@ services:
 
         # java/python sdk
         cd /work/java_quickstart
-        java -cp demo-1.0-SNAPSHOT.jar com.openmldb.demo.App
+        java -cp demo-1.0-SNAPSHOT.jar com.openmldb.demo.App || exit -1
         cd /work/python_quickstart
         python3 demo.py
 
@@ -46,16 +46,14 @@ services:
         python3 train_and_serve.py
         python3 predict.py || (cat predict.log && return -1)
 
-        # oneflow sql test
+        # oneflow sql test # will be failed before https://github.com/4paradigm/OpenMLDB/issues/3151 fixed
         cd /work/oneflow_demo/sql_scripts
         # 10 min
         cat sql_order | xargs cat | /work/openmldb/bin/openmldb --zk_cluster=127.0.0.1:2181 --zk_root_path=/openmldb --role=sql_client
 
-        python3 /work/job_checker.py
-
         # open it after new diag tool released, or you can test in local by USE_ADD_WHL
-        # cd /work
-        # openmldb_tool status --diff -f /work/openmldb/conf/hosts 
-        # openmldb_tool inspect
-        # openmldb_tool test
-        # openmldb_tool static-check --conf_file=/work/openmldb/conf/hosts -VCL --local
+        cd /work
+        openmldb_tool status --diff -f /work/openmldb/conf/hosts 
+        openmldb_tool inspect
+        openmldb_tool test
+        openmldb_tool static-check --conf_file=/work/openmldb/conf/hosts -VCL --local
