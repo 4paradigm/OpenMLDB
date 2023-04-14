@@ -1,8 +1,11 @@
-# 自定义函数开发
+# 自定义函数（UDF）开发
 ## 1. 背景
-虽然OpenMLDB内置了上百个函数，以供数据科学家作数据分析和特征抽取。但是在某些场景下还是不能很好的满足要求，以往只能通过开发内置函数来实现。内置函数开发需要重新编译二进制文件等待版本发布，周期相对较长。为了便于用户快速灵活实现特定的特征计算需求，我们实现了用户动态注册函数的机制。当用户执行`Create Function`语句时会动态加载包含用户自定义函数的动态库。
+虽然OpenMLDB内置了上百个函数，以供数据科学家作数据分析和特征抽取。但是在某些场景下还是不能很好的满足要求，为了便于用户快速灵活实现特定的特征计算需求，我们支持了基于 C++ 的用户自定义函数（UDF）开发，以及动态用户自定义函数库的加载。
 
-一般SQL函数分为单行函数和聚合函数，关于单行函数和聚合函数的介绍可以参考[这里](./built_in_function_develop_guide.md)
+```{seealso}
+用户也可以使用内置函数开发的方式扩展 OpenMLDB 的计算函数库。但是内置函数开发需要修改源代码和重新编译。如果用户希望贡献扩展函数到 OpenMLDB 代码库，那么可以参考[内置函数的开发文档](../developer/built_in_function_develop_guide.md)。
+```
+
 ## 2. 开发步骤
 ### 2.1 开发自定义函数
 #### 2.1.1 C++函数名规范
@@ -54,6 +57,7 @@
 - 一次分配空间的最大长度不能超过2M字节
 
 **注**：
+
 - 如果参数声明为nullable的，那么所有参数都是nullable的，每一个输入参数都添加is_null参数
 - 如果返回值声明为nullable的，那么通过参数来返回，并且添加is_null的参数来表示返回值是否为null
 
@@ -64,8 +68,14 @@ void sum(::openmldb::base::UDFContext* ctx, int64_t input1, bool is_null, int64_
 ```
 
 #### 2.1.5 单行函数开发
-- 包含头文件udf/openmldb_udf.h 
-- 实现自定义函数逻辑
+
+单行函数（scalar function）对单行数据进行处理，返回单个值，比如 `abs`, `sin`, `cos`, `date`, `year` 等。
+
+具体开发步骤为：
+
+1. 包含头文件udf/openmldb_udf.h 
+2. 实现自定义函数逻辑
+
 ```c++
 #include "udf/openmldb_udf.h"  // 必须包含此头文件
  
@@ -85,8 +95,13 @@ void cut2(::openmldb::base::UDFContext* ctx, ::openmldb::base::StringRef* input,
 ```
 
 #### 2.1.6 聚合函数开发
-- 包含头文件udf/openmldb_udf.h 
-- 实现自定义函数逻辑
+
+聚合函数（aggregate function）对一个数据集（比如一列数据）执行计算，返回单个值，比如 `sum`, `avg`, `max`, `min`, `count` 等。
+
+具体开发步骤为：
+
+1. 包含头文件udf/openmldb_udf.h 
+2. 实现自定义函数逻辑
 
 开发一个聚合函数需要实现如下三个C++方法：
 - init函数。 在init函数中做一些初始化工作，如开辟中间变量的空间等。函数命名格式为："聚合函数名_init"。
@@ -186,12 +201,13 @@ CREATE AGGREGATE FUNCTION third(x BIGINT) RETURNS BIGINT OPTIONS (FILE='libtest_
 - 一个udf函数只能对一种类型起作用。如果想用于多种类型，需要创建多个函数
 - `FILE` 指定动态库的文件名，不需要包含路径
 
-成功注册后就可openmldb_sql
-SELECT cut2(c1) FROM t1;
+成功注册后就可在 OpenMLDB 中使用该自定义函数：`SELECT cut2(c1) FROM t1` 
+
+可以通过 `SHOW FUNCTIONS` 查看已注册的 UDF
 ```
-可以通过SHOW FUNCTIONS查openmldb_sql
 SHOW FUNCTIONS;
 ```
-通过DROP FUNCTION删除已openmldb_sql
+通过 `DROP FUNCTION` 删除已注册的 UDF
+```
 DROP FUNCTION cut2;
 ```

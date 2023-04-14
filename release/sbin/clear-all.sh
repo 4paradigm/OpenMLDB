@@ -21,6 +21,17 @@ sbin="$(cd "$(dirname "$0")" || exit 1; pwd)"
 . "$sbin"/init.sh
 cd "$home" || exit 1
 
+rm_dir() {
+    local host=$1
+    local dir=$2
+    if [[ $dir == "" ]] || [[ $dir == "/" ]]; then
+        echo "invalid dir $dir"
+        exit 1
+    fi
+    local cmd="rm -rf $dir"
+    run_auto "$host" "$cmd"
+}
+
 if [[ ${OPENMLDB_MODE} == "standalone" ]]; then
   rm -rf standalone_db standalone_logs
 else
@@ -32,10 +43,14 @@ else
     host=$(echo "$line" | awk -F ' ' '{print $1}')
     port=$(echo "$line" | awk -F ' ' '{print $2}')
     dir=$(echo "$line" | awk -F ' ' '{print $3}')
-
-    echo "clear tablet data and log in $dir with endpoint $host:$port "
-    cmd="cd $dir && rm -rf recycle db logs"
-    run_auto "$host" "$cmd"
+    if [[ ${CLEAR_OPENMLDB_INSTALL_DIR} == "true" ]]; then
+      echo "clear $dir with endpoint $host:$port "
+      rm_dir "$host" "$dir"
+    else
+      echo "clear tablet data and log in $dir with endpoint $host:$port "
+      cmd="cd $dir && rm -rf recycle db logs"
+      run_auto "$host" "$cmd"
+    fi
   done
 
   # delete apiserver log
@@ -44,10 +59,14 @@ else
     host=$(echo "$line" | awk -F ' ' '{print $1}')
     port=$(echo "$line" | awk -F ' ' '{print $2}')
     dir=$(echo "$line" | awk -F ' ' '{print $3}')
-
-    echo "clear apiserver log in $dir with endpoint $host:$port "
-    cmd="cd $dir && rm -rf logs"
-    run_auto "$host" "$cmd"
+    if [[ ${CLEAR_OPENMLDB_INSTALL_DIR} == "true" ]]; then
+      echo "clear $dir with endpoint $host:$port "
+      rm_dir "$host" "$dir"
+    else
+      echo "clear apiserver log in $dir with endpoint $host:$port "
+      cmd="cd $dir && rm -rf logs"
+      run_auto "$host" "$cmd"
+    fi
   done
 
   # delete nameserver log
@@ -56,10 +75,14 @@ else
     host=$(echo "$line" | awk -F ' ' '{print $1}')
     port=$(echo "$line" | awk -F ' ' '{print $2}')
     dir=$(echo "$line" | awk -F ' ' '{print $3}')
-
-    echo "clear nameserver log in $dir with endpoint $host:$port "
-    cmd="cd $dir && rm -rf logs"
-    run_auto "$host" "$cmd"
+    if [[ ${CLEAR_OPENMLDB_INSTALL_DIR} == "true" ]]; then
+      echo "clear $dir with endpoint $host:$port "
+      rm_dir "$host" "$dir"
+    else
+      echo "clear nameserver log in $dir with endpoint $host:$port "
+      cmd="cd $dir && rm -rf logs"
+      run_auto "$host" "$cmd"
+    fi
   done
 
   # delete taskmanager data and log
@@ -69,11 +92,16 @@ else
     port=$(echo "$line" | awk -F ' ' '{print $2}')
     dir=$(echo "$line" | awk -F ' ' '{print $3}')
 
-    echo "clear taskmanager log in $dir with endpoint $host:$port "
-    cmd="cd $dir && rm -rf logs taskmanager/bin/logs"
-    run_auto "$host" "$cmd"
+    if [[ ${CLEAR_OPENMLDB_INSTALL_DIR} == "true" ]]; then
+      echo "clear $dir with endpoint $host:$port "
+      rm_dir "$host" "$dir"
+    else
+      echo "clear taskmanager log in $dir with endpoint $host:$port "
+      cmd="cd $dir && rm -rf logs taskmanager/bin/logs"
+      run_auto "$host" "$cmd"
+    fi
     # TODO(zhanghao): support to delete file:// or hdfs:// style path
-    cmd="cd $dir && rm -rf /tmp/openmldb_offline_storage/"
+    cmd="rm -rf /tmp/openmldb_offline_storage/"
     echo "clear taskmanager data in $dir with endpoint $host:$port "
     run_auto "$host" "$cmd"
   done
@@ -85,12 +113,17 @@ else
       host=$(echo "$line" | awk -F ' ' '{print $1}')
       port=$(echo "$line" | awk -F ' ' '{print $2}')
       dir=$(echo "$line" | awk -F ' ' '{print $3}')
+      if [[ ${CLEAR_OPENMLDB_INSTALL_DIR} == "true" ]]; then
+        echo "clear $dir with endpoint $host:$port "
+        rm_dir "$host" "$dir"
+      else
 
-      echo "clear zookeeper data and log in $dir with endpoint $host:$port"
-      cmd="cd $dir && rm zookeeper.out > /dev/null 2>&1"
-      run_auto "$host" "$cmd"
-      cmd="cd $dir/data; find -type d -not -path '.' -exec rm -rf {} +"
-      run_auto "$host" "$cmd"
+        echo "clear zookeeper data and log in $dir with endpoint $host:$port"
+        cmd="cd $dir && rm zookeeper.out > /dev/null 2>&1"
+        run_auto "$host" "$cmd"
+        cmd="cd $dir/data; find -type d -not -path '.' -exec rm -rf {} +"
+        run_auto "$host" "$cmd"
+      fi
     done
   fi
   IFS="$old_IFS"

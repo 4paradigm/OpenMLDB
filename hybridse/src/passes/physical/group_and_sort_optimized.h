@@ -20,6 +20,8 @@
 #include <optional>
 #include <string>
 #include <vector>
+#include <list>
+#include <utility>
 
 #include "passes/physical/transform_up_physical_pass.h"
 
@@ -58,11 +60,35 @@ class GroupAndSortOptimized : public TransformUpPysicalPass {
         uint32_t refered_index_key_count = 0;
     };
 
+    struct KeysInfo {
+        KeysInfo(vm::PhysicalOpType type, vm::Key* left_key, vm::Key* right_key, vm::Key* index_key, vm::Sort* sort)
+            : type(type), left_key(left_key), right_key(right_key), index_key(index_key), right_sort(sort) {}
+        vm::PhysicalOpType type;
+        Key* left_key;
+        Key* right_key;
+        Key* index_key;
+        Sort* right_sort;
+    };
+
+    template <typename Container>
+    struct TransformCxtGuard {
+        explicit TransformCxtGuard(Container* c, KeysInfo&& info) : c_(c) {
+            c_->push_back(std::forward<KeysInfo>(info));
+        }
+        ~TransformCxtGuard() { c_->pop_back(); }
+        TransformCxtGuard(const TransformCxtGuard&) = delete;
+        TransformCxtGuard(TransformCxtGuard&&) = delete;
+        TransformCxtGuard& operator=(const TransformCxtGuard&) = delete;
+        TransformCxtGuard& operator=(TransformCxtGuard&&) = delete;
+
+     private:
+        Container* c_;
+    };
+
  private:
     bool Transform(PhysicalOpNode* in, PhysicalOpNode** output);
 
-    bool KeysOptimized(const SchemasContext* root_schemas_ctx,
-                       PhysicalOpNode* in, Key* left_key, Key* index_key,
+    bool KeysOptimized(const SchemasContext* root_schemas_ctx, PhysicalOpNode* in, Key* left_key, Key* index_key,
                        Key* right_key, Sort* sort, PhysicalOpNode** new_in);
 
     bool FilterAndOrderOptimized(const SchemasContext* root_schemas_ctx,
@@ -107,6 +133,9 @@ class GroupAndSortOptimized : public TransformUpPysicalPass {
                         IndexBitMap* bitmap,
                         std::string* index_name,
                         IndexBitMap* best_bitmap);
+
+ private:
+    std::list<KeysInfo> ctx_;
 };
 }  // namespace passes
 }  // namespace hybridse

@@ -8,3 +8,4 @@
     install_deploy
     conf
     compile
+    integrate_hadoop
