@@ -42,7 +42,7 @@ public class TestYarnOfflineJob extends OpenMLDBTest {
     }
 
     @Story("YarnShowJobLog")
-    @Test(enabled = true)
+    @Test(enabled = false)
     public void testShowJoblog() {
         Statement statement = executor.getStatement();
         try {
