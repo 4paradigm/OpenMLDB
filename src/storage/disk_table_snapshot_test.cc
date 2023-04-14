@@ -14,13 +14,17 @@
  * limitations under the License.
  */
 
-#include <gflags/gflags.h>
-#include <google/protobuf/io/zero_copy_stream_impl.h>
-#include <google/protobuf/text_format.h>
 #include <unistd.h>
+#include <map>
+#include <vector>
+#include <utility>
 
 #include "base/file_util.h"
 #include "base/glog_wrapper.h"
+
+#include "gflags/gflags.h"
+#include "google/protobuf/io/zero_copy_stream_impl.h"
+#include "google/protobuf/text_format.h"
 #include "gtest/gtest.h"
 #include "proto/tablet.pb.h"
 #include "storage/disk_table.h"
