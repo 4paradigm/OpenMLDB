@@ -26,7 +26,7 @@ on:
       EXEC_TEST_TYPE:
         description: 'Which tests need to be executed? The options are all, python, java, batch, cli, standalone-cli, apiserver, yarn'
         required: true
-        default: 'yarn'
+        default: 'all'
 
 env:
   GIT_SUBMODULE_STRATEGY: recursive
