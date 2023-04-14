@@ -106,6 +106,8 @@ PreparedStatement insertStatement = connection.prepareStatement("DELETE FROM t1 
 
 ## SqlClusterExecutor 方式
 
+SqlClusterExecutor 是最全面的Java SDK连接方式，不仅有JDBC可以使用的增删查功能，还可以使用请求模式等额外功能。
+
 ### 创建 SqlClusterExecutor
 
 首先，进行 OpenMLDB 连接参数配置。
@@ -386,6 +388,18 @@ try {
         throwables.printStackTrace();
     }
 }
+```
+
+### 执行 Deployment
+
+执行 Deployment ，是通过 `SqlClusterExecutor::getCallablePreparedStmt(db, deploymentName)` 接口获取 CallablePreparedStatement 。区别于上文的 SQL 请求式查询，Deployment 在服务端已上线，速度会快于 SQL 请求式查询。
+
+执行 Deployment 有以下几步：
+```java
+// 上线一个Deployment（此处使用上文的selectSql），实际生产环境通常已经上线成功
+selectSql
+
+// 第一步，获取CallablePreparedStatement
 ```
 
 ###  删除指定索引下某个 key 的所有数据

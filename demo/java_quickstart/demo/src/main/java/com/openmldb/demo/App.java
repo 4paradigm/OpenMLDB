@@ -55,6 +55,8 @@ public class App {
             demo.select();
             // 在request模式下执行sql
             demo.requestSelect();
+            // 执行 deployment
+            demo.executeDeployment();
             // 删除表
             demo.dropTable();
             // 删除数据库
@@ -232,6 +234,50 @@ public class App {
                 throwables.printStackTrace();
             }
         }
+    }
+
+    private void executeDeployment() {
+        String selectSql = String.format("SELECT c1, c3, sum(c4) OVER w1 as w1_c4_sum FROM %s WINDOW w1 AS " +
+                "(PARTITION BY %s.c1 ORDER BY %s.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);", table, table, table);
+        PreparedStatement pstmt = null;
+        ResultSet resultSet = null;
+        try {
+            // 上线一个Deployment（此处使用上文的selectSql），实际生产环境通常已经上线成功
+            String deploymentName = "testDeployment";
+            String deploySql = String.format("DEPLOY %s %s;", selectSql, deploymentName);
+            sqlExecutor.executeSQL(db, deploySql);
+
+            pstmt = sqlExecutor.getCallablePreparedStmt(db, deploymentName);
+            // 如果是执行deployment, 可以通过名字获取preparedstatement
+            // pstmt = sqlExecutor.getCallablePreparedStmt(db, deploymentName);
+            ResultSetMetaData metaData = pstmt.getMetaData();
+            // 执行request模式需要在RequestPreparedStatement设置一行请求数据
+            setData(pstmt, metaData);
+            // 调用executeQuery会执行这个select sql, 然后将结果放在了resultSet中
+            resultSet = pstmt.executeQuery();
+
+            Assert.assertTrue(resultSet.next());
+            Assert.assertEquals(resultSet.getMetaData().getColumnCount(), 3);
+            Assert.assertEquals(resultSet.getString(1), "bb");
+            Assert.assertEquals(resultSet.getInt(2), 24);
+            Assert.assertEquals(resultSet.getLong(3), 34);
+            Assert.assertFalse(resultSet.next());
+        } catch (SQLException e) {
+            e.printStackTrace();
+            Assert.fail();
+        } finally {
+            try {
+                if (resultSet != null) {
+                    // result用完之后需要close
+                    resultSet.close();
+                }
+                if (pstmt != null) {
+                    pstmt.close();
+                }
+            } catch (SQLException throwables) {
+                throwables.printStackTrace();
+            }
+        }  
     }
 
     private void batchRequestSelect() {
