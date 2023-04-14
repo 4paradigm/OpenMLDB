@@ -50,8 +50,7 @@ public class OfflineJobExecuter extends BaseSQLExecutor {
     private SDKClient sdkClient;
     private boolean useFirstInputAsRequests = false;
     private Map<String, OpenMLDBResult> resultMap;
-    //private String offlineDataPrefix = "/tmp/openmldb_offline_storage/";
-    private String offlineDataPrefix = "/tmp/";
+    private String offlineDataPrefix = "/tmp/openmldb_offline_storage/";
 
     public OfflineJobExecuter(SqlExecutor executor, SQLCase sqlCase, SQLCaseType executorType) {
         super(executor, sqlCase, executorType);
@@ -91,9 +90,7 @@ public class OfflineJobExecuter extends BaseSQLExecutor {
         sdkClient.setOffline();
 
         // TODO: Handle for yarn cases
-        System.out.println("----------- tobedev, offlineDataPrefix: " + offlineDataPrefix);
-        System.out.println("Do not touch file in : " + offlineDataPrefix);
-        //ExecUtil.exeCommand("touch "+offlineDataPrefix);
+        ExecUtil.exeCommand("touch "+offlineDataPrefix);
 
         List<InputDesc> inputs = sqlCase.getInputs();
 

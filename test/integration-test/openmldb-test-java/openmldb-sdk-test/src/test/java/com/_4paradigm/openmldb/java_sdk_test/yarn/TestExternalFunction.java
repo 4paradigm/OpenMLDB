@@ -31,7 +31,7 @@ import java.sql.Statement;
 public class TestExternalFunction extends OpenMLDBTest {
 
     @Story("ExternalFunction")
-    @Test(enabled = false)
+    @Test(enabled = true)
     public void testFunctionMethods() {
         Statement statement = executor.getStatement();
 

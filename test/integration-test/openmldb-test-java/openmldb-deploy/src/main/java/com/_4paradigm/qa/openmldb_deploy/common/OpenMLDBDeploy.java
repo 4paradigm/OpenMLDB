@@ -392,7 +392,6 @@ public class OpenMLDBDeploy {
             ExecutorUtil.run("wget -P "+testPath+" -q "+ OpenMLDBDeployConfig.getSparkUrl(version));
             String tarName = ExecutorUtil.run("ls "+ testPath +" | grep spark.tgz").get(0);
             ExecutorUtil.run("tar -zxvf " + testPath + "/"+tarName+" -C "+testPath);
-            // tar -zxvf /github/home/openmldb-auto-test/0.7.2/spark-3.2.1-bin-openmldbspark.tgz -C /github/home/openmldb-auto-test/0.7.2
             String sparkDirectoryName = ExecutorUtil.run("ls "+ testPath +" | grep spark | grep  -v .tgz ").get(0);
             String sparkPath = testPath+"/"+sparkDirectoryName;
             this.sparkHome = sparkPath;
@@ -464,13 +463,13 @@ public class OpenMLDBDeploy {
                 ExecutorUtil.run("sh "+testPath+task_manager_name+"/bin/start.sh start taskmanager");
             }
 
-            // sh /github/home/openmldb-auto-test/0.7.2/openmldb-task_manager-1/bin/start.sh
+            /*
             String command = "cat " +testPath+task_manager_name + "/taskmanager/bin/logs/taskmanager.log";
             List<String> result = ExecutorUtil.run(command);
-            System.out.println("----------------- tobedev Try to print taskmanager log:");
             for (String line : result) {
                 System.out.println(line);
             }
+            */
 
             boolean used = LinuxUtil.checkPortIsUsed(port,3000,30);
             if(used){
