@@ -412,7 +412,7 @@ try {
     e.printStackTrace();
 }
 ```
-- 执行Deployment。可以复用该 CallablePreparedStmt，`executeQuery()`将会自动清除`setXX`的请求行缓存。
+- 执行Deployment。重新创建 CallablePreparedStmt 有一定耗时，建议尽可以复用 CallablePreparedStmt，`executeQuery()`将会自动清除`setXX`的请求行缓存。
 ```java
 // 执行Deployment
 PreparedStatement pstmt = null;
