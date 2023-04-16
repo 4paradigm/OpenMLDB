@@ -18,7 +18,6 @@
 #define HYBRIDSE_SRC_UDF_UDF_H_
 #include <stdint.h>
 
-#include <iomanip>
 #include <string>
 #include <tuple>
 
