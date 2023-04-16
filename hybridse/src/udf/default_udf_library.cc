@@ -1627,26 +1627,27 @@ void DefaultUdfLibrary::InitMathUdf() {
         .doc(R"(
             @brief Returns expr rounded to d decimal places using HALF_UP rounding mode.
 
-            @param numeric_expr Expression evaluated to double or can be casted to
-            @param d Integer decimal place
+            @param numeric_expr Expression evaluated to numeric
+            @param d Integer decimal place, omitted, default to 0
 
             When `d` is a positive, `numeric_expr` is rounded to the number of decimal positions specified by `d`. When `d` is a negative , `numeric_expr` is rounded on the left side of the decimal point.
+            Return type is the same as the type first parameter.
 
             Example:
 
             @code{.sql}
                 SELECT round(1.23);
-                -- 1
+                -- 1 (double type)
 
                 SELECT round(1.23, 1)
-                -- 1.2
+                -- 1.2 (double type)
 
                 SELECT round(123, -1)
-                -- 120
+                -- 120 (int32 type)
             @endcode
 
             @since 0.1.0)")
-        .args_in<int64_t, int16_t, int32_t>();
+        .args_in<int16_t, int32_t, int64_t, float, double>();
 
     RegisterExprUdf("round").variadic_args<AnyArg>(
         [](UdfResolveContext* ctx, ExprNode* x, const std::vector<ExprNode*>& other) -> ExprNode* {
@@ -1662,10 +1663,9 @@ void DefaultUdfLibrary::InitMathUdf() {
 
             node::ExprNode* decimal_place = nm->MakeConstNode(0);
             if (!other.empty()) {
-                decimal_place = other.front();
+                decimal_place = nm->MakeCastNode(node::kInt32, other.front());
             }
-            auto cast = nm->MakeCastNode(node::kDouble, x);
-            return nm->MakeFuncNode("round", {cast, decimal_place}, nullptr);
+            return nm->MakeFuncNode("round", {x, decimal_place}, nullptr);
         });
 
     RegisterExternalTemplate<v1::Sqrt>("sqrt")

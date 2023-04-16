@@ -610,6 +610,7 @@ TEST_F(UdfIRBuilderTest, PowerUdfTest) {
 }
 
 TEST_F(UdfIRBuilderTest, RoundWithPositiveD) {
+    // We use string as expet result in case the inaccuracy of flaot points
     std::initializer_list<std::pair<double, std::string>> cases = {
         // before decimal position = 0
         {0.5, "0.50"}, {0.12, "0.12"}, {0.123, "0.12"}, {0.1478, "0.15"},
@@ -617,11 +618,67 @@ TEST_F(UdfIRBuilderTest, RoundWithPositiveD) {
         // before decimal position > 0
         {1.1, "1.10" }, {1.14, "1.14"}, {1.177, "1.18"}, {1.171, "1.17"},
         {21.1, "21.10" }, {21.14, "21.14"}, {21.177, "21.18"}, {21.171, "21.17"},
-        {1889, "1889.00"}
+        {1889, "1889.00"},
     };
 
     for (auto& val : cases) {
-        CheckUdf<StringRef, double, int32_t>("round", val.second, val.first, 2);
+        // non-negative value
+        CheckUdf<double, double, int32_t>("round", std::stod(val.second), val.first, 2);
+        // negative value
+        std::string expect = "-" + val.second;
+        CheckUdf<double, double, int32_t>("round", std::stod(expect), -val.first, 2);
+    }
+
+    for (auto c :  {1, 2, 3, 4, 5, 6}) {
+        CheckUdf<int64_t, int64_t, int32_t>("round", c, c, 2);
+    }
+}
+
+TEST_F(UdfIRBuilderTest, RoundWithNegD) {
+    // We use string as expet result in case the inaccuracy of flaot points
+    std::initializer_list<std::pair<double, std::string>> cases = {
+        {0.0, "0.0"}, {1.23, "0"}, {100.12, "100"}, {3712.55, "3700"}, {4488, "4500"},
+        {88, "100"}, {175.4, "200"}
+    };
+
+    for (auto& val : cases) {
+        // non-negative value
+        CheckUdf<double, double, int32_t>("round", std::stod(val.second), val.first, -2);
+        // negative value
+        std::string expect = "-" + val.second;
+        CheckUdf<double, double, int32_t>("round", std::stod(expect), -val.first, -2);
+    }
+
+    std::initializer_list<std::pair<int32_t, int32_t>> icases = {{0, 0},     {1, 0},     {55, 100},     {100, 100},
+                                                                 {145, 100}, {199, 200}, {2312, 2300}};
+    for (auto c : icases) {
+        CheckUdf<int32_t, int32_t, int32_t>("round", c.second, c.first, -2);
+        CheckUdf<int32_t, int32_t, int32_t>("round", -c.second, -c.first, -2);
+    }
+}
+
+TEST_F(UdfIRBuilderTest, RoundWithZeroD) {
+    std::initializer_list<std::pair<double, std::string>> cases = {
+        {1.12, "1"}, {1.5, "2"}, {1.77, "2"}, {0.0, "0"}, {88, "88"}
+    };
+    for (auto& val : cases) {
+        // non-negative value
+        CheckUdf<double, double, int32_t>("round", std::stod(val.second), val.first, 0);
+        CheckUdf<double, double>("round", std::stod(val.second), val.first);
+        // negative value
+        std::string expect = "-" + val.second;
+        CheckUdf<double, double, int32_t>("round", std::stod(expect), -val.first, 0);
+        CheckUdf<double, double>("round", std::stod(expect), -val.first);
+    }
+
+    std::initializer_list<int32_t> icases = {1, 2, 3, 4, 5, 100, 88};
+    for (auto& val : icases) {
+        // non-negative value
+        CheckUdf<int32_t, int32_t, int32_t>("round", val, val, 0);
+        CheckUdf<int32_t, int32_t>("round", val, val);
+        // negative value
+        CheckUdf<int32_t, int32_t, int32_t>("round", -val, -val, 0);
+        CheckUdf<int32_t, int32_t>("round", -val, -val);
     }
 }
 

@@ -219,27 +219,20 @@ struct Pow {
 
 template <class V>
 struct Round {
-    using Args = std::tuple<double, V>;
+    using Args = std::tuple<V, int32_t>;
 
-    void operator()(double val, V decimal_number, StringRef *out) {
-        std::stringstream ss;
-
-        if (decimal_number > 0) {
-            double integer = std::trunc(val);
-            double abs_left = std::abs(val - integer);
-            ss << integer << "." << std::setfill('0') << std::right << std::setw(decimal_number)
-               << std::round(abs_left * std::pow(10, decimal_number));
+    V operator()(V val, int32_t decimal_number) {
+        if constexpr (std::is_integral_v<V>) {
+            if (decimal_number >= 0) {
+                return val;
+            } else {
+                double factor = std::pow(10, -decimal_number);
+                return static_cast<V>(std::round(val / factor) * factor);
+            }
         } else {
-            ss << std::round(val * std::pow(10, decimal_number)) / std::pow(10, decimal_number);
+            // floats
+            return static_cast<V>(std::round(val * std::pow(10, decimal_number)) / std::pow(10, decimal_number));
         }
-
-        std::string str = ss.str();
-        auto sz = str.size();
-        char *buf = AllocManagedStringBuf(sz);
-        memcpy(buf, str.data(), sz);
-
-        out->data_ = buf;
-        out->size_ = sz;
     }
 };
 
