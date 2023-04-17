@@ -204,7 +204,8 @@ TEST_F(DDLParserTest, complexJoin) {
     {
         // last join t2 must have a simple equal condition
         auto sql =
-            "SELECT t1.col1 as t1_col1, t2.col2 as t2_col2 FROM t1 last join t2 order by t2.col5 on abs(t1.col1) = t2.col1 "
+            "SELECT t1.col1 as t1_col1, t2.col2 as t2_col2 FROM t1 last join t2 order by t2.col5 on abs(t1.col1) = "
+            "t2.col1 "
             "and t2.col5 >= t1.col5;";
 
         auto index_map = DDLParser::ExtractIndexes(sql, db);
@@ -221,11 +222,15 @@ TEST_F(DDLParserTest, complexJoin) {
     {
         ClearAllIndex();
         // no simple equal condition
-        auto sql = "SELECT t1.col1, t1.col2, t2.col1, t2.col2 FROM t1 left join t2 on timestamp(int64(t1.col6)) = timestamp(int64(t2.col6));";
+        auto sql =
+            "SELECT t1.col1, t1.col2, t2.col1, t2.col2 FROM t1 left join t2 on timestamp(int64(t1.col6)) = "
+            "timestamp(int64(t2.col6));";
         auto index_map = DDLParser::ExtractIndexes(sql, db);
         ASSERT_TRUE(index_map.empty());
         // must have a simple equal condition
-        sql = "SELECT t1.col1, t1.col2, t2.col1, t2.col2 FROM t1 left join t2 on timestamp(int64(t1.col6)) = timestamp(int64(t2.col6)) and t1.col1 = t2.col2;";
+        sql =
+            "SELECT t1.col1, t1.col2, t2.col1, t2.col2 FROM t1 left join t2 on timestamp(int64(t1.col6)) = "
+            "timestamp(int64(t2.col6)) and t1.col1 = t2.col2;";
         index_map = DDLParser::ExtractIndexes(sql, db);
         ASSERT_EQ(index_map.size(), 1);
         // index is on t2.col2
