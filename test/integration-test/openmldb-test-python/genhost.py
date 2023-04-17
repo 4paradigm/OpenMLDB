@@ -16,4 +16,4 @@ import sys
 sys.path.append("util")
 from cluster_manager import ClusterManager
 
-ClusterManager.GenHosts("/tmp/", 2, 3, 0, 0, "./openmldb/conf/hosts")
+ClusterManager.GenHosts("/tmp/", 2, 3, 0, 2, "./openmldb/conf/hosts")

@@ -130,3 +130,60 @@ class TestHA:
         assert status.OK()
         assert new_leader == old_leader
         self.cursor.execute(f"drop table {table_name}")
+
+    def get_taskmanager_leader(self) -> str:
+        result = self.cursor.execute("show components;")
+        data = result.fetchall()
+        for item in data:
+            if item[1] == "taskmanager":
+                return item[0]
+        return None
+
+    def get_taskmanager_standby(self) -> str:
+        leader = self.get_taskmanager_leader()
+        task_managers = self.manager.GetComponents("taskmanager")
+        if leader is not None and len(task_managers) > 0:
+            for endpoint in task_managers:
+                if endpoint != leader:
+                    return endpoint
+        return None
+
+    def gen_file(self) -> str:
+        data_file = "/tmp/data_" + str(random.randint(0, 10000)) + ".csv"
+        with open(data_file, 'w') as f:
+            f.write("key1, key2")
+        return data_file
+
+    def test_restart_taskmanager(self):
+        task_managers = self.manager.GetComponents("taskmanager")
+        data_file = self.gen_file()
+        database = "test"
+        self.cursor.execute(f"create database if not exists {database}")
+        self.cursor.execute(f"use {database}")
+        table_name = "table" + str(random.randint(0, 10000))
+        ddl = f"create table if not exists {table_name} (col1 string, col2 string);"
+        self.cursor.execute(ddl)
+        load_sql = f"load data infile \"{data_file}\" INTO TABLE {table_name} options(format='csv', header=false, mode='append');"
+        self.cursor.execute(load_sql)
+        result = self.cursor.execute("show jobs;")
+        data = result.fetchall()
+        assert len(data) > 0
+        leader = self.get_taskmanager_leader()
+        standby = self.get_taskmanager_standby()
+        # restart standby
+        assert self.manager.RestartComponent("taskmanager", standby).OK()
+        new_leader = self.get_taskmanager_leader()
+        assert leader == new_leader
+        result = self.cursor.execute("show jobs;")
+        data = result.fetchall()
+        assert len(data) > 0
+
+        # restart leader
+        assert self.manager.RestartComponent("taskmanager", leader).OK()
+        new_leader = self.get_taskmanager_leader()
+        assert new_leader != leader
+        result = self.cursor.execute("show jobs;")
+        data = result.fetchall()
+        assert len(data) > 0
+        os.remove(data_file)
+        self.cursor.execute(f"drop table {table_name}")

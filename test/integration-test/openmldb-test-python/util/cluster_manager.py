@@ -41,6 +41,7 @@ class ClusterManager:
         tablet_start_port = 10921
         ns_start_port = 7527
         apiserver_start_port = 9080
+        taskmanager_start_port = 9902
         zk_port = 2181
         cf = configparser.ConfigParser(strict=False, delimiters=" ", allow_no_value=True)
         cf.add_section("tablet")
@@ -59,6 +60,12 @@ class ClusterManager:
                 endpoint = f"localhost:{apiserver_start_port + i}"
                 path = f"{base_path}/openmldb/apiserver-{i}"
                 cf.set("apiserver", endpoint, path)
+        if taskmanager_num > 0:
+            cf.add_section("taskmanager")
+            for i in range(taskmanager_num):
+                endpoint = f"localhost:{taskmanager_start_port + i}"
+                path = f"{base_path}/openmldb/taskmanager-{i}"
+                cf.set("taskmanager", endpoint, path)
         cf.add_section("zookeeper")
         cf.set("zookeeper", f"localhost:{zk_port}:2888:3888", f"{base_path}/openmldb/zookeeper")
         with open(hosts_file, "w") as f:
