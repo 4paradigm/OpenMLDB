@@ -643,12 +643,13 @@ std::string IndexMapBuilder::Encode(const std::string& table, const hybridse::no
     if (ts != nullptr && ts->order_expressions_ != nullptr) {
         for (auto order : ts->order_expressions_->children_) {
             auto cast = dynamic_cast<hybridse::node::OrderExpression*>(order);
-            if (cast->expr() != nullptr) {
+            if (cast && cast->expr() != nullptr) {
                 auto res = NormalizeColumns(table, {const_cast<hybridse::node::ExprNode*>(cast->expr())}, ctx);
                 if (res.size() != 1 || res[0].empty()) {
-                    LOG(DFATAL) << "parse ts col from order node failed, " << cast->GetExprString();
+                    LOG(DFATAL) << "parse ts col from order node failed, skip it. " << cast->GetExprString();
+                } else {
+                    ss << res[0];
                 }
-                ss << res[0];
             }
         }
     }
@@ -663,12 +664,14 @@ std::vector<std::string> IndexMapBuilder::NormalizeColumns(const std::string& ta
     }
     std::vector<std::string> result;
     for (auto& node : nodes) {
-        auto cast = hybridse::node::ColumnRefNode::CastFrom(node);
-        std::string name;
-        if (!ResolveColumnToSourceColumnName(cast, ctx, &name)) {
-            return {};
+        if (nullptr != node && node->GetExprType() == hybridse::node::kExprColumnRef) {
+            auto cast = hybridse::node::ColumnRefNode::CastFrom(node);
+            std::string name;
+            if (!ResolveColumnToSourceColumnName(cast, ctx, &name)) {
+                return {};
+            }
+            result.emplace_back(name);
         }
-        result.emplace_back(name);
     }
     // sort to avoid dup index
     std::sort(result.begin(), result.end());
@@ -739,7 +742,6 @@ bool GroupAndSortOptimizedParser::KeysOptimizedParse(const SchemasContext* root_
                            << " for table " << scan_op->table_handler_->GetName();
 
                 // columns in groups or order, may be renamed
-
                 index_map_builder_.CreateIndex(scan_op->table_handler_->GetName(), groups, order, root_schemas_ctx);
                 // parser won't create partition_op
                 return true;

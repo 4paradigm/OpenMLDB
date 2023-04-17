@@ -200,6 +200,51 @@ TEST_F(DDLParserTest, joinExtract) {
     }
 }
 
+TEST_F(DDLParserTest, complexJoin) {
+    {
+        // last join t2 must have a simple equal condition
+        auto sql =
+            "SELECT t1.col1 as t1_col1, t2.col2 as t2_col2 FROM t1 last join t2 order by t2.col5 on abs(t1.col1) = "
+            "t2.col1 "
+            "and t2.col5 >= t1.col5;";
+
+        auto index_map = DDLParser::ExtractIndexes(sql, db);
+        ASSERT_FALSE(index_map.empty());
+        LOG(INFO) << index_map;
+
+        // so add index on t2 (key=col2, ts=col5)
+        AddIndexToDB(index_map, &db);
+
+        // TODO(hw): check data provider type
+        LOG(INFO) << "after add index:\n" << DDLParser::Explain(sql, db);
+    }
+
+    {
+        ClearAllIndex();
+        // no simple equal condition
+        auto sql =
+            "SELECT t1.col1, t1.col2, t2.col1, t2.col2 FROM t1 left join t2 on timestamp(int64(t1.col6)) = "
+            "timestamp(int64(t2.col6));";
+        auto index_map = DDLParser::ExtractIndexes(sql, db);
+        ASSERT_TRUE(index_map.empty());
+        // must have a simple equal condition
+        sql =
+            "SELECT t1.col1, t1.col2, t2.col1, t2.col2 FROM t1 left join t2 on timestamp(int64(t1.col6)) = "
+            "timestamp(int64(t2.col6)) and t1.col1 = t2.col2;";
+        index_map = DDLParser::ExtractIndexes(sql, db);
+        ASSERT_EQ(index_map.size(), 1);
+        // index is on t2.col2
+        LOG(INFO) << index_map;
+        ASSERT_EQ(index_map["t2"].size(), 1);
+        auto& keys = index_map["t2"][0].col_name();
+        ASSERT_EQ(keys.size(), 1);
+        ASSERT_STREQ(keys[0].c_str(), "col2");
+        // the added index only has key, no ts
+        AddIndexToDB(index_map, &db);
+        LOG(INFO) << "after add index:\n" << DDLParser::Explain(sql, db);
+    }
+}
+
 TEST_F(DDLParserTest, emptyIndexes) {
     {
         // request data provider, won't get indexes.
