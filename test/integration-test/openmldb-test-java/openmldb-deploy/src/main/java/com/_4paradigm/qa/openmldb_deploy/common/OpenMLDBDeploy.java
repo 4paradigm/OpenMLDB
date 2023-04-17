@@ -386,7 +386,7 @@ public class OpenMLDBDeploy {
     public String deploySpark(String testPath){
         try {
             ExecutorUtil.run("wget -P "+testPath+" -q "+ OpenMLDBDeployConfig.getSparkUrl(version));
-            String tarName = ExecutorUtil.run("ls "+ testPath +" | grep spark").get(0);
+            String tarName = ExecutorUtil.run("ls "+ testPath +" | grep spark.tgz").get(0);
             ExecutorUtil.run("tar -zxvf " + testPath + "/"+tarName+" -C "+testPath);
             String sparkDirectoryName = ExecutorUtil.run("ls "+ testPath +" | grep spark | grep  -v .tgz ").get(0);
             String sparkPath = testPath+"/"+sparkDirectoryName;

@@ -140,17 +140,18 @@ class BatchModeTransformer {
     Status GenSort(Sort* sort, const SchemasContext* schemas_ctx);
     Status GenRange(Range* sort, const SchemasContext* schemas_ctx);
 
-    bool isSourceFromTableOrPartition(PhysicalOpNode* in);
+    static bool isSourceFromTableOrPartition(PhysicalOpNode* in);
     bool isSourceFromTable(PhysicalOpNode* in);
-    Status ValidateTableProvider(PhysicalOpNode* physical_plan);
-    Status ValidatePartitionDataProvider(PhysicalOpNode* physical_plan);
     std::string ExtractSchemaName(PhysicalOpNode* in);
-    Status ValidateRequestDataProvider(PhysicalOpNode* physical_plan);
-    Status ValidateWindowIndexOptimization(const WindowOp& window,
-                                           PhysicalOpNode* in);
-    Status ValidateJoinIndexOptimization(const Join& join, PhysicalOpNode* in);
-    Status ValidateRequestJoinIndexOptimization(const Join& join, PhysicalOpNode* in);
-    Status ValidateIndexOptimization(PhysicalOpNode* physical_plan);
+
+    static Status ValidateIndexOptimization(PhysicalOpNode* physical_plan);
+    static Status ValidateRequestDataProvider(PhysicalOpNode* physical_plan);
+    static Status ValidateWindowIndexOptimization(const WindowOp& window, PhysicalOpNode* in);
+    static Status ValidateJoinIndexOptimization(const Join& join, PhysicalOpNode* in);
+    static Status ValidateRequestJoinIndexOptimization(const Join& join, PhysicalOpNode* in);
+    static Status ValidateTableProvider(PhysicalOpNode* physical_plan);
+    static Status ValidatePartitionDataProvider(PhysicalOpNode* physical_plan);
+
     Status ValidateOnlyFullGroupBy(const node::ProjectListNode* project_list, const node::ExprListNode* group_keys,
                                    const SchemasContext* schemas_ctx);
     PhysicalPlanContext* GetPlanContext() { return &plan_ctx_; }
@@ -244,10 +245,9 @@ class BatchModeTransformer {
     ABSL_MUST_USE_RESULT
     Status PopCTEs();
 
-    virtual absl::StatusOr<PhysicalOpNode*> ResolveCTERef(absl::string_view tb_name, bool is_primary_path);
+    virtual absl::StatusOr<PhysicalOpNode*> ResolveCTERef(absl::string_view tb_name);
 
-    absl::StatusOr<PhysicalOpNode*> ResolveCTERefImpl(absl::string_view tb_name, bool request_mode,
-                                                      bool is_primary_path);
+    absl::StatusOr<PhysicalOpNode*> ResolveCTERefImpl(absl::string_view tb_name, bool request_mode);
 
  protected:
     node::NodeManager* node_manager_;
@@ -279,6 +279,7 @@ class BatchModeTransformer {
     LogicalOpMap op_map_;
     const udf::UdfLibrary* library_;
 };
+
 class RequestModeTransformer : public BatchModeTransformer {
  public:
     RequestModeTransformer(node::NodeManager* node_manager, const std::string& db,
@@ -316,7 +317,7 @@ class RequestModeTransformer : public BatchModeTransformer {
                                         const node::ExprListNode* partition, const node::WindowPlanNode* window_plan,
                                         PhysicalRequestUnionNode** output);
 
-    absl::StatusOr<PhysicalOpNode*> ResolveCTERef(absl::string_view tb_name, bool is_primary_path) override;
+    absl::StatusOr<PhysicalOpNode*> ResolveCTERef(absl::string_view tb_name) override;
 
     Status ValidateRequestTable(PhysicalOpNode* in, PhysicalOpNode** request_table);
 
@@ -336,6 +337,7 @@ class RequestModeTransformer : public BatchModeTransformer {
     std::string request_name_ = "";
     std::string request_db_name_ = "";
     BatchRequestInfo batch_request_info_;
+    node::TablePlanNode* request_table_ = nullptr;
 };
 
 inline bool SchemaType2DataType(const ::hybridse::type::Type type,

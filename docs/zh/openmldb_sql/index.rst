@@ -15,3 +15,4 @@ OpenMLDB SQL
     ddl/index
     deployment_manage/index
     task_manage/index
+    udf_develop_guide

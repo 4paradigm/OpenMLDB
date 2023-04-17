@@ -16,15 +16,17 @@
 
 package com._4paradigm.openmldb.taskmanager.k8s
 
-import com._4paradigm.openmldb.taskmanager.JobInfoManager
+import com._4paradigm.openmldb.taskmanager.{JobInfoManager, LogManager}
 import com._4paradigm.openmldb.taskmanager.config.TaskManagerConfig
 import com._4paradigm.openmldb.taskmanager.dao.JobInfo
 import com._4paradigm.openmldb.taskmanager.k8s.K8sJobManager.getDrvierPodName
 import io.fabric8.kubernetes.api.model.Pod
+import io.fabric8.kubernetes.client.dsl.LogWatch
 import io.fabric8.kubernetes.client.dsl.base.CustomResourceDefinitionContext
 import io.fabric8.kubernetes.client.{Config, DefaultKubernetesClient, Watcher, WatcherException}
 import org.slf4j.LoggerFactory
-
+import java.io.{File, FileOutputStream}
+import java.nio.file.Paths
 import java.util.Calendar
 import scala.collection.mutable
 
@@ -33,7 +35,7 @@ object K8sJobManager {
   private val logger = LoggerFactory.getLogger(this.getClass)
 
   def getK8sJobName(jobId: Int): String = {
-    s"openmldb-job-tobe1-$jobId"
+    s"openmldb-job-$jobId"
   }
 
   def getDrvierPodName(jobId: Int): String = {
@@ -79,19 +81,25 @@ object K8sJobManager {
       finalSparkConf.put("spark.openmldb.default.db", defaultDb)
     }
 
+    if (TaskManagerConfig.OFFLINE_DATA_PREFIX.nonEmpty) {
+      finalSparkConf.put("spark.openmldb.offline.data.prefix", TaskManagerConfig.OFFLINE_DATA_PREFIX)
+    }
+
+    // Set external function dir for offline jobs
+    val absoluteExternalFunctionDir = if (TaskManagerConfig.EXTERNAL_FUNCTION_DIR.startsWith("/")) {
+      TaskManagerConfig.EXTERNAL_FUNCTION_DIR
+    } else {
+      // TODO: The current path is incorrect if running in IDE, please set `external.function.dir` with absolute path
+      // Concat to generate absolute path
+      Paths.get(Paths.get(".").toAbsolutePath.toString, TaskManagerConfig.EXTERNAL_FUNCTION_DIR).toString
+    }
+    finalSparkConf.put("spark.openmldb.taskmanager.external.function.dir", absoluteExternalFunctionDir)
+
     if(TaskManagerConfig.ENABLE_HIVE_SUPPORT) {
       finalSparkConf.put("spark.sql.catalogImplementation", "hive")
     }
 
     val manager = new K8sJobManager()
-
-    // TODO: Support hdfs later
-    val mountLocalPath = if (TaskManagerConfig.OFFLINE_DATA_PREFIX.startsWith("file://")) {
-      TaskManagerConfig.OFFLINE_DATA_PREFIX.drop(7)
-    } else {
-      logger.warn("offline data prefix should start with file:// for K8S jobs, mount /tmp instead")
-      "/tmp"
-    }
 
     val jobConfig = K8sJobConfig(
       jobName = jobName,
@@ -99,15 +107,23 @@ object K8sJobManager {
       mainJarFile = "local:///opt/spark/jars/openmldb-batchjob-0.7.2-SNAPSHOT.jar",
       arguments = args,
       sparkConf = finalSparkConf.toMap,
-      mountLocalPath = mountLocalPath
+      mountLocalPath = TaskManagerConfig.K8S_MOUNT_LOCAL_PATH
     )
     manager.submitJob(jobConfig)
 
     // Update K8S job status
     manager.waitAndWatch(jobInfo: JobInfo)
+    
+    if (blocking) {
+      while (JobInfoManager.getJob(jobInfo.getId).get.isFinished) {
+        // TODO: Make this configurable
+        Thread.sleep(3000L)
+      }
+    }
 
     jobInfo
   }
+
 }
 
 class K8sJobManager(val namespace:String = "default",
@@ -117,7 +133,8 @@ class K8sJobManager(val namespace:String = "default",
 
   // TODO: Configure and create a Kubernetes client from TaskManagerConfig
   val k8sConfig = Config.autoConfigure(null)
-  val client =   new DefaultKubernetesClient(k8sConfig)
+  val client = new DefaultKubernetesClient(k8sConfig)
+  var podLogWatch: LogWatch = null
 
   def listAllPods(): Unit = {
     // List Pods in the specified namespace
@@ -151,11 +168,17 @@ class K8sJobManager(val namespace:String = "default",
         |  sparkVersion: "3.1.1"
         |  restartPolicy:
         |    type: Never
+        |  env:
+        |    - name: SPARK_USER
+        |      value: ${TaskManagerConfig.HADOOP_USER_NAME}
         |  volumes:
-        |    - name: "host-local"
+        |    - name: host-local
         |      hostPath:
         |        path: ${jobConfig.mountLocalPath}
         |        type: Directory
+        |    - name: hadoop-config
+        |      configMap:
+        |        name: ${TaskManagerConfig.K8S_HADOOP_CONFIGMAP_NAME}
         |  driver:
         |    cores: ${jobConfig.driverCores}
         |    memory: "${jobConfig.driverMemory}"
@@ -163,8 +186,15 @@ class K8sJobManager(val namespace:String = "default",
         |      version: 3.1.1
         |    serviceAccount: spark
         |    volumeMounts:
-        |      - name: "host-local"
+        |      - name: host-local
         |        mountPath: ${jobConfig.mountLocalPath}
+        |      - name: hadoop-config
+        |        mountPath: /etc/hadoop/conf
+        |    env:
+        |      - name: HADOOP_CONF_DIR
+        |        value: /etc/hadoop/conf
+        |      - name: HADOOP_USER_NAME
+        |        value: ${TaskManagerConfig.HADOOP_USER_NAME}
         |  executor:
         |    cores: ${jobConfig.executorCores}
         |    instances: ${jobConfig.executorNum}
@@ -172,8 +202,15 @@ class K8sJobManager(val namespace:String = "default",
         |    labels:
         |      version: 3.1.1
         |    volumeMounts:
-        |      - name: "host-local"
+        |      - name: host-local
         |        mountPath: ${jobConfig.mountLocalPath}
+        |      - name: hadoop-config
+        |        mountPath: /etc/hadoop/conf
+        |    env:
+        |      - name: HADOOP_CONF_DIR
+        |        value: /etc/hadoop/conf
+        |      - name: HADOOP_USER_NAME
+        |        value: ${TaskManagerConfig.HADOOP_USER_NAME}
       """.stripMargin
 
     // Create a CustomResourceDefinitionContext for the SparkApplication
@@ -194,7 +231,21 @@ class K8sJobManager(val namespace:String = "default",
 
   def close(): Unit = {
     // Close the Kubernetes client
-    client.close()
+    if (client != null) {
+      client.close()
+    }
+
+    if (podLogWatch != null) {
+      podLogWatch.close()
+    }
+  }
+
+  // Redirect pod log to local file
+  def redirectPodLog(jobInfo: JobInfo): Unit = {
+    val podName = getDrvierPodName(jobInfo.getId)
+    val jobLogFile = LogManager.getJobLogFile(jobInfo.getId)
+
+    podLogWatch = client.pods().inNamespace(namespace).withName(podName).watchLog(new FileOutputStream(jobLogFile))
   }
 
   def waitAndWatch(jobInfo: JobInfo, timeout: Long = 5000): Unit = {

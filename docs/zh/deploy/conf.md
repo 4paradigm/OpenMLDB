@@ -307,3 +307,11 @@ local模式即Spark任务运行在本地（TaskManager所在主机），该模�
 ##### yarn-client模式
 
 "yarn-client"模式，[driver运行在本地](https://spark.apache.org/docs/3.2.1/running-on-yarn.html#launching-spark-on-yarn)，executor运行在Yarn集群上，配置与yarn-cluster模式相同。
+
+#### spark.default.conf
+
+`spark.default.conf`配置Spark的参数，配置格式为`key=value`，多个配置用`;`分隔，例如：
+```
+spark.default.conf=spark.executor.instances=2;spark.executor.memory=2g;spark.executor.cores=2
+```
+等效于Spark的`--conf`参数，如果提示修改Spark高级参数，请将参数加入此项中。更多参数，参考[Spark 配置](https://spark.apache.org/docs/3.1.2/configuration.html)。
