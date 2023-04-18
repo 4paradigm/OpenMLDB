@@ -34,14 +34,12 @@ jobs:
     container:
       image: ghcr.io/4paradigm/hybridsql:latest
     env:
-      OPENMLDB_BUILD_TARGET: "openmldb"
+      SQL_JAVASDK_ENABLE: ON
     steps:
       - uses: actions/checkout@v2
       - name: build openmldb
         run: |
-          make configure SQL_JAVASDK_ENABLE=ON CMAKE_INSTALL_PREFIX=openmldb
-          make build SQL_JAVASDK_ENABLE=ON CMAKE_INSTALL_PREFIX=openmldb
-          make install SQL_JAVASDK_ENABLE=ON CMAKE_INSTALL_PREFIX=openmldb
+          make install CMAKE_INSTALL_PREFIX=openmldb
       - name: install openmldb
         run: |
           yum install -y rsync
