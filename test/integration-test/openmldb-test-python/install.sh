@@ -18,9 +18,7 @@
 set -eE -x
 CURRENT_DIR=$(dirname "$0")
 pushd "${CURRENT_DIR}"
-mkdir -p "openmldb"
-cp -r ../../../release/* ./openmldb/
-cp -f ../../../build/bin/openmldb ./openmldb/bin/
+cp -r ../../../openmldb ./
 sed -i"" -e "s/OPENMLDB_MODE:=standalone/OPENMLDB_MODE:=cluster/g" openmldb/conf/openmldb-env.sh
 sed -i"" -e "s/.*make_snapshot_threshold_offset.*/--make_snapshot_threshold_offset=1/g" openmldb/conf/tablet.flags.template
 rm -rf /tmp/openmldb

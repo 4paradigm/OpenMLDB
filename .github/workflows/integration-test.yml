@@ -38,7 +38,11 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - name: build openmldb
-        run: make build
+        env: SQL_JAVASDK_ENABLE: ON
+        run: |
+          make configure CMAKE_INSTALL_PREFIX=openmldb
+          make build
+          make install
       - name: install openmldb
         run: |
           yum install -y rsync
