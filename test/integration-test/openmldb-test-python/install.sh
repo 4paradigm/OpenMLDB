@@ -23,6 +23,6 @@ sed -i"" -e "s/OPENMLDB_MODE:=standalone/OPENMLDB_MODE:=cluster/g" openmldb/conf
 sed -i"" -e "s/.*make_snapshot_threshold_offset.*/--make_snapshot_threshold_offset=1/g" openmldb/conf/tablet.flags.template
 rm -rf /tmp/openmldb
 python3 genhost.py
-sh -x openmldb/sbin/deploy-all.sh
-sh -x openmldb/sbin/start-all.sh
+bash openmldb/sbin/deploy-all.sh
+bash openmldb/sbin/start-all.sh
 popd
