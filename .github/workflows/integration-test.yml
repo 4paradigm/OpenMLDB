@@ -38,7 +38,8 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - name: build openmldb
-        env: SQL_JAVASDK_ENABLE: ON
+        env:
+          SQL_JAVASDK_ENABLE: ON
         run: |
           make configure CMAKE_INSTALL_PREFIX=openmldb
           make build
