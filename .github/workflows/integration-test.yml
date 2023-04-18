@@ -24,7 +24,7 @@ on:
 
 env:
   GIT_SUBMODULE_STRATEGY: recursive
-  NPROC: 2 # default Parallel build number for GitHub's Linux runner
+  NPROC: 5 # default Parallel build number for GitHub's Linux runner
   EXAMPLES_ENABLE: OFF # turn off hybridse's example code
   HYBRIDSE_TESTING_ENABLE: OFF # turn off hybridse's test code
 
@@ -39,6 +39,7 @@ jobs:
       - uses: actions/checkout@v2
       - name: build openmldb
         run: |
+          make configure CMAKE_INSTALL_PREFIX=openmldb
           make install CMAKE_INSTALL_PREFIX=openmldb
       - name: install openmldb
         run: |
