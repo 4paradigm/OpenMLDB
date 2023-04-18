@@ -38,6 +38,7 @@ jobs:
       - name: build openmldb
         run: |
           make configure SQL_JAVASDK_ENABLE=ON CMAKE_INSTALL_PREFIX=openmldb
+          make build SQL_JAVASDK_ENABLE=ON CMAKE_INSTALL_PREFIX=openmldb
           make install SQL_JAVASDK_ENABLE=ON CMAKE_INSTALL_PREFIX=openmldb
       - name: install openmldb
         run: |
