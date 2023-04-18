@@ -23,7 +23,7 @@ The following discusses common storage architectures for offline and online data
 
 ## Full data storage in a real-time database (not recommended)
 
-![ca1](C:\Users\65972\Documents\GitHub\OpenMLDB\docs\en\tutorial\images\ca1.png)
+![ca1](images/ca1.png)
 
 Users can choose to store full data in OpenMLDB's real-time database. The advantage of this usage is its simplicity and having only one copy of the data in physical storage, which saves management and maintenance costs. However, this usage method is rarely used in practice due to the following potential problems:
 
@@ -35,7 +35,7 @@ Therefore, in practice, to fully leverage OpenMLDB's real-time computation capab
 
 ## Separate management architecture for offline data storage
 
-![ca2](C:\Users\65972\Documents\GitHub\OpenMLDB\docs\en\tutorial\images\ca2.png)
+![ca2](images/ca2.png)
 
 Currently, in practical usage scenarios, most users adopt a separate storage architecture for offline and online data management. Based on this architecture, data is simultaneously written to both the offline data warehouse and the real-time database of OpenMLDB. The real-time database of OpenMLDB sets table-level data expiration (TTL), which corresponds to the size of the time window required in the feature script, which is the real-time database only stores necessary data for real-time feature computation, rather than the entire dataset. Some important points to note are:
 
@@ -46,7 +46,7 @@ Currently, in practical usage scenarios, most users adopt a separate storage arc
 
 ## A unified view of architecture for offline data storage (expected to support during v0.7.4)
 
-![ca3](C:\Users\65972\Documents\GitHub\OpenMLDB\docs\en\tutorial\images\ca3.png)
+![ca3](images/ca3.png)
 
 Under this architecture of a unified view for online and offline data, users' perspectives on data synchronization and management have been simplified. We are planning to release an automated synchronization mechanism from a real-time database to an offline data warehouse in version 0.7.4. While we still have two storage engines, a real-time database, and an offline data warehouse, in physical terms, users can focus on a single writing channel. Users only need to write new data into OpenMLDB real-time database and set up the real-time to offline synchronization mechanism, and OpenMLDB can automatically synchronize data in real-time or periodically to one or more offline data warehouses. OpenMLDB's real-time database still relies on a data expiration mechanism to only save data necessary for online feature computation, while the offline data warehouse retains all full data. This feature is expected to be added in the early April 2023 release of version 0.7.4.
 
@@ -68,11 +68,11 @@ The default computation mode of OpenMLDB supports in-process decision-making app
 
 Let's take a concrete example. The following figure shows the functional logic of the entire system when a credit card transaction occurs. As shown in the figure, the system maintains a history of transaction records, and when a new transaction behavior occurs, the current behavioral data is **virtually inserted into the table** along with recent transaction records for feature computation, then given to the model for inference, and finally evaluated to determine whether it is a fraudulent transaction.
 
-![ca4](C:\Users\65972\Documents\GitHub\OpenMLDB\docs\en\tutorial\images\ca4.png)
+![ca4](images/ca4.png)
 
 Note that in the above figure, the new swipe record data is shown being **virtually inserted** into the historical transaction table. This is because, in OpenMLDB's request mode, the system by default virtually inserts the in-event data carried by the request into the table, participating in the overall feature computation (if in special circumstances the current request row information is not needed for decision-making, the "EXCLUDE CURRENT_ROW" keyword can be used, see "Appendix: EXCLUDE CURRENT_ROW semantic interpretation" for details). At the same time, the current request row is also useful for subsequent decision-making in general, so after completing the current feature computation, it should be physically inserted into the database. To build an in-event decision-making system like the above business process, a typical architecture flowchart is listed below.
 
-![ca5](C:\Users\65972\Documents\GitHub\OpenMLDB\docs\en\tutorial\images\ca5.jpg)
+![ca5](images/ca5.jpg)
 
 The architecture is based on the OpenMLDB SDK and achieves strict in-event decision-making, which consists of two stages:
 
@@ -85,7 +85,7 @@ The above strict in-event decision-making architecture based on the OpenMLDB SDK
 
 In some recommendation scenarios, it is often necessary to perform a real-time computation query at a specific time, which does not carry any meaningful data. For example, when a user browses products, it is necessary to query the most popular products on the platform that match the user's interests in the last ten minutes when the user opens the browser and recommends the products based on their order. In such scenarios, the user's request and the writing of related material data can be completely decoupled, and the user's request does not carry any meaningful data, only to trigger a real-time computation request, which can be achieved using the SQL keyword `EXCLUDE CURRENT_ROW`.
 
-![ca6](C:\Users\65972\Documents\GitHub\OpenMLDB\docs\en\tutorial\images\ca6.png)
+![ca6](images/ca6.png)
 
 In the above architecture, the real-time request (read-only) and the data writing path are decoupled.
 
