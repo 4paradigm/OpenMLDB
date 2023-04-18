@@ -26,6 +26,7 @@ from diagnostic_tool.conf_validator import (
 from diagnostic_tool.log_analyzer import LogAnalyzer
 from diagnostic_tool.collector import Collector
 import diagnostic_tool.server_checker as checker
+from diagnostic_tool.table_checker import TableChecker
 
 from absl import app
 from absl import flags
@@ -104,9 +105,13 @@ def insepct_online(args):
             # so we print warnings alone
             print(f"full warnings:\n{t[13]}")
             fails.append(f"{t[2]}.{t[1]}")
-    
+
     assert not fails, f"unhealthy tables: {fails}"
     print(f"all tables are healthy")
+
+    if args.db:
+        table_checker = TableChecker(conn)
+        table_checker.check_distribution(dbs=args.db.split(","))
 
 
 def inspect_offline(args):
@@ -212,10 +217,15 @@ def parse_arg(argv):
     )
     # inspect online & offline
     inspect_parser.set_defaults(command=inspect)
+    inspect_parser.add_argument("--db", help=argparse.SUPPRESS)  # hide this argument
     inspect_sub = inspect_parser.add_subparsers()
     # inspect online
-    online = inspect_sub.add_parser("online", help="only inspect online table")
+    online = inspect_sub.add_parser("online", help="only inspect online table. set`--db` to specify databases")
     online.set_defaults(command=insepct_online)
+    online.add_argument(
+        "--db",
+        help="Specify databases to diagnose, split by ','.Use `--db all` to diagnose all databases."
+    )
     # inspect offline
     offline = inspect_sub.add_parser(
         "offline", help="only inspect offline jobs, check the job log"
