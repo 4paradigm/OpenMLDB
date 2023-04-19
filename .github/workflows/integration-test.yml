@@ -1,4 +1,4 @@
-# This workflow runs SDK related jobs for OpenMLDB
+# This workflow runs integration test related jobs for OpenMLDB
 name: integration-test
 
 on:
