@@ -155,7 +155,7 @@ thirdparty-fast:
 	else \
 	    echo "[deps]: install zetasql only"; \
 	    $(MAKE) thirdparty-configure; \
-	    $(CMAKE_PRG) --build $(THIRD_PARTY_BUILD_DIR) -j $(NPROC) --target zetasql; \
+	    $(CMAKE_PRG) --build $(THIRD_PARTY_BUILD_DIR) --target zetasql; \
 	fi
 
 # third party compiled code install to 'OpenMLDB/.deps/usr', source code install to 'OpenMLDB/thirdsrc'
