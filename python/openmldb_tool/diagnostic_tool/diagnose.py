@@ -45,6 +45,11 @@ flags.DEFINE_bool(
     False,
     "If set, all server in config file will be treated as local server, skip ssh.",
 )
+flags.DEFINE_string(
+    "db",
+    "",
+    "Specify databases to diagnose, split by ','.Use `--db all` to diagnose all databases.(only uesd in inspect online)",
+)
 
 flags.DEFINE_string("collect_dir", "/tmp/diag_collect", "...")
 
@@ -109,9 +114,9 @@ def insepct_online(args):
     assert not fails, f"unhealthy tables: {fails}"
     print(f"all tables are healthy")
 
-    if args.db:
+    if flags.FLAGS.db:
         table_checker = TableChecker(conn)
-        table_checker.check_distribution(dbs=args.db.split(","))
+        table_checker.check_distribution(dbs=flags.FLAGS.db.split(","))
 
 
 def inspect_offline(args):
@@ -217,15 +222,10 @@ def parse_arg(argv):
     )
     # inspect online & offline
     inspect_parser.set_defaults(command=inspect)
-    inspect_parser.add_argument("--db", help=argparse.SUPPRESS)  # hide this argument
     inspect_sub = inspect_parser.add_subparsers()
     # inspect online
     online = inspect_sub.add_parser("online", help="only inspect online table. set`--db` to specify databases")
     online.set_defaults(command=insepct_online)
-    online.add_argument(
-        "--db",
-        help="Specify databases to diagnose, split by ','.Use `--db all` to diagnose all databases."
-    )
     # inspect offline
     offline = inspect_sub.add_parser(
         "offline", help="only inspect offline jobs, check the job log"
