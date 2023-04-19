@@ -16,4 +16,4 @@
     autofe
     standalone_vs_cluster 
     standalone_use
-    common_architecture
+    app_arch
