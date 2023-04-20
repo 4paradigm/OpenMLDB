@@ -48,6 +48,13 @@ else
       dirname="${dirname} ${cur_dirname}"
     fi
   done < "$conf_file"
+  for item in $dirname
+  do
+    if [[ $item == "/" ]]; then
+      echo "cannot remove the root dir \"/\""
+      exit 1
+    fi
+  done
   old_IFS="$IFS"
   IFS=$'\n'
   # delete tablet data and log
