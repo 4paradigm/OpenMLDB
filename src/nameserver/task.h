@@ -17,6 +17,7 @@
 #ifndef SRC_NAMESERVER_TASK_H_
 #define SRC_NAMESERVER_TASK_H_
 
+#include <map>
 #include <memory>
 #include <string>
 
@@ -161,6 +162,122 @@ class TableSyncTaskMeta : public TaskMeta {
     boost::function<bool()> fun;
 };
 
+class DumpIndexDataTaskMeta : public TaskMeta {
+  public:
+    DumpIndexDataTaskMeta(uint64_t op_id, ::openmldb::api::OPType op_type, const std::string& endpoint,
+            uint32_t tid_i, uint32_t pid_i, uint32_t partition_num_i,
+            const ::openmldb::common::ColumnKey& column_key_i, uint32_t idx_i) :
+        TaskMeta(op_id, op_type, ::openmldb::api::TaskType::kDumpIndexData, endpoint),
+        tid(tid_i), pid(pid_i), partition_num(partition_num_i), column_key(column_key_i), idx(idx_i) {}
+    uint32_t tid;
+    uint32_t pid;
+    uint32_t partition_num;
+    ::openmldb::common::ColumnKey column_key;
+    uint32_t idx;
+};
+
+class SendIndexDataTaskMeta : public TaskMeta {
+  public:
+    SendIndexDataTaskMeta(uint64_t op_id, ::openmldb::api::OPType op_type, const std::string& endpoint,
+            uint32_t tid_i, uint32_t pid_i, const std::map<uint32_t, std::string>& pid_endpoint_map_i) :
+        TaskMeta(op_id, op_type, ::openmldb::api::TaskType::kSendIndexData, endpoint),
+        tid(tid_i), pid(pid_i), pid_endpoint_map(pid_endpoint_map_i) {}
+    uint32_t tid;
+    uint32_t pid;
+    std::map<uint32_t, std::string> pid_endpoint_map;
+};
+
+class LoadIndexDataTaskMeta : public TaskMeta {
+  public:
+    LoadIndexDataTaskMeta(uint64_t op_id, ::openmldb::api::OPType op_type, const std::string& endpoint,
+            uint32_t tid_i, uint32_t pid_i, uint32_t partition_num_i) :
+        TaskMeta(op_id, op_type, ::openmldb::api::TaskType::kLoadIndexData, endpoint),
+        tid(tid_i), pid(pid_i), partition_num(partition_num_i) {}
+    uint32_t tid;
+    uint32_t pid;
+    uint32_t partition_num;
+};
+
+class ExtractIndexDataTaskMeta : public TaskMeta {
+  public:
+    ExtractIndexDataTaskMeta(uint64_t op_id, ::openmldb::api::OPType op_type,
+            uint32_t tid_i, uint32_t pid_i, const std::vector<std::string>& endpoints_i,
+            uint32_t partition_num_i, const ::openmldb::common::ColumnKey& column_key_i, uint32_t idx_i) :
+        TaskMeta(op_id, op_type, ::openmldb::api::TaskType::kExtractIndexData, ""),
+        tid(tid_i), pid(pid_i), endpoints(endpoints_i), partition_num(partition_num_i), column_key(column_key_i), idx(idx_i) {}
+    uint32_t tid;
+    uint32_t pid;
+    std::vector<std::string> endpoints;
+    uint32_t partition_num;
+    ::openmldb::common::ColumnKey column_key;
+    uint32_t idx;
+};
+
+class AddIndexToTabletTaskMeta : public TaskMeta {
+  public:
+    AddIndexToTabletTaskMeta(uint64_t op_id, ::openmldb::api::OPType op_type,
+            uint32_t tid_i, uint32_t pid_i, const std::vector<std::string>& endpoints_i,
+            const ::openmldb::common::ColumnKey& column_key_i) :
+        TaskMeta(op_id, op_type, ::openmldb::api::TaskType::kAddIndexToTablet, ""),
+        tid(tid_i), pid(pid_i), endpoints(endpoints_i), column_key(column_key_i) {}
+    uint32_t tid;
+    uint32_t pid;
+    std::vector<std::string> endpoints;
+    ::openmldb::common::ColumnKey column_key;
+};
+
+class AddTableInfoTaskMeta : public TaskMeta {
+  public:
+    AddTableInfoTaskMeta(uint64_t op_id, ::openmldb::api::OPType op_type,
+            const std::string& name_i, const std::string& db_i,  uint32_t pid_i, const std::string& endpoint_i) :
+        TaskMeta(op_id, op_type, ::openmldb::api::TaskType::kAddTableInfo, ""),
+        name(name_i), db(db_i), pid(pid_i), endpoint(endpoint_i) {}
+    AddTableInfoTaskMeta(uint64_t op_id, ::openmldb::api::OPType op_type,
+            const std::string& name_i, const std::string& db_i,  uint32_t pid_i, const std::string& endpoint_i,
+            const std::string& alias_i, uint32_t remote_tid_i) :
+        TaskMeta(op_id, op_type, ::openmldb::api::TaskType::kAddTableInfo, ""),
+        name(name_i), db(db_i), pid(pid_i), endpoint(endpoint_i), is_remote(true), alias(alias_i), remote_tid(remote_tid_i) {}
+    std::string name;
+    std::string db;
+    uint32_t pid;
+    std::string endpoint;
+    bool is_remote = false;
+    std::string alias;
+    uint32_t remote_tid;
+};
+
+class DelTableInfoTaskMeta : public TaskMeta {
+  public:
+    DelTableInfoTaskMeta(uint64_t op_id, ::openmldb::api::OPType op_type,
+            const std::string& name_i, const std::string& db_i,  uint32_t pid_i, const std::string& endpoint_i) :
+        TaskMeta(op_id, op_type, ::openmldb::api::TaskType::kDelTableInfo, ""),
+        name(name_i), db(db_i), endpoint(endpoint_i) {}
+    DelTableInfoTaskMeta(uint64_t op_id, ::openmldb::api::OPType op_type,
+            const std::string& name_i, const std::string& db_i,  uint32_t pid_i,
+            const std::string& endpoint_i, uint32_t flag_i) :
+        TaskMeta(op_id, op_type, ::openmldb::api::TaskType::kDelTableInfo, ""),
+        name(name_i), db(db_i), endpoint(endpoint_i), has_flag(true), flag(flag_i) {}
+    std::string name;
+    std::string db;
+    uint32_t pid;
+    std::string endpoint;
+    bool has_flag = false;
+    uint32_t flag;
+};
+
+class UpdateTableInfoTaskMeta : public TaskMeta {
+  public:
+    UpdateTableInfoTaskMeta(uint64_t op_id, ::openmldb::api::OPType op_type,
+            const std::string& name_i, const std::string& db_i,  uint32_t pid_i,
+            const std::string& src_endpoint_i, const std::string& des_endpoint_i) :
+        TaskMeta(op_id, op_type, ::openmldb::api::TaskType::kUpdateTableInfo, ""),
+        name(name_i), db(db_i), src_endpoint(src_endpoint_i), des_endpoint(des_endpoint_i) {}
+    std::string name;
+    std::string db;
+    uint32_t pid;
+    std::string src_endpoint;
+    std::string des_endpoint;
+};
 }  // namespace nameserver
 }  // namespace openmldb
 #endif  // SRC_NAMESERVER_TASK_H_

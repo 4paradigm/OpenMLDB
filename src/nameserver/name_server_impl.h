@@ -466,33 +466,12 @@ class NameServerImpl : public NameServer {
                                                        const std::vector<std::string>& endpoint_vec, uint32_t pid,
                                                        uint64_t op_index, ::openmldb::api::OPType op_type);
 
-    std::shared_ptr<Task> CreateAddTableInfoTask(const std::string& alias, const std::string& endpoint,
-                                                 const std::string& name, const std::string& db, uint32_t remote_tid,
-                                                 uint32_t pid, uint64_t op_index, ::openmldb::api::OPType op_type);
-
-    std::shared_ptr<Task> CreateAddTableInfoTask(const std::string& name, const std::string& db, uint32_t pid,
-                                                 const std::string& endpoint, uint64_t op_index,
-                                                 ::openmldb::api::OPType op_type);
-
     void AddTableInfo(const std::string& alias, const std::string& endpoint, const std::string& name,
                       const std::string& db, uint32_t pid, uint32_t remote_tid,
                       std::shared_ptr<::openmldb::api::TaskInfo> task_info);
 
     void AddTableInfo(const std::string& name, const std::string& db, const std::string& endpoint, uint32_t pid,
                       std::shared_ptr<::openmldb::api::TaskInfo> task_info);
-
-    std::shared_ptr<Task> CreateDelTableInfoTask(const std::string& name, const std::string& db, uint32_t pid,
-                                                 const std::string& endpoint, uint64_t op_index,
-                                                 ::openmldb::api::OPType op_type);
-
-    std::shared_ptr<Task> CreateDelTableInfoTask(const std::string& name, const std::string& db, uint32_t pid,
-                                                 const std::string& endpoint, uint64_t op_index,
-                                                 ::openmldb::api::OPType op_type, uint32_t flag);
-
-    std::shared_ptr<Task> CreateUpdateTableInfoTask(const std::string& src_endpoint, const std::string& name,
-                                                    const std::string& db, uint32_t pid,
-                                                    const std::string& des_endpoint, uint64_t op_index,
-                                                    ::openmldb::api::OPType op_type);
 
     void UpdateTableInfo(const std::string& src_endpoint, const std::string& name, const std::string& db, uint32_t pid,
                          const std::string& des_endpoint, std::shared_ptr<::openmldb::api::TaskInfo> task_info);
@@ -528,22 +507,6 @@ class NameServerImpl : public NameServer {
 
     std::shared_ptr<Task> DropTableRemoteTask(const std::string& name, const std::string& db, const std::string& alias,
                                               uint64_t op_index, ::openmldb::api::OPType op_type);
-
-    std::shared_ptr<Task> CreateDumpIndexDataTask(uint64_t op_index, ::openmldb::api::OPType op_type, uint32_t tid,
-                                                  uint32_t pid, const std::string& endpoint, uint32_t partition_num,
-                                                  const ::openmldb::common::ColumnKey& column_key, uint32_t idx);
-
-    std::shared_ptr<Task> CreateSendIndexDataTask(uint64_t op_index, ::openmldb::api::OPType op_type, uint32_t tid,
-                                                  uint32_t pid, const std::string& endpoint,
-                                                  const std::map<uint32_t, std::string>& pid_endpoint_map);
-
-    std::shared_ptr<Task> CreateLoadIndexDataTask(uint64_t op_index, ::openmldb::api::OPType op_type, uint32_t tid,
-                                                  uint32_t pid, const std::string& endpoint, uint32_t partition_num);
-
-    std::shared_ptr<Task> CreateExtractIndexDataTask(uint64_t op_index, ::openmldb::api::OPType op_type, uint32_t tid,
-                                                     uint32_t pid, const std::vector<std::string>& endpoints,
-                                                     uint32_t partition_num,
-                                                     const ::openmldb::common::ColumnKey& column_key, uint32_t idx);
 
     std::shared_ptr<Task> CreateAddIndexToTabletTask(uint64_t op_index, ::openmldb::api::OPType op_type, uint32_t tid,
                                                      uint32_t pid, const std::vector<std::string>& endpoints,
