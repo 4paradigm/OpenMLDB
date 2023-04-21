@@ -17,6 +17,7 @@
 package com._4paradigm.openmldb.java_sdk_test.checker;
 
 
+import com._4paradigm.openmldb.Date;
 import com._4paradigm.openmldb.test_common.bean.OpenMLDBResult;
 import com._4paradigm.openmldb.test_common.model.ExpectDesc;
 import com._4paradigm.openmldb.test_common.model.Table;
@@ -26,6 +27,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.testng.Assert;
 
+import java.sql.Timestamp;
 import java.text.ParseException;
 import java.util.Collections;
 import java.util.List;
@@ -44,17 +46,19 @@ public class ResultCheckerByOffline extends BaseChecker {
     @Override
     public void check() throws ParseException {
         log.info("result check");
-        if (expect.getOfflineColumns().isEmpty()) {
+        if (expect.getColumns().isEmpty()) {
             throw new RuntimeException("fail check result: columns are empty");
         }
-        List<List<Object>> expectRows = DataUtil.convertRows(expect.getOfflineRows(), expect.getOfflineColumns());
-        List<List<Object>> actual = DataUtil.convertRows(openMLDBResult.getOfflineResult(), expect.getOfflineColumns());
-
+//        List<List<Object>> expectRows = DataUtil.convertRows(expect.getOfflineRows(), expect.getOfflineColumns());
+        List<List<Object>> expectRows = DataUtil.convertRows(expect.getRows(),
+        expect.getColumns());
+//       List<List<Object>> actual = DataUtil.convertRows(openMLDBResult.getOfflineResult(),expect.getColumns());
+        List<List<Object>> actual = openMLDBResult.getOfflineResult();
         String orderName = expect.getOrder();
         if (StringUtils.isNotEmpty(orderName)) {
-            int index = SchemaUtil.getIndexByColumnName(openMLDBResult.getOfflineColumns(),orderName);
-            Collections.sort(expectRows, new RowsSort(index));
-            Collections.sort(actual, new RowsSort(index));
+           int index = SchemaUtil.getIndexByColumnName(openMLDBResult.getOfflineColumns(),orderName);
+            Collections.sort(expectRows, new RowsSort(0));
+            Collections.sort(actual, new RowsSort(0));
         }
 
         log.info("expect:{}", expectRows);
@@ -71,39 +75,52 @@ public class ResultCheckerByOffline extends BaseChecker {
                 Object actual_val = actual_list.get(j);
                 Object expect_val = expect_list.get(j);
 
-                if (actual_val != null && actual_val instanceof Float) {
+                if (expect_val != null && expect_val instanceof Float) {
                     Assert.assertTrue(expect_val != null && expect_val instanceof Float);
                     Assert.assertEquals(
                             (Float) actual_val, (Float) expect_val, 1e-4,
                             String.format("ResultChecker fail: row=%d column=%d expect=%s real=%s\nexpect %s\nreal %s",
                                 i, j, expect_val, actual_val,
-                                Table.getTableString(expect.getOfflineColumns(), expectRows),
-                                openMLDBResult.toString())
+                                Table.getTableString(expect.getColumns(), expectRows),
+                                Table.getTableString(openMLDBResult.getOfflineColumns(),actual))
                     );
 
-                } else if (actual_val != null && actual_val instanceof Double) {
+                } else if (expect_val != null && expect_val instanceof Double) {
                     Assert.assertTrue(expect_val != null && expect_val instanceof Double);
                     Assert.assertEquals(
                             (Double) actual_val, (Double) expect_val, 1e-4,
                             String.format("ResultChecker fail: row=%d column=%d expect=%s real=%s\nexpect %s\nreal %s",
                                     i, j, expect_val, actual_val,
-                                    Table.getTableString(expect.getOfflineColumns(), expectRows),
-                                    openMLDBResult.toString())
+                                    Table.getTableString(expect.getColumns(), expectRows),
+                                    Table.getTableString(openMLDBResult.getOfflineColumns(),actual))
+
                     );
 
                 } else if (String.valueOf(actual_val).equalsIgnoreCase("null")){
                     Assert.assertEquals(String.valueOf(actual_val),String.valueOf(expect_val),
                             String.format("ResultChecker fail: row=%d column=%d expect=%s real=%s\nexpect %s\nreal %s",
                                     i, j, expect_val, actual_val,
-                                    Table.getTableString(expect.getOfflineColumns(), expectRows),
-                                    openMLDBResult.toString())
+                                    Table.getTableString(expect.getColumns(), expectRows),
+                                    Table.getTableString(openMLDBResult.getOfflineColumns(),actual))
+
                     );
-                }else {
-                    Assert.assertEquals(actual_val, expect_val, String.format(
+                } else if (expect_val != null && expect_val instanceof Timestamp) {
+                    Assert.assertTrue(expect_val != null && expect_val instanceof Timestamp);
+                    Assert.assertEquals(
+                            (Timestamp) actual_val, (Timestamp) expect_val,
+                            String.format("ResultChecker fail: row=%d column=%d expect=%s real=%s\nexpect %s\nreal %s",
+                                    i, j, expect_val, actual_val,
+                                    Table.getTableString(expect.getColumns(), expectRows),
+                                    Table.getTableString(openMLDBResult.getOfflineColumns(),actual))
+
+                    );
+                } else {
+                    Assert.assertEquals(String.valueOf(actual_val),String.valueOf(expect_val),String.format(
                             "ResultChecker fail: row=%d column=%d expect=%s real=%s\nexpect %s\nreal %s",
                             i, j, expect_val, actual_val,
-                            Table.getTableString(expect.getOfflineColumns(), expectRows),
-                            openMLDBResult.toString()));
+                            Table.getTableString(expect.getColumns(), expectRows),
+                            Table.getTableString(openMLDBResult.getOfflineColumns(),actual)));
+
 
                 }
             }

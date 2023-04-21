@@ -71,7 +71,7 @@ org.apache.hadoop.security.AccessControlException: Permission denied: user=xx, a
 
 | OpenMLDB 数据格式 | Hive 数据格式 |
 | ----------------- | ------------- |
-| BOOL              | BOOLEAN       |
+| BOOL              | BOOL          |
 | SMALLINT          | SMALLINT      |
 | INT               | INT           |
 | BIGINT            | BIGINT        |
@@ -79,6 +79,7 @@ org.apache.hadoop.security.AccessControlException: Permission denied: user=xx, a
 | DOUBLE            | DOUBLE        |
 | DATE              | DATE          |
 | TIMESTAMP         | TIMESTAMP     |
+| STRING            | STRING        |
 
 ## 通过 `LIKE` 语法快速建表
 

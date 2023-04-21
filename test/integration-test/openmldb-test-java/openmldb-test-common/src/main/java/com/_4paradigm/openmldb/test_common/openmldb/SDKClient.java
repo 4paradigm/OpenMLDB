@@ -37,17 +37,17 @@ public class SDKClient {
             if(ok){
                 ResultUtil.parseResultSet(statement,openMLDBResult);
                 ResultParserManager.of().parseResult(openMLDBResult);
-//                if(sql.toLowerCase().startsWith("load data")||sql.toLowerCase().contains("into outfile")){
-//                    OpenMLDBJob openMLDBJob = ResultUtil.parseJob(openMLDBResult);
-//                    openMLDBResult.setOpenMLDBJob(openMLDBJob);
-//                    if (!openMLDBJob.getState().equals("FINISHED")) {
-//                        openMLDBResult.setOk(false);
-//                        openMLDBResult.setMsg(openMLDBJob.getError());
-//                    }
-//                    // 异步方式需要使用下面的方式 轮询去过去job的状态
-//                    //OpenMLDBJob finishJobInfo = showJob(openMLDBJob.getId());
-//                    //openMLDBResult.setOpenMLDBJob(finishJobInfo);
-//                }
+                if(sql.toLowerCase().startsWith("load data")||sql.toLowerCase().contains("into outfile")){
+                    OpenMLDBJob openMLDBJob = ResultUtil.parseJob(openMLDBResult);
+                    openMLDBResult.setOpenMLDBJob(openMLDBJob);
+                    if (!openMLDBJob.getState().equals("FINISHED")) {
+                        openMLDBResult.setOk(false);
+                        openMLDBResult.setMsg(openMLDBJob.getError());
+                    }
+                    // 异步方式需要使用下面的方式 轮询去过去job的状态
+                    //OpenMLDBJob finishJobInfo = showJob(openMLDBJob.getId());
+                    //openMLDBResult.setOpenMLDBJob(finishJobInfo);
+                }
             }
             if(sql.toLowerCase().startsWith("create index")||sql.toLowerCase().startsWith("drop index")){
                 Tool.sleep(20*1000);

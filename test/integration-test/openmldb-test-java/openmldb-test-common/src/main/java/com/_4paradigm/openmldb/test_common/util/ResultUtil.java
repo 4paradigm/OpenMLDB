@@ -11,6 +11,7 @@ import java.sql.*;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+import java.text.SimpleDateFormat;
 
 @Slf4j
 public class ResultUtil {
@@ -38,14 +39,24 @@ public class ResultUtil {
     public static OpenMLDBJob parseJob(OpenMLDBResult openMLDBResult){
         OpenMLDBJob openMLDBJob = new OpenMLDBJob();
         List<List<Object>> result = openMLDBResult.getResult();
-        String resultStr = String.valueOf(result.get(0).get(0));
-        String[] lines = resultStr.split("\n");
-        String[] ss = lines[3].trim().split("\\s+");
-        openMLDBJob.setId(Integer.parseInt(ss[0]));
-        openMLDBJob.setJobType(ss[1]);
-        openMLDBJob.setState(ss[2]);
-        openMLDBJob.setStartTime(new Timestamp(Long.parseLong(ss[3])));
-        openMLDBJob.setEndTime(new Timestamp(Long.parseLong(ss[4])));
+        String[] ss = String.valueOf(result.get(0)).trim().split(",");
+        openMLDBJob.setId(Integer.parseInt(ss[0].substring(1)));
+        openMLDBJob.setJobType(ss[1].substring(1));
+        openMLDBJob.setState(ss[2].substring(1));
+        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd hh:mm:ss.SSS");
+        Timestamp start_time = new java.sql.Timestamp(0);
+        Timestamp end_time = new java.sql.Timestamp(0);
+        try {
+            java.util.Date parsedDate = dateFormat.parse(ss[3].substring(1));
+            Timestamp timestamp = new java.sql.Timestamp(parsedDate.getTime());
+            start_time = timestamp;
+            parsedDate = dateFormat.parse(ss[4].substring(1));
+            timestamp = new java.sql.Timestamp(parsedDate.getTime());
+            end_time = timestamp;
+        } catch(Exception e) { 
+        }
+        openMLDBJob.setStartTime(start_time);
+        openMLDBJob.setEndTime(end_time);
         openMLDBJob.setParameter(ss[5]);
         openMLDBJob.setCluster(ss[6]);
         openMLDBJob.setApplicationId(ss[7]);
