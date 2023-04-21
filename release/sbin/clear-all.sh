@@ -36,7 +36,7 @@ if [[ ${OPENMLDB_MODE} == "standalone" ]]; then
   rm -rf standalone_db standalone_logs
 else
   conf_file="conf/tablet.flags.template"
-  dirname=""
+  dirname=()
   while IFS= read -r line
   do
     if echo "$line" | grep -q '^#'; then
@@ -44,17 +44,9 @@ else
     fi
     if echo "$line" | grep -v "zk_root_path" | grep -q "root_path" ||
         echo "$line" |  grep -q "openmldb_log_dir"; then
-      cur_dirname=$(echo "${line}" | awk -F '=' '{print $2}')
-      dirname="${dirname} ${cur_dirname}"
+      dirname[${#dirname[*]}]=$(echo "${line}" | awk -F '=' '{print $2}')
     fi
   done < "$conf_file"
-  for item in $dirname
-  do
-    if [[ $item == "/" ]]; then
-      echo "cannot remove the root dir \"/\""
-      exit 1
-    fi
-  done
   old_IFS="$IFS"
   IFS=$'\n'
   # delete tablet data and log
@@ -68,8 +60,15 @@ else
       rm_dir "$host" "$dir"
     else
       echo "clear tablet data and log in $dir with endpoint $host:$port "
-      cmd="cd $dir && rm -rf ${dirname}"
-      run_auto "$host" "$cmd"
+      for item in "${dirname[@]}"
+      do
+        if [[ $item == "/" ]]; then
+          echo "cannot remove the root dir \"/\""
+          exit 1
+        fi
+        cmd="cd $dir && rm -rf ${item}"
+        run_auto "$host" "$cmd"
+      done
     fi
   done
 
