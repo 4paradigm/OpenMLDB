@@ -16,3 +16,4 @@
     autofe
     standalone_vs_cluster 
     standalone_use
+    app_arch

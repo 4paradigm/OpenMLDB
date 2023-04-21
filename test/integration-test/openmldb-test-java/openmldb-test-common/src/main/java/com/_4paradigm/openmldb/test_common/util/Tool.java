@@ -22,7 +22,7 @@ import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.http.message.BasicNameValuePair;
 import org.testng.Assert;
-import sun.misc.BASE64Encoder;
+import java.util.Base64;
 
 import java.io.File;
 import java.io.IOException;
@@ -163,7 +163,7 @@ public class Tool {
             e.printStackTrace();
         }
         if (b != null) {
-            s = new BASE64Encoder().encode(b);
+            s = Base64.getEncoder().encodeToString(b);
         }
         return s;
     }

@@ -13,6 +13,7 @@ title: udfs/udfs.h
 | **[abs](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-abs)**()| <br>Return the absolute value of expr. |
 | **[acos](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-acos)**()| <br>Return the arc cosine of expr. |
 | **[add](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-add)**()| <br>Compute sum of two arguments. |
+| **[add_months](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-add-months)**()| <br>adds an integer months to a given date, returning the resulting date. |
 | **[array_contains](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-array-contains)**()| <br>array_contains(array, value) - Returns true if the array contains the value. |
 | **[asin](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-asin)**()| <br>Return the arc sine of expr. |
 | **[at](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-at)**()| |
@@ -273,6 +274,45 @@ select add(1, 2);
 * [`timestamp`, `int32`]
 * [`timestamp`, `int64`]
 * [`timestamp`, `timestamp`] 
+
+### function add_months
+
+```cpp
+add_months()
+```
+
+**Description**:
+
+adds an integer months to a given date, returning the resulting date. 
+
+**Parameters**: 
+
+  * **start_date** Date value to add 
+  * **num_months** Integer value as number of months to add, can be positive or negative
+
+
+**Since**:
+0.8.0
+
+
+The resulting day component will remain the same as that specified in date, unless the resulting month has fewer days than the day component of the given date, in which case the day will be the last day of the resulting month. Returns NULL if given an invalid date, or a NULL argument.
+
+```sql
+
+SELECT add_months('2016-08-31', 1);
+-- 2016-09-30
+SELECT add_months('2016-08-31', -1);
+-- 2016-07-31
+SELECT add_months('2012-01-31', 1);
+-- 2012-02-29
+```
+
+
+**Supported Types**:
+
+* [`date`, `int16`]
+* [`date`, `int32`]
+* [`date`, `int64`] 
 
 ### function array_contains
 

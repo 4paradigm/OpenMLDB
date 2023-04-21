@@ -50,3 +50,6 @@ Update `WINDOW_SIZE` in confguration file and execute the following command.
 ```
 java -cp conf/:lib/ com._4paradigm.openmldb.benchmark.OpenMLDBLongWindowBenchmark
 ```
+
+Note:
+If you want to test specific SQL, you can modify [here](https://github.com/4paradigm/OpenMLDB/blob/main/benchmark/src/main/java/com/_4paradigm/openmldb/benchmark/Util.java#L71)
