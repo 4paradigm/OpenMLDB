@@ -52,7 +52,6 @@ public class OfflineJobExecuter extends BaseSQLExecutor {
     private Map<String, OpenMLDBResult> resultMap;
     private String offlineDataPrefix = "/tmp/openmldb_offline_storage/";
 
-
     public OfflineJobExecuter(SqlExecutor executor, SQLCase sqlCase, SQLCaseType executorType) {
         super(executor, sqlCase, executorType);
         sdkClient = SDKClient.of(executor);
@@ -89,6 +88,8 @@ public class OfflineJobExecuter extends BaseSQLExecutor {
         sdkClient.execute("SET @@global.sync_job = 'true';");
         sdkClient.execute("SET @@global.job_timeout = '600000';");
         sdkClient.setOffline();
+
+        // TODO: Handle for yarn cases
         ExecUtil.exeCommand("touch "+offlineDataPrefix);
 
         List<InputDesc> inputs = sqlCase.getInputs();
@@ -162,13 +163,17 @@ public class OfflineJobExecuter extends BaseSQLExecutor {
         OpenMLDBResult openMLDBResult = null;
         List<String> sqls = sqlCase.getSqls();
         long totalMilliSeconds = System.currentTimeMillis();
+
+        String localOutDirPath = "file://" + offlineDataPrefix+Long.toString(totalMilliSeconds);
+
         String outDirPath = offlineDataPrefix+Long.toString(totalMilliSeconds);
+
 //        ExecUtil.exeCommand("touch "+outDirPath);
         if (CollectionUtils.isNotEmpty(sqls)) {
             for (String sql : sqls) {
                 sql = MapUtils.isNotEmpty(openMLDBInfoMap)?SQLUtil.formatSql(sql, tableNames, openMLDBInfoMap.get(version)):SQLUtil.formatSql(sql, tableNames);
                 sql = SQLUtil.formatSql(sql);
-                sql = sql.split(";")[0] +" INTO OUTFILE '"+outDirPath+"' OPTIONS ( format = 'parquet' );";
+                sql = sql.split(";")[0] +" INTO OUTFILE '"+localOutDirPath+"' OPTIONS ( format = 'parquet' );";
                 openMLDBResult = sdkClient.execute(sql);
             }
         }
@@ -176,7 +181,7 @@ public class OfflineJobExecuter extends BaseSQLExecutor {
         if (StringUtils.isNotEmpty(sql)) {
             sql = MapUtils.isNotEmpty(openMLDBInfoMap)?SQLUtil.formatSql(sql, tableNames, openMLDBInfoMap.get(version)):SQLUtil.formatSql(sql, tableNames);
             sql = SQLUtil.formatSql(sql);
-            sql = sql.split(";")[0] +" INTO OUTFILE '"+outDirPath+"' OPTIONS ( format = 'parquet' );";
+            sql = sql.split(";")[0] +" INTO OUTFILE '"+localOutDirPath+"' OPTIONS ( format = 'parquet' );";
             openMLDBResult = sdkClient.execute(sql);
         }
 

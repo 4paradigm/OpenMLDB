@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       EXEC_TEST_TYPE:
-        description: 'Which tests need to be executed? The options are all, python, java, batch, cli, standalone-cli and apiserver'
+        description: 'Which tests need to be executed? The options are all, python, java, batch, cli, standalone-cli, apiserver, yarn'
         required: true
         default: 'all'
 env:
@@ -526,3 +526,47 @@ jobs:
 #          files: test/batch-test/openmldb-batch-test/target/surefire-reports/TEST-*.xml
 #          check_name: Batch Test SRC Report
 #          comment_title: Batch Test SRC Report
+
+  java-sdk-yarn:
+    if: ${{ github.event.inputs.EXEC_TEST_TYPE == 'all' || github.event.inputs.EXEC_TEST_TYPE == 'yarn' }}
+    runs-on: self-hosted
+    container:
+      image: ghcr.io/4paradigm/hybridsql:latest
+    env:
+      OS: linux
+    steps:
+      - uses: actions/checkout@v2
+      - name: build jsdk and package
+        run: |
+          make configure CMAKE_INSTALL_PREFIX=openmldb-linux
+          make SQL_JAVASDK_ENABLE=ON && make SQL_JAVASDK_ENABLE=ON install
+          tar -zcvf openmldb-linux.tar.gz openmldb-linux
+          echo "openmldb-pkg:"
+          ls -al
+      - name: test
+        run: source /root/.bashrc && bash test/steps/openmldb-sdk-test-java-src.sh -c test_yarn.xml -d yarn -l "0" -s "memory"
+      - name: TEST Results
+        if: always()
+        uses: EnricoMi/publish-unit-test-result-action@v1
+        with:
+          files: test/integration-test/openmldb-test-java/openmldb-sdk-test/target/surefire-reports/TEST-*.xml
+          check_name: "SRC java-sdk-cluster-memory-0 Report"
+          comment_title: "SRC java-sdk-cluster-memory-0 Report"
+      - name: tar test report
+        if: ${{ failure() }}
+        run: tar -zcvf surefire-reports.tar.gz test/integration-test/openmldb-test-java/openmldb-sdk-test/target/surefire-reports
+      - name: Send Email
+        if: ${{ failure() }}
+        uses: dawidd6/action-send-mail@master
+        with:
+          server_address: smtp.partner.outlook.cn
+          server_port: 587
+          username: ${{ secrets.MAIL_USERNAME }}
+          password: ${{ secrets.MAIL_PASSWORD }}
+          subject: OpenMLDB Memory Test
+          body: OpenMLDB Memory Test Failed
+          html_body: test/integration-test/openmldb-test-java/openmldb-sdk-test/target/surefire-reports/html/overview.html
+          to: ${{ secrets.MAIL_TO }}
+          from: GitHub Actions
+          content_type: text/plain
+          attachments: surefire-reports.tar.gz
