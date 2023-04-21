@@ -24,11 +24,11 @@ cd "$home" || exit 1
 rm_dir() {
     local host=$1
     local dir=$2
-    if [[ $dir == "" ]] || [[ $dir == "/" ]]; then
-        echo "invalid dir $dir"
+    if [[ $dir == "" ]]; then
+        echo "empty dir name $dir"
         exit 1
     fi
-    local cmd="rm -rf $dir"
+    local cmd="rm -rf \"$dir\""
     run_auto "$host" "$cmd"
 }
 
@@ -44,7 +44,7 @@ else
     fi
     if echo "$line" | grep -v "zk_root_path" | grep -q "root_path" ||
         echo "$line" |  grep -q "openmldb_log_dir"; then
-      dirname[${#dirname[*]}]=$(echo "${line}" | awk -F '=' '{print $2}')
+      dirname+=($(echo "${line}" | awk -F '=' '{print $2}'))
     fi
   done < "$conf_file"
   old_IFS="$IFS"
@@ -59,14 +59,10 @@ else
       echo "clear $dir with endpoint $host:$port "
       rm_dir "$host" "$dir"
     else
-      echo "clear tablet data and log in $dir with endpoint $host:$port "
       for item in "${dirname[@]}"
       do
-        if [[ $item == "/" ]]; then
-          echo "cannot remove the root dir \"/\""
-          exit 1
-        fi
-        cmd="cd $dir && rm -rf ${item}"
+        echo "clear $item with endpoint $host:$port "
+        cmd="cd $dir && rm -rf \"${item}\""
         run_auto "$host" "$cmd"
       done
     fi
