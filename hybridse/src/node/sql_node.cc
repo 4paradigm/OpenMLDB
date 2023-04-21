@@ -1306,6 +1306,9 @@ std::string NameOfSqlNodeType(const SqlNodeType &type) {
         case kDynamicUdfFnDef:
             output = "kDynamicUdfFnDef";
             break;
+        case kDynamicUdafFnDef:
+            output = "kDynamicUdafFnDef";
+            break;
         case kWithClauseEntry:
             output = "kWithClauseEntry";
             break;
