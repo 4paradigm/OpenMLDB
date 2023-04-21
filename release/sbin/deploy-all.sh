@@ -56,7 +56,9 @@ distribute() {
   else
     if [[ "$type" = "taskmanager" ]]; then
       dir_list=(bin sbin conf taskmanager)
-      rsync -arz "${SPARK_HOME}/" "$host:${SPARK_HOME}/"
+      if [[ "$use_ssh" = true ]]; then
+        rsync -arz "${SPARK_HOME}/" "$host:${SPARK_HOME}/"
+      fi
     else
       dir_list=(bin sbin conf)
     fi

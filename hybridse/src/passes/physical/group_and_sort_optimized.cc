@@ -146,7 +146,12 @@ bool GroupAndSortOptimized::Transform(PhysicalOpNode* in,
             if (!union_op->window_unions().Empty()) {
                 for (auto& window_union :
                      union_op->window_unions_.window_unions_) {
-                    PhysicalOpNode* new_producer;
+                    PhysicalOpNode* new_producer = nullptr;
+                    // 1. optimize it self (e.g Join(t1, t2) can optimize t2 based on join condition)
+                    if (Apply(window_union.first, &new_producer) && new_producer != nullptr) {
+                        window_union.first = new_producer;
+                    }
+                    // 2. optimize based on window definition
                     auto& window = window_union.second;
                     if (KeysAndOrderFilterOptimized(
                             window_union.first->schemas_ctx(),
@@ -427,6 +432,21 @@ bool GroupAndSortOptimized::KeysOptimized(const SchemasContext* root_schemas_ctx
             return false;
         }
         *new_in = new_filter;
+        return true;
+    } else if (PhysicalOpType::kPhysicalOpRequestJoin == in->GetOpType()) {
+        PhysicalRequestJoinNode* request_join = dynamic_cast<PhysicalRequestJoinNode*>(in);
+        // try optimze left source of request join with window definition
+        // window partition by and order by columns must refer to the left most table only
+        PhysicalOpNode* new_depend = nullptr;
+        if (!KeysOptimized(request_join->GetProducer(0)->schemas_ctx(), request_join->GetProducer(0), left_key,
+                           index_key, right_key, sort, &new_depend)) {
+            return false;
+        }
+        if (!ResetProducer(plan_ctx_, request_join, 0, new_depend)) {
+            return false;
+        }
+
+        *new_in = request_join;
         return true;
     }
     return false;
