@@ -36,6 +36,7 @@
 #include "codec/schema_codec.h"
 #include "nameserver/cluster_info.h"
 #include "nameserver/system_table.h"
+#include "nameserver/task.h"
 #include "proto/name_server.pb.h"
 #include "proto/tablet.pb.h"
 #include "sdk/sql_cluster_router.h"
@@ -82,23 +83,6 @@ struct TabletInfo {
 // the container of tablet
 typedef std::map<std::string, std::shared_ptr<TabletInfo>> Tablets;
 typedef std::map<std::string, std::shared_ptr<::openmldb::nameserver::TableInfo>> TableInfos;
-
-typedef boost::function<void()> TaskFun;
-
-struct Task {
-    Task(std::string endpoint, std::shared_ptr<::openmldb::api::TaskInfo> task_info)
-        : endpoint_(std::move(endpoint)), task_info_(std::move(task_info)) {}
-    ~Task() = default;
-    std::string endpoint_;
-    std::shared_ptr<::openmldb::api::TaskInfo> task_info_;
-    std::vector<std::shared_ptr<Task>> sub_task_;
-    TaskFun fun_;
-};
-
-struct OPData {
-    ::openmldb::api::OPInfo op_info_;
-    std::list<std::shared_ptr<Task>> task_list_;
-};
 
 struct ZkPath {
     std::string zk_cluster_;
@@ -467,24 +451,7 @@ class NameServerImpl : public NameServer {
 
     int UpdateEndpointTableAlive(const std::string& endpoint, bool is_alive);
 
-    std::shared_ptr<Task> CreateMakeSnapshotTask(const std::string& endpoint, uint64_t op_index,
-                                                 ::openmldb::api::OPType op_type, uint32_t tid, uint32_t pid,
-                                                 uint64_t end_offset);
-
-    std::shared_ptr<Task> CreatePauseSnapshotTask(const std::string& endpoint, uint64_t op_index,
-                                                  ::openmldb::api::OPType op_type, uint32_t tid, uint32_t pid);
-
-    std::shared_ptr<Task> CreateRecoverSnapshotTask(const std::string& endpoint, uint64_t op_index,
-                                                    ::openmldb::api::OPType op_type, uint32_t tid, uint32_t pid);
-
-    std::shared_ptr<Task> CreateSendSnapshotTask(const std::string& endpoint, uint64_t op_index,
-                                                 ::openmldb::api::OPType op_type, uint32_t tid, uint32_t remote_tid,
-                                                 uint32_t pid, const std::string& des_endpoint);
-
-    std::shared_ptr<Task> CreateLoadTableTask(const std::string& endpoint, uint64_t op_index,
-                                              ::openmldb::api::OPType op_type, const std::string& name, uint32_t tid,
-                                              uint32_t pid, uint32_t seg_cnt, bool is_leader,
-                                              ::openmldb::common::StorageMode storage_mode);
+    std::shared_ptr<Task> CreateTask(const std::shared_ptr<TaskMeta>& task_meta);
 
     std::shared_ptr<Task> CreateLoadTableRemoteTask(const std::string& alias, const std::string& name,
                                                     const std::string& db, const std::string& endpoint, uint32_t pid,
@@ -498,10 +465,6 @@ class NameServerImpl : public NameServer {
     std::shared_ptr<Task> CreateAddReplicaNSRemoteTask(const std::string& alias, const std::string& name,
                                                        const std::vector<std::string>& endpoint_vec, uint32_t pid,
                                                        uint64_t op_index, ::openmldb::api::OPType op_type);
-
-    std::shared_ptr<Task> CreateAddReplicaTask(const std::string& endpoint, uint64_t op_index,
-                                               ::openmldb::api::OPType op_type, uint32_t tid, uint32_t pid,
-                                               const std::string& des_endpoint);
 
     std::shared_ptr<Task> CreateAddTableInfoTask(const std::string& alias, const std::string& endpoint,
                                                  const std::string& name, const std::string& db, uint32_t remote_tid,
@@ -517,10 +480,6 @@ class NameServerImpl : public NameServer {
 
     void AddTableInfo(const std::string& name, const std::string& db, const std::string& endpoint, uint32_t pid,
                       std::shared_ptr<::openmldb::api::TaskInfo> task_info);
-
-    std::shared_ptr<Task> CreateDelReplicaTask(const std::string& endpoint, uint64_t op_index,
-                                               ::openmldb::api::OPType op_type, uint32_t tid, uint32_t pid,
-                                               const std::string& follower_endpoint);
 
     std::shared_ptr<Task> CreateDelTableInfoTask(const std::string& name, const std::string& db, uint32_t pid,
                                                  const std::string& endpoint, uint64_t op_index,
@@ -558,9 +517,6 @@ class NameServerImpl : public NameServer {
                                                             uint32_t pid, const std::string& follower,
                                                             uint64_t offset_delta);
 
-    std::shared_ptr<Task> CreateDropTableTask(const std::string& endpoint, uint64_t op_index,
-                                              ::openmldb::api::OPType op_type, uint32_t tid, uint32_t pid);
-
     std::shared_ptr<Task> CreateRecoverTableTask(uint64_t op_index, ::openmldb::api::OPType op_type,
                                                  const std::string& name, const std::string& db, uint32_t pid,
                                                  const std::string& endpoint, uint64_t offset_delta,
@@ -592,9 +548,6 @@ class NameServerImpl : public NameServer {
     std::shared_ptr<Task> CreateAddIndexToTabletTask(uint64_t op_index, ::openmldb::api::OPType op_type, uint32_t tid,
                                                      uint32_t pid, const std::vector<std::string>& endpoints,
                                                      const ::openmldb::common::ColumnKey& column_key);
-
-    std::shared_ptr<Task> CreateTableSyncTask(uint64_t op_index, ::openmldb::api::OPType op_type, uint32_t tid,
-                                              const boost::function<bool()>& fun);
 
     bool GetTableInfo(const std::string& table_name, const std::string& db_name,
                       std::shared_ptr<TableInfo>* table_info);

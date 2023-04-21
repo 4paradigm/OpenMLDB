@@ -1029,8 +1029,9 @@ int NameServerImpl::CreateMakeSnapshotOPTask(std::shared_ptr<OPData> op_data) {
     if (request.has_offset() && request.offset() > 0) {
         end_offset = request.offset();
     }
-    std::shared_ptr<Task> task = CreateMakeSnapshotTask(endpoint, op_data->op_info_.op_id(),
-                                                        ::openmldb::api::OPType::kMakeSnapshotOP, tid, pid, end_offset);
+    auto task_meta = std::make_shared<MakeSnapshotTaskMeta>(op_data->op_info_.op_id(),
+            ::openmldb::api::OPType::kMakeSnapshotOP, endpoint, tid, pid, end_offset);
+    auto task = CreateTask(task_meta);
     if (!task) {
         PDLOG(WARNING, "create makesnapshot task failed. tid[%u] pid[%u]", tid, pid);
         return -1;
@@ -4112,16 +4113,18 @@ int NameServerImpl::CreateAddReplicaRemoteOPTask(std::shared_ptr<OPData> op_data
         return -1;
     }
     uint64_t op_index = op_data->op_info_.op_id();
-    std::shared_ptr<Task> task =
-        CreatePauseSnapshotTask(leader_endpoint, op_index, ::openmldb::api::OPType::kAddReplicaRemoteOP, tid, pid);
+    auto op_type = ::openmldb::api::OPType::kAddReplicaRemoteOP;
+    std::shared_ptr<TaskMeta> task_meta;
+    task_meta = std::make_shared<PauseSnapshotTaskMeta>(op_index, op_type, leader_endpoint, tid, pid);
+    auto task = CreateTask(task_meta);
     if (!task) {
         PDLOG(WARNING, "create pausesnapshot task failed. tid[%u] pid[%u]", tid, pid);
         return -1;
     }
     op_data->task_list_.push_back(task);
-
-    task = CreateSendSnapshotTask(leader_endpoint, op_index, ::openmldb::api::OPType::kAddReplicaRemoteOP, tid,
-                                  remote_tid, pid, endpoint);
+    task_meta = std::make_shared<SendSnapshotTaskMeta>(op_index, op_type, leader_endpoint,
+            tid, remote_tid, pid, endpoint);
+    task = CreateTask(task_meta);
     if (!task) {
         PDLOG(WARNING,
               "create sendsnapshot task failed. leader cluster tid[%u] replica "
@@ -4150,7 +4153,8 @@ int NameServerImpl::CreateAddReplicaRemoteOPTask(std::shared_ptr<OPData> op_data
     }
     op_data->task_list_.push_back(task);
 
-    task = CreateRecoverSnapshotTask(leader_endpoint, op_index, ::openmldb::api::OPType::kAddReplicaRemoteOP, tid, pid);
+    task_meta = std::make_shared<RecoverSnapshotTaskMeta>(op_index, op_type, leader_endpoint, tid, pid);
+    task = CreateTask(task_meta);
     if (!task) {
         PDLOG(WARNING, "create recoversnapshot task failed. tid[%u] pid[%u]", tid, pid);
         return -1;
@@ -4419,35 +4423,41 @@ int NameServerImpl::CreateAddReplicaOPTask(std::shared_ptr<OPData> op_data) {
         return -1;
     }
     uint64_t op_index = op_data->op_info_.op_id();
-    std::shared_ptr<Task> task =
-        CreatePauseSnapshotTask(leader_endpoint, op_index, ::openmldb::api::OPType::kAddReplicaOP, tid, pid);
+    auto op_type = ::openmldb::api::OPType::kAddReplicaOP;
+    std::shared_ptr<TaskMeta> task_meta;
+    task_meta = std::make_shared<PauseSnapshotTaskMeta>(op_index, op_type, leader_endpoint, tid, pid);
+    auto task = CreateTask(task_meta);
     if (!task) {
         PDLOG(WARNING, "create pausesnapshot task failed. tid[%u] pid[%u]", tid, pid);
         return -1;
     }
     op_data->task_list_.push_back(task);
-    task = CreateSendSnapshotTask(leader_endpoint, op_index, ::openmldb::api::OPType::kAddReplicaOP, tid, tid, pid,
-                                  request.endpoint());
+    task_meta = std::make_shared<SendSnapshotTaskMeta>(op_index, op_type, leader_endpoint,
+            tid, tid, pid, request.endpoint());
+    task = CreateTask(task_meta);
     if (!task) {
         PDLOG(WARNING, "create sendsnapshot task failed. tid[%u] pid[%u]", tid, pid);
         return -1;
     }
     op_data->task_list_.push_back(task);
-    task = CreateLoadTableTask(request.endpoint(), op_index, ::openmldb::api::OPType::kAddReplicaOP, request.name(),
-                               tid, pid, seg_cnt, false, table_info->storage_mode());
+    task_meta = std::make_shared<LoadTableTaskMeta>(op_index, op_type, request.endpoint(),
+            request.name(), tid, pid, seg_cnt, false, table_info->storage_mode());
+    task = CreateTask(task_meta);
     if (!task) {
         PDLOG(WARNING, "create loadtable task failed. tid[%u] pid[%u]", tid, pid);
         return -1;
     }
     op_data->task_list_.push_back(task);
-    task = CreateAddReplicaTask(leader_endpoint, op_index, ::openmldb::api::OPType::kAddReplicaOP, tid, pid,
-                                request.endpoint());
+
+    task_meta = std::make_shared<AddReplicaTaskMeta>(op_index, op_type, leader_endpoint, tid, pid, request.endpoint());
+    task = CreateTask(task_meta);
     if (!task) {
         PDLOG(WARNING, "create addreplica task failed. tid[%u] pid[%u]", tid, pid);
         return -1;
     }
     op_data->task_list_.push_back(task);
-    task = CreateRecoverSnapshotTask(leader_endpoint, op_index, ::openmldb::api::OPType::kAddReplicaOP, tid, pid);
+    task_meta = std::make_shared<RecoverSnapshotTaskMeta>(op_index, op_type, leader_endpoint, tid, pid);
+    task = CreateTask(task_meta);
     if (!task) {
         PDLOG(WARNING, "create recoversnapshot task failed. tid[%u] pid[%u]", tid, pid);
         return -1;
@@ -4657,41 +4667,43 @@ int NameServerImpl::CreateMigrateTask(std::shared_ptr<OPData> op_data) {
         return -1;
     }
     uint64_t op_index = op_data->op_info_.op_id();
-    std::shared_ptr<Task> task =
-        CreatePauseSnapshotTask(leader_endpoint, op_index, ::openmldb::api::OPType::kMigrateOP, tid, pid);
+    auto op_type = ::openmldb::api::OPType::kMigrateOP;
+    std::shared_ptr<TaskMeta> task_meta;
+    task_meta = std::make_shared<PauseSnapshotTaskMeta>(op_index, op_type, leader_endpoint, tid, pid);
+    auto task = CreateTask(task_meta);
     if (!task) {
         PDLOG(WARNING, "create pausesnapshot task failed. tid[%u] pid[%u] endpoint[%s]", tid, pid,
               leader_endpoint.c_str());
         return -1;
     }
     op_data->task_list_.push_back(task);
-    task = CreateSendSnapshotTask(leader_endpoint, op_index, ::openmldb::api::OPType::kMigrateOP, tid, tid, pid,
-                                  des_endpoint.c_str());
+    task_meta = std::make_shared<SendSnapshotTaskMeta>(op_index, op_type, leader_endpoint,
+            tid, tid, pid, des_endpoint);
+    task = CreateTask(task_meta);
     if (!task) {
-        PDLOG(WARNING,
-              "create sendsnapshot task failed. tid[%u] pid[%u] endpoint[%s] "
-              "des_endpoint[%s]",
+        PDLOG(WARNING, "create sendsnapshot task failed. tid[%u] pid[%u] endpoint[%s] des_endpoint[%s]",
               tid, pid, leader_endpoint.c_str(), des_endpoint.c_str());
         return -1;
     }
     op_data->task_list_.push_back(task);
-    task = CreateRecoverSnapshotTask(leader_endpoint, op_index, ::openmldb::api::OPType::kMigrateOP, tid, pid);
+    task_meta = std::make_shared<RecoverSnapshotTaskMeta>(op_index, op_type, leader_endpoint, tid, pid);
+    task = CreateTask(task_meta);
     if (!task) {
-        PDLOG(WARNING,
-              "create recoversnapshot task failed. tid[%u] pid[%u] "
-              "endpoint[%s] des_endpoint[%s]",
+        PDLOG(WARNING, "create recoversnapshot task failed. tid[%u] pid[%u] endpoint[%s] des_endpoint[%s]",
               tid, pid, leader_endpoint.c_str(), des_endpoint.c_str());
         return -1;
     }
     op_data->task_list_.push_back(task);
-    task = CreateLoadTableTask(des_endpoint, op_index, ::openmldb::api::OPType::kMigrateOP, name, tid, pid,
-                               table_info->seg_cnt(), false, table_info->storage_mode());
+    task_meta = std::make_shared<LoadTableTaskMeta>(op_index, op_type, des_endpoint,
+            name, tid, pid, table_info->seg_cnt(), false, table_info->storage_mode());
+    task = CreateTask(task_meta);
     if (!task) {
         PDLOG(WARNING, "create loadtable task failed. tid[%u] pid[%u] endpoint[%s]", tid, pid, des_endpoint.c_str());
         return -1;
     }
     op_data->task_list_.push_back(task);
-    task = CreateAddReplicaTask(leader_endpoint, op_index, ::openmldb::api::OPType::kMigrateOP, tid, pid, des_endpoint);
+    task_meta = std::make_shared<AddReplicaTaskMeta>(op_index, op_type, leader_endpoint, tid, pid, des_endpoint);
+    task = CreateTask(task_meta);
     if (!task) {
         PDLOG(WARNING,
               "create addreplica task failed. tid[%u] pid[%u] endpoint[%s] "
@@ -4716,11 +4728,10 @@ int NameServerImpl::CreateMigrateTask(std::shared_ptr<OPData> op_data) {
         return -1;
     }
     op_data->task_list_.push_back(task);
-    task = CreateDelReplicaTask(leader_endpoint, op_index, ::openmldb::api::OPType::kMigrateOP, tid, pid, src_endpoint);
+    task = CreateTask(
+            std::make_shared<DelReplicaTaskMeta>(op_index, op_type, leader_endpoint, tid, pid, src_endpoint));
     if (!task) {
-        PDLOG(WARNING,
-              "create delreplica task failed. tid[%u] pid[%u] leader[%s] "
-              "follower[%s]",
+        PDLOG(WARNING, "create delreplica task failed. tid[%u] pid[%u] leader[%s] follower[%s]",
               tid, pid, leader_endpoint.c_str(), src_endpoint.c_str());
         return -1;
     }
@@ -4735,7 +4746,7 @@ int NameServerImpl::CreateMigrateTask(std::shared_ptr<OPData> op_data) {
         return -1;
     }
     op_data->task_list_.push_back(task);
-    task = CreateDropTableTask(src_endpoint, op_index, ::openmldb::api::OPType::kMigrateOP, tid, pid);
+    task = CreateTask(std::make_shared<DropTableTaskMeta>(op_index, op_type, src_endpoint, tid, pid));
     if (!task) {
         PDLOG(WARNING, "create droptable task failed. tid[%u] pid[%u] endpoint[%s]", tid, pid, src_endpoint.c_str());
         return -1;
@@ -5284,8 +5295,9 @@ int NameServerImpl::CreateDelReplicaOPTask(std::shared_ptr<OPData> op_data) {
         return -1;
     }
     uint64_t op_index = op_data->op_info_.op_id();
-    std::shared_ptr<Task> task =
-        CreateDelReplicaTask(leader_endpoint, op_index, ::openmldb::api::OPType::kDelReplicaOP, tid, pid, endpoint);
+    auto op_type = ::openmldb::api::OPType::kDelReplicaOP;
+    auto task = CreateTask(
+            std::make_shared<DelReplicaTaskMeta>(op_index, op_type, leader_endpoint, tid, pid, endpoint));
     if (!task) {
         PDLOG(WARNING, "create delreplica task failed. table[%s] pid[%u] endpoint[%s]", name.c_str(), pid,
               endpoint.c_str());
@@ -5299,7 +5311,7 @@ int NameServerImpl::CreateDelReplicaOPTask(std::shared_ptr<OPData> op_data) {
         return -1;
     }
     op_data->task_list_.push_back(task);
-    task = CreateDropTableTask(endpoint, op_index, ::openmldb::api::OPType::kDelReplicaOP, tid, pid);
+    task = CreateTask(std::make_shared<DropTableTaskMeta>(op_index, op_type, endpoint, tid, pid));
     if (!task) {
         PDLOG(WARNING, "create droptable task failed. tid[%u] pid[%u] endpoint[%s]", tid, pid, endpoint.c_str());
         return -1;
@@ -5326,8 +5338,9 @@ int NameServerImpl::CreateDelReplicaRemoteOPTask(std::shared_ptr<OPData> op_data
         return -1;
     }
     uint64_t op_index = op_data->op_info_.op_id();
-    std::shared_ptr<Task> task = CreateDelReplicaTask(leader_endpoint, op_index,
-                                                      ::openmldb::api::OPType::kDelReplicaRemoteOP, tid, pid, endpoint);
+    auto op_type = ::openmldb::api::OPType::kDelReplicaRemoteOP;
+    auto task = CreateTask(
+            std::make_shared<DelReplicaTaskMeta>(op_index, op_type, leader_endpoint, tid, pid, endpoint));
     if (!task) {
         PDLOG(WARNING, "create delreplica task failed. table[%s] pid[%u] endpoint[%s]", name.c_str(), pid,
               endpoint.c_str());
@@ -5390,8 +5403,9 @@ int NameServerImpl::CreateOfflineReplicaTask(std::shared_ptr<OPData> op_data) {
             PDLOG(WARNING, "endpoint is leader. table[%s] pid[%u]", name.c_str(), pid);
             return -1;
         }
-        std::shared_ptr<Task> task = CreateDelReplicaTask(
-            leader_endpoint, op_index, ::openmldb::api::OPType::kOfflineReplicaOP, tid, pid, endpoint);
+        auto op_type = ::openmldb::api::OPType::kOfflineReplicaOP;
+        auto task = CreateTask(
+                std::make_shared<DelReplicaTaskMeta>(op_index, op_type, leader_endpoint, tid, pid, endpoint));
         if (!task) {
             PDLOG(WARNING, "create delreplica task failed. table[%s] pid[%u] endpoint[%s]", name.c_str(), pid,
                   endpoint.c_str());
@@ -5643,6 +5657,8 @@ int NameServerImpl::CreateRecoverTableOPTask(std::shared_ptr<OPData> op_data) {
     uint64_t offset_delta = recover_table_data.offset_delta();
     bool is_leader = recover_table_data.is_leader();
     uint32_t concurrency = recover_table_data.concurrency();
+    auto op_type = ::openmldb::api::OPType::kRecoverTableOP;
+    uint64_t op_index = op_data->op_info_.op_id();
     if (!is_leader) {
         std::string leader_endpoint;
         std::shared_ptr<::openmldb::nameserver::TableInfo> table_info;
@@ -5659,8 +5675,8 @@ int NameServerImpl::CreateRecoverTableOPTask(std::shared_ptr<OPData> op_data) {
             PDLOG(WARNING, "endpoint is leader. table[%s] pid[%u]", name.c_str(), pid);
             return -1;
         }
-        std::shared_ptr<Task> task = CreateDelReplicaTask(leader_endpoint, op_data->op_info_.op_id(),
-                                                          ::openmldb::api::OPType::kRecoverTableOP, tid, pid, endpoint);
+        auto task = CreateTask(
+                std::make_shared<DelReplicaTaskMeta>(op_index, op_type, leader_endpoint, tid, pid, endpoint));
         if (!task) {
             PDLOG(WARNING, "create delreplica task failed. table[%s] pid[%u] endpoint[%s]", name.c_str(), pid,
                   endpoint.c_str());
@@ -5931,35 +5947,39 @@ int NameServerImpl::CreateReAddReplicaTask(std::shared_ptr<OPData> op_data) {
         return -1;
     }
     uint64_t op_index = op_data->op_info_.op_id();
-    std::shared_ptr<Task> task =
-        CreatePauseSnapshotTask(leader_endpoint, op_index, ::openmldb::api::OPType::kReAddReplicaOP, tid, pid);
+    auto op_type = ::openmldb::api::OPType::kReAddReplicaOP;
+    std::shared_ptr<TaskMeta> task_meta;
+    task_meta = std::make_shared<PauseSnapshotTaskMeta>(op_index, op_type, leader_endpoint, tid, pid);
+    auto task = CreateTask(task_meta);
     if (!task) {
         PDLOG(WARNING, "create pausesnapshot task failed. tid[%u] pid[%u]", tid, pid);
         return -1;
     }
     op_data->task_list_.push_back(task);
-    task = CreateSendSnapshotTask(leader_endpoint, op_index, ::openmldb::api::OPType::kReAddReplicaOP, tid, tid, pid,
-                                  endpoint);
+    task_meta = std::make_shared<SendSnapshotTaskMeta>(op_index, op_type, leader_endpoint, tid, tid, pid, endpoint);
+    task = CreateTask(task_meta);
     if (!task) {
         PDLOG(WARNING, "create sendsnapshot task failed. tid[%u] pid[%u]", tid, pid);
         return -1;
     }
     op_data->task_list_.push_back(task);
-    task = CreateLoadTableTask(endpoint, op_index, ::openmldb::api::OPType::kReAddReplicaOP, name, tid, pid, seg_cnt,
-                               false, table_info->storage_mode());
+    task_meta = std::make_shared<LoadTableTaskMeta>(op_index, op_type, endpoint,
+            name, tid, pid, seg_cnt, false, table_info->storage_mode());
+    task = CreateTask(task_meta);
     if (!task) {
         PDLOG(WARNING, "create loadtable task failed. tid[%u] pid[%u]", tid, pid);
         return -1;
     }
     op_data->task_list_.push_back(task);
-    task =
-        CreateAddReplicaTask(leader_endpoint, op_index, ::openmldb::api::OPType::kReAddReplicaOP, tid, pid, endpoint);
+    task_meta = std::make_shared<AddReplicaTaskMeta>(op_index, op_type, leader_endpoint, tid, pid, endpoint);
+    task = CreateTask(task_meta);
     if (!task) {
         PDLOG(WARNING, "create addreplica task failed. tid[%u] pid[%u]", tid, pid);
         return -1;
     }
     op_data->task_list_.push_back(task);
-    task = CreateRecoverSnapshotTask(leader_endpoint, op_index, ::openmldb::api::OPType::kReAddReplicaOP, tid, pid);
+    task_meta = std::make_shared<RecoverSnapshotTaskMeta>(op_index, op_type, leader_endpoint, tid, pid);
+    task = CreateTask(task_meta);
     if (!task) {
         PDLOG(WARNING, "create recoversnapshot task failed. tid[%u] pid[%u]", tid, pid);
         return -1;
@@ -6049,42 +6069,45 @@ int NameServerImpl::CreateReAddReplicaWithDropTask(std::shared_ptr<OPData> op_da
         return -1;
     }
     uint64_t op_index = op_data->op_info_.op_id();
-    std::shared_ptr<Task> task =
-        CreatePauseSnapshotTask(leader_endpoint, op_index, ::openmldb::api::OPType::kReAddReplicaWithDropOP, tid, pid);
+    auto op_type = ::openmldb::api::OPType::kReAddReplicaWithDropOP;
+    std::shared_ptr<TaskMeta> task_meta;
+    task_meta = std::make_shared<PauseSnapshotTaskMeta>(op_index, op_type, leader_endpoint, tid, pid);
+    auto task = CreateTask(task_meta);
     if (!task) {
         PDLOG(WARNING, "create pausesnapshot task failed. tid[%u] pid[%u]", tid, pid);
         return -1;
     }
     op_data->task_list_.push_back(task);
-    task = CreateDropTableTask(endpoint, op_index, ::openmldb::api::OPType::kReAddReplicaWithDropOP, tid, pid);
+    task = CreateTask(std::make_shared<DropTableTaskMeta>(op_index, op_type, endpoint, tid, pid));
     if (!task) {
         PDLOG(WARNING, "create droptable task failed. tid[%u] pid[%u]", tid, pid);
         return -1;
     }
     op_data->task_list_.push_back(task);
-    task = CreateSendSnapshotTask(leader_endpoint, op_index, ::openmldb::api::OPType::kReAddReplicaWithDropOP, tid, tid,
-                                  pid, endpoint);
+    task_meta = std::make_shared<SendSnapshotTaskMeta>(op_index, op_type, leader_endpoint, tid, tid, pid, endpoint);
+    task = CreateTask(task_meta);
     if (!task) {
         PDLOG(WARNING, "create sendsnapshot task failed. tid[%u] pid[%u]", tid, pid);
         return -1;
     }
     op_data->task_list_.push_back(task);
-    task = CreateLoadTableTask(endpoint, op_index, ::openmldb::api::OPType::kReAddReplicaWithDropOP, name, tid, pid,
-                               seg_cnt, false, table_info->storage_mode());
+    task_meta = std::make_shared<LoadTableTaskMeta>(op_index, op_type, endpoint,
+            name, tid, pid, seg_cnt, false, table_info->storage_mode());
+    task = CreateTask(task_meta);
     if (!task) {
         PDLOG(WARNING, "create loadtable task failed. tid[%u] pid[%u]", tid, pid);
         return -1;
     }
     op_data->task_list_.push_back(task);
-    task = CreateAddReplicaTask(leader_endpoint, op_index, ::openmldb::api::OPType::kReAddReplicaWithDropOP, tid, pid,
-                                endpoint);
+    task_meta = std::make_shared<AddReplicaTaskMeta>(op_index, op_type, leader_endpoint, tid, pid, endpoint);
+    task = CreateTask(task_meta);
     if (!task) {
         PDLOG(WARNING, "create addreplica task failed. tid[%u] pid[%u]", tid, pid);
         return -1;
     }
     op_data->task_list_.push_back(task);
-    task = CreateRecoverSnapshotTask(leader_endpoint, op_index, ::openmldb::api::OPType::kReAddReplicaWithDropOP, tid,
-                                     pid);
+    task_meta = std::make_shared<RecoverSnapshotTaskMeta>(op_index, op_type, leader_endpoint, tid, pid);
+    task = CreateTask(task_meta);
     if (!task) {
         PDLOG(WARNING, "create recoversnapshot task failed. tid[%u] pid[%u]", tid, pid);
         return -1;
@@ -6177,29 +6200,32 @@ int NameServerImpl::CreateReAddReplicaNoSendTask(std::shared_ptr<OPData> op_data
         return -1;
     }
     uint64_t op_index = op_data->op_info_.op_id();
-    std::shared_ptr<Task> task =
-        CreatePauseSnapshotTask(leader_endpoint, op_index, ::openmldb::api::OPType::kReAddReplicaNoSendOP, tid, pid);
+    auto op_type = ::openmldb::api::OPType::kReAddReplicaNoSendOP;
+    std::shared_ptr<TaskMeta> task_meta;
+    task_meta = std::make_shared<PauseSnapshotTaskMeta>(op_index, op_type, leader_endpoint, tid, pid);
+    auto task = CreateTask(task_meta);
     if (!task) {
         PDLOG(WARNING, "create pausesnapshot task failed. tid[%u] pid[%u]", tid, pid);
         return -1;
     }
     op_data->task_list_.push_back(task);
-    task = CreateLoadTableTask(endpoint, op_index, ::openmldb::api::OPType::kReAddReplicaNoSendOP, name, tid, pid,
-                               seg_cnt, false, table_info->storage_mode());
+    task_meta = std::make_shared<LoadTableTaskMeta>(op_index, op_type, endpoint,
+            name, tid, pid, seg_cnt, false, table_info->storage_mode());
+    task = CreateTask(task_meta);
     if (!task) {
         PDLOG(WARNING, "create loadtable task failed. tid[%u] pid[%u]", tid, pid);
         return -1;
     }
     op_data->task_list_.push_back(task);
-    task = CreateAddReplicaTask(leader_endpoint, op_index, ::openmldb::api::OPType::kReAddReplicaNoSendOP, tid, pid,
-                                endpoint);
+    task_meta = std::make_shared<AddReplicaTaskMeta>(op_index, op_type, leader_endpoint, tid, pid, endpoint);
+    task = CreateTask(task_meta);
     if (!task) {
         PDLOG(WARNING, "create addreplica task failed. tid[%u] pid[%u]", tid, pid);
         return -1;
     }
     op_data->task_list_.push_back(task);
-    task =
-        CreateRecoverSnapshotTask(leader_endpoint, op_index, ::openmldb::api::OPType::kReAddReplicaNoSendOP, tid, pid);
+    task_meta = std::make_shared<RecoverSnapshotTaskMeta>(op_index, op_type, leader_endpoint, tid, pid);
+    task = CreateTask(task_meta);
     if (!task) {
         PDLOG(WARNING, "create recoversnapshot task failed. tid[%u] pid[%u]", tid, pid);
         return -1;
@@ -6307,8 +6333,10 @@ int NameServerImpl::CreateReAddReplicaSimplifyTask(std::shared_ptr<OPData> op_da
         return -1;
     }
     uint64_t op_index = op_data->op_info_.op_id();
-    std::shared_ptr<Task> task = CreateAddReplicaTask(
-        leader_endpoint, op_index, ::openmldb::api::OPType::kReAddReplicaSimplifyOP, tid, pid, endpoint);
+    auto op_type = ::openmldb::api::OPType::kReAddReplicaSimplifyOP;
+    std::shared_ptr<TaskMeta> task_meta;
+    task_meta = std::make_shared<AddReplicaTaskMeta>(op_index, op_type, leader_endpoint, tid, pid, endpoint);
+    auto task = CreateTask(task_meta);
     if (!task) {
         PDLOG(WARNING, "create addreplica task failed. tid[%u] pid[%u]", tid, pid);
         return -1;
@@ -6550,16 +6578,18 @@ int NameServerImpl::CreateReLoadTableTask(std::shared_ptr<OPData> op_data) {
     }
     uint32_t tid = table_info->tid();
     uint32_t seg_cnt = table_info->seg_cnt();
-    std::shared_ptr<Task> task =
-        CreateLoadTableTask(endpoint, op_data->op_info_.op_id(), ::openmldb::api::OPType::kReLoadTableOP, name, tid,
-                            pid, seg_cnt, true, table_info->storage_mode());
+    std::shared_ptr<TaskMeta> task_meta;
+    auto op_type = ::openmldb::api::OPType::kReLoadTableOP;
+    uint64_t op_index = op_data->op_info_.op_id();
+    task_meta = std::make_shared<LoadTableTaskMeta>(op_index, op_type, endpoint,
+            name, tid, pid, seg_cnt, false, table_info->storage_mode());
+    auto task = CreateTask(task_meta);
     if (!task) {
         PDLOG(WARNING, "create loadtable task failed. tid[%u] pid[%u]", tid, pid);
         return -1;
     }
     op_data->task_list_.push_back(task);
-    task = CreateUpdatePartitionStatusTask(name, db, pid, endpoint, true, true, op_data->op_info_.op_id(),
-                                           ::openmldb::api::OPType::kReLoadTableOP);
+    task = CreateUpdatePartitionStatusTask(name, db, pid, endpoint, true, true, op_index, op_type);
     if (!task) {
         PDLOG(WARNING,
               "create update table alive status task failed. table[%s] pid[%u] "
@@ -6715,83 +6745,6 @@ void NameServerImpl::WrapTaskFun(const boost::function<bool()>& fun,
     task_info->set_is_rpc_send(true);
 }
 
-std::shared_ptr<Task> NameServerImpl::CreateMakeSnapshotTask(const std::string& endpoint, uint64_t op_index,
-                                                             ::openmldb::api::OPType op_type, uint32_t tid,
-                                                             uint32_t pid, uint64_t end_offset) {
-    std::shared_ptr<Task> task = std::make_shared<Task>(endpoint, std::make_shared<::openmldb::api::TaskInfo>());
-    auto it = tablets_.find(endpoint);
-    if (it == tablets_.end() || it->second->state_ != ::openmldb::type::EndpointState::kHealthy) {
-        return std::shared_ptr<Task>();
-    }
-    task->task_info_->set_op_id(op_index);
-    task->task_info_->set_op_type(op_type);
-    task->task_info_->set_task_type(::openmldb::api::TaskType::kMakeSnapshot);
-    task->task_info_->set_status(::openmldb::api::TaskStatus::kInited);
-    task->task_info_->set_endpoint(endpoint);
-    boost::function<bool()> fun =
-        boost::bind(&TabletClient::MakeSnapshot, it->second->client_, tid, pid, end_offset, task->task_info_);
-    task->fun_ = boost::bind(&NameServerImpl::WrapTaskFun, this, fun, task->task_info_);
-    return task;
-}
-
-std::shared_ptr<Task> NameServerImpl::CreatePauseSnapshotTask(const std::string& endpoint, uint64_t op_index,
-                                                              ::openmldb::api::OPType op_type, uint32_t tid,
-                                                              uint32_t pid) {
-    std::shared_ptr<Task> task = std::make_shared<Task>(endpoint, std::make_shared<::openmldb::api::TaskInfo>());
-    auto it = tablets_.find(endpoint);
-    if (it == tablets_.end() || it->second->state_ != ::openmldb::type::EndpointState::kHealthy) {
-        return std::shared_ptr<Task>();
-    }
-    task->task_info_->set_op_id(op_index);
-    task->task_info_->set_op_type(op_type);
-    task->task_info_->set_task_type(::openmldb::api::TaskType::kPauseSnapshot);
-    task->task_info_->set_status(::openmldb::api::TaskStatus::kInited);
-    task->task_info_->set_endpoint(endpoint);
-    boost::function<bool()> fun =
-        boost::bind(&TabletClient::PauseSnapshot, it->second->client_, tid, pid, task->task_info_);
-    task->fun_ = boost::bind(&NameServerImpl::WrapTaskFun, this, fun, task->task_info_);
-    return task;
-}
-
-std::shared_ptr<Task> NameServerImpl::CreateRecoverSnapshotTask(const std::string& endpoint, uint64_t op_index,
-                                                                ::openmldb::api::OPType op_type, uint32_t tid,
-                                                                uint32_t pid) {
-    std::shared_ptr<Task> task = std::make_shared<Task>(endpoint, std::make_shared<::openmldb::api::TaskInfo>());
-    auto it = tablets_.find(endpoint);
-    if (it == tablets_.end() || it->second->state_ != ::openmldb::type::EndpointState::kHealthy) {
-        return std::shared_ptr<Task>();
-    }
-    task->task_info_->set_op_id(op_index);
-    task->task_info_->set_op_type(op_type);
-    task->task_info_->set_task_type(::openmldb::api::TaskType::kRecoverSnapshot);
-    task->task_info_->set_status(::openmldb::api::TaskStatus::kInited);
-    task->task_info_->set_endpoint(endpoint);
-    boost::function<bool()> fun =
-        boost::bind(&TabletClient::RecoverSnapshot, it->second->client_, tid, pid, task->task_info_);
-    task->fun_ = boost::bind(&NameServerImpl::WrapTaskFun, this, fun, task->task_info_);
-    return task;
-}
-
-std::shared_ptr<Task> NameServerImpl::CreateSendSnapshotTask(const std::string& endpoint, uint64_t op_index,
-                                                             ::openmldb::api::OPType op_type, uint32_t tid,
-                                                             uint32_t remote_tid, uint32_t pid,
-                                                             const std::string& des_endpoint) {
-    std::shared_ptr<Task> task = std::make_shared<Task>(endpoint, std::make_shared<::openmldb::api::TaskInfo>());
-    auto it = tablets_.find(endpoint);
-    if (it == tablets_.end() || it->second->state_ != ::openmldb::type::EndpointState::kHealthy) {
-        return std::shared_ptr<Task>();
-    }
-    task->task_info_->set_op_id(op_index);
-    task->task_info_->set_op_type(op_type);
-    task->task_info_->set_task_type(::openmldb::api::TaskType::kSendSnapshot);
-    task->task_info_->set_status(::openmldb::api::TaskStatus::kInited);
-    task->task_info_->set_endpoint(endpoint);
-    boost::function<bool()> fun = boost::bind(&TabletClient::SendSnapshot, it->second->client_, tid, remote_tid, pid,
-                                              des_endpoint, task->task_info_);
-    task->fun_ = boost::bind(&NameServerImpl::WrapTaskFun, this, fun, task->task_info_);
-    return task;
-}
-
 std::shared_ptr<Task> NameServerImpl::DropTableRemoteTask(const std::string& name, const std::string& db,
                                                           const std::string& alias, uint64_t op_index,
                                                           ::openmldb::api::OPType op_type) {
@@ -6836,38 +6789,6 @@ std::shared_ptr<Task> NameServerImpl::CreateTableRemoteTask(const ::openmldb::na
 
     boost::function<bool()> fun =
         boost::bind(&NameServerImpl::CreateTableRemote, this, *(task->task_info_), table_info, cluster);
-    task->fun_ = boost::bind(&NameServerImpl::WrapTaskFun, this, fun, task->task_info_);
-    return task;
-}
-
-std::shared_ptr<Task> NameServerImpl::CreateLoadTableTask(const std::string& endpoint, uint64_t op_index,
-                                                          ::openmldb::api::OPType op_type, const std::string& name,
-                                                          uint32_t tid, uint32_t pid, uint32_t seg_cnt, bool is_leader,
-                                                          ::openmldb::common::StorageMode storage_mode) {
-    std::shared_ptr<Task> task = std::make_shared<Task>(endpoint, std::make_shared<::openmldb::api::TaskInfo>());
-    auto it = tablets_.find(endpoint);
-    if (it == tablets_.end() || it->second->state_ != ::openmldb::type::EndpointState::kHealthy) {
-        return std::shared_ptr<Task>();
-    }
-    task->task_info_->set_op_id(op_index);
-    task->task_info_->set_op_type(op_type);
-    task->task_info_->set_task_type(::openmldb::api::TaskType::kLoadTable);
-    task->task_info_->set_status(::openmldb::api::TaskStatus::kInited);
-    task->task_info_->set_endpoint(endpoint);
-
-    ::openmldb::api::TableMeta table_meta;
-    table_meta.set_name(name);
-    table_meta.set_tid(tid);
-    table_meta.set_pid(pid);
-    table_meta.set_seg_cnt(seg_cnt);
-    table_meta.set_storage_mode(storage_mode);
-    if (is_leader) {
-        table_meta.set_mode(::openmldb::api::TableMode::kTableLeader);
-    } else {
-        table_meta.set_mode(::openmldb::api::TableMode::kTableFollower);
-    }
-    boost::function<bool()> fun =
-        boost::bind(&TabletClient::LoadTable, it->second->client_, table_meta, task->task_info_);
     task->fun_ = boost::bind(&NameServerImpl::WrapTaskFun, this, fun, task->task_info_);
     return task;
 }
@@ -6947,25 +6868,6 @@ std::shared_ptr<Task> NameServerImpl::CreateAddReplicaNSRemoteTask(const std::st
     boost::function<bool()> fun =
         boost::bind(&NsClient::AddReplicaNS, std::atomic_load_explicit(&cluster->client_, std::memory_order_relaxed),
                     name, endpoint_vec, pid, zone_info_, *(task->task_info_));
-    task->fun_ = boost::bind(&NameServerImpl::WrapTaskFun, this, fun, task->task_info_);
-    return task;
-}
-
-std::shared_ptr<Task> NameServerImpl::CreateAddReplicaTask(const std::string& endpoint, uint64_t op_index,
-                                                           ::openmldb::api::OPType op_type, uint32_t tid, uint32_t pid,
-                                                           const std::string& des_endpoint) {
-    std::shared_ptr<Task> task = std::make_shared<Task>(endpoint, std::make_shared<::openmldb::api::TaskInfo>());
-    auto it = tablets_.find(endpoint);
-    if (it == tablets_.end() || it->second->state_ != ::openmldb::type::EndpointState::kHealthy) {
-        return std::shared_ptr<Task>();
-    }
-    task->task_info_->set_op_id(op_index);
-    task->task_info_->set_op_type(op_type);
-    task->task_info_->set_task_type(::openmldb::api::TaskType::kAddReplica);
-    task->task_info_->set_status(::openmldb::api::TaskStatus::kInited);
-    task->task_info_->set_endpoint(endpoint);
-    boost::function<bool()> fun =
-        boost::bind(&TabletClient::AddReplica, it->second->client_, tid, pid, des_endpoint, task->task_info_);
     task->fun_ = boost::bind(&NameServerImpl::WrapTaskFun, this, fun, task->task_info_);
     return task;
 }
@@ -7083,43 +6985,6 @@ void NameServerImpl::AddTableInfo(const std::string& alias, const std::string& e
     task_info->set_status(::openmldb::api::TaskStatus::kDone);
     PDLOG(INFO, "update task status from[kDoing] to[kDone]. op_id[%lu], task_type[%s]", task_info->op_id(),
           ::openmldb::api::TaskType_Name(task_info->task_type()).c_str());
-}
-
-std::shared_ptr<Task> NameServerImpl::CreateDelReplicaTask(const std::string& endpoint, uint64_t op_index,
-                                                           ::openmldb::api::OPType op_type, uint32_t tid, uint32_t pid,
-                                                           const std::string& follower_endpoint) {
-    std::shared_ptr<Task> task = std::make_shared<Task>(endpoint, std::make_shared<::openmldb::api::TaskInfo>());
-    auto it = tablets_.find(endpoint);
-    if (it == tablets_.end() || it->second->state_ != ::openmldb::type::EndpointState::kHealthy) {
-        return std::shared_ptr<Task>();
-    }
-    task->task_info_->set_op_id(op_index);
-    task->task_info_->set_op_type(op_type);
-    task->task_info_->set_task_type(::openmldb::api::TaskType::kDelReplica);
-    task->task_info_->set_status(::openmldb::api::TaskStatus::kInited);
-    task->task_info_->set_endpoint(endpoint);
-    boost::function<bool()> fun =
-        boost::bind(&TabletClient::DelReplica, it->second->client_, tid, pid, follower_endpoint, task->task_info_);
-    task->fun_ = boost::bind(&NameServerImpl::WrapTaskFun, this, fun, task->task_info_);
-    return task;
-}
-
-std::shared_ptr<Task> NameServerImpl::CreateDropTableTask(const std::string& endpoint, uint64_t op_index,
-                                                          ::openmldb::api::OPType op_type, uint32_t tid, uint32_t pid) {
-    std::shared_ptr<Task> task = std::make_shared<Task>(endpoint, std::make_shared<::openmldb::api::TaskInfo>());
-    auto it = tablets_.find(endpoint);
-    if (it == tablets_.end() || it->second->state_ != ::openmldb::type::EndpointState::kHealthy) {
-        return std::shared_ptr<Task>();
-    }
-    task->task_info_->set_op_id(op_index);
-    task->task_info_->set_op_type(op_type);
-    task->task_info_->set_task_type(::openmldb::api::TaskType::kDropTable);
-    task->task_info_->set_status(::openmldb::api::TaskStatus::kInited);
-    task->task_info_->set_endpoint(endpoint);
-    boost::function<bool()> fun =
-        boost::bind(&TabletClient::DropTable, it->second->client_, tid, pid, task->task_info_);
-    task->fun_ = boost::bind(&NameServerImpl::WrapTaskFun, this, fun, task->task_info_);
-    return task;
 }
 
 std::shared_ptr<Task> NameServerImpl::CreateCheckBinlogSyncProgressTask(uint64_t op_index,
@@ -9314,6 +9179,7 @@ int NameServerImpl::CreateAddIndexOPTask(std::shared_ptr<OPData> op_data) {
         return -1;
     }
     uint64_t op_index = op_data->op_info_.op_id();
+    auto op_type = kAddIndexOP;
     std::shared_ptr<Task> task;
     const openmldb::common::ColumnKey& ck = add_index_meta.column_key();
     const auto ck_idx = add_index_meta.idx();
@@ -9325,7 +9191,7 @@ int NameServerImpl::CreateAddIndexOPTask(std::shared_ptr<OPData> op_data) {
         }
         op_data->task_list_.push_back(task);
         boost::function<bool()> fun = boost::bind(&NameServerImpl::AddIndexToTableInfo, this, name, db, ck, ck_idx);
-        task = CreateTableSyncTask(op_index, kAddIndexOP, tid, fun);
+        task = CreateTask(std::make_shared<TableSyncTaskMeta>(op_index, op_type, tid, fun));
         if (!task) {
             LOG(WARNING) << "create add index task failed. tid[" << tid << "] pid[" << pid << "]";
         }
@@ -9374,24 +9240,13 @@ int NameServerImpl::CreateAddIndexOPTask(std::shared_ptr<OPData> op_data) {
     }
     op_data->task_list_.push_back(task);
     boost::function<bool()> fun = boost::bind(&NameServerImpl::AddIndexToTableInfo, this, name, db, ck, ck_idx);
-    task = CreateTableSyncTask(op_index, kAddIndexOP, tid, fun);
+    task = CreateTask(std::make_shared<TableSyncTaskMeta>(op_index, op_type, tid, fun));
     if (!task) {
         LOG(WARNING) << "creawte table sync task failed. name[" << name << "] pid[" << pid << "]";
         return -1;
     }
     op_data->task_list_.push_back(task);
     return 0;
-}
-
-std::shared_ptr<Task> NameServerImpl::CreateTableSyncTask(uint64_t op_index, ::openmldb::api::OPType op_type,
-                                                          uint32_t tid, const boost::function<bool()>& fun) {
-    std::shared_ptr<Task> task = std::make_shared<Task>("", std::make_shared<::openmldb::api::TaskInfo>());
-    task->task_info_->set_op_id(op_index);
-    task->task_info_->set_op_type(op_type);
-    task->task_info_->set_task_type(::openmldb::api::TaskType::kTableSyncTask);
-    task->task_info_->set_status(::openmldb::api::TaskStatus::kInited);
-    task->fun_ = boost::bind(&NameServerImpl::RunSyncTaskFun, this, tid, fun, task->task_info_);
-    return task;
 }
 
 void NameServerImpl::RunSyncTaskFun(uint32_t tid, const boost::function<bool()>& fun,
@@ -10897,6 +10752,98 @@ void NameServerImpl::FreeSdkConnection() {
     if (std::atomic_load_explicit(&sr_, std::memory_order_acquire) != nullptr) {
         std::atomic_store_explicit(&sr_, {}, std::memory_order_release);
     }
+}
+
+std::shared_ptr<Task> NameServerImpl::CreateTask(const std::shared_ptr<TaskMeta>& task_meta) {
+    auto task_type = task_meta->task_info->task_type();
+    std::shared_ptr<TabletClient> client;
+    std::string endpoint = task_meta->task_info->endpoint();
+    if (!endpoint.empty()) {
+        auto it = tablets_.find(endpoint);
+        if (it == tablets_.end() || it->second->state_ != ::openmldb::type::EndpointState::kHealthy) {
+            return {};
+        }
+        client = it->second->client_;
+    }
+    auto task_info = task_meta->task_info;
+    auto task = std::make_shared<Task>(endpoint, task_info);
+    switch (task_type) {
+        case ::openmldb::api::TaskType::kMakeSnapshot: {
+            auto meta = std::dynamic_pointer_cast<MakeSnapshotTaskMeta>(task_meta);
+            boost::function<bool()> fun =
+                boost::bind(&TabletClient::MakeSnapshot, client,
+                        meta->tid, meta->pid, meta->end_offset, task_info);
+            task->fun_ = boost::bind(&NameServerImpl::WrapTaskFun, this, fun, task_info);
+            break;
+        }
+        case ::openmldb::api::TaskType::kPauseSnapshot: {
+            auto meta = std::dynamic_pointer_cast<PauseSnapshotTaskMeta>(task_meta);
+            boost::function<bool()> fun =
+                boost::bind(&TabletClient::PauseSnapshot, client, meta->tid, meta->pid, task_info);
+            task->fun_ = boost::bind(&NameServerImpl::WrapTaskFun, this, fun, task_info);
+            break;
+        }
+        case ::openmldb::api::TaskType::kRecoverSnapshot: {
+            auto meta = std::dynamic_pointer_cast<RecoverSnapshotTaskMeta>(task_meta);
+            boost::function<bool()> fun =
+                boost::bind(&TabletClient::RecoverSnapshot, client, meta->tid, meta->pid, task_info);
+            task->fun_ = boost::bind(&NameServerImpl::WrapTaskFun, this, fun, task_info);
+            break;
+        }
+        case ::openmldb::api::TaskType::kSendSnapshot: {
+            auto meta = std::dynamic_pointer_cast<SendSnapshotTaskMeta>(task_meta);
+            boost::function<bool()> fun =
+                boost::bind(&TabletClient::SendSnapshot, client, meta->tid, meta->remote_tid,
+                        meta->pid, meta->des_endpoint, task_info);
+            task->fun_ = boost::bind(&NameServerImpl::WrapTaskFun, this, fun, task_info);
+            break;
+        }
+        case ::openmldb::api::TaskType::kLoadTable: {
+            auto meta = std::dynamic_pointer_cast<LoadTableTaskMeta>(task_meta);
+            ::openmldb::api::TableMeta table_meta;
+            table_meta.set_name(meta->name);
+            table_meta.set_tid(meta->tid);
+            table_meta.set_pid(meta->pid);
+            table_meta.set_seg_cnt(meta->seg_cnt);
+            table_meta.set_storage_mode(meta->storage_mode);
+            if (meta->is_leader) {
+                table_meta.set_mode(::openmldb::api::TableMode::kTableLeader);
+            } else {
+                table_meta.set_mode(::openmldb::api::TableMode::kTableFollower);
+            }
+            boost::function<bool()> fun =
+                boost::bind(&TabletClient::LoadTable, client, table_meta, task_info);
+            task->fun_ = boost::bind(&NameServerImpl::WrapTaskFun, this, fun, task_info);
+            break;
+        }
+        case ::openmldb::api::TaskType::kAddReplica: {
+            auto meta = std::dynamic_pointer_cast<AddReplicaTaskMeta>(task_meta);
+            boost::function<bool()> fun =
+                boost::bind(&TabletClient::AddReplica, client, meta->tid, meta->pid, meta->des_endpoint, task_info);
+            task->fun_ = boost::bind(&NameServerImpl::WrapTaskFun, this, fun, task_info);
+            break;
+        }
+        case ::openmldb::api::TaskType::kDelReplica: {
+            auto meta = std::dynamic_pointer_cast<DelReplicaTaskMeta>(task_meta);
+            boost::function<bool()> fun =
+                boost::bind(&TabletClient::DelReplica, client, meta->tid, meta->pid, meta->des_endpoint, task_info);
+            task->fun_ = boost::bind(&NameServerImpl::WrapTaskFun, this, fun, task_info);
+            break;
+        }
+        case ::openmldb::api::TaskType::kDropTable: {
+            auto meta = std::dynamic_pointer_cast<DropTableTaskMeta>(task_meta);
+            boost::function<bool()> fun =
+                boost::bind(&TabletClient::DropTable, client, meta->tid, meta->pid, task_info);
+            task->fun_ = boost::bind(&NameServerImpl::WrapTaskFun, this, fun, task_info);
+            break;
+        }
+        case ::openmldb::api::TaskType::kTableSyncTask: {
+            auto meta = std::dynamic_pointer_cast<TableSyncTaskMeta>(task_meta);
+            task->fun_ = boost::bind(&NameServerImpl::RunSyncTaskFun, this, meta->tid, meta->fun, task_info);
+            break;
+        }
+    }
+    return task;
 }
 
 }  // namespace nameserver
