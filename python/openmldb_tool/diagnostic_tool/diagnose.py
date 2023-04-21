@@ -48,8 +48,8 @@ flags.DEFINE_bool(
 flags.DEFINE_string(
     "db",
     "",
-    "Specify databases to diagnose, split by ','.Use `--db all` to diagnose all databases.(only uesd in inspect online)",
-)
+    "Specify databases to diagnose, split by ','.",
+)  # only uesd in inspect online
 
 flags.DEFINE_string("collect_dir", "/tmp/diag_collect", "...")
 
@@ -114,9 +114,10 @@ def insepct_online(args):
     assert not fails, f"unhealthy tables: {fails}"
     print(f"all tables are healthy")
 
-    if flags.FLAGS.db:
-        table_checker = TableChecker(conn)
-        table_checker.check_distribution(dbs=flags.FLAGS.db.split(","))
+    if hasattr(args, 'dist'):
+        if args.dist:
+            table_checker = TableChecker(conn)
+            table_checker.check_distribution(dbs=flags.FLAGS.db.split(","))
 
 
 def inspect_offline(args):
@@ -226,6 +227,11 @@ def parse_arg(argv):
     # inspect online
     online = inspect_sub.add_parser("online", help="only inspect online table. set`--db` to specify databases")
     online.set_defaults(command=insepct_online)
+    online.add_argument(
+        "--dist",
+        action="store_true",
+        help="Inspect online distribution."
+    )
     # inspect offline
     offline = inspect_sub.add_parser(
         "offline", help="only inspect offline jobs, check the job log"

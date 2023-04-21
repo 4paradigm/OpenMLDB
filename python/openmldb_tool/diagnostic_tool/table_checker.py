@@ -31,7 +31,9 @@ class TableChecker:
         tables = res.json()["table_info"]
 
         exist_dbs = [db[0] for db in self.conn.execfetch("SHOW DATABASES")]
-        if "all" in dbs:
+        if not exist_dbs:
+            return
+        if dbs == ['']:
             dbs = exist_dbs
         assert all([db in exist_dbs for db in dbs]), "some databases are not exist"
 
