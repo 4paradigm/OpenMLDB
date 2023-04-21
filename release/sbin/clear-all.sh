@@ -25,7 +25,7 @@ rm_dir() {
     local host=$1
     local dir=$2
     if [[ $dir == "" ]]; then
-        echo "empty dir name $dir"
+        echo "empty dir"
         exit 1
     fi
     local cmd="rm -rf \"$dir\""
@@ -44,7 +44,8 @@ else
     fi
     if echo "$line" | grep -v "zk_root_path" | grep -q "root_path" ||
         echo "$line" |  grep -q "openmldb_log_dir"; then
-      dirname+=($(echo "${line}" | awk -F '=' '{print $2}'))
+      var=$(echo "${line}" | awk -F '=' '{print $2}')
+      dirname+=("$var")
     fi
   done < "$conf_file"
   old_IFS="$IFS"
@@ -59,6 +60,7 @@ else
       echo "clear $dir with endpoint $host:$port "
       rm_dir "$host" "$dir"
     else
+      echo "clear tablet data and log in $dir with endpoint $host:$port "
       for item in "${dirname[@]}"
       do
         echo "clear $item with endpoint $host:$port "
