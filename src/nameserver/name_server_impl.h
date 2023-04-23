@@ -462,10 +462,6 @@ class NameServerImpl : public NameServer {
                                                      uint32_t pid, const std::string& des_endpoint,
                                                      uint64_t task_id = INVALID_PARENT_ID);
 
-    std::shared_ptr<Task> CreateAddReplicaNSRemoteTask(const std::string& alias, const std::string& name,
-                                                       const std::vector<std::string>& endpoint_vec, uint32_t pid,
-                                                       uint64_t op_index, ::openmldb::api::OPType op_type);
-
     void AddTableInfo(const std::string& alias, const std::string& endpoint, const std::string& name,
                       const std::string& db, uint32_t pid, uint32_t remote_tid,
                       std::shared_ptr<::openmldb::api::TaskInfo> task_info);
@@ -475,38 +471,6 @@ class NameServerImpl : public NameServer {
 
     void UpdateTableInfo(const std::string& src_endpoint, const std::string& name, const std::string& db, uint32_t pid,
                          const std::string& des_endpoint, std::shared_ptr<::openmldb::api::TaskInfo> task_info);
-
-    std::shared_ptr<Task> CreateUpdatePartitionStatusTask(const std::string& name, const std::string& db, uint32_t pid,
-                                                          const std::string& endpoint, bool is_leader, bool is_alive,
-                                                          uint64_t op_index, ::openmldb::api::OPType op_type);
-
-    std::shared_ptr<Task> CreateSelectLeaderTask(uint64_t op_index, ::openmldb::api::OPType op_type,
-                                                 const std::string& name, const std::string& db, uint32_t tid,
-                                                 uint32_t pid,
-                                                 std::vector<std::string>& follower_endpoint);  // NOLINT
-
-    std::shared_ptr<Task> CreateChangeLeaderTask(uint64_t op_index, ::openmldb::api::OPType op_type,
-                                                 const std::string& name, uint32_t pid);
-
-    std::shared_ptr<Task> CreateUpdateLeaderInfoTask(uint64_t op_index, ::openmldb::api::OPType op_type,
-                                                     const std::string& name, uint32_t pid);
-
-    std::shared_ptr<Task> CreateCheckBinlogSyncProgressTask(uint64_t op_index, ::openmldb::api::OPType op_type,
-                                                            const std::string& name, const std::string& db,
-                                                            uint32_t pid, const std::string& follower,
-                                                            uint64_t offset_delta);
-
-    std::shared_ptr<Task> CreateRecoverTableTask(uint64_t op_index, ::openmldb::api::OPType op_type,
-                                                 const std::string& name, const std::string& db, uint32_t pid,
-                                                 const std::string& endpoint, uint64_t offset_delta,
-                                                 uint32_t concurrency);
-
-    std::shared_ptr<Task> CreateTableRemoteTask(const ::openmldb::nameserver::TableInfo& table_info,
-                                                const std::string& alias, uint64_t op_index,
-                                                ::openmldb::api::OPType op_type);
-
-    std::shared_ptr<Task> DropTableRemoteTask(const std::string& name, const std::string& db, const std::string& alias,
-                                              uint64_t op_index, ::openmldb::api::OPType op_type);
 
     std::shared_ptr<Task> CreateAddIndexToTabletTask(uint64_t op_index, ::openmldb::api::OPType op_type, uint32_t tid,
                                                      uint32_t pid, const std::vector<std::string>& endpoints,

@@ -278,6 +278,112 @@ class UpdateTableInfoTaskMeta : public TaskMeta {
     std::string src_endpoint;
     std::string des_endpoint;
 };
+
+class CheckBinlogSyncProgressTaskMeta : public TaskMeta {
+  public:
+    CheckBinlogSyncProgressTaskMeta(uint64_t op_id, ::openmldb::api::OPType op_type,
+            const std::string& name_i, const std::string& db_i,  uint32_t pid_i,
+            const std::string& follower_i, uint64_t offset_delta_i) :
+        TaskMeta(op_id, op_type, ::openmldb::api::TaskType::kCheckBinlogSyncProgress, ""),
+        name(name_i), db(db_i), follower(follower_i), offset_delta(offset_delta_i) {}
+    std::string name;
+    std::string db;
+    uint32_t pid;
+    std::string follower;
+    uint64_t offset_delta;
+};
+
+class ChangeLeaderTaskMeta : public TaskMeta {
+  public:
+    ChangeLeaderTaskMeta(uint64_t op_id, ::openmldb::api::OPType op_type) :
+        TaskMeta(op_id, op_type, ::openmldb::api::TaskType::kChangeLeader, "") {}
+};
+
+class UpdateLeaderInfoTaskMeta : public TaskMeta {
+  public:
+    UpdateLeaderInfoTaskMeta(uint64_t op_id, ::openmldb::api::OPType op_type) :
+        TaskMeta(op_id, op_type, ::openmldb::api::TaskType::kUpdateLeaderInfo, "") {}
+};
+
+class SelectLeaderTaskMeta : public TaskMeta {
+  public:
+    SelectLeaderTaskMeta(uint64_t op_id, ::openmldb::api::OPType op_type,
+            const std::string& name_i, const std::string& db_i, uint32_t tid_i, uint32_t pid_i,
+            const std::vector<std::string>& follower_endpoint_i) :
+        TaskMeta(op_id, op_type, ::openmldb::api::TaskType::kSelectLeader, ""),
+        name(name_i), db(db_i), tid(tid_i), pid(pid_i), follower_endpoint(follower_endpoint_i) {}
+    std::string name;
+    std::string db;
+    uint32_t tid;
+    uint32_t pid;
+    std::vector<std::string> follower_endpoint;
+};
+
+class UpdatePartitionStatusTaskMeta : public TaskMeta {
+  public:
+    UpdatePartitionStatusTaskMeta(uint64_t op_id, ::openmldb::api::OPType op_type,
+            const std::string& name_i, const std::string& db_i, uint32_t pid_i,
+            const std::string& endpoint_i, bool is_leader_i, bool is_alive_i) :
+        TaskMeta(op_id, op_type, ::openmldb::api::TaskType::kSelectLeader, ""),
+        name(name_i), db(db_i), pid(pid_i), endpoint(endpoint_i), is_leader(is_leader_i), is_alive(is_alive_i) {}
+    std::string name;
+    std::string db;
+    uint32_t tid;
+    uint32_t pid;
+    std::string endpoint;
+    bool is_leader;
+    bool is_alive;
+};
+
+class RecoverTableTaskMeta : public TaskMeta {
+  public:
+    RecoverTableTaskMeta(uint64_t op_id, ::openmldb::api::OPType op_type,
+            const std::string& name_i, const std::string& db_i, uint32_t pid_i,
+            const std::string& endpoint_i, bool offset_delta_i, bool concurrency_i) :
+        TaskMeta(op_id, op_type, ::openmldb::api::TaskType::kRecoverTable, ""),
+        name(name_i), db(db_i), pid(pid_i), endpoint(endpoint_i),
+        offset_delta(offset_delta_i), concurrency(concurrency_i) {}
+    std::string name;
+    std::string db;
+    uint32_t pid;
+    std::string endpoint;
+    uint64_t offset_delta;
+    uint32_t concurrency;
+};
+
+class CreateTableRemoteTaskMeta : public TaskMeta {
+  public:
+    CreateTableRemoteTaskMeta(uint64_t op_id, ::openmldb::api::OPType op_type,
+            const ::openmldb::nameserver::TableInfo& table_info_i, const std::string& alias_i) :
+        TaskMeta(op_id, op_type, ::openmldb::api::TaskType::kCreateTableRemote, ""),
+        table_info(table_info_i), alias(alias_i) {}
+    ::openmldb::nameserver::TableInfo table_info;
+    std::string alias;
+};
+
+class DropTableRemoteTaskMeta : public TaskMeta {
+  public:
+    DropTableRemoteTaskMeta(uint64_t op_id, ::openmldb::api::OPType op_type,
+            const std::string& name_i, const std::string& db_i, const std::string& alias_i) :
+        TaskMeta(op_id, op_type, ::openmldb::api::TaskType::kDropTableRemote, ""),
+        name(name_i), db(db_i), alias(alias_i) {}
+    std::string name;
+    std::string db;
+    std::string alias;
+};
+
+class AddReplicaNSRemoteTaskMeta : public TaskMeta {
+  public:
+    AddReplicaNSRemoteTaskMeta(uint64_t op_id, ::openmldb::api::OPType op_type,
+            const std::string& name_i, const std::string& alias_i,
+            const std::vector<std::string>& endpoint_vec_i, uint32_t pid_i) :
+        TaskMeta(op_id, op_type, ::openmldb::api::TaskType::kDropTableRemote, ""),
+        name(name_i), alias(alias_i), endpoint_vec(endpoint_vec_i), pid(pid_i) {}
+    std::string name;
+    std::string alias;
+    std::vector<std::string> endpoint_vec;
+    uint32_t pid;
+};
 }  // namespace nameserver
 }  // namespace openmldb
 #endif  // SRC_NAMESERVER_TASK_H_
