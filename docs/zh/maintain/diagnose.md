@@ -77,7 +77,8 @@ openmldb_tool status --conn
 
 ### inspect 检查
 
-`inspect`用于检查集群的在线和离线两个部分是否正常工作，可以选择单独检查`online`或`offline`，不指定则都检查。可以定期执行检查，以便及时发现异常。
+`inspect`用于检查集群的在线和离线两个部分是否正常工作。若不进行指定`online`或`offline`，则可以对在线和离线进行基本的检查。如若指定`online`或`offline`，则可以进行更多详细检查。可以定期执行检查，以便及时发现异常。
+
 ```
 openmldb_tool inspect -h
 usage: openmldb_tool inspect [-h] [--helpfull] {online,offline} ...

@@ -48,8 +48,8 @@ flags.DEFINE_bool(
 flags.DEFINE_string(
     "db",
     "",
-    "Specify databases to diagnose, split by ','.",
-)  # only uesd in inspect online
+    "Specify databases to diagnose, split by ','. Only used in inspect online.",
+)
 
 flags.DEFINE_string("collect_dir", "/tmp/diag_collect", "...")
 
