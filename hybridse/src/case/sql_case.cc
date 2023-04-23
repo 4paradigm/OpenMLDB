@@ -21,6 +21,7 @@
 #include <set>
 #include <string>
 #include <vector>
+#include <filesystem>
 
 #include "absl/cleanup/cleanup.h"
 #include "absl/strings/ascii.h"
@@ -37,6 +38,8 @@
 namespace hybridse {
 namespace sqlcase {
 using hybridse::codec::Row;
+
+static std::filesystem::path working_dir;
 
 bool SqlCase::TTLParse(const std::string& org_type_str,
                        std::vector<int64_t>& ttls) {
@@ -950,7 +953,18 @@ bool SqlCase::CreateTableInfoFromYamlNode(const YAML::Node& schema_data,
         if (schema_data["data"].IsMap()) {
             // csv format only
             table->csv_data_file_ = absl::StripAsciiWhitespace(schema_data["data"]["file"].as<std::string>());
-            std::fstream f(table->csv_data_file_, std::ios::in);
+            if (table->csv_data_file_.empty()) {
+                LOG(ERROR) << "table csv data file name is empty";
+                return false;
+            }
+            std::fstream f;
+            // (table->csv_data_file_, std::ios::in);
+            if (table->csv_data_file_.front() == '/') {
+                f.open(table->csv_data_file_, std::ios::in);
+            } else {
+                f.open(working_dir / table->csv_data_file_, std::ios::in);
+            }
+
             if (f.is_open()) {
                 absl::Cleanup clean = [&f]() {
                     f.close();
@@ -1527,6 +1541,9 @@ bool SqlCase::CreateSqlCasesFromYaml(
     } else {
         sql_case_path = yaml_path;
     }
+    std::filesystem::path p(sql_case_path);
+    working_dir = p.parent_path();
+
     if (IsDebug()) {
         DLOG(INFO) << "SQL Cases Path: " << sql_case_path;
     }
@@ -1570,6 +1587,7 @@ bool SqlCase::CreateSqlCasesFromYaml(
             continue;
         }
         SqlCase sql_case;
+        sql_case.base_dir_ = p.parent_path();
         bool is_skip = false;
         bool parse_success =
             ParseSqlCaseNode(sql_case_node, YAML::Node(), global_db, cases_dir,
