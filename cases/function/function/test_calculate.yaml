@@ -142,7 +142,7 @@ cases:
          floor(c5) as r5 from {0};
     expect:
       order: id
-      columns: ["id int", "r0 bigint", "r1 bigint", "r2 bigint", "r3 double", "r4 double","r5 double"]
+      columns: ["id int", "r0 bigint", "r1 bigint", "r2 bigint", "r3 float", "r4 double","r5 double"]
       rows:
         - [1, 1, 2, 2, 1.000000, 0.000000,1.0]
         - [2, NULL, NULL, 2, NULL, NULL,0.0]

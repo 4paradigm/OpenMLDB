@@ -1625,33 +1625,47 @@ void DefaultUdfLibrary::InitMathUdf() {
 
     RegisterExternalTemplate<v1::Round>("round")
         .doc(R"(
-            @brief Return the nearest integer value to expr (in floating-point format),
-            rounding halfway cases away from zero, regardless of the current rounding mode.
+            @brief Returns expr rounded to d decimal places using HALF_UP rounding mode.
+
+            @param numeric_expr Expression evaluated to numeric
+            @param d Integer decimal place, omitted, default to 0
+
+            When `d` is a positive, `numeric_expr` is rounded to the number of decimal positions specified by `d`. When `d` is a negative , `numeric_expr` is rounded on the left side of the decimal point.
+            Return type is the same as the type first parameter.
 
             Example:
 
             @code{.sql}
+                SELECT round(1.23);
+                -- 1 (double type)
 
-                SELECT ROUND(1.23);
-                -- output 1
+                SELECT round(1.23, 1)
+                -- 1.2 (double type)
 
+                SELECT round(123, -1)
+                -- 120 (int32 type)
             @endcode
 
-            @param expr
-
             @since 0.1.0)")
-        .args_in<int64_t, double>();
-    RegisterExternalTemplate<v1::Round32>("round").args_in<int16_t, int32_t>();
-    RegisterExprUdf("round").args<AnyArg>(
-        [](UdfResolveContext* ctx, ExprNode* x) -> ExprNode* {
+        .args_in<int16_t, int32_t, int64_t, float, double>();
+
+    RegisterExprUdf("round").variadic_args<AnyArg>(
+        [](UdfResolveContext* ctx, ExprNode* x, const std::vector<ExprNode*>& other) -> ExprNode* {
             if (!x->GetOutputType()->IsArithmetic()) {
-                ctx->SetError("round do not support type " +
-                              x->GetOutputType()->GetName());
+                ctx->SetError("round do not support type " + x->GetOutputType()->GetName());
                 return nullptr;
             }
             auto nm = ctx->node_manager();
-            auto cast = nm->MakeCastNode(node::kDouble, x);
-            return nm->MakeFuncNode("round", {cast}, nullptr);
+            if (other.size() > 1) {
+                ctx->SetError("can't round with more than 2 parameters");
+                return nullptr;
+            }
+
+            node::ExprNode* decimal_place = nm->MakeConstNode(0);
+            if (!other.empty()) {
+                decimal_place = nm->MakeCastNode(node::kInt32, other.front());
+            }
+            return nm->MakeFuncNode("round", {x, decimal_place}, nullptr);
         });
 
     RegisterExternalTemplate<v1::Sqrt>("sqrt")

@@ -218,16 +218,21 @@ struct Pow {
 
 template <class V>
 struct Round {
-    using Args = std::tuple<V>;
+    using Args = std::tuple<V, int32_t>;
 
-    V operator()(V r) { return static_cast<V>(round(r)); }
-};
-
-template <class V>
-struct Round32 {
-    using Args = std::tuple<V>;
-
-    int32_t operator()(V r) { return static_cast<int32_t>(round(r)); }
+    V operator()(V val, int32_t decimal_number) {
+        if constexpr (std::is_integral_v<V>) {
+            if (decimal_number >= 0) {
+                return val;
+            } else {
+                double factor = std::pow(10, -decimal_number);
+                return static_cast<V>(std::round(val / factor) * factor);
+            }
+        } else {
+            // floats
+            return static_cast<V>(std::round(val * std::pow(10, decimal_number)) / std::pow(10, decimal_number));
+        }
+    }
 };
 
 template <class V>

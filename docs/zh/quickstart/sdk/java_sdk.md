@@ -38,7 +38,7 @@
 
 注意：由于 openmldb-native 中包含了 OpenMLDB 编译的 C++ 静态库，默认是 Linux 静态库，macOS 上需将上述 openmldb-native 的 version 改成 `0.7.3-macos`，openmldb-jdbc 的版本保持不变。
 
-openmldb-native 的 macOS 版本只支持 macOS 12，如需在 macOS 11 或 macOS 10.15上运行，需在相应 OS 上源码编译 openmldb-native 包，详细编译方法见[并发编译 Java SDK](https://openmldb.ai/docs/zh/main/deploy/compile.html#java-sdk)。
+openmldb-native 的 macOS 版本只支持 macOS 12，如需在 macOS 11 或 macOS 10.15上运行，需在相应 OS 上源码编译 openmldb-native 包，详细编译方法见[并发编译 Java SDK](https://openmldb.ai/docs/zh/main/deploy/compile.html#java-sdk)。使用自编译的 openmldb-native 包，推荐使用`mvn install`安装到本地仓库，然后在 pom 中引用本地仓库的 openmldb-native 包，不建议用`scope=system`的方式引用。
 
 Java SDK 连接 OpenMLDB 服务，可以使用 JDBC 的方式（推荐），也可以通过 SqlClusterExecutor 的方式直连。如果需要使用在线请求模式，只能使用 SqlClusterExecutor 。下面将依次演示两种连接方式。
 
@@ -105,6 +105,8 @@ PreparedStatement insertStatement = connection.prepareStatement("DELETE FROM t1 
 ```
 
 ## SqlClusterExecutor 方式
+
+SqlClusterExecutor 是最全面的Java SDK连接方式，不仅有JDBC可以使用的增删查功能，还可以使用请求模式等额外功能。
 
 ### 创建 SqlClusterExecutor
 
@@ -381,6 +383,74 @@ try {
         }
         if (pstmt != null) {
         pstmt.close();
+        }
+    } catch (SQLException throwables) {
+        throwables.printStackTrace();
+    }
+}
+```
+
+### 执行 Deployment
+
+执行 Deployment ，是通过 `SqlClusterExecutor::getCallablePreparedStmt(db, deploymentName)` 接口获取 CallablePreparedStatement 。区别于上文的 SQL 请求式查询，Deployment 在服务端已上线，速度会快于 SQL 请求式查询。
+
+Deployment 使用过程分为两步：
+
+- 上线Deployment
+```java
+// 上线一个Deployment（此处使用上文的selectSql），实际生产环境通常已经上线成功
+java.sql.Statement state = sqlExecutor.getStatement();
+try {
+    String selectSql = String.format("SELECT c1, c3, sum(c4) OVER w1 as w1_c4_sum FROM %s WINDOW w1 AS " +
+            "(PARTITION BY %s.c1 ORDER BY %s.c7 ROWS_RANGE BETWEEN 2d PRECEDING AND CURRENT ROW);", table,
+            table, table);
+    // 上线一个Deployment
+    String deploySql = String.format("DEPLOY %s %s", deploymentName, selectSql);
+    // set return null rs, don't check the returned value, it's false
+    state.execute(deploySql);
+} catch (Exception e) {
+    e.printStackTrace();
+}
+```
+- 执行Deployment。重新创建 CallablePreparedStmt 有一定耗时，建议尽可以复用 CallablePreparedStmt，`executeQuery()`将会自动清除`setXX`的请求行缓存。
+```java
+// 执行Deployment
+PreparedStatement pstmt = null;
+ResultSet resultSet = null;
+try {
+    pstmt = sqlExecutor.getCallablePreparedStmt(db, deploymentName);
+    // 如果是执行deployment, 可以通过名字获取preparedstatement
+    // pstmt = sqlExecutor.getCallablePreparedStmt(db, deploymentName);
+    ResultSetMetaData metaData = pstmt.getMetaData();
+    // 执行request模式需要在RequestPreparedStatement设置一行请求数据
+    setData(pstmt, metaData);
+    // 调用executeQuery会执行这个select sql, 然后将结果放在了resultSet中
+    resultSet = pstmt.executeQuery();
+
+    Assert.assertTrue(resultSet.next());
+    Assert.assertEquals(resultSet.getMetaData().getColumnCount(), 3);
+    Assert.assertEquals(resultSet.getString(1), "bb");
+    Assert.assertEquals(resultSet.getInt(2), 24);
+    Assert.assertEquals(resultSet.getLong(3), 34);
+    Assert.assertFalse(resultSet.next());
+
+    // reuse way
+    for (int i = 0; i < 5; i++) {
+        setData(pstmt, metaData);
+        pstmt.executeQuery();
+        // skip result check
+    }
+} catch (SQLException e) {
+    e.printStackTrace();
+    Assert.fail();
+} finally {
+    try {
+        if (resultSet != null) {
+            // result用完之后需要close
+            resultSet.close();
+        }
+        if (pstmt != null) {
+            pstmt.close();
         }
     } catch (SQLException throwables) {
         throwables.printStackTrace();

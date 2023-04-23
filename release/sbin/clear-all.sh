@@ -24,17 +24,30 @@ cd "$home" || exit 1
 rm_dir() {
     local host=$1
     local dir=$2
-    if [[ $dir == "" ]] || [[ $dir == "/" ]]; then
-        echo "invalid dir $dir"
+    if [[ $dir == "" ]]; then
+        echo "empty dir"
         exit 1
     fi
-    local cmd="rm -rf $dir"
+    local cmd="rm -rf \"$dir\""
     run_auto "$host" "$cmd"
 }
 
 if [[ ${OPENMLDB_MODE} == "standalone" ]]; then
   rm -rf standalone_db standalone_logs
 else
+  conf_file="conf/tablet.flags.template"
+  dirname=()
+  while IFS= read -r line
+  do
+    if echo "$line" | grep -q '^#'; then
+      continue
+    fi
+    if echo "$line" | grep -v "zk_root_path" | grep -q "root_path" ||
+        echo "$line" |  grep -q "openmldb_log_dir"; then
+      var=$(echo "${line}" | awk -F '=' '{print $2}')
+      dirname+=("$var")
+    fi
+  done < "$conf_file"
   old_IFS="$IFS"
   IFS=$'\n'
   # delete tablet data and log
@@ -48,8 +61,12 @@ else
       rm_dir "$host" "$dir"
     else
       echo "clear tablet data and log in $dir with endpoint $host:$port "
-      cmd="cd $dir && rm -rf recycle db logs"
-      run_auto "$host" "$cmd"
+      for item in "${dirname[@]}"
+      do
+        echo "clear $item with endpoint $host:$port "
+        cmd="cd $dir && rm -rf \"${item}\""
+        run_auto "$host" "$cmd"
+      done
     fi
   done
 
