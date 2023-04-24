@@ -10615,9 +10615,11 @@ std::shared_ptr<Task> NameServerImpl::CreateTask(const std::shared_ptr<TaskMeta>
             if (!cluster) {
                 return {};
             }
-            std::string cluster_endpoint = std::atomic_load_explicit(&cluster->client_, std::memory_order_relaxed)->GetEndpoint();
+            std::string cluster_endpoint =
+                std::atomic_load_explicit(&cluster->client_, std::memory_order_relaxed)->GetEndpoint();
             task->task_info_->set_endpoint(cluster_endpoint);
-            boost::function<bool()> fun = boost::bind(&NameServerImpl::CreateTableRemote, this, *task_info, meta->table_info, cluster);
+            boost::function<bool()> fun =
+                boost::bind(&NameServerImpl::CreateTableRemote, this, *task_info, meta->table_info, cluster);
             task->fun_ = boost::bind(&NameServerImpl::WrapTaskFun, this, fun, task_info);
             break;
         }
@@ -10627,9 +10629,11 @@ std::shared_ptr<Task> NameServerImpl::CreateTask(const std::shared_ptr<TaskMeta>
             if (!cluster) {
                 return {};
             }
-            std::string cluster_endpoint = std::atomic_load_explicit(&cluster->client_, std::memory_order_relaxed)->GetEndpoint();
+            std::string cluster_endpoint =
+                std::atomic_load_explicit(&cluster->client_, std::memory_order_relaxed)->GetEndpoint();
             task->task_info_->set_endpoint(cluster_endpoint);
-            boost::function<bool()> fun = boost::bind(&NameServerImpl::DropTableRemote, this, *task_info, meta->name, meta->db, cluster);
+            boost::function<bool()> fun =
+                boost::bind(&NameServerImpl::DropTableRemote, this, *task_info, meta->name, meta->db, cluster);
             task->fun_ = boost::bind(&NameServerImpl::WrapTaskFun, this, fun, task_info);
             break;
         }
@@ -10639,7 +10643,8 @@ std::shared_ptr<Task> NameServerImpl::CreateTask(const std::shared_ptr<TaskMeta>
             if (!cluster) {
                 return {};
             }
-            std::string cluster_endpoint = std::atomic_load_explicit(&cluster->client_, std::memory_order_relaxed)->GetEndpoint();
+            std::string cluster_endpoint =
+                std::atomic_load_explicit(&cluster->client_, std::memory_order_relaxed)->GetEndpoint();
             task->task_info_->set_endpoint(cluster_endpoint);
             boost::function<bool()> fun = boost::bind(&NsClient::AddReplicaNS,
                     std::atomic_load_explicit(&cluster->client_, std::memory_order_relaxed),
@@ -10647,7 +10652,7 @@ std::shared_ptr<Task> NameServerImpl::CreateTask(const std::shared_ptr<TaskMeta>
             task->fun_ = boost::bind(&NameServerImpl::WrapTaskFun, this, fun, task_info);
             break;
         }
-        case ::openmldb::api::TaskType::kUpdateTableAlive: // deprecated
+        case ::openmldb::api::TaskType::kUpdateTableAlive:  // deprecated
             break;
     }
     return task;
