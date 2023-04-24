@@ -66,6 +66,8 @@ public class TaskManagerConfig {
     public static long BATCH_JOB_RESULT_MAX_WAIT_TIME;
     public static String K8S_HADOOP_CONFIGMAP_NAME;
     public static String K8S_MOUNT_LOCAL_PATH;
+    public static String AWS_ACCESS_KEY;
+    public static String AWS_SECRET_KEY;
 
     private static volatile boolean isParsed = false;
 
@@ -265,6 +267,9 @@ public class TaskManagerConfig {
         K8S_HADOOP_CONFIGMAP_NAME = prop.getProperty("k8s.hadoop.configmap", "hadoop-config");
 
         K8S_MOUNT_LOCAL_PATH = prop.getProperty("k8s.mount.local.path", "/tmp");
+
+        AWS_ACCESS_KEY = prop.getProperty("aws.access_key", "");
+        AWS_SECRET_KEY = prop.getProperty("aws.secret_key", "");
     }
 
     public static boolean isK8s() throws ConfigException {

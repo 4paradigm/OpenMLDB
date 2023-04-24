@@ -184,15 +184,6 @@ class OpenmldbBatchConfig extends Serializable {
   @ConfigOption(name = "openmldb.savejobresult.posttimeouts", doc = "ConnectionRequestTimeout,ConnectTimeout," +
     "SocketTimeout for http post request to savejobresult, default is '10000,10000,10000', unit is ms")
   var saveJobResultPostTimeouts = "10000,10000,10000"
-
-  @ConfigOption(name = "openmldb.aws.access_key", doc = "AWS access key")
-  var awsAccessKey = ""
-
-  @ConfigOption(name = "openmldb.aws.secret_key", doc = "AWS secret key")
-  var awsSecretKey = ""
-
-  @ConfigOption(name = "openmldb.aws.region", doc = "AWS region")
-  var awsRegion = ""
 }
 
 object OpenmldbBatchConfig {

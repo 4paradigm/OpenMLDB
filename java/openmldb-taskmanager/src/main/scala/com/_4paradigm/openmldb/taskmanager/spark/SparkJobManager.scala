@@ -146,6 +146,14 @@ object SparkJobManager {
       launcher.setConf("spark.sql.catalogImplementation", "hive")
     }
 
+    if (TaskManagerConfig.AWS_ACCESS_KEY.nonEmpty) {
+      launcher.setConf("spark.fs.s3a.access.key", TaskManagerConfig.AWS_ACCESS_KEY)
+    }
+
+    if (TaskManagerConfig.AWS_SECRET_KEY.nonEmpty) {
+      launcher.setConf("spark.fs.s3a.secret.key", TaskManagerConfig.AWS_SECRET_KEY)
+    }
+
     // Add the external function library files
     // TODO(tobe): Handle the same file names
     ExternalFunctionManager.getAllLibraryFilePaths().forEach(filePath => launcher.addFile(filePath))
