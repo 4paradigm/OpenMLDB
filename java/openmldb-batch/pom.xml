@@ -246,7 +246,7 @@
         <dependency>
             <groupId>org.apache.hadoop</groupId>
             <artifactId>hadoop-aws</artifactId>
-            <version>3.3.1</version>
+            <version>${hadoop.version}</version>
         </dependency>
     </dependencies>
 
@@ -341,7 +341,6 @@
                             </relocations>
                             <artifactSet>
                                 <excludes>
-                                    <exclude></exclude>
                                     <exclude>org.apache.hadoop:*</exclude>
                                     <exclude>org.apache.spark:*</exclude>
                                     <exclude>org.apache.parquet:*</exclude>
