@@ -290,7 +290,7 @@ class CheckBinlogSyncProgressTaskMeta : public TaskMeta {
             const std::string& name_i, const std::string& db_i,  uint32_t pid_i,
             const std::string& follower_i, uint64_t offset_delta_i) :
         TaskMeta(op_id, op_type, ::openmldb::api::TaskType::kCheckBinlogSyncProgress, ""),
-        name(name_i), db(db_i), follower(follower_i), offset_delta(offset_delta_i) {}
+        name(name_i), db(db_i), pid(pid_i), follower(follower_i), offset_delta(offset_delta_i) {}
     std::string name;
     std::string db;
     uint32_t pid;
@@ -344,7 +344,7 @@ class RecoverTableTaskMeta : public TaskMeta {
  public:
     RecoverTableTaskMeta(uint64_t op_id, ::openmldb::api::OPType op_type,
             const std::string& name_i, const std::string& db_i, uint32_t pid_i,
-            const std::string& endpoint_i, bool offset_delta_i, bool concurrency_i) :
+            const std::string& endpoint_i, uint64_t offset_delta_i, uint32_t concurrency_i) :
         TaskMeta(op_id, op_type, ::openmldb::api::TaskType::kRecoverTable, ""),
         name(name_i), db(db_i), pid(pid_i), endpoint(endpoint_i),
         offset_delta(offset_delta_i), concurrency(concurrency_i) {}

@@ -4964,9 +4964,7 @@ int NameServerImpl::AddOPData(const std::shared_ptr<OPData>& op_data, uint32_t c
             iter++;
             task_vec_[idx].insert(iter, op_data);
         } else {
-            PDLOG(WARNING,
-                  "not found parent_id[%lu] with index[%u]. add op[%lu] failed, "
-                  "op_type[%s]",
+            PDLOG(WARNING, "not found parent_id[%lu] with index[%u]. add op[%lu] failed, op_type[%s]",
                   parent_id, idx, op_data->op_info_.op_id(),
                   ::openmldb::api::OPType_Name(op_data->op_info_.op_type()).c_str());
             return -1;
@@ -6913,9 +6911,7 @@ void NameServerImpl::CheckBinlogSyncProgress(const std::string& name, const std:
         }
         break;
     }
-    PDLOG(INFO,
-          "op_id[%lu], task_type[%s],leader_offset[%lu], follower_offset[%lu] "
-          "offset_delta[%lu]",
+    PDLOG(INFO, "op_id[%lu], task_type[%s], leader_offset[%lu], follower_offset[%lu] offset_delta[%lu]",
           task_info->op_id(), ::openmldb::api::TaskType_Name(task_info->task_type()).c_str(), leader_offset,
           follower_offset, offset_delta);
     if (running_.load(std::memory_order_acquire)) {
