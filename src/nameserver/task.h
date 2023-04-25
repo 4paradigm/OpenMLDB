@@ -256,12 +256,12 @@ class DelTableInfoTaskMeta : public TaskMeta {
     DelTableInfoTaskMeta(uint64_t op_id, ::openmldb::api::OPType op_type,
             const std::string& name_i, const std::string& db_i,  uint32_t pid_i, const std::string& endpoint_i) :
         TaskMeta(op_id, op_type, ::openmldb::api::TaskType::kDelTableInfo, ""),
-        name(name_i), db(db_i), endpoint(endpoint_i) {}
+        name(name_i), db(db_i), pid(pid_i), endpoint(endpoint_i) {}
     DelTableInfoTaskMeta(uint64_t op_id, ::openmldb::api::OPType op_type,
             const std::string& name_i, const std::string& db_i,  uint32_t pid_i,
             const std::string& endpoint_i, uint32_t flag_i) :
         TaskMeta(op_id, op_type, ::openmldb::api::TaskType::kDelTableInfo, ""),
-        name(name_i), db(db_i), endpoint(endpoint_i), has_flag(true), flag(flag_i) {}
+        name(name_i), db(db_i), pid(pid_i), endpoint(endpoint_i), has_flag(true), flag(flag_i) {}
     std::string name;
     std::string db;
     uint32_t pid;
@@ -276,7 +276,7 @@ class UpdateTableInfoTaskMeta : public TaskMeta {
             const std::string& name_i, const std::string& db_i,  uint32_t pid_i,
             const std::string& src_endpoint_i, const std::string& des_endpoint_i) :
         TaskMeta(op_id, op_type, ::openmldb::api::TaskType::kUpdateTableInfo, ""),
-        name(name_i), db(db_i), src_endpoint(src_endpoint_i), des_endpoint(des_endpoint_i) {}
+        name(name_i), db(db_i), pid(pid_i), src_endpoint(src_endpoint_i), des_endpoint(des_endpoint_i) {}
     std::string name;
     std::string db;
     uint32_t pid;

@@ -7013,10 +7013,8 @@ void NameServerImpl::DelTableInfo(const std::string& name, const std::string& db
             for (int meta_idx = 0; meta_idx < cur_table_info->table_partition(idx).remote_partition_meta_size();
                  meta_idx++) {
                 if (cur_table_info->table_partition(idx).remote_partition_meta(meta_idx).endpoint() == endpoint) {
-                    ::openmldb::nameserver::TablePartition* table_partition =
-                        cur_table_info->mutable_table_partition(idx);
-                    ::google::protobuf::RepeatedPtrField<::openmldb::nameserver::PartitionMeta>* partition_meta =
-                        table_partition->mutable_remote_partition_meta();
+                    auto table_partition = cur_table_info->mutable_table_partition(idx);
+                    auto partition_meta = table_partition->mutable_remote_partition_meta();
                     PDLOG(INFO, "remove pid[%u] in table[%s]. endpoint is[%s]", pid, name.c_str(), endpoint.c_str());
                     partition_meta->DeleteSubrange(meta_idx, 1);
                     has_found = true;
@@ -7026,10 +7024,8 @@ void NameServerImpl::DelTableInfo(const std::string& name, const std::string& db
         } else {
             for (int meta_idx = 0; meta_idx < cur_table_info->table_partition(idx).partition_meta_size(); meta_idx++) {
                 if (cur_table_info->table_partition(idx).partition_meta(meta_idx).endpoint() == endpoint) {
-                    ::openmldb::nameserver::TablePartition* table_partition =
-                        cur_table_info->mutable_table_partition(idx);
-                    ::google::protobuf::RepeatedPtrField<::openmldb::nameserver::PartitionMeta>* partition_meta =
-                        table_partition->mutable_partition_meta();
+                    auto table_partition = cur_table_info->mutable_table_partition(idx);
+                    auto partition_meta = table_partition->mutable_partition_meta();
                     PDLOG(INFO, "remove pid[%u] in table[%s]. endpoint is[%s]", pid, name.c_str(), endpoint.c_str());
                     partition_meta->DeleteSubrange(meta_idx, 1);
                     has_found = true;
@@ -10490,10 +10486,10 @@ std::shared_ptr<Task> NameServerImpl::CreateTask(const std::shared_ptr<TaskMeta>
             auto meta = std::dynamic_pointer_cast<DelTableInfoTaskMeta>(task_meta);
             if (meta->has_flag) {
                 task->fun_ = boost::bind(&NameServerImpl::DelTableInfo, this,
-                        meta->name, meta->db, meta->task_info->endpoint(), meta->pid, task_info, meta->flag);
+                        meta->name, meta->db, meta->endpoint, meta->pid, task_info, meta->flag);
             } else {
                 task->fun_ = boost::bind(&NameServerImpl::DelTableInfo, this,
-                        meta->name, meta->db, meta->task_info->endpoint(), meta->pid, task_info);
+                        meta->name, meta->db, meta->endpoint, meta->pid, task_info);
             }
             break;
         }
