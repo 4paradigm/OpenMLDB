@@ -4021,13 +4021,10 @@ int NameServerImpl::CreateAddReplicaSimplyRemoteOPTask(std::shared_ptr<OPData> o
     }
     uint64_t op_index = op_data->op_info_.op_id();
     auto op_type = ::openmldb::api::OPType::kAddReplicaSimplyRemoteOP;
-    std::shared_ptr<Task> task =
-        CreateAddReplicaRemoteTask(leader_endpoint, op_index, ::openmldb::api::OPType::kAddReplicaSimplyRemoteOP, tid,
-                                   add_replica_data.remote_tid(), pid, add_replica_data.endpoint());
+    auto task = CreateTask(std::make_shared<AddReplicaTaskMeta>(op_index, op_type, leader_endpoint, tid, pid,
+                add_replica_data.endpoint(), add_replica_data.remote_tid()));
     if (!task) {
-        PDLOG(WARNING,
-              "create addreplica task failed. leader cluster tid[%u] replica "
-              "cluster tid[%u] pid[%u]",
+        PDLOG(WARNING, "create addreplica task failed. leader cluster tid[%u] replica cluster tid[%u] pid[%u]",
               tid, add_replica_data.remote_tid(), pid);
         return -1;
     }
@@ -4142,12 +4139,10 @@ int NameServerImpl::CreateAddReplicaRemoteOPTask(std::shared_ptr<OPData> op_data
     }
     op_data->task_list_.push_back(task);
 
-    task = CreateAddReplicaRemoteTask(leader_endpoint, op_index, ::openmldb::api::OPType::kAddReplicaRemoteOP, tid,
-                                      remote_tid, pid, endpoint);
+    task = CreateTask(std::make_shared<AddReplicaTaskMeta>(
+                op_index, op_type, leader_endpoint, tid, pid, endpoint, remote_tid));
     if (!task) {
-        PDLOG(WARNING,
-              "create addreplica task failed. leader cluster tid[%u] replica "
-              "cluster tid[%u] pid[%u]",
+        PDLOG(WARNING, "create addreplica task failed. leader cluster tid[%u] replica cluster tid[%u] pid[%u]",
               tid, remote_tid, pid);
         return -1;
     }
@@ -6453,8 +6448,8 @@ int NameServerImpl::CreateTableRemoteTask(std::shared_ptr<OPData> op_data) {
                     PDLOG(WARNING, "get leader failed. table[%s] pid[%u]", name.c_str(), pid);
                     return -1;
                 }
-                task = CreateAddReplicaRemoteTask(leader_endpoint, op_index, op_type,
-                        tid, remote_tid, pid, endpoint, idx);
+                task = CreateTask(std::make_shared<AddReplicaTaskMeta>(
+                            op_index, op_type, leader_endpoint, tid, pid, endpoint, remote_tid, idx));
                 if (!task) {
                     PDLOG(WARNING,
                           "create addreplica task failed. leader cluster tid[%u] replica cluster tid[%u] pid[%u]",
@@ -6732,34 +6727,6 @@ std::shared_ptr<Task> NameServerImpl::CreateLoadTableRemoteTask(const std::strin
     boost::function<bool()> fun =
         boost::bind(&NsClient::LoadTable, std::atomic_load_explicit(&cluster->client_, std::memory_order_relaxed), name,
                     db, endpoint, pid, zone_info_, *(task->task_info_));
-    task->fun_ = boost::bind(&NameServerImpl::WrapTaskFun, this, fun, task->task_info_);
-    return task;
-}
-
-std::shared_ptr<Task> NameServerImpl::CreateAddReplicaRemoteTask(const std::string& endpoint, uint64_t op_index,
-                                                                 ::openmldb::api::OPType op_type, uint32_t tid,
-                                                                 uint32_t remote_tid, uint32_t pid,
-                                                                 const std::string& des_endpoint, uint64_t task_id) {
-    std::shared_ptr<Task> task = std::make_shared<Task>(endpoint, std::make_shared<::openmldb::api::TaskInfo>());
-    auto it = tablets_.find(endpoint);
-    if (it == tablets_.end()) {
-        PDLOG(WARNING, "provide endpoint [%s] not found", endpoint.c_str());
-        return std::shared_ptr<Task>();
-    }
-    if (it->second->state_ != ::openmldb::type::EndpointState::kHealthy) {
-        PDLOG(WARNING, "provide endpoint [%s] is not healthy", endpoint.c_str());
-        return std::shared_ptr<Task>();
-    }
-    task->task_info_->set_op_id(op_index);
-    task->task_info_->set_op_type(op_type);
-    task->task_info_->set_task_type(::openmldb::api::TaskType::kAddReplica);
-    task->task_info_->set_status(::openmldb::api::TaskStatus::kInited);
-    task->task_info_->set_endpoint(endpoint);
-    if (task_id != INVALID_PARENT_ID) {
-        task->task_info_->set_task_id(task_id);
-    }
-    boost::function<bool()> fun = boost::bind(&TabletClient::AddReplica, it->second->client_, tid, pid, des_endpoint,
-                                              remote_tid, task->task_info_);
     task->fun_ = boost::bind(&NameServerImpl::WrapTaskFun, this, fun, task->task_info_);
     return task;
 }
@@ -10446,8 +10413,17 @@ std::shared_ptr<Task> NameServerImpl::CreateTask(const std::shared_ptr<TaskMeta>
         }
         case ::openmldb::api::TaskType::kAddReplica: {
             auto meta = std::dynamic_pointer_cast<AddReplicaTaskMeta>(task_meta);
-            boost::function<bool()> fun =
-                boost::bind(&TabletClient::AddReplica, client, meta->tid, meta->pid, meta->des_endpoint, task_info);
+            boost::function<bool()> fun;
+            if (meta->is_remote) {
+                if (meta->task_id != INVALID_PARENT_ID) {
+                    task_info->set_task_id(meta->task_id);
+                }
+                fun = boost::bind(&TabletClient::AddReplica, client,
+                        meta->tid, meta->pid, meta->des_endpoint, meta->remote_tid, task_info);
+            } else {
+                fun = boost::bind(&TabletClient::AddReplica, client,
+                        meta->tid, meta->pid, meta->des_endpoint, task_info);
+            }
             task->fun_ = boost::bind(&NameServerImpl::WrapTaskFun, this, fun, task_info);
             break;
         }
@@ -10605,6 +10581,8 @@ std::shared_ptr<Task> NameServerImpl::CreateTask(const std::shared_ptr<TaskMeta>
             auto meta = std::dynamic_pointer_cast<CreateTableRemoteTaskMeta>(task_meta);
             auto cluster = GetHealthCluster(meta->alias);
             if (!cluster) {
+                PDLOG(WARNING, "replica[%s] not available op_index[%lu]",
+                        meta->alias.c_str(), meta->task_info->op_id());
                 return {};
             }
             std::string cluster_endpoint =
@@ -10619,6 +10597,8 @@ std::shared_ptr<Task> NameServerImpl::CreateTask(const std::shared_ptr<TaskMeta>
             auto meta = std::dynamic_pointer_cast<DropTableRemoteTaskMeta>(task_meta);
             auto cluster = GetHealthCluster(meta->alias);
             if (!cluster) {
+                PDLOG(WARNING, "replica[%s] not available op_index[%lu]",
+                        meta->alias.c_str(), meta->task_info->op_id());
                 return {};
             }
             std::string cluster_endpoint =
@@ -10633,6 +10613,8 @@ std::shared_ptr<Task> NameServerImpl::CreateTask(const std::shared_ptr<TaskMeta>
             auto meta = std::dynamic_pointer_cast<AddReplicaNSRemoteTaskMeta>(task_meta);
             auto cluster = GetHealthCluster(meta->alias);
             if (!cluster) {
+                PDLOG(WARNING, "replica[%s] not available op_index[%lu]",
+                        meta->alias.c_str(), meta->task_info->op_id());
                 return {};
             }
             std::string cluster_endpoint =

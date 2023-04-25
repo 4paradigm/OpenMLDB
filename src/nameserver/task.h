@@ -33,6 +33,7 @@ namespace openmldb {
 namespace nameserver {
 
 using TaskFun = boost::function<void()>;
+constexpr uint64_t INVALID_PARENT_ID = UINT64_MAX;
 
 struct Task {
     Task(std::string endpoint, std::shared_ptr<::openmldb::api::TaskInfo> task_info)
@@ -131,9 +132,18 @@ class AddReplicaTaskMeta : public TaskMeta {
             uint32_t tid_i, uint32_t pid_i, const std::string& des_endpoint_i) :
         TaskMeta(op_id, op_type, ::openmldb::api::TaskType::kAddReplica, endpoint),
         tid(tid_i), pid(pid_i), des_endpoint(des_endpoint_i) {}
+    AddReplicaTaskMeta(uint64_t op_id, ::openmldb::api::OPType op_type, const std::string& endpoint,
+            uint32_t tid_i, uint32_t pid_i, const std::string& des_endpoint_i,
+            uint32_t remote_tid_i, uint64_t task_id_i = INVALID_PARENT_ID) :
+        TaskMeta(op_id, op_type, ::openmldb::api::TaskType::kAddReplica, endpoint),
+        tid(tid_i), pid(pid_i), des_endpoint(des_endpoint_i),
+        is_remote(true), remote_tid(remote_tid_i), task_id(task_id_i) {}
     uint32_t tid;
     uint32_t pid;
     std::string des_endpoint;
+    bool is_remote = false;
+    uint32_t remote_tid;
+    uint64_t task_id = INVALID_PARENT_ID;
 };
 
 class DelReplicaTaskMeta : public TaskMeta {
@@ -236,6 +246,7 @@ class AddTableInfoTaskMeta : public TaskMeta {
             const std::string& name_i, const std::string& db_i,  uint32_t pid_i, const std::string& endpoint_i) :
         TaskMeta(op_id, op_type, ::openmldb::api::TaskType::kAddTableInfo, ""),
         name(name_i), db(db_i), pid(pid_i), endpoint(endpoint_i) {}
+
     AddTableInfoTaskMeta(uint64_t op_id, ::openmldb::api::OPType op_type,
             const std::string& name_i, const std::string& db_i,  uint32_t pid_i, const std::string& endpoint_i,
             const std::string& alias_i, uint32_t remote_tid_i) :
@@ -257,6 +268,7 @@ class DelTableInfoTaskMeta : public TaskMeta {
             const std::string& name_i, const std::string& db_i,  uint32_t pid_i, const std::string& endpoint_i) :
         TaskMeta(op_id, op_type, ::openmldb::api::TaskType::kDelTableInfo, ""),
         name(name_i), db(db_i), pid(pid_i), endpoint(endpoint_i) {}
+
     DelTableInfoTaskMeta(uint64_t op_id, ::openmldb::api::OPType op_type,
             const std::string& name_i, const std::string& db_i,  uint32_t pid_i,
             const std::string& endpoint_i, uint32_t flag_i) :
@@ -333,7 +345,6 @@ class UpdatePartitionStatusTaskMeta : public TaskMeta {
         name(name_i), db(db_i), pid(pid_i), endpoint(endpoint_i), is_leader(is_leader_i), is_alive(is_alive_i) {}
     std::string name;
     std::string db;
-    uint32_t tid;
     uint32_t pid;
     std::string endpoint;
     bool is_leader;

@@ -59,7 +59,6 @@ using ::openmldb::zk::ZkClient;
 
 using Schema = ::google::protobuf::RepeatedPtrField<openmldb::common::ColumnDesc>;
 
-const uint64_t INVALID_PARENT_ID = UINT64_MAX;
 const uint32_t INVALID_PID = UINT32_MAX;
 
 struct EndpointInfo {
@@ -456,11 +455,6 @@ class NameServerImpl : public NameServer {
     std::shared_ptr<Task> CreateLoadTableRemoteTask(const std::string& alias, const std::string& name,
                                                     const std::string& db, const std::string& endpoint, uint32_t pid,
                                                     uint64_t op_index, ::openmldb::api::OPType op_type);
-
-    std::shared_ptr<Task> CreateAddReplicaRemoteTask(const std::string& endpoint, uint64_t op_index,
-                                                     ::openmldb::api::OPType op_type, uint32_t tid, uint32_t remote_tid,
-                                                     uint32_t pid, const std::string& des_endpoint,
-                                                     uint64_t task_id = INVALID_PARENT_ID);
 
     void AddTableInfo(const std::string& alias, const std::string& endpoint, const std::string& name,
                       const std::string& db, uint32_t pid, uint32_t remote_tid,
