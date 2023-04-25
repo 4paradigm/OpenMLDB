@@ -225,7 +225,7 @@ def parse_arg(argv):
     inspect_parser.set_defaults(command=inspect)
     inspect_sub = inspect_parser.add_subparsers()
     # inspect online
-    online = inspect_sub.add_parser("online", help="only inspect online table. set`--db` to specify databases")
+    online = inspect_sub.add_parser("online", help="only inspect online table.")
     online.set_defaults(command=insepct_online)
     online.add_argument(
         "--dist",
