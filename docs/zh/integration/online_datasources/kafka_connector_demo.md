@@ -118,7 +118,7 @@ auto.create=true
 value.converter=org.apache.kafka.connect.json.JsonConverter
 value.converter.schemas.enable=true
 ```
-连接配置中，需要填写正确的OpenMLDB url地址。该connector接收topic1的消息，并且会自动创建表(auto.create)。我们使用`connect-standalone.properties`中配置的默认key和value的converter，当然你也可以在connector配置（`openmldb-sink.properties`）中设置。
+连接配置中，需要填写正确的OpenMLDB url地址。该connector接收topic1的消息，并且会自动创建表(auto.create)。我们在 connector 配置`openmldb-sink.properties`中设置value的converter，当然你也可以在 connect worker的`connect-standalone.properties`中设置默认的converter，connector中无需额外配置。
 
 ```{tip}
 配置项详情见Kafka文档[Configuring Connectors](https://kafka.apache.org/documentation/#connect_configuring)。
