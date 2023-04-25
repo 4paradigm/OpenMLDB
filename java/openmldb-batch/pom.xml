@@ -248,12 +248,6 @@
             <artifactId>hadoop-aws</artifactId>
             <version>3.3.1</version>
         </dependency>
-        <dependency>
-            <groupId>com.amazonaws</groupId>
-            <artifactId>aws-java-sdk-bundle</artifactId>
-            <version>1.11.1001</version>
-        </dependency>
-
     </dependencies>
 
     <build>
