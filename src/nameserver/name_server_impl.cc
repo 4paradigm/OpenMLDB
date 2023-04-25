@@ -6544,7 +6544,7 @@ int NameServerImpl::CreateReLoadTableTask(std::shared_ptr<OPData> op_data) {
     auto op_type = ::openmldb::api::OPType::kReLoadTableOP;
     uint64_t op_index = op_data->op_info_.op_id();
     task_meta = std::make_shared<LoadTableTaskMeta>(op_index, op_type, endpoint,
-            name, tid, pid, seg_cnt, false, table_info->storage_mode());
+            name, tid, pid, seg_cnt, true, table_info->storage_mode());
     auto task = CreateTask(task_meta);
     if (!task) {
         PDLOG(WARNING, "create loadtable task failed. tid[%u] pid[%u]", tid, pid);
