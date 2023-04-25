@@ -115,6 +115,8 @@ tasks.max=1
 topics=topic1 
 connection.url=jdbc:openmldb:///kafka_test?zk=127.0.0.1:2181&zkPath=/openmldb
 auto.create=true
+value.converter=org.apache.kafka.connect.json.JsonConverter
+value.converter.schemas.enable=true
 ```
 连接配置中，需要填写正确的OpenMLDB url地址。该connector接收topic1的消息，并且会自动创建表(auto.create)。我们使用`connect-standalone.properties`中配置的默认key和value的converter，当然你也可以在connector配置（`openmldb-sink.properties`）中设置。
 
@@ -122,6 +124,7 @@ auto.create=true
 配置项详情见Kafka文档[Configuring Connectors](https://kafka.apache.org/documentation/#connect_configuring)。
 
 其中，`connection.url`需要配置为正确的OpenMLDB集群地址与database名，要求database必须存在。
+`value.converter`等属性也可以在 connector 处配置，将覆盖 connect worker 的默认配置。connector启动后也可以通过HTTP API动态修改属性。
 ```
 
 下面，使用 Kafka Connector standalone 模式启动 connect worker。
