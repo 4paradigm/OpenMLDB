@@ -290,6 +290,11 @@ object HybridseUtil {
     actual.zip(expect).forall{case (a, b) => (a.name, a.dataType) == (b.name, b.dataType)}
   }
 
+  def autoLoad(openmldbSession: OpenmldbSession, file: String, format: String, options: Map[String, String],
+               columns: util.List[Common.ColumnDesc]): DataFrame = {
+    autoLoad(openmldbSession, file, List.empty[String], format, options, columns)
+  }
+
   // Decide which load method to use by arg `format`, DO NOT pass `hive://a.b` with format `csv`.
   // Use `parseOptions` in LoadData/SelectInto to get the right format(filePath & option `format`).
   // valid pattern:
@@ -297,15 +302,32 @@ object HybridseUtil {
   //   2. file/hdfs path, format supports csv & parquet, other options take effect
   // We use OpenmldbSession for running sparksql in hiveLoad. If in 4pd Spark distribution, SparkSession.sql
   // will do openmldbSql first, and if DISABLE_OPENMLDB_FALLBACK, we can't use sparksql.
-  def autoLoad(openmldbSession: OpenmldbSession, file: String, format: String, options: Map[String, String],
-    columns: util.List[Common.ColumnDesc]): DataFrame = {
+  def autoLoad(openmldbSession: OpenmldbSession, file: String, symbolPaths: List[String], format: String,
+               options: Map[String, String], columns: util.List[Common.ColumnDesc]): DataFrame = {
     val fmt = format.toLowerCase
     if (fmt.equals("hive")) {
       logger.info("load data from hive table {}", file)
       HybridseUtil.hiveLoad(openmldbSession, file, columns);
     } else {
       logger.info("load data from file {} reader[format {}, options {}]", file, fmt, options)
-      HybridseUtil.autoFileLoad(openmldbSession, file, fmt, options, columns)
+
+      if (file.isEmpty) {
+        var outputDf: DataFrame = null
+        symbolPaths.zipWithIndex.foreach { case (path, index) =>
+          if (index == 0) {
+            outputDf = HybridseUtil.autoFileLoad(openmldbSession, path, fmt, options, columns);
+          } else {
+            outputDf = outputDf.union(HybridseUtil.autoFileLoad(openmldbSession, path, fmt, options, columns))
+          }
+        }
+        outputDf
+      } else {
+        var outputDf = HybridseUtil.autoFileLoad(openmldbSession, file, fmt, options, columns)
+        for (path: String <- symbolPaths) {
+          outputDf = outputDf.union(HybridseUtil.autoFileLoad(openmldbSession, path, fmt, options, columns))
+        }
+        outputDf
+      }
     }
   }
 
