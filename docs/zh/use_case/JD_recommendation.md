@@ -4,7 +4,7 @@
 
 如何从历史数据中找出规律，去预测用户未来的购买需求，让最合适的商品遇见最需要的人，是大数据应用在精准营销中的关键问题，也是所有电商平台在做智能化升级时所需要的核心技术。京东作为中国最大的自营式电商，沉淀了数亿的忠实用户，积累了海量的真实数据。本案例以京东商城真实的用户、商品和行为数据（脱敏后）为基础，通过数据挖掘的技术和机器学习的算法，构建用户购买商品的预测模型，输出高潜用户和目标商品的匹配结果，为精准营销提供高质量的目标群体，挖掘数据背后潜在的意义，为电商用户提供更简单、快捷、省心的购物体验。本案例使用OpenMLDB进行数据挖掘，使用OneFlow中的[DeepFM](https://github.com/Oneflow-Inc/models/tree/main/RecommenderSystems/deepfm)模型进行高性能训练推理，提供精准的商品推荐。全量数据[下载链接](https://www.openmldb.com/download/use_case/jd_recommendation/JD_data.tgz)。
 
-本案例基于 OpenMLDB 集群版进行教程演示。注意，本文档使用的是预编译好的 docker 镜像。如果希望在自己编译和搭建的 OpenMLDB 环境下进行测试，请参考相关[编译](https://openmldb.ai/docs/zh/main/deploy/compile.html)（参考章节：“针对OpenMLDB优化的Spark发行版”）和[安装部署文档](https://openmldb.ai/docs/zh/main/deploy/install_deploy.html)（参考章节：“部署TaskManager” - “2 修改配置文件conf/taskmanager.properties”）。
+本案例基于 OpenMLDB 集群版进行教程演示。注意，本文档使用的是 Docker 镜像。如果希望在自己编译和搭建的 OpenMLDB 环境下进行测试，请参考相关[编译](https://openmldb.ai/docs/zh/main/deploy/compile.html)和[安装部署文档](https://openmldb.ai/docs/zh/main/deploy/install_deploy.html)。
 
 ## 1.  环境准备
 ### 1.1 下载demo演示用的数据与脚本
