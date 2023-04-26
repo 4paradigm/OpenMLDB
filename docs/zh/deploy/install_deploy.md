@@ -275,6 +275,7 @@ OpenMLDB集群版需要部署ZooKeeper、NameServer、TabletServer、TaskManager
 
 **注意 2:** 下文均使用常规后台进程模式启动组件，如果想要使守护进程模式启动组件，请使用命令格式如 `bash bin/start.sh start <component> mon`。
 
+(zookeeper_addr)=
 ### 部署 ZooKeeper
 ZooKeeper 要求版本在 3.4 到 3.6 之间, 建议部署3.4.14版本。如果已有可用ZooKeeper集群可略过此步骤。如果想要部署ZooKeeper集群，参考[这里](https://zookeeper.apache.org/doc/r3.4.14/zookeeperStarted.html#sc_RunningReplicatedZooKeeper)。本步骤只演示部署standalone ZooKeeper。
 
@@ -289,12 +290,14 @@ cp conf/zoo_sample.cfg conf/zoo.cfg
 
 **2. 修改配置文件**
 打开文件`conf/zoo.cfg`修改`dataDir`和`clientPort`。
+
 ```
 dataDir=./data
 clientPort=7181
 ```
 
 **3. 启动ZooKeeper**
+
 ```
 bash bin/zkServer.sh start
 ```
@@ -345,7 +348,7 @@ cp conf/tablet.flags.template conf/tablet.flags
 注意，配置文件是`conf/tablet.flags`，不是其他配置文件。启动多台TabletServer时（多TabletServer目录应该独立，不可共享），依然是修改该配置文件。
 ```
 * 修改`endpoint`。`endpoint`是用冒号分隔的部署机器IP/域名和端口号（endpoint不能用0.0.0.0和127.0.0.1，必须是公网IP）。
-* 修改`zk_cluster`为已经启动的zk服务地址(见 [部署 ZooKeeper - 4. 记录ZooKeeper服务地址与连接测试](# 部署 ZooKeeper))。如果zk服务是集群，可用逗号分隔，例如，`172.27.128.33:7181,172.27.128.32:7181,172.27.128.31:7181`。
+* 修改`zk_cluster`为已经启动的zk服务地址(见 [部署 ZooKeeper - 4. 记录ZooKeeper服务地址与连接测试](zookeeper_addr))。如果zk服务是集群，可用逗号分隔，例如，`172.27.128.33:7181,172.27.128.32:7181,172.27.128.31:7181`。
 * 修改`zk_root_path`，本例中使用`/openmldb_cluster`。注意，**同一个集群下的组件`zk_root_path`是相同的**。所以本次部署中，各个组件配置的`zk_root_path`都为`/openmldb_cluster`。
 ```
 --endpoint=172.27.128.33:9527
@@ -418,7 +421,7 @@ cp conf/nameserver.flags.template conf/nameserver.flags
 注意，配置文件是`conf/nameserver.flags`，不是其他配置文件。启动多台NameServert时（多NameServer目录应该独立，不可共享），依然是修改该配置文件。
 ```
 * 修改`endpoint`。`endpoint`是用冒号分隔的部署机器IP/域名和端口号（endpoint不能用0.0.0.0和127.0.0.1，必须是公网IP）。
-* 修改`zk_cluster`为已经启动的zk服务地址(见 [部署 ZooKeeper - 4. 记录ZooKeeper服务地址与连接测试](# 部署 ZooKeeper))。如果zk服务是集群，可用逗号分隔，例如，`172.27.128.33:7181,172.27.128.32:7181,172.27.128.31:7181`。
+* 修改`zk_cluster`为已经启动的zk服务地址(见 [部署 ZooKeeper - 4. 记录ZooKeeper服务地址与连接测试](zookeeper_addr))。如果zk服务是集群，可用逗号分隔，例如，`172.27.128.33:7181,172.27.128.32:7181,172.27.128.31:7181`。
 * 修改`zk_root_path`，本例中使用`/openmldb_cluster`。注意，**同一个集群下的组件`zk_root_path`是相同的**。所以本次部署中，各个组件配置的`zk_root_path`都为`/openmldb_cluster`。
 ```
 --endpoint=172.27.128.31:6527
@@ -501,7 +504,7 @@ cp conf/apiserver.flags.template conf/apiserver.flags
 ```
 
 * 修改`endpoint`。`endpoint`是用冒号分隔的部署机器IP/域名和端口号（endpoint不能用0.0.0.0和127.0.0.1，必须是公网IP）。
-* 修改`zk_cluster`为已经启动的zk服务地址(见 [部署 ZooKeeper - 4. 记录ZooKeeper服务地址与连接测试](# 部署 ZooKeeper))。如果zk服务是集群，可用逗号分隔，例如，`172.27.128.33:7181,172.27.128.32:7181,172.27.128.31:7181`。
+* 修改`zk_cluster`为已经启动的zk服务地址(见 [部署 ZooKeeper - 4. 记录ZooKeeper服务地址与连接测试](zookeeper_addr))。如果zk服务是集群，可用逗号分隔，例如，`172.27.128.33:7181,172.27.128.32:7181,172.27.128.31:7181`。
 * 修改`zk_root_path`，本例中使用`/openmldb_cluster`。注意，**同一个集群下的组件`zk_root_path`是相同的**。所以本次部署中，各个组件配置的`zk_root_path`都为`/openmldb_cluster`。
 
 ```
