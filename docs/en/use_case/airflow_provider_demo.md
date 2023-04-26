@@ -17,10 +17,10 @@ The DAG mentioned above will be used to complete the feature extraction and depl
 ### 0 Preparations
 
 #### 0.1 Download DAG
-Both the DAG and the training script can be gained by downloading [airflow_demo_files](https://openmldb.ai/download/airflow_demo/airflow_demo_files.tar.gz). 
+Both the DAG and the training script can be gained by downloading [airflow_demo_files](https://openmldb.com/download/use_case/airflow_demo/airflow_demo_files.tar.gz). 
 
 ```
-wget https://openmldb.ai/download/airflow_demo/airflow_demo_files.tar.gz
+wget https://openmldb.com/download/use_case/airflow_demo/airflow_demo_files.tar.gz
 tar zxf airflow_demo_files.tar.gz
 ls airflow_demo_files
 ```

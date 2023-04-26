@@ -55,7 +55,7 @@ And enter `no`.
 
 The workflow will load data from `/tmp/train_sample.csv`，so prepare it：
 ```
-curl -SLo /tmp/train_sample.csv https://openmldb.ai/download/dolphinschduler-task/train_sample.csv
+curl -SLo /tmp/train_sample.csv https://openmldb.com/download/use_case/dolphinschduler_task/train_sample.csv
 ```
 
 **Start OpenMLDB Cluster and Predict Server**
@@ -68,7 +68,7 @@ In the container, you can directly run the following command to start the OpenML
 We will complete a workflow of importing data, offline training, and deploying the SQL and model online after successful training. For the online part of the model, you can use the simple predict server in `/work/talkingdata`. Run it in the background:
 ```
 cd /work
-curl -SLo predict_server.py https://openmldb.ai/download/dolphinschduler-task/predict_server.py
+curl -SLo predict_server.py https://openmldb.com/download/use_case/dolphinschduler_task/predict_server.py
 python3 predict_server.py --no-init > predict.log 2>&1 &
 ```
 ```{tip}
@@ -77,11 +77,11 @@ If online predict test got errors, please check the log`/work/predict.log`.
 
 **Start DolphinScheduler**
 
-You can download the DolphinScheduler dev package prepared by us, in[dolphinscheduler-bin download link](http://openmldb.ai/download/dolphinschduler-task/apache-dolphinscheduler-dev-SNAPSHOT-bin.tar.gz).
+You can download the DolphinScheduler dev package prepared by us, in[dolphinscheduler-bin download link](https://openmldb.com/download/use_case/dolphinschduler_task/apache-dolphinscheduler-dev-SNAPSHOT-bin.tar.gz).
 
 Start the DolphinScheduler standalone version. The steps are as follows. For more information, please refer to [Official Documentation](https://dolphinscheduler.apache.org/#/en-us/docs/3.1.2/guide/installation/standalone)。
 ```
-curl -SLO http://openmldb.ai/download/dolphinschduler-task/apache-dolphinscheduler-dev-SNAPSHOT-bin.tar.gz
+curl -SLO https://openmldb.com/download/use_case/dolphinschduler_task/apache-dolphinscheduler-dev-SNAPSHOT-bin.tar.gz
 tar -xvzf apache-dolpSchedulerler-*-bin.tar.gz
 cd apache-dolpSchedulerler-*-bin
 sed -i s#/opt/soft/python#/usr/bin/python3#g bin/env/dolphinscheduler_env.sh
@@ -106,7 +106,7 @@ The worker server of DolphinScheduler requires the OpenMLDB Python SDK. The work
 
 **Download workflow json**
 
-Workflows can be created manually. In this example, we directly provide JSON workflow files, [Click to Download](http://openmldb.ai/download/dolphinschduler-task/workflow_openmldb_demo.json), and you can directly import it later into the DolphinScheduler environment and make simple modifications to complete the whole workflow.
+Workflows can be created manually. In this example, we directly provide JSON workflow files, [Click to Download](https://openmldb.com/download/use_case/dolphinschduler_task/workflow_openmldb_demo.json), and you can directly import it later into the DolphinScheduler environment and make simple modifications to complete the whole workflow.
 
 Note that, you should download the workflow file in the machine which you open the browser. We'll upload the file on web.
 

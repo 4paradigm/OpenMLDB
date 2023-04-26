@@ -39,7 +39,7 @@ This tutorial will use the anti-fraud dataset, which is common in the financial 
 Note that if you want to run the SQL in this tutorial, please follow these two steps:
 
 - It is recommended to use the docker image to run this tutorial under the standalone version. For image pulling and CLI operation methods, please refer to [OpenMLDB Quick Start](../quickstart/openmldb_quickstart.md). If you want to use the cluster version, please use the offline mode (`SET @@execute_mode='offline'` ). The CLI of cluster version only supports online preview mode and offline mode. And the online preview mode only supports the simple data preview function, so most of the SQL in the tutorial cannot run in the online preview mode.
-- All data and SQL scripts related to this tutorial can be downloaded [here]( https://openmldb.ai/download/tutorial_sql/tutoral_sql_data.zip)
+- All data and SQL scripts related to this tutorial can be downloaded [here](https://openmldb.com/download/tutorial_sql/tutoral_sql_data.zip)
 
 ## 3.1. Basic Concepts
 ### 3.1.1. Primary and Secondary Tables

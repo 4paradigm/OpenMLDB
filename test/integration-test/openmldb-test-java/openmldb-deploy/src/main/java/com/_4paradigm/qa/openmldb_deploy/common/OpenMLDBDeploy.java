@@ -436,7 +436,7 @@ public class OpenMLDBDeploy {
             commands.forEach(ExecutorUtil::run);
 
             // Download dynamic library file
-            ExecutorUtil.run("curl -o /tmp/libtest_udf.so https://openmldb.ai/download/self_host_hadoop_config/libtest_udf.so");
+            ExecutorUtil.run("curl -o /tmp/libtest_udf.so https://www.openmldb.com/download/test/self_host_hadoop_config/libtest_udf.so");
 
             String taskmanagerUdfPath = testPath + task_manager_name + "/taskmanager/bin/udf/";
             //ExecutorUtil.run("touch " + taskmanagerUdfPath);
@@ -456,7 +456,7 @@ public class OpenMLDBDeploy {
 
             if (sparkMaster.startsWith("yarn")) {
                 log.info("Try to deploy TaskManager with yarn mode");
-                ExecutorUtil.run("curl -o /tmp/hadoop_conf.tar.gz https://openmldb.ai/download/self_host_hadoop_config/hadoop_conf.tar.gz");
+                ExecutorUtil.run("curl -o /tmp/hadoop_conf.tar.gz https://www.openmldb.com/download/test/self_host_hadoop_config/hadoop_conf.tar.gz");
                 ExecutorUtil.run("tar xzf /tmp/hadoop_conf.tar.gz -C /tmp");
                 ExecutorUtil.run("HADOOP_CONF_DIR=/tmp/hadoop/ sh "+testPath+task_manager_name+"/bin/start.sh start taskmanager");
             } else {

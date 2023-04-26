@@ -21,10 +21,10 @@ DAG流程如上图所示，首先建表，然后进行离线数据导入与特�
 
 #### 0.1 下载DAG
 
-除了DAG文件，还需要训练的脚本，所以我们提供了[下载包](https://openmldb.ai/download/airflow_demo/airflow_demo_files.tar.gz)，可以直接下载。如果想要使用最新版本，请在[github example_dags](https://github.com/4paradigm/OpenMLDB/tree/main/extensions/airflow-provider-openmldb/openmldb_provider/example_dags)中获取。
+除了DAG文件，还需要训练的脚本，所以我们提供了[下载包](https://openmldb.com/download/use_case/airflow_demo/airflow_demo_files.tar.gz)，可以直接下载。如果想要使用最新版本，请在[github example_dags](https://github.com/4paradigm/OpenMLDB/tree/main/extensions/airflow-provider-openmldb/openmldb_provider/example_dags)中获取。
 
 ```
-wget https://openmldb.ai/download/airflow_demo/airflow_demo_files.tar.gz
+wget https://openmldb.com/download/use_case/airflow_demo/airflow_demo_files.tar.gz
 tar zxf airflow_demo_files.tar.gz
 ls airflow_demo_files
 ```

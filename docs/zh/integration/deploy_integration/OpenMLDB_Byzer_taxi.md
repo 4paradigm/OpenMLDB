@@ -70,7 +70,7 @@ cd Byzer-Notebook-1.2.3
 
 ### 1.3 准备数据集
 
-本文使用的是Kaggle出租车行车时间数据集，为了演示方便，我们只使用一部分数据，可以从[此处](https://openmldb.ai/download/taxi_tour_table_train_simple.csv)下载，然后在Byzer Notebook中进行upload。
+本文使用的是Kaggle出租车行车时间数据集，为了演示方便，我们只使用一部分数据，可以从[此处](https://www.openmldb.com/download/use_case/taxi_trip/taxi_tour_table_train_simple.csv)下载，然后在Byzer Notebook中进行upload。
 
 ![byzer upload](images/byzer-upload-data.png)
 

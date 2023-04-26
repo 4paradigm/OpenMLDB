@@ -2,7 +2,7 @@
 
 本文我们将以[京东高潜用户购买意向预测问题](https://jdata.jd.com/html/detail.html?id=1)为例，示范如何使用[OpenMLDB](https://github.com/4paradigm/OpenMLDB)和 [OneFlow](https://github.com/Oneflow-Inc/oneflow) 联合来打造一个完整的机器学习应用。
 
-如何从历史数据中找出规律，去预测用户未来的购买需求，让最合适的商品遇见最需要的人，是大数据应用在精准营销中的关键问题，也是所有电商平台在做智能化升级时所需要的核心技术。京东作为中国最大的自营式电商，沉淀了数亿的忠实用户，积累了海量的真实数据。本案例以京东商城真实的用户、商品和行为数据（脱敏后）为基础，通过数据挖掘的技术和机器学习的算法，构建用户购买商品的预测模型，输出高潜用户和目标商品的匹配结果，为精准营销提供高质量的目标群体，挖掘数据背后潜在的意义，为电商用户提供更简单、快捷、省心的购物体验。本案例使用OpenMLDB进行数据挖掘，使用OneFlow中的[DeepFM](https://github.com/Oneflow-Inc/models/tree/main/RecommenderSystems/deepfm)模型进行高性能训练推理，提供精准的商品推荐。全量数据[下载链接](https://openmldb.ai/download/jd-recommendation/JD_data.tgz)。
+如何从历史数据中找出规律，去预测用户未来的购买需求，让最合适的商品遇见最需要的人，是大数据应用在精准营销中的关键问题，也是所有电商平台在做智能化升级时所需要的核心技术。京东作为中国最大的自营式电商，沉淀了数亿的忠实用户，积累了海量的真实数据。本案例以京东商城真实的用户、商品和行为数据（脱敏后）为基础，通过数据挖掘的技术和机器学习的算法，构建用户购买商品的预测模型，输出高潜用户和目标商品的匹配结果，为精准营销提供高质量的目标群体，挖掘数据背后潜在的意义，为电商用户提供更简单、快捷、省心的购物体验。本案例使用OpenMLDB进行数据挖掘，使用OneFlow中的[DeepFM](https://github.com/Oneflow-Inc/models/tree/main/RecommenderSystems/deepfm)模型进行高性能训练推理，提供精准的商品推荐。全量数据[下载链接](https://openmldb.com/download/use_case/jd_recommendation/JD_data.tgz)。
 
 本案例基于 OpenMLDB 集群版进行教程演示。注意，本文档使用的是预编译好的 docker 镜像。如果希望在自己编译和搭建的 OpenMLDB 环境下进行测试，需要配置使用我们[面向特征工程优化的 Spark 发行版](https://openmldb.ai/docs/zh/main/tutorial/openmldbspark_distribution.html)。请参考相关[编译](https://openmldb.ai/docs/zh/main/deploy/compile.html)（参考章节：“针对OpenMLDB优化的Spark发行版”）和[安装部署文档](https://openmldb.ai/docs/zh/main/deploy/install_deploy.html)（参考章节：“部署TaskManager” - “2 修改配置文件conf/taskmanager.properties”）。
 
@@ -12,7 +12,7 @@
 下载demo演示用的数据、脚本以及推理所需的OneEmbedding库（详情见[配置oneflow推理服务](#33-配置oneflow推理服务)），在后面的步骤中可以直接使用。
 
 ```
-wget http://openmldb.ai/download/jd-recommendation/demo.tgz
+wget https://openmldb.com/download/use_case/jd_recommendation/demo.tgz
 tar xzf demo.tgz
 ls demo
 ```
@@ -23,7 +23,7 @@ ls demo
 export demodir=<your_path>/demo
 ```
 
-我们仅使用小数据集做演示。如果你想要使用全量数据集，请下载[JD_data](http://openmldb.ai/download/jd-recommendation/JD_data.tgz)。
+我们仅使用小数据集做演示。如果你想要使用全量数据集，请下载[JD_data](https://openmldb.com/download/use_case/jd_recommendation/JD_data.tgz)。
 
 ### 1.2 OneFlow工具包安装
 
