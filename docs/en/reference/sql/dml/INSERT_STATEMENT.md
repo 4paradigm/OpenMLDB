@@ -14,6 +14,9 @@ value_list:
     value [, value] ...
 ```
 
+**Description**
+- `INSERT` statement only works in online execute mode
+
 ## Examples
 
 ```SQL

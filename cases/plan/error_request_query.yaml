@@ -18,8 +18,5 @@ cases:
     mode: batch-unsupport
     sql: |
       select col1, col2 from t1 union all select c1 + c2 as col1, col2 from t2;
-  - id: 1
-    desc: resolve请求主表失败
-    mode: batch-unsupport
-    sql: |
-      select col1, col2 from t1 left join (select col1+col2 as add12 from tt) as t2 on t1.col1 = t2.col1;
+    expect:
+      msg: Non-support kUnionPlan Op in online serving

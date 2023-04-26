@@ -14,6 +14,6 @@
     data_import
     data_export
     autofe
-    udf_develop_guide
     standalone_vs_cluster 
     standalone_use
+    app_arch

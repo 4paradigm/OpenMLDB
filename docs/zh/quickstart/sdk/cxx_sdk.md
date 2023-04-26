@@ -1,12 +1,22 @@
-# C++ SDK
+# [Alpha] C++ SDK
+
+```{warning}
+C++ SDK 目前功能支持上并不完善，不支持多线程，目前仅用于开发测试或者特殊用途，不推荐在实际生产环境中使用。生产环境推荐使用 Java SDK，功能覆盖最完善，并且在功能、性能上都经过了充分测试。
+```
 
 ## C++ SDK 包编译安装
 
-```Plain
+```{warning}
+C++ SDK 静态库的编译目前存在问题，如果需要使用 C++ SDK 库或需要临时编译方法，请联系我们提供。
+```
+编译需要满足 [硬件要求](../../deploy/compile.md#硬件要求)，安装 [依赖工具](../../deploy/compile.md#依赖工具)。
+
+```bash
 git clone git@github.com:4paradigm/OpenMLDB.git
 cd OpenMLDB
 make && make install
 ```
+编译完成后，会在 install 目录下生成`include`头文件目录和`lib`静态库目录。
 
 ## 编写用户代码
 
@@ -110,7 +120,7 @@ int main()
 
 ## 编译与运行
 
-```Plain
+```bash
 gcc <user_code>.cxx -o <bin_name> -lstdc++ -std=c++17 -I<install_path>/include  -L<install_path>/lib -lopenmldbsdk -lpthread
 ./<bin_name>
 ```

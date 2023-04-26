@@ -16,6 +16,7 @@
 
 import argparse
 import textwrap
+
 from diagnostic_tool.connector import Connector
 from diagnostic_tool.dist_conf import read_conf
 from diagnostic_tool.conf_validator import (
@@ -63,9 +64,9 @@ def check_version(version_map: dict):
 
 def status(args):
     """use OpenMLDB Python SDK to connect OpenMLDB"""
-    conn = Connector()
-    status_checker = checker.StatusChecker(conn)
-    assert status_checker.check_components(), "some components is offline"
+    connect = Connector()
+    status_checker = checker.StatusChecker(connect)
+    if not status_checker.check_components(): print("some components is offline")
 
     # --diff with dist conf file, conf_file is required
     if args.diff:
@@ -78,6 +79,9 @@ def status(args):
             dist_conf
         ), f"not all components in conf file are online, check the previous output"
         print(f"all components in conf file are online")
+
+    if args.conn:
+        status_checker.check_connection()
 
 
 def inspect(args):
@@ -100,7 +104,7 @@ def insepct_online(args):
             # so we print warnings alone
             print(f"full warnings:\n{t[13]}")
             fails.append(f"{t[2]}.{t[1]}")
-    
+
     assert not fails, f"unhealthy tables: {fails}"
     print(f"all tables are healthy")
 
@@ -194,6 +198,11 @@ def parse_arg(argv):
         action="store_true",
         help="check if all endpoints in conf are in cluster. If set, need to set `--conf_file`",
     )  # TODO action support in all python 3.x?
+    status_parser.add_argument(
+        "--conn",
+        action="store_true",
+        help="check network connection of all servers",
+    )
     status_parser.set_defaults(command=status)
 
     # sub inspect

@@ -90,13 +90,13 @@ void unhex(StringRef *str, StringRef *output, bool* is_null) {
 
     if (!*is_null) {    // every character is valid hex character
         if (str->size_ % 2 == 0) {
-            for (uint32_t i=0; i < str->size_; i+=2) {
-                buffer[i/2] = static_cast<char>(convert(str->data_[i]) << 4 | convert(str->data_[i+1]));
+            for (uint32_t i = 0; i < str->size_; i += 2) {
+                buffer[i / 2] = static_cast<char>(convert(str->data_[i]) << 4 | convert(str->data_[i + 1]));
             }
         } else {
             buffer[0] = static_cast<char>(convert(str->data_[0]));
-            for (uint32_t i=1; i < str->size_; i+=2) {
-                buffer[i/2+1] = static_cast<char>(convert(str->data_[i]) << 4 | convert(str->data_[i+1]));
+            for (uint32_t i = 1; i < str->size_; i += 2) {
+                buffer[i / 2 + 1] = static_cast<char>(convert(str->data_[i]) << 4 | convert(str->data_[i + 1]));
             }
         }
         output->size_ = str->size_ / 2 + str->size_ % 2;
@@ -130,18 +130,21 @@ void dayofyear(int64_t ts, int32_t* out, bool* is_null) {
 int32_t dayofmonth(int64_t ts) {
     time_t time = (ts + TZ_OFFSET) / 1000;
     struct tm t;
+    memset(&t, 0, sizeof(struct tm));
     gmtime_r(&time, &t);
     return t.tm_mday;
 }
 int32_t dayofweek(int64_t ts) {
     time_t time = (ts + TZ_OFFSET) / 1000;
     struct tm t;
+    memset(&t, 0, sizeof(struct tm));
     gmtime_r(&time, &t);
     return t.tm_wday + 1;
 }
 int32_t weekofyear(int64_t ts) {
     time_t time = (ts + TZ_OFFSET) / 1000;
     struct tm t;
+    memset(&t, 0, sizeof(struct tm));
     gmtime_r(&time, &t);
     try {
         boost::gregorian::date d = boost::gregorian::date_from_tm(t);
@@ -153,12 +156,14 @@ int32_t weekofyear(int64_t ts) {
 int32_t month(int64_t ts) {
     time_t time = (ts + TZ_OFFSET) / 1000;
     struct tm t;
+    memset(&t, 0, sizeof(struct tm));
     gmtime_r(&time, &t);
     return t.tm_mon + 1;
 }
 int32_t year(int64_t ts) {
     time_t time = (ts + TZ_OFFSET) / 1000;
     struct tm t;
+    memset(&t, 0, sizeof(struct tm));
     gmtime_r(&time, &t);
     return t.tm_year + 1900;
 }
@@ -287,6 +292,7 @@ void date_format(const Timestamp *timestamp, const char *format,
                  char *buffer, size_t size) {
     time_t time = (timestamp->ts_ + TZ_OFFSET) / 1000;
     struct tm t;
+    memset(&t, 0, sizeof(struct tm));
     gmtime_r(&time, &t);
     strftime(buffer, size, format, &t);
 }
@@ -384,6 +390,7 @@ void timestamp_to_date(Timestamp *timestamp,
                        Date *output, bool *is_null) {
     time_t time = (timestamp->ts_ + TZ_OFFSET) / 1000;
     struct tm t;
+    memset(&t, 0, sizeof(struct tm));
     if (nullptr == gmtime_r(&time, &t)) {
         *is_null = true;
         return;
@@ -822,6 +829,7 @@ void string_to_date(StringRef *str, Date *output,
                     bool *is_null) {
     if (19 == str->size_) {
         struct tm timeinfo;
+        memset(&timeinfo, 0, sizeof(struct tm));
         if (nullptr ==
             strptime(str->ToString().c_str(), "%Y-%m-%d %H:%M:%S", &timeinfo)) {
             *is_null = true;
@@ -929,6 +937,7 @@ void string_to_timestamp(StringRef *str,
                          Timestamp *output, bool *is_null) {
     if (19 == str->size_) {
         struct tm timeinfo;
+        memset(&timeinfo, 0, sizeof(struct tm));
         if (nullptr ==
             strptime(str->ToString().c_str(), "%Y-%m-%d %H:%M:%S", &timeinfo)) {
             *is_null = true;

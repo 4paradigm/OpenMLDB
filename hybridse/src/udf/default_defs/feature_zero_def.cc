@@ -684,14 +684,16 @@ void DefaultUdfLibrary::InitFeatureZero() {
         .args<ListRef<StringRef>, StringRef>(FZStringOpsDef::StringJoin);
 
     RegisterUdafTemplate<FZTop1Ratio>("top1_ratio")
-        .doc(R"(@brief Compute the top1 key's ratio
+        .doc(R"(
+        @brief Compute the top1 key's ratio
 
         @since 0.6.5)")
         .args_in<int16_t, int32_t, int64_t, float, double, Date, Timestamp,
                  StringRef>();
 
     RegisterUdafTemplate<FZTopNFrequency>("topn_frequency")
-        .doc(R"(@brief Return the topN keys sorted by their frequency
+        .doc(R"(
+        @brief Return the topN keys sorted by their frequency
 
         @since 0.6.5)")
         .args_in<int16_t, int32_t, int64_t, float, double, Date, Timestamp,

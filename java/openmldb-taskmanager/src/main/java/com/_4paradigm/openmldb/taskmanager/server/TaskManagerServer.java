@@ -97,8 +97,8 @@ public class TaskManagerServer {
         RpcServerOptions options = new RpcServerOptions();
         options.setReceiveBufferSize(64 * 1024 * 1024);
         options.setSendBufferSize(64 * 1024 * 1024);
-        options.setIoThreadNum(TaskManagerConfig.WORKER_THREAD);
-        options.setWorkThreadNum(TaskManagerConfig.IO_THREAD);
+        options.setIoThreadNum(TaskManagerConfig.IO_THREAD);
+        options.setWorkThreadNum(TaskManagerConfig.WORKER_THREAD);
         options.setKeepAliveTime(TaskManagerConfig.CHANNEL_KEEP_ALIVE_TIME);
         rpcServer = new RpcServer(TaskManagerConfig.PORT, options);
         rpcServer.registerService(new TaskManagerImpl());

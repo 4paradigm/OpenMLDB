@@ -1,0 +1,56 @@
+# Copyright 2021 4Paradigm
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+db: test_zw
+debugs: []
+sqlDialect: ["HybridSQL"]
+version: 0.5.0
+cases:
+  - id: 2
+    desc: 日期函数-normal
+    inputs:
+      -
+        columns : ["id bigint","ts1 bigint","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
+        indexs: ["index1:id:ts1"]
+        rows:
+          - [1,1,"aa",30,-30,30,30.0,30.0,1590738989000,"2020-05-02",true]
+          - [2,2,"aa",30,-30,NULL,30.0,30.0,NULL,NULL,true]
+    dataProvider:
+      - ["{0}.c4"]
+    sql: |
+      select id as id,
+        day(d[0]) as e1,
+        dayofmonth(d[0]) as e2,
+        dayofweek(d[0]) as e3,
+        month(d[0]) as e4,
+        week(d[0]) as e5,
+        weekofyear(d[0]) as e6,
+        year(d[0]) as e7
+        from {0};
+    expect:
+      order: id
+      columns: ["id bigint", "e1 int","e2 int","e3 int","e4 int","e5 int","e6 int","e7 int"]
+    expectProvider:
+      0:
+        rows:
+          - [1,1,1,5,1,1,1,1970]
+          - [2,null,null,null,null,null,null,null]
+      1:
+        rows:
+          - [1,29,29,6,5,22,22,2020]
+          - [2,null,null,null,null,null,null,null]
+      2:
+        rows:
+          - [1,2,2,7,5,18,18,2020]
+          - [2,null,null,null,null,null,null,null]

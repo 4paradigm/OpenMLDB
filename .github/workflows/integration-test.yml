@@ -1,0 +1,56 @@
+# This workflow runs integration test related jobs for OpenMLDB
+name: integration-test
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "src/**"
+      - "java/openmldb-taskmanager/**"
+      - "release/**"
+      - "test/integration-test/openmldb-test-python/**"
+    tags:
+      - v*
+  pull_request:
+    paths:
+      - "src/**"
+      - "java/openmldb-taskmanager/**"
+      - "release/**"
+      - "test/integration-test/openmldb-test-python/**"
+  workflow_dispatch:
+
+env:
+  GIT_SUBMODULE_STRATEGY: recursive
+  NPROC: 5 # default Parallel build number for GitHub's Linux runner
+  EXAMPLES_ENABLE: OFF # turn off hybridse's example code
+  HYBRIDSE_TESTING_ENABLE: OFF # turn off hybridse's test code
+
+jobs:
+  openmldb-test-python:
+    runs-on: [self-hosted,generic]
+    container:
+      image: ghcr.io/4paradigm/hybridsql:latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: build openmldb
+        run: |
+          make configure SQL_JAVASDK_ENABLE=ON CMAKE_INSTALL_PREFIX=openmldb
+          make build SQL_JAVASDK_ENABLE=ON CMAKE_INSTALL_PREFIX=openmldb
+          make install SQL_JAVASDK_ENABLE=ON CMAKE_INSTALL_PREFIX=openmldb
+      - name: install openmldb
+        run: |
+          yum install -y rsync
+          bash test/integration-test/openmldb-test-python/install.sh
+      - name: run test
+        run: |
+          python3 -m easy_install pip
+          python3 -m pip install requests openmldb pytest
+          python3 -m pytest test/integration-test/openmldb-test-python/ha_cases --junit-xml=pytest.xml
+
+      - name: upload ut results
+        if: always()
+        uses: actions/upload-artifact@v2
+        with:
+          name: openmldb-test-python-${{ github.sha }}
+          path: pytest.xml

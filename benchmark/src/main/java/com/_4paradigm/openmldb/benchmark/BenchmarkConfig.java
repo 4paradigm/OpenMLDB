@@ -31,7 +31,7 @@ public class BenchmarkConfig {
     public static int WINDOW_SIZE = 1000;
     public static int JOIN_NUM = 2;
     public static int PK_BASE = 1000000;
-    public static long TS_BASE = 1652232079000l;
+    public static long TS_BASE = System.currentTimeMillis();
     public static String DEPLOY_NAME;
     public static String CSV_PATH;
 
@@ -46,7 +46,6 @@ public class BenchmarkConfig {
             prop.load(BenchmarkConfig.class.getClassLoader().getResourceAsStream("conf.properties"));
             ZK_CLUSTER = prop.getProperty("ZK_CLUSTER");
             ZK_PATH = prop.getProperty("ZK_PATH");
-            TS_BASE = Long.parseLong(prop.getProperty("TS_BASE"));
             PK_BASE = Integer.parseInt(prop.getProperty("PK_BASE"));
             DATABASE = prop.getProperty("DATABASE");
             DEPLOY_NAME = prop.getProperty("DEPLOY_NAME");

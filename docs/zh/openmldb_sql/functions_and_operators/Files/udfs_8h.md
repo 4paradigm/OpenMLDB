@@ -13,6 +13,7 @@ title: udfs/udfs.h
 | **[abs](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-abs)**()| <br>Return the absolute value of expr. |
 | **[acos](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-acos)**()| <br>Return the arc cosine of expr. |
 | **[add](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-add)**()| <br>Compute sum of two arguments. |
+| **[add_months](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-add-months)**()| <br>adds an integer months to a given date, returning the resulting date. |
 | **[array_contains](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-array-contains)**()| <br>array_contains(array, value) - Returns true if the array contains the value. |
 | **[asin](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-asin)**()| <br>Return the arc sine of expr. |
 | **[at](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-at)**()| |
@@ -55,15 +56,6 @@ title: udfs/udfs.h
 | **[first_value](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-first-value)**()| <br>Returns the value of expr from the latest row (last row) of the window frame. |
 | **[float](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-float)**()| <br>Cast string expression to float. |
 | **[floor](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-floor)**()| <br>Return the largest integer value not less than the expr. |
-| **[fz_join](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-fz-join)**()| |
-| **[fz_split](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-fz-split)**()| |
-| **[fz_split_by_key](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-fz-split-by-key)**()| |
-| **[fz_split_by_value](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-fz-split-by-value)**()| |
-| **[fz_top1_ratio](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-fz-top1-ratio)**()| |
-| **[fz_topn_frequency](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-fz-topn-frequency)**()| |
-| **[fz_window_split](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-fz-window-split)**()| |
-| **[fz_window_split_by_key](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-fz-window-split-by-key)**()| |
-| **[fz_window_split_by_value](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-fz-window-split-by-value)**()| |
 | **[hash64](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-hash64)**()| <br>Returns a hash value of the arguments. It is not a cryptographic hash function and should not be used as such. |
 | **[hex](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-hex)**()| <br>Convert integer to hexadecimal. |
 | **[hour](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-hour)**()| <br>Return the hour for a timestamp. |
@@ -165,6 +157,8 @@ title: udfs/udfs.h
 
 ## Functions Documentation
 -->
+# Built-in Functions
+
 ## Must read
 
 Types in documents here may a little different from real types in OpenMLDB SQL, for the purpose of simplify. Those type are synonymics.
@@ -175,7 +169,7 @@ Types in documents here may a little different from real types in OpenMLDB SQL, 
 | any          | `bool, int16, int32, int64, float, double, string, timestamp, date` |
 | list<number> | `list<int16>, list<int32>, list<int64>, list<float>, list<double>` |
 
-## Built-in Functions
+## Functions
 
 ### function abs
 
@@ -280,6 +274,45 @@ select add(1, 2);
 * [`timestamp`, `int32`]
 * [`timestamp`, `int64`]
 * [`timestamp`, `timestamp`] 
+
+### function add_months
+
+```cpp
+add_months()
+```
+
+**Description**:
+
+adds an integer months to a given date, returning the resulting date. 
+
+**Parameters**: 
+
+  * **start_date** Date value to add 
+  * **num_months** Integer value as number of months to add, can be positive or negative
+
+
+**Since**:
+0.8.0
+
+
+The resulting day component will remain the same as that specified in date, unless the resulting month has fewer days than the day component of the given date, in which case the day will be the last day of the resulting month. Returns NULL if given an invalid date, or a NULL argument.
+
+```sql
+
+SELECT add_months('2016-08-31', 1);
+-- 2016-09-30
+SELECT add_months('2016-08-31', -1);
+-- 2016-07-31
+SELECT add_months('2012-01-31', 1);
+-- 2012-02-29
+```
+
+
+**Supported Types**:
+
+* [`date`, `int16`]
+* [`date`, `int32`]
+* [`date`, `int64`] 
 
 ### function array_contains
 
@@ -1727,105 +1760,6 @@ SELECT FLOOR(1.23);
 * [`bool`]
 * [`number`] 
 
-### function fz_join
-
-```cpp
-fz_join()
-```
-
-**Description**:
-
-
-alias to join 
-
-### function fz_split
-
-```cpp
-fz_split()
-```
-
-**Description**:
-
-
-alias to split 
-
-### function fz_split_by_key
-
-```cpp
-fz_split_by_key()
-```
-
-**Description**:
-
-
-alias to split_by_key 
-
-### function fz_split_by_value
-
-```cpp
-fz_split_by_value()
-```
-
-**Description**:
-
-
-alias to split_by_value 
-
-### function fz_top1_ratio
-
-```cpp
-fz_top1_ratio()
-```
-
-**Description**:
-
-
-alias to top1_ratio 
-
-### function fz_topn_frequency
-
-```cpp
-fz_topn_frequency()
-```
-
-**Description**:
-
-
-alias to topn_frequency 
-
-### function fz_window_split
-
-```cpp
-fz_window_split()
-```
-
-**Description**:
-
-
-alias to window_split 
-
-### function fz_window_split_by_key
-
-```cpp
-fz_window_split_by_key()
-```
-
-**Description**:
-
-
-alias to window_split_by_key 
-
-### function fz_window_split_by_value
-
-```cpp
-fz_window_split_by_value()
-```
-
-**Description**:
-
-
-alias to window_split_by_value 
-
 ### function hash64
 
 ```cpp
@@ -2187,7 +2121,7 @@ For each string value from specified column of window, join by delimeter. Null v
 
 
 **Since**:
-0.1.0
+0.6.5
 
 
 
@@ -2195,7 +2129,7 @@ Example:
 
 ```sql
 
-select fz_join(fz_split("k1:v1,k2:v2", ","), " ");
+select `join`(split("k1:v1,k2:v2", ","), " ");
 --  "k1:v1 k2:v2"
 ```
 
@@ -3525,7 +3459,7 @@ Split string to list by delimeter. Null values are skipped.
 
 
 **Since**:
-0.1.0
+0.6.5
 
 
 
@@ -3585,7 +3519,7 @@ Split string by delimeter and split each segment as kv pair, then add each key t
 
 
 **Since**:
-0.1.0
+0.6.5
 
 
 
@@ -3620,7 +3554,7 @@ Split string by delimeter and split each segment as kv pair, then add each value
 
 
 **Since**:
-0.1.0
+0.6.5
 
 
 
@@ -4194,13 +4128,12 @@ top1_ratio()
 
 Compute the top1 key's ratio. 
 
+**Since**:
+0.6.5
 
 
-```
-    @since 0.1.0
-```
 
- **Supported Types**:
+**Supported Types**:
 
 * [`list<date>`]
 * [`list<number>`]
@@ -4863,13 +4796,12 @@ topn_frequency()
 
 Return the topN keys sorted by their frequency. 
 
+**Since**:
+0.6.5
 
 
-```
-    @since 0.1.0
-```
 
- **Supported Types**:
+**Supported Types**:
 
 * [`list<date>`, `list<int32>`]
 * [`list<number>`, `list<int32>`]
@@ -5166,7 +5098,7 @@ window_split()
 For each string value from specified column of window, split by delimeter and add segment to output list. Null values are skipped. 
 
 **Since**:
-0.1.0
+0.6.5
 
 
 
@@ -5185,7 +5117,7 @@ window_split_by_key()
 For each string value from specified column of window, split by delimeter and then split each segment as kv pair, then add each key to output list. Null and illegal segments are skipped. 
 
 **Since**:
-0.1.0
+0.6.5
 
 
 
@@ -5204,7 +5136,7 @@ window_split_by_value()
 For each string value from specified column of window, split by delimeter and then split each segment as kv pair, then add each value to output list. Null and illegal segments are skipped. 
 
 **Since**:
-0.1.0
+0.6.5
 
 
 
