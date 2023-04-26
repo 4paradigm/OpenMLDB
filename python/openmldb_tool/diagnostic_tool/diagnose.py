@@ -26,6 +26,7 @@ from diagnostic_tool.conf_validator import (
 from diagnostic_tool.log_analyzer import LogAnalyzer
 from diagnostic_tool.collector import Collector
 import diagnostic_tool.server_checker as checker
+from diagnostic_tool.table_checker import TableChecker
 
 from absl import app
 from absl import flags
@@ -43,6 +44,11 @@ flags.DEFINE_bool(
     "local",
     False,
     "If set, all server in config file will be treated as local server, skip ssh.",
+)
+flags.DEFINE_string(
+    "db",
+    "",
+    "Specify databases to diagnose, split by ','. Only used in inspect online.",
 )
 
 flags.DEFINE_string("collect_dir", "/tmp/diag_collect", "...")
@@ -107,6 +113,11 @@ def insepct_online(args):
 
     assert not fails, f"unhealthy tables: {fails}"
     print(f"all tables are healthy")
+
+    if hasattr(args, 'dist'):
+        if args.dist:
+            table_checker = TableChecker(conn)
+            table_checker.check_distribution(dbs=flags.FLAGS.db.split(","))
 
 
 def inspect_offline(args):
@@ -214,8 +225,13 @@ def parse_arg(argv):
     inspect_parser.set_defaults(command=inspect)
     inspect_sub = inspect_parser.add_subparsers()
     # inspect online
-    online = inspect_sub.add_parser("online", help="only inspect online table")
+    online = inspect_sub.add_parser("online", help="only inspect online table.")
     online.set_defaults(command=insepct_online)
+    online.add_argument(
+        "--dist",
+        action="store_true",
+        help="Inspect online distribution."
+    )
     # inspect offline
     offline = inspect_sub.add_parser(
         "offline", help="only inspect offline jobs, check the job log"
