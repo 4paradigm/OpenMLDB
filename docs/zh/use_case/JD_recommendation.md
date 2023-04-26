@@ -34,13 +34,13 @@ OneFlow工具依赖GPU的强大算力，所以请确保部署机器具备Nvidia 
 ```bash
 conda create -y -n oneflow python=3.9.2
 conda activate oneflow
-pip install --pre oneflow -f https://staging.oneflow.info/branch/support_oneembedding_serving/cu102
+pip install -f https://release.oneflow.info oneflow==0.8.0+cu112
 pip install psutil petastorm pandas sklearn xxhash "tritonclient[all]" geventhttpclient tornado
 ```
 ```{note}
-我们仅验证了oneflow 0.8.0版本，如果你使用其他版本，可能会遇到问题。
-```
-```
+我们仅验证了oneflow 0.8.0版本，如果你使用其他版本，可能会遇到问题。下载版本中`cu`后缀对应的CUDA版本，例如`cu112`对应CUDA 11.2。
+```TODO: conda env oneflow-0426, test on it
+
 拉取Oneflow-serving镜像：
 ```bash
 docker pull oneflowinc/oneflow-serving:nightly
