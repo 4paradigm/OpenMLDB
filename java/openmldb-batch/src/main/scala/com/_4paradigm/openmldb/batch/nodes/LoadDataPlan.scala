@@ -42,8 +42,10 @@ object LoadDataPlan {
 
     require(ctx.getOpenmldbSession != null, "LOAD DATA must use OpenmldbSession, not SparkSession")
     val info = ctx.getOpenmldbSession.openmldbCatalogService.getTableInfo(db, table)
-    require(info != null && info.getName.nonEmpty, s"table $db.$table info is not existed(no table name): $info")
+
     logger.info("table info: {}", info)
+    require(info != null && info.getName.nonEmpty, s"table $db.$table info is not existed(no table name): $info")
+
 
     // we read input file even in soft copy,
     // cause we want to check if "the input file schema == openmldb table schema"
@@ -51,34 +53,64 @@ object LoadDataPlan {
 
     // write
     logger.info("write data to storage {}, writer[mode {}], is deep? {}", storage, mode, deepCopy.toString)
-    if (storage == "online") {
+    if (storage == "online") { // Import online data
       require(deepCopy && mode == "append", "import to online storage, can't do soft copy, and mode must be append")
 
       val writeOptions = Map("db" -> db, "table" -> table,
         "zkCluster" -> ctx.getConf.openmldbZkCluster,
         "zkPath" -> ctx.getConf.openmldbZkRootPath)
       df.write.options(writeOptions).format("openmldb").mode(mode).save()
-    } else {
+    } else { // Import offline data
       // only in some cases, do not need to update info
       var needUpdateInfo = true
       val newInfoBuilder = info.toBuilder
 
-      val infoExists = info.hasOfflineTableInfo
+      // If symbolic import
       if (!deepCopy) {
+        /*
         require(mode!="append", "I'm not the soft-copied data owner, can't append")
         require(!infoExists || !info.getOfflineTableInfo.getDeepCopy, "old offline info is deep-copied, " +
           "we don't know whether to delete the existing data")
         if (mode=="errorifexists" && infoExists){
           throw new IllegalArgumentException("offline info exists")
         }
+         */
         // because it's soft-copy, format+options should be the same with read settings
-        val offlineBuilder = OfflineTableInfo.newBuilder().setPath(inputFile).setFormat(format).setDeepCopy(false)
+        //val offlineBuilder = OfflineTableInfo.newBuilder().setPath(inputFile).setFormat(format).setDeepCopy(false)
+
+        val oldOfflineTableInfo = if (info.hasOfflineTableInfo) { // Have offline table info
+          info.getOfflineTableInfo
+        } else { // No offline table info
+          OfflineTableInfo.newBuilder()
+            .setPath("")
+            .setFormat(format)
+            .build()
+        }
+
+        val newOfflineInfoBuilder = OfflineTableInfo.newBuilder(oldOfflineTableInfo)
+
+        // If mode=="append"
+        if (mode.equals("append")) {
+          // Check if new path is already existed or not
+          val symbolicPaths = newOfflineInfoBuilder.getSymbolicPathsList()
+          if (symbolicPaths.contains(inputFile)) {
+            logger.warn(s"The path of $inputFile is already in symbolic paths, do not import again")
+          } else {
+            logger.info(s"Add the path of $inputFile to offline table info symbolic paths")
+            newOfflineInfoBuilder.addSymbolicPaths(inputFile)
+          }
+        } else if (mode.equals("errorifexists")) {
+          // TODO(tobe)
+          throw new IllegalArgumentException("Do not support errorifexists for symbolic import")
+        }
+
         if (!format.equals("hive")) {
           // hive source discard all read options
-          offlineBuilder.putAllOptions(options.asJava)
+          newOfflineInfoBuilder.putAllOptions(options.asJava)
         }
+
         // update to ns later
-        newInfoBuilder.setOfflineTableInfo(offlineBuilder)
+        newInfoBuilder.setOfflineTableInfo(newOfflineInfoBuilder.build())
       } else {
         // deep copy
         // Generate new offline address by db name, table name and config of prefix
@@ -92,7 +124,7 @@ object LoadDataPlan {
         // write default settings: no option and parquet format
         var (writePath, writeFormat) = (offlineDataPath, "parquet")
         var writeOptions: mutable.Map[String, String] = mutable.Map()
-        if (infoExists) {
+        if (info.hasOfflineTableInfo) {
           require(mode != "errorifexists", "offline info exists")
           val old = info.getOfflineTableInfo
           if (!old.getDeepCopy) {

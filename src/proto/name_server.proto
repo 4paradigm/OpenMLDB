@@ -83,6 +83,7 @@ message OfflineTableInfo {
     required string format = 2;
     optional bool deep_copy = 3 [default = true];
     map<string, string> options = 4;
+    repeated string symbolic_paths = 5;
 }
 
 message TableInfo {
