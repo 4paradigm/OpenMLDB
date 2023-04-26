@@ -484,7 +484,7 @@ echo "show components;" | ./bin/openmldb --zk_cluster=172.27.128.33:7181 --zk_ro
 
 ### 部署 APIServer
 
-APIServer负责接收http请求，转发给OpenMLDB集群并返回结果。它是无状态的。APIServer并不是OpenMLDB必须部署的组件，如果不需要使用http接口，可以跳过本步骤，进入下一步[部署TaskManager](#部署TaskManager)。
+APIServer负责接收http请求，转发给OpenMLDB集群并返回结果。它是无状态的。APIServer并不是OpenMLDB必须部署的组件，如果不需要使用http接口，可以跳过本步骤，进入下一步[部署TaskManager](deploy_taskmanager)。
 
 运行前需确保OpenMLDB集群的TabletServer和NameServer进程已经启动（TaskManager不影响APIServer的启动），否则APIServer将初始化失败并退出进程。
 
@@ -538,6 +538,8 @@ APIServer是非必需组件，所以不会出现在`show components;`中。
 curl http://<apiserver_ip>:<port>/dbs/foo -X POST -d'{"mode":"online","sql":"show components;"}'
 ```
 结果中应该有已启动的所有TabletServer和NameServer的信息。
+
+(deploy_taskmanager)=
 
 ### 部署TaskManager
 
