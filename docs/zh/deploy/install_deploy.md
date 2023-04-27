@@ -25,7 +25,7 @@
 如果你的操作系统可以直接运行预编译包，则可以从以下地址下载：
 
 - GitHub release 页面：https://github.com/4paradigm/OpenMLDB/releases
-- 镜像站点（香港）：https://openmldb.com/download/
+- 镜像站点（香港）：https://openmldb.ai/download/
 
 其中预编译包和可支持的操作系统的对应关系为：
 
@@ -545,7 +545,7 @@ TaskManager 可以只存在一台，如果你需要高可用性，可以部署�
 Spark发行版：
 ```shell
 wget https://github.com/4paradigm/spark/releases/download/v3.2.1-openmldb0.7.3/spark-3.2.1-bin-openmldbspark.tgz 
-# 国内镜像地址 https://openmldb.com/download/v0.7.3/spark-3.2.1-bin-openmldbspark.tgz
+# 国内镜像地址 https://openmldb.ai/download/v0.7.3/spark-3.2.1-bin-openmldbspark.tgz
 tar -zxvf spark-3.2.1-bin-openmldbspark.tgz 
 export SPARK_HOME=`pwd`/spark-3.2.1-bin-openmldbspark/
 ```

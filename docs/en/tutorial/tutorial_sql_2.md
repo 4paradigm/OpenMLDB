@@ -8,7 +8,7 @@ At the same time, we will take the SQL syntax of OpenMLDB as an example for SQL-
 If you want to run the SQL in this tutorial, please follow the following two steps to prepare:
 
 - It is recommended to use the OpenMLDB docker image under **Standalone Version**. Refer to [OpenMLDB Quick Start](../quickstart/openmldb_quickstart.md) for the operation mode. If using the cluster version, please use the **Offline** mode (`SET @@execute_mode='offline'` ). The CLI tool of cluster version is only available under **Offline** mode and **Online Preview** mode. The Online Preview mode only can be used for simple data preview, so most of the SQL in the tutorial cannot run in this mode.
-- All data related to this tutorial and the import operation script can be downloaded [here](https://openmldb.com/download/tutorial_sql/tutoral_sql_data.zip).
+- All data related to this tutorial and the import operation script can be downloaded [here](https://openmldb.ai/download/tutorial_sql/tutoral_sql_data.zip).
 
 In this article, the data set consists of a main table (holding the labels) and other secondary tables. We still use the sample data of anti-fraud transactions in the previous article, including a main table: user transaction table (Table 1, t1) and a secondary table: merchant flow table (Table 2, t2). 
 In the design of relational database, in order to avoid data redundancy and ensure data consistency, commonly, the data are stored in multiple tables according to design principles (database design paradigm). 

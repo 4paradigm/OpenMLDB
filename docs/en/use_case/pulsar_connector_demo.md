@@ -10,7 +10,7 @@ Note that, for the sake of simplicity, for this document, we use Pulsar Standalo
 
 ### Download
 
-- You can download the entire demo package [here](https://openmldb.com/download/use_case/pulsar_connector/files.tar.gz), which are needed by this demo, including the connector nar, schema files, and config files. 
+- You can download the entire demo package [here](https://openmldb.ai/download/pulsar-connector/files.tar.gz), which are needed by this demo, including the connector nar, schema files, and config files. 
 
 - If you would like to download the connector only, you can [download it here](https://github.com/4paradigm/OpenMLDB/releases/download/v0.4.4/pulsar-io-jdbc-openmldb-2.11.0-SNAPSHOT.nar) from the OpenMLDB release. 
 

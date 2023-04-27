@@ -52,7 +52,7 @@ dpkg-reconfigure dash
 
 下文使用的工作流会从`/tmp/train_sample.csv`导入数据到OpenMLDB，所以，先将源数据下载到这一地址：
 ```
-curl -SLo /tmp/train_sample.csv https://openmldb.com/download/use_case/dolphinschduler_task/train_sample.csv
+curl -SLo /tmp/train_sample.csv https://openmldb.ai/download/dolphinschduler-task/train_sample.csv
 ```
 
 **运行 OpenMLDB 集群与 Predict Server**
@@ -65,7 +65,7 @@ curl -SLo /tmp/train_sample.csv https://openmldb.com/download/use_case/dolphinsc
 我们将完成一个导入数据，离线训练，训练成功后模型上线的工作流。模型上线的部分，将发送模型地址给predict server来完成。所以，我们先下载并后台运行predict server：
 ```
 cd /work
-curl -SLo predict_server.py https://openmldb.com/download/use_case/dolphinschduler_task/predict_server.py
+curl -SLo predict_server.py https://openmldb.ai/download/dolphinschduler-task/predict_server.py
 python3 predict_server.py --no-init > predict.log 2>&1 &
 ```
 ```{tip}
@@ -74,12 +74,12 @@ python3 predict_server.py --no-init > predict.log 2>&1 &
 
 **下载并运行 DolphinScheduler**
 
-DolphinScheduler 支持 OpenMLDB Task 的版本，我们直接提供了一个可供下载版本，下载地址[dolphinscheduler-bin](https://openmldb.com/download/use_case/dolphinschduler_task/apache-dolphinscheduler-dev-SNAPSHOT-bin.tar.gz)。
+DolphinScheduler 支持 OpenMLDB Task 的版本，我们直接提供了一个可供下载版本，下载地址[dolphinscheduler-bin](http://openmldb.ai/download/dolphinschduler-task/apache-dolphinscheduler-dev-SNAPSHOT-bin.tar.gz)。
 
 启动 DolphinScheduler standalone，步骤如下，更多请参考[官方文档](https://dolphinscheduler.apache.org/#/zh-cn/docs/3.1.2/guide/installation/standalone)。
 
 ```
-curl -SLO https://openmldb.com/download/use_case/dolphinschduler_task/apache-dolphinscheduler-dev-SNAPSHOT-bin.tar.gz
+curl -SLO http://openmldb.ai/download/dolphinschduler-task/apache-dolphinscheduler-dev-SNAPSHOT-bin.tar.gz
 tar -xvzf apache-dolphinscheduler-*-bin.tar.gz
 cd apache-dolphinscheduler-*-bin
 sed -i s#/opt/soft/python#/usr/bin/python3#g bin/env/dolphinscheduler_env.sh
@@ -100,7 +100,7 @@ DolphinScheduler 的 worker server 需要 OpenMLDB Python SDK, DolphinScheduler 
 
 **下载工作流配置**
 
-工作流可以手动创建，为了简化演示，我们直接提供了 json 工作流文件，[点击下载](https://openmldb.com/download/use_case/dolphinschduler_task/workflow_openmldb_demo.json)。稍后可以直接上传到 DolphinScheduler 环境中，并做简单的修改（见下文的演示），即可完成全工作流。
+工作流可以手动创建，为了简化演示，我们直接提供了 json 工作流文件，[点击下载](http://openmldb.ai/download/dolphinschduler-task/workflow_openmldb_demo.json)。稍后可以直接上传到 DolphinScheduler 环境中，并做简单的修改（见下文的演示），即可完成全工作流。
 
 请注意，不是下载到容器中，而是下载到你使用的浏览器主机。之后将在web页面中完成上传。
 

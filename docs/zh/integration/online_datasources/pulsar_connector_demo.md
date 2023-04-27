@@ -13,7 +13,7 @@ Apache Pulsar是一个云原生的，分布式消息流平台。它可以作为O
 
 ### 下载
 
-- 你需要下载本文中所需要的所有文件，请点击[files](https://openmldb.com/download/use_case/pulsar_connector/files.tar.gz)下载。文件包括connector包，schema文件，配置文件等等。
+- 你需要下载本文中所需要的所有文件，请点击[files](https://openmldb.ai/download/pulsar-connector/files.tar.gz)下载。文件包括connector包，schema文件，配置文件等等。
 - 如果你只想要下载connector包用于自己的项目，请点击[connector snapshot](https://github.com/4paradigm/OpenMLDB/releases/download/v0.4.4/pulsar-io-jdbc-openmldb-2.11.0-SNAPSHOT.nar)。
 
 ### 流程

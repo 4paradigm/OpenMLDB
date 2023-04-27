@@ -7,7 +7,7 @@
 如果你想运行本篇教程中的 SQL，请按照以下两个步骤做准备：
 
 - 推荐使用 OpenMLDB docker 镜像在**单机版**下运行本教程，运行方式参考 [OpenMLDB 快速上手](../quickstart/openmldb_quickstart.md)。如果使用集群版，请使用离线模式（`SET @@execute_mode='offline'` ）。集群版 CLI 仅支持离线模式和在线预览模式。而在线预览模式仅支持简单的数据预览功能，因此无法运行教程中大部分的 SQL。
-- 本教程相关的所有数据以及导入操作脚本可以在 [这里下载](https://openmldb.com/download/tutorial_sql/tutoral_sql_data.zip)。
+- 本教程相关的所有数据以及导入操作脚本可以在 [这里下载](https://openmldb.ai/download/tutorial_sql/tutoral_sql_data.zip)。
 
 本文将用到主表和副表进行举例说明。样例数据是上篇使用的反欺诈交易数据集，包含一张主表：用户交易表（t1）和一张副表：商户流水表（t2）。
 在关系型数据库设计中，为了避免数据冗余以及保证数据一致性，一般都会按照一定的设计原则（数据库设计范式），把数据存入多个数据表中。在特征工程中，为了获得足够的有效信息，需要在多个表中取出数据，因此需要基于多表进行特征工程。

@@ -36,7 +36,7 @@
 注意，如果你想运行本篇教程的 SQL，请按照以下两个步骤做准备：
 
 - 推荐使用 docker 镜像在**单机版**下运行本教程，镜像拉取和 CLI 运行方式参考 [OpenMLDB 快速上手](../quickstart/openmldb_quickstart.md)。如果使用集群版，请使用离线模式（`SET @@execute_mode='offline'` ）。集群版 CLI 仅支持离线模式和在线预览模式。而在线预览模式仅支持简单的数据预览功能，因此无法运行教程中大部分的 SQL。
-- 本教程相关的所有数据以及导入操作脚本可以在[这里下载](https://openmldb.com/download/tutorial_sql/tutoral_sql_data.zip)。
+- 本教程相关的所有数据以及导入操作脚本可以在[这里下载](https://openmldb.ai/download/tutorial_sql/tutoral_sql_data.zip)。
 
 ### 3.1. 基本概念
 

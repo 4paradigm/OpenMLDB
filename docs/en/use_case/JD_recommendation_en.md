@@ -1,7 +1,7 @@
 
 #  OpenMLDB + OneFlow: Prediction of Purchase Intention for High Potential Customers
 
-In this article, we will use [JD Prediction of purchase intention for high potential customers problem](https://jdata.jd.com/html/detail.html?id=1) as a demonstration，to show how we can use [OpenMLDB](https://github.com/4paradigm/OpenMLDB) and [OneFlow](https://github.com/Oneflow-Inc/oneflow) together to build a complete machine learning application. Full dataset [download here](https://openmldb.com/download/use_case/jd_recommendation/jd-recommendation/JD_data.tgz).
+In this article, we will use [JD Prediction of purchase intention for high potential customers problem](https://jdata.jd.com/html/detail.html?id=1) as a demonstration，to show how we can use [OpenMLDB](https://github.com/4paradigm/OpenMLDB) and [OneFlow](https://github.com/Oneflow-Inc/oneflow) together to build a complete machine learning application. Full dataset [download here](https://openmldb.ai/download/jd-recommendation/JD_data.tgz).
 
 
 Extracting patterns from historical data to predict the future purchase intentions, to bring together the most suitable products and customers who need them most, is the key issue in the application of big data in precision marketing, and is also the key technology in digitalization for all e-commerce platforms. As the largest self-operated e-commerce company in China, JD.com has accumulated hundreds of millions of loyal customers and massive amounts of real-life data. This demonstration is based on the real-life data, including real customers, product and behavior data (after desensitization) from Jingdong Mall, and utilizes data mining technology and machine learning algorithm to build a prediction model for user purchase intentions, and output matching results between high-potential customers and target products. This aims to provide high-quality target groups for precision marketing, mine the potential meaning behind the data, and provide e-commerce customers with a simpler, faster and more worry-free shopping experience. In this demonstration, OpenMLDB is used for data mining, and the [DeepFM](https://github.com/Oneflow-Inc/models/tree/main/RecommenderSystems/deepfm) model in OneFlow is used for high-performance training and inference to provide accurate product recommendations.
@@ -14,7 +14,7 @@ Note that: (1) this case is based on the OpenMLDB cluster version for tutorial d
 
 Download demo scripts, or you can checkout `demo/jd-recommendation` in Github repo.
 ```
-wget https://openmldb.com/download/use_case/jd_recommendation/demo.tgz
+wget http://openmldb.ai/download/jd-recommendation/demo.tgz
 tar xzf demo.tgz
 ls demo
 ```
@@ -24,7 +24,7 @@ Export `demodir`, we'll use the variable `demodir` in the future.
 export demodir=<your_path>/demo
 ```
 
-We'll use the small dataset in demo.tgz. If you want to test on full dataset, please download [JD_data](https://openmldb.com/download/use_case/jd_recommendation/JD_data.tgz).
+We'll use the small dataset in demo.tgz. If you want to test on full dataset, please download [JD_data](http://openmldb.ai/download/jd-recommendation/JD_data.tgz).
 
 ### 1.2 OneFlow Installation
 OneFlow framework leverage on the great computational power from GPU. Therefore please ensure that the machines for deployment are equipped with NVidia GPUs, and ensure the driver version is >=460.X.X  [driver version support for CUDA 11.0](https://docs.nvidia.com/cuda/cuda-toolkit-release-notes/index.html#cuda-major-component-versions).
