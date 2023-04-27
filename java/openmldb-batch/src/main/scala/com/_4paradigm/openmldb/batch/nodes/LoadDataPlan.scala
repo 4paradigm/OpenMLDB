@@ -67,16 +67,11 @@ object LoadDataPlan {
 
       // If symbolic import
       if (!deepCopy) {
-        /*
-        require(mode!="append", "I'm not the soft-copied data owner, can't append")
-        require(!infoExists || !info.getOfflineTableInfo.getDeepCopy, "old offline info is deep-copied, " +
-          "we don't know whether to delete the existing data")
-        if (mode=="errorifexists" && infoExists){
+
+        // Get error if exists
+        if (mode=="errorifexists" && info.hasOfflineTableInfo){
           throw new IllegalArgumentException("offline info exists")
         }
-         */
-        // because it's soft-copy, format+options should be the same with read settings
-        //val offlineBuilder = OfflineTableInfo.newBuilder().setPath(inputFile).setFormat(format).setDeepCopy(false)
 
         val oldOfflineTableInfo = if (info.hasOfflineTableInfo) { // Have offline table info
           info.getOfflineTableInfo
@@ -90,7 +85,7 @@ object LoadDataPlan {
         val newOfflineInfoBuilder = OfflineTableInfo.newBuilder(oldOfflineTableInfo)
 
         // If mode=="append"
-        if (mode.equals("append")) {
+        if (mode.equals("append") || mode.equals("errorifexists")) {
           // Check if new path is already existed or not
           val symbolicPaths = newOfflineInfoBuilder.getSymbolicPathsList()
           if (symbolicPaths.contains(inputFile)) {
@@ -99,9 +94,11 @@ object LoadDataPlan {
             logger.info(s"Add the path of $inputFile to offline table info symbolic paths")
             newOfflineInfoBuilder.addSymbolicPaths(inputFile)
           }
-        } else if (mode.equals("errorifexists")) {
-          // TODO(tobe)
-          throw new IllegalArgumentException("Do not support errorifexists for symbolic import")
+        } else if (mode.equals("overwrite")) {
+          // TODO(tobe): May remove data files from copy import
+          newOfflineInfoBuilder.setPath("")
+          newOfflineInfoBuilder.clearSymbolicPaths()
+          newOfflineInfoBuilder.addSymbolicPaths(inputFile)
         }
 
         if (!format.equals("hive")) {
