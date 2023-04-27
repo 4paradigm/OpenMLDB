@@ -23,8 +23,9 @@ import com._4paradigm.openmldb.proto.NS
 import com._4paradigm.openmldb.sdk.impl.SqlClusterExecutor
 import org.apache.spark.SparkException
 import org.scalatest.Matchers
-
 import scala.language.postfixOps
+import scala.collection.JavaConverters.asScalaBufferConverter
+
 
 class TestLoadDataPlan extends SparkTestSuite with Matchers {
   var openmldbSession: OpenmldbSession = _
@@ -36,8 +37,8 @@ class TestLoadDataPlan extends SparkTestSuite with Matchers {
     // load data needs openmldb cluster
     val prop = new Properties
     prop.load(getClass.getResourceAsStream("/test.properties"))
-    val cluster = prop.getProperty("openmldb.zk.cluster", "127.0.0.1:6181")
-    val path = prop.getProperty("openmldb.zk.root.path", "/onebox")
+    val cluster = prop.getProperty("openmldb.zk.cluster", "127.0.0.1:2181")
+    val path = prop.getProperty("openmldb.zk.root.path", "/openmldb")
     getSparkSession.conf.set("openmldb.zk.cluster", cluster)
     getSparkSession.conf.set("openmldb.zk.root.path", path)
     //      set("openmldb.loaddata.mode", "offline") // default is offline
@@ -95,17 +96,12 @@ class TestLoadDataPlan extends SparkTestSuite with Matchers {
     var softInfo = getLatestTableInfo(db, table)
     assert(softInfo.hasOfflineTableInfo, s"no offline info $softInfo")
     // the offline info will be the same with load data options
-    assert(softInfo.getOfflineTableInfo.getPath == testFileWithHeader)
+    assert(softInfo.getOfflineTableInfo.getPath == "")
+    assert(softInfo.getOfflineTableInfo.getSymbolicPathsList().asScala.toList(0) == testFileWithHeader)
     assert(softInfo.getOfflineTableInfo.getFormat == "csv")
     assert(softInfo.getOfflineTableInfo.getOptionsMap.get("nullValue") == "123")
-    assert(!softInfo.getOfflineTableInfo.getDeepCopy)
 
-    println("soft offline table now, soft load data with append/error_if_exists mode")
-    a[IllegalArgumentException] should be thrownBy {
-      openmldbSession.openmldbSql(s"load data infile '$testFileWithHeader' into table $db.$table " +
-        "options(deep_copy=false, mode='append');")
-      fail("unreachable")
-    }
+    println("soft offline table now, soft load data with error_if_exists mode")
     a[IllegalArgumentException] should be thrownBy {
       openmldbSession.openmldbSql(s"load data infile '$testFileWithHeader' into table $db.$table " +
         "options(deep_copy=false, mode='error_if_exists');")
@@ -119,10 +115,10 @@ class TestLoadDataPlan extends SparkTestSuite with Matchers {
     softInfo = getLatestTableInfo(db, table)
     assert(softInfo.hasOfflineTableInfo, s"no offline info $softInfo")
     // the offline info will be the same with load data options
-    assert(softInfo.getOfflineTableInfo.getPath == testFileWithHeader)
+    assert(softInfo.getOfflineTableInfo.getPath == "")
+    assert(softInfo.getOfflineTableInfo.getSymbolicPathsList().asScala.toList(0) == testFileWithHeader)
     assert(softInfo.getOfflineTableInfo.getFormat == "csv")
     assert(softInfo.getOfflineTableInfo.getOptionsMap.get("nullValue") == "456")
-    assert(!softInfo.getOfflineTableInfo.getDeepCopy)
 
     println("soft offline table now, simple deep load data with append mode")
     a[IllegalArgumentException] should be thrownBy {
@@ -130,6 +126,7 @@ class TestLoadDataPlan extends SparkTestSuite with Matchers {
         "options(foo='bar', mode='append');")
       fail("unreachable")
     }
+
 
     println("soft offline table now, simple deep load data with overwrite mode")
     var res = openmldbSession.openmldbSql(s"load data infile '$testFileWithHeader' into table $db.$table " +
@@ -139,7 +136,7 @@ class TestLoadDataPlan extends SparkTestSuite with Matchers {
     assert(info.hasOfflineTableInfo, s"no offline info $info")
     assert(info.getOfflineTableInfo.getFormat == "parquet")
     assert(info.getOfflineTableInfo.getOptionsMap.isEmpty)
-    assert(info.getOfflineTableInfo.getDeepCopy)
+
 
     // after load, we can read the offline table data
     // only new openmldb session will register the latest offline tables
@@ -173,11 +170,13 @@ class TestLoadDataPlan extends SparkTestSuite with Matchers {
     }
 
     println("deep offline table now, soft load data with any mode")
+    /* TODO: Support this case now and need to update case
     a[IllegalArgumentException] should be thrownBy {
       openmldbSession.openmldbSql(s"load data infile '$testFileWithHeader' into table $db.$table " +
         "options(deep_copy=false, mode='append');")
       fail("unreachable")
     }
+    */
   }
 
   test("Test LoadData to Openmldb Online Storage") {

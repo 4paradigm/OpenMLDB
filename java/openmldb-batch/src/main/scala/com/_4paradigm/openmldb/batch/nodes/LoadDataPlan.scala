@@ -108,8 +108,7 @@ object LoadDataPlan {
 
         // update to ns later
         newInfoBuilder.setOfflineTableInfo(newOfflineInfoBuilder.build())
-      } else {
-        // deep copy
+      } else { // deep copy
         // Generate new offline address by db name, table name and config of prefix
         val offlineDataPrefix = if (ctx.getConf.offlineDataPrefix.endsWith("/")) {
           ctx.getConf.offlineDataPrefix.dropRight(1)
@@ -123,6 +122,11 @@ object LoadDataPlan {
         var writeOptions: mutable.Map[String, String] = mutable.Map()
         if (info.hasOfflineTableInfo) {
           require(mode != "errorifexists", "offline info exists")
+
+          if (mode.equals("append")) {
+            throw new IllegalArgumentException("Deep copy with append mode is not supported yet")
+          }
+
           val old = info.getOfflineTableInfo
           if (!old.getDeepCopy) {
             require(mode == "overwrite", "Only overwrite mode works. Old offline data is soft-coped, only can " +
@@ -133,10 +137,11 @@ object LoadDataPlan {
           } else {
             // if old offline data is deep-copied and mode is append/overwrite,
             // we need to use the old info and don't need to update info to ns
-            writeFormat = old.getFormat
-            writeOptions = old.getOptionsMap.asScala
-            writePath = old.getPath
-            needUpdateInfo = false
+            //writeFormat = old.getFormat
+            //writeOptions = old.getOptionsMap.asScala
+            // Generated the path to deep copy
+            //writePath = s"$offlineDataPrefix/$db/$table"
+            needUpdateInfo = true
           }
         }
 
@@ -145,8 +150,9 @@ object LoadDataPlan {
           "the path")
 
         df.write.mode(mode).format(writeFormat).options(writeOptions.toMap).save(writePath)
-        val offlineBuilder = OfflineTableInfo.newBuilder().setPath(writePath).setFormat(writeFormat).setDeepCopy(true)
-          .putAllOptions(writeOptions.asJava)
+        val offlineBuilder = OfflineTableInfo.newBuilder().setPath(writePath).setFormat(writeFormat)
+          .setDeepCopy(true).clearSymbolicPaths().putAllOptions(writeOptions.asJava)
+
         newInfoBuilder.setOfflineTableInfo(offlineBuilder)
       }
 
