@@ -1,8 +1,8 @@
-# Kubernetes 集成
+# 离线引擎使用 Kubernetes 后端（可选）
 
 ## 介绍
 
-OpenMLDB 支持集成 Kubernetes 服务，用户可以配置使用 Kubernetes 集群来调度运行大数据离线任务，使用 HDFS 等分布式存储服务来管理离线数据。
+OpenMLDB 的离线引擎也支持集成 Kubernetes 服务，用户可以配置使用 Kubernetes 集群来调度运行大数据离线任务，使用 HDFS 等分布式存储服务来管理离线数据。
 
 ## 部署 Kubernetes
 
@@ -47,7 +47,7 @@ offline.data.prefix=hdfs:///foo/bar/
 
 ## 任务提交和管理
 
-配置 TaskManager 和 Kubernetes 后，可在命令行提交离线任务，用法与 Local 或 Yarn 模式一样。
+配置 TaskManager 和 Kubernetes 后，可在命令行提交离线任务，用法与 Local 或 Yarn 模式一样，不仅可以在 SQL 命令行客户端中使用，也可以通过各种语言的 SDK 中使用。
 
 例如提交数据导入任务。
 
