@@ -121,9 +121,9 @@ object LoadDataPlan {
         var (writePath, writeFormat) = (offlineDataPath, "parquet")
         var writeOptions: mutable.Map[String, String] = mutable.Map()
         if (info.hasOfflineTableInfo) {
-          require(mode != "errorifexists", "offline info exists")
-
-          if (mode.equals("append")) {
+          if (mode.equals("errorifexists")) {
+            throw new IllegalArgumentException("offline info exists")
+          } else if (mode.equals("append")) {
             throw new IllegalArgumentException("Deep copy with append mode is not supported yet")
           }
 
