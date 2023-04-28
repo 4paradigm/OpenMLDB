@@ -69,7 +69,7 @@ object LoadDataPlan {
       if (!deepCopy) {
 
         // Get error if exists
-        if (mode=="errorifexists" && info.hasOfflineTableInfo){
+        if (mode.equals("errorifexists") && info.hasOfflineTableInfo){
           throw new IllegalArgumentException("offline info exists")
         }
 
@@ -129,7 +129,7 @@ object LoadDataPlan {
 
           val old = info.getOfflineTableInfo
           if (!old.getDeepCopy) {
-            require(mode == "overwrite", "Only overwrite mode works. Old offline data is soft-coped, only can " +
+            require(mode.equals("overwrite"), "Only overwrite mode works. Old offline data is soft-coped, only can " +
               "overwrite the offline info, leave the soft-coped data as it is.")
             // if old offline data is soft-coped, we need to reject the old info, use the 'offlineDataPath' and
             // normal settings

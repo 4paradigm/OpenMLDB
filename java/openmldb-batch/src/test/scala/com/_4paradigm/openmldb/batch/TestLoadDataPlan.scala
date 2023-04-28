@@ -37,8 +37,8 @@ class TestLoadDataPlan extends SparkTestSuite with Matchers {
     // load data needs openmldb cluster
     val prop = new Properties
     prop.load(getClass.getResourceAsStream("/test.properties"))
-    val cluster = prop.getProperty("openmldb.zk.cluster", "127.0.0.1:2181")
-    val path = prop.getProperty("openmldb.zk.root.path", "/openmldb")
+    val cluster = prop.getProperty("openmldb.zk.cluster", "127.0.0.1:6181")
+    val path = prop.getProperty("openmldb.zk.root.path", "/onebox")
     getSparkSession.conf.set("openmldb.zk.cluster", cluster)
     getSparkSession.conf.set("openmldb.zk.root.path", path)
     //      set("openmldb.loaddata.mode", "offline") // default is offline

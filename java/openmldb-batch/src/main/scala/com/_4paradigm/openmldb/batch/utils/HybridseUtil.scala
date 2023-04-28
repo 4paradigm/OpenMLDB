@@ -222,7 +222,7 @@ object HybridseUtil {
       case "error_if_exists" => "errorifexists"
       // append/overwrite, stay the same
       case "append" | "overwrite" => modeStr
-      case others: Any => throw new UnsupportedHybridSeException(s"unsupported write mode $others")
+      case _ => throw new UnsupportedHybridSeException(s"unsupported write mode $modeStr")
     }
 
     // only for PhysicalLoadDataNode
