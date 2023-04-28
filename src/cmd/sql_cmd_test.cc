@@ -815,7 +815,7 @@ TEST_P(DBSDKTest, DeploySkipIndexCheck) {
     hybridse::sdk::Status status;
     sr->ExecuteSQL(deploy_sql, &status);
     ASSERT_FALSE(status.IsOK());
-   deploy_sql = "deploy demo  OPTIONS (skip_index_check=\"false\") "
+    deploy_sql = "deploy demo  OPTIONS (skip_index_check=\"false\") "
         "SELECT * FROM t1 LAST JOIN t2 ORDER BY t2.col3 ON t1.col1 = t2.col1;";
     sr->ExecuteSQL(deploy_sql, &status);
     ASSERT_FALSE(status.IsOK());
