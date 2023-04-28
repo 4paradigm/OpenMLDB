@@ -66,6 +66,8 @@ namespace sdk {
 using hybridse::common::StatusCode;
 using hybridse::plan::PlanAPI;
 
+constexpr const char* SKIP_INDEX_CHECK = "skip_index_check";
+
 class ExplainInfoImpl : public ExplainInfo {
  public:
     ExplainInfoImpl(const ::hybridse::sdk::SchemaImpl& input_schema, const ::hybridse::sdk::SchemaImpl& output_schema,
@@ -3322,7 +3324,7 @@ hybridse::sdk::Status SQLClusterRouter::HandleDeploy(const std::string& db,
     sp_info.set_sql(str_stream.str());
     sp_info.set_type(::openmldb::type::ProcedureType::kReqDeployment);
 
-    auto index_status = HandleIndex(db, table_pair, select_sql);
+    auto index_status = HandleIndex(db, table_pair, select_sql, deploy_node);
     if (!index_status.IsOK()) {
         return index_status;
     }
@@ -3347,7 +3349,8 @@ hybridse::sdk::Status SQLClusterRouter::HandleDeploy(const std::string& db,
 
 hybridse::sdk::Status SQLClusterRouter::HandleIndex(const std::string& db,
                                                     const std::set<std::pair<std::string, std::string>>& table_pair,
-                                                    const std::string& select_sql) {
+                                                    const std::string& select_sql,
+                                                    const hybridse::node::DeployPlanNode* deploy_node) {
     // extract index from sql
     std::vector<::openmldb::nameserver::TableInfo> tables;
     auto ns = cluster_sdk_->GetNsClient();
@@ -3368,8 +3371,16 @@ hybridse::sdk::Status SQLClusterRouter::HandleIndex(const std::string& db,
         }
     }
     auto index_map = base::DDLParser::ExtractIndexes(select_sql, table_schema_map);
+    bool skip_index_check = false;
+    auto iter = deploy_node->Options()->find(SKIP_INDEX_CHECK);
+    if (iter != deploy_node->Options()->end()) {
+        std::string skip_index_value = iter->second->GetExprString();
+        if (absl::EqualsIgnoreCase(absl::string_view(skip_index_value), absl::string_view("true"))) {
+            skip_index_check = true;
+        }
+    }
     std::map<std::string, std::vector<::openmldb::common::ColumnKey>> new_index_map;
-    auto get_index_status = GetNewIndex(table_map, index_map, &new_index_map);
+    auto get_index_status = GetNewIndex(table_map, index_map, skip_index_check, &new_index_map);
     if (!get_index_status.IsOK()) {
         return get_index_status;
     }
@@ -3384,6 +3395,7 @@ hybridse::sdk::Status SQLClusterRouter::HandleIndex(const std::string& db,
 hybridse::sdk::Status SQLClusterRouter::GetNewIndex(
     const std::map<std::string, ::openmldb::nameserver::TableInfo>& table_map,
     const std::map<std::string, std::vector<::openmldb::common::ColumnKey>>& index_map,
+    bool skip_index_check,
     std::map<std::string, std::vector<::openmldb::common::ColumnKey>>* new_index_map) {
     auto ns = cluster_sdk_->GetNsClient();
     for (auto& kv : index_map) {
@@ -3426,6 +3438,9 @@ hybridse::sdk::Status SQLClusterRouter::GetNewIndex(
             // index exist, if type match && new ttl greater than old ttl && old ttl != 0, update ttl, else skip
             auto it = id_columnkey_map.find(index_id);
             if (it != id_columnkey_map.end()) {
+                if (skip_index_check) {
+                    continue;
+                }
                 auto& old_column_key = it->second;
                 // type mismatch, return here and deploy failed
                 if (old_column_key.ttl().ttl_type() != column_key.ttl().ttl_type()) {
