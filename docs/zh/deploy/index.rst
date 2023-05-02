@@ -8,4 +8,5 @@
     install_deploy
     conf
     compile
-    offline_integrate_hadoop
+    integrate_hadoop
+    offline_integrate_kubernetes
