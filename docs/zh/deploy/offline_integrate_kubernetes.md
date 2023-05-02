@@ -6,9 +6,9 @@ OpenMLDB 的离线引擎也支持集成 Kubernetes 服务，用户可以配置�
 
 ## 部署 Kubernetes
 
-参考 [Kubernetes 官方文档](https://kubernetes.io/docs/home/)部署 Kubernetes 单机版或集群版。
+- 部署 Kubernetes 单机版或集群版：请参考 [Kubernetes 官方文档](https://kubernetes.io/docs/home/)
 
-参考 [spark-operator 官方文档](https://github.com/GoogleCloudPlatform/spark-on-k8s-operator)部署管理 Spark 任务的 Operator 。下面是使用 helm 部署到 default 命令空间的命令，根据需要修改命令空间以及权限信息。
+- 部署管理 Spark 任务的 Operator：请参考 [spark-on-k8s-operator 官方文档](https://github.com/GoogleCloudPlatform/spark-on-k8s-operator)。以下是使用 `Helm` 部署到 `default` 命令空间的命令，可以根据需要修改命令空间以及权限信息。
 
 ```
 helm install my-release spark-operator/spark-operator --namespace default --create-namespace --set webhook.enable=true
