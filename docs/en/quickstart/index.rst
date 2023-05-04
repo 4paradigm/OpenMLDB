@@ -11,3 +11,4 @@ Quickstart
     go_sdk
     rest_api
     data_import_guide
+    cli
