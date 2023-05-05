@@ -252,8 +252,7 @@ void MemTableSnapshot::Put(std::string& path, std::shared_ptr<Table>& table, std
 }
 
 int MemTableSnapshot::TTLSnapshot(std::shared_ptr<Table> table, const ::openmldb::api::Manifest& manifest,
-                                  WriteHandle* wh, uint64_t& count, uint64_t& expired_key_num,
-                                  uint64_t& deleted_key_num) {
+        const std::shared_ptr<WriteHandle>& wh, MemSnapshotMeta* snapshot_meta) {
     std::string full_path = snapshot_path_ + manifest.name();
     FILE* fd = fopen(full_path.c_str(), "rb");
     if (fd == NULL) {
@@ -294,13 +293,13 @@ int MemTableSnapshot::TTLSnapshot(std::shared_ptr<Table> table, const ::openmldb
         }
         int ret = RemoveDeletedKey(entry, deleted_index, &tmp_buf);
         if (ret == 1) {
-            deleted_key_num++;
+            snapshot_meta->deleted_key_num++;
             continue;
         } else if (ret == 2) {
             record.reset(tmp_buf.data(), tmp_buf.size());
         }
         if (table->IsExpire(entry)) {
-            expired_key_num++;
+            snapshot_meta->expired_key_num++;
             continue;
         }
         status = wh->Write(record);
@@ -309,23 +308,25 @@ int MemTableSnapshot::TTLSnapshot(std::shared_ptr<Table> table, const ::openmldb
             has_error = true;
             break;
         }
-        if ((count + expired_key_num + deleted_key_num) % KEY_NUM_DISPLAY == 0) {
-            PDLOG(INFO, "tackled key num[%lu] total[%lu]", count + expired_key_num, manifest.count());
+        if ((snapshot_meta->count + snapshot_meta->expired_key_num + snapshot_meta->deleted_key_num)
+                % KEY_NUM_DISPLAY == 0) {
+            PDLOG(INFO, "tackled key num[%lu] total[%lu]",
+                    snapshot_meta->count + snapshot_meta->expired_key_num, manifest.count());
         }
-        count++;
+        snapshot_meta->count++;
     }
     delete seq_file;
-    if (expired_key_num + count + deleted_key_num != manifest.count()) {
-        PDLOG(WARNING,
-              "key num not match! total key num[%lu] load key num[%lu] ttl key "
-              "num[%lu]",
-              manifest.count(), count, expired_key_num);
+    if (snapshot_meta->expired_key_num + snapshot_meta->count + snapshot_meta->deleted_key_num
+            != manifest.count()) {
+        PDLOG(WARNING, "key num not match! total key num[%lu] load key num[%lu] ttl key num[%lu]",
+              manifest.count(), snapshot_meta->count, snapshot_meta->expired_key_num);
         has_error = true;
     }
     if (has_error) {
         return -1;
     }
-    PDLOG(INFO, "load snapshot success. load key num[%lu] ttl key num[%lu]", count, expired_key_num);
+    PDLOG(INFO, "load snapshot success. load key num[%lu] ttl key num[%lu]",
+            snapshot_meta->count, snapshot_meta->expired_key_num);
     return 0;
 }
 
@@ -423,8 +424,7 @@ int MemTableSnapshot::MakeSnapshot(std::shared_ptr<Table> table, uint64_t& out_o
     int result = GetLocalManifest(snapshot_path_ + MANIFEST, manifest);
     if (result == 0) {
         // filter old snapshot
-        if (TTLSnapshot(table, manifest, wh.get(), snapshot_meta.count,
-                    snapshot_meta.expired_key_num, snapshot_meta.deleted_key_num) < 0) {
+        if (TTLSnapshot(table, manifest, wh, &snapshot_meta) < 0) {
             has_error = true;
         }
         snapshot_meta.term = manifest.term();

@@ -94,9 +94,8 @@ class MemTableSnapshot : public Snapshot {
                      uint64_t end_offset,
                      uint64_t term = 0) override;
 
-    int TTLSnapshot(std::shared_ptr<Table> table, const ::openmldb::api::Manifest& manifest, WriteHandle* wh,
-                    uint64_t& count, uint64_t& expired_key_num,  // NOLINT
-                    uint64_t& deleted_key_num);                  // NOLINT
+    int TTLSnapshot(std::shared_ptr<Table> table, const ::openmldb::api::Manifest& manifest,
+            const std::shared_ptr<WriteHandle>& wh, MemSnapshotMeta* snapshot_meta);
 
     void Put(std::string& path, std::shared_ptr<Table>& table,  // NOLINT
              std::vector<std::string*> recordPtr, std::atomic<uint64_t>* succ_cnt, std::atomic<uint64_t>* failed_cnt);
