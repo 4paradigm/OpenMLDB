@@ -38,7 +38,12 @@ using ::openmldb::log::WriteHandle;
 typedef ::openmldb::base::Skiplist<uint32_t, uint64_t, ::openmldb::base::DefaultComparator> LogParts;
 
 struct MemSnapshotMeta : SnapshotMeta {
-    MemSnapshotMeta(const std::string& name, const std::string& snapshot_path) : SnapshotMeta(name) {
+    MemSnapshotMeta(const std::string& name, const std::string& snapshot_path,
+            const std::string& compression) : SnapshotMeta(name), snapshot_compression(compression) {
+        if (snapshot_compression != "off") {
+            snapshot_name.append(".");
+            snapshot_name.append(snapshot_compression);
+        }
         snapshot_name_tmp = snapshot_name + ".tmp";
         full_path = snapshot_path + snapshot_name;
         tmp_file_path = snapshot_path + snapshot_name_tmp;
@@ -46,6 +51,7 @@ struct MemSnapshotMeta : SnapshotMeta {
 
     uint64_t expired_key_num = 0;
     uint64_t deleted_key_num = 0;
+    std::string snapshot_compression;
     std::string snapshot_name_tmp;
     std::string full_path;
     std::string tmp_file_path;

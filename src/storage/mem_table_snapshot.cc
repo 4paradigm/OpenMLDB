@@ -407,37 +407,28 @@ int MemTableSnapshot::MakeSnapshot(std::shared_ptr<Table> table, uint64_t& out_o
     }
     making_snapshot_.store(true, std::memory_order_release);
     std::string now_time = ::openmldb::base::GetNowTime();
-    std::string snapshot_name = now_time.substr(0, now_time.length() - 2) + ".sdb";
-    if (FLAGS_snapshot_compression != "off") {
-        snapshot_name.append(".");
-        snapshot_name.append(FLAGS_snapshot_compression);
-    }
-    std::string snapshot_name_tmp = snapshot_name + ".tmp";
-    std::string full_path = snapshot_path_ + snapshot_name;
-    std::string tmp_file_path = snapshot_path_ + snapshot_name_tmp;
-    FILE* fd = fopen(tmp_file_path.c_str(), "ab+");
-    if (fd == NULL) {
-        PDLOG(WARNING, "fail to create file %s", tmp_file_path.c_str());
+    MemSnapshotMeta snapshot_meta(GenSnapshotName(), snapshot_path_, FLAGS_snapshot_compression);
+    auto wh = ::openmldb::log::CreateWriteHandle(FLAGS_snapshot_compression,
+            snapshot_meta.snapshot_name, snapshot_meta.tmp_file_path);
+    if (!wh) {
+        PDLOG(WARNING, "fail to create file %s", snapshot_meta.tmp_file_path.c_str());
         making_snapshot_.store(false, std::memory_order_release);
         return -1;
     }
     uint64_t collected_offset = CollectDeletedKey(end_offset);
     uint64_t start_time = ::baidu::common::timer::now_time();
-    WriteHandle* wh = new WriteHandle(FLAGS_snapshot_compression, snapshot_name_tmp, fd);
     ::openmldb::api::Manifest manifest;
     bool has_error = false;
-    uint64_t write_count = 0;
-    uint64_t expired_key_num = 0;
-    uint64_t deleted_key_num = 0;
-    uint64_t last_term = term;
+    snapshot_meta.term = term;
     int result = GetLocalManifest(snapshot_path_ + MANIFEST, manifest);
     if (result == 0) {
         // filter old snapshot
-        if (TTLSnapshot(table, manifest, wh, write_count, expired_key_num, deleted_key_num) < 0) {
+        if (TTLSnapshot(table, manifest, wh.get(), snapshot_meta.count,
+                    snapshot_meta.expired_key_num, snapshot_meta.deleted_key_num) < 0) {
             has_error = true;
         }
-        last_term = manifest.term();
-        DEBUGLOG("old manifest term is %lu", last_term);
+        snapshot_meta.term = manifest.term();
+        DEBUGLOG("old manifest term is %lu", snapshot_meta.term);
     } else if (result < 0) {
         // parse manifest error
         has_error = true;
@@ -480,29 +471,31 @@ int MemTableSnapshot::MakeSnapshot(std::shared_ptr<Table> table, uint64_t& out_o
                 continue;
             }
             if (entry.has_term()) {
-                last_term = entry.term();
+                snapshot_meta.term = entry.term();
             }
             int ret = RemoveDeletedKey(entry, deleted_index, &tmp_buf);
             if (ret == 1) {
-                deleted_key_num++;
+                snapshot_meta.deleted_key_num++;
                 continue;
             } else if (ret == 2) {
                 record.reset(tmp_buf.data(), tmp_buf.size());
             }
             if (table->IsExpire(entry)) {
-                expired_key_num++;
+                snapshot_meta.expired_key_num++;
                 continue;
             }
             ::openmldb::log::Status status = wh->Write(record);
             if (!status.ok()) {
-                PDLOG(WARNING, "fail to write snapshot. path[%s] status[%s]", tmp_file_path.c_str(),
-                      status.ToString().c_str());
+                PDLOG(WARNING, "fail to write snapshot. path[%s] status[%s]",
+                        snapshot_meta.tmp_file_path.c_str(), status.ToString().c_str());
                 has_error = true;
                 break;
             }
-            write_count++;
-            if ((write_count + expired_key_num + deleted_key_num) % KEY_NUM_DISPLAY == 0) {
-                PDLOG(INFO, "has write key num[%lu] expired key num[%lu]", write_count, expired_key_num);
+            snapshot_meta.count++;
+            if ((snapshot_meta.count + snapshot_meta.expired_key_num + snapshot_meta.deleted_key_num)
+                    % KEY_NUM_DISPLAY == 0) {
+                PDLOG(INFO, "has write key num[%lu] expired key num[%lu]",
+                        snapshot_meta.count, snapshot_meta.expired_key_num);
             }
         } else if (status.IsEof()) {
             continue;
@@ -512,10 +505,9 @@ int MemTableSnapshot::MakeSnapshot(std::shared_ptr<Table> table, uint64_t& out_o
             // judge end_log_index greater than cur_log_index
             if (end_log_index >= 0 && end_log_index > cur_log_index) {
                 log_reader.RollRLogFile();
-                PDLOG(WARNING,
-                      "read new binlog file. tid[%u] pid[%u] cur_log_index[%d] "
-                      "end_log_index[%d] cur_offset[%lu]",
-                      tid_, pid_, cur_log_index, end_log_index, cur_offset);
+                PDLOG(WARNING, "read new binlog file. tid[%u] pid[%u] cur_log_index[%d] "
+                        "end_log_index[%d] cur_offset[%lu]",
+                        tid_, pid_, cur_log_index, end_log_index, cur_offset);
                 continue;
             }
             DEBUGLOG("has read all record!");
@@ -526,44 +518,28 @@ int MemTableSnapshot::MakeSnapshot(std::shared_ptr<Table> table, uint64_t& out_o
             break;
         }
     }
-    if (wh != NULL) {
-        wh->EndLog();
-        delete wh;
-        wh = NULL;
-    }
+    deleted_keys_.clear();
+    wh->EndLog();
+    wh.reset();
     int ret = 0;
     if (has_error) {
-        unlink(tmp_file_path.c_str());
+        unlink(snapshot_meta.tmp_file_path.c_str());
         ret = -1;
     } else {
-        if (rename(tmp_file_path.c_str(), full_path.c_str()) == 0) {
-            if (GenManifest(snapshot_name, write_count, cur_offset, last_term) == 0) {
-                // delete old snapshot
-                if (manifest.has_name() && manifest.name() != snapshot_name) {
-                    DEBUGLOG("old snapshot[%s] has deleted", manifest.name().c_str());
-                    unlink((snapshot_path_ + manifest.name()).c_str());
-                }
-                uint64_t consumed = ::baidu::common::timer::now_time() - start_time;
-                PDLOG(INFO,
-                      "make snapshot[%s] success. update offset from %lu to %lu."
-                      "use %lu second. write key %lu expired key %lu deleted key "
-                      "%lu",
-                      snapshot_name.c_str(), offset_, cur_offset, consumed, write_count, expired_key_num,
-                      deleted_key_num);
-                offset_ = cur_offset;
-                out_offset = cur_offset;
-            } else {
-                PDLOG(WARNING, "GenManifest failed. delete snapshot file[%s]", full_path.c_str());
-                unlink(full_path.c_str());
-                ret = -1;
-            }
-        } else {
-            PDLOG(WARNING, "rename[%s] failed", snapshot_name.c_str());
-            unlink(tmp_file_path.c_str());
+        snapshot_meta.offset = cur_offset;
+        uint64_t old_offset = offset_;
+        auto status = WriteSnapshot(snapshot_meta, manifest);
+        if (!status.OK()) {
             ret = -1;
+            PDLOG(WARNING, "write snapshot failed. tid %u pid %u msg is %s ", tid_, pid_, status.GetMsg().c_str());
         }
+        uint64_t consumed = ::baidu::common::timer::now_time() - start_time;
+        PDLOG(INFO, "make snapshot[%s] success. update offset from %lu to %lu."
+              "use %lu second. write key %lu expired key %lu deleted key %lu",
+              snapshot_meta.snapshot_name.c_str(), old_offset, snapshot_meta.offset, consumed,
+              snapshot_meta.count, snapshot_meta.expired_key_num, snapshot_meta.deleted_key_num);
+        out_offset = snapshot_meta.offset;
     }
-    deleted_keys_.clear();
     making_snapshot_.store(false, std::memory_order_release);
     return ret;
 }
@@ -572,7 +548,7 @@ int MemTableSnapshot::RemoveDeletedKey(const ::openmldb::api::LogEntry& entry, c
                                        std::string* buffer) {
     uint64_t cur_offset = entry.log_index();
     if (entry.dimensions_size() == 0) {
-        std::string combined_key = entry.pk() + "|0";
+        std::string combined_key = absl::StrCat(entry.pk(), "|0");
         auto iter = deleted_keys_.find(combined_key);
         if (iter != deleted_keys_.end() && cur_offset <= iter->second) {
             DEBUGLOG("delete key %s  offset %lu", entry.pk().c_str(), entry.log_index());
@@ -581,7 +557,7 @@ int MemTableSnapshot::RemoveDeletedKey(const ::openmldb::api::LogEntry& entry, c
     } else {
         std::set<int> deleted_pos_set;
         for (int pos = 0; pos < entry.dimensions_size(); pos++) {
-            std::string combined_key = entry.dimensions(pos).key() + "|" + std::to_string(entry.dimensions(pos).idx());
+            std::string combined_key = absl::StrCat(entry.dimensions(pos).key(), "|", entry.dimensions(pos).idx());
             auto iter = deleted_keys_.find(combined_key);
             if ((iter != deleted_keys_.end() && cur_offset <= iter->second) ||
                 deleted_index.count(entry.dimensions(pos).idx())) {
@@ -644,7 +620,7 @@ int MemTableSnapshot::CheckDeleteAndUpdate(std::shared_ptr<Table> table, openmld
     // deleted key
     std::set<int> deleted_pos_set;
     for (int pos = 0; pos < entry->dimensions_size(); pos++) {
-        std::string combined_key = entry->dimensions(pos).key() + "|" + std::to_string(entry->dimensions(pos).idx());
+        std::string combined_key = absl::StrCat(entry->dimensions(pos).key(), "|", entry->dimensions(pos).idx());
         if (deleted_keys_.find(combined_key) != deleted_keys_.end() ||
             !table->GetIndex(entry->dimensions(pos).idx())->IsReady()) {
             deleted_pos_set.insert(pos);
@@ -694,7 +670,7 @@ base::Status MemTableSnapshot::GetIndexKey(std::shared_ptr<Table> table,
             val = ::openmldb::codec::NONETOKEN;
         }
         if (index_key->empty()) {
-            *index_key = std::move(val);
+            index_key->swap(val);
         } else {
             *index_key += "|" + val;
         }
@@ -1899,7 +1875,7 @@ bool MemTableSnapshot::IsCompressed(const std::string& path) {
     if (!table_index_info.Init()) {
         return {-1, "parse TableIndexInfo failed"};
     }
-    MemSnapshotMeta snapshot_meta(GenSnapshotName(), snapshot_path_);
+    MemSnapshotMeta snapshot_meta(GenSnapshotName(), snapshot_path_, FLAGS_snapshot_compression);
     auto wh = ::openmldb::log::CreateWriteHandle(FLAGS_snapshot_compression,
             snapshot_meta.snapshot_name, snapshot_meta.tmp_file_path);
     if (!wh) {
