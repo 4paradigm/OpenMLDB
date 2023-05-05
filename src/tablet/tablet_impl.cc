@@ -4754,7 +4754,7 @@ void TabletImpl::SendIndexDataInternal(std::shared_ptr<::openmldb::storage::Tabl
         if (kv.first == pid) {
             continue;
         }
-        std::string index_file_name = std::to_string(pid) + "_" + std::to_string(kv.first) + "_index.data";
+        std::string index_file_name = absl::StrCat(pid, "_", kv.first, "_index.data");
         std::string src_file = index_path + index_file_name;
         if (!::openmldb::base::IsExists(src_file)) {
             PDLOG(WARNING, "file %s does not exist. tid[%u] pid[%u]", src_file.c_str(), tid, pid);
@@ -4801,9 +4801,7 @@ void TabletImpl::SendIndexDataInternal(std::shared_ptr<::openmldb::storage::Tabl
                 auto tmp_map = std::atomic_load_explicit(&real_ep_map_, std::memory_order_acquire);
                 auto iter = tmp_map->find(kv.second);
                 if (iter == tmp_map->end()) {
-                    PDLOG(WARNING,
-                          "name %s not found in real_ep_map."
-                          "tid[%u] pid[%u]",
+                    PDLOG(WARNING, "name %s not found in real_ep_map. tid[%u] pid[%u]",
                           kv.second.c_str(), tid, pid);
                     break;
                 }
@@ -4811,22 +4809,18 @@ void TabletImpl::SendIndexDataInternal(std::shared_ptr<::openmldb::storage::Tabl
             }
             FileSender sender(tid, kv.first, table->GetStorageMode(), real_endpoint);
             if (!sender.Init()) {
-                PDLOG(WARNING,
-                      "Init FileSender failed. tid[%u] pid[%u] des_pid[%u] "
-                      "endpoint[%s]",
+                PDLOG(WARNING, "Init FileSender failed. tid[%u] pid[%u] des_pid[%u] endpoint[%s]",
                       tid, pid, kv.first, kv.second.c_str());
                 SetTaskStatus(task_ptr, ::openmldb::api::TaskStatus::kFailed);
                 return;
             }
             if (sender.SendFile(index_file_name, std::string("index"), index_path + index_file_name) < 0) {
-                PDLOG(WARNING, "send file %s failed. tid[%u] pid[%u] des_pid[%u]", index_file_name.c_str(), tid, pid,
-                      kv.first);
+                PDLOG(WARNING, "send file %s failed. tid[%u] pid[%u] des_pid[%u]",
+                        index_file_name.c_str(), tid, pid, kv.first);
                 SetTaskStatus(task_ptr, ::openmldb::api::TaskStatus::kFailed);
                 return;
             }
-            PDLOG(INFO,
-                  "send file %s to endpoint %s success. tid[%u] pid[%u] "
-                  "des_pid[%u]",
+            PDLOG(INFO, "send file %s to endpoint %s success. tid[%u] pid[%u] des_pid[%u]",
                   index_file_name.c_str(), kv.second.c_str(), tid, pid, kv.first);
         }
     }
@@ -4878,10 +4872,17 @@ void TabletImpl::DumpIndexData(RpcController* controller, const ::openmldb::api:
                 break;
             }
         }
-        std::shared_ptr<::openmldb::storage::MemTableSnapshot> memtable_snapshot =
-            std::static_pointer_cast<::openmldb::storage::MemTableSnapshot>(snapshot);
+        std::vector<::openmldb::common::ColumnKey> column_keys;
+        if (request->column_keys_size() > 0) {
+            for (const auto& column_key : request->column_keys()) {
+                column_keys.push_back(column_key);
+            }
+        } else {
+            column_keys.push_back(request->column_key());
+        }
+        auto memtable_snapshot = std::dynamic_pointer_cast<::openmldb::storage::MemTableSnapshot>(snapshot);
         task_pool_.AddTask(boost::bind(&TabletImpl::DumpIndexDataInternal, this, table, memtable_snapshot,
-                                       request->partition_num(), request->column_key(), request->idx(), task_ptr));
+                                       request->partition_num(), column_keys, request->idx(), task_ptr));
         response->set_code(::openmldb::base::ReturnCode::kOk);
         response->set_msg("ok");
         PDLOG(INFO, "dump index tid[%u] pid[%u]", tid, pid);
@@ -4891,9 +4892,9 @@ void TabletImpl::DumpIndexData(RpcController* controller, const ::openmldb::api:
 }
 
 void TabletImpl::DumpIndexDataInternal(std::shared_ptr<::openmldb::storage::Table> table,
-                                       std::shared_ptr<::openmldb::storage::MemTableSnapshot> memtable_snapshot,
-                                       uint32_t partition_num, ::openmldb::common::ColumnKey& column_key, uint32_t idx,
-                                       std::shared_ptr<::openmldb::api::TaskInfo> task) {
+        std::shared_ptr<::openmldb::storage::MemTableSnapshot> memtable_snapshot,
+        uint32_t partition_num, const std::vector<::openmldb::common::ColumnKey>& column_keys,
+        uint32_t idx, std::shared_ptr<::openmldb::api::TaskInfo> task) {
     uint32_t tid = table->GetId();
     uint32_t pid = table->GetPid();
     std::string db_root_path;
@@ -4909,24 +4910,19 @@ void TabletImpl::DumpIndexDataInternal(std::shared_ptr<::openmldb::storage::Tabl
         SetTaskStatus(task, ::openmldb::api::kFailed);
         return;
     }
-    std::vector<::openmldb::log::WriteHandle*> whs;
+    std::vector<std::shared_ptr<::openmldb::log::WriteHandle>> whs;
     for (uint32_t i = 0; i < partition_num; i++) {
-        std::string index_file_name = std::to_string(pid) + "_" + std::to_string(i) + "_index.data";
+        std::string index_file_name = absl::StrCat(pid, "_", i, "_index.data");
         std::string index_data_path = index_path + index_file_name;
         FILE* fd = fopen(index_data_path.c_str(), "wb+");
         if (fd == nullptr) {
             LOG(WARNING) << "fail to create file " << index_data_path << ". tid " << tid << " pid " << pid;
             SetTaskStatus(task, ::openmldb::api::kFailed);
-            for (auto& wh : whs) {
-                delete wh;
-                wh = nullptr;
-            }
             return;
         }
-        ::openmldb::log::WriteHandle* wh = new ::openmldb::log::WriteHandle("off", index_file_name, fd);
-        whs.push_back(wh);
+        whs.emplace_back(std::make_shared<::openmldb::log::WriteHandle>("off", index_file_name, fd));
     }
-    if (memtable_snapshot->DumpIndexData(table, column_key, idx, whs)) {
+    if (memtable_snapshot->DumpIndexData(table, column_keys, idx, whs)) {
         PDLOG(INFO, "dump index on table tid[%u] pid[%u] succeed", tid, pid);
         SetTaskStatus(task, ::openmldb::api::kDone);
     } else {
@@ -4935,8 +4931,6 @@ void TabletImpl::DumpIndexDataInternal(std::shared_ptr<::openmldb::storage::Tabl
     }
     for (auto& wh : whs) {
         wh->EndLog();
-        delete wh;
-        wh = nullptr;
     }
 }
 

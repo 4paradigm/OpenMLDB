@@ -614,6 +614,7 @@ message DumpIndexDataRequest {
     optional uint32 idx = 4;
     optional openmldb.common.ColumnKey column_key = 5;
     optional TaskInfo task_info = 6;
+    repeated openmldb.common.ColumnKey column_keys = 7;
 }
 
 message LoadIndexDataRequest {

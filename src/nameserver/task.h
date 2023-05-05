@@ -38,7 +38,6 @@ constexpr uint64_t INVALID_PARENT_ID = UINT64_MAX;
 struct Task {
     Task(std::string endpoint, std::shared_ptr<::openmldb::api::TaskInfo> task_info)
         : endpoint_(std::move(endpoint)), task_info_(std::move(task_info)) {}
-    ~Task() = default;
     std::string endpoint_;
     std::shared_ptr<::openmldb::api::TaskInfo> task_info_;
     std::vector<std::shared_ptr<Task>> sub_task_;

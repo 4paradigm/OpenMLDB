@@ -327,7 +327,7 @@ class TabletImpl : public ::openmldb::api::TabletServer {
     void DumpIndexDataInternal(std::shared_ptr<::openmldb::storage::Table> table,
                                std::shared_ptr<::openmldb::storage::MemTableSnapshot> memtable_snapshot,
                                uint32_t partition_num,
-                               ::openmldb::common::ColumnKey& column_key,  // NOLINT
+                               const std::vector<::openmldb::common::ColumnKey>& column_keys,
                                uint32_t idx, std::shared_ptr<::openmldb::api::TaskInfo> task);
 
     void SendIndexDataInternal(std::shared_ptr<::openmldb::storage::Table> table,

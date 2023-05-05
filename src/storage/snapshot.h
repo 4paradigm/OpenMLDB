@@ -26,6 +26,15 @@
 namespace openmldb {
 namespace storage {
 
+struct SnapshotMeta {
+    explicit SnapshotMeta(const std::string& name) : snapshot_name(name) {}
+
+    uint64_t count = 0;
+    uint64_t term = 0;
+    uint64_t offset = 0;
+    std::string snapshot_name;
+};
+
 class Snapshot {
  public:
     Snapshot(uint32_t tid, uint32_t pid) : tid_(tid), pid_(pid), offset_(0), making_snapshot_(false) {}
@@ -39,6 +48,7 @@ class Snapshot {
                          uint64_t& latest_offset) = 0;  // NOLINT
     uint64_t GetOffset() { return offset_; }
     int GenManifest(const std::string& snapshot_name, uint64_t key_count, uint64_t offset, uint64_t term);
+    int GenManifest(const SnapshotMeta& snapshot_meta);
     static int GetLocalManifest(const std::string& full_path,
                                 ::openmldb::api::Manifest& manifest);  // NOLINT
 
