@@ -1,0 +1,138 @@
+version: "3.8"
+
+services:
+  testing:
+    container_name: openmldb_test_client
+    build:
+      context: .
+      dockerfile: test.Dockerfile
+    restart: no
+    volumes:
+      - ./:/usr/src/openmldb-exporter
+    command:
+      - bash
+      - -ce
+      - |
+        poetry install
+        poetry run pytest --junit-xml=./pytest.xml
+    depends_on:
+      - grafana
+      - openmldb-api
+
+  grafana:
+    container_name: openmldb_grafana
+    image: grafana/grafana-oss:8.3.11
+    ports:
+      - 3000
+    depends_on:
+      - prometheus
+
+  prometheus:
+    container_name: openmldb_prometheus
+    image: prom/prometheus:v2.43.0
+    ports:
+      - 9090
+    volumes:
+      - ./res/prometheus.yml:/etc/prometheus/prometheus.yml
+    depends_on:
+      - openmldb-exporter
+      - openmldb-api
+
+  openmldb-exporter:
+    container_name: openmldb_exporter
+    # image: ghcr.io/aceforeverd/openmldb-exporter:0.6.0
+    build:
+      context: .
+      dockerfile: src.Dockerfile
+    ports:
+      - 8000
+    command:
+      - "--config.zk_root=openmldb-zk:2181"
+      - "--config.zk_path=/openmldb"
+    # exporter require openmldb cluster fully started up
+    # so it may fail at very begining, set restart to always
+    # to temporarily workaround the problem
+    restart: on-failure
+    depends_on:
+      - openmldb-ns1
+      - openmldb-ns2
+
+  openmldb-api:
+    container_name: openmldb_api
+    image: ghcr.io/aceforeverd/openmldb-server:0.7.3
+    restart: on-failure
+    command:
+      - "--role=apiserver"
+      - "--endpoint=openmldb-api:9527"
+      - "--zk_cluster=openmldb-zk:2181"
+      - "--zk_root_path=/openmldb"
+    ports:
+      - 9527
+    depends_on:
+      - openmldb-ns1
+      - openmldb-ns2
+
+  openmldb-zk:
+    container_name: openmldb_zk
+    image: zookeeper:3.4.14
+    ports:
+      - 2181
+
+  openmldb-ns1:
+    container_name: openmldb_ns1
+    image: ghcr.io/aceforeverd/openmldb-server:0.7.3
+    command:
+      - "--role=nameserver"
+      - "--endpoint=openmldb-ns1:9527"
+      - "--zk_cluster=openmldb-zk:2181"
+      - "--zk_root_path=/openmldb"
+    depends_on:
+      - openmldb-tablet1
+      - openmldb-tablet2
+      - openmldb-tablet3
+
+  openmldb-ns2:
+    container_name: openmldb_ns2
+    image: ghcr.io/aceforeverd/openmldb-server:0.7.3
+    command:
+      - "--role=nameserver"
+      - "--endpoint=openmldb-ns2:9527"
+      - "--zk_cluster=openmldb-zk:2181"
+      - "--zk_root_path=/openmldb"
+    depends_on:
+      - openmldb-tablet1
+      - openmldb-tablet2
+      - openmldb-tablet3
+
+  openmldb-tablet1:
+    container_name: openmldb_tablet1
+    image: ghcr.io/aceforeverd/openmldb-server:0.7.3
+    command:
+      - "--role=tablet"
+      - "--endpoint=openmldb-tablet1:9527"
+      - "--zk_cluster=openmldb-zk:2181"
+      - "--zk_root_path=/openmldb"
+    depends_on:
+      - openmldb-zk
+
+  openmldb-tablet2:
+    container_name: openmldb_tablet2
+    image: ghcr.io/aceforeverd/openmldb-server:0.7.3
+    command:
+      - "--role=tablet"
+      - "--endpoint=openmldb-tablet2:9527"
+      - "--zk_cluster=openmldb-zk:2181"
+      - "--zk_root_path=/openmldb"
+    depends_on:
+      - openmldb-zk
+
+  openmldb-tablet3:
+    container_name: openmldb_tablet3
+    image: ghcr.io/aceforeverd/openmldb-server:0.7.3
+    command:
+      - "--role=tablet"
+      - "--endpoint=openmldb-tablet3:9527"
+      - "--zk_cluster=openmldb-zk:2181"
+      - "--zk_root_path=/openmldb"
+    depends_on:
+      - openmldb-zk
