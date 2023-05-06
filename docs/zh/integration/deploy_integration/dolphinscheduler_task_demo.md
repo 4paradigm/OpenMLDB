@@ -4,7 +4,7 @@
 在机器学习从开发到上线的业务闭环中，数据处理、特征开发、模型训练往往要耗费大量的时间和人力。为给 AI 模型构建及应用上线提供便利，简化机器学习建模工程化的流程，我们开发了 DolphinScheduler OpenMLDB Task，将特征平台能力融入 DolphinScheduler 的工作流，链接特征工程与调度环节，打造端到端 MLOps 工作流，帮助开发者专注于业务价值的探索。本文将为大家简要介绍并实际演示 DolphinScheduler OpenMLDB Task 的操作流程。
 
 ```{seealso}
-详细的OpenMLDB Task信息，请参考[DolphinScheduler OpenMLDB Task 官方文档](https://dolphinscheduler.apache.org/#/zh-cn/docs/3.1.2/guide/task/openmldb)。
+详细的OpenMLDB Task信息，请参考[DolphinScheduler OpenMLDB Task 官方文档](https://dolphinscheduler.apache.org/zh-cn/docs/3.1.5/guide/task/openmldb)。
 ```
 
 ## 场景和功能
@@ -74,12 +74,14 @@ python3 predict_server.py --no-init > predict.log 2>&1 &
 
 **下载并运行 DolphinScheduler**
 
-DolphinScheduler 支持 OpenMLDB Task 的版本，我们直接提供了一个可供下载版本，下载地址[dolphinscheduler-bin](http://openmldb.ai/download/dolphinschduler-task/apache-dolphinscheduler-dev-SNAPSHOT-bin.tar.gz)。
+DolphinScheduler 支持 OpenMLDB Task 的版本为3.1.3及以上，本文使用3.1.5，可以到[官方](https://dolphinscheduler.apache.org/zh-cn/download/3.1.5)下载，或使用镜像网站下载。
 
-启动 DolphinScheduler standalone，步骤如下，更多请参考[官方文档](https://dolphinscheduler.apache.org/#/zh-cn/docs/3.1.2/guide/installation/standalone)。
+启动 DolphinScheduler standalone，步骤如下，更多请参考[官方文档](https://dolphinscheduler.apache.org/zh-cn/docs/3.1.5/guide/installation/standalone)。
 
 ```
-curl -SLO http://openmldb.ai/download/dolphinschduler-task/apache-dolphinscheduler-dev-SNAPSHOT-bin.tar.gz
+# 官方
+curl -SLO https://dlcdn.apache.org/dolphinscheduler/3.1.5/apache-dolphinscheduler-3.1.5-bin.tar.gz
+# 镜像 curl -SLO http://openmldb.ai/download/dolphinschduler-task/apache-dolphinscheduler-dev-3.1.5-bin.tar.gz
 tar -xvzf apache-dolphinscheduler-*-bin.tar.gz
 cd apache-dolphinscheduler-*-bin
 sed -i s#/opt/soft/python#/usr/bin/python3#g bin/env/dolphinscheduler_env.sh
@@ -87,12 +89,12 @@ sed -i s#/opt/soft/python#/usr/bin/python3#g bin/env/dolphinscheduler_env.sh
 ```
 
 ```{hint}
-目前DolphinScheduler的官方release版本的OpenMLDB Task存在问题，无法直接使用，请使用我们提供的下载版本。如需要使用更新版本的DolphinScheduler，可联系我们提供对应版本的OpenMLDB Task修复版。
+DolphinScheduler的官方release版本中，<3.1.3的旧版本里OpenMLDB Task存在问题，无法直接使用，如果使用旧版本，可联系我们提供对应版本的OpenMLDB Task修复版。3.1.3及以后的版本已经修复了这个问题，可以使用官方release版本。
 
-在更高版本的DolphinScheduler中，`bin/env/dolphinscheduler_env.sh`可能变化，需要追加配置`PYTHON_HOME`，可使用命令`echo "export PYTHON_HOME=/usr/bin/python3" >> bin/env/dolphinscheduler_env.sh`修改。
+在其他版本的DolphinScheduler中，`bin/env/dolphinscheduler_env.sh`可能变化，如果`bin/env/dolphinscheduler_env.sh`中不存在`PYTHON_HOME`，需要追加配置，可使用命令`echo "export PYTHON_HOME=/usr/bin/python3" >> bin/env/dolphinscheduler_env.sh`修改。
 ```
 
-浏览器访问地址 http://localhost:12345/dolphinscheduler/ui 即可登录系统UI（如果跨主机访问，请使用公网IP）。默认的用户名和密码是 admin/dolphinscheduler123。
+浏览器访问地址 http://localhost:12345/dolphinscheduler/ui 即可登录系统UI（默认配置即可跨主机访问，但需确保IP连接畅通）。默认的用户名和密码是 admin/dolphinscheduler123。
 
 ```{note}
 DolphinScheduler 的 worker server 需要 OpenMLDB Python SDK, DolphinScheduler standalone 的 worker 即本机，所以只需在本机安装OpenMLDB Python SDK。我们的OpenMLDB镜像中已经安装了。如果你在别的环境中，请安装openmldb sdk：`pip3 install openmldb`。
