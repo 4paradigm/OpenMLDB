@@ -26,7 +26,7 @@ SELECT ... FROM table_ref LAST JOIN table_ref ON expression;
 
 | `SELECT` Statement Elements                                | Offline Mode | Online Preview Mode | Online Request Mode | Note                                                                                                                                                                                                                                                                                                         |
 |:-----------------------------------------------------------|--------------|---------------------|---------------------|:-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| JOIN Clause                | **``✓``**    | **``✓``**           | **``✓``**           | The Join clause indicates that the data source comes from multiple joined tables. OpenMLDB currently only supports LAST JOIN. For Online Request Mode, please follow [the specification of LAST JOIN under Online Request Mode](../deployment_manage/ONLINE_REQUEST_REQUIREMENTS.md#the-usage-specification-of-last-join-under-online-serving) |
+| JOIN Clause                | **``✓``**    | **``x``**           | **``✓``**           | The Join clause indicates that the data source comes from multiple joined tables. OpenMLDB currently only supports LAST JOIN. For Online Request Mode, please follow [the specification of LAST JOIN under Online Request Mode](../deployment_manage/ONLINE_REQUEST_REQUIREMENTS.md#the-usage-specification-of-last-join-under-online-serving) |
 
 
 
