@@ -59,7 +59,13 @@ SELECT substr(COL7, 3, 6) FROM t1;
 
 - 仅支持`LAST JOIN`类型。
 - 至少有一个JOIN条件是形如`left_source.column=right_source.column`的EQUAL条件，**并且`right_source.column`列需要命中右表的索引（key 列）**。
-- 带排序LAST JOIN的情况下，`ORDER BY`只支持单列的列引用表达式，**并且列需要命中右表索引的时间列**。
+- 带排序LAST JOIN的情况下，`ORDER BY`只支持单列的列引用表达式，列类型为 int16, int32, int64 or timestamp, **并且列需要命中右表索引的时间列**。
+- 右表 TableRef
+  - 可以指一张物理表, 或者子查询语句
+  - 子查询情况, 只支持
+    - 简单列筛选 (`select * from tb` or `select id, val from tb`)
+    - 窗口聚合子查询, 例如 `select id, count(val) over w as cnt from t1 window w as (...)`. 这种情况下, 子查询和 last join 的左表必须有相同的主表, 主表指计划树下最左边的物理表节点. 
+    - **Since OpenMLDB 0.8.0** 带 WHERE 条件过滤的简单列筛选 ( 例如 `select * from tb where id > 10`)
 
 **Example: 支持上线的 `LAST JOIN` 语句范例**
 创建两张表以供后续`LAST JOIN`。

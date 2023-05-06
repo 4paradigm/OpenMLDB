@@ -60,7 +60,13 @@ SELECT substr(COL7, 3, 6) FROM t1;
 
 - Only `LAST JOIN` is supported.
 - At least one JOIN condition is an EQUAL condition like `left_table.column=right_table.column`, and the `rgith_table.column` needs to be indexed as a `KEY` of the right table.
-- In the case of LAST JOIN with sorting, `ORDER BY` only supports column expressions, and the column needs to be indexed as a timestamp (TS) of the right table.
+- In the case of LAST JOIN with sorting, `ORDER BY` only supports column expressions, all columns of type int16, int32, int64, timestamp, and the column needs to be indexed as a timestamp (TS) of the right table.
+- Right TableRef
+  - refer to a physical table name or subquery
+  - for subquery, limits to
+    - Simple Projection (`select * from tb` or `select id, val from tb`)
+    - Window subquery, e.g `select id, count(val) over w as cnt from t1 window w as (...)`.  Here the left TableRef of last join and window subquery must have the same request table, request table is the left most physical table of SQL syntax tree
+    - **Since OpenMLDB 0.8.0** WHERE claused simple projection ( 例如 `select * from tb where id > 10`)
 
 **Example**
 

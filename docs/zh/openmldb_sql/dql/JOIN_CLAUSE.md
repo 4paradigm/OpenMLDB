@@ -8,13 +8,24 @@ LAST JOIN可以看作一种特殊的LEFT JOIN。在满足JOIN条件的前提下�
 - 排序拼接是指：先对右表排序，然后再拼接。
 
 与LEFT JOIN相同，LAST JOIN也会返回左表中所有行，即使右表中没有匹配的行。
+
 ## Syntax
 
 ```
 JoinClause
-         ::= TableRef JoinType 'JOIN' TableRef [OrderClause] 'ON' Expression 
+         ::= TableRef JoinType 'JOIN' TableRef [OrderByClause] 'ON' Expression 
+
 JoinType ::= 'LAST'       
+
+OrderByClause :=  'ORDER' 'BY' <COLUMN_NAME>
 ```
+
+### 使用限制说明
+
+- ORDER BY CLAUSE
+  - `<COLUMN_NAME>` 须是单列, 类型 int16, int32, int64, timestamp, 不支持 ORDER BY 多列
+  - 不支持 ORDER BY DESC
+- TableRef: 可以指一张物理表, 或者子查询语句
 
 ## SQL语句模版
 

@@ -8,13 +8,24 @@ OpenMLDB currently only supports `LAST JOIN`.
 - The sorted join will sort the right table first, and then join two tables.
 
 Like `LEFT JOIN`, `LAST JOIN` returns all rows in the left table, even if there are no matched rows in the right table.
+
 ## Syntax
 
 ```
 JoinClause
          ::= TableRef JoinType 'JOIN' TableRef [OrderClause] 'ON' Expression 
+
 JoinType ::= 'LAST'       
+
+OrderByClause :=  'ORDER' 'BY' <COLUMN_NAME>
 ```
+
+### Usage Limits
+
+- ORDER BY CLAUSE
+  - `<COLUMN_NAME>` is single column, of type int16, int32, int64, timestamp, order by column_list not supported
+  - do not support ORDER BY DESC
+- TableRef: can be physical table name or subquery
 
 ## SQL Statement Template
 
