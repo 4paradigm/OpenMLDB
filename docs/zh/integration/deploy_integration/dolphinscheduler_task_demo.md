@@ -208,4 +208,4 @@ curl -X POST 127.0.0.1:8881/predict -d '{"ip": 114904,
 ./bin/dolphinscheduler-daemon.sh start standalone-server
 ```
 
-如果想要保留元数据，请参考[伪集群部署](https://dolphinscheduler.apache.org/#/zh-cn/docs/3.1.2/guide/installation/pseudo-cluster)配置数据库。
+如果想要保留元数据，请参考[伪集群部署](https://dolphinscheduler.apache.org/zh-cn/docs/3.1.5/guide/installation/pseudo-cluster)配置数据库。
