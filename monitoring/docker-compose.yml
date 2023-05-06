@@ -6,7 +6,6 @@ services:
     build:
       context: .
       dockerfile: test.Dockerfile
-    restart: no
     volumes:
       - ./:/usr/src/openmldb-exporter
     command:
@@ -49,9 +48,6 @@ services:
     command:
       - "--config.zk_root=openmldb-zk:2181"
       - "--config.zk_path=/openmldb"
-    # exporter require openmldb cluster fully started up
-    # so it may fail at very begining, set restart to always
-    # to temporarily workaround the problem
     restart: on-failure
     depends_on:
       - openmldb-ns1

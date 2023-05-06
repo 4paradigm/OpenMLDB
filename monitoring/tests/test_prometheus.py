@@ -1,14 +1,13 @@
 import requests
 
-prom_url = 'http://prometheus:9090'
 
 # server is healthy itself
-def test_prometheus_healthy():
+def test_prometheus_healthy(prom_url):
     response = requests.get(f"{prom_url}/-/healthy")
     assert response.status_code == 200
 
 
-def test_prometheus_targets():
+def test_prometheus_targets(prom_url):
     response = requests.get(f"{prom_url}/api/v1/targets")
     response_json = response.json()
 

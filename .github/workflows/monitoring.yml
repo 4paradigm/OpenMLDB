@@ -56,6 +56,8 @@ jobs:
         uses: EnricoMi/publish-unit-test-result-action@v2
         if: always()
         with:
+          check_name: Monitoring integration test
+          comment_title: Monitoring integration test
           files: |
             ./monitoring/pytest.xml
 
