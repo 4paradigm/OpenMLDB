@@ -52,17 +52,14 @@ public class DataParser {
             }
             ColumnDesc col = schema.get(i);
             Object value = rowView.getValue(i, col.getDataType());
-            String appendStr = value==null? "null":value.toString();
+            String appendStr = value == null ? "null" : value.toString();
             if (value instanceof String) {
                 // escape for string
-                appendStr = StringEscapeUtils.escapeJson((String) value);
+                appendStr = String.format("\"%s\"", StringEscapeUtils.escapeJson((String) value));
             }
-            // TODO(hw): escape for date?
+            // bool, date and timestamp string can be read by spark
+            // bool: true, date: 2023-04-11, timestamp: 2001-09-09T09:46:39.999+08:00
             sb.append(appendStr);
-            // case kDate:
-            // rowView.getDate(i);
-            // case kTimestamp:
-            // value = rowView.getTimestamp(i);
         }
         return sb.toString();
     }
