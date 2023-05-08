@@ -136,36 +136,6 @@ def inspect_offline(args):
     print("\n".join(jobs_show))
 
 
-def get_finished_jobs(jobs, conn):
-    finished_jobs = [row for row in jobs if row[2].lower() == "finished"]
-    job = finished_jobs[0]
-    std_output = conn.execfetch(f"SHOW JOBLOG {job[0]}")
-    log_parser(std_output[0][0])
-
-
-def get_running_jobs(jobs):
-    running_jobs = [" ".join(map(str, row)) for row in jobs if row[2].lower() == "running"]
-    print(f"{len(running_jobs)} running jobs")
-    print("\n".join(running_jobs))
-
-
-def get_failed_jobs(jobs, conn):
-    # only FINAL_STATE "finished", "failed", "killed", "lost"
-    final_failed = ["failed", "killed", "lost"]
-    failed_jobs = []
-    for row in jobs:
-        if row[2].lower() in final_failed:
-            failed_jobs.append(" ".join(map(str, row)))
-            # DO NOT try to print rs in execfetch, it's too long
-            std_output = conn.execfetch(f"SHOW JOBLOG {row[0]}")
-            # log rs schema is FORMAT_STRING_KEY
-            assert len(std_output) == 1 and len(std_output[0]) == 1
-            print(f"{row[0]}-{row[1]} failed, job log:\n{std_output[0][0]}")
-    if failed_jobs:
-        failed_jobs_str = "\n".join(failed_jobs)
-        raise AssertionError(f"failed jobs:\n{failed_jobs_str}")
-    print("all offline final jobs are finished")
-
 def get_status_jobs(status: str, jobs):
     job_status_field = {
         "running": ["running"],
@@ -178,8 +148,8 @@ def get_status_jobs(status: str, jobs):
 
 def inspect_job(args):
     assert getattr(args, "id", False), "need `--id`"
-    job_id = args.id
     conn = Connector()
+    job_id = args.id
     std_output = conn.execfetch(f"SHOW JOBLOG {job_id}")
     assert len(std_output) == 1 and len(std_output[0]) == 1
     err_messages = log_parser(std_output[0][0])
