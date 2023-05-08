@@ -130,19 +130,19 @@ def inspect_offline(args):
     print(f"inspect {len(jobs)} offline jobs")
     # jobs sorted by id
     jobs.sort(key=lambda x: x[0])
-    job_stauts = getattr(args, "job_status", "failed")
-    jobs_num, jobs_show = get_status_jobs(job_stauts, jobs)
-    print(f"{jobs_num} {job_stauts} jobs")
-    print("\n".join(jobs_show))
+    job_state = getattr(args, "state", "failed")
+    jobs_num, jobs_show = get_state_jobs(job_state, jobs)
+    print(f"{jobs_num} {job_state} jobs")
+    print(*jobs_show, sep="\n")
 
 
-def get_status_jobs(status: str, jobs):
-    job_status_field = {
+def get_state_jobs(state: str, jobs):
+    job_state_field = {
         "running": ["running"],
         "finished": ["finished"],
         "failed": ["failed", "killed", "lost"]
     }
-    show_jobs = [" ".join(map(str, row)) for row in jobs if row[2].lower() in job_status_field[status]]
+    show_jobs = [" ".join(map(str, row)) for row in jobs if row[2].lower() in job_state_field[state]]
     return len(show_jobs), show_jobs
 
 
@@ -152,8 +152,12 @@ def inspect_job(args):
     job_id = args.id
     std_output = conn.execfetch(f"SHOW JOBLOG {job_id}")
     assert len(std_output) == 1 and len(std_output[0]) == 1
-    err_messages = log_parser(std_output[0][0])
-    print(*err_messages, sep="\n")
+    detailed_log = std_output[0][0]
+    if args.detail:
+        print(detailed_log)
+    else:
+        err_messages = log_parser(detailed_log)
+        print(*err_messages, sep="\n")
 
 
 def log_parser(log):
@@ -278,16 +282,21 @@ def parse_arg(argv):
     )
     offline.set_defaults(command=inspect_offline)
     offline.add_argument(
-        "--job_status",
+        "--state",
         default="failed",
         choices=["failed", "running", "finished"],
-        help="inspect which status offline jobs"
+        help="inspect which state offline jobs"
     )
     ins_job = inspect_sub.add_parser("job", help="inspect job by id(need to set arg id)")
     ins_job.set_defaults(command=inspect_job)
     ins_job.add_argument(
         "--id",
         help="job id"
+    )
+    ins_job.add_argument(
+        "--detail",
+        action="store_true",
+        help="show detailed log information"
     )
 
     # sub test
