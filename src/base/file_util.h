@@ -20,9 +20,9 @@
 #include <absl/strings/match.h>
 #include <absl/strings/str_cat.h>
 #include <dirent.h>
-#include <glob.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <glob.h>
 #include <string.h>
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -337,7 +337,7 @@ inline static int HardLinkDir(const std::string& src, const std::string& dest) {
         return -3;
     }
     std::vector<std::string> files;
-    if (GetSubFiles(src, files)!=0) {
+    if (GetSubFiles(src, files) != 0) {
         LOG(WARNING) << "get sub files failed " << src;
         return -4;
     }
