@@ -417,7 +417,7 @@ bool DataCollectorImpl::FetchBinlogUnlocked(const std::string& name, const std::
             auto src = binlog_path + file_name;
             auto dst = binlog_hardlink_path + file_name;
             if (fs::exists(dst)) {
-                // hardlinked before, skip. TODO check inode?
+                // hardlinked before, skip. TODO(hw): check inode?
                 continue;
             }
             std::error_code ec;
@@ -449,7 +449,7 @@ void DataCollectorImpl::SyncOnce(uint32_t tid, uint32_t pid) {
     auto start_point = task.sync_point();
     auto mode = task.mode();
 
-    // TODO: fetch binlog in a work thread
+    // TODO(hw): fetch binlog in a work thread
     // we fetch binlog even when we read snapshot, cuz we don't want lost any binlog file, should fetch in time
     std::string binlog_path_in_db;
     {
@@ -582,7 +582,7 @@ void DataCollectorImpl::SyncOnce(uint32_t tid, uint32_t pid) {
     // Add next task.For each task, the sync progress is serial, so we add the next task to the task pool after the
     // current task is done.
     if (delay_longer) {
-        // if meet binlog end, we can delay the next sync longer TODO param
+        // if meet binlog end, we can delay the next sync longer TODO(hw): param
         task_pool_.DelayTask(FLAGS_sync_task_long_interval_ms, std::bind(&DataCollectorImpl::SyncOnce, this, tid, pid));
     } else {
         task_pool_.DelayTask(FLAGS_sync_task_short_interval_ms,
@@ -673,7 +673,7 @@ bool DataCollectorImpl::PackData(const datasync::AddSyncTaskRequest& task, butil
         std::shared_ptr<openmldb::log::LogReader> reader;
         // we read the binlog path in db, it can be shared
         // DO NOT write in the binlog path
-        // TODO what if no binlog? all in snapshot? or start offset doesn't exist(no new data)?
+        // it's ok to check no_binlog before reader
         {
             std::lock_guard<std::mutex> lock(process_map_mutex_);
             if (replicator_map_.find(name) == replicator_map_.end()) {
@@ -733,7 +733,7 @@ bool DataCollectorImpl::PackSNAPSHOT(std::shared_ptr<storage::TraverseIterator> 
     return !it->Valid();
 }
 
-// TODO what if SchedDelBinlog is called in tablet server when we are reading binlog?
+// TODO(hw): what if SchedDelBinlog is called in tablet server when we are reading binlog?
 // return the next offset to read?
 template <typename Func>
 int PackRecords(std::shared_ptr<log::LogReader> reader, uint64_t start_offset, Func&& pack_func, uint64_t* next_offset,
@@ -753,11 +753,11 @@ int PackRecords(std::shared_ptr<log::LogReader> reader, uint64_t start_offset, F
                 LOG(ERROR) << "parse log entry failed, skip it. " << base::DebugString(record.ToString());
                 continue;
             }
-            // TODO just skip delete record?
+            // TODO(hw): just skip delete record?
             if (entry.has_method_type() && entry.method_type() == api::MethodType::kDelete) {
                 continue;
             }
-            // TODO: need check index in order?
+            // TODO(hw): need check index in order?
             if (entry.log_index() >= start_offset) {
                 if (!pack_func(entry.ts(), entry.value())) {
                     // stop pack, current entry is exclude, so read in next.
@@ -790,7 +790,7 @@ int PackRecords(std::shared_ptr<log::LogReader> reader, uint64_t start_offset, F
             *meet_binlog_end = true;
             return 0;
         } else {
-            // TODO: should abort when read failed?
+            // TODO(hw): should abort when read failed?
             LOG(ERROR) << "read record failed, skip it, status: " << status.ToString();
             continue;
         }
@@ -902,7 +902,7 @@ void DataCollectorImpl::CleanTaskEnv(const std::string& name) {
         std::lock_guard<std::mutex> lock(cache_mutex_);
         binlog_path_map_.erase(name);
     }
-    // TODO: store some history data?
+    // TODO(hw): store some history data?
     fs::remove_all(GetWorkDir(name));
 }
 }  // namespace openmldb::datacollector

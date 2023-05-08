@@ -96,9 +96,9 @@ case $OP in
             fi
             if [ -f "./conf/${COMPONENT}.properties" ]; then
                 echo "Rewrite properties by ./conf/${COMPONENT}.properties"
-                cp ./conf/${COMPONENT}.properties ./${COMPONENT}/conf/${COMPONENT}.properties
+                cp ./conf/"${COMPONENT}".properties ./"${COMPONENT}"/conf/"${COMPONENT}".properties
             fi
-            pushd ./$COMPONENT/bin/ > /dev/null
+            pushd ./"$COMPONENT"/bin/ > /dev/null
             if [ "$DAEMON_MODE" = "true" ]; then
                 "${ROOTDIR}"/"${MON_BINARY}" "./${COMPONENT}.sh" -d -s 10 -l "$LOG_DIR"/"$COMPONENT"_mon.log -m "${ROOTDIR}/${OPENMLDB_PID_FILE}" -p "${ROOTDIR}/${OPENMLDB_PID_FILE}.child"
                 sleep 3
@@ -106,16 +106,16 @@ case $OP in
                 PID=$(tr -d '\0' < "${ROOTDIR}/${OPENMLDB_PID_FILE}.child")
                 echo "mon pid is $MON_PID, process pid is $PID, check $PID status"
             else
-                sh ./${COMPONENT}.sh > "$LOG_DIR"/"$COMPONENT".log 2>&1 &
+                sh ./"${COMPONENT}".sh > "$LOG_DIR"/"$COMPONENT".log 2>&1 &
                 PID=$!
                 echo "process pid is $PID"
             fi
 
             popd > /dev/null 
             sleep 10
-            if kill -0 $PID > /dev/null 2>&1; then
+            if kill -0 "$PID" > /dev/null 2>&1; then
                 if [ "$DAEMON_MODE" != "true" ]; then
-                    echo $PID > "$OPENMLDB_PID_FILE"
+                    echo "$PID" > "$OPENMLDB_PID_FILE"
                 fi
                 echo "Start ${COMPONENT} success"
                 exit 0

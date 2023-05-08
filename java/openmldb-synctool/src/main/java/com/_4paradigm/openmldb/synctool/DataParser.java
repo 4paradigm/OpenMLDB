@@ -60,8 +60,7 @@ public class DataParser {
             // TODO(hw): escape for date?
             sb.append(appendStr);
             // case kDate:
-            // // rowView.getDate(i);
-            // break;
+            // rowView.getDate(i);
             // case kTimestamp:
             // value = rowView.getTimestamp(i);
         }
