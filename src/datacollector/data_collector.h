@@ -34,7 +34,7 @@
 DECLARE_int32(request_timeout_ms);
 namespace openmldb::datacollector {
 
-static const std::string kDataCollectorRegisterPath = "/sync_tool/collector";
+static const char kDataCollectorRegisterPath[] = "/sync_tool/collector";
 
 // To hold log parts, we get log reader from log replicator
 std::shared_ptr<replica::LogReplicator> genLogReplicatorFromBinlog(const std::string& binlog_path);
@@ -48,14 +48,15 @@ bool HardLinkSnapshot(const std::string& snapshot_path, const std::string& dest,
 bool SaveTaskInfoInDisk(const datasync::AddSyncTaskRequest* info, const std::string& path);
 class SyncToolClient {
  public:
-    SyncToolClient(const std::string& endpoint) : client_(endpoint) {}
+    explicit SyncToolClient(const std::string& endpoint) : client_(endpoint) {}
     ~SyncToolClient() {}
     bool Init() {
         if (client_.Init() != 0) return false;
         return true;
     }
     // if ok, check repsonse, otherwise do not use response
-    bool SendData(const datasync::SendDataRequest* request, butil::IOBuf& data, datasync::SendDataResponse* response) {
+    bool SendData(const datasync::SendDataRequest* request, butil::IOBuf& data,
+                  datasync::SendDataResponse* response) {  // NOLINT
         // TODO(hw): IOBufAppender is better?
         auto st = client_.SendRequestSt(&datasync::SyncTool_Stub::SendData,
                                         [&data](brpc::Controller* cntl) { cntl->request_attachment().swap(data); },
@@ -108,7 +109,7 @@ class DataCollectorImpl : public datasync::DataCollector {
     void CreateTaskEnv(const datasync::AddSyncTaskRequest* request, datasync::GeneralResponse* response);
 
     void CleanTaskEnv(const std::string& name);
-    
+
     std::string EncodeId(uint32_t tid, uint32_t pid) { return std::to_string(tid) + "-" + std::to_string(pid); }
 
     std::string GetWorkDir(const std::string& name);
@@ -132,7 +133,7 @@ class DataCollectorImpl : public datasync::DataCollector {
     bool ValidateTableStatus(const api::TableStatus& table_status);
     bool CreateSnapshotEnvUnlocked(const std::string& name, const api::TableMeta& meta,
                                    const std::string& snapshot_path);
-    bool FetchBinlogUnlocked(const std::string& name, const std::string& binlog_path, bool *updated);
+    bool FetchBinlogUnlocked(const std::string& name, const std::string& binlog_path, bool* updated);
 
     bool PackData(const datasync::AddSyncTaskRequest& task, butil::IOBuf* io_buf, uint64_t* count,
                   datasync::SyncPoint* next_point, bool* meet_binlog_end);
@@ -157,6 +158,7 @@ class DataCollectorImpl : public datasync::DataCollector {
         }
         return it->second;
     }
+
  private:
     std::shared_ptr<zk::ZkClient> zk_client_;
     // zk background thread

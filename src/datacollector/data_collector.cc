@@ -17,6 +17,10 @@
 #include "datacollector/data_collector.h"
 
 #include <fstream>
+#include <map>
+#include <string>
+#include <utility>
+#include <vector>
 
 #include "absl/strings/str_join.h"
 #include "boost/algorithm/string/predicate.hpp"
@@ -32,7 +36,6 @@ DECLARE_string(zk_root_path);
 DECLARE_int32(thread_pool_size);
 DECLARE_int32(zk_session_timeout);
 DECLARE_int32(zk_keep_alive_check_interval);
-
 DEFINE_int32(task_thread_pool_size, 32, "thread pool size for exec sync task");
 DEFINE_string(collector_datadir, "/tmp/openmldb/datacollector",
               "data collector dir for meta data and snapshot hard link");
@@ -47,9 +50,7 @@ DEFINE_uint64(sync_task_short_interval_ms, 1000,
               "sync_task.check_period");
 
 namespace fs = std::filesystem;
-
 namespace openmldb::datacollector {
-
 // not thread safe
 std::string LogPartsToString(replica::LogParts* log_parts) {
     std::stringstream ss;
@@ -75,7 +76,6 @@ std::shared_ptr<replica::LogReplicator> genLogReplicatorFromParent(const std::st
         LOG(ERROR) << "init log replicator failed";
         return {};
     }
-
     // debug info
     LOG(INFO) << "log parts: " << LogPartsToString(replicator->GetLogPart());
     return replicator;
@@ -767,10 +767,10 @@ int PackRecords(std::shared_ptr<log::LogReader> reader, uint64_t start_offset, F
                 }
                 *next_offset = entry.log_index() + 1;
             }
-        }
-        // handle not ok status
-        // ref Binlog::RecoverFromBinlog, but don't use it directly, cuz we can't modify the binlog in db
-        else if (status.IsWaitRecord()) {
+        } else if (status.IsWaitRecord()) {
+            // handle unfinished binlog file
+            // ref Binlog::RecoverFromBinlog, but don't use it directly, cuz we can't modify the binlog in db
+            // it isn't an error status, just wait for next record
             int end_log_index = reader->GetEndLogIndex();
             int cur_log_index = reader->GetLogIndex();
             if (end_log_index >= 0 && end_log_index > cur_log_index) {
