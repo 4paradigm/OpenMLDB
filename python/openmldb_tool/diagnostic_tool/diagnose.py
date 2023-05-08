@@ -15,6 +15,7 @@
 # limitations under the License.
 
 import argparse
+import re
 import textwrap
 
 from diagnostic_tool.connector import Connector
@@ -72,7 +73,8 @@ def status(args):
     """use OpenMLDB Python SDK to connect OpenMLDB"""
     connect = Connector()
     status_checker = checker.StatusChecker(connect)
-    if not status_checker.check_components(): print("some components is offline")
+    if not status_checker.check_components():
+        print("some components is offline")
 
     # --diff with dist conf file, conf_file is required
     if args.diff:
@@ -114,10 +116,9 @@ def insepct_online(args):
     assert not fails, f"unhealthy tables: {fails}"
     print(f"all tables are healthy")
 
-    if hasattr(args, 'dist'):
-        if args.dist:
-            table_checker = TableChecker(conn)
-            table_checker.check_distribution(dbs=flags.FLAGS.db.split(","))
+    if getattr(args, 'dist', False):
+        table_checker = TableChecker(conn)
+        table_checker.check_distribution(dbs=flags.FLAGS.db.split(","))
 
 
 def inspect_offline(args):
@@ -127,22 +128,91 @@ def inspect_offline(args):
     jobs = conn.execfetch("SHOW JOBS")
     # TODO some failed jobs are known, what if we want skip them?
     print(f"inspect {len(jobs)} offline jobs")
-    fails = []
     # jobs sorted by id
     jobs.sort(key=lambda x: x[0])
+    job_stauts = getattr(args, "job_status", "failed")
+    jobs_num, jobs_show = get_status_jobs(job_stauts, jobs)
+    print(f"{jobs_num} {job_stauts} jobs")
+    print("\n".join(jobs_show))
+
+
+def get_finished_jobs(jobs, conn):
+    finished_jobs = [row for row in jobs if row[2].lower() == "finished"]
+    job = finished_jobs[0]
+    std_output = conn.execfetch(f"SHOW JOBLOG {job[0]}")
+    log_parser(std_output[0][0])
+
+
+def get_running_jobs(jobs):
+    running_jobs = [" ".join(map(str, row)) for row in jobs if row[2].lower() == "running"]
+    print(f"{len(running_jobs)} running jobs")
+    print("\n".join(running_jobs))
+
+
+def get_failed_jobs(jobs, conn):
     # only FINAL_STATE "finished", "failed", "killed", "lost"
     final_failed = ["failed", "killed", "lost"]
+    failed_jobs = []
     for row in jobs:
         if row[2].lower() in final_failed:
-            fails.append(" ".join([str(x) for x in row]))
+            failed_jobs.append(" ".join(map(str, row)))
             # DO NOT try to print rs in execfetch, it's too long
             std_output = conn.execfetch(f"SHOW JOBLOG {row[0]}")
             # log rs schema is FORMAT_STRING_KEY
             assert len(std_output) == 1 and len(std_output[0]) == 1
             print(f"{row[0]}-{row[1]} failed, job log:\n{std_output[0][0]}")
-    fails_total = "\n".join(fails)
-    assert not fails, f"failed jobs:\n{fails_total}"
+    if failed_jobs:
+        failed_jobs_str = "\n".join(failed_jobs)
+        raise AssertionError(f"failed jobs:\n{failed_jobs_str}")
     print("all offline final jobs are finished")
+
+def get_status_jobs(status: str, jobs):
+    job_status_field = {
+        "running": ["running"],
+        "finished": ["finished"],
+        "failed": ["failed", "killed", "lost"]
+    }
+    show_jobs = [" ".join(map(str, row)) for row in jobs if row[2].lower() in job_status_field[status]]
+    return len(show_jobs), show_jobs
+
+
+def inspect_job(args):
+    assert getattr(args, "id", False), "need `--id`"
+    job_id = args.id
+    conn = Connector()
+    std_output = conn.execfetch(f"SHOW JOBLOG {job_id}")
+    assert len(std_output) == 1 and len(std_output[0]) == 1
+    err_messages = log_parser(std_output[0][0])
+    print(*err_messages, sep="\n")
+
+
+def log_parser(log):
+    log_lines = log.split("\n")
+    error_patterns = [
+        re.compile(r"at com.*openmldb"),
+        re.compile(r"At .*OpenMLDB"),
+        re.compile(r"Caused by"),
+        re.compile(r"^java.*Exception"),
+        re.compile(r"Exception in"),
+        re.compile(r"ERROR"),
+    ]
+
+    error_messages = []
+    skip_flag = 0
+
+    for line in log_lines:
+        for pattern in error_patterns:
+            match = pattern.search(line)
+            if match:
+                error_messages.append(line)
+                skip_flag = 1
+                break
+        else:
+            if skip_flag:
+                error_messages.append("...")
+                skip_flag = 0
+
+    return error_messages
 
 
 def test_sql(args):
@@ -237,6 +307,18 @@ def parse_arg(argv):
         "offline", help="only inspect offline jobs, check the job log"
     )
     offline.set_defaults(command=inspect_offline)
+    offline.add_argument(
+        "--job_status",
+        default="failed",
+        choices=["failed", "running", "finished"],
+        help=""
+    )
+    ins_job = inspect_sub.add_parser("job", help="inspect job by id(need to set arg id)")
+    ins_job.set_defaults(command=inspect_job)
+    ins_job.add_argument(
+        "--id",
+        help="job id"
+    )
 
     # sub test
     test_parser = subparsers.add_parser(
