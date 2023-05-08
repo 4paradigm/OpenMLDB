@@ -122,7 +122,13 @@ desc t1;
 
 - 窗口边界仅支持`PRECEDING`和`CURRENT ROW`
 - 窗口类型仅支持`ROWS`和`ROWS_RANGE`。
-- 窗口`PARTITION BY`只支持列表达式，并且列需要命中索引
-- 窗口`ORDER BY`只支持列表达式，并且列需要命中索引的时间列
+- 窗口`PARTITION BY`只支持列表达式，可以是多列，并且所有列需要命中索引，主表和 union source 的表都需要符合要求
+- 窗口`ORDER BY`只支持列表达式，只能是单列，并且列需要命中索引的时间列，主表和 union source 的表都需要符合要求
 - 可支持使用 `EXCLUDE CURRENT_ROW`，`EXCLUDE CURRENT_TIME`，`MAXSIZE`，`INSTANCE_NOT_IN_WINDOW`对窗口进行其他特殊限制，详见[OpenMLDB特有的 WindowSpec 元素](openmldb特有的-windowspec-元素)。
+- `WINDOW UNION` source 要求，支持如下格式的子查询:
+  - 表引用或者简单列筛选，例如 `t1` 或者 `select id, val from t1`。union source 和 主表的 schema 必须完全一致，并且 union source 对应的 `PARTITION BY`, `ORDER BY` 也需要命中索引
+  - **Since OpenMLDB 0.8.0**, 基于 LAST JOIN 的简单列筛选，例如 `UNION (select * from t1 last join t2 ON ...)`。索引要求：
+    - last join 查询满足 LAST JOIN 的上线要求，t1, t2 都是物理表
+    - `PARTITION BY`, `ORDER BY` 表达式对应的列只能指向 LAST JOIN 的最左边的 table (即 t1), 并且命中索引
+
 
