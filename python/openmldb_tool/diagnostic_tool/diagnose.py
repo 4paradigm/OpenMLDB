@@ -281,7 +281,7 @@ def parse_arg(argv):
         "--job_status",
         default="failed",
         choices=["failed", "running", "finished"],
-        help=""
+        help="inspect which status offline jobs"
     )
     ins_job = inspect_sub.add_parser("job", help="inspect job by id(need to set arg id)")
     ins_job.set_defaults(command=inspect_job)
