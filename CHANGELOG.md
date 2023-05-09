@@ -6,7 +6,7 @@
 - Add a new synchronization tool to automatically synchronize data from online storage to offline storage (#3256 @vagetablechic)
 - Support the new built-in functions `var_samp`, `var_pop`, `entropy`, `earth_distance`, `nth_value_where` and `add_months` (#3046 #3193 @aceforeverd)
 - Support batch read for openmldb-spark-connector (#3070 @tobegit3hub)
-- Support Kubernetes as a TaskManager backend for the offline engine (#3147 #3157 #3185 @tobegit3hub)
+- [Alpha] Support Kubernetes as a TaskManager backend for the offline engine (#3147 #3157 #3185 @tobegit3hub)
 - Support getting yarn log for `SHOW JOBLOG` (#3163 @tobegit3hub)
 - Support LAST JOIN over WHERE clause (#3134 @aceforeverd)
 - Support LAST JOIN in WINDOW UNION clause (#3205 @aceforeverd)
