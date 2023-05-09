@@ -69,16 +69,14 @@ if __name__ == "__main__":
                     "db": db, "name": table, "mode": mode, "start_ts": ts, "dest": dest})
                 print(create_task.text)
             task = args.t
+            assert len(task) > 0, 'task should not be empty'
             db, table = task.split('.')
             # just use int for mode
-            mode = args.mode # 'FULL' # default is full
+            mode = args.mode # default is full
             ts = 0 # it's safe to set ts starts from 0 when mode is 0 or 2
             if args.mode == 1:
-                # mode = 'INCREMENTAL_BY_TIMESTAMP'
                 ts = args.ts
-            # elif args.mode == 2:
-            #     mode = 'FULL_AND_CONTINUOUS'
-
+            assert len(args.dest) > 0, 'dest should not be empty'
             dest = args.dest
             create_sync_task(db, table, mode, ts, dest)
         elif args.action == 'delete':
@@ -143,8 +141,7 @@ if __name__ == "__main__":
 # except Exception as e:
 #     pass
 
-# TODO: need?
-# data collector status
+# data collector status(runtime needs rpc in data collector, file needs run on data collector host)
 # try:
 #     data_collector = '172.24.4.27:8888'
 #     # no status rpc now
