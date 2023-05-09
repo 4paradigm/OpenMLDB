@@ -15,8 +15,8 @@
 # limitations under the License.
 
 import argparse
-import re
 import textwrap
+import time
 
 from diagnostic_tool.connector import Connector
 from diagnostic_tool.dist_conf import read_conf
@@ -28,6 +28,7 @@ from diagnostic_tool.log_analyzer import LogAnalyzer
 from diagnostic_tool.collector import Collector
 import diagnostic_tool.server_checker as checker
 from diagnostic_tool.table_checker import TableChecker
+from diagnostic_tool.parser import log_parser
 
 from absl import app
 from absl import flags
@@ -123,34 +124,46 @@ def insepct_online(args):
 
 def inspect_offline(args):
     """scan jobs status, show job log if failed"""
+    final_failed = "failed,killed,lost"
+    total, num, jobs = _get_jobs(final_failed)
+    # TODO some failed jobs are known, what if we want skip them?
+    print(f"inspect {total} offline jobs")
+    if num:
+        failed_jobs_str = "\n".join(jobs)
+        AssertionError(f"{num} offline final jobs are failed\nfailed jobs:\n{failed_jobs_str}")
+    print("all offline final jobs are finished")
+
+
+def _get_jobs(state: str = "all"):
     assert checker.StatusChecker(Connector()).offline_support()
     conn = Connector()
     jobs = conn.execfetch("SHOW JOBS")
-    # TODO some failed jobs are known, what if we want skip them?
-    print(f"inspect {len(jobs)} offline jobs")
+    total_num = len(jobs)
     # jobs sorted by id
     jobs.sort(key=lambda x: x[0])
-    job_state = getattr(args, "state", "failed")
-    jobs_num, jobs_show = get_state_jobs(job_state, jobs)
-    print(f"{jobs_num} {job_state} jobs")
-    print(*jobs_show, sep="\n")
+    if state == "all":
+        return total_num, total_num, [_format_job_row(row) for row in jobs]
+    show_jobs = [_format_job_row(row) for row in jobs if row[2].lower() in state.split(",")]
+    return total_num, len(show_jobs), show_jobs
 
 
-def get_state_jobs(state: str, jobs):
-    job_state_field = {
-        "running": ["running"],
-        "finished": ["finished"],
-        "failed": ["failed", "killed", "lost"]
-    }
-    show_jobs = [" ".join(map(str, row)) for row in jobs if row[2].lower() in job_state_field[state]]
-    return len(show_jobs), show_jobs
+def _format_job_row(row):
+    row = list(row)
+    row[3] = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(row[3] / 1000))
+    row[4] = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(row[4] / 1000))
+    return " ".join(map(str, row))
 
 
 def inspect_job(args):
-    assert getattr(args, "id", False), "need `--id`"
+    if not args.id:
+        total, num, jobs = _get_jobs(args.state)
+        print(f"inspect {total} offline jobs")
+        if args.state != "all":
+            print(f"{num} {args.state} jobs")
+        print(*jobs, sep="\n")
+        return
     conn = Connector()
-    job_id = args.id
-    std_output = conn.execfetch(f"SHOW JOBLOG {job_id}")
+    std_output = conn.execfetch(f"SHOW JOBLOG {args.id}")
     assert len(std_output) == 1 and len(std_output[0]) == 1
     detailed_log = std_output[0][0]
     if args.detail:
@@ -158,35 +171,6 @@ def inspect_job(args):
     else:
         err_messages = log_parser(detailed_log)
         print(*err_messages, sep="\n")
-
-
-def log_parser(log):
-    log_lines = log.split("\n")
-    error_patterns = [
-        re.compile(r"at com.*openmldb"),
-        re.compile(r"At .*OpenMLDB"),
-        re.compile(r"Caused by"),
-        re.compile(r"^java.*Exception"),
-        re.compile(r"Exception in"),
-        re.compile(r"ERROR"),
-    ]
-
-    error_messages = []
-    skip_flag = 0
-
-    for line in log_lines:
-        for pattern in error_patterns:
-            match = pattern.search(line)
-            if match:
-                error_messages.append(line)
-                skip_flag = 1
-                break
-        else:
-            if skip_flag:
-                error_messages.append("...")
-                skip_flag = 0
-
-    return error_messages
 
 
 def test_sql(args):
@@ -281,14 +265,13 @@ def parse_arg(argv):
         "offline", help="only inspect offline jobs, check the job log"
     )
     offline.set_defaults(command=inspect_offline)
-    offline.add_argument(
-        "--state",
-        default="failed",
-        choices=["failed", "running", "finished"],
-        help="inspect which state offline jobs"
-    )
     ins_job = inspect_sub.add_parser("job", help="inspect job by id(need to set arg id)")
     ins_job.set_defaults(command=inspect_job)
+    ins_job.add_argument(
+        "--state",
+        default="all",
+        help="inspect which state offline jobs"
+    )
     ins_job.add_argument(
         "--id",
         help="job id"
