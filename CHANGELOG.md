@@ -15,6 +15,7 @@
 - Enhance the diagnostic tool (#3224 #3208 @zhangziheng01233)
 - Add Sync tool to sync data from online to offline automatically (#3256 @vagetablechic)
 - Add `SKIP_INDEX_CHECK` option to skip index checking when deploying SQLs (#3241 @dl239)
+- Support symbolic paths for offline table (#3235 @tobegit3hub)
 - Improve the documents (#3104 #2993 @selenachenjingxin, #3113 #3118 #3239 @tobegit3hub, #3150 #3184 #3237 @aceforeverd, #3160 #3195 #3197 #3223 @lumianph, #3192 #3215 @haseeb-xd, #3201 #3220 #3232 #3236 #3254 @vagetablechicken, #3213 @alexab612, #3189 #3199 @TanZiYen)
 - Other minor features (#3115 #3143 #3182 @tobegit3hub, #2818 #3123 @aceforeverd, #3128 #3127 @dl239)
 
