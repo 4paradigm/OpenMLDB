@@ -1,0 +1,441 @@
+2023-05-08 18:58:38,969 WARN util.Utils: Your hostname, localhost resolves to a loopback address: 127.0.0.1; using 10.100.121.245 instead (on interface eth0)
+2023-05-08 18:58:38,970 WARN util.Utils: Set SPARK_LOCAL_IP if you need to bind to another address
+2023-05-08 18:58:39,530 WARN util.NativeCodeLoader: Unable to load native-hadoop library for your platform... using builtin-java classes where applicable
+2023-05-08 18:58:39,886 WARN util.DependencyUtils: Skip remote jar hdfs://172.24.4.39:9000/tmp/openmldb-batchjob-0.7.0-SNAPSHOT.jar.
+2023-05-08 18:58:40,056 INFO client.RMProxy: Connecting to ResourceManager at /172.24.4.39:18032
+2023-05-08 18:58:40,286 INFO yarn.Client: Requesting a new application from cluster with 1 NodeManagers
+2023-05-08 18:58:40,706 INFO yarn.Client: Verifying our application has not requested more than the maximum memory capability of the cluster (8192 MB per container)
+2023-05-08 18:58:40,707 INFO yarn.Client: Will allocate AM container, with 1408 MB memory including 384 MB overhead
+2023-05-08 18:58:40,709 INFO yarn.Client: Setting up container launch context for our AM
+2023-05-08 18:58:40,709 INFO yarn.Client: Setting up the launch environment for our AM container
+2023-05-08 18:58:40,720 INFO yarn.Client: Preparing resources for our AM container
+2023-05-08 18:58:40,918 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/HikariCP-2.5.1.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/HikariCP-2.5.1.jar
+2023-05-08 18:58:41,558 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/JLargeArrays-1.5.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/JLargeArrays-1.5.jar
+2023-05-08 18:58:41,792 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/JTransforms-3.1.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/JTransforms-3.1.jar
+2023-05-08 18:58:42,117 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/RoaringBitmap-0.9.0.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/RoaringBitmap-0.9.0.jar
+2023-05-08 18:58:42,351 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/ST4-4.0.4.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/ST4-4.0.4.jar
+2023-05-08 18:58:42,576 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/activation-1.1.1.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/activation-1.1.1.jar
+2023-05-08 18:58:42,784 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/aircompressor-0.21.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/aircompressor-0.21.jar
+2023-05-08 18:58:43,001 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/algebra_2.12-2.0.1.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/algebra_2.12-2.0.1.jar
+2023-05-08 18:58:43,326 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/annotations-17.0.0.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/annotations-17.0.0.jar
+2023-05-08 18:58:43,526 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/antlr-runtime-3.5.2.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/antlr-runtime-3.5.2.jar
+2023-05-08 18:58:43,742 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/antlr4-runtime-4.8.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/antlr4-runtime-4.8.jar
+2023-05-08 18:58:43,968 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/aopalliance-1.0.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/aopalliance-1.0.jar
+2023-05-08 18:58:44,193 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/aopalliance-repackaged-2.6.1.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/aopalliance-repackaged-2.6.1.jar
+2023-05-08 18:58:44,550 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/apacheds-i18n-2.0.0-M15.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/apacheds-i18n-2.0.0-M15.jar
+2023-05-08 18:58:44,759 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/apacheds-kerberos-codec-2.0.0-M15.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/apacheds-kerberos-codec-2.0.0-M15.jar
+2023-05-08 18:58:45,018 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/api-asn1-api-1.0.0-M20.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/api-asn1-api-1.0.0-M20.jar
+2023-05-08 18:58:45,218 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/api-util-1.0.0-M20.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/api-util-1.0.0-M20.jar
+2023-05-08 18:58:45,425 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/arpack-2.2.1.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/arpack-2.2.1.jar
+2023-05-08 18:58:45,634 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/arpack_combined_all-0.1.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/arpack_combined_all-0.1.jar
+2023-05-08 18:58:45,958 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/arrow-format-2.0.0.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/arrow-format-2.0.0.jar
+2023-05-08 18:58:46,167 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/arrow-memory-core-2.0.0.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/arrow-memory-core-2.0.0.jar
+2023-05-08 18:58:46,383 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/arrow-memory-netty-2.0.0.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/arrow-memory-netty-2.0.0.jar
+2023-05-08 18:58:46,583 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/arrow-vector-2.0.0.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/arrow-vector-2.0.0.jar
+2023-05-08 18:58:46,907 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/audience-annotations-0.5.0.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/audience-annotations-0.5.0.jar
+2023-05-08 18:58:47,108 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/automaton-1.11-8.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/automaton-1.11-8.jar
+2023-05-08 18:58:47,325 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/avro-1.10.2.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/avro-1.10.2.jar
+2023-05-08 18:58:47,583 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/avro-ipc-1.10.2.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/avro-ipc-1.10.2.jar
+2023-05-08 18:58:47,800 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/avro-mapred-1.10.2.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/avro-mapred-1.10.2.jar
+2023-05-08 18:58:48,017 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/blas-2.2.1.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/blas-2.2.1.jar
+2023-05-08 18:58:48,233 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/bonecp-0.8.0.RELEASE.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/bonecp-0.8.0.RELEASE.jar
+2023-05-08 18:58:48,450 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/breeze-macros_2.12-1.2.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/breeze-macros_2.12-1.2.jar
+2023-05-08 18:58:48,658 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/breeze_2.12-1.2.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/breeze_2.12-1.2.jar
+2023-05-08 18:58:49,600 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/cats-kernel_2.12-2.1.1.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/cats-kernel_2.12-2.1.1.jar
+2023-05-08 18:58:49,992 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/chill-java-0.10.0.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/chill-java-0.10.0.jar
+2023-05-08 18:58:50,200 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/chill_2.12-0.10.0.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/chill_2.12-0.10.0.jar
+2023-05-08 18:58:50,425 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/commons-beanutils-1.9.4.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/commons-beanutils-1.9.4.jar
+2023-05-08 18:58:50,658 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/commons-cli-1.2.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/commons-cli-1.2.jar
+2023-05-08 18:58:50,858 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/commons-codec-1.15.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/commons-codec-1.15.jar
+2023-05-08 18:58:51,192 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/commons-collections-3.2.2.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/commons-collections-3.2.2.jar
+2023-05-08 18:58:51,442 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/commons-compiler-3.0.16.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/commons-compiler-3.0.16.jar
+2023-05-08 18:58:51,650 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/commons-compress-1.21.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/commons-compress-1.21.jar
+2023-05-08 18:58:51,975 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/commons-configuration-1.6.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/commons-configuration-1.6.jar
+2023-05-08 18:58:52,200 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/commons-crypto-1.1.0.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/commons-crypto-1.1.0.jar
+2023-05-08 18:58:52,408 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/commons-dbcp-1.4.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/commons-dbcp-1.4.jar
+2023-05-08 18:58:52,617 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/commons-digester-1.8.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/commons-digester-1.8.jar
+2023-05-08 18:58:52,833 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/commons-httpclient-3.1.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/commons-httpclient-3.1.jar
+2023-05-08 18:58:53,058 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/commons-io-2.4.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/commons-io-2.4.jar
+2023-05-08 18:58:53,275 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/commons-lang-2.6.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/commons-lang-2.6.jar
+2023-05-08 18:58:53,500 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/commons-lang3-3.12.0.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/commons-lang3-3.12.0.jar
+2023-05-08 18:58:53,757 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/commons-logging-1.1.3.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/commons-logging-1.1.3.jar
+2023-05-08 18:58:53,967 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/commons-math3-3.4.1.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/commons-math3-3.4.1.jar
+2023-05-08 18:58:54,542 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/commons-net-3.1.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/commons-net-3.1.jar
+2023-05-08 18:58:54,766 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/commons-pool-1.5.4.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/commons-pool-1.5.4.jar
+2023-05-08 18:58:54,975 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/commons-text-1.6.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/commons-text-1.6.jar
+2023-05-08 18:58:55,191 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/compress-lzf-1.0.3.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/compress-lzf-1.0.3.jar
+2023-05-08 18:58:55,400 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/core-1.1.2.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/core-1.1.2.jar
+2023-05-08 18:58:55,608 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/curator-client-4.2.0.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/curator-client-4.2.0.jar
+2023-05-08 18:58:56,067 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/curator-framework-4.2.0.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/curator-framework-4.2.0.jar
+2023-05-08 18:58:56,300 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/curator-recipes-4.2.0.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/curator-recipes-4.2.0.jar
+2023-05-08 18:58:56,525 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/datanucleus-api-jdo-4.2.4.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/datanucleus-api-jdo-4.2.4.jar
+2023-05-08 18:58:56,750 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/datanucleus-core-4.1.17.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/datanucleus-core-4.1.17.jar
+2023-05-08 18:58:57,074 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/datanucleus-rdbms-4.1.19.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/datanucleus-rdbms-4.1.19.jar
+2023-05-08 18:58:57,399 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/derby-10.14.2.0.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/derby-10.14.2.0.jar
+2023-05-08 18:58:57,784 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/dropwizard-metrics-hadoop-metrics2-reporter-0.1.2.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/dropwizard-metrics-hadoop-metrics2-reporter-0.1.2.jar
+2023-05-08 18:58:57,983 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/flatbuffers-java-1.9.0.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/flatbuffers-java-1.9.0.jar
+2023-05-08 18:58:58,183 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/generex-1.0.2.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/generex-1.0.2.jar
+2023-05-08 18:58:58,382 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/gson-2.2.4.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/gson-2.2.4.jar
+2023-05-08 18:58:58,599 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/guava-14.0.1.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/guava-14.0.1.jar
+2023-05-08 18:58:58,932 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/guice-3.0.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/guice-3.0.jar
+2023-05-08 18:58:59,208 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/guice-servlet-3.0.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/guice-servlet-3.0.jar
+2023-05-08 18:58:59,415 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/hadoop-annotations-2.7.4.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/hadoop-annotations-2.7.4.jar
+2023-05-08 18:58:59,616 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/hadoop-auth-2.7.4.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/hadoop-auth-2.7.4.jar
+2023-05-08 18:58:59,924 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/hadoop-client-2.7.4.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/hadoop-client-2.7.4.jar
+2023-05-08 18:59:00,123 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/hadoop-common-2.7.4.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/hadoop-common-2.7.4.jar
+2023-05-08 18:59:00,548 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/hadoop-hdfs-2.7.4.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/hadoop-hdfs-2.7.4.jar
+2023-05-08 18:59:01,316 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/hadoop-mapreduce-client-app-2.7.4.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/hadoop-mapreduce-client-app-2.7.4.jar
+2023-05-08 18:59:01,558 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/hadoop-mapreduce-client-common-2.7.4.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/hadoop-mapreduce-client-common-2.7.4.jar
+2023-05-08 18:59:01,883 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/hadoop-mapreduce-client-core-2.7.4.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/hadoop-mapreduce-client-core-2.7.4.jar
+2023-05-08 18:59:02,208 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/hadoop-mapreduce-client-jobclient-2.7.4.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/hadoop-mapreduce-client-jobclient-2.7.4.jar
+2023-05-08 18:59:02,416 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/hadoop-mapreduce-client-shuffle-2.7.4.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/hadoop-mapreduce-client-shuffle-2.7.4.jar
+2023-05-08 18:59:02,632 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/hadoop-yarn-api-2.7.4.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/hadoop-yarn-api-2.7.4.jar
+2023-05-08 18:59:02,966 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/hadoop-yarn-client-2.7.4.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/hadoop-yarn-client-2.7.4.jar
+2023-05-08 18:59:03,182 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/hadoop-yarn-common-2.7.4.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/hadoop-yarn-common-2.7.4.jar
+2023-05-08 18:59:03,481 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/hadoop-yarn-server-common-2.7.4.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/hadoop-yarn-server-common-2.7.4.jar
+2023-05-08 18:59:03,707 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/hadoop-yarn-server-web-proxy-2.7.4.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/hadoop-yarn-server-web-proxy-2.7.4.jar
+2023-05-08 18:59:03,916 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/hive-beeline-2.3.9.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/hive-beeline-2.3.9.jar
+2023-05-08 18:59:04,164 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/hive-cli-2.3.9.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/hive-cli-2.3.9.jar
+2023-05-08 18:59:04,374 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/hive-common-2.3.9.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/hive-common-2.3.9.jar
+2023-05-08 18:59:04,607 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/hive-exec-2.3.9-core.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/hive-exec-2.3.9-core.jar
+2023-05-08 18:59:05,458 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/hive-jdbc-2.3.9.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/hive-jdbc-2.3.9.jar
+2023-05-08 18:59:05,674 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/hive-llap-common-2.3.9.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/hive-llap-common-2.3.9.jar
+2023-05-08 18:59:05,898 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/hive-metastore-2.3.9.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/hive-metastore-2.3.9.jar
+2023-05-08 18:59:06,575 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/hive-serde-2.3.9.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/hive-serde-2.3.9.jar
+2023-05-08 18:59:06,833 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/hive-service-rpc-3.1.2.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/hive-service-rpc-3.1.2.jar
+2023-05-08 18:59:07,158 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/hive-shims-0.23-2.3.9.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/hive-shims-0.23-2.3.9.jar
+2023-05-08 18:59:07,365 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/hive-shims-2.3.9.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/hive-shims-2.3.9.jar
+2023-05-08 18:59:07,558 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/hive-shims-common-2.3.9.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/hive-shims-common-2.3.9.jar
+2023-05-08 18:59:07,765 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/hive-shims-scheduler-2.3.9.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/hive-shims-scheduler-2.3.9.jar
+2023-05-08 18:59:07,947 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/hive-storage-api-2.7.2.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/hive-storage-api-2.7.2.jar
+2023-05-08 18:59:08,174 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/hive-vector-code-gen-2.3.9.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/hive-vector-code-gen-2.3.9.jar
+2023-05-08 18:59:08,374 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/hk2-api-2.6.1.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/hk2-api-2.6.1.jar
+2023-05-08 18:59:08,589 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/hk2-locator-2.6.1.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/hk2-locator-2.6.1.jar
+2023-05-08 18:59:08,832 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/hk2-utils-2.6.1.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/hk2-utils-2.6.1.jar
+2023-05-08 18:59:09,049 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/htrace-core-3.1.0-incubating.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/htrace-core-3.1.0-incubating.jar
+2023-05-08 18:59:09,374 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/httpclient-4.5.13.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/httpclient-4.5.13.jar
+2023-05-08 18:59:09,624 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/httpcore-4.4.14.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/httpcore-4.4.14.jar
+2023-05-08 18:59:09,922 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/istack-commons-runtime-3.0.8.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/istack-commons-runtime-3.0.8.jar
+2023-05-08 18:59:10,114 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/ivy-2.5.0.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/ivy-2.5.0.jar
+2023-05-08 18:59:10,390 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/jackson-annotations-2.12.3.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/jackson-annotations-2.12.3.jar
+2023-05-08 18:59:10,591 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/jackson-core-2.12.3.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/jackson-core-2.12.3.jar
+2023-05-08 18:59:10,807 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/jackson-core-asl-1.9.13.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/jackson-core-asl-1.9.13.jar
+2023-05-08 18:59:11,024 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/jackson-databind-2.12.3.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/jackson-databind-2.12.3.jar
+2023-05-08 18:59:11,424 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/jackson-dataformat-yaml-2.12.3.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/jackson-dataformat-yaml-2.12.3.jar
+2023-05-08 18:59:11,656 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/jackson-datatype-jsr310-2.11.2.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/jackson-datatype-jsr310-2.11.2.jar
+2023-05-08 18:59:11,866 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/jackson-jaxrs-1.9.13.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/jackson-jaxrs-1.9.13.jar
+2023-05-08 18:59:12,065 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/jackson-mapper-asl-1.9.13.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/jackson-mapper-asl-1.9.13.jar
+2023-05-08 18:59:12,324 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/jackson-module-scala_2.12-2.12.3.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/jackson-module-scala_2.12-2.12.3.jar
+2023-05-08 18:59:12,549 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/jackson-xc-1.9.13.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/jackson-xc-1.9.13.jar
+2023-05-08 18:59:12,740 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/jakarta.annotation-api-1.3.5.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/jakarta.annotation-api-1.3.5.jar
+2023-05-08 18:59:12,932 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/jakarta.inject-2.6.1.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/jakarta.inject-2.6.1.jar
+2023-05-08 18:59:13,124 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/jakarta.servlet-api-4.0.3.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/jakarta.servlet-api-4.0.3.jar
+2023-05-08 18:59:13,324 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/jakarta.validation-api-2.0.2.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/jakarta.validation-api-2.0.2.jar
+2023-05-08 18:59:13,523 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/jakarta.ws.rs-api-2.1.6.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/jakarta.ws.rs-api-2.1.6.jar
+2023-05-08 18:59:13,732 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/jakarta.xml.bind-api-2.3.2.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/jakarta.xml.bind-api-2.3.2.jar
+2023-05-08 18:59:13,940 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/janino-3.0.16.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/janino-3.0.16.jar
+2023-05-08 18:59:14,207 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/javassist-3.25.0-GA.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/javassist-3.25.0-GA.jar
+2023-05-08 18:59:14,457 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/javax.inject-1.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/javax.inject-1.jar
+2023-05-08 18:59:14,640 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/javax.jdo-3.2.0-m3.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/javax.jdo-3.2.0-m3.jar
+2023-05-08 18:59:14,949 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/javolution-5.5.1.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/javolution-5.5.1.jar
+2023-05-08 18:59:15,174 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/jaxb-api-2.2.11.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/jaxb-api-2.2.11.jar
+2023-05-08 18:59:15,390 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/jaxb-runtime-2.3.2.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/jaxb-runtime-2.3.2.jar
+2023-05-08 18:59:15,707 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/jcl-over-slf4j-1.7.30.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/jcl-over-slf4j-1.7.30.jar
+2023-05-08 18:59:15,899 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/jdo-api-3.0.1.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/jdo-api-3.0.1.jar
+2023-05-08 18:59:16,115 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/jersey-client-2.34.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/jersey-client-2.34.jar
+2023-05-08 18:59:16,332 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/jersey-common-2.34.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/jersey-common-2.34.jar
+2023-05-08 18:59:16,707 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/jersey-container-servlet-2.34.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/jersey-container-servlet-2.34.jar
+2023-05-08 18:59:16,906 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/jersey-container-servlet-core-2.34.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/jersey-container-servlet-core-2.34.jar
+2023-05-08 18:59:17,107 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/jersey-hk2-2.34.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/jersey-hk2-2.34.jar
+2023-05-08 18:59:17,315 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/jersey-server-2.34.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/jersey-server-2.34.jar
+2023-05-08 18:59:17,565 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/jetty-6.1.26.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/jetty-6.1.26.jar
+2023-05-08 18:59:17,882 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/jetty-sslengine-6.1.26.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/jetty-sslengine-6.1.26.jar
+2023-05-08 18:59:18,074 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/jetty-util-6.1.26.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/jetty-util-6.1.26.jar
+2023-05-08 18:59:18,287 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/jline-2.14.6.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/jline-2.14.6.jar
+2023-05-08 18:59:18,515 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/joda-time-2.10.10.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/joda-time-2.10.10.jar
+2023-05-08 18:59:18,815 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/jodd-core-3.5.2.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/jodd-core-3.5.2.jar
+2023-05-08 18:59:19,300 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/jpam-1.1.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/jpam-1.1.jar
+2023-05-08 18:59:19,490 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/json-1.8.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/json-1.8.jar
+2023-05-08 18:59:19,671 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/json4s-ast_2.12-3.7.0-M11.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/json4s-ast_2.12-3.7.0-M11.jar
+2023-05-08 18:59:19,931 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/json4s-core_2.12-3.7.0-M11.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/json4s-core_2.12-3.7.0-M11.jar
+2023-05-08 18:59:20,254 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/json4s-jackson_2.12-3.7.0-M11.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/json4s-jackson_2.12-3.7.0-M11.jar
+2023-05-08 18:59:20,430 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/json4s-scalap_2.12-3.7.0-M11.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/json4s-scalap_2.12-3.7.0-M11.jar
+2023-05-08 18:59:20,681 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/jsp-api-2.1.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/jsp-api-2.1.jar
+2023-05-08 18:59:20,889 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/jsr305-3.0.0.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/jsr305-3.0.0.jar
+2023-05-08 18:59:21,081 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/jta-1.1.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/jta-1.1.jar
+2023-05-08 18:59:21,273 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/jul-to-slf4j-1.7.30.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/jul-to-slf4j-1.7.30.jar
+2023-05-08 18:59:21,465 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/kryo-shaded-4.0.2.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/kryo-shaded-4.0.2.jar
+2023-05-08 18:59:21,897 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/kubernetes-client-5.4.1.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/kubernetes-client-5.4.1.jar
+2023-05-08 18:59:22,298 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/kubernetes-model-admissionregistration-5.4.1.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/kubernetes-model-admissionregistration-5.4.1.jar
+2023-05-08 18:59:22,605 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/kubernetes-model-apiextensions-5.4.1.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/kubernetes-model-apiextensions-5.4.1.jar
+2023-05-08 18:59:22,915 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/kubernetes-model-apps-5.4.1.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/kubernetes-model-apps-5.4.1.jar
+2023-05-08 18:59:23,173 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/kubernetes-model-autoscaling-5.4.1.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/kubernetes-model-autoscaling-5.4.1.jar
+2023-05-08 18:59:23,448 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/kubernetes-model-batch-5.4.1.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/kubernetes-model-batch-5.4.1.jar
+2023-05-08 18:59:23,673 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/kubernetes-model-certificates-5.4.1.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/kubernetes-model-certificates-5.4.1.jar
+2023-05-08 18:59:23,880 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/kubernetes-model-common-5.4.1.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/kubernetes-model-common-5.4.1.jar
+2023-05-08 18:59:24,073 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/kubernetes-model-coordination-5.4.1.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/kubernetes-model-coordination-5.4.1.jar
+2023-05-08 18:59:24,379 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/kubernetes-model-core-5.4.1.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/kubernetes-model-core-5.4.1.jar
+2023-05-08 18:59:24,948 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/kubernetes-model-discovery-5.4.1.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/kubernetes-model-discovery-5.4.1.jar
+2023-05-08 18:59:25,165 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/kubernetes-model-events-5.4.1.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/kubernetes-model-events-5.4.1.jar
+2023-05-08 18:59:25,364 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/kubernetes-model-extensions-5.4.1.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/kubernetes-model-extensions-5.4.1.jar
+2023-05-08 18:59:25,630 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/kubernetes-model-flowcontrol-5.4.1.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/kubernetes-model-flowcontrol-5.4.1.jar
+2023-05-08 18:59:25,864 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/kubernetes-model-metrics-5.4.1.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/kubernetes-model-metrics-5.4.1.jar
+2023-05-08 18:59:26,071 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/kubernetes-model-networking-5.4.1.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/kubernetes-model-networking-5.4.1.jar
+2023-05-08 18:59:26,315 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/kubernetes-model-node-5.4.1.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/kubernetes-model-node-5.4.1.jar
+2023-05-08 18:59:26,523 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/kubernetes-model-policy-5.4.1.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/kubernetes-model-policy-5.4.1.jar
+2023-05-08 18:59:26,856 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/kubernetes-model-rbac-5.4.1.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/kubernetes-model-rbac-5.4.1.jar
+2023-05-08 18:59:27,081 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/kubernetes-model-scheduling-5.4.1.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/kubernetes-model-scheduling-5.4.1.jar
+2023-05-08 18:59:27,297 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/kubernetes-model-storageclass-5.4.1.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/kubernetes-model-storageclass-5.4.1.jar
+2023-05-08 18:59:27,548 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/lapack-2.2.1.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/lapack-2.2.1.jar
+2023-05-08 18:59:27,864 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/leveldbjni-all-1.8.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/leveldbjni-all-1.8.jar
+2023-05-08 18:59:28,198 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/libfb303-0.9.3.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/libfb303-0.9.3.jar
+2023-05-08 18:59:28,440 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/libthrift-0.12.0.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/libthrift-0.12.0.jar
+2023-05-08 18:59:28,673 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/log4j-1.2.17.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/log4j-1.2.17.jar
+2023-05-08 18:59:28,998 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/logging-interceptor-3.12.12.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/logging-interceptor-3.12.12.jar
+2023-05-08 18:59:29,289 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/lz4-java-1.7.1.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/lz4-java-1.7.1.jar
+2023-05-08 18:59:29,613 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/macro-compat_2.12-1.1.1.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/macro-compat_2.12-1.1.1.jar
+2023-05-08 18:59:29,889 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/metrics-core-4.2.0.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/metrics-core-4.2.0.jar
+2023-05-08 18:59:30,097 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/metrics-graphite-4.2.0.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/metrics-graphite-4.2.0.jar
+2023-05-08 18:59:30,289 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/metrics-jmx-4.2.0.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/metrics-jmx-4.2.0.jar
+2023-05-08 18:59:30,489 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/metrics-json-4.2.0.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/metrics-json-4.2.0.jar
+2023-05-08 18:59:30,689 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/metrics-jvm-4.2.0.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/metrics-jvm-4.2.0.jar
+2023-05-08 18:59:30,879 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/minlog-1.3.0.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/minlog-1.3.0.jar
+2023-05-08 18:59:31,072 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/netty-all-4.1.68.Final.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/netty-all-4.1.68.Final.jar
+2023-05-08 18:59:31,682 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/objenesis-2.6.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/objenesis-2.6.jar
+2023-05-08 18:59:32,040 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/okhttp-3.12.12.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/okhttp-3.12.12.jar
+2023-05-08 18:59:32,297 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/okio-1.14.0.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/okio-1.14.0.jar
+2023-05-08 18:59:32,495 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/opencsv-2.3.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/opencsv-2.3.jar
+2023-05-08 18:59:32,680 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/openmldb-batch-0.7.0-SNAPSHOT.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/openmldb-batch-0.7.0-SNAPSHOT.jar
+2023-05-08 18:59:40,956 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/openmldb-native-0.7.0-SNAPSHOT.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/openmldb-native-0.7.0-SNAPSHOT.jar
+2023-05-08 18:59:50,121 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/orc-core-1.6.12.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/orc-core-1.6.12.jar
+2023-05-08 18:59:50,405 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/orc-mapreduce-1.6.12.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/orc-mapreduce-1.6.12.jar
+2023-05-08 18:59:50,612 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/orc-shims-1.6.12.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/orc-shims-1.6.12.jar
+2023-05-08 18:59:50,804 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/oro-2.0.8.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/oro-2.0.8.jar
+2023-05-08 18:59:53,322 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/osgi-resource-locator-1.0.3.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/osgi-resource-locator-1.0.3.jar
+2023-05-08 18:59:53,521 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/paranamer-2.8.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/paranamer-2.8.jar
+2023-05-08 18:59:53,721 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/parquet-column-1.12.2.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/parquet-column-1.12.2.jar
+2023-05-08 18:59:56,672 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/parquet-common-1.12.2.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/parquet-common-1.12.2.jar
+2023-05-08 18:59:57,479 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/parquet-encoding-1.12.2.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/parquet-encoding-1.12.2.jar
+2023-05-08 18:59:57,737 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/parquet-format-structures-1.12.2.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/parquet-format-structures-1.12.2.jar
+2023-05-08 18:59:57,995 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/parquet-hadoop-1.12.2.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/parquet-hadoop-1.12.2.jar
+2023-05-08 18:59:59,212 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/parquet-jackson-1.12.2.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/parquet-jackson-1.12.2.jar
+2023-05-08 18:59:59,562 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/protobuf-java-3.11.4.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/protobuf-java-3.11.4.jar
+2023-05-08 19:00:00,670 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/py4j-0.10.9.3.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/py4j-0.10.9.3.jar
+2023-05-08 19:00:00,904 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/pyrolite-4.30.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/pyrolite-4.30.jar
+2023-05-08 19:00:01,111 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/rocksdbjni-6.20.3.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/rocksdbjni-6.20.3.jar
+2023-05-08 19:00:03,830 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/scala-collection-compat_2.12-2.1.1.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/scala-collection-compat_2.12-2.1.1.jar
+2023-05-08 19:00:04,212 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/scala-compiler-2.12.15.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/scala-compiler-2.12.15.jar
+2023-05-08 19:00:05,428 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/scala-library-2.12.15.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/scala-library-2.12.15.jar
+2023-05-08 19:00:06,046 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/scala-parser-combinators_2.12-1.1.2.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/scala-parser-combinators_2.12-1.1.2.jar
+2023-05-08 19:00:07,087 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/scala-reflect-2.12.15.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/scala-reflect-2.12.15.jar
+2023-05-08 19:00:07,611 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/scala-xml_2.12-1.2.0.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/scala-xml_2.12-1.2.0.jar
+2023-05-08 19:00:08,728 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/shapeless_2.12-2.3.3.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/shapeless_2.12-2.3.3.jar
+2023-05-08 19:00:09,262 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/shims-0.9.0.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/shims-0.9.0.jar
+2023-05-08 19:00:09,453 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/slf4j-api-1.7.30.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/slf4j-api-1.7.30.jar
+2023-05-08 19:00:10,593 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/slf4j-log4j12-1.7.30.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/slf4j-log4j12-1.7.30.jar
+2023-05-08 19:00:10,768 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/snakeyaml-1.27.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/snakeyaml-1.27.jar
+2023-05-08 19:00:11,237 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/snappy-java-1.1.8.4.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/snappy-java-1.1.8.4.jar
+2023-05-08 19:00:11,753 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/spark-catalyst_2.12-3.2.1.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/spark-catalyst_2.12-3.2.1.jar
+2023-05-08 19:00:13,336 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/spark-core_2.12-3.2.1.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/spark-core_2.12-3.2.1.jar
+2023-05-08 19:00:15,028 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/spark-graphx_2.12-3.2.1.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/spark-graphx_2.12-3.2.1.jar
+2023-05-08 19:00:15,353 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/spark-hive-thriftserver_2.12-3.2.1.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/spark-hive-thriftserver_2.12-3.2.1.jar
+2023-05-08 19:00:15,612 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/spark-hive_2.12-3.2.1.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/spark-hive_2.12-3.2.1.jar
+2023-05-08 19:00:16,662 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/spark-kubernetes_2.12-3.2.1.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/spark-kubernetes_2.12-3.2.1.jar
+2023-05-08 19:00:16,937 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/spark-kvstore_2.12-3.2.1.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/spark-kvstore_2.12-3.2.1.jar
+2023-05-08 19:00:17,137 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/spark-launcher_2.12-3.2.1.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/spark-launcher_2.12-3.2.1.jar
+2023-05-08 19:00:17,337 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/spark-mllib-local_2.12-3.2.1.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/spark-mllib-local_2.12-3.2.1.jar
+2023-05-08 19:00:18,470 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/spark-mllib_2.12-3.2.1.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/spark-mllib_2.12-3.2.1.jar
+2023-05-08 19:00:20,154 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/spark-network-common_2.12-3.2.1.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/spark-network-common_2.12-3.2.1.jar
+2023-05-08 19:00:20,660 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/spark-network-shuffle_2.12-3.2.1.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/spark-network-shuffle_2.12-3.2.1.jar
+2023-05-08 19:00:20,868 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/spark-repl_2.12-3.2.1.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/spark-repl_2.12-3.2.1.jar
+2023-05-08 19:00:22,178 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/spark-sketch_2.12-3.2.1.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/spark-sketch_2.12-3.2.1.jar
+2023-05-08 19:00:22,377 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/spark-sql_2.12-3.2.1.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/spark-sql_2.12-3.2.1.jar
+2023-05-08 19:00:23,753 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/spark-streaming_2.12-3.2.1.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/spark-streaming_2.12-3.2.1.jar
+2023-05-08 19:00:24,105 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/spark-tags_2.12-3.2.1-tests.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/spark-tags_2.12-3.2.1-tests.jar
+2023-05-08 19:00:24,285 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/spark-tags_2.12-3.2.1.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/spark-tags_2.12-3.2.1.jar
+2023-05-08 19:00:25,293 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/spark-unsafe_2.12-3.2.1.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/spark-unsafe_2.12-3.2.1.jar
+2023-05-08 19:00:25,594 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/spark-yarn_2.12-3.2.1.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/spark-yarn_2.12-3.2.1.jar
+2023-05-08 19:00:25,827 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/spire-macros_2.12-0.17.0.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/spire-macros_2.12-0.17.0.jar
+2023-05-08 19:00:26,585 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/spire-platform_2.12-0.17.0.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/spire-platform_2.12-0.17.0.jar
+2023-05-08 19:00:26,778 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/spire-util_2.12-0.17.0.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/spire-util_2.12-0.17.0.jar
+2023-05-08 19:00:26,966 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/spire_2.12-0.17.0.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/spire_2.12-0.17.0.jar
+2023-05-08 19:00:27,711 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/stax-api-1.0.1.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/stax-api-1.0.1.jar
+2023-05-08 19:00:27,969 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/stream-2.9.6.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/stream-2.9.6.jar
+2023-05-08 19:00:28,202 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/super-csv-2.2.0.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/super-csv-2.2.0.jar
+2023-05-08 19:00:28,410 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/threeten-extra-1.5.0.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/threeten-extra-1.5.0.jar
+2023-05-08 19:00:29,543 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/tink-1.6.0.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/tink-1.6.0.jar
+2023-05-08 19:00:29,886 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/transaction-api-1.1.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/transaction-api-1.1.jar
+2023-05-08 19:00:30,069 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/univocity-parsers-2.9.1.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/univocity-parsers-2.9.1.jar
+2023-05-08 19:00:31,244 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/velocity-1.5.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/velocity-1.5.jar
+2023-05-08 19:00:31,494 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/xbean-asm9-shaded-4.20.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/xbean-asm9-shaded-4.20.jar
+2023-05-08 19:00:31,718 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/xercesImpl-2.12.0.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/xercesImpl-2.12.0.jar
+2023-05-08 19:00:32,734 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/xml-apis-1.4.01.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/xml-apis-1.4.01.jar
+2023-05-08 19:00:32,976 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/xmlenc-0.52.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/xmlenc-0.52.jar
+2023-05-08 19:00:33,176 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/xz-1.8.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/xz-1.8.jar
+2023-05-08 19:00:33,377 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/zjsonpatch-0.3.0.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/zjsonpatch-0.3.0.jar
+2023-05-08 19:00:33,768 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/zookeeper-3.6.2.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/zookeeper-3.6.2.jar
+2023-05-08 19:00:34,077 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/zookeeper-jute-3.6.2.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/zookeeper-jute-3.6.2.jar
+2023-05-08 19:00:34,302 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/jars/zstd-jni-1.5.0-4.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/zstd-jni-1.5.0-4.jar
+2023-05-08 19:00:34,978 INFO yarn.Client: Uploading resource hdfs://172.24.4.39:9000/tmp/openmldb-batchjob-0.7.0-SNAPSHOT.jar -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/openmldb-batchjob-0.7.0-SNAPSHOT.jar
+2023-05-08 19:00:35,166 INFO yarn.Client: Uploading resource file:/tmp/sql-2218138160899686504 -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/sql-2218138160899686504
+2023-05-08 19:00:35,438 INFO yarn.Client: Uploading resource file:/tmp/spark-6b49d1b3-beed-448a-a9be-d61347cb54d7/__spark_conf__7415606095789925819.zip -> hdfs://m7-pce-hdp03:9000/user/root/.sparkStaging/application_1683367814068_0006/__spark_conf__.zip
+2023-05-08 19:00:35,668 INFO spark.SecurityManager: Changing view acls to: root
+2023-05-08 19:00:35,668 INFO spark.SecurityManager: Changing modify acls to: root
+2023-05-08 19:00:35,668 INFO spark.SecurityManager: Changing view acls groups to: 
+2023-05-08 19:00:35,669 INFO spark.SecurityManager: Changing modify acls groups to: 
+2023-05-08 19:00:35,669 INFO spark.SecurityManager: SecurityManager: authentication disabled; ui acls disabled; users  with view permissions: Set(root); groups with view permissions: Set(); users  with modify permissions: Set(root); groups with modify permissions: Set()
+2023-05-08 19:00:35,746 INFO yarn.Client: Submitting application application_1683367814068_0006 to ResourceManager
+2023-05-08 19:00:35,832 INFO impl.YarnClientImpl: Submitted application application_1683367814068_0006
+2023-05-08 19:00:36,846 INFO yarn.Client: Application report for application_1683367814068_0006 (state: ACCEPTED)
+2023-05-08 19:00:36,849 INFO yarn.Client: 
+	 client token: N/A
+	 diagnostics: AM container is launched, waiting for AM container to Register with RM
+	 ApplicationMaster host: N/A
+	 ApplicationMaster RPC port: -1
+	 queue: default
+	 start time: 1683543675969
+	 final status: UNDEFINED
+	 tracking URL: http://m7-pce-hdp03:8088/proxy/application_1683367814068_0006/
+	 user: root
+2023-05-08 19:00:37,860 INFO yarn.Client: Application report for application_1683367814068_0006 (state: ACCEPTED)
+2023-05-08 19:00:38,871 INFO yarn.Client: Application report for application_1683367814068_0006 (state: ACCEPTED)
+2023-05-08 19:00:39,882 INFO yarn.Client: Application report for application_1683367814068_0006 (state: ACCEPTED)
+2023-05-08 19:00:40,893 INFO yarn.Client: Application report for application_1683367814068_0006 (state: ACCEPTED)
+2023-05-08 19:00:41,904 INFO yarn.Client: Application report for application_1683367814068_0006 (state: ACCEPTED)
+2023-05-08 19:00:42,915 INFO yarn.Client: Application report for application_1683367814068_0006 (state: ACCEPTED)
+2023-05-08 19:00:43,925 INFO yarn.Client: Application report for application_1683367814068_0006 (state: ACCEPTED)
+2023-05-08 19:00:44,936 INFO yarn.Client: Application report for application_1683367814068_0006 (state: ACCEPTED)
+2023-05-08 19:00:45,947 INFO yarn.Client: Application report for application_1683367814068_0006 (state: ACCEPTED)
+2023-05-08 19:00:46,958 INFO yarn.Client: Application report for application_1683367814068_0006 (state: ACCEPTED)
+2023-05-08 19:00:47,969 INFO yarn.Client: Application report for application_1683367814068_0006 (state: ACCEPTED)
+2023-05-08 19:00:48,980 INFO yarn.Client: Application report for application_1683367814068_0006 (state: ACCEPTED)
+2023-05-08 19:00:49,992 INFO yarn.Client: Application report for application_1683367814068_0006 (state: RUNNING)
+2023-05-08 19:00:49,992 INFO yarn.Client: 
+	 client token: N/A
+	 diagnostics: N/A
+	 ApplicationMaster host: m7-pce-hdp03
+	 ApplicationMaster RPC port: 46712
+	 queue: default
+	 start time: 1683543675969
+	 final status: UNDEFINED
+	 tracking URL: http://m7-pce-hdp03:8088/proxy/application_1683367814068_0006/
+	 user: root
+2023-05-08 19:00:51,004 INFO yarn.Client: Application report for application_1683367814068_0006 (state: RUNNING)
+2023-05-08 19:00:52,015 INFO yarn.Client: Application report for application_1683367814068_0006 (state: RUNNING)
+2023-05-08 19:00:53,026 INFO yarn.Client: Application report for application_1683367814068_0006 (state: RUNNING)
+2023-05-08 19:00:54,037 INFO yarn.Client: Application report for application_1683367814068_0006 (state: RUNNING)
+2023-05-08 19:00:55,048 INFO yarn.Client: Application report for application_1683367814068_0006 (state: RUNNING)
+2023-05-08 19:00:56,058 INFO yarn.Client: Application report for application_1683367814068_0006 (state: RUNNING)
+2023-05-08 19:00:57,069 INFO yarn.Client: Application report for application_1683367814068_0006 (state: RUNNING)
+2023-05-08 19:00:58,080 INFO yarn.Client: Application report for application_1683367814068_0006 (state: RUNNING)
+2023-05-08 19:00:59,091 INFO yarn.Client: Application report for application_1683367814068_0006 (state: RUNNING)
+2023-05-08 19:01:00,102 INFO yarn.Client: Application report for application_1683367814068_0006 (state: RUNNING)
+2023-05-08 19:01:01,113 INFO yarn.Client: Application report for application_1683367814068_0006 (state: RUNNING)
+2023-05-08 19:01:02,124 INFO yarn.Client: Application report for application_1683367814068_0006 (state: RUNNING)
+2023-05-08 19:01:03,135 INFO yarn.Client: Application report for application_1683367814068_0006 (state: RUNNING)
+2023-05-08 19:01:04,146 INFO yarn.Client: Application report for application_1683367814068_0006 (state: RUNNING)
+2023-05-08 19:01:05,158 INFO yarn.Client: Application report for application_1683367814068_0006 (state: RUNNING)
+2023-05-08 19:01:06,172 INFO yarn.Client: Application report for application_1683367814068_0006 (state: RUNNING)
+2023-05-08 19:01:07,183 INFO yarn.Client: Application report for application_1683367814068_0006 (state: RUNNING)
+2023-05-08 19:01:08,194 INFO yarn.Client: Application report for application_1683367814068_0006 (state: RUNNING)
+2023-05-08 19:01:09,206 INFO yarn.Client: Application report for application_1683367814068_0006 (state: RUNNING)
+2023-05-08 19:01:10,218 INFO yarn.Client: Application report for application_1683367814068_0006 (state: RUNNING)
+2023-05-08 19:01:11,229 INFO yarn.Client: Application report for application_1683367814068_0006 (state: RUNNING)
+2023-05-08 19:01:12,241 INFO yarn.Client: Application report for application_1683367814068_0006 (state: RUNNING)
+2023-05-08 19:01:13,253 INFO yarn.Client: Application report for application_1683367814068_0006 (state: RUNNING)
+2023-05-08 19:01:14,265 INFO yarn.Client: Application report for application_1683367814068_0006 (state: RUNNING)
+2023-05-08 19:01:15,277 INFO yarn.Client: Application report for application_1683367814068_0006 (state: RUNNING)
+2023-05-08 19:01:16,288 INFO yarn.Client: Application report for application_1683367814068_0006 (state: RUNNING)
+2023-05-08 19:01:17,299 INFO yarn.Client: Application report for application_1683367814068_0006 (state: RUNNING)
+2023-05-08 19:01:18,310 INFO yarn.Client: Application report for application_1683367814068_0006 (state: RUNNING)
+2023-05-08 19:01:19,321 INFO yarn.Client: Application report for application_1683367814068_0006 (state: RUNNING)
+2023-05-08 19:01:20,337 INFO yarn.Client: Application report for application_1683367814068_0006 (state: RUNNING)
+2023-05-08 19:01:21,349 INFO yarn.Client: Application report for application_1683367814068_0006 (state: RUNNING)
+2023-05-08 19:01:22,360 INFO yarn.Client: Application report for application_1683367814068_0006 (state: RUNNING)
+2023-05-08 19:01:23,371 INFO yarn.Client: Application report for application_1683367814068_0006 (state: RUNNING)
+2023-05-08 19:01:24,382 INFO yarn.Client: Application report for application_1683367814068_0006 (state: RUNNING)
+2023-05-08 19:01:25,393 INFO yarn.Client: Application report for application_1683367814068_0006 (state: RUNNING)
+2023-05-08 19:01:26,404 INFO yarn.Client: Application report for application_1683367814068_0006 (state: RUNNING)
+2023-05-08 19:01:27,415 INFO yarn.Client: Application report for application_1683367814068_0006 (state: RUNNING)
+2023-05-08 19:01:28,426 INFO yarn.Client: Application report for application_1683367814068_0006 (state: RUNNING)
+2023-05-08 19:01:29,437 INFO yarn.Client: Application report for application_1683367814068_0006 (state: RUNNING)
+2023-05-08 19:01:30,448 INFO yarn.Client: Application report for application_1683367814068_0006 (state: RUNNING)
+2023-05-08 19:01:31,459 INFO yarn.Client: Application report for application_1683367814068_0006 (state: RUNNING)
+2023-05-08 19:01:32,470 INFO yarn.Client: Application report for application_1683367814068_0006 (state: RUNNING)
+2023-05-08 19:01:33,481 INFO yarn.Client: Application report for application_1683367814068_0006 (state: RUNNING)
+2023-05-08 19:01:34,492 INFO yarn.Client: Application report for application_1683367814068_0006 (state: RUNNING)
+2023-05-08 19:01:35,503 INFO yarn.Client: Application report for application_1683367814068_0006 (state: RUNNING)
+2023-05-08 19:01:36,514 INFO yarn.Client: Application report for application_1683367814068_0006 (state: RUNNING)
+2023-05-08 19:01:37,525 INFO yarn.Client: Application report for application_1683367814068_0006 (state: RUNNING)
+2023-05-08 19:01:38,536 INFO yarn.Client: Application report for application_1683367814068_0006 (state: RUNNING)
+2023-05-08 19:01:39,547 INFO yarn.Client: Application report for application_1683367814068_0006 (state: RUNNING)
+2023-05-08 19:01:40,558 INFO yarn.Client: Application report for application_1683367814068_0006 (state: RUNNING)
+2023-05-08 19:01:41,569 INFO yarn.Client: Application report for application_1683367814068_0006 (state: RUNNING)
+2023-05-08 19:01:42,579 INFO yarn.Client: Application report for application_1683367814068_0006 (state: RUNNING)
+2023-05-08 19:01:43,590 INFO yarn.Client: Application report for application_1683367814068_0006 (state: RUNNING)
+2023-05-08 19:01:44,601 INFO yarn.Client: Application report for application_1683367814068_0006 (state: RUNNING)
+2023-05-08 19:01:45,612 INFO yarn.Client: Application report for application_1683367814068_0006 (state: RUNNING)
+2023-05-08 19:01:46,624 INFO yarn.Client: Application report for application_1683367814068_0006 (state: RUNNING)
+2023-05-08 19:01:47,635 INFO yarn.Client: Application report for application_1683367814068_0006 (state: FINISHED)
+2023-05-08 19:01:47,636 INFO yarn.Client: 
+	 client token: N/A
+	 diagnostics: User class threw exception: java.lang.IllegalArgumentException: requirement failed: table db.lte info is not existed(no table name): 
+	at scala.Predef$.require(Predef.scala:281)
+	at com._4paradigm.openmldb.batch.nodes.LoadDataPlan$.gen(LoadDataPlan.scala:45)
+	at com._4paradigm.openmldb.batch.SparkPlanner.visitNode(SparkPlanner.scala:269)
+	at com._4paradigm.openmldb.batch.SparkPlanner.getSparkOutput(SparkPlanner.scala:232)
+	at com._4paradigm.openmldb.batch.SparkPlanner.$anonfun$plan$1(SparkPlanner.scala:113)
+	at com._4paradigm.openmldb.batch.SparkPlanner.withSQLEngine(SparkPlanner.scala:391)
+	at com._4paradigm.openmldb.batch.SparkPlanner.plan(SparkPlanner.scala:83)
+	at com._4paradigm.openmldb.batch.api.OpenmldbSession.openmldbSql(OpenmldbSession.scala:182)
+	at com._4paradigm.openmldb.batch.api.OpenmldbSession.sql(OpenmldbSession.scala:193)
+	at com._4paradigm.openmldb.batchjob.util.OpenmldbJobUtil$.runOpenmldbSql(OpenmldbJobUtil.scala:59)
+	at com._4paradigm.openmldb.batchjob.ImportOfflineData$.importOfflineData(ImportOfflineData.scala:35)
+	at com._4paradigm.openmldb.batchjob.ImportOfflineData$.main(ImportOfflineData.scala:27)
+	at com._4paradigm.openmldb.batchjob.ImportOfflineData.main(ImportOfflineData.scala)
+	at sun.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+	at sun.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:62)
+	at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
+	at java.lang.reflect.Method.invoke(Method.java:498)
+	at org.apache.spark.deploy.yarn.ApplicationMaster$$anon$2.run(ApplicationMaster.scala:737)
+
+	 ApplicationMaster host: m7-pce-hdp03
+	 ApplicationMaster RPC port: 46712
+	 queue: default
+	 start time: 1683543675969
+	 final status: FAILED
+	 tracking URL: http://m7-pce-hdp03:8088/proxy/application_1683367814068_0006/
+	 user: root
+2023-05-08 19:01:47,661 ERROR yarn.Client: Application diagnostics message: User class threw exception: java.lang.IllegalArgumentException: requirement failed: table db.lte info is not existed(no table name): 
+	at scala.Predef$.require(Predef.scala:281)
+	at com._4paradigm.openmldb.batch.nodes.LoadDataPlan$.gen(LoadDataPlan.scala:45)
+	at com._4paradigm.openmldb.batch.SparkPlanner.visitNode(SparkPlanner.scala:269)
+	at com._4paradigm.openmldb.batch.SparkPlanner.getSparkOutput(SparkPlanner.scala:232)
+	at com._4paradigm.openmldb.batch.SparkPlanner.$anonfun$plan$1(SparkPlanner.scala:113)
+	at com._4paradigm.openmldb.batch.SparkPlanner.withSQLEngine(SparkPlanner.scala:391)
+	at com._4paradigm.openmldb.batch.SparkPlanner.plan(SparkPlanner.scala:83)
+	at com._4paradigm.openmldb.batch.api.OpenmldbSession.openmldbSql(OpenmldbSession.scala:182)
+	at com._4paradigm.openmldb.batch.api.OpenmldbSession.sql(OpenmldbSession.scala:193)
+	at com._4paradigm.openmldb.batchjob.util.OpenmldbJobUtil$.runOpenmldbSql(OpenmldbJobUtil.scala:59)
+	at com._4paradigm.openmldb.batchjob.ImportOfflineData$.importOfflineData(ImportOfflineData.scala:35)
+	at com._4paradigm.openmldb.batchjob.ImportOfflineData$.main(ImportOfflineData.scala:27)
+	at com._4paradigm.openmldb.batchjob.ImportOfflineData.main(ImportOfflineData.scala)
+	at sun.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+	at sun.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:62)
+	at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
+	at java.lang.reflect.Method.invoke(Method.java:498)
+	at org.apache.spark.deploy.yarn.ApplicationMaster$$anon$2.run(ApplicationMaster.scala:737)
+
+Exception in thread "main" org.apache.spark.SparkException: Application application_1683367814068_0006 finished with failed status
+	at org.apache.spark.deploy.yarn.Client.run(Client.scala:1283)
+	at org.apache.spark.deploy.yarn.YarnClusterApplication.start(Client.scala:1677)
+	at org.apache.spark.deploy.SparkSubmit.org$apache$spark$deploy$SparkSubmit$$runMain(SparkSubmit.scala:955)
+	at org.apache.spark.deploy.SparkSubmit.doRunMain$1(SparkSubmit.scala:180)
+	at org.apache.spark.deploy.SparkSubmit.submit(SparkSubmit.scala:203)
+	at org.apache.spark.deploy.SparkSubmit.doSubmit(SparkSubmit.scala:90)
+	at org.apache.spark.deploy.SparkSubmit$$anon$2.doSubmit(SparkSubmit.scala:1043)
+	at org.apache.spark.deploy.SparkSubmit$.main(SparkSubmit.scala:1052)
+	at org.apache.spark.deploy.SparkSubmit.main(SparkSubmit.scala)
+2023-05-08 19:01:47,665 INFO util.ShutdownHookManager: Shutdown hook called
+2023-05-08 19:01:47,666 INFO util.ShutdownHookManager: Deleting directory /tmp/spark-6b49d1b3-beed-448a-a9be-d61347cb54d7
+2023-05-08 19:01:47,669 INFO util.ShutdownHookManager: Deleting directory /tmp/spark-65b03090-ff45-4778-a4fa-80ca58d0257c
