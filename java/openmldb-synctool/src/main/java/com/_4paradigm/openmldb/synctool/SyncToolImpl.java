@@ -442,7 +442,7 @@ public class SyncToolImpl implements SyncToolInterface {
             addSyncTaskRequestBuilder.setStartTs(request.getStartTs());
         }
         // new sync point start from snapshot
-        addSyncTaskRequestBuilder.getSyncPointBuilder().setType(DataSync.SyncType.SNAPSHOT);
+        addSyncTaskRequestBuilder.getSyncPointBuilder().setType(DataSync.SyncType.kSNAPSHOT);
         addSyncTaskRequestBuilder.setTabletEndpoint(tabletServer);
         addSyncTaskRequestBuilder.setDesEndpoint(this.endpoint); // set me
         addSyncTaskRequestBuilder.setToken(genToken());

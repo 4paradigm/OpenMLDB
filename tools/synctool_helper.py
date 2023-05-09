@@ -70,13 +70,14 @@ if __name__ == "__main__":
                 print(create_task.text)
             task = args.t
             db, table = task.split('.')
-            mode = 'FULL' # default is full
+            # just use int for mode
+            mode = args.mode # 'FULL' # default is full
             ts = 0 # it's safe to set ts starts from 0 when mode is 0 or 2
             if args.mode == 1:
-                mode = 'INCREMENTAL_BY_TIMESTAMP'
+                # mode = 'INCREMENTAL_BY_TIMESTAMP'
                 ts = args.ts
-            elif args.mode == 2:
-                mode = 'FULL_AND_CONTINUOUS'
+            # elif args.mode == 2:
+            #     mode = 'FULL_AND_CONTINUOUS'
 
             dest = args.dest
             create_sync_task(db, table, mode, ts, dest)

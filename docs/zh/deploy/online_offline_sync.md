@@ -1,6 +1,6 @@
 # 在离线数据同步
 
-在离线数据同步，指将在线数据同步到离线地址，离线地址指大容量持久化存储地址，用户可以自行指定，不一定是OpenMLDB表中的离线数据地址。
+在离线数据同步，指将在线数据同步到离线地址，离线地址指大容量持久化存储地址，用户可以自行指定，不一定是OpenMLDB表中的离线数据地址，仅支持写入到hdfs集群。
 
 开启在离线同步功能，需要部署两种组件，DataCollector和SyncTool。一期仅支持单个SyncTool，DataCollector需要在**每台部署TabletServer的机器**上**至少**部署一台。举例说明，一台机器上可以存在多个TabletServer，同步任务将使用该机器上的一个DataCollector，如果你添加了更多的DataCollector，它们不会工作，直到运行的DataCollector下线，将由下一个DataCollector代替以继续工作。
 
@@ -10,15 +10,13 @@
 
 由于SyncTool有状态，如果先启动它，可能会在无DataCollector的情况下尝试分配同步任务。所以，请保证先启动所有DataCollector，再启动SyncTool。
 
-部署包请从github release或镜像网站中下载，版本>0.7.3，并解压。
+部署包请从github release或镜像网站中下载，版本>0.7.3，并解压。不可使用旧版本的TabletServer进行同步。
 
 ### DataCollector
 
 #### 配置(重点)
 
-更新`<package>/conf/data_collector.flags`配置文件。
-
-配置中请填写正确的zk地址和路径，以及配置无端口冲突`endpoint`（endpoint与TabletServer保持一致，如果TabletServer使用本机的公网IP，DataCollector endpoint使用127.0.0.1地址，无法自动转换）。
+更新`<package>/conf/data_collector.flags`配置文件。配置中请填写正确的zk地址和路径，以及配置无端口冲突`endpoint`（endpoint与TabletServer保持一致，如果TabletServer使用本机的公网IP，DataCollector endpoint使用127.0.0.1地址，无法自动转换）。
 
 需要注意的是，请慎重选择`collector_datadir`。我们将在同步中对TabletServer的磁盘数据进行硬链接，所以`collector_datadir`需要与TabletServer的数据地址`hdd_root_path`/`ssd_root_path`在同一磁盘上，否则报错`Invalid cross-device link`。
 
@@ -35,7 +33,8 @@
 ```
 curl http://<data_collector>/status
 ```
-TODO: synctool_helper可以得到DataCollector列表
+当前我们无法查询 `DataCollector ` 列表，将来会在相关工具中提供支持。
+
 ### SyncTool
 
 #### 配置
@@ -52,7 +51,8 @@ SyncTool目前只支持单进程运行，如果启动多个，它们互相独立
 SyncTool负责同步任务的管理和数据收集、写入离线地址。首先，说明一下任务关系，SyncTool收到用户的“表同步任务”，将会被分割为多个“分片同步任务”（后续简称为子任务）进行创建和管理。
 
 任务管理中，如果DataCollector掉线或出错，将会让DataCollector重新创建任务。如果重新赋予任务时，找不到合适的DataCollector，将会标记任务失败。如果不这样，SyncTool将会一直尝试赋予新任务，同步任务进度停滞，错误也不明显，所以为了及时发现问题，这种情况将标记子任务为失败。
-TODO: 由于创建表同步任务时具体定义每个子任务的起始进度很难，所以可以考虑重启SyncTool，SyncTool recover时不会检查子任务是否曾经failed，会当作init状态开始任务。
+
+由于创建表同步任务时不支持从某个点开始，所以当前情况下，不适合删除任务再创建，如果目的地一样，会有较多重复数据。可以考虑更换同步目的地，或者重启SyncTool（SyncTool recover时不会检查子任务是否曾经failed，会当作init状态开始任务）。
 
 #### SyncTool Helper
 
@@ -69,7 +69,9 @@ python tools/synctool_helper.py status [ -s <sync tool endpoint> ]
 python tools/synctool_helper.py tool-status [ -f <properties path> ]
 ```
 
-Mode: ...
+Mode配置填写0/1/2，分别对应全量同步FULL，按时间增量同步INCREMENTAL_BY_TIMESTAMP，完全增量同步FULL_AND_CONTINUOUS三种模式。如果是Mode 1，使用`-ts`配置起始时间，小于该时间的数据将不会被同步。
+
+Mode 0 没有严格的终止时间点，当每个子任务同步完当前的数据后，就会结束，结束会删除整个表任务，如果使用helper查询status没有该表的同步任务，则视为该表同步任务完成。Mode 1/2 都不会停止，将永远运行。
 
 status结果说明：
 

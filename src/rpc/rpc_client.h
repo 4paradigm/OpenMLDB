@@ -165,7 +165,7 @@ class RpcClient {
             cntl.set_max_retry(retry_times);
         }
         manual_set_cntl(&cntl);
-        LOG(INFO) << "request attachment size: " << cntl.request_attachment().size();
+        VLOG(1) << "request attachment size: " << cntl.request_attachment().size();
         if (stub_ == NULL) {
             PDLOG(WARNING, "stub is null. client must be init before send request");
             return {base::ReturnCode::kServerConnError, "stub is null"};

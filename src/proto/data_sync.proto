@@ -24,14 +24,14 @@ option java_outer_classname = "DataSync";
 option cc_generic_services = true;
 
 enum SyncType {
-    SNAPSHOT = 0;
-    BINLOG = 1;
+    kSNAPSHOT = 0;
+    kBINLOG = 1;
 }
 
 enum SyncMode {
-    FULL = 0;
-    INCREMENTAL_BY_TIMESTAMP = 1;
-    FULL_AND_CONTINUOUS = 2;
+    kFull = 0;
+    kIncrementalByTimestamp = 1;
+    kFullAndContinuous = 2;
 }
 
 message GeneralResponse {
@@ -95,21 +95,21 @@ message SendDataRequest {
     optional uint32 tid = 1;
     optional uint32 pid = 2;
     optional SyncPoint start_point = 3; // The start point of this data
-    optional uint64 count = 4; // 本次传输的数据条数
+    optional uint64 count = 4; // the row count in attachment
     optional string token = 5;
-    optional bool finished = 6; // 全量同步mode会停止，由DataCollector告知SyncTool
+    optional bool finished = 6; // if mode 0 and data collector meet the binlog end，tell SyncTool
     optional SyncPoint next_point = 7; // The NEXT point of this partition, to let SyncTool know the next start point
-    // 实际数据通过附件传输
+    // The data is in attachment
 }
 
 message SendDataResponse {
     required GeneralResponse response = 1; 
-    optional bool delete_task = 2; // TODO delete task here or send a rpc to delete
+    optional bool delete_task = 2; // TODO(hw): delete task here. No extra delete task way.
 }
 
 service DataCollector {
     rpc AddSyncTask(AddSyncTaskRequest) returns (GeneralResponse);
-    // TODO GetTaskInfo?
+    // TODO(hw): GetTaskInfo in runtime
 };
 
 service SyncTool {

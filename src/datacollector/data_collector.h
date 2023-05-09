@@ -17,7 +17,9 @@
 #define SRC_DATACOLLECTOR_DATA_COLLECTOR_H_
 
 #include <filesystem>
+#include <map>
 #include <memory>
+#include <string>
 
 #include "common/thread_pool.h"
 
@@ -55,8 +57,8 @@ class SyncToolClient {
         return true;
     }
     // if ok, check repsonse, otherwise do not use response
-    bool SendData(const datasync::SendDataRequest* request, butil::IOBuf& data,
-                  datasync::SendDataResponse* response) {  // NOLINT
+    bool SendData(const datasync::SendDataRequest* request, butil::IOBuf& data,  // NOLINT
+                  datasync::SendDataResponse* response) {
         // TODO(hw): IOBufAppender is better?
         auto st = client_.SendRequestSt(&datasync::SyncTool_Stub::SendData,
                                         [&data](brpc::Controller* cntl) { cntl->request_attachment().swap(data); },
@@ -145,7 +147,7 @@ class DataCollectorImpl : public datasync::DataCollector {
                     datasync::SyncPoint* next_point, bool* meet_binlog_end);
 
     // data will be cleared, whether send success or not
-    bool SendDataUnlock(const datasync::AddSyncTaskRequest* task, butil::IOBuf& data, uint64_t count,
+    bool SendDataUnlock(const datasync::AddSyncTaskRequest* task, butil::IOBuf& data, uint64_t count,  // NOLINT
                         const datasync::SyncPoint& next_point, bool is_finished, datasync::SendDataResponse* reponse,
                         datasync::AddSyncTaskRequest* update_task);
 

@@ -265,7 +265,7 @@ void DataCollectorImpl::CreateTaskEnv(const datasync::AddSyncTaskRequest* reques
         }
 
         // datasync::AddSyncTaskRequest adjusted_request = *request;
-        if (request->sync_point().type() == datasync::SyncType::SNAPSHOT) {
+        if (request->sync_point().type() == datasync::SyncType::kSNAPSHOT) {
             // if no snapshot, we should let sync tool know the change
             if (auto manifest = GetManifest(table_status.snapshot_path());
                 !manifest.has_name() || manifest.count() == 0) {
@@ -471,7 +471,7 @@ void DataCollectorImpl::SyncOnce(uint32_t tid, uint32_t pid) {
     if (updated) {
         replicator->Recover();
         LOG(INFO) << "log parts: " << LogPartsToString(replicator->GetLogPart());
-        if (start_point.type() == datasync::SyncType::BINLOG &&
+        if (start_point.type() == datasync::SyncType::kBINLOG &&
             replicator->GetSnapshotLastOffset() < start_point.offset()) {
             replicator->SetSnapshotLogPartIndex(start_point.offset());
             // delete old log file if SetSnapshotLogPartIndex
@@ -491,13 +491,13 @@ void DataCollectorImpl::SyncOnce(uint32_t tid, uint32_t pid) {
         return;
     }
 
-    LOG(INFO) << "pack cnt:" << count << "-size:" << io_buf.size() << ", start " << start_point.ShortDebugString()
+    VLOG(1) << "pack cnt:" << count << "-size:" << io_buf.size() << ", start " << start_point.ShortDebugString()
               << ", next: " << next_point.ShortDebugString();
 
     bool delay_longer = meet_binlog_end;
     bool is_finished = false;
     // even count is 0(all data in snapshot, binlog is empty)
-    if (meet_binlog_end && mode == datasync::SyncMode::FULL) {
+    if (meet_binlog_end && mode == datasync::SyncMode::kFull) {
         is_finished = true;
         LOG(INFO) << "Mode FULL and meet binlog end, set finished flag";
     }
@@ -513,7 +513,7 @@ void DataCollectorImpl::SyncOnce(uint32_t tid, uint32_t pid) {
         // check next_point >= start_point?
 
         // validate about status, if failed, reject task
-        if (next_point.type() == datasync::SyncType::SNAPSHOT) {
+        if (next_point.type() == datasync::SyncType::kSNAPSHOT) {
             LOG(ERROR) << "why snapshot can't get any data and can't switch to binlog? reject task: "
                        << task.ShortDebugString();
             return;
@@ -521,7 +521,7 @@ void DataCollectorImpl::SyncOnce(uint32_t tid, uint32_t pid) {
 
         // validate meet_binlog_end if start_point is binlog(don't check by next_point, cuz it won't update
         // meet_binlog_end when snapshot->binlog, just check start_point)
-        if (start_point.type() == datasync::SyncType::BINLOG && !meet_binlog_end) {
+        if (start_point.type() == datasync::SyncType::kBINLOG && !meet_binlog_end) {
             LOG(ERROR) << "why binlog can't get any data and can't meet binlog end? reject task: "
                        << task.ShortDebugString();
             return;
@@ -626,7 +626,7 @@ bool DataCollectorImpl::PackData(const datasync::AddSyncTaskRequest& task, butil
         return true;
     };
 
-    if (start_point.type() == datasync::SyncType::SNAPSHOT) {
+    if (start_point.type() == datasync::SyncType::kSNAPSHOT) {
         // read snapshot
         std::shared_ptr<storage::TraverseIterator> iter;
         uint64_t snapshot_offset = 0;  // snapshot end offset
@@ -635,7 +635,7 @@ bool DataCollectorImpl::PackData(const datasync::AddSyncTaskRequest& task, butil
             auto it = snapshot_map_.find(name);
             if (it == snapshot_map_.end()) {
                 LOG(INFO) << "snapshot env does not exist, switch to binlog";
-                next_point->set_type(datasync::SyncType::BINLOG);
+                next_point->set_type(datasync::SyncType::kBINLOG);
                 // start read from 1(include)
                 next_point->set_offset(1);
                 return true;
@@ -658,7 +658,7 @@ bool DataCollectorImpl::PackData(const datasync::AddSyncTaskRequest& task, butil
 
         // pack Slices, include start_point, exclude next_point
         bool finished = false;
-        if (mode == datasync::SyncMode::INCREMENTAL_BY_TIMESTAMP) {
+        if (mode == datasync::SyncMode::kIncrementalByTimestamp) {
             // to parse the ts, we need the table meta
             finished = PackSNAPSHOT(iter, pack_with_ts, next_point);
         } else {
@@ -666,7 +666,7 @@ bool DataCollectorImpl::PackData(const datasync::AddSyncTaskRequest& task, butil
         }
         // if snapshot finished, we should set the next offset to snapshot_offset(manifest's offset) + 1
         if (finished) {
-            next_point->set_type(datasync::SyncType::BINLOG);
+            next_point->set_type(datasync::SyncType::kBINLOG);
             next_point->set_offset(snapshot_offset + 1);
         }
     } else {
@@ -698,7 +698,7 @@ bool DataCollectorImpl::PackData(const datasync::AddSyncTaskRequest& task, butil
             return false;
         }
         bool ok = false;
-        if (mode == datasync::SyncMode::INCREMENTAL_BY_TIMESTAMP) {
+        if (mode == datasync::SyncMode::kIncrementalByTimestamp) {
             ok = PackBINLOG(reader, start_point.offset(), pack_with_ts, next_point, meet_binlog_end);
         } else {
             ok = PackBINLOG(reader, start_point.offset(), pack, next_point, meet_binlog_end);
@@ -726,7 +726,7 @@ bool DataCollectorImpl::PackSNAPSHOT(std::shared_ptr<storage::TraverseIterator> 
 
     // still has next to read
     if (it->Valid()) {
-        next_point->set_type(datasync::SyncType::SNAPSHOT);
+        next_point->set_type(datasync::SyncType::kSNAPSHOT);
         next_point->set_pk(it->GetPK());
         next_point->set_ts(it->GetKey());
     }
@@ -807,7 +807,7 @@ bool DataCollectorImpl::PackBINLOG(std::shared_ptr<log::LogReader> reader, uint6
         LOG(WARNING) << "PackRecords failed, ret: " << ret << ". maybe binlog is break or no data";
         return false;
     }
-    next_point->set_type(datasync::SyncType::BINLOG);
+    next_point->set_type(datasync::SyncType::kBINLOG);
     next_point->set_offset(next_offset);
     return true;
 }
