@@ -7,7 +7,6 @@
 - Support the new built-in functions `var_samp`, `var_pop`, `entropy`, `earth_distance`, `nth_value_where` and `add_months` (#3046 #3193 @aceforeverd)
 - Support batch read for openmldb-spark-connector (#3070 @tobegit3hub)
 - [Alpha] Support Kubernetes as a TaskManager backend for the offline engine (#3147 #3157 #3185 @tobegit3hub)
-- Support getting yarn log for `SHOW JOBLOG` (#3163 @tobegit3hub)
 - Support LAST JOIN over WHERE clause (#3134 @aceforeverd)
 - Support LAST JOIN in WINDOW UNION clause (#3205 @aceforeverd)
 - Supports a decimal place as the second parameter in the function `round` (#3221 @aceforeverd)
@@ -15,7 +14,7 @@
 - Enhance the diagnostic tool (#3224 #3208 @zhangziheng01233)
 - Add the new option `SKIP_INDEX_CHECK` to skip index checking when deploying SQLs (#3241 @dl239)
 - Support symbolic paths for offline table (#3235 @tobegit3hub)
-- Improve the documents (#3104 #2993 @selenachenjingxin, #3113 #3118 #3239 @tobegit3hub, #3150 #3184 #3237 @aceforeverd, #3160 #3195 #3197 #3223 @lumianph, #3192 #3215 @haseeb-xd, #3201 #3220 #3232 #3236 #3254 @vagetablechicken, #3213 @alexab612, #3189 #3199 @TanZiYen)
+- Improve the documents (#3104 #2993 @selenachenjingxin, #3113 #3118 #3239 @tobegit3hub, #3150 #3184 #3237 #3255 @aceforeverd, #3160 #3195 #3197 #3223 @lumianph, #3192 #3215 @haseeb-xd, #3201 #3220 #3232 #3236 #3254 @vagetablechicken, #3213 @alexab612, #3189 #3199 @TanZiYen)
 - Other minor features (#3115 #3143 #3182 @tobegit3hub, #2818 #3123 @aceforeverd, #3128 #3127 @dl239)
 
 ### Bug Fixes
