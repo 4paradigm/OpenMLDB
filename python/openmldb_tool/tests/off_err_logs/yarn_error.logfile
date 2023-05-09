@@ -1,4 +1,3 @@
-2023-05-08 18:58:38,969 WARN util.Utils: Your hostname, localhost resolves to a loopback address: 127.0.0.1; using 10.100.121.245 instead (on interface eth0)
 2023-05-08 18:58:38,970 WARN util.Utils: Set SPARK_LOCAL_IP if you need to bind to another address
 2023-05-08 18:58:39,530 WARN util.NativeCodeLoader: Unable to load native-hadoop library for your platform... using builtin-java classes where applicable
 2023-05-08 18:58:39,886 WARN util.DependencyUtils: Skip remote jar hdfs://172.24.4.39:9000/tmp/openmldb-batchjob-0.7.0-SNAPSHOT.jar.
