@@ -103,7 +103,7 @@ title: udfs/udfs.h
 | **[regexp_like](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-regexp-like)**()| <br>pattern match same as RLIKE predicate (based on RE2) |
 | **[replace](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-replace)**()| <br>replace(str, search[, replace]) - Replaces all occurrences of `search` with `replace`|
 | **[reverse](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-reverse)**()| <br>Returns the reversed given string. |
-| **[round](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-round)**()| <br>Return the nearest integer value to expr (in floating-point format), rounding halfway cases away from zero, regardless of the current rounding mode. |
+| **[round](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-round)**()| <br>Returns expr rounded to d decimal places using HALF_UP rounding mode. |
 | **[second](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-second)**()| <br>Return the second for a timestamp. |
 | **[sin](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-sin)**()| <br>Return the sine of expr. |
 | **[size](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-size)**()| <br>Get the size of a List (e.g., result of split) |
@@ -3326,30 +3326,40 @@ round()
 
 **Description**:
 
-Return the nearest integer value to expr (in floating-point format), rounding halfway cases away from zero, regardless of the current rounding mode. 
+Returns expr rounded to d decimal places using HALF_UP rounding mode. 
 
 **Parameters**: 
 
-  * **expr** 
+  * **numeric_expr** Expression evaluated to numeric 
+  * **d** Integer decimal place, if omitted, default to 0
 
 
 **Since**:
 0.1.0
 
 
+
+When `d` is a positive, `numeric_expr` is rounded to the number of decimal positions specified by `d`. When `d` is a negative , `numeric_expr` is rounded on the left side of the decimal point. Return type is the same as the type first parameter.
+
 Example:
 
 ```sql
 
-SELECT ROUND(1.23);
--- output 1
+SELECT round(1.23);
+-- 1 (double type)
+
+SELECT round(1.23, 1)
+-- 1.2 (double type)
+
+SELECT round(123, -1)
+-- 120 (int32 type)
 ```
 
 
 **Supported Types**:
 
-* [`bool`]
-* [`number`] 
+* [`number`, ...]
+* [`number`, `int32`] 
 
 ### function second
 
