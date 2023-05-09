@@ -23,6 +23,8 @@ import org.slf4j.LoggerFactory
 
 import scala.collection.JavaConverters.{mapAsJavaMapConverter, mapAsScalaMapConverter}
 import scala.collection.mutable
+import scala.collection.JavaConverters.{asScalaBufferConverter, mapAsScalaMap, mapAsScalaMapConverter}
+
 
 object LoadDataPlan {
   private val logger = LoggerFactory.getLogger(this.getClass)
@@ -87,7 +89,14 @@ object LoadDataPlan {
         // If mode=="append"
         if (mode.equals("append") || mode.equals("errorifexists")) {
           // Check if new path is already existed or not
-          val symbolicPaths = newOfflineInfoBuilder.getSymbolicPathsList()
+          val symbolicPathsSize = newOfflineInfoBuilder.getSymbolicPathsCount()
+
+          val symbolicPaths = if (symbolicPathsSize > 0) {
+            newOfflineInfoBuilder.getSymbolicPathsList().asScala.toList
+          } else {
+            List.empty[String]
+          }
+
           if (symbolicPaths.contains(inputFile)) {
             logger.warn(s"The path of $inputFile is already in symbolic paths, do not import again")
           } else {
