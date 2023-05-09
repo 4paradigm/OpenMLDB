@@ -91,7 +91,7 @@
         <dependency>
             <groupId>org.testng</groupId>
             <artifactId>testng</artifactId>
-            <version>6.14.3</version>
+            <version>7.5.1</version>
             <scope>test</scope>
         </dependency>
         <!-- required by scalatest-maven-plugin to generate HTML report -->
