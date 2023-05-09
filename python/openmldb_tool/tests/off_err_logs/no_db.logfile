@@ -20,6 +20,10 @@ Using Spark's default log4j profile: org/apache/spark/log4j-defaults.properties
 23/05/06 17:10:18 INFO MemoryStore: MemoryStore started with capacity 4.1 GiB
 23/05/06 17:10:18 INFO SparkEnv: Registering OutputCommitCoordinator
 23/05/06 17:10:19 INFO Utils: Successfully started service 'SparkUI' on port 4040.
+<<<<<<< HEAD
+=======
+23/05/06 17:10:19 INFO SparkContext: Added JAR file:/home/huangwei/openmldb-playground/openmldb-0.7.3-linux/taskmanager/lib/openmldb-batchjob-0.7.3.jar at spark://m7-pce-gpu02:43025/jars/openmldb-batchjob-0.7.3.jar with timestamp 1683364217750
+>>>>>>> f00aff11a7679ae9c902c06aa4296302ecc31792
 23/05/06 17:10:19 INFO SparkContext: Added file file:///tmp/sql-6595647893902893628 at file:///tmp/sql-6595647893902893628 with timestamp 1683364217750
 23/05/06 17:10:19 INFO Utils: Copying /tmp/sql-6595647893902893628 to /tmp/spark-8d22e394-be9f-4fd1-b4c0-b7cd6edde531/userFiles-dafc5a76-42b2-4bd0-81e9-f374697d76b4/sql-6595647893902893628
 23/05/06 17:10:19 INFO Executor: Fetching file:///tmp/sql-6595647893902893628 with timestamp 1683364217750

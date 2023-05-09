@@ -22,6 +22,10 @@ Using Spark's default log4j profile: org/apache/spark/log4j-defaults.properties
 23/05/06 17:12:48 WARN Utils: Service 'SparkUI' could not bind on port 4040. Attempting port 4041.
 23/05/06 17:12:48 WARN Utils: Service 'SparkUI' could not bind on port 4041. Attempting port 4042.
 23/05/06 17:12:48 INFO Utils: Successfully started service 'SparkUI' on port 4042.
+<<<<<<< HEAD
+=======
+23/05/06 17:12:49 INFO SparkContext: Added JAR file:/home/huangwei/openmldb-playground/openmldb-0.7.3-linux/taskmanager/lib/openmldb-batchjob-0.7.3.jar at spark://m7-pce-gpu02:36165/jars/openmldb-batchjob-0.7.3.jar with timestamp 1683364367844
+>>>>>>> f00aff11a7679ae9c902c06aa4296302ecc31792
 23/05/06 17:12:49 INFO SparkContext: Added file file:///tmp/sql-2332846503971509901 at file:///tmp/sql-2332846503971509901 with timestamp 1683364367844
 23/05/06 17:12:49 INFO Utils: Copying /tmp/sql-2332846503971509901 to /tmp/spark-3918934b-e895-48de-90cb-9b03ff1f7c6a/userFiles-758193dd-833f-493f-933e-7a985585fbb3/sql-2332846503971509901
 23/05/06 17:12:49 INFO Executor: Fetching file:///tmp/sql-2332846503971509901 with timestamp 1683364367844
