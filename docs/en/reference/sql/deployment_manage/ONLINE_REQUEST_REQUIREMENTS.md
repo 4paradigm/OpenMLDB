@@ -60,7 +60,13 @@ SELECT substr(COL7, 3, 6) FROM t1;
 
 - Only `LAST JOIN` is supported.
 - At least one JOIN condition is an EQUAL condition like `left_table.column=right_table.column`, and the `rgith_table.column` needs to be indexed as a `KEY` of the right table.
-- In the case of LAST JOIN with sorting, `ORDER BY` only supports column expressions, and the column needs to be indexed as a timestamp (TS) of the right table.
+- In the case of LAST JOIN with sorting, `ORDER BY` only supports column expressions, all columns of type int16, int32, int64, timestamp, and the column needs to be indexed as a timestamp (TS) of the right table.
+- Right TableRef
+  - refer to a physical table name or subquery
+  - for subquery, limits to
+    - Simple Projection (`select * from tb` or `select id, val from tb`)
+    - Window subquery, e.g `select id, count(val) over w as cnt from t1 window w as (...)`.  Here the left TableRef of last join and window subquery must have the same request table, request table is the left most physical table of SQL syntax tree
+    - **Since OpenMLDB 0.8.0** WHERE claused simple projection ( 例如 `select * from tb where id > 10`)
 
 **Example**
 
@@ -95,7 +101,12 @@ desc t1;
 
 - Window boundary: only `PRECEDING` and `CURRENT ROW` are supported.
 - Window type: only `ROWS` and `ROWS_RANGE` are supported.
-- `PARTITION BY` only supports column expressions, and the column needs to be indexed as a `KEY`.
-- `ORDER BY` only support column expressions, and the column needs to be indexed as a timestamp (`TS`).
+- `PARTITION BY` only supports column expressions, including multiple columns,  all columns needs to be indexed as a `KEY`. The rule apply to the main table and all union sources
+- `ORDER BY` only support column expressions, single column only, and the column needs to be indexed as a timestamp (`TS`). The rule apply to the main table and all union sources
 - Other supported keywords: `EXCLUDE CURRENT_ROW`, `EXCLUDE CURRENT_TIME`, `MAXSIZE` and `INSTANCE_NOT_IN_WINDOW`. See [WindowSpec elements specifically designed by OpenMLDB](../dql/WINDOW_CLAUSE.md#windowspec-elements-specifically-designed-by-openmldb) for detail.
+- `WINDOW UNION` ，supports those formats:
+  - table ref or simple table projection，e.g `t1` or `select id, val from t1`. The schema of main table and union source must be the same，and index optimized for columns referred by `PARTITION BY`, `ORDER BY` from union sources
+  - **Since OpenMLDB 0.8.0**, simple projection over table last join，e.g `UNION (select * from t1 last join t2 ON ...)`. Index requirements：
+    - `t1 last join t2`meet the requirements for LAST JOIN
+    - columns refered by `PARTITION BY`, `ORDER BY` must resolved to the left most table from last join, `t1` here.
 
