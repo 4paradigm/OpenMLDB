@@ -3,30 +3,30 @@
 ## [0.8.0] - 2023-05-10
 
 ### Features
+- Add a new synchronization tool to automatically synchronize data from online storage to offline storage (#3256 @vagetablechic)
 - Support the new built-in functions `var_samp`, `var_pop`, `entropy`, `earth_distance`, `nth_value_where` and `add_months` (#3046 #3193 @aceforeverd)
-- Support register table in Spark and OpenMLDB (#3057 @tobegit3hub)
 - Support batch read for openmldb-spark-connector (#3070 @tobegit3hub)
-- Support kubernetes as Taskmanager backend (#3147 #3157 #3185 @tobegit3hub)
+- Support Kubernetes as a TaskManager backend for the offline engine (#3147 #3157 #3185 @tobegit3hub)
 - Support getting yarn log for `SHOW JOBLOG` (#3163 @tobegit3hub)
 - Support LAST JOIN over WHERE clause (#3134 @aceforeverd)
 - Support LAST JOIN in WINDOW UNION clause (#3205 @aceforeverd)
-- Supports decimal place as second parameter in `round` (#3221 @aceforeverd)
-- Support `s3` for offline engine (#3229 @tobegit3hub)
+- Supports a decimal place as the second parameter in the function `round` (#3221 @aceforeverd)
+- Support Amazon S3 as an offline data source (#3229 @tobegit3hub)
 - Enhance the diagnostic tool (#3224 #3208 @zhangziheng01233)
-- Add Sync tool to sync data from online to offline automatically (#3256 @vagetablechic)
-- Add `SKIP_INDEX_CHECK` option to skip index checking when deploying SQLs (#3241 @dl239)
+- Add the new option `SKIP_INDEX_CHECK` to skip index checking when deploying SQLs (#3241 @dl239)
 - Support symbolic paths for offline table (#3235 @tobegit3hub)
 - Improve the documents (#3104 #2993 @selenachenjingxin, #3113 #3118 #3239 @tobegit3hub, #3150 #3184 #3237 @aceforeverd, #3160 #3195 #3197 #3223 @lumianph, #3192 #3215 @haseeb-xd, #3201 #3220 #3232 #3236 #3254 @vagetablechicken, #3213 @alexab612, #3189 #3199 @TanZiYen)
 - Other minor features (#3115 #3143 #3182 @tobegit3hub, #2818 #3123 @aceforeverd, #3128 #3127 @dl239)
 
 ### Bug Fixes
 - There is curator conflict problem when executing offline SQLs under certain circumstances. (#3090 @tobegit3hub)
-- `CREATE TABLE ... LIKE HIVE ...` statement execution fails if there is no database in table name. (#3063 @tobegit3hub)
-- The CLI shows success even though `CREATE TABLE ... LIKE ...`execution fails. (#3080 @tobegit3hub)
-- `SELECT ... INTO ...` statement execution fails in offline mode if there is no source table. (#3116 @tobegit3hub)
-- `SELECT * ` over two LAST JOIN compiling fails. (#3117 @aceforeverd)
-- The syncing job thread will enter an infinite loop if quering `JOB_INFO` fails. (#3169 @vagetablechicken)
-- Deploy SQLs execution fails if there are more than one conditions on JOIN statement. (#3196 @vagetablechicken)
+- `CREATE TABLE ... LIKE HIVE ...` statement execution fails if there is no database in a table name. (#3063 @tobegit3hub)
+- The CLI shows `success` even though `CREATE TABLE ... LIKE ...` execution fails. (#3080 @tobegit3hub)
+- `SELECT ... INTO ...` statement execution fails in the offline mode if there is no source table. (#3116 @tobegit3hub)
+- Compilation fails when `SELECT * ` over two LAST JOIN. (#3117 @aceforeverd)
+- The syncing job thread will enter an infinite loop if querying `JOB_INFO` fails. (#3169 @vagetablechicken)
+- SQLs deployment fails if there are more than one conditions on a JOIN statement. (#3196 @vagetablechicken)
+- Registered tables cannot be fetched when enabling SparkSQL for the offline engine (#3057 @tobegit3hub)
 - Other minor bug fixes (#3097 #3095 @dl239, #3109 #3141 #3162 #3234 @aceforeverd, #3096 #3112 @tobegit3hub, #3231 #3251 @vagetablechicken)
 
 ### Code Refactoring
