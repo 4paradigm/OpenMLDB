@@ -265,21 +265,21 @@ def parse_arg(argv):
         "offline", help="only inspect offline jobs, check the job log"
     )
     offline.set_defaults(command=inspect_offline)
-    ins_job = inspect_sub.add_parser("job", help="inspect job by id(need to set arg id)")
+    ins_job = inspect_sub.add_parser("job", help="show jobs by state or show joblog by id")
     ins_job.set_defaults(command=inspect_job)
     ins_job.add_argument(
         "--state",
         default="all",
-        help="inspect which state offline jobs"
+        help="Specify which state offline jobs, split by ','"
     )
     ins_job.add_argument(
         "--id",
-        help="job id"
+        help="inspect joblog by id"
     )
     ins_job.add_argument(
         "--detail",
         action="store_true",
-        help="show detailed log information"
+        help="show detailed joblog information, use with `--id`"
     )
 
     # sub test
