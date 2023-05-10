@@ -12,7 +12,7 @@ env:
   HYBRIDSE_SOURCE: local
 
 jobs:
-  build openmldb:
+  build-openmldb:
     runs-on: self-hosted
     container:
       image: ghcr.io/4paradigm/hybridsql:latest
@@ -23,7 +23,6 @@ jobs:
       - run:  make configure CMAKE_INSTALL_PREFIX=openmldb-linux
       - run:  make SQL_JAVASDK_ENABLE=ON && make SQL_JAVASDK_ENABLE=ON install
       - run:  mkdir openmldb-linux
-      - run: cat 
       - run:  tar -zcf openmldb-linux.tar.gz openmldb-linux
       - name: upload artifact
         uses: actions/upload-artifact@v3
@@ -32,7 +31,7 @@ jobs:
           path: release/
     
   java-sdk-cluster-memory-0:
-    needs: build openmldb
+    needs: build-openmldb
     if: ${{ github.event.inputs.EXEC_TEST_TYPE == 'all' || github.event.inputs.EXEC_TEST_TYPE == 'java' }}
     runs-on: self-hosted
     steps:
@@ -46,10 +45,10 @@ jobs:
         run: |
           tar -zxf openmldb-linux.tar.gz 
           ls -l
-         source /root/.bashrc && bash test/steps/format_config.sh $(pwd)/openmldb-linux java-sdk-cluster-memory-0 20001 21000 java
-         source /root/.bashrc && bash sbin/deploy.sh
-         source /root/.bashrc && bash sbin/start_all.sh
-         source /root/.bashrc && bash test/steps/use_config.sh java
+          source /root/.bashrc && bash test/steps/format_config.sh $(pwd)/openmldb-linux java-sdk-cluster-memory-0 20001 21000 java
+          source /root/.bashrc && bash sbin/deploy.sh
+          source /root/.bashrc && bash sbin/start_all.sh
+          source /root/.bashrc && bash test/steps/use_config.sh java
       - name: test
         run: source /root/.bashrc && bash test/steps/openmldb-sdk-test-java-src.sh -c test_cluster.xml -d deploy -l "0" -s "memory"    
       - name: TEST Results
