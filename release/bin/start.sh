@@ -99,6 +99,7 @@ case $OP in
                 cp ./conf/"${COMPONENT}".properties ./"${COMPONENT}"/conf/"${COMPONENT}".properties
             fi
             pushd ./"$COMPONENT"/bin/ > /dev/null
+            mkdir -p "$LOG_DIR" # no matter the path is abs or relat
             if [ "$DAEMON_MODE" = "true" ]; then
                 "${ROOTDIR}"/"${MON_BINARY}" "./${COMPONENT}.sh" -d -s 10 -l "$LOG_DIR"/"$COMPONENT"_mon.log -m "${ROOTDIR}/${OPENMLDB_PID_FILE}" -p "${ROOTDIR}/${OPENMLDB_PID_FILE}.child"
                 sleep 3
