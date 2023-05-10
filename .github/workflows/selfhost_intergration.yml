@@ -43,10 +43,10 @@ jobs:
       - name: install openmldb
         run: |
           tar -zxf ~/openmldb-linux.tar.gz 
-          source /root/.bashrc && bash test/steps/format_config.sh $(pwd)/openmldb-linux java-sdk-cluster-memory-0 20001 21000 java
-          source /root/.bashrc && bash sbin/deploy.sh
-          source /root/.bashrc && bash sbin/start_all.sh
-          source /root/.bashrc && bash test/steps/use_config.sh java
+          bash test/steps/format_config.sh $(pwd)/openmldb-linux java-sdk-cluster-memory-0 20001 21000 java
+          bash sbin/deploy.sh
+          bash sbin/start_all.sh
+          bash test/steps/use_config.sh java
       - name: test
         run: source /root/.bashrc && bash test/steps/openmldb-sdk-test-java-src.sh -c test_cluster.xml -d deploy -l "0" -s "memory"    
       - name: TEST Results
@@ -75,5 +75,5 @@ jobs:
           content_type: text/plain
           attachments: surefire-reports.tar.gz
       - name: clear source
-        run: source /root/.bashrc && bash sbin/stop_all.sh
+        run:  bash sbin/stop_all.sh
         
