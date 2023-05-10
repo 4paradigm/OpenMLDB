@@ -42,7 +42,7 @@ jobs:
       - uses: actions/checkout@v3
       - name: install openmldb
         run: |
-          tar -zxf openmldb-linux.tar.gz 
+          tar -zxf ~/openmldb-linux.tar.gz 
           ls -l
           source /root/.bashrc && bash test/steps/format_config.sh $(pwd)/openmldb-linux java-sdk-cluster-memory-0 20001 21000 java
           source /root/.bashrc && bash sbin/deploy.sh
