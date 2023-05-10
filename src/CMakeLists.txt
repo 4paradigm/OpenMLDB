@@ -93,7 +93,9 @@ function(compile_test_with_extra DIR DEPEND_FILE_LIST)
     set(test_list ${test_list} PARENT_SCOPE)
 endfunction(compile_test_with_extra)
 function(compile_test DIR)
+    # modify the var test_list
     compile_test_with_extra(${DIR} "")
+    set(test_list ${test_list} PARENT_SCOPE)
 endfunction(compile_test)
 
 compile_proto(type ${PROJECT_SOURCE_DIR})
