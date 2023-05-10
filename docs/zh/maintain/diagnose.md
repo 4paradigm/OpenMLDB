@@ -86,8 +86,8 @@ usage: openmldb_tool inspect [-h] [--helpfull] {online,offline,job} ...
 positional arguments:
   {online,offline,job}
     online              only inspect online table.
-    offline             only inspect offline jobs, check the job log
-    job                 show jobs by state or show joblog by id
+    offline             only inspect offline jobs.
+    job                 show jobs by state, show joblog or parse joblog by id.
 ```
 
 #### 在线检查
@@ -100,11 +100,13 @@ positional arguments:
 
 #### 离线检查
 
-离线检查会输出最终状态为失败的任务（不检查“运行中”的任务）及其日志，等价于`SHOW JOBS`并筛选出失败任务。
+离线检查会输出最终状态为失败的任务（不检查“运行中”的任务），等价于`SHOW JOBS`并筛选出失败任务。
 
 #### JOB 检查
 
-JOB 检查会检查集群中的离线任务，默认查询所有任务，等价于`SHOW JOBS`。使用`inspect job --state <state>`筛选出特定状态的日志，可以使用 ',' 分隔，同时查询不同状态的日志。使用`inspect job --id <job_id>`查询指定任务的log日志，其结果会筛选出主要错误信息。如果需要详细的日志信息，可以添加`--detail`获取详细信息。
+JOB 检查会检查集群中的离线任务，可以使用`inspect job`或`inspect job --state all`查询所有任务，等价于`SHOW JOBS`并按job_id排序。使用`inspect job --state <state>`可以筛选出特定状态的日志，可选的state有`finished running failed stopped killed`等。可以使用 ',' 分隔，同时查询不同状态的日志。
+
+使用`inspect job --id <job_id>`查询指定任务的log日志，其结果会筛选出主要错误信息。如果需要详细的日志信息，可以添加`--detail`获取详细信息。
 
 ### test 测试
 
