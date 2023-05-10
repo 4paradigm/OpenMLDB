@@ -29,7 +29,7 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: openmldb-linux.tar.gz
-          path: artifact/
+          path: release/
     
   java-sdk-cluster-memory-0:
     if: ${{ github.event.inputs.EXEC_TEST_TYPE == 'all' || github.event.inputs.EXEC_TEST_TYPE == 'java' }}
@@ -39,7 +39,7 @@ jobs:
         uses: actions/download-artifact@v3
         with:
           name: openmldb-linux.tar.gz
-          path: artifact/
+          path: release/
       - uses: actions/checkout@v3
       - name: install openmldb
         run: |
