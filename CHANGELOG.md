@@ -1,9 +1,9 @@
 # Changelog
 
-## [0.8.0] - 2023-05-10
+## [0.8.0] - 2023-05-11
 
 ### Features
-- Add a new synchronization tool to automatically synchronize data from online storage to offline storage (#3256 @vagetablechic)
+- Add a new synchronization tool to automatically synchronize data from online storage to offline storage (#3256 @vagetablechicken)
 - Support the new built-in functions `var_samp`, `var_pop`, `entropy`, `earth_distance`, `nth_value_where` and `add_months` (#3046 #3193 @aceforeverd)
 - Support batch read for openmldb-spark-connector (#3070 @tobegit3hub)
 - [Alpha] Support Kubernetes as a TaskManager backend for the offline engine (#3147 #3157 #3185 @tobegit3hub)
