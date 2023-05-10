@@ -10,7 +10,7 @@
 - Support LAST JOIN over WHERE clause (#3134 @aceforeverd)
 - Support LAST JOIN in WINDOW UNION clause (#3205 @aceforeverd)
 - Supports a decimal place as the second parameter in the function `round` (#3221 @aceforeverd)
-- Support Amazon S3 as an offline data source (#3229 @tobegit3hub)
+- Support Amazon S3 as an offline data source (#3229 #3261 @tobegit3hub)
 - Enhance the diagnostic tool (#3224 #3208 @zhangziheng01233)
 - Add the new option `SKIP_INDEX_CHECK` to skip index checking when deploying SQLs (#3241 @dl239)
 - Support symbolic paths for offline table (#3235 @tobegit3hub)
