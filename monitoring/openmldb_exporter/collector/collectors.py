@@ -64,11 +64,11 @@ class TableStatusCollector(Collector, SDKConnectable):
             tid, tb_name, db_name, storage_type, rows, mem, disk, partition, partition_unalive, replica, *_ = row
             tb_path = f"{db_name}_{tb_name}"
             tid = int(tid)
-            table_rows.labels(tb_path, tid, storage_type).set(long(rows))
+            table_rows.labels(tb_path, tid, storage_type).set(int(rows))
             table_partitions.labels(tb_path, tid, storage_type).set(int(partition))
             table_partitions_unalive.labels(tb_path, tid, storage_type).set(int(partition_unalive))
             table_replica.labels(tb_path, tid, storage_type).set(int(replica))
-            table_memory.labels(tb_path, tid, storage_type).set(long(mem))
+            table_memory.labels(tb_path, tid, storage_type).set(int(mem))
             table_disk.labels(tb_path, tid, storage_type).set(int(disk))
 
 
@@ -97,7 +97,7 @@ class DeployQueryStatCollector(Collector, SDKConnectable):
             for i, bound in enumerate(deploy_response_time._upper_bounds):
                 if time_second <= bound:
                     # FIXME: handle Histogram reset correctly
-                    deploy_response_time.labels(dp_name)._buckets[i].set(long(count))
+                    deploy_response_time.labels(dp_name)._buckets[i].set(int(count))
                     break
             # update sum for each deploy
             if dp_name in acc_map:
@@ -161,13 +161,13 @@ class ComponentStatusCollector(Collector, SDKConnectable):
                 line = i.decode().strip()
                 if line.rfind("use by application") > 0:
                     try:
-                        memory_by_application = long(line.split()[1])
+                        memory_by_application = int(line.split()[1])
                     except ValueError as e:
                         memory_by_application = 0
                         logging.error(e)
                 elif line.rfind("Actual memory used") > 0:
                     try:
-                        memory_acutal_used = long(line.split()[2])
+                        memory_acutal_used = int(line.split()[2])
                     except ValueError as e:
                         memory_acutal_used = 0
                         logging.error(e)
