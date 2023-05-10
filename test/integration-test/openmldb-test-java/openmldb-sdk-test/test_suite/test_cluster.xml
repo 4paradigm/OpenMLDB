@@ -2,8 +2,8 @@
 <!DOCTYPE suite SYSTEM "http://testng.org/testng-1.0.dtd">
 <suite name="openmldb-sdk-test" parallel="false" thread-count="2">
     <test name="cluster-test">
-        <parameter name="env" value="cluster"/>
-        <parameter name="version" value="0.2.3"/>
+        <parameter name="env" value="deploy"/>
+        <parameter name="version" value="SRC"/>
         <parameter name="openMLDBPath" value=""/>
         <packages>
             <package name="com._4paradigm.openmldb.java_sdk_test.cluster.sql_test"/>
