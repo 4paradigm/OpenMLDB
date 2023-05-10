@@ -124,7 +124,7 @@ def insepct_online(args):
 
 def inspect_offline(args):
     """scan jobs status, show job log if failed"""
-    final_failed = "failed,killed,lost"
+    final_failed = ["failed", "killed", "lost"]
     total, num, jobs = _get_jobs(final_failed)
     # TODO some failed jobs are known, what if we want skip them?
     print(f"inspect {total} offline jobs")
@@ -134,16 +134,14 @@ def inspect_offline(args):
     print("all offline final jobs are finished")
 
 
-def _get_jobs(state: str = "all"):
+def _get_jobs(states=None):
     assert checker.StatusChecker(Connector()).offline_support()
     conn = Connector()
     jobs = conn.execfetch("SHOW JOBS")
     total_num = len(jobs)
     # jobs sorted by id
     jobs.sort(key=lambda x: x[0])
-    if state == "all":
-        return total_num, total_num, [_format_job_row(row) for row in jobs]
-    show_jobs = [_format_job_row(row) for row in jobs if row[2].lower() in state.split(",")]
+    show_jobs = [_format_job_row(row) for row in jobs if not states or row[2].lower() in states]
     return total_num, len(show_jobs), show_jobs
 
 
@@ -156,7 +154,8 @@ def _format_job_row(row):
 
 def inspect_job(args):
     if not args.id:
-        total, num, jobs = _get_jobs(args.state)
+        states = args.state.split(",") if args.state != "all" else None
+        total, num, jobs = _get_jobs(states)
         print(f"inspect {total} offline jobs")
         if args.state != "all":
             print(f"{num} {args.state} jobs")
@@ -262,10 +261,10 @@ def parse_arg(argv):
     )
     # inspect offline
     offline = inspect_sub.add_parser(
-        "offline", help="only inspect offline jobs, check the job log"
+        "offline", help="only inspect offline jobs."
     )
     offline.set_defaults(command=inspect_offline)
-    ins_job = inspect_sub.add_parser("job", help="show jobs by state or show joblog by id")
+    ins_job = inspect_sub.add_parser("job", help="show jobs by state, show joblog or parse joblog by id.")
     ins_job.set_defaults(command=inspect_job)
     ins_job.add_argument(
         "--state",
