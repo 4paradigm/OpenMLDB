@@ -34,11 +34,11 @@ jobs:
     if: ${{ github.event.inputs.EXEC_TEST_TYPE == 'all' || github.event.inputs.EXEC_TEST_TYPE == 'java' }}
     runs-on: self-hosted
     steps:
-      - name: download artifact
-        uses: actions/download-artifact@v3
-        with:
-          name: openmldb-linux.tar.gz
-          path: release/
+#       - name: download artifact
+#         uses: actions/download-artifact@v3
+#         with:
+#           name: openmldb-linux.tar.gz
+#           path: release/
       - uses: actions/checkout@v3
       - name: install openmldb
         run: |
