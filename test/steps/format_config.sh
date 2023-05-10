@@ -35,11 +35,11 @@ ${Hosts[0]}:$tablet1Port /tmp/$dirName/tablet
 ${Hosts[1]}:$tablet2Port /tmp/$dirName/tablet
 ${Hosts[2]}:$tablet3Port /tmp/$dirName/tablet
 [nameserver]
-${Hosts[0]}:$ns1Port
+${Hosts[0]}:$ns1Port /tmp/$dirName/ns
 [apiserver]
-${Hosts[0]}:$apiserverPort
+${Hosts[0]}:$apiserverPort /tmp/$dirName/apiserver
 [taskmanager]
-${Hosts[0]}:$taskmanagerPort
+${Hosts[0]}:$taskmanagerPort /tmp/$dirName/taskmanager
 [zookeeper]
 ${Hosts[0]}:$zookeeperPort1:$zookeeperPort2:$zookeeperPort3 /tmp/$dirName/zk
 EOF
