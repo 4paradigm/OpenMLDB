@@ -47,7 +47,7 @@ jobs:
           bash openmldb-linux/sbin/deploy-all.sh
           bash openmldb-linux/sbin/start-all.sh
       - name: test
-        run: source /root/.bashrc && bash test/steps/openmldb-sdk-test-java-src.sh -c test_cluster.xml -d deploy -l "0" -s "memory"    
+        run:  bash test/steps/openmldb-sdk-test-java-src.sh -c test_cluster.xml -d deploy -l "0" -s "memory"    
       - name: TEST Results
         if: always()
         uses: EnricoMi/publish-unit-test-result-action@v1
@@ -74,5 +74,7 @@ jobs:
           content_type: text/plain
           attachments: surefire-reports.tar.gz
       - name: clear source
-        run:  bash sbin/stop_all.sh
+        run: |  
+          bash openmldb-linux/sbin/stop-all.sh
+          bash openmldb-linux/sbin/clear-all.sh 
         
