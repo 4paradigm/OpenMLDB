@@ -289,7 +289,12 @@ class OpenmldbSession {
           val format = offlineTableInfo.getFormat
           val options = offlineTableInfo.getOptionsMap.asScala.toMap
           val symbolicPathsSize = offlineTableInfo.getSymbolicPathsCount()
-          val symbolicPaths = offlineTableInfo.getSymbolicPathsList().asScala.toList
+
+          val symbolicPaths = if (symbolicPathsSize > 0) {
+            offlineTableInfo.getSymbolicPathsList().asScala.toList
+          } else {
+            List.empty[String]
+          }
 
           // TODO: Ignore the register exception which occurs when switching local and yarn mode
           try {
