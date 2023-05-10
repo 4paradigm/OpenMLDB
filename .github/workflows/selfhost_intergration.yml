@@ -44,8 +44,8 @@ jobs:
         run: |
           tar -zxf ~/openmldb-linux.tar.gz 
           bash test/steps/format_config.sh $(pwd)/openmldb-linux java-sdk-cluster-memory-0 20001 21000 java
-          bash openmldb-linux/sbin/deploy-all.sh
-          bash openmldb-linux/sbin/start-all.sh
+ #         bash openmldb-linux/sbin/deploy-all.sh
+ #         bash openmldb-linux/sbin/start-all.sh
       - name: test
         run:  bash test/steps/openmldb-sdk-test-java-src.sh -c test_cluster.xml -d deploy -l "0" -s "memory"    
       - name: TEST Results
