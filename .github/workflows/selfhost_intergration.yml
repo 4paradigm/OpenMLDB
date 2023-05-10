@@ -12,42 +12,92 @@ env:
   HYBRIDSE_SOURCE: local
 
 jobs:
-#   build-openmldb:
-#     runs-on: self-hosted
-#     container:
-#       image: ghcr.io/4paradigm/hybridsql:latest
-#     env:
-#       OS: linux
-#     steps:
-#       - uses: actions/checkout@v3
-#       - run:  make configure CMAKE_INSTALL_PREFIX=openmldb-linux
-#       - run:  make SQL_JAVASDK_ENABLE=ON && make SQL_JAVASDK_ENABLE=ON install
-#       - run:  tar -zcf openmldb-linux.tar.gz openmldb-linux
-#       - name: upload artifact
-#         uses: actions/upload-artifact@v3
-#         with:
-#           name: openmldb-linux.tar.gz
-#           path: release/
+  build-openmldb:
+    runs-on: self-hosted
+    container:
+      image: ghcr.io/4paradigm/hybridsql:latest
+    env:
+      OS: linux
+    steps:
+      - uses: actions/checkout@v3
+      - run:  make configure CMAKE_INSTALL_PREFIX=openmldb-linux
+      - run:  make SQL_JAVASDK_ENABLE=ON && make SQL_JAVASDK_ENABLE=ON install
+      - run:  tar -zcf openmldb-linux.tar.gz openmldb-linux
+      - name: upload artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: openmldb-linux.tar.gz
+          path: release/
     
   java-sdk-cluster-memory-0:
-#     needs: build-openmldb
+    needs: build-openmldb
     if: ${{ github.event.inputs.EXEC_TEST_TYPE == 'all' || github.event.inputs.EXEC_TEST_TYPE == 'java' }}
     runs-on: self-hosted
     steps:
-#       - name: download artifact
-#         uses: actions/download-artifact@v3
-#         with:
-#           name: openmldb-linux.tar.gz
-#           path: release/
+      - name: download artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: openmldb-linux.tar.gz
+          path: release/
       - uses: actions/checkout@v3
       - name: install openmldb
         run: |
           tar -zxf ~/openmldb-linux.tar.gz 
           bash test/steps/format_config.sh $(pwd)/openmldb-linux java-sdk-cluster-memory-0 20001 21000 java
- #         bash openmldb-linux/sbin/deploy-all.sh
- #         bash openmldb-linux/sbin/start-all.sh
+          bash openmldb-linux/sbin/deploy-all.sh
+          bash openmldb-linux/sbin/start-all.sh
       - name: test
         run:  bash test/steps/openmldb-sdk-test-java-src.sh -c test_cluster.xml -d deploy -l "0" -s "memory"    
+      - name: TEST Results
+        if: always()
+        uses: EnricoMi/publish-unit-test-result-action@v1
+        with:
+          files: test/integration-test/openmldb-test-java/openmldb-sdk-test/target/surefire-reports/TEST-*.xml
+          check_name: "SRC java-sdk-cluster-memory-0 Report"
+          comment_title: "SRC java-sdk-cluster-memory-0 Report"
+      - name: tar test report
+        if: ${{ failure() }}
+        run: tar -zcvf surefire-reports.tar.gz test/integration-test/openmldb-test-java/openmldb-sdk-test/target/surefire-reports
+      - name: Send Email
+        if: ${{ failure() }}
+        uses: dawidd6/action-send-mail@master
+        with:
+          server_address: smtp.partner.outlook.cn
+          server_port: 587
+          username: ${{ secrets.MAIL_USERNAME }}
+          password: ${{ secrets.MAIL_PASSWORD }}
+          subject: OpenMLDB Memory Test
+          body: OpenMLDB Memory Test Failed
+          html_body: test/integration-test/openmldb-test-java/openmldb-sdk-test/target/surefire-reports/html/overview.html
+          to: ${{ secrets.MAIL_TO }}
+          from: GitHub Actions
+          content_type: text/plain
+          attachments: surefire-reports.tar.gz
+      - name: clear source
+        run: |  
+          bash openmldb-linux/sbin/stop-all.sh
+          bash openmldb-linux/sbin/clear-all.sh 
+          
+          
+  java-sdk-cluster-memory-1:
+    needs: build-openmldb
+    if: ${{ github.event.inputs.EXEC_TEST_TYPE == 'all' || github.event.inputs.EXEC_TEST_TYPE == 'java' }}
+    runs-on: self-hosted
+    steps:
+      - name: download artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: openmldb-linux.tar.gz
+          path: release/
+      - uses: actions/checkout@v3
+      - name: install openmldb
+        run: |
+          tar -zxf ~/openmldb-linux.tar.gz 
+          bash test/steps/format_config.sh $(pwd)/openmldb-linux java-sdk-cluster-memory-0 21001 22000 java
+          bash openmldb-linux/sbin/deploy-all.sh
+          bash openmldb-linux/sbin/start-all.sh
+      - name: test
+        run:  bash test/steps/openmldb-sdk-test-java-src.sh -c test_cluster.xml -d deploy -l "1,2,3,4,5" -s "memory"   
       - name: TEST Results
         if: always()
         uses: EnricoMi/publish-unit-test-result-action@v1
