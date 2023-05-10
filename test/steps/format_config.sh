@@ -47,7 +47,7 @@ EOF
 #write openmldb.env.sh
 cat >$rootPath/conf/openmldb-env.sh<<EOF
 export OPENMLDB_VERSION=0.7.3
-export OPENMLDB_MODE=${OPENMLDB_MODE:=cluster}
+export OPENMLDB_MODE=\${OPENMLDB_MODE:=cluster}
 export OPENMLDB_USE_EXISTING_ZK_CLUSTER=false
 export OPENMLDB_ZK_HOME=
 export OPENMLDB_ZK_CLUSTER=
