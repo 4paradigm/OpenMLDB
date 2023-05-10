@@ -104,7 +104,19 @@ positional arguments:
 
 #### JOB 检查
 
-JOB 检查会检查集群中的离线任务，可以使用`inspect job`或`inspect job --state all`查询所有任务，等价于`SHOW JOBS`并按job_id排序。使用`inspect job --state <state>`可以筛选出特定状态的日志，可选的state有`finished running failed stopped killed`等。可以使用 ',' 分隔，同时查询不同状态的日志。
+JOB 检查会检查集群中的离线任务，可以使用`inspect job`或`inspect job --state all`查询所有任务，等价于`SHOW JOBS`并按job_id排序。使用`inspect job --state <state>`可以筛选出特定状态的日志，可以使用 ',' 分隔，同时查询不同状态的日志。例如：`inspect offline` 相当于`inspect job --state failed,killed,lost`即筛选出所有失败的任务。
+
+以下是一些常见的state:
+
+state    | 描述
+---------|--------
+finished | 成功完成的任务
+running  | 正在运行的任务
+failed   | 失败的任务
+killed   | 被终止的任务
+
+更多state信息详见[Spark State]( https://spark.apache.org/docs/3.2.1/api/java/org/apache/spark/launcher/SparkAppHandle.State.html)，[Yarn State](https://hadoop.apache.org/docs/current/api/org/apache/hadoop/yarn/api/records/YarnApplicationState.html)
+
 
 使用`inspect job --id <job_id>`查询指定任务的log日志，其结果会筛选出主要错误信息。如果需要详细的日志信息，可以添加`--detail`获取详细信息。
 
