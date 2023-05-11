@@ -6,6 +6,7 @@ jobName=$2
 portFrom=$3
 portTo=$4
 Type=$5
+Dependency=$6
 version=$(echo $($rootPath/bin/openmldb --version) | awk '{print $3}')
 curTime=$(date "+%m%d%H%M")
 dirName=${jobName}-${version}-${curTime}
@@ -68,3 +69,19 @@ basePath: "$rootPath/tmp"
 openMLDBPath: "/tmp/$dirName/tablet/bin/openmldb"
 EOF
 fi
+
+if [ "$Dependency"="hadoop" ]; then
+cat >$rootPath/conf/taskmanager.properties<<EOF
+server.host=${Hosts[0]}
+zookeeper.cluster=${Hosts[0]}:$zookeeperPort1
+zookeeper.root_path=/openmldb-$dirName
+server.port=$taskmanagerPort
+job.log.path=./logs/
+spark.home=
+spark.master=yarn-client
+offline.data.prefix=hdfs:///openmldb_integration_test/
+spark.default.conf=spark.hadoop.yarn.timeline-service.enabled=false
+hadoop.conf.dir=/4pd/home/liuqiyuan/hadoop
+hadoop.user.name=root
+external.function.dir=/tmp/
+EOF
