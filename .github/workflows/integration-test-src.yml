@@ -65,7 +65,7 @@ jobs:
 
   java-sdk-cluster-memory-0:
     if: ${{ github.event.inputs.EXEC_TEST_TYPE == 'all' || github.event.inputs.EXEC_TEST_TYPE == 'java' }}
-    runs-on: self-hosted
+    runs-on: [self-hosted,generic]
     container:
       image: ghcr.io/4paradigm/hybridsql:latest
     env:
@@ -109,7 +109,7 @@ jobs:
 
   java-sdk-cluster-memory-task:
     if: ${{ github.event.inputs.EXEC_TEST_TYPE == 'all' || github.event.inputs.EXEC_TEST_TYPE == 'java' }}
-    runs-on: self-hosted
+    runs-on: [self-hosted,generic]
     container:
       image: ghcr.io/4paradigm/hybridsql:latest
     env:
@@ -153,7 +153,7 @@ jobs:
 
   java-sdk-cluster-memory-1:
     if: ${{ github.event.inputs.EXEC_TEST_TYPE == 'all' || github.event.inputs.EXEC_TEST_TYPE == 'java' }}
-    runs-on: self-hosted
+    runs-on: [self-hosted,generic]
     container:
       image: ghcr.io/4paradigm/hybridsql:latest
     env:
@@ -196,7 +196,7 @@ jobs:
 
   java-sdk-cluster-ssd-0:
     if: ${{ github.event.inputs.EXEC_TEST_TYPE == 'all' || github.event.inputs.EXEC_TEST_TYPE == 'java' }}
-    runs-on: self-hosted
+    runs-on: [self-hosted,generic]
     container:
       image: ghcr.io/4paradigm/hybridsql:latest
     env:
@@ -282,7 +282,7 @@ jobs:
 
   java-sdk-cluster-hdd-0:
     if: ${{ github.event.inputs.EXEC_TEST_TYPE == 'all' || github.event.inputs.EXEC_TEST_TYPE == 'java' }}
-    runs-on: self-hosted
+    runs-on: [self-hosted,generic]
     container:
       image: ghcr.io/4paradigm/hybridsql:latest
     env:
