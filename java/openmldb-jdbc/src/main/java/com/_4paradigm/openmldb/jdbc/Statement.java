@@ -39,6 +39,7 @@ public class Statement implements java.sql.Statement {
         return new SQLResultSet(resultSet);
     }
 
+    // TODO(hw): why return sqlresultset?
     @Override
     public SQLResultSet executeQuery(String sql) throws SQLException {
         checkClosed();

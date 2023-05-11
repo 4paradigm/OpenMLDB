@@ -15,6 +15,7 @@
         <module>openmldb-jdbc</module>
         <module>openmldb-native</module>
         <module>openmldb-common</module>
+        <module>openmldb-synctool</module>
 
         <module>openmldb-spark-connector</module>
         <module>openmldb-batch</module>
