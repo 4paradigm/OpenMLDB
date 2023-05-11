@@ -99,7 +99,7 @@ jobs:
       - name: install openmldb
         run: |
           tar -zxf ~/openmldb-linux.tar.gz 
-          bash test/steps/format_config.sh $(pwd)/openmldb-linux java-sdk-cluster-memory-0 21001 22000 java
+          bash test/steps/format_config.sh $(pwd)/openmldb-linux java-sdk-cluster-memory-1 21001 22000 java
           bash openmldb-linux/sbin/deploy-all.sh
           bash openmldb-linux/sbin/start-all.sh
       - name: test
