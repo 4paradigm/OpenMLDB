@@ -28,6 +28,12 @@ jobs:
         with:
           name: openmldb-linux.tar.gz
           path: release/
+      - name: 'Cleanup build folder'
+        run: |
+          ls -la ./
+          rm -rf ./* || true
+          rm -rf ./.??* || true
+          ls -la ./
     
   java-sdk-cluster-memory-0:
     needs: build-openmldb
