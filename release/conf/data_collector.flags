@@ -1,0 +1,19 @@
+# no need to set role and use original glog flags
+--endpoint=127.0.0.1:8888
+--enable_status_service=true
+
+--zk_cluster=127.0.0.1:2181
+--zk_root_path=/openmldb
+--collector_datadir=/tmp/data_collector
+
+# log conf
+--openmldb_log_dir=./logs
+--log_level=info
+
+# if get reached timeout in data collector, set it bigger, default is 20000(20s)
+# --request_timeout_ms=
+
+# if it's big or tasks are too many, it will be overcrowded, set it smaller, default is 1048576(byte,1M)
+# --max_pack_size=
+# if overcrowded, set it bigger, default is 67108864(byte,64M)
+# --socket_max_unwritten_bytes=

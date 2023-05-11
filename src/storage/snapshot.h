@@ -41,7 +41,7 @@ class Snapshot {
     int GenManifest(const std::string& snapshot_name, uint64_t key_count, uint64_t offset, uint64_t term);
     static int GetLocalManifest(const std::string& full_path,
                                 ::openmldb::api::Manifest& manifest);  // NOLINT
-
+    std::string GetSnapshotPath() { return snapshot_path_; }
  protected:
     uint32_t tid_;
     uint32_t pid_;
