@@ -85,3 +85,4 @@ hadoop.conf.dir=/4pd/home/liuqiyuan/hadoop
 hadoop.user.name=root
 external.function.dir=/tmp/
 EOF
+fi
