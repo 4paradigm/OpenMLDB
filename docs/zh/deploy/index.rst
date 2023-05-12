@@ -10,3 +10,4 @@
     compile
     integrate_hadoop
     offline_integrate_kubernetes
+    online_offline_sync
