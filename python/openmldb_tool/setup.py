@@ -32,6 +32,7 @@ setup(
         "absl-py",
         "pyyaml",
         "paramiko",
+        "termplotlib",
     ],
     extras_require={'test': [
         "pytest",
