@@ -1,6 +1,6 @@
 # Changelog
 
-## [0.8.0] - 2023-05-11
+## [0.8.0] - 2023-05-12
 
 ### Features
 - Add a new synchronization tool to automatically synchronize data from online storage to offline storage (#3256 @vagetablechicken)
@@ -11,7 +11,6 @@
 - Support LAST JOIN in WINDOW UNION clause (#3205 @aceforeverd)
 - Supports a decimal place as the second parameter in the function `round` (#3221 @aceforeverd)
 - Support Amazon S3 as an offline data source (#3229 #3261 @tobegit3hub)
-- Enhance the diagnostic tool (#3224 #3208 @zhangziheng01233)
 - Add the new option `SKIP_INDEX_CHECK` to skip index checking when deploying SQLs (#3241 @dl239)
 - Support symbolic paths for offline table (#3235 @tobegit3hub)
 - Improve the documents (#3104 #2993 @selenachenjingxin, #3113 #3118 #3239 @tobegit3hub, #3150 #3184 #3237 #3255 @aceforeverd, #3160 #3195 #3197 #3223 @lumianph, #3192 #3215 @haseeb-xd, #3201 #3220 #3232 #3236 #3254 @vagetablechicken, #3213 @alexab612, #3189 #3199 @TanZiYen)
