@@ -31,7 +31,7 @@ ENV OPENMLDB_VERSION="${OPENMLDB_VERSION}"
 RUN  if [ "${USE_ADD_WHL}" = "true" ] ; then \
           pip install /additions/openmldb*.whl ; \
      else \
-          pip install --no-cache-dir "openmldb==${OPENMLDB_VERSION}" "openmldb-tool==${OPENMLDB_VERSION}" ; \
+          pip install --no-cache-dir "openmldb==${OPENMLDB_VERSION}" "openmldb-tool" ; \
      fi
 
 COPY setup_openmldb.sh /
