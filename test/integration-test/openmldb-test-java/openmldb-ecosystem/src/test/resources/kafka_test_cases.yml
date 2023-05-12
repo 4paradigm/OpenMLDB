@@ -109,3 +109,55 @@ cases:
     expect: 
       table: "auto_schema"
       data: [[1,2,3,4.400000095367432,5.555,true,"c77777","2022-4-27",1651051906000]]
+  - id: topic table mapping
+    append_conf: {
+      "topics": "mapping",
+      "name": "mapping-connector",
+      "auto.create": "false",
+      "auto.schema": "true",
+      "value.converter": "org.apache.kafka.connect.json.JsonConverter",
+      "value.converter.schemas.enable": "false",
+      "topic.table.mapping": "mapping:mapping_table,foo:bar"
+    }
+    openmldb_ddl: "create table mapping_table(c1_int16 int16, c2_int32 int32, c3_int64 int64, c4_float float, c5_double double, c6_boolean bool, c7_string string, c8_date date, c9_timestamp timestamp)"
+    messages: 
+      - json: {
+        "c1_int16": 1,
+        "c2_int32": 2,
+        "c3_int64": 3,
+        "c4_float": 4.4,
+        "c5_double": 5.555,
+        "c6_boolean": true,
+        "c7_string": "c77777",
+        "c8_date": 19109,
+        "c9_timestamp": 1651051906000
+      }
+    expect: 
+      table: "mapping_table"
+      data: [[1,2,3,4.400000095367432,5.555,true,"c77777","2022-4-27",1651051906000]]
+  - id: use ${topic} if doesn't find in mapping
+    append_conf: {
+      "topics": "no_mapping",
+      "name": "mapping-connector-1",
+      "auto.create": "false",
+      "auto.schema": "true",
+      "value.converter": "org.apache.kafka.connect.json.JsonConverter",
+      "value.converter.schemas.enable": "false",
+      "topic.table.mapping": "foo:bar"
+    }
+    openmldb_ddl: "create table no_mapping(c1_int16 int16, c2_int32 int32, c3_int64 int64, c4_float float, c5_double double, c6_boolean bool, c7_string string, c8_date date, c9_timestamp timestamp)"
+    messages: 
+      - json: {
+        "c1_int16": 1,
+        "c2_int32": 2,
+        "c3_int64": 3,
+        "c4_float": 4.4,
+        "c5_double": 5.555,
+        "c6_boolean": true,
+        "c7_string": "c77777",
+        "c8_date": 19109,
+        "c9_timestamp": 1651051906000
+      }
+    expect: 
+      table: "no_mapping"
+      data: [[1,2,3,4.400000095367432,5.555,true,"c77777","2022-4-27",1651051906000]]
