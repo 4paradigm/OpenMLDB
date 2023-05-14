@@ -111,6 +111,7 @@ case $component in
     exchange "dataDir" "$data_dir" ${zk_conf}
     echo "initLimit=5" >> ${zk_conf}
     echo "syncLimit=2" >> ${zk_conf}
+    echo "maxClientCnxns=120" >> ${zk_conf}
     echo "$OPENMLDB_ZK_QUORUM" | tr '|' '\n' >> ${zk_conf}
     if [[ ! -e "$data_dir" ]]; then
       mkdir -p "$data_dir"
