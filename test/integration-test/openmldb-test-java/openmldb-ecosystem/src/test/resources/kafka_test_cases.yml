@@ -1,6 +1,16 @@
+kafka: {
+  # kafka server host
+  "bootstrap.servers": localhost:9092
+  # kafka connect rest api
+  "connect.listeners": localhost:8083
+}
+openmldb:
+  # use apiserver for admin, to avoid import jdbc jars. kafka use `connection.url`.
+  apiserver.address: localhost:9080
 common_connector_conf: {
   "connector.class": "io.confluent.connect.jdbc.JdbcSinkConnector",
   "tasks.max": "1",
+  # test db here, will be deleted before test, don't depend on the data in it.
   "connection.url": "jdbc:openmldb:///kafka_test?zk=127.0.0.1:2181&zkPath=/openmldb"
  }
 cases:
