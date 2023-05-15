@@ -97,12 +97,9 @@ DeployOption
 						::= 'OPTIONS' '(' DeployOptionItem (',' DeployOptionItem)* ')'
 
 DeployOptionItem
-						::= LongWindowOption
-
-LongWindowOption
-						::= 'LONG_WINDOWS' '=' LongWindowDefinitions
+            ::= 'LONG_WINDOWS' '=' LongWindowDefinitions
+            | 'SKIP_INDEX_CHECK' '=' string_literal
 ```
-目前只支持长窗口`LONG_WINDOWS`的优化选项。
 
 #### 长窗口优化
 ```sql
@@ -152,6 +149,15 @@ interval_literal ::= int_literal 's'|'m'|'h'|'d'
 DEPLOY demo_deploy OPTIONS(long_windows="w1:1d") SELECT c1, sum(c2) OVER w1 FROM demo_table1
     WINDOW w1 AS (PARTITION BY c1 ORDER BY c2 ROWS_RANGE BETWEEN 5d PRECEDING AND CURRENT ROW);
 -- SUCCEED
+```
+
+#### 关闭索引类型校验
+默认情况下`SKIP_INDEX_CHECK`选项为`false`, 即deploy SQL时会校验现有的索引和期望的索引类型是否一致，如果不一致会报错。如果这个选项设置为`true`, deploy的时候对已有索引不会校验已有索引，也不会修改已有索引的TTL。
+
+**Example**
+```sql
+DEPLOY demo OPTIONS (SKIP_INDEX_CHECK="TRUE")
+    SELECT * FROM t1 LAST JOIN t2 ORDER BY t2.col3 ON t1.col1 = t2.col1;
 ```
 
 ## 相关SQL

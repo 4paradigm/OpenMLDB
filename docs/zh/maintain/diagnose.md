@@ -30,7 +30,6 @@ optional arguments:
   -h, --help  show this help message and exit
   --helpfull  show full help message and exit
   --diff      check if all endpoints in conf are in cluster. If set, need to set `--conf_file`
-  --conn      check network connection of all servers
 ```
 
 - 简单查询集群状态：
@@ -56,29 +55,9 @@ optional arguments:
 openmldb_tool status --diff -f=/work/openmldb/conf/hosts
 ```
 
-#### 检查各个节点的连接状况
-如果指定`--conn`参数，会检查集群中所有节点能否成功连接，如果连接成功，会返回连接所用时间和版本信息。如果有节点连接失败，则会输出异常信息。你可以这样检查：
-```bash
-openmldb_tool status --conn
-```
-输出类似下表:
-```
-+---------------------------------------------------------------------------+
-|                                Connections                                |
-+-----------------+---------------+-----------+-----------------------------+
-|     Endpoint    |    version    | cost_time |            extra            |
-+-----------------+---------------+-----------+-----------------------------+
-| localhost:10921 | 0.7.3-736ecb2 |  4.491ms  |                             |
-| localhost:10922 | 0.7.3-736ecb2 |  3.425ms  |                             |
-|  localhost:7527 | 0.7.3-736ecb2 |  3.489ms  |                             |
-|  localhost:9902 | 0.7.3-736ecb2 |  5.273ms  | batchVersion: 0.7.3-736ecb2 |
-+-----------------+---------------+-----------+-----------------------------+
-```
-
 ### inspect 检查
 
-`inspect`用于检查集群的在线和离线两个部分是否正常工作。若不进行指定`online`或`offline`，则可以对在线和离线进行基本的检查。如若指定`online`或`offline`，则可以进行更多详细检查。可以定期执行检查，以便及时发现异常。
-
+`inspect`用于检查集群的在线和离线两个部分是否正常工作，可以选择单独检查`online`或`offline`，不指定则都检查。可以定期执行检查，以便及时发现异常。
 ```
 openmldb_tool inspect -h
 usage: openmldb_tool inspect [-h] [--helpfull] {online,offline,job} ...
@@ -89,9 +68,6 @@ positional arguments:
     offline             only inspect offline jobs.
     job                 show jobs by state, show joblog or parse joblog by id.
 ```
-
-#### 在线检查
-
 在线检查会检查集群中的表状态（包括系统表），并输出有异常的表，包括表的状态，分区信息，副本信息等，等价于`SHOW TABLE STATUS`并筛选出有异常的表。如果发现集群表现不正常，请先检查下是否有异常表。例如，`SHOW JOBS`无法正常输出历史任务时，可以`inspect online`检查一下是否是job系统表出现问题。
 
 ##### 检查在线数据分布

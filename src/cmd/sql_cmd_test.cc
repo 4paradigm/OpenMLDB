@@ -794,6 +794,51 @@ TEST_P(DBSDKTest, DeployCol) {
     ASSERT_TRUE(cs->GetNsClient()->DropDatabase("test2", msg));
 }
 
+TEST_P(DBSDKTest, DeploySkipIndexCheck) {
+    auto cli = GetParam();
+    cs = cli->cs;
+    sr = cli->sr;
+    std::string ddl1 =
+        "create table if not exists t1 (col1 string, col2 string, col3 bigint, "
+        "index(key=col1, ts=col3, TTL_TYPE=absolute));";
+    std::string ddl2 =
+        "create table if not exists t2 (col1 string, col2 string, col3 bigint, "
+        "index(key=col1, ts=col3, TTL_TYPE=absolute));";
+    ProcessSQLs(sr, {
+                        "set @@execute_mode = 'online';",
+                        "create database test2;",
+                        "use test2;",
+                        ddl1,
+                        ddl2,
+                    });
+    std::string deploy_sql = "deploy demo SELECT * FROM t1 LAST JOIN t2 ORDER BY t2.col3 ON t1.col1 = t2.col1;";
+    hybridse::sdk::Status status;
+    sr->ExecuteSQL(deploy_sql, &status);
+    ASSERT_FALSE(status.IsOK());
+    deploy_sql = "deploy demo  OPTIONS (skip_index_check=\"false\") "
+        "SELECT * FROM t1 LAST JOIN t2 ORDER BY t2.col3 ON t1.col1 = t2.col1;";
+    sr->ExecuteSQL(deploy_sql, &status);
+    ASSERT_FALSE(status.IsOK());
+    deploy_sql = "deploy demo  OPTIONS (skip_index_check=\"false\") "
+        "SELECT * FROM t1 LAST JOIN t2 ORDER BY t2.col3 ON t1.col1 = t2.col1;";
+    sr->ExecuteSQL(deploy_sql, &status);
+    ASSERT_FALSE(status.IsOK());
+    deploy_sql = "deploy demo  OPTIONS (skip_index_check=\"true\") "
+        "SELECT * FROM t1 LAST JOIN t2 ORDER BY t2.col3 ON t1.col1 = t2.col1;";
+    sr->ExecuteSQL(deploy_sql, &status);
+    ASSERT_TRUE(status.IsOK()) << status.msg;
+    std::string msg;
+    ASSERT_TRUE(cs->GetNsClient()->DropProcedure("test2", "demo", msg));
+    deploy_sql = "deploy demo  OPTIONS (SKIP_INDEX_CHECK=\"TRUE\") "
+        "SELECT * FROM t1 LAST JOIN t2 ORDER BY t2.col3 ON t1.col1 = t2.col1;";
+    sr->ExecuteSQL(deploy_sql, &status);
+    ASSERT_TRUE(status.IsOK());
+    ASSERT_TRUE(cs->GetNsClient()->DropProcedure("test2", "demo", msg));
+    ASSERT_TRUE(cs->GetNsClient()->DropTable("test2", "t1", msg));
+    ASSERT_TRUE(cs->GetNsClient()->DropTable("test2", "t2", msg));
+    ASSERT_TRUE(cs->GetNsClient()->DropDatabase("test2", msg));
+}
+
 TEST_P(DBSDKTest, Delete) {
     auto cli = GetParam();
     sr = cli->sr;

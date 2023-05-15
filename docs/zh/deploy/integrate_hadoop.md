@@ -19,11 +19,3 @@ TaskManager 配置文件中可以指定 Yarn 相关配置，相关配置项如�
 ```
 offline.data.prefix=hdfs:///foo/bar/
 ```
-
-## 获取 Yarn 日志
-
-OpenMLDB 支持 `SHOW JOBLOG` 命令可以直接获取任务日志，使用 `local` 或 `yarn-client` 模式时，driver 日志在 TaskManager 本地可以实时获得。如果使用 `yarn-cluster` 模式，可以实时获得客户端提交的日志，但 driver 日志需要在 Yarn 页面查看，也可以通过 `SHOW JOBLOG` 命令获得远端日志，目前存在以下限制。
-
-* 只支持 Hadoop 3.x 版本，已经通过测试的版本为3.3.4。
-* 用户需要在 Yarn 集群开启日志聚合功能，可在 `core-site.xml` 文件中添加配置 `yarn.log-aggregation-enable`。
-* 需要等待 Yarn 任务完成后，才可以获得完整的 driver 日志。

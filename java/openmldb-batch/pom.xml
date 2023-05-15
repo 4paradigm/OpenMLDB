@@ -333,15 +333,17 @@
                                     </excludes>
                                 </filter>
                             </filters>
+                            <!--
                             <relocations>
                                 <relocation>
                                     <pattern>com.google.protobuf</pattern>
                                     <shadedPattern>shade.protobuf</shadedPattern>
                                 </relocation>
                             </relocations>
+                            -->
                             <artifactSet>
                                 <excludes>
-                                    <exclude>org.apache.hadoop:*</exclude>
+                                    <exclude>org.apache.hadoop:hadoop-common</exclude>
                                     <exclude>org.apache.spark:*</exclude>
                                     <exclude>org.apache.parquet:*</exclude>
                                     <exclude>org.apache.commons:*</exclude>
