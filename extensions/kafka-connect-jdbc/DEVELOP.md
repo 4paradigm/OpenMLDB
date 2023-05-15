@@ -6,7 +6,7 @@
 mvn package -DskipTests=true
 ```
 
-代码格式化为Google Style，不通过会编译失败，可通过clang-format格式化。暂不支持跑通单测，需要依赖xx合入后的openmldb-jdbc。
+代码格式化为Google Style，不通过会编译失败，可通过clang-format格式化。暂不支持自动测试，需要依赖#3282发布后的openmldb-jdbc。本地测试可以先编译安装jdbc包，再进行测试。
 
 ## Auto Schema
 kafka jdbc connector for openmldb，可以支持auto.schema，即从openmldb处获取table schema。
