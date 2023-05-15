@@ -49,4 +49,4 @@ Record中的value实际是需要org.apache.kafka.connect.data.Struct类型，但
 
 ## Topic Table Mapping
 
-支持topic到OpenMLDB表的映射配置``，可动态更改配置。如果topic在映射中不存在，则使用原规则`table.name.format`（默认为topic名）。
+支持topic到OpenMLDB表的映射配置`topic.table.mapping`，可动态更改配置，格式为`<topic>:<table>[,<topic>:<table>]`，逗号分隔。如果topic在映射中不存在，则使用原规则`table.name.format`（默认为topic名）。
