@@ -62,7 +62,7 @@ public class SQLDriver implements Driver {
     }
 
     /**
-     * parse and verification of URL.
+     * parse and verification of URL. If url is just not acceptted, return false.
      *
      * <p>basic syntax :<br>
      * {@code
