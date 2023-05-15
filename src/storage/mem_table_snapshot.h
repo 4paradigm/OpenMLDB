@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include <algorithm>
 #include <atomic>
 #include <map>
 #include <memory>
@@ -57,24 +58,78 @@ struct MemSnapshotMeta : SnapshotMeta {
     std::string tmp_file_path;
 };
 
+enum class DataReaderType {
+    kSnapshot = 1,
+    kBinlog = 2,
+    kSnapshotAndBinlog = 3
+};
+
+class DataReader {
+ public:
+    DataReader(const std::string& snapshot_path, LogParts* log_part,
+            const std::string& log_path, DataReaderType type, uint64_t start_offset, uint64_t end_offset)
+        : snapshot_path_(snapshot_path), log_part_(log_part), log_path_(log_path), read_type_(type),
+        start_offset_(start_offset), end_offset_(end_offset) {}
+    DataReader(const DataReader&) = delete;
+    DataReader& operator=(const DataReader&) = delete;
+
+    static std::shared_ptr<DataReader> CreateDataReader(const std::string& snapshot_path, LogParts* log_part,
+            const std::string& log_path, DataReaderType type);
+    static std::shared_ptr<DataReader> CreateDataReader(const std::string& snapshot_path, LogParts* log_part,
+            const std::string& log_path, DataReaderType type, uint64_t end_offset);
+    static std::shared_ptr<DataReader> CreateDataReader(LogParts* log_part, const std::string& log_path,
+            uint64_t start_offset, uint64_t end_offset);
+
+    bool HasNext();
+    ::openmldb::api::LogEntry& GetValue() { return entry_; }
+    bool Init();
+
+ private:
+    bool ReadFromSnapshot();
+    bool ReadFromBinlog();
+
+ private:
+    std::string snapshot_path_;
+    LogParts* log_part_;
+    std::string log_path_;
+    DataReaderType read_type_;
+    uint64_t start_offset_ = 0;
+    uint64_t end_offset_ = 0;
+    uint64_t cur_offset_ = 0;
+    bool read_snapshot_ = false;
+    bool read_binlog_ = false;
+    std::shared_ptr<::openmldb::log::SequentialFile> seq_file_;
+    std::shared_ptr<::openmldb::log::Reader> snapshot_reader_;
+    std::shared_ptr<::openmldb::log::LogReader> binlog_reader_;
+    std::string buffer_;
+    std::string entry_buff_;
+    ::openmldb::base::Slice record_;
+    ::openmldb::api::LogEntry entry_;
+    uint64_t succ_cnt_ = 0;
+    uint64_t failed_cnt_ = 0;
+};
+
+
 class TableIndexInfo {
  public:
     TableIndexInfo(const ::openmldb::api::TableMeta& table_meta,
              const std::vector<::openmldb::common::ColumnKey>& add_indexs)
         : table_meta_(table_meta), add_indexs_(add_indexs) {}
     bool Init();
-    const std::vector<uint32_t>& GetAllIndexCols();
-    const std::vector<uint32_t>& GetAddIndexCols();
-    bool HasIndex(uint32_t idx);
+    const std::vector<uint32_t>& GetAllIndexCols() const { return all_index_cols_; }
+    const std::vector<uint32_t>& GetAddIndexIdx() const { return add_index_idx_vec_; }
+    bool HasIndex(uint32_t idx) const;
     const std::vector<uint32_t>& GetIndexCols(uint32_t idx);
+    const std::vector<uint32_t>& GetRealIndexCols(uint32_t idx);  // the pos in all_index_cols_
 
  private:
     ::openmldb::api::TableMeta table_meta_;
     std::vector<::openmldb::common::ColumnKey> add_indexs_;
     std::map<std::string, uint32_t> column_idx_map_;
     std::vector<uint32_t> all_index_cols_;
-    std::vector<uint32_t> add_index_cols_;
+    std::vector<uint32_t> add_index_idx_vec_;
     std::map<uint32_t, std::vector<uint32_t>> index_cols_map_;
+    std::map<uint32_t, std::vector<uint32_t>> real_index_cols_map_;
 };
 
 class MemTableSnapshot : public Snapshot {
@@ -100,56 +155,12 @@ class MemTableSnapshot : public Snapshot {
     void Put(std::string& path, std::shared_ptr<Table>& table,  // NOLINT
              std::vector<std::string*> recordPtr, std::atomic<uint64_t>* succ_cnt, std::atomic<uint64_t>* failed_cnt);
 
-    base::Status GetAllDecoder(std::shared_ptr<Table> table, std::map<uint8_t, codec::RowView>* decoder_map);
-
-    base::Status GetIndexKey(std::shared_ptr<Table> table, const std::shared_ptr<IndexDef>& index,
-            const base::Slice& data, std::map<uint8_t, codec::RowView>* decoder_map, std::string* index_key);
-
-    base::Status DumpAndExtractIndexData(const std::shared_ptr<Table>& table,
+    base::Status ExtractIndexData(const std::shared_ptr<Table>& table,
             const std::vector<::openmldb::common::ColumnKey>& add_indexs,
             const std::vector<std::shared_ptr<::openmldb::log::WriteHandle>>& whs,
-            uint64_t offset);
-
-    base::Status ExtractIndexFromSnapshot(std::shared_ptr<Table> table, const ::openmldb::api::Manifest& manifest,
-            WriteHandle* wh, const std::vector<::openmldb::common::ColumnKey>& add_indexs,
-            uint32_t partition_num, uint64_t* count, uint64_t* expired_key_num, uint64_t* deleted_key_num);
+            uint64_t offset, bool dump_data);
 
     int CheckDeleteAndUpdate(std::shared_ptr<Table> table, ::openmldb::api::LogEntry* new_entry);
-
-    base::Status ExtractIndexFromBinlog(std::shared_ptr<Table> table,
-            WriteHandle* wh, const std::vector<::openmldb::common::ColumnKey>& add_indexs,
-            uint64_t collected_offset, uint32_t partition_num, uint64_t* offset,
-            uint64_t* last_term, uint64_t* count, uint64_t* expired_key_num, uint64_t* deleted_key_num);
-
-    int ExtractIndexFromSnapshot(std::shared_ptr<Table> table, const ::openmldb::api::Manifest& manifest,
-                                 WriteHandle* wh,
-                                 const ::openmldb::common::ColumnKey& column_key,  // NOLINT
-                                 uint32_t idx, uint32_t partition_num, uint32_t max_idx,
-                                 const std::vector<uint32_t>& index_cols,
-                                 uint64_t& count,                                        // NOLINT
-                                 uint64_t& expired_key_num, uint64_t& deleted_key_num);  // NOLINT
-
-    bool DumpSnapshotIndexData(std::shared_ptr<Table> table, const std::vector<std::vector<uint32_t>>& index_cols,
-            uint32_t max_idx, uint32_t idx, const std::vector<std::shared_ptr<::openmldb::log::WriteHandle>>& whs,
-            uint64_t* snapshot_offset);
-
-    bool DumpBinlogIndexData(std::shared_ptr<Table> table, const std::vector<std::vector<uint32_t>>& index_cols,
-            uint32_t max_idx, uint32_t idx, const std::vector<std::shared_ptr<::openmldb::log::WriteHandle>>& whs,
-            uint64_t snapshot_offset, uint64_t collected_offset);
-
-    int ExtractIndexData(std::shared_ptr<Table> table, const ::openmldb::common::ColumnKey& column_key, uint32_t idx,
-                         uint32_t partition_num,
-                         uint64_t& out_offset);  // NOLINT
-
-    int ExtractIndexData(std::shared_ptr<Table> table, const std::vector<::openmldb::common::ColumnKey>& column_key,
-                        uint32_t partition_num, uint64_t* out_offset);
-
-    bool DumpIndexData(std::shared_ptr<Table> table, const std::vector<::openmldb::common::ColumnKey>& column_keys,
-            uint32_t idx, const std::vector<std::shared_ptr<::openmldb::log::WriteHandle>>& whs);
-
-    bool PackNewIndexEntry(std::shared_ptr<Table> table, const std::vector<std::vector<uint32_t>>& index_cols,
-                           uint32_t max_idx, uint32_t idx, uint32_t partition_num, ::openmldb::api::LogEntry* entry,
-                           uint32_t* index_pid);
 
     int RemoveDeletedKey(const ::openmldb::api::LogEntry& entry, const std::set<uint32_t>& deleted_index,
                          std::string* buffer);
@@ -161,18 +172,12 @@ class MemTableSnapshot : public Snapshot {
 
     uint64_t CollectDeletedKey(uint64_t end_offset);
 
-    int DecodeData(std::shared_ptr<Table> table, const openmldb::api::LogEntry& entry, uint32_t maxIdx,
-                   std::vector<std::string>& row);  // NOLINT
-
-    ::openmldb::base::Status DecodeData(std::shared_ptr<Table> table, const openmldb::api::LogEntry& entry,
+    ::openmldb::base::Status DecodeData(const std::shared_ptr<Table>& table, const openmldb::api::LogEntry& entry,
             const std::vector<uint32_t>& cols, std::vector<std::string>* row);
-
-    inline bool IsCompressed(const std::string& path);
 
     std::string GenSnapshotName();
 
-    ::openmldb::base::Status WriteSnapshot(const MemSnapshotMeta& snapshot_meta,
-            const ::openmldb::api::Manifest& old_manifest);
+    ::openmldb::base::Status WriteSnapshot(const MemSnapshotMeta& snapshot_meta);
 
  private:
     LogParts* log_part_;

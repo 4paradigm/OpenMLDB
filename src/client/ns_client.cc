@@ -1065,5 +1065,32 @@ base::Status NsClient::ShowFunction(const std::string& name,
     return {};
 }
 
+base::Status NsClient::DeploySQL(const std::string& db, const std::string& sql, const std::string& deploy_name,
+        const std::map<std::string, std::vector<::openmldb::common::ColumnKey>>& new_index_map,
+        uint64_t* job_id) {
+    if (new_index_map.empty()) {
+        return {base::ReturnCode::kError, "new_index_map is empty. no need to execute DeploySQL"};
+    }
+    nameserver::DeploySQLRequest request;
+    request.set_db(db);
+    request.set_deploy_name(deploy_name);
+    request.set_sql(sql);
+    for (const auto& kv : new_index_map) {
+        auto index = request.add_index();
+        index->set_name(kv.first);
+        for (const auto& column_key : kv.second) {
+            index->add_column_key()->CopyFrom(column_key);
+        }
+    }
+    nameserver::DeploySQLResponse response;
+    bool ok = client_.SendRequest(&::openmldb::nameserver::NameServer_Stub::DeploySQL, &request, &response,
+                                  FLAGS_request_timeout_ms, 1);
+    if (!ok || response.code() != 0) {
+        return base::Status(base::ReturnCode::kError, response.msg());
+    }
+    *job_id = response.job_id();
+    return {};
+}
+
 }  // namespace client
 }  // namespace openmldb

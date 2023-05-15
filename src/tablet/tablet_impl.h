@@ -200,16 +200,10 @@ class TabletImpl : public ::openmldb::api::TabletServer {
     void DeleteIndex(RpcController* controller, const ::openmldb::api::DeleteIndexRequest* request,
                      ::openmldb::api::GeneralResponse* response, Closure* done);
 
-    void DumpIndexData(RpcController* controller, const ::openmldb::api::DumpIndexDataRequest* request,
-                       ::openmldb::api::GeneralResponse* response, Closure* done);
-
     void LoadIndexData(RpcController* controller, const ::openmldb::api::LoadIndexDataRequest* request,
                        ::openmldb::api::GeneralResponse* response, Closure* done);
 
     void ExtractIndexData(RpcController* controller, const ::openmldb::api::ExtractIndexDataRequest* request,
-                          ::openmldb::api::GeneralResponse* response, Closure* done);
-
-    void ExtractMultiIndexData(RpcController* controller, const ::openmldb::api::ExtractMultiIndexDataRequest* request,
                           ::openmldb::api::GeneralResponse* response, Closure* done);
 
     void AddIndex(RpcController* controller, const ::openmldb::api::AddIndexRequest* request,
@@ -328,19 +322,21 @@ class TabletImpl : public ::openmldb::api::TabletServer {
                                std::shared_ptr<::openmldb::storage::MemTableSnapshot> memtable_snapshot,
                                uint32_t partition_num,
                                const std::vector<::openmldb::common::ColumnKey>& column_keys,
-                               uint32_t idx, std::shared_ptr<::openmldb::api::TaskInfo> task);
+                               uint64_t offset, std::shared_ptr<::openmldb::api::TaskInfo> task);
 
     void SendIndexDataInternal(std::shared_ptr<::openmldb::storage::Table> table,
                                const std::map<uint32_t, std::string>& pid_endpoint_map,
                                std::shared_ptr<::openmldb::api::TaskInfo> task);
 
-    void LoadIndexDataInternal(uint32_t tid, uint32_t pid, uint32_t cur_pid, uint32_t partition_num, uint64_t last_time,
-                               std::shared_ptr<::openmldb::api::TaskInfo> task);
+    void LoadIndexDataInternal(uint32_t tid, uint32_t pid, uint32_t cur_pid,
+            uint32_t partition_num, uint64_t last_time,
+            std::shared_ptr<::openmldb::api::TaskInfo> task);
 
     void ExtractIndexDataInternal(std::shared_ptr<::openmldb::storage::Table> table,
-                                  std::shared_ptr<::openmldb::storage::MemTableSnapshot> memtable_snapshot,
-                                  ::openmldb::common::ColumnKey& column_key, uint32_t idx,  // NOLINT
-                                  uint32_t partition_num, std::shared_ptr<::openmldb::api::TaskInfo> task);
+            std::shared_ptr<::openmldb::storage::MemTableSnapshot> memtable_snapshot,
+            const std::vector<::openmldb::common::ColumnKey>& column_key,
+            uint32_t partition_num, uint64_t offset, bool contain_dump,
+            std::shared_ptr<::openmldb::api::TaskInfo> task);
 
     void SchedMakeSnapshot();
 

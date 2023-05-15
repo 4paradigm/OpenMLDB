@@ -151,6 +151,9 @@ class NameServerImpl : public NameServer {
     void CreateProcedure(RpcController* controller, const api::CreateProcedureRequest* request,
                          GeneralResponse* response, Closure* done);
 
+    void DeploySQL(RpcController* controller, const DeploySQLRequest* request,
+                         DeploySQLResponse* response, Closure* done);
+
     void DropTableInternel(const DropTableRequest& request, GeneralResponse& response,  // NOLINT
                            std::shared_ptr<::openmldb::nameserver::TableInfo> table_info,
                            std::shared_ptr<::openmldb::api::TaskInfo> task_ptr);
@@ -471,10 +474,10 @@ class NameServerImpl : public NameServer {
                                                      const ::openmldb::common::ColumnKey& column_key);
 
     bool GetTableInfo(const std::string& table_name, const std::string& db_name,
-                      std::shared_ptr<TableInfo>* table_info);
+            std::shared_ptr<TableInfo>* table_info);
 
     bool GetTableInfoUnlock(const std::string& table_name, const std::string& db_name,
-                            std::shared_ptr<TableInfo>* table_info);
+            std::shared_ptr<TableInfo>* table_info);
 
     int AddOPTask(const ::openmldb::api::TaskInfo& task_info, ::openmldb::api::TaskType task_type,
                   std::shared_ptr<::openmldb::api::TaskInfo>& task_ptr,  // NOLINT
@@ -539,11 +542,10 @@ class NameServerImpl : public NameServer {
                             uint64_t parent_id = INVALID_PARENT_ID,
                             uint32_t concurrency = FLAGS_name_server_task_concurrency_for_replica_cluster);
 
-    int CreateAddIndexOP(const std::string& name, const std::string& db, uint32_t pid,
-                         const std::vector<openmldb::common::ColumnDesc>& new_cols,
-                         const ::openmldb::common::ColumnKey& column_key, uint32_t idx);
+    base::Status CreateAddIndexOP(const std::string& name, const std::string& db,
+            const std::vector<::openmldb::common::ColumnKey>& column_key);
 
-    int CreateAddIndexOPTask(std::shared_ptr<OPData> op_data);
+    base::Status CreateAddIndexOPTask(std::shared_ptr<OPData> op_data);
 
     int DropTableRemoteOP(const std::string& name, const std::string& db, const std::string& alias,
                           uint64_t parent_id = INVALID_PARENT_ID,
@@ -559,7 +561,8 @@ class NameServerImpl : public NameServer {
                                  std::shared_ptr<::openmldb::api::TaskInfo> task_info);
 
     bool AddIndexToTableInfo(const std::string& name, const std::string& db,
-                             const ::openmldb::common::ColumnKey& column_key, uint32_t index_pos);
+            const std::vector<::openmldb::common::ColumnKey>& column_key,
+            std::shared_ptr<::openmldb::api::TaskInfo> task_info);
 
     void WrapTaskFun(const boost::function<bool()>& fun, std::shared_ptr<::openmldb::api::TaskInfo> task_info);
 
@@ -660,6 +663,10 @@ class NameServerImpl : public NameServer {
     bool RecoverExternalFunction();
 
     ::openmldb::base::Status CheckZoneInfo(const ::openmldb::nameserver::ZoneInfo& zone_info);
+
+    std::shared_ptr<api::ProcedureInfo> GetProcedure(const std::string& db, const std::string& name);
+
+    bool IsExistDataBase(const std::string& db);
 
  private:
     std::mutex mu_;

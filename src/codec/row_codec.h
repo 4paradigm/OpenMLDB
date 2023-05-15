@@ -60,7 +60,7 @@ class RowCodec {
                           bool replace_empty_str, int start, int length, std::vector<std::string>* value_vec);
 
     static bool DecodeRow(const openmldb::codec::RowView& rv, const int8_t* data,
-            const std::vector<uint32_t>& cols, std::vector<std::string>* value_vec);
+            const std::vector<uint32_t>& cols, bool replace_null, std::vector<std::string>* value_vec);
 };
 
 bool DecodeRows(const std::string& data, uint32_t count, const Schema& schema,

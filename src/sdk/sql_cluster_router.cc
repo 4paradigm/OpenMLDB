@@ -3544,9 +3544,10 @@ hybridse::sdk::Status SQLClusterRouter::AddNewIndex(
                 continue;
             }
             uint32_t tid = it->second.tid();
-            uint32_t pid = 0;
-            if (!tablet_client->ExtractMultiIndexData(tid, pid, it->second.table_partition_size(), kv.second)) {
-                return {StatusCode::kCmdError, "table " + kv.first + " load data failed"};
+            auto ret = tablet_client->ExtractIndexData(tid, 0, it->second.table_partition_size(),
+                        kv.second, 0, false, nullptr);
+            if (!ret) {
+                return {StatusCode::kCmdError, absl::StrCat("table ", kv.first, " load data failed.")};
             }
         }
     }

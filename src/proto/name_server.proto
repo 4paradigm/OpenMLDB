@@ -423,6 +423,7 @@ message AddIndexMeta {
     optional uint32 idx = 4;
     optional string db = 5 [default = ""];
     optional bool skip_data = 6 [default = false];
+    repeated openmldb.common.ColumnKey column_keys = 7;
 }
 
 message AddIndexRequest {
@@ -505,6 +506,24 @@ message ShowFunctionResponse {
     repeated openmldb.common.ExternalFun fun = 3;
 }
 
+message DeploySQLRequest {
+    optional string db = 1;
+    optional string deploy_name = 2;
+    optional string sql = 3;
+    message TableIndex {
+        optional string db = 1;
+        optional string name = 2;
+        repeated openmldb.common.ColumnKey column_key = 3;
+    }
+    repeated TableIndex index = 4;
+}
+
+message DeploySQLResponse {
+    optional int32 code = 1;
+    optional string msg = 2;
+    optional uint64 job_id = 3;
+}
+
 service NameServer {
     rpc CreateTable(CreateTableRequest) returns (GeneralResponse);
     rpc DropTable(DropTableRequest) returns (GeneralResponse);
@@ -560,4 +579,5 @@ service NameServer {
     rpc CreateProcedure(openmldb.api.CreateProcedureRequest) returns (GeneralResponse);
     rpc DropProcedure(openmldb.api.DropProcedureRequest) returns (GeneralResponse);
     rpc ShowProcedure(openmldb.api.ShowProcedureRequest) returns (openmldb.api.ShowProcedureResponse);
+    rpc DeploySQL(DeploySQLRequest) returns (DeploySQLResponse);
 }

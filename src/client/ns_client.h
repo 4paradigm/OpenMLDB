@@ -246,6 +246,10 @@ class NsClient : public Client {
 
     base::Status UpdateOfflineTableInfo(const nameserver::TableInfo& table_info);
 
+    base::Status DeploySQL(const std::string& db, const std::string& deploy_name, const std::string& sql,
+            const std::map<std::string, std::vector<::openmldb::common::ColumnKey>>& new_index_map,
+            uint64_t* job_id);
+
  private:
     ::openmldb::RpcClient<::openmldb::nameserver::NameServer_Stub> client_;
     std::string db_;

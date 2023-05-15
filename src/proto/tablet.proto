@@ -67,6 +67,7 @@ enum OPType {
     kDelReplicaRemoteOP = 18; 
     kAddReplicaRemoteOP = 19; 
     kAddIndexOP = 20; 
+    kDeployOP = 21;
 }
 
 enum TaskType {
@@ -91,12 +92,17 @@ enum TaskType {
     kCreateTableRemote = 19; 
     kDropTableRemote = 20; 
     kAddReplicaNSRemote = 21; 
-    kDumpIndexData = 22;
-    kSendIndexData = 23;
+    kSendIndexData = 22;
+    kSendIndexRequest = 23;
     kLoadIndexData = 24;
-    kExtractIndexData = 25;
-    kAddIndexToTablet = 26;
-    kTableSyncTask = 27;
+    kLoadIndexRequest = 25;
+    kExtractIndexData = 26;
+    kExtractIndexRequest = 27;
+    kAddIndexToTablet = 28;
+    kTableSyncTask = 29;
+    kAddIndexToTabletRequest = 30;
+    kAddIndexToTableInfo = 31;
+    kAddIndex = 32;
 }
 
 enum TaskStatus {
@@ -607,16 +613,6 @@ message DeleteIndexRequest {
     optional string idx_name = 3;
 }
 
-message DumpIndexDataRequest {
-    optional uint32 tid = 1;
-    optional uint32 pid = 2;
-    optional uint32 partition_num = 3;
-    optional uint32 idx = 4;
-    optional openmldb.common.ColumnKey column_key = 5;
-    optional TaskInfo task_info = 6;
-    repeated openmldb.common.ColumnKey column_keys = 7;
-}
-
 message LoadIndexDataRequest {
     optional uint32 tid = 1;
     optional uint32 pid = 2;
@@ -624,20 +620,14 @@ message LoadIndexDataRequest {
     optional TaskInfo task_info = 4;
 }
 
-message ExtractMultiIndexDataRequest {
-    optional uint32 tid = 1;
-    optional uint32 pid = 2;
-    optional uint32 partition_num = 3;
-    repeated openmldb.common.ColumnKey column_key = 4;
-}
-
 message ExtractIndexDataRequest {
     optional uint32 tid = 1;
     optional uint32 pid = 2;
     optional uint32 partition_num = 3;
-    optional uint32 idx = 4;
-    optional openmldb.common.ColumnKey column_key = 5;
-    optional TaskInfo task_info = 6;
+    repeated openmldb.common.ColumnKey column_key = 5;
+    optional uint64 offset = 6;
+    optional bool dump_data = 7 [default = true];
+    optional TaskInfo task_info = 8;
 }
 
 message Columns {
@@ -939,10 +929,8 @@ service TabletServer {
     rpc AddIndex(AddIndexRequest) returns (GeneralResponse);
     rpc SendIndexData(SendIndexDataRequest) returns (GeneralResponse);
     rpc DeleteIndex(DeleteIndexRequest) returns (GeneralResponse);
-    rpc DumpIndexData(DumpIndexDataRequest) returns (GeneralResponse);
     rpc LoadIndexData(LoadIndexDataRequest) returns (GeneralResponse);
     rpc ExtractIndexData(ExtractIndexDataRequest) returns (GeneralResponse);
-    rpc ExtractMultiIndexData(ExtractMultiIndexDataRequest) returns (GeneralResponse);
     rpc CancelOP(CancelOPRequest) returns (GeneralResponse);
     rpc UpdateRealEndpointMap(UpdateRealEndpointMapRequest) returns (GeneralResponse);
 

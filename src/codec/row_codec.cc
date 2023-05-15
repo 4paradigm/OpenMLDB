@@ -180,13 +180,24 @@ bool RowCodec::DecodeRow(const Schema& schema, openmldb::codec::RowView& rv,
 }
 
 bool RowCodec::DecodeRow(const openmldb::codec::RowView& rv, const int8_t* data,
-        const std::vector<uint32_t>& cols, std::vector<std::string>* value_vec) {
+        const std::vector<uint32_t>& cols, bool replace_null, std::vector<std::string>* value_vec) {
     for (auto col_idx : cols) {
         std::string col;
-        if (rv.GetStrValue(data, col_idx, &col) < 0) {
+        int ret = rv.GetStrValue(data, col_idx, &col);
+        if (ret < 0) {
             return false;
         }
-        value_vec->emplace_back(std::move(col));
+        if (replace_null) {
+            if (ret == 1) {
+                value_vec->emplace_back(NONETOKEN);
+            } else if (col.empty()) {
+                value_vec->emplace_back(EMPTY_STRING);
+            } else {
+                value_vec->emplace_back(std::move(col));
+            }
+        } else {
+            value_vec->emplace_back(std::move(col));
+        }
     }
     return true;
 }
