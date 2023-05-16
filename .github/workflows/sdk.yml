@@ -275,12 +275,15 @@ jobs:
           name: linux-ut-result-python-${{ github.sha }}
           path: |
             python/openmldb_sdk/openmldb/tests/pytest.xml
+            python/openmldb_tool/openmldb/tests/pytest.xml
 
       - name: upload python coverage to codecov
         uses: codecov/codecov-action@v3
         with:
           name: coverage-python
-          files: python/openmldb_sdk/tests/coverage.xml
+          files: |
+            python/openmldb_sdk/tests/coverage.xml
+            python/openmldb_tool/tests/coverage.xml
           fail_ci_if_error: true
           verbose: true
 
@@ -332,6 +335,7 @@ jobs:
           name: mac-ut-result-python-${{ github.sha }}
           path: |
             python/openmldb_sdk/openmldb/tests/pytest.xml
+            python/openmldb_tool/openmldb/tests/pytest.xml
 
       - name: upload to pypi
         if: >
