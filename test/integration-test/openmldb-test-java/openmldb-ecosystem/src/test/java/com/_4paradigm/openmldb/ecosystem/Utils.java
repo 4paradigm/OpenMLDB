@@ -83,14 +83,14 @@ public class Utils {
 
     public static boolean apiserverTableExists(String apiserverAddr, String db, String table) throws IOException {
         HttpRequestFactory requestFactory = HTTP_TRANSPORT.createRequestFactory();
-        HttpRequest request = requestFactory.buildPostRequest(
-                new GenericUrl("http://" + apiserverAddr + "/dbs/" + db + "/tables"), null);
+        HttpRequest request = requestFactory.buildGetRequest(
+                new GenericUrl("http://" + apiserverAddr + "/dbs/" + db + "/tables"));
         HttpResponse response = request.execute();
         // TODO check response.getStatusMessage());
         String res = CharStreams.toString(new InputStreamReader(response.getContent()));
         // to json and check if table exists
         JsonObject resJson = JsonParser.parseString(res).getAsJsonObject();
-        Assert.assertTrue(resJson.get("code").getAsInt() == 0, "fail to get table list");
+        Assert.assertTrue(resJson.get("code").getAsInt() == 0, "fail to get table list: " + res);
         boolean find = false;
         Iterator<JsonElement> iter = resJson.get("tables").getAsJsonArray().iterator();
         Iterable<JsonElement> iterable = () -> iter;

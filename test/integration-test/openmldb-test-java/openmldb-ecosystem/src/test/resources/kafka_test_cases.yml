@@ -1,11 +1,17 @@
 kafka: {
   # kafka server host
-  "bootstrap.servers": localhost:9092
+  "bootstrap.servers": localhost:9092,
   # kafka connect rest api
-  "connect.listeners": localhost:8083
+  "connect.listeners": http://:8083,
+  # the config to send message(json)
+  "producer.properties": {
+    # bootstrap.servers use the option kafka."bootstrap.servers"
+    "key.serializer":"org.apache.kafka.common.serialization.StringSerializer",
+    "value.serializer":"org.apache.kafka.common.serialization.StringSerializer"  
+  }
 }
 openmldb:
-  # use apiserver for admin, to avoid import jdbc jars. kafka use `connection.url`.
+  # use apiserver for admin, to avoid import jdbc jars. kafka use another option `connection.url` to connect, watch out.
   apiserver.address: localhost:9080
 common_connector_conf: {
   "connector.class": "io.confluent.connect.jdbc.JdbcSinkConnector",

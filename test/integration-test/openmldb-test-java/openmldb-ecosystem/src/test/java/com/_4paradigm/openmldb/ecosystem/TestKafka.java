@@ -5,7 +5,6 @@ import org.apache.kafka.clients.admin.DeleteTopicsResult;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerRecord;
-import org.apache.kafka.common.errors.UnknownTopicOrPartitionException;
 import org.testng.Assert;
 import org.testng.annotations.BeforeTest;
 import org.testng.annotations.DataProvider;
@@ -33,6 +32,7 @@ import java.util.stream.Collectors;
 public class TestKafka {
     private Map<String, Object> configMap;
     private Properties properties;
+    private Properties producerProperties;
     private String apiserverAddr;
 
     @BeforeTest
@@ -42,21 +42,26 @@ public class TestKafka {
         InputStream inputStream = TestKafka.class.getClassLoader().getResourceAsStream("kafka_test_cases.yml");
         configMap = yaml.load(inputStream);
 
-        // read kafka for admin, admin client needs bootstrap.servers
+        Map<String, Object> kafka = (Map<String, Object>) configMap.get("kafka");
+        // admin client needs bootstrap.servers
         // connect client needs connect.listeners
         properties = new Properties();
-        Map<String, String> kafka = (Map<String, String>) configMap.get("kafka");
-        kafka.entrySet().forEach(entry -> properties.setProperty(entry.getKey(), entry.getValue()));
+        properties.setProperty("bootstrap.servers", kafka.get("bootstrap.servers").toString());
+        properties.setProperty("connect.listeners", kafka.get("connect.listeners").toString());
+        producerProperties = new Properties();
+        producerProperties.setProperty("bootstrap.servers", properties.getProperty("bootstrap.servers"));
+        // a map
+        ((Map<String, String>) kafka.get("producer.properties"))
+                .forEach((k, v) -> producerProperties.setProperty(k, v));
 
         // read openmldb apiserver for admin
         Map<String, String> openmldb = (Map<String, String>) configMap.get("openmldb");
         apiserverAddr = openmldb.get("apiserver.address");
         Assert.assertTrue(apiserverAddr != null, "apiserver.address is not set");
-        log.info("kafka properties: {}, openmldb apiserver: {}", properties, apiserverAddr);
+        log.info("kafka properties: {}, producer {}, openmldb apiserver: {}", properties, producerProperties,
+                apiserverAddr);
         // TODO(hw): kafka test cluster
         // https://mvnrepository.com/artifact/org.testcontainers/kafka
-
-        // when no topic, create the connector will create the topic, it's ok in test
     }
 
     @SuppressWarnings("unchecked")
@@ -90,6 +95,7 @@ public class TestKafka {
         String config = new Gson().toJson(commonConf);
         log.info("config {}", config);
 
+        // only support one topic
         String topicName = (String) commonConf.get("topics");
         try (Admin admin = Admin.create(properties)) {
             // deleteTopics first to avoid extra data in topic
@@ -97,12 +103,11 @@ public class TestKafka {
             result.all().get();
             log.info("current kafka topics: {}",
                     admin.listTopics().names().get().stream().collect(Collectors.toList()));
-        } catch (UnknownTopicOrPartitionException e) {
-            log.info("topic {} not exists", topicName);
         } catch (InterruptedException | ExecutionException e) {
-            e.printStackTrace();
+            log.info("topic {} delete failed, {}", topicName, e.getMessage());
             // TODO(hw): what if topic still exists?
         }
+        // when no topic, create the connector will create the topic, it's ok in test
 
         // read connector name from file
         String connectorName = (String) commonConf.get("name");
@@ -130,7 +135,8 @@ public class TestKafka {
 
         // ensure openmldb db exists
         Utils.apiserverQuery(apiserverAddr, "foo", "CREATE DATABASE IF NOT EXISTS " + dbName);
-        // just drop test table to avoid unexpected data, if no openmldb_ddl, kafka connector will create table automatically
+        // just drop test table to avoid unexpected data, if no openmldb_ddl, kafka
+        // connector will create table automatically
         String testTable = (String) ((Map<String, Object>) caseMap.get("expect")).get("table");
         // don't handle drop result, table may not exists before
         Utils.apiserverQuery(apiserverAddr, dbName, "DROP TABLE " + testTable);
@@ -145,7 +151,7 @@ public class TestKafka {
 
         // send data to kafka, get input msgs from yaml
         List<Map<String, Object>> msgs = (List<Map<String, Object>>) caseMap.get("messages");
-        try (final Producer<String, String> producer = new KafkaProducer<>(properties)) {
+        try (final Producer<String, String> producer = new KafkaProducer<>(producerProperties)) {
             for (Map<String, Object> msg : msgs) {
                 // only support json style
                 String value = new Gson().toJson(msg.get("json"));
