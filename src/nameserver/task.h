@@ -24,7 +24,7 @@
 #include <utility>
 #include <vector>
 
-#include "boost/bind.hpp"
+#include "boost/function.hpp"
 #include "proto/common.pb.h"
 #include "proto/name_server.pb.h"
 #include "proto/tablet.pb.h"
@@ -35,13 +35,38 @@ namespace nameserver {
 using TaskFun = boost::function<void()>;
 constexpr uint64_t INVALID_PARENT_ID = UINT64_MAX;
 
-struct Task {
+class Task {
+ public:
     Task(std::string endpoint, std::shared_ptr<::openmldb::api::TaskInfo> task_info)
         : endpoint_(std::move(endpoint)), task_info_(std::move(task_info)) {}
+    bool IsFinished() const;
+    void UpdateTaskStatus(const ::google::protobuf::RepeatedPtrField<::openmldb::api::TaskInfo>& tasks,
+            const std::string& endpoint, bool is_recover);
+    void UpdateStatusFromSubTask();
+    std::string GetReadableType() const { return ::openmldb::api::TaskType_Name(task_info_->task_type()); }
+    api::TaskType GetType() const { return task_info_->task_type(); }
+    void SetStatus(api::TaskStatus status) { task_info_->set_status(status); }
+    api::TaskStatus GetStatus() const { return task_info_->status(); }
+    std::string GetReadableStatus() const { return ::openmldb::api::TaskStatus_Name(task_info_->status()); }
+    static std::string GetReadableStatus(const ::openmldb::api::TaskInfo& task_info) {
+        return ::openmldb::api::TaskStatus_Name(task_info.status());
+    }
+    uint64_t GetOpId() const { return task_info_->op_id(); }
+    std::string GetReadableOpType() const { return ::openmldb::api::OPType_Name(task_info_->op_type()); }
+
     std::string endpoint_;
     std::shared_ptr<::openmldb::api::TaskInfo> task_info_;
     std::vector<std::shared_ptr<Task>> sub_task_;
     TaskFun fun_;
+
+ private:
+    bool UpdateStatus(const ::openmldb::api::TaskInfo& task_info, const std::string& endpoint);
+    void SetState(const std::string& endpoint, bool is_recover);
+    std::string GetAdditionalMsg();  // for log info
+
+ private:
+    int check_num_ = 0;
+    bool traversed_ = false;
 };
 
 struct OPData {
@@ -178,8 +203,11 @@ class SendIndexRequestTaskMeta : public TaskMeta {
  public:
     SendIndexRequestTaskMeta(uint64_t op_id, ::openmldb::api::OPType op_type, const std::string& endpoint,
             uint32_t tid_i, uint32_t pid_i, const std::map<uint32_t, std::string>& pid_endpoint_map_i) :
-        TaskMeta(op_id, op_type, ::openmldb::api::TaskType::kSendIndexData, endpoint),
-        tid(tid_i), pid(pid_i), pid_endpoint_map(pid_endpoint_map_i) {}
+        TaskMeta(op_id, op_type, ::openmldb::api::TaskType::kSendIndexRequest, endpoint),
+        tid(tid_i), pid(pid_i), pid_endpoint_map(pid_endpoint_map_i) {
+        task_info->set_tid(tid);
+        task_info->set_pid(pid);
+    }
     uint32_t tid;
     uint32_t pid;
     std::map<uint32_t, std::string> pid_endpoint_map;
@@ -190,7 +218,9 @@ class SendIndexDataTaskMeta : public TaskMeta {
     SendIndexDataTaskMeta(uint64_t op_id, ::openmldb::api::OPType op_type,
             uint32_t tid_i, const std::map<uint32_t, std::string>& pid_endpoint_map_i) :
         TaskMeta(op_id, op_type, ::openmldb::api::TaskType::kSendIndexData, ""),
-        tid(tid_i), pid_endpoint_map(pid_endpoint_map_i) {}
+        tid(tid_i), pid_endpoint_map(pid_endpoint_map_i) {
+        task_info->set_tid(tid);
+    }
     uint32_t tid;
     std::map<uint32_t, std::string> pid_endpoint_map;
 };
@@ -200,7 +230,10 @@ class LoadIndexRequestTaskMeta : public TaskMeta {
     LoadIndexRequestTaskMeta(uint64_t op_id, ::openmldb::api::OPType op_type, const std::string& endpoint,
             uint32_t tid_i, uint32_t pid_i, uint32_t partition_num_i) :
         TaskMeta(op_id, op_type, ::openmldb::api::TaskType::kLoadIndexRequest, endpoint),
-        tid(tid_i), pid(pid_i), partition_num(partition_num_i) {}
+        tid(tid_i), pid(pid_i), partition_num(partition_num_i) {
+        task_info->set_tid(tid);
+        task_info->set_pid(pid);
+    }
     uint32_t tid;
     uint32_t pid;
     uint32_t partition_num;
@@ -212,7 +245,9 @@ class LoadIndexDataTaskMeta : public TaskMeta {
             uint32_t tid_i, uint32_t partition_num_i,
             const std::map<uint32_t, std::string>& pid_endpoint_map_i) :
         TaskMeta(op_id, op_type, ::openmldb::api::TaskType::kLoadIndexData, ""),
-        tid(tid_i), pid_endpoint_map(pid_endpoint_map_i) {}
+        tid(tid_i), pid_endpoint_map(pid_endpoint_map_i) {
+        task_info->set_tid(tid);
+    }
     uint32_t tid;
     std::map<uint32_t, std::string> pid_endpoint_map;
 };
@@ -224,7 +259,10 @@ class ExtractIndexRequestTaskMeta : public TaskMeta {
             const std::vector<::openmldb::common::ColumnKey>& column_key_i,
             uint64_t offset_i) :
         TaskMeta(op_id, op_type, ::openmldb::api::TaskType::kExtractIndexRequest, endpoint),
-        tid(tid_i), pid(pid_i), partition_num(partition_num_i), column_key(column_key_i), offset(offset_i) {}
+        tid(tid_i), pid(pid_i), partition_num(partition_num_i), column_key(column_key_i), offset(offset_i) {
+        task_info->set_tid(tid);
+        task_info->set_pid(pid);
+    }
     uint32_t tid;
     uint32_t pid;
     uint32_t partition_num;
@@ -241,7 +279,9 @@ class ExtractIndexDataTaskMeta : public TaskMeta {
             const std::map<uint32_t, std::string>& pid_endpoint_map_i) :
         TaskMeta(op_id, op_type, ::openmldb::api::TaskType::kExtractIndexData, ""),
         tid(tid_i), partition_num(partition_num_i), column_key(column_key_i),
-        pid_offset_map(pid_offset_map_i), pid_endpoint_map(pid_endpoint_map_i) {}
+        pid_offset_map(pid_offset_map_i), pid_endpoint_map(pid_endpoint_map_i) {
+        task_info->set_tid(tid);
+    }
     ::openmldb::nameserver::TableInfo table_info;
     uint32_t tid;
     uint32_t partition_num;
@@ -256,7 +296,9 @@ class AddIndexToTabletTaskMeta : public TaskMeta {
             const ::openmldb::nameserver::TableInfo& table_info_i,
             const std::vector<::openmldb::common::ColumnKey>& column_key_i) :
         TaskMeta(op_id, op_type, ::openmldb::api::TaskType::kAddIndexToTablet, ""),
-        table_info(table_info_i), column_key(column_key_i) {}
+        table_info(table_info_i), column_key(column_key_i) {
+        task_info->set_tid(table_info.tid());
+    }
     ::openmldb::nameserver::TableInfo table_info;
     std::vector<::openmldb::common::ColumnKey> column_key;
 };
@@ -267,7 +309,10 @@ class AddIndexToTabletRequestTaskMeta : public TaskMeta {
             uint32_t tid_i, uint32_t pid_i,
             const std::vector<::openmldb::common::ColumnKey>& column_key_i) :
         TaskMeta(op_id, op_type, ::openmldb::api::TaskType::kAddIndexToTabletRequest, endpoint),
-        tid(tid_i), pid(pid_i), column_key(column_key_i) {}
+        tid(tid_i), pid(pid_i), column_key(column_key_i) {
+        task_info->set_tid(tid);
+        task_info->set_pid(pid);
+    }
     uint32_t tid;
     uint32_t pid;
     std::vector<::openmldb::common::ColumnKey> column_key;

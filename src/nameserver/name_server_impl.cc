@@ -1529,9 +1529,7 @@ int NameServerImpl::UpdateTaskStatus(bool is_recover_op) {
                         continue;
                     }
                     if (task->task_info_->has_endpoint() && task->task_info_->endpoint() == iter->first) {
-                        PDLOG(WARNING,
-                              "tablet is offline. update task status "
-                              "from[kDoing] to[kFailed]. "
+                        PDLOG(WARNING, "tablet is offline. update task status from[kDoing] to[kFailed]. "
                               "op_id[%lu], task_type[%s] endpoint[%s]",
                               op_data->op_info_.op_id(),
                               ::openmldb::api::TaskType_Name(task->task_info_->task_type()).c_str(),
@@ -1556,10 +1554,7 @@ int NameServerImpl::UpdateTaskStatus(bool is_recover_op) {
             }
             std::string endpoint = iter->first;
             for (const auto& op_list : task_vec_) {
-                std::string endpoint_role = "tablet";
-                if (UpdateTask(op_list, endpoint, endpoint_role, is_recover_op, response) < 0) {
-                    continue;
-                }
+                UpdateTask(op_list, endpoint, is_recover_op, response);
             }
         }
     }
@@ -1607,10 +1602,7 @@ int NameServerImpl::UpdateTaskStatusRemote(bool is_recover_op) {
                 if (index <= FLAGS_name_server_task_max_concurrency) {
                     continue;
                 }
-                std::string endpoint_role = "replica cluster";
-                if (UpdateTask(op_list, endpoint, endpoint_role, is_recover_op, response) < 0) {
-                    continue;
-                }
+                UpdateTask(op_list, endpoint, is_recover_op, response);
             }
         } else {
             if (response.has_msg()) {
@@ -1622,8 +1614,7 @@ int NameServerImpl::UpdateTaskStatusRemote(bool is_recover_op) {
 }
 
 int NameServerImpl::UpdateTask(const std::list<std::shared_ptr<OPData>>& op_list, const std::string& endpoint,
-                               const std::string& msg, bool is_recover_op,
-                               ::openmldb::api::TaskStatusResponse& response) {
+                               bool is_recover_op, const ::openmldb::api::TaskStatusResponse& response) {
     if (op_list.empty()) {
         return -1;
     }
@@ -1631,83 +1622,11 @@ int NameServerImpl::UpdateTask(const std::list<std::shared_ptr<OPData>>& op_list
     if (op_data->task_list_.empty()) {
         return -1;
     }
-    // update task status
     std::shared_ptr<Task> task = op_data->task_list_.front();
     if (task->task_info_->status() != ::openmldb::api::kDoing) {
         return -1;
     }
-    bool has_op_task = false;
-    for (int idx = 0; idx < response.task_size(); idx++) {
-        if (op_data->op_info_.op_id() == response.task(idx).op_id() &&
-            task->task_info_->task_type() == response.task(idx).task_type()) {
-            has_op_task = true;
-            if (response.task(idx).status() != ::openmldb::api::kInited) {
-                if (!task->sub_task_.empty()) {
-                    for (auto& sub_task : task->sub_task_) {
-                        if (sub_task->task_info_->has_endpoint() && sub_task->task_info_->endpoint() == endpoint &&
-                            sub_task->task_info_->status() != response.task(idx).status()) {
-                            PDLOG(INFO,
-                                  "update sub task status from[%s] to[%s]. "
-                                  "op_id[%lu], task_type[%s]",
-                                  ::openmldb::api::TaskStatus_Name(sub_task->task_info_->status()).c_str(),
-                                  ::openmldb::api::TaskStatus_Name(response.task(idx).status()).c_str(),
-                                  response.task(idx).op_id(),
-                                  ::openmldb::api::TaskType_Name(sub_task->task_info_->task_type()).c_str());
-                            sub_task->task_info_->set_status(response.task(idx).status());
-                            if (response.task(idx).status() == ::openmldb::api::kFailed) {
-                                task->task_info_->set_status(::openmldb::api::kFailed);
-                                PDLOG(INFO,
-                                      "update task status from[%s] "
-                                      "to[kFailed]. op_id[%lu], task_type[%s]",
-                                      ::openmldb::api::TaskStatus_Name(task->task_info_->status()).c_str(),
-                                      response.task(idx).op_id(),
-                                      ::openmldb::api::TaskType_Name(task->task_info_->task_type()).c_str());
-                            }
-                            break;
-                        }
-                    }
-                } else if (task->task_info_->status() != response.task(idx).status()) {
-                    PDLOG(INFO,
-                          "update task status from[%s] to[%s]. op_id[%lu], "
-                          "task_type[%s]",
-                          ::openmldb::api::TaskStatus_Name(task->task_info_->status()).c_str(),
-                          ::openmldb::api::TaskStatus_Name(response.task(idx).status()).c_str(),
-                          response.task(idx).op_id(),
-                          ::openmldb::api::TaskType_Name(task->task_info_->task_type()).c_str());
-                    task->task_info_->set_status(response.task(idx).status());
-                }
-            }
-            break;
-        }
-    }
-    if (!has_op_task && (is_recover_op || task->task_info_->is_rpc_send())) {
-        if (!task->sub_task_.empty()) {
-            for (auto& sub_task : task->sub_task_) {
-                if (sub_task->task_info_->has_endpoint() && sub_task->task_info_->endpoint() == endpoint) {
-                    if (sub_task->task_info_->status() == ::openmldb::api::kDoing ||
-                        sub_task->task_info_->status() == ::openmldb::api::kInited) {
-                        PDLOG(WARNING,
-                              "not found op in [%s]. update sub task status "
-                              "from[kDoing] to[kFailed]. "
-                              "op_id[%lu], task_type[%s] endpoint[%s]",
-                              msg.c_str(), op_data->op_info_.op_id(),
-                              ::openmldb::api::TaskType_Name(task->task_info_->task_type()).c_str(), endpoint.c_str());
-                        sub_task->task_info_->set_status(::openmldb::api::kFailed);
-                        task->task_info_->set_status(::openmldb::api::kFailed);
-                    }
-                    break;
-                }
-            }
-        } else if (task->task_info_->has_endpoint() && task->task_info_->endpoint() == endpoint) {
-            PDLOG(WARNING,
-                  "not found op in [%s]. update task status from[kDoing] "
-                  "to[kFailed]. "
-                  "op_id[%lu], task_type[%s] endpoint[%s]",
-                  msg.c_str(), op_data->op_info_.op_id(),
-                  ::openmldb::api::TaskType_Name(task->task_info_->task_type()).c_str(), endpoint.c_str());
-            task->task_info_->set_status(::openmldb::api::kFailed);
-        }
-    }
+    task->UpdateTaskStatus(response.task(), endpoint, is_recover_op);
     return 1;
 }
 
@@ -1722,40 +1641,13 @@ int NameServerImpl::UpdateZKTaskStatus() {
             continue;
         }
         std::shared_ptr<Task> task = op_data->task_list_.front();
-        if (!task->sub_task_.empty()) {
-            bool has_done = true;
-            bool has_failed = false;
-            for (const auto& cur_task : task->sub_task_) {
-                if (cur_task->task_info_->status() == ::openmldb::api::kFailed) {
-                    has_failed = true;
-                    break;
-                } else if (cur_task->task_info_->status() != ::openmldb::api::kDone) {
-                    has_done = false;
-                    break;
-                }
-            }
-            if (has_failed) {
-                PDLOG(INFO,
-                      "update task status from[%s] to[kFailed]. op_id[%lu], "
-                      "task_type[%s]",
-                      ::openmldb::api::TaskStatus_Name(task->task_info_->status()).c_str(), op_data->op_info_.op_id(),
-                      ::openmldb::api::TaskType_Name(task->task_info_->task_type()).c_str());
-                task->task_info_->set_status(::openmldb::api::kFailed);
-            } else if (has_done) {
-                PDLOG(INFO,
-                      "update task status from[%s] to[kDone]. op_id[%lu], "
-                      "task_type[%s]",
-                      ::openmldb::api::TaskStatus_Name(task->task_info_->status()).c_str(), op_data->op_info_.op_id(),
-                      ::openmldb::api::TaskType_Name(task->task_info_->task_type()).c_str());
-                task->task_info_->set_status(::openmldb::api::kDone);
-            }
-        }
-        if (task->task_info_->status() == ::openmldb::api::kDone) {
+        task->UpdateStatusFromSubTask();
+        if (task->GetStatus() == ::openmldb::api::kDone) {
             uint32_t cur_task_index = op_data->op_info_.task_index();
             op_data->op_info_.set_task_index(cur_task_index + 1);
             std::string value;
             op_data->op_info_.SerializeToString(&value);
-            std::string node = zk_path_.op_data_path_ + "/" + std::to_string(op_data->op_info_.op_id());
+            std::string node = absl::StrCat(zk_path_.op_data_path_, "/", op_data->op_info_.op_id());
             if (zk_client_->SetNodeValue(node, value)) {
                 DEBUGLOG("set zk status value success. node[%s] value[%s]", node.c_str(), value.c_str());
                 op_data->task_list_.pop_front();
@@ -1763,9 +1655,7 @@ int NameServerImpl::UpdateZKTaskStatus() {
             }
             // revert task index
             op_data->op_info_.set_task_index(cur_task_index);
-            PDLOG(WARNING,
-                  "set zk status value failed! node[%s] op_id[%lu] op_type[%s] "
-                  "task_index[%u]",
+            PDLOG(WARNING, "set zk status value failed! node[%s] op_id[%lu] op_type[%s] task_index[%u]",
                   node.c_str(), op_data->op_info_.op_id(),
                   ::openmldb::api::OPType_Name(op_data->op_info_.op_type()).c_str(), op_data->op_info_.task_index());
         }
@@ -1787,14 +1677,10 @@ void NameServerImpl::UpdateTaskMapStatus(uint64_t remote_op_id, uint64_t op_id,
                 if (status == ::openmldb::api::kFailed || status == ::openmldb::api::kCanceled) {
                     task_info->set_status(status);
                     if (status == ::openmldb::api::kFailed) {
-                        DEBUGLOG(
-                            "update task status from[kDoing] to[kFailed]. "
-                            "op_id[%lu], task_type[%s]",
+                        DEBUGLOG("update task status from[kDoing] to[kFailed]. op_id[%lu], task_type[%s]",
                             task_info->op_id(), ::openmldb::api::TaskType_Name(task_info->task_type()).c_str());
                     } else {
-                        DEBUGLOG(
-                            "update task status from[kDoing] to[kCanceled]. "
-                            "op_id[%lu], task_type[%s]",
+                        DEBUGLOG("update task status from[kDoing] to[kCanceled]. op_id[%lu], task_type[%s]",
                             task_info->op_id(), ::openmldb::api::TaskType_Name(task_info->task_type()).c_str());
                     }
                 }
@@ -1802,9 +1688,7 @@ void NameServerImpl::UpdateTaskMapStatus(uint64_t remote_op_id, uint64_t op_id,
                     if (status == ::openmldb::api::kDone && task_info->status() != ::openmldb::api::kFailed &&
                         task_info->status() != ::openmldb::api::kCanceled) {
                         task_info->set_status(status);
-                        DEBUGLOG(
-                            "update task status from[kDoing] to[kDone]. "
-                            "op_id[%lu], task_type[%s]",
+                        DEBUGLOG("update task status from[kDoing] to[kDone]. op_id[%lu], task_type[%s]",
                             task_info->op_id(), ::openmldb::api::TaskType_Name(task_info->task_type()).c_str());
                     }
                 }
@@ -2003,33 +1887,27 @@ void NameServerImpl::ProcessTask() {
                     op_data->op_info_.SerializeToString(&value);
                     std::string node = zk_path_.op_data_path_ + "/" + std::to_string(op_data->op_info_.op_id());
                     if (!zk_client_->SetNodeValue(node, value)) {
-                        PDLOG(WARNING, "set zk op status value failed. node[%s] value[%s]", node.c_str(),
-                              value.c_str());
+                        PDLOG(WARNING, "set zk op status value failed. node[%s] value[%s]",
+                                node.c_str(), value.c_str());
                         op_data->op_info_.set_task_status(::openmldb::api::kInited);
                         continue;
                     }
                 }
                 std::shared_ptr<Task> task = op_data->task_list_.front();
-                if (task->task_info_->status() == ::openmldb::api::kFailed) {
+                if (task->GetStatus() == ::openmldb::api::kFailed) {
                     PDLOG(WARNING, "task[%s] run failed, terminate op[%s]. op_id[%lu]",
-                          ::openmldb::api::TaskType_Name(task->task_info_->task_type()).c_str(),
-                          ::openmldb::api::OPType_Name(task->task_info_->op_type()).c_str(), task->task_info_->op_id());
+                          task->GetReadableType().c_str(), task->GetReadableOpType().c_str(), task->GetOpId());
                 } else if (task->task_info_->status() == ::openmldb::api::kInited) {
-                    DEBUGLOG("run task. opid[%lu] op_type[%s] task_type[%s]", task->task_info_->op_id(),
-                             ::openmldb::api::OPType_Name(task->task_info_->op_type()).c_str(),
-                             ::openmldb::api::TaskType_Name(task->task_info_->task_type()).c_str());
+                    DEBUGLOG("run task. opid[%lu] op_type[%s] task_type[%s]",
+                            task->GetOpId(), task->GetReadableOpType().c_str(), task->GetReadableType().c_str());
                     task_thread_pool_.AddTask(task->fun_);
-                    task->task_info_->set_status(::openmldb::api::kDoing);
-                } else if (task->task_info_->status() == ::openmldb::api::kDoing) {
+                    task->SetStatus(::openmldb::api::kDoing);
+                } else if (task->GetStatus() == ::openmldb::api::kDoing) {
                     if (::baidu::common::timer::now_time() - op_data->op_info_.start_time() >
                         FLAGS_name_server_op_execute_timeout / 1000) {
-                        PDLOG(INFO,
-                              "The execution time of op is too long. "
-                              "opid[%lu] op_type[%s] cur task_type[%s] "
+                        PDLOG(INFO, "The execution time of op is too long. opid[%lu] op_type[%s] cur task_type[%s] "
                               "start_time[%lu] cur_time[%lu]",
-                              task->task_info_->op_id(),
-                              ::openmldb::api::OPType_Name(task->task_info_->op_type()).c_str(),
-                              ::openmldb::api::TaskType_Name(task->task_info_->task_type()).c_str(),
+                              task->GetOpId(), task->GetReadableOpType().c_str(), task->GetReadableType().c_str(),
                               op_data->op_info_.start_time(), ::baidu::common::timer::now_time());
                         cv_.wait_for(lock, std::chrono::milliseconds(FLAGS_name_server_task_wait_time));
                     }
@@ -6694,13 +6572,19 @@ int NameServerImpl::MatchTermOffset(const std::string& name, const std::string& 
 
 void NameServerImpl::WrapTaskFun(const boost::function<bool()>& fun,
                                  std::shared_ptr<::openmldb::api::TaskInfo> task_info) {
+    std::string msg = absl::StrCat("op_id ", task_info->op_id(),
+            " type ", ::openmldb::api::TaskType_Name(task_info->task_type()));
+    if (task_info->has_tid()) {
+        absl::StrAppend(&msg, " tid ", task_info->tid());
+    }
+    if (task_info->has_pid()) {
+        absl::StrAppend(&msg, " pid ", task_info->pid());
+    }
     if (!fun()) {
         task_info->set_status(::openmldb::api::TaskStatus::kFailed);
-        PDLOG(WARNING, "task[%s] run failed. op_id[%lu]",
-              ::openmldb::api::TaskType_Name(task_info->task_type()).c_str(), task_info->op_id());
+        PDLOG(WARNING, "task run failed. %s", msg.c_str());
     }
-    PDLOG(INFO, "task[%s] starts running. op_id[%lu]", ::openmldb::api::TaskType_Name(task_info->task_type()).c_str(),
-          task_info->op_id());
+    PDLOG(INFO, "task starts running. %s", msg.c_str());
     task_rpc_version_.fetch_add(1, std::memory_order_acq_rel);
     task_info->set_is_rpc_send(true);
 }

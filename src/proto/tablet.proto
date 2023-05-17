@@ -126,7 +126,9 @@ message TaskInfo {
     optional string endpoint = 5;
     optional bool is_rpc_send = 6 [default = false];
     repeated uint64 rep_cluster_op_id = 7;      // for multi cluster
-    optional uint64 task_id = 8 [default = 0];  // for multi cluster
+    optional uint64 task_id = 8 [default = 0];
+    optional uint32 tid = 9;
+    optional uint32 pid = 10;
 }
 
 message OPInfo {

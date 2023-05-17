@@ -315,8 +315,7 @@ class NameServerImpl : public NameServer {
     int UpdateTaskStatusRemote(bool is_recover_op);
 
     int UpdateTask(const std::list<std::shared_ptr<OPData>>& op_list, const std::string& endpoint,
-                   const std::string& msg, bool is_recover_op,
-                   ::openmldb::api::TaskStatusResponse& response);  // NOLINT
+                   bool is_recover_op, const ::openmldb::api::TaskStatusResponse& response);
 
     int UpdateTaskStatus(bool is_recover_op);
 

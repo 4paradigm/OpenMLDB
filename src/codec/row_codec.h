@@ -22,14 +22,16 @@
 #include <utility>
 #include <vector>
 
-#include "boost/algorithm/string.hpp"
+#include "base/status.h"
 #include "boost/container/deque.hpp"
+#include "codec/codec.h"
 #include "storage/segment.h"
 
 namespace openmldb {
 namespace codec {
 
 using ::openmldb::storage::DataBlock;
+using Schema = google::protobuf::RepeatedPtrField<openmldb::common::ColumnDesc>;
 
 class RowCodec {
  public:

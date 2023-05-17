@@ -2072,7 +2072,7 @@ void TabletImpl::AddReplica(RpcController* controller, const ::openmldb::api::Re
     brpc::ClosureGuard done_guard(done);
     std::shared_ptr<::openmldb::api::TaskInfo> task_ptr;
     if (request->has_task_info() && request->task_info().IsInitialized()) {
-        if (AddOPMultiTask(request->task_info(), ::openmldb::api::TaskType::kAddReplica, task_ptr) < 0) {
+        if (AddOPTask(request->task_info(), ::openmldb::api::TaskType::kAddReplica, task_ptr) < 0) {
             response->set_code(-1);
             response->set_msg("add task failed");
             return;
@@ -4030,7 +4030,7 @@ void TabletImpl::SetTaskStatus(std::shared_ptr<::openmldb::api::TaskInfo>& task_
     task_ptr->set_status(status);
 }
 
-int TabletImpl::GetTaskStatus(std::shared_ptr<::openmldb::api::TaskInfo>& task_ptr,
+int TabletImpl::GetTaskStatus(const std::shared_ptr<::openmldb::api::TaskInfo>& task_ptr,
                               ::openmldb::api::TaskStatus* status) {
     if (!task_ptr) {
         return -1;
@@ -4043,7 +4043,7 @@ int TabletImpl::GetTaskStatus(std::shared_ptr<::openmldb::api::TaskInfo>& task_p
 int TabletImpl::AddOPTask(const ::openmldb::api::TaskInfo& task_info, ::openmldb::api::TaskType task_type,
                           std::shared_ptr<::openmldb::api::TaskInfo>& task_ptr) {
     std::lock_guard<std::mutex> lock(mu_);
-    if (FindTask(task_info.op_id(), task_info.task_type())) {
+    if (IsExistTaskUnLock(task_info)) {
         PDLOG(WARNING, "task is running. op_id[%lu] op_type[%s] task_type[%s]", task_info.op_id(),
               ::openmldb::api::OPType_Name(task_info.op_type()).c_str(),
               ::openmldb::api::TaskType_Name(task_info.task_type()).c_str());
@@ -4054,12 +4054,13 @@ int TabletImpl::AddOPTask(const ::openmldb::api::TaskInfo& task_info, ::openmldb
     task_ptr->set_status(::openmldb::api::TaskStatus::kDoing);
     auto iter = task_map_.find(task_info.op_id());
     if (iter == task_map_.end()) {
-        task_map_.insert(std::make_pair(task_info.op_id(), std::list<std::shared_ptr<::openmldb::api::TaskInfo>>()));
+        iter = task_map_.emplace(task_info.op_id(), std::list<std::shared_ptr<::openmldb::api::TaskInfo>>()).first;
     }
-    task_map_[task_info.op_id()].push_back(task_ptr);
+    iter->second.push_back(task_ptr);
     if (task_info.task_type() != task_type) {
-        PDLOG(WARNING, "task type is not match. type is[%s]",
-              ::openmldb::api::TaskType_Name(task_info.task_type()).c_str());
+        PDLOG(WARNING, "task type is not match. type is[%s] expect type is [%s]",
+              ::openmldb::api::TaskType_Name(task_info.task_type()).c_str(),
+              ::openmldb::api::TaskType_Name(task_type).c_str());
         task_ptr->set_status(::openmldb::api::TaskStatus::kFailed);
         return -1;
     }
@@ -4069,57 +4070,26 @@ int TabletImpl::AddOPTask(const ::openmldb::api::TaskInfo& task_info, ::openmldb
     return 0;
 }
 
-std::shared_ptr<::openmldb::api::TaskInfo> TabletImpl::FindTask(uint64_t op_id, ::openmldb::api::TaskType task_type) {
-    auto iter = task_map_.find(op_id);
+bool TabletImpl::IsExistTaskUnLock(const ::openmldb::api::TaskInfo& task) {
+    auto iter = task_map_.find(task.op_id());
     if (iter == task_map_.end()) {
-        return std::shared_ptr<::openmldb::api::TaskInfo>();
+        return false;
     }
-    for (auto& task : iter->second) {
-        if (task->op_id() == op_id && task->task_type() == task_type) {
-            return task;
+    for (auto& cur_task : iter->second) {
+        if (cur_task->op_id() == task.op_id() && cur_task->task_type() == task.task_type()) {
+            if (task.has_tid() && (!cur_task->has_tid() || task.tid() != cur_task->tid())) {
+                continue;
+            }
+            if (task.has_pid() && (!cur_task->has_pid() || task.pid() != cur_task->pid())) {
+                continue;
+            }
+            if (task.has_task_id() && (!cur_task->has_task_id() || task.task_id() != cur_task->task_id())) {
+                continue;
+            }
+            return true;
         }
     }
-    return std::shared_ptr<::openmldb::api::TaskInfo>();
-}
-
-int TabletImpl::AddOPMultiTask(const ::openmldb::api::TaskInfo& task_info, ::openmldb::api::TaskType task_type,
-                               std::shared_ptr<::openmldb::api::TaskInfo>& task_ptr) {
-    std::lock_guard<std::mutex> lock(mu_);
-    if (FindMultiTask(task_info)) {
-        PDLOG(WARNING, "task is running. op_id[%lu] op_type[%s] task_type[%s]", task_info.op_id(),
-              ::openmldb::api::OPType_Name(task_info.op_type()).c_str(),
-              ::openmldb::api::TaskType_Name(task_info.task_type()).c_str());
-        return -1;
-    }
-    task_ptr.reset(task_info.New());
-    task_ptr->CopyFrom(task_info);
-    task_ptr->set_status(::openmldb::api::TaskStatus::kDoing);
-    auto iter = task_map_.find(task_info.op_id());
-    if (iter == task_map_.end()) {
-        task_map_.insert(std::make_pair(task_info.op_id(), std::list<std::shared_ptr<::openmldb::api::TaskInfo>>()));
-    }
-    task_map_[task_info.op_id()].push_back(task_ptr);
-    if (task_info.task_type() != task_type) {
-        PDLOG(WARNING, "task type is not match. type is[%s]",
-              ::openmldb::api::TaskType_Name(task_info.task_type()).c_str());
-        task_ptr->set_status(::openmldb::api::TaskStatus::kFailed);
-        return -1;
-    }
-    return 0;
-}
-
-std::shared_ptr<::openmldb::api::TaskInfo> TabletImpl::FindMultiTask(const ::openmldb::api::TaskInfo& task_info) {
-    auto iter = task_map_.find(task_info.op_id());
-    if (iter == task_map_.end()) {
-        return std::shared_ptr<::openmldb::api::TaskInfo>();
-    }
-    for (auto& task : iter->second) {
-        if (task->op_id() == task_info.op_id() && task->task_type() == task_info.task_type() &&
-            task->task_id() == task_info.task_id()) {
-            return task;
-        }
-    }
-    return std::shared_ptr<::openmldb::api::TaskInfo>();
+    return false;
 }
 
 void TabletImpl::GcTable(uint32_t tid, uint32_t pid, bool execute_once) {
@@ -4692,7 +4662,7 @@ void TabletImpl::SendIndexData(RpcController* controller, const ::openmldb::api:
     brpc::ClosureGuard done_guard(done);
     std::shared_ptr<::openmldb::api::TaskInfo> task_ptr;
     if (request->has_task_info() && request->task_info().IsInitialized()) {
-        if (AddOPTask(request->task_info(), ::openmldb::api::TaskType::kSendIndexData, task_ptr) < 0) {
+        if (AddOPTask(request->task_info(), ::openmldb::api::TaskType::kSendIndexRequest, task_ptr) < 0) {
             response->set_code(-1);
             response->set_msg("add task failed");
             return;
@@ -4879,7 +4849,7 @@ void TabletImpl::LoadIndexData(RpcController* controller, const ::openmldb::api:
     brpc::ClosureGuard done_guard(done);
     std::shared_ptr<::openmldb::api::TaskInfo> task_ptr;
     if (request->has_task_info() && request->task_info().IsInitialized()) {
-        if (AddOPTask(request->task_info(), ::openmldb::api::TaskType::kLoadIndexData, task_ptr) < 0) {
+        if (AddOPTask(request->task_info(), ::openmldb::api::TaskType::kLoadIndexRequest, task_ptr) < 0) {
             response->set_code(-1);
             response->set_msg("add task failed");
             return;
@@ -5036,7 +5006,7 @@ void TabletImpl::ExtractIndexData(RpcController* controller, const ::openmldb::a
     brpc::ClosureGuard done_guard(done);
     std::shared_ptr<::openmldb::api::TaskInfo> task_ptr;
     if (request->has_task_info() && request->task_info().IsInitialized()) {
-        if (AddOPTask(request->task_info(), ::openmldb::api::TaskType::kExtractIndexData, task_ptr) < 0) {
+        if (AddOPTask(request->task_info(), ::openmldb::api::TaskType::kExtractIndexRequest, task_ptr) < 0) {
             base::SetResponseStatus(-1, "add task failed", response);
             return;
         }

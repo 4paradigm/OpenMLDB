@@ -373,15 +373,10 @@ class TabletImpl : public ::openmldb::api::TabletServer {
     void SetTaskStatus(std::shared_ptr<::openmldb::api::TaskInfo>& task_ptr,  // NOLINT
                        ::openmldb::api::TaskStatus status);
 
-    int GetTaskStatus(std::shared_ptr<::openmldb::api::TaskInfo>& task_ptr,  // NOLINT
+    int GetTaskStatus(const std::shared_ptr<::openmldb::api::TaskInfo>& task_ptr,
                       ::openmldb::api::TaskStatus* status);
 
-    std::shared_ptr<::openmldb::api::TaskInfo> FindTask(uint64_t op_id, ::openmldb::api::TaskType task_type);
-
-    int AddOPMultiTask(const ::openmldb::api::TaskInfo& task_info, ::openmldb::api::TaskType task_type,
-                       std::shared_ptr<::openmldb::api::TaskInfo>& task_ptr);  // NOLINT
-
-    std::shared_ptr<::openmldb::api::TaskInfo> FindMultiTask(const ::openmldb::api::TaskInfo& task_info);
+    bool IsExistTaskUnLock(const ::openmldb::api::TaskInfo& task);
 
     int CheckDimessionPut(const ::openmldb::api::PutRequest* request, uint32_t idx_cnt);
 
