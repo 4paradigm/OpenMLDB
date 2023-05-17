@@ -274,8 +274,8 @@ jobs:
         with:
           name: linux-ut-result-python-${{ github.sha }}
           path: |
-            python/openmldb_sdk/openmldb/tests/pytest.xml
-            python/openmldb_tool/openmldb/tests/pytest.xml
+            python/openmldb_sdk/tests/pytest.xml
+            python/openmldb_tool/tests/pytest.xml
 
       - name: upload python coverage to codecov
         uses: codecov/codecov-action@v3
