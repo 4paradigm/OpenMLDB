@@ -28,7 +28,7 @@ from diagnostic_tool.log_analyzer import LogAnalyzer
 from diagnostic_tool.collector import Collector
 import diagnostic_tool.server_checker as checker
 from diagnostic_tool.table_checker import TableChecker
-from diagnostic_tool.parser import log_parser
+from diagnostic_tool.parser import LogParser
 
 from absl import app
 from absl import flags
@@ -168,7 +168,8 @@ def inspect_job(args):
     if args.detail:
         print(detailed_log)
     else:
-        err_messages = log_parser(detailed_log)
+        parser = LogParser("../tests/common_err.yml")
+        err_messages = parser.parse_log(detailed_log)
         print(*err_messages, sep="\n")
 
 
@@ -264,6 +265,7 @@ def parse_arg(argv):
         "offline", help="only inspect offline jobs."
     )
     offline.set_defaults(command=inspect_offline)
+    # inspect job
     ins_job = inspect_sub.add_parser("job", help="show jobs by state, show joblog or parse joblog by id.")
     ins_job.set_defaults(command=inspect_job)
     ins_job.add_argument(

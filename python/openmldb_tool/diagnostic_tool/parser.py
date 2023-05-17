@@ -1,30 +1,59 @@
 import re
+import yaml
 
 
-def log_parser(log):
-    log_lines = log.split("\n")
-    error_patterns = [
-        re.compile(r"at com.*openmldb"),
-        re.compile(r"At .*OpenMLDB"),
-        re.compile(r"Caused by"),
-        re.compile(r"java.*Exception"),
-        re.compile(r"Exception in"),
-        re.compile(r"ERROR"),
-    ]
+class LogParser:
+    def __init__(self, log_conf_file: str) -> None:
+        with open(log_conf_file) as f:
+            self.conf = yaml.safe_load(f)
+        self.errs = self.conf["errors"]
 
-    error_messages = []
-    skip_flag = 0
+    def parse_log(self, log: str):
+        log_rows = log.split("\n")
+        # solution results
+        solution_results = []
+        # skip irrelevant rows
+        skip_flag = False
+        for row in log_rows:
+            result = self._parse_row(row)
+            if result:
+                if result != "null":
+                    solution_results.append(result)
+                skip_flag = True
+                continue
+            # print "..." if some lines are skipped
+            elif skip_flag:
+                print("...")
+                skip_flag = False
+        print("Solutions".center(50, "="))
+        print(*solution_results, sep="\n")
 
-    for line in log_lines:
-        for pattern in error_patterns:
-            match = pattern.search(line)
-            if match:
-                error_messages.append(line)
-                skip_flag = 1
-                break
-        else:
-            if skip_flag:
-                error_messages.append("...")
-                skip_flag = 0
+    def _parse_row(self, row):
+        for name, value in self.errs.items():
+            for pattern in value['patterns']:
+                if re.search(pattern, row):
+                    print(row)
+                    if "solution" in self.errs[name]:
+                        solution = ErrSolution(self.errs[name])
+                        result = solution()
+                        return result
+                    return "null"
 
-    return error_messages
+
+class ErrSolution:
+    def __init__(self, err) -> None:
+        self.desc = err["description"]
+        self.solution = err["solution"]
+        self.result = ""
+
+    def __call__(self, *args, **kwargs):
+        exec(f"self.{self.solution}()")
+        return self.result
+
+    def zk_conn_err(self):
+        self.result += "\n" + self.desc
+        self.result += "\nChecking zk connection..."
+        # conn = Connector()
+        # checker = StatusChecker(conn)
+        # assert checker._get_components(show=False)
+        self.result += "\nSuccessfully checked zk connection, it may be caused by `Too many connections` in zk server, please check zk server log."
