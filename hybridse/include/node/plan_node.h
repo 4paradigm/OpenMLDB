@@ -732,6 +732,18 @@ class CreateProcedurePlanNode : public MultiChildPlanNode {
     PlanNodeList inner_plan_node_list_;
 };
 
+class AlterTableStmtPlanNode : public LeafPlanNode {
+ public:
+    AlterTableStmtPlanNode(absl::string_view db, absl::string_view table,
+                           const std::vector<const AlterActionBase *> &actions)
+        : LeafPlanNode(kPlanTypeAlterTable), db_(db), table_(table), actions_(actions) {}
+    ~AlterTableStmtPlanNode() override {}
+
+    absl::string_view db_;
+    absl::string_view table_;
+    std::vector<const AlterActionBase *> actions_;
+};
+
 bool PlanEquals(const PlanNode *left, const PlanNode *right);
 bool PlanListEquals(const std::vector<PlanNode *> &list1, const std::vector<PlanNode *> &list2);
 void PrintPlanVector(std::ostream &output, const std::string &tab, PlanNodeList vec, const std::string vector_name,

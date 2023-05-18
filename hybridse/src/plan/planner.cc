@@ -30,6 +30,7 @@
 #include "proto/fe_common.pb.h"
 #include "udf/default_udf_library.h"
 #include "vm/engine.h"
+
 namespace hybridse {
 namespace plan {
 
@@ -764,6 +765,16 @@ base::Status SimplePlanner::CreatePlanTree(const NodePointVector &parser_trees, 
                 CHECK_STATUS(CreateCreateFunctionPlanNode(dynamic_cast<node::CreateFunctionNode *>(parser_tree),
                             &create_function_plan_node));
                 plan_trees.push_back(create_function_plan_node);
+                break;
+            }
+            case ::hybridse::node::kAlterTableStmt: {
+                node::AlterTableStmtPlanNode* out = nullptr;
+                CHECK_STATUS(ConvertGuard<node::AlterTableStmt>(
+                    parser_tree, &out, [this](const node::AlterTableStmt *from, node::AlterTableStmtPlanNode **out) {
+                        *out = node_manager_->MakeNode<node::AlterTableStmtPlanNode>(from->db_, from->table_,
+                                                                                     from->actions_);
+                        return base::Status::OK();
+                    }));
                 break;
             }
             default: {

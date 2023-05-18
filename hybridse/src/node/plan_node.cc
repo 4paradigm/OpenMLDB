@@ -220,6 +220,8 @@ std::string NameOfPlanNodeType(const PlanType &type) {
             return "kPlanTypeCreateFunction";
         case kPlanTypeWithClauseEntry:
             return "kPlanTypeWithClauseEntry";
+        case kPlanTypeAlterTable:
+            return "kPlanTypeAlterTable";
         case kUnknowPlan:
             return std::string("kUnknow");
     }

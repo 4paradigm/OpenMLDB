@@ -347,6 +347,57 @@ class SqlNode : public NodeBase<SqlNode> {
 
 typedef std::vector<SqlNode *> NodePointVector;
 
+// Alter action for SQL
+// supported as:
+// - ADD PATH
+// - DROP PATH
+// all else is unsupported
+class AlterActionBase : public base::FeBaseObject {
+ public:
+    enum class ActionKind {
+        ADD_PATH = 0,
+        DROP_PATH
+    };
+
+    explicit AlterActionBase(ActionKind k) : kind_(k) {}
+    ~AlterActionBase() override {}
+
+    virtual std::string DebugString() const = 0;
+
+ protected:
+    ActionKind kind_;
+};
+
+class AddPathAction : public AlterActionBase {
+ public:
+    explicit AddPathAction(absl::string_view t) : AlterActionBase(ActionKind::ADD_PATH), target_(t) {}
+    std::string DebugString() const override;
+
+    std::string target_;
+};
+
+class DropPathAction : public AlterActionBase {
+ public:
+    explicit DropPathAction(absl::string_view t) : AlterActionBase(ActionKind::DROP_PATH), target_(t) {}
+    std::string DebugString() const override;
+
+    std::string target_;
+};
+
+
+class AlterTableStmt: public SqlNode {
+ public:
+    AlterTableStmt(absl::string_view db, absl::string_view table, const std::vector<const AlterActionBase *> &actions)
+        : SqlNode(kAlterTableStmt, 0, 0), db_(db), table_(table), actions_(actions) {}
+    ~AlterTableStmt() override {}
+
+    void Print(std::ostream &output, const std::string &org_tab) const override;
+
+    std::string db_;
+    std::string table_;
+    std::vector<const AlterActionBase *> actions_;
+};
+
 class SqlNodeList : public SqlNode {
  public:
     SqlNodeList() : SqlNode(kNodeList, 0, 0) {}
