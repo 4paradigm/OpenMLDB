@@ -1957,6 +1957,20 @@ Status BatchModeTransformer::TransformPhysicalPlan(const ::hybridse::node::PlanN
                 *output = insert_node;
                 return Status::OK();
             }
+            case ::hybridse::node::kPlanTypeAlterTable: {
+                auto* alter_plan_node = dynamic_cast<const ::hybridse::node::AlterTableStmtPlanNode*>(node);
+
+                // check table exists
+                std::string db_name = std::string(alter_plan_node->db_.empty() ? db_ : alter_plan_node->db_);
+                auto table = catalog_->GetTable(db_name, std::string(alter_plan_node->table_));
+                CHECK_TRUE(table != nullptr, kPlanError, "table ", alter_plan_node->table_, "not exists in database [",
+                           db_name, "]");
+
+                PhysicalAlterTableNode* out = nullptr;
+                CHECK_STATUS(CreateOp(&out, db_name, alter_plan_node->table_, alter_plan_node->actions_));
+                *output = out;
+                break;
+            }
             default: {
                 return {kPlanError, "Plan type not supported: " + node::NameOfPlanNodeType(node->GetType())};
             }

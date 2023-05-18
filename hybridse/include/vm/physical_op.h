@@ -61,6 +61,7 @@ enum PhysicalOpType {
     kPhysicalOpSelectInto,
     kPhysicalOpInsert,
     kPhysicalCreateTable,
+    kPhysicalAlterTable,
     kPhysicalOpFake,  // not a real type, for testing only
     kPhysicalOpLast = kPhysicalOpFake,
 };
@@ -1826,6 +1827,31 @@ class PhysicalCreateTableNode : public PhysicalOpNode {
     const node::CreatePlanNode *data_;
 
     static PhysicalCreateTableNode *CastFrom(PhysicalOpNode *node);
+};
+
+class PhysicalAlterTableNode : public PhysicalOpNode {
+ public:
+    PhysicalAlterTableNode(absl::string_view db, absl::string_view table,
+                           const std::vector<const node::AlterActionBase *> &actions)
+        : PhysicalOpNode(kPhysicalAlterTable, false), db_(db), table_(table), actions_(actions) {}
+    ~PhysicalAlterTableNode() override {}
+
+    void Print(std::ostream &output, const std::string &tab) const override;
+    base::Status InitSchema(PhysicalPlanContext *) override { return base::Status::OK(); }
+    base::Status WithNewChildren(node::NodeManager *nm, const std::vector<PhysicalOpNode *> &children,
+                                 PhysicalOpNode **out) override {
+        return base::Status::OK();
+    }
+
+    static PhysicalAlterTableNode *CastFrom(PhysicalOpNode *node);
+
+    const std::string& db() const { return db_; }
+    const std::string& table() const { return table_; }
+
+ private:
+    std::string db_;
+    std::string table_;
+    std::vector<const node::AlterActionBase *> actions_;
 };
 
 class PhysicalInsertNode : public PhysicalOpNode {

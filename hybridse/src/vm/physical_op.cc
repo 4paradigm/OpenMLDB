@@ -56,7 +56,8 @@ static absl::flat_hash_map<PhysicalOpType, absl::string_view> CreatePhysicalOpTy
         {kPhysicalOpRequestGroup, "REQUEST_GROUP"},
         {kPhysicalOpRequestGroupAndSort, "REQUEST_GROUP__SORT"},
         {kPhysicalOpInsert, "INSERT"},
-        {kPhysicalCreateTable, "CREATE_TABLE"}
+        {kPhysicalCreateTable, "CREATE_TABLE"},
+        {kPhysicalAlterTable, "ALTER_TABLE"},
     };
     for (auto kind = 0; kind < kPhysicalOpLast; ++kind) {
         DCHECK(map.find(static_cast<PhysicalOpType>(kind)) != map.end());
@@ -1544,6 +1545,16 @@ PhysicalCreateTableNode* PhysicalCreateTableNode::CastFrom(PhysicalOpNode* node)
 
 PhysicalLoadDataNode* PhysicalLoadDataNode::CastFrom(PhysicalOpNode* node) {
     return dynamic_cast<PhysicalLoadDataNode*>(node);
+}
+
+
+void PhysicalAlterTableNode::Print(std::ostream &output, const std::string &tab) const {
+    PhysicalOpNode::Print(output, tab);
+    output << absl::Substitute("($0.$1)", db_, table_);
+}
+
+PhysicalAlterTableNode* PhysicalAlterTableNode::CastFrom(PhysicalOpNode* node) {
+    return dynamic_cast<PhysicalAlterTableNode*>(node);
 }
 
 Status BuildColumnReplacement(const node::ExprNode* expr, const SchemasContext* origin_schema,
