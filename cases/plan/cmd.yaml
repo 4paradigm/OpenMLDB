@@ -594,6 +594,12 @@ cases:
           +-path: .t1
           +-actions:
             +-0: AddPathAction (12)
+      plan_tree_str: |
+        +-[kPlanTypeAlterTable]
+          +-path: .t1
+          +-actions:
+            +-0: AddPathAction (12)
+
   - id: alter-table-drop-path
     sql: |
       alter table db.t1 drop path '12'
@@ -603,4 +609,8 @@ cases:
           +-path: db.t1
           +-actions:
             +-0: DropPathAction (12)
-
+      plan_tree_str: |
+        +-[kPlanTypeAlterTable]
+          +-path: db.t1
+          +-actions:
+            +-0: DropPathAction (12)

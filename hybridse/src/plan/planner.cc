@@ -775,6 +775,7 @@ base::Status SimplePlanner::CreatePlanTree(const NodePointVector &parser_trees, 
                                                                                      from->actions_);
                         return base::Status::OK();
                     }));
+                plan_trees.push_back(out);
                 break;
             }
             default: {

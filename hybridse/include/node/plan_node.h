@@ -739,6 +739,8 @@ class AlterTableStmtPlanNode : public LeafPlanNode {
         : LeafPlanNode(kPlanTypeAlterTable), db_(db), table_(table), actions_(actions) {}
     ~AlterTableStmtPlanNode() override {}
 
+    void Print(std::ostream &output, const std::string &org_tab) const override;
+
     absl::string_view db_;
     absl::string_view table_;
     std::vector<const AlterActionBase *> actions_;
