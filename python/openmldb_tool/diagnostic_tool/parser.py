@@ -1,6 +1,9 @@
 import re
 import yaml
 
+from diagnostic_tool.connector import Connector
+from diagnostic_tool.server_checker import StatusChecker
+
 
 class LogParser:
     def __init__(self, log_conf_file: str) -> None:
@@ -53,7 +56,7 @@ class ErrSolution:
     def zk_conn_err(self):
         self.result += "\n" + self.desc
         self.result += "\nChecking zk connection..."
-        # conn = Connector()
-        # checker = StatusChecker(conn)
-        # assert checker._get_components(show=False)
+        conn = Connector()
+        checker = StatusChecker(conn)
+        assert checker._get_components(show=False)
         self.result += "\nSuccessfully checked zk connection, it may be caused by `Too many connections` in zk server, please check zk server log."
