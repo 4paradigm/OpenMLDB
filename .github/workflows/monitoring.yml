@@ -76,9 +76,9 @@ jobs:
       - name: service up
         working-directory: monitoring
         run: |
-          docker compose --file docker-compose.yml --build-arg ENV_TYPE=prod up -d grafana
+          docker compose --file docker-compose.yml --env-file prod.env up -d grafana
 
       - name: run tests
         working-directory: monitoring
         run: |
-          docker compose --file docker-compose.yml --build-arg ENV_TYPE=prod  up --no-recreate --exit-code-from testing testing
+          docker compose --file docker-compose.yml --env-file prod.env up --no-recreate --exit-code-from testing testing

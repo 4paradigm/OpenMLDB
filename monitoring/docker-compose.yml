@@ -41,8 +41,6 @@ services:
     build:
       context: .
       dockerfile: ${ENV_TYPE}.Dockerfile
-      args:
-        ENV_TYPE: src
     ports:
       - 8000
     command:
