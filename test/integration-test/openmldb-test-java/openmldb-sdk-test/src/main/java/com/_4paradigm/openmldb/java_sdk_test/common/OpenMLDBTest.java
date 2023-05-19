@@ -61,7 +61,7 @@ public class OpenMLDBTest extends BaseTest {
             openMLDBDeploy.setCluster(false);
             OpenMLDBGlobalVar.mainInfo = openMLDBDeploy.deployCluster(2, 3);
         }else if(env.equalsIgnoreCase("deploy")){
-            OpenMLDBGlobalVar.mainInfo = YamlUtil.getObject(Tool.openMLDBDir().getAbsolutePath()+"/openmldb-linux/out/openmldb_info.yaml",OpenMLDBInfo.class);
+            OpenMLDBGlobalVar.mainInfo = YamlUtil.getObject(Tool.openMLDBDir().getAbsolutePath()+"/out/openmldb_info.yaml",OpenMLDBInfo.class);
         } else if(env.equalsIgnoreCase("yarn")) {
             OpenMLDBDeploy openMLDBDeploy = new OpenMLDBDeploy(version);
             openMLDBDeploy.setOpenMLDBPath(openMLDBPath);
