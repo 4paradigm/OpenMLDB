@@ -42,10 +42,7 @@ services:
       context: .
       dockerfile: ${ENV_TYPE}.Dockerfile
       args:
-        ENV_TYPE: ${ENV_TYPE}
-    env_file:
-      # or use prod.env for released openmldb-exporter
-      - dev.env
+        ENV_TYPE: src
     ports:
       - 8000
     command:
