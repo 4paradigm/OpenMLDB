@@ -219,10 +219,16 @@ kubectl create configmap openmldb-kafka-connect-configmap --from-file=connect-st
 docker build -t registry.cn-shenzhen.aliyuncs.com/tobe43/openmldb-kafka-connect -f Dockerfile .
 ```
 
-使用 OpenMLDB 提供的 Yaml 文件来创建 Deployment，可按需修改启动的配置仓库。
+使用 OpenMLDB 提供的 Yaml 文件来创建 Deployment，可按需修改启动的配置仓库。注意，目前只支持单节点的 Connect 服务，因此 Deployment 的 replicas 配置必须为1。
 
 ```
 kubectl create -f ./openmldb-kafka-connect-deployment.yaml
 ```
 
 部署 Deployment 后，可以查看对应 Pod 的运行状态和日志，然后通过发送消息给 Kafka 检查服务功能是否正常。
+
+如果希望访问 Connect 服务的 RESTful 接口，可以参考 OpenMLDB 提供的 Yaml 文件来创建 Service ，默认使用 NodePort 并且在宿主机的 8083 端口可访问对应服务。
+
+```
+kubectl create -f ./openmldb-kafka-connect-service.yaml
+```
