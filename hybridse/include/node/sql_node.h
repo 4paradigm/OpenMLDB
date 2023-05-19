@@ -362,6 +362,8 @@ class AlterActionBase : public base::FeBaseObject {
     explicit AlterActionBase(ActionKind k) : kind_(k) {}
     ~AlterActionBase() override {}
 
+    ActionKind kind() const { return kind_; }
+
     virtual std::string DebugString() const = 0;
 
  protected:

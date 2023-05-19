@@ -1847,6 +1847,7 @@ class PhysicalAlterTableNode : public PhysicalOpNode {
 
     const std::string& db() const { return db_; }
     const std::string& table() const { return table_; }
+    const std::vector<const node::AlterActionBase *>& actions() const { return actions_; }
 
  private:
     std::string db_;
