@@ -58,7 +58,7 @@ export SPARK_HOME=
 export CLEAR_OPENMLDB_INSTALL_DIR=true
 EOF
 
-if [ "$Type"="java" ]; then
+if [ "$Type" = "java" ]; then
 mkdir -p $rootPath/out
 touch $rootPath/out/openmldb_info.yaml
 cat >$rootPath/out/openmldb_info.yaml<<EOF
@@ -70,7 +70,7 @@ openMLDBPath: "/tmp/$dirName/tablet/bin/openmldb"
 EOF
 fi
 
-if [ "$Dependency"="hadoop" ]; then
+if [ "$Dependency" = "hadoop" ]; then
 cat >$rootPath/conf/taskmanager.properties<<EOF
 server.host=${Hosts[0]}
 zookeeper.cluster=${Hosts[0]}:$zookeeperPort1
@@ -84,5 +84,11 @@ spark.default.conf=spark.hadoop.yarn.timeline-service.enabled=false
 hadoop.conf.dir=/4pd/home/liuqiyuan/hadoop
 hadoop.user.name=root
 external.function.dir=/tmp/
+EOF
+fi
+
+if [ "$Dependency" = "kafka" ]; then
+cat >$rootPath/conf/taskmanager.properties<<EOF
+//TODO
 EOF
 fi

@@ -13,7 +13,7 @@ env:
 
 jobs:
   build-openmldb:
-    runs-on: self-hosted
+    runs-on: [self-hosted,generic]
     container:
       image: ghcr.io/4paradigm/hybridsql:latest
     env:
@@ -28,17 +28,12 @@ jobs:
         with:
           name: openmldb-linux.tar.gz
           path: release/
-      - name: 'Cleanup build folder'
-        run: |
-          ls -la ./
-          rm -rf ./* || true
-          rm -rf ./.??* || true
-          ls -la ./
+
     
   java-sdk-cluster-memory-0:
     needs: build-openmldb
     if: ${{ github.event.inputs.EXEC_TEST_TYPE == 'all' || github.event.inputs.EXEC_TEST_TYPE == 'java' }}
-    runs-on: self-hosted
+    runs-on: [self-hosted,common-user]
     steps:
       - name: download artifact
         uses: actions/download-artifact@v3
@@ -48,10 +43,11 @@ jobs:
       - uses: actions/checkout@v3
       - name: install openmldb
         run: |
-          tar -zxf ~/openmldb-linux.tar.gz 
-          bash test/steps/format_config.sh $(pwd)/openmldb-linux java-sdk-cluster-memory-0 20001 21000 java
-          bash openmldb-linux/sbin/deploy-all.sh
-          bash openmldb-linux/sbin/start-all.sh
+          mkdir ${{ github.job }}
+          tar -zxf ~/openmldb-linux.tar.gz -C ${{ github.job }}/
+          bash test/steps/format_config.sh $(pwd)/${{ github.job }}/openmldb-linux ${{ github.job }} 20001 21000 java
+          bash ${{ github.job }}/openmldb-linux/sbin/deploy-all.sh
+          bash ${{ github.job }}/openmldb-linux/sbin/start-all.sh
       - name: test
         run:  bash test/steps/openmldb-sdk-test-java-src.sh -c test_cluster.xml -d deploy -l "0" -s "memory"    
       - name: TEST Results
@@ -81,14 +77,14 @@ jobs:
           attachments: surefire-reports.tar.gz
       - name: clear source
         run: |  
-          bash openmldb-linux/sbin/stop-all.sh
-          bash openmldb-linux/sbin/clear-all.sh 
+          bash ${{ github.job }}/openmldb-linux/sbin/stop-all.sh
+          bash ${{ github.job }}/openmldb-linux/sbin/clear-all.sh 
           
           
   java-sdk-cluster-memory-1:
     needs: build-openmldb
     if: ${{ github.event.inputs.EXEC_TEST_TYPE == 'all' || github.event.inputs.EXEC_TEST_TYPE == 'java' }}
-    runs-on: self-hosted
+    runs-on: [self-hosted,common-user]
     steps:
       - name: download artifact
         uses: actions/download-artifact@v3
@@ -98,10 +94,11 @@ jobs:
       - uses: actions/checkout@v3
       - name: install openmldb
         run: |
-          tar -zxf ~/openmldb-linux.tar.gz 
-          bash test/steps/format_config.sh $(pwd)/openmldb-linux java-sdk-cluster-memory-1 21001 22000 java
-          bash openmldb-linux/sbin/deploy-all.sh
-          bash openmldb-linux/sbin/start-all.sh
+          mkdir ${{ github.job }}
+          tar -zxf ~/openmldb-linux.tar.gz -C ${{ github.job }}/
+          bash test/steps/format_config.sh $(pwd)/${{ github.job }}/openmldb-linux ${{ github.job }} 21001 22000 java
+          bash ${{ github.job }}/openmldb-linux/sbin/deploy-all.sh
+          bash ${{ github.job }}/openmldb-linux/sbin/start-all.sh
       - name: test
         run:  bash test/steps/openmldb-sdk-test-java-src.sh -c test_cluster.xml -d deploy -l "1,2,3,4,5" -s "memory"   
       - name: TEST Results
@@ -131,15 +128,15 @@ jobs:
           attachments: surefire-reports.tar.gz
       - name: clear source
         run: |  
-          bash openmldb-linux/sbin/stop-all.sh
-          bash openmldb-linux/sbin/clear-all.sh 
+          bash ${{ github.job }}/openmldb-linux/sbin/stop-all.sh
+          bash ${{ github.job }}/openmldb-linux/sbin/clear-all.sh 
         
         
         
   java-sdk-cluster-hdd:
     needs: build-openmldb
     if: ${{ github.event.inputs.EXEC_TEST_TYPE == 'all' || github.event.inputs.EXEC_TEST_TYPE == 'java' }}
-    runs-on: self-hosted
+    runs-on: [self-hosted,common-user]
     steps:
       - name: download artifact
         uses: actions/download-artifact@v3
@@ -149,10 +146,11 @@ jobs:
       - uses: actions/checkout@v3
       - name: install openmldb
         run: |
-          tar -zxf ~/openmldb-linux.tar.gz 
-          bash test/steps/format_config.sh $(pwd)/openmldb-linux java-sdk-cluster-hdd 22001 23000 java
-          bash openmldb-linux/sbin/deploy-all.sh
-          bash openmldb-linux/sbin/start-all.sh
+          mkdir ${{ github.job }}
+          tar -zxf ~/openmldb-linux.tar.gz -C ${{ github.job }}/
+          bash test/steps/format_config.sh $(pwd)/${{ github.job }}/openmldb-linux ${{ github.job }} 22001 21000 java
+          bash ${{ github.job }}/openmldb-linux/sbin/deploy-all.sh
+          bash ${{ github.job }}/openmldb-linux/sbin/start-all.sh
       - name: test
         run:  bash test/steps/openmldb-sdk-test-java-src.sh -c test_cluster_disk.xml -d deploy -l "0" -s "hdd"
       - name: TEST Results
@@ -182,14 +180,14 @@ jobs:
           attachments: surefire-reports.tar.gz
       - name: clear source
         run: |  
-          bash openmldb-linux/sbin/stop-all.sh
-          bash openmldb-linux/sbin/clear-all.sh 
+          bash ${{ github.job }}/openmldb-linux/sbin/stop-all.sh
+          bash ${{ github.job }}/openmldb-linux/sbin/clear-all.sh 
           
 
   java-sdk-cluster-ssd:
     needs: build-openmldb
     if: ${{ github.event.inputs.EXEC_TEST_TYPE == 'all' || github.event.inputs.EXEC_TEST_TYPE == 'java' }}
-    runs-on: self-hosted
+    runs-on: [self-hosted,common-user]
     steps:
       - name: download artifact
         uses: actions/download-artifact@v3
@@ -199,10 +197,11 @@ jobs:
       - uses: actions/checkout@v3
       - name: install openmldb
         run: |
-          tar -zxf ~/openmldb-linux.tar.gz 
-          bash test/steps/format_config.sh $(pwd)/openmldb-linux java-sdk-cluster-ssd 23001 24000 java
-          bash openmldb-linux/sbin/deploy-all.sh
-          bash openmldb-linux/sbin/start-all.sh
+          mkdir ${{ github.job }}
+          tar -zxf ~/openmldb-linux.tar.gz -C ${{ github.job }}/
+          bash test/steps/format_config.sh $(pwd)/${{ github.job }}/openmldb-linux java-sdk-cluster-memory-0 23001 24000 java
+          bash ${{ github.job }}/openmldb-linux/sbin/deploy-all.sh
+          bash ${{ github.job }}/openmldb-linux/sbin/start-all.sh
       - name: test
         run:  bash test/steps/openmldb-sdk-test-java-src.sh -c test_cluster_disk.xml -d deploy -l "0" -s "ssd"
       - name: TEST Results
@@ -232,13 +231,13 @@ jobs:
           attachments: surefire-reports.tar.gz
       - name: clear source
         run: |  
-          bash openmldb-linux/sbin/stop-all.sh
-          bash openmldb-linux/sbin/clear-all.sh 
+          bash ${{ github.job }}/openmldb-linux/sbin/stop-all.sh
+          bash ${{ github.job }}/openmldb-linux/sbin/clear-all.sh 
           
   java-sdk-yarn:
     needs: build-openmldb
     if: ${{ github.event.inputs.EXEC_TEST_TYPE == 'all' || github.event.inputs.EXEC_TEST_TYPE == 'java' }}
-    runs-on: self-hosted
+    runs-on: [self-hosted,common-user]
     steps:
       - name: download artifact
         uses: actions/download-artifact@v3
@@ -248,10 +247,11 @@ jobs:
       - uses: actions/checkout@v3
       - name: install openmldb
         run: |
-          tar -zxf ~/openmldb-linux.tar.gz 
-          bash test/steps/format_config.sh $(pwd)/openmldb-linux java-sdk-yarn 24001 25000 java hadoop
-          bash openmldb-linux/sbin/deploy-all.sh
-          bash openmldb-linux/sbin/start-all.sh
+          mkdir ${{ github.job }}
+          tar -zxf ~/openmldb-linux.tar.gz -C ${{ github.job }}/
+          bash test/steps/format_config.sh $(pwd)/${{ github.job }}/openmldb-linux ${{ github.job }} 24001 25000 java
+          bash ${{ github.job }}/openmldb-linux/sbin/deploy-all.sh
+          bash ${{ github.job }}/openmldb-linux/sbin/start-all.sh
       - name: test
         run: bash test/steps/openmldb-sdk-test-java-src.sh -c test_yarn.xml -d deploy -l "0" -s "memory"
       - name: TEST Results
@@ -281,5 +281,56 @@ jobs:
           attachments: surefire-reports.tar.gz
       - name: clear source
         run: |  
-          bash openmldb-linux/sbin/stop-all.sh
-          bash openmldb-linux/sbin/clear-all.sh 
+          bash ${{ github.job }}/openmldb-linux/sbin/stop-all.sh
+          bash ${{ github.job }}/openmldb-linux/sbin/clear-all.sh 
+
+
+  java-sdk-kafka:
+    needs: build-openmldb
+    if: ${{ github.event.inputs.EXEC_TEST_TYPE == 'all' || github.event.inputs.EXEC_TEST_TYPE == 'java' }}
+    runs-on: [self-hosted,common-user]
+    steps:
+      - name: download artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: openmldb-linux.tar.gz
+          path: release/
+      - uses: actions/checkout@v3
+      - name: install openmldb
+        run: |
+          mkdir ${{ github.job }}
+          tar -zxf ~/openmldb-linux.tar.gz -C ${{ github.job }}/
+          bash test/steps/format_config.sh $(pwd)/${{ github.job }}/openmldb-linux ${{ github.job }} 25001 26000 java
+          bash ${{ github.job }}/openmldb-linux/sbin/deploy-all.sh
+          bash ${{ github.job }}/openmldb-linux/sbin/start-all.sh
+      - name: test
+        // TODO
+      - name: TEST Results
+        if: always()
+        uses: EnricoMi/publish-unit-test-result-action@v1
+        with:
+          files: test/integration-test/openmldb-test-java/openmldb-sdk-test/target/surefire-reports/TEST-*.xml
+          check_name: "SRC java-sdk-yarn Report"
+          comment_title: "SRC java-yarn Report"
+      - name: tar test report
+        if: ${{ failure() }}
+        run: tar -zcvf surefire-reports.tar.gz test/integration-test/openmldb-test-java/openmldb-sdk-test/target/surefire-reports
+      - name: Send Email
+        if: ${{ failure() }}
+        uses: dawidd6/action-send-mail@master
+        with:
+          server_address: smtp.partner.outlook.cn
+          server_port: 587
+          username: ${{ secrets.MAIL_USERNAME }}
+          password: ${{ secrets.MAIL_PASSWORD }}
+          subject: OpenMLDB Memory Test
+          body: OpenMLDB Memory Test Failed
+          html_body: test/integration-test/openmldb-test-java/openmldb-sdk-test/target/surefire-reports/html/overview.html
+          to: ${{ secrets.MAIL_TO }}
+          from: GitHub Actions
+          content_type: text/plain
+          attachments: surefire-reports.tar.gz
+      - name: clear source
+        run: |  
+          bash ${{ github.job }}/openmldb-linux/sbin/stop-all.sh
+          bash ${{ github.job }}/openmldb-linux/sbin/clear-all.sh 
