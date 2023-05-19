@@ -58,5 +58,5 @@ class ErrSolution:
         self.result += "\nChecking zk connection..."
         conn = Connector()
         checker = StatusChecker(conn)
-        assert checker._get_components(show=False)
+        assert checker._get_components(show=False), "Failed to connect to zk"
         self.result += "\nSuccessfully checked zk connection, it may be caused by `Too many connections` in zk server, please check zk server log."
