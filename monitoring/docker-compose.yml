@@ -16,7 +16,6 @@ services:
         poetry run pytest --junit-xml=./pytest.xml
     depends_on:
       - grafana
-      - openmldb-api
 
   grafana:
     container_name: openmldb_grafana
@@ -39,10 +38,14 @@ services:
 
   openmldb-exporter:
     container_name: openmldb_exporter
-    # image: ghcr.io/aceforeverd/openmldb-exporter:0.6.0
     build:
       context: .
-      dockerfile: src.Dockerfile
+      dockerfile: ${ENV_TYPE}.Dockerfile
+      args:
+        ENV_TYPE: ${ENV_TYPE}
+    env_file:
+      # or use prod.env for released openmldb-exporter
+      - dev.env
     ports:
       - 8000
     command:
