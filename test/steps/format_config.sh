@@ -59,9 +59,9 @@ export CLEAR_OPENMLDB_INSTALL_DIR=true
 EOF
 
 if [ "$Type" = "java" ]; then
-mkdir -p $rootPath/out
-touch $rootPath/out/openmldb_info.yaml
-cat >$rootPath/out/openmldb_info.yaml<<EOF
+mkdir -p out
+touch out/openmldb_info.yaml
+cat >out/openmldb_info.yaml<<EOF
 deployType: CLUSTER
 zk_cluster: "${Hosts[0]}:$zookeeperPort1"
 zk_root_path: "/openmldb-$dirName"
