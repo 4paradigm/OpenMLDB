@@ -50,6 +50,8 @@ jobs:
           bash ${{ github.job }}/openmldb-linux/sbin/start-all.sh
       - name: test
         run:  bash test/steps/openmldb-sdk-test-java-src.sh -c test_cluster.xml -d deploy -l "0" -s "memory"    
+      - name: stop openmldb
+        run: bash ${{ github.job }}/openmldb-linux/sbin/stop-all.sh
       - name: TEST Results
         if: always()
         uses: EnricoMi/publish-unit-test-result-action@v1
@@ -75,10 +77,7 @@ jobs:
           from: GitHub Actions
           content_type: text/plain
           attachments: surefire-reports.tar.gz
-      - name: clear source
-        run: |  
-          bash ${{ github.job }}/openmldb-linux/sbin/stop-all.sh
-          bash ${{ github.job }}/openmldb-linux/sbin/clear-all.sh 
+
           
           
   java-sdk-cluster-memory-1:
@@ -101,6 +100,8 @@ jobs:
           bash ${{ github.job }}/openmldb-linux/sbin/start-all.sh
       - name: test
         run:  bash test/steps/openmldb-sdk-test-java-src.sh -c test_cluster.xml -d deploy -l "1,2,3,4,5" -s "memory"   
+      - name: stop openmldb
+        run: bash ${{ github.job }}/openmldb-linux/sbin/stop-all.sh
       - name: TEST Results
         if: always()
         uses: EnricoMi/publish-unit-test-result-action@v1
@@ -126,10 +127,7 @@ jobs:
           from: GitHub Actions
           content_type: text/plain
           attachments: surefire-reports.tar.gz
-      - name: clear source
-        run: |  
-          bash ${{ github.job }}/openmldb-linux/sbin/stop-all.sh
-          bash ${{ github.job }}/openmldb-linux/sbin/clear-all.sh 
+
         
         
         
@@ -153,6 +151,8 @@ jobs:
           bash ${{ github.job }}/openmldb-linux/sbin/start-all.sh
       - name: test
         run:  bash test/steps/openmldb-sdk-test-java-src.sh -c test_cluster_disk.xml -d deploy -l "0" -s "hdd"
+      - name: stop openmldb
+        run: bash ${{ github.job }}/openmldb-linux/sbin/stop-all.sh
       - name: TEST Results
         if: always()
         uses: EnricoMi/publish-unit-test-result-action@v1
@@ -171,17 +171,14 @@ jobs:
           server_port: 587
           username: ${{ secrets.MAIL_USERNAME }}
           password: ${{ secrets.MAIL_PASSWORD }}
-          subject: OpenMLDB Memory Test
-          body: OpenMLDB Memory Test Failed
+          subject: OpenMLDB HDD Test
+          body: OpenMLDB HDD Test Failed
           html_body: test/integration-test/openmldb-test-java/openmldb-sdk-test/target/surefire-reports/html/overview.html
           to: ${{ secrets.MAIL_TO }}
           from: GitHub Actions
           content_type: text/plain
           attachments: surefire-reports.tar.gz
-      - name: clear source
-        run: |  
-          bash ${{ github.job }}/openmldb-linux/sbin/stop-all.sh
-          bash ${{ github.job }}/openmldb-linux/sbin/clear-all.sh 
+
           
 
   java-sdk-cluster-ssd:
@@ -204,6 +201,8 @@ jobs:
           bash ${{ github.job }}/openmldb-linux/sbin/start-all.sh
       - name: test
         run:  bash test/steps/openmldb-sdk-test-java-src.sh -c test_cluster_disk.xml -d deploy -l "0" -s "ssd"
+      - name: stop openmldb
+        run: bash ${{ github.job }}/openmldb-linux/sbin/stop-all.sh
       - name: TEST Results
         if: always()
         uses: EnricoMi/publish-unit-test-result-action@v1
@@ -222,17 +221,14 @@ jobs:
           server_port: 587
           username: ${{ secrets.MAIL_USERNAME }}
           password: ${{ secrets.MAIL_PASSWORD }}
-          subject: OpenMLDB Memory Test
-          body: OpenMLDB Memory Test Failed
+          subject: OpenMLDB SSD Test
+          body: OpenMLDB SSD Test Failed
           html_body: test/integration-test/openmldb-test-java/openmldb-sdk-test/target/surefire-reports/html/overview.html
           to: ${{ secrets.MAIL_TO }}
           from: GitHub Actions
           content_type: text/plain
           attachments: surefire-reports.tar.gz
-      - name: clear source
-        run: |  
-          bash ${{ github.job }}/openmldb-linux/sbin/stop-all.sh
-          bash ${{ github.job }}/openmldb-linux/sbin/clear-all.sh 
+
           
   java-sdk-yarn:
     needs: build-openmldb
@@ -254,6 +250,8 @@ jobs:
           bash ${{ github.job }}/openmldb-linux/sbin/start-all.sh
       - name: test
         run: bash test/steps/openmldb-sdk-test-java-src.sh -c test_yarn.xml -d deploy -l "0" -s "memory"
+      - name: stop openmldb
+        run: bash ${{ github.job }}/openmldb-linux/sbin/stop-all.sh
       - name: TEST Results
         if: always()
         uses: EnricoMi/publish-unit-test-result-action@v1
@@ -272,17 +270,14 @@ jobs:
           server_port: 587
           username: ${{ secrets.MAIL_USERNAME }}
           password: ${{ secrets.MAIL_PASSWORD }}
-          subject: OpenMLDB Memory Test
-          body: OpenMLDB Memory Test Failed
+          subject: OpenMLDB yarn Test
+          body: OpenMLDB yarn Test Failed
           html_body: test/integration-test/openmldb-test-java/openmldb-sdk-test/target/surefire-reports/html/overview.html
           to: ${{ secrets.MAIL_TO }}
           from: GitHub Actions
           content_type: text/plain
           attachments: surefire-reports.tar.gz
-      - name: clear source
-        run: |  
-          bash ${{ github.job }}/openmldb-linux/sbin/stop-all.sh
-          bash ${{ github.job }}/openmldb-linux/sbin/clear-all.sh 
+
 
 
 #   java-sdk-kafka:
