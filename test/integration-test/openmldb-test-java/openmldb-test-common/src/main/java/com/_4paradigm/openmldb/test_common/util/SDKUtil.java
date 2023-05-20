@@ -126,6 +126,7 @@ public class SDKUtil {
             openMLDBResult = db(executor, sql);
         }else if(sql.startsWith("CREATE INDEX")||sql.startsWith("create index")){
             openMLDBResult = createIndex(executor, sql);
+            TimeUnit.SECONDS.sleep(10);
         }else if (sql.startsWith("create") || sql.startsWith("CREATE") || sql.startsWith("DROP")|| sql.startsWith("drop")) {
             openMLDBResult = ddl(executor, dbName, sql);
         }else if (sql.startsWith("insert")||sql.startsWith("INSERT")) {
