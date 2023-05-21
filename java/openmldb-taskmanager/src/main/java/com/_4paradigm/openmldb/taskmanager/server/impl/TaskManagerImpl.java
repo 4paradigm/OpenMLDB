@@ -380,16 +380,19 @@ public class TaskManagerImpl implements TaskManagerInterface {
 
             String log = String.format("Stdout:\n%s\n\nStderr:\n%s", outLog, errorLog);
 
+            /* TODO: Can not get yarn log from finished containers
             try {
                 JobInfo jobInfo = JobInfoManager.getJob(request.getId()).get();
                 if (TaskManagerConfig.isYarnCluster() && jobInfo.isFinished()) {
                     // TODO: The yarn log is printed in front of the string
-                    log += "\n\nYarn log: " + YarnClientUtil.getAppLog(jobInfo.getApplicationId());
+                    String completeYarnLog = YarnClientUtil.getAppLog(jobInfo.getApplicationId());
+                    log += "\n\nYarn log: " + completeYarnLog;
                 }
             } catch (Exception e) {
                 logger.error("Fail to get yarn log for job " + request.getId());
                 e.printStackTrace();
             }
+            */
 
             return TaskManager.GetJobLogResponse.newBuilder().setCode(StatusCode.SUCCESS).setLog(log).build();
         } catch (Exception e) {

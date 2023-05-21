@@ -1628,7 +1628,7 @@ void DefaultUdfLibrary::InitMathUdf() {
             @brief Returns expr rounded to d decimal places using HALF_UP rounding mode.
 
             @param numeric_expr Expression evaluated to numeric
-            @param d Integer decimal place, omitted, default to 0
+            @param d Integer decimal place, if omitted, default to 0
 
             When `d` is a positive, `numeric_expr` is rounded to the number of decimal positions specified by `d`. When `d` is a negative , `numeric_expr` is rounded on the left side of the decimal point.
             Return type is the same as the type first parameter.
@@ -1649,10 +1649,11 @@ void DefaultUdfLibrary::InitMathUdf() {
             @since 0.1.0)")
         .args_in<int16_t, int32_t, int64_t, float, double>();
 
-    RegisterExprUdf("round").variadic_args<AnyArg>(
+    RegisterExprUdf("round")
+        .variadic_args<AnyArg>(
         [](UdfResolveContext* ctx, ExprNode* x, const std::vector<ExprNode*>& other) -> ExprNode* {
-            if (!x->GetOutputType()->IsArithmetic()) {
-                ctx->SetError("round do not support type " + x->GetOutputType()->GetName());
+            if (!x->GetOutputType()->IsArithmetic() || x->GetOutputType()->IsBool()) {
+                ctx->SetError("round do not support first parameter of type " + x->GetOutputType()->GetName());
                 return nullptr;
             }
             auto nm = ctx->node_manager();
@@ -1663,6 +1664,11 @@ void DefaultUdfLibrary::InitMathUdf() {
 
             node::ExprNode* decimal_place = nm->MakeConstNode(0);
             if (!other.empty()) {
+                auto sec_param = other.front();
+                if (!sec_param->GetOutputType()->IsArithmetic()) {
+                    ctx->SetError("round do not support second parameter of type " +
+                                  sec_param->GetOutputType()->GetName());
+                }
                 decimal_place = nm->MakeCastNode(node::kInt32, other.front());
             }
             return nm->MakeFuncNode("round", {x, decimal_place}, nullptr);

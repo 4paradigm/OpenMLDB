@@ -132,9 +132,9 @@ int ExportUdfInfo(const std::string& dir, const std::string& filename) {
         yaml_out << YAML::Value;
         yaml_out << YAML::BeginSeq;
 
-        for (auto& pair : signature_table) {
-            auto key = pair.first;
-            auto& regitem = pair.second;
+        for (auto& sub_pair : signature_table) {
+            auto key = sub_pair.first;
+            auto& regitem = sub_pair.second;
             auto registry = regitem.value;
 
             std::vector<UdfTypeInfo> expand_type_infos;

@@ -138,6 +138,7 @@ public class TaskManagerServer {
             TaskManagerServer server = new TaskManagerServer();
             server.start();
         } catch (Exception e) {
+            e.printStackTrace();
             logger.error(String.format("Fail to start TaskManager, message: ", e.getMessage()));
         }
     }

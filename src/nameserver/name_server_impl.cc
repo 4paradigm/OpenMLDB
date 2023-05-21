@@ -1497,7 +1497,7 @@ void NameServerImpl::CheckZkClient() {
             session_term_ = zk_client_->GetSessionTerm();
             PDLOG(INFO, "watch node ok");
         } else {
-            PDLOG(WARNING, "watch node falied");
+            PDLOG(WARNING, "watch node failed");
         }
     }
     thread_pool_.DelayTask(FLAGS_zk_keep_alive_check_interval, boost::bind(&NameServerImpl::CheckZkClient, this));
@@ -8987,7 +8987,7 @@ void NameServerImpl::RunSyncTaskFun(uint32_t tid, const boost::function<bool()>&
             try {
                 task_num = boost::lexical_cast<uint32_t>(value);
             } catch (std::exception const& e) {
-                PDLOG(WARNING, "convert to uint falied. table %u value %s", tid, value.c_str());
+                PDLOG(WARNING, "convert to uint failed. table %u value %s", tid, value.c_str());
                 break;
             }
             task_num--;
