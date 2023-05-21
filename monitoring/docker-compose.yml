@@ -53,7 +53,7 @@ services:
 
   openmldb-api:
     container_name: openmldb_api
-    image: ghcr.io/aceforeverd/openmldb-server:0.7.3
+    image: ghcr.io/aceforeverd/openmldb-server:${OPENMLDB_VERSION}
     restart: on-failure
     command:
       - "--role=apiserver"
@@ -74,7 +74,7 @@ services:
 
   openmldb-ns1:
     container_name: openmldb_ns1
-    image: ghcr.io/aceforeverd/openmldb-server:0.7.3
+    image: ghcr.io/aceforeverd/openmldb-server:${OPENMLDB_VERSION}
     command:
       - "--role=nameserver"
       - "--endpoint=openmldb-ns1:9527"
@@ -87,7 +87,7 @@ services:
 
   openmldb-ns2:
     container_name: openmldb_ns2
-    image: ghcr.io/aceforeverd/openmldb-server:0.7.3
+    image: ghcr.io/aceforeverd/openmldb-server:${OPENMLDB_VERSION}
     command:
       - "--role=nameserver"
       - "--endpoint=openmldb-ns2:9527"
@@ -100,7 +100,7 @@ services:
 
   openmldb-tablet1:
     container_name: openmldb_tablet1
-    image: ghcr.io/aceforeverd/openmldb-server:0.7.3
+    image: ghcr.io/aceforeverd/openmldb-server:${OPENMLDB_VERSION}
     command:
       - "--role=tablet"
       - "--endpoint=openmldb-tablet1:9527"
@@ -111,7 +111,7 @@ services:
 
   openmldb-tablet2:
     container_name: openmldb_tablet2
-    image: ghcr.io/aceforeverd/openmldb-server:0.7.3
+    image: ghcr.io/aceforeverd/openmldb-server:${OPENMLDB_VERSION}
     command:
       - "--role=tablet"
       - "--endpoint=openmldb-tablet2:9527"
@@ -122,7 +122,7 @@ services:
 
   openmldb-tablet3:
     container_name: openmldb_tablet3
-    image: ghcr.io/aceforeverd/openmldb-server:0.7.3
+    image: ghcr.io/aceforeverd/openmldb-server:${OPENMLDB_VERSION}
     command:
       - "--role=tablet"
       - "--endpoint=openmldb-tablet3:9527"
