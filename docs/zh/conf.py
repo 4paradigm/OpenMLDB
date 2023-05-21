@@ -39,6 +39,7 @@ extensions = [
 ]
 
 autosectionlabel_prefix_document = True
+autosectionlabel_maxdepth = 1
 
 myst_heading_anchors = 6
 
@@ -144,3 +145,4 @@ smv_branch_whitelist = r"^(main|v\d+\.\d+)$"
 
 # allow remote origin or upstream
 smv_remote_whitelist = r"^(origin|upstream)$"
+

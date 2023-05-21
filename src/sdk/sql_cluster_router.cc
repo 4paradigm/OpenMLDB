@@ -66,6 +66,8 @@ namespace sdk {
 using hybridse::common::StatusCode;
 using hybridse::plan::PlanAPI;
 
+constexpr const char* SKIP_INDEX_CHECK = "skip_index_check";
+
 class ExplainInfoImpl : public ExplainInfo {
  public:
     ExplainInfoImpl(const ::hybridse::sdk::SchemaImpl& input_schema, const ::hybridse::sdk::SchemaImpl& output_schema,
@@ -3353,8 +3355,16 @@ hybridse::sdk::Status SQLClusterRouter::HandleDeploy(const std::string& db,
             }
         }
     }
+    bool skip_index_check = false;
+    auto iter = deploy_node->Options()->find(SKIP_INDEX_CHECK);
+    if (iter != deploy_node->Options()->end()) {
+        std::string skip_index_value = iter->second->GetExprString();
+        if (absl::EqualsIgnoreCase(absl::string_view(skip_index_value), absl::string_view("true"))) {
+            skip_index_check = true;
+        }
+    }
     std::map<std::string, std::vector<::openmldb::common::ColumnKey>> new_index_map;
-    auto index_status = GetNewIndex(table_map, select_sql, &new_index_map);
+    auto index_status = GetNewIndex(table_map, select_sql, skip_index_check, &new_index_map);
     if (!index_status.IsOK()) {
         return index_status;
     }
@@ -3391,7 +3401,7 @@ hybridse::sdk::Status SQLClusterRouter::HandleDeploy(const std::string& db,
 
 hybridse::sdk::Status SQLClusterRouter::GetNewIndex(
     const std::map<std::string, ::openmldb::nameserver::TableInfo>& table_map, const std::string& select_sql,
-    std::map<std::string, std::vector<::openmldb::common::ColumnKey>>* new_index_map) {
+    bool skip_index_check, std::map<std::string, std::vector<::openmldb::common::ColumnKey>>* new_index_map) {
     std::map<std::string, ::google::protobuf::RepeatedPtrField<::openmldb::common::ColumnDesc>> table_schema_map;
     for (const auto& kv : table_map) {
         table_schema_map.emplace(kv.first, kv.second.column_desc());
@@ -3438,6 +3448,9 @@ hybridse::sdk::Status SQLClusterRouter::GetNewIndex(
             // index exist, if type match && new ttl greater than old ttl && old ttl != 0, update ttl, else skip
             auto it = id_columnkey_map.find(index_id);
             if (it != id_columnkey_map.end()) {
+                if (skip_index_check) {
+                    continue;
+                }
                 auto& old_column_key = it->second;
                 // type mismatch, return here and deploy failed
                 if (old_column_key.ttl().ttl_type() != column_key.ttl().ttl_type()) {

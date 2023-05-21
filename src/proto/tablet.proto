@@ -491,6 +491,8 @@ message TableStatus {
     optional uint32 skiplist_height = 18;
     optional uint64 diskused = 19 [default = 0];
     optional openmldb.common.StorageMode storage_mode = 20 [default = kMemory];
+    optional string snapshot_path = 21;
+    optional string binlog_path = 22;
 }
 
 message GetTableStatusResponse {

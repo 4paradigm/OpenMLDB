@@ -682,6 +682,18 @@ TEST_F(UdfIRBuilderTest, RoundWithZeroD) {
     }
 }
 
+TEST_F(UdfIRBuilderTest, RoundFail) {
+    // first param: only one of [intXX, double, float]
+    CheckUdfFail<double, StringRef, int32_t>("round", 12.3, "12.34", 1);
+
+    // second param: only one of [intXX, double, float]
+    CheckUdfFail<double, double, StringRef>("round", 12.3, 12.34, "1");
+    CheckUdfFail<double, double, Timestamp>("round", 12.3, 12.34, Timestamp(12));
+
+    // no third or more params
+    CheckUdfFail<double, double, int32_t, int32_t>("round", 12.3, 12.34, 1, 1);
+}
+
 TEST_F(UdfIRBuilderTest, SinUdfTest) {
     CheckUdf<double, int16_t>("sin", sin(5), 5);
     CheckUdf<double, int32_t>("sin", sin(65536), 65536);

@@ -1496,7 +1496,7 @@ void NameServerImpl::CheckZkClient() {
             session_term_ = zk_client_->GetSessionTerm();
             PDLOG(INFO, "watch node ok");
         } else {
-            PDLOG(WARNING, "watch node falied");
+            PDLOG(WARNING, "watch node failed");
         }
     }
     thread_pool_.DelayTask(FLAGS_zk_keep_alive_check_interval, boost::bind(&NameServerImpl::CheckZkClient, this));

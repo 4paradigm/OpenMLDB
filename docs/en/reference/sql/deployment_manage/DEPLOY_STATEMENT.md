@@ -97,12 +97,9 @@ DeployOption
 						::= 'OPTIONS' '(' DeployOptionItem (',' DeployOptionItem)* ')'
 
 DeployOptionItem
-						::= LongWindowOption
-
-LongWindowOption
-						::= 'LONG_WINDOWS' '=' LongWindowDefinitions
+            ::= 'LONG_WINDOWS' '=' LongWindowDefinitions
+            | 'SKIP_INDEX_CHECK' '=' string_literal
 ```
-Currently, only the optimization option of long windows `LONG_WINDOWS` is supported.
 
 #### Long Window Optimization
 ```sql
@@ -156,6 +153,16 @@ DEPLOY demo_deploy OPTIONS(long_windows="w1:1d") SELECT c1, sum(c2) OVER w1 FROM
 -- SUCCEED
 ```
 
+#### Skip Index Check
+
+By default, the value of `SKIP_INDEX_CHECK` option is `false`. It means that when deploying SQL, it will check whether the existing index
+is match the required index. An error will be reported if it does not matched. If this option is set to `true`, the existing index will not be verified and modified when deploying.
+
+**Example**
+```sql
+DEPLOY demo OPTIONS (SKIP_INDEX_CHECK="TRUE")
+    SELECT * FROM t1 LAST JOIN t2 ORDER BY t2.col3 ON t1.col1 = t2.col1;
+```
 
 ## Relevant SQL
 

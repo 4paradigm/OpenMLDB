@@ -6,6 +6,4 @@
     :maxdepth: 1
 
     hive
-
-
-
+    s3

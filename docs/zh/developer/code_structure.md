@@ -35,6 +35,7 @@ src/
 ├── client         // ns/tablet/taskmanager client的接口定义和实现
 ├── cmd            // CLI以及openmldb二进制生成相关
 ├── codec          // 编解码相关
+├── datacollector  // 在离线同步工具
 ├── log            // binlog和snapshot格式以及读写
 ├── nameserver     // nameserver相关
 ├── proto          // protobuf相关定义
@@ -63,6 +64,7 @@ java/
 ├── openmldb-jmh             // 用作性能和稳定性测试相关
 ├── openmldb-native          // swig自动生成的代码
 ├── openmldb-spark-connector // spark的connector实现，用来读写OpenMLDB
+├── openmldb-synctool        // 在离线同步工具
 └── openmldb-taskmanager     // 离线任务管理模块
 ```
 

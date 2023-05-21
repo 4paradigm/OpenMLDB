@@ -15,6 +15,7 @@
         <module>openmldb-jdbc</module>
         <module>openmldb-native</module>
         <module>openmldb-common</module>
+        <module>openmldb-synctool</module>
 
         <module>openmldb-spark-connector</module>
         <module>openmldb-batch</module>
@@ -52,9 +53,7 @@
         <scala.version>2.12.8</scala.version>
         <scala.binary.version>2.12</scala.binary.version>
         <spark.version>3.2.1</spark.version>
-
-        <hadoop.version>2.7.4</hadoop.version>
-
+        <hadoop.version>3.3.1</hadoop.version>
         <scalaCompatVersion>${scala.binary.version}</scalaCompatVersion>
         <scalatest.skip>false</scalatest.skip>
         <spark.dependencyScope>provided</spark.dependencyScope>

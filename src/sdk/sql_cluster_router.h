@@ -335,7 +335,7 @@ class SQLClusterRouter : public SQLRouter {
 
     hybridse::sdk::Status GetNewIndex(
         const std::map<std::string, ::openmldb::nameserver::TableInfo>& table_map, const std::string& select_sql,
-        std::map<std::string, std::vector<::openmldb::common::ColumnKey>>* new_index_map);
+        bool skip_index_check, std::map<std::string, std::vector<::openmldb::common::ColumnKey>>* new_index_map);
 
     hybridse::sdk::Status AddNewIndex(
         const std::string& db, const std::map<std::string, ::openmldb::nameserver::TableInfo>& table_map,

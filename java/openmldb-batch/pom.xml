@@ -241,6 +241,13 @@
             <artifactId>httpclient</artifactId>
             <version>4.5.13</version>
         </dependency>
+
+        <!-- S3 -->
+        <dependency>
+            <groupId>org.apache.hadoop</groupId>
+            <artifactId>hadoop-aws</artifactId>
+            <version>${hadoop.version}</version>
+        </dependency>
     </dependencies>
 
     <build>
@@ -326,16 +333,17 @@
                                     </excludes>
                                 </filter>
                             </filters>
+                            <!--
                             <relocations>
                                 <relocation>
                                     <pattern>com.google.protobuf</pattern>
                                     <shadedPattern>shade.protobuf</shadedPattern>
                                 </relocation>
                             </relocations>
+                            -->
                             <artifactSet>
                                 <excludes>
-                                    <exclude></exclude>
-                                    <exclude>org.apache.hadoop:*</exclude>
+                                    <exclude>org.apache.hadoop:hadoop-common</exclude>
                                     <exclude>org.apache.spark:*</exclude>
                                     <exclude>org.apache.parquet:*</exclude>
                                     <exclude>org.apache.commons:*</exclude>
@@ -433,7 +441,7 @@
                 </configuration>
             </plugin>
 
-            <!-- Generate report for spotbugs -->
+            <!-- Generate report for spotbugs
             <plugin>
                 <groupId>com.github.spotbugs</groupId>
                 <artifactId>spotbugs-maven-plugin</artifactId>
@@ -451,7 +459,7 @@
                     </execution>
                 </executions>
             </plugin>
-
+            -->
         </plugins>
 
         <pluginManagement>
