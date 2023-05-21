@@ -98,7 +98,6 @@ struct ZkPath {
     std::string zone_data_path_;
     std::string op_index_node_;
     std::string op_data_path_;
-    std::string op_sync_path_;
     std::string globalvar_changed_notify_node_;
     std::string external_function_path_;
 };
@@ -343,7 +342,8 @@ class NameServerImpl : public NameServer {
 
     bool RegisterName();
 
-    bool CreateProcedureOnTablet(const api::CreateProcedureRequest& sp_request, std::string& err_msg);  // NOLINT
+    base::Status CreateProcedureOnTablet(const api::CreateProcedureRequest& sp_request);
+    base::Status CreateProcedureInternal(const api::CreateProcedureRequest& sp_request);
 
     void DropProcedure(RpcController* controller, const api::DropProcedureRequest* request, GeneralResponse* response,
                        Closure* done);
@@ -541,10 +541,17 @@ class NameServerImpl : public NameServer {
                             uint64_t parent_id = INVALID_PARENT_ID,
                             uint32_t concurrency = FLAGS_name_server_task_concurrency_for_replica_cluster);
 
+    base::Status CreateDeployOP(const DeploySQLRequest& request);
+
     base::Status CreateAddIndexOP(const std::string& name, const std::string& db,
             const std::vector<::openmldb::common::ColumnKey>& column_key);
 
     base::Status CreateAddIndexOPTask(std::shared_ptr<OPData> op_data);
+
+    base::Status FillAddIndexTask(uint64_t op_index, api::OPType op_type,
+            const std::string& name, const std::string& db,
+            const std::vector<::openmldb::common::ColumnKey>& column_key,
+            std::list<std::shared_ptr<Task>>* task_list);
 
     int DropTableRemoteOP(const std::string& name, const std::string& db, const std::string& alias,
                           uint64_t parent_id = INVALID_PARENT_ID,
@@ -565,8 +572,8 @@ class NameServerImpl : public NameServer {
 
     void WrapTaskFun(const boost::function<bool()>& fun, std::shared_ptr<::openmldb::api::TaskInfo> task_info);
 
-    void RunSyncTaskFun(uint32_t tid, const boost::function<bool()>& fun,
-                        std::shared_ptr<::openmldb::api::TaskInfo> task_info);
+    void WrapNormalTaskFun(const boost::function<base::Status()>& fun,
+            std::shared_ptr<::openmldb::api::TaskInfo> task_info);
 
     void RunSubTask(std::shared_ptr<Task> task);
 

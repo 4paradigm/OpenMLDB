@@ -92,17 +92,19 @@ enum TaskType {
     kCreateTableRemote = 19; 
     kDropTableRemote = 20; 
     kAddReplicaNSRemote = 21; 
-    kSendIndexData = 22;
-    kSendIndexRequest = 23;
+    kDumpIndexData = 22 [deprecated = true];
+    kSendIndexData = 23;
     kLoadIndexData = 24;
-    kLoadIndexRequest = 25;
-    kExtractIndexData = 26;
-    kExtractIndexRequest = 27;
-    kAddIndexToTablet = 28;
-    kTableSyncTask = 29;
+    kSendIndexRequest = 25;
+    kLoadIndexRequest = 26;
+    kExtractIndexData = 27;
+    kExtractIndexRequest = 28;
+    kAddIndexToTablet = 29;
     kAddIndexToTabletRequest = 30;
     kAddIndexToTableInfo = 31;
-    kAddIndex = 32;
+    kAddMultiTableIndex = 32;
+    kAddTableIndex = 33;
+    kCreateProcedure = 34;
 }
 
 enum TaskStatus {

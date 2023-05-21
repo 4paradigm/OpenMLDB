@@ -56,6 +56,7 @@
 #include "glog/logging.h"
 #include "google/protobuf/io/zero_copy_stream_impl.h"
 #include "google/protobuf/text_format.h"
+#include "nameserver/task.h"
 #include "schema/schema_adapter.h"
 #include "storage/binlog.h"
 #include "storage/segment.h"
@@ -4064,9 +4065,10 @@ int TabletImpl::AddOPTask(const ::openmldb::api::TaskInfo& task_info, ::openmldb
         task_ptr->set_status(::openmldb::api::TaskStatus::kFailed);
         return -1;
     }
-    PDLOG(INFO, "add task map success, op_id[%lu] op_type[%s] task_type[%s]", task_info.op_id(),
+    PDLOG(INFO, "add task map success, op_id %lu op_type %s task_type %s %s", task_info.op_id(),
           ::openmldb::api::OPType_Name(task_info.op_type()).c_str(),
-          ::openmldb::api::TaskType_Name(task_info.task_type()).c_str());
+          ::openmldb::api::TaskType_Name(task_info.task_type()).c_str(),
+          nameserver::Task::GetAdditionalMsg(task_info));
     return 0;
 }
 
@@ -4817,7 +4819,7 @@ void TabletImpl::ExtractIndexDataInternal(std::shared_ptr<::openmldb::storage::T
         SetTaskStatus(task, ::openmldb::api::kFailed);
         return;
     }
-    std::vector<std::shared_ptr<::openmldb::log::WriteHandle>> whs;
+    std::vector<std::shared_ptr<::openmldb::log::WriteHandle>> whs(partition_num);
     if (dump_data) {
         for (uint32_t i = 0; i < partition_num; i++) {
             std::string index_file_name = absl::StrCat(pid, "_", i, "_index.data");
@@ -4828,7 +4830,7 @@ void TabletImpl::ExtractIndexDataInternal(std::shared_ptr<::openmldb::storage::T
                 SetTaskStatus(task, ::openmldb::api::kFailed);
                 return;
             }
-            whs.emplace_back(std::make_shared<::openmldb::log::WriteHandle>("off", index_file_name, fd));
+            whs[i] = std::make_shared<::openmldb::log::WriteHandle>("off", index_file_name, fd);
         }
     }
     auto status = memtable_snapshot->ExtractIndexData(table, column_keys, whs, offset, dump_data);
@@ -4840,7 +4842,9 @@ void TabletImpl::ExtractIndexDataInternal(std::shared_ptr<::openmldb::storage::T
         SetTaskStatus(task, ::openmldb::api::kFailed);
     }
     for (auto& wh : whs) {
-        wh->EndLog();
+        if (wh) {
+            wh->EndLog();
+        }
     }
 }
 
