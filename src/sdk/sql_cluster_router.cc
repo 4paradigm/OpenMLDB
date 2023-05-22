@@ -3379,6 +3379,22 @@ hybridse::sdk::Status SQLClusterRouter::HandleDeploy(const std::string& db,
             return {deploy_status.GetCode(), deploy_status.GetMsg()};
         }
         job_id->emplace(id);
+        while (true) {
+            nameserver::ShowOPStatusResponse response;
+            auto status = ns->ShowOPStatus(id, &response);
+            if (!status.OK()) {
+                return {status.GetCode(), status.GetMsg()};
+            }
+            if (response.op_status_size() < 1) {
+                return {-1, absl::StrCat("op does not exist. id ", id)};
+            }
+            if (response.op_status(0).status() == "kDone") {
+                return {};
+            } else if (response.op_status(0).status() == "kFailed" || response.op_status(0).status() == "kCanceled") {
+                return {-1, absl::StrCat("op status is ", response.op_status(0).status())};
+            }
+            sleep(1);
+        }
     } else {
         auto add_index_status = AddNewIndex(db, table_map, new_index_map);
         if (!add_index_status.IsOK()) {
@@ -3390,7 +3406,7 @@ hybridse::sdk::Status SQLClusterRouter::HandleDeploy(const std::string& db,
             return lw_status;
         }
 
-        auto ob_status = cluster_sdk_->GetNsClient()->CreateProcedure(sp_info, options_->request_timeout);
+        auto ob_status = ns->CreateProcedure(sp_info, options_->request_timeout);
         if (!ob_status.OK()) {
             APPEND_FROM_BASE_AND_WARN(&status, ob_status, "ns create procedure failed");
             return status;

@@ -890,8 +890,12 @@ std::string MemTableSnapshot::GenSnapshotName() {
     }
     std::string buff;
     ::openmldb::base::Status status;
+    uint64_t read_cnt = 0;
+    uint64_t dump_cnt = 0;
+    uint64_t extract_cnt = 0;
     while (data_reader->HasNext()) {
         auto& entry = data_reader->GetValue();
+        read_cnt++;
         if (entry.has_method_type() && entry.method_type() == ::openmldb::api::MethodType::kDelete) {
             continue;
         }
@@ -962,6 +966,8 @@ std::string MemTableSnapshot::GenSnapshotName() {
                 ::openmldb::api::Dimension* new_dim = entry.add_dimensions();
                 new_dim->CopyFrom(dim);
             }
+            DLOG(INFO) << "extract: dim size " << entry.dimensions_size() << " key " << entry.dimensions(0).key();
+            extract_cnt++;
             table->Put(entry);
         }
         if (dump_data) {
@@ -980,12 +986,17 @@ std::string MemTableSnapshot::GenSnapshotName() {
                     status =  {-1, "fail to dump index entry"};
                     break;
                 }
+                DLOG(INFO) << "dump " << pid << " dim size " << entry.dimensions_size()
+                    << " key " << entry.dimensions(0).key();
+                dump_cnt++;
             }
         }
         if (!status.OK()) {
             break;
         }
     }
+    LOG(INFO) << "read cnt " << read_cnt << " dump cnt " << dump_cnt << " extract cnt " << extract_cnt
+        << " tid " << tid << " pid " << pid;
     wh->EndLog();
     wh.reset();
     if (!status.OK()) {

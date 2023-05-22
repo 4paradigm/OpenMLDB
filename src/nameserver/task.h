@@ -58,7 +58,8 @@ class Task {
 
     std::string endpoint_;
     std::shared_ptr<::openmldb::api::TaskInfo> task_info_;
-    std::list<std::shared_ptr<Task>> sub_task_;
+    std::list<std::shared_ptr<Task>> seq_task_;   // execute one by one
+    std::list<std::shared_ptr<Task>> sub_task_;   // execute parallel
     TaskFun fun_;
 
  private:

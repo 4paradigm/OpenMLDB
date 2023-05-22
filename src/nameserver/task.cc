@@ -29,6 +29,9 @@ bool Task::IsFinished() const {
 
 void Task::UpdateTaskStatus(const ::google::protobuf::RepeatedPtrField<::openmldb::api::TaskInfo>& tasks,
         const std::string& endpoint, bool is_recover) {
+    if (IsFinished()) {
+        return;
+    }
     for (const auto& cur_task : tasks) {
         UpdateStatus(cur_task, endpoint);
     }
@@ -43,7 +46,13 @@ bool Task::UpdateStatus(const ::openmldb::api::TaskInfo& task, const std::string
     if (IsFinished()) {
         return false;
     }
-    if (sub_task_.empty()) {
+    if (!seq_task_.empty()) {
+        seq_task_.front()->UpdateStatus(task, endpoint);
+    } else if (!sub_task_.empty()) {
+        for (auto& cur_task : sub_task_) {
+            cur_task->UpdateStatus(task, endpoint);
+        }
+    } else {
         if (task_info_->task_type() != task.task_type()) {
             return false;
         }
@@ -66,17 +75,18 @@ bool Task::UpdateStatus(const ::openmldb::api::TaskInfo& task, const std::string
         }
         traversed_ = true;
         return true;
-    } else {
-        for (auto& cur_task : sub_task_) {
-            if (cur_task->UpdateStatus(task, endpoint)) {
-                break;
-            }
-        }
     }
     return false;
 }
 
 void Task::SetState(const std::string& endpoint, bool is_recover) {
+    if (IsFinished()) {
+        return;
+    }
+    if (!seq_task_.empty()) {
+        seq_task_.front()->SetState(endpoint, is_recover);
+        return;
+    }
     if (sub_task_.empty()) {
         if (endpoint_ == endpoint && !traversed_ && (is_recover || (task_info_->is_rpc_send() && check_num_ > 5))) {
             // if the task does not exist in tablet, set to failed
@@ -110,7 +120,15 @@ void Task::SetState(const std::string& endpoint, bool is_recover) {
 }
 
 void Task::UpdateStatusFromSubTask() {
-    if (sub_task_.empty() || IsFinished()) return;
+    if (IsFinished()) {
+        return;
+    }
+    if (!seq_task_.empty()) {
+        return seq_task_.front()->UpdateStatusFromSubTask();
+    }
+    if (sub_task_.empty()) {
+        return;
+    }
     uint32_t done_cnt = 0;
     for (auto& cur_task : sub_task_) {
         cur_task->UpdateStatusFromSubTask();

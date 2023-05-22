@@ -83,6 +83,7 @@ using ::openmldb::base::ReturnCode;
 
 const std::string OFFLINE_LEADER_ENDPOINT = "OFFLINE_LEADER_ENDPOINT";  // NOLINT
 constexpr uint8_t MAX_ADD_TABLE_FIELD_COUNT = 63;
+constexpr uint32_t SEQ_TASK_CHECK_INTERVAL = 100;  // 100ms
 
 void NameServerImpl::CheckSyncExistTable(const std::string& alias,
                                          const std::vector<::openmldb::nameserver::TableInfo>& tables_remote,
@@ -1648,15 +1649,15 @@ int NameServerImpl::UpdateZKTaskStatus() {
             op_data->op_info_.SerializeToString(&value);
             std::string node = absl::StrCat(zk_path_.op_data_path_, "/", op_data->op_info_.op_id());
             if (zk_client_->SetNodeValue(node, value)) {
-                DEBUGLOG("set zk status value success. node[%s] value[%s]", node.c_str(), value.c_str());
+                PDLOG(INFO, "set zk status value success. node[%s] value[%s]", node.c_str(), value.c_str());
                 op_data->task_list_.pop_front();
                 continue;
             }
             // revert task index
             op_data->op_info_.set_task_index(cur_task_index);
             PDLOG(WARNING, "set zk status value failed! node[%s] op_id[%lu] op_type[%s] task_index[%u]",
-                  node.c_str(), op_data->op_info_.op_id(),
-                  ::openmldb::api::OPType_Name(op_data->op_info_.op_type()).c_str(), op_data->op_info_.task_index());
+                    node.c_str(), op_data->GetOpId(), op_data->GetReadableType().c_str(),
+                    op_data->op_info_.task_index());
         }
     }
     return 0;
@@ -2732,6 +2733,9 @@ void NameServerImpl::ShowOPStatus(RpcController* controller, const ShowOPStatusR
     std::lock_guard<std::mutex> lock(mu_);
     DeleteDoneOP();
     for (const auto& op_data : done_op_list_) {
+        if (request->has_op_id() && op_data->op_info_.op_id() != request->op_id()) {
+            continue;
+        }
         if (request->has_db() && op_data->op_info_.db() != request->db()) {
             continue;
         }
@@ -2748,6 +2752,9 @@ void NameServerImpl::ShowOPStatus(RpcController* controller, const ShowOPStatusR
             continue;
         }
         for (const auto& op_data : op_list) {
+            if (request->has_op_id() && op_data->op_info_.op_id() != request->op_id()) {
+                continue;
+            }
             if (request->has_name() && op_data->op_info_.name() != request->name()) {
                 continue;
             }
@@ -8691,7 +8698,7 @@ base::Status NameServerImpl::FillAddIndexTask(uint64_t op_index, api::OPType op_
         std::list<std::shared_ptr<Task>>* task_list) {
     std::shared_ptr<::openmldb::nameserver::TableInfo> table_info;
     if (!GetTableInfoUnlock(name, db, &table_info)) {
-        return {-1, "get table info failed"};
+        return {-1, absl::StrCat("get table info failed, db ", db, " name ", name)};
     }
     uint32_t tid = table_info->tid();
     std::map<uint32_t, std::string> pid_endpoint_map;
@@ -8750,9 +8757,39 @@ base::Status NameServerImpl::FillAddIndexTask(uint64_t op_index, api::OPType op_
 
 void NameServerImpl::RunSubTask(std::shared_ptr<Task> task) {
     for (const auto& cur_task : task->sub_task_) {
+        PDLOG(INFO, "task starts running. op_id %lu task type %s %s",
+                cur_task->GetOpId(), cur_task->GetReadableType().c_str(), cur_task->GetAdditionalMsg().c_str());
         cur_task->SetStatus(::openmldb::api::TaskStatus::kDoing);
         cur_task->fun_();
     }
+}
+
+void NameServerImpl::RunSeqTask(std::shared_ptr<Task> task) {
+    if (task->seq_task_.empty()) {
+        PDLOG(INFO, "update task status from %s to kDone. op_id %lu task_type %s %s",
+                task->GetReadableStatus().c_str(), task->GetOpId(),
+                task->GetReadableType().c_str(), task->GetAdditionalMsg().c_str());
+        task->SetStatus(::openmldb::api::TaskStatus::kDone);
+        return;
+    }
+    auto cur_task = task->seq_task_.front();
+    auto task_status = cur_task->GetStatus();
+    if (task_status == ::openmldb::api::TaskStatus::kInited) {
+        PDLOG(INFO, "seq task starts running. op_id %lu task type %s %s",
+                cur_task->GetOpId(), cur_task->GetReadableType().c_str(), cur_task->GetAdditionalMsg().c_str());
+        cur_task->SetStatus(::openmldb::api::TaskStatus::kDoing);
+        cur_task->fun_();
+    } else if (task_status == ::openmldb::api::TaskStatus::kFailed ||
+            task_status == ::openmldb::api::TaskStatus::kCanceled) {
+        PDLOG(INFO, "update task status from %s to %s. op_id %lu task_type %s %s",
+                task->GetReadableStatus().c_str(), cur_task->GetReadableStatus().c_str(),
+                task->GetOpId(), task->GetReadableType().c_str(), task->GetAdditionalMsg().c_str());
+        task->SetStatus(task_status);
+        return;
+    } else if (task_status == ::openmldb::api::TaskStatus::kDone) {
+        task->seq_task_.pop_front();
+    }
+    task_thread_pool_.DelayTask(SEQ_TASK_CHECK_INTERVAL, boost::bind(&NameServerImpl::RunSeqTask, this, task));
 }
 
 void NameServerImpl::CreateDatabase(RpcController* controller, const CreateDatabaseRequest* request,
@@ -10381,13 +10418,13 @@ std::shared_ptr<Task> NameServerImpl::CreateTask(const std::shared_ptr<TaskMeta>
         case ::openmldb::api::TaskType::kAddTableIndex: {
             auto meta = std::dynamic_pointer_cast<AddTableIndexTaskMeta>(task_meta);
             auto status = FillAddIndexTask(meta->task_info->op_id(), meta->task_info->op_type(),
-                    meta->name, meta->db, meta->column_key, &task->sub_task_);
+                    meta->name, meta->db, meta->column_key, &task->seq_task_);
             if (!status.OK()) {
                 PDLOG(WARNING, "FillAddIndexTask failed. op_id %lu msg %s",
                         meta->task_info->op_id(), status.GetMsg().c_str());
                 return {};
             }
-            task->fun_ = boost::bind(&NameServerImpl::RunSubTask, this, task);
+            task->fun_ = boost::bind(&NameServerImpl::RunSeqTask, this, task);
             break;
         }
         case ::openmldb::api::TaskType::kAddMultiTableIndex: {
@@ -10480,15 +10517,17 @@ void NameServerImpl::DeploySQL(RpcController* controller, const DeploySQLRequest
             }
         }
     }
+    uint64_t op_id = 0;
     std::lock_guard<std::mutex> lock(mu_);
-    auto status = CreateDeployOP(*request);
+    auto status = CreateDeployOP(*request, &op_id);
     if (!status.OK()) {
         PDLOG(WARNING, "%s", status.GetMsg().c_str());
     }
+    response->set_op_id(op_id);
     SetResponseStatus(status, response);
 }
 
-base::Status NameServerImpl::CreateDeployOP(const DeploySQLRequest& request) {
+base::Status NameServerImpl::CreateDeployOP(const DeploySQLRequest& request, uint64_t* op_id) {
     std::shared_ptr<OPData> op_data;
     const auto& sp_info = request.sp_info();
     const auto& deploy_name = sp_info.sp_name();
@@ -10511,6 +10550,7 @@ base::Status NameServerImpl::CreateDeployOP(const DeploySQLRequest& request) {
         return {-1, absl::StrCat("add op data failed. deploy name ", sp_info.sp_name())};
     }
     PDLOG(INFO, "create DeployOP success. op id %lu deploy name %s", op_data->GetOpId(), deploy_name.c_str());
+    *op_id = op_data->GetOpId();
     return {};
 }
 

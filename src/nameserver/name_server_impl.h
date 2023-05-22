@@ -541,7 +541,7 @@ class NameServerImpl : public NameServer {
                             uint64_t parent_id = INVALID_PARENT_ID,
                             uint32_t concurrency = FLAGS_name_server_task_concurrency_for_replica_cluster);
 
-    base::Status CreateDeployOP(const DeploySQLRequest& request);
+    base::Status CreateDeployOP(const DeploySQLRequest& request, uint64_t* op_id);
 
     base::Status CreateAddIndexOP(const std::string& name, const std::string& db,
             const std::vector<::openmldb::common::ColumnKey>& column_key);
@@ -576,6 +576,7 @@ class NameServerImpl : public NameServer {
             std::shared_ptr<::openmldb::api::TaskInfo> task_info);
 
     void RunSubTask(std::shared_ptr<Task> task);
+    void RunSeqTask(std::shared_ptr<Task> task);
 
     // get tablet info
     std::shared_ptr<TabletInfo> GetTabletInfo(const std::string& endpoint);
