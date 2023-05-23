@@ -1581,8 +1581,8 @@ int NameServerImpl::UpdateTaskStatusRemote(bool is_recover_op) {
                 PDLOG(INFO, "cluster[%s] is not Healthy", iter->first.c_str());
                 continue;
             }
-            client_map.insert(std::make_pair(
-                iter->first, std::atomic_load_explicit(&iter->second->client_, std::memory_order_relaxed)));
+            client_map.emplace(iter->first,
+                    std::atomic_load_explicit(&iter->second->client_, std::memory_order_relaxed));
         }
     }
     uint64_t last_task_rpc_version = task_rpc_version_.load(std::memory_order_acquire);
@@ -1595,7 +1595,7 @@ int NameServerImpl::UpdateTaskStatusRemote(bool is_recover_op) {
                 DEBUGLOG("task_rpc_version mismatch");
                 break;
             }
-            std::string endpoint = iter->first;
+            std::string endpoint = iter->second->GetEndpoint();
             uint32_t index = 0;
             for (const auto& op_list : task_vec_) {
                 index++;
@@ -4761,7 +4761,7 @@ int NameServerImpl::AddOPTask(const ::openmldb::api::TaskInfo& task_info, ::open
 }
 
 std::shared_ptr<::openmldb::api::TaskInfo> NameServerImpl::FindTask(uint64_t op_id,
-                                                                    ::openmldb::api::TaskType task_type) {
+        ::openmldb::api::TaskType task_type) {
     auto iter = task_map_.find(op_id);
     if (iter == task_map_.end()) {
         return std::shared_ptr<::openmldb::api::TaskInfo>();
@@ -6239,10 +6239,8 @@ int NameServerImpl::CreateTableRemoteOP(const ::openmldb::nameserver::TableInfo&
                                         const std::string& alias, uint64_t parent_id, uint32_t concurrency) {
     CreateTableData create_table_data;
     create_table_data.set_alias(alias);
-    ::openmldb::nameserver::TableInfo* table_info_p = create_table_data.mutable_table_info();
-    table_info_p->CopyFrom(table_info);
-    ::openmldb::nameserver::TableInfo* remote_table_info_p = create_table_data.mutable_remote_table_info();
-    remote_table_info_p->CopyFrom(remote_table_info);
+    create_table_data.mutable_table_info()->CopyFrom(table_info);
+    create_table_data.mutable_remote_table_info()->CopyFrom(remote_table_info);
     std::string value;
     create_table_data.SerializeToString(&value);
     std::string name = table_info.name();
@@ -6250,15 +6248,13 @@ int NameServerImpl::CreateTableRemoteOP(const ::openmldb::nameserver::TableInfo&
     uint32_t pid = INVALID_PID;
     std::shared_ptr<OPData> op_data;
     if (CreateOPData(::openmldb::api::OPType::kCreateTableRemoteOP, value, op_data, name, db, pid, parent_id) < 0) {
-        PDLOG(WARNING,
-              "create CreateTableRemoteOP data error. table[%s] pid[%u] "
-              "alias[%s]",
+        PDLOG(WARNING, "create CreateTableRemoteOP data error. table[%s] pid[%u] alias[%s]",
               name.c_str(), pid, alias.c_str());
         return -1;
     }
     if (CreateTableRemoteTask(op_data) < 0) {
-        PDLOG(WARNING, "create CreateTableRemote task failed. table[%s] pid[%u] alias[%s]", table_info.name().c_str(),
-              pid, alias.c_str());
+        PDLOG(WARNING, "create CreateTableRemote task failed. table[%s] pid[%u] alias[%s]",
+                table_info.name().c_str(), pid, alias.c_str());
         return -1;
     }
     op_data->op_info_.set_for_replica_cluster(1);
@@ -6278,7 +6274,7 @@ int NameServerImpl::CreateTableRemoteTask(std::shared_ptr<OPData> op_data) {
         return -1;
     }
     std::string alias = create_table_data.alias();
-    ::openmldb::nameserver::TableInfo remote_table_info = create_table_data.remote_table_info();
+    auto remote_table_info = create_table_data.remote_table_info();
     uint64_t op_index = op_data->op_info_.op_id();
     auto op_type = ::openmldb::api::OPType::kCreateTableRemoteOP;
     auto task = CreateTask(std::make_shared<CreateTableRemoteTaskMeta>(op_index, op_type, remote_table_info, alias));
@@ -6289,7 +6285,7 @@ int NameServerImpl::CreateTableRemoteTask(std::shared_ptr<OPData> op_data) {
     }
     op_data->task_list_.push_back(task);
 
-    ::openmldb::nameserver::TableInfo table_info = create_table_data.table_info();
+    auto table_info = create_table_data.table_info();
     uint32_t tid = table_info.tid();
     uint32_t remote_tid = remote_table_info.tid();
     std::string name = table_info.name();

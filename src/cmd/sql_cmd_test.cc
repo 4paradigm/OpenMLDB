@@ -867,8 +867,6 @@ TEST_P(DBSDKTest, DeployWithData) {
     std::string deploy_sql = "deploy demo SELECT t1.col1, t2.col2, sum(col4) OVER w1 as w1_col4_sum FROM t1 "
         "LAST JOIN t2 ORDER BY t2.col3 ON t1.col2 = t2.col2 "
         "WINDOW w1 AS (PARTITION BY t1.col2 ORDER BY t1.col3 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);";
-    std::string deploy_sql1 = "deploy demo SELECT t1.col1, t2.col2 FROM t1 "
-        "LAST JOIN t2 ORDER BY t2.col3 ON t1.col2 = t2.col2;";
     sr->ExecuteSQL(deploy_sql, &status);
     ASSERT_TRUE(status.IsOK());
     std::string msg;
