@@ -187,6 +187,7 @@ class SqlCase {
         const std::string& cases_dir, const std::string& resource_path,
         type::TableDef& table,                     // NOLINT
         std::vector<hybridse::codec::Row>& rows);  // NOLINT
+
     static bool CreateSqlCasesFromYaml(
         const std::string& cases_dir, const std::string& yaml_path,
         std::vector<SqlCase>& sql_case_ptr,  // NOLINT
@@ -195,6 +196,7 @@ class SqlCase {
         const std::string& cases_dir, const std::string& yaml_path,
         std::vector<SqlCase>& sql_case_ptr,  // NOLINT
         const std::vector<std::string>& filter_modes);
+
     static bool CreateTableInfoFromYaml(const std::string& cases_dir,
                                         const std::string& yaml_path,
                                         TableInfo* table_info);
