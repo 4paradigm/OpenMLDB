@@ -82,6 +82,7 @@ class DataReader {
 
     bool HasNext();
     ::openmldb::api::LogEntry& GetValue() { return entry_; }
+    const std::string& GetStrValue() { return entry_buff_; }
     bool Init();
 
  private:

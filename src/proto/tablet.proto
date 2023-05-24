@@ -95,11 +95,11 @@ enum TaskType {
     kDumpIndexData = 22 [deprecated = true];
     kSendIndexData = 23;
     kLoadIndexData = 24;
-    kSendIndexRequest = 25;
-    kLoadIndexRequest = 26;
-    kExtractIndexData = 27;
+    kExtractIndexData = 25;
+    kAddIndexToTablet = 26;
+    kSendIndexRequest = 27;
     kExtractIndexRequest = 28;
-    kAddIndexToTablet = 29;
+    kLoadIndexRequest = 29;
     kAddIndexToTabletRequest = 30;
     kAddIndexToTableInfo = 31;
     kAddMultiTableIndex = 32;

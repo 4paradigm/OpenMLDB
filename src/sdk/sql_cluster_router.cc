@@ -59,6 +59,7 @@
 DECLARE_string(bucket_size);
 DECLARE_uint32(replica_num);
 DECLARE_int32(sync_job_timeout);
+DECLARE_int32(deploy_job_max_wait_time_ms);
 
 namespace openmldb {
 namespace sdk {
@@ -66,7 +67,8 @@ namespace sdk {
 using hybridse::common::StatusCode;
 using hybridse::plan::PlanAPI;
 
-constexpr const char* SKIP_INDEX_CHECK = "skip_index_check";
+constexpr const char* SKIP_INDEX_CHECK_OPTION = "skip_index_check";
+constexpr const char* SYNC_OPTION = "sync";
 
 class ExplainInfoImpl : public ExplainInfo {
  public:
@@ -2541,8 +2543,12 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(
             *status = HandleDeploy(db, deploy_node, &job_id);
             if (status->IsOK()) {
                 if (job_id.has_value()) {
+                    schema::PBSchema job_schema;
+                    auto col = job_schema.Add();
+                    col->set_name("job_id");
+                    col->set_data_type(::openmldb::type::DataType::kBigInt);
                     std::vector<std::string> value = {std::to_string(job_id.value())};
-                    return ResultSetSQL::MakeResultSet({FORMAT_STRING_KEY}, {value}, status);
+                    return ResultSetSQL::MakeResultSet(job_schema, {value}, status);
                 }
                 RefreshCatalog();
             }
@@ -3356,7 +3362,7 @@ hybridse::sdk::Status SQLClusterRouter::HandleDeploy(const std::string& db,
         }
     }
     bool skip_index_check = false;
-    auto iter = deploy_node->Options()->find(SKIP_INDEX_CHECK);
+    auto iter = deploy_node->Options()->find(SKIP_INDEX_CHECK_OPTION);
     if (iter != deploy_node->Options()->end()) {
         std::string skip_index_value = iter->second->GetExprString();
         if (absl::EqualsIgnoreCase(absl::string_view(skip_index_value), absl::string_view("true"))) {
@@ -3368,49 +3374,72 @@ hybridse::sdk::Status SQLClusterRouter::HandleDeploy(const std::string& db,
     if (!index_status.IsOK()) {
         return index_status;
     }
-    if (cluster_sdk_->IsClusterMode() && record_cnt > 0) {
-        auto lw_status = HandleLongWindows(deploy_node, table_pair, select_sql);
-        if (!lw_status.IsOK()) {
-            return lw_status;
-        }
-        uint64_t id = 0;
-        auto deploy_status = ns->DeploySQL(sp_info, new_index_map, &id);
-        if (!deploy_status.OK()) {
-            return {deploy_status.GetCode(), deploy_status.GetMsg()};
-        }
-        job_id->emplace(id);
-        while (true) {
-            nameserver::ShowOPStatusResponse response;
-            auto status = ns->ShowOPStatus(id, &response);
-            if (!status.OK()) {
-                return {status.GetCode(), status.GetMsg()};
+    if (!new_index_map.empty()) {
+        if (cluster_sdk_->IsClusterMode() && record_cnt > 0) {
+            auto lw_status = HandleLongWindows(deploy_node, table_pair, select_sql);
+            if (!lw_status.IsOK()) {
+                return lw_status;
             }
-            if (response.op_status_size() < 1) {
-                return {-1, absl::StrCat("op does not exist. id ", id)};
+            uint64_t id = 0;
+            auto deploy_status = ns->DeploySQL(sp_info, new_index_map, &id);
+            if (!deploy_status.OK()) {
+                return {deploy_status.GetCode(), deploy_status.GetMsg()};
             }
-            if (response.op_status(0).status() == "kDone") {
-                return {};
-            } else if (response.op_status(0).status() == "kFailed" || response.op_status(0).status() == "kCanceled") {
-                return {-1, absl::StrCat("op status is ", response.op_status(0).status())};
+            bool sync = true;
+            auto iter = deploy_node->Options()->find(SYNC_OPTION);
+            if (iter != deploy_node->Options()->end()) {
+                std::string skip_index_value = iter->second->GetExprString();
+                if (absl::EqualsIgnoreCase(absl::string_view(skip_index_value), absl::string_view("false"))) {
+                    sync = false;
+                }
             }
-            sleep(1);
+            if (sync) {
+                if (record_cnt > 1000000) {
+                    LOG(INFO) << "There is data in the table, it may take a few minutes to load the data";
+                } else if (record_cnt > 100000) {
+                    LOG(INFO) << "There is data in the table, it may take a few seconds to load the data";
+                }
+                uint64_t start_ts = ::baidu::common::timer::get_micros() / 1000;
+                while (true) {
+                    nameserver::ShowOPStatusResponse response;
+                    auto status = ns->ShowOPStatus(id, &response);
+                    if (!status.OK()) {
+                        return {status.GetCode(), status.GetMsg()};
+                    }
+                    if (response.op_status_size() < 1) {
+                        return {-1, absl::StrCat("op does not exist. id ", id)};
+                    }
+                    if (response.op_status(0).status() == "kDone") {
+                        return {};
+                    } else if (response.op_status(0).status() == "kFailed" ||
+                            response.op_status(0).status() == "kCanceled") {
+                        return {-1, absl::StrCat("op status is ", response.op_status(0).status())};
+                    }
+                    uint64_t cur_ts = ::baidu::common::timer::get_micros() / 1000;
+                    if (cur_ts - start_ts > static_cast<uint64_t>(FLAGS_deploy_job_max_wait_time_ms)) {
+                        return {-1, "exceed max wait time"};
+                    }
+                    sleep(1);
+                }
+            } else {
+                job_id->emplace(id);
+            }
+            return {};
+        } else {
+            auto add_index_status = AddNewIndex(db, table_map, new_index_map);
+            if (!add_index_status.IsOK()) {
+                return add_index_status;
+            }
         }
-    } else {
-        auto add_index_status = AddNewIndex(db, table_map, new_index_map);
-        if (!add_index_status.IsOK()) {
-            return add_index_status;
-        }
-
-        auto lw_status = HandleLongWindows(deploy_node, table_pair, select_sql);
-        if (!lw_status.IsOK()) {
-            return lw_status;
-        }
-
-        auto ob_status = ns->CreateProcedure(sp_info, options_->request_timeout);
-        if (!ob_status.OK()) {
-            APPEND_FROM_BASE_AND_WARN(&status, ob_status, "ns create procedure failed");
-            return status;
-        }
+    }
+    auto lw_status = HandleLongWindows(deploy_node, table_pair, select_sql);
+    if (!lw_status.IsOK()) {
+        return lw_status;
+    }
+    auto ob_status = ns->CreateProcedure(sp_info, options_->request_timeout);
+    if (!ob_status.OK()) {
+        APPEND_FROM_BASE_AND_WARN(&status, ob_status, "ns create procedure failed");
+        return status;
     }
     return {};
 }

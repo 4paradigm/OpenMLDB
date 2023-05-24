@@ -881,7 +881,7 @@ std::string MemTableSnapshot::GenSnapshotName() {
     if (!wh) {
         return {-1, "create WriteHandle failed"};
     }
-    uint64_t collected_offset = CollectDeletedKey(offset);
+    CollectDeletedKey(offset);
 
     auto data_reader = DataReader::CreateDataReader(snapshot_path_, log_part_, log_path_,
             DataReaderType::kSnapshotAndBinlog, offset);
@@ -893,9 +893,11 @@ std::string MemTableSnapshot::GenSnapshotName() {
     uint64_t read_cnt = 0;
     uint64_t dump_cnt = 0;
     uint64_t extract_cnt = 0;
+    uint64_t cur_offset = 0;
     while (data_reader->HasNext()) {
         auto& entry = data_reader->GetValue();
         read_cnt++;
+        cur_offset = entry.log_index();
         if (entry.has_method_type() && entry.method_type() == ::openmldb::api::MethodType::kDelete) {
             continue;
         }
@@ -928,6 +930,10 @@ std::string MemTableSnapshot::GenSnapshotName() {
             }
         }
         if (!has_main_index) {
+            if (!wh->Write(::openmldb::base::Slice(data_reader->GetStrValue())).ok()) {
+                status = {-1, "fail to write snapshot"};
+                break;
+            }
             continue;
         }
         std::vector<std::string> index_row;
@@ -958,7 +964,7 @@ std::string MemTableSnapshot::GenSnapshotName() {
             }
             entry.SerializeToString(&tmp_buf);
             if (!wh->Write(::openmldb::base::Slice(tmp_buf)).ok()) {
-                status =  {-1, "fail to write snapshot"};
+                status = {-1, "fail to write snapshot"};
                 break;
             }
             entry.clear_dimensions();
@@ -1002,6 +1008,7 @@ std::string MemTableSnapshot::GenSnapshotName() {
     if (!status.OK()) {
         unlink(snapshot_meta.tmp_file_path.c_str());
     } else {
+        snapshot_meta.offset = std::max(cur_offset, offset_);
         WriteSnapshot(snapshot_meta);
     }
     return status;
