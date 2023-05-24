@@ -345,6 +345,7 @@ message ShowOPStatusRequest{
     optional string name = 1;
     optional uint32 pid = 2;
     optional string db = 3;
+    optional uint64 op_id = 4;
 }
 
 message ConnectZKRequest {}

@@ -220,6 +220,8 @@ std::string NameOfPlanNodeType(const PlanType &type) {
             return "kPlanTypeCreateFunction";
         case kPlanTypeWithClauseEntry:
             return "kPlanTypeWithClauseEntry";
+        case kPlanTypeShow:
+            return "kPlanTypeShow";
         case kUnknowPlan:
             return std::string("kUnknow");
     }
@@ -794,6 +796,31 @@ void DeletePlanNode::Print(std::ostream& output, const std::string& tab) const {
         output << "\n";
         PrintSqlNode(output, tab, condition_, "condition", true);
     }
+}
+
+bool ShowPlanNode::Equals(const PlanNode *that) const {
+    auto other = dynamic_cast<const ShowPlanNode *>(that);
+    return LeafPlanNode::Equals(that) && type_ == that->type_ && GetType() == other->GetType()
+        && GetTarget() == other->GetTarget() && GetLikeStr() == other->GetLikeStr();
+}
+void ShowPlanNode::Print(std::ostream& output, const std::string& tab) const {
+    PlanNode::Print(output, tab);
+    const std::string next_tab = tab + INDENT + SPACE_ED;
+    output << "\n";
+    auto type2string = [](node::ShowStmtType show_type) -> std::string {
+        switch (show_type) {
+            case node::ShowStmtType::kJob: {
+                return "JOB";
+            }
+        }
+        return "unknown";
+    };
+    PrintValue(output, next_tab, type2string(show_type_), "show type", false);
+    output << "\n";
+    PrintValue(output, next_tab, target_, "target", false);
+    output << "\n";
+    PrintValue(output, next_tab, like_str_, "like_str", false);
+    output << "\n";
 }
 
 bool CmdPlanNode::Equals(const PlanNode *that) const {

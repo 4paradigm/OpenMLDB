@@ -187,8 +187,19 @@ bool NsClient::MakeSnapshot(const std::string& name, const std::string& db, uint
     return false;
 }
 
-bool NsClient::ShowOPStatus(::openmldb::nameserver::ShowOPStatusResponse& response, const std::string& name,
-                            uint32_t pid, std::string& msg) {
+base::Status NsClient::ShowOPStatus(uint64_t op_id, nameserver::ShowOPStatusResponse* response) {
+    ::openmldb::nameserver::ShowOPStatusRequest request;
+    request.set_op_id(op_id);
+    bool ok = client_.SendRequest(&::openmldb::nameserver::NameServer_Stub::ShowOPStatus, &request, response,
+                                  FLAGS_request_timeout_ms, 1);
+    if (ok && response->code() == 0) {
+        return {};
+    }
+    return {base::ReturnCode::kError, response->msg()};
+}
+
+base::Status NsClient::ShowOPStatus(const std::string& name, uint32_t pid,
+        ::openmldb::nameserver::ShowOPStatusResponse* response) {
     ::openmldb::nameserver::ShowOPStatusRequest request;
     if (const std::string& db = GetDb(); !db.empty()) {
         request.set_db(db);
@@ -199,13 +210,12 @@ bool NsClient::ShowOPStatus(::openmldb::nameserver::ShowOPStatusResponse& respon
     if (pid != INVALID_PID) {
         request.set_pid(pid);
     }
-    bool ok = client_.SendRequest(&::openmldb::nameserver::NameServer_Stub::ShowOPStatus, &request, &response,
+    bool ok = client_.SendRequest(&::openmldb::nameserver::NameServer_Stub::ShowOPStatus, &request, response,
                                   FLAGS_request_timeout_ms, 1);
-    msg = response.msg();
-    if (ok && response.code() == 0) {
-        return true;
+    if (ok && response->code() == 0) {
+        return {};
     }
-    return false;
+    return {base::ReturnCode::kError, response->msg()};
 }
 
 bool NsClient::CancelOP(uint64_t op_id, std::string& msg) {

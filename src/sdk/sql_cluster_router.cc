@@ -25,6 +25,7 @@
 #include <utility>
 
 #include "absl/strings/ascii.h"
+#include "absl/strings/numbers.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/strip.h"
 #include "absl/strings/substitute.h"
@@ -1828,40 +1829,22 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::HandleSQLCmd(const h
             exit(0);
         }
         case hybridse::node::kCmdShowJobs: {
-            std::string db = openmldb::nameserver::INTERNAL_DB;
-            std::string sql = "SELECT * FROM JOB_INFO";
-            auto rs = ExecuteSQLParameterized(db, sql, std::shared_ptr<openmldb::sdk::SQLRequestRow>(), status);
-            if (!status->IsOK()) {
-                return {};
-            }
-            if (FLAGS_role == "sql_client" && rs) {
-                return std::make_shared<ReadableResultSetSQL>(rs);
-            }
-            return rs;
+            return GetJobResultSet(status);
         }
         case hybridse::node::kCmdShowJob: {
             int job_id;
-            try {
-                // Check argument type
-                job_id = std::stoi(cmd_node->GetArgs()[0]);
-            } catch (...) {
+            if (!absl::SimpleAtoi(cmd_node->GetArgs()[0], &job_id)) {
                 *status = {StatusCode::kCmdError, "Failed to parse job id: " + cmd_node->GetArgs()[0]};
                 return {};
             }
-
             return this->GetJobResultSet(job_id, status);
         }
         case hybridse::node::kCmdShowJobLog: {
             int job_id;
-            try {
-                // Check argument type
-                job_id = std::stoi(cmd_node->GetArgs()[0]);
-            } catch (...) {
-                *status = {::hybridse::common::StatusCode::kCmdError,
-                           "Failed to parse job id: " + cmd_node->GetArgs()[0]};
+            if (!absl::SimpleAtoi(cmd_node->GetArgs()[0], &job_id)) {
+                *status = {StatusCode::kCmdError, "Failed to parse job id: " + cmd_node->GetArgs()[0]};
                 return {};
             }
-
             auto log = GetJobLog(job_id, status);
 
             if (!status->IsOK()) {
@@ -1876,16 +1859,12 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::HandleSQLCmd(const h
         }
         case hybridse::node::kCmdStopJob: {
             int job_id;
-            try {
-                job_id = std::stoi(cmd_node->GetArgs()[0]);
-            } catch (...) {
+            if (!absl::SimpleAtoi(cmd_node->GetArgs()[0], &job_id)) {
                 *status = {StatusCode::kCmdError, "Failed to parse job id: " + cmd_node->GetArgs()[0]};
                 return {};
             }
-
             ::openmldb::taskmanager::JobInfo job_info;
             StopJob(job_id, &job_info);
-
             return this->GetJobResultSet(job_id, status);
         }
         case hybridse::node::kCmdDropTable: {
@@ -1946,7 +1925,6 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::HandleSQLCmd(const h
     return {};
 }
 
-// TODO(hw): use openmldb::base::Status?
 base::Status SQLClusterRouter::HandleSQLCreateTable(hybridse::node::CreatePlanNode* create_node, const std::string& db,
                                                     std::shared_ptr<::openmldb::client::NsClient> ns_ptr) {
     return HandleSQLCreateTable(create_node, db, ns_ptr, "");
@@ -2649,6 +2627,18 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(
                 return {};
             }
             *status = HandleDelete(database, plan->GetTableName(), plan->GetCondition());
+            return {};
+        }
+        case hybridse::node::kPlanTypeShow: {
+            auto plan = dynamic_cast<hybridse::node::ShowPlanNode*>(node);
+            auto target = absl::AsciiStrToUpper(plan->GetTarget());
+            if (target.empty() || target == "TASKMANAGER") {
+                return GetJobResultSet(status);
+            } else if (target == "NAMESERVER") {
+                return GetNameServerJobResult(plan->GetLikeStr(), status);
+            } else {
+                *status = {StatusCode::kCmdError, absl::StrCat("invalid target ", target)};
+            }
             return {};
         }
         default: {
@@ -4228,7 +4218,7 @@ void SQLClusterRouter::ReadSparkConfFromFile(std::string conf_file_path, std::ma
 }
 
 std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::GetJobResultSet(int job_id,
-                                                                            ::hybridse::sdk::Status* status) {
+        ::hybridse::sdk::Status* status) {
     std::string db = openmldb::nameserver::INTERNAL_DB;
     std::string sql = "SELECT * FROM JOB_INFO WHERE id = " + std::to_string(job_id);
 
@@ -4246,6 +4236,58 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::GetJobResultSet(int 
     } else {
         return rs;
     }
+}
+
+std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::GetJobResultSet(::hybridse::sdk::Status* status) {
+    std::string db = openmldb::nameserver::INTERNAL_DB;
+    std::string sql = "SELECT * FROM JOB_INFO";
+    auto rs = ExecuteSQLParameterized(db, sql, std::shared_ptr<openmldb::sdk::SQLRequestRow>(), status);
+    if (!status->IsOK()) {
+        return {};
+    }
+    if (FLAGS_role == "sql_client" && rs) {
+        return std::make_shared<ReadableResultSetSQL>(rs);
+    }
+    return rs;
+}
+
+std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::GetNameServerJobResult(const std::string& job_id,
+        ::hybridse::sdk::Status* status) {
+    nameserver::ShowOPStatusResponse response;
+    base::Status ret;
+    if (!job_id.empty()) {
+        uint64_t id;
+        if (!absl::SimpleAtoi(job_id, &id)) {
+            *status = {-1, absl::StrCat("invalid job_id ", job_id)};
+            return {};
+        }
+        ret = cluster_sdk_->GetNsClient()->ShowOPStatus(id, &response);
+    } else {
+        ret = cluster_sdk_->GetNsClient()->ShowOPStatus("", client::INVALID_PID, &response);
+    }
+    if (!ret.OK()) {
+        *status = {ret.GetCode(), ret.GetMsg()};
+        return {};
+    }
+    auto build_schema = []() -> schema::PBSchema {
+        schema::PBSchema schema;
+        codec::SchemaCodec::SetColumnDesc(schema.Add(), "job_id", type::DataType::kBigInt);
+        codec::SchemaCodec::SetColumnDesc(schema.Add(), "op_type", type::DataType::kString);
+        codec::SchemaCodec::SetColumnDesc(schema.Add(), "db", type::DataType::kString);
+        codec::SchemaCodec::SetColumnDesc(schema.Add(), "name", type::DataType::kString);
+        codec::SchemaCodec::SetColumnDesc(schema.Add(), "pid", type::DataType::kInt);
+        codec::SchemaCodec::SetColumnDesc(schema.Add(), "status", type::DataType::kString);
+        codec::SchemaCodec::SetColumnDesc(schema.Add(), "start_time", type::DataType::kTimestamp);
+        codec::SchemaCodec::SetColumnDesc(schema.Add(), "end_time", type::DataType::kTimestamp);
+        codec::SchemaCodec::SetColumnDesc(schema.Add(), "cur_task", type::DataType::kString);
+        return schema;
+    };
+    static schema::PBSchema schema = build_schema();
+    std::shared_ptr<hybridse::sdk::ResultSet> rs;
+    if (FLAGS_role == "sql_client" && rs) {
+        return std::make_shared<ReadableResultSetSQL>(rs);
+    }
+    return rs;
 }
 
 }  // namespace sdk

@@ -2016,6 +2016,21 @@ class CmdNode : public SqlNode {
     bool if_exist_ = false;
 };
 
+class ShowNode : public SqlNode {
+ public:
+     ShowNode(ShowStmtType show_type, const std::string& target, const std::string like)
+         : SqlNode(kShowStmt, 0, 0), show_type_(show_type), target_(target), like_str_(like) {}
+
+     const std::string& GetTarget() const { return target_; }
+     ShowStmtType GetType() const { return show_type_; }
+     const std::string& GetLikeStr() const { return like_str_; }
+
+ private:
+    ShowStmtType show_type_;
+    std::string target_;
+    std::string like_str_;
+};
+
 enum class DeleteTarget {
     JOB = 1,
     TABLE = 2,

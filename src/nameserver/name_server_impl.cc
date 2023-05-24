@@ -2855,6 +2855,9 @@ void NameServerImpl::ShowOPStatus(RpcController* controller, const ShowOPStatusR
     std::lock_guard<std::mutex> lock(mu_);
     DeleteDoneOP();
     for (const auto& op_data : done_op_list_) {
+        if (request->has_op_id() && op_data->op_info_.op_id() != request->op_id()) {
+            continue;
+        }
         if (request->has_db() && op_data->op_info_.db() != request->db()) {
             continue;
         }
@@ -2871,6 +2874,9 @@ void NameServerImpl::ShowOPStatus(RpcController* controller, const ShowOPStatusR
             continue;
         }
         for (const auto& op_data : op_list) {
+            if (request->has_op_id() && op_data->op_info_.op_id() != request->op_id()) {
+                continue;
+            }
             if (request->has_name() && op_data->op_info_.name() != request->name()) {
                 continue;
             }

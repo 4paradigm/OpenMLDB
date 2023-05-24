@@ -94,8 +94,10 @@ class NsClient : public Client {
     bool MakeSnapshot(const std::string& name, const std::string& db, uint32_t pid, uint64_t end_offset,
                       std::string& msg);  // NOLINT
 
-    bool ShowOPStatus(::openmldb::nameserver::ShowOPStatusResponse& response,    // NOLINT
-                      const std::string& name, uint32_t pid, std::string& msg);  // NOLINT
+    base::Status ShowOPStatus(const std::string& name, uint32_t pid,
+            nameserver::ShowOPStatusResponse* response);
+
+    base::Status ShowOPStatus(uint64_t op_id, ::openmldb::nameserver::ShowOPStatusResponse* response);
 
     bool CancelOP(uint64_t op_id, std::string& msg);  // NOLINT
 

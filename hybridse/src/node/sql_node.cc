@@ -1312,6 +1312,9 @@ std::string NameOfSqlNodeType(const SqlNodeType &type) {
         case kWithClauseEntry:
             output = "kWithClauseEntry";
             break;
+        case kShowStmt:
+            output = "kShowStmt";
+            break;
         case kUnknow:
             output = "kUnknow";
             break;
