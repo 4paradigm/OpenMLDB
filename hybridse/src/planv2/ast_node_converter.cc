@@ -2289,9 +2289,9 @@ base::Status convertAlterAction(const zetasql::ASTAlterAction* action, node::Nod
     switch (action->node_kind()) {
         case zetasql::AST_ADD_PATH_ACTION: {
             node::AddPathAction* ac = nullptr;
-            CHECK_STATUS(ConvertGuard<zetasql::ASTAddPathAction>(
+            CHECK_STATUS(ConvertGuard<zetasql::ASTAddOfflinePathAction>(
                 action, nm, &ac,
-                [](const zetasql::ASTAddPathAction* in, node::NodeManager* nm, node::AddPathAction** out) {
+                [](const zetasql::ASTAddOfflinePathAction* in, node::NodeManager* nm, node::AddPathAction** out) {
                     *out = nm->MakeObj<node::AddPathAction>(in->path()->string_value());
                     return base::Status::OK();
                 }));
@@ -2300,9 +2300,9 @@ base::Status convertAlterAction(const zetasql::ASTAlterAction* action, node::Nod
         }
         case zetasql::AST_DROP_PATH_ACTION: {
             node::DropPathAction* ac = nullptr;
-            CHECK_STATUS(ConvertGuard<zetasql::ASTDropPathAction>(
+            CHECK_STATUS(ConvertGuard<zetasql::ASTDropOfflinePathAction>(
                 action, nm, &ac,
-                [](const zetasql::ASTDropPathAction* in, node::NodeManager* nm, node::DropPathAction** out) {
+                [](const zetasql::ASTDropOfflinePathAction* in, node::NodeManager* nm, node::DropPathAction** out) {
                     *out = nm->MakeObj<node::DropPathAction>(in->path()->string_value());
                     return base::Status::OK();
                 }));
