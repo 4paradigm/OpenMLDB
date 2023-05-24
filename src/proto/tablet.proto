@@ -97,14 +97,15 @@ enum TaskType {
     kLoadIndexData = 24;
     kExtractIndexData = 25;
     kAddIndexToTablet = 26;
-    kSendIndexRequest = 27;
-    kExtractIndexRequest = 28;
-    kLoadIndexRequest = 29;
-    kAddIndexToTabletRequest = 30;
-    kAddIndexToTableInfo = 31;
-    kAddMultiTableIndex = 32;
-    kAddTableIndex = 33;
-    kCreateProcedure = 34;
+    kTableSyncTask = 27 [deprecated = true];
+    kSendIndexRequest = 28;
+    kExtractIndexRequest = 29;
+    kLoadIndexRequest = 30;
+    kAddIndexToTabletRequest = 31;
+    kAddIndexToTableInfo = 32;
+    kAddMultiTableIndex = 33;
+    kAddTableIndex = 34;
+    kCreateProcedure = 35;
 }
 
 enum TaskStatus {
