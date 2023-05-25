@@ -332,6 +332,30 @@ TEST_F(SqlCmdTest, SelectMultiPartition) {
     ProcessSQLs(sr, {absl::StrCat("drop table ", name, ";"), absl::StrCat("drop database ", db_name, ";")});
 }
 
+TEST_F(SqlCmdTest, ShowNameserverJob) {
+    auto sr = cluster_cli.sr;
+    std::string db_name = "test" + GenRand();
+    std::string name = "table" + GenRand();
+    std::string ddl = "create table " + name +
+                      "(col1 string, col2 string, col3 bigint, index(key=col1, ts=col3, TTL_TYPE=absolute)) "
+                      "options (partitionnum=2, replicanum=1)";
+    ProcessSQLs(sr, {"set @@execute_mode = 'online'", absl::StrCat("create database ", db_name, ";"),
+                     absl::StrCat("use ", db_name, ";"), ddl});
+    hybridse::sdk::Status status;
+    std::string sql;
+    for (int i = 0; i < 10; i++) {
+        sql = absl::StrCat("insert into ", name, " values('", i, "', '", i, "', 1635247427000);");
+        ASSERT_TRUE(sr->ExecuteInsert(db_name, sql, &status));
+    }
+    sql = absl::StrCat("create index index2 on ", name, " (col2) options(ts=col3);");
+    sr->ExecuteSQL(db_name, sql, &status);
+    ASSERT_TRUE(status.IsOK());
+    auto rs = sr->ExecuteSQL(db_name, "show jobs from nameserver;", &status);
+    ASSERT_TRUE(status.IsOK());
+    ASSERT_GT(rs->Size(), 0);
+    ProcessSQLs(sr, {absl::StrCat("drop table ", name, ";"), absl::StrCat("drop database ", db_name, ";")});
+}
+
 TEST_F(SqlCmdTest, TableReader) {
     auto sr = cluster_cli.sr;
     std::string db_name = "test" + GenRand();

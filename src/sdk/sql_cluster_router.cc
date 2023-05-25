@@ -2637,7 +2637,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(
             } else if (target == "NAMESERVER") {
                 return GetNameServerJobResult(plan->GetLikeStr(), status);
             } else {
-                *status = {StatusCode::kCmdError, absl::StrCat("invalid target ", target)};
+                *status = {StatusCode::kCmdError, absl::StrCat("invalid component ", target)};
             }
             return {};
         }
@@ -4283,8 +4283,26 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::GetNameServerJobResu
         return schema;
     };
     static schema::PBSchema schema = build_schema();
-    std::shared_ptr<hybridse::sdk::ResultSet> rs;
-    if (FLAGS_role == "sql_client" && rs) {
+    if (response.op_status_size() == 0) {
+        return {};
+    }
+    std::vector<std::vector<std::string>> records;
+    for (const auto& op_status : response.op_status()) {
+        std::vector<std::string> vec = {
+            std::to_string(op_status.op_id()),
+            op_status.op_type(),
+            op_status.db(),
+            op_status.name(),
+            std::to_string(op_status.pid()),
+            op_status.status(),
+            op_status.start_time() > 0 ? std::to_string(op_status.start_time() * 1000) : "null",
+            op_status.end_time() > 0 ? std::to_string(op_status.end_time() * 1000) : "null",
+            op_status.task_type()
+        };
+        records.emplace_back(std::move(vec));
+    }
+    auto rs = ResultSetSQL::MakeResultSet(schema, records, status);
+    if (FLAGS_role == "sql_client" && rs && status->IsOK()) {
         return std::make_shared<ReadableResultSetSQL>(rs);
     }
     return rs;
