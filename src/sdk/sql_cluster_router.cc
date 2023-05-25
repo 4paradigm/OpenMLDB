@@ -2633,6 +2633,14 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(
             auto plan = dynamic_cast<hybridse::node::ShowPlanNode*>(node);
             auto target = absl::AsciiStrToUpper(plan->GetTarget());
             if (target.empty() || target == "TASKMANAGER") {
+                if (!plan->GetLikeStr().empty()) {
+                    int job_id;
+                    if (!absl::SimpleAtoi(plan->GetLikeStr(), &job_id)) {
+                        *status = {StatusCode::kCmdError, "Failed to parse job id: " + plan->GetLikeStr()};
+                        return {};
+                    }
+                    return this->GetJobResultSet(job_id, status);
+                }
                 return GetJobResultSet(status);
             } else if (target == "NAMESERVER") {
                 return GetNameServerJobResult(plan->GetLikeStr(), status);
