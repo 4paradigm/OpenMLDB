@@ -32,7 +32,6 @@ namespace hybridse {
 namespace sqlcase {
 class SqlCase {
  public:
-    std::string base_dir_;
     struct TableInfo {
         std::string db_;
         std::string name_;

@@ -1597,7 +1597,6 @@ bool SqlCase::CreateSqlCasesFromYaml(
             continue;
         }
         SqlCase sql_case;
-        sql_case.base_dir_ = p.parent_path();
         bool is_skip = false;
         bool parse_success =
             ParseSqlCaseNode(sql_case_node, YAML::Node(), global_db, cases_dir,
