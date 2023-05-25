@@ -800,7 +800,7 @@ void DeletePlanNode::Print(std::ostream& output, const std::string& tab) const {
 
 bool ShowPlanNode::Equals(const PlanNode *that) const {
     auto other = dynamic_cast<const ShowPlanNode *>(that);
-    return LeafPlanNode::Equals(that) && type_ == that->type_ && GetType() == other->GetType()
+    return LeafPlanNode::Equals(that) && type_ == that->type_ && GetShowType() == other->GetShowType()
         && GetTarget() == other->GetTarget() && GetLikeStr() == other->GetLikeStr();
 }
 void ShowPlanNode::Print(std::ostream& output, const std::string& tab) const {

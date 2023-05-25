@@ -355,7 +355,7 @@ TEST_F(ASTNodeConverterTest, ConvertShowStmtTest) {
         ASSERT_EQ(common::kOk, status.code) << status;
         auto show_node = dynamic_cast<node::ShowNode*>(output);
         ASSERT_TRUE(show_node != nullptr) << output->GetTypeName();
-        EXPECT_EQ(show_node->GetType(), node::ShowStmtType::kJob);
+        EXPECT_EQ(show_node->GetShowType(), node::ShowStmtType::kJob);
         EXPECT_EQ(show_node->GetTarget(), "abc");
     };
     expect_converted("show jobs from abc like '1';");

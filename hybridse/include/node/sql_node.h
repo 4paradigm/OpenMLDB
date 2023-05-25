@@ -2022,7 +2022,7 @@ class ShowNode : public SqlNode {
          : SqlNode(kShowStmt, 0, 0), show_type_(show_type), target_(target), like_str_(like) {}
 
      const std::string& GetTarget() const { return target_; }
-     ShowStmtType GetType() const { return show_type_; }
+     ShowStmtType GetShowType() const { return show_type_; }
      const std::string& GetLikeStr() const { return like_str_; }
 
  private:

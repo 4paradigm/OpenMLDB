@@ -762,7 +762,7 @@ base::Status SimplePlanner::CreatePlanTree(const NodePointVector &parser_trees, 
             case ::hybridse::node::kShowStmt: {
                 auto show_node = dynamic_cast<const node::ShowNode*>(parser_tree);
                 CHECK_TRUE(show_node != nullptr, common::kPlanError, "not an ShowNode");
-                plan_trees.push_back(node_manager_->MakeNode<node::ShowPlanNode>(show_node->GetType(),
+                plan_trees.push_back(node_manager_->MakeNode<node::ShowPlanNode>(show_node->GetShowType(),
                             show_node->GetTarget(), show_node->GetLikeStr()));
                 break;
             }
