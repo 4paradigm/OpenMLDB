@@ -1,13 +1,26 @@
 # SHOW JOBS
 
-`SHOW JOBS`语句用于显示在集群版下已经提交的任务列表。
+**Syntax**
+```sql
+ShowJobsStatement ::=
+    `SHOW JOBS` OptFromPathExpression OptLikeString
 
-```SQL
-SHOW JOBS;
+OptFromPathExpression ::=
+    `FROM` ComponentIdentifier | /* Nothing */
+
+ComponentIdentifier ::=
+    `TASKMANAGER` |
+    `NAMESERVER`
+
+OptLikeString ::=
+    `LIKE` string_literal
 ```
+
+`SHOW JOBS`语句用于显示在集群版下已经提交到TaskManager和NameServer的任务列表。
 
 ## Example
 
+### 查看TaskManager的任务
 查看当前所有的任务:
 
 ```sql
@@ -43,6 +56,46 @@ SHOW JOBS;
 
  1 row in set
 ```
+
+查看指定job id的任务:
+```sql
+SHOW JOBS FROM TASKMANAGER like '1';
+
+---- ------------------ ----------- ------------ --------------- ---------------------------------------------------------------------------------------------------------------------------- --------- ---------------- -------
+  id   job_type           state       start_time   end_time        parameter                                                                                                                    cluster   application_id   error
+ ---- ------------------ ----------- ------------ --------------- ---------------------------------------------------------------------------------------------------------------------------- --------- ---------------- -------
+  1    ImportOnlineData   Submitted   0            1641981373227   LOAD DATA INFILE 'file:///tmp/test.csv' INTO TABLE demo_db.t1 options(format='csv', header=false, mode='append');           local
+ ---- ------------------ ----------- ------------ --------------- ---------------------------------------------------------------------------------------------------------------------------- --------- ---------------- -------
+
+ 1 row in set
+```
+
+### 查看Nameserver里的任务
+查看nameserver里的当前db下的所有任务
+```sql
+show jobs from nameserver;
+ -------- ------------- ------ ------ ----- -------- --------------------- --------------------- ----------
+  job_id   op_type       db     name   pid   status   start_time            end_time              cur_task
+ -------- ------------- ------ ------ ----- -------- --------------------- --------------------- ----------
+  2        kAddIndexOP   test   t2     0     kDone    2023-05-25 12:06:05   2023-05-25 12:06:10   -
+ -------- ------------- ------ ------ ----- -------- --------------------- --------------------- ----------
+
+1 rows in set
+```
+查看nameserver里指定job id的任务
+```sql
+show jobs from nameserver like '2';
+ -------- ------------- ------ ------ ----- -------- --------------------- --------------------- ----------
+  job_id   op_type       db     name   pid   status   start_time            end_time              cur_task
+ -------- ------------- ------ ------ ----- -------- --------------------- --------------------- ----------
+  2        kAddIndexOP   test   t2     0     kDone    2023-05-25 12:06:05   2023-05-25 12:06:10   -
+ -------- ------------- ------ ------ ----- -------- --------------------- --------------------- ----------
+
+1 rows in set
+```
+
+
+注: like语句不支持模糊匹配
 
 ## 相关语句
 
