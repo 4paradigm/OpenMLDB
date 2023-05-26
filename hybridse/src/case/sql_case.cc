@@ -1152,13 +1152,11 @@ bool SqlCase::CreateSqlCasesFromYaml(const std::string& cases_dir,
 bool SqlCase::CreateTableInfoFromYaml(const std::string& cases_dir,
                                       const std::string& yaml_path,
                                       TableInfo* table_info) {
-    std::string resouces_path;
+    std::filesystem::path resouces_path = yaml_path;
     if (cases_dir != "") {
-        resouces_path = cases_dir + "/" + yaml_path;
-    } else {
-        resouces_path = yaml_path;
+        resouces_path = std::filesystem::path(cases_dir) / resouces_path;
     }
-    if (!boost::filesystem::is_regular_file(resouces_path)) {
+    if (!boost::filesystem::is_regular_file(resouces_path.string())) {
         LOG(WARNING) << resouces_path << ": No such file";
         return false;
     }
@@ -1544,20 +1542,19 @@ bool SqlCase::CreateSqlCasesFromYaml(
     const std::string& cases_dir, const std::string& yaml_path,
     std::vector<SqlCase>& sql_case_ptr,
     const std::vector<std::string>& filter_modes) {
-    std::string sql_case_path = yaml_path;
-    // 1. yaml_path starts from '/', respect it as absolute path
-    // 2. otherwise, prepend with cases_dir
-    if (yaml_path.front() != '/' && cases_dir != "") {
-        sql_case_path = cases_dir + "/" + yaml_path;
+
+    std::filesystem::path sql_case_path = yaml_path;
+    if (cases_dir != "") {
+        sql_case_path = std::filesystem::path(cases_dir) / sql_case_path;
     }
-    std::filesystem::path p(sql_case_path);
+
     absl::MutexLock lock(&mtx);
-    working_dir = p.parent_path();
+    working_dir = sql_case_path.parent_path();
 
     if (IsDebug()) {
         DLOG(INFO) << "SQL Cases Path: " << sql_case_path;
     }
-    if (!boost::filesystem::is_regular_file(sql_case_path)) {
+    if (!boost::filesystem::is_regular_file(sql_case_path.string())) {
         LOG(WARNING) << sql_case_path << ": No such file";
         return false;
     }

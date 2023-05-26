@@ -52,7 +52,7 @@ cases:
     inputs:
       -
         name: t1
-        resource: /cases/resource/simple_t1.yaml
+        resource: cases/resource/simple_t1.yaml
     output:
       schema: col0:string, col1:int32, col2:int16, col3:float, col4:double, col5:int64, col6:string
       data: |
