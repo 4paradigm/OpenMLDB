@@ -25,8 +25,6 @@ import com._4paradigm.openmldb.sdk.SdkOption;
 import com._4paradigm.openmldb.sdk.SqlExecutor;
 import com._4paradigm.openmldb.sdk.impl.SqlClusterExecutor;
 
-import lombok.extern.slf4j.Slf4j;
-
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -608,8 +606,8 @@ public class SQLRouterSmokeTest {
         }
     }
 
-    @Test(dataProvider = "executor")
-    public void testDDLParseMethods(SqlExecutor router) throws SQLException {
+    @Test
+    public void testDDLParseMethods() throws SQLException {
         Map<String, Map<String, Schema>> schemaMaps = new HashMap<>();
         Schema sch = new Schema(Collections.singletonList(new Column("c1", Types.VARCHAR)));
         Map<String, Schema> dbSchema = new HashMap<>();
@@ -656,8 +654,8 @@ public class SQLRouterSmokeTest {
         }
     }
 
-    @Test(dataProvider = "executor")
-    public void testValidateSQL(SqlExecutor router) throws SQLException {
+    @Test
+    public void testValidateSQL() throws SQLException {
         // even the input schmea has 2 dbs, we will make all tables in one fake
         // database.
         Map<String, Map<String, Schema>> schemaMaps = new HashMap<>();
@@ -711,11 +709,64 @@ public class SQLRouterSmokeTest {
         Assert.assertEquals(ret.size(), 2);
         Assert.assertTrue(ret.get(0).contains("Aggregate over a table cannot be supported in online serving"));
         dbSchema = new HashMap<>();
-        dbSchema.put("t3", new Schema(Arrays.asList(new Column("c1", Types.VARCHAR), 
-        new Column("c2", Types.BIGINT))));
+        dbSchema.put("t3", new Schema(Arrays.asList(new Column("c1", Types.VARCHAR),
+                new Column("c2", Types.BIGINT))));
         schemaMaps.put("db3", dbSchema);
-        ret = SqlClusterExecutor.validateSQLInRequest("select count(c1) over w1 from t3 window "+
-        "w1 as(partition by c1 order by c2 rows between unbounded preceding and current row);", schemaMaps);
+        ret = SqlClusterExecutor.validateSQLInRequest("select count(c1) over w1 from t3 window " +
+                "w1 as(partition by c1 order by c2 rows between unbounded preceding and current row);", schemaMaps);
         Assert.assertEquals(ret.size(), 0);
+    }
+
+    @Test
+    public void testMergeSQL() throws SQLException {
+        String merged = SqlClusterExecutor.mergeSQL(
+                Arrays.asList("select c1 from main;", "select c2 from main last join t1 on main.c1==t1.c1;"), "id");
+        Assert.assertEquals(merged,
+                "select * from (select id as merge_id_0, c1 from main) as out0 "
+                        + "last join (select id as merge_id_1, c2 from main last join t1 on main.c1==t1.c1) as out1 "
+                        + "on out0.merge_id_0 = out1.merge_id_1;");
+
+        // full table pattern
+        List<String> sqls = Arrays.asList(
+                // some features in current row
+                "select c1 from main",
+                // window
+                "select sum(c1) over w1 of2 from main window w1 as (partition by c1 order by c2 rows between unbounded preceding and current row);",
+                // join
+                "select t1.c2 of3 from main last join t1 on main.c1==t1.c1;",
+                // join in order
+                "select t1.c2 of4 from main last join t1 order by t1.c2 on main.c1==t1.c1;",
+                // window union
+                "select sum(c2) over w1 from main window w1 as (union (select \"\" as id, * from t1) partition by c1 order by c2 rows between unbounded preceding and current row)");
+
+        merged = SqlClusterExecutor.mergeSQL(sqls, "id");
+        System.out.println(merged);
+
+        // validate merged sql
+        Map<String, Map<String, Schema>> schemaMaps = new HashMap<>();
+        HashMap<String, Schema> dbSchema = new HashMap<>();
+        dbSchema.put("main", new Schema(Arrays.asList(new Column("id", Types.VARCHAR), new Column("c1", Types.BIGINT),
+                new Column("c2", Types.BIGINT))));
+        dbSchema.put("t1", new Schema(Arrays.asList(new Column("c1", Types.BIGINT), new Column("c2", Types.BIGINT))));
+        schemaMaps.put("foo", dbSchema);
+        String filtered = SqlClusterExecutor.mergeSQL(sqls, "id", schemaMaps);
+        System.out.println(filtered);
+
+        // add a function col without rename
+        List<String> sqls2 = new ArrayList<>(sqls);
+        sqls2.add("select int(`c1`) from main");
+        String sql = SqlClusterExecutor.mergeSQL(sqls2, "id", schemaMaps);
+        System.out.println(sql);
+        Assert.assertFalse(sql.startsWith("select * from "));
+
+        // add a ambiguous col-int(c1), throw exception
+        try {
+            sqls2.add("select int(`c1`) from main");
+            sql = SqlClusterExecutor.mergeSQL(sqls2, "id", schemaMaps);
+            Assert.fail("ambiguous col should throw exception");
+        } catch (SQLException e) {
+            Assert.assertTrue(e.getMessage().contains("ambiguous"));
+        }
+
     }
 }

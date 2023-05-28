@@ -1666,15 +1666,16 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::HandleSQLCmd(const h
                         arg_type = absl::StrCat(arg_type, "|");
                     }
                 }
-                std::vector<std::string> vec = {fun_info.name(),
-                                                openmldb::type::DataType_Name(fun_info.return_type()).substr(1),
-                                                arg_type, is_aggregate, fun_info.file(),
-                                                return_nullable, arg_nullable};
+                std::vector<std::string> vec = {
+                    fun_info.name(), openmldb::type::DataType_Name(fun_info.return_type()).substr(1),
+                    arg_type,        is_aggregate,
+                    fun_info.file(), return_nullable,
+                    arg_nullable};
                 lines.push_back(vec);
             }
             return ResultSetSQL::MakeResultSet(
-                    {"Name", "Return_type", "Arg_type", "Is_aggregate", "File", "Return_nullable", "Arg_nullable"},
-                    lines, status);
+                {"Name", "Return_type", "Arg_type", "Is_aggregate", "File", "Return_nullable", "Arg_nullable"}, lines,
+                status);
         }
         case hybridse::node::kCmdDropFunction: {
             std::string name = cmd_node->GetArgs()[0];
@@ -1867,7 +1868,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::HandleSQLCmd(const h
             if (!status->IsOK()) {
                 *status = {::hybridse::common::StatusCode::kCmdError,
                            "Failed to get job log for job id: " + cmd_node->GetArgs()[0] +
-                           ", code: " + std::to_string(status->code) + ", message: " + status->msg};
+                               ", code: " + std::to_string(status->code) + ", message: " + status->msg};
                 return {};
             } else {
                 std::vector<std::string> value = {log};
@@ -1953,7 +1954,8 @@ base::Status SQLClusterRouter::HandleSQLCreateTable(hybridse::node::CreatePlanNo
 }
 
 base::Status SQLClusterRouter::HandleSQLCreateTable(hybridse::node::CreatePlanNode* create_node, const std::string& db,
-    std::shared_ptr<::openmldb::client::NsClient> ns_ptr, const std::string& sql) {
+                                                    std::shared_ptr<::openmldb::client::NsClient> ns_ptr,
+                                                    const std::string& sql) {
     if (create_node == nullptr || ns_ptr == nullptr) {
         return base::Status(base::ReturnCode::kSQLCmdRunError, "fail to execute plan : null pointer");
     }
@@ -1974,7 +1976,7 @@ base::Status SQLClusterRouter::HandleSQLCreateTable(hybridse::node::CreatePlanNo
         hybridse::base::Status sql_status;
         bool is_cluster_mode = cluster_sdk_->IsClusterMode();
         ::openmldb::sdk::NodeAdapter::TransformToTableDef(create_node, &table_info, default_replica_num,
-            is_cluster_mode, &sql_status);
+                                                          is_cluster_mode, &sql_status);
         if (sql_status.code != 0) {
             return base::Status(sql_status.code, sql_status.msg);
         }
@@ -2420,7 +2422,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(const std
                                                                        hybridse::sdk::Status* status) {
     // To avoid setting sync job timeout by user, we set offline_job_timeout to the biggest value
     auto sync_job = IsSyncJob();
-    auto timeout = sync_job? FLAGS_sync_job_timeout : GetJobTimeout();
+    auto timeout = sync_job ? FLAGS_sync_job_timeout : GetJobTimeout();
     return ExecuteSQL(db, sql, IsOnlineMode(), sync_job, timeout, status);
 }
 
@@ -3379,8 +3381,10 @@ hybridse::sdk::Status SQLClusterRouter::HandleIndex(const std::string& db,
             skip_index_check = true;
         }
     }
-    std::map<std::string, std::vector<::openmldb::common::ColumnKey>> new_index_map;
+    base::IndexMap new_index_map;
+    // merge index, get unique index to create
     auto get_index_status = GetNewIndex(table_map, index_map, skip_index_check, &new_index_map);
+
     if (!get_index_status.IsOK()) {
         return get_index_status;
     }
@@ -3394,11 +3398,13 @@ hybridse::sdk::Status SQLClusterRouter::HandleIndex(const std::string& db,
 
 hybridse::sdk::Status SQLClusterRouter::GetNewIndex(
     const std::map<std::string, ::openmldb::nameserver::TableInfo>& table_map,
-    const std::map<std::string, std::vector<::openmldb::common::ColumnKey>>& index_map,
-    bool skip_index_check,
+    const std::map<std::string, std::vector<::openmldb::common::ColumnKey>>& index_map, bool skip_index_check,
     std::map<std::string, std::vector<::openmldb::common::ColumnKey>>* new_index_map) {
     auto ns = cluster_sdk_->GetNsClient();
     for (auto& kv : index_map) {
+        // for each table, the indexs to be added may be dup(key&ts may be the same, ttl may be different, it's still
+        // called dup) so we need to merge them, and after merge, if the new index is the same as the existed one(in
+        // table), we do update, not create
         std::string table_name = kv.first;
         std::vector<::openmldb::common::ColumnKey> extract_column_keys = kv.second;
         auto it = table_map.find(table_name);
@@ -3410,81 +3416,33 @@ hybridse::sdk::Status SQLClusterRouter::GetNewIndex(
         for (const auto& column_desc : table.column_desc()) {
             col_set.insert(column_desc.name());
         }
-        std::map<std::string, ::openmldb::common::ColumnKey> id_columnkey_map;
+        std::map<std::string, ::openmldb::common::ColumnKey> exists_index_map;
         for (const auto& column_key : table.column_key()) {
-            if (id_columnkey_map.find(openmldb::schema::IndexUtil::GetIDStr(column_key)) != id_columnkey_map.end()) {
+            if (exists_index_map.find(openmldb::schema::IndexUtil::GetIDStr(column_key)) != exists_index_map.end()) {
                 LOG(WARNING) << "exist two indexes which are the same id "
                              << openmldb::schema::IndexUtil::GetIDStr(column_key) << " in table " << table_name;
             }
-            id_columnkey_map.emplace(openmldb::schema::IndexUtil::GetIDStr(column_key), column_key);
+            exists_index_map.emplace(openmldb::schema::IndexUtil::GetIDStr(column_key), column_key);
         }
         int cur_index_num = table.column_key_size();
         int add_index_num = 0;
+
+        // extract_column_keys won't have dup indexs, just check if the indexs are the same as the existed ones
         std::vector<::openmldb::common::ColumnKey> new_indexs;
         for (auto& column_key : extract_column_keys) {
-            if (!column_key.has_ttl()) {
-                return {StatusCode::kCmdError, "table " + table_name + " index has not ttl"};
-            }
-            if (!column_key.ts_name().empty() && col_set.count(column_key.ts_name()) == 0) {
-                return {StatusCode::kCmdError,
-                        "ts col " + column_key.ts_name() + " does not exist in table " + table_name};
-            }
-            for (const auto& col : column_key.col_name()) {
-                if (col_set.count(col) == 0) {
-                    return {StatusCode::kCmdError, "col " + col + " does not exist in table " + table_name};
-                }
-            }
-            std::string index_id = openmldb::schema::IndexUtil::GetIDStr(column_key);
-            // index exist, if type match && new ttl greater than old ttl && old ttl != 0, update ttl, else skip
-            auto it = id_columnkey_map.find(index_id);
-            if (it != id_columnkey_map.end()) {
-                if (skip_index_check) {
-                    continue;
-                }
+            auto index_id = openmldb::schema::IndexUtil::GetIDStr(column_key);
+            auto it = exists_index_map.find(index_id);
+            if (it != exists_index_map.end()) {
                 auto& old_column_key = it->second;
-                // type mismatch, return here and deploy failed
-                if (old_column_key.ttl().ttl_type() != column_key.ttl().ttl_type()) {
-                    return {StatusCode::kCmdError, absl::StrCat("new ttl type ",
-                                                       ::openmldb::type::TTLType_Name(column_key.ttl().ttl_type()),
-                                                       " doesn't match the old ttl type ",
-                                                       ::openmldb::type::TTLType_Name(old_column_key.ttl().ttl_type()),
-                                                       " in table ", table_name)};
-                } else {
-                    // type match, if old ttl == 0, won't update
-                    ::openmldb::type::TTLType type = column_key.ttl().ttl_type();
-                    uint64_t old_abs_ttl = 0;
-                    uint64_t old_lat_ttl = 0;
-                    uint64_t new_abs_ttl = 0;
-                    uint64_t new_lat_ttl = 0;
-                    if (type == ::openmldb::type::TTLType::kAbsoluteTime) {
-                        if (old_column_key.ttl().abs_ttl() != 0) {
-                            old_abs_ttl = old_column_key.ttl().abs_ttl();
-                            new_abs_ttl = column_key.ttl().abs_ttl();
-                        }
-                    } else if (type == ::openmldb::type::TTLType::kLatestTime) {
-                        if (old_column_key.ttl().lat_ttl() != 0) {
-                            old_lat_ttl = old_column_key.ttl().lat_ttl();
-                            new_lat_ttl = column_key.ttl().lat_ttl();
-                        }
-                    } else {
-                        // absandlat && absorlat should check abs_ttl and lat_ttl
-                        if (old_column_key.ttl().abs_ttl() != 0) {
-                            old_abs_ttl = old_column_key.ttl().abs_ttl();
-                            new_abs_ttl = column_key.ttl().abs_ttl();
-                        }
-                        if (old_column_key.ttl().lat_ttl() != 0) {
-                            old_lat_ttl = old_column_key.ttl().lat_ttl();
-                            new_lat_ttl = column_key.ttl().lat_ttl();
-                        }
-                    }
-                    if (new_abs_ttl > old_abs_ttl || new_lat_ttl > old_lat_ttl) {
-                        // update ttl
-                        auto ns_ptr = cluster_sdk_->GetNsClient();
-                        std::string err;
-                        if (!ns_ptr->UpdateTTL(table_name, type, new_abs_ttl, new_lat_ttl, old_column_key.index_name(),
-                                               err)) {
-                            return {StatusCode::kCmdError, "update ttl failed"};
-                        }
+                common::TTLSt result;
+                // if skip index check, we don't do update ttl, for backward compatibility(server <=0.8.0)
+                if (base::TTLMerge(old_column_key.ttl(), column_key.ttl(), &result) && !skip_index_check) {
+                    // update ttl
+                    auto ns_ptr = cluster_sdk_->GetNsClient();
+                    std::string err;
+                    if (!ns_ptr->UpdateTTL(table_name, result.ttl_type(), result.abs_ttl(), result.lat_ttl(),
+                                           old_column_key.index_name(), err)) {
+                        return {StatusCode::kCmdError, "update ttl failed"};
                     }
                 }
             } else {
@@ -3494,6 +3452,7 @@ hybridse::sdk::Status SQLClusterRouter::GetNewIndex(
                 new_indexs.emplace_back(column_key);
             }
         }
+
         if (!new_indexs.empty()) {
             if (cluster_sdk_->IsClusterMode()) {
                 // TODO(zhanghaohit): record_cnt is updated by ns periodically, causing a delay to get the latest value
@@ -3921,10 +3880,10 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteShowNameServe
     std::vector<std::vector<std::string>> data;
     for (auto it = endpoint_map.cbegin(); it != endpoint_map.cend(); it++) {
         std::vector<std::string> val = {
-            it->first,                      // endpoint
-            "nameserver",                   // role
-            std::to_string(it->second),     // connect time
-            "online",                       // status
+            it->first,                                  // endpoint
+            "nameserver",                               // role
+            std::to_string(it->second),                 // connect time
+            "online",                                   // status
             it->first == leader ? "master" : "standby"  // ns_role
         };
         data.push_back(std::move(val));

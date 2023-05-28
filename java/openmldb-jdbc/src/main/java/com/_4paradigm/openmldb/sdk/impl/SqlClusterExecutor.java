@@ -49,9 +49,11 @@ import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.stream.Collectors;
 
 public class SqlClusterExecutor implements SqlExecutor {
     private static final Logger logger = LoggerFactory.getLogger(SqlClusterExecutor.class);
@@ -186,7 +188,7 @@ public class SqlClusterExecutor implements SqlExecutor {
 
     @Override
     public PreparedStatement getBatchRequestPreparedStmt(String db, String sql,
-                                                         List<Integer> commonColumnIndices) throws SQLException {
+            List<Integer> commonColumnIndices) throws SQLException {
         return new BatchRequestPreparedStatementImpl(
                 db, sql, this.sqlRouter, commonColumnIndices);
     }
@@ -197,7 +199,8 @@ public class SqlClusterExecutor implements SqlExecutor {
     }
 
     @Override
-    public CallablePreparedStatement getCallablePreparedStmtBatch(String db, String deploymentName) throws SQLException {
+    public CallablePreparedStatement getCallablePreparedStmtBatch(String db, String deploymentName)
+            throws SQLException {
         return new BatchCallablePreparedStatementImpl(db, deploymentName, this.sqlRouter);
     }
 
@@ -214,7 +217,7 @@ public class SqlClusterExecutor implements SqlExecutor {
 
     @Override
     public ResultSet executeSQLRequest(String db, String sql, SQLRequestRow row) {
-        //TODO(wangtaize) add execption
+        // TODO(wangtaize) add execption
         Status status = new Status();
         ResultSet rs = sqlRouter.ExecuteSQLRequest(db, sql, row, status);
         if (status.getCode() != 0) {
@@ -340,19 +343,21 @@ public class SqlClusterExecutor implements SqlExecutor {
             tableColumnDescPairVector.addAll(convertSchema(schemaMap));
         }
         com._4paradigm.openmldb.Schema outputSchema = sql_router_sdk.GenOutputSchema(sql, tableColumnDescPairVector);
-        // TODO(hw): if we convert com._4paradigm.openmldb.Schema(cPtr) failed, it will throw an exception,
-        //  we can't do the later delete()
+        // TODO(hw): if we convert com._4paradigm.openmldb.Schema(cPtr) failed, it will
+        // throw an exception, we can't do the later delete()
         Schema ret = Common.convertSchema(outputSchema);
         outputSchema.delete();
         tableColumnDescPairVector.delete();
         return ret;
     }
 
-    // NOTICE: even tableSchema is <db, <table, schea>>, we'll assume that all tables in one db in sql_router_sdk
+    // NOTICE: even tableSchema is <db, <table, schea>>, we'll assume that all
+    // tables in one db in sql_router_sdk
     // returns
     // 1. empty list: means valid
     // 2. otherwise a list(len 2):[0] the error msg; [1] the trace
-    public static List<String> validateSQLInBatch(String sql, Map<String, Map<String, Schema>> tableSchema) throws SQLException {
+    public static List<String> validateSQLInBatch(String sql, Map<String, Map<String, Schema>> tableSchema)
+            throws SQLException {
         SqlClusterExecutor.initJavaSdkLibrary("");
 
         if (null == tableSchema || tableSchema.isEmpty()) {
@@ -370,7 +375,8 @@ public class SqlClusterExecutor implements SqlExecutor {
     }
 
     // return: the same as validateSQLInBatch
-    public static List<String> validateSQLInRequest(String sql, Map<String, Map<String, Schema>> tableSchema) throws SQLException {
+    public static List<String> validateSQLInRequest(String sql, Map<String, Map<String, Schema>> tableSchema)
+            throws SQLException {
         SqlClusterExecutor.initJavaSdkLibrary("");
 
         if (null == tableSchema || tableSchema.isEmpty()) {
@@ -385,6 +391,66 @@ public class SqlClusterExecutor implements SqlExecutor {
         List<String> err = sql_router_sdk.ValidateSQLInRequest(sql, tableColumnDescPairVector);
         tableColumnDescPairVector.delete();
         return err;
+    }
+
+    // literal merge, should be validated by validateSQLInRequest
+    // return: select * from ..., including the join keys
+    public static String mergeSQL(List<String> sqls, String uniqueKey) {
+        // make uniqueKey more unique
+        String keyRenamedPrefix = "merge_" + uniqueKey + "_";
+        List<String> outParts = new ArrayList<>();
+        for (int i = 0; i < sqls.size(); i++) {
+            // add unique key to each sql
+            String sql = sqls.get(i);
+            if (!sql.toLowerCase().startsWith("select ")) {
+                throw new IllegalArgumentException("sql must be select");
+            }
+            // remove the last ';'
+            if (sql.endsWith(";")) {
+                sql = sql.substring(0, sql.length() - 1);
+            }
+            outParts.add(String.format("(select %s as %s,%s) as %s", uniqueKey, keyRenamedPrefix + i, sql.substring(6),
+                    "out" + i));
+        }
+        // last join all parts
+        StringBuilder sb = new StringBuilder();
+        sb.append("select * from "); // output all columns?
+        for (int i = 0; i < outParts.size(); i++) {
+            if (i > 0) {
+                sb.append(" last join ");
+            }
+            sb.append(outParts.get(i));
+            if (i > 0) {
+                sb.append(" on out0").append(".").append(keyRenamedPrefix).append(0);
+                sb.append(" = ").append("out").append(i).append(".").append(keyRenamedPrefix).append(i);
+            }
+        }
+        sb.append(";");
+        return sb.toString();
+    }
+
+    // with table schema, we can except join keys and validate the merged sql
+    public static String mergeSQL(List<String> sqls, String uniqueKey, Map<String, Map<String, Schema>> tableSchema) throws SQLException {
+        String merged = mergeSQL(sqls, uniqueKey);
+        // try to do column filter, if failed, we'll throw an exception
+        Schema outputSchema = SqlClusterExecutor.genOutputSchema(merged, tableSchema);
+        List<String> cols = outputSchema.getColumnList().stream().map(c -> c.getColumnName())
+                .collect(Collectors.toList());
+        if (!cols.stream().allMatch(new HashSet<>()::add)) {
+            throw new SQLException(
+                    "output schema contains ambiguous column name, can't do column filter. please use alias " + cols);
+        }
+
+        String filtered = "select " + cols.stream().filter(name -> !name.startsWith("merge_" + uniqueKey + "_"))
+                .collect(Collectors.joining("`, `", "`", "`")) + merged.substring(8);
+        merged = filtered;
+
+        // validate
+        List<String> ret = SqlClusterExecutor.validateSQLInRequest(merged, tableSchema);
+        if (!ret.isEmpty()) {
+            throw new SQLException("sql is invalid: " + ret.get(0));
+        }
+        return merged;
     }
 
     @Override

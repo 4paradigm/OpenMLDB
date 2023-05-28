@@ -152,6 +152,67 @@ class DDLParserTest : public ::testing::Test {
     int index_id = 0;
 };
 
+TEST_F(DDLParserTest, TTLMerge) {
+    // old ttl miss some fields
+
+    // values: {abs ttl, lat ttl}
+    auto test_func = [](type::TTLType old_type, std::initializer_list<uint64_t> old_values, type::TTLType new_type,
+                        std::initializer_list<uint64_t> new_values, bool should_update, type::TTLType expect_type,
+                        std::initializer_list<uint64_t> expect_values) {
+        common::TTLSt old_ttl, new_ttl, result;
+        ASSERT_TRUE(old_values.size() == 2 && new_values.size() == 2 && expect_values.size() == 2);
+        old_ttl.set_ttl_type(old_type);
+        old_ttl.set_abs_ttl(*old_values.begin());
+        old_ttl.set_lat_ttl(*(old_values.begin() + 1));
+
+        new_ttl.set_ttl_type(new_type);
+        new_ttl.set_abs_ttl(*new_values.begin());
+        new_ttl.set_lat_ttl(*(new_values.begin() + 1));
+
+        ASSERT_EQ(TTLMerge(old_ttl, new_ttl, &result), should_update)
+            << "old ttl[" << old_ttl.ShortDebugString() << "], new ttl[" << new_ttl.ShortDebugString() << "], result["
+            << result.ShortDebugString() << "]";
+        ASSERT_TRUE(result.ttl_type() == expect_type);
+        ASSERT_EQ(result.abs_ttl(), *expect_values.begin())
+            << "old ttl[" << old_ttl.ShortDebugString() << "], new ttl[" << new_ttl.ShortDebugString() << "], result["
+            << result.ShortDebugString() << "]";
+        ASSERT_EQ(result.lat_ttl(), *(expect_values.begin() + 1))
+            << "old ttl[" << old_ttl.ShortDebugString() << "], new ttl[" << new_ttl.ShortDebugString() << "], result["
+            << result.ShortDebugString() << "]";
+    };
+
+    auto test_same_type = [&](type::TTLType type, std::initializer_list<uint64_t> old_values,
+                              std::initializer_list<uint64_t> new_values, bool should_update,
+                              std::initializer_list<uint64_t> expect_values) {
+        test_func(type, old_values, type, new_values, should_update, type, expect_values);
+    };
+    // same type
+    test_same_type(type::TTLType::kAbsoluteTime, {1, 0}, {2, 0}, true, {2, 0});
+    test_same_type(type::TTLType::kAbsoluteTime, {1, 0}, {0, 0}, true, {0, 0});
+    test_same_type(type::TTLType::kAbsoluteTime, {0, 0}, {22, 0}, false, {0, 0});
+    test_same_type(type::TTLType::kAbsAndLat, {10, 20}, {20, 30}, true, {20, 30});
+    test_same_type(type::TTLType::kAbsAndLat, {10, 20}, {5, 30}, true, {10, 30});
+    test_same_type(type::TTLType::kAbsOrLat, {10, 20}, {20, 30}, true, {20, 30});
+    test_same_type(type::TTLType::kAbsOrLat, {10, 20}, {5, 30}, true, {10, 30});
+    // different type
+    // abs + lat
+    test_func(type::TTLType::kAbsoluteTime, {1, 0}, type::TTLType::kLatestTime, {0, 2}, true, type::TTLType::kAbsOrLat,
+              {1, 2});
+    test_func(type::TTLType::kLatestTime, {0, 3}, type::TTLType::kAbsoluteTime, {4, 0}, true, type::TTLType::kAbsOrLat,
+              {4, 3});
+
+    // abs + complex type
+    test_func(type::TTLType::kAbsoluteTime, {10, 0}, type::TTLType::kAbsAndLat, {5, 6}, false,
+              type::TTLType::kAbsoluteTime, {10, 0});
+    test_func(type::TTLType::kAbsoluteTime, {10, 0}, type::TTLType::kAbsOrLat, {7, 8}, true, type::TTLType::kAbsOrLat,
+              {10, 8});
+    // lat + complex type
+    test_func(type::TTLType::kLatestTime, {0, 11}, type::TTLType::kAbsAndLat, {12, 6}, false,
+              type::TTLType::kLatestTime, {0, 11});
+    test_func(type::TTLType::kLatestTime, {0, 11}, type::TTLType::kAbsOrLat, {14, 15}, true, type::TTLType::kAbsOrLat,
+              {14, 15});
+}
+
 // create procedure: only inner plan will be sql compiled.
 TEST_F(DDLParserTest, createSpExtractIndexes) {
     std::string query =
@@ -243,6 +304,22 @@ TEST_F(DDLParserTest, complexJoin) {
         AddIndexToDB(index_map, &db);
         LOG(INFO) << "after add index:\n" << DDLParser::Explain(sql, db);
     }
+}
+
+TEST_F(DDLParserTest, multiJoin) {
+    AddTableToDB(&db, "main", "id string, c1 int64, c2 int64", ",", " ");
+    AddTableToDB(&db, "t1", "c1 int64, c2 int64", ",", " ");
+    auto sql =
+        "select * from (select id as merge_id_0, c1 from main) as out0 last join (select id as merge_id_1, sum(c1) "
+        "over w1 from main window w1 as (partition by c1 order by c2 rows between unbounded preceding and current "
+        "row)) as out1 on out0.merge_id_0 = out1.merge_id_1 last join (select id as merge_id_2, t1.c2 from main last "
+        "join t1 on main.c1==t1.c1) as out2 on out0.merge_id_0 = out2.merge_id_2 last join (select id as merge_id_3, "
+        "t1.c2 from main last join t1 order by t1.c2 on main.c1==t1.c1) as out3 on out0.merge_id_0 = out3.merge_id_3 "
+        "last join (select id as merge_id_4, sum(c2) over w1 from main window w1 as (union (select \"\" as id, * from "
+        "t1) partition by c1 order by c2 rows between unbounded preceding and current row)) as out4 on out0.merge_id_0 "
+        "= out4.merge_id_4;";
+    auto index_map = DDLParser::ExtractIndexes(sql, db);
+    LOG(INFO) << index_map;
 }
 
 TEST_F(DDLParserTest, emptyIndexes) {
