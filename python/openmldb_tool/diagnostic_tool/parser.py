@@ -25,11 +25,13 @@ class LogParser:
                 skip_flag = True
                 continue
             # print "..." if some lines are skipped
-            elif skip_flag:
-                print("...")
-                skip_flag = False
-        print("Solutions".center(50, "="))
-        print(*solution_results, sep="\n")
+            else:
+                if skip_flag:
+                    print("...")
+                    skip_flag = False
+        if solution_results:
+            print("Solutions".center(50, "="))
+            print(*solution_results, sep="\n")
 
     def _parse_row(self, row):
         for name, value in self.errs.items():
@@ -50,7 +52,7 @@ class ErrSolution:
         self.result = ""
 
     def __call__(self, *args, **kwargs):
-        exec(f"self.{self.solution}()")
+        getattr(self, self.solution)()
         return self.result
 
     def zk_conn_err(self):
@@ -59,4 +61,4 @@ class ErrSolution:
         conn = Connector()
         checker = StatusChecker(conn)
         assert checker._get_components(show=False), "Failed to connect to zk"
-        self.result += "\nSuccessfully checked zk connection, it may be caused by `Too many connections` in zk server, please check zk server log."
+        self.result += "\nSuccessfully checked zk connection. It may be caused by `Too many connections` in zk server. Please check zk server log."
