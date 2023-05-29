@@ -60,13 +60,13 @@ jobs:
         run: |
           tar -zxf openmldb-linux.tar.gz -C ${{ github.job }}/
           bash test/steps/format_config.sh $(pwd)/${{ github.job }}/openmldb-${{ github.event.inputs.EXEC_VERSION }}-linux ${{ github.job }} 20001 21000 java
-          bash ${{ github.job }}/openmldb-linux/sbin/deploy-all.sh
-          bash ${{ github.job }}/openmldb-linux/sbin/start-all.sh
+          bash ${{ github.job }}/openmldb-${{ github.event.inputs.EXEC_VERSION }}-linux/sbin/deploy-all.sh
+          bash ${{ github.job }}/openmldb-${{ github.event.inputs.EXEC_VERSION }}-linux/sbin/start-all.sh
       - name: test
         run:  bash test/steps/openmldb-sdk-test-java-src.sh -c test_cluster.xml -d deploy -l "0" -s "memory"    
       - name: stop openmldb
         if: always()
-        run: bash ${{ github.job }}/openmldb-linux/sbin/stop-all.sh
+        run: bash ${{ github.job }}/openmldb-${{ github.event.inputs.EXEC_VERSION }}-linux/sbin/stop-all.sh
       - name: TEST Results
         if: always()
         uses: EnricoMi/publish-unit-test-result-action@v1
@@ -111,13 +111,13 @@ jobs:
         run: |
           tar -zxf openmldb-linux.tar.gz -C ${{ github.job }}/
           bash test/steps/format_config.sh $(pwd)/${{ github.job }}/openmldb-${{ github.event.inputs.EXEC_VERSION }}-linux ${{ github.job }} 21001 22000 java
-          bash ${{ github.job }}/openmldb-linux/sbin/deploy-all.sh
-          bash ${{ github.job }}/openmldb-linux/sbin/start-all.sh
+          bash ${{ github.job }}/openmldb-${{ github.event.inputs.EXEC_VERSION }}-linux/sbin/deploy-all.sh
+          bash ${{ github.job }}/openmldb-${{ github.event.inputs.EXEC_VERSION }}-linux/sbin/start-all.sh
       - name: test
         run:  bash test/steps/openmldb-sdk-test-java-src.sh -c test_cluster.xml -d deploy -l "1,2,3,4,5" -s "memory"   
       - name: stop openmldb
         if: always()
-        run: bash ${{ github.job }}/openmldb-linux/sbin/stop-all.sh
+        run: bash ${{ github.job }}/openmldb-${{ github.event.inputs.EXEC_VERSION }}-linux/sbin/stop-all.sh
       - name: TEST Results
         if: always()
         uses: EnricoMi/publish-unit-test-result-action@v1
@@ -163,13 +163,13 @@ jobs:
         run: |
           tar -zxf openmldb-linux.tar.gz -C ${{ github.job }}/
           bash test/steps/format_config.sh $(pwd)/${{ github.job }}/openmldb-${{ github.event.inputs.EXEC_VERSION }}-linux ${{ github.job }} 22001 21000 java
-          bash ${{ github.job }}/openmldb-linux/sbin/deploy-all.sh
-          bash ${{ github.job }}/openmldb-linux/sbin/start-all.sh
+          bash ${{ github.job }}/openmldb-${{ github.event.inputs.EXEC_VERSION }}-linux/sbin/deploy-all.sh
+          bash ${{ github.job }}/openmldb-${{ github.event.inputs.EXEC_VERSION }}-linux/sbin/start-all.sh
       - name: test
         run:  bash test/steps/openmldb-sdk-test-java-src.sh -c test_cluster_disk.xml -d deploy -l "0" -s "hdd"
       - name: stop openmldb
         if: always()
-        run: bash ${{ github.job }}/openmldb-linux/sbin/stop-all.sh
+        run: bash ${{ github.job }}/openmldb-${{ github.event.inputs.EXEC_VERSION }}-linux/sbin/stop-all.sh
       - name: TEST Results
         if: always()
         uses: EnricoMi/publish-unit-test-result-action@v1
@@ -214,13 +214,13 @@ jobs:
         run: |
           tar -zxf openmldb-linux.tar.gz -C ${{ github.job }}/
           bash test/steps/format_config.sh $(pwd)/${{ github.job }}/openmldb-${{ github.event.inputs.EXEC_VERSION }}-linux java-sdk-cluster-memory-0 23001 24000 java ssd
-          bash ${{ github.job }}/openmldb-linux/sbin/deploy-all.sh
-          bash ${{ github.job }}/openmldb-linux/sbin/start-all.sh
+          bash ${{ github.job }}/openmldb-${{ github.event.inputs.EXEC_VERSION }}-linux/sbin/deploy-all.sh
+          bash ${{ github.job }}/openmldb-${{ github.event.inputs.EXEC_VERSION }}-linux/sbin/start-all.sh
       - name: test
         run:  bash test/steps/openmldb-sdk-test-java-src.sh -c test_cluster_disk.xml -d deploy -l "0" -s "ssd"
       - name: stop openmldb
         if: always()
-        run: bash ${{ github.job }}/openmldb-linux/sbin/stop-all.sh
+        run: bash ${{ github.job }}/openmldb-${{ github.event.inputs.EXEC_VERSION }}-linux/sbin/stop-all.sh
       - name: TEST Results
         if: always()
         uses: EnricoMi/publish-unit-test-result-action@v1
@@ -264,13 +264,13 @@ jobs:
         run: |
           tar -zxf openmldb-linux.tar.gz -C ${{ github.job }}/
           bash test/steps/format_config.sh $(pwd)/${{ github.job }}/openmldb-${{ github.event.inputs.EXEC_VERSION }}-linux ${{ github.job }} 24001 25000 java
-          bash ${{ github.job }}/openmldb-linux/sbin/deploy-all.sh
-          bash ${{ github.job }}/openmldb-linux/sbin/start-all.sh
+          bash ${{ github.job }}/openmldb-${{ github.event.inputs.EXEC_VERSION }}-linux/sbin/deploy-all.sh
+          bash ${{ github.job }}/openmldb-${{ github.event.inputs.EXEC_VERSION }}-linux/sbin/start-all.sh
       - name: test
         run: bash test/steps/openmldb-sdk-test-java-src.sh -c test_yarn.xml -d deploy -l "0" -s "memory"
       - name: stop openmldb
         if: always()
-        run: bash ${{ github.job }}/openmldb-linux/sbin/stop-all.sh
+        run: bash ${{ github.job }}/openmldb-${{ github.event.inputs.EXEC_VERSION }}-linux/sbin/stop-all.sh
       - name: TEST Results
         if: always()
         uses: EnricoMi/publish-unit-test-result-action@v1
