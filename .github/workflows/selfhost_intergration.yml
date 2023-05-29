@@ -57,7 +57,7 @@ jobs:
       - name: install openmldb
         run: |
           mkdir ${{ github.job }}
-          tar -zxf ~/openmldb-linux.tar.gz -C ${{ github.job }}/
+          tar -zxf openmldb-linux.tar.gz -C ${{ github.job }}/
           bash test/steps/format_config.sh $(pwd)/${{ github.job }}/openmldb-linux ${{ github.job }} 20001 21000 java
           bash ${{ github.job }}/openmldb-linux/sbin/deploy-all.sh
           bash ${{ github.job }}/openmldb-linux/sbin/start-all.sh
@@ -107,7 +107,7 @@ jobs:
       - name: install openmldb
         run: |
           mkdir ${{ github.job }}
-          tar -zxf ~/openmldb-linux.tar.gz -C ${{ github.job }}/
+          tar -zxf openmldb-linux.tar.gz -C ${{ github.job }}/
           bash test/steps/format_config.sh $(pwd)/${{ github.job }}/openmldb-linux ${{ github.job }} 21001 22000 java
           bash ${{ github.job }}/openmldb-linux/sbin/deploy-all.sh
           bash ${{ github.job }}/openmldb-linux/sbin/start-all.sh
@@ -159,7 +159,7 @@ jobs:
         run: |
           sleep 60
           mkdir ${{ github.job }}
-          tar -zxf ~/openmldb-linux.tar.gz -C ${{ github.job }}/
+          tar -zxf openmldb-linux.tar.gz -C ${{ github.job }}/
           bash test/steps/format_config.sh $(pwd)/${{ github.job }}/openmldb-linux ${{ github.job }} 22001 21000 java
           bash ${{ github.job }}/openmldb-linux/sbin/deploy-all.sh
           bash ${{ github.job }}/openmldb-linux/sbin/start-all.sh
@@ -209,7 +209,7 @@ jobs:
       - name: install openmldb
         run: |
           mkdir ${{ github.job }}
-          tar -zxf ~/openmldb-linux.tar.gz -C ${{ github.job }}/
+          tar -zxf openmldb-linux.tar.gz -C ${{ github.job }}/
           bash test/steps/format_config.sh $(pwd)/${{ github.job }}/openmldb-linux java-sdk-cluster-memory-0 23001 24000 java ssd
           bash ${{ github.job }}/openmldb-linux/sbin/deploy-all.sh
           bash ${{ github.job }}/openmldb-linux/sbin/start-all.sh
@@ -258,7 +258,7 @@ jobs:
       - name: install openmldb
         run: |
           mkdir ${{ github.job }}
-          tar -zxf ~/openmldb-linux.tar.gz -C ${{ github.job }}/
+          tar -zxf openmldb-linux.tar.gz -C ${{ github.job }}/
           bash test/steps/format_config.sh $(pwd)/${{ github.job }}/openmldb-linux ${{ github.job }} 24001 25000 java
           bash ${{ github.job }}/openmldb-linux/sbin/deploy-all.sh
           bash ${{ github.job }}/openmldb-linux/sbin/start-all.sh
