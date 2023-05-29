@@ -791,7 +791,7 @@ select STRING(true) as str_true, string(false) as str_false;
 `DATE Date(TIMESTAMP)`函数接受一个`TIMESTAMP`参数，并将转成`DATE`类型输出。
 
 参考[#3.2.3 SQL函数的返回值类型是Nullable ](#323-sql函数的返回值类型是nullable)
-和[#3.2.2 SQL函数返回值为STRING,TIMESTAMP或DATE](#3.2.2-SQL函数返回值为STRING,TIMESTAMP或DATE)
+和[#3.2.2 SQL函数返回值为STRING,TIMESTAMP或DATE](#322-sql函数返回值为stringtimestamp或date)
 
 ##### **step 1: 实现待注册的内置函数**
 
