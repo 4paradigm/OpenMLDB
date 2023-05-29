@@ -162,7 +162,7 @@ jobs:
       - name: install openmldb
         run: |
           tar -zxf openmldb-linux.tar.gz -C ${{ github.job }}/
-          bash test/steps/format_config.sh $(pwd)/${{ github.job }}/openmldb-${{ github.event.inputs.EXEC_VERSION }}-linux ${{ github.job }} 22001 21000 java
+          bash test/steps/format_config.sh $(pwd)/${{ github.job }}/openmldb-${{ github.event.inputs.EXEC_VERSION }}-linux ${{ github.job }} 22001 23000 java
           bash ${{ github.job }}/openmldb-${{ github.event.inputs.EXEC_VERSION }}-linux/sbin/deploy-all.sh
           bash ${{ github.job }}/openmldb-${{ github.event.inputs.EXEC_VERSION }}-linux/sbin/start-all.sh
       - name: test
