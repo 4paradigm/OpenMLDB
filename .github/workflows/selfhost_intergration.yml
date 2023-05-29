@@ -33,9 +33,9 @@ jobs:
       - name: download
         if: ${{ github.event.inputs.EXEC_VERSION != 'main' }}
         run: | 
-         curl -SLO https://github.com/4paradigm/OpenMLDB/releases/download/v{{ github.event.inputs.EXEC_VERSION }}/openmldb-{{ github.event.inputs.EXEC_VERSION }}-linux.tar.gz
-         tar -zxf openmldb-{{ github.event.inputs.EXEC_VERSION }}-linux.tar.gz 
-         mv openmldb-{{ github.event.inputs.EXEC_VERSION }}-linux.tar.gz  openmldb-linux.tar.gz
+         curl -SLO https://github.com/4paradigm/OpenMLDB/releases/download/v${{ github.event.inputs.EXEC_VERSION }}/openmldb-${{ github.event.inputs.EXEC_VERSION }}-linux.tar.gz
+         tar -zxf openmldb-${{ github.event.inputs.EXEC_VERSION }}-linux.tar.gz 
+         mv openmldb-${{ github.event.inputs.EXEC_VERSION }}-linux.tar.gz  openmldb-linux.tar.gz
       - name: upload artifact
         uses: actions/upload-artifact@v3
         with:
