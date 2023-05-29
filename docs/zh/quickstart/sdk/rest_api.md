@@ -101,9 +101,11 @@ curl http://127.0.0.1:8080/dbs/demo_db/deployments/demo_data_service -X POST -d'
 示例 2：JSON 格式
 
 ```JSON
-curl http://127.0.0.1:8080/dbs/demo_db/deployments/demo_data_service -X POST -d'{
+curl http://127.0.0.1:8080/dbs/demo_db/deployments/demo_data_service -X POST -d'
+{
   "input": [{"c1":"aaa", "c2":11, "c3":22, "c4":1.2, "c5":1.3, "c6":1635247427000, "c7":"2021-05-20", "foo":"bar"}]
-    }'
+    }
+    '
 ```
 
 响应：
