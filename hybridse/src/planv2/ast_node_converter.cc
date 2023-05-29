@@ -2168,7 +2168,7 @@ base::Status convertShowStmt(const zetasql::ASTShowStatement* show_statement, no
                "not an ASTShowStatement")
 
     auto show_id = show_statement->identifier()->GetAsStringView();
-
+    // TODO(dl239): move all show statement from CmdNode to ShowNode
     if (auto iter = SHOW_STMT_TYPE_MAP.find(absl::AsciiStrToUpper(show_id));
             iter != SHOW_STMT_TYPE_MAP.end() && show_statement->optional_name() != nullptr) {
         std::vector<std::string> names;

@@ -95,8 +95,6 @@ show jobs from nameserver like '2';
 1 rows in set
 ```
 
-Note: `LIKE` statement does not support fuzzy matching
-
 ## Related Sentences
 
 [SHOW JOB](./SHOW_JOB.md)

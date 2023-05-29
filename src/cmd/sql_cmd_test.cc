@@ -341,6 +341,9 @@ TEST_F(SqlCmdTest, ShowNameserverJob) {
                       "options (partitionnum=2, replicanum=1)";
     ProcessSQLs(sr, {"set @@execute_mode = 'online'", absl::StrCat("create database ", db_name, ";"),
                      absl::StrCat("use ", db_name, ";"), ddl});
+    absl::Cleanup clean = [&]() {
+        ProcessSQLs(sr, {absl::StrCat("drop table ", name, ";"), absl::StrCat("drop database ", db_name, ";")});
+    };
     hybridse::sdk::Status status;
     std::string sql;
     for (int i = 0; i < 10; i++) {
@@ -353,7 +356,6 @@ TEST_F(SqlCmdTest, ShowNameserverJob) {
     auto rs = sr->ExecuteSQL(db_name, "show jobs from nameserver;", &status);
     ASSERT_TRUE(status.IsOK());
     ASSERT_GT(rs->Size(), 0);
-    ProcessSQLs(sr, {absl::StrCat("drop table ", name, ";"), absl::StrCat("drop database ", db_name, ";")});
 }
 
 TEST_F(SqlCmdTest, TableReader) {

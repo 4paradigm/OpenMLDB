@@ -510,7 +510,7 @@ class CmdPlanNode : public LeafPlanNode {
 
 class ShowPlanNode : public LeafPlanNode {
  public:
-    ShowPlanNode(ShowStmtType show_type,const std::string& target, const std::string like)
+    ShowPlanNode(ShowStmtType show_type, const std::string& target, const std::string like)
         : LeafPlanNode(kPlanTypeShow), show_type_(show_type), target_(target), like_str_(like) {}
     const std::string& GetTarget() const { return target_; }
     ShowStmtType GetShowType() const { return show_type_; }

@@ -341,40 +341,6 @@ TEST_F(ASTNodeConverterTest, ConvertFrameNodeTest) {
     }
 }
 
-TEST_F(ASTNodeConverterTest, ConvertShowStmtTest) {
-    node::NodeManager node_manager;
-    auto expect_converted = [&](const std::string& sql) -> void {
-        std::unique_ptr<zetasql::ParserOutput> parser_output;
-        ZETASQL_ASSERT_OK(zetasql::ParseStatement(sql, zetasql::ParserOptions(), &parser_output));
-        const auto* statement = parser_output->statement();
-        ASSERT_TRUE(statement->Is<zetasql::ASTShowStatement>());
-
-        const auto show_stmt = statement->GetAsOrDie<zetasql::ASTShowStatement>();
-        node::SqlNode* output = nullptr;
-        auto status = ConvertStatement(show_stmt, &node_manager, &output);
-        ASSERT_EQ(common::kOk, status.code) << status;
-        auto show_node = dynamic_cast<node::ShowNode*>(output);
-        ASSERT_TRUE(show_node != nullptr) << output->GetTypeName();
-        EXPECT_EQ(show_node->GetShowType(), node::ShowStmtType::kJob);
-        EXPECT_EQ(show_node->GetTarget(), "abc");
-    };
-    expect_converted("show jobs from abc like '1';");
-    expect_converted("show jobs from abc;");
-    {
-        const std::string sql = "show jobs;";
-        std::unique_ptr<zetasql::ParserOutput> parser_output;
-        ZETASQL_ASSERT_OK(zetasql::ParseStatement(sql, zetasql::ParserOptions(), &parser_output));
-        const auto* statement = parser_output->statement();
-        ASSERT_TRUE(statement->Is<zetasql::ASTShowStatement>());
-
-        node::SqlNode* output = nullptr;
-        const auto show_stmt = statement->GetAsOrDie<zetasql::ASTShowStatement>();
-        auto status = ConvertStatement(show_stmt, &node_manager, &output);
-        ASSERT_EQ(common::kOk, status.code) << status;
-        ASSERT_EQ(output->GetType(), node::SqlNodeType::kCmdStmt);
-    }
-}
-
 TEST_F(ASTNodeConverterTest, ConvertCreateTableNodeOkTest) {
     node::NodeManager node_manager;
     {

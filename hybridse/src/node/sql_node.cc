@@ -1686,6 +1686,26 @@ bool CmdNode::Equals(const SqlNode *node) const {
                       std::end(cnode->GetArgs()));
 }
 
+bool ShowNode::Equals(const SqlNode *node) const {
+    if (!SqlNode::Equals(node)) {
+        return false;
+    }
+    auto* show_node = dynamic_cast<const ShowNode*>(node);
+    return show_node != nullptr && GetShowType() == show_node->GetShowType() && GetTarget() == show_node->GetTarget()
+        && GetLikeStr() == show_node->GetLikeStr();
+}
+
+void ShowNode::Print(std::ostream &output, const std::string &org_tab) const {
+    SqlNode::Print(output, org_tab);
+    const std::string tab = org_tab + INDENT + SPACE_ED;
+    output << "\n";
+    PrintValue(output, tab, ShowStmtTypeName(show_type_), "show type", false);
+    output << "\n";
+    PrintValue(output, tab, target_, "target", false);
+    output << "\n";
+    PrintValue(output, tab, like_str_, "like_str", true);
+}
+
 void CreateFunctionNode::Print(std::ostream &output, const std::string &org_tab) const {
     SqlNode::Print(output, org_tab);
     const std::string tab = org_tab + INDENT + SPACE_ED;

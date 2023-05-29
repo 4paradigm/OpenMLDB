@@ -428,6 +428,45 @@ cases:
         +-node[CMD]
           +-cmd_type: show jobs
           +-args: []
+  - id: show jobs from taskmanager
+    sql: SHOW JOBS FROM TASKMANAGER
+    expect:
+      node_tree_str: |
+        +-node[kShowStmt]
+          +-show type: Job
+          +-target: TASKMANAGER
+          +-like_str: <nil>
+      plan_tree_str: |
+        +-[kPlanTypeShow]
+          +-show type: Job
+          +-target: TASKMANAGER
+          +-like_str: <nil>
+  - id: show jobs from nameserver
+    sql: SHOW JOBS FROM NAMESERVER
+    expect:
+      node_tree_str: |
+        +-node[kShowStmt]
+          +-show type: Job
+          +-target: NAMESERVER
+          +-like_str: <nil>
+      plan_tree_str: |
+        +-[kPlanTypeShow]
+          +-show type: Job
+          +-target: NAMESERVER
+          +-like_str: <nil>
+  - id: show jobs from nameserver like
+    sql: SHOW JOBS FROM NAMESERVER LIKE '1'
+    expect:
+      node_tree_str: |
+        +-node[kShowStmt]
+          +-show type: Job
+          +-target: NAMESERVER
+          +-like_str: 1
+      plan_tree_str: |
+        +-[kPlanTypeShow]
+          +-show type: Job
+          +-target: NAMESERVER
+          +-like_str: 1
   - id: show job
     sql: SHOW JOB 1
     expect:

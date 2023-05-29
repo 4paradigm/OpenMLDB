@@ -94,9 +94,6 @@ show jobs from nameserver like '2';
 1 rows in set
 ```
 
-
-注: like语句不支持模糊匹配
-
 ## 相关语句
 
 [SHOW JOB](./SHOW_JOB.md)

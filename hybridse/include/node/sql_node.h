@@ -66,6 +66,14 @@ inline const std::string ExplainTypeName(const ExplainType &explain_type) {
     }
 }
 
+inline const std::string ShowStmtTypeName(ShowStmtType type) {
+    switch (type) {
+        case ShowStmtType::kJob:
+            return "Job";
+    }
+    return "Unknow";
+}
+
 inline const std::string JoinTypeName(const JoinType &type) {
     switch (type) {
         case kJoinTypeFull:
@@ -2024,6 +2032,8 @@ class ShowNode : public SqlNode {
      const std::string& GetTarget() const { return target_; }
      ShowStmtType GetShowType() const { return show_type_; }
      const std::string& GetLikeStr() const { return like_str_; }
+    void Print(std::ostream &output, const std::string &org_tab) const;
+    bool Equals(const SqlNode *node) const override;
 
  private:
     ShowStmtType show_type_;

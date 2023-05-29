@@ -807,20 +807,11 @@ void ShowPlanNode::Print(std::ostream& output, const std::string& tab) const {
     PlanNode::Print(output, tab);
     const std::string next_tab = tab + INDENT + SPACE_ED;
     output << "\n";
-    auto type2string = [](node::ShowStmtType show_type) -> std::string {
-        switch (show_type) {
-            case node::ShowStmtType::kJob: {
-                return "JOB";
-            }
-        }
-        return "unknown";
-    };
-    PrintValue(output, next_tab, type2string(show_type_), "show type", false);
+    PrintValue(output, next_tab, ShowStmtTypeName(show_type_), "show type", false);
     output << "\n";
     PrintValue(output, next_tab, target_, "target", false);
     output << "\n";
-    PrintValue(output, next_tab, like_str_, "like_str", false);
-    output << "\n";
+    PrintValue(output, next_tab, like_str_, "like_str", true);
 }
 
 bool CmdPlanNode::Equals(const PlanNode *that) const {
