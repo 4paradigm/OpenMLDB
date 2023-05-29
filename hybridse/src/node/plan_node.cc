@@ -222,6 +222,8 @@ std::string NameOfPlanNodeType(const PlanType &type) {
             return "kPlanTypeWithClauseEntry";
         case kPlanTypeShow:
             return "kPlanTypeShow";
+        case kPlanTypeAlterTable:
+            return "kPlanTypeAlterTable";
         case kUnknowPlan:
             return std::string("kUnknow");
     }
@@ -837,6 +839,22 @@ bool WithClauseEntryPlanNode::Equals(const PlanNode *node) const {
         node, [](const WithClauseEntryPlanNode *lhs, const WithClauseEntryPlanNode *rhs) {
             return lhs->alias_ == rhs->alias_;
         });
+}
+
+void AlterTableStmtPlanNode::Print(std::ostream &output, const std::string &org_tab) const {
+    LeafPlanNode::Print(output, org_tab);
+    output << "\n";
+    auto tab = org_tab + INDENT;
+    PrintValue(output, tab, absl::StrCat(db_, ".", table_), "path", false);
+    output << "\n";
+    output << tab << SPACE_ST << "actions:"
+           << "\n";
+    for (decltype(actions_.size()) i = 0; i < actions_.size(); ++i) {
+        PrintValue(output, tab + INDENT, actions_[i]->DebugString(), std::to_string(i), false);
+        if (i + 1 < actions_.size()) {
+            output << "\n";
+        }
+    }
 }
 
 }  // namespace node
