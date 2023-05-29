@@ -27,7 +27,7 @@ jobs:
       - name: build
         if: ${{ github.event.inputs.EXEC_VERSION == 'main' }}
         run: |
-         make configure CMAKE_INSTALL_PREFIX=openmldb-linux
+         make configure CMAKE_INSTALL_PREFIX=openmldb-main-linux
          make SQL_JAVASDK_ENABLE=ON && make SQL_JAVASDK_ENABLE=ON install
          tar -zcf openmldb-linux.tar.gz openmldb-linux
       - name: download
@@ -58,8 +58,8 @@ jobs:
             name: openmldb-package       
       - name: install openmldb
         run: |
-          tar -zxf ~/openmldb-linux.tar.gz -C ${{ github.job }}/
-          bash test/steps/format_config.sh $(pwd)/${{ github.job }}/openmldb-linux ${{ github.job }} 20001 21000 java
+          tar -zxf openmldb-linux.tar.gz -C ${{ github.job }}/
+          bash test/steps/format_config.sh $(pwd)/${{ github.job }}/openmldb-${{ github.event.inputs.EXEC_VERSION }}-linux ${{ github.job }} 20001 21000 java
           bash ${{ github.job }}/openmldb-linux/sbin/deploy-all.sh
           bash ${{ github.job }}/openmldb-linux/sbin/start-all.sh
       - name: test
@@ -110,7 +110,7 @@ jobs:
       - name: install openmldb
         run: |
           tar -zxf openmldb-linux.tar.gz -C ${{ github.job }}/
-          bash test/steps/format_config.sh $(pwd)/${{ github.job }}/openmldb-linux ${{ github.job }} 21001 22000 java
+          bash test/steps/format_config.sh $(pwd)/${{ github.job }}/openmldb-${{ github.event.inputs.EXEC_VERSION }}-linux ${{ github.job }} 21001 22000 java
           bash ${{ github.job }}/openmldb-linux/sbin/deploy-all.sh
           bash ${{ github.job }}/openmldb-linux/sbin/start-all.sh
       - name: test
@@ -162,7 +162,7 @@ jobs:
       - name: install openmldb
         run: |
           tar -zxf openmldb-linux.tar.gz -C ${{ github.job }}/
-          bash test/steps/format_config.sh $(pwd)/${{ github.job }}/openmldb-linux ${{ github.job }} 22001 21000 java
+          bash test/steps/format_config.sh $(pwd)/${{ github.job }}/openmldb-${{ github.event.inputs.EXEC_VERSION }}-linux ${{ github.job }} 22001 21000 java
           bash ${{ github.job }}/openmldb-linux/sbin/deploy-all.sh
           bash ${{ github.job }}/openmldb-linux/sbin/start-all.sh
       - name: test
@@ -213,7 +213,7 @@ jobs:
       - name: install openmldb
         run: |
           tar -zxf openmldb-linux.tar.gz -C ${{ github.job }}/
-          bash test/steps/format_config.sh $(pwd)/${{ github.job }}/openmldb-linux java-sdk-cluster-memory-0 23001 24000 java ssd
+          bash test/steps/format_config.sh $(pwd)/${{ github.job }}/openmldb-${{ github.event.inputs.EXEC_VERSION }}-linux java-sdk-cluster-memory-0 23001 24000 java ssd
           bash ${{ github.job }}/openmldb-linux/sbin/deploy-all.sh
           bash ${{ github.job }}/openmldb-linux/sbin/start-all.sh
       - name: test
@@ -263,7 +263,7 @@ jobs:
       - name: install openmldb
         run: |
           tar -zxf openmldb-linux.tar.gz -C ${{ github.job }}/
-          bash test/steps/format_config.sh $(pwd)/${{ github.job }}/openmldb-linux ${{ github.job }} 24001 25000 java
+          bash test/steps/format_config.sh $(pwd)/${{ github.job }}/openmldb-${{ github.event.inputs.EXEC_VERSION }}-linux ${{ github.job }} 24001 25000 java
           bash ${{ github.job }}/openmldb-linux/sbin/deploy-all.sh
           bash ${{ github.job }}/openmldb-linux/sbin/start-all.sh
       - name: test
