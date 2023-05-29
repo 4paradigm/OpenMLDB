@@ -125,7 +125,7 @@ and action="ddl";
 
 ### 2.3 进行离线特征计算
 
-这一步骤通常需要特征设计，本例跳过设计阶段，直接使用[OpenMLDB + LightGBM：出租车行程时间预测](GitHub/fix_docs/OpenMLDB/docs/zh/use_case/taxi_tour_duration_prediction.md)2.3节中设计好的特征进行离线特征计算，并将处理后的数据集导出为本地parquet文件（推荐使用parquet，csv load需要额外的schema）。
+这一步骤通常需要特征设计，本例跳过设计阶段，直接使用[OpenMLDB + LightGBM：出租车行程时间预测](C:\Users\65972\Documents\GitHub\fix_docs\OpenMLDB\docs\zh\use_case\taxi_tour_duration_prediction.md)2.3节中设计好的特征进行离线特征计算，并将处理后的数据集导出为本地parquet文件（推荐使用parquet，csv load需要额外的schema）。
 
 ```sql
 run command as FeatureStoreExt.`` where
