@@ -17,7 +17,7 @@ env:
 
 jobs:
   build-openmldb:
-    if: ${{ github.event.inputs.EXEC_VERSION == 'main' }}
+
     runs-on: [self-hosted,generic]
     container:
       image: ghcr.io/4paradigm/hybridsql:latest
@@ -25,26 +25,14 @@ jobs:
       OS: linux
     steps:
       - name: build
+        if: ${{ github.event.inputs.EXEC_VERSION == 'main' }} 
         uses: actions/checkout@v3
       - run: |
          make configure CMAKE_INSTALL_PREFIX=openmldb-linux
          make SQL_JAVASDK_ENABLE=ON && make SQL_JAVASDK_ENABLE=ON install
          tar -zcf openmldb-linux.tar.gz openmldb-linux
-      - name: upload artifact
-        uses: actions/upload-artifact@v3
-        with:
-          name: openmldb-package
-          path: openmldb-linux.tar.gz
-          
-  download-openmldb:
-    if: ${{ github.event.inputs.EXEC_VERSION != 'main' }}
-    runs-on: [self-hosted,generic]
-    container:
-      image: ghcr.io/4paradigm/hybridsql:latest
-    env:
-      OS: linux
-    steps:
       - name: download
+        if: ${{ github.event.inputs.EXEC_VERSION != 'main' }}
         uses: actions/checkout@v3
       - run: | 
          wget https://github.com/4paradigm/OpenMLDB/releases/download/v{{ github.event.inputs.EXEC_VERSION }}/openmldb-{{ github.event.inputs.EXEC_VERSION }}-linux.tar.gz
@@ -55,6 +43,7 @@ jobs:
         with:
           name: openmldb-package
           path: openmldb-linux.tar.gz
+          
 
     
   java-sdk-cluster-memory-0:
