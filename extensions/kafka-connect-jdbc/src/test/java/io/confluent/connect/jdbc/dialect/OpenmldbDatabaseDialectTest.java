@@ -31,6 +31,7 @@ import static org.junit.Assert.assertEquals;
 
 public class OpenmldbDatabaseDialectTest extends BaseDialectTest<OpenmldbDatabaseDialect> {
 
+    // OpenMLDB JDBC will create connection when create dialect, so we need to use the real connection hold on
     @Override
     protected OpenmldbDatabaseDialect createDialect() {
         return new OpenmldbDatabaseDialect(sourceConfigWithUrl("jdbc:openmldb://something"));
@@ -44,7 +45,7 @@ public class OpenmldbDatabaseDialectTest extends BaseDialectTest<OpenmldbDatabas
         assertPrimitiveMapping(Schema.Type.INT64, "BIGINT");
         assertPrimitiveMapping(Schema.Type.FLOAT32, "FLOAT");
         assertPrimitiveMapping(Schema.Type.FLOAT64, "DOUBLE");
-        assertPrimitiveMapping(Schema.Type.BOOLEAN, "BOOLEAN");
+        assertPrimitiveMapping(Schema.Type.BOOLEAN, "BOOL"); // in OpenMLDB, it's bool
 //        assertPrimitiveMapping(Schema.Type.BYTES, "BLOB");
         assertPrimitiveMapping(Schema.Type.STRING, "VARCHAR");
     }
@@ -66,7 +67,7 @@ public class OpenmldbDatabaseDialectTest extends BaseDialectTest<OpenmldbDatabas
         verifyDataTypeMapping("BIGINT", Schema.INT64_SCHEMA);
         verifyDataTypeMapping("FLOAT", Schema.FLOAT32_SCHEMA);
         verifyDataTypeMapping("DOUBLE", Schema.FLOAT64_SCHEMA);
-        verifyDataTypeMapping("BOOLEAN", Schema.BOOLEAN_SCHEMA);
+        verifyDataTypeMapping("BOOL", Schema.BOOLEAN_SCHEMA);
         verifyDataTypeMapping("VARCHAR", Schema.STRING_SCHEMA);
 //        verifyDataTypeMapping("BLOB", Schema.BYTES_SCHEMA);
 //        verifyDataTypeMapping("DECIMAL", Decimal.schema(0));
