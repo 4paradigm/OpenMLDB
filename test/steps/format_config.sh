@@ -76,10 +76,10 @@ fi
 
 
 if [ "$Dependency" = "ssd" ]; then
-mkdir -p /mnt/nvmessd/$dirName
+mkdir -p /mnt/nvmessd/qytest/$dirName
 cat >>$rootPath/conf/tablet.flags.template<<EOF
---ssd_root_path=/mnt/nvmessd/$dirName/db
---recycle_bin_ssd_root_path=/mnt/nvmessd/$dirName/recycle_ssd
+--ssd_root_path=/mnt/nvmessd/qytest/$dirName/db
+--recycle_bin_ssd_root_path=/mnt/nvmessd/qytest/$dirName/recycle_ssd
 EOF
 # comment node-1 tablet , no ssd existed in node-1
 sed -i "s/^[^#].*node-1*/#&/g" out/openmldb_info.yaml
