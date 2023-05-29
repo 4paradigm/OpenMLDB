@@ -25,17 +25,17 @@ jobs:
       OS: linux
     steps:
       - name: build
-        if: ${{ github.event.inputs.EXEC_VERSION == 'main' }} 
         uses: actions/checkout@v3
+        if: ${{ github.event.inputs.EXEC_VERSION == 'main' }}
       - run: |
          make configure CMAKE_INSTALL_PREFIX=openmldb-linux
          make SQL_JAVASDK_ENABLE=ON && make SQL_JAVASDK_ENABLE=ON install
          tar -zcf openmldb-linux.tar.gz openmldb-linux
       - name: download
-        if: ${{ github.event.inputs.EXEC_VERSION != 'main' }}
         uses: actions/checkout@v3
+        if: ${{ github.event.inputs.EXEC_VERSION != 'main' }}
       - run: | 
-         wget https://github.com/4paradigm/OpenMLDB/releases/download/v{{ github.event.inputs.EXEC_VERSION }}/openmldb-{{ github.event.inputs.EXEC_VERSION }}-linux.tar.gz
+         curl -SLO https://github.com/4paradigm/OpenMLDB/releases/download/v{{ github.event.inputs.EXEC_VERSION }}/openmldb-{{ github.event.inputs.EXEC_VERSION }}-linux.tar.gz
          tar -zxf openmldb-{{ github.event.inputs.EXEC_VERSION }}-linux.tar.gz 
          mv openmldb-{{ github.event.inputs.EXEC_VERSION }}-linux.tar.gz  openmldb-linux.tar.gz
       - name: upload artifact
