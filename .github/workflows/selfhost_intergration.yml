@@ -65,6 +65,7 @@ jobs:
       - name: test
         run:  bash test/steps/openmldb-sdk-test-java-src.sh -c test_cluster.xml -d deploy -l "0" -s "memory"    
       - name: stop openmldb
+        if: always()
         run: bash ${{ github.job }}/openmldb-linux/sbin/stop-all.sh
       - name: TEST Results
         if: always()
@@ -115,6 +116,7 @@ jobs:
       - name: test
         run:  bash test/steps/openmldb-sdk-test-java-src.sh -c test_cluster.xml -d deploy -l "1,2,3,4,5" -s "memory"   
       - name: stop openmldb
+        if: always()
         run: bash ${{ github.job }}/openmldb-linux/sbin/stop-all.sh
       - name: TEST Results
         if: always()
@@ -166,6 +168,7 @@ jobs:
       - name: test
         run:  bash test/steps/openmldb-sdk-test-java-src.sh -c test_cluster_disk.xml -d deploy -l "0" -s "hdd"
       - name: stop openmldb
+        if: always()
         run: bash ${{ github.job }}/openmldb-linux/sbin/stop-all.sh
       - name: TEST Results
         if: always()
@@ -216,6 +219,7 @@ jobs:
       - name: test
         run:  bash test/steps/openmldb-sdk-test-java-src.sh -c test_cluster_disk.xml -d deploy -l "0" -s "ssd"
       - name: stop openmldb
+        if: always()
         run: bash ${{ github.job }}/openmldb-linux/sbin/stop-all.sh
       - name: TEST Results
         if: always()
@@ -265,6 +269,7 @@ jobs:
       - name: test
         run: bash test/steps/openmldb-sdk-test-java-src.sh -c test_yarn.xml -d deploy -l "0" -s "memory"
       - name: stop openmldb
+        if: always()
         run: bash ${{ github.job }}/openmldb-linux/sbin/stop-all.sh
       - name: TEST Results
         if: always()
