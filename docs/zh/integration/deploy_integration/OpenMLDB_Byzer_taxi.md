@@ -6,7 +6,7 @@
 
 ### 1.1 安装 OpenMLDB 引擎
 
-1. 本例推荐使用运行在Docker容器中的OpenMLDB集群版。安装步骤详见[OpenMLDB快速上手](..GitHub/fix_docs/OpenMLDB/docs/zh/quickstart/openmldb_quickstart.md)。
+1. 本例推荐使用运行在Docker容器中的OpenMLDB集群版。安装步骤详见[OpenMLDB快速上手](../quickstart/openmldb_quickstart)。
 1. 本例中，Byzer引擎虽然在同一主机上，但需要从容器外部访问OpenMLDB服务，所以需要暴露OpenMLDB集群的服务端口，推荐使用`--network host`的方式，具体详见[IP配置文档-CLI/SDK->容器onebox](../reference/ip_tips.md#clisdk-容器onebox)。
 1. 为了简单起见，我们使用file形式导入导出OpenMLDB集群数据，所以需要Byzer和OpenMLDB共享文件路径，这里我们将`/mlsql/admin`映射为`/byzermnt`，与OpenMLDB交互的SQL命令中使用`/byzermnt`开头作为文件路径。
 1. 我们还需要在OpenMLDB集群中创建名为`db1`的数据库，接下来在Byzer中使用这一数据库（目前不能在Byzer中执行，Byzer连接OpenMLDB必须指定可使用的db）。
