@@ -37,7 +37,7 @@ jobs:
           path: openmldb-linux.tar.gz
           
   download-openmldb:
-    if: ${{ github.event.inputs.EXEC_VERSION == '0.8.0' }}
+    if: ${{ github.event.inputs.EXEC_VERSION != 'main' }}
     runs-on: [self-hosted,generic]
     container:
       image: ghcr.io/4paradigm/hybridsql:latest
@@ -45,10 +45,11 @@ jobs:
       OS: linux
     steps:
       - name: download
+        uses: actions/checkout@v3
       - run: | 
          wget https://github.com/4paradigm/OpenMLDB/releases/download/v{{ github.event.inputs.EXEC_VERSION }}/openmldb-{{ github.event.inputs.EXEC_VERSION }}-linux.tar.gz
          tar -zxf openmldb-{{ github.event.inputs.EXEC_VERSION }}-linux.tar.gz 
-         cp openmldb-{{ github.event.inputs.EXEC_VERSION }}-linux.tar.gz  openmldb-linux.tar.gz
+         mv openmldb-{{ github.event.inputs.EXEC_VERSION }}-linux.tar.gz  openmldb-linux.tar.gz
       - name: upload artifact
         uses: actions/upload-artifact@v3
         with:
