@@ -12,7 +12,7 @@ curTime=$(date "+%m%d%H%M")
 dirName=${jobName}-${version}-${curTime}
 
 #set Deploy Host and Ports
-Hosts=(node-1 node-3 node-4)
+Hosts=(node-3 node-3 node-1)
 
 AvaNode1Ports=$(ssh ${Hosts[0]} "comm -23 <(seq $portFrom $portTo | sort) <(sudo ss -Htan | awk '{print $4}' | cut -d':' -f2 | sort -u) | shuf | head -n 8")
 AvaNode2Ports=$(ssh ${Hosts[1]} "comm -23 <(seq $portFrom $portTo | sort) <(sudo ss -Htan | awk '{print $4}' | cut -d':' -f2 | sort -u) | shuf | head -n 1")
@@ -74,6 +74,18 @@ tabletEndpoints:
 EOF
 fi
 
+
+if [ "$Dependency" = "ssd" ]; then
+mkdir -p /mnt/nvmessd/$dirName
+cat >>$rootPath/conf/tablet.flags.template<<EOF
+--ssd_root_path=/mnt/nvmessd/$dirName/db
+--recycle_bin_ssd_root_path=/mnt/nvmessd/$dirName/recycle_ssd
+EOF
+# comment node-1 tablet , no ssd existed in node-1
+sed -i "s/^[^#].*node-1*/#&/g" out/openmldb_info.yaml
+sed -i "s/^[^#].*node-1*/#&/g" $rootPath/conf/hosts
+fi
+
 if [ "$Dependency" = "hadoop" ]; then
 cat >$rootPath/conf/taskmanager.properties<<EOF
 server.host=${Hosts[0]}
@@ -90,6 +102,8 @@ hadoop.user.name=root
 external.function.dir=/tmp/
 EOF
 fi
+
+
 
 if [ "$Dependency" = "kafka" ]; then
 cat >$rootPath/conf/taskmanager.properties<<EOF
