@@ -160,6 +160,7 @@ jobs:
       - uses: actions/checkout@v3
       - name: install openmldb
         run: |
+          sleep 60
           mkdir ${{ github.job }}
           tar -zxf ~/openmldb-linux.tar.gz -C ${{ github.job }}/
           bash test/steps/format_config.sh $(pwd)/${{ github.job }}/openmldb-linux ${{ github.job }} 22001 21000 java
