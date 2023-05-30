@@ -281,9 +281,7 @@ jobs:
         uses: codecov/codecov-action@v3
         with:
           name: coverage-python
-          files: |
-            python/openmldb_sdk/tests/coverage.xml
-            python/openmldb_tool/tests/coverage.xml
+          files: python/openmldb_sdk/tests/coverage.xml,python/openmldb_tool/tests/coverage.xml
           fail_ci_if_error: true
           verbose: true
 
