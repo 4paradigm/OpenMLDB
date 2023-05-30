@@ -172,7 +172,7 @@ DolphinScheduler 中，需要先创建项目，再在项目中创建工作流。
 `load offline data`，`feture extraction`与`load online`可能出现DolphinScheduler 中显示task运行成功，但实际在OpenMLDB中任务执行失败。进而可能导致`train`任务报错，没有源特征数据可以concatenate的错误（Traceback `pd.concat`）。
 
 出现这类问题时，请在OpenMLDB中查询下各个任务的真正状态，可直接运行
-`echo "show jobs;" | /work/openmldb/bin/openmldb --zk_cluster=127.0.0.1:2181 --zk_root_path=/openmldb --role=sql_client`。如果某个任务状态是`FAILED`，请查询该任务的日志，方法见[任务日志](../quickstart/beginner_must_read.md#离线)。
+`echo "show jobs;" | /work/openmldb/bin/openmldb --zk_cluster=127.0.0.1:2181 --zk_root_path=/openmldb --role=sql_client`。如果某个任务状态是`FAILED`，请查询该任务的日志，方法见[任务日志](../../quickstart/beginner_must_read.md#离线)。
 ```
 
 #### 4. 在线预测测试
