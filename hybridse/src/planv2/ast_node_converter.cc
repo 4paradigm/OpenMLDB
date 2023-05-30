@@ -48,6 +48,11 @@ static base::Status ConvertArrayType(const zetasql::ASTArrayConstructor* array_e
 
 static base::Status ConvertASTType(const zetasql::ASTType* ast_type, node::NodeManager* nm,  node::TypeNode** out);
 
+static base::Status convertAlterAction(const zetasql::ASTAlterAction* action, node::NodeManager* nm,
+                                       node::AlterActionBase** out);
+static base::Status ConvertAlterTableStmt(const zetasql::ASTAlterTableStatement* stmt, node::NodeManager* nm,
+                                          node::SqlNode** out);
+
 /// Used to convert zetasql ASTExpression Node into our ExprNode
 base::Status ConvertExprNode(const zetasql::ASTExpression* ast_expression, node::NodeManager* node_manager,
                              node::ExprNode** output) {
@@ -823,6 +828,11 @@ base::Status ConvertStatement(const zetasql::ASTStatement* statement, node::Node
             node::CreateFunctionNode* create_fun_node = nullptr;
             CHECK_STATUS(ConvertCreateFunctionNode(ast_create_function_stmt, node_manager, &create_fun_node));
             *output = create_fun_node;
+            break;
+        }
+        case zetasql::AST_ALTER_TABLE_STATEMENT: {
+            CHECK_STATUS(
+                ConvertGuard<zetasql::ASTAlterTableStatement>(statement, node_manager, output, ConvertAlterTableStmt));
             break;
         }
         default: {
@@ -2271,6 +2281,59 @@ base::Status ConvertWithClause(const zetasql::ASTWithClause* with_clause, node::
 
         out->data_.push_back(with_entry);
     }
+    return base::Status::OK();
+}
+
+base::Status convertAlterAction(const zetasql::ASTAlterAction* action, node::NodeManager* nm,
+                                node::AlterActionBase** out) {
+    switch (action->node_kind()) {
+        case zetasql::AST_ADD_PATH_ACTION: {
+            node::AddPathAction* ac = nullptr;
+            CHECK_STATUS(ConvertGuard<zetasql::ASTAddOfflinePathAction>(
+                action, nm, &ac,
+                [](const zetasql::ASTAddOfflinePathAction* in, node::NodeManager* nm, node::AddPathAction** out) {
+                    *out = nm->MakeObj<node::AddPathAction>(in->path()->string_value());
+                    return base::Status::OK();
+                }));
+            *out = ac;
+            break;
+        }
+        case zetasql::AST_DROP_PATH_ACTION: {
+            node::DropPathAction* ac = nullptr;
+            CHECK_STATUS(ConvertGuard<zetasql::ASTDropOfflinePathAction>(
+                action, nm, &ac,
+                [](const zetasql::ASTDropOfflinePathAction* in, node::NodeManager* nm, node::DropPathAction** out) {
+                    *out = nm->MakeObj<node::DropPathAction>(in->path()->string_value());
+                    return base::Status::OK();
+                }));
+            *out = ac;
+            break;
+        }
+        default:
+            FAIL_STATUS(common::kUnsupportSql, action->SingleNodeDebugString());
+    }
+    return base::Status::OK();
+}
+
+base::Status ConvertAlterTableStmt(const zetasql::ASTAlterTableStatement* ast_node_, node::NodeManager* nm,
+                                   node::SqlNode** out) {
+    std::vector<const node::AlterActionBase *> actions;
+    for (auto &ac : ast_node_->action_list()->actions()) {
+        node::AlterActionBase *ac_out = nullptr;
+        CHECK_STATUS(convertAlterAction(ac, nm, &ac_out));
+        actions.push_back(ac_out);
+    }
+
+    auto path = ast_node_->path();
+    if (path->num_names() == 1) {
+        *out = nm->MakeNode<node::AlterTableStmt>("", path->name(0)->GetAsStringView(), actions);
+    } else if (path->num_names() == 2) {
+        *out = nm->MakeNode<node::AlterTableStmt>(path->name(0)->GetAsStringView(), path->name(1)->GetAsStringView(),
+                                                  actions);
+    } else {
+        FAIL_STATUS(common::kSyntaxError, "invalid table name: ", path->ToIdentifierPathString());
+    }
+
     return base::Status::OK();
 }
 
