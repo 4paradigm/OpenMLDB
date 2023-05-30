@@ -51,6 +51,7 @@
 #include "sdk/base_impl.h"
 #include "sdk/batch_request_result_set_sql.h"
 #include "sdk/file_option_parser.h"
+#include "sdk/job_table_helper.h"
 #include "sdk/node_adapter.h"
 #include "sdk/result_set_sql.h"
 #include "sdk/split.h"
@@ -4231,6 +4232,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::GetJobResultSet(int 
         status->SetMsg("Job not found: " + std::to_string(job_id));
         return {};
     }
+    rs = JobTableHelper::MakeResultSet(rs, "", status);
     if (FLAGS_role == "sql_client") {
         return std::make_shared<ReadableResultSetSQL>(rs);
     } else {
@@ -4245,6 +4247,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::GetJobResultSet(::hy
     if (!status->IsOK()) {
         return {};
     }
+    rs = JobTableHelper::MakeResultSet(rs, "", status);
     if (FLAGS_role == "sql_client" && rs) {
         return std::make_shared<ReadableResultSetSQL>(rs);
     }
@@ -4252,11 +4255,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::GetJobResultSet(::hy
 }
 std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::GetTaskManagerJobResult(const std::string& like_pattern,
         ::hybridse::sdk::Status* status) {
-    bool like_match = false;
-    if (!like_pattern.empty() &&
-            (like_pattern.find('%') != std::string::npos || like_pattern.find('_') != std::string::npos)) {
-        like_match = true;
-    }
+    bool like_match = JobTableHelper::NeedLikeMatch(like_pattern);
     if (!like_pattern.empty() && !like_match) {
         int job_id;
         if (!absl::SimpleAtoi(like_pattern, &job_id)) {
@@ -4271,43 +4270,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::GetTaskManagerJobRes
     if (!status->IsOK()) {
         return {};
     }
-    if (!like_match || rs->Size() == 0) {
-        return rs;
-    }
-    auto rs_sql = std::dynamic_pointer_cast<ResultSetSQL>(rs);
-    if (!rs_sql) {
-        *status = {StatusCode::kCmdError, "Failed to convert ResultSet to ResultSetSQL"};
-        return rs;
-    }
-    auto io_buf = std::make_shared<butil::IOBuf>();
-    uint32_t record_cnt = 0;
-    while (rs_sql->Next()) {
-        int32_t job_id = 0;
-        if (!rs_sql->GetInt32(0, &job_id)) {
-            *status = {StatusCode::kCmdError, "Failed to get job id"};
-            return rs;
-        }
-        std::string job_id_str = std::to_string(job_id);
-        bool matched = false;
-        bool is_null = false;
-        base::StringRef id_ref(job_id_str);
-        base::StringRef pattern_ref(like_pattern);
-        hybridse::udf::v1::like(&id_ref, &pattern_ref, &matched, &is_null);
-        if (is_null || !matched) {
-            continue;
-        }
-        io_buf->append(rs_sql->GetRecordValue());
-        record_cnt++;
-    }
-    auto schema = dynamic_cast<const ::hybridse::sdk::SchemaImpl*>(rs_sql->GetSchema());
-    if (schema) {
-        auto cur_rs = std::make_shared<ResultSetSQL>(schema->GetSchema(), record_cnt, io_buf);
-        if (!cur_rs->Init()) {
-            *status = {StatusCode::kCmdError, "Failed to init ResultSet"};
-            return {};
-        }
-        rs = cur_rs;
-    }
+    rs = JobTableHelper::MakeResultSet(rs, like_pattern, status);
     if (FLAGS_role == "sql_client" && rs && status->IsOK()) {
         return std::make_shared<ReadableResultSetSQL>(rs);
     }
@@ -4316,13 +4279,9 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::GetTaskManagerJobRes
 
 std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::GetNameServerJobResult(const std::string& like_pattern,
         ::hybridse::sdk::Status* status) {
-    nameserver::ShowOPStatusResponse response;
-    bool like_match = false;
-    if (!like_pattern.empty() &&
-            (like_pattern.find('%') != std::string::npos || like_pattern.find('_') != std::string::npos)) {
-        like_match = true;
-    }
+    bool like_match = JobTableHelper::NeedLikeMatch(like_pattern);
     base::Status ret;
+    nameserver::ShowOPStatusResponse response;
     if (!like_pattern.empty() && !like_match) {
         uint64_t id;
         if (!absl::SimpleAtoi(like_pattern, &id)) {
@@ -4337,48 +4296,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::GetNameServerJobResu
         *status = {ret.GetCode(), ret.GetMsg()};
         return {};
     }
-    auto build_schema = []() -> schema::PBSchema {
-        schema::PBSchema schema;
-        codec::SchemaCodec::SetColumnDesc(schema.Add(), "job_id", type::DataType::kBigInt);
-        codec::SchemaCodec::SetColumnDesc(schema.Add(), "op_type", type::DataType::kString);
-        codec::SchemaCodec::SetColumnDesc(schema.Add(), "db", type::DataType::kString);
-        codec::SchemaCodec::SetColumnDesc(schema.Add(), "name", type::DataType::kString);
-        codec::SchemaCodec::SetColumnDesc(schema.Add(), "pid", type::DataType::kInt);
-        codec::SchemaCodec::SetColumnDesc(schema.Add(), "status", type::DataType::kString);
-        codec::SchemaCodec::SetColumnDesc(schema.Add(), "start_time", type::DataType::kTimestamp);
-        codec::SchemaCodec::SetColumnDesc(schema.Add(), "end_time", type::DataType::kTimestamp);
-        codec::SchemaCodec::SetColumnDesc(schema.Add(), "cur_task", type::DataType::kString);
-        return schema;
-    };
-    static schema::PBSchema schema = build_schema();
-    std::vector<std::vector<std::string>> records;
-    for (const auto& op_status : response.op_status()) {
-        std::string op_id = std::to_string(op_status.op_id());
-        std::cout << "op_id " << op_id << std::endl;
-        bool matched = false;
-        bool is_null = false;
-        if (!like_pattern.empty()) {
-            base::StringRef id_ref(op_id);
-            base::StringRef pattern_ref(like_pattern);
-            hybridse::udf::v1::like(&id_ref, &pattern_ref, &matched, &is_null);
-            if (is_null || !matched) {
-                continue;
-            }
-        }
-        std::vector<std::string> vec = {
-            op_id,
-            op_status.op_type(),
-            op_status.db(),
-            op_status.name(),
-            std::to_string(op_status.pid()),
-            op_status.status(),
-            op_status.start_time() > 0 ? std::to_string(op_status.start_time() * 1000) : "null",
-            op_status.end_time() > 0 ? std::to_string(op_status.end_time() * 1000) : "null",
-            op_status.task_type()
-        };
-        records.emplace_back(std::move(vec));
-    }
-    auto rs = ResultSetSQL::MakeResultSet(schema, records, status);
+    auto rs = JobTableHelper::MakeResultSet(response.op_status(), like_pattern, status);
     if (FLAGS_role == "sql_client" && rs && status->IsOK()) {
         return std::make_shared<ReadableResultSetSQL>(rs);
     }

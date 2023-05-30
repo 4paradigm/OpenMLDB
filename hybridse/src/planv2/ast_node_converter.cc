@@ -2169,7 +2169,7 @@ static const absl::flat_hash_map<std::string_view, ShowTargetInfo> showTargetMap
 };
 
 static const absl::flat_hash_map<std::string_view, node::ShowStmtType> SHOW_STMT_TYPE_MAP = {
-    {"JOBS", node::ShowStmtType::kJob},
+    {"JOBS", node::ShowStmtType::kJobs},
 };
 
 base::Status convertShowStmt(const zetasql::ASTShowStatement* show_statement, node::NodeManager* node_manager,

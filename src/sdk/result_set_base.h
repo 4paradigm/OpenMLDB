@@ -64,11 +64,8 @@ class ResultSetBase {
 
     inline int32_t Size() { return count_; }
 
-    const butil::IOBuf& GetRecordValue() const { return cur_record_; }
-
  private:
     const butil::IOBuf* io_buf_;
-    butil::IOBuf cur_record_;
     uint32_t count_;
     uint32_t buf_size_;
     std::unique_ptr<::hybridse::sdk::RowIOBufView> row_view_;

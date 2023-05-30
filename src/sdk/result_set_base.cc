@@ -49,10 +49,10 @@ bool ResultSetBase::Next() {
         uint32_t row_size = 0;
         io_buf_->copy_to(reinterpret_cast<void*>(&row_size), 4, position_ + 2);
         DLOG(INFO) << "row size " << row_size << " position " << position_ << " byte size " << buf_size_;
-        cur_record_.clear();
-        io_buf_->append_to(&cur_record_, row_size, position_);
+        butil::IOBuf tmp;
+        io_buf_->append_to(&tmp, row_size, position_);
         position_ += row_size;
-        bool ok = row_view_->Reset(cur_record_);
+        bool ok = row_view_->Reset(tmp);
         if (!ok) {
             LOG(WARNING) << "reset row buf failed";
             return false;

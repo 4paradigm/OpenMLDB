@@ -96,8 +96,6 @@ class ResultSetSQL : public ::hybridse::sdk::ResultSet {
 
     int32_t Size() override { return result_set_base_->Size(); }
 
-    const butil::IOBuf& GetRecordValue() const { return result_set_base_->GetRecordValue(); }
-
  private:
     ::hybridse::vm::Schema schema_;
     uint32_t record_cnt_;

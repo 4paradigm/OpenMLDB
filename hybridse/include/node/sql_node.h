@@ -68,8 +68,8 @@ inline const std::string ExplainTypeName(const ExplainType &explain_type) {
 
 inline const std::string ShowStmtTypeName(ShowStmtType type) {
     switch (type) {
-        case ShowStmtType::kJob:
-            return "Job";
+        case ShowStmtType::kJobs:
+            return "Jobs";
     }
     return "Unknow";
 }

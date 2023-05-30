@@ -101,7 +101,7 @@ enum SqlNodeType {
 };
 
 enum class ShowStmtType {
-    kJob,
+    kJobs,
 };
 
 enum TableRefType {

@@ -433,12 +433,12 @@ cases:
     expect:
       node_tree_str: |
         +-node[kShowStmt]
-          +-show type: Job
+          +-show type: Jobs
           +-target: TASKMANAGER
           +-like_str: <nil>
       plan_tree_str: |
         +-[kPlanTypeShow]
-          +-show type: Job
+          +-show type: Jobs
           +-target: TASKMANAGER
           +-like_str: <nil>
   - id: show jobs from nameserver
@@ -446,12 +446,12 @@ cases:
     expect:
       node_tree_str: |
         +-node[kShowStmt]
-          +-show type: Job
+          +-show type: Jobs
           +-target: NAMESERVER
           +-like_str: <nil>
       plan_tree_str: |
         +-[kPlanTypeShow]
-          +-show type: Job
+          +-show type: Jobs
           +-target: NAMESERVER
           +-like_str: <nil>
   - id: show jobs from nameserver like
@@ -459,12 +459,12 @@ cases:
     expect:
       node_tree_str: |
         +-node[kShowStmt]
-          +-show type: Job
+          +-show type: Jobs
           +-target: NAMESERVER
           +-like_str: 1
       plan_tree_str: |
         +-[kPlanTypeShow]
-          +-show type: Job
+          +-show type: Jobs
           +-target: NAMESERVER
           +-like_str: 1
   - id: show job
