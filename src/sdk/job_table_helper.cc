@@ -48,6 +48,7 @@ schema::PBSchema JobTableHelper::GetSchema() {
     codec::SchemaCodec::SetColumnDesc(schema.Add(), "name", type::DataType::kString);
     codec::SchemaCodec::SetColumnDesc(schema.Add(), "pid", type::DataType::kInt);
     codec::SchemaCodec::SetColumnDesc(schema.Add(), "cur_task", type::DataType::kString);
+    codec::SchemaCodec::SetColumnDesc(schema.Add(), "component", type::DataType::kString);
     return schema;
 }
 
@@ -98,7 +99,8 @@ std::shared_ptr<hybridse::sdk::ResultSet> JobTableHelper::MakeResultSet(const PB
             op_status.db(),
             op_status.name(),
             std::to_string(op_status.pid()),
-            op_status.task_type()
+            op_status.task_type(),
+            "NameServer"
         };
         records.emplace_back(std::move(vec));
     }
@@ -167,6 +169,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> JobTableHelper::MakeResultSet(
         vec.push_back("null");
         vec.push_back("null");
         vec.push_back("null");
+        vec.push_back("TaskManager");
         records.emplace_back(std::move(vec));
     }
     return ResultSetSQL::MakeResultSet(schema, records, status);
