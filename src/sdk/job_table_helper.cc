@@ -123,47 +123,39 @@ std::shared_ptr<hybridse::sdk::ResultSet> JobTableHelper::MakeResultSet(
             continue;
         }
         std::vector<std::string> vec = {op_id_str};
-        auto fill_fun = [](const std::shared_ptr<hybridse::sdk::ResultSet>& rs,
-                std::vector<std::string>* vec) -> ::hybridse::sdk::Status {
-            for (int i = 1; i < rs->GetSchema()->GetColumnCnt(); i++) {
-                if (rs->IsNULL(i)) {
-                    vec->push_back("null");
-                    continue;
-                }
-                switch (rs->GetSchema()->GetColumnType(i)) {
-                    case ::hybridse::sdk::DataType::kTypeInt32: {
-                        int32_t val = 0;
-                        if (!rs->GetInt32(i, &val)) {
-                            return {-1, "decode int error"};
-                        }
-                        vec->push_back(std::to_string(val));
-                        break;
-                    }
-                    case ::hybridse::sdk::DataType::kTypeString: {
-                        std::string val;
-                        if (!rs->GetString(i, &val)) {
-                            return {-1, "decode int error"};
-                        }
-                        vec->push_back(std::move(val));
-                        break;
-                    }
-                    case ::hybridse::sdk::DataType::kTypeTimestamp: {
-                        int64_t val = 0;
-                        if (!rs->GetTime(i, &val)) {
-                            return {-1, "decode int error"};
-                        }
-                        vec->push_back(std::to_string(val));
-                        break;
-                    }
-                    default:
-                        return {-1, "invalid type"};
-                }
+        for (int i = 1; i < rs->GetSchema()->GetColumnCnt(); i++) {
+            if (rs->IsNULL(i)) {
+                vec.push_back("null");
+                continue;
             }
-            return {};
-        };
-        *status = fill_fun(rs, &vec);
-        if (!status->IsOK()) {
-            return {};
+            switch (rs->GetSchema()->GetColumnType(i)) {
+                case ::hybridse::sdk::DataType::kTypeInt32: {
+                    int32_t val = 0;
+                    if (!rs->GetInt32(i, &val)) {
+                        return {};
+                    }
+                    vec.push_back(std::to_string(val));
+                    break;
+                }
+                case ::hybridse::sdk::DataType::kTypeString: {
+                    std::string val;
+                    if (!rs->GetString(i, &val)) {
+                        return {};
+                    }
+                    vec.push_back(std::move(val));
+                    break;
+                }
+                case ::hybridse::sdk::DataType::kTypeTimestamp: {
+                    int64_t val = 0;
+                    if (!rs->GetTime(i, &val)) {
+                        return {};
+                    }
+                    vec.push_back(std::to_string(val));
+                    break;
+                }
+                default:
+                    return {};
+            }
         }
         vec.push_back("null");
         vec.push_back("null");
@@ -172,6 +164,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> JobTableHelper::MakeResultSet(
         vec.push_back("TaskManager");
         records.emplace_back(std::move(vec));
     }
+    *status = {};
     return ResultSetSQL::MakeResultSet(schema, records, status);
 }
 
