@@ -59,7 +59,7 @@ OpenMLDB CLI 启动以后的**默认模式为离线模式**。离线数据导入
 - 在线预览模式的 SELECT 语句目前不支持 `LAST JOIN` 和 `ORDER BY` 等较复杂的查询，参考 [`SELECT`](https://openmldb.ai/docs/zh/main/openmldb_sql/dql/SELECT_STATEMENT.html)。
 - 在线预览模式服务端均为单线程执行 SQL，对于大数据处理，会比较慢，有可能会触发超时，可以通过在客户端配置 `--request_timeout` 来提高超时时间。
 - 为了防止影响线上服务，在线预览模式控制了最大访问的条数和不同key的个数，可以通过`--max_traverse_cnt` 和 `--max_traverse_key_cnt` 来设置；
-同时，通过 `--scan_max_bytes_size` 来限制结果的大小。详细配置可参考[配置文件](../deploy/conf.md)。
+同时，通过 `--scan_max_bytes_size` 来限制结果的大小。详细配置可参考[配置文件](../../deploy/conf.md)。
 
 在线预览模式设置命令 (OpenMLDB CLI)：`SET @@execute_mode='online'`
 
