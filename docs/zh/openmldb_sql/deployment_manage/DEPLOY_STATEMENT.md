@@ -17,7 +17,7 @@ DeploymentName
 ```
 
 
-`DeployOption`的定义详见[DEPLOYMENT属性DeployOption（可选）](#DeployOption可选)。
+`DeployOption`的定义详见[DEPLOYMENT属性DeployOption（可选）](#deployoption可选)。
 
 `SelectStmt`的定义详见[Select查询语句](../dql/SELECT_STATEMENT.md)。
 
