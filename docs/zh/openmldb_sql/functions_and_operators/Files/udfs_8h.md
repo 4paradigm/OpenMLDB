@@ -863,7 +863,7 @@ SELECT COS(0);
 
 
 
-* The value returned by [cos()](../openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-cos) funis always in the range: -1 to 1.
+* The value returned by [cos()](../../openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-cos) funis always in the range: -1 to 1.
 
 
 **Supported Types**:
