@@ -395,9 +395,16 @@ public class SqlClusterExecutor implements SqlExecutor {
 
     // literal merge, should be validated by validateSQLInRequest
     // return: select * from ..., including the join keys
-    public static String mergeSQL(List<String> sqls, String uniqueKey) {
-        // make uniqueKey more unique
-        String keyRenamedPrefix = "merge_" + uniqueKey + "_";
+    public static String mergeSQL(List<String> sqls, List<String> uniqueKeys) {
+        // make uniqueKeys more unique, gen keys selection
+        List<String> uniqueKeysNewName = new ArrayList<>();
+        List<String> uniqueKeysRenamed = new ArrayList<>();
+        for (int i = 0; i < uniqueKeys.size(); i++) {
+            uniqueKeysNewName.add(String.format("merge_%s_", uniqueKeys.get(i)));
+            // <key> as merge_<key>_?
+            uniqueKeysRenamed.add(String.format("%s as merge_%s_", uniqueKeys.get(i), uniqueKeys.get(i)));
+        }
+
         List<String> outParts = new ArrayList<>();
         for (int i = 0; i < sqls.size(); i++) {
             // add unique key to each sql
@@ -409,20 +416,27 @@ public class SqlClusterExecutor implements SqlExecutor {
             if (sql.endsWith(";")) {
                 sql = sql.substring(0, sql.length() - 1);
             }
-            outParts.add(String.format("(select %s as %s,%s) as %s", uniqueKey, keyRenamedPrefix + i, sql.substring(6),
-                    "out" + i));
+            // (select <keys>, <origin features> from ...) as out<i>
+            final int idx = i;
+            outParts.add(String.format("(select %s,%s) as out%d",
+                    uniqueKeysRenamed.stream().map(keyRenamed -> keyRenamed + idx).collect(Collectors.joining(", ")),
+                    sql.substring(6), i));
         }
         // last join all parts
         StringBuilder sb = new StringBuilder();
-        sb.append("select * from "); // output all columns?
+        sb.append("select * from ");
         for (int i = 0; i < outParts.size(); i++) {
             if (i > 0) {
                 sb.append(" last join ");
             }
             sb.append(outParts.get(i));
             if (i > 0) {
-                sb.append(" on out0").append(".").append(keyRenamedPrefix).append(0);
-                sb.append(" = ").append("out").append(i).append(".").append(keyRenamedPrefix).append(i);
+                // on out0.<key> = out1.<key> and out0.<key> = out2.<key> ...
+                sb.append("on ");
+                String equalPattern = "out0.%s%d = out%d.%s%d";
+                final int idx = i;
+                uniqueKeysNewName.stream().map(newNamePrefix -> String.format(equalPattern, idx, newNamePrefix, idx))
+                        .collect(Collectors.joining(" and "));
             }
         }
         sb.append(";");
@@ -430,7 +444,9 @@ public class SqlClusterExecutor implements SqlExecutor {
     }
 
     // with table schema, we can except join keys and validate the merged sql
-    public static String mergeSQL(List<String> sqls, String uniqueKey, Map<String, Map<String, Schema>> tableSchema) throws SQLException {
+    public static String mergeSQL(List<String> sqls, List<String> uniqueKey,
+            Map<String, Map<String, Schema>> tableSchema)
+            throws SQLException {
         String merged = mergeSQL(sqls, uniqueKey);
         // try to do column filter, if failed, we'll throw an exception
         Schema outputSchema = SqlClusterExecutor.genOutputSchema(merged, tableSchema);
@@ -440,8 +456,8 @@ public class SqlClusterExecutor implements SqlExecutor {
             throw new SQLException(
                     "output schema contains ambiguous column name, can't do column filter. please use alias " + cols);
         }
-
-        String filtered = "select " + cols.stream().filter(name -> !name.startsWith("merge_" + uniqueKey + "_"))
+        // TODO(hw): merge_ is unique enough?
+        String filtered = "select " + cols.stream().filter(name -> !name.startsWith("merge_"))
                 .collect(Collectors.joining("`, `", "`", "`")) + merged.substring(8);
         merged = filtered;
 

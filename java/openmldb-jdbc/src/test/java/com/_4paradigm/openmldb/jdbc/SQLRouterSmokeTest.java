@@ -720,7 +720,7 @@ public class SQLRouterSmokeTest {
     @Test
     public void testMergeSQL() throws SQLException {
         String merged = SqlClusterExecutor.mergeSQL(
-                Arrays.asList("select c1 from main;", "select c2 from main last join t1 on main.c1==t1.c1;"), "id");
+                Arrays.asList("select c1 from main;", "select c2 from main last join t1 on main.c1==t1.c1;"), Arrays.asList("id"));
         Assert.assertEquals(merged,
                 "select * from (select id as merge_id_0, c1 from main) as out0 "
                         + "last join (select id as merge_id_1, c2 from main last join t1 on main.c1==t1.c1) as out1 "
@@ -739,7 +739,7 @@ public class SQLRouterSmokeTest {
                 // window union
                 "select sum(c2) over w1 from main window w1 as (union (select \"\" as id, * from t1) partition by c1 order by c2 rows between unbounded preceding and current row)");
 
-        merged = SqlClusterExecutor.mergeSQL(sqls, "id");
+        merged = SqlClusterExecutor.mergeSQL(sqls, Arrays.asList("id"));
         System.out.println(merged);
 
         // validate merged sql
@@ -749,24 +749,27 @@ public class SQLRouterSmokeTest {
                 new Column("c2", Types.BIGINT))));
         dbSchema.put("t1", new Schema(Arrays.asList(new Column("c1", Types.BIGINT), new Column("c2", Types.BIGINT))));
         schemaMaps.put("foo", dbSchema);
-        String filtered = SqlClusterExecutor.mergeSQL(sqls, "id", schemaMaps);
+        String filtered = SqlClusterExecutor.mergeSQL(sqls, Arrays.asList("id"), schemaMaps);
         System.out.println(filtered);
 
         // add a function col without rename
         List<String> sqls2 = new ArrayList<>(sqls);
         sqls2.add("select int(`c1`) from main");
-        String sql = SqlClusterExecutor.mergeSQL(sqls2, "id", schemaMaps);
+        String sql = SqlClusterExecutor.mergeSQL(sqls2, Arrays.asList("id"), schemaMaps);
         System.out.println(sql);
         Assert.assertFalse(sql.startsWith("select * from "));
 
         // add a ambiguous col-int(c1), throw exception
         try {
             sqls2.add("select int(`c1`) from main");
-            sql = SqlClusterExecutor.mergeSQL(sqls2, "id", schemaMaps);
+            sql = SqlClusterExecutor.mergeSQL(sqls2, Arrays.asList("id"), schemaMaps);
             Assert.fail("ambiguous col should throw exception");
         } catch (SQLException e) {
             Assert.assertTrue(e.getMessage().contains("ambiguous"));
         }
 
+        // join keys
+        sql = SqlClusterExecutor.mergeSQL(sqls, Arrays.asList("id", "c1", "c2"), schemaMaps);
+        System.out.println(sql);
     }
 }
