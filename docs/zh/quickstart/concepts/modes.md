@@ -32,7 +32,7 @@
 
 ### 离线模式
 
-OpenMLDB CLI 启动以后的**默认模式为离线模式**。离线数据导入、离线特征开发、特征方案部署上线均在离线模式下执行。离线模式的作用是对离线数据进行管理和计算。涉及的计算节点由针对特征工程优化的 [OpenMLDB Spark 发行版](../tutorial/openmldbspark_distribution.md)支持，存储节点支持使用 HDFS 等常见存储系统。
+OpenMLDB CLI 启动以后的**默认模式为离线模式**。离线数据导入、离线特征开发、特征方案部署上线均在离线模式下执行。离线模式的作用是对离线数据进行管理和计算。涉及的计算节点由针对特征工程优化的 [OpenMLDB Spark 发行版](../../tutorial/openmldbspark_distribution.md)支持，存储节点支持使用 HDFS 等常见存储系统。
 
 离线模式有以下主要特点：
 
