@@ -154,7 +154,7 @@ WindowFrameBound
 共三部分：
 1. WindowFrameUnits: 窗口类型
 2. WindowFrameBounds: 窗口边界
-3. WindowFrameMaxSize (Optional) 窗口最大行数, 见 [Window With MAXSIZE](#4.-window-with-maxsize)
+3. WindowFrameMaxSize (Optional) 窗口最大行数, 见 [Window With MAXSIZE](#4-window-with-maxsize)
 
 #### Window Frame Units
 
