@@ -44,7 +44,7 @@ OpenMLDB CLI 启动以后的**默认模式为离线模式**。离线数据导入
 和很多关系型数据库系统不同，`SELECT` 命令在离线模式下默认为异步执行，如需设置为同步执行，参考[设置离线模式下命令的同步执行](../openmldb_sql/ddl/SET_STATEMENT.md#离线命令配置详情)。在离线特征开发阶段，如果使用异步执行，强烈建议使用 `SELECT INTO` 语句进行开发调试，可以将结果导出到文件，方便查看。
 :::
 
-用于特征方案部署的命令 `DEPLOY` 也在离线模式下执行。其规范可以参阅 [OpenMLDB SQL 上线规范和要求](../openmldb_sql/deployment_manage/ONLINE_REQUEST_REQUIREMENTS.md)。
+用于特征方案部署的命令 `DEPLOY` 也在离线模式下执行。其规范可以参阅 [OpenMLDB SQL 上线规范和要求](../../openmldb_sql/deployment_manage/ONLINE_REQUEST_REQUIREMENTS.md)。
 
 离线模式设置命令 (OpenMLDB CLI)：`SET @@execute_mode='offline'`
 
