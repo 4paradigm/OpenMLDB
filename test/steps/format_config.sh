@@ -82,8 +82,8 @@ cat >>$rootPath/conf/tablet.flags.template<<EOF
 --recycle_bin_ssd_root_path=/mnt/nvmessd/qytest/$dirName/recycle_ssd
 EOF
 # comment node-1 tablet , no ssd existed in node-1
-sed -i "s/^[^#].*node-1*/#&/g" out/openmldb_info.yaml
-sed -i "s/^[^#].*node-1*/#&/g" $rootPath/conf/hosts
+sed -i "s/.*node-1.*/#&/g" out/openmldb_info.yaml
+sed -i "s/.*node-1.*/#&/g" $rootPath/conf/hosts
 fi
 
 if [ "$Dependency" = "hadoop" ]; then
