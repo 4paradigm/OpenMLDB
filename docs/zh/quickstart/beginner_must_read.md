@@ -50,7 +50,7 @@ OpenMLDB并不完全兼容标准SQL。所以，部分SQL执行会得不到预期
 
 OpenMLDB所有命令均为SQL，如果SQL执行失败或交互有问题（不知道命令是否执行成功），请先确认SQL书写是否有误，命令并未执行，还是命令进入了执行阶段。
 
-例如，下面提示Syntax error的是SQL书写有误，请参考[sql reference](../openmldb_sql)纠正错误。
+例如，下面提示Syntax error的是SQL书写有误，请参考[sql reference](../../openmldb_sql)纠正错误。
 ```
 127.0.0.1:7527/db> create table t1(c1 int;
 Error: Syntax error: Expected ")" or "," but got ";" [at 1:23]
