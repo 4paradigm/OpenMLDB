@@ -81,7 +81,7 @@ create table t1(c1 int;
 
 #### 在线
 
-集群版在线模式下，我们通常只推荐使用`DEPLOY`创建deployment，HTTP访问APIServer执行deployment做实时特征计算。在CLI或其他客户端中，直接在在线中进行SELECT查询，称为“在线预览”。在线预览有诸多限制，详情请参考[功能边界-集群版在线预览模式](./function_boundary.md#集群版在线预览模式)，请不要执行不支持的SQL。
+集群版在线模式下，我们通常只推荐使用`DEPLOY`创建deployment，HTTP访问APIServer执行deployment做实时特征计算。在CLI或其他客户端中，直接在在线中进行SELECT查询，称为“在线预览”。在线预览有诸多限制，详情请参考[功能边界-集群版在线预览模式](../function_boundary.md#集群版在线预览模式)，请不要执行不支持的SQL。
 
 ### 提供复现脚本
 
