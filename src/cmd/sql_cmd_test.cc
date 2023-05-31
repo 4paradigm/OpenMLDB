@@ -227,8 +227,7 @@ TEST_P(DBSDKTest, CreateDatabase) {
     }
     ASSERT_EQ(dbs.count(db1), 1);
     ASSERT_EQ(dbs.count(db2), 1);
-    ProcessSQLs(sr, {absl::StrCat("DROP DATABASE ", db1),
-                     absl::StrCat("DROP DATABASE ", db2)});
+    ProcessSQLs(sr, {absl::StrCat("DROP DATABASE ", db1), absl::StrCat("DROP DATABASE ", db2)});
 }
 
 TEST_P(DBSDKTest, CreateAndShowTable) {
@@ -263,8 +262,7 @@ TEST_P(DBSDKTest, CreateAndShowTable) {
     rs->GetString(0, &val);
     ASSERT_EQ(val, t2);
     ASSERT_FALSE(rs->Next());
-    ProcessSQLs(sr, {absl::StrCat("DROP TABLE ", t2),
-                     absl::StrCat("DROP DATABASE ", db)});
+    ProcessSQLs(sr, {absl::StrCat("DROP TABLE ", t2), absl::StrCat("DROP DATABASE ", db)});
 }
 
 TEST_P(DBSDKTest, Select) {
@@ -729,7 +727,7 @@ TEST_P(DBSDKTest, DeployWithSameIndex) {
         " WINDOW w1 AS (PARTITION BY trans.c1 ORDER BY trans.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);";
     hybridse::sdk::Status status;
     sr->ExecuteSQL(deploy_sql, &status);
-    ASSERT_TRUE(status.IsOK());
+    ASSERT_TRUE(status.IsOK()) << status.ToString();
 
     // new index, update ttl
     tables.clear();
@@ -745,7 +743,7 @@ TEST_P(DBSDKTest, DeployWithSameIndex) {
     ASSERT_EQ(column_key.ttl().ttl_type(), ::openmldb::type::TTLType::kLatestTime);
     ASSERT_EQ(column_key.ttl().lat_ttl(), 2);
 
-    // type mismatch case
+    // type mismatch case, still ok
     create_sql =
         "create table trans1 (c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, "
         "c8 date, index(key=c1, ts=c7, ttl=1m, ttl_type=absolute));";
@@ -754,14 +752,14 @@ TEST_P(DBSDKTest, DeployWithSameIndex) {
         HandleSQL("insert into trans1 values ('aaa', 11, 22, 1.2, 1.3, 1635247427000, \"2021-05-20\");");
     }
     deploy_sql =
-        "deploy demo SELECT c1, c3, sum(c4) OVER w1 as w1_c4_sum FROM trans1 "
+        "deploy demo1 SELECT c1, c3, sum(c4) OVER w1 as w1_c4_sum FROM trans1 "
         " WINDOW w1 AS (PARTITION BY trans1.c1 ORDER BY trans1.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);";
     sr->ExecuteSQL(deploy_sql, &status);
-    ASSERT_FALSE(status.IsOK());
-    ASSERT_EQ(status.msg, "new ttl type kLatestTime doesn't match the old ttl type kAbsoluteTime in table trans1");
+    ASSERT_TRUE(status.IsOK()) << status.ToString();
 
     ASSERT_FALSE(cs->GetNsClient()->DropTable("test1", "trans", msg));
     ASSERT_TRUE(cs->GetNsClient()->DropProcedure("test1", "demo", msg));
+    ASSERT_TRUE(cs->GetNsClient()->DropProcedure("test1", "demo1", msg));
     ASSERT_TRUE(cs->GetNsClient()->DropTable("test1", "trans", msg));
     ASSERT_TRUE(cs->GetNsClient()->DropTable("test1", "trans1", msg));
     ASSERT_TRUE(cs->GetNsClient()->DropDatabase("test1", msg));
@@ -815,21 +813,25 @@ TEST_P(DBSDKTest, DeploySkipIndexCheck) {
     hybridse::sdk::Status status;
     sr->ExecuteSQL(deploy_sql, &status);
     ASSERT_FALSE(status.IsOK());
-    deploy_sql = "deploy demo  OPTIONS (skip_index_check=\"false\") "
+    deploy_sql =
+        "deploy demo  OPTIONS (skip_index_check=\"false\") "
         "SELECT * FROM t1 LAST JOIN t2 ORDER BY t2.col3 ON t1.col1 = t2.col1;";
     sr->ExecuteSQL(deploy_sql, &status);
     ASSERT_FALSE(status.IsOK());
-    deploy_sql = "deploy demo  OPTIONS (skip_index_check=\"false\") "
+    deploy_sql =
+        "deploy demo  OPTIONS (skip_index_check=\"false\") "
         "SELECT * FROM t1 LAST JOIN t2 ORDER BY t2.col3 ON t1.col1 = t2.col1;";
     sr->ExecuteSQL(deploy_sql, &status);
     ASSERT_FALSE(status.IsOK());
-    deploy_sql = "deploy demo  OPTIONS (skip_index_check=\"true\") "
+    deploy_sql =
+        "deploy demo  OPTIONS (skip_index_check=\"true\") "
         "SELECT * FROM t1 LAST JOIN t2 ORDER BY t2.col3 ON t1.col1 = t2.col1;";
     sr->ExecuteSQL(deploy_sql, &status);
     ASSERT_TRUE(status.IsOK()) << status.msg;
     std::string msg;
     ASSERT_TRUE(cs->GetNsClient()->DropProcedure("test2", "demo", msg));
-    deploy_sql = "deploy demo  OPTIONS (SKIP_INDEX_CHECK=\"TRUE\") "
+    deploy_sql =
+        "deploy demo  OPTIONS (SKIP_INDEX_CHECK=\"TRUE\") "
         "SELECT * FROM t1 LAST JOIN t2 ORDER BY t2.col3 ON t1.col1 = t2.col1;";
     sr->ExecuteSQL(deploy_sql, &status);
     ASSERT_TRUE(status.IsOK());
@@ -2828,9 +2830,9 @@ TEST_P(DBSDKTest, LongWindowsCleanup) {
         rs = sr->ExecuteSQL("", result_sql, &status);
         ASSERT_EQ(0, rs->Size());
         ASSERT_FALSE(cs->GetNsClient()->DropTable("test2", "trans", msg));
-        ASSERT_TRUE(cs->GetNsClient()->DropProcedure("test2", "demo1", msg));
-        ASSERT_TRUE(cs->GetNsClient()->DropTable("test2", "trans", msg));
-        ASSERT_TRUE(cs->GetNsClient()->DropDatabase("test2", msg));
+        ASSERT_TRUE(cs->GetNsClient()->DropProcedure("test2", "demo1", msg)) << msg;
+        ASSERT_TRUE(cs->GetNsClient()->DropTable("test2", "trans", msg)) << msg;
+        ASSERT_TRUE(cs->GetNsClient()->DropDatabase("test2", msg)) << msg;
     }
 }
 
@@ -2871,8 +2873,8 @@ TEST_P(DBSDKTest, CreateIfNotExists) {
     ASSERT_TRUE(status.IsOK());
 
     std::string msg;
-    ASSERT_TRUE(cs->GetNsClient()->DropTable("test2", "trans", msg));
-    ASSERT_TRUE(cs->GetNsClient()->DropDatabase("test2", msg));
+    ASSERT_TRUE(cs->GetNsClient()->DropTable("test2", "trans", msg)) << msg;
+    ASSERT_TRUE(cs->GetNsClient()->DropDatabase("test2", msg)) << msg;
 }
 
 TEST_P(DBSDKTest, ShowComponents) {
@@ -2986,9 +2988,7 @@ void ExpectShowTableStatusResult(const std::vector<std::vector<test::CellExpectI
                                  SystemStandaloneTableStatus.end());
         }
     }
-    ExpectResultSetStrEq(
-        merged_expect,
-        rs);
+    ExpectResultSetStrEq(merged_expect, rs);
 }
 
 TEST_P(DBSDKTest, ShowTableStatusEmptySet) {
@@ -3185,8 +3185,7 @@ TEST_P(DBSDKTest, ShowTableStatusForHddTable) {
 
     // TODO(ace): Memory_data_size not asserted because not implemented
     ExpectShowTableStatusResult(
-        {{{}, tb_name, db_name, "hdd", "1", {}, {{}, "0"}, "1", "0", "1", "NULL", "NULL", "NULL", ""}},
-        rs.get());
+        {{{}, tb_name, db_name, "hdd", "1", {}, {{}, "0"}, "1", "0", "1", "NULL", "NULL", "NULL", ""}}, rs.get());
 
     // runs HandleSQL only for the purpose of pretty print result in console
     HandleSQL("show table status");
