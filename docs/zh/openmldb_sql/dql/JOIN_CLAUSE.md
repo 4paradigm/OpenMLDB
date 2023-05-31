@@ -54,7 +54,7 @@ SELECT ... FROM table_ref LAST JOIN table_ref ON expression;
 ![Figure 8: last join without order result](../dql/images/last_join_without_order2.png)
 
 ```{note}
-为了实现上图展示的拼接效果，即使您使用的是离线模式，也请遵循[在线请求模式下LAST JOIN的使用规范](../deployment_manage/ONLINE_SERVING_REQUIREMENTS.md#在线请求模式下-last-join-的使用规范)，如下文的SQL样例所示。
+为了实现上图展示的拼接效果，即使您使用的是离线模式，也请遵循[在线请求模式下LAST JOIN的使用规范](../deployment_manage/ONLINE_REQUEST_REQUIREMENTS.md#在线请求模式下-last-join-的使用规范)，如下文的SQL样例所示。
 否则由于底层存储顺序的不确定，尽管执行结果也是正确的，却可能无法复现上述拼接结果。
 ```
 
