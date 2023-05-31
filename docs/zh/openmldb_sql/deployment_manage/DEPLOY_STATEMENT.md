@@ -21,7 +21,7 @@ DeploymentName
 
 `SelectStmt`的定义详见[Select查询语句](../dql/SELECT_STATEMENT.md)。
 
-`DEPLOY`语句可以将SQL部署到线上。OpenMLDB仅支持部署Select查询语句，并且需要满足[OpenMLDB SQL上线规范和要求](../deployment_manage/ONLINE_SERVING_REQUIREMENTS.md)。
+`DEPLOY`语句可以将SQL部署到线上。OpenMLDB仅支持部署Select查询语句，并且需要满足[OpenMLDB SQL上线规范和要求](../deployment_manage/ONLINE_REQUEST_REQUIREMENTS.md)。
 
 
 
