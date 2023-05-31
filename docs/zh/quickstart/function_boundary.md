@@ -32,7 +32,7 @@ spark.default.conf=spark.port.maxRetries=32;foo=bar
 
 ### 长窗口 SQL
 
-长窗口 SQL，即 `DEPLOY` 语句带有 `OPTIONS(long_windows=...)` 配置项，语法详情见[长窗口](../openmldb_sql/deployment_manage/DEPLOY_STATEMENT#长窗口优化)。长窗口 SQL 的部署条件比较严格，必须保证 SQL 中使用的表没有在线数据。否则，即使部署和之前一致的 SQL，也会操作失败。
+长窗口 SQL，即 `DEPLOY` 语句带有 `OPTIONS(long_windows=...)` 配置项，语法详情见[长窗口](../openmldb_sql/deployment_manage/DEPLOY_STATEMENT.md#长窗口优化)。长窗口 SQL 的部署条件比较严格，必须保证 SQL 中使用的表没有在线数据。否则，即使部署和之前一致的 SQL，也会操作失败。
 
 ### 普通 SQL
 
