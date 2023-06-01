@@ -539,3 +539,33 @@ List<String> ret = SqlClusterExecutor.validateSQLInRequest("select count(c1) ove
         "w1 as(partition by c1 order by c2 rows between unbounded preceding and current row);", schemaMaps);
 Assert.assertEquals(ret.size(), 0);
 ```
+
+## SQL 合并
+
+Java 客户端支持对多个 SQL 进行合并，并进行 request 模式的正确性校验，接口为`mergeSQL`，只能在所有输入SQL的主表一致的情况下合并。
+
+输入参数：想要合并的 SQL 组，主表名与主表的join key（可多个），以及所有表的schema。
+
+例如，我们有这样四个特征组SQL：
+```
+// 单表直出特征
+select c1 from main;
+// 单表聚合特征
+select sum(c1) over w1 of2 from main window w1 as (partition by c1 order by c2 rows between unbounded preceding and current row);
+// 多表特征
+select t1.c2 of4 from main last join t1 order by t1.c2 on main.c1==t1.c1;
+// 多表聚合特征
+select sum(c2) over w1 from main window w1 as (union (select \"\" as id, * from t1) partition by c1 order by c2 rows between unbounded preceding and current row);
+```
+
+它们的主表均为main表，所以它们可以进行 SQL 合并。合并本质是进行join，所以我们还需要知道main表的unique列，它们可以定位到唯一一行数据。例如，main表id并不唯一，可能存在多行的id值相同，但不会出现id与c1两列值都相同，那么我们可以用id与c1两列来进行join。类似 SQL 校验，我们也传入表的schema map。
+
+```java
+String merged = SqlClusterExecutor.mergeSQL(sqls, "main", Arrays.asList("id", "c1"), schemaMaps);
+```
+
+输出结果为单个合并后的 SQL，见下。输入的SQL一共选择四个特征，所以合并 SQL 只会输出这四个特征列。（我们会自动过滤join keys）
+
+```
+select `c1`, `of2`, `of4`, `sum(c2)over w1` from (select main.id as merge_id_0, c1 from main) as out0 last join (select main.id as merge_id_1, sum(c1) over w1 of2 from main window w1 as (partition by c1 order by c2 rows between unbounded preceding and current row)) as out1 on out0.merge_id_0 = out1.merge_id_1 last join (select main.id as merge_id_2, t1.c2 of4 from main last join t1 order by t1.c2 on main.c1==t1.c1) as out2 on out0.merge_id_0 = out2.merge_id_2 last join (select main.id as merge_id_3, sum(c2) over w1 from main window w1 as (union (select "" as id, * from t1) partition by c1 order by c2 rows between unbounded preceding and current row)) as out3 on out0.merge_id_0 = out3.merge_id_3;
+```

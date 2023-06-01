@@ -395,7 +395,7 @@ public class SqlClusterExecutor implements SqlExecutor {
 
     // literal merge, should be validated by validateSQLInRequest
     // return: select * from ..., including the join keys
-    public static String mergeSQLWithOutValidate(List<String> sqls, String mainTable, List<String> uniqueKeys,
+    private static String mergeSQLWithPartValidate(List<String> sqls, String mainTable, List<String> uniqueKeys,
             Map<String, Map<String, Schema>> tableSchema) throws SQLException {
         // make uniqueKeys more unique, gen keys selection
         List<String> uniqueKeysNewName = new ArrayList<>();
@@ -462,7 +462,7 @@ public class SqlClusterExecutor implements SqlExecutor {
                 throw new SQLException("sql is invalid, can't merge: " + ret);
             }
         }
-        String merged = mergeSQLWithOutValidate(sqls, mainTable, uniqueKeys, tableSchema);
+        String merged = mergeSQLWithPartValidate(sqls, mainTable, uniqueKeys, tableSchema);
 
         // try to do column filter, if failed, we'll throw an exception
         Schema outputSchema = SqlClusterExecutor.genOutputSchema(merged, tableSchema);

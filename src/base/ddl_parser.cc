@@ -526,8 +526,8 @@ bool IndexMapBuilder::CreateIndex(const std::string& table, const hybridse::node
     }
 
     if (index_map_.find(index) != index_map_.end()) {
-        // TODO(hw): ttl merge
-        LOG(DFATAL) << "index " << index << " existed in cache, can't handle it now";
+        // index id has unique idx, can't be dup. It's a weird case
+        LOG(DFATAL) << "index " << index << " existed in cache";
         return false;
     }
     DLOG(INFO) << "create index with unset ttl: " << index;

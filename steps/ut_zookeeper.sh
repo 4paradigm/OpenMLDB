@@ -38,7 +38,8 @@ case $OP in
         cd "$THIRDSRC/zookeeper-3.4.14" && ./bin/zkServer.sh stop
         ;;
     reset)
-        echo "remove zk data and then start zk"
+        echo "stop, remove zk data and then start"
+        sh steps/ut_zookeeper.sh stop
         rm -rf "$THIRDSRC/zookeeper-3.4.14/data"
         sh steps/ut_zookeeper.sh start
         ;;
