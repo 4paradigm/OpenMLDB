@@ -136,3 +136,13 @@ openmldb = { path = "../python/", develop = true }
    openmldb_connected_seconds_created{endpoint="172.17.0.15:9623",role="nameserver"} 1.650181386051238e+09                
    openmldb_connected_seconds_created{endpoint="172.17.0.15:9624",role="nameserver"} 1.6501813860512598e+09               
    ```
+
+## Release History
+
+- 0.7.1
+    * Features
+        - Upgrade OpenMLDB SDK to v0.7
+        - Upgrade prometheus client to 0.16
+- 0.6.0
+    * Features
+        - Depends on OpenMLDB SDK v0.6

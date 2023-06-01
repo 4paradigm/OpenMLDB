@@ -1,6 +1,6 @@
 FROM python:3.11-slim-bullseye
 
-ENV OPENMLDB_EXPORTER_VERSION=0.6.0
+ENV OPENMLDB_EXPORTER_VERSION=0.7.1
 
 RUN pip install --no-cache-dir openmldb-exporter==${OPENMLDB_EXPORTER_VERSION}
 

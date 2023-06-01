@@ -42,14 +42,17 @@ public class SQLDriver implements Driver {
      * @throws SQLException if it is not possible to connect
      */
     @Override
-    public Connection connect(String url, Properties info) throws SQLException {
+    public Connection connect(String url, Properties info) throws SQLException { 
+        // Merge connectProperties (from URL) and supplied properties from user.
+        // TODO(hw): only cluster mode now, support StandaloneOptions later
+        if (info == null) {
+            info = new Properties();
+        }
+        // just url missmatch, don't throw exception
+        if (!parseAndMergeClusterProps(url, info)) {
+            return null;
+        }
         try {
-            // Merge connectProperties (from URL) and supplied properties from user.
-            // TODO(hw): only cluster mode now, support StandaloneOptions later
-            if (info == null) {
-                info = new Properties();
-            }
-            parseAndMergeClusterProps(url, info);
             SdkOption option = createOptionByProps(info);
             SqlExecutor client = new SqlClusterExecutor(option);
             return new SQLConnection(client, info);
@@ -59,7 +62,7 @@ public class SQLDriver implements Driver {
     }
 
     /**
-     * parse and verification of URL.
+     * parse and verification of URL. If url is just not acceptted, return false.
      *
      * <p>basic syntax :<br>
      * {@code
@@ -79,11 +82,12 @@ public class SQLDriver implements Driver {
      * jdbc:openmldb:///db_test?zk=localhost:6181&zkPath=/onebox&sessionTimeout=1000&enableDebug=true}
      * <br>
      */
-    private void parseAndMergeClusterProps(String url, Properties info) throws SQLException {
+    private boolean parseAndMergeClusterProps(String url, Properties info) throws SQLException {
         if (!acceptsURL(url)) {
-            throw new SQLException("not a valid url");
+            return false;
         }
         parseInternal(url, info);
+        return true;
     }
 
     /**
