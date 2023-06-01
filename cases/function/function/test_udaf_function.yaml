@@ -2689,12 +2689,15 @@ cases:
       select
         idx,
         `join`(split_by_key(count_cate(idx, val) over w, ",", ":"), "-") as ref,
-        at(split_by_key(count_cate(idx, val) over w, ",", ":"), 1) as out
+        at(split_by_key(count_cate(idx, val) over w, ",", ":"), 1) as out,
+        at(split_by_key(count_cate(idx, val) over w2, ",", ":"), 1) as out2
       from t1
       window w as (
         partition by gp order by ts
-        rows_range between 10s preceding and current row
-      )
+        rows_range between 10s preceding and current row),
+      w2 as (
+        partition by gp order by ts
+        rows_range between 10s preceding and 1s preceding)
     inputs:
       - name: t1
         columns: ["idx int", "gp int", "val int", "ts timestamp"]
@@ -2709,9 +2712,10 @@ cases:
         - idx int
         - ref string
         - out string
+        - out2 string
       order: idx
       data: |
-        100, 1, NULL
-        200, 1-2, 2
-        300, 1-2, 2
-        400, 1-2, 2
+        100, 1, NULL, NULL
+        200, 1-2, 2,  NULL
+        300, 1-2, 2,  2
+        400, 1-2, 2,  2
