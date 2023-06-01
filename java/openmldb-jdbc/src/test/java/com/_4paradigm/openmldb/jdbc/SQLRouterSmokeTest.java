@@ -719,13 +719,6 @@ public class SQLRouterSmokeTest {
 
     @Test
     public void testMergeSQL() throws SQLException {
-        String merged = SqlClusterExecutor.mergeSQL(
-                Arrays.asList("select c1 from main;", "select c2 from main last join t1 on main.c1==t1.c1;"), Arrays.asList("id"));
-        Assert.assertEquals(merged,
-                "select * from (select id as merge_id_0, c1 from main) as out0 "
-                        + "last join (select id as merge_id_1, c2 from main last join t1 on main.c1==t1.c1) as out1 "
-                        + "on out0.merge_id_0 = out1.merge_id_1;");
-
         // full table pattern
         List<String> sqls = Arrays.asList(
                 // some features in current row
@@ -739,9 +732,6 @@ public class SQLRouterSmokeTest {
                 // window union
                 "select sum(c2) over w1 from main window w1 as (union (select \"\" as id, * from t1) partition by c1 order by c2 rows between unbounded preceding and current row)");
 
-        merged = SqlClusterExecutor.mergeSQL(sqls, Arrays.asList("id"));
-        System.out.println(merged);
-
         // validate merged sql
         Map<String, Map<String, Schema>> schemaMaps = new HashMap<>();
         HashMap<String, Schema> dbSchema = new HashMap<>();
@@ -749,27 +739,30 @@ public class SQLRouterSmokeTest {
                 new Column("c2", Types.BIGINT))));
         dbSchema.put("t1", new Schema(Arrays.asList(new Column("c1", Types.BIGINT), new Column("c2", Types.BIGINT))));
         schemaMaps.put("foo", dbSchema);
-        String filtered = SqlClusterExecutor.mergeSQL(sqls, Arrays.asList("id"), schemaMaps);
-        System.out.println(filtered);
+
+        String filtered = SqlClusterExecutor.mergeSQL(sqls, "main", Arrays.asList("id"), schemaMaps);
+        Assert.assertEquals(filtered,
+                "select `c1`, `of2`, `of3`, `of4`, `sum(c2)over w1` from (select main.id as merge_id_0, c1 from main) as out0 last join (select main.id as merge_id_1, sum(c1) over w1 of2 from main window w1 as (partition by c1 order by c2 rows between unbounded preceding and current row)) as out1 on out0.merge_id_0 = out1.merge_id_1 last join (select main.id as merge_id_2, t1.c2 of3 from main last join t1 on main.c1==t1.c1) as out2 on out0.merge_id_0 = out2.merge_id_2 last join (select main.id as merge_id_3, t1.c2 of4 from main last join t1 order by t1.c2 on main.c1==t1.c1) as out3 on out0.merge_id_0 = out3.merge_id_3 last join (select main.id as merge_id_4, sum(c2) over w1 from main window w1 as (union (select \"\" as id, * from t1) partition by c1 order by c2 rows between unbounded preceding and current row)) as out4 on out0.merge_id_0 = out4.merge_id_4;");
 
         // add a function col without rename
         List<String> sqls2 = new ArrayList<>(sqls);
         sqls2.add("select int(`c1`) from main");
-        String sql = SqlClusterExecutor.mergeSQL(sqls2, Arrays.asList("id"), schemaMaps);
-        System.out.println(sql);
-        Assert.assertFalse(sql.startsWith("select * from "));
+        String merged1 = SqlClusterExecutor.mergeSQL(sqls2, "main", Arrays.asList("id"), schemaMaps);
+        Assert.assertFalse(merged1.startsWith("select * from "));
 
         // add a ambiguous col-int(c1), throw exception
         try {
             sqls2.add("select int(`c1`) from main");
-            sql = SqlClusterExecutor.mergeSQL(sqls2, Arrays.asList("id"), schemaMaps);
+            SqlClusterExecutor.mergeSQL(sqls2, "main", Arrays.asList("id"), schemaMaps);
             Assert.fail("ambiguous col should throw exception");
         } catch (SQLException e) {
             Assert.assertTrue(e.getMessage().contains("ambiguous"));
         }
 
         // join keys
-        sql = SqlClusterExecutor.mergeSQL(sqls, Arrays.asList("id", "c1", "c2"), schemaMaps);
-        System.out.println(sql);
+        String merged_keys = SqlClusterExecutor.mergeSQL(sqls, "main", Arrays.asList("id", "c1", "c2"), schemaMaps);
+        Assert.assertEquals(merged_keys,
+                "select `c1`, `of2`, `of3`, `of4`, `sum(c2)over w1` from (select main.id as merge_id_0, main.c1 as merge_c1_0, main.c2 as merge_c2_0, c1 from main) as out0 last join (select main.id as merge_id_1, main.c1 as merge_c1_1, main.c2 as merge_c2_1, sum(c1) over w1 of2 from main window w1 as (partition by c1 order by c2 rows between unbounded preceding and current row)) as out1 on out0.merge_id_0 = out1.merge_id_1 and out0.merge_c1_0 = out1.merge_c1_1 and out0.merge_c2_0 = out1.merge_c2_1 last join (select main.id as merge_id_2, main.c1 as merge_c1_2, main.c2 as merge_c2_2, t1.c2 of3 from main last join t1 on main.c1==t1.c1) as out2 on out0.merge_id_0 = out2.merge_id_2 and out0.merge_c1_0 = out2.merge_c1_2 and out0.merge_c2_0 = out2.merge_c2_2 last join (select main.id as merge_id_3, main.c1 as merge_c1_3, main.c2 as merge_c2_3, t1.c2 of4 from main last join t1 order by t1.c2 on main.c1==t1.c1) as out3 on out0.merge_id_0 = out3.merge_id_3 and out0.merge_c1_0 = out3.merge_c1_3 and out0.merge_c2_0 = out3.merge_c2_3 last join (select main.id as merge_id_4, main.c1 as merge_c1_4, main.c2 as merge_c2_4, sum(c2) over w1 from main window w1 as (union (select \"\" as id, * from t1) partition by c1 order by c2 rows between unbounded preceding and current row)) as out4 on out0.merge_id_0 = out4.merge_id_4 and out0.merge_c1_0 = out4.merge_c1_4 and out0.merge_c2_0 = out4.merge_c2_4;");
+
     }
 }

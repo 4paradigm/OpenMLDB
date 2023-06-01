@@ -395,16 +395,17 @@ public class SqlClusterExecutor implements SqlExecutor {
 
     // literal merge, should be validated by validateSQLInRequest
     // return: select * from ..., including the join keys
-    public static String mergeSQL(List<String> sqls, List<String> uniqueKeys) {
+    public static String mergeSQLWithOutValidate(List<String> sqls, String mainTable, List<String> uniqueKeys,
+            Map<String, Map<String, Schema>> tableSchema) throws SQLException {
         // make uniqueKeys more unique, gen keys selection
         List<String> uniqueKeysNewName = new ArrayList<>();
         List<String> uniqueKeysRenamed = new ArrayList<>();
         for (int i = 0; i < uniqueKeys.size(); i++) {
             uniqueKeysNewName.add(String.format("merge_%s_", uniqueKeys.get(i)));
-            // <key> as merge_<key>_?
-            uniqueKeysRenamed.add(String.format("%s as merge_%s_", uniqueKeys.get(i), uniqueKeys.get(i)));
+            // <mainTable>.<key> as merge_<key>_?, use <mainTable>.<key> to avoid ambiguous
+            // column with other tables
+            uniqueKeysRenamed.add(String.format("%s.%s as merge_%s_", mainTable, uniqueKeys.get(i), uniqueKeys.get(i)));
         }
-
         List<String> outParts = new ArrayList<>();
         for (int i = 0; i < sqls.size(); i++) {
             // add unique key to each sql
@@ -418,9 +419,15 @@ public class SqlClusterExecutor implements SqlExecutor {
             }
             // (select <keys>, <origin features> from ...) as out<i>
             final int idx = i;
-            outParts.add(String.format("(select %s,%s) as out%d",
+            String outSelection = String.format("select %s,%s",
                     uniqueKeysRenamed.stream().map(keyRenamed -> keyRenamed + idx).collect(Collectors.joining(", ")),
-                    sql.substring(6), i));
+                    sql.substring(6));
+            // validate
+            List<String> ret = SqlClusterExecutor.validateSQLInRequest(outSelection, tableSchema);
+            if (!ret.isEmpty()) {
+                throw new SQLException("sql with uniquekeys [" + outSelection + "] is invalid: " + ret);
+            }
+            outParts.add(String.format("(%s) as out%d", outSelection, i));
         }
         // last join all parts
         StringBuilder sb = new StringBuilder();
@@ -432,11 +439,12 @@ public class SqlClusterExecutor implements SqlExecutor {
             sb.append(outParts.get(i));
             if (i > 0) {
                 // on out0.<key> = out1.<key> and out0.<key> = out2.<key> ...
-                sb.append("on ");
-                String equalPattern = "out0.%s%d = out%d.%s%d";
+                sb.append(" on ");
+                String equalPattern = "out0.%s0 = out%d.%s%d";
                 final int idx = i;
-                uniqueKeysNewName.stream().map(newNamePrefix -> String.format(equalPattern, idx, newNamePrefix, idx))
-                        .collect(Collectors.joining(" and "));
+                sb.append(uniqueKeysNewName.stream()
+                        .map(newNamePrefix -> String.format(equalPattern, newNamePrefix, idx, newNamePrefix, idx))
+                        .collect(Collectors.joining(" and ")));
             }
         }
         sb.append(";");
@@ -444,10 +452,18 @@ public class SqlClusterExecutor implements SqlExecutor {
     }
 
     // with table schema, we can except join keys and validate the merged sql
-    public static String mergeSQL(List<String> sqls, List<String> uniqueKey,
+    public static String mergeSQL(List<String> sqls, String mainTable, List<String> uniqueKeys,
             Map<String, Map<String, Schema>> tableSchema)
             throws SQLException {
-        String merged = mergeSQL(sqls, uniqueKey);
+        // ensure each sql is valid
+        for (String sql : sqls) {
+            List<String> ret = SqlClusterExecutor.validateSQLInRequest(sql, tableSchema);
+            if (!ret.isEmpty()) {
+                throw new SQLException("sql is invalid, can't merge: " + ret);
+            }
+        }
+        String merged = mergeSQLWithOutValidate(sqls, mainTable, uniqueKeys, tableSchema);
+
         // try to do column filter, if failed, we'll throw an exception
         Schema outputSchema = SqlClusterExecutor.genOutputSchema(merged, tableSchema);
         List<String> cols = outputSchema.getColumnList().stream().map(c -> c.getColumnName())
@@ -464,7 +480,7 @@ public class SqlClusterExecutor implements SqlExecutor {
         // validate
         List<String> ret = SqlClusterExecutor.validateSQLInRequest(merged, tableSchema);
         if (!ret.isEmpty()) {
-            throw new SQLException("sql is invalid: " + ret.get(0));
+            throw new SQLException("merged sql is invalid: " + ret);
         }
         return merged;
     }
