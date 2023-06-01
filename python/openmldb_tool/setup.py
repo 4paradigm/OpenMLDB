@@ -33,6 +33,7 @@ setup(
         "pyyaml",
         "paramiko",
         "termplotlib",
+        "requests",
     ],
     extras_require={'test': [
         "pytest",
