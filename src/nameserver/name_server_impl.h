@@ -452,7 +452,13 @@ class NameServerImpl : public NameServer {
 
     int UpdateEndpointTableAlive(const std::string& endpoint, bool is_alive);
 
-    std::shared_ptr<Task> CreateTask(const std::shared_ptr<TaskMeta>& task_meta);
+    template <typename T, typename... Arg>
+    std::shared_ptr<Task> CreateTask(Arg &&...arg) {
+        T meta(std::forward<Arg>(arg)...);
+        return CreateTaskInternal(&meta);
+    }
+
+    std::shared_ptr<Task> CreateTaskInternal(const TaskMeta* task_meta);
 
     std::shared_ptr<Task> CreateLoadTableRemoteTask(const std::string& alias, const std::string& name,
                                                     const std::string& db, const std::string& endpoint, uint32_t pid,
