@@ -56,7 +56,7 @@ static absl::flat_hash_map<PhysicalOpType, absl::string_view> CreatePhysicalOpTy
         {kPhysicalOpRequestGroup, "REQUEST_GROUP"},
         {kPhysicalOpRequestGroupAndSort, "REQUEST_GROUP__SORT"},
         {kPhysicalOpInsert, "INSERT"},
-        {kPhysicalCreateTable, "CREATE_TABLE"}
+        {kPhysicalCreateTable, "CREATE_TABLE"},
     };
     for (auto kind = 0; kind < kPhysicalOpLast; ++kind) {
         DCHECK(map.find(static_cast<PhysicalOpType>(kind)) != map.end());

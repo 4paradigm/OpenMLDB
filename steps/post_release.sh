@@ -1,5 +1,5 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
+#!/bin/bash
+
 # Copyright 2021 4Paradigm
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,8 +13,14 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""
-OpenMLDB address used in test
-"""
 
-OpenMLDB_ZK_CLUSTER = "127.0.0.1:6181/onebox"
+
+VERSION=$1
+if [[ ! ${VERSION} =~ ^[0-9]\.[0-9]\.[0-9]$ ]]
+then
+    echo "invalid version ${VERSION}"
+    exit 0
+fi
+
+sed -i"" -e "s/OPENMLDB_VERSION=[0-9]\.[0-9]\.[0-9]/OPENMLDB_VERSION=${VERSION}/g" demo/Dockerfile
+sed -i"" -e "s/SPARK_VERSION=[0-9]\.[0-9]\.[0-9]/SPARK_VERSION=${VERSION}/g" test/integration-test/openmldb-test-python/install.sh
