@@ -569,3 +569,7 @@ String merged = SqlClusterExecutor.mergeSQL(sqls, "main", Arrays.asList("id", "c
 ```
 select `c1`, `of2`, `of4`, `sum(c2)over w1` from (select main.id as merge_id_0, c1 from main) as out0 last join (select main.id as merge_id_1, sum(c1) over w1 of2 from main window w1 as (partition by c1 order by c2 rows between unbounded preceding and current row)) as out1 on out0.merge_id_0 = out1.merge_id_1 last join (select main.id as merge_id_2, t1.c2 of4 from main last join t1 order by t1.c2 on main.c1==t1.c1) as out2 on out0.merge_id_0 = out2.merge_id_2 last join (select main.id as merge_id_3, sum(c2) over w1 from main window w1 as (union (select "" as id, * from t1) partition by c1 order by c2 rows between unbounded preceding and current row)) as out3 on out0.merge_id_0 = out3.merge_id_3;
 ```
+
+```{note}
+如果合并出现`Ambiguous column name`错误，可能是不同特征组里有相同的特征名，请在输入SQL中使用别名区分它们。
+```
