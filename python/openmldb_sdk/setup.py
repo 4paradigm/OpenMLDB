@@ -14,7 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from setuptools import setup, find_packages
+from setuptools import setup
 
 setup(
     name='openmldb',
@@ -38,7 +38,7 @@ setup(
     ]},
     include_package_data=True,
     package_data={'': ['*.so']},
-    packages=find_packages(),
+    packages=['openmldb'],
     entry_points={
         'sqlalchemy.dialects': [
             'openmldb = openmldb.sqlalchemy_openmldb.openmldb_dialect:OpenmldbDialect',

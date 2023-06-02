@@ -16,5 +16,5 @@ def test_pattern_logs(err_log):
     print("in", err_log)
     with open(err_log, "r") as f:
         log = f.read()
-    parser = LogParser("common_err.yml")
+    parser = LogParser("../diagnostic_tool/common_err.yml")
     parser.parse_log(log)

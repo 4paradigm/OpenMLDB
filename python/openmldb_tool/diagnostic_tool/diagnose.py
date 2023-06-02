@@ -168,7 +168,7 @@ def inspect_job(args):
     if args.detail:
         print(detailed_log)
     else:
-        parser = LogParser("../tests/common_err.yml")
+        parser = LogParser("common_err.yml")
         err_messages = parser.parse_log(detailed_log)
         print(*err_messages, sep="\n")
 
