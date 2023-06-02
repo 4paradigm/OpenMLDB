@@ -251,6 +251,12 @@ public class JdbcSinkConfig extends AbstractConfig {
   private static final String AUTO_SCHEMA_DOC =
       "Whether to automatically get schema from OpenMLDB, only works with JsonConverter";
 
+  public static final String TOPIC_TABLE_MAPPING_CONFIG = "topic.table.mapping";
+  private static final String TOPIC_TABLE_MAPPING_DISPLAY = "Topic Table Mapping";
+  public static final String TOPIC_TABLE_MAPPING_DEFAULT = "";
+  private static final String TOPIC_TABLE_MAPPING_DOC = "The mapping rule of topic->OpenMLDB "
+      + "table, e.g. topic1:table1,topic2:table2. If not found, use table.name.format instead.";
+
   private static final EnumRecommender QUOTE_METHOD_RECOMMENDER =
       EnumRecommender.in(QuoteMethod.values());
 
@@ -328,7 +334,10 @@ public class JdbcSinkConfig extends AbstractConfig {
               RETRIES_GROUP, 2, ConfigDef.Width.SHORT, RETRY_BACKOFF_MS_DISPLAY)
           .define(AUTO_SCHEMA_CONFIG, ConfigDef.Type.BOOLEAN, AUTO_SCHEMA_DEFAULT,
               ConfigDef.Importance.MEDIUM, AUTO_SCHEMA_DOC, DDL_GROUP, 1, ConfigDef.Width.SHORT,
-              AUTO_SCHEMA_DISPLAY);
+              AUTO_SCHEMA_DISPLAY)
+          .define(TOPIC_TABLE_MAPPING_CONFIG, ConfigDef.Type.LIST, TOPIC_TABLE_MAPPING_DEFAULT,
+              ConfigDef.Importance.MEDIUM, TOPIC_TABLE_MAPPING_DOC, DDL_GROUP, 1, 
+              ConfigDef.Width.SHORT, TOPIC_TABLE_MAPPING_DISPLAY);
 
   public final String connectorName;
   public final String connectionUrl;
@@ -352,6 +361,7 @@ public class JdbcSinkConfig extends AbstractConfig {
   public final EnumSet<TableType> tableTypes;
 
   public final boolean autoSchema;
+  public final Map<String, String> topicTableMapping;
 
   public JdbcSinkConfig(Map<?, ?> props) {
     super(CONFIG_DEF, props);
@@ -387,6 +397,11 @@ public class JdbcSinkConfig extends AbstractConfig {
       throw new ConfigException("Auto create must be false when auto schema is enabled, "
           + "cuz we'll get schema from jdbc table");
     }
+
+    topicTableMapping = getList(TOPIC_TABLE_MAPPING_CONFIG).stream()
+        .filter(s -> !s.isEmpty())
+        .map(s -> s.split(":"))
+        .collect(Collectors.toMap(s -> s[0], s -> s[1]));
   }
 
   private String getPasswordValue(String key) {

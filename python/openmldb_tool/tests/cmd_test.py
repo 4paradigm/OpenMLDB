@@ -71,6 +71,10 @@ def test_cmd():
     # still connect to OpenMLDB_ZK_CLUSTER
     args = parse_arg("foo status --cluster=foo/bar".split(" "))
     main(args)
+
+
+@pytest.mark.skip(reason="need to test in demo docker")
+def test_cmd_static_check():
     # skip ssh
     args = parse_arg(f"foo static-check -f={os.path.dirname(__file__)}/hosts -C --local".split(" "))
     main(args)
