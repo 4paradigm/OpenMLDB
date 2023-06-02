@@ -230,19 +230,23 @@ bool MemTable::Put(uint64_t time, const std::string& value, const Dimensions& di
     return true;
 }
 
-bool MemTable::Delete(const std::string& pk, uint32_t idx) {
-    std::shared_ptr<IndexDef> index_def = GetIndex(idx);
+bool MemTable::Delete(const ::openmldb::api::LogEntry& entry) {
+    auto index_def = GetIndex(entry.dimensions(0).idx());
     if (!index_def || !index_def->IsReady()) {
         return false;
     }
-    Slice spk(pk);
-    uint32_t seg_idx = 0;
-    if (seg_cnt_ > 1) {
-        seg_idx = ::openmldb::base::hash(spk.data(), spk.size(), SEED) % seg_cnt_;
+    auto ts_col = index_def->GetTsColumn();
+    std::optional<uint32_t> ts_idx = ts_col ? std::optional<uint32_t>{ts_col->GetId()} : std::nullopt;
+    if (entry.dimensions(0).has_key()) {
+        Slice spk(entry.dimensions(0).key());
+        uint32_t seg_idx = 0;
+        if (seg_cnt_ > 1) {
+            seg_idx = base::hash(spk.data(), spk.size(), SEED) % seg_cnt_;
+        }
+        uint32_t real_idx = index_def->GetInnerPos();
+        return segments_[real_idx][seg_idx]->Delete(ts_idx, spk);
     }
-    uint32_t real_idx = index_def->GetInnerPos();
-    Segment* segment = segments_[real_idx][seg_idx];
-    return segment->Delete(spk);
+    return true;
 }
 
 uint64_t MemTable::Release() {

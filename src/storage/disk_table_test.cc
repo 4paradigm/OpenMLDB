@@ -361,7 +361,7 @@ TEST_F(DiskTableTest, Delete) {
         }
     }
     Ticket ticket;
-    TableIterator* it = table->NewIterator("test6", ticket);
+    std::unique_ptr<TableIterator> it(table->NewIterator("test6", ticket));
     it->SeekToFirst();
     int count = 0;
     while (it->Valid()) {
@@ -371,12 +371,14 @@ TEST_F(DiskTableTest, Delete) {
         it->Next();
     }
     ASSERT_EQ(count, 10);
-    delete it;
-    table->Delete("test6", 0);
-    it = table->NewIterator("test6", ticket);
+    api::LogEntry entry;
+    auto dimension = entry.add_dimensions();
+    dimension->set_key("test6");
+    dimension->set_idx(0);
+    table->Delete(entry);
+    it.reset(table->NewIterator("test6", ticket));
     it->SeekToFirst();
     ASSERT_FALSE(it->Valid());
-    delete it;
 
     delete table;
     RemoveData(table_path);

@@ -23,6 +23,7 @@
 #include <vector>
 #include "base/endianconv.h"
 #include "base/slice.h"
+#include "base/status.h"
 #include "common/timer.h"
 #include "gflags/gflags.h"
 #include "proto/common.pb.h"
@@ -383,7 +384,7 @@ class DiskTable : public Table {
 
     bool Get(const std::string& pk, uint64_t ts, std::string& value);  // NOLINT
 
-    bool Delete(const std::string& pk, uint32_t idx) override;
+    bool Delete(const ::openmldb::api::LogEntry& entry) override;
 
     uint64_t GetExpireTime(const TTLSt& ttl_st) override;
 
@@ -433,6 +434,9 @@ class DiskTable : public Table {
     uint64_t GetRecordIdxByteSize() override;
 
     int GetCount(uint32_t index, const std::string& pk, uint64_t& count) override; // NOLINT
+
+ private:
+    base::Status Delete(uint32_t idx, const std::string& pk, uint64_t start_ts, const std::optional<uint64_t>& end_ts);
 
  private:
     rocksdb::DB* db_;

@@ -17,7 +17,7 @@
 #ifndef SRC_STORAGE_RECORD_H_
 #define SRC_STORAGE_RECORD_H_
 
-#include "storage/segment.h"
+#include "storage/key_entry.h"
 
 namespace openmldb {
 namespace storage {
@@ -42,6 +42,15 @@ static inline uint32_t GetRecordPkMultiIdxSize(uint8_t height, uint32_t key_size
 }
 
 static inline uint32_t GetRecordTsIdxSize(uint8_t height) { return height * 8 + DATA_NODE_SIZE; }
+
+struct StatisticsInfo {
+    StatisticsInfo() {}
+    StatisticsInfo(uint64_t idx_cnt_i, uint64_t record_cnt_i, uint64_t byte_size) :
+        idx_cnt(idx_cnt_i), record_cnt(record_cnt_i), record_byte_size(byte_size) {}
+    uint64_t idx_cnt = 0;
+    uint64_t record_cnt = 0;
+    uint64_t record_byte_size = 0;
+};
 
 }  // namespace storage
 }  // namespace openmldb

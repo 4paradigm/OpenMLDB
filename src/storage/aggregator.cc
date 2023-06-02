@@ -220,20 +220,20 @@ bool Aggregator::Delete(const std::string& key) {
         aggr_buffer_map_.erase(key);
     }
 
-    // delete the entries from the pre-aggr table
-    bool ok = aggr_table_->Delete(key, aggr_index_pos_);
-    if (!ok) {
-        PDLOG(ERROR, "Delete key %s from aggr table %s failed", key, aggr_table_->GetName());
-        return false;
-    }
-
-    // add delete entry to binlog
     ::openmldb::api::LogEntry entry;
     entry.set_term(aggr_replicator_->GetLeaderTerm());
     entry.set_method_type(::openmldb::api::MethodType::kDelete);
     ::openmldb::api::Dimension* dimension = entry.add_dimensions();
     dimension->set_key(key);
     dimension->set_idx(aggr_index_pos_);
+    // delete the entries from the pre-aggr table
+    bool ok = aggr_table_->Delete(entry);
+    if (!ok) {
+        PDLOG(ERROR, "Delete key %s from aggr table %s failed", key, aggr_table_->GetName());
+        return false;
+    }
+
+    // add delete entry to binlog
     ok = aggr_replicator_->AppendEntry(entry);
     if (!ok) {
         PDLOG(ERROR, "Add Delete entry to binlog failed: key %s, aggr table %s", key, aggr_table_->GetName());

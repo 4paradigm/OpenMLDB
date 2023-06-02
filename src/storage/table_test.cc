@@ -674,7 +674,7 @@ TEST_P(TableTest, TableIteratorNoPk) {
     table->Put("pk2", 9523, "test2", 5);
     table->Put("pk0", 9522, "test0", 5);
     // Ticket ticket;
-    TableIterator* it = table->NewTraverseIterator(0);
+    std::unique_ptr<TableIterator> it(table->NewTraverseIterator(0));
     it->SeekToFirst();
 
     ASSERT_STREQ("pk0", it->GetPK().c_str());
@@ -689,16 +689,17 @@ TEST_P(TableTest, TableIteratorNoPk) {
     ASSERT_STREQ("pk4", it->GetPK().c_str());
     ASSERT_EQ(9524, (int64_t)it->GetKey());
 
-    delete it;
-
-    it = table->NewTraverseIterator(0);
+    it.reset(table->NewTraverseIterator(0));
     it->Seek("pk4", 9526);
     ASSERT_STREQ("pk4", it->GetPK().c_str());
     ASSERT_EQ(9524, (int64_t)it->GetKey());
-    delete it;
 
-    ASSERT_TRUE(table->Delete("pk4", 0));
-    it = table->NewTraverseIterator(0);
+    api::LogEntry entry;
+    auto dimension = entry.add_dimensions();
+    dimension->set_key("pk4");
+    dimension->set_idx(0);
+    ASSERT_TRUE(table->Delete(entry));
+    it.reset(table->NewTraverseIterator(0));
     it->Seek("pk4", 9526);
     ASSERT_TRUE(it->Valid());
 
@@ -708,7 +709,6 @@ TEST_P(TableTest, TableIteratorNoPk) {
     ASSERT_STREQ("pk8", it->GetPK().c_str());
     ASSERT_EQ(9526, (int64_t)it->GetKey());
 
-    delete it;
     delete table;
 }
 

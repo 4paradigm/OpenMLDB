@@ -10451,6 +10451,7 @@ std::shared_ptr<Task> NameServerImpl::CreateTask(const std::shared_ptr<TaskMeta>
         }
         case ::openmldb::api::TaskType::kDumpIndexData:  // deprecated
         case ::openmldb::api::TaskType::kUpdateTableAlive:  // deprecated
+        case ::openmldb::api::TaskType::kTableSyncTask:  // deprecated
             break;
     }
     return task;

@@ -52,7 +52,7 @@ TEST_F(SegmentTest, DataBlock) {
 }
 
 TEST_F(SegmentTest, PutAndScan) {
-    Segment segment;
+    Segment segment(8);
     Slice pk("test1");
     std::string value = "test0";
     segment.Put(pk, 9527, value.c_str(), value.size());
@@ -77,7 +77,7 @@ TEST_F(SegmentTest, PutAndScan) {
 }
 
 TEST_F(SegmentTest, Delete) {
-    Segment segment;
+    Segment segment(8);
     Slice pk("test1");
     std::string value = "test0";
     segment.Put(pk, 9527, value.c_str(), value.size());
@@ -95,7 +95,7 @@ TEST_F(SegmentTest, Delete) {
     }
     ASSERT_EQ(4, size);
     delete it;
-    ASSERT_TRUE(segment.Delete(pk));
+    ASSERT_TRUE(segment.Delete(std::nullopt, pk));
     it = segment.NewIterator("test1", ticket);
     ASSERT_FALSE(it->Valid());
     delete it;
@@ -111,7 +111,7 @@ TEST_F(SegmentTest, Delete) {
 }
 
 TEST_F(SegmentTest, GetCount) {
-    Segment segment;
+    Segment segment(8);
     Slice pk("test1");
     std::string value = "test0";
     uint64_t count = 0;
@@ -161,7 +161,7 @@ TEST_F(SegmentTest, GetCount) {
 }
 
 TEST_F(SegmentTest, Iterator) {
-    Segment segment;
+    Segment segment(8);
     Slice pk("test1");
     segment.Put(pk, 9768, "test1", 5);
     segment.Put(pk, 9768, "test1", 5);
@@ -191,7 +191,7 @@ TEST_F(SegmentTest, Iterator) {
 }
 
 TEST_F(SegmentTest, TestGc4Head) {
-    Segment segment;
+    Segment segment(8);
     uint64_t gc_idx_cnt = 0;
     uint64_t gc_record_cnt = 0;
     uint64_t gc_record_byte_size = 0;
@@ -215,7 +215,7 @@ TEST_F(SegmentTest, TestGc4Head) {
 }
 
 TEST_F(SegmentTest, TestGc4TTL) {
-    Segment segment;
+    Segment segment(8);
     segment.Put("PK", 9768, "test1", 5);
     segment.Put("PK", 9769, "test2", 5);
     uint64_t gc_idx_cnt = 0;
@@ -236,7 +236,7 @@ TEST_F(SegmentTest, TestGc4TTL) {
 }
 
 TEST_F(SegmentTest, TestGc4TTLAndHead) {
-    Segment segment;
+    Segment segment(8);
     segment.Put("PK1", 9766, "test1", 5);
     segment.Put("PK1", 9767, "test2", 5);
     segment.Put("PK1", 9768, "test3", 5);
@@ -286,7 +286,7 @@ TEST_F(SegmentTest, TestGc4TTLAndHead) {
 }
 
 TEST_F(SegmentTest, TestGc4TTLOrHead) {
-    Segment segment;
+    Segment segment(8);
     segment.Put("PK1", 9766, "test1", 5);
     segment.Put("PK1", 9767, "test2", 5);
     segment.Put("PK1", 9768, "test3", 5);
@@ -336,7 +336,7 @@ TEST_F(SegmentTest, TestGc4TTLOrHead) {
 }
 
 TEST_F(SegmentTest, TestStat) {
-    Segment segment;
+    Segment segment(8);
     segment.Put("PK", 9768, "test1", 5);
     segment.Put("PK", 9769, "test2", 5);
     uint64_t gc_idx_cnt = 0;
@@ -421,7 +421,7 @@ TEST_F(SegmentTest, ReleaseAndCount) {
 }
 
 TEST_F(SegmentTest, ReleaseAndCountOneTs) {
-    Segment segment;
+    Segment segment(8);
     for (int i = 0; i < 100; i++) {
         std::string key = "key" + std::to_string(i);
         uint64_t ts = 1669013677221000;

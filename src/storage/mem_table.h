@@ -87,7 +87,7 @@ class MemTable : public Table {
     bool BulkLoad(const std::vector<DataBlock*>& data_blocks,
                   const ::google::protobuf::RepeatedPtrField<::openmldb::api::BulkLoadIndex>& indexes);
 
-    bool Delete(const std::string& pk, uint32_t idx) override;
+    bool Delete(const ::openmldb::api::LogEntry& entry) override;
 
     // use the first demission
     TableIterator* NewIterator(const std::string& pk, Ticket& ticket) override;

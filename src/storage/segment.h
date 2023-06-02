@@ -21,66 +21,22 @@
 #include <map>
 #include <memory>
 #include <mutex>  // NOLINT
+#include <optional>
 #include <vector>
 
 #include "base/skiplist.h"
 #include "base/slice.h"
 #include "proto/tablet.pb.h"
 #include "storage/iterator.h"
+#include "storage/key_entry.h"
+#include "storage/node_cache.h"
 #include "storage/schema.h"
 #include "storage/ticket.h"
 
 namespace openmldb {
 namespace storage {
 
-typedef google::protobuf::RepeatedPtrField<::openmldb::api::TSDimension> TSDimensions;
-
 using ::openmldb::base::Slice;
-
-class Segment;
-class Ticket;
-
-struct DataBlock {
-    // dimension count down
-    uint8_t dim_cnt_down;
-    uint32_t size;
-    char* data;
-
-    DataBlock(uint8_t dim_cnt, const char* input, uint32_t len) : dim_cnt_down(dim_cnt), size(len), data(nullptr) {
-        data = new char[len];
-        memcpy(data, input, len);
-    }
-
-    DataBlock(uint8_t dim_cnt, char* input, uint32_t len, bool skip_copy)
-        : dim_cnt_down(dim_cnt), size(len), data(nullptr) {
-        if (skip_copy) {
-            data = input;
-        } else {
-            data = new char[len];
-            memcpy(data, input, len);
-        }
-    }
-
-    ~DataBlock() {
-        delete[] data;
-        data = nullptr;
-    }
-};
-
-// the desc time comparator
-struct TimeComparator {
-    int operator() (uint64_t a, uint64_t b) const {
-        if (a > b) {
-            return -1;
-        } else if (a == b) {
-            return 0;
-        }
-        return 1;
-    }
-};
-
-static const TimeComparator tcmp;
-typedef ::openmldb::base::Skiplist<uint64_t, DataBlock*, TimeComparator> TimeEntries;
 
 class MemTableIterator : public TableIterator {
  public:
@@ -98,56 +54,15 @@ class MemTableIterator : public TableIterator {
     TimeEntries::Iterator* it_;
 };
 
-class KeyEntry {
- public:
-    KeyEntry() : entries(12, 4, tcmp), refs_(0), count_(0) {}
-    explicit KeyEntry(uint8_t height) : entries(height, 4, tcmp), refs_(0), count_(0) {}
-    ~KeyEntry() {}
-
-    // just return the count of datablock
-    uint64_t Release() {
-        uint64_t cnt = 0;
-        TimeEntries::Iterator* it = entries.NewIterator();
-        it->SeekToFirst();
-        while (it->Valid()) {
-            cnt += 1;
-            DataBlock* block = it->GetValue();
-            // Avoid double free
-            if (block->dim_cnt_down > 1) {
-                block->dim_cnt_down--;
-            } else {
-                delete block;
-            }
-            it->Next();
-        }
-        entries.Clear();
-        delete it;
-        return cnt;
-    }
-
-    void Ref() { refs_.fetch_add(1, std::memory_order_relaxed); }
-
-    void UnRef() { refs_.fetch_sub(1, std::memory_order_relaxed); }
-
-    uint64_t GetCount() { return count_.load(std::memory_order_relaxed); }
-
- public:
-    TimeEntries entries;
-    std::atomic<uint64_t> refs_;
-    std::atomic<uint64_t> count_;
-    friend Segment;
-};
-
 struct SliceComparator {
     int operator()(const ::openmldb::base::Slice& a, const ::openmldb::base::Slice& b) const { return a.compare(b); }
 };
 
-typedef ::openmldb::base::Skiplist<::openmldb::base::Slice, void*, SliceComparator> KeyEntries;
-typedef ::openmldb::base::Skiplist<uint64_t, ::openmldb::base::Node<Slice, void*>*, TimeComparator> KeyEntryNodeList;
+using KeyEntries = base::Skiplist<base::Slice, void*, SliceComparator>;
+using KeyEntryNodeList = base::Skiplist<uint64_t, base::Node<Slice, void*>*, TimeComparator>;
 
 class Segment {
  public:
-    Segment();
     explicit Segment(uint8_t height);
     Segment(uint8_t height, const std::vector<uint32_t>& ts_idx_vec);
     ~Segment();
@@ -163,7 +78,9 @@ class Segment {
 
     void Put(const Slice& key, const std::map<int32_t, uint64_t>& ts_map, DataBlock* row);
 
-    bool Delete(const Slice& key);
+    bool Delete(const std::optional<uint32_t>& idx, const Slice& key);
+    bool Delete(const std::optional<uint32_t>& idx, const Slice& key,
+            uint64_t ts, const std::optional<uint64_t>& end_ts);
 
     uint64_t Release();
 
@@ -268,6 +185,7 @@ class Segment {
     std::map<uint32_t, uint32_t> ts_idx_map_;
     std::vector<std::shared_ptr<std::atomic<uint64_t>>> idx_cnt_vec_;
     uint64_t ttl_offset_;
+    NodeCache node_cache_;
 };
 
 }  // namespace storage
