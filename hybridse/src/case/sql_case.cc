@@ -955,30 +955,17 @@ bool SqlCase::CreateTableInfoFromYamlNode(const YAML::Node& schema_data,
     if (schema_data["data"]) {
         if (schema_data["data"].IsMap()) {
             // csv format only
-            table->csv_data_file_ = absl::StripAsciiWhitespace(schema_data["data"]["file"].as<std::string>());
-            if (table->csv_data_file_.empty()) {
+            auto csv_data_file_ = absl::StripAsciiWhitespace(schema_data["data"]["file"].as<std::string>());
+            if (csv_data_file_.empty()) {
                 LOG(ERROR) << "table csv data file name is empty";
                 return false;
             }
-            std::fstream f;
-            if (table->csv_data_file_.front() == '/') {
-                f.open(table->csv_data_file_, std::ios::in);
-            } else {
-                f.open(working_dir / table->csv_data_file_, std::ios::in);
-            }
-
-            if (f.is_open()) {
-                absl::Cleanup clean = [&f]() {
-                    f.close();
-                };
-                std::stringstream ss;
-                ss << f.rdbuf();
-                table->data_ = ss.str();
-                boost::trim(table->data_);
-            } else {
-                LOG(ERROR) << "file " << table->csv_data_file_ << " not open";
+            std::ifstream ifs(working_dir / csv_data_file_);
+            if (!ifs.is_open()) {
+                LOG(ERROR) << "can't open " << (working_dir / csv_data_file_);
                 return false;
             }
+            table->data_.assign((std::istreambuf_iterator<char>(ifs)), std::istreambuf_iterator<char>());
         } else if (schema_data["data"].IsScalar()) {
             table->data_ = schema_data["data"].as<std::string>();
             boost::trim(table->data_);
@@ -1283,15 +1270,17 @@ static bool ParseSqlCaseNode(const YAML::Node& sql_case_node,
             boost::trim(sql_case.sql_str_);
         } else if (sql_node.IsMap()) {
             if (sql_node["file"].IsScalar()) {
-                std::string file_path = sql_node["file"].as<std::string>();
+                auto file_path = absl::StripAsciiWhitespace(sql_node["file"].as<std::string>());
                 if (file_path.empty()) {
                     LOG(ERROR) << "file path to sql is empty";
                     return false;
                 }
-                if (file_path.front() != '/') {
-                    file_path = working_dir / file_path;
+                auto real_path = working_dir / file_path;
+                std::ifstream ifs(real_path);
+                if (!ifs.is_open()) {
+                    LOG(ERROR) << "can't open " << real_path;
+                    return false;
                 }
-                std::ifstream ifs(file_path);
                 sql_case.sql_str_.assign((std::istreambuf_iterator<char>(ifs)), std::istreambuf_iterator<char>());
             } else {
                 return false;
