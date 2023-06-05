@@ -67,6 +67,29 @@ TEST_F(IndexTest, CheckNewIndex) {
     ASSERT_TRUE(IndexUtil::CheckNewIndex(test_index3, table_info).OK());
 }
 
+TEST_F(IndexTest, CheckIndex) {
+    PBSchema schema;
+    SchemaCodec::SetColumnDesc(schema.Add(), "card", ::openmldb::type::kString);
+    SchemaCodec::SetColumnDesc(schema.Add(), "mcc", ::openmldb::type::kString);
+    SchemaCodec::SetColumnDesc(schema.Add(), "ts1", ::openmldb::type::kBigInt);
+    SchemaCodec::SetColumnDesc(schema.Add(), "ts2", ::openmldb::type::kBigInt);
+    std::map<std::string, ::openmldb::common::ColumnDesc> column_map =
+    {
+        {"card", schema.Get(0)},
+        {"mcc", schema.Get(1)},
+        {"ts1", schema.Get(2)},
+        {"ts2", schema.Get(3)}
+    };
+    PBIndex indexa;
+    SchemaCodec::SetIndex(indexa.Add(), "index1", "card", "ts1", ::openmldb::type::kAbsoluteTime, 0, 0);
+    SchemaCodec::SetIndex(indexa.Add(), "index2", "card", "ts2", ::openmldb::type::kAbsoluteTime, 0, 0);
+    ASSERT_TRUE(IndexUtil::CheckIndex(column_map, indexa).OK());
+    PBIndex indexb;
+    SchemaCodec::SetIndex(indexb.Add(), "index1", "card", "ts1", ::openmldb::type::kAbsoluteTime, 0, 0);
+    SchemaCodec::SetIndex(indexb.Add(), "index2", "card", "ts1", ::openmldb::type::kLatestTime, 0, 0);
+    ASSERT_FALSE(IndexUtil::CheckIndex(column_map, indexb).OK());
+}
+
 }  // namespace schema
 }  // namespace openmldb
 
