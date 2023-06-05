@@ -16,5 +16,5 @@ def test_pattern_logs(err_log):
     print("in", err_log)
     with open(err_log, "r") as f:
         log = f.read()
-    parser = LogParser("../diagnostic_tool/common_err.yml")
+    parser = LogParser(log_conf_url="https://openmldb.ai/download/diag/common_err.yml", update=True)
     parser.parse_log(log)

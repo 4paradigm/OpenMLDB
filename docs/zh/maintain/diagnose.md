@@ -94,7 +94,7 @@ killed   | 被终止的任务
 更多state信息详见[Spark State]( https://spark.apache.org/docs/3.2.1/api/java/org/apache/spark/launcher/SparkAppHandle.State.html)，[Yarn State](https://hadoop.apache.org/docs/current/api/org/apache/hadoop/yarn/api/records/YarnApplicationState.html)
 
 
-使用`inspect job --id <job_id>`查询指定任务的log日志，其结果会筛选出主要错误信息。如果需要详细的日志信息，可以添加`--detail`获取详细信息。
+使用`inspect job --id <job_id>`查询指定任务的log日志，其结果会使用配置文件筛选出主要错误信息。如需更新配置文件，可以添加`--conf-update`，并且可以使用`--conf-url`配置镜像源。如果需要完整的日志信息，可以添加`--detail`获取详细信息。
 
 ### test 测试
 

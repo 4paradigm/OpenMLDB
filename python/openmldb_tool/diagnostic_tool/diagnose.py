@@ -130,7 +130,7 @@ def inspect_offline(args):
     print(f"inspect {total} offline jobs")
     if num:
         failed_jobs_str = "\n".join(jobs)
-        AssertionError(f"{num} offline final jobs are failed\nfailed jobs:\n{failed_jobs_str}")
+        raise AssertionError(f"{num} offline final jobs are failed\nfailed jobs:\n{failed_jobs_str}")
     print("all offline final jobs are finished")
 
 
@@ -168,9 +168,8 @@ def inspect_job(args):
     if args.detail:
         print(detailed_log)
     else:
-        parser = LogParser("common_err.yml")
-        err_messages = parser.parse_log(detailed_log)
-        print(*err_messages, sep="\n")
+        parser = LogParser(log_conf_url=args.conf_url, update=args.conf_update)
+        parser.parse_log(detailed_log)
 
 
 def test_sql(args):
@@ -281,6 +280,16 @@ def parse_arg(argv):
         "--detail",
         action="store_true",
         help="show detailed joblog information, use with `--id`"
+    )
+    ins_job.add_argument(
+        "--conf-url",
+        default="https://raw.githubusercontent.com/4paradigm/OpenMLDB/main/python/openmldb_tool/diagnostic_tool/common_err.yml",
+        help="url used to update the log parser configuration"
+    )
+    ins_job.add_argument(
+        "--conf-update",
+        action="store_true",
+        help="update the log parser configuration"
     )
 
     # sub test

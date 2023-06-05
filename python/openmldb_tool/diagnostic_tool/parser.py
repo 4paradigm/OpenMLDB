@@ -1,14 +1,21 @@
+import os
 import re
+import requests
+import warnings
 import yaml
 
 from diagnostic_tool.connector import Connector
 from diagnostic_tool.server_checker import StatusChecker
 
+CONF_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "common_err.yml")
+CONF_URL = "https://raw.githubusercontent.com/4paradigm/OpenMLDB/main/python/openmldb_tool/diagnostic_tool/common_err.yml"
+
 
 class LogParser:
-    def __init__(self, log_conf_file: str) -> None:
-        with open(log_conf_file) as f:
-            self.conf = yaml.safe_load(f)
+    def __init__(self, log_conf_file=CONF_FILE, log_conf_url=CONF_URL, update=False) -> None:
+        if update or not os.path.exists(log_conf_file):
+            self._update_conf_file(log_conf_file, log_conf_url)
+        self.conf = yaml.safe_load(open(log_conf_file))
         self.errs = self.conf["errors"]
 
     def parse_log(self, log: str):
@@ -43,6 +50,14 @@ class LogParser:
                         result = solution()
                         return result
                     return "null"
+
+    def _update_conf_file(self, log_conf_file, log_conf_url):
+        response = requests.get(log_conf_url)
+        if response.status_code == 200:
+            with open(log_conf_file, "w") as f:
+                f.write(response.text)
+        else:
+            warnings.warn("log parser configuration update failed")
 
 
 class ErrSolution:
