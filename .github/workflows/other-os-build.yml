@@ -1,0 +1,256 @@
+# OpenMLDB build on other os, only trigger by dispatch event and only upload artifacts, not release.
+# You should download artifacts manually. And we won't do test in this workflow.
+name: other os build
+
+on:
+  workflow_dispatch:
+    inputs:
+      OS:
+        description: 'os name: centos6, macos11, macos10'
+        required: true
+        default: 'centos6'
+      JAVA_SDK:
+        description: 'java sdk enable: ON, OFF'
+        required: true
+        default: 'OFF' # turn on later
+      PYTHON_SDK:
+        description: 'python sdk enable: ON, OFF'
+        required: true
+        default: 'OFF'
+
+env:
+  GIT_SUBMODULE_STRATEGY: recursive
+  NPROC: 2 # default Parallel build number for GitHub's Linux runner
+  EXAMPLES_ENABLE: OFF # turn off hybridse's example code
+  HYBRIDSE_TESTING_ENABLE: OFF # turn off hybridse's test code
+
+jobs:
+  centos6: # glibc version is 2.12, glibcxx version is 3.4.13
+    if: ${{ github.event.inputs.OS == 'centos6' }}
+    runs-on: ubuntu-latest
+    env:
+      OS: linux
+      SQL_JAVASDK_ENABLE: ${{ github.event.inputs.JAVA_SDK }}
+      SQL_PYSDK_ENABLE: ${{ github.event.inputs.PYTHON_SDK }} # python whl will be built when make, no prerequirement
+      TESTING_ENABLE: OFF
+      NPROC: 8
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: prepare release
+        run: |
+          VERSION="snapshot"
+          if [[ ${{ github.ref }} == "refs/tags/v"* ]]; then
+            VERSION=$(echo "${{ github.ref }}" | sed -e 's,.*/\(.*\),\1,')
+            VERSION=${VERSION#v}
+            bash steps/prepare_release.sh "$VERSION"
+            bash java/prepare_release.sh "$VERSION"
+          fi
+          echo "OPENMLDB_PREFIX=openmldb-$VERSION-${{ env.OS }}" >> $GITHUB_ENV
+
+      - name: Cache thirdparty
+        id: deps-cache
+        uses: actions/cache@v3
+        with:
+          path: |
+            .deps/
+          key: centos6-thirdparty-${{ hashFiles('third-party/**/CMakeLists.txt', 'third-party/**/*.cmake', 'third-party/**/*.sh') }}
+
+      # use docker in a step, not in a job, cuz we want use higher version actions(cache/upload...), centos6's nodejs is too old
+      # use raw cmake to build main, avoid thirdparty build again and parallel limit
+      # thirdparty -j8 is ok
+      # build -j2 is ok, >=4 will oom
+      # No space left on device when java sdk on, python sdk is small, rm /depends 400M, not enough, 
+      # so we disable java when build binary(+python) and then build java without binary build(target sql_javasdk_package, build/ cost ~6.2G, java/ cost ~4.6G)
+      # P.S. we can package only openmldb-native, but it's better to build the whole, to avoid code error
+      # if you want to download other jars, upload them
+      # https://docs.github.com/en/actions/using-github-hosted-runners/about-github-hosted-runners#supported-runners-and-hardware-resources
+      - uses: addnab/docker-run-action@v3
+        with:
+          image: ghcr.io/4paradigm/centos6_gcc7_hybridsql
+          options: -v ${{ github.workspace }}:/root/OpenMLDB -e USE_DEPS_CACHE=${{ steps.deps-cache.outputs.cache-hit }} -e OPENMLDB_PREFIX=${{ env.OPENMLDB_PREFIX }} -e SQL_PYSDK_ENABLE=${{ env.SQL_PYSDK_ENABLE }} -e SQL_JAVASDK_ENABLE=${{ env.SQL_JAVASDK_ENABLE }}
+          shell: bash
+          run: |
+            cd /root/OpenMLDB
+            IN_WORKFLOW=true bash steps/centos6_build.sh
+            # bazel bin
+            export PATH=$PATH:`pwd`
+            source /opt/rh/devtoolset-8/enable
+            if [[ "${USE_DEPS_CACHE}" != "true" ]]; then
+              echo "build thirdparty"
+              make thirdparty CMAKE_INSTALL_PREFIX=${OPENMLDB_PREFIX} BUILD_BUNDLE=ON NPROC=8
+              rm -rf .deps/build # GitHub runner disk space is limited
+            fi
+            echo "build"
+            cmake -S . -B `pwd`/build -DCMAKE_PREFIX_PATH=`pwd`/.deps/usr -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+            -DSQL_PYSDK_ENABLE=${SQL_PYSDK_ENABLE} -DSQL_JAVASDK_ENABLE=OFF \
+            -DTESTING_ENABLE=OFF -DCMAKE_INSTALL_PREFIX=${OPENMLDB_PREFIX}  \
+            -DHYBRIDSE_TESTING_ENABLE=OFF -DEXAMPLES_ENABLE=OFF -DEXAMPLES_TESTING_ENABLE=OFF
+            cmake --build build --target install -- -j2
+            # clean up to save disk space(~11G), don't know which is relative, build again in next step
+            rm -rf build
+            if [[ "${SQL_JAVASDK_ENABLE}" == "ON" ]]; then
+              echo "build java sdk"
+              cmake -S . -B `pwd`/build -DCMAKE_PREFIX_PATH=`pwd`/.deps/usr -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+              -DSQL_PYSDK_ENABLE=OFF -DSQL_JAVASDK_ENABLE=ON \
+              -DTESTING_ENABLE=OFF -DCMAKE_INSTALL_PREFIX=${OPENMLDB_PREFIX}  \
+              -DHYBRIDSE_TESTING_ENABLE=OFF -DEXAMPLES_ENABLE=OFF -DEXAMPLES_TESTING_ENABLE=OFF
+              cmake --build build --target sql_javasdk_package -- -j2
+            fi
+
+      - name: package    
+        run: |
+          tar czf ${{ env.OPENMLDB_PREFIX }}.tar.gz ${{ env.OPENMLDB_PREFIX }}/
+
+      - name: upload binary
+        uses: actions/upload-artifact@v2
+        with:
+          path: openmldb-*.tar.gz
+          name: binary-package
+
+      - name: upload java native
+        if: ${{ env.SQL_JAVASDK_ENABLE == 'ON' }}
+        uses: actions/upload-artifact@v2
+        with:
+          name: native-jar
+          path: java/openmldb-native/target/openmldb-native-*.jar
+
+      - name: upload python whl
+        if: ${{ env.SQL_PYSDK_ENABLE == 'ON' }}
+        uses: actions/upload-artifact@v2
+        with: 
+          name: python-whl
+          path: |
+            python/openmldb_sdk/dist/openmldb*.whl  
+    
+      # TODO(hw): upload cxx sdk
+
+  # macos no need to build thirdparty, but binary/os needs to be built on each os
+  macos-11:
+    if: ${{ github.event.inputs.OS == 'macos11' }}
+    runs-on: macos-11
+    env:
+      OS: darwin
+      # if macos, set VARIANT_TYPE=macos
+      VARIANT_TYPE: macos
+      SQL_JAVASDK_ENABLE: ${{ github.event.inputs.JAVA_SDK }}
+      SQL_PYSDK_ENABLE: ${{ github.event.inputs.PYTHON_SDK }} # python whl will be built when make, no prerequirement
+      TESTING_ENABLE: OFF
+      ARCH: x86_64
+      NPROC: 3
+    steps:
+      - uses: actions/checkout@v3
+      # it's ok to prepare version even java sdk disabled
+      - name: prepare release
+        run: |
+          VERSION="snapshot"
+          if [[ ${{ github.ref }} == "refs/tags/v"* ]]; then
+            VERSION=$(echo "${{ github.ref }}" | sed -e 's,.*/\(.*\),\1,')
+            VERSION=${VERSION#v}
+            bash steps/prepare_release.sh "$VERSION"
+            bash java/prepare_release.sh "$VERSION"
+          fi
+          echo "OPENMLDB_PREFIX=openmldb-$VERSION-${{ env.OS }}" >> $GITHUB_ENV
+
+      - name: build
+        run: |
+          make build CMAKE_INSTALL_PREFIX=${{ env.OPENMLDB_PREFIX }}
+          # GitHub runner disk space is limited
+          # delete thirdparty build directory($ROOT/.deps/) to save disk space
+          # make thirdpartybuild-clean
+
+      - name: install
+        run: |
+          make install
+
+      - name: package
+        run: |
+          tar czf ${{ env.OPENMLDB_PREFIX }}.tar.gz ${{ env.OPENMLDB_PREFIX }}/
+
+      - name: upload binary
+        uses: actions/upload-artifact@v2
+        with:
+          path: openmldb-*.tar.gz
+          name: binary-package
+
+      - name: upload java native
+        if: ${{ env.SQL_JAVASDK_ENABLE == 'ON' }}
+        uses: actions/upload-artifact@v2
+        with:
+          name: native-jar
+          path: java/openmldb-native/target/openmldb-native-*.jar
+
+      - name: upload python whl
+        if: ${{ env.SQL_PYSDK_ENABLE == 'ON' }}
+        uses: actions/upload-artifact@v2
+        with: 
+          name: python-whl
+          path: |
+            python/openmldb_sdk/dist/openmldb*.whl
+
+  macos-10:
+    if: ${{ github.event.inputs.OS == 'macos10' }}
+    runs-on: macos-11
+    env:
+      OS: darwin
+      # if macos, set VARIANT_TYPE=macos
+      VARIANT_TYPE: macos
+      SQL_JAVASDK_ENABLE: ${{ github.event.inputs.JAVA_SDK }}
+      SQL_PYSDK_ENABLE: ${{ github.event.inputs.PYTHON_SDK }} # python whl will be built when make, no prerequirement
+      TESTING_ENABLE: OFF
+      ARCH: x86_64
+      NPROC: 3
+    steps:
+      - uses: actions/checkout@v3
+      # ref https://github.com/actions/runner-images/blob/main/images/macos/macos-11-Readme.md macOS 10.15	macosx10.15	11.7 | macOS 11.1	macosx11.1	12.4
+      - name: xcode select
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: '11.7'
+      # it's ok to prepare version even java sdk disabled
+      - name: prepare release
+        run: |
+          VERSION="snapshot"
+          if [[ ${{ github.ref }} == "refs/tags/v"* ]]; then
+            VERSION=$(echo "${{ github.ref }}" | sed -e 's,.*/\(.*\),\1,')
+            VERSION=${VERSION#v}
+            bash steps/prepare_release.sh "$VERSION"
+            bash java/prepare_release.sh "$VERSION"
+          fi
+          echo "OPENMLDB_PREFIX=openmldb-$VERSION-${{ env.OS }}" >> $GITHUB_ENV
+
+      - name: build
+        run: |
+          make build CMAKE_INSTALL_PREFIX=${{ env.OPENMLDB_PREFIX }}
+          # GitHub runner disk space is limited
+          # delete thirdparty build directory($ROOT/.deps/) to save disk space
+          # make thirdpartybuild-clean
+
+      - name: install
+        run: |
+          make install
+
+      - name: package
+        run: |
+          tar czf ${{ env.OPENMLDB_PREFIX }}.tar.gz ${{ env.OPENMLDB_PREFIX }}/
+
+      - name: upload binary
+        uses: actions/upload-artifact@v2
+        with:
+          path: openmldb-*.tar.gz
+          name: binary-package
+
+      - name: upload java native
+        if: ${{ env.SQL_JAVASDK_ENABLE == 'ON' }}
+        uses: actions/upload-artifact@v2
+        with:
+          name: native-jar
+          path: java/openmldb-native/target/openmldb-native-*.jar
+
+      - name: upload python whl
+        if: ${{ env.SQL_PYSDK_ENABLE == 'ON' }}
+        uses: actions/upload-artifact@v2
+        with: 
+          name: python-whl
+          path: |
+            python/openmldb_sdk/dist/openmldb*.whl
