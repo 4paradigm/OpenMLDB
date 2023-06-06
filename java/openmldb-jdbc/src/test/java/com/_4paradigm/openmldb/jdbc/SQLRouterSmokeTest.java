@@ -608,8 +608,8 @@ public class SQLRouterSmokeTest {
         }
     }
 
-    @Test(dataProvider = "executor")
-    public void testDDLParseMethods(SqlExecutor router) throws SQLException {
+    @Test
+    public void testDDLParseMethods() throws SQLException {
         Map<String, Map<String, Schema>> schemaMaps = new HashMap<>();
         Schema sch = new Schema(Collections.singletonList(new Column("c1", Types.VARCHAR)));
         Map<String, Schema> dbSchema = new HashMap<>();
@@ -654,9 +654,16 @@ public class SQLRouterSmokeTest {
             SqlClusterExecutor.genOutputSchema("select not_exist from t1;", schemaMaps);
         } catch (SQLException ignored) {
         }
+
+        // multi db genOutputSchema
+        schemaMaps.put("db2", dbSchema);
+        schema = SqlClusterExecutor
+                .genOutputSchema("select t11.c1 from db1.t1 t1 last join db2.t1 t11 on t1.c1==t11.c1;", schemaMaps)
+                .getColumnList();
+        Assert.assertEquals(schema.size(), 1);
     }
 
-    @Test(dataProvider = "executor")
+    @Test
     public void testValidateSQL(SqlExecutor router) throws SQLException {
         // even the input schmea has 2 dbs, we will make all tables in one fake
         // database.
@@ -711,11 +718,11 @@ public class SQLRouterSmokeTest {
         Assert.assertEquals(ret.size(), 2);
         Assert.assertTrue(ret.get(0).contains("Aggregate over a table cannot be supported in online serving"));
         dbSchema = new HashMap<>();
-        dbSchema.put("t3", new Schema(Arrays.asList(new Column("c1", Types.VARCHAR), 
-        new Column("c2", Types.BIGINT))));
+        dbSchema.put("t3", new Schema(Arrays.asList(new Column("c1", Types.VARCHAR),
+                new Column("c2", Types.BIGINT))));
         schemaMaps.put("db3", dbSchema);
-        ret = SqlClusterExecutor.validateSQLInRequest("select count(c1) over w1 from t3 window "+
-        "w1 as(partition by c1 order by c2 rows between unbounded preceding and current row);", schemaMaps);
+        ret = SqlClusterExecutor.validateSQLInRequest("select count(c1) over w1 from t3 window " +
+                "w1 as(partition by c1 order by c2 rows between unbounded preceding and current row);", schemaMaps);
         Assert.assertEquals(ret.size(), 0);
     }
 }

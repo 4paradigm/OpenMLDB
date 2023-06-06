@@ -26,6 +26,7 @@
 #include "proto/common.pb.h"
 #include "proto/fe_type.pb.h"
 #include "sdk/base.h"
+#include "vm/simple_catalog.h"
 
 namespace hybridse::vm {
 class RunSession;
@@ -39,6 +40,10 @@ int64_t AbsTTLConvert(int64_t time_ms, bool zero_eq_unbounded);
 int64_t LatTTLConvert(int64_t time_ms, bool zero_eq_unbounded);
 
 using IndexMap = std::map<std::string, std::vector<::openmldb::common::ColumnKey>>;
+using MultiDBIndexMap = std::map<std::string, IndexMap>;
+
+using TableDescMap = std::map<std::string, std::vector<openmldb::common::ColumnDesc>>;
+using MultiDBTableDescMap = std::map<std::string, TableDescMap>;
 
 struct LongWindowInfo {
     std::string window_name_;
@@ -61,10 +66,12 @@ using LongWindowInfos = std::vector<LongWindowInfo>;
 
 class DDLParser {
  public:
-    /** core funcs(with arg ::hybridse::type::Database) **/
+    /** core funcs(with arg catalog) **/
+
+    // simpler for test, single db
     static IndexMap ExtractIndexes(const std::string& sql, const ::hybridse::type::Database& db);
-    static IndexMap ExtractIndexesForBatch(const std::string& sql, const ::hybridse::type::Database& db);
     static std::string Explain(const std::string& sql, const ::hybridse::type::Database& db);
+    // remove later, catalog is core arg
     static std::shared_ptr<hybridse::sdk::Schema> GetOutputSchema(const std::string& sql,
                                                                   const hybridse::type::Database& db);
     // returns
@@ -74,25 +81,30 @@ class DDLParser {
     static std::vector<std::string> ValidateSQLInRequest(const std::string& sql, const hybridse::type::Database& db);
 
     /** interfaces, the arg schema's type can be varied **/
+    // single db, do not use <db>.<table> in sql
     static IndexMap ExtractIndexes(
         const std::string& sql,
         const std::map<std::string, ::google::protobuf::RepeatedPtrField<::openmldb::common::ColumnDesc>>& schemas);
 
-    static IndexMap ExtractIndexes(const std::string& sql,
-                                   const std::map<std::string, std::vector<::openmldb::common::ColumnDesc>>& schemas);
+    static IndexMap ExtractIndexes(const std::string& sql, const TableDescMap& schemas);
+    // request mode, multi db, you can use <db>.<table> in sql, if has <table>, use the current used db.
+    static MultiDBIndexMap ExtractIndexes(const std::string& sql, const std::string& used_db,
+                                          const MultiDBTableDescMap& schemas);
 
-    static std::shared_ptr<hybridse::sdk::Schema> GetOutputSchema(
-        const std::string& sql, const std::map<std::string, std::vector<::openmldb::common::ColumnDesc>>& schemas);
+    // request mode, multi db
+    static std::shared_ptr<hybridse::sdk::Schema> GetOutputSchema(const std::string& sql, const std::string& db,
+                                                                  // <db, <table, columns>>
+                                                                  const MultiDBTableDescMap& schemas);
 
     static hybridse::sdk::Status ExtractLongWindowInfos(const std::string& sql,
                                                         const std::unordered_map<std::string, std::string>& window_map,
                                                         LongWindowInfos* infos);
 
-    static std::vector<std::string> ValidateSQLInBatch(
-        const std::string& sql, const std::map<std::string, std::vector<::openmldb::common::ColumnDesc>>& schemas);
+    static std::vector<std::string> ValidateSQLInBatch(const std::string& sql, const std::string& db,
+                                                       const MultiDBTableDescMap& schemas);
 
-    static std::vector<std::string> ValidateSQLInRequest(
-        const std::string& sql, const std::map<std::string, std::vector<::openmldb::common::ColumnDesc>>& schemas);
+    static std::vector<std::string> ValidateSQLInRequest(const std::string& sql, const std::string& db,
+                                                         const MultiDBTableDescMap& schemas);
 
  private:
     // tables are in one db, and db name will be rewritten for simplicity
@@ -100,15 +112,24 @@ class DDLParser {
                                    hybridse::vm::RunSession* session);
 
     // DLR
-    static IndexMap ParseIndexes(hybridse::vm::PhysicalOpNode* node);
+    static MultiDBIndexMap ParseIndexes(hybridse::vm::PhysicalOpNode* node);
 
+    // real get plan func, multi db should use catalog, don't forget init catalog with enable_index=true
+    static bool GetPlan(const std::string& sql, const std::string& db,
+                        const std::shared_ptr<hybridse::vm::SimpleCatalog>& catalog, hybridse::vm::RunSession* session,
+                        hybridse::base::Status* status);
+    /** multi APIs, single db, ... **/
+    static bool GetPlan(const std::string& sql, const std::string& db,
+                        const std::shared_ptr<hybridse::vm::SimpleCatalog>& catalog, hybridse::vm::RunSession* session);
     static bool GetPlan(const std::string& sql, const hybridse::type::Database& db, hybridse::vm::RunSession* session);
     // If you want the status, use this
     static bool GetPlan(const std::string& sql, const hybridse::type::Database& db, hybridse::vm::RunSession* session,
                         hybridse::base::Status* status);
 
     template <typename T>
-    static void AddTables(const T& schema, hybridse::type::Database* db);
+    static void AddTables(const T& table_defs, hybridse::type::Database* db);
+
+    static std::shared_ptr<hybridse::vm::SimpleCatalog> buildCatalog(const MultiDBTableDescMap& schemas);
 
     // traverse plan tree to extract all long window infos
     static bool TraverseNode(hybridse::node::PlanNode* node,

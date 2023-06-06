@@ -29,6 +29,8 @@ import com._4paradigm.openmldb.StandaloneOptions;
 import com._4paradigm.openmldb.Status;
 import com._4paradigm.openmldb.TableColumnDescPair;
 import com._4paradigm.openmldb.TableColumnDescPairVector;
+import com._4paradigm.openmldb.DBTableColumnDescPair;
+import com._4paradigm.openmldb.DBTableColumnDescPairVector;
 import com._4paradigm.openmldb.TableReader;
 import com._4paradigm.openmldb.VectorString;
 import com._4paradigm.openmldb.common.LibraryLoader;
@@ -186,7 +188,7 @@ public class SqlClusterExecutor implements SqlExecutor {
 
     @Override
     public PreparedStatement getBatchRequestPreparedStmt(String db, String sql,
-                                                         List<Integer> commonColumnIndices) throws SQLException {
+            List<Integer> commonColumnIndices) throws SQLException {
         return new BatchRequestPreparedStatementImpl(
                 db, sql, this.sqlRouter, commonColumnIndices);
     }
@@ -197,7 +199,8 @@ public class SqlClusterExecutor implements SqlExecutor {
     }
 
     @Override
-    public CallablePreparedStatement getCallablePreparedStmtBatch(String db, String deploymentName) throws SQLException {
+    public CallablePreparedStatement getCallablePreparedStmtBatch(String db, String deploymentName)
+            throws SQLException {
         return new BatchCallablePreparedStatementImpl(db, deploymentName, this.sqlRouter);
     }
 
@@ -214,7 +217,7 @@ public class SqlClusterExecutor implements SqlExecutor {
 
     @Override
     public ResultSet executeSQLRequest(String db, String sql, SQLRequestRow row) {
-        //TODO(wangtaize) add execption
+        // TODO(wangtaize) add execption
         Status status = new Status();
         ResultSet rs = sqlRouter.ExecuteSQLRequest(db, sql, row, status);
         if (status.getCode() != 0) {
@@ -327,32 +330,45 @@ public class SqlClusterExecutor implements SqlExecutor {
         return results;
     }
 
-    public static Schema genOutputSchema(String sql, Map<String, Map<String, Schema>> tableSchema) throws SQLException {
+    public static Schema genOutputSchema(String sql, String used_db, Map<String, Map<String, Schema>> tableSchema)
+            throws SQLException {
         SqlClusterExecutor.initJavaSdkLibrary("");
 
         if (null == tableSchema || tableSchema.isEmpty()) {
             throw new SQLException("input schema is null or empty");
         }
-        TableColumnDescPairVector tableColumnDescPairVector = new TableColumnDescPairVector();
-        // TODO(hw): multi db is not supported now, so we add all db-tables here
+        DBTableColumnDescPairVector dbTableColumnDescPairVector = new DBTableColumnDescPairVector();
+        // com._4paradigm.openmldb.Schema has no ctor, so we use a new struct
+        // map -> vector, for swig
         for (Map.Entry<String, Map<String, Schema>> entry : tableSchema.entrySet()) {
+            String db = entry.getKey();
             Map<String, Schema> schemaMap = entry.getValue();
-            tableColumnDescPairVector.addAll(convertSchema(schemaMap));
+            dbTableColumnDescPairVector.add(new DBTableColumnDescPair(db, convertSchema(schemaMap)));
         }
-        com._4paradigm.openmldb.Schema outputSchema = sql_router_sdk.GenOutputSchema(sql, tableColumnDescPairVector);
-        // TODO(hw): if we convert com._4paradigm.openmldb.Schema(cPtr) failed, it will throw an exception,
-        //  we can't do the later delete()
+        com._4paradigm.openmldb.Schema outputSchema = sql_router_sdk.GenOutputSchema(sql, used_db,
+                dbTableColumnDescPairVector);
+        // TODO(hw): if we convert com._4paradigm.openmldb.Schema(cPtr) failed, it will
+        // throw an exception,
+        // we can't do the later delete()
         Schema ret = Common.convertSchema(outputSchema);
         outputSchema.delete();
-        tableColumnDescPairVector.delete();
+        dbTableColumnDescPairVector.delete();
         return ret;
     }
 
-    // NOTICE: even tableSchema is <db, <table, schea>>, we'll assume that all tables in one db in sql_router_sdk
+    // for back compatibility, genOutputSchema can set no used_db
+    public static Schema genOutputSchema(String sql, Map<String, Map<String, Schema>> tableSchema)
+            throws SQLException {
+        return genOutputSchema(sql, "", tableSchema);
+    }
+
+    // NOTICE: even tableSchema is <db, <table, schea>>, we'll assume that all
+    // tables in one db in sql_router_sdk
     // returns
     // 1. empty list: means valid
     // 2. otherwise a list(len 2):[0] the error msg; [1] the trace
-    public static List<String> validateSQLInBatch(String sql, Map<String, Map<String, Schema>> tableSchema) throws SQLException {
+    public static List<String> validateSQLInBatch(String sql, Map<String, Map<String, Schema>> tableSchema)
+            throws SQLException {
         SqlClusterExecutor.initJavaSdkLibrary("");
 
         if (null == tableSchema || tableSchema.isEmpty()) {
@@ -370,7 +386,8 @@ public class SqlClusterExecutor implements SqlExecutor {
     }
 
     // return: the same as validateSQLInBatch
-    public static List<String> validateSQLInRequest(String sql, Map<String, Map<String, Schema>> tableSchema) throws SQLException {
+    public static List<String> validateSQLInRequest(String sql, Map<String, Map<String, Schema>> tableSchema)
+            throws SQLException {
         SqlClusterExecutor.initJavaSdkLibrary("");
 
         if (null == tableSchema || tableSchema.isEmpty()) {

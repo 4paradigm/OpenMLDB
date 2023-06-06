@@ -3360,6 +3360,7 @@ hybridse::sdk::Status SQLClusterRouter::HandleDeploy(const std::string& db,
                 break;
             }
         }
+        // TODO(hw): setup maps
     }
     bool skip_index_check = false;
     auto iter = deploy_node->Options()->find(SKIP_INDEX_CHECK_OPTION);
@@ -3557,7 +3558,7 @@ hybridse::sdk::Status SQLClusterRouter::GetNewIndex(
 }
 
 hybridse::sdk::Status SQLClusterRouter::AddNewIndex(
-    const std::string& db, const std::map<std::string, ::openmldb::nameserver::TableInfo>& table_map,
+    const std::string& db, const TableInfoMap& table_map,
     const std::map<std::string, std::vector<::openmldb::common::ColumnKey>>& new_index_map) {
     auto ns = cluster_sdk_->GetNsClient();
     for (auto& kv : new_index_map) {

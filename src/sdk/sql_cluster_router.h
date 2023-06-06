@@ -44,6 +44,8 @@ typedef ::google::protobuf::RepeatedPtrField<::openmldb::common::ColumnDesc> PBS
 
 constexpr const char* FORMAT_STRING_KEY = "!%$FORMAT_STRING_KEY";
 
+using TableInfoMap = std::map<std::string, std::map<std::string, ::openmldb::nameserver::TableInfo>>;
+
 class SQLClusterRouter : public SQLRouter {
  public:
     using TableStatusMap = std::unordered_map<
@@ -338,7 +340,7 @@ class SQLClusterRouter : public SQLRouter {
         bool skip_index_check, std::map<std::string, std::vector<::openmldb::common::ColumnKey>>* new_index_map);
 
     hybridse::sdk::Status AddNewIndex(
-        const std::string& db, const std::map<std::string, ::openmldb::nameserver::TableInfo>& table_map,
+        const std::string& db, const TableInfoMap& table_map,
         const std::map<std::string, std::vector<::openmldb::common::ColumnKey>>& new_index_map);
 
     hybridse::sdk::Status HandleCreateFunction(const hybridse::node::CreateFunctionPlanNode* node);

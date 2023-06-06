@@ -43,9 +43,9 @@ std::shared_ptr<SQLRouter> NewStandaloneSQLRouter(const StandaloneOptions& optio
 
 // To avoid using protobuf message in swig, we use normal type in GenDDL/OutputSchema parameters,
 // so we should convert schema format here
-std::map<std::string, std::vector<openmldb::common::ColumnDesc>> convertSchema(
+base::TableDescMap convertSchema(
     const std::vector<std::pair<std::string, std::vector<std::pair<std::string, hybridse::sdk::DataType>>>>& schemas) {
-    std::map<std::string, std::vector<openmldb::common::ColumnDesc>> table_desc_map;
+    base::TableDescMap table_desc_map;
     for (auto& table_item : schemas) {
         auto table_name = table_item.first;
         auto column_list = table_item.second;
@@ -67,6 +67,20 @@ std::map<std::string, std::vector<openmldb::common::ColumnDesc>> convertSchema(
         if (!success) {
             LOG(WARNING) << "insert to map failed, table " << table_name << " already exists";
         }
+    }
+    return table_desc_map;
+}
+
+base::MultiDBTableDescMap convertSchema(
+    const std::vector<
+        std::pair<std::string,
+                  std::vector<std::pair<std::string, std::vector<std::pair<std::string, hybridse::sdk::DataType>>>>>>&
+        schemas) {
+    base::MultiDBTableDescMap table_desc_map;
+    for (auto& db_item : schemas) {
+        auto db_name = db_item.first;
+        auto& table_map = db_item.second;
+        table_desc_map.emplace(db_name, convertSchema(table_map));
     }
     return table_desc_map;
 }
@@ -188,36 +202,45 @@ std::vector<std::string> GenDDL(
 }
 
 std::shared_ptr<hybridse::sdk::Schema> GenOutputSchema(
-    const std::string& sql,
-    const std::vector<std::pair<std::string, std::vector<std::pair<std::string, hybridse::sdk::DataType>>>>& schemas) {
+    const std::string& sql, const std::string& db,
+    const std::vector<
+        std::pair<std::string,
+                  std::vector<std::pair<std::string, std::vector<std::pair<std::string, hybridse::sdk::DataType>>>>>>&
+        schemas) {
     auto table_desc_map = convertSchema(schemas);
     if (table_desc_map.empty()) {
         LOG_IF(WARNING, !schemas.empty()) << "input schemas is not emtpy, but conversion failed";
         return {};
     }
-    return openmldb::base::DDLParser::GetOutputSchema(sql, table_desc_map);
+    return openmldb::base::DDLParser::GetOutputSchema(sql, db, table_desc_map);
 }
 
 std::vector<std::string> ValidateSQLInBatch(
-    const std::string& sql,
-    const std::vector<std::pair<std::string, std::vector<std::pair<std::string, hybridse::sdk::DataType>>>>& schemas) {
+    const std::string& sql, const std::string& db,
+    const std::vector<
+        std::pair<std::string,
+                  std::vector<std::pair<std::string, std::vector<std::pair<std::string, hybridse::sdk::DataType>>>>>>&
+        schemas) {
     auto table_desc_map = convertSchema(schemas);
     if (table_desc_map.empty()) {
         LOG_IF(WARNING, !schemas.empty()) << "input schemas is not emtpy, but conversion failed";
         return {"schema convert failed(input schema may be empty)", "check convertSchema"};
     }
-    return openmldb::base::DDLParser::ValidateSQLInBatch(sql, table_desc_map);
+    return openmldb::base::DDLParser::ValidateSQLInBatch(sql, db, table_desc_map);
 }
 
 std::vector<std::string> ValidateSQLInRequest(
-    const std::string& sql,
-    const std::vector<std::pair<std::string, std::vector<std::pair<std::string, hybridse::sdk::DataType>>>>& schemas) {
+    const std::string& sql, const std::string& db,
+    const std::vector<
+        std::pair<std::string,
+                  std::vector<std::pair<std::string, std::vector<std::pair<std::string, hybridse::sdk::DataType>>>>>>&
+        schemas) {
     auto table_desc_map = convertSchema(schemas);
     if (table_desc_map.empty()) {
         LOG_IF(WARNING, !schemas.empty()) << "input schemas is not emtpy, but conversion failed";
         return {"schema convert failed(input schema may be empty)", "check convertSchema"};
     }
-    return openmldb::base::DDLParser::ValidateSQLInRequest(sql, table_desc_map);
+    return openmldb::base::DDLParser::ValidateSQLInRequest(sql, db, table_desc_map);
 }
 
 }  // namespace openmldb::sdk

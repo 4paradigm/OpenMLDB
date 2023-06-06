@@ -1148,6 +1148,21 @@ TEST_F(SQLRouterTest, DDLParseMethods) {
     }
     std::vector<std::string> expected{"itemId", "ip", "query", "mcuid", "name", "brandId", "label"};
     ASSERT_EQ(output_col_names, expected);
+
+    // multi db output schema
+    std::map<std::string, decltype(table_map)> db_table_map;
+    db_table_map.emplace("db1", table_map);
+    db_table_map.emplace("db2", table_map);
+    // feedbackTable is in db1(used_db)
+    auto multi_db_output_schema = GenOutputSchema(
+        "SELECT\n db1.behaviourTable.itemId as itemId,\n  db1.behaviourTable.ip as ip,\n  db1.behaviourTable.query as "
+        "query,\n  "
+        "db1.behaviourTable.mcuid as mcuid,\n db2.adinfo.brandName as name,\n  db2.adinfo.brandId as brandId,\n "
+        "feedbackTable.actionValue as label\n FROM db1.behaviourTable\n LAST JOIN feedbackTable ON "
+        "feedbackTable.itemId = "
+        "behaviourTable.itemId\n LAST JOIN db2.adinfo ON behaviourTable.itemId = db2.adinfo.id;",
+        "db1", db_table_map);
+    ASSERT_EQ(multi_db_output_schema->GetColumnCnt(), 7);
 }
 
 TEST_F(SQLRouterTest, DDLParseMethodsCombineIndex) {
