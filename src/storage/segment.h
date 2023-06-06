@@ -163,23 +163,14 @@ class Segment {
                   uint64_t& gc_record_byte_size);  // NOLINT
     void SplitList(KeyEntry* entry, uint64_t ts, ::openmldb::base::Node<uint64_t, DataBlock*>** node);
 
-    void GcEntryFreeList(uint64_t version, uint64_t& gc_idx_cnt,  // NOLINT
-                         uint64_t& gc_record_cnt,                 // NOLINT
-                         uint64_t& gc_record_byte_size);          // NOLINT
-    void FreeEntry(::openmldb::base::Node<Slice, void*>* entry_node, uint64_t& gc_idx_cnt,  // NOLINT
-                   uint64_t& gc_record_cnt,         // NOLINT
-                   uint64_t& gc_record_byte_size);  // NOLINT
-
  private:
     KeyEntries* entries_;
     // only Put need mutex
     std::mutex mu_;
-    std::mutex gc_mu_;
     std::atomic<uint64_t> idx_cnt_;
     std::atomic<uint64_t> idx_byte_size_;
     std::atomic<uint64_t> pk_cnt_;
     uint8_t key_entry_max_height_;
-    KeyEntryNodeList* entry_free_list_;
     uint32_t ts_cnt_;
     std::atomic<uint64_t> gc_version_;
     std::map<uint32_t, uint32_t> ts_idx_map_;

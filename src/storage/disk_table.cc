@@ -302,7 +302,7 @@ bool DiskTable::Delete(const ::openmldb::api::LogEntry& entry) {
                 continue;
             }
             uint32_t idx = index->GetId();
-            auto iter = NewTraverseIterator(idx);
+            std::shared_ptr<TraverseIterator> iter(NewTraverseIterator(idx));
             iter->SeekToFirst();
             while (iter->Valid()) {
                 Delete(idx, iter->GetPK(), start_ts, end_ts);

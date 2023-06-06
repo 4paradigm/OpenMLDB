@@ -34,15 +34,40 @@ class NodeCache {
     ~NodeCache();
     void AddKeyEntryNode(uint64_t version, base::Node<base::Slice, void*>* node);
     void AddKeyEntry(uint64_t version, KeyEntry* key_entry);
-    void AddValueNode(uint64_t version, base::Node<uint64_t, DataBlock*>* node);
-    void Free(uint64_t version, StatisticsInfo* gc_info);
+    void AddSingleValueNode(uint64_t version, base::Node<uint64_t, DataBlock*>* node);
+    void AddValueNodeList(uint64_t version, base::Node<uint64_t, DataBlock*>* node);
+
+    void Free(uint64_t version/*, StatisticsInfo* gc_info*/);
+    void Clear();
+
+    using KeyEntryNodeList =
+      base::Skiplist<uint64_t, std::forward_list<base::Node<base::Slice, void*>*>*, TimeComparator>;
+    using ValueNodeList =
+      base::Skiplist<uint64_t, std::forward_list<base::Node<uint64_t, DataBlock*>*>*, TimeComparator>;
+
+ private:
+    template <typename T>
+    void AddNode(uint64_t version, T node, base::Skiplist<uint64_t, std::forward_list<T>*, TimeComparator>* list) {
+         std::forward_list<T>* value_list = nullptr;
+         std::lock_guard<std::mutex> lock(mutex_);
+         if (auto ret = list->Get(version, value_list); ret < 0 || value_list == nullptr) {
+            value_list = new std::forward_list<T>();
+            list->Insert(version, value_list);
+         }
+         value_list->push_front(node);
+    }
+
+    void FreeKeyEntryNode(base::Node<base::Slice, void*>* entry_node);
+    void FreeNodeList(base::Node<uint64_t, DataBlock*>* node);
+    void FreeKeyEntry(KeyEntry* entry);
+    void FreeNode(base::Node<uint64_t, DataBlock*>* node);
 
  private:
     uint32_t ts_cnt_;
     std::mutex mutex_;
-    base::Skiplist<uint64_t, base::Node<base::Slice, void*>*, TimeComparator> key_entry_node_list_;
-    base::Skiplist<uint64_t, std::forward_list<KeyEntry*>*, TimeComparator> key_entry_list_;
-    base::Skiplist<uint64_t, std::forward_list<base::Node<uint64_t, DataBlock*>*>*, TimeComparator> value_node_list_;
+    KeyEntryNodeList key_entry_node_list_;
+    ValueNodeList value_node_list_;
+    ValueNodeList value_nodes_list_;  // the value in froward_list is a list of nodes
 };
 
 

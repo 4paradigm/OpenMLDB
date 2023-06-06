@@ -231,20 +231,56 @@ bool MemTable::Put(uint64_t time, const std::string& value, const Dimensions& di
 }
 
 bool MemTable::Delete(const ::openmldb::api::LogEntry& entry) {
-    auto index_def = GetIndex(entry.dimensions(0).idx());
-    if (!index_def || !index_def->IsReady()) {
-        return false;
-    }
-    auto ts_col = index_def->GetTsColumn();
-    std::optional<uint32_t> ts_idx = ts_col ? std::optional<uint32_t>{ts_col->GetId()} : std::nullopt;
-    if (entry.dimensions(0).has_key()) {
+    if (entry.dimensions_size() > 0) {
+        auto index_def = GetIndex(entry.dimensions(0).idx());
+        if (!index_def || !index_def->IsReady()) {
+            return false;
+        }
+        auto ts_col = index_def->GetTsColumn();
+        std::optional<uint32_t> ts_idx = ts_col ? std::optional<uint32_t>{ts_col->GetId()} : std::nullopt;
         Slice spk(entry.dimensions(0).key());
         uint32_t seg_idx = 0;
         if (seg_cnt_ > 1) {
             seg_idx = base::hash(spk.data(), spk.size(), SEED) % seg_cnt_;
         }
         uint32_t real_idx = index_def->GetInnerPos();
-        return segments_[real_idx][seg_idx]->Delete(ts_idx, spk);
+        if (entry.has_ts() || entry.has_end_ts()) {
+            uint64_t start_ts = entry.has_ts() ? entry.ts() : UINT64_MAX;
+            std::optional<uint64_t> end_ts = entry.has_end_ts() ? std::optional<uint64_t>{entry.end_ts()}
+                                                                 : std::nullopt;
+            return segments_[real_idx][seg_idx]->Delete(ts_idx, spk, start_ts, end_ts);
+        } else {
+            return segments_[real_idx][seg_idx]->Delete(ts_idx, spk);
+        }
+    } else {
+        for (const auto& index_def : table_index_.GetAllIndex()) {
+            if (!index_def || !index_def->IsReady()) {
+                continue;
+            }
+            uint32_t real_idx = index_def->GetInnerPos();
+            auto ts_col = index_def->GetTsColumn();
+            std::optional<uint32_t> ts_idx = ts_col ? std::optional<uint32_t>{ts_col->GetId()} : std::nullopt;
+            uint32_t idx = index_def->GetId();
+            std::shared_ptr<TraverseIterator> iter(NewTraverseIterator(idx));
+            iter->SeekToFirst();
+            while (iter->Valid()) {
+                auto pk = iter->GetPK();
+                iter->NextPK();
+                Slice spk(pk);
+                uint32_t seg_idx = 0;
+                if (seg_cnt_ > 1) {
+                    seg_idx = base::hash(spk.data(), spk.size(), SEED) % seg_cnt_;
+                }
+                if (entry.has_ts() || entry.has_end_ts()) {
+                    uint64_t start_ts = entry.has_ts() ? entry.ts() : UINT64_MAX;
+                    std::optional<uint64_t> end_ts = entry.has_end_ts() ? std::optional<uint64_t>{entry.end_ts()}
+                                                                        : std::nullopt;
+                    segments_[real_idx][seg_idx]->Delete(ts_idx, spk, start_ts, end_ts);
+                } else {
+                    segments_[real_idx][seg_idx]->Delete(ts_idx, spk);
+                }
+            }
+        }
     }
     return true;
 }
