@@ -38,34 +38,6 @@ namespace storage {
 
 typedef google::protobuf::RepeatedPtrField<::openmldb::api::Dimension> Dimensions;
 
-class MemTableTraverseIterator : public TraverseIterator {
- public:
-    MemTableTraverseIterator(Segment** segments, uint32_t seg_cnt, ::openmldb::storage::TTLType ttl_type,
-                             uint64_t expire_time, uint64_t expire_cnt, uint32_t ts_index);
-    ~MemTableTraverseIterator() override;
-    inline bool Valid() override;
-    void Next() override;
-    void NextPK() override;
-    void Seek(const std::string& key, uint64_t time) override;
-    openmldb::base::Slice GetValue() const override;
-    std::string GetPK() const override;
-    uint64_t GetKey() const override;
-    void SeekToFirst() override;
-    uint64_t GetCount() const override;
-
- private:
-    Segment** segments_;
-    uint32_t const seg_cnt_;
-    uint32_t seg_idx_;
-    KeyEntries::Iterator* pk_it_;
-    TimeEntries::Iterator* it_;
-    uint32_t record_idx_;
-    uint32_t ts_idx_;
-    TTLSt expire_value_;
-    Ticket ticket_;
-    uint64_t traverse_cnt_;
-};
-
 class MemTable : public Table {
  public:
     MemTable(const std::string& name, uint32_t id, uint32_t pid, uint32_t seg_cnt,
