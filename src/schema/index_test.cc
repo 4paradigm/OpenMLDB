@@ -73,8 +73,7 @@ TEST_F(IndexTest, CheckIndex) {
     SchemaCodec::SetColumnDesc(schema.Add(), "mcc", ::openmldb::type::kString);
     SchemaCodec::SetColumnDesc(schema.Add(), "ts1", ::openmldb::type::kBigInt);
     SchemaCodec::SetColumnDesc(schema.Add(), "ts2", ::openmldb::type::kBigInt);
-    std::map<std::string, ::openmldb::common::ColumnDesc> column_map =
-    {
+    std::map<std::string, ::openmldb::common::ColumnDesc> column_map = {
         {"card", schema.Get(0)},
         {"mcc", schema.Get(1)},
         {"ts1", schema.Get(2)},
