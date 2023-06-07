@@ -98,7 +98,6 @@ struct ZkPath {
     std::string zone_data_path_;
     std::string op_index_node_;
     std::string op_data_path_;
-    std::string op_sync_path_;
     std::string globalvar_changed_notify_node_;
     std::string external_function_path_;
 };
@@ -150,6 +149,9 @@ class NameServerImpl : public NameServer {
 
     void CreateProcedure(RpcController* controller, const api::CreateProcedureRequest* request,
                          GeneralResponse* response, Closure* done);
+
+    void DeploySQL(RpcController* controller, const DeploySQLRequest* request,
+                         DeploySQLResponse* response, Closure* done);
 
     void DropTableInternel(const DropTableRequest& request, GeneralResponse& response,  // NOLINT
                            std::shared_ptr<::openmldb::nameserver::TableInfo> table_info,
@@ -312,8 +314,7 @@ class NameServerImpl : public NameServer {
     int UpdateTaskStatusRemote(bool is_recover_op);
 
     int UpdateTask(const std::list<std::shared_ptr<OPData>>& op_list, const std::string& endpoint,
-                   const std::string& msg, bool is_recover_op,
-                   ::openmldb::api::TaskStatusResponse& response);  // NOLINT
+                   bool is_recover_op, const ::openmldb::api::TaskStatusResponse& response);
 
     int UpdateTaskStatus(bool is_recover_op);
 
@@ -341,7 +342,8 @@ class NameServerImpl : public NameServer {
 
     bool RegisterName();
 
-    bool CreateProcedureOnTablet(const api::CreateProcedureRequest& sp_request, std::string& err_msg);  // NOLINT
+    base::Status CreateProcedureOnTablet(const api::CreateProcedureRequest& sp_request);
+    base::Status CreateProcedureInternal(const api::CreateProcedureRequest& sp_request);
 
     void DropProcedure(RpcController* controller, const api::DropProcedureRequest* request, GeneralResponse* response,
                        Closure* done);
@@ -450,7 +452,13 @@ class NameServerImpl : public NameServer {
 
     int UpdateEndpointTableAlive(const std::string& endpoint, bool is_alive);
 
-    std::shared_ptr<Task> CreateTask(const std::shared_ptr<TaskMeta>& task_meta);
+    template <typename T, typename... Arg>
+    std::shared_ptr<Task> CreateTask(Arg &&...arg) {
+        T meta(std::forward<Arg>(arg)...);
+        return CreateTaskInternal(&meta);
+    }
+
+    std::shared_ptr<Task> CreateTaskInternal(const TaskMeta* task_meta);
 
     std::shared_ptr<Task> CreateLoadTableRemoteTask(const std::string& alias, const std::string& name,
                                                     const std::string& db, const std::string& endpoint, uint32_t pid,
@@ -471,10 +479,10 @@ class NameServerImpl : public NameServer {
                                                      const ::openmldb::common::ColumnKey& column_key);
 
     bool GetTableInfo(const std::string& table_name, const std::string& db_name,
-                      std::shared_ptr<TableInfo>* table_info);
+            std::shared_ptr<TableInfo>* table_info);
 
     bool GetTableInfoUnlock(const std::string& table_name, const std::string& db_name,
-                            std::shared_ptr<TableInfo>* table_info);
+            std::shared_ptr<TableInfo>* table_info);
 
     int AddOPTask(const ::openmldb::api::TaskInfo& task_info, ::openmldb::api::TaskType task_type,
                   std::shared_ptr<::openmldb::api::TaskInfo>& task_ptr,  // NOLINT
@@ -539,11 +547,17 @@ class NameServerImpl : public NameServer {
                             uint64_t parent_id = INVALID_PARENT_ID,
                             uint32_t concurrency = FLAGS_name_server_task_concurrency_for_replica_cluster);
 
-    int CreateAddIndexOP(const std::string& name, const std::string& db, uint32_t pid,
-                         const std::vector<openmldb::common::ColumnDesc>& new_cols,
-                         const ::openmldb::common::ColumnKey& column_key, uint32_t idx);
+    base::Status CreateDeployOP(const DeploySQLRequest& request, uint64_t* op_id);
 
-    int CreateAddIndexOPTask(std::shared_ptr<OPData> op_data);
+    base::Status CreateAddIndexOP(const std::string& name, const std::string& db,
+            const std::vector<::openmldb::common::ColumnKey>& column_key);
+
+    base::Status CreateAddIndexOPTask(std::shared_ptr<OPData> op_data);
+
+    base::Status FillAddIndexTask(uint64_t op_index, api::OPType op_type,
+            const std::string& name, const std::string& db,
+            const std::vector<::openmldb::common::ColumnKey>& column_key,
+            std::list<std::shared_ptr<Task>>* task_list);
 
     int DropTableRemoteOP(const std::string& name, const std::string& db, const std::string& alias,
                           uint64_t parent_id = INVALID_PARENT_ID,
@@ -559,14 +573,16 @@ class NameServerImpl : public NameServer {
                                  std::shared_ptr<::openmldb::api::TaskInfo> task_info);
 
     bool AddIndexToTableInfo(const std::string& name, const std::string& db,
-                             const ::openmldb::common::ColumnKey& column_key, uint32_t index_pos);
+            const std::vector<::openmldb::common::ColumnKey>& column_key,
+            std::shared_ptr<::openmldb::api::TaskInfo> task_info);
 
     void WrapTaskFun(const boost::function<bool()>& fun, std::shared_ptr<::openmldb::api::TaskInfo> task_info);
 
-    void RunSyncTaskFun(uint32_t tid, const boost::function<bool()>& fun,
-                        std::shared_ptr<::openmldb::api::TaskInfo> task_info);
+    void WrapNormalTaskFun(const boost::function<base::Status()>& fun,
+            std::shared_ptr<::openmldb::api::TaskInfo> task_info);
 
     void RunSubTask(std::shared_ptr<Task> task);
+    void RunSeqTask(std::shared_ptr<Task> task);
 
     // get tablet info
     std::shared_ptr<TabletInfo> GetTabletInfo(const std::string& endpoint);
@@ -660,6 +676,10 @@ class NameServerImpl : public NameServer {
     bool RecoverExternalFunction();
 
     ::openmldb::base::Status CheckZoneInfo(const ::openmldb::nameserver::ZoneInfo& zone_info);
+
+    std::shared_ptr<api::ProcedureInfo> GetProcedure(const std::string& db, const std::string& name);
+
+    bool IsExistDataBase(const std::string& db);
 
  private:
     std::mutex mu_;
