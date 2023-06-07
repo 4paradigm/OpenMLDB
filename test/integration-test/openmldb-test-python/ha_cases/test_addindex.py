@@ -71,9 +71,10 @@ class TestAddIndex:
                 key2 = "key2" + str(i)
                 self.cursor.execute(f"insert into {table_name} values (\'{key1}\', \'{key2}\', {ts})");
 
+        time.sleep(2)
         result = self.cursor.execute(f"create index index2 on {table_name} (col2) options (ts=col3)")
         time.sleep(1)
-        assert self.executor.WaitingTableOP(database, table_name, partition_num).OK()
+        assert self.executor.WaitingOP(database, table_name, 0).OK()
         status, indexs = self.executor.GetIndexs(database, table_name)
         assert status.OK() and len(indexs) == 2
         assert indexs[1].GetName() == "index2" and indexs[1].GetTsCol() == "col3"
