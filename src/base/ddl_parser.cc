@@ -18,6 +18,7 @@
 
 #include <algorithm>
 #include <memory>
+#include <tuple>
 #include <unordered_map>
 #include <utility>
 #include <vector>
@@ -25,6 +26,7 @@
 #include "absl/strings/match.h"
 #include "codec/schema_codec.h"
 #include "common/timer.h"
+#include "google/protobuf/util/message_differencer.h"
 #include "node/node_manager.h"
 #include "plan/plan_api.h"
 #include "proto/common.pb.h"
@@ -69,7 +71,9 @@ class IndexMapBuilder {
     // db, table, keys and ts -> db$table:key1,key2,...;ts
     static std::string Encode(const std::string& db, const std::string& table, const hybridse::node::ExprListNode* keys,
                               const hybridse::node::OrderByNode* ts, const SchemasContext* ctx);
-    static std::tuple<std::string, std::string, common::ColumnKey> Decode(const std::string& index_str);
+
+    // return db, table, index_str(key1,key2,...;ts), column_key
+    static std::tuple<std::string, std::string, std::string, common::ColumnKey> Decode(const std::string& index_str);
 
     static std::string GetTsCol(const std::string& index_str) {
         std::size_t ts_mark_pos = index_str.find(TS_MARK);
@@ -81,14 +85,17 @@ class IndexMapBuilder {
     }
 
     static std::string GetTable(const std::string& index_str) {
+        auto table_start = index_str.find(UNIQ_MARK);
         auto key_sep = index_str.find(KEY_MARK);
-        if (key_sep == std::string::npos) {
+        if (table_start == std::string::npos || key_sep == std::string::npos) {
+            LOG(DFATAL) << "invalid index str " << index_str;
             return {};
         }
-        return index_str.substr(0, key_sep);
+        return index_str.substr(table_start + 1, key_sep - 1 - table_start);
     }
 
  private:
+    static constexpr char UNIQ_MARK = '|';
     static constexpr char TABLE_MARK = '$';
     static constexpr char KEY_MARK = ':';
     static constexpr char KEY_SEP = ',';
@@ -546,8 +553,8 @@ bool IndexMapBuilder::CreateIndex(const std::shared_ptr<hybridse::vm::TableHandl
     }
 
     if (index_map_.find(index) != index_map_.end()) {
-        // TODO(hw): ttl merge
-        LOG(DFATAL) << "index existed in cache, can't handle it now";
+        // index id has unique idx, can't be dup. It's a weird case
+        LOG(DFATAL) << "index " << index << " existed in cache";
         return false;
     }
     DLOG(INFO) << "create index with unset ttl: " << index;
@@ -632,7 +639,9 @@ bool IndexMapBuilder::UpdateIndex(const hybridse::vm::Range& range) {
 }
 
 MultiDBIndexMap IndexMapBuilder::ToMap() {
-    MultiDBIndexMap result;
+    // index_map_ may have duplicated index, we need to merge them here(don't merge in CreateIndex for debug)
+    // <db, <table, <index_str, ColumnKey>>>
+    std::map<std::string, std::map<std::string, std::map<std::string, common::ColumnKey>>> tmp_map;
     for (auto& pair : index_map_) {
         if (!pair.second->has_ttl_type()) {
             pair.second->set_ttl_type(::openmldb::type::TTLType::kLatestTime);
@@ -641,11 +650,31 @@ MultiDBIndexMap IndexMapBuilder::ToMap() {
         auto dec = Decode(pair.first);
         auto& db = std::get<0>(dec);
         auto& table = std::get<1>(dec);
-        auto column_key = std::get<2>(dec);
-        // message owns the TTLSt
-        column_key.set_allocated_ttl(pair.second);
-        result[db].emplace_back(table, dec.second);
+        auto& idx_str = std::get<2>(dec);
+        auto column_key = std::get<3>(dec);
+
+        auto& idx_map_of_table = tmp_map[db][table];
+        auto iter = idx_map_of_table.find(idx_str);
+        if (iter != idx_map_of_table.end()) {
+            // dup index, ttl merge
+            TTLMerge(iter->second.ttl(), *pair.second, iter->second.mutable_ttl());
+        } else {
+            // message owns the TTLSt
+            column_key.set_allocated_ttl(pair.second);
+            idx_map_of_table.emplace(idx_str, column_key);
+        }
     }
+
+    MultiDBIndexMap result;
+    for (auto& pair : tmp_map) {
+        auto& table = pair.first;
+        auto& idx_map_of_table = pair.second;
+        for (auto& idx_pair : idx_map_of_table) {
+            auto& column_key = idx_pair.second;
+            result[table].emplace_back(column_key);
+        }
+    }
+
     // TTLSt is owned by result now, index_map_ can't be reused
     index_map_.clear();
     return result;
@@ -661,7 +690,10 @@ std::string IndexMapBuilder::Encode(const std::string& db, const std::string& ta
     }
 
     std::stringstream ss;
-    ss << db << TABLE_MARK << table << KEY_MARK;
+    static int index_id = 0;
+    // we add a unique mark to avoid conflict with index name, leave the indexes with same name(ttl may be different)
+    // you should do merge later
+    ss << index_id++ << UNIQ_MARK << db << TABLE_MARK << table << KEY_MARK;
     auto iter = cols.begin();
     ss << (*iter);
     iter++;
@@ -705,16 +737,15 @@ std::vector<std::string> IndexMapBuilder::NormalizeColumns(const std::vector<hyb
 }
 
 // ColumnKey in result doesn't set ttl
-std::tuple<std::string, std::string, common::ColumnKey> IndexMapBuilder::Decode(const std::string& index_str) {
+std::tuple<std::string, std::string, std::string, common::ColumnKey> IndexMapBuilder::Decode(const std::string& index_str) {
     if (index_str.empty()) {
         return {};
     }
-    auto table_sep = index_str.find(TABLE_MARK);
-    auto db_name = index_str.substr(0, table_sep);
-    auto key_sep = index_str.find(KEY_MARK);
-    auto table_name = index_str.substr(table_sep + 1, key_sep);
+
+    auto table_name = GetTable(index_str);
 
     common::ColumnKey column_key;
+    auto key_sep = index_str.find(KEY_MARK);
     auto ts_sep = index_str.find(TS_MARK);
     auto keys_str = index_str.substr(key_sep + 1, ts_sep - key_sep - 1);
     // split keys
@@ -729,7 +760,7 @@ std::tuple<std::string, std::string, common::ColumnKey> IndexMapBuilder::Decode(
     if (!ts_col.empty()) {
         column_key.set_ts_name(ts_col);
     }
-    return std::make_tuple(db_name, table_name, column_key);
+    return std::make_tuple(db_name, table_name, index_str.substr(key_sep + 1), column_key);
 }
 
 bool GroupAndSortOptimizedParser::KeysOptimizedParse(const SchemasContext* root_schemas_ctx, PhysicalOpNode* in,
@@ -970,5 +1001,90 @@ bool ResolveColumnToSourceColumnName(const hybridse::node::ColumnRefNode* col, c
         return false;
     }
     return true;
+}
+
+// return merged result: return new if new is bigger, else return old
+google::protobuf::uint64 TTLValueMerge(google::protobuf::uint64 old_value, google::protobuf::uint64 new_value) {
+    google::protobuf::uint64 result = old_value;
+    // 0 is the max, means no ttl, don't update
+    // if old value != 0
+    if (old_value != 0 && (new_value == 0 || old_value < new_value)) {
+        result = new_value;
+    }
+    return result;
+}
+
+void TTLValueMerge(const common::TTLSt& old_ttl, const common::TTLSt& new_ttl, common::TTLSt* result) {
+    google::protobuf::uint64 tmp_result;
+    tmp_result = TTLValueMerge(old_ttl.abs_ttl(), new_ttl.abs_ttl());
+    result->set_abs_ttl(tmp_result);
+    tmp_result = TTLValueMerge(old_ttl.lat_ttl(), new_ttl.lat_ttl());
+    result->set_lat_ttl(tmp_result);
+}
+
+// 4(same type merge): same type and max ttls
+// 12(A(4,2)): see in code
+bool TTLMerge(const common::TTLSt& old_ttl, const common::TTLSt& new_ttl, common::TTLSt* result) {
+    // TTLSt has type and two values, updated is complex, so we just check result==old_ttl in the end
+    result->CopyFrom(old_ttl);
+
+    // merge case 1. same type, just merge values(max ttls)
+    // it's ok to merge both abs and lat ttl value even type is only abs or lat(just unused and default is 0)
+    // merge case 2. different type
+    if (old_ttl.ttl_type() == new_ttl.ttl_type()) {
+        TTLValueMerge(old_ttl, new_ttl, result);
+    } else {
+        // type is different
+        if (old_ttl.ttl_type() == type::TTLType::kAbsAndLat) {
+            // 3 cases, abs&lat + ?. ?: abs / lat / abs||lat(new_ttl type != abs&lat). Use new ttl, merge values.
+            // abs&lat + abs -> abs, abs&lat + lat -> lat, abs&lat + abs||lat -> abs||lat. Use the max range, it's ok to
+            // merge two ttl(e.g. abs 10s&lat 1 + abs 10s(lat 0) -> abs 10s), we won't use the another ttl if result is
+            // lat or abs.
+            result->set_ttl_type(new_ttl.ttl_type());
+            TTLValueMerge(old_ttl, new_ttl, result);
+        } else if (new_ttl.ttl_type() == type::TTLType::kAbsAndLat) {
+            // 3 cases, ? + abs&lat. ?: abs / lat / abs||lat
+            result->set_ttl_type(old_ttl.ttl_type());
+            TTLValueMerge(old_ttl, new_ttl, result);
+        } else if (old_ttl.ttl_type() == type::TTLType::kAbsOrLat) {
+            // 2 cases, abs||lat + ? -> abs||lat. Stay old, merge values
+            // ?: abs / lat 2 cases(abs||lat + abs&lat is in 2)
+            TTLValueMerge(old_ttl, new_ttl, result);
+        } else if (new_ttl.ttl_type() == type::TTLType::kAbsOrLat) {
+            // 2 cases, abs + abs||lat -> abs||lat, lat + abs||lat -> abs||lat. Use new, merge can't use lat ttl(0) if
+            // type is abs abs&lat + abs||lat is in 1
+            result->set_ttl_type(type::TTLType::kAbsOrLat);
+            if (old_ttl.ttl_type() == type::TTLType::kAbsoluteTime) {
+                result->set_abs_ttl(TTLValueMerge(old_ttl.abs_ttl(), new_ttl.abs_ttl()));
+                result->set_lat_ttl(new_ttl.lat_ttl());
+            } else {
+                result->set_abs_ttl(new_ttl.abs_ttl());
+                result->set_lat_ttl(TTLValueMerge(old_ttl.lat_ttl(), new_ttl.lat_ttl()));
+            }
+        } else {
+            // 2 cases, abs + lat -> abs||lat, lat + abs -> abs||lat. Set type, merge can't use lat ttl(0) if type is
+            // abs
+            result->set_ttl_type(type::TTLType::kAbsOrLat);
+            if (old_ttl.ttl_type() == type::TTLType::kAbsoluteTime) {
+                DCHECK(new_ttl.ttl_type() == type::TTLType::kLatestTime);
+                result->set_abs_ttl(old_ttl.abs_ttl());
+                result->set_lat_ttl(new_ttl.lat_ttl());
+            } else {
+                DCHECK(old_ttl.ttl_type() == type::TTLType::kLatestTime);
+                result->set_abs_ttl(new_ttl.abs_ttl());
+                result->set_lat_ttl(old_ttl.lat_ttl());
+            }
+        }
+    }
+
+    // old ttl may not have one ttl value, but the result must have, so fix the cmp
+    common::TTLSt old_ttl_fixed(old_ttl);
+    if (!old_ttl_fixed.has_abs_ttl()) {
+        old_ttl_fixed.set_abs_ttl(0);
+    }
+    if (!old_ttl_fixed.has_lat_ttl()) {
+        old_ttl_fixed.set_lat_ttl(0);
+    }
+    return !google::protobuf::util::MessageDifferencer::Equals(old_ttl_fixed, *result);
 }
 }  // namespace openmldb::base

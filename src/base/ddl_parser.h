@@ -66,9 +66,8 @@ using LongWindowInfos = std::vector<LongWindowInfo>;
 
 class DDLParser {
  public:
-    /** core funcs(with arg catalog) **/
-
-    // simpler for test, single db
+    /** core funcs(with arg catalog), returns the index map which has no dup index(same key, same ts, different ttl) **/
+    // simpler for test, single db  
     static IndexMap ExtractIndexes(const std::string& sql, const ::hybridse::type::Database& db);
     static std::string Explain(const std::string& sql, const ::hybridse::type::Database& db);
     // remove later, catalog is core arg
@@ -140,6 +139,12 @@ class DDLParser {
                                             const std::unordered_map<std::string, std::string>& window_map,
                                             LongWindowInfos* long_window_infos);
 };
+
+// return true if updated, else false and the result is the same as old_index
+// 16 cases: 4(same type merge) + 12(A(4,2), we can get `updated` flag by old==result, and old & new are swapable, but
+// in code, we can only check old & new one by one, so not C(4,2))
+bool TTLMerge(const common::TTLSt& old_ttl, const common::TTLSt& new_ttl, common::TTLSt* result);
+
 }  // namespace openmldb::base
 
 #endif  // SRC_BASE_DDL_PARSER_H_
