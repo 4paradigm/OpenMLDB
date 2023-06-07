@@ -880,6 +880,43 @@ TEST_P(DBSDKTest, DeploySkipIndexCheck) {
     ASSERT_TRUE(cs->GetNsClient()->DropDatabase("test2", msg));
 }
 
+TEST_P(DBSDKTest, DeployWithData) {
+    auto cli = GetParam();
+    cs = cli->cs;
+    sr = cli->sr;
+    std::string ddl1 =
+        "create table if not exists t1 (col1 string, col2 string, col3 bigint, col4 int, "
+        "index(key=col1, ts=col3, TTL_TYPE=absolute)) options (partitionnum=2, replicanum=1);";
+    std::string ddl2 =
+        "create table if not exists t2 (col1 string, col2 string, col3 bigint, "
+        "index(key=col1, ts=col3, TTL_TYPE=absolute)) options (partitionnum=2, replicanum=1);";
+    ProcessSQLs(sr, {
+                        "set @@execute_mode = 'online';",
+                        "create database test2;",
+                        "use test2;",
+                        ddl1,
+                        ddl2,
+                    });
+    hybridse::sdk::Status status;
+    for (int i = 0; i < 100; i++) {
+        std::string key1 = absl::StrCat("col1", i);
+        std::string key2 = absl::StrCat("col2", i);
+        sr->ExecuteSQL(absl::StrCat("insert into t1 values ('", key1, "', '", key2, "', 1635247427000, 5);"), &status);
+        sr->ExecuteSQL(absl::StrCat("insert into t2 values ('", key1, "', '", key2, "', 1635247427000);"), &status);
+    }
+    sleep(2);
+    std::string deploy_sql = "deploy demo SELECT t1.col1, t2.col2, sum(col4) OVER w1 as w1_col4_sum FROM t1 "
+        "LAST JOIN t2 ORDER BY t2.col3 ON t1.col2 = t2.col2 "
+        "WINDOW w1 AS (PARTITION BY t1.col2 ORDER BY t1.col3 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);";
+    sr->ExecuteSQL(deploy_sql, &status);
+    ASSERT_TRUE(status.IsOK());
+    std::string msg;
+    ASSERT_TRUE(cs->GetNsClient()->DropProcedure("test2", "demo", msg));
+    ASSERT_TRUE(cs->GetNsClient()->DropTable("test2", "t1", msg));
+    ASSERT_TRUE(cs->GetNsClient()->DropTable("test2", "t2", msg));
+    ASSERT_TRUE(cs->GetNsClient()->DropDatabase("test2", msg));
+}
+
 TEST_P(DBSDKTest, Delete) {
     auto cli = GetParam();
     sr = cli->sr;

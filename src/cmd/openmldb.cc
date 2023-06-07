@@ -2717,7 +2717,6 @@ void HandleNSShowOPStatus(const std::vector<std::string>& parts, ::openmldb::cli
     ::baidu::common::TPrinter tp(row.size(), FLAGS_max_col_display_length);
     tp.AddRow(row);
     ::openmldb::nameserver::ShowOPStatusResponse response;
-    std::string msg;
     std::string name;
     uint32_t pid = ::openmldb::client::INVALID_PID;
     if (parts.size() > 1) {
@@ -2731,9 +2730,9 @@ void HandleNSShowOPStatus(const std::vector<std::string>& parts, ::openmldb::cli
             return;
         }
     }
-    bool ok = client->ShowOPStatus(response, name, pid, msg);
-    if (!ok) {
-        std::cout << "Fail to show tablets. error msg: " << msg << std::endl;
+    auto status = client->ShowOPStatus(name, pid, &response);
+    if (!status.OK()) {
+        std::cout << "Fail to show tablets. error msg: " << status.GetMsg() << std::endl;
         return;
     }
     for (int idx = 0; idx < response.op_status_size(); idx++) {

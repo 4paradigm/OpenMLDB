@@ -99,6 +99,7 @@ DeployOption
 DeployOptionItem
             ::= 'LONG_WINDOWS' '=' LongWindowDefinitions
             | 'SKIP_INDEX_CHECK' '=' string_literal
+            | 'SYNC' '=' string_literal
 ```
 
 #### 长窗口优化
@@ -158,6 +159,15 @@ DEPLOY demo_deploy OPTIONS(long_windows="w1:1d") SELECT c1, sum(c2) OVER w1 FROM
 ```sql
 DEPLOY demo OPTIONS (SKIP_INDEX_CHECK="TRUE")
     SELECT * FROM t1 LAST JOIN t2 ORDER BY t2.col3 ON t1.col1 = t2.col1;
+```
+
+### 设置同步/异步
+执行deploy的时候可以通过`SYNC`选项来设置同步/异步模式, 默认为`true`即同步模式。如果deploy语句中涉及的相关表有数据，并且需要添加索引的情况下，执行deploy会发起数据加载等任务，如果`SYNC`选项设置为`false`就会返回一个任务id。可以通过`SHOW JOBS FROM NAMESERVER LIKE '{job_id}'`来查看任务执行状态。
+
+**Example**
+```sql
+deploy demo options(SYNC="false") SELECT t1.col1, t2.col2, sum(col4) OVER w1 as w1_col4_sum FROM t1 LAST JOIN t2 ORDER BY t2.col3 ON t1.col2 = t2.col2
+    WINDOW w1 AS (PARTITION BY t1.col2 ORDER BY t1.col3 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
 ```
 
 ## 相关SQL

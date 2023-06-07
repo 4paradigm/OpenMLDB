@@ -44,7 +44,7 @@ TEST_F(IndexTest, CheckUnique) {
     ASSERT_FALSE(IndexUtil::CheckUnique(indexs).OK());
 }
 
-TEST_F(IndexTest, CheckNewIndex) {
+TEST_F(IndexTest, CheckExist) {
     openmldb::nameserver::TableInfo table_info;
     SchemaCodec::SetColumnDesc(table_info.add_column_desc(), "card", ::openmldb::type::kString);
     SchemaCodec::SetColumnDesc(table_info.add_column_desc(), "mcc", ::openmldb::type::kString);
@@ -61,10 +61,13 @@ TEST_F(IndexTest, CheckNewIndex) {
     SchemaCodec::SetIndex(&test_index2, "test_index2", "card", "ts2", ::openmldb::type::kAbsoluteTime, 0, 0);
     ::openmldb::common::ColumnKey test_index3;
     SchemaCodec::SetIndex(&test_index3, "test_index3", "mcc", "ts2", ::openmldb::type::kAbsoluteTime, 0, 0);
+    ::openmldb::common::ColumnKey test_index4;
+    SchemaCodec::SetIndex(&test_index4, "index1", "aa", "ts2", ::openmldb::type::kAbsoluteTime, 0, 0);
 
-    ASSERT_FALSE(IndexUtil::CheckNewIndex(test_index1, table_info).OK());
-    ASSERT_TRUE(IndexUtil::CheckNewIndex(test_index2, table_info).OK());
-    ASSERT_TRUE(IndexUtil::CheckNewIndex(test_index3, table_info).OK());
+    ASSERT_TRUE(IndexUtil::IsExist(test_index1, table_info.column_key()));
+    ASSERT_TRUE(IndexUtil::IsExist(test_index2, table_info.column_key()));
+    ASSERT_FALSE(IndexUtil::IsExist(test_index3, table_info.column_key()));
+    ASSERT_TRUE(IndexUtil::IsExist(test_index4, table_info.column_key()));
 }
 
 }  // namespace schema
