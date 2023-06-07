@@ -14,7 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from setuptools import setup
+from setuptools import setup, find_packages
 
 setup(
     name='openmldb-tool',
@@ -38,7 +38,7 @@ setup(
     extras_require={'test': [
         "pytest",
     ]},
-    packages=['diagnostic_tool'],
+    packages=find_packages(exclude=['tests']),
     exclude_package_data={
         'openmldb-tool': ['diagnostic_tool/common_err.yml']
     },
