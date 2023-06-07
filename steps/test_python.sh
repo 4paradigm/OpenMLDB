@@ -40,12 +40,21 @@ pgrep -f openmldb
 echo "ROOT_DIR:${ROOT_DIR}"
 
 cd "${ROOT_DIR}"/python/openmldb_sdk/dist/
-whl_name=$(ls openmldb*.whl)
-echo "whl_name:${whl_name}"
-python3 -m pip install "${whl_name}"
+whl_name_sdk=$(ls openmldb*.whl)
+echo "whl_name_sdk:${whl_name_sdk}"
+python3 -m pip install "${whl_name_sdk}"
+
+cd "${ROOT_DIR}"/python/openmldb_tool/dist/
+whl_name_tool=$(ls openmldb*.whl)
+echo "whl_name_tool:${whl_name_tool}"
+python3 -m pip install "${whl_name_tool}"
+
 python3 -m pip install pytest-cov
 
 cd "${ROOT_DIR}"/python/openmldb_sdk/tests
 python3 -m pytest -vv --junit-xml=pytest.xml --cov=./ --cov-report=xml
+cd "${ROOT_DIR}"/python/openmldb_tool/tests
+python3 -m pytest -vv --junit-xml=pytest.xml --cov=./ --cov-report=xml
+
 cd "${ROOT_DIR}"/onebox && ./stop_all.sh && cd "$ROOT_DIR"
 cd "$THIRDSRC/zookeeper-3.4.14" && ./bin/zkServer.sh stop && cd "$ROOT_DIR"

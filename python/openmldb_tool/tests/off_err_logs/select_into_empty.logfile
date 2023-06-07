@@ -1,0 +1,177 @@
+23/05/06 17:12:47 WARN NativeCodeLoader: Unable to load native-hadoop library for your platform... using builtin-java classes where applicable
+Using Spark's default log4j profile: org/apache/spark/log4j-defaults.properties
+23/05/06 17:12:47 INFO SparkContext: Running Spark version 3.2.1
+23/05/06 17:12:47 INFO ResourceUtils: ==============================================================
+23/05/06 17:12:47 INFO ResourceUtils: No custom resources configured for spark.driver.
+23/05/06 17:12:47 INFO ResourceUtils: ==============================================================
+23/05/06 17:12:47 INFO SparkContext: Submitted application: com._4paradigm.openmldb.batchjob.ExportOfflineData
+23/05/06 17:12:47 INFO ResourceProfile: Default ResourceProfile created, executor resources: Map(cores -> name: cores, amount: 1, script: , vendor: , memory -> name: memory, amount: 4096, script: , vendor: , offHeap -> name: offHeap, amount: 0, script: , vendor: ), task resources: Map(cpus -> name: cpus, amount: 1.0)
+23/05/06 17:12:47 INFO ResourceProfile: Limiting resource is cpu
+23/05/06 17:12:47 INFO ResourceProfileManager: Added ResourceProfile id: 0
+23/05/06 17:12:48 INFO SecurityManager: Changing view acls groups to: 
+23/05/06 17:12:48 INFO SecurityManager: Changing modify acls groups to: 
+23/05/06 17:12:48 INFO Utils: Successfully started service 'sparkDriver' on port 36165.
+23/05/06 17:12:48 INFO SparkEnv: Registering MapOutputTracker
+23/05/06 17:12:48 INFO SparkEnv: Registering BlockManagerMaster
+23/05/06 17:12:48 INFO BlockManagerMasterEndpoint: Using org.apache.spark.storage.DefaultTopologyMapper for getting topology information
+23/05/06 17:12:48 INFO BlockManagerMasterEndpoint: BlockManagerMasterEndpoint up
+23/05/06 17:12:48 INFO SparkEnv: Registering BlockManagerMasterHeartbeat
+23/05/06 17:12:48 INFO DiskBlockManager: Created local directory at /tmp/blockmgr-090d6b84-592e-45a5-a540-564a59c536e6
+23/05/06 17:12:48 INFO MemoryStore: MemoryStore started with capacity 4.1 GiB
+23/05/06 17:12:48 INFO SparkEnv: Registering OutputCommitCoordinator
+23/05/06 17:12:48 WARN Utils: Service 'SparkUI' could not bind on port 4040. Attempting port 4041.
+23/05/06 17:12:48 WARN Utils: Service 'SparkUI' could not bind on port 4041. Attempting port 4042.
+23/05/06 17:12:48 INFO Utils: Successfully started service 'SparkUI' on port 4042.
+23/05/06 17:12:49 INFO SparkContext: Added file file:///tmp/sql-2332846503971509901 at file:///tmp/sql-2332846503971509901 with timestamp 1683364367844
+23/05/06 17:12:49 INFO Utils: Copying /tmp/sql-2332846503971509901 to /tmp/spark-3918934b-e895-48de-90cb-9b03ff1f7c6a/userFiles-758193dd-833f-493f-933e-7a985585fbb3/sql-2332846503971509901
+23/05/06 17:12:49 INFO Executor: Fetching file:///tmp/sql-2332846503971509901 with timestamp 1683364367844
+23/05/06 17:12:49 INFO Utils: /tmp/sql-2332846503971509901 has been previously copied to /tmp/spark-3918934b-e895-48de-90cb-9b03ff1f7c6a/userFiles-758193dd-833f-493f-933e-7a985585fbb3/sql-2332846503971509901
+23/05/06 17:12:49 INFO Executor: Adding file:/tmp/spark-3918934b-e895-48de-90cb-9b03ff1f7c6a/userFiles-758193dd-833f-493f-933e-7a985585fbb3/openmldb-batchjob-0.7.3.jar to class loader
+23/05/06 17:12:49 INFO Utils: Successfully started service 'org.apache.spark.network.netty.NettyBlockTransferService' on port 35125.
+23/05/06 17:12:49 INFO BlockManager: Using org.apache.spark.storage.RandomBlockReplicationPolicy for block replication policy
+23/05/06 17:12:50 INFO SharedState: Setting hive.metastore.warehouse.dir ('null') to the value of spark.sql.warehouse.dir.
+23/05/06 17:12:52 INFO ConfigReflections$: Native Spark Configuration: spark.sql.session.timeZone -> Asia/Shanghai
+23/05/06 17:12:52 INFO ConfigReflections$: Native Spark Configuration: openmldb.zk.cluster -> 127.0.0.1:8181
+23/05/06 17:12:52 INFO ConfigReflections$: Native Spark Configuration: openmldb.default.db -> db
+23/05/06 17:12:52 INFO LibraryLoader: Can not find libsql_jsdk.so from environment, try find in resources
+23/05/06 17:12:52 INFO LibraryLoader: Found libsql_jsdk.so in local resource
+23/05/06 17:12:56 INFO LibraryLoader: Extract resource to /tmp/temp-4920105972243697697libsql_jsdk.so
+2023-05-06 17:12:56,685:26840(0x7f04c4097700):ZOO_INFO@log_env@753: Client environment:zookeeper.version=zookeeper C client 3.4.14
+2023-05-06 17:12:56,685:26840(0x7f04c4097700):ZOO_INFO@log_env@764: Client environment:os.name=Linux
+2023-05-06 17:12:56,685:26840(0x7f04c4097700):ZOO_INFO@log_env@765: Client environment:os.arch=3.10.0-1160.6.1.el7.x86_64
+2023-05-06 17:12:56,685:26840(0x7f04c4097700):ZOO_INFO@log_env@766: Client environment:os.version=#1 SMP Tue Nov 17 13:59:11 UTC 2020
+2023-05-06 17:12:56,685:26840(0x7f04c4097700):ZOO_INFO@log_env@774: Client environment:user.name=(null)
+2023-05-06 17:12:56,685:26840(0x7f04c4097700):ZOO_INFO@zookeeper_init@827: Initiating client connection, host=127.0.0.1:8181 sessionTimeout=10000 watcher=0x7f02dbd21e00 sessionId=0 sessionPasswd=<null> context=0x7f04bdd34d90 flags=0
+2023-05-06 17:12:56,686:26840(0x7f043defc700):ZOO_INFO@check_events@1764: initiated connection to server [127.0.0.1:8181]
+2023-05-06 17:12:56,788:26840(0x7f043defc700):ZOO_INFO@check_events@1811: session establishment complete on server [127.0.0.1:8181], sessionId=0x1025071ec790033, negotiated timeout=10000
+I0506 17:12:56.788709 27416 zk_client.cc:564] zookeeper event with type -1, state 3, path 
+I0506 17:12:56.788930 27416 zk_client.cc:579] connect success
+I0506 17:12:56.794449 27019 client_manager.cc:483] add client. name 172.24.4.27:7126, endpoint 
+I0506 17:12:56.794545 27019 client_manager.cc:483] add client. name 172.24.4.27:7128, endpoint 
+I0506 17:12:56.797703 27019 db_sdk.cc:234] start to watch notify on table, function, ns leader, taskamanger leader
+I0506 17:12:56.799224 27019 db_sdk.cc:55] init ns client with endpoint 172.24.4.27:7123 done
+I0506 17:12:56.811419 27019 default_udf_library.cc:49] Creating DefaultUdfLibrary
+23/05/06 17:12:56 INFO ZooKeeper: Client environment:zookeeper.version=3.6.2--803c7f1a12f85978cb049af5e4ef23bd8b688715, built on 09/04/2020 12:44 GMT
+23/05/06 17:12:56 INFO ZooKeeper: Client environment:java.version=1.8.0_302
+23/05/06 17:12:56 INFO ZooKeeper: Client environment:java.vendor=Red Hat, Inc.
+23/05/06 17:12:56 INFO ZooKeeper: Client environment:java.home=/usr/lib/jvm/java-1.8.0-openjdk-1.8.0.302.b08-0.el7_9.x86_64/jre
+23/05/06 17:12:56 INFO ZooKeeper: Client environment:java.io.tmpdir=/tmp
+23/05/06 17:12:56 INFO ZooKeeper: Client environment:java.compiler=<NA>
+23/05/06 17:12:56 INFO ZooKeeper: Client environment:os.name=Linux
+23/05/06 17:12:56 INFO ZooKeeper: Client environment:os.arch=amd64
+23/05/06 17:12:56 INFO ZooKeeper: Client environment:os.version=3.10.0-1160.6.1.el7.x86_64
+23/05/06 17:12:56 INFO ZooKeeper: Client environment:os.memory.free=2625MB
+23/05/06 17:12:56 INFO ZooKeeper: Client environment:os.memory.max=7282MB
+23/05/06 17:12:56 INFO ZooKeeper: Client environment:os.memory.total=2924MB
+23/05/06 17:12:56 INFO CuratorFrameworkImpl: Starting
+23/05/06 17:12:57 INFO ZooKeeper: Initiating client connection, connectString=127.0.0.1:8181 sessionTimeout=5000 watcher=org.apache.curator.ConnectionState@430df350
+23/05/06 17:12:57 INFO X509Util: Setting -D jdk.tls.rejectClientInitiatedRenegotiation=true to disable client-initiated TLS renegotiation
+23/05/06 17:12:57 INFO ClientCnxnSocket: jute.maxbuffer value is 1048575 Bytes
+23/05/06 17:12:57 INFO ClientCnxn: zookeeper.request.timeout value is 0. feature enabled=false
+23/05/06 17:12:57 INFO CuratorFrameworkImpl: Default schema
+23/05/06 17:12:57 INFO ClientCnxn: Opening socket connection to server localhost/127.0.0.1:8181.
+23/05/06 17:12:57 INFO ClientCnxn: SASL config status: Will not attempt to authenticate using SASL (unknown error)
+23/05/06 17:12:57 INFO ClientCnxn: Socket connection established, initiating session, client: /127.0.0.1:60642, server: localhost/127.0.0.1:8181
+23/05/06 17:12:57 INFO ClientCnxn: Session establishment complete on server localhost/127.0.0.1:8181, session id = 0x1025071ec790034, negotiated timeout = 5000
+23/05/06 17:12:57 INFO ConnectionStateManager: State change: CONNECTED
+23/05/06 17:12:57 INFO OpenmldbSession: Register empty dataframe of db.e with schema StructType(StructField(c1,IntegerType,true), StructField(c2,IntegerType,true))
+23/05/06 17:12:59 INFO OpenmldbSession: Register empty dataframe of demo_db.demo_table1 with schema StructType(StructField(c1,StringType,true), StructField(c2,IntegerType,true), StructField(c3,LongType,true), StructField(c4,FloatType,true), StructField(c5,DoubleType,true), StructField(c6,TimestampType,true), StructField(c7,DateType,true))
+23/05/06 17:12:59 INFO OpenmldbSession: Register empty dataframe of disk_test.fulltable with schema StructType(StructField(c1,StringType,true), StructField(c2,ShortType,true), StructField(c3,IntegerType,true), StructField(c4,LongType,true), StructField(c5,FloatType,true), StructField(c6,DoubleType,true), StructField(c7,StringType,true), StructField(c8,DateType,true), StructField(c9,TimestampType,true), StructField(c10,StringType,true))
+23/05/06 17:12:59 INFO ConfigReflections$: Native Spark Configuration: spark.sql.session.timeZone -> Asia/Shanghai
+23/05/06 17:12:59 INFO ConfigReflections$: Native Spark Configuration: openmldb.zk.cluster -> 127.0.0.1:8181
+23/05/06 17:12:59 INFO ConfigReflections$: Native Spark Configuration: openmldb.default.db -> db
+2023-05-06 17:12:59,168:26840(0x7f04c4097700):ZOO_INFO@log_env@753: Client environment:zookeeper.version=zookeeper C client 3.4.14
+2023-05-06 17:12:59,168:26840(0x7f04c4097700):ZOO_INFO@log_env@764: Client environment:os.name=Linux
+2023-05-06 17:12:59,168:26840(0x7f04c4097700):ZOO_INFO@log_env@765: Client environment:os.arch=3.10.0-1160.6.1.el7.x86_64
+2023-05-06 17:12:59,168:26840(0x7f04c4097700):ZOO_INFO@log_env@766: Client environment:os.version=#1 SMP Tue Nov 17 13:59:11 UTC 2020
+2023-05-06 17:12:59,168:26840(0x7f04c4097700):ZOO_INFO@log_env@774: Client environment:user.name=(null)
+2023-05-06 17:12:59,168:26840(0x7f04c4097700):ZOO_INFO@zookeeper_init@827: Initiating client connection, host=127.0.0.1:8181 sessionTimeout=10000 watcher=0x7f02dbd21e00 sessionId=0 sessionPasswd=<null> context=0x7f028caef130 flags=0
+2023-05-06 17:12:59,168:26840(0x7f028b7fe700):ZOO_INFO@check_events@1764: initiated connection to server [127.0.0.1:8181]
+2023-05-06 17:12:59,222:26840(0x7f028b7fe700):ZOO_INFO@check_events@1811: session establishment complete on server [127.0.0.1:8181], sessionId=0x1025071ec790035, negotiated timeout=10000
+I0506 17:12:59.222445 27434 zk_client.cc:564] zookeeper event with type -1, state 3, path 
+I0506 17:12:59.222640 27434 zk_client.cc:579] connect success
+I0506 17:12:59.224256 27019 client_manager.cc:483] add client. name 172.24.4.27:7126, endpoint 
+I0506 17:12:59.224316 27019 client_manager.cc:483] add client. name 172.24.4.27:7128, endpoint 
+I0506 17:12:59.227520 27019 db_sdk.cc:234] start to watch notify on table, function, ns leader, taskamanger leader
+I0506 17:12:59.229028 27019 db_sdk.cc:55] init ns client with endpoint 172.24.4.27:7123 done
+23/05/06 17:12:59 INFO CuratorFrameworkImpl: Starting
+23/05/06 17:12:59 INFO ZooKeeper: Initiating client connection, connectString=127.0.0.1:8181 sessionTimeout=5000 watcher=org.apache.curator.ConnectionState@53a09566
+23/05/06 17:12:59 INFO ClientCnxnSocket: jute.maxbuffer value is 1048575 Bytes
+23/05/06 17:12:59 INFO ClientCnxn: zookeeper.request.timeout value is 0. feature enabled=false
+23/05/06 17:12:59 INFO ClientCnxn: Opening socket connection to server localhost/127.0.0.1:8181.
+23/05/06 17:12:59 INFO CuratorFrameworkImpl: Default schema
+23/05/06 17:12:59 INFO ClientCnxn: SASL config status: Will not attempt to authenticate using SASL (unknown error)
+23/05/06 17:12:59 INFO ClientCnxn: Socket connection established, initiating session, client: /127.0.0.1:60662, server: localhost/127.0.0.1:8181
+23/05/06 17:12:59 INFO ClientCnxn: Session establishment complete on server localhost/127.0.0.1:8181, session id = 0x1025071ec790036, negotiated timeout = 5000
+23/05/06 17:12:59 INFO ConnectionStateManager: State change: CONNECTED
+23/05/06 17:12:59 INFO OpenmldbSession: Register empty dataframe of db.e with schema StructType(StructField(c1,IntegerType,true), StructField(c2,IntegerType,true))
+23/05/06 17:12:59 INFO OpenmldbSession: Register empty dataframe of demo_db.demo_table1 with schema StructType(StructField(c1,StringType,true), StructField(c2,IntegerType,true), StructField(c3,LongType,true), StructField(c4,FloatType,true), StructField(c5,DoubleType,true), StructField(c6,TimestampType,true), StructField(c7,DateType,true))
+23/05/06 17:12:59 INFO OpenmldbSession: Register empty dataframe of disk_test.fulltable with schema StructType(StructField(c1,StringType,true), StructField(c2,ShortType,true), StructField(c3,IntegerType,true), StructField(c4,LongType,true), StructField(c5,FloatType,true), StructField(c6,DoubleType,true), StructField(c7,StringType,true), StructField(c8,DateType,true), StructField(c9,TimestampType,true), StructField(c10,StringType,true))
+23/05/06 17:12:59 INFO SparkPlanner: Disable window parallelization optimization, enable by setting openmldb.window.parallelization
+23/05/06 17:12:59 INFO SqlEngine: Dumped module size: 103
+23/05/06 17:12:59 INFO SparkPlanner: Visit physical plan to find ConcatJoin node
+23/05/06 17:12:59 INFO SparkPlanner: Visit concat join node to add node index info
+23/05/06 17:13:00 INFO CodeGenerator: Code generated in 315.821124 ms
+java.lang.Exception: select empty, skip save
+	at com._4paradigm.openmldb.batch.nodes.SelectIntoPlan$.gen(SelectIntoPlan.scala:39)
+	at com._4paradigm.openmldb.batch.SparkPlanner.visitNode(SparkPlanner.scala:271)
+	at com._4paradigm.openmldb.batch.SparkPlanner.getSparkOutput(SparkPlanner.scala:232)
+	at com._4paradigm.openmldb.batch.SparkPlanner.$anonfun$plan$1(SparkPlanner.scala:113)
+	at com._4paradigm.openmldb.batch.SparkPlanner.withSQLEngine(SparkPlanner.scala:384)
+	at com._4paradigm.openmldb.batch.SparkPlanner.plan(SparkPlanner.scala:83)
+	at com._4paradigm.openmldb.batch.api.OpenmldbSession.openmldbSql(OpenmldbSession.scala:178)
+	at com._4paradigm.openmldb.batch.api.OpenmldbSession.sql(OpenmldbSession.scala:189)
+	at com._4paradigm.openmldb.batchjob.util.OpenmldbJobUtil$.runOpenmldbSql(OpenmldbJobUtil.scala:54)
+	at com._4paradigm.openmldb.batchjob.ExportOfflineData$.exportOfflineData(ExportOfflineData.scala:33)
+	at com._4paradigm.openmldb.batchjob.ExportOfflineData$.main(ExportOfflineData.scala:27)
+	at com._4paradigm.openmldb.batchjob.ExportOfflineData.main(ExportOfflineData.scala)
+	at sun.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+	at sun.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:62)
+	at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
+	at java.lang.reflect.Method.invoke(Method.java:498)
+	at org.apache.spark.deploy.JavaMainApplication.start(SparkApplication.scala:52)
+	at org.apache.spark.deploy.SparkSubmit.org$apache$spark$deploy$SparkSubmit$$runMain(SparkSubmit.scala:955)
+	at org.apache.spark.deploy.SparkSubmit.doRunMain$1(SparkSubmit.scala:180)
+	at org.apache.spark.deploy.SparkSubmit.submit(SparkSubmit.scala:203)
+	at org.apache.spark.deploy.SparkSubmit.doSubmit(SparkSubmit.scala:90)
+	at org.apache.spark.deploy.SparkSubmit$$anon$2.doSubmit(SparkSubmit.scala:1043)
+	at org.apache.spark.deploy.SparkSubmit$.main(SparkSubmit.scala:1052)
+	at org.apache.spark.deploy.SparkSubmit.main(SparkSubmit.scala)
+23/05/06 17:13:00 INFO SqlEngine: Dumped module size: 103
+23/05/06 17:13:00 INFO SparkPlanner: Visit physical plan to find ConcatJoin node
+23/05/06 17:13:00 INFO SparkPlanner: Visit concat join node to add node index info
+Exception in thread "main" java.lang.Exception: select empty, skip save
+	at com._4paradigm.openmldb.batch.nodes.SelectIntoPlan$.gen(SelectIntoPlan.scala:39)
+	at com._4paradigm.openmldb.batch.SparkPlanner.visitNode(SparkPlanner.scala:271)
+	at com._4paradigm.openmldb.batch.SparkPlanner.getSparkOutput(SparkPlanner.scala:232)
+	at com._4paradigm.openmldb.batch.SparkPlanner.$anonfun$plan$1(SparkPlanner.scala:113)
+	at com._4paradigm.openmldb.batch.SparkPlanner.withSQLEngine(SparkPlanner.scala:391)
+	at com._4paradigm.openmldb.batch.SparkPlanner.plan(SparkPlanner.scala:83)
+	at com._4paradigm.openmldb.batch.api.OpenmldbSession.openmldbSql(OpenmldbSession.scala:178)
+	at com._4paradigm.openmldb.batch.api.OpenmldbSession.sql(OpenmldbSession.scala:189)
+	at com._4paradigm.openmldb.batchjob.util.OpenmldbJobUtil$.runOpenmldbSql(OpenmldbJobUtil.scala:54)
+	at com._4paradigm.openmldb.batchjob.ExportOfflineData$.exportOfflineData(ExportOfflineData.scala:33)
+	at com._4paradigm.openmldb.batchjob.ExportOfflineData$.main(ExportOfflineData.scala:27)
+	at com._4paradigm.openmldb.batchjob.ExportOfflineData.main(ExportOfflineData.scala)
+	at sun.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+	at sun.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:62)
+	at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
+	at java.lang.reflect.Method.invoke(Method.java:498)
+	at org.apache.spark.deploy.JavaMainApplication.start(SparkApplication.scala:52)
+	at org.apache.spark.deploy.SparkSubmit.org$apache$spark$deploy$SparkSubmit$$runMain(SparkSubmit.scala:955)
+	at org.apache.spark.deploy.SparkSubmit.doRunMain$1(SparkSubmit.scala:180)
+	at org.apache.spark.deploy.SparkSubmit.submit(SparkSubmit.scala:203)
+	at org.apache.spark.deploy.SparkSubmit.doSubmit(SparkSubmit.scala:90)
+	at org.apache.spark.deploy.SparkSubmit$$anon$2.doSubmit(SparkSubmit.scala:1043)
+	at org.apache.spark.deploy.SparkSubmit$.main(SparkSubmit.scala:1052)
+	at org.apache.spark.deploy.SparkSubmit.main(SparkSubmit.scala)
+23/05/06 17:13:00 INFO SparkContext: Invoking stop() from shutdown hook
+23/05/06 17:13:00 INFO MapOutputTrackerMasterEndpoint: MapOutputTrackerMasterEndpoint stopped!
+23/05/06 17:13:01 INFO MemoryStore: MemoryStore cleared
+23/05/06 17:13:01 INFO BlockManager: BlockManager stopped
+23/05/06 17:13:01 INFO BlockManagerMaster: BlockManagerMaster stopped
+23/05/06 17:13:01 INFO OutputCommitCoordinator$OutputCommitCoordinatorEndpoint: OutputCommitCoordinator stopped!
+23/05/06 17:13:01 INFO SparkContext: Successfully stopped SparkContext
+23/05/06 17:13:01 INFO ShutdownHookManager: Shutdown hook called
+23/05/06 17:13:01 INFO ShutdownHookManager: Deleting directory /tmp/spark-360ea84f-be36-46c7-a56d-8771ec89cea4
+23/05/06 17:13:01 INFO ShutdownHookManager: Deleting directory /tmp/spark-3918934b-e895-48de-90cb-9b03ff1f7c6a
