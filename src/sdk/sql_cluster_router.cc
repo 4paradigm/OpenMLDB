@@ -61,6 +61,7 @@
 DECLARE_string(bucket_size);
 DECLARE_uint32(replica_num);
 DECLARE_int32(sync_job_timeout);
+DECLARE_int32(deploy_job_max_wait_time_ms);
 
 namespace openmldb {
 namespace sdk {
@@ -68,7 +69,8 @@ namespace sdk {
 using hybridse::common::StatusCode;
 using hybridse::plan::PlanAPI;
 
-constexpr const char* SKIP_INDEX_CHECK = "skip_index_check";
+constexpr const char* SKIP_INDEX_CHECK_OPTION = "skip_index_check";
+constexpr const char* SYNC_OPTION = "sync";
 
 class ExplainInfoImpl : public ExplainInfo {
  public:
@@ -2515,9 +2517,18 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(
                            "Can not deploy in offline mode, please set @@SESSION.execute_mode='online'"};
                 return {};
             }
-
-            *status = HandleDeploy(db, dynamic_cast<hybridse::node::DeployPlanNode*>(node));
+            auto deploy_node = dynamic_cast<hybridse::node::DeployPlanNode*>(node);
+            std::optional<uint64_t> job_id;
+            *status = HandleDeploy(db, deploy_node, &job_id);
             if (status->IsOK()) {
+                if (job_id.has_value()) {
+                    schema::PBSchema job_schema;
+                    auto col = job_schema.Add();
+                    col->set_name("job_id");
+                    col->set_data_type(::openmldb::type::DataType::kBigInt);
+                    std::vector<std::string> value = {std::to_string(job_id.value())};
+                    return ResultSetSQL::MakeResultSet(job_schema, {value}, status);
+                }
                 RefreshCatalog();
             }
             return {};
@@ -3252,7 +3263,8 @@ hybridse::sdk::Status SQLClusterRouter::HandleCreateFunction(const hybridse::nod
 }
 
 hybridse::sdk::Status SQLClusterRouter::HandleDeploy(const std::string& db,
-                                                     const hybridse::node::DeployPlanNode* deploy_node) {
+        const hybridse::node::DeployPlanNode* deploy_node,
+        std::optional<uint64_t>* job_id) {
     hybridse::sdk::Status status;
     if (db.empty()) {
         return {StatusCode::kCmdError, "database is empty"};
@@ -3314,35 +3326,12 @@ hybridse::sdk::Status SQLClusterRouter::HandleDeploy(const std::string& db,
 
     sp_info.set_sql(str_stream.str());
     sp_info.set_type(::openmldb::type::ProcedureType::kReqDeployment);
-
-    auto index_status = HandleIndex(db, table_pair, select_sql, deploy_node);
-    if (!index_status.IsOK()) {
-        return index_status;
-    }
-
-    auto lw_status = HandleLongWindows(deploy_node, table_pair, select_sql);
-    if (!lw_status.IsOK()) {
-        return lw_status;
-    }
     for (const auto& o : *deploy_node->Options()) {
         auto option = sp_info.add_options();
         option->set_name(o.first);
         option->mutable_value()->set_value(o.second->GetExprString());
     }
 
-    auto ob_status = cluster_sdk_->GetNsClient()->CreateProcedure(sp_info, options_->request_timeout);
-    if (!ob_status.OK()) {
-        APPEND_FROM_BASE_AND_WARN(&status, ob_status, "ns create procedure failed");
-        return status;
-    }
-    return {};
-}
-
-hybridse::sdk::Status SQLClusterRouter::HandleIndex(const std::string& db,
-                                                    const std::set<std::pair<std::string, std::string>>& table_pair,
-                                                    const std::string& select_sql,
-                                                    const hybridse::node::DeployPlanNode* deploy_node) {
-    // extract index from sql
     std::vector<::openmldb::nameserver::TableInfo> tables;
     auto ns = cluster_sdk_->GetNsClient();
     // TODO(denglong): support multi db
@@ -3350,20 +3339,21 @@ hybridse::sdk::Status SQLClusterRouter::HandleIndex(const std::string& db,
     if (!ret.OK()) {
         return {StatusCode::kCmdError, "get table failed " + ret.msg};
     }
-    std::map<std::string, ::google::protobuf::RepeatedPtrField<::openmldb::common::ColumnDesc>> table_schema_map;
     std::map<std::string, ::openmldb::nameserver::TableInfo> table_map;
+    uint64_t record_cnt = 0;
     for (const auto& table : tables) {
         for (const auto& pair : table_pair) {
             if (table.name() == pair.second) {
-                table_schema_map.emplace(table.name(), table.column_desc());
                 table_map.emplace(table.name(), table);
+                for (int idx = 0; idx < table.table_partition_size(); idx++) {
+                    record_cnt += table.table_partition(idx).record_cnt();
+                }
                 break;
             }
         }
     }
-    auto index_map = base::DDLParser::ExtractIndexes(select_sql, table_schema_map);
     bool skip_index_check = false;
-    auto iter = deploy_node->Options()->find(SKIP_INDEX_CHECK);
+    auto iter = deploy_node->Options()->find(SKIP_INDEX_CHECK_OPTION);
     if (iter != deploy_node->Options()->end()) {
         std::string skip_index_value = iter->second->GetExprString();
         if (absl::EqualsIgnoreCase(absl::string_view(skip_index_value), absl::string_view("true"))) {
@@ -3371,23 +3361,88 @@ hybridse::sdk::Status SQLClusterRouter::HandleIndex(const std::string& db,
         }
     }
     std::map<std::string, std::vector<::openmldb::common::ColumnKey>> new_index_map;
-    auto get_index_status = GetNewIndex(table_map, index_map, skip_index_check, &new_index_map);
-    if (!get_index_status.IsOK()) {
-        return get_index_status;
+    auto index_status = GetNewIndex(table_map, select_sql, skip_index_check, &new_index_map);
+    if (!index_status.IsOK()) {
+        return index_status;
     }
-
-    auto add_index_status = AddNewIndex(db, table_map, new_index_map);
-    if (!add_index_status.IsOK()) {
-        return add_index_status;
+    if (!new_index_map.empty()) {
+        if (cluster_sdk_->IsClusterMode() && record_cnt > 0) {
+            auto lw_status = HandleLongWindows(deploy_node, table_pair, select_sql);
+            if (!lw_status.IsOK()) {
+                return lw_status;
+            }
+            uint64_t id = 0;
+            auto deploy_status = ns->DeploySQL(sp_info, new_index_map, &id);
+            if (!deploy_status.OK()) {
+                return {deploy_status.GetCode(), deploy_status.GetMsg()};
+            }
+            bool sync = true;
+            auto iter = deploy_node->Options()->find(SYNC_OPTION);
+            if (iter != deploy_node->Options()->end()) {
+                std::string skip_index_value = iter->second->GetExprString();
+                if (absl::EqualsIgnoreCase(absl::string_view(skip_index_value), absl::string_view("false"))) {
+                    sync = false;
+                }
+            }
+            if (sync) {
+                if (record_cnt > 1000000) {
+                    LOG(INFO) << "There is data in the table, it may take a few minutes to load the data";
+                } else if (record_cnt > 100000) {
+                    LOG(INFO) << "There is data in the table, it may take a few seconds to load the data";
+                }
+                uint64_t start_ts = ::baidu::common::timer::get_micros() / 1000;
+                while (true) {
+                    nameserver::ShowOPStatusResponse response;
+                    auto status = ns->ShowOPStatus(id, &response);
+                    if (!status.OK()) {
+                        return {status.GetCode(), status.GetMsg()};
+                    }
+                    if (response.op_status_size() < 1) {
+                        return {-1, absl::StrCat("op does not exist. id ", id)};
+                    }
+                    if (response.op_status(0).status() == "kDone") {
+                        return {};
+                    } else if (response.op_status(0).status() == "kFailed" ||
+                            response.op_status(0).status() == "kCanceled") {
+                        return {-1, absl::StrCat("op status is ", response.op_status(0).status())};
+                    }
+                    uint64_t cur_ts = ::baidu::common::timer::get_micros() / 1000;
+                    if (cur_ts - start_ts > static_cast<uint64_t>(FLAGS_deploy_job_max_wait_time_ms)) {
+                        return {-1, "exceed max wait time"};
+                    }
+                    sleep(1);
+                }
+            } else {
+                job_id->emplace(id);
+            }
+            return {};
+        } else {
+            auto add_index_status = AddNewIndex(db, table_map, new_index_map);
+            if (!add_index_status.IsOK()) {
+                return add_index_status;
+            }
+        }
+    }
+    auto lw_status = HandleLongWindows(deploy_node, table_pair, select_sql);
+    if (!lw_status.IsOK()) {
+        return lw_status;
+    }
+    auto ob_status = ns->CreateProcedure(sp_info, options_->request_timeout);
+    if (!ob_status.OK()) {
+        APPEND_FROM_BASE_AND_WARN(&status, ob_status, "ns create procedure failed");
+        return status;
     }
     return {};
 }
 
 hybridse::sdk::Status SQLClusterRouter::GetNewIndex(
-    const std::map<std::string, ::openmldb::nameserver::TableInfo>& table_map,
-    const std::map<std::string, std::vector<::openmldb::common::ColumnKey>>& index_map,
-    bool skip_index_check,
-    std::map<std::string, std::vector<::openmldb::common::ColumnKey>>* new_index_map) {
+    const std::map<std::string, ::openmldb::nameserver::TableInfo>& table_map, const std::string& select_sql,
+    bool skip_index_check, std::map<std::string, std::vector<::openmldb::common::ColumnKey>>* new_index_map) {
+    std::map<std::string, ::google::protobuf::RepeatedPtrField<::openmldb::common::ColumnDesc>> table_schema_map;
+    for (const auto& kv : table_map) {
+        table_schema_map.emplace(kv.first, kv.second.column_desc());
+    }
+    auto index_map = base::DDLParser::ExtractIndexes(select_sql, table_schema_map);
     auto ns = cluster_sdk_->GetNsClient();
     for (auto& kv : index_map) {
         std::string table_name = kv.first;
@@ -3479,25 +3534,13 @@ hybridse::sdk::Status SQLClusterRouter::GetNewIndex(
                     }
                 }
             } else {
-                column_key.set_index_name("INDEX_" + std::to_string(cur_index_num + add_index_num) + "_" +
-                                          std::to_string(::baidu::common::timer::now_time()));
+                column_key.set_index_name(absl::StrCat("INDEX_", cur_index_num + add_index_num, "_",
+                            ::baidu::common::timer::now_time()));
                 add_index_num++;
                 new_indexs.emplace_back(column_key);
             }
         }
         if (!new_indexs.empty()) {
-            if (cluster_sdk_->IsClusterMode()) {
-                // TODO(zhanghaohit): record_cnt is updated by ns periodically, causing a delay to get the latest value
-                uint64_t record_cnt = 0;
-                for (int idx = 0; idx < table.table_partition_size(); idx++) {
-                    record_cnt += table.table_partition(idx).record_cnt();
-                }
-                if (record_cnt > 0) {
-                    return {StatusCode::kUnSupport,
-                            "table " + table_name +
-                                " has online data, cannot deploy. please drop this table and create a new one"};
-                }
-            }
             new_index_map->emplace(table_name, std::move(new_indexs));
         }
     }
@@ -3508,52 +3551,12 @@ hybridse::sdk::Status SQLClusterRouter::AddNewIndex(
     const std::string& db, const std::map<std::string, ::openmldb::nameserver::TableInfo>& table_map,
     const std::map<std::string, std::vector<::openmldb::common::ColumnKey>>& new_index_map) {
     auto ns = cluster_sdk_->GetNsClient();
-    if (cluster_sdk_->IsClusterMode()) {
-        for (auto& kv : new_index_map) {
-            auto status = ns->AddMultiIndex(db, kv.first, kv.second);
-            if (!status.OK()) {
-                return {StatusCode::kCmdError, "table [" + db + "." + kv.first + "] add index failed. " + status.msg};
-            }
-        }
-    } else {
-        auto tablet_accessor = cluster_sdk_->GetTablet();
-        if (!tablet_accessor) {
-            return {StatusCode::kCmdError, "cannot connect tablet"};
-        }
-        auto tablet_client = tablet_accessor->GetClient();
-        if (!tablet_client) {
-            return {StatusCode::kCmdError, "tablet client is null"};
-        }
-        // add index
-        for (auto& kv : new_index_map) {
-            auto it = table_map.find(kv.first);
-            for (auto& column_key : kv.second) {
-                std::vector<openmldb::common::ColumnDesc> cols;
-                for (const auto& col_name : column_key.col_name()) {
-                    for (const auto& col : it->second.column_desc()) {
-                        if (col.name() == col_name) {
-                            cols.push_back(col);
-                            break;
-                        }
-                    }
-                }
-                std::string msg;
-                if (!ns->AddIndex(kv.first, column_key, &cols, msg)) {
-                    return {StatusCode::kCmdError, "table " + kv.first + " add index failed"};
-                }
-            }
-        }
-        // load new index data to table
-        for (auto& kv : new_index_map) {
-            auto it = table_map.find(kv.first);
-            if (it == table_map.end()) {
-                continue;
-            }
-            uint32_t tid = it->second.tid();
-            uint32_t pid = 0;
-            if (!tablet_client->ExtractMultiIndexData(tid, pid, it->second.table_partition_size(), kv.second)) {
-                return {StatusCode::kCmdError, "table " + kv.first + " load data failed"};
-            }
+    for (auto& kv : new_index_map) {
+        bool skip_load_data = cluster_sdk_->IsClusterMode();
+        auto status = ns->AddMultiIndex(db, kv.first, kv.second, skip_load_data);
+        if (!status.OK()) {
+            return {StatusCode::kCmdError,
+                absl::StrCat("table [", db, ".", kv.first, "] add index failed. ", status.msg)};
         }
     }
     return {};

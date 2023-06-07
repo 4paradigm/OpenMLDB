@@ -751,14 +751,14 @@ int32_t RowView::GetInteger(const int8_t* row, uint32_t idx, ::openmldb::type::D
         }
         case ::openmldb::type::kInt: {
             int32_t tmp_val = 0;
-            GetValue(row, idx, type, &tmp_val);
+            ret = GetValue(row, idx, type, &tmp_val);
             if (ret == 0) *val = tmp_val;
             break;
         }
         case ::openmldb::type::kTimestamp:
         case ::openmldb::type::kBigInt: {
             int64_t tmp_val = 0;
-            GetValue(row, idx, type, &tmp_val);
+            ret = GetValue(row, idx, type, &tmp_val);
             if (ret == 0) *val = tmp_val;
             break;
         }

@@ -927,7 +927,7 @@ bool NsClient::AddIndex(const std::string& db_name,
 }
 
 base::Status NsClient::AddMultiIndex(const std::string& db, const std::string& table_name,
-        const std::vector<::openmldb::common::ColumnKey>& column_keys) {
+        const std::vector<::openmldb::common::ColumnKey>& column_keys, bool skip_load_data) {
     ::openmldb::nameserver::AddIndexRequest request;
     ::openmldb::nameserver::GeneralResponse response;
     if (column_keys.empty()) {
@@ -939,6 +939,7 @@ base::Status NsClient::AddMultiIndex(const std::string& db, const std::string& t
     }
     request.set_name(table_name);
     request.set_db(db);
+    request.set_skip_load_data(skip_load_data);
     bool ok = client_.SendRequest(&::openmldb::nameserver::NameServer_Stub::AddIndex, &request, &response,
                                   FLAGS_request_timeout_ms, 1);
     if (ok && response.code() == 0) {
@@ -1072,6 +1073,32 @@ base::Status NsClient::ShowFunction(const std::string& name,
     for (int i = 0; i < response.fun_size(); i++) {
         fun_vec->emplace_back(response.fun(i));
     }
+    return {};
+}
+
+base::Status NsClient::DeploySQL(const ::openmldb::api::ProcedureInfo& sp_info,
+        const std::map<std::string, std::vector<::openmldb::common::ColumnKey>>& new_index_map,
+        uint64_t* op_id) {
+    if (new_index_map.empty()) {
+        return {base::ReturnCode::kError, "no index to add"};
+    }
+    nameserver::DeploySQLRequest request;
+    request.mutable_sp_info()->CopyFrom(sp_info);
+    for (const auto& kv : new_index_map) {
+        auto index = request.add_index();
+        index->set_name(kv.first);
+        index->set_db(sp_info.db_name());
+        for (const auto& column_key : kv.second) {
+            index->add_column_key()->CopyFrom(column_key);
+        }
+    }
+    nameserver::DeploySQLResponse response;
+    bool ok = client_.SendRequest(&::openmldb::nameserver::NameServer_Stub::DeploySQL, &request, &response,
+                                  FLAGS_request_timeout_ms, 1);
+    if (!ok || response.code() != 0) {
+        return {base::ReturnCode::kError, response.msg()};
+    }
+    *op_id = response.op_id();
     return {};
 }
 
