@@ -30,13 +30,12 @@
 #include "storage/ticket.h"
 #include "vm/catalog.h"
 
-using ::openmldb::api::LogEntry;
-using ::openmldb::base::Slice;
-
 namespace openmldb {
 namespace storage {
 
 typedef google::protobuf::RepeatedPtrField<::openmldb::api::Dimension> Dimensions;
+using ::openmldb::api::LogEntry;
+using ::openmldb::base::Slice;
 
 class MemTable : public Table {
  public:

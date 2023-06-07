@@ -43,7 +43,7 @@ Segment::Segment(uint8_t height)
       ts_cnt_(1),
       gc_version_(0),
       ttl_offset_(FLAGS_gc_safe_offset * 60 * 1000),
-      node_cache_(1) {
+      node_cache_(1, height) {
     entries_ = new KeyEntries((uint8_t)FLAGS_skiplist_max_height, 4, scmp);
 }
 
@@ -57,7 +57,7 @@ Segment::Segment(uint8_t height, const std::vector<uint32_t>& ts_idx_vec)
       ts_cnt_(ts_idx_vec.size()),
       gc_version_(0),
       ttl_offset_(FLAGS_gc_safe_offset * 60 * 1000),
-      node_cache_(ts_idx_vec.size()) {
+      node_cache_(ts_idx_vec.size(), height) {
     entries_ = new KeyEntries((uint8_t)FLAGS_skiplist_max_height, 4, scmp);
     for (uint32_t i = 0; i < ts_idx_vec.size(); i++) {
         ts_idx_map_[ts_idx_vec[i]] = i;
@@ -69,8 +69,7 @@ Segment::~Segment() {
     delete entries_;
 }
 
-uint64_t Segment::Release() {
-    uint64_t cnt = 0;
+void Segment::Release(StatisticsInfo* statistics_info) {
     std::unique_ptr<KeyEntries::Iterator> it(entries_->NewIterator());
     it->SeekToFirst();
     while (it->Valid()) {
@@ -79,13 +78,13 @@ uint64_t Segment::Release() {
             if (ts_cnt_ > 1) {
                 KeyEntry** entry_arr = reinterpret_cast<KeyEntry**>(it->GetValue());
                 for (uint32_t i = 0; i < ts_cnt_; i++) {
-                    cnt += entry_arr[i]->Release();
+                    entry_arr[i]->Release(statistics_info);
                     delete entry_arr[i];
                 }
                 delete[] entry_arr;
             } else {
                 KeyEntry* entry = reinterpret_cast<KeyEntry*>(it->GetValue());
-                cnt += entry->Release();
+                entry->Release(statistics_info);
                 delete entry;
             }
         }
@@ -99,14 +98,13 @@ uint64_t Segment::Release() {
     for (auto& idx_cnt : idx_cnt_vec_) {
         idx_cnt->store(0);
     }
-    return cnt;
 }
 
-void Segment::ReleaseAndCount() {
-    Release();
+void Segment::ReleaseAndCount(StatisticsInfo* statistics_info) {
+    Release(statistics_info);
 }
 
-void Segment::ReleaseAndCount(const std::vector<size_t>& id_vec) {
+void Segment::ReleaseAndCount(const std::vector<size_t>& id_vec, StatisticsInfo* statistics_info) {
     if (ts_cnt_ <= 1) {
         return;
     }
@@ -119,9 +117,6 @@ void Segment::ReleaseAndCount(const std::vector<size_t>& id_vec) {
     if (real_idx_vec.empty()) {
         return;
     }
-    uint64_t gc_idx_cnt = 0;
-    uint64_t gc_record_cnt = 0;
-    uint64_t gc_record_byte_size = 0;
     std::unique_ptr<KeyEntries::Iterator> it(entries_->NewIterator());
     it->SeekToFirst();
     while (it->Valid()) {
@@ -134,7 +129,7 @@ void Segment::ReleaseAndCount(const std::vector<size_t>& id_vec) {
                 if (ts_it->Valid()) {
                     uint64_t ts = ts_it->GetKey();
                     auto data_node = entry->entries.Split(ts);
-                    FreeList(data_node, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
+                    FreeList(data_node, statistics_info);
                 }
             }
         }
@@ -354,10 +349,9 @@ bool Segment::Delete(const std::optional<uint32_t>& idx, const Slice& key,
     return true;
 }
 
-void Segment::FreeList(::openmldb::base::Node<uint64_t, DataBlock*>* node, uint64_t& gc_idx_cnt,
-                       uint64_t& gc_record_cnt, uint64_t& gc_record_byte_size) {
+void Segment::FreeList(::openmldb::base::Node<uint64_t, DataBlock*>* node, StatisticsInfo* statistics_info) {
     while (node != nullptr) {
-        gc_idx_cnt++;
+        statistics_info->idx_cnt++;
         ::openmldb::base::Node<uint64_t, DataBlock*>* tmp = node;
         idx_byte_size_.fetch_sub(GetRecordTsIdxSize(tmp->Height()));
         node = node->GetNextNoBarrier(0);
@@ -366,26 +360,25 @@ void Segment::FreeList(::openmldb::base::Node<uint64_t, DataBlock*>* node, uint6
             tmp->GetValue()->dim_cnt_down--;
         } else {
             DEBUGLOG("delele data block for key %lu", tmp->GetKey());
-            gc_record_byte_size += GetRecordSize(tmp->GetValue()->size);
+            statistics_info->record_byte_size += GetRecordSize(tmp->GetValue()->size);
             delete tmp->GetValue();
-            gc_record_cnt++;
+            statistics_info->record_cnt++;
         }
         delete tmp;
     }
 }
 
 
-void Segment::GcFreeList(uint64_t& gc_idx_cnt, uint64_t& gc_record_cnt, uint64_t& gc_record_byte_size) {
+void Segment::GcFreeList(StatisticsInfo* statistics_info) {
     uint64_t cur_version = gc_version_.load(std::memory_order_relaxed);
     if (cur_version < FLAGS_gc_deleted_pk_version_delta) {
         return;
     }
     uint64_t free_list_version = cur_version - FLAGS_gc_deleted_pk_version_delta;
-    node_cache_.Free(free_list_version);
+    node_cache_.Free(free_list_version, statistics_info);
 }
 
-void Segment::ExecuteGc(const TTLSt& ttl_st, uint64_t& gc_idx_cnt, uint64_t& gc_record_cnt,
-                        uint64_t& gc_record_byte_size) {
+void Segment::ExecuteGc(const TTLSt& ttl_st, StatisticsInfo* statistics_info) {
     uint64_t cur_time = ::baidu::common::timer::get_micros() / 1000;
     switch (ttl_st.ttl_type) {
         case ::openmldb::storage::TTLType::kAbsoluteTime: {
@@ -393,14 +386,14 @@ void Segment::ExecuteGc(const TTLSt& ttl_st, uint64_t& gc_idx_cnt, uint64_t& gc_
                 return;
             }
             uint64_t expire_time = cur_time - ttl_offset_ - ttl_st.abs_ttl;
-            Gc4TTL(expire_time, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
+            Gc4TTL(expire_time, statistics_info);
             break;
         }
         case ::openmldb::storage::TTLType::kLatestTime: {
             if (ttl_st.lat_ttl == 0) {
                 return;
             }
-            Gc4Head(ttl_st.lat_ttl, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
+            Gc4Head(ttl_st.lat_ttl, statistics_info);
             break;
         }
         case ::openmldb::storage::TTLType::kAbsAndLat: {
@@ -408,7 +401,7 @@ void Segment::ExecuteGc(const TTLSt& ttl_st, uint64_t& gc_idx_cnt, uint64_t& gc_
                 return;
             }
             uint64_t expire_time = cur_time - ttl_offset_ - ttl_st.abs_ttl;
-            Gc4TTLAndHead(expire_time, ttl_st.lat_ttl, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
+            Gc4TTLAndHead(expire_time, ttl_st.lat_ttl, statistics_info);
             break;
         }
         case ::openmldb::storage::TTLType::kAbsOrLat: {
@@ -416,7 +409,7 @@ void Segment::ExecuteGc(const TTLSt& ttl_st, uint64_t& gc_idx_cnt, uint64_t& gc_
                 return;
             }
             uint64_t expire_time = ttl_st.abs_ttl == 0 ? 0 : cur_time - ttl_offset_ - ttl_st.abs_ttl;
-            Gc4TTLOrHead(expire_time, ttl_st.lat_ttl, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
+            Gc4TTLOrHead(expire_time, ttl_st.lat_ttl, statistics_info);
             break;
         }
         default:
@@ -424,13 +417,12 @@ void Segment::ExecuteGc(const TTLSt& ttl_st, uint64_t& gc_idx_cnt, uint64_t& gc_
     }
 }
 
-void Segment::ExecuteGc(const std::map<uint32_t, TTLSt>& ttl_st_map, uint64_t& gc_idx_cnt, uint64_t& gc_record_cnt,
-                        uint64_t& gc_record_byte_size) {
+void Segment::ExecuteGc(const std::map<uint32_t, TTLSt>& ttl_st_map, StatisticsInfo* statistics_info) {
     if (ttl_st_map.empty()) {
         return;
     }
     if (ts_cnt_ <= 1) {
-        ExecuteGc(ttl_st_map.begin()->second, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
+        ExecuteGc(ttl_st_map.begin()->second, statistics_info);
         return;
     }
     bool need_gc = false;
@@ -445,16 +437,16 @@ void Segment::ExecuteGc(const std::map<uint32_t, TTLSt>& ttl_st_map, uint64_t& g
     if (!need_gc) {
         return;
     }
-    GcAllType(ttl_st_map, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
+    GcAllType(ttl_st_map, statistics_info);
 }
 
-void Segment::Gc4Head(uint64_t keep_cnt, uint64_t& gc_idx_cnt, uint64_t& gc_record_cnt, uint64_t& gc_record_byte_size) {
+void Segment::Gc4Head(uint64_t keep_cnt, StatisticsInfo* statistics_info) {
     if (keep_cnt == 0) {
         PDLOG(WARNING, "[Gc4Head] segment gc4head is disabled");
         return;
     }
     uint64_t consumed = ::baidu::common::timer::get_micros();
-    uint64_t old = gc_idx_cnt;
+    uint64_t old = statistics_info->idx_cnt;
     KeyEntries::Iterator* it = entries_->NewIterator();
     it->SeekToFirst();
     while (it->Valid()) {
@@ -466,26 +458,24 @@ void Segment::Gc4Head(uint64_t keep_cnt, uint64_t& gc_idx_cnt, uint64_t& gc_reco
                 node = entry->entries.SplitByPos(keep_cnt);
             }
         }
-        uint64_t entry_gc_idx_cnt = 0;
-        FreeList(node, entry_gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
-        entry->count_.fetch_sub(entry_gc_idx_cnt, std::memory_order_relaxed);
-        gc_idx_cnt += entry_gc_idx_cnt;
+        uint64_t cur_idx_cnt = statistics_info->idx_cnt;
+        FreeList(node, statistics_info);
+        entry->count_.fetch_sub(statistics_info->idx_cnt - cur_idx_cnt, std::memory_order_relaxed);
         it->Next();
     }
     DEBUGLOG("[Gc4Head] segment gc keep cnt %lu consumed %lu, count %lu", keep_cnt,
-             (::baidu::common::timer::get_micros() - consumed) / 1000, gc_idx_cnt - old);
-    idx_cnt_.fetch_sub(gc_idx_cnt - old, std::memory_order_relaxed);
+             (::baidu::common::timer::get_micros() - consumed) / 1000, statistics_info->idx_cnt - old);
+    idx_cnt_.fetch_sub(statistics_info->idx_cnt - old, std::memory_order_relaxed);
     delete it;
 }
 
-void Segment::GcAllType(const std::map<uint32_t, TTLSt>& ttl_st_map, uint64_t& gc_idx_cnt, uint64_t& gc_record_cnt,
-                        uint64_t& gc_record_byte_size) {
-    uint64_t old = gc_idx_cnt;
+void Segment::GcAllType(const std::map<uint32_t, TTLSt>& ttl_st_map, StatisticsInfo* statistics_info) {
+    uint64_t old = statistics_info->idx_cnt;
     uint64_t consumed = ::baidu::common::timer::get_micros();
-    KeyEntries::Iterator* it = entries_->NewIterator();
+    std::unique_ptr<KeyEntries::Iterator> it(entries_->NewIterator());
     it->SeekToFirst();
     while (it->Valid()) {
-        KeyEntry** entry_arr = (KeyEntry**)it->GetValue();  // NOLINT
+        KeyEntry** entry_arr = reinterpret_cast<KeyEntry**>(it->GetValue());
         Slice key = it->GetKey();
         it->Next();
         uint32_t empty_cnt = 0;
@@ -563,11 +553,11 @@ void Segment::GcAllType(const std::map<uint32_t, TTLSt>& ttl_st_map, uint64_t& g
             if (continue_flag) {
                 continue;
             }
-            uint64_t entry_gc_idx_cnt = 0;
-            FreeList(node, entry_gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
-            entry->count_.fetch_sub(entry_gc_idx_cnt, std::memory_order_relaxed);
-            idx_cnt_vec_[pos->second]->fetch_sub(entry_gc_idx_cnt, std::memory_order_relaxed);
-            gc_idx_cnt += entry_gc_idx_cnt;
+            uint64_t cur_idx_cnt = statistics_info->idx_cnt;
+            FreeList(node, statistics_info);
+            uint64_t free_idx_cnt = statistics_info->idx_cnt - cur_idx_cnt;
+            entry->count_.fetch_sub(free_idx_cnt, std::memory_order_relaxed);
+            idx_cnt_vec_[pos->second]->fetch_sub(free_idx_cnt, std::memory_order_relaxed);
         }
         if (empty_cnt == ts_cnt_) {
             bool is_empty = true;
@@ -590,8 +580,7 @@ void Segment::GcAllType(const std::map<uint32_t, TTLSt>& ttl_st_map, uint64_t& g
         }
     }
     DEBUGLOG("[GcAll] segment gc consumed %lu, count %lu", (::baidu::common::timer::get_micros() - consumed) / 1000,
-             gc_idx_cnt - old);
-    delete it;
+             statistics_info->idx_cnt - old);
 }
 
 void Segment::SplitList(KeyEntry* entry, uint64_t ts, ::openmldb::base::Node<uint64_t, DataBlock*>** node) {
@@ -602,23 +591,20 @@ void Segment::SplitList(KeyEntry* entry, uint64_t ts, ::openmldb::base::Node<uin
 }
 
 // fast gc with no global pause
-void Segment::Gc4TTL(const uint64_t time, uint64_t& gc_idx_cnt, uint64_t& gc_record_cnt,
-                     uint64_t& gc_record_byte_size) {
+void Segment::Gc4TTL(const uint64_t time, StatisticsInfo* statistics_info) {
     uint64_t consumed = ::baidu::common::timer::get_micros();
-    uint64_t old = gc_idx_cnt;
-    KeyEntries::Iterator* it = entries_->NewIterator();
+    uint64_t old = statistics_info->idx_cnt;
+    std::unique_ptr<KeyEntries::Iterator> it(entries_->NewIterator());
     it->SeekToFirst();
     while (it->Valid()) {
-        KeyEntry* entry = (KeyEntry*)it->GetValue();  // NOLINT
+        KeyEntry* entry = reinterpret_cast<KeyEntry*>(it->GetValue());
         Slice key = it->GetKey();
         it->Next();
         ::openmldb::base::Node<uint64_t, DataBlock*>* node = entry->entries.GetLast();
         if (node == nullptr) {
             continue;
         } else if (node->GetKey() > time) {
-            DEBUGLOG(
-                "[Gc4TTL] segment gc with key %lu need not ttl, last node "
-                "key %lu",
+            DEBUGLOG("[Gc4TTL] segment gc with key %lu need not ttl, last node key %lu",
                 time, node->GetKey());
             continue;
         }
@@ -634,37 +620,32 @@ void Segment::Gc4TTL(const uint64_t time, uint64_t& gc_idx_cnt, uint64_t& gc_rec
         if (entry_node != nullptr) {
             node_cache_.AddKeyEntryNode(gc_version_.load(std::memory_order_relaxed), entry_node);
         }
-        uint64_t entry_gc_idx_cnt = 0;
-        FreeList(node, entry_gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
-        entry->count_.fetch_sub(entry_gc_idx_cnt, std::memory_order_relaxed);
-        gc_idx_cnt += entry_gc_idx_cnt;
+        uint64_t cur_idx_cnt = statistics_info->idx_cnt;
+        FreeList(node, statistics_info);
+        entry->count_.fetch_sub(statistics_info->idx_cnt - cur_idx_cnt, std::memory_order_relaxed);
     }
     DEBUGLOG("[Gc4TTL] segment gc with key %lu ,consumed %lu, count %lu", time,
-             (::baidu::common::timer::get_micros() - consumed) / 1000, gc_idx_cnt - old);
-    idx_cnt_.fetch_sub(gc_idx_cnt - old, std::memory_order_relaxed);
-    delete it;
+             (::baidu::common::timer::get_micros() - consumed) / 1000, statistics_info->idx_cnt - old);
+    idx_cnt_.fetch_sub(statistics_info->idx_cnt - old, std::memory_order_relaxed);
 }
 
-void Segment::Gc4TTLAndHead(const uint64_t time, const uint64_t keep_cnt, uint64_t& gc_idx_cnt, uint64_t& gc_record_cnt,
-                            uint64_t& gc_record_byte_size) {
+void Segment::Gc4TTLAndHead(const uint64_t time, const uint64_t keep_cnt, StatisticsInfo* statistics_info) {
     if (time == 0 || keep_cnt == 0) {
         PDLOG(INFO, "[Gc4TTLAndHead] segment gc4ttlandhead is disabled");
         return;
     }
     uint64_t consumed = ::baidu::common::timer::get_micros();
-    uint64_t old = gc_idx_cnt;
-    KeyEntries::Iterator* it = entries_->NewIterator();
+    uint64_t old = statistics_info->idx_cnt;
+    std::unique_ptr<KeyEntries::Iterator> it(entries_->NewIterator());
     it->SeekToFirst();
     while (it->Valid()) {
-        KeyEntry* entry = (KeyEntry*)it->GetValue();  // NOLINT
+        KeyEntry* entry = reinterpret_cast<KeyEntry*>(it->GetValue());
         ::openmldb::base::Node<uint64_t, DataBlock*>* node = entry->entries.GetLast();
         it->Next();
         if (node == nullptr) {
             continue;
         } else if (node->GetKey() > time) {
-            DEBUGLOG(
-                "[Gc4TTLAndHead] segment gc with key %lu need not ttl, last "
-                "node key %lu",
+            DEBUGLOG("[Gc4TTLAndHead] segment gc with key %lu need not ttl, last node key %lu",
                 time, node->GetKey());
             continue;
         }
@@ -675,37 +656,32 @@ void Segment::Gc4TTLAndHead(const uint64_t time, const uint64_t keep_cnt, uint64
                 node = entry->entries.SplitByKeyAndPos(time, keep_cnt);
             }
         }
-        uint64_t entry_gc_idx_cnt = 0;
-        FreeList(node, entry_gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
-        entry->count_.fetch_sub(entry_gc_idx_cnt, std::memory_order_relaxed);
-        gc_idx_cnt += entry_gc_idx_cnt;
+        uint64_t cur_idx_cnt = statistics_info->idx_cnt;
+        FreeList(node, statistics_info);
+        entry->count_.fetch_sub(statistics_info->idx_cnt - cur_idx_cnt, std::memory_order_relaxed);
     }
-    DEBUGLOG(
-        "[Gc4TTLAndHead] segment gc time %lu and keep cnt %lu consumed %lu, "
-        "count %lu",
-        time, keep_cnt, (::baidu::common::timer::get_micros() - consumed) / 1000, gc_idx_cnt - old);
-    idx_cnt_.fetch_sub(gc_idx_cnt - old, std::memory_order_relaxed);
-    delete it;
+    DEBUGLOG("[Gc4TTLAndHead] segment gc time %lu and keep cnt %lu consumed %lu, count %lu",
+        time, keep_cnt, (::baidu::common::timer::get_micros() - consumed) / 1000, statistics_info->idx_cnt - old);
+    idx_cnt_.fetch_sub(statistics_info->idx_cnt - old, std::memory_order_relaxed);
 }
 
-void Segment::Gc4TTLOrHead(const uint64_t time, const uint64_t keep_cnt, uint64_t& gc_idx_cnt, uint64_t& gc_record_cnt,
-                           uint64_t& gc_record_byte_size) {
+void Segment::Gc4TTLOrHead(const uint64_t time, const uint64_t keep_cnt, StatisticsInfo* statistics_info) {
     if (time == 0 && keep_cnt == 0) {
         PDLOG(INFO, "[Gc4TTLOrHead] segment gc4ttlorhead is disabled");
         return;
     } else if (time == 0) {
-        Gc4Head(keep_cnt, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
+        Gc4Head(keep_cnt, statistics_info);
         return;
     } else if (keep_cnt == 0) {
-        Gc4TTL(time, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
+        Gc4TTL(time, statistics_info);
         return;
     }
     uint64_t consumed = ::baidu::common::timer::get_micros();
-    uint64_t old = gc_idx_cnt;
+    uint64_t old = statistics_info->idx_cnt;
     std::unique_ptr<KeyEntries::Iterator> it(entries_->NewIterator());
     it->SeekToFirst();
     while (it->Valid()) {
-        KeyEntry* entry = (KeyEntry*)it->GetValue();  // NOLINT
+        KeyEntry* entry = reinterpret_cast<KeyEntry*>(it->GetValue());
         Slice key = it->GetKey();
         it->Next();
         ::openmldb::base::Node<uint64_t, DataBlock*>* node = entry->entries.GetLast();
@@ -726,14 +702,13 @@ void Segment::Gc4TTLOrHead(const uint64_t time, const uint64_t keep_cnt, uint64_
         if (entry_node != nullptr) {
             node_cache_.AddKeyEntryNode(gc_version_.load(std::memory_order_relaxed), entry_node);
         }
-        uint64_t entry_gc_idx_cnt = 0;
-        FreeList(node, entry_gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
-        entry->count_.fetch_sub(entry_gc_idx_cnt, std::memory_order_relaxed);
-        gc_idx_cnt += entry_gc_idx_cnt;
+        uint64_t cur_idx_cnt = statistics_info->idx_cnt;
+        FreeList(node, statistics_info);
+        entry->count_.fetch_sub(statistics_info->idx_cnt - cur_idx_cnt, std::memory_order_relaxed);
     }
     DEBUGLOG("[Gc4TTLAndHead] segment gc time %lu and keep cnt %lu consumed %lu, count %lu",
-        time, keep_cnt, (::baidu::common::timer::get_micros() - consumed) / 1000, gc_idx_cnt - old);
-    idx_cnt_.fetch_sub(gc_idx_cnt - old, std::memory_order_relaxed);
+        time, keep_cnt, (::baidu::common::timer::get_micros() - consumed) / 1000, statistics_info->idx_cnt - old);
+    idx_cnt_.fetch_sub(statistics_info->idx_cnt - old, std::memory_order_relaxed);
 }
 
 int Segment::GetCount(const Slice& key, uint64_t& count) {

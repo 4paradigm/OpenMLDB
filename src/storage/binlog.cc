@@ -99,12 +99,9 @@ bool Binlog::RecoverFromBinlog(std::shared_ptr<Table> table, uint64_t offset, ui
         }
 
         if (cur_offset + 1 != entry.log_index()) {
-            PDLOG(WARNING,
-                  "missing log entry cur_offset %lu , new entry offset %lu for "
-                  "tid %u, pid %u",
+            PDLOG(WARNING, "missing log entry cur_offset %lu , new entry offset %lu for tid %u, pid %u",
                   cur_offset, entry.log_index(), tid, pid);
         }
-
         if (entry.has_method_type() && entry.method_type() == ::openmldb::api::MethodType::kDelete) {
             table->Delete(entry);
         } else {

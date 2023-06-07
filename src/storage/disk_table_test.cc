@@ -53,7 +53,7 @@ class DiskTableTest : public ::testing::Test {
 TEST_F(DiskTableTest, ParseKeyAndTs) {
     std::string combined_key = CombineKeyTs("abcdexxx11", 1552619498000);
     std::string key;
-    uint64_t ts;
+    uint64_t ts = 0;
     ASSERT_EQ(0, ParseKeyAndTs(false, rocksdb::Slice(combined_key), &key, &ts, nullptr));
     ASSERT_EQ("abcdexxx11", key);
     ASSERT_EQ(1552619498000, (int64_t)ts);

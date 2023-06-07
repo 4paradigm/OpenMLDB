@@ -76,6 +76,12 @@ TEST_F(SegmentTest, PutAndScan) {
     ASSERT_TRUE(it->Valid());
 }
 
+void CheckStatisticsInfo(const StatisticsInfo& expect, const StatisticsInfo& value) {
+    ASSERT_EQ(expect.idx_cnt, value.idx_cnt);
+    ASSERT_EQ(expect.record_cnt, value.record_cnt);
+    ASSERT_EQ(expect.record_byte_size, value.record_byte_size);
+}
+
 TEST_F(SegmentTest, Delete) {
     Segment segment(8);
     Slice pk("test1");
@@ -99,15 +105,11 @@ TEST_F(SegmentTest, Delete) {
     it = segment.NewIterator("test1", ticket);
     ASSERT_FALSE(it->Valid());
     delete it;
-    uint64_t gc_idx_cnt = 0;
-    uint64_t gc_record_cnt = 0;
-    uint64_t gc_record_byte_size = 0;
     segment.IncrGcVersion();
     segment.IncrGcVersion();
-    segment.GcFreeList(gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
-    ASSERT_EQ(4, (int64_t)gc_idx_cnt);
-    ASSERT_EQ(4, (int64_t)gc_record_cnt);
-    ASSERT_EQ(84, (int64_t)gc_record_byte_size);
+    StatisticsInfo gc_info;
+    segment.GcFreeList(&gc_info);
+    CheckStatisticsInfo(StatisticsInfo(4, 4, 84), gc_info);
 }
 
 TEST_F(SegmentTest, GetCount) {
@@ -124,10 +126,8 @@ TEST_F(SegmentTest, GetCount) {
     ASSERT_EQ(0, segment.GetCount(pk, count));
     ASSERT_EQ(4, (int64_t)count);
 
-    uint64_t gc_idx_cnt = 0;
-    uint64_t gc_record_cnt = 0;
-    uint64_t gc_record_byte_size = 0;
-    segment.Gc4TTL(9528, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
+    StatisticsInfo gc_info;
+    segment.Gc4TTL(9528, &gc_info);
     ASSERT_EQ(0, segment.GetCount(pk, count));
     ASSERT_EQ(2, (int64_t)count);
 
@@ -192,16 +192,12 @@ TEST_F(SegmentTest, Iterator) {
 
 TEST_F(SegmentTest, TestGc4Head) {
     Segment segment(8);
-    uint64_t gc_idx_cnt = 0;
-    uint64_t gc_record_cnt = 0;
-    uint64_t gc_record_byte_size = 0;
     Slice pk("PK");
     segment.Put(pk, 9768, "test1", 5);
     segment.Put(pk, 9769, "test2", 5);
-    segment.Gc4Head(1, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
-    ASSERT_EQ(1, (int64_t)gc_idx_cnt);
-    ASSERT_EQ(1, (int64_t)gc_record_cnt);
-    ASSERT_EQ(GetRecordSize(5), (int64_t)gc_record_byte_size);
+    StatisticsInfo gc_info;
+    segment.Gc4Head(1, &gc_info);
+    CheckStatisticsInfo({1, 1, GetRecordSize(5)}, gc_info);
     Ticket ticket;
     MemTableIterator* it = segment.NewIterator(pk, ticket);
     it->Seek(9769);
@@ -218,21 +214,14 @@ TEST_F(SegmentTest, TestGc4TTL) {
     Segment segment(8);
     segment.Put("PK", 9768, "test1", 5);
     segment.Put("PK", 9769, "test2", 5);
-    uint64_t gc_idx_cnt = 0;
-    uint64_t gc_record_cnt = 0;
-    uint64_t gc_record_byte_size = 0;
-    segment.Gc4TTL(9765, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
-    ASSERT_EQ(0, (int64_t)gc_idx_cnt);
-    ASSERT_EQ(0, (int64_t)gc_record_cnt);
-    ASSERT_EQ(0, (int64_t)gc_record_byte_size);
-    segment.Gc4TTL(9768, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
-    ASSERT_EQ(1, (int64_t)gc_idx_cnt);
-    ASSERT_EQ(1, (int64_t)gc_record_cnt);
-    ASSERT_EQ(GetRecordSize(5), (int64_t)gc_record_byte_size);
-    segment.Gc4TTL(9770, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
-    ASSERT_EQ(2, (int64_t)gc_idx_cnt);
-    ASSERT_EQ(2, (int64_t)gc_record_cnt);
-    ASSERT_EQ(2 * GetRecordSize(5), (int64_t)gc_record_byte_size);
+    StatisticsInfo gc_info;
+    segment.Gc4TTL(9765, &gc_info);
+    CheckStatisticsInfo({0, 0, 0}, gc_info);
+    segment.Gc4TTL(9768, &gc_info);
+    CheckStatisticsInfo({1, 1, GetRecordSize(5)}, gc_info);
+    gc_info.Reset();
+    segment.Gc4TTL(9770, &gc_info);
+    CheckStatisticsInfo({2, 2, 2 * GetRecordSize(5)}, gc_info);
 }
 
 TEST_F(SegmentTest, TestGc4TTLAndHead) {
@@ -244,45 +233,20 @@ TEST_F(SegmentTest, TestGc4TTLAndHead) {
     segment.Put("PK2", 9765, "test1", 5);
     segment.Put("PK2", 9766, "test2", 5);
     segment.Put("PK2", 9767, "test3", 5);
-    uint64_t gc_idx_cnt = 0;
-    uint64_t gc_record_cnt = 0;
-    uint64_t gc_record_byte_size = 0;
-    segment.Gc4TTLAndHead(0, 0, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
-    ASSERT_EQ(0, (int64_t)gc_idx_cnt);
-    ASSERT_EQ(0, (int64_t)gc_record_cnt);
-    ASSERT_EQ(0, (int64_t)gc_record_byte_size);
-    segment.Gc4TTLAndHead(9765, 0, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
-    ASSERT_EQ(0, (int64_t)gc_idx_cnt);
-    ASSERT_EQ(0, (int64_t)gc_record_cnt);
-    ASSERT_EQ(0, (int64_t)gc_record_byte_size);
-    gc_idx_cnt = 0;
-    gc_record_cnt = 0;
-    gc_record_byte_size = 0;
-    segment.Gc4TTLAndHead(0, 3, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
-    ASSERT_EQ(0, (int64_t)gc_idx_cnt);
-    ASSERT_EQ(0, (int64_t)gc_record_cnt);
-    ASSERT_EQ(0, (int64_t)gc_record_byte_size);
-    gc_idx_cnt = 0;
-    gc_record_cnt = 0;
-    gc_record_byte_size = 0;
-    segment.Gc4TTLAndHead(9765, 3, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
-    ASSERT_EQ(0, (int64_t)gc_idx_cnt);
-    ASSERT_EQ(0, (int64_t)gc_record_cnt);
-    ASSERT_EQ(0, (int64_t)gc_record_byte_size);
-    gc_idx_cnt = 0;
-    gc_record_cnt = 0;
-    gc_record_byte_size = 0;
-    segment.Gc4TTLAndHead(9766, 2, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
-    ASSERT_EQ(2, (int64_t)gc_idx_cnt);
-    ASSERT_EQ(2, (int64_t)gc_record_cnt);
-    ASSERT_EQ(2 * GetRecordSize(5), (int64_t)gc_record_byte_size);
-    gc_idx_cnt = 0;
-    gc_record_cnt = 0;
-    gc_record_byte_size = 0;
-    segment.Gc4TTLAndHead(9770, 1, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
-    ASSERT_EQ(3, (int64_t)gc_idx_cnt);
-    ASSERT_EQ(3, (int64_t)gc_record_cnt);
-    ASSERT_EQ(3 * GetRecordSize(5), (int64_t)gc_record_byte_size);
+    StatisticsInfo gc_info;
+    segment.Gc4TTLAndHead(0, 0, &gc_info);
+    CheckStatisticsInfo({0, 0, 0}, gc_info);
+    segment.Gc4TTLAndHead(9765, 0, &gc_info);
+    CheckStatisticsInfo({0, 0, 0}, gc_info);
+    segment.Gc4TTLAndHead(0, 3, &gc_info);
+    CheckStatisticsInfo({0, 0, 0}, gc_info);
+    segment.Gc4TTLAndHead(9765, 3, &gc_info);
+    CheckStatisticsInfo({0, 0, 0}, gc_info);
+    segment.Gc4TTLAndHead(9766, 2, &gc_info);
+    CheckStatisticsInfo({2, 2, 2 * GetRecordSize(5)}, gc_info);
+    gc_info.Reset();
+    segment.Gc4TTLAndHead(9770, 1, &gc_info);
+    CheckStatisticsInfo({3, 3, 3 * GetRecordSize(5)}, gc_info);
 }
 
 TEST_F(SegmentTest, TestGc4TTLOrHead) {
@@ -294,63 +258,40 @@ TEST_F(SegmentTest, TestGc4TTLOrHead) {
     segment.Put("PK2", 9765, "test1", 5);
     segment.Put("PK2", 9766, "test2", 5);
     segment.Put("PK2", 9767, "test3", 5);
-    uint64_t gc_idx_cnt = 0;
-    uint64_t gc_record_cnt = 0;
-    uint64_t gc_record_byte_size = 0;
-    segment.Gc4TTLOrHead(0, 0, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
-    ASSERT_EQ(0, (int64_t)gc_idx_cnt);
-    ASSERT_EQ(0, (int64_t)gc_record_cnt);
-    ASSERT_EQ(0, (int64_t)gc_record_byte_size);
-    segment.Gc4TTLOrHead(9765, 0, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
-    ASSERT_EQ(1, (int64_t)gc_idx_cnt);
-    ASSERT_EQ(1, (int64_t)gc_record_cnt);
-    ASSERT_EQ(GetRecordSize(5), (int64_t)gc_record_byte_size);
-    gc_idx_cnt = 0;
-    gc_record_cnt = 0;
-    gc_record_byte_size = 0;
-    segment.Gc4TTLOrHead(0, 3, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
-    ASSERT_EQ(1, (int64_t)gc_idx_cnt);
-    ASSERT_EQ(1, (int64_t)gc_record_cnt);
-    ASSERT_EQ(GetRecordSize(5), (int64_t)gc_record_byte_size);
-    gc_idx_cnt = 0;
-    gc_record_cnt = 0;
-    gc_record_byte_size = 0;
-    segment.Gc4TTLOrHead(9765, 3, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
-    ASSERT_EQ(0, (int64_t)gc_idx_cnt);
-    ASSERT_EQ(0, (int64_t)gc_record_cnt);
-    ASSERT_EQ(0, (int64_t)gc_record_byte_size);
-    gc_idx_cnt = 0;
-    gc_record_cnt = 0;
-    gc_record_byte_size = 0;
-    segment.Gc4TTLOrHead(9766, 2, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
-    ASSERT_EQ(2, (int64_t)gc_idx_cnt);
-    ASSERT_EQ(2, (int64_t)gc_record_cnt);
-    ASSERT_EQ(2 * GetRecordSize(5), (int64_t)gc_record_byte_size);
-    gc_idx_cnt = 0;
-    gc_record_cnt = 0;
-    gc_record_byte_size = 0;
-    segment.Gc4TTLOrHead(9770, 1, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
-    ASSERT_EQ(3, (int64_t)gc_idx_cnt);
-    ASSERT_EQ(3, (int64_t)gc_record_cnt);
-    ASSERT_EQ(3 * GetRecordSize(5), (int64_t)gc_record_byte_size);
+    StatisticsInfo gc_info;
+    segment.Gc4TTLOrHead(0, 0, &gc_info);
+    CheckStatisticsInfo({0, 0, 0}, gc_info);
+    segment.Gc4TTLOrHead(9765, 0, &gc_info);
+    CheckStatisticsInfo({1, 1, GetRecordSize(5)}, gc_info);
+    gc_info.Reset();
+    segment.Gc4TTLOrHead(0, 3, &gc_info);
+    CheckStatisticsInfo({1, 1, GetRecordSize(5)}, gc_info);
+    gc_info.Reset();
+    segment.Gc4TTLOrHead(9765, 3, &gc_info);
+    CheckStatisticsInfo({0, 0, 0}, gc_info);
+    segment.Gc4TTLOrHead(9766, 2, &gc_info);
+    CheckStatisticsInfo({2, 2, 2 * GetRecordSize(5)}, gc_info);
+    gc_info.Reset();
+    segment.Gc4TTLOrHead(9770, 1, &gc_info);
+    CheckStatisticsInfo({3, 3, 3 * GetRecordSize(5)}, gc_info);
 }
 
 TEST_F(SegmentTest, TestStat) {
     Segment segment(8);
     segment.Put("PK", 9768, "test1", 5);
     segment.Put("PK", 9769, "test2", 5);
-    uint64_t gc_idx_cnt = 0;
-    uint64_t gc_record_cnt = 0;
-    uint64_t gc_record_byte_size = 0;
     ASSERT_EQ(2, (int64_t)segment.GetIdxCnt());
     ASSERT_EQ(1, (int64_t)segment.GetPkCnt());
-    segment.Gc4TTL(9765, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
-    ASSERT_EQ(0, (int64_t)gc_idx_cnt);
-    segment.Gc4TTL(9768, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
+    StatisticsInfo gc_info;
+    segment.Gc4TTL(9765, &gc_info);
+    ASSERT_EQ(0, gc_info.idx_cnt);
+    gc_info.Reset();
+    segment.Gc4TTL(9768, &gc_info);
     ASSERT_EQ(1, (int64_t)segment.GetIdxCnt());
-    ASSERT_EQ(1, (int64_t)gc_idx_cnt);
-    segment.Gc4TTL(9770, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
-    ASSERT_EQ(2, (int64_t)gc_idx_cnt);
+    ASSERT_EQ(1, gc_info.idx_cnt);
+    gc_info.Reset();
+    segment.Gc4TTL(9770, &gc_info);
+    ASSERT_EQ(2, gc_info.idx_cnt);
     ASSERT_EQ(0, (int64_t)segment.GetIdxCnt());
 }
 
@@ -412,10 +353,11 @@ TEST_F(SegmentTest, ReleaseAndCount) {
     }
     ASSERT_EQ(200, GetCount(&segment, 1));
     ASSERT_EQ(200, GetCount(&segment, 3));
-    segment.ReleaseAndCount({1});
+    StatisticsInfo gc_info;
+    segment.ReleaseAndCount(&gc_info);
     ASSERT_EQ(0, GetCount(&segment, 1));
     ASSERT_EQ(200, GetCount(&segment, 3));
-    segment.ReleaseAndCount();
+    segment.ReleaseAndCount(&gc_info);
     ASSERT_EQ(0, GetCount(&segment, 1));
     ASSERT_EQ(0, GetCount(&segment, 3));
 }
@@ -429,8 +371,9 @@ TEST_F(SegmentTest, ReleaseAndCountOneTs) {
             segment.Put(Slice(key), ts + j, key.c_str(), key.size());
         }
     }
+    StatisticsInfo gc_info;
     ASSERT_EQ(200, GetCount(&segment, 0));
-    segment.ReleaseAndCount();
+    segment.ReleaseAndCount(&gc_info);
     ASSERT_EQ(0, GetCount(&segment, 0));
 }
 

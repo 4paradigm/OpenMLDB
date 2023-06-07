@@ -320,7 +320,7 @@ bool MemTableSnapshot::Recover(std::shared_ptr<Table> table, uint64_t& latest_of
 
 void MemTableSnapshot::RecoverFromSnapshot(const std::string& snapshot_name, uint64_t expect_cnt,
                                            std::shared_ptr<Table> table) {
-    std::string full_path = snapshot_path_ + "/" + snapshot_name;
+    std::string full_path = absl::StrCat(snapshot_path_, "/", snapshot_name);
     std::atomic<uint64_t> g_succ_cnt(0);
     std::atomic<uint64_t> g_failed_cnt(0);
     RecoverSingleSnapshot(full_path, table, &g_succ_cnt, &g_failed_cnt);
@@ -349,10 +349,9 @@ void MemTableSnapshot::RecoverSingleSnapshot(const std::string& path, std::share
             break;
         }
         bool compressed = IsCompressed(path);
-        ::openmldb::log::SequentialFile* seq_file = ::openmldb::log::NewSeqFile(path, fd);
-        ::openmldb::log::Reader reader(seq_file, NULL, false, 0, compressed);
+        std::unique_ptr<::openmldb::log::SequentialFile> seq_file(::openmldb::log::NewSeqFile(path, fd));
+        ::openmldb::log::Reader reader(seq_file.get(), NULL, false, 0, compressed);
         std::string buffer;
-        // second
         uint64_t consumed = ::baidu::common::timer::now_time();
         std::vector<std::string*> recordPtr;
         recordPtr.reserve(FLAGS_load_table_batch);
@@ -389,8 +388,6 @@ void MemTableSnapshot::RecoverSingleSnapshot(const std::string& path, std::share
             load_pool_.AddTask(
                 boost::bind(&MemTableSnapshot::Put, this, path, table, recordPtr, &succ_cnt, &failed_cnt));
         }
-        // will close the fd atomic
-        delete seq_file;
         if (g_succ_cnt) {
             g_succ_cnt->fetch_add(succ_cnt, std::memory_order_relaxed);
         }
@@ -404,11 +401,11 @@ void MemTableSnapshot::RecoverSingleSnapshot(const std::string& path, std::share
 void MemTableSnapshot::Put(std::string& path, std::shared_ptr<Table>& table, std::vector<std::string*> recordPtr,
                            std::atomic<uint64_t>* succ_cnt, std::atomic<uint64_t>* failed_cnt) {
     ::openmldb::api::LogEntry entry;
-    for (auto it = recordPtr.cbegin(); it != recordPtr.cend(); it++) {
-        bool ok = entry.ParseFromString(**it);
+    for (const auto ptr : recordPtr) {
+        bool ok = entry.ParseFromString(*ptr);
+        delete ptr;
         if (!ok) {
             failed_cnt->fetch_add(1, std::memory_order_relaxed);
-            delete *it;
             continue;
         }
         auto scount = succ_cnt->fetch_add(1, std::memory_order_relaxed);
@@ -416,8 +413,11 @@ void MemTableSnapshot::Put(std::string& path, std::shared_ptr<Table>& table, std
             PDLOG(INFO, "load snapshot %s with succ_cnt %lu, failed_cnt %lu", path.c_str(), scount,
                   failed_cnt->load(std::memory_order_relaxed));
         }
-        table->Put(entry);
-        delete *it;
+        if (entry.has_method_type() && entry.method_type() == ::openmldb::api::MethodType::kDelete) {
+            table->Delete(entry);
+        } else {
+            table->Put(entry);
+        }
     }
 }
 

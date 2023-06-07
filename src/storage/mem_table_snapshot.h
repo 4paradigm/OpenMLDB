@@ -110,7 +110,6 @@ class DataReader {
     uint64_t failed_cnt_ = 0;
 };
 
-
 class TableIndexInfo {
  public:
     TableIndexInfo(const ::openmldb::api::TableMeta& table_meta,

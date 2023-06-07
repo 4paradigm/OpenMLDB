@@ -65,32 +65,14 @@ struct TimeComparator {
 
 static const TimeComparator tcmp;
 using TimeEntries = base::Skiplist<uint64_t, DataBlock*, TimeComparator>;
+class StatisticsInfo;
 
 class KeyEntry {
  public:
     KeyEntry() : entries(12, 4, tcmp), refs_(0), count_(0) {}
     explicit KeyEntry(uint8_t height) : entries(height, 4, tcmp), refs_(0), count_(0) {}
-    ~KeyEntry() {}
 
-    // just return the count of datablock
-    uint64_t Release() {
-        uint64_t cnt = 0;
-        std::unique_ptr<TimeEntries::Iterator> it(entries.NewIterator());
-        it->SeekToFirst();
-        while (it->Valid()) {
-            cnt += 1;
-            DataBlock* block = it->GetValue();
-            // Avoid double free
-            if (block->dim_cnt_down > 1) {
-                block->dim_cnt_down--;
-            } else {
-                delete block;
-            }
-            it->Next();
-        }
-        entries.Clear();
-        return cnt;
-    }
+    void Release(StatisticsInfo* statistics_info);
 
     void Ref() { refs_.fetch_add(1, std::memory_order_relaxed); }
 

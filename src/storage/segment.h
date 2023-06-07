@@ -82,30 +82,17 @@ class Segment {
     bool Delete(const std::optional<uint32_t>& idx, const Slice& key,
             uint64_t ts, const std::optional<uint64_t>& end_ts);
 
-    uint64_t Release();
+    void Release(StatisticsInfo* statistics_info);
 
-    void ExecuteGc(const TTLSt& ttl_st, uint64_t& gc_idx_cnt,                          // NOLINT
-                   uint64_t& gc_record_cnt, uint64_t& gc_record_byte_size);            // NOLINT
-    void ExecuteGc(const std::map<uint32_t, TTLSt>& ttl_st_map, uint64_t& gc_idx_cnt,  // NOLINT
-                   uint64_t& gc_record_cnt, uint64_t& gc_record_byte_size);            // NOLINT
+    void ExecuteGc(const TTLSt& ttl_st, StatisticsInfo* statistics_info);
+    void ExecuteGc(const std::map<uint32_t, TTLSt>& ttl_st_map, StatisticsInfo* statistics_info);
 
-    void Gc4TTL(const uint64_t time, uint64_t& gc_idx_cnt,  // NOLINT
-                uint64_t& gc_record_cnt,                    // NOLINT
-                uint64_t& gc_record_byte_size);             // NOLINT
-    void Gc4Head(uint64_t keep_cnt, uint64_t& gc_idx_cnt,   // NOLINT
-                 uint64_t& gc_record_cnt,                   // NOLINT
-                 uint64_t& gc_record_byte_size);            // NOLINT
-    void Gc4TTLAndHead(const uint64_t time, const uint64_t keep_cnt,
-                       uint64_t& gc_idx_cnt,            // NOLINT
-                       uint64_t& gc_record_cnt,         // NOLINT
-                       uint64_t& gc_record_byte_size);  // NOLINT
-    void Gc4TTLOrHead(const uint64_t time, const uint64_t keep_cnt,
-                      uint64_t& gc_idx_cnt,                                            // NOLINT
-                      uint64_t& gc_record_cnt,                                         // NOLINT
-                      uint64_t& gc_record_byte_size);                                  // NOLINT
-    void GcAllType(const std::map<uint32_t, TTLSt>& ttl_st_map, uint64_t& gc_idx_cnt,  // NOLINT
-                   uint64_t& gc_record_cnt,                                            // NOLINT
-                   uint64_t& gc_record_byte_size);                                     // NOLINT
+    void Gc4TTL(const uint64_t time, StatisticsInfo* statistics_info);
+    void Gc4Head(uint64_t keep_cnt, StatisticsInfo* statistics_info);
+    void Gc4TTLAndHead(const uint64_t time, const uint64_t keep_cnt, StatisticsInfo* statistics_info);
+    void Gc4TTLOrHead(const uint64_t time, const uint64_t keep_cnt, StatisticsInfo* statistics_info);
+    void GcAllType(const std::map<uint32_t, TTLSt>& ttl_st_map, StatisticsInfo* statistics_info);
+
     MemTableIterator* NewIterator(const Slice& key, Ticket& ticket);                   // NOLINT
     MemTableIterator* NewIterator(const Slice& key, uint32_t idx,
                                   Ticket& ticket);  // NOLINT
@@ -142,9 +129,7 @@ class Segment {
 
     inline uint64_t GetPkCnt() { return pk_cnt_.load(std::memory_order_relaxed); }
 
-    void GcFreeList(uint64_t& entry_gc_idx_cnt,      // NOLINT
-                    uint64_t& gc_record_cnt,         // NOLINT
-                    uint64_t& gc_record_byte_size);  // NOLINT
+    void GcFreeList(StatisticsInfo* statistics_info);
 
     KeyEntries* GetKeyEntries() { return entries_; }
 
@@ -153,14 +138,12 @@ class Segment {
 
     void IncrGcVersion() { gc_version_.fetch_add(1, std::memory_order_relaxed); }
 
-    void ReleaseAndCount();
+    void ReleaseAndCount(StatisticsInfo* statistics_info);
 
-    void ReleaseAndCount(const std::vector<size_t>& id_vec);
+    void ReleaseAndCount(const std::vector<size_t>& id_vec, StatisticsInfo* statistics_info);
 
  private:
-    void FreeList(::openmldb::base::Node<uint64_t, DataBlock*>* node, uint64_t& gc_idx_cnt,  // NOLINT
-                  uint64_t& gc_record_cnt,         // NOLINT
-                  uint64_t& gc_record_byte_size);  // NOLINT
+    void FreeList(::openmldb::base::Node<uint64_t, DataBlock*>* node, StatisticsInfo* statistics_info);
     void SplitList(KeyEntry* entry, uint64_t ts, ::openmldb::base::Node<uint64_t, DataBlock*>** node);
 
  private:

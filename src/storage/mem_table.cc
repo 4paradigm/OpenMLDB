@@ -291,25 +291,23 @@ uint64_t MemTable::Release() {
     if (segments_.empty()) {
         return 0;
     }
-    uint64_t total_cnt = 0;
+    StatisticsInfo statistics_info;
     for (uint32_t i = 0; i < segments_.size(); i++) {
         if (segments_[i] != nullptr) {
             for (uint32_t j = 0; j < seg_cnt_; j++) {
-                total_cnt += segments_[i][j]->Release();
+                segments_[i][j]->Release(&statistics_info);
             }
         }
     }
     segment_released_ = true;
     segments_.clear();
-    return total_cnt;
+    return statistics_info.record_cnt;
 }
 
 void MemTable::SchedGc() {
     uint64_t consumed = ::baidu::common::timer::get_micros();
     PDLOG(INFO, "start making gc for table %s, tid %u, pid %u", name_.c_str(), id_, pid_);
-    uint64_t gc_idx_cnt = 0;
-    uint64_t gc_record_cnt = 0;
-    uint64_t gc_record_byte_size = 0;
+    StatisticsInfo statistics_info;
     auto inner_indexs = table_index_.GetAllInnerIndex();
     for (uint32_t i = 0; i < inner_indexs->size(); i++) {
         const std::vector<std::shared_ptr<IndexDef>>& real_index = inner_indexs->at(i)->GetIndex();
@@ -337,9 +335,9 @@ void MemTable::SchedGc() {
                 for (uint32_t k = 0; k < seg_cnt_; k++) {
                     if (segments_[i][k] != nullptr) {
                        if (real_index.size() == 1 || deleting_pos.size() + deleted_num == real_index.size()) {
-                            segments_[i][k]->ReleaseAndCount();
+                            segments_[i][k]->ReleaseAndCount(&statistics_info);
                         } else {
-                            segments_[i][k]->ReleaseAndCount(deleting_pos);
+                            segments_[i][k]->ReleaseAndCount(deleting_pos, &statistics_info);
                         }
                     }
                 }
@@ -359,11 +357,11 @@ void MemTable::SchedGc() {
             uint64_t seg_gc_time = ::baidu::common::timer::get_micros() / 1000;
             Segment* segment = segments_[i][j];
             segment->IncrGcVersion();
-            segment->GcFreeList(gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
+            segment->GcFreeList(&statistics_info);
             if (ttl_st_map.size() == 1) {
-                segment->ExecuteGc(ttl_st_map.begin()->second, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
+                segment->ExecuteGc(ttl_st_map.begin()->second, &statistics_info);
             } else {
-                segment->ExecuteGc(ttl_st_map, gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
+                segment->ExecuteGc(ttl_st_map, &statistics_info);
             }
             seg_gc_time = ::baidu::common::timer::get_micros() / 1000 - seg_gc_time;
             PDLOG(INFO, "gc segment[%u][%u] done consumed %lu for table %s tid %u pid %u", i, j, seg_gc_time,
@@ -371,12 +369,12 @@ void MemTable::SchedGc() {
         }
     }
     consumed = ::baidu::common::timer::get_micros() - consumed;
-    record_cnt_.fetch_sub(gc_record_cnt, std::memory_order_relaxed);
-    record_byte_size_.fetch_sub(gc_record_byte_size, std::memory_order_relaxed);
+    record_cnt_.fetch_sub(statistics_info.record_cnt, std::memory_order_relaxed);
+    record_byte_size_.fetch_sub(statistics_info.record_byte_size, std::memory_order_relaxed);
     PDLOG(INFO,
           "gc finished, gc_idx_cnt %lu, gc_record_cnt %lu consumed %lu ms for "
           "table %s tid %u pid %u",
-          gc_idx_cnt, gc_record_cnt, consumed / 1000, name_.c_str(), id_, pid_);
+          statistics_info.idx_cnt, statistics_info.record_cnt, consumed / 1000, name_.c_str(), id_, pid_);
     UpdateTTL();
 }
 

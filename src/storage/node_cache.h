@@ -30,14 +30,14 @@ namespace storage {
 
 class NodeCache {
  public:
-    explicit NodeCache(uint32_t ts_cnt);
+    explicit NodeCache(uint32_t ts_cnt, uint32_t height);
     ~NodeCache();
     void AddKeyEntryNode(uint64_t version, base::Node<base::Slice, void*>* node);
     void AddKeyEntry(uint64_t version, KeyEntry* key_entry);
     void AddSingleValueNode(uint64_t version, base::Node<uint64_t, DataBlock*>* node);
     void AddValueNodeList(uint64_t version, base::Node<uint64_t, DataBlock*>* node);
 
-    void Free(uint64_t version/*, StatisticsInfo* gc_info*/);
+    void Free(uint64_t version, StatisticsInfo* gc_info);
     void Clear();
 
     using KeyEntryNodeList =
@@ -57,19 +57,19 @@ class NodeCache {
          value_list->push_front(node);
     }
 
-    void FreeKeyEntryNode(base::Node<base::Slice, void*>* entry_node);
-    void FreeNodeList(base::Node<uint64_t, DataBlock*>* node);
-    void FreeKeyEntry(KeyEntry* entry);
-    void FreeNode(base::Node<uint64_t, DataBlock*>* node);
+    void FreeKeyEntryNode(base::Node<base::Slice, void*>* entry_node, StatisticsInfo* gc_info);
+    void FreeNodeList(base::Node<uint64_t, DataBlock*>* node, StatisticsInfo* gc_info);
+    void FreeKeyEntry(KeyEntry* entry, StatisticsInfo* gc_info);
+    void FreeNode(base::Node<uint64_t, DataBlock*>* node, StatisticsInfo* gc_info);
 
  private:
     uint32_t ts_cnt_;
+    uint32_t key_entry_max_height_;
     std::mutex mutex_;
     KeyEntryNodeList key_entry_node_list_;
     ValueNodeList value_node_list_;
     ValueNodeList value_nodes_list_;  // the value in froward_list is a list of nodes
 };
-
 
 }  // namespace storage
 }  // namespace openmldb
