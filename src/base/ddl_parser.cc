@@ -33,7 +33,6 @@
 #include "proto/fe_type.pb.h"
 #include "sdk/base_impl.h"
 #include "sdk/sql_insert_row.h"
-#include "vm/engine.h"
 #include "vm/physical_op.h"
 
 namespace openmldb::base {
@@ -59,7 +58,7 @@ class IndexMapBuilder {
  public:
     IndexMapBuilder() = default;
     // Create the index with unset TTLSt, return false if the index(same table, same keys, same ts) existed
-    bool CreateIndex(const std::string& table, const hybridse::node::ExprListNode* keys,
+    bool CreateIndex(const std::shared_ptr<hybridse::vm::TableHandler>& table, const hybridse::node::ExprListNode* keys,
                      const hybridse::node::OrderByNode* ts, const SchemasContext* ctx);
     bool UpdateIndex(const hybridse::vm::Range& range);
     // After ToMap, inner data will be cleared
@@ -69,8 +68,8 @@ class IndexMapBuilder {
     static std::vector<std::string> NormalizeColumns(const std::vector<hybridse::node::ExprNode*>& nodes,
                                                      const SchemasContext* ctx);
     // db, table, keys and ts -> db$table:key1,key2,...;ts
-    static std::string Encode(const std::string& db, const std::string& table, const hybridse::node::ExprListNode* keys,
-                              const hybridse::node::OrderByNode* ts, const SchemasContext* ctx);
+    std::string Encode(const std::string& db, const std::string& table, const hybridse::node::ExprListNode* keys,
+                       const hybridse::node::OrderByNode* ts, const SchemasContext* ctx);
 
     // return db, table, index_str(key1,key2,...;ts), column_key
     static std::tuple<std::string, std::string, std::string, common::ColumnKey> Decode(const std::string& index_str);
@@ -84,14 +83,17 @@ class IndexMapBuilder {
         return index_str.substr(ts_begin);
     }
 
-    static std::string GetTable(const std::string& index_str) {
-        auto table_start = index_str.find(UNIQ_MARK);
+    static std::pair<std::string, std::string> GetTable(const std::string& index_str) {
+        auto db_table_start = index_str.find(UNIQ_MARK);
+        auto table_start = index_str.find(TABLE_MARK);
         auto key_sep = index_str.find(KEY_MARK);
-        if (table_start == std::string::npos || key_sep == std::string::npos) {
+        if (db_table_start == std::string::npos || table_start == std::string::npos || key_sep == std::string::npos) {
             LOG(DFATAL) << "invalid index str " << index_str;
             return {};
         }
-        return index_str.substr(table_start + 1, key_sep - 1 - table_start);
+        // i|db$table:key1,key2,...
+        return std::make_pair(index_str.substr(db_table_start + 1, table_start - db_table_start - 1),
+                              index_str.substr(table_start + 1, key_sep - 1 - table_start));
     }
 
  private:
@@ -101,6 +103,7 @@ class IndexMapBuilder {
     static constexpr char KEY_SEP = ',';
     static constexpr char TS_MARK = ';';
 
+    uint64_t index_id_ = 0;
     std::string latest_record_;
     // map<db_table_keys_and_order_str, ttl_st>
     std::map<std::string, common::TTLSt*> index_map_;
@@ -175,33 +178,16 @@ class GroupAndSortOptimizedParser {
     IndexMapBuilder index_map_builder_;
 };
 
-IndexMap DDLParser::ExtractIndexes(const std::string& sql, const ::hybridse::type::Database& db) {
-    hybridse::vm::MockRequestRunSession session;
-    return ExtractIndexes(sql, db, &session);
-}
-
-IndexMap DDLParser::ExtractIndexes(
-    const std::string& sql,
-    const std::map<std::string, ::google::protobuf::RepeatedPtrField<::openmldb::common::ColumnDesc>>& schemas) {
-    ::hybridse::type::Database db;
-    db.set_name(DB_NAME);
-    AddTables(schemas, &db);
-    return ExtractIndexes(sql, db);
-}
-
-IndexMap DDLParser::ExtractIndexes(const std::string& sql,
-                                   const std::map<std::string, std::vector<::openmldb::common::ColumnDesc>>& schemas) {
-    ::hybridse::type::Database db;
-    db.set_name(DB_NAME);
-    AddTables(schemas, &db);
-    return ExtractIndexes(sql, db);
-}
-
 // multi database
 MultiDBIndexMap DDLParser::ExtractIndexes(const std::string& sql, const std::string& used_db,
                                           const MultiDBTableDescMap& schemas) {
-    hybridse::vm::MockRequestRunSession session;
     auto catalog = buildCatalog(schemas);
+    return ExtractIndexes(sql, used_db, catalog);
+}
+
+MultiDBIndexMap DDLParser::ExtractIndexes(const std::string& sql, const std::string& used_db,
+                                          const std::shared_ptr<hybridse::vm::SimpleCatalog>& catalog) {
+    hybridse::vm::MockRequestRunSession session;
     if (!GetPlan(sql, used_db, catalog, &session)) {
         LOG(ERROR) << "sql get plan failed";
         return {};
@@ -211,15 +197,42 @@ MultiDBIndexMap DDLParser::ExtractIndexes(const std::string& sql, const std::str
     return ParseIndexes(const_cast<hybridse::vm::PhysicalOpNode*>(plan));
 }
 
-std::string DDLParser::Explain(const std::string& sql, const ::hybridse::type::Database& db) {
+std::string DDLParser::PhysicalPlan(const std::string& sql, const ::hybridse::type::Database& db) {
     hybridse::vm::MockRequestRunSession session;
-    if (!GetPlan(sql, db, &session)) {
+    auto catalog = std::make_shared<hybridse::vm::SimpleCatalog>(true);
+    catalog->AddDatabase(db);
+    if (!GetPlan(sql, db.name(), catalog, &session)) {
         LOG(ERROR) << "sql get plan failed";
         return {};
     }
     std::ostringstream plan_oss;
     session.GetCompileInfo()->DumpPhysicalPlan(plan_oss, "\t");
     return plan_oss.str();
+}
+
+bool DDLParser::Explain(const std::string& sql, const std::string& db,
+                        const std::shared_ptr<hybridse::vm::SimpleCatalog>& catalog,
+                        hybridse::vm::ExplainOutput* output) {
+    ::hybridse::base::Status vm_status;
+    ::hybridse::vm::Engine::InitializeGlobalLLVM();
+    ::hybridse::vm::EngineOptions options;
+    options.SetKeepIr(true);
+    options.SetCompileOnly(true);
+    auto engine = std::make_shared<hybridse::vm::Engine>(catalog, options);
+    // use mock, to disable enable_request_performance_sensitive, avoid no matched index, it may get error `Isn't
+    // partition provider:DATA_PROVIDER(table=xxx)`
+    auto ok = engine->Explain(sql, db, ::hybridse::vm::kMockRequestMode, output, &vm_status);
+    if (!ok) {
+        LOG(WARNING) << "hybrid engine compile sql failed, " << vm_status.str();
+        return false;
+    }
+    return true;
+}
+
+bool DDLParser::Explain(const std::string& sql, const std::string& db, const MultiDBTableDescMap& schemas,
+                        ::hybridse::vm::ExplainOutput* output) {
+    auto catalog = buildCatalog(schemas);
+    return Explain(sql, db, catalog, output);
 }
 
 hybridse::sdk::Status DDLParser::ExtractLongWindowInfos(const std::string& sql,
@@ -395,17 +408,6 @@ bool DDLParser::ExtractInfosFromProjectPlan(hybridse::node::ProjectPlanNode* pro
     return true;
 }
 
-std::shared_ptr<hybridse::sdk::Schema> DDLParser::GetOutputSchema(const std::string& sql,
-                                                                  const hybridse::type::Database& db) {
-    hybridse::vm::MockRequestRunSession session;
-    if (!GetPlan(sql, db, &session)) {
-        LOG(ERROR) << "sql get plan failed";
-        return {};
-    }
-    auto output_schema_ptr = session.GetCompileInfo()->GetPhysicalPlan()->GetOutputSchema();
-    return std::make_shared<hybridse::sdk::SchemaImpl>(*output_schema_ptr);
-}
-
 // schemas: <db, <table, columns>>
 std::shared_ptr<hybridse::sdk::Schema> DDLParser::GetOutputSchema(const std::string& sql, const std::string& db,
                                                                   const MultiDBTableDescMap& schemas) {
@@ -421,9 +423,13 @@ std::shared_ptr<hybridse::sdk::Schema> DDLParser::GetOutputSchema(const std::str
         used_db = schemas.begin()->first;
         DLOG(INFO) << "use the first db in catalog: " << used_db;
     }
+    return GetOutputSchema(sql, used_db, catalog);
+}
 
+std::shared_ptr<hybridse::sdk::Schema> DDLParser::GetOutputSchema(
+    const std::string& sql, const std::string& db, const std::shared_ptr<hybridse::vm::SimpleCatalog>& catalog) {
     hybridse::vm::MockRequestRunSession session;
-    if (!GetPlan(sql, used_db, catalog, &session)) {
+    if (!GetPlan(sql, db, catalog, &session)) {
         LOG(ERROR) << "sql get plan failed";
         return {};
     }
@@ -442,19 +448,6 @@ MultiDBIndexMap DDLParser::ParseIndexes(hybridse::vm::PhysicalOpNode* node) {
     GroupAndSortOptimizedParser parser;
     parser.Parse(node);
     return parser.GetIndexes();
-}
-
-bool DDLParser::GetPlan(const std::string& sql, const hybridse::type::Database& db, hybridse::vm::RunSession* session) {
-    hybridse::base::Status status;
-    return GetPlan(sql, db, session, &status);
-}
-
-bool DDLParser::GetPlan(const std::string& sql, const hybridse::type::Database& db, hybridse::vm::RunSession* session,
-                        hybridse::base::Status* status) {
-    auto catalog = std::make_shared<hybridse::vm::SimpleCatalog>(true);
-    catalog->AddDatabase(db);
-    // just one db, so set the arg
-    return GetPlan(sql, db.name(), catalog, session, status);
 }
 
 bool DDLParser::GetPlan(const std::string& sql, const std::string& db,
@@ -647,12 +640,9 @@ MultiDBIndexMap IndexMapBuilder::ToMap() {
             pair.second->set_ttl_type(::openmldb::type::TTLType::kLatestTime);
             pair.second->set_lat_ttl(1);
         }
-        auto dec = Decode(pair.first);
-        auto& db = std::get<0>(dec);
-        auto& table = std::get<1>(dec);
-        auto& idx_str = std::get<2>(dec);
-        auto column_key = std::get<3>(dec);
-
+        auto[db, table, idx_str, column_key] = Decode(pair.first);
+        DLOG(INFO) << "decode index '" << pair.first << "': " << db << " " << table << " " << idx_str << " "
+                   << column_key.ShortDebugString();
         auto& idx_map_of_table = tmp_map[db][table];
         auto iter = idx_map_of_table.find(idx_str);
         if (iter != idx_map_of_table.end()) {
@@ -666,17 +656,21 @@ MultiDBIndexMap IndexMapBuilder::ToMap() {
     }
 
     MultiDBIndexMap result;
-    for (auto& pair : tmp_map) {
-        auto& table = pair.first;
-        auto& idx_map_of_table = pair.second;
-        for (auto& idx_pair : idx_map_of_table) {
-            auto& column_key = idx_pair.second;
-            result[table].emplace_back(column_key);
+    for (auto& db_map : tmp_map) {
+        auto& db = db_map.first;
+        for (auto& pair : db_map.second) {
+            auto& table = pair.first;
+            auto& idx_map_of_table = pair.second;
+            for (auto& idx_pair : idx_map_of_table) {
+                auto& column_key = idx_pair.second;
+                result[db][table].emplace_back(column_key);
+            }
         }
     }
 
     // TTLSt is owned by result now, index_map_ can't be reused
     index_map_.clear();
+    index_id_ = 0;
     return result;
 }
 
@@ -690,10 +684,9 @@ std::string IndexMapBuilder::Encode(const std::string& db, const std::string& ta
     }
 
     std::stringstream ss;
-    static int index_id = 0;
     // we add a unique mark to avoid conflict with index name, leave the indexes with same name(ttl may be different)
     // you should do merge later
-    ss << index_id++ << UNIQ_MARK << db << TABLE_MARK << table << KEY_MARK;
+    ss << index_id_++ << UNIQ_MARK << db << TABLE_MARK << table << KEY_MARK;
     auto iter = cols.begin();
     ss << (*iter);
     iter++;
@@ -737,12 +730,13 @@ std::vector<std::string> IndexMapBuilder::NormalizeColumns(const std::vector<hyb
 }
 
 // ColumnKey in result doesn't set ttl
-std::tuple<std::string, std::string, std::string, common::ColumnKey> IndexMapBuilder::Decode(const std::string& index_str) {
+std::tuple<std::string, std::string, std::string, common::ColumnKey> IndexMapBuilder::Decode(
+    const std::string& index_str) {
     if (index_str.empty()) {
         return {};
     }
 
-    auto table_name = GetTable(index_str);
+    const auto[db_name, table_name] = GetTable(index_str);
 
     common::ColumnKey column_key;
     auto key_sep = index_str.find(KEY_MARK);

@@ -24,7 +24,7 @@
 namespace openmldb::base {
 
 // IndexMap helpers
-std::ostream& operator<<(std::ostream& os, IndexMap& index_map) {
+std::ostream& operator<<(std::ostream& os, const IndexMap& index_map) {
     for (auto& indexes : index_map) {
         os << " {" << indexes.first << "[";
         for (auto& ck : indexes.second) {
@@ -35,10 +35,19 @@ std::ostream& operator<<(std::ostream& os, IndexMap& index_map) {
     return os;
 }
 
-void CheckEqual(const IndexMap& map1, const IndexMap& map2) {
-    if (map1.size() != map2.size()) {
-        FAIL() << "map size not equal";
+std::ostream& operator<<(std::ostream& os, const std::map<std::string, std::vector<std::string>>& readable_map) {
+    for (auto& table : readable_map) {
+        os << " {" << table.first << "[";
+        for (auto& index : table.second) {
+            os << index << ", ";
+        }
+        os << "]} ";
     }
+    return os;
+}
+
+void CheckEqual(const IndexMap& map1, const IndexMap& map2) {
+    ASSERT_EQ(map1.size(), map2.size()) << "map size not equal";
     for (const auto & [ key, value ] : map1) {
         auto it = map2.find(key);
         if (it == map2.end()) {
@@ -103,17 +112,22 @@ common::ColumnKey ParseIndex(const std::string& index_str) {
 // a human readable string for one index: key1,key2,...;ts;<ttl>. (ts is optional and only one, if no ts, it should be
 // key;;<ttl>) <ttl>: type,abs_value,lat_value, e.g. abs,10,0 lat,0,20 abs&lat,10,20 abs||lat,10,20
 void CheckEqual(const IndexMap& map, std::map<std::string, std::vector<std::string>>&& readable_map) {
-    if (map.size() != readable_map.size()) {
-        FAIL() << "map size not equal";
-    }
+    auto error_message = [](const IndexMap& map, const std::map<std::string, std::vector<std::string>>& readable) {
+        std::stringstream ss;
+        ss << map << " vs " << readable;
+        return ss.str();
+    };
+
+    ASSERT_EQ(map.size(), readable_map.size()) << "map size not equal" << error_message(map, readable_map);
     for (const auto & [ key, value ] : map) {
         auto it = readable_map.find(key);
         if (it == readable_map.end()) {
-            FAIL() << "can't find key " << key << " in expected map";
+            FAIL() << "can't find key " << key << " in expected map. " << error_message(map, readable_map);
         }
         // check vector equal
         auto& index_list = it->second;
-        ASSERT_EQ(value.size(), index_list.size());
+        ASSERT_EQ(value.size(), index_list.size())
+            << "key " << key << " size not equal. " << error_message(map, readable_map);
         for (size_t i = 0; i < value.size(); i++) {
             // fix ColumnKey(e.g. abs type ttl, lat default value is 0, it's ok to set it to 0)
             auto fixed = value[i];
@@ -133,7 +147,7 @@ void CheckEqual(const IndexMap& map, std::map<std::string, std::vector<std::stri
 class DDLParserTest : public ::testing::Test {
  public:
     void SetUp() override {
-        db.set_name("DDLParserTest");
+        db.set_name(DB_NAME);
         ASSERT_TRUE(AddTableToDB(
             &db, "behaviourTable",
             {"itemId",    "string", "reqId",  "string",  "tags",   "string", "instanceKey", "string", "eventTime",
@@ -238,18 +252,46 @@ class DDLParserTest : public ::testing::Test {
             }
         }
     }
+
     void ClearAllIndex() {
         for (auto& table : *db.mutable_tables()) {
             table.clear_indexes();
         }
     }
 
+    std::shared_ptr<::hybridse::vm::SimpleCatalog> BuildSingleDBCatalog(const ::hybridse::type::Database& db) {
+        auto catalog = std::make_shared<hybridse::vm::SimpleCatalog>(true);
+        catalog->AddDatabase(db);
+        return catalog;
+    }
+
+    // db2 is a copy of db, named with db.name() + "2"
+    std::shared_ptr<::hybridse::vm::SimpleCatalog> BuildTwoDBCatalog(const ::hybridse::type::Database& db) {
+        auto catalog = std::make_shared<hybridse::vm::SimpleCatalog>(true);
+        catalog->AddDatabase(db);
+        auto db2 = db;
+        db2.set_name(db.name() + "2");
+        catalog->AddDatabase(db2);
+        return catalog;
+    }
+
+    // single db index map is simple for test, so if input is single db, we just check the index map of db
+    IndexMap ExtractIndexesWithSingleDB(const std::string& sql, const ::hybridse::type::Database& db) {
+        auto catalog = BuildSingleDBCatalog(db);
+        auto index_map = DDLParser::ExtractIndexes(sql, db.name(), catalog);
+        if (index_map.empty()) {
+            return {};
+        }
+        return index_map.begin()->second;
+    }
+
  protected:
+    std::string DB_NAME = "DDLParserTest";
     ::hybridse::type::Database db;
     int index_id = 0;
 };
 
-TEST_F(DDLParserTest, TTLMerge) {
+TEST_F(DDLParserTest, ttlMerge) {
     // old ttl miss some fields
 
     // values: {abs ttl, lat ttl}
@@ -317,9 +359,9 @@ TEST_F(DDLParserTest, createSpExtractIndexes) {
         "PARTITION BY itemId ORDER BY "
         "eventTime ROWS BETWEEN 3 PRECEDING AND CURRENT ROW);";
 
-    auto query_map = DDLParser::ExtractIndexes(query, db);
+    auto query_map = ExtractIndexesWithSingleDB(query, db);
 
-    auto sp_map = DDLParser::ExtractIndexes("create procedure sp1() begin " + query + " end;", db);
+    auto sp_map = ExtractIndexesWithSingleDB("create procedure sp1() begin " + query + " end;", db);
 
     ASSERT_EQ(query_map.size(), sp_map.size());
     CheckEqual(query_map, sp_map);
@@ -332,7 +374,7 @@ TEST_F(DDLParserTest, joinExtract) {
             "SELECT t1.col1 as t1_col1, t2.col2 as t2_col2 FROM t1 last join t2 order by t2.col5 on t1.col1 = t2.col2 "
             "and t2.col5 >= t1.col5;";
 
-        auto index_map = DDLParser::ExtractIndexes(sql, db);
+        auto index_map = ExtractIndexesWithSingleDB(sql, db);
         // t2[col_name: "col2" ts_name: "col5" ttl { ttl_type: kLatestTime lat_ttl: 1 }, ]
         CheckEqual(index_map, {{"t2", {"col2;col5;lat,0,1"}}});
 
@@ -340,7 +382,7 @@ TEST_F(DDLParserTest, joinExtract) {
         AddIndexToDB(index_map, &db);
 
         // TODO(hw): check data provider type
-        LOG(INFO) << "after add index:\n" << DDLParser::Explain(sql, db);
+        LOG(INFO) << "after add index:\n" << DDLParser::PhysicalPlan(sql, db);
     }
 
     {
@@ -348,12 +390,12 @@ TEST_F(DDLParserTest, joinExtract) {
         // left join
         auto sql = "SELECT t1.col1, t1.col2, t2.col1, t2.col2 FROM t1 left join t2 on t1.col1 = t2.col2;";
 
-        auto index_map = DDLParser::ExtractIndexes(sql, db);
+        auto index_map = ExtractIndexesWithSingleDB(sql, db);
         // {t2[col_name: "col2" ttl { ttl_type: kLatestTime lat_ttl: 1 }, ]}
         CheckEqual(index_map, {{"t2", {"col2;;lat,0,1"}}});
         // the added index only has key, no ts
         AddIndexToDB(index_map, &db);
-        LOG(INFO) << "after add index:\n" << DDLParser::Explain(sql, db);
+        LOG(INFO) << "after add index:\n" << DDLParser::PhysicalPlan(sql, db);
     }
 }
 
@@ -365,7 +407,7 @@ TEST_F(DDLParserTest, complexJoin) {
             "t2.col1 "
             "and t2.col5 >= t1.col5;";
 
-        auto index_map = DDLParser::ExtractIndexes(sql, db);
+        auto index_map = ExtractIndexesWithSingleDB(sql, db);
         // {t2[col_name: "col1" ts_name: "col5" ttl { ttl_type: kLatestTime lat_ttl: 1 }, ]}
         CheckEqual(index_map, {{"t2", {"col1;col5;lat,0,1"}}});
 
@@ -373,7 +415,7 @@ TEST_F(DDLParserTest, complexJoin) {
         AddIndexToDB(index_map, &db);
 
         // TODO(hw): check data provider type
-        LOG(INFO) << "after add index:\n" << DDLParser::Explain(sql, db);
+        LOG(INFO) << "after add index:\n" << DDLParser::PhysicalPlan(sql, db);
     }
 
     {
@@ -382,19 +424,19 @@ TEST_F(DDLParserTest, complexJoin) {
         auto sql =
             "SELECT t1.col1, t1.col2, t2.col1, t2.col2 FROM t1 left join t2 on timestamp(int64(t1.col6)) = "
             "timestamp(int64(t2.col6));";
-        auto index_map = DDLParser::ExtractIndexes(sql, db);
+        auto index_map = ExtractIndexesWithSingleDB(sql, db);
         ASSERT_TRUE(index_map.empty());
         // must have a simple equal condition
         sql =
             "SELECT t1.col1, t1.col2, t2.col1, t2.col2 FROM t1 left join t2 on timestamp(int64(t1.col6)) = "
             "timestamp(int64(t2.col6)) and t1.col1 = t2.col2;";
-        index_map = DDLParser::ExtractIndexes(sql, db);
+        index_map = ExtractIndexesWithSingleDB(sql, db);
         // index is on t2.col2 {t2[col_name: "col2" ttl { ttl_type: kLatestTime lat_ttl: 1 }, ]}
         CheckEqual(index_map, {{"t2", {"col2;;lat,0,1"}}});
 
         // the added index only has key, no ts
         AddIndexToDB(index_map, &db);
-        LOG(INFO) << "after add index:\n" << DDLParser::Explain(sql, db);
+        LOG(INFO) << "after add index:\n" << DDLParser::PhysicalPlan(sql, db);
     }
 }
 
@@ -410,7 +452,7 @@ TEST_F(DDLParserTest, multiJoin) {
         "last join (select id as merge_id_4, sum(c2) over w1 from main window w1 as (union (select \"\" as id, * from "
         "t1) partition by c1 order by c2 rows between unbounded preceding and current row)) as out4 on out0.merge_id_0 "
         "= out4.merge_id_4;";
-    auto index_map = DDLParser::ExtractIndexes(sql, db);
+    auto index_map = ExtractIndexesWithSingleDB(sql, db);
     // {main[col_name: "c1" ts_name: "c2" ttl { ttl_type: kLatestTime abs_ttl: 0 lat_ttl: 0 }, ]}
     // {t1[col_name: "c1" ttl { ttl_type: kLatestTime lat_ttl: 1 }, col_name: "c1" ts_name: "c2" ttl { ttl_type:
     // kLatestTime abs_ttl: 0 lat_ttl: 0 }, ]}
@@ -423,7 +465,7 @@ TEST_F(DDLParserTest, emptyIndexes) {
         auto sql =
             "SELECT sum(col1) as col1sum FROM (select col1, col2, "
             "col3 from t1) where col1 = 10 and col2 = 20 group by col2, col1;";
-        auto index_map = DDLParser::ExtractIndexes(sql, db);
+        auto index_map = ExtractIndexesWithSingleDB(sql, db);
         ASSERT_TRUE(index_map.empty());
     }
 }
@@ -439,12 +481,12 @@ TEST_F(DDLParserTest, windowExtractIndexes) {
             "FROM t1 WINDOW w1 AS (PARTITION BY col1 ORDER BY col5 "
             "ROWS_RANGE BETWEEN 3d "
             "PRECEDING AND CURRENT ROW) limit 10;";
-        auto index_map = DDLParser::ExtractIndexes(sql, db);
+        auto index_map = ExtractIndexesWithSingleDB(sql, db);
         // {t1[col_name: "col1" ts_name: "col5" ttl { ttl_type: kAbsoluteTime abs_ttl: 4320 }, ]}
         CheckEqual(index_map, {{"t1", {"col1;col5;abs,4320,0"}}});
 
         AddIndexToDB(index_map, &db);
-        LOG(INFO) << "after add index:\n" << DDLParser::Explain(sql, db);
+        LOG(INFO) << "after add index:\n" << DDLParser::PhysicalPlan(sql, db);
     }
 
     {
@@ -457,13 +499,13 @@ TEST_F(DDLParserTest, windowExtractIndexes) {
             "FROM t1 WINDOW w1 AS (PARTITION BY col2 ORDER BY col5 "
             "ROWS_RANGE BETWEEN 3s "
             "PRECEDING AND CURRENT ROW) limit 10;";
-        auto index_map = DDLParser::ExtractIndexes(sql, db);
+        auto index_map = ExtractIndexesWithSingleDB(sql, db);
         // 0 < abs < 1min -> 1min, abs ttl value is in min, be careful
         //  {t1[col_name: "col2" ts_name: "col5" ttl { ttl_type: kAbsoluteTime abs_ttl: 1 }, ]}
         CheckEqual(index_map, {{"t1", {"col2;col5;abs,1,0"}}});
 
         AddIndexToDB(index_map, &db);
-        LOG(INFO) << "after add index:\n" << DDLParser::Explain(sql, db);
+        LOG(INFO) << "after add index:\n" << DDLParser::PhysicalPlan(sql, db);
     }
 
     {
@@ -476,13 +518,13 @@ TEST_F(DDLParserTest, windowExtractIndexes) {
             "FROM t1 WINDOW w1 AS (PARTITION BY col2 ORDER BY col5 "
             "ROWS_RANGE BETWEEN 0s "
             "PRECEDING AND CURRENT ROW) limit 10;";
-        auto index_map = DDLParser::ExtractIndexes(sql, db);
+        auto index_map = ExtractIndexesWithSingleDB(sql, db);
         // abs 0 -> 1min start, 0 == UNBOUNDED means never gc
         // {t1[col_name: "col2" ts_name: "col5" ttl { ttl_type: kAbsoluteTime abs_ttl: 1 }, ]}
         CheckEqual(index_map, {{"t1", {"col2;col5;abs,1,0"}}});
 
         AddIndexToDB(index_map, &db);
-        LOG(INFO) << "after add index:\n" << DDLParser::Explain(sql, db);
+        LOG(INFO) << "after add index:\n" << DDLParser::PhysicalPlan(sql, db);
     }
 
     {
@@ -492,7 +534,7 @@ TEST_F(DDLParserTest, windowExtractIndexes) {
             "SELECT sum(col3) OVER w1 "
             "FROM t1 WINDOW w1 AS (PARTITION BY col2 ORDER BY col5 "
             "ROWS_RANGE BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW)";
-        auto index_map = DDLParser::ExtractIndexes(sql, db);
+        auto index_map = ExtractIndexesWithSingleDB(sql, db);
         CheckEqual(index_map, {{"t1", {"col2;col5;abs,0,0"}}});
     }
 
@@ -503,7 +545,7 @@ TEST_F(DDLParserTest, windowExtractIndexes) {
             "SELECT sum(col3) OVER w1 as w1_col3_sum "
             "FROM t1 WINDOW w1 AS (PARTITION BY col2 ORDER BY col5 "
             "ROWS_RANGE BETWEEN 3m OPEN PRECEDING AND CURRENT ROW)";
-        auto index_map = DDLParser::ExtractIndexes(sql, db);
+        auto index_map = ExtractIndexesWithSingleDB(sql, db);
         // {t1[col_name: "col2" ts_name: "col5" ttl { ttl_type: kAbsoluteTime abs_ttl: 3 }, ]}
         CheckEqual(index_map, {{"t1", {"col2;col5;abs,3,0"}}});
     }
@@ -519,12 +561,12 @@ TEST_F(DDLParserTest, windowExtractIndexes) {
             "FROM t1 WINDOW w1 AS (PARTITION BY col2 ORDER BY col5 "
             "ROWS BETWEEN 3 "
             "PRECEDING AND CURRENT ROW) limit 10;";
-        auto index_map = DDLParser::ExtractIndexes(sql, db);
+        auto index_map = ExtractIndexesWithSingleDB(sql, db);
         // {t1[col_name: "col2" ts_name: "col5" ttl { ttl_type: kLatestTime lat_ttl: 3 }, ]}
         CheckEqual(index_map, {{"t1", {"col2;col5;lat,0,3"}}});
 
         AddIndexToDB(index_map, &db);
-        LOG(INFO) << "after add index:\n" << DDLParser::Explain(sql, db);
+        LOG(INFO) << "after add index:\n" << DDLParser::PhysicalPlan(sql, db);
     }
 
     {
@@ -538,12 +580,12 @@ TEST_F(DDLParserTest, windowExtractIndexes) {
             "FROM t1 WINDOW w1 AS (PARTITION BY col2 ORDER BY col5 "
             "ROWS BETWEEN 0 "
             "PRECEDING AND CURRENT ROW) limit 10;";
-        auto index_map = DDLParser::ExtractIndexes(sql, db);
+        auto index_map = ExtractIndexesWithSingleDB(sql, db);
         // {t1[col_name: "col2" ts_name: "col5" ttl { ttl_type: kLatestTime lat_ttl: 1 }, ]}
         CheckEqual(index_map, {{"t1", {"col2;col5;lat,0,1"}}});
 
         AddIndexToDB(index_map, &db);
-        LOG(INFO) << "after add index:\n" << DDLParser::Explain(sql, db);
+        LOG(INFO) << "after add index:\n" << DDLParser::PhysicalPlan(sql, db);
     }
 
     {
@@ -553,24 +595,25 @@ TEST_F(DDLParserTest, windowExtractIndexes) {
             "SELECT sum(col3) OVER w1 as w1_col3_sum "
             "FROM t1 WINDOW w1 AS (PARTITION BY col2 ORDER BY col5 "
             "ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW)";
-        auto index_map = DDLParser::ExtractIndexes(sql, db);
+        auto index_map = ExtractIndexesWithSingleDB(sql, db);
         // {t1[col_name: "col2" ts_name: "col5" ttl { ttl_type: kLatestTime lat_ttl: 0 }, ]}
         CheckEqual(index_map, {{"t1", {"col2;col5;lat,0,0"}}});
     }
 
-    {
-        ClearAllIndex();
-        // no order by
-        auto sql = "SELECT sum(col1) as col1sum FROM t1 group by col2, col1;";
-        // GROUP_BY node
-        auto index_map = DDLParser::ExtractIndexesForBatch(sql, db);
-        // {t1[col_name: "col1" col_name: "col2" ttl { ttl_type: kLatestTime lat_ttl: 1 }, ]}
-        CheckEqual(index_map, {{"t1", {"col1,col2;;lat,0,1"}}});
+    // test extract index for batch mode
+    // {
+    //     ClearAllIndex();
+    //     // no order by
+    //     auto sql = "SELECT sum(col1) as col1sum FROM t1 group by col2, col1;";
+    //     // GROUP_BY node
+    //     auto index_map = ExtractIndexesWithSingleDBForBatch(sql, db);
+    //     // {t1[col_name: "col1" col_name: "col2" ttl { ttl_type: kLatestTime lat_ttl: 1 }, ]}
+    //     CheckEqual(index_map, {{"t1", {"col1,col2;;lat,0,1"}}});
 
-        // REQUEST_UNION node, this will use index(key=col1,no ts)
-        index_map = DDLParser::ExtractIndexes(sql, db);
-        LOG(INFO) << "result: " << index_map;
-    }
+    //     // REQUEST_UNION node, this will use index(key=col1,no ts)
+    //     index_map = ExtractIndexesWithSingleDB(sql, db);
+    //     LOG(INFO) << "result: " << index_map;
+    // }
 }
 
 TEST_F(DDLParserTest, renameColumns) {
@@ -580,7 +623,7 @@ TEST_F(DDLParserTest, renameColumns) {
         "select col1, col2, col3, sum(col3) over w1 from tt1 window "
         "w1 as (union (select c1 as col1, c2 as col2, c3 as col3 from tt2)  partition by col1 order by col2 rows "
         "between 1000 preceding and current row);";
-    auto index_map = DDLParser::ExtractIndexes(sql, db);
+    auto index_map = ExtractIndexesWithSingleDB(sql, db);
     // {tt1[col_name: "col1" ts_name: "col2" ttl { ttl_type: kLatestTime lat_ttl: 1000 }, ]}  {tt2[col_name: "c1"
     // ts_name: "c2" ttl { ttl_type: kLatestTime lat_ttl: 1000 }, ]}
     CheckEqual(index_map, {{"tt1", {"col1;col2;lat,0,1000"}}, {"tt2", {"c1;c2;lat,0,1000"}}});
@@ -597,7 +640,7 @@ TEST_F(DDLParserTest, mergeNode) {
         "w3_col1_sum\n"
         "      FROM t1\n"
         "      WINDOW w2 AS (PARTITION BY pk1 ORDER BY std_ts ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);";
-    auto index_map = DDLParser::ExtractIndexes(sql, db);
+    auto index_map = ExtractIndexesWithSingleDB(sql, db);
     // {t1[col_name: "pk1" ts_name: "std_ts" ttl { ttl_type: kAbsAndLat abs_ttl: 1 lat_ttl: 2 }, ]}
     CheckEqual(index_map, {{"t1", {"pk1;std_ts;abs&lat,1,2"}}});
 }
@@ -613,10 +656,44 @@ TEST_F(DDLParserTest, twoTable) {
         "w1_t2_col2_sum, sum(t1.col5) OVER w1 as w1_col5_sum, str1 as t2_str1 FROM t1 last join t2 order by t2.col5 on "
         "t1.col1=t2.col1 and t1.col5 = t2.col5 WINDOW w1 AS (PARTITION BY t1.col2 ORDER BY t1.col5 ROWS_RANGE BETWEEN "
         "3 PRECEDING AND CURRENT ROW) limit 10;";
-    auto index_map = DDLParser::ExtractIndexes(sql, db);
+    auto index_map = ExtractIndexesWithSingleDB(sql, db);
     // {t1[col_name: "col2" ts_name: "col5" ttl { ttl_type: kAbsoluteTime abs_ttl: 1 }, ]}
     // {t2[col_name: "col1" col_name: "col5" ts_name: "col5" ttl { ttl_type: kLatestTime lat_ttl: 1 }, ]}
     CheckEqual(index_map, {{"t1", {"col2;col5;abs,1,0"}}, {"t2", {"col1,col5;col5;lat,0,1"}}});
+}
+
+TEST_F(DDLParserTest, multiDBExtractIndexes) {
+    auto catalog = BuildTwoDBCatalog(db);
+    // t2 from db2
+    auto sql = std::string("SELECT t1.col1 as t1_col1, t2.col2 as t2_col2 FROM t1 last join ") + DB_NAME +
+               "2.t2 t2 order by t2.col5 on t1.col1 = t2.col2 "
+               "and t2.col5 >= t1.col5;";
+    auto index_map = DDLParser::ExtractIndexes(sql, DB_NAME, catalog);
+    // last join, only t2 needs index
+    ASSERT_EQ(index_map.size(), 1);
+    // t2[col_name: "col2" ts_name: "col5" ttl { ttl_type: kLatestTime lat_ttl: 1 }, ]
+    CheckEqual(index_map[DB_NAME + "2"], {{"t2", {"col2;col5;lat,0,1"}}});
+
+    // all tables are <db>.<table> style, using db can be empty?
+    sql = std::string("SELECT t1.col1 as t1_col1, t2.col2 as t2_col2 FROM ") + DB_NAME + ".t1 t1 last join " + DB_NAME +
+          "2.t2 t2 order by t2.col5 on t1.col1 = t2.col2 "
+          "and t2.col5 >= t1.col5;";
+    index_map = DDLParser::ExtractIndexes(sql, "", catalog);
+    // last join, only t2 needs index
+    ASSERT_EQ(index_map.size(), 1);
+    // t2[col_name: "col2" ts_name: "col5" ttl { ttl_type: kLatestTime lat_ttl: 1 }, ]
+    CheckEqual(index_map[DB_NAME + "2"], {{"t2", {"col2;col5;lat,0,1"}}});
+
+    // explain in multi db, needs index
+    // create a new catalog
+    catalog = std::make_shared<hybridse::vm::SimpleCatalog>(true);
+    catalog->AddDatabase(db);
+    auto db2 = db;
+    db2.set_name(db.name() + "2");
+    AddIndexToDB(index_map[DB_NAME + "2"], &db2);
+    catalog->AddDatabase(db2);
+    hybridse::vm::ExplainOutput output;
+    ASSERT_TRUE(DDLParser::Explain(sql, "", catalog, &output));
 }
 
 TEST_F(DDLParserTest, getOutputSchema) {
@@ -625,7 +702,7 @@ TEST_F(DDLParserTest, getOutputSchema) {
         "PARTITION BY itemId ORDER BY "
         "eventTime ROWS BETWEEN 3 PRECEDING AND CURRENT ROW);";
 
-    auto output_schema = DDLParser::GetOutputSchema(query, db);
+    auto output_schema = DDLParser::GetOutputSchema(query, db.name(), BuildSingleDBCatalog(db));
     ASSERT_EQ(output_schema->GetColumnCnt(), 1);
     ASSERT_EQ(output_schema->GetColumnName(0), "w1_rank_sum");
     ASSERT_EQ(output_schema->GetColumnType(0), hybridse::sdk::DataType::kTypeInt32);
@@ -874,30 +951,32 @@ TEST_F(DDLParserTest, extractLongWindow) {
 }
 
 TEST_F(DDLParserTest, validateSQL) {
+    auto catalog = BuildSingleDBCatalog(db);
+
     std::string query = "SWLECT 1;";
-    auto ret = DDLParser::ValidateSQLInBatch(query, db);
+    auto ret = DDLParser::ValidateSQLInBatch(query, db.name(), catalog);
     ASSERT_FALSE(ret.empty());
     ASSERT_EQ(ret.size(), 2);
     LOG(INFO) << ret[0];
 
     query = "SELECT * from not_exist_table;";
-    ret = DDLParser::ValidateSQLInBatch(query, db);
+    ret = DDLParser::ValidateSQLInBatch(query, db.name(), catalog);
     ASSERT_FALSE(ret.empty());
     ASSERT_EQ(ret.size(), 2);
     LOG(INFO) << ret[0];
 
     query = "SELECT foo(col1) from t1;";
-    ret = DDLParser::ValidateSQLInBatch(query, db);
+    ret = DDLParser::ValidateSQLInBatch(query, db.name(), catalog);
     ASSERT_FALSE(ret.empty());
     ASSERT_EQ(ret.size(), 2);
     LOG(INFO) << ret[0] << "\n" << ret[1];
 
     query = "SELECT * FROM t1;";
-    ret = DDLParser::ValidateSQLInBatch(query, db);
+    ret = DDLParser::ValidateSQLInBatch(query, db.name(), catalog);
     ASSERT_TRUE(ret.empty());
 
     query = "SELECT foo(col1) from t1;";
-    ret = DDLParser::ValidateSQLInRequest(query, db);
+    ret = DDLParser::ValidateSQLInRequest(query, db.name(), catalog);
     ASSERT_FALSE(ret.empty());
     ASSERT_EQ(ret.size(), 2);
     LOG(INFO) << ret[0] << "\n" << ret[1];
@@ -905,7 +984,7 @@ TEST_F(DDLParserTest, validateSQL) {
     query =
         "SELECT count(col1) over w1 from t1 window w1 as(partition by col0 order by col1 rows between unbounded "
         "preceding and current row);";
-    ret = DDLParser::ValidateSQLInRequest(query, db);
+    ret = DDLParser::ValidateSQLInRequest(query, db.name(), catalog);
     ASSERT_TRUE(ret.empty());
 }
 }  // namespace openmldb::base

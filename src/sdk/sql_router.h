@@ -258,6 +258,7 @@ std::vector<std::string> GenDDL(
     const std::vector<std::pair<std::string, std::vector<std::pair<std::string, hybridse::sdk::DataType>>>>& schemas);
 
 // support multi db, input schema: vector<db, vector<table, vector<column, type>>>
+// if using db is empty, use the first db in schemas
 std::shared_ptr<hybridse::sdk::Schema> GenOutputSchema(
     const std::string& sql, const std::string& db,
     const std::vector<
@@ -273,6 +274,14 @@ std::vector<std::string> ValidateSQLInBatch(
         schemas);
 
 std::vector<std::string> ValidateSQLInRequest(
+    const std::string& sql, const std::string& db,
+    const std::vector<
+        std::pair<std::string,
+                  std::vector<std::pair<std::string, std::vector<std::pair<std::string, hybridse::sdk::DataType>>>>>>&
+        schemas);
+
+// vector[0] is the main db.table
+std::vector<std::pair<std::string, std::string>> GetDependentTables(
     const std::string& sql, const std::string& db,
     const std::vector<
         std::pair<std::string,

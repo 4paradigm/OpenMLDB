@@ -248,7 +248,7 @@ class NsClient : public Client {
     base::Status UpdateOfflineTableInfo(const nameserver::TableInfo& table_info);
 
     base::Status DeploySQL(const ::openmldb::api::ProcedureInfo& sp_info,
-            const std::map<std::string, std::vector<::openmldb::common::ColumnKey>>& new_index_map,
+            const std::map<std::string, std::map<std::string, std::vector<::openmldb::common::ColumnKey>>>& new_index_map,
             uint64_t* op_id);
 
  private:

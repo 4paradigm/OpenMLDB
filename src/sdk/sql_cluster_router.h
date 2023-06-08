@@ -331,7 +331,7 @@ class SQLClusterRouter : public SQLRouter {
                                        const std::vector<std::string>& cols);
 
     hybridse::sdk::Status HandleDeploy(const std::string& db, const hybridse::node::DeployPlanNode* deploy_node,
-            std::optional<uint64_t>* job_id);
+                                       std::optional<uint64_t>* job_id);
 
     hybridse::sdk::Status HandleDelete(const std::string& db, const std::string& table_name,
                                        const hybridse::node::ExprNode* condition);
@@ -339,14 +339,13 @@ class SQLClusterRouter : public SQLRouter {
     hybridse::sdk::Status HandleIndex(const std::string& db,
                                       const std::set<std::pair<std::string, std::string>>& table_pair,
                                       const std::string& select_sql, const hybridse::node::DeployPlanNode* deploy_node);
+    // update existing index, return index need to be created
+    // NOTE: table index may be changed, can't revert
+    hybridse::sdk::Status GetNewIndex(const TableInfoMap& table_map, const std::string& select_sql,
+                                      const std::string& db, bool skip_index_check,
+                                      base::MultiDBIndexMap* new_index_map);
 
-    hybridse::sdk::Status GetNewIndex(
-        const std::map<std::string, ::openmldb::nameserver::TableInfo>& table_map, const std::string& select_sql,
-        bool skip_index_check, std::map<std::string, std::vector<::openmldb::common::ColumnKey>>* new_index_map);
-
-    hybridse::sdk::Status AddNewIndex(
-        const std::string& db, const TableInfoMap& table_map,
-        const std::map<std::string, std::vector<::openmldb::common::ColumnKey>>& new_index_map);
+    hybridse::sdk::Status AddNewIndex(const base::MultiDBIndexMap& new_index_map);
 
     hybridse::sdk::Status HandleCreateFunction(const hybridse::node::CreateFunctionPlanNode* node);
 

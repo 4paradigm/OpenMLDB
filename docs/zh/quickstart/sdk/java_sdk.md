@@ -506,17 +506,17 @@ java -cp target/demo-1.0-SNAPSHOT.jar com.openmldb.demo.App
 
 ### 可选配置项
 
-| **可选配置项** | **说明**                                                     |
-| -------------- | ------------------------------------------------------------ |
+| **可选配置项**  | **说明**                                                                                                                                                                 |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | enableDebug     | 默认 false，开启 hybridse 的 debug 日志（注意不是全局的 debug 日志），可以查看到更多 sql 编译和运行的日志。但这些日志不是全部被客户端收集，需要查看 tablet server 日志。 |
-| requestTimeout  | 默认 60000 ms，这个 timeout 是客户端发送的 rpc 超时时间，发送到 taskmanager 的除外（job 的 rpc timeout 由 variable `job_timeout` 控制）。 |
-| glogLevel       | 默认 0，和 glog 的 minloglevel 类似，`INFO/WARNING/ERROR/FATAL` 日志分别对应 `0/1/2/3`。0 表示打印 INFO 以及上的等级。 |
-| glogDir         | 默认为 empty，日志目录为空时，打印到 stderr，即控制台。      |
-| maxSqlCacheSize | 默认 50，客户端单个 db 单种执行模式的最大 sql cache 数量，如果出现 cache淘汰引发的错误，可以增大这一 size 避开问题。 |
-| sessionTimeout | 默认 10000 ms，zk 的 session timeout。                       |
-| zkLogLevel     | 默认 3，`0/1/2/3/4` 分别代表 `禁止所有 zk log/error/warn/info/debug` |
-| zkLogFile      | 默认 empty，打印到 stdout。                                  |
-| sparkConfPath  | 默认 empty，可以通过此配置更改 job 使用的 spark conf，而不需要配置 taskmanager 重启。 |
+| requestTimeout  | 默认 60000 ms，这个 timeout 是客户端发送的 rpc 超时时间，发送到 taskmanager 的除外（job 的 rpc timeout 由 variable `job_timeout` 控制）。                                |
+| glogLevel       | 默认 0，和 glog 的 minloglevel 类似，`INFO/WARNING/ERROR/FATAL` 日志分别对应 `0/1/2/3`。0 表示打印 INFO 以及上的等级。                                                   |
+| glogDir         | 默认为 empty，日志目录为空时，打印到 stderr，即控制台。                                                                                                                  |
+| maxSqlCacheSize | 默认 50，客户端单个 db 单种执行模式的最大 sql cache 数量，如果出现 cache淘汰引发的错误，可以增大这一 size 避开问题。                                                     |
+| sessionTimeout  | 默认 10000 ms，zk 的 session timeout。                                                                                                                                   |
+| zkLogLevel      | 默认 3，`0/1/2/3/4` 分别代表 `禁止所有 zk log/error/warn/info/debug`                                                                                                     |
+| zkLogFile       | 默认 empty，打印到 stdout。                                                                                                                                              |
+| sparkConfPath   | 默认 empty，可以通过此配置更改 job 使用的 spark conf，而不需要配置 taskmanager 重启。                                                                                    |
 
 ## SQL 校验
 
@@ -525,7 +525,7 @@ Java 客户端支持对 SQL 进行正确性校验，验证是否可执行。分�
 - `validateSQLInBatch` 可以验证 SQL 是否能在离线端执行。
 - `validateSQLInRequest` 可以验证 SQL 是否能被部署上线。
 
-两个接口都需要传入 SQL 所需要的所有表 schema。目前只支持单 db，请不要在 SQL 语句中使用 `db.table` 格式。
+两种接口都需要传入 SQL 所需要的所有表 schema，支持多 db。为了向后兼容，允许参数中不填写`db`（当前use的db），但在这种情况下，输入 SQL 语句需要保证全部使用 `db.table` 格式（不需要知道当前use的db）或完全没有`db.table`格式（所有表都在同一个db）。
 
 例如：验证 SQL `select count(c1) over w1 from t3 window w1 as(partition by c1 order by c2 rows between unbounded preceding and current row);`，那么除了这个语句，还需要将表 `t3` 的 schema 作为第二参数 schemaMaps 传入。格式为 Map，key 为 db 名，value 为每个 db 的所有 table schema(Map)。实际只支持单 db，所以这里通常只有 1 个 db，如下所示的 db3。db 下的 table schema map key 为 table name，value 为 com.\_4paradigm.openmldb.sdk.Schema，由每列的 name 和 type 构成。
 
@@ -535,10 +535,25 @@ Map<String, Schema> dbSchema = new HashMap<>();
 dbSchema = new HashMap<>();
 dbSchema.put("t3", new Schema(Arrays.asList(new Column("c1", Types.VARCHAR), new Column("c2", Types.BIGINT))));
 schemaMaps.put("db3", dbSchema);
+// 可以使用no db参数的格式，因为只有一个db，且sql中只是用<table>格式
+// List<String> ret = SqlClusterExecutor.validateSQLInRequest("select count(c1) over w1 from t3 window "+
+//        "w1 as(partition by c1 order by c2 rows between unbounded preceding and current row);", schemaMaps);
 List<String> ret = SqlClusterExecutor.validateSQLInRequest("select count(c1) over w1 from t3 window "+
-        "w1 as(partition by c1 order by c2 rows between unbounded preceding and current row);", schemaMaps);
+        "w1 as(partition by c1 order by c2 rows between unbounded preceding and current row);", "db3", schemaMaps);
 Assert.assertEquals(ret.size(), 0);
 ```
+
+## 生成建表DDL
+
+单db
+
+## SQL Output Schema
+
+
+
+## SQL 表血缘
+
+
 
 ## SQL 合并
 
@@ -561,7 +576,8 @@ select sum(c2) over w1 from main window w1 as (union (select \"\" as id, * from 
 它们的主表均为main表，所以它们可以进行 SQL 合并。合并本质是进行join，所以我们还需要知道main表的unique列，它们可以定位到唯一一行数据。例如，main表id并不唯一，可能存在多行的id值相同，但不会出现id与c1两列值都相同，那么我们可以用id与c1两列来进行join。类似 SQL 校验，我们也传入表的schema map。
 
 ```java
-String merged = SqlClusterExecutor.mergeSQL(sqls, "main", Arrays.asList("id", "c1"), schemaMaps);
+// 为了展示简单，我们仅使用单个db，可以不填写第二个参数used db。如果是多db，且sql中需要used db来定位表，请填写有意义的used db
+String merged = SqlClusterExecutor.mergeSQL(sqls, "", Arrays.asList("id", "c1"), schemaMaps);
 ```
 
 输出结果为单个合并后的 SQL，见下。输入的SQL一共选择四个特征，所以合并 SQL 只会输出这四个特征列。（我们会自动过滤join keys）

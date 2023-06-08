@@ -152,7 +152,9 @@ std::vector<std::string> GenDDL(
         LOG_IF(WARNING, !schemas.empty()) << "input schemas is not emtpy, but conversion failed";
         return {};
     }
-    auto index_map = openmldb::base::DDLParser::ExtractIndexes(sql, table_desc_map);
+    // DDL only support single db, but ExtractIndexes support multi db
+    auto db_index_map = openmldb::base::DDLParser::ExtractIndexes(sql, "GenDDLDB", {{"GenDDLDB", table_desc_map}});
+    auto& index_map = db_index_map["GenDDLDB"];
     std::vector<std::string> ddl_vector;
     for (const auto& table_item : table_desc_map) {
         std::string ddl = "CREATE TABLE IF NOT EXISTS ";
@@ -241,6 +243,29 @@ std::vector<std::string> ValidateSQLInRequest(
         return {"schema convert failed(input schema may be empty)", "check convertSchema"};
     }
     return openmldb::base::DDLParser::ValidateSQLInRequest(sql, db, table_desc_map);
+}
+
+std::vector<std::pair<std::string, std::string>> GetDependentTables(
+    const std::string& sql, const std::string& db,
+    const std::vector<
+        std::pair<std::string,
+                  std::vector<std::pair<std::string, std::vector<std::pair<std::string, hybridse::sdk::DataType>>>>>>&
+        schemas) {
+    auto table_desc_map = convertSchema(schemas);
+    if (table_desc_map.empty()) {
+        LOG_IF(WARNING, !schemas.empty()) << "input schemas is not emtpy, but conversion failed";
+        return {};
+    }
+    hybridse::vm::ExplainOutput explain;
+    auto ok = openmldb::base::DDLParser::Explain(sql, db, table_desc_map, &explain);
+    if (!ok) {
+        LOG(WARNING) << "fail to explain sql";
+        return {};
+    }
+    std::vector<std::pair<std::string, std::string>> tables{
+        {explain.router.GetMainDb(), explain.router.GetMainTable()}};
+    tables.insert(tables.end(), explain.dependent_tables.begin(), explain.dependent_tables.end());
+    return tables;
 }
 
 }  // namespace openmldb::sdk
