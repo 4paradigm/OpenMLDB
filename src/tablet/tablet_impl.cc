@@ -1602,13 +1602,13 @@ void TabletImpl::Delete(RpcController* controller, const ::openmldb::api::Delete
     ::openmldb::api::LogEntry entry;
     entry.set_term(replicator->GetLeaderTerm());
     entry.set_method_type(::openmldb::api::MethodType::kDelete);
-    auto dimension = entry.add_dimensions();
     if (request->has_key()) {
+        auto dimension = entry.add_dimensions();
         dimension->set_key(request->key());
-    }
-    dimension->set_idx(idx);
-    if (request->has_idx()) {
-        dimension->set_idx(request->idx());
+        dimension->set_idx(idx);
+        if (request->has_idx()) {
+            dimension->set_idx(request->idx());
+        }
     }
     if (request->has_ts()) {
         entry.set_ts(request->ts());
@@ -1616,7 +1616,7 @@ void TabletImpl::Delete(RpcController* controller, const ::openmldb::api::Delete
     if (request->has_end_ts()) {
         entry.set_end_ts(request->end_ts());
     }
-    if (!entry.dimensions(0).has_key() && (!entry.has_ts() || !entry.has_end_ts())) {
+    if (entry.dimensions_size() == 0 && (!entry.has_ts() || !entry.has_end_ts())) {
         response->set_code(base::ReturnCode::kInvalidArgs);
         response->set_msg("invalid args");
         PDLOG(WARNING, "invalid args. tid %u, pid %u", tid, pid);

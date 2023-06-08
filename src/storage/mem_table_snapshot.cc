@@ -26,6 +26,7 @@
 #include <utility>
 
 #include "absl/cleanup/cleanup.h"
+#include "absl/container/flat_hash_set.h"
 #include "base/file_util.h"
 #include "base/glog_wrapper.h"
 #include "base/hash.h"
@@ -286,6 +287,87 @@ const std::vector<uint32_t>& TableIndexInfo::GetRealIndexCols(uint32_t idx) {
     return real_index_cols_map_[idx];
 }
 
+DeleteSpan::DeleteSpan(const api::LogEntry& entry) {
+    offset = entry.log_index();
+    if (entry.dimensions_size() > 0) {
+        idx = entry.dimensions(0).idx();
+    }
+    if (entry.has_ts()) {
+        start_ts = entry.ts();
+    }
+    if (entry.has_end_ts()) {
+        end_ts = entry.end_ts();
+    }
+}
+
+bool DeleteSpan::IsDeleted(uint64_t offset_i, uint32_t idx_i, uint64_t ts) const {
+    if (offset_i <= offset) {
+        if (idx.has_value() && idx.value() != idx_i) {
+            return false;
+        }
+        if (ts <= start_ts) {
+            if (end_ts.has_value()) {
+                if (ts > end_ts.value()) {
+                    return true;
+                }
+            } else {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+void DeleteCollector::Clear() {
+    deleted_keys_.clear();
+    deleted_spans_.clear();
+    no_key_spans_.clear();
+}
+
+bool DeleteCollector::IsEmpty() const {
+    return deleted_keys_.empty() && deleted_spans_.empty() && no_key_spans_.empty();
+}
+
+bool DeleteCollector::IsDeleted(uint64_t offset, uint32_t idx, const std::string& key, uint64_t ts) const {
+    if (IsEmpty()) {
+        return false;
+    }
+    if (!no_key_spans_.empty()) {
+        auto iter = no_key_spans_.lower_bound(offset);
+        while (iter !=  no_key_spans_.end()) {
+            if (iter->second.IsDeleted(offset, idx, ts)) {
+                return true;
+            }
+            iter++;
+        }
+    }
+    std::string combined_key = absl::StrCat(key, "|", idx);
+    if (auto iter = deleted_keys_.find(combined_key); iter != deleted_keys_.end() && offset <= iter->second) {
+        return true;
+    }
+    if (auto iter = deleted_spans_.find(combined_key);
+            iter != deleted_spans_.end() && iter->second.IsDeleted(offset, idx, ts)) {
+        return true;
+    }
+    return false;
+}
+
+void DeleteCollector::AddSpan(uint64_t offset, DeleteSpan span) {
+    no_key_spans_.emplace(offset, std::move(span));
+}
+
+void DeleteCollector::AddSpan(std::string key, DeleteSpan span) {
+    deleted_spans_.insert_or_assign(std::move(key), std::move(span));
+}
+
+void DeleteCollector::AddKey(uint64_t offset, std::string key) {
+    deleted_keys_.insert_or_assign(std::move(key), offset);
+}
+
+size_t DeleteCollector::Size() const {
+    return deleted_keys_.size() + deleted_spans_.size() + no_key_spans_.size();
+}
+
 MemTableSnapshot::MemTableSnapshot(uint32_t tid, uint32_t pid, LogParts* log_part, const std::string& db_root_path)
     : Snapshot(tid, pid), log_part_(log_part), db_root_path_(db_root_path) {}
 
@@ -423,56 +505,31 @@ void MemTableSnapshot::Put(std::string& path, std::shared_ptr<Table>& table, std
 
 int MemTableSnapshot::TTLSnapshot(std::shared_ptr<Table> table, const ::openmldb::api::Manifest& manifest,
         const std::shared_ptr<WriteHandle>& wh, MemSnapshotMeta* snapshot_meta) {
-    std::string full_path = snapshot_path_ + manifest.name();
-    FILE* fd = fopen(full_path.c_str(), "rb");
-    if (fd == NULL) {
-        PDLOG(WARNING, "fail to open path %s for error %s", full_path.c_str(), strerror(errno));
+    auto data_reader = DataReader::CreateDataReader(snapshot_path_, nullptr, "", DataReaderType::kSnapshot);
+    if (!data_reader) {
+        PDLOG(WARNING, "fail to create data reader. tid %u pid %u", tid_, pid_);
         return -1;
     }
-    bool compressed = IsCompressed(full_path);
-    ::openmldb::log::SequentialFile* seq_file = ::openmldb::log::NewSeqFile(manifest.name(), fd);
-    ::openmldb::log::Reader reader(seq_file, NULL, false, 0, compressed);
-
-    std::string buffer;
-    std::string tmp_buf;
-    ::openmldb::api::LogEntry entry;
     bool has_error = false;
-    std::set<uint32_t> deleted_index;
-    for (const auto& it : table->GetAllIndex()) {
-        if (it->GetStatus() != ::openmldb::storage::IndexStatus::kReady) {
-            deleted_index.insert(it->GetId());
-        }
-    }
-    while (true) {
-        ::openmldb::base::Slice record;
-        ::openmldb::log::Status status = reader.ReadRecord(&record, &buffer);
-        if (status.IsEof()) {
-            break;
-        }
-        if (!status.ok()) {
-            PDLOG(WARNING, "fail to read record for tid %u, pid %u with error %s", tid_, pid_,
-                  status.ToString().c_str());
-            has_error = true;
-            break;
-        }
-        if (!entry.ParseFromString(record.ToString())) {
-            PDLOG(WARNING, "fail parse record for tid %u, pid %u with value %s", tid_, pid_,
-                  ::openmldb::base::DebugString(record.ToString()).c_str());
-            has_error = true;
-            break;
-        }
-        int ret = RemoveDeletedKey(entry, deleted_index, &tmp_buf);
-        if (ret == 1) {
-            snapshot_meta->deleted_key_num++;
-            continue;
-        } else if (ret == 2) {
-            record.reset(tmp_buf.data(), tmp_buf.size());
+    std::string tmp_buf;
+    while (data_reader->HasNext()) {
+        auto& entry = data_reader->GetValue();
+        ::openmldb::base::Slice record(data_reader->GetStrValue());
+        if (!delete_collector_.IsEmpty()) {
+            int ret = CheckDeleteAndUpdate(table, &entry);
+            if (ret == 1) {
+                snapshot_meta->deleted_key_num++;
+                continue;
+            } else if (ret == 2) {
+                entry.SerializeToString(&tmp_buf);
+                record.reset(tmp_buf.data(), tmp_buf.size());
+            }
         }
         if (table->IsExpire(entry)) {
             snapshot_meta->expired_key_num++;
             continue;
         }
-        status = wh->Write(record);
+        auto status = wh->Write(record);
         if (!status.ok()) {
             PDLOG(WARNING, "fail to write snapshot. status[%s]", status.ToString().c_str());
             has_error = true;
@@ -485,7 +542,6 @@ int MemTableSnapshot::TTLSnapshot(std::shared_ptr<Table> table, const ::openmldb
         }
         snapshot_meta->count++;
     }
-    delete seq_file;
     if (snapshot_meta->expired_key_num + snapshot_meta->count + snapshot_meta->deleted_key_num
             != manifest.count()) {
         PDLOG(WARNING, "key num not match! total key num[%lu] load key num[%lu] ttl key num[%lu]",
@@ -501,66 +557,33 @@ int MemTableSnapshot::TTLSnapshot(std::shared_ptr<Table> table, const ::openmldb
 }
 
 uint64_t MemTableSnapshot::CollectDeletedKey(uint64_t end_offset) {
-    deleted_keys_.clear();
-    ::openmldb::log::LogReader log_reader(log_part_, log_path_, false);
-    log_reader.SetOffset(offset_);
+    delete_collector_.Clear();
     uint64_t cur_offset = offset_;
-    std::string buffer;
-    while (true) {
-        if (deleted_keys_.size() >= FLAGS_make_snapshot_max_deleted_keys) {
+    auto data_reader = DataReader::CreateDataReader(log_part_, log_path_, offset_, end_offset);
+    if (!data_reader) {
+        return cur_offset;
+    }
+    while (data_reader->HasNext()) {
+        if (delete_collector_.Size() >= FLAGS_make_snapshot_max_deleted_keys) {
             PDLOG(WARNING, "deleted_keys map size reach the make_snapshot_max_deleted_keys %u, tid %u pid %u",
                   FLAGS_make_snapshot_max_deleted_keys, tid_, pid_);
             break;
         }
-        if (end_offset > 0 && cur_offset >= end_offset) {
-            return cur_offset;
-        }
-        buffer.clear();
-        ::openmldb::base::Slice record;
-        ::openmldb::log::Status status = log_reader.ReadNextRecord(&record, &buffer);
-        if (status.ok()) {
-            ::openmldb::api::LogEntry entry;
-            if (!entry.ParseFromString(record.ToString())) {
-                PDLOG(WARNING, "fail to parse LogEntry. record[%s] size[%ld]",
-                      ::openmldb::base::DebugString(record.ToString()).c_str(), record.ToString().size());
-                break;
-            }
-            if (entry.log_index() <= cur_offset) {
-                continue;
-            }
-            if (cur_offset + 1 != entry.log_index()) {
-                PDLOG(WARNING, "log missing expect offset %lu but %ld. tid %u pid %u",
-                        cur_offset + 1, entry.log_index(), tid_, pid_);
-                continue;
-            }
-            cur_offset = entry.log_index();
-            if (entry.has_method_type() && entry.method_type() == ::openmldb::api::MethodType::kDelete) {
-                if (entry.dimensions_size() == 0) {
-                    PDLOG(WARNING, "no dimesion. tid %u pid %u offset %lu", tid_, pid_, cur_offset);
-                    continue;
-                }
+        const auto& entry = data_reader->GetValue();
+        cur_offset = entry.log_index();
+        if (entry.has_method_type() && entry.method_type() == ::openmldb::api::MethodType::kDelete) {
+            if (entry.dimensions_size() == 0) {
+                delete_collector_.AddSpan(cur_offset, DeleteSpan(entry));
+                DEBUGLOG("insert span offset %lu. tid %u pid %u", cur_offset, tid_, pid_);
+            } else {
                 std::string combined_key = absl::StrCat(entry.dimensions(0).key(), "|", entry.dimensions(0).idx());
+                if (entry.has_ts() || entry.has_end_ts()) {
+                    delete_collector_.AddSpan(std::move(combined_key), DeleteSpan(entry));
+                } else {
+                    delete_collector_.AddKey(cur_offset, std::move(combined_key));
+                }
                 DEBUGLOG("insert key %s offset %lu. tid %u pid %u", combined_key.c_str(), cur_offset, tid_, pid_);
-                deleted_keys_.insert_or_assign(std::move(combined_key), cur_offset);
             }
-        } else if (status.IsEof()) {
-            continue;
-        } else if (status.IsWaitRecord()) {
-            int end_log_index = log_reader.GetEndLogIndex();
-            int cur_log_index = log_reader.GetLogIndex();
-            // judge end_log_index greater than cur_log_index
-            if (end_log_index >= 0 && end_log_index > cur_log_index) {
-                log_reader.RollRLogFile();
-                PDLOG(WARNING, "read new binlog file. tid[%u] pid[%u] cur_log_index[%d] "
-                      "end_log_index[%d] cur_offset[%lu]",
-                      tid_, pid_, cur_log_index, end_log_index, cur_offset);
-                continue;
-            }
-            DEBUGLOG("has read all record!");
-            break;
-        } else {
-            PDLOG(WARNING, "fail to get record. status is %s", status.ToString().c_str());
-            break;
         }
     }
     return cur_offset;
@@ -577,13 +600,15 @@ int MemTableSnapshot::MakeSnapshot(std::shared_ptr<Table> table, uint64_t& out_o
         return -1;
     }
     making_snapshot_.store(true, std::memory_order_release);
-    std::string now_time = ::openmldb::base::GetNowTime();
+    absl::Cleanup clean = [this] {
+        this->making_snapshot_.store(false, std::memory_order_release);
+        this->delete_collector_.Clear();
+    };
     MemSnapshotMeta snapshot_meta(GenSnapshotName(), snapshot_path_, FLAGS_snapshot_compression);
     auto wh = ::openmldb::log::CreateWriteHandle(FLAGS_snapshot_compression,
             snapshot_meta.snapshot_name, snapshot_meta.tmp_file_path);
     if (!wh) {
         PDLOG(WARNING, "fail to create file %s", snapshot_meta.tmp_file_path.c_str());
-        making_snapshot_.store(false, std::memory_order_release);
         return -1;
     }
     uint64_t collected_offset = CollectDeletedKey(end_offset);
@@ -604,13 +629,6 @@ int MemTableSnapshot::MakeSnapshot(std::shared_ptr<Table> table, uint64_t& out_o
         has_error = true;
     }
 
-    // get deleted index
-    std::set<uint32_t> deleted_index;
-    for (const auto& it : table->GetAllIndex()) {
-        if (it->GetStatus() == ::openmldb::storage::IndexStatus::kDeleted) {
-            deleted_index.insert(it->GetId());
-        }
-    }
     ::openmldb::log::LogReader log_reader(log_part_, log_path_, false);
     log_reader.SetOffset(offset_);
     uint64_t cur_offset = offset_;
@@ -643,12 +661,15 @@ int MemTableSnapshot::MakeSnapshot(std::shared_ptr<Table> table, uint64_t& out_o
             if (entry.has_term()) {
                 snapshot_meta.term = entry.term();
             }
-            int ret = RemoveDeletedKey(entry, deleted_index, &tmp_buf);
-            if (ret == 1) {
-                snapshot_meta.deleted_key_num++;
-                continue;
-            } else if (ret == 2) {
-                record.reset(tmp_buf.data(), tmp_buf.size());
+            if (!delete_collector_.IsEmpty()) {
+                int ret = CheckDeleteAndUpdate(table, &entry);
+                if (ret == 1) {
+                    snapshot_meta.deleted_key_num++;
+                    continue;
+                } else if (ret == 2) {
+                    entry.SerializeToString(&tmp_buf);
+                    record.reset(tmp_buf.data(), tmp_buf.size());
+                }
             }
             if (table->IsExpire(entry)) {
                 snapshot_meta.expired_key_num++;
@@ -688,20 +709,18 @@ int MemTableSnapshot::MakeSnapshot(std::shared_ptr<Table> table, uint64_t& out_o
             break;
         }
     }
-    deleted_keys_.clear();
     wh->EndLog();
     wh.reset();
-    int ret = 0;
     if (has_error) {
         unlink(snapshot_meta.tmp_file_path.c_str());
-        ret = -1;
+        return -1;
     } else {
         snapshot_meta.offset = cur_offset;
         uint64_t old_offset = offset_;
         auto status = WriteSnapshot(snapshot_meta);
         if (!status.OK()) {
-            ret = -1;
             PDLOG(WARNING, "write snapshot failed. tid %u pid %u msg is %s ", tid_, pid_, status.GetMsg().c_str());
+            return -1;
         }
         uint64_t consumed = ::baidu::common::timer::now_time() - start_time;
         PDLOG(INFO, "make snapshot[%s] success. update offset from %lu to %lu."
@@ -709,48 +728,6 @@ int MemTableSnapshot::MakeSnapshot(std::shared_ptr<Table> table, uint64_t& out_o
               snapshot_meta.snapshot_name.c_str(), old_offset, snapshot_meta.offset, consumed,
               snapshot_meta.count, snapshot_meta.expired_key_num, snapshot_meta.deleted_key_num);
         out_offset = snapshot_meta.offset;
-    }
-    making_snapshot_.store(false, std::memory_order_release);
-    return ret;
-}
-
-int MemTableSnapshot::RemoveDeletedKey(const ::openmldb::api::LogEntry& entry, const std::set<uint32_t>& deleted_index,
-                                       std::string* buffer) {
-    uint64_t cur_offset = entry.log_index();
-    if (entry.dimensions_size() == 0) {
-        std::string combined_key = absl::StrCat(entry.pk(), "|0");
-        auto iter = deleted_keys_.find(combined_key);
-        if (iter != deleted_keys_.end() && cur_offset <= iter->second) {
-            DEBUGLOG("delete key %s  offset %lu", entry.pk().c_str(), entry.log_index());
-            return 1;
-        }
-    } else {
-        std::set<int> deleted_pos_set;
-        for (int pos = 0; pos < entry.dimensions_size(); pos++) {
-            std::string combined_key = absl::StrCat(entry.dimensions(pos).key(), "|", entry.dimensions(pos).idx());
-            auto iter = deleted_keys_.find(combined_key);
-            if ((iter != deleted_keys_.end() && cur_offset <= iter->second) ||
-                deleted_index.count(entry.dimensions(pos).idx())) {
-                deleted_pos_set.insert(pos);
-            }
-        }
-        if (!deleted_pos_set.empty()) {
-            if (static_cast<int>(deleted_pos_set.size()) == entry.dimensions_size()) {
-                return 1;
-            } else {
-                ::openmldb::api::LogEntry tmp_entry(entry);
-                tmp_entry.clear_dimensions();
-                for (int pos = 0; pos < entry.dimensions_size(); pos++) {
-                    if (deleted_pos_set.find(pos) == deleted_pos_set.end()) {
-                        ::openmldb::api::Dimension* dimension = tmp_entry.add_dimensions();
-                        dimension->CopyFrom(entry.dimensions(pos));
-                    }
-                }
-                buffer->clear();
-                tmp_entry.SerializeToString(buffer);
-                return 2;
-            }
-        }
     }
     return 0;
 }
@@ -766,31 +743,64 @@ int MemTableSnapshot::CheckDeleteAndUpdate(std::shared_ptr<Table> table, openmld
     if (entry == nullptr) {
         return -1;
     }
-    if (deleted_keys_.empty()) {
+    if (delete_collector_.IsEmpty()) {
         return 0;
     }
-    // deleted key
-    std::set<int> deleted_pos_set;
-    for (int pos = 0; pos < entry->dimensions_size(); pos++) {
-        std::string combined_key = absl::StrCat(entry->dimensions(pos).key(), "|", entry->dimensions(pos).idx());
-        if (deleted_keys_.find(combined_key) != deleted_keys_.end() ||
-            !table->GetIndex(entry->dimensions(pos).idx())->IsReady()) {
-            deleted_pos_set.insert(pos);
-        }
-    }
-    if (!deleted_pos_set.empty()) {
-        if (static_cast<int>(deleted_pos_set.size()) == entry->dimensions_size()) {
+    if (entry->dimensions_size() == 0) {
+        std::string combined_key = absl::StrCat(entry->pk(), "|0");
+        if (delete_collector_.IsDeleted(entry->log_index(), 0, combined_key, entry->ts())) {
             return 1;
-        } else {
-            ::openmldb::api::LogEntry tmp_entry(*entry);
-            entry->clear_dimensions();
-            for (int pos = 0; pos < tmp_entry.dimensions_size(); pos++) {
-                if (deleted_pos_set.find(pos) == deleted_pos_set.end()) {
-                    ::openmldb::api::Dimension* dimension = entry->add_dimensions();
-                    dimension->CopyFrom(tmp_entry.dimensions(pos));
+        }
+    } else {
+        absl::flat_hash_set<int> deleted_pos_set;
+        for (int pos = 0; pos < entry->dimensions_size(); pos++) {
+            uint32_t idx = entry->dimensions(pos).idx();
+            auto index = table->GetIndex(idx);
+            if (index == nullptr || !index->IsReady()) {
+                deleted_pos_set.insert(pos);
+                continue;
+            }
+            std::string combined_key = absl::StrCat(entry->dimensions(pos).key(), "|", idx);
+            auto ts_col = index->GetTsColumn();
+            if (ts_col->IsAutoGenTs()) {
+                if (delete_collector_.IsDeleted(entry->log_index(), idx, combined_key, entry->ts())) {
+                    deleted_pos_set.insert(pos);
+                }
+            } else {
+                std::string buff;
+                openmldb::base::Slice data;
+                if (table->GetCompressType() == openmldb::type::kSnappy) {
+                    snappy::Uncompress(entry->value().data(), entry->value().size(), &buff);
+                    data.reset(buff.data(), buff.size());
+                } else {
+                    data.reset(entry->value().data(), entry->value().size());
+                }
+                const int8_t* raw = reinterpret_cast<const int8_t*>(data.data());
+                uint8_t version = openmldb::codec::RowView::GetSchemaVersion(raw);
+                auto decoder = table->GetVersionDecoder(version);
+                int64_t ts = 0;
+                if (decoder->GetInteger(raw, ts_col->GetId(), ts_col->GetType(), &ts) < 0) {
+                    PDLOG(WARNING, "fail to get ts. tid %u pid %u", tid_, pid_);
+                    return -1;
+                }
+                if (delete_collector_.IsDeleted(entry->log_index(), idx, combined_key, ts)) {
+                    deleted_pos_set.insert(pos);
                 }
             }
-            return 2;
+        }
+        if (!deleted_pos_set.empty()) {
+            if (static_cast<int>(deleted_pos_set.size()) == entry->dimensions_size()) {
+                return 1;
+            } else {
+                ::google::protobuf::RepeatedPtrField<api::Dimension> dimensions(entry->dimensions());
+                entry->clear_dimensions();
+                for (int pos = 0; pos < dimensions.size(); pos++) {
+                    if (deleted_pos_set.find(pos) == deleted_pos_set.end()) {
+                        entry->add_dimensions()->CopyFrom(dimensions.Get(pos));
+                    }
+                }
+                return 2;
+            }
         }
     }
     return 0;
@@ -869,7 +879,7 @@ std::string MemTableSnapshot::GenSnapshotName() {
     }
     absl::Cleanup clean = [this]() {
         this->making_snapshot_.store(false, std::memory_order_release);
-        deleted_keys_.clear();
+        delete_collector_.Clear();
     };
     TableIndexInfo table_index_info(*(table->GetTableMeta()), add_indexs);
     if (!table_index_info.Init()) {
@@ -908,31 +918,36 @@ std::string MemTableSnapshot::GenSnapshotName() {
             snapshot_meta.expired_key_num++;
             continue;
         }
-        if (!deleted_keys_.empty()) {
-            int ret = CheckDeleteAndUpdate(table, &entry);
+        bool entry_updated = false;
+        if (!delete_collector_.IsEmpty()) {
+            auto ret = CheckDeleteAndUpdate(table, &entry);
             if (ret == 1) {
                 snapshot_meta.deleted_key_num++;
                 continue;
+            } else if (ret == 2) {
+                entry_updated = true;
             }
         }
         bool has_main_index = false;
         for (int pos = 0; pos < entry.dimensions_size(); pos++) {
             if (entry.dimensions(pos).idx() == 0) {
-                if (!deleted_keys_.empty()) {
-                    std::string combined_key = absl::StrCat(entry.dimensions(pos).key(), "|0");
-                    if (deleted_keys_.find(combined_key) == deleted_keys_.end()) {
-                        has_main_index = true;
-                    }
-                } else {
-                    has_main_index = true;
-                }
+                has_main_index = true;
                 break;
             }
         }
         if (!has_main_index) {
-            if (!wh->Write(::openmldb::base::Slice(data_reader->GetStrValue())).ok()) {
-                status = {-1, "fail to write snapshot"};
-                break;
+            if (entry_updated) {
+                buff.clear();
+                entry.SerializeToString(&buff);
+                if (!wh->Write(::openmldb::base::Slice(buff)).ok()) {
+                    status = {-1, "fail to write snapshot"};
+                    break;
+                }
+            } else {
+                if (!wh->Write(::openmldb::base::Slice(data_reader->GetStrValue())).ok()) {
+                    status = {-1, "fail to write snapshot"};
+                    break;
+                }
             }
             continue;
         }
@@ -959,8 +974,7 @@ std::string MemTableSnapshot::GenSnapshotName() {
         auto iter = dimension_map.find(pid);
         if (iter != dimension_map.end()) {
             for (const auto& dim : iter->second) {
-                ::openmldb::api::Dimension* new_dim = entry.add_dimensions();
-                new_dim->CopyFrom(dim);
+                entry.add_dimensions()->CopyFrom(dim);
             }
             entry.SerializeToString(&tmp_buf);
             if (!wh->Write(::openmldb::base::Slice(tmp_buf)).ok()) {
@@ -975,6 +989,20 @@ std::string MemTableSnapshot::GenSnapshotName() {
             DLOG(INFO) << "extract: dim size " << entry.dimensions_size() << " key " << entry.dimensions(0).key();
             extract_cnt++;
             table->Put(entry);
+        } else {
+            if (entry_updated) {
+                buff.clear();
+                entry.SerializeToString(&buff);
+                if (!wh->Write(::openmldb::base::Slice(buff)).ok()) {
+                    status = {-1, "fail to write snapshot"};
+                    break;
+                }
+            } else {
+                if (!wh->Write(::openmldb::base::Slice(data_reader->GetStrValue())).ok()) {
+                    status = {-1, "fail to write snapshot"};
+                    break;
+                }
+            }
         }
         if (dump_data) {
             for (const auto& kv : dimension_map) {

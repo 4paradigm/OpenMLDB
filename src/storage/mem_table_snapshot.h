@@ -20,10 +20,13 @@
 #include <atomic>
 #include <map>
 #include <memory>
+#include <optional>
 #include <set>
 #include <string>
 #include <vector>
 
+#include "absl/container/btree_map.h"
+#include "absl/container/flat_hash_map.h"
 #include "base/status.h"
 #include "codec/schema_codec.h"
 #include "log/log_reader.h"
@@ -132,6 +135,33 @@ class TableIndexInfo {
     std::map<uint32_t, std::vector<uint32_t>> real_index_cols_map_;
 };
 
+struct DeleteSpan {
+    DeleteSpan() = default;
+    explicit DeleteSpan(const api::LogEntry& entry);
+    bool IsDeleted(uint64_t offset_i, uint32_t idx_i, uint64_t ts) const;
+
+    uint64_t offset = 0;
+    std::optional<uint32_t> idx = std::nullopt;
+    uint64_t start_ts = UINT64_MAX;
+    std::optional<uint64_t> end_ts = std::nullopt;
+};
+
+class DeleteCollector {
+ public:
+    bool IsDeleted(uint64_t offset, uint32_t idx, const std::string& key, uint64_t ts) const;
+    bool IsEmpty() const;
+    void Clear();
+    void AddSpan(uint64_t offset, DeleteSpan span);
+    void AddSpan(std::string key, DeleteSpan span);
+    void AddKey(uint64_t offset, std::string key);
+    size_t Size() const;
+
+ private:
+    absl::flat_hash_map<std::string, uint64_t> deleted_keys_;
+    absl::flat_hash_map<std::string, DeleteSpan> deleted_spans_;
+    absl::btree_map<uint64_t, DeleteSpan> no_key_spans_;
+};
+
 class MemTableSnapshot : public Snapshot {
  public:
     MemTableSnapshot(uint32_t tid, uint32_t pid, LogParts* log_part, const std::string& db_root_path);
@@ -162,9 +192,6 @@ class MemTableSnapshot : public Snapshot {
 
     int CheckDeleteAndUpdate(std::shared_ptr<Table> table, ::openmldb::api::LogEntry* new_entry);
 
-    int RemoveDeletedKey(const ::openmldb::api::LogEntry& entry, const std::set<uint32_t>& deleted_index,
-                         std::string* buffer);
-
  private:
     // load single snapshot to table
     void RecoverSingleSnapshot(const std::string& path, std::shared_ptr<Table> table, std::atomic<uint64_t>* g_succ_cnt,
@@ -182,8 +209,8 @@ class MemTableSnapshot : public Snapshot {
  private:
     LogParts* log_part_;
     std::string log_path_;
-    std::map<std::string, uint64_t> deleted_keys_;
     std::string db_root_path_;
+    DeleteCollector delete_collector_;
 };
 
 }  // namespace storage
