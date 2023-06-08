@@ -345,6 +345,7 @@ message ShowOPStatusRequest{
     optional string name = 1;
     optional uint32 pid = 2;
     optional string db = 3;
+    optional uint64 op_id = 4;
 }
 
 message ConnectZKRequest {}
@@ -424,6 +425,7 @@ message AddIndexMeta {
     optional uint32 idx = 4;
     optional string db = 5 [default = ""];
     optional bool skip_data = 6 [default = false];
+    repeated openmldb.common.ColumnKey column_keys = 7;
 }
 
 message AddIndexRequest {
@@ -432,6 +434,7 @@ message AddIndexRequest {
     optional string db = 3 [default = ""];
     repeated openmldb.common.ColumnDesc cols = 4;
     repeated openmldb.common.ColumnKey column_keys = 5;
+    optional bool skip_load_data = 6 [default = false];
 }
 
 message DeleteIndexRequest {
@@ -506,6 +509,23 @@ message ShowFunctionResponse {
     repeated openmldb.common.ExternalFun fun = 3;
 }
 
+message TableIndex {
+    optional string db = 1;
+    optional string name = 2;
+    repeated openmldb.common.ColumnKey column_key = 3;
+}
+
+message DeploySQLRequest {
+    optional openmldb.api.ProcedureInfo sp_info = 3;
+    repeated TableIndex index = 4;
+}
+
+message DeploySQLResponse {
+    optional int32 code = 1;
+    optional string msg = 2;
+    optional uint64 op_id = 3;
+}
+
 service NameServer {
     rpc CreateTable(CreateTableRequest) returns (GeneralResponse);
     rpc DropTable(DropTableRequest) returns (GeneralResponse);
@@ -561,4 +581,5 @@ service NameServer {
     rpc CreateProcedure(openmldb.api.CreateProcedureRequest) returns (GeneralResponse);
     rpc DropProcedure(openmldb.api.DropProcedureRequest) returns (GeneralResponse);
     rpc ShowProcedure(openmldb.api.ShowProcedureRequest) returns (openmldb.api.ShowProcedureResponse);
+    rpc DeploySQL(DeploySQLRequest) returns (DeploySQLResponse);
 }

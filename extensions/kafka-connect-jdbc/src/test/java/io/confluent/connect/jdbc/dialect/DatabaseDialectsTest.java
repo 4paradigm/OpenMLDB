@@ -95,6 +95,11 @@ public class DatabaseDialectsTest {
   }
 
   @Test
+  public void shouldFindOpenmldbDialet() {
+    assertDialect(OpenmldbDatabaseDialect.class, "jdbc:openmldb://something");
+  }
+
+  @Test
   public void shouldFindMockDialect() {
     assertDialect(MockDatabaseDialect.class, "jdbc:mock:argle");
   }

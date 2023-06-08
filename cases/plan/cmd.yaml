@@ -584,3 +584,50 @@ cases:
         +-node[CMD]
           +-cmd_type: exit
           +-args: []
+
+  - id: alter-table-add-path
+    sql: |
+      alter table t1 add offline_path '12'
+    expect:
+      node_tree_str: |
+        +-node[kAlterTableStmt]
+          +-path: .t1
+          +-actions:
+            +-0: AddPathAction (12)
+      plan_tree_str: |
+        +-[kPlanTypeAlterTable]
+          +-path: .t1
+          +-actions:
+            +-0: AddPathAction (12)
+
+  - id: alter-table-drop-path
+    sql: |
+      alter table db.t1 drop offline_path '12'
+    expect:
+      node_tree_str: |
+        +-node[kAlterTableStmt]
+          +-path: db.t1
+          +-actions:
+            +-0: DropPathAction (12)
+      plan_tree_str: |
+        +-[kPlanTypeAlterTable]
+          +-path: db.t1
+          +-actions:
+            +-0: DropPathAction (12)
+
+  - id: alter-table-drop-path-2
+    sql: |
+      alter table db.t1 drop offline_path '12', add offline_path '13'
+    expect:
+      node_tree_str: |
+        +-node[kAlterTableStmt]
+          +-path: db.t1
+          +-actions:
+            +-0: DropPathAction (12)
+            +-1: AddPathAction (13)
+      plan_tree_str: |
+        +-[kPlanTypeAlterTable]
+          +-path: db.t1
+          +-actions:
+            +-0: DropPathAction (12)
+            +-1: AddPathAction (13)
