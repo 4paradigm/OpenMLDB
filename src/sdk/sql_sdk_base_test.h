@@ -123,7 +123,8 @@ struct DeploymentEnv {
 
     virtual ~DeploymentEnv() { TearDown(); }
 
-    void SetUp();
+    // @param skip_data If true, won't insert new records into tables, only table & deployment creation
+    void SetUp(bool skip_data = false);
 
     void CallDeployProcedure() const;
     // calls deployment, without logs, without result check, simply

@@ -16,6 +16,7 @@
 
 #include "case/sql_case.h"
 
+#include <filesystem>
 #include <fstream>
 #include <optional>
 #include <set>
@@ -25,6 +26,7 @@
 #include "absl/cleanup/cleanup.h"
 #include "absl/strings/ascii.h"
 #include "absl/strings/substitute.h"
+#include "absl/synchronization/mutex.h"
 #include "boost/algorithm/string.hpp"
 #include "boost/filesystem/operations.hpp"
 #include "boost/lexical_cast.hpp"
@@ -37,6 +39,10 @@
 namespace hybridse {
 namespace sqlcase {
 using hybridse::codec::Row;
+
+static absl::Mutex mtx;
+// working directory, where the yaml file lives
+static std::filesystem::path working_dir;
 
 bool SqlCase::TTLParse(const std::string& org_type_str,
                        std::vector<int64_t>& ttls) {
@@ -948,19 +954,22 @@ bool SqlCase::CreateTableInfoFromYamlNode(const YAML::Node& schema_data,
 
     if (schema_data["data"]) {
         if (schema_data["data"].IsMap()) {
-            // csv format only
-            table->csv_data_file_ = absl::StripAsciiWhitespace(schema_data["data"]["file"].as<std::string>());
-            std::fstream f(table->csv_data_file_, std::ios::in);
-            if (f.is_open()) {
-                absl::Cleanup clean = [&f]() {
-                    f.close();
-                };
-                std::stringstream ss;
-                ss << f.rdbuf();
-                table->data_ = ss.str();
-                boost::trim(table->data_);
+            if (schema_data["data"]["file"].IsScalar()) {
+                // csv format only
+                auto csv_data_file_ = absl::StripAsciiWhitespace(schema_data["data"]["file"].as<std::string>());
+                if (csv_data_file_.empty()) {
+                    LOG(ERROR) << "table csv data file name is empty";
+                    return false;
+                }
+                std::ifstream ifs(working_dir / csv_data_file_);
+                if (!ifs.is_open()) {
+                    LOG(ERROR) << "can't open " << (working_dir / csv_data_file_);
+                    return false;
+                }
+                table->data_.assign((std::istreambuf_iterator<char>(ifs)), std::istreambuf_iterator<char>());
+                absl::StripAsciiWhitespace(&table->data_);
             } else {
-                LOG(ERROR) << "file " << table->csv_data_file_ << " not open";
+                LOG(ERROR) << "inputs[*].data.file is not scalar type";
                 return false;
             }
         } else if (schema_data["data"].IsScalar()) {
@@ -1136,13 +1145,11 @@ bool SqlCase::CreateSqlCasesFromYaml(const std::string& cases_dir,
 bool SqlCase::CreateTableInfoFromYaml(const std::string& cases_dir,
                                       const std::string& yaml_path,
                                       TableInfo* table_info) {
-    std::string resouces_path;
+    std::filesystem::path resouces_path = yaml_path;
     if (cases_dir != "") {
-        resouces_path = cases_dir + "/" + yaml_path;
-    } else {
-        resouces_path = yaml_path;
+        resouces_path = std::filesystem::path(cases_dir) / resouces_path;
     }
-    if (!boost::filesystem::is_regular_file(resouces_path)) {
+    if (!boost::filesystem::is_regular_file(resouces_path.string())) {
         LOG(WARNING) << resouces_path << ": No such file";
         return false;
     }
@@ -1263,8 +1270,30 @@ static bool ParseSqlCaseNode(const YAML::Node& sql_case_node,
     }
 
     if (sql_case_node["sql"]) {
-        sql_case.sql_str_ = sql_case_node["sql"].as<std::string>();
-        boost::trim(sql_case.sql_str_);
+        auto& sql_node = sql_case_node["sql"];
+        if (sql_node.IsScalar()) {
+            sql_case.sql_str_ = sql_case_node["sql"].as<std::string>();
+            boost::trim(sql_case.sql_str_);
+        } else if (sql_node.IsMap()) {
+            if (sql_node["file"].IsScalar()) {
+                auto file_path = absl::StripAsciiWhitespace(sql_node["file"].as<std::string>());
+                if (file_path.empty()) {
+                    LOG(ERROR) << "file path to sql is empty";
+                    return false;
+                }
+                auto real_path = working_dir / file_path;
+                std::ifstream ifs(real_path);
+                if (!ifs.is_open()) {
+                    LOG(ERROR) << "can't open " << real_path;
+                    return false;
+                }
+                sql_case.sql_str_.assign((std::istreambuf_iterator<char>(ifs)), std::istreambuf_iterator<char>());
+            } else {
+                return false;
+            }
+        } else {
+            return false;
+        }
     }
     if (sql_case_node["sqls"]) {
         sql_case.sql_strs_.clear();
@@ -1508,16 +1537,19 @@ bool SqlCase::CreateSqlCasesFromYaml(
     const std::string& cases_dir, const std::string& yaml_path,
     std::vector<SqlCase>& sql_case_ptr,
     const std::vector<std::string>& filter_modes) {
-    std::string sql_case_path;
+
+    std::filesystem::path sql_case_path = yaml_path;
     if (cases_dir != "") {
-        sql_case_path = cases_dir + "/" + yaml_path;
-    } else {
-        sql_case_path = yaml_path;
+        sql_case_path = std::filesystem::path(cases_dir) / sql_case_path;
     }
+
+    absl::MutexLock lock(&mtx);
+    working_dir = sql_case_path.parent_path();
+
     if (IsDebug()) {
         DLOG(INFO) << "SQL Cases Path: " << sql_case_path;
     }
-    if (!boost::filesystem::is_regular_file(sql_case_path)) {
+    if (!boost::filesystem::is_regular_file(sql_case_path.string())) {
         LOG(WARNING) << sql_case_path << ": No such file";
         return false;
     }
