@@ -29,7 +29,7 @@ jobs:
         run: |
          make configure CMAKE_INSTALL_PREFIX=openmldb-main-linux
          make SQL_JAVASDK_ENABLE=ON && make SQL_JAVASDK_ENABLE=ON install
-         tar -zcf openmldb-linux.tar.gz openmldb-linux
+         tar -zcf openmldb-linux.tar.gz openmldb-main-linux
       - name: download
         if: ${{ github.event.inputs.EXEC_VERSION != 'main' }}
         run: | 
