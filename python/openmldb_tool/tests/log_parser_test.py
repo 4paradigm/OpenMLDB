@@ -5,7 +5,8 @@ import pytest
 from diagnostic_tool.parser import LogParser
 from .case_conf import OpenMLDB_ZK_CLUSTER
 
-err_log_list = [os.path.join("off_err_logs", err_log) for err_log in os.listdir("off_err_logs")]
+logs_path = os.path.join(os.path.dirname(__file__), "off_err_logs")
+err_log_list = [os.path.join(logs_path, err_log) for err_log in os.listdir(logs_path)]
 
 
 @pytest.mark.parametrize("err_log", err_log_list)
@@ -15,5 +16,6 @@ def test_pattern_logs(err_log):
     print("in", err_log)
     with open(err_log, "r") as f:
         log = f.read()
-    parser = LogParser(log_conf_url="https://openmldb.ai/download/diag/common_err.yml", update=True)
+    parser = LogParser()
+    parser.update_conf_file("https://openmldb.ai/download/diag/common_err.yml")
     parser.parse_log(log)

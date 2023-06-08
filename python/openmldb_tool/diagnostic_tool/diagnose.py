@@ -15,6 +15,7 @@
 # limitations under the License.
 
 import argparse
+import os
 import textwrap
 import time
 
@@ -168,7 +169,9 @@ def inspect_job(args):
     if args.detail:
         print(detailed_log)
     else:
-        parser = LogParser(log_conf_url=args.conf_url, update=args.conf_update)
+        parser = LogParser()
+        if args.conf_update or not os.path.exists(parser.conf_file):
+            parser.update_conf_file(args.conf_url)
         parser.parse_log(detailed_log)
 
 
@@ -284,7 +287,7 @@ def parse_arg(argv):
     ins_job.add_argument(
         "--conf-url",
         default="https://raw.githubusercontent.com/4paradigm/OpenMLDB/main/python/openmldb_tool/diagnostic_tool/common_err.yml",
-        help="url used to update the log parser configuration"
+        help="url used to update the log parser configuration. If downloading is slow, you can try mirror source 'https://openmldb.ai/download/diag/common_err.yml'"
     )
     ins_job.add_argument(
         "--conf-update",
