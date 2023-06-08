@@ -954,18 +954,24 @@ bool SqlCase::CreateTableInfoFromYamlNode(const YAML::Node& schema_data,
 
     if (schema_data["data"]) {
         if (schema_data["data"].IsMap()) {
-            // csv format only
-            auto csv_data_file_ = absl::StripAsciiWhitespace(schema_data["data"]["file"].as<std::string>());
-            if (csv_data_file_.empty()) {
-                LOG(ERROR) << "table csv data file name is empty";
+            if (schema_data["data"]["file"].IsScalar()) {
+                // csv format only
+                auto csv_data_file_ = absl::StripAsciiWhitespace(schema_data["data"]["file"].as<std::string>());
+                if (csv_data_file_.empty()) {
+                    LOG(ERROR) << "table csv data file name is empty";
+                    return false;
+                }
+                std::ifstream ifs(working_dir / csv_data_file_);
+                if (!ifs.is_open()) {
+                    LOG(ERROR) << "can't open " << (working_dir / csv_data_file_);
+                    return false;
+                }
+                table->data_.assign((std::istreambuf_iterator<char>(ifs)), std::istreambuf_iterator<char>());
+                absl::StripAsciiWhitespace(&table->data_);
+            } else {
+                LOG(ERROR) << "inputs[*].data.file is not scalar type";
                 return false;
             }
-            std::ifstream ifs(working_dir / csv_data_file_);
-            if (!ifs.is_open()) {
-                LOG(ERROR) << "can't open " << (working_dir / csv_data_file_);
-                return false;
-            }
-            table->data_.assign((std::istreambuf_iterator<char>(ifs)), std::istreambuf_iterator<char>());
         } else if (schema_data["data"].IsScalar()) {
             table->data_ = schema_data["data"].as<std::string>();
             boost::trim(table->data_);
