@@ -24,6 +24,7 @@ jobs:
     env:
       OS: linux
     steps:
+      - uses: actions/checkout@v2
       - name: build
         if: ${{ github.event.inputs.EXEC_VERSION == 'main' }}
         run: |
