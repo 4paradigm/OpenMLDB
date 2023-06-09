@@ -334,7 +334,7 @@ public class SqlClusterExecutor implements SqlExecutor {
         return results;
     }
 
-    public static Schema genOutputSchema(String sql, String used_db, Map<String, Map<String, Schema>> tableSchema)
+    public static Schema genOutputSchema(String sql, String usedDB, Map<String, Map<String, Schema>> tableSchema)
             throws SQLException {
         SqlClusterExecutor.initJavaSdkLibrary("");
 
@@ -349,7 +349,7 @@ public class SqlClusterExecutor implements SqlExecutor {
             Map<String, Schema> schemaMap = entry.getValue();
             dbTableColumnDescPairVector.add(new DBTableColumnDescPair(db, convertSchema(schemaMap)));
         }
-        com._4paradigm.openmldb.Schema outputSchema = sql_router_sdk.GenOutputSchema(sql, used_db,
+        com._4paradigm.openmldb.Schema outputSchema = sql_router_sdk.GenOutputSchema(sql, usedDB,
                 dbTableColumnDescPairVector);
         // TODO(hw): if we convert com._4paradigm.openmldb.Schema(cPtr) failed, it will
         // throw an exception, we can't do the later delete()
@@ -359,7 +359,7 @@ public class SqlClusterExecutor implements SqlExecutor {
         return ret;
     }
 
-    // for back compatibility, genOutputSchema can set no used_db
+    // for back compatibility, genOutputSchema can set no usedDB
     // 1. if only one db(no <db>.<table> in sql), it's ok
     // 2. if multi db, sql must be <db>.<table>, no using db works
     public static Schema genOutputSchema(String sql, Map<String, Map<String, Schema>> tableSchema)
@@ -390,7 +390,7 @@ public class SqlClusterExecutor implements SqlExecutor {
         return err;
     }
 
-    // for back compatibility, validateSQLInBatch can set no used_db
+    // for back compatibility, validateSQLInBatch can set no usedDB
     public static List<String> validateSQLInBatch(String sql, Map<String, Map<String, Schema>> tableSchema)
             throws SQLException {
         return validateSQLInBatch(sql, "", tableSchema);
@@ -416,14 +416,14 @@ public class SqlClusterExecutor implements SqlExecutor {
         return err;
     }
 
-    // for back compatibility, validateSQLInRequest can set no used_db
+    // for back compatibility, validateSQLInRequest can set no usedDB
     public static List<String> validateSQLInRequest(String sql, Map<String, Map<String, Schema>> tableSchema)
             throws SQLException {
         return validateSQLInRequest(sql, "", tableSchema);
     }
 
     // list<db,table>, the first table is main table, [1, end) are dependent
-    // tables(include main table)
+    // tables(no main table)
     // TODO(hw): db may be empty? seems always not empty
     public static List<Pair<String, String>> getDependentTables(String sql, String usedDB,
             Map<String, Map<String, Schema>> tableSchema)

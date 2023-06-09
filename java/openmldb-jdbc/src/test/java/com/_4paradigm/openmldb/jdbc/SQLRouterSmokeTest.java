@@ -18,6 +18,7 @@ package com._4paradigm.openmldb.jdbc;
 
 import com._4paradigm.openmldb.SQLInsertRow;
 import com._4paradigm.openmldb.SQLInsertRows;
+import com._4paradigm.openmldb.common.Pair;
 import com._4paradigm.openmldb.proto.NS;
 import com._4paradigm.openmldb.sdk.Column;
 import com._4paradigm.openmldb.sdk.Schema;
@@ -659,6 +660,11 @@ public class SQLRouterSmokeTest {
                 .genOutputSchema("select t11.c1 from db1.t1 t1 last join db2.t1 t11 on t1.c1==t11.c1;", schemaMaps)
                 .getColumnList();
         Assert.assertEquals(schema.size(), 1);
+
+        // get dependence tables
+        List<Pair<String, String>> tables = SqlClusterExecutor.getDependentTables("select t11.c1 from db1.t1 t1 last join db2.t1 t11 on t1.c1==t11.c1;", "",
+                schemaMaps);
+        Assert.assertEquals(tables.size(), 2);
     }
 
     @Test

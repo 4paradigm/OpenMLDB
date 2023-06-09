@@ -264,6 +264,12 @@ std::vector<std::pair<std::string, std::string>> GetDependentTables(
     }
     std::vector<std::pair<std::string, std::string>> tables{
         {explain.router.GetMainDb(), explain.router.GetMainTable()}};
+    auto it = explain.dependent_tables.find(tables[0]);
+    if (it == explain.dependent_tables.end()) {
+        LOG(WARNING) << "fail to find main table in dependent tables";
+    } else {
+        explain.dependent_tables.erase(it);
+    }
     tables.insert(tables.end(), explain.dependent_tables.begin(), explain.dependent_tables.end());
     return tables;
 }

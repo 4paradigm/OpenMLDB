@@ -529,6 +529,8 @@ Java 客户端支持对 SQL 进行正确性校验，验证是否可执行。分�
 
 例如：验证 SQL `select count(c1) over w1 from t3 window w1 as(partition by c1 order by c2 rows between unbounded preceding and current row);`，那么除了这个语句，还需要将表 `t3` 的 schema 作为第二参数 schemaMaps 传入。格式为 Map，key 为 db 名，value 为每个 db 的所有 table schema(Map)。实际只支持单 db，所以这里通常只有 1 个 db，如下所示的 db3。db 下的 table schema map key 为 table name，value 为 com.\_4paradigm.openmldb.sdk.Schema，由每列的 name 和 type 构成。
 
+返回结果`List<String>`，如果校验正确，返回空列表；如果校验失败，返回错误信息列表`[error_msg, error_trace]`。
+
 ```java
 Map<String, Map<String, Schema>> schemaMaps = new HashMap<>();
 Map<String, Schema> dbSchema = new HashMap<>();
@@ -545,15 +547,21 @@ Assert.assertEquals(ret.size(), 0);
 
 ## 生成建表DDL
 
-单db
+`public static List<String> genDDL(String sql, Map<String, Map<String, Schema>> tableSchema)`方法可以帮助用户，根据想要deploy的 SQL，自动生成建表语句，目前只支持单db。因此参数`sql`不可以是使用`<db>.<table>`格式，`tableSchema`输入sql依赖的所有table的schema，格式和前文一致，即使此处`tableSchema`存在多db，db信息也会被丢弃，所有表都等价于在同一个db中。
 
 ## SQL Output Schema
 
+`public static Schema genOutputSchema(String sql, String usedDB, Map<String, Map<String, Schema>> tableSchema)`方法可以得到 SQL 的 Output Schema，支持多db。如果使用`usedDB`，`sql`中使用该db的表，可以使用`<table>`格式；如果`usedDB`为空，即无 use db的情况下查询，需保证`sql`中所有表格式为`<db>.<table>`，或者保证`sql`中所有表都是`<table>`（即所有表都来自于同一个db）。
 
+```{note}
+如无use db，底层将把`tableSchema`中第一个db作为used db，这不影响`<db>.<table>`格式的 SQL。
+```
+
+为了向后兼容，还支持了`public static Schema genOutputSchema(String sql, Map<String, Map<String, Schema>> tableSchema)`无db的接口，等价于无 use db，因此，也需要保证所有表格式为`<db>.<table>`，或者保证`sql`中所有表都是`<table>`。
 
 ## SQL 表血缘
 
-
+`public static List<Pair<String, String>> getDependentTables(String sql, String usedDB, Map<String, Map<String, Schema>> tableSchema)`可以获得`sql`依赖的所有表，`Pair<String, String>`分别对应库名和表名，列表的第一个元素为主表，`[1,end)`为其他依赖表（不包括主表）。
 
 ## SQL 合并
 
