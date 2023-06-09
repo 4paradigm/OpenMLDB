@@ -32,7 +32,8 @@ tool_install
 echo "set envs, if IN_WORKFLOW, you should set envs in workflow"
 new_path=$PATH:$(pwd)
 export PATH=$new_path
-# shellcheck source=/opt/rh/devtoolset-8/enable
+# disable check, it will be installed by devtoolset
+# shellcheck disable=SC1091
 source /opt/rh/devtoolset-8/enable
 
 echo "add patch in fetch cmake"
