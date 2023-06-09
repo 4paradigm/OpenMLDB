@@ -67,6 +67,8 @@ zk_cluster: "${Hosts[0]}:$zookeeperPort1"
 zk_root_path: "/openmldb-$dirName"
 basePath: "$rootPath/tmp"
 openMLDBPath: "/tmp/$dirName/tablet/bin/openmldb"
+apiServerEndpoints:
+  - "${Hosts[0]}:$apiserverPort"
 tabletEndpoints:
   - "${Hosts[0]}:$tablet1Port"
   - "${Hosts[1]}:$tablet2Port"
