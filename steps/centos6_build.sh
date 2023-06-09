@@ -30,7 +30,9 @@ fi
 tool_install
 
 echo "set envs, if IN_WORKFLOW, you should set envs in workflow"
-export PATH=$PATH:`pwd`
+new_path=$PATH:$(pwd)
+export PATH=$new_path
+# shellcheck source=/opt/rh/devtoolset-8/enable
 source /opt/rh/devtoolset-8/enable
 
 echo "add patch in fetch cmake"
@@ -40,14 +42,14 @@ sed -i'' '34s/$/ -DWITH_CORE_TOOLS=OFF/' third-party/cmake/FetchRocksDB.cmake
 # If BUILD_BUNDLED=OFF will download pre-built thirdparty, not good. So we use cmake to build zetasql only
 echo  "modify in .deps needs a make first, download&build zetasql first(build will fail)"
 # sed -i'' '31s/${BUILD_BUNDLED}/ON/' third-party/CMakeLists.txt
-cmake -S third-party -B `pwd`/.deps -DSRC_INSTALL_DIR=`pwd`/thirdsrc -DDEPS_INSTALL_DIR=`pwd`/.deps/usr -DBUILD_BUNDLED=ON
-cmake --build `pwd`/.deps --target zetasql
+cmake -S third-party -B "$(pwd)"/.deps -DSRC_INSTALL_DIR="$(pwd)"/thirdsrc -DDEPS_INSTALL_DIR="$(pwd)"/.deps/usr -DBUILD_BUNDLED=ON
+cmake --build "$(pwd)"/.deps --target zetasql
 echo "add patch in .deps zetasql"
 sed -i'' "26s/lm'/lm:-lrt'/" .deps/build/src/zetasql/build_zetasql_parser.sh
 # skip more target to avoid adding -lrt
 sed -i'' '42s/^/#/' .deps/build/src/zetasql/build_zetasql_parser.sh
 sed -i'' '6a function realpath () { \n[[ $1 = /* ]] && echo "$1" || echo "$PWD/${1#./}"\n}' .deps/build/src/zetasql/pack_zetasql.sh
-if [ "OPENMLDB_SOURCE" = "true" ]; then
+if [ "$OPENMLDB_SOURCE" = "true" ]; then
     echo "add patch, use openmldb.ai download icu4c required by zetasql"
     sed -i'' '911s#],#,"https://openmldb.ai/download/legacy/icu4c-65_1-src.tgz"],#' .deps/build/src/zetasql/bazel/zetasql_deps_step_2.bzl
 fi
