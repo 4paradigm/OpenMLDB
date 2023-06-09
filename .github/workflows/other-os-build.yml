@@ -12,11 +12,11 @@ on:
       JAVA_SDK:
         description: 'java sdk enable: ON, OFF'
         required: true
-        default: 'OFF' # turn on later
+        default: 'ON'
       PYTHON_SDK:
         description: 'python sdk enable: ON, OFF'
         required: true
-        default: 'OFF'
+        default: 'ON'
 
 env:
   GIT_SUBMODULE_STRATEGY: recursive
