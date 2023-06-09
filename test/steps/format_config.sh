@@ -95,7 +95,7 @@ zookeeper.cluster=${Hosts[0]}:$zookeeperPort1
 zookeeper.root_path=/openmldb-$dirName
 server.port=$taskmanagerPort
 job.log.path=./logs/
-spark.home=
+spark.home=/tmp/spark/spark-$dirName
 spark.master=yarn-client
 offline.data.prefix=hdfs:///openmldb_integration_test/
 spark.default.conf=spark.hadoop.yarn.timeline-service.enabled=false
