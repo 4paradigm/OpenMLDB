@@ -3350,9 +3350,8 @@ int32_t TabletImpl::DeleteTableInternal(uint32_t tid, uint32_t pid,
         if (base_tid > 0) {
             std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
             uint64_t uid = (uint64_t)base_tid << 32 | pid;
-            auto it = aggregators_.find(uid);
-            if (it != aggregators_.end()) {
-                auto aggrs = *it->second;
+            if (auto it = aggregators_.find(uid); it != aggregators_.end()) {
+                auto& aggrs = *it->second;
                 for (auto it = aggrs.begin(); it != aggrs.end(); it++) {
                     if ((*it)->GetAggrTid() == tid) {
                         aggrs.erase(it);
@@ -5717,7 +5716,7 @@ void TabletImpl::CreateAggregator(RpcController* controller, const ::openmldb::a
 }
 
 bool TabletImpl::CreateAggregatorInternal(const ::openmldb::api::CreateAggregatorRequest* request, std::string& msg) {
-    const ::openmldb::api::TableMeta* base_meta = &request->base_table_meta();
+    const auto& base_meta = request->base_table_meta();
     std::shared_ptr<Table> aggr_table = GetTable(request->aggr_table_tid(), request->aggr_table_pid());
     if (!aggr_table) {
         PDLOG(WARNING, "table does not exist. tid %u, pid %u", request->aggr_table_tid(), request->aggr_table_pid());
@@ -5726,24 +5725,25 @@ bool TabletImpl::CreateAggregatorInternal(const ::openmldb::api::CreateAggregato
     }
     auto aggr_replicator = GetReplicator(request->aggr_table_tid(), request->aggr_table_pid());
     auto aggregator = ::openmldb::storage::CreateAggregator(
-        *base_meta, *aggr_table->GetTableMeta(), aggr_table, aggr_replicator, request->index_pos(), request->aggr_col(),
+        base_meta, *aggr_table->GetTableMeta(), aggr_table, aggr_replicator, request->index_pos(), request->aggr_col(),
         request->aggr_func(), request->order_by_col(), request->bucket_size(), request->filter_col());
     if (!aggregator) {
         msg.assign("create aggregator failed");
         return false;
     }
 
-    auto base_replicator = GetReplicator(base_meta->tid(), base_meta->pid());
+    auto base_replicator = GetReplicator(base_meta.tid(), base_meta.pid());
     if (!aggregator->Init(base_replicator)) {
         PDLOG(WARNING, "aggregator init failed");
     }
-    uint64_t uid = (uint64_t)base_meta->tid() << 32 | base_meta->pid();
+    uint64_t uid = (uint64_t)base_meta.tid() << 32 | base_meta.pid();
     {
         std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
-        if (aggregators_.find(uid) == aggregators_.end()) {
-            aggregators_.emplace(uid, std::make_shared<Aggrs>());
+        auto iter = aggregators_.find(uid);
+        if (iter == aggregators_.end()) {
+            iter = aggregators_.emplace(uid, std::make_shared<Aggrs>()).first;
         }
-        aggregators_[uid]->push_back(aggregator);
+        iter->second->push_back(aggregator);
     }
     return true;
 }

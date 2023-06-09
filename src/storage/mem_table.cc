@@ -260,7 +260,7 @@ bool MemTable::Delete(const ::openmldb::api::LogEntry& entry) {
             auto ts_col = index_def->GetTsColumn();
             std::optional<uint32_t> ts_idx = ts_col ? std::optional<uint32_t>{ts_col->GetId()} : std::nullopt;
             uint32_t idx = index_def->GetId();
-            std::shared_ptr<TraverseIterator> iter(NewTraverseIterator(idx));
+            std::unique_ptr<TraverseIterator> iter(NewTraverseIterator(idx));
             iter->SeekToFirst();
             while (iter->Valid()) {
                 auto pk = iter->GetPK();
