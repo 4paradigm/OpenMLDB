@@ -1,6 +1,6 @@
 # OpenMLDB build on other os, only trigger by dispatch event and only upload artifacts, not release.
 # You should download artifacts manually. And we won't do test in this workflow.
-name: other os build
+name: Other OS Build
 
 on:
   workflow_dispatch:

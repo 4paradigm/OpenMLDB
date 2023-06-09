@@ -191,11 +191,11 @@ bash steps/centos6_build.sh
 
 #### 云编译
 
-Fork OpenMLDB仓库后，可以使用在`Actions`中触发workflow `other os build`，编译产出在`Actions`的`Artifacts`中。workflow 配置 `os name`为`centos6`，
+Fork OpenMLDB仓库后，可以使用在`Actions`中触发workflow `Other OS Build`，编译产出在`Actions`的`Artifacts`中。workflow 配置 `os name`为`centos6`，
 如果不需要Java或Python SDK，可配置`java sdk enable`或`python sdk enable`为`OFF`，节约编译时间。
 
 此编译流程需要从源码编译thirdparty，且资源较少，无法开启较高的并发编译。因此编译时间较长，大约需要3h5m（2h thirdparty+1h OpenMLDB）。workflow会缓存thirdparty的编译产出，因此第二次编译会快很多（1h15m OpenMLDB）。
 
 ### Macos 10.15, 11
 
-Macos适配不需要从源码编译thirdparty，所以云编译耗时不会太长，大约1h15m。本地编译与[从源码全量编译](#从源码全量编译)章节相同，无需编译thirdparty（`BUILD_BUNDLED=OFF`）。云编译需要在`Actions`中触发workflow `other os build`，编译产出在`Actions`的`Artifacts`中。workflow 配置 `os name`为`macos10`/`macos11`，同样可配置`java sdk enable`或`python sdk enable`为`OFF`。
+Macos适配不需要从源码编译thirdparty，所以云编译耗时不会太长，大约1h15m。本地编译与[从源码全量编译](#从源码全量编译)章节相同，无需编译thirdparty（`BUILD_BUNDLED=OFF`）。云编译需要在`Actions`中触发workflow `Other OS Build`，编译产出在`Actions`的`Artifacts`中。workflow 配置 `os name`为`macos10`/`macos11`，同样可配置`java sdk enable`或`python sdk enable`为`OFF`。
