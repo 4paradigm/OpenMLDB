@@ -66,7 +66,7 @@ TEST_F(ASTNodeConverterTest, InvalidASTIntLiteralTest) {
         node::ExprNode* output = nullptr;
         base::Status status = ConvertExprNode(&expression, &node_manager, &output);
         ASSERT_FALSE(status.isOK());
-        ASSERT_EQ("Invalid integer literal: abc123", status.msg);
+        ASSERT_EQ("Invalid integer literal<INVALID_ARGUMENT: abc123 (no digitals found)>", status.msg);
     }
     {
         zetasql::ASTIntLiteral expression;
@@ -74,7 +74,7 @@ TEST_F(ASTNodeConverterTest, InvalidASTIntLiteralTest) {
         node::ExprNode* output = nullptr;
         base::Status status = ConvertExprNode(&expression, &node_manager, &output);
         ASSERT_FALSE(status.isOK());
-        ASSERT_EQ("Invalid integer literal: abc123L", status.msg);
+        ASSERT_EQ("Invalid integer literal<INVALID_ARGUMENT: abc123 (no digitals found)>", status.msg);
     }
 }
 TEST_F(ASTNodeConverterTest, InvalidASTFloatLiteralTest) {
@@ -184,7 +184,7 @@ TEST_F(ASTNodeConverterTest, InvalidASTIntervalLiteralTest) {
         node::ExprNode* output = nullptr;
         base::Status status = ConvertExprNode(&expression, &node_manager, &output);
         ASSERT_FALSE(status.isOK());
-        ASSERT_EQ("Invalid interval literal: 1abds", status.msg);
+        ASSERT_EQ("Invalid interval literal<INVALID_ARGUMENT: 1abd (digitals with extra non-space chars following)>", status.msg);
     }
 }
 TEST_F(ASTNodeConverterTest, InvalidASTBoolLiteralTest) {

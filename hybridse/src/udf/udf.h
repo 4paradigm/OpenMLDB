@@ -20,7 +20,10 @@
 
 #include <string>
 #include <tuple>
+#include <utility>
 
+#include "absl/status/status.h"
+#include "absl/strings/ascii.h"
 #include "base/string_ref.h"
 #include "base/type.h"
 #include "codec/list_iterator_codec.h"
@@ -391,6 +394,55 @@ void sub_string(StringRef *str, int32_t pos, int32_t len,
                 StringRef *output);
 int32_t strcmp(StringRef *s1, StringRef *s2);
 void bool_to_string(bool v, StringRef *output);
+
+// transform string into integral
+// base is default to 10, 16 if string starts with '0x' or '0X', other base is not considered
+template <typename T>
+struct StrToIntegral {
+    std::pair<absl::Status, T> operator()(absl::string_view in) {
+        if (0 == in.size()) {
+            return {absl::InvalidArgumentError("input empty string"), {}};
+        }
+
+        // reset errno to 0 before call
+        errno = 0;
+
+        int base = 10;
+        if (in.size() >= 2 && in[0] == '0' && absl::ascii_tolower(in[1]) == 'x') {
+            base = 16;
+        }
+
+        std::string copy_of_str(in);
+        const char *str = copy_of_str.data();
+        char *endptr = NULL;
+        auto number = std::strtol(str, &endptr, base);
+
+        if (str == endptr) {
+            //  invalid: no digits found
+            return {absl::InvalidArgumentError(absl::StrCat(in, " (no digitals found)")), {}};
+        } else if (errno == ERANGE && (number == LONG_MIN || number == LLONG_MIN)) {
+            // user may chose the truncated value even overflow
+            return {absl::OutOfRangeError(absl::StrCat(in, " (underflow)")), number};
+        } else if (errno == ERANGE && (number == LONG_MAX || number == LLONG_MAX)) {
+            return {absl::OutOfRangeError(absl::StrCat(in, " (overflow)")), number};
+        } else if (errno == EINVAL) {
+            // not copy_of_str all c99 implementations - gcc OK
+            return {absl::InvalidArgumentError(absl::StrCat(in, " (base contains unsupported value)")), {}};
+        } else if (errno != 0 && number == 0) {
+            // invalid:  unspecified error occurred
+            return {absl::UnknownError(absl::StrCat(in, " (unspecified error: ", std::strerror(errno), ")")), {}};
+        } else if (errno == 0 && str && !*endptr) {
+            // valid  (and represents all characters read;
+            return {absl::OkStatus(), number};
+        } else if (errno == 0 && str && *endptr != 0) {
+            return {absl::InvalidArgumentError(absl::StrCat(in, " (digitals with extra non-space chars following)")),
+                    {}};
+        }
+
+        return {absl::UnknownError(absl::StrCat(in, " (unspecified error)")), {}};
+    }
+};
+
 void string_to_bool(StringRef *str, bool *out, bool *is_null_ptr);
 void string_to_int(StringRef *str, int32_t *v, bool *is_null_ptr);
 void string_to_smallint(StringRef *str, int16_t *v, bool *is_null_ptr);
