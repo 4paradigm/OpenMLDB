@@ -35,6 +35,132 @@ namespace openmldb::sdk {
 
 using hybridse::plan::PlanAPI;
 
+hybridse::sdk::Status NodeAdapter::ExtractDeleteOption(
+        const ::google::protobuf::RepeatedPtrField<::openmldb::common::ColumnKey>& indexs,
+        const std::vector<Condition>& condition_vec,
+        DeleteOption* option) {
+    std::string con_ts_name;
+    for (auto idx = 0; idx < indexs.size(); idx++) {
+        const auto& column_key = indexs.Get(idx);
+        if (column_key.flag() != 0) {
+            continue;
+        }
+        std::string pk;
+        int match_index_col = 0;
+        for (const auto& col : column_key.col_name()) {
+            for (const auto& con : condition_vec) {
+                if (con.col_name == col) {
+                    if (con.op != hybridse::node::FnOperator::kFnOpEq) {
+                        return {hybridse::common::StatusCode::kCmdError, "only support equal condition on index col"};
+                    }
+                    match_index_col++;
+                    if (!pk.empty()) {
+                        pk.append("|");
+                    }
+                    if (!con.val.has_value()) {
+                        pk.append(hybridse::codec::NONETOKEN);
+                    } else if (con.val.value().empty()) {
+                        pk.append(hybridse::codec::EMPTY_STRING);
+                    } else {
+                        pk.append(con.val.value());
+                    }
+                }
+            }
+        }
+        if (match_index_col != column_key.col_name_size()) {
+            continue;
+        }
+        if (column_key.has_ts_name()) {
+            for (const auto& con : condition_vec) {
+                if (con.col_name != column_key.ts_name()) {
+                    continue;
+                }
+                if (con_ts_name.empty()) {
+                    con_ts_name = con.col_name;
+                } else if (con.col_name != con_ts_name) {
+                    return {hybridse::common::StatusCode::kCmdError,
+                        "setting more than one ts column is not allowed in delete statement"};
+                }
+                if (!con.val.has_value()) {
+                    return {hybridse::common::StatusCode::kCmdError, "ts column cannot be null"};
+                }
+                uint64_t ts = 0;
+                if (!absl::SimpleAtoi(con.val.value(), &ts)) {
+                    return {hybridse::common::StatusCode::kCmdError,
+                        absl::StrCat("cannot convert to integer! value ", con.val.value())};
+                }
+                if (con.op == hybridse::node::FnOperator::kFnOpEq) {
+                    option->start_ts = ts;
+                    if (ts > 0) {
+                        option->end_ts = ts - 1;
+                    }
+                } else if (con.op == hybridse::node::FnOperator::kFnOpLe) {
+                    option->start_ts = ts;
+                } else if (con.op == hybridse::node::FnOperator::kFnOpLt) {
+                    if (ts == 0) {
+                        return {hybridse::common::StatusCode::kCmdError, "invalid condition with ts column"};
+                    }
+                    option->start_ts = ts - 1;;
+                } else if (con.op == hybridse::node::FnOperator::kFnOpGt && ts != 0) {
+                    option->end_ts = ts;
+                } else if (con.op == hybridse::node::FnOperator::kFnOpGe && ts > 1) {
+                    option->end_ts = ts - 1;
+                }
+            }
+        }
+        option->index_map.emplace(idx, pk);
+    }
+    return {};
+}
+
+hybridse::sdk::Status NodeAdapter::CheckCondition(
+        const ::google::protobuf::RepeatedPtrField<::openmldb::common::ColumnKey>& indexs,
+        const std::vector<Condition>& condition_vec) {
+    std::string con_ts_name;
+    bool hit_index = false;
+    for (auto idx = 0; idx < indexs.size(); idx++) {
+        const auto& column_key = indexs.Get(idx);
+        if (column_key.flag() != 0) {
+            continue;
+        }
+        int match_index_col = 0;
+        for (const auto& col : column_key.col_name()) {
+            for (const auto& con : condition_vec) {
+                if (con.col_name == col) {
+                    if (con.op != hybridse::node::FnOperator::kFnOpEq) {
+                        return {hybridse::common::StatusCode::kCmdError, "only support equal condition on index col"};
+                    }
+                    match_index_col++;
+                }
+            }
+        }
+        if (match_index_col != column_key.col_name_size()) {
+            continue;
+        }
+        if (column_key.has_ts_name()) {
+            for (const auto& con : condition_vec) {
+                if (con.col_name != column_key.ts_name()) {
+                    continue;
+                }
+                if (con_ts_name.empty()) {
+                    con_ts_name = con.col_name;
+                } else if (con.col_name != con_ts_name) {
+                    return {hybridse::common::StatusCode::kCmdError,
+                        "setting more than one ts column is not allowed in delete statement"};
+                }
+                if (!con.val.has_value()) {
+                    return {hybridse::common::StatusCode::kCmdError, "ts column cannot be null"};
+                }
+            }
+        }
+        hit_index = true;
+    }
+    if (!hit_index) {
+        return {hybridse::common::StatusCode::kCmdError, "no index hit"};
+    }
+    return {};
+}
+
 bool NodeAdapter::TransformToTableDef(::hybridse::node::CreatePlanNode* create_node,
                                       ::openmldb::nameserver::TableInfo* table, uint32_t default_replica_num,
                                       bool is_cluster_mode, hybridse::base::Status* status) {
@@ -505,60 +631,82 @@ std::shared_ptr<hybridse::node::ConstNode> NodeAdapter::StringToData(const std::
 
 hybridse::sdk::Status NodeAdapter::ParseExprNode(const hybridse::node::BinaryExpr* expr_node,
         const std::map<std::string, openmldb::type::DataType>& col_map,
-        std::map<std::string, std::string>* condition_map, std::map<std::string, int>* parameter_map) {
+        const ::google::protobuf::RepeatedPtrField<::openmldb::common::ColumnKey>& indexs,
+        std::vector<Condition>* condition_vec, std::vector<Condition>* parameter_vec) {
     auto op_type = expr_node->GetOp();
-    if (op_type == hybridse::node::FnOperator::kFnOpAnd) {
-        for (size_t idx = 0; idx < expr_node->GetChildNum(); idx++) {
-            auto node = dynamic_cast<const hybridse::node::BinaryExpr*>(expr_node->GetChild(idx));
-            if (node == nullptr) {
-                return {::hybridse::common::StatusCode::kCmdError, "parse expr node failed"};
+    switch (op_type) {
+        case hybridse::node::FnOperator::kFnOpAnd: {
+            if (op_type == hybridse::node::FnOperator::kFnOpAnd) {
+                for (size_t idx = 0; idx < expr_node->GetChildNum(); idx++) {
+                    auto node = dynamic_cast<const hybridse::node::BinaryExpr*>(expr_node->GetChild(idx));
+                    if (node == nullptr) {
+                        return {::hybridse::common::StatusCode::kCmdError, "parse expr node failed"};
+                    }
+                    auto status = ParseExprNode(node, col_map, indexs, condition_vec, parameter_vec);
+                    if (!status.IsOK()) {
+                        return status;
+                    }
+                }
             }
-            auto status = ParseExprNode(node, col_map, condition_map, parameter_map);
-            if (!status.IsOK()) {
-                return status;
+            break;
+        }
+        case hybridse::node::FnOperator::kFnOpEq:
+        case hybridse::node::FnOperator::kFnOpLt:
+        case hybridse::node::FnOperator::kFnOpLe:
+        case hybridse::node::FnOperator::kFnOpGt:
+        case hybridse::node::FnOperator::kFnOpGe: {
+            if (expr_node->GetChild(0)->GetExprType() != hybridse::node::ExprType::kExprColumnRef) {
+                return {::hybridse::common::StatusCode::kCmdError, "parse node failed"};
             }
-        }
-    } else if (op_type == hybridse::node::FnOperator::kFnOpEq) {
-        if (expr_node->GetChild(0)->GetExprType() != hybridse::node::ExprType::kExprColumnRef) {
-            return {::hybridse::common::StatusCode::kCmdError, "parse node failed"};
-        }
-        auto column_node = dynamic_cast<const hybridse::node::ColumnRefNode*>(expr_node->GetChild(0));
-        const auto& col_name = column_node->GetColumnName();
-        if (expr_node->GetChild(1)->GetExprType() == hybridse::node::ExprType::kExprPrimary) {
+            auto column_node = dynamic_cast<const hybridse::node::ColumnRefNode*>(expr_node->GetChild(0));
+            const auto& col_name = column_node->GetColumnName();
             auto iter = col_map.find(col_name);
             if (iter == col_map.end()) {
                 return {::hybridse::common::StatusCode::kCmdError, "col " + col_name + " does not exist"};
             }
-            auto value_node = dynamic_cast<const hybridse::node::ConstNode*>(expr_node->GetChild(1));
-            if (value_node->IsNull()) {
-                condition_map->emplace(col_name, hybridse::codec::NONETOKEN);
-            } else if (iter->second == openmldb::type::kDate &&
-                    value_node->GetDataType() == hybridse::node::kVarchar) {
-                int32_t year;
-                int32_t month;
-                int32_t day;
-                if (!value_node->GetAsDate(&year, &month, &day)) {
-                    return {::hybridse::common::StatusCode::kCmdError, "invalid date value"};
+            std::optional<std::string> value;
+            if (expr_node->GetChild(1)->GetExprType() == hybridse::node::ExprType::kExprPrimary) {
+                auto value_node = dynamic_cast<const hybridse::node::ConstNode*>(expr_node->GetChild(1));
+                if (value_node->IsNull()) {
+                    value = std::nullopt;
+                } else if (iter->second == openmldb::type::kDate &&
+                        value_node->GetDataType() == hybridse::node::kVarchar) {
+                    int32_t year;
+                    int32_t month;
+                    int32_t day;
+                    if (!value_node->GetAsDate(&year, &month, &day)) {
+                        return {::hybridse::common::StatusCode::kCmdError, "invalid date value"};
+                    }
+                    uint32_t date = 0;
+                    if (!openmldb::codec::RowBuilder::ConvertDate(year, month, day, &date)) {
+                        return {::hybridse::common::StatusCode::kCmdError, "invalid date value"};
+                    }
+                    value = std::to_string(date);
+                } else {
+                    value = value_node->GetAsString();
                 }
-                uint32_t date = 0;
-                if (!openmldb::codec::RowBuilder::ConvertDate(year, month, day, &date)) {
-                    return {::hybridse::common::StatusCode::kCmdError, "invalid date value"};
-                }
-                condition_map->emplace(col_name, std::to_string(date));
+                condition_vec->emplace_back(col_name, op_type, value, iter->second);
+            } else if (expr_node->GetChild(1)->GetExprType() == hybridse::node::ExprType::kExprParameter) {
+                auto value_node = dynamic_cast<const hybridse::node::ParameterExpr*>(expr_node->GetChild(1));
+                value = std::to_string(value_node->position());
+                parameter_vec->emplace_back(col_name, op_type, value, iter->second);
             } else {
-                condition_map->emplace(col_name, value_node->GetAsString());
+                return {::hybridse::common::StatusCode::kCmdError, "parse node failed"};
             }
-        } else if (expr_node->GetChild(1)->GetExprType() == hybridse::node::ExprType::kExprParameter) {
-            auto value_node = dynamic_cast<const hybridse::node::ParameterExpr*>(expr_node->GetChild(1));
-            parameter_map->emplace(col_name, value_node->position());
-        } else {
-            return {::hybridse::common::StatusCode::kCmdError, "parse node failed"};
+            break;
         }
-    } else {
-        return {::hybridse::common::StatusCode::kCmdError,
-            "unsupport operator type " + hybridse::node::ExprOpTypeName(op_type)};
+        default:
+            return {::hybridse::common::StatusCode::kCmdError,
+                "unsupport operator type " + hybridse::node::ExprOpTypeName(op_type)};
     }
-    return {};
+    if (parameter_vec->empty()) {
+        return CheckCondition(indexs, *condition_vec);
+    } else if (condition_vec->empty()) {
+        return CheckCondition(indexs, *parameter_vec);
+    }
+    std::vector<Condition> conditions(*condition_vec);
+    conditions.insert(conditions.end(), parameter_vec->begin(), parameter_vec->end());
+    return CheckCondition(indexs, conditions);
 }
 
 }  // namespace openmldb::sdk

@@ -44,6 +44,8 @@ typedef ::google::protobuf::RepeatedPtrField<::openmldb::common::ColumnDesc> PBS
 
 constexpr const char* FORMAT_STRING_KEY = "!%$FORMAT_STRING_KEY";
 
+class DeleteOption;
+
 class SQLClusterRouter : public SQLRouter {
  public:
     using TableStatusMap = std::unordered_map<
@@ -332,6 +334,9 @@ class SQLClusterRouter : public SQLRouter {
 
     hybridse::sdk::Status HandleDelete(const std::string& db, const std::string& table_name,
                                        const hybridse::node::ExprNode* condition);
+
+    hybridse::sdk::Status SendDeleteRequst(const std::shared_ptr<nameserver::TableInfo>& table_info,
+        const DeleteOption* option);
 
     hybridse::sdk::Status GetNewIndex(
         const std::map<std::string, ::openmldb::nameserver::TableInfo>& table_map, const std::string& select_sql,
