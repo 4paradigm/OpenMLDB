@@ -15,6 +15,7 @@
 # limitations under the License.
 
 import argparse
+import os
 import textwrap
 import time
 
@@ -28,7 +29,7 @@ from diagnostic_tool.log_analyzer import LogAnalyzer
 from diagnostic_tool.collector import Collector
 import diagnostic_tool.server_checker as checker
 from diagnostic_tool.table_checker import TableChecker
-from diagnostic_tool.parser import log_parser
+from diagnostic_tool.parser import LogParser
 
 from absl import app
 from absl import flags
@@ -130,7 +131,7 @@ def inspect_offline(args):
     print(f"inspect {total} offline jobs")
     if num:
         failed_jobs_str = "\n".join(jobs)
-        AssertionError(f"{num} offline final jobs are failed\nfailed jobs:\n{failed_jobs_str}")
+        raise AssertionError(f"{num} offline final jobs are failed\nfailed jobs:\n{failed_jobs_str}")
     print("all offline final jobs are finished")
 
 
@@ -168,8 +169,10 @@ def inspect_job(args):
     if args.detail:
         print(detailed_log)
     else:
-        err_messages = log_parser(detailed_log)
-        print(*err_messages, sep="\n")
+        parser = LogParser()
+        if args.conf_update or not os.path.exists(parser.conf_file):
+            parser.update_conf_file(args.conf_url)
+        parser.parse_log(detailed_log)
 
 
 def test_sql(args):
@@ -264,6 +267,7 @@ def parse_arg(argv):
         "offline", help="only inspect offline jobs."
     )
     offline.set_defaults(command=inspect_offline)
+    # inspect job
     ins_job = inspect_sub.add_parser("job", help="show jobs by state, show joblog or parse joblog by id.")
     ins_job.set_defaults(command=inspect_job)
     ins_job.add_argument(
@@ -279,6 +283,16 @@ def parse_arg(argv):
         "--detail",
         action="store_true",
         help="show detailed joblog information, use with `--id`"
+    )
+    ins_job.add_argument(
+        "--conf-url",
+        default="https://raw.githubusercontent.com/4paradigm/OpenMLDB/main/python/openmldb_tool/diagnostic_tool/common_err.yml",
+        help="url used to update the log parser configuration. If downloading is slow, you can try mirror source 'https://openmldb.ai/download/diag/common_err.yml'"
+    )
+    ins_job.add_argument(
+        "--conf-update",
+        action="store_true",
+        help="update the log parser configuration"
     )
 
     # sub test
