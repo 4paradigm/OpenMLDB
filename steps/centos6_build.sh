@@ -37,24 +37,29 @@ export PATH=$new_path
 source /opt/rh/devtoolset-8/enable
 
 echo "add patch in fetch cmake"
-# skip -lrt in rocksdb
-sed -i'' '34s/$/ -DWITH_CORE_TOOLS=OFF/' third-party/cmake/FetchRocksDB.cmake
+# skip -lrt in rocksdb, avoid add patch twice
+sed -i'' '34s/WITH_TOOLS=OFF$/WITH_TOOLS=OFF -DWITH_CORE_TOOLS=OFF/' third-party/cmake/FetchRocksDB.cmake
 
-# If BUILD_BUNDLED=OFF will download pre-built thirdparty, not good. So we use cmake to build zetasql only
-echo  "modify in .deps needs a make first, download&build zetasql first(build will fail)"
-# sed -i'' '31s/${BUILD_BUNDLED}/ON/' third-party/CMakeLists.txt
-cmake -S third-party -B "$(pwd)"/.deps -DSRC_INSTALL_DIR="$(pwd)"/thirdsrc -DDEPS_INSTALL_DIR="$(pwd)"/.deps/usr -DBUILD_BUNDLED=ON
-cmake --build "$(pwd)"/.deps --target zetasql
-echo "add patch in .deps zetasql"
-sed -i'' "26s/lm'/lm:-lrt'/" .deps/build/src/zetasql/build_zetasql_parser.sh
-# skip more target to avoid adding -lrt
-sed -i'' '42s/^/#/' .deps/build/src/zetasql/build_zetasql_parser.sh
-sed -i'' '6a function realpath () { \n[[ $1 = /* ]] && echo "$1" || echo "$PWD/${1#./}"\n}' .deps/build/src/zetasql/pack_zetasql.sh
-if [ "$OPENMLDB_SOURCE" = "true" ]; then
-    echo "add patch, use openmldb.ai download icu4c required by zetasql"
-    sed -i'' '911s#],#,"https://openmldb.ai/download/legacy/icu4c-65_1-src.tgz"],#' .deps/build/src/zetasql/bazel/zetasql_deps_step_2.bzl
+# if BUILD_BUNDLED=OFF will download pre-built thirdparty, not good
+# so we use cmake to build zetasql only
+# it's hard to avoid add zetasql patch twice, so we check the dir to avoid
+if [ -d ".deps/build/src/zetasql" ]; then
+    echo "zetasql already exists, skip add patch, if you want, rm .deps/build/src/zetasql* -rf"
+else
+    echo  "modify in .deps needs a make first, download&build zetasql first(build will fail)"
+    # sed -i'' '31s/${BUILD_BUNDLED}/ON/' third-party/CMakeLists.txt
+    cmake -S third-party -B "$(pwd)"/.deps -DSRC_INSTALL_DIR="$(pwd)"/thirdsrc -DDEPS_INSTALL_DIR="$(pwd)"/.deps/usr -DBUILD_BUNDLED=ON
+    cmake --build "$(pwd)"/.deps --target zetasql
+    echo "add patch in .deps zetasql"
+    sed -i'' "26s/lm'/lm:-lrt'/" .deps/build/src/zetasql/build_zetasql_parser.sh
+    # skip more target to avoid adding -lrt
+    sed -i'' '42s/^/#/' .deps/build/src/zetasql/build_zetasql_parser.sh
+    sed -i'' '6a function realpath () { \n[[ $1 = /* ]] && echo "$1" || echo "$PWD/${1#./}"\n}' .deps/build/src/zetasql/pack_zetasql.sh
+    if [ "$OPENMLDB_SOURCE" = "true" ]; then
+        echo "add patch, use openmldb.ai download icu4c required by zetasql"
+        sed -i'' '911s#],#,"https://openmldb.ai/download/legacy/icu4c-65_1-src.tgz"],#' .deps/build/src/zetasql/bazel/zetasql_deps_step_2.bzl
+    fi
 fi
-
 # python wheel will be installed in sdk make
 
 if [ "$IN_WORKFLOW" == "false" ]; then
