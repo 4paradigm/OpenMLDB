@@ -525,9 +525,9 @@ Java 客户端支持对 SQL 进行正确性校验，验证是否可执行。分�
 - `validateSQLInBatch` 可以验证 SQL 是否能在离线端执行。
 - `validateSQLInRequest` 可以验证 SQL 是否能被部署上线。
 
-两种接口都需要传入 SQL 所需要的所有表 schema，支持多 db。为了向后兼容，允许参数中不填写`db`（当前use的db），但在这种情况下，输入 SQL 语句需要保证全部使用 `db.table` 格式（不需要知道当前use的db）或完全没有`db.table`格式（所有表都在同一个db）。
+两种接口都需要传入 SQL 所需要的所有表 schema，支持多 db。为了向后兼容，允许参数中不填写`db`（当前use的db），等价于use schema表中的第一个db。这种情况下，输入 SQL 语句需要保证`<table>`格式的表来自第一个db，不影响`<db>.<table>`格式的 SQL。
 
-例如：验证 SQL `select count(c1) over w1 from t3 window w1 as(partition by c1 order by c2 rows between unbounded preceding and current row);`，那么除了这个语句，还需要将表 `t3` 的 schema 作为第二参数 schemaMaps 传入。格式为 Map，key 为 db 名，value 为每个 db 的所有 table schema(Map)。实际只支持单 db，所以这里通常只有 1 个 db，如下所示的 db3。db 下的 table schema map key 为 table name，value 为 com.\_4paradigm.openmldb.sdk.Schema，由每列的 name 和 type 构成。
+例如：验证 SQL `select count(c1) over w1 from t3 window w1 as(partition by c1 order by c2 rows between unbounded preceding and current row);`，那么除了这个语句，还需要将表 `t3` 的 schema 作为第二参数 schemaMaps 传入。格式为 Map，key 为 db 名，value 为每个 db 的所有 table schema(Map)。这里为了演示简单，只有 1 个 db，如下所示的 db3。db 下的 table schema map key 为 table name，value 为 `com.\_4paradigm.openmldb.sdk.Schema`，由每列的 name 和 type 构成。
 
 返回结果`List<String>`，如果校验正确，返回空列表；如果校验失败，返回错误信息列表`[error_msg, error_trace]`。
 
@@ -537,7 +537,7 @@ Map<String, Schema> dbSchema = new HashMap<>();
 dbSchema = new HashMap<>();
 dbSchema.put("t3", new Schema(Arrays.asList(new Column("c1", Types.VARCHAR), new Column("c2", Types.BIGINT))));
 schemaMaps.put("db3", dbSchema);
-// 可以使用no db参数的格式，因为只有一个db，且sql中只是用<table>格式
+// 可以使用no db参数的格式，需保证schemaMaps中只有一个db，且sql中只是用<table>格式
 // List<String> ret = SqlClusterExecutor.validateSQLInRequest("select count(c1) over w1 from t3 window "+
 //        "w1 as(partition by c1 order by c2 rows between unbounded preceding and current row);", schemaMaps);
 List<String> ret = SqlClusterExecutor.validateSQLInRequest("select count(c1) over w1 from t3 window "+
@@ -547,27 +547,21 @@ Assert.assertEquals(ret.size(), 0);
 
 ## 生成建表DDL
 
-`public static List<String> genDDL(String sql, Map<String, Map<String, Schema>> tableSchema)`方法可以帮助用户，根据想要deploy的 SQL，自动生成建表语句，目前只支持单db。因此参数`sql`不可以是使用`<db>.<table>`格式，`tableSchema`输入sql依赖的所有table的schema，格式和前文一致，即使此处`tableSchema`存在多db，db信息也会被丢弃，所有表都等价于在同一个db中。
+`public static List<String> genDDL(String sql, Map<String, Map<String, Schema>> tableSchema)`方法可以帮助用户，根据想要deploy的 SQL，自动生成建表语句，**目前只支持单db**。参数`sql`不可以是使用`<db>.<table>`格式，`tableSchema`输入sql依赖的所有table的schema，格式和前文一致，即使此处`tableSchema`存在多db，db信息也会被丢弃，所有表都等价于在同一个不知名的db中。
 
 ## SQL Output Schema
 
-`public static Schema genOutputSchema(String sql, String usedDB, Map<String, Map<String, Schema>> tableSchema)`方法可以得到 SQL 的 Output Schema，支持多db。如果使用`usedDB`，`sql`中使用该db的表，可以使用`<table>`格式；如果`usedDB`为空，即无 use db的情况下查询，需保证`sql`中所有表格式为`<db>.<table>`，或者保证`sql`中所有表都是`<table>`（即所有表都来自于同一个db）。
-
-```{note}
-如无use db，底层将把`tableSchema`中第一个db作为used db，这不影响`<db>.<table>`格式的 SQL。
-```
-
-为了向后兼容，还支持了`public static Schema genOutputSchema(String sql, Map<String, Map<String, Schema>> tableSchema)`无db的接口，等价于无 use db，因此，也需要保证所有表格式为`<db>.<table>`，或者保证`sql`中所有表都是`<table>`。
+`public static Schema genOutputSchema(String sql, String usedDB, Map<String, Map<String, Schema>> tableSchema)`方法可以得到 SQL 的 Output Schema，支持多db。如果使用`usedDB`，`sql`中使用该db的表，可以使用`<table>`格式。为了向后兼容，还支持了`public static Schema genOutputSchema(String sql, Map<String, Map<String, Schema>> tableSchema)`无db的接口，等价于使用第一个db作为used db，因此，也需要保证`sql`中`<table>`格式的表来自此db。
 
 ## SQL 表血缘
 
-`public static List<Pair<String, String>> getDependentTables(String sql, String usedDB, Map<String, Map<String, Schema>> tableSchema)`可以获得`sql`依赖的所有表，`Pair<String, String>`分别对应库名和表名，列表的第一个元素为主表，`[1,end)`为其他依赖表（不包括主表）。
+`public static List<Pair<String, String>> getDependentTables(String sql, String usedDB, Map<String, Map<String, Schema>> tableSchema)`可以获得`sql`依赖的所有表，`Pair<String, String>`分别对应库名和表名，列表的第一个元素为主表，`[1,end)`为其他依赖表（不包括主表）。输入参数`usedDB`若为空串，即无use db下进行查询。（区别于前面的`genDDL`等兼容规则）
 
 ## SQL 合并
 
 Java 客户端支持对多个 SQL 进行合并，并进行 request 模式的正确性校验，接口为`mergeSQL`，只能在所有输入SQL的主表一致的情况下合并。
 
-输入参数：想要合并的 SQL 组，主表名与主表的join key（可多个），以及所有表的schema。
+输入参数：想要合并的 SQL 组，当前使用的库名，主表的join key（可多个），以及所有表的schema。
 
 例如，我们有这样四个特征组SQL：
 ```
@@ -584,8 +578,8 @@ select sum(c2) over w1 from main window w1 as (union (select \"\" as id, * from 
 它们的主表均为main表，所以它们可以进行 SQL 合并。合并本质是进行join，所以我们还需要知道main表的unique列，它们可以定位到唯一一行数据。例如，main表id并不唯一，可能存在多行的id值相同，但不会出现id与c1两列值都相同，那么我们可以用id与c1两列来进行join。类似 SQL 校验，我们也传入表的schema map。
 
 ```java
-// 为了展示简单，我们仅使用单个db，可以不填写第二个参数used db。如果是多db，且sql中需要used db来定位表，请填写有意义的used db
-String merged = SqlClusterExecutor.mergeSQL(sqls, "", Arrays.asList("id", "c1"), schemaMaps);
+// 为了展示简单，我们仅使用单个db的表，所以只需要填写used db，sql中均使用<table>格式的表名。如果sql均使用<db>.<table>格式，used db可以填空串。
+String merged = SqlClusterExecutor.mergeSQL(sqls, "db", Arrays.asList("id", "c1"), schemaMaps);
 ```
 
 输出结果为单个合并后的 SQL，见下。输入的SQL一共选择四个特征，所以合并 SQL 只会输出这四个特征列。（我们会自动过滤join keys）

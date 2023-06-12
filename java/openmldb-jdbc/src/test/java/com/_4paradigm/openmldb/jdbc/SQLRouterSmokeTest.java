@@ -662,7 +662,8 @@ public class SQLRouterSmokeTest {
         Assert.assertEquals(schema.size(), 1);
 
         // get dependence tables
-        List<Pair<String, String>> tables = SqlClusterExecutor.getDependentTables("select t11.c1 from db1.t1 t1 last join db2.t1 t11 on t1.c1==t11.c1;", "",
+        List<Pair<String, String>> tables = SqlClusterExecutor.getDependentTables(
+                "select t11.c1 from db1.t1 t1 last join db2.t1 t11 on t1.c1==t11.c1;", "",
                 schemaMaps);
         Assert.assertEquals(tables.size(), 2);
     }
@@ -830,5 +831,26 @@ public class SQLRouterSmokeTest {
                         + "last join "
                         + "(select foo.main.id as merge_id_2, foo.main.c1 as merge_c1_2, foo.main.c2 as merge_c2_2, id from foo.main) as out2 "
                         + "on out0.merge_id_0 = out2.merge_id_2 and out0.merge_c1_0 = out2.merge_c1_2 and out0.merge_c2_0 = out2.merge_c2_2;");
+
+        // case in java quickstart
+
+        String demoResult = SqlClusterExecutor.mergeSQL(Arrays.asList(
+                // 单表直出特征
+                "select c1 from main;",
+                // 单表聚合特征
+                "select sum(c1) over w1 of2 from main window w1 as (partition by c1 order by c2 rows between unbounded preceding and current row);",
+                // 多表特征
+                "select t1.c2 of4 from main last join t1 order by t1.c2 on main.c1==t1.c1;",
+                // 多表聚合特征
+                "select sum(c2) over w1 from main window w1 as (union (select \"\" as id, * from t1) partition by c1 order by c2 rows between unbounded preceding and current row);"),
+                "db", Arrays.asList("id", "c1"), Collections.singletonMap("db", dbSchema));
+        Assert.assertEquals(demoResult, "select `c1`, `of2`, `of4`, `sum(c2)over w1` from "
+                + "(select db.main.id as merge_id_0, db.main.c1 as merge_c1_0, c1 from main) as out0 " + "last join "
+                + "(select db.main.id as merge_id_1, db.main.c1 as merge_c1_1, sum(c1) over w1 of2 from main window w1 as (partition by c1 order by c2 rows between unbounded preceding and current row)) as out1 "
+                + "on out0.merge_id_0 = out1.merge_id_1 and out0.merge_c1_0 = out1.merge_c1_1 " + "last join "
+                + "(select db.main.id as merge_id_2, db.main.c1 as merge_c1_2, t1.c2 of4 from main last join t1 order by t1.c2 on main.c1==t1.c1) as out2 "
+                + "on out0.merge_id_0 = out2.merge_id_2 and out0.merge_c1_0 = out2.merge_c1_2 last join "
+                + "(select db.main.id as merge_id_3, db.main.c1 as merge_c1_3, sum(c2) over w1 from main window w1 as (union (select \"\" as id, * from t1) partition by c1 order by c2 rows between unbounded preceding and current row)) as out3 "
+                + "on out0.merge_id_0 = out3.merge_id_3 and out0.merge_c1_0 = out3.merge_c1_3;");
     }
 }

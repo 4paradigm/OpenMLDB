@@ -413,17 +413,7 @@ std::shared_ptr<hybridse::sdk::Schema> DDLParser::GetOutputSchema(const std::str
                                                                   const MultiDBTableDescMap& schemas) {
     // multi database
     auto catalog = buildCatalog(schemas);
-    // for back compatible, if db is empty, use the first db in catalog
-    auto used_db = db;
-    if (used_db.empty()) {
-        if (schemas.size() == 0) {
-            LOG(ERROR) << "no db in catalog";
-            return {};
-        }
-        used_db = schemas.begin()->first;
-        DLOG(INFO) << "use the first db in catalog: " << used_db;
-    }
-    return GetOutputSchema(sql, used_db, catalog);
+    return GetOutputSchema(sql, db, catalog);
 }
 
 std::shared_ptr<hybridse::sdk::Schema> DDLParser::GetOutputSchema(

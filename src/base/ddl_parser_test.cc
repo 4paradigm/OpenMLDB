@@ -706,6 +706,9 @@ TEST_F(DDLParserTest, getOutputSchema) {
     ASSERT_EQ(output_schema->GetColumnCnt(), 1);
     ASSERT_EQ(output_schema->GetColumnName(0), "w1_rank_sum");
     ASSERT_EQ(output_schema->GetColumnType(0), hybridse::sdk::DataType::kTypeInt32);
+
+    // no used db, can't query by <table> style(use first db in java sdk wrapper)
+    ASSERT_FALSE(DDLParser::GetOutputSchema(query, "", BuildSingleDBCatalog(db)));
 }
 
 TEST_F(DDLParserTest, extractLongWindow) {
@@ -955,19 +958,16 @@ TEST_F(DDLParserTest, validateSQL) {
 
     std::string query = "SWLECT 1;";
     auto ret = DDLParser::ValidateSQLInBatch(query, db.name(), catalog);
-    ASSERT_FALSE(ret.empty());
     ASSERT_EQ(ret.size(), 2);
     LOG(INFO) << ret[0];
 
     query = "SELECT * from not_exist_table;";
     ret = DDLParser::ValidateSQLInBatch(query, db.name(), catalog);
-    ASSERT_FALSE(ret.empty());
     ASSERT_EQ(ret.size(), 2);
     LOG(INFO) << ret[0];
 
     query = "SELECT foo(col1) from t1;";
     ret = DDLParser::ValidateSQLInBatch(query, db.name(), catalog);
-    ASSERT_FALSE(ret.empty());
     ASSERT_EQ(ret.size(), 2);
     LOG(INFO) << ret[0] << "\n" << ret[1];
 
@@ -977,7 +977,6 @@ TEST_F(DDLParserTest, validateSQL) {
 
     query = "SELECT foo(col1) from t1;";
     ret = DDLParser::ValidateSQLInRequest(query, db.name(), catalog);
-    ASSERT_FALSE(ret.empty());
     ASSERT_EQ(ret.size(), 2);
     LOG(INFO) << ret[0] << "\n" << ret[1];
 
@@ -986,6 +985,13 @@ TEST_F(DDLParserTest, validateSQL) {
         "preceding and current row);";
     ret = DDLParser::ValidateSQLInRequest(query, db.name(), catalog);
     ASSERT_TRUE(ret.empty());
+
+    // no used db, can't do <table> query(use first db is the logic in java sdk wrapper)
+    query = "SELECT * FROM t1;";
+    ret = DDLParser::ValidateSQLInRequest(query, "", catalog);
+    ASSERT_EQ(ret.size(), 2);
+    ASSERT_STREQ(ret[0].c_str(), "Fail to transform data_provider op: table .t1 not exist!");
+    ASSERT_TRUE(DDLParser::ValidateSQLInRequest("SELECT * FROM " + db.name() + ".t1;", "", catalog).empty());
 }
 }  // namespace openmldb::base
 

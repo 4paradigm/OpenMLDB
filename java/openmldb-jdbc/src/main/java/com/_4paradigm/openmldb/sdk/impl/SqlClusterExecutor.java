@@ -359,12 +359,10 @@ public class SqlClusterExecutor implements SqlExecutor {
         return ret;
     }
 
-    // for back compatibility, genOutputSchema can set no usedDB
-    // 1. if only one db(no <db>.<table> in sql), it's ok
-    // 2. if multi db, sql must be <db>.<table>, no using db works
+    // for back compatibility, genOutputSchema can set no usedDB, just use the first db in tableSchema
     public static Schema genOutputSchema(String sql, Map<String, Map<String, Schema>> tableSchema)
             throws SQLException {
-        return genOutputSchema(sql, "", tableSchema);
+        return genOutputSchema(sql, tableSchema.keySet().iterator().next(), tableSchema);
     }
 
     // NOTICE: even tableSchema is <db, <table, schema>>, we'll assume that all
@@ -390,10 +388,11 @@ public class SqlClusterExecutor implements SqlExecutor {
         return err;
     }
 
-    // for back compatibility, validateSQLInBatch can set no usedDB
+    // for back compatibility, validateSQLInBatch can set no usedDB, just use the first db in tableSchema
+    // so if only one db, sql can be <table>, otherwise sql must be <db>.<table>
     public static List<String> validateSQLInBatch(String sql, Map<String, Map<String, Schema>> tableSchema)
             throws SQLException {
-        return validateSQLInBatch(sql, "", tableSchema);
+        return validateSQLInBatch(sql, tableSchema.keySet().iterator().next(), tableSchema);
     }
 
     // return: the same as validateSQLInBatch
@@ -416,15 +415,15 @@ public class SqlClusterExecutor implements SqlExecutor {
         return err;
     }
 
-    // for back compatibility, validateSQLInRequest can set no usedDB
+    // for back compatibility, validateSQLInRequest can set no usedDB, just use the first db in tableSchema
     public static List<String> validateSQLInRequest(String sql, Map<String, Map<String, Schema>> tableSchema)
             throws SQLException {
-        return validateSQLInRequest(sql, "", tableSchema);
+        return validateSQLInRequest(sql, tableSchema.keySet().iterator().next(), tableSchema);
     }
 
     // list<db,table>, the first table is main table, [1, end) are dependent
     // tables(no main table)
-    // TODO(hw): db may be empty? seems always not empty
+    // TODO(hw): returned pair db may be empty? seems always not empty
     public static List<Pair<String, String>> getDependentTables(String sql, String usedDB,
             Map<String, Map<String, Schema>> tableSchema)
             throws SQLException {
