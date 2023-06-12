@@ -32,9 +32,6 @@
 #include "proto/tablet.pb.h"
 #include "rpc/rpc_client.h"
 
-using Schema = ::google::protobuf::RepeatedPtrField<openmldb::common::ColumnDesc>;
-
-
 namespace openmldb {
 
 // forward decl
@@ -194,7 +191,7 @@ class TabletClient : public Client {
 
     std::shared_ptr<openmldb::base::TraverseKvIterator> Traverse(uint32_t tid, uint32_t pid,
             const std::string& idx_name, const std::string& pk, uint64_t ts,
-            uint32_t limit, bool skip_current_pk, uint32_t& count);  // NOLINT
+            uint32_t limit, bool skip_current_pk, uint32_t ts_pos, uint32_t& count);  // NOLINT
 
     bool SetMode(bool mode);
 
@@ -203,13 +200,9 @@ class TabletClient : public Client {
     bool AddIndex(uint32_t tid, uint32_t pid, const ::openmldb::common::ColumnKey& column_key,
                   std::shared_ptr<TaskInfo> task_info);
 
-    base::Status AddMultiIndex(uint32_t tid, uint32_t pid,
+    bool AddMultiIndex(uint32_t tid, uint32_t pid,
             const std::vector<::openmldb::common::ColumnKey>& column_keys,
             std::shared_ptr<TaskInfo> task_info);
-
-    bool DumpIndexData(uint32_t tid, uint32_t pid, uint32_t partition_num,
-                       const ::openmldb::common::ColumnKey& column_key, uint32_t idx,
-                       std::shared_ptr<TaskInfo> task_info);
 
     bool GetCatalog(uint64_t* version);
 
@@ -219,18 +212,15 @@ class TabletClient : public Client {
     bool LoadIndexData(uint32_t tid, uint32_t pid, uint32_t partition_num, std::shared_ptr<TaskInfo> task_info);
 
     bool ExtractIndexData(uint32_t tid, uint32_t pid, uint32_t partition_num,
-                          const ::openmldb::common::ColumnKey& column_key, uint32_t idx,
+                          const std::vector<::openmldb::common::ColumnKey>& column_key,
+                          uint64_t offset, bool dump_data,
                           std::shared_ptr<TaskInfo> task_info);
-
-    bool ExtractMultiIndexData(uint32_t tid, uint32_t pid, uint32_t partition_num,
-                          const std::vector<::openmldb::common::ColumnKey>& column_key_vec);
 
     bool CancelOP(const uint64_t op_id);
 
     bool UpdateRealEndpointMap(const std::map<std::string, std::string>& map);
 
-    bool CreateProcedure(const openmldb::api::CreateProcedureRequest& sp_request,
-                         std::string& msg);  // NOLINT
+    base::Status CreateProcedure(const openmldb::api::CreateProcedureRequest& sp_request);
 
     bool CallProcedure(const std::string& db, const std::string& sp_name, const std::string& row,
                        brpc::Controller* cntl, openmldb::api::QueryResponse* response, bool is_debug,

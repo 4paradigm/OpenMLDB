@@ -40,9 +40,9 @@ public class RequestQuerySQLExecutor extends BaseSQLExecutor {
     protected boolean isBatchRequest;
     protected boolean isAsyn;
 
-    public RequestQuerySQLExecutor(SqlExecutor executor, SQLCase fesqlCase,
+    public RequestQuerySQLExecutor(SqlExecutor executor, SQLCase sqlCase,
                                    boolean isBatchRequest, boolean isAsyn, SQLCaseType executorType) {
-        super(executor, fesqlCase, executorType);
+        super(executor, sqlCase, executorType);
         this.isBatchRequest = isBatchRequest;
         this.isAsyn = isAsyn;
     }

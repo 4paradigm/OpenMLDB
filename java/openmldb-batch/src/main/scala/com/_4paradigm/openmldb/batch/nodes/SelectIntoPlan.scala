@@ -28,18 +28,28 @@ object SelectIntoPlan {
     require(outPath.nonEmpty)
 
     if (logger.isDebugEnabled()) {
+      logger.debug("session catalog {}", ctx.getSparkSession.sessionState.catalog)
       logger.debug("select {} rows", input.getDf().count())
       input.getDf().show(10)
     }
 
-    // write options don't need deepCopy
-    val (format, options, mode, _, coalesce) = HybridseUtil.parseOptions(node)
-    logger.info("select into offline storage: format[{}], options[{}], write mode[{}], out path {}", format, options,
-      mode, outPath)
-    if (input.getDf().isEmpty) {
+    // write options don't need deepCopy, may have coalesce
+    val (format, options, mode, extra) = HybridseUtil.parseOptions(outPath, node)
+    if (input.getSchema.size == 0 && input.getDf().isEmpty) {
       throw new Exception("select empty, skip save")
+    }
+
+    if (format == "hive") {
+      // we won't check if the database exists, if not, save will throw exception
+      // DO NOT create database in here(the table location will be spark warehouse)
+      val dbt = HybridseUtil.hiveDest(outPath)
+      logger.info(s"offline select into: hive way, write mode[${mode}], out table ${dbt}")
+      input.getDf().write.format("hive").mode(mode).saveAsTable(dbt)
     } else {
+      logger.info("offline select into: format[{}], options[{}], write mode[{}], out path {}", format, options,
+          mode, outPath)
       var ds = input.getDf()
+      val coalesce = extra.get("coalesce").map(_.toInt)
       if (coalesce.nonEmpty){
         ds = ds.coalesce(coalesce.get)
         logger.info("coalesce to {} part", coalesce.get)

@@ -34,7 +34,7 @@ namespace openmldb {
 namespace statistics {
 
 struct DeployResponseTimeRow : public ResponseTimeRow {
-    DeployResponseTimeRow(const std::string& name, absl::Duration time, uint32_t cnt, absl::Duration total)
+    DeployResponseTimeRow(const std::string& name, absl::Duration time, uint64_t cnt, absl::Duration total)
         : ResponseTimeRow(time, cnt, total), deploy_name_(name) {}
     ~DeployResponseTimeRow() override {}
 

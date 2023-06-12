@@ -94,7 +94,7 @@ void SetupLog() {
     } else {
         ::openmldb::base::SetLogLevel(INFO);
     }
-    ::openmldb::base::SetupGLog();
+    ::openmldb::base::SetupGlog();
 }
 
 void GetRealEndpoint(std::string* real_endpoint) {
@@ -265,8 +265,7 @@ void StartTablet() {
 
 int PutData(uint32_t tid, const std::map<uint32_t, std::vector<std::pair<std::string, uint32_t>>>& dimensions,
             uint64_t ts, const std::string& value,
-            const google::protobuf::RepeatedPtrField<::openmldb::nameserver::TablePartition>& table_partition,
-            uint32_t format_version) {
+            const google::protobuf::RepeatedPtrField<::openmldb::nameserver::TablePartition>& table_partition) {
     std::map<std::string, std::shared_ptr<::openmldb::client::TabletClient>> clients;
     for (auto iter = dimensions.begin(); iter != dimensions.end(); iter++) {
         uint32_t pid = iter->first;
@@ -348,8 +347,7 @@ int PutData(uint32_t tid, const std::map<uint32_t, std::vector<std::pair<std::st
         value = compressed;
     }
     const int tid = table_info.tid();
-    const uint32_t fmt_ver = table_info.format_version();
-    PutData(tid, dimensions, ts, value, table_info.table_partition(), fmt_ver);
+    PutData(tid, dimensions, ts, value, table_info.table_partition());
 
     return ::openmldb::base::Status(0, "ok");
 }
@@ -1077,7 +1075,7 @@ void HandleNSClientShowSchema(const std::vector<std::string>& parts, ::openmldb:
         return;
     }
     if (tables.empty()) {
-        printf("table %s is not exist\n", name.c_str());
+        printf("table %s does not exist\n", name.c_str());
         return;
     }
 
@@ -1104,7 +1102,7 @@ void HandleNSDelete(const std::vector<std::string>& parts, ::openmldb::client::N
             return;
         }
         if (tables.empty()) {
-            printf("delete failed! table %s is not exist\n", parts[1].c_str());
+            printf("delete failed! table %s does not exist\n", parts[1].c_str());
             return;
         }
         uint32_t tid = tables[0].tid();
@@ -1124,7 +1122,7 @@ void HandleNSDelete(const std::vector<std::string>& parts, ::openmldb::client::N
                 }
             }
             if (idx_name.empty()) {
-                printf("idx_name %s is not exist\n", parts[3].c_str());
+                printf("idx_name %s does not exist\n", parts[3].c_str());
                 return;
             }
         }
@@ -1377,7 +1375,7 @@ void HandleNSGet(const std::vector<std::string>& parts, ::openmldb::client::NsCl
         return;
     }
     if (tables.empty()) {
-        printf("get failed! table %s is not exist\n", parts[1].c_str());
+        printf("get failed! table %s does not exist\n", parts[1].c_str());
         return;
     }
     uint32_t tid = tables[0].tid();
@@ -1552,7 +1550,7 @@ void HandleNSScan(const std::vector<std::string>& parts, ::openmldb::client::NsC
         return;
     }
     if (tables.empty()) {
-        printf("scan failed! table %s is not exist\n", parts[1].c_str());
+        printf("scan failed! table %s does not exist\n", parts[1].c_str());
         return;
     }
     uint32_t tid = tables[0].tid();
@@ -1733,7 +1731,7 @@ void HandleNSCount(const std::vector<std::string>& parts, ::openmldb::client::Ns
         return;
     }
     if (tables.empty()) {
-        printf("get failed! table %s is not exist\n", parts[1].c_str());
+        printf("get failed! table %s does not exist\n", parts[1].c_str());
         return;
     }
     uint32_t tid = tables[0].tid();
@@ -1802,7 +1800,7 @@ void HandleNSPreview(const std::vector<std::string>& parts, ::openmldb::client::
         return;
     }
     if (tables.empty()) {
-        printf("preview failed! table %s is not exist\n", parts[1].c_str());
+        printf("preview failed! table %s does not exist\n", parts[1].c_str());
         return;
     }
     uint32_t tid = tables[0].tid();
@@ -1837,7 +1835,7 @@ void HandleNSPreview(const std::vector<std::string>& parts, ::openmldb::client::
             return;
         }
         uint32_t count = 0;
-        auto it = tb_client->Traverse(tid, pid, "", "", 0, limit, false, count);
+        auto it = tb_client->Traverse(tid, pid, "", "", 0, limit, false, 0, count);
         if (!it) {
             std::cout << "Fail to preview table" << std::endl;
             return;
@@ -2016,7 +2014,7 @@ void HandleNSPut(const std::vector<std::string>& parts, ::openmldb::client::NsCl
         return;
     }
     if (tables.empty()) {
-        std::cout << "put failed! table " << parts[1] << " is not exist\n";
+        std::cout << "put failed! table " << parts[1] << " does not exist\n";
         return;
     }
     uint64_t ts = 0;
@@ -2254,7 +2252,6 @@ void HandleNSCreateTable(const std::vector<std::string>& parts, ::openmldb::clie
         return;
     }
     ns_table_info.set_db(client->GetDb());
-    ns_table_info.set_format_version(1);
     std::string msg;
     if (!client->CreateTable(ns_table_info, false, msg)) {
         std::cout << "Fail to create table. error msg: " << msg << std::endl;
@@ -2720,7 +2717,6 @@ void HandleNSShowOPStatus(const std::vector<std::string>& parts, ::openmldb::cli
     ::baidu::common::TPrinter tp(row.size(), FLAGS_max_col_display_length);
     tp.AddRow(row);
     ::openmldb::nameserver::ShowOPStatusResponse response;
-    std::string msg;
     std::string name;
     uint32_t pid = ::openmldb::client::INVALID_PID;
     if (parts.size() > 1) {
@@ -2734,9 +2730,9 @@ void HandleNSShowOPStatus(const std::vector<std::string>& parts, ::openmldb::cli
             return;
         }
     }
-    bool ok = client->ShowOPStatus(response, name, pid, msg);
-    if (!ok) {
-        std::cout << "Fail to show tablets. error msg: " << msg << std::endl;
+    auto status = client->ShowOPStatus(name, pid, &response);
+    if (!status.OK()) {
+        std::cout << "Fail to show tablets. error msg: " << status.GetMsg() << std::endl;
         return;
     }
     for (int idx = 0; idx < response.op_status_size(); idx++) {
@@ -3930,8 +3926,11 @@ void StartAPIServer() {
 int main(int argc, char* argv[]) {
     ::google::SetVersionString(OPENMLDB_VERSION);
     ::google::ParseCommandLineFlags(&argc, &argv, true);
-
-    if (FLAGS_role == "ns_client") {
+    if (FLAGS_role.empty()) {
+        std::cout << "client start in stand-alone mode" << std::endl;
+        // TODO(hw): standalonesdk refresh every 2s, too many logs in Debug mode
+        ::openmldb::cmd::StandAloneSQLClient();
+    } else if (FLAGS_role == "ns_client") {
         StartNsClient();
     } else if (FLAGS_role == "sql_client") {
         ::openmldb::cmd::ClusterSQLClient();
@@ -3946,9 +3945,7 @@ int main(int argc, char* argv[]) {
         StartAPIServer();
 #endif
     } else {
-        std::cout << "client start in stand-alone mode" << std::endl;
-        // TODO(hw): standalonesdk refresh every 2s, too many logs in Debug mode
-        ::openmldb::cmd::StandAloneSQLClient();
+        std::cout << "Invalid role: " << FLAGS_role << std::endl;
     }
     return 0;
 }

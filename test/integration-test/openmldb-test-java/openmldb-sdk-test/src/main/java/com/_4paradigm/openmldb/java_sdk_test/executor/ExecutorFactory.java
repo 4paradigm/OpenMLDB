@@ -97,6 +97,10 @@ public class ExecutorFactory {
                 return new DiffResultExecutor(executor,sqlCase,type);
             case kLongWindow:
                 return new LongWindowExecutor(executor,sqlCase,false,false,type);
+            case kJob:
+                return new JobExecutor(executor,sqlCase,type);
+            case KOfflineJob:
+                return new OfflineJobExecuter(executor,sqlCase,type);
         }
         return null;
     }
@@ -104,10 +108,6 @@ public class ExecutorFactory {
         return new BatchSQLExecutor(sqlExecutor, sqlCase, type);
     }
     private static BaseSQLExecutor getFeBatchQueryExecutor(SqlExecutor sqlExecutor, SQLCase sqlCase, SQLCaseType type) {
-        if (OpenMLDBConfig.isCluster()) {
-            log.info("cluster unsupport batch query mode");
-            return new NullExecutor(sqlExecutor, sqlCase, type);
-        }
         return new BatchSQLExecutor(sqlExecutor, sqlCase, type);
     }
     private static BaseSQLExecutor getFeRequestQueryExecutor(SqlExecutor sqlExecutor, SQLCase sqlCase, SQLCaseType type) {

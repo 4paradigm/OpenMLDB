@@ -47,26 +47,39 @@ The request URL: http://ip:port/dbs/{db_name}/deployments/{deployment_name}
 HTTP method: POST
 
 The request body: 
-
+- array style
 ```
 {
     "input": [["row0_value0", "row0_value1", "row0_value2"], ["row1_value0", "row1_value1", "row1_value2"], ...],
     "need_schema": false
 }
 ```
+- json style
+```json
+{
+    "input": [
+      {"col0":"row0_value0", "col1":"row0_value1", "col2":"row0_value2", "foo": "bar"}, 
+      {"col0":"row1_value0", "col1":"row1_value1", "col2":"row1_value2"}, 
+      ...
+    ]
+}
+```
 
 + Multiple rows of input are supported, whose returned values correspond to the fields in the `data.data` array.
-+ A schema will be returned if `need_schema`  is `true`. Default: `false`.
++ A schema will be returned if `need_schema`  is `true`. Optional, default is `false`.
++ If input is array style, the response data is array style. If input is json style, the response data is json style. DO NOT use multi styles in one request input.
++ Json style input can provide redundancy columns.
 
 **Example**
 
+- array style
 ```bash
 curl http://127.0.0.1:8080/dbs/demo_db/deployments/demo_data_service -X POST -d'{
-        "input": [["aaa", 11, 22, 1.2, 1.3, 1635247427000, "2021-05-20"]],
+        "input": [["aaa", 11, 22, 1.2, 1.3, 1635247427000, "2021-05-20"]]
     }'
 ```
 
-The response:
+response:
 
 ```json
 {
@@ -78,49 +91,85 @@ The response:
 }
 ```
 
+- json style
+```bash
+curl http://127.0.0.1:8080/dbs/demo_db/deployments/demo_data_service -X POST -d'{
+        "input": [{"c1":"aaa", "c2":11, "c3":22, "c4":1.2, "c5":1.3, "c6":1635247427000, "c7":"2021-05-20", "foo":"bar"}]
+    }'
+```
+
+response:
+
+```json
+{
+    "code":0,
+    "msg":"ok",
+    "data":{
+        "data":[{"c1":"aaa","c2":11,"w1_c3_sum":22}]
+    }
+}
+```
+
 ## Query
 
 The request URL: http://ip:port/dbs/{db_name}
 
 HTTP method: POST
 
-**Request Body Example**
-
-The query without parameter: 
+request body: 
 
 ```json
 {
-    "mode": "online",
-    "sql": "select 1"
+    "mode": "",
+    "sql": "",
+    "input": {
+        "schema": [],
+        "data": []
+    }
 }
 ```
 
-mode: "offsync", "offasync", "online"
+- "mode" can be: "offsync", "offasync", "online"
+- "input" is optional
+- "schema" all supported types (case-insensitive):
+`Bool`, `Int16`, `Int32`, `Int64`, `Float`, `Double`, `String`, `Date` and `Timestamp`.
+
+**Request Body Example**
+
+- Normal query: 
+
+```json
+{
+  "mode": "online",
+  "sql": "select 1"
+}
+```
 
 The response:
 
 ```json
 {
-    "code":0,
-    "msg":"ok"
+  "code":0,
+  "msg":"ok",
+  "data": {
+    "schema":["Int32"],
+    "data":[[1]]
+  }
 }
 ```
 
-The query with parameters:
+- Parameterized query:
 
 ```json
 {
-    "mode": "online",
-    "sql": "SELECT c1, c2, c3 FROM demo WHERE c1 = ? AND c2 = ?",
-    "input": {
-      "schema": ["Int32", "String"],
-      "data": [1, "aaa"]
-    }
+  "mode": "online",
+  "sql": "SELECT c1, c2, c3 FROM demo WHERE c1 = ? AND c2 = ?",
+  "input": {
+    "schema": ["Int32", "String"],
+    "data": [1, "aaa"]
+  }
 }
 ```
-
-all supported types (case-insensitive):
-`Bool`, `Int16`, `Int32`, `Int64`, `Float`, `Double`, `String`, `Date` and `Timestamp`.
 
 The response:
 
@@ -245,7 +294,7 @@ The response:
 }
 ```
 
-## Refresh
+## Refresh APIServer metadata cache
 
 The request URL: http://ip:port/refresh
 

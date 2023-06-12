@@ -15,11 +15,14 @@
  */
 
 #include "codegen/ir_base_builder.h"
+
 #include <string>
 #include <tuple>
 #include <utility>
 #include <vector>
+
 #include "codec/list_iterator_codec.h"
+#include "codegen/array_ir_builder.h"
 #include "codegen/date_ir_builder.h"
 #include "codegen/string_ir_builder.h"
 #include "codegen/timestamp_ir_builder.h"
@@ -351,11 +354,50 @@ bool GetLlvmType(::llvm::Module* m, const hybridse::node::TypeNode* data_type,
         }
         case hybridse::node::kMap: {
             LOG(WARNING) << "fail to codegen map type, currently not support";
+            break;
         }
-        default: {
-            return GetLlvmType(m, data_type->base_, llvm_type);
+        case hybridse::node::kArray: {
+            if (data_type->generics_.size() != 1) {
+                LOG(WARNING) << "array type with element type size != 1";
+                return false;
+            }
+            ::llvm::Type* ele_type = nullptr;
+            if (false == GetLlvmType(m, data_type->GetGenericType(0), &ele_type)) {
+                LOG(WARNING) << "failed to infer llvm type for array element";
+                return false;
+            }
+
+            ArrayIRBuilder array_builder(m, ele_type);
+            *llvm_type = array_builder.GetType()->getPointerTo();
+
+            return true;
         }
+        case hybridse::node::kTuple: {
+            std::string name = absl::StrCat("fe.", data_type->GetName());
+            ::llvm::StringRef sr(name);
+            ::llvm::StructType* stype = m->getTypeByName(sr);
+            if (stype != nullptr) {
+                *llvm_type = stype;
+                return true;
+            }
+            stype = ::llvm::StructType::create(m->getContext(), name);
+
+            std::vector<::llvm::Type*> fields;
+            for (auto field : data_type->generics()) {
+                ::llvm::Type* tp = nullptr;
+                if (!GetLlvmType(m, field, &tp)) {
+                    return false;
+                }
+                fields.push_back(tp);
+            }
+            stype->setBody(fields);
+            *llvm_type = stype;
+            return true;
+        }
+        default:
+            break;
     }
+    return GetLlvmType(m, data_type->base_, llvm_type);
 }
 
 bool GetConstFeString(const std::string& val, ::llvm::BasicBlock* block,
@@ -575,34 +617,32 @@ bool GetBaseType(::llvm::Type* type, ::hybridse::node::DataType* output) {
             }
         }
         case ::llvm::Type::PointerTyID: {
-            if (type->getTypeID() == ::llvm::Type::PointerTyID) {
-                type = reinterpret_cast<::llvm::PointerType*>(type)
-                           ->getElementType();
-            }
+            auto pointee_ty = reinterpret_cast<::llvm::PointerType*>(type)
+                ->getElementType();
 
-            if (::llvm::Type::StructTyID != type->getTypeID()) {
-                LOG(WARNING) << "no mapping type for llvm type";
+            if (::llvm::Type::StructTyID != pointee_ty->getTypeID()) {
+                LOG(WARNING) << "no mapping pointee_ty for llvm pointee_ty";
                 return false;
             }
 
-            if (type->getStructName().startswith("fe.list_ref_")) {
+            if (pointee_ty->getStructName().startswith("fe.list_ref_")) {
                 *output = hybridse::node::kList;
                 return true;
-            } else if (type->getStructName().startswith("fe.iterator_ref_")) {
+            } else if (pointee_ty->getStructName().startswith("fe.iterator_ref_")) {
                 *output = hybridse::node::kIterator;
                 return true;
-            } else if (type->getStructName().equals("fe.string_ref")) {
+            } else if (pointee_ty->getStructName().equals("fe.string_ref")) {
                 *output = hybridse::node::kVarchar;
                 return true;
-            } else if (type->getStructName().equals("fe.timestamp")) {
+            } else if (pointee_ty->getStructName().equals("fe.timestamp")) {
                 *output = hybridse::node::kTimestamp;
                 return true;
-            } else if (type->getStructName().equals("fe.date")) {
+            } else if (pointee_ty->getStructName().equals("fe.date")) {
                 *output = hybridse::node::kDate;
                 return true;
             }
-            LOG(WARNING) << "no mapping type for llvm type "
-                         << type->getStructName().str();
+            LOG(WARNING) << "no mapping pointee_ty for llvm pointee_ty "
+                         << pointee_ty->getStructName().str();
             return false;
         }
         default: {
@@ -773,110 +813,6 @@ bool SchemaType2DataType(const ::hybridse::type::Type type,
     }
     return true;
 }
-bool TypeIRBuilder::IsTimestampPtr(::llvm::Type* type) {
-    ::hybridse::node::DataType data_type;
-    if (!IsStructPtr(type)) {
-        return false;
-    }
-
-    if (!GetBaseType(type, &data_type)) {
-        return false;
-    }
-    return data_type == node::kTimestamp;
-}
-bool TypeIRBuilder::IsInt64(::llvm::Type* type) {
-    ::hybridse::node::DataType data_type;
-    if (!GetBaseType(type, &data_type)) {
-        return false;
-    }
-    return data_type == node::kInt64;
-}
-bool TypeIRBuilder::IsBool(::llvm::Type* type) {
-    ::hybridse::node::DataType data_type;
-    if (!GetBaseType(type, &data_type)) {
-        return false;
-    }
-    return data_type == node::kBool;
-}
-
-bool TypeIRBuilder::IsNull(::llvm::Type* type) { return type->isTokenTy(); }
-bool TypeIRBuilder::IsInterger(::llvm::Type* type) {
-    return type->isIntegerTy();
-}
-bool TypeIRBuilder::IsNumber(::llvm::Type* type) {
-    return type->isIntegerTy() || type->isFloatingPointTy();
-}
-bool TypeIRBuilder::isFloatPoint(::llvm::Type* type) {
-    return type->isFloatingPointTy();
-}
-const std::string TypeIRBuilder::TypeName(::llvm::Type* type) {
-    node::NodeManager tmp_node_manager;
-    const node::TypeNode* type_node = nullptr;
-    if (!GetFullType(&tmp_node_manager, type, &type_node)) {
-        return "unknow";
-    }
-    return type_node->GetName();
-}
-
-bool TypeIRBuilder::IsDatePtr(::llvm::Type* type) {
-    ::hybridse::node::DataType data_type;
-    if (!IsStructPtr(type)) {
-        return false;
-    }
-
-    if (!GetBaseType(type, &data_type)) {
-        return false;
-    }
-    return data_type == node::kDate;
-}
-bool TypeIRBuilder::IsStringPtr(::llvm::Type* type) {
-    ::hybridse::node::DataType data_type;
-    if (!type->isPointerTy()) {
-        return false;
-    }
-
-    if (!GetBaseType(type, &data_type)) {
-        return false;
-    }
-    return data_type == node::kVarchar;
-}
-bool TypeIRBuilder::IsStructPtr(::llvm::Type* type) {
-    if (type->getTypeID() == ::llvm::Type::PointerTyID) {
-        type = reinterpret_cast<::llvm::PointerType*>(type)->getElementType();
-        if (type->isStructTy()) {
-            DLOG(INFO) << "Struct Name " << type->getStructName().str();
-            return true;
-        } else {
-            DLOG(INFO) << "Isn't Struct Type";
-            return false;
-        }
-    }
-    return false;
-}
-base::Status TypeIRBuilder::UnaryOpTypeInfer(
-    const std::function<base::Status(node::NodeManager*, const node::TypeNode*, const node::TypeNode**)> func,
-    ::llvm::Type* lhs) {
-    node::NodeManager tmp_node_manager;
-    const node::TypeNode* left_type = nullptr;
-    CHECK_TRUE(GetFullType(&tmp_node_manager, lhs, &left_type), common::kTypeError, "invalid op type")
-    const node::TypeNode* output_type;
-    CHECK_STATUS(func(&tmp_node_manager, left_type, &output_type))
-    return Status::OK();
-}
-base::Status TypeIRBuilder::BinaryOpTypeInfer(
-    const std::function<base::Status(node::NodeManager*, const node::TypeNode*, const node::TypeNode*,
-                                     const node::TypeNode**)>
-        func,
-    ::llvm::Type* lhs, ::llvm::Type* rhs) {
-    const node::TypeNode* left_type = nullptr;
-    const node::TypeNode* right_type = nullptr;
-    node::NodeManager tmp_node_manager;
-    CHECK_TRUE(GetFullType(&tmp_node_manager, lhs, &left_type), common::kTypeError, "invalid op type")
-    CHECK_TRUE(GetFullType(&tmp_node_manager, rhs, &right_type), common::kTypeError, "invalid op type")
-    const node::TypeNode* output_type = nullptr;
-    CHECK_STATUS(func(&tmp_node_manager, left_type, right_type, &output_type))
-    return Status::OK();
-}
 
 static Status ExpandLlvmArgTypes(
     ::llvm::Module* m, const node::TypeNode* dtype, bool nullable,
@@ -891,9 +827,8 @@ static Status ExpandLlvmArgTypes(
         }
     } else {
         ::llvm::Type* llvm_ty = nullptr;
-        CHECK_TRUE(GetLlvmType(m, dtype, &llvm_ty), kCodegenError,
-                   "Fail to lower ", dtype->GetName());
-        output->push_back(std::make_pair(llvm_ty, nullable));
+        CHECK_TRUE(GetLlvmType(m, dtype, &llvm_ty), kCodegenError, "Fail to lower ", dtype->GetName());
+        output->emplace_back(llvm_ty, nullable);
     }
     return Status::OK();
 }

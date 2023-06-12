@@ -64,7 +64,7 @@ cases:
   - id: 4
     desc: 先过滤再分组聚合再过滤
     mode: request-unsupport
-    sql: SELECT COL1, sum(COL3) as col3sum, * FROM t1 where COL2 > 10 group by COL1 having sum(COL3) > 0;
+    sql: SELECT COL1, sum(COL3) as col3sum FROM t1 where COL2 > 10 group by COL1 having sum(COL3) > 0;
     expect:
       node_tree_str: |
         +-node[kQuery]: kQuerySelect
@@ -110,21 +110,16 @@ cases:
           |  |    |    +-column_name: COL1
           |  |    +-name: <nil>
           |  +-1:
-          |  |  +-node[kResTarget]
-          |  |    +-val:
-          |  |    |  +-expr[function]
-          |  |    |    +-function:
-          |  |    |    |  [Unresolved](sum)
-          |  |    |    +-arg[0]:
-          |  |    |      +-expr[column ref]
-          |  |    |        +-relation_name: <nil>
-          |  |    |        +-column_name: COL3
-          |  |    +-name: col3sum
-          |  +-2:
           |    +-node[kResTarget]
           |      +-val:
-          |      |  +-expr[all]
-          |      +-name: <nil>
+          |      |  +-expr[function]
+          |      |    +-function:
+          |      |    |  [Unresolved](sum)
+          |      |    +-arg[0]:
+          |      |      +-expr[column ref]
+          |      |        +-relation_name: <nil>
+          |      |        +-column_name: COL3
+          |      +-name: col3sum
           +-tableref_list[list]:
           |  +-0:
           |    +-node[kTableRef]: kTable

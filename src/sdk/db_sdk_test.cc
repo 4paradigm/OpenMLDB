@@ -63,7 +63,6 @@ class DBSDKTest : public ::testing::Test {
         ASSERT_TRUE(ns_client->CreateDatabase(db_name_, error));
 
         ::openmldb::nameserver::TableInfo table_info;
-        table_info.set_format_version(1);
         table_info.set_db(db_name_);
         table_info.set_name(table_name_);
         SchemaCodec::SetColumnDesc(table_info.add_column_desc(), "col1", ::openmldb::type::kString);
@@ -144,9 +143,10 @@ TEST_F(DBSDKTest, standAloneMode) {
 }  // namespace openmldb::sdk
 
 int main(int argc, char** argv) {
-    FLAGS_zk_session_timeout = 100000;
     ::testing::InitGoogleTest(&argc, argv);
-    srand(time(nullptr));
     ::google::ParseCommandLineFlags(&argc, &argv, true);
+    FLAGS_zk_session_timeout = 100000;
+    srand(time(nullptr));
+    ::openmldb::base::SetupGlog(true);
     return RUN_ALL_TESTS();
 }

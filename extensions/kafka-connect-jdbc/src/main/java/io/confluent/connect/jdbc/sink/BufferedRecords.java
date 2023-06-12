@@ -38,14 +38,12 @@ import org.slf4j.LoggerFactory;
 import java.sql.BatchUpdateException;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
-import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
@@ -72,13 +70,8 @@ public class BufferedRecords {
   private StatementBinder deleteStatementBinder;
   private boolean deletesInBatch = false;
 
-  public BufferedRecords(
-      JdbcSinkConfig config,
-      TableId tableId,
-      DatabaseDialect dbDialect,
-      DbStructure dbStructure,
-      Connection connection
-  ) {
+  public BufferedRecords(JdbcSinkConfig config, TableId tableId, DatabaseDialect dbDialect,
+      DbStructure dbStructure, Connection connection) {
     this.tableId = tableId;
     this.config = config;
     this.dbDialect = dbDialect;
@@ -107,6 +100,8 @@ public class BufferedRecords {
     if (field.schema().name() != null && value != null) {
       switch (field.schema().name()) {
         case Date.LOGICAL_NAME:
+          // date in json is day int, convert to millisecond
+          return new java.util.Date((Long) value * 24 * 60 * 60 * 1000);
         case Time.LOGICAL_NAME:
         case Timestamp.LOGICAL_NAME:
           return new java.util.Date((Long) value);
@@ -148,8 +143,8 @@ public class BufferedRecords {
         break;
       }
       default: {
-        log.debug("field {}-type {}, value type {}, stay", field.name(),
-            field.schema().type(), value.getClass().getSimpleName());
+        log.debug("field {}-type {}, value type {}, stay", field.name(), field.schema().type(),
+            value.getClass().getSimpleName());
       }
     }
     return result;
@@ -180,10 +175,10 @@ public class BufferedRecords {
         log.warn("auto schema convertToStruct only support hashmap to struct");
       }
       Object structValue = convertToStruct(valueSchema, record.value());
-      record = new SinkRecord(record.topic(), record.kafkaPartition(),
-          record.keySchema(), record.key(),
-          valueSchema, structValue,
-          record.kafkaOffset(), record.timestamp(), record.timestampType(), record.headers());
+      log.debug("auto schema convertToStruct {}", structValue);
+      record = new SinkRecord(record.topic(), record.kafkaPartition(), record.keySchema(),
+          record.key(), valueSchema, structValue, record.kafkaOffset(), record.timestamp(),
+          record.timestampType(), record.headers());
     }
 
     recordValidator.validate(record);
@@ -216,52 +211,24 @@ public class BufferedRecords {
       flushed.addAll(flush());
 
       // re-initialize everything that depends on the record schema
-      final SchemaPair schemaPair = new SchemaPair(
-          record.keySchema(),
-          record.valueSchema()
-      );
+      final SchemaPair schemaPair = new SchemaPair(record.keySchema(), record.valueSchema());
       fieldsMetadata = FieldsMetadata.extract(
-          tableId.tableName(),
-          config.pkMode,
-          config.pkFields,
-          config.fieldsWhitelist,
-          schemaPair
-      );
-      dbStructure.createOrAmendIfNecessary(
-          config,
-          connection,
-          tableId,
-          fieldsMetadata
-      );
+          tableId.tableName(), config.pkMode, config.pkFields, config.fieldsWhitelist, schemaPair);
+      dbStructure.createOrAmendIfNecessary(config, connection, tableId, fieldsMetadata);
       final String insertSql = getInsertSql();
       final String deleteSql = getDeleteSql();
-      log.debug(
-          "{} sql: {} deleteSql: {} meta: {}",
-          config.insertMode,
-          insertSql,
-          deleteSql,
-          fieldsMetadata
-      );
+      log.debug("{} sql: {} deleteSql: {} meta: {}", config.insertMode, insertSql, deleteSql,
+          fieldsMetadata);
       close();
       updatePreparedStatement = dbDialect.createPreparedStatement(connection, insertSql);
-      updateStatementBinder = dbDialect.statementBinder(
-          updatePreparedStatement,
-          config.pkMode,
-          schemaPair,
-          fieldsMetadata,
-          dbStructure.tableDefinition(connection, tableId),
-          config.insertMode
-      );
+      updateStatementBinder =
+          dbDialect.statementBinder(updatePreparedStatement, config.pkMode, schemaPair,
+              fieldsMetadata, dbStructure.tableDefinition(connection, tableId), config.insertMode);
       if (config.deleteEnabled && nonNull(deleteSql)) {
         deletePreparedStatement = dbDialect.createPreparedStatement(connection, deleteSql);
-        deleteStatementBinder = dbDialect.statementBinder(
-            deletePreparedStatement,
-            config.pkMode,
-            schemaPair,
-            fieldsMetadata,
-            dbStructure.tableDefinition(connection, tableId),
-            config.insertMode
-        );
+        deleteStatementBinder = dbDialect.statementBinder(deletePreparedStatement, config.pkMode,
+            schemaPair, fieldsMetadata, dbStructure.tableDefinition(connection, tableId),
+            config.insertMode);
       }
     }
 
@@ -325,9 +292,7 @@ public class BufferedRecords {
   public void close() throws SQLException {
     log.debug(
         "Closing BufferedRecords with updatePreparedStatement: {} deletePreparedStatement: {}",
-        updatePreparedStatement,
-        deletePreparedStatement
-    );
+        updatePreparedStatement, deletePreparedStatement);
     if (nonNull(updatePreparedStatement)) {
       updatePreparedStatement.close();
       updatePreparedStatement = null;
@@ -341,41 +306,29 @@ public class BufferedRecords {
   private String getInsertSql() throws SQLException {
     switch (config.insertMode) {
       case INSERT:
-        return dbDialect.buildInsertStatement(
-            tableId,
-            asColumns(fieldsMetadata.keyFieldNames),
+        return dbDialect.buildInsertStatement(tableId, asColumns(fieldsMetadata.keyFieldNames),
             asColumns(fieldsMetadata.nonKeyFieldNames),
-            dbStructure.tableDefinition(connection, tableId)
-        );
+            dbStructure.tableDefinition(connection, tableId));
       case UPSERT:
         if (fieldsMetadata.keyFieldNames.isEmpty()) {
           throw new ConnectException(String.format(
               "Write to table '%s' in UPSERT mode requires key field names to be known, check the"
                   + " primary key configuration",
-              tableId
-          ));
+              tableId));
         }
         try {
-          return dbDialect.buildUpsertQueryStatement(
-              tableId,
-              asColumns(fieldsMetadata.keyFieldNames),
-              asColumns(fieldsMetadata.nonKeyFieldNames),
-              dbStructure.tableDefinition(connection, tableId)
-          );
+          return dbDialect.buildUpsertQueryStatement(tableId,
+              asColumns(fieldsMetadata.keyFieldNames), asColumns(fieldsMetadata.nonKeyFieldNames),
+              dbStructure.tableDefinition(connection, tableId));
         } catch (UnsupportedOperationException e) {
           throw new ConnectException(String.format(
-              "Write to table '%s' in UPSERT mode is not supported with the %s dialect.",
-              tableId,
-              dbDialect.name()
-          ));
+              "Write to table '%s' in UPSERT mode is not supported with the %s dialect.", tableId,
+              dbDialect.name()));
         }
       case UPDATE:
-        return dbDialect.buildUpdateStatement(
-            tableId,
-            asColumns(fieldsMetadata.keyFieldNames),
+        return dbDialect.buildUpdateStatement(tableId, asColumns(fieldsMetadata.keyFieldNames),
             asColumns(fieldsMetadata.nonKeyFieldNames),
-            dbStructure.tableDefinition(connection, tableId)
-        );
+            dbStructure.tableDefinition(connection, tableId));
       default:
         throw new ConnectException("Invalid insert mode");
     }
@@ -390,16 +343,11 @@ public class BufferedRecords {
             throw new ConnectException("Require primary keys to support delete");
           }
           try {
-            sql = dbDialect.buildDeleteStatement(
-                tableId,
-                asColumns(fieldsMetadata.keyFieldNames)
-            );
+            sql = dbDialect.buildDeleteStatement(tableId, asColumns(fieldsMetadata.keyFieldNames));
           } catch (UnsupportedOperationException e) {
-            throw new ConnectException(String.format(
-                "Deletes to table '%s' are not supported with the %s dialect.",
-                tableId,
-                dbDialect.name()
-            ));
+            throw new ConnectException(
+                String.format("Deletes to table '%s' are not supported with the %s dialect.",
+                    tableId, dbDialect.name()));
           }
           break;
 
@@ -411,8 +359,6 @@ public class BufferedRecords {
   }
 
   private Collection<ColumnId> asColumns(Collection<String> names) {
-    return names.stream()
-        .map(name -> new ColumnId(tableId, name))
-        .collect(Collectors.toList());
+    return names.stream().map(name -> new ColumnId(tableId, name)).collect(Collectors.toList());
   }
 }

@@ -191,7 +191,6 @@ Status WindowColumnPruning::ProcessWindow(PhysicalPlanContext* ctx,
         &new_agg_op, pruned_project_op, projects, agg_op->window(),
         agg_op->instance_not_in_window(), agg_op->need_append_input(),
         agg_op->exclude_current_time()));
-    new_agg_op->set_exclude_current_row(agg_op->exclude_current_row());
     for (auto union_op : pruned_unions) {
         new_agg_op->AddWindowUnion(union_op);
     }

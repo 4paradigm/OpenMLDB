@@ -93,8 +93,10 @@ enum SqlNodeType {
     kDeleteStmt,
     kCreateFunctionStmt,
     kDynamicUdfFnDef,
-    kDynamicUdafFnDef,
-    kUnknow = -1
+    kDynamicUdafFnDef,  // deprecated
+    kWithClauseEntry,
+    kAlterTableStmt,
+    kSqlNodeTypeLast,  // debug type
 };
 
 enum TableRefType {
@@ -109,7 +111,8 @@ enum QueryType {
     kQueryUnion,
 };
 enum ExprType {
-    kExprBinary,
+    kExprUnknow = -1,
+    kExprBinary = 0,
     kExprUnary,
     kExprBetween,
     kExprCall,
@@ -133,11 +136,17 @@ enum ExprType {
     kExprCond,
     kExprIn,
     kExprEscaped,
-    kExprUnknow = -1
+    kExprArray,
+    kExprFake,  // not a real one
+    kExprLast = kExprFake,
 };
+
 // typedef hybridse::type::Type DataType;
+// TODO(ace): separate DataType into two group
+//   - group 1: bool ~ list, map ~ array: those types are built in codegen
+//   - group2: hour/minute/second/day, only appear in plan node level
 enum DataType {
-    kBool,
+    kBool = 0,
     kInt16,
     kInt32,
     kInt64,
@@ -146,7 +155,7 @@ enum DataType {
     kVarchar,
     kDate,
     kTimestamp,
-    kList,
+    kList,  // dynamic sized, same element type, not nullable. usually ref to column ref or subquery
     kHour,
     kMinute,
     kSecond,
@@ -156,7 +165,12 @@ enum DataType {
     kInt8Ptr,
     kRow,
     kOpaque,
-    kTuple,
+    kTuple,         // heterogeneous element type, fixed size
+    kArray,         // fixed size. In SQL: [1, 2, 3] or ARRAY<int>[1, 2, 3]
+    kDataTypeFake,  // not a data type, for testing purpose only
+    kLastDataType = kDataTypeFake,
+    // the tree type are not moved above kLastDataType for compatibility
+    // it may necessary to do it in the further
     kVoid = 100,
     kNull = 101,
     kPlaceholder = 102
@@ -177,8 +191,8 @@ enum FnOperator {
     kFnOpAdd,         // "+"
     kFnOpMinus,       // "-"
     kFnOpMulti,       // "*"
-    kFnOpDiv,         // "/"
-    kFnOpFDiv,        // "div", float division
+    kFnOpDiv,         // "DIV", integer division
+    kFnOpFDiv,        // "/", float division
     kFnOpMod,         // "%"
     kFnOpAnd,         // "AND", logical
     kFnOpOr,          // "OR" , logical
@@ -263,6 +277,7 @@ enum CmdType {
     kCmdShowTableStatus,
     kCmdShowFunctions,
     kCmdDropFunction,
+    kCmdShowJobLog,
     kCmdFake,  // not a real cmd, for testing purpose only
     kLastCmd = kCmdFake,
 };
@@ -298,6 +313,8 @@ enum PlanType {
     kPlanTypeSet,
     kPlanTypeDelete,
     kPlanTypeCreateFunction,
+    kPlanTypeWithClauseEntry,
+    kPlanTypeAlterTable,
     kUnknowPlan = -1,
 };
 

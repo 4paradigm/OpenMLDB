@@ -27,9 +27,7 @@ namespace openmldb {
 namespace codec {
 
 SDKCodec::SDKCodec(const ::openmldb::nameserver::TableInfo& table_info)
-    : format_version_(table_info.format_version()),
-      base_schema_size_(0),
-      modify_times_(0),
+    : base_schema_size_(0),
       version_schema_(),
       last_ver_(1) {
     if (table_info.column_desc_size() > 0) {
@@ -52,7 +50,7 @@ SDKCodec::SDKCodec(const ::openmldb::nameserver::TableInfo& table_info)
 }
 
 SDKCodec::SDKCodec(const ::openmldb::api::TableMeta& table_info)
-    : format_version_(table_info.format_version()), base_schema_size_(0), modify_times_(0), last_ver_(1) {
+    : base_schema_size_(0), last_ver_(1) {
     if (table_info.column_desc_size() > 0) {
         ParseColumnDesc(table_info.column_desc());
     }
@@ -68,9 +66,7 @@ SDKCodec::SDKCodec(const ::openmldb::api::TableMeta& table_info)
 
 void SDKCodec::ParseColumnDesc(const Schema& column_desc) {
     base_schema_size_ = column_desc.size();
-    if (format_version_ == 1) {
-        schema_.CopyFrom(column_desc);
-    }
+    schema_.CopyFrom(column_desc);
     for (uint32_t idx = 0; idx < (uint32_t)column_desc.size(); idx++) {
         const auto& cur_column_desc = column_desc.Get(idx);
         schema_idx_map_.emplace(cur_column_desc.name(), idx);
@@ -93,25 +89,18 @@ void SDKCodec::ParseTsCol() {
 }
 
 void SDKCodec::ParseAddedColumnDesc(const Schema& column_desc) {
-    if (format_version_ == 1) {
-        uint32_t idx = schema_.size();
-        for (const auto& col : column_desc) {
-            openmldb::common::ColumnDesc* new_col = schema_.Add();
-            new_col->CopyFrom(col);
-            schema_idx_map_.emplace(col.name(), idx);
-            idx++;
-        }
-        return;
+    uint32_t idx = schema_.size();
+    for (const auto& col : column_desc) {
+        openmldb::common::ColumnDesc* new_col = schema_.Add();
+        new_col->CopyFrom(col);
+        schema_idx_map_.emplace(col.name(), idx);
+        idx++;
     }
-    modify_times_ = column_desc.size();
 }
 
 void SDKCodec::ParseSchemaVer(const VerSchema& ver_schema, const Schema& add_schema) {
-    if (format_version_ != 1) {
-        return;
-    }
-    std::shared_ptr<Schema> origin_schema = std::make_shared<Schema>(schema_);
-    version_schema_.insert(std::make_pair(1, origin_schema));
+    auto origin_schema = std::make_shared<Schema>(schema_);
+    version_schema_.emplace(1, origin_schema);
     for (const auto& pair : ver_schema) {
         int32_t ver = pair.id();
         int32_t times = pair.field_count();

@@ -22,12 +22,16 @@ import org.apache.spark.sql.SparkSession
 object ImportOfflineData {
 
   def main(args: Array[String]): Unit = {
-    OpenmldbJobUtil.checkOneSqlArgument(args)
+    // sql
+    OpenmldbJobUtil.checkArgumentSize(args, 1)
     importOfflineData(args(0))
   }
 
   def importOfflineData(sqlFilePath: String): Unit = {
-    val spark = SparkSession.builder().getOrCreate()
+    // No need to use `enableHiveSupport` create session, just enabled by config `spark.sql.catalogImplementation=hive`
+    // If spark has no hive jars, throws exception
+    val builder = SparkSession.builder()
+    val spark = builder.getOrCreate()
     OpenmldbJobUtil.runOpenmldbSql(spark, sqlFilePath)
   }
 

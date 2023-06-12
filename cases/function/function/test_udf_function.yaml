@@ -132,6 +132,68 @@ cases:
             - [5, contact@dropmldb.ai]
             - [6, contact@closemldb.ai]
 
+  - id: 4
+    desc: |
+      hash64 function, for all data types
+    inputs:
+      - name: t1
+        schema: id:int32, col1:int64, col2:int16, col3:string, col4:double, col5:float, std_ts:timestamp, de:date, bt bool
+        index: index2:col2:std_ts
+        data: |
+          0, 1,    55, g1,   2.0, 1.0, 1590115420000, 2020-07-15, true
+          1, 2,    55, NULL, 2.0, 4.4, 1590115421000, 2020-07-15, true
+          2, 3,    55, g2,   NULL,4.4, 1590115422000, 2020-07-15, false
+          3, 4,    55, g1,   4.0, 4.0, 1590115423000, 2020-07-15, false
+          4, NULL, 55, g2,   4.0, 4.0, 1590115424000, 2020-07-15, false
+          5, 5,    55, g2,   4.0, 4.0, 1590115425000, 2020-07-15, false
+          90, 5,   55, g2,   1.0, 4.0, 1590115426000, 2020-07-15, true
+    sql: |
+      select
+        id,
+        hash64(id) as hid,
+        hash64(col1) as hcol1,
+        hash64(col2) as hcol2,
+        hash64(col3) as hcol3,
+        hash64(col4) as hcol4,
+        hash64(col5) as hcol5,
+        farm_fingerprint(std_ts) as hts,
+        farm_fingerprint(de) as hdate,
+        farm_fingerprint(bt) as hb,
+      from t1
+    expect:
+      order: id
+      columns: ["id int", "hid int64","hcol1 int64","hcol2 int64","hcol3 int64", "hcol4 int64", "hcol5 int64", "hts int64", "hdate int64", "hb int64"]
+      rows:
+         - [0, -470600885322160961, 5925585971146611297, -8280049305495806603, 3208330103598489124, 1446482599179445476, 322450456541637418,   4361965398422314040, -8740639806462273876, 5161771770385946686]
+         - [1, 7601041269982238804, 3353244675891348105, -8280049305495806603, NULL,                1446482599179445476, -2386882153598325791, -8427233238384893499, -8740639806462273876, 5161771770385946686]
+         - [2, 6706320920252439311, 7262150054277104024, -8280049305495806603, 386896907218095555,  NULL,                -2386882153598325791, -8306842479876455466, -8740639806462273876, -4728684028706075820]
+         - [3, 2681491882390849628, 3255232038643208583, -8280049305495806603, 3208330103598489124, 4223774888982935081, -2508610241776323253, 836854283058012232, -8740639806462273876, -4728684028706075820]
+         - [4, -601936896161254990, NULL,                -8280049305495806603, 386896907218095555,  4223774888982935081, -2508610241776323253, -1715213075984056143, -8740639806462273876, -4728684028706075820]
+         - [5, -2259736796076314196, 3312746975386716960, -8280049305495806603, 386896907218095555, 4223774888982935081, -2508610241776323253,  4701969050813670, -8740639806462273876, -4728684028706075820]
+         - [90, -3754664774081171349, 3312746975386716960, -8280049305495806603, 386896907218095555, -6169223503904558093, -2508610241776323253, 6739953749437222492, -8740639806462273876, 5161771770385946686]
+
+  - id: 5
+    desc: |
+      hash64 function, different hash result for different type, even for same value
+    mode: request-unsupport
+    inputs:
+      - name: t1
+        schema: id:int32, col1:int64, col2:int16, col3:string, col4:double, col5:float, std_ts:timestamp, de:date
+        index: index2:col2:std_ts
+        data: |
+          0, 1,    55, g1,   2.0, 1.0, 1590115420000, 2020-07-15
+    sql: |
+      select
+        hash64(cast(90 as int16)) as h16,
+        hash64(cast(90 as int32)) as h32,
+        hash64(cast(90 as int64)) as h64,
+        hash64(cast(90 as double)) as hd,
+        hash64(cast(90 as float)) as hf,
+    expect:
+      columns: ["h16 int64", "h32 int64", "h64 int64", "hd int64", "hf int64"]
+      rows:
+        - [ -9205917472348398353, -3754664774081171349, -6110541762027922508, 42123122574000053, 3717229009355585768 ]
+
 # reserved case
 # For more details, please checkout https://github.com/4paradigm/OpenMLDB/pull/2187
 #  - id: 4
@@ -251,3 +313,33 @@ cases:
 #            - [1, null]
 #            - [2, null]
 #            - [3, null]
+#
+  - id: 6
+    desc: earth_distance
+    inputs:
+      -
+        name: t1
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1, "aa", 40, 73, 73, 41.0, 74.0, 1590738990000]
+    sql: |
+      select
+        id,
+        earth_distance(40.0, 73.0, 41.0, 74.0) as dis1,
+        earth_distance(c2, c3, 41.0, 74.0) as dis2,
+        earth_distance(c2, c3, c5, c6) as dis3,
+        earth_distance(c2, c4, c5, c6) as dis4,
+        earth_distance(c2, 73.0, c5, c6) as dis5,
+      from t1;
+    expect:
+      order: id
+      columns:
+        - id int
+        - dis1 double
+        - dis2 double
+        - dis3 double
+        - dis4 double
+        - dis5 double
+      data: |
+        1, 139.72810080682342, 139.72810080682342, 139.72810080682342, 139.72810080682342, 139.72810080682342

@@ -143,7 +143,7 @@ TEST_F(UdafTest, SumWhereTest) {
         MakeList<Nullable<bool>>({true, false, nullptr, true}));
 }
 
-TEST_F(UdafTest, count_where_test) {
+TEST_F(UdafTest, CountWhereTest) {
     CheckUdf<int64_t, ListRef<int32_t>, ListRef<bool>>(
         "count_where", 2, MakeList<int32_t>({4, 5, 6}),
         MakeBoolList({true, false, true}));
@@ -264,6 +264,87 @@ TEST_F(UdafTest, AvgTest) {
     CheckUdf<Nullable<double>, ListRef<Nullable<double>>>("avg", nullptr, MakeList<Nullable<double>>({nullptr}));
 }
 
+TEST_F(UdafTest, StdPopTest) {
+    double expected = 1.118034;
+    CheckUdf<double, ListRef<int16_t>>("stddev_pop", expected, MakeList<int16_t>({1, 2, 3, 4}));
+    CheckUdf<double, ListRef<int32_t>>("stddev_pop", expected, MakeList<int32_t>({1, 2, 3, 4}));
+    CheckUdf<double, ListRef<int64_t>>("stddev_pop", expected, MakeList<int64_t>({1, 2, 3, 4}));
+    CheckUdf<double, ListRef<float>>("stddev_pop", expected, MakeList<float>({1, 2, 3, 4}));
+    CheckUdf<double, ListRef<Nullable<double>>>("stddev_pop", expected,
+                                                MakeList<Nullable<double>>({1, 2, nullptr, 3, 4}));
+    // nullable
+    CheckUdf<Nullable<double>, ListRef<double>>("stddev_pop", nullptr, MakeList<double>({}));
+    CheckUdf<Nullable<double>, ListRef<Nullable<double>>>("stddev_pop", nullptr, MakeList<Nullable<double>>({nullptr}));
+}
+
+TEST_F(UdafTest, StdSampTest) {
+    double expected = 1.290994;
+    CheckUdf<double, ListRef<int16_t>>("std", expected, MakeList<int16_t>({1, 2, 3, 4}));
+    CheckUdf<double, ListRef<int32_t>>("stddev", expected, MakeList<int32_t>({1, 2, 3, 4}));
+    CheckUdf<double, ListRef<int64_t>>("stddev_samp", expected, MakeList<int64_t>({1, 2, 3, 4}));
+    CheckUdf<double, ListRef<float>>("stddev_samp", expected, MakeList<float>({1, 2, 3, 4}));
+    CheckUdf<double, ListRef<Nullable<double>>>("stddev_samp", expected,
+                                                MakeList<Nullable<double>>({1, 2, nullptr, 3, 4}));
+    // nullable
+    CheckUdf<Nullable<double>, ListRef<double>>("stddev_samp", nullptr, MakeList<double>({1}));
+    CheckUdf<Nullable<double>, ListRef<double>>("stddev_samp", nullptr, MakeList<double>({}));
+    CheckUdf<Nullable<double>, ListRef<Nullable<double>>>("stddev_samp", nullptr,
+                                                          MakeList<Nullable<double>>({nullptr}));
+}
+
+TEST_F(UdafTest, EwAvgTest) {
+    double expect = 3.161290;
+    auto alpha_list = MakeList<double>({0.5, 0.5, 0.5, 0.5, 0.5, 0.5});
+    CheckUdf<double, ListRef<int16_t>, ListRef<double>>("ew_avg", expect, MakeList<int16_t>({4, 3, 2, 1, 0}),
+                                                        alpha_list);
+    CheckUdf<double, ListRef<Nullable<int32_t>>, ListRef<double>>(
+        "ew_avg", expect, MakeList<Nullable<int32_t>>({4, 3, 2, 1, 0}), alpha_list);
+    CheckUdf<double, ListRef<int64_t>, ListRef<double>>("ew_avg", expect, MakeList<int64_t>({4, 3, 2, 1, 0}),
+                                                        alpha_list);
+    CheckUdf<double, ListRef<float>, ListRef<double>>("ew_avg", expect, MakeList<float>({4, 3, 2, 1, 0}), alpha_list);
+    CheckUdf<double, ListRef<Nullable<double>>, ListRef<double>>(
+        "ew_avg", expect, MakeList<Nullable<double>>({4, 3, 2, nullptr, 1, 0.0}), alpha_list);
+
+    CheckUdf<double, ListRef<Nullable<double>>, ListRef<double>>(
+        "ew_avg", 1.733333, MakeList<Nullable<double>>({1, 2, 3, 4}), alpha_list);
+    CheckUdf<double, ListRef<Nullable<double>>, ListRef<double>>(
+        "ew_avg", 1, MakeList<Nullable<double>>({1}), alpha_list);
+    CheckUdf<double, ListRef<Nullable<double>>, ListRef<double>>(
+        "ew_avg", 0, MakeList<Nullable<double>>({0.0}), alpha_list);
+    CheckUdf<double, ListRef<Nullable<double>>, ListRef<double>>(
+        "ew_avg", 2.224932, MakeList<Nullable<double>>({1, 2, 3, 4}), MakeList<double>({0.2, 0.2, 0.2, 0.2}));
+    CheckUdf<double, ListRef<Nullable<double>>, ListRef<double>>(
+        "ew_avg", 4, MakeList<Nullable<double>>({4, 3, 2, 1}), MakeList<double>({1, 1, 1, 1}));
+
+    // NULL alpha will fall back to nornal avg
+    CheckUdf<double, ListRef<Nullable<double>>, ListRef<Nullable<double>>>(
+        "ew_avg", 2.5, MakeList<Nullable<double>>({4, 3, 2, 1}),
+        MakeList<Nullable<double>>({nullptr, nullptr, nullptr, nullptr}));
+    CheckUdf<double, ListRef<Nullable<double>>, ListRef<Nullable<double>>>(
+        "ew_avg", 2.5, MakeList<Nullable<double>>({4, 3, 2, 1}), MakeList<Nullable<double>>({0.0, 0.0, 0.0, 0.0}));
+
+    // nullable
+    CheckUdf<Nullable<double>, ListRef<double>, ListRef<double>>("ew_avg", nullptr, MakeList<double>({}), alpha_list);
+    CheckUdf<Nullable<double>, ListRef<Nullable<double>>, ListRef<double>>(
+        "ew_avg", nullptr, MakeList<Nullable<double>>({nullptr}), alpha_list);
+}
+TEST_F(UdafTest, VarSampTest) {
+    CheckUdf<double, ListRef<int16_t>>("variance", 4.0, MakeList<int16_t>({0, 2, 4}));
+    CheckUdf<double, ListRef<int32_t>>("var_samp", 4.0, MakeList<int32_t>({0, 2, 4}));
+    CheckUdf<double, ListRef<Nullable<double>>>("var_samp", 4.0, MakeList<Nullable<double>>({0.0, 2, nullptr, 4}));
+    CheckUdf<Nullable<double>, ListRef<double>>("var_samp", nullptr, MakeList<double>({4}));
+    CheckUdf<Nullable<double>, ListRef<double>>("var_samp", nullptr, MakeList<double>({}));
+    CheckUdf<Nullable<double>, ListRef<Nullable<double>>>("var_samp", nullptr, MakeList<Nullable<double>>({nullptr}));
+}
+
+TEST_F(UdafTest, VarPopTest) {
+    CheckUdf<double, ListRef<int32_t>>("var_pop", 6.0, MakeList<int32_t>({0, 3, 6}));
+    CheckUdf<double, ListRef<Nullable<double>>>("var_pop", 6.0, MakeList<Nullable<double>>({0.0, 3, nullptr, 6}));
+    CheckUdf<Nullable<double>, ListRef<double>>("var_pop", 0.0, MakeList<double>({2}));
+    CheckUdf<Nullable<double>, ListRef<double>>("var_pop", nullptr, MakeList<double>({}));
+    CheckUdf<Nullable<double>, ListRef<Nullable<double>>>("var_pop", nullptr, MakeList<Nullable<double>>({nullptr}));
+}
+
 TEST_F(UdafTest, SumTest) {
     CheckUdf<int16_t, ListRef<int16_t>>("sum", 10,
                                        MakeList<int16_t>({1, 2, 3, 4}));
@@ -279,7 +360,7 @@ TEST_F(UdafTest, SumTest) {
     CheckUdf<Nullable<double>, ListRef<Nullable<double>>>("sum", nullptr, MakeList<Nullable<double>>({nullptr}));
 }
 
-TEST_F(UdafTest, topk_test) {
+TEST_F(UdafTest, TopkTest) {
     CheckUdf<StringRef, ListRef<int32_t>, ListRef<int32_t>>(
         "top", StringRef("6,6,5,4"), MakeList<int32_t>({1, 6, 3, 4, 5, 2, 6}),
         MakeList<int32_t>({4, 4, 4, 4, 4, 4, 4}));
@@ -322,7 +403,7 @@ TEST_F(UdafTest, topk_test) {
         "top", StringRef(""), MakeList<int32_t>({}), MakeList<int32_t>({}));
 }
 
-TEST_F(UdafTest, sum_cate_test) {
+TEST_F(UdafTest, SumCateTest) {
     CheckUdf<StringRef, ListRef<int32_t>, ListRef<int32_t>>(
         "sum_cate", StringRef("1:4,2:6"), MakeList<int32_t>({1, 2, 3, 4}),
         MakeList<int32_t>({1, 2, 1, 2}));
@@ -352,7 +433,7 @@ TEST_F(UdafTest, sum_cate_test) {
         MakeList<int32_t>({}));
 }
 
-TEST_F(UdafTest, count_cate_test) {
+TEST_F(UdafTest, CountCateTest) {
     CheckUdf<StringRef, ListRef<int32_t>, ListRef<int32_t>>(
         "count_cate", StringRef("1:2,2:2"), MakeList<int32_t>({1, 2, 3, 4}),
         MakeList<int32_t>({1, 2, 1, 2}));
@@ -382,7 +463,7 @@ TEST_F(UdafTest, count_cate_test) {
         MakeList<int32_t>({}));
 }
 
-TEST_F(UdafTest, min_cate_test) {
+TEST_F(UdafTest, MinCateTest) {
     CheckUdf<StringRef, ListRef<int32_t>, ListRef<int32_t>>(
         "min_cate", StringRef("1:1,2:2"), MakeList<int32_t>({1, 2, 3, 4}),
         MakeList<int32_t>({1, 2, 1, 2}));
@@ -412,7 +493,7 @@ TEST_F(UdafTest, min_cate_test) {
         MakeList<int32_t>({}));
 }
 
-TEST_F(UdafTest, max_cate_test) {
+TEST_F(UdafTest, MaxCateTest) {
     CheckUdf<StringRef, ListRef<int32_t>, ListRef<int32_t>>(
         "max_cate", StringRef("1:3,2:4"), MakeList<int32_t>({1, 2, 3, 4}),
         MakeList<int32_t>({1, 2, 1, 2}));
@@ -442,7 +523,7 @@ TEST_F(UdafTest, max_cate_test) {
         MakeList<int32_t>({}));
 }
 
-TEST_F(UdafTest, avg_cate_test) {
+TEST_F(UdafTest, AvgCateTest) {
     CheckUdf<StringRef, ListRef<int32_t>, ListRef<int32_t>>(
         "avg_cate", StringRef("1:2.000000,2:3.000000"),
         MakeList<int32_t>({1, 2, 3, 4}), MakeList<int32_t>({1, 2, 1, 2}));
@@ -473,7 +554,7 @@ TEST_F(UdafTest, avg_cate_test) {
         MakeList<int32_t>({}));
 }
 
-TEST_F(UdafTest, sum_cate_where_test) {
+TEST_F(UdafTest, SumCateWhereTest) {
     CheckUdf<StringRef, ListRef<int32_t>, ListRef<bool>, ListRef<int32_t>>(
         "sum_cate_where", StringRef("1:4,2:6"),
         MakeList<int32_t>({1, 2, 3, 4, 5, 6}),
@@ -509,7 +590,7 @@ TEST_F(UdafTest, sum_cate_where_test) {
         MakeBoolList({}), MakeList<int32_t>({}));
 }
 
-TEST_F(UdafTest, count_cate_where_test) {
+TEST_F(UdafTest, CountCateWhereTest) {
     CheckUdf<StringRef, ListRef<int32_t>, ListRef<bool>, ListRef<int32_t>>(
         "count_cate_where", StringRef("1:2,2:2"),
         MakeList<int32_t>({1, 2, 3, 4, 5, 6}),
@@ -545,7 +626,7 @@ TEST_F(UdafTest, count_cate_where_test) {
         MakeBoolList({}), MakeList<int32_t>({}));
 }
 
-TEST_F(UdafTest, max_cate_where_test) {
+TEST_F(UdafTest, MaxCateWhereTest) {
     CheckUdf<StringRef, ListRef<int32_t>, ListRef<bool>, ListRef<int32_t>>(
         "max_cate_where", StringRef("1:3,2:4"),
         MakeList<int32_t>({1, 2, 3, 4, 5, 6}),
@@ -581,7 +662,7 @@ TEST_F(UdafTest, max_cate_where_test) {
         MakeBoolList({}), MakeList<int32_t>({}));
 }
 
-TEST_F(UdafTest, min_cate_where_test) {
+TEST_F(UdafTest, MinCateWhereTest) {
     CheckUdf<StringRef, ListRef<int32_t>, ListRef<bool>, ListRef<int32_t>>(
         "min_cate_where", StringRef("1:1,2:2"),
         MakeList<int32_t>({1, 2, 3, 4, 5, 6}),
@@ -617,7 +698,7 @@ TEST_F(UdafTest, min_cate_where_test) {
         MakeBoolList({}), MakeList<int32_t>({}));
 }
 
-TEST_F(UdafTest, avg_cate_where_test) {
+TEST_F(UdafTest, AvgCateWhereTest) {
     CheckUdf<StringRef, ListRef<int32_t>, ListRef<bool>, ListRef<int32_t>>(
         "avg_cate_where", StringRef("1:2.000000,2:3.000000"),
         MakeList<int32_t>({1, 2, 3, 4, 5, 6}),
@@ -653,7 +734,7 @@ TEST_F(UdafTest, avg_cate_where_test) {
         MakeBoolList({}), MakeList<int32_t>({}));
 }
 
-TEST_F(UdafTest, top_n_key_count_cate_where_test) {
+TEST_F(UdafTest, TopNKeyCountCateWhereTest) {
     CheckUdf<StringRef, ListRef<int32_t>, ListRef<bool>, ListRef<int32_t>,
              ListRef<int32_t>>(
         "top_n_key_count_cate_where", StringRef("2:2,1:2"),
@@ -700,7 +781,7 @@ TEST_F(UdafTest, top_n_key_count_cate_where_test) {
                                MakeList<int32_t>({}), MakeList<int32_t>({}));
 }
 
-TEST_F(UdafTest, top_n_key_sum_cate_where_test) {
+TEST_F(UdafTest, TopNKeySumCateWhereTest) {
     CheckUdf<StringRef, ListRef<int32_t>, ListRef<bool>, ListRef<int32_t>,
              ListRef<int32_t>>(
         "top_n_key_sum_cate_where", StringRef("2:9,1:7"),
@@ -747,7 +828,7 @@ TEST_F(UdafTest, top_n_key_sum_cate_where_test) {
                                MakeList<int32_t>({}), MakeList<int32_t>({}));
 }
 
-TEST_F(UdafTest, top_n_key_min_cate_where_test) {
+TEST_F(UdafTest, TopNKeyMinCateWhereTest) {
     CheckUdf<StringRef, ListRef<int32_t>, ListRef<bool>, ListRef<int32_t>,
              ListRef<int32_t>>(
         "top_n_key_min_cate_where", StringRef("2:3,1:2"),
@@ -794,7 +875,7 @@ TEST_F(UdafTest, top_n_key_min_cate_where_test) {
                                MakeList<int32_t>({}), MakeList<int32_t>({}));
 }
 
-TEST_F(UdafTest, top_n_key_max_cate_where_test) {
+TEST_F(UdafTest, TopNKeyMaxCateWhereTest) {
     CheckUdf<StringRef, ListRef<int32_t>, ListRef<bool>, ListRef<int32_t>,
              ListRef<int32_t>>(
         "top_n_key_max_cate_where", StringRef("2:6,1:5"),
@@ -841,7 +922,7 @@ TEST_F(UdafTest, top_n_key_max_cate_where_test) {
                                MakeList<int32_t>({}), MakeList<int32_t>({}));
 }
 
-TEST_F(UdafTest, top_n_key_avg_cate_where_test) {
+TEST_F(UdafTest, TopNKeyAvgCateWhereTest) {
     CheckUdf<StringRef, ListRef<int32_t>, ListRef<bool>, ListRef<int32_t>,
              ListRef<int32_t>>(
         "top_n_key_avg_cate_where", StringRef("2:4.500000,1:3.500000"),
@@ -887,6 +968,144 @@ TEST_F(UdafTest, top_n_key_avg_cate_where_test) {
              ListRef<int32_t>>("top_n_key_avg_cate_where", StringRef(""),
                                MakeList<int32_t>({}), MakeBoolList({}),
                                MakeList<int32_t>({}), MakeList<int32_t>({}));
+}
+
+TEST_F(UdafTest, TopNValueCountCateWhereTest) {
+    CheckUdf<StringRef, ListRef<StringRef>, ListRef<bool>, ListRef<int32_t>, ListRef<int32_t>>(
+        "top_n_value_count_cate_where", "2:2,1:2", MakeList<StringRef>({"1", "2", "3", "4", "5", "6", "7", "8", "9"}),
+        MakeBoolList({true, true, true, true, true, true, false, false, false}),
+        MakeList<int32_t>({0, 1, 2, 0, 1, 2, 0, 1, 2}), MakeList<int32_t>({2, 2, 2, 2, 2, 2, 2, 2, 2}));
+
+    CheckUdf<StringRef, ListRef<int64_t>, ListRef<bool>, ListRef<Date>, ListRef<int32_t>>(
+        "top_n_value_count_cate_where", "1900-01-01:3,1900-01-02:2", MakeList<int64_t>({1, 2, 3, 4, 5, 6, 7, 8, 9}),
+        MakeBoolList({false, true, true, true, true, true, false, true, false}),
+        MakeList<Date>({Date(0), Date(1), Date(2), Date(0), Date(1), Date(2), Date(0), Date(1), Date(2)}),
+        MakeList<int32_t>({2, 2, 2, 2, 2, 2, 2, 2, 2}));
+
+    CheckUdf<StringRef, ListRef<int32_t>, ListRef<bool>, ListRef<StringRef>, ListRef<int32_t>>(
+        "top_n_value_count_cate_where", "x:3,y:1", MakeList<int32_t>({1, 2, 3, 4, 5, 6, 7, 8, 9}),
+        MakeBoolList({true, true, false, true, false, false, true, false, false}),
+        MakeList<StringRef>({"x", "y", "z", "x", "y", "z", "x", "y", "z"}),
+        MakeList<int32_t>({2, 2, 2, 2, 2, 2, 2, 2, 2}));
+
+    // null key and values
+    CheckUdf<StringRef, ListRef<Nullable<int32_t>>, ListRef<Nullable<bool>>, ListRef<Nullable<StringRef>>,
+             ListRef<int64_t>>("top_n_value_count_cate_where", "y:2,z:1",
+                               MakeList<Nullable<int32_t>>({1, 2, 3, 4, 5, 6, nullptr, 7}),
+                               MakeList<Nullable<bool>>({false, nullptr, true, true, true, true, true, true}),
+                               MakeList<Nullable<StringRef>>({"x", "y", "z", "x", "y", nullptr, "x", "y"}),
+                               MakeList<int64_t>({2, 2, 2, 2, 2, 2, 2, 2}));
+
+    // empty
+    CheckUdf<StringRef, ListRef<int32_t>, ListRef<bool>, ListRef<int32_t>, ListRef<int32_t>>(
+        "top_n_value_count_cate_where", "", MakeList<int32_t>({}), MakeBoolList({}), MakeList<int32_t>({}),
+        MakeList<int32_t>({}));
+}
+
+TEST_F(UdafTest, TopNValueMaxCateWhereTest) {
+    CheckUdf<StringRef, ListRef<int32_t>, ListRef<bool>, ListRef<int32_t>, ListRef<int32_t>>(
+        "top_n_value_max_cate_where", "0:7,2:6", MakeList<int32_t>({1, 2, 3, 4, 5, 6, 7, 8, 9}),
+        MakeBoolList({true, true, true, true, true, true, true, false, false}),
+        MakeList<int32_t>({0, 1, 2, 0, 1, 2, 0, 1, 2}), MakeList<int32_t>({2, 2, 2, 2, 2, 2, 2, 2, 2}));
+
+    CheckUdf<StringRef, ListRef<int32_t>, ListRef<bool>, ListRef<StringRef>, ListRef<int64_t>>(
+        "top_n_value_max_cate_where", "z:6", MakeList<int32_t>({1, 2, 3, 4, 5, 6, 7, 8, 9}),
+        MakeBoolList({true, true, true, true, true, true, false, false, false}),
+        MakeList<StringRef>({"x", "y", "z", "x", "y", "z", "x", "y", "z"}),
+        MakeList<int64_t>({1, 1, 1, 1, 1, 1, 1, 1, 1}));
+
+    // null key and values
+    CheckUdf<StringRef, ListRef<Nullable<int32_t>>, ListRef<Nullable<bool>>, ListRef<Nullable<StringRef>>,
+             ListRef<int32_t>>("top_n_value_max_cate_where", "y:5,x:4",
+                               MakeList<Nullable<int32_t>>({1, 2, 3, 4, 5, 6, nullptr}),
+                               MakeList<Nullable<bool>>({false, nullptr, true, true, true, true, true}),
+                               MakeList<Nullable<StringRef>>({"x", "y", "z", "x", "y", nullptr, "x"}),
+                               MakeList<int32_t>({2, 2, 2, 2, 2, 2, 2}));
+    //
+    // empty
+    CheckUdf<StringRef, ListRef<int32_t>, ListRef<bool>, ListRef<int32_t>, ListRef<int32_t>>(
+        "top_n_value_max_cate_where", "", MakeList<int32_t>({}), MakeBoolList({}), MakeList<int32_t>({}),
+        MakeList<int32_t>({}));
+}
+
+TEST_F(UdafTest, TopNValueMinCateWhereTest) {
+    CheckUdf<StringRef, ListRef<int32_t>, ListRef<bool>, ListRef<int32_t>, ListRef<int32_t>>(
+        "top_n_value_min_cate_where", "2:3,1:2", MakeList<int32_t>({1, 2, 3, 4, 5, 6, 7, 8, 9}),
+        MakeBoolList({true, true, true, true, true, true, true, false, false}),
+        MakeList<int32_t>({0, 1, 2, 0, 1, 2, 0, 1, 2}), MakeList<int32_t>({2, 2, 2, 2, 2, 2, 2, 2, 2}));
+
+    // null key and values
+    CheckUdf<StringRef, ListRef<Nullable<int32_t>>, ListRef<Nullable<bool>>, ListRef<Nullable<StringRef>>,
+             ListRef<int32_t>>("top_n_value_min_cate_where", "y:5,x:4",
+                               MakeList<Nullable<int32_t>>({1, 2, 3, 4, 5, 6, nullptr}),
+                               MakeList<Nullable<bool>>({false, nullptr, true, true, true, true, true}),
+                               MakeList<Nullable<StringRef>>({"x", "y", "z", "x", "y", nullptr, "x"}),
+                               MakeList<int32_t>({2, 2, 2, 2, 2, 2, 2}));
+}
+
+TEST_F(UdafTest, TopNValueSumCateWhereTest) {
+    CheckUdf<StringRef, ListRef<int32_t>, ListRef<bool>, ListRef<int32_t>, ListRef<int32_t>>(
+        "top_n_value_sum_cate_where", "0:12,2:9", MakeList<int32_t>({1, 2, 3, 4, 5, 6, 7, 8, 9}),
+        MakeBoolList({true, true, true, true, true, true, true, false, false}),
+        MakeList<int32_t>({0, 1, 2, 0, 1, 2, 0, 1, 2}), MakeList<int32_t>({2, 2, 2, 2, 2, 2, 2, 2, 2}));
+
+    // null key and values
+    CheckUdf<StringRef, ListRef<Nullable<int32_t>>, ListRef<Nullable<bool>>, ListRef<Nullable<StringRef>>,
+             ListRef<int32_t>>("top_n_value_sum_cate_where", "y:5,x:4",
+                               MakeList<Nullable<int32_t>>({1, 2, 3, 4, 5, 6, nullptr}),
+                               MakeList<Nullable<bool>>({false, nullptr, true, true, true, true, true}),
+                               MakeList<Nullable<StringRef>>({"x", "y", "z", "x", "y", nullptr, "x"}),
+                               MakeList<int32_t>({2, 2, 2, 2, 2, 2, 2}));
+}
+
+TEST_F(UdafTest, TopNValueAvgCateWhereTest) {
+    CheckUdf<StringRef, ListRef<int32_t>, ListRef<bool>, ListRef<int32_t>, ListRef<int32_t>>(
+        "top_n_value_avg_cate_where", "2:4.500000,0:4.000000", MakeList<int32_t>({1, 2, 3, 4, 5, 6, 7, 8, 9}),
+        MakeBoolList({true, true, true, true, true, true, true, false, false}),
+        MakeList<int32_t>({0, 1, 2, 0, 1, 2, 0, 1, 2}), MakeList<int32_t>({2, 2, 2, 2, 2, 2, 2, 2, 2}));
+
+    // null key and values
+    CheckUdf<StringRef, ListRef<Nullable<int32_t>>, ListRef<Nullable<bool>>, ListRef<Nullable<StringRef>>,
+             ListRef<int32_t>>("top_n_value_avg_cate_where", "y:5.000000,x:4.000000",
+                               MakeList<Nullable<int32_t>>({1, 2, 3, 4, 5, 6, nullptr}),
+                               MakeList<Nullable<bool>>({false, nullptr, true, true, true, true, true}),
+                               MakeList<Nullable<StringRef>>({"x", "y", "z", "x", "y", nullptr, "x"}),
+                               MakeList<int32_t>({2, 2, 2, 2, 2, 2, 2}));
+}
+
+TEST_F(UdafTest, Entropy) {
+    CheckUdf<double, ListRef<codec::StringRef>>("entropy", 1.0, MakeList<codec::StringRef>({"A", "A", "B", "B"}));
+    CheckUdf<double, ListRef<openmldb::base::Date>>(
+        "entropy", 1.5, MakeList<openmldb::base::Date>({Date(1999), Date(1999), Date(2000), Date(2001)}));
+    CheckUdf<Nullable<double>, ListRef<codec::StringRef>>("entropy", nullptr, MakeList<codec::StringRef>({}));
+    CheckUdf<Nullable<double>, ListRef<Nullable<int64_t>>>("entropy", nullptr, MakeList<Nullable<int64_t>>({nullptr}));
+}
+
+TEST_F(UdafTest, DrawdownTest) {
+    double expected = 0.75;
+    CheckUdf<double, ListRef<int16_t>>("drawdown", expected, MakeList<int16_t>({4, 10, 2, 5, 8, 1}));
+    CheckUdf<double, ListRef<int32_t>>("drawdown", expected, MakeList<int32_t>({4, 10, 2, 5, 8, 1}));
+    CheckUdf<double, ListRef<int64_t>>("drawdown", expected, MakeList<int64_t>({4, 10, 2, 5, 8, 1}));
+    CheckUdf<double, ListRef<float>>("drawdown", expected, MakeList<float>({4, 10, 2, 5, 8, 1}));
+    CheckUdf<double, ListRef<Nullable<double>>>("drawdown", expected,
+                                                MakeList<Nullable<double>>({4, 10, nullptr, 2, 5, 8, 1}));
+
+    CheckUdf<double, ListRef<Nullable<double>>>("drawdown", 0, MakeList<Nullable<double>>({1}));
+    CheckUdf<double, ListRef<Nullable<double>>>("drawdown", 0, MakeList<Nullable<double>>({8, 1}));
+    CheckUdf<double, ListRef<Nullable<double>>>("drawdown", 1, MakeList<Nullable<double>>({0.0, 1}));
+    CheckUdf<double, ListRef<Nullable<double>>>("drawdown", 0, MakeList<Nullable<double>>({0.0, 0.0}));
+    CheckUdf<double, ListRef<Nullable<double>>>("drawdown", 0, MakeList<Nullable<double>>({1, 1}));
+    CheckUdf<double, ListRef<Nullable<double>>>("drawdown", 1, MakeList<Nullable<double>>({10, 20, 20, 0.0, 1, 10}));
+    CheckUdf<double, ListRef<Nullable<double>>>("drawdown", 0.8, MakeList<Nullable<double>>({10, 50, 20, 5, 4, 10}));
+
+    // nullable
+    CheckUdf<Nullable<double>, ListRef<double>>("drawdown", nullptr, MakeList<double>({}));
+    CheckUdf<Nullable<double>, ListRef<Nullable<double>>>("drawdown", nullptr, MakeList<Nullable<double>>({nullptr}));
+
+    // negative value will be skipped
+    CheckUdf<double, ListRef<Nullable<double>>>("drawdown", 0.5, MakeList<Nullable<double>>({1, -2, 2, -1}));
+    CheckUdf<Nullable<double>, ListRef<Nullable<double>>>("drawdown", nullptr,
+                                                          MakeList<Nullable<double>>({-1, -2, -1}));
 }
 
 }  // namespace udf

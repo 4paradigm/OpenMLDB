@@ -30,7 +30,9 @@
 #include "gflags/gflags.h"
 #include "sdk/mini_cluster.h"
 #include "sdk/sql_router.h"
+#include "sdk/sql_sdk_base_test.h"
 #include "test/base_test.h"
+#include "test/util.h"
 #include "vm/catalog.h"
 
 namespace openmldb {
@@ -56,29 +58,24 @@ static std::shared_ptr<SQLRouter> GetNewSQLRouter() {
 }
 
 static bool IsRequestSupportMode(const std::string& mode) {
-    if (mode.find("hybridse-only") != std::string::npos ||
-        mode.find("rtidb-unsupport") != std::string::npos ||
+    if (mode.find("hybridse-only") != std::string::npos || mode.find("rtidb-unsupport") != std::string::npos ||
         mode.find("performance-sensitive-unsupport") != std::string::npos ||
-            mode.find("request-unsupport") != std::string::npos
-        || mode.find("standalone-unsupport") != std::string::npos) {
+        mode.find("request-unsupport") != std::string::npos || mode.find("standalone-unsupport") != std::string::npos) {
         return false;
     }
     return true;
 }
 static bool IsBatchRequestSupportMode(const std::string& mode) {
-    if (mode.find("hybridse-only") != std::string::npos ||
-        mode.find("rtidb-unsupport") != std::string::npos ||
+    if (mode.find("hybridse-only") != std::string::npos || mode.find("rtidb-unsupport") != std::string::npos ||
         mode.find("performance-sensitive-unsupport") != std::string::npos ||
         mode.find("batch-request-unsupport") != std::string::npos ||
-        mode.find("request-unsupport") != std::string::npos
-        || mode.find("standalone-unsupport") != std::string::npos) {
+        mode.find("request-unsupport") != std::string::npos || mode.find("standalone-unsupport") != std::string::npos) {
         return false;
     }
     return true;
 }
 static bool IsBatchSupportMode(const std::string& mode) {
-    if (mode.find("hybridse-only") != std::string::npos ||
-        mode.find("rtidb-unsupport") != std::string::npos ||
+    if (mode.find("hybridse-only") != std::string::npos || mode.find("rtidb-unsupport") != std::string::npos ||
         mode.find("batch-unsupport") != std::string::npos ||
         mode.find("performance-sensitive-unsupport") != std::string::npos ||
         mode.find("standalone-unsupport") != std::string::npos) {
@@ -164,6 +161,21 @@ TEST_P(SQLSDKQueryTest, SqlSdkRequestProcedureAsynTest) {
     RunRequestProcedureModeSDK(sql_case, router_, true);
     LOG(INFO) << "Finish sql_sdk_request_procedure_asyn_test: ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
 }
+
+TEST_P(SQLSDKQueryTest, SqlSdkDeployTest) {
+    auto sql_case = GetParam();
+    if (!sql_case.deployable_) {
+        LOG(INFO) << "SKIPPED for not deployable";
+        return;
+    }
+    ASSERT_TRUE(router_ != nullptr) << "Fail new cluster sql router";
+    {
+        DeploymentEnv env(router_, &sql_case);
+        env.SetUp();
+        env.CallDeployProcedure();
+    }
+}
+
 TEST_P(SQLSDKBatchRequestQueryTest, SqlSdkBatchRequestTest) {
     auto sql_case = GetParam();
     if (!IsBatchRequestSupportMode(sql_case.mode())) {
@@ -561,7 +573,6 @@ TEST_F(SQLSDKQueryTest, RequestProcedureTest) {
     ASSERT_TRUE(router->ExecuteDDL(db, "drop table trans;", &status));
 }
 
-
 TEST_F(SQLSDKQueryTest, DropTableWithProcedureTest) {
     // create table trans
     std::string ddl =
@@ -912,15 +923,17 @@ TEST_F(SQLSDKQueryTest, ExecuteWhereWithParameter) {
 }  // namespace openmldb
 
 int main(int argc, char** argv) {
-    ::hybridse::vm::Engine::InitializeGlobalLLVM();
     ::testing::InitGoogleTest(&argc, argv);
+    ::google::ParseCommandLineFlags(&argc, &argv, true);
+    ::hybridse::vm::Engine::InitializeGlobalLLVM();
+    ::openmldb::base::SetupGlog(true);
+
     srand(time(NULL));
     FLAGS_zk_session_timeout = 100000;
     ::openmldb::sdk::MiniCluster mc(6181);
     ::openmldb::sdk::mc_ = &mc;
     int ok = ::openmldb::sdk::mc_->SetUp(3);
     sleep(5);
-    ::google::ParseCommandLineFlags(&argc, &argv, true);
     ::openmldb::sdk::router_ = ::openmldb::sdk::GetNewSQLRouter();
     if (nullptr == ::openmldb::sdk::router_) {
         LOG(ERROR) << "Fail Test with NULL SQL router";

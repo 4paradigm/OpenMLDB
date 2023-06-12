@@ -24,7 +24,7 @@ import org.apache.spark.sql.SparkSession
 object RunBatchSql {
 
   def main(args: Array[String]): Unit = {
-    OpenmldbJobUtil.checkOneSqlArgument(args)
+    OpenmldbJobUtil.checkArgumentSize(args, 1)
     runBatchSql(args(0))
   }
 
@@ -33,7 +33,9 @@ object RunBatchSql {
     val sqlText = OpenmldbJobUtil.getSqlFromFile(spark, sqlFilePath)
 
     val sess = new OpenmldbSession(spark)
-    sess.sql(sqlText).show()
+    // offline sync and send result back to taskmanager
+    // no show to print, save result by http in all modes?
+    sess.sql(sqlText).sendResult()
     sess.close()
   }
 

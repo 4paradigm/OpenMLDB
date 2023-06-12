@@ -17,6 +17,7 @@ on:
       - 'release/**'
       - 'tools/**'
       - '*.md'
+      - 'benchmark/**'
   pull_request:
     paths-ignore:
       - 'docs/**'
@@ -26,11 +27,12 @@ on:
       - 'release/**'
       - 'tools/**'
       - '*.md'
+      - 'benchmark/**'
   workflow_dispatch:
 
 jobs:
   coverage:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     env:
       CTEST_PARALLEL_LEVEL: 1 # parallel test level for ctest (make test)
       CMAKE_BUILD_TYPE: Debug
@@ -48,7 +50,7 @@ jobs:
         uses: actions/checkout@v3
         with:
           repository: linux-test-project/lcov
-          ref: master
+          ref: v1.16
           path: lcov
 
       - name: install lcov
@@ -72,7 +74,7 @@ jobs:
         uses: codecov/codecov-action@v3
         with:
           files: build/coverage.info
-          name: coverage
+          name: coverage-cpp
           fail_ci_if_error: true
           verbose: true
 

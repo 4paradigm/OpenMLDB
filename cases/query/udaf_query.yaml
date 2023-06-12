@@ -138,7 +138,7 @@ cases:
         sum(f1) over w as sum,
         avg(d1) over w as av
       from t1
-          window w as (partition by `key1` order by `ts` rows_range between 5s open preceding and 0s preceding maxsize 10);
+          window w as (partition by `key1` order by `ts` rows_range between 5s open preceding and 0s preceding maxsize 10)
     expect:
       columns:
         - id int
@@ -159,3 +159,60 @@ cases:
         6, g2, 3, 1, 1,    -2,   20.4, 4.0
         7, g2, 4, 2, 1,    -2,   20.4, 4.0
         8, g2, 5, 2, 1,    -2,   20.4, 5.0
+
+  -
+    id: 4
+    desc: udaf with a expr registered udf as parameter, refer \#2974
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
+          - [2,"aa",4,4,33,1.4,2.4,1590738991000,"2020-05-03","c",false]
+          - [3,"aa",3,3,32,1.3,2.3,1590738992000,"2020-05-02","b",true]
+          - [4,"aa",NULL,NULL,NULL,NULL,NULL,1590738993000,NULL,NULL,NULL]
+    sql: |
+      SELECT
+        {0}.id, c1,
+        count_where(inc(c2), c2<4) OVER w1 as m2,
+        sum_where(nvl(c3, 14), nvl(c3, 14) > 4) OVER w1 as m3
+      FROM {0} WINDOW
+        w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
+    expect:
+      order: id
+      columns: ["id int","c1 string","m2 bigint","m3 int"]
+      rows:
+        - [1, "aa", 1, NULL]
+        - [2, "aa", 1, NULL]
+        - [3, "aa", 2, NULL]
+        - [4, "aa", 1, 14]
+
+  -
+    id: 5
+    desc: udaf with a expr registered udf as parameter, refer \#2974
+    inputs:
+      -
+        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
+          - [2,"aa",4,4,33,1.4,2.4,1590738991000,"2020-05-03","c",false]
+          - [3,"aa",3,3,32,1.3,2.3,1590738992000,"2020-05-02","b",true]
+          - [4,"aa",NULL,NULL,NULL,NULL,NULL,1590738993000,NULL,NULL,NULL]
+    sql: |
+      SELECT
+        {0}.id, c1,
+        count(case when c2 > first_value(c2) over w1 then c3 else null end) OVER w1 as m2,
+        sum(nvl(c3, 14)) OVER w1 as m3
+      FROM {0} WINDOW
+        w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
+    expect:
+      order: id
+      columns: ["id int","c1 string","m2 bigint","m3 int"]
+      rows:
+        - [1, "aa", 0, 1]
+        - [2, "aa", 0, 5]
+        - [3, "aa", 1, 8]
+        - [4, "aa", 0, 21]
+

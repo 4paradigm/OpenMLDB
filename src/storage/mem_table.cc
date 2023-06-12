@@ -16,6 +16,7 @@
 
 #include "storage/mem_table.h"
 
+#include <snappy.h>
 #include <algorithm>
 #include <utility>
 
@@ -44,7 +45,7 @@ MemTable::MemTable(const std::string& name, uint32_t id, uint32_t pid, uint32_t 
     : Table(::openmldb::common::StorageMode::kMemory, name, id, pid, ttl * 60 * 1000, true, 60 * 1000, mapping,
             ttl_type, ::openmldb::type::CompressType::kNoCompress),
       seg_cnt_(seg_cnt),
-      segments_(MAX_INDEX_NUM, NULL),
+      segments_(MAX_INDEX_NUM, nullptr),
       enable_gc_(true),
       record_cnt_(0),
       segment_released_(false),
@@ -54,7 +55,7 @@ MemTable::MemTable(const ::openmldb::api::TableMeta& table_meta)
     : Table(table_meta.storage_mode(), table_meta.name(), table_meta.tid(), table_meta.pid(), 0, true, 60 * 1000,
             std::map<std::string, uint32_t>(), ::openmldb::type::TTLType::kAbsoluteTime,
             ::openmldb::type::CompressType::kNoCompress),
-      segments_(MAX_INDEX_NUM, NULL) {
+    segments_(MAX_INDEX_NUM, nullptr) {
     seg_cnt_ = 8;
     enable_gc_ = true;
     record_cnt_ = 0;
@@ -70,7 +71,7 @@ MemTable::~MemTable() {
     }
     Release();
     for (uint32_t i = 0; i < segments_.size(); i++) {
-        if (segments_[i] != NULL) {
+        if (segments_[i] != nullptr) {
             for (uint32_t j = 0; j < seg_cnt_; j++) {
                 delete segments_[i][j];
             }
@@ -162,6 +163,11 @@ bool MemTable::Put(uint64_t time, const std::string& value, const Dimensions& di
     }
     uint32_t real_ref_cnt = 0;
     const int8_t* data = reinterpret_cast<const int8_t*>(value.data());
+    std::string uncompress_data;
+    if (GetCompressType() == openmldb::type::kSnappy) {
+        snappy::Uncompress(value.data(), value.size(), &uncompress_data);
+        data = reinterpret_cast<const int8_t*>(uncompress_data.data());
+    }
     uint8_t version = codec::RowView::GetSchemaVersion(data);
     auto decoder = GetVersionDecoder(version);
     if (decoder == nullptr) {
@@ -183,6 +189,10 @@ bool MemTable::Put(uint64_t time, const std::string& value, const Dimensions& di
                     ts = time;
                 } else if (decoder->GetInteger(data, ts_col->GetId(), ts_col->GetType(), &ts) != 0) {
                     PDLOG(WARNING, "get ts failed. tid %u pid %u", id_, pid_);
+                    return false;
+                }
+                if (ts < 0) {
+                    PDLOG(WARNING, "ts %ld is negative. tid %u pid %u", ts, id_, pid_);
                     return false;
                 }
                 ts_map.emplace(ts_col->GetId(), ts);
@@ -244,7 +254,7 @@ uint64_t MemTable::Release() {
     }
     uint64_t total_cnt = 0;
     for (uint32_t i = 0; i < segments_.size(); i++) {
-        if (segments_[i] != NULL) {
+        if (segments_[i] != nullptr) {
             for (uint32_t j = 0; j < seg_cnt_; j++) {
                 total_cnt += segments_[i][j]->Release();
             }
@@ -267,32 +277,38 @@ void MemTable::SchedGc() {
         std::map<uint32_t, TTLSt> ttl_st_map;
         bool need_gc = true;
         size_t deleted_num = 0;
+        std::vector<size_t> deleting_pos;
         for (size_t pos = 0; pos < real_index.size(); pos++) {
             auto cur_index = real_index[pos];
             auto ts_col = cur_index->GetTsColumn();
             if (ts_col) {
                 ttl_st_map.emplace(ts_col->GetId(), *(cur_index->GetTTL()));
-            } else {
-                ttl_st_map.emplace(0, *(cur_index->GetTTL()));
             }
             if (cur_index->GetStatus() == IndexStatus::kWaiting) {
                 cur_index->SetStatus(IndexStatus::kDeleting);
                 need_gc = false;
             } else if (cur_index->GetStatus() == IndexStatus::kDeleting) {
-                if (real_index.size() == 1) {
-                    if (segments_[i] != NULL) {
-                        for (uint32_t k = 0; k < seg_cnt_; k++) {
-                            if (segments_[i][k] != NULL) {
-                                segments_[i][k]->ReleaseAndCount(gc_idx_cnt, gc_record_cnt, gc_record_byte_size);
-                            }
-                        }
-                    }
-                    deleted_num++;
-                }
-                cur_index->SetStatus(IndexStatus::kDeleted);
+                deleting_pos.push_back(pos);
             } else if (cur_index->GetStatus() == IndexStatus::kDeleted) {
                 deleted_num++;
             }
+        }
+        if (!deleting_pos.empty()) {
+            if (segments_[i] != nullptr) {
+                for (uint32_t k = 0; k < seg_cnt_; k++) {
+                    if (segments_[i][k] != nullptr) {
+                       if (real_index.size() == 1 || deleting_pos.size() + deleted_num == real_index.size()) {
+                            segments_[i][k]->ReleaseAndCount();
+                        } else {
+                            segments_[i][k]->ReleaseAndCount(deleting_pos);
+                        }
+                    }
+                }
+            }
+            for (auto pos : deleting_pos) {
+                real_index[pos]->SetStatus(IndexStatus::kDeleted);
+            }
+            deleted_num += deleting_pos.size();
         }
         if (!enable_gc_.load(std::memory_order_relaxed) || !need_gc) {
             continue;
@@ -449,7 +465,7 @@ TableIterator* MemTable::NewIterator(uint32_t index, const std::string& pk, Tick
     std::shared_ptr<IndexDef> index_def = table_index_.GetIndex(index);
     if (!index_def || !index_def->IsReady()) {
         PDLOG(WARNING, "index %d not found in table, tid %u pid %u", index, id_, pid_);
-        return NULL;
+        return nullptr;
     }
     uint32_t seg_idx = 0;
     if (seg_cnt_ > 1) {
@@ -487,19 +503,24 @@ uint64_t MemTable::GetRecordIdxByteSize() {
 
 uint64_t MemTable::GetRecordIdxCnt() {
     uint64_t record_idx_cnt = 0;
-    auto inner_indexs = table_index_.GetAllInnerIndex();
-    for (size_t i = 0; i < inner_indexs->size(); i++) {
-        bool is_valid = false;
-        for (const auto& index_def : inner_indexs->at(i)->GetIndex()) {
-            if (index_def && index_def->IsReady()) {
-                is_valid = true;
-                break;
-            }
-        }
-        if (is_valid) {
-            for (uint32_t j = 0; j < seg_cnt_; j++) {
-                record_idx_cnt += segments_[i][j]->GetIdxCnt();
-            }
+    std::shared_ptr<IndexDef> index_def = table_index_.GetIndex(0);
+    if (!index_def || !index_def->IsReady()) {
+        return record_idx_cnt;
+    }
+    uint32_t inner_idx = index_def->GetInnerPos();
+    auto inner_index = table_index_.GetInnerIndex(inner_idx);
+    int32_t ts_col_id = -1;
+    auto ts_col = index_def->GetTsColumn();
+    if (ts_col) {
+        ts_col_id = ts_col->GetId();
+    }
+    for (uint32_t i = 0; i < seg_cnt_; i++) {
+        if (inner_index->GetIndex().size() > 1 && ts_col_id >= 0) {
+            uint64_t record_cnt = 0;
+            segments_[inner_idx][i]->GetIdxCnt(ts_col_id, record_cnt);
+            record_idx_cnt += record_cnt;
+        } else {
+            record_idx_cnt += segments_[inner_idx][i]->GetIdxCnt();
         }
     }
     return record_idx_cnt;
@@ -526,17 +547,27 @@ uint64_t MemTable::GetRecordPkCnt() {
 }
 
 bool MemTable::GetRecordIdxCnt(uint32_t idx, uint64_t** stat, uint32_t* size) {
-    if (stat == NULL) {
+    if (stat == nullptr) {
         return false;
     }
     std::shared_ptr<IndexDef> index_def = table_index_.GetIndex(idx);
     if (!index_def || !index_def->IsReady()) {
         return false;
     }
-    auto* data_array = new uint64_t[seg_cnt_];
-    uint32_t real_idx = index_def->GetInnerPos();
+    auto* data_array = new uint64_t[seg_cnt_]();
+    uint32_t inner_idx = index_def->GetInnerPos();
+    auto inner_index = table_index_.GetInnerIndex(inner_idx);
+    int32_t ts_col_id = -1;
+    auto ts_col = index_def->GetTsColumn();
+    if (ts_col) {
+        ts_col_id = ts_col->GetId();
+    }
     for (uint32_t i = 0; i < seg_cnt_; i++) {
-        data_array[i] = segments_[real_idx][i]->GetIdxCnt();
+        if (inner_index->GetIndex().size() > 1 && ts_col_id >= 0) {
+            segments_[inner_idx][i]->GetIdxCnt(ts_col_id, data_array[i]);
+        } else {
+            data_array[i] += segments_[inner_idx][i]->GetIdxCnt();
+        }
     }
     *stat = data_array;
     *size = seg_cnt_;
@@ -554,6 +585,9 @@ bool MemTable::AddIndex(const ::openmldb::common::ColumnKey& column_key) {
             return false;
         }
         new_table_meta->mutable_column_key(index_def->GetId())->CopyFrom(column_key);
+        if (column_key.has_ttl()) {
+            index_def->SetTTL(::openmldb::storage::TTLSt(column_key.ttl()));
+        }
     } else {
         ::openmldb::common::ColumnKey* added_column_key = new_table_meta->add_column_key();
         added_column_key->CopyFrom(column_key);
@@ -628,7 +662,7 @@ bool MemTable::AddIndex(const ::openmldb::common::ColumnKey& column_key) {
 bool MemTable::DeleteIndex(const std::string& idx_name) {
     std::shared_ptr<IndexDef> index_def = table_index_.GetIndex(idx_name);
     if (!index_def) {
-        PDLOG(WARNING, "index %s is not exist. tid %u pid %u", idx_name.c_str(), id_, pid_);
+        PDLOG(WARNING, "index %s does not exist. tid %u pid %u", idx_name.c_str(), id_, pid_);
         return false;
     }
     if (index_def->GetId() == 0) {
@@ -653,7 +687,7 @@ bool MemTable::DeleteIndex(const std::string& idx_name) {
     std::shared_ptr<IndexDef> index_def = table_index_.GetIndex(index);
     if (!index_def || !index_def->IsReady()) {
         LOG(WARNING) << "index id " << index << "  not found. tid " << id_ << " pid " << pid_;
-        return NULL;
+        return nullptr;
     }
     uint64_t expire_time = 0;
     uint64_t expire_cnt = 0;
@@ -675,7 +709,7 @@ TraverseIterator* MemTable::NewTraverseIterator(uint32_t index) {
     std::shared_ptr<IndexDef> index_def = GetIndex(index);
     if (!index_def || !index_def->IsReady()) {
         PDLOG(WARNING, "index %u not found. tid %u pid %u", index, id_, pid_);
-        return NULL;
+        return nullptr;
     }
     uint64_t expire_time = 0;
     uint64_t expire_cnt = 0;
@@ -783,8 +817,8 @@ MemTableTraverseIterator::MemTableTraverseIterator(Segment** segments, uint32_t 
     : segments_(segments),
       seg_cnt_(seg_cnt),
       seg_idx_(0),
-      pk_it_(NULL),
-      it_(NULL),
+      pk_it_(nullptr),
+      it_(nullptr),
       record_idx_(0),
       ts_idx_(0),
       expire_value_(expire_time, expire_cnt, ttl_type),
@@ -797,12 +831,12 @@ MemTableTraverseIterator::MemTableTraverseIterator(Segment** segments, uint32_t 
 }
 
 MemTableTraverseIterator::~MemTableTraverseIterator() {
-    if (pk_it_ != NULL) delete pk_it_;
-    if (it_ != NULL) delete it_;
+    if (pk_it_ != nullptr) delete pk_it_;
+    if (it_ != nullptr) delete it_;
 }
 
 bool MemTableTraverseIterator::Valid() {
-    return pk_it_ != NULL && pk_it_->Valid() && it_ != NULL && it_->Valid() &&
+    return pk_it_ != nullptr && pk_it_->Valid() && it_ != nullptr && it_->Valid() &&
            !expire_value_.IsExpired(it_->GetKey(), record_idx_);
 }
 
@@ -819,7 +853,7 @@ uint64_t MemTableTraverseIterator::GetCount() const { return traverse_cnt_; }
 
 void MemTableTraverseIterator::NextPK() {
     delete it_;
-    it_ = NULL;
+    it_ = nullptr;
     do {
         ticket_.Pop();
         if (pk_it_->Valid()) {
@@ -827,7 +861,7 @@ void MemTableTraverseIterator::NextPK() {
         }
         if (!pk_it_->Valid()) {
             delete pk_it_;
-            pk_it_ = NULL;
+            pk_it_ = nullptr;
             seg_idx_++;
             if (seg_idx_ < seg_cnt_) {
                 pk_it_ = segments_[seg_idx_]->GetKeyEntries()->NewIterator();
@@ -839,9 +873,9 @@ void MemTableTraverseIterator::NextPK() {
                 break;
             }
         }
-        if (it_ != NULL) {
+        if (it_ != nullptr) {
             delete it_;
-            it_ = NULL;
+            it_ = nullptr;
         }
         if (segments_[seg_idx_]->GetTsCnt() > 1) {
             KeyEntry* entry = ((KeyEntry**)pk_it_->GetValue())[0];  // NOLINT
@@ -855,20 +889,20 @@ void MemTableTraverseIterator::NextPK() {
         it_->SeekToFirst();
         record_idx_ = 1;
         traverse_cnt_++;
-        if (traverse_cnt_ >= FLAGS_max_traverse_cnt) {
+        if (FLAGS_max_traverse_cnt > 0 && traverse_cnt_ >= FLAGS_max_traverse_cnt) {
             break;
         }
-    } while (it_ == NULL || !it_->Valid() || expire_value_.IsExpired(it_->GetKey(), record_idx_));
+    } while (it_ == nullptr || !it_->Valid() || expire_value_.IsExpired(it_->GetKey(), record_idx_));
 }
 
 void MemTableTraverseIterator::Seek(const std::string& key, uint64_t ts) {
-    if (pk_it_ != NULL) {
+    if (pk_it_ != nullptr) {
         delete pk_it_;
-        pk_it_ = NULL;
+        pk_it_ = nullptr;
     }
-    if (it_ != NULL) {
+    if (it_ != nullptr) {
         delete it_;
-        it_ = NULL;
+        it_ = nullptr;
     }
     ticket_.Pop();
     if (seg_cnt_ > 1) {
@@ -887,7 +921,7 @@ void MemTableTraverseIterator::Seek(const std::string& key, uint64_t ts) {
             it_ = ((KeyEntry*)pk_it_->GetValue())         // NOLINT
                       ->entries.NewIterator();
         }
-        if (spk.compare(pk_it_->GetKey()) != 0 || ts == 0) {
+        if (spk.compare(pk_it_->GetKey()) != 0) {
             it_->SeekToFirst();
             traverse_cnt_++;
             record_idx_ = 1;
@@ -900,7 +934,7 @@ void MemTableTraverseIterator::Seek(const std::string& key, uint64_t ts) {
                 record_idx_ = 1;
                 while (it_->Valid() && record_idx_ <= expire_value_.lat_ttl) {
                     traverse_cnt_++;
-                    if (it_->GetKey() < ts) {
+                    if (it_->GetKey() <= ts) {
                         return;
                     }
                     it_->Next();
@@ -910,9 +944,6 @@ void MemTableTraverseIterator::Seek(const std::string& key, uint64_t ts) {
             } else {
                 it_->Seek(ts);
                 traverse_cnt_++;
-                if (it_->Valid() && it_->GetKey() == ts) {
-                    it_->Next();
-                }
                 if (!it_->Valid() || expire_value_.IsExpired(it_->GetKey(), record_idx_)) {
                     NextPK();
                 }
@@ -928,14 +959,14 @@ openmldb::base::Slice MemTableTraverseIterator::GetValue() const {
 }
 
 uint64_t MemTableTraverseIterator::GetKey() const {
-    if (it_ != NULL && it_->Valid()) {
+    if (it_ != nullptr && it_->Valid()) {
         return it_->GetKey();
     }
     return UINT64_MAX;
 }
 
 std::string MemTableTraverseIterator::GetPK() const {
-    if (pk_it_ == NULL) {
+    if (pk_it_ == nullptr) {
         return std::string();
     }
     return pk_it_->GetKey().ToString();
@@ -943,13 +974,13 @@ std::string MemTableTraverseIterator::GetPK() const {
 
 void MemTableTraverseIterator::SeekToFirst() {
     ticket_.Pop();
-    if (pk_it_ != NULL) {
+    if (pk_it_ != nullptr) {
         delete pk_it_;
-        pk_it_ = NULL;
+        pk_it_ = nullptr;
     }
-    if (it_ != NULL) {
+    if (it_ != nullptr) {
         delete it_;
-        it_ = NULL;
+        it_ = nullptr;
     }
     for (seg_idx_ = 0; seg_idx_ < seg_cnt_; seg_idx_++) {
         pk_it_ = segments_[seg_idx_]->GetKeyEntries()->NewIterator();
@@ -971,15 +1002,15 @@ void MemTableTraverseIterator::SeekToFirst() {
                 return;
             }
             delete it_;
-            it_ = NULL;
+            it_ = nullptr;
             pk_it_->Next();
             ticket_.Pop();
-            if (traverse_cnt_ >= FLAGS_max_traverse_cnt) {
+            if (FLAGS_max_traverse_cnt > 0 && traverse_cnt_ >= FLAGS_max_traverse_cnt) {
                 return;
             }
         }
         delete pk_it_;
-        pk_it_ = NULL;
+        pk_it_ = nullptr;
     }
 }
 

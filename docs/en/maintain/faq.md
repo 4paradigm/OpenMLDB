@@ -10,6 +10,26 @@ It can be queried by `ps axu | grep openmldb`. (Note that `mon` is used as the d
 
 If the processes are all running and the cluster still behaves abnormally, you need to query the server log. You can give priority to 'WARN' and 'ERROR' level logs, which are most likely the root cause.
 
+### 2. What if tables are not recovered successfully？
+
+In the common cases, tables will be recovered automatically
+after the service is started. However, in some cases
+there may be failures during auto-recover, e.g.,
+- tablet exits unexpectedly
+- tablets that store tables with multiple replicas restart at the same time or too quickly, causing some operations of `auto_failover` unfinished
+- auto_failover is set to `false`
+
+After all the services are started, we can use `gettablestatus` to show the statuses of all tables:
+```
+python tools/openmldb_ops.py --openmldb_bin_path=./bin/openmldb --zk_cluster=172.24.4.40:30481 --zk_root_path=/openmldb --cmd=gettablestatus
+```
+
+If there are `Warnings`，we can use `recoverdata` to manually recover the data:
+```
+python tools/openmldb_ops.py --openmldb_bin_path=./bin/openmldb --zk_cluster=172.24.4.40:30481 --zk_root_path=/openmldb --cmd=recoverdata
+```
+
+
 ## Server FAQ
 
 ### 1. Why is there a warning of "Fail to write into Socket" in the log?
@@ -45,17 +65,7 @@ Generally speaking, this is a normal phenomenon and does not represent an anomal
 ```
 rpc_client.h:xxx] request error. [E1008] Reached timeout=xxxms
 ```
-This is because the timeout setting of the rpc request sent by the client itself is small, and the client itself disconnects itself. Note that this is a timeout for rpc.
-
-It is divided into the following situations:
-#### Synchronized offline job
-This happens easily when using synchronized offline commands. you can use
-```sql
-> SET @@job_timeout = "600000";
-```
-To adjust the timeout time of rpc, use 'ms' units.
-#### normal request
-If it is a simple query or insert, still get timeout, the general `request_timeout` configuration needs to be changed.
+This is because the timeout setting of the rpc request sent by the client itself is small, and the client itself disconnects itself. Note that this is a timeout for rpc. The general `request_timeout` configuration needs to be changed.
 1. CLI: set `--request_timeout` before running
 2. JAVA: SDK direct connection, adjust `SdkOption.requestTimeout`; JDBC, adjust the parameter `requestTimeout` in url
 3. Python: SDK direct connection(DBAPI), adjust `connect()` arg `request_timeout`; SQLAlchemy, adjust the parameter `requestTimeout` in url
@@ -96,12 +106,12 @@ zk log：
 1. CLI：set before running, `--zk_log_level`(int) to set zk log level,`--zk_log_file` to set log file(just file, not dir)
 2. JAVA/Python SDK：in option or url, set `zkLogLevel` and `zkLogFile`
 
-- `zk_log_level`(int, default=3, which is INFO): 
+- `zk_log_level`(int, default=0, which is DISABLE_LOGGING): 
 Log messages at or **below** this level. 0-disable all zk log, 1-error, 2-warn, 3-info, 4-debug.
 
 sdk log(glog):
-1. CLI：set before running, `--glog_level`(int) to set glog level,`--glogDir`to set glog dir(a path, not a file)
+1. CLI：set before running, `--glog_level`(int) to set glog level,`--glog_dir`to set glog dir(a path, not a file)
 2. JAVA/Python SDK：in option or url, set `glogLevel` and`glogDir`
 
-- `glog_level`(int, default=0, which is INFO):
+- `glog_level`(int, default=1, which is WARNING):
 Log messages at or **above** this level. The numbers of severity levels INFO, WARNING, ERROR, and FATAL are 0, 1, 2, and 3, respectively.

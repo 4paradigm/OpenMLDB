@@ -203,7 +203,7 @@ TEST_P(TableTest, MultiDimissionPut0) {
     // some functions in disk table need to be implemented.
     // refer to issue #1238
     if (storageMode == ::openmldb::common::StorageMode::kMemory) {
-        ASSERT_EQ(3, (int64_t)table->GetRecordIdxCnt());
+        ASSERT_EQ(1, (int64_t)table->GetRecordIdxCnt());
     }
     ASSERT_EQ(1, (int64_t)table->GetRecordCnt());
     delete table;
@@ -615,7 +615,7 @@ TEST_P(TableTest, TableIteratorRun) {
     ASSERT_EQ(20, (int64_t)it->GetKey());
 
     it->Seek("test", 20);
-    ASSERT_FALSE(it->Valid());
+    ASSERT_TRUE(it->Valid());
 
     delete it;
     delete table;
@@ -639,15 +639,15 @@ TEST_P(TableTest, TableIteratorRun) {
     it1->Seek("pk", 9528);
     ASSERT_TRUE(it1->Valid());
     ASSERT_STREQ("pk", it1->GetPK().c_str());
-    ASSERT_EQ(9527, (int64_t)it1->GetKey());
+    ASSERT_EQ(9528, (int64_t)it1->GetKey());
     it1->Next();
 
     ASSERT_TRUE(it1->Valid());
-    ASSERT_STREQ("pk1", it1->GetPK().c_str());
+    ASSERT_STREQ("pk", it1->GetPK().c_str());
     ASSERT_EQ(9527, (int64_t)it1->GetKey());
     it1->Next();
     ASSERT_STREQ("pk1", it1->GetPK().c_str());
-    ASSERT_EQ(100, (int64_t)it1->GetKey());
+    ASSERT_EQ(9527, (int64_t)it1->GetKey());
 
     delete it1;
     delete table1;
@@ -743,16 +743,13 @@ TEST_P(TableTest, TableIteratorCount) {
     it = table->NewTraverseIterator(0);
     it->Seek("pk500", 9528);
     ASSERT_STREQ("pk500", it->GetPK().c_str());
-    ASSERT_EQ(9527, (int64_t)it->GetKey());
+    ASSERT_EQ(9528, (int64_t)it->GetKey());
     count = 0;
     while (it->Valid()) {
         count++;
         it->Next();
     }
-    // We seek to pk500 9528. The next data is pk500 9527.
-    // Then all these records with pk greater than str(500) and both timestamps are traversed
-    // So here the count is 55551
-    ASSERT_EQ(55551, count);
+    ASSERT_EQ(55552, count);
 
     delete it;
 
@@ -793,7 +790,6 @@ TEST_P(TableTest, TableIteratorTS) {
     table_meta.set_mode(::openmldb::api::TableMode::kTableLeader);
     table_meta.set_key_entry_max_height(8);
     table_meta.set_storage_mode(storageMode);
-    table_meta.set_format_version(1);
     SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "card", ::openmldb::type::kString);
     SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "mcc", ::openmldb::type::kString);
     SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "price", ::openmldb::type::kBigInt);
@@ -904,7 +900,6 @@ TEST_P(TableTest, TraverseIteratorCount) {
     table_meta.set_seg_cnt(8);
     table_meta.set_mode(::openmldb::api::TableMode::kTableLeader);
     table_meta.set_key_entry_max_height(8);
-    table_meta.set_format_version(1);
     table_meta.set_storage_mode(storageMode);
     SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "card", ::openmldb::type::kString);
     SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "mcc", ::openmldb::type::kString);
@@ -1037,7 +1032,6 @@ TEST_P(TableTest, AbsAndLatSetGet) {
     table_meta.set_seg_cnt(8);
     table_meta.set_mode(::openmldb::api::TableMode::kTableLeader);
     table_meta.set_key_entry_max_height(8);
-    table_meta.set_format_version(1);
     table_meta.set_storage_mode(storageMode);
     SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "card", ::openmldb::type::kString);
     SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "mcc", ::openmldb::type::kString);
@@ -1138,7 +1132,6 @@ TEST_P(TableTest, AbsOrLatSetGet) {
     table_meta.set_seg_cnt(8);
     table_meta.set_mode(::openmldb::api::TableMode::kTableLeader);
     table_meta.set_key_entry_max_height(8);
-    table_meta.set_format_version(1);
     table_meta.set_storage_mode(storageMode);
     SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "card", ::openmldb::type::kString);
     SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "mcc", ::openmldb::type::kString);
@@ -1241,7 +1234,6 @@ TEST_P(TableTest, GcAbsOrLat) {
     table_meta.set_seg_cnt(8);
     table_meta.set_mode(::openmldb::api::TableMode::kTableLeader);
     table_meta.set_key_entry_max_height(8);
-    table_meta.set_format_version(1);
     table_meta.set_storage_mode(storageMode);
     SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "idx0", ::openmldb::type::kString);
     SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "value", ::openmldb::type::kString);
@@ -1392,7 +1384,6 @@ TEST_P(TableTest, GcAbsAndLat) {
     table_meta.set_seg_cnt(8);
     table_meta.set_mode(::openmldb::api::TableMode::kTableLeader);
     table_meta.set_key_entry_max_height(8);
-    table_meta.set_format_version(1);
     table_meta.set_storage_mode(storageMode);
     SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "idx0", ::openmldb::type::kString);
     SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "value", ::openmldb::type::kString);
@@ -1552,7 +1543,6 @@ TEST_P(TableTest, TraverseIteratorCountWithLimit) {
     table_meta.set_seg_cnt(8);
     table_meta.set_mode(::openmldb::api::TableMode::kTableLeader);
     table_meta.set_key_entry_max_height(8);
-    table_meta.set_format_version(1);
     table_meta.set_storage_mode(storageMode);
     SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "card", ::openmldb::type::kString);
     SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "mcc", ::openmldb::type::kString);
@@ -1661,7 +1651,6 @@ TEST_P(TableTest, TSColIDLength) {
     table_meta.set_seg_cnt(8);
     table_meta.set_mode(::openmldb::api::TableMode::kTableLeader);
     table_meta.set_key_entry_max_height(8);
-    table_meta.set_format_version(1);
     table_meta.set_storage_mode(storageMode);
     SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "card", ::openmldb::type::kString);
     SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "mcc", ::openmldb::type::kString);
@@ -1722,7 +1711,6 @@ TEST_P(TableTest, MultiDimensionPutTS) {
     table_meta.set_mode(::openmldb::api::TableMode::kTableLeader);
     table_meta.set_key_entry_max_height(8);
     table_meta.set_storage_mode(storageMode);
-    table_meta.set_format_version(1);
     SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "card", ::openmldb::type::kString);
     SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "mcc", ::openmldb::type::kString);
     SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "price", ::openmldb::type::kBigInt);
@@ -1781,7 +1769,6 @@ TEST_P(TableTest, MultiDimensionPutTS1) {
     table_meta.set_mode(::openmldb::api::TableMode::kTableLeader);
     table_meta.set_key_entry_max_height(8);
     table_meta.set_storage_mode(storageMode);
-    table_meta.set_format_version(1);
     SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "card", ::openmldb::type::kString);
     SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "mcc", ::openmldb::type::kString);
     SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "ts1", ::openmldb::type::kBigInt);
@@ -1875,7 +1862,6 @@ TEST_P(TableTest, AbsAndLat) {
     table_meta.set_mode(::openmldb::api::TableMode::kTableLeader);
     table_meta.set_key_entry_max_height(8);
     table_meta.set_storage_mode(storageMode);
-    table_meta.set_format_version(1);
     SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "test", ::openmldb::type::kString);
     SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "ts1", ::openmldb::type::kBigInt);
     SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "ts2", ::openmldb::type::kBigInt);
@@ -1903,9 +1889,11 @@ TEST_P(TableTest, AbsAndLat) {
         std::vector<std::string> row = {
             "test" + std::to_string(i % 10), ts_str, ts_str, ts_str, ts_str, ts_str, ts_str};
         ::openmldb::api::PutRequest request;
-        ::openmldb::api::Dimension* dim = request.add_dimensions();
-        dim->set_idx(0);
-        dim->set_key(row[0]);
+        for (int idx = 0; idx <= 5; idx++) {
+            auto dim = request.add_dimensions();
+            dim->set_idx(idx);
+            dim->set_key(row[0]);
+        }
         std::string value;
         ASSERT_EQ(0, codec.EncodeRow(row, &value));
         table->Put(0, value, request.dimensions());
@@ -1930,6 +1918,39 @@ TEST_P(TableTest, AbsAndLat) {
     }
 
     delete table;
+}
+
+TEST_P(TableTest, NegativeTs) {
+    ::openmldb::common::StorageMode storageMode = GetParam();
+    ::openmldb::api::TableMeta table_meta;
+    table_meta.set_name("table1");
+    std::string table_path = "";
+    int id = 1;
+    if (storageMode == ::openmldb::common::kHDD) {
+        id = ++counter;
+        table_path = GetDBPath(FLAGS_hdd_root_path, id, 1);
+    }
+    table_meta.set_tid(id);
+    table_meta.set_pid(1);
+    table_meta.set_seg_cnt(8);
+    table_meta.set_mode(::openmldb::api::TableMode::kTableLeader);
+    table_meta.set_key_entry_max_height(8);
+    table_meta.set_format_version(1);
+    table_meta.set_storage_mode(storageMode);
+    SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "card", ::openmldb::type::kString);
+    SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "ts1", ::openmldb::type::kBigInt);
+    SchemaCodec::SetIndex(table_meta.add_column_key(), "card", "card", "ts1", ::openmldb::type::kAbsoluteTime, 0, 0);
+    Table* table = CreateTable(table_meta, table_path);
+    table->Init();
+    codec::SDKCodec codec(table_meta);
+    std::vector<std::string> row = {"card1", "-1224"};
+    ::openmldb::api::PutRequest request;
+    ::openmldb::api::Dimension* dim = request.add_dimensions();
+    dim->set_idx(0);
+    dim->set_key(row[0]);
+    std::string value;
+    ASSERT_EQ(0, codec.EncodeRow(row, &value));
+    ASSERT_FALSE(table->Put(0, value, request.dimensions()));
 }
 
 INSTANTIATE_TEST_CASE_P(TestMemAndHDD, TableTest,

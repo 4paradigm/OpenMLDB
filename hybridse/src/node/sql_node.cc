@@ -22,10 +22,12 @@
 #include <unordered_map>
 #include <utility>
 
+#include "absl/algorithm/container.h"
 #include "absl/container/flat_hash_map.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/str_join.h"
 #include "absl/strings/string_view.h"
+#include "absl/strings/substitute.h"
 #include "boost/algorithm/string/case_conv.hpp"
 #include "glog/logging.h"
 #include "node/node_enum.h"
@@ -72,6 +74,7 @@ static absl::flat_hash_map<CmdType, absl::string_view> CreateCmdTypeNamesMap() {
         {CmdType::kCmdShowTableStatus, "show table status"},
         {CmdType::kCmdDropFunction, "drop function"},
         {CmdType::kCmdShowFunctions, "show functions"},
+        {CmdType::kCmdShowJobLog, "show joblog"},
     };
     for (auto kind = 0; kind < CmdType::kLastCmd; ++kind) {
         DCHECK(map.find(static_cast<CmdType>(kind)) != map.end());
@@ -82,6 +85,82 @@ static absl::flat_hash_map<CmdType, absl::string_view> CreateCmdTypeNamesMap() {
 static const absl::flat_hash_map<CmdType, absl::string_view>& GetCmdTypeNamesMap() {
   static const absl::flat_hash_map<CmdType, std::string_view>& map = *new auto(CreateCmdTypeNamesMap());
   return map;
+}
+
+static absl::flat_hash_map<DataType, absl::string_view> CreateDataTypeNamesMap() {
+  absl::flat_hash_map<DataType, absl::string_view> map = {
+      {kBool, "bool"},     {kInt16, "int16"},   {kInt32, "int32"},    {kInt64, "int64"},
+      {kFloat, "float"},   {kDouble, "double"}, {kVarchar, "string"}, {kTimestamp, "timestamp"},
+      {kDate, "date"},     {kList, "list"},     {kMap, "map"},        {kIterator, "iterator"},
+      {kRow, "row"},       {kSecond, "second"}, {kMinute, "minute"},  {kHour, "hour"},
+      {kNull, "null"},     {kArray, "array"},   {kVoid, "void"},      {kPlaceholder, "placeholder"},
+      {kOpaque, "opaque"}, {kTuple, "tuple"},   {kDay, "day"},        {kInt8Ptr, "int8ptr"},
+  };
+
+  for (auto kind = 0; kind < DataType::kLastDataType; ++kind) {
+        DCHECK(map.find(static_cast<DataType>(kind)) != map.end());
+  }
+  DCHECK(map.find(kVoid) != map.end());
+  DCHECK(map.find(kNull) != map.end());
+  DCHECK(map.find(kPlaceholder) != map.end());
+
+  return map;
+}
+
+static const absl::flat_hash_map<DataType, absl::string_view>& GetDataTypeNamesMap() {
+  static const absl::flat_hash_map<DataType, std::string_view> &map = *new auto(CreateDataTypeNamesMap());
+  return map;
+}
+
+static absl::flat_hash_map<ExprType, absl::string_view> CreateExprTypeNamesMap() {
+  absl::flat_hash_map<ExprType, absl::string_view> map = {
+      {kExprPrimary, "primary"},
+      {kExprParameter, "parameter"},
+      {kExprId, "id"},
+      {kExprBinary, "binary"},
+      {kExprUnary, "unary"},
+      {kExprCall, "function"},
+      {kExprCase, "case"},
+      {kExprWhen, "when"},
+      {kExprBetween, "between"},
+      {kExprColumnRef, "column ref"},
+      {kExprColumnId, "column id"},
+      {kExprCast, "cast"},
+      {kExprAll, "all"},
+      {kExprStruct, "struct"},
+      {kExprQuery, "query"},
+      {kExprOrder, "order"},
+      {kExprGetField, "get field"},
+      {kExprCond, "cond"},
+      {kExprUnknow, "unknow"},
+      {kExprIn, "in"},
+      {kExprList, "expr_list"},
+      {kExprForIn, "for_in"},
+      {kExprRange, "range"},
+      {kExprOrderExpression, "order"},
+      {kExprEscaped, "escape"},
+      {kExprArray, "array"},
+  };
+  for (auto kind = 0; kind < ExprType::kExprLast; ++kind) {
+        DCHECK(map.find(static_cast<ExprType>(kind)) != map.end());
+  }
+  return map;
+}
+
+static const absl::flat_hash_map<ExprType, absl::string_view>& GetExprTypeNamesMap() {
+  static const absl::flat_hash_map<ExprType, std::string_view> &map = *new auto(CreateExprTypeNamesMap());
+  return map;
+}
+
+template <typename NodeType, typename Allocator>
+void PrintNodeList(const std::vector<NodeType *, Allocator> &node_list, std::ostream &output,
+                   const std::string &org_tab) {
+  for (auto iter = node_list.cbegin(); iter != node_list.cend(); iter++) {
+        (*iter)->Print(output, org_tab);
+        if (iter + 1 != node_list.end()) {
+            output << "\n";
+        }
+  }
 }
 
 bool SqlEquals(const SqlNode *left, const SqlNode *right) {
@@ -289,6 +368,17 @@ bool SqlNodeList::Equals(const SqlNodeList *that) const {
 void QueryNode::Print(std::ostream &output, const std::string &org_tab) const {
     SqlNode::Print(output, org_tab);
     output << ": " << QueryTypeName(query_type_);
+
+    std::string new_tab = org_tab + INDENT;
+    if (!with_clauses_.empty()) {
+        output << "\n" << new_tab << SPACE_ST << "with_clause[list]:";
+        for (size_t i = 0; i <  with_clauses_.size(); i++) {
+            auto node = with_clauses_[i];
+            output << "\n";
+            PrintSqlNode(output, new_tab + INDENT, node, std::to_string(i), false);
+        }
+    }
+
     if (config_options_.get() != nullptr) {
         output << "\n";
         PrintValue(output, org_tab + INDENT + SPACE_ED, config_options_.get(), "config_options", false);
@@ -300,7 +390,9 @@ bool QueryNode::Equals(const SqlNode *node) const {
     }
 
     const QueryNode *that = dynamic_cast<const QueryNode *>(node);
-    return this->query_type_ == that->query_type_;
+    return that != nullptr && this->query_type_ == that->query_type_ &&
+           absl::c_equal(with_clauses_, that->with_clauses_,
+                         [](WithClauseEntry *lhs, WithClauseEntry *rhs) { return SqlEquals(lhs, rhs); });
 }
 
 const std::string AllNode::GetExprString() const {
@@ -664,7 +756,8 @@ bool FrameNode::Equals(const SqlNode *node) const {
     }
     const FrameNode *that = dynamic_cast<const FrameNode *>(node);
     return this->frame_type_ == that->frame_type_ && SqlEquals(this->frame_range_, that->frame_range_) &&
-           SqlEquals(this->frame_rows_, that->frame_rows_) && (this->frame_maxsize_ == that->frame_maxsize_);
+           SqlEquals(this->frame_rows_, that->frame_rows_) && (this->frame_maxsize_ == that->frame_maxsize_) &&
+           exclude_current_row_ == that->exclude_current_row_;
 }
 
 const std::string FrameNode::GetExprString() const {
@@ -902,7 +995,7 @@ void WindowDefNode::Print(std::ostream &output, const std::string &org_tab) cons
     if (exclude_current_time_) {
         attrs.emplace_back("exclude_current_time");
     }
-    if (exclude_current_row_) {
+    if (exclude_current_row()) {
         attrs.emplace_back("exclude_current_row");
     }
     if (instance_not_in_window_) {
@@ -951,8 +1044,7 @@ bool WindowDefNode::CanMergeWith(const WindowDefNode *that, const bool enable_wi
 
 WindowDefNode* WindowDefNode::ShadowCopy(NodeManager *nm) const {
     return dynamic_cast<WindowDefNode *>(nm->MakeWindowDefNode(union_tables_, GetPartitions(), GetOrders(), GetFrame(),
-                                                               exclude_current_time_, exclude_current_row_,
-                                                               instance_not_in_window_));
+                                                               exclude_current_time_, instance_not_in_window_));
 }
 
 bool WindowDefNode::Equals(const SqlNode *node) const {
@@ -961,7 +1053,6 @@ bool WindowDefNode::Equals(const SqlNode *node) const {
     }
     const WindowDefNode *that = dynamic_cast<const WindowDefNode *>(node);
     return this->window_name_ == that->window_name_ && this->exclude_current_time_ == that->exclude_current_time_ &&
-           this->exclude_current_row_ == that->exclude_current_row_ &&
            this->instance_not_in_window_ == that->instance_not_in_window_ &&
            SqlListEquals(this->union_tables_, that->union_tables_) && ExprEquals(this->orders_, that->orders_) &&
            ExprEquals(this->partitions_, that->partitions_) && SqlEquals(this->frame_ptr_, that->frame_ptr_);
@@ -1022,208 +1113,94 @@ bool SelectQueryNode::Equals(const SqlNode *node) const {
            SqlEquals(this->limit_ptr_, that->limit_ptr_);
 }
 
-// Return the node type name
-// param type
-// return
-std::string NameOfSqlNodeType(const SqlNodeType &type) {
-    std::string output;
-    switch (type) {
-        case kCreateStmt:
-            output = "CREATE";
-            break;
-        case kCmdStmt:
-            output = "CMD";
-            break;
-        case kExplainStmt:
-            output = "EXPLAIN";
-        case kName:
-            output = "kName";
-            break;
-        case kType:
-            output = "kType";
-            break;
-        case kNodeList:
-            output = "kNodeList";
-            break;
-        case kResTarget:
-            output = "kResTarget";
-            break;
-        case kTableRef:
-            output = "kTableRef";
-            break;
-        case kQuery:
-            output = "kQuery";
-            break;
-        case kColumnDesc:
-            output = "kColumnDesc";
-            break;
-        case kColumnIndex:
-            output = "kColumnIndex";
-            break;
-        case kExpr:
-            output = "kExpr";
-            break;
-        case kWindowDef:
-            output = "kWindowDef";
-            break;
-        case kFrames:
-            output = "kFrame";
-            break;
-        case kFrameExtent:
-            output = "kFrameExtent";
-            break;
-        case kFrameBound:
-            output = "kBound";
-            break;
-        case kConst:
-            output = "kConst";
-            break;
-        case kLimit:
-            output = "kLimit";
-            break;
-        case kFnList:
-            output = "kFnList";
-            break;
-        case kFnDef:
-            output = "kFnDef";
-            break;
-        case kFnHeader:
-            output = "kFnHeader";
-            break;
-        case kFnPara:
-            output = "kFnPara";
-            break;
-        case kFnReturnStmt:
-            output = "kFnReturnStmt";
-            break;
-        case kFnAssignStmt:
-            output = "kFnAssignStmt";
-            break;
-        case kFnIfStmt:
-            output = "kFnIfStmt";
-            break;
-        case kFnElifStmt:
-            output = "kFnElseifStmt";
-            break;
-        case kFnElseStmt:
-            output = "kFnElseStmt";
-            break;
-        case kFnIfBlock:
-            output = "kFnIfBlock";
-            break;
-        case kFnElseBlock:
-            output = "kFnElseBlock";
-            break;
-        case kFnIfElseBlock:
-            output = "kFnIfElseBlock";
-            break;
-        case kFnElifBlock:
-            output = "kFnElIfBlock";
-            break;
-        case kFnValue:
-            output = "kFnValue";
-            break;
-        case kFnForInStmt:
-            output = "kFnForInStmt";
-            break;
-        case kFnForInBlock:
-            output = "kFnForInBlock";
-            break;
-        case kExternalFnDef:
-            output = "kExternFnDef";
-            break;
-        case kUdfDef:
-            output = "kUdfDef";
-            break;
-        case kUdfByCodeGenDef:
-            output = "kUdfByCodeGenDef";
-            break;
-        case kUdafDef:
-            output = "kUdafDef";
-            break;
-        case kLambdaDef:
-            output = "kLambdaDef";
-            break;
-        case kPartitionMeta:
-            output = "kPartitionMeta";
-            break;
-        case kCreateIndexStmt:
-            output = "kCreateIndexStmt";
-            break;
-        case kInsertStmt:
-            output = "kInsertStmt";
-            break;
-        case kWindowFunc:
-            output = "kWindowFunc";
-            break;
-        case kIndexKey:
-            output = "kIndexKey";
-            break;
-        case kIndexTs:
-            output = "kIndexTs";
-            break;
-        case kIndexTTLType:
-            output = "kIndexTTLType";
-            break;
-        case kIndexTTL:
-            output = "kIndexTTL";
-            break;
-        case kIndexVersion:
-            output = "kIndexVersion";
-            break;
-        case kReplicaNum:
-            output = "kReplicaNum";
-            break;
-        case kPartitionNum:
-            output = "kPartitionNum";
-            break;
-        case kStorageMode:
-            output = "kStorageMode";
-            break;
-        case kFn:
-            output = "kFn";
-            break;
-        case kFnParaList:
-            output = "kFnParaList";
-            break;
-        case kCreateSpStmt:
-            output = "kCreateSpStmt";
-            break;
-        case kDistributions:
-            output = "kDistributions";
-            break;
-        case kInputParameter:
-            output = "kInputParameter";
-            break;
-        case kDeployStmt:
-            output = "kDeployStmt";
-            break;
-        case kSelectIntoStmt:
-            output = "kSelectIntoStmt";
-            break;
-        case kLoadDataStmt:
-            output = "kLoadDataStmt";
-            break;
-        case kSetStmt:
-            output = "kSetStmt";
-            break;
-        case kDeleteStmt:
-            output = "kDeleteStmt";
-            break;
-        case kCreateFunctionStmt:
-            output = "kCreateFunctionStmt";
-            break;
-        case kDynamicUdfFnDef:
-            output = "kDynamicUdfFnDef";
-            break;
-        case kDynamicUdafFnDef:
-            output = "kDynamicUdafFnDef";
-            break;
-        case kUnknow:
-            output = "kUnknow";
-            break;
+static absl::flat_hash_map<SqlNodeType, absl::string_view> CreateSqlNodeTypeToNamesMap() {
+    absl::flat_hash_map<SqlNodeType, absl::string_view> map = {
+        {kCreateStmt, "CREATE"},
+        {kCmdStmt, "CMD"},
+        {kExplainStmt, "EXPLAIN"},
+        {kName, "kName"},
+        {kType, "kType"},
+        {kNodeList, "kNodeList"},
+        {kResTarget, "kResTarget"},
+        {kTableRef, "kTableRef"},
+        {kQuery, "kQuery"},
+        {kColumnDesc, "kColumnDesc"},
+        {kColumnIndex, "kColumnIndex"},
+        {kExpr, "kExpr"},
+        {kWindowDef, "kWindowDef"},
+        {kFrames, "kFrame"},
+        {kFrameExtent, "kFrameExtent"},
+        {kFrameBound, "kBound"},
+        {kConst, "kConst"},
+        {kLimit, "kLimit"},
+        {kFnList, "kFnList"},
+        {kFnDef, "kFnDef"},
+        {kFnHeader, "kFnHeader"},
+        {kFnPara, "kFnPara"},
+        {kFnReturnStmt, "kFnReturnStmt"},
+        {kFnAssignStmt, "kFnAssignStmt"},
+        {kFnIfStmt, "kFnIfStmt"},
+        {kFnElifStmt, "kFnElseifStmt"},
+        {kFnElseStmt, "kFnElseStmt"},
+        {kFnIfBlock, "kFnIfBlock"},
+        {kFnElseBlock, "kFnElseBlock"},
+        {kFnIfElseBlock, "kFnIfElseBlock"},
+        {kFnElifBlock, "kFnElIfBlock"},
+        {kFnValue, "kFnValue"},
+        {kFnForInStmt, "kFnForInStmt"},
+        {kFnForInBlock, "kFnForInBlock"},
+        {kExternalFnDef, "kExternFnDef"},
+        {kUdfDef, "kUdfDef"},
+        {kUdfByCodeGenDef, "kUdfByCodeGenDef"},
+        {kUdafDef, "kUdafDef"},
+        {kLambdaDef, "kLambdaDef"},
+        {kPartitionMeta, "kPartitionMeta"},
+        {kCreateIndexStmt, "kCreateIndexStmt"},
+        {kInsertStmt, "kInsertStmt"},
+        {kWindowFunc, "kWindowFunc"},
+        {kIndexKey, "kIndexKey"},
+        {kIndexTs, "kIndexTs"},
+        {kIndexTTLType, "kIndexTTLType"},
+        {kIndexTTL, "kIndexTTL"},
+        {kIndexVersion, "kIndexVersion"},
+        {kReplicaNum, "kReplicaNum"},
+        {kPartitionNum, "kPartitionNum"},
+        {kStorageMode, "kStorageMode"},
+        {kFn, "kFn"},
+        {kFnParaList, "kFnParaList"},
+        {kCreateSpStmt, "kCreateSpStmt"},
+        {kDistributions, "kDistributions"},
+        {kInputParameter, "kInputParameter"},
+        {kDeployStmt, "kDeployStmt"},
+        {kSelectIntoStmt, "kSelectIntoStmt"},
+        {kLoadDataStmt, "kLoadDataStmt"},
+        {kSetStmt, "kSetStmt"},
+        {kDeleteStmt, "kDeleteStmt"},
+        {kCreateFunctionStmt, "kCreateFunctionStmt"},
+        {kDynamicUdfFnDef, "kDynamicUdfFnDef"},
+        {kDynamicUdafFnDef, "kDynamicUdafFnDef"},
+        {kWithClauseEntry, "kWithClauseEntry"},
+        {kAlterTableStmt, "kAlterTableStmt"},
+    };
+    for (auto kind = 0; kind < SqlNodeType::kSqlNodeTypeLast; ++kind) {
+        DCHECK(map.find(static_cast<SqlNodeType>(kind)) != map.end())
+            << "name of " << kind << " not exist";
     }
-    return output;
+    return map;
+}
+
+static const auto& GetSqlNodeTypeToNamesMap() {
+    static const auto &map = *new auto(CreateSqlNodeTypeToNamesMap());
+    return map;
+}
+
+std::string NameOfSqlNodeType(const SqlNodeType &type) {
+    auto& map = GetSqlNodeTypeToNamesMap();
+    auto it = map.find(type);
+    if (it != map.end()) {
+        return std::string(it->second);
+    }
+    return "kUnknow";
 }
 
 absl::string_view CmdTypeName(const CmdType type) {
@@ -1233,6 +1210,24 @@ absl::string_view CmdTypeName(const CmdType type) {
         return it->second;
     }
     return "undefined cmd type";
+}
+
+std::string DataTypeName(DataType type) {
+    auto &map = GetDataTypeNamesMap();
+    auto it = map.find(type);
+    if (it != map.end()) {
+        return std::string(it->second);
+    }
+    return "unknown";
+}
+
+std::string ExprTypeName(ExprType type) {
+    auto &map = GetExprTypeNamesMap();
+    auto it = map.find(type);
+    if (it != map.end()) {
+        return std::string(it->second);
+    }
+    return "unknown";
 }
 
 std::ostream &operator<<(std::ostream &output, const SqlNode &thiz) {
@@ -1429,7 +1424,19 @@ void CreateStmt::Print(std::ostream &output, const std::string &org_tab) const {
     output << "\n";
     PrintSqlVector(output, tab, column_desc_list_, "column_desc_list", false);
     output << "\n";
+    if (like_clause_ != nullptr) {
+        like_clause_->Print(output, tab);
+    }
     PrintSqlVector(output, tab, table_option_list_, "table_option_list", true);
+}
+
+void CreateTableLikeClause::Print(std::ostream &output, const std::string &tab) const {
+    output << tab << SPACE_ST << "like:";
+    output << "\n";
+    PrintValue(output, tab + INDENT, ToKindString(kind_), "kind", false);
+    output << "\n";
+    PrintValue(output, tab + INDENT, path_, "path", false);
+    output << "\n";
 }
 
 void ColumnDefNode::Print(std::ostream &output, const std::string &org_tab) const {
@@ -1764,18 +1771,25 @@ bool ExprNode::Equals(const ExprNode *that) const {
 }
 
 void ExprListNode::Print(std::ostream &output, const std::string &org_tab) const {
-    if (children_.empty()) {
-        return;
-    }
-    const std::string tab = org_tab + INDENT + SPACE_ED;
-    auto iter = children_.cbegin();
-    (*iter)->Print(output, org_tab);
-    iter++;
-    for (; iter != children_.cend(); iter++) {
+    PrintNodeList(children_, output, org_tab);
+}
+
+void ArrayExpr::Print(std::ostream &output, const std::string &org_tab) const {
+    ExprNode::Print(output, org_tab);
+    output << "\n";
+
+    auto sub_indent = org_tab + INDENT;
+    output << sub_indent << SPACE_ST << "values:";
+    if (!children_.empty()) {
         output << "\n";
-        (*iter)->Print(output, org_tab);
+    }
+    PrintNodeList(children_, output, sub_indent + INDENT);
+    if (specific_type_ != nullptr) {
+        output << "\n";
+        PrintValue(output, sub_indent, specific_type_->DebugString(), "type", true);
     }
 }
+
 const std::string ExprListNode::GetExprString() const {
     if (children_.empty()) {
         return "()";
@@ -1791,6 +1805,15 @@ const std::string ExprListNode::GetExprString() const {
         str.append(")");
         return str;
     }
+}
+
+// brackets (`[]`) represents array expr, prefix by the optional 'ARRAY<type>'
+const std::string ArrayExpr::GetExprString() const {
+    return absl::StrCat(
+        (specific_type_ != nullptr ? specific_type_->DebugString() : ""), "[",
+        absl::StrJoin(children_, ",",
+                      [](std::string *out, const ExprNode *expr) { absl::StrAppend(out, expr->GetExprString()); }),
+        "]");
 }
 
 void FnParaNode::Print(std::ostream &output, const std::string &org_tab) const {
@@ -1953,7 +1976,7 @@ bool TypeNode::Equals(const SqlNode *node) const {
     return this->base_ == that->base_ &&
            std::equal(
                this->generics_.cbegin(), this->generics_.cend(), that->generics_.cbegin(),
-               [&](const hybridse::node::TypeNode *a, const hybridse::node::TypeNode *b) { return a->Equals(b); });
+               [&](const hybridse::node::TypeNode *a, const hybridse::node::TypeNode *b) { return TypeEquals(a, b); });
 }
 
 void JoinNode::Print(std::ostream &output, const std::string &org_tab) const {
@@ -2629,6 +2652,47 @@ Status StringToDataType(const std::string identifier, DataType *type) {
 
     *type = it->second;
     return Status::OK();
+}
+
+void WithClauseEntry::Print(std::ostream &output, const std::string &org_tab) const {
+    SqlNode::Print(output, org_tab);
+    const std::string tab = org_tab + INDENT + SPACE_ED;
+    output << "\n";
+    PrintValue(output, tab, alias_, "alias", false);
+    output << "\n";
+    PrintSqlNode(output, tab, query_, "query", true);
+}
+
+bool WithClauseEntry::Equals(const SqlNode *node) const {
+    if (!SqlNode::Equals(node)) {
+        return false;
+    }
+
+    auto rhs = dynamic_cast<const WithClauseEntry*>(node);
+    return rhs != nullptr && alias_ == rhs->alias_ && SqlEquals(this, rhs);
+}
+
+void AlterTableStmt::Print(std::ostream &output, const std::string &org_tab) const {
+    SqlNode::Print(output, org_tab);
+    output << "\n";
+    auto tab = org_tab + INDENT;
+    PrintValue(output, tab, db_ + "." + table_, "path", false);
+    output << "\n";
+    output << tab << SPACE_ST << "actions:" << "\n";
+    for (decltype(actions_.size()) i = 0; i < actions_.size(); ++i) {
+        PrintValue(output, tab + INDENT, actions_[i]->DebugString(), std::to_string(i), false);
+        if (i + 1 < actions_.size()) {
+            output << "\n";
+        }
+    }
+}
+
+std::string AddPathAction::DebugString() const {
+    return absl::Substitute("AddPathAction ($0)", target_);
+}
+
+std::string DropPathAction::DebugString() const {
+    return absl::Substitute("DropPathAction ($0)", target_);
 }
 
 }  // namespace node

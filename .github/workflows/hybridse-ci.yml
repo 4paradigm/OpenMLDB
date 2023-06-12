@@ -54,15 +54,17 @@ jobs:
     env:
       NPROC: 3
       CTEST_PARALLEL_LEVEL: 3 # parallel test level for ctest (make test)
+      # this option enables print inner output rows of each node in runner
+      HYBRIDSE_DEBUG: true
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
       - name: Install dependencies
         run: |
           brew install coreutils
 
       - name: Cache thirdparty
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: |
             .deps/
@@ -79,35 +81,37 @@ jobs:
 
       - name: Upload Cpp UT Results
         if: always()
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: macos-ut-result-cpp-${{ github.sha }}
           path: |
             build/hybridse/**/*.xml
 
-  publish-test-results:
-    runs-on: ubuntu-latest
-    needs: ["linux-build", "macos-build"]
+  publish-test-results-linux:
+    needs: ["linux-build"]
     # the action will only run on 4paradigm/HybridSE's context, not for fork repo or dependabot
     if: >
       always() && github.event_name == 'push' || (
       github.event.pull_request.head.repo.full_name == github.repository &&
       github.event.sender.login != 'dependabot[bot]' )
-    steps:
-      - name: Download Artifacts
-        uses: actions/download-artifact@v2
 
-      - name: Publish Linux UT Results
-        uses: EnricoMi/publish-unit-test-result-action@v1
-        with:
-          files: linux-ut-result-*/**/*.xml
-          check_name: HybridSE Linux Test Report
-          comment_title: HybridSE Linux Test Report
+    name: Publish Linux UT Results
+    uses: ./.github/workflows/publish-test-results-action.yml
+    with:
+      files: linux-ut-result-*/**/*.xml
+      check_name: HybridSE Linux Test Report
+      comment_title: HybridSE Linux Test Report
 
-      - name: Publish Mac UT Results
-        uses: EnricoMi/publish-unit-test-result-action@v1
-        with:
-          files: macos-ut-result-*/**/*.xml
-          check_name: HybridSE Mac Test Report
-          comment_title: HybridSE Mac Test Report
-
+  publish-test-results-mac:
+    needs: ["macos-build"]
+    # the action will only run on 4paradigm/HybridSE's context, not for fork repo or dependabot
+    if: >
+      always() && github.event_name == 'push' || (
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.event.sender.login != 'dependabot[bot]' )
+    name: Publish Mac UT Results
+    uses: ./.github/workflows/publish-test-results-action.yml
+    with:
+      files: macos-ut-result-*/**/*.xml
+      check_name: HybridSE Mac Test Report
+      comment_title: HybridSE Mac Test Report

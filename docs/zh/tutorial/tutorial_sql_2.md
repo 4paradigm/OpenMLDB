@@ -64,12 +64,12 @@ SELECT * FROM s1 LAST JOIN s2 ORDER BY s2.std_ts ON s1.col1 = s2.col1;
 
 ## 3. 副表多行聚合特征
 
-OpenMLDB 针对副表拼接场景，扩展了标准的 WINDOW 语法，新增了 [WINDOW UNION](../reference/sql/dql/WINDOW_CLAUSE.md#window-union) 的特性，支持从副表拼接多条数据形成副表窗口。在副表拼接窗口的基础上，可以方便构建副表多行聚合特征。同样地，构造副表多行聚合特征也需要完成两个步骤：
+OpenMLDB 针对副表拼接场景，扩展了标准的 WINDOW 语法，新增了 [WINDOW UNION](../openmldb_sql/dql/WINDOW_CLAUSE.md#window-union) 的特性，支持从副表拼接多条数据形成副表窗口。在副表拼接窗口的基础上，可以方便构建副表多行聚合特征。同样地，构造副表多行聚合特征也需要完成两个步骤：
 
 - 步骤一：定义副表拼接窗口。
 - 步骤二：在副表拼接窗口上构造副表多行聚合特征。
 
-## 3.1 步骤一： 定义副表拼接窗口
+### 3.1 步骤一： 定义副表拼接窗口
 
 主表的每一个样本行都可以从副表中按某列拼接多行数据，并允许定义拼接数据的时间区间或者条数区间。我们通过特殊的窗口语法 WINDOW UNION 来定义副表拼接条件和区间范围。为了便于理解，我们将这种窗口称之为**副表拼接窗口**。
 
@@ -89,27 +89,27 @@ window window_name as (UNION other_table PARTITION BY key_col ORDER BY order_col
 
 - `ROWS_RANGE BETWEEN StartFrameBound AND EndFrameBound`: 表示副表拼接窗口的时间区间
 
-  - `StartFrameBound`表示该窗口的上界。
+  - `StartFrameBound`表示该时间窗口的上界。
 
-    - `UNBOUNDED PRECEDING`: 无上界。
-    - `time_expression PRECEDING`: 如果是时间区间，可以定义时间偏移，如`30d preceding`表示窗口上界为当前行的时间的前30天。
+    - `UNBOUNDED PRECEDING`：无上界。
+    - `time_expression PRECEDING`：如果是时间区间，可以定义时间偏移，如`30d preceding`表示窗口上界为当前行的时间的前30天。
 
   - `EndFrameBound`表示该时间窗口的下界。
 
-    - `CURRENT ROW`： 当前行
-    - `time_expression PRECEDING`: 如果是时间区间，可以定义时间偏移，如`1d PRECEDING`。这表示窗口下界为当前行的时间的前1天。
+    - `CURRENT ROW`：当前行。
+    - `time_expression PRECEDING`：如果是时间区间，可以定义时间偏移，如`1d PRECEDING`。这表示窗口下界为当前行的时间的前1天。
 
 - `ROWS BETWEEN StartFrameBound AND EndFrameBound`: 表示副表拼接窗口的条数区间
 
   - `StartFrameBound`表示该窗口的上界。
 
-    - `UNBOUNDED PRECEDING`: 无上界。
-    - `number PRECEDING`: 如果是条数区间，可以定义条数。如，`100 PRECEDING`表示窗口上界为的当前行的前100行。
+    - `UNBOUNDED PRECEDING`：无上界。
+    - `number PRECEDING`：如果是条数区间，可以定义条数。如，`100 PRECEDING`表示窗口上界为的当前行的前100行。
 
-  - `EndFrameBound`表示该时间窗口的下界。
+  - `EndFrameBound`表示该窗口的下界。
 
     - `CURRENT ROW`： 当前行
-    - `number PRECEDING`: 如果是条数窗口，可以定义条数。如，`1 PRECEDING`表示窗口上界为的当前行的前1行。
+    - `number PRECEDING`：如果是条数窗口，可以定义条数。如，`1 PRECEDING`表示窗口上界为的当前行的前1行。
     
 
 ```{note}
@@ -117,12 +117,12 @@ window window_name as (UNION other_table PARTITION BY key_col ORDER BY order_col
   - OpenMLDB 目前无法支持当前行以后的时间作为上界和下界。如`1d FOLLOWING`。换言之，我们只能处理历史时间窗口。这也基本满足大部分的特征工程的应用场景。
   - OpenMLDB 的下界时间必须>=上界时间
   - OpenMLDB 的下界的条数必须<=上界条数
-- `INSTANCE_NOT_IN_WINDOW`: 标记为副表拼接窗口。主表除了当前行以外，其他数据不进入窗口。
-- 更多语法和特性可以参考 [OpenMLDB窗口UNION参考手册](../reference/sql/dql/WINDOW_CLAUSE.md)。
+- `INSTANCE_NOT_IN_WINDOW`：表示主表除了当前行以外，其他数据不进入窗口。
+- 更多语法和特性可以参考 [OpenMLDB窗口UNION参考手册](../openmldb_sql/dql/WINDOW_CLAUSE.md)。
 
 ```
 
-### 示例
+#### 示例
 
 以下通过具体例子来展示 WINDOW UNION 的定义方式。
 
@@ -130,7 +130,7 @@ window window_name as (UNION other_table PARTITION BY key_col ORDER BY order_col
 由于 t1 和 t2 的schema不同，所以我们首先分别从 t1 和 t2 抽取相同的列，对于在某个表中不存在的列，可以配置缺省值。
 其中，`mid` 列用于两个表的拼接，所以是必须的； 其次，作为时间戳的列（t1 中的 `trans_time`，t2 中的 `purchase_time`）包含时序信息， 在定义时间窗口时候也是必须的；其余列按照聚合函数需要，进行必要的筛选保留。
 
-以下 SQL 和示意图展示了从 t1 抽取必要列，生成 t11。
+以下 SQL 和示意图展示了从 t1 抽取必要列，生成 t11的方法。
 
 ```sql
 (select id, mid, trans_time as purchase_time, 0.0 as purchase_amt, "" as purchase_type from t1) as t11
@@ -141,7 +141,7 @@ window window_name as (UNION other_table PARTITION BY key_col ORDER BY order_col
 以下 SQL 和示意图展示了从 t2 抽取必要列，生成 t22。
 
 ```sql
-(select 0 as id, mid, purchase_time, purchase_amt, purchase_type from t2) as t22
+(select 0L as id, mid, purchase_time, purchase_amt, purchase_type from t2) as t22
 ```
 
 ![img](images/t2_to_t22.png)
@@ -161,7 +161,7 @@ PARTITION BY mid ORDER BY purchase_time
 ROWS_RANGE BETWEEN 10d PRECEDING AND 1 PRECEDING INSTANCE_NOT_IN_WINDOW)
 ```
 
-## 3.2 步骤二：构建副表多行聚合特征
+### 3.2 步骤二：构建副表多行聚合特征
 
 对于副表拼接窗口进行多行聚合函数加工，构造多行副表聚合特征，使得最后生成的行数和主表相同。以简单聚合函数为例，我们可以构造样本的副表拼接特征：商户的最近10天的零售总额`w10d_merchant_purchase_amt_sum`，商户的最近10天消费总次数`w10d_merchant_purchase_count`。以下 SQL 基于 [3.1](#31-步骤一-定义副表拼接窗口) 中所定义的副表拼接窗口，构建多行聚合特征。
 

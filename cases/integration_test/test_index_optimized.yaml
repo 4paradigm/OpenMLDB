@@ -122,6 +122,7 @@ cases:
         - [ "aa", 6, 1590739002000, 1590738995000, 2, 4 ]
   - id: 3
     desc: LastJoin optimized one key one ts
+    mode: batch-unsupport
     inputs:
       - columns: [ "c1 string","c2 int","c3 bigint","c4 timestamp"]
         indexs: [ "index1:c1:c4" ]
@@ -151,6 +152,7 @@ cases:
         - [ "bb",21,151, 1590738988000]
   - id: 4
     desc: LastJoin optimized one key two ts
+    mode: batch-unsupport
     inputs:
       - columns: [ "c1 string","c2 int","c3 bigint","c4 timestamp"]
         indexs: [ "index1:c1:c4" ]

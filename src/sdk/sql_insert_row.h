@@ -85,6 +85,7 @@ class SQLInsertRow {
     bool MakeDefault();
     void PackDimension(const std::string& val);
     inline bool IsDimension() { return raw_dimensions_.find(rb_.GetAppendPos()) != raw_dimensions_.end(); }
+    inline bool IsTsCol() { return ts_set_.find(rb_.GetAppendPos()) != ts_set_.end(); }
 
  private:
     std::shared_ptr<::openmldb::nameserver::TableInfo> table_info_;

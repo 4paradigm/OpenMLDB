@@ -39,7 +39,6 @@ typedef ::google::protobuf::RepeatedPtrField<::openmldb::common::ColumnKey> RtiD
 
 static void BM_SimpleQueryFunction(benchmark::State& state) {  // NOLINT
     ::openmldb::nameserver::TableInfo table_info;
-    table_info.set_format_version(1);
     std::string name = "test" + GenRand();
     std::string db = "db" + GenRand();
     auto ns_client = mc->GetNsClient();
@@ -893,6 +892,8 @@ BENCHMARK(BM_SimpleTableReaderAsyncMulti)
     ->Args({10000});
 
 int main(int argc, char** argv) {
+    ::google::ParseCommandLineFlags(&argc, &argv, true);
+    ::openmldb::base::SetupGlog(true);
     ::hybridse::vm::Engine::InitializeGlobalLLVM();
     FLAGS_enable_distsql = hybridse::sqlcase::SqlCase::IsCluster();
     FLAGS_enable_localtablet = !hybridse::sqlcase::SqlCase::IsDisableLocalTablet();

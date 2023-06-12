@@ -31,7 +31,7 @@
 
 ## 3. 从 0 到 1，特征工程实践
 
-我们将会分上下两篇介绍特征工程常用的处理方法，本篇将会侧重单表特征处理，下一篇我们将会聚焦更为复杂的多表特征计算。本文使用在金融领域普遍使用的反欺诈作为案例。
+我们将会分上下两篇介绍特征工程常用的处理方法，本篇将会侧重单表特征处理，下一篇我们将会聚焦更为复杂的多表特征计算。本文使用在金融领域普遍使用的反欺诈数据集作为案例。
 
 注意，如果你想运行本篇教程的 SQL，请按照以下两个步骤做准备：
 
@@ -136,14 +136,14 @@ window window_name as (PARTITION BY partition_col ORDER BY order_col ROWS_RANGE 
 
   - `CURRENT ROW`： 当前行
   - `time_expression PRECEDING`: 一定的时间偏移，如`1d PRECEDING`。这表示窗口下界为当前行的时间-1天。
-  - `number PRECEDING`: 如果是条数窗口，可以定义条数偏移。如，`1 PRECEDING`表示窗口上界为的当前行的前1行。
+  - `number PRECEDING`: 如果是条数窗口，可以定义条数偏移。如，`1 PRECEDING`表示窗口下界为当前行的前1行。
 
 - 配置窗口上下界时，请注意:
   - OpenMLDB 目前无法支持当前行以后的时间作为上界和下界。如`1d FOLLOWING`。换言之，我们只能处理历史时间窗口。这也基本满足大部分的特征工程的应用场景。
   - OpenMLDB 的下界时间必须>=上界时间
   - OpenMLDB 的下界条数必须<=上界条数
 
-更多语法和特性可以参考 [OpenMLDB窗口参考手册](../reference/sql/dql/WHERE_CLAUSE.md)。
+更多语法和特性可以参考 [OpenMLDB窗口参考手册](../openmldb_sql/dql/WHERE_CLAUSE.md)。
 #### 示例
 对于上面所示的交易表 t1，我们定义两个时间窗口和两个条数窗口。每一个样本行的窗口均按用户ID(`uid`)分组，按交易时间(`trans_time`)排序。下图展示了分组排序后的数据。
 ![img](images/table_t1.jpg)
@@ -296,22 +296,22 @@ window w30d as (PARTITION BY uid ORDER BY trans_time ROWS_RANGE BETWEEN 30d PREC
 
 通常，我们会对类型特征进行频率的统计。例如，我们可能需要统计各个类别中，最高频次的类型，最高频的类型的频度占比等。
 
-**Top ratio 特征`fz_top1_ratio`**：求窗口内某列数量最多的类别占窗口总数据的比例。
+**Top ratio 特征`top1_ratio`**：求窗口内某列数量最多的类别占窗口总数据的比例。
 
-以下SQL使用`fz_top1_ratio`求t1中最近30天的交易次数最大的城市的交易次数占比。
+以下SQL使用`top1_ratio`求t1中最近30天的交易次数最大的城市的交易次数占比。
 ```sql
 SELECT 
-fz_top1_ratio(city) over w30d as top_city_ratio 
+top1_ratio(city) over w30d as top_city_ratio 
 FROM t1 
 window w30d as (PARTITION BY uid ORDER BY trans_time ROWS_RANGE BETWEEN 30d PRECEDING AND CURRENT ROW);
 ```
 
-**Top N 特征`fz_topn_frequency(col, top_n)`**: 求取窗口内某列频率最高的N个类别
+**Top N 特征`topn_frequency(col, top_n)`**: 求取窗口内某列频率最高的N个类别
 
-以下SQL使用`fz_topn_frequency`求t1中最近30天的交易次数最大的2个城市。
+以下SQL使用`topn_frequency`求t1中最近30天的交易次数最大的2个城市。
 ```sql
 SELECT 
-fz_topn_frequency(city, 2) over w30d as top_city_ratio
+topn_frequency(city, 2) over w30d as top_city_ratio
 FROM t1 
 window w30d as (PARTITION BY uid ORDER BY trans_time ROWS_RANGE BETWEEN 30d PRECEDING AND CURRENT ROW);
 ```

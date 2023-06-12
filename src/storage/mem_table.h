@@ -61,7 +61,6 @@ class MemTableTraverseIterator : public TraverseIterator {
     TimeEntries::Iterator* it_;
     uint32_t record_idx_;
     uint32_t ts_idx_;
-    // uint64_t expire_value_;
     TTLSt expire_value_;
     Ticket ticket_;
     uint64_t traverse_cnt_;
@@ -127,10 +126,6 @@ class MemTable : public Table {
     bool IsExpire(const ::openmldb::api::LogEntry& entry) override;
 
     inline bool GetExpireStatus() { return enable_gc_.load(std::memory_order_relaxed); }
-
-    inline void RecordCntIncr() { record_cnt_.fetch_add(1, std::memory_order_relaxed); }
-
-    inline void RecordCntIncr(uint32_t cnt) { record_cnt_.fetch_add(cnt, std::memory_order_relaxed); }
 
     inline uint32_t GetKeyEntryHeight() const { return key_entry_max_height_; }
 

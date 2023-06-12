@@ -18,9 +18,28 @@ TableElement ::=
     ColumnDef | ColumnIndex
 ```
 
-
 The `TableElementList` needs to be defined in the `CREATE TABLE` statement. `TableElementList` consists of `ColumnDef` (column definition) and `ColumnIndex`. OpenMLDB requires at least one `ColumnDef` in the `TableElementList`.
 
+Or use Hive tables and Parquet files to create new tables.
+
+```sql
+CreateTableStmt ::=
+    'CREATE' 'TABLE' TableName LIKE LikeType PATH
+
+TableName ::=
+    Identifier ('.' Identifier)?
+
+LikeType ::=
+    'HIVE' | 'PARQUET'
+
+PATH ::=
+    string_literal
+```
+
+Here is the known issues of creating tables with Hive.
+
+* May get timeout for the default CLI config and need to show tables to check result.
+* The column constraints of Hive tables such as `NOT NULL` will not copy to new tables.
 
 ### ColumnDef (required)
 
@@ -171,8 +190,21 @@ desc t3;
  --------------
 ```
 
+**Example 5: Create a Table from the Hive table**
 
+At first configure OpenMLDB to support Hive, then create table with the following SQL.
 
+```sql
+CREATE TABLE t1 LIKE HIVE 'hive://hive_db.t1';
+-- SUCCEED
+```
+
+**Example 6: Create a Table from the Parquet files**
+
+```sql
+CREATE TABLE t1 LIKE PARQUET 'file://t1.parquet';
+-- SUCCEED
+```
 
 ### ColumnIndex (optional）
 
@@ -191,12 +223,12 @@ Indexes can be used by database search engines to speed up data retrieval. Simpl
 The index key must be configured, and other configuration items are optional. The following table introduces these configuration items in detail.
 
 
-| Configuration Item        | Note                                                                                                                                                                                                                                                                                                                    | Expression                                                                                      | Example                                                                                                                    |
-|------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------|
-| `KEY`      | It defines the index column (required). OpenMLDB supports single-column indexes as well as joint indexes. When `KEY`=one column, a single-column index is configured. When `KEY`=multiple columns, the joint index of these columns is configured: several columns are spliced into a new string as an index in order. | Single-column index: `ColumnName`<br/>Joint index: <br/>`(ColumnName (, ColumnName)* ) `        | Single-column index: `INDEX(KEY=col1)`<br />Joint index: `INDEX(KEY=(col1, col2))`                                         |
-| `TS`       | It defines the index time column (optional). Data on the same index will be sorted by the index time column. When `TS` is not explicitly configured, the timestamp of data insertion is used as the index time.                                                                                                        | `ColumnName`                                                                                    | `INDEX(KEY=col1, TS=std_time)`。 The index column is col1, and the data rows with the same col1 value are sorted by std_time. |
-| `TTL_TYPE` | It defines the elimination rules (optional). Including four types. When `TTL_TYPE` is not explicitly configured, the `ABSOLUTE` expiration configuration is used by default.                                                                                                                                           | Supported expr: `ABSOLUTE` <br/> `LATEST`<br/>`ABSORLAT`<br/> `ABSANDLAT`。                      | For specific usage, please refer to **Configuration Rules for TTL and TTL_TYP** below.                                     |
-| `TTL`      | It defines the maximum survival time/number. Different TTL_TYPEs determines different `TTL` configuration methods. When `TTL` is not explicitly configured, `TTL=0` which means OpenMLDB will not evict records.                                                                                                       | Supported expr: `int_literal`<br/>  `interval_literal`<br/>`( interval_literal , int_literal )` | For specific usage, please refer to "Configuration Rules for TTL and TTL_TYPE" below.                                      |
+| Configuration Item        | Note                                                                                                                                                                                                                                                                                                                        | Expression                                                                                      | Example                                                                                                                    |
+|------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------|
+| `KEY`      | It defines the index column (required). OpenMLDB supports single-column indexes as well as joint indexes. When `KEY`=one column, a single-column index is configured. When `KEY`=multiple columns, the joint index of these columns is configured: several columns are concatenated into a new string as an index in order. | Single-column index: `ColumnName`<br/>Joint index: <br/>`(ColumnName (, ColumnName)* ) `        | Single-column index: `INDEX(KEY=col1)`<br />Joint index: `INDEX(KEY=(col1, col2))`                                         |
+| `TS`       | It defines the index time column (optional). Data on the same index will be sorted by the index time column. When `TS` is not explicitly configured, the timestamp of data insertion is used as the index time.                                                                                                             | `ColumnName`                                                                                    | `INDEX(KEY=col1, TS=std_time)`。 The index column is col1, and the data rows with the same col1 value are sorted by std_time. |
+| `TTL_TYPE` | It defines the elimination rules (optional). Including four types. When `TTL_TYPE` is not explicitly configured, the `ABSOLUTE` expiration configuration is used by default.                                                                                                                                                | Supported expr: `ABSOLUTE` <br/> `LATEST`<br/>`ABSORLAT`<br/> `ABSANDLAT`。                      | For specific usage, please refer to **Configuration Rules for TTL and TTL_TYP** below.                                     |
+| `TTL`      | It defines the maximum survival time/number. Different TTL_TYPEs determines different `TTL` configuration methods. When `TTL` is not explicitly configured, `TTL=0` which means OpenMLDB will not evict records.                                                                                                            | Supported expr: `int_literal`<br/>  `interval_literal`<br/>`( interval_literal , int_literal )` | For specific usage, please refer to "Configuration Rules for TTL and TTL_TYPE" below.                                      |
 
 
 **Configuration details of TTL and TTL_TYPE**:

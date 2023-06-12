@@ -56,6 +56,9 @@ C++ built-in functions can use limited data types, including BOOL, Numeric, Stri
   | STRING    | `codec::StringRef` |
   | TIMESTAMP | `codec::Timestamp` |
   | DATE      | `codec::Date`      |
+  | ARRAY     | `ArrayRef`         |
+
+*Note: ARRAY type is not supported in storage or as SQL query output column type*
 
 #### 2.1.4 Parameters and Result
 
@@ -72,7 +75,7 @@ C++ built-in functions can use limited data types, including BOOL, Numeric, Stri
       double func_return_double(int); 
       ```
 
-  - If SQL function return **STRING**, **TIMESTAMP** or **DATE**, the C++ function result should be returned in parameter with the corresponding C++ pointer type (`codec::StringRef*`, `codec::Timestamp*`, `codec::Date*`).
+  - If SQL function return **STRING**, **TIMESTAMP**, **DATE**, **ArrayRef**, the C++ function result should be returned in parameter with the corresponding C++ pointer type (`codec::StringRef*`, `codec::Timestamp*`, `codec::Date*`).
 
     - ```c++
       // SQL: STRING FUNC_STR(INT)
@@ -91,9 +94,11 @@ C++ built-in functions can use limited data types, including BOOL, Numeric, Stri
 #### 2.1.5 Memory Management
 
 - Operator `new` operator or method `malloc` are forbidden in C++ built-in function implementation.
-- Developers can call `hybridse::udf::v1::AllocManagedStringBuf(size)` to allocate space. OpenMLDB `ByteMemoryPool` will assign continous space to the function and will release it when safe.
-- If allocated size < 0, allocation will fail. `AllocManagedStringBuf` return null pointer.
-- If allocated size exceed the MAX_ALLOC_SIZE which is 2048, the allocation will fail. `AllocManagedStringBuf` return null pointer.
+- Developers must call provided memory management APIs in order to archive space allocation for output parameters:
+  - `hybridse::udf::v1::AllocManagedStringBuf(size)` to allocate space. OpenMLDB `ByteMemoryPool` will assign continous space to the function and will release it when safe.
+    - If allocated size < 0, allocation will fail. `AllocManagedStringBuf` return null pointer.
+    - If allocated size exceed the MAX_ALLOC_SIZE which is 2048, the allocation will fail. `AllocManagedStringBuf` return null pointer.
+  - `hybridse::udf::v1::AllocManagedArray(ArrayRef<T>*, uint64_t)`: allocate space for array types
 
 **Example**:
 
@@ -782,4 +787,15 @@ select date(timestamp(1590115420000)) as dt;
   2020-05-22 
  ------------
 ```
+
+
+
+## 5. Document Management
+
+Documents for all built-in functions can be found in [Built-in Functions](http://4paradigm.github.io/OpenMLDB/zh/main/reference/sql/functions_and_operators/Files/udfs_8h.html). It is a markdown file automatically generated from source, so please do not edit it directly.
+
+- If you are adding a document for a new function, please refer to [2.2.4 Documenting Function](#224-documenting-function). 
+- If you are trying to revise a document of an existing function, you can find source code in the files of `hybridse/src/udf/default_udf_library.cc` or `hybridse/src/udf/default_defs/*_def.cc` .
+
+There is a daily workflow that automatically converts the source code to a readable format, which are the contents inside the `docs/*/reference/sql/functions_and_operators` directory. The document website will also be updated accordingly. If you are interested in this process, you can refer to the source directory [udf_doxygen](https://github.com/4paradigm/OpenMLDB/tree/main/hybridse/tools/documentation/udf_doxygen).
 

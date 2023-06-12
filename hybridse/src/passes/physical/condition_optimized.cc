@@ -108,6 +108,17 @@ bool ConditionOptimized::Transform(PhysicalOpNode* in,
                 dynamic_cast<PhysicalFilterNode*>(in);
             return FilterConditionOptimized(filter_op, &filter_op->filter_);
         }
+        case PhysicalOpType::kPhysicalOpRequestUnion: {
+            vm::PhysicalRequestUnionNode* request_union = dynamic_cast<vm::PhysicalRequestUnionNode*>(in);
+            for (auto& kv : request_union->window_unions_.window_unions_) {
+                PhysicalOpNode* new_n = nullptr;
+                // treat window unions as standalone query here, calls Apply explictly
+                if (Apply(kv.first, &new_n) && new_n != nullptr) {
+                    kv.first = new_n;
+                }
+            }
+            return true;
+        }
         default: {
             return false;
         }

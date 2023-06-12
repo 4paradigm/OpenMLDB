@@ -51,7 +51,7 @@ Since data objects are different in offline and online scenarios, their underlyi
 | 3. **Feature Extraction Plan Deployment** | the offline mode        | CLI                        | - `DEPLOY` command                                           |
 | 4. **Import Data for Cold-start**         | the online preview mode        | CLI, Import Tools          | - `LOAD DATA` command for CLI <br />- or you can use the independent import tool `openmldb-import` |
 | 5. **Real-time Data Import**              | the online preview mode         | REST APIs, Java/Python SDK | - Data insert APIs of OpenMLDB are called by third-party data sources to import real-time data. |
-| 6. **Online Data Preview (Optional)**     | the online preview mode         | CLI, Java/Python SDK       | - Currently, only `SELECT` on columns, expressions and single-line functions are supported to be used on data preview<br />- Complex computing functions like `LAST JOIN`, `GROUP BY`, `HAVING`, `WINDOW` are not supported temporarily<br /> |
+| 6. **Online Data Preview (Optional)**     | the online preview mode         | CLI, Java/Python SDK       | - Currently `LAST JOIN`, `ORDER BY` are not supported temporarily |
 | 7. **Real-time Feature Processing**       | the online request mode       | REST APIs, Java/Python SDK | - all SQL syntax of  OpenMLDB is supported<br />- both REST APIs and Java SDK support single-line and batch request<br />- Python SDK only support single-line request |
 
 As the table shown above, execution modes can be categorized as `the offline mode`, `the online preview mode` and `the online request mode`. The following figure summarizes the entire feature engineering process and corresponding execution modes. Detailed introduction of each of these modes will be shown later in this page. 
@@ -90,7 +90,7 @@ The offline mode has following main features.
 
 + The feature extraction plan deploying command `DEPLOY` executes in offline mode as well. 
 :::{note}
-The deployment criterion has certain requirements for SQL, see [The Specification and Requirements of OpenMLDB SQL Deployment](https://openmldb.ai/docs/en/main/reference/sql/deployment_manage/ONLINE_SERVING_REQUIREMENTS.html) for more details. 
+The deployment criterion has certain requirements for SQL, see [The Specification and Requirements of OpenMLDB SQL Deployment](../../reference/sql/deployment_manage/ONLINE_REQUEST_REQUIREMENTS.md) for more details. 
 :::
 The offline mode can be set in following ways:
 
@@ -106,8 +106,15 @@ The cold-start's online data import, real-time data import and online data previ
 
 The online preview mode has following main features.
 
-- In online preview mode, all commands are executed synchronously except the `LOAD DATA` command which is used when importing online data. `LOAD DATA` is executed asynchronously in non-blocking mode as the way it executed in offline mode.
-- In order to view related data, only simple `SELECT ` commands on columns are supported in online preview mode currently, complex SQL queries for this purpose are not supported. As a result, this execution mode is not suitable for SQL feature development and optimizing, whcih should be completed in the offline mode or by standalone version.
+- In online preview mode, `LOAD DATA` with `load_mode='cluster'` is executed asynchronously in non-blocking mode as the way it executed in offline mode, 
+while `load_mode='local'` will load the data locally in the synchronous way.
+All the other commands are executed synchronously.
+- `Last Join ` and `Order By` commands are not supported in online preview mode currently.
+- As SQL is executed in a single thread in online engine, it may run for long time for big data，
+which may trigger timeout. The timeout can be configured by `--request_timeout` in the client side;
+- In order not to degrade the performance of online request, we limit the max traverse number and unique key numbers,
+which can be configured by `--max_traverse_cnt` and `--max_traverse_key_cnt`.
+In additional, the result size is limited by `--scan_max_bytes_size`. Details can be found in [Configuration File](../deploy/conf.md).
 
 The online preview mode can be set in following ways:
 

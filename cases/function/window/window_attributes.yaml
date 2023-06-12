@@ -137,7 +137,7 @@ cases:
           PARTITION by `g` ORDER by `ts`
           ROWS_RANGE BETWEEN 2s PRECEDING AND 1s PRECEDING EXCLUDE CURRENT_ROW);
     batch_plan: |
-      PROJECT(type=WindowAggregation)
+      PROJECT(type=WindowAggregation, EXCLUDE_CURRENT_ROW)
         +-WINDOW(partition_keys=(g), orders=(ts ASC), range=(ts, 2000 PRECEDING, 1000 PRECEDING))
         PROJECT(type=WindowAggregation, NEED_APPEND_INPUT)
           +-WINDOW(partition_keys=(), orders=(ASC), rows=(ts, 1 PRECEDING, 0 CURRENT))
@@ -146,7 +146,7 @@ cases:
       SIMPLE_PROJECT(sources=(id, cnt, mv, mi, l1))
         REQUEST_JOIN(type=kJoinTypeConcat)
           PROJECT(type=Aggregation)
-            REQUEST_UNION(partition_keys=(), orders=(ASC), range=(ts, 2000 PRECEDING, 1000 PRECEDING), index_keys=(g))
+            REQUEST_UNION(EXCLUDE_CURRENT_ROW, partition_keys=(), orders=(ASC), range=(ts, 2000 PRECEDING, 1000 PRECEDING), index_keys=(g))
               DATA_PROVIDER(request=t1)
               DATA_PROVIDER(type=Partition, table=t1, index=idx)
           PROJECT(type=Aggregation)
@@ -195,8 +195,8 @@ cases:
           PARTITION by `g` ORDER by `ts`
           ROWS BETWEEN 2 PRECEDING AND 1 PRECEDING EXCLUDE CURRENT_ROW);
     batch_plan: |
-      PROJECT(type=WindowAggregation)
-        +-WINDOW(partition_keys=(g), orders=(ts ASC), rows=(ts, 2 PRECEDING, 0 OPEN PRECEDING))
+      PROJECT(type=WindowAggregation, EXCLUDE_CURRENT_ROW)
+        +-WINDOW(partition_keys=(g), orders=(ts ASC), rows=(ts, 2 PRECEDING, 0 CURRENT))
         PROJECT(type=WindowAggregation, NEED_APPEND_INPUT)
           +-WINDOW(partition_keys=(), orders=(ASC), rows=(ts, 1 PRECEDING, 0 CURRENT))
           DATA_PROVIDER(type=Partition, table=t1, index=idx)
@@ -204,7 +204,7 @@ cases:
       SIMPLE_PROJECT(sources=(id, cnt, mv, mi, l1))
         REQUEST_JOIN(type=kJoinTypeConcat)
           PROJECT(type=Aggregation)
-            REQUEST_UNION(partition_keys=(), orders=(ASC), rows=(ts, 2 PRECEDING, 0 OPEN PRECEDING), index_keys=(g))
+            REQUEST_UNION(EXCLUDE_CURRENT_ROW, partition_keys=(), orders=(ASC), rows=(ts, 2 PRECEDING, 0 CURRENT), index_keys=(g))
               DATA_PROVIDER(request=t1)
               DATA_PROVIDER(type=Partition, table=t1, index=idx)
           PROJECT(type=Aggregation)
@@ -300,7 +300,7 @@ cases:
           PARTITION by `g` ORDER by `ts`
           ROWS_RANGE BETWEEN 3s PRECEDING AND 0s OPEN PRECEDING MAXSIZE 2 EXCLUDE CURRENT_ROW);
     batch_plan: |
-      PROJECT(type=WindowAggregation)
+      PROJECT(type=WindowAggregation, EXCLUDE_CURRENT_ROW)
         +-WINDOW(partition_keys=(g), orders=(ts ASC), range=(ts, 3000 PRECEDING, 0 OPEN PRECEDING, maxsize=2))
         PROJECT(type=WindowAggregation, NEED_APPEND_INPUT)
           +-WINDOW(partition_keys=(), orders=(ASC), rows=(ts, 1 PRECEDING, 0 CURRENT))
@@ -309,7 +309,7 @@ cases:
       SIMPLE_PROJECT(sources=(id, cnt, mv, mi, l1))
         REQUEST_JOIN(type=kJoinTypeConcat)
           PROJECT(type=Aggregation)
-            REQUEST_UNION(partition_keys=(), orders=(ASC), range=(ts, 3000 PRECEDING, 0 OPEN PRECEDING, maxsize=2), index_keys=(g))
+            REQUEST_UNION(EXCLUDE_CURRENT_ROW, partition_keys=(), orders=(ASC), range=(ts, 3000 PRECEDING, 0 OPEN PRECEDING, maxsize=2), index_keys=(g))
               DATA_PROVIDER(request=t1)
               DATA_PROVIDER(type=Partition, table=t1, index=idx)
           PROJECT(type=Aggregation)
@@ -362,7 +362,7 @@ cases:
           PARTITION by `g` ORDER by `ts`
           ROWS BETWEEN 3 PRECEDING AND 0 OPEN PRECEDING EXCLUDE CURRENT_ROW);
     batch_plan: |
-      PROJECT(type=WindowAggregation)
+      PROJECT(type=WindowAggregation, EXCLUDE_CURRENT_ROW)
         +-WINDOW(partition_keys=(g), orders=(ts ASC), rows=(ts, 3 PRECEDING, 0 OPEN PRECEDING))
         PROJECT(type=WindowAggregation, NEED_APPEND_INPUT)
           +-WINDOW(partition_keys=(), orders=(ASC), rows=(ts, 1 PRECEDING, 0 CURRENT))
@@ -371,7 +371,7 @@ cases:
       SIMPLE_PROJECT(sources=(id, cnt, mv, mi, l1))
         REQUEST_JOIN(type=kJoinTypeConcat)
           PROJECT(type=Aggregation)
-            REQUEST_UNION(partition_keys=(), orders=(ASC), rows=(ts, 3 PRECEDING, 0 OPEN PRECEDING), index_keys=(g))
+            REQUEST_UNION(EXCLUDE_CURRENT_ROW, partition_keys=(), orders=(ASC), rows=(ts, 3 PRECEDING, 0 OPEN PRECEDING), index_keys=(g))
               DATA_PROVIDER(request=t1)
               DATA_PROVIDER(type=Partition, table=t1, index=idx)
           PROJECT(type=Aggregation)
@@ -562,3 +562,74 @@ cases:
         - [ "aa",22,61,2 ]
         - [ "aa",23,63,2 ]
         - [ "bb",24,null,0 ]
+  - id: 11
+    desc: |
+      ROWS window with (unbounded, CURRENT_ROW), exclude current_row
+    inputs:
+      - name: t1
+        columns:
+          - id int
+          - ts timestamp
+          - g int
+          - val int
+        indexs:
+          - idx:g:ts
+        data: |
+          1,  99000, 111, 21
+          2, 100000, 111, 22
+          3, 101000, 111, 23
+          4, 102000, 111, 44
+          5, 100000, 114, 56
+          6, 102000, 114, 52
+    sql: |
+       select
+          id,
+          count(val) over w as cnt,
+          max(val) over w as mv,
+          min(val) over w as mi,
+       FROM t1 WINDOW w as(
+          PARTITION by `g` ORDER by `ts`
+          ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW EXCLUDE CURRENT_ROW);
+    expect:
+      columns:
+        - id int
+        - cnt int64
+        - mv int
+        - mi int
+      order: id
+      data: |
+         1, 0, NULL, NULL
+         2, 1, 21, 21
+         3, 2, 22, 21
+         4, 3, 23, 21
+         5, 0, NULL, NULL
+         6, 1, 56, 56
+  - id: 12
+    desc: |
+      two row_range exclude current_row window merged, correctness unaffected
+    inputs:
+      - columns: [ "c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date" ]
+        indexs: [ "index1:c1:c7" ]
+        rows:
+          - [ "aa",20,30,1.1,2.1,1590738990000,"2020-05-01" ]
+          - [ "aa",21,31,1.2,2.2,1590738991000,"2020-05-02" ]
+          - [ "aa",22,32,1.3,2.3,1590738992000,"2020-05-03" ]
+          - [ "aa",23,33,1.4,2.4,1590738993000,"2020-05-04" ]
+          - [ "bb",24,34,1.5,2.5,1590738994000,"2020-05-05" ]
+    sql: |
+      SELECT
+        c1, c3,
+        sum(c4) OVER w1 as w1_c4_sum,
+        count(c5) OVER w2 as w2_c5_count FROM {0}
+      WINDOW
+        w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS_RANGE BETWEEN 1s PRECEDING AND CURRENT ROW EXCLUDE CURRENT_ROW),
+        w2 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS_RANGE BETWEEN 2s PRECEDING AND CURRENT ROW EXCLUDE CURRENT_ROW);
+    expect:
+      order: c3
+      columns: ["c1 string", "c3 int", "w1_c4_sum bigint", "w2_c5_count bigint"]
+      rows:
+        - ["aa", 20, null, 0]
+        - ["aa", 21, 30,   1]
+        - ["aa", 22, 31,   2]
+        - ["aa", 23, 32,   2]
+        - ["bb", 24, null, 0]

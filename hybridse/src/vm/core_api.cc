@@ -31,11 +31,13 @@ namespace vm {
 WindowInterface::WindowInterface(bool instance_not_in_window, bool exclude_current_time, bool exclude_current_row,
                                  const std::string& frame_type_str, int64_t start_offset, int64_t end_offset,
                                  uint64_t rows_preceding, uint64_t max_size) {
+    if (exclude_current_row && max_size > 0 && end_offset == 0) {
+        max_size++;
+    }
     window_impl_ = std::make_unique<HistoryWindow>(
         WindowRange(ExtractFrameType(frame_type_str), start_offset, end_offset, rows_preceding, max_size));
     window_impl_->set_instance_not_in_window(instance_not_in_window);
     window_impl_->set_exclude_current_time(exclude_current_time);
-    window_impl_->set_exclude_current_row(exclude_current_row);
 }
 
 bool WindowInterface::BufferData(uint64_t key, const Row& row) {
@@ -259,7 +261,6 @@ hybridse::codec::Row CoreAPI::UnsafeRowProjectDirect(
         const hybridse::vm::RawPtrHandle fn,
         hybridse::vm::NIOBUFFER inputUnsafeRowBytes,
         const int inputRowSizeInBytes, const bool need_free) {
-
     auto bufPtr = reinterpret_cast<int8_t *>(inputUnsafeRowBytes);
 
     // Create Row from input UnsafeRow bytes
@@ -343,7 +344,6 @@ hybridse::codec::Row CoreAPI::UnsafeWindowProjectDirect(
         hybridse::vm::NIOBUFFER inputUnsafeRowBytes,
         const int inputRowSizeInBytes, const bool is_instance, size_t append_slices,
         WindowInterface* window) {
-
     // Create Row from input UnsafeRow bytes
     // auto bufPtr = reinterpret_cast<int8_t *>(inputUnsafeRowBytes);
     // auto row = Row(base::RefCountedSlice::Create(bufPtr, inputRowSizeInBytes));

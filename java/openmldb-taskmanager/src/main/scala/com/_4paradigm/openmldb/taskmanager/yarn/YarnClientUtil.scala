@@ -1,13 +1,18 @@
 package com._4paradigm.openmldb.taskmanager.yarn
 
 import com._4paradigm.openmldb.taskmanager.config.TaskManagerConfig
+import org.apache.commons.io.output.ByteArrayOutputStream
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.Path
 import org.apache.hadoop.yarn.api.records.{ApplicationId, ApplicationReport, YarnApplicationState}
 import org.apache.hadoop.yarn.client.api.YarnClient
 import org.slf4j.LoggerFactory
+import org.apache.hadoop.security.UserGroupInformation
+import org.apache.hadoop.yarn.conf.YarnConfiguration
+import org.apache.hadoop.yarn.logaggregation.{ContainerLogsRequest, LogCLIHelpers}
+import java.io.PrintStream
+import java.nio.charset.StandardCharsets
 
-import java.io.File
 
 object YarnClientUtil {
 
@@ -25,14 +30,15 @@ object YarnClientUtil {
   }
 
   def createYarnClient(): YarnClient = {
-    val configuration = new Configuration()
-    configuration.addResource(new Path(TaskManagerConfig.HADOOP_CONF_DIR + File.separator + "core-site.xml"));
-    configuration.addResource(new Path(TaskManagerConfig.HADOOP_CONF_DIR + File.separator + "hdfs-site.xml"));
-    configuration.addResource(new Path(TaskManagerConfig.HADOOP_CONF_DIR + File.separator + "yarn-site.xml"));
+    val config = new Configuration()
+    config.addResource(new Path(TaskManagerConfig.HADOOP_CONF_DIR, "core-site.xml"))
+    config.addResource(new Path(TaskManagerConfig.HADOOP_CONF_DIR, "hdfs-site.xml"))
+    config.addResource(new Path(TaskManagerConfig.HADOOP_CONF_DIR, "yarn-site.xml"))
+    config.addResource(new Path(TaskManagerConfig.HADOOP_CONF_DIR, "mapred-site.xml"))
 
     // Create yarn client
     val yarnClient = YarnClient.createYarnClient()
-    yarnClient.init(configuration)
+    yarnClient.init(config)
     yarnClient.start()
 
     yarnClient
@@ -66,6 +72,51 @@ object YarnClientUtil {
   def killYarnJob(appIdStr: String): Unit = {
     val yarnClient = createYarnClient()
     yarnClient.killApplication(parseAppIdStr(appIdStr))
+  }
+
+
+  /**
+   * Get the yarn job log.
+   *
+   * Notice that it uses the CLI package which works for custom version like 3.x.
+   * Notice that this only works for completed job and requires Yarn to enable log aggregation.
+   *
+   * @param appIdStr
+   * @return
+   */
+  def getAppLog(appIdStr: String): String = {
+    val appId = parseAppIdStr(appIdStr)
+    logger.info(s"Try to get yarn log for app $appId")
+
+    val config = new YarnConfiguration()
+    // TODO: Load config file in better way
+    config.addResource(new Path(TaskManagerConfig.HADOOP_CONF_DIR, "core-site.xml"))
+    config.addResource(new Path(TaskManagerConfig.HADOOP_CONF_DIR, "hdfs-site.xml"))
+    config.addResource(new Path(TaskManagerConfig.HADOOP_CONF_DIR, "yarn-site.xml"))
+    config.addResource(new Path(TaskManagerConfig.HADOOP_CONF_DIR, "mapred-site.xml"))
+
+    val logCliHelper = new LogCLIHelpers
+    logCliHelper.setConf(config)
+
+    val appOwner = UserGroupInformation.getCurrentUser.getShortUserName
+
+    val logCliHelperOptions = new ContainerLogsRequest()
+    logCliHelperOptions.setAppId(appId)
+    logCliHelperOptions.setAppOwner(appOwner)
+
+    var content = ""
+
+    try {
+      // Get the YARN log for a completed application
+      logCliHelper.dumpAllContainersLogs(logCliHelperOptions)
+
+      val baos = new ByteArrayOutputStream()
+      content = new String(baos.toByteArray, StandardCharsets.UTF_8)
+    } catch {
+      case e: Exception => logger.error(s"Fail to get yarn job log for app id $appId, get error $e")
+    }
+
+    content
   }
 
 }

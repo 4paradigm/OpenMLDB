@@ -712,3 +712,276 @@ cases:
       columns: ["a string", "b string", "c string"]
       data: |
         aaa, bbb, ccc
+
+  # =============================================================#
+  # 100-105: Output schema correctness for SQL query that contains All('*')
+  #   refer issue https://github.com/4paradigm/OpenMLDB/issues/2505
+  # =============================================================
+  - id: 100
+    desc: |
+      simple select(*) + agg project
+    inputs:
+      - name: t1
+        columns: ["id int32", "b int32", "ts int64"]
+        indexs: ["idx:id:ts"]
+        data: |
+          1, 10, 1000
+          2, 30, 2000
+    sql: |
+      select *, count(id) over w as cnt
+      from t1
+      window w as (
+        partition by id order by ts rows between 2 preceding and current row);
+    cluster_request_plan: |
+      SIMPLE_PROJECT(sources=(t1.id, t1.b, t1.ts, cnt))
+        REQUEST_JOIN(type=kJoinTypeConcat)
+          DATA_PROVIDER(request=t1)
+          PROJECT(type=Aggregation)
+            REQUEST_UNION(partition_keys=(), orders=(ASC), rows=(ts, 2 PRECEDING, 0 CURRENT), index_keys=(id))
+              DATA_PROVIDER(request=t1)
+              DATA_PROVIDER(type=Partition, table=t1, index=idx)
+    expect:
+      columns: ["id int32", "b int32", "ts int64", "cnt int64"]
+      order: id
+      data: |
+          1, 10, 1000, 1
+          2, 30, 2000, 1
+
+  - id: 101
+    desc: |
+      simple select(*) + column ref + agg project
+    inputs:
+      - name: t1
+        columns: ["id int32", "b int32", "ts int64"]
+        indexs: ["idx:id:ts"]
+        data: |
+          1, 10, 1000
+          2, 30, 2000
+    sql: |
+      select b, *, count(id) over w as cnt
+      from t1
+      window w as (
+        partition by id order by ts rows between 2 preceding and current row);
+    cluster_request_plan: |
+      SIMPLE_PROJECT(sources=(b, t1.id, t1.b, t1.ts, cnt))
+        REQUEST_JOIN(type=kJoinTypeConcat)
+          SIMPLE_PROJECT(sources=(b, t1.id, t1.b, t1.ts))
+            DATA_PROVIDER(request=t1)
+          PROJECT(type=Aggregation)
+            REQUEST_UNION(partition_keys=(), orders=(ASC), rows=(ts, 2 PRECEDING, 0 CURRENT), index_keys=(id))
+              DATA_PROVIDER(request=t1)
+              DATA_PROVIDER(type=Partition, table=t1, index=idx)
+    expect:
+      columns: ["b int32", "id int32", "b int32", "ts int64", "cnt int64"]
+      order: id
+      data: |
+          10, 1, 10, 1000, 1
+          30, 2, 30, 2000, 1
+
+  - id: 102
+    desc: |
+      simple select(*) + agg project * multiple window
+    inputs:
+      - name: t1
+        columns: ["id int32", "b int32", "ts int64"]
+        indexs: ["idx1:id:ts", "idx2:b:ts"]
+        data: |
+          1, 10, 1000
+          2, 30, 2000
+    sql: |
+      select
+        id, t1.*, b,
+        count(id) over w1 as cnt1,
+        count(id) over w2 as cnt2
+      from t1
+      window w1 as (
+        partition by id order by ts rows between 2 preceding and current row),
+      w2 as (
+        partition by b order by ts rows_range between 2s preceding and current row);
+    cluster_request_plan: |
+      SIMPLE_PROJECT(sources=(id, t1.id, t1.b, t1.ts, b, cnt1, cnt2))
+        REQUEST_JOIN(type=kJoinTypeConcat)
+          REQUEST_JOIN(type=kJoinTypeConcat)
+            SIMPLE_PROJECT(sources=(id, t1.id, t1.b, t1.ts, b))
+              DATA_PROVIDER(request=t1)
+            PROJECT(type=Aggregation)
+              REQUEST_UNION(partition_keys=(), orders=(ASC), rows=(ts, 2 PRECEDING, 0 CURRENT), index_keys=(id))
+                DATA_PROVIDER(request=t1)
+                DATA_PROVIDER(type=Partition, table=t1, index=idx1)
+          PROJECT(type=Aggregation)
+            REQUEST_UNION(partition_keys=(), orders=(ASC), range=(ts, 2000 PRECEDING, 0 CURRENT), index_keys=(b))
+              DATA_PROVIDER(request=t1)
+              DATA_PROVIDER(type=Partition, table=t1, index=idx2)
+    expect:
+      columns: ["id int32", "id int32", "b int32", "ts int64", "b int32", "cnt1 int64", "cnt2 int64"]
+      order: id
+      data: |
+          1, 1, 10, 1000, 10, 1, 1
+          2, 2, 30, 2000, 30, 1, 1
+
+  - id: 103
+    desc: |
+      simple select(*) + agg project * multiple window
+    inputs:
+      - name: t1
+        columns: ["id int32", "b int32", "ts int64"]
+        indexs: ["idx1:id:ts", "idx2:b:ts"]
+        data: |
+          1, 10, 1000
+          2, 30, 2000
+    sql: |
+      select
+        count(id) over w1 as cnt1,
+        id, *, b,
+        count(id) over w2 as cnt2
+      from t1
+      window w1 as (
+        partition by id order by ts rows between 2 preceding and current row),
+      w2 as (
+        partition by b order by ts rows_range between 2s preceding and current row);
+    cluster_request_plan: |
+      SIMPLE_PROJECT(sources=(cnt1, id, t1.id, t1.b, t1.ts, b, cnt2))
+        REQUEST_JOIN(type=kJoinTypeConcat)
+          REQUEST_JOIN(type=kJoinTypeConcat)
+            SIMPLE_PROJECT(sources=(id, t1.id, t1.b, t1.ts, b))
+              DATA_PROVIDER(request=t1)
+            PROJECT(type=Aggregation)
+              REQUEST_UNION(partition_keys=(), orders=(ASC), rows=(ts, 2 PRECEDING, 0 CURRENT), index_keys=(id))
+                DATA_PROVIDER(request=t1)
+                DATA_PROVIDER(type=Partition, table=t1, index=idx1)
+          PROJECT(type=Aggregation)
+            REQUEST_UNION(partition_keys=(), orders=(ASC), range=(ts, 2000 PRECEDING, 0 CURRENT), index_keys=(b))
+              DATA_PROVIDER(request=t1)
+              DATA_PROVIDER(type=Partition, table=t1, index=idx2)
+    expect:
+      columns: ["cnt1 int64", "id int32", "id int32", "b int32", "ts int64", "b int32", "cnt2 int64"]
+      order: id
+      data: |
+          1, 1, 1, 10, 1000, 10, 1
+          1, 2, 2, 30, 2000, 30, 1
+
+  - id: 104
+    desc: |
+      simple select(*) + agg project * multiple window
+    inputs:
+      - name: t1
+        columns: ["id int32", "b int32", "ts int64"]
+        indexs: ["idx1:id:ts", "idx2:b:ts"]
+        data: |
+          1, 10, 1000
+          2, 30, 2000
+    sql: |
+      select
+        count(id) over w1 as cnt1,
+        id, *,
+        count(id) over w2 as cnt2,
+        b,
+        count(id) over w3 as cnt3
+      from t1
+      window w1 as (
+        partition by id order by ts rows between 2 preceding and current row),
+      w2 as (
+        partition by b order by ts rows_range between 2s preceding and current row),
+      w3 as (
+        partition by b order by ts rows_range between 2s preceding and current row exclude current_row);
+    cluster_request_plan: |
+      SIMPLE_PROJECT(sources=(cnt1, id, t1.id, t1.b, t1.ts, cnt2, b, cnt3))
+        REQUEST_JOIN(type=kJoinTypeConcat)
+          REQUEST_JOIN(type=kJoinTypeConcat)
+            REQUEST_JOIN(type=kJoinTypeConcat)
+              SIMPLE_PROJECT(sources=(id, t1.id, t1.b, t1.ts, b))
+                DATA_PROVIDER(request=t1)
+              PROJECT(type=Aggregation)
+                REQUEST_UNION(partition_keys=(), orders=(ASC), rows=(ts, 2 PRECEDING, 0 CURRENT), index_keys=(id))
+                  DATA_PROVIDER(request=t1)
+                  DATA_PROVIDER(type=Partition, table=t1, index=idx1)
+            PROJECT(type=Aggregation)
+              REQUEST_UNION(partition_keys=(), orders=(ASC), range=(ts, 2000 PRECEDING, 0 CURRENT), index_keys=(b))
+                DATA_PROVIDER(request=t1)
+                DATA_PROVIDER(type=Partition, table=t1, index=idx2)
+          PROJECT(type=Aggregation)
+            REQUEST_UNION(EXCLUDE_CURRENT_ROW, partition_keys=(), orders=(ASC), range=(ts, 2000 PRECEDING, 0 CURRENT), index_keys=(b))
+              DATA_PROVIDER(request=t1)
+              DATA_PROVIDER(type=Partition, table=t1, index=idx2)
+    expect:
+      columns: ["cnt1 int64", "id int32", "id int32", "b int32", "ts int64",  "cnt2 int64", "b int32", "cnt3 int64"]
+      order: id
+      data: |
+          1, 1, 1, 10, 1000, 1, 10, 0
+          1, 2, 2, 30, 2000, 1, 30, 0
+  - id: 105
+    desc: |
+      simple select(*) over last join (multiple input source)
+    inputs:
+      - name: t1
+        columns: ["id int32", "b int32", "ts int64"]
+        indexs: ["idx1:id:ts", "idx2:b:ts"]
+        data: |
+          1, 10, 1000
+          2, 30, 2000
+      - name: t2
+        columns: ["id int32", "b int32", "ts int64"]
+        indexs: ["idx1:id:ts", "idx2:b:ts"]
+        data: |
+          3, 10, 1000
+          4, 30, 2000
+    sql: |
+      select * from t1 last join t2 on t1.b = t2.b;
+    expect:
+      columns: ["id int32", "b int32", "ts int64", "id int32", "b int32", "ts int64"]
+      order: id
+      data: |
+        1, 10, 1000, 3, 10, 1000
+        2, 30, 2000, 4, 30, 2000
+
+  - id: 106
+    desc: |
+      select(t1.*) over last join (multiple input source)
+    inputs:
+      - name: t1
+        columns: ["id int32", "b int32", "ts int64"]
+        indexs: ["idx1:id:ts", "idx2:b:ts"]
+        data: |
+          1, 10, 1000
+          2, 30, 2000
+      - name: t2
+        columns: ["id int32", "b int32", "ts int64"]
+        indexs: ["idx1:id:ts", "idx2:b:ts"]
+        data: |
+          3, 10, 1000
+          4, 30, 2000
+    sql: |
+      select t1.* from t1 last join t2 on t1.b = t2.b;
+    expect:
+      columns: ["id int32", "b int32", "ts int64"]
+      order: id
+      data: |
+        1, 10, 1000
+        2, 30, 2000
+
+  - id: 107
+    desc: |
+      select(t1.*) over last join (multiple input source)
+    inputs:
+      - name: t1
+        columns: ["id int32", "b int32", "ts int64"]
+        indexs: ["idx1:id:ts", "idx2:b:ts"]
+        data: |
+          1, 10, 1000
+          2, 30, 2000
+      - name: t2
+        columns: ["id int32", "b int32", "ts int64"]
+        indexs: ["idx1:id:ts", "idx2:b:ts"]
+        data: |
+          3, 10, 1000
+          4, 30, 2000
+    sql: |
+      select t1.* from t1
+      last join t2 on t1.b = t2.b
+      last join t2 as t3 on t1.b = t3.b
+    expect:
+      columns: ["id int32", "b int32", "ts int64"]
+      order: id
+      data: |
+        1, 10, 1000
+        2, 30, 2000

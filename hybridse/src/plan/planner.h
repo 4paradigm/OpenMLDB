@@ -31,6 +31,7 @@
 #include "node/plan_node.h"
 #include "node/sql_node.h"
 #include "proto/fe_type.pb.h"
+
 namespace hybridse {
 namespace plan {
 
@@ -55,17 +56,32 @@ class Planner {
 
     static int GetPlanTreeLimitCount(node::PlanNode *node);
 
+    /// Prepare plan node for request mode (or batch request mode):
+    /// - verify the plan node for supported OPs
+    ///
+    /// \param node Plan node tree going to validate.
+    static base::Status PreparePlanForRequestMode(node::PlanNode *node) ABSL_ATTRIBUTE_NONNULL();
+
  protected:
+    template <typename NodeType, typename OutputType, typename ConvertFn>
+    ABSL_MUST_USE_RESULT base::Status ConvertGuard(const node::SqlNode *node, OutputType **output, ConvertFn &&func) {
+        auto specific_node = dynamic_cast<std::add_pointer_t<std::add_const_t<NodeType>>>(node);
+        CHECK_TRUE(specific_node != nullptr, common::kUnsupportSql, "unable to cast");
+        return func(specific_node, output);
+    }
+
+    static absl::StatusOr<node::TablePlanNode *> IsTable(node::PlanNode *node);
+    static base::Status PrepareRequestTable(node::PlanNode *node,
+                                            std::vector<node::TablePlanNode *> &request_tables);  // NOLINT
+    static base::Status ValidateOnlineServingOp(node::PlanNode *node);
+    static base::Status ValidateClusterOnlineTrainingOp(node::PlanNode *node);
+
     // expand pure history window to current history window.
     // currently only apply to rows window
     bool ExpandCurrentHistoryWindow(std::vector<const node::WindowDefNode *> *windows);
-    bool IsTable(node::PlanNode *node, node::PlanNode **output);
-    base::Status ValidateRequestTable(node::PlanNode *node, std::vector<node::PlanNode *> &request_tables);  // NOLINT
-    base::Status ValidateOnlineServingOp(node::PlanNode *node);
-    base::Status ValidateClusterOnlineTrainingOp(node::PlanNode *node);
     base::Status CheckWindowFrame(const node::WindowDefNode *w_ptr);
     base::Status CreateQueryPlan(const node::QueryNode *root, PlanNode **plan_tree);
-    base::Status CreateSelectQueryPlan(const node::SelectQueryNode *root, PlanNode **plan_tree);
+    base::Status CreateSelectQueryPlan(const node::SelectQueryNode *root, node::QueryPlanNode **plan_tree);
     base::Status CreateUnionQueryPlan(const node::UnionQueryNode *root, PlanNode **plan_tree);
     base::Status CreateCreateTablePlan(const node::SqlNode *root, node::PlanNode **output);
     base::Status CreateTableReferencePlanNode(const node::TableRefNode *root, node::PlanNode **output);
@@ -117,6 +133,8 @@ class SimplePlanner : public Planner {
                   const std::unordered_map<std::string, std::string>* extra_options = nullptr)
         : Planner(manager, is_batch_mode, is_cluster_optimized, enable_batch_window_parallelization, extra_options) {}
     ~SimplePlanner() {}
+
+ protected:
     base::Status CreatePlanTree(const NodePointVector &parser_trees,
                                 PlanNodeList &plan_trees);  // NOLINT
 };

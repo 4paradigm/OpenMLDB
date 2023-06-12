@@ -22,12 +22,13 @@ import org.apache.spark.sql.SparkSession
 object ImportOnlineData {
 
   def main(args: Array[String]): Unit = {
-    OpenmldbJobUtil.checkOneSqlArgument(args)
+    OpenmldbJobUtil.checkArgumentSize(args, 1)
     importOnlineData(args(0))
   }
 
-  def importOnlineData(sqlFilePath: String): Unit = {
-    val spark = SparkSession.builder().config("openmldb.loaddata.mode", "online").getOrCreate()
+  def importOnlineData(sqlFilePath: String): Unit = {  
+    val builder = SparkSession.builder().config("openmldb.loaddata.mode", "online")
+    val spark = builder.getOrCreate()
     OpenmldbJobUtil.runOpenmldbSql(spark, sqlFilePath)
   }
 

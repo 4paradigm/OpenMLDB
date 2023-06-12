@@ -22,12 +22,14 @@ import org.apache.spark.sql.SparkSession
 object ExportOfflineData {
 
   def main(args: Array[String]): Unit = {
-    OpenmldbJobUtil.checkOneSqlArgument(args)
+    // sql
+    OpenmldbJobUtil.checkArgumentSize(args, 1)
     exportOfflineData(args(0))
   }
 
   def exportOfflineData(sqlFilePath: String): Unit = {
-    val spark = SparkSession.builder().getOrCreate()
+    val builder = SparkSession.builder()
+    val spark = builder.getOrCreate()
     OpenmldbJobUtil.runOpenmldbSql(spark, sqlFilePath)
   }
 

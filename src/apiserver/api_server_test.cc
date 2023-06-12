@@ -91,7 +91,7 @@ class APIServerTestEnv : public testing::Environment {
     void TearDown() override {
         std::cout << "Environment TearDown!" << std::endl;
         hybridse::sdk::Status status;
-        cluster_remote->DropDB(db, &status);
+        cluster_remote->ExecuteSQL("drop database " + db, &status);
         server.Stop(0);
         server.Join();
         mc->Close();
@@ -382,6 +382,23 @@ TEST_F(APIServerTest, validPut) {
     ASSERT_TRUE(env->cluster_remote->ExecuteDDL(env->db, ddl, &status)) << status.msg;
     ASSERT_TRUE(env->cluster_sdk->Refresh());
 
+    // invalid date 2021-0 4-27
+    {
+        brpc::Controller cntl;
+        cntl.http_request().set_method(brpc::HTTP_METHOD_PUT);
+        cntl.http_request().uri() = "http://127.0.0.1:8010/dbs/" + env->db + "/tables/" + table;
+        cntl.request_attachment().append(
+            "{\"value\": [[\"foo\", 111, 1.4,  \"2021-0 4-27\", 1620471840256, true, \"more str\", null]]}");
+        env->http_channel.CallMethod(NULL, &cntl, NULL, NULL, NULL);
+        ASSERT_FALSE(cntl.Failed()) << cntl.ErrorText();
+        GeneralResp resp;
+        JsonReader reader(cntl.response_attachment().to_string().c_str());
+        reader >> resp;
+        ASSERT_EQ(-1, resp.code) << resp.msg;
+        ASSERT_STREQ("convertion failed for col field4", resp.msg.c_str());
+    }
+
+    // valid data
     int insert_cnt = 10;
     for (int i = 0; i < insert_cnt; i++) {
         std::string key = "k" + std::to_string(i);
@@ -633,6 +650,29 @@ TEST_F(APIServerTest, procedure) {
         ASSERT_TRUE(document["data"].FindMember("schema") == document["data"].MemberEnd());
         ASSERT_EQ(2, document["data"]["data"].Size());
         ASSERT_EQ(2, document["data"]["common_cols_data"].Size());
+    }
+
+    // invalid date
+    {
+        brpc::Controller cntl;
+        cntl.http_request().set_method(brpc::HTTP_METHOD_POST);
+        cntl.http_request().uri() = "http://127.0.0.1:8010/dbs/" + env->db + "/procedures/" + sp_name;
+        cntl.request_attachment().append(R"({
+        "common_cols":["bb", 23, 1590738994000],
+        "input": [[123, 5.1, 6.1, "20 21-08-01"],[234, 5.2, 6.2, "2021-08-0 2"]],
+    })");
+        env->http_channel.CallMethod(NULL, &cntl, NULL, NULL, NULL);
+        ASSERT_FALSE(cntl.Failed()) << cntl.ErrorText();
+
+        LOG(INFO) << "exec procedure resp:\n" << cntl.response_attachment().to_string();
+
+        // check resp data
+        if (document.Parse(cntl.response_attachment().to_string().c_str()).HasParseError()) {
+            ASSERT_TRUE(false) << "response parse failed with code " << document.GetParseError()
+                               << ", raw resp: " << cntl.response_attachment().to_string();
+        }
+        ASSERT_EQ(-1, document["code"].GetInt());
+        ASSERT_STREQ("Request body json parse failed", document["msg"].GetString());
     }
 
     // drop procedure and table
@@ -998,17 +1038,102 @@ TEST_F(APIServerTest, getTables) {
         ASSERT_STREQ("DB not found", document["msg"].GetString());
     }
     for (auto table : tables) {
-        env->cluster_remote->ExecuteDDL(env->db, "drop table " + table + ";", &status);
+        env->cluster_remote->ExecuteDDL(db_name, "drop table " + table + ";", &status);
         ASSERT_TRUE(env->cluster_sdk->Refresh());
     }
     env->cluster_remote->DropDB(db_name, &status);
 }
 
+TEST_F(APIServerTest, jsonInput) {
+    const auto env = APIServerTestEnv::Instance();
+
+    std::string table = "json_test";
+    // create table, no c2
+    std::string ddl = "create table " + table +
+                      "(c1 string,\n"
+                      "c3 int,\n"
+                      "c4 bigint,\n"
+                      "c5 float,\n"
+                      "c6 double,\n"
+                      "c7 timestamp,\n"
+                      "c8 date,\n"
+                      "index(key=c1, ts=c7));";
+    hybridse::sdk::Status status;
+    env->cluster_remote->ExecuteDDL(env->db, "drop table " + table, &status);
+    ASSERT_TRUE(env->cluster_sdk->Refresh());
+    ASSERT_TRUE(env->cluster_remote->ExecuteDDL(env->db, ddl, &status)) << "fail to create table";
+
+    ASSERT_TRUE(env->cluster_sdk->Refresh());
+    // insert
+    std::string insert_sql = "insert into " + table + " values(\"bb\",24,34,1.5,2.5,1590738994000,\"2020-05-05\");";
+    ASSERT_TRUE(env->cluster_remote->ExecuteInsert(env->db, insert_sql, &status));
+    // create procedure
+    std::string sp_name = "json_deploy";
+    std::string sql = "SELECT c1, c3, sum(c4) OVER w1 as w1_c4_sum FROM " + table +
+                      " WINDOW w1 AS"
+                      " (PARTITION BY c1 ORDER BY c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);";
+    std::string sp_ddl = "create procedure " + sp_name +
+                         " (c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, c8 date" + ")" +
+                         " begin " + sql + " end;";
+    ASSERT_TRUE(env->cluster_remote->ExecuteDDL(env->db, sp_ddl, &status)) << "fail to create procedure";
+    ASSERT_TRUE(env->cluster_sdk->Refresh());
+
+    // show procedure
+    brpc::Controller show_cntl;  // default is GET
+    show_cntl.http_request().uri() = "http://127.0.0.1:8010/dbs/" + env->db + "/procedures/" + sp_name;
+    env->http_channel.CallMethod(NULL, &show_cntl, NULL, NULL, NULL);
+    ASSERT_FALSE(show_cntl.Failed()) << show_cntl.ErrorText();
+    LOG(INFO) << "get sp resp: " << show_cntl.response_attachment();
+
+    // call deployment in json style input(won't check if it's a sp or deployment)
+    {
+        brpc::Controller cntl;
+        cntl.http_request().set_method(brpc::HTTP_METHOD_POST);
+        cntl.http_request().uri() = "http://127.0.0.1:8010/dbs/" + env->db + "/deployments/" + sp_name;
+        cntl.request_attachment().append(R"({
+        "input": [{"c1":"bb", "c3":23, "c4":123, "c5":5.1, "c6":6.1, "c7":1590738994000, "c8":"2021-08-01"},
+                  {"c1":"bb", "c3":23, "c4":234, "c5":5.2, "c6":6.2, "c7":1590738994000, "c8":"2021-08-02"}]
+    })");
+        env->http_channel.CallMethod(NULL, &cntl, NULL, NULL, NULL);
+        ASSERT_FALSE(cntl.Failed()) << cntl.ErrorText();
+
+        LOG(INFO) << "exec deployment resp:\n" << cntl.response_attachment().to_string();
+        butil::rapidjson::Document document;
+        // check resp data
+        if (document.Parse(cntl.response_attachment().to_string().c_str()).HasParseError()) {
+            ASSERT_TRUE(false) << "response parse failed with code " << document.GetParseError()
+                               << ", raw resp: " << cntl.response_attachment().to_string();
+        }
+        ASSERT_EQ(0, document["code"].GetInt());
+        ASSERT_STREQ("ok", document["msg"].GetString());
+        ASSERT_TRUE(document["data"].FindMember("schema") == document["data"].MemberEnd());
+        ASSERT_EQ(2, document["data"]["data"].Size());
+        ASSERT_EQ(0, document["data"]["common_cols_data"].Size());
+
+        // check data.data 2 results
+        auto& data = document["data"]["data"];
+        ASSERT_TRUE(data[0].IsObject());
+        ASSERT_STREQ(data[0].FindMember("c1")->value.GetString(), "bb");
+        ASSERT_EQ(data[0].FindMember("c3")->value.GetInt(), 23);
+        ASSERT_EQ(data[0].FindMember("w1_c4_sum")->value.GetInt64(), 157);  // 34 + 123
+
+        ASSERT_TRUE(data[1].IsObject());
+        ASSERT_STREQ(data[1].FindMember("c1")->value.GetString(), "bb");
+        ASSERT_EQ(data[1].FindMember("c3")->value.GetInt(), 23);
+        ASSERT_EQ(data[1].FindMember("w1_c4_sum")->value.GetInt64(), 268);  // 34 + 234
+    }
+
+    // drop procedure and table
+    std::string drop_sp_sql = "drop procedure " + sp_name + ";";
+    ASSERT_TRUE(env->cluster_remote->ExecuteDDL(env->db, drop_sp_sql, &status));
+    ASSERT_TRUE(env->cluster_remote->ExecuteDDL(env->db, "drop table " + table, &status));
+}
 }  // namespace openmldb::apiserver
 
 int main(int argc, char* argv[]) {
     testing::AddGlobalTestEnvironment(openmldb::apiserver::APIServerTestEnv::Instance());
     ::testing::InitGoogleTest(&argc, argv);
     ::google::ParseCommandLineFlags(&argc, &argv, true);
+    ::openmldb::base::SetupGlog(true);
     return RUN_ALL_TESTS();
 }

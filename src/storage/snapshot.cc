@@ -17,23 +17,29 @@
 #include "storage/snapshot.h"
 
 #include <fcntl.h>
-#include <google/protobuf/io/zero_copy_stream_impl.h>
-#include <google/protobuf/text_format.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
 
+#include "absl/strings/str_cat.h"
 #include "base/glog_wrapper.h"
+#include "google/protobuf/io/zero_copy_stream_impl.h"
+#include "google/protobuf/text_format.h"
 
 namespace openmldb {
 namespace storage {
 
-const std::string MANIFEST = "MANIFEST";  // NOLINT
+constexpr const char*  MANIFEST = "MANIFEST";
+
+int Snapshot::GenManifest(const SnapshotMeta& snapshot_meta) {
+    return GenManifest(snapshot_meta.snapshot_name, snapshot_meta.count,
+            snapshot_meta.offset, snapshot_meta.term);
+}
 
 int Snapshot::GenManifest(const std::string& snapshot_name, uint64_t key_count, uint64_t offset, uint64_t term) {
     DEBUGLOG("record offset[%lu]. add snapshot[%s] key_count[%lu]", offset, snapshot_name.c_str(), key_count);
-    std::string full_path = snapshot_path_ + MANIFEST;
-    std::string tmp_file = snapshot_path_ + MANIFEST + ".tmp";
+    std::string full_path = absl::StrCat(snapshot_path_, MANIFEST);
+    std::string tmp_file = absl::StrCat(snapshot_path_, MANIFEST, ".tmp");
     ::openmldb::api::Manifest manifest;
     std::string manifest_info;
     manifest.set_offset(offset);
@@ -43,7 +49,7 @@ int Snapshot::GenManifest(const std::string& snapshot_name, uint64_t key_count, 
     manifest_info.clear();
     google::protobuf::TextFormat::PrintToString(manifest, &manifest_info);
     FILE* fd_write = fopen(tmp_file.c_str(), "w");
-    if (fd_write == NULL) {
+    if (fd_write == nullptr) {
         PDLOG(WARNING, "fail to open file %s", tmp_file.c_str());
         return -1;
     }
@@ -58,7 +64,7 @@ int Snapshot::GenManifest(const std::string& snapshot_name, uint64_t key_count, 
     }
     fclose(fd_write);
     if (!io_error && rename(tmp_file.c_str(), full_path.c_str()) == 0) {
-        DEBUGLOG("%s generate success. path[%s]", MANIFEST.c_str(), full_path.c_str());
+        DEBUGLOG("%s generate success. path[%s]", MANIFEST, full_path.c_str());
         return 0;
     }
     unlink(tmp_file.c_str());
@@ -68,7 +74,7 @@ int Snapshot::GenManifest(const std::string& snapshot_name, uint64_t key_count, 
 int Snapshot::GetLocalManifest(const std::string& full_path, ::openmldb::api::Manifest& manifest) {
     int fd = open(full_path.c_str(), O_RDONLY);
     if (fd < 0) {
-        PDLOG(INFO, "[%s] is not exist", MANIFEST.c_str());
+        PDLOG(INFO, "[%s] does not exist", MANIFEST);
         return 1;
     } else {
         google::protobuf::io::FileInputStream fileInput(fd);

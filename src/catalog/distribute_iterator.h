@@ -54,6 +54,13 @@ class FullTableIterator : public ::hybridse::codec::ConstIterator<uint64_t, ::hy
     bool NextFromRemote();
     void Reset();
     void EndLocal();
+    inline void ResetValue() {
+        valid_value_ = false;
+    }
+
+    inline bool ValidValue() const {
+        return valid_value_;
+    }
 
  private:
     uint32_t tid_;
@@ -67,7 +74,15 @@ class FullTableIterator : public ::hybridse::codec::ConstIterator<uint64_t, ::hy
     uint64_t last_ts_;
     std::string last_pk_;
     ::hybridse::codec::Row value_;
-    std::vector<std::shared_ptr<::google::protobuf::Message>> response_vec_;
+    // use an extra flag to indicate whether the `value_` contains a valid value
+    // the logic is:
+    // After GetValue(): valid_value_ = true
+    // After Next(): valid_value_ = false, but the `row_` is still valid until next `GetValue()`
+    // refer to next_row_iterator() in udf.cc for the reason why we must make sure the `value_` is valid
+    // the call steps in next_row_iterator are: res = GetValue() -> Next() -> return res
+    bool valid_value_ = false;
+    std::vector<hybridse::base::RefCountedSlice> buffered_slices_;
+    int64_t cnt_ = 0;
 };
 
 class RemoteWindowIterator : public ::hybridse::vm::RowIterator {
@@ -94,21 +109,33 @@ class RemoteWindowIterator : public ::hybridse::vm::RowIterator {
     bool IsSeekable() const override { return true; }
 
  private:
-    void SetTs();
-    void ScanRemote(uint64_t key, uint32_t ts_cnt);
+    void ScanRemote(uint64_t key, uint32_t ts_pos);
+
+    inline void ResetValue() {
+        valid_value_ = false;
+    }
+
+    inline bool ValidValue() const {
+        return valid_value_;
+    }
 
  private:
     uint32_t tid_;
     uint32_t pid_;
     std::string index_name_;
     std::shared_ptr<::openmldb::base::KvIterator> kv_it_;
-    std::vector<std::shared_ptr<::google::protobuf::Message>> response_vec_;
     std::shared_ptr<openmldb::client::TabletClient> tablet_client_;
     ::hybridse::codec::Row row_;
+    // use an extra flag to indicate whether the `row_` contains a valid value
+    // the logic is:
+    // After GetValue(): valid_value_ = true
+    // After Next(): valid_value_ = false, but the `row_` is still valid until next `GetValue()`
+    // refer to next_row_iterator() in udf.cc for the reason why we must make sure the `row_` is valid
+    // the call steps in next_row_iterator are: res = GetValue() -> Next() -> return res
+    bool valid_value_ = false;
     bool is_traverse_data_;
     std::string pk_;
     mutable uint64_t ts_;
-    uint32_t ts_cnt_;
 };
 
 class DistributeWindowIterator : public ::hybridse::codec::WindowIterator {
@@ -158,8 +185,7 @@ class DistributeWindowIterator : public ::hybridse::codec::WindowIterator {
     IT it_;
     // iterator to remote data, only zero or one of `it_` and `kv_it_` can be non-null
     KV_IT kv_it_;
-    // underlaying data pointed by `kv_it_`
-    std::vector<std::shared_ptr<::google::protobuf::Message>> response_vec_;
+    int64_t pk_cnt_ = 0;
 };
 
 }  // namespace catalog

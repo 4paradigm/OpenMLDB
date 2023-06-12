@@ -1,5 +1,5 @@
 =============================
-快速上手
+快速入门
 =============================
 
 
@@ -7,7 +7,10 @@
     :maxdepth: 1
 
     openmldb_quickstart
-    java_sdk
-    python_sdk
-    rest_api
-    data_import_guide
+    concepts/index
+    cli
+    sdk/index
+    beginner_must_read
+    function_boundary
+    
+

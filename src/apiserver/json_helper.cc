@@ -164,10 +164,46 @@ JsonReader& JsonReader::operator&(unsigned& u) {  // NOLINT
     return *this;
 }
 
+JsonReader& JsonReader::operator&(int16_t& i) {  // NOLINT
+    if (!error_) {
+        if (CURRENT.IsInt()) {
+            i = static_cast<int16_t>(CURRENT.GetInt());
+            Next();
+        } else {
+            error_ = true;
+        }
+    }
+    return *this;
+}
+
 JsonReader& JsonReader::operator&(int& i) {  // NOLINT
     if (!error_) {
         if (CURRENT.IsInt()) {
             i = CURRENT.GetInt();
+            Next();
+        } else {
+            error_ = true;
+        }
+    }
+    return *this;
+}
+
+JsonReader& JsonReader::operator&(int64_t& i) {  // NOLINT
+    if (!error_) {
+        if (CURRENT.IsInt64()) {
+            i = CURRENT.GetInt64();
+            Next();
+        } else {
+            error_ = true;
+        }
+    }
+    return *this;
+}
+
+JsonReader& JsonReader::operator&(float& f) {  // NOLINT
+    if (!error_) {
+        if (CURRENT.IsNumber()) {
+            f = static_cast<float>(CURRENT.GetDouble());
             Next();
         } else {
             error_ = true;

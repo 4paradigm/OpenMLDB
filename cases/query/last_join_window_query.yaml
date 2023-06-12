@@ -164,3 +164,259 @@ cases:
         3, 55, 1590115420001, 1590115420001, CCC, 3
         4, 55, 1590115420002, 1590115420002, DDDD, 7
         5, 55, 1590115420003, 1590115420002, FFFFFF, 12
+
+  - id: 4
+    desc: |
+      window with a last join subquery
+    inputs:
+      - name: actions
+        columns:
+          - userId int
+          - itemId int
+          - actionTime timestamp
+        indexs:
+          - index2:itemId:actionTime
+        data: |
+          1, 1, 1000
+          2, 2, 2000
+          3, 3, 3000
+          4, 3, 4000
+
+      - name: items
+        columns:
+          - id int
+          - price float
+          - tm timestamp
+        indexs:
+          - idx:id:tm
+        data: |
+          1, 99,  1000
+          1, 599, 4000
+          2, 199, 3000
+          3, 399, 5000
+    # userid, itemid, actionTime, id, price, tm
+    #    1,     1,     1000,       1, 599,   4000
+    #    2,     2,     2000,       2, 199,   3000
+    #    3,     3,     3000,       3, 399,   5000
+    #    4,     3,     4000,       3, 399,   5000
+    sql: |
+      select
+       userId,
+        itemId,
+        count(itemId) over w1 as count_1,
+        sum(price) over w1 as total,
+        actionTime
+      from (
+        select * from actions
+        last join items order by tm
+        on actions.itemId = items.id and actionTime <= tm
+      ) window w1 as (
+        partition by itemId
+        order by actionTime
+        rows_range between 3000 preceding and current row
+      );
+    request_plan: |
+      PROJECT(type=Aggregation)
+        SIMPLE_PROJECT(sources=(actions.userId, actions.itemId, actions.actionTime, items.id, items.price, items.tm))
+          JOIN(type=LastJoin, right_sort=(ASC), condition=actionTime <= tm, left_keys=(), right_keys=(), index_keys=(actions.itemId))
+            REQUEST_UNION(partition_keys=(), orders=(ASC), range=(actionTime, 3000 PRECEDING, 0 CURRENT), index_keys=(itemId))
+              DATA_PROVIDER(request=actions)
+              DATA_PROVIDER(type=Partition, table=actions, index=index2)
+            DATA_PROVIDER(type=Partition, table=items, index=idx)
+    expect:
+      order: userId
+      columns:
+        - userId int
+        - itemId int
+        - count_1 int64
+        - total float
+        - actionTime timestamp
+      data: |
+        1, 1, 1, 599, 1000
+        2, 2, 1, 199, 2000
+        3, 3, 1, 399, 3000
+        4, 3, 2, 798, 4000
+
+  - id: 5
+    desc: window over subquery(t1 last join t2)
+    inputs:
+      -
+        name: t0
+        columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",2,30,1.1,2.1,1590738990000,"2020-05-01"]
+          - [2,"aa",2,30,1.1,2.1,1590738991000,"2020-05-01"]
+          - [3,"bb",2,31,1.2,2.2,1590738991000,"2020-05-02"]
+          - [4,"cc",2,32,1.3,2.3,1590738992000,"2020-05-03"]
+      -
+        name: t1
+        columns: ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
+        indexs: ["index1:c1:c7","index2:c3:c7"]
+        rows:
+          - [1,"aa",20,30,1.1,2.1,1606755660000,"2020-05-01"]
+          - [2,"cc",21,32,1.1,2.1,1606755780000,"2020-05-01"]
+    sql: |
+      select
+        idx, c1, c3l, c3r,
+        sum(c3l) OVER w1 as suma,
+        min(c3r) OVER w1 as sumb,
+      from (
+        select
+          {0}.c3 as c3l,
+          {0}.id as idx,
+          {0}.c1 as c1,
+          {1}.c3 as c3r,
+          {0}.c7 as c7
+        from t0 last join t1 on t0.c1=t1.c1
+      )
+      WINDOW w1 AS (
+        PARTITION BY c1 ORDER BY c7 ROWS_RANGE BETWEEN 10s PRECEDING AND CURRENT ROW);
+    request_plan: |
+      PROJECT(type=Aggregation)
+        SIMPLE_PROJECT(sources=(t0.c3 -> c3l, t0.id -> idx, t0.c1, t1.c3 -> c3r, t0.c7))
+          JOIN(type=LastJoin, condition=, left_keys=(), right_keys=(), index_keys=(t0.c1))
+            REQUEST_UNION(partition_keys=(), orders=(ASC), range=(c7, 10000 PRECEDING, 0 CURRENT), index_keys=(c1))
+              DATA_PROVIDER(request=t0)
+              DATA_PROVIDER(type=Partition, table=t0, index=index1)
+            DATA_PROVIDER(type=Partition, table=t1, index=index1)
+    expect:
+      order: idx
+      columns:
+        - idx int
+        - c1 string
+        - c3l int
+        - c3r int
+        - suma int
+        - sumb int
+      rows:
+        - [1,"aa", 2, 20,   2, 20 ]
+        - [2,"aa", 2, 20,   4, 20 ]
+        - [3,"bb", 2, null, 2, NULL]
+        - [4,"cc", 2, 21,   2, 21]
+
+  - id: 6
+    desc: window over subquery(t1 last join t2), aliasing window def as well
+    inputs:
+      -
+        name: t0
+        columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",2,30,1.1,2.1,1590738990000,"2020-05-01"]
+          - [2,"aa",2,30,1.1,2.1,1590738991000,"2020-05-01"]
+          - [3,"bb",2,31,1.2,2.2,1590738991000,"2020-05-02"]
+          - [4,"cc",2,32,1.3,2.3,1590738992000,"2020-05-03"]
+      -
+        name: t1
+        columns: ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
+        indexs: ["index1:c1:c7","index2:c3:c7"]
+        rows:
+          - [1,"aa",20,30,1.1,2.1,1606755660000,"2020-05-01"]
+          - [2,"cc",21,32,1.1,2.1,1606755780000,"2020-05-01"]
+    sql: |
+      select
+        idx, c1a as c1, c3l, c3r,
+        sum(c3l) OVER w1 as suma,
+        min(c3r) OVER w1 as sumb,
+      from (
+        select
+          {0}.c3 as c3l,
+          {0}.id as idx,
+          {1}.c3 as c3r,
+          {0}.c1 as c1a,
+          {0}.c7 as c7a
+        from t0 last join t1 on t0.c1=t1.c1
+      )
+      WINDOW w1 AS (
+        PARTITION BY c1a ORDER BY c7a ROWS_RANGE BETWEEN 10s PRECEDING AND CURRENT ROW);
+    request_plan: |
+      PROJECT(type=Aggregation)
+        SIMPLE_PROJECT(sources=(t0.c3 -> c3l, t0.id -> idx, t1.c3 -> c3r, t0.c1 -> c1a, t0.c7 -> c7a))
+          JOIN(type=LastJoin, condition=, left_keys=(), right_keys=(), index_keys=(t0.c1))
+            REQUEST_UNION(partition_keys=(), orders=(ASC), range=(c7, 10000 PRECEDING, 0 CURRENT), index_keys=(c1))
+              DATA_PROVIDER(request=t0)
+              DATA_PROVIDER(type=Partition, table=t0, index=index1)
+            DATA_PROVIDER(type=Partition, table=t1, index=index1)
+    expect:
+      order: idx
+      columns:
+        - idx int
+        - c1 string
+        - c3l int
+        - c3r int
+        - suma int
+        - sumb int
+      rows:
+        - [1,"aa", 2, 20,   2, 20 ]
+        - [2,"aa", 2, 20,   4, 20 ]
+        - [3,"bb", 2, null, 2, NULL]
+        - [4,"cc", 2, 21,   2, 21]
+
+  - id: 7
+    desc: window over subquery(t1 last join t2), aliasing window def with multiple level renames
+    inputs:
+      -
+        name: t0
+        columns : ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
+        indexs: ["index1:c1:c7"]
+        rows:
+          - [1,"aa",2,30,1.1,2.1,1590738990000,"2020-05-01"]
+          - [2,"aa",2,30,1.1,2.1,1590738991000,"2020-05-01"]
+          - [3,"bb",2,31,1.2,2.2,1590738991000,"2020-05-02"]
+          - [4,"cc",2,32,1.3,2.3,1590738992000,"2020-05-03"]
+      -
+        name: t1
+        columns: ["id int","c1 string","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date"]
+        indexs: ["index1:c1:c7","index2:c3:c7"]
+        rows:
+          - [1,"aa",20,30,1.1,2.1,1606755660000,"2020-05-01"]
+          - [2,"cc",21,32,1.1,2.1,1606755780000,"2020-05-01"]
+    sql: |
+      select
+        idx2, c1a2, c3l2, c3r2,
+        sum(c3l2) OVER w1 as suma,
+        min(c3r2) OVER w1 as sumb,
+      from (
+        select
+          c3l as c3l2,
+          idx as idx2,
+          c3r as c3r2,
+          c1a as c1a2,
+          c7a as c7a2
+        from (
+          select
+            {0}.c3 as c3l,
+            {0}.id as idx,
+            {1}.c3 as c3r,
+            {0}.c1 as c1a,
+            {0}.c7 as c7a
+          from t0 last join t1 on t0.c1=t1.c1
+        )
+      )
+      WINDOW w1 AS (
+        PARTITION BY c1a2 ORDER BY c7a2 ROWS_RANGE BETWEEN 10s PRECEDING AND CURRENT ROW);
+
+    # consecutive simple projects will be optimized into single one
+    request_plan: |
+      PROJECT(type=Aggregation)
+        SIMPLE_PROJECT(sources=(t0.c3 -> c3l2, t0.id -> idx2, t1.c3 -> c3r2, t0.c1 -> c1a2, t0.c7 -> c7a2))
+          JOIN(type=LastJoin, condition=, left_keys=(), right_keys=(), index_keys=(t0.c1))
+            REQUEST_UNION(partition_keys=(), orders=(ASC), range=(c7, 10000 PRECEDING, 0 CURRENT), index_keys=(c1))
+              DATA_PROVIDER(request=t0)
+              DATA_PROVIDER(type=Partition, table=t0, index=index1)
+            DATA_PROVIDER(type=Partition, table=t1, index=index1)
+    expect:
+      order: idx2
+      columns:
+        - idx2 int
+        - c1a2 string
+        - c3l2 int
+        - c3r2 int
+        - suma int
+        - sumb int
+      rows:
+        - [1,"aa", 2, 20,   2, 20 ]
+        - [2,"aa", 2, 20,   4, 20 ]
+        - [3,"bb", 2, null, 2, NULL]
+        - [4,"cc", 2, 21,   2, 21]

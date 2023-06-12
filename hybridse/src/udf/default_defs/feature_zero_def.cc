@@ -34,16 +34,13 @@
 #include "udf/udf_registry.h"
 #include "vm/jit_runtime.h"
 
-using openmldb::base::Date;
-using hybridse::codec::ListRef;
-using openmldb::base::StringRef;
-using openmldb::base::Timestamp;
-
 namespace hybridse {
 namespace udf {
 
 using hybridse::codec::ListRef;
 using hybridse::codec::StringRef;
+using openmldb::base::Date;
+using openmldb::base::Timestamp;
 
 /**
  * A mutable string ArrayListV
@@ -106,7 +103,7 @@ class MutableStringListVIterator
 
     const uint64_t& GetKey() const override { return key_; }
 
-    void SeekToFirst() {
+    void SeekToFirst() override {
         iter_ = buffer_->cbegin();
         if (Valid()) {
             tmp_ = StringRef(*iter_);
@@ -382,6 +379,11 @@ struct FZStringOpsDef {
         output->size_ = bytes;
         output->data_ = buf;
     }
+
+    static int32_t ListSize(hybridse::codec::ListRef<StringRef>* list) {
+        auto list_v = reinterpret_cast<hybridse::codec::ListV<StringRef> *>(list->list);
+        return list_v->GetCount();
+    }
 };
 
 template <typename K>
@@ -394,9 +396,9 @@ struct FZTop1Ratio {
             ".opaque_dict_" + DataTypeTrait<K>::to_string() + "_";
         helper.doc(helper.GetDoc())
             .templates<double, Opaque<ContainerT>, Nullable<K>>()
-            .init("fz_top1_ratio_init" + suffix, ContainerT::Init)
-            .update("fz_top1_ratio_update" + suffix, Update)
-            .output("fz_top1_ratio_output" + suffix, Output);
+            .init("top1_ratio_init" + suffix, ContainerT::Init)
+            .update("top1_ratio_update" + suffix, Update)
+            .output("top1_ratio_output" + suffix, Output);
     }
 
     static ContainerT* Update(ContainerT* ptr, InputK key, bool is_key_null) {
@@ -455,9 +457,9 @@ struct FZTopNFrequency {
             ".opaque_dict_" + DataTypeTrait<K>::to_string() + "_";
         helper.doc(helper.GetDoc())
             .templates<StringRef, Opaque<TopNContainer>, Nullable<K>, int32_t>()
-            .init("fz_topn_frequency_init" + suffix, TopNContainer::Init)
-            .update("fz_topn_frequency_update" + suffix, Update)
-            .output("fz_topn_frequency_output" + suffix, Output);
+            .init("topn_frequency_init" + suffix, TopNContainer::Init)
+            .update("topn_frequency_update" + suffix, Update)
+            .output("topn_frequency_output" + suffix, Output);
     }
 
     static TopNContainer* Update(TopNContainer* ptr, InputK key,
@@ -553,115 +555,165 @@ struct FZTopNFrequency {
 };
 
 void DefaultUdfLibrary::InitFeatureZero() {
-    RegisterUdaf("fz_window_split")
+    RegisterUdaf("window_split")
         .templates<ListRef<StringRef>, Opaque<StringSplitState>,
                    Nullable<StringRef>, StringRef>()
-        .init("fz_window_split_init", FZStringOpsDef::InitList)
-        .update("fz_window_split_update", FZStringOpsDef::UpdateSplit)
-        .output("fz_window_split_output", FZStringOpsDef::OutputList)
+        .init("window_split_init", FZStringOpsDef::InitList)
+        .update("window_split_update", FZStringOpsDef::UpdateSplit)
+        .output("window_split_output", FZStringOpsDef::OutputList)
         .doc(R"(
-            @brief Used by feature zero, for each string value from specified
+            @brief For each string value from specified
             column of window, split by delimeter and add segment
             to output list. Null values are skipped.
 
-            @since 0.1.0)");
+            @since 0.6.5)");
 
-    RegisterExternal("fz_split")
+    RegisterExternal("split")
         .returns<ListRef<StringRef>>()
         .return_by_arg(true)
         .args<Nullable<StringRef>, StringRef>(
             reinterpret_cast<void*>(&FZStringOpsDef::SingleSplit))
         .doc(R"(
-            @brief Used by feature zero, split string to list by delimeter.
-            Null values are skipped.
+            @brief Split string to list by delimeter. Null values are skipped.
 
-            @since 0.1.0)");
+            @param input Input string
+            @param delimeter Delimeter of string
 
-    RegisterUdaf("fz_window_split_by_key")
+            Example:
+
+            @code{.sql}
+            select `join`(split("k1:1,k2:2", ","), " ") as out;
+            -- output "k1:1 k2:2"
+            @endcode
+
+            @since 0.6.5)");
+
+    RegisterUdaf("window_split_by_key")
         .templates<ListRef<StringRef>, Opaque<StringSplitState>,
                    Nullable<StringRef>, StringRef, StringRef>()
-        .init("fz_window_split_by_key_init", FZStringOpsDef::InitList)
-        .update("fz_window_split_by_key_update",
+        .init("window_split_by_key_init", FZStringOpsDef::InitList)
+        .update("window_split_by_key_update",
                 FZStringOpsDef::UpdateSplitByKey)
-        .output("fz_window_split_by_key_output", FZStringOpsDef::OutputList)
+        .output("window_split_by_key_output", FZStringOpsDef::OutputList)
         .doc(R"(
-            @brief Used by feature zero, for each string value from specified
-            column of window, split by delimeter and then split each segment 
-            as kv pair, then add each key to output list. Null and 
+            @brief For each string value from specified
+            column of window, split by delimeter and then split each segment
+            as kv pair, then add each key to output list. Null and
             illegal segments are skipped.
 
-            @since 0.1.0)");
+            @since 0.6.5)");
 
     // single line version
-    RegisterExternal("fz_split_by_key")
+    RegisterExternal("split_by_key")
         .returns<ListRef<StringRef>>()
         .return_by_arg(true)
         .args<Nullable<StringRef>, StringRef, StringRef>(
             reinterpret_cast<void*>(FZStringOpsDef::SingleSplitByKey))
         .doc(R"(
-            @brief Used by feature zero, split string by delimeter and then
-            split each segment as kv pair, then add each 
-            key to output list. Null and illegal segments are skipped.
+            @brief Split string by delimeter and split each segment as kv pair, then add each 
+            key to output list. Null or illegal segments are skipped.
 
-            @since 0.1.0)");
+            @param input Input string
+            @param delimeter Delimeter of string
+            @param kv_delimeter Delimeter of kv pair
 
-    RegisterUdaf("fz_window_split_by_value")
+            Example:
+
+            @code{.sql}
+            select `join`(split_by_key("k1:1, k2:2", ",", ":"), " ") as out;
+            -- output "k1 k2"
+            @endcode
+
+            @since 0.6.5)");
+
+    RegisterUdaf("window_split_by_value")
         .templates<ListRef<StringRef>, Opaque<StringSplitState>,
                    Nullable<StringRef>, StringRef, StringRef>()
-        .init("fz_window_split_by_value_init", FZStringOpsDef::InitList)
-        .update("fz_window_split_by_value_update",
+        .init("window_split_by_value_init", FZStringOpsDef::InitList)
+        .update("window_split_by_value_update",
                 FZStringOpsDef::UpdateSplitByValue)
-        .output("fz_window_split_by_value_output", FZStringOpsDef::OutputList)
+        .output("window_split_by_value_output", FZStringOpsDef::OutputList)
         .doc(R"(
-            @brief Used by feature zero, for each string value from specified
-            column of window, split by delimeter and then split each segment 
-            as kv pair, then add each value to output list. Null and 
+            @brief For each string value from specified
+            column of window, split by delimeter and then split each segment
+            as kv pair, then add each value to output list. Null and
             illegal segments are skipped.
 
-            @since 0.1.0)");
+            @since 0.6.5)");
 
     // single line version
-    RegisterExternal("fz_split_by_value")
+    RegisterExternal("split_by_value")
         .returns<ListRef<StringRef>>()
         .return_by_arg(true)
         .args<Nullable<StringRef>, StringRef, StringRef>(
             reinterpret_cast<void*>(FZStringOpsDef::SingleSplitByValue))
         .doc(R"(
-            @brief Used by feature zero, split string by delimeter and then
-            split each segment as kv pair, then add each
-            value to output list. Null and illegal segments are skipped.
+            @brief Split string by delimeter and split each segment as kv pair, then add each
+            value to output list. Null or illegal segments are skipped.
 
-            @since 0.1.0)");
-
-    RegisterExternal("fz_join")
-        .doc(R"(
-            @brief Used by feature zero, for each string value from specified
-            column of window, join by delimeter. Null values are skipped.
+            @param input Input string
+            @param delimeter Delimeter of string
+            @param kv_delimeter Delimeter of kv pair
 
             Example:
 
             @code{.sql}
-                select fz_join(fz_split("k1:v1,k2:v2", ","), " ");
+            select `join`(split_by_value("k1:1, k2:2", ",", ":"), " ") as out;
+            -- output "1 2"
+            @endcode
+
+            @since 0.6.5)");
+
+    RegisterExternal("join")
+        .doc(R"(
+            @brief For each string value from specified
+            column of window, join by delimeter. Null values are skipped.
+
+            @param input List of string to join
+            @param delimeter Join delimeter
+
+            Example:
+
+            @code{.sql}
+                select `join`(split("k1:v1,k2:v2", ","), " ");
                 --  "k1:v1 k2:v2"
             @endcode
-            @since 0.1.0
+            @since 0.6.5
         )")
         .list_argument_at(0)
         .args<ListRef<StringRef>, StringRef>(FZStringOpsDef::StringJoin);
 
-    RegisterUdafTemplate<FZTop1Ratio>("fz_top1_ratio")
-        .doc(R"(@brief Compute the top1 key's ratio
+    RegisterUdafTemplate<FZTop1Ratio>("top1_ratio")
+        .doc(R"(
+        @brief Compute the top1 key's ratio
 
-        @since 0.1.0)")
+        @since 0.6.5)")
         .args_in<int16_t, int32_t, int64_t, float, double, Date, Timestamp,
                  StringRef>();
 
-    RegisterUdafTemplate<FZTopNFrequency>("fz_topn_frequency")
-        .doc(R"(@brief Return the topN keys sorted by their frequency
+    RegisterUdafTemplate<FZTopNFrequency>("topn_frequency")
+        .doc(R"(
+        @brief Return the topN keys sorted by their frequency
 
-        @since 0.1.0)")
+        @since 0.6.5)")
         .args_in<int16_t, int32_t, int64_t, float, double, Date, Timestamp,
                  StringRef>();
+
+    RegisterExternal("size")
+        .list_argument_at(0)
+        .args<ListRef<StringRef>>(reinterpret_cast<int32_t (*)(ListRef<StringRef>*)>(FZStringOpsDef::ListSize))
+        .returns<int32_t>()
+        .doc(R"(
+            @brief Get the size of a List (e.g., result of split)
+
+            Example:
+
+            @code{.sql}
+                select size(split("a b c", " "));
+                -- output 3
+
+            @endcode
+            @since 0.7.0)");
 }
 
 }  // namespace udf

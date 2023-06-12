@@ -10,6 +10,24 @@
 
 如果进程都活着，集群还是表现不正常，需要查询一下server日志。可以优先看WARN和ERROR级日志，很大概率上，它们就是根本原因。
 
+### 2. 如果数据没有自动恢复成功怎么办？
+
+通常情况，当我们重启服务，表中数据会自动进行恢复，但有些情况可能会造成恢复失败，通常失败的情况包括：
+
+- tablet异常退出
+- 多副本表多个副本所在的tablets同时重启或者重启太快，造成某些`auto_failover`操作还没完成tablet就重启
+- auto_failover设成`false`
+
+当服务启动成功后，可以通过`gettablestatus`获得所有表的状态：
+```
+python tools/openmldb_ops.py --openmldb_bin_path=./bin/openmldb --zk_cluster=172.24.4.40:30481 --zk_root_path=/openmldb --cmd=gettablestatus
+```
+
+如果表中有`Warnings`，可以通过`recoverdata`来自动恢复数据：
+```
+python tools/openmldb_ops.py --openmldb_bin_path=./bin/openmldb --zk_cluster=172.24.4.40:30481 --zk_root_path=/openmldb --cmd=recoverdata
+```
+
 ## Server FAQ
 
 ### 1. 为什么日志中有 Fail to write into Socket 的警告日志？
@@ -45,27 +63,19 @@ setttl table_name ttl_type ttl [ttl] [index_name]
 ```
 rpc_client.h:xxx] request error. [E1008] Reached timeout=xxxms
 ```
-这是由于client端本身发送的rpc request的timeout设置小了，client端自己主动断开。注意，这是rpc的超时。
-
-分为以下情况处理：
-#### 同步的离线job
-在使用同步的离线命令时，容易出现这个情况。你可以使用
-```sql
-> SET @@job_timeout = "600000";
-```
-来调大rpc的timeout时间，单位为ms。
-#### 普通请求
-如果是简单的query或insert，都会出现超时，需要更改通用的`request_timeout`配置。
+这是由于client端本身发送的rpc request的timeout设置小了，client端自己主动断开，注意这是rpc的超时。需要更改通用的`request_timeout`配置。
 1. CLI: 启动时配置`--request_timeout_ms`
 2. JAVA/Python SDK: Option或url中调整`SdkOption.requestTimeout`
-
+```{note}
+同步的离线命令通常不会出现这个错误，因为同步离线命令的timeout设置为了TaskManager可接受的最长时间。
+```
 ### 2. 为什么收到 Got EOF of Socket 的警告日志？
 ```
 rpc_client.h:xxx] request error. [E1014]Got EOF of Socket{id=x fd=x addr=xxx} (xx)
 ```
-这是因为`addr`端主动断开了连接，`addr`的地址大概率是taskmanager。这不代表taskmanager不正常，而是taskmanager端认为这个连接没有活动，超过keepAliveTime了，而主动断开通信channel。
-在0.5.0及以后的版本中，可以调大taskmanager的`server.channel_keep_alive_time`来提高对不活跃channel的容忍度。默认值为1800s(0.5h)，特别是使用同步的离线命令时，这个值可能需要适当调大。
-在0.5.0以前的版本中，无法更改此配置，请升级taskmanager版本。
+这是因为`addr`端主动断开了连接，`addr`的地址大概率是TaskManager。这不代表TaskManager不正常，而是TaskManager端认为这个连接没有活动，超过keepAliveTime了，而主动断开通信channel。
+在0.5.0及以后的版本中，可以调大TaskManager的`server.channel_keep_alive_time`来提高对不活跃channel的容忍度。默认值为1800s(0.5h)，特别是使用同步的离线命令时，这个值可能需要适当调大。
+在0.5.0以前的版本中，无法更改此配置，请升级TaskManager版本。
 
 ### 3. 离线查询结果显示中文为什么乱码？
 
@@ -95,12 +105,26 @@ zk日志：
 1. CLI：启动时配置`--zk_log_level`调整level,`--zk_log_file`配置日志保存文件。
 2. JAVA/Python SDK：Option或url中使用`zkLogLevel`调整level，`zkLogFile`配置日志保存文件。
 
-- `zk_log_level`(int, 默认=3, 即INFO): 
+- `zk_log_level`(int, 默认=0, 即DISABLE_LOGGING): 
 打印这个等级及**以下**等级的日志。0-禁止所有zk log, 1-error, 2-warn, 3-info, 4-debug。
 
 sdk日志（glog日志）：
 1. CLI：启动时配置`--glog_level`调整level,`--glog_dir`配置日志保存文件。
 2. JAVA/Python SDK：Option或url中使用`glogLevel`调整level，`glogDir`配置日志保存文件。
 
-- `glog_level`(int, 默认=0, 即INFO):
+- `glog_level`(int, 默认=1, 即WARNING):
 打印这个等级及**以上**等级的日志。 INFO, WARNING, ERROR, and FATAL日志分别对应 0, 1, 2, and 3。
+
+
+### 6. 插入错误，日志显示`please use getInsertRow with ... first`
+
+在JAVA client使用InsertPreparedStatement进行插入，或在Python中使用sql和parameter进行插入时，client底层实际有cache影响，第一步`getInsertRow`生成sql cache并返回sql还需要补充的parameter信息，第二步才会真正执行insert，而执行insert需要使用第一步缓存的sql cache。所以，当多线程使用同一个client时，可能因为插入和查询频繁更新cache表，将你想要执行的insert sql cache淘汰掉了，所以会出现好像第一步`getInsertRow`并未执行的样子。
+
+目前可以通过调大`maxSqlCacheSize`这一配置项来避免错误。仅JAVA/Python SDK支持配置。
+
+### 7. 离线命令错误`java.lang.OutOfMemoryError: Java heap space`
+
+离线命令的Spark配置默认为`local[*]`，并发较高可能出现OutOfMemoryError错误，请调整`spark.driver.memory`和`spark.executor.memory`两个spark配置项。可以写在TaskManager运行目录的`conf/taskmanager.properties`的`spark.default.conf`并重启TaskManager，或者使用CLI客户端进行配置，参考[客户端Spark配置文件](../reference/client_config/client_spark_config.md)。
+```
+spark.default.conf=spark.driver.memory=16g;spark.executor.memory=16g
+```

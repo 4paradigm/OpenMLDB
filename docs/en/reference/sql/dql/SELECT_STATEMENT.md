@@ -6,7 +6,13 @@
 
 ```sql
 SelectStmt
-         ::= ( NoTableSelectClause | SelectStmtFromTable) 
+         ::= WithClause ( NoTableSelectClause | SelectStmtFromTable) 
+
+WithClause
+         ::= 'WITH' non_recursive_cte [, ...]
+
+non_recursive_cte
+         ::= cte_name 'AS' '(' SelectStmt ')'
 
 NoTableSelectClause
          ::= 'SELECT' SelectExprList      
@@ -38,50 +44,56 @@ ByItem   ::= Expression Order
 
 Order    ::= ( 'ASC' | 'DESC' )?
 
-
 WindowClauseOptional
          ::= ( 'WINDOW' WindowDefinition ( ',' WindowDefinition )* )?
 WindowDefinition
          ::= WindowName 'AS' WindowSpec
 
 WindowSpec
-         ::= '(' WindowSpecDetails ')'   
-         
-WindowSpecDetails
-         ::= [ExistingWindowName] [WindowUnionClause] WindowPartitionClause WindowFrameClause [WindowExcludeCurrentTime] [WindowInstanceNotInWindow]
+        ::= '(' WindowSpecDetails ')'   
 
+WindowSpecDetails
+        ::= [ExistingWindowName] [WindowUnionClause] WindowPartitionClause WindowOrderByClause WindowFrameClause (WindowAttribute)*
 
 WindowUnionClause
-				 :: = ( 'UNION' TableRefs)
+	:: = ( 'UNION' TableRefs)
 
 WindowPartitionClause
          ::= ( 'PARTITION' 'BY' ByList ) 
 
+WindowOrderByClause
+        ::= ( 'ORDER' 'BY' ByList )
+
 WindowFrameClause
-         ::= ( WindowFrameUnits WindowFrameExtent [WindowFrameMaxSize]) 
+        ::= ( WindowFrameUnits WindowFrameBounds [WindowFrameMaxSize] )
 
 WindowFrameUnits
-         ::= 'ROWS'
-           | 'ROWS_RANGE'         
+        ::= 'ROWS'
+          | 'ROWS_RANGE'
 
-WindowFrameExtent
-         ::= WindowFrameStart
-           | WindowFrameBetween
-WindowFrameStart
-         ::= ( 'UNBOUNDED' | NumLiteral | IntervalLiteral ) ['OPEN'] 'PRECEDING'
-           | 'CURRENT' 'ROW'
-WindowFrameBetween
-         ::= 'BETWEEN' WindowFrameBound 'AND' WindowFrameBound
+WindowFrameBounds
+        ::= 'BETWEEN' WindowFrameBound 'AND' WindowFrameBound
+
 WindowFrameBound
-         ::= WindowFrameStart
-           | ( 'UNBOUNDED' | NumLiteral | IntervalLiteral ) ['OPEN'] 'FOLLOWING'  
-           
-WindowExcludeCurrentTime 
-				::= 'EXCLUDE' 'CURRENT_TIME'      
+        ::= ( 'UNBOUNDED' | NumLiteral | IntervalLiteral ) ['OPEN'] 'PRECEDING'
+          | 'CURRENT' 'ROW'
+
+WindowAttribute
+        ::= WindowExcludeCurrentTime
+          | WindowExcludeCurrentRow
+          | WindowInstanceNotInWindow
+
+WindowExcludeCurrentTime
+        ::= 'EXCLUDE' 'CURRENT_TIME'
+
+WindowExcludeCurrentRow
+        ::= 'EXCLUDE' 'CURRENT_ROW'
 
 WindowInstanceNotInWindow
-				:: = 'INSTANCE_NOT_IN_WINDOW'
-				
+        :: = 'INSTANCE_NOT_IN_WINDOW'
+
+WindowFrameMaxSize
+        :: = 'MAXSIZE' NumLiteral
 ```
 
 ### SelectExprList
@@ -116,12 +128,12 @@ TableAsName
 |:-----------------------------------------------|--------------|---------------------|---------------------|:------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | [`SELECT Clause`](#selectexprlist)             | **``✓``**    | **``✓``**           | **``✓``**           | A list of projection operations, generally including column names, expressions, or ‘*’ for all columns.                                                                                                                                                                                                                                                                                                                 |
 | [`FROM Clause`](#tablerefs)                    | **``✓``**    | **``✓``**           | **``✓``**           | The FROM clause indicates the data source.<br />The data source can be one table (`select * from t;`) or multiple tables that LAST JOIN together (see [JOIN CLAUSE](../dql/JOIN_CLAUSE.md)) or no table ( `select 1+1;`), see [NO_TABLE SELECT](../dql/NO_TABLE_SELECT_CLAUSE.md)                                                                                                                                       |
-| [`JOIN` Clause](../dql/JOIN_CLAUSE.md)         | **``✓``**    | **``✓``**           | **``✓``**           | The JOIN clause indicates that the data source comes from multiple joined tables. OpenMLDB currently only supports LAST JOIN. For Online Request Mode, please follow [the specification of LAST JOIN under Online Request Mode](../deployment_manage/ONLINE_SERVING_REQUIREMENTS.md#the-usage-specification-of-last-join-under-online-serving)                                                                          |
-| [`WHERE` Clause](../dql/WHERE_CLAUSE.md)       | **``✓``**    | **``✓``**           |                     | The WHERE clause is used to set filter conditions, and only the data that meets the conditions will be included in the query result.                                                                                                                                                                                                                                                                                    |
+| [`JOIN` Clause](../dql/JOIN_CLAUSE.md)         | **``✓``**    | **``x``**           | **``✓``**           | The JOIN clause indicates that the data source comes from multiple joined tables. OpenMLDB currently only supports LAST JOIN. For Online Request Mode, please follow [the specification of LAST JOIN under Online Request Mode](../deployment_manage/ONLINE_REQUEST_REQUIREMENTS.md#the-usage-specification-of-last-join-under-online-serving)                                                                          |
+| [`WHERE` Clause](../dql/WHERE_CLAUSE.md)       |             | **``✓``**           |                     | The WHERE clause is used to set filter conditions, and only the data that meets the conditions will be included in the query result.                                                                                                                                                                                                                                                                                    |
 | [`GROUP BY` Clause](../dql/GROUP_BY_CLAUSE.md) | **``✓``**    |                     |                     | The GROUP BY clause is used to group the query results.The grouping conditions only support simple columns.                                                                                                                                                                                                                                                                                                             |
 | [`HAVING` Clause](../dql/HAVING_CLAUSE.md)     | **``✓``**    |                     |                     | The HAVING clause is similar to the WHERE clause. The HAVING clause filters data after GROUP BY, and the WHERE clause is used to filter records before aggregation.                                                                                                                                                                                                                                                     |                                                                                                                                                                                                                                                                                                                                                                              |
-| [`WINDOW` Clause](../dql/WINDOW_CLAUSE.md)     | **``✓``**    |                     | **``✓``**           | The WINDOW clause is used to define one or several windows. Windows can be named or anonymous. Users can call aggregate functions on the window to perform analysis (```sql agg_func() over window_name```). For Online Request Mode, please follow the [specification of WINDOW Clause under Online Request Mode](../deployment_manage/ONLINE_SERVING_REQUIREMENTS.md#window-usage-specification-under-online-serving) |
-| [`LIMIT` Clause](../dql/LIMIT_CLAUSE.md)       | **``✓``**    | **``✓``**           | **``✓``**           | The LIMIT clause is used to limit the number of results. OpenMLDB currently only supports one parameter to limit the maximum number of rows of returned data.                                                                                                                                                                                                                                                           |
+| [`WINDOW` Clause](../dql/WINDOW_CLAUSE.md)     | **``✓``**    |                     | **``✓``**           | The WINDOW clause is used to define one or several windows. Windows can be named or anonymous. Users can call aggregate functions on the window to perform analysis (```sql agg_func() over window_name```). For Online Request Mode, please follow the [specification of WINDOW Clause under Online Request Mode](../deployment_manage/ONLINE_REQUEST_REQUIREMENTS.md#window-usage-specification-under-online-serving) |
+| [`LIMIT` Clause](../dql/LIMIT_CLAUSE.md)       | **``✓``**    | **``✓``**           |                     | The LIMIT clause is used to limit the number of results. OpenMLDB currently only supports one parameter to limit the maximum number of rows of returned data.                                                                                                                                                                                                                                                           |
 | `ORDER BY` Clause                              |              |                     |                     | Standard SQL also supports the ORDER BY keyword, however OpenMLDB does not support this keyword currently. For example, the query `SELECT * from t1 ORDER BY col1;` is not supported in OpenMLDB.                                                                                                                                                                                                                       |
 
 ```{warning}

@@ -40,7 +40,7 @@ namespace sdk {
 struct BasicRouterOptions {
     virtual ~BasicRouterOptions() = default;
     bool enable_debug = false;
-    uint32_t max_sql_cache_size = 10;
+    uint32_t max_sql_cache_size = 50;
     // == gflag `request_timeout` default value(no gflags here cuz swig)
     uint32_t request_timeout = 60000;
     // default 0(INFO), INFO, WARNING, ERROR, and FATAL are 0, 1, 2, and 3
@@ -54,7 +54,7 @@ struct SQLRouterOptions : BasicRouterOptions {
     std::string zk_path;
     uint32_t zk_session_timeout = 2000;
     std::string spark_conf_path;
-    uint32_t zk_log_level = 3; // PY/JAVA SDK default info log
+    uint32_t zk_log_level = 3;  // PY/JAVA SDK default info log
     std::string zk_log_file;
 };
 
@@ -205,6 +205,8 @@ class SQLRouter {
     virtual bool NotifyTableChange() = 0;
 
     virtual bool IsOnlineMode() = 0;
+
+    virtual std::string GetDatabase() = 0;
 };
 
 std::shared_ptr<SQLRouter> NewClusterSQLRouter(const SQLRouterOptions& options);
@@ -250,11 +252,20 @@ std::shared_ptr<SQLRouter> NewStandaloneSQLRouter(const StandaloneOptions& optio
  *      ]
  */
 // TODO(hw): support multi db
+// All types should be convertible in swig, so we use vector&pair, not map
 std::vector<std::string> GenDDL(
     const std::string& sql,
     const std::vector<std::pair<std::string, std::vector<std::pair<std::string, hybridse::sdk::DataType>>>>& schemas);
 
 std::shared_ptr<hybridse::sdk::Schema> GenOutputSchema(
+    const std::string& sql,
+    const std::vector<std::pair<std::string, std::vector<std::pair<std::string, hybridse::sdk::DataType>>>>& schemas);
+
+std::vector<std::string> ValidateSQLInBatch(
+    const std::string& sql,
+    const std::vector<std::pair<std::string, std::vector<std::pair<std::string, hybridse::sdk::DataType>>>>& schemas);
+
+std::vector<std::string> ValidateSQLInRequest(
     const std::string& sql,
     const std::vector<std::pair<std::string, std::vector<std::pair<std::string, hybridse::sdk::DataType>>>>& schemas);
 

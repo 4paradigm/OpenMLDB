@@ -21,6 +21,7 @@
 #include <memory>
 #include <set>
 #include <string>
+#include <unordered_map>
 #include <unordered_set>
 #include <utility>
 #include <vector>
@@ -32,6 +33,7 @@
 #include "client/tablet_client.h"
 #include "nameserver/system_table.h"
 #include "sdk/db_sdk.h"
+#include "sdk/file_option_parser.h"
 #include "sdk/sql_cache.h"
 #include "sdk/sql_router.h"
 #include "sdk/table_reader_impl.h"
@@ -44,6 +46,9 @@ constexpr const char* FORMAT_STRING_KEY = "!%$FORMAT_STRING_KEY";
 
 class SQLClusterRouter : public SQLRouter {
  public:
+    using TableStatusMap = std::unordered_map<
+        uint32_t, std::unordered_map<uint32_t, std::unordered_map<std::string, openmldb::api::TableStatus>>>;
+
     explicit SQLClusterRouter(const SQLRouterOptions& options);
     explicit SQLClusterRouter(const StandaloneOptions& options);
     explicit SQLClusterRouter(DBSDK* sdk);
@@ -100,9 +105,11 @@ class SQLClusterRouter : public SQLRouter {
     std::shared_ptr<hybridse::sdk::ResultSet> ExecuteSQL(const std::string& sql,
                                                          ::hybridse::sdk::Status* status) override;
 
+    // Execute batch SQL, if offline job, get config from session variables and user-friendly timeout
     std::shared_ptr<hybridse::sdk::ResultSet> ExecuteSQL(const std::string& db, const std::string& sql,
                                                          ::hybridse::sdk::Status* status) override;
 
+    // The raw API for execute batch SQL, offline_job_timeout can be set when execute offline sync job
     std::shared_ptr<hybridse::sdk::ResultSet> ExecuteSQL(const std::string& db, const std::string& sql,
                                                          bool is_online_mode, bool is_sync_job, int offline_job_timeout,
                                                          hybridse::sdk::Status* status) override;
@@ -185,6 +192,9 @@ class SQLClusterRouter : public SQLRouter {
     base::Status HandleSQLCreateTable(hybridse::node::CreatePlanNode* create_node, const std::string& db,
                                       std::shared_ptr<::openmldb::client::NsClient> ns_ptr);
 
+    base::Status HandleSQLCreateTable(hybridse::node::CreatePlanNode* create_node, const std::string& db,
+                                      std::shared_ptr<::openmldb::client::NsClient> ns_ptr, const std::string& sql);
+
     std::shared_ptr<hybridse::sdk::ResultSet> HandleSQLCmd(const hybridse::node::CmdPlanNode* cmd_node,
                                                            const std::string& db, ::hybridse::sdk::Status* status);
 
@@ -229,7 +239,7 @@ class SQLClusterRouter : public SQLRouter {
     bool IsOnlineMode() override;
     bool IsEnableTrace();
 
-    std::string GetDatabase();
+    std::string GetDatabase() override;
     void SetDatabase(const std::string& db);
     void SetInteractive(bool value);
 
@@ -301,25 +311,31 @@ class SQLClusterRouter : public SQLRouter {
 
     hybridse::sdk::Status HandleLoadDataInfile(const std::string& database, const std::string& table,
                                                const std::string& file_path,
-                                               const std::shared_ptr<hybridse::node::OptionsMap>& options);
+                                               const openmldb::sdk::ReadFileOptionsParser& options_parser);
+
+    hybridse::sdk::Status LoadDataMultipleFile(int id, int step, const std::string& database,
+                                               const std::string& table, const std::vector<std::string>& file_list,
+                                               const openmldb::sdk::ReadFileOptionsParser& options_parser,
+                                               uint64_t* count);
+
+    hybridse::sdk::Status LoadDataSingleFile(int id, int step, const std::string& database,
+                                             const std::string& table, const std::string& file_path,
+                                             const openmldb::sdk::ReadFileOptionsParser& options_parser,
+                                             uint64_t* count);
 
     hybridse::sdk::Status InsertOneRow(const std::string& database, const std::string& insert_placeholder,
                                        const std::vector<int>& str_col_idx, const std::string& null_value,
                                        const std::vector<std::string>& cols);
 
-    hybridse::sdk::Status HandleDeploy(const std::string& db, const hybridse::node::DeployPlanNode* deploy_node);
+    hybridse::sdk::Status HandleDeploy(const std::string& db, const hybridse::node::DeployPlanNode* deploy_node,
+            std::optional<uint64_t>* job_id);
 
     hybridse::sdk::Status HandleDelete(const std::string& db, const std::string& table_name,
                                        const hybridse::node::ExprNode* condition);
 
-    hybridse::sdk::Status HandleIndex(const std::string& db,
-                                      const std::set<std::pair<std::string, std::string>>& table_pair,
-                                      const std::string& select_sql);
-
     hybridse::sdk::Status GetNewIndex(
-        const std::map<std::string, ::openmldb::nameserver::TableInfo>& table_map,
-        const std::map<std::string, std::vector<::openmldb::common::ColumnKey>>& index_map,
-        std::map<std::string, std::vector<::openmldb::common::ColumnKey>>* new_index_map);
+        const std::map<std::string, ::openmldb::nameserver::TableInfo>& table_map, const std::string& select_sql,
+        bool skip_index_check, std::map<std::string, std::vector<::openmldb::common::ColumnKey>>* new_index_map);
 
     hybridse::sdk::Status AddNewIndex(
         const std::string& db, const std::map<std::string, ::openmldb::nameserver::TableInfo>& table_map,
@@ -344,7 +360,14 @@ class SQLClusterRouter : public SQLRouter {
 
     /// internal implementation for SQL 'SHOW TABLE STATUS'
     std::shared_ptr<hybridse::sdk::ResultSet> ExecuteShowTableStatus(const std::string& db,
+                                                                     const std::string& pattern,
                                                                      hybridse::sdk::Status* status);
+
+    std::shared_ptr<hybridse::sdk::ResultSet> GetJobResultSet(int job_id, ::hybridse::sdk::Status* status);
+
+    bool CheckTableStatus(const std::string& db, const std::string& table_name, uint32_t tid,
+                          const nameserver::TablePartition& partition_info, uint32_t replica_num,
+                          const TableStatusMap& statuses, std::string* msg);
 
  private:
     std::shared_ptr<BasicRouterOptions> options_;

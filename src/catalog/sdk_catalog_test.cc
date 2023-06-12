@@ -37,7 +37,6 @@ struct TestArgs {
 TestArgs* PrepareTable(const std::string& tname, const std::string& db) {
     TestArgs* args = new TestArgs();
     args->meta.set_name(tname);
-    args->meta.set_format_version(1);
     args->meta.set_db(db);
     PBSchema* schema = args->meta.mutable_column_desc();
     auto col1 = schema->Add();

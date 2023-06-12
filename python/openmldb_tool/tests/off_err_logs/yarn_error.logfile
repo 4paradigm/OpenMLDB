@@ -1,0 +1,162 @@
+2023-05-08 18:58:38,970 WARN util.Utils: Set SPARK_LOCAL_IP if you need to bind to another address
+2023-05-08 18:58:39,530 WARN util.NativeCodeLoader: Unable to load native-hadoop library for your platform... using builtin-java classes where applicable
+2023-05-08 18:58:40,286 INFO yarn.Client: Requesting a new application from cluster with 1 NodeManagers
+2023-05-08 18:58:40,706 INFO yarn.Client: Verifying our application has not requested more than the maximum memory capability of the cluster (8192 MB per container)
+2023-05-08 18:58:40,707 INFO yarn.Client: Will allocate AM container, with 1408 MB memory including 384 MB overhead
+2023-05-08 18:58:40,709 INFO yarn.Client: Setting up container launch context for our AM
+2023-05-08 18:58:40,709 INFO yarn.Client: Setting up the launch environment for our AM container
+2023-05-08 19:00:35,668 INFO spark.SecurityManager: Changing view acls to: root
+2023-05-08 19:00:35,668 INFO spark.SecurityManager: Changing modify acls to: root
+2023-05-08 19:00:35,668 INFO spark.SecurityManager: Changing view acls groups to: 
+2023-05-08 19:00:35,669 INFO spark.SecurityManager: Changing modify acls groups to: 
+2023-05-08 19:00:35,669 INFO spark.SecurityManager: SecurityManager: authentication disabled; ui acls disabled; users  with view permissions: Set(root); groups with view permissions: Set(); users  with modify permissions: Set(root); groups with modify permissions: Set()
+2023-05-08 19:00:35,746 INFO yarn.Client: Submitting application application_1683367814068_0006 to ResourceManager
+2023-05-08 19:00:35,832 INFO impl.YarnClientImpl: Submitted application application_1683367814068_0006
+2023-05-08 19:00:36,846 INFO yarn.Client: Application report for application_1683367814068_0006 (state: ACCEPTED)
+2023-05-08 19:00:36,849 INFO yarn.Client: 
+	 client token: N/A
+	 diagnostics: AM container is launched, waiting for AM container to Register with RM
+	 ApplicationMaster host: N/A
+	 ApplicationMaster RPC port: -1
+	 queue: default
+	 start time: 1683543675969
+	 final status: UNDEFINED
+	 user: root
+2023-05-08 19:00:37,860 INFO yarn.Client: Application report for application_1683367814068_0006 (state: ACCEPTED)
+2023-05-08 19:00:38,871 INFO yarn.Client: Application report for application_1683367814068_0006 (state: ACCEPTED)
+2023-05-08 19:00:39,882 INFO yarn.Client: Application report for application_1683367814068_0006 (state: ACCEPTED)
+2023-05-08 19:00:40,893 INFO yarn.Client: Application report for application_1683367814068_0006 (state: ACCEPTED)
+2023-05-08 19:00:41,904 INFO yarn.Client: Application report for application_1683367814068_0006 (state: ACCEPTED)
+2023-05-08 19:00:42,915 INFO yarn.Client: Application report for application_1683367814068_0006 (state: ACCEPTED)
+2023-05-08 19:00:43,925 INFO yarn.Client: Application report for application_1683367814068_0006 (state: ACCEPTED)
+2023-05-08 19:00:44,936 INFO yarn.Client: Application report for application_1683367814068_0006 (state: ACCEPTED)
+2023-05-08 19:00:45,947 INFO yarn.Client: Application report for application_1683367814068_0006 (state: ACCEPTED)
+2023-05-08 19:00:46,958 INFO yarn.Client: Application report for application_1683367814068_0006 (state: ACCEPTED)
+2023-05-08 19:00:47,969 INFO yarn.Client: Application report for application_1683367814068_0006 (state: ACCEPTED)
+2023-05-08 19:00:48,980 INFO yarn.Client: Application report for application_1683367814068_0006 (state: ACCEPTED)
+2023-05-08 19:00:49,992 INFO yarn.Client: Application report for application_1683367814068_0006 (state: RUNNING)
+2023-05-08 19:00:49,992 INFO yarn.Client: 
+	 client token: N/A
+	 diagnostics: N/A
+	 ApplicationMaster RPC port: 46712
+	 queue: default
+	 start time: 1683543675969
+	 final status: UNDEFINED
+	 user: root
+2023-05-08 19:00:51,004 INFO yarn.Client: Application report for application_1683367814068_0006 (state: RUNNING)
+2023-05-08 19:00:52,015 INFO yarn.Client: Application report for application_1683367814068_0006 (state: RUNNING)
+2023-05-08 19:00:53,026 INFO yarn.Client: Application report for application_1683367814068_0006 (state: RUNNING)
+2023-05-08 19:00:54,037 INFO yarn.Client: Application report for application_1683367814068_0006 (state: RUNNING)
+2023-05-08 19:00:55,048 INFO yarn.Client: Application report for application_1683367814068_0006 (state: RUNNING)
+2023-05-08 19:00:56,058 INFO yarn.Client: Application report for application_1683367814068_0006 (state: RUNNING)
+2023-05-08 19:00:57,069 INFO yarn.Client: Application report for application_1683367814068_0006 (state: RUNNING)
+2023-05-08 19:00:58,080 INFO yarn.Client: Application report for application_1683367814068_0006 (state: RUNNING)
+2023-05-08 19:00:59,091 INFO yarn.Client: Application report for application_1683367814068_0006 (state: RUNNING)
+2023-05-08 19:01:00,102 INFO yarn.Client: Application report for application_1683367814068_0006 (state: RUNNING)
+2023-05-08 19:01:01,113 INFO yarn.Client: Application report for application_1683367814068_0006 (state: RUNNING)
+2023-05-08 19:01:02,124 INFO yarn.Client: Application report for application_1683367814068_0006 (state: RUNNING)
+2023-05-08 19:01:03,135 INFO yarn.Client: Application report for application_1683367814068_0006 (state: RUNNING)
+2023-05-08 19:01:04,146 INFO yarn.Client: Application report for application_1683367814068_0006 (state: RUNNING)
+2023-05-08 19:01:05,158 INFO yarn.Client: Application report for application_1683367814068_0006 (state: RUNNING)
+2023-05-08 19:01:06,172 INFO yarn.Client: Application report for application_1683367814068_0006 (state: RUNNING)
+2023-05-08 19:01:07,183 INFO yarn.Client: Application report for application_1683367814068_0006 (state: RUNNING)
+2023-05-08 19:01:08,194 INFO yarn.Client: Application report for application_1683367814068_0006 (state: RUNNING)
+2023-05-08 19:01:09,206 INFO yarn.Client: Application report for application_1683367814068_0006 (state: RUNNING)
+2023-05-08 19:01:10,218 INFO yarn.Client: Application report for application_1683367814068_0006 (state: RUNNING)
+2023-05-08 19:01:11,229 INFO yarn.Client: Application report for application_1683367814068_0006 (state: RUNNING)
+2023-05-08 19:01:12,241 INFO yarn.Client: Application report for application_1683367814068_0006 (state: RUNNING)
+2023-05-08 19:01:13,253 INFO yarn.Client: Application report for application_1683367814068_0006 (state: RUNNING)
+2023-05-08 19:01:14,265 INFO yarn.Client: Application report for application_1683367814068_0006 (state: RUNNING)
+2023-05-08 19:01:15,277 INFO yarn.Client: Application report for application_1683367814068_0006 (state: RUNNING)
+2023-05-08 19:01:16,288 INFO yarn.Client: Application report for application_1683367814068_0006 (state: RUNNING)
+2023-05-08 19:01:17,299 INFO yarn.Client: Application report for application_1683367814068_0006 (state: RUNNING)
+2023-05-08 19:01:18,310 INFO yarn.Client: Application report for application_1683367814068_0006 (state: RUNNING)
+2023-05-08 19:01:19,321 INFO yarn.Client: Application report for application_1683367814068_0006 (state: RUNNING)
+2023-05-08 19:01:20,337 INFO yarn.Client: Application report for application_1683367814068_0006 (state: RUNNING)
+2023-05-08 19:01:21,349 INFO yarn.Client: Application report for application_1683367814068_0006 (state: RUNNING)
+2023-05-08 19:01:22,360 INFO yarn.Client: Application report for application_1683367814068_0006 (state: RUNNING)
+2023-05-08 19:01:23,371 INFO yarn.Client: Application report for application_1683367814068_0006 (state: RUNNING)
+2023-05-08 19:01:24,382 INFO yarn.Client: Application report for application_1683367814068_0006 (state: RUNNING)
+2023-05-08 19:01:25,393 INFO yarn.Client: Application report for application_1683367814068_0006 (state: RUNNING)
+2023-05-08 19:01:26,404 INFO yarn.Client: Application report for application_1683367814068_0006 (state: RUNNING)
+2023-05-08 19:01:27,415 INFO yarn.Client: Application report for application_1683367814068_0006 (state: RUNNING)
+2023-05-08 19:01:28,426 INFO yarn.Client: Application report for application_1683367814068_0006 (state: RUNNING)
+2023-05-08 19:01:29,437 INFO yarn.Client: Application report for application_1683367814068_0006 (state: RUNNING)
+2023-05-08 19:01:30,448 INFO yarn.Client: Application report for application_1683367814068_0006 (state: RUNNING)
+2023-05-08 19:01:31,459 INFO yarn.Client: Application report for application_1683367814068_0006 (state: RUNNING)
+2023-05-08 19:01:32,470 INFO yarn.Client: Application report for application_1683367814068_0006 (state: RUNNING)
+2023-05-08 19:01:33,481 INFO yarn.Client: Application report for application_1683367814068_0006 (state: RUNNING)
+2023-05-08 19:01:34,492 INFO yarn.Client: Application report for application_1683367814068_0006 (state: RUNNING)
+2023-05-08 19:01:35,503 INFO yarn.Client: Application report for application_1683367814068_0006 (state: RUNNING)
+2023-05-08 19:01:36,514 INFO yarn.Client: Application report for application_1683367814068_0006 (state: RUNNING)
+2023-05-08 19:01:37,525 INFO yarn.Client: Application report for application_1683367814068_0006 (state: RUNNING)
+2023-05-08 19:01:38,536 INFO yarn.Client: Application report for application_1683367814068_0006 (state: RUNNING)
+2023-05-08 19:01:39,547 INFO yarn.Client: Application report for application_1683367814068_0006 (state: RUNNING)
+2023-05-08 19:01:40,558 INFO yarn.Client: Application report for application_1683367814068_0006 (state: RUNNING)
+2023-05-08 19:01:41,569 INFO yarn.Client: Application report for application_1683367814068_0006 (state: RUNNING)
+2023-05-08 19:01:42,579 INFO yarn.Client: Application report for application_1683367814068_0006 (state: RUNNING)
+2023-05-08 19:01:43,590 INFO yarn.Client: Application report for application_1683367814068_0006 (state: RUNNING)
+2023-05-08 19:01:44,601 INFO yarn.Client: Application report for application_1683367814068_0006 (state: RUNNING)
+2023-05-08 19:01:45,612 INFO yarn.Client: Application report for application_1683367814068_0006 (state: RUNNING)
+2023-05-08 19:01:46,624 INFO yarn.Client: Application report for application_1683367814068_0006 (state: RUNNING)
+2023-05-08 19:01:47,635 INFO yarn.Client: Application report for application_1683367814068_0006 (state: FINISHED)
+2023-05-08 19:01:47,636 INFO yarn.Client: 
+	 client token: N/A
+	 diagnostics: User class threw exception: java.lang.IllegalArgumentException: requirement failed: table db.lte info is not existed(no table name): 
+	at scala.Predef$.require(Predef.scala:281)
+	at com._4paradigm.openmldb.batch.nodes.LoadDataPlan$.gen(LoadDataPlan.scala:45)
+	at com._4paradigm.openmldb.batch.SparkPlanner.visitNode(SparkPlanner.scala:269)
+	at com._4paradigm.openmldb.batch.SparkPlanner.getSparkOutput(SparkPlanner.scala:232)
+	at com._4paradigm.openmldb.batch.SparkPlanner.$anonfun$plan$1(SparkPlanner.scala:113)
+	at com._4paradigm.openmldb.batch.SparkPlanner.withSQLEngine(SparkPlanner.scala:391)
+	at com._4paradigm.openmldb.batch.SparkPlanner.plan(SparkPlanner.scala:83)
+	at com._4paradigm.openmldb.batch.api.OpenmldbSession.openmldbSql(OpenmldbSession.scala:182)
+	at com._4paradigm.openmldb.batch.api.OpenmldbSession.sql(OpenmldbSession.scala:193)
+	at com._4paradigm.openmldb.batchjob.util.OpenmldbJobUtil$.runOpenmldbSql(OpenmldbJobUtil.scala:59)
+	at com._4paradigm.openmldb.batchjob.ImportOfflineData$.importOfflineData(ImportOfflineData.scala:35)
+	at com._4paradigm.openmldb.batchjob.ImportOfflineData$.main(ImportOfflineData.scala:27)
+	at com._4paradigm.openmldb.batchjob.ImportOfflineData.main(ImportOfflineData.scala)
+	at sun.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+	at sun.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:62)
+	at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
+	at java.lang.reflect.Method.invoke(Method.java:498)
+	at org.apache.spark.deploy.yarn.ApplicationMaster$$anon$2.run(ApplicationMaster.scala:737)
+
+	 ApplicationMaster RPC port: 46712
+	 queue: default
+	 start time: 1683543675969
+	 final status: FAILED
+	 user: root
+2023-05-08 19:01:47,661 ERROR yarn.Client: Application diagnostics message: User class threw exception: java.lang.IllegalArgumentException: requirement failed: table db.lte info is not existed(no table name): 
+	at scala.Predef$.require(Predef.scala:281)
+	at com._4paradigm.openmldb.batch.nodes.LoadDataPlan$.gen(LoadDataPlan.scala:45)
+	at com._4paradigm.openmldb.batch.SparkPlanner.visitNode(SparkPlanner.scala:269)
+	at com._4paradigm.openmldb.batch.SparkPlanner.getSparkOutput(SparkPlanner.scala:232)
+	at com._4paradigm.openmldb.batch.SparkPlanner.$anonfun$plan$1(SparkPlanner.scala:113)
+	at com._4paradigm.openmldb.batch.SparkPlanner.withSQLEngine(SparkPlanner.scala:391)
+	at com._4paradigm.openmldb.batch.SparkPlanner.plan(SparkPlanner.scala:83)
+	at com._4paradigm.openmldb.batch.api.OpenmldbSession.openmldbSql(OpenmldbSession.scala:182)
+	at com._4paradigm.openmldb.batch.api.OpenmldbSession.sql(OpenmldbSession.scala:193)
+	at com._4paradigm.openmldb.batchjob.util.OpenmldbJobUtil$.runOpenmldbSql(OpenmldbJobUtil.scala:59)
+	at com._4paradigm.openmldb.batchjob.ImportOfflineData$.importOfflineData(ImportOfflineData.scala:35)
+	at com._4paradigm.openmldb.batchjob.ImportOfflineData$.main(ImportOfflineData.scala:27)
+	at com._4paradigm.openmldb.batchjob.ImportOfflineData.main(ImportOfflineData.scala)
+	at sun.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+	at sun.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:62)
+	at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
+	at java.lang.reflect.Method.invoke(Method.java:498)
+	at org.apache.spark.deploy.yarn.ApplicationMaster$$anon$2.run(ApplicationMaster.scala:737)
+
+Exception in thread "main" org.apache.spark.SparkException: Application application_1683367814068_0006 finished with failed status
+	at org.apache.spark.deploy.yarn.Client.run(Client.scala:1283)
+	at org.apache.spark.deploy.yarn.YarnClusterApplication.start(Client.scala:1677)
+	at org.apache.spark.deploy.SparkSubmit.org$apache$spark$deploy$SparkSubmit$$runMain(SparkSubmit.scala:955)
+	at org.apache.spark.deploy.SparkSubmit.doRunMain$1(SparkSubmit.scala:180)
+	at org.apache.spark.deploy.SparkSubmit.submit(SparkSubmit.scala:203)
+	at org.apache.spark.deploy.SparkSubmit.doSubmit(SparkSubmit.scala:90)
+	at org.apache.spark.deploy.SparkSubmit$$anon$2.doSubmit(SparkSubmit.scala:1043)
+	at org.apache.spark.deploy.SparkSubmit$.main(SparkSubmit.scala:1052)
+	at org.apache.spark.deploy.SparkSubmit.main(SparkSubmit.scala)
+2023-05-08 19:01:47,665 INFO util.ShutdownHookManager: Shutdown hook called
+2023-05-08 19:01:47,666 INFO util.ShutdownHookManager: Deleting directory /tmp/spark-6b49d1b3-beed-448a-a9be-d61347cb54d7
+2023-05-08 19:01:47,669 INFO util.ShutdownHookManager: Deleting directory /tmp/spark-65b03090-ff45-4778-a4fa-80ca58d0257c

@@ -44,6 +44,7 @@ DECLARE_int32(zk_keep_alive_check_interval);
 DECLARE_int32(make_snapshot_threshold_offset);
 DECLARE_uint32(name_server_task_max_concurrency);
 DECLARE_uint32(system_table_replica_num);
+DECLARE_uint32(sync_deploy_stats_timeout);
 DECLARE_bool(auto_failover);
 
 using brpc::Server;
@@ -470,9 +471,10 @@ TEST_P(NameServerImplTest, Offline) {
     std::string old_db_root_path = FLAGS_db_root_path;
     std::string old_ssd_root_path = FLAGS_ssd_root_path;
     std::string old_hdd_root_path = FLAGS_hdd_root_path;
-    FLAGS_db_root_path = "/tmp/" + ::openmldb::test::GenRand();
-    FLAGS_ssd_root_path = "/tmp/" + ::openmldb::test::GenRand();
-    FLAGS_hdd_root_path = "/tmp/" + ::openmldb::test::GenRand();
+    ::openmldb::test::TempPath temp_path;
+    FLAGS_db_root_path = temp_path.GetTempPath();
+    FLAGS_ssd_root_path = temp_path.GetTempPath();
+    FLAGS_hdd_root_path = temp_path.GetTempPath();
     ::openmldb::tablet::TabletImpl* tablet = new ::openmldb::tablet::TabletImpl();
     ok = tablet->Init("");
     ASSERT_TRUE(ok);
@@ -492,11 +494,9 @@ TEST_P(NameServerImplTest, Offline) {
     ASSERT_TRUE(ok);
 
     FLAGS_endpoint = "127.0.0.1:9534";
-    std::string tmp_ssd_root_path = FLAGS_ssd_root_path;
-    std::string tmp_hdd_root_path = FLAGS_hdd_root_path;
-    FLAGS_ssd_root_path = "/tmp/" + ::openmldb::test::GenRand();
-    FLAGS_hdd_root_path = "/tmp/" + ::openmldb::test::GenRand();
-    FLAGS_db_root_path = "/tmp/" + ::openmldb::test::GenRand();
+    FLAGS_ssd_root_path = temp_path.GetTempPath();
+    FLAGS_hdd_root_path = temp_path.GetTempPath();
+    FLAGS_db_root_path = temp_path.GetTempPath();
     ::openmldb::tablet::TabletImpl* tablet2 = new ::openmldb::tablet::TabletImpl();
     ok = tablet2->Init("");
     ASSERT_TRUE(ok);
@@ -571,10 +571,6 @@ TEST_P(NameServerImplTest, Offline) {
     delete tablet;
     delete tablet2;
 
-    ::openmldb::base::RemoveDirRecursive(FLAGS_ssd_root_path);
-    ::openmldb::base::RemoveDirRecursive(FLAGS_hdd_root_path);
-    ::openmldb::base::RemoveDirRecursive(tmp_ssd_root_path);
-    ::openmldb::base::RemoveDirRecursive(tmp_hdd_root_path);
     FLAGS_ssd_root_path = old_ssd_root_path;
     FLAGS_hdd_root_path = old_hdd_root_path;
 }
@@ -779,7 +775,7 @@ void InitTablet(int port, vector<Server*> services, vector<shared_ptr<TabletImpl
         FLAGS_ssd_root_path = "/tmp/ssd/test4" + openmldb::test::GenRand();
         FLAGS_hdd_root_path = "/tmp/hdd/test4" + openmldb::test::GenRand();
         port += 500;
-        FLAGS_endpoint = "127.0.0.1:" + std::to_string(port);
+        FLAGS_endpoint = absl::StrCat("127.0.0.1:", port);
 
         shared_ptr<TabletImpl> tb = std::make_shared<TabletImpl>();
         if (!tb->Init("")) {
@@ -1293,9 +1289,11 @@ int main(int argc, char** argv) {
     ::openmldb::base::SetLogLevel(INFO);
     ::google::ParseCommandLineFlags(&argc, &argv, true);
     FLAGS_zk_cluster = "127.0.0.1:6181";
-    FLAGS_db_root_path = "/tmp/" + ::openmldb::test::GenRand();
-    FLAGS_ssd_root_path = "/tmp/ssd/" + ::openmldb::test::GenRand();
-    FLAGS_hdd_root_path = "/tmp/hdd/" + ::openmldb::test::GenRand();
+    ::openmldb::test::TempPath tmp_path;
+    FLAGS_db_root_path = tmp_path.GetTempPath("memory");
+    FLAGS_ssd_root_path = tmp_path.GetTempPath("ssd");
+    FLAGS_hdd_root_path = tmp_path.GetTempPath("hdd");
     FLAGS_system_table_replica_num = 0;
+    FLAGS_sync_deploy_stats_timeout = 1000000;
     return RUN_ALL_TESTS();
 }

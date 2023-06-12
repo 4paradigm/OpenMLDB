@@ -113,10 +113,10 @@ TEST_F(StandaloneTest, smoketestdisk) {
 int main(int argc, char** argv) {
     FLAGS_zk_session_timeout = 100000;
     ::testing::InitGoogleTest(&argc, argv);
-    srand(time(NULL));
     ::openmldb::base::SetLogLevel(INFO);
     ::google::ParseCommandLineFlags(&argc, &argv, true);
-    FLAGS_db_root_path = "/tmp/" + ::openmldb::test::GenRand();
-    FLAGS_hdd_root_path = "/tmp/hdd/" + ::openmldb::test::GenRand();
+    ::openmldb::test::TempPath tmp_path;
+    FLAGS_db_root_path = tmp_path.GetTempPath();
+    FLAGS_hdd_root_path = tmp_path.GetTempPath();
     return RUN_ALL_TESTS();
 }

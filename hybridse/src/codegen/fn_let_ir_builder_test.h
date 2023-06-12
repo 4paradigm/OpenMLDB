@@ -84,15 +84,10 @@ node::ProjectListNode* GetPlanNodeList(node::PlanNodeList trees) {
     return pp_node_ptr;
 }
 
-
-
-void CheckFnLetBuilderWithParameterRow(::hybridse::node::NodeManager* manager,
-                       vm::SchemasContext* schemas_ctx,
-                                       const codec::Schema* parameter_types,
-                                       std::string udf_str,
-                       std::string sql, int8_t* row_ptr, int8_t* window_ptr,
-                                    int8_t * parameter_row_ptr,
-                       vm::Schema* output_schema, int8_t** output) {
+void CheckFnLetBuilderWithParameterRow(::hybridse::node::NodeManager* manager, vm::SchemasContext* schemas_ctx,
+                                       const codec::Schema* parameter_types, std::string udf_str, std::string sql,
+                                       int8_t* row_ptr, int8_t* window_ptr, int8_t* parameter_row_ptr,
+                                       vm::Schema* output_schema, int8_t** output) {
     // Create an LLJIT instance.
     auto ctx = llvm::make_unique<LLVMContext>();
     auto m = make_unique<Module>("test_project", *ctx);
@@ -113,8 +108,7 @@ void CheckFnLetBuilderWithParameterRow(::hybridse::node::NodeManager* manager,
     if (pp_node_ptr->GetW() != nullptr) {
         frame_node = pp_node_ptr->GetW()->frame_node();
     }
-    status = vm::ExtractProjectInfos(pp_node_ptr->GetProjects(), frame_node,
-                                     schemas_ctx, manager, &column_projects);
+    status = vm::ExtractProjectInfos(pp_node_ptr->GetProjects(), frame_node, &column_projects);
     ASSERT_TRUE(status.isOK()) << status.str();
 
     bool is_agg = window_ptr != nullptr;

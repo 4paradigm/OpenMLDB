@@ -18,6 +18,7 @@
 #define SRC_APISERVER_API_SERVER_IMPL_H_
 
 #include <algorithm>
+#include <charconv>
 #include <memory>
 #include <string>
 #include <utility>
@@ -68,12 +69,22 @@ class APIServerImpl : public APIServer {
     void ExecuteProcedure(bool has_common_col, const InterfaceProvider::Params& param, const butil::IOBuf& req_body,
                           JsonWriter& writer);  // NOLINT
 
-    static bool Json2SQLRequestRow(const butil::rapidjson::Value& non_common_cols_v,
-                                   const butil::rapidjson::Value& common_cols_v,
-                                   std::shared_ptr<openmldb::sdk::SQLRequestRow> row);
+    static bool JsonArray2SQLRequestRow(const butil::rapidjson::Value& non_common_cols_v,
+                                        const butil::rapidjson::Value& common_cols_v,
+                                        std::shared_ptr<openmldb::sdk::SQLRequestRow> row);
+    static bool JsonMap2SQLRequestRow(const butil::rapidjson::Value& non_common_cols_v,
+                                      const butil::rapidjson::Value& common_cols_v,
+                                      std::shared_ptr<openmldb::sdk::SQLRequestRow> row);
     template <typename T>
     static bool AppendJsonValue(const butil::rapidjson::Value& v, hybridse::sdk::DataType type, bool is_not_null,
                                 T row);
+
+    // may get segmentation fault when throw boost::bad_lexical_cast, so we use std::from_chars
+    template <typename T>
+    static bool FromString(const std::string& s, T& value) {  // NOLINT
+        auto res = std::from_chars(s.data(), s.data() + s.size(), value);
+        return res.ec == std::errc() && (res.ptr - s.data() == s.size());
+    }
 
  private:
     std::shared_ptr<sdk::SQLRouter> sql_router_;
@@ -84,6 +95,7 @@ class APIServerImpl : public APIServer {
 
 struct QueryReq {
     std::string mode;
+    int timeout = -1;  // only for offline jobs
     std::string sql;
     std::shared_ptr<openmldb::sdk::SQLRequestRow> parameter;
 };
@@ -98,6 +110,7 @@ struct ExecSPResp {
     std::string msg = "ok";
     std::shared_ptr<hybridse::sdk::ProcedureInfo> sp_info;
     bool need_schema = false;
+    bool json_result = false;
     std::shared_ptr<hybridse::sdk::ResultSet> rs;
 };
 

@@ -100,10 +100,10 @@ find_library(SNAPPY_LIBRARY snappy)
 
 message(STATUS "Boost libraries ${Boost_LIBRARIES}")
 message(STATUS "OpenSSL libraries ${OPENSSL_LIBRARIES}")
+
 if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
     set(OS_LIB ${CMAKE_THREAD_LIBS_INIT} rt)
     set(COMMON_LIBS ${Boost_LIBRARIES} ${LEVELDB_LIBRARY} ${Protobuf_LIBRARIES} ${GLOG_LIBRARY} ${UNWIND_LIBRARY} ${Z_LIBRARY} ${SNAPPY_LIBRARY} ${OPENSSL_LIBRARIES} dl)
-    set(BRPC_LIBS ${BRPC_LIBRARY} ${COMMON_LIBS})
 elseif (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
     set(OS_LIB
             ${CMAKE_THREAD_LIBS_INIT}
@@ -117,8 +117,12 @@ elseif (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
             "-Wl,-U,_ProfilerStart"
             "-Wl,-U,_ProfilerStop")
     set(COMMON_LIBS ${Boost_LIBRARIES} ${LEVELDB_LIBRARY} ${Protobuf_LIBRARIES} ${GLOG_LIBRARY} ${Z_LIBRARY} ${SNAPPY_LIBRARY} ${OPENSSL_LIBRARIES} dl)
-    set(BRPC_LIBS ${BRPC_LIBRARY} ${COMMON_LIBS})
 endif ()
+
+if(CMAKE_CXX_COMPILER_ID MATCHES "GNU" AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS "9.1")
+    # GNU implementation prior to 9.1 requires linking with -lstdc++fs
+    list(APPEND COMMON_LIBS stdc++fs)
+endif()
 
 configure_file(
         "${PROJECT_SOURCE_DIR}/src/version.h.in"
@@ -172,11 +176,13 @@ else()
 endif()
 
 include_directories(
-    ${PROJECT_SOURCE_DIR}/../include
+    ${CMAKE_SOURCE_DIR}/include
     ${CMAKE_CURRENT_SOURCE_DIR}/include
     ${LLVM_INCLUDE_DIRS}
     ${Boost_INCLUDE_DIRS}
-    ${CMAKE_PREFIX_PATH}/include)
+    ${CMAKE_PREFIX_PATH}/include
+    ${farmhash_SOURCE_DIR}/src
+)
 
 link_directories(
     ${LLVM_LIBRARY_DIRS}

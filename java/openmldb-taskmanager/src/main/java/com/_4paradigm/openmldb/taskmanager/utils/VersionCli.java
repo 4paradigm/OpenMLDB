@@ -47,7 +47,7 @@ public class VersionCli {
     public static String getVersion() throws Exception {
         InputStream stream = VersionCli.class.getClassLoader().getResourceAsStream("git.properties");
         if (stream == null) {
-            throw new Exception("Fail to get version from file of openmldb_git.properties");
+            throw new Exception("Fail to get TaskManager version from file of git.properties");
         }
         // Do not use apache IOUtils to get rid of the dependency
         //List<String> gitVersionStrList = IOUtils.readLines(stream, "UTF-8");

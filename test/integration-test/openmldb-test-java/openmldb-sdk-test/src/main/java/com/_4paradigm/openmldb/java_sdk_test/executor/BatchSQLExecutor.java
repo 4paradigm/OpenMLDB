@@ -18,6 +18,7 @@ package com._4paradigm.openmldb.java_sdk_test.executor;
 
 import com._4paradigm.openmldb.java_sdk_test.common.OpenMLDBConfig;
 import com._4paradigm.openmldb.test_common.bean.OpenMLDBResult;
+import com._4paradigm.openmldb.test_common.model.InputDesc;
 import com._4paradigm.openmldb.test_common.openmldb.OpenMLDBGlobalVar;
 import com._4paradigm.openmldb.test_common.util.SDKUtil;
 import com._4paradigm.openmldb.sdk.SqlExecutor;
@@ -27,6 +28,7 @@ import com._4paradigm.openmldb.test_common.util.SQLUtil;
 import com._4paradigm.qa.openmldb_deploy.bean.OpenMLDBInfo;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.MapUtils;
+import org.apache.commons.lang3.StringUtils;
 
 import java.util.List;
 import java.util.Map;
@@ -38,11 +40,11 @@ import java.util.Map;
 @Slf4j
 public class BatchSQLExecutor extends BaseSQLExecutor {
 
-    public BatchSQLExecutor(SqlExecutor executor, SQLCase fesqlCase, SQLCaseType executorType) {
-        super(executor, fesqlCase, executorType);
+    public BatchSQLExecutor(SqlExecutor executor, SQLCase sqlCase, SQLCaseType executorType) {
+        super(executor, sqlCase, executorType);
     }
-    public BatchSQLExecutor(SQLCase sqlCase, SqlExecutor executor, Map<String,SqlExecutor> executorMap, Map<String, OpenMLDBInfo> fedbInfoMap, SQLCaseType executorType) {
-        super(sqlCase, executor, executorMap, fedbInfoMap, executorType);
+    public BatchSQLExecutor(SQLCase sqlCase, SqlExecutor executor, Map<String,SqlExecutor> executorMap, Map<String, OpenMLDBInfo> openMLDBInfoMap, SQLCaseType executorType) {
+        super(sqlCase, executor, executorMap, openMLDBInfoMap, executorType);
     }
 
     @Override
@@ -81,30 +83,60 @@ public class BatchSQLExecutor extends BaseSQLExecutor {
     @Override
     public void prepare(String version,SqlExecutor executor){
         log.info("version:{} prepare begin",version);
-        boolean dbOk = executor.createDB(dbName);
-        log.info("version:{},create db:{},{}", version, dbName, dbOk);
-        SDKUtil.useDB(executor,dbName);
-        OpenMLDBResult res = SDKUtil.createAndInsert(executor, dbName, sqlCase.getInputs(), false);
-        if (!res.isOk()) {
-            throw new RuntimeException("fail to run BatchSQLExecutor: prepare fail . version:"+version);
+        sdkClient.createAndUseDB(dbName);
+        sdkClient.setOnline();
+        boolean useFirstInputAsRequests = false;
+        List<InputDesc> inputs = sqlCase.getInputs();
+        if (inputs != null && inputs.size() > 0) {
+            for (int i = 0; i < inputs.size(); i++) {
+                InputDesc input = inputs.get(i);
+                if (StringUtils.isNotEmpty(input.getDb())) {
+                    sdkClient.createAndUseDB(input.getDb());
+                }else{
+                    sdkClient.useDB(dbName);
+                }
+                String tableName = input.getName();
+                String createSql = input.extractCreate();
+                if(StringUtils.isEmpty(createSql)){
+                    continue;
+                }
+                createSql = SQLCase.formatSql(createSql, i, tableName);
+                createSql = SQLUtil.formatSql(createSql, OpenMLDBGlobalVar.mainInfo);
+                sdkClient.execute(createSql);
+                if (useFirstInputAsRequests && i==0) {
+                    continue;
+                }
+                List<String> inserts = input.extractInserts();
+                for (String insertSql : inserts) {
+                    insertSql = SQLCase.formatSql(insertSql, i, tableName);
+                    if (StringUtils.isNotEmpty(insertSql)) {
+                        OpenMLDBResult openMLDBResult = sdkClient.execute(insertSql);
+                        if (!openMLDBResult.isOk()) {
+                            throw new RuntimeException("prepare insert fail, version:"+version+",openMLDBResult:"+openMLDBResult);
+                        }
+                    }
+                }
+            }
         }
+
         log.info("version:{} prepare end",version);
     }
 
     @Override
     public OpenMLDBResult execute(String version, SqlExecutor executor){
         log.info("version:{} execute begin",version);
+        sdkClient.useDB(dbName);
         OpenMLDBResult openMLDBResult = null;
         List<String> sqls = sqlCase.getSqls();
         if (sqls != null && sqls.size() > 0) {
             for (String sql : sqls) {
-                // log.info("sql:{}", sql);
                 if(MapUtils.isNotEmpty(openMLDBInfoMap)) {
                     sql = SQLUtil.formatSql(sql, tableNames, openMLDBInfoMap.get(version));
                 }else {
                     sql = SQLUtil.formatSql(sql, tableNames);
                 }
-                openMLDBResult = SDKUtil.sql(executor, dbName, sql);
+//                openMLDBResult = SDKUtil.sql(executor, dbName, sql);
+                openMLDBResult = sdkClient.execute(sql);
             }
         }
         String sql = sqlCase.getSql();
@@ -115,7 +147,8 @@ public class BatchSQLExecutor extends BaseSQLExecutor {
             }else {
                 sql = SQLUtil.formatSql(sql, tableNames);
             }
-            openMLDBResult = SDKUtil.sql(executor, dbName, sql);
+//            openMLDBResult = SDKUtil.sql(executor, dbName, sql);
+            openMLDBResult = sdkClient.execute(sql);
         }
         log.info("version:{} execute end",version);
         return openMLDBResult;

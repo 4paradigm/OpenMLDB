@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-db: test_zw
 debugs: []
 version: 0.5.0
 cases:
@@ -75,9 +74,22 @@ cases:
         indexs: ["index1:c1:c4"]
         rows:
           - [aa,1,1590738990000,1590738989000]
-    sql: CREATE INDEX index1 ON {0} (c1,c2) OPTIONS (ttl=100, ttl_type=absolute);
+    sqls:
+      - CREATE INDEX index1 ON {0} (c1,c2) OPTIONS (ttl=100m, ttl_type=absolute);
+      - desc {0};
     expect:
-      success: false
+      success: true
+      idxs:
+        -
+          keys: ["c1"]
+          ts: "c4"
+          ttl: 0min
+          ttlType: kAbsoluteTime
+        -
+          keys: ["c1","c2"]
+          ts: "-"
+          ttl: 100min
+          ttlType: kAbsoluteTime
   -
     id: 3
     desc: 不指定ttl

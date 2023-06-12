@@ -17,7 +17,9 @@
 #include "base/file_util.h"
 
 #include <algorithm>
+#include <filesystem>
 
+#include "absl/cleanup/cleanup.h"
 #include "gtest/gtest.h"
 
 namespace openmldb {
@@ -43,6 +45,14 @@ TEST_F(FileUtilTest, GetChildFileName) {
     ASSERT_EQ("/tmp/gtest/test", file_vec[0]);
     ASSERT_EQ("/tmp/gtest/test0.txt", file_vec[1]);
     ASSERT_EQ("/tmp/gtest/test1.txt", file_vec[2]);
+}
+
+TEST_F(FileUtilTest, ParseParentDirFromPath) {
+    ASSERT_EQ("/test0/", ParseParentDirFromPath("/test0/test1"));
+    ASSERT_EQ("/test0/", ParseParentDirFromPath("/test0/test1/"));
+    ASSERT_EQ("./", ParseParentDirFromPath("test0"));
+    ASSERT_EQ("/", ParseParentDirFromPath("/test0"));
+    ASSERT_EQ("/", ParseParentDirFromPath("/"));
 }
 
 TEST_F(FileUtilTest, IsFolder) {
@@ -124,6 +134,127 @@ TEST_F(FileUtilTest, CopyFile) {
     GetFileSize(des_file, des_size);
     ASSERT_EQ(src_size, des_size);
     RemoveDirRecursive("/tmp/gtest");
+}
+
+TEST_F(FileUtilTest, FindFiles) {
+    std::filesystem::path tmp_path = std::filesystem::temp_directory_path() / "file_util_test2";
+    absl::Cleanup clean = [&tmp_path]() { std::filesystem::remove_all(tmp_path); };
+
+    ASSERT_TRUE(MkdirRecur(tmp_path.string()));
+    ASSERT_TRUE(MkdirRecur(tmp_path / "subfolder"));
+    auto file0 = tmp_path / "test0.csv";
+    FILE* f = fopen(file0.c_str(), "w");
+    if (f != nullptr) fclose(f);
+    auto file1 = tmp_path / "test1.csv";
+    f = fopen(file1.c_str(), "w");
+    if (f != nullptr) fclose(f);
+    auto file2 = tmp_path / "test2.csv";
+    f = fopen(file2.c_str(), "w");
+    if (f != nullptr) fclose(f);
+    auto file3 = tmp_path / "subfolder/test3.csv";
+    f = fopen(file3.c_str(), "w");
+    if (f != nullptr) fclose(f);
+    auto file4 = "test4.csv";
+    absl::Cleanup clean2 = [&file4]() { std::filesystem::remove_all(file4); };
+    f = fopen(file4, "w");
+    if (f != nullptr) fclose(f);
+
+    {
+        auto res = FindFiles(tmp_path / "test*");
+        ASSERT_EQ(res.size(), 3);
+        ASSERT_EQ(res[0], file0);
+        ASSERT_EQ(res[1], file1);
+        ASSERT_EQ(res[2], file2);
+    }
+
+    {
+        auto res = FindFiles(tmp_path / "*");
+        ASSERT_EQ(res.size(), 3);
+        ASSERT_EQ(res[0], file0);
+        ASSERT_EQ(res[1], file1);
+        ASSERT_EQ(res[2], file2);
+    }
+
+    {
+        auto res = FindFiles(tmp_path / "*.csv");
+        ASSERT_EQ(res.size(), 3);
+        ASSERT_EQ(res[0], file0);
+        ASSERT_EQ(res[1], file1);
+        ASSERT_EQ(res[2], file2);
+    }
+
+    {
+        auto res = FindFiles(tmp_path / "test1.csv");
+        ASSERT_EQ(res.size(), 1);
+        ASSERT_EQ(res[0], file1);
+    }
+
+    {
+        auto res = FindFiles(tmp_path / "test1.csv*");
+        ASSERT_EQ(res.size(), 1);
+        ASSERT_EQ(res[0], file1);
+    }
+
+    {
+        auto res = FindFiles(tmp_path);
+        ASSERT_EQ(res.size(), 3);
+        ASSERT_EQ(res[0], file0);
+        ASSERT_EQ(res[1], file1);
+        ASSERT_EQ(res[2], file2);
+    }
+
+    {
+        auto res = FindFiles(absl::StrCat("file://", tmp_path.string()));
+        ASSERT_EQ(res.size(), 3);
+        ASSERT_EQ(res[0], file0);
+        ASSERT_EQ(res[1], file1);
+        ASSERT_EQ(res[2], file2);
+    }
+
+    {
+        auto res = FindFiles(absl::StrCat("file://", tmp_path.string(), "/", "*.csv"));
+        ASSERT_EQ(res.size(), 3);
+        ASSERT_EQ(res[0], file0);
+        ASSERT_EQ(res[1], file1);
+        ASSERT_EQ(res[2], file2);
+    }
+
+    {
+        auto res = FindFiles(tmp_path / "not_exists");
+        ASSERT_EQ(res.size(), 0);
+    }
+
+    {
+        auto res = FindFiles(absl::StrCat("/not_exits_folder", "/", "not_exists"));
+        ASSERT_EQ(res.size(), 0);
+    }
+
+    {
+        auto res = FindFiles(tmp_path / "subfolder/test3.csv");
+        ASSERT_EQ(res.size(), 1);
+    }
+
+    {
+        auto res = FindFiles(tmp_path / "subfolder");
+        ASSERT_EQ(res.size(), 1);
+    }
+
+    {
+        auto res = FindFiles("not_exists");
+        ASSERT_EQ(res.size(), 0);
+    }
+
+    {
+        auto res = FindFiles("test4.csv");
+        ASSERT_EQ(res.size(), 1);
+        ASSERT_EQ(res[0], "test4.csv");
+    }
+
+    {
+        auto res = FindFiles("./test4.csv");
+        ASSERT_EQ(res.size(), 1);
+        ASSERT_EQ(res[0], "./test4.csv");
+    }
 }
 
 }  // namespace base

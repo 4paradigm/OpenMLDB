@@ -48,6 +48,15 @@ class DefaultUdfLibrary : public UdfLibrary {
     void initMaxByCateUdaFs();
     void InitAvgByCateUdafs();
     void InitFeatureZero();
+
+    // Array Udf defines, udfs either accept array as parameter or returns array
+    void InitArrayUdfs();
+
+    // aggregate functions for statistic
+    void InitStatisticsUdafs();
+
+    // earth distance udfs
+    void InitEarthDistanceUdf();
 };
 
 }  // namespace udf

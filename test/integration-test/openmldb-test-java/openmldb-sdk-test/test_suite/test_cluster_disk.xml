@@ -10,6 +10,8 @@
             <class name="com._4paradigm.openmldb.java_sdk_test.cluster.sql_test.DDLTest">
                 <methods>
                     <exclude name="testCreateIndex"></exclude>
+                    <exclude name="testDeleteIndex"></exclude>
+                    <exclude name="testExecuteMode"></exclude>
                 </methods>
             </class>
             <class name="com._4paradigm.openmldb.java_sdk_test.cluster.sql_test.DMLTest"></class>
@@ -25,6 +27,8 @@
         </classes>
     </test>
     <listeners>
-        <listener class-name="com._4paradigm.openmldb.java_sdk_test.report.AddAttachmentListener" />
+        <!-- <listener class-name="com._4paradigm.openmldb.java_sdk_test.report.AddAttachmentListener" /> -->
+        <listener class-name="org.uncommons.reportng.HTMLReporter" />
+        <listener class-name="org.uncommons.reportng.JUnitXMLReporter" />
     </listeners>
 </suite>

@@ -15,7 +15,9 @@
  */
 
 #include "node/expr_node.h"
-#include <absl/strings/str_cat.h>
+
+#include "absl/strings/str_cat.h"
+#include "absl/strings/substitute.h"
 #include "codec/fe_row_codec.h"
 #include "codegen/arithmetic_expr_ir_builder.h"
 #include "codegen/type_ir_builder.h"
@@ -143,6 +145,7 @@ Status GetFieldExpr::InferAttr(ExprAnalysisContext* ctx) {
 
         auto nm = ctx->node_manager();
         SetOutputType(nm->MakeTypeNode(dtype));
+        SetNullable(true);
     } else {
         return Status(common::kTypeError,
                       "Get field's input is neither tuple nor row");
@@ -158,34 +161,26 @@ Status WhenExprNode::InferAttr(ExprAnalysisContext* ctx) {
 }
 
 // Case when 返回类型推断，目前要求所有的then/else的输出类型都一致
-// TODO(chenjing, xinqi): case when output type需要作类型兼容
 Status CaseWhenExprNode::InferAttr(ExprAnalysisContext* ctx) {
     CHECK_TRUE(GetChildNum() == 2, kTypeError);
     CHECK_TRUE(when_expr_list()->GetChildNum() > 0, kTypeError);
-    const TypeNode* type = nullptr;
+
+    // get compatiable type for [when list] and else
+    auto* nm = ctx->node_manager();
+    const TypeNode* out_type = nm->MakeTypeNode(DataType::kNull);
     for (auto expr : when_expr_list()->children_) {
         auto expr_type = expr->GetOutputType();
-        if (nullptr == type) {
-            type = expr_type;
-        } else if (expr_type->base() != node::kNull &&
-                   type->base() != node::kNull) {
-            CHECK_TRUE(
-                type->Equals(expr_type), kTypeError,
-                "fail infer case when expr attr: then return types and else "
-                "return type aren't compatible");
-        }
+        auto res = CompatibleType(nm, out_type, expr_type);
+        CHECK_TRUE(res.ok(), kTypeError, res.status());
+        out_type = res.value();
     }
     CHECK_TRUE(nullptr != else_expr(), kTypeError,
                "fail infer case when expr attr: else expr is nullptr");
-    CHECK_TRUE(node::IsNullPrimary(else_expr()) ||
-                   type->Equals(else_expr()->GetOutputType()),
-               kTypeError,
-               "fail infer case when expr attr: then return types and else "
-               "return type aren't compatible");
+    auto res = CompatibleType(nm, out_type, else_expr()->GetOutputType());
+    CHECK_TRUE(res.ok(), kTypeError, res.status());
+    out_type = res.value();
 
-    CHECK_TRUE(nullptr != type, kTypeError,
-               "fail infer case when expr: output type is null");
-    SetOutputType(type);
+    SetOutputType(out_type);
     SetNullable(true);
     return Status::OK();
 }
@@ -211,6 +206,55 @@ Status ExprNode::IsCastAccept(node::NodeManager* nm, const TypeNode* src,
     }
     *output = dist;
     return Status::OK();
+}
+
+// this handles compatible type when both lhs and rhs are basic types
+// composited types like array, list, tuple are not handled correctly, so do not expect the function to handle those
+// types
+absl::StatusOr<const TypeNode*> ExprNode::CompatibleType(NodeManager* nm, const TypeNode* lhs, const TypeNode* rhs) {
+    if (*lhs == *rhs) {
+        // include Null = Null
+        return rhs;
+    }
+    if (lhs->IsNull()) {
+        // NULL + T -> T
+        return rhs;
+    }
+    if (rhs->IsNull()) {
+        // T + NULL -> T
+        return lhs;
+    }
+
+    if (IsSafeCast(lhs, rhs)) {
+        return rhs;
+    }
+    if (IsSafeCast(rhs, lhs)) {
+        return lhs;
+    }
+    if (IsIntFloat2PointerCast(lhs, rhs)) {
+        // rhs is float while lhs is 64bit
+        if (rhs->base() == kFloat && (lhs->base() == kInt64 || lhs->base() == kDouble)) {
+            return nm->MakeTypeNode(kDouble);
+        }
+
+        return rhs;
+    }
+
+    if (IsIntFloat2PointerCast(rhs, lhs)) {
+        if ((rhs->base() == kInt64 || rhs->base() == kDouble) && lhs->base() == kFloat) {
+            return nm->MakeTypeNode(kDouble);
+        }
+        return lhs;
+    }
+
+    if (lhs->IsBaseOrNullType() && rhs->IsBaseOrNullType()) {
+        // both casting to string as a fallback
+        return nm->MakeTypeNode(kVarchar);
+    }
+
+    // for composited types, there is no fallback type, requires exact match
+    return absl::InvalidArgumentError(absl::Substitute(
+        "no compatiable type: composited type $0 and $1 requires exact match", lhs->DebugString(), rhs->DebugString()));
 }
 
 /**
@@ -717,22 +761,20 @@ Status UnaryExpr::InferAttr(ExprAnalysisContext* ctx) {
 }
 
 Status CondExpr::InferAttr(ExprAnalysisContext* ctx) {
-    CHECK_TRUE(GetCondition() != nullptr &&
-                   GetCondition()->GetOutputType() != nullptr &&
+    CHECK_TRUE(GetCondition() != nullptr && GetCondition()->GetOutputType() != nullptr &&
                    GetCondition()->GetOutputType()->base() == node::kBool,
                kTypeError, "Condition must be boolean type");
     CHECK_TRUE(GetLeft() != nullptr && GetRight() != nullptr, kTypeError);
     auto left_type = GetLeft()->GetOutputType();
     auto right_type = GetRight()->GetOutputType();
-    CHECK_TRUE(left_type != nullptr, kTypeError, kTypeError,
-               "Unknown cond left type");
-    CHECK_TRUE(right_type != nullptr, kTypeError, kTypeError,
-               "Unknown cond right type");
-    CHECK_TRUE(TypeEquals(left_type, right_type), kTypeError,
-               "Condition's left and right type do not match: ",
-               left_type->GetName(), " : ", right_type->GetName());
-    this->SetOutputType(left_type);
-    this->SetNullable(GetLeft()->nullable() || GetRight()->nullable());
+    CHECK_TRUE(left_type != nullptr, kTypeError, kTypeError, "Unknown cond left type");
+    CHECK_TRUE(right_type != nullptr, kTypeError, kTypeError, "Unknown cond right type");
+
+    auto out_res = CompatibleType(ctx->node_manager(), left_type, right_type);
+    CHECK_TRUE(out_res.ok(), kTypeError, out_res.status());
+    SetOutputType(out_res.value());
+
+    SetNullable(GetLeft()->nullable() || GetRight()->nullable());
     return Status::OK();
 }
 
@@ -784,6 +826,43 @@ Status ExprListNode::InferAttr(ExprAnalysisContext* ctx) {
     }
     SetOutputType(top_type);
     SetNullable(false);
+    return Status::OK();
+}
+
+ArrayExpr* ArrayExpr::ShadowCopy(NodeManager* nm) const {
+    auto array = nm->MakeArrayExpr();
+    array->children_ = children_;
+    array->specific_type_ = specific_type_;
+    return array;
+}
+
+Status ArrayExpr::InferAttr(ExprAnalysisContext* ctx) {
+    // if specific_type_ exists, and has the array element type, take the type directly
+    // whether the specific type is castable from should checked during codegen
+    if (specific_type_ != nullptr && !specific_type_->generics().empty()) {
+        SetOutputType(specific_type_);
+        SetNullable(true);
+        return Status::OK();
+    }
+
+    // auto top_type = ctx->node_manager()->MakeTypeNode(kArray);
+    TypeNode* top_type = nullptr;
+    auto nm = ctx->node_manager();
+    if (children_.empty()) {
+        FAIL_STATUS(kTypeError, "element type unknown for empty array expression");
+    } else {
+        const TypeNode* ele_type = children_[0]->GetOutputType();
+        for (size_t i = 1; i < children_.size() ; ++i) {
+            auto res = CompatibleType(ctx->node_manager(), ele_type, children_[i]->GetOutputType());
+            CHECK_TRUE(res.ok(), kTypeError, res.status());
+            ele_type = res.value();
+        }
+        CHECK_TRUE(!ele_type->IsNull(), kTypeError, "unable to infer array type, all elements are null");
+        top_type = nm->MakeArrayType(ele_type, children_.size());
+    }
+    SetOutputType(top_type);
+    // array is nullable
+    SetNullable(true);
     return Status::OK();
 }
 
@@ -937,9 +1016,11 @@ ConstNode* ConstNode::ShadowCopy(NodeManager* nm) const {
             LOG(WARNING) << "Fail to copy primary expr of type " << node::DataTypeName(GetDataType());
             return nm->MakeConstNode(GetDataType());
         }
+        default: {
+            LOG(ERROR) << "Unsupported Data type " << node::DataTypeName(GetDataType());
+            return nullptr;
+        }
     }
-    LOG(ERROR) << "Unsupported Data type " << node::DataTypeName(GetDataType());
-    return nullptr;
 }
 
 ColumnRefNode* ColumnRefNode::ShadowCopy(NodeManager* nm) const {

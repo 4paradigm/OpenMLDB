@@ -64,6 +64,7 @@ OpenMLDB内置了上百个SQL函数，以供数据科学家作数据分析和特
 - C++内置函数名统一使用[snake_case](https://en.wikipedia.org/wiki/Snake_case) 风格
 - 要求函数名能清晰表达函数功能
 
+(c_vs_sql)=
 #### 2.1.3 C++类型与SQL类型对应关系
 
 内置C++函数的参数类型限定为：BOOL类型，数值类型，时间戳日期类型和字符串类型。C++类型SQL类型对应关系如下：
@@ -79,12 +80,15 @@ OpenMLDB内置了上百个SQL函数，以供数据科学家作数据分析和特
 | STRING    | `StringRef` |
 | TIMESTAMP | `Timestamp` |
 | DATE      | `Date`      |
+| ARRAY     | `ArrayRef`  |
+
+*注意 ARRAY 类型尚不支持在存储中作为表的列类型或者作为 SQL 查询的输出列格式*
 
 #### 2.1.4 函数参数和返回值
 
 - C++函数与SQL函数参数相对位置相同
 
-- C++函数与SQL函数与参数类型类型一一对应。详情参见[2.1.3 C++类型与SQL类型对应关系](#2.1.3-C++类型与SQL类型对应关系)
+- C++函数与SQL函数与参数类型类型一一对应。详情参见 [2.1.3 C++类型与SQL类型对应关系](c_vs_sql)
 
 - 函数返回值要考虑以下几种情况：
 
@@ -95,34 +99,36 @@ OpenMLDB内置了上百个SQL函数，以供数据科学家作数据分析和特
       double func_return_double(int); 
       ```
 
-  - 当SQL函数返回值为**STRING**, **TIMESTAMP**或**DATE**时，要求C++函数通过参数来输出结果。这意味着，C++的**输入参数**后额外有一个指针类型的**输出参数**（`StringRef*`, `Timestamp*`或 `Date*`)用来存放和返回结果值
+  - 当SQL函数返回值为**STRING**, **TIMESTAMP**, **DATE**或者**ArrayRef**时，要求C++函数通过参数来输出结果。这意味着，C++的**输入参数**后额外有一个指针类型的**输出参数**（`StringRef*`, `Timestamp*`或 `Date*`)用来存放和返回结果值
 
     - ```c++
       // SQL: STRING FUNC_STR(INT)
       void func_output_str(int32_t, StringRef*); 
       ```
 
-  - 当SQL函数的返回值可能为空(**Nullable**)时，额外要有一个`bool*`类型的**输出参数**来存放结果为空与否
+  - 当SQL函数的返回值可能为 NULL (**Nullable**)时，额外要有一个`bool*`类型的**输出参数**来存放结果为空与否
 
     - ```c++
       // SQL: Nullable<DATE> FUNC_NULLABLE_DATE(BIGINT)
       void func_output_nullable_date(int64_t, Date*, bool*); 
       ```
     
-  - 注意， SQL 函数返回值将对内置函数的实现和注册方式产生较大的影响，我们将在后续分别讨论，详情参见[3.2. SQL函数开发](#3.2.-单行函数开发分类)。
+  - 注意， SQL 函数返回值将对内置函数的实现和注册方式产生较大的影响，我们将在后续分别讨论，详情参见 [3.2. 单行函数开发分类](sfunc_category)。
   
 - 参数Nullable的处理方式：
 
-  - 一般地，OpenMLDB对所有内置的单行函数采取统一的NULL参数处理方式。即任意一个参数为NULL时，直接返回NULL。
-  - 但需要对NULL参数做特殊处理的单行函数或者聚合函数，那么可以将参数配置为`Nullable<ArgType>`，然后在C++ function中将使用ArgType对应的C++类型和`bool*`来表达这个参数。详情参见[3.2.4 SQL函数参数是Nullable](#3.2.4-SQL函数参数是Nullable)。
+  - 一般地，OpenMLDB对所有内置的单行函数采取统一的NULL参数处理方式。即任意一个输入参数为NULL时，直接返回NULL。
+  - 但需要对NULL参数做特殊处理的单行函数或者聚合函数，那么可以将参数配置为`Nullable<ArgType>`，然后在C++ function中将使用ArgType对应的C++类型和`bool*`来表达这个参数。详情参见[3.2.4 SQL函数参数是Nullable](arg_nullable)。
 
 #### 2.1.5 内存管理
 
 - C++内置单行函数中，不允许使用`new`操作符或者`malloc`函数开辟空间。 
 - C++内置聚合函数，可以在初始化的时候使用`new`或者`malloc`函数开辟空间，但需要保证在`output`生成最终结果的时候，将空间释放。
-- 单行函数和聚合函数中也可以使用OpenMLDB提供的内存管理接口`hybridse::udf::v1::AllocManagedStringBuf(size)`。系统会从内存池`ByteMemoryPool`中分配指定大小的连续空间给该函数，并在安全的时候自动释放空间。
-  - 若空间size大于2M字节，则分配失败，返回nullptr。
-  - 若空间size < 0，则分配失败，返回nullptr。
+- 涉及到为 UDF 输出参数分配内存的，必须使用OpenMLDB提供的内存管理接口:
+  - `hybridse::udf::v1::AllocManagedStringBuf(size)`: 系统会从内存池`ByteMemoryPool`中分配指定大小的连续空间给该函数，并在安全的时候自动释放空间。
+    - 若空间size大于2M字节，则分配失败，返回nullptr。
+    - 若空间size < 0，则分配失败，返回nullptr。
+  - `hybridse::udf::v1::AllocManagedArray(ArrayRef<T>*, uint64_t)`: 为 array 输出类型分配空间
 
 **例子:**
 
@@ -259,13 +265,15 @@ CheckUdf<return_type, arg_type,...>("function_name", expect_result, arg_value,..
   ```
 
 - 在[hybridse/src/udf/udaf_test.cc](https://github.com/4paradigm/OpenMLDB/blob/main/hybridse/src/udf/udaf_test.cc)
-添加单测：
+  添加单测：
   ```c++
   // avg udaf test
   TEST_F(UdafTest, avg_test) {
       CheckUdf<double, ListRef<int16_t>>("avg", 2.5, MakeList<int16_t>({1, 2, 3, 4}));
   }
   ```
+
+(compile_ut)=
 
 #### 2.3.2 编译和执行单测
 
@@ -388,15 +396,19 @@ RegisterExternalTemplate<v1::Abs>("abs")
 泛型模版的内置单行函数开发和单一数据类型的内置单行函数开发类似，在本文档中不详细展开讨论，
 本章以下内容主要针对单一数据类型的内置单行函数开发。
 
+(sfunc_category)=
+
 ### 3.2. 单行函数开发分类
 
 我们按内置函数的返回类型将函数基本分为三种类型：
 
 - SQL函数返回值为布尔或数值类型
-- SQL函数返回值为**STRING**, **TIMESTAMP**或**DATE**
+- SQL函数返回值为**STRING**, **TIMESTAMP**,**DATE**, **ArrayRef**
 - SQL函数的返回值可能为空
 
 我们将详细介绍这几种类型的函数的开发和注册的基本流程。
+
+(return_bool)=
 
 #### 3.2.1 SQL函数返回值为布尔或数值类型
 
@@ -532,6 +544,8 @@ RegisterExternal("my_func")
         )");
 ```
 
+(arg_nullable)=
+
 #### 3.2.4 SQL函数参数是Nullable
 
 OpenMLDB对函数的NULL参数有默认的处理机制。即，任意一个参数为NULL时，函数返回NULL。但如果开发者想要在函数中获得参数是否为NULL并特别处理NULL参数时，我们需要把参数NULL的信息传递到函数中去。
@@ -585,7 +599,7 @@ RegisterExternal("my_func")
 
 #### 3.3.1 SQL函数返回值为布尔或数值类型 - `INT Month(TIMESTAMP)`函数
 
-Month()函数接受一个**TIMESTAMP**的时间戳参数，返回一个**INT**整数值，它表示指定日期的月份。参考[3.2.1 SQL函数返回值为布尔或数值类型](#3.2.1-SQL函数返回值为布尔或数值类型)
+Month()函数接受一个**TIMESTAMP**的时间戳参数，返回一个**INT**整数值，它表示指定日期的月份。参考[3.2.1 SQL函数返回值为布尔或数值类型](return_bool)
 
 ##### **step 1: 实现待注册的内置函数**
 
@@ -650,7 +664,7 @@ namespace udf {
 
 ##### **step 3: 函数单元测试**
 
-在[src/codegen/udf_ir_builder_test.cc](https://github.com/4paradigm/OpenMLDB/blob/main/hybridse/src/codegen/udf_ir_builder_test.cc) 中添加`TEST_F`单测，并[编译和运行单元测试](#2.3.2-编译和执行单测)。
+在[src/codegen/udf_ir_builder_test.cc](https://github.com/4paradigm/OpenMLDB/blob/main/hybridse/src/codegen/udf_ir_builder_test.cc) 中添加`TEST_F`单测，并[编译和运行单元测试](compile_ut)。
 
 ```c++
 // month(timestamp) normal check
@@ -750,7 +764,7 @@ namespace hybridse {
 
 ##### **step 3: 函数单元测试**
 
-在[src/codegen/udf_ir_builder_test.cc](https://github.com/4paradigm/OpenMLDB/blob/main/hybridse/src/codegen/udf_ir_builder_test.cc) 中添加`TEST_F`单测，并[编译和运行单元测试](#2.3.2-编译和执行单测)。
+在[src/codegen/udf_ir_builder_test.cc](https://github.com/4paradigm/OpenMLDB/blob/main/hybridse/src/codegen/udf_ir_builder_test.cc) 中添加`TEST_F`单测，并[编译和运行单元测试](compile_ut)。
 
 ```c++
 // string(bool) normal check
@@ -856,7 +870,7 @@ namespace hybridse {
 
 ##### **step 3: 函数单元测试**
 
-在[src/codegen/udf_ir_builder_test.cc](https://github.com/4paradigm/OpenMLDB/blob/main/hybridse/src/codegen/udf_ir_builder_test.cc) 中添加`TEST_F`单测，并[编译和运行单元测试](#2.3.2-编译和执行单测)。
+在[src/codegen/udf_ir_builder_test.cc](https://github.com/4paradigm/OpenMLDB/blob/main/hybridse/src/codegen/udf_ir_builder_test.cc) 中添加`TEST_F`单测，并[编译和运行单元测试](compile_ut)。
 
 ```c++
 // date(timestamp) normal check
@@ -913,7 +927,7 @@ RegisterUdaf("register_func_name")
     函数签名为：`ST* Update(ST* state, IN val1, bool val1_is_null, ...)`
 - 配置`output`函数指针: `output_func_ptr`。
   当函数的返回值可能为空时，额外要有一个`bool*`类型的参数来存放结果是否为空
-（可以参照[3.2.3 SQL函数的返回值类型是Nullable](#3.2.3-SQL函数的返回值类型是Nullable)）。
+  （可以参照[3.2.3 SQL函数的返回值类型是Nullable](#3.2.3-SQL函数的返回值类型是Nullable)）。
 
 
 下面代码展示了新增`second` 聚合函数的代码示例，`second`功能为返回聚合数据中非空的第二个元素；为了方便展示，示例中`second`仅支持`int32_t`数据类型：
@@ -1015,3 +1029,15 @@ RegisterUdafTemplate<DistinctCountDef>("distinct_count")
 ### 5.2. 聚合函数示例代码参考
 更多聚合函数示例代码可以参考：
 [hybridse/src/udf/default_udf_library.cc](https://github.com/4paradigm/OpenMLDB/blob/main/hybridse/src/udf/default_udf_library.cc)
+
+
+
+## 6. 文档管理
+
+内置函数文档可在 [Built-in Functions](https://openmldb.ai/docs/zh/main/openmldb_sql/functions_and_operators/Files/udfs_8h.html) 查看，它是一个代码生成的 markdown 文件，注意请不要进行直接编辑。
+
+- 如果需要对新增加的函数添加文档，请参照 2.2.4 配置函数文档 章节，说明了内置函数的文档是在 CPP 源代码中管理的。后续会通过一系列步骤生成如上网页中更加可读的文档， 即`docs/*/openmldb_sql/functions_and_operators/`目录下的内容。
+- 如果需要修改一个已存在函数的文档，可以在文件 `hybridse/src/udf/default_udf_library.cc` 或者 `hybridse/src/udf/default_defs/*_def.cc` 下查找到对应函数的文档说明，进行修改。
+
+OpenMLDB 项目中创建了一个定期天级别的 GitHub Workflow 任务来定期更新这里的相关文档。因此内置函数文档相关的改动只需按照上面的步骤修改对应源代码位置的内容即可，`docs` 目录和网站的内容会随之定期更新。具体的文档生成流程可以查看源代码路径下的 [udf_doxygen](https://github.com/4paradigm/OpenMLDB/tree/main/hybridse/tools/documentation/udf_doxygen)。
+

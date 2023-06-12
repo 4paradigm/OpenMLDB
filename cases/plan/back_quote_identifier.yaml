@@ -118,7 +118,7 @@ cases:
     desc: Create table statement with back quote name
     sql: |
       create table `t-1` (`a-1` `int`, `b-1` `string`, index(key=(`a-1`, `b-1`), dump='12', `ts`=`column-2`, `ttl`=1d, `ttl_type`=absolute, `version`=(`column-5`, 3)))
-      options (`replicanum` = 3, `partitionnum` = 3, `ignored_option` = 'abc',
+      options (`replicanum` = 3, `partitionnum` = 3,
           distribution = [ ('leader1', ['fo1', 'fo2']) ]
       );
     expect:

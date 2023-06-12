@@ -20,12 +20,12 @@
 2. [生产级机器学习特征平台](#2-生产级机器学习特征平台)
 3. [核心特性](#3-核心特性)
 4. [FAQ](#4-faq)
-5. [编译和安装](#5-编译和安装)
+5. [下载和安装](#5-下载和安装)
 6. [QuickStart](#6-quickstart)
 7. [使用案例](#7-使用案例)
 8. [OpenMLDB 文档](#8-openmldb-文档)
 9. [Roadmap](#9-roadmap)
-10. [社区开发者](#10-社区开发者)
+10. [社区贡献](#10-社区贡献)
 11. [加入社区](#11-加入社区)
 12. [学术论文](#12-学术论文)
 13. [用户列表](#13-用户列表)
@@ -79,19 +79,14 @@ OpenMLDB 的整体架构设计是为了达到特征平台从开发到部署的�
    
    SQL 具备表达语法简洁且功能强大的特点，选用 SQL 和数据库开发体验一方面降低开发门槛，另一方面更易于跨部门之间的协作和共享。此外，基于 OpenMLDB 的实践经验表明，经过优化过的 SQL 在特征计算的表达上功能完备，已经经历了长时间的实践考验。
 
-## 5. 编译和安装
+## 5. 下载和安装
 
-:point_right: [点击这里](https://openmldb.ai/docs/zh/main/deploy/index.html)
+- 下载：[GitHub 发布页面](https://github.com/4paradigm/OpenMLDB/releases)，[镜像网站（中国）](http://43.138.115.238/download/)
+- [安装和部署文档](https://openmldb.ai/docs/zh/main/deploy/install_deploy.html)
 
 ## 6. QuickStart
 
-**集群版和单机版**
-
-OpenMLDB 有两种部署模式：集群版（cluster version）和单机版（standalone vesion）。集群版适合于大规模数据的生产环境，提供了良好的可扩展性和高可用性；单机版适合于小数据场景或者试用目的，更加方便部署和使用。集群版和单机版在功能上完全一致，但是在某些具体功能上会有不同限制，详细参阅[此篇说明文档](https://openmldb.ai/docs/zh/main/tutorial/standalone_vs_cluster.html)。你可以选择合适的版本开始试用。
-
-**准备开始体验 OpenMLDB**
-
-:point_right: [OpenMLDB 快速上手指南](https://openmldb.ai/docs/zh/main/quickstart/openmldb_quickstart.html)
+[OpenMLDB 快速上手指南](https://openmldb.ai/docs/zh/main/quickstart/openmldb_quickstart.html)
 
 ## 7. 使用案例
 
@@ -100,12 +95,13 @@ OpenMLDB 有两种部署模式：集群版（cluster version）和单机版（st
 | 应用                                                         | 所用工具                                                     | 简介                                                         |
 | ------------------------------------------------------------ | ------------------------------------------------------------ | ------------------------------------------------------------ |
 | [出租车行程时间预测](https://openmldb.ai/docs/zh/main/use_case/taxi_tour_duration_prediction.html) | OpenMLDB, LightGBM                                           | 这是个来自 Kaggle 的挑战，用于预测纽约市的出租车行程时间。你可以从这里阅读更多关于[该应用场景的描述](https://www.kaggle.com/c/nyc-taxi-trip-duration/)。本案例展示使用 OpenMLDB + LightGBM 的开源方案，快速搭建完整的机器学习应用。 |
-| [使用 Pulsar connector 接入实时数据流](https://openmldb.ai/docs/zh/main/use_case/pulsar_openmldb_connector_demo.html) | OpenMLDB, Pulsar, [OpenMLDB-Pulsar connector](https://github.com/apache/pulsar/tree/master/pulsar-io/jdbc/openmldb) | Apache Pulsar 是一个高性能的云原生的消息队列平台，基于  OpenMLDB-Pulsar connector，我们可以高效的将 Pulsar 的数据流作为 OpenMLDB 的在线数据源，实现两者的无缝整合。 |
-| [使用 Kafka connector 接入实时数据流](https://openmldb.ai/docs/zh/main/use_case/kafka_connector_demo.html) | OpenMLDB, Kafka, [OpenMLDB-Kafka connector](https://github.com/4paradigm/OpenMLDB/tree/main/extensions/kafka-connect-jdbc) | Apache Kafka 是一个分布式消息流平台。基于 OpenMLDB-Kafka connector，实时数据流可以被简单的引入到 OpenMLDB 作为在线数据源。 |
-| [在 DolphinScheduler 中构建端到端的机器学习工作流](https://openmldb.ai/docs/zh/main/use_case/dolphinscheduler_task_demo.html) | OpenMLDB, DolphinScheduler, [OpenMLDB task plugin](https://dolphinscheduler.apache.org/zh-cn/docs/dev/user_doc/guide/task/openmldb.html) | 这个案例新演示了基于 OpenMLDB 和 DolphinScheduler（一个开源的工作流任务调度平台）来构建一个完整的机器学习工作流，包括了特征工程、模型训练，以及部署上线。 |
+| [使用 Pulsar connector 接入实时数据流](https://openmldb.ai/docs/zh/main/integration/online_datasources/pulsar_connector_demo.html) | OpenMLDB, Pulsar, [OpenMLDB-Pulsar connector](https://github.com/apache/pulsar/tree/master/pulsar-io/jdbc/openmldb) | Apache Pulsar 是一个高性能的云原生的消息队列平台，基于  OpenMLDB-Pulsar connector，我们可以高效的将 Pulsar 的数据流作为 OpenMLDB 的在线数据源，实现两者的无缝整合。 |
+| [使用 Kafka connector 接入实时数据流](https://openmldb.ai/docs/zh/main/integration/online_datasources/kafka_connector_demo.html) | OpenMLDB, Kafka, [OpenMLDB-Kafka connector](https://github.com/4paradigm/OpenMLDB/tree/main/extensions/kafka-connect-jdbc) | Apache Kafka 是一个分布式消息流平台。基于 OpenMLDB-Kafka connector，实时数据流可以被简单的引入到 OpenMLDB 作为在线数据源。 |
+| [使用 RocketMQ 接入实时数据流](https://openmldb.ai/docs/zh/main/integration/online_datasources/rocketmq_connector.html) | OpenMLDB, RocketMQ, [OpenMLDB-RocketMQ connector](https://github.com/apache/rocketmq-connect/blob/master/connectors/rocketmq-connect-jdbc/src/main/java/org/apache/rocketmq/connect/jdbc/dialect/impl/OpenMLDBDatabaseDialect.java) | Apache RocketMQ 是一个云原生“消息、事件、流”实时数据处理平台，使用 OpenMLDB-RocketMQ connector，可以将实时数据从 RocketMQ 高效的引入到 OpenMLDB，进行实时计算。 |
+| [在 DolphinScheduler 中构建端到端的机器学习工作流](https://openmldb.ai/docs/zh/main/integration/deploy_integration/dolphinscheduler_task_demo.html) | OpenMLDB, DolphinScheduler, [OpenMLDB task plugin](https://dolphinscheduler.apache.org/zh-cn/docs/dev/user_doc/guide/task/openmldb.html) | 这个案例新演示了基于 OpenMLDB 和 DolphinScheduler（一个开源的工作流任务调度平台）来构建一个完整的机器学习工作流，包括了特征工程、模型训练，以及部署上线。 |
 | [在线广告点击欺诈检测](https://openmldb.ai/docs/zh/main/use_case/talkingdata_demo.html) | OpenMLDB, XGBoost                                            | 该案例演示了基于 OpenMLDB 以及 XGBoost 去构建一个[在线广告反欺诈的应用](https://www.kaggle.com/c/talkingdata-adtracking-fraud-detection/)。 |
-| [基于 SQL 构建机器学习全流程](https://openmldb.ai/docs/zh/main/use_case/OpenMLDB_Byzer_taxi.html) | OpenMLDB, Byzer, [OpenMLDB Plugin for Byzer](https://github.com/byzer-org/byzer-extension/tree/master/byzer-openmldb) | Byzer 是一门面向 Data 和 AI 的低代码、云原生的开源编程语言。Byzer 已经把 OpenMLDB 整合在内，用来一起构建完整的机器学习应用全流程。 |
-| [在 Airflow 中构建机器学习应用](https://openmldb.ai/docs/zh/main/use_case/airflow_provider_demo.html) | OpenMLDB, Airflow, [Airflow OpenMLDB Provider](https://github.com/4paradigm/OpenMLDB/tree/main/extensions/airflow-provider-openmldb), XGBoost | Airflow 是一个流行的工作流编排和管理软件。该案例展示了如何在 Airflow 内，通过提供的 provder package，来方便的编排基于 OpenMLDB 的机器学习任务。 |
+| [基于 SQL 构建机器学习全流程](https://openmldb.ai/docs/zh/main/integration/deploy_integration/OpenMLDB_Byzer_taxi.html) | OpenMLDB, Byzer, [OpenMLDB Plugin for Byzer](https://github.com/byzer-org/byzer-extension/tree/master/byzer-openmldb) | Byzer 是一门面向 Data 和 AI 的低代码、云原生的开源编程语言。Byzer 已经把 OpenMLDB 整合在内，用来一起构建完整的机器学习应用全流程。 |
+| [在 Airflow 中构建机器学习应用](https://openmldb.ai/docs/zh/main/integration/deploy_integration/airflow_provider_demo.html) | OpenMLDB, Airflow, [Airflow OpenMLDB Provider](https://github.com/4paradigm/OpenMLDB/tree/main/extensions/airflow-provider-openmldb), XGBoost | Airflow 是一个流行的工作流编排和管理软件。该案例展示了如何在 Airflow 内，通过提供的 provder package，来方便的编排基于 OpenMLDB 的机器学习任务。 |
 | [精准营销](https://openmldb.ai/docs/zh/main/use_case/JD_recommendation.html) | OpenMLDB, OneFlow                                            | OneFlow 是一个用户友好、可扩展、高效的深度学习框架。改案例展示了如何使用 OpenMLDB 做特征工程，串联 OneFlow 进行模型训练和预测，来构造一个用于[精准营销的机器学习应用](https://jdata.jd.com/html/detail.html?id=1)。 |
 
 ## 8. OpenMLDB 文档
@@ -134,6 +130,8 @@ OpenMLDB 有两种部署模式：集群版（cluster version）和单机版（st
 - 如果你是有一定的开发经验，可以查找 [call-for-contributions](https://github.com/4paradigm/OpenMLDB/issues?q=is%3Aopen+is%3Aissue+label%3Acall-for-contributions) 标签的 issues。
 - 也可以阅读我们[这个文档](https://go005qabor.feishu.cn/docs/doccn7oEU0AlCOGtYz09chIebzd)来了解不同层级的开发任务，参与和开发者讨论
 
+[![Open in Gitpod](https://gitpod.io/button/open-in-gitpod.svg)](https://gitpod.io/#https://github.com/4paradigm/OpenMLDB)
+
 ## 11. 加入社区
 
 - 网站：[https://openmldb.ai/](https://openmldb.ai) 
@@ -148,7 +146,10 @@ OpenMLDB 有两种部署模式：集群版（cluster version）和单机版（st
 
 ## 12. 学术论文
 
-* Cheng Chen, Jun Yang, Mian Lu, Taize Wang, Zhao Zheng, Yuqiang Chen, Wenyuan Dai, Bingsheng He, Weng-Fai Wong, Guoan Wu, Yuping Zhao, and Andy Rudoff. *[Optimizing in-memory database engine for AI-powered on-line decision augmentation using persistent memory](http://vldb.org/pvldb/vol14/p799-chen.pdf)*. International Conference on Very Large Data Bases (VLDB) 2021.
+- [Scalable Online Interval Join on Modern Multicore Processors in OpenMLDB](docs/paper/scale_oij_icde2023.pdf). Hao Zhang, Xianzhi Zeng, Shuhao Zhang, Xinyi Liu, Mian Lu, and Zhao Zheng. In 2023 IEEE 39rd International Conference on Data Engineering (ICDE) 2023. [[code]](https://github.com/4paradigm/OpenMLDB/tree/stream)
+- [FEBench: A Benchmark for Real-Time Relational Data Feature Extraction](https://github.com/decis-bench/febench/blob/main/report/febench.pdf). Xuanhe Zhou, Cheng Chen, Kunyi Li, Bingsheng He, Mian Lu, Qiaosheng Liu, Wei Huang, Guoliang Li, Zhao Zheng, Yuqiang Chen. In submission. [[code]](https://github.com/decis-bench/febench).
+- [A System for Time Series Feature Extraction in Federated Learning](https://dl.acm.org/doi/pdf/10.1145/3511808.3557176). Siqi Wang, Jiashu Li, Mian Lu, Zhao Zheng, Yuqiang Chen, and Bingsheng He. 2022. In Proceedings of the 31st ACM International Conference on Information & Knowledge Management (CIKM) 2022. [[code]](https://github.com/4paradigm/tsfe).
+- [Optimizing in-memory database engine for AI-powered on-line decision augmentation using persistent memory](http://vldb.org/pvldb/vol14/p799-chen.pdf). Cheng Chen, Jun Yang, Mian Lu, Taize Wang, Zhao Zheng, Yuqiang Chen, Wenyuan Dai, Bingsheng He, Weng-Fai Wong, Guoan Wu, Yuping Zhao, and Andy Rudoff. International Conference on Very Large Data Bases (VLDB) 2021.
 
 ## 13. [用户列表](https://github.com/4paradigm/OpenMLDB/discussions/707)
 

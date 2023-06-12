@@ -42,7 +42,7 @@ using namespace ::llvm;  // NOLINT
         ->Args({1000})                                                    \
         ->Args({2000});
 
-const char* DEFAULT_YAML_PATH = "/cases/benchmark/request_benchmark.yaml";
+const char* DEFAULT_YAML_PATH = "cases/benchmark/request_benchmark.yaml";
 DEFINE_REQUEST_CASE(BM_SimpleLastJoin2Right, DEFAULT_YAML_PATH, "0");
 DEFINE_REQUEST_CASE(BM_SimpleLastJoin4Right, DEFAULT_YAML_PATH, "1");
 DEFINE_REQUEST_WINDOW_CASE(BM_SimpleWindowOutputLastJoinTable2,
@@ -53,7 +53,7 @@ DEFINE_REQUEST_WINDOW_CASE(BM_LastJoin4WindowOutput, DEFAULT_YAML_PATH, "4");
 DEFINE_REQUEST_WINDOW_CASE(BM_LastJoin8WindowOutput, DEFAULT_YAML_PATH, "5");
 
 DEFINE_REQUEST_WINDOW_CASE(BM_MultipleUDAF,
-                           "/cases/benchmark/udaf_benchmark.yaml", "0");
+                           "cases/benchmark/udaf_benchmark.yaml", "0");
 
 }  // namespace bm
 }  // namespace hybridse

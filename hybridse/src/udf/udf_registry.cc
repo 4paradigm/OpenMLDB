@@ -27,6 +27,146 @@ using ::hybridse::common::kCodegenError;
 namespace hybridse {
 namespace udf {
 
+Status ArgSignatureTable::Find(UdfResolveContext* ctx, std::shared_ptr<UdfRegistry>* res, std::string* signature,
+            int* variadic_pos) {
+    std::vector<const node::TypeNode*> arg_types;
+    for (size_t i = 0; i < ctx->arg_size(); ++i) {
+        arg_types.push_back(ctx->arg_type(i));
+    }
+    return Find(arg_types, res, signature, variadic_pos);
+}
+
+Status ArgSignatureTable::Find(const std::vector<const node::TypeNode*>& arg_types, std::shared_ptr<UdfRegistry>* res,
+            std::string* signature, int* variadic_pos) {
+    std::stringstream ss;
+    for (size_t i = 0; i < arg_types.size(); ++i) {
+        auto type_node = arg_types[i];
+        if (type_node == nullptr) {
+            ss << "?";
+        } else {
+            ss << type_node->GetName();
+        }
+        if (i < arg_types.size() - 1) {
+            ss << ", ";
+        }
+    }
+
+    // There are four match conditions:
+    // (1) explicit match without placeholders
+    // (2) explicit match with placeholders
+    // (3) variadic match without placeholders
+    // (4) variadic match with placeholders
+    // The priority is (1) > (2) > (3) > (4)
+    typename TableType::iterator placeholder_match_iter = table_.end();
+    typename TableType::iterator variadic_placeholder_match_iter =
+        table_.end();
+    typename TableType::iterator variadic_match_iter = table_.end();
+    int variadic_match_pos = -1;
+    int variadic_placeholder_match_pos = -1;
+
+    for (auto iter = table_.begin(); iter != table_.end(); ++iter) {
+        auto& def_item = iter->second;
+        auto& def_arg_types = def_item.arg_types;
+        if (def_item.is_variadic) {
+            // variadic match
+            bool match = true;
+            bool placeholder_match = false;
+            int non_variadic_arg_num = def_arg_types.size();
+            if (arg_types.size() <
+                static_cast<size_t>(non_variadic_arg_num)) {
+                continue;
+            }
+            for (int j = 0; j < non_variadic_arg_num; ++j) {
+                if (def_arg_types[j] == nullptr) {  // any arg
+                    placeholder_match = true;
+                    match = false;
+                } else if (!node::TypeEquals(def_arg_types[j],
+                                             arg_types[j])) {
+                    placeholder_match = false;
+                    match = false;
+                    break;
+                }
+            }
+            if (match) {
+                if (variadic_match_pos < non_variadic_arg_num) {
+                    placeholder_match_iter = iter;
+                    variadic_match_pos = non_variadic_arg_num;
+                }
+            } else if (placeholder_match) {
+                if (variadic_placeholder_match_pos < non_variadic_arg_num) {
+                    variadic_placeholder_match_iter = iter;
+                    variadic_placeholder_match_pos = non_variadic_arg_num;
+                }
+            }
+
+        } else if (arg_types.size() == def_arg_types.size()) {
+            // explicit match
+            bool match = true;
+            bool placeholder_match = false;
+            for (size_t j = 0; j < arg_types.size(); ++j) {
+                if (def_arg_types[j] == nullptr) {
+                    placeholder_match = true;
+                    match = false;
+                } else if (!node::TypeEquals(def_arg_types[j],
+                                             arg_types[j])) {
+                    placeholder_match = false;
+                    match = false;
+                    break;
+                }
+            }
+            if (match) {
+                *variadic_pos = -1;
+                *signature = iter->first;
+                *res = def_item.value;
+                return Status::OK();
+            } else if (placeholder_match) {
+                placeholder_match_iter = iter;
+            }
+        }
+    }
+
+    if (placeholder_match_iter != table_.end()) {
+        *variadic_pos = -1;
+        *signature = placeholder_match_iter->first;
+        *res = placeholder_match_iter->second.value;
+        return Status::OK();
+    } else if (variadic_match_iter != table_.end()) {
+        *variadic_pos = variadic_match_pos;
+        *signature = variadic_match_iter->first;
+        *res = variadic_match_iter->second.value;
+        return Status::OK();
+    } else if (variadic_placeholder_match_iter != table_.end()) {
+        *variadic_pos = variadic_placeholder_match_pos;
+        *signature = variadic_placeholder_match_iter->first;
+        *res = variadic_placeholder_match_iter->second.value;
+        return Status::OK();
+    } else {
+        return Status(common::kCodegenError,
+                      "Resolve udf signature failure: <" + ss.str() + ">");
+    }
+}
+
+Status ArgSignatureTable::Register(const std::vector<const node::TypeNode*>& args,
+                bool is_variadic, const std::shared_ptr<UdfRegistry>& t) {
+    std::stringstream ss;
+    for (size_t i = 0; i < args.size(); ++i) {
+        if (args[i] == nullptr) {
+            ss << "?";
+        } else {
+            ss << args[i]->GetName();
+        }
+        if (i < args.size() - 1) {
+            ss << ", ";
+        }
+    }
+    std::string key = ss.str();
+    auto iter = table_.find(key);
+    CHECK_TRUE(iter == table_.end(), common::kCodegenError,
+               "Duplicate signature: ", key);
+    table_.insert(iter, {key, DefItem(t, args, is_variadic)});
+    return Status::OK();
+}
+
 const std::string UdfResolveContext::GetArgSignature() const {
     return hybridse::udf::GetArgSignature(args_);
 }
@@ -185,24 +325,31 @@ Status UdafRegistry::ResolveFunction(UdfResolveContext* ctx,
 }
 
 DynamicUdfRegistryHelper::DynamicUdfRegistryHelper(const std::string& basename, UdfLibrary* library, void* fn,
-        node::DataType return_type, const std::vector<node::DataType>& arg_types, void* udfcontext_fun)
+        node::DataType return_type, bool return_nullable,
+        const std::vector<node::DataType>& arg_types, bool arg_nullable,
+        void* udfcontext_fun)
     : UdfRegistryHelper(basename, library), fn_name_(basename), fn_ptr_(fn), udfcontext_fun_ptr_(udfcontext_fun) {
     auto nm = node_manager();
     return_type_ = nm->MakeTypeNode(return_type);
+    return_nullable_ = return_nullable;
     for (const auto type : arg_types) {
         auto type_node = nm->MakeTypeNode(type);
         arg_types_.emplace_back(type_node);
         fn_name_.append(".").append(type_node->GetName());
-        arg_nullable_.emplace_back(0);
+        arg_nullable_.emplace_back(arg_nullable);
     }
-    switch (return_type) {
-        case node::kVarchar:
-        case node::kDate:
-        case node::kTimestamp:
-            return_by_arg_ = true;
-            break;
-        default:
-            return_by_arg_ = false;
+    if (return_nullable_) {
+        return_by_arg_ = true;
+    } else {
+        switch (return_type) {
+            case node::kVarchar:
+            case node::kDate:
+            case node::kTimestamp:
+                return_by_arg_ = true;
+                break;
+            default:
+                return_by_arg_ = false;
+        }
     }
 }
 
@@ -216,7 +363,7 @@ Status DynamicUdfRegistryHelper::Register() {
         return Status(kCodegenError, "No return type specified for udf registry");;
     }
     std::string init_context_fn_name = "init_udfcontext.opaque";
-    auto type_node = node_manager()->MakeOpaqueType(sizeof(UDFContext));
+    auto type_node = node_manager()->MakeOpaqueType(sizeof(::openmldb::base::UDFContext));
     auto init_context_node = node_manager()->MakeExternalFnDefNode(
             init_context_fn_name, udfcontext_fun_ptr_, type_node, false, {}, {}, -1, true);
     auto def = node_manager()->MakeDynamicUdfFnDefNode(
@@ -227,6 +374,103 @@ Status DynamicUdfRegistryHelper::Register() {
     this->InsertRegistry(arg_types_, false, registry);
     LOG(INFO) << "register function success. name: " << fn_name_ << " return type:" << return_type_->GetName();
     return Status::OK();
+}
+
+DynamicUdafRegistryHelperImpl::DynamicUdafRegistryHelperImpl(const std::string& name, UdfLibrary* library,
+        node::DataType return_type, bool return_nullable,
+        const std::vector<node::DataType>& arg_types, bool arg_nullable) : UdfRegistryHelper(name, library) {
+    auto nm = node_manager();
+    state_ty_ = nm->MakeOpaqueType(sizeof(::openmldb::base::UDFContext));
+    state_nullable_ = false;
+    update_tys_.push_back(state_ty_);
+    update_nullable_.push_back(state_nullable_);
+    for (const auto type : arg_types) {
+        auto type_node = nm->MakeTypeNode(type);
+        elem_tys_.push_back(type_node);
+        elem_nullable_.push_back(arg_nullable);
+        update_tys_.push_back(type_node);
+        update_nullable_.push_back(arg_nullable);
+    }
+    output_nullable_ = return_nullable;
+    if (output_nullable_) {
+        return_by_arg_ = true;
+    } else {
+        switch (return_type) {
+            case node::kVarchar:
+            case node::kDate:
+            case node::kTimestamp:
+                return_by_arg_ = true;
+                break;
+            default:
+                return_by_arg_ = false;
+        }
+    }
+    output_ty_ = nm->MakeTypeNode(return_type);
+}
+
+DynamicUdafRegistryHelperImpl& DynamicUdafRegistryHelperImpl::init(const std::string& fname,
+        void* init_context_ptr, void* fn_ptr) {
+    auto fn = library()->node_manager()->MakeExternalFnDefNode(fname, fn_ptr,
+            state_ty_, false, {state_ty_}, {0}, -1, false);
+    library()->AddExternalFunction(fname, fn_ptr);
+    auto type_node = state_ty_;
+    udaf_gen_.init_gen =
+        std::make_shared<DynamicExprUdfGen>([init_context_ptr, type_node, fn](UdfResolveContext* ctx) {
+            std::string init_context_fn_name = "init_udfcontext.opaque";
+            auto init_contex_fn = ctx->node_manager()->MakeExternalFnDefNode(init_context_fn_name,
+                    init_context_ptr, type_node, false, {}, {}, -1, true);
+            auto init_contex_call = ctx->node_manager()->MakeFuncNode(init_contex_fn, {}, nullptr);
+            return ctx->node_manager()->MakeFuncNode(fn, {init_contex_call}, nullptr);
+        });
+    return *this;
+}
+
+DynamicUdafRegistryHelperImpl& DynamicUdafRegistryHelperImpl::update(const std::string& fname, void* fn_ptr) {
+    auto fn = library()->node_manager()->MakeExternalFnDefNode(fname, fn_ptr,
+            state_ty_, state_nullable_, update_tys_, update_nullable_, -1, false);
+    auto registry = std::make_shared<ExternalFuncRegistry>(fname, fn);
+    udaf_gen_.update_gen = registry;
+    library()->AddExternalFunction(fname, fn_ptr);
+    return *this;
+}
+
+DynamicUdafRegistryHelperImpl& DynamicUdafRegistryHelperImpl::output(const std::string& fname, void* fn_ptr) {
+    auto fn = library()->node_manager()->MakeExternalFnDefNode(fname, fn_ptr,
+            output_ty_, output_nullable_, {state_ty_}, {state_nullable_}, -1, return_by_arg_);
+    auto registry = std::make_shared<ExternalFuncRegistry>(fname, fn);
+    udaf_gen_.output_gen = registry;
+    library()->AddExternalFunction(fname, fn_ptr);
+    return *this;
+}
+
+void DynamicUdafRegistryHelperImpl::finalize() {
+    if (elem_tys_.empty()) {
+        LOG(WARNING) << "UDAF must take at least one input";
+        return;
+    }
+    if (udaf_gen_.init_gen == nullptr) {
+        if (!(elem_tys_.size() == 1 && elem_tys_[0]->Equals(state_ty_))) {
+            LOG(WARNING) << "no init expr provided but input type does not equal to state type";
+            return;
+        }
+    }
+    if (udaf_gen_.update_gen == nullptr) {
+        LOG(WARNING) << "update function not specified for " << name();
+        return;
+    }
+    if (udaf_gen_.output_gen == nullptr) {
+        LOG(WARNING) << "output function not specified for " << name();
+        return;
+    }
+    udaf_gen_.state_type = state_ty_;
+    udaf_gen_.state_nullable = state_nullable_;
+    std::vector<const node::TypeNode*> input_list_types;
+    for (auto elem_ty : elem_tys_) {
+        input_list_types.push_back(library()->node_manager()->MakeTypeNode(node::kList, elem_ty));
+    }
+    auto registry = std::make_shared<UdafRegistry>(name(), udaf_gen_);
+    this->InsertRegistry(input_list_types, false, registry);
+    library()->SetIsUdaf(name(), elem_tys_.size());
 }
 
 }  // namespace udf

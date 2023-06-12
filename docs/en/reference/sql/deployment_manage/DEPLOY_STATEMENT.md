@@ -4,27 +4,33 @@
 
 ```sql
 CreateDeploymentStmt
-						::= 'DEPLOY' [DeployOptions] DeploymentName SelectStmt
+				::= 'DEPLOY' [DeployOptionList] DeploymentName SelectStmt
 
-DeployOptions（可选）
-						::= 'OPTIONS' '(' DeployOptionItem (',' DeployOptionItem)* ')'
-
+DeployOptionList
+				::= DeployOption*
+				    
+DeployOption
+				::= 'OPTIONS' '(' DeployOptionItem (',' DeployOptionItem)* ')'
+				    
 DeploymentName
-						::= identifier
-```
-Please refer to [DEPLOYMENT Property DeployOptions (optional)](#DEPLOYMENT Property DeployOptions (optional)) for the definition of `DeployOptions`.
-
-The `DEPLOY` statement is used to deploy SQL to online. It supports to deploy [Select Statement](../dql/SELECT_STATEMENT.md)，and the SQL should meet the requirement [OpenMLDB SQL Requirement](../deployment_manage/ONLINE_SERVING_REQUIREMENTS.md)
-
-```SQL
-DEPLOY deployment_name SELECT clause
+				::= identifier
 ```
 
-### Example: Deploy SQL onto Online
+Please refer to [DEPLOYMENT Property DeployOptions (optional)](#deployoptions-optional) for the definition of `DeployOptions`.
+Please refer to [Select Statement](../dql/SELECT_STATEMENT.md) for the definition of `SelectStmt`.
 
+
+The `DEPLOY` statement is used to deploy SQL online. OpenMLDB supports to deploy [Select Statement](../dql/SELECT_STATEMENT.md), and the SQL script should meet the requirements in [OpenMLDB SQL Requirement](../deployment_manage/ONLINE_SERVING_REQUIREMENTS.md)
+
+
+
+**Example**
+
+
+The following commands deploy a SQL script online under the Online Request mode of cluster version.
 ```sql
 CREATE DATABASE db1;
--- SUCCEED: Create database successfully
+-- SUCCEED
 
 USE db1;
 -- SUCCEED: Database changed
@@ -33,10 +39,11 @@ CREATE TABLE demo_table1(c1 string, c2 int, c3 bigint, c4 float, c5 double, c6 t
 -- SUCCEED: Create successfully
 
 DEPLOY demo_deploy SELECT c1, c2, sum(c3) OVER w1 AS w1_c3_sum FROM demo_table1 WINDOW w1 AS (PARTITION BY demo_table1.c1 ORDER BY demo_table1.c6 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
--- SUCCEED: deploy successfully
+
+-- SUCCEED
 ```
 
-We can use `SHOW DEPLOYMENT demo_deploy` command to see the detail of sepcific deployment：
+We can use `SHOW DEPLOYMENT demo_deploy` command to see the detail of a specific deployment.
 
 ```sql
  --------- -------------------
@@ -83,66 +90,88 @@ WINDOW w1 AS (PARTITION BY demo_table1.c1
 ```
 
 
-### DEPLOYMENT Property DeployOptions (optional)
+### DeployOptions (optional)
 
 ```sql
-DeployOptions
+DeployOption
 						::= 'OPTIONS' '(' DeployOptionItem (',' DeployOptionItem)* ')'
 
 DeployOptionItem
-						::= LongWindowOption
-
-LongWindowOption
-						::= 'LONG_WINDOWS' '=' LongWindowDefinitions
+            ::= 'LONG_WINDOWS' '=' LongWindowDefinitions
+            | 'SKIP_INDEX_CHECK' '=' string_literal
 ```
-Currently only the optimization option for long windows `LONG_WINDOWS` is supported.
 
 #### Long Window Optimization
-##### Long Window Optimization Options Format
 ```sql
 LongWindowDefinitions
-						::= 'LongWindowDefinition (, LongWindowDefinition)*'
+					::= 'LongWindowDefinition (, LongWindowDefinition)*'
 
 LongWindowDefinition
-						::= 'WindowName[:BucketSize]'
+					::= WindowName':'[BucketSize]
 
 WindowName
-						::= string_literal
+					::= string_literal
 
-BucketSize (optional, defaults to)
-						::= int_literal | interval_literal
+BucketSize
+					::= int_literal | interval_literal
 
-interval_literal ::= int_literal 's'|'m'|'h'|'d' (representing seconds, minutes, hours, days)
-```
-Among them, `BucketSize` is a performance optimization option. It will use `BucketSize` as the granularity to pre-aggregate the data in the table. The default value is `1d`.
-
-An example is as follows:
-```sqlite
-DEPLOY demo_deploy OPTIONS(long_windows="w1:1d") SELECT col0, sum(col1) OVER w1 FROM t1
-    WINDOW w1 AS (PARTITION BY col0 ORDER BY col2 ROWS_RANGE BETWEEN 5d PRECEDING AND CURRENT ROW);
--- SUCCEED: deploy successfully
+interval_literal ::= int_literal 's'|'m'|'h'|'d'
 ```
 
-##### Limitation Factor
+`BucketSize` is a performance optimization option. Data will be pre-aggregated according to `BucketSize`. The default value is `1d`.
+
+
+
+##### Limitation 
 
 The current long window optimization has the following limitations:
-- Only supports `SelectStmt` involving only one physical table, i.e. `SelectStmt` containing `join` or `union` is not supported
+- Only `SelectStmt` involving one physical table is supported, i.e. `SelectStmt` containing `join` or `union` is not supported.
 
-- Only supported aggregation operations: `sum`, `avg`, `count`, `min`, `max`, `count_where`, `min_where`, `max_where`, `sum_where`, `avg_where`
+- Supported aggregation operations include: `sum`, `avg`, `count`, `min`, `max`, `count_where`, `min_where`, `max_where`, `sum_where`, `avg_where`.
 
-- Do not allow data in the table when executing the `deploy` command
+- The table should be empty when executing the `deploy` command.
 
-- For `count_where`, `min_where`, `max_where`, `sum_where`, `avg_where`, there are extra limitations：
+- For commands with `where` condition, like `count_where`, `min_where`, `max_where`, `sum_where`, `avg_where`, there are extra limitations：
 
-  1. The main table over should be a memory type table (`storage_mode = 'Memory'`)
+  1. The main table should be a memory table (`storage_mode = 'Memory'`).
 
-  2. The type of `BucketSize` for deployment should be range, e.g.  `long_windows='w1:1d'` supported, whereas `long_windows='w1:100'` is not
+  2. The type of `BucketSize`  should be range type, that is its value should be `interval_literal`. For example, `long_windows='w1:1d'` is supported, whereas `long_windows='w1:100'` is not supported.
 
-  3. The expression for where should be the format of `<column ref> op <const value>` or `<const value> op <column ref>`
+  3. The expression for `where` should be the format of `<column ref> op <const value>` or `<const value> op <column ref>`
 
-     - Supported where op: `>, <, >=, <=, =, !=`
+     - Supported where op: `>, <, >=, <=, =, !=`.
 
-     - The `<column ref>` should not be type of date or timestamp
+     - The `<column ref>` should not be `date` type or timestamp.
+
+- It requires the data is loaded in the increasing order of the `timestamp` column for getting the best performance boost.
+
+**Example**
+
+```sql
+DEPLOY demo_deploy OPTIONS(long_windows="w1:1d") SELECT c1, sum(c2) OVER w1 FROM demo_table1
+    WINDOW w1 AS (PARTITION BY c1 ORDER BY c2 ROWS_RANGE BETWEEN 5d PRECEDING AND CURRENT ROW);
+-- SUCCEED
+```
+
+#### Skip Index Check
+
+By default, the value of `SKIP_INDEX_CHECK` option is `false`. It means that when deploying SQL, it will check whether the existing index
+is match the required index. An error will be reported if it does not matched. If this option is set to `true`, the existing index will not be verified and modified when deploying.
+
+**Example**
+```sql
+DEPLOY demo OPTIONS (SKIP_INDEX_CHECK="TRUE")
+    SELECT * FROM t1 LAST JOIN t2 ORDER BY t2.col3 ON t1.col1 = t2.col1;
+```
+
+### Synchronization/Asynchronization Settings
+When executing deploy, you can set the synchronous/asynchronous mode through the `SYNC` option. The default value of `SYNC` is `true`, that is, the synchronous mode. If the relevant tables involved in the deploy statement have data and needs to add one or more indexs, executing deploy will initiate a job to execute a series of tasks such as loading data. In this case a job id will be returned if the `SYNC` option is set to `false`. You can get the job execution status by `SHOW JOBS FROM NAMESERVER LIKE '{job_id}'`
+
+**Example**
+```sql
+deploy demo options(SYNC="false") SELECT t1.col1, t2.col2, sum(col4) OVER w1 as w1_col4_sum FROM t1 LAST JOIN t2 ORDER BY t2.col3 ON t1.col2 = t2.col2
+    WINDOW w1 AS (PARTITION BY t1.col2 ORDER BY t1.col3 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
+```
 
 ## Relevant SQL
 

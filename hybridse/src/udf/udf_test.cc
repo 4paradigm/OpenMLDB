@@ -574,10 +574,7 @@ TEST_F(ExternUdfTest, TestCompoundTypedExternalCall) {
     library.RegisterExternal("add_two_one_nullable")
         .args<Nullable<int32_t>, int32_t>(ExternUdfTest::AddTwoOneNullable);
 
-    library.RegisterExternal("new_date")
-        .args<Nullable<int64_t>>(
-            TypeAnnotatedFuncPtrImpl<std::tuple<Nullable<int64_t>>>::RBA<
-                Nullable<Date>>(ExternUdfTest::NewDate));
+    library.RegisterExternal("new_date").args<Nullable<int64_t>>(ExternUdfTest::NewDate);
 
     library.RegisterExternal("sum_tuple")
         .args<Tuple<Nullable<float>, float>, Tuple<double, Nullable<double>>>(
@@ -585,12 +582,10 @@ TEST_F(ExternUdfTest, TestCompoundTypedExternalCall) {
         .args<Tuple<Nullable<float>, Tuple<float, double, Nullable<double>>>>(
             ExternUdfTest::SumTuple);
 
-    library.RegisterExternal("make_tuple")
-        .args<int16_t, Nullable<int32_t>, int64_t>(
-            TypeAnnotatedFuncPtrImpl<
-                std::tuple<int16_t, Nullable<int32_t>, int64_t>>::
-                RBA<Tuple<int16_t, Nullable<int32_t>, int64_t>>(
-                    ExternUdfTest::MakeTuple));
+    // no public interface to registering customized return type, disabling
+    // library.RegisterExternal("make_tuple")
+    //     .args<int16_t, Nullable<int32_t>, int64_t>(
+    //         TypeAnnotatedFuncPtrImpl<std::tuple<int16_t, Nullable<int32_t>, int64_t>>(ExternUdfTest::MakeTuple));
 
     // pass null to primitive
     CheckUdf<int32_t, Nullable<int32_t>, int32_t>(&library, "if_null", 1, 1, 3);
@@ -663,11 +658,11 @@ TEST_F(ExternUdfTest, TestCompoundTypedExternalCall) {
             1.0f, Tuple<Nullable<float>, double, double>(nullptr, 3.0, 4.0)));
 
     // return tuple
-    using TupleResT = Tuple<int16_t, Nullable<int32_t>, int64_t>;
-    CheckUdf<TupleResT, int16_t, Nullable<int32_t>, int64_t>(
-        &library, "make_tuple", TupleResT(1, 2, 3), 1, 2, 3);
-    CheckUdf<TupleResT, int16_t, Nullable<int32_t>, int64_t>(
-        &library, "make_tuple", TupleResT(1, nullptr, 3), 1, nullptr, 3);
+    // using TupleResT = Tuple<int16_t, Nullable<int32_t>, int64_t>;
+    // CheckUdf<TupleResT, int16_t, Nullable<int32_t>, int64_t>(
+    //     &library, "make_tuple", TupleResT(1, 2, 3), 1, 2, 3);
+    // CheckUdf<TupleResT, int16_t, Nullable<int32_t>, int64_t>(
+    //     &library, "make_tuple", TupleResT(1, nullptr, 3), 1, nullptr, 3);
 }
 
 TEST_F(ExternUdfTest, LikeMatchTest) {

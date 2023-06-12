@@ -29,6 +29,7 @@
 #include "base/glog_wrapper.h"
 #include "base/strings.h"
 #include "codec/schema_codec.h"
+#include "codec/sdk_codec.h"
 #include "common/timer.h"
 #include "gtest/gtest.h"
 #include "log/log_writer.h"
@@ -493,7 +494,7 @@ TEST_F(SnapshotTest, Recover_only_snapshot_multi) {
         ASSERT_FALSE(it->Valid());
     }
     ASSERT_EQ(2u, table->GetRecordCnt());
-    ASSERT_EQ(4u, table->GetRecordIdxCnt());
+    ASSERT_EQ(2u, table->GetRecordIdxCnt());
 }
 
 TEST_F(SnapshotTest, Recover_only_snapshot_multi_with_deleted_index) {
@@ -507,7 +508,6 @@ TEST_F(SnapshotTest, Recover_only_snapshot_multi_with_deleted_index) {
     table_meta->set_tid(4);
     table_meta->set_pid(2);
     table_meta->set_seg_cnt(8);
-    table_meta->set_format_version(1);
     SchemaCodec::SetColumnDesc(table_meta->add_column_desc(), "card", ::openmldb::type::kString);
     SchemaCodec::SetColumnDesc(table_meta->add_column_desc(), "merchant", ::openmldb::type::kString);
     SchemaCodec::SetColumnDesc(table_meta->add_column_desc(), "value", ::openmldb::type::kString);
@@ -863,7 +863,6 @@ TEST_F(SnapshotTest, MakeSnapshot_with_delete_index) {
     table_meta->set_tid(4);
     table_meta->set_pid(2);
     table_meta->set_seg_cnt(8);
-    table_meta->set_format_version(1);
     SchemaCodec::SetColumnDesc(table_meta->add_column_desc(), "card", ::openmldb::type::kString);
     SchemaCodec::SetColumnDesc(table_meta->add_column_desc(), "merchant", ::openmldb::type::kString);
     SchemaCodec::SetColumnDesc(table_meta->add_column_desc(), "value", ::openmldb::type::kString);
@@ -1010,7 +1009,6 @@ TEST_F(SnapshotTest, MakeSnapshotAbsOrLat) {
     table_meta->set_tid(10);
     table_meta->set_pid(0);
     table_meta->set_seg_cnt(8);
-    table_meta->set_format_version(1);
     SchemaCodec::SetColumnDesc(table_meta->add_column_desc(), "card", ::openmldb::type::kString);
     SchemaCodec::SetColumnDesc(table_meta->add_column_desc(), "merchant", ::openmldb::type::kString);
     SchemaCodec::SetColumnDesc(table_meta->add_column_desc(), "ts", ::openmldb::type::kTimestamp);
@@ -1314,7 +1312,6 @@ TEST_F(SnapshotTest, Recover_snapshot_ts) {
     table_meta.set_tid(2);
     table_meta.set_pid(2);
     table_meta.set_seg_cnt(8);
-    table_meta.set_format_version(1);
     SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "card", ::openmldb::type::kString);
     SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "mcc", ::openmldb::type::kString);
     SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "amt", ::openmldb::type::kDouble);
@@ -1717,9 +1714,10 @@ int main(int argc, char** argv) {
     ::openmldb::base::SetLogLevel(DEBUG);
     int ret = 0;
     std::vector<std::string> vec{"off", "zlib", "snappy"};
+    ::openmldb::test::TempPath tmp_path;
     for (size_t i = 0; i < vec.size(); i++) {
         std::cout << "compress type: " << vec[i] << std::endl;
-        FLAGS_db_root_path = "/tmp/" + std::to_string(::openmldb::storage::GenRand());
+        FLAGS_db_root_path = tmp_path.GetTempPath();
         FLAGS_snapshot_compression = vec[i];
         ret += RUN_ALL_TESTS();
     }

@@ -77,7 +77,7 @@ int DiskTableSnapshot::MakeSnapshot(std::shared_ptr<Table> table, uint64_t& out_
             }
         }
         DiskTable* disk_table = dynamic_cast<DiskTable*>(table.get());
-        if (disk_table == NULL) {
+        if (disk_table == nullptr) {
             break;
         }
         uint64_t record_count = disk_table->GetRecordCnt();
@@ -86,8 +86,9 @@ int DiskTableSnapshot::MakeSnapshot(std::shared_ptr<Table> table, uint64_t& out_
             PDLOG(WARNING, "create checkpoint failed. checkpoint dir[%s]", snapshot_dir_tmp.c_str());
             break;
         }
+        std::string snapshot_dir_bak;
         if (::openmldb::base::IsExists(snapshot_dir)) {
-            std::string snapshot_dir_bak = snapshot_dir + ".bak";
+            snapshot_dir_bak = snapshot_dir + ".bak";
             if (::openmldb::base::IsExists(snapshot_dir_bak)) {
                 if (!::openmldb::base::RemoveDir(snapshot_dir_bak)) {
                     PDLOG(WARNING, "delete checkpoint bak failed. checkpoint bak dir[%s]", snapshot_dir_bak.c_str());
@@ -106,10 +107,15 @@ int DiskTableSnapshot::MakeSnapshot(std::shared_ptr<Table> table, uint64_t& out_
         ::openmldb::api::Manifest manifest;
         GetLocalManifest(snapshot_path_ + MANIFEST, manifest);
         if (GenManifest(snapshot_dir_name, record_count, cur_offset, term) == 0) {
-            if (manifest.has_name() && manifest.name() != snapshot_dir) {
+            if (manifest.has_name() && manifest.name() != snapshot_dir_name) {
                 DEBUGLOG("delete old checkpoint[%s]", manifest.name().c_str());
                 if (!::openmldb::base::RemoveDir(snapshot_path_ + manifest.name())) {
                     PDLOG(WARNING, "delete checkpoint failed. checkpoint dir[%s]", snapshot_dir.c_str());
+                }
+            }
+            if (!snapshot_dir_bak.empty() && ::openmldb::base::IsExists(snapshot_dir_bak)) {
+                if (!::openmldb::base::RemoveDir(snapshot_dir_bak)) {
+                    PDLOG(WARNING, "delete checkpoint backup failed. backup dir[%s]", snapshot_dir_bak.c_str());
                 }
             }
             offset_ = cur_offset;

@@ -277,12 +277,8 @@ class Window : public MemTimeTableHandler {
     bool exclude_current_time() const { return exclude_current_time_; }
     void set_exclude_current_time(bool flag) { exclude_current_time_ = flag; }
 
-    bool exclude_current_row() const { return exclude_current_row_; }
-    void set_exclude_current_row(bool flag) { exclude_current_row_ = flag; }
-
  protected:
     bool exclude_current_time_ = false;
-    bool exclude_current_row_ = false;
     bool instance_not_in_window_ = false;
 };
 class WindowRange {
@@ -437,6 +433,11 @@ class HistoryWindow : public Window {
     // if `start_ts_inclusive` is empty, no rows goes out of effective window
     // if `end_ts_inclusive` is empty, no rows goes out of history buffer and into effective window
     void SlideWindow(std::optional<uint64_t> start_ts_inclusive, std::optional<uint64_t> end_ts_inclusive) {
+        // always try to cleanup the stale rows out of effective window
+        if (start_ts_inclusive.has_value()) {
+            Slide(start_ts_inclusive);
+        }
+
         if (!end_ts_inclusive.has_value()) {
             return;
         }
@@ -456,6 +457,10 @@ class HistoryWindow : public Window {
     // if `start_ts` is empty, no rows eliminated from window
     bool BufferEffectiveWindow(uint64_t key, const Row& row, std::optional<uint64_t> start_ts) {
         AddFrontRow(key, row);
+        return Slide(start_ts);
+    }
+
+    bool Slide(std::optional<uint64_t> start_ts) {
         auto cur_size = table_.size();
         while (window_range_.max_size_ > 0 &&
                cur_size > window_range_.max_size_) {
@@ -471,8 +476,7 @@ class HistoryWindow : public Window {
                 // note it is always current rows window
                 break;
             }
-            if (kFrameRows == window_range_.frame_type_ ||
-                pair.first < start_ts) {
+            if (kFrameRows == window_range_.frame_type_ || pair.first < start_ts) {
                 PopBackRow();
                 --cur_size;
             } else {
@@ -483,22 +487,6 @@ class HistoryWindow : public Window {
     }
 
     bool BufferCurrentTimeBuffer(uint64_t key, const Row& row, uint64_t start_ts) {
-        if (exclude_current_row_) {
-            // slide window first so current row kept in `current_history_buffer_`
-            // and will go into window in next action
-            if (exclude_current_time_) {
-                if (key == 0) {
-                    SlideWindow(start_ts, {});
-                } else {
-                    SlideWindow(start_ts, key - 1);
-                }
-            } else {
-                SlideWindow(start_ts, key);
-            }
-            current_history_buffer_.emplace_front(key, row);
-            return true;
-        }
-
         if (exclude_current_time_) {
             // except `exclude current_row`, the current row is always added to the effective window
             // but for next buffer action, previous current row already buffered in `current_history_buffer_`

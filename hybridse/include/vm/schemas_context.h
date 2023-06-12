@@ -206,6 +206,8 @@ class SchemasContext {
      * Set the defautl database name
      */
     void SetDefaultDBName(const std::string& default_db_name);
+
+    const std::string& GetDefaultDBName() const { return default_db_name_; }
     /**
      * Add new schema source and return the mutable instance of added source.
      */
@@ -213,6 +215,7 @@ class SchemasContext {
 
     /**
      * Add schema sources from child and inherit column identifiers.
+     * New source is appended to the back.
      */
     void Merge(size_t child_idx, const SchemasContext* child);
 
@@ -301,6 +304,8 @@ class RowParser {
     const SchemasContext* schema_ctx_ = nullptr;
     std::vector<codec::RowView> row_view_list_;
 };
+
+base::Status DoSearchExprDependentColumns(const node::ExprNode* expr, std::vector<const node::ExprNode*>* columns);
 
 }  // namespace vm
 }  // namespace hybridse

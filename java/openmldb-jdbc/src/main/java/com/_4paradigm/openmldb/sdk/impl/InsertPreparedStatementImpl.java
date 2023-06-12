@@ -95,7 +95,7 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
         Status status = new Status();
         SQLInsertRow row = router.GetInsertRow(db, sql, status);
         if (status.getCode() != 0) {
-            String msg = status.getMsg();
+            String msg = status.ToString();
             status.delete();
             if (row != null) {
                 row.delete();
@@ -351,11 +351,11 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
                 }
             }
             if (!ok) {
-                throw new SQLException("append failed");
+                throw new SQLException("append failed on currentDataIdx: " + currentDataIdx + ", curType: " + currentDatasType.get(currentDataIdx) + ", current data: " + data);
             }
         }
         if (!currentRow.Build()) {
-            throw new SQLException("build insert row failed");
+            throw new SQLException("build insert row failed(str size init != actual)");
         }
         currentRows.add(currentRow);
         clearParameters();
@@ -384,7 +384,7 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
         // we can't execute() again without set new row, so we must clean up here
         clearSQLInsertRowList();
         if (!ok) {
-            logger.error("getInsertRow fail: {}", status.getMsg());
+            logger.error("execute insert failed: {}", status.ToString());
             status.delete();
             return false;
         }
@@ -775,7 +775,8 @@ public class InsertPreparedStatementImpl implements PreparedStatement {
         for (int i = 0; i < currentRows.size(); i++) {
             boolean ok = router.ExecuteInsert(db, sql, currentRows.get(i), status);
             if (!ok) {
-                logger.info(status.getMsg());
+                // TODO(hw): may lost log, e.g. openmldb-batch online import in yarn mode?
+                logger.warn(status.ToString());
             }
             result[i] = ok ? 0 : -1;
         }

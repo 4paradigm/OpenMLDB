@@ -142,7 +142,8 @@ bool DBSDK::RegisterExternalFun(const std::shared_ptr<openmldb::common::External
         ::openmldb::schema::SchemaAdapter::ConvertType(fun->arg_type(i), &data_type);
         arg_types.emplace_back(data_type);
     }
-    if (engine_->RegisterExternalFunction(fun->name(), return_type, arg_types, fun->is_aggregate(), "").isOK()) {
+    if (engine_->RegisterExternalFunction(fun->name(), return_type, fun->return_nullable(),
+                arg_types, fun->arg_nullable(), fun->is_aggregate(), "").isOK()) {
         std::lock_guard<::openmldb::base::SpinMutex> lock(mu_);
         external_fun_.emplace(fun->name(), fun);
         return true;
@@ -317,9 +318,6 @@ bool ClusterSDK::UpdateCatalog(const std::vector<std::string>& table_datas, cons
             continue;
         }
         DLOG(INFO) << "parse table " << table_info->name() << " ok";
-        if (table_info->format_version() != 1) {
-            continue;
-        }
         tables.push_back(*(table_info));
         auto it = mapping.find(table_info->db());
         if (it == mapping.end()) {
@@ -558,6 +556,19 @@ std::shared_ptr<::openmldb::catalog::TabletAccessor> DBSDK::GetTablet(const std:
     return {};
 }
 
+std::vector<std::shared_ptr<::openmldb::catalog::TabletAccessor>> DBSDK::GetTabletFollowers(const std::string& db,
+                                                                                            const std::string& name,
+                                                                                            uint32_t pid) {
+    auto table_handler = GetCatalog()->GetTable(db, name);
+    if (table_handler) {
+        auto* sdk_table_handler = dynamic_cast<::openmldb::catalog::SDKTableHandler*>(table_handler.get());
+        if (sdk_table_handler) {
+            return sdk_table_handler->GetTabletFollowers(pid);
+        }
+    }
+    return {};
+}
+
 std::shared_ptr<::openmldb::catalog::TabletAccessor> DBSDK::GetTablet(const std::string& db, const std::string& name,
                                                                       const std::string& pk) {
     auto table_handler = GetCatalog()->GetTable(db, name);
@@ -597,7 +608,7 @@ std::shared_ptr<hybridse::sdk::ProcedureInfo> DBSDK::GetProcedureInfo(const std:
 std::vector<std::shared_ptr<hybridse::sdk::ProcedureInfo>> DBSDK::GetProcedureInfo(std::string* msg) {
     std::vector<std::shared_ptr<hybridse::sdk::ProcedureInfo>> sp_infos;
     if (msg == nullptr) {
-        return std::move(sp_infos);
+        return sp_infos;
     }
     std::lock_guard<::openmldb::base::SpinMutex> lock(mu_);
     auto& db_sp_map = catalog_->GetProcedures();
@@ -608,9 +619,9 @@ std::vector<std::shared_ptr<hybridse::sdk::ProcedureInfo>> DBSDK::GetProcedureIn
     }
     if (sp_infos.empty()) {
         *msg = "procedure set is empty";
-        return std::move(sp_infos);
+        return sp_infos;
     }
-    return std::move(sp_infos);
+    return sp_infos;
 }
 
 bool StandAloneSDK::Init() {

@@ -31,8 +31,9 @@ public class BenchmarkConfig {
     public static int WINDOW_SIZE = 1000;
     public static int JOIN_NUM = 2;
     public static int PK_BASE = 1000000;
-    public static long TS_BASE = 1652232079000l;
+    public static long TS_BASE = System.currentTimeMillis();
     public static String DEPLOY_NAME;
+    public static String CSV_PATH;
 
     private static SqlExecutor executor = null;
     private static SdkOption option = null;
@@ -45,7 +46,6 @@ public class BenchmarkConfig {
             prop.load(BenchmarkConfig.class.getClassLoader().getResourceAsStream("conf.properties"));
             ZK_CLUSTER = prop.getProperty("ZK_CLUSTER");
             ZK_PATH = prop.getProperty("ZK_PATH");
-            TS_BASE = Long.parseLong(prop.getProperty("TS_BASE"));
             PK_BASE = Integer.parseInt(prop.getProperty("PK_BASE"));
             DATABASE = prop.getProperty("DATABASE");
             DEPLOY_NAME = prop.getProperty("DEPLOY_NAME");
@@ -54,7 +54,10 @@ public class BenchmarkConfig {
             JOIN_NUM = Integer.valueOf(prop.getProperty("JOIN_NUM"));
             PK_NUM = Integer.valueOf(prop.getProperty("PK_NUM", "100000"));
             PK_MAX = Integer.valueOf(prop.getProperty("PK_MAX", "0"));
-
+            CSV_PATH = prop.getProperty("CSV_PATH");
+//            if(!CSV_PATH.startsWith("/")){
+//                CSV_PATH=Util.getRootPath()+CSV_PATH;
+//            }
         } catch (Exception e) {
             e.printStackTrace();
         }

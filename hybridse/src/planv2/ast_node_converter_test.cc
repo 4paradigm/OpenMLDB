@@ -21,6 +21,7 @@
 #include <random>
 #include <vector>
 
+#include "absl/strings/match.h"
 #include "case/sql_case.h"
 #include "gtest/gtest.h"
 #include "zetasql/base/testing//status_matchers.h"
@@ -345,7 +346,23 @@ TEST_F(ASTNodeConverterTest, ConvertCreateTableNodeOkTest) {
     {
         const std::string sql =
             "create table t1 (a int, b string, index(key=(a, b), dump='12', ts=column2, ttl=1d, ttl_type=absolute, "
-            "version=(column5, 3) ) ) options (replicanum = 3, partitionnum = 3, ignored_option = 'abc', distribution "
+            "version=(column5, 3) ) ) options (replicanum = 3, partitionnum = 3, invalid_option = 'abc', distribution "
+            "= [ ('leader1', ['fo1', 'fo2']) ]);";
+
+        std::unique_ptr<zetasql::ParserOutput> parser_output;
+        ZETASQL_ASSERT_OK(zetasql::ParseStatement(sql, zetasql::ParserOptions(), &parser_output));
+        const auto* statement = parser_output->statement();
+        ASSERT_TRUE(statement->Is<zetasql::ASTCreateTableStatement>());
+
+        const auto create_stmt = statement->GetAsOrDie<zetasql::ASTCreateTableStatement>();
+        node::CreateStmt* output = nullptr;
+        auto status = ConvertCreateTableNode(create_stmt, &node_manager, &output);
+        EXPECT_EQ(common::kSqlAstError, status.code) << status;
+    }
+    {
+        const std::string sql =
+            "create table t1 (a int, b string, index(key=(a, b), dump='12', ts=column2, ttl=1d, ttl_type=absolute, "
+            "version=(column5, 3) ) ) options (replicanum = 3, partitionnum = 3, distribution "
             "= [ ('leader1', ['fo1', 'fo2']) ]);";
 
         std::unique_ptr<zetasql::ParserOutput> parser_output;
@@ -407,7 +424,7 @@ TEST_F(ASTNodeConverterTest, ConvertCreateTableNodeOkTest) {
     {
         const std::string sql =
             "create table if not exists t1 (a i16, b float32, index(key=a, ignored_key='seb', ts=b, ttl=(1h, 1800), "
-            "ttl_type=latest, version=a ) ) options (replicanum = 2, partitionnum = 5, ignored_option = 'abc', "
+            "ttl_type=latest, version=a ) ) options (replicanum = 2, partitionnum = 5, "
             "distribution = [ ('leader1', ['fo1', 'fo2']) ]);";
 
         std::unique_ptr<zetasql::ParserOutput> parser_output;
@@ -433,7 +450,7 @@ TEST_F(ASTNodeConverterTest, ConvertCreateTableNodeOkTest) {
     {
         const std::string sql =
             "create table if not exists t3 (a int32, b timestamp, index(key=a, ignored_key='seb', ts=b, ttl=1800, "
-            "ttl_type=absorlat, version=a ) ) options (replicanum = 4, partitionnum = 5, ignored_option = 'abc', "
+            "ttl_type=absorlat, version=a ) ) options (replicanum = 4, partitionnum = 5, "
             "distribution = [ ('leader1', ['fo1', 'fo2']) ]);";
 
         std::unique_ptr<zetasql::ParserOutput> parser_output;
@@ -475,7 +492,7 @@ TEST_F(ASTNodeConverterTest, ConvertCreateTableNodeOkTest) {
     {
         const std::string sql =
             "create table if not exists t3 (a int32, b timestamp, index(key=a, ignored_key='seb', ts=b, ttl=1800, "
-            "ttl_type=absorlat, version=a ) ) options (replicanum = 4, partitionnum = 5, ignored_option = 'abc', "
+            "ttl_type=absorlat, version=a ) ) options (replicanum = 4, partitionnum = 5, "
             "distribution = [ ('leader1', ['fo1', 'fo2']), ('leader2', ['fo3', 'fo4']) ]);";
 
         std::unique_ptr<zetasql::ParserOutput> parser_output;
@@ -589,7 +606,7 @@ TEST_F(ASTNodeConverterTest, ConvertCreateProcedureOKTest) {
 TEST_F(ASTNodeConverterTest, ConvertCreateProcedureFailTest) {
     node::NodeManager node_manager;
 
-    auto expect_converted = [&](const std::string& sql, const int code, const std::string& msg) {
+    auto expect_converted = [&](absl::string_view sql, int code, absl::string_view msg) {
         std::unique_ptr<zetasql::ParserOutput> parser_output;
         ZETASQL_ASSERT_OK(zetasql::ParseStatement(sql, zetasql::ParserOptions(), &parser_output));
         const auto* statement = parser_output->statement();
@@ -599,7 +616,7 @@ TEST_F(ASTNodeConverterTest, ConvertCreateProcedureFailTest) {
         node::CreateSpStmt* stmt;
         auto s = ConvertCreateProcedureNode(create_sp, &node_manager, &stmt);
         EXPECT_EQ(code, s.code);
-        EXPECT_TRUE(boost::contains(s.msg, msg)) << s << "\nexpect msg: " << msg;
+        EXPECT_TRUE(absl::StrContains(s.msg, msg)) << s << "\nexpect msg: " << msg;
     };
 
     // unsupported param type
@@ -640,7 +657,7 @@ TEST_F(ASTNodeConverterTest, ConvertCreateProcedureFailTest) {
           SELECT 1 UNION DISTINCT SELECT 2;
         END;
         )sql",
-                     common::kSqlAstError, "Un-support type: ArrayType");
+                     common::kSqlAstError, "Un-support: func parameter accept only basic type, but get ARRAY<INT32>");
 
     // unsupport set operation
     expect_converted(R"sql(
@@ -851,11 +868,6 @@ TEST_F(ASTNodeConverterTest, ConvertStmtFailTest) {
     };
 
     expect_converted(R"sql(
-        ALTER TABLE foo ALTER COLUMN bar SET DATA TYPE STRING;
-    )sql",
-                     common::kSqlAstError, "Un-support statement type: AlterTableStatement");
-
-    expect_converted(R"sql(
         SHOW procedurxs;
     )sql",
                      common::kSqlAstError, "Un-support SHOW: procedurxs");
@@ -894,7 +906,7 @@ TEST_F(ASTNodeConverterTest, ConvertStmtFailTest) {
         SHOW GLOBAL VARIABLES LIKE 'execute%'
     )sql",
                      common::kSqlAstError,
-                     "Non-support LIKE in show statement");
+                     "Non-support LIKE in SHOW GLOBAL VARIABLES statement");
 }
 
 TEST_F(ASTNodeConverterTest, ConvertCreateTableNodeErrorTest) {

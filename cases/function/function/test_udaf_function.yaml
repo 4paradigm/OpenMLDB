@@ -435,17 +435,28 @@ cases:
           - [3,"aa",3,3,32,1.3,2.3,1590738992000,"2020-05-02","b",true]
           - [4,"aa",NULL,NULL,NULL,NULL,NULL,1590738993000,NULL,NULL,NULL]
     sql: |
-      SELECT {0}.id, c1, count_where(c2,c2<4) OVER w1 as m2,count_where(c3,c3<4) OVER w1 as m3,count_where(c4,c4<33) OVER w1 as m4,count_where(c5,c5<=1.3) OVER w1 as m5,count_where(c6,c10) OVER w1 as m6,
-      count_where(c7,c10) OVER w1 as m7,count_where(c8,c10) OVER w1 as m8,count_where(c9,c10) OVER w1 as m9, count_where(*,c3<4) over w1 as m10 FROM {0} WINDOW
-      w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
+      SELECT
+        {0}.id, c1,
+        count_where(c2,c2<4) OVER w1 as m2,
+        count_where(c3,c3<4) OVER w1 as m3,
+        count_where(c4,c4<33) OVER w1 as m4,
+        count_where(c5,c5<=1.3) OVER w1 as m5,
+        count_where(c6,c10) OVER w1 as m6,
+        count_where(c7,c10) OVER w1 as m7,
+        count_where(c8,c10) OVER w1 as m8,
+        count_where(c9,c10) OVER w1 as m9,
+        count_where(c10,c3<4) over w1 as m10,
+        count_where(*,c3<4) over w1 as m11
+      FROM {0} WINDOW
+        w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
     expect:
       order: id
-      columns: ["id int","c1 string","m2 bigint","m3 bigint","m4 bigint","m5 bigint","m6 bigint","m7 bigint","m8 bigint","m9 bigint","m10 bigint"]
+      columns: ["id int","c1 string","m2 bigint","m3 bigint","m4 bigint","m5 bigint","m6 bigint","m7 bigint","m8 bigint","m9 bigint","m10 bigint", "m11 bigint"]
       rows:
-        - [1,"aa",1,1,1,1,1,1,1,1,1]
-        - [2,"aa",1,1,1,1,1,1,1,1,1]
-        - [3,"aa",2,2,2,2,2,2,2,2,2]
-        - [4,"aa",1,1,1,1,1,1,1,1,1]
+        - [1, "aa", 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+        - [2, "aa", 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+        - [3, "aa", 2, 2, 2, 2, 2, 2, 2, 2, 2, 2]
+        - [4, "aa", 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
   -
     id: 18
     desc: AVG_WHERE/MAX_WHERE/MIN_WHERE/SUM_WHERE-fail
@@ -463,28 +474,6 @@ cases:
     dataProvider:
       - ["avg_where","sum_where","max_where","min_where"]
       - ["c7","c8","c9","c10"]
-    sql: |
-      SELECT {0}.id, c1, d[0](d[1],c10) OVER w1 as m2 FROM {0} WINDOW
-      w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
-    expect:
-      success: false
-  -
-    id: 19
-    desc: COUNT_WHERE-fail
-    sqlDialect: ["HybridSQL"]
-    level: 5
-    inputs:
-      -
-        columns : ["id int","c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 string","c10 bool"]
-        indexs: ["index1:c1:c7"]
-        rows:
-          - [1,"aa",1,1,30,1.1,2.1,1590738990000,"2020-05-01","a",true]
-          - [2,"aa",4,4,33,1.4,2.4,1590738991000,"2020-05-03","c",false]
-          - [3,"aa",3,3,32,1.3,2.3,1590738992000,"2020-05-02","b",true]
-          - [4,"aa",NULL,NULL,NULL,NULL,NULL,1590738993000,NULL,NULL,NULL]
-    dataProvider:
-      - ["count_where"]
-      - ["c10"]
     sql: |
       SELECT {0}.id, c1, d[0](d[1],c10) OVER w1 as m2 FROM {0} WINDOW
       w1 AS (PARTITION BY {0}.c1 ORDER BY {0}.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
@@ -916,7 +905,7 @@ cases:
           - [3,3,2,2,32,1.3,2.3,1590738992000,"2020-05-02","b",false]
           - [4,4,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL]
     dataProvider:
-      - ["avg_cate","sum_cate","max_cate","min_cate","count_cate"]
+      - ["avg_cate","sum_cate","max_cate","min_cate"]
       - ["{0}.c7","{0}.c8","{0}.c9","{0}.c10"]
       - ["{1}.c2","{1}.c3","{1}.c4","{1}.c5","{1}.c6","{1}.c7","{1}.c8","{1}.c9","{1}.c10"]
     sql: |
@@ -1347,7 +1336,7 @@ cases:
           - [3,3,2,2,32,1.3,2.3,1590738992000,"2020-05-02","b",false]
           - [4,4,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL]
     dataProvider:
-      - ["avg_cate_where","sum_cate_where","max_cate_where","min_cate_where","count_cate_where"]
+      - ["avg_cate_where","sum_cate_where","max_cate_where","min_cate_where"]
       - ["{0}.c7","{0}.c8","{0}.c9","{0}.c10"]
       - ["{1}.c2","{1}.c3","{1}.c4","{1}.c5","{1}.c6","{1}.c7","{1}.c8","{1}.c9","{1}.c10"]
     sql: |
@@ -1724,7 +1713,8 @@ cases:
           - [4,"aa","b:1","b:1","b:1","b:1","b:1"]
   -
     id: 39
-    desc: "top_n_key_*_cate_where-fail1"
+    desc: |
+      top_n_key_*_cate_where-fail1, float or bool can't be category
     sqlDialect: ["HybridSQL"]
     level: 5
     inputs:
@@ -1757,7 +1747,8 @@ cases:
       success: false
   -
     id: 40
-    desc: "top_n_key_*_cate_where-fail2"
+    desc: |
+      top_n_key_*_cate_where-fail2. Value can not be timestamp, date, string, bool, excepting top_n_key_count_cate_where
     sqlDialect: ["HybridSQL"]
     level: 5
     inputs:
@@ -1778,7 +1769,7 @@ cases:
           - [3,3,2,2,32,1.3,2.3,1590738992000,"2020-05-02","b",false]
           - [4,4,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL]
     dataProvider:
-      - ["top_n_key_count_cate_where","top_n_key_sum_cate_where","top_n_key_avg_cate_where","top_n_key_max_cate_where","top_n_key_min_cate_where"]
+      - ["top_n_key_sum_cate_where","top_n_key_avg_cate_where","top_n_key_max_cate_where","top_n_key_min_cate_where"]
       - ["{0}.c7","{0}.c8","{0}.c9","{0}.c10"]
       - ["{1}.c2","{1}.c3","{1}.c4","{1}.c5","{1}.c6","{1}.c7","{1}.c8","{1}.c9","{1}.c10"]
     sql: |
@@ -2251,7 +2242,7 @@ cases:
       avg_where(col1, std_ts > timestamp(1590115440000)) OVER w as a5,
       sum(col1) OVER w as a6,
       count(col1) OVER w as a7,
-      fz_topn_frequency(id, 3) OVER w as a8
+      topn_frequency(id, 3) OVER w as a8
       FROM {0} WINDOW
         w AS (PARTITION BY pk ORDER BY std_ts ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
     inputs:
@@ -2561,3 +2552,134 @@ cases:
         - [2,"aa",2.5,2.5,31.5,1.25,2.25]
         - [3,"aa",1,1,33,1.1000000238418579,2.1]
         - [4,"aa",2.5,2.5,33,1.25,2.25]
+
+  - id: 62
+    desc: |
+      top_n_value_*_cate_where
+    inputs:
+      - name: t1
+        schema: id:int32, col1:int32, col2:int16, col3:string, col4 double, std_ts:timestamp
+        index: index2:col2:std_ts
+        data: |
+          0, 1,    55, g1,   2.0,  1590115420000
+          1, 2,    55, NULL, 2.0,  1590115421000
+          2, 3,    55, g2,   NULL, 1590115422000
+          3, 4,    55, g1,   4.0,  1590115423000
+          4, NULL, 55, g2,   4.0,  1590115424000
+          5, 5,    55, g2,   4.0,  1590115425000
+          6, 5,    55, g2,   1.0,  1590115426000
+    sql: |
+      select id, col1,
+        top_n_value_count_cate_where(col3, col1 != 5, col3, 1) over w as tv1,
+        top_n_value_min_cate_where(col1, char_length(col3) > 1, col3, 1) over w as tv2,
+        top_n_value_max_cate_where(col4, id > 0, col3, 2) over w as tv3,
+        top_n_value_sum_cate_where(col1, id != 6, col2, 1) over w as tv4,
+        top_n_value_avg_cate_where(col4, true, col1, 3) over w as tv5,
+      from t1
+      window w as (
+        partition by col2 order by std_ts rows_range between 10s preceding and current row);
+    expect:
+      order: id
+      columns:
+        - id int32
+        - col1 int32
+        - tv1 string
+        - tv2 string
+        - tv3 string
+        - tv4 string
+        - tv5 string
+      rows:
+        - [0, 1,    "g1:1", "g1:1", "",                        "55:1",              "1:2.000000"]
+        - [1, 2,    "g1:1", "g1:1", "",                        "55:3",              "2:2.000000,1:2.000000"]
+        - [2, 3,    "g2:1", "g2:3", "",                        "55:6",              "2:2.000000,1:2.000000"]
+        - [3, 4,    "g1:2", "g2:3", "g1:4.000000",             "55:10",             "4:4.000000,2:2.000000,1:2.000000"]
+        - [4, NULL, "g1:2", "g2:3", "g2:4.000000,g1:4.000000", "55:10", "4:4.000000,2:2.000000,1:2.000000"]
+        - [5, 5,    "g1:2", "g2:3", "g2:4.000000,g1:4.000000", "55:15", "5:4.000000,4:4.000000,2:2.000000"]
+        - [6, 5,    "g1:2", "g2:3", "g2:4.000000,g1:4.000000", "55:15", "4:4.000000,5:2.500000,2:2.000000"]
+
+  - id: 63
+    desc: entropy
+    mode: request-unsupport
+    inputs:
+      - name: t1
+        schema: id:int32, col1:int32, col2:int16, col3:string, col4 double, std_ts:timestamp, de:date, flag:bool
+        index: index2:col2:std_ts
+        data: |
+          0, 1,    55, g1,   2.0,  1590115420000, 2012-12-12, true
+          1, 2,    55, NULL, 2.0,  1590115421000, 2012-12-13, true
+          2, 3,    55, g2,   NULL, 1590115422000, 2012-12-14, false
+          3, 4,    55, g1,   4.0,  1590115423000, 2012-12-15, false
+          4, NULL, 55, g2,   4.0,  1590115424000, NULL,       NULL
+    sql: |
+      select
+        entropy(col1) as agg1,
+        entropy(col2) as agg2,
+        entropy(col3) as agg3,
+        entropy(col4) as agg4,
+        entropy(std_ts) as agg5,
+        entropy(de) as agg6,
+        entropy(flag) as agg7,
+      from t1
+    expect:
+      columns:
+        - agg1 double
+        - agg2 double
+        - agg3 double
+        - agg4 double
+        - agg5 double
+        - agg6 double
+        - agg7 double
+      data: |
+        2.0, 0.0, 1.0, 1.0, 2.3219280948873622, 2.0, 1.0
+
+  - id: 64
+    desc: nth_value_where
+    inputs:
+      - name: t1
+        columns:
+          - id int
+          - key1 string
+          - l1 int32
+          - l2 int64
+          - f1 float
+          - ts timestamp
+          - val string
+        indexs:
+          - idx:key1:ts
+        data: |
+          4, g2, null, 10,  4.4,  1590738990002, A
+          5, g2, null, -2,  9.0,  1590738990003, B
+          6, g2, 1,     3,  7.0,  1590738990004, A
+          7, g2, 3,    10,  null, 1590738990005, C
+          8, g2, null, 11,  null, 1590738990006, F
+    sql: |
+      select
+        id,
+        key1,
+        nth_value_where(id, 0, true) over w as agg_null,
+        nth_value_where(l1 + 1, -1, l1 < first_value(l1)) over w as agg1,
+        nth_value_where(f1, -2, case when f1 > 5.0 then true else null end) over w as agg2,
+        nth_value_where(val, -2, case when sum(l2) > 10 then true else false end) over w as agg3,
+        nth_value_where(l1 + 1, 1, l1 < 4) over w as agg4,
+        nth_value_where(f1, 2, f1 > 5.0) over w as agg5,
+        nth_value_where(ts, 2, sum(l2) > 10) over w as agg6,
+      from t1
+          window w as (partition by `key1` order by `ts` rows_range between 5s open preceding and 0s preceding)
+    expect:
+      order: id
+      columns:
+        - id int
+        - key1 string
+        - agg_null int32
+        - agg1 int32
+        - agg2 float
+        - agg3 string
+        - agg4 int32
+        - agg5 float
+        - agg6 timestamp
+      data: |
+        4, g2, NULL, NULL, NULL, NULL, NULL, NULL, NULL
+        5, g2, NULL, NULL, NULL, NULL, NULL, NULL, NULL
+        6, g2, NULL, NULL, 9.0,  B,    2,    7.0,  1590738990003
+        7, g2, NULL, 2,    9.0,  A,    2,    7.0,  1590738990003
+        8, g2, NULL, NULL, 9.0,  C,    2,    7.0,  1590738990003

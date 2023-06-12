@@ -29,6 +29,7 @@
 
 #include "base/glog_wrapper.h"
 #include "base/status.h"
+#include "codec/sdk_codec.h"
 #include "common/thread_pool.h"
 #include "common/timer.h"
 #include "proto/tablet.pb.h"
@@ -322,7 +323,7 @@ TEST_F(LogReplicatorTest, LeaderAndFollowerMulti) {
     sleep(5);
     leader.DelAllReplicateNode();
     ASSERT_EQ(3, (int64_t)t8->GetRecordCnt());
-    ASSERT_EQ(5, (int64_t)t8->GetRecordIdxCnt());
+    ASSERT_EQ(3, (int64_t)t8->GetRecordIdxCnt());
     {
         Ticket ticket;
         // check 18527

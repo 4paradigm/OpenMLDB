@@ -18,7 +18,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='openmldb',
-    version='0.6.0a0',
+    version='0.7.0a0',
     author='OpenMLDB Team',
     author_email=' ',
     url='https://github.com/4paradigm/OpenMLDB',
@@ -26,17 +26,19 @@ setup(
     license="copyright 4paradigm.com",
     classifiers=[
         'Programming Language :: Python :: 3',
-        ],
+    ],
     install_requires=[
         "sqlalchemy <= 1.4.9",
         "IPython",
         "prettytable",
-        "tox",
-        "pytest"
     ],
+    extras_require={'test': [
+        "pytest",
+        "tox",
+    ]},
     include_package_data=True,
-    package_data = {'':['*.so']},
-    packages=find_packages(),
+    package_data={'': ['*.so']},
+    packages=find_packages(exclude=['tests']),
     entry_points={
         'sqlalchemy.dialects': [
             'openmldb = openmldb.sqlalchemy_openmldb.openmldb_dialect:OpenmldbDialect',

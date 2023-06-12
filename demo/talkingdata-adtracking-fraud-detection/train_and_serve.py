@@ -85,10 +85,11 @@ def nothrow_execute(sql):
 
 print(f'Prepare openmldb, db {DB_NAME} table {TABLE_NAME}')
 engine = db.create_engine(
-    f'openmldb:///{DB_NAME}?zk={ZK}&zkPath={ZK_PATH}')
+    f'openmldb:///?zk={ZK}&zkPath={ZK_PATH}')
 connection = engine.connect()
 
 connection.execute(f'CREATE DATABASE IF NOT EXISTS {DB_NAME};')
+connection.execute(f'USE {DB_NAME};')
 schema_string = ','.join(list(map(column_string, train_schema)))
 connection.execute(
     f'CREATE TABLE IF NOT EXISTS {TABLE_NAME}({schema_string});')
@@ -99,7 +100,7 @@ connection.execute(f'USE {DB_NAME}')
 connection.execute("SET @@execute_mode='offline';")
 # use sync offline job, to make sure `LOAD DATA` finished
 connection.execute('SET @@sync_job=true;')
-connection.execute('SET @@job_timeout=1200000;')
+
 connection.execute(f"LOAD DATA INFILE 'file://{os.path.abspath('train_sample.csv')}' "
                    f"INTO TABLE {TABLE_NAME} OPTIONS(format='csv',header=true, deep_copy=true);")
 
@@ -120,11 +121,18 @@ w3 as(partition by ip, app, os order by click_time ROWS_RANGE BETWEEN UNBOUNDED 
 connection.execute(
     f"{sql_part} INTO OUTFILE '{TRAIN_FEATURE_DIR}' OPTIONS(mode='overwrite');")
 
+# train_feature_dir has multi csv files, check feature files
+feature_files = glob.glob(os.path.join('', TRAIN_FEATURE_DIR, '*.csv'))
+print(f'feature files: {feature_files}')
+if len(feature_files) == 0:
+    print('No output feature, check the job status')
+    rs = connection.execute('SHOW JOBS').fetchall()
+    for row in rs:
+        print(row)
+    exit(-1)
+
 print(f'Load features from feature dir {TRAIN_FEATURE_DIR}')
-# train_feature_dir has multi csv files
-# all int, so no need to set read types
-train_df = pd.concat(map(pd.read_csv, glob.glob(
-    os.path.join('', TRAIN_FEATURE_DIR + '/*.csv'))))
+train_df = pd.concat(map(pd.read_csv, feature_files))
 
 # drop column label
 X_data = train_df.drop('is_attributed', axis=1)

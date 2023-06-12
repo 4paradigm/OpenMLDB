@@ -19,7 +19,6 @@
 #include <sys/stat.h>
 
 #include "base/file_util.h"
-#include "base/glog_wrapper.h"
 #include "base/strings.h"
 #include "codec/schema_codec.h"
 #include "codec/sdk_codec.h"
@@ -31,6 +30,7 @@
 #include "storage/mem_table.h"
 #include "storage/ticket.h"
 #include "tablet/tablet_impl.h"
+#include "test/util.h"
 
 DECLARE_string(db_root_path);
 DECLARE_string(ssd_root_path);
@@ -47,10 +47,6 @@ namespace tablet {
 using ::openmldb::api::TableStatus;
 using ::openmldb::codec::SchemaCodec;
 
-inline std::string GenRand() {
-    return std::to_string(rand() % 10000000 + 1);  // NOLINT
-}
-
 ::openmldb::api::TableMeta GetTableMeta() {
     ::openmldb::api::TableMeta table_meta;
     table_meta.set_name("table");
@@ -59,7 +55,6 @@ inline std::string GenRand() {
     table_meta.set_seg_cnt(8);
     table_meta.set_mode(::openmldb::api::TableMode::kTableLeader);
     table_meta.set_key_entry_max_height(8);
-    table_meta.set_format_version(1);
     SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "card", ::openmldb::type::kString);
     SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "mcc", ::openmldb::type::kString);
     SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "price", ::openmldb::type::kBigInt);
@@ -404,8 +399,9 @@ INSTANTIATE_TEST_CASE_P(TabletMemAndHDD, TabletFuncTest,
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
     srand(time(NULL));
-    FLAGS_db_root_path = "/tmp/" + ::openmldb::tablet::GenRand();
-    FLAGS_ssd_root_path = "/tmp/ssd/" + ::openmldb::tablet::GenRand();
-    FLAGS_hdd_root_path = "/tmp/hdd/" + ::openmldb::tablet::GenRand();
+    ::openmldb::test::TempPath tmp_path;
+    FLAGS_db_root_path = tmp_path.GetTempPath();
+    FLAGS_ssd_root_path = tmp_path.GetTempPath("ssd");
+    FLAGS_hdd_root_path = tmp_path.GetTempPath("hdd");
     return RUN_ALL_TESTS();
 }

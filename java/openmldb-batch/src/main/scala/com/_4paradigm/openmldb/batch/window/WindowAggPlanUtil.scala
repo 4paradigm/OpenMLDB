@@ -20,11 +20,11 @@ import com._4paradigm.hybridse.node.FrameType
 import com._4paradigm.hybridse.sdk.{HybridSeException, JitManager, SerializableByteBuffer}
 import com._4paradigm.hybridse.vm.PhysicalWindowAggrerationNode
 import com._4paradigm.hybridse.vm.Window.WindowFrameType
-import com._4paradigm.openmldb.batch.utils.{HybridseUtil, SparkColumnUtil, SparkUtil}
+import com._4paradigm.openmldb.batch.utils.{ExternalUdfUtil, HybridseUtil, SparkColumnUtil, SparkUtil}
 import com._4paradigm.openmldb.batch.{OpenmldbBatchConfig, PlanContext, SparkInstance}
 import com._4paradigm.openmldb.sdk.impl.SqlClusterExecutor
 import org.apache.hadoop.fs.FileSystem
-import org.apache.spark.sql.functions.col
+import org.apache.spark.sql.functions.{col, lit}
 import org.apache.spark.sql.{DataFrame, functions}
 import org.apache.spark.sql.types.{LongType, StructType}
 import org.apache.spark.util.SerializableConfiguration
@@ -59,6 +59,7 @@ object WindowAggPlanUtil {
       val windowUnionNode = physicalNode.window_unions().GetUnionNode(i)
       val rightDf = ctx.getSparkOutput(windowUnionNode).getDfConsideringIndex(ctx, windowUnionNode.GetNodeId())
 
+      /* TODO(tobe): Do not check schema now because window union after window union may get unequal schemas
       if (isKeepIndexColumn) {
         // Notice that input df may has index column, check in another way
         if (!SparkUtil.checkSchemaIgnoreNullable(rightDf
@@ -73,15 +74,39 @@ object WindowAggPlanUtil {
             s"Expect ${inputDf.schema}\nGet ${rightDf.schema}")
         }
       }
+      */
+
+      /*
+      If original left table schema is [c1, c2], it may be [c1, c2, _WINDOW_UNION_FLAG_1665546417076#55] now.
+      If isKeepIndexColumn is true, it may be [c1, c2, _index_column_placeholder, _WINDOW_UNION_FLAG_1665546417076#55].
+
+      If window union after window union, the schema sizes are not equal and we need to append null columns for right
+      tables before union.
+       */
+      var outputRightTable = rightDf
+
+      if (inputDf.schema.size != rightDf.schema.size) {
+        if (isKeepIndexColumn) {
+          for (i <- rightDf.schema.size until inputDf.schema.size - 1) {
+            outputRightTable = outputRightTable.withColumn(inputDf.columns(i), lit(null))
+          }
+        } else {
+          for (i <- rightDf.schema.size until inputDf.schema.size) {
+            outputRightTable = outputRightTable.withColumn(inputDf.columns(i), lit(null))
+          }
+        }
+      }
 
       if (isKeepIndexColumn) {
         // Add one more placeholder column for sub tables if main table has index column
-        rightDf.withColumn(uniqueColName + "_index_column_placeholder",
+        outputRightTable = outputRightTable.withColumn(uniqueColName + "_index_column_placeholder",
           functions.lit(0L)).withColumn(uniqueColName, functions.lit(false))
       } else {
         // Only add the union boolean column where the values are false
-        rightDf.withColumn(uniqueColName, functions.lit(false))
+        outputRightTable = outputRightTable.withColumn(uniqueColName, functions.lit(false))
       }
+
+      outputRightTable
     })
 
     // Add new column for left table where the values are true which will be used for window aggregate
@@ -119,7 +144,10 @@ object WindowAggPlanUtil {
                              needAppendInput: Boolean,
                              limitCnt: Int,
                              keepIndexColumn: Boolean,
-                             isUnsafeRowOpt: Boolean)
+                             isUnsafeRowOpt: Boolean,
+                             externalFunMap: Map[String, com._4paradigm.openmldb.proto.Common.ExternalFun],
+                             isYarnMode: Boolean,
+                             taskmanagerExternalFunctionDir: String)
 
 
   /** Get the data from context and physical node and create the WindowAggConfig object.
@@ -181,6 +209,18 @@ object WindowAggPlanUtil {
       WindowFrameType.kFrameRowsRange
     }
 
+    val config = ctx.getConf
+    val openmldbSession = ctx.getOpenmldbSession
+    var externalFunMap = Map[String, com._4paradigm.openmldb.proto.Common.ExternalFun]()
+    if (config.openmldbZkCluster.nonEmpty && config.openmldbZkRootPath.nonEmpty
+      && openmldbSession != null && openmldbSession.openmldbCatalogService != null) {
+      externalFunMap = openmldbSession.openmldbCatalogService.getExternalFunctionsMap()
+    }
+    // TODO(tobe): openmldbSession may be null
+    //val isYarnMode = openmldbSession.isYarnMode()
+    val isYarnMode = ctx.getSparkSession.conf.get("spark.master").equalsIgnoreCase("yarn")
+    val taskmanagerExternalFunctionDir = config.taskmanagerExternalFunctionDir
+
     WindowAggConfig(
       windowName = windowName,
       windowFrameTypeName = windowFrameType.toString,
@@ -203,10 +243,12 @@ object WindowAggPlanUtil {
       needAppendInput = node.need_append_input(),
       limitCnt = node.GetLimitCntValue(),
       keepIndexColumn = keepIndexColumn,
-      isUnsafeRowOpt = ctx.getConf.enableUnsafeRowOptimization
+      isUnsafeRowOpt = ctx.getConf.enableUnsafeRowOptimization,
+      externalFunMap = externalFunMap,
+      isYarnMode = isYarnMode,
+      taskmanagerExternalFunctionDir = taskmanagerExternalFunctionDir
     )
   }
-
 
   def createComputer(partitionIndex: Int,
                      hadoopConf: SerializableConfiguration,
@@ -216,8 +258,12 @@ object WindowAggPlanUtil {
     val tag = config.moduleTag
     val buffer = config.moduleNoneBroadcast.getBuffer
     SqlClusterExecutor.initJavaSdkLibrary(sqlConfig.openmldbJsdkLibraryPath)
-    JitManager.initJitModule(tag, buffer, config.isUnsafeRowOpt)
 
+    // Load external udf if exists
+    ExternalUdfUtil.executorRegisterExternalUdf(config.externalFunMap, config.taskmanagerExternalFunctionDir,
+      config.isYarnMode)
+
+    JitManager.initJitModule(tag, buffer, config.isUnsafeRowOpt)
     val jit = JitManager.getJit(tag)
 
     // create stateful computer

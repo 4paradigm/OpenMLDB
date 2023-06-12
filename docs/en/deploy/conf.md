@@ -60,7 +60,7 @@
 --system_table_replica_num=2
 ```
 
-## The Configuration File for conf/tablet.flags
+## The Configuration File for Tablet: conf/tablet.flags
 
 ```
 # tablet.conf
@@ -86,6 +86,9 @@
 
 # log file path
 --openmldb_log_dir=./logs
+
+# Specify the max memory usage of tablet. If memory usage exceeds the value, write will fail. The default value 0 means unlimited
+#--max_memory_mb=0
 
 # binlog conf
 # Binlog wait time when no new data is added, in milliseconds
@@ -113,10 +116,25 @@
 #--io_pool_size=2
 # The thread pool size for tasks such as deleting tables, sending snapshots, load snapshots, etc.
 #--task_pool_size=8
+# Configure whether to put the table drop data in the recycle directory, the default is true
+#--recycle_bin_enabled=true
+# Configure the storage time of data in the recycle directory. If this time is exceeded, the corresponding directory and data will be deleted. The default is 0 means never delete, the unit is minutes
+#--recycle_ttl=0
+
 # Configure the data directory, multiple disks are separated by commas
 --db_root_path=./db
 # Configure the data recycle bin directory, the data of the drop table will be placed here
 --recycle_bin_root_path=./recycle
+#
+#Configure HDD table data file path (optional, default is empty), use English commas for multiple disks
+--hdd_root_path=./db_hdd
+#Configure the recycle bin directory, use English commas for multiple disks
+--recycle_bin_hdd_root_path=./recycle_hdd
+#
+#Configure the SSD table data file path (optional, default is empty), use English commas for multiple disks
+--ssd_root_path=./db_ssd
+#Configure the data recycle bin directory, where the data of the drop table will be placed
+--recycle_bin_ssd_root_path=./recycle_ssd
 
 # snapshot conf
 # Configure the time to do snapshots, the time of day. For example, 23 means taking a snapshot at 23 o'clock every day.
@@ -158,6 +176,14 @@
 # The maximum height of the second level skip list
 #--key_entry_max_height=8
 
+# query conf
+# max table traverse iteration(full table scan/aggregation),default: 0
+#--max_traverse_cnt=0
+# max table traverse unique key number(batch query), default: 0
+#--max_traverse_key_cnt=0
+# max result size in byte (default: 2MB)
+#--scan_max_bytes_size=2097152
+
 # loadtable
 # The number of data bars to submit a task to the thread pool when loading
 #--load_table_batch=30
@@ -165,9 +191,19 @@
 #--load_table_thread_num=3
 # The maximum queue length of the load thread pool
 #--load_table_queue_size=1000
+
+# for rocksdb
+#--disable_wal=true
+# Type of compression, can be off, pz, lz4, zlib
+#--file_compression=off
+#--block_cache_mb=4096
+#--block_cache_shardbits=8
+#--verify_compression=false
+#--max_log_file_size=100 * 1024 * 1024
+#--keep_log_file_num=5
 ```
 
-## The Configuration file for APIServer: conf/tablet.flags
+## The Configuration file for APIServer: conf/apiserver.flags
 
 ```
 # apiserver.conf

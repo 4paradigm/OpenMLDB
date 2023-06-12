@@ -2,6 +2,8 @@
 
 OpenMLDB Benchmak tool is used for tesing the performance of OpenMLDB's online SQL engine.
 
+**You may also refer to FEBench (https://github.com/decis-bench/febench), which is a more comprehensive benchmark for real-time feature extraction developed by a third-party, comparing the performance between OpenMLDB and Flink.**
+
 ## Requirements
 
 - CentOS 7 / macOS >= 10.15
@@ -9,17 +11,16 @@ OpenMLDB Benchmak tool is used for tesing the performance of OpenMLDB's online S
 
 ## Run
 
- 1. Compile
+1. Compile
     ```bash
     cd benchmark
     mvn clean package
     ```
-2. Uncompress the package to `lib` dir and copy the configuration to `conf` dir
+2. Copy the configuration and package
     ```bash
     mkdir -p /work/benchmark/conf /work/benchmark/lib
     cp target/openmldb-benchmark-0.5.0.jar  /work/benchmark/lib
     cp src/main/resources/conf.properties /work/benchmark/conf
-    cd /work/benchmark/lib && jar -xvf openmldb-benchmark-0.5.0.jar
     ```
 3. Modify the configuration
     ```
@@ -29,7 +30,7 @@ OpenMLDB Benchmak tool is used for tesing the performance of OpenMLDB's online S
 4. Run benchmark
     ```
     cd /work/benchmark
-    java -cp conf/:lib/ com._4paradigm.openmldb.benchmark.OpenMLDBPerfBenchmark
+    java -cp conf/:lib/* com._4paradigm.openmldb.benchmark.OpenMLDBPerfBenchmark
     ```
 
 The above testing run with the default confguration. You can modify `WINDOW_NUM`, `WINDOW_SIZE` and `JOIN_NUM` in the confguration file if you want to evaluate the performance impact of those parameters.
@@ -49,3 +50,6 @@ Update `WINDOW_SIZE` in confguration file and execute the following command.
 ```
 java -cp conf/:lib/ com._4paradigm.openmldb.benchmark.OpenMLDBLongWindowBenchmark
 ```
+
+Note:
+If you want to test specific SQL, you can modify [here](https://github.com/4paradigm/OpenMLDB/blob/main/benchmark/src/main/java/com/_4paradigm/openmldb/benchmark/Util.java#L71)

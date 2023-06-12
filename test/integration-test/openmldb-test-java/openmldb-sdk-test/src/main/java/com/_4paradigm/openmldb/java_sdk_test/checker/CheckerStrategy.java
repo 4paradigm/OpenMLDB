@@ -47,6 +47,8 @@ public class CheckerStrategy {
                 checkList.add(new ColumnsCheckerByJBDC(expect, openMLDBResult));
             }else if(executorType==SQLCaseType.kCLI||executorType==SQLCaseType.kStandaloneCLI||executorType==SQLCaseType.kClusterCLI){
                 checkList.add(new ColumnsCheckerByCli(expect, openMLDBResult));
+            }else if(executorType==SQLCaseType.KOfflineJob){
+                checkList.add(new ColumnsCheckerByOffline(expect, openMLDBResult));
             }else {
                 checkList.add(new ColumnsChecker(expect, openMLDBResult));
             }
@@ -56,6 +58,8 @@ public class CheckerStrategy {
                 checkList.add(new ResultCheckerByJDBC(expect, openMLDBResult));
             }else if(executorType==SQLCaseType.kCLI||executorType==SQLCaseType.kStandaloneCLI||executorType==SQLCaseType.kClusterCLI){
                 checkList.add(new ResultCheckerByCli(expect, openMLDBResult));
+            }else if(executorType==SQLCaseType.KOfflineJob){
+                checkList.add(new ResultCheckerByOffline(expect, openMLDBResult));
             }else {
                 checkList.add(new ResultChecker(expect, openMLDBResult));
             }
@@ -93,6 +97,15 @@ public class CheckerStrategy {
         }
         if(CollectionUtils.isNotEmpty(expect.getPreAggList())){
             checkList.add(new PreAggListChecker(executor, expect, openMLDBResult));
+        }
+        if(expect.getOfflineInfo()!=null){
+            checkList.add(new OfflineInfoChecker(expect, openMLDBResult));
+        }
+        if(CollectionUtils.isNotEmpty(expect.getOfflineColumns())){
+            checkList.add(new ColumnsCheckerByOffline(expect, openMLDBResult));
+        }
+        if(CollectionUtils.isNotEmpty(expect.getOfflineRows())){
+            checkList.add(new ResultCheckerByOffline(expect, openMLDBResult));
         }
         return checkList;
     }

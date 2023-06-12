@@ -398,7 +398,7 @@ Status EngineTestRunner::Compile() {
     LOG(INFO) << "SQL Compile take " << mill << " milliseconds";
 
     if (!ok || !status.isOK()) {
-        LOG(INFO) << status.str();
+        LOG(INFO) << status;
         return_code_ = ENGINE_TEST_RET_COMPILE_ERROR;
     } else {
         LOG(INFO) << "SQL output schema:";
@@ -506,154 +506,163 @@ GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(EngineTest);
 GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(BatchRequestEngineTest);
 
 INSTANTIATE_TEST_SUITE_P(EngineTestBug, EngineTest,
-                         testing::ValuesIn(sqlcase::InitCases("/cases/debug/bug.yaml")));
+                         testing::ValuesIn(sqlcase::InitCases("cases/debug/bug.yaml")));
 INSTANTIATE_TEST_SUITE_P(EngineFailQuery, EngineTest,
-                        testing::ValuesIn(sqlcase::InitCases("/cases/query/fail_query.yaml")));
+                        testing::ValuesIn(sqlcase::InitCases("cases/query/fail_query.yaml")));
 
 INSTANTIATE_TEST_SUITE_P(EngineTestFzTest, EngineTest,
-                        testing::ValuesIn(sqlcase::InitCases("/cases/query/fz_sql.yaml")));
+                        testing::ValuesIn(sqlcase::InitCases("cases/query/fz_sql.yaml")));
 
 INSTANTIATE_TEST_SUITE_P(LimitClauseQuery, EngineTest,
-                        testing::ValuesIn(sqlcase::InitCases("/cases/query/limit.yaml")));
+                        testing::ValuesIn(sqlcase::InitCases("cases/query/limit.yaml")));
 
 INSTANTIATE_TEST_SUITE_P(EngineSimpleQuery, EngineTest,
-                        testing::ValuesIn(sqlcase::InitCases("/cases/query/simple_query.yaml")));
+                        testing::ValuesIn(sqlcase::InitCases("cases/query/simple_query.yaml")));
 INSTANTIATE_TEST_SUITE_P(EngineConstQuery, EngineTest,
-                        testing::ValuesIn(sqlcase::InitCases("/cases/query/const_query.yaml")));
+                        testing::ValuesIn(sqlcase::InitCases("cases/query/const_query.yaml")));
 INSTANTIATE_TEST_SUITE_P(EngineUdfQuery, EngineTest,
-                        testing::ValuesIn(sqlcase::InitCases("/cases/query/udf_query.yaml")));
+                        testing::ValuesIn(sqlcase::InitCases("cases/query/udf_query.yaml")));
 INSTANTIATE_TEST_SUITE_P(EngineOperatorQuery, EngineTest,
-                        testing::ValuesIn(sqlcase::InitCases("/cases/query/operator_query.yaml")));
+                        testing::ValuesIn(sqlcase::InitCases("cases/query/operator_query.yaml")));
 INSTANTIATE_TEST_SUITE_P(EngineParameterizedQuery, EngineTest,
-                         testing::ValuesIn(sqlcase::InitCases("/cases/query/parameterized_query.yaml")));
+                         testing::ValuesIn(sqlcase::InitCases("cases/query/parameterized_query.yaml")));
 INSTANTIATE_TEST_SUITE_P(EngineUdafQuery, EngineTest,
-                        testing::ValuesIn(sqlcase::InitCases("/cases/query/udaf_query.yaml")));
+                        testing::ValuesIn(sqlcase::InitCases("cases/query/udaf_query.yaml")));
 INSTANTIATE_TEST_SUITE_P(EngineExtreamQuery, EngineTest,
-                        testing::ValuesIn(sqlcase::InitCases("/cases/query/extream_query.yaml")));
+                        testing::ValuesIn(sqlcase::InitCases("cases/query/extream_query.yaml")));
 
 INSTANTIATE_TEST_SUITE_P(EngineLastJoinQuery, EngineTest,
-                        testing::ValuesIn(sqlcase::InitCases("/cases/query/last_join_query.yaml")));
+                        testing::ValuesIn(sqlcase::InitCases("cases/query/last_join_query.yaml")));
 
 INSTANTIATE_TEST_SUITE_P(EngineLastJoinWindowQuery, EngineTest,
-                        testing::ValuesIn(sqlcase::InitCases("/cases/query/last_join_window_query.yaml")));
+                        testing::ValuesIn(sqlcase::InitCases("cases/query/last_join_window_query.yaml")));
+INSTANTIATE_TEST_SUITE_P(EngineLastJoinWhere, EngineTest,
+                        testing::ValuesIn(sqlcase::InitCases("cases/query/last_join_where.yaml")));
 INSTANTIATE_TEST_SUITE_P(EngineWindowQuery, EngineTest,
-                        testing::ValuesIn(sqlcase::InitCases("/cases/query/window_query.yaml")));
+                        testing::ValuesIn(sqlcase::InitCases("cases/query/window_query.yaml")));
 
 INSTANTIATE_TEST_SUITE_P(EngineWindowWithUnionQuery, EngineTest,
-                        testing::ValuesIn(sqlcase::InitCases("/cases/query/window_with_union_query.yaml")));
+                        testing::ValuesIn(sqlcase::InitCases("cases/query/window_with_union_query.yaml")));
 
 INSTANTIATE_TEST_SUITE_P(EngineBatchGroupQuery, EngineTest,
-                        testing::ValuesIn(sqlcase::InitCases("/cases/query/group_query.yaml")));
+                        testing::ValuesIn(sqlcase::InitCases("cases/query/group_query.yaml")));
 INSTANTIATE_TEST_SUITE_P(EngineBatchHavingQuery, EngineTest,
-                         testing::ValuesIn(sqlcase::InitCases("/cases/query/having_query.yaml")));
+                         testing::ValuesIn(sqlcase::InitCases("cases/query/having_query.yaml")));
 INSTANTIATE_TEST_SUITE_P(EngineBatchWhereGroupQuery, EngineTest,
-                         testing::ValuesIn(sqlcase::InitCases("/cases/query/where_group_query.yaml")));
+                         testing::ValuesIn(sqlcase::InitCases("cases/query/where_group_query.yaml")));
+INSTANTIATE_TEST_SUITE_P(WithClause, EngineTest,
+                         testing::ValuesIn(sqlcase::InitCases("cases/query/with.yaml")));
+
 INSTANTIATE_TEST_SUITE_P(EngineTestWindowRowQuery, EngineTest,
-                        testing::ValuesIn(sqlcase::InitCases("/cases/function/window/test_window_row.yaml")));
+                        testing::ValuesIn(sqlcase::InitCases("cases/function/window/test_window_row.yaml")));
 
 INSTANTIATE_TEST_SUITE_P(
     EngineTestWindowRowsRangeQuery, EngineTest,
-    testing::ValuesIn(sqlcase::InitCases("/cases/function/window/test_window_row_range.yaml")));
+    testing::ValuesIn(sqlcase::InitCases("cases/function/window/test_window_row_range.yaml")));
+
+INSTANTIATE_TEST_SUITE_P(
+    EngineTestWindowRowsCurrentRow, EngineTest,
+    testing::ValuesIn(sqlcase::InitCases("cases/function/window/test_current_row.yaml")));
 
 INSTANTIATE_TEST_SUITE_P(EngineTestWindowAttributes, EngineTest,
-                         testing::ValuesIn(sqlcase::InitCases("/cases/function/window/window_attributes.yaml")));
+                         testing::ValuesIn(sqlcase::InitCases("cases/function/window/window_attributes.yaml")));
 INSTANTIATE_TEST_SUITE_P(EngineTestWindowUnion, EngineTest,
-                        testing::ValuesIn(sqlcase::InitCases("/cases/function/window/test_window_union.yaml")));
+                        testing::ValuesIn(sqlcase::InitCases("cases/function/window/test_window_union.yaml")));
 INSTANTIATE_TEST_SUITE_P(EngineTestWindowMaxSize, EngineTest,
-                        testing::ValuesIn(sqlcase::InitCases("/cases/function/window/test_maxsize.yaml")));
+                        testing::ValuesIn(sqlcase::InitCases("cases/function/window/test_maxsize.yaml")));
 
 INSTANTIATE_TEST_SUITE_P(EngineTestMultipleDatabases, EngineTest,
-    testing::ValuesIn(sqlcase::InitCases("/cases/function/multiple_databases/test_multiple_databases.yaml")));
+    testing::ValuesIn(sqlcase::InitCases("cases/function/multiple_databases/test_multiple_databases.yaml")));
 INSTANTIATE_TEST_SUITE_P(EngineTestLastJoinSimple, EngineTest,
-                         testing::ValuesIn(sqlcase::InitCases("/cases/function/join/test_lastjoin_simple.yaml")));
+                         testing::ValuesIn(sqlcase::InitCases("cases/function/join/test_lastjoin_simple.yaml")));
 INSTANTIATE_TEST_SUITE_P(EngineTestLastJoinComplex, EngineTest,
-                        testing::ValuesIn(sqlcase::InitCases("/cases/function/join/test_lastjoin_complex.yaml")));
+                        testing::ValuesIn(sqlcase::InitCases("cases/function/join/test_lastjoin_complex.yaml")));
 INSTANTIATE_TEST_SUITE_P(EngineTestArithmetic, EngineTest,
-                        testing::ValuesIn(sqlcase::InitCases("/cases/function/expression/test_arithmetic.yaml")));
+                        testing::ValuesIn(sqlcase::InitCases("cases/function/expression/test_arithmetic.yaml")));
 INSTANTIATE_TEST_SUITE_P(EngineTestPredicate, EngineTest,
-                        testing::ValuesIn(sqlcase::InitCases("/cases/function/expression/test_predicate.yaml")));
+                        testing::ValuesIn(sqlcase::InitCases("cases/function/expression/test_predicate.yaml")));
 INSTANTIATE_TEST_SUITE_P(EngineTestCondition, EngineTest,
-                        testing::ValuesIn(sqlcase::InitCases("/cases/function/expression/test_condition.yaml")));
+                        testing::ValuesIn(sqlcase::InitCases("cases/function/expression/test_condition.yaml")));
 INSTANTIATE_TEST_SUITE_P(EngineTestLogic, EngineTest,
-                        testing::ValuesIn(sqlcase::InitCases("/cases/function/expression/test_logic.yaml")));
+                        testing::ValuesIn(sqlcase::InitCases("cases/function/expression/test_logic.yaml")));
 INSTANTIATE_TEST_SUITE_P(EngineTestType, EngineTest,
-                        testing::ValuesIn(sqlcase::InitCases("/cases/function/expression/test_type.yaml")));
+                        testing::ValuesIn(sqlcase::InitCases("cases/function/expression/test_type.yaml")));
 
 INSTANTIATE_TEST_SUITE_P(EngineTestSubSelect, EngineTest,
-                        testing::ValuesIn(sqlcase::InitCases("/cases/function/select/test_sub_select.yaml")));
+                        testing::ValuesIn(sqlcase::InitCases("cases/function/select/test_sub_select.yaml")));
 
 INSTANTIATE_TEST_SUITE_P(EngineTestUdfFunction, EngineTest,
-                        testing::ValuesIn(sqlcase::InitCases("/cases/function/function/test_udf_function.yaml")));
+                        testing::ValuesIn(sqlcase::InitCases("cases/function/function/test_udf_function.yaml")));
 INSTANTIATE_TEST_SUITE_P(
     EngineTestUdafFunction, EngineTest,
-    testing::ValuesIn(sqlcase::InitCases("/cases/function/function/test_udaf_function.yaml")));
+    testing::ValuesIn(sqlcase::InitCases("cases/function/function/test_udaf_function.yaml")));
 INSTANTIATE_TEST_SUITE_P(EngineTestCalculateFunction, EngineTest,
-                        testing::ValuesIn(sqlcase::InitCases("/cases/function/function/test_calculate.yaml")));
+                        testing::ValuesIn(sqlcase::InitCases("cases/function/function/test_calculate.yaml")));
 INSTANTIATE_TEST_SUITE_P(EngineTestDateFunction, EngineTest,
-                        testing::ValuesIn(sqlcase::InitCases("/cases/function/function/test_date.yaml")));
+                        testing::ValuesIn(sqlcase::InitCases("cases/function/function/test_date.yaml")));
 INSTANTIATE_TEST_SUITE_P(EngineTestStringFunction, EngineTest,
-                        testing::ValuesIn(sqlcase::InitCases("/cases/function/function/test_string.yaml")));
+                        testing::ValuesIn(sqlcase::InitCases("cases/function/function/test_string.yaml")));
 
 INSTANTIATE_TEST_SUITE_P(EngineTestSelectSample, EngineTest,
-                        testing::ValuesIn(sqlcase::InitCases("/cases/function/select/test_select_sample.yaml")));
+                        testing::ValuesIn(sqlcase::InitCases("cases/function/select/test_select_sample.yaml")));
 INSTANTIATE_TEST_SUITE_P(EngineTestWhere, EngineTest,
-                        testing::ValuesIn(sqlcase::InitCases("/cases/function/select/test_where.yaml")));
+                        testing::ValuesIn(sqlcase::InitCases("cases/function/select/test_where.yaml")));
 
 INSTANTIATE_TEST_SUITE_P(EngineTestFzFunction, EngineTest,
-                        testing::ValuesIn(sqlcase::InitCases("/cases/function/test_feature_zero_function.yaml")));
+                        testing::ValuesIn(sqlcase::InitCases("cases/function/test_feature_zero_function.yaml")));
 
 INSTANTIATE_TEST_SUITE_P(EngineTestFzSQLFunction, EngineTest,
-                        testing::ValuesIn(sqlcase::InitCases("/cases/function/test_fz_sql.yaml")));
+                        testing::ValuesIn(sqlcase::InitCases("cases/function/test_fz_sql.yaml")));
 INSTANTIATE_TEST_SUITE_P(EngineTestClusterWindowAndLastJoin, EngineTest,
-                        testing::ValuesIn(sqlcase::InitCases("/cases/function/cluster/window_and_lastjoin.yaml")));
+                        testing::ValuesIn(sqlcase::InitCases("cases/function/cluster/window_and_lastjoin.yaml")));
 INSTANTIATE_TEST_SUITE_P(EngineTestClusterWindowRow, EngineTest,
-                        testing::ValuesIn(sqlcase::InitCases("/cases/function/cluster/test_window_row.yaml")));
+                        testing::ValuesIn(sqlcase::InitCases("cases/function/cluster/test_window_row.yaml")));
 INSTANTIATE_TEST_SUITE_P(EngineTestClusterWindowRowRange, EngineTest,
-                        testing::ValuesIn(sqlcase::InitCases("/cases/function/cluster/test_window_row_range.yaml")));
+                        testing::ValuesIn(sqlcase::InitCases("cases/function/cluster/test_window_row_range.yaml")));
 
 INSTANTIATE_TEST_SUITE_P(
     EngineTestWindowExcludeCurrentTime, EngineTest,
-    testing::ValuesIn(sqlcase::InitCases("/cases/function/window/test_window_exclude_current_time.yaml")));
+    testing::ValuesIn(sqlcase::InitCases("cases/function/window/test_window_exclude_current_time.yaml")));
 
 INSTANTIATE_TEST_SUITE_P(EngineTestIndexOptimized, EngineTest,
-                        testing::ValuesIn(sqlcase::InitCases("/cases/function/test_index_optimized.yaml")));
+                        testing::ValuesIn(sqlcase::InitCases("cases/function/test_index_optimized.yaml")));
 INSTANTIATE_TEST_SUITE_P(EngineTestErrorWindow, EngineTest,
-                        testing::ValuesIn(sqlcase::InitCases("/cases/function/window/error_window.yaml")));
+                        testing::ValuesIn(sqlcase::InitCases("cases/function/window/error_window.yaml")));
 
 // myhug 场景正确性验证
 INSTANTIATE_TEST_SUITE_P(EngineTestFzMyhug, EngineTest,
-                        testing::ValuesIn(sqlcase::InitCases("/cases/function/fz_ddl/test_myhug.yaml")));
+                        testing::ValuesIn(sqlcase::InitCases("cases/function/fz_ddl/test_myhug.yaml")));
 
 // luoji 场景正确性验证
 INSTANTIATE_TEST_SUITE_P(EngineTestFzLuoji, EngineTest,
-                        testing::ValuesIn(sqlcase::InitCases("/cases/function/fz_ddl/test_luoji.yaml")));
+                        testing::ValuesIn(sqlcase::InitCases("cases/function/fz_ddl/test_luoji.yaml")));
 // bank 场景正确性验证
 INSTANTIATE_TEST_SUITE_P(EngineTestFzBank, EngineTest,
-                        testing::ValuesIn(sqlcase::InitCases("/cases/function/fz_ddl/test_bank.yaml")));
+                        testing::ValuesIn(sqlcase::InitCases("cases/function/fz_ddl/test_bank.yaml")));
 // TODO(qiliguo) #229 sql 语句加一个大 select, 选取其中几列，
 //   添加到 expect 中的做验证
 // imported from spark offline test
 // 单表反欺诈场景
 INSTANTIATE_TEST_SUITE_P(EngineTestSparkFQZ, EngineTest,
-                        testing::ValuesIn(sqlcase::InitCases("/cases/function/spark/test_fqz_studio.yaml")));
+                        testing::ValuesIn(sqlcase::InitCases("cases/function/spark/test_fqz_studio.yaml")));
 // 单表-广告场景
 INSTANTIATE_TEST_SUITE_P(EngineTestSparkAds, EngineTest,
-                        testing::ValuesIn(sqlcase::InitCases("/cases/function/spark/test_ads.yaml")));
+                        testing::ValuesIn(sqlcase::InitCases("cases/function/spark/test_ads.yaml")));
 // 单表-新闻场景
 INSTANTIATE_TEST_SUITE_P(EngineTestSparkNews, EngineTest,
-                        testing::ValuesIn(sqlcase::InitCases("/cases/function/spark/test_news.yaml")));
+                        testing::ValuesIn(sqlcase::InitCases("cases/function/spark/test_news.yaml")));
 // 多表-京东数据场景
 INSTANTIATE_TEST_SUITE_P(EngineTestSparkJD, EngineTest,
-                        testing::ValuesIn(sqlcase::InitCases("/cases/function/spark/test_jd.yaml")));
+                        testing::ValuesIn(sqlcase::InitCases("cases/function/spark/test_jd.yaml")));
 // 多表-信用卡用户转借记卡预测场景
 INSTANTIATE_TEST_SUITE_P(EngineTestSparkCredit, EngineTest,
-                        testing::ValuesIn(sqlcase::InitCases("/cases/function/spark/test_credit.yaml")));
+                        testing::ValuesIn(sqlcase::InitCases("cases/function/spark/test_credit.yaml")));
 
 // AUTOX
 INSTANTIATE_TEST_SUITE_P(EngineTestAutoXSQLFunction, EngineTest,
-                         testing::ValuesIn(sqlcase::InitCases("/cases/usecase/autox.yaml")));
+                         testing::ValuesIn(sqlcase::InitCases("cases/usecase/autox.yaml")));
 
 INSTANTIATE_TEST_SUITE_P(BatchRequestEngineTest, BatchRequestEngineTest,
-                        testing::ValuesIn(sqlcase::InitCases("/cases/function/test_batch_request.yaml")));
+                        testing::ValuesIn(sqlcase::InitCases("cases/function/test_batch_request.yaml")));
 }  // namespace vm
 }  // namespace hybridse

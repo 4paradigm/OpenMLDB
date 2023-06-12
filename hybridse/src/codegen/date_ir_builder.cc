@@ -140,7 +140,7 @@ base::Status DateIRBuilder::CastFrom(::llvm::BasicBlock* block,
 }
 bool DateIRBuilder::GetDate(::llvm::BasicBlock* block, ::llvm::Value* date,
                             ::llvm::Value** output) {
-    return Get(block, date, 0, output);
+    return Load(block, date, 0, output);
 }
 bool DateIRBuilder::SetDate(::llvm::BasicBlock* block, ::llvm::Value* date,
                             ::llvm::Value* code) {

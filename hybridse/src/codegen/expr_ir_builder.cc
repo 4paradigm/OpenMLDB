@@ -15,9 +15,13 @@
  */
 
 #include "codegen/expr_ir_builder.h"
+
 #include <string>
 #include <utility>
 #include <vector>
+
+#include "base/numeric.h"
+#include "codegen/array_ir_builder.h"
 #include "codegen/buf_ir_builder.h"
 #include "codegen/cond_select_ir_builder.h"
 #include "codegen/context.h"
@@ -84,9 +88,9 @@ Status ExprIRBuilder::Build(const ::hybridse::node::ExprNode* node,
                             NativeValue* output) {
     CHECK_TRUE(node != nullptr && output != nullptr, kCodegenError,
                "Node or output is null");
-    std::string cache_key = "@expr(#" + std::to_string(node->node_id()) + ")";
+    std::string cache_key = absl::StrCat("@expr(#", node->node_id(), ")");
     if (frame_ != nullptr) {
-        cache_key.append(" over " + frame_->GetExprString());
+        absl::StrAppend(&cache_key, " over ", frame_->GetExprString());
     }
     if (ctx_->GetCurrentScope()->sv()->FindVar(cache_key, output)) {
         return Status::OK();
@@ -191,6 +195,10 @@ Status ExprIRBuilder::Build(const ::hybridse::node::ExprNode* node,
         }
         case ::hybridse::node::kExprEscaped: {
             CHECK_STATUS(BuildEscapeExpr(dynamic_cast<const ::hybridse::node::EscapedExpr*>(node), output));
+            break;
+        }
+        case ::hybridse::node::kExprArray: {
+            CHECK_STATUS(BuildArrayExpr(dynamic_cast<const node::ArrayExpr*>(node), output));
             break;
         }
         default: {
@@ -402,11 +410,8 @@ Status ExprIRBuilder::BuildStructExpr(const ::hybridse::node::StructExpr* node,
         for (auto each : node->GetFileds()->children) {
             node::FnParaNode* field = dynamic_cast<node::FnParaNode*>(each);
             ::llvm::Type* type = nullptr;
-            CHECK_TRUE(ConvertHybridSeType2LlvmType(field->GetParaType(),
-                                                    ctx_->GetModule(), &type),
-                       kCodegenError,
-                       "Invalid struct with unacceptable field type: " +
-                           field->GetParaType()->GetName());
+            CHECK_TRUE(GetLlvmType(ctx_->GetModule(), field->GetParaType(), &type), kCodegenError,
+                         "Invalid struct with unacceptable field type: ", field->GetParaType()->DebugString());
             members.push_back(type);
         }
     }
@@ -458,7 +463,7 @@ Status ExprIRBuilder::BuildWindow(NativeValue* output) {  // NOLINT
             row_key = row_key_value.GetValue(&builder);
         }
         CHECK_TRUE(ok && nullptr != row_key, kCodegenError, "Fail to build inner range window: row key is null");
-        if (frame_->exclude_current_row_) {
+        if (frame_->exclude_current_row_ && frame_->GetHistoryRangeEnd() == 0) {
             ok = window_ir_builder.BuildInnerRowsRangeList(list_ptr, row_key, 1,
                                                            frame_->GetHistoryRangeStart(), &window_ptr);
         } else {
@@ -466,8 +471,12 @@ Status ExprIRBuilder::BuildWindow(NativeValue* output) {  // NOLINT
                                                        frame_->GetHistoryRangeStart(), &window_ptr);
         }
     } else if (frame_->frame_rows() != nullptr) {
-        ok = window_ir_builder.BuildInnerRowsList(list_ptr, -1 * frame_->GetHistoryRowsEnd(),
-                                                  -1 * frame_->GetHistoryRowsStart(), &window_ptr);
+        int64_t end = ::hybridse::base::safe_inverse(frame_->GetHistoryRowsEnd());
+        if (frame_->exclude_current_row_ && end == 0) {
+            end = 1;
+        }
+        ok = window_ir_builder.BuildInnerRowsList(
+            list_ptr, end, ::hybridse::base::safe_inverse(frame_->GetHistoryRowsStart()), &window_ptr);
     }
 
     // int8_t** -> ListRef* { int8_t* }
@@ -516,27 +525,22 @@ Status ExprIRBuilder::BuildParameterExpr(const ::hybridse::node::ParameterExpr* 
 // param col
 // param output
 // return
-Status ExprIRBuilder::BuildColumnRef(
-    const ::hybridse::node::ColumnRefNode* node, NativeValue* output) {
+Status ExprIRBuilder::BuildColumnRef(const ::hybridse::node::ColumnRefNode* node, NativeValue* output) {
     const std::string relation_name = node->GetRelationName();
     const std::string col = node->GetColumnName();
 
     size_t schema_idx;
     size_t col_idx;
-    CHECK_STATUS(ctx_->schemas_context()->ResolveColumnRefIndex(
-                     node, &schema_idx, &col_idx),
+    CHECK_STATUS(ctx_->schemas_context()->ResolveColumnRefIndex(node, &schema_idx, &col_idx),
                  "Fail to find context with " + node->GetExprString());
 
     ::llvm::Value* value = NULL;
-    const std::string frame_str =
-        nullptr == frame_ ? "" : frame_->GetExprString();
-    DLOG(INFO) << "get table column " << col;
+    const std::string frame_str = nullptr == frame_ ? "" : frame_->GetExprString();
+    DLOG(INFO) << "get table column from row " << col;
     // not found
-    VariableIRBuilder variable_ir_builder(ctx_->GetCurrentBlock(),
-                                          ctx_->GetCurrentScope()->sv());
+    VariableIRBuilder variable_ir_builder(ctx_->GetCurrentBlock(), ctx_->GetCurrentScope()->sv());
     Status status;
-    bool ok = variable_ir_builder.LoadColumnRef(relation_name, col, frame_str,
-                                                &value, status);
+    bool ok = variable_ir_builder.LoadColumnRef(relation_name, col, frame_str, &value, status);
     if (ok) {
         *output = NativeValue::Create(value);
         return Status::OK();
@@ -545,19 +549,16 @@ Status ExprIRBuilder::BuildColumnRef(
     NativeValue window;
     CHECK_STATUS(BuildWindow(&window), "Fail to build window");
 
-    DLOG(INFO) << "get table column " << col;
+    DLOG(INFO) << "get table column from window " << col;
     // NOT reuse for iterator
-    MemoryWindowDecodeIRBuilder window_ir_builder(ctx_->schemas_context(),
-                                                  ctx_->GetCurrentBlock());
-    ok = window_ir_builder.BuildGetCol(schema_idx, col_idx, window.GetRaw(),
-                                       &value);
-    CHECK_TRUE(ok && value != nullptr, kCodegenError,
-               "fail to find column " + col);
+    MemoryWindowDecodeIRBuilder window_ir_builder(ctx_->schemas_context(), ctx_->GetCurrentBlock());
+    ::llvm::Value* wvalue = NULL;
+    ok = window_ir_builder.BuildGetCol(schema_idx, col_idx, window.GetRaw(), &wvalue);
+    CHECK_TRUE(ok && wvalue != nullptr, kCodegenError, "fail to find column " + col);
 
-    ok = variable_ir_builder.StoreColumnRef(relation_name, col, frame_str,
-                                            value, status);
+    ok = variable_ir_builder.StoreColumnRef(relation_name, col, frame_str, wvalue, status);
     CHECK_TRUE(ok, kCodegenError, "fail to store col for ", status.str());
-    *output = NativeValue::Create(value);
+    *output = NativeValue::Create(wvalue);
     return Status::OK();
 }
 
@@ -1010,10 +1011,8 @@ Status ExprIRBuilder::BuildGetFieldExpr(
     return Status::OK();
 }
 
-Status ExprIRBuilder::BuildCaseExpr(
-    const ::hybridse::node::CaseWhenExprNode* node, NativeValue* output) {
-    CHECK_TRUE(nullptr != node && nullptr != node->when_expr_list() &&
-                   node->when_expr_list()->GetChildNum() > 0,
+Status ExprIRBuilder::BuildCaseExpr(const ::hybridse::node::CaseWhenExprNode* node, NativeValue* output) {
+    CHECK_TRUE(nullptr != node && nullptr != node->when_expr_list() && node->when_expr_list()->GetChildNum() > 0,
                kCodegenError);
     node::NodeManager* nm = ctx_->node_manager();
     node::ExprNode* expr =
@@ -1024,8 +1023,13 @@ Status ExprIRBuilder::BuildCaseExpr(
         expr = nm->MakeCondExpr(when_expr->when_expr(), when_expr->then_expr(),
                                 expr);
     }
-    return BuildCondExpr(dynamic_cast<::hybridse::node::CondExpr*>(expr),
-                         output);
+
+    auto library = udf::DefaultUdfLibrary::get();
+    node::ExprAnalysisContext analysis_ctx(ctx_->node_manager(), library, ctx_->schemas_context(), nullptr);
+    passes::ResolveFnAndAttrs resolver(&analysis_ctx);
+    node::ExprNode* transformed = nullptr;
+    CHECK_STATUS(resolver.VisitExpr(expr, &transformed));
+    return Build(transformed, output);
 }
 
 Status ExprIRBuilder::BuildCondExpr(const ::hybridse::node::CondExpr* node,
@@ -1034,13 +1038,30 @@ Status ExprIRBuilder::BuildCondExpr(const ::hybridse::node::CondExpr* node,
     NativeValue cond_value;
     CHECK_STATUS(this->Build(node->GetCondition(), &cond_value));
 
+    auto* out_type = node->GetOutputType();
+    ::llvm::Type* llvm_out_type = nullptr;
+    CHECK_TRUE(GetLlvmType(ctx_->GetModule(), out_type, &llvm_out_type),
+               kCodegenError, "unsupported casting type: ", out_type->DebugString());
+    CastExprIRBuilder cast_builder(ctx_->GetCurrentBlock());
+
     // build left
     NativeValue left_value;
     CHECK_STATUS(this->Build(node->GetLeft(), &left_value));
 
+    // FIXME: sometimes built NativeValue may not have type information (GetType() returns NULL),
+    // this may happen inside some udaf functions (e.g sum), so we skip the case in favor of the
+    // old approach that still work. However it is better to correct it so every NativeValue has
+    // its type information resolved correctly during codegen.
+    if (left_value.GetType() != nullptr && left_value.GetType() != llvm_out_type) {
+        CHECK_STATUS(cast_builder.Cast(left_value, llvm_out_type, &left_value));
+    }
+
     // build right
     NativeValue right_value;
     CHECK_STATUS(this->Build(node->GetRight(), &right_value));
+    if (right_value.GetType() != nullptr && right_value.GetType() != llvm_out_type) {
+        CHECK_STATUS(cast_builder.Cast(right_value, llvm_out_type, &right_value));
+    }
 
     CondSelectIRBuilder cond_select_builder;
     return cond_select_builder.Select(ctx_->GetCurrentBlock(), cond_value,
@@ -1127,6 +1148,43 @@ Status ExprIRBuilder::ExtractSliceFromRow(const NativeValue& input_value, const 
     *slice_size = builder.CreateIntCast(
         builder.CreateCall(get_slice_size_func, {row_ptr, slice_idx_value}),
         int32_ty, false);
+    return Status::OK();
+}
+
+Status ExprIRBuilder::BuildArrayExpr(const ::hybridse::node::ArrayExpr* node, NativeValue* output) {
+    auto array_type = dynamic_cast<const node::FixedArrayType*>(node->GetOutputType());
+    CHECK_TRUE(array_type != nullptr, kCodegenError, "not FixedArrayType");
+
+    ::llvm::Type* ele_type = nullptr;
+    CHECK_TRUE(GetLlvmType(ctx_->GetModule(), array_type->element_type(), &ele_type), kCodegenError);
+
+    llvm::IRBuilder<> builder(ctx_->GetCurrentBlock());
+
+    if (node->GetChildNum() == 0) {
+        // build empty array
+        ArrayIRBuilder ir_builder(ctx_->GetModule(), ele_type);
+        CHECK_STATUS(ir_builder.NewEmptyArray(ctx_->GetCurrentBlock(), output));
+        return Status::OK();
+    }
+
+    CastExprIRBuilder cast_builder(ctx_->GetCurrentBlock());
+    std::vector<NativeValue> elements;
+    for (auto& ele : node->children_) {
+        NativeValue val;
+        CHECK_STATUS(Build(ele, &val));
+        if (val.GetType() != ele_type) {
+            NativeValue casted;
+            CHECK_STATUS(cast_builder.Cast(val, ele_type, &casted));
+            elements.push_back(casted);
+        } else {
+            elements.push_back(val);
+        }
+    }
+
+    ::llvm::Value* num_elements = builder.getInt64(elements.size());
+    ArrayIRBuilder array_builder(ctx_->GetModule(), ele_type, num_elements);
+    CHECK_STATUS(array_builder.NewFixedArray(ctx_->GetCurrentBlock(), elements, output));
+
     return Status::OK();
 }
 }  // namespace codegen

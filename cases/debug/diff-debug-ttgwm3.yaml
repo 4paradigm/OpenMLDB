@@ -36,7 +36,7 @@ cases:
           distinct_count(`f_userAddress`) over flattenRequest_f_temDescription_eventTime_0s_432001s_100 as flattenRequest_f_userAddress_window_unique_count_112,
           distinct_count(`f_userAddress`) over flattenRequest_f_itemTitle_eventTime_0s_172801s_100 as flattenRequest_f_userAddress_window_unique_count_113,
           distinct_count(`f_userAddress`) over flattenRequest_f_itemTitle_eventTime_0s_432001s_100 as flattenRequest_f_userAddress_window_unique_count_114,
-          fz_top1_ratio(`f_itemTitle`) over flattenRequest_f_requestId_eventTime_0s_432001s_100 as flattenRequest_f_itemTitle_window_top1_ratio_126,
+          top1_ratio(`f_itemTitle`) over flattenRequest_f_requestId_eventTime_0s_432001s_100 as flattenRequest_f_itemTitle_window_top1_ratio_126,
           case when !isnull(at(`f_userGender`, 0)) over flattenRequest_f_requestId_eventTime_0s_432001s_100 then count(`f_userGender`) over flattenRequest_f_requestId_eventTime_0s_432001s_100 else null end as flattenRequest_f_userGender_window_count_127,
           case when !isnull(at(`f_itemExpired`, 0)) over flattenRequest_f_requestId_eventTime_0s_432001s_100 then count(`f_itemExpired`) over flattenRequest_f_requestId_eventTime_0s_432001s_100 else null end as flattenRequest_f_itemExpired_window_count_128
       from

@@ -692,7 +692,7 @@ TEST_F(SqlCaseTest, ExtractSqlCase) {
 
 TEST_F(SqlCaseTest, ExtractYamlSqlCase) {
     std::string hybridse_dir = hybridse::sqlcase::FindSqlCaseBaseDirPath();
-    std::string case_path = "/cases/yaml/demo.yaml";
+    std::string case_path = "cases/yaml/demo.yaml";
     std::vector<SqlCase> cases;
 
     ASSERT_TRUE(hybridse::sqlcase::SqlCase::CreateSqlCasesFromYaml(
@@ -870,7 +870,7 @@ TEST_F(SqlCaseTest, ExtractYamlSqlCase) {
 
 TEST_F(SqlCaseTest, ExtractYamlSqlCase2) {
     std::string hybridse_dir = hybridse::sqlcase::FindSqlCaseBaseDirPath();
-    std::string case_path = "/cases/yaml/rtidb_demo.yaml";
+    std::string case_path = "cases/yaml/rtidb_demo.yaml";
     std::vector<SqlCase> cases;
 
     ASSERT_TRUE(hybridse::sqlcase::SqlCase::CreateSqlCasesFromYaml(
@@ -1032,7 +1032,7 @@ TEST_F(SqlCaseTest, ExtractYamlSqlCase2) {
 
 TEST_F(SqlCaseTest, ExtractYamlWithDebugSqlCase) {
     std::string hybridse_dir = hybridse::sqlcase::FindSqlCaseBaseDirPath();
-    std::string case_path = "/cases/yaml/rtidb_demo_debug.yaml";
+    std::string case_path = "cases/yaml/rtidb_demo_debug.yaml";
     std::vector<SqlCase> cases;
 
     ASSERT_TRUE(hybridse::sqlcase::SqlCase::CreateSqlCasesFromYaml(
@@ -1048,7 +1048,7 @@ TEST_F(SqlCaseTest, ExtractYamlWithDebugSqlCase) {
 }
 
 TEST_F(SqlCaseTest, InitCasesTest) {
-    std::string case_path = "/cases/yaml/demo.yaml";
+    std::string case_path = "cases/yaml/demo.yaml";
     {
         std::vector<SqlCase> cases = InitCases(case_path);
         ASSERT_EQ(5u, cases.size());
@@ -1061,7 +1061,7 @@ TEST_F(SqlCaseTest, InitCasesTest) {
 
 // dataProvider size = 1
 TEST_F(SqlCaseTest, DataProviderSize1Test) {
-    std::string case_path = "/cases/yaml/demo_data_provider_sz1.yaml";
+    std::string case_path = "cases/yaml/demo_data_provider_sz1.yaml";
     auto cases = InitCases(case_path);
     ASSERT_EQ(5u, cases.size());
     auto& case2 = cases.at(1);
@@ -1076,7 +1076,7 @@ TEST_F(SqlCaseTest, DataProviderSize1Test) {
 
 // dataProvider size > 1
 TEST_F(SqlCaseTest, DataProviderSize2Test) {
-    std::string case_path = "/cases/yaml/demo_data_provider_sz2.yaml";
+    std::string case_path = "cases/yaml/demo_data_provider_sz2.yaml";
     auto cases = InitCases(case_path);
     ASSERT_EQ(6u, cases.size());
 
@@ -1096,7 +1096,7 @@ TEST_F(SqlCaseTest, DataProviderSize2Test) {
 
 // dataProvider is two dimension sequence
 TEST_F(SqlCaseTest, DataProviderSize2SeqTest) {
-    std::string case_path = "/cases/yaml/demo_data_provider_sz2_sequence.yaml";
+    std::string case_path = "cases/yaml/demo_data_provider_sz2_sequence.yaml";
     auto cases = InitCases(case_path);
     ASSERT_EQ(6u, cases.size());
 
@@ -1115,7 +1115,7 @@ TEST_F(SqlCaseTest, DataProviderSize2SeqTest) {
 
 // dataProvider is 3 dimension map mixed of map and sequence
 TEST_F(SqlCaseTest, DataProviderSize3MixedTest) {
-    std::string case_path = "/cases/yaml/demo_data_provider_sz3_mixed.yaml";
+    std::string case_path = "cases/yaml/demo_data_provider_sz3_mixed.yaml";
     auto cases = InitCases(case_path);
     ASSERT_EQ(8u, cases.size());
 
@@ -1133,7 +1133,7 @@ TEST_F(SqlCaseTest, DataProviderSize3MixedTest) {
 }
 
 TEST_F(SqlCaseTest, ExpectProviderDefaultTest) {
-    std::string case_path = "/cases/yaml/demo_expect_provider_sz2_default.yaml";
+    std::string case_path = "cases/yaml/demo_expect_provider_sz2_default.yaml";
     auto cases = InitCases(case_path);
     ASSERT_EQ(6u, cases.size());
 
@@ -1149,7 +1149,7 @@ TEST_F(SqlCaseTest, ExpectProviderDefaultTest) {
 }
 
 TEST_F(SqlCaseTest, EmptyExpectProviderTest) {
-    std::string case_path = "/cases/yaml/demo_empty_expect_provider.yaml";
+    std::string case_path = "cases/yaml/demo_empty_expect_provider.yaml";
     auto cases = InitCases(case_path);
     ASSERT_EQ(10u, cases.size());
 
@@ -1165,20 +1165,20 @@ TEST_F(SqlCaseTest, BuildCreateSpSqlFromInputTest) {
         input.columns_ = {"c1 string", "c2 int", "c3 bigint", "c4 timestamp"};
         SqlCase sql_case;
         sql_case.inputs_.push_back(input);
-        std::string sql = "select c1, c2, c3, c4 from t1";
+        sql_case.sp_name_ = "sp";
+        std::string sql = " select c1, c2, c3, c4 from t1   ";
         std::string sp_sql = "";
-        ASSERT_TRUE(sql_case.BuildCreateSpSqlFromInput(0, sql, {}, &sp_sql));
-        ASSERT_EQ(
-            "CREATE Procedure (\n"
-            "c1 string,\n"
-            "c2 int,\n"
-            "c3 bigint,\n"
-            "c4 timestamp)\n"
-            "BEGIN\n"
-            "select c1, c2, c3, c4 from t1\n"
-            "END;",
-            sp_sql)
-            << sp_sql;
+        auto s = sql_case.BuildCreateSpSqlFromInput(0, sql, {});
+        ASSERT_TRUE(s.ok()) << s.status();
+        ASSERT_EQ(R"s(CREATE PROCEDURE sp (
+c1 string,
+c2 int,
+c3 bigint,
+c4 timestamp)
+BEGIN
+select c1, c2, c3, c4 from t1;
+END;)s",
+                  s.value());
     }
 
     // create procedure with common idx
@@ -1186,21 +1186,21 @@ TEST_F(SqlCaseTest, BuildCreateSpSqlFromInputTest) {
         SqlCase::TableInfo input;
         input.columns_ = {"c1 string", "c2 int", "c3 bigint", "c4 timestamp"};
         SqlCase sql_case;
+        sql_case.sp_name_ = "sp1";
         sql_case.inputs_.push_back(input);
-        std::string sql = "select c1, c2, c3, c4 from t1";
+        std::string sql = "select c1, c2, c3, c4 from t1;";
         std::string sp_sql = "";
-        ASSERT_TRUE(sql_case.BuildCreateSpSqlFromInput(0, sql, {0, 1, 3}, &sp_sql));
-        ASSERT_EQ(
-            "CREATE Procedure (\n"
-            "const c1 string,\n"
-            "const c2 int,\n"
-            "c3 bigint,\n"
-            "const c4 timestamp)\n"
-            "BEGIN\n"
-            "select c1, c2, c3, c4 from t1\n"
-            "END;",
-            sp_sql)
-            << sp_sql;
+        auto s = sql_case.BuildCreateSpSqlFromInput(0, sql, {0, 1, 3});
+        ASSERT_TRUE(s.ok()) << s.status();
+        ASSERT_EQ(R"s(CREATE PROCEDURE sp1 (
+const c1 string,
+const c2 int,
+c3 bigint,
+const c4 timestamp)
+BEGIN
+select c1, c2, c3, c4 from t1;
+END;)s",
+                  s.value());
     }
 }
 }  // namespace sqlcase

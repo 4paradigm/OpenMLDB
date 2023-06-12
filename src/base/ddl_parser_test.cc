@@ -36,6 +36,7 @@ std::ostream& operator<<(std::ostream& os, IndexMap& index_map) {
 class DDLParserTest : public ::testing::Test {
  public:
     void SetUp() override {
+        db.set_name("DDLParserTest");
         ASSERT_TRUE(AddTableToDB(
             &db, "behaviourTable",
             {"itemId",    "string", "reqId",  "string",  "tags",   "string", "instanceKey", "string", "eventTime",
@@ -193,6 +194,51 @@ TEST_F(DDLParserTest, joinExtract) {
         auto index_map = DDLParser::ExtractIndexes(sql, db);
         ASSERT_FALSE(index_map.empty());
         LOG(INFO) << index_map;
+        // the added index only has key, no ts
+        AddIndexToDB(index_map, &db);
+        LOG(INFO) << "after add index:\n" << DDLParser::Explain(sql, db);
+    }
+}
+
+TEST_F(DDLParserTest, complexJoin) {
+    {
+        // last join t2 must have a simple equal condition
+        auto sql =
+            "SELECT t1.col1 as t1_col1, t2.col2 as t2_col2 FROM t1 last join t2 order by t2.col5 on abs(t1.col1) = "
+            "t2.col1 "
+            "and t2.col5 >= t1.col5;";
+
+        auto index_map = DDLParser::ExtractIndexes(sql, db);
+        ASSERT_FALSE(index_map.empty());
+        LOG(INFO) << index_map;
+
+        // so add index on t2 (key=col2, ts=col5)
+        AddIndexToDB(index_map, &db);
+
+        // TODO(hw): check data provider type
+        LOG(INFO) << "after add index:\n" << DDLParser::Explain(sql, db);
+    }
+
+    {
+        ClearAllIndex();
+        // no simple equal condition
+        auto sql =
+            "SELECT t1.col1, t1.col2, t2.col1, t2.col2 FROM t1 left join t2 on timestamp(int64(t1.col6)) = "
+            "timestamp(int64(t2.col6));";
+        auto index_map = DDLParser::ExtractIndexes(sql, db);
+        ASSERT_TRUE(index_map.empty());
+        // must have a simple equal condition
+        sql =
+            "SELECT t1.col1, t1.col2, t2.col1, t2.col2 FROM t1 left join t2 on timestamp(int64(t1.col6)) = "
+            "timestamp(int64(t2.col6)) and t1.col1 = t2.col2;";
+        index_map = DDLParser::ExtractIndexes(sql, db);
+        ASSERT_EQ(index_map.size(), 1);
+        // index is on t2.col2
+        LOG(INFO) << index_map;
+        ASSERT_EQ(index_map["t2"].size(), 1);
+        auto& keys = index_map["t2"][0].col_name();
+        ASSERT_EQ(keys.size(), 1);
+        ASSERT_STREQ(keys[0].c_str(), "col2");
         // the added index only has key, no ts
         AddIndexToDB(index_map, &db);
         LOG(INFO) << "after add index:\n" << DDLParser::Explain(sql, db);
@@ -452,9 +498,8 @@ TEST_F(DDLParserTest, twoTable) {
     auto ttl2 = t2_index->second.begin()->ttl();
     ASSERT_EQ(ttl1.ttl_type(), type::TTLType::kAbsoluteTime);
     ASSERT_EQ(ttl1.abs_ttl(), 1);
-    // default ttl
-    ASSERT_EQ(ttl2.ttl_type(), type::TTLType::kAbsoluteTime);
-    ASSERT_EQ(ttl2.abs_ttl(), 0);
+    ASSERT_EQ(ttl2.ttl_type(), type::TTLType::kLatestTime);
+    ASSERT_EQ(ttl2.lat_ttl(), 1);
 }
 
 TEST_F(DDLParserTest, getOutputSchema) {
@@ -709,6 +754,42 @@ TEST_F(DDLParserTest, extractLongWindow) {
         auto extract_status = DDLParser::ExtractLongWindowInfos(query, window_map, &window_infos);
         ASSERT_TRUE(!extract_status.IsOK());
     }
+}
+
+TEST_F(DDLParserTest, validateSQL) {
+    std::string query = "SWLECT 1;";
+    auto ret = DDLParser::ValidateSQLInBatch(query, db);
+    ASSERT_FALSE(ret.empty());
+    ASSERT_EQ(ret.size(), 2);
+    LOG(INFO) << ret[0];
+
+    query = "SELECT * from not_exist_table;";
+    ret = DDLParser::ValidateSQLInBatch(query, db);
+    ASSERT_FALSE(ret.empty());
+    ASSERT_EQ(ret.size(), 2);
+    LOG(INFO) << ret[0];
+
+    query = "SELECT foo(col1) from t1;";
+    ret = DDLParser::ValidateSQLInBatch(query, db);
+    ASSERT_FALSE(ret.empty());
+    ASSERT_EQ(ret.size(), 2);
+    LOG(INFO) << ret[0] << "\n" << ret[1];
+
+    query = "SELECT * FROM t1;";
+    ret = DDLParser::ValidateSQLInBatch(query, db);
+    ASSERT_TRUE(ret.empty());
+
+    query = "SELECT foo(col1) from t1;";
+    ret = DDLParser::ValidateSQLInRequest(query, db);
+    ASSERT_FALSE(ret.empty());
+    ASSERT_EQ(ret.size(), 2);
+    LOG(INFO) << ret[0] << "\n" << ret[1];
+
+    query =
+        "SELECT count(col1) over w1 from t1 window w1 as(partition by col0 order by col1 rows between unbounded "
+        "preceding and current row);";
+    ret = DDLParser::ValidateSQLInRequest(query, db);
+    ASSERT_TRUE(ret.empty());
 }
 }  // namespace openmldb::base
 

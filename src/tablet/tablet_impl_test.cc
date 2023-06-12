@@ -17,6 +17,7 @@
 #include "tablet/tablet_impl.h"
 
 #include <fcntl.h>
+#include <snappy.h>
 #include <gflags/gflags.h>
 #include <google/protobuf/io/zero_copy_stream_impl.h>
 #include <google/protobuf/text_format.h>
@@ -34,6 +35,7 @@
 #include "codec/codec.h"
 #include "codec/row_codec.h"
 #include "codec/schema_codec.h"
+#include "codec/sdk_codec.h"
 #include "common/timer.h"
 #include "gtest/gtest.h"
 #include "log/log_reader.h"
@@ -72,10 +74,6 @@ using ::openmldb::type::TTLType::kAbsOrLat;
 
 uint32_t counter = 10;
 static const ::openmldb::base::DefaultComparator scmp;
-
-inline std::string GenRand() {
-    return std::to_string(rand() % 10000000 + 1);  // NOLINT
-}
 
 class MockClosure : public ::google::protobuf::Closure {
  public:
@@ -130,13 +128,18 @@ bool RollWLogFile(::openmldb::storage::WriteHandle** wh, ::openmldb::storage::Lo
     return true;
 }
 
-void PrepareLatestTableData(TabletImpl& tablet, int32_t tid,  // NOLINT
-                            int32_t pid) {
+void PrepareLatestTableData(TabletImpl& tablet, int32_t tid, int32_t pid, bool compress = false) { // NOLINT
     for (int32_t i = 0; i < 100; i++) {
         ::openmldb::api::PutRequest prequest;
         ::openmldb::test::SetDimension(0, std::to_string(i % 10), prequest.add_dimensions());
         prequest.set_time(i + 1);
-        prequest.set_value(::openmldb::test::EncodeKV(std::to_string(i % 10), std::to_string(i)));
+        std::string value = ::openmldb::test::EncodeKV(std::to_string(i % 10), std::to_string(i));
+        if (compress) {
+            std::string compressed;
+            ::snappy::Compress(value.c_str(), value.length(), &compressed);
+            value.swap(compressed);
+        }
+        prequest.set_value(value);
         prequest.set_tid(tid);
         prequest.set_pid(pid);
         ::openmldb::api::PutResponse presponse;
@@ -149,7 +152,13 @@ void PrepareLatestTableData(TabletImpl& tablet, int32_t tid,  // NOLINT
         ::openmldb::api::PutRequest prequest;
         ::openmldb::test::SetDimension(0, "10", prequest.add_dimensions());
         prequest.set_time(i % 10 + 1);
-        prequest.set_value(::openmldb::test::EncodeKV("10", std::to_string(i)));
+        std::string value = ::openmldb::test::EncodeKV("10", std::to_string(i));
+        if (compress) {
+            std::string compressed;
+            ::snappy::Compress(value.c_str(), value.length(), &compressed);
+            value.swap(compressed);
+        }
+        prequest.set_value(value);
         prequest.set_tid(tid);
         prequest.set_pid(pid);
         ::openmldb::api::PutResponse presponse;
@@ -161,7 +170,6 @@ void PrepareLatestTableData(TabletImpl& tablet, int32_t tid,  // NOLINT
 
 void AddDefaultSchema(uint64_t abs_ttl, uint64_t lat_ttl, ::openmldb::type::TTLType ttl_type,
                       ::openmldb::api::TableMeta* table_meta) {
-    table_meta->set_format_version(1);
     auto column_desc = table_meta->add_column_desc();
     column_desc->set_name("idx0");
     column_desc->set_data_type(::openmldb::type::kString);
@@ -210,7 +218,6 @@ void AddDefaultAggregatorSchema(::openmldb::api::TableMeta* table_meta) {
 
 std::string EncodeAggrRow(const std::string& key, int64_t ts, int32_t val) {
     ::openmldb::api::TableMeta table_meta;
-    table_meta.set_format_version(1);
     SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "id", openmldb::type::DataType::kString);
     SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "ts_col", openmldb::type::DataType::kTimestamp);
     SchemaCodec::SetColumnDesc(table_meta.add_column_desc(), "col3", openmldb::type::DataType::kInt);
@@ -318,10 +325,10 @@ TEST_F(TabletImplTest, Init) {
         ASSERT_TRUE(tablet.Init(""));
         create_and_drop_table(&tablet, counter++);
     }
-
+    ::openmldb::test::TempPath tmp_path;
     {
         TabletImpl tablet;
-        FLAGS_recycle_bin_root_path = "/tmp/recycle/" + ::openmldb::tablet::GenRand();
+        FLAGS_recycle_bin_root_path = tmp_path.GetTempPath();
         ASSERT_TRUE(tablet.Init(""));
         create_and_drop_table(&tablet, counter++, common::kMemory, true);
     }
@@ -335,7 +342,7 @@ TEST_F(TabletImplTest, Init) {
 
     {
         TabletImpl tablet;
-        FLAGS_recycle_bin_hdd_root_path = "/tmp/recycle/" + ::openmldb::tablet::GenRand();
+        FLAGS_recycle_bin_hdd_root_path = tmp_path.GetTempPath();
         ASSERT_TRUE(tablet.Init(""));
         create_and_drop_table(&tablet, counter++, common::kHDD, true);
     }
@@ -349,7 +356,7 @@ TEST_F(TabletImplTest, Init) {
 
     {
         TabletImpl tablet;
-        FLAGS_recycle_bin_ssd_root_path = "/tmp/recycle/" + ::openmldb::tablet::GenRand();
+        FLAGS_recycle_bin_ssd_root_path = tmp_path.GetTempPath();
         ASSERT_TRUE(tablet.Init(""));
         create_and_drop_table(&tablet, counter++, common::kSSD, true);
     }
@@ -1560,7 +1567,6 @@ TEST_P(TabletImplTest, TraverseTTLTS) {
     table_meta->set_pid(1);
     table_meta->set_storage_mode(storage_mode);
     table_meta->set_seg_cnt(1);
-    table_meta->set_format_version(1);
     SchemaCodec::SetColumnDesc(table_meta->add_column_desc(), "card", ::openmldb::type::kVarchar);
     SchemaCodec::SetColumnDesc(table_meta->add_column_desc(), "mcc", ::openmldb::type::kVarchar);
     SchemaCodec::SetColumnDesc(table_meta->add_column_desc(), "price", ::openmldb::type::kBigInt);
@@ -1689,7 +1695,7 @@ TEST_P(TabletImplTest, TraverseTTLTS) {
     tablet.Traverse(NULL, &sr, srp, &closure);
     ASSERT_EQ(0, srp->code());
     ASSERT_EQ(26, (signed)srp->count());
-    ASSERT_EQ("mcc21009", srp->pk());
+    ASSERT_EQ("mcc21008", srp->pk());
     ASSERT_FALSE(srp->is_finish());
     sr.set_pk(srp->pk());
     sr.set_ts(srp->ts());
@@ -2020,9 +2026,9 @@ TEST_F(TabletImplTest, DropTableNoRecycleMem) {
     std::string tmp_recycle_bin_root_path = FLAGS_recycle_bin_root_path;
     std::vector<std::string> file_vec;
     FLAGS_recycle_bin_enabled = false;
-    FLAGS_db_root_path = "/tmp/gtest/db";
-    FLAGS_recycle_bin_root_path = "/tmp/gtest/recycle";
-    ::openmldb::base::RemoveDirRecursive("/tmp/gtest");
+    ::openmldb::test::TempPath tmp_path;
+    FLAGS_db_root_path = tmp_path.GetTempPath();
+    FLAGS_recycle_bin_root_path = tmp_path.GetTempPath();
     TabletImpl tablet;
     uint32_t id = counter++;
     tablet.Init("");
@@ -2054,7 +2060,6 @@ TEST_F(TabletImplTest, DropTableNoRecycleMem) {
     ::openmldb::base::GetChildFileName(FLAGS_recycle_bin_root_path, file_vec);
     ASSERT_TRUE(file_vec.empty());
     ASSERT_EQ(0, CreateDefaultTable("", "t0", id, 1, 1, 0, kAbsoluteTime, openmldb::common::kMemory, &tablet));
-    ::openmldb::base::RemoveDirRecursive("/tmp/gtest");
     FLAGS_recycle_bin_enabled = tmp_recycle_bin_enabled;
     FLAGS_db_root_path = tmp_db_root_path;
     FLAGS_recycle_bin_root_path = tmp_recycle_bin_root_path;
@@ -2066,9 +2071,9 @@ TEST_F(TabletImplTest, DropTableNoRecycleDisk) {
     std::string tmp_recycle_bin_hdd_root_path = FLAGS_recycle_bin_hdd_root_path;
     std::vector<std::string> file_vec;
     FLAGS_recycle_bin_enabled = false;
-    FLAGS_hdd_root_path = "/tmp/gtest/db/hdd";
-    FLAGS_recycle_bin_hdd_root_path = "/tmp/gtest/recycle/hdd";
-    ::openmldb::base::RemoveDirRecursive("/tmp/gtest");
+    ::openmldb::test::TempPath tmp_path;
+    FLAGS_hdd_root_path = tmp_path.GetTempPath();
+    FLAGS_recycle_bin_hdd_root_path = tmp_path.GetTempPath();
     TabletImpl tablet;
     uint32_t id = counter++;
     tablet.Init("");
@@ -2100,7 +2105,6 @@ TEST_F(TabletImplTest, DropTableNoRecycleDisk) {
     ::openmldb::base::GetChildFileName(FLAGS_recycle_bin_hdd_root_path, file_vec);
     ASSERT_TRUE(file_vec.empty());
     ASSERT_EQ(0, CreateDefaultTable("", "t0", id, 1, 1, 0, kAbsoluteTime, openmldb::common::kHDD, &tablet));
-    ::openmldb::base::RemoveDirRecursive("/tmp/gtest");
     FLAGS_recycle_bin_enabled = tmp_recycle_bin_enabled;
     FLAGS_hdd_root_path = tmp_hdd_root_path;
     FLAGS_recycle_bin_hdd_root_path = tmp_recycle_bin_hdd_root_path;
@@ -2247,7 +2251,6 @@ TEST_P(TabletImplTest, LoadWithDeletedKey) {
         table_meta->set_pid(1);
         table_meta->set_seg_cnt(8);
         table_meta->set_term(1024);
-        table_meta->set_format_version(1);
         table_meta->set_storage_mode(storage_mode);
         ::openmldb::common::ColumnDesc* column_desc1 = table_meta->add_column_desc();
         column_desc1->set_name("card");
@@ -3027,7 +3030,7 @@ TEST_P(TabletImplTest, GetTermPair) {
     ::openmldb::common::StorageMode storage_mode = GetParam();
     uint32_t id = counter++;
     FLAGS_zk_cluster = "127.0.0.1:6181";
-    FLAGS_zk_root_path = "/rtidb3" + GenRand();
+    FLAGS_zk_root_path = "/rtidb3" + ::openmldb::test::GenRand();
     int offset = FLAGS_make_snapshot_threshold_offset;
     FLAGS_make_snapshot_threshold_offset = 0;
     MockClosure closure;
@@ -3507,7 +3510,6 @@ TEST_P(TabletImplTest, AbsAndLat) {
         table_meta->set_name("t0");
         table_meta->set_tid(id);
         table_meta->set_pid(0);
-        table_meta->set_format_version(1);
         table_meta->set_storage_mode(storage_mode);
         SchemaCodec::SetColumnDesc(table_meta->add_column_desc(), "test", ::openmldb::type::kString);
         SchemaCodec::SetColumnDesc(table_meta->add_column_desc(), "ts1", ::openmldb::type::kBigInt);
@@ -3538,9 +3540,11 @@ TEST_P(TabletImplTest, AbsAndLat) {
     for (int i = 0; i < 100; ++i) {
         ::openmldb::api::PutResponse presponse;
         ::openmldb::api::PutRequest prequest;
-        ::openmldb::api::Dimension* dim = prequest.add_dimensions();
-        dim->set_idx(0);
-        dim->set_key("test" + std::to_string(i % 10));
+        for (int idx = 0; idx < 6; idx++) {
+            auto dim = prequest.add_dimensions();
+            dim->set_idx(idx);
+            dim->set_key("test" + std::to_string(i % 10));
+        }
         uint64_t ts = now - (99 - i) * 60 * 1000;
         std::string ts_str = std::to_string(ts);
         std::vector<std::string> row = {"test" + std::to_string(i % 10), ts_str, ts_str,
@@ -3573,10 +3577,10 @@ TEST_P(TabletImplTest, AbsAndLat) {
         sr.set_pid(0);
         sr.set_limit(100);
         sr.set_idx_name("index1");
-        ::openmldb::api::TraverseResponse* srp = new ::openmldb::api::TraverseResponse();
-        tablet.Traverse(NULL, &sr, srp, &closure);
-        ASSERT_EQ(0, srp->code());
-        ASSERT_EQ(80, (signed)srp->count());
+        ::openmldb::api::TraverseResponse srp;
+        tablet.Traverse(NULL, &sr, &srp, &closure);
+        ASSERT_EQ(0, srp.code());
+        ASSERT_EQ(80, (signed)srp.count());
     }
     // ts3 has 30 expire
     {
@@ -3621,10 +3625,10 @@ TEST_P(TabletImplTest, AbsAndLat) {
         sr.set_pid(0);
         sr.set_limit(100);
         sr.set_idx_name("index5");
-        ::openmldb::api::TraverseResponse* srp = new ::openmldb::api::TraverseResponse();
-        tablet.Traverse(NULL, &sr, srp, &closure);
-        ASSERT_EQ(0, srp->code());
-        ASSERT_EQ(100, (signed)srp->count());
+        ::openmldb::api::TraverseResponse srp;
+        tablet.Traverse(NULL, &sr, &srp, &closure);
+        ASSERT_EQ(0, srp.code());
+        ASSERT_EQ(100, (signed)srp.count());
     }
     // //// Scan Count test
     ::openmldb::api::ScanRequest sr;
@@ -4179,7 +4183,6 @@ TEST_P(TabletImplTest, AbsOrLat) {
         table_meta->set_name("t0");
         table_meta->set_tid(id);
         table_meta->set_pid(0);
-        table_meta->set_format_version(1);
         table_meta->set_storage_mode(storage_mode);
         SchemaCodec::SetColumnDesc(table_meta->add_column_desc(), "test", ::openmldb::type::kString);
         SchemaCodec::SetColumnDesc(table_meta->add_column_desc(), "ts1", ::openmldb::type::kBigInt);
@@ -4205,9 +4208,11 @@ TEST_P(TabletImplTest, AbsOrLat) {
     for (int i = 0; i < 100; ++i) {
         ::openmldb::api::PutResponse presponse;
         ::openmldb::api::PutRequest prequest;
-        ::openmldb::api::Dimension* dim = prequest.add_dimensions();
-        dim->set_idx(0);
-        dim->set_key("test" + std::to_string(i % 10));
+        for (int idx = 0; idx < 6; idx++) {
+            auto dim = prequest.add_dimensions();
+            dim->set_idx(idx);
+            dim->set_key("test" + std::to_string(i % 10));
+        }
         std::string ts_str = std::to_string(now - (99 - i) * 60 * 1000);
         std::vector<std::string> row = {"test" + std::to_string(i % 10), ts_str, ts_str,
                 ts_str, ts_str, ts_str, ts_str};
@@ -4923,19 +4928,12 @@ TEST_P(TabletImplTest, AbsOrLat) {
 }
 
 TEST_F(TabletImplTest, DelRecycleMem) {
-    uint32_t tmp_recycle_ttl = FLAGS_recycle_ttl;
     std::string tmp_recycle_bin_root_path = FLAGS_recycle_bin_root_path;
-    absl::Cleanup clean = [&]() {
-        ::openmldb::base::RemoveDirRecursive("/tmp/gtest");
-        FLAGS_recycle_ttl = tmp_recycle_ttl;
-        FLAGS_recycle_bin_root_path = tmp_recycle_bin_root_path;
-    };
-
     FLAGS_recycle_ttl = 1;
-    FLAGS_recycle_bin_root_path = "/tmp/gtest/recycle";
-    ::openmldb::base::RemoveDirRecursive(FLAGS_recycle_bin_root_path);
-    ::openmldb::base::MkdirRecur("/tmp/gtest/recycle/99_1_binlog_20191111070955/binlog/");
-    ::openmldb::base::MkdirRecur("/tmp/gtest/recycle/100_2_20191111115149/binlog/");
+    ::openmldb::test::TempPath tmp_path;
+    FLAGS_recycle_bin_root_path = tmp_path.GetTempPath("recycle");
+    ::openmldb::base::MkdirRecur(FLAGS_recycle_bin_root_path + "/99_1_binlog_20191111070955/binlog/");
+    ::openmldb::base::MkdirRecur(FLAGS_recycle_bin_root_path + "/100_2_20191111115149/binlog/");
     TabletImpl tablet;
     tablet.Init("");
 
@@ -4949,8 +4947,8 @@ TEST_F(TabletImplTest, DelRecycleMem) {
         LOG(INFO) << "sleep for 30s" << std::endl;
         sleep(30);
         std::string now_time = ::openmldb::base::GetNowTime();
-        ::openmldb::base::MkdirRecur("/tmp/gtest/recycle/99_3_" + now_time + "/binlog/");
-        ::openmldb::base::MkdirRecur("/tmp/gtest/recycle/100_4_binlog_" + now_time + "/binlog/");
+        ::openmldb::base::MkdirRecur(absl::StrCat(FLAGS_recycle_bin_root_path, "/99_3_", now_time, "/binlog/"));
+        ::openmldb::base::MkdirRecur(absl::StrCat(FLAGS_recycle_bin_root_path, "/100_4_binlog_", now_time, "/binlog/"));
         std::vector<std::string> file_vec;
         ::openmldb::base::GetChildFileName(FLAGS_recycle_bin_root_path, file_vec);
         ASSERT_EQ(4, (signed)file_vec.size());
@@ -4974,19 +4972,12 @@ TEST_F(TabletImplTest, DelRecycleMem) {
 }
 
 TEST_F(TabletImplTest, DelRecycleDisk) {
-    uint32_t tmp_recycle_ttl = FLAGS_recycle_ttl;
     std::string tmp_recycle_bin_hdd_root_path = FLAGS_recycle_bin_hdd_root_path;
-    absl::Cleanup clean = [&]() {
-        ::openmldb::base::RemoveDirRecursive("/tmp/hdd/gtest");
-        FLAGS_recycle_ttl = tmp_recycle_ttl;
-        FLAGS_recycle_bin_hdd_root_path = tmp_recycle_bin_hdd_root_path;
-    };
-
     FLAGS_recycle_ttl = 1;
-    FLAGS_recycle_bin_hdd_root_path = "/tmp/hdd/gtest/recycle/";
-    ::openmldb::base::RemoveDirRecursive(FLAGS_recycle_bin_hdd_root_path);
-    ::openmldb::base::MkdirRecur("/tmp/hdd/gtest/recycle//99_1_binlog_20191111070955/binlog/");
-    ::openmldb::base::MkdirRecur("/tmp/hdd/gtest/recycle//100_2_20191111115149/binlog/");
+    ::openmldb::test::TempPath tmp_path;
+    FLAGS_recycle_bin_hdd_root_path = tmp_path.GetTempPath("recycle");
+    ::openmldb::base::MkdirRecur(absl::StrCat(FLAGS_recycle_bin_hdd_root_path, "/99_1_binlog_20191111070955/binlog/"));
+    ::openmldb::base::MkdirRecur(absl::StrCat(FLAGS_recycle_bin_hdd_root_path, "/100_2_20191111115149/binlog/"));
     TabletImpl tablet;
     tablet.Init("");
 
@@ -5000,8 +4991,9 @@ TEST_F(TabletImplTest, DelRecycleDisk) {
         sleep(30);
 
         std::string now_time = ::openmldb::base::GetNowTime();
-        ::openmldb::base::MkdirRecur("/tmp/hdd/gtest/recycle//99_3_" + now_time + "/binlog/");
-        ::openmldb::base::MkdirRecur("/tmp/hdd/gtest/recycle//100_4_binlog_" + now_time + "/binlog/");
+        ::openmldb::base::MkdirRecur(absl::StrCat(FLAGS_recycle_bin_hdd_root_path, "/99_3_", now_time, "/binlog/"));
+        ::openmldb::base::MkdirRecur(absl::StrCat(FLAGS_recycle_bin_hdd_root_path,
+                    "/100_4_binlog_", now_time, "/binlog/"));
 
         std::vector<std::string> file_vec;
         ::openmldb::base::GetChildFileName(FLAGS_recycle_bin_hdd_root_path, file_vec);
@@ -5025,129 +5017,6 @@ TEST_F(TabletImplTest, DelRecycleDisk) {
         ::openmldb::base::GetChildFileName(FLAGS_recycle_bin_hdd_root_path, file_vec);
         ASSERT_EQ(0, (signed)file_vec.size());
     }
-}
-
-TEST_P(TabletImplTest, DumpIndex) {
-    ::openmldb::common::StorageMode storage_mode = GetParam();
-    int old_offset = FLAGS_make_snapshot_threshold_offset;
-    FLAGS_make_snapshot_threshold_offset = 0;
-    uint32_t id = counter++;
-    MockClosure closure;
-    TabletImpl tablet;
-    tablet.Init("");
-    ::openmldb::api::CreateTableRequest request;
-    ::openmldb::api::TableMeta* table_meta = request.mutable_table_meta();
-    ::openmldb::common::ColumnDesc* desc = table_meta->add_column_desc();
-    desc->set_name("card");
-    desc->set_data_type(::openmldb::type::kString);
-    desc = table_meta->add_column_desc();
-    desc->set_name("mcc");
-    desc->set_data_type(::openmldb::type::kString);
-    desc = table_meta->add_column_desc();
-    desc->set_name("price");
-    desc->set_data_type(::openmldb::type::kBigInt);
-    desc = table_meta->add_column_desc();
-    desc->set_name("ts1");
-    desc->set_data_type(::openmldb::type::kBigInt);
-    desc = table_meta->add_column_desc();
-    desc->set_name("ts2");
-    desc->set_data_type(::openmldb::type::kBigInt);
-    SchemaCodec::SetIndex(table_meta->add_column_key(), "index1", "card", "ts1", ::openmldb::type::kAbsoluteTime, 0, 0);
-    SchemaCodec::SetIndex(table_meta->add_column_key(), "index2", "card", "ts2", ::openmldb::type::kAbsoluteTime, 0, 0);
-
-    table_meta->set_name("t0");
-    table_meta->set_tid(id);
-    table_meta->set_pid(1);
-    table_meta->set_storage_mode(storage_mode);
-    ::openmldb::api::CreateTableResponse response;
-    tablet.CreateTable(NULL, &request, &response, &closure);
-    ASSERT_EQ(0, response.code());
-
-    for (int i = 0; i < 10; i++) {
-        std::vector<std::string> input;
-        input.push_back("card" + std::to_string(i));
-        input.push_back("mcc" + std::to_string(i));
-        input.push_back(std::to_string(i));
-        input.push_back(std::to_string(i + 100));
-        input.push_back(std::to_string(i + 10000));
-        std::string value;
-        ::openmldb::codec::RowCodec::EncodeRow(input, table_meta->column_desc(), 1, value);
-        ::openmldb::api::PutRequest request;
-        request.set_value(value);
-        request.set_tid(id);
-        request.set_pid(1);
-
-        ::openmldb::api::Dimension* d = request.add_dimensions();
-        d->set_key(input[0]);
-        d->set_idx(0);
-        ::openmldb::api::TSDimension* tsd = request.add_ts_dimensions();
-        tsd->set_ts(i + 100);
-        tsd->set_idx(0);
-        tsd = request.add_ts_dimensions();
-        tsd->set_ts(i + 10000);
-        tsd->set_idx(1);
-        ::openmldb::api::PutResponse response;
-        MockClosure closure;
-        tablet.Put(NULL, &request, &response, &closure);
-        ASSERT_EQ(0, response.code());
-    }
-    ::openmldb::api::GeneralRequest grq;
-    grq.set_tid(id);
-    grq.set_pid(1);
-    grq.set_storage_mode(storage_mode);
-    ::openmldb::api::GeneralResponse grp;
-    grp.set_code(-1);
-    tablet.MakeSnapshot(NULL, &grq, &grp, &closure);
-    sleep(2);
-    for (int i = 0; i < 10; i++) {
-        std::vector<std::string> input;
-        input.push_back("card" + std::to_string(i));
-        input.push_back("mcc" + std::to_string(i));
-        input.push_back(std::to_string(i));
-        input.push_back(std::to_string(i + 200));
-        input.push_back(std::to_string(i + 20000));
-        std::string value;
-        ::openmldb::codec::RowCodec::EncodeRow(input, table_meta->column_desc(), 1, value);
-        ::openmldb::api::PutRequest request;
-        request.set_value(value);
-        request.set_tid(id);
-        request.set_pid(1);
-        ::openmldb::api::Dimension* d = request.add_dimensions();
-        d->set_key(input[0]);
-        d->set_idx(0);
-        ::openmldb::api::TSDimension* tsd = request.add_ts_dimensions();
-        tsd->set_ts(i + 100);
-        tsd->set_idx(0);
-        tsd = request.add_ts_dimensions();
-        tsd->set_ts(i + 10000);
-        tsd->set_idx(1);
-        ::openmldb::api::PutResponse response;
-        MockClosure closure;
-        tablet.Put(NULL, &request, &response, &closure);
-        ASSERT_EQ(0, response.code());
-    }
-    {
-        ::openmldb::api::DumpIndexDataRequest dump_request;
-        dump_request.set_tid(id);
-        dump_request.set_pid(1);
-        dump_request.set_partition_num(8);
-        dump_request.set_idx(1);
-        auto column_key = dump_request.mutable_column_key();
-        column_key->set_index_name("card|mcc");
-        column_key->add_col_name("card");
-        column_key->add_col_name("mcc");
-        column_key->set_ts_name("ts2");
-        ::openmldb::api::GeneralResponse dump_response;
-        tablet.DumpIndexData(NULL, &dump_request, &dump_response, &closure);
-        // Some functions in tablet_impl only support memtable now
-        // refer to issue #1438
-        if (storage_mode == openmldb::common::kMemory) {
-            ASSERT_EQ(0, dump_response.code());
-        } else {
-            ASSERT_EQ(701, dump_response.code());
-        }
-    }
-    FLAGS_make_snapshot_threshold_offset = old_offset;
 }
 
 TEST_P(TabletImplTest,  SendIndexData) {
@@ -5188,7 +5057,6 @@ TEST_P(TabletImplTest,  SendIndexData) {
     ::openmldb::base::GetFileSize(des_index_file, des_size);
     ASSERT_TRUE(::openmldb::base::IsExists(des_index_file));
     ASSERT_EQ(src_size, des_size);
-    ::openmldb::base::RemoveDirRecursive(FLAGS_db_root_path);
 }
 
 TEST_P(TabletImplTest, BulkLoad) {
@@ -5306,7 +5174,6 @@ TEST_P(TabletImplTest, AddIndex) {
     table_meta->set_tid(id);
     table_meta->set_pid(1);
     table_meta->set_seg_cnt(1);
-    table_meta->set_format_version(1);
     table_meta->set_storage_mode(storage_mode);
     SchemaCodec::SetColumnDesc(table_meta->add_column_desc(), "card", ::openmldb::type::kVarchar);
     SchemaCodec::SetColumnDesc(table_meta->add_column_desc(), "mcc", ::openmldb::type::kVarchar);
@@ -5415,7 +5282,6 @@ TEST_P(TabletImplTest, CountWithFilterExpire) {
     }
 
     {
-        //
         ::openmldb::api::CountRequest request;
         request.set_tid(id);
         request.set_pid(0);
@@ -5428,9 +5294,44 @@ TEST_P(TabletImplTest, CountWithFilterExpire) {
     }
 }
 
-INSTANTIATE_TEST_CASE_P(TabletMemAndHDD, TabletImplTest,
-                        ::testing::Values(::openmldb::common::kMemory,/*::openmldb::common::kSSD,*/
-                                          ::openmldb::common::kHDD));
+TEST_P(TabletImplTest, PutCompress) {
+    ::openmldb::common::StorageMode storage_mode = GetParam();
+    TabletImpl tablet;
+    tablet.Init("");
+    MockClosure closure;
+    uint32_t id = counter++;
+    {
+        ::openmldb::api::CreateTableRequest request;
+        ::openmldb::api::TableMeta* table_meta = request.mutable_table_meta();
+        table_meta->set_name("t0");
+        table_meta->set_tid(id);
+        table_meta->set_pid(0);
+        table_meta->set_storage_mode(storage_mode);
+        table_meta->set_mode(::openmldb::api::TableMode::kTableLeader);
+        table_meta->set_compress_type(::openmldb::type::CompressType::kSnappy);
+        AddDefaultSchema(0, 5, ::openmldb::type::TTLType::kLatestTime, table_meta);
+        ::openmldb::api::CreateTableResponse response;
+        MockClosure closure;
+        tablet.CreateTable(NULL, &request, &response, &closure);
+        ASSERT_EQ(0, response.code());
+        PrepareLatestTableData(tablet, id, 0, true);
+    }
+
+    {
+        ::openmldb::api::CountRequest request;
+        request.set_tid(id);
+        request.set_pid(0);
+        request.set_key("0");
+        ::openmldb::api::CountResponse response;
+        tablet.Count(NULL, &request, &response, &closure);
+        ASSERT_EQ(0, response.code());
+        ASSERT_EQ(10, (int32_t)response.count());
+    }
+}
+
+INSTANTIATE_TEST_SUITE_P(TabletMemAndHDD, TabletImplTest,
+                         ::testing::Values(::openmldb::common::kMemory, /*::openmldb::common::kSSD,*/
+                                           ::openmldb::common::kHDD));
 
 TEST_F(TabletImplTest, CreateAggregator) {
     TabletImpl tablet;
@@ -6120,12 +6021,13 @@ int main(int argc, char** argv) {
     srand(time(NULL));
     ::openmldb::base::SetLogLevel(INFO);
     ::google::ParseCommandLineFlags(&argc, &argv, true);
-    FLAGS_db_root_path = "/tmp/" + ::openmldb::tablet::GenRand();
-    FLAGS_ssd_root_path = "/tmp/ssd/" + ::openmldb::tablet::GenRand();
-    FLAGS_hdd_root_path = "/tmp/hdd/" + ::openmldb::tablet::GenRand();
-    FLAGS_recycle_bin_root_path = "/tmp/recycle/" + ::openmldb::tablet::GenRand();
-    FLAGS_recycle_bin_ssd_root_path = "/tmp/ssd/recycle/" + ::openmldb::tablet::GenRand();
-    FLAGS_recycle_bin_hdd_root_path = "/tmp/hdd/recycle/" + ::openmldb::tablet::GenRand();
+    ::openmldb::test::TempPath tmp_path;
+    FLAGS_db_root_path = tmp_path.GetTempPath();
+    FLAGS_ssd_root_path = tmp_path.GetTempPath("ssd");
+    FLAGS_hdd_root_path = tmp_path.GetTempPath("hdd");
+    FLAGS_recycle_bin_root_path = tmp_path.GetTempPath("recycle");
+    FLAGS_recycle_bin_ssd_root_path = tmp_path.GetTempPath("recycle");
+    FLAGS_recycle_bin_hdd_root_path = tmp_path.GetTempPath("recycle");
     FLAGS_recycle_bin_enabled = true;
     return RUN_ALL_TESTS();
 }
