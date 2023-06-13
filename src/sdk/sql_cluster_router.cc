@@ -3372,10 +3372,10 @@ hybridse::sdk::Status SQLClusterRouter::HandleDeploy(const std::string& db,
     base::MultiDBIndexMap new_index_map;
     // merge index, update exists index ttl in table, get new index to create
     auto get_index_status = GetNewIndex(table_map, select_sql, db, skip_index_check, &new_index_map);
-
     if (!get_index_status.IsOK()) {
         return get_index_status;
     }
+
     if (!new_index_map.empty()) {
         if (cluster_sdk_->IsClusterMode() && record_cnt > 0) {
             // long windows only support one table(no join/union), no secondary table, so no multi db support

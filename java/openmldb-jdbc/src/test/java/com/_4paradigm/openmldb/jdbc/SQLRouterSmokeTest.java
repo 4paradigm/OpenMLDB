@@ -772,10 +772,8 @@ public class SQLRouterSmokeTest {
         sqls2.add("select int(`c1`) from main");
         String merged1 = SqlClusterExecutor.mergeSQL(sqls2, "foo", Arrays.asList("id"), schemaMaps);
         Assert.assertFalse(merged1.startsWith("select * from "));
-
         // add a ambiguous col-int(c1), throw exception
         try {
-            sqls2.add("select int(`c1`) from main");
             SqlClusterExecutor.mergeSQL(sqls2, "foo", Arrays.asList("id"), schemaMaps);
             Assert.fail("ambiguous col should throw exception");
         } catch (SQLException e) {
@@ -792,7 +790,6 @@ public class SQLRouterSmokeTest {
                         + "(partition by c1 order by c2 rows between unbounded preceding and current row)) as out1 "
                         + "on out0.merge_id_0 = out1.merge_id_1 and out0.merge_c1_0 = out1.merge_c1_1 and out0.merge_c2_0 = out1.merge_c2_1 "
                         + "last join "
-                        + "(select foo.main.id as merge_id_2, foo.main.c1 as merge_c1_2, foo.main.c2 as merge_c2_2, t1.c2 of3 from main last join t1 on main.c1==t1.c1) as out2 "
                         + "on out0.merge_id_0 = out2.merge_id_2 and out0.merge_c1_0 = out2.merge_c1_2 and out0.merge_c2_0 = out2.merge_c2_2 "
                         + "last join "
                         + "(select foo.main.id as merge_id_3, foo.main.c1 as merge_c1_3, foo.main.c2 as merge_c2_3, t1.c2 of4 from main last join t1 order by t1.c2 on main.c1==t1.c1) as out3 "

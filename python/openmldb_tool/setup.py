@@ -38,7 +38,10 @@ setup(
     extras_require={'test': [
         "pytest",
     ]},
-    packages=find_packages(),
+    packages=find_packages(exclude=['tests']),
+    exclude_package_data={
+        'openmldb-tool': ['diagnostic_tool/common_err.yml']
+    },
     entry_points={
         'console_scripts': ['openmldb_tool = diagnostic_tool.diagnose:run'],
     },

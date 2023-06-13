@@ -362,14 +362,10 @@ public class SqlClusterExecutor implements SqlExecutor {
     // for back compatibility, genOutputSchema can set no usedDB, just use the first db in tableSchema
     public static Schema genOutputSchema(String sql, Map<String, Map<String, Schema>> tableSchema)
             throws SQLException {
-        return genOutputSchema(sql, tableSchema.keySet().iterator().next(), tableSchema);
     }
 
     // NOTICE: even tableSchema is <db, <table, schema>>, we'll assume that all
     // tables in one db in sql_router_sdk
-    // returns
-    // 1. empty list: means valid
-    // 2. otherwise a list(len 2):[0] the error msg; [1] the trace
     public static List<String> validateSQLInBatch(String sql, String usedDB,
             Map<String, Map<String, Schema>> tableSchema) throws SQLException {
         SqlClusterExecutor.initJavaSdkLibrary("");
@@ -510,12 +506,12 @@ public class SqlClusterExecutor implements SqlExecutor {
 
     // input: sqls, using db, unique keys in main table, table schema
     // with table schema, we can except join keys and validate the merged sql
-    public static String mergeSQL(List<String> sqls, String db, List<String> uniqueKeys,
+    public static String mergeSQL(List<String> sqls, String usedDB, List<String> uniqueKeys,
             Map<String, Map<String, Schema>> tableSchema)
             throws SQLException {
         // ensure each sql is valid
         for (String sql : sqls) {
-            List<String> ret = SqlClusterExecutor.validateSQLInRequest(sql, db,
+            List<String> ret = SqlClusterExecutor.validateSQLInRequest(sql, usedDB,
                     tableSchema);
             if (!ret.isEmpty()) {
                 throw new SQLException("sql is invalid, can't merge: " + ret + ", sql: " + sql);
@@ -523,12 +519,12 @@ public class SqlClusterExecutor implements SqlExecutor {
         }
 
         // get main table from first sql
-        Pair<String, String> mainTablePr = SqlClusterExecutor.getDependentTables(sqls.get(0), db, tableSchema).get(0);
-        String mainTable = mainTablePr.getKey().isEmpty() ? db : mainTablePr.getKey() + "." + mainTablePr.getValue();
+        Pair<String, String> mainTablePr = SqlClusterExecutor.getDependentTables(sqls.get(0), usedDB, tableSchema).get(0);
+        String mainTable = mainTablePr.getKey().isEmpty() ? usedDB : mainTablePr.getKey() + "." + mainTablePr.getValue();
         // main table is used to combine unique keys, to avoid some ambiguous column
         // name problem, whatever the main table pattern in sql(even renamed),
         // <db>.<table>.<key> as merge_<key>_ always works
-        String merged = mergeSQLWithPartValidate(sqls, db, mainTable, uniqueKeys, tableSchema);
+        String merged = mergeSQLWithPartValidate(sqls, usedDB, mainTable, uniqueKeys, tableSchema);
 
         // try to do column filter, if failed, we'll throw an exception
         Schema outputSchema = SqlClusterExecutor.genOutputSchema(merged, tableSchema);
@@ -544,7 +540,7 @@ public class SqlClusterExecutor implements SqlExecutor {
         merged = filtered;
 
         // validate
-        List<String> ret = SqlClusterExecutor.validateSQLInRequest(merged, db, tableSchema);
+        List<String> ret = SqlClusterExecutor.validateSQLInRequest(merged, usedDB, tableSchema);
         if (!ret.isEmpty()) {
             throw new SQLException("merged sql is invalid: " + ret + ", merged sql: " + merged);
         }

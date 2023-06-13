@@ -45,7 +45,7 @@ using namespace ::llvm;  // NOLINT
         ->Args({0, 1000, 100})                                                 \
         ->Args({1, 1000, 100});
 
-const char* DEFAULT_YAML_PATH = "/cases/benchmark/batch_request_benchmark.yaml";
+const char* DEFAULT_YAML_PATH = "cases/benchmark/batch_request_benchmark.yaml";
 
 DEFINE_BATCH_REQUEST_CASE(TwoWindow, DEFAULT_YAML_PATH, "0");
 DEFINE_BATCH_REQUEST_CASE(CommonWindow, DEFAULT_YAML_PATH, "1");
