@@ -3344,9 +3344,9 @@ hybridse::sdk::Status SQLClusterRouter::HandleDeploy(const std::string& db,
     std::vector<::openmldb::nameserver::TableInfo> tables;
     std::string msg;
     auto ns = cluster_sdk_->GetNsClient();
-    // TODO(hw): multi db
     for (const auto& pair : table_pair) {
         // table name, db name, ...
+        tables.clear();
         auto ok = ns->ShowTable(pair.second, pair.first, false, tables, msg);
         if (!ok) {
             return {StatusCode::kCmdError, msg};
