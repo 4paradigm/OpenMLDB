@@ -114,7 +114,7 @@ install: build
 
 test: build
 	# NOTE: some test require zookeeper start first, it should fixed
-	sh ./steps/ut_zookeeper.sh start
+	sh ./steps/ut_zookeeper.sh reset
 	$(CMAKE_PRG) --build $(OPENMLDB_BUILD_DIR) --target test -- -j$(NPROC)
 	sh ./steps/ut_zookeeper.sh stop
 
