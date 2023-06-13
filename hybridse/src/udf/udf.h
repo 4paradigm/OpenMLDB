@@ -396,10 +396,11 @@ int32_t strcmp(StringRef *s1, StringRef *s2);
 void bool_to_string(bool v, StringRef *output);
 
 // transform string into integral
-// base is default to 10, 16 if string starts with '0x' or '0X', other base is not considered
-template <typename T>
+// base is default to 10, 16 if string starts with '0x' or '0X', other base is not considered.
+// for hex string, it's parsed unsigned, add minus('-') to the very begining for negative hex
+// returns (status, int64)
 struct StrToIntegral {
-    std::pair<absl::Status, T> operator()(absl::string_view in) {
+    std::pair<absl::Status, int64_t> operator()(absl::string_view in) {
         if (0 == in.size()) {
             return {absl::InvalidArgumentError("input empty string"), {}};
         }
@@ -408,22 +409,22 @@ struct StrToIntegral {
         errno = 0;
 
         int base = 10;
-        if (in.size() >= 2 && in[0] == '0' && absl::ascii_tolower(in[1]) == 'x') {
+        if (in.find("0x") != absl::string_view::npos || in.find("0X") != absl::string_view::npos) {
             base = 16;
         }
 
         std::string copy_of_str(in);
         const char *str = copy_of_str.data();
         char *endptr = NULL;
-        auto number = std::strtol(str, &endptr, base);
+        // always to int64
+        int64_t number = std::strtoll(str, &endptr, base);
 
         if (str == endptr) {
             //  invalid: no digits found
             return {absl::InvalidArgumentError(absl::StrCat(in, " (no digitals found)")), {}};
-        } else if (errno == ERANGE && (number == LONG_MIN || number == LLONG_MIN)) {
-            // user may chose the truncated value even overflow
+        } else if (errno == ERANGE && number == LLONG_MIN) {
             return {absl::OutOfRangeError(absl::StrCat(in, " (underflow)")), number};
-        } else if (errno == ERANGE && (number == LONG_MAX || number == LLONG_MAX)) {
+        } else if (errno == ERANGE && number == LLONG_MAX) {
             return {absl::OutOfRangeError(absl::StrCat(in, " (overflow)")), number};
         } else if (errno == EINVAL) {
             // not copy_of_str all c99 implementations - gcc OK
@@ -431,12 +432,18 @@ struct StrToIntegral {
         } else if (errno != 0 && number == 0) {
             // invalid:  unspecified error occurred
             return {absl::UnknownError(absl::StrCat(in, " (unspecified error: ", std::strerror(errno), ")")), {}};
-        } else if (errno == 0 && str && !*endptr) {
-            // valid  (and represents all characters read;
-            return {absl::OkStatus(), number};
-        } else if (errno == 0 && str && *endptr != 0) {
-            return {absl::InvalidArgumentError(absl::StrCat(in, " (digitals with extra non-space chars following)")),
+        } else if (errno == 0 && str) {
+            while (endptr && absl::ascii_isspace(*endptr)) {
+                endptr++;
+            }
+            if (*endptr == 0) {
+                // valid  (and represents all characters read;
+                return {absl::OkStatus(), number};
+            } else {
+                return {
+                    absl::InvalidArgumentError(absl::StrCat(in, " (digitals with extra non-space chars following)")),
                     {}};
+            }
         }
 
         return {absl::UnknownError(absl::StrCat(in, " (unspecified error)")), {}};

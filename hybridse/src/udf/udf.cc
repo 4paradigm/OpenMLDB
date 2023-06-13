@@ -655,8 +655,8 @@ void string_to_int(StringRef *str, int32_t *out, bool *is_null_ptr) {
         *is_null_ptr = true;
         return;
     }
-    auto [s, ret] = StrToIntegral<int32_t>()(str->ToString());
-    if (s.ok()) {
+    auto [s, ret] = StrToIntegral()(str->ToString());
+    if (s.ok() && ret <= INT32_MAX && ret >= INT32_MIN) {
         *is_null_ptr = false;
         *out = ret;
     } else {
@@ -670,8 +670,8 @@ void string_to_smallint(StringRef *str, int16_t *out,
         return;
     }
 
-    auto [s, ret] = StrToIntegral<int16_t>()(str->ToString());
-    if (s.ok()) {
+    auto [s, ret] = StrToIntegral()(str->ToString());
+    if (s.ok() && ret >= INT16_MIN && ret <= INT16_MAX) {
         *is_null_ptr = false;
         *out = ret;
     } else {
@@ -685,7 +685,7 @@ void string_to_bigint(StringRef *str, int64_t *out, bool *is_null_ptr) {
         return;
     }
 
-    auto [s, ret] = StrToIntegral<int64_t>()(str->ToString());
+    auto [s, ret] = StrToIntegral()(str->ToString());
     if (s.ok()) {
         *is_null_ptr = false;
         *out = ret;

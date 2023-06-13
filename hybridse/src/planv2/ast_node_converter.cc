@@ -1863,7 +1863,7 @@ base::Status ASTIntLiteralToNum(const zetasql::ASTExpression* ast_expr, int64_t*
         img.remove_suffix(1);
     }
 
-    auto [status, ret] = udf::v1::StrToIntegral<int64_t>()(img);
+    auto [status, ret] = udf::v1::StrToIntegral()(img);
     if (status.ok() || absl::IsOutOfRange(status)) {
         *val = ret;
         return base::Status::OK();
@@ -1900,8 +1900,8 @@ base::Status ASTIntervalLIteralToNum(const zetasql::ASTExpression* ast_expr, int
     auto img = interval_literal->image();
     img.remove_suffix(1);
 
-    auto [status, ret] = udf::v1::StrToIntegral<int64_t>()(img);
-    if (status.ok() || absl::IsOutOfRange(status)) {
+    auto [status, ret] = udf::v1::StrToIntegral()(img);
+    if (status.ok()) {
         *val = ret;
         return base::Status::OK();
     }
