@@ -36,7 +36,7 @@ SelectInfoOptionItem
 | format     | String  | csv             | 输出文件格式:<br />`csv`:不显示指明format时，默认为该值<br />`parquet`:集群版离线模式支持导出parquet格式文件，但集群在线和单机版不支持                                                                                                    |
 | mode       | String  | error_if_exists | 输出模式:<br />`error_if_exists`: 表示若文件已经在则报错。<br />`overwrite`: 表示若文件已存在，数据将覆盖原文件内容。<br />`append`：表示若文件已存在，数据将追加到原文件后面。<br />不显示配置时，默认为`error_if_exists`。                            |
 | quote      | String  | ""              | 输出数据的包围字符串，字符串长度<=1。默认为""，表示输出数据包围字符串为空。当配置包围字符串时，将使用包围字符串包围一个field。例如，我们配置包围字符串为`"#"`，原始数据为{1, 1.0, This is a string, with comma}。输出的文本为`1, 1.0, #This is a string, with comma#`。 |
-| coalesce   | Int     | N/A             | 仅集群版离线模式支持，默认不配置（可能输出多个文件），可指定输出几个文件。例如，coalesce=1，会将所有part合并为1个文件。 |
+| coalesce   | Int     | 0             | 仅集群版离线模式支持，默认值为0，不进行合并（可能输出多个文件），可指定最终输出几个文件。例如，coalesce=1，会将所有part合并为1个文件。 |
 
 
 ````{important}

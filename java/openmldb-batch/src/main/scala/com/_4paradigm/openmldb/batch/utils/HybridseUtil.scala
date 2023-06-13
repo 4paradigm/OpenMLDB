@@ -247,9 +247,9 @@ object HybridseUtil {
     extraOptions += ("deep_copy" -> parseOption(getOptionFromNode(node, "deep_copy"), "true", getBoolOrDefault))
 
     // only for select into, "" means N/A
-    extraOptions += ("coalesce" -> parseOption(getOptionFromNode(node, "coalesce"), "", getIntOrDefault))
+    extraOptions += ("coalesce" -> parseOption(getOptionFromNode(node, "coalesce"), "0", getIntOrDefault))
 
-    (format, options.toMap, mode, deepCopy, extraOptions.toMap)
+    (format, options.toMap, mode, extraOptions.toMap)
   }
 
   // result 'readSchema' & 'tsCols' is only for csv format, may not be used

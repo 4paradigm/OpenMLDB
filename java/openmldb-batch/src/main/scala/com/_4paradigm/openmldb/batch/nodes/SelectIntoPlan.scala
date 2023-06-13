@@ -50,7 +50,7 @@ object SelectIntoPlan {
           mode, outPath)
       var ds = input.getDf()
       val coalesce = extra.get("coalesce").map(_.toInt)
-      if (coalesce.nonEmpty){
+      if (coalesce.nonEmpty && coalesce.get > 0){
         ds = ds.coalesce(coalesce.get)
         logger.info("coalesce to {} part", coalesce.get)
       }
