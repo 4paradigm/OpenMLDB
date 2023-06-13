@@ -1139,7 +1139,7 @@ TEST_F(SQLRouterTest, DDLParseMethods) {
         "string,\n\tingestionTime timestamp,\n\tindex(key=(id), ttl=1, ttl_type=latest)\n);",
         ddl_list.at(0));
 
-    auto output_schema = GenOutputSchema(sql, "", {{"foo", table_map}});
+    auto output_schema = GenOutputSchema(sql, "foo", {{"foo", table_map}});
     ASSERT_EQ(output_schema->GetColumnCnt(), 7);
     std::vector<std::string> output_col_names;
     output_col_names.reserve(output_schema->GetColumnCnt());
@@ -1162,6 +1162,7 @@ TEST_F(SQLRouterTest, DDLParseMethods) {
         "feedbackTable.itemId = "
         "behaviourTable.itemId\n LAST JOIN db2.adinfo ON behaviourTable.itemId = db2.adinfo.id;",
         "db1", db_table_map);
+    ASSERT_TRUE(multi_db_output_schema);
     ASSERT_EQ(multi_db_output_schema->GetColumnCnt(), 7);
 
     // no use db
@@ -1169,10 +1170,11 @@ TEST_F(SQLRouterTest, DDLParseMethods) {
         "SELECT\n db1.behaviourTable.itemId as itemId,\n  db1.behaviourTable.ip as ip,\n  db1.behaviourTable.query as "
         "query,\n  "
         "db1.behaviourTable.mcuid as mcuid,\n db2.adinfo.brandName as name,\n  db2.adinfo.brandId as brandId,\n "
-        "feedbackTable.actionValue as label\n FROM db1.behaviourTable\n LAST JOIN db1.feedbackTable ON "
-        "feedbackTable.itemId = "
-        "behaviourTable.itemId\n LAST JOIN db2.adinfo ON behaviourTable.itemId = db2.adinfo.id;";
+        "feedbackTable.actionValue as label\n FROM db1.behaviourTable behaviourTable\n LAST JOIN db1.feedbackTable "
+        "feedbackTable ON feedbackTable.itemId = behaviourTable.itemId\n LAST JOIN db2.adinfo ON behaviourTable.itemId "
+        "= db2.adinfo.id;";
     multi_db_output_schema = GenOutputSchema(db_table_sql, "", db_table_map);
+    ASSERT_TRUE(multi_db_output_schema);
     ASSERT_EQ(multi_db_output_schema->GetColumnCnt(), 7);
 
     auto tables = GetDependentTables(db_table_sql, "", db_table_map);
