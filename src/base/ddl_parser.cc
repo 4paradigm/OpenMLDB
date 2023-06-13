@@ -47,8 +47,6 @@ using hybridse::vm::PhysicalOpType;
 using hybridse::vm::SchemasContext;
 using hybridse::vm::Sort;
 
-constexpr const char* DB_NAME = "ddl_parser_single_db";
-
 // Ref hybridse/src/passes/physical/group_and_sort_optimized.cc:651
 // TODO(hw): hybridse should open this method
 bool ResolveColumnToSourceColumnName(const hybridse::node::ColumnRefNode* col, const SchemasContext* schemas_ctx,

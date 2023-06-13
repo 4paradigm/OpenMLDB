@@ -362,6 +362,7 @@ public class SqlClusterExecutor implements SqlExecutor {
     // for back compatibility, genOutputSchema can set no usedDB, just use the first db in tableSchema
     public static Schema genOutputSchema(String sql, Map<String, Map<String, Schema>> tableSchema)
             throws SQLException {
+        return genOutputSchema(sql, tableSchema.keySet().iterator().next(), tableSchema);
     }
 
     // NOTICE: even tableSchema is <db, <table, schema>>, we'll assume that all
