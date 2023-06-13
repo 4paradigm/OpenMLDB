@@ -40,6 +40,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.Arrays;
 
 public class SQLRouterSmokeTest {
@@ -630,7 +631,7 @@ public class SQLRouterSmokeTest {
         try {
             SqlClusterExecutor.genOutputSchema("", null);
             Assert.fail("null input schema will throw an exception");
-        } catch (SQLException ignored) {
+        } catch (NullPointerException ignored) {
         }
         try {
             SqlClusterExecutor.genDDL("", Maps.<String, Map<String, Schema>>newHashMap());
@@ -639,8 +640,8 @@ public class SQLRouterSmokeTest {
         }
         try {
             SqlClusterExecutor.genOutputSchema("", Maps.<String, Map<String, Schema>>newHashMap());
-            Assert.fail("null input schema will throw an exception");
-        } catch (SQLException ignored) {
+            Assert.fail("empty input schema will throw an exception");
+        } catch (NoSuchElementException ignored) {
         }
 
         // if parse fails, genDDL will create table without index
@@ -670,8 +671,6 @@ public class SQLRouterSmokeTest {
 
     @Test
     public void testValidateSQL() throws SQLException {
-        // even the input schmea has 2 dbs, we will make all tables in one fake
-        // database.
         Map<String, Map<String, Schema>> schemaMaps = new HashMap<>();
         Schema sch = new Schema(Collections.singletonList(new Column("c1", Types.VARCHAR)));
         Map<String, Schema> dbSchema = new HashMap<>();
@@ -679,14 +678,17 @@ public class SQLRouterSmokeTest {
         schemaMaps.put("db1", dbSchema);
         dbSchema = new HashMap<>();
         dbSchema.put("t2", sch);
+        // one more db, if no used db, will use the first one db1
         schemaMaps.put("db2", dbSchema);
 
         List<String> ret = SqlClusterExecutor.validateSQLInBatch("select c1 from t1;", schemaMaps);
         Assert.assertEquals(ret.size(), 0);
+        // t2 is in db2, db1 is the used db
         ret = SqlClusterExecutor.validateSQLInBatch("select c1 from t2;", schemaMaps);
-        Assert.assertEquals(ret.size(), 0);
+        Assert.assertEquals(ret.size(), 2);
+        // used db won't effect <db>.<table> style
         ret = SqlClusterExecutor.validateSQLInBatch("select c1 from db1.t1;", schemaMaps);
-        Assert.assertEquals(ret.size(), 2); // db is unsupported
+        Assert.assertEquals(ret.size(), 0);
 
         ret = SqlClusterExecutor.validateSQLInBatch("swlect c1 from t1;", schemaMaps);
         Assert.assertEquals(ret.size(), 2);
@@ -708,6 +710,7 @@ public class SQLRouterSmokeTest {
 
         ret = SqlClusterExecutor.validateSQLInBatch("select c1 from t1;", schemaMaps);
         Assert.assertEquals(ret.size(), 0);
+        // t1 is db1.t1
         ret = SqlClusterExecutor.validateSQLInBatch("select c2 from t1;", schemaMaps);
         Assert.assertEquals(ret.size(), 2);
 
@@ -715,8 +718,13 @@ public class SQLRouterSmokeTest {
         try {
             SqlClusterExecutor.validateSQLInBatch("", null);
             Assert.fail("null input schema will throw an exception");
-        } catch (SQLException e) {
-            Assert.assertEquals(e.getMessage(), "input schema is null or empty");
+        } catch (NullPointerException ignored) {
+        }
+
+        try {
+            SqlClusterExecutor.validateSQLInBatch("", Maps.<String, Map<String, Schema>>newHashMap());
+            Assert.fail("null input schema will throw an exception");
+        } catch (NoSuchElementException ignored) {
         }
 
         ret = SqlClusterExecutor.validateSQLInRequest("select count(c1) from t1;", schemaMaps);
@@ -726,7 +734,8 @@ public class SQLRouterSmokeTest {
         dbSchema.put("t3", new Schema(Arrays.asList(new Column("c1", Types.VARCHAR),
                 new Column("c2", Types.BIGINT))));
         schemaMaps.put("db3", dbSchema);
-        ret = SqlClusterExecutor.validateSQLInRequest("select count(c1) over w1 from t3 window " +
+        // t3 is in db3, <db>.<table> style is ok
+        ret = SqlClusterExecutor.validateSQLInRequest("select count(c1) over w1 from db3.t3 window " +
                 "w1 as(partition by c1 order by c2 rows between unbounded preceding and current row);", schemaMaps);
         Assert.assertEquals(ret.size(), 0);
     }
@@ -774,6 +783,7 @@ public class SQLRouterSmokeTest {
         Assert.assertFalse(merged1.startsWith("select * from "));
         // add a ambiguous col-int(c1), throw exception
         try {
+            sqls2.add("select int(`c1`) from main");
             SqlClusterExecutor.mergeSQL(sqls2, "foo", Arrays.asList("id"), schemaMaps);
             Assert.fail("ambiguous col should throw exception");
         } catch (SQLException e) {
@@ -790,6 +800,7 @@ public class SQLRouterSmokeTest {
                         + "(partition by c1 order by c2 rows between unbounded preceding and current row)) as out1 "
                         + "on out0.merge_id_0 = out1.merge_id_1 and out0.merge_c1_0 = out1.merge_c1_1 and out0.merge_c2_0 = out1.merge_c2_1 "
                         + "last join "
+                        + "(select foo.main.id as merge_id_2, foo.main.c1 as merge_c1_2, foo.main.c2 as merge_c2_2, t1.c2 of3 from main last join t1 on main.c1==t1.c1) as out2 "
                         + "on out0.merge_id_0 = out2.merge_id_2 and out0.merge_c1_0 = out2.merge_c1_2 and out0.merge_c2_0 = out2.merge_c2_2 "
                         + "last join "
                         + "(select foo.main.id as merge_id_3, foo.main.c1 as merge_c1_3, foo.main.c2 as merge_c2_3, t1.c2 of4 from main last join t1 order by t1.c2 on main.c1==t1.c1) as out3 "
