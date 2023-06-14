@@ -402,8 +402,8 @@ base::Status ConvertExprNode(const zetasql::ASTExpression* ast_expression, node:
             int64_t int_value;
             CHECK_STATUS(ASTIntLiteralToNum(ast_expression, &int_value));
 
-            if (!literal->is_long() && int_value <= INT_MAX && int_value >= INT_MIN) {
-                *output = node_manager->MakeConstNode(static_cast<int>(int_value));
+            if (!literal->is_long() && int_value <= INT32_MAX && int_value >= INT32_MIN) {
+                *output = node_manager->MakeConstNode(static_cast<int32_t>(int_value));
             } else {
                 *output = node_manager->MakeConstNode(int_value);
             }
