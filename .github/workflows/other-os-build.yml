@@ -17,9 +17,12 @@ on:
         description: 'python sdk enable: ON, OFF'
         required: true
         default: 'ON'
+      REF:
+        description: 'The branch, tag or SHA to checkout, otherwise use the branch'
+        required: false
+        default: ''
 
 env:
-  GIT_SUBMODULE_STRATEGY: recursive
   NPROC: 2 # default Parallel build number for GitHub's Linux runner
   EXAMPLES_ENABLE: OFF # turn off hybridse's example code
   HYBRIDSE_TESTING_ENABLE: OFF # turn off hybridse's test code
@@ -36,12 +39,16 @@ jobs:
       NPROC: 8
     steps:
       - uses: actions/checkout@v3
+        with:
+          ref: ${{ github.event.inputs.REF }}
+          submodules: true
 
       - name: prepare release
         run: |
           VERSION="snapshot"
-          if [[ ${{ github.ref }} == "refs/tags/v"* ]]; then
-            VERSION=$(echo "${{ github.ref }}" | sed -e 's,.*/\(.*\),\1,')
+          TAG=${{ git tag -l | grep $(git describe HEAD) }}
+          if [[ ${{ TAG }} == "refs/tags/v"* ]]; then
+            VERSION=$(echo "${{ TAG }}" | sed -e 's,.*/\(.*\),\1,')
             VERSION=${VERSION#v}
             bash steps/prepare_release.sh "$VERSION"
             bash java/prepare_release.sh "$VERSION"
@@ -140,12 +147,16 @@ jobs:
       NPROC: 3
     steps:
       - uses: actions/checkout@v3
+        with:
+          ref: ${{ github.event.inputs.REF }}
+          submodules: true
       # it's ok to prepare version even java sdk disabled
       - name: prepare release
         run: |
           VERSION="snapshot"
-          if [[ ${{ github.ref }} == "refs/tags/v"* ]]; then
-            VERSION=$(echo "${{ github.ref }}" | sed -e 's,.*/\(.*\),\1,')
+          TAG=${{ git tag -l | grep $(git describe HEAD) }}
+          if [[ ${{ TAG }} == "refs/tags/v"* ]]; then
+            VERSION=$(echo "${{ TAG }}" | sed -e 's,.*/\(.*\),\1,')
             VERSION=${VERSION#v}
             bash steps/prepare_release.sh "$VERSION"
             bash java/prepare_release.sh "$VERSION"
@@ -202,6 +213,9 @@ jobs:
       NPROC: 3
     steps:
       - uses: actions/checkout@v3
+        with:
+          ref: ${{ github.event.inputs.REF }}
+          submodules: true
       # ref https://github.com/actions/runner-images/blob/main/images/macos/macos-11-Readme.md macOS 10.15	macosx10.15	11.7 | macOS 11.1	macosx11.1	12.4
       - name: xcode select
         uses: maxim-lobanov/setup-xcode@v1
@@ -211,8 +225,9 @@ jobs:
       - name: prepare release
         run: |
           VERSION="snapshot"
-          if [[ ${{ github.ref }} == "refs/tags/v"* ]]; then
-            VERSION=$(echo "${{ github.ref }}" | sed -e 's,.*/\(.*\),\1,')
+          TAG=${{ git tag -l | grep $(git describe HEAD) }}
+          if [[ ${{ TAG }} == "refs/tags/v"* ]]; then
+            VERSION=$(echo "${{ TAG }}" | sed -e 's,.*/\(.*\),\1,')
             VERSION=${VERSION#v}
             bash steps/prepare_release.sh "$VERSION"
             bash java/prepare_release.sh "$VERSION"
