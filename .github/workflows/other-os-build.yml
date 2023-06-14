@@ -46,10 +46,9 @@ jobs:
       - name: prepare release
         run: |
           VERSION="snapshot"
-          TAG=${{ git tag -l | grep $(git describe HEAD) }}
-          if [[ ${{ TAG }} == "refs/tags/v"* ]]; then
-            VERSION=$(echo "${{ TAG }}" | sed -e 's,.*/\(.*\),\1,')
-            VERSION=${VERSION#v}
+          TAG=$(git tag -l | grep $(git describe HEAD))
+          if [[ "${TAG}" == "v"* ]]; then
+            VERSION=${TAG#v}
             bash steps/prepare_release.sh "$VERSION"
             bash java/prepare_release.sh "$VERSION"
           fi
@@ -154,10 +153,9 @@ jobs:
       - name: prepare release
         run: |
           VERSION="snapshot"
-          TAG=${{ git tag -l | grep $(git describe HEAD) }}
-          if [[ ${{ TAG }} == "refs/tags/v"* ]]; then
-            VERSION=$(echo "${{ TAG }}" | sed -e 's,.*/\(.*\),\1,')
-            VERSION=${VERSION#v}
+          TAG=$(git tag -l | grep $(git describe HEAD))
+          if [[ "${TAG}" == "v"* ]]; then
+            VERSION=${TAG#v}
             bash steps/prepare_release.sh "$VERSION"
             bash java/prepare_release.sh "$VERSION"
           fi
@@ -225,10 +223,9 @@ jobs:
       - name: prepare release
         run: |
           VERSION="snapshot"
-          TAG=${{ git tag -l | grep $(git describe HEAD) }}
-          if [[ ${{ TAG }} == "refs/tags/v"* ]]; then
-            VERSION=$(echo "${{ TAG }}" | sed -e 's,.*/\(.*\),\1,')
-            VERSION=${VERSION#v}
+          TAG=$(git tag -l | grep $(git describe HEAD))
+          if [[ "${TAG}" == "v"* ]]; then
+            VERSION=${TAG#v}
             bash steps/prepare_release.sh "$VERSION"
             bash java/prepare_release.sh "$VERSION"
           fi
