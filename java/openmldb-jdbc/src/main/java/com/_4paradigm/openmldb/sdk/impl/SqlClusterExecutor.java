@@ -528,7 +528,7 @@ public class SqlClusterExecutor implements SqlExecutor {
         String merged = mergeSQLWithPartValidate(sqls, usedDB, mainTable, uniqueKeys, tableSchema);
 
         // try to do column filter, if failed, we'll throw an exception
-        Schema outputSchema = SqlClusterExecutor.genOutputSchema(merged, tableSchema);
+        Schema outputSchema = SqlClusterExecutor.genOutputSchema(merged, usedDB, tableSchema);
         List<String> cols = outputSchema.getColumnList().stream().map(c -> c.getColumnName())
                 .collect(Collectors.toList());
         if (!cols.stream().allMatch(new HashSet<>()::add)) {

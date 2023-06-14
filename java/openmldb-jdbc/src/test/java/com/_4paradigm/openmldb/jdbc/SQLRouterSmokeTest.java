@@ -824,6 +824,10 @@ public class SQLRouterSmokeTest {
                         + "last join "
                         + "(select foo.main.id as merge_id_2, foo.main.c1 as merge_c1_2, foo.main.c2 as merge_c2_2, bar.id from main as bar) as out2 "
                         + "on out0.merge_id_0 = out2.merge_id_2 and out0.merge_c1_0 = out2.merge_c1_2 and out0.merge_c2_0 = out2.merge_c2_2;");
+        // add one more db aaa, mergeSQL won't the unrelated db
+        schemaMaps.put("aaa", null);
+        String noUsedDB2 = SqlClusterExecutor.mergeSQL(sqls, "foo", Arrays.asList("id", "c1", "c2"), schemaMaps);
+
         // no used db, all tables are <db>.<table>
         sqls = Arrays.asList("select c1 from foo.main",
                 "select t1.c2 from foo.main as main last join foo.t1 as t1 on main.c1==t1.c1",
@@ -840,8 +844,8 @@ public class SQLRouterSmokeTest {
                         + "(select foo.main.id as merge_id_2, foo.main.c1 as merge_c1_2, foo.main.c2 as merge_c2_2, id from foo.main) as out2 "
                         + "on out0.merge_id_0 = out2.merge_id_2 and out0.merge_c1_0 = out2.merge_c1_2 and out0.merge_c2_0 = out2.merge_c2_2;");
 
-        // case in java quickstart
 
+        // case in java quickstart
         String demoResult = SqlClusterExecutor.mergeSQL(Arrays.asList(
                 // 单表直出特征
                 "select c1 from main;",
