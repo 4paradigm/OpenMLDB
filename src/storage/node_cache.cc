@@ -21,8 +21,7 @@ namespace openmldb {
 namespace storage {
 
 NodeCache::NodeCache(uint32_t ts_cnt, uint32_t height) : ts_cnt_(ts_cnt), key_entry_max_height_(height),
-    mutex_(), key_entry_node_list_(4, 4, tcmp),
-    value_node_list_(4, 4, tcmp), value_nodes_list_(4, 4, tcmp) {}
+    mutex_(), key_entry_node_list_(4, 4, tcmp), value_node_list_(4, 4, tcmp) {}
 
 NodeCache::~NodeCache() {
     Clear();
@@ -31,7 +30,7 @@ NodeCache::~NodeCache() {
 void NodeCache::Clear() {
     std::unique_ptr<KeyEntryNodeList::Iterator> it(key_entry_node_list_.NewIterator());
     it->SeekToFirst();
-    StatisticsInfo gc_info;
+    StatisticsInfo gc_info(ts_cnt_);
     while (it->Valid()) {
         auto entry_node_list = it->GetValue();
         for (auto& entry_node : *entry_node_list) {
@@ -46,23 +45,16 @@ void NodeCache::Clear() {
     while (node_it->Valid()) {
         auto node_list = node_it->GetValue();
         for (auto& node : *node_list) {
-            FreeNode(node, &gc_info);
+            if (node.type == NodeType::kNode) {
+                FreeNode(node.idx, node.node, &gc_info);
+            } else {
+                FreeNodeList(node.idx, node.node, &gc_info);
+            }
         }
         delete node_list;
         node_it->Next();
     }
     value_node_list_.Clear();
-    std::unique_ptr<ValueNodeList::Iterator> nodes_it(value_nodes_list_.NewIterator());
-    nodes_it->SeekToFirst();
-    while (nodes_it->Valid()) {
-        auto node_list = nodes_it->GetValue();
-        for (auto& node : *node_list) {
-            FreeNodeList(node, &gc_info);
-        }
-        delete node_list;
-        nodes_it->Next();
-    }
-    value_nodes_list_.Clear();
 }
 
 
@@ -70,23 +62,21 @@ void NodeCache::AddKeyEntryNode(uint64_t version, base::Node<base::Slice, void*>
     AddNode(version, node, &key_entry_node_list_);
 }
 
-void NodeCache::AddSingleValueNode(uint64_t version, base::Node<uint64_t, DataBlock*>* node) {
-    AddNode(version, node, &value_node_list_);
+void NodeCache::AddSingleValueNode(uint32_t idx, uint64_t version, base::Node<uint64_t, DataBlock*>* node) {
+    AddNode(version, DataNode(idx, NodeType::kNode, node), &value_node_list_);
 }
 
-void NodeCache::AddValueNodeList(uint64_t version, base::Node<uint64_t, DataBlock*>* node) {
-    AddNode(version, node, &value_nodes_list_);
+void NodeCache::AddValueNodeList(uint32_t idx, uint64_t version, base::Node<uint64_t, DataBlock*>* node) {
+    AddNode(version, DataNode(idx, NodeType::kList, node), &value_node_list_);
 }
 
 void NodeCache::Free(uint64_t version, StatisticsInfo* gc_info) {
     base::Node<uint64_t, std::forward_list<base::Node<base::Slice, void*>*>*>* node1 = nullptr;
-    base::Node<uint64_t, std::forward_list<base::Node<uint64_t, DataBlock*>*>*>* node2 = nullptr;
-    base::Node<uint64_t, std::forward_list<base::Node<uint64_t, DataBlock*>*>*>* node3 = nullptr;
+    base::Node<uint64_t, std::forward_list<DataNode>*>* node2 = nullptr;
     {
         std::lock_guard<std::mutex> lock(mutex_);
         node1 = key_entry_node_list_.Split(version);
         node2 = value_node_list_.Split(version);
-        node3 = value_nodes_list_.Split(version);
     }
     while (node1) {
         auto entry_node_list = node1->GetValue();
@@ -101,29 +91,24 @@ void NodeCache::Free(uint64_t version, StatisticsInfo* gc_info) {
     while (node2) {
         auto node_list = node2->GetValue();
         for (auto& node : *node_list) {
-            FreeNode(node, gc_info);
+            if (node.type == NodeType::kNode) {
+                FreeNode(node.idx, node.node, gc_info);
+            } else {
+                FreeNodeList(node.idx, node.node, gc_info);
+            }
         }
         delete node_list;
         auto tmp = node2;
         node2 = node2->GetNextNoBarrier(0);
         delete tmp;
     }
-    while (node3) {
-        auto node_list = node3->GetValue();
-        for (auto& node : *node_list) {
-            FreeNodeList(node, gc_info);
-        }
-        delete node_list;
-        auto tmp = node3;
-        node3 = node3->GetNextNoBarrier(0);
-        delete tmp;
-    }
 }
 
-void NodeCache::FreeNode(base::Node<uint64_t, DataBlock*>* node, StatisticsInfo* gc_info) {
+void NodeCache::FreeNode(uint32_t idx, base::Node<uint64_t, DataBlock*>* node, StatisticsInfo* gc_info) {
     if (node == nullptr) {
         return;
     }
+    gc_info->IncrIdxCnt(idx);
     gc_info->idx_byte_size += GetRecordTsIdxSize(node->Height());
     DEBUGLOG("delete key %lu with height %u", node->GetKey(), node->Height());
     if (node->GetValue()->dim_cnt_down > 1) {
@@ -132,20 +117,19 @@ void NodeCache::FreeNode(base::Node<uint64_t, DataBlock*>* node, StatisticsInfo*
         DEBUGLOG("delele data block for key %lu", node->GetKey());
         gc_info->record_byte_size += GetRecordSize(node->GetValue()->size);
         delete node->GetValue();
-        gc_info->record_cnt++;
     }
     delete node;
 }
 
-void NodeCache::FreeNodeList(base::Node<uint64_t, DataBlock*>* node, StatisticsInfo* gc_info) {
+void NodeCache::FreeNodeList(uint32_t idx, base::Node<uint64_t, DataBlock*>* node, StatisticsInfo* gc_info) {
     while (node) {
         auto tmp = node;
         node = node->GetNextNoBarrier(0);
-        FreeNode(tmp, gc_info);
+        FreeNode(idx, tmp, gc_info);
     }
 }
 
-void NodeCache::FreeKeyEntry(KeyEntry* entry, StatisticsInfo* gc_info) {
+void NodeCache::FreeKeyEntry(uint32_t idx, KeyEntry* entry, StatisticsInfo* gc_info) {
     if (entry == nullptr) {
         return;
     }
@@ -154,7 +138,7 @@ void NodeCache::FreeKeyEntry(KeyEntry* entry, StatisticsInfo* gc_info) {
     if (it->Valid()) {
         uint64_t ts = it->GetKey();
         base::Node<uint64_t, DataBlock*>* data_node = entry->entries.Split(ts);
-        FreeNodeList(data_node, gc_info);
+        FreeNodeList(idx, data_node, gc_info);
     }
     delete entry;
 }
@@ -168,7 +152,7 @@ void NodeCache::FreeKeyEntryNode(base::Node<base::Slice, void*>* entry_node, Sta
         auto entry_arr = reinterpret_cast<KeyEntry**>(entry_node->GetValue());
         for (uint32_t i = 0; i < ts_cnt_; i++) {
             KeyEntry* entry = entry_arr[i];
-            FreeKeyEntry(entry, gc_info);
+            FreeKeyEntry(i, entry, gc_info);
         }
         delete[] entry_arr;
         uint64_t byte_size =
@@ -176,7 +160,7 @@ void NodeCache::FreeKeyEntryNode(base::Node<base::Slice, void*>* entry_node, Sta
         gc_info->idx_byte_size += byte_size;
     } else {
         KeyEntry* entry = reinterpret_cast<KeyEntry*>(entry_node->GetValue());
-        FreeKeyEntry(entry, gc_info);
+        FreeKeyEntry(0, entry, gc_info);
         uint64_t byte_size =
             GetRecordPkIdxSize(entry_node->Height(), entry_node->GetKey().size(), key_entry_max_height_);
         gc_info->idx_byte_size += byte_size;

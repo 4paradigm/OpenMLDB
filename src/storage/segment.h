@@ -97,9 +97,8 @@ class Segment {
     MemTableIterator* NewIterator(const Slice& key, uint32_t idx,
                                   Ticket& ticket);  // NOLINT
 
-    inline uint64_t GetIdxCnt() {
-        return ts_cnt_ > 1 ? idx_cnt_vec_[0]->load(std::memory_order_relaxed)
-                           : idx_cnt_.load(std::memory_order_relaxed);
+    uint64_t GetIdxCnt() const {
+        return idx_cnt_vec_[0]->load(std::memory_order_relaxed);
     }
 
     int GetIdxCnt(uint32_t ts_idx, uint64_t& ts_cnt) {  // NOLINT
@@ -143,14 +142,13 @@ class Segment {
     void ReleaseAndCount(const std::vector<size_t>& id_vec, StatisticsInfo* statistics_info);
 
  private:
-    void FreeList(::openmldb::base::Node<uint64_t, DataBlock*>* node, StatisticsInfo* statistics_info);
+    void FreeList(uint32_t ts_idx, ::openmldb::base::Node<uint64_t, DataBlock*>* node,
+        StatisticsInfo* statistics_info);
     void SplitList(KeyEntry* entry, uint64_t ts, ::openmldb::base::Node<uint64_t, DataBlock*>** node);
 
  private:
     KeyEntries* entries_;
-    // only Put need mutex
     std::mutex mu_;
-    std::atomic<uint64_t> idx_cnt_;
     std::atomic<uint64_t> idx_byte_size_;
     std::atomic<uint64_t> pk_cnt_;
     uint8_t key_entry_max_height_;

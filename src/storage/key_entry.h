@@ -72,7 +72,7 @@ class KeyEntry {
     KeyEntry() : entries(12, 4, tcmp), refs_(0), count_(0) {}
     explicit KeyEntry(uint8_t height) : entries(height, 4, tcmp), refs_(0), count_(0) {}
 
-    void Release(StatisticsInfo* statistics_info);
+    void Release(uint32_t idx, StatisticsInfo* statistics_info);
 
     void Ref() { refs_.fetch_add(1, std::memory_order_relaxed); }
 

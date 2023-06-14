@@ -28,14 +28,26 @@
 namespace openmldb {
 namespace storage {
 
+enum class NodeType : uint32_t {
+   kNode = 1,
+   kList = 2
+};
+
+struct DataNode {
+   DataNode(uint32_t i, NodeType node_type, base::Node<uint64_t, DataBlock*>* value_node) :
+      idx(i), type(node_type), node(value_node) {}
+   uint32_t idx = 0;
+   NodeType type = NodeType::kNode;
+   base::Node<uint64_t, DataBlock*>* node = nullptr;
+};
+
 class NodeCache {
  public:
     explicit NodeCache(uint32_t ts_cnt, uint32_t height);
     ~NodeCache();
     void AddKeyEntryNode(uint64_t version, base::Node<base::Slice, void*>* node);
-    void AddKeyEntry(uint64_t version, KeyEntry* key_entry);
-    void AddSingleValueNode(uint64_t version, base::Node<uint64_t, DataBlock*>* node);
-    void AddValueNodeList(uint64_t version, base::Node<uint64_t, DataBlock*>* node);
+    void AddSingleValueNode(uint32_t idx, uint64_t version, base::Node<uint64_t, DataBlock*>* node);
+    void AddValueNodeList(uint32_t idx, uint64_t version, base::Node<uint64_t, DataBlock*>* node);
 
     void Free(uint64_t version, StatisticsInfo* gc_info);
     void Clear();
@@ -43,7 +55,7 @@ class NodeCache {
     using KeyEntryNodeList =
       base::Skiplist<uint64_t, std::forward_list<base::Node<base::Slice, void*>*>*, TimeComparator>;
     using ValueNodeList =
-      base::Skiplist<uint64_t, std::forward_list<base::Node<uint64_t, DataBlock*>*>*, TimeComparator>;
+      base::Skiplist<uint64_t, std::forward_list<DataNode>*, TimeComparator>;
 
  private:
     template <typename T>
@@ -58,17 +70,15 @@ class NodeCache {
     }
 
     void FreeKeyEntryNode(base::Node<base::Slice, void*>* entry_node, StatisticsInfo* gc_info);
-    void FreeNodeList(base::Node<uint64_t, DataBlock*>* node, StatisticsInfo* gc_info);
-    void FreeKeyEntry(KeyEntry* entry, StatisticsInfo* gc_info);
-    void FreeNode(base::Node<uint64_t, DataBlock*>* node, StatisticsInfo* gc_info);
-
+    void FreeKeyEntry(uint32_t idx, KeyEntry* entry, StatisticsInfo* gc_info);
+    void FreeNode(uint32_t idx, base::Node<uint64_t, DataBlock*>* node, StatisticsInfo* gc_info);
+    void FreeNodeList(uint32_t idx, base::Node<uint64_t, DataBlock*>* node, StatisticsInfo* gc_info);
  private:
     uint32_t ts_cnt_;
     uint32_t key_entry_max_height_;
     std::mutex mutex_;
     KeyEntryNodeList key_entry_node_list_;
     ValueNodeList value_node_list_;
-    ValueNodeList value_nodes_list_;  // the value in froward_list is a list of nodes
 };
 
 }  // namespace storage

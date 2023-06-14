@@ -36,7 +36,6 @@ static const SliceComparator scmp;
 Segment::Segment(uint8_t height)
     : entries_(nullptr),
       mu_(),
-      idx_cnt_(0),
       idx_byte_size_(0),
       pk_cnt_(0),
       key_entry_max_height_(height),
@@ -45,12 +44,12 @@ Segment::Segment(uint8_t height)
       ttl_offset_(FLAGS_gc_safe_offset * 60 * 1000),
       node_cache_(1, height) {
     entries_ = new KeyEntries((uint8_t)FLAGS_skiplist_max_height, 4, scmp);
+    idx_cnt_vec_.push_back(std::make_shared<std::atomic<uint64_t>>(0));
 }
 
 Segment::Segment(uint8_t height, const std::vector<uint32_t>& ts_idx_vec)
     : entries_(nullptr),
       mu_(),
-      idx_cnt_(0),
       idx_byte_size_(0),
       pk_cnt_(0),
       key_entry_max_height_(height),
@@ -78,13 +77,13 @@ void Segment::Release(StatisticsInfo* statistics_info) {
             if (ts_cnt_ > 1) {
                 KeyEntry** entry_arr = reinterpret_cast<KeyEntry**>(it->GetValue());
                 for (uint32_t i = 0; i < ts_cnt_; i++) {
-                    entry_arr[i]->Release(statistics_info);
+                    entry_arr[i]->Release(i, statistics_info);
                     delete entry_arr[i];
                 }
                 delete[] entry_arr;
             } else {
                 KeyEntry* entry = reinterpret_cast<KeyEntry*>(it->GetValue());
-                entry->Release(statistics_info);
+                entry->Release(0, statistics_info);
                 delete entry;
             }
         }
@@ -92,7 +91,6 @@ void Segment::Release(StatisticsInfo* statistics_info) {
     }
     entries_->Clear();
     node_cache_.Clear();
-    idx_cnt_.store(0);
     idx_byte_size_.store(0);
     pk_cnt_.store(0);
     for (auto& idx_cnt : idx_cnt_vec_) {
@@ -129,7 +127,7 @@ void Segment::ReleaseAndCount(const std::vector<size_t>& id_vec, StatisticsInfo*
                 if (ts_it->Valid()) {
                     uint64_t ts = ts_it->GetKey();
                     auto data_node = entry->entries.Split(ts);
-                    FreeList(data_node, statistics_info);
+                    FreeList(pos, data_node, statistics_info);
                 }
             }
         }
@@ -162,15 +160,14 @@ void Segment::PutUnlock(const Slice& key, uint64_t time, DataBlock* row) {
         memcpy(pk, key.data(), key.size());
         // need to delete memory when free node
         Slice skey(pk, key.size());
-        entry = (void*)new KeyEntry(key_entry_max_height_);  // NOLINT
+        entry = reinterpret_cast<void*>(new KeyEntry(key_entry_max_height_));
         uint8_t height = entries_->Insert(skey, entry);
         byte_size += GetRecordPkIdxSize(height, key.size(), key_entry_max_height_);
         pk_cnt_.fetch_add(1, std::memory_order_relaxed);
     }
-    idx_cnt_.fetch_add(1, std::memory_order_relaxed);
-    uint8_t height = ((KeyEntry*)entry)->entries.Insert(time, row);  // NOLINT
-    ((KeyEntry*)entry)                                               // NOLINT
-        ->count_.fetch_add(1, std::memory_order_relaxed);
+    idx_cnt_vec_[0]->fetch_add(1, std::memory_order_relaxed);
+    uint8_t height = reinterpret_cast<KeyEntry*>(entry)->entries.Insert(time, row);
+    reinterpret_cast<KeyEntry*>(entry)->count_.fetch_add(1, std::memory_order_relaxed);
     byte_size += GetRecordTsIdxSize(height);
     idx_byte_size_.fetch_add(byte_size, std::memory_order_relaxed);
 }
@@ -191,15 +188,13 @@ void Segment::BulkLoadPut(unsigned int key_entry_id, const Slice& key, uint64_t 
             for (uint32_t i = 0; i < ts_cnt_; i++) {
                 entry_arr_tmp[i] = new KeyEntry(key_entry_max_height_);
             }
-            auto entry_arr = (void*)entry_arr_tmp;  // NOLINT
+            auto entry_arr = reinterpret_cast<void*>(entry_arr_tmp);
             uint8_t height = entries_->Insert(skey, entry_arr);
             byte_size += GetRecordPkMultiIdxSize(height, key.size(), key_entry_max_height_, ts_cnt_);
             pk_cnt_.fetch_add(1, std::memory_order_relaxed);
         }
-        uint8_t height = ((KeyEntry**)key_entry_or_list)[key_entry_id]->entries.Insert(  // NOLINT
-            time, row);
-        ((KeyEntry**)key_entry_or_list)[key_entry_id]->count_.fetch_add(  // NOLINT
-            1, std::memory_order_relaxed);
+        uint8_t height = reinterpret_cast<KeyEntry**>(key_entry_or_list)[key_entry_id]->entries.Insert(time, row);
+        reinterpret_cast<KeyEntry**>(key_entry_or_list)[key_entry_id]->count_.fetch_add(1, std::memory_order_relaxed);
         byte_size += GetRecordTsIdxSize(height);
         idx_byte_size_.fetch_add(byte_size, std::memory_order_relaxed);
         idx_cnt_vec_[key_entry_id]->fetch_add(1, std::memory_order_relaxed);
@@ -235,16 +230,15 @@ void Segment::Put(const Slice& key, const std::map<int32_t, uint64_t>& ts_map, D
                 for (uint32_t i = 0; i < ts_cnt_; i++) {
                     entry_arr_tmp[i] = new KeyEntry(key_entry_max_height_);
                 }
-                entry_arr = (void*)entry_arr_tmp;  // NOLINT
+                entry_arr = reinterpret_cast<void*>(entry_arr_tmp);
                 uint8_t height = entries_->Insert(skey, entry_arr);
                 byte_size += GetRecordPkMultiIdxSize(height, key.size(), key_entry_max_height_, ts_cnt_);
                 pk_cnt_.fetch_add(1, std::memory_order_relaxed);
             }
         }
-        uint8_t height = ((KeyEntry**)entry_arr)[pos->second]->entries.Insert(  // NOLINT
-            kv.second, row);
-        ((KeyEntry**)entry_arr)[pos->second]->count_.fetch_add(  // NOLINT
-            1, std::memory_order_relaxed);
+        auto entry = reinterpret_cast<KeyEntry**>(entry_arr)[pos->second];
+        uint8_t height = entry->entries.Insert(kv.second, row);
+        entry->count_.fetch_add(1, std::memory_order_relaxed);
         byte_size += GetRecordTsIdxSize(height);
         idx_byte_size_.fetch_add(byte_size, std::memory_order_relaxed);
         idx_cnt_vec_[pos->second]->fetch_add(1, std::memory_order_relaxed);
@@ -289,7 +283,7 @@ bool Segment::Delete(const std::optional<uint32_t>& idx, const Slice& key) {
             }
         }
         if (data_node != nullptr) {
-            node_cache_.AddValueNodeList(gc_version_.load(std::memory_order_relaxed), data_node);
+            node_cache_.AddValueNodeList(iter->second, gc_version_.load(std::memory_order_relaxed), data_node);
         }
     }
     return false;
@@ -302,6 +296,7 @@ bool Segment::Delete(const std::optional<uint32_t>& idx, const Slice& key,
         return true;
     }
     KeyEntry* key_entry = nullptr;
+    uint32_t ts_idx = 0;
     if (ts_cnt_ == 1) {
         if (idx.has_value() && ts_idx_map_.find(idx.value()) == ts_idx_map_.end()) {
             return false;
@@ -316,6 +311,7 @@ bool Segment::Delete(const std::optional<uint32_t>& idx, const Slice& key,
             return false;
         }
         key_entry = reinterpret_cast<KeyEntry**>(entry)[iter->second];
+        ts_idx = iter->second;
     }
     if (end_ts.has_value()) {
         if (auto node = key_entry->entries.GetLast(); node == nullptr) {
@@ -333,7 +329,7 @@ bool Segment::Delete(const std::optional<uint32_t>& idx, const Slice& key,
                 } else {
                     return true;
                 }
-                node_cache_.AddSingleValueNode(gc_version_.load(std::memory_order_relaxed), data_node);
+                node_cache_.AddSingleValueNode(ts_idx, gc_version_.load(std::memory_order_relaxed), data_node);
             }
             return true;
         }
@@ -344,14 +340,15 @@ bool Segment::Delete(const std::optional<uint32_t>& idx, const Slice& key,
         data_node = key_entry->entries.Split(ts);
     }
     if (data_node != nullptr) {
-        node_cache_.AddValueNodeList(gc_version_.load(std::memory_order_relaxed), data_node);
+        node_cache_.AddValueNodeList(ts_idx, gc_version_.load(std::memory_order_relaxed), data_node);
     }
     return true;
 }
 
-void Segment::FreeList(::openmldb::base::Node<uint64_t, DataBlock*>* node, StatisticsInfo* statistics_info) {
+void Segment::FreeList(uint32_t ts_idx, ::openmldb::base::Node<uint64_t, DataBlock*>* node,
+    StatisticsInfo* statistics_info) {
     while (node != nullptr) {
-        statistics_info->idx_cnt++;
+        statistics_info->IncrIdxCnt(ts_idx);
         ::openmldb::base::Node<uint64_t, DataBlock*>* tmp = node;
         idx_byte_size_.fetch_sub(GetRecordTsIdxSize(tmp->Height()));
         node = node->GetNextNoBarrier(0);
@@ -362,7 +359,6 @@ void Segment::FreeList(::openmldb::base::Node<uint64_t, DataBlock*>* node, Stati
             DEBUGLOG("delele data block for key %lu", tmp->GetKey());
             statistics_info->record_byte_size += GetRecordSize(tmp->GetValue()->size);
             delete tmp->GetValue();
-            statistics_info->record_cnt++;
         }
         delete tmp;
     }
@@ -446,11 +442,11 @@ void Segment::Gc4Head(uint64_t keep_cnt, StatisticsInfo* statistics_info) {
         return;
     }
     uint64_t consumed = ::baidu::common::timer::get_micros();
-    uint64_t old = statistics_info->idx_cnt;
-    KeyEntries::Iterator* it = entries_->NewIterator();
+    uint64_t old = statistics_info->GetIdxCnt(0);
+    std::unique_ptr<KeyEntries::Iterator> it(entries_->NewIterator());
     it->SeekToFirst();
     while (it->Valid()) {
-        KeyEntry* entry = (KeyEntry*)it->GetValue();  // NOLINT
+        auto entry = reinterpret_cast<KeyEntry*>(it->GetValue());
         ::openmldb::base::Node<uint64_t, DataBlock*>* node = nullptr;
         {
             std::lock_guard<std::mutex> lock(mu_);
@@ -458,19 +454,18 @@ void Segment::Gc4Head(uint64_t keep_cnt, StatisticsInfo* statistics_info) {
                 node = entry->entries.SplitByPos(keep_cnt);
             }
         }
-        uint64_t cur_idx_cnt = statistics_info->idx_cnt;
-        FreeList(node, statistics_info);
-        entry->count_.fetch_sub(statistics_info->idx_cnt - cur_idx_cnt, std::memory_order_relaxed);
+        uint64_t cur_idx_cnt = statistics_info->GetIdxCnt(0);
+        FreeList(0, node, statistics_info);
+        entry->count_.fetch_sub(statistics_info->GetIdxCnt(0) - cur_idx_cnt, std::memory_order_relaxed);
         it->Next();
     }
     DEBUGLOG("[Gc4Head] segment gc keep cnt %lu consumed %lu, count %lu", keep_cnt,
-             (::baidu::common::timer::get_micros() - consumed) / 1000, statistics_info->idx_cnt - old);
-    idx_cnt_.fetch_sub(statistics_info->idx_cnt - old, std::memory_order_relaxed);
-    delete it;
+             (::baidu::common::timer::get_micros() - consumed) / 1000, statistics_info->GetIdxCnt(0) - old);
+    idx_cnt_vec_[0]->fetch_sub(statistics_info->GetIdxCnt(0) - old, std::memory_order_relaxed);
 }
 
 void Segment::GcAllType(const std::map<uint32_t, TTLSt>& ttl_st_map, StatisticsInfo* statistics_info) {
-    uint64_t old = statistics_info->idx_cnt;
+    uint64_t old = statistics_info->GetTotalCnt();
     uint64_t consumed = ::baidu::common::timer::get_micros();
     std::unique_ptr<KeyEntries::Iterator> it(entries_->NewIterator());
     it->SeekToFirst();
@@ -553,9 +548,9 @@ void Segment::GcAllType(const std::map<uint32_t, TTLSt>& ttl_st_map, StatisticsI
             if (continue_flag) {
                 continue;
             }
-            uint64_t cur_idx_cnt = statistics_info->idx_cnt;
-            FreeList(node, statistics_info);
-            uint64_t free_idx_cnt = statistics_info->idx_cnt - cur_idx_cnt;
+            uint64_t cur_idx_cnt = statistics_info->GetIdxCnt(pos->second);
+            FreeList(pos->second, node, statistics_info);
+            uint64_t free_idx_cnt = statistics_info->GetIdxCnt(pos->second) - cur_idx_cnt;
             entry->count_.fetch_sub(free_idx_cnt, std::memory_order_relaxed);
             idx_cnt_vec_[pos->second]->fetch_sub(free_idx_cnt, std::memory_order_relaxed);
         }
@@ -580,7 +575,7 @@ void Segment::GcAllType(const std::map<uint32_t, TTLSt>& ttl_st_map, StatisticsI
         }
     }
     DEBUGLOG("[GcAll] segment gc consumed %lu, count %lu", (::baidu::common::timer::get_micros() - consumed) / 1000,
-             statistics_info->idx_cnt - old);
+             statistics_info->GetTotalCnt() - old);
 }
 
 void Segment::SplitList(KeyEntry* entry, uint64_t ts, ::openmldb::base::Node<uint64_t, DataBlock*>** node) {
@@ -593,7 +588,7 @@ void Segment::SplitList(KeyEntry* entry, uint64_t ts, ::openmldb::base::Node<uin
 // fast gc with no global pause
 void Segment::Gc4TTL(const uint64_t time, StatisticsInfo* statistics_info) {
     uint64_t consumed = ::baidu::common::timer::get_micros();
-    uint64_t old = statistics_info->idx_cnt;
+    uint64_t old = statistics_info->GetIdxCnt(0);
     std::unique_ptr<KeyEntries::Iterator> it(entries_->NewIterator());
     it->SeekToFirst();
     while (it->Valid()) {
@@ -620,13 +615,13 @@ void Segment::Gc4TTL(const uint64_t time, StatisticsInfo* statistics_info) {
         if (entry_node != nullptr) {
             node_cache_.AddKeyEntryNode(gc_version_.load(std::memory_order_relaxed), entry_node);
         }
-        uint64_t cur_idx_cnt = statistics_info->idx_cnt;
-        FreeList(node, statistics_info);
-        entry->count_.fetch_sub(statistics_info->idx_cnt - cur_idx_cnt, std::memory_order_relaxed);
+        uint64_t cur_idx_cnt = statistics_info->GetIdxCnt(0);
+        FreeList(0, node, statistics_info);
+        entry->count_.fetch_sub(statistics_info->GetIdxCnt(0) - cur_idx_cnt, std::memory_order_relaxed);
     }
     DEBUGLOG("[Gc4TTL] segment gc with key %lu ,consumed %lu, count %lu", time,
-             (::baidu::common::timer::get_micros() - consumed) / 1000, statistics_info->idx_cnt - old);
-    idx_cnt_.fetch_sub(statistics_info->idx_cnt - old, std::memory_order_relaxed);
+             (::baidu::common::timer::get_micros() - consumed) / 1000, statistics_info->GetIdxCnt(0) - old);
+    idx_cnt_vec_[0]->fetch_sub(statistics_info->GetIdxCnt(0) - old, std::memory_order_relaxed);
 }
 
 void Segment::Gc4TTLAndHead(const uint64_t time, const uint64_t keep_cnt, StatisticsInfo* statistics_info) {
@@ -635,7 +630,7 @@ void Segment::Gc4TTLAndHead(const uint64_t time, const uint64_t keep_cnt, Statis
         return;
     }
     uint64_t consumed = ::baidu::common::timer::get_micros();
-    uint64_t old = statistics_info->idx_cnt;
+    uint64_t old = statistics_info->GetIdxCnt(0);
     std::unique_ptr<KeyEntries::Iterator> it(entries_->NewIterator());
     it->SeekToFirst();
     while (it->Valid()) {
@@ -656,13 +651,13 @@ void Segment::Gc4TTLAndHead(const uint64_t time, const uint64_t keep_cnt, Statis
                 node = entry->entries.SplitByKeyAndPos(time, keep_cnt);
             }
         }
-        uint64_t cur_idx_cnt = statistics_info->idx_cnt;
-        FreeList(node, statistics_info);
-        entry->count_.fetch_sub(statistics_info->idx_cnt - cur_idx_cnt, std::memory_order_relaxed);
+        uint64_t cur_idx_cnt = statistics_info->GetIdxCnt(0);
+        FreeList(0, node, statistics_info);
+        entry->count_.fetch_sub(statistics_info->GetIdxCnt(0) - cur_idx_cnt, std::memory_order_relaxed);
     }
     DEBUGLOG("[Gc4TTLAndHead] segment gc time %lu and keep cnt %lu consumed %lu, count %lu",
-        time, keep_cnt, (::baidu::common::timer::get_micros() - consumed) / 1000, statistics_info->idx_cnt - old);
-    idx_cnt_.fetch_sub(statistics_info->idx_cnt - old, std::memory_order_relaxed);
+        time, keep_cnt, (::baidu::common::timer::get_micros() - consumed) / 1000, statistics_info->GetIdxCnt(0) - old);
+    idx_cnt_vec_[0]->fetch_sub(statistics_info->GetIdxCnt(0) - old, std::memory_order_relaxed);
 }
 
 void Segment::Gc4TTLOrHead(const uint64_t time, const uint64_t keep_cnt, StatisticsInfo* statistics_info) {
@@ -677,7 +672,7 @@ void Segment::Gc4TTLOrHead(const uint64_t time, const uint64_t keep_cnt, Statist
         return;
     }
     uint64_t consumed = ::baidu::common::timer::get_micros();
-    uint64_t old = statistics_info->idx_cnt;
+    uint64_t old = statistics_info->GetIdxCnt(0);
     std::unique_ptr<KeyEntries::Iterator> it(entries_->NewIterator());
     it->SeekToFirst();
     while (it->Valid()) {
@@ -702,13 +697,13 @@ void Segment::Gc4TTLOrHead(const uint64_t time, const uint64_t keep_cnt, Statist
         if (entry_node != nullptr) {
             node_cache_.AddKeyEntryNode(gc_version_.load(std::memory_order_relaxed), entry_node);
         }
-        uint64_t cur_idx_cnt = statistics_info->idx_cnt;
-        FreeList(node, statistics_info);
-        entry->count_.fetch_sub(statistics_info->idx_cnt - cur_idx_cnt, std::memory_order_relaxed);
+        uint64_t cur_idx_cnt = statistics_info->GetIdxCnt(0);
+        FreeList(0, node, statistics_info);
+        entry->count_.fetch_sub(statistics_info->GetIdxCnt(0) - cur_idx_cnt, std::memory_order_relaxed);
     }
     DEBUGLOG("[Gc4TTLAndHead] segment gc time %lu and keep cnt %lu consumed %lu, count %lu",
-        time, keep_cnt, (::baidu::common::timer::get_micros() - consumed) / 1000, statistics_info->idx_cnt - old);
-    idx_cnt_.fetch_sub(statistics_info->idx_cnt - old, std::memory_order_relaxed);
+        time, keep_cnt, (::baidu::common::timer::get_micros() - consumed) / 1000, statistics_info->GetIdxCnt(0) - old);
+    idx_cnt_vec_[0]->fetch_sub(statistics_info->GetIdxCnt(0) - old, std::memory_order_relaxed);
 }
 
 int Segment::GetCount(const Slice& key, uint64_t& count) {
@@ -719,7 +714,7 @@ int Segment::GetCount(const Slice& key, uint64_t& count) {
     if (entries_->Get(key, entry) < 0 || entry == nullptr) {
         return -1;
     }
-    count = ((KeyEntry*)entry)->count_.load(std::memory_order_relaxed);  // NOLINT
+    count = reinterpret_cast<KeyEntry*>(entry)->count_.load(std::memory_order_relaxed);
     return 0;
 }
 
@@ -735,12 +730,10 @@ int Segment::GetCount(const Slice& key, uint32_t idx, uint64_t& count) {
     if (entries_->Get(key, entry_arr) < 0 || entry_arr == nullptr) {
         return -1;
     }
-    count = ((KeyEntry**)entry_arr)[pos->second]->count_.load(  // NOLINT
-        std::memory_order_relaxed);
+    count = reinterpret_cast<KeyEntry**>(entry_arr)[pos->second]->count_.load(std::memory_order_relaxed);
     return 0;
 }
 
-// Iterator
 MemTableIterator* Segment::NewIterator(const Slice& key, Ticket& ticket) {
     if (entries_ == nullptr || ts_cnt_ > 1) {
         return new MemTableIterator(nullptr);
@@ -749,8 +742,8 @@ MemTableIterator* Segment::NewIterator(const Slice& key, Ticket& ticket) {
     if (entries_->Get(key, entry) < 0 || entry == nullptr) {
         return new MemTableIterator(nullptr);
     }
-    ticket.Push((KeyEntry*)entry);                                           // NOLINT
-    return new MemTableIterator(((KeyEntry*)entry)->entries.NewIterator());  // NOLINT
+    ticket.Push(reinterpret_cast<KeyEntry*>(entry));
+    return new MemTableIterator(reinterpret_cast<KeyEntry*>(entry)->entries.NewIterator());
 }
 
 MemTableIterator* Segment::NewIterator(const Slice& key, uint32_t idx, Ticket& ticket) {
@@ -765,8 +758,9 @@ MemTableIterator* Segment::NewIterator(const Slice& key, uint32_t idx, Ticket& t
     if (entries_->Get(key, entry_arr) < 0 || entry_arr == nullptr) {
         return new MemTableIterator(nullptr);
     }
-    ticket.Push(((KeyEntry**)entry_arr)[pos->second]);                                         // NOLINT
-    return new MemTableIterator(((KeyEntry**)entry_arr)[pos->second]->entries.NewIterator());  // NOLINT
+    auto entry = reinterpret_cast<KeyEntry**>(entry_arr)[pos->second];
+    ticket.Push(entry);
+    return new MemTableIterator(entry->entries.NewIterator());
 }
 
 MemTableIterator::MemTableIterator(TimeEntries::Iterator* it) : it_(it) {}

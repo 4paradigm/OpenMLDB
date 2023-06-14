@@ -17,6 +17,7 @@
 #ifndef SRC_STORAGE_RECORD_H_
 #define SRC_STORAGE_RECORD_H_
 
+#include <vector>
 #include "base/slice.h"
 #include "base/skiplist.h"
 #include "storage/key_entry.h"
@@ -46,20 +47,40 @@ static inline uint32_t GetRecordPkMultiIdxSize(uint8_t height, uint32_t key_size
 static inline uint32_t GetRecordTsIdxSize(uint8_t height) { return height * 8 + DATA_NODE_SIZE; }
 
 struct StatisticsInfo {
-    StatisticsInfo() {}
-    StatisticsInfo(uint64_t idx_cnt_i, uint64_t record_cnt_i, uint64_t byte_size) :
-        idx_cnt(idx_cnt_i), record_cnt(record_cnt_i), record_byte_size(byte_size) {}
-    StatisticsInfo(uint64_t idx_cnt_i, uint64_t idx_byte_size_i, uint64_t record_cnt_i, uint64_t byte_size) :
-        idx_cnt(idx_cnt_i), idx_byte_size(idx_byte_size_i), record_cnt(record_cnt_i), record_byte_size(byte_size) {}
+    explicit StatisticsInfo(uint32_t idx_num) : idx_cnt_vec(idx_num, 0) {}
+    StatisticsInfo(const StatisticsInfo& other) {
+        idx_cnt_vec = other.idx_cnt_vec;
+        idx_byte_size = other.idx_byte_size;
+        record_byte_size = other.record_byte_size;
+    }
     void Reset() {
-        idx_cnt = 0;
+        for (auto& cnt : idx_cnt_vec) {
+            cnt = 0;
+        }
         idx_byte_size = 0;
-        record_cnt = 0;
         record_byte_size = 0;
     }
-    uint64_t idx_cnt = 0;
+
+    void IncrIdxCnt(uint32_t idx) {
+        if (idx < idx_cnt_vec.size()) {
+            idx_cnt_vec[idx]++;
+        }
+    }
+
+    uint64_t GetIdxCnt(uint32_t idx) const {
+        return idx >= idx_cnt_vec.size() ? 0 : idx_cnt_vec[idx];
+    }
+
+    uint64_t GetTotalCnt() const {
+        uint64_t total_cnt = 0;
+        for (auto& cnt : idx_cnt_vec) {
+            total_cnt += cnt;
+        }
+        return total_cnt;
+    }
+
+    std::vector<uint64_t> idx_cnt_vec;
     uint64_t idx_byte_size = 0;
-    uint64_t record_cnt = 0;
     uint64_t record_byte_size = 0;
 };
 

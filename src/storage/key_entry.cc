@@ -21,7 +21,7 @@
 namespace openmldb {
 namespace storage {
 
-void KeyEntry::Release(StatisticsInfo* statistics_info) {
+void KeyEntry::Release(uint32_t idx, StatisticsInfo* statistics_info) {
     if (entries.IsEmpty()) {
         return;
     }
@@ -39,8 +39,8 @@ void KeyEntry::Release(StatisticsInfo* statistics_info) {
             DEBUGLOG("delele data block for key %lu", node->GetKey());
             statistics_info->record_byte_size += GetRecordSize(node->GetValue()->size);
             delete node->GetValue();
-            statistics_info->record_cnt++;
         }
+        statistics_info->IncrIdxCnt(idx);
         statistics_info->idx_byte_size += GetRecordTsIdxSize(node->Height());
         auto tmp = node;
         node = node->GetNextNoBarrier(0);

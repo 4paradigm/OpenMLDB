@@ -291,24 +291,27 @@ uint64_t MemTable::Release() {
     if (segments_.empty()) {
         return 0;
     }
-    StatisticsInfo statistics_info;
+    uint64_t idx_cnt = 0;
     for (uint32_t i = 0; i < segments_.size(); i++) {
         if (segments_[i] != nullptr) {
             for (uint32_t j = 0; j < seg_cnt_; j++) {
+                StatisticsInfo statistics_info(segments_[i][j]->GetTsCnt());
                 segments_[i][j]->Release(&statistics_info);
+                idx_cnt += statistics_info.GetTotalCnt();
             }
         }
     }
     segment_released_ = true;
     segments_.clear();
-    return statistics_info.record_cnt;
+    return idx_cnt;
 }
 
 void MemTable::SchedGc() {
     uint64_t consumed = ::baidu::common::timer::get_micros();
     PDLOG(INFO, "start making gc for table %s, tid %u, pid %u", name_.c_str(), id_, pid_);
-    StatisticsInfo statistics_info;
     auto inner_indexs = table_index_.GetAllInnerIndex();
+    uint64_t gc_idx_cnt = 0;
+    uint64_t gc_record_byte_size = 0;
     for (uint32_t i = 0; i < inner_indexs->size(); i++) {
         const std::vector<std::shared_ptr<IndexDef>>& real_index = inner_indexs->at(i)->GetIndex();
         std::map<uint32_t, TTLSt> ttl_st_map;
@@ -334,11 +337,14 @@ void MemTable::SchedGc() {
             if (segments_[i] != nullptr) {
                 for (uint32_t k = 0; k < seg_cnt_; k++) {
                     if (segments_[i][k] != nullptr) {
+                        StatisticsInfo statistics_info(segments_[i][k]->GetTsCnt());
                        if (real_index.size() == 1 || deleting_pos.size() + deleted_num == real_index.size()) {
                             segments_[i][k]->ReleaseAndCount(&statistics_info);
                         } else {
                             segments_[i][k]->ReleaseAndCount(deleting_pos, &statistics_info);
                         }
+                        gc_idx_cnt += statistics_info.GetTotalCnt();
+                        gc_record_byte_size += statistics_info.record_byte_size;
                     }
                 }
             }
@@ -356,6 +362,7 @@ void MemTable::SchedGc() {
         for (uint32_t j = 0; j < seg_cnt_; j++) {
             uint64_t seg_gc_time = ::baidu::common::timer::get_micros() / 1000;
             Segment* segment = segments_[i][j];
+            StatisticsInfo statistics_info(segment->GetTsCnt());
             segment->IncrGcVersion();
             segment->GcFreeList(&statistics_info);
             if (ttl_st_map.size() == 1) {
@@ -363,18 +370,17 @@ void MemTable::SchedGc() {
             } else {
                 segment->ExecuteGc(ttl_st_map, &statistics_info);
             }
+            gc_idx_cnt += statistics_info.GetTotalCnt();
+            gc_record_byte_size += statistics_info.record_byte_size;
             seg_gc_time = ::baidu::common::timer::get_micros() / 1000 - seg_gc_time;
             PDLOG(INFO, "gc segment[%u][%u] done consumed %lu for table %s tid %u pid %u", i, j, seg_gc_time,
                   name_.c_str(), id_, pid_);
         }
     }
     consumed = ::baidu::common::timer::get_micros() - consumed;
-    record_cnt_.fetch_sub(statistics_info.record_cnt, std::memory_order_relaxed);
-    record_byte_size_.fetch_sub(statistics_info.record_byte_size, std::memory_order_relaxed);
-    PDLOG(INFO,
-          "gc finished, gc_idx_cnt %lu, gc_record_cnt %lu consumed %lu ms for "
-          "table %s tid %u pid %u",
-          statistics_info.idx_cnt, statistics_info.record_cnt, consumed / 1000, name_.c_str(), id_, pid_);
+    record_byte_size_.fetch_sub(gc_record_byte_size, std::memory_order_relaxed);
+    PDLOG(INFO, "gc finished, gc_idx_cnt %lu, consumed %lu ms for table %s tid %u pid %u",
+          gc_idx_cnt, consumed / 1000, name_.c_str(), id_, pid_);
     UpdateTTL();
 }
 
@@ -390,15 +396,13 @@ uint64_t MemTable::GetExpireTime(const TTLSt& ttl_st) {
 
 bool MemTable::CheckLatest(uint32_t index_id, const std::string& key, uint64_t ts) {
     ::openmldb::storage::Ticket ticket;
-    ::openmldb::storage::TableIterator* it = NewIterator(index_id, key, ticket);
+    std::unique_ptr<::openmldb::storage::TableIterator> it(NewIterator(index_id, key, ticket));
     it->SeekToLast();
     if (it->Valid()) {
         if (ts >= it->GetKey()) {
-            delete it;
             return false;
         }
     }
-    delete it;
     return true;
 }
 

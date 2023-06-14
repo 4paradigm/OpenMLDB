@@ -19,6 +19,7 @@
 #include <iostream>
 #include <string>
 
+#include "absl/strings/str_cat.h"
 #include "base/glog_wrapper.h"
 #include "base/slice.h"
 #include "gtest/gtest.h"
@@ -42,13 +43,12 @@ TEST_F(SegmentTest, Size) {
 
 TEST_F(SegmentTest, DataBlock) {
     const char* test = "test";
-    DataBlock* db = new DataBlock(1, test, 4);
+    std::unique_ptr<DataBlock> db = std::make_unique<DataBlock>(1, test, 4);
     ASSERT_EQ(4, (int64_t)db->size);
     ASSERT_EQ('t', db->data[0]);
     ASSERT_EQ('e', db->data[1]);
     ASSERT_EQ('s', db->data[2]);
     ASSERT_EQ('t', db->data[3]);
-    delete db;
 }
 
 TEST_F(SegmentTest, PutAndScan) {
@@ -61,7 +61,7 @@ TEST_F(SegmentTest, PutAndScan) {
     segment.Put(pk, 9529, value.c_str(), value.size());
     ASSERT_EQ(1, (int64_t)segment.GetPkCnt());
     Ticket ticket;
-    MemTableIterator* it = segment.NewIterator("test1", ticket);
+    std::unique_ptr<MemTableIterator> it(segment.NewIterator("test1", ticket));
     it->Seek(9530);
     ASSERT_TRUE(it->Valid());
     ASSERT_EQ(9529, (int64_t)it->GetKey());
@@ -77,9 +77,20 @@ TEST_F(SegmentTest, PutAndScan) {
 }
 
 void CheckStatisticsInfo(const StatisticsInfo& expect, const StatisticsInfo& value) {
-    ASSERT_EQ(expect.idx_cnt, value.idx_cnt);
-    ASSERT_EQ(expect.record_cnt, value.record_cnt);
+    ASSERT_EQ(expect.idx_cnt_vec.size(), value.idx_cnt_vec.size());
+    for (size_t idx = 0; idx < expect.idx_cnt_vec.size(); idx++) {
+        ASSERT_EQ(expect.idx_cnt_vec[idx], value.idx_cnt_vec[idx]);
+    }
     ASSERT_EQ(expect.record_byte_size, value.record_byte_size);
+    ASSERT_EQ(expect.idx_byte_size, value.idx_byte_size);
+}
+
+StatisticsInfo CreateStatisticsInfo(uint64_t idx_cnt, uint64_t idx_byte_size, uint64_t record_byte_size) {
+    StatisticsInfo info(1);
+    info.idx_cnt_vec[0] = idx_cnt;
+    info.idx_byte_size = idx_byte_size;
+    info.record_byte_size = record_byte_size;
+    return info;
 }
 
 TEST_F(SegmentTest, Delete) {
@@ -92,7 +103,7 @@ TEST_F(SegmentTest, Delete) {
     segment.Put(pk, 9529, value.c_str(), value.size());
     ASSERT_EQ(1, (int64_t)segment.GetPkCnt());
     Ticket ticket;
-    MemTableIterator* it = segment.NewIterator("test1", ticket);
+    std::unique_ptr<MemTableIterator> it(segment.NewIterator("test1", ticket));
     int size = 0;
     it->SeekToFirst();
     while (it->Valid()) {
@@ -100,16 +111,14 @@ TEST_F(SegmentTest, Delete) {
         size++;
     }
     ASSERT_EQ(4, size);
-    delete it;
     ASSERT_TRUE(segment.Delete(std::nullopt, pk));
-    it = segment.NewIterator("test1", ticket);
+    it.reset(segment.NewIterator("test1", ticket));
     ASSERT_FALSE(it->Valid());
-    delete it;
     segment.IncrGcVersion();
     segment.IncrGcVersion();
-    StatisticsInfo gc_info;
+    StatisticsInfo gc_info(1);
     segment.GcFreeList(&gc_info);
-    CheckStatisticsInfo(StatisticsInfo(4, 4, 84), gc_info);
+    CheckStatisticsInfo(CreateStatisticsInfo(4, 365, 4 * (5 + sizeof(DataBlock))), gc_info);
 }
 
 TEST_F(SegmentTest, GetCount) {
@@ -126,7 +135,7 @@ TEST_F(SegmentTest, GetCount) {
     ASSERT_EQ(0, segment.GetCount(pk, count));
     ASSERT_EQ(4, (int64_t)count);
 
-    StatisticsInfo gc_info;
+    StatisticsInfo gc_info(1);
     segment.Gc4TTL(9528, &gc_info);
     ASSERT_EQ(0, segment.GetCount(pk, count));
     ASSERT_EQ(2, (int64_t)count);
@@ -169,7 +178,7 @@ TEST_F(SegmentTest, Iterator) {
     segment.Put(pk, 9769, "test2", 5);
     ASSERT_EQ(1, (int64_t)segment.GetPkCnt());
     Ticket ticket;
-    MemTableIterator* it = segment.NewIterator("test1", ticket);
+    std::unique_ptr<MemTableIterator> it(segment.NewIterator("test1", ticket));
     it->SeekToFirst();
     int size = 0;
     while (it->Valid()) {
@@ -195,11 +204,11 @@ TEST_F(SegmentTest, TestGc4Head) {
     Slice pk("PK");
     segment.Put(pk, 9768, "test1", 5);
     segment.Put(pk, 9769, "test2", 5);
-    StatisticsInfo gc_info;
+    StatisticsInfo gc_info(1);
     segment.Gc4Head(1, &gc_info);
-    CheckStatisticsInfo({1, 1, GetRecordSize(5)}, gc_info);
+    CheckStatisticsInfo(CreateStatisticsInfo(1, 0, GetRecordSize(5)), gc_info);
     Ticket ticket;
-    MemTableIterator* it = segment.NewIterator(pk, ticket);
+    std::unique_ptr<MemTableIterator> it(segment.NewIterator(pk, ticket));
     it->Seek(9769);
     ASSERT_TRUE(it->Valid());
     ASSERT_EQ(9769, (int64_t)it->GetKey());
@@ -214,14 +223,17 @@ TEST_F(SegmentTest, TestGc4TTL) {
     Segment segment(8);
     segment.Put("PK", 9768, "test1", 5);
     segment.Put("PK", 9769, "test2", 5);
-    StatisticsInfo gc_info;
+    StatisticsInfo gc_info(1);
     segment.Gc4TTL(9765, &gc_info);
-    CheckStatisticsInfo({0, 0, 0}, gc_info);
+    CheckStatisticsInfo(CreateStatisticsInfo(0, 0, 0), gc_info);
     segment.Gc4TTL(9768, &gc_info);
-    CheckStatisticsInfo({1, 1, GetRecordSize(5)}, gc_info);
-    gc_info.Reset();
+    CheckStatisticsInfo(CreateStatisticsInfo(1, 0, GetRecordSize(5)), gc_info);
     segment.Gc4TTL(9770, &gc_info);
-    CheckStatisticsInfo({2, 2, 2 * GetRecordSize(5)}, gc_info);
+    CheckStatisticsInfo(CreateStatisticsInfo(2, 0, 2 * GetRecordSize(5)), gc_info);
+    segment.IncrGcVersion();
+    segment.IncrGcVersion();
+    segment.GcFreeList(&gc_info);
+    CheckStatisticsInfo(CreateStatisticsInfo(2, 194, 2 * GetRecordSize(5)), gc_info);
 }
 
 TEST_F(SegmentTest, TestGc4TTLAndHead) {
@@ -233,20 +245,20 @@ TEST_F(SegmentTest, TestGc4TTLAndHead) {
     segment.Put("PK2", 9765, "test1", 5);
     segment.Put("PK2", 9766, "test2", 5);
     segment.Put("PK2", 9767, "test3", 5);
-    StatisticsInfo gc_info;
+    StatisticsInfo gc_info(1);
     segment.Gc4TTLAndHead(0, 0, &gc_info);
-    CheckStatisticsInfo({0, 0, 0}, gc_info);
+    CheckStatisticsInfo(CreateStatisticsInfo(0, 0, 0), gc_info);
     segment.Gc4TTLAndHead(9765, 0, &gc_info);
-    CheckStatisticsInfo({0, 0, 0}, gc_info);
+    CheckStatisticsInfo(CreateStatisticsInfo(0, 0, 0), gc_info);
     segment.Gc4TTLAndHead(0, 3, &gc_info);
-    CheckStatisticsInfo({0, 0, 0}, gc_info);
+    CheckStatisticsInfo(CreateStatisticsInfo(0, 0, 0), gc_info);
     segment.Gc4TTLAndHead(9765, 3, &gc_info);
-    CheckStatisticsInfo({0, 0, 0}, gc_info);
+    CheckStatisticsInfo(CreateStatisticsInfo(0, 0, 0), gc_info);
     segment.Gc4TTLAndHead(9766, 2, &gc_info);
-    CheckStatisticsInfo({2, 2, 2 * GetRecordSize(5)}, gc_info);
+    CheckStatisticsInfo(CreateStatisticsInfo(2, 0, 2 * GetRecordSize(5)), gc_info);
     gc_info.Reset();
     segment.Gc4TTLAndHead(9770, 1, &gc_info);
-    CheckStatisticsInfo({3, 3, 3 * GetRecordSize(5)}, gc_info);
+    CheckStatisticsInfo(CreateStatisticsInfo(3, 0, 3 * GetRecordSize(5)), gc_info);
 }
 
 TEST_F(SegmentTest, TestGc4TTLOrHead) {
@@ -258,22 +270,22 @@ TEST_F(SegmentTest, TestGc4TTLOrHead) {
     segment.Put("PK2", 9765, "test1", 5);
     segment.Put("PK2", 9766, "test2", 5);
     segment.Put("PK2", 9767, "test3", 5);
-    StatisticsInfo gc_info;
+    StatisticsInfo gc_info(1);
     segment.Gc4TTLOrHead(0, 0, &gc_info);
-    CheckStatisticsInfo({0, 0, 0}, gc_info);
+    CheckStatisticsInfo(CreateStatisticsInfo(0, 0, 0), gc_info);
     segment.Gc4TTLOrHead(9765, 0, &gc_info);
-    CheckStatisticsInfo({1, 1, GetRecordSize(5)}, gc_info);
+    CheckStatisticsInfo(CreateStatisticsInfo(1, 0, GetRecordSize(5)), gc_info);
     gc_info.Reset();
     segment.Gc4TTLOrHead(0, 3, &gc_info);
-    CheckStatisticsInfo({1, 1, GetRecordSize(5)}, gc_info);
+    CheckStatisticsInfo(CreateStatisticsInfo(1, 0, GetRecordSize(5)), gc_info);
     gc_info.Reset();
     segment.Gc4TTLOrHead(9765, 3, &gc_info);
-    CheckStatisticsInfo({0, 0, 0}, gc_info);
+    CheckStatisticsInfo(CreateStatisticsInfo(0, 0, 0), gc_info);
     segment.Gc4TTLOrHead(9766, 2, &gc_info);
-    CheckStatisticsInfo({2, 2, 2 * GetRecordSize(5)}, gc_info);
+    CheckStatisticsInfo(CreateStatisticsInfo(2, 0, 2 * GetRecordSize(5)), gc_info);
     gc_info.Reset();
     segment.Gc4TTLOrHead(9770, 1, &gc_info);
-    CheckStatisticsInfo({3, 3, 3 * GetRecordSize(5)}, gc_info);
+    CheckStatisticsInfo(CreateStatisticsInfo(3, 0, 3 * GetRecordSize(5)), gc_info);
 }
 
 TEST_F(SegmentTest, TestStat) {
@@ -282,16 +294,15 @@ TEST_F(SegmentTest, TestStat) {
     segment.Put("PK", 9769, "test2", 5);
     ASSERT_EQ(2, (int64_t)segment.GetIdxCnt());
     ASSERT_EQ(1, (int64_t)segment.GetPkCnt());
-    StatisticsInfo gc_info;
+    StatisticsInfo gc_info(1);
     segment.Gc4TTL(9765, &gc_info);
-    ASSERT_EQ(0, gc_info.idx_cnt);
+    ASSERT_EQ(0, gc_info.GetTotalCnt());
     gc_info.Reset();
     segment.Gc4TTL(9768, &gc_info);
     ASSERT_EQ(1, (int64_t)segment.GetIdxCnt());
-    ASSERT_EQ(1, gc_info.idx_cnt);
-    gc_info.Reset();
+    ASSERT_EQ(1, gc_info.GetTotalCnt());
     segment.Gc4TTL(9770, &gc_info);
-    ASSERT_EQ(2, gc_info.idx_cnt);
+    ASSERT_EQ(2, gc_info.GetTotalCnt());
     ASSERT_EQ(0, (int64_t)segment.GetIdxCnt());
 }
 
@@ -353,8 +364,8 @@ TEST_F(SegmentTest, ReleaseAndCount) {
     }
     ASSERT_EQ(200, GetCount(&segment, 1));
     ASSERT_EQ(200, GetCount(&segment, 3));
-    StatisticsInfo gc_info;
-    segment.ReleaseAndCount(&gc_info);
+    StatisticsInfo gc_info(1);
+    segment.ReleaseAndCount({1}, &gc_info);
     ASSERT_EQ(0, GetCount(&segment, 1));
     ASSERT_EQ(200, GetCount(&segment, 3));
     segment.ReleaseAndCount(&gc_info);
@@ -371,10 +382,46 @@ TEST_F(SegmentTest, ReleaseAndCountOneTs) {
             segment.Put(Slice(key), ts + j, key.c_str(), key.size());
         }
     }
-    StatisticsInfo gc_info;
+    StatisticsInfo gc_info(1);
     ASSERT_EQ(200, GetCount(&segment, 0));
     segment.ReleaseAndCount(&gc_info);
     ASSERT_EQ(0, GetCount(&segment, 0));
+}
+
+TEST_F(SegmentTest, TestDeleteRange) {
+    Segment segment(8);
+    for (int idx = 0; idx < 10; idx++) {
+        std::string key = absl::StrCat("key", idx);
+        std::string value = absl::StrCat("value", idx);
+        uint64_t ts = 1000;
+        for (int i = 0; i < 10; i++) {
+            segment.Put(Slice(key), ts + i, value.data(), 6);
+        }
+    }
+    ASSERT_EQ(100, GetCount(&segment, 0));
+    std::string pk = "key2";
+    Ticket ticket;
+    std::unique_ptr<MemTableIterator> it(segment.NewIterator(pk, ticket));
+    it->Seek(1005);
+    ASSERT_TRUE(it->Valid() && it->GetKey() == 1005);
+    ASSERT_TRUE(segment.Delete(std::nullopt, pk, 1005, 1004));
+    ASSERT_EQ(99, GetCount(&segment, 0));
+    it->Seek(1005);
+    ASSERT_FALSE(it->Valid() && it->GetKey() == 1005);
+    ASSERT_TRUE(segment.Delete(std::nullopt, pk, 1005, std::nullopt));
+    ASSERT_EQ(94, GetCount(&segment, 0));
+    it->Seek(1005);
+    ASSERT_FALSE(it->Valid());
+    pk = "key3";
+    ASSERT_TRUE(segment.Delete(std::nullopt, pk));
+    pk = "key4";
+    ASSERT_TRUE(segment.Delete(std::nullopt, pk, 1005, 1001));
+    ASSERT_EQ(80, GetCount(&segment, 0));
+    segment.IncrGcVersion();
+    segment.IncrGcVersion();
+    StatisticsInfo gc_info(1);
+    segment.GcFreeList(&gc_info);
+    CheckStatisticsInfo(CreateStatisticsInfo(20, 1012, 20 * (6 + sizeof(DataBlock))), gc_info);
 }
 
 }  // namespace storage
