@@ -1864,7 +1864,7 @@ base::Status ASTIntLiteralToNum(const zetasql::ASTExpression* ast_expr, int64_t*
     }
 
     auto [status, ret] = udf::v1::StrToIntegral()(img);
-    if (status.ok() || absl::IsOutOfRange(status)) {
+    if (status.ok()) {
         *val = ret;
         return base::Status::OK();
     }

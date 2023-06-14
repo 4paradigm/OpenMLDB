@@ -1105,7 +1105,7 @@ TEST_P(CastTest, StrCastI64) {
     }
 }
 
-static const std::vector<StrCastCase>& GenCastCases() {
+static const std::vector<StrCastCase>& GetCastCases() {
     static const std::vector<StrCastCase> cs{
         {"12", StrCastCase::ErrType::OK, 12},
         {"012", StrCastCase::ErrType::OK, 12},
@@ -1132,13 +1132,14 @@ static const std::vector<StrCastCase>& GenCastCases() {
         {"8l", StrCastCase::ErrType::INVALID, {}},
         {"8 l", StrCastCase::ErrType::INVALID, {}},
         {"gg", StrCastCase::ErrType::INVALID, {}},
+        {"80x99", StrCastCase::ErrType::INVALID, {}},
         {"89223372036854775807", StrCastCase::ErrType::OUT_OF_RANGE, {}},
         {"-19223372036854775807", StrCastCase::ErrType::OUT_OF_RANGE, {}},
     };
     return cs;
 }
 
-INSTANTIATE_TEST_SUITE_P(CastI64, CastTest, ::testing::ValuesIn(GenCastCases()));
+INSTANTIATE_TEST_SUITE_P(CastI64, CastTest, ::testing::ValuesIn(GetCastCases()));
 
 }  // namespace udf
 }  // namespace hybridse

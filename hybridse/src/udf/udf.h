@@ -401,15 +401,21 @@ void bool_to_string(bool v, StringRef *output);
 // returns (status, int64)
 struct StrToIntegral {
     std::pair<absl::Status, int64_t> operator()(absl::string_view in) {
+        in = absl::StripAsciiWhitespace(in);
         if (0 == in.size()) {
-            return {absl::InvalidArgumentError("input empty string"), {}};
+            return {absl::InvalidArgumentError("empty or blank string"), {}};
         }
 
         // reset errno to 0 before call
         errno = 0;
 
         int base = 10;
-        if (in.find("0x") != absl::string_view::npos || in.find("0X") != absl::string_view::npos) {
+        auto copy = in;
+        if (copy[0] == '+' || copy[0] == '-') {
+            copy.remove_prefix(1);
+        }
+        copy = copy.substr(0, 2);
+        if (copy == "0x" || copy == "0X") {
             base = 16;
         }
 
@@ -433,17 +439,13 @@ struct StrToIntegral {
             // invalid:  unspecified error occurred
             return {absl::UnknownError(absl::StrCat(in, " (unspecified error: ", std::strerror(errno), ")")), {}};
         } else if (errno == 0 && str) {
-            while (endptr && absl::ascii_isspace(*endptr)) {
-                endptr++;
-            }
-            if (*endptr == 0) {
-                // valid  (and represents all characters read;
-                return {absl::OkStatus(), number};
-            } else {
+            if (*endptr != 0) {
                 return {
                     absl::InvalidArgumentError(absl::StrCat(in, " (digitals with extra non-space chars following)")),
                     {}};
             }
+            // valid  (and represents all characters read;
+            return {absl::OkStatus(), number};
         }
 
         return {absl::UnknownError(absl::StrCat(in, " (unspecified error)")), {}};

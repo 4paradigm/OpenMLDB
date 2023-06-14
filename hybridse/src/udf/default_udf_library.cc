@@ -2090,6 +2090,8 @@ void DefaultUdfLibrary::InitTypeUdf() {
                 -- output 12345
             @endcode
             @since 0.1.0)");
+    RegisterAlias("int", "int32");
+
     RegisterExternal("int64")
         .args<StringRef>(reinterpret_cast<void*>(
             static_cast<void (*)(StringRef*, int64_t*, bool*)>(
@@ -2107,6 +2109,8 @@ void DefaultUdfLibrary::InitTypeUdf() {
             @endcode
             @since 0.1.0
         )");
+    RegisterAlias("bigint", "int64");
+
     RegisterExternal("int16")
         .args<StringRef>(reinterpret_cast<void*>(
             static_cast<void (*)(StringRef*, int16_t*, bool*)>(
