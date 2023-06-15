@@ -192,7 +192,7 @@ PhysicalOpNode* GetTestSqlPlan(SqlCase& sql_case,  // NOLINT
 INSTANTIATE_TEST_SUITE_P(
     ResolveNameTest, SchemasContextResolveTest,
     testing::ValuesIn(
-        sqlcase::InitCases("/cases/plan/schemas_context/resolve_column_name.yaml")));
+        sqlcase::InitCases("cases/plan/schemas_context/resolve_column_name.yaml")));
 
 TEST_P(SchemasContextResolveTest, test_request_column_resolve) {
     SqlCase sql_case = GetParam();

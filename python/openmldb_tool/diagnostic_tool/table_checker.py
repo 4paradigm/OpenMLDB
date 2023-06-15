@@ -50,7 +50,7 @@ class TableChecker:
             t = {}
             t['name'] = table['db'] + "." + table['name']
             parts = table['table_partition']
-            part_dist = self._collect(parts,'')
+            part_dist = self._collect(parts, '')
             count_dist = self._collect(parts, 'record_cnt')
             mem_dist = self._collect(parts, 'record_byte_size')
             dused_dist = self._collect(parts, 'diskused')
@@ -125,4 +125,4 @@ class TableChecker:
 
     def _get_nameserver(self):
         component_list = self.conn.execfetch("SHOW COMPONENTS")
-        return list(filter(lambda l: l[1]=="nameserver", component_list))[0][0]
+        return list(filter(lambda l: l[1] == "nameserver", component_list))[0][0]

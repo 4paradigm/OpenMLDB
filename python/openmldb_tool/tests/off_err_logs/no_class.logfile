@@ -42,3 +42,4 @@ Caused by: java.lang.ClassNotFoundException: Class com.hadoop.compression.lzo.Lz
     at org.apache.hadoop.conf.Configuration.getClassByName(Configuration.java:2273)
     at org.apache.hadoop.io.compress.CompressionCodecFactory.getCodecClasses(CompressionCodecFactory.java:132)
     ... 33 more
+fail to init zk handler with hosts
