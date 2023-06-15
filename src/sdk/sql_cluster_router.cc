@@ -3443,7 +3443,7 @@ hybridse::sdk::Status SQLClusterRouter::HandleDeploy(const std::string& db,
     }
     LOG(INFO) << "index adjusted, create procedure " << sp_info.sp_name();
     // TODO(hw): RefreshTableInfo in tablet (bg, zk) may change the catalog in tablet, index changed 2->1?
-    absl::SleepFor(absl::Seconds(1));
+    // absl::SleepFor(absl::Seconds(1));
     auto ob_status = ns->CreateProcedure(sp_info, options_->request_timeout);
     if (!ob_status.OK()) {
         APPEND_FROM_BASE_AND_WARN(&status, ob_status, "ns create procedure failed");
