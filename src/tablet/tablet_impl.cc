@@ -5224,6 +5224,12 @@ void TabletImpl::CreateProcedure(RpcController* controller, const openmldb::api:
         options->emplace(hybridse::vm::LONG_WINDOWS, *long_windows);
     }
 
+    // TODO(hw): debug for table index
+    auto table = catalog_->GetTable(sp_info.main_db(), sp_info.main_table());
+    auto index = table->GetIndex();
+    for(auto& kv : index) {
+        LOG(INFO) << "table index: " << kv.first << " : " << kv.second.name;
+    }
     // build for single request
     ::hybridse::vm::RequestRunSession session;
     session.SetOptions(options);

@@ -3515,7 +3515,8 @@ struct DeploymentEnv {
                                        "c8 date, index(key=c1, ts=c4, abs_ttl=0, ttl_type=absolute)) "
                                        "OPTIONS(partitionnum=1,replicanum=1);")});
         // show index
-        HandleSQL(absl::StrCat("desc ", table_));
+        absl::SleepFor(absl::Seconds(3));
+        LOG(INFO) << "table " << table_ << ":\n" << ExecFetch(absl::StrCat("desc ", table_));
         ProcessSQLs(
             sr_,
             {
