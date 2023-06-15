@@ -299,51 +299,51 @@ jobs:
 
 
 
-#   java-sdk-kafka:
-#     needs: build-openmldb
-#     if: ${{ github.event.inputs.EXEC_TEST_TYPE == 'all' || github.event.inputs.EXEC_TEST_TYPE == 'java' }}
-#     runs-on: [self-hosted,common-user]
-#     steps:
-#       - name: download artifact
-#         uses: actions/download-artifact@v3
-#         with:
-#           name: openmldb-linux.tar.gz
-#           path: release/
-#       - uses: actions/checkout@v3
-#       - name: install openmldb
-#         run: |
-#           mkdir ${{ github.job }}
-#           tar -zxf ~/openmldb-linux.tar.gz -C ${{ github.job }}/
-#           bash test/steps/format_config.sh $(pwd)/${{ github.job }}/openmldb-linux ${{ github.job }} 25001 26000 java
-#           bash ${{ github.job }}/openmldb-linux/sbin/deploy-all.sh
-#           bash ${{ github.job }}/openmldb-linux/sbin/start-all.sh
-#       - name: test
-#       - name: TEST Results
-#         if: always()
-#         uses: EnricoMi/publish-unit-test-result-action@v1
-#         with:
-#           files: test/integration-test/openmldb-test-java/openmldb-sdk-test/target/surefire-reports/TEST-*.xml
-#           check_name: "SRC java-sdk-yarn Report"
-#           comment_title: "SRC java-yarn Report"
-#       - name: tar test report
-#         if: ${{ failure() }}
-#         run: tar -zcvf surefire-reports.tar.gz test/integration-test/openmldb-test-java/openmldb-sdk-test/target/surefire-reports
-#       - name: Send Email
-#         if: ${{ failure() }}
-#         uses: dawidd6/action-send-mail@master
-#         with:
-#           server_address: smtp.partner.outlook.cn
-#           server_port: 587
-#           username: ${{ secrets.MAIL_USERNAME }}
-#           password: ${{ secrets.MAIL_PASSWORD }}
-#           subject: OpenMLDB Memory Test
-#           body: OpenMLDB Memory Test Failed
-#           html_body: test/integration-test/openmldb-test-java/openmldb-sdk-test/target/surefire-reports/html/overview.html
-#           to: ${{ secrets.MAIL_TO }}
-#           from: GitHub Actions
-#           content_type: text/plain
-#           attachments: surefire-reports.tar.gz
-#       - name: clear source
-#         run: |  
-#           bash ${{ github.job }}/openmldb-linux/sbin/stop-all.sh
-#           bash ${{ github.job }}/openmldb-linux/sbin/clear-all.sh 
+  java-sdk-kafka:
+    needs: build-openmldb
+    if: ${{ github.event.inputs.EXEC_TEST_TYPE == 'all' || github.event.inputs.EXEC_TEST_TYPE == 'java' }}
+    runs-on: [self-hosted,common-user]
+    steps:
+      - uses: actions/checkout@v3
+      - name:  before test
+        run: mkdir ${{ github.job }}
+      - name: download artifact
+        uses: actions/download-artifact@v3
+        with:
+            name: openmldb-package       
+      - name: install openmldb
+        run: |
+          tar -zxf openmldb-linux.tar.gz -C ${{ github.job }}/
+          bash test/steps/format_config.sh $(pwd)/${{ github.job }}/openmldb-${{ github.event.inputs.EXEC_VERSION }}-linux ${{ github.job }} 25001 26000 java kafka
+          bash ${{ github.job }}/openmldb-${{ github.event.inputs.EXEC_VERSION }}-linux/sbin/deploy-all.sh
+          bash ${{ github.job }}/openmldb-${{ github.event.inputs.EXEC_VERSION }}-linux/sbin/start-all.sh
+      - name: test
+        run: bash test/steps/openmldb-sdk-test-java-src.sh -c test_yarn.xml -d deploy -l "0" -s "memory"
+      - name: stop openmldb
+        if: always()
+        run: bash ${{ github.job }}/openmldb-${{ github.event.inputs.EXEC_VERSION }}-linux/sbin/stop-all.sh
+      # - name: TEST Results
+      #   if: always()
+      #   uses: EnricoMi/publish-unit-test-result-action@v1
+      #   with:
+      #     files: test/integration-test/openmldb-test-java/openmldb-sdk-test/target/surefire-reports/TEST-*.xml
+      #     check_name: "SRC java-sdk-yarn Report"
+      #     comment_title: "SRC java-yarn Report"
+      # - name: tar test report
+      #   if: ${{ failure() }}
+      #   run: tar -zcvf surefire-reports.tar.gz test/integration-test/openmldb-test-java/openmldb-sdk-test/target/surefire-reports
+      # - name: Send Email
+      #   if: ${{ failure() }}
+      #   uses: dawidd6/action-send-mail@master
+      #   with:
+      #     server_address: smtp.partner.outlook.cn
+      #     server_port: 587
+      #     username: ${{ secrets.MAIL_USERNAME }}
+      #     password: ${{ secrets.MAIL_PASSWORD }}
+      #     subject: OpenMLDB yarn Test
+      #     body: OpenMLDB yarn Test Failed
+      #     html_body: test/integration-test/openmldb-test-java/openmldb-sdk-test/target/surefire-reports/html/overview.html
+      #     to: ${{ secrets.MAIL_TO }}
+      #     from: GitHub Actions
+      #     content_type: text/plain
+      #     attachments: surefire-reports.tar.gz
