@@ -47,29 +47,30 @@ float_literal
 digit ::= [0-9]
 ```
 
-Numbers include integers and floating-point numbers. Integers include `int`(`int32`), `smallint`(`int16`) and `bigint`()
+Number literal includes integer literal and floating literal. Integer include `int`(`int32`), `smallint`(`int16`) and `bigint`(`int64`)
 
-- Integers consist of a series of consecutive numbers and are generally represented as integers or long integers according to the range of values.
-- When a string of numbers ends with an `L`, it can be displayed as a long integer
+- Integer literal is a series of consecutive digitals, representing integers or long integers based on the represented integral value.
+- If the represented value out of range of the maximum value for INT64 (`0"0x7FFFFFFFFFFFFFFF"`), will result the SQL parser error of `OUT_OF_RANGE`.
+- If the integer literal ends with an `L` or `l`, it is treated as INT64 explicitly.
 - Decimals like `double` are connected by a dot `.` with two strings of numbers. The string of numbers on the left is allowed to be empty.
 - When the decimal is followed by an `F`, it is expressed as a decimal of type `float`.
 
 ### Examples
 
 ```SQL
--- interger
+-- 123 is int
 SELECT 123 from t1;
 
--- big int
+-- 1234567890987654321 is big int
 SELECT 1234567890987654321 from t1;
 
--- big int
+-- 123L is big int
 SELECT 123L from t1;
 
--- double
+-- 3.1415926 is double
 SELECT 3.1415926 from t1;
 
--- float
+-- 3.1415926f is float
 SELECT 3.1415926f from t1;
 ```
 

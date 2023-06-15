@@ -2083,6 +2083,10 @@ void DefaultUdfLibrary::InitTypeUdf() {
         .doc(R"(
             @brief Cast string expression to int32
 
+            @param str Input string, refer int64 for supported format
+
+            Returns NULL if string is invalid or represented number out of range of output type.
+
             Example:
 
             @code{.sql}
@@ -2100,6 +2104,17 @@ void DefaultUdfLibrary::InitTypeUdf() {
         .returns<Nullable<int64_t>>()
         .doc(R"(
             @brief Cast string expression to int64
+
+            @param str Input string
+
+            Returns NULL if string is invalid or represented number out of range of output type.
+
+            Valid string input can be represented as the regexp
+             ```
+             \s*(\+|-)?(0[xX])?[0-9a-fA-F]+\s*
+             ```
+            - string is parsed unsigned, use minus(`-`) or plus(`+`) indicate signs
+            - default base of interpreted integer value is 10, and 16 if string starts with `0x` or `0X`
 
             Example:
 
@@ -2120,6 +2135,10 @@ void DefaultUdfLibrary::InitTypeUdf() {
         .doc(R"(
             @brief Cast string expression to int16
 
+            @param str Input string, refer int64 for supported format
+
+            Returns NULL if string is invalid or represented number out of range of output type.
+
             Example:
 
             @code{.sql}
@@ -2128,6 +2147,8 @@ void DefaultUdfLibrary::InitTypeUdf() {
             @endcode
             @since 0.1.0
         )");
+    RegisterAlias("smallint", "int16");
+
     RegisterExternal("bool")
         .args<StringRef>(reinterpret_cast<void*>(
             static_cast<void (*)(StringRef*, bool*, bool*)>(

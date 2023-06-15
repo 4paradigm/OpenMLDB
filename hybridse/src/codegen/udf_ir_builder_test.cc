@@ -1176,6 +1176,7 @@ TEST_P(UdfIRCastTest, ToI16) {
         expect = static_cast<int16_t>(out.value());
     }
     CheckUdf<Nullable<int16_t>, StringRef>("int16", expect, in);
+    CheckUdf<Nullable<int16_t>, StringRef>("smallint", expect, in);
 }
 
 TEST_F(UdfIRBuilderTest, StringToDouble0) {
