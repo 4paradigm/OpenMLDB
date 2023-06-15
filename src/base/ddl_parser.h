@@ -73,7 +73,7 @@ class DDLParser {
 
     static std::vector<std::string> ValidateSQLInBatch(const std::string& sql, const std::string& db,
                                                        const std::shared_ptr<hybridse::vm::SimpleCatalog>& catalog);
-
+    // validate in request mode, use mock request session, we can't do real request cuz no index input now
     static std::vector<std::string> ValidateSQLInRequest(const std::string& sql, const std::string& db,
                                                          const std::shared_ptr<hybridse::vm::SimpleCatalog>& catalog);
 

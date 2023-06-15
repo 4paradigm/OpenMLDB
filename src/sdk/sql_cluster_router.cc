@@ -3345,8 +3345,8 @@ hybridse::sdk::Status SQLClusterRouter::HandleDeploy(const std::string& db,
     std::string msg;
     auto ns = cluster_sdk_->GetNsClient();
     for (const auto& pair : table_pair) {
-        // table name, db name, ...
         tables.clear();
+        // args: table name, db name, ...
         auto ok = ns->ShowTable(pair.second, pair.first, false, tables, msg);
         if (!ok) {
             return {StatusCode::kCmdError, msg};
@@ -3378,6 +3378,7 @@ hybridse::sdk::Status SQLClusterRouter::HandleDeploy(const std::string& db,
 
     if (!new_index_map.empty()) {
         if (cluster_sdk_->IsClusterMode() && record_cnt > 0) {
+            LOG(INFO) << "deploy with data";
             // long windows only support one table(no join/union), no secondary table, so no multi db support
             auto lw_status = HandleLongWindows(deploy_node, table_pair, select_sql);
             if (!lw_status.IsOK()) {
@@ -3429,6 +3430,7 @@ hybridse::sdk::Status SQLClusterRouter::HandleDeploy(const std::string& db,
             }
             return {};
         } else {
+            LOG(INFO) << "deploy without data, add new index";
             auto add_index_status = AddNewIndex(new_index_map);
             if (!add_index_status.IsOK()) {
                 return add_index_status;
@@ -3439,6 +3441,7 @@ hybridse::sdk::Status SQLClusterRouter::HandleDeploy(const std::string& db,
     if (!lw_status.IsOK()) {
         return lw_status;
     }
+    LOG(INFO) << "index adjusted, create procedure " << sp_info.sp_name();
     auto ob_status = ns->CreateProcedure(sp_info, options_->request_timeout);
     if (!ob_status.OK()) {
         APPEND_FROM_BASE_AND_WARN(&status, ob_status, "ns create procedure failed");

@@ -905,7 +905,8 @@ TEST_P(DBSDKTest, DeployWithData) {
         sr->ExecuteSQL(absl::StrCat("insert into t2 values ('", key1, "', '", key2, "', 1635247427000);"), &status);
     }
     sleep(2);
-    std::string deploy_sql = "deploy demo SELECT t1.col1, t2.col2, sum(col4) OVER w1 as w1_col4_sum FROM t1 "
+    std::string deploy_sql =
+        "deploy demo SELECT t1.col1, t2.col2, sum(col4) OVER w1 as w1_col4_sum FROM t1 "
         "LAST JOIN t2 ORDER BY t2.col3 ON t1.col2 = t2.col2 "
         "WINDOW w1 AS (PARTITION BY t1.col2 ORDER BY t1.col3 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);";
     sr->ExecuteSQL(deploy_sql, &status);
@@ -3507,26 +3508,29 @@ struct DeploymentEnv {
     virtual ~DeploymentEnv() { TearDown(); }
 
     void SetUp() {
+        ProcessSQLs(sr_, {"set session execute_mode = 'online'", absl::StrCat("create database ", db_),
+                          absl::StrCat("use ", db_),
+                          absl::StrCat("create table ", table_,
+                                       " (c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, "
+                                       "c8 date, index(key=c1, ts=c4, abs_ttl=0, ttl_type=absolute)) "
+                                       "OPTIONS(partitionnum=1,replicanum=1);")});
+        // show index
+        HandleSQL(absl::StrCat("desc ", table_));
         ProcessSQLs(
             sr_,
             {
-                "set session execute_mode = 'online'",
-                absl::StrCat("create database ", db_),
-                absl::StrCat("use ", db_),
-                absl::StrCat("create table ", table_,
-                             " (c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, "
-                             "c8 date, index(key=c1, ts=c4, abs_ttl=0, ttl_type=absolute)) "
-                             "OPTIONS(partitionnum=1,replicanum=1);"),
-                // deploy will create index c1,c7,lat 2
+                // deploy will create index c1,c7,lat 2, may fail in workflow cpp
                 absl::StrCat("deploy ", dp_name_, " SELECT c1, c3, sum(c4) OVER w1 as w1_c4_sum FROM ", table_,
                              " WINDOW w1 AS (PARTITION BY c1 ORDER BY c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);"),
                 absl::StrCat(
                     "create procedure ", procedure_name_,
-                    " (c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, c8 date) BEGIN SELECT c1, c3, "
+                    " (c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, c8 date) BEGIN SELECT c1, "
+                    "c3, "
                     "sum(c4) OVER w1 as w1_c4_sum FROM ",
                     table_,
                     " WINDOW w1 AS (PARTITION BY c1 ORDER BY c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW); END"),
             });
+        HandleSQL(absl::StrCat("desc ", table_));
     }
 
     void TearDown() {

@@ -674,7 +674,7 @@ TEST_F(DDLParserTest, multiDBExtractIndexes) {
     // t2[col_name: "col2" ts_name: "col5" ttl { ttl_type: kLatestTime lat_ttl: 1 }, ]
     CheckEqual(index_map[DB_NAME + "2"], {{"t2", {"col2;col5;lat,0,1"}}});
 
-    // all tables are <db>.<table> style, using db can be empty?
+    // all tables are <db>.<table> style, using db can be empty
     sql = std::string("SELECT t1.col1 as t1_col1, t2.col2 as t2_col2 FROM ") + DB_NAME + ".t1 t1 last join " + DB_NAME +
           "2.t2 t2 order by t2.col5 on t1.col1 = t2.col2 "
           "and t2.col5 >= t1.col5;";
