@@ -1695,23 +1695,25 @@ TEST_F(SnapshotTest, Recover_large_snapshot_and_binlog) {
 
 TEST_F(SnapshotTest, DeleteRange) {
     LogParts* log_part = new LogParts(12, 4, scmp);
-    MemTableSnapshot snapshot(1, 2, log_part, FLAGS_db_root_path);
+    uint32_t tid = GenRand();
+    uint32_t pid = 2;
+    MemTableSnapshot snapshot(tid, pid, log_part, FLAGS_db_root_path);
     snapshot.Init();
     std::map<std::string, uint32_t> mapping = { {"idx0", 0} };
-    auto table = std::make_shared<MemTable>("tx_log", 1, 1, 8, mapping, 0, ::openmldb::type::TTLType::kLatestTime);
+    auto table = std::make_shared<MemTable>("tx_log", tid, pid, 8, mapping, 0, ::openmldb::type::TTLType::kLatestTime);
     table->Init();
     uint64_t offset = 0;
     uint32_t binlog_index = 0;
-    std::string log_path = FLAGS_db_root_path + "/1_2/binlog/";
-    std::string snapshot_path = FLAGS_db_root_path + "/1_2/snapshot/";
+    std::string log_path = absl::StrCat(FLAGS_db_root_path, "/", tid, "_", pid, "/binlog/");
+    std::string snapshot_path = absl::StrCat(FLAGS_db_root_path, "/", tid, "_", pid, "/snapshot/");
     WriteHandle* wh = NULL;
     RollWLogFile(&wh, log_part, log_path, binlog_index, offset++);
     uint64_t ts = 1000;
+    std::string buffer;
     for (int count = 0; count < 10; count++) {
         std::string key = "key" + std::to_string(count);
         for (int i = 0; i < 10; i++) {
             auto entry = ::openmldb::test::PackKVEntry(offset, key, "value", ts + i, 5);
-            std::string buffer;
             entry.SerializeToString(&buffer);
             ::openmldb::log::Status status = wh->Write(base::Slice(buffer));
             offset++;
@@ -1729,11 +1731,17 @@ TEST_F(SnapshotTest, DeleteRange) {
         } else {
             entry.set_ts(1005);
         }
-        std::string buffer;
         entry.SerializeToString(&buffer);
         ::openmldb::log::Status status = wh->Write(base::Slice(buffer));
         offset++;
     }
+    ::openmldb::api::LogEntry entry;
+    entry.set_log_index(offset);
+    entry.set_method_type(::openmldb::api::MethodType::kDelete);
+    entry.set_ts(1008);
+    entry.set_end_ts(1006);
+    entry.SerializeToString(&buffer);
+    ::openmldb::log::Status status = wh->Write(base::Slice(buffer));
     uint64_t offset_value;
     int ret = snapshot.MakeSnapshot(table, offset_value, 0);
     ASSERT_EQ(0, ret);
@@ -1753,8 +1761,8 @@ TEST_F(SnapshotTest, DeleteRange) {
         fileInput.SetCloseOnDelete(true);
         google::protobuf::TextFormat::Parse(&fileInput, &manifest);
     }
-    ASSERT_EQ(110, (int64_t)manifest.offset());
-    ASSERT_EQ(60, (int64_t)manifest.count());
+    ASSERT_EQ(111, (int64_t)manifest.offset());
+    ASSERT_EQ(40, (int64_t)manifest.count());
     ASSERT_EQ(5, (int64_t)manifest.term());
 }
 

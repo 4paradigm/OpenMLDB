@@ -67,8 +67,11 @@ hybridse::sdk::Status NodeAdapter::ExtractDeleteOption(
                 }
             }
         }
-        if (match_index_col != column_key.col_name_size()) {
-            continue;
+        if (match_index_col > 0) {
+            if (match_index_col != column_key.col_name_size()) {
+                continue;
+            }
+            option->index_map.emplace(idx, pk);
         }
         if (column_key.has_ts_name()) {
             for (const auto& con : condition_vec) {
@@ -108,7 +111,6 @@ hybridse::sdk::Status NodeAdapter::ExtractDeleteOption(
                 }
             }
         }
-        option->index_map.emplace(idx, pk);
     }
     return {};
 }
@@ -134,8 +136,11 @@ hybridse::sdk::Status NodeAdapter::CheckCondition(
                 }
             }
         }
-        if (match_index_col != column_key.col_name_size()) {
-            continue;
+        if (match_index_col > 0) {
+            if (match_index_col != column_key.col_name_size()) {
+                continue;
+            }
+            hit_index = true;
         }
         if (column_key.has_ts_name()) {
             for (const auto& con : condition_vec) {
@@ -153,10 +158,9 @@ hybridse::sdk::Status NodeAdapter::CheckCondition(
                 }
             }
         }
-        hit_index = true;
     }
-    if (!hit_index) {
-        return {hybridse::common::StatusCode::kCmdError, "no index hit"};
+    if (!hit_index && con_ts_name.empty()) {
+        return {hybridse::common::StatusCode::kCmdError, "no index or ts columnhit"};
     }
     return {};
 }

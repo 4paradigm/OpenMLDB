@@ -3125,7 +3125,7 @@ hybridse::sdk::Status SQLClusterRouter::SendDeleteRequst(
             return {StatusCode::kCmdError, "get tablet failed"};
         }
         for (auto& tablet : tablets) {
-            if (!tablet || tablet->GetClient()) {
+            if (!tablet || !tablet->GetClient()) {
                 return {StatusCode::kCmdError, "cannot connect tablet"};
             }
         }

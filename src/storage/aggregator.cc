@@ -102,7 +102,7 @@ bool Aggregator::Update(const std::string& key, const std::string& row, uint64_t
         PDLOG(WARNING, "Aggregator status is not kInited");
         return false;
     }
-    auto row_ptr = reinterpret_cast<const int8_t*>(row.data());
+    auto row_ptr = reinterpret_cast<const int8_t*>(row.c_str());
     int64_t cur_ts = 0;
     switch (ts_col_type_) {
         case DataType::kBigInt: {
@@ -219,13 +219,13 @@ bool Aggregator::Delete(const std::string& key) {
         // erase from the aggr_buffer_map_
         aggr_buffer_map_.erase(key);
     }
-
     ::openmldb::api::LogEntry entry;
     entry.set_term(aggr_replicator_->GetLeaderTerm());
     entry.set_method_type(::openmldb::api::MethodType::kDelete);
-    ::openmldb::api::Dimension* dimension = entry.add_dimensions();
+    auto dimension = entry.add_dimensions();
     dimension->set_key(key);
     dimension->set_idx(aggr_index_pos_);
+
     // delete the entries from the pre-aggr table
     bool ok = aggr_table_->Delete(entry);
     if (!ok) {
@@ -233,7 +233,6 @@ bool Aggregator::Delete(const std::string& key) {
         return false;
     }
 
-    // add delete entry to binlog
     ok = aggr_replicator_->AppendEntry(entry);
     if (!ok) {
         PDLOG(ERROR, "Add Delete entry to binlog failed: key %s, aggr table %s", key, aggr_table_->GetName());
@@ -248,8 +247,8 @@ bool Aggregator::Delete(const std::string& key) {
 
 bool Aggregator::FlushAll() {
     // TODO(nauta): optimize the flush process
-    absl::flat_hash_map<std::string, absl::flat_hash_map<std::string, AggrBuffer>> flushed_buffer_map;
     std::unique_lock<std::mutex> lock(mu_);
+    absl::flat_hash_map<std::string, absl::flat_hash_map<std::string, AggrBuffer>> flushed_buffer_map;
     for (auto& it : aggr_buffer_map_) {
         for (auto& filter_it : it.second) {
             auto& aggr_buffer = filter_it.second.buffer_;
@@ -301,7 +300,7 @@ bool Aggregator::Init(std::shared_ptr<LogReplicator> base_replicator) {
         if (!aggr_row_view_.IsNULL(data_ptr, 6)) {
             aggr_row_view_.GetStrValue(data_ptr, 6, &filter_key);
         }
-        auto insert_pair = aggr_buffer_map_[pk].emplace(std::move(filter_key), AggrBufferLocked());
+        auto insert_pair = aggr_buffer_map_[pk].emplace(std::move(filter_key), AggrBufferLocked{});
         auto& buffer = insert_pair.first->second.buffer_;
         auto val = it->GetValue();
         auto aggr_row_ptr = reinterpret_cast<const int8_t*>(val.data());
@@ -362,7 +361,8 @@ bool Aggregator::Init(std::shared_ptr<LogReplicator> base_replicator) {
             continue;
         }
 
-        if (!entry.ParseFromString(record.ToString())) {
+        bool ok = entry.ParseFromString(record.ToString());
+        if (!ok) {
             PDLOG(WARNING, "parse binlog failed");
             continue;
         }
@@ -483,15 +483,17 @@ bool Aggregator::FlushAggrBuffer(const std::string& key, const std::string& filt
     }
 
     int64_t time = ::baidu::common::timer::get_micros() / 1000;
-    entry.set_ts(time);
-    entry.set_term(aggr_replicator_->GetLeaderTerm());
     auto dimension = entry.add_dimensions();
     dimension->set_idx(aggr_index_pos_);
     dimension->set_key(key);
-    if (!aggr_table_->Put(time, entry.value(), entry.dimensions())) {
+    bool ok = aggr_table_->Put(time, entry.value(), entry.dimensions());
+    if (!ok) {
         PDLOG(ERROR, "Aggregator put failed");
         return false;
     }
+    entry.set_pk(key);
+    entry.set_ts(time);
+    entry.set_term(aggr_replicator_->GetLeaderTerm());
     aggr_replicator_->AppendEntry(entry);
     if (FLAGS_binlog_notify_on_put) {
         aggr_replicator_->Notify();
@@ -507,7 +509,8 @@ bool Aggregator::UpdateFlushedBuffer(const std::string& key, const std::string& 
     AggrBuffer tmp_buffer;
     while (it->Valid()) {
         auto val = it->GetValue();
-        int8_t* aggr_row_ptr = reinterpret_cast<int8_t*>(const_cast<char*>(val.data()));
+        auto aggr_row_ptr = reinterpret_cast<const int8_t*>(val.data());
+
         char* ch = nullptr;
         uint32_t length = 0;
         aggr_row_view_.GetValue(aggr_row_ptr, 0, &ch, &length);
@@ -529,14 +532,13 @@ bool Aggregator::UpdateFlushedBuffer(const std::string& key, const std::string& 
             it->Next();
             continue;
         }
-
         ch = nullptr;
         length = 0;
         if (!aggr_row_view_.IsNULL(aggr_row_ptr, 6)) {
             aggr_row_view_.GetValue(aggr_row_ptr, 6, &ch, &length);
         }
         // filter_key doesn't match, continue
-        if (ch == nullptr || base::Slice(filter_key).compare(base::Slice(ch, length)) != 0) {
+        if (ch != nullptr && base::Slice(filter_key).compare(base::Slice(ch, length)) != 0) {
             it->Next();
             continue;
         }

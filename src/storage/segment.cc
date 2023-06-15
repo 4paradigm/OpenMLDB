@@ -286,7 +286,7 @@ bool Segment::Delete(const std::optional<uint32_t>& idx, const Slice& key) {
             node_cache_.AddValueNodeList(iter->second, gc_version_.load(std::memory_order_relaxed), data_node);
         }
     }
-    return false;
+    return true;
 }
 
 bool Segment::Delete(const std::optional<uint32_t>& idx, const Slice& key,
@@ -316,7 +316,7 @@ bool Segment::Delete(const std::optional<uint32_t>& idx, const Slice& key,
     if (end_ts.has_value()) {
         if (auto node = key_entry->entries.GetLast(); node == nullptr) {
             return true;
-        } else if (node->GetKey() < end_ts.value()) {
+        } else if (node->GetKey() <= end_ts.value()) {
             std::unique_ptr<TimeEntries::Iterator> it(key_entry->entries.NewIterator());
             it->Seek(ts);
             while (it->Valid()) {
