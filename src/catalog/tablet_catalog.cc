@@ -239,6 +239,7 @@ void TabletTableHandler::Update(const ::openmldb::nameserver::TableInfo& meta, c
         table_client_manager_->UpdatePartitionClientManager(partition_st, client_manager);
     }
     if (meta.column_key_size() != static_cast<int>(GetIndex().size())) {
+        LOG(INFO) << "index size changed, update index" << meta.column_key_size() << " " << GetIndex().size();
         UpdateIndex(meta.column_key());
     }
 }
@@ -451,7 +452,7 @@ bool TabletCatalog::UpdateTableInfo(const ::openmldb::nameserver::TableInfo& tab
                 return false;
             }
             db_it->second.emplace(table_name, handler);
-            LOG(INFO) << "add table " << table_name << " db " << db_name;
+            LOG(INFO) << "add table " << table_name << "to db " << db_name;
         } else {
             handler = it->second;
         }
