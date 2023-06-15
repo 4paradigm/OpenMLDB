@@ -350,7 +350,7 @@ TEST_F(DiskTableTest, Delete) {
     mapping.insert(std::make_pair("idx1", 1));
     mapping.insert(std::make_pair("idx2", 2));
     std::string table_path = FLAGS_hdd_root_path + "/4_1";
-    DiskTable* table = new DiskTable("yjtable2", 4, 1, mapping, 10, ::openmldb::type::TTLType::kAbsoluteTime,
+    auto table = std::make_unique<DiskTable>("yjtable2", 4, 1, mapping, 10, ::openmldb::type::TTLType::kAbsoluteTime,
                                      ::openmldb::common::StorageMode::kHDD, table_path);
     ASSERT_TRUE(table->Init());
     for (int idx = 0; idx < 10; idx++) {
@@ -379,8 +379,7 @@ TEST_F(DiskTableTest, Delete) {
     it.reset(table->NewIterator("test6", ticket));
     it->SeekToFirst();
     ASSERT_FALSE(it->Valid());
-
-    delete table;
+    it.reset();
     RemoveData(table_path);
 }
 

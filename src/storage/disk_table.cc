@@ -286,15 +286,15 @@ bool DiskTable::Delete(const ::openmldb::api::LogEntry& entry) {
     uint64_t start_ts = entry.has_ts() ? entry.ts() : UINT64_MAX;
     std::optional<uint64_t> end_ts = entry.has_end_ts() ? std::optional<uint64_t>(entry.end_ts()) : std::nullopt;
     if (entry.dimensions_size() > 0) {
-        uint32_t idx = entry.dimensions(0).idx();
-        const auto& pk = entry.dimensions(0).key();
-        auto s = Delete(idx, pk, start_ts, end_ts);
-        if (s.OK()) {
-            offset_.fetch_add(1, std::memory_order_relaxed);
-        } else {
-            DEBUGLOG("Delete failed. tid %u pid %u msg %s", id_, pid_, s.GetMsg().c_str());
-            return false;
+        for (const auto& dimension : entry.dimensions()) {
+            auto s = Delete(dimension.idx(), dimension.key(), start_ts, end_ts);
+            if (!s.OK()) {
+                DEBUGLOG("Delete failed. tid %u pid %u msg %s", id_, pid_, s.GetMsg().c_str());
+                return false;
+            }
         }
+        offset_.fetch_add(1, std::memory_order_relaxed);
+        return true;
     } else {
         for (const auto& index : table_index_.GetAllIndex()) {
             if (!index || !index->IsReady()) {
@@ -318,6 +318,7 @@ base::Status DiskTable::Delete(uint32_t idx, const std::string& pk,
     if (!index_def || !index_def->IsReady()) {
         return {-1, "index not found"};
     }
+    uint64_t real_end_ts = end_ts.has_value() ? end_ts.value() : 0;
     std::string combine_key1;
     std::string combine_key2;
     auto inner_index = table_index_.GetInnerIndex(index_def->GetInnerPos());
@@ -329,22 +330,14 @@ base::Status DiskTable::Delete(uint32_t idx, const std::string& pk,
                 return {-1, "ts column not found"};
             }
             combine_key1 = CombineKeyTs(pk, start_ts, ts_col->GetId());
-            if (end_ts.has_value()) {
-                combine_key2 = CombineKeyTs(pk, end_ts.value(), ts_col->GetId());
-            }
+            combine_key2 = CombineKeyTs(pk, real_end_ts, ts_col->GetId());
         }
     } else {
         combine_key1 = CombineKeyTs(pk, start_ts);
-        if (end_ts.has_value()) {
-            combine_key2 = CombineKeyTs(pk, end_ts.value());
-        }
+        combine_key2 = CombineKeyTs(pk, real_end_ts);
     }
     rocksdb::WriteBatch batch;
-    if (end_ts.has_value()) {
-        batch.DeleteRange(cf_hs_[idx + 1], rocksdb::Slice(combine_key1), rocksdb::Slice(combine_key2));
-    } else {
-        batch.Delete(cf_hs_[idx + 1], rocksdb::Slice(combine_key1));
-    }
+    batch.DeleteRange(cf_hs_[idx + 1], rocksdb::Slice(combine_key1), rocksdb::Slice(combine_key2));
     rocksdb::Status s = db_->Write(write_opts_, &batch);
     if (!s.ok()) {
         return {-1, s.ToString()};

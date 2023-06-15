@@ -183,7 +183,7 @@ class DiskTable : public Table {
 
     uint64_t GetExpireTime(const TTLSt& ttl_st) override;
 
-    uint64_t GetRecordCnt() const override {
+    uint64_t GetRecordCnt() override {
         uint64_t count = 0;
         if (cf_hs_.size() == 1) {
             db_->GetIntProperty(cf_hs_[0], "rocksdb.estimate-num-keys", &count);

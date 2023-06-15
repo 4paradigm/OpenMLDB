@@ -86,7 +86,7 @@ class MemTable : public Table {
 
     uint64_t GetRecordByteSize() const override { return record_byte_size_.load(std::memory_order_relaxed); }
 
-    uint64_t GetRecordCnt() const override { return record_cnt_.load(std::memory_order_relaxed); }
+    uint64_t GetRecordCnt() override { return GetRecordIdxCnt(); }
 
     inline uint32_t GetSegCnt() const { return seg_cnt_; }
 
@@ -114,7 +114,6 @@ class MemTable : public Table {
     std::vector<Segment**> segments_;
     std::atomic<bool> enable_gc_;
     uint64_t ttl_offset_;
-    std::atomic<uint64_t> record_cnt_;
     bool segment_released_;
     std::atomic<uint64_t> record_byte_size_;
     uint32_t key_entry_max_height_;

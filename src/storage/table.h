@@ -71,7 +71,7 @@ class Table {
 
     virtual void SchedGc() = 0;
 
-    virtual uint64_t GetRecordCnt() const = 0;
+    virtual uint64_t GetRecordCnt() = 0;
 
     virtual bool IsExpire(const ::openmldb::api::LogEntry& entry) = 0;
 

@@ -46,7 +46,6 @@ MemTable::MemTable(const std::string& name, uint32_t id, uint32_t pid, uint32_t 
       seg_cnt_(seg_cnt),
       segments_(MAX_INDEX_NUM, nullptr),
       enable_gc_(true),
-      record_cnt_(0),
       segment_released_(false),
       record_byte_size_(0) {}
 
@@ -57,7 +56,6 @@ MemTable::MemTable(const ::openmldb::api::TableMeta& table_meta)
     segments_(MAX_INDEX_NUM, nullptr) {
     seg_cnt_ = 8;
     enable_gc_ = true;
-    record_cnt_ = 0;
     segment_released_ = false;
     record_byte_size_ = 0;
     diskused_ = 0;
@@ -137,7 +135,6 @@ bool MemTable::Put(const std::string& pk, uint64_t time, const char* data, uint3
     Segment* segment = segments_[0][index];
     Slice spk(pk);
     segment->Put(spk, time, data, size);
-    record_cnt_.fetch_add(1, std::memory_order_relaxed);
     record_byte_size_.fetch_add(GetRecordSize(size));
     return true;
 }
@@ -224,33 +221,39 @@ bool MemTable::Put(uint64_t time, const std::string& value, const Dimensions& di
             segment->Put(::openmldb::base::Slice(kv.second), ts_map, block);
         }
     }
-    record_cnt_.fetch_add(1, std::memory_order_relaxed);
     record_byte_size_.fetch_add(GetRecordSize(value.length()));
     return true;
 }
 
 bool MemTable::Delete(const ::openmldb::api::LogEntry& entry) {
     if (entry.dimensions_size() > 0) {
-        auto index_def = GetIndex(entry.dimensions(0).idx());
-        if (!index_def || !index_def->IsReady()) {
-            return false;
+        for (const auto& dimension : entry.dimensions()) {
+            auto index_def = GetIndex(dimension.idx());
+            if (!index_def || !index_def->IsReady()) {
+                return false;
+            }
+            auto ts_col = index_def->GetTsColumn();
+            std::optional<uint32_t> ts_idx = ts_col ? std::optional<uint32_t>{ts_col->GetId()} : std::nullopt;
+            Slice spk(dimension.key());
+            uint32_t seg_idx = 0;
+            if (seg_cnt_ > 1) {
+                seg_idx = base::hash(spk.data(), spk.size(), SEED) % seg_cnt_;
+            }
+            uint32_t real_idx = index_def->GetInnerPos();
+            if (entry.has_ts() || entry.has_end_ts()) {
+                uint64_t start_ts = entry.has_ts() ? entry.ts() : UINT64_MAX;
+                std::optional<uint64_t> end_ts = entry.has_end_ts() ? std::optional<uint64_t>{entry.end_ts()}
+                                                                     : std::nullopt;
+                if (!segments_[real_idx][seg_idx]->Delete(ts_idx, spk, start_ts, end_ts)) {
+                    return false;
+                }
+            } else {
+                if (!segments_[real_idx][seg_idx]->Delete(ts_idx, spk)) {
+                    return false;
+                }
+            }
         }
-        auto ts_col = index_def->GetTsColumn();
-        std::optional<uint32_t> ts_idx = ts_col ? std::optional<uint32_t>{ts_col->GetId()} : std::nullopt;
-        Slice spk(entry.dimensions(0).key());
-        uint32_t seg_idx = 0;
-        if (seg_cnt_ > 1) {
-            seg_idx = base::hash(spk.data(), spk.size(), SEED) % seg_cnt_;
-        }
-        uint32_t real_idx = index_def->GetInnerPos();
-        if (entry.has_ts() || entry.has_end_ts()) {
-            uint64_t start_ts = entry.has_ts() ? entry.ts() : UINT64_MAX;
-            std::optional<uint64_t> end_ts = entry.has_end_ts() ? std::optional<uint64_t>{entry.end_ts()}
-                                                                 : std::nullopt;
-            return segments_[real_idx][seg_idx]->Delete(ts_idx, spk, start_ts, end_ts);
-        } else {
-            return segments_[real_idx][seg_idx]->Delete(ts_idx, spk);
-        }
+        return true;
     } else {
         for (const auto& index_def : table_index_.GetAllIndex()) {
             if (!index_def || !index_def->IsReady()) {
