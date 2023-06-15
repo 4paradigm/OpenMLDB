@@ -54,7 +54,7 @@ export OPENMLDB_ZK_HOME=
 export OPENMLDB_ZK_CLUSTER=
 export OPENMLDB_ZK_ROOT_PATH=/openmldb-$dirName
 export OPENMLDB_HOME=
-export SPARK_HOME=
+export SPARK_HOME=/tmp/spark/spark-$dirName
 export CLEAR_OPENMLDB_INSTALL_DIR=true
 EOF
 
@@ -67,6 +67,8 @@ zk_cluster: "${Hosts[0]}:$zookeeperPort1"
 zk_root_path: "/openmldb-$dirName"
 basePath: "$rootPath/tmp"
 openMLDBPath: "/tmp/$dirName/tablet/bin/openmldb"
+apiServerEndpoints:
+  - "${Hosts[0]}:$apiserverPort"
 tabletEndpoints:
   - "${Hosts[0]}:$tablet1Port"
   - "${Hosts[1]}:$tablet2Port"
@@ -93,7 +95,7 @@ zookeeper.cluster=${Hosts[0]}:$zookeeperPort1
 zookeeper.root_path=/openmldb-$dirName
 server.port=$taskmanagerPort
 job.log.path=./logs/
-spark.home=
+spark.home=/tmp/spark/spark-$dirName
 spark.master=yarn-client
 offline.data.prefix=hdfs:///openmldb_integration_test/
 spark.default.conf=spark.hadoop.yarn.timeline-service.enabled=false

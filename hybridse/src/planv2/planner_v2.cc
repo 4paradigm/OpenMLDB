@@ -15,15 +15,8 @@
  */
 
 #include "planv2/planner_v2.h"
-#include <algorithm>
-#include <map>
-#include <random>
-#include <set>
-#include <string>
-#include <utility>
-#include <vector>
+
 #include "planv2/ast_node_converter.h"
-#include "proto/fe_common.pb.h"
 
 namespace hybridse {
 namespace plan {

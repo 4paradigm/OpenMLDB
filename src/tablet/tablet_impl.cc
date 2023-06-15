@@ -57,6 +57,7 @@
 #include "glog/logging.h"
 #include "google/protobuf/io/zero_copy_stream_impl.h"
 #include "google/protobuf/text_format.h"
+#include "nameserver/task.h"
 #include "schema/schema_adapter.h"
 #include "storage/binlog.h"
 #include "storage/disk_table_snapshot.h"
@@ -334,17 +335,7 @@ void TabletImpl::UpdateTTL(RpcController* ctrl, const ::openmldb::api::UpdateTTL
     uint64_t abs_ttl = ttl.abs_ttl();
     uint64_t lat_ttl = ttl.lat_ttl();
     const auto& index_name = request->index_name();
-    if (index_name.empty()) {
-        for (const auto& index : table->GetAllIndex()) {
-            if (index->GetTTLType() != ::openmldb::storage::TTLSt::ConvertTTLType(ttl.ttl_type())) {
-                response->set_code(::openmldb::base::ReturnCode::kTtlTypeMismatch);
-                response->set_msg("ttl type mismatch");
-                PDLOG(WARNING, "ttl type mismatch request type %d current type %d. tid %u, pid %u",
-                      ::openmldb::storage::TTLSt::ConvertTTLType(ttl.ttl_type()), index->GetTTLType(), tid, pid);
-                return;
-            }
-        }
-    } else {
+    if (!index_name.empty()) {
         auto index = table->GetIndex(request->index_name());
         if (!index) {
             PDLOG(WARNING, "idx name %s not found in table tid %u, pid %u", index_name.c_str(), tid, pid);
@@ -352,24 +343,9 @@ void TabletImpl::UpdateTTL(RpcController* ctrl, const ::openmldb::api::UpdateTTL
             response->set_msg("idx name not found");
             return;
         }
-        if (index->GetTTLType() != ::openmldb::storage::TTLSt::ConvertTTLType(ttl.ttl_type())) {
-            response->set_code(::openmldb::base::ReturnCode::kTtlTypeMismatch);
-            response->set_msg("ttl type mismatch");
-            PDLOG(WARNING, "ttl type mismatch. tid %u, pid %u", tid, pid);
-            return;
-        }
     }
-    if (abs_ttl > FLAGS_absolute_ttl_max || lat_ttl > FLAGS_latest_ttl_max) {
-        response->set_code(::openmldb::base::ReturnCode::kTtlIsGreaterThanConfValue);
-        response->set_msg("ttl is greater than conf value. max abs_ttl is " + std::to_string(FLAGS_absolute_ttl_max) +
-                          ", max lat_ttl is " + std::to_string(FLAGS_latest_ttl_max));
-        PDLOG(WARNING,
-              "ttl is greater than conf value. abs_ttl[%lu] lat_ttl[%lu] "
-              "ttl_type[%s] max abs_ttl[%u] max lat_ttl[%u]",
-              abs_ttl, lat_ttl, ::openmldb::type::TTLType_Name(ttl.ttl_type()).c_str(), FLAGS_absolute_ttl_max,
-              FLAGS_latest_ttl_max);
-        return;
-    }
+    // different ttl type is ok
+    // no ttl value limit check in tablet, do it in nameserver before send request
     ::openmldb::storage::TTLSt ttl_st(ttl);
     table->SetTTL(::openmldb::storage::UpdateTTLMeta(ttl_st, request->index_name()));
     std::string db_root_path;
@@ -2071,7 +2047,7 @@ void TabletImpl::AddReplica(RpcController* controller, const ::openmldb::api::Re
     brpc::ClosureGuard done_guard(done);
     std::shared_ptr<::openmldb::api::TaskInfo> task_ptr;
     if (request->has_task_info() && request->task_info().IsInitialized()) {
-        if (AddOPMultiTask(request->task_info(), ::openmldb::api::TaskType::kAddReplica, task_ptr) < 0) {
+        if (AddOPTask(request->task_info(), ::openmldb::api::TaskType::kAddReplica, task_ptr) < 0) {
             response->set_code(-1);
             response->set_msg("add task failed");
             return;
@@ -4053,7 +4029,7 @@ void TabletImpl::SetTaskStatus(std::shared_ptr<::openmldb::api::TaskInfo>& task_
     task_ptr->set_status(status);
 }
 
-int TabletImpl::GetTaskStatus(std::shared_ptr<::openmldb::api::TaskInfo>& task_ptr,
+int TabletImpl::GetTaskStatus(const std::shared_ptr<::openmldb::api::TaskInfo>& task_ptr,
                               ::openmldb::api::TaskStatus* status) {
     if (!task_ptr) {
         return -1;
@@ -4066,7 +4042,7 @@ int TabletImpl::GetTaskStatus(std::shared_ptr<::openmldb::api::TaskInfo>& task_p
 int TabletImpl::AddOPTask(const ::openmldb::api::TaskInfo& task_info, ::openmldb::api::TaskType task_type,
                           std::shared_ptr<::openmldb::api::TaskInfo>& task_ptr) {
     std::lock_guard<std::mutex> lock(mu_);
-    if (FindTask(task_info.op_id(), task_info.task_type())) {
+    if (IsExistTaskUnLock(task_info)) {
         PDLOG(WARNING, "task is running. op_id[%lu] op_type[%s] task_type[%s]", task_info.op_id(),
               ::openmldb::api::OPType_Name(task_info.op_type()).c_str(),
               ::openmldb::api::TaskType_Name(task_info.task_type()).c_str());
@@ -4077,72 +4053,43 @@ int TabletImpl::AddOPTask(const ::openmldb::api::TaskInfo& task_info, ::openmldb
     task_ptr->set_status(::openmldb::api::TaskStatus::kDoing);
     auto iter = task_map_.find(task_info.op_id());
     if (iter == task_map_.end()) {
-        task_map_.insert(std::make_pair(task_info.op_id(), std::list<std::shared_ptr<::openmldb::api::TaskInfo>>()));
+        iter = task_map_.emplace(task_info.op_id(), std::list<std::shared_ptr<::openmldb::api::TaskInfo>>()).first;
     }
-    task_map_[task_info.op_id()].push_back(task_ptr);
+    iter->second.push_back(task_ptr);
     if (task_info.task_type() != task_type) {
-        PDLOG(WARNING, "task type is not match. type is[%s]",
-              ::openmldb::api::TaskType_Name(task_info.task_type()).c_str());
+        PDLOG(WARNING, "task type is not match. type is[%s] expect type is [%s]",
+              ::openmldb::api::TaskType_Name(task_info.task_type()).c_str(),
+              ::openmldb::api::TaskType_Name(task_type).c_str());
         task_ptr->set_status(::openmldb::api::TaskStatus::kFailed);
         return -1;
     }
-    PDLOG(INFO, "add task map success, op_id[%lu] op_type[%s] task_type[%s]", task_info.op_id(),
+    PDLOG(INFO, "add task map success, op_id %lu op_type %s task_type %s %s", task_info.op_id(),
           ::openmldb::api::OPType_Name(task_info.op_type()).c_str(),
-          ::openmldb::api::TaskType_Name(task_info.task_type()).c_str());
+          ::openmldb::api::TaskType_Name(task_info.task_type()).c_str(),
+          nameserver::Task::GetAdditionalMsg(task_info));
     return 0;
 }
 
-std::shared_ptr<::openmldb::api::TaskInfo> TabletImpl::FindTask(uint64_t op_id, ::openmldb::api::TaskType task_type) {
-    auto iter = task_map_.find(op_id);
+bool TabletImpl::IsExistTaskUnLock(const ::openmldb::api::TaskInfo& task) {
+    auto iter = task_map_.find(task.op_id());
     if (iter == task_map_.end()) {
-        return std::shared_ptr<::openmldb::api::TaskInfo>();
+        return false;
     }
-    for (auto& task : iter->second) {
-        if (task->op_id() == op_id && task->task_type() == task_type) {
-            return task;
+    for (auto& cur_task : iter->second) {
+        if (cur_task->op_id() == task.op_id() && cur_task->task_type() == task.task_type()) {
+            if (task.has_tid() && (!cur_task->has_tid() || task.tid() != cur_task->tid())) {
+                continue;
+            }
+            if (task.has_pid() && (!cur_task->has_pid() || task.pid() != cur_task->pid())) {
+                continue;
+            }
+            if (task.has_task_id() && (!cur_task->has_task_id() || task.task_id() != cur_task->task_id())) {
+                continue;
+            }
+            return true;
         }
     }
-    return std::shared_ptr<::openmldb::api::TaskInfo>();
-}
-
-int TabletImpl::AddOPMultiTask(const ::openmldb::api::TaskInfo& task_info, ::openmldb::api::TaskType task_type,
-                               std::shared_ptr<::openmldb::api::TaskInfo>& task_ptr) {
-    std::lock_guard<std::mutex> lock(mu_);
-    if (FindMultiTask(task_info)) {
-        PDLOG(WARNING, "task is running. op_id[%lu] op_type[%s] task_type[%s]", task_info.op_id(),
-              ::openmldb::api::OPType_Name(task_info.op_type()).c_str(),
-              ::openmldb::api::TaskType_Name(task_info.task_type()).c_str());
-        return -1;
-    }
-    task_ptr.reset(task_info.New());
-    task_ptr->CopyFrom(task_info);
-    task_ptr->set_status(::openmldb::api::TaskStatus::kDoing);
-    auto iter = task_map_.find(task_info.op_id());
-    if (iter == task_map_.end()) {
-        task_map_.insert(std::make_pair(task_info.op_id(), std::list<std::shared_ptr<::openmldb::api::TaskInfo>>()));
-    }
-    task_map_[task_info.op_id()].push_back(task_ptr);
-    if (task_info.task_type() != task_type) {
-        PDLOG(WARNING, "task type is not match. type is[%s]",
-              ::openmldb::api::TaskType_Name(task_info.task_type()).c_str());
-        task_ptr->set_status(::openmldb::api::TaskStatus::kFailed);
-        return -1;
-    }
-    return 0;
-}
-
-std::shared_ptr<::openmldb::api::TaskInfo> TabletImpl::FindMultiTask(const ::openmldb::api::TaskInfo& task_info) {
-    auto iter = task_map_.find(task_info.op_id());
-    if (iter == task_map_.end()) {
-        return std::shared_ptr<::openmldb::api::TaskInfo>();
-    }
-    for (auto& task : iter->second) {
-        if (task->op_id() == task_info.op_id() && task->task_type() == task_info.task_type() &&
-            task->task_id() == task_info.task_id()) {
-            return task;
-        }
-    }
-    return std::shared_ptr<::openmldb::api::TaskInfo>();
+    return false;
 }
 
 void TabletImpl::GcTable(uint32_t tid, uint32_t pid, bool execute_once) {
@@ -4714,7 +4661,7 @@ void TabletImpl::SendIndexData(RpcController* controller, const ::openmldb::api:
     brpc::ClosureGuard done_guard(done);
     std::shared_ptr<::openmldb::api::TaskInfo> task_ptr;
     if (request->has_task_info() && request->task_info().IsInitialized()) {
-        if (AddOPTask(request->task_info(), ::openmldb::api::TaskType::kSendIndexData, task_ptr) < 0) {
+        if (AddOPTask(request->task_info(), ::openmldb::api::TaskType::kSendIndexRequest, task_ptr) < 0) {
             response->set_code(-1);
             response->set_msg("add task failed");
             return;
@@ -4776,7 +4723,7 @@ void TabletImpl::SendIndexDataInternal(std::shared_ptr<::openmldb::storage::Tabl
         if (kv.first == pid) {
             continue;
         }
-        std::string index_file_name = std::to_string(pid) + "_" + std::to_string(kv.first) + "_index.data";
+        std::string index_file_name = absl::StrCat(pid, "_", kv.first, "_index.data");
         std::string src_file = index_path + index_file_name;
         if (!::openmldb::base::IsExists(src_file)) {
             PDLOG(WARNING, "file %s does not exist. tid[%u] pid[%u]", src_file.c_str(), tid, pid);
@@ -4823,9 +4770,7 @@ void TabletImpl::SendIndexDataInternal(std::shared_ptr<::openmldb::storage::Tabl
                 auto tmp_map = std::atomic_load_explicit(&real_ep_map_, std::memory_order_acquire);
                 auto iter = tmp_map->find(kv.second);
                 if (iter == tmp_map->end()) {
-                    PDLOG(WARNING,
-                          "name %s not found in real_ep_map."
-                          "tid[%u] pid[%u]",
+                    PDLOG(WARNING, "name %s not found in real_ep_map. tid[%u] pid[%u]",
                           kv.second.c_str(), tid, pid);
                     break;
                 }
@@ -4833,89 +4778,29 @@ void TabletImpl::SendIndexDataInternal(std::shared_ptr<::openmldb::storage::Tabl
             }
             FileSender sender(tid, kv.first, table->GetStorageMode(), real_endpoint);
             if (!sender.Init()) {
-                PDLOG(WARNING,
-                      "Init FileSender failed. tid[%u] pid[%u] des_pid[%u] "
-                      "endpoint[%s]",
+                PDLOG(WARNING, "Init FileSender failed. tid[%u] pid[%u] des_pid[%u] endpoint[%s]",
                       tid, pid, kv.first, kv.second.c_str());
                 SetTaskStatus(task_ptr, ::openmldb::api::TaskStatus::kFailed);
                 return;
             }
             if (sender.SendFile(index_file_name, std::string("index"), index_path + index_file_name) < 0) {
-                PDLOG(WARNING, "send file %s failed. tid[%u] pid[%u] des_pid[%u]", index_file_name.c_str(), tid, pid,
-                      kv.first);
+                PDLOG(WARNING, "send file %s failed. tid[%u] pid[%u] des_pid[%u]",
+                        index_file_name.c_str(), tid, pid, kv.first);
                 SetTaskStatus(task_ptr, ::openmldb::api::TaskStatus::kFailed);
                 return;
             }
-            PDLOG(INFO,
-                  "send file %s to endpoint %s success. tid[%u] pid[%u] "
-                  "des_pid[%u]",
+            PDLOG(INFO, "send file %s to endpoint %s success. tid[%u] pid[%u] des_pid[%u]",
                   index_file_name.c_str(), kv.second.c_str(), tid, pid, kv.first);
         }
     }
     SetTaskStatus(task_ptr, ::openmldb::api::TaskStatus::kDone);
 }
 
-void TabletImpl::DumpIndexData(RpcController* controller, const ::openmldb::api::DumpIndexDataRequest* request,
-                               ::openmldb::api::GeneralResponse* response, Closure* done) {
-    brpc::ClosureGuard done_guard(done);
-    std::shared_ptr<::openmldb::api::TaskInfo> task_ptr;
-    if (request->has_task_info() && request->task_info().IsInitialized()) {
-        if (AddOPTask(request->task_info(), ::openmldb::api::TaskType::kDumpIndexData, task_ptr) < 0) {
-            response->set_code(-1);
-            response->set_msg("add task failed");
-            return;
-        }
-    }
-    uint32_t tid = request->tid();
-    uint32_t pid = request->pid();
-    do {
-        std::shared_ptr<Table> table;
-        std::shared_ptr<Snapshot> snapshot;
-        {
-            std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
-            table = GetTableUnLock(tid, pid);
-            if (!table) {
-                PDLOG(WARNING, "table does not exist. tid[%u] pid[%u]", tid, pid);
-                response->set_code(::openmldb::base::ReturnCode::kTableIsNotExist);
-                response->set_msg("table does not exist");
-                break;
-            }
-            if (table->GetStorageMode() != ::openmldb::common::kMemory) {
-                response->set_code(::openmldb::base::ReturnCode::kOperatorNotSupport);
-                response->set_msg("only support mem_table");
-                break;
-            }
-            if (table->GetTableStat() != ::openmldb::storage::kNormal) {
-                PDLOG(WARNING, "table state is %d, cannot dump index data. %u, pid %u", table->GetTableStat(), tid,
-                      pid);
-                response->set_code(::openmldb::base::ReturnCode::kTableStatusIsNotKnormal);
-                response->set_msg("table status is not kNormal");
-                break;
-            }
-            snapshot = GetSnapshotUnLock(tid, pid);
-            if (!snapshot) {
-                PDLOG(WARNING, "snapshot does not exist. tid[%u] pid[%u]", tid, pid);
-                response->set_code(::openmldb::base::ReturnCode::kSnapshotIsNotExist);
-                response->set_msg("table snapshot does not exist");
-                break;
-            }
-        }
-        std::shared_ptr<::openmldb::storage::MemTableSnapshot> memtable_snapshot =
-            std::static_pointer_cast<::openmldb::storage::MemTableSnapshot>(snapshot);
-        task_pool_.AddTask(boost::bind(&TabletImpl::DumpIndexDataInternal, this, table, memtable_snapshot,
-                                       request->partition_num(), request->column_key(), request->idx(), task_ptr));
-        response->set_code(::openmldb::base::ReturnCode::kOk);
-        response->set_msg("ok");
-        PDLOG(INFO, "dump index tid[%u] pid[%u]", tid, pid);
-        return;
-    } while (0);
-    SetTaskStatus(task_ptr, ::openmldb::api::TaskStatus::kFailed);
-}
-
-void TabletImpl::DumpIndexDataInternal(std::shared_ptr<::openmldb::storage::Table> table,
-                                       std::shared_ptr<::openmldb::storage::MemTableSnapshot> memtable_snapshot,
-                                       uint32_t partition_num, ::openmldb::common::ColumnKey& column_key, uint32_t idx,
-                                       std::shared_ptr<::openmldb::api::TaskInfo> task) {
+void TabletImpl::ExtractIndexDataInternal(std::shared_ptr<::openmldb::storage::Table> table,
+        std::shared_ptr<::openmldb::storage::MemTableSnapshot> memtable_snapshot,
+        const std::vector<::openmldb::common::ColumnKey>& column_keys,
+        uint32_t partition_num, uint64_t offset, bool dump_data,
+        std::shared_ptr<::openmldb::api::TaskInfo> task) {
     uint32_t tid = table->GetId();
     uint32_t pid = table->GetPid();
     std::string db_root_path;
@@ -4931,34 +4816,32 @@ void TabletImpl::DumpIndexDataInternal(std::shared_ptr<::openmldb::storage::Tabl
         SetTaskStatus(task, ::openmldb::api::kFailed);
         return;
     }
-    std::vector<::openmldb::log::WriteHandle*> whs;
-    for (uint32_t i = 0; i < partition_num; i++) {
-        std::string index_file_name = std::to_string(pid) + "_" + std::to_string(i) + "_index.data";
-        std::string index_data_path = index_path + index_file_name;
-        FILE* fd = fopen(index_data_path.c_str(), "wb+");
-        if (fd == nullptr) {
-            LOG(WARNING) << "fail to create file " << index_data_path << ". tid " << tid << " pid " << pid;
-            SetTaskStatus(task, ::openmldb::api::kFailed);
-            for (auto& wh : whs) {
-                delete wh;
-                wh = nullptr;
+    std::vector<std::shared_ptr<::openmldb::log::WriteHandle>> whs(partition_num);
+    if (dump_data) {
+        for (uint32_t i = 0; i < partition_num; i++) {
+            std::string index_file_name = absl::StrCat(pid, "_", i, "_index.data");
+            std::string index_data_path = index_path + index_file_name;
+            FILE* fd = fopen(index_data_path.c_str(), "wb+");
+            if (fd == nullptr) {
+                LOG(WARNING) << "fail to create file " << index_data_path << ". tid " << tid << " pid " << pid;
+                SetTaskStatus(task, ::openmldb::api::kFailed);
+                return;
             }
-            return;
+            whs[i] = std::make_shared<::openmldb::log::WriteHandle>("off", index_file_name, fd);
         }
-        ::openmldb::log::WriteHandle* wh = new ::openmldb::log::WriteHandle("off", index_file_name, fd);
-        whs.push_back(wh);
     }
-    if (memtable_snapshot->DumpIndexData(table, column_key, idx, whs)) {
-        PDLOG(INFO, "dump index on table tid[%u] pid[%u] succeed", tid, pid);
+    auto status = memtable_snapshot->ExtractIndexData(table, column_keys, whs, offset, dump_data);
+    if (status.OK()) {
+        PDLOG(INFO, "extract index on table tid[%u] pid[%u] succeed", tid, pid);
         SetTaskStatus(task, ::openmldb::api::kDone);
     } else {
-        PDLOG(WARNING, "fail to dump index on table tid[%u] pid[%u]", tid, pid);
+        PDLOG(WARNING, "fail to extract index on table tid[%u] pid[%u] msg[%s]", tid, pid, status.GetMsg().c_str());
         SetTaskStatus(task, ::openmldb::api::kFailed);
     }
     for (auto& wh : whs) {
-        wh->EndLog();
-        delete wh;
-        wh = nullptr;
+        if (wh) {
+            wh->EndLog();
+        }
     }
 }
 
@@ -4967,7 +4850,7 @@ void TabletImpl::LoadIndexData(RpcController* controller, const ::openmldb::api:
     brpc::ClosureGuard done_guard(done);
     std::shared_ptr<::openmldb::api::TaskInfo> task_ptr;
     if (request->has_task_info() && request->task_info().IsInitialized()) {
-        if (AddOPTask(request->task_info(), ::openmldb::api::TaskType::kLoadIndexData, task_ptr) < 0) {
+        if (AddOPTask(request->task_info(), ::openmldb::api::TaskType::kLoadIndexRequest, task_ptr) < 0) {
             response->set_code(-1);
             response->set_msg("add task failed");
             return;
@@ -4990,8 +4873,8 @@ void TabletImpl::LoadIndexData(RpcController* controller, const ::openmldb::api:
             break;
         }
         if (table->GetTableStat() != ::openmldb::storage::kNormal) {
-            PDLOG(WARNING, "table state is %d, cannot load index data. tid %u, pid %u", table->GetTableStat(), tid,
-                  pid);
+            PDLOG(WARNING, "table state is %d, cannot load index data. tid %u, pid %u",
+                    table->GetTableStat(), tid, pid);
             response->set_code(::openmldb::base::ReturnCode::kTableStatusIsNotKnormal);
             response->set_msg("table status is not kNormal");
             break;
@@ -5015,8 +4898,8 @@ void TabletImpl::LoadIndexDataInternal(uint32_t tid, uint32_t pid, uint32_t cur_
                                        uint64_t last_time, std::shared_ptr<::openmldb::api::TaskInfo> task) {
     uint64_t cur_time = ::baidu::common::timer::get_micros() / 1000;
     if (cur_pid == pid) {
-        task_pool_.AddTask(boost::bind(&TabletImpl::LoadIndexDataInternal, this, tid, pid, cur_pid + 1, partition_num,
-                                       cur_time, task));
+        task_pool_.AddTask(boost::bind(&TabletImpl::LoadIndexDataInternal, this,
+                    tid, pid, cur_pid + 1, partition_num, cur_time, task));
         return;
     }
     ::openmldb::api::TaskStatus status = ::openmldb::api::TaskStatus::kFailed;
@@ -5045,15 +4928,16 @@ void TabletImpl::LoadIndexDataInternal(uint32_t tid, uint32_t pid, uint32_t cur_
         return;
     }
     std::string index_path = GetDBPath(db_root_path, tid, pid) + "/index/";
-    std::string index_file_path = index_path + std::to_string(cur_pid) + "_" + std::to_string(pid) + "_index.data";
+    std::string index_file_path = absl::StrCat(index_path, cur_pid, "_", pid, "_index.data");
     if (!::openmldb::base::IsExists(index_file_path)) {
         if (last_time + FLAGS_load_index_max_wait_time < cur_time) {
             PDLOG(WARNING, "wait time too long. tid %u pid %u file %s", tid, pid, index_file_path.c_str());
             SetTaskStatus(task, ::openmldb::api::TaskStatus::kFailed);
             return;
         }
-        task_pool_.DelayTask(FLAGS_task_check_interval, boost::bind(&TabletImpl::LoadIndexDataInternal, this, tid, pid,
-                                                                    cur_pid, partition_num, last_time, task));
+        task_pool_.DelayTask(FLAGS_task_check_interval,
+                boost::bind(&TabletImpl::LoadIndexDataInternal, this, tid, pid,
+                    cur_pid, partition_num, last_time, task));
         return;
     }
     FILE* fd = fopen(index_file_path.c_str(), "rb");
@@ -5062,8 +4946,8 @@ void TabletImpl::LoadIndexDataInternal(uint32_t tid, uint32_t pid, uint32_t cur_
         SetTaskStatus(task, ::openmldb::api::TaskStatus::kFailed);
         return;
     }
-    ::openmldb::log::SequentialFile* seq_file = ::openmldb::log::NewSeqFile(index_file_path, fd);
-    ::openmldb::log::Reader reader(seq_file, nullptr, false, 0, false);
+    auto seq_file = std::unique_ptr<::openmldb::log::SequentialFile>(::openmldb::log::NewSeqFile(index_file_path, fd));
+    ::openmldb::log::Reader reader(seq_file.get(), nullptr, false, 0, false);
     std::string buffer;
     uint64_t succ_cnt = 0;
     uint64_t failed_cnt = 0;
@@ -5072,9 +4956,7 @@ void TabletImpl::LoadIndexDataInternal(uint32_t tid, uint32_t pid, uint32_t cur_
         ::openmldb::base::Slice record;
         ::openmldb::log::Status status = reader.ReadRecord(&record, &buffer);
         if (status.IsWaitRecord() || status.IsEof()) {
-            PDLOG(INFO,
-                  "read path %s for table tid %u pid %u completed. succ_cnt "
-                  "%lu, failed_cnt %lu",
+            PDLOG(INFO, "read path %s for table tid %u pid %u completed. succ_cnt %lu, failed_cnt %lu",
                   index_file_path.c_str(), tid, pid, succ_cnt, failed_cnt);
             break;
         }
@@ -5093,7 +4975,6 @@ void TabletImpl::LoadIndexDataInternal(uint32_t tid, uint32_t pid, uint32_t cur_
         replicator->AppendEntry(entry);
         succ_cnt++;
     }
-    delete seq_file;
     if (cur_pid == partition_num - 1 || (cur_pid + 1 == pid && pid == partition_num - 1)) {
         if (FLAGS_recycle_bin_enabled) {
             std::string recycle_bin_root_path;
@@ -5102,12 +4983,11 @@ void TabletImpl::LoadIndexDataInternal(uint32_t tid, uint32_t pid, uint32_t cur_
                 LOG(WARNING) << "fail to get recycle bin root path. tid " << tid << " pid " << pid;
                 openmldb::base::RemoveDirRecursive(index_path);
             } else {
-                std::string recycle_path =
-                    recycle_bin_root_path + "/" + std::to_string(tid) + "_" + std::to_string(pid);
+                std::string recycle_path = absl::StrCat(recycle_bin_root_path, "/", tid, "_", pid);
                 if (!openmldb::base::IsExists(recycle_path)) {
                     openmldb::base::Mkdir(recycle_path);
                 }
-                std::string dst = recycle_path + "/index" + openmldb::base::GetNowTime();
+                std::string dst = absl::StrCat(recycle_path, "/index", openmldb::base::GetNowTime());
                 openmldb::base::Rename(index_path, dst);
             }
         } else {
@@ -5122,60 +5002,12 @@ void TabletImpl::LoadIndexDataInternal(uint32_t tid, uint32_t pid, uint32_t cur_
         boost::bind(&TabletImpl::LoadIndexDataInternal, this, tid, pid, cur_pid + 1, partition_num, cur_time, task));
 }
 
-void TabletImpl::ExtractMultiIndexData(RpcController* controller,
-                                       const ::openmldb::api::ExtractMultiIndexDataRequest* request,
-                                       ::openmldb::api::GeneralResponse* response, Closure* done) {
-    brpc::ClosureGuard done_guard(done);
-    uint32_t tid = request->tid();
-    uint32_t pid = request->pid();
-    std::shared_ptr<Table> table;
-    std::shared_ptr<Snapshot> snapshot;
-    {
-        std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
-        table = GetTableUnLock(tid, pid);
-        if (!table) {
-            PDLOG(WARNING, "table does not exist. tid %u pid %u", tid, pid);
-            base::SetResponseStatus(base::ReturnCode::kTableIsNotExist, "table does not exist", response);
-            return;
-        }
-        if (table->GetTableStat() != ::openmldb::storage::kNormal) {
-            PDLOG(WARNING, "table state is %d, cannot extract index data. tid %u, pid %u", table->GetTableStat(), tid,
-                  pid);
-            base::SetResponseStatus(base::ReturnCode::kTableStatusIsNotKnormal, "table status is not kNormal",
-                                    response);
-            return;
-        }
-        snapshot = GetSnapshotUnLock(tid, pid);
-        if (!snapshot) {
-            PDLOG(WARNING, "snapshot does not exist. tid %u pid %u", tid, pid);
-            base::SetResponseStatus(base::ReturnCode::kSnapshotIsNotExist, "table snapshot does not exist", response);
-            return;
-        }
-    }
-    std::vector<::openmldb::common::ColumnKey> index_vec;
-    for (const auto& cur_column_key : request->column_key()) {
-        index_vec.push_back(cur_column_key);
-    }
-    uint64_t offset = 0;
-    auto memtable_snapshot = std::static_pointer_cast<::openmldb::storage::MemTableSnapshot>(snapshot);
-    if (memtable_snapshot->ExtractIndexData(table, index_vec, request->partition_num(), &offset) < 0) {
-        PDLOG(WARNING, "fail to extract index. tid %u pid %u", tid, pid);
-        return;
-    }
-    PDLOG(INFO, "extract index success. tid %u pid %u", tid, pid);
-    std::shared_ptr<LogReplicator> replicator = GetReplicator(tid, pid);
-    if (replicator) {
-        replicator->SetSnapshotLogPartIndex(offset);
-    }
-    base::SetResponseOK(response);
-}
-
 void TabletImpl::ExtractIndexData(RpcController* controller, const ::openmldb::api::ExtractIndexDataRequest* request,
                                   ::openmldb::api::GeneralResponse* response, Closure* done) {
     brpc::ClosureGuard done_guard(done);
     std::shared_ptr<::openmldb::api::TaskInfo> task_ptr;
     if (request->has_task_info() && request->task_info().IsInitialized()) {
-        if (AddOPTask(request->task_info(), ::openmldb::api::TaskType::kExtractIndexData, task_ptr) < 0) {
+        if (AddOPTask(request->task_info(), ::openmldb::api::TaskType::kExtractIndexRequest, task_ptr) < 0) {
             base::SetResponseStatus(-1, "add task failed", response);
             return;
         }
@@ -5214,33 +5046,22 @@ void TabletImpl::ExtractIndexData(RpcController* controller, const ::openmldb::a
                 break;
             }
         }
+        std::vector<::openmldb::common::ColumnKey> index_vec;
+        for (const auto& cur_column_key : request->column_key()) {
+            index_vec.push_back(cur_column_key);
+        }
         auto memtable_snapshot = std::static_pointer_cast<::openmldb::storage::MemTableSnapshot>(snapshot);
-        task_pool_.AddTask(boost::bind(&TabletImpl::ExtractIndexDataInternal, this, table, memtable_snapshot,
-                                       request->column_key(), request->idx(), request->partition_num(), task_ptr));
+        if (IsClusterMode()) {
+            task_pool_.AddTask(boost::bind(&TabletImpl::ExtractIndexDataInternal, this, table, memtable_snapshot,
+                    index_vec, request->partition_num(), request->offset(), request->dump_data(), task_ptr));
+        } else {
+            ExtractIndexDataInternal(table, memtable_snapshot, index_vec, request->partition_num(),
+                    request->offset(), false, nullptr);
+        }
         base::SetResponseOK(response);
         return;
     } while (0);
     SetTaskStatus(task_ptr, ::openmldb::api::TaskStatus::kFailed);
-}
-
-void TabletImpl::ExtractIndexDataInternal(std::shared_ptr<::openmldb::storage::Table> table,
-                                          std::shared_ptr<::openmldb::storage::MemTableSnapshot> memtable_snapshot,
-                                          ::openmldb::common::ColumnKey& column_key, uint32_t idx,
-                                          uint32_t partition_num, std::shared_ptr<::openmldb::api::TaskInfo> task) {
-    uint64_t offset = 0;
-    uint32_t tid = table->GetId();
-    uint32_t pid = table->GetPid();
-    if (memtable_snapshot->ExtractIndexData(table, column_key, idx, partition_num, offset) < 0) {
-        PDLOG(WARNING, "fail to extract index. tid %u pid %u", tid, pid);
-        SetTaskStatus(task, ::openmldb::api::TaskStatus::kFailed);
-        return;
-    }
-    PDLOG(INFO, "extract index success. tid %u pid %u", tid, pid);
-    std::shared_ptr<LogReplicator> replicator = GetReplicator(tid, pid);
-    if (replicator) {
-        replicator->SetSnapshotLogPartIndex(offset);
-    }
-    SetTaskStatus(task, ::openmldb::api::TaskStatus::kDone);
 }
 
 void TabletImpl::AddIndex(RpcController* controller, const ::openmldb::api::AddIndexRequest* request,

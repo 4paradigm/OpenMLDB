@@ -60,16 +60,41 @@ openmldb_tool status --diff -f=/work/openmldb/conf/hosts
 `inspect`用于检查集群的在线和离线两个部分是否正常工作，可以选择单独检查`online`或`offline`，不指定则都检查。可以定期执行检查，以便及时发现异常。
 ```
 openmldb_tool inspect -h
-usage: openmldb_tool inspect [-h] [--helpfull] {online,offline} ...
+usage: openmldb_tool inspect [-h] [--helpfull] {online,offline,job} ...
 
 positional arguments:
-  {online,offline}
-    online          only inspect online table
-    offline         only inspect offline jobs, check the job log
+  {online,offline,job}
+    online              only inspect online table.
+    offline             only inspect offline jobs.
+    job                 show jobs by state, show joblog or parse joblog by id.
 ```
 在线检查会检查集群中的表状态（包括系统表），并输出有异常的表，包括表的状态，分区信息，副本信息等，等价于`SHOW TABLE STATUS`并筛选出有异常的表。如果发现集群表现不正常，请先检查下是否有异常表。例如，`SHOW JOBS`无法正常输出历史任务时，可以`inspect online`检查一下是否是job系统表出现问题。
 
-离线检查会检查集群中的离线任务，并输出最终状态为失败的任务（不检查“运行中”的任务）及其日志，等价于`SHOW JOBS`并筛选出失败任务。
+##### 检查在线数据分布
+
+在线检查中，可以使用`inspect online --dist`检查在线数据分布，默认检查所有数据库，可以使用`--db`指定要检查的数据库。若要查询多个数据库，请使用 ',' 分隔数据库名称。会输出数据库在各个节点上的数据分布情况。
+
+#### 离线检查
+
+离线检查会输出最终状态为失败的任务（不检查“运行中”的任务），等价于`SHOW JOBS`并筛选出失败任务。
+
+#### JOB 检查
+
+JOB 检查会检查集群中的离线任务，可以使用`inspect job`或`inspect job --state all`查询所有任务，等价于`SHOW JOBS`并按job_id排序。使用`inspect job --state <state>`可以筛选出特定状态的日志，可以使用 ',' 分隔，同时查询不同状态的日志。例如：`inspect offline` 相当于`inspect job --state failed,killed,lost`即筛选出所有失败的任务。
+
+以下是一些常见的state:
+
+state    | 描述
+---------|--------
+finished | 成功完成的任务
+running  | 正在运行的任务
+failed   | 失败的任务
+killed   | 被终止的任务
+
+更多state信息详见[Spark State]( https://spark.apache.org/docs/3.2.1/api/java/org/apache/spark/launcher/SparkAppHandle.State.html)，[Yarn State](https://hadoop.apache.org/docs/current/api/org/apache/hadoop/yarn/api/records/YarnApplicationState.html)
+
+
+使用`inspect job --id <job_id>`查询指定任务的log日志，其结果会使用配置文件筛选出主要错误信息。如需更新配置文件，可以添加`--conf-update`，并且可以使用`--conf-url`配置镜像源，例如使用`--conf-url https://openmldb.ai/download/diag/common_err.yml`配置国内镜像。如果需要完整的日志信息，可以添加`--detail`获取详细信息。
 
 ### test 测试
 

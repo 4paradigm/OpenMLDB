@@ -17,19 +17,15 @@
 #ifndef HYBRIDSE_SRC_PLANV2_PLANNER_V2_H_
 #define HYBRIDSE_SRC_PLANV2_PLANNER_V2_H_
 
-#include <map>
 #include <string>
 #include <unordered_map>
-#include <vector>
+
 #include "base/fe_status.h"
-#include "gflags/gflags.h"
-#include "glog/logging.h"
 #include "node/node_manager.h"
 #include "node/plan_node.h"
-#include "node/sql_node.h"
 #include "plan/planner.h"
-#include "proto/fe_type.pb.h"
 #include "zetasql/parser/parser.h"
+
 namespace hybridse {
 namespace plan {
 
@@ -42,11 +38,11 @@ class SimplePlannerV2 : public SimplePlanner {
     explicit SimplePlannerV2(node::NodeManager *manager) : SimplePlanner(manager, true, false, false) {}
     SimplePlannerV2(node::NodeManager *manager, bool is_batch_mode, bool is_cluster_optimized = false,
                     bool enable_batch_window_parallelization = false,
-                    const std::unordered_map<std::string, std::string>* extra_options = nullptr)
+                    const std::unordered_map<std::string, std::string> *extra_options = nullptr)
         : SimplePlanner(manager, is_batch_mode, is_cluster_optimized, enable_batch_window_parallelization,
                         extra_options) {}
     base::Status CreateASTScriptPlan(const zetasql::ASTScript *script,
-                            PlanNodeList &plan_trees);           // NOLINT (runtime/references)
+                                     PlanNodeList &plan_trees);  // NOLINT (runtime/references)
 };
 
 }  // namespace plan

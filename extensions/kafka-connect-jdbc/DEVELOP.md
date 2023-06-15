@@ -6,7 +6,7 @@
 mvn package -DskipTests=true
 ```
 
-代码格式化为Google Style，不通过会编译失败，可通过clang-format格式化。
+代码格式化为Google Style，不通过会编译失败，可通过clang-format格式化。暂不支持自动测试，需要依赖#3282发布后的openmldb-jdbc。本地测试可以先编译安装jdbc包，再进行测试。
 
 ## Auto Schema
 kafka jdbc connector for openmldb，可以支持auto.schema，即从openmldb处获取table schema。
@@ -46,3 +46,7 @@ Record中的value实际是需要org.apache.kafka.connect.data.Struct类型，但
 如果想要对某个类型做更多的value转换支持，可以在`convertToLogicalType`或`convertToSchemaType`中加入逻辑。
 
 比如，支持多类型json value转为int32类型，就在int32的case中加入对value的类型判断，并支持将该类型转为int32。
+
+## Topic Table Mapping
+
+支持topic到OpenMLDB表的映射配置`topic.table.mapping`，可动态更改配置，格式为`<topic>:<table>[,<topic>:<table>]`，逗号分隔。如果topic在映射中不存在，则使用原规则`table.name.format`（默认为topic名）。

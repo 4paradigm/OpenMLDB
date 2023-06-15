@@ -397,7 +397,7 @@ cases:
   -
     id: 24
     desc: 没有partitionnum和replicanum，指定distribution
-    mode: standalone-unsupport
+    mode: standalone-unsupport,disk-unsupport
     inputs:
       - name: t3
     sql: |
