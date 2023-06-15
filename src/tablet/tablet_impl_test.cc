@@ -2316,7 +2316,7 @@ TEST_P(TabletImplTest, LoadWithDeletedKey) {
         MockClosure closure;
         tablet.LoadTable(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
-        sleep(1);
+        sleep(2); // sleep more to avoid scan when loading(workflow)
         ::openmldb::api::ScanRequest sr;
         sr.set_tid(id);
         sr.set_pid(1);
