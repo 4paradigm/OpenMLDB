@@ -19,7 +19,7 @@
 
 #include <forward_list>
 #include <memory>
-#include <mutex>  // NOLINT
+#include <mutex>
 #include "base/slice.h"
 #include "base/skiplist.h"
 #include "storage/key_entry.h"
@@ -29,16 +29,16 @@ namespace openmldb {
 namespace storage {
 
 enum class NodeType : uint32_t {
-   kNode = 1,
-   kList = 2
+    kNode = 1,
+    kList = 2
 };
 
 struct DataNode {
-   DataNode(uint32_t i, NodeType node_type, base::Node<uint64_t, DataBlock*>* value_node) :
-      idx(i), type(node_type), node(value_node) {}
-   uint32_t idx = 0;
-   NodeType type = NodeType::kNode;
-   base::Node<uint64_t, DataBlock*>* node = nullptr;
+    DataNode(uint32_t i, NodeType node_type, base::Node<uint64_t, DataBlock*>* value_node) :
+        idx(i), type(node_type), node(value_node) {}
+    uint32_t idx = 0;
+    NodeType type = NodeType::kNode;
+    base::Node<uint64_t, DataBlock*>* node = nullptr;
 };
 
 class NodeCache {
@@ -73,6 +73,7 @@ class NodeCache {
     void FreeKeyEntry(uint32_t idx, KeyEntry* entry, StatisticsInfo* gc_info);
     void FreeNode(uint32_t idx, base::Node<uint64_t, DataBlock*>* node, StatisticsInfo* gc_info);
     void FreeNodeList(uint32_t idx, base::Node<uint64_t, DataBlock*>* node, StatisticsInfo* gc_info);
+
  private:
     uint32_t ts_cnt_;
     uint32_t key_entry_max_height_;

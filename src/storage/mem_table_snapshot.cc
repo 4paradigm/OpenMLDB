@@ -341,11 +341,10 @@ bool DeleteCollector::IsDeleted(uint64_t offset, uint32_t idx, const std::string
             iter++;
         }
     }
-    std::string combined_key = absl::StrCat(key, "|", idx);
-    if (auto iter = deleted_keys_.find(combined_key); iter != deleted_keys_.end() && offset <= iter->second) {
+    if (auto iter = deleted_keys_.find(key); iter != deleted_keys_.end() && offset <= iter->second) {
         return true;
     }
-    if (auto iter = deleted_spans_.find(combined_key);
+    if (auto iter = deleted_spans_.find(key);
             iter != deleted_spans_.end() && iter->second.IsDeleted(offset, idx, ts)) {
         return true;
     }
