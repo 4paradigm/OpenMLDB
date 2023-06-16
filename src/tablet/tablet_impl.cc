@@ -335,17 +335,7 @@ void TabletImpl::UpdateTTL(RpcController* ctrl, const ::openmldb::api::UpdateTTL
     uint64_t abs_ttl = ttl.abs_ttl();
     uint64_t lat_ttl = ttl.lat_ttl();
     const auto& index_name = request->index_name();
-    if (index_name.empty()) {
-        for (const auto& index : table->GetAllIndex()) {
-            if (index->GetTTLType() != ::openmldb::storage::TTLSt::ConvertTTLType(ttl.ttl_type())) {
-                response->set_code(::openmldb::base::ReturnCode::kTtlTypeMismatch);
-                response->set_msg("ttl type mismatch");
-                PDLOG(WARNING, "ttl type mismatch request type %d current type %d. tid %u, pid %u",
-                      ::openmldb::storage::TTLSt::ConvertTTLType(ttl.ttl_type()), index->GetTTLType(), tid, pid);
-                return;
-            }
-        }
-    } else {
+    if (!index_name.empty()) {
         auto index = table->GetIndex(request->index_name());
         if (!index) {
             PDLOG(WARNING, "idx name %s not found in table tid %u, pid %u", index_name.c_str(), tid, pid);
@@ -353,24 +343,9 @@ void TabletImpl::UpdateTTL(RpcController* ctrl, const ::openmldb::api::UpdateTTL
             response->set_msg("idx name not found");
             return;
         }
-        if (index->GetTTLType() != ::openmldb::storage::TTLSt::ConvertTTLType(ttl.ttl_type())) {
-            response->set_code(::openmldb::base::ReturnCode::kTtlTypeMismatch);
-            response->set_msg("ttl type mismatch");
-            PDLOG(WARNING, "ttl type mismatch. tid %u, pid %u", tid, pid);
-            return;
-        }
     }
-    if (abs_ttl > FLAGS_absolute_ttl_max || lat_ttl > FLAGS_latest_ttl_max) {
-        response->set_code(::openmldb::base::ReturnCode::kTtlIsGreaterThanConfValue);
-        response->set_msg("ttl is greater than conf value. max abs_ttl is " + std::to_string(FLAGS_absolute_ttl_max) +
-                          ", max lat_ttl is " + std::to_string(FLAGS_latest_ttl_max));
-        PDLOG(WARNING,
-              "ttl is greater than conf value. abs_ttl[%lu] lat_ttl[%lu] "
-              "ttl_type[%s] max abs_ttl[%u] max lat_ttl[%u]",
-              abs_ttl, lat_ttl, ::openmldb::type::TTLType_Name(ttl.ttl_type()).c_str(), FLAGS_absolute_ttl_max,
-              FLAGS_latest_ttl_max);
-        return;
-    }
+    // different ttl type is ok
+    // no ttl value limit check in tablet, do it in nameserver before send request
     ::openmldb::storage::TTLSt ttl_st(ttl);
     table->SetTTL(::openmldb::storage::UpdateTTLMeta(ttl_st, request->index_name()));
     std::string db_root_path;

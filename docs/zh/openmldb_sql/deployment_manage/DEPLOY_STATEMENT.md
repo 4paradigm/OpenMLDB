@@ -153,7 +153,7 @@ DEPLOY demo_deploy OPTIONS(long_windows="w1:1d") SELECT c1, sum(c2) OVER w1 FROM
 ```
 
 #### 关闭索引类型校验
-默认情况下`SKIP_INDEX_CHECK`选项为`false`, 即deploy SQL时会校验现有的索引和期望的索引类型是否一致，如果不一致会报错。如果这个选项设置为`true`, deploy的时候对已有索引不会校验已有索引，也不会修改已有索引的TTL。
+默认情况下`SKIP_INDEX_CHECK`选项为`false`, deploy SQL时如果存在和期望索引key与ts相同的现有索引，还会校验现有索引和期望索引的TTL类型是否一致，并更新表的索引，如果集群版本是0.8.0或更早的，将不支持更新索引的TTL类型。如果这个选项设置为`true`, deploy的时候不会校验现有索引，也不会修改现有索引的TTL，仅创建新的期望索引。
 
 **Example**
 ```sql

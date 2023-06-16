@@ -42,7 +42,7 @@ void AtList(::hybridse::codec::ListRef<V>* list_ref, int64_t pos, V* v, bool* is
         *v = static_cast<V>(DataTypeTrait<V>::zero_value());
         return;
     }
-    auto list = reinterpret_cast<codec::ListV<V>*>(list_ref->list);
+    codec::ListV<V>* list = reinterpret_cast<codec::ListV<V>*>(list_ref->list);
     auto column = dynamic_cast<codec::WrapListImpl<V, codec::Row>*>(list);
     if (column != nullptr) {
         auto row = column->root()->At(pos);
@@ -53,8 +53,9 @@ void AtList(::hybridse::codec::ListRef<V>* list_ref, int64_t pos, V* v, bool* is
             column->GetField(row, v, is_null);
         }
     } else {
-        *is_null = false;
-        *v = list->At(pos);
+        auto out = list->At(pos);
+        *is_null = codec::AtOut<V>::IsNull(out);
+        *v = codec::AtOut<V>::Value(out);
     }
 }
 
