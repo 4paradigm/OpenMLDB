@@ -2664,6 +2664,101 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(
             *status = HandleDelete(database, plan->GetTableName(), plan->GetCondition());
             return {};
         }
+        case hybridse::node::kPlanTypeAlterTable: {
+            // tobedev
+            auto plan = dynamic_cast<hybridse::node::AlterTableStmtPlanNode*>(node);
+
+            std::string db(plan->db_.begin(), plan->db_.end());
+            std::string table(plan->table_.begin(), plan->table_.end());
+
+            std::vector<const hybridse::node::AlterActionBase *> actions = plan->actions_;
+
+
+
+            for (const auto& action : actions) {
+
+                LOG(WARNING) << "Action: " << action;
+
+                auto kind = action->kind();
+
+                if (kind == hybridse::node::AlterActionBase::ActionKind::ADD_PATH) {
+                    LOG(WARNING) << "Add path";
+
+                    auto addAction = dynamic_cast<const hybridse::node::AddPathAction*>(action);
+
+                    auto target = addAction->target_;
+
+                    LOG(WARNING) << "Target: " << target;
+
+
+                    auto tableInfo = cluster_sdk_->GetTableInfo(db, table);
+
+                    if (tableInfo == nullptr) {
+                        *status = {StatusCode::kCmdError, "table does not exist"};
+                        return {};
+                    }
+
+                    if (tableInfo->has_offline_table_info()) {
+                        LOG(WARNING) << "Has offline table info";
+                        ::openmldb::nameserver::OfflineTableInfo offlineTableInfo = tableInfo->offline_table_info();
+
+                        LOG(WARNING) << "Offline table info format: " << offlineTableInfo.format();
+                        LOG(WARNING) << "Offline table info path: " << offlineTableInfo.path();
+
+
+                        //auto paths = offlineTableInfo.symbolic_paths();
+                        bool isDuplicated = false;
+                        for (const auto& item : offlineTableInfo.symbolic_paths()) {
+                            if (item == target) {   
+                                isDuplicated = true;
+                            }
+                        }
+                        if (isDuplicated) {
+                            LOG(WARNING) << "Ignore adding the duplicated symbolic path: " + target;
+                        } else {
+                            LOG(WARNING) << "Try to add symbolic path: " + target;
+                            offlineTableInfo.add_symbolic_paths(target);
+                            tableInfo->mutable_offline_table_info()->CopyFrom(offlineTableInfo);
+                        }
+
+                    } else {
+
+
+                        LOG(WARNING) << "No offline table info";
+
+
+                        ::openmldb::nameserver::OfflineTableInfo newOfflineTableInfo;
+
+                        newOfflineTableInfo.set_path("");
+                        newOfflineTableInfo.set_format("parquet");
+                        newOfflineTableInfo.add_symbolic_paths(target);
+
+                        LOG(WARNING) << "Get offline table info format: " << newOfflineTableInfo.format();
+
+                        tableInfo->mutable_offline_table_info()->CopyFrom(newOfflineTableInfo);
+
+                        LOG(WARNING) << "Now has offline table info or not: " << tableInfo->has_offline_table_info();
+
+                    }
+
+
+                    auto ns = cluster_sdk_->GetNsClient();
+                    ns->UpdateOfflineTableInfo(*tableInfo);
+
+
+
+                } else {
+                    LOG(WARNING) << "Delete path";
+                }
+
+            }
+
+
+
+
+
+            return {};
+        }
         default: {
             *status = {StatusCode::kCmdError, "Unsupported command"};
             return {};
