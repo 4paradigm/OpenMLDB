@@ -38,9 +38,9 @@ object LoadDataPlan {
     // get target storage
     val storage = ctx.getConf.loadDataMode
     require(storage == "offline" || storage == "online")
-    val (format, options, mode, deepCopyOpt) = HybridseUtil.parseOptions(inputFile, node)
-    require(deepCopyOpt.nonEmpty) // PhysicalLoadDataNode must have the option deepCopy
-    val deepCopy = deepCopyOpt.get
+    val (format, options, mode, extra) = HybridseUtil.parseOptions(inputFile, node)
+    // load have the option deep_copy
+    val deepCopy = extra.get("deep_copy").get.toBoolean
 
     require(ctx.getOpenmldbSession != null, "LOAD DATA must use OpenmldbSession, not SparkSession")
     val info = ctx.getOpenmldbSession.openmldbCatalogService.getTableInfo(db, table)
