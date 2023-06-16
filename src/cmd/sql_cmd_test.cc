@@ -3508,30 +3508,22 @@ struct DeploymentEnv {
     virtual ~DeploymentEnv() { TearDown(); }
 
     void SetUp() {
-        ProcessSQLs(sr_, {"set session execute_mode = 'online'", absl::StrCat("create database ", db_),
-                          absl::StrCat("use ", db_),
-                          absl::StrCat("create table ", table_,
-                                       " (c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, "
-                                       "c8 date, index(key=c1, ts=c4, abs_ttl=0, ttl_type=absolute)) "
-                                       "OPTIONS(partitionnum=1,replicanum=1);")});
-        // show index
-        absl::SleepFor(absl::Seconds(3));
-        LOG(INFO) << "table " << table_ << ":\n" << ExecFetch(absl::StrCat("desc ", table_));
         ProcessSQLs(
             sr_,
-            {
-                // deploy will create index c1,c7,lat 2, may fail in workflow cpp
-                absl::StrCat("deploy ", dp_name_, " SELECT c1, c3, sum(c4) OVER w1 as w1_c4_sum FROM ", table_,
-                             " WINDOW w1 AS (PARTITION BY c1 ORDER BY c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);"),
-                absl::StrCat(
-                    "create procedure ", procedure_name_,
-                    " (c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, c8 date) BEGIN SELECT c1, "
-                    "c3, "
-                    "sum(c4) OVER w1 as w1_c4_sum FROM ",
-                    table_,
-                    " WINDOW w1 AS (PARTITION BY c1 ORDER BY c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW); END"),
-            });
-        HandleSQL(absl::StrCat("desc ", table_));
+            {"set session execute_mode = 'online'", absl::StrCat("create database ", db_), absl::StrCat("use ", db_),
+             absl::StrCat("create table ", table_,
+                          " (c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, "
+                          "c8 date, index(key=c1, ts=c4, abs_ttl=0, ttl_type=absolute)) "
+                          "OPTIONS(partitionnum=1,replicanum=1);"),
+             // deploy will create index c1,c7,lat 2, may fail in workflow cpp
+             absl::StrCat("deploy ", dp_name_, " SELECT c1, c3, sum(c4) OVER w1 as w1_c4_sum FROM ", table_,
+                          " WINDOW w1 AS (PARTITION BY c1 ORDER BY c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);"),
+             absl::StrCat(
+                 "create procedure ", procedure_name_,
+                 " (c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, c8 date) BEGIN SELECT c1, "
+                 "c3, "
+                 "sum(c4) OVER w1 as w1_c4_sum FROM ",
+                 table_, " WINDOW w1 AS (PARTITION BY c1 ORDER BY c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW); END")});
     }
 
     void TearDown() {
