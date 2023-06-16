@@ -2668,94 +2668,83 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(
             // tobedev
             auto plan = dynamic_cast<hybridse::node::AlterTableStmtPlanNode*>(node);
 
+            // Get table info
             std::string db(plan->db_.begin(), plan->db_.end());
             std::string table(plan->table_.begin(), plan->table_.end());
+            auto tableInfo = cluster_sdk_->GetTableInfo(db, table);
+
+            if (tableInfo == nullptr) {
+                *status = {StatusCode::kCmdError, "table does not exist"};
+                return {};
+            }
+
+            // Create offline table info if not exists
+            ::openmldb::nameserver::OfflineTableInfo offline_table_info;
+
+            if (tableInfo->has_offline_table_info()) {
+                // Get the existed offline table info
+                offline_table_info.CopyFrom(tableInfo->offline_table_info());
+            } else {
+                // Create empty offline table info
+                offline_table_info.set_path("");
+                offline_table_info.set_format("parquet");
+            }
+
+            auto current_symbolic_paths = offline_table_info.symbolic_paths();
 
             std::vector<const hybridse::node::AlterActionBase *> actions = plan->actions_;
 
-
-
+            // Handle multiple add and delete actions
             for (const auto& action : actions) {
-
-                LOG(WARNING) << "Action: " << action;
-
                 auto kind = action->kind();
 
-                if (kind == hybridse::node::AlterActionBase::ActionKind::ADD_PATH) {
-                    LOG(WARNING) << "Add path";
-
+                if (kind == hybridse::node::AlterActionBase::ActionKind::ADD_PATH) { // Handle add path
                     auto addAction = dynamic_cast<const hybridse::node::AddPathAction*>(action);
-
                     auto target = addAction->target_;
 
-                    LOG(WARNING) << "Target: " << target;
+                    bool isDuplicated = false;
+                    for (const auto& item : current_symbolic_paths) {
+                        if (item == target) {   
+                            isDuplicated = true;
+                            break;
+                        }
+                    }
+                    if (isDuplicated) {
+                        *status = {StatusCode::kCmdError, "The symbolic path exists: " + target};
+                        return {};
+                    } else {
+                        offline_table_info.add_symbolic_paths(target);
+                    }
 
+                } else { // Handle delete path
+                    auto dropAction = dynamic_cast<const hybridse::node::DropPathAction*>(action);
+                    auto target = dropAction->target_;
 
-                    auto tableInfo = cluster_sdk_->GetTableInfo(db, table);
-
-                    if (tableInfo == nullptr) {
-                        *status = {StatusCode::kCmdError, "table does not exist"};
+                    bool isExist = false;
+                    int index = 0;
+                    for (const auto& item : current_symbolic_paths) {
+                        if (item == target) {   
+                            isExist = true;
+                            break;
+                        }
+                        index += 1;
+                    }
+                    if (isExist) {
+                        offline_table_info.mutable_symbolic_paths()->erase(offline_table_info.mutable_symbolic_paths()->begin() + index);
+                    } else {
+                        *status = {StatusCode::kCmdError, "The symbolic path does not exist: " + target};
                         return {};
                     }
-
-                    if (tableInfo->has_offline_table_info()) {
-                        LOG(WARNING) << "Has offline table info";
-                        ::openmldb::nameserver::OfflineTableInfo offlineTableInfo = tableInfo->offline_table_info();
-
-                        LOG(WARNING) << "Offline table info format: " << offlineTableInfo.format();
-                        LOG(WARNING) << "Offline table info path: " << offlineTableInfo.path();
-
-
-                        //auto paths = offlineTableInfo.symbolic_paths();
-                        bool isDuplicated = false;
-                        for (const auto& item : offlineTableInfo.symbolic_paths()) {
-                            if (item == target) {   
-                                isDuplicated = true;
-                            }
-                        }
-                        if (isDuplicated) {
-                            LOG(WARNING) << "Ignore adding the duplicated symbolic path: " + target;
-                        } else {
-                            LOG(WARNING) << "Try to add symbolic path: " + target;
-                            offlineTableInfo.add_symbolic_paths(target);
-                            tableInfo->mutable_offline_table_info()->CopyFrom(offlineTableInfo);
-                        }
-
-                    } else {
-
-
-                        LOG(WARNING) << "No offline table info";
-
-
-                        ::openmldb::nameserver::OfflineTableInfo newOfflineTableInfo;
-
-                        newOfflineTableInfo.set_path("");
-                        newOfflineTableInfo.set_format("parquet");
-                        newOfflineTableInfo.add_symbolic_paths(target);
-
-                        LOG(WARNING) << "Get offline table info format: " << newOfflineTableInfo.format();
-
-                        tableInfo->mutable_offline_table_info()->CopyFrom(newOfflineTableInfo);
-
-                        LOG(WARNING) << "Now has offline table info or not: " << tableInfo->has_offline_table_info();
-
-                    }
-
-
-                    auto ns = cluster_sdk_->GetNsClient();
-                    ns->UpdateOfflineTableInfo(*tableInfo);
-
-
-
-                } else {
                     LOG(WARNING) << "Delete path";
                 }
-
             }
 
+            // Update offline table info
+            tableInfo->mutable_offline_table_info()->CopyFrom(offline_table_info);
 
-
-
+            // Send reqeust to persistent table info
+            auto ns = cluster_sdk_->GetNsClient();
+            ns->UpdateOfflineTableInfo(*tableInfo);
 
             return {};
         }
