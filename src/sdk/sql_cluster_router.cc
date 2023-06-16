@@ -2698,13 +2698,13 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(
             for (const auto& action : actions) {
                 auto kind = action->kind();
 
-                if (kind == hybridse::node::AlterActionBase::ActionKind::ADD_PATH) { // Handle add path
+                if (kind == hybridse::node::AlterActionBase::ActionKind::ADD_PATH) {  // Handle add path
                     auto addAction = dynamic_cast<const hybridse::node::AddPathAction*>(action);
                     auto target = addAction->target_;
 
                     bool isDuplicated = false;
                     for (const auto& item : current_symbolic_paths) {
-                        if (item == target) {   
+                        if (item == target) {
                             isDuplicated = true;
                             break;
                         }
@@ -2716,21 +2716,23 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(
                         offline_table_info.add_symbolic_paths(target);
                     }
 
-                } else { // Handle delete path
+                } else {  // Handle delete path
                     auto dropAction = dynamic_cast<const hybridse::node::DropPathAction*>(action);
                     auto target = dropAction->target_;
 
                     bool isExist = false;
                     int index = 0;
                     for (const auto& item : current_symbolic_paths) {
-                        if (item == target) {   
+                        if (item == target) {
                             isExist = true;
                             break;
                         }
                         index += 1;
                     }
                     if (isExist) {
-                        offline_table_info.mutable_symbolic_paths()->erase(offline_table_info.mutable_symbolic_paths()->begin() + index);
+                        offline_table_info.mutable_symbolic_paths()->erase(
+                            offline_table_info.mutable_symbolic_paths()->begin() + index
+                        );
                     } else {
                         *status = {StatusCode::kCmdError, "The symbolic path does not exist: " + target};
                         return {};
