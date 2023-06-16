@@ -66,10 +66,10 @@ jobs:
         run: |
           ./steps/ut_zookeeper.sh start
 
-      - name: thirdparty(min disk size)
+      - name: rm thirdparty download(min disk size)
         run: |
-          make thirdparty
           rm -rf .deps/build/
+          du -h -d 1
 
       - name: Coverage CPP
         run: |
