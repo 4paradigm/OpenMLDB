@@ -322,7 +322,7 @@ public class SqlClusterExecutor implements SqlExecutor {
             throw new SQLException("input schema is null or empty");
         }
         List<String> results = new ArrayList<>();
-        // TODO(hw): multi db is not supported now, create db.table works?
+        // TODO(hw): multi db is not supported now
         for (Map.Entry<String, Map<String, Schema>> entry : tableSchema.entrySet()) {
             Map<String, Schema> schemaMap = entry.getValue();
             TableColumnDescPairVector tableColumnDescPairVector = convertSchema(schemaMap);
