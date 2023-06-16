@@ -911,6 +911,8 @@ TEST_P(DBSDKTest, DeployWithData) {
         "WINDOW w1 AS (PARTITION BY t1.col2 ORDER BY t1.col3 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);";
     sr->ExecuteSQL(deploy_sql, &status);
     ASSERT_TRUE(status.IsOK());
+    LOG(INFO) << "deployed";
+    ProcessSQLs(sr, { "show deployment demo;"});
     std::string msg;
     ASSERT_TRUE(cs->GetNsClient()->DropProcedure("test2", "demo", msg));
     ASSERT_TRUE(cs->GetNsClient()->DropTable("test2", "t1", msg));

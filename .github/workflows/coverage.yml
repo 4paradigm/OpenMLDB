@@ -69,7 +69,6 @@ jobs:
       - name: rm thirdparty download(min disk size)
         run: |
           rm -rf .deps/build/
-          du -h -d 1
 
       - name: Coverage CPP
         run: |
