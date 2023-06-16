@@ -56,7 +56,7 @@ class SQLDeleteRow {
 
     const std::string& GetDatabase() const { return db_; }
     const std::string& GetTableName() const { return table_name_; }
-    const std::vector<Condition>& GetValue() const { return result_; }
+    const std::vector<Condition>& GetValue() const { return value_; }
 
  private:
     const std::string db_;
@@ -64,6 +64,7 @@ class SQLDeleteRow {
     std::vector<Condition> condition_vec_;
     std::vector<Condition> parameter_vec_;
     std::vector<Condition> result_;
+    std::vector<Condition> value_;
     std::map<int, size_t> pos_map_;
 };
 

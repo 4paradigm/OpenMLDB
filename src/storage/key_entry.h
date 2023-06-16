@@ -65,7 +65,7 @@ struct TimeComparator {
 
 static const TimeComparator tcmp;
 using TimeEntries = base::Skiplist<uint64_t, DataBlock*, TimeComparator>;
-class StatisticsInfo;
+struct StatisticsInfo;
 
 class KeyEntry {
  public:

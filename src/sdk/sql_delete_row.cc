@@ -27,7 +27,7 @@ SQLDeleteRow::SQLDeleteRow(const std::string& db, const std::string& table_name,
             const std::vector<Condition>& condition_vec,
             const std::vector<Condition>& parameter_vec) :
         db_(db), table_name_(table_name), condition_vec_(condition_vec),
-        parameter_vec_(parameter_vec), result_(condition_vec_), pos_map_() {
+        parameter_vec_(parameter_vec), result_(condition_vec_), value_(), pos_map_() {
     for (size_t idx = 0; idx < parameter_vec_.size(); ++idx) {
         int pos = 0;
         if (absl::SimpleAtoi(parameter_vec.at(idx).val.value(), &pos)) {
@@ -135,6 +135,8 @@ bool SQLDeleteRow::SetNULL(int pos) {
 }
 
 bool SQLDeleteRow::Build() {
+    value_.swap(result_);
+    result_.clear();
     return true;
 }
 
