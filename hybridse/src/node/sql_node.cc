@@ -1293,8 +1293,7 @@ bool IsAggregationExpression(const udf::UdfLibrary *lib, const ExprNode *node_pt
 
 bool WindowOfExpression(const std::map<std::string, const WindowDefNode *> &windows, ExprNode *node_ptr,
                         const WindowDefNode **output) {
-    // try to resolved window ptr from expression like: call(args...) over
-    // window
+    // try to resolved window ptr from expression like: call(args...) over window
     if (kExprCall == node_ptr->GetExprType()) {
         CallExprNode *func_node_ptr = dynamic_cast<CallExprNode *>(node_ptr);
         if (nullptr != func_node_ptr->GetOver()) {
