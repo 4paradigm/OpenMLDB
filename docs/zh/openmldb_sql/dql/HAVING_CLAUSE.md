@@ -20,7 +20,7 @@ SELECT select_expr [,select_expr...] FROM ... GROUP BY ... HAVING having_conditi
 
 | SELECT语句元素                                 | 离线模式  | 在线预览模式 | 在线请求模式 | 说明                                                                   |
 | :--------------------------------------------- | --------- | ------------ | ------------ |:---------------------------------------------------------------------|
-| HAVING Clause     | **``✓``** |   **``✓(since 0.6.4)``**  |              | Having 子句与 Where 子句作用类似。Having 子句过滤 GroupBy 后的各种数据，Where 子句在聚合前进行过滤。 |
+| HAVING Clause     | **``✓``** |   **``✓(0.6.4 或者更高版本)``**  |              | Having 子句与 Where 子句作用类似。Having 子句过滤 GroupBy 后的各种数据，Where 子句在聚合前进行过滤。 |
 
 
 ## Example
