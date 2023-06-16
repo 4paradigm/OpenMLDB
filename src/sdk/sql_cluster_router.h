@@ -46,8 +46,9 @@ constexpr const char* FORMAT_STRING_KEY = "!%$FORMAT_STRING_KEY";
 
 class SQLClusterRouter : public SQLRouter {
  public:
-    using TableStatusMap = std::unordered_map<
-        uint32_t, std::unordered_map<uint32_t, std::unordered_map<std::string, openmldb::api::TableStatus>>>;
+    using TableStatusMap =
+        std::unordered_map<uint32_t,
+                           std::unordered_map<uint32_t, std::unordered_map<std::string, openmldb::api::TableStatus>>>;
 
     explicit SQLClusterRouter(const SQLRouterOptions& options);
     explicit SQLClusterRouter(const StandaloneOptions& options);
@@ -313,13 +314,13 @@ class SQLClusterRouter : public SQLRouter {
                                                const std::string& file_path,
                                                const openmldb::sdk::ReadFileOptionsParser& options_parser);
 
-    hybridse::sdk::Status LoadDataMultipleFile(int id, int step, const std::string& database,
-                                               const std::string& table, const std::vector<std::string>& file_list,
+    hybridse::sdk::Status LoadDataMultipleFile(int id, int step, const std::string& database, const std::string& table,
+                                               const std::vector<std::string>& file_list,
                                                const openmldb::sdk::ReadFileOptionsParser& options_parser,
                                                uint64_t* count);
 
-    hybridse::sdk::Status LoadDataSingleFile(int id, int step, const std::string& database,
-                                             const std::string& table, const std::string& file_path,
+    hybridse::sdk::Status LoadDataSingleFile(int id, int step, const std::string& database, const std::string& table,
+                                             const std::string& file_path,
                                              const openmldb::sdk::ReadFileOptionsParser& options_parser,
                                              uint64_t* count);
 
@@ -359,8 +360,7 @@ class SQLClusterRouter : public SQLRouter {
     std::shared_ptr<hybridse::sdk::ResultSet> ExecuteShowComponents(hybridse::sdk::Status* status);
 
     /// internal implementation for SQL 'SHOW TABLE STATUS'
-    std::shared_ptr<hybridse::sdk::ResultSet> ExecuteShowTableStatus(const std::string& db,
-                                                                     const std::string& pattern,
+    std::shared_ptr<hybridse::sdk::ResultSet> ExecuteShowTableStatus(const std::string& db, const std::string& pattern,
                                                                      hybridse::sdk::Status* status);
 
     std::shared_ptr<hybridse::sdk::ResultSet> GetJobResultSet(int job_id, ::hybridse::sdk::Status* status);

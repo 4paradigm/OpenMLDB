@@ -938,10 +938,10 @@ TEST_P(TabletImplTest, UpdateTTLAbsoluteTime) {
     ASSERT_EQ(0, CreateDefaultTable("", "t0", id, 0, 100, 0, kAbsoluteTime, storage_mode, &tablet));
     // table not exist
     ASSERT_EQ(100, UpdateTTL(0, 0, ::openmldb::type::kAbsoluteTime, 0, 0, &tablet));
-    // bigger than max ttl
-    ASSERT_EQ(132, UpdateTTL(id, 0, ::openmldb::type::kAbsoluteTime, 60 * 24 * 365 * 30 * 2, 0, &tablet));
-    // ttl type mismatch
-    ASSERT_EQ(112, UpdateTTL(id, 0, ::openmldb::type::kLatestTime, 0, 0, &tablet));
+    // bigger than max ttl, tablet side won't check
+    ASSERT_EQ(0, UpdateTTL(id, 0, ::openmldb::type::kAbsoluteTime, 60 * 24 * 365 * 30 * 2, 0, &tablet));
+    // ttl type mismatch is allowed
+    ASSERT_EQ(0, UpdateTTL(id, 0, ::openmldb::type::kLatestTime, 0, 0, &tablet));
 
     // normal case
     uint64_t now = ::baidu::common::timer::get_micros() / 1000;
@@ -1053,10 +1053,10 @@ TEST_P(TabletImplTest, UpdateTTLLatest) {
     ASSERT_EQ(0, CreateDefaultTable("", "t0", id, 0, 0, 1, kLatestTime, storage_mode, &tablet));
     // table not exist
     ASSERT_EQ(100, UpdateTTL(0, 0, ::openmldb::type::kLatestTime, 0, 0, &tablet));
-    // reach the max ttl
-    ASSERT_EQ(132, UpdateTTL(id, 0, ::openmldb::type::kLatestTime, 0, 20000, &tablet));
-    // ttl type mismatch
-    ASSERT_EQ(112, UpdateTTL(id, 0, ::openmldb::type::kAbsoluteTime, 0, 0, &tablet));
+    // reach the max ttl, tablet side won't check
+    ASSERT_EQ(0, UpdateTTL(id, 0, ::openmldb::type::kLatestTime, 0, 20000, &tablet));
+    // ttl type mismatch is allowed
+    ASSERT_EQ(0, UpdateTTL(id, 0, ::openmldb::type::kAbsoluteTime, 0, 0, &tablet));
     // normal case
     {
         ASSERT_EQ(0, UpdateTTL(id, 0, ::openmldb::type::kLatestTime, 0, 2, &tablet));
@@ -3248,12 +3248,12 @@ TEST_P(TabletImplTest, UpdateTTLAbsAndLat) {
     ASSERT_EQ(0, CreateDefaultTable("", "t0", id, 0, 100, 50, kAbsAndLat, storage_mode, &tablet));
     // table not exist
     ASSERT_EQ(100, UpdateTTL(0, 0, ::openmldb::type::kAbsAndLat, 10, 5, &tablet));
-    // bigger than max ttl
-    ASSERT_EQ(132, UpdateTTL(id, 0, ::openmldb::type::kAbsAndLat, 60 * 24 * 365 * 30 * 2, 5, &tablet));
-    // bigger than max ttl
-    ASSERT_EQ(132, UpdateTTL(id, 0, ::openmldb::type::kAbsAndLat, 30, 20000, &tablet));
-    // ttl type mismatch
-    ASSERT_EQ(112, UpdateTTL(id, 0, ::openmldb::type::kLatestTime, 10, 5, &tablet));
+    // bigger than max ttl, tablet side will not check
+    ASSERT_EQ(0, UpdateTTL(id, 0, ::openmldb::type::kAbsAndLat, 60 * 24 * 365 * 30 * 2, 5, &tablet));
+    // bigger than max ttl, tablet side will not check
+    ASSERT_EQ(0, UpdateTTL(id, 0, ::openmldb::type::kAbsAndLat, 30, 20000, &tablet));
+    // ttl type mismatch is allowed
+    ASSERT_EQ(0, UpdateTTL(id, 0, ::openmldb::type::kLatestTime, 10, 5, &tablet));
     // normal case
     uint64_t now = ::baidu::common::timer::get_micros() / 1000;
     ::openmldb::api::PutResponse presponse;
@@ -3381,11 +3381,11 @@ TEST_P(TabletImplTest, UpdateTTLAbsOrLat) {
     // table not exist
     ASSERT_EQ(100, UpdateTTL(0, 0, ::openmldb::type::kAbsOrLat, 10, 5, &tablet));
     // bigger than max ttl
-    ASSERT_EQ(132, UpdateTTL(id, 0, ::openmldb::type::kAbsOrLat, 60 * 24 * 365 * 30 * 2, 5, &tablet));
+    ASSERT_EQ(0, UpdateTTL(id, 0, ::openmldb::type::kAbsOrLat, 60 * 24 * 365 * 30 * 2, 5, &tablet));
     // bigger than max ttl
-    ASSERT_EQ(132, UpdateTTL(id, 0, ::openmldb::type::kAbsOrLat, 30, 20000, &tablet));
+    ASSERT_EQ(0, UpdateTTL(id, 0, ::openmldb::type::kAbsOrLat, 30, 20000, &tablet));
     // ttl type mismatch
-    ASSERT_EQ(112, UpdateTTL(id, 0, ::openmldb::type::kLatestTime, 30, 20000, &tablet));
+    ASSERT_EQ(0, UpdateTTL(id, 0, ::openmldb::type::kLatestTime, 30, 20000, &tablet));
     // normal case
     uint64_t now = ::baidu::common::timer::get_micros() / 1000;
     ::openmldb::api::PutRequest prequest;
