@@ -32,6 +32,10 @@ namespace openmldb {
 namespace sdk {
 
 struct DeleteOption {
+    DeleteOption(const std::map<uint32_t, std::string>& index,
+            const std::optional<uint64_t>& ts1, const std::optional<uint64_t>& ts2) :
+        index_map(index), start_ts(ts1), end_ts(ts2) {}
+    DeleteOption() = default;
     std::map<uint32_t, std::string> index_map;
     std::optional<uint64_t> start_ts = std::nullopt;
     std::optional<uint64_t> end_ts = std::nullopt;

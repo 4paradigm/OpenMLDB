@@ -110,6 +110,10 @@ hybridse::sdk::Status NodeAdapter::ExtractDeleteOption(
                     option->end_ts = ts - 1;
                 }
             }
+            if (option->start_ts.has_value() && option->end_ts.has_value() &&
+                    option->end_ts.value() >= option->start_ts.value()) {
+                return {hybridse::common::StatusCode::kCmdError, "invalid ts condition"};
+            }
         }
     }
     return {};
