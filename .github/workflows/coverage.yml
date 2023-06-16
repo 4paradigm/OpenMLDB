@@ -70,9 +70,10 @@ jobs:
         run: |
           rm -rf .deps/build/
 
+      # use raw cmake cmd to run(avoid download thirdparty again)
       - name: Coverage CPP
         run: |
-          make coverage-cpp
+          cmake -S . -B $(pwd)/build -DCMAKE_PREFIX_PATH=$(pwd)/.deps/usr -DCMAKE_BUILD_TYPE=Debug -DSQL_PYSDK_ENABLE=OFF -DSQL_JAVASDK_ENABLE=ON -DTESTING_ENABLE=ON -DCOVERAGE_ENABLE=ON -DBUILD_SHARED_LIBS=ON  
 
       - name: Upload Coverage Report
         uses: codecov/codecov-action@v3
