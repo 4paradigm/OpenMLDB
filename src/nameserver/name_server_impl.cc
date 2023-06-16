@@ -583,11 +583,11 @@ bool NameServerImpl::Recover() {
         }
         value.clear();
         if (!zk_client_->GetNodeValue(zk_path_.op_index_node_, value)) {
-            if (!zk_client_->CreateNode(zk_path_.op_index_node_, "1")) {
+            if (!zk_client_->CreateNode(zk_path_.op_index_node_, "0")) {
                 PDLOG(WARNING, "create op index node failed!");
                 return false;
             }
-            op_index_ = 1;
+            op_index_ = 0;
             PDLOG(INFO, "init op_index[%u]", op_index_);
         } else {
             op_index_ = std::stoull(value);
