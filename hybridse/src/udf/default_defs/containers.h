@@ -28,6 +28,29 @@ namespace hybridse {
 namespace udf {
 namespace container {
 
+// default update action: update ContainerT only cond is true
+template <template <typename> typename CateImpl>
+struct DefaultUpdateAction {
+    template <typename V>
+    struct Impl {
+        using GroupContainerT = typename CateImpl<V>::ContainerT;
+        using InputK = typename GroupContainerT::InputK;
+        using InputV = typename GroupContainerT::InputV;
+        using ContainerT = std::pair<GroupContainerT, int64_t>;
+
+        static inline ContainerT* Update(ContainerT* ptr, InputV value, bool is_value_null, bool cond,
+                                         bool is_cond_null, InputK key, bool is_key_null, int64_t bound) {
+            if (ptr->second == 0) {
+                ptr->second = bound;
+            }
+            if (cond && !is_cond_null) {
+                CateImpl<V>::Update(&ptr->first, value, is_value_null, key, is_key_null);
+            }
+            return ptr;
+        }
+    };
+};
+
 // Top N Value wrapper over *CateWhere
 // Base template class for 'top_n_value_*_cate_where' udafs
 //
@@ -36,7 +59,8 @@ namespace container {
 // - ContainerT* Update(ContainerT* ptr, InputV value, bool is_value_null, InputK key, bool is_key_null)
 // - uint32_t FormatValueFn(const V& val, char* buf, size_t size) {
 //
-template <template <typename> typename CateImpl>
+template <template <typename> typename CateImpl,
+          template <typename > typename UpdateAction = DefaultUpdateAction<CateImpl>::template Impl>
 struct TopNValueImpl {
     template <typename V>
     struct Impl {
@@ -74,13 +98,7 @@ struct TopNValueImpl {
 
         static ContainerT* Update(ContainerT* ptr, InputV value, bool is_value_null, bool cond, bool is_cond_null,
                                   InputK key, bool is_key_null, int64_t bound) {
-            if (ptr->second == 0) {
-                ptr->second = bound;
-            }
-            if (cond && !is_cond_null) {
-                CateImpl<V>::Update(&ptr->first, value, is_value_null, key, is_key_null);
-            }
-            return ptr;
+            UpdateAction<V>::Update(ptr, value, is_value_null, cond, is_cond_null, key, is_key_null, bound);
         }
 
         static ContainerT* UpdateI32Bound(ContainerT* ptr, InputV value, bool is_value_null, bool cond,

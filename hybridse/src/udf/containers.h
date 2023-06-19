@@ -183,7 +183,7 @@ struct DefaultPairCmp {
         return lhs.second < rhs.second;
     }
 
-    // StorageV is pair(int, double)
+    // For AVG cate, StorageV is pair(int, double)
     template <typename U = V>
     std::enable_if_t<std::is_same_v<U, std::pair<int64_t, double>>, bool> operator()(
         const std::pair<K, U>& lhs, const std::pair<K, U>& rhs) const {
@@ -204,6 +204,7 @@ class BoundedGroupByDict {
  public:
     // export data types
     using Key = K;
+    using Value = V;
     using StorageValue = StorageV;
     using InputK = typename DataTypeTrait<K>::CCallArgType;
     using InputV = typename DataTypeTrait<V>::CCallArgType;
