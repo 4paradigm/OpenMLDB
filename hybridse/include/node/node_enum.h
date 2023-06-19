@@ -96,7 +96,12 @@ enum SqlNodeType {
     kDynamicUdafFnDef,  // deprecated
     kWithClauseEntry,
     kAlterTableStmt,
+    kShowStmt,
     kSqlNodeTypeLast,  // debug type
+};
+
+enum class ShowStmtType {
+    kJobs,
 };
 
 enum TableRefType {
@@ -315,6 +320,7 @@ enum PlanType {
     kPlanTypeCreateFunction,
     kPlanTypeWithClauseEntry,
     kPlanTypeAlterTable,
+    kPlanTypeShow,
     kUnknowPlan = -1,
 };
 

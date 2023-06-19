@@ -56,7 +56,12 @@ class MutableStringListV : public codec::ListV<StringRef> {
 
     const uint64_t GetCount() override { return buffer_.size(); }
 
-    StringRef At(uint64_t pos) override { return StringRef(buffer_[pos]); }
+    codec::AtOut<StringRef>::T At(uint64_t pos) override {
+        if (pos >= buffer_.size()) {
+            return codec::AtOut<codec::StringRef>::Null();
+        }
+        return StringRef(buffer_.at(pos));
+    }
 
     void Add(const std::string& str) {
         if (total_len_ + str.size() > MAXIMUM_STRING_LENGTH) {
