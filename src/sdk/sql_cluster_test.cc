@@ -1050,6 +1050,51 @@ TEST_F(SQLClusterTest, ClusterOnlineAgg) {
     ASSERT_TRUE(ok);
 }
 
+TEST_F(SQLClusterTest, AlterTableAddDropOfflinePath) {
+    SQLRouterOptions sql_opt;
+    sql_opt.zk_cluster = mc_->GetZkCluster();
+    sql_opt.zk_path = mc_->GetZkPath();
+    auto router = NewClusterSQLRouter(sql_opt);
+    ASSERT_TRUE(router != nullptr);
+    SetOnlineMode(router);
+    std::string table = "test" + GenRand();
+    std::string db = "db" + GenRand();
+    ::hybridse::sdk::Status status;
+    bool ok = router->CreateDB(db, &status);
+    ASSERT_TRUE(ok);
+    std::string ddl = "create table (col1 int)";
+    ok = router->ExecuteDDL(db, ddl, &status);
+    ASSERT_TRUE(ok);
+    ASSERT_TRUE(router->RefreshCatalog());
+
+    router->ExecuteSQL(db, "use " + db + ";", &status);
+
+    ddl = "ALTER TABLE " + table + " ADD offline_path 'hdfs://foo/bar'";
+    ok = router->ExecuteDDL(db, ddl, &status);
+    ASSERT_TRUE(ok);
+    ASSERT_TRUE(router->RefreshCatalog());
+
+    ddl = "ALTER TABLE " + table + " DROP offline_path 'hdfs://foo/bar'";
+    ok = router->ExecuteDDL(db, ddl, &status);
+    ASSERT_TRUE(ok);
+    ASSERT_TRUE(router->RefreshCatalog());
+
+    ddl = "ALTER TABLE " + table + " ADD offline_path 'hdfs://foo/bar'";
+    ok = router->ExecuteDDL(db, ddl, &status);
+    ASSERT_TRUE(ok);
+    ASSERT_TRUE(router->RefreshCatalog());
+
+    ddl = "ALTER TABLE " + table + " ADD offline_path 'hdfs://foo/bar2', DROP offline_path 'hdfs://foo/bar'";
+    ok = router->ExecuteDDL(db, ddl, &status);
+    ASSERT_TRUE(ok);
+    ASSERT_TRUE(router->RefreshCatalog());
+
+    ok = router->ExecuteDDL(db, "drop table " + table + ";", &status);
+    ASSERT_TRUE(ok);
+    ok = router->DropDB(db, &status);
+    ASSERT_TRUE(ok);
+}
+
 }  // namespace openmldb::sdk
 
 int main(int argc, char** argv) {
