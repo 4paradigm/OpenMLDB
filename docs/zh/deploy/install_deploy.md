@@ -13,7 +13,7 @@ cat /etc/redhat-release # redhat only
 ldd --version
 strings /lib64/libc.so.6 | grep ^GLIBC_
 ````
-通常ldd版本2.17，libc.so.6中也会有`GLIBC_2.17`，也就是该系统支持glibc 2.17的程序/动态库运行。如果系统的glibc版本低于2.17，则需要尝试从源码编译。
+通常ldd版本>=2.17，libc.so.6中也会有`GLIBC_2.17`，也就是该系统支持glibc 2.17的程序/动态库运行。如果系统的glibc版本低于2.17，则需要尝试从源码编译。
 ```
 
 ### 第三方组件依赖
