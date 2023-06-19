@@ -66,14 +66,9 @@ jobs:
         run: |
           ./steps/ut_zookeeper.sh start
 
-      - name: rm thirdparty download(min disk size)
-        run: |
-          rm -rf .deps/build/
-
-      # use raw cmake cmd to run(avoid download thirdparty again)
       - name: Coverage CPP
         run: |
-          cmake --build $(pwd)/build --target coverage -- -j2 SQL_CASE_BASE_DIR=$(pwd) YAML_CASE_BASE_DIR=$(pwd)
+          make coverage-cpp
 
       - name: Upload Coverage Report
         uses: codecov/codecov-action@v3
