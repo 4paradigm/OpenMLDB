@@ -2731,8 +2731,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(
                     }
                     if (isExist) {
                         offline_table_info.mutable_symbolic_paths()->erase(
-                            offline_table_info.mutable_symbolic_paths()->begin() + index
-                        );
+                            offline_table_info.mutable_symbolic_paths()->begin() + index);
                     } else {
                         *status = {StatusCode::kCmdError, "The symbolic path does not exist: " + target};
                         return {};
