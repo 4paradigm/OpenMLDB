@@ -283,17 +283,14 @@ bool DiskTable::Put(uint64_t time, const std::string& value, const Dimensions& d
 }
 
 bool DiskTable::Delete(const ::openmldb::api::LogEntry& entry) {
-    uint64_t start_ts = entry.has_ts() ? entry.ts() : UINT64_MAX;
+    std::optional<uint64_t> start_ts = entry.has_ts() ? std::optional<uint64_t>(entry.ts()) : std::nullopt;
     std::optional<uint64_t> end_ts = entry.has_end_ts() ? std::optional<uint64_t>(entry.end_ts()) : std::nullopt;
     if (entry.dimensions_size() > 0) {
         for (const auto& dimension : entry.dimensions()) {
-            auto s = Delete(dimension.idx(), dimension.key(), start_ts, end_ts);
-            if (!s.OK()) {
-                DEBUGLOG("Delete failed. tid %u pid %u msg %s", id_, pid_, s.GetMsg().c_str());
+            if (!Delete(dimension.idx(), dimension.key(), start_ts, end_ts)) {
                 return false;
             }
         }
-        offset_.fetch_add(1, std::memory_order_relaxed);
         return true;
     } else {
         for (const auto& index : table_index_.GetAllIndex()) {
@@ -312,12 +309,13 @@ bool DiskTable::Delete(const ::openmldb::api::LogEntry& entry) {
     return true;
 }
 
-base::Status DiskTable::Delete(uint32_t idx, const std::string& pk,
-        uint64_t start_ts, const std::optional<uint64_t>& end_ts) {
+bool DiskTable::Delete(uint32_t idx, const std::string& pk,
+        const std::optional<uint64_t>& start_ts, const std::optional<uint64_t>& end_ts) {
     auto index_def = table_index_.GetIndex(idx);
     if (!index_def || !index_def->IsReady()) {
-        return {-1, "index not found"};
+        return false;
     }
+    uint64_t real_start_ts = start_ts.has_value() ? start_ts.value() : UINT64_MAX;
     uint64_t real_end_ts = end_ts.has_value() ? end_ts.value() : 0;
     std::string combine_key1;
     std::string combine_key2;
@@ -327,22 +325,24 @@ base::Status DiskTable::Delete(uint32_t idx, const std::string& pk,
         for (const auto& index : indexs) {
             auto ts_col = index->GetTsColumn();
             if (!ts_col) {
-                return {-1, "ts column not found"};
+                return false;
             }
-            combine_key1 = CombineKeyTs(pk, start_ts, ts_col->GetId());
+            combine_key1 = CombineKeyTs(pk, real_start_ts, ts_col->GetId());
             combine_key2 = CombineKeyTs(pk, real_end_ts, ts_col->GetId());
         }
     } else {
-        combine_key1 = CombineKeyTs(pk, start_ts);
+        combine_key1 = CombineKeyTs(pk, real_start_ts);
         combine_key2 = CombineKeyTs(pk, real_end_ts);
     }
     rocksdb::WriteBatch batch;
     batch.DeleteRange(cf_hs_[idx + 1], rocksdb::Slice(combine_key1), rocksdb::Slice(combine_key2));
     rocksdb::Status s = db_->Write(write_opts_, &batch);
     if (!s.ok()) {
-        return {-1, s.ToString()};
+        DEBUGLOG("Delete failed. tid %u pid %u msg %s", id_, pid_, s.ToString().c_str());
+        return false;
     }
-    return {};
+    offset_.fetch_add(1, std::memory_order_relaxed);
+    return true;
 }
 
 bool DiskTable::Get(uint32_t idx, const std::string& pk, uint64_t ts, std::string& value) {

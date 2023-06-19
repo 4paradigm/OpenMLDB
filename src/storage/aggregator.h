@@ -122,7 +122,7 @@ class Aggregator {
  public:
     Aggregator(const ::openmldb::api::TableMeta& base_meta, const ::openmldb::api::TableMeta& aggr_meta,
                std::shared_ptr<Table> aggr_table, std::shared_ptr<LogReplicator> aggr_replicator,
-               const uint32_t& index_pos, const std::string& aggr_col, const AggrType& aggr_type,
+               uint32_t index_pos, const std::string& aggr_col, const AggrType& aggr_type,
                const std::string& ts_col, WindowType window_tpye, uint32_t window_size);
 
     ~Aggregator();
@@ -130,6 +130,8 @@ class Aggregator {
     bool Update(const std::string& key, const std::string& row, uint64_t offset, bool recover = false);
 
     bool Delete(const std::string& key);
+
+    bool Delete(const std::string& key, const std::optional<uint64_t>& start_ts, const std::optional<uint64_t>& end_ts);
 
     bool FlushAll();
 
@@ -215,7 +217,7 @@ class SumAggregator : public Aggregator {
  public:
     SumAggregator(const ::openmldb::api::TableMeta& base_meta, const ::openmldb::api::TableMeta& aggr_meta,
                   std::shared_ptr<Table> aggr_table, std::shared_ptr<LogReplicator> aggr_replicator,
-                  const uint32_t& index_pos, const std::string& aggr_col, const AggrType& aggr_type,
+                  uint32_t index_pos, const std::string& aggr_col, const AggrType& aggr_type,
                   const std::string& ts_col, WindowType window_tpye, uint32_t window_size);
 
     ~SumAggregator() = default;
@@ -232,7 +234,7 @@ class MinMaxBaseAggregator : public Aggregator {
  public:
     MinMaxBaseAggregator(const ::openmldb::api::TableMeta& base_meta, const ::openmldb::api::TableMeta& aggr_meta,
                          std::shared_ptr<Table> aggr_table, std::shared_ptr<LogReplicator> aggr_replicator,
-                         const uint32_t& index_pos, const std::string& aggr_col, const AggrType& aggr_type,
+                         uint32_t index_pos, const std::string& aggr_col, const AggrType& aggr_type,
                          const std::string& ts_col, WindowType window_tpye, uint32_t window_size);
 
     ~MinMaxBaseAggregator() = default;
@@ -246,7 +248,7 @@ class MinAggregator : public MinMaxBaseAggregator {
  public:
     MinAggregator(const ::openmldb::api::TableMeta& base_meta, const ::openmldb::api::TableMeta& aggr_meta,
                   std::shared_ptr<Table> aggr_table, std::shared_ptr<LogReplicator> aggr_replicator,
-                  const uint32_t& index_pos, const std::string& aggr_col, const AggrType& aggr_type,
+                  uint32_t index_pos, const std::string& aggr_col, const AggrType& aggr_type,
                   const std::string& ts_col, WindowType window_tpye, uint32_t window_size);
 
     ~MinAggregator() = default;
@@ -259,7 +261,7 @@ class MaxAggregator : public MinMaxBaseAggregator {
  public:
     MaxAggregator(const ::openmldb::api::TableMeta& base_meta, const ::openmldb::api::TableMeta& aggr_meta,
                   std::shared_ptr<Table> aggr_table, std::shared_ptr<LogReplicator> aggr_replicator,
-                  const uint32_t& index_pos, const std::string& aggr_col, const AggrType& aggr_type,
+                  uint32_t index_pos, const std::string& aggr_col, const AggrType& aggr_type,
                   const std::string& ts_col, WindowType window_tpye, uint32_t window_size);
 
     ~MaxAggregator() = default;
@@ -272,7 +274,7 @@ class CountAggregator : public Aggregator {
  public:
     CountAggregator(const ::openmldb::api::TableMeta& base_meta, const ::openmldb::api::TableMeta& aggr_meta,
                     std::shared_ptr<Table> aggr_table, std::shared_ptr<LogReplicator> aggr_replicator,
-                    const uint32_t& index_pos, const std::string& aggr_col, const AggrType& aggr_type,
+                    uint32_t index_pos, const std::string& aggr_col, const AggrType& aggr_type,
                     const std::string& ts_col, WindowType window_tpye, uint32_t window_size);
 
     ~CountAggregator() = default;
@@ -291,7 +293,7 @@ class AvgAggregator : public Aggregator {
  public:
     AvgAggregator(const ::openmldb::api::TableMeta& base_meta, const ::openmldb::api::TableMeta& aggr_meta,
                   std::shared_ptr<Table> aggr_table, std::shared_ptr<LogReplicator> aggr_replicator,
-                  const uint32_t& index_pos, const std::string& aggr_col, const AggrType& aggr_type,
+                  uint32_t index_pos, const std::string& aggr_col, const AggrType& aggr_type,
                   const std::string& ts_col, WindowType window_tpye, uint32_t window_size);
 
     ~AvgAggregator() = default;

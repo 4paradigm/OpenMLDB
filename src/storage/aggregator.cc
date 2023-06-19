@@ -56,7 +56,7 @@ std::string AggrStatToString(AggrStat type) {
 
 Aggregator::Aggregator(const ::openmldb::api::TableMeta& base_meta, const ::openmldb::api::TableMeta& aggr_meta,
                        std::shared_ptr<Table> aggr_table, std::shared_ptr<LogReplicator> aggr_replicator,
-                       const uint32_t& index_pos, const std::string& aggr_col, const AggrType& aggr_type,
+                       uint32_t index_pos, const std::string& aggr_col, const AggrType& aggr_type,
                        const std::string& ts_col, WindowType window_tpye, uint32_t window_size)
     : base_table_schema_(base_meta.column_desc()),
       aggr_table_schema_(aggr_meta.column_desc()),
@@ -104,19 +104,11 @@ bool Aggregator::Update(const std::string& key, const std::string& row, uint64_t
     }
     auto row_ptr = reinterpret_cast<const int8_t*>(row.c_str());
     int64_t cur_ts = 0;
-    switch (ts_col_type_) {
-        case DataType::kBigInt: {
-            base_row_view_.GetValue(row_ptr, ts_col_idx_, DataType::kBigInt, &cur_ts);
-            break;
-        }
-        case DataType::kTimestamp: {
-            base_row_view_.GetValue(row_ptr, ts_col_idx_, DataType::kTimestamp, &cur_ts);
-            break;
-        }
-        default: {
-            PDLOG(ERROR, "Unsupported timestamp data type");
-            return false;
-        }
+    if  (ts_col_type_ == DataType::kBigInt || ts_col_type_ == DataType::kTimestamp) {
+        base_row_view_.GetValue(row_ptr, ts_col_idx_, ts_col_type_, &cur_ts);
+    } else {
+        PDLOG(ERROR, "Unsupported timestamp data type");
+        return false;
     }
     std::string filter_key = "";
     if (filter_col_idx_ != -1) {
@@ -227,21 +219,22 @@ bool Aggregator::Delete(const std::string& key) {
     dimension->set_idx(aggr_index_pos_);
 
     // delete the entries from the pre-aggr table
-    bool ok = aggr_table_->Delete(entry);
-    if (!ok) {
+    if (!aggr_table_->Delete(entry)) {
         PDLOG(ERROR, "Delete key %s from aggr table %s failed", key, aggr_table_->GetName());
         return false;
     }
-
-    ok = aggr_replicator_->AppendEntry(entry);
-    if (!ok) {
+    if (!aggr_replicator_->AppendEntry(entry)) {
         PDLOG(ERROR, "Add Delete entry to binlog failed: key %s, aggr table %s", key, aggr_table_->GetName());
         return false;
     }
     if (FLAGS_binlog_notify_on_put) {
         aggr_replicator_->Notify();
     }
+    return true;
+}
 
+bool Aggregator::Delete(const std::string& key, const std::optional<uint64_t>& start_ts,
+        const std::optional<uint64_t>& end_ts) {
     return true;
 }
 
@@ -588,7 +581,7 @@ bool Aggregator::CheckBufferFilled(int64_t cur_ts, int64_t buffer_end, int32_t b
 
 SumAggregator::SumAggregator(const ::openmldb::api::TableMeta& base_meta, const ::openmldb::api::TableMeta& aggr_meta,
                              std::shared_ptr<Table> aggr_table, std::shared_ptr<LogReplicator> aggr_replicator,
-                             const uint32_t& index_pos, const std::string& aggr_col, const AggrType& aggr_type,
+                             uint32_t index_pos, const std::string& aggr_col, const AggrType& aggr_type,
                              const std::string& ts_col, WindowType window_tpye, uint32_t window_size)
     : Aggregator(base_meta, aggr_meta, aggr_table, aggr_replicator, index_pos, aggr_col, aggr_type, ts_col, window_tpye,
                  window_size) {}
@@ -702,7 +695,7 @@ bool SumAggregator::DecodeAggrVal(const int8_t* row_ptr, AggrBuffer* buffer) {
 MinMaxBaseAggregator::MinMaxBaseAggregator(const ::openmldb::api::TableMeta& base_meta,
                                            const ::openmldb::api::TableMeta& aggr_meta,
                                            std::shared_ptr<Table> aggr_table,
-                                           std::shared_ptr<LogReplicator> aggr_replicator, const uint32_t& index_pos,
+                                           std::shared_ptr<LogReplicator> aggr_replicator, uint32_t index_pos,
                                            const std::string& aggr_col, const AggrType& aggr_type,
                                            const std::string& ts_col, WindowType window_tpye, uint32_t window_size)
     : Aggregator(base_meta, aggr_meta, aggr_table, aggr_replicator, index_pos, aggr_col, aggr_type, ts_col, window_tpye,
@@ -808,7 +801,7 @@ bool MinMaxBaseAggregator::DecodeAggrVal(const int8_t* row_ptr, AggrBuffer* buff
 
 MinAggregator::MinAggregator(const ::openmldb::api::TableMeta& base_meta, const ::openmldb::api::TableMeta& aggr_meta,
                              std::shared_ptr<Table> aggr_table, std::shared_ptr<LogReplicator> aggr_replicator,
-                             const uint32_t& index_pos, const std::string& aggr_col, const AggrType& aggr_type,
+                             uint32_t index_pos, const std::string& aggr_col, const AggrType& aggr_type,
                              const std::string& ts_col, WindowType window_tpye, uint32_t window_size)
     : MinMaxBaseAggregator(base_meta, aggr_meta, aggr_table, aggr_replicator, index_pos, aggr_col, aggr_type, ts_col,
                            window_tpye, window_size) {}
@@ -890,7 +883,7 @@ bool MinAggregator::UpdateAggrVal(const codec::RowView& row_view, const int8_t* 
 
 MaxAggregator::MaxAggregator(const ::openmldb::api::TableMeta& base_meta, const ::openmldb::api::TableMeta& aggr_meta,
                              std::shared_ptr<Table> aggr_table, std::shared_ptr<LogReplicator> aggr_replicator,
-                             const uint32_t& index_pos, const std::string& aggr_col, const AggrType& aggr_type,
+                             uint32_t index_pos, const std::string& aggr_col, const AggrType& aggr_type,
                              const std::string& ts_col, WindowType window_tpye, uint32_t window_size)
     : MinMaxBaseAggregator(base_meta, aggr_meta, aggr_table, aggr_replicator, index_pos, aggr_col, aggr_type, ts_col,
                            window_tpye, window_size) {}
@@ -972,7 +965,7 @@ bool MaxAggregator::UpdateAggrVal(const codec::RowView& row_view, const int8_t* 
 
 CountAggregator::CountAggregator(const ::openmldb::api::TableMeta& base_meta,
                                  const ::openmldb::api::TableMeta& aggr_meta, std::shared_ptr<Table> aggr_table,
-                                 std::shared_ptr<LogReplicator> aggr_replicator, const uint32_t& index_pos,
+                                 std::shared_ptr<LogReplicator> aggr_replicator, uint32_t index_pos,
                                  const std::string& aggr_col, const AggrType& aggr_type, const std::string& ts_col,
                                  WindowType window_tpye, uint32_t window_size)
     : Aggregator(base_meta, aggr_meta, aggr_table, aggr_replicator, index_pos, aggr_col, aggr_type, ts_col, window_tpye,
@@ -1007,7 +1000,7 @@ bool CountAggregator::UpdateAggrVal(const codec::RowView& row_view, const int8_t
 
 AvgAggregator::AvgAggregator(const ::openmldb::api::TableMeta& base_meta, const ::openmldb::api::TableMeta& aggr_meta,
                              std::shared_ptr<Table> aggr_table, std::shared_ptr<LogReplicator> aggr_replicator,
-                             const uint32_t& index_pos, const std::string& aggr_col, const AggrType& aggr_type,
+                             uint32_t index_pos, const std::string& aggr_col, const AggrType& aggr_type,
                              const std::string& ts_col, WindowType window_tpye, uint32_t window_size)
     : Aggregator(base_meta, aggr_meta, aggr_table, aggr_replicator, index_pos, aggr_col, aggr_type, ts_col, window_tpye,
                  window_size) {}
