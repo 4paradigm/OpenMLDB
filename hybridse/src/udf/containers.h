@@ -45,6 +45,7 @@ struct ContainerStorageTypeTrait {
 
 template <>
 struct ContainerStorageTypeTrait<openmldb::base::StringRef> {
+    // FIXME: StringRef do not own data, ref #2944
     using type = codec::StringRef;
     static codec::StringRef to_stored_value(codec::StringRef* t) {
         return t == nullptr ? codec::StringRef() : *t;
@@ -164,56 +165,55 @@ class TopKContainer {
     BoundT bound_ = -1;  // delayed to be set by first push
 };
 
-template <typename K, typename V,
-          typename StorageV = typename ContainerStorageTypeTrait<V>::type>
-class BoundedGroupByDict {
- public:
-    // forward & export K & StorageV type
-    using Key = K;
-    using StorageValue = StorageV;
-
-    // actual input type
-    using InputK = typename DataTypeTrait<K>::CCallArgType;
-    using InputV = typename DataTypeTrait<V>::CCallArgType;
-
-    // actual stored type
-    using StorageK = typename ContainerStorageTypeTrait<K>::type;
-
-    // self type
-    using ContainerT = BoundedGroupByDict<K, V, StorageV>;
-
-    using FormatValueF = std::function<uint32_t(const StorageV&, char*, size_t)>;
-
+template <typename K, typename V>
+struct DefaultPairCmp {
     template <typename>
     struct is_pair : std::false_type {};
     template <typename... T>
     struct is_pair<std::pair<T...>> : std::true_type {};
 
-    struct PairCmp {
-        // (4, 2), (1, 4), (2, 4)
-        template <typename U = StorageV>
-        std::enable_if_t<!is_pair<U>::value, bool> operator()(
-            const std::pair<StorageK, U>& lhs, const std::pair<StorageK, U>& rhs) const {
-            if (lhs.second == rhs.second) {
-                return lhs.first < rhs.first;
-            }
-
-            return lhs.second < rhs.second;
+    // (4, 2), (1, 4), (2, 4)
+    template <typename U = V>
+    std::enable_if_t<!is_pair<U>::value, bool> operator()(const std::pair<K, U>& lhs,
+                                                          const std::pair<K, U>& rhs) const {
+        if (lhs.second == rhs.second) {
+            return lhs.first < rhs.first;
         }
 
-        // StorageV is pair(int, double)
-        template <typename U = StorageV>
-        std::enable_if_t<std::is_same_v<U, std::pair<int64_t, double>>, bool> operator()(
-            const std::pair<StorageK, U>& lhs, const std::pair<StorageK, U>& rhs) const {
-            double lavg = lhs.second.second / lhs.second.first;
-            double ravg = rhs.second.second / rhs.second.first;
-            if (lavg == ravg) {
-                return lhs.first < rhs.first;
-            }
+        return lhs.second < rhs.second;
+    }
 
-            return lavg < ravg;
+    // StorageV is pair(int, double)
+    template <typename U = V>
+    std::enable_if_t<std::is_same_v<U, std::pair<int64_t, double>>, bool> operator()(
+        const std::pair<K, U>& lhs, const std::pair<K, U>& rhs) const {
+        double lavg = lhs.second.second / lhs.second.first;
+        double ravg = rhs.second.second / rhs.second.first;
+        if (lavg == ravg) {
+            return lhs.first < rhs.first;
         }
-    };
+
+        return lavg < ravg;
+    }
+};
+
+template <typename K, typename V,
+          typename StorageV = typename ContainerStorageTypeTrait<V>::type,
+          template <typename, typename> typename PairCmp = DefaultPairCmp>
+class BoundedGroupByDict {
+ public:
+    // export data types
+    using Key = K;
+    using StorageValue = StorageV;
+    using InputK = typename DataTypeTrait<K>::CCallArgType;
+    using InputV = typename DataTypeTrait<V>::CCallArgType;
+    // actual stored type
+    using StorageK = typename ContainerStorageTypeTrait<K>::type;
+
+    // self type
+    using ContainerT = BoundedGroupByDict<K, V, StorageV, PairCmp>;
+
+    using FormatValueF = std::function<uint32_t(const StorageV&, char*, size_t)>;
 
     // convert to internal key and value
     static inline StorageK to_stored_key(const InputK& key) {
@@ -349,7 +349,7 @@ class BoundedGroupByDict {
             output->data_ = "";
             return;
         }
-        std::set<std::pair<StorageK, StorageV>, PairCmp> ordered_set;
+        std::set<std::pair<StorageK, StorageV>, PairCmp<StorageK, StorageV>> ordered_set;
         for (auto& kv : map_) {
             ordered_set.emplace(kv.first, kv.second);
 

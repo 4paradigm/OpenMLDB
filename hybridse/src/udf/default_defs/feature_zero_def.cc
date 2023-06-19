@@ -393,7 +393,7 @@ struct FZStringOpsDef {
 
 template <typename K>
 struct FZTop1Ratio {
-    using ContainerT = udf::container::BoundedGroupByDict<K, int64_t, int64_t>;
+    using ContainerT = udf::container::BoundedGroupByDict<K, int64_t>;
     using InputK = typename ContainerT::InputK;
 
     void operator()(UdafRegistryHelper& helper) {  // NOLINT
@@ -412,12 +412,9 @@ struct FZTop1Ratio {
         }
         auto& map = ptr->map();
         auto stored_key = ContainerT::to_stored_key(key);
-        auto iter = map.find(stored_key);
-        if (iter == map.end()) {
-            map.insert(iter, {stored_key, 1});
-        } else {
-            auto& single = iter->second;
-            single += 1;
+        auto [iter, inserted] = map.try_emplace(stored_key, 1);
+        if (!inserted) {
+            iter->second++;
         }
         return ptr;
     }
@@ -690,7 +687,24 @@ void DefaultUdfLibrary::InitFeatureZero() {
 
     RegisterUdafTemplate<FZTop1Ratio>("top1_ratio")
         .doc(R"(
-        @brief Compute the top1 key's ratio
+        @brief Compute the top1 occurring value's ratio
+
+        Calculate the most frequently occurring value from the list, and output ratio as `count_of_mode / count_of_all`.
+        NULL values are ignored. 0 returned if input list do not has non-null value.
+
+        @param col Expr to the key
+
+        Example:
+
+        @code{.sql}
+             SELECT key, top1_ratio(key) over () as ratio FROM t1;
+        @endcode
+
+        | key | ratio |
+        | --- | ----- |
+        | 1   | 1.0   |
+        | 2   | 0.5   |
+        | NULL   | 0.5   |
 
         @since 0.6.5)")
         .args_in<int16_t, int32_t, int64_t, float, double, Date, Timestamp,
