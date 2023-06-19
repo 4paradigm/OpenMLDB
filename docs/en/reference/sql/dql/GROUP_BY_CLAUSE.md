@@ -19,7 +19,7 @@ For the standalone version, `GROUP BY` is supported in all conditions. For the c
 
 | `SELECT` Statement Elements                                | Offline Mode | Online Preview Mode | Online Request Mode | Note                                                                                                                    |
 |:-----------------------------------------------------------|--------------|---------------------|---------------------|:------------------------------------------------------------------------------------------------------------------------|
-| GROUP BY Clause            | **``✓``**    |                     |                     | The Group By clause is used to group the query results.The grouping conditions only support grouping on simple columns. |
+| GROUP BY Clause            | **``✓``**    |  **``✓(since 0.6.4)``**  |                     | The Group By clause is used to group the query results.The grouping conditions only support grouping on simple columns. |
 
 ## Example
 
