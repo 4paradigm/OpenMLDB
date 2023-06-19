@@ -95,7 +95,7 @@ class NsClient : public Client {
                       std::string& msg);  // NOLINT
 
     base::Status ShowOPStatus(const std::string& name, uint32_t pid,
-                              ::openmldb::nameserver::ShowOPStatusResponse* response);
+            nameserver::ShowOPStatusResponse* response);
 
     base::Status ShowOPStatus(uint64_t op_id, ::openmldb::nameserver::ShowOPStatusResponse* response);
 
