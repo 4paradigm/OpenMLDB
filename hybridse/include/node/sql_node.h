@@ -66,6 +66,14 @@ inline const std::string ExplainTypeName(const ExplainType &explain_type) {
     }
 }
 
+inline const std::string ShowStmtTypeName(ShowStmtType type) {
+    switch (type) {
+        case ShowStmtType::kJobs:
+            return "Jobs";
+    }
+    return "Unknow";
+}
+
 inline const std::string JoinTypeName(const JoinType &type) {
     switch (type) {
         case kJoinTypeFull:
@@ -2067,6 +2075,23 @@ class CmdNode : public SqlNode {
     std::vector<std::string> args_;
     bool if_not_exist_ = false;
     bool if_exist_ = false;
+};
+
+class ShowNode : public SqlNode {
+ public:
+     ShowNode(ShowStmtType show_type, const std::string& target, const std::string like)
+         : SqlNode(kShowStmt, 0, 0), show_type_(show_type), target_(target), like_str_(like) {}
+
+     const std::string& GetTarget() const { return target_; }
+     ShowStmtType GetShowType() const { return show_type_; }
+     const std::string& GetLikeStr() const { return like_str_; }
+    void Print(std::ostream &output, const std::string &org_tab) const;
+    bool Equals(const SqlNode *node) const override;
+
+ private:
+    ShowStmtType show_type_;
+    std::string target_;
+    std::string like_str_;
 };
 
 enum class DeleteTarget {
