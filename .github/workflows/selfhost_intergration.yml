@@ -92,7 +92,6 @@ jobs:
           html_body: test/integration-test/openmldb-test-java/openmldb-sdk-test/target/surefire-reports/html/overview.html
           to: ${{ secrets.MAIL_TO }}
           from: GitHub Actions
-          content_type: text/plain
           attachments: surefire-reports.tar.gz
 
           
@@ -143,7 +142,6 @@ jobs:
           html_body: test/integration-test/openmldb-test-java/openmldb-sdk-test/target/surefire-reports/html/overview.html
           to: ${{ secrets.MAIL_TO }}
           from: GitHub Actions
-          content_type: text/plain
           attachments: surefire-reports.tar.gz
 
         
@@ -195,7 +193,6 @@ jobs:
           html_body: test/integration-test/openmldb-test-java/openmldb-sdk-test/target/surefire-reports/html/overview.html
           to: ${{ secrets.MAIL_TO }}
           from: GitHub Actions
-          content_type: text/plain
           attachments: surefire-reports.tar.gz
 
           
@@ -246,7 +243,6 @@ jobs:
           html_body: test/integration-test/openmldb-test-java/openmldb-sdk-test/target/surefire-reports/html/overview.html
           to: ${{ secrets.MAIL_TO }}
           from: GitHub Actions
-          content_type: text/plain
           attachments: surefire-reports.tar.gz
 
           
@@ -296,7 +292,6 @@ jobs:
           html_body: test/integration-test/openmldb-test-java/openmldb-sdk-test/target/surefire-reports/html/overview.html
           to: ${{ secrets.MAIL_TO }}
           from: GitHub Actions
-          content_type: text/plain
           attachments: surefire-reports.tar.gz
 
 
