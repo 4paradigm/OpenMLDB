@@ -2719,3 +2719,35 @@ cases:
         200, 1-2, 2,  NULL
         300, 1-2, 2,  2
         400, 1-2, 2,  2
+
+  - id: 66
+    desc: top_n_value_ratio_cate_where/top_n_key_ratio_cate_where
+    sql: |
+      select
+        idx,
+        top_n_value_ratio_cate_where(val, val > 100, cate, 2) over w as ratios
+      from t1
+      window w as (
+        partition by gp order by ts
+        rows_range between 10s preceding and current row)
+    inputs:
+      - name: t1
+        columns: ["idx int", "gp int", "val int", "cate string", "ts timestamp"]
+        indexs: ['idx:gp:ts']
+        data: |
+          100, 1, 200, a, 1000
+          200, 1, 300, b, 2000
+          300, 1, 200, NULL, 3000
+          400, 1, 10,  b, 4000
+          500, 1, 101, c, 4000
+    expect:
+      columns:
+        - idx int
+        - ratios string
+      order: idx
+      rows:
+        - [100, "a:1.000000"]
+        - [200, "b:1.000000,a:1.000000"]
+        - [300, "b:1.000000,a:1.000000"]
+        - [400, "a:1.000000,b:0.500000"]
+        - [500, "c:1.000000,a:1.000000"]

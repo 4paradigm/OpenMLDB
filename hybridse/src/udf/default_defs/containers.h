@@ -98,7 +98,7 @@ struct TopNValueImpl {
 
         static ContainerT* Update(ContainerT* ptr, InputV value, bool is_value_null, bool cond, bool is_cond_null,
                                   InputK key, bool is_key_null, int64_t bound) {
-            UpdateAction<V>::Update(ptr, value, is_value_null, cond, is_cond_null, key, is_key_null, bound);
+            return UpdateAction<V>::Update(ptr, value, is_value_null, cond, is_cond_null, key, is_key_null, bound);
         }
 
         static ContainerT* UpdateI32Bound(ContainerT* ptr, InputV value, bool is_value_null, bool cond,
