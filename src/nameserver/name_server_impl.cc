@@ -17,16 +17,15 @@
 #include "nameserver/name_server_impl.h"
 
 #include <algorithm>
-#include <set>
-#include <random>
-#include <iterator>
 #include <iostream>
+#include <iterator>
+#include <random>
+#include <set>
 #include <vector>
 
-
+#include "absl/strings/numbers.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/str_split.h"
-#include "absl/strings/numbers.h"
 #include "absl/time/time.h"
 #include "nameserver/system_table.h"
 #include "sdk/db_sdk.h"
@@ -44,10 +43,10 @@
 #include "base/strings.h"
 #include "boost/algorithm/string.hpp"
 #include "boost/bind.hpp"
+#include "codec/row_codec.h"
 #include "gflags/gflags.h"
 #include "schema/index_util.h"
 #include "schema/schema_adapter.h"
-#include "codec/row_codec.h"
 
 DECLARE_string(endpoint);
 DECLARE_string(zk_cluster);
@@ -74,7 +73,6 @@ DECLARE_int32(make_snapshot_check_interval);
 DECLARE_bool(use_name);
 DECLARE_bool(enable_distsql);
 DECLARE_uint32(sync_deploy_stats_timeout);
-
 
 namespace openmldb {
 namespace nameserver {
