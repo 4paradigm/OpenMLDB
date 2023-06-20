@@ -46,6 +46,7 @@ struct AvgCateDef {
         using ContainerT = udf::container::BoundedGroupByDict<K, V, std::pair<int64_t, double>>;
         using InputK = typename ContainerT::InputK;
         using InputV = typename ContainerT::InputV;
+        using StorageValue = typename ContainerT::StorageValue;
 
         void operator()(UdafRegistryHelper& helper) {  // NOLINT
             std::string suffix = ".opaque_dict_" +
@@ -60,7 +61,7 @@ struct AvgCateDef {
         }
 
         // FormatValueF
-        static uint32_t FormatValueFn(const typename ContainerT::StorageValue& val, char* buf, size_t size) {
+        static uint32_t FormatValueFn(const StorageValue& val, char* buf, size_t size) {
             double avg = val.second / val.first;
             return v1::format_string(avg, buf, size);
         }

@@ -30,7 +30,7 @@ namespace container {
 
 // default update action: update ContainerT only cond is true
 template <template <typename> typename CateImpl>
-struct DefaultUpdateAction {
+struct DefaultTopNValueOperator {
     template <typename V>
     struct Impl {
         using GroupContainerT = typename CateImpl<V>::ContainerT;
@@ -48,6 +48,10 @@ struct DefaultUpdateAction {
             }
             return ptr;
         }
+
+        static inline void Output(ContainerT* ptr, codec::StringRef* output) {
+            ptr->first.OutputTopNByValue(ptr->second, CateImpl<V>::FormatValueFn, output);
+        }
     };
 };
 
@@ -60,7 +64,7 @@ struct DefaultUpdateAction {
 // - uint32_t FormatValueFn(const V& val, char* buf, size_t size) {
 //
 template <template <typename> typename CateImpl,
-          template <typename > typename UpdateAction = DefaultUpdateAction<CateImpl>::template Impl>
+          template <typename > typename Operator = DefaultTopNValueOperator<CateImpl>::template Impl>
 struct TopNValueImpl {
     template <typename V>
     struct Impl {
@@ -69,7 +73,6 @@ struct TopNValueImpl {
 
         using InputK = typename GroupContainerT::InputK;
         using InputV = typename GroupContainerT::InputV;
-        // (key-value group, bound)
         using ContainerT = std::pair<GroupContainerT, int64_t>;
 
         void operator()(UdafRegistryHelper& helper) {  // NOLINT
@@ -98,7 +101,7 @@ struct TopNValueImpl {
 
         static ContainerT* Update(ContainerT* ptr, InputV value, bool is_value_null, bool cond, bool is_cond_null,
                                   InputK key, bool is_key_null, int64_t bound) {
-            return UpdateAction<V>::Update(ptr, value, is_value_null, cond, is_cond_null, key, is_key_null, bound);
+            return Operator<V>::Update(ptr, value, is_value_null, cond, is_cond_null, key, is_key_null, bound);
         }
 
         static ContainerT* UpdateI32Bound(ContainerT* ptr, InputV value, bool is_value_null, bool cond,
@@ -107,10 +110,7 @@ struct TopNValueImpl {
         }
 
         static void Output(ContainerT* ptr, codec::StringRef* output) {
-            ptr->first.OutputTopNByValue(
-                ptr->second,
-                CateImpl<V>::FormatValueFn,
-                output);
+            Operator<V>::Output(ptr, output);
             ptr->~ContainerT();
         }
     };

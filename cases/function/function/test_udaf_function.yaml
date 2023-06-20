@@ -2725,7 +2725,8 @@ cases:
     sql: |
       select
         idx,
-        top_n_value_ratio_cate_where(val, val > 100, cate, 2) over w as ratios
+        top_n_value_ratio_cate_where(val, val > 100, cate, 2) over w as ratio_by_value,
+        top_n_key_ratio_cate_where(val, val > 100, cate, 2) over w as ratio_by_key
       from t1
       window w as (
         partition by gp order by ts
@@ -2743,11 +2744,12 @@ cases:
     expect:
       columns:
         - idx int
-        - ratios string
+        - ratio_by_value string
+        - ratio_by_key string
       order: idx
       rows:
-        - [100, "a:1.000000"]
-        - [200, "b:1.000000,a:1.000000"]
-        - [300, "b:1.000000,a:1.000000"]
-        - [400, "a:1.000000,b:0.500000"]
-        - [500, "c:1.000000,a:1.000000"]
+        - [100, "a:1.000000", "a:1.000000"]
+        - [200, "b:1.000000,a:1.000000", "b:1.000000,a:1.000000"]
+        - [300, "b:1.000000,a:1.000000", "b:1.000000,a:1.000000"]
+        - [400, "a:1.000000,b:0.500000", "b:0.500000,a:1.000000"]
+        - [500, "c:1.000000,a:1.000000", "c:1.000000,b:0.500000"]
