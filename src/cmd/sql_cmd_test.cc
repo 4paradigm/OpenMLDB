@@ -363,8 +363,6 @@ TEST_F(SqlCmdTest, SelectMultiPartition) {
 }
 
 TEST_F(SqlCmdTest, ShowNameserverJob) {
-    // timeout larger for workflow
-    FLAGS_request_timeout_ms=40000;
     auto sr = cluster_cli.sr;
     std::string db_name = "test" + GenRand();
     std::string name = "table" + GenRand();

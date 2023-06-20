@@ -182,7 +182,7 @@ void ProcessSQLs(sdk::SQLRouter* sr, std::initializer_list<absl::string_view> sq
     hybridse::sdk::Status status;
     for (auto sql : sqls) {
         sr->ExecuteSQL(std::string(sql), &status);
-        EXPECT_TRUE(status.IsOK()) << "running sql=" << sql << " failed: code=" << status.code << ", msg=" << status.msg
+        ASSERT_TRUE(status.IsOK()) << "running sql=" << sql << " failed: code=" << status.code << ", msg=" << status.msg
                                    << "\n"
                                    << status.trace;
     }
