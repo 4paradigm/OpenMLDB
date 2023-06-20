@@ -47,7 +47,7 @@ ifdef COVERAGE_ENABLE
     OPENMLDB_CMAKE_FLAGS += -DCOVERAGE_ENABLE=$(COVERAGE_ENABLE)
 endif
 ifdef COVERAGE_NO_DEPS
-	OPENMLDB_CMAKE_FLAGS += -DCOVERAGE_NO_DEPS=$(COVERAGE_NO_DEPS)
+    OPENMLDB_CMAKE_FLAGS += -DCOVERAGE_NO_DEPS=$(COVERAGE_NO_DEPS)
 endif
 ifdef SANITIZER_ENABLE
     OPENMLDB_CMAKE_FLAGS += -DSANITIZER_ENABLE=$(SANITIZER_ENABLE)
@@ -96,41 +96,41 @@ all: build
 coverage: coverage-cpp coverage-java
 
 coverage-cpp: coverage-configure
-	$(CMAKE_PRG) --build $(OPENMLDB_BUILD_DIR) --target coverage -- -j$(NPROC) SQL_CASE_BASE_DIR=$(SQL_CASE_BASE_DIR) YAML_CASE_BASE_DIR=$(SQL_CASE_BASE_DIR)
+    $(CMAKE_PRG) --build $(OPENMLDB_BUILD_DIR) --target coverage -- -j$(NPROC) SQL_CASE_BASE_DIR=$(SQL_CASE_BASE_DIR) YAML_CASE_BASE_DIR=$(SQL_CASE_BASE_DIR)
 
 # scoverage may conflicts with jacoco, so we run it separately
 coverage-java: coverage-configure
-	$(CMAKE_PRG) --build $(OPENMLDB_BUILD_DIR) --target cp_native_so -- -j$(NPROC)
-	cd java && ./mvnw --batch-mode prepare-package
-	cd java && ./mvnw --batch-mode scoverage:report
+    $(CMAKE_PRG) --build $(OPENMLDB_BUILD_DIR) --target cp_native_so -- -j$(NPROC)
+    cd java && ./mvnw --batch-mode prepare-package
+    cd java && ./mvnw --batch-mode scoverage:report
 
 coverage-configure:
-	$(MAKE) configure COVERAGE_ENABLE=ON CMAKE_BUILD_TYPE=Debug SQL_JAVASDK_ENABLE=ON TESTING_ENABLE=ON
+    $(MAKE) configure COVERAGE_ENABLE=ON CMAKE_BUILD_TYPE=Debug SQL_JAVASDK_ENABLE=ON TESTING_ENABLE=ON
 
 OPENMLDB_BUILD_DIR ?= $(MAKEFILE_DIR)/build
 
 build: configure
-	$(CMAKE_PRG) --build $(OPENMLDB_BUILD_DIR) --target $(OPENMLDB_BUILD_TARGET) -- -j$(NPROC)
+    $(CMAKE_PRG) --build $(OPENMLDB_BUILD_DIR) --target $(OPENMLDB_BUILD_TARGET) -- -j$(NPROC)
 
 install: build
-	$(CMAKE_PRG) --build $(OPENMLDB_BUILD_DIR) --target install -- -j$(NPROC)
+    $(CMAKE_PRG) --build $(OPENMLDB_BUILD_DIR) --target install -- -j$(NPROC)
 
 test: build
-	# NOTE: some test require zookeeper start first, it should fixed
-	sh ./steps/ut_zookeeper.sh reset
-	$(CMAKE_PRG) --build $(OPENMLDB_BUILD_DIR) --target test -- -j$(NPROC)
-	sh ./steps/ut_zookeeper.sh stop
+    # NOTE: some test require zookeeper start first, it should fixed
+    sh ./steps/ut_zookeeper.sh reset
+    $(CMAKE_PRG) --build $(OPENMLDB_BUILD_DIR) --target test -- -j$(NPROC)
+    sh ./steps/ut_zookeeper.sh stop
 
 configure: thirdparty-fast
-	$(CMAKE_PRG) -S . -B $(OPENMLDB_BUILD_DIR) -DCMAKE_PREFIX_PATH=$(THIRD_PARTY_DIR) $(OPENMLDB_CMAKE_FLAGS) $(CMAKE_EXTRA_FLAGS)
+    $(CMAKE_PRG) -S . -B $(OPENMLDB_BUILD_DIR) -DCMAKE_PREFIX_PATH=$(THIRD_PARTY_DIR) $(OPENMLDB_CMAKE_FLAGS) $(CMAKE_EXTRA_FLAGS)
 
 openmldb-clean:
-	rm -rf "$(OPENMLDB_BUILD_DIR)"
-	@cd java && ./mvnw clean
+    rm -rf "$(OPENMLDB_BUILD_DIR)"
+    @cd java && ./mvnw clean
 
 udf_doc_gen:
-	$(MAKE) build OPENMLDB_BUILD_TARGET=export_udf_info
-	$(MAKE) -C ./hybridse/tools/documentation/udf_doxygen
+    $(MAKE) build OPENMLDB_BUILD_TARGET=export_udf_info
+    $(MAKE) -C ./hybridse/tools/documentation/udf_doxygen
 
 THIRD_PARTY_BUILD_DIR ?= $(MAKEFILE_DIR)/.deps
 THIRD_PARTY_SRC_DIR ?= $(MAKEFILE_DIR)/thirdsrc
@@ -143,38 +143,38 @@ THIRD_PARTY_DIR ?= $(THIRD_PARTY_BUILD_DIR)/usr
 #  it will updated if the variable '$ZETASQL_VERSION' (defined in docker) not equal to that defined in current code
 override GREP_PATTERN = "set(ZETASQL_VERSION"
 thirdparty-fast:
-	@if [ $(THIRD_PARTY_DIR) != "/deps/usr" ] ; then \
-	    echo "[deps]: install thirdparty and zetasql"; \
-	    $(MAKE) thirdparty; \
-	elif [ -n "$(ZETASQL_VERSION)" ]; then \
-	    new_zetasql_version=$(shell grep $(GREP_PATTERN) third-party/cmake/FetchZetasql.cmake | sed 's/[^0-9.]*\([0-9.]*\).*/\1/'); \
-	    if [ "$$new_zetasql_version" != "$(ZETASQL_VERSION)" ] ; then \
-		echo "[deps]: thirdparty up-to-date. reinstall zetasql from $(ZETASQL_VERSION) to $$new_zetasql_version"; \
-		$(MAKE) thirdparty-configure; \
-		$(CMAKE_PRG) --build $(THIRD_PARTY_BUILD_DIR) -j $(NPROC) --target zetasql; \
-	    else \
-		echo "[deps]: all up-to-date. zetasql already installed with version: $(ZETASQL_VERSION)"; \
-	    fi; \
-	else \
-	    echo "[deps]: install zetasql only"; \
-	    $(MAKE) thirdparty-configure; \
-	    $(CMAKE_PRG) --build $(THIRD_PARTY_BUILD_DIR) --target zetasql; \
-	fi
+    @if [ $(THIRD_PARTY_DIR) != "/deps/usr" ] ; then \
+        echo "[deps]: install thirdparty and zetasql"; \
+        $(MAKE) thirdparty; \
+    elif [ -n "$(ZETASQL_VERSION)" ]; then \
+        new_zetasql_version=$(shell grep $(GREP_PATTERN) third-party/cmake/FetchZetasql.cmake | sed 's/[^0-9.]*\([0-9.]*\).*/\1/'); \
+        if [ "$$new_zetasql_version" != "$(ZETASQL_VERSION)" ] ; then \
+        echo "[deps]: thirdparty up-to-date. reinstall zetasql from $(ZETASQL_VERSION) to $$new_zetasql_version"; \
+        $(MAKE) thirdparty-configure; \
+        $(CMAKE_PRG) --build $(THIRD_PARTY_BUILD_DIR) -j $(NPROC) --target zetasql; \
+        else \
+        echo "[deps]: all up-to-date. zetasql already installed with version: $(ZETASQL_VERSION)"; \
+        fi; \
+    else \
+        echo "[deps]: install zetasql only"; \
+        $(MAKE) thirdparty-configure; \
+        $(CMAKE_PRG) --build $(THIRD_PARTY_BUILD_DIR) --target zetasql; \
+    fi
 
 # third party compiled code install to 'OpenMLDB/.deps/usr', source code install to 'OpenMLDB/thirdsrc'
 thirdparty: thirdparty-configure
-	$(CMAKE_PRG) --build $(THIRD_PARTY_BUILD_DIR) -j $(NPROC)
+    $(CMAKE_PRG) --build $(THIRD_PARTY_BUILD_DIR) -j $(NPROC)
 
 thirdparty-configure:
-	$(CMAKE_PRG) -S third-party -B $(THIRD_PARTY_BUILD_DIR) -DSRC_INSTALL_DIR=$(THIRD_PARTY_SRC_DIR) -DDEPS_INSTALL_DIR=$(THIRD_PARTY_DIR) $(THIRD_PARTY_CMAKE_FLAGS)
+    $(CMAKE_PRG) -S third-party -B $(THIRD_PARTY_BUILD_DIR) -DSRC_INSTALL_DIR=$(THIRD_PARTY_SRC_DIR) -DDEPS_INSTALL_DIR=$(THIRD_PARTY_DIR) $(THIRD_PARTY_CMAKE_FLAGS)
 
 thirdparty-clean: thirdpartybuild-clean thirdpartysrc-clean
 
 thirdpartybuild-clean:
-	rm -rf "$(THIRD_PARTY_BUILD_DIR)"
+    rm -rf "$(THIRD_PARTY_BUILD_DIR)"
 
 thirdpartysrc-clean:
-	rm -rf "$(THIRD_PARTY_SRC_DIR)"
+    rm -rf "$(THIRD_PARTY_SRC_DIR)"
 
 
 .PHONY: hybridse-build hybridse-test
@@ -184,11 +184,11 @@ thirdpartysrc-clean:
 HYBRIDSE_BUILD_DIR := $(OPENMLDB_BUILD_DIR)/hybridse
 
 hybridse-test:
-	$(MAKE) hybridse-build TESTING_ENABLE=ON
-	$(CMAKE_PRG) --build $(HYBRIDSE_BUILD_DIR) --target test -- -j$(NPROC) SQL_CASE_BASE_DIR=$(SQL_CASE_BASE_DIR)
+    $(MAKE) hybridse-build TESTING_ENABLE=ON
+    $(CMAKE_PRG) --build $(HYBRIDSE_BUILD_DIR) --target test -- -j$(NPROC) SQL_CASE_BASE_DIR=$(SQL_CASE_BASE_DIR)
 
 hybridse-build: configure
-	$(CMAKE_PRG) --build $(HYBRIDSE_BUILD_DIR) -- -j$(NPROC)
+    $(CMAKE_PRG) --build $(HYBRIDSE_BUILD_DIR) -- -j$(NPROC)
 
 clean: openmldb-clean
 
@@ -201,79 +201,79 @@ lint: cpplint shlint javalint pylint
 format: javafmt shfmt cppfmt pyfmt configfmt
 
 javafmt:
-	@cd java && ./mvnw -pl hybridse-sdk spotless:apply
+    @cd java && ./mvnw -pl hybridse-sdk spotless:apply
 
 shfmt:
-	@if command -v shfmt; then\
-	    git ls-files | grep --regexp "\.sh$$" | xargs -I {} shfmt -i 4 -w {}; \
-	    exit 0; \
-	    else \
-	    echo "SKIP: shfmt (shfmt not found)"; \
-	    fi
+    @if command -v shfmt; then\
+        git ls-files | grep --regexp "\.sh$$" | xargs -I {} shfmt -i 4 -w {}; \
+        exit 0; \
+        else \
+        echo "SKIP: shfmt (shfmt not found)"; \
+        fi
 
 cppfmt:
-	@if command -v clang-format; then \
-	    git ls-files | grep --regexp "\(\.h\|\.cc\)$$" | xargs -I {} clang-format -i -style=file {} ; \
-	    exit 0; \
-	    else \
-	    echo "SKIP: cppfmt (clang-format not found)"; \
-	    fi
+    @if command -v clang-format; then \
+        git ls-files | grep --regexp "\(\.h\|\.cc\)$$" | xargs -I {} clang-format -i -style=file {} ; \
+        exit 0; \
+        else \
+        echo "SKIP: cppfmt (clang-format not found)"; \
+        fi
 
 pyfmt:
-	@if command -v yapf; then \
-	    git ls-files | grep --regexp "\.py$$" | xargs -I {} yapf -i --style=google {}; \
-	    exit 0; \
-	    else \
-	    echo "SKIP: pyfmt (yapf not found)"; \
-	    fi
+    @if command -v yapf; then \
+        git ls-files | grep --regexp "\.py$$" | xargs -I {} yapf -i --style=google {}; \
+        exit 0; \
+        else \
+        echo "SKIP: pyfmt (yapf not found)"; \
+        fi
 
 configfmt: yamlfmt jsonfmt
 
 yamlfmt:
-	@if command -v prettier; then \
-	    git ls-files | grep --regexp "\(\.yaml\|\.yml\)$$" | xargs -I {} prettier -w {}; \
-	    exit 0; \
-	    else \
-	    echo "SKIP: yamlfmt (prettier not found)"; \
-	    fi
+    @if command -v prettier; then \
+        git ls-files | grep --regexp "\(\.yaml\|\.yml\)$$" | xargs -I {} prettier -w {}; \
+        exit 0; \
+        else \
+        echo "SKIP: yamlfmt (prettier not found)"; \
+        fi
 
 jsonfmt:
-	@if command -v prettier; then \
-	    git ls-files | grep --regexp "\.json$$" | xargs -I {} prettier -w {}; \
-	    exit 0; \
-	    else \
-	    echo "SKIP: jsonfmt (prettier not found)"; \
-	    fi
+    @if command -v prettier; then \
+        git ls-files | grep --regexp "\.json$$" | xargs -I {} prettier -w {}; \
+        exit 0; \
+        else \
+        echo "SKIP: jsonfmt (prettier not found)"; \
+        fi
 
 xmlfmt:
-	@if command -v prettier; then \
-	    git ls-files | grep --regexp "\.xml$$" | xargs -I {} prettier --plugin=@prettier/plugin-xml --plugin-search-dir=./node_modules -w {}; \
-	    exit 0; \
-	    else \
-	    echo "SKIP: xmlfmt (prettier not found)"; \
-	    fi
+    @if command -v prettier; then \
+        git ls-files | grep --regexp "\.xml$$" | xargs -I {} prettier --plugin=@prettier/plugin-xml --plugin-search-dir=./node_modules -w {}; \
+        exit 0; \
+        else \
+        echo "SKIP: xmlfmt (prettier not found)"; \
+        fi
 
 
 cpplint:
-	@if command -v cpplint; then \
-	    git ls-files | grep --regexp "\(\.h\|\.cc\)$$" | xargs -I {} cpplint {} ; \
-	    else \
-	    echo "SKIP: cpplint (cpplint not found)"; \
-	    fi
+    @if command -v cpplint; then \
+        git ls-files | grep --regexp "\(\.h\|\.cc\)$$" | xargs -I {} cpplint {} ; \
+        else \
+        echo "SKIP: cpplint (cpplint not found)"; \
+        fi
 
 shlint:
-	@if command -v shellcheck; then \
-	    git ls-files | grep --regexp "\.sh$$" | xargs -I {} shellcheck {}; \
-	    else \
-	    echo "SKIP: shlint (shellcheck not found)"; \
-	    fi
+    @if command -v shellcheck; then \
+        git ls-files | grep --regexp "\.sh$$" | xargs -I {} shellcheck {}; \
+        else \
+        echo "SKIP: shlint (shellcheck not found)"; \
+        fi
 
 javalint:
-	@cd java && ./mvnw -pl hybridse-sdk -Dplugin.violationSeverity=warning checkstyle:check
+    @cd java && ./mvnw -pl hybridse-sdk -Dplugin.violationSeverity=warning checkstyle:check
 
 pylint:
-	@if command -v pylint; then \
-	    git ls-files | grep --regexp "\.py$$" | xargs -I {} pylint {}; \
-	    else \
-	    echo "SKIP: pylint (pylint not found)"; \
-	    fi
+    @if command -v pylint; then \
+        git ls-files | grep --regexp "\.py$$" | xargs -I {} pylint {}; \
+        else \
+        echo "SKIP: pylint (pylint not found)"; \
+        fi
