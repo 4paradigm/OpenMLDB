@@ -306,6 +306,8 @@ void DefaultUdfLibrary::InitMinByCateUdafs() {
     OVER w;
                 -- output "z:5,y:1"
             @endcode
+
+            @since 0.1.0
             )")
         .args_in<int16_t, int32_t, int64_t, Date, Timestamp, StringRef>();
 
@@ -337,6 +339,8 @@ void DefaultUdfLibrary::InitMinByCateUdafs() {
     OVER w;
                 -- output "z:5,x:2"
             @endcode
+
+            @since 0.6.4
             )")
         .args_in<int16_t, int32_t, int64_t, Date, Timestamp, StringRef>();
 }

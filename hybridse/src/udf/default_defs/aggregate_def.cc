@@ -436,6 +436,8 @@ void DefaultUdfLibrary::InitStatisticsUdafs() {
                 SELECT top_n_key_ratio_cate_where(value, condition, catagory, 2) from t;
                 -- output "z:1.000000,y:0.500000"
             @endcode
+
+            @since 0.8.1
             )")
         // type of categories
         .args_in<int16_t, int32_t, int64_t, Date, Timestamp, StringRef>();
@@ -469,6 +471,8 @@ void DefaultUdfLibrary::InitStatisticsUdafs() {
                 SELECT top_n_value_ratio_cate_where(value, condition, catagory, 2) from t;
                 -- output "z:1.000000,x:1.000000"
             @endcode
+
+            @since 0.8.1
             )")
         // type of categories
         .args_in<int16_t, int32_t, int64_t, Date, Timestamp, StringRef>();

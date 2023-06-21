@@ -299,6 +299,8 @@ void DefaultUdfLibrary::InitSumByCateUdafs() {
     OVER w;
                 -- output "z:11,y:4"
             @endcode
+
+            @since 0.1.0
             )")
         .args_in<int16_t, int32_t, int64_t, Date, Timestamp, StringRef>();
 
@@ -329,6 +331,8 @@ void DefaultUdfLibrary::InitSumByCateUdafs() {
     OVER w;
                 -- output "z:11,x:4"
             @endcode
+
+            @since 0.6.4
             )")
         .args_in<int16_t, int32_t, int64_t, Date, Timestamp, StringRef>();
 }

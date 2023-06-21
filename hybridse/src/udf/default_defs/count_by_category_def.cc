@@ -294,6 +294,8 @@ void DefaultUdfLibrary::InitCountByCateUdafs() {
     OVER w;
                 -- output "z:2,y:2"
             @endcode
+
+            @since 0.1.0
             )")
         // type of category
         .args_in<int16_t, int32_t, int64_t, Date, Timestamp, StringRef>();
@@ -326,6 +328,8 @@ void DefaultUdfLibrary::InitCountByCateUdafs() {
     OVER w;
                 -- output "x:3,y:2"
             @endcode
+
+            @since 0.6.4
             )")
         // type of category
         .args_in<int16_t, int32_t, int64_t, Date, Timestamp, StringRef>();
