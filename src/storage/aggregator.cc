@@ -205,8 +205,9 @@ bool Aggregator::Update(const std::string& key, const std::string& row, uint64_t
     return true;
 }
 
-bool Aggregator::Delete(const std::string& key) {
-    {
+bool Aggregator::DeleteData(const std::string& key, const std::optional<uint64_t>& start_ts,
+        const std::optional<uint64_t>& end_ts) {
+    if (!start_ts.has_value() && !end_ts.has_value()) {
         std::lock_guard<std::mutex> lock(mu_);
         // erase from the aggr_buffer_map_
         aggr_buffer_map_.erase(key);
@@ -217,7 +218,12 @@ bool Aggregator::Delete(const std::string& key) {
     auto dimension = entry.add_dimensions();
     dimension->set_key(key);
     dimension->set_idx(aggr_index_pos_);
-
+    if (start_ts.has_value()) {
+        entry.set_ts(start_ts.value());
+    }
+    if (end_ts.has_value()) {
+        entry.set_end_ts(end_ts.value());
+    }
     // delete the entries from the pre-aggr table
     if (!aggr_table_->Delete(entry)) {
         PDLOG(ERROR, "Delete key %s from aggr table %s failed", key, aggr_table_->GetName());
@@ -235,6 +241,116 @@ bool Aggregator::Delete(const std::string& key) {
 
 bool Aggregator::Delete(const std::string& key, const std::optional<uint64_t>& start_ts,
         const std::optional<uint64_t>& end_ts) {
+    if (GetStat() != AggrStat::kInited) {
+        PDLOG(WARNING, "Aggregator status is not kInited");
+        return false;
+    }
+    if (!start_ts.has_value() && !end_ts.has_value()) {
+        return Delete(key, start_ts, end_ts);
+    }
+    uint64_t real_start_ts = start_ts.has_value() ? start_ts.value() : UINT64_MAX;
+    std::vector<AggrBufferLocked*> aggr_buffer_lock_vec;
+    {
+        std::lock_guard<std::mutex> lock(mu_);
+        if (auto it = aggr_buffer_map_.find(key); it != aggr_buffer_map_.end()) {
+            for (auto& kv : it->second) {
+                aggr_buffer_lock_vec.push_back(&kv.second);
+            }
+        }
+    }
+    for (auto agg_buffer_lock : aggr_buffer_lock_vec) {
+        RebuildAggrBuffer(key, &agg_buffer_lock->buffer_);
+    }
+    ::openmldb::storage::Ticket ticket;
+    std::unique_ptr<storage::TableIterator> it(aggr_table_->NewIterator(0, key, ticket));
+    if (it == nullptr) {
+        return false;
+    }
+    if (window_type_ == WindowType::kRowsRange && UINT64_MAX - window_size_ > real_start_ts) {
+        it->Seek(real_start_ts + window_size_);
+    } else {
+        it->SeekToFirst();
+    }
+    std::optional<uint64_t> delete_start_ts = std::nullopt;
+    std::optional<uint64_t> delete_end_ts = std::nullopt;
+    while (it->Valid()) {
+        uint64_t buffer_start_ts = it->GetKey();
+        uint64_t buffer_end_ts = 0;
+        auto aggr_row_ptr =  reinterpret_cast<const int8_t*>(it->GetValue().data());
+        aggr_row_view_.GetValue(aggr_row_ptr, 2, DataType::kTimestamp, &buffer_end_ts);
+        if (real_start_ts <= buffer_end_ts && real_start_ts >= buffer_start_ts) {
+            RebuildFlushedAggrBuffer(key, aggr_row_ptr);
+            delete_start_ts = buffer_start_ts;
+            if (end_ts.has_value()) {
+                if (end_ts.value() >= buffer_start_ts) {
+                    // range data in one aggregate buffer
+                    return true;
+                }
+            } else {
+                break;
+            }
+        }
+        if (end_ts.has_value() && end_ts.value() <= buffer_end_ts && end_ts.value() >= buffer_start_ts) {
+            RebuildFlushedAggrBuffer(key, aggr_row_ptr);
+            delete_end_ts = buffer_end_ts;
+            break;
+        }
+        it->Next();
+    }
+    return DeleteData(key, delete_start_ts, delete_end_ts);
+}
+
+bool Aggregator::RebuildFlushedAggrBuffer(const std::string& key, const int8_t* row_ptr) {
+    AggrBuffer buffer;
+    if (!GetAggrBufferFromRowView(aggr_row_view_, row_ptr, &buffer)) {
+        PDLOG(WARNING, "GetAggrBufferFromRowView failed");
+        return false;
+    }
+    if (!RebuildAggrBuffer(key, &buffer)) {
+        PDLOG(WARNING, "RebuildAggrBuffer failed. key is %s", key.c_str());
+        return false;
+    }
+    std::string filter_key;
+    if (!aggr_row_view_.IsNULL(row_ptr, 6)) {
+        char* ch = nullptr;
+        uint32_t len = 0;
+        aggr_row_view_.GetValue(row_ptr, 6, &ch, &len);
+        filter_key.assign(ch, len);
+    }
+    if (!FlushAggrBuffer(key, filter_key, buffer)) {
+        PDLOG(WARNING, "FlushAggrBuffer failed. key is %s", key.c_str());
+        return false;
+    }
+    return true;
+}
+
+bool Aggregator::RebuildAggrBuffer(const std::string& key, AggrBuffer* aggr_buffer) {
+    if (base_table_ == nullptr) {
+        PDLOG(WARNING, "base table is nullptr, cannot update MinAggr table");
+        return false;
+    }
+    storage::Ticket ticket;
+    std::unique_ptr<storage::TableIterator> it(base_table_->NewIterator(GetIndexPos(), key, ticket));
+    if (it == nullptr) {
+        return false;
+    }
+    int64_t ts_begin = aggr_buffer->ts_begin_;
+    int64_t ts_end = aggr_buffer->ts_end_;
+    aggr_buffer->Clear();
+    aggr_buffer->ts_begin_ = ts_begin;
+    aggr_buffer->ts_end_ = ts_end;
+    it->Seek(ts_end);
+    while (it->Valid()) {
+        if (it->GetKey() < static_cast<uint64_t>(ts_begin)) {
+            break;
+        }
+        auto base_row_ptr = reinterpret_cast<const int8_t*>(it->GetValue().data());
+        if (!UpdateAggrVal(base_row_view_, base_row_ptr, aggr_buffer)) {
+            PDLOG(WARNING, "Failed to update aggr Val during rebuilding Extermum aggr buffer");
+            return false;
+        }
+        it->Next();
+    }
     return true;
 }
 
@@ -263,12 +379,10 @@ bool Aggregator::FlushAll() {
 }
 
 bool Aggregator::Init(std::shared_ptr<LogReplicator> base_replicator) {
-    std::unique_lock<std::mutex> lock(mu_);
     if (GetStat() != AggrStat::kUnInit) {
         PDLOG(INFO, "aggregator status is %s", AggrStatToString(GetStat()));
         return true;
     }
-    lock.unlock();
     if (!base_replicator) {
         return false;
     }
@@ -365,7 +479,11 @@ bool Aggregator::Init(std::shared_ptr<LogReplicator> base_replicator) {
         for (const auto& dimension : entry.dimensions()) {
             if (dimension.idx() == index_pos_) {
                 if (entry.has_method_type() && entry.method_type() == ::openmldb::api::MethodType::kDelete) {
-                    Delete(dimension.key());
+                    std::optional<uint64_t> start_ts = entry.has_ts() ?
+                        std::optional<uint64_t>(entry.ts()) : std::nullopt;
+                    std::optional<uint64_t> end_ts = entry.has_end_ts() ?
+                        std::optional<uint64_t>(entry.end_ts()) : std::nullopt;
+                    DeleteData(dimension.key(), start_ts, end_ts);
                 } else {
                     Update(dimension.key(), entry.value(), entry.log_index(), true);
                 }

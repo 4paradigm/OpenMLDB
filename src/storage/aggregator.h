@@ -129,8 +129,6 @@ class Aggregator {
 
     bool Update(const std::string& key, const std::string& row, uint64_t offset, bool recover = false);
 
-    bool Delete(const std::string& key);
-
     bool Delete(const std::string& key, const std::optional<uint64_t>& start_ts, const std::optional<uint64_t>& end_ts);
 
     bool FlushAll();
@@ -167,6 +165,7 @@ class Aggregator {
     std::mutex mu_;
     DataType aggr_col_type_;
     DataType ts_col_type_;
+    std::shared_ptr<Table> base_table_;
     std::shared_ptr<Table> aggr_table_;
     std::shared_ptr<LogReplicator> aggr_replicator_;
     std::atomic<AggrStat> status_;
@@ -178,11 +177,16 @@ class Aggregator {
     bool CheckBufferFilled(int64_t cur_ts, int64_t buffer_end, int32_t buffer_cnt);
 
  private:
+    bool DeleteData(const std::string& key, const std::optional<uint64_t>& start_ts,
+        const std::optional<uint64_t>& end_ts);
+
     virtual bool UpdateAggrVal(const codec::RowView& row_view, const int8_t* row_ptr, AggrBuffer* aggr_buffer) = 0;
     virtual bool EncodeAggrVal(const AggrBuffer& buffer, std::string* aggr_val) = 0;
     virtual bool DecodeAggrVal(const int8_t* row_ptr, AggrBuffer* buffer) = 0;
     bool EncodeAggrBuffer(const std::string& key, const std::string& filter_key,
             const AggrBuffer& buffer, const std::string& aggr_val, std::string* encoded_row);
+    bool RebuildAggrBuffer(const std::string& key, AggrBuffer* aggr_buffer);
+    bool RebuildFlushedAggrBuffer(const std::string& key, const int8_t* row_ptr);
     int64_t AlignedStart(int64_t ts) {
         if (window_type_ == WindowType::kRowsRange) {
             return ts / window_size_ * window_size_;
