@@ -1,0 +1,2155 @@
+/*
+ * Copyright 2021 4Paradigm
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+syntax = "proto2";
+
+package openmldb.type;
+
+option cc_generic_services = false;
+option java_package = "com._4paradigm.openmldb.proto";
+option java_outer_classname = "Type";
+
+enum DataType {
+    kBool = 1;
+    kSmallInt = 2;
+    kInt = 3;
+    kBigInt = 4;
+    kFloat = 5;
+    kDouble = 6;
+    kDate = 7;
+    kTimestamp = 8;
+    // reserve 9, 10, 11, 12
+    kVarchar = 13;
+    kString = 14;
+}
+
+enum IndexType {
+    kUnique = 1; // uinque index
+    kNoUnique = 2;
+    kPrimaryKey = 3; 
+    kAutoGen = 4;  // auto gen primary key
+    kIncrement = 5; // auto gen increment id primary key
+    kTimeSerise = 6;
+}
+
+enum TTLType {
+    kAbsoluteTime = 1;
+    kRelativeTime = 2;
+    kLatestTime = 3;
+    kAbsAndLat = 4;
+    kAbsOrLat = 5;
+}
+
+enum CompressType {
+    kNoCompress = 0;
+    kSnappy = 1;
+}
+
+enum EndpointState {
+    kOffline = 1;
+    kHealthy = 2;
+}
+
+enum StartupMode {
+    kStandalone = 1;
+    kCluster = 2;
+}
+
+enum ProcedureType {
+    kUnknow = -1;
+    kReqProcedure = 0;
+    kReqDeployment = 1;
+}
+
+enum NotifyType {
+    kTable = 1;
+    kGlobalVar = 2;
+}/*
+ * Copyright 2021 4Paradigm
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+syntax = "proto2";
+
+import "type.proto";
+package openmldb.common;
+
+option cc_generic_services = false;
+option java_package = "com._4paradigm.openmldb.proto";
+option java_outer_classname = "Common";
+
+message KvPair {
+    optional int64 time = 1;
+    optional bytes value = 2;
+}
+
+message KvList {
+    optional string pk = 1;
+    repeated KvPair pairs = 2;
+}
+
+message VersionPair {
+    optional int32 id = 1;
+    optional int32 field_count = 2;
+}
+message DbTableNamePair {
+    required string db_name = 1;
+    required string table_name = 2;
+}
+message ColumnDesc {
+    required string name = 1;
+    optional openmldb.type.DataType data_type = 2;
+    optional bool not_null = 3 [default = false];
+    optional bool is_constant = 4 [default = false];
+    optional string default_value = 5;
+}
+
+message TTLSt {
+    optional openmldb.type.TTLType ttl_type = 1 [default = kAbsoluteTime];
+    optional uint64 abs_ttl = 2 [default = 0]; // unit: min
+    optional uint64 lat_ttl = 3 [default = 0];
+}
+
+message ColumnKey {
+    optional string index_name = 1;
+    repeated string col_name = 2;
+    optional string ts_name = 3;
+    optional uint32 flag = 4 [default = 0]; // 0 mean index exist, 1 mean index has been deleted
+    optional TTLSt ttl = 5;
+}
+
+message EndpointAndTid {
+    optional string endpoint = 1;
+    optional uint32 tid = 2;
+}
+
+message PartitionMeta {
+    optional string endpoint = 1;
+    optional bool is_leader = 2;
+    optional bool is_alive = 3 [default = true];
+}
+
+message TablePartition {
+    optional uint32 pid = 1;
+    repeated PartitionMeta partition_meta = 2;
+}
+
+message CatalogInfo {
+    optional uint64 version = 1;
+    optional string endpoint = 2;
+}
+
+enum StorageMode {
+    kUnknown = 0;
+    kMemory = 1;
+    kSSD = 2;
+    kHDD = 3;
+}
+
+message ExternalFun {
+    optional string name = 1;
+    optional openmldb.type.DataType return_type = 2;
+    repeated openmldb.type.DataType arg_type = 3;
+    optional bool is_aggregate = 4 [default = false];
+    optional string file = 5;
+    optional bool return_nullable = 6 [default = false];
+    optional bool arg_nullable = 7 [default = false];
+}
+/*
+ * Copyright 2021 4Paradigm
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+syntax = "proto2";
+
+import "type.proto";
+import "common.proto";
+import "tablet.proto";
+import "sql_procedure.proto";
+package openmldb.nameserver;
+
+option cc_generic_services = true;
+option java_package = "com._4paradigm.openmldb.proto";
+option java_outer_classname = "NS";
+
+enum ServerMode {
+    kNORMAL = 0;
+    kLEADER = 1;
+    kFOLLOWER = 2;
+}
+
+enum ClusterStatus {
+    kClusterHealthy = 0;
+    kClusterOffline = 1;
+    kClusterRemove = 2;
+}
+
+message PartitionMeta {
+    required string endpoint = 1;
+    required bool is_leader = 2;
+    optional bool is_alive = 3 [default = true];
+    optional uint64 offset = 4;
+    optional uint64 record_cnt = 5;
+    optional uint64 record_byte_size = 6;
+    optional bool tablet_has_partition = 7 [default = true];
+    optional uint64 diskused = 8 [default = 0];
+    optional uint32 remote_tid = 9 [default = 4294967295]; // 4294967295 is UINT32 max value
+    optional string alias = 10;
+}
+
+message TermPair {
+    required uint64 term = 1;
+    required uint64 offset = 2;
+}
+
+message TablePartition {
+    required uint32 pid = 1;
+    repeated PartitionMeta partition_meta = 2;
+    repeated TermPair term_offset = 3;
+    optional uint64 record_cnt = 4;
+    optional uint64 record_byte_size = 5;
+    optional uint64 diskused = 6 [default = 0];
+    repeated PartitionMeta remote_partition_meta = 7;
+}
+
+message UpdateTTLRequest {
+    optional string name = 1;
+    optional string db = 2 [default = ""];
+    optional string index_name = 3;
+    optional openmldb.common.TTLSt ttl_desc = 4;
+}
+
+message UpdateTTLResponse {
+    optional int32 code = 1;
+    optional string msg = 2;
+}
+
+message OfflineTableInfo {
+    required string path = 1;
+    required string format = 2;
+    optional bool deep_copy = 3 [default = true, deprecated = true];
+    optional map<string,string> options = 4;
+    repeated string symbolic_paths = 5;
+}
+
+message TableInfo {
+    optional string name = 1;
+    optional uint32 seg_cnt = 2 [default = 8];
+    repeated TablePartition table_partition = 3;
+    optional uint32 tid = 4;
+    optional uint32 partition_num = 5;
+    optional uint32 replica_num = 6; // contain the leader
+    optional openmldb.type.CompressType compress_type = 7 [default = kNoCompress];
+    optional uint32 key_entry_max_height = 8;
+    repeated openmldb.common.ColumnDesc column_desc = 9;
+    repeated openmldb.common.ColumnKey column_key = 10;
+    repeated openmldb.common.ColumnDesc added_column_desc = 11;
+    optional uint32 format_version = 12 [default = 1];
+    optional string db = 13 [default = ""];
+    repeated string partition_key = 14;
+    repeated common.VersionPair schema_versions = 15;
+    optional OfflineTableInfo offline_table_info = 16;
+    optional openmldb.common.StorageMode storage_mode = 17 [default = kMemory];
+    optional uint32 base_table_tid = 18 [default = 0];
+}
+
+message CreateTableRequest {
+    required TableInfo table_info = 1;
+    optional ZoneInfo zone_info = 2;
+    optional openmldb.api.TaskInfo task_info = 3;
+    optional bool create_if_not_exist = 4 [default = false];
+}
+
+message DropTableRequest {
+    required string name = 1;
+    optional ZoneInfo zone_info = 2;
+    optional openmldb.api.TaskInfo task_info = 3;
+    optional string db = 4 [default = ""];
+}
+
+message LoadTableRequest {
+    optional string name = 1;
+    optional string endpoint = 2;
+    optional uint32 pid = 3;
+    optional ZoneInfo zone_info = 4;
+    optional openmldb.api.TaskInfo task_info = 5;
+    optional string db = 6 [default = ""];
+}
+
+message CreateTableInfoRequest {
+    optional TableInfo table_info = 1;
+    optional ZoneInfo zone_info = 2;
+}
+
+message ShowTableRequest {
+    optional string name = 1;
+    optional string db = 2 [default = ""];
+    optional bool show_all = 3 [default = false];
+}
+
+message ShowTableResponse {
+    repeated TableInfo table_info = 1;
+    required int32 code = 2;
+    optional string msg = 3;
+}
+
+message MakeSnapshotNSRequest {
+    required string name = 1;
+    required uint32 pid = 2;
+    optional uint64 offset = 3;
+    optional string db = 4 [default=""];
+}
+
+message AddReplicaData {
+    required string name = 1;
+    required uint32 pid = 2;
+    optional string endpoint = 3;
+    optional uint32 remote_tid = 4; //for remote
+    optional string alias = 5; //for remote
+    optional TablePartition table_partition = 6; //for remote
+    optional string db = 7 [default = ""];
+}
+
+message AddReplicaNSRequest {
+    required string name = 1;
+    required uint32 pid = 2;
+    required string endpoint = 3;
+    repeated uint32 pid_group = 4;
+    repeated string endpoint_group = 5; //for remote
+    optional ZoneInfo zone_info = 6; //for remote
+    optional openmldb.api.TaskInfo task_info = 7; //for remote
+    optional string db = 8 [default = ""];
+}
+
+message Pair {
+    required string key = 1;
+    required string value = 2;
+}
+
+message ConfSetRequest {
+    required Pair conf = 1;
+}
+
+message ConfGetRequest {
+
+}
+
+message ConfGetResponse {
+    required int32 code = 1;
+    optional string msg = 2;
+    repeated Pair conf = 3;
+}
+
+message ChangeLeaderRequest {
+    required string name = 1;
+    required uint32 pid = 2;
+    optional string candidate_leader = 3;
+    optional string db = 4 [default = ""];
+}
+
+message OfflineEndpointRequest {
+    required string endpoint = 1;
+    optional uint32 concurrency = 2;
+}
+
+message RecoverEndpointRequest {
+    required string endpoint = 1;
+    optional bool need_restore = 2;
+    optional uint32 concurrency = 3;
+}
+
+message GeneralResponse {
+    required int32 code = 1;
+    optional string msg = 2;
+}
+
+message CreateTableInfoResponse {
+    optional TableInfo table_info = 1;
+    required int32 code = 2;
+    optional string msg = 3;
+}
+
+message ShowTabletRequest {
+
+}
+
+message AddTableFieldRequest {
+    optional string name = 1;
+    optional openmldb.common.ColumnDesc column_desc = 2;
+    optional string db = 3 [default = ""];
+}
+
+message TabletStatus {
+    optional string endpoint = 1;
+    optional string state = 2;
+    optional uint64 age = 3;
+    optional string real_endpoint = 4;
+}
+
+message ShowTabletResponse {
+    repeated TabletStatus tablets = 1;
+    optional int32 code = 2;
+    optional string msg = 3;
+}
+
+message RecoverTableRequest {
+    required string name = 1;
+    required uint32 pid = 2;
+    required string endpoint = 3;
+    optional string db = 4 [default = ""];
+}
+
+message DelReplicaNSRequest {
+    required string name = 1;
+    required uint32 pid = 2;
+    required string endpoint = 3;
+    repeated uint32 pid_group = 4;
+    optional string db = 5 [default = ""];
+}
+
+message MigrateRequest {
+    required string src_endpoint = 1;
+    required string name = 2;
+    repeated uint32 pid = 3;
+    required string des_endpoint = 4;
+    optional string db = 5 [default = ""];
+}
+
+message MigrateInfo {
+    optional string src_endpoint = 1;
+    optional string des_endpoint = 2;
+}
+
+message EndpointStatusData {
+    optional string endpoint = 1;
+    optional bool is_leader = 2;
+    optional bool is_alive = 3;
+}
+
+message RecoverTableData {
+    optional string endpoint = 1;
+    optional uint64 offset_delta = 2;
+    optional bool is_leader = 3;
+    optional uint32 concurrency = 4;
+}
+
+message CreateTableData {
+    optional string alias = 1;
+    optional TableInfo table_info = 2;
+    optional TableInfo remote_table_info = 3;
+}
+
+message ChangeLeaderData {
+    optional string name = 1;
+    optional uint32 tid = 2;
+    optional uint32 pid = 3;
+    optional uint64 term = 4;
+    optional uint64 offset = 5;
+    optional string leader = 6;
+    repeated string follower = 7;
+    optional string candidate_leader = 8;
+    repeated openmldb.common.EndpointAndTid remote_follower = 9;
+    optional string db = 10 [default = ""];
+}
+
+message OPStatus {
+    required uint64 op_id = 1;
+    required string op_type = 2;
+    required string status = 3;
+    required uint64 start_time = 4;
+    required uint64 end_time = 5;
+    required string task_type = 6;
+    optional string name = 7;
+    optional uint32 pid = 8;
+    optional int32 for_replica_cluster = 9 [default = 0];
+    optional string db = 10 [default = ""];
+}
+
+message GetTablePartitionRequest {
+    optional string name = 1;
+    optional uint32 pid = 2;
+    optional string db = 3 [default = ""];
+}
+
+message GetTablePartitionResponse {
+    optional int32 code = 1;
+    optional string msg = 2;
+    optional TablePartition table_partition = 3;
+}
+
+message SetTablePartitionRequest {
+    optional string name = 1;
+    optional TablePartition table_partition = 2;
+    optional string db = 3 [default = ""];
+}
+
+message UpdateTableAliveRequest {
+    optional string name = 1;
+    optional string endpoint = 2;
+    optional uint32 pid = 3;
+    optional bool is_alive = 4;
+    optional string db = 5 [default = ""];
+}
+
+message ShowOPStatusRequest{
+    optional string name = 1;
+    optional uint32 pid = 2;
+    optional string db = 3;
+    optional uint64 op_id = 4;
+}
+
+message ConnectZKRequest {
+
+}
+message DisConnectZKRequest {
+
+}
+
+message ShowOPStatusResponse {
+    optional int32 code = 1;
+    optional string msg = 2;
+    repeated OPStatus op_status = 3;
+}
+
+message CancelOPRequest {
+    optional uint64 op_id = 1;
+}
+
+message ClusterAddress {
+    optional string zk_endpoints = 1;
+    optional string zk_path = 2;
+    optional string alias = 3;
+}
+
+message GeneralRequest {
+
+}
+
+message ClusterAddAge {
+    optional ClusterAddress replica = 1;
+    optional uint64 age = 2;
+    optional string state = 3;
+}
+message ShowReplicaClusterResponse {
+    repeated ClusterAddAge replicas = 1;
+    optional int32 code = 2;
+    optional string msg = 3;
+}
+
+message RemoveReplicaOfRequest {
+    optional string alias = 1;
+}
+
+message ReplicaClusterByNsRequest {
+    optional ZoneInfo zone_info = 1;
+}
+
+message ZoneInfo {
+    optional string zone_name = 1;
+    optional string replica_alias = 2;
+    optional uint64 zone_term = 3;
+    optional ServerMode mode = 4;
+}
+
+message AddReplicaClusterByNsResponse {
+    repeated TabletStatus tablets = 1;
+    repeated TableInfo table_info = 2;
+    required int32 code = 3;
+    optional string msg = 4;
+}
+
+message SwitchModeRequest {
+    optional ServerMode sm = 1;
+}
+
+message SyncTableRequest {
+    optional string name = 1;
+    optional string cluster_alias = 2;
+    optional uint32 pid = 3;
+    optional string db = 4 [default = ""];
+}
+
+message SetSdkEndpointRequest {
+    optional string server_name = 1;
+    optional string sdk_endpoint = 2;
+}
+
+message AddIndexMeta {
+    optional string name = 1;
+    optional uint32 pid = 2;
+    optional openmldb.common.ColumnKey column_key = 3;
+    optional uint32 idx = 4;
+    optional string db = 5 [default = ""];
+    optional bool skip_data = 6 [default = false];
+    repeated openmldb.common.ColumnKey column_keys = 7;
+}
+
+message AddIndexRequest {
+    optional string name = 1;
+    optional openmldb.common.ColumnKey column_key = 2;
+    optional string db = 3 [default = ""];
+    repeated openmldb.common.ColumnDesc cols = 4;
+    repeated openmldb.common.ColumnKey column_keys = 5;
+    optional bool skip_load_data = 6 [default = false];
+}
+
+message DeleteIndexRequest {
+    optional string table_name = 1;
+    optional string idx_name = 2;
+    optional string db_name = 3  [default = ""];
+}
+
+message CreateDatabaseRequest {
+    optional string db = 1;
+    optional bool if_not_exists = 2 [default = false];
+    optional ZoneInfo zone_info = 3;
+}
+
+message UseDatabaseRequest {
+    optional string db = 1;
+}
+
+message ShowDatabaseResponse {
+    optional int32 code = 1;
+    optional string msg = 2;
+    repeated string db = 3;
+}
+
+message DropDatabaseRequest {
+    optional string db = 1;
+    optional ZoneInfo zone_info = 2;
+}
+
+message ShowSdkEndpointRequest {
+
+}
+
+message ShowSdkEndpointResponse {
+    repeated TabletStatus tablets = 1;
+    optional int32 code = 2;
+    optional string msg = 3;
+}
+
+message ShowCatalogRequest {
+
+}
+
+message ShowCatalogResponse {
+    repeated openmldb.common.CatalogInfo catalog = 1;
+    optional int32 code = 2;
+    optional string msg = 3;
+}
+
+message CreateFunctionRequest {
+    optional openmldb.common.ExternalFun fun = 1;
+}
+
+message CreateFunctionResponse {
+    optional int32 code = 1;
+    optional string msg = 2;
+}
+
+message DropFunctionRequest {
+    optional string name = 1;
+    optional bool if_exists = 2;
+}
+
+message DropFunctionResponse {
+    optional int32 code = 1;
+    optional string msg = 2;
+}
+
+message ShowFunctionRequest {
+    optional string name = 1;
+}
+
+message ShowFunctionResponse {
+    optional int32 code = 1;
+    optional string msg = 2;
+    repeated openmldb.common.ExternalFun fun = 3;
+}
+
+message TableIndex {
+    optional string db = 1;
+    optional string name = 2;
+    repeated openmldb.common.ColumnKey column_key = 3;
+}
+
+message DeploySQLRequest {
+    optional openmldb.api.ProcedureInfo sp_info = 3;
+    repeated TableIndex index = 4;
+}
+
+message DeploySQLResponse {
+    optional int32 code = 1;
+    optional string msg = 2;
+    optional uint64 op_id = 3;
+}
+
+service NameServer {
+    rpc CreateTable(CreateTableRequest) returns (GeneralResponse);
+    rpc DropTable(DropTableRequest) returns (GeneralResponse);
+    rpc ShowTablet(ShowTabletRequest) returns (ShowTabletResponse);
+    rpc ShowTable(ShowTableRequest) returns (ShowTableResponse);
+    rpc MakeSnapshotNS(MakeSnapshotNSRequest) returns (GeneralResponse);
+    rpc AddReplicaNS(AddReplicaNSRequest) returns (GeneralResponse);
+    rpc DelReplicaNS(DelReplicaNSRequest) returns (GeneralResponse);
+    rpc ShowOPStatus(ShowOPStatusRequest) returns (ShowOPStatusResponse);
+    rpc CancelOP(CancelOPRequest) returns (GeneralResponse);
+    rpc ConfSet(ConfSetRequest) returns (GeneralResponse);
+    rpc ConfGet(ConfGetRequest) returns (ConfGetResponse);
+    rpc ChangeLeader(ChangeLeaderRequest) returns (GeneralResponse);
+    rpc OfflineEndpoint(OfflineEndpointRequest) returns (GeneralResponse);
+    rpc Migrate(MigrateRequest) returns (GeneralResponse);
+    rpc RecoverTable(RecoverTableRequest) returns (GeneralResponse);
+    rpc RecoverEndpoint(RecoverEndpointRequest) returns (GeneralResponse);
+    rpc ConnectZK(ConnectZKRequest) returns (GeneralResponse);
+    rpc DisConnectZK(DisConnectZKRequest) returns (GeneralResponse);
+    rpc SetTablePartition(SetTablePartitionRequest) returns (GeneralResponse);
+    rpc GetTablePartition(GetTablePartitionRequest) returns (GetTablePartitionResponse);
+    rpc UpdateTTL(UpdateTTLRequest) returns (UpdateTTLResponse);
+    rpc UpdateTableAliveStatus(UpdateTableAliveRequest) returns (GeneralResponse);
+    rpc AddTableField(AddTableFieldRequest) returns (GeneralResponse);
+    rpc AddReplicaCluster(ClusterAddress) returns (GeneralResponse);
+    rpc ShowReplicaCluster(GeneralRequest) returns (ShowReplicaClusterResponse);
+    rpc RemoveReplicaCluster(RemoveReplicaOfRequest) returns (GeneralResponse);
+    rpc AddReplicaClusterByNs(ReplicaClusterByNsRequest) returns (AddReplicaClusterByNsResponse);
+    rpc RemoveReplicaClusterByNs(ReplicaClusterByNsRequest) returns (GeneralResponse);
+    rpc SwitchMode(SwitchModeRequest) returns (GeneralResponse);
+    rpc GetTaskStatus(openmldb.api.TaskStatusRequest) returns (openmldb.api.TaskStatusResponse);
+    rpc DeleteOPTask(openmldb.api.DeleteTaskRequest) returns (openmldb.api.GeneralResponse);
+    rpc CreateTableInfo(CreateTableInfoRequest) returns (CreateTableInfoResponse);
+    rpc CreateTableInfoSimply(CreateTableInfoRequest) returns (CreateTableInfoResponse);
+    rpc LoadTable(LoadTableRequest) returns (GeneralResponse);
+    rpc AddReplicaNSFromRemote(AddReplicaNSRequest) returns (GeneralResponse);
+    rpc SyncTable(SyncTableRequest) returns (GeneralResponse);
+    rpc AddIndex(AddIndexRequest) returns (GeneralResponse);
+    rpc DeleteIndex(DeleteIndexRequest) returns (GeneralResponse);
+    rpc CreateDatabase(CreateDatabaseRequest) returns (GeneralResponse);
+    rpc UseDatabase(UseDatabaseRequest) returns (GeneralResponse);
+    rpc ShowDatabase(GeneralRequest) returns (ShowDatabaseResponse);
+    rpc DropDatabase(DropDatabaseRequest) returns (GeneralResponse);
+    rpc SetSdkEndpoint(SetSdkEndpointRequest) returns (GeneralResponse);
+    rpc ShowSdkEndpoint(ShowSdkEndpointRequest) returns (ShowSdkEndpointResponse);
+    rpc ShowCatalog(ShowCatalogRequest) returns (ShowCatalogResponse);
+    rpc UpdateOfflineTableInfo(TableInfo) returns (GeneralResponse);
+    rpc CreateFunction(CreateFunctionRequest) returns (CreateFunctionResponse);
+    rpc DropFunction(DropFunctionRequest) returns (DropFunctionResponse);
+    rpc ShowFunction(ShowFunctionRequest) returns (ShowFunctionResponse);
+
+    // sql procedure interfaces
+    rpc CreateProcedure(openmldb.api.CreateProcedureRequest) returns (GeneralResponse);
+    rpc DropProcedure(openmldb.api.DropProcedureRequest) returns (GeneralResponse);
+    rpc ShowProcedure(openmldb.api.ShowProcedureRequest) returns (openmldb.api.ShowProcedureResponse);
+    rpc DeploySQL(DeploySQLRequest) returns (DeploySQLResponse);
+}
+/*
+ * Copyright 2021 4Paradigm
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+syntax = "proto2";
+
+import "type.proto";
+import "common.proto";
+import "sql_procedure.proto";
+package openmldb.api;
+
+option java_package = "com._4paradigm.openmldb.proto";
+option cc_generic_services = true;
+option java_outer_classname = "Tablet";
+
+enum TableMode {
+    kTableLeader = 1;
+    kTableFollower = 2;
+}
+
+enum TableState {
+    kTableUndefined = 0;
+    kTableNormal = 1;
+    kTableLoading = 2;
+    kMakingSnapshot = 3;
+    kSnapshotPaused = 4;
+}
+
+enum GetType {
+    kSubKeyEq = 1;
+    kSubKeyLt = 2;
+    kSubKeyLe = 3;
+    kSubKeyGt = 4;
+    kSubKeyGe = 5;
+}
+
+enum OPType {
+    kMakeSnapshotOP = 1;
+    kAddReplicaOP = 2;
+    kDelReplicaOP = 3;
+    kChangeLeaderOP = 4;
+    kOfflineReplicaOP = 5;
+    kReAddReplicaOP = 6;
+    kReAddReplicaNoSendOP = 7;    // need not send snapshot
+    kReAddReplicaWithDropOP = 8;  // should droptable before loadtable
+    kReAddReplicaSimplifyOP = 9;  // table is exist, need run addreplica task only
+    kUpdateTableAliveOP = 10;     // deleted
+    kMigrateOP = 11;
+    kReLoadTableOP = 12;
+    kUpdatePartitionStatusOP = 13;
+    kRecoverTableOP = 14;
+    kCreateTableRemoteOP = 15; 
+    kDropTableRemoteOP = 16; 
+    kAddReplicaSimplyRemoteOP = 17; 
+    kDelReplicaRemoteOP = 18; 
+    kAddReplicaRemoteOP = 19; 
+    kAddIndexOP = 20; 
+    kDeployOP = 21;
+}
+
+enum TaskType {
+    kMakeSnapshot = 1;
+    kPauseSnapshot = 2;
+    kRecoverSnapshot = 3;
+    kSendSnapshot = 4;
+    kLoadTable = 5;
+    kAddReplica = 6;
+    kAddTableInfo = 7;
+    kDelReplica = 8;
+    kDelTableInfo = 9;
+    kChangeLeader = 10;
+    kUpdatePartitionStatus = 11;
+    kDropTable = 12;
+    kUpdateTableAlive = 13;
+    kUpdateTableInfo = 14;
+    kSelectLeader = 15;
+    kUpdateLeaderInfo = 16;
+    kRecoverTable = 17;
+    kCheckBinlogSyncProgress = 18;
+    kCreateTableRemote = 19; 
+    kDropTableRemote = 20; 
+    kAddReplicaNSRemote = 21; 
+    kDumpIndexData = 22 [deprecated = true];
+    kSendIndexData = 23;
+    kLoadIndexData = 24;
+    kExtractIndexData = 25;
+    kAddIndexToTablet = 26;
+    kTableSyncTask = 27 [deprecated = true];
+    kSendIndexRequest = 28;
+    kExtractIndexRequest = 29;
+    kLoadIndexRequest = 30;
+    kAddIndexToTabletRequest = 31;
+    kAddIndexToTableInfo = 32;
+    kAddMultiTableIndex = 33;
+    kAddTableIndex = 34;
+    kCreateProcedure = 35;
+}
+
+enum TaskStatus {
+    kInited = 1;
+    kDoing = 2;
+    kDone = 3;
+    kFailed = 4;
+    kCanceled = 5;
+}
+
+enum MethodType {
+    kPut = 1;
+    kDelete = 2;
+}
+
+message TaskInfo {
+    required uint64 op_id = 1;
+    required OPType op_type = 2;
+    required TaskType task_type = 3;
+    required TaskStatus status = 4;
+    optional string endpoint = 5;
+    optional bool is_rpc_send = 6 [default = false];
+    repeated uint64 rep_cluster_op_id = 7;      // for multi cluster
+    optional uint64 task_id = 8 [default = 0];
+    optional uint32 tid = 9;
+    optional uint32 pid = 10;
+}
+
+message OPInfo {
+    required uint64 op_id = 1;
+    required OPType op_type = 2;
+    required uint32 task_index = 3;
+    required string data = 4;
+    optional TaskStatus task_status = 5;
+    optional uint64 start_time = 6 [default = 0];
+    optional uint64 end_time = 7 [default = 0];
+    optional string name = 8;
+    optional uint32 pid = 9;
+    optional uint64 parent_id = 10;
+    optional uint32 vec_idx = 11;                           // the index in task_vec
+    optional uint64 remote_op_id = 12;                      // for multi cluster
+    optional int32 for_replica_cluster = 13 [default = 0];  // for multi cluster, default 0. if 1, for multi cluster
+    optional string db = 14;
+}
+
+message PartSnapshotOffset {
+    optional uint32 pid = 2;
+    optional uint64 offset = 3;
+}
+message TableSnapshotOffsetResponse {
+    message Table {
+        optional uint32 tid = 1;
+        repeated PartSnapshotOffset parts = 2;
+    }
+    optional int32 code = 1;
+    optional string msg = 2;
+    repeated Table tables = 3;
+}
+
+message Manifest {
+    optional uint64 offset = 1;
+    optional string name = 2;
+    optional uint64 count = 3;
+    optional uint64 term = 4;
+}
+
+message Dimension {
+    optional string key = 1;
+    optional uint32 idx = 2;
+}
+
+message TSDimension {
+    optional uint64 ts = 1;
+    optional uint32 idx = 2;
+}
+
+message PutRequest {
+    // the prefix key
+    // abandoned
+    optional string pk = 1;
+    // the subfix key
+    optional int64 time = 2;
+    optional bytes value = 3;
+    optional uint32 tid = 4;
+    optional uint32 pid = 5;
+    repeated Dimension dimensions = 6;
+    repeated TSDimension ts_dimensions = 7 [deprecated = true];
+    optional uint32 format_version = 8 [default = 0];
+}
+
+message PutResponse {
+    optional int32 code = 1;
+    optional string msg = 2;
+}
+
+message DeleteRequest {
+    optional uint32 tid = 1;
+    optional uint32 pid = 2;
+    optional string key = 3;
+    optional string idx_name = 4;
+}
+
+message ExecuteGcRequest {
+    optional uint32 tid = 1;
+    optional uint32 pid = 2;
+}
+
+message GeneralRequest {
+    required int32 tid = 1;
+    required int32 pid = 2;
+    optional TaskInfo task_info = 3;
+    optional uint64 offset = 4;
+    optional openmldb.common.StorageMode storage_mode = 5 [default = kMemory];
+}
+
+message TaskStatusRequest {
+
+}
+
+message TaskStatusResponse {
+    optional int32 code = 1;
+    optional string msg = 2;
+    repeated TaskInfo task = 3;
+}
+
+message DeleteTaskRequest {
+    repeated uint64 op_id = 1;
+}
+
+message GeneralResponse {
+    optional int32 code = 1;
+    optional string msg = 2;
+    repeated int64 additional_ids = 3;
+    optional uint32 count = 4;
+}
+
+message ScanRequest {
+    // the prefix key
+    optional string pk = 1;
+    // the start subfix key (inclusive)
+    optional uint64 st = 2;
+    // the end subfix key (exclusive)
+    optional uint64 et = 3;
+    optional uint32 limit = 4;
+    optional uint32 tid = 5;
+    optional uint32 pid = 6;
+    optional bool enable_remove_duplicated_record = 7 [default = false];
+    optional string idx_name = 8;
+    optional bool enable_remove_ts = 9 [default = false];
+    repeated uint32 projection = 10;
+    repeated uint32 pid_group = 11;
+    optional bool use_attachment = 12 [default = false];
+    optional uint32 skip_record_num = 13 [default = 0];
+}
+
+message TraverseRequest {
+    optional uint32 tid = 1;
+    optional uint32 pid = 2;
+    optional string idx_name = 3;
+    optional uint32 limit = 4 [default = 100];
+    optional string pk = 5;
+    optional uint64 ts = 6;
+    optional bool enable_remove_duplicated_record = 7 [default = false];
+    optional bool skip_current_pk = 8 [default = false];
+    optional uint32 ts_pos = 9;
+}
+
+message TraverseResponse {
+    optional bytes pairs = 1;
+    optional string msg = 2;
+    optional int32 code = 3;
+    optional uint32 count = 4;
+    optional string pk = 5;
+    optional uint64 ts = 6;
+    optional bool is_finish = 7;
+    optional uint64 snapshot_id = 8;
+    optional uint32 ts_pos = 9;
+}
+
+message ScanResponse {
+    optional bytes pairs = 1;
+    optional string msg = 2;
+    optional int32 code = 3;
+    optional uint32 count = 4;
+    optional uint32 buf_size = 5;
+    optional bool is_finish = 6 [default = true];
+}
+
+message ReplicaRequest {
+    optional uint32 tid = 1;
+    optional uint32 pid = 2;
+    optional string endpoint = 3;
+    optional TaskInfo task_info = 4;
+    optional uint32 remote_tid = 5;  // for remote
+}
+
+message AddReplicaResponse {
+    optional int32 code = 1;
+    optional string msg = 2;
+}
+
+message TableMeta {
+    optional int32 tid = 1;
+    optional string name = 2;
+    optional int32 pid = 3;
+    optional int32 seg_cnt = 4;
+    // the slave endpoints
+    repeated string replicas = 5;
+    optional TableMode mode = 6;
+    optional uint64 term = 7 [default = 0];
+    optional openmldb.type.CompressType compress_type = 8;
+    optional uint32 key_entry_max_height = 9;
+    repeated openmldb.common.ColumnDesc column_desc = 10;
+    repeated openmldb.common.ColumnKey column_key = 11;
+    repeated openmldb.common.ColumnDesc added_column_desc = 12;
+    // format_version 0 , the legacy format 1 ,the new one
+    optional uint32 format_version = 13 [default = 0];
+    optional string db = 14 [default = ""];
+    repeated common.VersionPair schema_versions = 15;
+    repeated common.TablePartition table_partition = 16;
+    optional openmldb.common.StorageMode storage_mode = 17 [default = kMemory];
+    optional uint32 base_table_tid = 18 [default = 0];
+}
+
+message CreateTableRequest {
+    optional TableMeta table_meta = 1;
+}
+message UpdateTableMetaForAddFieldRequest {
+    optional uint32 tid = 1;
+    optional openmldb.common.ColumnDesc column_desc = 2;
+    repeated openmldb.common.ColumnDesc column_descs = 3;
+    optional openmldb.common.VersionPair version_pair = 4;
+}
+
+message CreateTableResponse {
+    optional int32 code = 1;
+    optional string msg = 2;
+}
+
+message LoadTableRequest {
+    optional TableMeta table_meta = 1;
+    optional TaskInfo task_info = 2;
+}
+
+message DropTableRequest {
+    optional int32 tid = 1;
+    optional int32 pid = 2;
+    optional TaskInfo task_info = 3;
+}
+
+message DropTableResponse {
+    optional int32 code = 1;
+    optional string msg = 2;
+}
+
+message GetTableSchemaRequest {
+    optional int32 tid = 1;
+    optional int32 pid = 2;
+}
+
+message SetExpireRequest {
+    optional int32 tid = 1;
+    optional int32 pid = 2;
+    optional bool is_expire = 3;
+}
+
+message GetTableSchemaResponse {
+    optional int32 code = 1;
+    optional string msg = 2;
+    optional TableMeta table_meta = 3;
+}
+
+message UpdateTTLRequest {
+    optional int32 tid = 1;
+    optional int32 pid = 2;
+    optional openmldb.common.TTLSt ttl = 3;
+    optional string index_name = 5;
+}
+
+message UpdateTTLResponse {
+    optional int32 code = 1;
+    optional string msg = 2;
+}
+
+message LogEntry {
+    // term for leader
+    optional uint64 term = 1;
+    optional uint64 log_index = 2;
+    optional string pk = 3;
+    optional bytes value = 4;
+    optional uint64 ts = 5;
+    repeated Dimension dimensions = 6;
+    optional MethodType method_type = 7;
+    repeated TSDimension ts_dimensions = 8 [deprecated = true];
+}
+
+message AppendEntriesRequest {
+    optional uint64 pre_log_index = 2;
+    repeated LogEntry entries = 4;
+    optional uint32 tid = 6;
+    optional uint32 pid = 7;
+    optional uint64 term = 8;
+}
+
+message AppendEntriesResponse {
+    optional uint64 log_offset = 1;
+    optional int32 code = 2;
+    optional string msg = 3;
+    optional uint64 term = 4;
+}
+
+message ChangeRoleRequest {
+    optional uint32 tid = 1;
+    optional uint32 pid = 2;
+    optional uint64 term = 3;
+    optional TableMode mode = 4;
+    repeated string replicas = 5;
+    repeated openmldb.common.EndpointAndTid endpoint_tid = 6;
+}
+
+message SendSnapshotRequest {
+    required uint32 tid = 1;
+    required uint32 pid = 2;
+    required string endpoint = 3;
+    optional TaskInfo task_info = 4;
+    optional uint32 remote_tid = 5;
+}
+
+message SendIndexDataRequest {
+    message EndpointPair {
+        optional uint32 pid = 1;
+        optional string endpoint = 2;
+    }
+
+    optional uint32 tid = 1;
+    optional uint32 pid = 2;
+    repeated EndpointPair pairs = 3;
+    optional TaskInfo task_info = 4;
+}
+
+message SendDataRequest {
+    required uint32 tid = 1;
+    required uint32 pid = 2;
+    required string file_name = 3;
+    required uint64 block_id = 4;
+    optional uint32 block_size = 5;
+    optional bool eof = 6 [default = false];
+    optional string dir_name = 7;
+    optional openmldb.common.StorageMode storage_mode = 8 [default = kMemory];
+}
+
+message ChangeRoleResponse {
+    optional int32 code = 1;
+    optional string msg = 2;
+}
+
+// Get all table status information on tablet
+message GetTableStatusRequest {
+    optional uint32 tid = 1;
+    optional uint32 pid = 2;
+    optional bool need_schema = 3 [default = false];
+}
+
+message TsIdxStatus {
+    optional string idx_name = 1;
+    repeated uint64 seg_cnts = 2;
+}
+
+// table status message
+message TableStatus {
+    optional uint32 tid = 1;
+    optional uint32 pid = 2;
+    optional uint64 offset = 3;
+    optional TableMode mode = 4;
+    optional TableState state = 5;
+    optional bool is_expire = 7;
+    optional int64 time_offset = 8;
+    optional uint64 record_cnt = 9;
+    optional uint64 idx_cnt = 10;
+    repeated TsIdxStatus ts_idx_status = 11;
+    optional string name = 12;
+    optional uint64 record_byte_size = 13;
+    optional uint64 record_idx_byte_size = 14;
+    optional uint64 record_pk_cnt = 15;
+    optional openmldb.type.CompressType compress_type = 17;
+    optional uint32 skiplist_height = 18;
+    optional uint64 diskused = 19 [default = 0];
+    optional openmldb.common.StorageMode storage_mode = 20 [default = kMemory];
+    optional string snapshot_path = 21;
+    optional string binlog_path = 22;
+}
+
+message GetTableStatusResponse {
+    repeated TableStatus all_table_status = 1;
+    optional int32 code = 2;
+    optional string msg = 3;
+}
+
+message GetRequest {
+    optional uint32 tid = 1;
+    optional uint32 pid = 2;
+    optional string key = 3;
+    optional uint64 ts = 4 [default = 0];
+    optional string idx_name = 5;
+    optional GetType type = 6 [default = kSubKeyEq];
+    optional uint64 et = 7;
+    optional GetType et_type = 8 [default = kSubKeyGe];
+    repeated uint32 projection = 9;
+    repeated uint32 pid_group = 10;
+}
+
+message GetResponse {
+    optional int32 code = 1;
+    optional string msg = 2;
+    optional string key = 3;
+    optional uint64 ts = 4;
+    optional bytes value = 5;
+}
+
+message CountRequest {
+    optional uint32 tid = 1;
+    optional uint32 pid = 2;
+    optional string idx_name = 3;
+    optional string key = 4;
+    optional bool filter_expired_data = 5 [default = false];
+    optional bool enable_remove_duplicated_record = 6 [default = false];
+    optional uint64 st = 7 [default = 0];
+    optional GetType st_type = 8 [default = kSubKeyLe];
+    optional uint64 et = 9 [default = 0];
+    optional GetType et_type = 10 [default = kSubKeyGt];
+}
+
+message CountResponse {
+    optional int32 code = 1;
+    optional string msg = 2;
+    optional uint32 count = 3;
+}
+
+message GetTermPairRequest {
+    optional uint32 tid = 1;
+    optional uint32 pid = 2;
+    optional openmldb.common.StorageMode storage_mode = 3 [default = kMemory];
+}
+
+message GetTermPairResponse {
+    optional int32 code = 1;
+    optional string msg = 2;
+    optional uint64 term = 3;
+    optional uint64 offset = 4;
+    optional bool has_table = 5;
+    optional bool is_leader = 6;
+}
+
+message GetManifestRequest {
+    optional uint32 tid = 1;
+    optional uint32 pid = 2;
+    optional openmldb.common.StorageMode storage_mode = 3 [default = kMemory];
+}
+
+message GetManifestResponse { 
+    optional int32 code = 1;
+    optional string msg = 2;
+    optional Manifest manifest = 3;
+}
+
+message GetTableFollowerRequest {
+    optional uint32 tid = 1;
+    optional uint32 pid = 2;
+}
+
+message FollowerInfo {
+    optional string endpoint = 1;
+    optional uint64 offset = 2;
+}
+
+message GetTableFollowerResponse {
+    optional int32 code = 1;
+    optional string msg = 2;
+    optional uint64 offset = 3;
+    repeated FollowerInfo follower_info = 4;
+}
+
+message CheckFileRequest {
+    optional uint32 tid = 1;
+    optional uint32 pid = 2;
+    optional string file = 3;
+    optional uint64 size = 4;
+    optional string dir_name = 5;
+    optional openmldb.common.StorageMode storage_mode = 6 [default = kMemory];
+}
+
+message AddIndexRequest {
+    optional uint32 tid = 1;
+    optional uint32 pid = 2;
+    optional openmldb.common.ColumnKey column_key = 3;
+    repeated openmldb.common.ColumnKey column_keys = 4;
+}
+
+message SetModeRequest {
+    optional bool follower = 1;
+}
+
+message EmptyRequest {
+
+}
+
+message ConnectZKRequest {
+
+}
+message DisConnectZKRequest {
+
+}
+
+message HttpRequest {
+
+}
+message HttpResponse {
+    
+}
+
+message DeleteIndexRequest {
+    optional uint32 tid = 1;
+    optional uint32 pid = 2;
+    optional string idx_name = 3;
+}
+
+message LoadIndexDataRequest {
+    optional uint32 tid = 1;
+    optional uint32 pid = 2;
+    optional uint32 partition_num = 3;
+    optional TaskInfo task_info = 4;
+}
+
+message ExtractIndexDataRequest {
+    optional uint32 tid = 1;
+    optional uint32 pid = 2;
+    optional uint32 partition_num = 3;
+    repeated openmldb.common.ColumnKey column_key = 5;
+    optional uint64 offset = 6;
+    optional bool dump_data = 7 [default = true];
+    optional TaskInfo task_info = 8;
+}
+
+message Columns {
+    repeated string name = 1;
+    optional bytes value = 2 [default = ""];
+    optional GetType type = 3 [default = kSubKeyEq];
+}
+
+message CancelOPRequest {
+    optional uint64 op_id = 1;
+}
+
+message RealEndpointPair {
+    optional string name = 1;
+    optional string real_endpoint = 2;
+}
+
+message UpdateRealEndpointMapRequest {
+    repeated RealEndpointPair real_endpoint_map = 1; 
+}
+
+message QueryRequest {
+    optional string sql = 1;
+    optional string db = 2;
+    optional bool is_batch = 3;
+    optional bool is_debug = 4 [default = false];
+    optional string sp_name = 5;
+    optional bool is_procedure = 6 [default = false];
+    optional uint64 task_id = 7;
+    optional uint32 row_size = 8;
+    optional uint32 row_slices = 9;
+    optional uint32 parameter_row_size = 10;
+    optional uint32 parameter_row_slices = 11;
+    repeated openmldb.type.DataType parameter_types = 12;
+}
+
+message QueryResponse {
+    optional int32 code = 1;
+    optional string msg = 2;
+    optional uint32 count = 3;
+    optional uint32 byte_size = 4;
+    optional bytes schema = 5;
+    optional uint32 row_slices = 6;
+}
+
+/**
+  * Batch request rows encoding:
+  *   (1) Multiple rows are stored in attachment consecutively and use `row_sizes`
+  *      to find each row's start offset in attachment buffer. Multiple slices in
+  *      row are stored consecutively also, with slice size encoded just in slice data.
+  *
+  *   (2) If non-trival common columns exist
+  *   - `row_sizes` store N+1 integers, the first is the total size of common row part,
+        the next N is total size of each non-common row part from batch.
+  *   - `common_slices` represent common row's slices num.
+  *   - `non_common_slices` represent non-common row's slices num.
+  *   - the actual ith row is concat of common row part and ith non-common row part.
+  *
+  *   (3) else
+  *   - `row_sizes` store N integers, each record total size (sum of slice sizes) of
+        one row from batch.
+  *   - `common_slices` = 0
+  *   - `non_common_slices` represent slices num of each row.
+  */
+message SQLBatchRequestQueryRequest {
+    optional string sql = 1;
+    optional string db = 2;
+    repeated uint32 common_column_indices = 3;
+    optional bool is_debug = 4 [default = false];
+    optional string sp_name = 5;
+    optional bool is_procedure = 6 [default = false];
+    repeated uint32 row_sizes = 7;
+    optional uint32 common_slices = 8;
+    optional uint32 non_common_slices = 9;
+    optional uint64 task_id = 10;
+}
+
+message SQLBatchRequestQueryResponse {
+    optional int32 code = 1;
+    optional string msg = 2;
+    optional uint32 count = 3;
+    optional bytes schema = 4;
+    repeated uint32 common_column_indices = 5;
+    repeated uint32 row_sizes = 6;
+    optional uint32 common_slices = 7;
+    optional uint32 non_common_slices = 8;
+}
+
+message ExplainRequest {
+    optional string sql = 1;
+    optional string db = 2;
+    optional bool is_batch = 3;
+}
+
+message ExplainResponse {
+    optional bytes input_schema = 1;
+    optional string logical_plan = 3;
+    optional string physical_plan = 4;
+    optional string ir = 5;
+    optional bytes output_schema = 6;
+    optional bool is_batch = 7;
+}
+
+message RefreshRequest {
+    optional uint32 tid = 1;
+}
+
+message GetCatalogRequest {
+
+}
+
+message GetCatalogResponse {
+    optional openmldb.common.CatalogInfo catalog = 1;
+    optional int32 code = 2;
+    optional string msg = 3;
+}
+
+message DataBlockInfo {
+    optional uint32 ref_cnt = 1;
+    optional uint64 offset = 2;  // offset in DataRegion
+    optional uint32 length = 3;
+}
+
+message BinlogInfo {
+    repeated Dimension dimensions = 1;
+    repeated TSDimension ts_dimensions = 2;
+    optional int64 time = 3;
+    optional uint32 block_id = 4;
+}
+
+message Segment {
+    optional uint32 id = 1;
+    message KeyEntries {
+        optional bytes key = 1;
+        message KeyEntry {
+            optional uint32 key_entry_id = 1;
+            message TimeEntry {
+                optional uint64 time = 1;
+                optional uint32 block_id = 2;
+            }
+            repeated TimeEntry time_entry = 2;
+        }
+        repeated KeyEntry key_entry = 2;  // ts_cnt_ == key_entry_size()
+    }
+    repeated KeyEntries key_entries = 2;
+}
+
+message BulkLoadIndex {
+    optional uint32 inner_index_id = 1;
+    repeated Segment segment = 2;
+}
+
+// we use attachment(baidu_std supports) to send Data Region
+message BulkLoadRequest {
+    optional uint32 tid = 1;
+    optional uint32 pid = 2;
+    optional int32 part_id = 3;
+    // Data Region: DataBlockInfo & BinlogInfo
+    repeated DataBlockInfo block_info = 4;  // idx is the block id, entries in Index are using the block id
+    repeated BinlogInfo binlog_info = 5;
+    repeated BulkLoadIndex index_region = 6;
+    optional bool eof = 7 [default = false];
+}
+
+message BulkLoadInfoRequest {
+    optional uint32 tid = 1;
+    optional uint32 pid = 2;
+}
+
+message BulkLoadInfoResponse {
+    optional int32 code = 1;
+    optional string msg = 2;
+    optional uint32 seg_cnt = 3;
+    repeated int32 inner_index_pos = 4;
+    message InnerIndexSt {
+        message IndexDef {
+            optional int32 ts_idx = 1 [default = -1];  // -1 means no ts_col
+            optional bool is_ready = 2;
+        }
+        repeated IndexDef index_def = 1;
+    }
+    repeated InnerIndexSt inner_index = 5; // 4&5: Table::table_index_
+
+    message InnerSegments {
+        message Segment {
+            optional uint32 ts_cnt = 1;
+            message MapFieldEntry {
+                required uint32 key = 1; // TODO(hw): java will use int, cpp uses uint32. Not good?
+                required uint32 value = 2;
+            }
+            repeated MapFieldEntry ts_idx_map = 2; // TODO(hw): proto3 supports map
+        }
+        repeated Segment segment = 1;
+    }
+    repeated InnerSegments inner_segments = 6; // MemTable::segments_
+}
+
+message CreateFunctionRequest {
+    optional openmldb.common.ExternalFun fun = 1;
+}
+
+message CreateFunctionResponse {
+    optional int32 code = 1;
+    optional string msg = 2;
+}
+
+message DropFunctionRequest {
+    optional openmldb.common.ExternalFun fun = 1;
+}
+
+message DropFunctionResponse {
+    optional int32 code = 1;
+    optional string msg = 2;
+}
+
+message CreateAggregatorRequest {
+    optional TableMeta base_table_meta = 1;
+    optional uint32 aggr_table_tid = 2;
+    optional uint32 aggr_table_pid = 3;
+    optional uint32 index_pos = 4;
+    optional string aggr_func = 5;
+    optional string aggr_col = 6;
+    optional string order_by_col = 7;
+    optional string bucket_size = 8;
+    optional string filter_col = 9;
+}
+
+message CreateAggregatorResponse {
+    optional int32 code = 1;
+    optional string msg = 2;
+}
+
+message GAFDeployStatsRequest {
+    
+}
+
+message DeployStatsResponse {
+    optional int32 code = 1;
+    optional string msg = 2;
+    message DeployStat {
+        required string deploy_name = 1;
+        // NOTE: time and total is the microsecond string
+        required string time = 2;
+        required uint32 count = 3;
+        required string total = 4;
+    }
+    repeated DeployStat rows = 3;
+}
+
+service TabletServer {
+    // kv storage api for client
+    rpc Put(PutRequest) returns (PutResponse);
+    rpc Get(GetRequest) returns (GetResponse);
+    rpc Scan(ScanRequest) returns (ScanResponse);
+    rpc Delete(DeleteRequest) returns (GeneralResponse);
+    rpc Count(CountRequest) returns (CountResponse);
+    rpc Traverse(TraverseRequest) returns (TraverseResponse);
+
+    // sql api for client
+    rpc Query(QueryRequest) returns (QueryResponse);
+    rpc SubQuery(QueryRequest) returns (QueryResponse);
+    rpc SQLBatchRequestQuery(SQLBatchRequestQueryRequest) returns (SQLBatchRequestQueryResponse);
+    rpc SubBatchRequestQuery(SQLBatchRequestQueryRequest) returns (SQLBatchRequestQueryResponse);
+
+    // table api for nameserver
+    rpc CreateTable(CreateTableRequest) returns (CreateTableResponse);
+    rpc LoadTable(LoadTableRequest) returns (GeneralResponse);
+    rpc DropTable(DropTableRequest) returns (DropTableResponse);
+    rpc GetTableStatus(GetTableStatusRequest) returns (GetTableStatusResponse);
+    rpc GetTableSchema(GetTableSchemaRequest) returns (GetTableSchemaResponse);
+    rpc GetTableFollower(GetTableFollowerRequest) returns (GetTableFollowerResponse);
+    rpc UpdateTTL(UpdateTTLRequest) returns (UpdateTTLResponse);
+    rpc ExecuteGc(ExecuteGcRequest) returns (GeneralResponse);
+
+    // replication api for master
+    rpc AppendEntries(AppendEntriesRequest) returns (AppendEntriesResponse);
+    rpc AddReplica(ReplicaRequest) returns (AddReplicaResponse);
+    rpc DelReplica(ReplicaRequest) returns (GeneralResponse);
+    rpc ChangeRole(ChangeRoleRequest) returns (ChangeRoleResponse);
+    rpc MakeSnapshot(GeneralRequest) returns (GeneralResponse);
+    rpc PauseSnapshot(GeneralRequest) returns (GeneralResponse);
+    rpc RecoverSnapshot(GeneralRequest) returns (GeneralResponse);
+    rpc SendSnapshot(SendSnapshotRequest) returns (GeneralResponse);
+
+    rpc SendData(SendDataRequest) returns (GeneralResponse);
+
+    rpc SetExpire(SetExpireRequest) returns (GeneralResponse);
+
+    // name server interface
+    rpc GetTaskStatus(TaskStatusRequest) returns (TaskStatusResponse);
+    rpc DeleteOPTask(DeleteTaskRequest) returns (GeneralResponse);
+    rpc GetTermPair(GetTermPairRequest) returns (GetTermPairResponse);
+    rpc GetManifest(GetManifestRequest) returns (GetManifestResponse);
+    rpc CheckFile(CheckFileRequest) returns (GeneralResponse);
+    rpc DeleteBinlog(GeneralRequest) returns (GeneralResponse);
+    rpc ShowMemPool(HttpRequest) returns (HttpResponse);
+    rpc GetCatalog(GetCatalogRequest) returns (GetCatalogResponse);
+    rpc ConnectZK(ConnectZKRequest) returns (GeneralResponse);
+    rpc DisConnectZK(DisConnectZKRequest) returns (GeneralResponse);
+    rpc UpdateTableMetaForAddField(UpdateTableMetaForAddFieldRequest) returns (GeneralResponse);
+    rpc SetMode(SetModeRequest) returns (GeneralResponse);
+    rpc GetAllSnapshotOffset(EmptyRequest) returns (TableSnapshotOffsetResponse);
+    rpc AddIndex(AddIndexRequest) returns (GeneralResponse);
+    rpc SendIndexData(SendIndexDataRequest) returns (GeneralResponse);
+    rpc DeleteIndex(DeleteIndexRequest) returns (GeneralResponse);
+    rpc LoadIndexData(LoadIndexDataRequest) returns (GeneralResponse);
+    rpc ExtractIndexData(ExtractIndexDataRequest) returns (GeneralResponse);
+    rpc CancelOP(CancelOPRequest) returns (GeneralResponse);
+    rpc UpdateRealEndpointMap(UpdateRealEndpointMapRequest) returns (GeneralResponse);
+
+    // sql procedure interfaces
+    rpc CreateProcedure(openmldb.api.CreateProcedureRequest) returns (GeneralResponse);
+    rpc DropProcedure(openmldb.api.DropProcedureRequest) returns (GeneralResponse);
+    rpc Refresh(RefreshRequest) returns (GeneralResponse);
+    
+    // TODO(hw): nameserver call this?
+    rpc GetBulkLoadInfo(BulkLoadInfoRequest) returns (BulkLoadInfoResponse);
+    rpc BulkLoad(BulkLoadRequest) returns (GeneralResponse);
+    rpc CreateFunction(CreateFunctionRequest) returns (CreateFunctionResponse);
+    rpc DropFunction(DropFunctionRequest) returns (DropFunctionResponse);
+
+
+    // pre aggregator interfaces
+    rpc CreateAggregator(CreateAggregatorRequest) returns (CreateAggregatorResponse);
+    // monitoring interfaces
+    rpc GetAndFlushDeployStats(GAFDeployStatsRequest) returns (DeployStatsResponse);
+}
+/*
+ * Copyright 2021 4Paradigm
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+syntax = "proto2";
+
+package openmldb.apiserver;
+option java_package = "com._4paradigm.openmldb.proto";
+option cc_generic_services = true;
+
+message HttpRequest {
+
+};
+message HttpResponse {
+
+};
+
+service APIServer {
+  rpc Process(HttpRequest) returns (HttpResponse);
+};
+/*
+ * Copyright 2021 4Paradigm
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+syntax = "proto2";
+
+// datasync is a tool to sync data from online to offline
+// need java package cus SyncTool is a java class
+package openmldb.datasync;
+option java_package = "com._4paradigm.openmldb.proto";
+option java_outer_classname = "DataSync";
+option cc_generic_services = true;
+
+enum SyncType {
+    kSNAPSHOT = 0;
+    kBINLOG = 1;
+}
+
+enum SyncMode {
+    kFull = 0;
+    kIncrementalByTimestamp = 1;
+    kFullAndContinuous = 2;
+}
+
+message GeneralResponse {
+    optional int32 code = 1;
+    optional string msg = 2;
+}
+
+message SyncPoint {
+    required SyncType type = 1;
+    optional string pk = 2;
+    optional uint64 ts = 3;
+    optional uint64 offset = 4;
+}
+
+message AddSyncTaskRequest {
+    optional uint32 tid = 1;
+    optional uint32 pid = 2;
+    optional SyncMode mode = 3; // 3 modes
+    optional uint64 start_ts = 4; // mode 1 INCREMENTAL_BY_TIMESTAMP start ts
+    optional SyncPoint sync_point = 5; // DataCollector should read data from this point, include it
+    optional string tablet_endpoint = 6; // the tablet server connect to
+    optional string des_endpoint = 7; // SyncTool address(which SendData to), may be worker
+    optional string token = 8; // token, DataCollector sends data with it, SyncTool will check it
+    optional string dest = 9; // offline path for sync tool persistency, data collector won't use it
+}
+
+message CreateSyncTaskRequest {
+    optional string db = 1;
+    optional string name = 2;
+    optional SyncMode mode = 3; // 3 modes
+    optional uint64 start_ts = 4; // mode 1 INCREMENTAL_BY_TIMESTAMP start ts
+    optional string dest = 5; // offline path
+}
+
+// only one sync task per table
+message DeleteSyncTaskRequest {
+    optional string db = 1;
+    optional string name = 2;
+}
+
+message TaskStatusRequest {
+    optional bool clear_all = 1;
+}
+
+// used as backup data
+message Task {
+    optional AddSyncTaskRequest progress = 1;
+    optional string data_collector = 2;
+    optional uint64 count = 3;
+    optional string status = 4;
+}
+
+message TaskStatusResponse {
+    optional GeneralResponse response = 1;
+    // all tid-pid tasks
+    repeated Task task = 2;
+    repeated string readableInfo = 3;
+}
+
+message SendDataRequest {
+    optional uint32 tid = 1;
+    optional uint32 pid = 2;
+    optional SyncPoint start_point = 3; // The start point of this data
+    optional uint64 count = 4; // the row count in attachment
+    optional string token = 5;
+    optional bool finished = 6; // if mode 0 and data collector meet the binlog end，tell SyncTool
+    optional SyncPoint next_point = 7; // The NEXT point of this partition, to let SyncTool know the next start point
+    // The data is in attachment
+}
+
+message SendDataResponse {
+    required GeneralResponse response = 1; 
+    optional bool delete_task = 2; // TODO(hw): delete task here. No extra delete task way.
+}
+
+service DataCollector {
+    rpc AddSyncTask(AddSyncTaskRequest) returns (GeneralResponse);
+    // TODO(hw): GetTaskInfo in runtime
+};
+
+service SyncTool {
+    rpc CreateSyncTask(CreateSyncTaskRequest) returns (GeneralResponse);
+    rpc DelelteSyncTask(DeleteSyncTaskRequest) returns (GeneralResponse);
+    rpc TaskStatus(TaskStatusRequest) returns (TaskStatusResponse);
+    rpc SendData(SendDataRequest) returns (SendDataResponse);
+}
+/*
+ * Copyright 2021 4Paradigm
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+syntax = "proto2";
+
+import "type.proto";
+import "common.proto";
+import "google/protobuf/type.proto";
+package openmldb.api;
+
+option cc_generic_services = true;
+option java_package = "com._4paradigm.openmldb.proto";
+option java_outer_classname = "SQLProcedure";
+
+message ProcedureInfo {
+    optional string db_name = 1;
+    optional string sp_name = 2;
+    optional string sql = 3;
+    repeated openmldb.common.ColumnDesc input_schema = 4;
+    repeated openmldb.common.ColumnDesc output_schema = 5;
+    optional string main_table = 6;
+    optional string main_db = 7;
+    repeated openmldb.common.DbTableNamePair tables = 8; // dependent tables
+    optional openmldb.type.ProcedureType type = 9 [default = kReqProcedure];
+    repeated google.protobuf.Option options = 10;
+}
+
+message CreateProcedureRequest {
+    optional ProcedureInfo sp_info = 1;
+    optional uint64 timeout_ms = 2;
+}
+
+message DropProcedureRequest {
+    optional string db_name = 1;
+    optional string sp_name = 2;
+}
+
+message ShowProcedureRequest {
+    optional string db_name = 1;
+    optional string sp_name = 2;
+}
+
+message ShowProcedureResponse {
+    required int32 code = 1;
+    optional string msg = 2;
+    repeated ProcedureInfo sp_info = 3;
+}
+syntax = "proto2";
+
+import "common.proto";
+
+package openmldb.taskmanager;
+
+option java_package = "com._4paradigm.openmldb.proto";
+option java_outer_classname = "TaskManager";
+option cc_generic_services = true;
+
+message JobInfo {
+    required int32 id = 1;
+    optional string job_type = 2;
+    optional string state = 3;
+    optional int64 start_time = 4;
+    optional int64 end_time = 5;
+    optional string parameter = 6;
+    optional string cluster = 7;
+    optional string application_id = 8;
+    optional string error = 9;
+    optional string tracking_url = 10;
+    optional float progress = 11;
+}
+
+message ShowJobsRequest {
+    optional bool unfinished = 1 [default = false];
+};
+
+message ShowJobsResponse {
+    required int32 code = 1;
+    optional string msg = 2;
+    repeated JobInfo jobs = 3;
+}
+
+message ShowJobRequest {
+    required int32 id = 1;
+};
+
+message ShowJobResponse {
+    required int32 code = 1;
+    optional string msg = 2;
+    optional JobInfo job = 3;
+};
+
+message StopJobRequest {
+    required int32 id = 1;
+};
+
+message StopJobResponse {
+    required int32 code = 1;
+    optional string msg = 2;
+    optional JobInfo job = 3;
+};
+
+message DeleteJobRequest {
+    required int32 id = 1;
+};
+
+message DeleteJobResponse {
+    required int32 code = 1;
+    optional string msg = 2;
+};
+
+message ShowBatchVersionRequest {
+    optional bool sync_job = 1 [default = false];
+};
+
+message RunBatchSqlRequest {
+    required string sql = 1;
+    optional map<string,string> conf = 2;
+    optional string default_db = 3 [default = ""];
+};
+
+message RunBatchSqlResponse {
+    required int32 code = 1;
+    optional string msg = 2;
+    optional string output = 3;
+};
+
+message RunBatchAndShowRequest {
+    required string sql = 1;
+    optional map<string,string> conf = 2;
+    optional string default_db = 3 [default = ""];
+    optional bool sync_job = 4 [default = false];
+};
+
+message ImportOnlineDataRequest {
+    required string sql = 1;
+    optional map<string,string> conf = 2;
+    optional string default_db = 3 [default = ""];
+    optional bool sync_job = 4 [default = false];
+};
+
+message ImportOfflineDataRequest {
+    required string sql = 1;
+    optional map<string,string> conf = 2;
+    optional string default_db = 3 [default = ""];
+    optional bool sync_job = 4 [default = false];
+};
+
+message ExportOfflineDataRequest {
+    required string sql = 1;
+    optional map<string,string> conf = 2;
+    optional string default_db = 3 [default = ""];
+    optional bool sync_job = 4 [default = false];
+}
+
+message DropOfflineTableRequest {
+    required string db = 1;
+    required string table = 2;
+};
+
+message DropOfflineTableResponse {
+    required int32 code = 1;
+    optional string msg = 2;
+};
+
+message GetJobLogRequest {
+    required int32 id = 1;
+};
+
+message GetJobLogResponse {
+    required int32 code = 1;
+    optional string msg = 2;
+    optional string log = 3;
+};
+
+message CreateFunctionRequest {
+    optional openmldb.common.ExternalFun fun = 1;
+};
+
+message CreateFunctionResponse {
+    required int32 code = 1;
+    optional string msg = 2;
+};
+
+message DropFunctionRequest {
+    optional string name = 1;
+};
+
+message DropFunctionResponse {
+    required int32 code = 1;
+    optional string msg = 2;
+};
+
+message GetVersionResponse {
+    required string taskmanager_version = 1;
+    required string batch_version = 2;
+};
+
+message EmptyMessage {
+
+};
+
+message SaveJobResultRequest {
+    required int32 result_id = 1;
+    required string json_data = 2;
+}
+
+message SaveJobResultResponse {
+    required int32 code = 1;
+    optional string msg = 2; 
+}
+
+service TaskManagerServer {
+    // Job management
+    rpc ShowJobs(ShowJobsRequest) returns (ShowJobsResponse);
+    rpc ShowJob(ShowJobRequest) returns (ShowJobResponse);
+    rpc StopJob(StopJobRequest) returns (StopJobResponse);
+    rpc DeleteJob(DeleteJobRequest) returns (DeleteJobResponse);
+
+    // Spark jobs
+    rpc ShowBatchVersion(ShowBatchVersionRequest) returns (ShowJobResponse);
+    rpc RunBatchSql(RunBatchSqlRequest) returns (RunBatchSqlResponse);
+    rpc RunBatchAndShow(RunBatchAndShowRequest) returns (ShowJobResponse);
+    rpc ImportOnlineData(ImportOnlineDataRequest) returns (ShowJobResponse);
+    rpc ImportOfflineData(ImportOfflineDataRequest) returns (ShowJobResponse);
+    rpc ExportOfflineData(ExportOfflineDataRequest) returns (ShowJobResponse);
+    rpc DropOfflineTable(DropOfflineTableRequest) returns (DropOfflineTableResponse);
+    rpc GetJobLog(GetJobLogRequest) returns (GetJobLogResponse);
+    rpc CreateFunction(CreateFunctionRequest) returns (CreateFunctionResponse);
+    rpc DropFunction(DropFunctionRequest) returns (DropFunctionResponse);
+
+    // Other APIs
+    rpc GetVersion(EmptyMessage) returns (GetVersionResponse);
+    rpc SaveJobResult(SaveJobResultRequest) returns (SaveJobResultResponse);
+};
