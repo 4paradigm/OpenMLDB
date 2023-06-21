@@ -290,7 +290,7 @@ cases:
     sql: |
       select col1,ifnull(col2 /0 ,100) as e3 from {0};
     expect:
-      columns: ["col1 int", "e3 int"]
+      columns: ["col1 int", "e3 double"]
       order: col1
       rows:
         - [1, 100]
@@ -327,7 +327,7 @@ cases:
     sql: |
       select col1,nvl(col2 /0 ,100) as e3 from {0};
     expect:
-      columns: ["col1 int", "e3 int"]
+      columns: ["col1 int", "e3 double"]
       order: col1
       rows:
         - [1, 100]
