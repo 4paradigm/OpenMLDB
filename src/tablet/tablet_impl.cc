@@ -5741,9 +5741,14 @@ bool TabletImpl::CreateAggregatorInternal(const ::openmldb::api::CreateAggregato
         return false;
     }
     auto aggr_replicator = GetReplicator(request->aggr_table_tid(), request->aggr_table_pid());
-    auto aggregator = ::openmldb::storage::CreateAggregator(
-        base_meta, *aggr_table->GetTableMeta(), aggr_table, aggr_replicator, request->index_pos(), request->aggr_col(),
-        request->aggr_func(), request->order_by_col(), request->bucket_size(), request->filter_col());
+    auto base_table = GetTable(base_meta.tid(), base_meta.pid());
+    if (!base_table) {
+        PDLOG(WARNING, "base table does not exist. tid %u, pid %u", base_meta.tid(), base_meta.pid());
+        return false;
+    }
+    auto aggregator = ::openmldb::storage::CreateAggregator(base_meta, base_table,
+            *aggr_table->GetTableMeta(), aggr_table, aggr_replicator, request->index_pos(), request->aggr_col(),
+            request->aggr_func(), request->order_by_col(), request->bucket_size(), request->filter_col());
     if (!aggregator) {
         msg.assign("create aggregator failed");
         return false;
