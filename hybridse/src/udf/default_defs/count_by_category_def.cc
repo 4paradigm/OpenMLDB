@@ -204,7 +204,7 @@ template <typename K>
 struct TopNValueCountCateWhereDef {
     void operator()(UdafRegistryHelper& helper) {  // NOLINT
         helper.library()
-            ->RegisterUdafTemplate<container::TopNValueImpl<CountCateDef<K>::template Impl>::template Impl>(
+            ->RegisterUdafTemplate<container::TopNCateWhereImpl<CountCateDef<K>::template Impl>::template Impl>(
                 helper.name())
             .doc(helper.GetDoc())
             // type of value

@@ -208,7 +208,7 @@ template <typename K>
 struct TopNValueMaxCateWhereDef {
     void operator()(UdafRegistryHelper& helper) {  // NOLINT
         helper.library()
-            ->RegisterUdafTemplate<container::TopNValueImpl<MaxCateDef<K>::template Impl>::template Impl>(helper.name())
+            ->RegisterUdafTemplate<container::TopNCateWhereImpl<MaxCateDef<K>::template Impl>::template Impl>(helper.name())
             .doc(helper.GetDoc())
             .template args_in<int16_t, int32_t, int64_t, float, double>();
     }

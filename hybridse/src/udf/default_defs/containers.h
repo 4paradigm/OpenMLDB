@@ -55,17 +55,20 @@ struct DefaultTopNValueOperator {
     };
 };
 
-// Top N Value wrapper over *CateWhere
-// Base template class for 'top_n_value_*_cate_where' udafs
+// A top_n_*_cate_where template
+// default impl as top_n_value_*_cate_where
 //
-// CateImpl requirements
+// CateImpl requires
 // - ContainerT
-// - ContainerT* Update(ContainerT* ptr, InputV value, bool is_value_null, InputK key, bool is_key_null)
-// - uint32_t FormatValueFn(const V& val, char* buf, size_t size) {
+// - uint32_t FormatValueFn(const V& val, char* buf, size_t size)
+//
+// Operator requires
+// - Update(...)
+// - Output(...)
 //
 template <template <typename> typename CateImpl,
           template <typename > typename Operator = DefaultTopNValueOperator<CateImpl>::template Impl>
-struct TopNValueImpl {
+struct TopNCateWhereImpl {
     template <typename V>
     struct Impl {
         using GroupContainerT = typename CateImpl<V>::ContainerT;

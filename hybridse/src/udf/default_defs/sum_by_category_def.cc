@@ -212,7 +212,7 @@ template <typename K>
 struct TopNValueSumCateWhereDef {
     void operator()(UdafRegistryHelper& helper) {  // NOLINT
         helper.library()
-            ->RegisterUdafTemplate<container::TopNValueImpl<SumCateDef<K>::template Impl>::template Impl>(helper.name())
+            ->RegisterUdafTemplate<container::TopNCateWhereImpl<SumCateDef<K>::template Impl>::template Impl>(helper.name())
             .doc(helper.GetDoc())
             .template args_in<int16_t, int32_t, int64_t, float, double>();
     }

@@ -174,7 +174,7 @@ struct RatioCmp<Key, std::pair<int64_t, int64_t>> {
 };
 
 template <typename K>
-struct RatioCateDef {
+struct RatioCateTrait {
     template <typename V>
     struct Impl {
         // StorageV is (cond_cnt, total_cnt)
@@ -192,10 +192,10 @@ struct RatioCateDef {
 };
 
 template <typename K>
-struct RatioUpdateAction {
+struct TopNValueRatioCateOp {
     template <typename V>
     struct Impl {
-        using TypeTrait = typename RatioCateDef<K>::template Impl<V>;
+        using TypeTrait = typename RatioCateTrait<K>::template Impl<V>;
         using ContainerT = typename TypeTrait::ContainerT;
         using InputK = typename ContainerT::InputK;
         using InputV = typename ContainerT::InputV;
@@ -227,10 +227,10 @@ struct RatioUpdateAction {
 };
 
 template <typename K>
-struct TopNKeyRatioUpdateAction {
+struct TopNKeyRatioCateOp {
     template <typename V>
     struct Impl {
-        using TypeTrait = typename RatioCateDef<K>::template Impl<V>;
+        using TypeTrait = typename RatioCateTrait<K>::template Impl<V>;
         using ContainerT = typename TypeTrait::ContainerT;
         using InputK = typename ContainerT::InputK;
         using InputV = typename ContainerT::InputV;
@@ -265,11 +265,11 @@ struct TopNKeyRatioUpdateAction {
 };
 
 template <typename K>
-struct TopNKeyRatioCateWhere {
+struct TopNKeyRatioCate {
     void operator()(UdafRegistryHelper& helper) {  // NOLINT
         helper.library()
-            ->RegisterUdafTemplate<container::TopNValueImpl<RatioCateDef<K>::template Impl,
-                                                            TopNKeyRatioUpdateAction<K>::template Impl>::template Impl>(
+            ->RegisterUdafTemplate<container::TopNCateWhereImpl<RatioCateTrait<K>::template Impl,
+                                                            TopNKeyRatioCateOp<K>::template Impl>::template Impl>(
                 helper.name())
             .doc(helper.GetDoc())
             // value category
@@ -278,11 +278,11 @@ struct TopNKeyRatioCateWhere {
 };
 
 template <typename K>
-struct TopNValueRatioCateWhere {
+struct TopNValueRatioCate {
     void operator()(UdafRegistryHelper& helper) {  // NOLINT
         helper.library()
-            ->RegisterUdafTemplate<container::TopNValueImpl<
-                RatioCateDef<K>::template Impl, RatioUpdateAction<K>::template Impl>::template Impl>(
+            ->RegisterUdafTemplate<container::TopNCateWhereImpl<RatioCateTrait<K>::template Impl,
+                                                            TopNValueRatioCateOp<K>::template Impl>::template Impl>(
                 helper.name())
             .doc(helper.GetDoc())
             // value category
@@ -407,7 +407,7 @@ void DefaultUdfLibrary::InitStatisticsUdafs() {
         .args_in<bool, int16_t, int32_t, int64_t, float, double, StringRef, openmldb::base::Timestamp,
                  openmldb::base::Date>();
 
-    RegisterUdafTemplate<TopNKeyRatioCateWhere>("top_n_key_ratio_cate_where")
+    RegisterUdafTemplate<TopNKeyRatioCate>("top_n_key_ratio_cate")
         .doc(R"(
             @brief Ratios (cond match cnt / total cnt) for groups.
 
@@ -440,7 +440,7 @@ void DefaultUdfLibrary::InitStatisticsUdafs() {
         // type of categories
         .args_in<int16_t, int32_t, int64_t, Date, Timestamp, StringRef>();
 
-    RegisterUdafTemplate<TopNValueRatioCateWhere>("top_n_value_ratio_cate_where")
+    RegisterUdafTemplate<TopNValueRatioCate>("top_n_value_ratio_cate")
         .doc(R"(
             @brief Ratios (cond match cnt / total cnt) for groups.
 

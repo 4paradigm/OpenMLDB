@@ -2721,12 +2721,12 @@ cases:
         400, 1-2, 2,  2
 
   - id: 66
-    desc: top_n_value_ratio_cate_where/top_n_key_ratio_cate_where
+    desc: top_n_value_ratio_cate/top_n_key_ratio_cate
     sql: |
       select
         idx,
-        top_n_value_ratio_cate_where(val, val > 100, cate, 2) over w as ratio_by_value,
-        top_n_key_ratio_cate_where(val, val > 100, cate, 2) over w as ratio_by_key
+        top_n_value_ratio_cate(val, val > 100, cate, 2) over w as ratio_by_value,
+        top_n_key_ratio_cate(val, val > 100, cate, 2) over w as ratio_by_key
       from t1
       window w as (
         partition by gp order by ts
