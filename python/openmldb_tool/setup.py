@@ -34,6 +34,7 @@ setup(
         "paramiko",
         "termplotlib",
         "requests",
+        "beautifulsoup4",
     ],
     extras_require={'test': [
         "pytest",
