@@ -8584,20 +8584,22 @@ bool NameServerImpl::AddIndexToTableInfo(const std::string& name, const std::str
     UpdateZkTableNode(table_info);
     // refresh tablet here, cuz this func may be called by task
     // if refresh failed, won't break the process of add index
-    for (const auto& partition : table_info->table_partition()) {
-        for (const auto& meta : partition.partition_meta()) {
-            // locked on the top
-            auto tablet_ptr = GetTabletUnlock(meta.endpoint());
-            if (!tablet_ptr) {
-                LOG(INFO) << "tablet[" << meta.endpoint() << "] can not find client";
-                continue;
-            }
-            if (!tablet_ptr->client_->Refresh(table_info->tid())) {
-                LOG(WARNING) << "refresh table" << name << " on " << meta.endpoint() << " failed";
-                continue;
-            }
+    std::set<std::string> endpoint_set;
+    for (const auto& part : table_info->table_partition()) {
+        for (const auto& meta : part.partition_meta()) {
+            endpoint_set.insert(meta.endpoint());
         }
     }
+    // locked on top
+    for (const auto& tablet : tablets_) {
+        if (!tablet.second->Health()) {
+            continue;
+        }
+        if (endpoint_set.count(tablet.first) == 0) {
+            tablet.second->client_->Refresh(table_info->tid());
+        }
+    }
+
     PDLOG(INFO, "add index ok. table %s index cnt %d", name.c_str(), column_key.size());
     if (task_info) {
         task_info->set_status(::openmldb::api::TaskStatus::kDone);
