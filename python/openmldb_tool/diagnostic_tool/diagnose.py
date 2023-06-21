@@ -15,6 +15,7 @@
 # limitations under the License.
 
 import argparse
+import json
 import os
 import textwrap
 import time
@@ -30,6 +31,7 @@ from diagnostic_tool.collector import Collector
 import diagnostic_tool.server_checker as checker
 from diagnostic_tool.table_checker import TableChecker
 from diagnostic_tool.parser import LogParser
+from diagnostic_tool.rpc import RPC
 
 from absl import app
 from absl import flags
@@ -222,6 +224,17 @@ def static_check(args):
         LogAnalyzer(dist_conf, flags.FLAGS.collect_dir).run()
 
 
+def rpc(args):
+    host = args.host
+    operation = args.operation
+    field = json.loads(args.field)
+    rpc_service = RPC(host, operation, field)
+    if args.hint:
+        rpc_service.hint(args.hint)
+        return
+    rpc_service()
+
+
 def parse_arg(argv):
     """parser definition, absl.flags + argparse"""
     parser = argparse_flags.ArgumentParser(
@@ -324,6 +337,29 @@ def parse_arg(argv):
         "--log", "-L", action="store_true", help="check log"
     )
     static_check_parser.set_defaults(command=static_check)
+
+    # sub rpc
+    rpc_parser = subparsers.add_parser(
+        "rpc",
+        help="",
+    )
+    rpc_parser.add_argument(
+        "host"
+    )
+    rpc_parser.add_argument(
+        "operation",
+        nargs="?",
+        default="",
+    )
+    rpc_parser.add_argument(
+        "--field",
+        default="{}",
+    )
+    rpc_parser.add_argument(
+        "--hint",
+        help=""
+    )
+    rpc_parser.set_defaults(command=rpc)
 
     def help(args):
         parser.print_help()
