@@ -218,7 +218,8 @@ template <typename K>
 struct TopNValueAvgCateWhereDef {
     void operator()(UdafRegistryHelper& helper) {  // NOLINT
         helper.library()
-            ->RegisterUdafTemplate<container::TopNCateWhereImpl<AvgCateDef<K>::template Impl>::template Impl>(helper.name())
+            ->RegisterUdafTemplate<container::TopNCateWhereImpl<AvgCateDef<K>::template Impl>::template Impl>(
+                helper.name())
             .doc(helper.GetDoc())
             .template args_in<int16_t, int32_t, int64_t, float, double>();
     }

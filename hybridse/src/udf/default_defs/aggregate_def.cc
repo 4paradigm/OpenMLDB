@@ -269,7 +269,7 @@ struct TopNKeyRatioCate {
     void operator()(UdafRegistryHelper& helper) {  // NOLINT
         helper.library()
             ->RegisterUdafTemplate<container::TopNCateWhereImpl<RatioCateTrait<K>::template Impl,
-                                                            TopNKeyRatioCateOp<K>::template Impl>::template Impl>(
+                                                                TopNKeyRatioCateOp<K>::template Impl>::template Impl>(
                 helper.name())
             .doc(helper.GetDoc())
             // value category
@@ -282,7 +282,7 @@ struct TopNValueRatioCate {
     void operator()(UdafRegistryHelper& helper) {  // NOLINT
         helper.library()
             ->RegisterUdafTemplate<container::TopNCateWhereImpl<RatioCateTrait<K>::template Impl,
-                                                            TopNValueRatioCateOp<K>::template Impl>::template Impl>(
+                                                                TopNValueRatioCateOp<K>::template Impl>::template Impl>(
                 helper.name())
             .doc(helper.GetDoc())
             // value category

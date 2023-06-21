@@ -217,7 +217,8 @@ template <typename K>
 struct TopNValueMinCateWhereDef {
     void operator()(UdafRegistryHelper& helper) {  // NOLINT
         helper.library()
-            ->RegisterUdafTemplate<container::TopNCateWhereImpl<MinCateDef<K>::template Impl>::template Impl>(helper.name())
+            ->RegisterUdafTemplate<container::TopNCateWhereImpl<MinCateDef<K>::template Impl>::template Impl>(
+                helper.name())
             .doc(helper.GetDoc())
             .template args_in<int16_t, int32_t, int64_t, float, double>();
     }
