@@ -363,7 +363,7 @@ TEST_F(SqlCmdTest, SelectMultiPartition) {
 }
 
 TEST_F(SqlCmdTest, ShowNameserverJob) {
-    auto sr = cluster_cli.sr;
+    sr = cluster_cli.sr;
     std::string db_name = "test" + GenRand();
     std::string name = "table" + GenRand();
     std::string ddl = "create table " + name +

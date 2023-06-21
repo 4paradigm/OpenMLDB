@@ -190,7 +190,7 @@ void ProcessSQLs(sdk::SQLRouter* sr, std::initializer_list<absl::string_view> sq
 
 void ExpectResultSetStrEq(const std::vector<std::vector<CellExpectInfo>>& expect, hybridse::sdk::ResultSet* rs,
                           bool ordered) {
-    ASSERT_EQ(expect.size(), rs->Size() + 1);
+    ASSERT_EQ(expect.size(), static_cast<uint64_t>(rs->Size()) + 1);
     size_t idx = 0;
     // schema check
     ASSERT_EQ(expect.front().size(), rs->GetSchema()->GetColumnCnt());

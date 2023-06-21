@@ -8585,9 +8585,9 @@ bool NameServerImpl::AddIndexToTableInfo(const std::string& name, const std::str
     // refresh tablet here, cuz this func may be called by task
     // if refresh failed, won't break the process of add index
     for (const auto& partition : table_info->table_partition()) {
-        uint32_t pid = partition.pid();
         for (const auto& meta : partition.partition_meta()) {
-            auto tablet_ptr = GetTablet(meta.endpoint());
+            // locked on the top
+            auto tablet_ptr = GetTabletUnlock(meta.endpoint());
             if (!tablet_ptr) {
                 LOG(INFO) << "tablet[" << meta.endpoint() << "] can not find client";
                 continue;
@@ -9575,9 +9575,8 @@ void NameServerImpl::ShowProcedure(RpcController* controller, const api::ShowPro
     }
 }
 
-std::shared_ptr<TabletInfo> NameServerImpl::GetTablet(const std::string& endpoint) {
+std::shared_ptr<TabletInfo> NameServerImpl::GetTabletUnlock(const std::string& endpoint) {
     std::shared_ptr<TabletInfo> tablet_ptr;
-    std::lock_guard<std::mutex> lock(mu_);
     auto iter = tablets_.find(endpoint);
     // check tablet if exist
     if (iter == tablets_.end()) {
@@ -9589,6 +9588,11 @@ std::shared_ptr<TabletInfo> NameServerImpl::GetTablet(const std::string& endpoin
         return {};
     }
     return tablet_ptr;
+}
+
+std::shared_ptr<TabletInfo> NameServerImpl::GetTablet(const std::string& endpoint) {
+    std::lock_guard<std::mutex> lock(mu_);
+    return GetTabletUnlock(endpoint);
 }
 
 void NameServerImpl::CreateDatabaseOrExit(const std::string& db) {
