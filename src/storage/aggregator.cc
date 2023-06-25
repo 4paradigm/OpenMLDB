@@ -248,7 +248,7 @@ bool Aggregator::Delete(const std::string& key, const std::optional<uint64_t>& s
         return false;
     }
     if (!start_ts.has_value() && !end_ts.has_value()) {
-        return Delete(key, start_ts, end_ts);
+        return DeleteData(key, start_ts, end_ts);
     }
     uint64_t real_start_ts = start_ts.has_value() ? start_ts.value() : UINT64_MAX;
     std::vector<AggrBufferLocked*> aggr_buffer_lock_vec;
@@ -256,7 +256,13 @@ bool Aggregator::Delete(const std::string& key, const std::optional<uint64_t>& s
         std::lock_guard<std::mutex> lock(mu_);
         if (auto it = aggr_buffer_map_.find(key); it != aggr_buffer_map_.end()) {
             for (auto& kv : it->second) {
-                aggr_buffer_lock_vec.push_back(&kv.second);
+                auto& buffer = kv.second.buffer_;
+                if (buffer.IsInited()) {
+                    if (!(static_cast<uint64_t>(buffer.ts_begin_) > real_start_ts ||
+                                (end_ts.has_value() && static_cast<uint64_t>(buffer.ts_end_) < end_ts.value()))) {
+                        aggr_buffer_lock_vec.push_back(&kv.second);
+                    }
+                }
             }
         }
     }
@@ -275,11 +281,18 @@ bool Aggregator::Delete(const std::string& key, const std::optional<uint64_t>& s
     }
     std::optional<uint64_t> delete_start_ts = std::nullopt;
     std::optional<uint64_t> delete_end_ts = std::nullopt;
+    bool first_block = true;
     while (it->Valid()) {
         uint64_t buffer_start_ts = it->GetKey();
         uint64_t buffer_end_ts = 0;
         auto aggr_row_ptr =  reinterpret_cast<const int8_t*>(it->GetValue().data());
         aggr_row_view_.GetValue(aggr_row_ptr, 2, DataType::kTimestamp, &buffer_end_ts);
+        if (first_block) {
+            first_block = false;
+            if (end_ts.has_value() && end_ts.value() >= buffer_end_ts) {
+                return true;
+            }
+        }
         if (real_start_ts <= buffer_end_ts && real_start_ts >= buffer_start_ts) {
             RebuildFlushedAggrBuffer(key, aggr_row_ptr);
             delete_start_ts = buffer_start_ts;
@@ -299,7 +312,10 @@ bool Aggregator::Delete(const std::string& key, const std::optional<uint64_t>& s
         }
         it->Next();
     }
-    return DeleteData(key, delete_start_ts, delete_end_ts);
+    if (delete_start_ts.has_value()) {
+        return DeleteData(key, delete_start_ts, delete_end_ts);
+    }
+    return true;
 }
 
 bool Aggregator::RebuildFlushedAggrBuffer(const std::string& key, const int8_t* row_ptr) {
