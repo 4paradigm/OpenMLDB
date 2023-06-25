@@ -113,15 +113,16 @@ jobs:
             name: openmldb-package       
       - name: install openmldb
         run: |
-          mkdir mvnrepo
-          export MAVEN_OPTS="-Dmaven.repo.local=$(pwd)/mvnrepo"
-          echo $MAVEN_OPTS
           tar -zxf openmldb-linux.tar.gz -C ${{ github.job }}/
           bash test/steps/format_config.sh $(pwd)/${{ github.job }}/openmldb-${{ github.event.inputs.EXEC_VERSION }}-linux ${{ github.job }} 21001 22000 java
           bash ${{ github.job }}/openmldb-${{ github.event.inputs.EXEC_VERSION }}-linux/sbin/deploy-all.sh
           bash ${{ github.job }}/openmldb-${{ github.event.inputs.EXEC_VERSION }}-linux/sbin/start-all.sh
       - name: test
-        run:  bash test/steps/openmldb-sdk-test-java-src.sh -c test_cluster.xml -d deploy -l "1,2,3,4,5" -s "memory"   
+        run: |
+          mkdir mvnrepo
+          export MAVEN_OPTS="-Dmaven.repo.local=$(pwd)/mvnrepo"
+          echo $MAVEN_OPTS
+          bash test/steps/openmldb-sdk-test-java-src.sh -c test_cluster.xml -d deploy -l "1,2,3,4,5" -s "memory"   
       - name: stop openmldb
         if: always()
         run: bash ${{ github.job }}/openmldb-${{ github.event.inputs.EXEC_VERSION }}-linux/sbin/stop-all.sh
@@ -167,15 +168,16 @@ jobs:
             name: openmldb-package       
       - name: install openmldb
         run: |
-          mkdir mvnrepo
-          export MAVEN_OPTS="-Dmaven.repo.local=$(pwd)/mvnrepo"
-          echo $MAVEN_OPTS
           tar -zxf openmldb-linux.tar.gz -C ${{ github.job }}/
           bash test/steps/format_config.sh $(pwd)/${{ github.job }}/openmldb-${{ github.event.inputs.EXEC_VERSION }}-linux ${{ github.job }} 22001 23000 java
           bash ${{ github.job }}/openmldb-${{ github.event.inputs.EXEC_VERSION }}-linux/sbin/deploy-all.sh
           bash ${{ github.job }}/openmldb-${{ github.event.inputs.EXEC_VERSION }}-linux/sbin/start-all.sh
       - name: test
-        run:  bash test/steps/openmldb-sdk-test-java-src.sh -c test_cluster_disk.xml -d deploy -l "0" -s "hdd"
+        run: |
+          mkdir mvnrepo
+          export MAVEN_OPTS="-Dmaven.repo.local=$(pwd)/mvnrepo"
+          echo $MAVEN_OPTS
+          bash test/steps/openmldb-sdk-test-java-src.sh -c test_cluster_disk.xml -d deploy -l "0" -s "hdd"
       - name: stop openmldb
         if: always()
         run: bash ${{ github.job }}/openmldb-${{ github.event.inputs.EXEC_VERSION }}-linux/sbin/stop-all.sh
@@ -220,15 +222,16 @@ jobs:
             name: openmldb-package       
       - name: install openmldb
         run: |
-          mkdir mvnrepo
-          export MAVEN_OPTS="-Dmaven.repo.local=$(pwd)/mvnrepo"
-          echo $MAVEN_OPTS
           tar -zxf openmldb-linux.tar.gz -C ${{ github.job }}/
           bash test/steps/format_config.sh $(pwd)/${{ github.job }}/openmldb-${{ github.event.inputs.EXEC_VERSION }}-linux java-sdk-cluster-memory-0 23001 24000 java ssd
           bash ${{ github.job }}/openmldb-${{ github.event.inputs.EXEC_VERSION }}-linux/sbin/deploy-all.sh
           bash ${{ github.job }}/openmldb-${{ github.event.inputs.EXEC_VERSION }}-linux/sbin/start-all.sh
       - name: test
-        run:  bash test/steps/openmldb-sdk-test-java-src.sh -c test_cluster_disk.xml -d deploy -l "0" -s "ssd"
+        run: |
+          mkdir mvnrepo
+          export MAVEN_OPTS="-Dmaven.repo.local=$(pwd)/mvnrepo"
+          echo $MAVEN_OPTS
+          bash test/steps/openmldb-sdk-test-java-src.sh -c test_cluster_disk.xml -d deploy -l "0" -s "ssd"
       - name: stop openmldb
         if: always()
         run: bash ${{ github.job }}/openmldb-${{ github.event.inputs.EXEC_VERSION }}-linux/sbin/stop-all.sh
@@ -272,15 +275,16 @@ jobs:
             name: openmldb-package       
       - name: install openmldb
         run: |
-          mkdir mvnrepo
-          export MAVEN_OPTS="-Dmaven.repo.local=$(pwd)/mvnrepo"
-          echo $MAVEN_OPTS
           tar -zxf openmldb-linux.tar.gz -C ${{ github.job }}/
           bash test/steps/format_config.sh $(pwd)/${{ github.job }}/openmldb-${{ github.event.inputs.EXEC_VERSION }}-linux ${{ github.job }} 24001 25000 java
           bash ${{ github.job }}/openmldb-${{ github.event.inputs.EXEC_VERSION }}-linux/sbin/deploy-all.sh
           bash ${{ github.job }}/openmldb-${{ github.event.inputs.EXEC_VERSION }}-linux/sbin/start-all.sh
       - name: test
-        run: bash test/steps/openmldb-sdk-test-java-src.sh -c test_yarn.xml -d deploy -l "0" -s "memory"
+        run: |
+          mkdir mvnrepo
+          export MAVEN_OPTS="-Dmaven.repo.local=$(pwd)/mvnrepo"
+          echo $MAVEN_OPTS
+          bash test/steps/openmldb-sdk-test-java-src.sh -c test_yarn.xml -d deploy -l "0" -s "memory"
       - name: stop openmldb
         if: always()
         run: bash ${{ github.job }}/openmldb-${{ github.event.inputs.EXEC_VERSION }}-linux/sbin/stop-all.sh
@@ -325,15 +329,16 @@ jobs:
             name: openmldb-package       
       - name: install openmldb
         run: |
-          mkdir mvnrepo
-          export MAVEN_OPTS="-Dmaven.repo.local=$(pwd)/mvnrepo"
-          echo $MAVEN_OPTS
           tar -zxf openmldb-linux.tar.gz -C ${{ github.job }}/
           bash test/steps/format_config.sh $(pwd)/${{ github.job }}/openmldb-${{ github.event.inputs.EXEC_VERSION }}-linux ${{ github.job }} 25001 26000 java kafka
           bash ${{ github.job }}/openmldb-${{ github.event.inputs.EXEC_VERSION }}-linux/sbin/deploy-all.sh
           bash ${{ github.job }}/openmldb-${{ github.event.inputs.EXEC_VERSION }}-linux/sbin/start-all.sh
       - name: test
-        run: bash test/steps/openmldb-sdk-test-java-src.sh -c test_yarn.xml -d deploy -l "0" -s "memory"
+        run: |
+          mkdir mvnrepo
+          export MAVEN_OPTS="-Dmaven.repo.local=$(pwd)/mvnrepo"
+          echo $MAVEN_OPTS
+          bash test/steps/openmldb-sdk-test-java-src.sh -c test_yarn.xml -d deploy -l "0" -s "memory"
       - name: stop openmldb
         if: always()
         run: bash ${{ github.job }}/openmldb-${{ github.event.inputs.EXEC_VERSION }}-linux/sbin/stop-all.sh
