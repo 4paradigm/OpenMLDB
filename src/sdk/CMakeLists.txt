@@ -299,6 +299,10 @@ list(REMOVE_ITEM ABSL_LLVM_LIBS "")
 
 # Find path of libraries in ${ABSL_LLVM_LIBS}
 foreach(X  IN LISTS ABSL_LLVM_LIBS)
+    get_target_property(type ${X} TYPE)
+    if (${type} STREQUAL "INTERFACE_LIBRARY")
+        continue()
+    endif()
     get_property(_loc TARGET ${X} PROPERTY LOCATION)
     list(APPEND ABSL_LLVM_PATH ${_loc})
 endforeach()
