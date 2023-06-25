@@ -28,5 +28,7 @@ jobs:
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
     # Runs a single command using the runners shell
-      - run:  export MAVEN_OPTS=\"-Dmaven.repo.local=$(pwd)\"
-      - run:  echo $MAVEN_OPTS
+      - run: | 
+          bash mkdir mvnrepo
+          bash export MAVEN_OPTS="-Dmaven.repo.local=$(pwd)/mvnrepo"
+          bash echo $MAVEN_OPTS
