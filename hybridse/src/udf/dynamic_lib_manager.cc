@@ -31,8 +31,8 @@ DynamicLibManager::~DynamicLibManager() {
     handle_map_.clear();
 }
 
-base::Status DynamicLibManager::ExtractFunction(const std::string& name, bool is_aggregate,
-        const std::string& file, std::vector<void*>* funs) {
+base::Status DynamicLibManager::ExtractFunction(const std::string& name, bool is_aggregate, const std::string& file,
+                                                std::vector<void*>* funs) {
     CHECK_TRUE(funs != nullptr, common::kExternalUDFError, "funs is nullptr")
     std::shared_ptr<DynamicLibHandle> so_handle;
     {
@@ -45,7 +45,8 @@ base::Status DynamicLibManager::ExtractFunction(const std::string& name, bool is
     }
     if (!so_handle) {
         void* handle = dlopen(file.c_str(), RTLD_LAZY);
-        CHECK_TRUE(handle != nullptr, common::kExternalUDFError, "can not open the dynamic library: " + file + ", error: " + dlerror())
+        CHECK_TRUE(handle != nullptr, common::kExternalUDFError,
+                   "can not open the dynamic library: " + file + ", error: " + dlerror())
         so_handle = std::make_shared<DynamicLibHandle>(handle);
         std::lock_guard<std::mutex> lock(mu_);
         handle_map_.emplace(file, so_handle);
@@ -96,8 +97,7 @@ base::Status DynamicLibManager::RemoveHandler(const std::string& file) {
         }
     }
     if (so_handle) {
-        CHECK_TRUE(dlclose(so_handle->handle) == 0, common::kExternalUDFError,
-                "dlclose run error. file is " + file)
+        CHECK_TRUE(dlclose(so_handle->handle) == 0, common::kExternalUDFError, "dlclose run error. file is " + file)
     }
     return {};
 }
