@@ -26,6 +26,8 @@
 #include "proto/common.pb.h"
 #include "proto/fe_type.pb.h"
 #include "sdk/base.h"
+#include "vm/engine.h"
+#include "vm/simple_catalog.h"
 
 namespace hybridse::vm {
 class RunSession;
@@ -39,6 +41,10 @@ int64_t AbsTTLConvert(int64_t time_ms, bool zero_eq_unbounded);
 int64_t LatTTLConvert(int64_t time_ms, bool zero_eq_unbounded);
 
 using IndexMap = std::map<std::string, std::vector<::openmldb::common::ColumnKey>>;
+using MultiDBIndexMap = std::map<std::string, IndexMap>;
+
+using TableDescMap = std::map<std::string, std::vector<openmldb::common::ColumnDesc>>;
+using MultiDBTableDescMap = std::map<std::string, TableDescMap>;
 
 struct LongWindowInfo {
     std::string window_name_;
@@ -61,55 +67,68 @@ using LongWindowInfos = std::vector<LongWindowInfo>;
 
 class DDLParser {
  public:
-    /** core funcs(with arg ::hybridse::type::Database) **/
-    // returns the index map which has no dup index(same key, same ts, different ttl)
-    static IndexMap ExtractIndexes(const std::string& sql, const ::hybridse::type::Database& db);
-    static IndexMap ExtractIndexesForBatch(const std::string& sql, const ::hybridse::type::Database& db);
-    static std::string Explain(const std::string& sql, const ::hybridse::type::Database& db);
-    static std::shared_ptr<hybridse::sdk::Schema> GetOutputSchema(const std::string& sql,
-                                                                  const hybridse::type::Database& db);
-    // returns
-    // 1. empty list: means valid
-    // 2. otherwise a list(len 2):[0] the error msg; [1] the trace
-    static std::vector<std::string> ValidateSQLInBatch(const std::string& sql, const hybridse::type::Database& db);
-    static std::vector<std::string> ValidateSQLInRequest(const std::string& sql, const hybridse::type::Database& db);
+    /** core funcs(with arg catalog), returns the index map which has no dup index(same key, same ts, different ttl) **/
+    static MultiDBIndexMap ExtractIndexes(const std::string& sql, const std::string& used_db,
+                                          const std::shared_ptr<hybridse::vm::SimpleCatalog>& catalog);
 
-    /** interfaces, the arg schema's type can be varied **/
-    static IndexMap ExtractIndexes(
-        const std::string& sql,
-        const std::map<std::string, ::google::protobuf::RepeatedPtrField<::openmldb::common::ColumnDesc>>& schemas);
-
-    static IndexMap ExtractIndexes(const std::string& sql,
-                                   const std::map<std::string, std::vector<::openmldb::common::ColumnDesc>>& schemas);
+    static std::vector<std::string> ValidateSQLInBatch(const std::string& sql, const std::string& db,
+                                                       const std::shared_ptr<hybridse::vm::SimpleCatalog>& catalog);
+    // validate in request mode, use mock request session, we can't do real request cuz no index input now
+    static std::vector<std::string> ValidateSQLInRequest(const std::string& sql, const std::string& db,
+                                                         const std::shared_ptr<hybridse::vm::SimpleCatalog>& catalog);
 
     static std::shared_ptr<hybridse::sdk::Schema> GetOutputSchema(
-        const std::string& sql, const std::map<std::string, std::vector<::openmldb::common::ColumnDesc>>& schemas);
+        const std::string& sql, const std::string& db, const std::shared_ptr<hybridse::vm::SimpleCatalog>& catalog);
+
+    static bool Explain(const std::string& sql, const std::string& db,
+                        const std::shared_ptr<hybridse::vm::SimpleCatalog>& catalog,
+                        hybridse::vm::ExplainOutput* output);
+
+    /** interfaces, the arg schema's type can be varied **/
+    static IndexMap ExtractIndexes(const std::string& sql, const TableDescMap& schemas);
+    // request mode, multi db, you can use <db>.<table> in sql, if has <table>, use the current used db.
+    static MultiDBIndexMap ExtractIndexes(const std::string& sql, const std::string& used_db,
+                                          const MultiDBTableDescMap& schemas);
+
+    // request mode, multi db
+    static std::shared_ptr<hybridse::sdk::Schema> GetOutputSchema(const std::string& sql, const std::string& db,
+                                                                  const MultiDBTableDescMap& schemas);
 
     static hybridse::sdk::Status ExtractLongWindowInfos(const std::string& sql,
                                                         const std::unordered_map<std::string, std::string>& window_map,
                                                         LongWindowInfos* infos);
+    // returns
+    // 1. empty list: means valid
+    // 2. otherwise a list(len 2):[0] the error msg; [1] the trace
+    static std::vector<std::string> ValidateSQLInBatch(const std::string& sql, const std::string& db,
+                                                       const MultiDBTableDescMap& schemas);
 
-    static std::vector<std::string> ValidateSQLInBatch(
-        const std::string& sql, const std::map<std::string, std::vector<::openmldb::common::ColumnDesc>>& schemas);
+    static std::vector<std::string> ValidateSQLInRequest(const std::string& sql, const std::string& db,
+                                                         const MultiDBTableDescMap& schemas);
 
-    static std::vector<std::string> ValidateSQLInRequest(
-        const std::string& sql, const std::map<std::string, std::vector<::openmldb::common::ColumnDesc>>& schemas);
+    static bool Explain(const std::string& sql, const std::string& db, const MultiDBTableDescMap& schemas,
+                        hybridse::vm::ExplainOutput* output);
+
+    // for ut, to check index works well
+    static std::string PhysicalPlan(const std::string& sql, const ::hybridse::type::Database& db);
 
  private:
-    // tables are in one db, and db name will be rewritten for simplicity
-    static IndexMap ExtractIndexes(const std::string& sql, const hybridse::type::Database& db,
-                                   hybridse::vm::RunSession* session);
-
     // DLR
-    static IndexMap ParseIndexes(hybridse::vm::PhysicalOpNode* node);
+    static MultiDBIndexMap ParseIndexes(hybridse::vm::PhysicalOpNode* node);
 
-    static bool GetPlan(const std::string& sql, const hybridse::type::Database& db, hybridse::vm::RunSession* session);
-    // If you want the status, use this
-    static bool GetPlan(const std::string& sql, const hybridse::type::Database& db, hybridse::vm::RunSession* session,
+    // real get plan func, multi db should use catalog, don't forget init catalog with enable_index=true
+    // if you want the status, use this func
+    static bool GetPlan(const std::string& sql, const std::string& db,
+                        const std::shared_ptr<hybridse::vm::SimpleCatalog>& catalog, hybridse::vm::RunSession* session,
                         hybridse::base::Status* status);
+    /** multi APIs **/
+    static bool GetPlan(const std::string& sql, const std::string& db,
+                        const std::shared_ptr<hybridse::vm::SimpleCatalog>& catalog, hybridse::vm::RunSession* session);
 
     template <typename T>
-    static void AddTables(const T& schema, hybridse::type::Database* db);
+    static void AddTables(const T& table_defs, hybridse::type::Database* db);
+
+    static std::shared_ptr<hybridse::vm::SimpleCatalog> buildCatalog(const MultiDBTableDescMap& schemas);
 
     // traverse plan tree to extract all long window infos
     static bool TraverseNode(hybridse::node::PlanNode* node,
