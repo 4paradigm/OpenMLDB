@@ -29,7 +29,5 @@ jobs:
     steps:
     # Runs a single command using the runners shell
     - name: Send greeting
-      run: ｜
-        echo "Hello ${{ inputs.name }}"
-        export MAVEN_OPTS=\"-Dmaven.repo.local=$(pwd)\"
-        echo $MAVEN_OPTS
+    - run:  export MAVEN_OPTS=\"-Dmaven.repo.local=$(pwd)\"
+    - run:  echo $MAVEN_OPTS
