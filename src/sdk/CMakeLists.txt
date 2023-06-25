@@ -12,7 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-if(TESTING_ENABLE)
+# coverage test won't run tests below, but they are *_test, so if COVERAGE_NO_DEPS, disable build
+if(TESTING_ENABLE AND NOT COVERAGE_NO_DEPS)
     set(THIRD_LIBS benchmark_main benchmark ${GTEST_LIBRARIES} yaml-cpp)
 
     add_library(mini_cluster_bm_common mini_cluster_bm.cc)
