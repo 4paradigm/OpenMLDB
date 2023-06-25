@@ -29,5 +29,6 @@ jobs:
     steps:
     # Runs a single command using the runners shell
       - run:  mkdir mvnrepo
-      - run:  export MAVEN_OPTS="-Dmaven.repo.local=$(pwd)/mvnrepo"
-      - run:  echo $MAVEN_OPTS
+      - run: |
+          export MAVEN_OPTS="-Dmaven.repo.local=$(pwd)/mvnrepo"
+          echo $MAVEN_OPTS
