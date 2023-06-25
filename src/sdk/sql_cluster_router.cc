@@ -3265,8 +3265,8 @@ hybridse::sdk::Status SQLClusterRouter::HandleCreateFunction(const hybridse::nod
 }
 
 hybridse::sdk::Status SQLClusterRouter::HandleDeploy(const std::string& db,
-        const hybridse::node::DeployPlanNode* deploy_node,
-        std::optional<uint64_t>* job_id) {
+                                                     const hybridse::node::DeployPlanNode* deploy_node,
+                                                     std::optional<uint64_t>* job_id) {
     hybridse::sdk::Status status;
     if (db.empty()) {
         return {StatusCode::kCmdError, "database is empty"};
@@ -3301,16 +3301,12 @@ hybridse::sdk::Status SQLClusterRouter::HandleDeploy(const std::string& db,
     }
 
     auto& table_pair = explain_output.dependent_tables;
-    std::set<std::string> db_set;
     for (auto& table : table_pair) {
-        db_set.insert(table.first);
         auto db_table = sp_info.add_tables();
         db_table->set_db_name(table.first);
         db_table->set_table_name(table.second);
     }
-    if (db_set.size() > 1) {
-        return {StatusCode::kCmdError, "unsupport multi database"};
-    }
+
     std::stringstream str_stream;
     str_stream << "CREATE PROCEDURE " << deploy_node->Name() << " (";
     for (int idx = 0; idx < input_schema->size(); idx++) {
@@ -3334,26 +3330,27 @@ hybridse::sdk::Status SQLClusterRouter::HandleDeploy(const std::string& db,
         option->mutable_value()->set_value(o.second->GetExprString());
     }
 
-    std::vector<::openmldb::nameserver::TableInfo> tables;
-    auto ns = cluster_sdk_->GetNsClient();
-    // TODO(denglong): support multi db
-    auto ret = ns->ShowDBTable(db, &tables);
-    if (!ret.OK()) {
-        return {StatusCode::kCmdError, "get table failed " + ret.msg};
-    }
-    std::map<std::string, ::openmldb::nameserver::TableInfo> table_map;
+    TableInfoMap table_map;
     uint64_t record_cnt = 0;
-    for (const auto& table : tables) {
-        for (const auto& pair : table_pair) {
-            if (table.name() == pair.second) {
-                table_map.emplace(table.name(), table);
-                for (int idx = 0; idx < table.table_partition_size(); idx++) {
-                    record_cnt += table.table_partition(idx).record_cnt();
-                }
-                break;
-            }
+    std::vector<::openmldb::nameserver::TableInfo> tables;
+    std::string msg;
+    auto ns = cluster_sdk_->GetNsClient();
+    for (const auto& pair : table_pair) {
+        tables.clear();
+        // args: table name, db name, ...
+        auto ok = ns->ShowTable(pair.second, pair.first, false, tables, msg);
+        if (!ok) {
+            return {StatusCode::kCmdError, msg};
+        }
+        if (tables.empty() || tables.size() > 1) {
+            return {StatusCode::kCmdError, "table not found or more than one table found"};
+        }
+        table_map[pair.first][pair.second] = tables[0];
+        for (int idx = 0; idx < tables[0].table_partition_size(); idx++) {
+            record_cnt += tables[0].table_partition(idx).record_cnt();
         }
     }
+
     bool skip_index_check = false;
     auto iter = deploy_node->Options()->find(SKIP_INDEX_CHECK_OPTION);
     if (iter != deploy_node->Options()->end()) {
@@ -3363,13 +3360,16 @@ hybridse::sdk::Status SQLClusterRouter::HandleDeploy(const std::string& db,
         }
     }
 
-    base::IndexMap new_index_map;
-    auto index_status = GetNewIndex(table_map, select_sql, skip_index_check, &new_index_map);
-    if (!index_status.IsOK()) {
-        return index_status;
+    base::MultiDBIndexMap new_index_map;
+    // merge index, update exists index ttl in table, get new index to create
+    auto get_index_status = GetNewIndex(table_map, select_sql, db, skip_index_check, &new_index_map);
+    if (!get_index_status.IsOK()) {
+        return get_index_status;
     }
+
     if (!new_index_map.empty()) {
         if (cluster_sdk_->IsClusterMode() && record_cnt > 0) {
+            // long windows only support one table(no join/union), no secondary table, so no multi db support
             auto lw_status = HandleLongWindows(deploy_node, table_pair, select_sql);
             if (!lw_status.IsOK()) {
                 return lw_status;
@@ -3406,7 +3406,7 @@ hybridse::sdk::Status SQLClusterRouter::HandleDeploy(const std::string& db,
                     if (response.op_status(0).status() == "kDone") {
                         return {};
                     } else if (response.op_status(0).status() == "kFailed" ||
-                            response.op_status(0).status() == "kCanceled") {
+                               response.op_status(0).status() == "kCanceled") {
                         return {-1, absl::StrCat("op status is ", response.op_status(0).status())};
                     }
                     uint64_t cur_ts = ::baidu::common::timer::get_micros() / 1000;
@@ -3420,7 +3420,7 @@ hybridse::sdk::Status SQLClusterRouter::HandleDeploy(const std::string& db,
             }
             return {};
         } else {
-            auto add_index_status = AddNewIndex(db, table_map, new_index_map);
+            auto add_index_status = AddNewIndex(new_index_map);
             if (!add_index_status.IsOK()) {
                 return add_index_status;
             }
@@ -3430,6 +3430,7 @@ hybridse::sdk::Status SQLClusterRouter::HandleDeploy(const std::string& db,
     if (!lw_status.IsOK()) {
         return lw_status;
     }
+
     auto ob_status = ns->CreateProcedure(sp_info, options_->request_timeout);
     if (!ob_status.OK()) {
         APPEND_FROM_BASE_AND_WARN(&status, ob_status, "ns create procedure failed");
@@ -3438,84 +3439,101 @@ hybridse::sdk::Status SQLClusterRouter::HandleDeploy(const std::string& db,
     return {};
 }
 
-hybridse::sdk::Status SQLClusterRouter::GetNewIndex(
-    const std::map<std::string, ::openmldb::nameserver::TableInfo>& table_map, const std::string& select_sql,
-    bool skip_index_check, std::map<std::string, std::vector<::openmldb::common::ColumnKey>>* new_index_map) {
-    std::map<std::string, ::google::protobuf::RepeatedPtrField<::openmldb::common::ColumnDesc>> table_schema_map;
-    for (const auto& kv : table_map) {
-        table_schema_map.emplace(kv.first, kv.second.column_desc());
+hybridse::sdk::Status SQLClusterRouter::GetNewIndex(const TableInfoMap& table_map, const std::string& select_sql,
+                                                    const std::string& db, bool skip_index_check,
+                                                    base::MultiDBIndexMap* new_index_map) {
+    // convert info map to desc map
+    base::MultiDBTableDescMap table_desc_map;
+    for (auto& db_table : table_map) {
+        for (auto& kv : db_table.second) {
+            table_desc_map[db_table.first].emplace(
+                kv.first,
+                std::vector<common::ColumnDesc>{kv.second.column_desc().begin(), kv.second.column_desc().end()});
+        }
     }
-    auto index_map = base::DDLParser::ExtractIndexes(select_sql, table_schema_map);
+    auto index_map = base::DDLParser::ExtractIndexes(select_sql, db, table_desc_map);
     auto ns = cluster_sdk_->GetNsClient();
-    for (auto& kv : index_map) {
-        // for each table, the indexs to be added may be dup(key&ts may be the same, ttl may be different, it's still
-        // called dup) so we need to merge them, and after merge, if the new index is the same as the existed one(in
-        // table), we do update, not create
-        std::string table_name = kv.first;
-        std::vector<::openmldb::common::ColumnKey> extract_column_keys = kv.second;
-        auto it = table_map.find(table_name);
-        if (it == table_map.end()) {
-            return {StatusCode::kCmdError, "table " + table_name + "does not exist"};
-        }
-        auto& table = it->second;
-        std::set<std::string> col_set;
-        for (const auto& column_desc : table.column_desc()) {
-            col_set.insert(column_desc.name());
-        }
-        std::map<std::string, ::openmldb::common::ColumnKey> exists_index_map;
-        for (const auto& column_key : table.column_key()) {
-            if (exists_index_map.find(openmldb::schema::IndexUtil::GetIDStr(column_key)) != exists_index_map.end()) {
-                LOG(WARNING) << "exist two indexes which are the same id "
-                             << openmldb::schema::IndexUtil::GetIDStr(column_key) << " in table " << table_name;
-            }
-            exists_index_map.emplace(openmldb::schema::IndexUtil::GetIDStr(column_key), column_key);
-        }
-        int cur_index_num = table.column_key_size();
-        int add_index_num = 0;
+    for (auto& db_index : index_map) {
+        auto& db_name = db_index.first;
+        for (auto& kv : db_index.second) {
+            // for each table, the indexs to be added may be dup(key&ts may be the same, ttl may be different, it's
+            // still called dup) so we need to merge them, and after merge, if the new index is the same as the existed
+            // one(in table), we do update, not create
+            std::string table_name = kv.first;
+            std::vector<::openmldb::common::ColumnKey> extract_column_keys = kv.second;
 
-        // extract_column_keys won't have dup indexs, just check if the indexs are the same as the existed ones
-        std::vector<::openmldb::common::ColumnKey> new_indexs;
-        for (auto& column_key : extract_column_keys) {
-            auto index_id = openmldb::schema::IndexUtil::GetIDStr(column_key);
-            auto it = exists_index_map.find(index_id);
-            if (it != exists_index_map.end()) {
-                auto& old_column_key = it->second;
-                common::TTLSt result;
-                // if skip index check, we don't do update ttl, for backward compatibility(server <=0.8.0)
-                if (base::TTLMerge(old_column_key.ttl(), column_key.ttl(), &result) && !skip_index_check) {
-                    // update ttl
-                    auto ns_ptr = cluster_sdk_->GetNsClient();
-                    std::string err;
-                    if (!ns_ptr->UpdateTTL(table_name, result.ttl_type(), result.abs_ttl(), result.lat_ttl(),
-                                           old_column_key.index_name(), err)) {
-                        return {StatusCode::kCmdError, "update ttl failed"};
-                    }
+            // gen existed index map
+            auto it = table_map.find(db_name);
+            if (it == table_map.end()) {
+                return {StatusCode::kCmdError, "db " + db_name + "does not exist"};
+            }
+            auto table_it = it->second.find(table_name);
+            if (table_it == it->second.end()) {
+                return {StatusCode::kCmdError, "table " + table_name + " does not exist"};
+            }
+            auto& table = table_it->second;
+            std::set<std::string> col_set;
+            for (const auto& column_desc : table.column_desc()) {
+                col_set.insert(column_desc.name());
+            }
+            std::map<std::string, ::openmldb::common::ColumnKey> exists_index_map;
+            for (const auto& column_key : table.column_key()) {
+                if (exists_index_map.find(openmldb::schema::IndexUtil::GetIDStr(column_key)) !=
+                    exists_index_map.end()) {
+                    LOG(WARNING) << "exist two indexes which are the same id "
+                                 << openmldb::schema::IndexUtil::GetIDStr(column_key) << " in table " << table_name;
                 }
-            } else {
-                column_key.set_index_name(absl::StrCat("INDEX_", cur_index_num + add_index_num, "_",
-                            ::baidu::common::timer::now_time()));
-                add_index_num++;
-                new_indexs.emplace_back(column_key);
+                exists_index_map.emplace(openmldb::schema::IndexUtil::GetIDStr(column_key), column_key);
             }
-        }
 
-        if (!new_indexs.empty()) {
-            new_index_map->emplace(table_name, std::move(new_indexs));
+            int cur_index_num = table.column_key_size();
+            int add_index_num = 0;
+            // extract_column_keys & exists_index_map won't have dup indexs, just check if the indexs are the same as
+            // the existed ones
+            std::vector<::openmldb::common::ColumnKey> new_indexs;
+            for (auto& column_key : extract_column_keys) {
+                auto index_id = openmldb::schema::IndexUtil::GetIDStr(column_key);
+                auto it = exists_index_map.find(index_id);
+                if (it != exists_index_map.end()) {
+                    auto& old_column_key = it->second;
+                    common::TTLSt result;
+                    // if skip index check, we don't do update ttl, for backward compatibility(server <=0.8.0)
+                    if (base::TTLMerge(old_column_key.ttl(), column_key.ttl(), &result) && !skip_index_check) {
+                        // update ttl
+                        auto ns_ptr = cluster_sdk_->GetNsClient();
+                        std::string err;
+                        if (!ns_ptr->UpdateTTL(table_name, result.ttl_type(), result.abs_ttl(), result.lat_ttl(),
+                                               old_column_key.index_name(), err)) {
+                            return {StatusCode::kCmdError, "update ttl failed"};
+                        }
+                    }
+                } else {
+                    column_key.set_index_name(
+                        absl::StrCat("INDEX_", cur_index_num + add_index_num, "_", ::baidu::common::timer::now_time()));
+                    add_index_num++;
+                    new_indexs.emplace_back(column_key);
+                }
+            }
+
+            if (!new_indexs.empty()) {
+                (*new_index_map)[db_name].emplace(table_name, std::move(new_indexs));
+            }
         }
     }
     return {};
 }
 
-hybridse::sdk::Status SQLClusterRouter::AddNewIndex(
-    const std::string& db, const std::map<std::string, ::openmldb::nameserver::TableInfo>& table_map,
-    const std::map<std::string, std::vector<::openmldb::common::ColumnKey>>& new_index_map) {
+hybridse::sdk::Status SQLClusterRouter::AddNewIndex(const base::MultiDBIndexMap& new_index_map) {
     auto ns = cluster_sdk_->GetNsClient();
-    for (auto& kv : new_index_map) {
-        bool skip_load_data = cluster_sdk_->IsClusterMode();
-        auto status = ns->AddMultiIndex(db, kv.first, kv.second, skip_load_data);
-        if (!status.OK()) {
-            return {StatusCode::kCmdError,
-                absl::StrCat("table [", db, ".", kv.first, "] add index failed. ", status.msg)};
+    for (auto& db_map : new_index_map) {
+        auto& db = db_map.first;
+        for (auto& kv : db_map.second) {
+            bool skip_load_data = cluster_sdk_->IsClusterMode();
+            auto status = ns->AddMultiIndex(db, kv.first, kv.second, skip_load_data);
+            if (!status.OK()) {
+                return {StatusCode::kCmdError,
+                        absl::StrCat("table [", db, ".", kv.first, "] add index failed. ", status.msg)};
+            }
         }
     }
     return {};
