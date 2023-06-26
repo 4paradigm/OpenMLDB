@@ -177,6 +177,9 @@ jobs:
 
       - name: build
         run: |
+          which ar
+          brew install gcc-binutils
+          which ar
           make build
           # GitHub runner disk space is limited
           # delete thirdparty build directory($ROOT/.deps/) to save disk space
