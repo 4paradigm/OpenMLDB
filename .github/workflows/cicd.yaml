@@ -178,7 +178,7 @@ jobs:
       - name: build
         run: |
           brew install binutils
-          echo 'export PATH="/usr/local/opt/binutils/bin:$PATH"' >> $GITHUB_ENV
+          export PATH="/usr/local/opt/binutils/bin:$PATH"
           which ar
           ar --version
           make build
