@@ -257,11 +257,9 @@ bool Aggregator::Delete(const std::string& key, const std::optional<uint64_t>& s
         if (auto it = aggr_buffer_map_.find(key); it != aggr_buffer_map_.end()) {
             for (auto& kv : it->second) {
                 auto& buffer = kv.second.buffer_;
-                if (buffer.IsInited()) {
-                    if (!(static_cast<uint64_t>(buffer.ts_begin_) > real_start_ts ||
-                                (end_ts.has_value() && static_cast<uint64_t>(buffer.ts_end_) < end_ts.value()))) {
-                        aggr_buffer_lock_vec.push_back(&kv.second);
-                    }
+                if (buffer.IsInited() && real_start_ts >= static_cast<uint64_t>(buffer.ts_begin_) &&
+                        (!end_ts.has_value() || end_ts.value() < static_cast<uint64_t>(buffer.ts_end_))) {
+                    aggr_buffer_lock_vec.push_back(&kv.second);
                 }
             }
         }
@@ -281,44 +279,70 @@ bool Aggregator::Delete(const std::string& key, const std::optional<uint64_t>& s
     }
     std::optional<uint64_t> delete_start_ts = std::nullopt;
     std::optional<uint64_t> delete_end_ts = std::nullopt;
-    bool first_block = true;
+    bool is_first_block = true;
     while (it->Valid()) {
         uint64_t buffer_start_ts = it->GetKey();
         uint64_t buffer_end_ts = 0;
         auto aggr_row_ptr =  reinterpret_cast<const int8_t*>(it->GetValue().data());
         aggr_row_view_.GetValue(aggr_row_ptr, 2, DataType::kTimestamp, &buffer_end_ts);
-        if (first_block) {
-            first_block = false;
-            if (end_ts.has_value() && end_ts.value() >= buffer_end_ts) {
-                return true;
+        if (is_first_block) {
+            is_first_block = false;
+            if (!end_ts.has_value() || end_ts.value() < buffer_end_ts) {
+                real_start_ts = std::min(buffer_end_ts, real_start_ts);
             }
         }
-        if (real_start_ts <= buffer_end_ts && real_start_ts >= buffer_start_ts) {
-            RebuildFlushedAggrBuffer(key, aggr_row_ptr);
-            delete_start_ts = buffer_start_ts;
+        if (real_start_ts <= buffer_end_ts) {
             if (end_ts.has_value()) {
-                if (end_ts.value() >= buffer_start_ts) {
-                    // range data in one aggregate buffer
-                    return true;
+                delete_end_ts = buffer_start_ts;
+            }
+            if (real_start_ts >= buffer_start_ts) {
+                RebuildFlushedAggrBuffer(key, aggr_row_ptr);
+                // start delete from next block
+                delete_start_ts = buffer_start_ts > 0 ? buffer_start_ts - 1 : 0;
+                if (end_ts.has_value()) {
+                    if (end_ts.value() >= buffer_start_ts) {
+                        // range data in one aggregate buffer
+                        return true;
+                    }
+                } else {
+                    break;
                 }
-            } else {
-                break;
+                it->Next();
+                continue;
             }
         }
-        if (end_ts.has_value() && end_ts.value() <= buffer_end_ts && end_ts.value() >= buffer_start_ts) {
-            RebuildFlushedAggrBuffer(key, aggr_row_ptr);
-            delete_end_ts = buffer_end_ts;
-            break;
+        if (end_ts.has_value()) {
+            if (end_ts.value() >= buffer_end_ts) {
+                break;
+            } else {
+                delete_end_ts = buffer_start_ts > 0 ? buffer_start_ts - 1 : 0;
+                if (end_ts.value() >= buffer_start_ts) {
+                    // end delete with last block
+                    delete_end_ts = buffer_end_ts;
+                    if (delete_start_ts.has_value() && delete_start_ts.value() <= buffer_end_ts) {
+                        // two adjacent blocks, no delete
+                        delete_start_ts.reset();
+                        delete_end_ts.reset();
+                    }
+                    RebuildFlushedAggrBuffer(key, aggr_row_ptr);
+                    break;
+                }
+            }
         }
         it->Next();
     }
-    if (delete_start_ts.has_value()) {
+    if (delete_start_ts.has_value() || delete_end_ts.has_value()) {
+        if (delete_start_ts.has_value() && delete_end_ts.has_value() &&
+                delete_start_ts.value() <= delete_end_ts.value()) {
+            return true;
+        }
         return DeleteData(key, delete_start_ts, delete_end_ts);
     }
     return true;
 }
 
 bool Aggregator::RebuildFlushedAggrBuffer(const std::string& key, const int8_t* row_ptr) {
+    DLOG(INFO) << "RebuildFlushedAggrBuffer. key is " << key;
     AggrBuffer buffer;
     if (!GetAggrBufferFromRowView(aggr_row_view_, row_ptr, &buffer)) {
         PDLOG(WARNING, "GetAggrBufferFromRowView failed");
@@ -354,9 +378,13 @@ bool Aggregator::RebuildAggrBuffer(const std::string& key, AggrBuffer* aggr_buff
     }
     int64_t ts_begin = aggr_buffer->ts_begin_;
     int64_t ts_end = aggr_buffer->ts_end_;
+    uint64_t binlog_offset = aggr_buffer->binlog_offset_;
+    auto data_type = aggr_buffer->data_type_;
     aggr_buffer->Clear();
     aggr_buffer->ts_begin_ = ts_begin;
     aggr_buffer->ts_end_ = ts_end;
+    aggr_buffer->binlog_offset_ = binlog_offset;
+    aggr_buffer->data_type_ = data_type;
     it->Seek(ts_end);
     while (it->Valid()) {
         if (it->GetKey() < static_cast<uint64_t>(ts_begin)) {
@@ -367,6 +395,7 @@ bool Aggregator::RebuildAggrBuffer(const std::string& key, AggrBuffer* aggr_buff
             PDLOG(WARNING, "Failed to update aggr Val during rebuilding Extermum aggr buffer");
             return false;
         }
+        aggr_buffer->aggr_cnt_++;
         it->Next();
     }
     return true;
