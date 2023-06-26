@@ -48,9 +48,6 @@ class ColumnTypes;
 }  // namespace sdk
 }  // namespace hybridse
 
-// save the results of SQL query
-static std::shared_ptr<hybridse::sdk::ResultSet> resultset_last;
-
 // TimeStamp corresponds to TIMESTAMP in SQL, as a parameter inserted into ParameterRow or RequestRow
 // constructor : only one parameter of type int_64
 class TimeStamp {
@@ -99,8 +96,34 @@ class OpenmldbHandler {
  public:
     OpenmldbHandler(std::string zk_cluster, std::string zk_path);
     OpenmldbHandler(std::string host, uint32_t _port);
+    OpenmldbHandler(openmldb::sdk::SQLClusterRouter* router) { router_ = router; }
     ~OpenmldbHandler();
     openmldb::sdk::SQLClusterRouter* get_router() const { return router_; }
+
+    // execute() is used to execute SQL statements without parameters
+    // first parameter :         OpenmldbHandler
+    // second parameter :    string                        pass SQL statement
+    bool execute(const std::string& sql);
+
+    // execute() is used to execute SQL statements without parameters
+    // first parameter :         OpenmldbHandler     a object of type OpenmldbHandler
+    // second parameter :    string                        name of database
+    // third parameter :        string                        SQL statement
+    bool execute(const std::string& db, const std::string& sql);
+
+    // execute_parameterized() is used to execute SQL statements with parameters
+    // first parameter :        OpenmldbHandler     a object of type OpenmldbHandler
+    // second parameter :    string                        name of database
+    // third parameter :        string                        SQL statement
+    // forth parameter :        ParameterRow          a object of type ParameterRow
+    bool execute_parameterized(const std::string& db, const std::string& sql, const ParameterRow& para);
+
+    // execute_request() is used to execute SQL of request mode
+    // only one parameter,  a object of type RequestRow
+    bool execute_request(const RequestRow& req);
+
+    // get the results of the latest SQL query
+    std::shared_ptr<hybridse::sdk::ResultSet> get_resultset() { return resultset_last_; }
     hybridse::sdk::Status* get_status() const { return status_; }
 
  private:
@@ -108,10 +131,9 @@ class OpenmldbHandler {
     OpenmldbHandler& operator=(const OpenmldbHandler&);
 
  private:
-    openmldb::sdk::SQLRouterOptions* cluster_ = nullptr;
-    openmldb::sdk::StandaloneOptions* standalone_ = nullptr;
+    hybridse::sdk::Status* status_ = new hybridse::sdk::Status();
     openmldb::sdk::SQLClusterRouter* router_ = nullptr;
-    hybridse::sdk::Status* status_ = nullptr;
+    std::shared_ptr<hybridse::sdk::ResultSet> resultset_last_;
 };
 
 // In the request with parameter and request mode of openmldb, the position of parameters to be filled is indicated by
@@ -181,32 +203,6 @@ class RequestRow {
     std::string sql_;
     uint32_t str_length_ = 0;
 };
-
-// execute() is used to execute SQL statements without parameters
-// first parameter :         OpenmldbHandler
-// second parameter :    string                        pass SQL statement
-bool execute(const OpenmldbHandler& handler, const std::string& sql);
-
-// execute() is used to execute SQL statements without parameters
-// first parameter :         OpenmldbHandler     a object of type OpenmldbHandler
-// second parameter :    string                        name of database
-// third parameter :        string                        SQL statement
-bool execute(const OpenmldbHandler& handler, const std::string& db, const std::string& sql);
-
-// execute_parameterized() is used to execute SQL statements with parameters
-// first parameter :        OpenmldbHandler     a object of type OpenmldbHandler
-// second parameter :    string                        name of database
-// third parameter :        string                        SQL statement
-// forth parameter :        ParameterRow          a object of type ParameterRow
-bool execute_parameterized(const OpenmldbHandler& handler, const std::string& db, const std::string& sql,
-                           const ParameterRow& para);
-
-// execute_request() is used to execute SQL of request mode
-// only one parameter,  a object of type RequestRow
-bool execute_request(const RequestRow& req);
-
-// get the results of the latest SQL query
-std::shared_ptr<hybridse::sdk::ResultSet> get_resultset();
 
 // print_resultset() is used to print the results of SQL query
 // only one parameter,  a object of type shared_ptr<hybridse::sdk::ResultSet>

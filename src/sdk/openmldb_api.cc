@@ -24,30 +24,25 @@
 #include "sdk/request_row.h"
 #include "sdk/sql_cluster_router.h"
 
-
 OpenmldbHandler::OpenmldbHandler(std::string _zk_cluster, std::string _zk_path) {
-    cluster_ = new openmldb::sdk::SQLRouterOptions;
-    cluster_->zk_cluster = _zk_cluster;
-    cluster_->zk_path = _zk_path;
-    status_ = new hybridse::sdk::Status;
-    router_ = new openmldb::sdk::SQLClusterRouter(*cluster_);
+    openmldb::sdk::SQLRouterOptions cluster;
+    cluster.zk_cluster = _zk_cluster;
+    cluster.zk_path = _zk_path;
+    router_ = new openmldb::sdk::SQLClusterRouter(cluster);
     router_->Init();
 }
 
 OpenmldbHandler::OpenmldbHandler(std::string _host, uint32_t _port) {
-    standalone_ = new openmldb::sdk::StandaloneOptions;
-    standalone_->host = _host;
-    standalone_->port = _port;
-    status_ = new hybridse::sdk::Status;
-    router_ = new openmldb::sdk::SQLClusterRouter(*standalone_);
+    openmldb::sdk::StandaloneOptions standalone;
+    standalone.host = _host;
+    standalone.port = _port;
+    router_ = new openmldb::sdk::SQLClusterRouter(standalone);
     router_->Init();
 }
 
 OpenmldbHandler::~OpenmldbHandler() {
-    if (cluster_ != nullptr) delete cluster_;
-    if (standalone_ != nullptr) delete standalone_;
     delete status_;
-    delete router_;
+    if (router_ != nullptr) delete router_;
 }
 
 ParameterRow::ParameterRow(const OpenmldbHandler* handler) : handler_(handler) {
@@ -77,8 +72,8 @@ std::shared_ptr<openmldb::sdk::SQLRequestRow> ParameterRow::get_parameter_row() 
                 break;
             case ::hybridse::sdk::kTypeDate:
                 sql_parameter_row_->AppendDate(std::any_cast<int32_t>(record_[i]),
-                        std::any_cast<int32_t>(record_[i + 1]),
-                        std::any_cast<int32_t>(record_[i + 2]));
+                                               std::any_cast<int32_t>(record_[i + 1]),
+                                               std::any_cast<int32_t>(record_[i + 2]));
                 i = i + 2;
                 break;
             case ::hybridse::sdk::kTypeFloat:
@@ -151,7 +146,7 @@ ParameterRow& ParameterRow::operator<<(const double value) {
     return *this;
 }
 
-ParameterRow& ParameterRow::operator<<(const std::string&value) {
+ParameterRow& ParameterRow::operator<<(const std::string& value) {
     parameter_types_->AddColumnType(::hybridse::sdk::kTypeString);
     str_length_ += value.length();
     record_.push_back(value);
@@ -280,7 +275,7 @@ RequestRow& RequestRow::operator<<(const double value) {
     return *this;
 }
 
-RequestRow& RequestRow::operator<<(const std::string&value) {
+RequestRow& RequestRow::operator<<(const std::string& value) {
     parameter_types_->AddColumnType(::hybridse::sdk::kTypeString);
     str_length_ += value.length();
     record_.push_back(value);
@@ -306,37 +301,34 @@ void RequestRow::reset() {
     str_length_ = 0;
 }
 
-bool execute(const OpenmldbHandler& handler, const std::string& sql) {
-    auto rs = (handler.get_router())->ExecuteSQL(sql, handler.get_status());
-    if (rs != NULL) resultset_last = rs;
-    return (handler.get_status())->IsOK();
+bool OpenmldbHandler::execute(const std::string& sql) {
+    auto rs = (get_router())->ExecuteSQL(sql, get_status());
+    if (rs != NULL) resultset_last_ = rs;
+    return (get_status())->IsOK();
 }
 
-bool execute(const OpenmldbHandler& handler, const std::string& db, const std::string& sql) {
-    auto rs = (handler.get_router())->ExecuteSQL(db, sql, handler.get_status());
-    if (rs != NULL) resultset_last = rs;
-    return (handler.get_status())->IsOK();
+bool OpenmldbHandler::execute(const std::string& db, const std::string& sql) {
+    auto rs = (get_router())->ExecuteSQL(db, sql, get_status());
+    if (rs != NULL) resultset_last_ = rs;
+    return (get_status())->IsOK();
 }
 
-bool execute_parameterized(const OpenmldbHandler& handler, const std::string& db, const std::string& sql,
-                           const ParameterRow& para) {
+bool OpenmldbHandler::execute_parameterized(const std::string& db, const std::string& sql, const ParameterRow& para) {
     auto pr = para.get_parameter_row();
-    auto rs = (handler.get_router())->ExecuteSQLParameterized(db, sql, pr, handler.get_status());
-    if (rs != NULL) resultset_last = rs;
-    return (handler.get_status())->IsOK();
+    auto rs = (get_router())->ExecuteSQLParameterized(db, sql, pr, get_status());
+    if (rs != NULL) resultset_last_ = rs;
+    return (get_status())->IsOK();
 }
 
-bool execute_request(const RequestRow& req) {
+bool OpenmldbHandler::execute_request(const RequestRow& req) {
     auto rr = req.get_request_row();
     auto rs = ((req.get_handler())->get_router())
                   ->ExecuteSQLRequest(req.get_db(), req.get_sql(), rr, (req.get_handler())->get_status());
-    if (rs != NULL) resultset_last = rs;
+    if (rs != NULL) resultset_last_ = rs;
     return ((req.get_handler())->get_status())->IsOK();
 }
 
-std::shared_ptr<hybridse::sdk::ResultSet> get_resultset() { return resultset_last; }
-
-void print_resultset(std::shared_ptr<hybridse::sdk::ResultSet> rs = resultset_last) {
+void print_resultset(std::shared_ptr<hybridse::sdk::ResultSet> rs) {
     if (rs == nullptr) {
         std::cout << "resultset is NULL\n";
         return;
