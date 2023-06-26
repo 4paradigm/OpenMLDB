@@ -167,6 +167,8 @@ class OpenmldbHandler {
     OpenmldbHandler(std::string host, uint32_t _port);
     OpenmldbHandler(std::shared_ptr<openmldb::sdk::SQLClusterRouter> router);
     ~OpenmldbHandler();
+
+    bool is_connected() { return router_ != nullptr; }
     std::shared_ptr<openmldb::sdk::SQLClusterRouter> get_router() const { return router_; }
 
     // execute() is used to execute SQL statements without parameters

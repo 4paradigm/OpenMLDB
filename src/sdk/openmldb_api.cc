@@ -30,7 +30,9 @@ OpenmldbHandler::OpenmldbHandler(std::string _zk_cluster, std::string _zk_path) 
     cluster.zk_cluster = _zk_cluster;
     cluster.zk_path = _zk_path;
     router_ = std::make_shared<openmldb::sdk::SQLClusterRouter>(cluster);
-    router_->Init();
+    if (!router_->Init()) {
+        router_ = nullptr;
+    }
 }
 
 OpenmldbHandler::OpenmldbHandler(std::string _host, uint32_t _port) {
@@ -39,7 +41,9 @@ OpenmldbHandler::OpenmldbHandler(std::string _host, uint32_t _port) {
     standalone.host = _host;
     standalone.port = _port;
     router_ = std::make_shared<openmldb::sdk::SQLClusterRouter>(standalone);
-    router_->Init();
+    if (!router_->Init()) {
+        router_ = nullptr;
+    }
 }
 
 OpenmldbHandler::OpenmldbHandler(std::shared_ptr<openmldb::sdk::SQLClusterRouter> router) {

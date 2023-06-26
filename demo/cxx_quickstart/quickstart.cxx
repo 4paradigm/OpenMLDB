@@ -12,7 +12,10 @@ int main() {
     // 集群版：参数（ip:port, path），如：OpenmldbHandler handler("127.0.0.1:2181", "/openmldb")；
     // 在此以单机版为示例。
     OpenmldbHandler handler("127.0.0.1:2181", "/openmldb");
-
+    if (!handler.is_connected()) {
+        std::cout << "connect failed" << std::endl;
+        return -1;
+    }
     // 定义数据库名
     std::time_t t = std::time(0);
     std::string db = "test_db" + std::to_string(t);
@@ -90,15 +93,20 @@ int main() {
     //      | Hi~  | 5                 |
     //      +------+--------------------+
 
-
     // multi thread example
 
     OpenmldbHandler h1("127.0.0.1:2181", "/openmldb");
     OpenmldbHandler h2(h1.get_router());
 
-    std::thread t1([&](){ h1.execute("show components;"); print_resultset(h1.get_resultset());});
+    std::thread t1([&]() {
+        h1.execute("show components;");
+        print_resultset(h1.get_resultset());
+    });
 
-    std::thread t2([&](){ h2.execute("show table status;"); print_resultset(h2.get_resultset());});
+    std::thread t2([&]() {
+        h2.execute("show table status;");
+        print_resultset(h2.get_resultset());
+    });
 
     t1.join();
     t2.join();
