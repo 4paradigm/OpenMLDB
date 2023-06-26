@@ -221,11 +221,11 @@ if(SQL_JAVASDK_ENABLE)
 endif()
 
 message(STATUS "build cxx sdk")
-# c++ sdk TODO: if pack can't in macos, open it
-# if (APPLE)
-#     message(STATUS "skip c++ sdk build on macos")
-#     return()
-# endif()
+# see cicd workflow, we can't build c++ sdk on macos
+if (APPLE)
+    message(STATUS "skip c++ sdk build on macos")
+    return()
+endif()
 
 add_library(openmldb_api STATIC openmldb_api.cc)
 target_include_directories (
@@ -352,7 +352,7 @@ list(FILTER CXXSDK_THIRDPARTY_LIBS EXCLUDE REGEX ".*\.tbd$")
 
 set(CXXSDK_NAME libopenmldbsdk.a)
 list(APPEND TOTAL_LIBS ${CXXSDK_LIBS} ${CXXSDK_THIRDPARTY_LIBS})
-message(STATUS "cxx sdk link libs: ${TOTAL_LIBS}")
+# message(STATUS "cxx sdk link libs: ${TOTAL_LIBS}")
 
 # gen mri file
 list(JOIN TOTAL_LIBS "\nADDLIB " ADD_LIBS_PART)
@@ -362,7 +362,7 @@ add_custom_target(gen_mri DEPENDS cxxsdk.mri openmldb_api) # depends openmldb_ap
 
 add_custom_target(pack_cxxsdk ALL
 COMMAND rm -f ${CXXSDK_NAME}
-COMMAND ar -M < cxxsdk.mri
+COMMAND ar -TM < cxxsdk.mri
 DEPENDS gen_mri
 )
 

@@ -1,6 +1,7 @@
 #include <ctime>
 #include <iostream>
 #include <string>
+#include <thread>
 
 #include "openmldb_api.h"
 #include "sdk/result_set.h"
@@ -88,4 +89,17 @@ int main() {
     //      +------+--------------------+
     //      | Hi~  | 5                 |
     //      +------+--------------------+
+
+
+    // multi thread example
+
+    OpenmldbHandler h1("127.0.0.1:2181", "/openmldb");
+    OpenmldbHandler h2(h1.get_router());
+
+    std::thread t1([&](){ h1.execute("show components;"); print_resultset(h1.get_resultset());});
+
+    std::thread t2([&](){ h2.execute("show table status;"); print_resultset(h2.get_resultset());});
+
+    t1.join();
+    t2.join();
 }
