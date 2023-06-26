@@ -7,14 +7,14 @@ C++ SDK 目前功能支持上并不完善，不支持多线程，目前仅用于
 ## C++ SDK 包编译安装
 
 ```{warning}
-C++ SDK 静态库的编译目前存在问题，如果需要使用 C++ SDK 库或需要临时编译方法，请联系我们提供。
+C++ SDK 静态库仅支持Linux系统，且不在标准发布中。如果需要使用 C++ SDK 库，请源码编译，并打开编译选项`INSTALL_CXXSDK=ON`。
 ```
 编译需要满足 [硬件要求](../../deploy/compile.md#硬件要求)，安装 [依赖工具](../../deploy/compile.md#依赖工具)。
 
 ```bash
 git clone git@github.com:4paradigm/OpenMLDB.git
 cd OpenMLDB
-make && make install
+make INSTALL_CXXSDK=ON && make install
 ```
 编译完成后，会在 install 目录下生成`include`头文件目录和`lib`静态库目录。
 
@@ -135,7 +135,10 @@ t2.join();
 
 ## 编译与运行
 
+可参考[编译Makefile](https://github.com/4paradigm/OpenMLDB/blob/main/demo/cxx_quickstart/Makefile)或直接使用以下命令，编译并运行示例代码。
+
 ```bash
-gcc <user_code>.cxx -o <bin_name> -lstdc++ -std=c++17 -I<install_path>/include  -L<install_path>/lib -lopenmldbsdk -lpthread
+gcc <user_code>.cxx -o <bin_name> -lstdc++ -std=c++17 -I<install_path>/include  -L<install_path>/lib -lopenmldbsdk -lpthread -lm -ldl -lstdc++fs
+
 ./<bin_name>
 ```

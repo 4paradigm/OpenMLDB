@@ -85,6 +85,7 @@ class OpenmldbNull {
     OpenmldbNull() {}
 };
 
+class OpenmldbHandler;
 // In the request with parameter and request mode of openmldb, the position of parameters to be filled is indicated by
 // the symbol "?" to express
 
@@ -164,9 +165,9 @@ class OpenmldbHandler {
  public:
     OpenmldbHandler(std::string zk_cluster, std::string zk_path);
     OpenmldbHandler(std::string host, uint32_t _port);
-    OpenmldbHandler(openmldb::sdk::SQLClusterRouter* router) { router_ = router; }
+    OpenmldbHandler(std::shared_ptr<openmldb::sdk::SQLClusterRouter> router);
     ~OpenmldbHandler();
-    openmldb::sdk::SQLClusterRouter* get_router() const { return router_; }
+    std::shared_ptr<openmldb::sdk::SQLClusterRouter> get_router() const { return router_; }
 
     // execute() is used to execute SQL statements without parameters
     // first parameter :         OpenmldbHandler
@@ -199,8 +200,8 @@ class OpenmldbHandler {
     OpenmldbHandler& operator=(const OpenmldbHandler&);
 
  private:
-    hybridse::sdk::Status* status_ = new hybridse::sdk::Status();
-    openmldb::sdk::SQLClusterRouter* router_ = nullptr;
+    hybridse::sdk::Status* status_;
+    std::shared_ptr<openmldb::sdk::SQLClusterRouter> router_ = nullptr;
     std::shared_ptr<hybridse::sdk::ResultSet> resultset_last_;
 };
 

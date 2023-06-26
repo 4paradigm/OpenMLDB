@@ -251,6 +251,19 @@ target_link_libraries(openmldb_api openmldb_sdk
     hybridse_flags
 )
 
+if(TESTING_ENABLE)
+    # load cxx sdk library built below is difficult, cuz we need more libs e.g. mini cluster/stdc++fs to build test
+    # so we just use lower libs to build test
+    # P.S. openmldb_sdk contains a lot, but it's not a good idea to use it to include mini cluster ..., we should reduce ibopenmldbsdk.a
+    add_executable(openmldb_api_test openmldb_api_test.cc)
+    target_link_libraries(openmldb_api_test ${EXPORTER_LIBS} ${GTEST_LIBRARIES})
+endif()
+
+if(APPLE)
+    message(STATUS "skip c++ sdk build")
+    return()
+endif()
+
 # To get the final SDK, we need add built-in libraries and third party libraries 
 # Below, we will find and integrate these required libraries
 
@@ -318,7 +331,7 @@ foreach(X IN LISTS ZETASQL_LIBS)
 endforeach()
 
 # 2. absl llvm libs(some libs needs to be linked explicitly)
-set(ABSL_LLVM_LIBS ${ABSL_LIBS} ${LLVM_LIBS}) # TODO LLVM miss some libs, add them here
+set(ABSL_LLVM_LIBS ${ABSL_LIBS} ${LLVM_LIBS})
 # set(ABSL_LLVM_LIBS ${LLVM_LIBS})
 # handle absl libs, need to recursively look up, target may need more deps
 foreach(X IN LISTS ABSL_LLVM_LIBS)
@@ -358,46 +371,40 @@ list(APPEND TOTAL_LIBS ${CXXSDK_LIBS} ${CXXSDK_THIRDPARTY_LIBS})
 list(JOIN TOTAL_LIBS "\nADDLIB " ADD_LIBS_PART)
 string(CONCAT ADD_LIBS "ADDLIB " ${ADD_LIBS_PART})
 file(GENERATE OUTPUT cxxsdk.mri CONTENT "CREATE ${CXXSDK_NAME}\n${ADD_LIBS}\nSAVE\nEND")
-add_custom_target(gen_mri DEPENDS cxxsdk.mri openmldb_api) # depends openmldb_api can't work?
+add_custom_target(gen_mri DEPENDS cxxsdk.mri openmldb_api)
 
+# ~2G, too big lib
 add_custom_target(pack_cxxsdk ALL
 COMMAND rm -f ${CXXSDK_NAME}
 COMMAND ar -TM < cxxsdk.mri
 DEPENDS gen_mri
 )
 
-if(TESTING_ENABLE)
-    # load cxx sdk library built before is difficult, cuz we need more libs e.g. mini cluster/stdc++fs to build test
-    # so we just use lower libs to build test
-    # P.S. openmldb_sdk contains a lot, but it's not a good idea to use it to include mini cluster ..., we should reduce ibopenmldbsdk.a
-    add_executable(openmldb_api_test openmldb_api_test.cc)
-    target_link_libraries(openmldb_api_test ${EXPORTER_LIBS} ${GTEST_LIBRARIES})
+if(INSTALL_CXXSDK)
+    FILE(GLOB USER_HEADER 
+        "${PROJECT_SOURCE_DIR}/src/sdk/openmldb_api.h"
+    )
+    FILE(GLOB USER_HEADER_SDK
+        "${PROJECT_SOURCE_DIR}/hybridse/include/sdk/result_set.h"
+        "${PROJECT_SOURCE_DIR}/hybridse/include/sdk/base_schema.h"
+    )
+    FILE(GLOB USER_LIB
+        "${CMAKE_CURRENT_BINARY_DIR}/${CXXSDK_NAME}"
+    )
+
+    install(
+        FILES ${USER_HEADER}
+        DESTINATION include/
+        PERMISSIONS OWNER_WRITE OWNER_READ GROUP_READ WORLD_READ
+    )
+    install(
+        FILES ${USER_HEADER_SDK}
+        DESTINATION include/sdk/
+        PERMISSIONS OWNER_WRITE OWNER_READ GROUP_READ WORLD_READ
+    )
+    install(
+        FILES ${USER_LIB}
+        DESTINATION lib/
+        PERMISSIONS OWNER_WRITE OWNER_READ GROUP_READ WORLD_READ
+    )
 endif()
-
-FILE(GLOB USER_HEADER 
-    "${PROJECT_SOURCE_DIR}/src/sdk/openmldb_api.h"
-)
-FILE(GLOB USER_HEADER_SDK
-    "${PROJECT_SOURCE_DIR}/hybridse/include/sdk/result_set.h"
-    "${PROJECT_SOURCE_DIR}/hybridse/include/sdk/base_schema.h"
-)
-FILE(GLOB USER_LIB
-    "${CMAKE_CURRENT_BINARY_DIR}/${CXXSDK_NAME}"
-)
-
-install(
-    FILES ${USER_HEADER}
-    DESTINATION include/
-    PERMISSIONS OWNER_WRITE OWNER_READ GROUP_READ WORLD_READ
-)
-install(
-    FILES ${USER_HEADER_SDK}
-    DESTINATION include/sdk/
-    PERMISSIONS OWNER_WRITE OWNER_READ GROUP_READ WORLD_READ
-)
-install(
-    FILES ${USER_LIB}
-    DESTINATION lib/
-    PERMISSIONS OWNER_WRITE OWNER_READ GROUP_READ WORLD_READ
-)
-

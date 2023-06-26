@@ -25,25 +25,29 @@
 #include "sdk/sql_cluster_router.h"
 
 OpenmldbHandler::OpenmldbHandler(std::string _zk_cluster, std::string _zk_path) {
+    status_ = new hybridse::sdk::Status();
     openmldb::sdk::SQLRouterOptions cluster;
     cluster.zk_cluster = _zk_cluster;
     cluster.zk_path = _zk_path;
-    router_ = new openmldb::sdk::SQLClusterRouter(cluster);
+    router_ = std::make_shared<openmldb::sdk::SQLClusterRouter>(cluster);
     router_->Init();
 }
 
 OpenmldbHandler::OpenmldbHandler(std::string _host, uint32_t _port) {
+    status_ = new hybridse::sdk::Status();
     openmldb::sdk::StandaloneOptions standalone;
     standalone.host = _host;
     standalone.port = _port;
-    router_ = new openmldb::sdk::SQLClusterRouter(standalone);
+    router_ = std::make_shared<openmldb::sdk::SQLClusterRouter>(standalone);
     router_->Init();
 }
 
-OpenmldbHandler::~OpenmldbHandler() {
-    delete status_;
-    if (router_ != nullptr) delete router_;
+OpenmldbHandler::OpenmldbHandler(std::shared_ptr<openmldb::sdk::SQLClusterRouter> router) {
+    status_ = new hybridse::sdk::Status();
+    router_ = router;
 }
+
+OpenmldbHandler::~OpenmldbHandler() { delete status_; }
 
 ParameterRow::ParameterRow(const OpenmldbHandler* handler) : handler_(handler) {
     parameter_types_ = std::make_shared<hybridse::sdk::ColumnTypes>();
