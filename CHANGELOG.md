@@ -1,5 +1,26 @@
 # Changelog
 
+## [0.8.1] - 2023-06-28
+
+### Features
+- Support the new SQL statement `ALTER TABLE ... ADD/DROP OFFLINE_PATH ...` (#3286 @aceforeverd, #3323 @tobegit3hub)
+- Support deploying SQLs that does not contain long windows if there is data in the related tables (#3288 @dl239)
+- Add a new interface to merge multiple SQLs (#3297 @vagetablechicken)
+- Support mapping topic tables in Kafka connector (#3282 @vagetablechicken)
+- Support deploying Kafka connector in Docker and Kubernetes (#3276 @tobegit3hub)
+- Support getting jobs from NameServer (#3293 @dl239)
+- Enhance the diagnostic tool (#3224 #3208 #3285 #3258 #3303 @zhangziheng01233)
+- Enhance the `SELECT INTO ...` statement (#2529 @vagetablechicken)
+- Improve the documents (#3308 @aceforeverd)
+- Other minor features (#3312 #3314 @vagetablechicken, #3298 @aceforeverd)
+
+### Bug Fixes
+- Deploying fails in some cases (#3328 @vagetablechicken)
+- Other minor bug fixes (#3281 #3284 @vagetablechicken)
+
+### Code Refactoring
+#3226 @dl239, #3294 @aceforeverd
+
 ## [0.8.0] - 2023-05-12
 
 ### Features
@@ -576,6 +597,7 @@ Removed
 - openmldb-0.2.0-linux.tar.gz targets on x86_64
 - aarch64 artifacts consider experimental
 
+[0.8.1]: https://github.com/4paradigm/OpenMLDB/compare/v0.8.0...v0.8.1
 [0.8.0]: https://github.com/4paradigm/OpenMLDB/compare/v0.7.3...v0.8.0
 [0.7.3]: https://github.com/4paradigm/OpenMLDB/compare/v0.7.2...v0.7.3
 [0.7.2]: https://github.com/4paradigm/OpenMLDB/compare/v0.7.1...v0.7.2
