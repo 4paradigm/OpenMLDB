@@ -199,7 +199,7 @@ base::Status NsClient::ShowOPStatus(uint64_t op_id, nameserver::ShowOPStatusResp
 }
 
 base::Status NsClient::ShowOPStatus(const std::string& name, uint32_t pid,
-        ::openmldb::nameserver::ShowOPStatusResponse* response) {
+                                    ::openmldb::nameserver::ShowOPStatusResponse* response) {
     ::openmldb::nameserver::ShowOPStatusRequest request;
     if (const std::string& db = GetDb(); !db.empty()) {
         request.set_db(db);
@@ -891,16 +891,13 @@ bool NsClient::SwitchMode(const ::openmldb::nameserver::ServerMode& mode, std::s
 }
 
 bool NsClient::AddIndex(const std::string& table_name, const ::openmldb::common::ColumnKey& column_key,
-                  std::vector<openmldb::common::ColumnDesc>* cols,
-                  std::string& msg) {
+                        std::vector<openmldb::common::ColumnDesc>* cols, std::string& msg) {
     return AddIndex("", table_name, column_key, cols, msg);
 }
 
-bool NsClient::AddIndex(const std::string& db_name,
-                        const std::string& table_name,
+bool NsClient::AddIndex(const std::string& db_name, const std::string& table_name,
                         const ::openmldb::common::ColumnKey& column_key,
-                        std::vector<openmldb::common::ColumnDesc>* cols,
-                        std::string& msg) {
+                        std::vector<openmldb::common::ColumnDesc>* cols, std::string& msg) {
     ::openmldb::nameserver::AddIndexRequest request;
     ::openmldb::nameserver::GeneralResponse response;
     ::openmldb::common::ColumnKey* cur_column_key = request.mutable_column_key();
@@ -927,7 +924,8 @@ bool NsClient::AddIndex(const std::string& db_name,
 }
 
 base::Status NsClient::AddMultiIndex(const std::string& db, const std::string& table_name,
-        const std::vector<::openmldb::common::ColumnKey>& column_keys, bool skip_load_data) {
+                                     const std::vector<::openmldb::common::ColumnKey>& column_keys,
+                                     bool skip_load_data) {
     ::openmldb::nameserver::AddIndexRequest request;
     ::openmldb::nameserver::GeneralResponse response;
     if (column_keys.empty()) {
@@ -1054,8 +1052,7 @@ base::Status NsClient::DropFunction(const std::string& name, bool if_exists) {
     return {};
 }
 
-base::Status NsClient::ShowFunction(const std::string& name,
-        std::vector<::openmldb::common::ExternalFun>* fun_vec) {
+base::Status NsClient::ShowFunction(const std::string& name, std::vector<::openmldb::common::ExternalFun>* fun_vec) {
     if (fun_vec == nullptr) {
         return base::Status(base::ReturnCode::kError, "nullptr");
     }
@@ -1076,20 +1073,24 @@ base::Status NsClient::ShowFunction(const std::string& name,
     return {};
 }
 
-base::Status NsClient::DeploySQL(const ::openmldb::api::ProcedureInfo& sp_info,
-        const std::map<std::string, std::vector<::openmldb::common::ColumnKey>>& new_index_map,
-        uint64_t* op_id) {
+base::Status NsClient::DeploySQL(
+    const ::openmldb::api::ProcedureInfo& sp_info,
+    const std::map<std::string, std::map<std::string, std::vector<::openmldb::common::ColumnKey>>>& new_index_map,
+    uint64_t* op_id) {
     if (new_index_map.empty()) {
         return {base::ReturnCode::kError, "no index to add"};
     }
     nameserver::DeploySQLRequest request;
     request.mutable_sp_info()->CopyFrom(sp_info);
-    for (const auto& kv : new_index_map) {
-        auto index = request.add_index();
-        index->set_name(kv.first);
-        index->set_db(sp_info.db_name());
-        for (const auto& column_key : kv.second) {
-            index->add_column_key()->CopyFrom(column_key);
+    for (const auto& db_map : new_index_map) {
+        auto& db = db_map.first;
+        for (const auto& kv : db_map.second) {
+            auto index = request.add_index();
+            index->set_db(db);
+            index->set_name(kv.first);
+            for (const auto& column_key : kv.second) {
+                index->add_column_key()->CopyFrom(column_key);
+            }
         }
     }
     nameserver::DeploySQLResponse response;
