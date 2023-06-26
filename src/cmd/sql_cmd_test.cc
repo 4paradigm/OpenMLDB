@@ -363,7 +363,7 @@ TEST_F(SqlCmdTest, SelectMultiPartition) {
 }
 
 TEST_F(SqlCmdTest, ShowNameserverJob) {
-    auto sr = cluster_cli.sr;
+    sr = cluster_cli.sr;
     std::string db_name = "test" + GenRand();
     std::string name = "table" + GenRand();
     std::string ddl = "create table " + name +
@@ -3824,6 +3824,7 @@ int main(int argc, char** argv) {
     ::openmldb::sdk::ClusterOptions copt;
     copt.zk_cluster = mc.GetZkCluster();
     copt.zk_path = mc.GetZkPath();
+    copt.zk_session_timeout = FLAGS_zk_session_timeout;
     ::openmldb::cmd::cluster_cli.cs = new ::openmldb::sdk::ClusterSDK(copt);
     ::openmldb::cmd::cluster_cli.cs->Init();
     ::openmldb::cmd::cluster_cli.sr = new ::openmldb::sdk::SQLClusterRouter(::openmldb::cmd::cluster_cli.cs);

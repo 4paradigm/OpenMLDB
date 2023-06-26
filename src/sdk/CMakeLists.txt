@@ -12,8 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# coverage test won't run tests below, but they are *_test, so if COVERAGE_NO_DEPS, disable build
-if(TESTING_ENABLE AND NOT COVERAGE_NO_DEPS)
+if(TESTING_ENABLE)
     set(THIRD_LIBS benchmark_main benchmark ${GTEST_LIBRARIES} yaml-cpp)
 
     add_library(mini_cluster_bm_common mini_cluster_bm.cc)
@@ -344,6 +343,10 @@ list(REMOVE_DUPLICATES ABSL_LLVM_TGTS)
 
 # get absl llvm libs path
 foreach(X IN LISTS ABSL_LLVM_TGTS)
+    get_target_property(type ${X} TYPE)
+    if (${type} STREQUAL "INTERFACE_LIBRARY")
+        continue()
+    endif()
     get_lib_path(${X} Y)
     # message(STATUS "get ${X} path: ${Y}")
     list(APPEND CXXSDK_THIRDPARTY_LIBS ${Y})

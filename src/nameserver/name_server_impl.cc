@@ -17,16 +17,15 @@
 #include "nameserver/name_server_impl.h"
 
 #include <algorithm>
-#include <set>
-#include <random>
-#include <iterator>
 #include <iostream>
+#include <iterator>
+#include <random>
+#include <set>
 #include <vector>
 
-
+#include "absl/strings/numbers.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/str_split.h"
-#include "absl/strings/numbers.h"
 #include "absl/time/time.h"
 #include "nameserver/system_table.h"
 #include "sdk/db_sdk.h"
@@ -44,10 +43,10 @@
 #include "base/strings.h"
 #include "boost/algorithm/string.hpp"
 #include "boost/bind.hpp"
+#include "codec/row_codec.h"
 #include "gflags/gflags.h"
 #include "schema/index_util.h"
 #include "schema/schema_adapter.h"
-#include "codec/row_codec.h"
 
 DECLARE_string(endpoint);
 DECLARE_string(zk_cluster);
@@ -74,7 +73,6 @@ DECLARE_int32(make_snapshot_check_interval);
 DECLARE_bool(use_name);
 DECLARE_bool(enable_distsql);
 DECLARE_uint32(sync_deploy_stats_timeout);
-
 
 namespace openmldb {
 namespace nameserver {
@@ -8584,6 +8582,24 @@ bool NameServerImpl::AddIndexToTableInfo(const std::string& name, const std::str
         }
     }
     UpdateZkTableNode(table_info);
+    // refresh tablet here, cuz this func may be called by task
+    // if refresh failed, won't break the process of add index
+    std::set<std::string> endpoint_set;
+    for (const auto& part : table_info->table_partition()) {
+        for (const auto& meta : part.partition_meta()) {
+            endpoint_set.insert(meta.endpoint());
+        }
+    }
+    // locked on top
+    for (const auto& tablet : tablets_) {
+        if (!tablet.second->Health()) {
+            continue;
+        }
+        if (endpoint_set.count(tablet.first) == 0) {
+            tablet.second->client_->Refresh(table_info->tid());
+        }
+    }
+
     PDLOG(INFO, "add index ok. table %s index cnt %d", name.c_str(), column_key.size());
     if (task_info) {
         task_info->set_status(::openmldb::api::TaskStatus::kDone);
@@ -9561,9 +9577,8 @@ void NameServerImpl::ShowProcedure(RpcController* controller, const api::ShowPro
     }
 }
 
-std::shared_ptr<TabletInfo> NameServerImpl::GetTablet(const std::string& endpoint) {
+std::shared_ptr<TabletInfo> NameServerImpl::GetTabletUnlock(const std::string& endpoint) {
     std::shared_ptr<TabletInfo> tablet_ptr;
-    std::lock_guard<std::mutex> lock(mu_);
     auto iter = tablets_.find(endpoint);
     // check tablet if exist
     if (iter == tablets_.end()) {
@@ -9575,6 +9590,11 @@ std::shared_ptr<TabletInfo> NameServerImpl::GetTablet(const std::string& endpoin
         return {};
     }
     return tablet_ptr;
+}
+
+std::shared_ptr<TabletInfo> NameServerImpl::GetTablet(const std::string& endpoint) {
+    std::lock_guard<std::mutex> lock(mu_);
+    return GetTabletUnlock(endpoint);
 }
 
 void NameServerImpl::CreateDatabaseOrExit(const std::string& db) {
