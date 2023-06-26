@@ -2714,7 +2714,6 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(
                         *status = {StatusCode::kCmdError, "The symbolic path does not exist: " + target};
                         return {};
                     }
-                    LOG(WARNING) << "Delete path";
                 }
             }
 

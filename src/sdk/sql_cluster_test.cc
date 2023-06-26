@@ -15,7 +15,7 @@
  */
 
 #include <unistd.h>
-
+#include <algorithm>
 #include <memory>
 #include <string>
 #include <vector>
@@ -1050,6 +1050,10 @@ TEST_F(SQLClusterTest, ClusterOnlineAgg) {
     ASSERT_TRUE(ok);
 }
 
+bool contains(const google::protobuf::RepeatedPtrField<std::string>& field, const std::string& value) {
+    return std::find(field.begin(), field.end(), value) != field.end();
+}
+
 TEST_F(SQLClusterTest, AlterTableAddDropOfflinePath) {
     SQLRouterOptions sql_opt;
     sql_opt.zk_cluster = mc_->GetZkCluster();
@@ -1067,12 +1071,16 @@ TEST_F(SQLClusterTest, AlterTableAddDropOfflinePath) {
     ASSERT_TRUE(ok);
     ASSERT_TRUE(router->RefreshCatalog());
 
-    router->ExecuteSQL(db, "use " + db + ";", &status);
-
     ddl = "ALTER TABLE " + table + " ADD offline_path 'hdfs://foo/bar'";
     ok = router->ExecuteDDL(db, ddl, &status);
     ASSERT_TRUE(ok);
     ASSERT_TRUE(router->RefreshCatalog());
+
+    // tobe: check the offline table info
+    auto table_info = router->GetTableInfo(db, table);
+    auto paths = table_info.offline_table_info().symbolic_paths();
+    std::string path = "hdfs://foo/bar";
+    ASSERT_TRUE(contains(paths, path))
 
     ddl = "ALTER TABLE " + table + " DROP offline_path 'hdfs://foo/bar'";
     ok = router->ExecuteDDL(db, ddl, &status);
