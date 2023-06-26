@@ -654,6 +654,7 @@ class NameServerImpl : public NameServer {
 
     void DropProcedureOnTablet(const std::string& db_name, const std::string& sp_name);
 
+    std::shared_ptr<TabletInfo> GetTabletUnlock(const std::string& endpoint);
     std::shared_ptr<TabletInfo> GetTablet(const std::string& endpoint);
 
     std::vector<std::shared_ptr<TabletInfo>> GetAllHealthTablet();

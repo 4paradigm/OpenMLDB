@@ -88,3 +88,10 @@ using openmldb::sdk::TableReader;
 %template(ColumnDescVector) std::vector<std::pair<std::string, hybridse::sdk::DataType>>;
 %template(TableColumnDescPair) std::pair<std::string, std::vector<std::pair<std::string, hybridse::sdk::DataType>>>;
 %template(TableColumnDescPairVector) std::vector<std::pair<std::string, std::vector<std::pair<std::string, hybridse::sdk::DataType>>>>;
+
+%template(DBTableColumnDescPair) std::pair<std::string, std::vector<std::pair<std::string, std::vector<std::pair<std::string, hybridse::sdk::DataType>>>>>;
+// vector<db, vector<table, vector<column, type>>>
+%template(DBTableColumnDescPairVector) std::vector<std::pair<std::string, std::vector<std::pair<std::string, std::vector<std::pair<std::string, hybridse::sdk::DataType>>>>>>;
+
+%template(DBTable) std::pair<std::string, std::string>;
+%template(DBTableVector) std::vector<std::pair<std::string, std::string>>;
