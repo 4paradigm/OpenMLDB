@@ -9,6 +9,7 @@
 ```{note}
 Linux可通过以下命令来检查系统的支持情况。
 ````shell
+cat /etc/os-release # most linux
 cat /etc/redhat-release # redhat only
 ldd --version
 strings /lib64/libc.so.6 | grep ^GLIBC_
