@@ -346,10 +346,13 @@ foreach(X IN LISTS EXTRA_LIBS)
 endforeach()
 # brpc includes some so, but we don't need them, so remove them
 list(FILTER CXXSDK_THIRDPARTY_LIBS EXCLUDE REGEX ".*\.so$")
+# for apple
+list(FILTER CXXSDK_THIRDPARTY_LIBS EXCLUDE REGEX ".*\.dylib$")
+list(FILTER CXXSDK_THIRDPARTY_LIBS EXCLUDE REGEX ".*\.tdb$")
 
 set(CXXSDK_NAME libopenmldbsdk.a)
 list(APPEND TOTAL_LIBS ${CXXSDK_LIBS} ${CXXSDK_THIRDPARTY_LIBS})
-# message(STATUS "cxx sdk link libs: ${TOTAL_LIBS}")
+message(STATUS "cxx sdk link libs: ${TOTAL_LIBS}")
 
 # gen mri file
 list(JOIN TOTAL_LIBS "\nADDLIB " ADD_LIBS_PART)
