@@ -178,7 +178,6 @@ jobs:
       - name: build
         run: |
           which ar
-          ar --version
           brew install binutils
           which ar
           ar --version
