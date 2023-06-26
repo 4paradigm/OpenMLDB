@@ -43,7 +43,7 @@ OpenMLDB Spark兼容标准的[Spark配置](https://spark.apache.org/docs/latest/
 ```java
 export SPARK_HOME=`pwd`/spark-3.2.1-bin-openmldbspark/
 
-$SPARK_HOME/bin/spark-submit\
+$SPARK_HOME/bin/spark-submit \
   --master local \
   --class org.apache.spark.examples.sql.SparkSQLExample \
   $SPARK_HOME/examples/jars/spark-examples*.jar
