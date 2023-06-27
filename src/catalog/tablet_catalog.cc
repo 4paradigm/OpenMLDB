@@ -239,6 +239,7 @@ void TabletTableHandler::Update(const ::openmldb::nameserver::TableInfo& meta, c
         table_client_manager_->UpdatePartitionClientManager(partition_st, client_manager);
     }
     if (meta.column_key_size() != static_cast<int>(GetIndex().size())) {
+        LOG(INFO) << "index size changed, update index" << meta.column_key_size() << " " << GetIndex().size();
         UpdateIndex(meta.column_key());
     }
 }
@@ -399,7 +400,7 @@ bool TabletCatalog::DropProcedure(const std::string& db, const std::string& sp_n
     std::lock_guard<::openmldb::base::SpinMutex> spin_lock(mu_);
     auto db_it = db_sp_map_.find(db);
     if (db_it == db_sp_map_.end()) {
-        LOG(WARNING) << "db " << db << " not exist";
+        LOG(WARNING) << "db " << db << " not exist in sp map";
         return false;
     }
     auto& sp_map = db_it->second;
@@ -451,7 +452,7 @@ bool TabletCatalog::UpdateTableInfo(const ::openmldb::nameserver::TableInfo& tab
                 return false;
             }
             db_it->second.emplace(table_name, handler);
-            LOG(INFO) << "add table " << table_name << " db " << db_name;
+            LOG(INFO) << "add table " << table_name << "to db " << db_name;
         } else {
             handler = it->second;
         }

@@ -137,11 +137,9 @@ base::Status IndexUtil::CheckUnique(const PBIndex& index) {
     return {};
 }
 
-bool IndexUtil::CheckExist(const ::openmldb::common::ColumnKey& column_key,
-        const PBIndex& index, int32_t* pos) {
-    int32_t index_pos = 0;
+bool IndexUtil::IsExist(const ::openmldb::common::ColumnKey& column_key, const PBIndex& index) {
     std::string id_str = GetIDStr(column_key);
-    for (; index_pos < index.size(); index_pos++) {
+    for (int32_t index_pos = 0; index_pos < index.size(); index_pos++) {
         if (index.Get(index_pos).index_name() == column_key.index_name()) {
             if (index.Get(index_pos).flag() == 0) {
                 return true;
@@ -152,8 +150,31 @@ bool IndexUtil::CheckExist(const ::openmldb::common::ColumnKey& column_key,
             return true;
         }
     }
-    *pos = index_pos;
     return false;
+}
+
+int IndexUtil::GetPosition(const ::openmldb::common::ColumnKey& column_key, const PBIndex& index) {
+    std::string id_str = GetIDStr(column_key);
+    for (int32_t index_pos = 0; index_pos < index.size(); index_pos++) {
+        if (index.Get(index_pos).index_name() == column_key.index_name()) {
+            if (index.Get(index_pos).flag() == 0) {
+                return index_pos;
+            }
+            break;
+        }
+        if (id_str == GetIDStr(index.Get(index_pos))) {
+            return index_pos;
+        }
+    }
+    return -1;
+}
+
+std::vector<::openmldb::common::ColumnKey> IndexUtil::Convert2Vector(const PBIndex& index) {
+    std::vector<::openmldb::common::ColumnKey> vec;
+    for (const auto& column_key : index) {
+        vec.push_back(column_key);
+    }
+    return vec;
 }
 
 std::string IndexUtil::GetIDStr(const ::openmldb::common::ColumnKey& column_key) {
@@ -165,27 +186,6 @@ std::string IndexUtil::GetIDStr(const ::openmldb::common::ColumnKey& column_key)
         id_str.append(column_key.ts_name());
     }
     return id_str;
-}
-
-base::Status IndexUtil::CheckNewIndex(const ::openmldb::common::ColumnKey& column_key,
-        const openmldb::nameserver::TableInfo& table_info) {
-    if (table_info.column_key_size() == 0) {
-        return {base::ReturnCode::kError, "has no index"};
-    }
-    std::map<std::string, ::openmldb::common::ColumnDesc> col_map;
-    for (const auto& column_desc : table_info.column_desc()) {
-        col_map.emplace(column_desc.name(), column_desc);
-    }
-    for (const auto& column_desc : table_info.added_column_desc()) {
-        col_map.emplace(column_desc.name(), column_desc);
-    }
-    std::string id_str = GetIDStr(column_key);
-    for (const auto& cur_column_key : table_info.column_key()) {
-        if (id_str == GetIDStr(cur_column_key) && cur_column_key.flag() == 0) {
-            return {base::ReturnCode::kError, "duplicated index"};
-        }
-    }
-    return {};
 }
 
 }  // namespace schema

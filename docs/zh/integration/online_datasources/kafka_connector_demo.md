@@ -197,3 +197,38 @@ rm -rf /tmp/kafka-logs /tmp/kraft-combined-logs
 /work/init.sh
 ```
 `init.sh`会启动新的OpenMLDB集群，你可以在OpenMLDB创建database，再重新启动Kafka。
+
+## 使用 Kubernetes 部署
+
+OpenMLDB Kafka Connect 服务可以本地部署，也可以使用 Kubernetes 来部署，下面介绍部署需要的配置文件以及部署步骤。
+
+在本地准备上面demo下载的配置文件，建议修改其中的配置项“plugin.path=/tmp”，并且修改OpenMLDB连接的ZK地址。
+
+* connect-standalone.properties
+* openmldb-sink.properties
+
+本地准备好配置文件后，使用命令来创建 ConfigMap 。
+
+```
+kubectl create configmap openmldb-kafka-connect-configmap --from-file=connect-standalone.properties=connect-standalone.properties --from-file=openmldb-sink.properties=openmldb-sink.properties
+```
+
+使用 OpenMLDB 提供的 Dockerfile 来创建镜像，并且把镜像推送到镜像仓库。
+
+```
+docker build -t registry.cn-shenzhen.aliyuncs.com/tobe43/openmldb-kafka-connect -f Dockerfile .
+```
+
+使用 OpenMLDB 提供的 Yaml 文件来创建 Deployment，可按需修改启动的配置仓库。注意，目前只支持单节点的 Connect 服务，因此 Deployment 的 replicas 配置必须为1。
+
+```
+kubectl create -f ./openmldb-kafka-connect-deployment.yaml
+```
+
+部署 Deployment 后，可以查看对应 Pod 的运行状态和日志，然后通过发送消息给 Kafka 检查服务功能是否正常。
+
+如果希望访问 Connect 服务的 RESTful 接口，可以参考 OpenMLDB 提供的 Yaml 文件来创建 Service ，默认使用 NodePort 并且在宿主机的 8083 端口可访问对应服务。
+
+```
+kubectl create -f ./openmldb-kafka-connect-service.yaml
+```

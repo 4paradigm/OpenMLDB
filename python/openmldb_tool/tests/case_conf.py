@@ -17,4 +17,4 @@
 OpenMLDB address used in test
 """
 
-OpenMLDB_ZK_CLUSTER = "127.0.0.1:2181/openmldb"
+OpenMLDB_ZK_CLUSTER = "127.0.0.1:6181/onebox"

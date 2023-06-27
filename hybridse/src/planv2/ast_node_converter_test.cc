@@ -868,11 +868,6 @@ TEST_F(ASTNodeConverterTest, ConvertStmtFailTest) {
     };
 
     expect_converted(R"sql(
-        ALTER TABLE foo ALTER COLUMN bar SET DATA TYPE STRING;
-    )sql",
-                     common::kSqlAstError, "Un-support statement type: AlterTableStatement");
-
-    expect_converted(R"sql(
         SHOW procedurxs;
     )sql",
                      common::kSqlAstError, "Un-support SHOW: procedurxs");

@@ -164,6 +164,15 @@ DEPLOY demo OPTIONS (SKIP_INDEX_CHECK="TRUE")
     SELECT * FROM t1 LAST JOIN t2 ORDER BY t2.col3 ON t1.col1 = t2.col1;
 ```
 
+### Synchronization/Asynchronization Settings
+When executing deploy, you can set the synchronous/asynchronous mode through the `SYNC` option. The default value of `SYNC` is `true`, that is, the synchronous mode. If the relevant tables involved in the deploy statement have data and needs to add one or more indexs, executing deploy will initiate a job to execute a series of tasks such as loading data. In this case a job id will be returned if the `SYNC` option is set to `false`. You can get the job execution status by `SHOW JOBS FROM NAMESERVER LIKE '{job_id}'`
+
+**Example**
+```sql
+deploy demo options(SYNC="false") SELECT t1.col1, t2.col2, sum(col4) OVER w1 as w1_col4_sum FROM t1 LAST JOIN t2 ORDER BY t2.col3 ON t1.col2 = t2.col2
+    WINDOW w1 AS (PARTITION BY t1.col2 ORDER BY t1.col3 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
+```
+
 ## Relevant SQL
 
 [USE DATABASE](../ddl/USE_DATABASE_STATEMENT.md)
