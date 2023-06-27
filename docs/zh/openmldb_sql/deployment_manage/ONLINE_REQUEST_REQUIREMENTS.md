@@ -15,7 +15,7 @@ OpenMLDB仅支持上线[SELECT查询语句](../dql/SELECT_STATEMENT.md)。
 | SELECT 子句                                   | 说明                                                                                                                                       |
 |:-------------------------------------------|:-----------------------------------------------------------------------------------------------------------------------------------------|
 | 单张表的简单表达式计算                                | 简单的单表查询是对一张表进行列运算、使用运算表达式或单行处理函数（Scalar Function)以及它们的组合表达式作计算。需要遵循[在线请求模式下单表查询的使用规范](#在线请求模式下单表查询的使用规范)                                 |
-| [`JOIN` 子句](../dql/JOIN_CLAUSE.md)     | OpenMLDB目前仅支持**LAST JOIN**。需要遵循[在线请求模式下LAST JOIN的使用规范](#在线请求模式下last-join的使用规范)                                                           |
+| [`JOIN` 子句](../dql/JOIN_CLAUSE.md)     | OpenMLDB目前仅支持**LAST JOIN**。需要遵循[在线请求模式下LAST JOIN的使用规范](#在线请求模式下-last-join-的使用规范)                                                           |
 | [`WINDOW` 子句](../dql/WINDOW_CLAUSE.md) | 窗口子句用于定义一个或者若干个窗口。窗口可以是有名或者匿名的。用户可以在窗口上调用聚合函数进行分析计算。需要遵循[在线请求模式下Window的使用规范](#在线请求模式下window的使用规范) |
 
 ## 在线请求模式下 `SELECT` 子句的使用规范
@@ -124,11 +124,10 @@ desc t1;
 - 窗口类型仅支持`ROWS`和`ROWS_RANGE`。
 - 窗口`PARTITION BY`只支持列表达式，可以是多列，并且所有列需要命中索引，主表和 union source 的表都需要符合要求
 - 窗口`ORDER BY`只支持列表达式，只能是单列，并且列需要命中索引的时间列，主表和 union source 的表都需要符合要求
-- 可支持使用 `EXCLUDE CURRENT_ROW`，`EXCLUDE CURRENT_TIME`，`MAXSIZE`，`INSTANCE_NOT_IN_WINDOW`对窗口进行其他特殊限制，详见[OpenMLDB特有的 WindowSpec 元素](openmldb特有的-windowspec-元素)。
+- 可支持使用 `EXCLUDE CURRENT_ROW`，`EXCLUDE CURRENT_TIME`，`MAXSIZE`，`INSTANCE_NOT_IN_WINDOW`对窗口进行其他特殊限制，详见[OpenMLDB特有的 WindowSpec 元素](#openmldb特有的-windowspec-元素)。
 - `WINDOW UNION` source 要求，支持如下格式的子查询:
   - 表引用或者简单列筛选，例如 `t1` 或者 `select id, val from t1`。union source 和 主表的 schema 必须完全一致，并且 union source 对应的 `PARTITION BY`, `ORDER BY` 也需要命中索引
   - **Since OpenMLDB 0.8.0**, 基于 LAST JOIN 的简单列筛选，例如 `UNION (select * from t1 last join t2 ON ...)`。索引要求：
     - last join 查询满足 LAST JOIN 的上线要求，t1, t2 都是物理表
     - `PARTITION BY`, `ORDER BY` 表达式对应的列只能指向 LAST JOIN 的最左边的 table (即 t1), 并且命中索引
-
 

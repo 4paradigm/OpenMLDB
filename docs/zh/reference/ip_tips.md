@@ -120,7 +120,7 @@ cd /work/openmldb/conf/ && ls | grep -v _ | xargs sed -i s/0.0.0.0/<IP>/g && cd 
 
 如果是本机的容器外CLI访问容器onebox，可以**任选一种**下面的方式：
 
-- bridge连接，bridge IP查看参考[容器onebox-apiserver](#容器onebox-apiserver)，将所有endpoint配置改为bridge ip。不可以是`0.0.0.0`，容器外CLI/SDK无法通过`0.0.0.0`找到容器内的server。
+- bridge连接，bridge IP查看参考[容器onebox-apiserver](#容器-onebox-apiserver)，将所有endpoint配置改为bridge ip。不可以是`0.0.0.0`，容器外CLI/SDK无法通过`0.0.0.0`找到容器内的server。
 
 - 暴露端口，并将conf所有endpoint改为bridge IP或`0.0.0.0`。本机也可以顺利通信。
 

@@ -32,7 +32,7 @@
 
 ### 离线模式
 
-OpenMLDB CLI 启动以后的**默认模式为离线模式**。离线数据导入、离线特征开发、特征方案部署上线均在离线模式下执行。离线模式的作用是对离线数据进行管理和计算。涉及的计算节点由针对特征工程优化的 [OpenMLDB Spark 发行版](./openmldbspark_distribution.md)支持，存储节点支持使用 HDFS 等常见存储系统。
+OpenMLDB CLI 启动以后的**默认模式为离线模式**。离线数据导入、离线特征开发、特征方案部署上线均在离线模式下执行。离线模式的作用是对离线数据进行管理和计算。涉及的计算节点由针对特征工程优化的 [OpenMLDB Spark 发行版](../../tutorial/openmldbspark_distribution.md)支持，存储节点支持使用 HDFS 等常见存储系统。
 
 离线模式有以下主要特点：
 
@@ -41,10 +41,10 @@ OpenMLDB CLI 启动以后的**默认模式为离线模式**。离线数据导入
 - 异步执行的 SQL 由内部的 TaskManager 进行管理，可以通过 `SHOW JOBS`、`SHOW JOB`、`STOP JOB` 命令进行查看和管理。
 
 :::{tip}
-和很多关系型数据库系统不同，`SELECT` 命令在离线模式下默认为异步执行，如需设置为同步执行，参考[设置离线模式下命令的同步执行](../openmldb_sql/ddl/SET_STATEMENT.md#id4)。在离线特征开发阶段，如果使用异步执行，强烈建议使用 `SELECT INTO` 语句进行开发调试，可以将结果导出到文件，方便查看。
+和很多关系型数据库系统不同，`SELECT` 命令在离线模式下默认为异步执行，如需设置为同步执行，参考[设置离线模式下命令的同步执行](../../openmldb_sql/ddl/SET_STATEMENT.md#离线命令配置详情)。在离线特征开发阶段，如果使用异步执行，强烈建议使用 `SELECT INTO` 语句进行开发调试，可以将结果导出到文件，方便查看。
 :::
 
-用于特征方案部署的命令 `DEPLOY` 也在离线模式下执行。其规范可以参阅 [OpenMLDB SQL 上线规范和要求](../openmldb_sql/deployment_manage/ONLINE_REQUEST_REQUIREMENTS.md)。
+用于特征方案部署的命令 `DEPLOY` 也在离线模式下执行。其规范可以参阅 [OpenMLDB SQL 上线规范和要求](../../openmldb_sql/deployment_manage/ONLINE_REQUEST_REQUIREMENTS.md)。
 
 离线模式设置命令 (OpenMLDB CLI)：`SET @@execute_mode='offline'`
 
@@ -59,7 +59,7 @@ OpenMLDB CLI 启动以后的**默认模式为离线模式**。离线数据导入
 - 在线预览模式的 SELECT 语句目前不支持 `LAST JOIN` 和 `ORDER BY` 等较复杂的查询，参考 [`SELECT`](https://openmldb.ai/docs/zh/main/openmldb_sql/dql/SELECT_STATEMENT.html)。
 - 在线预览模式服务端均为单线程执行 SQL，对于大数据处理，会比较慢，有可能会触发超时，可以通过在客户端配置 `--request_timeout` 来提高超时时间。
 - 为了防止影响线上服务，在线预览模式控制了最大访问的条数和不同key的个数，可以通过`--max_traverse_cnt` 和 `--max_traverse_key_cnt` 来设置；
-同时，通过 `--scan_max_bytes_size` 来限制结果的大小。详细配置可参考[配置文件](../deploy/conf.md)。
+同时，通过 `--scan_max_bytes_size` 来限制结果的大小。详细配置可参考[配置文件](../../deploy/conf.md)。
 
 在线预览模式设置命令 (OpenMLDB CLI)：`SET @@execute_mode='online'`
 
