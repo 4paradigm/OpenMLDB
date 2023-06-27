@@ -1066,7 +1066,7 @@ TEST_F(SQLClusterTest, AlterTableAddDropOfflinePath) {
     ::hybridse::sdk::Status status;
     bool ok = router->CreateDB(db, &status);
     ASSERT_TRUE(ok);
-    std::string ddl = "create table (col1 int)";
+    std::string ddl = "create table " + table + " (col1 int)";
     ok = router->ExecuteDDL(db, ddl, &status);
     ASSERT_TRUE(ok);
     ASSERT_TRUE(router->RefreshCatalog());
@@ -1080,7 +1080,7 @@ TEST_F(SQLClusterTest, AlterTableAddDropOfflinePath) {
     auto table_info = router->GetTableInfo(db, table);
     auto paths = table_info.offline_table_info().symbolic_paths();
     std::string path = "hdfs://foo/bar";
-    ASSERT_TRUE(contains(paths, path))
+    ASSERT_TRUE(contains(paths, path));
 
     ddl = "ALTER TABLE " + table + " DROP offline_path 'hdfs://foo/bar'";
     ok = router->ExecuteDDL(db, ddl, &status);

@@ -2724,6 +2724,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(
             auto ns = cluster_sdk_->GetNsClient();
             ns->UpdateOfflineTableInfo(*tableInfo);
             return {};
+        }
         case hybridse::node::kPlanTypeShow: {
             auto plan = dynamic_cast<hybridse::node::ShowPlanNode*>(node);
             auto target = absl::AsciiStrToUpper(plan->GetTarget());
