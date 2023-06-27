@@ -530,7 +530,7 @@ bool Aggregator::Init(std::shared_ptr<LogReplicator> base_replicator) {
                         std::optional<uint64_t>(entry.ts()) : std::nullopt;
                     std::optional<uint64_t> end_ts = entry.has_end_ts() ?
                         std::optional<uint64_t>(entry.end_ts()) : std::nullopt;
-                    DeleteData(dimension.key(), start_ts, end_ts);
+                    Delete(dimension.key(), start_ts, end_ts);
                 } else {
                     Update(dimension.key(), entry.value(), entry.log_index(), true);
                 }
