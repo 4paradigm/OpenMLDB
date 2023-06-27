@@ -2646,10 +2646,17 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(
         case hybridse::node::kPlanTypeAlterTable: {
             auto plan = dynamic_cast<hybridse::node::AlterTableStmtPlanNode*>(node);
 
-            // Get table info
-            std::string db(plan->db_.begin(), plan->db_.end());
+            std::string db_name;
+            if (!plan->db_.empty()) {
+                db_name = (plan->table_.begin(), plan->table_.end());
+            } else {
+                db_name = db;
+            }
+
             std::string table(plan->table_.begin(), plan->table_.end());
-            auto tableInfo = cluster_sdk_->GetTableInfo(db, table);
+            // Refresh before getting actual table info
+            cluster_sdk_->Refresh();
+            auto tableInfo = cluster_sdk_->GetTableInfo(db_name, table);
 
             if (tableInfo == nullptr) {
                 *status = {StatusCode::kCmdError, "table does not exist"};

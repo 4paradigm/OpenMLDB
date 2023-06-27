@@ -1071,31 +1071,96 @@ TEST_F(SQLClusterTest, AlterTableAddDropOfflinePath) {
     ASSERT_TRUE(ok);
     ASSERT_TRUE(router->RefreshCatalog());
 
+    // Add path
     ddl = "ALTER TABLE " + table + " ADD offline_path 'hdfs://foo/bar'";
-    ok = router->ExecuteDDL(db, ddl, &status);
-    ASSERT_TRUE(ok);
+    router->ExecuteSQL(db, ddl, &status);
     ASSERT_TRUE(router->RefreshCatalog());
 
-    // tobe: check the offline table info
-    auto table_info = router->GetTableInfo(db, table);
-    auto paths = table_info.offline_table_info().symbolic_paths();
-    std::string path = "hdfs://foo/bar";
-    ASSERT_TRUE(contains(paths, path));
+    auto paths = router->GetTableInfo(db, table).offline_table_info().symbolic_paths();
+    ASSERT_TRUE(contains(paths, "hdfs://foo/bar"));
 
+    // Drop path
     ddl = "ALTER TABLE " + table + " DROP offline_path 'hdfs://foo/bar'";
-    ok = router->ExecuteDDL(db, ddl, &status);
-    ASSERT_TRUE(ok);
+    router->ExecuteSQL(db, ddl, &status);
     ASSERT_TRUE(router->RefreshCatalog());
 
+    paths = router->GetTableInfo(db, table).offline_table_info().symbolic_paths();
+    ASSERT_TRUE(!contains(paths, "hdfs://foo/bar"));
+
+    // Add path
     ddl = "ALTER TABLE " + table + " ADD offline_path 'hdfs://foo/bar'";
+    router->ExecuteSQL(db, ddl, &status);
+    ASSERT_TRUE(router->RefreshCatalog());
+
+    paths = router->GetTableInfo(db, table).offline_table_info().symbolic_paths();
+    ASSERT_TRUE(contains(paths, "hdfs://foo/bar"));
+
+    // Add path and drop path
+    ddl = "ALTER TABLE " + table + " ADD offline_path 'hdfs://foo/bar2', DROP offline_path 'hdfs://foo/bar'";
+    router->ExecuteSQL(db, ddl, &status);
+    ASSERT_TRUE(router->RefreshCatalog());
+
+    paths = router->GetTableInfo(db, table).offline_table_info().symbolic_paths();
+    ASSERT_TRUE(!contains(paths, "hdfs://foo/bar"));
+    ASSERT_TRUE(contains(paths, "hdfs://foo/bar2"));
+
+    // Clear offline table to drop, otherwise it requires taskmanager to drop table
+    auto table_info = router->GetTableInfo(db, table);
+    table_info.clear_offline_table_info();
+    router->UpdateOfflineTableInfo(table_info);
+
+    ok = router->ExecuteDDL(db, "drop table " + table + ";", &status);
+    ASSERT_TRUE(ok);
+    ok = router->DropDB(db, &status);
+    ASSERT_TRUE(ok);
+}
+
+TEST_F(SQLClusterTest, MultiThreadAlterTableOfflinePath) {
+    SQLRouterOptions sql_opt;
+    sql_opt.zk_cluster = mc_->GetZkCluster();
+    sql_opt.zk_path = mc_->GetZkPath();
+    auto router = NewClusterSQLRouter(sql_opt);
+    ASSERT_TRUE(router != nullptr);
+    SetOnlineMode(router);
+    std::string table = "test" + GenRand();
+    std::string db = "db" + GenRand();
+    ::hybridse::sdk::Status status;
+    bool ok = router->CreateDB(db, &status);
+    ASSERT_TRUE(ok);
+    std::string ddl = "create table " + table + " (col1 int)";
     ok = router->ExecuteDDL(db, ddl, &status);
     ASSERT_TRUE(ok);
     ASSERT_TRUE(router->RefreshCatalog());
 
-    ddl = "ALTER TABLE " + table + " ADD offline_path 'hdfs://foo/bar2', DROP offline_path 'hdfs://foo/bar'";
-    ok = router->ExecuteDDL(db, ddl, &status);
-    ASSERT_TRUE(ok);
-    ASSERT_TRUE(router->RefreshCatalog());
+    auto run_and_check = [&]() {
+        // Add path
+        ddl = "ALTER TABLE " + table + " ADD offline_path 'hdfs://foo/bar'";
+        router->ExecuteSQL(db, ddl, &status);
+        ASSERT_TRUE(router->RefreshCatalog());
+
+        // Drop path
+        ddl = "ALTER TABLE " + table + " DROP offline_path 'hdfs://foo/bar'";
+        router->ExecuteSQL(db, ddl, &status);
+        ASSERT_TRUE(router->RefreshCatalog());
+    };
+
+    int iter = 1;
+    for (int i = 0; i < iter; i++) {
+        std::thread t1(run_and_check);
+        std::thread t2(run_and_check);
+        std::thread t3(run_and_check);
+        t1.join();
+        t2.join();
+        t3.join();
+    }
+
+    auto paths = router->GetTableInfo(db, table).offline_table_info().symbolic_paths();
+    ASSERT_TRUE(!contains(paths, "hdfs://foo/bar"));
+
+    // Clear offline table to drop, otherwise it requires taskmanager to drop table
+    auto table_info = router->GetTableInfo(db, table);
+    table_info.clear_offline_table_info();
+    router->UpdateOfflineTableInfo(table_info);
 
     ok = router->ExecuteDDL(db, "drop table " + table + ";", &status);
     ASSERT_TRUE(ok);
