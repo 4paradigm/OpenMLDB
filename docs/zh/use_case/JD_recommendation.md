@@ -294,12 +294,14 @@ out/
 ```{note}
 注意，以下命令在安装1.2所描述的OneFlow运行环境中运行
 ```
+
 ```bash
 cd $demodir/oneflow_process/
 sh train_deepfm.sh -h
 Usage: train_deepfm.sh DATA_DIR(abs)
-        We'll read required args in $DATA_DIR/data_info.txt, and save results in path ./
+        We will read required args in $DATA_DIR/data_info.txt, and save results in path ./
 ```
+
 OneFLow模型训练使用该目录中的`train_deepfm.sh`脚本，使用说明如上所示。通常情况下，我们不用特别配置。脚本会自动读取`$DATA_DIR/data_info.txt`的参数，包括`num_train_samples`,`num_val_samples`,`num_test_samples`和`table_size_array`。请使用预处理后的特征数据集（绝对路径），命令如下：
 ```bash
 bash train_deepfm.sh $demodir/feature_preprocess/out

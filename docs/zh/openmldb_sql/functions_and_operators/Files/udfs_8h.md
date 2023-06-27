@@ -863,7 +863,7 @@ SELECT COS(0);
 
 
 
-* The value returned by [cos()](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-cos) is always in the range: -1 to 1.
+* The value returned by [cos()](../../../openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-cos) is always in the range: -1 to 1.
 
 
 **Supported Types**:
@@ -3418,7 +3418,7 @@ SELECT SIN(0);
 
 
 
-* The value returned by [sin()](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-sin) is always in the range: -1 to 1.
+* The value returned by [sin()](../../../openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-sin) is always in the range: -1 to 1.
 
 
 **Supported Types**:
@@ -5182,7 +5182,6 @@ select year(timestamp(1590115420000));
 * [`date`]
 * [`int64`]
 * [`timestamp`] 
-
 
 
 
