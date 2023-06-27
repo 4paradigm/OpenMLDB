@@ -3,8 +3,9 @@
 ## [0.8.1] - 2023-06-28
 
 ### Features
-- Support the new SQL statement `ALTER TABLE ... ADD/DROP OFFLINE_PATH ...` (#3286 @aceforeverd, #3323 @tobegit3hub)
+- Support a new SQL statement `ALTER TABLE ... ADD/DROP OFFLINE_PATH ...` (#3286 @aceforeverd, #3323 @tobegit3hub)
 - Support deploying SQLs that does not contain long windows if there is data in the related tables (#3288 @dl239)
+- Support new built-in functions `top_n_value_ratio_cate`, `top_n_key_ratio_cate`, `list_except_by_key` and `list_except_by_value` (#3329 @aceforeverd)
 - Add a new interface to merge multiple SQLs (#3297 @vagetablechicken)
 - Support mapping topic tables in Kafka connector (#3282 @vagetablechicken)
 - Support deploying Kafka connector in Docker and Kubernetes (#3276 @tobegit3hub)
@@ -16,6 +17,7 @@
 
 ### Bug Fixes
 - Deploying fails in some cases (#3328 @vagetablechicken)
+- Creating udf/udaf function may fails as `udf` directory does not exist at startup. (#3326 @vagetablechicken)
 - Other minor bug fixes (#3281 #3284 @vagetablechicken)
 
 ### Code Refactoring
