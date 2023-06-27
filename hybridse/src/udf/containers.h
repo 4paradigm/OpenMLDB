@@ -284,6 +284,12 @@ class BoundedGroupByDict {
             }
         }
 
+        if (str_len == 0) {
+            output->size_ = 0;
+            output->data_ = "";
+            return;
+        }
+
         // allocate string buffer
         char* buffer = udf::v1::AllocManagedStringBuf(str_len);
         if (buffer == nullptr) {
@@ -354,7 +360,7 @@ class BoundedGroupByDict {
         for (auto& kv : map_) {
             ordered_set.emplace(kv.first, kv.second);
 
-            if (topn >= 0 && ordered_set.size() > static_cast<size_t>(topn)) {
+            if (topn >= 0 && ordered_set.size() > static_cast<uint64_t>(topn)) {
                 ordered_set.erase(ordered_set.begin());
             }
         }
@@ -374,6 +380,12 @@ class BoundedGroupByDict {
             } else {
                 outlen = new_len;
             }
+        }
+
+        if (outlen == 0) {
+            output->size_ = 0;
+            output->data_ = "";
+            return;
         }
 
         // allocate string buffer

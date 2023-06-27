@@ -2726,7 +2726,9 @@ cases:
       select
         idx,
         top_n_value_ratio_cate(val, val > 100, cate, 2) over w as ratio_by_value,
-        top_n_key_ratio_cate(val, val > 100, cate, 2) over w as ratio_by_key
+        top_n_key_ratio_cate(val, val > 100, cate, 2) over w as ratio_by_key,
+        top_n_value_ratio_cate(val, val > 100, cate, 0) over w as ratio_by_value_empty,
+        top_n_key_ratio_cate(val, val > 100, cate, 0) over w as ratio_by_key_empty,
       from t1
       window w as (
         partition by gp order by ts
@@ -2747,11 +2749,13 @@ cases:
         - idx int
         - ratio_by_value string
         - ratio_by_key string
+        - ratio_by_value_empty string
+        - ratio_by_key_empty string
       order: idx
       rows:
-        - [0, "", ""]
-        - [100, "a:1.000000", "a:1.000000"]
-        - [200, "b:1.000000,a:1.000000", "b:1.000000,a:1.000000"]
-        - [300, "b:1.000000,a:1.000000", "b:1.000000,a:1.000000"]
-        - [400, "a:1.000000,b:0.500000", "b:0.500000,a:1.000000"]
-        - [500, "c:1.000000,a:1.000000", "c:1.000000,b:0.500000"]
+        - [0, "", "", "", ""]
+        - [100, "a:1.000000", "a:1.000000", "", ""]
+        - [200, "b:1.000000,a:1.000000", "b:1.000000,a:1.000000", "", ""]
+        - [300, "b:1.000000,a:1.000000", "b:1.000000,a:1.000000", "", ""]
+        - [400, "a:1.000000,b:0.500000", "b:0.500000,a:1.000000", "", ""]
+        - [500, "c:1.000000,a:1.000000", "c:1.000000,b:0.500000", "", ""]
