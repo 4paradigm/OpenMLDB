@@ -2648,7 +2648,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(
 
             std::string db_name;
             if (!plan->db_.empty()) {
-                db_name = (plan->table_.begin(), plan->table_.end());
+                db_name = plan->db_;
             } else {
                 db_name = db;
             }
