@@ -240,24 +240,10 @@ if (NOT ICU_FOUND)
 endif ()
 message(STATUS "Found ICU Libraries: ${ICU_LIBRARIES}")
 
-# TODO(hw): no need?
-# list(APPEND file_based_test_driver_LIBS
-#         alternations
-#         test_case_options
-#         test_case_outputs
-#         test_case_mode
-#         logging
-#         path
-#         status
-#         unified_diff_oss
-#         ret_check
-#         )
-
 find_library(zetasql_LIB zetasql)
 find_library(re2_LIB re2)
 set(ZETASQL_LIBS
         ${zetasql_LIB}
-        # ${file_based_test_driver_LIBS}
         ${ABSL_LIBS}
         ${re2_LIB}
         ${ICU_LIBRARIES}

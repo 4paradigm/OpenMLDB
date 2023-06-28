@@ -236,7 +236,7 @@ target_include_directories (
     ${PROJECT_SOURCE_DIR}/hybridse/include
     ${PROJECT_SOURCE_DIR}/.deps/usr/include
 )
-# openmldb_sdk is enouth, but we need to add all libs to one, add lib message here
+# openmldb_sdk is enough for link, but we need to add all libs to one, add lib hint here
 target_link_libraries(openmldb_api openmldb_sdk 
     openmldb_codec
     openmldb_catalog
