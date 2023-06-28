@@ -1,7 +1,7 @@
 # [Alpha] C++ SDK
 
 ```{warning}
-C++ SDK 目前功能支持上并不完善，不支持多线程，目前仅用于开发测试或者特殊用途，不推荐在实际生产环境中使用。生产环境推荐使用 Java SDK，功能覆盖最完善，并且在功能、性能上都经过了充分测试。
+C++ SDK 目前功能支持上并不完善，目前仅用于开发测试或者特殊用途，不推荐在实际生产环境中使用。生产环境推荐使用 Java SDK，功能覆盖最完善，并且在功能、性能上都经过了充分测试。
 ```
 
 ## C++ SDK 包编译安装
@@ -119,10 +119,9 @@ int main() {
 }
 ```
 
-
 ## 多线程使用
 
-`OpenMLDBHandler` 对象是线程不安全的，但内部连接`SQLClusterRouter`可以在多线程中使用，所以可以通过共享Handler中的Router来实现多线程，比独立创建多个Handler（多个独立Router）更合适。但需要注意多线程模式下，无db的接口依赖Router内部缓存的used db，可能被其他线程修改，请使用db接口。以下代码演示了多线程使用的方法。
+`OpenMLDBHandler` 对象是线程不安全的，但内部连接`SQLClusterRouter`可以在多线程中使用，所以可以通过共享Handler中的Router来实现多线程，比独立创建多个Handler（多个独立Router）更合适。但需要注意，多线程模式下，无db的接口依赖Router内部缓存的used db，可能被其他线程修改，请使用db接口。以下代码演示了多线程使用的方法。
 
 ```c++
 OpenmldbHandler h1("127.0.0.1:2181", "/openmldb");
