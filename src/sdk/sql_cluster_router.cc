@@ -2643,6 +2643,95 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(
             *status = HandleDelete(database, plan->GetTableName(), plan->GetCondition());
             return {};
         }
+        case hybridse::node::kPlanTypeAlterTable: {
+            auto plan = dynamic_cast<hybridse::node::AlterTableStmtPlanNode*>(node);
+
+            std::string db_name;
+            if (!plan->db_.empty()) {
+                db_name = (plan->table_.begin(), plan->table_.end());
+            } else {
+                db_name = db;
+            }
+
+            std::string table(plan->table_.begin(), plan->table_.end());
+            // Refresh before getting actual table info
+            cluster_sdk_->Refresh();
+            auto tableInfo = cluster_sdk_->GetTableInfo(db_name, table);
+
+            if (tableInfo == nullptr) {
+                *status = {StatusCode::kCmdError, "table does not exist"};
+                return {};
+            }
+
+            // Create offline table info if not exists
+            ::openmldb::nameserver::OfflineTableInfo offline_table_info;
+
+            if (tableInfo->has_offline_table_info()) {
+                // Get the existed offline table info
+                offline_table_info.CopyFrom(tableInfo->offline_table_info());
+            } else {
+                // Create empty offline table info
+                offline_table_info.set_path("");
+                offline_table_info.set_format("parquet");
+            }
+
+            auto current_symbolic_paths = offline_table_info.symbolic_paths();
+
+            std::vector<const hybridse::node::AlterActionBase *> actions = plan->actions_;
+
+            // Handle multiple add and delete actions
+            for (const auto& action : actions) {
+                auto kind = action->kind();
+
+                if (kind == hybridse::node::AlterActionBase::ActionKind::ADD_PATH) {  // Handle add path
+                    auto addAction = dynamic_cast<const hybridse::node::AddPathAction*>(action);
+                    auto target = addAction->target_;
+
+                    bool isDuplicated = false;
+                    for (const auto& item : current_symbolic_paths) {
+                        if (item == target) {
+                            isDuplicated = true;
+                            break;
+                        }
+                    }
+                    if (isDuplicated) {
+                        *status = {StatusCode::kCmdError, "The symbolic path exists: " + target};
+                        return {};
+                    } else {
+                        offline_table_info.add_symbolic_paths(target);
+                    }
+
+                } else {  // Handle delete path
+                    auto dropAction = dynamic_cast<const hybridse::node::DropPathAction*>(action);
+                    auto target = dropAction->target_;
+
+                    bool isExist = false;
+                    int index = 0;
+                    for (const auto& item : current_symbolic_paths) {
+                        if (item == target) {
+                            isExist = true;
+                            break;
+                        }
+                        index += 1;
+                    }
+                    if (isExist) {
+                        offline_table_info.mutable_symbolic_paths()->erase(
+                            offline_table_info.mutable_symbolic_paths()->begin() + index);
+                    } else {
+                        *status = {StatusCode::kCmdError, "The symbolic path does not exist: " + target};
+                        return {};
+                    }
+                }
+            }
+
+            // Update offline table info
+            tableInfo->mutable_offline_table_info()->CopyFrom(offline_table_info);
+
+            // Send reqeust to persistent table info
+            auto ns = cluster_sdk_->GetNsClient();
+            ns->UpdateOfflineTableInfo(*tableInfo);
+            return {};
+        }
         case hybridse::node::kPlanTypeShow: {
             auto plan = dynamic_cast<hybridse::node::ShowPlanNode*>(node);
             auto target = absl::AsciiStrToUpper(plan->GetTarget());
