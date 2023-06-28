@@ -1,5 +1,28 @@
 # Changelog
 
+## [0.8.1] - 2023-06-28
+
+### Features
+- Support a new SQL statement `ALTER TABLE ... ADD/DROP OFFLINE_PATH ...` (#3286 @aceforeverd, #3323 @tobegit3hub)
+- Support deploying SQLs in which the involved tables have data but without pre-aggregation defined (#3288 @dl239)
+- Support new built-in functions `top_n_value_ratio_cate`, `top_n_key_ratio_cate`, `list_except_by_key` and `list_except_by_value` (#3329 @aceforeverd)
+- Add a new SDK API to merge multiple SQLs for deployment (#3297 @vagetablechicken)
+- Support mapping topic tables in the Kafka connector (#3282 @vagetablechicken)
+- Support deploying the Kafka connector in Docker and Kubernetes (#3276 @tobegit3hub)
+- Support fetching jobs from NameServer (#3293 @dl239)
+- Enhance the diagnostic tool (#3224 #3208 #3285 #3258 #3303 @zhangziheng01233)
+- Enhance the `SELECT INTO ...` statement (#2529 @vagetablechicken)
+- Improve the documents (#3308 @aceforeverd)
+- Other minor features (#3312 #3314 @vagetablechicken, #3298 @aceforeverd)
+
+### Bug Fixes
+- SQL deployment fails in some cases (#3328 @vagetablechicken)
+- Creating UDFs/UDAFs may fail as the `udf` directory does not exist by default. (#3326 @vagetablechicken)
+- Other minor bug fixes (#3281 #3284 @vagetablechicken)
+
+### Code Refactoring
+#3226 @dl239, #3294 @aceforeverd
+
 ## [0.8.0] - 2023-05-12
 
 ### Features
@@ -576,6 +599,7 @@ Removed
 - openmldb-0.2.0-linux.tar.gz targets on x86_64
 - aarch64 artifacts consider experimental
 
+[0.8.1]: https://github.com/4paradigm/OpenMLDB/compare/v0.8.0...v0.8.1
 [0.8.0]: https://github.com/4paradigm/OpenMLDB/compare/v0.7.3...v0.8.0
 [0.7.3]: https://github.com/4paradigm/OpenMLDB/compare/v0.7.2...v0.7.3
 [0.7.2]: https://github.com/4paradigm/OpenMLDB/compare/v0.7.1...v0.7.2

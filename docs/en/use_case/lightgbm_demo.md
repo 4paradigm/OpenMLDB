@@ -13,7 +13,7 @@ Note that: (1) this case is based on the OpenMLDB cluster version for tutorial d
 - Pull the OpenMLDB docker image and run the corresponding container:
 
 ```bash
-docker run -it 4pdosc/openmldb:0.8.0 bash
+docker run -it 4pdosc/openmldb:0.8.1 bash
 ```
 
 The image is preinstalled with OpenMLDB and preset with all scripts, third-party libraries, open-source tools and training data required for this case.
