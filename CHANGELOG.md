@@ -16,7 +16,7 @@
 - Other minor features (#3312 #3314 @vagetablechicken, #3298 @aceforeverd)
 
 ### Bug Fixes
-- SQL Deployment fails in some cases (#3328 @vagetablechicken)
+- SQL deployment fails in some cases (#3328 @vagetablechicken)
 - Creating UDFs/UDAFs may fail as the `udf` directory does not exist by default. (#3326 @vagetablechicken)
 - Other minor bug fixes (#3281 #3284 @vagetablechicken)
 
