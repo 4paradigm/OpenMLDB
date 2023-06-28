@@ -182,7 +182,11 @@ base::Status Planner::CreateSelectQueryPlan(const node::SelectQueryNode *root, n
         // expand window frame for lag funtions early
         if (project_expr->GetExprType() == node::kExprCall) {
             auto *call_expr = dynamic_cast<node::CallExprNode *>(project_expr);
-            if (call_expr != nullptr && IsCurRowRelativeWinFun(call_expr->GetFnDef()->GetName())) {
+            if (call_expr != nullptr && call_expr->GetOver() != nullptr &&
+                IsCurRowRelativeWinFun(call_expr->GetFnDef()->GetName())) {
+                // current row window constructed only for `lag(col, 1) over w`,
+                // not for nested window aggregation from kids,
+                //   like `lag(split_by_key(count_cate_where(col, ...) over w, ",", ":"), 1)`
                 auto s = ConstructWindowForLag(w_ptr, call_expr);
                 CHECK_TRUE(s.ok(), common::kUnsupportSql, s.status().ToString());
                 w_ptr = s.value();
@@ -758,6 +762,13 @@ base::Status SimplePlanner::CreatePlanTree(const NodePointVector &parser_trees, 
                 CHECK_TRUE(delete_node != nullptr, common::kPlanError, "not an DeleteNode");
                 node::PlanNode *delete_plan_node = node_manager_->MakeDeletePlanNode(delete_node);
                 plan_trees.push_back(delete_plan_node);
+                break;
+            }
+            case ::hybridse::node::kShowStmt: {
+                auto show_node = dynamic_cast<const node::ShowNode*>(parser_tree);
+                CHECK_TRUE(show_node != nullptr, common::kPlanError, "not an ShowNode");
+                plan_trees.push_back(node_manager_->MakeNode<node::ShowPlanNode>(show_node->GetShowType(),
+                            show_node->GetTarget(), show_node->GetLikeStr()));
                 break;
             }
             case ::hybridse::node::kCreateFunctionStmt: {

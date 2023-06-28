@@ -4,7 +4,18 @@
 
 ### 操作系统
 
-发行的预编译包支持：CentOS 7.x, Ubuntu 20.04, SUSE 12 SP3, macOS 12。对于其他操作系统发行版本，预编译包未做充分测试，无法保证其完全兼容。你可以尝试 [从源码编译](compile.md)，来支持其他的操作系统。
+发行的预编译包支持：CentOS 7.x, Ubuntu 20.04, SUSE 12 SP3, macOS 12。因此Linux要求glibc version >= 2.17。对于其他操作系统发行版本，预编译包未做充分测试，无法保证其完全兼容。你可以尝试 [从源码编译](compile.md)，来支持其他的操作系统。
+
+```{note}
+Linux可通过以下命令来检查系统的支持情况。
+````shell
+cat /etc/os-release # most linux
+cat /etc/redhat-release # redhat only
+ldd --version
+strings /lib64/libc.so.6 | grep ^GLIBC_
+````
+通常ldd版本>=2.17，libc.so.6中也会有`GLIBC_2.17`，也就是该系统支持glibc 2.17的程序/动态库运行。如果系统的glibc版本低于2.17，则需要尝试从源码编译。
+```
 
 ### 第三方组件依赖
 

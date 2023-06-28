@@ -82,6 +82,7 @@ std::shared_ptr<::hybridse::sdk::ResultSet> ResultSetSQL::MakeResultSet(
         *status = {::hybridse::common::StatusCode::kCmdError, "request error, ResultSetSQL init failed"};
         return {};
     }
+    *status = {};
     return rs;
 }
 
@@ -110,6 +111,7 @@ std::shared_ptr<::hybridse::sdk::ResultSet> ResultSetSQL::MakeResultSet(
         *status = {::hybridse::common::StatusCode::kCmdError, "request error, ResultSetSQL init failed"};
         return {};
     }
+    *status = {};
     return rs;
 }
 
@@ -132,9 +134,9 @@ std::shared_ptr<::hybridse::sdk::ResultSet> ResultSetSQL::MakeResultSet(
         *status = {::hybridse::common::StatusCode::kCmdError, "fail to convert schema"};
         return {};
     }
-    *status = {};
     auto rs = std::make_shared<openmldb::sdk::ResultSetSQL>(vm_schema, records.size(), io_buf);
     if (rs->Init()) {
+        *status = {};
         return rs;
     }
     *status = {::hybridse::common::StatusCode::kCmdError, "fail to init ResultSetSQL"};

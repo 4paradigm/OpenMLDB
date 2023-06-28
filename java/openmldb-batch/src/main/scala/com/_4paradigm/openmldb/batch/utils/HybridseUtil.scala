@@ -158,6 +158,22 @@ object HybridseUtil {
     }
   }
 
+  def getIntOrDefault(node: ConstNode, default: String): String = {
+    if (node != null) {
+      node.GetInt().toString
+    } else {
+      default
+    }
+  }
+
+  def getIntOrNone(node: ConstNode): Option[Int] = {
+    if (node != null) {
+      Option(node.GetInt())
+    } else {
+      None
+    }
+  }
+
   def updateOptionsMap(options: mutable.Map[String, String], node: ConstNode, name: String, getValue: ConstNode =>
     String): Unit = {
     if (node != null) {
@@ -192,7 +208,8 @@ object HybridseUtil {
   // 'file' may change the option 'format':
   // If file starts with 'hive', format is hive, not the detail format in hive
   // If file starts with 'file'/'hdfs', format is the file format
-  def parseOptions[T](file: String, node: T): (String, Map[String, String], String, Option[Boolean]) = {
+  // result: format, options(spark write/read options), mode is common, if more options, set them to extra map
+  def parseOptions[T](file: String, node: T): (String, Map[String, String], String, Map[String, String]) = {
     // load data: read format, select into: write format
     val format = if (file.toLowerCase().startsWith("hive://")) {
       "hive"
@@ -216,8 +233,7 @@ object HybridseUtil {
 
     // load data: write mode(load data may write to offline storage or online storage, needs mode too)
     // select into: write mode
-    val modeStr = parseOption(getOptionFromNode(node, "mode"), "error_if_exists", HybridseUtil
-      .getStringOrDefault).toLowerCase
+    val modeStr = parseOption(getOptionFromNode(node, "mode"), "error_if_exists", getStringOrDefault).toLowerCase
     val mode = modeStr match {
       case "error_if_exists" => "errorifexists"
       // append/overwrite, stay the same
@@ -225,12 +241,15 @@ object HybridseUtil {
       case _ => throw new UnsupportedHybridSeException(s"unsupported write mode $modeStr")
     }
 
+    // extra options for some special case
     // only for PhysicalLoadDataNode
-    var deepCopy: Option[Boolean] = None
-    if (node.isInstanceOf[PhysicalLoadDataNode]) {
-      deepCopy = Option(parseOption(getOptionFromNode(node, "deep_copy"), "true", getBoolOrDefault).toBoolean)
-    }
-    (format, options.toMap, mode, deepCopy)
+    var extraOptions: mutable.Map[String, String] = mutable.Map()
+    extraOptions += ("deep_copy" -> parseOption(getOptionFromNode(node, "deep_copy"), "true", getBoolOrDefault))
+
+    // only for select into, "" means N/A
+    extraOptions += ("coalesce" -> parseOption(getOptionFromNode(node, "coalesce"), "0", getIntOrDefault))
+
+    (format, options.toMap, mode, extraOptions.toMap)
   }
 
   // result 'readSchema' & 'tsCols' is only for csv format, may not be used

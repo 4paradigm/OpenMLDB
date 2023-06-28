@@ -508,6 +508,22 @@ class CmdPlanNode : public LeafPlanNode {
     bool if_exist_ = false;
 };
 
+class ShowPlanNode : public LeafPlanNode {
+ public:
+    ShowPlanNode(ShowStmtType show_type, const std::string& target, const std::string like)
+        : LeafPlanNode(kPlanTypeShow), show_type_(show_type), target_(target), like_str_(like) {}
+    const std::string& GetTarget() const { return target_; }
+    ShowStmtType GetShowType() const { return show_type_; }
+    const std::string& GetLikeStr() const { return like_str_; }
+    bool Equals(const PlanNode* that) const override;
+    void Print(std::ostream& output, const std::string& tab) const override;
+
+ private:
+    ShowStmtType show_type_;
+    std::string target_;
+    std::string like_str_;
+};
+
 class DeletePlanNode : public LeafPlanNode {
  public:
     DeletePlanNode(DeleteTarget target, std::string job_id,
