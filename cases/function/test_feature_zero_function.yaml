@@ -201,3 +201,36 @@ cases:
         - [3, 3, 1, 1]
         - [4, 0, 0, 0]
         - [5, 2, 2, 2]
+
+  - id: 7
+    desc: list_except_by_key/list_except_by_value
+    inputs:
+      - name: t1
+        columns: ["idx int", "gp int", "val string", "ts timestamp"]
+        indexs: ['idx:gp:ts']
+        rows:
+          - [100, 1, "a:1,b:2,c:0", 1000]
+          - [101, 1, "abc", 1000]
+          - [102, 1, "a,b,c", 1000]
+    # note
+    # 1.'abc' as kv pair parsed to `abc=`, value is a empty string
+    # 2. list is not kv pair but simply 'k1,k2,k3' ? it fallbacked (same result as) filter on whole kv pair
+    sql: |
+      select idx,
+        `join`(list_except_by_key(split(val, ','), 'a,b'), " ") as keys_filterd,
+        `join`(list_except_by_value(split(val, ','), '1,2'), " ") as values_filterd,
+        `join`(list_except_by_key(split(val, ','), ''), " ") as filter_nothing1,
+        `join`(list_except_by_value(split(val, ','), ''), " ") as filter_nothing2,
+      from t1
+    expect:
+      order: idx
+      columns:
+        - idx int
+        - keys_filterd string
+        - values_filterd string
+        - filter_nothing1 string
+        - filter_nothing2 string
+      rows:
+        - [100, "c:0", "c:0", "a:1 b:2 c:0", "a:1 b:2 c:0"]
+        - [101, "abc", "abc", "abc", ""]
+        - [102, "c", "a b c", "a b c", ""]

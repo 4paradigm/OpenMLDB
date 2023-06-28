@@ -42,7 +42,7 @@ struct MaxCateDef {
 
     template <typename V>
     struct Impl {
-        using ContainerT = udf::container::BoundedGroupByDict<K, V, V>;
+        using ContainerT = udf::container::BoundedGroupByDict<K, V>;
         using InputK = typename ContainerT::InputK;
         using InputV = typename ContainerT::InputV;
 
@@ -105,7 +105,7 @@ struct MaxCateWhereDef {
 
     template <typename V>
     struct Impl {
-        using ContainerT = udf::container::BoundedGroupByDict<K, V, V>;
+        using ContainerT = udf::container::BoundedGroupByDict<K, V>;
         using InputK = typename ContainerT::InputK;
         using InputV = typename ContainerT::InputV;
 
@@ -148,7 +148,7 @@ struct TopNKeyMaxCateWhereDef {
 
     template <typename V>
     struct Impl {
-        using ContainerT = udf::container::BoundedGroupByDict<K, V, V>;
+        using ContainerT = udf::container::BoundedGroupByDict<K, V>;
         using InputK = typename ContainerT::InputK;
         using InputV = typename ContainerT::InputV;
 
@@ -208,7 +208,8 @@ template <typename K>
 struct TopNValueMaxCateWhereDef {
     void operator()(UdafRegistryHelper& helper) {  // NOLINT
         helper.library()
-            ->RegisterUdafTemplate<container::TopNValueImpl<MaxCateDef<K>::template Impl>::template Impl>(helper.name())
+            ->RegisterUdafTemplate<container::TopNCateWhereImpl<MaxCateDef<K>::template Impl>::template Impl>(
+                helper.name())
             .doc(helper.GetDoc())
             .template args_in<int16_t, int32_t, int64_t, float, double>();
     }
@@ -294,6 +295,8 @@ void DefaultUdfLibrary::initMaxByCateUdaFs() {
     OVER w;
                 -- output "z:5,y:3"
             @endcode
+
+            @since 0.1.0
             )")
         .args_in<int16_t, int32_t, int64_t, Date, Timestamp, StringRef>();
 
@@ -324,6 +327,8 @@ void DefaultUdfLibrary::initMaxByCateUdaFs() {
     OVER w;
                 -- output "z:5,x:4"
             @endcode
+
+            @since 0.6.4
             )")
         .args_in<int16_t, int32_t, int64_t, Date, Timestamp, StringRef>();
 }
