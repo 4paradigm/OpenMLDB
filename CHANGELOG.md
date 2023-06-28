@@ -4,20 +4,20 @@
 
 ### Features
 - Support a new SQL statement `ALTER TABLE ... ADD/DROP OFFLINE_PATH ...` (#3286 @aceforeverd, #3323 @tobegit3hub)
-- Support deploying SQLs that does not contain long windows if there is data in the related tables (#3288 @dl239)
+- Support deploying SQLs in which the involved tables have data but without pre-aggregation defined (#3288 @dl239)
 - Support new built-in functions `top_n_value_ratio_cate`, `top_n_key_ratio_cate`, `list_except_by_key` and `list_except_by_value` (#3329 @aceforeverd)
-- Add a new interface to merge multiple SQLs (#3297 @vagetablechicken)
-- Support mapping topic tables in Kafka connector (#3282 @vagetablechicken)
-- Support deploying Kafka connector in Docker and Kubernetes (#3276 @tobegit3hub)
-- Support getting jobs from NameServer (#3293 @dl239)
+- Add a new SDK API to merge multiple SQLs for deployment (#3297 @vagetablechicken)
+- Support mapping topic tables in the Kafka connector (#3282 @vagetablechicken)
+- Support deploying the Kafka connector in Docker and Kubernetes (#3276 @tobegit3hub)
+- Support fetching jobs from NameServer (#3293 @dl239)
 - Enhance the diagnostic tool (#3224 #3208 #3285 #3258 #3303 @zhangziheng01233)
 - Enhance the `SELECT INTO ...` statement (#2529 @vagetablechicken)
 - Improve the documents (#3308 @aceforeverd)
 - Other minor features (#3312 #3314 @vagetablechicken, #3298 @aceforeverd)
 
 ### Bug Fixes
-- Deploying fails in some cases (#3328 @vagetablechicken)
-- Creating udf/udaf function may fails as `udf` directory does not exist at startup. (#3326 @vagetablechicken)
+- SQL Deployment fails in some cases (#3328 @vagetablechicken)
+- Creating UDFs/UDAFs may fail as the `udf` directory does not exist by default. (#3326 @vagetablechicken)
 - Other minor bug fixes (#3281 #3284 @vagetablechicken)
 
 ### Code Refactoring
