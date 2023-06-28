@@ -1104,6 +1104,14 @@ TEST_F(SQLClusterTest, AlterTableAddDropOfflinePath) {
     ASSERT_TRUE(!contains(paths, "hdfs://foo/bar"));
     ASSERT_TRUE(contains(paths, "hdfs://foo/bar2"));
 
+    // Add path with database name
+    ddl = "ALTER TABLE " + db + "." + table + " ADD offline_path 'hdfs://foo/bar'";
+    router->ExecuteSQL(db, ddl, &status);
+    ASSERT_TRUE(router->RefreshCatalog());
+
+    paths = router->GetTableInfo(db, table).offline_table_info().symbolic_paths();
+    ASSERT_TRUE(contains(paths, "hdfs://foo/bar"));
+
     // Clear offline table to drop, otherwise it requires taskmanager to drop table
     auto table_info = router->GetTableInfo(db, table);
     table_info.clear_offline_table_info();
