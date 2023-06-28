@@ -3495,6 +3495,7 @@ void TabletImpl::GetTableFollower(RpcController* controller, const ::openmldb::a
     if (info_map.empty()) {
         response->set_msg("has no follower");
         response->set_code(::openmldb::base::ReturnCode::kNoFollower);
+        return;
     }
     for (const auto& kv : info_map) {
         ::openmldb::api::FollowerInfo* follower_info = response->add_follower_info();

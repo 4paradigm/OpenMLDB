@@ -18,7 +18,6 @@ import re
 import requests
 import warnings
 import yaml
-from bs4 import BeautifulSoup
 
 from diagnostic_tool.connector import Connector
 from diagnostic_tool.server_checker import StatusChecker
@@ -97,6 +96,7 @@ class ErrSolution:
 
 
 class ProtoParser:
+    """ literal parse proto file to json, it's not a good way to parse proto file, but it's simple and easy to use """
     def __init__(self) -> None:
         with open("combined.proto") as f:
             self.text = f.read()
@@ -157,7 +157,7 @@ class ProtoParser:
         return enum_list, message_list
 
     def parse_service(self):
-        pass
+        assert False, "Not implemented"
 
     def to_json(self):
         my_json = {}
