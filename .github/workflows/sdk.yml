@@ -262,6 +262,8 @@ jobs:
         run: |
           python3 -m easy_install pip
           pip install setuptools wheel twine
+          pip install urllib3==1.26.6
+          twine --version
           yum install -y net-tools
 
       - name: test sqlalchemy and generate coverage report
