@@ -73,10 +73,11 @@ bool NsClient::ShowDatabase(std::vector<std::string>* dbs, std::string& msg) {
     return ok && response.code() == 0;
 }
 
-bool NsClient::DropDatabase(const std::string& db, std::string& msg) {
+bool NsClient::DropDatabase(const std::string& db, std::string& msg, bool if_not_exists) {
     ::openmldb::nameserver::DropDatabaseRequest request;
     ::openmldb::nameserver::GeneralResponse response;
     request.set_db(db);
+    request.set_if_not_exists(if_not_exists);
     bool ok = client_.SendRequest(&::openmldb::nameserver::NameServer_Stub::DropDatabase, &request, &response,
                                   FLAGS_request_timeout_ms, 1);
     msg = response.msg();

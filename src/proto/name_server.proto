@@ -461,7 +461,8 @@ message ShowDatabaseResponse {
 
 message DropDatabaseRequest {
     optional string db = 1;
-    optional ZoneInfo zone_info = 2;
+    optional bool if_not_exists = 2 [default = false];
+    optional ZoneInfo zone_info = 3;
 }
 
 message ShowSdkEndpointRequest {}
