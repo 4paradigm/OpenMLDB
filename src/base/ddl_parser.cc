@@ -35,6 +35,8 @@
 #include "sdk/sql_insert_row.h"
 #include "vm/physical_op.h"
 
+DECLARE_bool(enable_distsql);
+
 namespace openmldb::base {
 
 using hybridse::vm::Catalog;
@@ -452,6 +454,7 @@ bool DDLParser::GetPlan(const std::string& sql, const std::string& db,
     ::hybridse::vm::EngineOptions options;
     options.SetKeepIr(true);
     options.SetCompileOnly(true);
+    options.SetClusterOptimized(FLAGS_enable_distsql);
     auto engine = std::make_shared<hybridse::vm::Engine>(catalog, options);
     auto ok = engine->Get(sql, db, *session, *status);
     if (!(ok && status->isOK())) {
