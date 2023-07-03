@@ -105,12 +105,12 @@ TEST_F(SQLClusterDDLTest, DropDatabase) {
     ASSERT_TRUE(router->CreateDB(db2, &status));
     // drop database db2
     
-    ASSERT_TRUE(router->ExecuteDDL(db, "drop database " + db2 + ";", &status;));
+    ASSERT_TRUE(router->ExecuteDDL(db, "drop database " + db2 + ";", &status));
     
     ASSERT_TRUE(router->DropDB(db2, &status));
 
     //drop database db2 when db2 not exist
-    ASSERT_FALSE(router->ExecuteDDL(db, "drop database db2;", &status;));
+    ASSERT_FALSE(router->ExecuteDDL(db, "drop database db2;", &status));
 }
 TEST_F(SQLClusterDDLTest, DropDatabaseIfNotExist) {
     std::string db2 = "db" + GenRand();
@@ -120,12 +120,12 @@ TEST_F(SQLClusterDDLTest, DropDatabaseIfNotExist) {
     ASSERT_TRUE(router->CreateDB(db2, &status));
     // drop database db2
 
-    ASSERT_TRUE(router->ExecuteDDL(db, "drop database " + db2 + ";", &status;));
+    ASSERT_TRUE(router->ExecuteDDL(db, "drop database " + db2 + " if exists;", &status));
 
     ASSERT_TRUE(router->DropDB(db2, &status));
 
     //drop database db2 when db2 not exist
-    ASSERT_TRUE(router->ExecuteDDL(db, "drop database db2;", &status;));
+    ASSERT_TRUE(router->ExecuteDDL(db, "drop database db2 if exists;", &status));
 }
 
 TEST_F(SQLClusterDDLTest, CreateTableWithDatabase) {
