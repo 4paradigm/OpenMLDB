@@ -81,7 +81,7 @@ bool NsClient::DropDatabase(const std::string& db, std::string& msg, bool if_not
                                   FLAGS_request_timeout_ms, 1);
     msg = response.msg();
     if(if_not_exists){
-        return ok && (response.code() == 0 || response.code() == 802);
+        return ok && (response.code() == 0 || response.code() == ::openmldb::base::ReturnCode::kDatabaseNotFound);
     }
     return ok && response.code() == 0;
 }

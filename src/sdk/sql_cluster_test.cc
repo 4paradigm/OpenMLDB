@@ -97,6 +97,37 @@ class SQLClusterDDLTest : public SQLClusterTest {
     std::shared_ptr<SQLRouter> router;
     std::string db;
 };
+TEST_F(SQLClusterDDLTest, DropDatabase) {
+    std::string db2 = "db" + GenRand();
+    ::hybridse::sdk::Status status;
+    std::string ddl;
+
+    ASSERT_TRUE(router->CreateDB(db2, &status));
+    // drop database db2
+    
+    ASSERT_TRUE(router->ExecuteDDL(db, "drop database " + db2 + ";", &status;));
+    
+    ASSERT_TRUE(router->DropDB(db2, &status));
+
+    //drop database db2 when db2 not exist
+    ASSERT_FALSE(router->ExecuteDDL(db, "drop database db2;", &status;));
+}
+TEST_F(SQLClusterDDLTest, DropDatabaseIfNotExist) {
+    std::string db2 = "db" + GenRand();
+    ::hybridse::sdk::Status status;
+    std::string ddl;
+
+    ASSERT_TRUE(router->CreateDB(db2, &status));
+    // drop database db2
+
+    ASSERT_TRUE(router->ExecuteDDL(db, "drop database " + db2 + ";", &status;));
+
+    ASSERT_TRUE(router->DropDB(db2, &status));
+
+    //drop database db2 when db2 not exist
+    ASSERT_TRUE(router->ExecuteDDL(db, "drop database db2;", &status;));
+}
+
 TEST_F(SQLClusterDDLTest, CreateTableWithDatabase) {
     std::string name = "test" + GenRand();
     ::hybridse::sdk::Status status;

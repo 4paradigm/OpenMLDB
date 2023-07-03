@@ -1644,7 +1644,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::HandleSQLCmd(const h
         }
         case hybridse::node::kCmdDropDatabase: {
             std::string name = cmd_node->GetArgs()[0];
-            if (ns_ptr->DropDatabase(name, msg)) {
+            if (ns_ptr->DropDatabase(name, msg, cmd_node->IsIfNotExists())) {
                 *status = {};
             } else {
                 *status = {StatusCode::kCmdError, msg};
