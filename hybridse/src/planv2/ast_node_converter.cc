@@ -2011,6 +2011,7 @@ base::Status ConvertDropStatement(const zetasql::ASTDropStatement* root, node::N
                 *output = dynamic_cast<node::CmdNode*>(
                     node_manager->MakeCmdNode(node::CmdType::kCmdDropTable, names[0], names[1]));
             }
+            (*output)->SetIfNotExists(root->is_if_exists());
             return base::Status::OK();
         }
         case zetasql::SchemaObjectKind::kDatabase: {
@@ -2018,6 +2019,7 @@ base::Status ConvertDropStatement(const zetasql::ASTDropStatement* root, node::N
                        root->name()->ToIdentifierPathString())
             *output =
                 dynamic_cast<node::CmdNode*>(node_manager->MakeCmdNode(node::CmdType::kCmdDropDatabase, names[0]));
+            (*output)->SetIfNotExists(root->is_if_exists());
             return base::Status::OK();
         }
         case zetasql::SchemaObjectKind::kIndex: {

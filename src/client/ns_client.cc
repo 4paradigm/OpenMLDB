@@ -80,7 +80,7 @@ bool NsClient::DropDatabase(const std::string& db, std::string& msg, bool if_not
     bool ok = client_.SendRequest(&::openmldb::nameserver::NameServer_Stub::DropDatabase, &request, &response,
                                   FLAGS_request_timeout_ms, 1);
     msg = response.msg();
-    if(if_not_exists){
+    if (if_not_exists) {
         return ok && (response.code() == 0 || response.code() == ::openmldb::base::ReturnCode::kDatabaseNotFound);
     }
     return ok && response.code() == 0;
