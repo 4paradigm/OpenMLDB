@@ -902,7 +902,7 @@ bool SQLClusterRouter::DropDB(const std::string& db, hybridse::sdk::Status* stat
     return true;
 }
 
-bool SQLClusterRouter::DropTable(const std::string& db, const std::string& table, hybridse::sdk::Status* status) {
+bool SQLClusterRouter::DropTable(const std::string& db, const std::string& table, const bool if_not_exists, hybridse::sdk::Status* status) {
     RET_FALSE_IF_NULL_AND_WARN(status, "output status is nullptr");
     if (db.empty() || table.empty()) {
         SET_STATUS_AND_WARN(status, StatusCode::kCmdError,
@@ -916,20 +916,30 @@ bool SQLClusterRouter::DropTable(const std::string& db, const std::string& table
         return false;
     }
 
-    auto tableInfo = GetTableInfo(db, table);
+    auto table_info = cluster_sdk_ -> GetTableInfo(db, table);
+
+    if (table_info == nullptr) {
+	if (if_not_exists) {
+             *status= {};
+             return true;
+        } else {
+            SET_STATUS_AND_WARN(status, StatusCode::kCmdError, "table not exists");
+            return false;
+        }
+    }
 
     // delete pre-aggr meta info if need
-    if (tableInfo.base_table_tid() > 0) {
+    if (table_info->base_table_tid() > 0) {
         std::string meta_db = openmldb::nameserver::INTERNAL_DB;
         std::string meta_table = openmldb::nameserver::PRE_AGG_META_NAME;
         std::string select_aggr_info =
             absl::StrCat("select base_db,base_table,aggr_func,aggr_col,partition_cols,order_by_col,filter_col from ",
-                         meta_db, ".", meta_table, " where aggr_table = '", tableInfo.name(), "';");
+                         meta_db, ".", meta_table, " where aggr_table = '", table_info->name(), "';");
         auto rs = ExecuteSQL("", select_aggr_info, true, true, 0, status);
         WARN_NOT_OK_AND_RET(status, "get aggr info failed", false);
         if (rs->Size() != 1) {
             SET_STATUS_AND_WARN(status, StatusCode::kCmdError,
-                                "duplicate records generate with aggr table name: " + tableInfo.name());
+                                "duplicate records generate with aggr table name: " + table_info->name());
             return false;
         }
         std::string idx_key;
@@ -961,7 +971,7 @@ bool SQLClusterRouter::DropTable(const std::string& db, const std::string& table
         }
         auto tid = cluster_sdk_->GetTableId(meta_db, meta_table);
         std::string msg;
-        if (!tablet_client->Delete(tid, 0, tableInfo.name(), "aggr_table", msg) ||
+        if (!tablet_client->Delete(tid, 0, table_info->name(), "aggr_table", msg) ||
             !tablet_client->Delete(tid, 0, idx_key, "unique_key", msg)) {
             SET_STATUS_AND_WARN(status, StatusCode::kCmdError, "delete aggr meta failed");
             return false;
@@ -969,7 +979,7 @@ bool SQLClusterRouter::DropTable(const std::string& db, const std::string& table
     }
 
     // Check offline table info first
-    if (tableInfo.has_offline_table_info()) {
+    if (table_info->has_offline_table_info()) {
         auto taskmanager_client_ptr = cluster_sdk_->GetTaskManagerClient();
         if (!taskmanager_client_ptr) {
             SET_STATUS_AND_WARN(status, StatusCode::kRuntimeError, "no taskmanager client");
@@ -1886,7 +1896,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::HandleSQLCmd(const h
             if (!CheckAnswerIfInteractive("table", table_name)) {
                 return {};
             }
-            if (DropTable(db_name, table_name, status)) {
+            if (DropTable(db_name, table_name, cmd_node -> IsIfNotExists(), status)) {
                 RefreshCatalog();
             }
             return {};

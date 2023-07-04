@@ -97,27 +97,66 @@ class SQLClusterDDLTest : public SQLClusterTest {
     std::shared_ptr<SQLRouter> router;
     std::string db;
 };
+TEST_F(SQLClusterDDLTest, DropTable) {
+    std::string name = "test" + GenRand();
+    ::hybridse::sdk::Status status;
+    std::string ddl;
+
+    std::string db2 = "db" + GenRand();
+    ASSERT_TRUE(router->CreateDB(db2, &status));
+    // drop table name
+    ddl = "create table " + db2 + "." + name +
+          "("
+          "col1 int, col2 bigint, col3 string,"
+          "index(key=col3, ts=col2));";   
+    ASSERT_TRUE(router->ExecuteDDL(db, ddl, &status));
+    ASSERT_TRUE(router->ExecuteDDL(db, "drop table " + db2 + "." + name + ";", &status));
+
+    //drop table name when name not exist
+    ASSERT_FALSE(router->ExecuteDDL(db, "drop table " + db2 + "." + name + ";", &status));
+
+    ASSERT_TRUE(router->DropDB(db2, &status));
+}
+TEST_F(SQLClusterDDLTest, DropTableIfExists) {
+    std::string name = "test" + GenRand();
+    ::hybridse::sdk::Status status;
+    std::string ddl;
+
+    std::string db2 = "db" + GenRand();
+    ASSERT_TRUE(router->CreateDB(db2, &status));
+    // drop table name
+    ddl = "create table " + db2 + "." + name +
+          "("
+          "col1 int, col2 bigint, col3 string,"
+          "index(key=col3, ts=col2));";
+    ASSERT_TRUE(router->ExecuteDDL(db, ddl, &status));
+    ASSERT_TRUE(router->ExecuteDDL(db, "drop table if exists " + db2 + "." + name + ";", &status));
+
+    //drop table name when name not exist
+    ASSERT_TRUE(router->ExecuteDDL(db, "drop table if exists " + db2 + "." + name + ";", &status));
+
+    ASSERT_TRUE(router->DropDB(db2, &status));
+}
+
 TEST_F(SQLClusterDDLTest, DropDatabase) {
     std::string db2 = "db" + GenRand();
     ::hybridse::sdk::Status status;
     std::string ddl;
 
     ASSERT_TRUE(router->CreateDB(db2, &status));
-    // drop database db2
-    
+    // drop database db2   
     ASSERT_TRUE(router->ExecuteDDL(db, "drop database " + db2 + ";", &status));
 
     //drop database db2 when db2 not exist
     ASSERT_FALSE(router->ExecuteDDL(db, "drop database db2;", &status));
 }
-TEST_F(SQLClusterDDLTest, DropDatabaseIfNotExist) {
+TEST_F(SQLClusterDDLTest, DropDatabaseIfExists) {
     std::string db2 = "db" + GenRand();
     ::hybridse::sdk::Status status;
     std::string ddl;
 
     ASSERT_TRUE(router->CreateDB(db2, &status));
     // drop database db2
-
     ASSERT_TRUE(router->ExecuteDDL(db, "drop database if exists " + db2 + ";", &status));
 
     //drop database db2 when db2 not exist
