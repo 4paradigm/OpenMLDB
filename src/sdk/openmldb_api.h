@@ -165,7 +165,7 @@ class OpenmldbHandler {
  public:
     OpenmldbHandler(std::string zk_cluster, std::string zk_path);
     OpenmldbHandler(std::string host, uint32_t _port);
-    OpenmldbHandler(std::shared_ptr<openmldb::sdk::SQLClusterRouter> router);
+    explicit OpenmldbHandler(std::shared_ptr<openmldb::sdk::SQLClusterRouter> router);
     ~OpenmldbHandler();
 
     bool is_connected() { return router_ != nullptr; }
