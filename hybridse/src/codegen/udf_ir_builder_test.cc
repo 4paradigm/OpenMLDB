@@ -1420,6 +1420,10 @@ TEST_F(UdfIRBuilderTest, AddMonths) {
     CheckUdf<Nullable<Date>, Date, int64_t>("add_months", Date(2013, 3, 31), Date(2012, 1, 31), 14);
 }
 
+TEST_F(UdfIRBuilderTest, tid) {
+    CheckUdf<StringRef, StringRef, StringRef, StringRef>("combin_3id", "1^2^3", "1", "2", "3");
+}
+
 }  // namespace codegen
 }  // namespace hybridse
 

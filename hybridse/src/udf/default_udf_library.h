@@ -57,6 +57,9 @@ class DefaultUdfLibrary : public UdfLibrary {
 
     // earth distance udfs
     void InitEarthDistanceUdf();
+
+    // third defs
+    void InitThirdDefs();
 };
 
 }  // namespace udf
