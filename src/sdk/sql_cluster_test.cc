@@ -98,53 +98,42 @@ class SQLClusterDDLTest : public SQLClusterTest {
     std::string db;
 };
 
-TEST_F(SQLClusterDDLTest, DropTableIfExists) {
+TEST_F(SQLClusterDDLTest, TestIfExists) {
     std::string name = "test" + GenRand();
     ::hybridse::sdk::Status status;
     std::string db2 = "db" + GenRand();
-    
+ 
     std::string ddl;
     ddl = "create table " + db2 + "." + name +
           "("
           "col1 int, col2 bigint, col3 string,"
           "index(key=col3, ts=col2));";
 
-    ASSERT_TRUE(router->CreateDB(db2, &status));
+    ASSERT_TRUE(router->ExecuteDDL(db, "create database " + db2 + ";", &status));
 
-    // drop table name
+    // drop database db2 & table name
     ASSERT_TRUE(router->ExecuteDDL(db, ddl, &status));
     ASSERT_TRUE(router->ExecuteDDL(db, "drop table " + db2 + "." + name + ";", &status));
 
     // drop table name when name not exist
     ASSERT_FALSE(router->ExecuteDDL(db, "drop table " + db2 + "." + name + ";", &status));
-
-    // if exists drop table name
-    ASSERT_TRUE(router->ExecuteDDL(db, ddl, &status));
-    ASSERT_TRUE(router->ExecuteDDL(db, "drop table if exists " + db2 + "." + name + ";", &status));
-
-    // if exists drop table name when name not exist;
-    ASSERT_TRUE(router->ExecuteDDL(db, "drop table if exists " + db2 + "." + name + ";", &status));
-
-    ASSERT_TRUE(router->DropDB(db2, &status));
-}
-
-TEST_F(SQLClusterDDLTest, DropDatabaseIfExists) {
-    std::string db2 = "db" + GenRand();
-    ::hybridse::sdk::Status status;
-
-    // drop database db2
-    ASSERT_TRUE(router->ExecuteDDL(db, "create database " + db2 + ";", &status));
     ASSERT_TRUE(router->ExecuteDDL(db, "drop database " + db2 + ";", &status));
 
     // drop database db2 when db2 not exist
-    ASSERT_FALSE(router->ExecuteDDL(db, "drop database db2;", &status));
-    
-    // if exists drop database db2
+    ASSERT_FALSE(router->ExecuteDDL(db, "drop database " + db2 + ";", &status));
+
     ASSERT_TRUE(router->ExecuteDDL(db, "create database " + db2 + ";", &status));
+
+    // if exists drop database db2 & table name
+    ASSERT_TRUE(router->ExecuteDDL(db, ddl, &status));
+    ASSERT_TRUE(router->ExecuteDDL(db, "drop table if exists " + db2 + "." + name + ";", &status));
+
+    // drop table name when name not exist
+    ASSERT_TRUE(router->ExecuteDDL(db, "drop table if exists " + db2 + "." + name + ";", &status));
     ASSERT_TRUE(router->ExecuteDDL(db, "drop database if exists " + db2 + ";", &status));
 
-    // if exists drop database db2 when db2 not exist
-    ASSERT_TRUE(router->ExecuteDDL(db, "drop database if exists db2;", &status));
+    // drop database db2 when db2 not exist
+    ASSERT_TRUE(router->ExecuteDDL(db, "drop database if exists " + db2 + ";", &status));
 }
 
 TEST_F(SQLClusterDDLTest, CreateTableWithDatabase) {
