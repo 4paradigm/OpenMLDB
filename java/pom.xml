@@ -76,6 +76,9 @@
 
         <!-- Compatible with Spark 3.2.1 -->
         <guava.version>14.0.1</guava.version>
+
+        <!-- workaround to make git-commit-id work in Git worktree, refer https://github.com/git-commit-id/git-commit-id-maven-plugin/issues/215 -->
+        <maven.gitcommitid.nativegit>true</maven.gitcommitid.nativegit>
     </properties>
 
     <dependencies>
