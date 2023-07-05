@@ -902,7 +902,8 @@ bool SQLClusterRouter::DropDB(const std::string& db, hybridse::sdk::Status* stat
     return true;
 }
 
-bool SQLClusterRouter::DropTable(const std::string& db, const std::string& table, const bool if_not_exists, hybridse::sdk::Status* status) {
+bool SQLClusterRouter::DropTable(const std::string& db, const std::string& table, const bool if_not_exists,
+                                 hybridse::sdk::Status* status) {
     RET_FALSE_IF_NULL_AND_WARN(status, "output status is nullptr");
     if (db.empty() || table.empty()) {
         SET_STATUS_AND_WARN(status, StatusCode::kCmdError,
@@ -916,12 +917,12 @@ bool SQLClusterRouter::DropTable(const std::string& db, const std::string& table
         return false;
     }
 
-    auto table_info = cluster_sdk_ -> GetTableInfo(db, table);
+    auto table_info = cluster_sdk_->GetTableInfo(db, table);
 
     if (table_info == nullptr) {
-	if (if_not_exists) {
-             *status= {};
-             return true;
+        if (if_not_exists) {
+            *status = {};
+            return true;
         } else {
             SET_STATUS_AND_WARN(status, StatusCode::kCmdError, "table not exists");
             return false;
