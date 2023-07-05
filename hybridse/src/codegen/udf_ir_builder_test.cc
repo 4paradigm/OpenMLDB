@@ -1324,6 +1324,10 @@ TEST_F(UdfIRBuilderTest, TestPMod) {
     CheckUdf<Nullable<int64_t>, Nullable<int64_t>, Nullable<int16_t>>(fn_name, 2, -10, 3);
 }
 
+TEST_F(UdfIRBuilderTest, tid) {
+    CheckUdf<StringRef, StringRef, StringRef, StringRef>("combin_3id", "1^2^3", "1", "2", "3");
+}
+
 }  // namespace codegen
 }  // namespace hybridse
 

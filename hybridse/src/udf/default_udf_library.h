@@ -51,6 +51,9 @@ class DefaultUdfLibrary : public UdfLibrary {
 
     // Array Udf defines, udfs either accept array as parameter or returns array
     void InitArrayUdfs();
+
+    // third defs
+    void InitThirdDefs();
 };
 
 }  // namespace udf
