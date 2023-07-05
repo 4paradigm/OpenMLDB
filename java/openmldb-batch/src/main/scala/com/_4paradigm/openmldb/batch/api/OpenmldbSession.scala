@@ -20,6 +20,7 @@ import com._4paradigm.openmldb.batch.catalog.OpenmldbCatalogService
 import com._4paradigm.openmldb.batch.utils.{DataTypeUtil, VersionCli}
 import com._4paradigm.openmldb.batch.utils.HybridseUtil.autoLoad
 import com._4paradigm.openmldb.batch.{OpenmldbBatchConfig, SparkPlanner}
+import org.apache.commons.lang3.exception.ExceptionUtils
 import org.apache.log4j.{Level, Logger}
 import org.apache.spark.{SPARK_VERSION, SparkConf}
 import org.apache.spark.sql.catalyst.QueryPlanningTracker
@@ -321,7 +322,9 @@ class OpenmldbSession {
               registerTable(dbName, tableName, emptyDf)
             }
           } catch {
-            case e: Exception => logger.warn(s"Fail to register table $dbName.$tableName, error: ${e.getMessage}")
+            case e: Exception => {
+              logger.warn(s"Fail to register table $dbName.$tableName " + ExceptionUtils.getStackTrace(e))
+            }
           }
         }
       })
