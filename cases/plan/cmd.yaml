@@ -195,7 +195,7 @@ cases:
         +-node[CMD]
           +-cmd_type: show functions
           +-args: []
-  - id: drop_deployment
+  - id: drop_deployment1
     desc: drop deployment foo
     sql: DROP DEPLOYMENT foo;
     expect:
@@ -203,6 +203,14 @@ cases:
         +-node[CMD]
           +-cmd_type: drop deployment
           +-args: [foo]
+  - id: drop_deployment2
+    desc: drop deployment foo
+    sql: DROP DEPLOYMENT db.foo;
+    expect:
+      node_tree_str: |
+        +-node[CMD]
+          +-cmd_type: drop deployment
+          +-args: [db, foo]
   - id: deploy_stmt_1
     desc: deploy query task
     sql: DEPLOY foo SELECT col1 from t1;
