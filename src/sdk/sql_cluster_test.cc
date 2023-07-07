@@ -102,7 +102,7 @@ TEST_F(SQLClusterDDLTest, TestIfExists) {
     std::string name = "test" + GenRand();
     ::hybridse::sdk::Status status;
     std::string db2 = "db" + GenRand();
- 
+
     std::string ddl;
     ddl = "create table " + db2 + "." + name +
           "("
