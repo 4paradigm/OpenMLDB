@@ -924,7 +924,7 @@ bool SQLClusterRouter::DropTable(const std::string& db, const std::string& table
             *status = {};
             return true;
         } else {
-            SET_STATUS_AND_WARN(status, StatusCode::kCmdError, "table not exists");
+            SET_STATUS_AND_WARN(status, StatusCode::kCmdError, "fail to drop, table does not exist!");
             return false;
         }
     }
