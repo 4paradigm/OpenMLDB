@@ -338,6 +338,7 @@ bool Segment::Delete(const std::optional<uint32_t>& idx, const Slice& key,
     {
         std::lock_guard<std::mutex> lock(mu_);
         data_node = key_entry->entries.Split(ts);
+        DLOG(INFO) << "entry " << key.ToString() << " split by " << ts;
     }
     if (data_node != nullptr) {
         node_cache_.AddValueNodeList(ts_idx, gc_version_.load(std::memory_order_relaxed), data_node);
@@ -370,8 +371,13 @@ void Segment::GcFreeList(StatisticsInfo* statistics_info) {
     if (cur_version < FLAGS_gc_deleted_pk_version_delta) {
         return;
     }
+    StatisticsInfo old = *statistics_info;
     uint64_t free_list_version = cur_version - FLAGS_gc_deleted_pk_version_delta;
     node_cache_.Free(free_list_version, statistics_info);
+    for (size_t idx = 0; idx < idx_cnt_vec_.size(); idx++) {
+        idx_cnt_vec_[idx]->fetch_sub(statistics_info->GetIdxCnt(idx) - old.GetIdxCnt(idx), std::memory_order_relaxed);
+    }
+    idx_byte_size_.fetch_sub(statistics_info->idx_byte_size - old.idx_byte_size);
 }
 
 void Segment::ExecuteGc(const TTLSt& ttl_st, StatisticsInfo* statistics_info) {
@@ -495,6 +501,7 @@ void Segment::GcAllType(const std::map<uint32_t, TTLSt>& ttl_st_map, StatisticsI
                         std::lock_guard<std::mutex> lock(mu_);
                         SplitList(entry, kv.second.abs_ttl, &node);
                         if (entry->entries.IsEmpty()) {
+                            DLOG(INFO) << "gc key " << key.ToString() << " is empty";
                             empty_cnt++;
                         }
                     }
@@ -613,6 +620,7 @@ void Segment::Gc4TTL(const uint64_t time, StatisticsInfo* statistics_info) {
             }
         }
         if (entry_node != nullptr) {
+            DLOG(INFO) << "add key " << key.ToString() << " to node cache. version " << gc_version_;
             node_cache_.AddKeyEntryNode(gc_version_.load(std::memory_order_relaxed), entry_node);
         }
         uint64_t cur_idx_cnt = statistics_info->GetIdxCnt(0);
