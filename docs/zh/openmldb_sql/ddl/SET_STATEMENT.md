@@ -148,7 +148,7 @@ CREATE TABLE t1 (col0 STRING, col1 int, std_time TIMESTAMP, INDEX(KEY=col1, TS=s
 
 ### 离线命令配置详情
 
-- 设置离线命令同步执行，同步的超时时间将自动设置为`sync_job_timeout`，默认30min：
+- 设置离线命令同步执行，同步的超时时间将自动设置为gflag `sync_job_timeout`，默认30min：
 
 ```sql
 > SET @@sync_job = "true";
