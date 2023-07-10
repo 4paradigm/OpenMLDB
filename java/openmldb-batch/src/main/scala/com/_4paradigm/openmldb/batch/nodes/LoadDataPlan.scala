@@ -78,11 +78,12 @@ object LoadDataPlan {
 
         val oldOfflineTableInfo = if (info.hasOfflineTableInfo) { // Have offline table info
           info.getOfflineTableInfo
-        } else { // No offline table info, use new format
+        } else { // No offline table info, use new format and options
           OfflineTableInfo
             .newBuilder()
             .setPath("")
             .setFormat(format)
+            .putAllOptions(options.asJava)
             .build()
         }
 
