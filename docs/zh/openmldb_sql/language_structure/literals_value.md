@@ -50,7 +50,7 @@ digit ::= [0-9]
 Number literal 包括 integer literal（整数）和 float literal (浮点数)。整数包含`int`(`int32`), `smallint`(`int16`) 和 `bigint`(`int64`)
 
 - 整数由一串连续的数字构成，一般按数值范围表示为整型或者长整型。
-- 当字符串代表的值超过了 INT64 的最大值(`0"0x7FFFFFFFFFFFFFFF"`)时，SQL 解析会返回 `OUT_OF_RANGE` 错误。
+- 当字符串代表的值超过了 INT64 的最大值(`0x7FFFFFFFFFFFFFFF`)时，SQL 解析会返回 `OUT_OF_RANGE` 错误。
 - 当一串数字结尾跟一个`L` or `l` 时，可以显式表示长整型
 - `double`类型的小数由一个点`.`连接两串数字。其中，左边的那串数字允许为空。
 - 当小数结尾跟一个`F`时，表达为一个`float`类型的小数。

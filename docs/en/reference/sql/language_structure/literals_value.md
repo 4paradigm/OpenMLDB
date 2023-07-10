@@ -50,7 +50,7 @@ digit ::= [0-9]
 Number literal includes integer literal and floating literal. Integer include `int`(`int32`), `smallint`(`int16`) and `bigint`(`int64`)
 
 - Integer literal is a series of consecutive digitals, representing integers or long integers based on the represented integral value.
-- If the represented value out of range of the maximum value for INT64 (`0"0x7FFFFFFFFFFFFFFF"`), will result the SQL parser error of `OUT_OF_RANGE`.
+- If the represented value out of range of the maximum value for INT64 (`0x7FFFFFFFFFFFFFFF`), will result the SQL parser error of `OUT_OF_RANGE`.
 - If the integer literal ends with an `L` or `l`, it is treated as INT64 explicitly.
 - Decimals like `double` are connected by a dot `.` with two strings of numbers. The string of numbers on the left is allowed to be empty.
 - When the decimal is followed by an `F`, it is expressed as a decimal of type `float`.
