@@ -104,10 +104,7 @@ public class OpenmldbDatabaseDialect extends GenericDatabaseDialect {
   }
 
   @Override
-  public String buildCreateTableStatement(
-      TableId table,
-      Collection<SinkRecordField> fields
-  ) {
+  public String buildCreateTableStatement(TableId table, Collection<SinkRecordField> fields) {
     final List<String> pkFieldNames = extractPrimaryKeyFieldNames(fields);
     if (!pkFieldNames.isEmpty()) {
       throw new UnsupportedOperationException("pk is unsupported in openmldb");
@@ -116,10 +113,7 @@ public class OpenmldbDatabaseDialect extends GenericDatabaseDialect {
   }
 
   @Override
-  protected void writeColumnSpec(
-      ExpressionBuilder builder,
-      SinkRecordField f
-  ) {
+  protected void writeColumnSpec(ExpressionBuilder builder, SinkRecordField f) {
     builder.appendColumnName(f.name());
     builder.append(" ");
     String sqlType = getSqlType(f);
@@ -127,22 +121,14 @@ public class OpenmldbDatabaseDialect extends GenericDatabaseDialect {
     if (f.defaultValue() != null) {
       builder.append(" DEFAULT ");
       formatColumnValue(
-          builder,
-          f.schemaName(),
-          f.schemaParameters(),
-          f.schemaType(),
-          f.defaultValue()
-      );
+          builder, f.schemaName(), f.schemaParameters(), f.schemaType(), f.defaultValue());
     } else if (!isColumnOptional(f)) {
       builder.append(" NOT NULL");
     }
   }
 
   @Override
-  public String buildDropTableStatement(
-      TableId table,
-      DropOptions options
-  ) {
+  public String buildDropTableStatement(TableId table, DropOptions options) {
     // no ifExists, no cascade
     ExpressionBuilder builder = expressionBuilder();
 
@@ -152,27 +138,18 @@ public class OpenmldbDatabaseDialect extends GenericDatabaseDialect {
   }
 
   @Override
-  public List<String> buildAlterTable(
-      TableId table,
-      Collection<SinkRecordField> fields
-  ) {
+  public List<String> buildAlterTable(TableId table, Collection<SinkRecordField> fields) {
     throw new UnsupportedOperationException("alter is unsupported");
   }
 
   @Override
   public String buildUpdateStatement(
-      TableId table,
-      Collection<ColumnId> keyColumns,
-      Collection<ColumnId> nonKeyColumns
-  ) {
+      TableId table, Collection<ColumnId> keyColumns, Collection<ColumnId> nonKeyColumns) {
     throw new UnsupportedOperationException("update is unsupported");
   }
 
   @Override
-  public final String buildDeleteStatement(
-      TableId table,
-      Collection<ColumnId> keyColumns
-  ) {
+  public final String buildDeleteStatement(TableId table, Collection<ColumnId> keyColumns) {
     throw new UnsupportedOperationException("delete is unsupported");
   }
 
@@ -183,13 +160,8 @@ public class OpenmldbDatabaseDialect extends GenericDatabaseDialect {
 
   // set name in schema
   @Override
-  protected String addFieldToSchema(
-      final ColumnDefinition columnDefn,
-      final SchemaBuilder builder,
-      final String fieldName,
-      final int sqlType,
-      final boolean optional
-  ) {
+  protected String addFieldToSchema(final ColumnDefinition columnDefn, final SchemaBuilder builder,
+      final String fieldName, final int sqlType, final boolean optional) {
     SchemaBuilder schemaBuilder = null;
     switch (sqlType) {
       // 16 bit ints
@@ -221,16 +193,15 @@ public class OpenmldbDatabaseDialect extends GenericDatabaseDialect {
       // Date is day + moth + year
       // Time is a time of day -- hour, minute, seconds, nanoseconds
       // Timestamp is a date + time, openmldb jdbc setTimestamp is compatible
-      default: {
-      }
+      default: { }
     }
     if (schemaBuilder == null) {
-      log.warn("openmldb schema builder for sqlType {} is null, " +
-          "use GenericDatabaseDialect method", sqlType);
+      log.warn("openmldb schema builder for sqlType {} is null, "
+              + "use GenericDatabaseDialect method",
+          sqlType);
       return super.addFieldToSchema(columnDefn, builder, fieldName, sqlType, optional);
     }
     builder.field(fieldName, optional ? schemaBuilder.optional().build() : schemaBuilder.build());
     return fieldName;
   }
 }
-

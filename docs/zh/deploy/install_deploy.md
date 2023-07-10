@@ -4,7 +4,18 @@
 
 ### 操作系统
 
-发行的预编译包支持：CentOS 7.x, Ubuntu 20.04, SUSE 12 SP3, macOS 12。对于其他操作系统发行版本，预编译包未做充分测试，无法保证其完全兼容。你可以尝试 [从源码编译](compile.md)，来支持其他的操作系统。
+发行的预编译包支持：CentOS 7.x, Ubuntu 20.04, SUSE 12 SP3, macOS 12。因此Linux要求glibc version >= 2.17。对于其他操作系统发行版本，预编译包未做充分测试，无法保证其完全兼容。你可以尝试 [从源码编译](compile.md)，来支持其他的操作系统。
+
+````{note}
+Linux可通过以下命令来检查系统的支持情况。
+```shell
+cat /etc/os-release # most linux
+cat /etc/redhat-release # redhat only
+ldd --version
+strings /lib64/libc.so.6 | grep ^GLIBC_
+```
+通常ldd版本>=2.17，libc.so.6中也会有`GLIBC_2.17`，也就是该系统支持glibc 2.17的程序/动态库运行。如果系统的glibc版本低于2.17，则需要尝试从源码编译。
+````
 
 ### 第三方组件依赖
 
@@ -25,7 +36,7 @@
 如果你的操作系统可以直接运行预编译包，则可以从以下地址下载：
 
 - GitHub release 页面：https://github.com/4paradigm/OpenMLDB/releases
-- 镜像站点（香港）：https://openmldb.ai/download/
+- 镜像站点（中国）：http://43.138.115.238/download/
 
 其中预编译包和可支持的操作系统的对应关系为：
 
@@ -36,17 +47,17 @@
 
 ### Linux 平台预测试
 
-由于 Linux 平台的多样性，发布包可能在你的机器上不兼容，请先通过简单的运行测试。比如，下载预编译包 `openmldb-0.7.3-linux.tar.gz` 以后，运行：
+由于 Linux 平台的多样性，发布包可能在你的机器上不兼容，请先通过简单的运行测试。比如，下载预编译包 `openmldb-0.8.1-linux.tar.gz` 以后，运行：
 
 ```
-tar -zxvf openmldb-0.7.3-linux.tar.gz
-./openmldb-0.7.3-linux/bin/openmldb --version
+tar -zxvf openmldb-0.8.1-linux.tar.gz
+./openmldb-0.8.1-linux/bin/openmldb --version
 ```
 
 结果应显示该程序的版本号，类似
 
 ```
-openmldb version 0.7.3-xxxx
+openmldb version 0.8.1-xxxx
 Debug build (NDEBUG not #defined)
 ```
 
@@ -159,9 +170,9 @@ OpenMLDB集群版需要部署ZooKeeper、NameServer、TabletServer、TaskManager
 ### 下载OpenMLDB发行版
 
 ```
-wget https://github.com/4paradigm/OpenMLDB/releases/download/v0.7.3/openmldb-0.7.3-linux.tar.gz
-tar -zxvf openmldb-0.7.3-linux.tar.gz
-cd openmldb-0.7.3-linux
+wget https://github.com/4paradigm/OpenMLDB/releases/download/v0.8.1/openmldb-0.8.1-linux.tar.gz
+tar -zxvf openmldb-0.8.1-linux.tar.gz
+cd openmldb-0.8.1-linux
 ```
 
 ### 环境配置
@@ -169,7 +180,7 @@ cd openmldb-0.7.3-linux
 
 | 环境变量                              | 默认值                                | 定义                                                                      |
 |-----------------------------------|------------------------------------|-------------------------------------------------------------------------|
-| OPENMLDB_VERSION                  | 0.7.3                              | OpenMLDB版本                                                              |
+| OPENMLDB_VERSION                  | 0.8.1                              | OpenMLDB版本                                                              |
 | OPENMLDB_MODE                     | standalone                         | standalone或者cluster                                                     |
 | OPENMLDB_HOME                     | 当前发行版的根目录                          | openmldb发行版根目录                                                          |
 | SPARK_HOME                        | $OPENMLDB_HOME/spark               | openmldb spark发行版根目录，如果该目录不存在，自动从网上下载                                   |
@@ -275,6 +286,7 @@ OpenMLDB集群版需要部署ZooKeeper、NameServer、TabletServer、TaskManager
 
 **注意 2:** 下文均使用常规后台进程模式启动组件，如果想要使守护进程模式启动组件，请使用命令格式如 `bash bin/start.sh start <component> mon`。
 
+(zookeeper_addr)=
 ### 部署 ZooKeeper
 ZooKeeper 要求版本在 3.4 到 3.6 之间, 建议部署3.4.14版本。如果已有可用ZooKeeper集群可略过此步骤。如果想要部署ZooKeeper集群，参考[这里](https://zookeeper.apache.org/doc/r3.4.14/zookeeperStarted.html#sc_RunningReplicatedZooKeeper)。本步骤只演示部署standalone ZooKeeper。
 
@@ -289,12 +301,14 @@ cp conf/zoo_sample.cfg conf/zoo.cfg
 
 **2. 修改配置文件**
 打开文件`conf/zoo.cfg`修改`dataDir`和`clientPort`。
+
 ```
 dataDir=./data
 clientPort=7181
 ```
 
 **3. 启动ZooKeeper**
+
 ```
 bash bin/zkServer.sh start
 ```
@@ -331,10 +345,10 @@ bash bin/zkCli.sh -server 172.27.128.33:7181
 **1. 下载OpenMLDB部署包**
 
 ```
-wget https://github.com/4paradigm/OpenMLDB/releases/download/v0.7.3/openmldb-0.7.3-linux.tar.gz
-tar -zxvf openmldb-0.7.3-linux.tar.gz
-mv openmldb-0.7.3-linux openmldb-tablet-0.7.3
-cd openmldb-tablet-0.7.3
+wget https://github.com/4paradigm/OpenMLDB/releases/download/v0.8.1/openmldb-0.8.1-linux.tar.gz
+tar -zxvf openmldb-0.8.1-linux.tar.gz
+mv openmldb-0.8.1-linux openmldb-tablet-0.8.1
+cd openmldb-tablet-0.8.1
 ```
 **2. 修改配置文件`conf/tablet.flags`**
 ```bash
@@ -345,7 +359,7 @@ cp conf/tablet.flags.template conf/tablet.flags
 注意，配置文件是`conf/tablet.flags`，不是其他配置文件。启动多台TabletServer时（多TabletServer目录应该独立，不可共享），依然是修改该配置文件。
 ```
 * 修改`endpoint`。`endpoint`是用冒号分隔的部署机器IP/域名和端口号（endpoint不能用0.0.0.0和127.0.0.1，必须是公网IP）。
-* 修改`zk_cluster`为已经启动的zk服务地址(见[ZooKeeper启动步骤](#4-记录ZooKeeper服务地址与连接测试))。如果zk服务是集群，可用逗号分隔，例如，`172.27.128.33:7181,172.27.128.32:7181,172.27.128.31:7181`。
+* 修改`zk_cluster`为已经启动的zk服务地址(见 [部署 ZooKeeper - 4. 记录ZooKeeper服务地址与连接测试](zookeeper_addr))。如果zk服务是集群，可用逗号分隔，例如，`172.27.128.33:7181,172.27.128.32:7181,172.27.128.31:7181`。
 * 修改`zk_root_path`，本例中使用`/openmldb_cluster`。注意，**同一个集群下的组件`zk_root_path`是相同的**。所以本次部署中，各个组件配置的`zk_root_path`都为`/openmldb_cluster`。
 ```
 --endpoint=172.27.128.33:9527
@@ -385,12 +399,12 @@ Start tablet success
 
 在另一台机器启动下一个TabletServer只需在该机器上重复以上步骤。如果是在同一个机器上启动下一个TabletServer，请保证是在另一个目录中，不要重复使用已经启动过TabletServer的目录。
 
-比如，可以再次解压压缩包（不要cp已经启动过TabletServer的目录，启动后的生成文件会造成影响），并命名目录为`openmldb-tablet-0.7.3-2`。
+比如，可以再次解压压缩包（不要cp已经启动过TabletServer的目录，启动后的生成文件会造成影响），并命名目录为`openmldb-tablet-0.8.1-2`。
 
 ```
-tar -zxvf openmldb-0.7.3-linux.tar.gz
-mv openmldb-0.7.3-linux openmldb-tablet-0.7.3-2
-cd openmldb-tablet-0.7.3-2
+tar -zxvf openmldb-0.8.1-linux.tar.gz
+mv openmldb-0.8.1-linux openmldb-tablet-0.8.1-2
+cd openmldb-tablet-0.8.1-2
 ```
 
 再修改配置并启动。注意，TabletServer如果都在同一台机器上，请使用不同端口号，否则日志(logs/tablet.WARNING)中将会有"Fail to listen"信息。
@@ -404,10 +418,10 @@ cd openmldb-tablet-0.7.3-2
 ```
 **1. 下载OpenMLDB部署包**
 ````
-wget https://github.com/4paradigm/OpenMLDB/releases/download/v0.7.3/openmldb-0.7.3-linux.tar.gz
-tar -zxvf openmldb-0.7.3-linux.tar.gz
-mv openmldb-0.7.3-linux openmldb-ns-0.7.3
-cd openmldb-ns-0.7.3
+wget https://github.com/4paradigm/OpenMLDB/releases/download/v0.8.1/openmldb-0.8.1-linux.tar.gz
+tar -zxvf openmldb-0.8.1-linux.tar.gz
+mv openmldb-0.8.1-linux openmldb-ns-0.8.1
+cd openmldb-ns-0.8.1
 ````
 **2. 修改配置文件conf/nameserver.flags**
 ```bash
@@ -418,7 +432,7 @@ cp conf/nameserver.flags.template conf/nameserver.flags
 注意，配置文件是`conf/nameserver.flags`，不是其他配置文件。启动多台NameServert时（多NameServer目录应该独立，不可共享），依然是修改该配置文件。
 ```
 * 修改`endpoint`。`endpoint`是用冒号分隔的部署机器IP/域名和端口号（endpoint不能用0.0.0.0和127.0.0.1，必须是公网IP）。
-* 修改`zk_cluster`为已经启动的zk服务地址(见[ZooKeeper启动步骤](#4-记录ZooKeeper服务地址与连接测试))。如果zk服务是集群，可用逗号分隔，例如，`172.27.128.33:7181,172.27.128.32:7181,172.27.128.31:7181`。
+* 修改`zk_cluster`为已经启动的zk服务地址(见 [部署 ZooKeeper - 4. 记录ZooKeeper服务地址与连接测试](zookeeper_addr))。如果zk服务是集群，可用逗号分隔，例如，`172.27.128.33:7181,172.27.128.32:7181,172.27.128.31:7181`。
 * 修改`zk_root_path`，本例中使用`/openmldb_cluster`。注意，**同一个集群下的组件`zk_root_path`是相同的**。所以本次部署中，各个组件配置的`zk_root_path`都为`/openmldb_cluster`。
 ```
 --endpoint=172.27.128.31:6527
@@ -445,12 +459,12 @@ NameServer 可以只存在一台，如果你需要高可用性，可以部署多
 
 在另一台机器启动下一个 NameServer 只需在该机器上重复以上步骤。如果是在同一个机器上启动下一个 NameServer，请保证是在另一个目录中，不要重复使用已经启动过 namserver 的目录。
 
-比如，可以再次解压压缩包（不要cp已经启动过 namserver 的目录，启动后的生成文件会造成影响），并命名目录为`openmldb-ns-0.7.3-2`。
+比如，可以再次解压压缩包（不要cp已经启动过 namserver 的目录，启动后的生成文件会造成影响），并命名目录为`openmldb-ns-0.8.1-2`。
 
 ```
-tar -zxvf openmldb-0.7.3-linux.tar.gz
-mv openmldb-0.7.3-linux openmldb-ns-0.7.3-2
-cd openmldb-ns-0.7.3-2
+tar -zxvf openmldb-0.8.1-linux.tar.gz
+mv openmldb-0.8.1-linux openmldb-ns-0.8.1-2
+cd openmldb-ns-0.8.1-2
 ```
 然后再修改配置并启动。
 
@@ -481,17 +495,17 @@ echo "show components;" | ./bin/openmldb --zk_cluster=172.27.128.33:7181 --zk_ro
 
 ### 部署 APIServer
 
-APIServer负责接收http请求，转发给OpenMLDB集群并返回结果。它是无状态的。APIServer并不是OpenMLDB必须部署的组件，如果不需要使用http接口，可以跳过本步骤，进入下一步[部署TaskManager](#部署TaskManager)。
+APIServer负责接收http请求，转发给OpenMLDB集群并返回结果。它是无状态的。APIServer并不是OpenMLDB必须部署的组件，如果不需要使用http接口，可以跳过本步骤，进入下一步[部署TaskManager](deploy_taskmanager)。
 
 运行前需确保OpenMLDB集群的TabletServer和NameServer进程已经启动（TaskManager不影响APIServer的启动），否则APIServer将初始化失败并退出进程。
 
 **1. 下载OpenMLDB部署包**
 
 ```
-wget https://github.com/4paradigm/OpenMLDB/releases/download/v0.7.3/openmldb-0.7.3-linux.tar.gz
-tar -zxvf openmldb-0.7.3-linux.tar.gz
-mv openmldb-0.7.3-linux openmldb-apiserver-0.7.3
-cd openmldb-apiserver-0.7.3
+wget https://github.com/4paradigm/OpenMLDB/releases/download/v0.8.1/openmldb-0.8.1-linux.tar.gz
+tar -zxvf openmldb-0.8.1-linux.tar.gz
+mv openmldb-0.8.1-linux openmldb-apiserver-0.8.1
+cd openmldb-apiserver-0.8.1
 ```
 
 **2. 修改配置文件conf/apiserver.flags**
@@ -501,7 +515,7 @@ cp conf/apiserver.flags.template conf/apiserver.flags
 ```
 
 * 修改`endpoint`。`endpoint`是用冒号分隔的部署机器IP/域名和端口号（endpoint不能用0.0.0.0和127.0.0.1，必须是公网IP）。
-* 修改`zk_cluster`为已经启动的zk服务地址(见[ZooKeeper启动步骤](#4-记录ZooKeeper服务地址与连接测试))。如果zk服务是集群，可用逗号分隔，例如，`172.27.128.33:7181,172.27.128.32:7181,172.27.128.31:7181`。
+* 修改`zk_cluster`为已经启动的zk服务地址(见 [部署 ZooKeeper - 4. 记录ZooKeeper服务地址与连接测试](zookeeper_addr))。如果zk服务是集群，可用逗号分隔，例如，`172.27.128.33:7181,172.27.128.32:7181,172.27.128.31:7181`。
 * 修改`zk_root_path`，本例中使用`/openmldb_cluster`。注意，**同一个集群下的组件`zk_root_path`是相同的**。所以本次部署中，各个组件配置的`zk_root_path`都为`/openmldb_cluster`。
 
 ```
@@ -536,6 +550,8 @@ curl http://<apiserver_ip>:<port>/dbs/foo -X POST -d'{"mode":"online","sql":"sho
 ```
 结果中应该有已启动的所有TabletServer和NameServer的信息。
 
+(deploy_taskmanager)=
+
 ### 部署TaskManager
 
 TaskManager 可以只存在一台，如果你需要高可用性，可以部署多 TaskManager ，需要注意避免IP端口冲突。如果 TaskManager 主节点出现故障，从节点将自动恢复故障取代主节点，客户端无需任何修改可继续访问 TaskManager 服务。
@@ -544,18 +560,18 @@ TaskManager 可以只存在一台，如果你需要高可用性，可以部署�
 
 Spark发行版：
 ```shell
-wget https://github.com/4paradigm/spark/releases/download/v3.2.1-openmldb0.7.3/spark-3.2.1-bin-openmldbspark.tgz 
-# 国内镜像地址 https://openmldb.ai/download/v0.7.3/spark-3.2.1-bin-openmldbspark.tgz
+wget https://github.com/4paradigm/spark/releases/download/v3.2.1-openmldb0.8.1/spark-3.2.1-bin-openmldbspark.tgz
+# 中国镜像地址：http://43.138.115.238/download/v0.8.1/spark-3.2.1-bin-openmldbspark.tgz
 tar -zxvf spark-3.2.1-bin-openmldbspark.tgz 
 export SPARK_HOME=`pwd`/spark-3.2.1-bin-openmldbspark/
 ```
 
 OpenMLDB部署包：
 ```
-wget https://github.com/4paradigm/OpenMLDB/releases/download/v0.7.3/openmldb-0.7.3-linux.tar.gz
-tar -zxvf openmldb-0.7.3-linux.tar.gz
-mv openmldb-0.7.3-linux openmldb-taskmanager-0.7.3
-cd openmldb-taskmanager-0.7.3
+wget https://github.com/4paradigm/OpenMLDB/releases/download/v0.8.1/openmldb-0.8.1-linux.tar.gz
+tar -zxvf openmldb-0.8.1-linux.tar.gz
+mv openmldb-0.8.1-linux openmldb-taskmanager-0.8.1
+cd openmldb-taskmanager-0.8.1
 ```
 
 **2. 修改配置文件conf/taskmanager.properties**

@@ -62,6 +62,25 @@ class Partition:
     def GetKey(self):
         return "{}_{}".format(self.tid, self.pid)
 
+class Index:
+    def __init__(self, name, keys, ts, ttl, ttl_type):
+        self.name = name
+        self.keys = keys.split(",")
+        self.ts = ts
+        self.ttl = ttl
+        self.ttl_type = ttl_type
+
+    def GetName(self) -> str:
+        return self.name
+    def GetTsCol(self) -> str:
+        return self.ts
+    def GetKeys(self) -> list:
+        return self.keys
+    def GetTTL(self) -> str:
+        return self.ttl
+    def GetTTLType(self) -> str:
+        return self.ttl_type
+
 class SystemUtil:
     @staticmethod
     def ExecuteCmd(command, universal_newlines = True, useshell = USE_SHELL, env = os.environ) -> tuple([Status, str]):
@@ -133,7 +152,7 @@ class Executor:
             for record in result:
                 if record[2] == "leader":
                     return Status(), record[0]
-        return Status(-1, "get ns leader falied"), None
+        return Status(-1, "get ns leader failed"), None
 
     def GetNs(self) -> tuple([Status, list]):
         cmd = list(self.ns_base_cmd)
@@ -144,7 +163,7 @@ class Executor:
             for record in result:
                 if record[2] == "leader":
                     return Status(), record[0]
-        return Status(-1, "get ns leader falied"), None
+        return Status(-1, "get ns leader failed"), None
 
 
     def ParseResult(self, output) -> list:
@@ -251,6 +270,44 @@ class Executor:
             key = "{}_{}".format(record[0], record[1])
             result[key] = record
         return Status(), result
+
+    def Scan(self, database, table_name, key, index, st, et, limit = "") -> tuple([Status, list]):
+        cmd = list(self.ns_base_cmd)
+        cmd.append(f"--cmd=scan {table_name} {key} {index} {st} {et} {limit}")
+        cmd.append("--database=" + database)
+        status, output = self.RunWithRetuncode(cmd)
+        if not status.OK():
+            return status, None
+        result = []
+        for record in self.ParseResult(output):
+            if len(record) < 2:
+                continue
+            result.append(record[1:])
+        return status, result
+
+    def GetIndexs(self, database, table_name) -> tuple([Status, list]):
+        cmd = list(self.ns_base_cmd)
+        cmd.append("--cmd=showschema " + table_name)
+        cmd.append("--database=" + database)
+        status, output = self.RunWithRetuncode(cmd)
+        if not status.OK():
+            return status, None
+        arr = output.split("#ColumnKey")
+        lines = arr[1].split("\n")
+        dash_num = 0
+        indexs = []
+        for line in lines:
+            line = line.lstrip()
+            if line.startswith("---"):
+                dash_num += 1
+                continue
+            if dash_num < 2:
+                continue
+            record = line.split()
+            if len(record) < 5:
+                continue
+            indexs.append(Index(record[1], record[2], record[3], record[4], record[5]))
+        return Status(), indexs
 
     def ShowTableStatus(self, pattern = '%') -> tuple([Status, list]):
         cmd = list(self.sql_base_cmd)

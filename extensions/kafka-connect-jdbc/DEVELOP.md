@@ -1,24 +1,34 @@
 # 开发指南
+
+## Build
+
+```
+mvn package -DskipTests=true
+```
+
+代码格式化为Google Style，不通过会编译失败，可通过clang-format格式化。暂不支持自动测试，需要依赖#3282发布后的openmldb-jdbc。本地测试可以先编译安装jdbc包，再进行测试。
+
+## Auto Schema
 kafka jdbc connector for openmldb，可以支持auto.schema，即从openmldb处获取table schema。
 
 目前仅支持与value JsonConverter搭配使用（OpenMLDB完全不支持key），且需要disable JsonConverter的schema支持。
 
-## 配置方法
+### 配置方法
 
-需要修改两个配置文件：
-- connector配置 `connect-xx.properties`：
+需要修改以下的配置项：
+- converter配置，可以在 connect worker `connect-xx.properties`中配置，它将改变worker上的默认converter配置，或者针对 单个connector 配置，例如修改 `openmldb-sink.properties`，也可以HTTP动态修改：
 ```
 value.converter=org.apache.kafka.connect.json.JsonConverter
 value.converter.schemas.enable=false
 ```
-- sink配置 `openmldb-sink.properties`：
+- jdbc sink配置 `openmldb-sink.properties`：
 ```
 auto.schema=true
 auto.create=false
 ```
 请确保已经建好了OpenMLDB表。
 
-## message convert for auto schema
+### message convert for auto schema
 
 auto schema开启后，主要逻辑在[BufferedRecords](src/main/java/io/confluent/connect/jdbc/sink/BufferedRecords.java)
 中。核心函数为`public List<SinkRecord> add(SinkRecord record)`。
@@ -36,3 +46,7 @@ Record中的value实际是需要org.apache.kafka.connect.data.Struct类型，但
 如果想要对某个类型做更多的value转换支持，可以在`convertToLogicalType`或`convertToSchemaType`中加入逻辑。
 
 比如，支持多类型json value转为int32类型，就在int32的case中加入对value的类型判断，并支持将该类型转为int32。
+
+## Topic Table Mapping
+
+支持topic到OpenMLDB表的映射配置`topic.table.mapping`，可动态更改配置，格式为`<topic>:<table>[,<topic>:<table>]`，逗号分隔。如果topic在映射中不存在，则使用原规则`table.name.format`（默认为topic名）。

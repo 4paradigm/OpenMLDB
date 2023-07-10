@@ -16,7 +16,7 @@
 
 set -e
 
-export COMPONENTS="tablet tablet2 nameserver apiserver taskmanager standalone_tablet standalone_nameserver standalone_apiserver"
+export COMPONENTS="tablet tablet2 nameserver apiserver taskmanager standalone_tablet standalone_nameserver standalone_apiserver data_collector synctool"
 
 if [ $# -lt 2 ]; then
     echo "Usage: start.sh start/stop/restart <component> [mon]"
@@ -65,10 +65,13 @@ fi
 OPENMLDB_PID_FILE="./bin/$COMPONENT.pid"
 mkdir -p "$(dirname "$OPENMLDB_PID_FILE")"
 
-if [ "$COMPONENT" != "taskmanager" ]; then
-    LOG_DIR=$(grep log_dir ./conf/"$COMPONENT".flags | awk -F '=' '{print $2}')
-else
+if [ "$COMPONENT" == "taskmanager" ]; then
     LOG_DIR=$(grep job.log.path ./conf/"$COMPONENT".properties | awk -F '=' '{print $2}')
+elif [ "$COMPONENT" == "synctool" ] || [ "$COMPONENT" == "data_collector" ]; then
+    # use bootstrap dir
+    LOG_DIR="${ROOTDIR}/logs"
+else
+    LOG_DIR=$(grep log_dir ./conf/"$COMPONENT".flags | awk -F '=' '{print $2}')
 fi
 
 [ -n "$LOG_DIR" ] || { echo "Invalid log dir"; exit 1; }
@@ -85,9 +88,48 @@ case $OP in
             fi
         fi
 
-        if [ "$COMPONENT" != "taskmanager" ]; then
+        # java style
+        if [ "$COMPONENT" == "taskmanager" ] || [ "$COMPONENT" == "synctool" ]; then
+            # unique setup
+            if [ "$COMPONENT" == "taskmanager" ]; then
+                echo "SPARK_HOME: ${SPARK_HOME}"
+            fi
+            if [ -f "./conf/${COMPONENT}.properties" ]; then
+                echo "Rewrite properties by ./conf/${COMPONENT}.properties"
+                cp ./conf/"${COMPONENT}".properties ./"${COMPONENT}"/conf/"${COMPONENT}".properties
+            fi
+            pushd ./"$COMPONENT"/bin/ > /dev/null
+            mkdir -p "$LOG_DIR" # no matter the path is abs or relat
+            if [ "$DAEMON_MODE" = "true" ]; then
+                "${ROOTDIR}"/"${MON_BINARY}" "./${COMPONENT}.sh" -d -s 10 -l "$LOG_DIR"/"$COMPONENT"_mon.log -m "${ROOTDIR}/${OPENMLDB_PID_FILE}" -p "${ROOTDIR}/${OPENMLDB_PID_FILE}.child"
+                sleep 3
+                MON_PID=$(tr -d '\0' < "${ROOTDIR}/${OPENMLDB_PID_FILE}")
+                PID=$(tr -d '\0' < "${ROOTDIR}/${OPENMLDB_PID_FILE}.child")
+                echo "mon pid is $MON_PID, process pid is $PID, check $PID status"
+            else
+                sh ./"${COMPONENT}".sh > "$LOG_DIR"/"$COMPONENT".log 2>&1 &
+                PID=$!
+                echo "process pid is $PID"
+            fi
+
+            popd > /dev/null 
+            sleep 10
+            if kill -0 "$PID" > /dev/null 2>&1; then
+                if [ "$DAEMON_MODE" != "true" ]; then
+                    echo "$PID" > "$OPENMLDB_PID_FILE"
+                fi
+                echo "Start ${COMPONENT} success"
+                exit 0
+            fi
+            echo -e "${RED}Start ${COMPONENT} failed! Please check log in ${LOG_DIR}/${COMPONENT}[_mon].log and ./${COMPONENT}/bin/logs/${COMPONENT}.log ${RES}"
+        else
+            # cxx style
+            BIN_NAME="openmldb"
+            if [ "$COMPONENT" = "data_collector" ]; then
+                BIN_NAME="data_collector"
+            fi
             if [ "$DAEMON_MODE" = "true" ]; then # nohup? test it
-                START_CMD="./bin/openmldb --flagfile=./conf/${COMPONENT}.flags --enable_status_service=true"
+                START_CMD="./bin/${BIN_NAME} --flagfile=./conf/${COMPONENT}.flags --enable_status_service=true"
                 # save the mon process pid, but check the component pid
                 ${MON_BINARY} "${START_CMD}" -d -s 10 -l "$LOG_DIR"/"$COMPONENT"_mon.log -m "${OPENMLDB_PID_FILE}" -p "${OPENMLDB_PID_FILE}.child"
                 # sleep for pid files
@@ -97,7 +139,7 @@ case $OP in
                 echo "mon pid is $MON_PID, process pid is $PID, check $PID status"
             else
                 # DO NOT put the whole command in variable
-                ./bin/openmldb --flagfile=./conf/"${COMPONENT}".flags --enable_status_service=true >> "$LOG_DIR"/"$COMPONENT".log 2>&1 &
+                ./bin/${BIN_NAME} --flagfile=./conf/"${COMPONENT}".flags --enable_status_service=true >> "$LOG_DIR"/"$COMPONENT".log 2>&1 &
                 PID=$!
                 echo "process pid is $PID"
             fi
@@ -133,35 +175,6 @@ case $OP in
                 fi
             fi
             echo -e "${RED}Start ${COMPONENT} failed! Please check log in ${LOG_DIR}/${COMPONENT}[_mon].log and ${LOG_DIR}/${COMPONENT}.INFO ${RES}"
-        else
-            echo "SPARK_HOME: ${SPARK_HOME}"
-            if [ -f "./conf/taskmanager.properties" ]; then
-                cp ./conf/taskmanager.properties ./taskmanager/conf/taskmanager.properties
-            fi
-            pushd ./taskmanager/bin/ > /dev/null
-            mkdir -p logs
-            if [ "$DAEMON_MODE" = "true" ]; then
-                "${ROOTDIR}"/"${MON_BINARY}" "./taskmanager.sh" -d -s 10 -l "$LOG_DIR"/"$COMPONENT"_mon.log -m "${ROOTDIR}/${OPENMLDB_PID_FILE}" -p "${ROOTDIR}/${OPENMLDB_PID_FILE}.child"
-                sleep 3
-                MON_PID=$(tr -d '\0' < "${ROOTDIR}/${OPENMLDB_PID_FILE}")
-                PID=$(tr -d '\0' < "${ROOTDIR}/${OPENMLDB_PID_FILE}.child")
-                echo "mon pid is $MON_PID, process pid is $PID, check $PID status"
-            else
-                sh ./taskmanager.sh > "$LOG_DIR"/"$COMPONENT".log 2>&1 &
-                PID=$!
-                echo "process pid is $PID"
-            fi
-
-            popd > /dev/null 
-            sleep 10
-            if kill -0 $PID > /dev/null 2>&1; then
-                if [ "$DAEMON_MODE" != "true" ]; then
-                    echo $PID > "$OPENMLDB_PID_FILE"
-                fi
-                echo "Start ${COMPONENT} success"
-                exit 0
-            fi
-            echo -e "${RED}Start ${COMPONENT} failed! Please check log in ${LOG_DIR}/${COMPONENT}[_mon].log and ./taskmanager/bin/logs/taskmanager.log ${RES}"
         fi
         ;;
     stop)

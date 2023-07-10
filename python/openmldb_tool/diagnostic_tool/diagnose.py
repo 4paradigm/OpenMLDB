@@ -15,7 +15,9 @@
 # limitations under the License.
 
 import argparse
+import os
 import textwrap
+import time
 
 from diagnostic_tool.connector import Connector
 from diagnostic_tool.dist_conf import read_conf
@@ -26,6 +28,8 @@ from diagnostic_tool.conf_validator import (
 from diagnostic_tool.log_analyzer import LogAnalyzer
 from diagnostic_tool.collector import Collector
 import diagnostic_tool.server_checker as checker
+from diagnostic_tool.table_checker import TableChecker
+from diagnostic_tool.parser import LogParser
 
 from absl import app
 from absl import flags
@@ -43,6 +47,11 @@ flags.DEFINE_bool(
     "local",
     False,
     "If set, all server in config file will be treated as local server, skip ssh.",
+)
+flags.DEFINE_string(
+    "db",
+    "",
+    "Specify databases to diagnose, split by ','. Only used in inspect online.",
 )
 
 flags.DEFINE_string("collect_dir", "/tmp/diag_collect", "...")
@@ -66,7 +75,8 @@ def status(args):
     """use OpenMLDB Python SDK to connect OpenMLDB"""
     connect = Connector()
     status_checker = checker.StatusChecker(connect)
-    if not status_checker.check_components(): print("some components is offline")
+    if not status_checker.check_components():
+        print("some components is offline")
 
     # --diff with dist conf file, conf_file is required
     if args.diff:
@@ -108,30 +118,61 @@ def insepct_online(args):
     assert not fails, f"unhealthy tables: {fails}"
     print(f"all tables are healthy")
 
+    if getattr(args, 'dist', False):
+        table_checker = TableChecker(conn)
+        table_checker.check_distribution(dbs=flags.FLAGS.db.split(","))
+
 
 def inspect_offline(args):
     """scan jobs status, show job log if failed"""
+    final_failed = ["failed", "killed", "lost"]
+    total, num, jobs = _get_jobs(final_failed)
+    # TODO some failed jobs are known, what if we want skip them?
+    print(f"inspect {total} offline jobs")
+    if num:
+        failed_jobs_str = "\n".join(jobs)
+        raise AssertionError(f"{num} offline final jobs are failed\nfailed jobs:\n{failed_jobs_str}")
+    print("all offline final jobs are finished")
+
+
+def _get_jobs(states=None):
     assert checker.StatusChecker(Connector()).offline_support()
     conn = Connector()
     jobs = conn.execfetch("SHOW JOBS")
-    # TODO some failed jobs are known, what if we want skip them?
-    print(f"inspect {len(jobs)} offline jobs")
-    fails = []
+    total_num = len(jobs)
     # jobs sorted by id
     jobs.sort(key=lambda x: x[0])
-    # only FINAL_STATE "finished", "failed", "killed", "lost"
-    final_failed = ["failed", "killed", "lost"]
-    for row in jobs:
-        if row[2].lower() in final_failed:
-            fails.append(" ".join([str(x) for x in row]))
-            # DO NOT try to print rs in execfetch, it's too long
-            std_output = conn.execfetch(f"SHOW JOBLOG {row[0]}")
-            # log rs schema is FORMAT_STRING_KEY
-            assert len(std_output) == 1 and len(std_output[0]) == 1
-            print(f"{row[0]}-{row[1]} failed, job log:\n{std_output[0][0]}")
-    fails_total = "\n".join(fails)
-    assert not fails, f"failed jobs:\n{fails_total}"
-    print("all offline final jobs are finished")
+    show_jobs = [_format_job_row(row) for row in jobs if not states or row[2].lower() in states]
+    return total_num, len(show_jobs), show_jobs
+
+
+def _format_job_row(row):
+    row = list(row)
+    row[3] = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(row[3] / 1000))
+    row[4] = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(row[4] / 1000))
+    return " ".join(map(str, row))
+
+
+def inspect_job(args):
+    if not args.id:
+        states = args.state.split(",") if args.state != "all" else None
+        total, num, jobs = _get_jobs(states)
+        print(f"inspect {total} offline jobs")
+        if args.state != "all":
+            print(f"{num} {args.state} jobs")
+        print(*jobs, sep="\n")
+        return
+    conn = Connector()
+    std_output = conn.execfetch(f"SHOW JOBLOG {args.id}")
+    assert len(std_output) == 1 and len(std_output[0]) == 1
+    detailed_log = std_output[0][0]
+    if args.detail:
+        print(detailed_log)
+    else:
+        parser = LogParser()
+        if args.conf_update or not os.path.exists(parser.conf_file):
+            parser.update_conf_file(args.conf_url)
+        parser.parse_log(detailed_log)
 
 
 def test_sql(args):
@@ -214,13 +255,45 @@ def parse_arg(argv):
     inspect_parser.set_defaults(command=inspect)
     inspect_sub = inspect_parser.add_subparsers()
     # inspect online
-    online = inspect_sub.add_parser("online", help="only inspect online table")
+    online = inspect_sub.add_parser("online", help="only inspect online table.")
     online.set_defaults(command=insepct_online)
+    online.add_argument(
+        "--dist",
+        action="store_true",
+        help="Inspect online distribution."
+    )
     # inspect offline
     offline = inspect_sub.add_parser(
-        "offline", help="only inspect offline jobs, check the job log"
+        "offline", help="only inspect offline jobs."
     )
     offline.set_defaults(command=inspect_offline)
+    # inspect job
+    ins_job = inspect_sub.add_parser("job", help="show jobs by state, show joblog or parse joblog by id.")
+    ins_job.set_defaults(command=inspect_job)
+    ins_job.add_argument(
+        "--state",
+        default="all",
+        help="Specify which state offline jobs, split by ','"
+    )
+    ins_job.add_argument(
+        "--id",
+        help="inspect joblog by id"
+    )
+    ins_job.add_argument(
+        "--detail",
+        action="store_true",
+        help="show detailed joblog information, use with `--id`"
+    )
+    ins_job.add_argument(
+        "--conf-url",
+        default="https://raw.githubusercontent.com/4paradigm/OpenMLDB/main/python/openmldb_tool/diagnostic_tool/common_err.yml",
+        help="url used to update the log parser configuration. If downloading is slow, you can try mirror source 'https://openmldb.ai/download/diag/common_err.yml'"
+    )
+    ins_job.add_argument(
+        "--conf-update",
+        action="store_true",
+        help="update the log parser configuration"
+    )
 
     # sub test
     test_parser = subparsers.add_parser(

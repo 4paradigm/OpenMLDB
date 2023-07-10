@@ -17,9 +17,11 @@
 
 set -eE -x
 CURRENT_DIR=$(dirname "$0")
+SPARK_VERSION=0.8.0
 pushd "${CURRENT_DIR}"
 cp -r ../../../openmldb ./
 sed -i"" -e "s/OPENMLDB_MODE:=standalone/OPENMLDB_MODE:=cluster/g" openmldb/conf/openmldb-env.sh
+sed -i"" -e "s/OPENMLDB_VERSION=.*/OPENMLDB_VERSION=${SPARK_VERSION}/g" openmldb/conf/openmldb-env.sh
 sed -i"" -e "s/.*make_snapshot_threshold_offset.*/--make_snapshot_threshold_offset=1/g" openmldb/conf/tablet.flags.template
 rm -rf /tmp/openmldb
 python3 genhost.py

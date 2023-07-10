@@ -25,13 +25,13 @@ COPY *_dist.yml /work/
 
 ENV LANG=en_US.UTF-8
 ENV SPARK_HOME=/work/openmldb/spark-3.2.1-bin-openmldbspark
-ARG OPENMLDB_VERSION=0.7.3
+ARG OPENMLDB_VERSION=0.8.0
 ENV OPENMLDB_VERSION="${OPENMLDB_VERSION}"
 
 RUN  if [ "${USE_ADD_WHL}" = "true" ] ; then \
           pip install /additions/openmldb*.whl ; \
      else \
-          pip install --no-cache-dir "openmldb==${OPENMLDB_VERSION}" "openmldb-tool==${OPENMLDB_VERSION}" ; \
+          pip install --no-cache-dir "openmldb==${OPENMLDB_VERSION}" "openmldb-tool" ; \
      fi
 
 COPY setup_openmldb.sh /

@@ -30,6 +30,7 @@
 #include "proto/fe_common.pb.h"
 #include "udf/default_udf_library.h"
 #include "vm/engine.h"
+
 namespace hybridse {
 namespace plan {
 
@@ -181,7 +182,11 @@ base::Status Planner::CreateSelectQueryPlan(const node::SelectQueryNode *root, n
         // expand window frame for lag funtions early
         if (project_expr->GetExprType() == node::kExprCall) {
             auto *call_expr = dynamic_cast<node::CallExprNode *>(project_expr);
-            if (call_expr != nullptr && IsCurRowRelativeWinFun(call_expr->GetFnDef()->GetName())) {
+            if (call_expr != nullptr && call_expr->GetOver() != nullptr &&
+                IsCurRowRelativeWinFun(call_expr->GetFnDef()->GetName())) {
+                // current row window constructed only for `lag(col, 1) over w`,
+                // not for nested window aggregation from kids,
+                //   like `lag(split_by_key(count_cate_where(col, ...) over w, ",", ":"), 1)`
                 auto s = ConstructWindowForLag(w_ptr, call_expr);
                 CHECK_TRUE(s.ok(), common::kUnsupportSql, s.status().ToString());
                 w_ptr = s.value();
@@ -759,11 +764,29 @@ base::Status SimplePlanner::CreatePlanTree(const NodePointVector &parser_trees, 
                 plan_trees.push_back(delete_plan_node);
                 break;
             }
+            case ::hybridse::node::kShowStmt: {
+                auto show_node = dynamic_cast<const node::ShowNode*>(parser_tree);
+                CHECK_TRUE(show_node != nullptr, common::kPlanError, "not an ShowNode");
+                plan_trees.push_back(node_manager_->MakeNode<node::ShowPlanNode>(show_node->GetShowType(),
+                            show_node->GetTarget(), show_node->GetLikeStr()));
+                break;
+            }
             case ::hybridse::node::kCreateFunctionStmt: {
                 node::PlanNode *create_function_plan_node = nullptr;
                 CHECK_STATUS(CreateCreateFunctionPlanNode(dynamic_cast<node::CreateFunctionNode *>(parser_tree),
                             &create_function_plan_node));
                 plan_trees.push_back(create_function_plan_node);
+                break;
+            }
+            case ::hybridse::node::kAlterTableStmt: {
+                node::AlterTableStmtPlanNode* out = nullptr;
+                CHECK_STATUS(ConvertGuard<node::AlterTableStmt>(
+                    parser_tree, &out, [this](const node::AlterTableStmt *from, node::AlterTableStmtPlanNode **out) {
+                        *out = node_manager_->MakeNode<node::AlterTableStmtPlanNode>(from->db_, from->table_,
+                                                                                     from->actions_);
+                        return base::Status::OK();
+                    }));
+                plan_trees.push_back(out);
                 break;
             }
             default: {

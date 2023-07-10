@@ -7,25 +7,25 @@
 This section describes the steps to compile and use OpenMLDB inside its official docker image [hybridsql](https://hub.docker.com/r/4pdosc/hybridsql).
 The docker image has packed required tools and dependencies, so there is no need to set them up separately. To compile without the official docker image, refer to the section [Detailed Instructions for Build](#detailed-instructions-for-build) below.
 
-Keep in mind that you should always use the same version of both compile image and [OpenMLDB version](https://github.com/4paradigm/OpenMLDB/releases). This section demonstrates compiling for [OpenMLDB v0.7.3](https://github.com/4paradigm/OpenMLDB/releases/tag/v0.7.3) under `hybridsql:0.7.3` ，If you prefer to compile on the latest code in `main` branch, pull `hybridsql:latest` image instead.
+Keep in mind that you should always use the same version of both compile image and [OpenMLDB version](https://github.com/4paradigm/OpenMLDB/releases). This section demonstrates compiling for [OpenMLDB v0.8.1](https://github.com/4paradigm/OpenMLDB/releases/tag/v0.8.1) under `hybridsql:0.8.1` ，If you prefer to compile on the latest code in `main` branch, pull `hybridsql:latest` image instead.
 
 1. Pull the docker image
 
    ```bash
-    docker pull 4pdosc/hybridsql:0.7
+    docker pull 4pdosc/hybridsql:0.8
    ```
 
 2. Create a docker container with the hybridsql docker image
 
    ```bash
-   docker run -it 4pdosc/hybridsql:0.7 bash
+   docker run -it 4pdosc/hybridsql:0.8 bash
    ```
 
-3. Download the OpenMLDB source code inside the docker container, and setting the branch into v0.7.3
+3. Download the OpenMLDB source code inside the docker container, and setting the branch into v0.8.1
 
    ```bash
    cd ~
-   git clone -b v0.7.3 https://github.com/4paradigm/OpenMLDB.git
+   git clone -b v0.8.1 https://github.com/4paradigm/OpenMLDB.git
    ```
 
 4. Compile OpenMLDB
@@ -151,7 +151,7 @@ The built jar packages are in the `target` path of each submodule. If you want t
 1. Downloading the pre-built OpenMLDB Spark distribution:
 
 ```bash
-wget https://github.com/4paradigm/spark/releases/download/v3.2.1-openmldb0.7.3/spark-3.2.1-bin-openmldbspark.tgz
+wget https://github.com/4paradigm/spark/releases/download/v3.2.1-openmldb0.8.1/spark-3.2.1-bin-openmldbspark.tgz
 ```
 
 Alternatively, you can also download the source code and compile from scratch:

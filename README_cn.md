@@ -81,7 +81,7 @@ OpenMLDB 的整体架构设计是为了达到特征平台从开发到部署的�
 
 ## 5. 下载和安装
 
-- 下载：[GitHub 发布页面](https://github.com/4paradigm/OpenMLDB/releases)，[镜像网站（香港）](https://openmldb.ai/download/)
+- 下载：[GitHub 发布页面](https://github.com/4paradigm/OpenMLDB/releases)，[镜像网站（中国）](http://43.138.115.238/download/)
 - [安装和部署文档](https://openmldb.ai/docs/zh/main/deploy/install_deploy.html)
 
 ## 6. QuickStart
@@ -147,7 +147,7 @@ OpenMLDB 的整体架构设计是为了达到特征平台从开发到部署的�
 ## 12. 学术论文
 
 - [Scalable Online Interval Join on Modern Multicore Processors in OpenMLDB](docs/paper/scale_oij_icde2023.pdf). Hao Zhang, Xianzhi Zeng, Shuhao Zhang, Xinyi Liu, Mian Lu, and Zhao Zheng. In 2023 IEEE 39rd International Conference on Data Engineering (ICDE) 2023. [[code]](https://github.com/4paradigm/OpenMLDB/tree/stream)
-- [FEBench: A Benchmark for Real-Time Relational Data Feature Extraction](https://github.com/decis-bench/febench/blob/main/report/febench.pdf). Xuanhe Zhou, Cheng Chen, Kunyi Li, Bingsheng He, Mian Lu, Qiaosheng Liu, Wei Huang, Guoliang Li, Zhao Zheng, Yuqiang Chen. In submission. [[code]](https://github.com/decis-bench/febench).
+- [FEBench: A Benchmark for Real-Time Relational Data Feature Extraction](https://github.com/decis-bench/febench/blob/main/report/febench.pdf). Xuanhe Zhou, Cheng Chen, Kunyi Li, Bingsheng He, Mian Lu, Qiaosheng Liu, Wei Huang, Guoliang Li, Zhao Zheng, Yuqiang Chen. International Conference on Very Large Data Bases (VLDB) 2023. [[code]](https://github.com/decis-bench/febench).
 - [A System for Time Series Feature Extraction in Federated Learning](https://dl.acm.org/doi/pdf/10.1145/3511808.3557176). Siqi Wang, Jiashu Li, Mian Lu, Zhao Zheng, Yuqiang Chen, and Bingsheng He. 2022. In Proceedings of the 31st ACM International Conference on Information & Knowledge Management (CIKM) 2022. [[code]](https://github.com/4paradigm/tsfe).
 - [Optimizing in-memory database engine for AI-powered on-line decision augmentation using persistent memory](http://vldb.org/pvldb/vol14/p799-chen.pdf). Cheng Chen, Jun Yang, Mian Lu, Taize Wang, Zhao Zheng, Yuqiang Chen, Wenyuan Dai, Bingsheng He, Weng-Fai Wong, Guoan Wu, Yuping Zhao, and Andy Rudoff. International Conference on Very Large Data Bases (VLDB) 2021.
 

@@ -1,0 +1,15 @@
+errors:
+  other:
+    patterns:
+      - "at com.*openmldb"
+      - "At .*OpenMLDB"
+      - "Caused by"
+      - "java.*Exception"
+      - "Exception in"
+      - "ERROR"
+    description: "just print errs"
+  zk_conn_err:
+    patterns:
+      - "fail to init zk handler with hosts"
+    description: "Error: fail to init zk handler with hosts"
+    solution: "zk_conn_err"

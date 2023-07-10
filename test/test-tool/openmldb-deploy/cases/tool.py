@@ -119,7 +119,7 @@ class Executor:
             for record in result:
                 if record[2] == "leader":
                     return Status(), record[0]
-        return Status(-1, "get ns leader falied"), None
+        return Status(-1, "get ns leader failed"), None
 
 
     def ParseResult(self, output) -> list:

@@ -74,6 +74,8 @@ title: udfs/udfs.h
 | **[last_day](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-last-day)**()| <br>Return the last day of the month to which the date belongs to. |
 | **[lcase](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-lcase)**()| <br>Convert all the characters to lowercase. Note that characters with values > 127 are simply returned. |
 | **[like_match](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-like-match)**()| <br>pattern match same as LIKE predicate |
+| **[list_except_by_key](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-list-except-by-key)**()| <br>Return list of elements in list1 but keys not in except_str. |
+| **[list_except_by_value](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-list-except-by-value)**()| <br>Return list of elements in list1 but values not in except_str. |
 | **[ln](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-ln)**()| <br>Return the natural logarithm of expr. |
 | **[log](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-log)**()| <br>log(base, expr) If called with one parameter, this function returns the natural logarithm of expr. If called with two parameters, this function returns the logarithm of expr to the base. |
 | **[log10](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-log10)**()| <br>Return the base-10 logarithm of expr. |
@@ -103,7 +105,7 @@ title: udfs/udfs.h
 | **[regexp_like](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-regexp-like)**()| <br>pattern match same as RLIKE predicate (based on RE2) |
 | **[replace](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-replace)**()| <br>replace(str, search[, replace]) - Replaces all occurrences of `search` with `replace`|
 | **[reverse](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-reverse)**()| <br>Returns the reversed given string. |
-| **[round](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-round)**()| <br>Return the nearest integer value to expr (in floating-point format), rounding halfway cases away from zero, regardless of the current rounding mode. |
+| **[round](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-round)**()| <br>Returns expr rounded to d decimal places using HALF_UP rounding mode. |
 | **[second](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-second)**()| <br>Return the second for a timestamp. |
 | **[sin](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-sin)**()| <br>Return the sine of expr. |
 | **[size](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-size)**()| <br>Get the size of a List (e.g., result of split) |
@@ -127,16 +129,18 @@ title: udfs/udfs.h
 | **[tan](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-tan)**()| <br>Return the tangent of expr. |
 | **[timestamp](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-timestamp)**()| <br>Cast int64, date or string expression to timestamp. |
 | **[top](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-top)**()| <br>Compute top k of values and output string separated by comma. The outputs are sorted in desc order. |
-| **[top1_ratio](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-top1-ratio)**()| <br>Compute the top1 key's ratio. |
+| **[top1_ratio](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-top1-ratio)**()| <br>Compute the top1 occurring value's ratio. |
 | **[top_n_key_avg_cate_where](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-top-n-key-avg-cate-where)**()| <br>Compute average of values matching specified condition grouped by category key. Output string for top N category keys in descend order. Each group is represented as 'K:V' and separated by comma(,). Empty string returned if no rows selected. |
 | **[top_n_key_count_cate_where](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-top-n-key-count-cate-where)**()| <br>Compute count of values matching specified condition grouped by category key. Output string for top N category keys in descend order. Each group is represented as 'K:V' and separated by comma(,). Empty string returned if no rows selected. |
 | **[top_n_key_max_cate_where](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-top-n-key-max-cate-where)**()| <br>Compute maximum of values matching specified condition grouped by category key. Output string for top N category keys in descend order. Each group is represented as 'K:V' and separated by comma(,). Empty string returned if no rows selected. |
 | **[top_n_key_min_cate_where](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-top-n-key-min-cate-where)**()| <br>Compute minimum of values matching specified condition grouped by category key. Output string for top N category keys in descend order. Each group is represented as 'K:V' and separated by comma(,). Empty string returned if no rows selected. |
+| **[top_n_key_ratio_cate](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-top-n-key-ratio-cate)**()| <br>Ratios (cond match cnt / total cnt) for groups. |
 | **[top_n_key_sum_cate_where](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-top-n-key-sum-cate-where)**()| <br>Compute sum of values matching specified condition grouped by category key. Output string for top N category keys in descend order. Each group is represented as 'K:V' and separated by comma(,). Empty string returned if no rows selected. |
 | **[top_n_value_avg_cate_where](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-top-n-value-avg-cate-where)**()| <br>Compute average of values matching specified condition grouped by category key. Output string for top N aggregate values in descend order. Each group is represented as 'K:V' and separated by comma(,). Empty string returned if no rows selected. |
 | **[top_n_value_count_cate_where](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-top-n-value-count-cate-where)**()| <br>Compute count of values matching specified condition grouped by category key. Output string for top N aggregate values in descend order. Each group is represented as 'K:V' and separated by comma(,). Empty string returned if no rows selected. |
 | **[top_n_value_max_cate_where](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-top-n-value-max-cate-where)**()| <br>Compute maximum of values matching specified condition grouped by category key. Output string for top N aggregate values in descend order. Each group is represented as 'K:V' and separated by comma(,). Empty string returned if no rows selected. |
 | **[top_n_value_min_cate_where](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-top-n-value-min-cate-where)**()| <br>Compute minimum of values matching specified condition grouped by category key. Output string for top N aggregate values in descend order. Each group is represented as 'K:V' and separated by comma(,). Empty string returned if no rows selected. |
+| **[top_n_value_ratio_cate](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-top-n-value-ratio-cate)**()| <br>Ratios (cond match cnt / total cnt) for groups. |
 | **[top_n_value_sum_cate_where](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-top-n-value-sum-cate-where)**()| <br>Compute sum of values matching specified condition grouped by category key. Output string for top N aggregate values in descend order. Each group is represented as 'K:V' and separated by comma(,). Empty string returned if no rows selected. |
 | **[topn_frequency](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-topn-frequency)**()| <br>Return the topN keys sorted by their frequency. |
 | **[truncate](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-truncate)**()| <br>Return the nearest integer that is not greater in magnitude than the expr. |
@@ -2306,6 +2310,74 @@ select like_match('Mike', 'mi_k')
 * [`string`, `string`]
 * [`string`, `string`, `string`] 
 
+### function list_except_by_key
+
+```cpp
+list_except_by_key()
+```
+
+**Description**:
+
+Return list of elements in list1 but keys not in except_str. 
+
+**Parameters**: 
+
+  * **list1** List of string, with each element as the format of `key:vaule`. 
+  * **except_str** String joined list, as `key1,key2`, split by comma(,)
+
+
+**Since**:
+0.8.1
+
+
+
+Example:
+
+```sql
+
+select `join`(list_except_by_key(split("a:1,b:2,c:0", ","), "a,c"), " ");
+-- output b:2
+```
+
+
+**Supported Types**:
+
+* [`list<string>`, `string`] 
+
+### function list_except_by_value
+
+```cpp
+list_except_by_value()
+```
+
+**Description**:
+
+Return list of elements in list1 but values not in except_str. 
+
+**Parameters**: 
+
+  * **list1** List of string, with each element as the format of `key:vaule`. 
+  * **except_str** String joined list, as `value1,value2`, split by comma(,). Empty string filters list whose value is empty
+
+
+**Since**:
+0.8.1
+
+
+
+Example:
+
+```sql
+
+select `join`(list_except_by_value(split("a:1,b:2,c:0", ","), "0,1"), " ");
+-- output b:2
+```
+
+
+**Supported Types**:
+
+* [`list<string>`, `string`] 
+
 ### function ln
 
 ```cpp
@@ -3326,30 +3398,40 @@ round()
 
 **Description**:
 
-Return the nearest integer value to expr (in floating-point format), rounding halfway cases away from zero, regardless of the current rounding mode. 
+Returns expr rounded to d decimal places using HALF_UP rounding mode. 
 
 **Parameters**: 
 
-  * **expr** 
+  * **numeric_expr** Expression evaluated to numeric 
+  * **d** Integer decimal place, if omitted, default to 0
 
 
 **Since**:
 0.1.0
 
 
+
+When `d` is a positive, `numeric_expr` is rounded to the number of decimal positions specified by `d`. When `d` is a negative , `numeric_expr` is rounded on the left side of the decimal point. Return type is the same as the type first parameter.
+
 Example:
 
 ```sql
 
-SELECT ROUND(1.23);
--- output 1
+SELECT round(1.23);
+-- 1 (double type)
+
+SELECT round(1.23, 1)
+-- 1.2 (double type)
+
+SELECT round(123, -1)
+-- 120 (int32 type)
 ```
 
 
 **Supported Types**:
 
-* [`bool`]
-* [`number`] 
+* [`number`, ...]
+* [`number`, `int32`] 
 
 ### function second
 
@@ -4126,10 +4208,33 @@ top1_ratio()
 
 **Description**:
 
-Compute the top1 key's ratio. 
+Compute the top1 occurring value's ratio. 
+
+**Parameters**: 
+
+  * **col** Expr to the key
+
 
 **Since**:
 0.6.5
+
+
+Calculate the most frequently occurring value from the list, and output ratio as `count_of_mode / count_of_all`. NULL values are ignored. 0 returned if input list do not has non-null value.
+
+
+Example:
+
+```sql
+
+SELECT key, top1_ratio(key) over () as ratio FROM t1;
+```
+
+
+| key    | ratio     |
+|  -------- | -------- |
+| 1    | 1.0     |
+| 2    | 0.5     |
+| NULL    | 0.5    |
 
 
 
@@ -4158,6 +4263,10 @@ Compute average of values matching specified condition grouped by category key. 
   * **n** Fetch top n keys.
 
 
+**Since**:
+0.1.0
+
+
 
 Example:
 
@@ -4179,6 +4288,7 @@ Example:
 OVER w;
     -- output "z:5,y:3"
 ```
+
 
 **Supported Types**:
 
@@ -4213,6 +4323,10 @@ Compute count of values matching specified condition grouped by category key. Ou
   * **n** Fetch top n keys.
 
 
+**Since**:
+0.1.0
+
+
 
 Example:
 
@@ -4234,6 +4348,7 @@ Example:
 OVER w;
     -- output "z:2,y:2"
 ```
+
 
 **Supported Types**:
 
@@ -4316,6 +4431,10 @@ Compute maximum of values matching specified condition grouped by category key. 
   * **n** Fetch top n keys.
 
 
+**Since**:
+0.1.0
+
+
 
 Example:
 
@@ -4337,6 +4456,7 @@ Example:
 OVER w;
     -- output "z:5,y:3"
 ```
+
 
 **Supported Types**:
 
@@ -4371,6 +4491,10 @@ Compute minimum of values matching specified condition grouped by category key. 
   * **n** Fetch top n keys.
 
 
+**Since**:
+0.1.0
+
+
 
 Example:
 
@@ -4393,6 +4517,7 @@ OVER w;
     -- output "z:5,y:1"
 ```
 
+
 **Supported Types**:
 
 * [`list<number>`, `list<bool>`, `list<date>`, `list<int32>`]
@@ -4407,6 +4532,115 @@ OVER w;
 * [`list<number>`, `list<bool>`, `list<string>`, `list<int64>`]
 * [`list<number>`, `list<bool>`, `list<timestamp>`, `list<int32>`]
 * [`list<number>`, `list<bool>`, `list<timestamp>`, `list<int64>`] 
+
+### function top_n_key_ratio_cate
+
+```cpp
+top_n_key_ratio_cate()
+```
+
+**Description**:
+
+Ratios (cond match cnt / total cnt) for groups. 
+
+**Parameters**: 
+
+  * **value** Specify value column to aggregate on. 
+  * **condition** Ratio filter condition . 
+  * **catagory** Specify catagory column to group by. 
+  * **n** Top N.
+
+
+**Since**:
+0.8.1
+
+
+For each group, ratio value is `value` expr count matches condtion divide total rows count. NULL groups or NULL values are never take into count. Output string for top N category keys in descend order. Each group is represented as 'K:V' and separated by comma(,). Empty string returned if no rows selected.
+
+
+Example:
+
+
+| value    | condition    | catagory     |
+|  -------- | -------- | -------- |
+| 0    | true    | x     |
+| 2    | true    | x     |
+| 4    | true    | x     |
+| 1    | true    | y     |
+| 3    | false    | y     |
+| 5    | true    | z     |
+| 6    | true    | z    |
+
+
+```sql
+
+SELECT top_n_key_ratio_cate_where(value, condition, catagory, 2) from t;
+-- output "z:1.000000,y:0.500000"
+```
+
+
+**Supported Types**:
+
+* [`list<bool>`, `list<bool>`, `list<date>`, `list<int32>`]
+* [`list<bool>`, `list<bool>`, `list<date>`, `list<int64>`]
+* [`list<bool>`, `list<bool>`, `list<int16>`, `list<int32>`]
+* [`list<bool>`, `list<bool>`, `list<int16>`, `list<int64>`]
+* [`list<bool>`, `list<bool>`, `list<int32>`, `list<int32>`]
+* [`list<bool>`, `list<bool>`, `list<int32>`, `list<int64>`]
+* [`list<bool>`, `list<bool>`, `list<int64>`, `list<int32>`]
+* [`list<bool>`, `list<bool>`, `list<int64>`, `list<int64>`]
+* [`list<bool>`, `list<bool>`, `list<string>`, `list<int32>`]
+* [`list<bool>`, `list<bool>`, `list<string>`, `list<int64>`]
+* [`list<bool>`, `list<bool>`, `list<timestamp>`, `list<int32>`]
+* [`list<bool>`, `list<bool>`, `list<timestamp>`, `list<int64>`]
+* [`list<date>`, `list<bool>`, `list<date>`, `list<int32>`]
+* [`list<date>`, `list<bool>`, `list<date>`, `list<int64>`]
+* [`list<date>`, `list<bool>`, `list<int16>`, `list<int32>`]
+* [`list<date>`, `list<bool>`, `list<int16>`, `list<int64>`]
+* [`list<date>`, `list<bool>`, `list<int32>`, `list<int32>`]
+* [`list<date>`, `list<bool>`, `list<int32>`, `list<int64>`]
+* [`list<date>`, `list<bool>`, `list<int64>`, `list<int32>`]
+* [`list<date>`, `list<bool>`, `list<int64>`, `list<int64>`]
+* [`list<date>`, `list<bool>`, `list<string>`, `list<int32>`]
+* [`list<date>`, `list<bool>`, `list<string>`, `list<int64>`]
+* [`list<date>`, `list<bool>`, `list<timestamp>`, `list<int32>`]
+* [`list<date>`, `list<bool>`, `list<timestamp>`, `list<int64>`]
+* [`list<number>`, `list<bool>`, `list<date>`, `list<int32>`]
+* [`list<number>`, `list<bool>`, `list<date>`, `list<int64>`]
+* [`list<number>`, `list<bool>`, `list<int16>`, `list<int32>`]
+* [`list<number>`, `list<bool>`, `list<int16>`, `list<int64>`]
+* [`list<number>`, `list<bool>`, `list<int32>`, `list<int32>`]
+* [`list<number>`, `list<bool>`, `list<int32>`, `list<int64>`]
+* [`list<number>`, `list<bool>`, `list<int64>`, `list<int32>`]
+* [`list<number>`, `list<bool>`, `list<int64>`, `list<int64>`]
+* [`list<number>`, `list<bool>`, `list<string>`, `list<int32>`]
+* [`list<number>`, `list<bool>`, `list<string>`, `list<int64>`]
+* [`list<number>`, `list<bool>`, `list<timestamp>`, `list<int32>`]
+* [`list<number>`, `list<bool>`, `list<timestamp>`, `list<int64>`]
+* [`list<string>`, `list<bool>`, `list<date>`, `list<int32>`]
+* [`list<string>`, `list<bool>`, `list<date>`, `list<int64>`]
+* [`list<string>`, `list<bool>`, `list<int16>`, `list<int32>`]
+* [`list<string>`, `list<bool>`, `list<int16>`, `list<int64>`]
+* [`list<string>`, `list<bool>`, `list<int32>`, `list<int32>`]
+* [`list<string>`, `list<bool>`, `list<int32>`, `list<int64>`]
+* [`list<string>`, `list<bool>`, `list<int64>`, `list<int32>`]
+* [`list<string>`, `list<bool>`, `list<int64>`, `list<int64>`]
+* [`list<string>`, `list<bool>`, `list<string>`, `list<int32>`]
+* [`list<string>`, `list<bool>`, `list<string>`, `list<int64>`]
+* [`list<string>`, `list<bool>`, `list<timestamp>`, `list<int32>`]
+* [`list<string>`, `list<bool>`, `list<timestamp>`, `list<int64>`]
+* [`list<timestamp>`, `list<bool>`, `list<date>`, `list<int32>`]
+* [`list<timestamp>`, `list<bool>`, `list<date>`, `list<int64>`]
+* [`list<timestamp>`, `list<bool>`, `list<int16>`, `list<int32>`]
+* [`list<timestamp>`, `list<bool>`, `list<int16>`, `list<int64>`]
+* [`list<timestamp>`, `list<bool>`, `list<int32>`, `list<int32>`]
+* [`list<timestamp>`, `list<bool>`, `list<int32>`, `list<int64>`]
+* [`list<timestamp>`, `list<bool>`, `list<int64>`, `list<int32>`]
+* [`list<timestamp>`, `list<bool>`, `list<int64>`, `list<int64>`]
+* [`list<timestamp>`, `list<bool>`, `list<string>`, `list<int32>`]
+* [`list<timestamp>`, `list<bool>`, `list<string>`, `list<int64>`]
+* [`list<timestamp>`, `list<bool>`, `list<timestamp>`, `list<int32>`]
+* [`list<timestamp>`, `list<bool>`, `list<timestamp>`, `list<int64>`] 
 
 ### function top_n_key_sum_cate_where
 
@@ -4424,6 +4658,10 @@ Compute sum of values matching specified condition grouped by category key. Outp
   * **condition** Specify condition column. 
   * **catagory** Specify catagory column to group by. 
   * **n** Fetch top n keys.
+
+
+**Since**:
+0.1.0
 
 
 
@@ -4447,6 +4685,7 @@ Example:
 OVER w;
     -- output "z:11,y:4"
 ```
+
 
 **Supported Types**:
 
@@ -4481,6 +4720,10 @@ Compute average of values matching specified condition grouped by category key. 
   * **n** Fetch top n keys.
 
 
+**Since**:
+0.6.4
+
+
 
 Example:
 
@@ -4502,6 +4745,7 @@ Example:
 OVER w;
     -- output "z:5,x:4"
 ```
+
 
 **Supported Types**:
 
@@ -4536,6 +4780,10 @@ Compute count of values matching specified condition grouped by category key. Ou
   * **n** Top N.
 
 
+**Since**:
+0.6.4
+
+
 
 Example:
 
@@ -4557,6 +4805,7 @@ Example:
 OVER w;
     -- output "x:3,y:2"
 ```
+
 
 **Supported Types**:
 
@@ -4639,6 +4888,10 @@ Compute maximum of values matching specified condition grouped by category key. 
   * **n** Fetch Top n.
 
 
+**Since**:
+0.6.4
+
+
 
 Example:
 
@@ -4660,6 +4913,7 @@ Example:
 OVER w;
     -- output "z:5,x:4"
 ```
+
 
 **Supported Types**:
 
@@ -4694,6 +4948,10 @@ Compute minimum of values matching specified condition grouped by category key. 
   * **n** Fetch top n keys.
 
 
+**Since**:
+0.6.4
+
+
 
 Example:
 
@@ -4716,6 +4974,7 @@ OVER w;
     -- output "z:5,x:2"
 ```
 
+
 **Supported Types**:
 
 * [`list<number>`, `list<bool>`, `list<date>`, `list<int32>`]
@@ -4730,6 +4989,115 @@ OVER w;
 * [`list<number>`, `list<bool>`, `list<string>`, `list<int64>`]
 * [`list<number>`, `list<bool>`, `list<timestamp>`, `list<int32>`]
 * [`list<number>`, `list<bool>`, `list<timestamp>`, `list<int64>`] 
+
+### function top_n_value_ratio_cate
+
+```cpp
+top_n_value_ratio_cate()
+```
+
+**Description**:
+
+Ratios (cond match cnt / total cnt) for groups. 
+
+**Parameters**: 
+
+  * **value** Specify value column to aggregate on. 
+  * **condition** Ratio filter condition . 
+  * **catagory** Specify catagory column to group by. 
+  * **n** Top N.
+
+
+**Since**:
+0.8.1
+
+
+For each group, ratio value is `value` expr count matches condtion divide total rows count. NULL groups or NULL values are never take into count. Output string for top N aggregate values in descend order. Each group is represented as 'K:V' and separated by comma(,). Empty string returned if no rows selected.
+
+
+Example:
+
+
+| value    | condition    | catagory     |
+|  -------- | -------- | -------- |
+| 0    | true    | x     |
+| 2    | true    | x     |
+| 4    | true    | x     |
+| 1    | true    | y     |
+| 3    | false    | y     |
+| 5    | true    | z     |
+| 6    | true    | z    |
+
+
+```sql
+
+SELECT top_n_value_ratio_cate_where(value, condition, catagory, 2) from t;
+-- output "z:1.000000,x:1.000000"
+```
+
+
+**Supported Types**:
+
+* [`list<bool>`, `list<bool>`, `list<date>`, `list<int32>`]
+* [`list<bool>`, `list<bool>`, `list<date>`, `list<int64>`]
+* [`list<bool>`, `list<bool>`, `list<int16>`, `list<int32>`]
+* [`list<bool>`, `list<bool>`, `list<int16>`, `list<int64>`]
+* [`list<bool>`, `list<bool>`, `list<int32>`, `list<int32>`]
+* [`list<bool>`, `list<bool>`, `list<int32>`, `list<int64>`]
+* [`list<bool>`, `list<bool>`, `list<int64>`, `list<int32>`]
+* [`list<bool>`, `list<bool>`, `list<int64>`, `list<int64>`]
+* [`list<bool>`, `list<bool>`, `list<string>`, `list<int32>`]
+* [`list<bool>`, `list<bool>`, `list<string>`, `list<int64>`]
+* [`list<bool>`, `list<bool>`, `list<timestamp>`, `list<int32>`]
+* [`list<bool>`, `list<bool>`, `list<timestamp>`, `list<int64>`]
+* [`list<date>`, `list<bool>`, `list<date>`, `list<int32>`]
+* [`list<date>`, `list<bool>`, `list<date>`, `list<int64>`]
+* [`list<date>`, `list<bool>`, `list<int16>`, `list<int32>`]
+* [`list<date>`, `list<bool>`, `list<int16>`, `list<int64>`]
+* [`list<date>`, `list<bool>`, `list<int32>`, `list<int32>`]
+* [`list<date>`, `list<bool>`, `list<int32>`, `list<int64>`]
+* [`list<date>`, `list<bool>`, `list<int64>`, `list<int32>`]
+* [`list<date>`, `list<bool>`, `list<int64>`, `list<int64>`]
+* [`list<date>`, `list<bool>`, `list<string>`, `list<int32>`]
+* [`list<date>`, `list<bool>`, `list<string>`, `list<int64>`]
+* [`list<date>`, `list<bool>`, `list<timestamp>`, `list<int32>`]
+* [`list<date>`, `list<bool>`, `list<timestamp>`, `list<int64>`]
+* [`list<number>`, `list<bool>`, `list<date>`, `list<int32>`]
+* [`list<number>`, `list<bool>`, `list<date>`, `list<int64>`]
+* [`list<number>`, `list<bool>`, `list<int16>`, `list<int32>`]
+* [`list<number>`, `list<bool>`, `list<int16>`, `list<int64>`]
+* [`list<number>`, `list<bool>`, `list<int32>`, `list<int32>`]
+* [`list<number>`, `list<bool>`, `list<int32>`, `list<int64>`]
+* [`list<number>`, `list<bool>`, `list<int64>`, `list<int32>`]
+* [`list<number>`, `list<bool>`, `list<int64>`, `list<int64>`]
+* [`list<number>`, `list<bool>`, `list<string>`, `list<int32>`]
+* [`list<number>`, `list<bool>`, `list<string>`, `list<int64>`]
+* [`list<number>`, `list<bool>`, `list<timestamp>`, `list<int32>`]
+* [`list<number>`, `list<bool>`, `list<timestamp>`, `list<int64>`]
+* [`list<string>`, `list<bool>`, `list<date>`, `list<int32>`]
+* [`list<string>`, `list<bool>`, `list<date>`, `list<int64>`]
+* [`list<string>`, `list<bool>`, `list<int16>`, `list<int32>`]
+* [`list<string>`, `list<bool>`, `list<int16>`, `list<int64>`]
+* [`list<string>`, `list<bool>`, `list<int32>`, `list<int32>`]
+* [`list<string>`, `list<bool>`, `list<int32>`, `list<int64>`]
+* [`list<string>`, `list<bool>`, `list<int64>`, `list<int32>`]
+* [`list<string>`, `list<bool>`, `list<int64>`, `list<int64>`]
+* [`list<string>`, `list<bool>`, `list<string>`, `list<int32>`]
+* [`list<string>`, `list<bool>`, `list<string>`, `list<int64>`]
+* [`list<string>`, `list<bool>`, `list<timestamp>`, `list<int32>`]
+* [`list<string>`, `list<bool>`, `list<timestamp>`, `list<int64>`]
+* [`list<timestamp>`, `list<bool>`, `list<date>`, `list<int32>`]
+* [`list<timestamp>`, `list<bool>`, `list<date>`, `list<int64>`]
+* [`list<timestamp>`, `list<bool>`, `list<int16>`, `list<int32>`]
+* [`list<timestamp>`, `list<bool>`, `list<int16>`, `list<int64>`]
+* [`list<timestamp>`, `list<bool>`, `list<int32>`, `list<int32>`]
+* [`list<timestamp>`, `list<bool>`, `list<int32>`, `list<int64>`]
+* [`list<timestamp>`, `list<bool>`, `list<int64>`, `list<int32>`]
+* [`list<timestamp>`, `list<bool>`, `list<int64>`, `list<int64>`]
+* [`list<timestamp>`, `list<bool>`, `list<string>`, `list<int32>`]
+* [`list<timestamp>`, `list<bool>`, `list<string>`, `list<int64>`]
+* [`list<timestamp>`, `list<bool>`, `list<timestamp>`, `list<int32>`]
+* [`list<timestamp>`, `list<bool>`, `list<timestamp>`, `list<int64>`] 
 
 ### function top_n_value_sum_cate_where
 
@@ -4747,6 +5115,10 @@ Compute sum of values matching specified condition grouped by category key. Outp
   * **condition** Specify condition column. 
   * **catagory** Specify catagory column to group by. 
   * **n** Top N.
+
+
+**Since**:
+0.6.4
 
 
 
@@ -4770,6 +5142,7 @@ Example:
 OVER w;
     -- output "z:11,x:4"
 ```
+
 
 **Supported Types**:
 

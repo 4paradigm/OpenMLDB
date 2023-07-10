@@ -24,6 +24,7 @@
 #include <stdint.h>
 
 #include <string>
+#include <memory>
 
 #include "base/slice.h"
 #include "log/status.h"
@@ -109,6 +110,15 @@ struct WriteHandle {
         delete wf_;
     }
 };
+
+std::shared_ptr<WriteHandle> inline CreateWriteHandle(const std::string& compress_type,
+        const std::string& fname, const std::string& path) {
+    FILE* fd = fopen(path.c_str(), "ab+");
+    if (fd == nullptr) {
+        return {};
+    }
+    return std::make_shared<WriteHandle>(compress_type, fname, fd);
+}
 
 }  // namespace log
 }  // namespace openmldb

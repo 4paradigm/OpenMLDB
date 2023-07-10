@@ -203,6 +203,20 @@ if(SQL_JAVASDK_ENABLE)
     install(FILES ${TASKMANAGER_LIB}
             DESTINATION taskmanager/lib/
             PERMISSIONS OWNER_WRITE OWNER_READ GROUP_READ WORLD_READ)
+
+    # Install SyncTool binary and libraries
+    FILE(GLOB SYNCTOOL_BIN "${PROJECT_SOURCE_DIR}/java/openmldb-synctool/target/openmldb-synctool-binary/bin/*")
+    FILE(GLOB SYNCTOOL_CONF "${PROJECT_SOURCE_DIR}/java/openmldb-synctool/target/openmldb-synctool-binary/conf/log4j*")
+    FILE(GLOB SYNCTOOL_LIB "${PROJECT_SOURCE_DIR}/java/openmldb-synctool/target/openmldb-synctool-binary/lib/*")
+    install(FILES ${SYNCTOOL_BIN}
+            DESTINATION synctool/bin/
+            PERMISSIONS OWNER_EXECUTE OWNER_WRITE OWNER_READ GROUP_EXECUTE GROUP_READ WORLD_EXECUTE WORLD_READ)
+    install(FILES ${SYNCTOOL_CONF}
+            DESTINATION synctool/conf/
+            PERMISSIONS OWNER_WRITE OWNER_READ GROUP_READ WORLD_READ)
+    install(FILES ${SYNCTOOL_LIB}
+            DESTINATION synctool/lib/
+            PERMISSIONS OWNER_WRITE OWNER_READ GROUP_READ WORLD_READ)
 endif()
 
 # c++ sdk
@@ -284,6 +298,10 @@ list(REMOVE_ITEM ABSL_LLVM_LIBS "")
 
 # Find path of libraries in ${ABSL_LLVM_LIBS}
 foreach(X  IN LISTS ABSL_LLVM_LIBS)
+    get_target_property(type ${X} TYPE)
+    if (${type} STREQUAL "INTERFACE_LIBRARY")
+        continue()
+    endif()
     get_property(_loc TARGET ${X} PROPERTY LOCATION)
     list(APPEND ABSL_LLVM_PATH ${_loc})
 endforeach()
@@ -299,7 +317,7 @@ COMMENT "pack static cxx sdk and all depend static libs into one"
 
 if(TESTING_ENABLE)
     add_executable(openmldb_api_test openmldb_api_test.cc)
-    target_link_libraries(openmldb_api_test ${BIN_LIBS} ${GTEST_LIBRARIES})
+    target_link_libraries(openmldb_api_test ${EXPORTER_LIBS} ${GTEST_LIBRARIES})
 endif()
 
 FILE(GLOB USER_HEADER 

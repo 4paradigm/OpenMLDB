@@ -14,14 +14,14 @@ OpenMLDB Kafka Connector实现见[extensions/kafka-connect-jdbc](https://github.
 ### 下载与准备
 
 - 你需要下载kafka，请点击[kafka官网下载](https://kafka.apache.org/downloads)下载kafka_2.13-3.1.0.tgz。
-- 你需要下载connector包以及依赖，请点击[kafka-connect-jdbc.tgz](https://github.com/4paradigm/OpenMLDB/releases/download/v0.5.0/kafka-connect-jdbc.tgz)。
+- 你需要下载connector包以及依赖，请点击[kafka-connect-jdbc.tgz](http://openmldb.ai/download/kafka-connector/kafka-connect-jdbc.tgz)。
 - 你需要下载本文中所需要的配置与脚本等文件，请点击[kafka_demo_files.tgz](http://openmldb.ai/download/kafka-connector/kafka_demo_files.tgz)下载。
 
 本文将使用docker方式启动OpenMLDB，所以无需单独下载OpenMLDB。并且，kafka与connector的启动，都可以在同一个容器中进行。
 
 我们推荐你将下载的三个文件包都绑定到文件目录`kafka`。当然，也可以在启动容器后，再进行文件包的下载。我们假设文件包都在`/work/kafka`目录中。
 ```
-docker run -it -v `pwd`:/work/kafka --name openmldb 4pdosc/openmldb:0.7.3 bash
+docker run -it -v `pwd`:/work/kafka 4pdosc/openmldb:0.8.1 bash
 ```
 
 ### 流程
@@ -96,7 +96,7 @@ tar zxf kafka_demo_files.tgz
 ```
 启动connector，需要kafka_demo_files中的两个配置文件，并将connector插件放入正确位置。
 
-第一个配置文件是 connector 自身的配置`connect-standalone.properties`，重点配置是“插件目录”，请确认此配置项如下所示：
+第一个配置文件是 connect worker 的配置`connect-standalone.properties`，重点配置是“插件目录”，请确认此配置项如下所示：
 ```
 plugin.path=/usr/local/share/java
 ```
@@ -107,7 +107,7 @@ mkdir -p /usr/local/share/java
 cp -r /work/kafka/kafka-connect-jdbc /usr/local/share/java/
 ```
 
-第二个配置文件是连接 OpenMLDB 的配置 `openmldb-sink.properties`，如下所示：
+第二个配置文件是连接 OpenMLDB 的 Sink Connector 配置 `openmldb-sink.properties`，如下所示：
 ```
 name=test-sink
 connector.class=io.confluent.connect.jdbc.JdbcSinkConnector
@@ -115,22 +115,25 @@ tasks.max=1
 topics=topic1 
 connection.url=jdbc:openmldb:///kafka_test?zk=127.0.0.1:2181&zkPath=/openmldb
 auto.create=true
+value.converter=org.apache.kafka.connect.json.JsonConverter
+value.converter.schemas.enable=true
 ```
-连接配置中，需要填写正确的openmldb url地址。该connector接收topic1的消息，并且会自动创建表(auto.create)。
+连接配置中，需要填写正确的OpenMLDB url地址。该connector接收topic1的消息，并且会自动创建表(auto.create)。我们在 connector 配置`openmldb-sink.properties`中设置value的converter，当然你也可以在 connect worker的`connect-standalone.properties`中设置默认的converter，connector中无需额外配置。
 
 ```{tip}
 配置项详情见Kafka文档[Configuring Connectors](https://kafka.apache.org/documentation/#connect_configuring)。
 
 其中，`connection.url`需要配置为正确的OpenMLDB集群地址与database名，要求database必须存在。
+`value.converter`等属性也可以在 connector 处配置，将覆盖 connect worker 的默认配置。connector启动后也可以通过HTTP API动态修改属性。
 ```
 
-下面，使用 Kafka Connector standalone 模式启动 connector。
+下面，使用 Kafka Connector standalone 模式启动 connect worker。
 ```
 cd /work/kafka/kafka_2.13-3.1.0
 ./bin/connect-standalone.sh -daemon ../kafka_demo_files/connect-standalone.properties ../kafka_demo_files/openmldb-sink.properties
 ```
 
-确认 connector 是否启动，以及是否正确连接到 OpenMLDB 集群，可以查看 `logs/connect.log`，正常情况下日志应有 `Executing sink task`。
+确认 connect worker 是否启动，以及 sink task 是否正确连接到 OpenMLDB 集群，可以查看 `logs/connect.log`，正常情况下日志应有 `Executing sink task`。
 
 ## 步骤 4：测试
 ### 发送消息
@@ -194,3 +197,38 @@ rm -rf /tmp/kafka-logs /tmp/kraft-combined-logs
 /work/init.sh
 ```
 `init.sh`会启动新的OpenMLDB集群，你可以在OpenMLDB创建database，再重新启动Kafka。
+
+## 使用 Kubernetes 部署
+
+OpenMLDB Kafka Connect 服务可以本地部署，也可以使用 Kubernetes 来部署，下面介绍部署需要的配置文件以及部署步骤。
+
+在本地准备上面demo下载的配置文件，建议修改其中的配置项“plugin.path=/tmp”，并且修改OpenMLDB连接的ZK地址。
+
+* connect-standalone.properties
+* openmldb-sink.properties
+
+本地准备好配置文件后，使用命令来创建 ConfigMap 。
+
+```
+kubectl create configmap openmldb-kafka-connect-configmap --from-file=connect-standalone.properties=connect-standalone.properties --from-file=openmldb-sink.properties=openmldb-sink.properties
+```
+
+使用 OpenMLDB 提供的 Dockerfile 来创建镜像，并且把镜像推送到镜像仓库。
+
+```
+docker build -t registry.cn-shenzhen.aliyuncs.com/tobe43/openmldb-kafka-connect -f Dockerfile .
+```
+
+使用 OpenMLDB 提供的 Yaml 文件来创建 Deployment，可按需修改启动的配置仓库。注意，目前只支持单节点的 Connect 服务，因此 Deployment 的 replicas 配置必须为1。
+
+```
+kubectl create -f ./openmldb-kafka-connect-deployment.yaml
+```
+
+部署 Deployment 后，可以查看对应 Pod 的运行状态和日志，然后通过发送消息给 Kafka 检查服务功能是否正常。
+
+如果希望访问 Connect 服务的 RESTful 接口，可以参考 OpenMLDB 提供的 Yaml 文件来创建 Service ，默认使用 NodePort 并且在宿主机的 8083 端口可访问对应服务。
+
+```
+kubectl create -f ./openmldb-kafka-connect-service.yaml
+```

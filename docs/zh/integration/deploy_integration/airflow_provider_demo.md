@@ -1,7 +1,7 @@
 # Airflow 
 我们提供了[Airflow OpenMLDB Provider](https://github.com/4paradigm/OpenMLDB/tree/main/extensions/airflow-provider-openmldb)，使得在Airflow DAG中能更容易地使用OpenMLDB。
 
-本案例将通过 Airflow 编排[TalkingData](talkingdata_demo)的训练与上线过程。
+本案例将通过 Airflow 编排[TalkingData](../../use_case/talkingdata_demo.md)的训练与上线过程。
 
 ## TalkingData DAG
 
@@ -35,7 +35,7 @@ ls airflow_demo_files
 登录Airflow Web需要对外端口，所以此处暴露容器的端口。并且直接将上一步下载的文件映射到`/work/airflow/dags`，接下来Airflow将加载此文件夹的DAG。
 
 ```
-docker run -p 8080:8080 -v `pwd`/airflow_demo_files:/work/airflow_demo_files -it 4pdosc/openmldb:0.7.3 bash
+docker run -p 8080:8080 -v `pwd`/airflow_demo_files:/work/airflow_demo_files -it 4pdosc/openmldb:0.8.1 bash
 ```
 
 #### 0.3 下载安装Airflow与Airflow OpenMLDB Provider
