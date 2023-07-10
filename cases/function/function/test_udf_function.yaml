@@ -343,3 +343,29 @@ cases:
         - dis5 double
       data: |
         1, 139.72810080682342, 139.72810080682342, 139.72810080682342, 139.72810080682342, 139.72810080682342
+
+  - id: 7
+    desc: udf at
+    inputs:
+      - name: t1
+        columns: ["idx int", "gp int", "val string", "ts timestamp"]
+        indexs: ['idx:gp:ts']
+        rows:
+          - [100, 1, "7,8,9", 1000]
+    sql: |
+      select idx,
+        at(split(val, ","), 0) as s0,
+        at(split(val, ","), 1) as s1,
+        at(split(val, ","), 2) as s2,
+        at(split(val, ","), 3) as s3
+      from t1
+    expect:
+      order: id
+      columns:
+        - idx int
+        - s0 string
+        - s1 string
+        - s2 string
+        - s3 string
+      data: |
+        100, 7, 8, 9, NULL

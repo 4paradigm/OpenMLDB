@@ -52,15 +52,15 @@ curl http://<IP:port>/dbs/foo -X POST -d'{"mode":"online", "sql":"show component
  - 暴露端口，也需要修改apiserver的endpoint改为`0.0.0.0`。这样可以使用127.0.0.1或是公网ip访问到 APIServer。
     单机版：
     ```
-    docker run -p 8080:8080 -it 4pdosc/openmldb:0.8.0 bash
+    docker run -p 8080:8080 -it 4pdosc/openmldb:0.8.1 bash
     ```
     集群版：
     ```
-    docker run -p 9080:9080 -it 4pdosc/openmldb:0.8.0 bash
+    docker run -p 9080:9080 -it 4pdosc/openmldb:0.8.1 bash
     ```
  - 使用host网络，可以不用修改endpoint配置。缺点是容易引起端口冲突。
     ```
-    docker run --network host -it 4pdosc/openmldb:0.8.0 bash
+    docker run --network host -it 4pdosc/openmldb:0.8.1 bash
     ```
 
 如果是跨主机访问容器 onebox 中的 APIServer，可以**任选一种**下面的方式：
@@ -120,23 +120,23 @@ cd /work/openmldb/conf/ && ls | grep -v _ | xargs sed -i s/0.0.0.0/<IP>/g && cd 
 
 如果是本机的容器外CLI访问容器onebox，可以**任选一种**下面的方式：
 
-- bridge连接，bridge IP查看参考[容器onebox-apiserver](#容器onebox-apiserver)，将所有endpoint配置改为bridge ip。不可以是`0.0.0.0`，容器外CLI/SDK无法通过`0.0.0.0`找到容器内的server。
+- bridge连接，bridge IP查看参考[容器onebox-apiserver](#容器-onebox-apiserver)，将所有endpoint配置改为bridge ip。不可以是`0.0.0.0`，容器外CLI/SDK无法通过`0.0.0.0`找到容器内的server。
 
 - 暴露端口，并将conf所有endpoint改为bridge IP或`0.0.0.0`。本机也可以顺利通信。
 
 单机版需要暴露三个组件（nameserver，tabletserver，APIServer）的端口：
 ```
-docker run -p 6527:6527 -p 9921:9921 -p 8080:8080 -it 4pdosc/openmldb:0.8.0 bash
+docker run -p 6527:6527 -p 9921:9921 -p 8080:8080 -it 4pdosc/openmldb:0.8.1 bash
 ```
 
 集群版需要暴露zk端口与所有组件的端口：
 ```
-docker run -p 2181:2181 -p 7527:7527 -p 10921:10921 -p 10922:10922 -p 8080:8080 -p 9902:9902 -it 4pdosc/openmldb:0.8.0 bash
+docker run -p 2181:2181 -p 7527:7527 -p 10921:10921 -p 10922:10922 -p 8080:8080 -p 9902:9902 -it 4pdosc/openmldb:0.8.1 bash
 ```
 
 - 使用host网络，可以不用修改 endpoint 配置。如果有端口冲突，请修改 server 的端口配置。
 ```
-docker run --network host -it 4pdosc/openmldb:0.8.0 bash
+docker run --network host -it 4pdosc/openmldb:0.8.1 bash
 ```
 
 如果是跨主机使用 CLI/SDK 访问问容器onebox，只能通过`--network host`，并更改所有endpoint为公网IP，才能顺利访问。

@@ -92,6 +92,7 @@ option(SQL_PYSDK_ENABLE "Enable sql pysdk" OFF)
 option(SQL_JAVASDK_ENABLE "Enable sql javasdk" OFF)
 option(MAC_TABLET_ENABLE "Enable Table on Mac OS" ON)
 option(COVERAGE_ENABLE "Enable Coverage" OFF)
+option(COVERAGE_NO_DEPS "Coverage without test deps, should ensure test built" OFF)
 option(SANITIZER_ENABLE "Enable AddressSanitizer in Debug mode" OFF)
 # add_library can reply on this variable
 # see https://cmake.org/cmake/help/latest/variable/BUILD_SHARED_LIBS.html#variable:BUILD_SHARED_LIBS
@@ -173,6 +174,7 @@ if (COVERAGE_ENABLE)
         message(FATAL_ERROR "Coverage is only supported on linux")
     endif ()
     find_program(LCOV_EXE NAMES lcov DOC "coverage requires lcov installed" REQUIRED)
+    message(STATUS "include CodeCoverage, if file not found, please git submodule update --init to get file")
     include(CodeCoverage)
     APPEND_COVERAGE_COMPILER_FLAGS()
 endif ()
@@ -285,10 +287,15 @@ link_directories(
 add_subdirectory(src)
 
 if (COVERAGE_ENABLE AND CMAKE_COMPILER_IS_GNUCXX)
-  # FIXME(aceforeverd): api_server_test failed to run on debug mode, skip temporarily
-  SETUP_TARGET_FOR_COVERAGE_LCOV(NAME coverage
-    EXECUTABLE ctest --force-new-ctest-process --output-on-failure -E "api_server_test"
-    DEPENDENCIES ${test_list})
+  if (COVERAGE_NO_DEPS)
+        SETUP_TARGET_FOR_COVERAGE_LCOV(NAME coverage
+        EXECUTABLE ctest --force-new-ctest-process --output-on-failure -E "api_server_test")
+  else ()
+    # FIXME(aceforeverd): api_server_test failed to run on debug mode, skip temporarily
+    SETUP_TARGET_FOR_COVERAGE_LCOV(NAME coverage
+        EXECUTABLE ctest --force-new-ctest-process --output-on-failure -E "api_server_test"
+        DEPENDENCIES ${test_list})
+  endif ()
 endif ()
 
 
@@ -321,3 +328,4 @@ install(
   DESTINATION tools
   PERMISSIONS OWNER_EXECUTE OWNER_WRITE OWNER_READ GROUP_EXECUTE GROUP_READ WORLD_EXECUTE WORLD_READ
 )
+install(DIRECTORY DESTINATION udf)

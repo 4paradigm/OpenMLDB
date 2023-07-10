@@ -32,7 +32,7 @@ spark.default.conf=spark.port.maxRetries=32;foo=bar
 
 ### 长窗口 SQL
 
-长窗口 SQL，即 `DEPLOY` 语句带有 `OPTIONS(long_windows=...)` 配置项，语法详情见[长窗口](../openmldb_sql/deployment_manage/DEPLOY_STATEMENT#长窗口优化)。长窗口 SQL 的部署条件比较严格，必须保证 SQL 中使用的表没有在线数据。否则，即使部署和之前一致的 SQL，也会操作失败。
+长窗口 SQL，即 `DEPLOY` 语句带有 `OPTIONS(long_windows=...)` 配置项，语法详情见[长窗口](../openmldb_sql/deployment_manage/DEPLOY_STATEMENT.md#长窗口优化)。长窗口 SQL 的部署条件比较严格，必须保证 SQL 中使用的表没有在线数据。否则，即使部署和之前一致的 SQL，也会操作失败。
 
 ### 普通 SQL
 
@@ -137,7 +137,7 @@ OpenMLDB CLI 中在线模式下执行 SQL，均为在线预览模式。在线预
 
 ### 离线模式与在线请求模式
 
-在[特征工程开发上线全流程](../tutorial/modes.md11-特征工程开发上线全流程)中，主要使用离线模式和在线请求模式。
+在[特征工程开发上线全流程](../tutorial/concepts/modes.md#11-特征工程开发上线全流程)中，主要使用离线模式和在线请求模式。
 
 - 离线模式的批查询：离线特征生成
 - 在线请求模式的请求查询：实时特征计算

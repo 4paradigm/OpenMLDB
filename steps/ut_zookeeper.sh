@@ -17,7 +17,7 @@
 WORK_DIR=$(pwd)
 
 if [ $# -ne 1 ]; then
-    echo "./ut_zookeeper.sh [start|stop]"
+    echo "./ut_zookeeper.sh [start|stop|reset]"
     exit 1
 fi
 
@@ -36,6 +36,12 @@ case $OP in
     stop)
         echo "Stopping zk ... "
         cd "$THIRDSRC/zookeeper-3.4.14" && ./bin/zkServer.sh stop
+        ;;
+    reset)
+        echo "stop, remove zk data and then start"
+        sh steps/ut_zookeeper.sh stop
+        rm -rf "$THIRDSRC/zookeeper-3.4.14/data"
+        sh steps/ut_zookeeper.sh start
         ;;
     *)
         echo "Only support {start|stop}" >&2

@@ -100,7 +100,13 @@ class ColumnImpl : public WrapListImpl<V, Row> {
         return new ColumnIterator<V>(root_, this);
     }
     const uint64_t GetCount() override { return root_->GetCount(); }
-    V At(uint64_t pos) override { return GetFieldUnsafe(root_->At(pos)); }
+    std::optional<V> At(uint64_t pos) override {
+        auto row = root_->At(pos);
+        if (row.empty()) {
+            return std::nullopt;
+        }
+        return GetFieldUnsafe(row);
+    }
 
     ListV<Row> *root() const override { return root_; }
 

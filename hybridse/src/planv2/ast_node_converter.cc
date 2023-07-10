@@ -2170,17 +2170,35 @@ static const absl::flat_hash_map<std::string_view, ShowTargetInfo> showTargetMap
     {"JOBLOG", {node::CmdType::kCmdShowJobLog, true}},
 };
 
+static const absl::flat_hash_map<std::string_view, node::ShowStmtType> SHOW_STMT_TYPE_MAP = {
+    {"JOBS", node::ShowStmtType::kJobs},
+};
+
 base::Status convertShowStmt(const zetasql::ASTShowStatement* show_statement, node::NodeManager* node_manager,
                              node::SqlNode** output) {
     CHECK_TRUE(nullptr != show_statement && nullptr != show_statement->identifier(), common::kSqlAstError,
                "not an ASTShowStatement")
 
     auto show_id = show_statement->identifier()->GetAsStringView();
+    // TODO(dl239): move all show statement from CmdNode to ShowNode
+    if (auto iter = SHOW_STMT_TYPE_MAP.find(absl::AsciiStrToUpper(show_id));
+            iter != SHOW_STMT_TYPE_MAP.end() && show_statement->optional_name() != nullptr) {
+        std::vector<std::string> names;
+        CHECK_STATUS(AstPathExpressionToStringList(show_statement->optional_name(), names));
+        CHECK_TRUE(names.size() == 1, common::kSqlAstError, "illegal optional name in show statement");
+        std::string like;
+        if (show_statement->optional_like_string() != nullptr) {
+            like = show_statement->optional_like_string()->string_value();
+        }
+        *output = node_manager->MakeNode<node::ShowNode>(iter->second, names.back(), like);
+        return base::Status::OK();
+    }
 
     auto show_info = showTargetMap.find(absl::AsciiStrToUpper(show_id));
     if (show_info == showTargetMap.end()) {
         FAIL_STATUS(common::kSqlAstError, "Un-support SHOW: ", show_id)
     }
+
     CHECK_TRUE(show_info->second.with_like_string_ || nullptr == show_statement->optional_like_string(),
                common::kSqlAstError, absl::StrCat("Non-support LIKE in SHOW ", show_info->first, " statement"))
 
