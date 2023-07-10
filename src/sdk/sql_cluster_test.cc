@@ -97,7 +97,7 @@ class SQLClusterDDLTest : public SQLClusterTest {
     std::shared_ptr<SQLRouter> router;
     std::string db;
 };
-TEST_F(SQLClusterDDLTest, DropDeployment) {
+TEST_F(SQLClusterDDLTest, TestShowAndDropDeployment){
     std::string db2 = "db" + GenRand();
     std::string table_name = "tb" + GenRand();
     std::string deploy_name = "dp" + GenRand();
@@ -120,6 +120,10 @@ TEST_F(SQLClusterDDLTest, DropDeployment) {
     router->ExecuteSQL(db2, "deploy " + deploy_name + " select col1 from " + db + "." + table_name + ";", &status);
     ASSERT_TRUE(status.IsOK());
 
+    router->ExecuteSQL(db, "show deployment " + deploy_name + ";", &status);
+    ASSERT_TRUE(status.IsOK());
+    router->ExecuteSQL(db, "show deployment " + db2 + "." + deploy_name + ";", &status);
+    ASSERT_TRUE(status.IsOK());
 
     router->ExecuteSQL(db, "drop deployment " + deploy_name + ";", &status);
     ASSERT_TRUE(status.IsOK());

@@ -1749,8 +1749,9 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::HandleSQLCmd(const h
             if (!status->IsOK()) {
                 return {};
             }
+
             std::vector<api::ProcedureInfo> sps;
-            if (!ns_ptr->ShowProcedure(db, deploy_name, &sps, &msg)) {
+            if (!ns_ptr->ShowProcedure(db_name, deploy_name, &sps, &msg)) {
                 *status = {StatusCode::kCmdError, msg};
                 return {};
             }

@@ -179,7 +179,7 @@ cases:
         +-node[CMD]
           +-cmd_type: show deployments
           +-args: []
-  - id: show_deployment
+  - id: show_deployment1
     desc: show deployment foo
     sql: SHOW DEPLOYMENT foo;
     expect:
@@ -187,6 +187,14 @@ cases:
         +-node[CMD]
           +-cmd_type: show deployment
           +-args: [foo]
+  - id: show_deployment2
+    desc: show deployment foo
+    sql: SHOW DEPLOYMENT db.foo;
+    expect:
+      node_tree_str: |
+        +-node[CMD]
+          +-cmd_type: show deployment
+          +-args: [db, foo]
   - id: show_functions
     desc: show functions
     sql: SHOW FUNCTIONS;
