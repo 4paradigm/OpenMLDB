@@ -30,6 +30,10 @@ For example, `'%'` means all databases, including the hidden ones.
 | Offline_symbolic_paths | It shows the paths that load data in deep_copy==false way. The `NULL` value means it is not set.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 | Warnings               | Warnings related to the table, including the following four types：<br/>1) `leader/follower mode inconsistent`: the leader/follower information from nameserver is not consistent with those in tablet<br/>2) `state is kNotFound/kTableUndefined/kTableLoading`：the partition is unavailable, `kNotFound` means the partition does not exist; `kTableUndefined` means the partition is not loaded successfully; `kTableLoading` means the partition is being loaded<br/>3) `real replica number xx does not match the configured replicanum xx`：the number of replicas != `replicanum`<br/>4) `not connected to leader`：follower is not connected to the leader, which usually occurs together with 3) |
 
+```{note}
+When version <=0.8.1, `Offline_symbolic_paths` doesn't exist, the position is used by `Offline_deep_copy` instead.
+```
+
 ## Example
 
 ```sql

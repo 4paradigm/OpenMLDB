@@ -1972,7 +1972,8 @@ base::Status SQLClusterRouter::HandleSQLCreateTable(hybridse::node::CreatePlanNo
         ::openmldb::taskmanager::JobInfo job_info;
         std::string output;
         // create table like hive is a long op, use large timeout
-        ::openmldb::base::Status status = ExecuteOfflineQueryGetOutput(sql, config, db, FLAGS_sync_job_timeout, &output);
+        ::openmldb::base::Status status =
+            ExecuteOfflineQueryGetOutput(sql, config, db, FLAGS_sync_job_timeout, &output);
 
         if (!status.OK()) {
             LOG(ERROR) << "Fail to create table, error message: " + status.msg;
@@ -4064,10 +4065,20 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteShowApiServer
 }
 
 static const std::initializer_list<std::string> GetTableStatusSchema() {
-    static const std::initializer_list<std::string> schema = {
-        "Table_id",         "Table_name",     "Database_name",     "Storage_type",      "Rows",
-        "Memory_data_size", "Disk_data_size", "Partition",         "Partition_unalive", "Replica",
-        "Offline_path",     "Offline_format", "Offline_symbolic_paths", "Warnings"};
+    static const std::initializer_list<std::string> schema = {"Table_id",
+                                                              "Table_name",
+                                                              "Database_name",
+                                                              "Storage_type",
+                                                              "Rows",
+                                                              "Memory_data_size",
+                                                              "Disk_data_size",
+                                                              "Partition",
+                                                              "Partition_unalive",
+                                                              "Replica",
+                                                              "Offline_path",
+                                                              "Offline_format",
+                                                              "Offline_symbolic_paths",
+                                                              "Warnings"};
     return schema;
 }
 

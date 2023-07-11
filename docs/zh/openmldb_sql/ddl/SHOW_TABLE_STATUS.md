@@ -26,7 +26,9 @@ SHOW TABLE STATUS [LIKE Pattern];
 | Offline_symbolic_paths | 表对应 offline 软链接路径，`NULL` 表示未设置该项。                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
 | Warnings               | 当前表相关的Warnings信息，包含以下四类：<br/>1) `leader/follower mode inconsistent`: nameserver上记录的leader/follower信息和tablet上面不一致<br/>2) `state is kNotFound/kTableUndefined/kTableLoading`：分片状态为不可用，`kNotFound`代表分片不存在；`kTableUndefined`代表分片未成功加载; `kTableLoading`表明分配正在加载，稍等可用<br/>3) `real replica number xx does not match the configured replicanum xx`：副本数目和配置的`replicanum`不匹配<br/>4) `not connected to leader`：follower和leader未连接，通常和3) 同时出现 |
 
-
+```{note}
+版本<=0.8.1时，`Offline_symbolic_paths`不存在，所在列位置是`Offline_deep_copy`列。
+```
 
 ## Example
 
