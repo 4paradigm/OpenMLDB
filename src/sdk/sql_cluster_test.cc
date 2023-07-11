@@ -130,6 +130,11 @@ TEST_F(SQLClusterDDLTest, TestShowAndDropDeployment) {
     router->ExecuteSQL(db, "drop deployment " + db2 + "." + deploy_name + ";", &status);
     ASSERT_TRUE(status.IsOK());
 
+    router->ExecuteSQL(db, "show deployment " + deploy_name + ";", &status);
+    ASSERT_FALSE(status.IsOK());
+    router->ExecuteSQL(db, "show deployment " + db2 + "." + deploy_name + ";", &status);
+    ASSERT_FALSE(status.IsOK());
+
     ASSERT_TRUE(router->ExecuteDDL(db, "drop table " + table_name + ";", &status));
     ASSERT_TRUE(router->DropDB(db2, &status));
 }
