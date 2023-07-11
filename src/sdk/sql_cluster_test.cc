@@ -97,7 +97,7 @@ class SQLClusterDDLTest : public SQLClusterTest {
     std::shared_ptr<SQLRouter> router;
     std::string db;
 };
-TEST_F(SQLClusterDDLTest, TestShowAndDropDeployment){
+TEST_F(SQLClusterDDLTest, TestShowAndDropDeployment) {
     std::string db2 = "db" + GenRand();
     std::string table_name = "tb" + GenRand();
     std::string deploy_name = "dp" + GenRand();
