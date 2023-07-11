@@ -45,13 +45,14 @@ base::Status DynamicLibManager::ExtractFunction(const std::string& name, bool is
         }
     }
     if (!so_handle) {
-        // use abs path to avoid dlopen search failed in yarn mode 
+        // use abs path to avoid dlopen search failed in yarn mode
         char abs_path_buff[PATH_MAX];
         if (realpath(file.c_str(), abs_path_buff) == NULL) {
             return {common::kExternalUDFError, "can not get real path " + file};
         }
         void* handle = dlopen(abs_path_buff, RTLD_LAZY);
-        CHECK_TRUE(handle != nullptr, common::kExternalUDFError, "can not open the dynamic library: " + file + ", error: " + dlerror())
+        CHECK_TRUE(handle != nullptr, common::kExternalUDFError,
+                   "can not open the dynamic library: " + file + ", error: " + dlerror())
         so_handle = std::make_shared<DynamicLibHandle>(handle);
         std::lock_guard<std::mutex> lock(mu_);
         handle_map_.emplace(file, so_handle);
