@@ -39,12 +39,12 @@ class OpenmldbApiTest : public ::testing::Test {
         std::time_t t = std::time(0);
         db_ = "cxx_api_db" + std::to_string(t);
         std::string sql = "create database " + db_ + ";";
-        EXPECT_TRUE(execute(*handler, sql));
+        EXPECT_TRUE(handler->execute(sql));
         LOG(INFO) << "create db " << db_ << " succeed";
     }
     ~OpenmldbApiTest() {
         std::string sql = "drop database " + db_ + ";";
-        EXPECT_TRUE(execute(*handler, sql)) << handler->get_status()->msg;
+        EXPECT_TRUE(handler->execute(sql)) << handler->get_status()->msg;
     }
 
  protected:
@@ -52,35 +52,35 @@ class OpenmldbApiTest : public ::testing::Test {
 };
 
 TEST_F(OpenmldbApiTest, SimpleApiTest) {
-    ASSERT_TRUE(execute(*handler, "SET @@execute_mode='online';"));
+    ASSERT_TRUE(handler->execute("SET @@execute_mode='online';"));
 
     auto sql = "use " + db_ + ";";
-    ASSERT_TRUE(execute(*handler, sql));
+    ASSERT_TRUE(handler->execute(sql));
     LOG(INFO) << "use db succeed";
     std::string table = "test_table";
     sql = "create table " + table +
           "("
           "col1 string, col2 bigint,"
           "index(key=col1, ts=col2));";
-    ASSERT_TRUE(execute(*handler, sql));
+    ASSERT_TRUE(handler->execute(sql));
     LOG(INFO) << "create table test_table succeed";
 
     sql = "insert test_table values(\"hello\", 1)";
-    ASSERT_TRUE(execute(*handler, sql));
+    ASSERT_TRUE(handler->execute(sql));
     sql = "insert test_table values(\"Hi~\", 2)";
-    ASSERT_TRUE(execute(*handler, sql));
+    ASSERT_TRUE(handler->execute(sql));
 
     sql = "select * from test_table;";
-    ASSERT_TRUE(execute(*handler, sql));
-    auto res = get_resultset();
+    ASSERT_TRUE(handler->execute(sql));
+    auto res = handler->get_resultset();
     ASSERT_EQ(2u, res->Size());
     print_resultset(res);
 
     sql = "select * from test_table where col1 = ? ;";
     ParameterRow para(handler);
     para << "Hi~";
-    ASSERT_TRUE(execute_parameterized(*handler, db_, sql, para));
-    res = get_resultset();
+    ASSERT_TRUE(handler->execute_parameterized(db_, sql, para));
+    res = handler->get_resultset();
     ASSERT_TRUE(res->Next());
     ASSERT_EQ("Hi~, 2", res->GetRowString());
     ASSERT_FALSE(res->Next());
@@ -92,20 +92,20 @@ TEST_F(OpenmldbApiTest, SimpleApiTest) {
         "rows between 2 preceding and current row);";
     RequestRow req(handler, db_, sql);
     req << "Hi~" << 3l;
-    ASSERT_TRUE(execute_request(req));
-    res = get_resultset();
+    ASSERT_TRUE(handler->execute_request(req));
+    res = handler->get_resultset();
     ASSERT_TRUE(res->Next());
     ASSERT_EQ("Hi~, 5", res->GetRowString());
     ASSERT_FALSE(res->Next());
     print_resultset(res);
 
-    ASSERT_TRUE(execute(*handler, "drop table " + table));
+    ASSERT_TRUE(handler->execute("drop table " + table));
 }
 
-// test execute() execute_parameterized() execute_request
+// test handler->execute() handler->execute_parameterized() execute_request
 TEST_F(OpenmldbApiTest, ComplexApiTest) {
-    // test execute() and execute_parameterized()
-    LOG(INFO) << "test execute() and execute_parameterized()";
+    // test handler->execute() and handler->execute_parameterized()
+    LOG(INFO) << "test handler->execute() and handler->execute_parameterized()";
     {
         // table name
         std::string table_name = "trans";
@@ -139,7 +139,7 @@ TEST_F(OpenmldbApiTest, ComplexApiTest) {
                           "                   txn_time int64,\n"
                           "                   index(key=pay_card_no, ts=txn_time),\n"
                           "                   index(key=merch_id, ts=txn_time));";
-        ASSERT_TRUE(execute(*handler, db_, sql));
+        ASSERT_TRUE(handler->execute(db_, sql));
         LOG(INFO) << "create table " << table_name << "succeed";
 
         // insert data into table
@@ -157,7 +157,7 @@ TEST_F(OpenmldbApiTest, ComplexApiTest) {
                     "'city0', 'longitude', %s);",
                     0, 0, std::to_string(ts++).c_str());  // NOLINT
             std::string insert_sql = std::string(buffer, strlen(buffer));
-            ASSERT_TRUE(execute(*handler, db_, insert_sql));
+            ASSERT_TRUE(handler->execute(db_, insert_sql));
         }
         {
             char buffer[4096];
@@ -172,7 +172,7 @@ TEST_F(OpenmldbApiTest, ComplexApiTest) {
                     "'city0', 'longitude', %s);",
                     0, 0, std::to_string(ts++).c_str());  // NOLINT
             std::string insert_sql = std::string(buffer, strlen(buffer));
-            ASSERT_TRUE(execute(*handler, db_, insert_sql));
+            ASSERT_TRUE(handler->execute(db_, insert_sql));
         }
         {
             char buffer[4096];
@@ -187,22 +187,22 @@ TEST_F(OpenmldbApiTest, ComplexApiTest) {
                     "'city0', 'longitude', %s);",
                     0, 0, std::to_string(ts++).c_str());  // NOLINT
             std::string insert_sql = std::string(buffer, strlen(buffer));
-            ASSERT_TRUE(execute(*handler, db_, insert_sql));
+            ASSERT_TRUE(handler->execute(db_, insert_sql));
         }
 
         std::string select_all = "select * from " + table_name + ";";
-        ASSERT_TRUE(execute(*handler, db_, select_all));
-        auto res = get_resultset();
+        ASSERT_TRUE(handler->execute(db_, select_all));
+        auto res = handler->get_resultset();
         ASSERT_EQ(3u, res->Size());
         print_resultset(res);
-        LOG(INFO) << "test execute() succeed";
+        LOG(INFO) << "test handler->execute() succeed";
 
         std::string sql_para = "select * from " + table_name + " where merch_id = ? and txn_time < ?;";
         ParameterRow para(handler);
         LOG(INFO) << "condition  txn_time = 1594800959828";
         para << "mc_0" << 1594800959828;
-        ASSERT_TRUE(execute_parameterized(*handler, db_, sql_para, para));
-        res = get_resultset();
+        ASSERT_TRUE(handler->execute_parameterized(db_, sql_para, para));
+        res = handler->get_resultset();
         ASSERT_TRUE(res->Next());
         ASSERT_EQ(
             "c_sk_seq0, cust_no0, pay_cust_name0, card_0, payee_card_no0, "
@@ -216,27 +216,27 @@ TEST_F(OpenmldbApiTest, ComplexApiTest) {
         para.reset();
         LOG(INFO) << "condition  txn_time = 1594800959830";
         para << "mc_0" << 1594800959830;
-        ASSERT_TRUE(execute_parameterized(*handler, db_, sql_para, para));
-        res = get_resultset();
+        ASSERT_TRUE(handler->execute_parameterized(db_, sql_para, para));
+        res = handler->get_resultset();
         ASSERT_EQ(3u, res->Size());
         print_resultset(res);
-        LOG(INFO) << "test parameter_execute() succeed";
-        ASSERT_TRUE(execute(*handler, db_, "drop table " + table_name));
+        LOG(INFO) << "test parameter_handler->execute() succeed";
+        ASSERT_TRUE(handler->execute(db_, "drop table " + table_name));
     }
 
-    //  test execute_request()
-    LOG(INFO) << "test execute_request()";
+    //  test handler->execute_request()
+    LOG(INFO) << "test handler->execute_request()";
     {
         std::string table_name = "trans1";
         std::string create_table = "create table " + table_name +
                                    "("
                                    "col1 string, col2 bigint,"
                                    "index(key=col1, ts=col2));";
-        ASSERT_TRUE(execute(*handler, db_, create_table));
+        ASSERT_TRUE(handler->execute(db_, create_table));
         LOG(INFO) << "create table test_table succeed";
 
         std::string insert = "insert into " + table_name + " values('hello', 1590);";
-        ASSERT_TRUE(execute(*handler, db_, insert));
+        ASSERT_TRUE(handler->execute(db_, insert));
         LOG(INFO) << "insert 1row into test_table succeed";
 
         std::string sql_req = "select sum(col2)  over w as sum_col2 from " + table_name +
@@ -244,14 +244,14 @@ TEST_F(OpenmldbApiTest, ComplexApiTest) {
                               ".col2 rows between 3 preceding and current row);";
         RequestRow req(handler, db_, sql_req);
         req << "hello" << (int64_t)2000;
-        ASSERT_TRUE(execute_request(req));
-        auto res = get_resultset();
+        ASSERT_TRUE(handler->execute_request(req));
+        auto res = handler->get_resultset();
         ASSERT_TRUE(res->Next());
         ASSERT_EQ("3590", res->GetRowString());
         ASSERT_FALSE(res->Next());
         print_resultset(res);
-        LOG(INFO) << "execute_request() succeed";
-        ASSERT_TRUE(execute(*handler, db_, "drop table " + table_name));
+        LOG(INFO) << "handler->execute_request() succeed";
+        ASSERT_TRUE(handler->execute(db_, "drop table " + table_name));
     }
 }
 
@@ -273,7 +273,7 @@ TEST_F(OpenmldbApiTest, TypesOfParameterRowAndRequestRowTest) {
                       "                   test_string string, \n"
                       "                   test_date date, \n"
                       "                   test_timestamp TimeStamp);";
-    ASSERT_TRUE(execute(*handler, db_, sql));
+    ASSERT_TRUE(handler->execute(db_, sql));
     LOG(INFO) << "create table succeed";
 
     // insert data
@@ -281,23 +281,23 @@ TEST_F(OpenmldbApiTest, TypesOfParameterRowAndRequestRowTest) {
         std::string insert_sql = "insert into " + table_name +
                                  " values(true, 32760, 2147483640, 922337203685477580, "
                                  "3.14, 6.88, 'the first row', '2020-1-1', 1594800959827)";
-        ASSERT_TRUE(execute(*handler, db_, insert_sql));
+        ASSERT_TRUE(handler->execute(db_, insert_sql));
         insert_sql = "insert into " + table_name +
                      " values(true, 32761, 2147483641, 922337203685477581, "
                      "3.14563, 6.885247821, 'the second row', '2020-1-2', 1594800959828)";
-        ASSERT_TRUE(execute(*handler, db_, insert_sql));
+        ASSERT_TRUE(handler->execute(db_, insert_sql));
         insert_sql = "insert into " + table_name +
                      " values(true, 32762, 2147483642, 922337203685477582, "
                      "2.14, 7.899, 'the third row', '2020-1-3', 1594800959829)";
-        ASSERT_TRUE(execute(*handler, db_, insert_sql));
+        ASSERT_TRUE(handler->execute(db_, insert_sql));
         insert_sql = "insert into " + table_name +
                      " values(false, 32763, 2147483643, 922337203685477583, "
                      "4.86, 5.733, 'the forth row', '2020-1-4', 15948009598296)";
-        ASSERT_TRUE(execute(*handler, db_, insert_sql));
+        ASSERT_TRUE(handler->execute(db_, insert_sql));
         LOG(INFO) << "insert rows succeed";
     }
-    ASSERT_TRUE(execute(*handler, db_, "select * from " + table_name + ";"));
-    auto res = get_resultset();
+    ASSERT_TRUE(handler->execute(db_, "select * from " + table_name + ";"));
+    auto res = handler->get_resultset();
     ASSERT_EQ(4u, res->Size());
     print_resultset(res);
 
@@ -308,8 +308,8 @@ TEST_F(OpenmldbApiTest, TypesOfParameterRowAndRequestRowTest) {
         ParameterRow para(handler);
         LOG(INFO) << sql_para << std::endl;
         para << false;
-        ASSERT_TRUE(execute_parameterized(*handler, db_, sql_para, para));
-        res = get_resultset();
+        ASSERT_TRUE(handler->execute_parameterized(db_, sql_para, para));
+        res = handler->get_resultset();
         ASSERT_EQ(1u, res->Size());
         print_resultset(res);
     }
@@ -319,8 +319,8 @@ TEST_F(OpenmldbApiTest, TypesOfParameterRowAndRequestRowTest) {
         ParameterRow para(handler);
         LOG(INFO) << sql_para << std::endl;
         para << 32762;
-        ASSERT_TRUE(execute_parameterized(*handler, db_, sql_para, para));
-        res = get_resultset();
+        ASSERT_TRUE(handler->execute_parameterized(db_, sql_para, para));
+        res = handler->get_resultset();
         ASSERT_EQ(2u, res->Size());
         print_resultset(res);
     }
@@ -330,8 +330,8 @@ TEST_F(OpenmldbApiTest, TypesOfParameterRowAndRequestRowTest) {
         ParameterRow para(handler);
         LOG(INFO) << sql_para << std::endl;
         para << 2147483642;
-        ASSERT_TRUE(execute_parameterized(*handler, db_, sql_para, para));
-        res = get_resultset();
+        ASSERT_TRUE(handler->execute_parameterized(db_, sql_para, para));
+        res = handler->get_resultset();
         ASSERT_EQ(2u, res->Size());
         print_resultset(res);
     }
@@ -341,8 +341,8 @@ TEST_F(OpenmldbApiTest, TypesOfParameterRowAndRequestRowTest) {
         ParameterRow para(handler);
         LOG(INFO) << sql_para << std::endl;
         para << 922337203685477583;
-        ASSERT_TRUE(execute_parameterized(*handler, db_, sql_para, para));
-        res = get_resultset();
+        ASSERT_TRUE(handler->execute_parameterized(db_, sql_para, para));
+        res = handler->get_resultset();
         ASSERT_TRUE(res->Next());
         ASSERT_EQ(
             "false, 32763, 2147483643, 922337203685477583, "
@@ -357,8 +357,8 @@ TEST_F(OpenmldbApiTest, TypesOfParameterRowAndRequestRowTest) {
         ParameterRow para(handler);
         LOG(INFO) << sql_para << std::endl;
         para << 3.14563f;
-        ASSERT_TRUE(execute_parameterized(*handler, db_, sql_para, para));
-        res = get_resultset();
+        ASSERT_TRUE(handler->execute_parameterized(db_, sql_para, para));
+        res = handler->get_resultset();
         ASSERT_EQ(2u, res->Size());
         print_resultset(res);
     }
@@ -368,8 +368,8 @@ TEST_F(OpenmldbApiTest, TypesOfParameterRowAndRequestRowTest) {
         ParameterRow para(handler);
         LOG(INFO) << sql_para << std::endl;
         para << 6.88;
-        ASSERT_TRUE(execute_parameterized(*handler, db_, sql_para, para));
-        res = get_resultset();
+        ASSERT_TRUE(handler->execute_parameterized(db_, sql_para, para));
+        res = handler->get_resultset();
         ASSERT_EQ(3u, res->Size());
         print_resultset(res);
     }
@@ -379,8 +379,8 @@ TEST_F(OpenmldbApiTest, TypesOfParameterRowAndRequestRowTest) {
         ParameterRow para(handler);
         LOG(INFO) << sql_para << std::endl;
         para << "the first row";
-        ASSERT_TRUE(execute_parameterized(*handler, db_, sql_para, para));
-        res = get_resultset();
+        ASSERT_TRUE(handler->execute_parameterized(db_, sql_para, para));
+        res = handler->get_resultset();
         ASSERT_TRUE(res->Next());
         ASSERT_EQ(
             "true, 32760, 2147483640, 922337203685477580, "
@@ -388,7 +388,7 @@ TEST_F(OpenmldbApiTest, TypesOfParameterRowAndRequestRowTest) {
             res->GetRowString());
         ASSERT_FALSE(res->Next());
         print_resultset(res);
-        print_resultset(get_resultset());
+        print_resultset(handler->get_resultset());
     }
     // date
     {
@@ -397,8 +397,8 @@ TEST_F(OpenmldbApiTest, TypesOfParameterRowAndRequestRowTest) {
         ParameterRow para(handler);
         LOG(INFO) << sql_para << std::endl;
         para << date;
-        ASSERT_TRUE(execute_parameterized(*handler, db_, sql_para, para));
-        res = get_resultset();
+        ASSERT_TRUE(handler->execute_parameterized(db_, sql_para, para));
+        res = handler->get_resultset();
         ASSERT_EQ(3u, res->Size());
         print_resultset(res);
     }
@@ -409,8 +409,8 @@ TEST_F(OpenmldbApiTest, TypesOfParameterRowAndRequestRowTest) {
         ParameterRow para(handler);
         LOG(INFO) << sql_para << std::endl;
         para << ts;
-        ASSERT_TRUE(execute_parameterized(*handler, db_, sql_para, para));
-        res = get_resultset();
+        ASSERT_TRUE(handler->execute_parameterized(db_, sql_para, para));
+        res = handler->get_resultset();
         ASSERT_TRUE(res->Next());
         ASSERT_EQ(
             "true, 32761, 2147483641, 922337203685477581, "
@@ -419,7 +419,7 @@ TEST_F(OpenmldbApiTest, TypesOfParameterRowAndRequestRowTest) {
         ASSERT_FALSE(res->Next());
         print_resultset(res);
     }
-    ASSERT_TRUE(execute(*handler, db_, "drop table " + table_name));
+    ASSERT_TRUE(handler->execute(db_, "drop table " + table_name));
 
     table_name = "reqtypestest";
     sql = "create table " + table_name +
@@ -432,16 +432,16 @@ TEST_F(OpenmldbApiTest, TypesOfParameterRowAndRequestRowTest) {
           "                           c7 TimeStamp,\n"
           "                           c8 date,\n"
           "                           index(key=c1, ts=c7));";
-    ASSERT_TRUE(execute(*handler, db_, sql));
+    ASSERT_TRUE(handler->execute(db_, sql));
     LOG(INFO) << "create table succeed";
 
     // insert data
     {
         std::string insert_sql =
             "insert into " + table_name + " values(\"aa\",13,23,33,1.4,2.4,1590738993000,\"2020-05-04\");";
-        ASSERT_TRUE(execute(*handler, db_, insert_sql));
+        ASSERT_TRUE(handler->execute(db_, insert_sql));
         insert_sql = "insert into " + table_name + " values(\"bb\",14,24,34,1.5,2.5,1590738994000,\"2020-05-05\");";
-        ASSERT_TRUE(execute(*handler, db_, insert_sql));
+        ASSERT_TRUE(handler->execute(db_, insert_sql));
         LOG(INFO) << "insert rows succeed";
     }
     // test parameter types of RequestRow
@@ -456,16 +456,16 @@ TEST_F(OpenmldbApiTest, TypesOfParameterRowAndRequestRowTest) {
         Date date(2020, 5, 5);
         // need to check short, disable cpplint
         req << "bb" << (short)14 << 24 << 35l << 1.5f << 2.5 << timestamp << date;  // NOLINT
-        ASSERT_TRUE(execute_request(req));
-        res = get_resultset();
+        ASSERT_TRUE(handler->execute_request(req));
+        res = handler->get_resultset();
         ASSERT_TRUE(res->Next());
         ASSERT_EQ("bb, 14, 24, 69", res->GetRowString());
         ASSERT_FALSE(res->Next());
         print_resultset(res);
-        LOG(INFO) << "execute_request() succeed";
+        LOG(INFO) << "handler->execute_request() succeed";
     }
 
-    ASSERT_TRUE(execute(*handler, db_, "drop table " + table_name));
+    ASSERT_TRUE(handler->execute(db_, "drop table " + table_name));
 }
 
 }  // namespace sdk

@@ -1,31 +1,7 @@
-# [Alpha] C++ SDK
-
-```{warning}
-C++ SDK 目前功能支持上并不完善，目前仅用于开发测试或者特殊用途，不推荐在实际生产环境中使用。生产环境推荐使用 Java SDK，功能覆盖最完善，并且在功能、性能上都经过了充分测试。
-```
-
-## C++ SDK 包编译安装
-
-```{warning}
-C++ SDK 静态库仅支持Linux系统，且不在标准发布中。如果需要使用 C++ SDK 库，请源码编译，并打开编译选项`INSTALL_CXXSDK=ON`。
-```
-编译需要满足 [硬件要求](../../deploy/compile.md#硬件要求)，安装 [依赖工具](../../deploy/compile.md#依赖工具)。
-
-```bash
-git clone git@github.com:4paradigm/OpenMLDB.git
-cd OpenMLDB
-make INSTALL_CXXSDK=ON && make install
-```
-编译完成后，会在 install 目录下生成`include`头文件目录和`lib`静态库目录。
-
-## 编写用户代码
-
-以下代码演示 C++ SDK 的基本使用。openmldb_api.h 和 sdk/result_set.h 是必须 include 的头文件。
-
-```c++
 #include <ctime>
 #include <iostream>
 #include <string>
+#include <thread>
 
 #include "openmldb_api.h"
 #include "sdk/result_set.h"
@@ -116,31 +92,22 @@ int main() {
     //      +------+--------------------+
     //      | Hi~  | 5                 |
     //      +------+--------------------+
+
+    // multi thread example
+
+    OpenmldbHandler h1("127.0.0.1:2181", "/openmldb");
+    OpenmldbHandler h2(h1.get_router());
+
+    std::thread t1([&]() {
+        h1.execute("show components;");
+        print_resultset(h1.get_resultset());
+    });
+
+    std::thread t2([&]() {
+        h2.execute("show table status;");
+        print_resultset(h2.get_resultset());
+    });
+
+    t1.join();
+    t2.join();
 }
-```
-
-## 多线程使用
-
-`OpenMLDBHandler` 对象是线程不安全的，但内部连接`SQLClusterRouter`可以在多线程中使用，所以可以通过共享Handler中的Router来实现多线程，比独立创建多个Handler（多个独立Router）更合适。但需要注意，多线程模式下，无db的接口依赖Router内部缓存的used db，可能被其他线程修改，请使用db接口。以下代码演示了多线程使用的方法。
-
-```c++
-OpenmldbHandler h1("127.0.0.1:2181", "/openmldb");
-OpenmldbHandler h2(h1.get_router());
-
-std::thread t1([&](){ h1.execute("show components;"); print_resultset(h1.get_resultset());});
-
-std::thread t2([&](){ h2.execute("show table status;"); print_resultset(h2.get_resultset());});
-
-t1.join();
-t2.join();
-```
-
-## 编译与运行
-
-可参考[编译Makefile](https://github.com/4paradigm/OpenMLDB/blob/main/demo/cxx_quickstart/Makefile)或直接使用以下命令，编译并运行示例代码。
-
-```bash
-gcc <user_code>.cxx -o <bin_name> -lstdc++ -std=c++17 -I<install_path>/include  -L<install_path>/lib -lopenmldbsdk -lpthread -lm -ldl -lstdc++fs
-
-./<bin_name>
-```
