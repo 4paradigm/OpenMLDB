@@ -37,6 +37,11 @@ struct StringRef {
     StringRef(const std::string& str) // NOLINT
         : size_(str.size()), data_(str.data()) {}
 
+    StringRef(std::string&& str) = delete;  // NOLINT
+
+    template <typename Char>
+    StringRef(std::basic_string_view<Char> v) : size_(v.size()), data_(v.data()) {}  // NOLINT
+
     ~StringRef() {}
 
     const inline bool IsNull() const { return nullptr == data_; }

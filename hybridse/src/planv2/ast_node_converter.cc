@@ -402,8 +402,8 @@ base::Status ConvertExprNode(const zetasql::ASTExpression* ast_expression, node:
             int64_t int_value;
             CHECK_STATUS(ASTIntLiteralToNum(ast_expression, &int_value));
 
-            if (!literal->is_long() && int_value <= INT_MAX && int_value >= INT_MIN) {
-                *output = node_manager->MakeConstNode(static_cast<int>(int_value));
+            if (!literal->is_long() && int_value <= INT32_MAX && int_value >= INT32_MIN) {
+                *output = node_manager->MakeConstNode(static_cast<int32_t>(int_value));
             } else {
                 *output = node_manager->MakeConstNode(int_value);
             }
@@ -1858,17 +1858,17 @@ base::Status AstPathExpressionToStringList(const zetasql::ASTPathExpression* pat
 base::Status ASTIntLiteralToNum(const zetasql::ASTExpression* ast_expr, int64_t* val) {
     const auto int_literal = ast_expr->GetAsOrNull<zetasql::ASTIntLiteral>();
     CHECK_TRUE(int_literal != nullptr, common::kSqlAstError, "not an ASTIntLiteral");
-    bool is_null = false;
+    auto img = int_literal->image();
     if (int_literal->is_long()) {
-        const int size = int_literal->image().size();
-        codec::StringRef str_ref(size - 1, int_literal->image().data());
-        udf::v1::string_to_bigint(&str_ref, val, &is_null);
-    } else {
-        codec::StringRef str_ref(int_literal->image().size(), int_literal->image().data());
-        udf::v1::string_to_bigint(&str_ref, val, &is_null);
+        img.remove_suffix(1);
     }
-    CHECK_TRUE(!is_null, common::kSqlAstError, "Invalid integer literal: ", int_literal->image());
-    return base::Status::OK();
+
+    auto [status, ret] = udf::v1::StrToIntegral()(img);
+    if (status.ok()) {
+        *val = ret;
+        return base::Status::OK();
+    }
+    FAIL_STATUS(common::kSqlAstError, "Invalid integer literal<", status.ToString(), ">");
 }
 
 // transform zetasql::ASTIntervalLiteral into (number, unit)
@@ -1897,13 +1897,15 @@ base::Status ASTIntervalLIteralToNum(const zetasql::ASTExpression* ast_expr, int
             FAIL_STATUS(common::kTypeError, "Invalid interval literal ", interval_literal->image(),
                         ": invalid interval unit")
     }
-    bool is_null = false;
-    codec::StringRef str_ref(interval_literal->image().size() - 1, interval_literal->image().data());
-    udf::v1::string_to_bigint(&str_ref, val, &is_null);
+    auto img = interval_literal->image();
+    img.remove_suffix(1);
 
-    CHECK_TRUE(!is_null, common::kTypeError, "Invalid interval literal: ", interval_literal->image());
-
-    return base::Status::OK();
+    auto [status, ret] = udf::v1::StrToIntegral()(img);
+    if (status.ok()) {
+        *val = ret;
+        return base::Status::OK();
+    }
+    FAIL_STATUS(common::kSqlAstError, "Invalid interval literal<", status.ToString(), ">");
 }
 
 base::Status ConvertDeleteNode(const zetasql::ASTDeleteStatement* delete_stmt, node::NodeManager* node_manager,
