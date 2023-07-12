@@ -902,7 +902,7 @@ bool SQLClusterRouter::DropDB(const std::string& db, hybridse::sdk::Status* stat
     return true;
 }
 
-bool SQLClusterRouter::DropTable(const std::string& db, const std::string& table, const bool if_not_exists,
+bool SQLClusterRouter::DropTable(const std::string& db, const std::string& table, const bool if_exists,
                                  hybridse::sdk::Status* status) {
     RET_FALSE_IF_NULL_AND_WARN(status, "output status is nullptr");
     if (db.empty() || table.empty()) {
@@ -920,7 +920,7 @@ bool SQLClusterRouter::DropTable(const std::string& db, const std::string& table
     auto table_info = cluster_sdk_->GetTableInfo(db, table);
 
     if (table_info == nullptr) {
-        if (if_not_exists) {
+        if (if_exists) {
             *status = {};
             return true;
         } else {
@@ -1655,7 +1655,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::HandleSQLCmd(const h
         }
         case hybridse::node::kCmdDropDatabase: {
             std::string name = cmd_node->GetArgs()[0];
-            if (ns_ptr->DropDatabase(name, msg, cmd_node->IsIfNotExists())) {
+            if (ns_ptr->DropDatabase(name, msg, cmd_node->IsIfExists())) {
                 *status = {};
             } else {
                 *status = {StatusCode::kCmdError, msg};
@@ -1897,7 +1897,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::HandleSQLCmd(const h
             if (!CheckAnswerIfInteractive("table", table_name)) {
                 return {};
             }
-            if (DropTable(db_name, table_name, cmd_node -> IsIfNotExists(), status)) {
+            if (DropTable(db_name, table_name, cmd_node->IsIfExists(), status)) {
                 RefreshCatalog();
             }
             return {};

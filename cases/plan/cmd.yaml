@@ -146,7 +146,7 @@ cases:
       node_tree_str: |
         +-node[CMD]
           +-cmd_type: drop table
-          +-if_not_exists: true
+          +-if_exists: true
           +-args: [t1]
   - id: 15-1
     desc: DROP INDEX
@@ -187,7 +187,7 @@ cases:
       node_tree_str: |
         +-node[CMD]
           +-cmd_type: drop database
-          +-if_not_exists: true
+          +-if_exists: true
           +-args: [db1]
   - id: show_deployments
     desc: show deployments
