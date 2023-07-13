@@ -23,6 +23,7 @@ title: udfs/udfs.h
 | **[avg_cate](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-avg-cate)**()| <br>Compute average of values grouped by category key and output string. Each group is represented as 'K:V' and separated by comma in outputs and are sorted by key in ascend order. |
 | **[avg_cate_where](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-avg-cate-where)**()| <br>Compute average of values matching specified condition grouped by category key and output string. Each group is represented as 'K:V', separated by comma, and sorted by key in ascend order. |
 | **[avg_where](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-avg-where)**()| <br>Compute average of values match specified condition. |
+| **[bigint](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-bigint)**()| |
 | **[bool](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-bool)**()| <br>Cast string expression to bool. |
 | **[ceil](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-ceil)**()| <br>Return the smallest integer value not less than the expr. |
 | **[ceiling](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-ceiling)**()| |
@@ -64,6 +65,7 @@ title: udfs/udfs.h
 | **[ifnull](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-ifnull)**()| |
 | **[ilike_match](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-ilike-match)**()| <br>pattern match same as ILIKE predicate |
 | **[inc](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-inc)**()| <br>Return expression + 1. |
+| **[int](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-int)**()| |
 | **[int16](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-int16)**()| <br>Cast string expression to int16. |
 | **[int32](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-int32)**()| <br>Cast string expression to int32. |
 | **[int64](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-int64)**()| <br>Cast string expression to int64. |
@@ -109,6 +111,7 @@ title: udfs/udfs.h
 | **[second](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-second)**()| <br>Return the second for a timestamp. |
 | **[sin](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-sin)**()| <br>Return the sine of expr. |
 | **[size](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-size)**()| <br>Get the size of a List (e.g., result of split) |
+| **[smallint](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-smallint)**()| |
 | **[split](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-split)**()| <br>Split string to list by delimeter. Null values are skipped. |
 | **[split_array](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-split-array)**()| <br>Split string to array of string by delimeter. |
 | **[split_by_key](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-split-by-key)**()| <br>Split string by delimeter and split each segment as kv pair, then add each key to output list. Null or illegal segments are skipped. |
@@ -648,6 +651,17 @@ SELECT avg_where(value, value > 2) OVER w;
 **Supported Types**:
 
 * [`list<number>`, `list<bool>`] 
+
+### function bigint
+
+```cpp
+bigint()
+```
+
+**Description**:
+
+
+alias to int64 
 
 ### function bool
 
@@ -1929,6 +1943,17 @@ select inc(1);
 
 * [`number`] 
 
+### function int
+
+```cpp
+int()
+```
+
+**Description**:
+
+
+alias to int32 
+
 ### function int16
 
 ```cpp
@@ -1939,9 +1964,17 @@ int16()
 
 Cast string expression to int16. 
 
+**Parameters**: 
+
+  * **str** Input string, refer int64 for supported format
+
+
 **Since**:
 0.1.0
 
+
+
+Returns NULL if string is invalid or represented number out of range of output type.
 
 Example:
 
@@ -1966,9 +1999,17 @@ int32()
 
 Cast string expression to int32. 
 
+**Parameters**: 
+
+  * **str** Input string, refer int64 for supported format
+
+
 **Since**:
 0.1.0
 
+
+
+Returns NULL if string is invalid or represented number out of range of output type.
 
 Example:
 
@@ -1993,9 +2034,28 @@ int64()
 
 Cast string expression to int64. 
 
+**Parameters**: 
+
+  * **str** Input string
+
+
 **Since**:
 0.1.0
 
+
+
+Returns NULL if string is invalid or represented number out of range of output type.
+
+Valid string input can be represented as the regexp 
+
+```cpp
+\s*(\+|-)?(0[xX])?[0-9a-fA-F]+\s*
+```
+
+
+
+* string is parsed unsigned, use minus(`-`) or plus(`+`) indicate signs
+* default base of interpreted integer value is 10, and 16 if string starts with `0x` or `0X`
 
 Example:
 
@@ -3444,6 +3504,17 @@ select size(split("a b c", " "));
 **Supported Types**:
 
 * [`list<string>`] 
+
+### function smallint
+
+```cpp
+smallint()
+```
+
+**Description**:
+
+
+alias to int16 
 
 ### function split
 
