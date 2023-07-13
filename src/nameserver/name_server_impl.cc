@@ -9729,7 +9729,7 @@ void NameServerImpl::CreateFunction(RpcController* controller, const CreateFunct
         }
         succ_tablets.emplace_back(tablet);
     }
-    // rollback and return
+    // rollback and return, it's ok if tablet rollback failed
     if (succ_tablets.size() < tablets.size()) {
         for (const auto& tablet : succ_tablets) {
             std::string msg;
@@ -9746,10 +9746,8 @@ void NameServerImpl::CreateFunction(RpcController* controller, const CreateFunct
         std::string value;
         fun->SerializeToString(&value);
         std::string fun_node = zk_path_.external_function_path_ + "/" + fun->name();
-        // TODO(hw): don't handle zk error?
         if (!zk_client_->CreateNode(fun_node, value)) {
-            PDLOG(WARNING, "create function node[%s] failed! value[%s] value_size[%u]", fun_node.c_str(), value.c_str(),
-                  value.length());
+            SET_RESP_AND_WARN(response, base::ReturnCode::kCreateZkFailed, "create function on zk failed: " + fun_node);
             return;
         }
     }
