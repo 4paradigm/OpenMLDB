@@ -39,6 +39,14 @@ void SetResponseStatus(int code, const std::string& msg, Response* response) {
     }
 }
 
+/// @brief Set code and msg, and log it at warning. Must be not ok, skip check code
+#define SET_RESP_AND_WARN(s, c, m)                                         \
+    do {                                                                   \
+        (s)->set_code((int)c);                                             \
+        (s)->set_msg((m));                                                 \
+        LOG(WARNING) << "Set resp: " << (s)->code() << ", " << (s)->msg(); \
+    } while (0)
+
 template <typename Response>
 void SetResponseStatus(const Status& status, Response* response) {
     if (response != nullptr) {

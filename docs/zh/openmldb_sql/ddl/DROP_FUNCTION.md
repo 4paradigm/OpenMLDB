@@ -3,7 +3,7 @@
 **Syntax**
 
 ```sql
-DROP FUNCTION FunctionName
+DROP FUNCTION [IF EXISTS] FunctionName
 ```
 
 **Example**

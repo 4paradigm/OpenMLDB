@@ -1685,18 +1685,22 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::HandleSQLCmd(const h
             std::string name = cmd_node->GetArgs()[0];
             auto base_status = ns_ptr->DropFunction(name, cmd_node->IsIfExists());
             if (base_status.OK()) {
+                *status = {};
+                // zk deleted already, remove from cluster_sdk, only failed when func not exist in sdk, ignore error
                 cluster_sdk_->RemoveExternalFun(name);
+                // drop function from taskmanager, ignore error, taskmanager can recreate the function
                 auto taskmanager_client = cluster_sdk_->GetTaskManagerClient();
                 if (taskmanager_client) {
                     base_status = taskmanager_client->DropFunction(name, GetJobTimeout());
                     if (!base_status.OK()) {
-                        *status = {StatusCode::kCmdError, base_status.msg};
+                        LOG(WARNING) << "drop function " << name << " failed: [" << base_status.GetCode() << "] "
+                                     << base_status.GetMsg();
                         return {};
                     }
                 }
-                *status = {};
             } else {
-                *status = {StatusCode::kCmdError, base_status.msg};
+                // not exists or nameserver delete failed on zk
+                APPEND_FROM_BASE_AND_WARN(status, base_status, "drop function failed");
             }
             return {};
         }
@@ -3335,22 +3339,25 @@ hybridse::sdk::Status SQLClusterRouter::HandleCreateFunction(const hybridse::nod
         }
         fun->set_arg_nullable(iter->second->GetBool());
     }
+    hybridse::sdk::Status st;
     if (cluster_sdk_->IsClusterMode()) {
         auto taskmanager_client = cluster_sdk_->GetTaskManagerClient();
         if (taskmanager_client) {
             auto ret = taskmanager_client->CreateFunction(fun, GetJobTimeout());
             if (!ret.OK()) {
-                return {StatusCode::kCmdError, ret.msg};
+                APPEND_FROM_BASE_AND_WARN(&st, ret, "create function failed on taskmanager");
+                return st;
             }
         }
     }
     auto ns = cluster_sdk_->GetNsClient();
     auto ret = ns->CreateFunction(*fun);
     if (!ret.OK()) {
-        return {StatusCode::kCmdError, ret.msg};
+        APPEND_FROM_BASE_AND_WARN(&st, ret, "create function failed on nameserver");
+        return st;
     }
     cluster_sdk_->RegisterExternalFun(fun);
-    return {};
+    return st;
 }
 
 hybridse::sdk::Status SQLClusterRouter::HandleDeploy(const std::string& db,
