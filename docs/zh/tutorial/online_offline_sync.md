@@ -10,7 +10,7 @@
 
 由于SyncTool有状态，如果先启动它，可能会在无DataCollector的情况下尝试分配同步任务。所以，请保证先启动所有DataCollector，再启动SyncTool。
 
-部署包请从github release或镜像网站中下载，版本>0.7.3，并解压。不可使用旧版本的TabletServer进行同步。
+在离线同步要求集群的TabletServer版本>0.7.3，如果你的集群版本低于0.7.3，请先升级。DataCollector在部署包中的bin目录中，SyncTool在根目录`synctool`中，两者都可通过`bin/start.sh`启动。
 
 ### DataCollector
 
