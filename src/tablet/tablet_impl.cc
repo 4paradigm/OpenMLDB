@@ -5626,11 +5626,10 @@ void TabletImpl::DropFunction(RpcController* controller, const openmldb::api::Dr
         LOG(INFO) << "Drop function success. name " << fun.name() << " path " << fun.file();
         base::SetResponseOK(response);
     } else {
-        LOG(WARNING) << "Drop function failed. name " << fun.name() << ", error [" << status.GetCode() << ", "
-                     << status.str() << "]";
-        response->set_msg(status.str());
         // udf remove failed but it's ok to recreate even it exists, nameserver should treat it as success
-        response->set_code(::openmldb::base::ReturnCode::kDeleteFailed);
+        SET_RESP_AND_WARN(response, base::ReturnCode::kDeleteFailed,
+                          absl::StrCat("drop function failed, name ", fun.name(), ", error: [", status.GetCode(), "] ",
+                                       status.str()));
     }
 }
 
