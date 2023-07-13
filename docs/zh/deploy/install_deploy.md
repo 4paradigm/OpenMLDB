@@ -602,6 +602,9 @@ offline.data.prefix=file:///tmp/openmldb_offline_storage/
 spark.master=local
 spark.home=
 ```
+
+更多Spark相关配置说明，见[Spark Config详解](./conf.md#spark-config详解)。
+
 ```{attention}
 分布式部署的集群，请不要使用客户端本地文件作为源数据导入，推荐使用hdfs路径。
 
