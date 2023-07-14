@@ -66,7 +66,7 @@ class NsClient : public Client {
     bool ShowDatabase(std::vector<std::string>* dbs,
                       std::string& msg);  // NOLINT
 
-    bool DropDatabase(const std::string& db, std::string& msg);  // NOLINT
+    bool DropDatabase(const std::string& db, std::string& msg, bool if_exists = false);  // NOLINT
 
     bool ShowTablet(std::vector<TabletInfo>& tablets,  // NOLINT
                     std::string& msg);                 // NOLINT

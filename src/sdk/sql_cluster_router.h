@@ -64,7 +64,8 @@ class SQLClusterRouter : public SQLRouter {
 
     bool DropDB(const std::string& db, hybridse::sdk::Status* status) override;
 
-    bool DropTable(const std::string& db, const std::string& table, hybridse::sdk::Status* status);
+    bool DropTable(const std::string& db, const std::string& table, const bool if_exists,
+                   hybridse::sdk::Status* status);
 
     bool ShowDB(std::vector<std::string>* dbs, hybridse::sdk::Status* status) override;
 
