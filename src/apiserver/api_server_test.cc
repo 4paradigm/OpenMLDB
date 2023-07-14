@@ -708,7 +708,7 @@ TEST_F(APIServerTest, testResultType) {
             [ true,32767,65535,9223372036854775807,1.1,2.2,"abc","2021-12-01",11111111111111,"def" ],
             [ false,32767,65535,null,1.1,2.2,"abc",null,null,"def" ]
           ]
-    })"); // null must be lower case
+    })");  // null must be lower case
         env->http_channel.CallMethod(NULL, &cntl, NULL, NULL, NULL);
         ASSERT_FALSE(cntl.Failed()) << cntl.ErrorText();
 
