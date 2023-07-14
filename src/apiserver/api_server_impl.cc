@@ -947,7 +947,7 @@ void WriteValue(JsonWriter& ar, std::shared_ptr<hybridse::sdk::ResultSet> rs, in
         }
         default: {
             LOG(ERROR) << "Invalid Column Type";
-            ar & std::string("NA");
+            ar& std::string("NA");
             break;
         }
     }
