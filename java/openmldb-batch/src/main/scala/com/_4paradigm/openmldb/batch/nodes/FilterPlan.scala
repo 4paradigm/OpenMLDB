@@ -19,12 +19,14 @@ package com._4paradigm.openmldb.batch.nodes
 import com._4paradigm.hybridse.node.ExprListNode
 import com._4paradigm.hybridse.vm.PhysicalFilterNode
 import com._4paradigm.openmldb.batch.nodes.JoinPlan.JoinConditionUDF
-import com._4paradigm.openmldb.batch.utils.{HybridseUtil, SparkColumnUtil}
+import com._4paradigm.openmldb.batch.utils.{ExternalUdfUtil, HybridseUtil, SparkColumnUtil}
 import com._4paradigm.openmldb.batch.{PlanContext, SparkInstance}
+import com._4paradigm.openmldb.sdk.impl.SqlClusterExecutor
 import org.apache.spark.sql.functions
-
+import org.slf4j.LoggerFactory
 
 object FilterPlan {
+  private val logger = LoggerFactory.getLogger(this.getClass)
 
   def gen(ctx: PlanContext, node: PhysicalFilterNode, input: SparkInstance): SparkInstance = {
     val inputDf = input.getDfConsideringIndex(ctx, node.GetNodeId())
@@ -51,6 +53,13 @@ object FilterPlan {
     // Handle non-equal condiction
     if (filter.condition() != null) {
       val regName = "SPARKFE_FILTER_CONDITION_" + node.filter().condition().fn_info().fn_name()
+
+      var externalFunMap = Map[String, com._4paradigm.openmldb.proto.Common.ExternalFun]()
+      val openmldbSession = ctx.getOpenmldbSession
+      if (ctx.getConf.openmldbZkCluster.nonEmpty && ctx.getConf.openmldbZkRootPath.nonEmpty
+        && openmldbSession != null && openmldbSession.openmldbCatalogService != null) {
+        externalFunMap = openmldbSession.openmldbCatalogService.getExternalFunctionsMap()
+      }
       val conditionUDF = new JoinConditionUDF(
         functionName = filter.fn_info().fn_name(),
         inputSchemaSlices = inputSchemaSlices,
@@ -58,12 +67,15 @@ object FilterPlan {
         moduleTag = ctx.getTag,
         moduleBroadcast = ctx.getSerializableModuleBuffer,
         hybridseJsdkLibraryPath = ctx.getConf.openmldbJsdkLibraryPath,
-        ctx.getConf.enableUnsafeRowOptimization
+        ctx.getConf.enableUnsafeRowOptimization,
+        externalFunMap,
+        ctx.getConf.taskmanagerExternalFunctionDir,
+        ctx.getSparkSession.conf.get("spark.master").equalsIgnoreCase("yarn")
       )
       ctx.getSparkSession.udf.register(regName, conditionUDF)
 
       val allColumns = SparkColumnUtil.getColumnsFromDataFrame(inputDf)
-      val allColWrap = functions.struct(allColumns:_*)
+      val allColWrap = functions.struct(allColumns: _*)
       val condictionCol = functions.callUDF(regName, allColWrap)
 
       outputDf = outputDf.where(condictionCol)

@@ -107,3 +107,10 @@ cases:
     expect:
       success: false
       msg: 'array of non-basic type is not supported: ARRAY<ARRAY<INT32>>'
+  - id: 21
+    sql: |
+      insert into t1 values (29223372036854775807)
+    expect:
+      success: false
+      msg: |
+        Invalid integer literal<OUT_OF_RANGE: 29223372036854775807 (overflow)>
