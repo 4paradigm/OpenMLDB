@@ -3,6 +3,7 @@
 ## [0.8.1] - 2023-07-20
 
 ### Features
+- Enhance the `delete` statement (#3301 @dl239)
 - Enhance the C++ SDK (#3334 @vagetablechicken)
 - Support `IF EXISTS` option in `DROP TABLE/DATABASE` statement (#3348 @emo-coder)
 - Improve the documents (#3344 #3152 @vagetablechicken, #3341 @aceforeverd, #3343 @dl239)
