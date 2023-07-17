@@ -10,8 +10,9 @@
 
 ### Bug Fixes
 - Loading external UDF library fails under specific cloud environment when runing an offline task (#3350 #3359 @vagetablechicken)
-- Loading data fails with Hive soft link. (#3349 @vagetablechicken)
-- Inserting success with invalid timestamp. (#3313 @aceforeverd)
+- Loading data fails with Hive soft link (#3349 @vagetablechicken)
+- Inserting success with invalid timestamp (#3313 @aceforeverd)
+- The bool type is not properly packed in APIServer. (#3366 @vagetablechicken)
 
 Note:
 `Offline_deep_copy` field will be replaced by `Offline_symbolic_paths` in the result of `SHOW TABLE STATUS` #3349.
