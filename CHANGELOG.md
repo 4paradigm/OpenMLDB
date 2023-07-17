@@ -15,8 +15,8 @@
 - Inserting success with invalid timestamp (#3313 @aceforeverd)
 - The bool type is not properly packed in APIServer. (#3366 @vagetablechicken)
 
-Note:
-`Offline_deep_copy` field will be replaced by `Offline_symbolic_paths` in the result of `SHOW TABLE STATUS` #3349.
+### Breaking Changes:
+- `Offline_deep_copy` field will be replaced by `Offline_symbolic_paths` in the result of `SHOW TABLE STATUS` #3349.
 
 ## [0.8.1] - 2023-06-28
 
