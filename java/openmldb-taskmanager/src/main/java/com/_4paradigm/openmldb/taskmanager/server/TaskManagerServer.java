@@ -45,7 +45,7 @@ public class TaskManagerServer {
      * @throws ConfigException if config file does not exist or some configs are incorrect.
      */
     public TaskManagerServer() throws ConfigException {
-        TaskManagerConfig.parse();
+        TaskManagerConfig.print();
     }
 
     /**

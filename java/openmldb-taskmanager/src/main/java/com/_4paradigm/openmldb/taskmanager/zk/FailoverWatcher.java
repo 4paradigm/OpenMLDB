@@ -56,8 +56,8 @@ public class FailoverWatcher implements Watcher {
     zkQuorum = TaskManagerConfig.ZK_CLUSTER;
     sessionTimeout = TaskManagerConfig.ZK_SESSION_TIMEOUT;
     connectRetryTimes = 3;
-    String serverHost = TaskManagerConfig.HOST;
-    int serverPort = TaskManagerConfig.PORT;
+    String serverHost = TaskManagerConfig.getServerHost();
+    int serverPort = TaskManagerConfig.getServerPort();
     hostPort = new HostPort(serverHost, serverPort);
 
     connectZooKeeper();

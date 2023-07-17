@@ -61,7 +61,7 @@ public class TaskManagerImpl implements TaskManagerInterface {
     public TaskManagerImpl() throws InterruptedException, ConfigException {
         jobResultSaver = new JobResultSaver();
 
-        TaskManagerConfig.parse();
+        TaskManagerConfig.validate();
 
         initExternalFunction();
     }
@@ -220,7 +220,7 @@ public class TaskManagerImpl implements TaskManagerInterface {
             // HOST can't be 0.0.0.0 if distributed or spark is not local
             confMap.put("spark.openmldb.savejobresult.http",
                     String.format("http://%s:%d/openmldb.taskmanager.TaskManagerServer/SaveJobResult",
-                            TaskManagerConfig.HOST, TaskManagerConfig.PORT));
+                            TaskManagerConfig.getServerHost(), TaskManagerConfig.getServerPort()));
             // we can't get spark job id here, so we use JobResultSaver id, != spark job id
             // if too much running jobs to save result, throw exception
             int resultId = jobResultSaver.genResultId();
