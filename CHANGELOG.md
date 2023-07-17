@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.8.1] - 2023-07-20
+
+### Features
+- Enhance the C++ SDK (#3334 @vagetablechicken)
+- Support `IF EXISTS` option in `DROP TABLE/DATABASE` statement (#3348 @emo-coder)
+- Improve the documents (#3344 #3152 @vagetablechicken, #3341 @aceforeverd, #3343 @dl239)
+- Upgrade the version of Kafka connector to `10.5.0-SNAPSHOT-0.8.1` (#3365 @vagetablechicken)
+
+### Bug Fixes
+- Loading external UDF library fails under specific cloud environment when runing an offline task (#3350 #3359 @vagetablechicken)
+- Loading data fails with Hive soft link. (#3349 @vagetablechicken)
+- Inserting success with invalid timestamp. (#3313 @aceforeverd)
+
+Note:
+`Offline_deep_copy` field will be replaced by `Offline_symbolic_paths` in the result of `SHOW TABLE STATUS` #3349.
+
 ## [0.8.1] - 2023-06-28
 
 ### Features
