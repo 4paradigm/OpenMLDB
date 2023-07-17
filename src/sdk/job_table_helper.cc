@@ -17,6 +17,7 @@
 #include "sdk/job_table_helper.h"
 
 #include <unordered_map>
+#include <algorithm>
 #include <utility>
 #include "codec/schema_codec.h"
 #include "sdk/result_set_sql.h"
@@ -166,7 +167,8 @@ std::shared_ptr<hybridse::sdk::ResultSet> JobTableHelper::MakeResultSet(
     }
     // sort jobs by id
     std::sort(records.begin(), records.end(),
-              [](std::vector<std::string> vec1, std::vector<std::string> vec2) { return atoi(vec1[0].c_str()) < atoi(vec2[0].c_str()); });
+              [](std::vector<std::string> vec1, std::vector<std::string> vec2) {
+              return atoi(vec1[0].c_str()) < atoi(vec2[0].c_str()); });
     *status = {};
     return ResultSetSQL::MakeResultSet(schema, records, status);
 }
