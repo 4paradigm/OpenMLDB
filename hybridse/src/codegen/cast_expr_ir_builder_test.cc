@@ -670,33 +670,72 @@ INSTANTIATE_TEST_SUITE_P(
                     std::make_tuple("bool", "null", "string", "")));
 // SafeCastNumber: bool, int16, int32
 // UnSafeCst: int64, float, double
-INSTANTIATE_TEST_SUITE_P(
-    CastExprTestInt32, CastExprTest,
-    testing::Values(std::make_tuple("int32", "1", "bool", "true"),
-                    std::make_tuple("int32", "1", "int16", "1"),
-                    std::make_tuple("int32", "1", "int32", "1"),
-                    std::make_tuple("int32", "1", "int64", "1"),
-                    std::make_tuple("int32", "1", "float", "1"),
-                    std::make_tuple("int32", "1", "double", "1"),
-                    std::make_tuple("int32", "1", "string", "1"),
-                    std::make_tuple("int32", "null", "date", "2020-10-12"),
-                    std::make_tuple("int32", "977520480", "timestamp",
-                                    "1590115420000"),
-                    std::make_tuple("int32", "0", "bool", "false"),
-                    std::make_tuple("int32", "-1", "int16", "-1"),
-                    std::make_tuple("int32", "-1", "int32", "-1"),
-                    std::make_tuple("int32", "-1", "int64", "-1"),
-                    std::make_tuple("int32", "-1", "float", "-1"),
-                    std::make_tuple("int32", "-1", "double", "-1"),
-                    std::make_tuple("int32", "null", "bool", "null"),
-                    std::make_tuple("int32", "null", "int16", "null"),
-                    std::make_tuple("int32", "null", "int32", "null"),
-                    std::make_tuple("int32", "null", "int64", "null"),
-                    std::make_tuple("int32", "null", "float", "null"),
-                    std::make_tuple("int32", "null", "double", "null"),
-                    std::make_tuple("int32", "null", "string", "abc"),
-                    std::make_tuple("int32", "null", "string", "null"),
-                    std::make_tuple("int32", "null", "timestamp", "null")));
+INSTANTIATE_TEST_SUITE_P(CastExprTestInt32, CastExprTest,
+                         testing::ValuesIn(std::vector<std::tuple<std::string, std::string, std::string, std::string>>{
+                             {"int32", "1", "bool", "true"},
+                             {"int32", "1", "int16", "1"},
+                             {"int32", "1", "int32", "1"},
+                             {"int32", "1", "int64", "1"},
+                             {"int32", "1", "float", "1"},
+                             {"int32", "1", "double", "1"},
+                             {"int32", "1", "string", "1"},
+                             {"int32", "null", "date", "2020-10-12"},
+                             {"int32", "977520480", "timestamp", "1590115420000"},
+                             {"int32", "0", "bool", "false"},
+                             {"int32", "-1", "int16", "-1"},
+                             {"int32", "-1", "int32", "-1"},
+                             {"int32", "-1", "int64", "-1"},
+                             {"int32", "-1", "float", "-1"},
+                             {"int32", "-1", "double", "-1"},
+                             {"int32", "null", "bool", "null"},
+                             {"int32", "null", "int16", "null"},
+                             {"int32", "null", "int32", "null"},
+                             {"int32", "null", "int64", "null"},
+                             {"int32", "null", "float", "null"},
+                             {"int32", "null", "double", "null"},
+                             {"int32", "null", "string", "abc"},
+                             {"int32", "null", "string", "null"},
+                             {"int32", "null", "timestamp", "null"},
+
+                             // numeric cast overflow: truncate
+                             {"int32", "-1", "int64", "9223372036854775807"},
+                             // int32(0x31993af1d7bffff) -> 0x1d7bffff
+                             {"int32", "494665727", "int64", "223372036854775807"},
+                             {"int32", "-494665727", "int64", "-223372036854775807"},
+                             // string to numeric overflow: NULL
+                             {"int32", "null", "string", "9223372036854775807"},
+                             {"int32", "null", "string", "223372036854775807"},
+                             {"int32", "null", "string", "-223372036854775807"},
+                             {"int32", "12", "string", "12"},
+                             {"int32", "12", "string", "012"},
+                             {"int32", "0", "string", "0"},
+                             {"int32", "9", "string", " 9"},
+                             {"int32", "100", "string", " +100 "},
+                             {"int32", "-999", "string", "-999\t"},
+                             {"int32", "0", "string", "+0"},
+                             {"int32", "0", "string", "-0"},
+                             {"int32", "-1", "string", "-1"},
+                             {"int32", "-88", "string", "-88"},
+                             {"int32", "18", "string", "0x12"},
+                             {"int32", "42", "string", "+0X2a"},
+                             {"int32", "-43", "string", "-0X2b"},
+                             {"int32", "-43", "string", "\t -0X2b"},
+                             {"int32", "null", "string", "9223372036854775807"},
+                             {"int32", "null", "string", "0x7FFFFFFFFFFFFFFF"},
+                             {"int32", std::to_string(INT32_MAX), "string", "0x7FFFFFFF"},
+                             {"int32", "null", "string", "-9223372036854775808"},
+                             {"int32", "null", "string", ""},
+                             {"int32", "null", "string", "-"},
+                             {"int32", "null", "string", "+"},
+                             {"int32", "null", "string", "8g"},
+                             {"int32", "null", "string", "80x99"},
+                             {"int32", "null", "string", "0x12k"},
+                             {"int32", "null", "string", "8l"},
+                             {"int32", "null", "string", "8 l"},
+                             {"int32", "null", "string", "gg"},
+                             {"int32", "null", "string", "89223372036854775807"},
+                             {"int32", "null", "string", "-19223372036854775807"},
+                         }));
 
 // SafeCastNumber: bool, int16, int32, int64
 // UnSafeCst: float, double
@@ -843,39 +882,41 @@ INSTANTIATE_TEST_SUITE_P(
                     std::make_tuple("string", "null", "timestamp", "null"),
                     std::make_tuple("string", "null", "date", "null"),
                     std::make_tuple("string", "null", "string", "null")));
-INSTANTIATE_TEST_SUITE_P(
-    CastExprTestInt16, CastExprTest,
-    testing::Values(std::make_tuple("int16", "1", "bool", "true"),
-                    std::make_tuple("int16", "1", "int16", "1"),
-                    std::make_tuple("int16", "1", "int32", "1"),
-                    std::make_tuple("int16", "1", "int64", "1"),
-                    std::make_tuple("int16", "1", "float", "1"),
-                    std::make_tuple("int16", "1", "double", "1"),
-                    std::make_tuple("int16", "1", "string", "1"),
-                    std::make_tuple("int16", "null", "date", "2020-10-12"),
-                    std::make_tuple("int16", "-14496", "timestamp",
-                                    "1590115420000"),
-                    std::make_tuple("int16", "0", "bool", "false"),
-                    std::make_tuple("int16", "-1", "int16", "-1"),
-                    std::make_tuple("int16", "-1", "int32", "-1"),
-                    std::make_tuple("int16", "-1", "int64", "-1"),
-                    std::make_tuple("int16", "-1", "float", "-1"),
-                    std::make_tuple("int16", "-1", "double", "-1"),
-                    std::make_tuple("int16", "null", "bool", "null"),
-                    std::make_tuple("int16", "null", "int16", "null"),
-                    std::make_tuple("int16", "null", "int32", "null"),
-                    std::make_tuple("int16", "null", "int64", "null"),
-                    std::make_tuple("int16", "null", "float", "null"),
-                    std::make_tuple("int16", "null", "double", "null"),
-                    std::make_tuple("int16", "null", "string", "null"),
-                    std::make_tuple("int16", "null", "string", "abc"),
-                    std::make_tuple("int16", "null", "timestamp", "null")));
 
-TEST_P(CastExprTest, cast_check) {
-    auto [cast_type_str, cast_value_str, src_type_str,  // NOLINT
-          src_value_str] = GetParam();
-    LOG(INFO) << "GetParam() = (" << cast_type_str << ", " << cast_value_str
-              << ", " << src_type_str << ", " << src_value_str << ")";
+INSTANTIATE_TEST_SUITE_P(CastExprTestInt16, CastExprTest,
+                         testing::ValuesIn(std::vector<std::tuple<std::string, std::string, std::string, std::string>>{
+                             {"int16", "1", "bool", "true"},
+                             {"int16", "1", "int16", "1"},
+                             {"int16", "1", "int32", "1"},
+                             {"int16", "1", "int64", "1"},
+                             {"int16", "1", "float", "1"},
+                             {"int16", "1", "double", "1"},
+                             {"int16", "1", "string", "1"},
+                             {"int16", "null", "date", "2020-10-12"},
+                             {"int16", "-14496", "timestamp", "1590115420000"},
+                             {"int16", "0", "bool", "false"},
+                             {"int16", "-1", "int16", "-1"},
+                             {"int16", "-1", "int32", "-1"},
+                             {"int16", "-1", "int64", "-1"},
+                             {"int16", "-1", "float", "-1"},
+                             {"int16", "-1", "double", "-1"},
+                             {"int16", "null", "bool", "null"},
+                             {"int16", "null", "int16", "null"},
+                             {"int16", "null", "int32", "null"},
+                             {"int16", "null", "int64", "null"},
+                             {"int16", "null", "float", "null"},
+                             {"int16", "null", "double", "null"},
+                             {"int16", "null", "string", "null"},
+                             {"int16", "null", "string", "abc"},
+                             {"int16", "null", "timestamp", "null"},
+                             // int32 -> int16 overflow -> truncate value
+                             {"int16", "-1", "int32", "6815743"},
+                             {"int16", "1", "int32", "-6815743"},
+                             {"int16", "28398", "int32", "487150"},
+                         }));
+
+TEST_P(CastExprTest, CastCheck) {
+    auto [cast_type_str, cast_value_str, src_type_str, src_value_str] = GetParam();
     CastExprCheck(cast_type_str, cast_value_str, src_type_str, src_value_str);
 }
 
@@ -1006,10 +1047,8 @@ INSTANTIATE_TEST_SUITE_P(
         std::make_tuple("date", "int32"), std::make_tuple("date", "int64"),
         std::make_tuple("date", "float"), std::make_tuple("date", "double")));
 
-TEST_P(CastErrorExprTest, cast_error_check) {
-    auto [cast_type_str, src_type_str] = GetParam();  // NOLINT
-    LOG(INFO) << "GetParam() = (" << cast_type_str << ", " << src_type_str
-              << ")";
+TEST_P(CastErrorExprTest, CastErrorCheck) {
+    auto [cast_type_str, src_type_str] = GetParam();
     CastErrorExprCheck(cast_type_str, src_type_str);
 }
 

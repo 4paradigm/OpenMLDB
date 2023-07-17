@@ -139,6 +139,15 @@ cases:
         +-node[CMD]
           +-cmd_type: drop table
           +-args: [db1, t1]
+  - id: 14-3
+    desc: DROP TABLE IF EXISTS
+    sql: DROP TABLE IF EXISTS t1;
+    expect:
+      node_tree_str: |
+        +-node[CMD]
+          +-cmd_type: drop table
+          +-if_exists: true
+          +-args: [t1]
   - id: 15-1
     desc: DROP INDEX
     sql: DROP INDEX t1.index1
@@ -170,6 +179,15 @@ cases:
       node_tree_str: |
         +-node[CMD]
           +-cmd_type: drop database
+          +-args: [db1]
+  - id: 18
+    desc: DROP DATABASE IF EXISTS
+    sql: DROP DATABASE IF EXISTS db1
+    expect:
+      node_tree_str: |
+        +-node[CMD]
+          +-cmd_type: drop database
+          +-if_exists: true
           +-args: [db1]
   - id: show_deployments
     desc: show deployments

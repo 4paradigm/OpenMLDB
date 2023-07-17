@@ -902,7 +902,8 @@ bool SQLClusterRouter::DropDB(const std::string& db, hybridse::sdk::Status* stat
     return true;
 }
 
-bool SQLClusterRouter::DropTable(const std::string& db, const std::string& table, hybridse::sdk::Status* status) {
+bool SQLClusterRouter::DropTable(const std::string& db, const std::string& table, const bool if_exists,
+                                 hybridse::sdk::Status* status) {
     RET_FALSE_IF_NULL_AND_WARN(status, "output status is nullptr");
     if (db.empty() || table.empty()) {
         SET_STATUS_AND_WARN(status, StatusCode::kCmdError,
@@ -916,20 +917,30 @@ bool SQLClusterRouter::DropTable(const std::string& db, const std::string& table
         return false;
     }
 
-    auto tableInfo = GetTableInfo(db, table);
+    auto table_info = cluster_sdk_->GetTableInfo(db, table);
+
+    if (table_info == nullptr) {
+        if (if_exists) {
+            *status = {};
+            return true;
+        } else {
+            SET_STATUS_AND_WARN(status, StatusCode::kCmdError, "fail to drop, table does not exist!");
+            return false;
+        }
+    }
 
     // delete pre-aggr meta info if need
-    if (tableInfo.base_table_tid() > 0) {
+    if (table_info->base_table_tid() > 0) {
         std::string meta_db = openmldb::nameserver::INTERNAL_DB;
         std::string meta_table = openmldb::nameserver::PRE_AGG_META_NAME;
         std::string select_aggr_info =
             absl::StrCat("select base_db,base_table,aggr_func,aggr_col,partition_cols,order_by_col,filter_col from ",
-                         meta_db, ".", meta_table, " where aggr_table = '", tableInfo.name(), "';");
+                         meta_db, ".", meta_table, " where aggr_table = '", table_info->name(), "';");
         auto rs = ExecuteSQL("", select_aggr_info, true, true, 0, status);
         WARN_NOT_OK_AND_RET(status, "get aggr info failed", false);
         if (rs->Size() != 1) {
             SET_STATUS_AND_WARN(status, StatusCode::kCmdError,
-                                "duplicate records generate with aggr table name: " + tableInfo.name());
+                                "duplicate records generate with aggr table name: " + table_info->name());
             return false;
         }
         std::string idx_key;
@@ -961,7 +972,7 @@ bool SQLClusterRouter::DropTable(const std::string& db, const std::string& table
         }
         auto tid = cluster_sdk_->GetTableId(meta_db, meta_table);
         std::string msg;
-        if (!tablet_client->Delete(tid, 0, tableInfo.name(), "aggr_table", msg) ||
+        if (!tablet_client->Delete(tid, 0, table_info->name(), "aggr_table", msg) ||
             !tablet_client->Delete(tid, 0, idx_key, "unique_key", msg)) {
             SET_STATUS_AND_WARN(status, StatusCode::kCmdError, "delete aggr meta failed");
             return false;
@@ -969,7 +980,7 @@ bool SQLClusterRouter::DropTable(const std::string& db, const std::string& table
     }
 
     // Check offline table info first
-    if (tableInfo.has_offline_table_info()) {
+    if (table_info->has_offline_table_info()) {
         auto taskmanager_client_ptr = cluster_sdk_->GetTaskManagerClient();
         if (!taskmanager_client_ptr) {
             SET_STATUS_AND_WARN(status, StatusCode::kRuntimeError, "no taskmanager client");
@@ -1644,7 +1655,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::HandleSQLCmd(const h
         }
         case hybridse::node::kCmdDropDatabase: {
             std::string name = cmd_node->GetArgs()[0];
-            if (ns_ptr->DropDatabase(name, msg)) {
+            if (ns_ptr->DropDatabase(name, msg, cmd_node->IsIfExists())) {
                 *status = {};
             } else {
                 *status = {StatusCode::kCmdError, msg};
@@ -1889,7 +1900,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::HandleSQLCmd(const h
             if (!CheckAnswerIfInteractive("table", table_name)) {
                 return {};
             }
-            if (DropTable(db_name, table_name, status)) {
+            if (DropTable(db_name, table_name, cmd_node->IsIfExists(), status)) {
                 RefreshCatalog();
             }
             return {};
@@ -1973,10 +1984,10 @@ base::Status SQLClusterRouter::HandleSQLCreateTable(hybridse::node::CreatePlanNo
 
         std::map<std::string, std::string> config;
         ::openmldb::taskmanager::JobInfo job_info;
-        int job_timeout = GetJobTimeout();
         std::string output;
-
-        ::openmldb::base::Status status = ExecuteOfflineQueryGetOutput(sql, config, db, job_timeout, &output);
+        // create table like hive is a long op, use large timeout
+        ::openmldb::base::Status status =
+            ExecuteOfflineQueryGetOutput(sql, config, db, FLAGS_sync_job_timeout, &output);
 
         if (!status.OK()) {
             LOG(ERROR) << "Fail to create table, error message: " + status.msg;
@@ -2680,7 +2691,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(
 
             auto current_symbolic_paths = offline_table_info.symbolic_paths();
 
-            std::vector<const hybridse::node::AlterActionBase *> actions = plan->actions_;
+            std::vector<const hybridse::node::AlterActionBase*> actions = plan->actions_;
 
             // Handle multiple add and delete actions
             for (const auto& action : actions) {
@@ -4068,10 +4079,20 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteShowApiServer
 }
 
 static const std::initializer_list<std::string> GetTableStatusSchema() {
-    static const std::initializer_list<std::string> schema = {
-        "Table_id",         "Table_name",     "Database_name",     "Storage_type",      "Rows",
-        "Memory_data_size", "Disk_data_size", "Partition",         "Partition_unalive", "Replica",
-        "Offline_path",     "Offline_format", "Offline_deep_copy", "Warnings"};
+    static const std::initializer_list<std::string> schema = {"Table_id",
+                                                              "Table_name",
+                                                              "Database_name",
+                                                              "Storage_type",
+                                                              "Rows",
+                                                              "Memory_data_size",
+                                                              "Disk_data_size",
+                                                              "Partition",
+                                                              "Partition_unalive",
+                                                              "Replica",
+                                                              "Offline_path",
+                                                              "Offline_format",
+                                                              "Offline_symbolic_paths",
+                                                              "Warnings"};
     return schema;
 }
 
@@ -4092,7 +4113,7 @@ static const std::initializer_list<std::string> GetTableStatusSchema() {
 // - Replica: replica number
 // - Offline_path: data path for offline data
 // - Offline_format: format for offline data
-// - Offline_deep_copy: deep copy option for offline data
+// - Offline_symbolic_paths: symbolic paths for offline data
 // - Warnings: any warnings raised during the checking
 //
 // if db is empty:
@@ -4167,18 +4188,21 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteShowTableStat
             }
             CheckTableStatus(db, table_name, tid, partition_info, replica_num, table_statuses, &error_msg);
         }
-
-        std::string offline_path = "NULL", offline_format = "NULL", offline_deep_copy = "NULL";
+        // TODO(hw): miss options, it can be got from desc table
+        std::string offline_path = "NULL", offline_format = "NULL", symbolic_paths = "NULL";
         if (tinfo.has_offline_table_info()) {
             offline_path = tinfo.offline_table_info().path();
             offline_format = tinfo.offline_table_info().format();
-            offline_deep_copy = std::to_string(tinfo.offline_table_info().deep_copy());
+            symbolic_paths = "";
+            for (const auto& ele : tinfo.offline_table_info().symbolic_paths()) {
+                symbolic_paths += ele + ",";
+            }
         }
 
         data.push_back({std::to_string(tid), table_name, db, storage_type, std::to_string(rows),
                         std::to_string(mem_bytes), std::to_string(disk_bytes), std::to_string(partition_num),
                         std::to_string(partition_unalive), std::to_string(replica_num), offline_path, offline_format,
-                        offline_deep_copy, error_msg});
+                        symbolic_paths, error_msg});
     }
 
     // TODO(#1456): rich schema result set, and pretty-print numberic values (e.g timestamp) in cli
@@ -4291,7 +4315,7 @@ void SQLClusterRouter::ReadSparkConfFromFile(std::string conf_file_path, std::ma
 }
 
 std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::GetJobResultSet(int job_id,
-        ::hybridse::sdk::Status* status) {
+                                                                            ::hybridse::sdk::Status* status) {
     std::string db = openmldb::nameserver::INTERNAL_DB;
     std::string sql = "SELECT * FROM JOB_INFO WHERE id = " + std::to_string(job_id);
 
@@ -4326,7 +4350,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::GetJobResultSet(::hy
     return rs;
 }
 std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::GetTaskManagerJobResult(const std::string& like_pattern,
-        ::hybridse::sdk::Status* status) {
+                                                                                    ::hybridse::sdk::Status* status) {
     bool like_match = JobTableHelper::NeedLikeMatch(like_pattern);
     if (!like_pattern.empty() && !like_match) {
         int job_id;
@@ -4350,7 +4374,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::GetTaskManagerJobRes
 }
 
 std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::GetNameServerJobResult(const std::string& like_pattern,
-        ::hybridse::sdk::Status* status) {
+                                                                                   ::hybridse::sdk::Status* status) {
     bool like_match = JobTableHelper::NeedLikeMatch(like_pattern);
     base::Status ret;
     nameserver::ShowOPStatusResponse response;

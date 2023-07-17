@@ -148,7 +148,7 @@ CREATE TABLE t1 (col0 STRING, col1 int, std_time TIMESTAMP, INDEX(KEY=col1, TS=s
 
 ### 离线命令配置详情
 
-- 设置离线命令同步执行，同步的超时时间将自动设置：
+- 设置离线命令同步执行，同步的超时时间将自动设置为gflag `sync_job_timeout`，默认30min：
 
 ```sql
 > SET @@sync_job = "true";
@@ -160,7 +160,7 @@ CREATE TABLE t1 (col0 STRING, col1 int, std_time TIMESTAMP, INDEX(KEY=col1, TS=s
 - 配置客户端`--sync_job_timeout`，不可大于`server.channel_keep_alive_time`。SDK暂不支持修改。
 ```
 
-- 设置离线异步命令或离线管理命令的等待时间(单位为毫秒)：
+- 离线命令异步执行时，同样会有超时时间，可手动配置。设置离线异步命令或离线管理命令的等待时间(单位为毫秒)：
 ```sql
 > SET @@job_timeout = "600000";
 ```

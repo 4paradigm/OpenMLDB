@@ -3083,7 +3083,7 @@ void ExpectShowTableStatusResult(const std::vector<std::vector<test::CellExpectI
 
     std::vector<std::vector<test::CellExpectInfo>> merged_expect = {
         {"Table_id", "Table_name", "Database_name", "Storage_type", "Rows", "Memory_data_size", "Disk_data_size",
-         "Partition", "Partition_unalive", "Replica", "Offline_path", "Offline_format", "Offline_deep_copy",
+         "Partition", "Partition_unalive", "Replica", "Offline_path", "Offline_format", "Offline_symbolic_paths",
          "Warnings"}};
     merged_expect.insert(merged_expect.end(), expect.begin(), expect.end());
     if (all_db) {

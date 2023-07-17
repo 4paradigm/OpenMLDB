@@ -48,9 +48,6 @@ class ColumnTypes;
 }  // namespace sdk
 }  // namespace hybridse
 
-// save the results of SQL query
-static std::shared_ptr<hybridse::sdk::ResultSet> resultset_last;
-
 // TimeStamp corresponds to TIMESTAMP in SQL, as a parameter inserted into ParameterRow or RequestRow
 // constructor : only one parameter of type int_64
 class TimeStamp {
@@ -88,32 +85,7 @@ class OpenmldbNull {
     OpenmldbNull() {}
 };
 
-// OpenmldbHandler is used to link openmldb server. to use openmldb, you must create an object of this type
-// cluster :
-// constructor : first parameter         string      format : "IP:Port"    eg : "127.0.0.1:2181"
-//                    second parameter    string      format : "path"       eg : "/openmldb"
-// standalone :
-// constructor : first parameter         string      format : "IP"           eg : "127.0.0.1"
-//                    second parameter    string      format : "Port"        eg : 6527
-class OpenmldbHandler {
- public:
-    OpenmldbHandler(std::string zk_cluster, std::string zk_path);
-    OpenmldbHandler(std::string host, uint32_t _port);
-    ~OpenmldbHandler();
-    openmldb::sdk::SQLClusterRouter* get_router() const { return router_; }
-    hybridse::sdk::Status* get_status() const { return status_; }
-
- private:
-    OpenmldbHandler(const OpenmldbHandler&);
-    OpenmldbHandler& operator=(const OpenmldbHandler&);
-
- private:
-    openmldb::sdk::SQLRouterOptions* cluster_ = nullptr;
-    openmldb::sdk::StandaloneOptions* standalone_ = nullptr;
-    openmldb::sdk::SQLClusterRouter* router_ = nullptr;
-    hybridse::sdk::Status* status_ = nullptr;
-};
-
+class OpenmldbHandler;
 // In the request with parameter and request mode of openmldb, the position of parameters to be filled is indicated by
 // the symbol "?" to express
 
@@ -182,31 +154,58 @@ class RequestRow {
     uint32_t str_length_ = 0;
 };
 
-// execute() is used to execute SQL statements without parameters
-// first parameter :         OpenmldbHandler
-// second parameter :    string                        pass SQL statement
-bool execute(const OpenmldbHandler& handler, const std::string& sql);
+// OpenmldbHandler is used to link openmldb server. to use openmldb, you must create an object of this type
+// cluster :
+// constructor : first parameter         string      format : "IP:Port"    eg : "127.0.0.1:2181"
+//                    second parameter    string      format : "path"       eg : "/openmldb"
+// standalone :
+// constructor : first parameter         string      format : "IP"           eg : "127.0.0.1"
+//                    second parameter    string      format : "Port"        eg : 6527
+class OpenmldbHandler {
+ public:
+    OpenmldbHandler(std::string zk_cluster, std::string zk_path);
+    OpenmldbHandler(std::string host, uint32_t _port);
+    explicit OpenmldbHandler(std::shared_ptr<openmldb::sdk::SQLClusterRouter> router);
+    ~OpenmldbHandler();
 
-// execute() is used to execute SQL statements without parameters
-// first parameter :         OpenmldbHandler     a object of type OpenmldbHandler
-// second parameter :    string                        name of database
-// third parameter :        string                        SQL statement
-bool execute(const OpenmldbHandler& handler, const std::string& db, const std::string& sql);
+    bool is_connected() { return router_ != nullptr; }
+    std::shared_ptr<openmldb::sdk::SQLClusterRouter> get_router() const { return router_; }
 
-// execute_parameterized() is used to execute SQL statements with parameters
-// first parameter :        OpenmldbHandler     a object of type OpenmldbHandler
-// second parameter :    string                        name of database
-// third parameter :        string                        SQL statement
-// forth parameter :        ParameterRow          a object of type ParameterRow
-bool execute_parameterized(const OpenmldbHandler& handler, const std::string& db, const std::string& sql,
-                           const ParameterRow& para);
+    // execute() is used to execute SQL statements without parameters
+    // first parameter :         OpenmldbHandler
+    // second parameter :    string                        pass SQL statement
+    bool execute(const std::string& sql);
 
-// execute_request() is used to execute SQL of request mode
-// only one parameter,  a object of type RequestRow
-bool execute_request(const RequestRow& req);
+    // execute() is used to execute SQL statements without parameters
+    // first parameter :         OpenmldbHandler     a object of type OpenmldbHandler
+    // second parameter :    string                        name of database
+    // third parameter :        string                        SQL statement
+    bool execute(const std::string& db, const std::string& sql);
 
-// get the results of the latest SQL query
-std::shared_ptr<hybridse::sdk::ResultSet> get_resultset();
+    // execute_parameterized() is used to execute SQL statements with parameters
+    // first parameter :        OpenmldbHandler     a object of type OpenmldbHandler
+    // second parameter :    string                        name of database
+    // third parameter :        string                        SQL statement
+    // forth parameter :        ParameterRow          a object of type ParameterRow
+    bool execute_parameterized(const std::string& db, const std::string& sql, const ParameterRow& para);
+
+    // execute_request() is used to execute SQL of request mode
+    // only one parameter,  a object of type RequestRow
+    bool execute_request(const RequestRow& req);
+
+    // get the results of the latest SQL query
+    std::shared_ptr<hybridse::sdk::ResultSet> get_resultset() { return resultset_last_; }
+    hybridse::sdk::Status* get_status() const { return status_; }
+
+ private:
+    OpenmldbHandler(const OpenmldbHandler&);
+    OpenmldbHandler& operator=(const OpenmldbHandler&);
+
+ private:
+    hybridse::sdk::Status* status_;
+    std::shared_ptr<openmldb::sdk::SQLClusterRouter> router_ = nullptr;
+    std::shared_ptr<hybridse::sdk::ResultSet> resultset_last_;
+};
 
 // print_resultset() is used to print the results of SQL query
 // only one parameter,  a object of type shared_ptr<hybridse::sdk::ResultSet>
