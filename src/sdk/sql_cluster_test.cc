@@ -27,6 +27,7 @@
 #include "gtest/gtest.h"
 #include "sdk/mini_cluster.h"
 #include "sdk/sql_cluster_router.h"
+#include "sdk/job_table_helper.h"
 #include "sdk/sql_router.h"
 #include "sdk/sql_sdk_test.h"
 #include "vm/catalog.h"
@@ -97,6 +98,106 @@ class SQLClusterDDLTest : public SQLClusterTest {
     std::shared_ptr<SQLRouter> router;
     std::string db;
 };
+TEST_F(SQLClusterDDLTest, ShowSortedJobs) {
+    std::string name = "job_info" + GenRand();
+    ::hybridse::sdk::Status status;
+
+    std::string sql;
+    sql = "create table " + name +
+          "("
+          "id int, job_type string, state string, start_time timestamp, end_time timestamp, "
+          "parameter string, cluster string, application_id string, error string, "
+          "index(key=id));";
+    ASSERT_TRUE(router->ExecuteDDL(db, sql, &status)) << "ddl: " << sql;
+    ASSERT_TRUE(router->RefreshCatalog());
+
+    sql = "insert into " + name +
+          " values(1, \"ImportOnlineData\", \"Finished\", 1000, 1001, "
+          "\"/tmp/sql-00000000000000000001\", \"local[*]\", \"local-000000000000001\", \"\");";
+    router->ExecuteSQL(db, sql, &status);
+    ASSERT_TRUE(status.IsOK());
+
+    sql = "insert into " + name +
+          " values(5, \"ImportOnlineData\", \"Failed\", 1000, 1005, "
+          "\"/tmp/sql-00000000000000000005\", \"local[*]\", \"local-000000000000005\", \"\");";
+    router->ExecuteSQL(db, sql, &status);
+    ASSERT_TRUE(status.IsOK());
+
+    sql = "insert into " + name +
+          " values(9, \"ImportOnlineData\", \"Submitted\", 1000, 1009, "
+          "\"/tmp/sql-00000000000000000009\", \"local[*]\", \"local-000000000000009\", \"\");";
+    router->ExecuteSQL(db, sql, &status);
+    ASSERT_TRUE(status.IsOK());
+
+    sql = "insert into " + name +
+          " values(2, \"ExportOnlineData\", \"Finished\", 1000, 1002, "
+          "\"/tmp/sql-00000000000000000002\", \"local[*]\", \"local-000000000000002\", \"\");";
+    router->ExecuteSQL(db, sql, &status);
+    ASSERT_TRUE(status.IsOK());
+
+    sql = "insert into " + name +
+          " values(6, \"ExportOnlineData\", \"Failed\", 1000, 1006, "
+          "\"/tmp/sql-00000000000000000006\", \"local[*]\", \"local-000000000000006\", \"\");";
+    router->ExecuteSQL(db, sql, &status);
+    ASSERT_TRUE(status.IsOK());
+
+    sql = "insert into " + name +
+          " values(10, \"ExportOnlineData\", \"Submitted\", 1000, 1010, "
+          "\"/tmp/sql-00000000000000000010\", \"local[*]\", \"local-000000000000010\", \"\");";
+    router->ExecuteSQL(db, sql, &status);
+    ASSERT_TRUE(status.IsOK());
+
+    sql = "insert into " + name +
+          " values(3, \"ImportOfflineData\", \"Finished\", 1000, 1003, "
+          "\"/tmp/sql-00000000000000000003\", \"local[*]\", \"local-000000000000003\", \"\");";
+    router->ExecuteSQL(db, sql, &status);
+    ASSERT_TRUE(status.IsOK());
+
+    sql = "insert into " + name +
+          " values(7, \"ImportOfflineData\", \"Failed\", 1000, 1007, "
+          "\"/tmp/sql-00000000000000000007\", \"local[*]\", \"local-000000000000007\", \"\");";
+    router->ExecuteSQL(db, sql, &status);
+    ASSERT_TRUE(status.IsOK());
+
+    sql = "insert into " + name +
+          " values(11, \"ImportOfflineData\", \"Submitted\", 1000, 1011, "
+          "\"/tmp/sql-00000000000000000011\", \"local[*]\", \"local-000000000000011\", \"\");";
+    router->ExecuteSQL(db, sql, &status);
+    ASSERT_TRUE(status.IsOK());
+
+    sql = "insert into " + name +
+          " values(4, \"ExportOfflineData\", \"Finished\", 1000, 1004, "
+          "\"/tmp/sql-00000000000000000004\", \"local[*]\", \"local-000000000000004\", \"\");";
+    router->ExecuteSQL(db, sql, &status);
+    ASSERT_TRUE(status.IsOK());
+
+    sql = "insert into " + name +
+          " values(8, \"ExportOfflineData\", \"Failed\", 1000, 1008, "
+          "\"/tmp/sql-00000000000000000008\", \"local[*]\", \"local-000000000000008\", \"\");";
+    router->ExecuteSQL(db, sql, &status);
+    ASSERT_TRUE(status.IsOK());
+
+    sql = "insert into " + name +
+          " values(12, \"ExportOfflineData\", \"Failed\", 1000, 1012, "
+          "\"/tmp/sql-00000000000000000012\", \"local[*]\", \"local-000000000000012\", \"\");";
+    router->ExecuteSQL(db, sql, &status);
+    ASSERT_TRUE(status.IsOK());
+
+    auto rs = router->ExecuteSQL(db, "select * from " + name + ";", &status);
+    ASSERT_TRUE(status.IsOK());
+
+    rs = JobTableHelper::MakeResultSet(rs, "", &status);
+    ASSERT_TRUE(status.IsOK());
+
+    int id_current = 0, id_next;
+    while (rs->Next()) {
+        ASSERT_TRUE(rs->GetInt32(0, &id_next));
+        ASSERT_LT(id_current, id_next);
+        id_current = id_next;
+    }
+    ASSERT_TRUE(router->ExecuteDDL(db, "drop table " + name + ";", &status));
+}
+
 TEST_F(SQLClusterDDLTest, CreateTableWithDatabase) {
     std::string name = "test" + GenRand();
     ::hybridse::sdk::Status status;

@@ -164,6 +164,9 @@ std::shared_ptr<hybridse::sdk::ResultSet> JobTableHelper::MakeResultSet(
         vec.push_back("TaskManager");
         records.emplace_back(std::move(vec));
     }
+    // sort jobs by id
+    std::sort(records.begin(), records.end(),
+              [](std::vector<std::string> vec1, std::vector<std::string> vec2) { return atoi(vec1[0].c_str()) < atoi(vec2[0].c_str()); });
     *status = {};
     return ResultSetSQL::MakeResultSet(schema, records, status);
 }
