@@ -32,7 +32,7 @@ public class ExternalFunctionManager {
     static private Map<String, String> nameFileMap = new ConcurrentHashMap<>();
 
     static public String getLibraryFilePath(String libraryFileName) {
-        return Paths.get(TaskManagerConfig.EXTERNAL_FUNCTION_DIR, libraryFileName).toString();
+        return Paths.get(TaskManagerConfig.getExternalFunctionDir(), libraryFileName).toString();
     }
 
     static public void addFunction(String fnName, String libraryFileName) throws Exception {

@@ -56,7 +56,7 @@ object K8sJobManager {
 
     val finalSparkConf: mutable.Map[String, String] = mutable.Map(sparkConf.toSeq: _*)
 
-    val defaultSparkConfs = TaskManagerConfig.SPARK_DEFAULT_CONF.split(";")
+    val defaultSparkConfs = TaskManagerConfig.getSparkDefaultConf.split(";")
     defaultSparkConfs.map(sparkConf => {
       if (sparkConf.nonEmpty) {
         val kvList = sparkConf.split("=")
@@ -66,36 +66,36 @@ object K8sJobManager {
       }
     })
 
-    if (TaskManagerConfig.SPARK_EVENTLOG_DIR.nonEmpty) {
+    if (TaskManagerConfig.getSparkEventlogDir.nonEmpty) {
       finalSparkConf.put("spark.eventLog.enabled", "true")
-      finalSparkConf.put("spark.eventLog.dir", TaskManagerConfig.SPARK_EVENTLOG_DIR)
+      finalSparkConf.put("spark.eventLog.dir", TaskManagerConfig.getSparkEventlogDir)
     }
 
     // Set ZooKeeper config for openmldb-batch jobs
-    if (TaskManagerConfig.ZK_CLUSTER.nonEmpty && TaskManagerConfig.ZK_ROOT_PATH.nonEmpty) {
-      finalSparkConf.put("spark.openmldb.zk.cluster", TaskManagerConfig.ZK_CLUSTER)
-      finalSparkConf.put("spark.openmldb.zk.root.path", TaskManagerConfig.ZK_ROOT_PATH)
+    if (TaskManagerConfig.getZkCluster.nonEmpty && TaskManagerConfig.getZkRootPath.nonEmpty) {
+      finalSparkConf.put("spark.openmldb.zk.cluster", TaskManagerConfig.getZkCluster)
+      finalSparkConf.put("spark.openmldb.zk.root.path", TaskManagerConfig.getZkRootPath)
     }
 
     if (defaultDb.nonEmpty) {
       finalSparkConf.put("spark.openmldb.default.db", defaultDb)
     }
 
-    if (TaskManagerConfig.OFFLINE_DATA_PREFIX.nonEmpty) {
-      finalSparkConf.put("spark.openmldb.offline.data.prefix", TaskManagerConfig.OFFLINE_DATA_PREFIX)
+    if (TaskManagerConfig.getOfflineDataPrefix.nonEmpty) {
+      finalSparkConf.put("spark.openmldb.offline.data.prefix", TaskManagerConfig.getOfflineDataPrefix)
     }
 
     // Set external function dir for offline jobs
-    val absoluteExternalFunctionDir = if (TaskManagerConfig.EXTERNAL_FUNCTION_DIR.startsWith("/")) {
-      TaskManagerConfig.EXTERNAL_FUNCTION_DIR
+    val absoluteExternalFunctionDir = if (TaskManagerConfig.getExternalFunctionDir.startsWith("/")) {
+      TaskManagerConfig.getExternalFunctionDir
     } else {
       // TODO: The current path is incorrect if running in IDE, please set `external.function.dir` with absolute path
       // Concat to generate absolute path
-      Paths.get(Paths.get(".").toAbsolutePath.toString, TaskManagerConfig.EXTERNAL_FUNCTION_DIR).toString
+      Paths.get(Paths.get(".").toAbsolutePath.toString, TaskManagerConfig.getExternalFunctionDir).toString
     }
     finalSparkConf.put("spark.openmldb.taskmanager.external.function.dir", absoluteExternalFunctionDir)
 
-    if(TaskManagerConfig.ENABLE_HIVE_SUPPORT) {
+    if(TaskManagerConfig.getEnableHiveSupport) {
       finalSparkConf.put("spark.sql.catalogImplementation", "hive")
     }
 
@@ -107,7 +107,7 @@ object K8sJobManager {
       mainJarFile = "local:///opt/spark/jars/openmldb-batchjob-0.7.2-SNAPSHOT.jar",
       arguments = args,
       sparkConf = finalSparkConf.toMap,
-      mountLocalPath = TaskManagerConfig.K8S_MOUNT_LOCAL_PATH
+      mountLocalPath = TaskManagerConfig.getK8sMountLocalPath
     )
     manager.submitJob(jobConfig)
 
@@ -170,7 +170,7 @@ class K8sJobManager(val namespace:String = "default",
         |    type: Never
         |  env:
         |    - name: SPARK_USER
-        |      value: ${TaskManagerConfig.HADOOP_USER_NAME}
+        |      value: ${TaskManagerConfig.getHadoopUserName}
         |  volumes:
         |    - name: host-local
         |      hostPath:
@@ -178,7 +178,7 @@ class K8sJobManager(val namespace:String = "default",
         |        type: Directory
         |    - name: hadoop-config
         |      configMap:
-        |        name: ${TaskManagerConfig.K8S_HADOOP_CONFIGMAP_NAME}
+        |        name: ${TaskManagerConfig.getK8sHadoopConfigmapName}
         |  driver:
         |    cores: ${jobConfig.driverCores}
         |    memory: "${jobConfig.driverMemory}"
@@ -194,7 +194,7 @@ class K8sJobManager(val namespace:String = "default",
         |      - name: HADOOP_CONF_DIR
         |        value: /etc/hadoop/conf
         |      - name: HADOOP_USER_NAME
-        |        value: ${TaskManagerConfig.HADOOP_USER_NAME}
+        |        value: ${TaskManagerConfig.getHadoopUserName}
         |  executor:
         |    cores: ${jobConfig.executorCores}
         |    instances: ${jobConfig.executorNum}
@@ -210,7 +210,7 @@ class K8sJobManager(val namespace:String = "default",
         |      - name: HADOOP_CONF_DIR
         |        value: /etc/hadoop/conf
         |      - name: HADOOP_USER_NAME
-        |        value: ${TaskManagerConfig.HADOOP_USER_NAME}
+        |        value: ${TaskManagerConfig.getHadoopUserName}
       """.stripMargin
 
     // Create a CustomResourceDefinitionContext for the SparkApplication

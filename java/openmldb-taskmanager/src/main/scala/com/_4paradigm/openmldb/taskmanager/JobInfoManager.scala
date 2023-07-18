@@ -42,8 +42,8 @@ object JobInfoManager {
   private val JOB_INFO_TABLE_NAME = "JOB_INFO"
 
   private val option = new SdkOption
-  option.setZkCluster(TaskManagerConfig.ZK_CLUSTER)
-  option.setZkPath(TaskManagerConfig.ZK_ROOT_PATH)
+  option.setZkCluster(TaskManagerConfig.getZkCluster)
+  option.setZkPath(TaskManagerConfig.getZkRootPath)
   val sqlExecutor = new SqlClusterExecutor(option)
   sqlExecutor.executeSQL("", "set @@execute_mode='online';")
 
@@ -52,7 +52,7 @@ object JobInfoManager {
     val startTime = new java.sql.Timestamp(Calendar.getInstance.getTime().getTime())
     val initialState = "Submitted"
     val parameter = if (args != null && args.length>0) args.mkString(",") else ""
-    val cluster = sparkConf.getOrElse("spark.master", TaskManagerConfig.SPARK_MASTER)
+    val cluster = sparkConf.getOrElse("spark.master", TaskManagerConfig.getSparkMaster)
 
     // TODO: Parse if run in yarn or local
     val jobInfo = new JobInfo(jobId, jobType, initialState, startTime, null, parameter, cluster, "", "")
@@ -212,7 +212,8 @@ object JobInfoManager {
         } else if (filePath.startsWith("hdfs://")) {
           val conf = new Configuration();
           // TODO: Get namenode uri from config file
-          val namenodeUri = TaskManagerConfig.NAMENODE_URI
+          val namenodeUri = "";
+          //val namenodeUri = TaskManagerConfig.NAMENODE_URI
           val hdfs = FileSystem.get(URI.create(s"hdfs://$namenodeUri"), conf)
           hdfs.delete(new Path(filePath), true)
 

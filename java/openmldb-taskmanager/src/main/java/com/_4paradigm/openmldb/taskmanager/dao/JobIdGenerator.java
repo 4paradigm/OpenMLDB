@@ -28,28 +28,29 @@ public class JobIdGenerator {
     static {
         try {
             zkClient = new ZKClient(ZKConfig.builder()
-                    .cluster(TaskManagerConfig.ZK_CLUSTER)
-                    .namespace(TaskManagerConfig.ZK_ROOT_PATH)
-                    .sessionTimeout(TaskManagerConfig.ZK_SESSION_TIMEOUT)
-                    .baseSleepTime(TaskManagerConfig.ZK_BASE_SLEEP_TIME)
-                    .connectionTimeout(TaskManagerConfig.ZK_CONNECTION_TIMEOUT)
-                    .maxConnectWaitTime(TaskManagerConfig.ZK_MAX_CONNECT_WAIT_TIME)
-                    .maxRetries(TaskManagerConfig.ZK_MAX_RETRIES)
+                    .cluster(TaskManagerConfig.getZkCluster())
+                    .namespace(TaskManagerConfig.getZkRootPath())
+                    .sessionTimeout(TaskManagerConfig.getZkSessionTimeout())
+                    .baseSleepTime(TaskManagerConfig.getZkBaseSleepTime())
+                    .connectionTimeout(TaskManagerConfig.getZkConnectionTimeout())
+                    .maxConnectWaitTime(TaskManagerConfig.getZkMaxConnectWaitTime())
+                    .maxRetries(TaskManagerConfig.getZkMaxRetries())
                     .build());
             zkClient.connect();
+
             // Initialize zk nodes
-            zkClient.createNode(TaskManagerConfig.ZK_ROOT_PATH, "".getBytes());
-            zkClient.createNode(TaskManagerConfig.ZK_TASKMANAGER_PATH, "".getBytes());
+            zkClient.createNode(TaskManagerConfig.getZkRootPath(), "".getBytes());
+            zkClient.createNode(TaskManagerConfig.getZkTaskmanagerPath(), "".getBytes());
 
             int lastMaxJobId = 0;
-            if (zkClient.checkExists(TaskManagerConfig.ZK_MAX_JOB_ID_PATH)) {
+            if (zkClient.checkExists(TaskManagerConfig.getZkMaxJobIdPath())) {
                 // Get last max job id from zk
-                lastMaxJobId = Integer.parseInt(zkClient.getNodeValue(TaskManagerConfig.ZK_MAX_JOB_ID_PATH));
+                lastMaxJobId = Integer.parseInt(zkClient.getNodeValue(TaskManagerConfig.getZkMaxJobIdPath()));
             }
             currentJobId = lastMaxJobId;
-            maxJobId = lastMaxJobId + TaskManagerConfig.PREFETCH_JOBID_NUM;
+            maxJobId = lastMaxJobId + TaskManagerConfig.getPrefetchJobidNum();
             // set max job id in zk
-            zkClient.setNodeValue(TaskManagerConfig.ZK_MAX_JOB_ID_PATH, String.valueOf(maxJobId).getBytes());
+            zkClient.setNodeValue(TaskManagerConfig.getZkMaxJobIdPath(), String.valueOf(maxJobId).getBytes());
 
         } catch (Exception e) {
             zkClient = null;
@@ -67,8 +68,8 @@ public class JobIdGenerator {
             currentJobId += 1;
             if (currentJobId > maxJobId) {
                 // Update zk before returning job id
-                maxJobId += TaskManagerConfig.PREFETCH_JOBID_NUM;
-                zkClient.setNodeValue(TaskManagerConfig.ZK_MAX_JOB_ID_PATH, String.valueOf(maxJobId).getBytes());
+                maxJobId += TaskManagerConfig.getPrefetchJobidNum();
+                zkClient.setNodeValue(TaskManagerConfig.getZkMaxJobIdPath(), String.valueOf(maxJobId).getBytes());
             }
             return currentJobId;
         }

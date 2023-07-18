@@ -148,8 +148,8 @@ class TestTaskManagerImpl extends FunSuite {
     val testDb = "db1"
     val testTable = "t1"
     val option = new SdkOption
-    option.setZkCluster(TaskManagerConfig.ZK_CLUSTER)
-    option.setZkPath(TaskManagerConfig.ZK_ROOT_PATH)
+    option.setZkCluster(TaskManagerConfig.getZkCluster)
+    option.setZkPath(TaskManagerConfig.getZkRootPath)
     val executor = new SqlClusterExecutor(option)
     executor.createDB(testDb)
     executor.executeDDL(testDb, s"drop table $testTable")
@@ -191,8 +191,8 @@ class TestTaskManagerImpl extends FunSuite {
     val testDb = "db1"
     val testTable = "t1"
     val option = new SdkOption
-    option.setZkCluster(TaskManagerConfig.ZK_CLUSTER)
-    option.setZkPath(TaskManagerConfig.ZK_ROOT_PATH)
+    option.setZkCluster(TaskManagerConfig.getZkCluster)
+    option.setZkPath(TaskManagerConfig.getZkRootPath)
     val executor = new SqlClusterExecutor(option)
 
     executor.createDB(testDb)
@@ -239,8 +239,8 @@ class TestTaskManagerImpl extends FunSuite {
     val testDb = "db1"
     val testTable = "t1"
     val option = new SdkOption
-    option.setZkCluster(TaskManagerConfig.ZK_CLUSTER)
-    option.setZkPath(TaskManagerConfig.ZK_ROOT_PATH)
+    option.setZkCluster(TaskManagerConfig.getZkCluster)
+    option.setZkPath(TaskManagerConfig.getZkRootPath)
     val executor = new SqlClusterExecutor(option)
 
     executor.createDB(testDb)
@@ -295,8 +295,8 @@ class TestTaskManagerImpl extends FunSuite {
     val testDb = "db1"
     val testTable = "t1"
     val option = new SdkOption
-    option.setZkCluster(TaskManagerConfig.ZK_CLUSTER)
-    option.setZkPath(TaskManagerConfig.ZK_ROOT_PATH)
+    option.setZkCluster(TaskManagerConfig.getZkCluster)
+    option.setZkPath(TaskManagerConfig.getZkRootPath)
     val executor = new SqlClusterExecutor(option)
 
     executor.createDB(testDb)
