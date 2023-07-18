@@ -148,7 +148,7 @@ CREATE TABLE t1 (col0 STRING, col1 int, std_time TIMESTAMP, INDEX(KEY=col1, TS=s
 
 ### 离线命令配置详情
 
-- 设置离线命令同步执行，同步的超时时间将自动设置为30min（同时也是与TaskManager的最大超时时间，仅手动设置更大的此超时时间是无意义的）：
+- 设置离线命令同步执行，同步的超时时间将自动设置为30min（gflag `sync_job_timeout`，同时也是与TaskManager的最大超时时间，仅手动设置更大的此超时时间是无意义的）：
 
 ```sql
 > SET @@sync_job = "true";
@@ -161,6 +161,7 @@ CREATE TABLE t1 (col0 STRING, col1 int, std_time TIMESTAMP, INDEX(KEY=col1, TS=s
 ```
 
 - 设置离线异步命令或离线管理命令的等待时间，单位为毫秒，默认为1min：
+
 ```sql
 > SET @@job_timeout = "600000";
 ```

@@ -52,6 +52,16 @@ spark.default.conf=spark.port.maxRetries=32;foo=bar
 
 ## DML 边界
 
+### 离线信息
+
+表的离线信息中存在两种path，一个是`offline_path`，一个是`symbolic_paths`。`offline_path`是离线数据的实际存储路径，`symbolic_paths`是离线数据的软链接路径。两种path都可以通过`LOAD DATA`来修改，`symbolic_paths`还可以通过`ALTER`语句修改。
+
+`offline_path`和`symbolic_paths`的区别在于，`offline_path`是OpenMLDB集群所拥有的路径，如果实施硬拷贝，数据将写入此路径，而`symbolic_paths`是OpenMLDB集群外的路径，软拷贝将会在这个信息中增添一个路径。离线查询时，两个路径的数据都会被加载。两个路径使用同样的格式和读选项，不支持不同配置的路径。
+
+因此，如果目前离线中存在`offline_path`，那么`LOAD DATA`只能修改`symbolic_paths`，如果目前离线中存在`symbolic_paths`，那么`LOAD DATA`可以修改`offline_path`和`symbolic_paths`。
+
+`errorifexists`当表存在离线信息时就会报错。存在软链接时硬拷贝，或存在硬拷贝时软拷贝，都会报错。
+
 ### LOAD DATA
 
 `LOAD DATA` 无论导入到在线或离线，都是离线 job。源数据的格式规则，离线在线没有区别。

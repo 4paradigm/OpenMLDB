@@ -301,7 +301,7 @@ local模式即Spark任务运行在本地（TaskManager所在主机），该模�
 "yarn"和"yarn-cluster"是同一个模式，即Spark任务运行在Yarn集群上，该模式下需要配置的参数较多，主要包括：
 - 在**启动TaskManager前**配置环境变量`HADOOP_CONF_DIR`为Hadoop和Yarn的配置文件所在目录，文件目录中应包含Hadoop的`core-site.xml`、`hdfs-site.xml`、Yarn的`yarn-site.xml`等配置文件，参考[Spark官方文档](https://spark.apache.org/docs/3.2.1/running-on-yarn.html#launching-spark-on-yarn)。
 - `spark.yarn.jars`配置Yarn需要读取的Spark运行jar包地址，必须是`hdfs://`地址。可以上传[OpenMLDB Spark 发行版](../../tutorial/openmldbspark_distribution.md)解压后的`jars`目录到HDFS上，并配置为`hdfs://<hdfs_path>/jars/*`（注意通配符）。[如果不配置该参数，Yarn会将`$SPARK_HOME/jars`打包上传分发，并且每次离线任务都要分发](https://spark.apache.org/docs/3.2.1/running-on-yarn.html#preparations)，效率较低，所以推荐配置。
-- `batchjob.jar.path`必须是HDFS路径，上传batchjob jar包到HDFS上，并配置为对应地址，保证Yarn集群上所有Worker可以获得batchjob包。
+- `batchjob.jar.path`必须是HDFS路径（具体到包名），上传batchjob jar包到HDFS上，并配置为对应地址，保证Yarn集群上所有Worker可以获得batchjob包。
 - `offline.data.prefix`必须是HDFS路径，保证Yarn集群上所有Worker可读写数据。应使用前面配置的环境变量`HADOOP_CONF_DIR`中的Hadoop集群地址。
 
 ##### yarn-client模式
