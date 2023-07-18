@@ -26,6 +26,7 @@
 #include "node/node_manager.h"
 #include "proto/name_server.pb.h"
 #include "proto/type.pb.h"
+#include "sdk/sql_delete_row.h"
 #include "vm/router.h"
 
 namespace openmldb {
@@ -99,20 +100,15 @@ class RouterSQLCache : public SQLCache {
 class DeleteSQLCache : public SQLCache {
  public:
     DeleteSQLCache(const std::string& db, uint32_t tid, const std::string& table_name,
-            const openmldb::common::ColumnKey& column_key,
-            const std::map<std::string, std::string>& default_value,
-            const std::map<std::string, int>& parameter_map);
+      const std::vector<Condition>& condition_vec, const std::vector<Condition>& parameter_vec) :
+      SQLCache(db, tid, table_name), condition_vec_(condition_vec), parameter_vec_(parameter_vec) {}
 
-    const std::string& GetIndexName() const { return index_name_; }
-    const std::vector<std::string>& GetColNames() const { return col_names_; }
-    const std::map<int, std::string>& GetHoleMap() const { return hole_column_map_; }
-    const std::map<std::string, std::string>& GetDefaultValue() const {return default_value_; }
+    const std::vector<Condition>& GetCondition() const { return parameter_vec_; }
+    const std::vector<Condition>& GetDefaultCondition() const {return condition_vec_; }
 
  private:
-    const std::string index_name_;
-    std::vector<std::string> col_names_;
-    const std::map<std::string, std::string> default_value_;
-    std::map<int, std::string> hole_column_map_;
+    std::vector<Condition> condition_vec_;
+    std::vector<Condition> parameter_vec_;
 };
 
 }  // namespace sdk

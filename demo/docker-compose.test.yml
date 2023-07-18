@@ -16,8 +16,6 @@ services:
       - /bin/bash
       - -cx
       - |
-        # # TODO(tobe): Remove this after 0.7.3 is released
-        # rm -f /work/openmldb/spark-3.2.1-bin-openmldbspark/jars/curator-* # curator NoSuchMethodError error
         ./init.sh
         sleep 5
         # quickstart test
@@ -25,11 +23,11 @@ services:
         /work/openmldb/bin/openmldb --zk_cluster=127.0.0.1:2181 --zk_root_path=/openmldb --role=sql_client < cluster_quickstart.sql
         python3 request_test.py
 
-        # java/python sdk, no jar in ci, so we should check the result manually
+        # java/python sdk, no jar in ci, so we should check the java result manually
         cd /work/java_quickstart
         java -cp demo-1.0-SNAPSHOT.jar com.openmldb.demo.App
         cd /work/python_quickstart
-        python3 demo.py
+        python3 demo.py || exit -1
 
         # taxi use case test
         cd /work/taxi-trip
@@ -37,19 +35,21 @@ services:
         python3 train.py /tmp/feature_data /tmp/model.txt
         # port 8887
         ./start_predict_server.sh 127.0.0.1:9080 /tmp/model.txt
-        python3 predict.py || (cat /tmp/p.log && return -1)
+        python3 predict.py || (cat /tmp/p.log && exit -1)
 
         # talkingdata demo test
         cd /work/talkingdata
         # port 8881
         python3 predict_server.py --no-init > predict.log 2>&1 &
         python3 train_and_serve.py
-        python3 predict.py || (cat predict.log && return -1)
+        python3 predict.py || (cat predict.log && exit -1)
 
-        # oneflow sql test # will be failed before https://github.com/4paradigm/OpenMLDB/issues/3151 fixed
+        # oneflow sql test
         cd /work/oneflow_demo/sql_scripts
         # 10 min
         cat sql_order | xargs cat | /work/openmldb/bin/openmldb --zk_cluster=127.0.0.1:2181 --zk_root_path=/openmldb --role=sql_client
+        # check deployment, jobs will be checked by openmldb_tool
+        curl http://127.0.0.1:9080/dbs/JD_db/deployments/demo | grep "ok" || exit -1
 
         # open it after new diag tool released, or you can test in local by USE_ADD_WHL
         cd /work

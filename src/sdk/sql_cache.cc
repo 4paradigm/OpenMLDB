@@ -36,19 +36,5 @@ bool RouterSQLCache::IsCompatibleCache(const std::shared_ptr<::hybridse::sdk::Sc
     return true;
 }
 
-DeleteSQLCache::DeleteSQLCache(const std::string& db, uint32_t tid, const std::string& table_name,
-        const openmldb::common::ColumnKey& column_key,
-        const std::map<std::string, std::string>& default_value,
-        const std::map<std::string, int>& parameter_map)
-    : SQLCache(db, tid, table_name),
-    index_name_(column_key.index_name()), default_value_(default_value) {
-    for (const auto& col : column_key.col_name()) {
-        col_names_.push_back(col);
-    }
-    for (const auto& kv : parameter_map) {
-        hole_column_map_.emplace(kv.second, kv.first);
-    }
-}
-
 }  // namespace sdk
 }  // namespace openmldb
