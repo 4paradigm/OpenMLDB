@@ -58,6 +58,7 @@ class Table {
     }
 
     virtual bool Delete(const ::openmldb::api::LogEntry& entry) = 0;
+
     virtual bool Delete(uint32_t idx, const std::string& key,
             const std::optional<uint64_t>& start_ts, const std::optional<uint64_t>& end_ts) = 0;
 
