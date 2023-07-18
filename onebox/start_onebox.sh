@@ -29,7 +29,7 @@ if [ ! -r "$OPENMLDB_BIN" ]; then
 fi
 
 # enable dynamic loading searches the 'udf' directory
-mkdir -p "${OPENMLDB_BIN}/../udf"
+mkdir -p "$(dirname "$OPENMLDB_BIN")/../udf"
 
 # the subdirectory can be set through the environment variable ONEBOX_WORKDIR
 WORKSPACE=${ONEBOX_WORKDIR:-onebox/workspace}
