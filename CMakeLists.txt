@@ -1,4 +1,4 @@
-cmake_minimum_required (VERSION 3.13)
+cmake_minimum_required (VERSION 3.16)
 if (POLICY CMP0068)
     cmake_policy(SET CMP0068 NEW)
 endif ()
@@ -97,6 +97,8 @@ option(COVERAGE_NO_DEPS "Coverage without test deps, should ensure test built" O
 option(SANITIZER_ENABLE "Enable AddressSanitizer in Debug mode" OFF)
 # add_library can reply on this variable
 # see https://cmake.org/cmake/help/latest/variable/BUILD_SHARED_LIBS.html#variable:BUILD_SHARED_LIBS
+# WARN: installed binaries like openmldb may not runnable since the INSTALL_RPATH is not updated acorrespondingly
+# Solution: 1. update INSTALL_RPATH for install target  2. install dependent shared libraries
 option(BUILD_SHARED_LIBS "Enable build shared Libraries instead static" OFF)
 option(TESTING_ENABLE_STRIP "Strip test binary that may help reduce storage space" OFF)
 
@@ -140,6 +142,11 @@ include(farmhash)
 if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
     set(OS_LIB ${CMAKE_THREAD_LIBS_INIT} rt)
     set(BRPC_LIBS ${BRPC_LIBRARY} ${Protobuf_LIBRARIES} ${GLOG_LIBRARY} ${GFLAGS_LIBRARY} ${UNWIND_LIBRARY} ${OPENSSL_LIBRARIES} ${LEVELDB_LIBRARY} ${Z_LIBRARY} ${SNAPPY_LIBRARY} dl pthread ${OS_LIB})
+    # OPENMLDB_INSTALL_RPATH
+    # custom RPATH tag for necessary install binaries (like bin/openmldb)
+    # relative to binary location so any install location works, binary is
+    # by convention installed to 'bin/' directory, search to '<binary_dir>/../$LIB' and '<binary_dir>/../udf'
+    set(OPENMLDB_INSTALL_RPATH '$ORIGIN/../$LIB' '$ORIGIN/../udf')
 elseif (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
     set(OS_LIB
         ${CMAKE_THREAD_LIBS_INIT}
@@ -153,6 +160,7 @@ elseif (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
         "-Wl,-U,_ProfilerStart"
         "-Wl,-U,_ProfilerStop")
     set(BRPC_LIBS ${BRPC_LIBRARY} ${Protobuf_LIBRARIES} ${GLOG_LIBRARY} ${GFLAGS_LIBRARY} ${OPENSSL_LIBRARIES} ${LEVELDB_LIBRARY} ${Z_LIBRARY} ${SNAPPY_LIBRARY} dl pthread ${OS_LIB})
+    set(OPENMLDB_INSTALL_RPATH '@loader_path/../lib' '@loader_path/../udf')
 endif ()
 
 if (SANITIZER_ENABLE)

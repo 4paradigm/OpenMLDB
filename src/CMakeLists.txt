@@ -172,6 +172,10 @@ target_link_libraries(data_exporter ${EXPORTER_LIBS})
 add_executable(openmldb cmd/openmldb.cc base/linenoise.cc)
 # tablet needs std::filesystem(stdc++fs)
 target_link_libraries(openmldb ${EXPORTER_LIBS})
+set_target_properties(
+    openmldb
+    PROPERTIES
+    INSTALL_RPATH "${OPENMLDB_INSTALL_RPATH}")
 
 add_executable(data_collector datacollector/data_collector_server.cc datacollector/data_collector.cc)
 target_link_libraries(data_collector ${EXPORTER_LIBS})
