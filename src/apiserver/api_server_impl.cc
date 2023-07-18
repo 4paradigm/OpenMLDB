@@ -942,12 +942,12 @@ void WriteValue(JsonWriter& ar, std::shared_ptr<hybridse::sdk::ResultSet> rs, in
         case hybridse::sdk::kTypeBool: {
             bool value = false;
             rs->GetBool(i, &value);
-            ar&(value ? "true" : "false");
+            ar& value;
             break;
         }
         default: {
             LOG(ERROR) << "Invalid Column Type";
-            ar & "NA";
+            ar& std::string("NA");
             break;
         }
     }
