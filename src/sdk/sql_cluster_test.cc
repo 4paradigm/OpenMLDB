@@ -15,6 +15,7 @@
  */
 
 #include <unistd.h>
+#include <time.h>
 #include <algorithm>
 #include <memory>
 #include <string>
@@ -111,13 +112,14 @@ TEST_F(SQLClusterDDLTest, TestShowSortedJobs) {
           "index(key=id));";
     ASSERT_TRUE(router->ExecuteDDL(db, sql, &status)) << "ddl: " << sql;
     ASSERT_TRUE(router->RefreshCatalog());
-    
+
+    uint32_t seed = time(NULL);
     std::vector<int> randint;
-    for (int i = 0; i < rand(); i++) {
+    for (int i = 0; i < rand_r(&seed); i++) {
         randint.push_back(i);
     }
     std::random_shuffle(randint.begin(), randint.end());
-    for (int i = 0; i < randint.size(); i++) {
+    for (uint64_t i = 0; i < randint.size(); i++) {
         std::string id = std::to_string(randint[i]);
         sql = "insert into " + name +
           " values(" + id + ", \"Type\", \"State\", 0, " + id + ", "
