@@ -154,3 +154,14 @@ OpenMLDB CLI 中在线模式下执行 SQL，均为在线预览模式。在线预
 
 两种模式虽然不同，但使用的是相同的 SQL 语句，且计算结果一致。但由于离线和在线使用两套执行引擎，功能尚未完全对齐，因此离线可执行的 SQL 不一定可以部署上线（在线请求模式可执行的 SQL 是离线可执行 SQL 的子集）。在实际开发中，需要在完成离线 SQL 开发后 `DEPLOY`，来测试 SQL 是否可上线。
 
+## 离线命令同步模式
+
+所有离线命令都可以通过`set @@sync_job=true;`来设置同步模式，同步模式下，命令执行完毕后才会返回，否则会立即返回离线Job的Job info，需要通过`SHOW JOB <id>`来查询Job的执行状态。而同步模式下的返回值会根据命令的不同而不同：
+
+- DML，例如`LOAD DATA`等，以及DQL `SELECT INTO`，返回的是Job Info的ResultSet。它们和异步模式的结果没有区别，只是返回时间的区别，Job Info的ResultSet也可解析。
+
+- DQL的普通`SELECT`，在异步模式中返回Job Info，同步模式中则是返回查询结果，但目前支持不完善，详细解释见[离线同步模式-select](../openmldb_sql/dql/SELECT_STATEMENT.md#离线同步模式-select)。其结果为csv格式，但不保证数据完整性，不建议将其作为可靠的查询结果使用。
+    - CLI是交互模式，所以将结果直接打印。
+    - SDK中，返回的是一行一列的ResultSet，将整个查询结果作为一个字符串返回。所以，不建议SDK使用同步模式查询，并处理其结果。
+
+同步模式涉及超时问题，详情见[调整配置](../../openmldb_sql/ddl/SET_STATEMENT.md#离线命令配置详情)。
