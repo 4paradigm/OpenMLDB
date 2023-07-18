@@ -47,17 +47,17 @@ strings /lib64/libc.so.6 | grep ^GLIBC_
 
 ### Linux 平台预测试
 
-由于 Linux 平台的多样性，发布包可能在你的机器上不兼容，请先通过简单的运行测试。比如，下载预编译包 `openmldb-0.8.1-linux.tar.gz` 以后，运行：
+由于 Linux 平台的多样性，发布包可能在你的机器上不兼容，请先通过简单的运行测试。比如，下载预编译包 `openmldb-0.8.2-linux.tar.gz` 以后，运行：
 
 ```
-tar -zxvf openmldb-0.8.1-linux.tar.gz
-./openmldb-0.8.1-linux/bin/openmldb --version
+tar -zxvf openmldb-0.8.2-linux.tar.gz
+./openmldb-0.8.2-linux/bin/openmldb --version
 ```
 
 结果应显示该程序的版本号，类似
 
 ```
-openmldb version 0.8.1-xxxx
+openmldb version 0.8.2-xxxx
 Debug build (NDEBUG not #defined)
 ```
 
@@ -171,9 +171,9 @@ DataCollector和SyncTool暂不支持一键部署。请参考手动部署方式�
 ### 下载OpenMLDB发行版
 
 ```
-wget https://github.com/4paradigm/OpenMLDB/releases/download/v0.8.1/openmldb-0.8.1-linux.tar.gz
-tar -zxvf openmldb-0.8.1-linux.tar.gz
-cd openmldb-0.8.1-linux
+wget https://github.com/4paradigm/OpenMLDB/releases/download/v0.8.2/openmldb-0.8.2-linux.tar.gz
+tar -zxvf openmldb-0.8.2-linux.tar.gz
+cd openmldb-0.8.2-linux
 ```
 
 ### 环境配置
@@ -181,7 +181,7 @@ cd openmldb-0.8.1-linux
 
 | 环境变量                              | 默认值                                | 定义                                                                      |
 |-----------------------------------|------------------------------------|-------------------------------------------------------------------------|
-| OPENMLDB_VERSION                  | 0.8.1                              | OpenMLDB版本                                                              |
+| OPENMLDB_VERSION                  | 0.8.2                              | OpenMLDB版本                                                              |
 | OPENMLDB_MODE                     | standalone                         | standalone或者cluster                                                     |
 | OPENMLDB_HOME                     | 当前发行版的根目录                          | openmldb发行版根目录                                                          |
 | SPARK_HOME                        | $OPENMLDB_HOME/spark               | openmldb spark发行版根目录，如果该目录不存在，自动从网上下载                                   |
@@ -348,10 +348,10 @@ bash bin/zkCli.sh -server 172.27.128.33:7181
 **1. 下载OpenMLDB部署包**
 
 ```
-wget https://github.com/4paradigm/OpenMLDB/releases/download/v0.8.1/openmldb-0.8.1-linux.tar.gz
-tar -zxvf openmldb-0.8.1-linux.tar.gz
-mv openmldb-0.8.1-linux openmldb-tablet-0.8.1
-cd openmldb-tablet-0.8.1
+wget https://github.com/4paradigm/OpenMLDB/releases/download/v0.8.2/openmldb-0.8.2-linux.tar.gz
+tar -zxvf openmldb-0.8.2-linux.tar.gz
+mv openmldb-0.8.2-linux openmldb-tablet-0.8.2
+cd openmldb-tablet-0.8.2
 ```
 **2. 修改配置文件`conf/tablet.flags`**
 ```bash
@@ -402,12 +402,12 @@ Start tablet success
 
 在另一台机器启动下一个TabletServer只需在该机器上重复以上步骤。如果是在同一个机器上启动下一个TabletServer，请保证是在另一个目录中，不要重复使用已经启动过TabletServer的目录。
 
-比如，可以再次解压压缩包（不要cp已经启动过TabletServer的目录，启动后的生成文件会造成影响），并命名目录为`openmldb-tablet-0.8.1-2`。
+比如，可以再次解压压缩包（不要cp已经启动过TabletServer的目录，启动后的生成文件会造成影响），并命名目录为`openmldb-tablet-0.8.2-2`。
 
 ```
-tar -zxvf openmldb-0.8.1-linux.tar.gz
-mv openmldb-0.8.1-linux openmldb-tablet-0.8.1-2
-cd openmldb-tablet-0.8.1-2
+tar -zxvf openmldb-0.8.2-linux.tar.gz
+mv openmldb-0.8.2-linux openmldb-tablet-0.8.2-2
+cd openmldb-tablet-0.8.2-2
 ```
 
 再修改配置并启动。注意，TabletServer如果都在同一台机器上，请使用不同端口号，否则日志(logs/tablet.WARNING)中将会有"Fail to listen"信息。
@@ -421,10 +421,10 @@ cd openmldb-tablet-0.8.1-2
 ```
 **1. 下载OpenMLDB部署包**
 ````
-wget https://github.com/4paradigm/OpenMLDB/releases/download/v0.8.1/openmldb-0.8.1-linux.tar.gz
-tar -zxvf openmldb-0.8.1-linux.tar.gz
-mv openmldb-0.8.1-linux openmldb-ns-0.8.1
-cd openmldb-ns-0.8.1
+wget https://github.com/4paradigm/OpenMLDB/releases/download/v0.8.2/openmldb-0.8.2-linux.tar.gz
+tar -zxvf openmldb-0.8.2-linux.tar.gz
+mv openmldb-0.8.2-linux openmldb-ns-0.8.2
+cd openmldb-ns-0.8.2
 ````
 **2. 修改配置文件conf/nameserver.flags**
 ```bash
@@ -462,12 +462,12 @@ NameServer 可以只存在一台，如果你需要高可用性，可以部署多
 
 在另一台机器启动下一个 NameServer 只需在该机器上重复以上步骤。如果是在同一个机器上启动下一个 NameServer，请保证是在另一个目录中，不要重复使用已经启动过 namserver 的目录。
 
-比如，可以再次解压压缩包（不要cp已经启动过 namserver 的目录，启动后的生成文件会造成影响），并命名目录为`openmldb-ns-0.8.1-2`。
+比如，可以再次解压压缩包（不要cp已经启动过 namserver 的目录，启动后的生成文件会造成影响），并命名目录为`openmldb-ns-0.8.2-2`。
 
 ```
-tar -zxvf openmldb-0.8.1-linux.tar.gz
-mv openmldb-0.8.1-linux openmldb-ns-0.8.1-2
-cd openmldb-ns-0.8.1-2
+tar -zxvf openmldb-0.8.2-linux.tar.gz
+mv openmldb-0.8.2-linux openmldb-ns-0.8.2-2
+cd openmldb-ns-0.8.2-2
 ```
 然后再修改配置并启动。
 
@@ -505,10 +505,10 @@ APIServer负责接收http请求，转发给OpenMLDB集群并返回结果。它�
 **1. 下载OpenMLDB部署包**
 
 ```
-wget https://github.com/4paradigm/OpenMLDB/releases/download/v0.8.1/openmldb-0.8.1-linux.tar.gz
-tar -zxvf openmldb-0.8.1-linux.tar.gz
-mv openmldb-0.8.1-linux openmldb-apiserver-0.8.1
-cd openmldb-apiserver-0.8.1
+wget https://github.com/4paradigm/OpenMLDB/releases/download/v0.8.2/openmldb-0.8.2-linux.tar.gz
+tar -zxvf openmldb-0.8.2-linux.tar.gz
+mv openmldb-0.8.2-linux openmldb-apiserver-0.8.2
+cd openmldb-apiserver-0.8.2
 ```
 
 **2. 修改配置文件conf/apiserver.flags**
@@ -563,18 +563,18 @@ TaskManager 可以只存在一台，如果你需要高可用性，可以部署�
 
 Spark发行版：
 ```shell
-wget https://github.com/4paradigm/spark/releases/download/v3.2.1-openmldb0.8.1/spark-3.2.1-bin-openmldbspark.tgz
-# 中国镜像地址：http://43.138.115.238/download/v0.8.1/spark-3.2.1-bin-openmldbspark.tgz
+wget https://github.com/4paradigm/spark/releases/download/v3.2.1-openmldb0.8.2/spark-3.2.1-bin-openmldbspark.tgz
+# 中国镜像地址：http://43.138.115.238/download/v0.8.2/spark-3.2.1-bin-openmldbspark.tgz
 tar -zxvf spark-3.2.1-bin-openmldbspark.tgz 
 export SPARK_HOME=`pwd`/spark-3.2.1-bin-openmldbspark/
 ```
 
 OpenMLDB部署包：
 ```
-wget https://github.com/4paradigm/OpenMLDB/releases/download/v0.8.1/openmldb-0.8.1-linux.tar.gz
-tar -zxvf openmldb-0.8.1-linux.tar.gz
-mv openmldb-0.8.1-linux openmldb-taskmanager-0.8.1
-cd openmldb-taskmanager-0.8.1
+wget https://github.com/4paradigm/OpenMLDB/releases/download/v0.8.2/openmldb-0.8.2-linux.tar.gz
+tar -zxvf openmldb-0.8.2-linux.tar.gz
+mv openmldb-0.8.2-linux openmldb-taskmanager-0.8.2
+cd openmldb-taskmanager-0.8.2
 ```
 
 **2. 修改配置文件conf/taskmanager.properties**
