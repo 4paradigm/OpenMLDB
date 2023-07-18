@@ -277,6 +277,8 @@ Spark Config中重点关注的配置如下：
 
 如果TaskManager配置文件中`spark.home`为空，则会尝试读取TaskManager启动时的环境变量`SPARK_HOME`。如二者都未配置，TaskManager将会启动失败，并提示`spark.home`未配置。
 
+如果使用一键部署工具，SPARK_HOME会被设置为`<package_home>/spark`。举例说明，如果TaskManager部署到host1的`/work/taskmanager`，那么host1的SPARK_HOME默认为`/work/taskmanager/spark`。如果需要单独配置，在openmldb-env.sh中配置。不要单独更改properties template文件，会被覆盖，请注意部署时`OPENMLDB envs:`的提示。
+
 #### spark.master
 
 `spark.master`配置Spark的模式，Spark模式配置更详细的解释请参考[Spark Master URL](https://spark.apache.org/docs/latest/submitting-applications.html#master-urls)。

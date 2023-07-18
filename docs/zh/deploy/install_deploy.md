@@ -154,11 +154,12 @@ OpenMLDB 提供了两种启动模式：普通和守护进程启动。守护进�
 
 如果想要使守护进程模式启动，请使用`bash bin/start.sh start <component> mon`或者`sbin/start-all.sh mon`的方式启动。守护进程模式中，`bin/<component>.pid`将是 mon 进程的 pid，`bin/<component>.pid.child` 为组件真实的 pid。
 
-
 ## 部署方式一：一键部署（推荐）
 OpenMLDB集群版需要部署ZooKeeper、NameServer、TabletServer、TaskManager等模块。其中ZooKeeper用于服务发现和保存元数据信息。NameServer用于管理TabletServer，实现高可用和failover。TabletServer用于存储数据和主从同步数据。APIServer是可选的，如果要用http的方式和OpenMLDB交互需要部署此模块。TaskManager 用于管理离线 job。我们提供了一键部署脚本，可以简化手动在每台机器上下载和配置的复杂性。
 
 **注意:** 同一台机器部署多个组件时，一定要部署在不同的目录里，便于单独管理。尤其是部署TabletServer，一定不能重复使用目录，避免数据文件和日志文件冲突。
+
+DataCollector和SyncTool暂不支持一键部署。请参考手动部署方式。
 
 ### 环境要求
 
@@ -253,6 +254,8 @@ sbin/deploy-all.sh
 如果希望为每个节点添加一些额外的相同的定制化配置，可以在执行deploy脚本之前，修改`conf/xx.template`的配置，
 这样在分发配置文件的时候，每个节点都可以用到更改后的配置。
 重复执行`sbin/deploy-all.sh`会覆盖上一次的配置。
+
+详细配置说明见[配置文件](./conf.md)，请注意TaskManager Spark的选择与细节配置[Spark Config详解](./conf.md#spark-config详解)。
 
 ### 启动服务
 
@@ -599,6 +602,9 @@ offline.data.prefix=file:///tmp/openmldb_offline_storage/
 spark.master=local
 spark.home=
 ```
+
+更多Spark相关配置说明，见[Spark Config详解](./conf.md#spark-config详解)。
+
 ```{attention}
 分布式部署的集群，请不要使用客户端本地文件作为源数据导入，推荐使用hdfs路径。
 
@@ -648,3 +654,13 @@ set @@execute_mode='online';
 Insert into t1 values (1, 'a'),(2,'b');
 select * from t1;
 ```
+
+### 部署在离线同步工具 (可选)
+
+在离线同步工具中的DataCollector需要部署在TabletServer所在机器上，所以，如果有在离线同步需求，可以在所有TabletServer部署目录中再进行DataCollector的部署。
+
+SyncTool需要Java运行环境，没有额外要求，建议单独部署在一台机器上。
+
+SyncTool的同步任务管理工具SyncTool Helper，在部署包的`tools/synctool_helper.py`，需要Python3运行环境，无额外要求，可以远程使用，但由于支持不够完善，查看Tool的调试信息需要在SyncTool所在机器上使用Helper。
+
+具体部署方式见[在离线同步工具](../tutorial/online_offline_sync.md)，请仔细阅读在离线同步工具的版本条件与功能边界。
