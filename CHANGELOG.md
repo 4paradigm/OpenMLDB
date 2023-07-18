@@ -1,12 +1,12 @@
 # Changelog
 
-## [0.8.1] - 2023-07-20
+## [0.8.1] - 2023-07-19
 
 ### Features
 - Enhance the `delete` statement (#3301 @dl239)
 - Enhance the C++ SDK (#3334 @vagetablechicken)
 - Support the new option `IF EXISTS` in the `DROP TABLE/DATABASE` statement (#3348 @emo-coder)
-- Improve the documents (#3344 #3152 @vagetablechicken, #3341 @aceforeverd, #3343 @dl239)
+- Improve the documents (#3344 #3152 #3355 #3360 @vagetablechicken, #3341 @aceforeverd, #3343 #3372 @dl239)
 - Upgrade the version of Kafka connector to `10.5.0-SNAPSHOT-0.8.1` (#3365 @vagetablechicken)
 
 ### Bug Fixes
@@ -618,6 +618,7 @@ Removed
 - openmldb-0.2.0-linux.tar.gz targets on x86_64
 - aarch64 artifacts consider experimental
 
+[0.8.2]: https://github.com/4paradigm/OpenMLDB/compare/v0.8.1...v0.8.2
 [0.8.1]: https://github.com/4paradigm/OpenMLDB/compare/v0.8.0...v0.8.1
 [0.8.0]: https://github.com/4paradigm/OpenMLDB/compare/v0.7.3...v0.8.0
 [0.7.3]: https://github.com/4paradigm/OpenMLDB/compare/v0.7.2...v0.7.3
