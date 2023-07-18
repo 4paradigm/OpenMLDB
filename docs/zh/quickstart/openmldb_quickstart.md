@@ -19,19 +19,11 @@ OpenMLDB 的主要使用场景为作为机器学习的实时特征平台。其�
 在命令行执行以下命令拉取 OpenMLDB 镜像，并启动 Docker 容器：
 
 ```bash
-docker run -it 4pdosc/openmldb:0.8.0 bash
+docker run -it 4pdosc/openmldb:0.8.1 bash
 ```
 
 ```{note}
 成功启动容器以后，本教程中的后续命令默认均在容器内执行。如果你需要从容器外访问容器内的 OpenMLDB 服务端，请参考 [CLI/SDK-容器 onebox 文档](../reference/ip_tips.md#clisdk-容器onebox)。
-```
-
-### 下载样例数据
-
-在容器中执行以下命令，下载后续流程中使用的样例数据（**0.7.0 及之后的版本可跳过此步**，数据已经存放在镜像内）：
-
-```bash
-curl https://openmldb.ai/demo/data.parquet --output /work/taxi-trip/data/data.parquet
 ```
 
 ### 启动服务端和客户端

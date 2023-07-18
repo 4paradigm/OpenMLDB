@@ -363,7 +363,7 @@ TEST_F(SqlCmdTest, SelectMultiPartition) {
 }
 
 TEST_F(SqlCmdTest, ShowNameserverJob) {
-    auto sr = cluster_cli.sr;
+    sr = cluster_cli.sr;
     std::string db_name = "test" + GenRand();
     std::string name = "table" + GenRand();
     std::string ddl = "create table " + name +
@@ -3128,7 +3128,7 @@ void ExpectShowTableStatusResult(const std::vector<std::vector<test::CellExpectI
 
     std::vector<std::vector<test::CellExpectInfo>> merged_expect = {
         {"Table_id", "Table_name", "Database_name", "Storage_type", "Rows", "Memory_data_size", "Disk_data_size",
-         "Partition", "Partition_unalive", "Replica", "Offline_path", "Offline_format", "Offline_deep_copy",
+         "Partition", "Partition_unalive", "Replica", "Offline_path", "Offline_format", "Offline_symbolic_paths",
          "Warnings"}};
     merged_expect.insert(merged_expect.end(), expect.begin(), expect.end());
     if (all_db) {
@@ -3869,6 +3869,7 @@ int main(int argc, char** argv) {
     ::openmldb::sdk::ClusterOptions copt;
     copt.zk_cluster = mc.GetZkCluster();
     copt.zk_path = mc.GetZkPath();
+    copt.zk_session_timeout = FLAGS_zk_session_timeout;
     ::openmldb::cmd::cluster_cli.cs = new ::openmldb::sdk::ClusterSDK(copt);
     ::openmldb::cmd::cluster_cli.cs->Init();
     ::openmldb::cmd::cluster_cli.sr = new ::openmldb::sdk::SQLClusterRouter(::openmldb::cmd::cluster_cli.cs);

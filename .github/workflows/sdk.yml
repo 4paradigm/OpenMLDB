@@ -260,8 +260,7 @@ jobs:
 
       - name: prepare python deps
         run: |
-          python3 -m easy_install pip
-          pip install setuptools wheel twine
+          pip install twine "urllib3>=1.26.0,<2.0.0"
           yum install -y net-tools
 
       - name: test sqlalchemy and generate coverage report

@@ -153,7 +153,7 @@ g++ -shared -o libtest_udf.so examples/test_udf.cc -I /work/OpenMLDB/include -st
 ```
 
 ### 2.3 拷贝动态库
-编译过的动态库需要被拷贝到 TaskManager 和 tablets中。如果 TaskManager 和 tablets中不存在`udf`目录，请先创建。
+编译过的动态库需要被拷贝到 TaskManager 和 tablets中。如果 TaskManager 和 tablets中不存在`udf`目录，请先创建并重启这些进程（保证环境变量生效）。
 - tablet的UDF目录是 `path_to_tablet/udf`。
 - TaskManager的UDF目录是 `path_to_taskmanager/taskmanager/bin/udf`。
 

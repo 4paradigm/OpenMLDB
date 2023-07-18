@@ -32,7 +32,7 @@ spark.default.conf=spark.port.maxRetries=32;foo=bar
 
 ### 长窗口 SQL
 
-长窗口 SQL，即 `DEPLOY` 语句带有 `OPTIONS(long_windows=...)` 配置项，语法详情见[长窗口](../openmldb_sql/deployment_manage/DEPLOY_STATEMENT#长窗口优化)。长窗口 SQL 的部署条件比较严格，必须保证 SQL 中使用的表没有在线数据。否则，即使部署和之前一致的 SQL，也会操作失败。
+长窗口 SQL，即 `DEPLOY` 语句带有 `OPTIONS(long_windows=...)` 配置项，语法详情见[长窗口](../openmldb_sql/deployment_manage/DEPLOY_STATEMENT.md#长窗口优化)。长窗口 SQL 的部署条件比较严格，必须保证 SQL 中使用的表没有在线数据。否则，即使部署和之前一致的 SQL，也会操作失败。
 
 ### 普通 SQL
 
@@ -51,6 +51,16 @@ spark.default.conf=spark.port.maxRetries=32;foo=bar
 ```
 
 ## DML 边界
+
+### 离线信息
+
+表的离线信息中存在两种path，一个是`offline_path`，一个是`symbolic_paths`。`offline_path`是离线数据的实际存储路径，`symbolic_paths`是离线数据的软链接路径。两种path都可以通过`LOAD DATA`来修改，`symbolic_paths`还可以通过`ALTER`语句修改。
+
+`offline_path`和`symbolic_paths`的区别在于，`offline_path`是OpenMLDB集群所拥有的路径，如果实施硬拷贝，数据将写入此路径，而`symbolic_paths`是OpenMLDB集群外的路径，软拷贝将会在这个信息中增添一个路径。离线查询时，两个路径的数据都会被加载。两个路径使用同样的格式和读选项，不支持不同配置的路径。
+
+因此，如果目前离线中存在`offline_path`，那么`LOAD DATA`只能修改`symbolic_paths`，如果目前离线中存在`symbolic_paths`，那么`LOAD DATA`可以修改`offline_path`和`symbolic_paths`。
+
+`errorifexists`当表存在离线信息时就会报错。存在软链接时硬拷贝，或存在硬拷贝时软拷贝，都会报错。
 
 ### LOAD DATA
 
@@ -137,7 +147,7 @@ OpenMLDB CLI 中在线模式下执行 SQL，均为在线预览模式。在线预
 
 ### 离线模式与在线请求模式
 
-在[特征工程开发上线全流程](../tutorial/modes.md11-特征工程开发上线全流程)中，主要使用离线模式和在线请求模式。
+在[特征工程开发上线全流程](../tutorial/concepts/modes.md#11-特征工程开发上线全流程)中，主要使用离线模式和在线请求模式。
 
 - 离线模式的批查询：离线特征生成
 - 在线请求模式的请求查询：实时特征计算

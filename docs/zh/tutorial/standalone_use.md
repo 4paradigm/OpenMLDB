@@ -11,7 +11,7 @@
 执行以下命令拉取 OpenMLDB 镜像，并启动 Docker 容器：
 
 ```bash
-docker run -it 4pdosc/openmldb:0.8.0 bash
+docker run -it 4pdosc/openmldb:0.8.1 bash
 ```
 
 成功启动容器以后，本教程中的后续命令默认均在容器内执行。
@@ -125,7 +125,7 @@ SELECT c1, c2, sum(c3) OVER w1 AS w1_c3_sum FROM demo_table1 WINDOW w1 AS (PARTI
 
 ```sql
 DEPLOY demo_data_service SELECT c1, c2, sum(c3) OVER w1 AS w1_c3_sum FROM demo_table1 WINDOW w1 AS (PARTITION BY demo_table1.c1 ORDER BY demo_table1.c6 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
-``` 
+```
 
 上线后可以通过命令 `SHOW DEPLOYMENTS` 查看已部署的 SQL 方案；
 
@@ -194,6 +194,6 @@ curl http://127.0.0.1:8080/dbs/demo_db/deployments/demo_data_service -X POST -d'
 
 说明：
 
-- api server 执行请求，可以支持批请求，通过 `input` 字段支持数组。每行 input 单独进行 request 计算。详细参数格式请参考 [REST API](../reference/rest_api)。
+- api server 执行请求，可以支持批请求，通过 `input` 字段支持数组。每行 input 单独进行 request 计算。详细参数格式请参考 [REST API](../quickstart/sdk/rest_api.md)。
 
-- request 结果说明请参考[实时特征计算的结果说明](../quickstart/openmldb_quickstart#实时特征计算的结果说明)。
+- request 结果说明请参考[实时特征计算的结果说明](../quickstart/openmldb_quickstart.md#实时特征计算的结果说明)。
