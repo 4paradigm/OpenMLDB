@@ -1,3 +1,4 @@
+# RPATH '$ORIGIN' tokens are properly escaped if policy CMP0095 ON, which requires cmake >= 3.16
 cmake_minimum_required (VERSION 3.16)
 if (POLICY CMP0068)
     cmake_policy(SET CMP0068 NEW)
@@ -97,7 +98,7 @@ option(COVERAGE_NO_DEPS "Coverage without test deps, should ensure test built" O
 option(SANITIZER_ENABLE "Enable AddressSanitizer in Debug mode" OFF)
 # add_library can reply on this variable
 # see https://cmake.org/cmake/help/latest/variable/BUILD_SHARED_LIBS.html#variable:BUILD_SHARED_LIBS
-# WARN: installed binaries like openmldb may not runnable since the INSTALL_RPATH is not updated acorrespondingly
+# WARN: installed binaries like openmldb may not runnable since the INSTALL_RPATH is not updated accordingly
 # Solution: 1. update INSTALL_RPATH for install target  2. install dependent shared libraries
 option(BUILD_SHARED_LIBS "Enable build shared Libraries instead static" OFF)
 option(TESTING_ENABLE_STRIP "Strip test binary that may help reduce storage space" OFF)
