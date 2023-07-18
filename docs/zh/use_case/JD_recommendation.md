@@ -371,7 +371,7 @@ bash train_deepfm.sh $demodir/feature_preprocess/out
 使用 OpenMLDB+OneFlow 进行模型上线，主要步骤为：
 
 1. OpenMLDB 上线： SQL 上线，准备在线数据
-2. OneFlow 上线：加载模型
+2. OneFlow 上线：启动推理服务，加载模型
 3. 启动预测服务：使用一个简单的 predict server 进行展示
 
 接下来会介绍每一个步骤的具体操作细节。
@@ -444,7 +444,7 @@ LOAD DATA INFILE '/work/oneflow_demo/data/JD_data/bo_comment/*.parquet' INTO TAB
 注意，在线 `LOAD DATA` 也是异步任务，请等待任务运行成功（ `state` 转至 `FINISHED` 状态），再进行下一步操作 。
 ```
 
-### 配置 OneFlow 推理服务
+### OneFlow 推理服务
 
 #### 检查
 
@@ -478,7 +478,7 @@ model/
 ```
 1. 其中，`config.pbtxt`是我们已准备好的文件，其中的`name`要和config.pbtxt所在目录的名字(本案例中为`embedding`)保持一致，如果你有单独修改，请确认此处一致；`model/embedding/1/model/one_embedding_options.json`的路径`persistent_table.path`会自动生成，可以再确认下路径是否正确，应为`$demodir/oneflow_process/persistent`绝对路径。
 
-### 启动OneFLow推理服务
+#### 启动OneFLow推理服务
 
 使用以下命令启动OneFlow推理服务：
 ```
@@ -531,15 +531,14 @@ curl -v localhost:8000/v2/models/stats
 
 ```
 
-### 启动实时推理服务
+### 启动实时预测服务
 
 ```{note}
 
 以下命令可在物理机环境执行，由于 Python 依赖，推荐 OneFlow 虚拟环境中执行。
 
 ```
-
-脚本中参数使用 `127.0.0.1:9080` 作为 OpenMLDB ApiServer 地址，`127.0.0.1:8000` 作为 OneFlow Triton 地址。
+此预测服务接收到预测请求后，先通过OpenMLDB获得实时特征，再使用实时特征请求推理服务给出推理结果，再返回。脚本中参数使用 `127.0.0.1:9080` 作为 OpenMLDB ApiServer 地址，`127.0.0.1:8000` 作为 OneFlow Triton 地址。
 
 ```bash
 sh $demodir/serving/start_predict_server.sh
@@ -547,9 +546,9 @@ sh $demodir/serving/start_predict_server.sh
 
 你可以通过查看日志文件 `/tmp/p.log`，获得 predict server 的运行日志。
 
-### 发送预估请求
+### 发送预测请求
 
-执行 `predict.py` 脚本。该脚本发送一行请求数据到预估服务，接收返回的预估结果，并打印出来。
+执行 `predict.py` 脚本。该脚本发送一行请求数据到预测服务，接收返回的预测结果，并打印出来。
 
 ```bash
 python $demodir/serving/predict.py
