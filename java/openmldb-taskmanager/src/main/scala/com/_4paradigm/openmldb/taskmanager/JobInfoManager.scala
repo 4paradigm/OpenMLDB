@@ -20,6 +20,7 @@ import com._4paradigm.openmldb.sdk.SdkOption
 import com._4paradigm.openmldb.sdk.impl.SqlClusterExecutor
 import com._4paradigm.openmldb.taskmanager.config.TaskManagerConfig
 import com._4paradigm.openmldb.taskmanager.dao.{JobIdGenerator, JobInfo}
+import com._4paradigm.openmldb.taskmanager.util.HdfsUtil
 import com._4paradigm.openmldb.taskmanager.yarn.YarnClientUtil
 import org.slf4j.LoggerFactory
 import org.apache.hadoop.fs.{FileSystem, LocalFileSystem, Path}
@@ -210,13 +211,8 @@ object JobInfoManager {
           FileUtils.deleteDirectory(dir)
 
         } else if (filePath.startsWith("hdfs://")) {
-          val conf = new Configuration();
-          // TODO: Get namenode uri from config file
-          val namenodeUri = "";
-          //val namenodeUri = TaskManagerConfig.NAMENODE_URI
-          val hdfs = FileSystem.get(URI.create(s"hdfs://$namenodeUri"), conf)
-          hdfs.delete(new Path(filePath), true)
-
+          logger.info(s"Try to delete the HDFS path ${filePath}")
+          HdfsUtil.deleteHdfsDir(filePath)
         } else {
           throw new Exception(s"Get unsupported file path: $filePath")
         }
