@@ -17,6 +17,7 @@
 #include "udf/dynamic_lib_manager.h"
 
 #include <dlfcn.h>
+#include <unistd.h>
 
 namespace hybridse {
 namespace udf {
@@ -31,8 +32,8 @@ DynamicLibManager::~DynamicLibManager() {
     handle_map_.clear();
 }
 
-base::Status DynamicLibManager::ExtractFunction(const std::string& name, bool is_aggregate,
-        const std::string& file, std::vector<void*>* funs) {
+base::Status DynamicLibManager::ExtractFunction(const std::string& name, bool is_aggregate, const std::string& file,
+                                                std::vector<void*>* funs) {
     CHECK_TRUE(funs != nullptr, common::kExternalUDFError, "funs is nullptr")
     std::shared_ptr<DynamicLibHandle> so_handle;
     {
@@ -45,7 +46,24 @@ base::Status DynamicLibManager::ExtractFunction(const std::string& name, bool is
     }
     if (!so_handle) {
         void* handle = dlopen(file.c_str(), RTLD_LAZY);
-        CHECK_TRUE(handle != nullptr, common::kExternalUDFError, "can not open the dynamic library: " + file)
+        if (handle == nullptr) {
+            std::string err_msg;
+            err_msg = "can not open the dynamic library: " + file + ", error: " + dlerror() + ", try to use abs path";
+            LOG(WARNING) << err_msg;
+            // try to use abs path to avoid dlopen failed but it only works in the same path(e.g. in yarn mode)
+            char abs_path_buff[PATH_MAX];
+            if (realpath(file.c_str(), abs_path_buff) == NULL) {
+                err_msg.append(", can not get real path, error: ").append(strerror(errno));
+                return {common::kExternalUDFError, err_msg};
+            }
+
+            handle = dlopen(abs_path_buff, RTLD_LAZY);
+            if (handle == nullptr) {
+                err_msg.append("dlopen abs path failed, error: ").append(dlerror());
+                return {common::kExternalUDFError, err_msg};
+            }
+        }
+
         so_handle = std::make_shared<DynamicLibHandle>(handle);
         std::lock_guard<std::mutex> lock(mu_);
         handle_map_.emplace(file, so_handle);
@@ -97,7 +115,7 @@ base::Status DynamicLibManager::RemoveHandler(const std::string& file) {
     }
     if (so_handle) {
         CHECK_TRUE(dlclose(so_handle->handle) == 0, common::kExternalUDFError,
-                "dlclose run error. file is " + file)
+                   "dlclose run error. file is " + file + ", error: " + dlerror())
     }
     return {};
 }

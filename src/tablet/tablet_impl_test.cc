@@ -2333,7 +2333,7 @@ TEST_P(TabletImplTest, LoadWithDeletedKey) {
         MockClosure closure;
         tablet.LoadTable(NULL, &request, &response, &closure);
         ASSERT_EQ(0, response.code());
-        sleep(1);
+        sleep(2);  // sleep more to avoid scan when loading(workflow)
         ::openmldb::api::ScanRequest sr;
         sr.set_tid(id);
         sr.set_pid(1);
@@ -6253,6 +6253,81 @@ std::vector<DeleteParm> delete_cases = {
 };
 
 INSTANTIATE_TEST_SUITE_P(AggregatorTest, AggregatorDeleteTest, testing::ValuesIn(delete_cases));
+
+TEST_F(TabletImplTest, DeleteRange) {
+    uint32_t id = counter++;
+    MockClosure closure;
+    ::openmldb::api::TableMeta table_meta_test;
+    TabletImpl tablet;
+    tablet.Init("");
+    ::openmldb::api::CreateTableRequest request;
+    ::openmldb::api::TableMeta* table_meta = request.mutable_table_meta();
+    table_meta->set_name("t0");
+    table_meta->set_tid(id);
+    table_meta->set_pid(1);
+    ::openmldb::common::ColumnDesc* column_desc1 = table_meta->add_column_desc();
+    column_desc1->set_name("card");
+    column_desc1->set_data_type(::openmldb::type::kString);
+    ::openmldb::common::ColumnDesc* column_desc2 = table_meta->add_column_desc();
+    column_desc2->set_name("mcc");
+    column_desc2->set_data_type(::openmldb::type::kString);
+    SchemaCodec::SetIndex(table_meta->add_column_key(), "card", "card", "", ::openmldb::type::kAbsoluteTime, 120, 0);
+
+    ::openmldb::api::CreateTableResponse response;
+    tablet.CreateTable(NULL, &request, &response, &closure);
+    ASSERT_EQ(0, response.code());
+    ::openmldb::codec::SDKCodec sdk_codec(*table_meta);
+    for (int i = 0; i < 10; i++) {
+        ::openmldb::api::PutRequest request;
+        std::vector<std::string> row = {"card" + std::to_string(i), "mcc" + std::to_string(i)};
+        auto value = request.mutable_value();
+        sdk_codec.EncodeRow(row, value);
+        request.set_tid(id);
+        request.set_pid(1);
+        auto d1 = request.add_dimensions();
+        d1->set_idx(0);
+        d1->set_key("card" + std::to_string(i));
+        uint64_t now = ::baidu::common::timer::get_micros() / 1000;
+        for (int j = 0; j < 10; j++) {
+            request.set_time(now - j);
+            ::openmldb::api::PutResponse response;
+            MockClosure closure;
+            tablet.Put(NULL, &request, &response, &closure);
+            ASSERT_EQ(0, response.code());
+        }
+    }
+    auto assert_status = [&tablet, &id](uint64_t record_cnt, uint64_t record_byte_size, uint64_t record_idx_byte_size) {
+        ::openmldb::api::GetTableStatusRequest g_request;
+        g_request.set_tid(id);
+        g_request.set_pid(1);
+        ::openmldb::api::GetTableStatusResponse g_response;
+        MockClosure closure;
+        tablet.GetTableStatus(NULL, &g_request, &g_response, &closure);
+        ASSERT_EQ(record_cnt, g_response.all_table_status(0).record_cnt());
+        ASSERT_EQ(record_byte_size, g_response.all_table_status(0).record_byte_size());
+        ASSERT_EQ(record_idx_byte_size, g_response.all_table_status(0).record_idx_byte_size());
+    };
+    assert_status(100, 3400, 5786);
+
+    ::openmldb::api::DeleteRequest delete_request;
+    ::openmldb::api::GeneralResponse gen_response;
+    delete_request.set_tid(id);
+    delete_request.set_pid(1);
+    delete_request.set_end_ts(1);
+    tablet.Delete(NULL, &delete_request, &gen_response, &closure);
+    ASSERT_EQ(0, gen_response.code());
+    ::openmldb::api::ExecuteGcRequest e_request;
+    e_request.set_tid(id);
+    e_request.set_pid(1);
+    tablet.ExecuteGc(NULL, &e_request, &gen_response, &closure);
+    sleep(2);
+    tablet.ExecuteGc(NULL, &e_request, &gen_response, &closure);
+    sleep(2);
+    assert_status(0, 0, 1626);
+    tablet.ExecuteGc(NULL, &e_request, &gen_response, &closure);
+    sleep(2);
+    assert_status(0, 0, 0);
+}
 
 }  // namespace tablet
 }  // namespace openmldb

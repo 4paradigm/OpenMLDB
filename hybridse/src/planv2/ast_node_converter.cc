@@ -402,8 +402,8 @@ base::Status ConvertExprNode(const zetasql::ASTExpression* ast_expression, node:
             int64_t int_value;
             CHECK_STATUS(ASTIntLiteralToNum(ast_expression, &int_value));
 
-            if (!literal->is_long() && int_value <= INT_MAX && int_value >= INT_MIN) {
-                *output = node_manager->MakeConstNode(static_cast<int>(int_value));
+            if (!literal->is_long() && int_value <= INT32_MAX && int_value >= INT32_MIN) {
+                *output = node_manager->MakeConstNode(static_cast<int32_t>(int_value));
             } else {
                 *output = node_manager->MakeConstNode(int_value);
             }
@@ -1858,17 +1858,17 @@ base::Status AstPathExpressionToStringList(const zetasql::ASTPathExpression* pat
 base::Status ASTIntLiteralToNum(const zetasql::ASTExpression* ast_expr, int64_t* val) {
     const auto int_literal = ast_expr->GetAsOrNull<zetasql::ASTIntLiteral>();
     CHECK_TRUE(int_literal != nullptr, common::kSqlAstError, "not an ASTIntLiteral");
-    bool is_null = false;
+    auto img = int_literal->image();
     if (int_literal->is_long()) {
-        const int size = int_literal->image().size();
-        codec::StringRef str_ref(size - 1, int_literal->image().data());
-        udf::v1::string_to_bigint(&str_ref, val, &is_null);
-    } else {
-        codec::StringRef str_ref(int_literal->image().size(), int_literal->image().data());
-        udf::v1::string_to_bigint(&str_ref, val, &is_null);
+        img.remove_suffix(1);
     }
-    CHECK_TRUE(!is_null, common::kSqlAstError, "Invalid integer literal: ", int_literal->image());
-    return base::Status::OK();
+
+    auto [status, ret] = udf::v1::StrToIntegral()(img);
+    if (status.ok()) {
+        *val = ret;
+        return base::Status::OK();
+    }
+    FAIL_STATUS(common::kSqlAstError, "Invalid integer literal<", status.ToString(), ">");
 }
 
 // transform zetasql::ASTIntervalLiteral into (number, unit)
@@ -1897,13 +1897,15 @@ base::Status ASTIntervalLIteralToNum(const zetasql::ASTExpression* ast_expr, int
             FAIL_STATUS(common::kTypeError, "Invalid interval literal ", interval_literal->image(),
                         ": invalid interval unit")
     }
-    bool is_null = false;
-    codec::StringRef str_ref(interval_literal->image().size() - 1, interval_literal->image().data());
-    udf::v1::string_to_bigint(&str_ref, val, &is_null);
+    auto img = interval_literal->image();
+    img.remove_suffix(1);
 
-    CHECK_TRUE(!is_null, common::kTypeError, "Invalid interval literal: ", interval_literal->image());
-
-    return base::Status::OK();
+    auto [status, ret] = udf::v1::StrToIntegral()(img);
+    if (status.ok()) {
+        *val = ret;
+        return base::Status::OK();
+    }
+    FAIL_STATUS(common::kSqlAstError, "Invalid interval literal<", status.ToString(), ">");
 }
 
 base::Status ConvertDeleteNode(const zetasql::ASTDeleteStatement* delete_stmt, node::NodeManager* node_manager,
@@ -2011,6 +2013,7 @@ base::Status ConvertDropStatement(const zetasql::ASTDropStatement* root, node::N
                 *output = dynamic_cast<node::CmdNode*>(
                     node_manager->MakeCmdNode(node::CmdType::kCmdDropTable, names[0], names[1]));
             }
+            (*output)->SetIfExists(root->is_if_exists());
             return base::Status::OK();
         }
         case zetasql::SchemaObjectKind::kDatabase: {
@@ -2018,6 +2021,7 @@ base::Status ConvertDropStatement(const zetasql::ASTDropStatement* root, node::N
                        root->name()->ToIdentifierPathString())
             *output =
                 dynamic_cast<node::CmdNode*>(node_manager->MakeCmdNode(node::CmdType::kCmdDropDatabase, names[0]));
+            (*output)->SetIfExists(root->is_if_exists());
             return base::Status::OK();
         }
         case zetasql::SchemaObjectKind::kIndex: {
@@ -2168,17 +2172,35 @@ static const absl::flat_hash_map<std::string_view, ShowTargetInfo> showTargetMap
     {"JOBLOG", {node::CmdType::kCmdShowJobLog, true}},
 };
 
+static const absl::flat_hash_map<std::string_view, node::ShowStmtType> SHOW_STMT_TYPE_MAP = {
+    {"JOBS", node::ShowStmtType::kJobs},
+};
+
 base::Status convertShowStmt(const zetasql::ASTShowStatement* show_statement, node::NodeManager* node_manager,
                              node::SqlNode** output) {
     CHECK_TRUE(nullptr != show_statement && nullptr != show_statement->identifier(), common::kSqlAstError,
                "not an ASTShowStatement")
 
     auto show_id = show_statement->identifier()->GetAsStringView();
+    // TODO(dl239): move all show statement from CmdNode to ShowNode
+    if (auto iter = SHOW_STMT_TYPE_MAP.find(absl::AsciiStrToUpper(show_id));
+            iter != SHOW_STMT_TYPE_MAP.end() && show_statement->optional_name() != nullptr) {
+        std::vector<std::string> names;
+        CHECK_STATUS(AstPathExpressionToStringList(show_statement->optional_name(), names));
+        CHECK_TRUE(names.size() == 1, common::kSqlAstError, "illegal optional name in show statement");
+        std::string like;
+        if (show_statement->optional_like_string() != nullptr) {
+            like = show_statement->optional_like_string()->string_value();
+        }
+        *output = node_manager->MakeNode<node::ShowNode>(iter->second, names.back(), like);
+        return base::Status::OK();
+    }
 
     auto show_info = showTargetMap.find(absl::AsciiStrToUpper(show_id));
     if (show_info == showTargetMap.end()) {
         FAIL_STATUS(common::kSqlAstError, "Un-support SHOW: ", show_id)
     }
+
     CHECK_TRUE(show_info->second.with_like_string_ || nullptr == show_statement->optional_like_string(),
                common::kSqlAstError, absl::StrCat("Non-support LIKE in SHOW ", show_info->first, " statement"))
 

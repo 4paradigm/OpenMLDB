@@ -790,8 +790,8 @@ select STRING(true) as str_true, string(false) as str_false;
 
 `DATE Date(TIMESTAMP)`函数接受一个`TIMESTAMP`参数，并将转成`DATE`类型输出。
 
-参考[#3.2.3 SQL函数的返回值类型是Nullable ](#3.2.3-SQL函数的返回值类型是Nullable)
-和[#3.2.2 SQL函数返回值为STRING,TIMESTAMP或DATE](#3.2.2-SQL函数返回值为STRING,TIMESTAMP或DATE)
+参考[#3.2.3 SQL函数的返回值类型是Nullable ](#323-sql函数的返回值类型是nullable)
+和[#3.2.2 SQL函数返回值为STRING,TIMESTAMP或DATE](#322-sql函数返回值为stringtimestamp或date)
 
 ##### **step 1: 实现待注册的内置函数**
 
@@ -927,7 +927,7 @@ RegisterUdaf("register_func_name")
     函数签名为：`ST* Update(ST* state, IN val1, bool val1_is_null, ...)`
 - 配置`output`函数指针: `output_func_ptr`。
   当函数的返回值可能为空时，额外要有一个`bool*`类型的参数来存放结果是否为空
-  （可以参照[3.2.3 SQL函数的返回值类型是Nullable](#3.2.3-SQL函数的返回值类型是Nullable)）。
+  （可以参照[3.2.3 SQL函数的返回值类型是Nullable](#323-sql函数的返回值类型是nullable)）。
 
 
 下面代码展示了新增`second` 聚合函数的代码示例，`second`功能为返回聚合数据中非空的第二个元素；为了方便展示，示例中`second`仅支持`int32_t`数据类型：

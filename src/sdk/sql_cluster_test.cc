@@ -15,7 +15,7 @@
  */
 
 #include <unistd.h>
-
+#include <algorithm>
 #include <memory>
 #include <string>
 #include <vector>
@@ -97,6 +97,45 @@ class SQLClusterDDLTest : public SQLClusterTest {
     std::shared_ptr<SQLRouter> router;
     std::string db;
 };
+
+TEST_F(SQLClusterDDLTest, TestIfExists) {
+    std::string name = "test" + GenRand();
+    ::hybridse::sdk::Status status;
+    std::string db2 = "db" + GenRand();
+
+    std::string ddl;
+    ddl = "create table " + db2 + "." + name +
+          "("
+          "col1 int, col2 bigint, col3 string,"
+          "index(key=col3, ts=col2));";
+
+    ASSERT_TRUE(router->ExecuteDDL(db, "create database " + db2 + ";", &status));
+
+    // drop database db2 & table name
+    ASSERT_TRUE(router->ExecuteDDL(db, ddl, &status));
+    ASSERT_TRUE(router->ExecuteDDL(db, "drop table " + db2 + "." + name + ";", &status));
+
+    // drop table name when name not exist
+    ASSERT_FALSE(router->ExecuteDDL(db, "drop table " + db2 + "." + name + ";", &status));
+    ASSERT_TRUE(router->ExecuteDDL(db, "drop database " + db2 + ";", &status));
+
+    // drop database db2 when db2 not exist
+    ASSERT_FALSE(router->ExecuteDDL(db, "drop database " + db2 + ";", &status));
+
+    ASSERT_TRUE(router->ExecuteDDL(db, "create database " + db2 + ";", &status));
+
+    // if exists drop database db2 & table name
+    ASSERT_TRUE(router->ExecuteDDL(db, ddl, &status));
+    ASSERT_TRUE(router->ExecuteDDL(db, "drop table if exists " + db2 + "." + name + ";", &status));
+
+    // drop table name when name not exist
+    ASSERT_TRUE(router->ExecuteDDL(db, "drop table if exists " + db2 + "." + name + ";", &status));
+    ASSERT_TRUE(router->ExecuteDDL(db, "drop database if exists " + db2 + ";", &status));
+
+    // drop database db2 when db2 not exist
+    ASSERT_TRUE(router->ExecuteDDL(db, "drop database if exists " + db2 + ";", &status));
+}
+
 TEST_F(SQLClusterDDLTest, CreateTableWithDatabase) {
     std::string name = "test" + GenRand();
     ::hybridse::sdk::Status status;
@@ -1043,6 +1082,132 @@ TEST_F(SQLClusterTest, ClusterOnlineAgg) {
             ASSERT_TRUE(std::abs(sum_c5 / row_num - 19.3) < 0.1);
         }
     }
+
+    ok = router->ExecuteDDL(db, "drop table " + table + ";", &status);
+    ASSERT_TRUE(ok);
+    ok = router->DropDB(db, &status);
+    ASSERT_TRUE(ok);
+}
+
+bool contains(const google::protobuf::RepeatedPtrField<std::string>& field, const std::string& value) {
+    return std::find(field.begin(), field.end(), value) != field.end();
+}
+
+TEST_F(SQLClusterTest, AlterTableAddDropOfflinePath) {
+    SQLRouterOptions sql_opt;
+    sql_opt.zk_cluster = mc_->GetZkCluster();
+    sql_opt.zk_path = mc_->GetZkPath();
+    auto router = NewClusterSQLRouter(sql_opt);
+    ASSERT_TRUE(router != nullptr);
+    SetOnlineMode(router);
+    std::string table = "test" + GenRand();
+    std::string db = "db" + GenRand();
+    ::hybridse::sdk::Status status;
+    bool ok = router->CreateDB(db, &status);
+    ASSERT_TRUE(ok);
+    std::string ddl = "create table " + table + " (col1 int)";
+    ok = router->ExecuteDDL(db, ddl, &status);
+    ASSERT_TRUE(ok);
+    ASSERT_TRUE(router->RefreshCatalog());
+
+    // Add path
+    ddl = "ALTER TABLE " + table + " ADD offline_path 'hdfs://foo/bar'";
+    router->ExecuteSQL(db, ddl, &status);
+    ASSERT_TRUE(router->RefreshCatalog());
+
+    auto paths = router->GetTableInfo(db, table).offline_table_info().symbolic_paths();
+    ASSERT_TRUE(contains(paths, "hdfs://foo/bar"));
+
+    // Drop path
+    ddl = "ALTER TABLE " + table + " DROP offline_path 'hdfs://foo/bar'";
+    router->ExecuteSQL(db, ddl, &status);
+    ASSERT_TRUE(router->RefreshCatalog());
+
+    paths = router->GetTableInfo(db, table).offline_table_info().symbolic_paths();
+    ASSERT_TRUE(!contains(paths, "hdfs://foo/bar"));
+
+    // Add path
+    ddl = "ALTER TABLE " + table + " ADD offline_path 'hdfs://foo/bar'";
+    router->ExecuteSQL(db, ddl, &status);
+    ASSERT_TRUE(router->RefreshCatalog());
+
+    paths = router->GetTableInfo(db, table).offline_table_info().symbolic_paths();
+    ASSERT_TRUE(contains(paths, "hdfs://foo/bar"));
+
+    // Add path and drop path
+    ddl = "ALTER TABLE " + table + " ADD offline_path 'hdfs://foo/bar2', DROP offline_path 'hdfs://foo/bar'";
+    router->ExecuteSQL(db, ddl, &status);
+    ASSERT_TRUE(router->RefreshCatalog());
+
+    paths = router->GetTableInfo(db, table).offline_table_info().symbolic_paths();
+    ASSERT_TRUE(!contains(paths, "hdfs://foo/bar"));
+    ASSERT_TRUE(contains(paths, "hdfs://foo/bar2"));
+
+    // Add path with database name
+    ddl = "ALTER TABLE " + db + "." + table + " ADD offline_path 'hdfs://foo/bar'";
+    router->ExecuteSQL(db, ddl, &status);
+    ASSERT_TRUE(router->RefreshCatalog());
+
+    paths = router->GetTableInfo(db, table).offline_table_info().symbolic_paths();
+    ASSERT_TRUE(contains(paths, "hdfs://foo/bar"));
+
+    // Clear offline table to drop, otherwise it requires taskmanager to drop table
+    auto table_info = router->GetTableInfo(db, table);
+    table_info.clear_offline_table_info();
+    router->UpdateOfflineTableInfo(table_info);
+
+    ok = router->ExecuteDDL(db, "drop table " + table + ";", &status);
+    ASSERT_TRUE(ok);
+    ok = router->DropDB(db, &status);
+    ASSERT_TRUE(ok);
+}
+
+TEST_F(SQLClusterTest, MultiThreadAlterTableOfflinePath) {
+    SQLRouterOptions sql_opt;
+    sql_opt.zk_cluster = mc_->GetZkCluster();
+    sql_opt.zk_path = mc_->GetZkPath();
+    auto router = NewClusterSQLRouter(sql_opt);
+    ASSERT_TRUE(router != nullptr);
+    SetOnlineMode(router);
+    std::string table = "test" + GenRand();
+    std::string db = "db" + GenRand();
+    ::hybridse::sdk::Status status;
+    bool ok = router->CreateDB(db, &status);
+    ASSERT_TRUE(ok);
+    std::string ddl = "create table " + table + " (col1 int)";
+    ok = router->ExecuteDDL(db, ddl, &status);
+    ASSERT_TRUE(ok);
+    ASSERT_TRUE(router->RefreshCatalog());
+
+    auto run_and_check = [&]() {
+        // Add path
+        ddl = "ALTER TABLE " + table + " ADD offline_path 'hdfs://foo/bar'";
+        router->ExecuteSQL(db, ddl, &status);
+        ASSERT_TRUE(router->RefreshCatalog());
+
+        // Drop path
+        ddl = "ALTER TABLE " + table + " DROP offline_path 'hdfs://foo/bar'";
+        router->ExecuteSQL(db, ddl, &status);
+        ASSERT_TRUE(router->RefreshCatalog());
+    };
+
+    int iter = 1;
+    for (int i = 0; i < iter; i++) {
+        std::thread t1(run_and_check);
+        std::thread t2(run_and_check);
+        std::thread t3(run_and_check);
+        t1.join();
+        t2.join();
+        t3.join();
+    }
+
+    auto paths = router->GetTableInfo(db, table).offline_table_info().symbolic_paths();
+    ASSERT_TRUE(!contains(paths, "hdfs://foo/bar"));
+
+    // Clear offline table to drop, otherwise it requires taskmanager to drop table
+    auto table_info = router->GetTableInfo(db, table);
+    table_info.clear_offline_table_info();
+    router->UpdateOfflineTableInfo(table_info);
 
     ok = router->ExecuteDDL(db, "drop table " + table + ";", &status);
     ASSERT_TRUE(ok);

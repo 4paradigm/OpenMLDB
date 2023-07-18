@@ -71,6 +71,7 @@ void NodeCache::AddValueNodeList(uint32_t idx, uint64_t version, base::Node<uint
 }
 
 void NodeCache::Free(uint64_t version, StatisticsInfo* gc_info) {
+    StatisticsInfo old = *gc_info;
     base::Node<uint64_t, std::forward_list<base::Node<base::Slice, void*>*>*>* node1 = nullptr;
     base::Node<uint64_t, std::forward_list<DataNode>*>* node2 = nullptr;
     {
@@ -102,6 +103,8 @@ void NodeCache::Free(uint64_t version, StatisticsInfo* gc_info) {
         node2 = node2->GetNextNoBarrier(0);
         delete tmp;
     }
+    DLOG(INFO) << "free idx_byte_size " << gc_info->idx_byte_size - old.idx_byte_size;
+    DLOG(INFO) << "free record_byte_size " << gc_info->record_byte_size - old.record_byte_size;
 }
 
 void NodeCache::FreeNode(uint32_t idx, base::Node<uint64_t, DataBlock*>* node, StatisticsInfo* gc_info) {
@@ -110,11 +113,11 @@ void NodeCache::FreeNode(uint32_t idx, base::Node<uint64_t, DataBlock*>* node, S
     }
     gc_info->IncrIdxCnt(idx);
     gc_info->idx_byte_size += GetRecordTsIdxSize(node->Height());
-    DEBUGLOG("delete key %lu with height %u", node->GetKey(), node->Height());
+    DLOG(INFO) << "delete key " << node->GetKey() << " with height " << node->Height();
     if (node->GetValue()->dim_cnt_down > 1) {
         node->GetValue()->dim_cnt_down--;
     } else {
-        DEBUGLOG("delele data block for key %lu", node->GetKey());
+        DLOG(INFO) << "delele data block for key " << node->GetKey();
         gc_info->record_byte_size += GetRecordSize(node->GetValue()->size);
         delete node->GetValue();
     }
@@ -147,6 +150,7 @@ void NodeCache::FreeKeyEntryNode(base::Node<base::Slice, void*>* entry_node, Sta
     if (entry_node == nullptr) {
         return;
     }
+    DLOG(INFO) << "Free KeyEntryNode. key is " << entry_node->GetKey().ToString();
     delete[] entry_node->GetKey().data();
     if (ts_cnt_ > 1) {
         auto entry_arr = reinterpret_cast<KeyEntry**>(entry_node->GetValue());

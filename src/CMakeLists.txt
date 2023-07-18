@@ -51,18 +51,15 @@ function(compile_lib LIB_NAME DIR DEPEND_FILE_LIST)
     add_library(${LIB_NAME} STATIC ${FILE_LIST} $<TARGET_OBJECTS:openmldb_proto>)
 endfunction(compile_lib)
 
+set(TEST_LIBS
+    openmldb_test_base apiserver nameserver tablet query_response_time openmldb_sdk
+    openmldb_catalog schema client zk_client storage replica base openmldb_codec openmldb_proto log
+    common zookeeper_mt tcmalloc_minimal ${RocksDB_LIB} ${VM_LIBS} ${LLVM_LIBS} ${ZETASQL_LIBS} ${BRPC_LIBS})
+if(CMAKE_CXX_COMPILER_ID MATCHES "GNU" AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS "9.1")
+    # GNU implementation prior to 9.1 requires linking with -lstdc++fs
+    list(APPEND TEST_LIBS stdc++fs)
+endif()
 function(compile_test_with_extra DIR DEPEND_FILE_LIST)
-    set(TEST_LIBS
-        openmldb_test_base
-        apiserver nameserver tablet query_response_time openmldb_sdk openmldb_catalog
-        schema client zk_client storage replica base openmldb_codec openmldb_proto log
-        common zookeeper_mt tcmalloc_minimal ${RocksDB_LIB}
-        ${VM_LIBS} ${LLVM_LIBS} ${ZETASQL_LIBS} ${BRPC_LIBS})
-
-    if(CMAKE_CXX_COMPILER_ID MATCHES "GNU" AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS "9.1")
-        # GNU implementation prior to 9.1 requires linking with -lstdc++fs
-        list(APPEND TEST_LIBS stdc++fs)
-    endif()
     file(GLOB_RECURSE SRC_FILES ${DIR}/*.cc)
     foreach(SRC_FILE ${SRC_FILES})
         if (SRC_FILE MATCHES ".*_test.cc")
@@ -88,6 +85,9 @@ function(compile_test_with_extra DIR DEPEND_FILE_LIST)
             add_test(${TEST_TARGET_NAME}
                 ${CMAKE_CURRENT_BINARY_DIR}/${TEST_TARGET_DIR}/${TEST_TARGET_NAME}
                 --gtest_output=xml:${CMAKE_CURRENT_BINARY_DIR}/${TEST_TARGET_DIR}/${TEST_TARGET_NAME}.xml)
+            if (TESTING_ENABLE_STRIP)
+                strip_exe(${TEST_TARGET_NAME})
+            endif()
         endif()
     endforeach()
     set(test_list ${test_list} PARENT_SCOPE)

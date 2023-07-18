@@ -66,7 +66,7 @@ class NsClient : public Client {
     bool ShowDatabase(std::vector<std::string>* dbs,
                       std::string& msg);  // NOLINT
 
-    bool DropDatabase(const std::string& db, std::string& msg);  // NOLINT
+    bool DropDatabase(const std::string& db, std::string& msg, bool if_exists = false);  // NOLINT
 
     bool ShowTablet(std::vector<TabletInfo>& tablets,  // NOLINT
                     std::string& msg);                 // NOLINT
@@ -95,7 +95,7 @@ class NsClient : public Client {
                       std::string& msg);  // NOLINT
 
     base::Status ShowOPStatus(const std::string& name, uint32_t pid,
-            ::openmldb::nameserver::ShowOPStatusResponse* response);
+            nameserver::ShowOPStatusResponse* response);
 
     base::Status ShowOPStatus(uint64_t op_id, ::openmldb::nameserver::ShowOPStatusResponse* response);
 
@@ -104,8 +104,7 @@ class NsClient : public Client {
     bool AddTableField(const std::string& table_name, const ::openmldb::common::ColumnDesc& column_desc,
                        std::string& msg);  // NOLINT
 
-    bool CreateTable(const ::openmldb::nameserver::TableInfo& table_info,
-                     const bool create_if_not_exist,
+    bool CreateTable(const ::openmldb::nameserver::TableInfo& table_info, const bool create_if_not_exist,
                      std::string& msg);  // NOLINT
 
     bool DropTable(const std::string& name, std::string& msg);  // NOLINT
@@ -216,14 +215,12 @@ class NsClient : public Client {
                   std::vector<openmldb::common::ColumnDesc>* cols,
                   std::string& msg);  // NOLINT
 
-    bool AddIndex(const std::string& db_name,
-                  const std::string& table_name,
-                  const ::openmldb::common::ColumnKey& column_key,
-                  std::vector<openmldb::common::ColumnDesc>* cols,
+    bool AddIndex(const std::string& db_name, const std::string& table_name,
+                  const ::openmldb::common::ColumnKey& column_key, std::vector<openmldb::common::ColumnDesc>* cols,
                   std::string& msg);  // NOLINT
 
     base::Status AddMultiIndex(const std::string& db, const std::string& table_name,
-            const std::vector<::openmldb::common::ColumnKey>& column_keys, bool skip_load_data);
+                               const std::vector<::openmldb::common::ColumnKey>& column_keys, bool skip_load_data);
 
     bool DeleteIndex(const std::string& table_name, const std::string& idx_name,
                      std::string& msg);  // NOLINT
@@ -247,9 +244,10 @@ class NsClient : public Client {
 
     base::Status UpdateOfflineTableInfo(const nameserver::TableInfo& table_info);
 
-    base::Status DeploySQL(const ::openmldb::api::ProcedureInfo& sp_info,
-            const std::map<std::string, std::vector<::openmldb::common::ColumnKey>>& new_index_map,
-            uint64_t* op_id);
+    base::Status DeploySQL(
+        const ::openmldb::api::ProcedureInfo& sp_info,
+        const std::map<std::string, std::map<std::string, std::vector<::openmldb::common::ColumnKey>>>& new_index_map,
+        uint64_t* op_id);
 
  private:
     ::openmldb::RpcClient<::openmldb::nameserver::NameServer_Stub> client_;
