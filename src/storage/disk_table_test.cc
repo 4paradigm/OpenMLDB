@@ -53,7 +53,7 @@ class DiskTableTest : public ::testing::Test {
 TEST_F(DiskTableTest, ParseKeyAndTs) {
     std::string combined_key = CombineKeyTs("abcdexxx11", 1552619498000);
     std::string key;
-    uint64_t ts;
+    uint64_t ts = 0;
     ASSERT_EQ(0, ParseKeyAndTs(false, rocksdb::Slice(combined_key), &key, &ts, nullptr));
     ASSERT_EQ("abcdexxx11", key);
     ASSERT_EQ(1552619498000, (int64_t)ts);
@@ -350,7 +350,7 @@ TEST_F(DiskTableTest, Delete) {
     mapping.insert(std::make_pair("idx1", 1));
     mapping.insert(std::make_pair("idx2", 2));
     std::string table_path = FLAGS_hdd_root_path + "/4_1";
-    DiskTable* table = new DiskTable("yjtable2", 4, 1, mapping, 10, ::openmldb::type::TTLType::kAbsoluteTime,
+    auto table = std::make_unique<DiskTable>("yjtable2", 4, 1, mapping, 10, ::openmldb::type::TTLType::kAbsoluteTime,
                                      ::openmldb::common::StorageMode::kHDD, table_path);
     ASSERT_TRUE(table->Init());
     for (int idx = 0; idx < 10; idx++) {
@@ -361,7 +361,7 @@ TEST_F(DiskTableTest, Delete) {
         }
     }
     Ticket ticket;
-    TableIterator* it = table->NewIterator("test6", ticket);
+    std::unique_ptr<TableIterator> it(table->NewIterator("test6", ticket));
     it->SeekToFirst();
     int count = 0;
     while (it->Valid()) {
@@ -371,14 +371,15 @@ TEST_F(DiskTableTest, Delete) {
         it->Next();
     }
     ASSERT_EQ(count, 10);
-    delete it;
-    table->Delete("test6", 0);
-    it = table->NewIterator("test6", ticket);
+    api::LogEntry entry;
+    auto dimension = entry.add_dimensions();
+    dimension->set_key("test6");
+    dimension->set_idx(0);
+    table->Delete(entry);
+    it.reset(table->NewIterator("test6", ticket));
     it->SeekToFirst();
     ASSERT_FALSE(it->Valid());
-    delete it;
-
-    delete table;
+    it.reset();
     RemoveData(table_path);
 }
 

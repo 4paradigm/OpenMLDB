@@ -19,7 +19,7 @@
 
 #include <vector>
 
-#include "storage/segment.h"
+#include "storage/key_entry.h"
 
 namespace openmldb {
 namespace storage {

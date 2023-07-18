@@ -20,7 +20,8 @@
 #include <gflags/gflags.h>
 #include <memory>
 #include <string>
-#include <boost/algorithm/string/predicate.hpp>
+#include "absl/strings/str_cat.h"
+#include "absl/strings/match.h"
 #include "base/file_util.h"
 #include "base/glog_wrapper.h"
 #include "base/strings.h"
@@ -34,7 +35,7 @@ DiskTableSnapshot::DiskTableSnapshot(uint32_t tid, uint32_t pid, const std::stri
     : Snapshot(tid, pid), db_root_path_(db_root_path) {}
 
 bool DiskTableSnapshot::Init() {
-    snapshot_path_ = db_root_path_ + "/" + std::to_string(tid_) + "_" + std::to_string(pid_) + "/snapshot/";
+    snapshot_path_ = absl::StrCat(db_root_path_, "/", tid_, "_" , pid_, "/snapshot/");
     if (!::openmldb::base::MkdirRecur(snapshot_path_)) {
         PDLOG(WARNING, "fail to create db meta path %s", snapshot_path_.c_str());
         return false;
@@ -45,7 +46,7 @@ bool DiskTableSnapshot::Init() {
         return false;
     }
     snapshot_path_.assign(abs_path_buff);
-    if (!boost::ends_with(snapshot_path_, "/")) {
+    if (!absl::EndsWith(snapshot_path_, "/")) {
         snapshot_path_.append("/");
     }
     return true;
