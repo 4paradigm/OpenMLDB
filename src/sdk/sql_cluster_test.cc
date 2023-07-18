@@ -113,9 +113,8 @@ TEST_F(SQLClusterDDLTest, TestShowSortedJobs) {
     ASSERT_TRUE(router->ExecuteDDL(db, sql, &status)) << "ddl: " << sql;
     ASSERT_TRUE(router->RefreshCatalog());
 
-    uint32_t seed = time(NULL);
     std::vector<int> randint;
-    for (int i = 0; i < rand_r(&seed); i++) {
+    for (int i = 1; i < 100; i++) {
         randint.push_back(i);
     }
     std::random_shuffle(randint.begin(), randint.end());
@@ -123,7 +122,7 @@ TEST_F(SQLClusterDDLTest, TestShowSortedJobs) {
         std::string id = std::to_string(randint[i]);
         sql = "insert into " + name +
           " values(" + id + ", \"Type\", \"State\", 0, " + id + ", "
-          "\"/tmp/sql-00000000000000" + id + "\", \"local[*]\", \"local-000000000" + id + "\", \"\");";
+          "\"/tmp/sql-000000000000000000" + id + "\", \"local[*]\", \"local-0000000000000" + id + "\", \"\");";
         router->ExecuteSQL(db, sql, &status);
         ASSERT_TRUE(status.IsOK());
     }
