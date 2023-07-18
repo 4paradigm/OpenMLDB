@@ -271,6 +271,12 @@ class RequestEngineTestRunner : public EngineTestRunner {
         std::string request_db_name = request_session->GetRequestDbName();
         CHECK_TRUE(parameter_rows_.empty(), common::kUnSupport, "Request do not support parameterized query currently")
         Row parameter = parameter_rows_.empty() ? Row() : parameter_rows_[0];
+        if (request_rows_.empty()) {
+            // send empty request, trigger e.g const project in request mode
+            CHECK_TRUE(request_name.empty() && request_db_name.empty(), common::kUnsupportSql,
+                       "no request data for request table: <", request_db_name, ".", request_name, ">")
+            request_rows_.push_back(Row());
+        }
         for (auto in_row : request_rows_) {
             Row out_row;
             int run_ret = request_session->Run(in_row, &out_row);
@@ -278,7 +284,7 @@ class RequestEngineTestRunner : public EngineTestRunner {
                 return_code_ = ENGINE_TEST_RET_EXECUTION_ERROR;
                 return Status(common::kRunError, "Run request session failed");
             }
-            if (!has_batch_request) {
+            if (!has_batch_request && !request_db_name.empty() && !request_name.empty()) {
                 CHECK_TRUE(AddRowIntoTable(request_db_name, request_name, in_row), common::kTablePutFailed,
                            "Fail add row into table ", request_db_name, ".", request_name);
             }
