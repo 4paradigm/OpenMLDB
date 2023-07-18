@@ -1,6 +1,6 @@
 # 在离线数据同步
 
-在离线数据同步，指将在线数据同步到离线地址，离线地址指大容量持久化存储地址，用户可以自行指定，不一定是OpenMLDB表中的离线数据地址，仅支持写入到hdfs集群。
+在离线数据同步，指将在线数据同步到离线地址，离线地址指大容量持久化存储地址，用户可以自行指定，不一定是OpenMLDB表中的离线数据地址。当前仅支持**磁盘表**同步，仅支持写入到**hdfs集群**。
 
 开启在离线同步功能，需要部署两种组件，DataCollector和SyncTool。一期仅支持单个SyncTool，DataCollector需要在**每台部署TabletServer的机器**上**至少**部署一台。举例说明，一台机器上可以存在多个TabletServer，同步任务将使用该机器上的一个DataCollector，如果你添加了更多的DataCollector，它们不会工作，直到运行的DataCollector下线，将由下一个DataCollector代替以继续工作。
 
