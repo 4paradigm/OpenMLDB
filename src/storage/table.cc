@@ -129,6 +129,8 @@ void Table::SetTTL(const ::openmldb::storage::UpdateTTLMeta& ttl_meta) {
         auto column_key = new_table_meta->mutable_column_key(idx);
         if (ttl_meta.index_name.empty() || column_key->index_name() == ttl_meta.index_name) {
             auto cur_ttl = column_key->mutable_ttl();
+            cur_ttl->set_ttl_type(ttl_meta.ttl.GetProtoTTLType());
+            // second to minute
             cur_ttl->set_abs_ttl(ttl_meta.ttl.abs_ttl / (60 * 1000));
             cur_ttl->set_lat_ttl(ttl_meta.ttl.lat_ttl);
         }

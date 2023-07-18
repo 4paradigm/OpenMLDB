@@ -23,6 +23,7 @@ import org.slf4j.LoggerFactory
 
 import scala.collection.JavaConverters.{mapAsJavaMapConverter, mapAsScalaMapConverter}
 import scala.collection.mutable
+import scala.collection.JavaConverters.{asScalaBufferConverter, mapAsScalaMap, mapAsScalaMapConverter}
 
 object LoadDataPlan {
   private val logger = LoggerFactory.getLogger(this.getClass)
@@ -36,14 +37,15 @@ object LoadDataPlan {
     // get target storage
     val storage = ctx.getConf.loadDataMode
     require(storage == "offline" || storage == "online")
-    val (format, options, mode, deepCopyOpt) = HybridseUtil.parseOptions(inputFile, node)
-    require(deepCopyOpt.nonEmpty) // PhysicalLoadDataNode must have the option deepCopy
-    val deepCopy = deepCopyOpt.get
+    val (format, options, mode, extra) = HybridseUtil.parseOptions(inputFile, node)
+    // load have the option deep_copy
+    val deepCopy = extra.get("deep_copy").get.toBoolean
 
     require(ctx.getOpenmldbSession != null, "LOAD DATA must use OpenmldbSession, not SparkSession")
     val info = ctx.getOpenmldbSession.openmldbCatalogService.getTableInfo(db, table)
-    require(info != null && info.getName.nonEmpty, s"table $db.$table info is not existed(no table name): $info")
+
     logger.info("table info: {}", info)
+    require(info != null && info.getName.nonEmpty, s"table $db.$table info is not existed(no table name): $info")
 
     // we read input file even in soft copy,
     // cause we want to check if "the input file schema == openmldb table schema"
@@ -51,36 +53,82 @@ object LoadDataPlan {
 
     // write
     logger.info("write data to storage {}, writer[mode {}], is deep? {}", storage, mode, deepCopy.toString)
-    if (storage == "online") {
+    if (storage == "online") { // Import online data
       require(deepCopy && mode == "append", "import to online storage, can't do soft copy, and mode must be append")
 
-      val writeOptions = Map("db" -> db, "table" -> table,
+      val writeOptions = Map(
+        "db" -> db,
+        "table" -> table,
         "zkCluster" -> ctx.getConf.openmldbZkCluster,
-        "zkPath" -> ctx.getConf.openmldbZkRootPath)
+        "zkPath" -> ctx.getConf.openmldbZkRootPath
+      )
       df.write.options(writeOptions).format("openmldb").mode(mode).save()
-    } else {
-      // only in some cases, do not need to update info
+    } else { // Import offline data
+      // only in some cases, do not need to update info, set false in these cases
       var needUpdateInfo = true
       val newInfoBuilder = info.toBuilder
 
-      val infoExists = info.hasOfflineTableInfo
+      // If symbolic import
       if (!deepCopy) {
-        require(mode!="append", "I'm not the soft-copied data owner, can't append")
-        require(!infoExists || !info.getOfflineTableInfo.getDeepCopy, "old offline info is deep-copied, " +
-          "we don't know whether to delete the existing data")
-        if (mode=="errorifexists" && infoExists){
+
+        // Get error if exists
+        if (mode.equals("errorifexists") && info.hasOfflineTableInfo) {
           throw new IllegalArgumentException("offline info exists")
         }
-        // because it's soft-copy, format+options should be the same with read settings
-        val offlineBuilder = OfflineTableInfo.newBuilder().setPath(inputFile).setFormat(format).setDeepCopy(false)
+
+        val oldOfflineTableInfo = if (info.hasOfflineTableInfo) { // Have offline table info
+          info.getOfflineTableInfo
+        } else { // No offline table info, use new format and options
+          OfflineTableInfo
+            .newBuilder()
+            .setPath("")
+            .setFormat(format)
+            .putAllOptions(options.asJava)
+            .build()
+        }
+
+        val newOfflineInfoBuilder = OfflineTableInfo.newBuilder(oldOfflineTableInfo)
+
+        if (mode.equals("append") || mode.equals("errorifexists")) {
+          // Check if new path is already existed or not
+          val symbolicPathsSize = newOfflineInfoBuilder.getSymbolicPathsCount()
+
+          val symbolicPaths = if (symbolicPathsSize > 0) {
+            newOfflineInfoBuilder.getSymbolicPathsList().asScala.toList
+          } else {
+            List.empty[String]
+          }
+
+          if (symbolicPaths.contains(inputFile)) {
+            logger.warn(s"The path of $inputFile is already in symbolic paths, do not import again")
+          } else {
+            logger.info(s"Add the path of $inputFile to offline table info symbolic paths")
+            newOfflineInfoBuilder.addSymbolicPaths(inputFile)
+          }
+          // if no offline info berore, the format is set by new format
+          require(
+            oldOfflineTableInfo.getFormat.equals(format) &&
+              oldOfflineTableInfo.getOptionsMap.asScala.toMap.equals(options),
+            s"format and options must be the same with existed, but old is ${oldOfflineTableInfo.getFormat}, " +
+              s"${oldOfflineTableInfo.getOptionsMap.asScala.toMap}, new is $format, $options"
+          )
+        } else if (mode.equals("overwrite")) {
+          // overwrite mode, we need to clean all paths(hard+symbolic)
+          // TODO(tobe): May remove data files from copy import
+          newOfflineInfoBuilder.setPath("")
+          newOfflineInfoBuilder.clearSymbolicPaths()
+          newOfflineInfoBuilder.addSymbolicPaths(inputFile)
+          newOfflineInfoBuilder.setFormat(format)
+        }
+
         if (!format.equals("hive")) {
           // hive source discard all read options
-          offlineBuilder.putAllOptions(options.asJava)
+          newOfflineInfoBuilder.putAllOptions(options.asJava)
         }
+
         // update to ns later
-        newInfoBuilder.setOfflineTableInfo(offlineBuilder)
-      } else {
-        // deep copy
+        newInfoBuilder.setOfflineTableInfo(newOfflineInfoBuilder.build())
+      } else { // deep copy, only work on OfflineTableInfo.path
         // Generate new offline address by db name, table name and config of prefix
         val offlineDataPrefix = if (ctx.getConf.offlineDataPrefix.endsWith("/")) {
           ctx.getConf.offlineDataPrefix.dropRight(1)
@@ -92,40 +140,51 @@ object LoadDataPlan {
         // write default settings: no option and parquet format
         var (writePath, writeFormat) = (offlineDataPath, "parquet")
         var writeOptions: mutable.Map[String, String] = mutable.Map()
-        if (infoExists) {
-          require(mode != "errorifexists", "offline info exists")
+
+        var offlineBuilder = OfflineTableInfo
+          .newBuilder()
+          .setPath(writePath)
+          .setFormat(writeFormat)
+          .putAllOptions(writeOptions.asJava)
+        if (info.hasOfflineTableInfo) {
+          require(!mode.equals("errorifexists"), "has offline info(even no deep path), can't do errorifexists")
+
           val old = info.getOfflineTableInfo
-          if (!old.getDeepCopy) {
-            require(mode == "overwrite", "Only overwrite mode works. Old offline data is soft-coped, only can " +
-              "overwrite the offline info, leave the soft-coped data as it is.")
-            // if old offline data is soft-coped, we need to reject the old info, use the 'offlineDataPath' and
-            // normal settings
-            needUpdateInfo = true
-          } else {
-            // if old offline data is deep-copied and mode is append/overwrite,
-            // we need to use the old info and don't need to update info to ns
-            writeFormat = old.getFormat
-            writeOptions = old.getOptionsMap.asScala
-            writePath = old.getPath
-            needUpdateInfo = false
+          // only symbolic paths need to be copied, and if overwrite, all fields will be overwritten as default write
+          if (!mode.equals("overwrite")) {
+            old.getSymbolicPathsList.forEach(path => {
+              offlineBuilder.addSymbolicPaths(path)
+            })
+            // if has symbolic paths, the format and options may don't proper for deep copy
+            require(
+              old.getFormat == writeFormat && old.getOptionsMap.asScala.toMap.equals(writeOptions.toMap),
+              s"can't do deep copy in existed paths' format or options in mode $mode, " +
+                s"old is ${old.getFormat}, ${old.getOptionsMap.asScala.toMap}, new is $writeFormat, $writeOptions"
+            )
+            if (old.getPath.equals(writePath)) {
+              needUpdateInfo = false
+            }
+            // write path may changed by offline path setting, so don't require path equals
           }
         }
 
         // do deep copy
-        require(!inputFile.equals(writePath), "read and write paths shouldn't be the same, it may clean data in " +
-          "the path")
+        require(
+          !inputFile.equals(writePath),
+          "read and write paths shouldn't be the same, it may clean data in the path"
+        )
 
         df.write.mode(mode).format(writeFormat).options(writeOptions.toMap).save(writePath)
-        val offlineBuilder = OfflineTableInfo.newBuilder().setPath(writePath).setFormat(writeFormat).setDeepCopy(true)
-          .putAllOptions(writeOptions.asJava)
         newInfoBuilder.setOfflineTableInfo(offlineBuilder)
       }
 
       if (needUpdateInfo) {
         val newInfo = newInfoBuilder.build()
         logger.info(s"new info:\n$newInfo")
-        require(ctx.getOpenmldbSession.openmldbCatalogService.updateOfflineTableInfo(newInfo), s"update new info " +
-          s"failed: $newInfo")
+        require(
+          ctx.getOpenmldbSession.openmldbCatalogService.updateOfflineTableInfo(newInfo),
+          s"update new info failed: $newInfo"
+        )
       }
     }
 

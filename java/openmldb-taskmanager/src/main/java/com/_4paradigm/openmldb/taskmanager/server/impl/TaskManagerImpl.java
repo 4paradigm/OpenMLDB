@@ -32,6 +32,7 @@ import com._4paradigm.openmldb.taskmanager.server.TaskManagerInterface;
 import com._4paradigm.openmldb.taskmanager.udf.ExternalFunctionManager;
 import com._4paradigm.openmldb.taskmanager.util.VersionUtil;
 import com._4paradigm.openmldb.taskmanager.utils.VersionCli;
+import com._4paradigm.openmldb.taskmanager.yarn.YarnClientUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -166,7 +167,7 @@ public class TaskManagerImpl implements TaskManagerInterface {
             if (jobInfo.isEmpty()) {
                 responseBuilder.setCode(StatusCode.FAILED).setMsg("Fail to get job with id: " + request.getId());
             } else {
-                responseBuilder.setCode(StatusCode.SUCCESS).setJob(jobInfoToProto(jobInfo.get()));;
+                responseBuilder.setCode(StatusCode.SUCCESS).setJob(jobInfoToProto(jobInfo.get()));
             }
 
             return responseBuilder.build();
@@ -202,7 +203,7 @@ public class TaskManagerImpl implements TaskManagerInterface {
     @Override
     public TaskManager.ShowJobResponse ShowBatchVersion(TaskManager.ShowBatchVersionRequest request) {
         try {
-            JobInfo jobInfo = OpenmldbBatchjobManager.showBatchVersion();
+            JobInfo jobInfo = OpenmldbBatchjobManager.showBatchVersion(request.getSyncJob());
             return TaskManager.ShowJobResponse.newBuilder().setCode(StatusCode.SUCCESS).setJob(jobInfoToProto(jobInfo))
                     .build();
         } catch (Exception e) {
@@ -232,8 +233,10 @@ public class TaskManagerImpl implements TaskManagerInterface {
             JobInfo finalJobInfo = JobInfoManager.getJob(jobId).get();
             if (finalJobInfo.isSuccess()) {
                 // wait for all files of result saved and read them, large timeout
+                // TODO: Test for K8S backend
                 String output = jobResultSaver.readResult(resultId, TaskManagerConfig.BATCH_JOB_RESULT_MAX_WAIT_TIME);
-                return TaskManager.RunBatchSqlResponse.newBuilder().setCode(StatusCode.SUCCESS).setOutput(output).build();
+                return TaskManager.RunBatchSqlResponse.newBuilder().setCode(StatusCode.SUCCESS).setOutput(output)
+                        .build();
             } else {
                 String errorMsg = String.format("The job %d fail and use 'SHOW JOBLOG %d' for more info", jobId, jobId);
                 return TaskManager.RunBatchSqlResponse.newBuilder().setCode(StatusCode.FAILED).setMsg(errorMsg)
@@ -246,26 +249,35 @@ public class TaskManagerImpl implements TaskManagerInterface {
         }
     }
 
-    // no max wait time
-    private JobInfo busyWaitJobInfo(int jobId) throws InterruptedException {
-        while (true) {
+    // waitSeconds: 0 means wait max time
+    // rpc max time is CHANNEL_KEEP_ALIVE_TIME, so we don't need to wait too long
+    private JobInfo busyWaitJobInfo(int jobId, int waitSeconds) throws InterruptedException {
+        long maxWaitEnd = System.currentTimeMillis()
+                + (waitSeconds == 0 ? TaskManagerConfig.CHANNEL_KEEP_ALIVE_TIME : waitSeconds) * 1000;
+        while (System.currentTimeMillis() < maxWaitEnd) {
             Option<JobInfo> info = JobInfoManager.getJob(jobId);
-            if (info.nonEmpty() && info.get().isFinished()) {
+            if (info.isEmpty()) {
+                throw new RuntimeException("job " + jobId + " not found in job_info table");
+            }
+            if (info.get().isFinished()) {
                 return info.get();
             }
             Thread.sleep(10000);
         }
+        throw new RuntimeException("wait for job " + jobId + " timeout");
     }
 
     private JobInfo waitJobInfoWrapper(int jobId) throws Exception {
         try {
-            busyWaitJobInfo(jobId);
+            busyWaitJobInfo(jobId, 0);
             // Ref https://github.com/4paradigm/OpenMLDB/issues/1436#issuecomment-1066314684
+            // wait for 2s to avoid state jump from FINISHED to FAILED
             Thread.sleep(2000);
-            return busyWaitJobInfo(jobId);
-        } catch (InterruptedException e) {
+            // check the job state again, just check one time
+            return busyWaitJobInfo(jobId, 2);
+        } catch (Exception e) {
             e.printStackTrace();
-            throw new Exception("wait for job failed, use show job to get the job status. Job " + jobId);
+            throw new RuntimeException("wait for job failed, use show job to get the job status. Job " + jobId, e);
         }
     }
 
@@ -352,9 +364,36 @@ public class TaskManagerImpl implements TaskManagerInterface {
     @Override
     public TaskManager.GetJobLogResponse GetJobLog(TaskManager.GetJobLogRequest request) {
         try {
-            String outLog = LogManager.getJobLog(request.getId());
-            String errorLog = LogManager.getJobErrorLog(request.getId());
+            String outLog = "";
+            try {
+                outLog = LogManager.getJobLog(request.getId());
+            } catch (Exception e) {
+                logger.warn(String.format("Fail to to get job log of job %s", request.getId()));
+            }
+
+            String errorLog = "";
+            try {
+                errorLog = LogManager.getJobErrorLog(request.getId());
+            } catch (Exception e) {
+                logger.warn(String.format("Fail to to get job error log of job %s", request.getId()));
+            }
+
             String log = String.format("Stdout:\n%s\n\nStderr:\n%s", outLog, errorLog);
+
+            /* TODO: Can not get yarn log from finished containers
+            try {
+                JobInfo jobInfo = JobInfoManager.getJob(request.getId()).get();
+                if (TaskManagerConfig.isYarnCluster() && jobInfo.isFinished()) {
+                    // TODO: The yarn log is printed in front of the string
+                    String completeYarnLog = YarnClientUtil.getAppLog(jobInfo.getApplicationId());
+                    log += "\n\nYarn log: " + completeYarnLog;
+                }
+            } catch (Exception e) {
+                logger.error("Fail to get yarn log for job " + request.getId());
+                e.printStackTrace();
+            }
+            */
+
             return TaskManager.GetJobLogResponse.newBuilder().setCode(StatusCode.SUCCESS).setLog(log).build();
         } catch (Exception e) {
             e.printStackTrace();

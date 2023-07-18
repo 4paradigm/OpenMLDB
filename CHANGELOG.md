@@ -1,5 +1,77 @@
 # Changelog
 
+## [0.8.1] - 2023-06-28
+
+### Features
+- Support a new SQL statement `ALTER TABLE ... ADD/DROP OFFLINE_PATH ...` (#3286 @aceforeverd, #3323 @tobegit3hub)
+- Support deploying SQLs in which the involved tables have data but without pre-aggregation defined (#3288 @dl239)
+- Support new built-in functions `top_n_value_ratio_cate`, `top_n_key_ratio_cate`, `list_except_by_key` and `list_except_by_value` (#3329 @aceforeverd)
+- Add a new SDK API to merge multiple SQLs for deployment (#3297 @vagetablechicken)
+- Support mapping topic tables in the Kafka connector (#3282 @vagetablechicken)
+- Support deploying the Kafka connector in Docker and Kubernetes (#3276 @tobegit3hub)
+- Support fetching jobs from NameServer (#3293 @dl239)
+- Enhance the diagnostic tool (#3224 #3208 #3285 #3258 #3303 @zhangziheng01233)
+- Enhance the `SELECT INTO ...` statement (#2529 @vagetablechicken)
+- Improve the documents (#3308 @aceforeverd)
+- Other minor features (#3312 #3314 @vagetablechicken, #3298 @aceforeverd)
+
+### Bug Fixes
+- SQL deployment fails in some cases (#3328 @vagetablechicken)
+- Creating UDFs/UDAFs may fail as the `udf` directory does not exist by default. (#3326 @vagetablechicken)
+- Other minor bug fixes (#3281 #3284 @vagetablechicken)
+
+### Code Refactoring
+#3226 @dl239, #3294 @aceforeverd
+
+## [0.8.0] - 2023-05-12
+
+### Features
+- Add a new synchronization tool to automatically synchronize data from online storage to offline storage (#3256 @vagetablechicken)
+- Support the new built-in functions `var_samp`, `var_pop`, `entropy`, `earth_distance`, `nth_value_where` and `add_months` (#3046 #3193 @aceforeverd)
+- Support batch read for openmldb-spark-connector (#3070 @tobegit3hub)
+- [Alpha] Support Kubernetes as a TaskManager backend for the offline engine (#3147 #3157 #3185 @tobegit3hub)
+- Support LAST JOIN over WHERE clause (#3134 @aceforeverd)
+- Support LAST JOIN in WINDOW UNION clause (#3205 @aceforeverd)
+- Supports a decimal place as the second parameter in the function `round` (#3221 @aceforeverd)
+- Support Amazon S3 as an offline data source (#3229 #3261 @tobegit3hub)
+- Add the new option `SKIP_INDEX_CHECK` to skip index checking when deploying SQLs (#3241 @dl239)
+- Support symbolic paths for offline table (#3235 @tobegit3hub)
+- Improve the documents (#3104 #2993 @selenachenjingxin, #3113 #3118 #3239 @tobegit3hub, #3150 #3184 #3237 #3255 @aceforeverd, #3160 #3195 #3197 #3223 @lumianph, #3192 #3215 @haseeb-xd, #3201 #3220 #3232 #3236 #3254 @vagetablechicken, #3213 @alexab612, #3189 #3199 @TanZiYen)
+- Other minor features (#3115 #3143 #3182 @tobegit3hub, #2818 #3123 @aceforeverd, #3128 #3127 @dl239)
+
+### Bug Fixes
+- There is curator conflict problem when executing offline SQLs under certain circumstances. (#3090 @tobegit3hub)
+- `CREATE TABLE ... LIKE HIVE ...` statement execution fails if there is no database in a table name. (#3063 @tobegit3hub)
+- The CLI shows `success` even though `CREATE TABLE ... LIKE ...` execution fails. (#3080 @tobegit3hub)
+- `SELECT ... INTO ...` statement execution fails in the offline mode if there is no source table. (#3116 @tobegit3hub)
+- Compilation fails when `SELECT * ` over two LAST JOIN. (#3117 @aceforeverd)
+- The syncing job thread will enter an infinite loop if querying `JOB_INFO` fails. (#3169 @vagetablechicken)
+- SQLs deployment fails if there are more than one conditions on a JOIN statement. (#3196 @vagetablechicken)
+- Registered tables cannot be fetched when enabling SparkSQL for the offline engine (#3057 @tobegit3hub)
+- Other minor bug fixes (#3097 #3095 @dl239, #3109 #3141 #3162 #3234 @aceforeverd, #3096 #3112 @tobegit3hub, #3231 #3251 @vagetablechicken)
+
+### Code Refactoring
+#3188 @tobegit3hub
+
+## [0.7.3] - 2023-03-22
+
+### Features
+- Support C/C++ based User-Defined Aggregated Functions (UDAFs) (#2825 @dl239)
+- Improve the diagnostic tool to support a few new sub-commands (#3106 @vagetablechicken)
+- Add a new script to modify the node environment configuration (#3142 @dl239)
+- Change the default value of `max_traverse_cnt` to unlimited to avoid result truncated when performing queries in CLI (#2999 @dl239)
+- Improve the documents (#3111 #3093 #3119 @selenachenjingxin, #3105 #3125 #3120 @vagetablechicken, #3114 #3126 @dl239, #3128 @lumianph)
+
+### Bug Fixes
+- The user-provided `SPARK_HOME` does not work in the deployment scripts. (#3085 @zhanghaohit)
+- The result of `SELECT timestamp(string_val)` is incorrect at the offline mode. (#3088 @tobegit3hub)
+
+### Code Refactoring
+#3122 @haseeb-xd
+
+Note:
+If the configuration of a tablet has not been updated when upgrading to this new version, the query result still may be truncated as the old version (#2999).
+
 ## [0.7.2] - 2023-02-17
 
 ### Features
@@ -527,6 +599,9 @@ Removed
 - openmldb-0.2.0-linux.tar.gz targets on x86_64
 - aarch64 artifacts consider experimental
 
+[0.8.1]: https://github.com/4paradigm/OpenMLDB/compare/v0.8.0...v0.8.1
+[0.8.0]: https://github.com/4paradigm/OpenMLDB/compare/v0.7.3...v0.8.0
+[0.7.3]: https://github.com/4paradigm/OpenMLDB/compare/v0.7.2...v0.7.3
 [0.7.2]: https://github.com/4paradigm/OpenMLDB/compare/v0.7.1...v0.7.2
 [0.7.1]: https://github.com/4paradigm/OpenMLDB/compare/v0.7.0...v0.7.1
 [0.7.0]: https://github.com/4paradigm/OpenMLDB/compare/v0.6.9...v0.7.0

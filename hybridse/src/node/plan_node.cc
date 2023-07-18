@@ -220,6 +220,10 @@ std::string NameOfPlanNodeType(const PlanType &type) {
             return "kPlanTypeCreateFunction";
         case kPlanTypeWithClauseEntry:
             return "kPlanTypeWithClauseEntry";
+        case kPlanTypeShow:
+            return "kPlanTypeShow";
+        case kPlanTypeAlterTable:
+            return "kPlanTypeAlterTable";
         case kUnknowPlan:
             return std::string("kUnknow");
     }
@@ -475,8 +479,9 @@ void TablePlanNode::Print(std::ostream &output,
                           const std::string &org_tab) const {
     PlanNode::Print(output, org_tab);
     output << "\n";
-    PrintValue(output, org_tab + INDENT, GetPathString(), is_primary_ ? "primary_table" : "table", true);
+    PrintValue(output, org_tab + INDENT, GetPathString(), "table", true);
 }
+
 bool TablePlanNode::Equals(const PlanNode *node) const {
     if (nullptr == node) {
         return false;
@@ -490,9 +495,9 @@ bool TablePlanNode::Equals(const PlanNode *node) const {
         return false;
     }
     const TablePlanNode *that = dynamic_cast<const TablePlanNode *>(node);
-    return is_primary_ == that->is_primary_ &&
-           db_ == that->db_ && table_ == that->table_ && LeafPlanNode::Equals(that);
+    return db_ == that->db_ && table_ == that->table_ && LeafPlanNode::Equals(that);
 }
+
 void RenamePlanNode::Print(std::ostream &output,
                            const std::string &org_tab) const {
     PlanNode::Print(output, org_tab);
@@ -795,6 +800,22 @@ void DeletePlanNode::Print(std::ostream& output, const std::string& tab) const {
     }
 }
 
+bool ShowPlanNode::Equals(const PlanNode *that) const {
+    auto other = dynamic_cast<const ShowPlanNode *>(that);
+    return LeafPlanNode::Equals(that) && type_ == that->type_ && GetShowType() == other->GetShowType()
+        && GetTarget() == other->GetTarget() && GetLikeStr() == other->GetLikeStr();
+}
+void ShowPlanNode::Print(std::ostream& output, const std::string& tab) const {
+    PlanNode::Print(output, tab);
+    const std::string next_tab = tab + INDENT + SPACE_ED;
+    output << "\n";
+    PrintValue(output, next_tab, ShowStmtTypeName(show_type_), "show type", false);
+    output << "\n";
+    PrintValue(output, next_tab, target_, "target", false);
+    output << "\n";
+    PrintValue(output, next_tab, like_str_, "like_str", true);
+}
+
 bool CmdPlanNode::Equals(const PlanNode *that) const {
     if (!LeafPlanNode::Equals(that)) {
         return false;
@@ -818,6 +839,22 @@ bool WithClauseEntryPlanNode::Equals(const PlanNode *node) const {
         node, [](const WithClauseEntryPlanNode *lhs, const WithClauseEntryPlanNode *rhs) {
             return lhs->alias_ == rhs->alias_;
         });
+}
+
+void AlterTableStmtPlanNode::Print(std::ostream &output, const std::string &org_tab) const {
+    LeafPlanNode::Print(output, org_tab);
+    output << "\n";
+    auto tab = org_tab + INDENT;
+    PrintValue(output, tab, absl::StrCat(db_, ".", table_), "path", false);
+    output << "\n";
+    output << tab << SPACE_ST << "actions:"
+           << "\n";
+    for (decltype(actions_.size()) i = 0; i < actions_.size(); ++i) {
+        PrintValue(output, tab + INDENT, actions_[i]->DebugString(), std::to_string(i), false);
+        if (i + 1 < actions_.size()) {
+            output << "\n";
+        }
+    }
 }
 
 }  // namespace node

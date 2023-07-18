@@ -39,9 +39,6 @@ class SqlCase {
         std::string index_;
         std::string data_;
         std::string order_;
-        // resource file name of the table data.
-        // absolute path or relative to current yaml file
-        std::string csv_data_file_;
         std::vector<std::string> indexs_;
         std::vector<std::string> columns_;
         std::vector<std::vector<std::string>> rows_;
@@ -186,6 +183,7 @@ class SqlCase {
         const std::string& cases_dir, const std::string& resource_path,
         type::TableDef& table,                     // NOLINT
         std::vector<hybridse::codec::Row>& rows);  // NOLINT
+
     static bool CreateSqlCasesFromYaml(
         const std::string& cases_dir, const std::string& yaml_path,
         std::vector<SqlCase>& sql_case_ptr,  // NOLINT
@@ -194,6 +192,7 @@ class SqlCase {
         const std::string& cases_dir, const std::string& yaml_path,
         std::vector<SqlCase>& sql_case_ptr,  // NOLINT
         const std::vector<std::string>& filter_modes);
+
     static bool CreateTableInfoFromYaml(const std::string& cases_dir,
                                         const std::string& yaml_path,
                                         TableInfo* table_info);

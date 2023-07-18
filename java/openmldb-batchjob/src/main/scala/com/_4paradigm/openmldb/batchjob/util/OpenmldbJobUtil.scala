@@ -30,6 +30,11 @@ object OpenmldbJobUtil {
   }
 
   def getSqlFromFile(spark: SparkSession, sqlFilePath: String): String = {
+    if (!sqlFilePath.split("/").last.startsWith("sql-")) {
+      // If it starts with "sql-" it is sql file, otherwise it is sql text
+      return sqlFilePath
+    }
+
     val sparkMaster = spark.conf.get("spark.master")
     val sparkDeployMode = spark.conf.get("spark.submit.deployMode", "client")
 
@@ -44,7 +49,7 @@ object OpenmldbJobUtil {
       throw new Exception("SQL file does not exist in " + actualSqlFilePath)
     }
 
-    scala.io.Source.fromFile(actualSqlFilePath).mkString
+    scala.io.Source.fromFile(actualSqlFilePath).mkString.trim
   }
 
   def runOpenmldbSql(spark: SparkSession, sqlFilePath: String): Unit = {

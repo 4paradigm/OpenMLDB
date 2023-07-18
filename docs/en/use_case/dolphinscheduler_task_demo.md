@@ -4,7 +4,7 @@
 In the closed loop of machine learning applications from development to deployment, data processing, feature engineering, and model training often cost a lot of time and manpower. To facilitate AI applications development and deployment, we have developed the DolphinScheduler OpenMLDB Task, which integrates feature engineering into the workflow of DolphinScheduler to build an end-to-end MLOps workflow. This article will briefly introduce and demonstrate the operation process of the DolphinScheduler OpenMLDB Task.
 
 ```{seealso}
-See [DolphinScheduler OpenMLDB Task Official Documentation](https://dolphinscheduler.apache.org/#/en-us/docs/3.1.2/guide/task/openmldb) for full details.
+See [DolphinScheduler OpenMLDB Task Official Documentation](https://dolphinscheduler.apache.org/en-us/docs/3.1.5/guide/task/openmldb) for full details.
 ```
 
 ## Scenarios and Functions
@@ -33,7 +33,7 @@ In addition to the feature engineering done by OpenMLDB, the prediction also req
 
 The demo can run on MacOS or Linux, the OpenMLDB docker image is recommended. We'll start OpenMLDB and DolphinScheduler in the same container, expose the DolphinScheduler web port:
 ```
-docker run -it -p 12345:12345 4pdosc/openmldb:0.7.2 bash
+docker run -it -p 12345:12345 4pdosc/openmldb:0.8.1 bash
 ```
 
 ```{attention}
@@ -77,11 +77,12 @@ If online predict test got errors, please check the log`/work/predict.log`.
 
 **Start DolphinScheduler**
 
-You can download the DolphinScheduler dev package prepared by us, in[dolphinscheduler-bin download link](http://openmldb.ai/download/dolphinschduler-task/apache-dolphinscheduler-dev-SNAPSHOT-bin.tar.gz).
+You can download the DolphinScheduler package in [official](https://dolphinscheduler.apache.org/zh-cn/download/3.1.5), or the mirror site prepared by us, in[dolphinscheduler-bin download link](http://openmldb.ai/download/dolphinschduler-task/apache-dolphinscheduler-dev-3.1.5-bin.tar.gz).
 
-Start the DolphinScheduler standalone version. The steps are as follows. For more information, please refer to [Official Documentation](https://dolphinscheduler.apache.org/#/en-us/docs/3.1.2/guide/installation/standalone)。
+Start the DolphinScheduler standalone version. The steps are as follows. For more information, please refer to [Official Documentation](https://dolphinscheduler.apache.org/en-us/docs/3.1.5/guide/installation/standalone)。
 ```
-curl -SLO http://openmldb.ai/download/dolphinschduler-task/apache-dolphinscheduler-dev-SNAPSHOT-bin.tar.gz
+curl -SLO https://dlcdn.apache.org/dolphinscheduler/3.1.5/apache-dolphinscheduler-3.1.5-bin.tar.gz
+# mirror: curl -SLO http://openmldb.ai/download/dolphinschduler-task/apache-dolphinscheduler-dev-3.1.5-bin.tar.gz
 tar -xvzf apache-dolpSchedulerler-*-bin.tar.gz
 cd apache-dolpSchedulerler-*-bin
 sed -i s#/opt/soft/python#/usr/bin/python3#g bin/env/dolphinscheduler_env.sh
@@ -89,7 +90,7 @@ sh ./bin/dolpSchedulerler-daemon.sh start standalone-server
 ```
 
 ```{hint}
-The OpenMLDB Task in higher version DolphinScheduler official releases(e.g. 3.1.2) has problems，can't work, please use the package which we provided. If you want the DolphinScheduler in higher version, ask us for the fix version.
+The OpenMLDB Task in old version (< 3.1.2) has problems，can't work, please use the newer package(>=3.1.3). If you want the DolphinScheduler in old version, ask us for the fix version.
 
 In higher version of DolphinScheduler, `bin/env/dolphinscheduler_env.sh` may be changed, we need to append `PYTHON_HOME` to it, run `echo "export PYTHON_HOME=/usr/bin/python3" >> bin/env/dolphinscheduler_env.sh`.
 
@@ -211,4 +212,4 @@ Restart the DolphinScheduler server(the metadata will be cleaned, you need to re
 ./bin/dolphinscheduler-daemon.sh start standalone-server
 ```
 
-If you want to store the metadata，check [Pseudo-Cluster Deployment](https://dolphinscheduler.apache.org/#/en-us/docs/3.1.2/guide/installation/pseudo-cluster) to use the database.
+If you want to store the metadata，check [Pseudo-Cluster Deployment](https://dolphinscheduler.apache.org/en-us/docs/3.1.5/guide/installation/pseudo-cluster) to use the database.

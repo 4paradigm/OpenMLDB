@@ -73,13 +73,16 @@ bool NsClient::ShowDatabase(std::vector<std::string>* dbs, std::string& msg) {
     return ok && response.code() == 0;
 }
 
-bool NsClient::DropDatabase(const std::string& db, std::string& msg) {
+bool NsClient::DropDatabase(const std::string& db, std::string& msg, bool if_exists) {
     ::openmldb::nameserver::DropDatabaseRequest request;
     ::openmldb::nameserver::GeneralResponse response;
     request.set_db(db);
     bool ok = client_.SendRequest(&::openmldb::nameserver::NameServer_Stub::DropDatabase, &request, &response,
                                   FLAGS_request_timeout_ms, 1);
     msg = response.msg();
+    if (if_exists) {
+        return ok && (response.code() == 0 || response.code() == ::openmldb::base::ReturnCode::kDatabaseNotFound);
+    }
     return ok && response.code() == 0;
 }
 
@@ -187,8 +190,19 @@ bool NsClient::MakeSnapshot(const std::string& name, const std::string& db, uint
     return false;
 }
 
-bool NsClient::ShowOPStatus(::openmldb::nameserver::ShowOPStatusResponse& response, const std::string& name,
-                            uint32_t pid, std::string& msg) {
+base::Status NsClient::ShowOPStatus(uint64_t op_id, nameserver::ShowOPStatusResponse* response) {
+    ::openmldb::nameserver::ShowOPStatusRequest request;
+    request.set_op_id(op_id);
+    bool ok = client_.SendRequest(&::openmldb::nameserver::NameServer_Stub::ShowOPStatus, &request, response,
+                                  FLAGS_request_timeout_ms, 1);
+    if (ok && response->code() == 0) {
+        return {};
+    }
+    return {base::ReturnCode::kError, response->msg()};
+}
+
+base::Status NsClient::ShowOPStatus(const std::string& name, uint32_t pid,
+                                    ::openmldb::nameserver::ShowOPStatusResponse* response) {
     ::openmldb::nameserver::ShowOPStatusRequest request;
     if (const std::string& db = GetDb(); !db.empty()) {
         request.set_db(db);
@@ -199,13 +213,12 @@ bool NsClient::ShowOPStatus(::openmldb::nameserver::ShowOPStatusResponse& respon
     if (pid != INVALID_PID) {
         request.set_pid(pid);
     }
-    bool ok = client_.SendRequest(&::openmldb::nameserver::NameServer_Stub::ShowOPStatus, &request, &response,
+    bool ok = client_.SendRequest(&::openmldb::nameserver::NameServer_Stub::ShowOPStatus, &request, response,
                                   FLAGS_request_timeout_ms, 1);
-    msg = response.msg();
-    if (ok && response.code() == 0) {
-        return true;
+    if (ok && response->code() == 0) {
+        return {};
     }
-    return false;
+    return {base::ReturnCode::kError, response->msg()};
 }
 
 bool NsClient::CancelOP(uint64_t op_id, std::string& msg) {
@@ -881,16 +894,13 @@ bool NsClient::SwitchMode(const ::openmldb::nameserver::ServerMode& mode, std::s
 }
 
 bool NsClient::AddIndex(const std::string& table_name, const ::openmldb::common::ColumnKey& column_key,
-                  std::vector<openmldb::common::ColumnDesc>* cols,
-                  std::string& msg) {
+                        std::vector<openmldb::common::ColumnDesc>* cols, std::string& msg) {
     return AddIndex("", table_name, column_key, cols, msg);
 }
 
-bool NsClient::AddIndex(const std::string& db_name,
-                        const std::string& table_name,
+bool NsClient::AddIndex(const std::string& db_name, const std::string& table_name,
                         const ::openmldb::common::ColumnKey& column_key,
-                        std::vector<openmldb::common::ColumnDesc>* cols,
-                        std::string& msg) {
+                        std::vector<openmldb::common::ColumnDesc>* cols, std::string& msg) {
     ::openmldb::nameserver::AddIndexRequest request;
     ::openmldb::nameserver::GeneralResponse response;
     ::openmldb::common::ColumnKey* cur_column_key = request.mutable_column_key();
@@ -917,7 +927,8 @@ bool NsClient::AddIndex(const std::string& db_name,
 }
 
 base::Status NsClient::AddMultiIndex(const std::string& db, const std::string& table_name,
-        const std::vector<::openmldb::common::ColumnKey>& column_keys) {
+                                     const std::vector<::openmldb::common::ColumnKey>& column_keys,
+                                     bool skip_load_data) {
     ::openmldb::nameserver::AddIndexRequest request;
     ::openmldb::nameserver::GeneralResponse response;
     if (column_keys.empty()) {
@@ -929,6 +940,7 @@ base::Status NsClient::AddMultiIndex(const std::string& db, const std::string& t
     }
     request.set_name(table_name);
     request.set_db(db);
+    request.set_skip_load_data(skip_load_data);
     bool ok = client_.SendRequest(&::openmldb::nameserver::NameServer_Stub::AddIndex, &request, &response,
                                   FLAGS_request_timeout_ms, 1);
     if (ok && response.code() == 0) {
@@ -1043,8 +1055,7 @@ base::Status NsClient::DropFunction(const std::string& name, bool if_exists) {
     return {};
 }
 
-base::Status NsClient::ShowFunction(const std::string& name,
-        std::vector<::openmldb::common::ExternalFun>* fun_vec) {
+base::Status NsClient::ShowFunction(const std::string& name, std::vector<::openmldb::common::ExternalFun>* fun_vec) {
     if (fun_vec == nullptr) {
         return base::Status(base::ReturnCode::kError, "nullptr");
     }
@@ -1062,6 +1073,36 @@ base::Status NsClient::ShowFunction(const std::string& name,
     for (int i = 0; i < response.fun_size(); i++) {
         fun_vec->emplace_back(response.fun(i));
     }
+    return {};
+}
+
+base::Status NsClient::DeploySQL(
+    const ::openmldb::api::ProcedureInfo& sp_info,
+    const std::map<std::string, std::map<std::string, std::vector<::openmldb::common::ColumnKey>>>& new_index_map,
+    uint64_t* op_id) {
+    if (new_index_map.empty()) {
+        return {base::ReturnCode::kError, "no index to add"};
+    }
+    nameserver::DeploySQLRequest request;
+    request.mutable_sp_info()->CopyFrom(sp_info);
+    for (const auto& db_map : new_index_map) {
+        auto& db = db_map.first;
+        for (const auto& kv : db_map.second) {
+            auto index = request.add_index();
+            index->set_db(db);
+            index->set_name(kv.first);
+            for (const auto& column_key : kv.second) {
+                index->add_column_key()->CopyFrom(column_key);
+            }
+        }
+    }
+    nameserver::DeploySQLResponse response;
+    bool ok = client_.SendRequest(&::openmldb::nameserver::NameServer_Stub::DeploySQL, &request, &response,
+                                  FLAGS_request_timeout_ms, 1);
+    if (!ok || response.code() != 0) {
+        return {base::ReturnCode::kError, response.msg()};
+    }
+    *op_id = response.op_id();
     return {};
 }
 

@@ -6,8 +6,7 @@ OpenMLDB 的主要使用场景为作为机器学习的实时特征平台。其�
 
 ![modes-flow](concepts/images/modes-flow.png)
 
-
-可以看到，OpenMLDB 会覆盖机器学习的特征计算环节，从离线开发到线上实时请求服务的完整流程。可以参考文档 [使用流程和执行模式](concepts/modes.md) 来详细了解。本文将按照基本使用流程，逐步演示一个快速上手的例子。
+可以看到，OpenMLDB 会覆盖机器学习的特征计算环节，从离线开发到线上实时请求服务的完整流程。可以参考文档[使用流程和执行模式](concepts/modes.md)来详细了解。本文将按照基本使用流程，逐步演示一个快速上手和了解 OpenMLDB 的例子。
 
 ## 准备
 
@@ -20,19 +19,11 @@ OpenMLDB 的主要使用场景为作为机器学习的实时特征平台。其�
 在命令行执行以下命令拉取 OpenMLDB 镜像，并启动 Docker 容器：
 
 ```bash
-docker run -it 4pdosc/openmldb:0.7.2 bash
+docker run -it 4pdosc/openmldb:0.8.1 bash
 ```
 
 ```{note}
 成功启动容器以后，本教程中的后续命令默认均在容器内执行。如果你需要从容器外访问容器内的 OpenMLDB 服务端，请参考 [CLI/SDK-容器 onebox 文档](../reference/ip_tips.md#clisdk-容器onebox)。
-```
-
-### 下载样例数据
-
-在容器中执行以下命令，下载后续流程中使用的样例数据（**0.7.0 及之后的版本可跳过此步**，数据已经存放在镜像内）：
-
-```bash
-curl https://openmldb.ai/demo/data.parquet --output /work/taxi-trip/data/data.parquet
 ```
 
 ### 启动服务端和客户端
@@ -92,7 +83,11 @@ LOAD DATA INFILE 'file:///work/taxi-trip/data/data.parquet' INTO TABLE demo_tabl
 这里使用 `SHOW JOBS` 查看任务状态，请等待任务运行成功（ `state` 转至 `FINISHED` 状态），再进行下面步骤。
 ![image-20220111141358808](./images/state_finished.png)
 
-任务完成以后，如果希望预览数据，可以使用 `SELECT * FROM demo_table1` 语句，推荐先将离线命令设置为同步模式（`SET @@sync_job=true`）；否则该命令会提交一个异步任务，结果会保存在 Spark 任务的日志文件中，查看较不方便。
+任务完成以后，如果希望预览数据，可以在同步模式`SET @@sync_job=true`下 `SELECT * FROM demo_table1` 语句。但它有一定的限制，详情见[离线命令同步模式](./function_boundary.md#离线命令同步模式)。
+
+默认的异步模式下，`SELECT * FROM demo_table1`会提交一个异步任务，结果会保存在 Spark 任务的日志文件中，查看较不方便。如果TaskManager为local，可以`SHOW JOBLOG <id>`查看stdout中的查询打印结果。
+
+最可靠的方式是，可以使用 `SELECT INTO` 命令，将数据导出到指定目录，或直接查看导入后的存储地址。
 
 ```{note}
 OpenMLDB 也支持链接形式的软拷贝来导入离线数据，无需数据硬拷贝。可以参考 [LOAD DATA INFILE 文档](../openmldb_sql/dml/LOAD_DATA_STATEMENT.md) 的参数 `deep_copy` 的说明。

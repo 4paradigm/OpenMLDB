@@ -33,7 +33,7 @@
         <dependency>
             <groupId>com.google.guava</groupId>
             <artifactId>guava</artifactId>
-            <version>29.0-jre</version>
+            <version>32.0.0-jre</version>
         </dependency>
         <dependency>
             <groupId>org.apache.commons</groupId>
@@ -48,7 +48,7 @@
         <dependency>
             <groupId>org.testng</groupId>
             <artifactId>testng</artifactId>
-            <version>7.7.0</version>
+            <version>6.14.3</version>
         </dependency>
     </dependencies>
     <build>

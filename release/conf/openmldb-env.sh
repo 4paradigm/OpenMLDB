@@ -1,5 +1,5 @@
 #! /usr/bin/env bash
-export OPENMLDB_VERSION=0.7.2
+export OPENMLDB_VERSION=0.8.1
 # openmldb mode: standalone / cluster
 export OPENMLDB_MODE=${OPENMLDB_MODE:=standalone}
 # tablet port
@@ -32,3 +32,5 @@ export OPENMLDB_HOME=
 # the root path of openmldb spark release, default is $OPENMLDB_HOME/spark
 # if not exists, download from online
 export SPARK_HOME=
+# if CLEAR_OPENMLDB_INSTALL_DIR is set, all files in the WORKDIR will be deleted when running sbin/clear-all.sh
+export CLEAR_OPENMLDB_INSTALL_DIR=false

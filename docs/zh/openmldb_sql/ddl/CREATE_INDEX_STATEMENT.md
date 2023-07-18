@@ -1,7 +1,7 @@
 # CREATE INDEX
 
 `CREATE INDEX` 语句用来创建索引。 如果表里有数据，添加索引会发起异步任务来加载数据。
-通过`ns_client`中的`showopstatus`命令可以查看任务状态，详见[运维 CLI](../../../maintain/cli.md#showopstatus)。
+通过`ns_client`中的`showopstatus`命令可以查看任务状态，详见[运维 CLI](../../maintain/cli.md#showopstatus)。
 
 ## 语法
 

@@ -119,24 +119,19 @@ class RenamePlanNode : public UnaryPlanNode {
     const std::string table_;
 };
 
-// Refer to a table or a CTE name in with clause
+// Refer to a physical table or a CTE entry in with clause
 class TablePlanNode : public LeafPlanNode {
  public:
     TablePlanNode(const std::string &db, const std::string &table)
-        : LeafPlanNode(kPlanTypeTable), db_(db), table_(table), is_primary_(false) {}
+        : LeafPlanNode(kPlanTypeTable), db_(db), table_(table) {}
     void Print(std::ostream &output, const std::string &org_tab) const override;
-    virtual bool Equals(const PlanNode *that) const;
-    const bool IsPrimary() const { return is_primary_; }
-    void SetIsPrimary(bool is_primary) { is_primary_ = is_primary; }
+    bool Equals(const PlanNode *that) const override;
     const std::string GetPathString() const {
         return db_.empty() ? table_ : db_ + "." + table_;
     }
 
     const std::string db_;
     const std::string table_;
-
- private:
-    bool is_primary_;
 };
 
 class DistinctPlanNode : public UnaryPlanNode {
@@ -238,7 +233,7 @@ class FilterPlanNode : public UnaryPlanNode {
         : UnaryPlanNode(node, kPlanTypeFilter), condition_(condition) {}
     ~FilterPlanNode() {}
     void Print(std::ostream &output, const std::string &org_tab) const override;
-    virtual bool Equals(const PlanNode *node) const;
+    bool Equals(const PlanNode *node) const override;
     const ExprNode *condition_;
 };
 
@@ -249,7 +244,7 @@ class LimitPlanNode : public UnaryPlanNode {
     ~LimitPlanNode() {}
     const int GetLimitCnt() const { return limit_cnt_; }
     void Print(std::ostream &output, const std::string &org_tab) const override;
-    virtual bool Equals(const PlanNode *node) const;
+    bool Equals(const PlanNode *node) const override;
     const int32_t limit_cnt_;
 };
 
@@ -513,6 +508,22 @@ class CmdPlanNode : public LeafPlanNode {
     bool if_exist_ = false;
 };
 
+class ShowPlanNode : public LeafPlanNode {
+ public:
+    ShowPlanNode(ShowStmtType show_type, const std::string& target, const std::string like)
+        : LeafPlanNode(kPlanTypeShow), show_type_(show_type), target_(target), like_str_(like) {}
+    const std::string& GetTarget() const { return target_; }
+    ShowStmtType GetShowType() const { return show_type_; }
+    const std::string& GetLikeStr() const { return like_str_; }
+    bool Equals(const PlanNode* that) const override;
+    void Print(std::ostream& output, const std::string& tab) const override;
+
+ private:
+    ShowStmtType show_type_;
+    std::string target_;
+    std::string like_str_;
+};
+
 class DeletePlanNode : public LeafPlanNode {
  public:
     DeletePlanNode(DeleteTarget target, std::string job_id,
@@ -735,6 +746,20 @@ class CreateProcedurePlanNode : public MultiChildPlanNode {
     std::string sp_name_;
     NodePointVector input_parameter_list_;
     PlanNodeList inner_plan_node_list_;
+};
+
+class AlterTableStmtPlanNode : public LeafPlanNode {
+ public:
+    AlterTableStmtPlanNode(absl::string_view db, absl::string_view table,
+                           const std::vector<const AlterActionBase *> &actions)
+        : LeafPlanNode(kPlanTypeAlterTable), db_(db), table_(table), actions_(actions) {}
+    ~AlterTableStmtPlanNode() override {}
+
+    void Print(std::ostream &output, const std::string &org_tab) const override;
+
+    absl::string_view db_;
+    absl::string_view table_;
+    std::vector<const AlterActionBase *> actions_;
 };
 
 bool PlanEquals(const PlanNode *left, const PlanNode *right);

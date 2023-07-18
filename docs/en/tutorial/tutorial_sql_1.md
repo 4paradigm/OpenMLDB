@@ -304,22 +304,22 @@ window w30d as (PARTITION BY uid ORDER BY trans_time ROWS_RANGE BETWEEN 30d PREC
 
 We make frequency statistics for a given column as we may need to know the type of the highest frequency, the proportion of the type with the largest number, etc., in each category.
 
-`fz_top1_ratio`: Find out the type with the largest number and compute the proportion of its number in the window.
+`top1_ratio`: Find out the type with the largest number and compute the proportion of its number in the window.
 
-The following SQL uses `fz_top1_ratio` to find out the city with the most transactions in the last 30 days and compute the proportion of the number of transactions of the city to the total number of transactions in t1.
+The following SQL uses `top1_ratio` to find out the city with the most transactions in the last 30 days and compute the proportion of the number of transactions of the city to the total number of transactions in t1.
 ```sql
 SELECT 
-fz_top1_ratio(city) over w30d as top_city_ratio 
+top1_ratio(city) over w30d as top_city_ratio 
 FROM t1 
 window w30d as (PARTITION BY uid ORDER BY trans_time ROWS_RANGE BETWEEN 30d PRECEDING AND CURRENT ROW);
 ```
 
-`fz_topn_frequency(col, top_n)`: Find the `top_n` categories with the highest frequency in the window
+`topn_frequency(col, top_n)`: Find the `top_n` categories with the highest frequency in the window
 
-The following SQL uses `fz_topn_frequency` to find out the top 2 cities with the highest number of transactions in the last 30 days in t1.
+The following SQL uses `topn_frequency` to find out the top 2 cities with the highest number of transactions in the last 30 days in t1.
 ```sql
 SELECT 
-fz_topn_frequency(city, 2) over w30d as top_city_ratio
+topn_frequency(city, 2) over w30d as top_city_ratio
 FROM t1 
 window w30d as (PARTITION BY uid ORDER BY trans_time ROWS_RANGE BETWEEN 30d PRECEDING AND CURRENT ROW);
 ```

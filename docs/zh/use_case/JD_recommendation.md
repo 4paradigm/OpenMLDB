@@ -12,28 +12,26 @@
 本案例使用 OpenMLDB 进行数据挖掘，使用 OneFlow 中的 [DeepFM](https://github.com/OneFlow-Inc/models/tree/main/RecommenderSystems/deepfm) 模型进行高性能训练推理，提供精准的商品推荐。
 
 ```{note}
-
-注意，本文档使用的是预编译好的 Docker 镜像。如果希望在自己编译和搭建的 OpenMLDB 环境下进行测试，需要配置使用[面向特征工程优化的 Spark 发行版](https://openmldb.ai/docs/zh/main/tutorial/openmldbspark_distribution.html)。请参考[针对 OpenMLDB 优化的 Spark 发行版文档](https://openmldb.ai/docs/zh/main/deploy/compile.html#openmldb-spark)和[安装部署文档](https://openmldb.ai/docs/zh/main/deploy/install_deploy.html)。
-
+注意，本文档使用的是预编译好的 Docker 镜像。如果希望在自己编译和搭建的 OpenMLDB 环境下进行测试请参考相关[编译](https://openmldb.ai/docs/zh/main/deploy/compile.html)和[安装部署文档](https://openmldb.ai/docs/zh/main/deploy/install_deploy.html)。
 ```
 
 ## 准备
 
 ### 下载数据与脚本
 
-下载数据、脚本以及推理所需的 OneEmbedding 库（详情见[配置 OneFlow 推理服务](#配置-OneFlow-推理服务)），在后面的步骤中可以直接使用。
+下载数据、脚本，在后面的步骤中可以直接使用。
 
 ```
-wget http://openmldb.ai/download/jd-recommendation/demo.tgz
+wget https://openmldb.ai/download/jd-recommendation/demo-0.8.1.tgz
 tar xzf demo.tgz
-ls demo
+ls jd-recommendation/
 ```
 
 也可以 checkout GitHub 仓库中的 `demo/jd-recommendation`。
 这个 `demo` 目录定为环境变量 `demodir`，之后的脚本中多会使用这一环境变量。所以，你需要配置这一变量：
 
 ```
-export demodir=<your_path>/demo
+export demodir=<your_path>/jd-recommendation/
 ```
 
 本例仅使用小数据集做演示。如果你想要使用全量数据集，请下载 [JD_data](http://openmldb.ai/download/jd-recommendation/JD_data.tgz)。
@@ -42,13 +40,17 @@ export demodir=<your_path>/demo
 
 OneFlow 工具依赖 GPU 的强大算力，所以请确保部署机器具备 Nvidia GPU，并且保证驱动版本 >=460.X.X。[驱动版本需支持 CUDA 11.0](https://docs.nvidia.com/cuda/cuda-toolkit-release-notes/index.html#cuda-major-component-versions)。
 
-推荐使用 conda 来管理 OneFlow 环境，安装 OneFlow 开发版（支持 OneEmbedding），以及本案例演示所需的其他依赖，手动创建方法如下：
+我们推荐使用conda来管理oneflow环境，安装OneFlow，以及本案例演示所需的其他依赖，手动创建方法如下：
 
 ```bash
 conda create -y -n oneflow python=3.9.2
 conda activate oneflow
-pip install -f https://staging.oneflow.info/branch/master/cu112 --pre oneflow
+pip install numpy==1.23 nvidia-cudnn-cu11 # for oneflow
+pip install -f https://release.oneflow.info oneflow==0.9.0+cu112
 pip install psutil petastorm pandas sklearn xxhash "tritonclient[all]" geventhttpclient tornado
+```
+```{note}
+我们仅验证了oneflow 0.9.0版本，如果你使用其他版本，可能会遇到问题。下载版本中`cu`后缀对应的CUDA版本，例如`cu112`对应CUDA 11.2。
 ```
 
 拉取 oneflow_serving 镜像：
@@ -58,13 +60,9 @@ docker pull oneflowinc/oneflow-serving:nightly
 ```
 
 ```{note}
+注意，此处安装的为Oneflow serving nightly版本。本案例使用的版本commit为https://github.com/Oneflow-Inc/serving/tree/ce5d667468b6b3ba66d3be6986f41f965e52cf16
 
-注意，此处安装的为 OneFlow nightly 版本。本案例使用的版本 commit 如下：
-
-Oneflow：https://github.com/Oneflow-Inc/oneflow/tree/fcf205cf57989a5ecb7a756633a4be08444d8a28
-
-Oneflow-serving：https://github.com/Oneflow-Inc/serving/tree/ce5d667468b6b3ba66d3be6986f41f965e52cf16
-
+如果此镜像版本不适用，可以下载并导入此[镜像备份](https://openmldb.ai/download/jd-recommendation/oneflow-image.tar.gz)，导入使用`docker load < oneflow-image.tar.gz`。
 ```
 
 ### 启动 OpenMLDB Docker 容器
@@ -76,9 +74,7 @@ Oneflow-serving：https://github.com/Oneflow-Inc/serving/tree/ce5d667468b6b3ba66
 由于 OpenMLDB 集群需要和其他组件网络通信，我们直接使用 host 网络。本例将在容器中使用已下载的脚本，所以请将数据脚本所在目录 `demodir` 映射为容器中的目录：
 
 ```bash
-
-docker run -dit --name=openmldb --network=host -v $demodir:/work/oneflow_demo 4pdosc/openmldb:0.7.2 bash
-
+docker run -dit --name=openmldb --network=host -v $demodir:/work/oneflow_demo 4pdosc/openmldb:0.8.1 bash
 docker exec -it openmldb bash
 ```
 
@@ -103,15 +99,13 @@ docker exec -it openmldb bash
 在 OpenMLDB CLI 内操作 OpenMLDB 集群，使用命令如下：
 
 ```bash
-
 /work/openmldb/bin/openmldb --zk_cluster=127.0.0.1:2181 --zk_root_path=/openmldb --role=sql_client
-
 ```
+
 
 ### 预备知识
 
 集群版 OpenMLDB 部分命令是异步的，如：在线/离线模式的 `LOAD DATA`、`SELECT`、`SELECT INTO` 命令。提交任务以后可以使用相关的命令如 `SHOW JOBS`、`SHOW JOB` 来查看任务进度，详情参见[离线任务管理文档](../openmldb_sql/task_manage/SHOW_JOB.md)。
-
 
 ## 机器学习训练流程
 
@@ -156,7 +150,7 @@ CREATE TABLE bo_comment(ingestionTime timestamp, dt bigint, sku_id string, comme
 
 #### 导入离线数据
 
-需要将源数据导入到 OpenMLDB 中作为离线数据，用于离线特征计算。如果你导入较大的数据集，可以使用软链接的方式，减少导入消耗时间。本次演示中仅导入很少的数据，因此使用硬拷贝。
+需要将源数据导入到 OpenMLDB 中作为离线数据，用于离线特征计算。如果你导入较大的数据集，可以使用软链接的方式，减少导入消耗时间。本次演示中仅导入很少的数据，因此使用硬拷贝。由于是多个导入任务，异步发送更节约时间，但需确认导入任务都完成，再进入下一步。
 
 ```sql
 -- OpenMLDB CLI
@@ -171,9 +165,7 @@ LOAD DATA INFILE '/work/oneflow_demo/data/JD_data/bo_comment/*.parquet' INTO TAB
 ```
 
 ```{important}
-
 运行 `SHOW JOBS`，等待所有任务运行成功（ `state` 转至 `FINISHED` 状态），再进行下一步操作。
-
 ```
 
 或直接运行脚本导入，并快速查询 jobs 状态：
@@ -182,7 +174,6 @@ LOAD DATA INFILE '/work/oneflow_demo/data/JD_data/bo_comment/*.parquet' INTO TAB
 /work/openmldb/bin/openmldb --zk_cluster=127.0.0.1:2181 --zk_root_path=/openmldb --role=sql_client < /work/oneflow_demo/sql_scripts/load_offline_data.sql
 echo "show jobs;" | /work/openmldb/bin/openmldb --zk_cluster=127.0.0.1:2181 --zk_root_path=/openmldb --role=sql_client
 ```
-
 
 #### 特征设计
 
@@ -207,8 +198,8 @@ select
     `sku_id` as flattenRequest_sku_id_original_25,
     `user_id` as flattenRequest_user_id_original_26,
     distinct_count(`pair_id`) over flattenRequest_user_id_eventTime_0_10_ as flattenRequest_pair_id_window_unique_count_27,
-    fz_top1_ratio(`pair_id`) over flattenRequest_user_id_eventTime_0_10_ as flattenRequest_pair_id_window_top1_ratio_28,
-    fz_top1_ratio(`pair_id`) over flattenRequest_user_id_eventTime_0s_14d_200 as flattenRequest_pair_id_window_top1_ratio_29,
+    top1_ratio(`pair_id`) over flattenRequest_user_id_eventTime_0_10_ as flattenRequest_pair_id_window_top1_ratio_28,
+    top1_ratio(`pair_id`) over flattenRequest_user_id_eventTime_0s_14d_200 as flattenRequest_pair_id_window_top1_ratio_29,
     distinct_count(`pair_id`) over flattenRequest_user_id_eventTime_0s_14d_200 as flattenRequest_pair_id_window_unique_count_32,
     case when !isnull(at(`pair_id`, 0)) over flattenRequest_user_id_eventTime_0_10_ then count_where(`pair_id`, `pair_id` = at(`pair_id`, 0)) over flattenRequest_user_id_eventTime_0_10_ else null end as flattenRequest_pair_id_window_count_35,
     dayofweek(timestamp(`eventTime`)) as flattenRequest_eventTime_dayofweek_41,
@@ -249,8 +240,8 @@ select
     min(`bad_comment_rate`) over bo_comment_sku_id_ingestionTime_0s_64d_100 as bo_comment_bad_comment_rate_multi_min_15,
     distinct_count(`comment_num`) over bo_comment_sku_id_ingestionTime_0s_64d_100 as bo_comment_comment_num_multi_unique_count_22,
     distinct_count(`has_bad_comment`) over bo_comment_sku_id_ingestionTime_0s_64d_100 as bo_comment_has_bad_comment_multi_unique_count_23,
-    fz_topn_frequency(`has_bad_comment`, 3) over bo_comment_sku_id_ingestionTime_0s_64d_100 as bo_comment_has_bad_comment_multi_top3frequency_30,
-    fz_topn_frequency(`comment_num`, 3) over bo_comment_sku_id_ingestionTime_0s_64d_100 as bo_comment_comment_num_multi_top3frequency_33
+    topn_frequency(`has_bad_comment`, 3) over bo_comment_sku_id_ingestionTime_0s_64d_100 as bo_comment_has_bad_comment_multi_top3frequency_30,
+    topn_frequency(`comment_num`, 3) over bo_comment_sku_id_ingestionTime_0s_64d_100 as bo_comment_comment_num_multi_top3frequency_33
 from
     (select `eventTime` as `ingestionTime`, bigint(0) as `dt`, `sku_id` as `sku_id`, int(0) as `comment_num`, '' as `has_bad_comment`, float(0) as `bad_comment_rate`, reqId from `flattenRequest`)
     window bo_comment_sku_id_ingestionTime_0s_64d_100 as (
@@ -263,14 +254,14 @@ last join
 (
 select
     `reqId` as reqId_17,
-    fz_topn_frequency(`br`, 3) over bo_action_pair_id_ingestionTime_0s_10h_100 as bo_action_br_multi_top3frequency_16,
-    fz_topn_frequency(`cate`, 3) over bo_action_pair_id_ingestionTime_0s_10h_100 as bo_action_cate_multi_top3frequency_17,
-    fz_topn_frequency(`model_id`, 3) over bo_action_pair_id_ingestionTime_0s_7d_100 as bo_action_model_id_multi_top3frequency_18,
+    topn_frequency(`br`, 3) over bo_action_pair_id_ingestionTime_0s_10h_100 as bo_action_br_multi_top3frequency_16,
+    topn_frequency(`cate`, 3) over bo_action_pair_id_ingestionTime_0s_10h_100 as bo_action_cate_multi_top3frequency_17,
+    topn_frequency(`model_id`, 3) over bo_action_pair_id_ingestionTime_0s_7d_100 as bo_action_model_id_multi_top3frequency_18,
     distinct_count(`model_id`) over bo_action_pair_id_ingestionTime_0s_14d_100 as bo_action_model_id_multi_unique_count_19,
     distinct_count(`model_id`) over bo_action_pair_id_ingestionTime_0s_7d_100 as bo_action_model_id_multi_unique_count_20,
     distinct_count(`type`) over bo_action_pair_id_ingestionTime_0s_14d_100 as bo_action_type_multi_unique_count_21,
-    fz_topn_frequency(`type`, 3) over bo_action_pair_id_ingestionTime_0s_7d_100 as bo_action_type_multi_top3frequency_40,
-    fz_topn_frequency(`type`, 3) over bo_action_pair_id_ingestionTime_0s_14d_100 as bo_action_type_multi_top3frequency_42
+    topn_frequency(`type`, 3) over bo_action_pair_id_ingestionTime_0s_7d_100 as bo_action_type_multi_top3frequency_40,
+    topn_frequency(`type`, 3) over bo_action_pair_id_ingestionTime_0s_14d_100 as bo_action_type_multi_top3frequency_42
 from
     (select `eventTime` as `ingestionTime`, `pair_id` as `pair_id`, bigint(0) as `time`, '' as `model_id`, '' as `type`, '' as `cate`, '' as `br`, reqId from `flattenRequest`)
     window bo_action_pair_id_ingestionTime_0s_10h_100 as (
@@ -285,9 +276,7 @@ INTO OUTFILE '/work/oneflow_demo/out/1' OPTIONS(mode='overwrite');
 ```
 
 ```{note}
-
 `SELECT INTO` 为异步任务，使用命令 `SHOW JOBS` 查看任务运行状态，请等待任务运行成功（ `state` 转至 `FINISHED` 状态），再进行下一步操作。耗时大概一分半。
-
 ```
 
 因为这里只有一个特征抽取任务，可以使用同步的运行方式，命令完成即特征抽取完成。直接运行 SQL 脚本 `sync_select_out.sql`:
@@ -299,9 +288,7 @@ INTO OUTFILE '/work/oneflow_demo/out/1' OPTIONS(mode='overwrite');
 ### 预处理特征数据以配合 DeepFM 模型要求
 
 ```{note}
-
 注意，以下命令在 Docker 外执行，使用准备阶段安装的 OneFlow 运行环境。
-
 ```
 
 根据 [DeepFM 论文](https://arxiv.org/abs/1703.04247)，类别特征和连续特征都被当作稀疏特征对待。
@@ -359,11 +346,11 @@ out/
 ```
 
 ```bash
-
 cd $demodir/oneflow_process/
 sh train_deepfm.sh -h
 Usage: train_deepfm.sh DATA_DIR(abs)
-​   We'll read required args in $DATA_DIR/data_info.txt, and save results in path ./
+
+        We'll read required args in $DATA_DIR/data_info.txt, and save results in path ./
 
 ```
 
@@ -454,55 +441,46 @@ LOAD DATA INFILE '/work/oneflow_demo/data/JD_data/bo_comment/*.parquet' INTO TAB
 ```
 
 ```{note}
-
 注意，在线 `LOAD DATA` 也是异步任务，请等待任务运行成功（ `state` 转至 `FINISHED` 状态），再进行下一步操作 。
-
 ```
 
 ### 配置 OneFlow 推理服务
 
-OneFlow 的推理服务需要 [OneEmbedding](https://docs.oneflow.org/master/cookies/one_embedding.html) 的支持。该支持目前还没有合入主框架中。
-
-我们提供预编译版本的库在 `$demodir/oneflow_serving/` 中。若与你的环境不兼容，你需要重新编译，可参考附录 A 进行编译测试。接下来步骤默认相关支持已编译完成，并且存放在 `$demodir/OneFlow_serving/` 路径中。
-
 #### 检查
 
-1. 模型路径 (`$demodir/oneflow_process/model`) 结果是否如下所示。
+1. 模型路径（`$demodir/oneflow_process/model`）结果是否如下所示。
+```
+cd $demodir/oneflow_process/
+tree -L 4 model/
+```
+结果如下：
+```
+model/
+`-- embedding
+    |-- 1
+    |   `-- model
+    |       |-- model.mlir
+    |       |-- module.dnn_layer.linear_layers.0.bias
+    |       |-- module.dnn_layer.linear_layers.0.weight
+    |       |-- module.dnn_layer.linear_layers.12.bias
+    |       |-- module.dnn_layer.linear_layers.12.weight
+    |       |-- module.dnn_layer.linear_layers.15.bias
+    |       |-- module.dnn_layer.linear_layers.15.weight
+    |       |-- module.dnn_layer.linear_layers.3.bias
+    |       |-- module.dnn_layer.linear_layers.3.weight
+    |       |-- module.dnn_layer.linear_layers.6.bias
+    |       |-- module.dnn_layer.linear_layers.6.weight
+    |       |-- module.dnn_layer.linear_layers.9.bias
+    |       |-- module.dnn_layer.linear_layers.9.weight
+    |       |-- module.embedding_layer.one_embedding.shadow
+    |       `-- one_embedding_options.json
+    `-- config.pbtxt
+```
+1. 其中，`config.pbtxt`是我们已准备好的文件，其中的`name`要和config.pbtxt所在目录的名字(本案例中为`embedding`)保持一致，如果你有单独修改，请确认此处一致；`model/embedding/1/model/one_embedding_options.json`的路径`persistent_table.path`会自动生成，可以再确认下路径是否正确，应为`$demodir/oneflow_process/persistent`绝对路径。
 
-    ```
-    cd $demodir/oneflow_process/
-    tree -L 4 model/
-    ```
+### 启动OneFLow推理服务
 
-    ```
-    model/
-    `-- embedding
-        |-- 1
-        |   `-- model
-        |       |-- model.mlir
-        |       |-- module.dnn_layer.linear_layers.0.bias
-        |       |-- module.dnn_layer.linear_layers.0.weight
-        |       |-- module.dnn_layer.linear_layers.12.bias
-        |       |-- module.dnn_layer.linear_layers.12.weight
-        |       |-- module.dnn_layer.linear_layers.15.bias
-        |       |-- module.dnn_layer.linear_layers.15.weight
-        |       |-- module.dnn_layer.linear_layers.3.bias
-        |       |-- module.dnn_layer.linear_layers.3.weight
-        |       |-- module.dnn_layer.linear_layers.6.bias
-        |       |-- module.dnn_layer.linear_layers.6.weight
-        |       |-- module.dnn_layer.linear_layers.9.bias
-        |       |-- module.dnn_layer.linear_layers.9.weight
-        |       |-- module.embedding_layer.one_embedding.shadow
-        |       `-- one_embedding_options.json
-        `-- config.pbtxt
-    ```
-
-2. 其中，`config.pbtxt` 中的 `name` 要和 config.pbtxt 所在目录的名字（本例中为 `embedding`）保持一致；`model/embedding/1/model/one_embedding_options.json` 的路径 `persistent_table.path` 会自动生成，可以再确认下路径是否正确，应为 `$demodir/oneflow_process/persistent` 绝对路径。
-
-#### 启动 OneFlow 推理服务
-
-使用以下命令启动 OneFlow 推理服务：
-
+使用以下命令启动OneFlow推理服务：
 ```
 docker run --runtime=nvidia --rm -p 8001:8001 -p8000:8000 -p 8002:8002 \
   -v $demodir/oneflow_process/model:/models \
@@ -514,6 +492,19 @@ docker run --runtime=nvidia --rm -p 8001:8001 -p8000:8000 -p 8002:8002 \
 若成功，将显示如下类似输出：
 
 ```
+I0711 09:58:55.199227 1 server.cc:549]
++---------+---------------------------------------------------------+--------+
+| Backend | Path                                                    | Config |
++---------+---------------------------------------------------------+--------+
+| oneflow | /opt/tritonserver/backends/oneflow/libtriton_oneflow.so | {}     |
++---------+---------------------------------------------------------+--------+
+
+I0711 09:58:55.199287 1 server.cc:592]
++-----------+---------+--------+
+| Model     | Version | Status |
++-----------+---------+--------+
+| embedding | 1       | READY  |
++-----------+---------+--------+
 ...
 I0929 07:28:34.281655 1 grpc_server.cc:4117] Started GRPCInferenceService at 0.0.0.0:8001
 I0929 07:28:34.282343 1 http_server.cc:2815] Started HTTPService at 0.0.0.0:8000
@@ -528,13 +519,19 @@ I0929 07:28:34.324662 1 http_server.cc:167] Started Metrics Service at 0.0.0.0:8
 curl -v localhost:8000/v2/health/ready
 ```
 
+进一步地，检查model是否成功加载：
+```
+curl -v localhost:8000/v2/models/stats
+```
+如果成功，可以看到`embedding`模型的信息，否则，模型加载出错，请再次检查模型路径与其结构是否正确。
+
 ```{note}
 
 如果 800x 端口出现冲突，可以更改端口映射中的主机端口，例如 `-p 18000:8000` 。如果更改了 8000 的映射，后续访问 8000 的都需要相应更改。
 
 ```
 
-### 启动推理服务
+### 启动实时推理服务
 
 ```{note}
 
@@ -575,4 +572,8 @@ python $demodir/serving/predict.py
 
 [[b'0.007005:0']]
 
+```
+
+```{note}
+如果出现infer错误，可以使用serving目录中的client.py或[下载](https://github.com/4paradigm/OpenMLDB/blob/f2d985c986c5c4cbe538b01dabdbd1956588da40/demo/jd-recommendation/serving/client.py)，来进行triton infer单独的调试。
 ```

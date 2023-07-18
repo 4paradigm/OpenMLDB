@@ -67,6 +67,7 @@ enum OPType {
     kDelReplicaRemoteOP = 18; 
     kAddReplicaRemoteOP = 19; 
     kAddIndexOP = 20; 
+    kDeployOP = 21;
 }
 
 enum TaskType {
@@ -91,12 +92,20 @@ enum TaskType {
     kCreateTableRemote = 19; 
     kDropTableRemote = 20; 
     kAddReplicaNSRemote = 21; 
-    kDumpIndexData = 22;
+    kDumpIndexData = 22 [deprecated = true];
     kSendIndexData = 23;
     kLoadIndexData = 24;
     kExtractIndexData = 25;
     kAddIndexToTablet = 26;
-    kTableSyncTask = 27;
+    kTableSyncTask = 27 [deprecated = true];
+    kSendIndexRequest = 28;
+    kExtractIndexRequest = 29;
+    kLoadIndexRequest = 30;
+    kAddIndexToTabletRequest = 31;
+    kAddIndexToTableInfo = 32;
+    kAddMultiTableIndex = 33;
+    kAddTableIndex = 34;
+    kCreateProcedure = 35;
 }
 
 enum TaskStatus {
@@ -120,7 +129,9 @@ message TaskInfo {
     optional string endpoint = 5;
     optional bool is_rpc_send = 6 [default = false];
     repeated uint64 rep_cluster_op_id = 7;      // for multi cluster
-    optional uint64 task_id = 8 [default = 0];  // for multi cluster
+    optional uint64 task_id = 8 [default = 0];
+    optional uint32 tid = 9;
+    optional uint32 pid = 10;
 }
 
 message OPInfo {
@@ -195,6 +206,9 @@ message DeleteRequest {
     optional uint32 pid = 2;
     optional string key = 3;
     optional string idx_name = 4;
+    repeated Dimension dimensions = 5;
+    optional uint64 ts = 6;
+    optional uint64 end_ts = 7;
 }
 
 message ExecuteGcRequest {
@@ -387,6 +401,7 @@ message LogEntry {
     repeated Dimension dimensions = 6;
     optional MethodType method_type = 7;
     repeated TSDimension ts_dimensions = 8 [deprecated = true];
+    optional uint64 end_ts = 9;  // only for range delete: [ts, end_ts)
 }
 
 message AppendEntriesRequest {
@@ -481,6 +496,8 @@ message TableStatus {
     optional uint32 skiplist_height = 18;
     optional uint64 diskused = 19 [default = 0];
     optional openmldb.common.StorageMode storage_mode = 20 [default = kMemory];
+    optional string snapshot_path = 21;
+    optional string binlog_path = 22;
 }
 
 message GetTableStatusResponse {
@@ -607,15 +624,6 @@ message DeleteIndexRequest {
     optional string idx_name = 3;
 }
 
-message DumpIndexDataRequest {
-    optional uint32 tid = 1;
-    optional uint32 pid = 2;
-    optional uint32 partition_num = 3;
-    optional uint32 idx = 4;
-    optional openmldb.common.ColumnKey column_key = 5;
-    optional TaskInfo task_info = 6;
-}
-
 message LoadIndexDataRequest {
     optional uint32 tid = 1;
     optional uint32 pid = 2;
@@ -623,20 +631,14 @@ message LoadIndexDataRequest {
     optional TaskInfo task_info = 4;
 }
 
-message ExtractMultiIndexDataRequest {
-    optional uint32 tid = 1;
-    optional uint32 pid = 2;
-    optional uint32 partition_num = 3;
-    repeated openmldb.common.ColumnKey column_key = 4;
-}
-
 message ExtractIndexDataRequest {
     optional uint32 tid = 1;
     optional uint32 pid = 2;
     optional uint32 partition_num = 3;
-    optional uint32 idx = 4;
-    optional openmldb.common.ColumnKey column_key = 5;
-    optional TaskInfo task_info = 6;
+    repeated openmldb.common.ColumnKey column_key = 5;
+    optional uint64 offset = 6;
+    optional bool dump_data = 7 [default = true];
+    optional TaskInfo task_info = 8;
 }
 
 message Columns {
@@ -938,10 +940,8 @@ service TabletServer {
     rpc AddIndex(AddIndexRequest) returns (GeneralResponse);
     rpc SendIndexData(SendIndexDataRequest) returns (GeneralResponse);
     rpc DeleteIndex(DeleteIndexRequest) returns (GeneralResponse);
-    rpc DumpIndexData(DumpIndexDataRequest) returns (GeneralResponse);
     rpc LoadIndexData(LoadIndexDataRequest) returns (GeneralResponse);
     rpc ExtractIndexData(ExtractIndexDataRequest) returns (GeneralResponse);
-    rpc ExtractMultiIndexData(ExtractMultiIndexDataRequest) returns (GeneralResponse);
     rpc CancelOP(CancelOPRequest) returns (GeneralResponse);
     rpc UpdateRealEndpointMap(UpdateRealEndpointMapRequest) returns (GeneralResponse);
 

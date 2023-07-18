@@ -61,8 +61,11 @@ public class TaskManagerConfig {
     public static String NAMENODE_URI;
     public static String BATCHJOB_JAR_PATH;
     public static String HADOOP_CONF_DIR;
+    public static String HADOOP_USER_NAME;
     public static boolean ENABLE_HIVE_SUPPORT;
     public static long BATCH_JOB_RESULT_MAX_WAIT_TIME;
+    public static String K8S_HADOOP_CONFIGMAP_NAME;
+    public static String K8S_MOUNT_LOCAL_PATH;
 
     private static volatile boolean isParsed = false;
 
@@ -86,7 +89,7 @@ public class TaskManagerConfig {
         if (PORT < 1 || PORT > 65535) {
             throw new ConfigException("server.port", "invalid port, should be in range of 1 through 65535");
         }
-        WORKER_THREAD = Integer.parseInt(prop.getProperty("server.worker_threads", "4"));
+        WORKER_THREAD = Integer.parseInt(prop.getProperty("server.worker_threads", "16"));
         IO_THREAD = Integer.parseInt(prop.getProperty("server.io_threads", "4"));
         // alive time seconds
         CHANNEL_KEEP_ALIVE_TIME = Integer.parseInt(prop.getProperty("server.channel_keep_alive_time", "1800"));
@@ -109,10 +112,10 @@ public class TaskManagerConfig {
         ZK_MAX_RETRIES = Integer.parseInt(prop.getProperty("zookeeper.max_retries", "10"));
         ZK_MAX_CONNECT_WAIT_TIME = Integer.parseInt(prop.getProperty("zookeeper.max_connect_waitTime", "30000"));
 
-        SPARK_MASTER = prop.getProperty("spark.master", "local").toLowerCase();
+        SPARK_MASTER = prop.getProperty("spark.master", "local[*]").toLowerCase();
         if (!SPARK_MASTER.startsWith("local")) {
-            if (!Arrays.asList("yarn", "yarn-cluster", "yarn-client").contains(SPARK_MASTER)) {
-                throw new ConfigException("spark.master", "should be local, yarn, yarn-cluster or yarn-client");
+            if (!Arrays.asList("yarn", "yarn-cluster", "yarn-client", "k8s", "kubernetes").contains(SPARK_MASTER)) {
+                throw new ConfigException("spark.master", "should be local, yarn, yarn-cluster, yarn-client, k8s or kubernetes");
             }
         }
         boolean isLocal = SPARK_MASTER.startsWith("local");
@@ -239,6 +242,8 @@ public class TaskManagerConfig {
             }
         }
 
+        HADOOP_USER_NAME = prop.getProperty("hadoop.user.name", "root");
+
         HADOOP_CONF_DIR = prop.getProperty("hadoop.conf.dir", "");
         if (isYarn && HADOOP_CONF_DIR.isEmpty()) {
             try {
@@ -256,6 +261,19 @@ public class TaskManagerConfig {
         ENABLE_HIVE_SUPPORT = Boolean.parseBoolean(prop.getProperty("enable.hive.support", "true"));
 
         BATCH_JOB_RESULT_MAX_WAIT_TIME = Long.parseLong(prop.getProperty("batch.job.result.max.wait.time", "600000")); // 10min
+
+        K8S_HADOOP_CONFIGMAP_NAME = prop.getProperty("k8s.hadoop.configmap", "hadoop-config");
+
+        K8S_MOUNT_LOCAL_PATH = prop.getProperty("k8s.mount.local.path", "/tmp");
     }
 
+    public static boolean isK8s() throws ConfigException {
+        parse();
+        return SPARK_MASTER.equals("k8s") || SPARK_MASTER.equals("kubernetes");
+    }
+
+    public static boolean isYarnCluster() throws ConfigException {
+        parse();
+        return SPARK_MASTER.equals("yarn") || SPARK_MASTER.equals("yarn-cluster");
+    }
 }

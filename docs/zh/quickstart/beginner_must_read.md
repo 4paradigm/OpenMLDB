@@ -15,7 +15,7 @@ docker创建OpenMLDB见[快速上手](./openmldb_quickstart.md)，请注意文�
 如果所有服务进程都运行中，但CLI连接服务端失败，请确认CLI运行的参数。如果仍有问题，请联系我们并提供CLI的错误信息。
 
 ```{seealso}
-如果我们还需要OpenMLDB服务端的配置和日志，可以使用诊断工具获取，见[下文](#提供配置与日志)。
+如果我们还需要OpenMLDB服务端的配置和日志，可以使用诊断工具获取，见[下文](#提供配置与日志获得技术支持)。
 ```
 
 ## 源数据
@@ -50,7 +50,7 @@ OpenMLDB并不完全兼容标准SQL。所以，部分SQL执行会得不到预期
 
 OpenMLDB所有命令均为SQL，如果SQL执行失败或交互有问题（不知道命令是否执行成功），请先确认SQL书写是否有误，命令并未执行，还是命令进入了执行阶段。
 
-例如，下面提示Syntax error的是SQL书写有误，请参考[sql reference](../openmldb_sql/)纠正错误。
+例如，下面提示Syntax error的是SQL书写有误，请参考[sql reference](../../openmldb_sql/)纠正错误。
 ```
 127.0.0.1:7527/db> create table t1(c1 int;
 Error: Syntax error: Expected ")" or "," but got ";" [at 1:23]
@@ -81,7 +81,7 @@ create table t1(c1 int;
 
 #### 在线
 
-集群版在线模式下，我们通常只推荐使用`DEPLOY`创建deployment，HTTP访问APIServer执行deployment做实时特征计算。在CLI或其他客户端中，直接在在线中进行SELECT查询，称为“在线预览”。在线预览有诸多限制，详情请参考[功能边界-集群版在线预览模式](./function_boundary.md#集群版在线预览模式)，请不要执行不支持的SQL。
+集群版在线模式下，我们通常只推荐使用`DEPLOY`创建deployment，HTTP访问APIServer执行deployment做实时特征计算。在CLI或其他客户端中，直接在在线中进行SELECT查询，称为“在线预览”。在线预览有诸多限制，详情请参考[功能边界-集群版在线预览模式](../function_boundary.md#集群版在线预览模式)，请不要执行不支持的SQL。
 
 ### 提供复现脚本
 
@@ -115,7 +115,7 @@ set @@execute_mode='';
 请确保在你本地可以使用复现脚本复现问题，再记录issue或发送给我们。
 
 ```{caution}
-请注意离线job默认为异步。如果你需要离线导入再查询，请设置为同步模式，详情见[配置离线命令同步执行](../openmldb_sql/ddl/SET_STATEMENT.md#配置离线命令同步执行)。否则导入还未完成就进行查询，是无意义的。
+请注意离线job默认为异步。如果你需要离线导入再查询，请设置为同步模式，详情见[离线命令配置详情](../openmldb_sql/ddl/SET_STATEMENT.md#离线命令配置详情)。否则导入还未完成就进行查询，是无意义的。
 ```
 
 ## 提供配置与日志，获得技术支持

@@ -37,7 +37,7 @@ http_rpc_protocol.cpp:911] Fail to write into Socket{id=xx fd=xx addr=xxx} (0x7a
 这是server端会打印的日志。一般是client端使用了连接池或短连接模式，在RPC超时后会关闭连接，server写回response时发现连接已经关了就报这个错。Got EOF就是指之前已经收到了EOF（对端正常关闭了连接）。client端使用单连接模式server端一般不会报这个。
 
 ### 2. 表数据的ttl初始设置不合适，如何调整？
-这需要使用nsclient来修改，普通client无法做到。nsclient启动方式与命令，见[ns client](../reference/cli.md#ns-client)。
+这需要使用nsclient来修改，普通client无法做到。nsclient启动方式与命令，见[ns client](../maintain/cli.md#ns-client)。
 
 在nsclient中使用命令`setttl`可以更改一个表的ttl，类似
 ```
@@ -105,14 +105,14 @@ zk日志：
 1. CLI：启动时配置`--zk_log_level`调整level,`--zk_log_file`配置日志保存文件。
 2. JAVA/Python SDK：Option或url中使用`zkLogLevel`调整level，`zkLogFile`配置日志保存文件。
 
-- `zk_log_level`(int, 默认=3, 即INFO): 
+- `zk_log_level`(int, 默认=0, 即DISABLE_LOGGING): 
 打印这个等级及**以下**等级的日志。0-禁止所有zk log, 1-error, 2-warn, 3-info, 4-debug。
 
 sdk日志（glog日志）：
 1. CLI：启动时配置`--glog_level`调整level,`--glog_dir`配置日志保存文件。
 2. JAVA/Python SDK：Option或url中使用`glogLevel`调整level，`glogDir`配置日志保存文件。
 
-- `glog_level`(int, 默认=0, 即INFO):
+- `glog_level`(int, 默认=1, 即WARNING):
 打印这个等级及**以上**等级的日志。 INFO, WARNING, ERROR, and FATAL日志分别对应 0, 1, 2, and 3。
 
 
@@ -124,4 +124,7 @@ sdk日志（glog日志）：
 
 ### 7. 离线命令错误`java.lang.OutOfMemoryError: Java heap space`
 
-离线命令的spark配置默认为`local[*]`，并发较高可能出现OutOfMemoryError错误，请调整`spark.driver.memory`和`spark.executor.memory`两个spark配置项。可以写在taskmanager运行目录的`conf/taskmanager.properties`内并重启taskmanager，或者使用CLI客户端进行配置，参考[客户端Spark配置文件](../reference/client_config/client_spark_config.md#)。
+离线命令的Spark配置默认为`local[*]`，并发较高可能出现OutOfMemoryError错误，请调整`spark.driver.memory`和`spark.executor.memory`两个spark配置项。可以写在TaskManager运行目录的`conf/taskmanager.properties`的`spark.default.conf`并重启TaskManager，或者使用CLI客户端进行配置，参考[客户端Spark配置文件](../reference/client_config/client_spark_config.md)。
+```
+spark.default.conf=spark.driver.memory=16g;spark.executor.memory=16g
+```

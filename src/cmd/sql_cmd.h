@@ -93,7 +93,8 @@ void StripStartingSpaceOfLastStmt(absl::string_view input, std::string* output) 
     }
 }
 
-void HandleSQL(const std::string& sql) {
+std::string ExecFetch(const std::string& sql) {
+    std::stringstream ss;
     hybridse::sdk::Status status;
     auto result_set = sr->ExecuteSQL(sql, &status);
     if (status.IsOK()) {
@@ -103,7 +104,7 @@ void HandleSQL(const std::string& sql) {
                 while (result_set->Next()) {
                     std::string val;
                     result_set->GetAsString(0, val);
-                    std::cout << val;
+                    ss << val;
                 }
             } else {
                 ::hybridse::base::TextTable t('-', ' ', ' ');
@@ -119,27 +120,32 @@ void HandleSQL(const std::string& sql) {
                     }
                     t.end_of_row();
                 }
-                std::cout << t;
-                std::cout << std::endl << result_set->Size() << " rows in set" << std::endl;
+                ss << t;
+                ss << std::endl << result_set->Size() << " rows in set" << std::endl;
             }
         } else {
             if (status.msg != "ok") {
-                std::cout << "SUCCEED: " << status.msg << std::endl;
+                // status is ok, but we want to print more info by msg
+                ss << "SUCCEED: " << status.msg << std::endl;
             } else {
-                std::cout << "SUCCEED" << std::endl;
+                ss << "SUCCEED" << std::endl;
             }
         }
     } else {
         std::cout << "Error: " << status.ToString() << std::endl;
         if (sr->IsEnableTrace()) {
             // trace has '\n' already
-            std::cout << status.trace;
+            ss << status.trace;
         }
     }
+    return ss.str();
 }
 
-// cluster mode: if zk_cluster is not empty,
-// standalone mode:
+void HandleSQL(const std::string& sql) {
+    std::cout << ExecFetch(sql);
+}
+
+// cluster mode if zk_cluster is not empty, otherwise standalone mode
 void Shell() {
     DCHECK(cs);
     DCHECK(sr);

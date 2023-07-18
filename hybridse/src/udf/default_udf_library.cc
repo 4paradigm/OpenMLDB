@@ -34,6 +34,7 @@
 #include "udf/udf.h"
 #include "udf/udf_registry.h"
 #include "udf/default_defs/expr_def.h"
+#include "udf/default_defs/date_and_time_def.h"
 
 using openmldb::base::Date;
 using openmldb::base::StringRef;
@@ -1624,33 +1625,53 @@ void DefaultUdfLibrary::InitMathUdf() {
 
     RegisterExternalTemplate<v1::Round>("round")
         .doc(R"(
-            @brief Return the nearest integer value to expr (in floating-point format),
-            rounding halfway cases away from zero, regardless of the current rounding mode.
+            @brief Returns expr rounded to d decimal places using HALF_UP rounding mode.
+
+            @param numeric_expr Expression evaluated to numeric
+            @param d Integer decimal place, if omitted, default to 0
+
+            When `d` is a positive, `numeric_expr` is rounded to the number of decimal positions specified by `d`. When `d` is a negative , `numeric_expr` is rounded on the left side of the decimal point.
+            Return type is the same as the type first parameter.
 
             Example:
 
             @code{.sql}
+                SELECT round(1.23);
+                -- 1 (double type)
 
-                SELECT ROUND(1.23);
-                -- output 1
+                SELECT round(1.23, 1)
+                -- 1.2 (double type)
 
+                SELECT round(123, -1)
+                -- 120 (int32 type)
             @endcode
 
-            @param expr
-
             @since 0.1.0)")
-        .args_in<int64_t, double>();
-    RegisterExternalTemplate<v1::Round32>("round").args_in<int16_t, int32_t>();
-    RegisterExprUdf("round").args<AnyArg>(
-        [](UdfResolveContext* ctx, ExprNode* x) -> ExprNode* {
-            if (!x->GetOutputType()->IsArithmetic()) {
-                ctx->SetError("round do not support type " +
-                              x->GetOutputType()->GetName());
+        .args_in<int16_t, int32_t, int64_t, float, double>();
+
+    RegisterExprUdf("round")
+        .variadic_args<AnyArg>(
+        [](UdfResolveContext* ctx, ExprNode* x, const std::vector<ExprNode*>& other) -> ExprNode* {
+            if (!x->GetOutputType()->IsArithmetic() || x->GetOutputType()->IsBool()) {
+                ctx->SetError("round do not support first parameter of type " + x->GetOutputType()->GetName());
                 return nullptr;
             }
             auto nm = ctx->node_manager();
-            auto cast = nm->MakeCastNode(node::kDouble, x);
-            return nm->MakeFuncNode("round", {cast}, nullptr);
+            if (other.size() > 1) {
+                ctx->SetError("can't round with more than 2 parameters");
+                return nullptr;
+            }
+
+            node::ExprNode* decimal_place = nm->MakeConstNode(0);
+            if (!other.empty()) {
+                auto sec_param = other.front();
+                if (!sec_param->GetOutputType()->IsArithmetic()) {
+                    ctx->SetError("round do not support second parameter of type " +
+                                  sec_param->GetOutputType()->GetName());
+                }
+                decimal_place = nm->MakeCastNode(node::kInt32, other.front());
+            }
+            return nm->MakeFuncNode("round", {x, decimal_place}, nullptr);
         });
 
     RegisterExternalTemplate<v1::Sqrt>("sqrt")
@@ -2062,6 +2083,10 @@ void DefaultUdfLibrary::InitTypeUdf() {
         .doc(R"(
             @brief Cast string expression to int32
 
+            @param str Input string, refer int64 for supported format
+
+            Returns NULL if string is invalid or represented number out of range of output type.
+
             Example:
 
             @code{.sql}
@@ -2069,6 +2094,8 @@ void DefaultUdfLibrary::InitTypeUdf() {
                 -- output 12345
             @endcode
             @since 0.1.0)");
+    RegisterAlias("int", "int32");
+
     RegisterExternal("int64")
         .args<StringRef>(reinterpret_cast<void*>(
             static_cast<void (*)(StringRef*, int64_t*, bool*)>(
@@ -2078,6 +2105,17 @@ void DefaultUdfLibrary::InitTypeUdf() {
         .doc(R"(
             @brief Cast string expression to int64
 
+            @param str Input string
+
+            Returns NULL if string is invalid or represented number out of range of output type.
+
+            Valid string input can be represented as the regexp
+             ```
+             \s*(\+|-)?(0[xX])?[0-9a-fA-F]+\s*
+             ```
+            - string is parsed unsigned, use minus(`-`) or plus(`+`) indicate signs
+            - default base of interpreted integer value is 10, and 16 if string starts with `0x` or `0X`
+
             Example:
 
             @code{.sql}
@@ -2086,6 +2124,8 @@ void DefaultUdfLibrary::InitTypeUdf() {
             @endcode
             @since 0.1.0
         )");
+    RegisterAlias("bigint", "int64");
+
     RegisterExternal("int16")
         .args<StringRef>(reinterpret_cast<void*>(
             static_cast<void (*)(StringRef*, int16_t*, bool*)>(
@@ -2095,6 +2135,10 @@ void DefaultUdfLibrary::InitTypeUdf() {
         .doc(R"(
             @brief Cast string expression to int16
 
+            @param str Input string, refer int64 for supported format
+
+            Returns NULL if string is invalid or represented number out of range of output type.
+
             Example:
 
             @code{.sql}
@@ -2103,6 +2147,8 @@ void DefaultUdfLibrary::InitTypeUdf() {
             @endcode
             @since 0.1.0
         )");
+    RegisterAlias("smallint", "int16");
+
     RegisterExternal("bool")
         .args<StringRef>(reinterpret_cast<void*>(
             static_cast<void (*)(StringRef*, bool*, bool*)>(
@@ -2151,50 +2197,6 @@ void DefaultUdfLibrary::InitTypeUdf() {
         .return_by_arg(true)
         .returns<Nullable<Date>>();
 
-    RegisterExternal("datediff")
-        .args<Date, Date>(reinterpret_cast<void*>(
-            static_cast<void (*)(Date*, Date*, int32_t*, bool*)>(
-                v1::date_diff)))
-        .return_by_arg(true)
-        .returns<Nullable<int32_t>>()
-        .doc(R"(
-            @brief days difference from date1 to date2
-
-            Supported date string style:
-              - yyyy-mm-dd
-              - yyyymmdd
-              - yyyy-mm-dd hh:mm:ss
-
-            Example:
-
-            @code{.sql}
-                select datediff("2021-05-10", "2021-05-01");
-                -- output 9
-                select datediff("2021-04-10", "2021-05-01");
-                -- output -21
-                select datediff(Date("2021-04-10"), Date("2021-05-01"));
-                -- output -21
-            @endcode
-            @since 0.7.0)");
-    RegisterExternal("datediff")
-        .args<StringRef, StringRef>(reinterpret_cast<void*>(
-            static_cast<void (*)(StringRef*, StringRef*, int32_t*, bool*)>(
-                v1::date_diff)))
-        .return_by_arg(true)
-        .returns<Nullable<int32_t>>();
-    RegisterExternal("datediff")
-        .args<StringRef, Date>(reinterpret_cast<void*>(
-            static_cast<void (*)(StringRef*, Date*, int32_t*, bool*)>(
-                v1::date_diff)))
-        .return_by_arg(true)
-        .returns<Nullable<int32_t>>();
-    RegisterExternal("datediff")
-        .args<Date, StringRef>(reinterpret_cast<void*>(
-            static_cast<void (*)(Date*, StringRef*, int32_t*, bool*)>(
-                v1::date_diff)))
-        .return_by_arg(true)
-        .returns<Nullable<int32_t>>();
-
     RegisterExternal("timestamp")
         .args<Date>(reinterpret_cast<void*>(
             static_cast<void (*)(Date*, Timestamp*, bool*)>(
@@ -2228,40 +2230,6 @@ void DefaultUdfLibrary::InitTypeUdf() {
                 v1::string_to_timestamp)))
         .return_by_arg(true)
         .returns<Nullable<Timestamp>>();
-
-    RegisterExternal("unix_timestamp")
-        .args<Date>(reinterpret_cast<void*>(
-            static_cast<void (*)(Date*, int64_t*, bool*)>(
-                v1::date_to_unix_timestamp)))
-        .return_by_arg(true)
-        .returns<Nullable<int64_t>>()
-        .doc(R"(
-            @brief Cast date or string expression to unix_timestamp. If empty string or NULL is provided, return current timestamp
-
-            Supported string style:
-              - yyyy-mm-dd
-              - yyyymmdd
-              - yyyy-mm-dd hh:mm:ss
-
-            Example:
-
-            @code{.sql}
-                select unix_timestamp("2020-05-22");
-                -- output 1590076800
-
-                select unix_timestamp("2020-05-22 10:43:40");
-                -- output 1590115420
-
-                select unix_timestamp("");
-                -- output 1670404338 (the current timestamp)
-            @endcode
-            @since 0.7.0)");
-    RegisterExternal("unix_timestamp")
-        .args<StringRef>(reinterpret_cast<void*>(
-            static_cast<void (*)(StringRef*, int64_t*, bool*)>(
-                v1::string_to_unix_timestamp)))
-        .return_by_arg(true)
-        .returns<Nullable<int64_t>>();
 }
 
 void DefaultUdfLibrary::InitTimeAndDateUdf() {
@@ -2620,6 +2588,99 @@ void DefaultUdfLibrary::InitTimeAndDateUdf() {
                 *out = NativeValue::CreateTuple(args);
                 return Status::OK();
             });
+
+    RegisterExternal("datediff")
+        .args<Date, Date>(reinterpret_cast<void*>(static_cast<void (*)(Date*, Date*, int32_t*, bool*)>(v1::date_diff)))
+        .return_by_arg(true)
+        .returns<Nullable<int32_t>>()
+        .doc(R"(
+            @brief days difference from date1 to date2
+
+            Supported date string style:
+              - yyyy-mm-dd
+              - yyyymmdd
+              - yyyy-mm-dd hh:mm:ss
+
+            Example:
+
+            @code{.sql}
+                select datediff("2021-05-10", "2021-05-01");
+                -- output 9
+                select datediff("2021-04-10", "2021-05-01");
+                -- output -21
+                select datediff(Date("2021-04-10"), Date("2021-05-01"));
+                -- output -21
+            @endcode
+            @since 0.7.0)");
+    RegisterExternal("datediff")
+        .args<StringRef, StringRef>(
+            reinterpret_cast<void*>(static_cast<void (*)(StringRef*, StringRef*, int32_t*, bool*)>(v1::date_diff)))
+        .return_by_arg(true)
+        .returns<Nullable<int32_t>>();
+    RegisterExternal("datediff")
+        .args<StringRef, Date>(
+            reinterpret_cast<void*>(static_cast<void (*)(StringRef*, Date*, int32_t*, bool*)>(v1::date_diff)))
+        .return_by_arg(true)
+        .returns<Nullable<int32_t>>();
+    RegisterExternal("datediff")
+        .args<Date, StringRef>(
+            reinterpret_cast<void*>(static_cast<void (*)(Date*, StringRef*, int32_t*, bool*)>(v1::date_diff)))
+        .return_by_arg(true)
+        .returns<Nullable<int32_t>>();
+
+    RegisterExternal("unix_timestamp")
+        .args<Date>(reinterpret_cast<void*>(static_cast<void (*)(Date*, int64_t*, bool*)>(v1::date_to_unix_timestamp)))
+        .return_by_arg(true)
+        .returns<Nullable<int64_t>>()
+        .doc(R"(
+            @brief Cast date or string expression to unix_timestamp. If empty string or NULL is provided, return current timestamp
+
+            Supported string style:
+              - yyyy-mm-dd
+              - yyyymmdd
+              - yyyy-mm-dd hh:mm:ss
+
+            Example:
+
+            @code{.sql}
+                select unix_timestamp("2020-05-22");
+                -- output 1590076800
+
+                select unix_timestamp("2020-05-22 10:43:40");
+                -- output 1590115420
+
+                select unix_timestamp("");
+                -- output 1670404338 (the current timestamp)
+            @endcode
+            @since 0.7.0)");
+    RegisterExternal("unix_timestamp")
+        .args<StringRef>(
+            reinterpret_cast<void*>(static_cast<void (*)(StringRef*, int64_t*, bool*)>(v1::string_to_unix_timestamp)))
+        .return_by_arg(true)
+        .returns<Nullable<int64_t>>();
+
+    RegisterExternalTemplate<AddMonths>("add_months")
+        .doc(R"s(
+             @brief adds an integer months to a given date, returning the resulting date.
+
+             The resulting day component will remain the same as that specified in date, unless the resulting month has fewer days than the day component of the given date,
+             in which case the day will be the last day of the resulting month. Returns NULL if given an invalid date, or a NULL argument.
+
+             @param start_date Date value to add
+             @param num_months Integer value as number of months to add, can be positive or negative
+
+             @code{.sql}
+               SELECT add_months('2016-08-31', 1);
+               -- 2016-09-30
+               SELECT add_months('2016-08-31', -1);
+               -- 2016-07-31
+               SELECT add_months('2012-01-31', 1);
+               -- 2012-02-29
+             @endcode
+
+             @since 0.8.0
+             )s")
+        .args_in<int32_t, int16_t, int64_t>();
 }
 
 void DefaultUdfLibrary::InitUdaf() {

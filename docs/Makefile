@@ -8,6 +8,7 @@ OUT_DIR ?= $(MAKEFILE_DIR)/build
 
 
 all: en zh
+	echo '<!DOCTYPE html> <html><head><meta http-equiv="refresh" content="0; url=zh" /></head></html>' > $(OUT_DIR)/index.html
 
 en: init
 	$(POETRY_PRG) run sphinx-multiversion "$(MAKEFILE_DIR)/en" "$(OUT_DIR)/en"

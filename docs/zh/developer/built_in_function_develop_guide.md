@@ -64,6 +64,7 @@ OpenMLDB内置了上百个SQL函数，以供数据科学家作数据分析和特
 - C++内置函数名统一使用[snake_case](https://en.wikipedia.org/wiki/Snake_case) 风格
 - 要求函数名能清晰表达函数功能
 
+(c_vs_sql)=
 #### 2.1.3 C++类型与SQL类型对应关系
 
 内置C++函数的参数类型限定为：BOOL类型，数值类型，时间戳日期类型和字符串类型。C++类型SQL类型对应关系如下：
@@ -87,7 +88,7 @@ OpenMLDB内置了上百个SQL函数，以供数据科学家作数据分析和特
 
 - C++函数与SQL函数参数相对位置相同
 
-- C++函数与SQL函数与参数类型类型一一对应。详情参见[2.1.3 C++类型与SQL类型对应关系](#2.1.3-C++类型与SQL类型对应关系)
+- C++函数与SQL函数与参数类型类型一一对应。详情参见 [2.1.3 C++类型与SQL类型对应关系](c_vs_sql)
 
 - 函数返回值要考虑以下几种情况：
 
@@ -112,12 +113,12 @@ OpenMLDB内置了上百个SQL函数，以供数据科学家作数据分析和特
       void func_output_nullable_date(int64_t, Date*, bool*); 
       ```
     
-  - 注意， SQL 函数返回值将对内置函数的实现和注册方式产生较大的影响，我们将在后续分别讨论，详情参见[3.2. SQL函数开发](#3.2.-单行函数开发分类)。
+  - 注意， SQL 函数返回值将对内置函数的实现和注册方式产生较大的影响，我们将在后续分别讨论，详情参见 [3.2. 单行函数开发分类](sfunc_category)。
   
 - 参数Nullable的处理方式：
 
   - 一般地，OpenMLDB对所有内置的单行函数采取统一的NULL参数处理方式。即任意一个输入参数为NULL时，直接返回NULL。
-  - 但需要对NULL参数做特殊处理的单行函数或者聚合函数，那么可以将参数配置为`Nullable<ArgType>`，然后在C++ function中将使用ArgType对应的C++类型和`bool*`来表达这个参数。详情参见[3.2.4 SQL函数参数是Nullable](#3.2.4-SQL函数参数是Nullable)。
+  - 但需要对NULL参数做特殊处理的单行函数或者聚合函数，那么可以将参数配置为`Nullable<ArgType>`，然后在C++ function中将使用ArgType对应的C++类型和`bool*`来表达这个参数。详情参见[3.2.4 SQL函数参数是Nullable](arg_nullable)。
 
 #### 2.1.5 内存管理
 
@@ -272,6 +273,8 @@ CheckUdf<return_type, arg_type,...>("function_name", expect_result, arg_value,..
   }
   ```
 
+(compile_ut)=
+
 #### 2.3.2 编译和执行单测
 
 - 编译`udf_ir_builder_test`并测试
@@ -393,6 +396,8 @@ RegisterExternalTemplate<v1::Abs>("abs")
 泛型模版的内置单行函数开发和单一数据类型的内置单行函数开发类似，在本文档中不详细展开讨论，
 本章以下内容主要针对单一数据类型的内置单行函数开发。
 
+(sfunc_category)=
+
 ### 3.2. 单行函数开发分类
 
 我们按内置函数的返回类型将函数基本分为三种类型：
@@ -402,6 +407,8 @@ RegisterExternalTemplate<v1::Abs>("abs")
 - SQL函数的返回值可能为空
 
 我们将详细介绍这几种类型的函数的开发和注册的基本流程。
+
+(return_bool)=
 
 #### 3.2.1 SQL函数返回值为布尔或数值类型
 
@@ -537,6 +544,8 @@ RegisterExternal("my_func")
         )");
 ```
 
+(arg_nullable)=
+
 #### 3.2.4 SQL函数参数是Nullable
 
 OpenMLDB对函数的NULL参数有默认的处理机制。即，任意一个参数为NULL时，函数返回NULL。但如果开发者想要在函数中获得参数是否为NULL并特别处理NULL参数时，我们需要把参数NULL的信息传递到函数中去。
@@ -590,7 +599,7 @@ RegisterExternal("my_func")
 
 #### 3.3.1 SQL函数返回值为布尔或数值类型 - `INT Month(TIMESTAMP)`函数
 
-Month()函数接受一个**TIMESTAMP**的时间戳参数，返回一个**INT**整数值，它表示指定日期的月份。参考[3.2.1 SQL函数返回值为布尔或数值类型](#3.2.1-SQL函数返回值为布尔或数值类型)
+Month()函数接受一个**TIMESTAMP**的时间戳参数，返回一个**INT**整数值，它表示指定日期的月份。参考[3.2.1 SQL函数返回值为布尔或数值类型](return_bool)
 
 ##### **step 1: 实现待注册的内置函数**
 
@@ -655,7 +664,7 @@ namespace udf {
 
 ##### **step 3: 函数单元测试**
 
-在[src/codegen/udf_ir_builder_test.cc](https://github.com/4paradigm/OpenMLDB/blob/main/hybridse/src/codegen/udf_ir_builder_test.cc) 中添加`TEST_F`单测，并[编译和运行单元测试](#2.3.2-编译和执行单测)。
+在[src/codegen/udf_ir_builder_test.cc](https://github.com/4paradigm/OpenMLDB/blob/main/hybridse/src/codegen/udf_ir_builder_test.cc) 中添加`TEST_F`单测，并[编译和运行单元测试](compile_ut)。
 
 ```c++
 // month(timestamp) normal check
@@ -755,7 +764,7 @@ namespace hybridse {
 
 ##### **step 3: 函数单元测试**
 
-在[src/codegen/udf_ir_builder_test.cc](https://github.com/4paradigm/OpenMLDB/blob/main/hybridse/src/codegen/udf_ir_builder_test.cc) 中添加`TEST_F`单测，并[编译和运行单元测试](#2.3.2-编译和执行单测)。
+在[src/codegen/udf_ir_builder_test.cc](https://github.com/4paradigm/OpenMLDB/blob/main/hybridse/src/codegen/udf_ir_builder_test.cc) 中添加`TEST_F`单测，并[编译和运行单元测试](compile_ut)。
 
 ```c++
 // string(bool) normal check
@@ -781,8 +790,8 @@ select STRING(true) as str_true, string(false) as str_false;
 
 `DATE Date(TIMESTAMP)`函数接受一个`TIMESTAMP`参数，并将转成`DATE`类型输出。
 
-参考[#3.2.3 SQL函数的返回值类型是Nullable ](#3.2.3-SQL函数的返回值类型是Nullable)
-和[#3.2.2 SQL函数返回值为STRING,TIMESTAMP或DATE](#3.2.2-SQL函数返回值为STRING,TIMESTAMP或DATE)
+参考[#3.2.3 SQL函数的返回值类型是Nullable ](#323-sql函数的返回值类型是nullable)
+和[#3.2.2 SQL函数返回值为STRING,TIMESTAMP或DATE](#322-sql函数返回值为stringtimestamp或date)
 
 ##### **step 1: 实现待注册的内置函数**
 
@@ -861,7 +870,7 @@ namespace hybridse {
 
 ##### **step 3: 函数单元测试**
 
-在[src/codegen/udf_ir_builder_test.cc](https://github.com/4paradigm/OpenMLDB/blob/main/hybridse/src/codegen/udf_ir_builder_test.cc) 中添加`TEST_F`单测，并[编译和运行单元测试](#2.3.2-编译和执行单测)。
+在[src/codegen/udf_ir_builder_test.cc](https://github.com/4paradigm/OpenMLDB/blob/main/hybridse/src/codegen/udf_ir_builder_test.cc) 中添加`TEST_F`单测，并[编译和运行单元测试](compile_ut)。
 
 ```c++
 // date(timestamp) normal check
@@ -918,7 +927,7 @@ RegisterUdaf("register_func_name")
     函数签名为：`ST* Update(ST* state, IN val1, bool val1_is_null, ...)`
 - 配置`output`函数指针: `output_func_ptr`。
   当函数的返回值可能为空时，额外要有一个`bool*`类型的参数来存放结果是否为空
-  （可以参照[3.2.3 SQL函数的返回值类型是Nullable](#3.2.3-SQL函数的返回值类型是Nullable)）。
+  （可以参照[3.2.3 SQL函数的返回值类型是Nullable](#323-sql函数的返回值类型是nullable)）。
 
 
 下面代码展示了新增`second` 聚合函数的代码示例，`second`功能为返回聚合数据中非空的第二个元素；为了方便展示，示例中`second`仅支持`int32_t`数据类型：
