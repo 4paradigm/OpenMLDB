@@ -3229,22 +3229,30 @@ hybridse::sdk::Status SQLClusterRouter::SendDeleteRequst(
                 return {StatusCode::kCmdError, status.GetMsg()};
             }
         }
-    } else if (option->index_map.size() > 1) {
-        return {StatusCode::kCmdError, "cannot delete with multiple indexs"};
     } else {
-        uint32_t pid = base::hash64(option->index_map.begin()->second) % table_info->table_partition_size();
-        auto tablet = cluster_sdk_->GetTablet(table_info->db(), table_info->name(), pid);
-        if (!tablet) {
-            return {StatusCode::kCmdError, "cannot connect tablet"};
+        std::map<uint32_t, std::map<uint32_t, std::string>> pid_index_map;
+        for (const auto& kv : option->index_map) {
+            uint32_t pid = ::openmldb::base::hash64(kv.second) % table_info->table_partition_size();
+            auto iter = pid_index_map.find(pid);
+            if (iter == pid_index_map.end()) {
+                iter = pid_index_map.emplace(pid, std::map<uint32_t, std::string>()).first;
+            }
+            iter->second.emplace(kv.first, kv.second);
         }
-        auto tablet_client = tablet->GetClient();
-        if (!tablet_client) {
-            return {StatusCode::kCmdError, "tablet client is null"};
-        }
-        auto ret = tablet_client->Delete(table_info->tid(), pid, option->index_map,
-                option->ts_name, option->start_ts, option->end_ts);
-        if (!ret.OK()) {
-            return {StatusCode::kCmdError, ret.GetMsg()};
+        for (const auto& kv : pid_index_map) {
+            auto tablet = cluster_sdk_->GetTablet(table_info->db(), table_info->name(), kv.first);
+            if (!tablet) {
+                return {StatusCode::kCmdError, "cannot connect tablet"};
+            }
+            auto tablet_client = tablet->GetClient();
+            if (!tablet_client) {
+                return {StatusCode::kCmdError, "tablet client is null"};
+            }
+            auto ret = tablet_client->Delete(table_info->tid(), kv.first, kv.second,
+                    option->ts_name, option->start_ts, option->end_ts);
+            if (!ret.OK()) {
+                return {StatusCode::kCmdError, ret.GetMsg()};
+            }
         }
     }
     return {};

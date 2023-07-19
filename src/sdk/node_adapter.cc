@@ -50,13 +50,11 @@ hybridse::sdk::Status NodeAdapter::ExtractDeleteOption(
                 return index1.col_name_size() > index2.col_name_size();
             });
     std::string con_ts_name;
-    size_t match_condition_num = 0;
+    ::openmldb::common::ColumnKey matched_column_key;
+    std::set<std::string> hit_con_col;
     for (const auto& column_key : index_vec) {
         if (column_key.flag() != 0) {
             continue;
-        }
-        if (!option->index_map.empty()) {
-            break;
         }
         std::string pk;
         int match_index_col = 0;
@@ -84,13 +82,8 @@ hybridse::sdk::Status NodeAdapter::ExtractDeleteOption(
             if (match_index_col != column_key.col_name_size()) {
                 continue;
             }
-            match_condition_num += match_index_col;
-            option->index_map.emplace(index_pos[column_key.index_name()], pk);
         }
         if (column_key.has_ts_name()) {
-            if (!option->ts_name.empty() && match_index_col > 0 && option->ts_name != column_key.ts_name()) {
-                return {hybridse::common::StatusCode::kCmdError, "ts name mismatch"};
-            }
             for (const auto& con : condition_vec) {
                 if (con.col_name != column_key.ts_name()) {
                     continue;
@@ -106,6 +99,7 @@ hybridse::sdk::Status NodeAdapter::ExtractDeleteOption(
                 }
                 if (option->ts_name.empty()) {
                     option->ts_name = con_ts_name;
+                    hit_con_col.insert(con_ts_name);
                 }
                 uint64_t ts = 0;
                 if (!absl::SimpleAtoi(con.val.value(), &ts)) {
@@ -129,7 +123,6 @@ hybridse::sdk::Status NodeAdapter::ExtractDeleteOption(
                 } else if (con.op == hybridse::node::FnOperator::kFnOpGe && ts > 1) {
                     option->end_ts = ts - 1;
                 }
-                match_condition_num++;
             }
             if (option->start_ts.has_value() && option->end_ts.has_value() &&
                     option->end_ts.value() >= option->start_ts.value()) {
@@ -138,9 +131,35 @@ hybridse::sdk::Status NodeAdapter::ExtractDeleteOption(
         } else if (!option->ts_name.empty() && match_index_col > 0) {
             return {hybridse::common::StatusCode::kCmdError, "ts name mismatch"};
         }
+        if (match_index_col > 0) {
+            if (!option->ts_name.empty()) {
+                option->index_map.clear();
+            }
+            if (option->index_map.empty()) {
+                matched_column_key.CopyFrom(column_key);
+            } else {
+                if (column_key.col_name_size() != matched_column_key.col_name_size() ||
+                        !std::equal(column_key.col_name().begin(), column_key.col_name().end(),
+                            matched_column_key.col_name().begin())) {
+                    return {hybridse::common::StatusCode::kCmdError, "hit multiple indexs"};
+                }
+            }
+            option->index_map.emplace(index_pos[column_key.index_name()], pk);
+            for (const auto& col : matched_column_key.col_name()) {
+                hit_con_col.insert(col);
+            }
+            if (!option->ts_name.empty()) {
+                break;
+            }
+        }
     }
-    if (match_condition_num < condition_vec.size()) {
-        return {hybridse::common::StatusCode::kCmdError, "has redundant condition"};
+    if (!option->ts_name.empty() && !option->index_map.empty() && option->ts_name != matched_column_key.ts_name()) {
+        return {hybridse::common::StatusCode::kCmdError, "ts name mismatch"};
+    }
+    for (const auto& con : condition_vec) {
+        if (hit_con_col.find(con.col_name) == hit_con_col.end()) {
+            return {hybridse::common::StatusCode::kCmdError, "has redundant condition"};
+        }
     }
     return {};
 }
