@@ -110,26 +110,25 @@ LOAD DATA INFILE 'hive://db1.t1' INTO TABLE t1;
 
 ## 离线导入规则
 
-表的离线信息可通过desc <table>查看。在没有离线信息时，进行LOAD DATA离线导入，没有特别限制。
-
-但如果当前已有离线信息，再次LOAD DATA，能否成功和表之前的离线信息有关。规则为：
-- 原信息为软链接(Deep Copy列为false)，OpenMLDB应只读该地址，不应修改**软连接中的数据**
-  - 可以再次软链接，替换原软链接地址，指向别的数据地址(mode='overwrite', deep_copy=false)
-  - 可以做硬拷贝(mode='overwrite', deep_copy=true)，将丢弃原软链接地址，但不会修改软链接指向的数据
-- 原信息为硬拷贝(Deep Copy列为true)，数据地址(Offline path)为OpenMLDB所拥有的，可读可写
-  - **不可以**替换为软链接（数据还没有回收恢复机制，直接删除是危险行为，所以暂不支持）
-  - 可以再次硬拷贝(mode='overwrite'/'append', deep_copy=true)
-
+表的离线信息可通过`desc <table>`查看。我们将数据地址分为两类，离线地址是OpenMLDB的内部存储路径，硬拷贝将写入此地址，仅一个；软链接地址是软链接导入的地址列表。
+根据模式的不同，对离线信息的修改也不同。
+- overwrite模式，将会覆盖原有的所有字段，包括离线地址、软链接地址、格式、读取选项，仅保留当前overwrite进入的信息。
+ - overwrite 硬拷贝，离线地址如果存在数据将被覆盖，软链接全部清空，格式更改为内部默认格式parquet，读取选项全部清空。
+ - overwrite 软拷贝，离线地址直接删除（并不删除数据），软链接覆盖为输入的链接、格式、读取选项。
+- append模式，append 硬拷贝将数据写入当前离线地址，append 软拷贝需要考虑当前的格式和读取选项，如果不同，将无法append。
+	- append同样的路径将被忽略，但路径需要是字符串相等的，如果不同，会作为两个软链接地址。
+- errorifexists，如果当前已有离线信息，将报错。这里的离线信息包括离线地址和软链接地址，比如，当前存在离线地址，无软链接，现在`LOAD DATA`软链接，也将报错。
 
 ````{tip}
-如果你肯定原有的硬拷贝数据不再被需要，而现在想将离线数据地址修改为软链接，可以手动删除离线地址的数据，并用nameserver http请求清空表的离线信息。
+如果当前离线信息存在问题，无法通过`LOAD DATA`修改，可以手动删除离线地址的数据，并用nameserver http请求清空表的离线信息。
 清空离线信息步骤：
 ```
 curl http://<ns_endpoint>/NameServer/ShowTable -d'{"db":"<db_name>","name":"<table_name>"}' # 获得其中的表tid
 curl http://<ns_endpoint>/NameServer/UpdateOfflineTableInfo -d '{"db":"<db_name>","name":"<table_name>","tid":<tid>}'
 ```
-然后，可以进行软链接导入。
 ````
+
+由于硬拷贝的写入格式无法修改，是parquet格式，所以如果想要硬拷贝和软链接同时存在，需要保证软链接的数据格式也是parquet。
 
 ## CSV源数据格式说明
 

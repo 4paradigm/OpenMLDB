@@ -10,12 +10,12 @@
     <dependency>
         <groupId>com.4paradigm.openmldb</groupId>
         <artifactId>openmldb-jdbc</artifactId>
-        <version>0.8.0</version>
+        <version>0.8.2</version>
     </dependency>
     <dependency>
         <groupId>com.4paradigm.openmldb</groupId>
         <artifactId>openmldb-native</artifactId>
-        <version>0.8.0</version>
+        <version>0.8.2</version>
     </dependency>
     ```
 
@@ -27,16 +27,16 @@
     <dependency>
         <groupId>com.4paradigm.openmldb</groupId>
         <artifactId>openmldb-jdbc</artifactId>
-        <version>0.8.0</version>
+        <version>0.8.2</version>
     </dependency>
     <dependency>
         <groupId>com.4paradigm.openmldb</groupId>
         <artifactId>openmldb-native</artifactId>
-        <version>0.8.0-macos</version>
+        <version>0.8.2-macos</version>
     </dependency>
     ```
 
-注意：由于 openmldb-native 中包含了 OpenMLDB 编译的 C++ 静态库，默认是 Linux 静态库，macOS 上需将上述 openmldb-native 的 version 改成 `0.8.0-macos`，openmldb-jdbc 的版本保持不变。
+注意：由于 openmldb-native 中包含了 OpenMLDB 编译的 C++ 静态库，默认是 Linux 静态库，macOS 上需将上述 openmldb-native 的 version 改成 `0.8.2-macos`，openmldb-jdbc 的版本保持不变。
 
 openmldb-native 的 macOS 版本只支持 macOS 12，如需在 macOS 11 或 macOS 10.15上运行，需在相应 OS 上源码编译 openmldb-native 包，详细编译方法见[并发编译 Java SDK](https://openmldb.ai/docs/zh/main/deploy/compile.html#java-sdk)。使用自编译的 openmldb-native 包，推荐使用`mvn install`安装到本地仓库，然后在 pom 中引用本地仓库的 openmldb-native 包，不建议用`scope=system`的方式引用。
 
@@ -77,13 +77,9 @@ res = stmt.executeQuery("SELECT * from t1"); // 在线 select, executeQuery 可�
 
 其中，`LOAD DATA` 命令是异步命令，返回的 ResultSet 包含该 job 的 id、state 等信息。可通过执行 `show job <id>` 来查询 job 是否执行完成。注意 ResultSet 需要先执行 `next()` 游标才会指向第一行数据。
 
-也可以改为同步命令：
+离线模式默认为异步执行，返回的ResultSet是Job Info，可以通过`SET @@sync_job=true;`改为同步执行，但返回的ResultSet根据SQL不同，详情见[功能边界-离线命令同步模式](../function_boundary.md#离线命令同步模式)。只推荐在`LOAD DATA`/`SELECT INTO`时选择同步执行。
 
-```SQL
-SET @@sync_job=true;
-```
-
-如果同步命令实际耗时超过连接空闲默认的最大等待时间 0.5 小时，请[调整配置](../../openmldb_sql/ddl/SET_STATEMENT.md#离线命令配置详情)。
+如果同步命令超时，请参考[离线命令配置详情](../../openmldb_sql/ddl/SET_STATEMENT.md#离线命令配置详情)调整配置。
 
 ```{caution}
 `Statement`执行`SET @@execute_mode='offline'`不仅会影响当前`Statement`，还会影响该`Connection`已创建和未创建的所有`Statement`。所以，不建议创建多个`Statement`，并期望它们在不同的模式下执行。如果需要在不同模式下执行SQL，建议创建多个Connection。
@@ -506,17 +502,17 @@ java -cp target/demo-1.0-SNAPSHOT.jar com.openmldb.demo.App
 
 ### 可选配置项
 
-| **可选配置项** | **说明**                                                     |
-| -------------- | ------------------------------------------------------------ |
+| **可选配置项**  | **说明**                                                                                                                                                                 |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | enableDebug     | 默认 false，开启 hybridse 的 debug 日志（注意不是全局的 debug 日志），可以查看到更多 sql 编译和运行的日志。但这些日志不是全部被客户端收集，需要查看 tablet server 日志。 |
-| requestTimeout  | 默认 60000 ms，这个 timeout 是客户端发送的 rpc 超时时间，发送到 taskmanager 的除外（job 的 rpc timeout 由 variable `job_timeout` 控制）。 |
-| glogLevel       | 默认 0，和 glog 的 minloglevel 类似，`INFO/WARNING/ERROR/FATAL` 日志分别对应 `0/1/2/3`。0 表示打印 INFO 以及上的等级。 |
-| glogDir         | 默认为 empty，日志目录为空时，打印到 stderr，即控制台。      |
-| maxSqlCacheSize | 默认 50，客户端单个 db 单种执行模式的最大 sql cache 数量，如果出现 cache淘汰引发的错误，可以增大这一 size 避开问题。 |
-| sessionTimeout | 默认 10000 ms，zk 的 session timeout。                       |
-| zkLogLevel     | 默认 3，`0/1/2/3/4` 分别代表 `禁止所有 zk log/error/warn/info/debug` |
-| zkLogFile      | 默认 empty，打印到 stdout。                                  |
-| sparkConfPath  | 默认 empty，可以通过此配置更改 job 使用的 spark conf，而不需要配置 taskmanager 重启。 |
+| requestTimeout  | 默认 60000 ms，这个 timeout 是客户端发送的 rpc 超时时间，发送到 taskmanager 的除外（job 的 rpc timeout 由 variable `job_timeout` 控制）。                                |
+| glogLevel       | 默认 0，和 glog 的 minloglevel 类似，`INFO/WARNING/ERROR/FATAL` 日志分别对应 `0/1/2/3`。0 表示打印 INFO 以及上的等级。                                                   |
+| glogDir         | 默认为 empty，日志目录为空时，打印到 stderr，即控制台。                                                                                                                  |
+| maxSqlCacheSize | 默认 50，客户端单个 db 单种执行模式的最大 sql cache 数量，如果出现 cache淘汰引发的错误，可以增大这一 size 避开问题。                                                     |
+| sessionTimeout  | 默认 10000 ms，zk 的 session timeout。                                                                                                                                   |
+| zkLogLevel      | 默认 3，`0/1/2/3/4` 分别代表 `禁止所有 zk log/error/warn/info/debug`                                                                                                     |
+| zkLogFile       | 默认 empty，打印到 stdout。                                                                                                                                              |
+| sparkConfPath   | 默认 empty，可以通过此配置更改 job 使用的 spark conf，而不需要配置 taskmanager 重启。                                                                                    |
 
 ## SQL 校验
 
@@ -525,9 +521,11 @@ Java 客户端支持对 SQL 进行正确性校验，验证是否可执行。分�
 - `validateSQLInBatch` 可以验证 SQL 是否能在离线端执行。
 - `validateSQLInRequest` 可以验证 SQL 是否能被部署上线。
 
-两个接口都需要传入 SQL 所需要的所有表 schema。目前只支持单 db，请不要在 SQL 语句中使用 `db.table` 格式。
+两种接口都需要传入 SQL 所需要的所有表 schema，支持多 db。为了向后兼容，允许参数中不填写`db`（当前use的db），等价于use schema表中的第一个db。这种情况下，输入 SQL 语句需要保证`<table>`格式的表来自第一个db，不影响`<db>.<table>`格式的 SQL。
 
-例如：验证 SQL `select count(c1) over w1 from t3 window w1 as(partition by c1 order by c2 rows between unbounded preceding and current row);`，那么除了这个语句，还需要将表 `t3` 的 schema 作为第二参数 schemaMaps 传入。格式为 Map，key 为 db 名，value 为每个 db 的所有 table schema(Map)。实际只支持单 db，所以这里通常只有 1 个 db，如下所示的 db3。db 下的 table schema map key 为 table name，value 为 com.\_4paradigm.openmldb.sdk.Schema，由每列的 name 和 type 构成。
+例如：验证 SQL `select count(c1) over w1 from t3 window w1 as(partition by c1 order by c2 rows between unbounded preceding and current row);`，那么除了这个语句，还需要将表 `t3` 的 schema 作为第二参数 schemaMaps 传入。格式为 Map，key 为 db 名，value 为每个 db 的所有 table schema(Map)。这里为了演示简单，只有 1 个 db，如下所示的 db3。db 下的 table schema map key 为 table name，value 为 `com.\_4paradigm.openmldb.sdk.Schema`，由每列的 name 和 type 构成。
+
+返回结果`List<String>`，如果校验正确，返回空列表；如果校验失败，返回错误信息列表`[error_msg, error_trace]`。
 
 ```java
 Map<String, Map<String, Schema>> schemaMaps = new HashMap<>();
@@ -535,16 +533,31 @@ Map<String, Schema> dbSchema = new HashMap<>();
 dbSchema = new HashMap<>();
 dbSchema.put("t3", new Schema(Arrays.asList(new Column("c1", Types.VARCHAR), new Column("c2", Types.BIGINT))));
 schemaMaps.put("db3", dbSchema);
+// 可以使用no db参数的格式，需保证schemaMaps中只有一个db，且sql中只是用<table>格式
+// List<String> ret = SqlClusterExecutor.validateSQLInRequest("select count(c1) over w1 from t3 window "+
+//        "w1 as(partition by c1 order by c2 rows between unbounded preceding and current row);", schemaMaps);
 List<String> ret = SqlClusterExecutor.validateSQLInRequest("select count(c1) over w1 from t3 window "+
-        "w1 as(partition by c1 order by c2 rows between unbounded preceding and current row);", schemaMaps);
+        "w1 as(partition by c1 order by c2 rows between unbounded preceding and current row);", "db3", schemaMaps);
 Assert.assertEquals(ret.size(), 0);
 ```
+
+## 生成建表DDL
+
+`public static List<String> genDDL(String sql, Map<String, Map<String, Schema>> tableSchema)`方法可以帮助用户，根据想要deploy的 SQL，自动生成建表语句，**目前只支持单db**。参数`sql`不可以是使用`<db>.<table>`格式，`tableSchema`输入sql依赖的所有table的schema，格式和前文一致，即使此处`tableSchema`存在多db，db信息也会被丢弃，所有表都等价于在同一个不知名的db中。
+
+## SQL Output Schema
+
+`public static Schema genOutputSchema(String sql, String usedDB, Map<String, Map<String, Schema>> tableSchema)`方法可以得到 SQL 的 Output Schema，支持多db。如果使用`usedDB`，`sql`中使用该db的表，可以使用`<table>`格式。为了向后兼容，还支持了`public static Schema genOutputSchema(String sql, Map<String, Map<String, Schema>> tableSchema)`无db的接口，等价于使用第一个db作为used db，因此，也需要保证`sql`中`<table>`格式的表来自此db。
+
+## SQL 表血缘
+
+`public static List<Pair<String, String>> getDependentTables(String sql, String usedDB, Map<String, Map<String, Schema>> tableSchema)`可以获得`sql`依赖的所有表，`Pair<String, String>`分别对应库名和表名，列表的第一个元素为主表，`[1,end)`为其他依赖表（不包括主表）。输入参数`usedDB`若为空串，即无use db下进行查询。（区别于前面的`genDDL`等兼容规则）
 
 ## SQL 合并
 
 Java 客户端支持对多个 SQL 进行合并，并进行 request 模式的正确性校验，接口为`mergeSQL`，只能在所有输入SQL的主表一致的情况下合并。
 
-输入参数：想要合并的 SQL 组，主表名与主表的join key（可多个），以及所有表的schema。
+输入参数：想要合并的 SQL 组，当前使用的库名，主表的join key（可多个），以及所有表的schema。
 
 例如，我们有这样四个特征组SQL：
 ```
@@ -561,7 +574,8 @@ select sum(c2) over w1 from main window w1 as (union (select \"\" as id, * from 
 它们的主表均为main表，所以它们可以进行 SQL 合并。合并本质是进行join，所以我们还需要知道main表的unique列，它们可以定位到唯一一行数据。例如，main表id并不唯一，可能存在多行的id值相同，但不会出现id与c1两列值都相同，那么我们可以用id与c1两列来进行join。类似 SQL 校验，我们也传入表的schema map。
 
 ```java
-String merged = SqlClusterExecutor.mergeSQL(sqls, "main", Arrays.asList("id", "c1"), schemaMaps);
+// 为了展示简单，我们仅使用单个db的表，所以只需要填写used db，sql中均使用<table>格式的表名。如果sql均使用<db>.<table>格式，used db可以填空串。
+String merged = SqlClusterExecutor.mergeSQL(sqls, "db", Arrays.asList("id", "c1"), schemaMaps);
 ```
 
 输出结果为单个合并后的 SQL，见下。输入的SQL一共选择四个特征，所以合并 SQL 只会输出这四个特征列。（我们会自动过滤join keys）

@@ -17,21 +17,11 @@ If you wan to compile and install it by yourself, you can refer to our [installa
 Pull the image (image download size is about 1GB, after decompression is about 1.7 GB) and start the docker container:
 
 ```bash
-docker run -it 4pdosc/openmldb:0.8.0 bash
+docker run -it 4pdosc/openmldb:0.8.2 bash
 ```
 
 ```{important}
 After the container is successfully started, all the subsequent commands in this tutorial are executed within the container by default. 
-```
-
-(download_data)=
-### 1.2. Download the Sample Data
-
-Download sample data:
-
-```bash
-curl https://openmldb.ai/demo/data.csv --output /work/taxi-trip/data/data.csv
-curl https://openmldb.ai/demo/data.parquet --output /work/taxi-trip/data/data.parquet
 ```
 
 ## 2. The Standalone Version

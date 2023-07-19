@@ -31,7 +31,7 @@ OpenMLDB 希望能达成开发即上线的目标，让开发回归本质，而�
 
 测试可以在macOS或Linux上运行，推荐在我们提供的 OpenMLDB 镜像内进行演示测试。我们将在这个容器中启动OpenMLDB和DolphinScheduler，暴露DolphinScheduler的web端口：
 ```
-docker run -it -p 12345:12345 4pdosc/openmldb:0.8.0 bash
+docker run -it -p 12345:12345 4pdosc/openmldb:0.8.2 bash
 ```
 ```{attention}
 DolphinScheduler 需要配置租户，是操作系统的用户，并且该用户需要有 sudo 权限。所以推荐在 OpenMLDB 容器内下载并启动 DolphinScheduler。否则，请准备有sudo权限的操作系统用户。
@@ -172,7 +172,7 @@ DolphinScheduler 中，需要先创建项目，再在项目中创建工作流。
 `load offline data`，`feture extraction`与`load online`可能出现DolphinScheduler 中显示task运行成功，但实际在OpenMLDB中任务执行失败。进而可能导致`train`任务报错，没有源特征数据可以concatenate的错误（Traceback `pd.concat`）。
 
 出现这类问题时，请在OpenMLDB中查询下各个任务的真正状态，可直接运行
-`echo "show jobs;" | /work/openmldb/bin/openmldb --zk_cluster=127.0.0.1:2181 --zk_root_path=/openmldb --role=sql_client`。如果某个任务状态是`FAILED`，请查询该任务的日志，方法见[任务日志](../quickstart/beginner_must_read.md#离线)。
+`echo "show jobs;" | /work/openmldb/bin/openmldb --zk_cluster=127.0.0.1:2181 --zk_root_path=/openmldb --role=sql_client`。如果某个任务状态是`FAILED`，请查询该任务的日志，方法见[任务日志](../../quickstart/beginner_must_read.md#离线)。
 ```
 
 #### 4. 在线预测测试

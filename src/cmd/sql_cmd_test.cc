@@ -363,7 +363,7 @@ TEST_F(SqlCmdTest, SelectMultiPartition) {
 }
 
 TEST_F(SqlCmdTest, ShowNameserverJob) {
-    auto sr = cluster_cli.sr;
+    sr = cluster_cli.sr;
     std::string db_name = "test" + GenRand();
     std::string name = "table" + GenRand();
     std::string ddl = "create table " + name +
@@ -931,7 +931,8 @@ TEST_P(DBSDKTest, DeployWithData) {
         sr->ExecuteSQL(absl::StrCat("insert into t2 values ('", key1, "', '", key2, "', 1635247427000);"), &status);
     }
     sleep(2);
-    std::string deploy_sql = "deploy demo SELECT t1.col1, t2.col2, sum(col4) OVER w1 as w1_col4_sum FROM t1 "
+    std::string deploy_sql =
+        "deploy demo SELECT t1.col1, t2.col2, sum(col4) OVER w1 as w1_col4_sum FROM t1 "
         "LAST JOIN t2 ORDER BY t2.col3 ON t1.col2 = t2.col2 "
         "WINDOW w1 AS (PARTITION BY t1.col2 ORDER BY t1.col3 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);";
     sr->ExecuteSQL(deploy_sql, &status);
@@ -943,7 +944,52 @@ TEST_P(DBSDKTest, DeployWithData) {
     ASSERT_TRUE(cs->GetNsClient()->DropDatabase("test2", msg));
 }
 
-TEST_P(DBSDKTest, Delete) {
+TEST_P(DBSDKTest, DeletetRange) {
+    auto cli = GetParam();
+    sr = cli->sr;
+    std::string db_name = "test2";
+    std::string table_name = "test1";
+    std::string ddl = "create table test1 (c1 string, c2 int, c3 bigint, INDEX(KEY=c1, ts=c3));";
+    ProcessSQLs(sr, {
+                        "set @@execute_mode = 'online'",
+                        absl::StrCat("create database ", db_name, ";"),
+                        absl::StrCat("use ", db_name, ";"),
+                        ddl,
+                    });
+    hybridse::sdk::Status status;
+    for (int i = 0; i < 10; i++) {
+        std::string key = absl::StrCat("key", i);
+        for (int j = 0; j < 10; j++) {
+            uint64_t ts = 1000 + j;
+            sr->ExecuteSQL(absl::StrCat("insert into ", table_name, " values ('", key, "', 11, ", ts, ");"), &status);
+        }
+    }
+
+    auto res = sr->ExecuteSQL(absl::StrCat("select * from ", table_name, ";"), &status);
+    ASSERT_EQ(res->Size(), 100);
+    ProcessSQLs(sr, {absl::StrCat("delete from ", table_name, " where c1 = 'key2';")});
+    res = sr->ExecuteSQL(absl::StrCat("select * from ", table_name, ";"), &status);
+    ASSERT_EQ(res->Size(), 90);
+    ProcessSQLs(sr, {absl::StrCat("delete from ", table_name, " where c1 = 'key3' and c3 = 1001;")});
+    res = sr->ExecuteSQL(absl::StrCat("select * from ", table_name, ";"), &status);
+    ASSERT_EQ(res->Size(), 89);
+    ProcessSQLs(sr, {absl::StrCat("delete from ", table_name, " where c1 = 'key4' and c3 > 1005;")});
+    res = sr->ExecuteSQL(absl::StrCat("select * from ", table_name, ";"), &status);
+    ASSERT_EQ(res->Size(), 85);
+    ProcessSQLs(sr, {absl::StrCat("delete from ", table_name, " where c1 = 'key4' and c3 > 1002 and c3 < 1006;")});
+    res = sr->ExecuteSQL(absl::StrCat("select * from ", table_name, ";"), &status);
+    ASSERT_EQ(res->Size(), 82);
+    ProcessSQLs(sr, {absl::StrCat("delete from ", table_name, " where c3 > 1007;")});
+    res = sr->ExecuteSQL(absl::StrCat("select * from ", table_name, ";"), &status);
+    ASSERT_EQ(res->Size(), 66);
+    ProcessSQLs(sr, {
+                        absl::StrCat("use ", db_name, ";"),
+                        absl::StrCat("drop table ", table_name),
+                        absl::StrCat("drop database ", db_name),
+                    });
+}
+
+TEST_P(DBSDKTest, SQLDeletetRow) {
     auto cli = GetParam();
     sr = cli->sr;
     std::string db_name = "test2";
@@ -3082,7 +3128,7 @@ void ExpectShowTableStatusResult(const std::vector<std::vector<test::CellExpectI
 
     std::vector<std::vector<test::CellExpectInfo>> merged_expect = {
         {"Table_id", "Table_name", "Database_name", "Storage_type", "Rows", "Memory_data_size", "Disk_data_size",
-         "Partition", "Partition_unalive", "Replica", "Offline_path", "Offline_format", "Offline_deep_copy",
+         "Partition", "Partition_unalive", "Replica", "Offline_path", "Offline_format", "Offline_symbolic_paths",
          "Warnings"}};
     merged_expect.insert(merged_expect.end(), expect.begin(), expect.end());
     if (all_db) {
@@ -3535,23 +3581,20 @@ struct DeploymentEnv {
     void SetUp() {
         ProcessSQLs(
             sr_,
-            {
-                "set session execute_mode = 'online'",
-                absl::StrCat("create database ", db_),
-                absl::StrCat("use ", db_),
-                absl::StrCat("create table ", table_,
-                             " (c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, "
-                             "c8 date, index(key=c1, ts=c4, abs_ttl=0, ttl_type=absolute)) "
-                             "OPTIONS(partitionnum=1,replicanum=1);"),
-                absl::StrCat("deploy ", dp_name_, " SELECT c1, c3, sum(c4) OVER w1 as w1_c4_sum FROM ", table_,
-                             " WINDOW w1 AS (PARTITION BY c1 ORDER BY c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);"),
-                absl::StrCat(
-                    "create procedure ", procedure_name_,
-                    " (c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, c8 date) BEGIN SELECT c1, c3, "
-                    "sum(c4) OVER w1 as w1_c4_sum FROM ",
-                    table_,
-                    " WINDOW w1 AS (PARTITION BY c1 ORDER BY c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW); END"),
-            });
+            {"set session execute_mode = 'online'", absl::StrCat("create database ", db_), absl::StrCat("use ", db_),
+             absl::StrCat("create table ", table_,
+                          " (c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, "
+                          "c8 date, index(key=c1, ts=c4, abs_ttl=0, ttl_type=absolute)) "
+                          "OPTIONS(partitionnum=1,replicanum=1);"),
+             // deploy will create index c1,c7,lat 2, may fail in workflow cpp
+             absl::StrCat("deploy ", dp_name_, " SELECT c1, c3, sum(c4) OVER w1 as w1_c4_sum FROM ", table_,
+                          " WINDOW w1 AS (PARTITION BY c1 ORDER BY c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);"),
+             absl::StrCat(
+                 "create procedure ", procedure_name_,
+                 " (c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, c8 date) BEGIN SELECT c1, "
+                 "c3, "
+                 "sum(c4) OVER w1 as w1_c4_sum FROM ",
+                 table_, " WINDOW w1 AS (PARTITION BY c1 ORDER BY c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW); END")});
     }
 
     void TearDown() {
@@ -3826,6 +3869,7 @@ int main(int argc, char** argv) {
     ::openmldb::sdk::ClusterOptions copt;
     copt.zk_cluster = mc.GetZkCluster();
     copt.zk_path = mc.GetZkPath();
+    copt.zk_session_timeout = FLAGS_zk_session_timeout;
     ::openmldb::cmd::cluster_cli.cs = new ::openmldb::sdk::ClusterSDK(copt);
     ::openmldb::cmd::cluster_cli.cs->Init();
     ::openmldb::cmd::cluster_cli.sr = new ::openmldb::sdk::SQLClusterRouter(::openmldb::cmd::cluster_cli.cs);

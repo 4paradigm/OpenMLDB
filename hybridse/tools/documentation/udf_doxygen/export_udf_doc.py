@@ -54,12 +54,22 @@ def process_doc(doc):
         lines[i] = lines[i][indent:]
     return "\n".join(lines)
 
+def surrond_backquote(t):
+    return f"`{t}`"
+
+def to_list_type(t):
+    return f"`list<{t}>`"
+
+
+numeric_types = frozenset(["int16", "int32", "int64", "float", "double"])
+all_basic_types = frozenset(["bool", "int16", "int32", "int64", "float", "double", "string", "timestamp", "date"])
+
+numeric_types_code = list(map(surrond_backquote, numeric_types))
+list_numeric_types_code = list(map(to_list_type, numeric_types))
+all_types_code = list(map(surrond_backquote, all_basic_types))
+list_all_types_code = list(map(to_list_type, all_basic_types))
 
 def merge_arith_types(signature_set):
-    arith_types = frozenset(["`int16`", "`int32`", "`int64`", "`float`", "`double`"])
-    arith_list_types = frozenset(["`list<int16>`", "`list<int32>`", "`list<int64>`", "`list<float>`", "`list<double>`"])
-    all_basic_types = frozenset(["`bool`", "`int16`", "`int32`", "`int64`",
-                                "`float`", "`double`", "`string`", "`timestamp`", "`date`"])
     found = True
 
     def _find_and_merge(arg_types, idx, list_ty, merge_ty):
@@ -87,14 +97,17 @@ def merge_arith_types(signature_set):
         for key in signature_set:
             arg_types = [_ for _ in signature_set[key]]
             for i in range(len(arg_types)):
-                if _find_and_merge(arg_types, i, all_basic_types, "`any`"):
+                if _find_and_merge(arg_types, i, all_types_code, "`any`"):
                     # NOTE: must merge any before number
                     found = True
                     break
-                elif _find_and_merge(arg_types, i, arith_types, "`number`"):
+                elif _find_and_merge(arg_types, i, list_all_types_code, "`list<any>`"):
                     found = True
                     break
-                elif _find_and_merge(arg_types, i, arith_list_types, "`list<number>`"):
+                elif _find_and_merge(arg_types, i, numeric_types_code, "`number`"):
+                    found = True
+                    break
+                elif _find_and_merge(arg_types, i, list_numeric_types_code, "`list<number>`"):
                     found = True
                     break
             if found:

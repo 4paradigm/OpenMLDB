@@ -11,7 +11,7 @@ OpenMLDB的SDK，可以分为几层，如图所示。我们将从下层往上依
 开发者需要注意，它的方法中最核心的三个方法。
 1. [ExecuteSQL](https://github.com/4paradigm/OpenMLDB/blob/b6f122798f567adf2bb7766e2c3b81b633ebd231/src/sdk/sql_cluster_router.h#L160)，支持执行所有sql，包括DDL，DML，DQL等等。
 2. [ExecuteSQLParameterized](https://github.com/4paradigm/OpenMLDB/blob/b6f122798f567adf2bb7766e2c3b81b633ebd231/src/sdk/sql_cluster_router.h#L166)，支持参数化的sql形式。
-3. [ExecuteSQLRequest](https://github.com/4paradigm/OpenMLDB/blob/b6f122798f567adf2bb7766e2c3b81b633ebd231/src/sdk/sql_cluster_router.h#L156)，这是OpenMLDB特有的[Request模式](../tutorial/modes.md#4-在线请求模式)，不是普通sql，因此需要一个专用的方法。
+3. [ExecuteSQLRequest](https://github.com/4paradigm/OpenMLDB/blob/b6f122798f567adf2bb7766e2c3b81b633ebd231/src/sdk/sql_cluster_router.h#L156)，这是OpenMLDB特有的[Request模式](../quickstart/concepts/modes.md#在线请求模式)，不是普通sql，因此需要一个专用的方法。
 
 其他方法，比如CreateDB/DropDB/DropTable，由于历史原因，还没有及时删除，开发者不需要关心。
 

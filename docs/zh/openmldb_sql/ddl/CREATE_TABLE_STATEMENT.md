@@ -73,7 +73,7 @@ DefaultValueExpr ::=
 一张表中包含一个或多个列。每一列的列描述`ColumnDef`描述了列名、列类型以及列约束配置。
 
 - 列名：列在表中的名字。同一张表内的列名必须是唯一的。
-- 列类型：列的类型。关于OpenMLDB支持的数据类型，详见[数据类型](../data_types)。
+- 列类型：列的类型。关于OpenMLDB支持的数据类型，详见[数据类型](../../openmldb_sql/data_types)。
 - 列约束配置：
   - `NOT NULL`: 该列的取值不允许为空。
   - `DEFAULT`: 设置该列的默认值。`NOT NULL`的属性推荐同时配置`DEFAULT`默认值，在插入数据时，若没有定义该列的值，会插入默认值。若设置了`NOT NULL`属性但没有配置`DEFAULT`值，插入语句中未定义该列值时，OpenMLDB会抛出错误。

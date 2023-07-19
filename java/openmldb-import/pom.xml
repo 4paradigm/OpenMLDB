@@ -94,7 +94,7 @@
             <groupId>com.google.guava</groupId>
             <artifactId>guava</artifactId>
             <!-- hadoop-common 3.2.2 needs -->
-            <version>30.1.1-jre</version>
+            <version>32.0.0-jre</version>
         </dependency>
 
         <!-- https://mvnrepository.com/artifact/org.apache.hadoop/hadoop-annotations -->

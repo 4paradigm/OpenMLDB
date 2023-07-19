@@ -12,8 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# coverage test won't run tests below, but they are *_test, so if COVERAGE_NO_DEPS, disable build
-if(TESTING_ENABLE AND NOT COVERAGE_NO_DEPS)
+if(TESTING_ENABLE)
     set(THIRD_LIBS benchmark_main benchmark ${GTEST_LIBRARIES} yaml-cpp)
 
     add_library(mini_cluster_bm_common mini_cluster_bm.cc)
@@ -220,7 +219,8 @@ if(SQL_JAVASDK_ENABLE)
             PERMISSIONS OWNER_WRITE OWNER_READ GROUP_READ WORLD_READ)
 endif()
 
-# c++ sdk
+message(STATUS "build cxx sdk")
+# see cicd workflow, we can't build c++ sdk on macos
 if (APPLE)
     message(STATUS "skip c++ sdk build on macos")
     return()
@@ -236,111 +236,178 @@ target_include_directories (
     ${PROJECT_SOURCE_DIR}/hybridse/include
     ${PROJECT_SOURCE_DIR}/.deps/usr/include
 )
-target_link_libraries(openmldb_api ${BIN_LIBS})
-
-# To get the final SDK, we need some libraries
-# Below, we will find and integrate these required libraries
-# LIBRARIES_PATH save all required libraries path
-# TODO(hw): we should use openmldb_api target link libs, not list them manually
-
-# Get path by $<TARGET_FILE:${X}> for some libraries built in OpenMLDB
-set(SELF_LIBS ${BUILTIN_LIBS} openmldb_sdk openmldb_flags hybridse_sdk hybridse_core hybridse_flags)
-foreach(X  IN LISTS SELF_LIBS)
-    list(APPEND LIBRARIES_PATH $<TARGET_FILE:${X}>)
-endforeach()
-
-list(APPEND MERGED_LIBS ${BIN_LIBS} ${SDK_LIBS} ${LINK_LIBS})
-# Some libraries have their own paths
-foreach(X  IN LISTS MERGED_LIBS)
-    if(EXISTS ${X})
-        # message(STATUS ${X})
-        list(APPEND LIBRARIES_PATH ${X})
-    endif()
-endforeach()
-
-# Some third party libraries, get path by ${X_LIBRARY}
-set(THIRD_PARTY_LIBS zetasql zookeeper_mt re2 pthread rt m dl)
-foreach(X  IN LISTS THIRD_PARTY_LIBS)
-    # message(STATUS ${${X}_LIBRARY})
-    find_library(${X}_LIBRARY ${X})
-    list(APPEND LIBRARIES_PATH ${${X}_LIBRARY})
-endforeach()
-
-# lib_name is the name of a library
-# all_libs save all the libraries name of absl and LLVM which find recursively
-function(get_link_libraries_by_target lib_name all_libs)
-    # Determine whether it is an absl... library or a LLVM... library according to the first four digits of the ${lib_name}
-    string(SUBSTRING ${lib_name} 0 4 filter)
-    # Get ${lib_name}'s link library
-    get_property(_links TARGET ${lib_name} PROPERTY INTERFACE_LINK_LIBRARIES)
-    # We should filter out libraries in the form of $<LINK_ONLY:...>, and don't include absl or LLVM, like $<LINK_ONLY:$<$<BOOL:>:"advapi32">>
-    list(FILTER _links INCLUDE REGEX ".*${filter}.*")
-    foreach(X IN LISTS _links)
-        # Some libraries exist in the form similar to $<LINK_ONLY:absl::base>. We need to filter them out through regular expressions
-        string(REGEX MATCH "${filter}[^>]+" Y ${X})
-        list(FIND ${all_libs} ${Y} _index)
-        # If there is no ${Y} in ${all_libs}, we recursively look for B
-        if(_index EQUAL -1)
-            get_link_libraries_by_target(${Y} ${all_libs})
-        endif()
-    endforeach()
-    set(${all_libs} "${${all_libs}};${lib_name}" PARENT_SCOPE)
-endfunction(get_link_libraries_by_target)
-
-# ${ABSL_LIBS} and ${LLVM_LIBS} need to recursively look up
-# We need absl::statusor, but it's not mentioned
-list(APPEND ABSL_AND_LLVM ${ABSL_LIBS} ${LLVM_LIBS})
-foreach(X IN LISTS ABSL_AND_LLVM)
-    get_link_libraries_by_target(${X} ABSL_LLVM_LIBS)
-endforeach()
-# Because the value of ABSL_LLVM_LIBS is changed by "ABSL_LLVM_LIBS=ABSL_LLVM_LIBS+lib_name" in recursion, and ABSL_LLVM_LIBS starts as null.
-# So there is a null value at the beginning of the final A. Remove null values here.
-list(REMOVE_ITEM ABSL_LLVM_LIBS "")
-
-# Find path of libraries in ${ABSL_LLVM_LIBS}
-foreach(X  IN LISTS ABSL_LLVM_LIBS)
-    get_property(_loc TARGET ${X} PROPERTY LOCATION)
-    list(APPEND ABSL_LLVM_PATH ${_loc})
-endforeach()
-
-list(APPEND to_openmldbsdk $<TARGET_FILE:openmldb_api> ${ABSL_LLVM_PATH} ${LIBRARIES_PATH})
-
-# must rm lib first, otherwise err 'Malformed archive'
-add_custom_target(pack_openmldbsdk ALL 
-COMMAND rm -f libopenmldbsdk.a
-COMMAND ar -crsT libopenmldbsdk.a ${to_openmldbsdk}
-COMMENT "pack static cxx sdk and all depend static libs into one"
+# openmldb_sdk is enough for link, but we need to add all libs to one, add lib hint here
+target_link_libraries(openmldb_api openmldb_sdk 
+    openmldb_codec
+    openmldb_catalog
+    schema
+    client
+    zk_client
+    base
+    openmldb_flags
+    hybridse_sdk
+    hybridse_core
+    hybridse_flags
 )
 
 if(TESTING_ENABLE)
+    # load cxx sdk library built below is difficult, cuz we need more libs e.g. mini cluster/stdc++fs to build test
+    # so we just use lower libs to build test
+    # P.S. openmldb_sdk contains a lot, but it's not a good idea to use it to include mini cluster ..., we should reduce ibopenmldbsdk.a
     add_executable(openmldb_api_test openmldb_api_test.cc)
     target_link_libraries(openmldb_api_test ${EXPORTER_LIBS} ${GTEST_LIBRARIES})
 endif()
 
-FILE(GLOB USER_HEADER 
-    "${PROJECT_SOURCE_DIR}/src/sdk/openmldb_api.h"
-)
-FILE(GLOB USER_HEADER_SDK
-    "${PROJECT_SOURCE_DIR}/hybridse/include/sdk/result_set.h"
-    "${PROJECT_SOURCE_DIR}/hybridse/include/sdk/base_schema.h"
-)
-FILE(GLOB USER_LIB
-    "${CMAKE_CURRENT_BINARY_DIR}/libopenmldbsdk.a"
+if(APPLE)
+    message(STATUS "skip c++ sdk build")
+    return()
+endif()
+
+# To get the final SDK, we need add built-in libraries and third party libraries 
+# Below, we will find and integrate these required libraries
+
+# dfs target here, if needs path, get after find all targets
+macro(getAllLinkedLibraries iTarget iReturnValue)
+   if(NOT TARGET ${iTarget})
+        # message(STATUS "${iTarget} is not a target")
+        # ignored
+    else()
+        if(NOT ${iTarget} IN_LIST ${iReturnValue}) # avoid too much duplicate
+            list(APPEND ${iReturnValue} ${iTarget})
+        endif()
+
+        get_target_property(linkedLibrairies ${iTarget} INTERFACE_LINK_LIBRARIES)
+        if(NOT "${linkedLibrairies}" STREQUAL "linkedLibrairies-NOTFOUND")
+            FOREACH(linkedLibrary ${linkedLibrairies})
+                getAllLinkedLibraries(${linkedLibrary} ${iReturnValue})
+            ENDFOREACH()
+        endif()
+    endif()
+endmacro()
+
+# lib is target or lib name
+function(get_lib_path X RET)
+    if (NOT TARGET ${X})
+        if(EXISTS ${X})
+            set(RET_V ${X})
+        else()
+            find_library(RET_V ${X})
+        endif()
+    else()
+        # if target has no location, handle it before call this function
+        get_target_property(RET_V ${X} LOCATION)
+        # message(STATUS "get ${X} path: ${RET_V}")
+    endif()
+    if("${RET_V}" STREQUAL "RET_V-NOTFOUND")
+        # message(STATUS "library ${X} path not found, set empty")
+        set(RET_V "")
+    endif()
+    set(${RET} ${RET_V} PARENT_SCOPE)
+endfunction(get_lib_path)
+
+# get linked libraries built in OpenMLDB
+get_target_property(CXXSDK_TGTS openmldb_api LINK_LIBRARIES)
+list(PREPEND CXXSDK_TGTS openmldb_api)
+list(APPEND CXXSDK_TGTS farmhash) # not a standalone lib, build-in, so use target file
+list(REMOVE_ITEM CXXSDK_TGTS gcov)
+set(CXXSDK_LIBS )
+foreach(X IN LISTS CXXSDK_TGTS)
+    # build-in libraries are targets without location, add lib path(TARGET_FILE in file can get location)
+    list(APPEND CXXSDK_LIBS $<TARGET_FILE:${X}>)
+endforeach()
+
+# CXXSDK_THIRDPARTY_LIBS save all required libraries path
+set(CXXSDK_THIRDPARTY_LIBS )
+
+# 1. zetasql & it's dependencies use ZETASQL_LIBS(include ABSL_LIBS, ICU_LIBRARIES)
+foreach(X IN LISTS ZETASQL_LIBS)
+    get_lib_path(${X} Y)
+    # message(STATUS "get ${X} path: ${Y}")
+    # to simplify, we handle absl implicit link below(some absl lib can't get location by get_target_property), so no recursive get here
+    if(NOT "${Y}" STREQUAL "")
+        list(APPEND CXXSDK_THIRDPARTY_LIBS ${Y})      
+    endif()
+endforeach()
+
+# 2. absl llvm libs(some libs needs to be linked explicitly)
+set(ABSL_LLVM_LIBS ${ABSL_LIBS} ${LLVM_LIBS})
+# set(ABSL_LLVM_LIBS ${LLVM_LIBS})
+# handle absl libs, need to recursively look up, target may need more deps
+foreach(X IN LISTS ABSL_LLVM_LIBS)
+    set(_tgts "")
+    getAllLinkedLibraries(${X} _tgts)
+    list(APPEND ABSL_LLVM_TGTS ${_tgts})
+    # message(STATUS "get ${X} linked libs: ${_tgts}")
+endforeach()
+list(REMOVE_DUPLICATES ABSL_LLVM_TGTS)
+
+# get absl llvm libs path
+foreach(X IN LISTS ABSL_LLVM_TGTS)
+    get_target_property(type ${X} TYPE)
+    if (${type} STREQUAL "INTERFACE_LIBRARY")
+        continue()
+    endif()
+    get_lib_path(${X} Y)
+    # message(STATUS "get ${X} path: ${Y}")
+    list(APPEND CXXSDK_THIRDPARTY_LIBS ${Y})
+endforeach()
+
+# 3. extras
+# hybrid_core needs yaml_libs
+set(EXTRA_LIBS ${BRPC_LIBS} ${YAML_CPP_LIBRARIES} ${zookeeper_mt_LIB} ${Boost_LIBRARIES})
+foreach(X IN LISTS EXTRA_LIBS)
+    get_lib_path(${X} Y)
+    # message(STATUS "get ${X} path: ${Y}")
+    list(APPEND CXXSDK_THIRDPARTY_LIBS ${Y})
+endforeach()
+# brpc includes some so, but we don't need them, so remove them
+list(FILTER CXXSDK_THIRDPARTY_LIBS EXCLUDE REGEX ".*\.so$")
+# for apple
+list(FILTER CXXSDK_THIRDPARTY_LIBS EXCLUDE REGEX ".*\.dylib$")
+list(FILTER CXXSDK_THIRDPARTY_LIBS EXCLUDE REGEX ".*\.tbd$")
+
+set(CXXSDK_NAME libopenmldbsdk.a)
+list(APPEND TOTAL_LIBS ${CXXSDK_LIBS} ${CXXSDK_THIRDPARTY_LIBS})
+# message(STATUS "cxx sdk link libs: ${TOTAL_LIBS}")
+
+# gen mri file
+list(JOIN TOTAL_LIBS "\nADDLIB " ADD_LIBS_PART)
+string(CONCAT ADD_LIBS "ADDLIB " ${ADD_LIBS_PART})
+file(GENERATE OUTPUT cxxsdk.mri CONTENT "CREATE ${CXXSDK_NAME}\n${ADD_LIBS}\nSAVE\nEND")
+add_custom_target(gen_mri DEPENDS cxxsdk.mri openmldb_api)
+
+# ~2G, too big lib
+add_custom_target(pack_cxxsdk ALL
+COMMAND rm -f ${CXXSDK_NAME}
+COMMAND ar -TM < cxxsdk.mri
+DEPENDS gen_mri
 )
 
-install(
-    FILES ${USER_HEADER}
-    DESTINATION include/
-    PERMISSIONS OWNER_WRITE OWNER_READ GROUP_READ WORLD_READ
-)
-install(
-    FILES ${USER_HEADER_SDK}
-    DESTINATION include/sdk/
-    PERMISSIONS OWNER_WRITE OWNER_READ GROUP_READ WORLD_READ
-)
-install(
-    FILES ${USER_LIB}
-    DESTINATION lib/
-    PERMISSIONS OWNER_WRITE OWNER_READ GROUP_READ WORLD_READ
-)
+if(INSTALL_CXXSDK)
+    FILE(GLOB USER_HEADER 
+        "${PROJECT_SOURCE_DIR}/src/sdk/openmldb_api.h"
+    )
+    FILE(GLOB USER_HEADER_SDK
+        "${PROJECT_SOURCE_DIR}/hybridse/include/sdk/result_set.h"
+        "${PROJECT_SOURCE_DIR}/hybridse/include/sdk/base_schema.h"
+    )
+    FILE(GLOB USER_LIB
+        "${CMAKE_CURRENT_BINARY_DIR}/${CXXSDK_NAME}"
+    )
 
+    install(
+        FILES ${USER_HEADER}
+        DESTINATION include/
+        PERMISSIONS OWNER_WRITE OWNER_READ GROUP_READ WORLD_READ
+    )
+    install(
+        FILES ${USER_HEADER_SDK}
+        DESTINATION include/sdk/
+        PERMISSIONS OWNER_WRITE OWNER_READ GROUP_READ WORLD_READ
+    )
+    install(
+        FILES ${USER_LIB}
+        DESTINATION lib/
+        PERMISSIONS OWNER_WRITE OWNER_READ GROUP_READ WORLD_READ
+    )
+endif()
