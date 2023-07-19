@@ -77,7 +77,6 @@ class DBSDK {
 
     std::shared_ptr<::openmldb::client::TaskManagerClient> GetTaskManagerClient();
 
-    std::map<std::string, std::shared_ptr<::openmldb::nameserver::TableInfo>> GetDbInfo(const std::string& db);
     std::vector<std::string> GetAllDbs();
     uint32_t GetTableId(const std::string& db, const std::string& tname);
     std::shared_ptr<::openmldb::nameserver::TableInfo> GetTableInfo(const std::string& db, const std::string& tname);

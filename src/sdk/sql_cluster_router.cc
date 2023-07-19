@@ -1967,10 +1967,11 @@ base::Status SQLClusterRouter::HandleSQLCreateTable(hybridse::node::CreatePlanNo
             return base::Status(base::ReturnCode::kSQLCmdRunError, msg);
         }
     } else {
-        auto db_info = cluster_sdk_->GetDbInfo(db_name);
-        if (db_info.empty()) {
-            return base::Status(base::ReturnCode::kSQLCmdRunError, "fail to create, database does not exist!");
-        }
+        auto dbs = cluster_sdk_->GetAllDbs();
+        auto it = std::find(dbs.begin(), dbs.end(), db_name);
+        if (it == dbs.end()) {
+             return base::Status(base::ReturnCode::kSQLCmdRunError, "fail to create, database does not exist!");
+         }
 
         LOG(WARNING) << "CREATE TABLE LIKE will run in offline job, please wait.";
 
