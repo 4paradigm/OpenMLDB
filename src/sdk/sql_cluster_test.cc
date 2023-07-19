@@ -29,7 +29,6 @@
 #include "sdk/job_table_helper.h"
 #include "sdk/mini_cluster.h"
 #include "sdk/sql_cluster_router.h"
-#include "sdk/job_table_helper.h"
 #include "sdk/sql_router.h"
 #include "sdk/sql_sdk_test.h"
 #include "vm/catalog.h"
