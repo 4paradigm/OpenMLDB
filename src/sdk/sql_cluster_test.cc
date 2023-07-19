@@ -26,6 +26,7 @@
 #include "codec/fe_row_codec.h"
 #include "gflags/gflags.h"
 #include "gtest/gtest.h"
+#include "sdk/job_table_helper.h"
 #include "sdk/mini_cluster.h"
 #include "sdk/sql_cluster_router.h"
 #include "sdk/job_table_helper.h"
