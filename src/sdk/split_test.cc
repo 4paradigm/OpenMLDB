@@ -62,7 +62,7 @@ TEST_P(SplitTest, SplitLineWithDelimiterForStrings) {
 
     ASSERT_EQ(c.expect.size(), splited.size()) << "splited list size not match";
 
-    for (int i = 0; i < c.expect.size(); i++) {
+    for (size_t i = 0; i < c.expect.size(); i++) {
         EXPECT_STREQ(c.expect[i].c_str(), splited[i].c_str());
     }
 }

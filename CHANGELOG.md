@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.8.1] - 2023-07-19
+
+### Features
+- Enhance the `delete` statement (#3301 @dl239)
+- Enhance the C++ SDK (#3334 @vagetablechicken)
+- Support the new option `IF EXISTS` in the `DROP TABLE/DATABASE` statement (#3348 @emo-coder)
+- Improve the documents (#3344 #3152 #3355 #3360 @vagetablechicken, #3341 @aceforeverd, #3343 #3372 @dl239)
+- Upgrade the version of Kafka connector to `10.5.0-SNAPSHOT-0.8.1` (#3365 @vagetablechicken)
+
+### Bug Fixes
+- Loading external UDF libraries fails under certain environment when runing an offline task (#3350 #3359 @vagetablechicken)
+- Loading data fails with Hive soft links (#3349 @vagetablechicken)
+- Insertion succeeds but with an invalid timestamp (#3313 @aceforeverd)
+- The bool type is not properly packed in APIServer. (#3366 @vagetablechicken)
+- The table can be created successfully when there are duplicated indexs. (#3306 @dl239)
+
+### Breaking Changes:
+- The field `Offline_deep_copy` will be replaced by `Offline_symbolic_paths` in the result of `SHOW TABLE STATUS` #3349.
+
 ## [0.8.1] - 2023-06-28
 
 ### Features
@@ -599,6 +618,7 @@ Removed
 - openmldb-0.2.0-linux.tar.gz targets on x86_64
 - aarch64 artifacts consider experimental
 
+[0.8.2]: https://github.com/4paradigm/OpenMLDB/compare/v0.8.1...v0.8.2
 [0.8.1]: https://github.com/4paradigm/OpenMLDB/compare/v0.8.0...v0.8.1
 [0.8.0]: https://github.com/4paradigm/OpenMLDB/compare/v0.7.3...v0.8.0
 [0.7.3]: https://github.com/4paradigm/OpenMLDB/compare/v0.7.2...v0.7.3

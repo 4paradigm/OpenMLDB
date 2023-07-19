@@ -384,8 +384,8 @@ std::shared_ptr<openmldb::sdk::SQLDeleteRow> SQLClusterRouter::GetDeleteRow(cons
         if (delete_cache) {
             status->code = 0;
             return std::make_shared<openmldb::sdk::SQLDeleteRow>(
-                delete_cache->GetDatabase(), delete_cache->GetTableName(), delete_cache->GetIndexName(),
-                delete_cache->GetColNames(), delete_cache->GetDefaultValue(), delete_cache->GetHoleMap());
+                delete_cache->GetDatabase(), delete_cache->GetTableName(),
+                delete_cache->GetDefaultCondition(), delete_cache->GetCondition());
         }
     }
     ::hybridse::node::NodeManager nm;
@@ -418,43 +418,21 @@ std::shared_ptr<openmldb::sdk::SQLDeleteRow> SQLClusterRouter::GetDeleteRow(cons
         return {};
     }
     auto col_map = schema::SchemaAdapter::GetColMap(*table_info);
-    std::map<std::string, std::string> condition_map;
-    std::map<std::string, int> parameter_map;
+    std::vector<Condition> condition_vec;
+    std::vector<Condition> parameter_vec;
     auto binary_node = dynamic_cast<const hybridse::node::BinaryExpr*>(condition);
-    *status = NodeAdapter::ParseExprNode(binary_node, col_map, &condition_map, &parameter_map);
+    *status = NodeAdapter::ParseExprNode(binary_node, col_map, table_info->column_key(),
+        &condition_vec, &parameter_vec);
     if (!status->IsOK()) {
         LOG(WARNING) << status->ToString();
         return {};
     }
-    int index_pos = 0;
-    bool found = true;
-    for (; index_pos < table_info->column_key_size(); index_pos++) {
-        const auto& column_key = table_info->column_key(index_pos);
-        if (column_key.flag() != 0) {
-            continue;
-        }
-        for (const auto& col : column_key.col_name()) {
-            if (condition_map.count(col) == 0 && parameter_map.count(col) == 0) {
-                found = false;
-                break;
-            }
-        }
-        if (found) {
-            break;
-        }
-    }
-    if (!found) {
-        SET_STATUS_AND_WARN(status, StatusCode::kCmdError, "no index col in sql");
-        return {};
-    }
     auto delete_cache = std::make_shared<DeleteSQLCache>(
-        db, table_info->tid(), table_name, table_info->column_key(index_pos), condition_map, parameter_map);
-
+        db, table_info->tid(), table_name, condition_vec, parameter_vec);
     SetCache(db, sql, hybridse::vm::kBatchMode, delete_cache);
     *status = {};
     return std::make_shared<openmldb::sdk::SQLDeleteRow>(delete_cache->GetDatabase(), delete_cache->GetTableName(),
-                                                         delete_cache->GetIndexName(), delete_cache->GetColNames(),
-                                                         delete_cache->GetDefaultValue(), delete_cache->GetHoleMap());
+                delete_cache->GetDefaultCondition(), delete_cache->GetCondition());
 }
 
 std::shared_ptr<SQLInsertRow> SQLClusterRouter::GetInsertRow(const std::string& db, const std::string& sql,
@@ -902,7 +880,8 @@ bool SQLClusterRouter::DropDB(const std::string& db, hybridse::sdk::Status* stat
     return true;
 }
 
-bool SQLClusterRouter::DropTable(const std::string& db, const std::string& table, hybridse::sdk::Status* status) {
+bool SQLClusterRouter::DropTable(const std::string& db, const std::string& table, const bool if_exists,
+                                 hybridse::sdk::Status* status) {
     RET_FALSE_IF_NULL_AND_WARN(status, "output status is nullptr");
     if (db.empty() || table.empty()) {
         SET_STATUS_AND_WARN(status, StatusCode::kCmdError,
@@ -916,20 +895,30 @@ bool SQLClusterRouter::DropTable(const std::string& db, const std::string& table
         return false;
     }
 
-    auto tableInfo = GetTableInfo(db, table);
+    auto table_info = cluster_sdk_->GetTableInfo(db, table);
+
+    if (table_info == nullptr) {
+        if (if_exists) {
+            *status = {};
+            return true;
+        } else {
+            SET_STATUS_AND_WARN(status, StatusCode::kCmdError, "fail to drop, table does not exist!");
+            return false;
+        }
+    }
 
     // delete pre-aggr meta info if need
-    if (tableInfo.base_table_tid() > 0) {
+    if (table_info->base_table_tid() > 0) {
         std::string meta_db = openmldb::nameserver::INTERNAL_DB;
         std::string meta_table = openmldb::nameserver::PRE_AGG_META_NAME;
         std::string select_aggr_info =
             absl::StrCat("select base_db,base_table,aggr_func,aggr_col,partition_cols,order_by_col,filter_col from ",
-                         meta_db, ".", meta_table, " where aggr_table = '", tableInfo.name(), "';");
+                         meta_db, ".", meta_table, " where aggr_table = '", table_info->name(), "';");
         auto rs = ExecuteSQL("", select_aggr_info, true, true, 0, status);
         WARN_NOT_OK_AND_RET(status, "get aggr info failed", false);
         if (rs->Size() != 1) {
             SET_STATUS_AND_WARN(status, StatusCode::kCmdError,
-                                "duplicate records generate with aggr table name: " + tableInfo.name());
+                                "duplicate records generate with aggr table name: " + table_info->name());
             return false;
         }
         std::string idx_key;
@@ -961,7 +950,7 @@ bool SQLClusterRouter::DropTable(const std::string& db, const std::string& table
         }
         auto tid = cluster_sdk_->GetTableId(meta_db, meta_table);
         std::string msg;
-        if (!tablet_client->Delete(tid, 0, tableInfo.name(), "aggr_table", msg) ||
+        if (!tablet_client->Delete(tid, 0, table_info->name(), "aggr_table", msg) ||
             !tablet_client->Delete(tid, 0, idx_key, "unique_key", msg)) {
             SET_STATUS_AND_WARN(status, StatusCode::kCmdError, "delete aggr meta failed");
             return false;
@@ -969,7 +958,7 @@ bool SQLClusterRouter::DropTable(const std::string& db, const std::string& table
     }
 
     // Check offline table info first
-    if (tableInfo.has_offline_table_info()) {
+    if (table_info->has_offline_table_info()) {
         auto taskmanager_client_ptr = cluster_sdk_->GetTaskManagerClient();
         if (!taskmanager_client_ptr) {
             SET_STATUS_AND_WARN(status, StatusCode::kRuntimeError, "no taskmanager client");
@@ -1644,7 +1633,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::HandleSQLCmd(const h
         }
         case hybridse::node::kCmdDropDatabase: {
             std::string name = cmd_node->GetArgs()[0];
-            if (ns_ptr->DropDatabase(name, msg)) {
+            if (ns_ptr->DropDatabase(name, msg, cmd_node->IsIfExists())) {
                 *status = {};
             } else {
                 *status = {StatusCode::kCmdError, msg};
@@ -1886,7 +1875,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::HandleSQLCmd(const h
             if (!CheckAnswerIfInteractive("table", table_name)) {
                 return {};
             }
-            if (DropTable(db_name, table_name, status)) {
+            if (DropTable(db_name, table_name, cmd_node->IsIfExists(), status)) {
                 RefreshCatalog();
             }
             return {};
@@ -1977,10 +1966,10 @@ base::Status SQLClusterRouter::HandleSQLCreateTable(hybridse::node::CreatePlanNo
 
         std::map<std::string, std::string> config;
         ::openmldb::taskmanager::JobInfo job_info;
-        int job_timeout = GetJobTimeout();
         std::string output;
-
-        ::openmldb::base::Status status = ExecuteOfflineQueryGetOutput(sql, config, db, job_timeout, &output);
+        // create table like hive is a long op, use large timeout
+        ::openmldb::base::Status status =
+            ExecuteOfflineQueryGetOutput(sql, config, db, FLAGS_sync_job_timeout, &output);
 
         if (!status.OK()) {
             LOG(ERROR) << "Fail to create table, error message: " + status.msg;
@@ -2684,7 +2673,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(
 
             auto current_symbolic_paths = offline_table_info.symbolic_paths();
 
-            std::vector<const hybridse::node::AlterActionBase *> actions = plan->actions_;
+            std::vector<const hybridse::node::AlterActionBase*> actions = plan->actions_;
 
             // Handle multiple add and delete actions
             for (const auto& action : actions) {
@@ -3207,60 +3196,70 @@ hybridse::sdk::Status SQLClusterRouter::HandleDelete(const std::string& db, cons
     if (!table_info) {
         return {StatusCode::kCmdError, "table " + table_name + " in db " + db + " does not exist"};
     }
-    std::map<std::string, std::string> condition_map;
-    std::map<std::string, int> parameter_map;
+    std::vector<Condition> condition_vec;
+    std::vector<Condition> parameter_vec;
     auto binary_node = dynamic_cast<const hybridse::node::BinaryExpr*>(condition);
     auto col_map = schema::SchemaAdapter::GetColMap(*table_info);
-    auto status = NodeAdapter::ParseExprNode(binary_node, col_map, &condition_map, &parameter_map);
+    auto status = NodeAdapter::ParseExprNode(binary_node, col_map, table_info->column_key(),
+        &condition_vec, &parameter_vec);
     if (!status.IsOK()) {
         return status;
     }
-    if (!parameter_map.empty()) {
+    if (!parameter_vec.empty()) {
         return {StatusCode::kCmdError, "unsupport placeholder in sql"};
     }
-    std::string index_name;
-    std::string pk;
-    for (const auto& column_key : table_info->column_key()) {
-        if (column_key.flag() != 0) {
-            continue;
+    DeleteOption option;
+    status = NodeAdapter::ExtractDeleteOption(table_info->column_key(), condition_vec, &option);
+    if (!status.IsOK()) {
+        return status;
+    }
+    return SendDeleteRequst(table_info, &option);
+}
+
+hybridse::sdk::Status SQLClusterRouter::SendDeleteRequst(
+        const std::shared_ptr<::openmldb::nameserver::TableInfo>& table_info,
+        const DeleteOption* option) {
+    if (option->index_map.empty()) {
+        std::vector<std::shared_ptr<::openmldb::catalog::TabletAccessor>> tablets;
+        if (!cluster_sdk_->GetTablet(table_info->db(), table_info->name(), &tablets)) {
+            return {StatusCode::kCmdError, "get tablet failed"};
         }
-        pk.clear();
-        bool found = true;
-        for (const auto& col : column_key.col_name()) {
-            auto iter = condition_map.find(col);
-            if (iter == condition_map.end()) {
-                found = false;
-                break;
-            }
-            if (!pk.empty()) {
-                pk.append("|");
-            }
-            if (iter->second.empty()) {
-                pk.append(hybridse::codec::EMPTY_STRING);
-            } else {
-                pk.append(iter->second);
+        for (auto& tablet : tablets) {
+            if (!tablet || !tablet->GetClient()) {
+                return {StatusCode::kCmdError, "cannot connect tablet"};
             }
         }
-        if (found) {
-            index_name = column_key.index_name();
-            break;
+        for (size_t idx = 0; idx < tablets.size(); idx++) {
+            auto tablet_client = tablets.at(idx)->GetClient();
+            if (auto status = tablet_client->Delete(table_info->tid(), idx,
+                        option->index_map, option->start_ts, option->end_ts); !status.OK()) {
+                return {StatusCode::kCmdError, status.GetMsg()};
+            }
         }
-    }
-    if (index_name.empty()) {
-        return {StatusCode::kCmdError, "no index col in delete sql"};
-    }
-    uint32_t pid = ::openmldb::base::hash64(pk) % table_info->table_partition_size();
-    auto tablet = cluster_sdk_->GetTablet(db, table_name, pk);
-    if (!tablet) {
-        return {StatusCode::kCmdError, "cannot connect tablet"};
-    }
-    auto tablet_client = tablet->GetClient();
-    if (!tablet_client) {
-        return {StatusCode::kCmdError, "tablet client is null"};
-    }
-    std::string msg;
-    if (!tablet_client->Delete(table_info->tid(), pid, pk, index_name, msg)) {
-        return {StatusCode::kCmdError, msg};
+    } else {
+        std::map<uint32_t, std::map<uint32_t, std::string>> pid_index_map;
+        for (const auto& kv : option->index_map) {
+            uint32_t pid = ::openmldb::base::hash64(kv.second) % table_info->table_partition_size();
+            auto iter = pid_index_map.find(pid);
+            if (iter == pid_index_map.end()) {
+                iter = pid_index_map.emplace(pid, std::map<uint32_t, std::string>()).first;
+            }
+            iter->second.emplace(kv.first, kv.second);
+        }
+        for (const auto& kv : pid_index_map) {
+            auto tablet = cluster_sdk_->GetTablet(table_info->db(), table_info->name(), kv.first);
+            if (!tablet) {
+                return {StatusCode::kCmdError, "cannot connect tablet"};
+            }
+            auto tablet_client = tablet->GetClient();
+            if (!tablet_client) {
+                return {StatusCode::kCmdError, "tablet client is null"};
+            }
+            auto ret = tablet_client->Delete(table_info->tid(), kv.first, kv.second, option->start_ts, option->end_ts);
+            if (!ret.OK()) {
+                return {StatusCode::kCmdError, ret.GetMsg()};
+            }
+        }
     }
     return {};
 }
@@ -3278,25 +3277,14 @@ bool SQLClusterRouter::ExecuteDelete(std::shared_ptr<SQLDeleteRow> row, hybridse
         SET_STATUS_AND_WARN(status, StatusCode::kCmdError, "table " + db + "." + table_name + " does not exist");
         return false;
     }
-    const auto& pk = row->GetValue();
-    const auto& index_name = row->GetIndexName();
-    uint32_t pid = ::openmldb::base::hash64(pk) % table_info->table_partition_size();
-    auto tablet = cluster_sdk_->GetTablet(db, table_name, pk);
-    if (!tablet) {
-        *status = {StatusCode::kCmdError, "cannot connect tablet"};
+    const auto& condition_vec = row->GetValue();
+    DeleteOption option;
+    *status = NodeAdapter::ExtractDeleteOption(table_info->column_key(), condition_vec, &option);
+    if (!status->IsOK()) {
         return false;
     }
-    auto tablet_client = tablet->GetClient();
-    if (!tablet_client) {
-        *status = {StatusCode::kCmdError, "tablet client is null"};
-    }
-    std::string msg;
-    if (!tablet_client->Delete(table_info->tid(), pid, pk, index_name, msg)) {
-        *status = {StatusCode::kCmdError, msg};
-        return false;
-    }
-    *status = {};
-    return true;
+    *status = SendDeleteRequst(table_info, &option);
+    return status->IsOK();
 }
 
 hybridse::sdk::Status SQLClusterRouter::HandleCreateFunction(const hybridse::node::CreateFunctionPlanNode* node) {
@@ -4072,10 +4060,20 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteShowApiServer
 }
 
 static const std::initializer_list<std::string> GetTableStatusSchema() {
-    static const std::initializer_list<std::string> schema = {
-        "Table_id",         "Table_name",     "Database_name",     "Storage_type",      "Rows",
-        "Memory_data_size", "Disk_data_size", "Partition",         "Partition_unalive", "Replica",
-        "Offline_path",     "Offline_format", "Offline_deep_copy", "Warnings"};
+    static const std::initializer_list<std::string> schema = {"Table_id",
+                                                              "Table_name",
+                                                              "Database_name",
+                                                              "Storage_type",
+                                                              "Rows",
+                                                              "Memory_data_size",
+                                                              "Disk_data_size",
+                                                              "Partition",
+                                                              "Partition_unalive",
+                                                              "Replica",
+                                                              "Offline_path",
+                                                              "Offline_format",
+                                                              "Offline_symbolic_paths",
+                                                              "Warnings"};
     return schema;
 }
 
@@ -4096,7 +4094,7 @@ static const std::initializer_list<std::string> GetTableStatusSchema() {
 // - Replica: replica number
 // - Offline_path: data path for offline data
 // - Offline_format: format for offline data
-// - Offline_deep_copy: deep copy option for offline data
+// - Offline_symbolic_paths: symbolic paths for offline data
 // - Warnings: any warnings raised during the checking
 //
 // if db is empty:
@@ -4171,18 +4169,21 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteShowTableStat
             }
             CheckTableStatus(db, table_name, tid, partition_info, replica_num, table_statuses, &error_msg);
         }
-
-        std::string offline_path = "NULL", offline_format = "NULL", offline_deep_copy = "NULL";
+        // TODO(hw): miss options, it can be got from desc table
+        std::string offline_path = "NULL", offline_format = "NULL", symbolic_paths = "NULL";
         if (tinfo.has_offline_table_info()) {
             offline_path = tinfo.offline_table_info().path();
             offline_format = tinfo.offline_table_info().format();
-            offline_deep_copy = std::to_string(tinfo.offline_table_info().deep_copy());
+            symbolic_paths = "";
+            for (const auto& ele : tinfo.offline_table_info().symbolic_paths()) {
+                symbolic_paths += ele + ",";
+            }
         }
 
         data.push_back({std::to_string(tid), table_name, db, storage_type, std::to_string(rows),
                         std::to_string(mem_bytes), std::to_string(disk_bytes), std::to_string(partition_num),
                         std::to_string(partition_unalive), std::to_string(replica_num), offline_path, offline_format,
-                        offline_deep_copy, error_msg});
+                        symbolic_paths, error_msg});
     }
 
     // TODO(#1456): rich schema result set, and pretty-print numberic values (e.g timestamp) in cli
@@ -4295,7 +4296,7 @@ void SQLClusterRouter::ReadSparkConfFromFile(std::string conf_file_path, std::ma
 }
 
 std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::GetJobResultSet(int job_id,
-        ::hybridse::sdk::Status* status) {
+                                                                            ::hybridse::sdk::Status* status) {
     std::string db = openmldb::nameserver::INTERNAL_DB;
     std::string sql = "SELECT * FROM JOB_INFO WHERE id = " + std::to_string(job_id);
 
@@ -4330,7 +4331,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::GetJobResultSet(::hy
     return rs;
 }
 std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::GetTaskManagerJobResult(const std::string& like_pattern,
-        ::hybridse::sdk::Status* status) {
+                                                                                    ::hybridse::sdk::Status* status) {
     bool like_match = JobTableHelper::NeedLikeMatch(like_pattern);
     if (!like_pattern.empty() && !like_match) {
         int job_id;
@@ -4354,7 +4355,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::GetTaskManagerJobRes
 }
 
 std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::GetNameServerJobResult(const std::string& like_pattern,
-        ::hybridse::sdk::Status* status) {
+                                                                                   ::hybridse::sdk::Status* status) {
     bool like_match = JobTableHelper::NeedLikeMatch(like_pattern);
     base::Status ret;
     nameserver::ShowOPStatusResponse response;

@@ -13,8 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef SRC_STORAGE_WINDOW_ITERATOR_H_
-#define SRC_STORAGE_WINDOW_ITERATOR_H_
+#ifndef SRC_STORAGE_MEM_TABLE_ITERATOR_H_
+#define SRC_STORAGE_MEM_TABLE_ITERATOR_H_
 
 #include <memory>
 #include <string>
@@ -89,7 +89,35 @@ class MemTableKeyIterator : public ::hybridse::vm::WindowIterator {
     uint32_t ts_idx_;
 };
 
+class MemTableTraverseIterator : public TraverseIterator {
+ public:
+    MemTableTraverseIterator(Segment** segments, uint32_t seg_cnt, ::openmldb::storage::TTLType ttl_type,
+                             uint64_t expire_time, uint64_t expire_cnt, uint32_t ts_index);
+    ~MemTableTraverseIterator() override;
+    inline bool Valid() override;
+    void Next() override;
+    void NextPK() override;
+    void Seek(const std::string& key, uint64_t time) override;
+    openmldb::base::Slice GetValue() const override;
+    std::string GetPK() const override;
+    uint64_t GetKey() const override;
+    void SeekToFirst() override;
+    uint64_t GetCount() const override;
+
+ private:
+    Segment** segments_;
+    uint32_t const seg_cnt_;
+    uint32_t seg_idx_;
+    KeyEntries::Iterator* pk_it_;
+    TimeEntries::Iterator* it_;
+    uint32_t record_idx_;
+    uint32_t ts_idx_;
+    TTLSt expire_value_;
+    Ticket ticket_;
+    uint64_t traverse_cnt_;
+};
+
 }  // namespace storage
 }  // namespace openmldb
 
-#endif  // SRC_STORAGE_WINDOW_ITERATOR_H_
+#endif  // SRC_STORAGE_MEM_TABLE_ITERATOR_H_
