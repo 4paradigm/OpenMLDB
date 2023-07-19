@@ -3229,8 +3229,6 @@ hybridse::sdk::Status SQLClusterRouter::SendDeleteRequst(
                 return {StatusCode::kCmdError, status.GetMsg()};
             }
         }
-    } else if (option->index_map.size() > 1) {
-        return {StatusCode::kCmdError, "cannot delete with multiple indexs"};
     } else {
         std::map<uint32_t, std::map<uint32_t, std::string>> pid_index_map;
         for (const auto& kv : option->index_map) {
