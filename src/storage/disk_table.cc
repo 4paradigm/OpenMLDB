@@ -300,6 +300,10 @@ bool DiskTable::Delete(const ::openmldb::api::LogEntry& entry) {
             if (!index || !index->IsReady()) {
                 continue;
             }
+            auto ts_col = index->GetTsColumn();
+            if (!ts_col->IsAutoGenTs() && ts_col->GetName() != entry.ts_name()) {
+                continue;
+            }
             uint32_t idx = index->GetId();
             std::shared_ptr<TraverseIterator> iter(NewTraverseIterator(idx));
             iter->SeekToFirst();

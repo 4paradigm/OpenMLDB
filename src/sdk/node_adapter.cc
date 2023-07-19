@@ -88,6 +88,9 @@ hybridse::sdk::Status NodeAdapter::ExtractDeleteOption(
             option->index_map.emplace(index_pos[column_key.index_name()], pk);
         }
         if (column_key.has_ts_name()) {
+            if (!option->ts_name.empty() && match_index_col > 0 && option->ts_name != column_key.ts_name()) {
+                return {hybridse::common::StatusCode::kCmdError, "ts name mismatch"};
+            }
             for (const auto& con : condition_vec) {
                 if (con.col_name != column_key.ts_name()) {
                     continue;
@@ -100,6 +103,9 @@ hybridse::sdk::Status NodeAdapter::ExtractDeleteOption(
                 }
                 if (!con.val.has_value()) {
                     return {hybridse::common::StatusCode::kCmdError, "ts column cannot be null"};
+                }
+                if (option->ts_name.empty()) {
+                    option->ts_name = con_ts_name;
                 }
                 uint64_t ts = 0;
                 if (!absl::SimpleAtoi(con.val.value(), &ts)) {
@@ -129,6 +135,8 @@ hybridse::sdk::Status NodeAdapter::ExtractDeleteOption(
                     option->end_ts.value() >= option->start_ts.value()) {
                 return {hybridse::common::StatusCode::kCmdError, "invalid ts condition"};
             }
+        } else if (!option->ts_name.empty() && match_index_col > 0) {
+            return {hybridse::common::StatusCode::kCmdError, "ts name mismatch"};
         }
     }
     if (match_condition_num < condition_vec.size()) {
