@@ -47,9 +47,12 @@ object LoadDataPlan {
     logger.info("table info: {}", info)
     require(info != null && info.getName.nonEmpty, s"table $db.$table info is not existed(no table name): $info")
 
+    val loadDataSql = extra.get("sql").get
+
     // we read input file even in soft copy,
     // cause we want to check if "the input file schema == openmldb table schema"
-    val df = HybridseUtil.autoLoad(ctx.getOpenmldbSession, inputFile, format, options, info.getColumnDescList)
+    val df = HybridseUtil.autoLoad(ctx.getOpenmldbSession, inputFile, format, options, info.getColumnDescList,
+      loadDataSql)
 
     // write
     logger.info("write data to storage {}, writer[mode {}], is deep? {}", storage, mode, deepCopy.toString)
