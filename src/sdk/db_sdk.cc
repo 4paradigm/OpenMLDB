@@ -426,6 +426,24 @@ bool ClusterSDK::BuildCatalog() {
     return UpdateCatalog(table_datas, sp_datas);
 }
 
+std::map<std::string, std::shared_ptr<::openmldb::nameserver::TableInfo>> DBSDK::GetDbInfo(const std::string& db) {
+    std::lock_guard<::openmldb::base::SpinMutex> lock(mu_);
+    auto it = table_to_tablets_.find(db);
+    if (it == table_to_tablets_.end()) {
+        return {};
+    }
+    auto db_info = it->second;
+    return db_info;
+}
+
+std::vector<std::string> DBSDK::GetAllDbs() {
+    std::vector<std::string> all_dbs;
+    for (auto db_name_iter = table_to_tablets_.begin(); db_name_iter != table_to_tablets_.end(); db_name_iter++) {
+        all_dbs.push_back(db_name_iter->first);
+    }
+    return all_dbs;
+}
+
 uint32_t DBSDK::GetTableId(const std::string& db, const std::string& tname) {
     auto table_handler = GetCatalog()->GetTable(db, tname);
     auto* sdk_table_handler = dynamic_cast<::openmldb::catalog::SDKTableHandler*>(table_handler.get());

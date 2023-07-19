@@ -1941,11 +1941,12 @@ base::Status SQLClusterRouter::HandleSQLCreateTable(hybridse::node::CreatePlanNo
         return base::Status(base::ReturnCode::kSQLCmdRunError, "fail to execute plan : null pointer");
     }
 
-    if (create_node->like_clause_ == nullptr) {
-        std::string db_name = create_node->GetDatabase().empty() ? db : create_node->GetDatabase();
-        if (db_name.empty()) {
-            return base::Status(base::ReturnCode::kSQLCmdRunError, "ERROR: Please use database first");
+    std::string db_name = create_node->GetDatabase().empty() ? db : create_node->GetDatabase();
+    if (db_name.empty()) {
+        return base::Status(base::ReturnCode::kSQLCmdRunError, "ERROR: Please use database first");
         }
+
+    if (create_node->like_clause_ == nullptr) {
         ::openmldb::nameserver::TableInfo table_info;
         table_info.set_db(db_name);
 
@@ -1966,6 +1967,11 @@ base::Status SQLClusterRouter::HandleSQLCreateTable(hybridse::node::CreatePlanNo
             return base::Status(base::ReturnCode::kSQLCmdRunError, msg);
         }
     } else {
+        auto db_info = cluster_sdk_->GetDbInfo(db_name);
+        if (db_info.empty()) {
+            return base::Status(base::ReturnCode::kSQLCmdRunError, "fail to create, database does not exist!");
+        }
+
         LOG(WARNING) << "CREATE TABLE LIKE will run in offline job, please wait.";
 
         std::map<std::string, std::string> config;
