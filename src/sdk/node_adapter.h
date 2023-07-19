@@ -59,7 +59,7 @@ class NodeAdapter {
     static std::shared_ptr<hybridse::node::ConstNode> StringToData(const std::string& str,
                                                                    openmldb::type::DataType data_type);
 
-    static hybridse::sdk::Status ParseExprNode(const hybridse::node::BinaryExpr* expr_node,
+    static hybridse::sdk::Status ExtractCondition(const hybridse::node::BinaryExpr* expr_node,
             const std::map<std::string, openmldb::type::DataType>& col_map,
             const ::google::protobuf::RepeatedPtrField<::openmldb::common::ColumnKey>& indexs,
             std::vector<Condition>* condition_vec, std::vector<Condition>* parameter_vec);
@@ -72,6 +72,9 @@ class NodeAdapter {
     static hybridse::sdk::Status CheckCondition(
             const ::google::protobuf::RepeatedPtrField<::openmldb::common::ColumnKey>& indexs,
             const std::vector<Condition>& condition_vec);
+    static hybridse::sdk::Status ParseExprNode(const hybridse::node::BinaryExpr* expr_node,
+            const std::map<std::string, openmldb::type::DataType>& col_map,
+            std::vector<Condition>* condition_vec, std::vector<Condition>* parameter_vec);
 };
 
 }  // namespace sdk

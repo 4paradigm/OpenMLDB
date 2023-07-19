@@ -39,11 +39,24 @@ hybridse::sdk::Status NodeAdapter::ExtractDeleteOption(
         const ::google::protobuf::RepeatedPtrField<::openmldb::common::ColumnKey>& indexs,
         const std::vector<Condition>& condition_vec,
         DeleteOption* option) {
-    std::string con_ts_name;
+    std::vector<::openmldb::common::ColumnKey> index_vec;
+    std::map<std::string, uint32_t> index_pos;
     for (auto idx = 0; idx < indexs.size(); idx++) {
-        const auto& column_key = indexs.Get(idx);
+        index_vec.push_back(indexs.Get(idx));
+        index_pos.emplace(indexs.Get(idx).index_name(), idx);
+    }
+    std::stable_sort(index_vec.begin(), index_vec.end(),
+            [](const ::openmldb::common::ColumnKey& index1, const ::openmldb::common::ColumnKey& index2) {
+                return index1.col_name_size() > index2.col_name_size();
+            });
+    std::string con_ts_name;
+    size_t match_condition_num = 0;
+    for (const auto& column_key : index_vec) {
         if (column_key.flag() != 0) {
             continue;
+        }
+        if (!option->index_map.empty()) {
+            break;
         }
         std::string pk;
         int match_index_col = 0;
@@ -71,7 +84,8 @@ hybridse::sdk::Status NodeAdapter::ExtractDeleteOption(
             if (match_index_col != column_key.col_name_size()) {
                 continue;
             }
-            option->index_map.emplace(idx, pk);
+            match_condition_num += match_index_col;
+            option->index_map.emplace(index_pos[column_key.index_name()], pk);
         }
         if (column_key.has_ts_name()) {
             for (const auto& con : condition_vec) {
@@ -109,12 +123,16 @@ hybridse::sdk::Status NodeAdapter::ExtractDeleteOption(
                 } else if (con.op == hybridse::node::FnOperator::kFnOpGe && ts > 1) {
                     option->end_ts = ts - 1;
                 }
+                match_condition_num++;
             }
             if (option->start_ts.has_value() && option->end_ts.has_value() &&
                     option->end_ts.value() >= option->start_ts.value()) {
                 return {hybridse::common::StatusCode::kCmdError, "invalid ts condition"};
             }
         }
+    }
+    if (match_condition_num < condition_vec.size()) {
+        return {hybridse::common::StatusCode::kCmdError, "has redundant condition"};
     }
     return {};
 }
@@ -639,7 +657,6 @@ std::shared_ptr<hybridse::node::ConstNode> NodeAdapter::StringToData(const std::
 
 hybridse::sdk::Status NodeAdapter::ParseExprNode(const hybridse::node::BinaryExpr* expr_node,
         const std::map<std::string, openmldb::type::DataType>& col_map,
-        const ::google::protobuf::RepeatedPtrField<::openmldb::common::ColumnKey>& indexs,
         std::vector<Condition>* condition_vec, std::vector<Condition>* parameter_vec) {
     auto op_type = expr_node->GetOp();
     switch (op_type) {
@@ -650,7 +667,7 @@ hybridse::sdk::Status NodeAdapter::ParseExprNode(const hybridse::node::BinaryExp
                     if (node == nullptr) {
                         return {::hybridse::common::StatusCode::kCmdError, "parse expr node failed"};
                     }
-                    auto status = ParseExprNode(node, col_map, indexs, condition_vec, parameter_vec);
+                    auto status = ParseExprNode(node, col_map, condition_vec, parameter_vec);
                     if (!status.IsOK()) {
                         return status;
                     }
@@ -706,6 +723,17 @@ hybridse::sdk::Status NodeAdapter::ParseExprNode(const hybridse::node::BinaryExp
         default:
             return {::hybridse::common::StatusCode::kCmdError,
                 "unsupport operator type " + hybridse::node::ExprOpTypeName(op_type)};
+    }
+    return {};
+}
+
+hybridse::sdk::Status NodeAdapter::ExtractCondition(const hybridse::node::BinaryExpr* expr_node,
+        const std::map<std::string, openmldb::type::DataType>& col_map,
+        const ::google::protobuf::RepeatedPtrField<::openmldb::common::ColumnKey>& indexs,
+        std::vector<Condition>* condition_vec, std::vector<Condition>* parameter_vec) {
+    auto status = ParseExprNode(expr_node, col_map, condition_vec, parameter_vec);
+    if (!status.IsOK()) {
+        return status;
     }
     if (parameter_vec->empty()) {
         return CheckCondition(indexs, *condition_vec);

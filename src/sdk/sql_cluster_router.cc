@@ -421,7 +421,7 @@ std::shared_ptr<openmldb::sdk::SQLDeleteRow> SQLClusterRouter::GetDeleteRow(cons
     std::vector<Condition> condition_vec;
     std::vector<Condition> parameter_vec;
     auto binary_node = dynamic_cast<const hybridse::node::BinaryExpr*>(condition);
-    *status = NodeAdapter::ParseExprNode(binary_node, col_map, table_info->column_key(),
+    *status = NodeAdapter::ExtractCondition(binary_node, col_map, table_info->column_key(),
         &condition_vec, &parameter_vec);
     if (!status->IsOK()) {
         LOG(WARNING) << status->ToString();
@@ -3193,7 +3193,7 @@ hybridse::sdk::Status SQLClusterRouter::HandleDelete(const std::string& db, cons
     std::vector<Condition> parameter_vec;
     auto binary_node = dynamic_cast<const hybridse::node::BinaryExpr*>(condition);
     auto col_map = schema::SchemaAdapter::GetColMap(*table_info);
-    auto status = NodeAdapter::ParseExprNode(binary_node, col_map, table_info->column_key(),
+    auto status = NodeAdapter::ExtractCondition(binary_node, col_map, table_info->column_key(),
         &condition_vec, &parameter_vec);
     if (!status.IsOK()) {
         return status;
