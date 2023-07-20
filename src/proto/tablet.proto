@@ -209,6 +209,7 @@ message DeleteRequest {
     repeated Dimension dimensions = 5;
     optional uint64 ts = 6;
     optional uint64 end_ts = 7;
+    optional string ts_name = 8;
 }
 
 message ExecuteGcRequest {
@@ -402,6 +403,7 @@ message LogEntry {
     optional MethodType method_type = 7;
     repeated TSDimension ts_dimensions = 8 [deprecated = true];
     optional uint64 end_ts = 9;  // only for range delete: [ts, end_ts)
+    optional string ts_name = 10;
 }
 
 message AppendEntriesRequest {

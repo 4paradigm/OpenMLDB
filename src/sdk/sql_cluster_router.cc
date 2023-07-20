@@ -421,7 +421,7 @@ std::shared_ptr<openmldb::sdk::SQLDeleteRow> SQLClusterRouter::GetDeleteRow(cons
     std::vector<Condition> condition_vec;
     std::vector<Condition> parameter_vec;
     auto binary_node = dynamic_cast<const hybridse::node::BinaryExpr*>(condition);
-    *status = NodeAdapter::ParseExprNode(binary_node, col_map, table_info->column_key(),
+    *status = NodeAdapter::ExtractCondition(binary_node, col_map, table_info->column_key(),
         &condition_vec, &parameter_vec);
     if (!status->IsOK()) {
         LOG(WARNING) << status->ToString();
@@ -3193,7 +3193,7 @@ hybridse::sdk::Status SQLClusterRouter::HandleDelete(const std::string& db, cons
     std::vector<Condition> parameter_vec;
     auto binary_node = dynamic_cast<const hybridse::node::BinaryExpr*>(condition);
     auto col_map = schema::SchemaAdapter::GetColMap(*table_info);
-    auto status = NodeAdapter::ParseExprNode(binary_node, col_map, table_info->column_key(),
+    auto status = NodeAdapter::ExtractCondition(binary_node, col_map, table_info->column_key(),
         &condition_vec, &parameter_vec);
     if (!status.IsOK()) {
         return status;
@@ -3225,7 +3225,7 @@ hybridse::sdk::Status SQLClusterRouter::SendDeleteRequst(
         for (size_t idx = 0; idx < tablets.size(); idx++) {
             auto tablet_client = tablets.at(idx)->GetClient();
             if (auto status = tablet_client->Delete(table_info->tid(), idx,
-                        option->index_map, option->start_ts, option->end_ts); !status.OK()) {
+                        option->index_map, option->ts_name, option->start_ts, option->end_ts); !status.OK()) {
                 return {StatusCode::kCmdError, status.GetMsg()};
             }
         }
@@ -3248,7 +3248,8 @@ hybridse::sdk::Status SQLClusterRouter::SendDeleteRequst(
             if (!tablet_client) {
                 return {StatusCode::kCmdError, "tablet client is null"};
             }
-            auto ret = tablet_client->Delete(table_info->tid(), kv.first, kv.second, option->start_ts, option->end_ts);
+            auto ret = tablet_client->Delete(table_info->tid(), kv.first, kv.second,
+                    option->ts_name, option->start_ts, option->end_ts);
             if (!ret.OK()) {
                 return {StatusCode::kCmdError, ret.GetMsg()};
             }
