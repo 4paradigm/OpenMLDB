@@ -16,9 +16,7 @@
 
 import pytest
 from diagnostic_tool.diagnose import parse_arg, main
-from absl import flags
 from .case_conf import OpenMLDB_ZK_CLUSTER
-import os
 
 
 def test_rpc():

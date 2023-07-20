@@ -218,3 +218,4 @@ hint还需要额外的pb文件，帮助解析输入参数，默认是从`/tmp/di
 ## 附加
 
 可使用`openmldb_tool --helpfull`查看所有配置项。例如，`--sdk_log`可以打印sdk的日志（zk，glog），可用于调试。
+  

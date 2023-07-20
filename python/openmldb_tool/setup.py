@@ -37,6 +37,7 @@ setup(
     ],
     extras_require={
         "test": [
+            "openmldb-tool[rpc]",
             "pytest",
         ],
         "rpc": [

@@ -42,12 +42,12 @@ echo "ROOT_DIR:${ROOT_DIR}"
 cd "${ROOT_DIR}"/python/openmldb_sdk/dist/
 whl_name_sdk=$(ls openmldb*.whl)
 echo "whl_name_sdk:${whl_name_sdk}"
-python3 -m pip install "${whl_name_sdk}"
+python3 -m pip install "${whl_name_sdk}[test]"
 
 cd "${ROOT_DIR}"/python/openmldb_tool/dist/
 whl_name_tool=$(ls openmldb*.whl)
 echo "whl_name_tool:${whl_name_tool}"
-python3 -m pip install "${whl_name_tool}"
+python3 -m pip install "${whl_name_tool}[test]"
 
 python3 -m pip install pytest-cov
 
