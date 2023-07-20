@@ -1593,6 +1593,9 @@ void TabletImpl::Delete(RpcController* controller, const ::openmldb::api::Delete
     if (request->has_end_ts()) {
         entry.set_end_ts(request->end_ts());
     }
+    if (request->has_ts_name()) {
+        entry.set_ts_name(request->ts_name());
+    }
     if (entry.dimensions_size() == 0 && !entry.has_ts() && !entry.has_end_ts()) {
         response->set_code(base::ReturnCode::kInvalidArgs);
         response->set_msg("invalid args");
