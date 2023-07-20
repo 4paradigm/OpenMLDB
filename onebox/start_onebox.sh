@@ -18,6 +18,7 @@ set -eE
 set -x
 
 cd "$(dirname "$0")/../"
+BASE=$(pwd)
 
 # allow producing core files
 ulimit -c unlimited
@@ -133,6 +134,19 @@ start_cluster() {
     echo "cluster start ok"
 }
 
+start_taskmanager() {
+    rm -rf onebox/taskmanager
+    cp -r java/openmldb-taskmanager/target/openmldb-taskmanager-binary/ onebox/taskmanager
+    pushd onebox/taskmanager/
+    chmod +x bin/*.sh
+    mkdir -p bin/udf/
+    cp "$BASE/build/udf/"*.so bin/udf/
+    cp "$BASE/onebox/taskmanager.properties" conf/
+
+    ./bin/taskmanager.sh > "$WORKSPACE/logs/taskmanager.log" 2>&1 &
+    popd
+}
+
 SA_NS=$IP:6527
 SA_TABLET=$IP:9921
 SA_BINLOG="$WORKSPACE/standalone/binlog"
@@ -188,6 +202,10 @@ cluster)
 standalone)
     start_standalone
     ;;
+taskmanager)
+    start_taskmanager
+    ;;
+
 -h | help)
     help
     ;;

@@ -267,6 +267,26 @@ public class SQLRouterSmokeTest {
     }
 
     @Test(dataProvider = "executor")
+    public void testCreateFunction(SqlExecutor router) {
+        java.sql.Statement statement = router.getStatement();
+
+        // create function ok
+        Assert.assertTrue(statement.execute("CREATE FUNCTION cut2(x STRING) RETURNS STRING OPTIONS (FILE='/tmp/libtest_udf.so')"));
+        Assert.assertTrue(statement.execute("SHOW FUNCTIONS"));
+
+        // queryable
+        Assert.assertTrue(statement.execute("set @@execute_mode='online'"));
+        Assert.assertTrue(statement.execute("select cut2('hello')"));
+        java.sql.ResultSet resultset = statement.getResultSet();
+        resultset.next();
+        String result = resultset.getString(1);
+        Assert.assertEqualsDeep(result, "he");
+
+        // dropable
+        Assert.assertTrue(statement.execute("DROP FUNCTION cut2"));
+    }
+
+    @Test(dataProvider = "executor")
     public void testParameterizedQueryFail(SqlExecutor router) {
         try {
             String dbname = "SQLRouterSmokeTest" + System.currentTimeMillis();

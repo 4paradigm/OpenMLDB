@@ -163,7 +163,7 @@ if(SQL_JAVASDK_ENABLE)
     target_compile_options(sql_jsdk PRIVATE -w)
     set_target_properties(sql_jsdk
         PROPERTIES
-        BUILD_RPATH "${OPENMLDB_INSTALL_RPATH}")
+        BUILD_RPATH "${OPENMLDB_RPATH}")
 
     add_dependencies(sql_jsdk hybridse_jsdk_core_static)
     if(APPLE)

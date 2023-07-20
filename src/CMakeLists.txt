@@ -152,6 +152,10 @@ if(TESTING_ENABLE)
     # abs path
     compile_test_with_extra(datacollector ${CMAKE_CURRENT_SOURCE_DIR}/datacollector/data_collector.cc)
     add_library(test_udf SHARED examples/test_udf.cc)
+    set_target_properties(test_udf
+        PROPERTIES
+        LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/udf
+    )
 endif()
 
 add_executable(parse_log tools/parse_log.cc  $<TARGET_OBJECTS:openmldb_proto>)
@@ -175,7 +179,8 @@ target_link_libraries(openmldb ${EXPORTER_LIBS})
 set_target_properties(
     openmldb
     PROPERTIES
-    INSTALL_RPATH "${OPENMLDB_INSTALL_RPATH}")
+    BUILD_RPATH "${OPENMLDB_RPATH}"
+    INSTALL_RPATH "${OPENMLDB_RPATH}")
 
 add_executable(data_collector datacollector/data_collector_server.cc datacollector/data_collector.cc)
 target_link_libraries(data_collector ${EXPORTER_LIBS})

@@ -41,7 +41,7 @@ jobs:
       image: ghcr.io/4paradigm/hybridsql:latest
     env:
       SQL_JAVASDK_ENABLE: ON
-      OPENMLDB_BUILD_TARGET: "cp_native_so openmldb"
+      OPENMLDB_BUILD_TARGET: "cp_native_so openmldb test_udf"
       MAVEN_OPTS: -Duser.home=/github/home
       SPARK_HOME: /tmp/spark/
     steps:
@@ -82,6 +82,11 @@ jobs:
         run: |
           make build
 
+      - name: build taskmanager
+        working-directory: java
+        run: |
+          ./mvnw package --batch-mode -DskipTests=true -Dscalatest.skip=true -Dwagon.skip=true -Dmaven.test.skip=true
+
       - name: upload linux library
         if: github.event_name == 'push'
         uses: actions/upload-artifact@v2
@@ -95,7 +100,9 @@ jobs:
         run: |
           sh steps/ut_zookeeper.sh start
           sh steps/download_openmldb_spark.sh $SPARK_HOME
-          cd onebox && sh start_onebox.sh && sh start_onebox.sh standalone && cd - || exit
+          ./onebox/start_onebox.sh
+          ./onebox/start_onebox.sh standalone
+          ./onebox/start_onebox.sh taskmanager
 
       - name: run java modules smoke test
         working-directory: java
@@ -147,10 +154,9 @@ jobs:
     runs-on: macos-latest
     needs:
       - java-sdk
-    if: github.event_name == 'push'
     env:
       SQL_JAVASDK_ENABLE: ON
-      OPENMLDB_BUILD_TARGET: "cp_native_so openmldb"
+      OPENMLDB_BUILD_TARGET: "cp_native_so openmldb test_udf"
       NPROC: 3
     steps:
       - uses: actions/checkout@v3

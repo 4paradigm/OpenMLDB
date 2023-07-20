@@ -143,11 +143,11 @@ include(farmhash)
 if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
     set(OS_LIB ${CMAKE_THREAD_LIBS_INIT} rt)
     set(BRPC_LIBS ${BRPC_LIBRARY} ${Protobuf_LIBRARIES} ${GLOG_LIBRARY} ${GFLAGS_LIBRARY} ${UNWIND_LIBRARY} ${OPENSSL_LIBRARIES} ${LEVELDB_LIBRARY} ${Z_LIBRARY} ${SNAPPY_LIBRARY} dl pthread ${OS_LIB})
-    # OPENMLDB_INSTALL_RPATH
+    # OPENMLDB_RPATH
     # custom RPATH tag for necessary install binaries (like bin/openmldb)
     # relative to binary location so any install location works, binary is
     # by convention installed to 'bin/' directory, search to '<binary_dir>/../$LIB' and '<binary_dir>/../udf'
-    set(OPENMLDB_INSTALL_RPATH '$ORIGIN/../$LIB' '$ORIGIN/../udf')
+    set(OPENMLDB_RPATH '$ORIGIN/../$LIB' '$ORIGIN/../udf')
 elseif (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
     set(OS_LIB
         ${CMAKE_THREAD_LIBS_INIT}
@@ -161,7 +161,7 @@ elseif (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
         "-Wl,-U,_ProfilerStart"
         "-Wl,-U,_ProfilerStop")
     set(BRPC_LIBS ${BRPC_LIBRARY} ${Protobuf_LIBRARIES} ${GLOG_LIBRARY} ${GFLAGS_LIBRARY} ${OPENSSL_LIBRARIES} ${LEVELDB_LIBRARY} ${Z_LIBRARY} ${SNAPPY_LIBRARY} dl pthread ${OS_LIB})
-    set(OPENMLDB_INSTALL_RPATH '@loader_path/../lib' '@loader_path/../udf')
+    set(OPENMLDB_RPATH '@loader_path/../lib' '@loader_path/../udf')
 endif ()
 
 if (SANITIZER_ENABLE)
@@ -318,9 +318,9 @@ install(
   PERMISSIONS OWNER_EXECUTE OWNER_WRITE OWNER_READ GROUP_EXECUTE GROUP_READ WORLD_EXECUTE WORLD_READ
 )
 install(
-        FILES ${OPENMLDB_SBINS}
-        DESTINATION sbin
-        PERMISSIONS OWNER_EXECUTE OWNER_WRITE OWNER_READ GROUP_EXECUTE GROUP_READ WORLD_EXECUTE WORLD_READ
+  FILES ${OPENMLDB_SBINS}
+  DESTINATION sbin
+  PERMISSIONS OWNER_EXECUTE OWNER_WRITE OWNER_READ GROUP_EXECUTE GROUP_READ WORLD_EXECUTE WORLD_READ
 )
 install(FILES ${OPENMLDB_CONFS} DESTINATION conf)
 install(

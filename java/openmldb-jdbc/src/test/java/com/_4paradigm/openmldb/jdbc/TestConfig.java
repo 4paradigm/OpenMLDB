@@ -17,11 +17,11 @@
 package com._4paradigm.openmldb.jdbc;
 
 public class TestConfig {
-//    config for cluster mode
-    public static String ZK_CLUSTER="127.0.0.1:6181";
-    public static String ZK_PATH="/onebox";
+    // config for cluster mode
+    public static String ZK_CLUSTER = "127.0.0.1:6181";
+    public static String ZK_PATH = "/onebox";
 
-//    config for standalone mode
-    public static String HOST="127.0.0.1";
-    public static long PORT=6527;
+    // config for standalone mode
+    public static String HOST = "127.0.0.1";
+    public static long PORT = 6527;
 }
