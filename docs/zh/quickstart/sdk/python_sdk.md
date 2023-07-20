@@ -33,7 +33,6 @@ zk 和 zkPath 配置项必填。
 创建数据库 `db1`：
 
 ```python
-# ddl error will throw exception
 cursor.execute("CREATE DATABASE db1")
 cursor.execute("USE db1")
 ```
