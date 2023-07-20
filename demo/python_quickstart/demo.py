@@ -21,6 +21,8 @@
 
 import openmldb.dbapi
 
+# dbapi接口如果执行失败，会抛出异常，本例不捕获异常，暴露错误
+
 # 连接集群版OpenMLDB
 db = openmldb.dbapi.connect(zk="127.0.0.1:2181", zkPath="/openmldb")
 
@@ -65,6 +67,16 @@ result = cursor.batch_row_request(
 )
 print(result.fetchone())
 
+### 执行 Deployment
+cursor.execute("DEPLOY d1 SELECT col1 FROM t1")
+# dict style
+cursor.callproc("d1", {"col1": 1000, "col2": None, "col3": None, "col4": None, "col5": None})
+print(result.fetchall())
+# tuple style
+cursor.callproc("d1", (1001, "2023-07-20", "abc", "def", 1))
+print(result.fetchall())
+# drop deployment before drop table
+cursor.execute("DROP DEPLOYMENT d1")
 
 ### 2.7 删除表
 cursor.execute("DROP TABLE t1")
