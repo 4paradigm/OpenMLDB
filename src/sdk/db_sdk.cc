@@ -427,6 +427,7 @@ bool ClusterSDK::BuildCatalog() {
 }
 
 std::vector<std::string> DBSDK::GetAllDbs() {
+    std::lock_guard<::openmldb::base::SpinMutex> lock(mu_);
     std::vector<std::string> all_dbs;
     for (auto db_name_iter = table_to_tablets_.begin(); db_name_iter != table_to_tablets_.end(); db_name_iter++) {
         all_dbs.push_back(db_name_iter->first);

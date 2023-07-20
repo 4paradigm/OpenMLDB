@@ -99,12 +99,10 @@ class SQLClusterDDLTest : public SQLClusterTest {
 };
 
 TEST_F(SQLClusterDDLTest, TestCreateTableLike) {
-    std::string db2 = "db" + GenRand();
     ::hybridse::sdk::Status status;
-    std::string ddl;
 
-    ASSERT_FALSE(router->ExecuteDDL(db, "create table " +  db2 + ".tb like hive 'hive://db.tb';", &status));
-    ASSERT_FALSE(router->ExecuteDDL(db, "drop table " + db2 + ".tb;", &status));
+    ASSERT_FALSE(router->ExecuteDDL(db, "create table db2.tb like hive 'hive://db.tb';", &status));
+    ASSERT_FALSE(router->ExecuteDDL(db, "drop table db2.tb;", &status));
 }
 
 TEST_F(SQLClusterDDLTest, TestIfExists) {
