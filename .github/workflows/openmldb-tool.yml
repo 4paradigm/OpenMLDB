@@ -22,7 +22,7 @@ env:
 jobs:
   openmldb-tool-test:
     runs-on: [self-hosted,generic]
-    if: github.repository == '4paradigm/OpenMLDB'
+  #  if: github.repository == '4paradigm/OpenMLDB'
     steps:
       - uses: actions/checkout@v2
 
