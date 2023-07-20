@@ -36,13 +36,13 @@ setup(
         "requests",
     ],
     extras_require={
-        "test": [
-            "openmldb-tool[rpc]",
-            "pytest",
-        ],
         "rpc": [
             "protobuf==3.6.1",
             "beautifulsoup4",
+        ],
+        "test": [
+            "openmldb-tool[rpc]",
+            "pytest",
         ],
     },
     packages=find_packages(exclude=["tests"]),
