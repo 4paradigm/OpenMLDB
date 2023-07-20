@@ -9730,11 +9730,11 @@ void NameServerImpl::CreateFunction(RpcController* controller, const CreateFunct
     auto tablets = GetAllHealthTablet();
     std::vector<std::shared_ptr<TabletInfo>> succ_tablets;
     std::string error_msgs;
+    // try create on every tablet
     for (const auto& tablet : tablets) {
         std::string msg;
         if (!tablet->client_->CreateFunction(request->fun(), &msg)) {
             error_msgs.append("create function failed on " + tablet->client_->GetEndpoint() + ", reason: " + msg + ";");
-            break;
         }
         succ_tablets.emplace_back(tablet);
     }
