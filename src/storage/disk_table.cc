@@ -325,23 +325,21 @@ base::Status DiskTable::Delete(uint32_t idx, const std::string& pk,
     uint64_t real_end_ts = end_ts.has_value() ? end_ts.value() : 0;
     std::string combine_key1;
     std::string combine_key2;
-    auto inner_index = table_index_.GetInnerIndex(index_def->GetInnerPos());
+    int32_t inner_pos = index_def->GetInnerPos();
+    auto inner_index = table_index_.GetInnerIndex(inner_pos);
     if (inner_index && inner_index->GetIndex().size() > 1) {
-        const auto& indexs = inner_index->GetIndex();
-        for (const auto& index : indexs) {
-            auto ts_col = index->GetTsColumn();
-            if (!ts_col) {
-                return {-1, "ts column not found"};
-            }
-            combine_key1 = CombineKeyTs(pk, start_ts, ts_col->GetId());
-            combine_key2 = CombineKeyTs(pk, real_end_ts, ts_col->GetId());
+        auto ts_col = index_def->GetTsColumn();
+        if (!ts_col) {
+            return {-1, "ts column not found"};
         }
+        combine_key1 = CombineKeyTs(pk, start_ts, ts_col->GetId());
+        combine_key2 = CombineKeyTs(pk, real_end_ts, ts_col->GetId());
     } else {
         combine_key1 = CombineKeyTs(pk, start_ts);
         combine_key2 = CombineKeyTs(pk, real_end_ts);
     }
     rocksdb::WriteBatch batch;
-    batch.DeleteRange(cf_hs_[idx + 1], rocksdb::Slice(combine_key1), rocksdb::Slice(combine_key2));
+    batch.DeleteRange(cf_hs_[inner_pos + 1], rocksdb::Slice(combine_key1), rocksdb::Slice(combine_key2));
     rocksdb::Status s = db_->Write(write_opts_, &batch);
     if (!s.ok()) {
         return {-1, s.ToString()};
