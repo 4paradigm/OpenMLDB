@@ -17,7 +17,7 @@ on:
 env:
   GIT_SUBMODULE_STRATEGY: recursive
   DEPLOY_DIR: /mnt/hdd0/openmldb_runner_work/openmldb_env
-  NODE_LIST: node-1,node-2,node-3
+  NODE_LIST: node-1,node-4,node-3
 
 jobs:
   openmldb-tool-test:
@@ -29,7 +29,7 @@ jobs:
       - name: prepare env
         run: |
           VERSION=`git fetch --tags | git tag -l v[0-9].* | tail -n1`
-          VERSION=${VERSION#v}
+          VERSION='0.8.2'
           echo "OPENMLDB_VETSION=$VERSION" >> $GITHUB_ENV
           bash test/test-tool/openmldb-deploy/gen_conf.sh ${{ env.DEPLOY_DIR }} ${{ env.NODE_LIST }} > hosts
           pip3 install requests openmldb pytest
