@@ -270,20 +270,25 @@ public class SQLRouterSmokeTest {
     public void testCreateFunction(SqlExecutor router) {
         java.sql.Statement statement = router.getStatement();
 
-        // create function ok
-        Assert.assertTrue(statement.execute("CREATE FUNCTION cut2(x STRING) RETURNS STRING OPTIONS (FILE='libtest_udf.so')"));
-        Assert.assertTrue(statement.execute("SHOW FUNCTIONS"));
+        try {
+            // create function ok
+            Assert.assertTrue(statement.execute("CREATE FUNCTION cut2(x STRING) RETURNS STRING OPTIONS (FILE='libtest_udf.so')"));
+            Assert.assertTrue(statement.execute("SHOW FUNCTIONS"));
 
-        // queryable
-        Assert.assertTrue(statement.execute("set @@execute_mode='online'"));
-        Assert.assertTrue(statement.execute("select cut2('hello')"));
-        java.sql.ResultSet resultset = statement.getResultSet();
-        resultset.next();
-        String result = resultset.getString(1);
-        Assert.assertEquals(result, "he");
+            // queryable
+            Assert.assertTrue(statement.execute("set @@execute_mode='online'"));
+            Assert.assertTrue(statement.execute("select cut2('hello')"));
+            java.sql.ResultSet resultset = statement.getResultSet();
+            resultset.next();
+            String result = resultset.getString(1);
+            Assert.assertEquals(result, "he");
 
-        // dropable
-        Assert.assertTrue(statement.execute("DROP FUNCTION cut2"));
+            // dropable
+            Assert.assertTrue(statement.execute("DROP FUNCTION cut2"));
+        } catch (Exception e) {
+            e.printStackTrace();
+            Assert.fail();
+        }
     }
 
     @Test(dataProvider = "executor")
