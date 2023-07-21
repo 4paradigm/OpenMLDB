@@ -151,12 +151,13 @@ if(TESTING_ENABLE)
     compile_test(apiserver)
     # abs path
     compile_test_with_extra(datacollector ${CMAKE_CURRENT_SOURCE_DIR}/datacollector/data_collector.cc)
-    add_library(test_udf SHARED examples/test_udf.cc)
-    set_target_properties(test_udf
-        PROPERTIES
-        LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/udf
-    )
 endif()
+
+add_library(test_udf SHARED examples/test_udf.cc)
+set_target_properties(test_udf
+    PROPERTIES
+    LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/udf
+)
 
 add_executable(parse_log tools/parse_log.cc  $<TARGET_OBJECTS:openmldb_proto>)
 add_executable(data_exporter tools/data_exporter.cc tools/log_exporter.cc tools/tablemeta_reader.cc $<TARGET_OBJECTS:openmldb_proto>)
