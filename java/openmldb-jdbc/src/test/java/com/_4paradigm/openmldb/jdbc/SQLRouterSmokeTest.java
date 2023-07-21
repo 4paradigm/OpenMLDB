@@ -271,7 +271,7 @@ public class SQLRouterSmokeTest {
         java.sql.Statement statement = router.getStatement();
 
         // create function ok
-        Assert.assertTrue(statement.execute("CREATE FUNCTION cut2(x STRING) RETURNS STRING OPTIONS (FILE='/tmp/libtest_udf.so')"));
+        Assert.assertTrue(statement.execute("CREATE FUNCTION cut2(x STRING) RETURNS STRING OPTIONS (FILE='libtest_udf.so')"));
         Assert.assertTrue(statement.execute("SHOW FUNCTIONS"));
 
         // queryable
@@ -280,7 +280,7 @@ public class SQLRouterSmokeTest {
         java.sql.ResultSet resultset = statement.getResultSet();
         resultset.next();
         String result = resultset.getString(1);
-        Assert.assertEqualsDeep(result, "he");
+        Assert.assertEquals(result, "he");
 
         // dropable
         Assert.assertTrue(statement.execute("DROP FUNCTION cut2"));
