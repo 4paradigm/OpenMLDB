@@ -68,9 +68,7 @@ bool Binlog::RecoverFromBinlog(std::shared_ptr<Table> table, uint64_t offset, ui
                 continue;
             }
             consumed = ::baidu::common::timer::now_time() - consumed;
-            PDLOG(INFO,
-                  "table tid %u pid %u completed, succ_cnt %lu, failed_cnt "
-                  "%lu, consumed %us",
+            PDLOG(INFO, "table tid %u pid %u completed, succ_cnt %lu, failed_cnt %lu, consumed %us",
                   tid, pid, succ_cnt, failed_cnt, consumed);
             reach_end_log = false;
             break;
@@ -101,27 +99,18 @@ bool Binlog::RecoverFromBinlog(std::shared_ptr<Table> table, uint64_t offset, ui
         }
 
         if (cur_offset + 1 != entry.log_index()) {
-            PDLOG(WARNING,
-                  "missing log entry cur_offset %lu , new entry offset %lu for "
-                  "tid %u, pid %u",
+            PDLOG(WARNING, "missing log entry cur_offset %lu , new entry offset %lu for tid %u, pid %u",
                   cur_offset, entry.log_index(), tid, pid);
         }
-
         if (entry.has_method_type() && entry.method_type() == ::openmldb::api::MethodType::kDelete) {
-            if (entry.dimensions_size() == 0) {
-                PDLOG(WARNING, "no dimesion. tid %u pid %u offset %lu", tid, pid, entry.log_index());
-            } else {
-                table->Delete(entry.dimensions(0).key(), entry.dimensions(0).idx());
-            }
+            table->Delete(entry);
         } else {
             table->Put(entry);
         }
         cur_offset = entry.log_index();
         succ_cnt++;
         if (succ_cnt % 100000 == 0) {
-            PDLOG(INFO,
-                  "[Recover] load data from binlog succ_cnt %lu, failed_cnt "
-                  "%lu for tid %u, pid %u",
+            PDLOG(INFO, "[Recover] load data from binlog succ_cnt %lu, failed_cnt %lu for tid %u, pid %u",
                   succ_cnt, failed_cnt, tid, pid);
         }
         if (succ_cnt % FLAGS_gc_on_table_recover_count == 0) {

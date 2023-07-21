@@ -218,19 +218,21 @@ object HybridseUtil {
     }
 
     // load data: read options, select into: write options
+    // parquet/hive format doesn't support any option now, consistent with write options(empty) when deep copy
     val options: mutable.Map[String, String] = mutable.Map()
-    // default values: https://spark.apache.org/docs/3.2.1/sql-data-sources-csv.html
-    // delimiter -> sep: ,(the same with spark3 default sep)
-    // header: true(different with spark)
-    // null_value -> nullValue: null(different with spark)
-    // quote: `"`(the same with spark3 default quote)
-    options += ("header" -> "true")
-    options += ("nullValue" -> "null")
-    updateOptionsMap(options, getOptionFromNode(node, "delimiter"), "sep", getStr)
-    updateOptionsMap(options, getOptionFromNode(node, "header"), "header", getBool)
-    updateOptionsMap(options, getOptionFromNode(node, "null_value"), "nullValue", getStr)
-    updateOptionsMap(options, getOptionFromNode(node, "quote"), "quote", getStr)
-
+    if (format.equals("csv")){
+      // default values: https://spark.apache.org/docs/3.2.1/sql-data-sources-csv.html
+      // delimiter -> sep: ,(the same with spark3 default sep)
+      // header: true(different with spark)
+      // null_value -> nullValue: null(different with spark)
+      // quote: `"`(the same with spark3 default quote)
+      options += ("header" -> "true")
+      options += ("nullValue" -> "null")
+      updateOptionsMap(options, getOptionFromNode(node, "delimiter"), "sep", getStr)
+      updateOptionsMap(options, getOptionFromNode(node, "header"), "header", getBool)
+      updateOptionsMap(options, getOptionFromNode(node, "null_value"), "nullValue", getStr)
+      updateOptionsMap(options, getOptionFromNode(node, "quote"), "quote", getStr)
+    }
     // load data: write mode(load data may write to offline storage or online storage, needs mode too)
     // select into: write mode
     val modeStr = parseOption(getOptionFromNode(node, "mode"), "error_if_exists", getStringOrDefault).toLowerCase
@@ -314,7 +316,9 @@ object HybridseUtil {
     autoLoad(openmldbSession, file, List.empty[String], format, options, columns)
   }
 
-  // Decide which load method to use by arg `format`, DO NOT pass `hive://a.b` with format `csv`.
+  // Load df from file **and** symbol paths, they should in the same format and options.
+  // Decide which load method to use by arg `format`, DO NOT pass `hive://a.b` with format `csv`,
+  // the format should be `hive`.
   // Use `parseOptions` in LoadData/SelectInto to get the right format(filePath & option `format`).
   // valid pattern:
   //   1. hive path, format must be hive, discard other options
@@ -325,10 +329,26 @@ object HybridseUtil {
                options: Map[String, String], columns: util.List[Common.ColumnDesc]): DataFrame = {
     val fmt = format.toLowerCase
     if (fmt.equals("hive")) {
-      logger.info("load data from hive table {}", file)
-      HybridseUtil.hiveLoad(openmldbSession, file, columns);
+      logger.info(s"load data from hive table $file & $symbolPaths")
+      if (file.isEmpty) {
+        var outputDf: DataFrame = null
+        symbolPaths.zipWithIndex.foreach { case (path, index) =>
+          if (index == 0) {
+            outputDf = HybridseUtil.hiveLoad(openmldbSession, path, columns);
+          } else {
+            outputDf = outputDf.union(HybridseUtil.hiveLoad(openmldbSession, path, columns))
+          }
+        }
+        outputDf
+      } else {
+        var outputDf = HybridseUtil.hiveLoad(openmldbSession, file, columns)
+        for (path: String <- symbolPaths) {
+          outputDf = outputDf.union(HybridseUtil.hiveLoad(openmldbSession, path, columns))
+        }
+        outputDf
+      }
     } else {
-      logger.info("load data from file {} reader[format {}, options {}]", file, fmt, options)
+      logger.info("load data from file {} & {} reader[format {}, options {}]", file, symbolPaths, fmt, options)
 
       if (file.isEmpty) {
         var outputDf: DataFrame = null
