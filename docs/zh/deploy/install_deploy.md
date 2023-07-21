@@ -6,16 +6,16 @@
 
 发行的预编译包支持：CentOS 7.x, Ubuntu 20.04, SUSE 12 SP3, macOS 12。因此Linux要求glibc version >= 2.17。对于其他操作系统发行版本，预编译包未做充分测试，无法保证其完全兼容。你可以尝试 [从源码编译](compile.md)，来支持其他的操作系统。
 
-```{note}
+````{note}
 Linux可通过以下命令来检查系统的支持情况。
-````shell
+```shell
 cat /etc/os-release # most linux
 cat /etc/redhat-release # redhat only
 ldd --version
 strings /lib64/libc.so.6 | grep ^GLIBC_
-````
-通常ldd版本>=2.17，libc.so.6中也会有`GLIBC_2.17`，也就是该系统支持glibc 2.17的程序/动态库运行。如果系统的glibc版本低于2.17，则需要尝试从源码编译。
 ```
+通常ldd版本>=2.17，libc.so.6中也会有`GLIBC_2.17`，也就是该系统支持glibc 2.17的程序/动态库运行。如果系统的glibc版本低于2.17，则需要尝试从源码编译。
+````
 
 ### 第三方组件依赖
 
@@ -47,17 +47,17 @@ strings /lib64/libc.so.6 | grep ^GLIBC_
 
 ### Linux 平台预测试
 
-由于 Linux 平台的多样性，发布包可能在你的机器上不兼容，请先通过简单的运行测试。比如，下载预编译包 `openmldb-0.8.1-linux.tar.gz` 以后，运行：
+由于 Linux 平台的多样性，发布包可能在你的机器上不兼容，请先通过简单的运行测试。比如，下载预编译包 `openmldb-0.8.2-linux.tar.gz` 以后，运行：
 
 ```
-tar -zxvf openmldb-0.8.1-linux.tar.gz
-./openmldb-0.8.1-linux/bin/openmldb --version
+tar -zxvf openmldb-0.8.2-linux.tar.gz
+./openmldb-0.8.2-linux/bin/openmldb --version
 ```
 
 结果应显示该程序的版本号，类似
 
 ```
-openmldb version 0.8.1-xxxx
+openmldb version 0.8.2-xxxx
 Debug build (NDEBUG not #defined)
 ```
 
@@ -154,11 +154,12 @@ OpenMLDB 提供了两种启动模式：普通和守护进程启动。守护进�
 
 如果想要使守护进程模式启动，请使用`bash bin/start.sh start <component> mon`或者`sbin/start-all.sh mon`的方式启动。守护进程模式中，`bin/<component>.pid`将是 mon 进程的 pid，`bin/<component>.pid.child` 为组件真实的 pid。
 
-
 ## 部署方式一：一键部署（推荐）
 OpenMLDB集群版需要部署ZooKeeper、NameServer、TabletServer、TaskManager等模块。其中ZooKeeper用于服务发现和保存元数据信息。NameServer用于管理TabletServer，实现高可用和failover。TabletServer用于存储数据和主从同步数据。APIServer是可选的，如果要用http的方式和OpenMLDB交互需要部署此模块。TaskManager 用于管理离线 job。我们提供了一键部署脚本，可以简化手动在每台机器上下载和配置的复杂性。
 
 **注意:** 同一台机器部署多个组件时，一定要部署在不同的目录里，便于单独管理。尤其是部署TabletServer，一定不能重复使用目录，避免数据文件和日志文件冲突。
+
+DataCollector和SyncTool暂不支持一键部署。请参考手动部署方式。
 
 ### 环境要求
 
@@ -170,9 +171,9 @@ OpenMLDB集群版需要部署ZooKeeper、NameServer、TabletServer、TaskManager
 ### 下载OpenMLDB发行版
 
 ```
-wget https://github.com/4paradigm/OpenMLDB/releases/download/v0.8.1/openmldb-0.8.1-linux.tar.gz
-tar -zxvf openmldb-0.8.1-linux.tar.gz
-cd openmldb-0.8.1-linux
+wget https://github.com/4paradigm/OpenMLDB/releases/download/v0.8.2/openmldb-0.8.2-linux.tar.gz
+tar -zxvf openmldb-0.8.2-linux.tar.gz
+cd openmldb-0.8.2-linux
 ```
 
 ### 环境配置
@@ -180,7 +181,7 @@ cd openmldb-0.8.1-linux
 
 | 环境变量                              | 默认值                                | 定义                                                                      |
 |-----------------------------------|------------------------------------|-------------------------------------------------------------------------|
-| OPENMLDB_VERSION                  | 0.8.1                              | OpenMLDB版本                                                              |
+| OPENMLDB_VERSION                  | 0.8.2                              | OpenMLDB版本                                                              |
 | OPENMLDB_MODE                     | standalone                         | standalone或者cluster                                                     |
 | OPENMLDB_HOME                     | 当前发行版的根目录                          | openmldb发行版根目录                                                          |
 | SPARK_HOME                        | $OPENMLDB_HOME/spark               | openmldb spark发行版根目录，如果该目录不存在，自动从网上下载                                   |
@@ -253,6 +254,8 @@ sbin/deploy-all.sh
 如果希望为每个节点添加一些额外的相同的定制化配置，可以在执行deploy脚本之前，修改`conf/xx.template`的配置，
 这样在分发配置文件的时候，每个节点都可以用到更改后的配置。
 重复执行`sbin/deploy-all.sh`会覆盖上一次的配置。
+
+详细配置说明见[配置文件](./conf.md)，请注意TaskManager Spark的选择与细节配置[Spark Config详解](./conf.md#spark-config详解)。
 
 ### 启动服务
 
@@ -345,10 +348,10 @@ bash bin/zkCli.sh -server 172.27.128.33:7181
 **1. 下载OpenMLDB部署包**
 
 ```
-wget https://github.com/4paradigm/OpenMLDB/releases/download/v0.8.1/openmldb-0.8.1-linux.tar.gz
-tar -zxvf openmldb-0.8.1-linux.tar.gz
-mv openmldb-0.8.1-linux openmldb-tablet-0.8.1
-cd openmldb-tablet-0.8.1
+wget https://github.com/4paradigm/OpenMLDB/releases/download/v0.8.2/openmldb-0.8.2-linux.tar.gz
+tar -zxvf openmldb-0.8.2-linux.tar.gz
+mv openmldb-0.8.2-linux openmldb-tablet-0.8.2
+cd openmldb-tablet-0.8.2
 ```
 **2. 修改配置文件`conf/tablet.flags`**
 ```bash
@@ -399,12 +402,12 @@ Start tablet success
 
 在另一台机器启动下一个TabletServer只需在该机器上重复以上步骤。如果是在同一个机器上启动下一个TabletServer，请保证是在另一个目录中，不要重复使用已经启动过TabletServer的目录。
 
-比如，可以再次解压压缩包（不要cp已经启动过TabletServer的目录，启动后的生成文件会造成影响），并命名目录为`openmldb-tablet-0.8.1-2`。
+比如，可以再次解压压缩包（不要cp已经启动过TabletServer的目录，启动后的生成文件会造成影响），并命名目录为`openmldb-tablet-0.8.2-2`。
 
 ```
-tar -zxvf openmldb-0.8.1-linux.tar.gz
-mv openmldb-0.8.1-linux openmldb-tablet-0.8.1-2
-cd openmldb-tablet-0.8.1-2
+tar -zxvf openmldb-0.8.2-linux.tar.gz
+mv openmldb-0.8.2-linux openmldb-tablet-0.8.2-2
+cd openmldb-tablet-0.8.2-2
 ```
 
 再修改配置并启动。注意，TabletServer如果都在同一台机器上，请使用不同端口号，否则日志(logs/tablet.WARNING)中将会有"Fail to listen"信息。
@@ -418,10 +421,10 @@ cd openmldb-tablet-0.8.1-2
 ```
 **1. 下载OpenMLDB部署包**
 ````
-wget https://github.com/4paradigm/OpenMLDB/releases/download/v0.8.1/openmldb-0.8.1-linux.tar.gz
-tar -zxvf openmldb-0.8.1-linux.tar.gz
-mv openmldb-0.8.1-linux openmldb-ns-0.8.1
-cd openmldb-ns-0.8.1
+wget https://github.com/4paradigm/OpenMLDB/releases/download/v0.8.2/openmldb-0.8.2-linux.tar.gz
+tar -zxvf openmldb-0.8.2-linux.tar.gz
+mv openmldb-0.8.2-linux openmldb-ns-0.8.2
+cd openmldb-ns-0.8.2
 ````
 **2. 修改配置文件conf/nameserver.flags**
 ```bash
@@ -459,12 +462,12 @@ NameServer 可以只存在一台，如果你需要高可用性，可以部署多
 
 在另一台机器启动下一个 NameServer 只需在该机器上重复以上步骤。如果是在同一个机器上启动下一个 NameServer，请保证是在另一个目录中，不要重复使用已经启动过 namserver 的目录。
 
-比如，可以再次解压压缩包（不要cp已经启动过 namserver 的目录，启动后的生成文件会造成影响），并命名目录为`openmldb-ns-0.8.1-2`。
+比如，可以再次解压压缩包（不要cp已经启动过 namserver 的目录，启动后的生成文件会造成影响），并命名目录为`openmldb-ns-0.8.2-2`。
 
 ```
-tar -zxvf openmldb-0.8.1-linux.tar.gz
-mv openmldb-0.8.1-linux openmldb-ns-0.8.1-2
-cd openmldb-ns-0.8.1-2
+tar -zxvf openmldb-0.8.2-linux.tar.gz
+mv openmldb-0.8.2-linux openmldb-ns-0.8.2-2
+cd openmldb-ns-0.8.2-2
 ```
 然后再修改配置并启动。
 
@@ -502,10 +505,10 @@ APIServer负责接收http请求，转发给OpenMLDB集群并返回结果。它�
 **1. 下载OpenMLDB部署包**
 
 ```
-wget https://github.com/4paradigm/OpenMLDB/releases/download/v0.8.1/openmldb-0.8.1-linux.tar.gz
-tar -zxvf openmldb-0.8.1-linux.tar.gz
-mv openmldb-0.8.1-linux openmldb-apiserver-0.8.1
-cd openmldb-apiserver-0.8.1
+wget https://github.com/4paradigm/OpenMLDB/releases/download/v0.8.2/openmldb-0.8.2-linux.tar.gz
+tar -zxvf openmldb-0.8.2-linux.tar.gz
+mv openmldb-0.8.2-linux openmldb-apiserver-0.8.2
+cd openmldb-apiserver-0.8.2
 ```
 
 **2. 修改配置文件conf/apiserver.flags**
@@ -560,18 +563,18 @@ TaskManager 可以只存在一台，如果你需要高可用性，可以部署�
 
 Spark发行版：
 ```shell
-wget https://github.com/4paradigm/spark/releases/download/v3.2.1-openmldb0.8.1/spark-3.2.1-bin-openmldbspark.tgz
-# 中国镜像地址：http://43.138.115.238/download/v0.8.1/spark-3.2.1-bin-openmldbspark.tgz
+wget https://github.com/4paradigm/spark/releases/download/v3.2.1-openmldb0.8.2/spark-3.2.1-bin-openmldbspark.tgz
+# 中国镜像地址：http://43.138.115.238/download/v0.8.2/spark-3.2.1-bin-openmldbspark.tgz
 tar -zxvf spark-3.2.1-bin-openmldbspark.tgz 
 export SPARK_HOME=`pwd`/spark-3.2.1-bin-openmldbspark/
 ```
 
 OpenMLDB部署包：
 ```
-wget https://github.com/4paradigm/OpenMLDB/releases/download/v0.8.1/openmldb-0.8.1-linux.tar.gz
-tar -zxvf openmldb-0.8.1-linux.tar.gz
-mv openmldb-0.8.1-linux openmldb-taskmanager-0.8.1
-cd openmldb-taskmanager-0.8.1
+wget https://github.com/4paradigm/OpenMLDB/releases/download/v0.8.2/openmldb-0.8.2-linux.tar.gz
+tar -zxvf openmldb-0.8.2-linux.tar.gz
+mv openmldb-0.8.2-linux openmldb-taskmanager-0.8.2
+cd openmldb-taskmanager-0.8.2
 ```
 
 **2. 修改配置文件conf/taskmanager.properties**
@@ -599,6 +602,9 @@ offline.data.prefix=file:///tmp/openmldb_offline_storage/
 spark.master=local
 spark.home=
 ```
+
+更多Spark相关配置说明，见[Spark Config详解](./conf.md#spark-config详解)。
+
 ```{attention}
 分布式部署的集群，请不要使用客户端本地文件作为源数据导入，推荐使用hdfs路径。
 
@@ -648,3 +654,13 @@ set @@execute_mode='online';
 Insert into t1 values (1, 'a'),(2,'b');
 select * from t1;
 ```
+
+### 部署在离线同步工具 (可选)
+
+在离线同步工具中的DataCollector需要部署在TabletServer所在机器上，所以，如果有在离线同步需求，可以在所有TabletServer部署目录中再进行DataCollector的部署。
+
+SyncTool需要Java运行环境，没有额外要求，建议单独部署在一台机器上。
+
+SyncTool的同步任务管理工具SyncTool Helper，在部署包的`tools/synctool_helper.py`，需要Python3运行环境，无额外要求，可以远程使用，但由于支持不够完善，查看Tool的调试信息需要在SyncTool所在机器上使用Helper。
+
+具体部署方式见[在离线同步工具](../tutorial/online_offline_sync.md)，请仔细阅读在离线同步工具的版本条件与功能边界。

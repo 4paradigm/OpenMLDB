@@ -15,6 +15,7 @@
  */
 
 #include "codegen/udf_ir_builder.h"
+#include <cstdint>
 #include <memory>
 #include <string>
 #include <utility>
@@ -1100,42 +1101,84 @@ TEST_F(UdfIRBuilderTest, DateDiff) {
     CheckUdf<Nullable<int32_t>, Nullable<StringRef>, Nullable<Date>>(func_name, nullptr, nullptr, nullptr);
 }
 
-TEST_F(UdfIRBuilderTest, StringToSmallint0) {
-    CheckUdf<Nullable<int16_t>, Nullable<StringRef>>("int16", 1,
-                                                     StringRef("1"));
+
+class UdfIRCastTest : public ::testing::TestWithParam<std::pair<absl::string_view, Nullable<int64_t>>> {};
+
+static const std::vector<std::pair<absl::string_view, Nullable<int64_t>>>& GetCastCases() {
+    static const std::string& INT32_MAX_S = *new auto(std::to_string(INT32_MAX));
+    static const std::string& INT16_MIN_S = *new auto(std::to_string(INT16_MIN));
+    static const std::vector<std::pair<absl::string_view, Nullable<int64_t>>> cs{
+        {"12", 12},
+        {"012", 12},
+        {"0", 0},
+        {" 9", 9},
+        {" +100 ", 100},
+        {"-999\t", -999},
+        {"+0", 0},
+        {"-0", 0},
+        {"-1", -1},
+        {"-88", -88},
+        {"0x12", 18},
+        {"+0X2a", 42},
+        {"-0X2b", -43},
+        {"\t -0X2b", -43},
+        {"9223372036854775807", INT64_MAX},
+        {"0x7FFFFFFFFFFFFFFF", INT64_MAX},
+        {"-9223372036854775808", INT64_MIN},
+        // int32 overflows
+        {"21474770944", 0x4ffff0000},
+        {"-21474770944", -21474770944},
+        {INT32_MAX_S, INT32_MAX},
+        // int16 overflows
+        {"0x4eeee", 323310},
+        {"-323310", -323310},
+        {INT16_MIN_S, INT16_MIN},
+        {"", {}},
+        {"-", {}},
+        {"+", {}},
+        {"8g", {}},
+        {"80x99", {}},
+        {"0x12k", {}},
+        {"8l", {}},
+        {"8 l", {}},
+        {"gg", {}},
+        {"89223372036854775807", {}},
+        {"-19223372036854775807", {}},
+    };
+    return cs;
 }
-TEST_F(UdfIRBuilderTest, StringToSmallint1) {
-    CheckUdf<Nullable<int16_t>, Nullable<StringRef>>("int16", -1,
-                                                     StringRef("-1"));
+
+INSTANTIATE_TEST_SUITE_P(StrCastNumeric, UdfIRCastTest, ::testing::ValuesIn(GetCastCases()));
+TEST_P(UdfIRCastTest, ToI64) {
+    auto [in, out] = GetParam();
+    CheckUdf<Nullable<int64_t>, StringRef>("int64", out, in);
+    CheckUdf<Nullable<int64_t>, StringRef>("bigint", out, in);
 }
-TEST_F(UdfIRBuilderTest, StringToSmallint2) {
-    CheckUdf<Nullable<int16_t>, Nullable<StringRef>>("int16", nullptr,
-                                                     StringRef("abc"));
+
+TEST_P(UdfIRCastTest, ToI32) {
+    auto [in, out] = GetParam();
+    Nullable<int32_t> expect;
+    if (out.is_null() || out.value() > INT32_MAX || out.value() < INT32_MIN) {
+        expect = {};
+    } else {
+        expect = static_cast<int32_t>(out.value());
+    }
+    CheckUdf<Nullable<int32_t>, StringRef>("int32", expect, in);
+    CheckUdf<Nullable<int32_t>, StringRef>("int", expect, in);
 }
-TEST_F(UdfIRBuilderTest, StringToInt0) {
-    CheckUdf<Nullable<int32_t>, Nullable<StringRef>>("int32", 1,
-                                                     StringRef("1"));
+
+TEST_P(UdfIRCastTest, ToI16) {
+    auto [in, out] = GetParam();
+    Nullable<int16_t> expect;
+    if (out.is_null() || out.value() > INT16_MAX || out.value() < INT16_MIN) {
+        expect = {};
+    } else {
+        expect = static_cast<int16_t>(out.value());
+    }
+    CheckUdf<Nullable<int16_t>, StringRef>("int16", expect, in);
+    CheckUdf<Nullable<int16_t>, StringRef>("smallint", expect, in);
 }
-TEST_F(UdfIRBuilderTest, StringToInt1) {
-    CheckUdf<Nullable<int32_t>, Nullable<StringRef>>("int32", -1,
-                                                     StringRef("-1"));
-}
-TEST_F(UdfIRBuilderTest, StringToInt2) {
-    CheckUdf<Nullable<int32_t>, Nullable<StringRef>>("int32", nullptr,
-                                                     StringRef("abc"));
-}
-TEST_F(UdfIRBuilderTest, StringToBigint0) {
-    CheckUdf<Nullable<int64_t>, Nullable<StringRef>>(
-        "int64", 1589904000000L, StringRef("1589904000000"));
-}
-TEST_F(UdfIRBuilderTest, StringToBigint1) {
-    CheckUdf<Nullable<int64_t>, Nullable<StringRef>>(
-        "int64", -1589904000000L, StringRef("-1589904000000"));
-}
-TEST_F(UdfIRBuilderTest, StringToBigint2) {
-    CheckUdf<Nullable<int64_t>, Nullable<StringRef>>("int64", nullptr,
-                                                     StringRef("abc"));
-}
+
 TEST_F(UdfIRBuilderTest, StringToDouble0) {
     CheckUdf<Nullable<double>, Nullable<StringRef>>("double", 1.0,
                                                     StringRef("1.0"));

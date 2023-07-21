@@ -97,6 +97,45 @@ class SQLClusterDDLTest : public SQLClusterTest {
     std::shared_ptr<SQLRouter> router;
     std::string db;
 };
+
+TEST_F(SQLClusterDDLTest, TestIfExists) {
+    std::string name = "test" + GenRand();
+    ::hybridse::sdk::Status status;
+    std::string db2 = "db" + GenRand();
+
+    std::string ddl;
+    ddl = "create table " + db2 + "." + name +
+          "("
+          "col1 int, col2 bigint, col3 string,"
+          "index(key=col3, ts=col2));";
+
+    ASSERT_TRUE(router->ExecuteDDL(db, "create database " + db2 + ";", &status));
+
+    // drop database db2 & table name
+    ASSERT_TRUE(router->ExecuteDDL(db, ddl, &status));
+    ASSERT_TRUE(router->ExecuteDDL(db, "drop table " + db2 + "." + name + ";", &status));
+
+    // drop table name when name not exist
+    ASSERT_FALSE(router->ExecuteDDL(db, "drop table " + db2 + "." + name + ";", &status));
+    ASSERT_TRUE(router->ExecuteDDL(db, "drop database " + db2 + ";", &status));
+
+    // drop database db2 when db2 not exist
+    ASSERT_FALSE(router->ExecuteDDL(db, "drop database " + db2 + ";", &status));
+
+    ASSERT_TRUE(router->ExecuteDDL(db, "create database " + db2 + ";", &status));
+
+    // if exists drop database db2 & table name
+    ASSERT_TRUE(router->ExecuteDDL(db, ddl, &status));
+    ASSERT_TRUE(router->ExecuteDDL(db, "drop table if exists " + db2 + "." + name + ";", &status));
+
+    // drop table name when name not exist
+    ASSERT_TRUE(router->ExecuteDDL(db, "drop table if exists " + db2 + "." + name + ";", &status));
+    ASSERT_TRUE(router->ExecuteDDL(db, "drop database if exists " + db2 + ";", &status));
+
+    // drop database db2 when db2 not exist
+    ASSERT_TRUE(router->ExecuteDDL(db, "drop database if exists " + db2 + ";", &status));
+}
+
 TEST_F(SQLClusterDDLTest, CreateTableWithDatabase) {
     std::string name = "test" + GenRand();
     ::hybridse::sdk::Status status;
@@ -122,6 +161,7 @@ TEST_F(SQLClusterDDLTest, CreateTableWithDatabase) {
 
     ASSERT_TRUE(router->DropDB(db2, &status));
 }
+
 TEST_F(SQLClusterDDLTest, CreateTableWithDatabaseWrongDDL) {
     std::string name = "test" + GenRand();
     ::hybridse::sdk::Status status;
@@ -142,6 +182,47 @@ TEST_F(SQLClusterDDLTest, CreateTableWithDatabaseWrongDDL) {
           "index(key=col3, ts=col2));";
     ASSERT_FALSE(router->ExecuteDDL("", ddl, &status)) << "ddl: " << ddl;
     ASSERT_FALSE(router->ExecuteDDL("", "drop table " + name + ";", &status));
+}
+
+TEST_F(SQLClusterDDLTest, TestDelete) {
+    std::string name = "test" + GenRand();
+    ::hybridse::sdk::Status status;
+    std::string ddl;
+
+    std::string db = "db" + GenRand();
+    ASSERT_TRUE(router->CreateDB(db, &status));
+    ddl = absl::StrCat("create table ", name,
+          "(col1 string, col2 string, col3 string, col4 bigint, col5 bigint, col6 bigint, col7 string,"
+          "index(key=col1, ts=col4), index(key=(col1, col2), ts=col4), index(key=col3, ts=col5));");
+    ASSERT_TRUE(router->ExecuteDDL(db, ddl, &status)) << "ddl: " << ddl;
+    ASSERT_TRUE(router->RefreshCatalog());
+    router->ExecuteSQL(db, "insert into " + name + " values ('a', 'aa', 'aaa', 100, 101, 102, 'xx');", &status);
+    router->ExecuteSQL(db, "insert into " + name + " values ('b', 'bb', 'bbb', 200, 201, 202, 'xx');", &status);
+    auto rs = router->ExecuteSQL(db, "select * from " + name + ";", &status);
+    ASSERT_EQ(rs->Size(), 2);
+    rs = router->ExecuteSQL(db, "delete from " + name + " where col1 = 'xxx' and col5 > 100;", &status);
+    ASSERT_FALSE(status.IsOK());
+    rs = router->ExecuteSQL(db, "delete from " + name + " where col1 = 'xxx' and col6 > 100;", &status);
+    ASSERT_FALSE(status.IsOK());
+    rs = router->ExecuteSQL(db, "delete from " + name + " where col1 = 'xxx' and col3 = 'aaa';", &status);
+    ASSERT_FALSE(status.IsOK());
+    rs = router->ExecuteSQL(db, "delete from " + name + " where col7 = 'xxx' and col3 = 'aaa';", &status);
+    ASSERT_FALSE(status.IsOK());
+    router->ExecuteSQL(db, "delete from " + name + " where col6 > 100;", &status);
+    ASSERT_FALSE(status.IsOK());
+    router->ExecuteSQL(db, "delete from " + name + " where col4 > 100 and col5 = 200;", &status);
+    ASSERT_FALSE(status.IsOK());
+    router->ExecuteSQL(db, "delete from " + name + " where col5 > 100;", &status);
+    ASSERT_TRUE(status.IsOK()) << status.msg;
+    rs = router->ExecuteSQL(db, "select * from " + name + ";", &status);
+    ASSERT_EQ(rs->Size(), 2);
+    router->ExecuteSQL(db, "delete from " + name + " where col4 > 100;", &status);
+    ASSERT_TRUE(status.IsOK());
+    rs = router->ExecuteSQL(db, "select * from " + name + ";", &status);
+    ASSERT_EQ(rs->Size(), 1);
+
+    ASSERT_TRUE(router->ExecuteDDL(db, "drop table " + name + ";", &status));
+    ASSERT_TRUE(router->DropDB(db, &status));
 }
 
 TEST_F(SQLClusterDDLTest, ColumnDefaultValue) {

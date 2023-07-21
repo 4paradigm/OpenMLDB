@@ -23,6 +23,7 @@
 #include "common/timer.h"
 #include "storage/aggregator.h"
 #include "storage/mem_table.h"
+#include "test/util.h"
 namespace openmldb {
 namespace storage {
 
@@ -721,8 +722,9 @@ TEST_F(AggregatorTest, CountWhereAggregatorUpdate) {
 }
 
 TEST_F(AggregatorTest, OutOfOrder) {
+    ::openmldb::test::TempPath tmp_path;
+    std::string folder = tmp_path.GetTempPath();
     std::map<std::string, std::string> map;
-    std::string folder = "/tmp/" + GenRand() + "/";
     uint32_t id = counter++;
     ::openmldb::api::TableMeta base_table_meta;
     base_table_meta.set_tid(id);
@@ -765,7 +767,7 @@ TEST_F(AggregatorTest, OutOfOrder) {
     bool ok = aggr->Update(key, encoded_row, 101);
     ASSERT_TRUE(ok);
     ASSERT_EQ(aggr_table->GetRecordCnt(), 51);
-    auto it = aggr_table->NewTraverseIterator(0);
+    std::unique_ptr<TraverseIterator> it(aggr_table->NewTraverseIterator(0));
     it->Seek(key, 25 * 1000 + 100);
     ASSERT_TRUE(it->Valid());
 
@@ -773,7 +775,7 @@ TEST_F(AggregatorTest, OutOfOrder) {
     auto val = it->GetValue();
     std::string origin_data = val.ToString();
     codec::RowView origin_row_view(aggr_table_meta.column_desc(),
-                                   reinterpret_cast<int8_t*>(const_cast<char*>(origin_data.c_str())),
+                                   reinterpret_cast<const int8_t*>(origin_data.data()),
                                    origin_data.size());
     int32_t origin_cnt = 0;
     char* ch = NULL;

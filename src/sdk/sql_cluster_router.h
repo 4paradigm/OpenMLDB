@@ -44,6 +44,7 @@ typedef ::google::protobuf::RepeatedPtrField<::openmldb::common::ColumnDesc> PBS
 
 constexpr const char* FORMAT_STRING_KEY = "!%$FORMAT_STRING_KEY";
 
+class DeleteOption;
 using TableInfoMap = std::map<std::string, std::map<std::string, ::openmldb::nameserver::TableInfo>>;
 
 class SQLClusterRouter : public SQLRouter {
@@ -64,7 +65,8 @@ class SQLClusterRouter : public SQLRouter {
 
     bool DropDB(const std::string& db, hybridse::sdk::Status* status) override;
 
-    bool DropTable(const std::string& db, const std::string& table, hybridse::sdk::Status* status);
+    bool DropTable(const std::string& db, const std::string& table, const bool if_exists,
+                   hybridse::sdk::Status* status);
 
     bool ShowDB(std::vector<std::string>* dbs, hybridse::sdk::Status* status) override;
 
@@ -335,6 +337,9 @@ class SQLClusterRouter : public SQLRouter {
 
     hybridse::sdk::Status HandleDelete(const std::string& db, const std::string& table_name,
                                        const hybridse::node::ExprNode* condition);
+
+    hybridse::sdk::Status SendDeleteRequst(const std::shared_ptr<nameserver::TableInfo>& table_info,
+        const DeleteOption* option);
 
     hybridse::sdk::Status HandleIndex(const std::string& db,
                                       const std::set<std::pair<std::string, std::string>>& table_pair,
