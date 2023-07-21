@@ -139,9 +139,10 @@ start_taskmanager() {
     cp -r java/openmldb-taskmanager/target/openmldb-taskmanager-binary/ onebox/taskmanager
     pushd onebox/taskmanager/
     chmod +x bin/*.sh
-    mkdir -p bin/udf/
-    cp "$BASE/build/udf/"*.so bin/udf/
-    cp "$BASE/onebox/taskmanager.properties" conf/
+    # NOTE: taskmanager find shared libraraies in "<cwd>/udf", where starts taskmanager matters
+    mkdir -p udf/
+    cp -v "$BASE/build/udf/"*.so udf/
+    cp -v "$BASE/onebox/taskmanager.properties" conf/
 
     ./bin/taskmanager.sh > "$WORKSPACE/logs/taskmanager.log" 2>&1 &
     popd
