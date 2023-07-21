@@ -328,9 +328,9 @@ bool DiskTable::Delete(uint32_t idx, const std::string& pk,
     if (inner_index && inner_index->GetIndex().size() > 1) {
         auto ts_col = index_def->GetTsColumn();
         if (!ts_col) {
-            return {-1, "ts column not found"};
+            return false;
         }
-        combine_key1 = CombineKeyTs(pk, start_ts, ts_col->GetId());
+        combine_key1 = CombineKeyTs(pk, real_start_ts, ts_col->GetId());
         combine_key2 = CombineKeyTs(pk, real_end_ts, ts_col->GetId());
     } else {
         combine_key1 = CombineKeyTs(pk, real_start_ts);

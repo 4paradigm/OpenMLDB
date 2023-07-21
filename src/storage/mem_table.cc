@@ -242,12 +242,10 @@ bool MemTable::Delete(const ::openmldb::api::LogEntry& entry) {
             if (!index_def || !index_def->IsReady()) {
                 continue;
             }
-            uint32_t real_idx = index_def->GetInnerPos();
             auto ts_col = index_def->GetTsColumn();
             if (!ts_col->IsAutoGenTs() && ts_col->GetName() != entry.ts_name()) {
                 continue;
             }
-            std::optional<uint32_t> ts_idx = ts_col ? std::optional<uint32_t>{ts_col->GetId()} : std::nullopt;
             uint32_t idx = index_def->GetId();
             std::unique_ptr<TraverseIterator> iter(NewTraverseIterator(idx));
             iter->SeekToFirst();
