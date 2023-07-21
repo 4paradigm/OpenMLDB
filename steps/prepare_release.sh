@@ -39,8 +39,10 @@ ROOT=$(pwd)
 cmake_file="$ROOT/CMakeLists.txt"
 
 VERSION=$1
+SUFFIX_VERSION=$(echo "$VERSION" | sed -e 's/^[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*//')
+BASE_VERSION=${VERSION%"$SUFFIX_VERSION"}
 # shellcheck disable=SC2206
-ARR=(${VERSION//./ })
+ARR=(${BASE_VERSION//./ })
 echo "splited version components: ${ARR[*]}"
 if [[ "${#ARR[*]}" -lt 3 ]]; then
     echo -e "${RED}inputed version should have at least three number${NC}"
@@ -63,7 +65,7 @@ pushd java/
 popd
 
 # tweak python sdk version
-PY_VERSION=$VERSION
+PY_VERSION=$BASE_VERSION
 if [[ ${#ARR[@]} -gt 3 ]]; then
     # has {pre-prelease-identifier}
     # refer: https://www.python.org/dev/peps/pep-0440/#pre-releases
