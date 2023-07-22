@@ -144,7 +144,7 @@ start_taskmanager() {
     cp -v "$BASE/build/udf/"*.so udf/
     cp -v "$BASE/onebox/taskmanager.properties" conf/
 
-    ./bin/taskmanager.sh > "$WORKSPACE/logs/taskmanager.log" 2>&1 &
+    LB_DEBUG=libs ./bin/taskmanager.sh > "$WORKSPACE/logs/taskmanager.log" 2>&1 &
     popd
 }
 
