@@ -193,7 +193,6 @@ nameserver:
 openmldb_tool static-check --conf_file=/work/openmldb/conf/hosts -VCL --local
 ```
 
-
 ### rpc
 
 `openmldb_tool`还提供了一个RPC接口，但它是一个额外组件，需要通过`pip install openmldb-tool[rpc]`安装。使用方式是`openmldb_tool rpc`，例如，`openmldb_tool rpc ns ShowTable --field '{"show_all":true}'`可以调用`nameserver`的`ShowTable`接口，获取表的状态信息。

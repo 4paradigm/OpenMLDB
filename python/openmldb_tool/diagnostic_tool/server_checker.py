@@ -42,7 +42,9 @@ class StatusChecker:
         t.title = "Connections"
         t.field_names = ["Endpoint", "Version", "Cost_time", "Extra"]
         err = ""
-        taskmanager = component_map.pop("taskmanager")  # extract taskmanager
+        taskmanager = []
+        if "taskmanager" in component_map:
+            taskmanager = component_map.pop("taskmanager")  # extract taskmanager
         other_components = [component for role in component_map.values() for component in role]  # extract other components
         conns = []
         for (endpoint, _) in other_components:

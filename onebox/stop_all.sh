@@ -19,6 +19,6 @@ set -x -e
 if [[ "$OSTYPE" = "darwin"* ]]; then
     pkill -9 -x -l openmldb
 else
-    pkill -9 -x -e openmldb
+    ps axu | grep /onebox | grep -v grep | awk '{print $2}' | xargs kill -9
 fi
 
