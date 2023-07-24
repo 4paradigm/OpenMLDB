@@ -8270,14 +8270,13 @@ void NameServerImpl::DeleteIndex(RpcController* controller, const DeleteIndexReq
             tablet_client_map.insert(std::make_pair(kv.second->client_->GetEndpoint(), kv.second->client_));
         }
     }
-    for (int idx = 0; idx < table_info->table_partition_size(); idx++) {
-        for (int meta_idx = 0; meta_idx < table_info->table_partition(idx).partition_meta_size(); meta_idx++) {
-            std::string endpoint = table_info->table_partition(idx).partition_meta(meta_idx).endpoint();
-            if (!table_info->table_partition(idx).partition_meta(meta_idx).is_alive()) {
+    for (const auto& table_partition: table_info->table_partition()) {
+        for (const auto& partition_meta : table_partition.partition_meta()) {
+            const std::string& endpoint = partition_meta.endpoint();
+            if (!partition_meta.is_alive()) {
                 response->set_code(::openmldb::base::ReturnCode::kTableHasNoAliveLeaderPartition);
                 response->set_msg("partition is not alive!");
-                PDLOG(WARNING, "partition[%s][%d] is not alive!", endpoint.c_str(),
-                      table_info->table_partition(idx).pid());
+                PDLOG(WARNING, "partition[%s][%d] is not alive!", endpoint.c_str(), table_partition.pid());
                 return;
             }
             if (tablet_client_map.find(endpoint) == tablet_client_map.end()) {
@@ -8289,14 +8288,14 @@ void NameServerImpl::DeleteIndex(RpcController* controller, const DeleteIndexReq
         }
     }
     bool delete_failed = false;
-    for (int idx = 0; idx < table_info->table_partition_size(); idx++) {
-        for (int meta_idx = 0; meta_idx < table_info->table_partition(idx).partition_meta_size(); meta_idx++) {
-            std::string endpoint = table_info->table_partition(idx).partition_meta(meta_idx).endpoint();
+    for (const auto& table_partition: table_info->table_partition()) {
+        for (const auto& partition_meta : table_partition.partition_meta()) {
+            const std::string& endpoint = partition_meta.endpoint();
             std::string msg;
-            if (!tablet_client_map[endpoint]->DeleteIndex(table_info->tid(), table_info->table_partition(idx).pid(),
+            if (!tablet_client_map[endpoint]->DeleteIndex(table_info->tid(), table_partition.pid(),
                                                           request->idx_name(), &msg)) {
-                PDLOG(WARNING, "delete index failed. name %s pid %u endpoint %s msg %s", request->table_name().c_str(),
-                      table_info->table_partition(idx).pid(), endpoint.c_str(), msg.c_str());
+                PDLOG(WARNING, "delete index failed. name %s pid %u endpoint %s msg %s",
+                        request->table_name().c_str(), table_partition.pid(), endpoint.c_str(), msg.c_str());
                 delete_failed = true;
             }
         }
@@ -8524,6 +8523,13 @@ void NameServerImpl::AddIndex(RpcController* controller, const AddIndexRequest* 
         pair->CopyFrom(new_pair);
     }
     if (IsClusterMode() && !request->skip_load_data()) {
+        if (IsExistActiveOp(db, name, api::kAddIndexOP)) {
+            LOG(WARNING) << "create AddIndexOP failed. there is already a task running. db "
+                << db << " table " << name;
+            base::SetResponseStatus(ReturnCode::kOPAlreadyExists,
+                    "there is already a task running", response);
+            return;
+        }
         std::lock_guard<std::mutex> lock(mu_);
         auto status = CreateAddIndexOP(name, db, column_key_vec);
         if (!status.OK()) {
@@ -10480,6 +10486,12 @@ void NameServerImpl::DeploySQL(RpcController* controller, const DeploySQLRequest
             }
         }
     }
+    if (IsExistActiveOp(db, "", api::OPType::kDeployOP)) {
+        LOG(WARNING) << "create DeployOP failed. there is already a task running in db " << db;
+        base::SetResponseStatus(ReturnCode::kOPAlreadyExists,
+                "there is already a task running", response);
+        return;
+    }
     uint64_t op_id = 0;
     std::lock_guard<std::mutex> lock(mu_);
     auto status = CreateDeployOP(*request, &op_id);
@@ -10497,7 +10509,7 @@ base::Status NameServerImpl::CreateDeployOP(const DeploySQLRequest& request, uin
     std::string value;
     auto op_type = api::OPType::kDeployOP;
     if (CreateOPData(op_type, value, op_data, sp_info.main_table(), sp_info.db_name(), 0) < 0) {
-        return {-1, absl::StrCat("create AddIndexOP data error. deploy name ", deploy_name)};
+        return {-1, absl::StrCat("create DeployOP data error. deploy name ", deploy_name)};
     }
     auto task = CreateTask<AddMultiTableIndexTaskMeta>(op_data->GetOpId(), op_type, request.index());
     if (!task) {
@@ -10515,6 +10527,31 @@ base::Status NameServerImpl::CreateDeployOP(const DeploySQLRequest& request, uin
     PDLOG(INFO, "create DeployOP success. op id %lu deploy name %s", op_data->GetOpId(), deploy_name.c_str());
     *op_id = op_data->GetOpId();
     return {};
+}
+
+bool NameServerImpl::IsExistActiveOp(const std::string& db, const std::string& name, api::OPType op_type) {
+    std::lock_guard<std::mutex> lock(mu_);
+    for (const auto& op_list : task_vec_) {
+        if (op_list.empty()) {
+            continue;
+        }
+        for (const auto& op_data : op_list) {
+            if (op_data->op_info_.op_type() != op_type) {
+                continue;
+            }
+            if (!db.empty() && op_data->op_info_.db() != db) {
+                continue;
+            }
+            if (!name.empty() && op_data->op_info_.name() != name) {
+                continue;
+            }
+            if (op_data->op_info_.task_status() == api::TaskStatus::kInited ||
+                    op_data->op_info_.task_status() == api::TaskStatus::kDoing) {
+                return true;
+            }
+        }
+    }
+    return false;
 }
 
 }  // namespace nameserver
