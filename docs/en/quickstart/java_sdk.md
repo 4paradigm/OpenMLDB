@@ -9,12 +9,12 @@ Configure maven pom
 <dependency>
     <groupId>com.4paradigm.openmldb</groupId>
     <artifactId>openmldb-jdbc</artifactId>
-    <version>0.8.1</version>
+    <version>0.8.2</version>
 </dependency>
 <dependency>
     <groupId>com.4paradigm.openmldb</groupId>
     <artifactId>openmldb-native</artifactId>
-    <version>0.8.1</version>
+    <version>0.8.2</version>
 </dependency>
 ```
 ### Package Installation on Mac
@@ -24,15 +24,15 @@ Configure maven pom
 <dependency>
     <groupId>com.4paradigm.openmldb</groupId>
     <artifactId>openmldb-jdbc</artifactId>
-    <version>0.8.1</version>
+    <version>0.8.2</version>
 </dependency>
 <dependency>
     <groupId>com.4paradigm.openmldb</groupId>
     <artifactId>openmldb-native</artifactId>
-    <version>0.8.1-macos</version>
+    <version>0.8.2-macos</version>
 </dependency>
 ```
-Note that since `openmldb-native` contains the C++ static library compiled by OpenMLDB, by default it is a Linux's static library. On macOS, the version of the above openmldb-native needs to be changed to `0.8.1-macos`, and the version of openmldb-jdbc remains unchanged.
+Note that since `openmldb-native` contains the C++ static library compiled by OpenMLDB, by default it is a Linux's static library. On macOS, the version of the above openmldb-native needs to be changed to `0.8.2-macos`, and the version of openmldb-jdbc remains unchanged.
 
 The macOS native relase only supports macos-12. If you want use in macos-11 or macos 10.15, you should build openmldb-native from source in macos-11/macos-10.15, see [Build Java SDK](../deploy/compile.md#build-java-sdk-with-multi-processes) for details.
 

@@ -93,6 +93,9 @@ class TabletClient : public Client {
     bool Delete(uint32_t tid, uint32_t pid, const std::string& pk, const std::string& idx_name,
                 std::string& msg);  // NOLINT
 
+    base::Status Delete(uint32_t tid, uint32_t pid, const std::map<uint32_t, std::string>& index_val,
+            const std::optional<uint64_t> start_ts, const std::optional<uint64_t>& end_ts);
+
     bool Count(uint32_t tid, uint32_t pid, const std::string& pk, const std::string& idx_name, bool filter_expired_data,
                uint64_t& value, std::string& msg);  // NOLINT
 

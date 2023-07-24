@@ -24,7 +24,6 @@
 #include <vector>
 
 #include "base/endianconv.h"
-#include "base/glog_wrapper.h"
 #include "base/strings.h"
 #include "boost/lexical_cast.hpp"
 #include "proto/type.pb.h"

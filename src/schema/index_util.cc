@@ -73,7 +73,7 @@ base::Status IndexUtil::CheckIndex(const std::map<std::string, ::openmldb::commo
             }
         }
     }
-    return {};
+    return CheckUnique(index);
 }
 
 bool IndexUtil::CheckTTL(const ::openmldb::common::TTLSt& ttl) {
