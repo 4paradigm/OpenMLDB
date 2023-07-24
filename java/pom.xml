@@ -399,6 +399,8 @@
                     <generateGitPropertiesFile>true</generateGitPropertiesFile>
                     <generateGitPropertiesFilename>${project.build.outputDirectory}/git.properties</generateGitPropertiesFilename>
                     <injectAllReactorProjects>true</injectAllReactorProjects>
+                    <!-- do not fetch upstream -->
+                    <offline>true</offline>
                   </configuration>
                 </plugin>
                 <!-- site lifecycle, see https://maven.apache.org/ref/current/maven-core/lifecycles.html#site_Lifecycle -->
