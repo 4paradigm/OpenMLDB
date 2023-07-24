@@ -70,10 +70,10 @@ print(result.fetchone())
 ### 执行 Deployment
 cursor.execute("DEPLOY d1 SELECT col1 FROM t1")
 # dict style
-cursor.callproc("d1", {"col1": 1000, "col2": None, "col3": None, "col4": None, "col5": None})
+result = cursor.callproc("d1", {"col1": 1000, "col2": None, "col3": None, "col4": None, "col5": None})
 print(result.fetchall())
 # tuple style
-cursor.callproc("d1", (1001, "2023-07-20", "abc", "def", 1))
+result = cursor.callproc("d1", (1001, "2023-07-20", "abc", "def", 1))
 print(result.fetchall())
 # drop deployment before drop table
 cursor.execute("DROP DEPLOYMENT d1")
