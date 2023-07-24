@@ -42,7 +42,7 @@ pytest tests/
 pytest -so log_cli=true --log-cli-level=DEBUG tests/
 ```
 
-也可以使用module模式运行，适合做实际运行测试（但此模式下的）：
+也可以使用module模式运行，适合做实际运行测试：
 ```
 python -m diagnostic_tool.diagnose ...
 ```
