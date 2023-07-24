@@ -19,7 +19,9 @@
 #include <gflags/gflags.h>
 #include <stdio.h>
 
-#include "boost/algorithm/string.hpp"
+#include "absl/strings/ascii.h"
+#include "absl/strings/str_replace.h"
+//#include "boost/algorithm/string.hpp"
 #include "codec/fe_row_codec.h"
 #include "sdk/base.h"
 #include "sdk/sql_router.h"
@@ -58,9 +60,9 @@ void BM_RequestQuery(benchmark::State& state, hybridse::sqlcase::SqlCase& sql_ca
         std::string sql = sql_case.sql_str();
         for (size_t i = 0; i < sql_case.inputs().size(); i++) {
             std::string placeholder = "{" + std::to_string(i) + "}";
-            boost::replace_all(sql, placeholder, sql_case.inputs()[i].name_);
+            absl::StrReplaceAll(sql, {{placeholder, sql_case.inputs()[i].name_}});
         }
-        boost::to_lower(sql);
+        absl::AsciiStrToLower(sql);
         LOG(INFO) << sql;
         auto request_row = router->GetRequestRow(sql_case.db(), sql, &status);
         if (status.code != 0) {
@@ -224,9 +226,9 @@ void BM_BatchRequestQuery(benchmark::State& state, hybridse::sqlcase::SqlCase& s
         std::string sql = sql_case.sql_str();
         for (size_t i = 0; i < sql_case.inputs().size(); i++) {
             std::string placeholder = "{" + std::to_string(i) + "}";
-            boost::replace_all(sql, placeholder, sql_case.inputs()[i].name_);
+            absl::StrReplaceAll(sql, {{placeholder, sql_case.inputs()[i].name_}});
         }
-        boost::to_lower(sql);
+        absl::AsciiStrToLower(sql);
         LOG(INFO) << sql;
         auto request_row = router->GetRequestRow(sql_case.db(), sql, &status);
         if (status.code != 0) {

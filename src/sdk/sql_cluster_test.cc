@@ -20,6 +20,7 @@
 #include <string>
 #include <vector>
 
+#include "absl/strings/match.h"
 #include "absl/strings/str_cat.h"
 #include "base/glog_wrapper.h"
 #include "codec/fe_row_codec.h"
@@ -795,10 +796,10 @@ TEST_P(SQLSDKBatchRequestQueryTest, SqlSdkDistributeBatchRequestSinglePartitionT
 /* TEST_P(SQLSDKQueryTest, sql_sdk_distribute_request_single_partition_test) {
     auto sql_case = GetParam();
     LOG(INFO) << "ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
-    if (boost::contains(sql_case.mode(), "rtidb-unsupport") ||
-        boost::contains(sql_case.mode(), "rtidb-request-unsupport") ||
-        boost::contains(sql_case.mode(), "request-unsupport") ||
-        boost::contains(sql_case.mode(), "cluster-unsupport")) {
+    if (absl::StrContains(sql_case.mode(), "rtidb-unsupport") ||
+        absl::StrContains(sql_case.mode(), "rtidb-request-unsupport") ||
+        absl::StrContains(sql_case.mode(), "request-unsupport") ||
+        absl::StrContains(sql_case.mode(), "cluster-unsupport")) {
         LOG(WARNING) << "Unsupport mode: " << sql_case.mode();
         return;
     }

@@ -24,6 +24,7 @@
 #include <utility>
 #include <vector>
 
+#include "absl/strings/numbers.h"
 #include "base/ddl_parser.h"
 #include "codec/schema_codec.h"
 #include "plan/plan_api.h"
