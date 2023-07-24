@@ -16,8 +16,8 @@
 
 #include "sdk/job_table_helper.h"
 
-#include <unordered_map>
 #include <algorithm>
+#include <unordered_map>
 #include <utility>
 #include "codec/schema_codec.h"
 #include "sdk/result_set_sql.h"

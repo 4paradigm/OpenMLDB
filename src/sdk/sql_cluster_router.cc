@@ -27,6 +27,7 @@
 #include "absl/strings/ascii.h"
 #include "absl/strings/numbers.h"
 #include "absl/strings/str_cat.h"
+#include "absl/strings/str_split.h"
 #include "absl/strings/strip.h"
 #include "absl/strings/substitute.h"
 #include "absl/types/span.h"
@@ -3657,10 +3658,10 @@ hybridse::sdk::Status SQLClusterRouter::HandleLongWindows(
         std::string base_db = table_pair.begin()->first;
         std::string base_table = table_pair.begin()->second;
         std::vector<std::string> windows;
-        boost::split(windows, long_window_param, boost::is_any_of(","));
+        windows = absl::StrSplit(long_window_param, ",");
         for (auto& window : windows) {
             std::vector<std::string> window_info;
-            boost::split(window_info, window, boost::is_any_of(":"));
+            window_info = absl::StrSplit(window, ":");
 
             if (window_info.size() == 2) {
                 long_window_map[window_info[0]] = window_info[1];
