@@ -61,14 +61,7 @@ services:
         # check deployment, jobs will be checked by openmldb_tool
         curl http://127.0.0.1:9080/dbs/JD_db/deployments/demo | grep "ok" || exit -1
 
-        # udf test
-        cd /work
-        curl -SLO https://openmldb.ai/download/self_host_hadoop_config/libtest_udf.so 
-        cp libtest_udf.so /work/openmldb/udf/
-        cp libtest_udf.so /work/openmldb/taskmanager/bin/udf/
-        # TODO and move some tests to black-box test(add some user cmd), not in openmldb_tool, but openmldb_tool can get and run it?
-        # bb test has setup and run two phases, setup support onebox env and env should have internet, otherwise, you should setup manually
-        # run just sqls, no matter who run it, just run it
+        # TODO(hw): udf test
         
         cd /work
         openmldb_tool status --diff -f /work/openmldb/conf/hosts 
