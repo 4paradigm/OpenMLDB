@@ -1,4 +1,4 @@
-# RPATH '$ORIGIN' tokens are properly escaped if policy CMP0095 ON, which requires cmake >= 3.16
+# RPATH "$ORIGIN" tokens are properly escaped if policy CMP0095 ON, which requires cmake >= 3.16
 cmake_minimum_required (VERSION 3.16)
 if (POLICY CMP0068)
     cmake_policy(SET CMP0068 NEW)
@@ -147,7 +147,7 @@ if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
     # custom RPATH tag for necessary install binaries (like bin/openmldb)
     # relative to binary location so any install location works, binary is
     # by convention installed to 'bin/' directory, search to '<binary_dir>/../$LIB' and '<binary_dir>/../udf'
-    set(OPENMLDB_RPATH '$ORIGIN/../$LIB' '$ORIGIN/../udf')
+    set(OPENMLDB_RPATH "$ORIGIN/../$LIB" "$ORIGIN/../udf")
 elseif (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
     set(OS_LIB
         ${CMAKE_THREAD_LIBS_INIT}
@@ -161,7 +161,7 @@ elseif (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
         "-Wl,-U,_ProfilerStart"
         "-Wl,-U,_ProfilerStop")
     set(BRPC_LIBS ${BRPC_LIBRARY} ${Protobuf_LIBRARIES} ${GLOG_LIBRARY} ${GFLAGS_LIBRARY} ${OPENSSL_LIBRARIES} ${LEVELDB_LIBRARY} ${Z_LIBRARY} ${SNAPPY_LIBRARY} dl pthread ${OS_LIB})
-    set(OPENMLDB_RPATH '@loader_path/../lib' '@loader_path/../udf')
+    set(OPENMLDB_RPATH "@loader_path/../lib" "@loader_path/../udf")
 endif ()
 
 if (SANITIZER_ENABLE)

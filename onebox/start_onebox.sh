@@ -91,7 +91,7 @@ cluster_start_component() {
     fi
 
     # just need extra_opts to split
-    "$OPENMLDB_BIN" \
+    LD_DEBUG=libs "$OPENMLDB_BIN" \
         --role="$role" \
         --endpoint="$endpoint" \
         --openmldb_log_dir="$log_dir" \
@@ -144,7 +144,7 @@ start_taskmanager() {
     cp -v "$BASE/build/udf/"*.so udf/
     cp -v "$BASE/onebox/taskmanager.properties" conf/
 
-    LB_DEBUG=libs ./bin/taskmanager.sh > "$WORKSPACE/logs/taskmanager.log" 2>&1 &
+    LD_DEBUG=libs ./bin/taskmanager.sh > "$WORKSPACE/logs/taskmanager.log" 2>&1 &
     popd
 }
 
@@ -163,7 +163,7 @@ start_standalone() {
     mkdir -p "$WORKSPACE/logs/standalone-tb"
     mkdir -p "$WORKSPACE/logs/standalone-ns"
 
-    ./build/bin/openmldb --db_root_path="$SA_BINLOG" \
+    LD_DEBUG=libs ./build/bin/openmldb --db_root_path="$SA_BINLOG" \
         --recycle_bin_root_path="$SA_RECYCLE" \
         --openmldb_log_dir="$WORKSPACE/logs/standalone-tb" \
         --endpoint="$SA_TABLET" --role=tablet \
@@ -171,7 +171,7 @@ start_standalone() {
     sleep 2
 
     # start ns
-    ./build/bin/openmldb --endpoint="$SA_NS" --role=nameserver \
+    LD_DEBUG=libs ./build/bin/openmldb --endpoint="$SA_NS" --role=nameserver \
         --tablet="$SA_TABLET" \
         --openmldb_log_dir="$WORKSPACE/logs/standalone-ns" \
         --tablet_offline_check_interval=1 --tablet_heartbeat_timeout=1 >"$WORKSPACE/sa-ns.log" 2>&1 &

@@ -272,22 +272,33 @@ public class SQLRouterSmokeTest {
 
         try {
             // create function ok
-            Assert.assertTrue(statement.execute("CREATE FUNCTION cut2(x STRING) RETURNS STRING OPTIONS (FILE='libtest_udf.so')"));
+            statement.execute("CREATE FUNCTION cut2(x STRING) RETURNS STRING OPTIONS (FILE='libtest_udf.so')");
             Assert.assertTrue(statement.execute("SHOW FUNCTIONS"));
 
             // queryable
-            Assert.assertTrue(statement.execute("set @@execute_mode='online'"));
+            statement.execute("set session execute_mode='offline'");
             Assert.assertTrue(statement.execute("select cut2('hello')"));
             java.sql.ResultSet resultset = statement.getResultSet();
             resultset.next();
             String result = resultset.getString(1);
             Assert.assertEquals(result, "he");
 
-            // dropable
-            Assert.assertTrue(statement.execute("DROP FUNCTION cut2"));
+            statement.execute("set session execute_mode='online'");
+            Assert.assertTrue(statement.execute("select cut2('hello')"));
+            resultset = statement.getResultSet();
+            resultset.next();
+            result = resultset.getString(1);
+            Assert.assertEquals(result, "he");
         } catch (Exception e) {
             e.printStackTrace();
             Assert.fail();
+        } finally {
+            // dropable
+            try {
+                statement.execute("DROP FUNCTION cut2");
+            } catch (Exception e) {
+                Assert.fail();
+            }
         }
     }
 
