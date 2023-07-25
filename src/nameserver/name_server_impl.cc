@@ -8523,6 +8523,7 @@ void NameServerImpl::AddIndex(RpcController* controller, const AddIndexRequest* 
         pair->CopyFrom(new_pair);
     }
     if (IsClusterMode() && !request->skip_load_data()) {
+        std::lock_guard<std::mutex> lock(mu_);
         if (IsExistActiveOp(db, name, api::kAddIndexOP)) {
             LOG(WARNING) << "create AddIndexOP failed. there is already a task running. db "
                 << db << " table " << name;
@@ -8530,7 +8531,6 @@ void NameServerImpl::AddIndex(RpcController* controller, const AddIndexRequest* 
                     "there is already a task running", response);
             return;
         }
-        std::lock_guard<std::mutex> lock(mu_);
         auto status = CreateAddIndexOP(name, db, column_key_vec);
         if (!status.OK()) {
             LOG(WARNING) << "create AddIndexOP failed, table " << name << " msg " << status.GetMsg();
@@ -10486,6 +10486,7 @@ void NameServerImpl::DeploySQL(RpcController* controller, const DeploySQLRequest
             }
         }
     }
+    std::lock_guard<std::mutex> lock(mu_);
     if (IsExistActiveOp(db, "", api::OPType::kDeployOP)) {
         LOG(WARNING) << "create DeployOP failed. there is already a task running in db " << db;
         base::SetResponseStatus(ReturnCode::kOPAlreadyExists,
@@ -10493,7 +10494,6 @@ void NameServerImpl::DeploySQL(RpcController* controller, const DeploySQLRequest
         return;
     }
     uint64_t op_id = 0;
-    std::lock_guard<std::mutex> lock(mu_);
     auto status = CreateDeployOP(*request, &op_id);
     if (!status.OK()) {
         PDLOG(WARNING, "%s", status.GetMsg().c_str());
@@ -10530,7 +10530,6 @@ base::Status NameServerImpl::CreateDeployOP(const DeploySQLRequest& request, uin
 }
 
 bool NameServerImpl::IsExistActiveOp(const std::string& db, const std::string& name, api::OPType op_type) {
-    std::lock_guard<std::mutex> lock(mu_);
     for (const auto& op_list : task_vec_) {
         if (op_list.empty()) {
             continue;
