@@ -1,6 +1,6 @@
 # CREATE INDEX
 
-The `CREATE INDEX` statement is used to create a new index on existing table. Running `CREATE INDEX` will initiates an asynchronous job, you can check the status of the job by executing `SHOW JOBS FROM NAMESERVER`.
+The `CREATE INDEX` statement is used to create a new index on existing table. Running `CREATE INDEX` will initiates an asynchronous job, and you can check the status of the job by executing `SHOW JOBS FROM NAMESERVER`.
 
 ## Syntax
 
