@@ -15,6 +15,7 @@
 # limitations under the License.
 
 set -e
+shopt -s nullglob
 
 cd "$(dirname "$0")"
 

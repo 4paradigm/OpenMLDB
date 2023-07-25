@@ -33,6 +33,7 @@ env:
   NPROC: 2 # default Parallel build number for GitHub's Linux runner
   EXAMPLES_ENABLE: OFF # turn off hybridse's example code
   HYBRIDSE_TESTING_ENABLE: OFF # turn off hybridse's test code
+  SPARK_HOME: /tmp/spark/
 
 jobs:
   java-sdk:
@@ -43,7 +44,6 @@ jobs:
       SQL_JAVASDK_ENABLE: ON
       OPENMLDB_BUILD_TARGET: "cp_native_so openmldb test_udf"
       MAVEN_OPTS: -Duser.home=/github/home
-      SPARK_HOME: /tmp/spark/
     steps:
       - uses: actions/checkout@v2
 
@@ -59,7 +59,7 @@ jobs:
       - name: Import GPG key
         id: import_gpg
         if: github.event_name == 'push'
-        uses: crazy-max/ghaction-import-gpg@v4
+        uses: crazy-max/ghaction-import-gpg@v5
         with:
           gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
 
@@ -144,13 +144,12 @@ jobs:
 
       - name: stop services
         run: |
-          cd onebox && ./stop_all.sh && cd - || exit
+          ./onebox/stop_all.sh
           sh steps/ut_zookeeper.sh stop
 
   java-sdk-mac:
     # mac job for java sdk. steps are almost same with job 'java-sdk'
     # except mvn deploy won't target all modules, just hybridse-native & openmldb-native
-    # the job only run on tag push or manual workflow dispatch due to no test runs
     runs-on: macos-latest
     needs:
       - java-sdk
@@ -195,6 +194,7 @@ jobs:
 
       - name: Import GPG key
         id: import_gpg
+        if: github.event_name == 'push'
         uses: crazy-max/ghaction-import-gpg@v5
         with:
           gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
@@ -203,6 +203,30 @@ jobs:
         run: |
           make build
 
+      - name: build taskmanager
+        working-directory: java
+        run: |
+          ./mvnw package --batch-mode -DskipTests=true -Dscalatest.skip=true -Dwagon.skip=true -Dmaven.test.skip=true
+
+      # ======================================== #
+      #  MacOS Tests
+      # ======================================== #
+      - name: start services
+        run: |
+          sh steps/ut_zookeeper.sh start
+          sh steps/download_openmldb_spark.sh $SPARK_HOME
+          ./onebox/start_onebox.sh
+          ./onebox/start_onebox.sh standalone
+          ./onebox/start_onebox.sh taskmanager
+
+      - name: run java modules smoke test
+        working-directory: java
+        run: |
+          ./mvnw --batch-mode test
+
+      # ======================================== #
+      # Deploy java modules
+      # ======================================== #
       - name: mvn deploy
         working-directory: java
         run: |

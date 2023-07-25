@@ -15,7 +15,6 @@
 # limitations under the License.
 
 set -eE
-set -x
 
 cd "$(dirname "$0")/../"
 BASE=$(pwd)
