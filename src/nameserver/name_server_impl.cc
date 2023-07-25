@@ -8270,7 +8270,7 @@ void NameServerImpl::DeleteIndex(RpcController* controller, const DeleteIndexReq
             tablet_client_map.insert(std::make_pair(kv.second->client_->GetEndpoint(), kv.second->client_));
         }
     }
-    for (const auto& table_partition: table_info->table_partition()) {
+    for (const auto& table_partition : table_info->table_partition()) {
         for (const auto& partition_meta : table_partition.partition_meta()) {
             const std::string& endpoint = partition_meta.endpoint();
             if (!partition_meta.is_alive()) {
@@ -8288,7 +8288,7 @@ void NameServerImpl::DeleteIndex(RpcController* controller, const DeleteIndexReq
         }
     }
     bool delete_failed = false;
-    for (const auto& table_partition: table_info->table_partition()) {
+    for (const auto& table_partition : table_info->table_partition()) {
         for (const auto& partition_meta : table_partition.partition_meta()) {
             const std::string& endpoint = partition_meta.endpoint();
             std::string msg;
