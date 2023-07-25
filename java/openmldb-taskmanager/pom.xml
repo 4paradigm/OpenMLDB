@@ -340,6 +340,7 @@
                     <dateFormat>yyyy.MM.dd HH:mm:ss</dateFormat>
                     <verbose>true</verbose>
                     <generateGitPropertiesFile>true</generateGitPropertiesFile>
+                    <offline>true</offline>
                 </configuration>
             </plugin>
         </plugins>

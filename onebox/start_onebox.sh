@@ -35,9 +35,20 @@ mkdir -p "$(dirname "$OPENMLDB_BIN")/../udf"
 # the subdirectory can be set through the environment variable ONEBOX_WORKDIR
 WORKSPACE=${ONEBOX_WORKDIR:-onebox/workspace}
 mkdir -p "$WORKSPACE"
+mkdir -p "$WORKSPACE/run/"
 WORKSPACE=$(cd "$WORKSPACE" && pwd)
 
 IP=127.0.0.1
+
+canonical_file_name() {
+    local var
+    var=$1
+    while [ $# -gt 1 ]; do
+        shift
+        var="$var-${1//:/-}"
+    done
+    echo "$var"
+}
 
 # Function: cluster_start_component
 #   start a openmldb component for cluster
@@ -90,6 +101,9 @@ cluster_start_component() {
         return 3
     fi
 
+    local canon_name
+    canon_name="$(canonical_file_name "$role" "$endpoint").log"
+
     # just need extra_opts to split
     LD_DEBUG=libs "$OPENMLDB_BIN" \
         --role="$role" \
@@ -97,7 +111,9 @@ cluster_start_component() {
         --openmldb_log_dir="$log_dir" \
         --zk_cluster="$zk_end" \
         --zk_root_path="$zk_path" \
-        "${extra_opts[@]}"
+        "${extra_opts[@]}" > "$WORKSPACE/$canon_name.log" 2>&1 &
+
+    echo $! > "$WORKSPACE/run/$canon_name.pid"
 }
 
 ZK_CLUSTER=$IP:6181
@@ -113,31 +129,35 @@ TABLET2=$IP:9522
 start_cluster() {
     # first start zookeeper
 
-    cluster_start_component tablet "$TABLET0" "$WORKSPACE/logs/tablet0" "$ZK_CLUSTER" "/onebox" "$WORKSPACE/tablet0-binlogs" "$WORKSPACE/recycle_bin0" >"$WORKSPACE/tablet0.log" 2>&1 &
+    cluster_start_component tablet "$TABLET0" "$WORKSPACE/logs/tablet0" "$ZK_CLUSTER" "/onebox" "$WORKSPACE/tablet0-binlogs" "$WORKSPACE/recycle_bin0"
     sleep 2
 
-    cluster_start_component tablet "$TABLET1" "$WORKSPACE/logs/tablet1" "$ZK_CLUSTER" "/onebox" "$WORKSPACE/tablet1-binlogs" "$WORKSPACE/recycle_bin1" >"$WORKSPACE/tablet1.log" 2>&1 &
+    cluster_start_component tablet "$TABLET1" "$WORKSPACE/logs/tablet1" "$ZK_CLUSTER" "/onebox" "$WORKSPACE/tablet1-binlogs" "$WORKSPACE/recycle_bin1"
     sleep 2
 
-    cluster_start_component tablet "$TABLET2" "$WORKSPACE/logs/tablet2" "$ZK_CLUSTER" "/onebox" "$WORKSPACE/tablet2-binlogs" "$WORKSPACE/recycle_bin2" >"$WORKSPACE/tablet1.log" 2>&1 &
+    cluster_start_component tablet "$TABLET2" "$WORKSPACE/logs/tablet2" "$ZK_CLUSTER" "/onebox" "$WORKSPACE/tablet2-binlogs" "$WORKSPACE/recycle_bin2"
     sleep 2
 
-    cluster_start_component nameserver "$NS0" "$WORKSPACE/logs/ns0" "$ZK_CLUSTER" "/onebox" >"$WORKSPACE/ns0.log" 2>&1 &
+    cluster_start_component nameserver "$NS0" "$WORKSPACE/logs/ns0" "$ZK_CLUSTER" "/onebox"
     sleep 2
 
-    cluster_start_component nameserver "$NS1" "$WORKSPACE/logs/ns1" "$ZK_CLUSTER" "/onebox" >"$WORKSPACE/ns1.log" 2>&1 &
+    cluster_start_component nameserver "$NS1" "$WORKSPACE/logs/ns1" "$ZK_CLUSTER" "/onebox"
     sleep 2
 
-    cluster_start_component nameserver "$NS2" "$WORKSPACE/logs/ns2" "$ZK_CLUSTER" "/onebox" >"$WORKSPACE/ns2.log" 2>&1 &
+    cluster_start_component nameserver "$NS2" "$WORKSPACE/logs/ns2" "$ZK_CLUSTER" "/onebox"
     sleep 2
 
     echo "cluster start ok"
 }
 
+TASKMANGER_DIST=java/openmldb-taskmanager/target/openmldb-taskmanager-binary/
 start_taskmanager() {
-    rm -rf onebox/taskmanager
-    cp -r java/openmldb-taskmanager/target/openmldb-taskmanager-binary/ onebox/taskmanager
-    pushd onebox/taskmanager/
+    if [ ! -d "$TASKMANGER_DIST" ]; then
+        echo "taskmanager dist directory $TASKMANGER_DIST not built, run './mvnw package --batch-mode -DskipTests=true -Dscalatest.skip=true -Dwagon.skip=true -Dmaven.test.skip=true' in java directory first"
+        exit 1
+    fi
+
+    pushd "$TASKMANGER_DIST"
     chmod +x bin/*.sh
     # NOTE: taskmanager find shared libraraies in "<cwd>/udf", where starts taskmanager matters
     mkdir -p udf/
@@ -145,6 +165,7 @@ start_taskmanager() {
     cp -v "$BASE/onebox/taskmanager.properties" conf/
 
     LD_DEBUG=libs ./bin/taskmanager.sh > "$WORKSPACE/logs/taskmanager.log" 2>&1 &
+    echo $! > "$WORKSPACE/run/taskmanager.pid"
     popd
 }
 
@@ -168,6 +189,7 @@ start_standalone() {
         --openmldb_log_dir="$WORKSPACE/logs/standalone-tb" \
         --endpoint="$SA_TABLET" --role=tablet \
         --binlog_notify_on_put=true >"$WORKSPACE/sa-tablet.log" 2>&1 &
+    echo $! > "$WORKSPACE/run/$(canonical_file_name sa-tablet).pid"
     sleep 2
 
     # start ns
@@ -175,6 +197,7 @@ start_standalone() {
         --tablet="$SA_TABLET" \
         --openmldb_log_dir="$WORKSPACE/logs/standalone-ns" \
         --tablet_offline_check_interval=1 --tablet_heartbeat_timeout=1 >"$WORKSPACE/sa-ns.log" 2>&1 &
+    echo $! > "$WORKSPACE/run/$(canonical_file_name sa-ns).pid"
     sleep 2
     echo "standalone start ok"
 }

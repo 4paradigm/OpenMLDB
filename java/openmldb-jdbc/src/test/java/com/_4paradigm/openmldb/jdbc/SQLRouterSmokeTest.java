@@ -288,7 +288,6 @@ public class SQLRouterSmokeTest {
             }
 
             {
-                // FIXME: execute returns do not actually indicate execute success/failure
                 statement.execute("set session execute_mode='online'");
                 Assert.assertTrue(statement.execute("select cut2('hello')"));
                 java.sql.ResultSet resultset = statement.getResultSet();
