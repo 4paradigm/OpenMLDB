@@ -1,7 +1,6 @@
 # CREATE INDEX
 
-The `CREATE INDEX` statement is used to create a new index on existing table. If there is data in the table, data will be loaded asynchronously. 
-The job status can be checked through the `showopstatus` command of `ns_client`, see [Operations in CLI](../../../maintain/cli.md#showopstatus).
+The `CREATE INDEX` statement is used to create a new index on existing table. Running `CREATE INDEX` will initiates an asynchronous job, you can check the status of the job by executing `SHOW JOBS FROM NAMESERVER`.
 
 ## Syntax
 
