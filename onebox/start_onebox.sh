@@ -102,7 +102,7 @@ cluster_start_component() {
     fi
 
     local canon_name
-    canon_name="$(canonical_file_name "$role" "$endpoint").log"
+    canon_name="$(canonical_file_name "$role" "$endpoint")"
 
     # just need extra_opts to split
     LD_DEBUG=libs "$OPENMLDB_BIN" \
