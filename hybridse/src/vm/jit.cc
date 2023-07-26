@@ -192,7 +192,7 @@ RawPtrHandle HybridSeLlvmJitWrapper::FindFunction(const std::string& funcname) {
     ::llvm::Expected<::llvm::JITEvaluatedSymbol> symbol(jit_->lookup(funcname));
     ::llvm::Error e = symbol.takeError();
     if (e) {
-        LOG(WARNING) << "fail to resolve fn address of" << funcname << ": "
+        LOG(WARNING) << "fail to resolve fn address of " << funcname << ": "
                      << LlvmToString(e);
         return 0;
     }

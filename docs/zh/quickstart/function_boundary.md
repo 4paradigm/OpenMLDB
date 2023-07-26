@@ -52,6 +52,16 @@ spark.default.conf=spark.port.maxRetries=32;foo=bar
 
 ## DML 边界
 
+### 离线信息
+
+表的离线信息中存在两种path，一个是`offline_path`，一个是`symbolic_paths`。`offline_path`是离线数据的实际存储路径，`symbolic_paths`是离线数据的软链接路径。两种path都可以通过`LOAD DATA`来修改，`symbolic_paths`还可以通过`ALTER`语句修改。
+
+`offline_path`和`symbolic_paths`的区别在于，`offline_path`是OpenMLDB集群所拥有的路径，如果实施硬拷贝，数据将写入此路径，而`symbolic_paths`是OpenMLDB集群外的路径，软拷贝将会在这个信息中增添一个路径。离线查询时，两个路径的数据都会被加载。两个路径使用同样的格式和读选项，不支持不同配置的路径。
+
+因此，如果目前离线中存在`offline_path`，那么`LOAD DATA`只能修改`symbolic_paths`，如果目前离线中存在`symbolic_paths`，那么`LOAD DATA`可以修改`offline_path`和`symbolic_paths`。
+
+`errorifexists`当表存在离线信息时就会报错。存在软链接时硬拷贝，或存在硬拷贝时软拷贝，都会报错。
+
 ### LOAD DATA
 
 `LOAD DATA` 无论导入到在线或离线，都是离线 job。源数据的格式规则，离线在线没有区别。
@@ -144,3 +154,14 @@ OpenMLDB CLI 中在线模式下执行 SQL，均为在线预览模式。在线预
 
 两种模式虽然不同，但使用的是相同的 SQL 语句，且计算结果一致。但由于离线和在线使用两套执行引擎，功能尚未完全对齐，因此离线可执行的 SQL 不一定可以部署上线（在线请求模式可执行的 SQL 是离线可执行 SQL 的子集）。在实际开发中，需要在完成离线 SQL 开发后 `DEPLOY`，来测试 SQL 是否可上线。
 
+## 离线命令同步模式
+
+所有离线命令都可以通过`set @@sync_job=true;`来设置同步模式，同步模式下，命令执行完毕后才会返回，否则会立即返回离线Job的Job info，需要通过`SHOW JOB <id>`来查询Job的执行状态。而同步模式下的返回值会根据命令的不同而不同：
+
+- DML，例如`LOAD DATA`等，以及DQL `SELECT INTO`，返回的是Job Info的ResultSet。它们和异步模式的结果没有区别，只是返回时间的区别，Job Info的ResultSet也可解析。
+
+- DQL的普通`SELECT`，在异步模式中返回Job Info，同步模式中则是返回查询结果，但目前支持不完善，详细解释见[离线同步模式-select](../openmldb_sql/dql/SELECT_STATEMENT.md#离线同步模式-select)。其结果为csv格式，但不保证数据完整性，不建议将其作为可靠的查询结果使用。
+    - CLI是交互模式，所以将结果直接打印。
+    - SDK中，返回的是一行一列的ResultSet，将整个查询结果作为一个字符串返回。所以，不建议SDK使用同步模式查询，并处理其结果。
+
+同步模式涉及超时问题，详情见[调整配置](../../openmldb_sql/ddl/SET_STATEMENT.md#离线命令配置详情)。

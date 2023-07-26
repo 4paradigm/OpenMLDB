@@ -23,6 +23,7 @@ title: udfs/udfs.h
 | **[avg_cate](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-avg-cate)**()| <br>Compute average of values grouped by category key and output string. Each group is represented as 'K:V' and separated by comma in outputs and are sorted by key in ascend order. |
 | **[avg_cate_where](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-avg-cate-where)**()| <br>Compute average of values matching specified condition grouped by category key and output string. Each group is represented as 'K:V', separated by comma, and sorted by key in ascend order. |
 | **[avg_where](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-avg-where)**()| <br>Compute average of values match specified condition. |
+| **[bigint](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-bigint)**()| |
 | **[bool](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-bool)**()| <br>Cast string expression to bool. |
 | **[ceil](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-ceil)**()| <br>Return the smallest integer value not less than the expr. |
 | **[ceiling](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-ceiling)**()| |
@@ -64,6 +65,7 @@ title: udfs/udfs.h
 | **[ifnull](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-ifnull)**()| |
 | **[ilike_match](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-ilike-match)**()| <br>pattern match same as ILIKE predicate |
 | **[inc](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-inc)**()| <br>Return expression + 1. |
+| **[int](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-int)**()| |
 | **[int16](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-int16)**()| <br>Cast string expression to int16. |
 | **[int32](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-int32)**()| <br>Cast string expression to int32. |
 | **[int64](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-int64)**()| <br>Cast string expression to int64. |
@@ -109,6 +111,7 @@ title: udfs/udfs.h
 | **[second](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-second)**()| <br>Return the second for a timestamp. |
 | **[sin](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-sin)**()| <br>Return the sine of expr. |
 | **[size](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-size)**()| <br>Get the size of a List (e.g., result of split) |
+| **[smallint](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-smallint)**()| |
 | **[split](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-split)**()| <br>Split string to list by delimeter. Null values are skipped. |
 | **[split_array](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-split-array)**()| <br>Split string to array of string by delimeter. |
 | **[split_by_key](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-split-by-key)**()| <br>Split string by delimeter and split each segment as kv pair, then add each key to output list. Null or illegal segments are skipped. |
@@ -169,9 +172,10 @@ Types in documents here may a little different from real types in OpenMLDB SQL, 
 
 | Type literal | Same as any of those types in OpenMLDB SQL |
 | ---------    | --------------------------------------     |
-| number       | `int16, int32, int64, float, double`  |
-| any          | `bool, int16, int32, int64, float, double, string, timestamp, date` |
-| list<number> | `list<int16>, list<int32>, list<int64>, list<float>, list<double>` |
+| `number`       | `int16, int32, int64, float, double`  |
+| `any`          | `bool, int16, int32, int64, float, double, string, timestamp, date` |
+| `list<number>` | `list<int16>, list<int32>, list<int64>, list<float>, list<double>` |
+| `list<any>`    | `list<bool>, list<int16>, list<int32>, list<int64>, list<float>, list<double>, list<string>, list<timestamp>, list<date>` |
 
 ## Functions
 
@@ -648,6 +652,17 @@ SELECT avg_where(value, value > 2) OVER w;
 
 * [`list<number>`, `list<bool>`] 
 
+### function bigint
+
+```cpp
+bigint()
+```
+
+**Description**:
+
+
+alias to int64 
+
 ### function bool
 
 ```cpp
@@ -947,12 +962,8 @@ SELECT count(value) OVER w;
 
 **Supported Types**:
 
-* [`list<bool>`]
-* [`list<date>`]
-* [`list<number>`]
-* [`list<row>`]
-* [`list<string>`]
-* [`list<timestamp>`] 
+* [`list<any>`]
+* [`list<row>`] 
 
 ### function count_cate
 
@@ -991,36 +1002,12 @@ SELECT count_cate(value, catagory) OVER w;
 
 **Supported Types**:
 
-* [`list<bool>`, `list<date>`]
-* [`list<bool>`, `list<int16>`]
-* [`list<bool>`, `list<int32>`]
-* [`list<bool>`, `list<int64>`]
-* [`list<bool>`, `list<string>`]
-* [`list<bool>`, `list<timestamp>`]
-* [`list<date>`, `list<date>`]
-* [`list<date>`, `list<int16>`]
-* [`list<date>`, `list<int32>`]
-* [`list<date>`, `list<int64>`]
-* [`list<date>`, `list<string>`]
-* [`list<date>`, `list<timestamp>`]
-* [`list<number>`, `list<date>`]
-* [`list<number>`, `list<int16>`]
-* [`list<number>`, `list<int32>`]
-* [`list<number>`, `list<int64>`]
-* [`list<number>`, `list<string>`]
-* [`list<number>`, `list<timestamp>`]
-* [`list<string>`, `list<date>`]
-* [`list<string>`, `list<int16>`]
-* [`list<string>`, `list<int32>`]
-* [`list<string>`, `list<int64>`]
-* [`list<string>`, `list<string>`]
-* [`list<string>`, `list<timestamp>`]
-* [`list<timestamp>`, `list<date>`]
-* [`list<timestamp>`, `list<int16>`]
-* [`list<timestamp>`, `list<int32>`]
-* [`list<timestamp>`, `list<int64>`]
-* [`list<timestamp>`, `list<string>`]
-* [`list<timestamp>`, `list<timestamp>`] 
+* [`list<any>`, `list<date>`]
+* [`list<any>`, `list<int16>`]
+* [`list<any>`, `list<int32>`]
+* [`list<any>`, `list<int64>`]
+* [`list<any>`, `list<string>`]
+* [`list<any>`, `list<timestamp>`] 
 
 ### function count_cate_where
 
@@ -1060,36 +1047,12 @@ SELECT count_cate_where(value, condition, category) OVER w;
 
 **Supported Types**:
 
-* [`list<bool>`, `list<bool>`, `list<date>`]
-* [`list<bool>`, `list<bool>`, `list<int16>`]
-* [`list<bool>`, `list<bool>`, `list<int32>`]
-* [`list<bool>`, `list<bool>`, `list<int64>`]
-* [`list<bool>`, `list<bool>`, `list<string>`]
-* [`list<bool>`, `list<bool>`, `list<timestamp>`]
-* [`list<date>`, `list<bool>`, `list<date>`]
-* [`list<date>`, `list<bool>`, `list<int16>`]
-* [`list<date>`, `list<bool>`, `list<int32>`]
-* [`list<date>`, `list<bool>`, `list<int64>`]
-* [`list<date>`, `list<bool>`, `list<string>`]
-* [`list<date>`, `list<bool>`, `list<timestamp>`]
-* [`list<number>`, `list<bool>`, `list<date>`]
-* [`list<number>`, `list<bool>`, `list<int16>`]
-* [`list<number>`, `list<bool>`, `list<int32>`]
-* [`list<number>`, `list<bool>`, `list<int64>`]
-* [`list<number>`, `list<bool>`, `list<string>`]
-* [`list<number>`, `list<bool>`, `list<timestamp>`]
-* [`list<string>`, `list<bool>`, `list<date>`]
-* [`list<string>`, `list<bool>`, `list<int16>`]
-* [`list<string>`, `list<bool>`, `list<int32>`]
-* [`list<string>`, `list<bool>`, `list<int64>`]
-* [`list<string>`, `list<bool>`, `list<string>`]
-* [`list<string>`, `list<bool>`, `list<timestamp>`]
-* [`list<timestamp>`, `list<bool>`, `list<date>`]
-* [`list<timestamp>`, `list<bool>`, `list<int16>`]
-* [`list<timestamp>`, `list<bool>`, `list<int32>`]
-* [`list<timestamp>`, `list<bool>`, `list<int64>`]
-* [`list<timestamp>`, `list<bool>`, `list<string>`]
-* [`list<timestamp>`, `list<bool>`, `list<timestamp>`] 
+* [`list<any>`, `list<bool>`, `list<date>`]
+* [`list<any>`, `list<bool>`, `list<int16>`]
+* [`list<any>`, `list<bool>`, `list<int32>`]
+* [`list<any>`, `list<bool>`, `list<int64>`]
+* [`list<any>`, `list<bool>`, `list<string>`]
+* [`list<any>`, `list<bool>`, `list<timestamp>`] 
 
 ### function count_where
 
@@ -1133,12 +1096,8 @@ SELECT count_where(value, value > 2) OVER w;
 
 **Supported Types**:
 
-* [`list<bool>`, `list<bool>`]
-* [`list<date>`, `list<bool>`]
-* [`list<number>`, `list<bool>`]
-* [`list<row>`, `list<bool>`]
-* [`list<string>`, `list<bool>`]
-* [`list<timestamp>`, `list<bool>`] 
+* [`list<any>`, `list<bool>`]
+* [`list<row>`, `list<bool>`] 
 
 ### function date
 
@@ -1426,11 +1385,7 @@ SELECT distinct_count(value) OVER w;
 
 **Supported Types**:
 
-* [`list<bool>`]
-* [`list<date>`]
-* [`list<number>`]
-* [`list<string>`]
-* [`list<timestamp>`] 
+* [`list<any>`] 
 
 ### function double
 
@@ -1578,11 +1533,7 @@ select entropy(col1) from t1
 
 **Supported Types**:
 
-* [`list<bool>`]
-* [`list<date>`]
-* [`list<number>`]
-* [`list<string>`]
-* [`list<timestamp>`] 
+* [`list<any>`] 
 
 ### function ew_avg
 
@@ -1992,6 +1943,17 @@ select inc(1);
 
 * [`number`] 
 
+### function int
+
+```cpp
+int()
+```
+
+**Description**:
+
+
+alias to int32 
+
 ### function int16
 
 ```cpp
@@ -2002,9 +1964,17 @@ int16()
 
 Cast string expression to int16. 
 
+**Parameters**: 
+
+  * **str** Input string, refer int64 for supported format
+
+
 **Since**:
 0.1.0
 
+
+
+Returns NULL if string is invalid or represented number out of range of output type.
 
 Example:
 
@@ -2029,9 +1999,17 @@ int32()
 
 Cast string expression to int32. 
 
+**Parameters**: 
+
+  * **str** Input string, refer int64 for supported format
+
+
 **Since**:
 0.1.0
 
+
+
+Returns NULL if string is invalid or represented number out of range of output type.
 
 Example:
 
@@ -2056,9 +2034,28 @@ int64()
 
 Cast string expression to int64. 
 
+**Parameters**: 
+
+  * **str** Input string
+
+
 **Since**:
 0.1.0
 
+
+
+Returns NULL if string is invalid or represented number out of range of output type.
+
+Valid string input can be represented as the regexp 
+
+```cpp
+\s*(\+|-)?(0[xX])?[0-9a-fA-F]+\s*
+```
+
+
+
+* string is parsed unsigned, use minus(`-`) or plus(`+`) indicate signs
+* default base of interpreted integer value is 10, and 16 if string starts with `0x` or `0X`
 
 Example:
 
@@ -2198,11 +2195,7 @@ SELECT at(c1, 1) over w as co from t1 window w as(partition by c2 order by c1 ro
 
 **Supported Types**:
 
-* [`list<bool>`, `int64`]
-* [`list<date>`, `int64`]
-* [`list<number>`, `int64`]
-* [`list<string>`, `int64`]
-* [`list<timestamp>`, `int64`] 
+* [`list<any>`, `int64`] 
 
 ### function last_day
 
@@ -3097,21 +3090,9 @@ select col1, cond, gp, nth_value_where(col1, 2, cond) over (partition by gp orde
 
 **Supported Types**:
 
-* [`list<bool>`, `list<int16>`, `list<bool>`]
-* [`list<bool>`, `list<int32>`, `list<bool>`]
-* [`list<bool>`, `list<int64>`, `list<bool>`]
-* [`list<date>`, `list<int16>`, `list<bool>`]
-* [`list<date>`, `list<int32>`, `list<bool>`]
-* [`list<date>`, `list<int64>`, `list<bool>`]
-* [`list<number>`, `list<int16>`, `list<bool>`]
-* [`list<number>`, `list<int32>`, `list<bool>`]
-* [`list<number>`, `list<int64>`, `list<bool>`]
-* [`list<string>`, `list<int16>`, `list<bool>`]
-* [`list<string>`, `list<int32>`, `list<bool>`]
-* [`list<string>`, `list<int64>`, `list<bool>`]
-* [`list<timestamp>`, `list<int16>`, `list<bool>`]
-* [`list<timestamp>`, `list<int32>`, `list<bool>`]
-* [`list<timestamp>`, `list<int64>`, `list<bool>`] 
+* [`list<any>`, `list<int16>`, `list<bool>`]
+* [`list<any>`, `list<int32>`, `list<bool>`]
+* [`list<any>`, `list<int64>`, `list<bool>`] 
 
 ### function nvl
 
@@ -3523,6 +3504,17 @@ select size(split("a b c", " "));
 **Supported Types**:
 
 * [`list<string>`] 
+
+### function smallint
+
+```cpp
+smallint()
+```
+
+**Description**:
+
+
+alias to int16 
 
 ### function split
 
@@ -4352,66 +4344,18 @@ OVER w;
 
 **Supported Types**:
 
-* [`list<bool>`, `list<bool>`, `list<date>`, `list<int32>`]
-* [`list<bool>`, `list<bool>`, `list<date>`, `list<int64>`]
-* [`list<bool>`, `list<bool>`, `list<int16>`, `list<int32>`]
-* [`list<bool>`, `list<bool>`, `list<int16>`, `list<int64>`]
-* [`list<bool>`, `list<bool>`, `list<int32>`, `list<int32>`]
-* [`list<bool>`, `list<bool>`, `list<int32>`, `list<int64>`]
-* [`list<bool>`, `list<bool>`, `list<int64>`, `list<int32>`]
-* [`list<bool>`, `list<bool>`, `list<int64>`, `list<int64>`]
-* [`list<bool>`, `list<bool>`, `list<string>`, `list<int32>`]
-* [`list<bool>`, `list<bool>`, `list<string>`, `list<int64>`]
-* [`list<bool>`, `list<bool>`, `list<timestamp>`, `list<int32>`]
-* [`list<bool>`, `list<bool>`, `list<timestamp>`, `list<int64>`]
-* [`list<date>`, `list<bool>`, `list<date>`, `list<int32>`]
-* [`list<date>`, `list<bool>`, `list<date>`, `list<int64>`]
-* [`list<date>`, `list<bool>`, `list<int16>`, `list<int32>`]
-* [`list<date>`, `list<bool>`, `list<int16>`, `list<int64>`]
-* [`list<date>`, `list<bool>`, `list<int32>`, `list<int32>`]
-* [`list<date>`, `list<bool>`, `list<int32>`, `list<int64>`]
-* [`list<date>`, `list<bool>`, `list<int64>`, `list<int32>`]
-* [`list<date>`, `list<bool>`, `list<int64>`, `list<int64>`]
-* [`list<date>`, `list<bool>`, `list<string>`, `list<int32>`]
-* [`list<date>`, `list<bool>`, `list<string>`, `list<int64>`]
-* [`list<date>`, `list<bool>`, `list<timestamp>`, `list<int32>`]
-* [`list<date>`, `list<bool>`, `list<timestamp>`, `list<int64>`]
-* [`list<number>`, `list<bool>`, `list<date>`, `list<int32>`]
-* [`list<number>`, `list<bool>`, `list<date>`, `list<int64>`]
-* [`list<number>`, `list<bool>`, `list<int16>`, `list<int32>`]
-* [`list<number>`, `list<bool>`, `list<int16>`, `list<int64>`]
-* [`list<number>`, `list<bool>`, `list<int32>`, `list<int32>`]
-* [`list<number>`, `list<bool>`, `list<int32>`, `list<int64>`]
-* [`list<number>`, `list<bool>`, `list<int64>`, `list<int32>`]
-* [`list<number>`, `list<bool>`, `list<int64>`, `list<int64>`]
-* [`list<number>`, `list<bool>`, `list<string>`, `list<int32>`]
-* [`list<number>`, `list<bool>`, `list<string>`, `list<int64>`]
-* [`list<number>`, `list<bool>`, `list<timestamp>`, `list<int32>`]
-* [`list<number>`, `list<bool>`, `list<timestamp>`, `list<int64>`]
-* [`list<string>`, `list<bool>`, `list<date>`, `list<int32>`]
-* [`list<string>`, `list<bool>`, `list<date>`, `list<int64>`]
-* [`list<string>`, `list<bool>`, `list<int16>`, `list<int32>`]
-* [`list<string>`, `list<bool>`, `list<int16>`, `list<int64>`]
-* [`list<string>`, `list<bool>`, `list<int32>`, `list<int32>`]
-* [`list<string>`, `list<bool>`, `list<int32>`, `list<int64>`]
-* [`list<string>`, `list<bool>`, `list<int64>`, `list<int32>`]
-* [`list<string>`, `list<bool>`, `list<int64>`, `list<int64>`]
-* [`list<string>`, `list<bool>`, `list<string>`, `list<int32>`]
-* [`list<string>`, `list<bool>`, `list<string>`, `list<int64>`]
-* [`list<string>`, `list<bool>`, `list<timestamp>`, `list<int32>`]
-* [`list<string>`, `list<bool>`, `list<timestamp>`, `list<int64>`]
-* [`list<timestamp>`, `list<bool>`, `list<date>`, `list<int32>`]
-* [`list<timestamp>`, `list<bool>`, `list<date>`, `list<int64>`]
-* [`list<timestamp>`, `list<bool>`, `list<int16>`, `list<int32>`]
-* [`list<timestamp>`, `list<bool>`, `list<int16>`, `list<int64>`]
-* [`list<timestamp>`, `list<bool>`, `list<int32>`, `list<int32>`]
-* [`list<timestamp>`, `list<bool>`, `list<int32>`, `list<int64>`]
-* [`list<timestamp>`, `list<bool>`, `list<int64>`, `list<int32>`]
-* [`list<timestamp>`, `list<bool>`, `list<int64>`, `list<int64>`]
-* [`list<timestamp>`, `list<bool>`, `list<string>`, `list<int32>`]
-* [`list<timestamp>`, `list<bool>`, `list<string>`, `list<int64>`]
-* [`list<timestamp>`, `list<bool>`, `list<timestamp>`, `list<int32>`]
-* [`list<timestamp>`, `list<bool>`, `list<timestamp>`, `list<int64>`] 
+* [`list<any>`, `list<bool>`, `list<date>`, `list<int32>`]
+* [`list<any>`, `list<bool>`, `list<date>`, `list<int64>`]
+* [`list<any>`, `list<bool>`, `list<int16>`, `list<int32>`]
+* [`list<any>`, `list<bool>`, `list<int16>`, `list<int64>`]
+* [`list<any>`, `list<bool>`, `list<int32>`, `list<int32>`]
+* [`list<any>`, `list<bool>`, `list<int32>`, `list<int64>`]
+* [`list<any>`, `list<bool>`, `list<int64>`, `list<int32>`]
+* [`list<any>`, `list<bool>`, `list<int64>`, `list<int64>`]
+* [`list<any>`, `list<bool>`, `list<string>`, `list<int32>`]
+* [`list<any>`, `list<bool>`, `list<string>`, `list<int64>`]
+* [`list<any>`, `list<bool>`, `list<timestamp>`, `list<int32>`]
+* [`list<any>`, `list<bool>`, `list<timestamp>`, `list<int64>`] 
 
 ### function top_n_key_max_cate_where
 
@@ -4581,66 +4525,18 @@ SELECT top_n_key_ratio_cate_where(value, condition, catagory, 2) from t;
 
 **Supported Types**:
 
-* [`list<bool>`, `list<bool>`, `list<date>`, `list<int32>`]
-* [`list<bool>`, `list<bool>`, `list<date>`, `list<int64>`]
-* [`list<bool>`, `list<bool>`, `list<int16>`, `list<int32>`]
-* [`list<bool>`, `list<bool>`, `list<int16>`, `list<int64>`]
-* [`list<bool>`, `list<bool>`, `list<int32>`, `list<int32>`]
-* [`list<bool>`, `list<bool>`, `list<int32>`, `list<int64>`]
-* [`list<bool>`, `list<bool>`, `list<int64>`, `list<int32>`]
-* [`list<bool>`, `list<bool>`, `list<int64>`, `list<int64>`]
-* [`list<bool>`, `list<bool>`, `list<string>`, `list<int32>`]
-* [`list<bool>`, `list<bool>`, `list<string>`, `list<int64>`]
-* [`list<bool>`, `list<bool>`, `list<timestamp>`, `list<int32>`]
-* [`list<bool>`, `list<bool>`, `list<timestamp>`, `list<int64>`]
-* [`list<date>`, `list<bool>`, `list<date>`, `list<int32>`]
-* [`list<date>`, `list<bool>`, `list<date>`, `list<int64>`]
-* [`list<date>`, `list<bool>`, `list<int16>`, `list<int32>`]
-* [`list<date>`, `list<bool>`, `list<int16>`, `list<int64>`]
-* [`list<date>`, `list<bool>`, `list<int32>`, `list<int32>`]
-* [`list<date>`, `list<bool>`, `list<int32>`, `list<int64>`]
-* [`list<date>`, `list<bool>`, `list<int64>`, `list<int32>`]
-* [`list<date>`, `list<bool>`, `list<int64>`, `list<int64>`]
-* [`list<date>`, `list<bool>`, `list<string>`, `list<int32>`]
-* [`list<date>`, `list<bool>`, `list<string>`, `list<int64>`]
-* [`list<date>`, `list<bool>`, `list<timestamp>`, `list<int32>`]
-* [`list<date>`, `list<bool>`, `list<timestamp>`, `list<int64>`]
-* [`list<number>`, `list<bool>`, `list<date>`, `list<int32>`]
-* [`list<number>`, `list<bool>`, `list<date>`, `list<int64>`]
-* [`list<number>`, `list<bool>`, `list<int16>`, `list<int32>`]
-* [`list<number>`, `list<bool>`, `list<int16>`, `list<int64>`]
-* [`list<number>`, `list<bool>`, `list<int32>`, `list<int32>`]
-* [`list<number>`, `list<bool>`, `list<int32>`, `list<int64>`]
-* [`list<number>`, `list<bool>`, `list<int64>`, `list<int32>`]
-* [`list<number>`, `list<bool>`, `list<int64>`, `list<int64>`]
-* [`list<number>`, `list<bool>`, `list<string>`, `list<int32>`]
-* [`list<number>`, `list<bool>`, `list<string>`, `list<int64>`]
-* [`list<number>`, `list<bool>`, `list<timestamp>`, `list<int32>`]
-* [`list<number>`, `list<bool>`, `list<timestamp>`, `list<int64>`]
-* [`list<string>`, `list<bool>`, `list<date>`, `list<int32>`]
-* [`list<string>`, `list<bool>`, `list<date>`, `list<int64>`]
-* [`list<string>`, `list<bool>`, `list<int16>`, `list<int32>`]
-* [`list<string>`, `list<bool>`, `list<int16>`, `list<int64>`]
-* [`list<string>`, `list<bool>`, `list<int32>`, `list<int32>`]
-* [`list<string>`, `list<bool>`, `list<int32>`, `list<int64>`]
-* [`list<string>`, `list<bool>`, `list<int64>`, `list<int32>`]
-* [`list<string>`, `list<bool>`, `list<int64>`, `list<int64>`]
-* [`list<string>`, `list<bool>`, `list<string>`, `list<int32>`]
-* [`list<string>`, `list<bool>`, `list<string>`, `list<int64>`]
-* [`list<string>`, `list<bool>`, `list<timestamp>`, `list<int32>`]
-* [`list<string>`, `list<bool>`, `list<timestamp>`, `list<int64>`]
-* [`list<timestamp>`, `list<bool>`, `list<date>`, `list<int32>`]
-* [`list<timestamp>`, `list<bool>`, `list<date>`, `list<int64>`]
-* [`list<timestamp>`, `list<bool>`, `list<int16>`, `list<int32>`]
-* [`list<timestamp>`, `list<bool>`, `list<int16>`, `list<int64>`]
-* [`list<timestamp>`, `list<bool>`, `list<int32>`, `list<int32>`]
-* [`list<timestamp>`, `list<bool>`, `list<int32>`, `list<int64>`]
-* [`list<timestamp>`, `list<bool>`, `list<int64>`, `list<int32>`]
-* [`list<timestamp>`, `list<bool>`, `list<int64>`, `list<int64>`]
-* [`list<timestamp>`, `list<bool>`, `list<string>`, `list<int32>`]
-* [`list<timestamp>`, `list<bool>`, `list<string>`, `list<int64>`]
-* [`list<timestamp>`, `list<bool>`, `list<timestamp>`, `list<int32>`]
-* [`list<timestamp>`, `list<bool>`, `list<timestamp>`, `list<int64>`] 
+* [`list<any>`, `list<bool>`, `list<date>`, `list<int32>`]
+* [`list<any>`, `list<bool>`, `list<date>`, `list<int64>`]
+* [`list<any>`, `list<bool>`, `list<int16>`, `list<int32>`]
+* [`list<any>`, `list<bool>`, `list<int16>`, `list<int64>`]
+* [`list<any>`, `list<bool>`, `list<int32>`, `list<int32>`]
+* [`list<any>`, `list<bool>`, `list<int32>`, `list<int64>`]
+* [`list<any>`, `list<bool>`, `list<int64>`, `list<int32>`]
+* [`list<any>`, `list<bool>`, `list<int64>`, `list<int64>`]
+* [`list<any>`, `list<bool>`, `list<string>`, `list<int32>`]
+* [`list<any>`, `list<bool>`, `list<string>`, `list<int64>`]
+* [`list<any>`, `list<bool>`, `list<timestamp>`, `list<int32>`]
+* [`list<any>`, `list<bool>`, `list<timestamp>`, `list<int64>`] 
 
 ### function top_n_key_sum_cate_where
 
@@ -4809,66 +4705,18 @@ OVER w;
 
 **Supported Types**:
 
-* [`list<bool>`, `list<bool>`, `list<date>`, `list<int32>`]
-* [`list<bool>`, `list<bool>`, `list<date>`, `list<int64>`]
-* [`list<bool>`, `list<bool>`, `list<int16>`, `list<int32>`]
-* [`list<bool>`, `list<bool>`, `list<int16>`, `list<int64>`]
-* [`list<bool>`, `list<bool>`, `list<int32>`, `list<int32>`]
-* [`list<bool>`, `list<bool>`, `list<int32>`, `list<int64>`]
-* [`list<bool>`, `list<bool>`, `list<int64>`, `list<int32>`]
-* [`list<bool>`, `list<bool>`, `list<int64>`, `list<int64>`]
-* [`list<bool>`, `list<bool>`, `list<string>`, `list<int32>`]
-* [`list<bool>`, `list<bool>`, `list<string>`, `list<int64>`]
-* [`list<bool>`, `list<bool>`, `list<timestamp>`, `list<int32>`]
-* [`list<bool>`, `list<bool>`, `list<timestamp>`, `list<int64>`]
-* [`list<date>`, `list<bool>`, `list<date>`, `list<int32>`]
-* [`list<date>`, `list<bool>`, `list<date>`, `list<int64>`]
-* [`list<date>`, `list<bool>`, `list<int16>`, `list<int32>`]
-* [`list<date>`, `list<bool>`, `list<int16>`, `list<int64>`]
-* [`list<date>`, `list<bool>`, `list<int32>`, `list<int32>`]
-* [`list<date>`, `list<bool>`, `list<int32>`, `list<int64>`]
-* [`list<date>`, `list<bool>`, `list<int64>`, `list<int32>`]
-* [`list<date>`, `list<bool>`, `list<int64>`, `list<int64>`]
-* [`list<date>`, `list<bool>`, `list<string>`, `list<int32>`]
-* [`list<date>`, `list<bool>`, `list<string>`, `list<int64>`]
-* [`list<date>`, `list<bool>`, `list<timestamp>`, `list<int32>`]
-* [`list<date>`, `list<bool>`, `list<timestamp>`, `list<int64>`]
-* [`list<number>`, `list<bool>`, `list<date>`, `list<int32>`]
-* [`list<number>`, `list<bool>`, `list<date>`, `list<int64>`]
-* [`list<number>`, `list<bool>`, `list<int16>`, `list<int32>`]
-* [`list<number>`, `list<bool>`, `list<int16>`, `list<int64>`]
-* [`list<number>`, `list<bool>`, `list<int32>`, `list<int32>`]
-* [`list<number>`, `list<bool>`, `list<int32>`, `list<int64>`]
-* [`list<number>`, `list<bool>`, `list<int64>`, `list<int32>`]
-* [`list<number>`, `list<bool>`, `list<int64>`, `list<int64>`]
-* [`list<number>`, `list<bool>`, `list<string>`, `list<int32>`]
-* [`list<number>`, `list<bool>`, `list<string>`, `list<int64>`]
-* [`list<number>`, `list<bool>`, `list<timestamp>`, `list<int32>`]
-* [`list<number>`, `list<bool>`, `list<timestamp>`, `list<int64>`]
-* [`list<string>`, `list<bool>`, `list<date>`, `list<int32>`]
-* [`list<string>`, `list<bool>`, `list<date>`, `list<int64>`]
-* [`list<string>`, `list<bool>`, `list<int16>`, `list<int32>`]
-* [`list<string>`, `list<bool>`, `list<int16>`, `list<int64>`]
-* [`list<string>`, `list<bool>`, `list<int32>`, `list<int32>`]
-* [`list<string>`, `list<bool>`, `list<int32>`, `list<int64>`]
-* [`list<string>`, `list<bool>`, `list<int64>`, `list<int32>`]
-* [`list<string>`, `list<bool>`, `list<int64>`, `list<int64>`]
-* [`list<string>`, `list<bool>`, `list<string>`, `list<int32>`]
-* [`list<string>`, `list<bool>`, `list<string>`, `list<int64>`]
-* [`list<string>`, `list<bool>`, `list<timestamp>`, `list<int32>`]
-* [`list<string>`, `list<bool>`, `list<timestamp>`, `list<int64>`]
-* [`list<timestamp>`, `list<bool>`, `list<date>`, `list<int32>`]
-* [`list<timestamp>`, `list<bool>`, `list<date>`, `list<int64>`]
-* [`list<timestamp>`, `list<bool>`, `list<int16>`, `list<int32>`]
-* [`list<timestamp>`, `list<bool>`, `list<int16>`, `list<int64>`]
-* [`list<timestamp>`, `list<bool>`, `list<int32>`, `list<int32>`]
-* [`list<timestamp>`, `list<bool>`, `list<int32>`, `list<int64>`]
-* [`list<timestamp>`, `list<bool>`, `list<int64>`, `list<int32>`]
-* [`list<timestamp>`, `list<bool>`, `list<int64>`, `list<int64>`]
-* [`list<timestamp>`, `list<bool>`, `list<string>`, `list<int32>`]
-* [`list<timestamp>`, `list<bool>`, `list<string>`, `list<int64>`]
-* [`list<timestamp>`, `list<bool>`, `list<timestamp>`, `list<int32>`]
-* [`list<timestamp>`, `list<bool>`, `list<timestamp>`, `list<int64>`] 
+* [`list<any>`, `list<bool>`, `list<date>`, `list<int32>`]
+* [`list<any>`, `list<bool>`, `list<date>`, `list<int64>`]
+* [`list<any>`, `list<bool>`, `list<int16>`, `list<int32>`]
+* [`list<any>`, `list<bool>`, `list<int16>`, `list<int64>`]
+* [`list<any>`, `list<bool>`, `list<int32>`, `list<int32>`]
+* [`list<any>`, `list<bool>`, `list<int32>`, `list<int64>`]
+* [`list<any>`, `list<bool>`, `list<int64>`, `list<int32>`]
+* [`list<any>`, `list<bool>`, `list<int64>`, `list<int64>`]
+* [`list<any>`, `list<bool>`, `list<string>`, `list<int32>`]
+* [`list<any>`, `list<bool>`, `list<string>`, `list<int64>`]
+* [`list<any>`, `list<bool>`, `list<timestamp>`, `list<int32>`]
+* [`list<any>`, `list<bool>`, `list<timestamp>`, `list<int64>`] 
 
 ### function top_n_value_max_cate_where
 
@@ -5038,66 +4886,18 @@ SELECT top_n_value_ratio_cate_where(value, condition, catagory, 2) from t;
 
 **Supported Types**:
 
-* [`list<bool>`, `list<bool>`, `list<date>`, `list<int32>`]
-* [`list<bool>`, `list<bool>`, `list<date>`, `list<int64>`]
-* [`list<bool>`, `list<bool>`, `list<int16>`, `list<int32>`]
-* [`list<bool>`, `list<bool>`, `list<int16>`, `list<int64>`]
-* [`list<bool>`, `list<bool>`, `list<int32>`, `list<int32>`]
-* [`list<bool>`, `list<bool>`, `list<int32>`, `list<int64>`]
-* [`list<bool>`, `list<bool>`, `list<int64>`, `list<int32>`]
-* [`list<bool>`, `list<bool>`, `list<int64>`, `list<int64>`]
-* [`list<bool>`, `list<bool>`, `list<string>`, `list<int32>`]
-* [`list<bool>`, `list<bool>`, `list<string>`, `list<int64>`]
-* [`list<bool>`, `list<bool>`, `list<timestamp>`, `list<int32>`]
-* [`list<bool>`, `list<bool>`, `list<timestamp>`, `list<int64>`]
-* [`list<date>`, `list<bool>`, `list<date>`, `list<int32>`]
-* [`list<date>`, `list<bool>`, `list<date>`, `list<int64>`]
-* [`list<date>`, `list<bool>`, `list<int16>`, `list<int32>`]
-* [`list<date>`, `list<bool>`, `list<int16>`, `list<int64>`]
-* [`list<date>`, `list<bool>`, `list<int32>`, `list<int32>`]
-* [`list<date>`, `list<bool>`, `list<int32>`, `list<int64>`]
-* [`list<date>`, `list<bool>`, `list<int64>`, `list<int32>`]
-* [`list<date>`, `list<bool>`, `list<int64>`, `list<int64>`]
-* [`list<date>`, `list<bool>`, `list<string>`, `list<int32>`]
-* [`list<date>`, `list<bool>`, `list<string>`, `list<int64>`]
-* [`list<date>`, `list<bool>`, `list<timestamp>`, `list<int32>`]
-* [`list<date>`, `list<bool>`, `list<timestamp>`, `list<int64>`]
-* [`list<number>`, `list<bool>`, `list<date>`, `list<int32>`]
-* [`list<number>`, `list<bool>`, `list<date>`, `list<int64>`]
-* [`list<number>`, `list<bool>`, `list<int16>`, `list<int32>`]
-* [`list<number>`, `list<bool>`, `list<int16>`, `list<int64>`]
-* [`list<number>`, `list<bool>`, `list<int32>`, `list<int32>`]
-* [`list<number>`, `list<bool>`, `list<int32>`, `list<int64>`]
-* [`list<number>`, `list<bool>`, `list<int64>`, `list<int32>`]
-* [`list<number>`, `list<bool>`, `list<int64>`, `list<int64>`]
-* [`list<number>`, `list<bool>`, `list<string>`, `list<int32>`]
-* [`list<number>`, `list<bool>`, `list<string>`, `list<int64>`]
-* [`list<number>`, `list<bool>`, `list<timestamp>`, `list<int32>`]
-* [`list<number>`, `list<bool>`, `list<timestamp>`, `list<int64>`]
-* [`list<string>`, `list<bool>`, `list<date>`, `list<int32>`]
-* [`list<string>`, `list<bool>`, `list<date>`, `list<int64>`]
-* [`list<string>`, `list<bool>`, `list<int16>`, `list<int32>`]
-* [`list<string>`, `list<bool>`, `list<int16>`, `list<int64>`]
-* [`list<string>`, `list<bool>`, `list<int32>`, `list<int32>`]
-* [`list<string>`, `list<bool>`, `list<int32>`, `list<int64>`]
-* [`list<string>`, `list<bool>`, `list<int64>`, `list<int32>`]
-* [`list<string>`, `list<bool>`, `list<int64>`, `list<int64>`]
-* [`list<string>`, `list<bool>`, `list<string>`, `list<int32>`]
-* [`list<string>`, `list<bool>`, `list<string>`, `list<int64>`]
-* [`list<string>`, `list<bool>`, `list<timestamp>`, `list<int32>`]
-* [`list<string>`, `list<bool>`, `list<timestamp>`, `list<int64>`]
-* [`list<timestamp>`, `list<bool>`, `list<date>`, `list<int32>`]
-* [`list<timestamp>`, `list<bool>`, `list<date>`, `list<int64>`]
-* [`list<timestamp>`, `list<bool>`, `list<int16>`, `list<int32>`]
-* [`list<timestamp>`, `list<bool>`, `list<int16>`, `list<int64>`]
-* [`list<timestamp>`, `list<bool>`, `list<int32>`, `list<int32>`]
-* [`list<timestamp>`, `list<bool>`, `list<int32>`, `list<int64>`]
-* [`list<timestamp>`, `list<bool>`, `list<int64>`, `list<int32>`]
-* [`list<timestamp>`, `list<bool>`, `list<int64>`, `list<int64>`]
-* [`list<timestamp>`, `list<bool>`, `list<string>`, `list<int32>`]
-* [`list<timestamp>`, `list<bool>`, `list<string>`, `list<int64>`]
-* [`list<timestamp>`, `list<bool>`, `list<timestamp>`, `list<int32>`]
-* [`list<timestamp>`, `list<bool>`, `list<timestamp>`, `list<int64>`] 
+* [`list<any>`, `list<bool>`, `list<date>`, `list<int32>`]
+* [`list<any>`, `list<bool>`, `list<date>`, `list<int64>`]
+* [`list<any>`, `list<bool>`, `list<int16>`, `list<int32>`]
+* [`list<any>`, `list<bool>`, `list<int16>`, `list<int64>`]
+* [`list<any>`, `list<bool>`, `list<int32>`, `list<int32>`]
+* [`list<any>`, `list<bool>`, `list<int32>`, `list<int64>`]
+* [`list<any>`, `list<bool>`, `list<int64>`, `list<int32>`]
+* [`list<any>`, `list<bool>`, `list<int64>`, `list<int64>`]
+* [`list<any>`, `list<bool>`, `list<string>`, `list<int32>`]
+* [`list<any>`, `list<bool>`, `list<string>`, `list<int64>`]
+* [`list<any>`, `list<bool>`, `list<timestamp>`, `list<int32>`]
+* [`list<any>`, `list<bool>`, `list<timestamp>`, `list<int64>`] 
 
 ### function top_n_value_sum_cate_where
 

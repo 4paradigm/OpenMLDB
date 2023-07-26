@@ -177,6 +177,9 @@ jobs:
 
       - name: build
         run: |
+          # even gnu binutils support ar -M script, get error `ar: BFD (GNU Binutils) 2.40 assertion fail archive.c:1813`
+          # brew install binutils
+          # export PATH="/usr/local/opt/binutils/bin:$PATH"
           make build
           # GitHub runner disk space is limited
           # delete thirdparty build directory($ROOT/.deps/) to save disk space
