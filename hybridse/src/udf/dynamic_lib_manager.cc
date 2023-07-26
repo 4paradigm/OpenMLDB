@@ -24,8 +24,9 @@ namespace udf {
 DynamicLibManager::~DynamicLibManager() {
     for (const auto& kv : handle_map_) {
         auto so_handle = kv.second;
-        if (so_handle) {
-            // dlclose(so_handle->handle);
+        // if (so_handle) {
+        //     dlclose(so_handle->handle);
+        if(so_handle != nullptr) {
             dlclose(so_handle);
         }
     }
@@ -45,7 +46,8 @@ base::Status DynamicLibManager::ExtractFunction(const std::string& name, bool is
             // so_handle->ref_cnt++;
         }
     }
-    if (!so_handle) {
+    // if (!so_handle) {
+    if (so_handle == nullptr) {
         void* handle = dlopen(file.c_str(), RTLD_LAZY);
         CHECK_TRUE(handle != nullptr, common::kExternalUDFError,
                    "can not open the dynamic library: " + file + ", error: " + dlerror())
@@ -99,16 +101,16 @@ base::Status DynamicLibManager::RemoveHandler(const std::string& file) {
         if (auto iter = handle_map_.find(file); iter != handle_map_.end()) {
             // iter->second->ref_cnt--;
             // if (iter->second->ref_cnt == 0) {
-            if (dlclose(iter->second) == 0) {
+            if (iter->second != nullptr && dlclose(iter->second) == 0) {
                 so_handle = iter->second;
                 handle_map_.erase(iter);
             }
         }
     }
-    if (so_handle) {
-        // CHECK_TRUE(dlclose(so_handle->handle) == 0, common::kExternalUDFError, "dlclose run error. file is " + file)
-        CHECK_TRUE(dlclose(so_handle) == 0, common::kExternalUDFError, "dlclose run error. file is " + file)
-    }
+   //  if (so_handle) {
+   //      CHECK_TRUE(dlclose(so_handle->handle) == 0, common::kExternalUDFError, "dlclose run error. file is " + file)
+   //  }
+    CHECK_TRUE(dlclose(so_handle) == 0, common::kExternalUDFError, "dlclose run error. file is " + file)
     return {};
 }
 
