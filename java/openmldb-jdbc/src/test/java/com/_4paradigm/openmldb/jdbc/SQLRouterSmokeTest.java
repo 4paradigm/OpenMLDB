@@ -42,6 +42,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Arrays;
+import org.apache.commons.lang3.SystemUtils;
 
 public class SQLRouterSmokeTest {
     public static SqlExecutor clusterExecutor;
@@ -272,7 +273,11 @@ public class SQLRouterSmokeTest {
 
         try {
             // create function ok
-            statement.execute("CREATE FUNCTION cut2(x STRING) RETURNS STRING OPTIONS (FILE='libtest_udf.so')");
+            if (SystemUtils.IS_OS_MAC) {
+                statement.execute("CREATE FUNCTION cut2(x STRING) RETURNS STRING OPTIONS (FILE='libtest_udf.dylib')");
+            } else if (SystemUtils.IS_OS_LINUX) {
+                statement.execute("CREATE FUNCTION cut2(x STRING) RETURNS STRING OPTIONS (FILE='libtest_udf.so')");
+            }
             Assert.assertTrue(statement.execute("SHOW FUNCTIONS"));
 
             // queryable
