@@ -19,7 +19,6 @@
 
 #include "absl/strings/str_replace.h"
 #include "benchmark/benchmark.h"
-//#include "boost/algorithm/string.hpp"
 #include "codec/fe_row_codec.h"
 #include "schema/schema_adapter.h"
 #include "sdk/base.h"
