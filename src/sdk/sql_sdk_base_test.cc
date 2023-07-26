@@ -72,7 +72,7 @@ void SQLSDKTest::CreateTables(hybridse::sqlcase::SqlCase& sql_case,  // NOLINT
         std::string create;
         if (sql_case.BuildCreateSqlFromInput(i, &create, partition_num) && !create.empty()) {
             std::string placeholder = "{" + std::to_string(i) + "}";
-            absl::StrReplaceAll(create, {{placeholder, sql_case.inputs()[i].name_}});
+            create = absl::StrReplaceAll(create, {{placeholder, sql_case.inputs()[i].name_}});
             LOG(INFO) << create;
             router->ExecuteDDL(input_db_name, create, &status);
             ASSERT_TRUE(router->RefreshCatalog());
@@ -114,12 +114,12 @@ void SQLSDKTest::CreateProcedure(hybridse::sqlcase::SqlCase& sql_case,  // NOLIN
     std::string sql = sql_case.sql_str();
     for (size_t i = 0; i < sql_case.inputs().size(); i++) {
         std::string placeholder = "{" + std::to_string(i) + "}";
-        absl::StrReplaceAll(sql, {{placeholder, sql_case.inputs()[i].name_}});
+        sql = absl::StrReplaceAll(sql, {{placeholder, sql_case.inputs()[i].name_}});
     }
-    absl::StrReplaceAll(
+    sql = absl::StrReplaceAll(
         sql, {{"{auto}",
         hybridse::sqlcase::SqlCase::GenRand("auto_t") + std::to_string(static_cast<int64_t>(time(NULL)))}});
-    absl::StrJoin(absl::StrSplit(sql, " "), "");
+    absl::RemoveExtraAsciiWhitespace(&sql);
     LOG(INFO) << sql;
     sql_case.sp_name_ =
         hybridse::sqlcase::SqlCase::GenRand("auto_sp") + std::to_string(static_cast<int64_t>(time(NULL)));
@@ -141,7 +141,7 @@ void SQLSDKTest::CreateProcedure(hybridse::sqlcase::SqlCase& sql_case,  // NOLIN
 
     for (size_t i = 0; i < sql_case.inputs_.size(); i++) {
         std::string placeholder = "{" + std::to_string(i) + "}";
-        absl::StrReplaceAll(create_sp, {{placeholder, sql_case.inputs()[i].name_}});
+        create_sp = absl::StrReplaceAll(create_sp, {{placeholder, sql_case.inputs()[i].name_}});
     }
     LOG(INFO) << create_sp;
     if (!create_sp.empty()) {
@@ -222,7 +222,7 @@ void SQLSDKTest::InsertTables(hybridse::sqlcase::SqlCase& sql_case,  // NOLINT
             }
             auto insert = inserts[row_idx];
             std::string placeholder = "{" + std::to_string(i) + "}";
-            absl::StrReplaceAll(insert, {{placeholder, sql_case.inputs()[i].name_}});
+            insert = absl::StrReplaceAll(insert, {{placeholder, sql_case.inputs()[i].name_}});
             DLOG(INFO) << insert;
             if (!insert.empty()) {
                 for (int j = 0; j < sql_case.inputs()[i].repeat_; j++) {
@@ -296,13 +296,13 @@ void SQLSDKTest::BatchExecuteSQL(hybridse::sqlcase::SqlCase& sql_case,  // NOLIN
     std::string sql = sql_case.sql_str();
     for (size_t i = 0; i < sql_case.inputs().size(); i++) {
         std::string placeholder = "{" + std::to_string(i) + "}";
-        absl::StrReplaceAll(sql, {{placeholder, sql_case.inputs()[i].name_}});
+        sql = absl::StrReplaceAll(sql, {{placeholder, sql_case.inputs()[i].name_}});
     }
-    absl::StrReplaceAll(
+    sql = absl::StrReplaceAll(
         sql, {{"{auto}",
         hybridse::sqlcase::SqlCase::GenRand("auto_t") + std::to_string(static_cast<int64_t>(time(NULL)))}});
     for (size_t endpoint_id = 0; endpoint_id < tbEndpoints.size(); endpoint_id++) {
-        absl::StrReplaceAll(sql, {{"{tb_endpoint_" + std::to_string(endpoint_id) + "}", tbEndpoints.at(endpoint_id)}});
+        sql = absl::StrReplaceAll(sql, {{"{tb_endpoint_" + std::to_string(endpoint_id) + "}", tbEndpoints.at(endpoint_id)}});
     }
     std::string lower_sql = sql;
     absl::AsciiStrToLower(lower_sql);
@@ -384,9 +384,9 @@ void SQLSDKQueryTest::RequestExecuteSQL(hybridse::sqlcase::SqlCase& sql_case,  /
     std::string sql = sql_case.sql_str();
     for (size_t i = 0; i < sql_case.inputs().size(); i++) {
         std::string placeholder = "{" + std::to_string(i) + "}";
-        absl::StrReplaceAll(sql, {{placeholder, sql_case.inputs()[i].name_}});
+        sql = absl::StrReplaceAll(sql, {{placeholder, sql_case.inputs()[i].name_}});
     }
-    absl::StrReplaceAll(sql, {{"{auto}", hybridse::sqlcase::SqlCase::GenRand("auto_t") +
+    sql = absl::StrReplaceAll(sql, {{"{auto}", hybridse::sqlcase::SqlCase::GenRand("auto_t") +
             std::to_string(static_cast<int64_t>(time(NULL)))}});
     std::string lower_sql = sql;
     absl::AsciiStrToLower(lower_sql);
@@ -529,9 +529,9 @@ void SQLSDKQueryTest::BatchRequestExecuteSQLWithCommonColumnIndices(hybridse::sq
     std::string sql = sql_case.sql_str();
     for (size_t i = 0; i < sql_case.inputs().size(); i++) {
         std::string placeholder = "{" + std::to_string(i) + "}";
-        absl::StrReplaceAll(sql, {{placeholder, sql_case.inputs()[i].name_}});
+        sql = absl::StrReplaceAll(sql, {{placeholder, sql_case.inputs()[i].name_}});
     }
-    absl::StrReplaceAll(sql, {{"{auto}", hybridse::sqlcase::SqlCase::GenRand("auto_t") +
+    sql = absl::StrReplaceAll(sql, {{"{auto}", hybridse::sqlcase::SqlCase::GenRand("auto_t") +
             std::to_string(static_cast<int64_t>(time(NULL)))}});
     LOG(INFO) << sql;
     std::string lower_sql = sql;

@@ -59,7 +59,7 @@ void BM_RequestQuery(benchmark::State& state, hybridse::sqlcase::SqlCase& sql_ca
         std::string sql = sql_case.sql_str();
         for (size_t i = 0; i < sql_case.inputs().size(); i++) {
             std::string placeholder = "{" + std::to_string(i) + "}";
-            absl::StrReplaceAll(sql, {{placeholder, sql_case.inputs()[i].name_}});
+            sql = absl::StrReplaceAll(sql, {{placeholder, sql_case.inputs()[i].name_}});
         }
         absl::AsciiStrToLower(sql);
         LOG(INFO) << sql;
@@ -225,7 +225,7 @@ void BM_BatchRequestQuery(benchmark::State& state, hybridse::sqlcase::SqlCase& s
         std::string sql = sql_case.sql_str();
         for (size_t i = 0; i < sql_case.inputs().size(); i++) {
             std::string placeholder = "{" + std::to_string(i) + "}";
-            absl::StrReplaceAll(sql, {{placeholder, sql_case.inputs()[i].name_}});
+            sql = absl::StrReplaceAll(sql, {{placeholder, sql_case.inputs()[i].name_}});
         }
         absl::AsciiStrToLower(sql);
         LOG(INFO) << sql;
