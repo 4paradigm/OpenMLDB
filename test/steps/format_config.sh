@@ -46,8 +46,9 @@ ${Hosts[0]}:$zookeeperPort1:$zookeeperPort2:$zookeeperPort3 /tmp/$dirName/zk
 EOF
 
 #write openmldb.env.sh
+curVersion=$(grep 'OPENMLDB_VERSION' $rootPath/conf/openmldb-env.sh | awk -F= '{print $2}')
 cat >$rootPath/conf/openmldb-env.sh<<EOF
-export OPENMLDB_VERSION=0.7.3
+export OPENMLDB_VERSION=$curVersion
 export OPENMLDB_MODE=\${OPENMLDB_MODE:=cluster}
 export OPENMLDB_USE_EXISTING_ZK_CLUSTER=false
 export OPENMLDB_ZK_HOME=
@@ -108,7 +109,13 @@ fi
 
 
 if [ "$Dependency" = "kafka" ]; then
+// install kafak& deploy connector with kafka address and openmldb address
 cat >$rootPath/conf/taskmanager.properties<<EOF
-//TODO
+// config  test/integration-test/openmldb-test-java/openmldb-ecosystem/src/test/resources/kafka_test_cases.yml
+// "bootstrap.servers": localhost:9092,
+//  "connect.listeners": http://:8083,
+// apiserver.address: localhost:9080
+// "connection.url": "jdbc:openmldb:///kafka_test?zk=127.0.0.1:2181&zkPath=/openmldb"
+// zk_root_path: "/openmldb-$dirName"
 EOF
 fi
