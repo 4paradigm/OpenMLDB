@@ -284,7 +284,7 @@ class RequestEngineTestRunner : public EngineTestRunner {
                 return_code_ = ENGINE_TEST_RET_EXECUTION_ERROR;
                 return Status(common::kRunError, "Run request session failed");
             }
-            if (!has_batch_request && !request_db_name.empty() && !request_name.empty()) {
+            if (!has_batch_request && !request_name.empty()) {
                 CHECK_TRUE(AddRowIntoTable(request_db_name, request_name, in_row), common::kTablePutFailed,
                            "Fail add row into table ", request_db_name, ".", request_name);
             }
