@@ -32,11 +32,12 @@ namespace openmldb {
 namespace sdk {
 
 struct DeleteOption {
-    DeleteOption(const std::map<uint32_t, std::string>& index,
+    DeleteOption(const std::map<uint32_t, std::string>& index, const std::string& name,
             const std::optional<uint64_t>& ts1, const std::optional<uint64_t>& ts2) :
-        index_map(index), start_ts(ts1), end_ts(ts2) {}
+        index_map(index), ts_name(name), start_ts(ts1), end_ts(ts2) {}
     DeleteOption() = default;
     std::map<uint32_t, std::string> index_map;
+    std::string ts_name;
     std::optional<uint64_t> start_ts = std::nullopt;
     std::optional<uint64_t> end_ts = std::nullopt;
 };
@@ -59,7 +60,7 @@ class NodeAdapter {
     static std::shared_ptr<hybridse::node::ConstNode> StringToData(const std::string& str,
                                                                    openmldb::type::DataType data_type);
 
-    static hybridse::sdk::Status ParseExprNode(const hybridse::node::BinaryExpr* expr_node,
+    static hybridse::sdk::Status ExtractCondition(const hybridse::node::BinaryExpr* expr_node,
             const std::map<std::string, openmldb::type::DataType>& col_map,
             const ::google::protobuf::RepeatedPtrField<::openmldb::common::ColumnKey>& indexs,
             std::vector<Condition>* condition_vec, std::vector<Condition>* parameter_vec);
@@ -72,6 +73,9 @@ class NodeAdapter {
     static hybridse::sdk::Status CheckCondition(
             const ::google::protobuf::RepeatedPtrField<::openmldb::common::ColumnKey>& indexs,
             const std::vector<Condition>& condition_vec);
+    static hybridse::sdk::Status ParseExprNode(const hybridse::node::BinaryExpr* expr_node,
+            const std::map<std::string, openmldb::type::DataType>& col_map,
+            std::vector<Condition>* condition_vec, std::vector<Condition>* parameter_vec);
 };
 
 }  // namespace sdk

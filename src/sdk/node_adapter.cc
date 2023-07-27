@@ -39,9 +39,20 @@ hybridse::sdk::Status NodeAdapter::ExtractDeleteOption(
         const ::google::protobuf::RepeatedPtrField<::openmldb::common::ColumnKey>& indexs,
         const std::vector<Condition>& condition_vec,
         DeleteOption* option) {
-    std::string con_ts_name;
+    std::vector<::openmldb::common::ColumnKey> index_vec;
+    std::map<std::string, uint32_t> index_pos;
     for (auto idx = 0; idx < indexs.size(); idx++) {
-        const auto& column_key = indexs.Get(idx);
+        index_vec.push_back(indexs.Get(idx));
+        index_pos.emplace(indexs.Get(idx).index_name(), idx);
+    }
+    std::stable_sort(index_vec.begin(), index_vec.end(),
+            [](const ::openmldb::common::ColumnKey& index1, const ::openmldb::common::ColumnKey& index2) {
+                return index1.col_name_size() > index2.col_name_size();
+            });
+    std::string con_ts_name;
+    ::openmldb::common::ColumnKey matched_column_key;
+    std::set<std::string> hit_con_col;
+    for (const auto& column_key : index_vec) {
         if (column_key.flag() != 0) {
             continue;
         }
@@ -71,7 +82,6 @@ hybridse::sdk::Status NodeAdapter::ExtractDeleteOption(
             if (match_index_col != column_key.col_name_size()) {
                 continue;
             }
-            option->index_map.emplace(idx, pk);
         }
         if (column_key.has_ts_name()) {
             for (const auto& con : condition_vec) {
@@ -86,6 +96,10 @@ hybridse::sdk::Status NodeAdapter::ExtractDeleteOption(
                 }
                 if (!con.val.has_value()) {
                     return {hybridse::common::StatusCode::kCmdError, "ts column cannot be null"};
+                }
+                if (option->ts_name.empty()) {
+                    option->ts_name = con_ts_name;
+                    hit_con_col.insert(con_ts_name);
                 }
                 uint64_t ts = 0;
                 if (!absl::SimpleAtoi(con.val.value(), &ts)) {
@@ -114,6 +128,37 @@ hybridse::sdk::Status NodeAdapter::ExtractDeleteOption(
                     option->end_ts.value() >= option->start_ts.value()) {
                 return {hybridse::common::StatusCode::kCmdError, "invalid ts condition"};
             }
+        } else if (!option->ts_name.empty() && match_index_col > 0) {
+            return {hybridse::common::StatusCode::kCmdError, "ts name mismatch"};
+        }
+        if (match_index_col > 0) {
+            if (!option->ts_name.empty()) {
+                option->index_map.clear();
+            }
+            if (option->index_map.empty()) {
+                matched_column_key.CopyFrom(column_key);
+            } else {
+                if (column_key.col_name_size() != matched_column_key.col_name_size() ||
+                        !std::equal(column_key.col_name().begin(), column_key.col_name().end(),
+                            matched_column_key.col_name().begin())) {
+                    return {hybridse::common::StatusCode::kCmdError, "hit multiple indexs"};
+                }
+            }
+            option->index_map.emplace(index_pos[column_key.index_name()], pk);
+            for (const auto& col : matched_column_key.col_name()) {
+                hit_con_col.insert(col);
+            }
+            if (!option->ts_name.empty()) {
+                break;
+            }
+        }
+    }
+    if (!option->ts_name.empty() && !option->index_map.empty() && option->ts_name != matched_column_key.ts_name()) {
+        return {hybridse::common::StatusCode::kCmdError, "ts name mismatch"};
+    }
+    for (const auto& con : condition_vec) {
+        if (hit_con_col.find(con.col_name) == hit_con_col.end()) {
+            return {hybridse::common::StatusCode::kCmdError, "has redundant condition"};
         }
     }
     return {};
@@ -639,7 +684,6 @@ std::shared_ptr<hybridse::node::ConstNode> NodeAdapter::StringToData(const std::
 
 hybridse::sdk::Status NodeAdapter::ParseExprNode(const hybridse::node::BinaryExpr* expr_node,
         const std::map<std::string, openmldb::type::DataType>& col_map,
-        const ::google::protobuf::RepeatedPtrField<::openmldb::common::ColumnKey>& indexs,
         std::vector<Condition>* condition_vec, std::vector<Condition>* parameter_vec) {
     auto op_type = expr_node->GetOp();
     switch (op_type) {
@@ -650,7 +694,7 @@ hybridse::sdk::Status NodeAdapter::ParseExprNode(const hybridse::node::BinaryExp
                     if (node == nullptr) {
                         return {::hybridse::common::StatusCode::kCmdError, "parse expr node failed"};
                     }
-                    auto status = ParseExprNode(node, col_map, indexs, condition_vec, parameter_vec);
+                    auto status = ParseExprNode(node, col_map, condition_vec, parameter_vec);
                     if (!status.IsOK()) {
                         return status;
                     }
@@ -706,6 +750,17 @@ hybridse::sdk::Status NodeAdapter::ParseExprNode(const hybridse::node::BinaryExp
         default:
             return {::hybridse::common::StatusCode::kCmdError,
                 "unsupport operator type " + hybridse::node::ExprOpTypeName(op_type)};
+    }
+    return {};
+}
+
+hybridse::sdk::Status NodeAdapter::ExtractCondition(const hybridse::node::BinaryExpr* expr_node,
+        const std::map<std::string, openmldb::type::DataType>& col_map,
+        const ::google::protobuf::RepeatedPtrField<::openmldb::common::ColumnKey>& indexs,
+        std::vector<Condition>* condition_vec, std::vector<Condition>* parameter_vec) {
+    auto status = ParseExprNode(expr_node, col_map, condition_vec, parameter_vec);
+    if (!status.IsOK()) {
+        return status;
     }
     if (parameter_vec->empty()) {
         return CheckCondition(indexs, *condition_vec);
