@@ -160,7 +160,7 @@ start_taskmanager() {
     chmod +x bin/*.sh
     # NOTE: taskmanager find shared libraraies in "<cwd>/udf", where starts taskmanager matters
     mkdir -p udf/
-    cp -v "$BASE/build/udf/"*.{so,dyllib} udf/ || true
+    cp -v "$BASE/build/udf/"*.{so,dylib} udf/ || true
     cp -v "$BASE/onebox/taskmanager.properties" conf/
 
     LD_DEBUG=libs ./bin/taskmanager.sh > "$WORKSPACE/logs/taskmanager.log" 2>&1 &
