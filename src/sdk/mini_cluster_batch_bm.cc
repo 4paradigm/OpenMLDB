@@ -705,7 +705,7 @@ last join {2} order by {2}.x7 on {0}.c2 = {2}.x2 and {0}.c7 - {ts_diff} >= {2}.x
 last join {3} order by {3}.x7 on {0}.c3 = {3}.x3 and {0}.c7 - {ts_diff} >= {3}.x7
 last join {4} order by {4}.x7 on {0}.c4 = {4}.x4 and {0}.c7 - {ts_diff} >= {4}.x7;
 )";
-    absl::StrReplaceAll({{"{ts_diff}", std::to_string(state.range(0) * 1000 / 2)}}, sql_case.sql_str_);
+    absl::StrReplaceAll({{"{ts_diff}", std::to_string(state.range(0) * 1000 / 2)}}, &sql_case.sql_str_);
     BM_RequestQuery(state, sql_case, mc);
 }
 
