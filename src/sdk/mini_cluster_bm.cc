@@ -59,9 +59,9 @@ void BM_RequestQuery(benchmark::State& state, hybridse::sqlcase::SqlCase& sql_ca
         std::string sql = sql_case.sql_str();
         for (size_t i = 0; i < sql_case.inputs().size(); i++) {
             std::string placeholder = "{" + std::to_string(i) + "}";
-            sql = absl::StrReplaceAll(sql, {{placeholder, sql_case.inputs()[i].name_}});
+            absl::StrReplaceAll({{placeholder, sql_case.inputs()[i].name_}}, &sql);
         }
-        absl::AsciiStrToLower(sql);
+        absl::AsciiStrToLower(&sql);
         LOG(INFO) << sql;
         auto request_row = router->GetRequestRow(sql_case.db(), sql, &status);
         if (status.code != 0) {
@@ -225,9 +225,9 @@ void BM_BatchRequestQuery(benchmark::State& state, hybridse::sqlcase::SqlCase& s
         std::string sql = sql_case.sql_str();
         for (size_t i = 0; i < sql_case.inputs().size(); i++) {
             std::string placeholder = "{" + std::to_string(i) + "}";
-            sql = absl::StrReplaceAll(sql, {{placeholder, sql_case.inputs()[i].name_}});
+            absl::StrReplaceAll({{placeholder, sql_case.inputs()[i].name_}}, &sql);
         }
-        absl::AsciiStrToLower(sql);
+        absl::AsciiStrToLower(&sql);
         LOG(INFO) << sql;
         auto request_row = router->GetRequestRow(sql_case.db(), sql, &status);
         if (status.code != 0) {
