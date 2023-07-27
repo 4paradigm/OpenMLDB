@@ -1,12 +1,12 @@
 # Changelog
 
-## [0.8.1] - 2023-07-19
+## [0.8.2] - 2023-07-20
 
 ### Features
-- Enhance the `delete` statement (#3301 @dl239)
+- Enhance the `delete` statement (#3301 #3374 @dl239)
 - Enhance the C++ SDK (#3334 @vagetablechicken)
 - Support the new option `IF EXISTS` in the `DROP TABLE/DATABASE` statement (#3348 @emo-coder)
-- Improve the documents (#3344 #3152 #3355 #3360 @vagetablechicken, #3341 @aceforeverd, #3343 #3372 @dl239)
+- Improve the documents (#3344 #3152 #3355 #3360 @vagetablechicken, #3341 @aceforeverd, #3343 #3372 @dl239, #2968 @selenachenjingxin)
 - Upgrade the version of Kafka connector to `10.5.0-SNAPSHOT-0.8.1` (#3365 @vagetablechicken)
 
 ### Bug Fixes
