@@ -17,15 +17,15 @@
 from setuptools import setup, find_packages
 
 setup(
-    name='openmldb-tool',
-    version='0.7.0a0',
-    author='OpenMLDB Team',
-    author_email=' ',
-    url='https://github.com/4paradigm/OpenMLDB',
-    description='OpenMLDB Tool',
+    name="openmldb-tool",
+    version="0.7.0a0",
+    author="OpenMLDB Team",
+    author_email=" ",
+    url="https://github.com/4paradigm/OpenMLDB",
+    description="OpenMLDB Tool",
     license="copyright 4paradigm.com",
     classifiers=[
-        'Programming Language :: Python :: 3',
+        "Programming Language :: Python :: 3",
     ],
     install_requires=[
         "openmldb >= 0.6.9",
@@ -35,15 +35,20 @@ setup(
         "termplotlib",
         "requests",
     ],
-    extras_require={'test': [
-        "pytest",
-    ]},
-    packages=find_packages(exclude=['tests']),
-    exclude_package_data={
-        'openmldb-tool': ['diagnostic_tool/common_err.yml']
+    extras_require={
+        "rpc": [
+            "protobuf==3.6.1",
+            "beautifulsoup4",
+        ],
+        "test": [
+            "openmldb-tool[rpc]",
+            "pytest",
+        ],
     },
+    packages=find_packages(exclude=["tests"]),
+    exclude_package_data={"openmldb-tool": ["diagnostic_tool/common_err.yml"]},
     entry_points={
-        'console_scripts': ['openmldb_tool = diagnostic_tool.diagnose:run'],
+        "console_scripts": ["openmldb_tool = diagnostic_tool.diagnose:run"],
     },
     zip_safe=False,
 )
