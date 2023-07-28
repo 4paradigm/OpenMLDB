@@ -13,6 +13,7 @@ on:
       - 'release/**'
       - 'tools/**'
       - '*.md'
+      - 'benchmark/**'
     tags:
       - v*
   pull_request:
@@ -24,6 +25,7 @@ on:
       - 'release/**'
       - 'tools/**'
       - '*.md'
+      - 'benchmark/**'
   workflow_dispatch:
 
 env:
@@ -34,7 +36,7 @@ env:
 
 jobs:
   cpp:
-    runs-on: self-hosted
+    runs-on: [self-hosted,generic]
     if: github.repository == '4paradigm/OpenMLDB'
     container:
       image: ghcr.io/4paradigm/hybridsql:latest
@@ -175,6 +177,9 @@ jobs:
 
       - name: build
         run: |
+          # even gnu binutils support ar -M script, get error `ar: BFD (GNU Binutils) 2.40 assertion fail archive.c:1813`
+          # brew install binutils
+          # export PATH="/usr/local/opt/binutils/bin:$PATH"
           make build
           # GitHub runner disk space is limited
           # delete thirdparty build directory($ROOT/.deps/) to save disk space

@@ -28,16 +28,47 @@ namespace hybridse {
 namespace udf {
 namespace container {
 
-// Top N Value wrapper over *CateWhere
-// Base template class for 'top_n_value_*_cate_where' udafs
-//
-// CateImpl requirements
-// - ContainerT
-// - ContainerT* Update(ContainerT* ptr, InputV value, bool is_value_null, InputK key, bool is_key_null)
-// - uint32_t FormatValueFn(const V& val, char* buf, size_t size) {
-//
+// default update action: update ContainerT only cond is true
 template <template <typename> typename CateImpl>
-struct TopNValueImpl {
+struct DefaultTopNValueOperator {
+    template <typename V>
+    struct Impl {
+        using GroupContainerT = typename CateImpl<V>::ContainerT;
+        using InputK = typename GroupContainerT::InputK;
+        using InputV = typename GroupContainerT::InputV;
+        using ContainerT = std::pair<GroupContainerT, int64_t>;
+
+        static inline ContainerT* Update(ContainerT* ptr, InputV value, bool is_value_null, bool cond,
+                                         bool is_cond_null, InputK key, bool is_key_null, int64_t bound) {
+            if (ptr->second == 0) {
+                ptr->second = bound;
+            }
+            if (cond && !is_cond_null) {
+                CateImpl<V>::Update(&ptr->first, value, is_value_null, key, is_key_null);
+            }
+            return ptr;
+        }
+
+        static inline void Output(ContainerT* ptr, codec::StringRef* output) {
+            ptr->first.OutputTopNByValue(ptr->second, CateImpl<V>::FormatValueFn, output);
+        }
+    };
+};
+
+// A top_n_*_cate_where template
+// default impl as top_n_value_*_cate_where
+//
+// CateImpl requires
+// - ContainerT
+// - uint32_t FormatValueFn(const V& val, char* buf, size_t size)
+//
+// Operator requires
+// - Update(...)
+// - Output(...)
+//
+template <template <typename> typename CateImpl,
+          template <typename > typename Operator = DefaultTopNValueOperator<CateImpl>::template Impl>
+struct TopNCateWhereImpl {
     template <typename V>
     struct Impl {
         using GroupContainerT = typename CateImpl<V>::ContainerT;
@@ -45,7 +76,6 @@ struct TopNValueImpl {
 
         using InputK = typename GroupContainerT::InputK;
         using InputV = typename GroupContainerT::InputV;
-        // (key-value group, bound)
         using ContainerT = std::pair<GroupContainerT, int64_t>;
 
         void operator()(UdafRegistryHelper& helper) {  // NOLINT
@@ -74,13 +104,7 @@ struct TopNValueImpl {
 
         static ContainerT* Update(ContainerT* ptr, InputV value, bool is_value_null, bool cond, bool is_cond_null,
                                   InputK key, bool is_key_null, int64_t bound) {
-            if (ptr->second == 0) {
-                ptr->second = bound;
-            }
-            if (cond && !is_cond_null) {
-                CateImpl<V>::Update(&ptr->first, value, is_value_null, key, is_key_null);
-            }
-            return ptr;
+            return Operator<V>::Update(ptr, value, is_value_null, cond, is_cond_null, key, is_key_null, bound);
         }
 
         static ContainerT* UpdateI32Bound(ContainerT* ptr, InputV value, bool is_value_null, bool cond,
@@ -89,10 +113,7 @@ struct TopNValueImpl {
         }
 
         static void Output(ContainerT* ptr, codec::StringRef* output) {
-            ptr->first.OutputTopNByValue(
-                ptr->second,
-                CateImpl<V>::FormatValueFn,
-                output);
+            Operator<V>::Output(ptr, output);
             ptr->~ContainerT();
         }
     };

@@ -16,7 +16,7 @@ RUN  apt-get update \
      && rm -rf /var/lib/apt/lists/*
 
 RUN if [ -f "/additions/pypi.txt" ] ; then pip config set global.index-url $(cat /additions/pypi.txt) ; fi
-RUN pip install --no-cache-dir py4j==0.10.9 numpy lightgbm tornado requests pandas xgboost==1.4.2
+RUN pip install --no-cache-dir py4j==0.10.9 numpy lightgbm==3 tornado requests pandas==1.5 xgboost==1.4.2
 
 COPY init.sh /work/
 COPY predict-taxi-trip-duration/script /work/taxi-trip/
@@ -25,13 +25,13 @@ COPY *_dist.yml /work/
 
 ENV LANG=en_US.UTF-8
 ENV SPARK_HOME=/work/openmldb/spark-3.2.1-bin-openmldbspark
-ARG OPENMLDB_VERSION=0.7.3
+ARG OPENMLDB_VERSION=0.8.1
 ENV OPENMLDB_VERSION="${OPENMLDB_VERSION}"
 
 RUN  if [ "${USE_ADD_WHL}" = "true" ] ; then \
           pip install /additions/openmldb*.whl ; \
      else \
-          pip install --no-cache-dir "openmldb==${OPENMLDB_VERSION}" "openmldb-tool==${OPENMLDB_VERSION}" ; \
+          pip install --no-cache-dir "openmldb==${OPENMLDB_VERSION}" "openmldb-tool" ; \
      fi
 
 COPY setup_openmldb.sh /

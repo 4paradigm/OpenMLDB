@@ -2,6 +2,8 @@
 
 OpenMLDB Benchmak tool is used for tesing the performance of OpenMLDB's online SQL engine.
 
+**You may also refer to FEBench (https://github.com/decis-bench/febench), which is a more comprehensive benchmark for real-time feature extraction developed by a third-party, comparing the performance between OpenMLDB and Flink.**
+
 ## Requirements
 
 - CentOS 7 / macOS >= 10.15
@@ -48,3 +50,6 @@ Update `WINDOW_SIZE` in confguration file and execute the following command.
 ```
 java -cp conf/:lib/ com._4paradigm.openmldb.benchmark.OpenMLDBLongWindowBenchmark
 ```
+
+Note:
+If you want to test specific SQL, you can modify [here](https://github.com/4paradigm/OpenMLDB/blob/main/benchmark/src/main/java/com/_4paradigm/openmldb/benchmark/Util.java#L71)

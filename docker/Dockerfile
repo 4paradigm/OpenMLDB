@@ -15,7 +15,7 @@
 
 FROM centos:7
 
-ARG ZETASQL_VERSION=0.2.16
+ARG ZETASQL_VERSION=0.3.0
 ARG THIRDPARTY_VERSION=0.5.2
 ARG TARGETARCH
 
@@ -24,7 +24,7 @@ LABEL org.opencontainers.image.source https://github.com/4paradigm/OpenMLDB
 COPY setup_deps.sh /
 # hadolint ignore=DL3031,DL3033
 RUN yum update -y && yum install -y centos-release-scl epel-release && \
-    yum install -y devtoolset-8 rh-git227 devtoolset-8-libasan-devel flex doxygen java-1.8.0-openjdk-devel rh-python38-python-devel rh-python38-python-wheel && \
+    yum install -y devtoolset-8 rh-git227 devtoolset-8-libasan-devel flex doxygen java-1.8.0-openjdk-devel rh-python38-python-devel rh-python38-python-wheel rh-python38-python-requests rh-python38-python-pip && \
     curl -Lo lcov-1.15-1.noarch.rpm https://github.com/linux-test-project/lcov/releases/download/v1.15/lcov-1.15-1.noarch.rpm && \
     yum localinstall -y lcov-1.15-1.noarch.rpm && \
     yum clean all && rm -v lcov-1.15-1.noarch.rpm && \

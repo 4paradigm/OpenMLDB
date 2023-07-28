@@ -439,7 +439,7 @@ void StaticSignatureCheckFail() {
     static_assert(!Check::value, "error");
 }
 
-TEST_F(UdfRegistryTest, static_extern_signature_check) {
+TEST_F(UdfRegistryTest, StaticExternSignatureCheck) {
     using openmldb::base::StringRef;
 
     // normal arg

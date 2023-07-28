@@ -16,7 +16,9 @@
 
 from absl import flags
 from absl import logging
-import time
+from prettytable import PrettyTable
+import re
+import requests
 
 from .connector import Connector
 from .dist_conf import DistConf, COMPONENT_ROLES, ServerInfo
@@ -32,6 +34,64 @@ class StatusChecker:
         """ensure all components in cluster is online"""
         components_map = self._get_components(show=True)
         return self._check_status(components_map)
+
+    def check_connection(self):
+        """check all compontents connections"""
+        component_map = self._get_components(show=False)
+        t = PrettyTable()
+        t.title = "Connections"
+        t.field_names = ["Endpoint", "Version", "Cost_time", "Extra"]
+        err = ""
+        taskmanager = []
+        if "taskmanager" in component_map:
+            taskmanager = component_map.pop("taskmanager")  # extract taskmanager
+        other_components = [component for role in component_map.values() for component in role]  # extract other components
+        conns = []
+        for (endpoint, _) in other_components:
+            version, response_time, ex, e = self._get_information(endpoint)
+            conns.append([endpoint, version, response_time, ex])
+            err += e
+        for (endpoint, _) in taskmanager:
+            version, response_time, ex, e = self._get_information_taskmanager(endpoint)
+            conns.append([endpoint, version, response_time, ex])
+            err += e
+        for conn in conns:
+            t.add_row(conn)
+        print(t)
+        if err:
+            print(err)
+        return conns
+
+    def _get_information(self, endpoint):
+        """get informations from components except taskmanager"""
+        try:
+            response = requests.get(f"http://{endpoint}/status", timeout=1)  # the connection timeout is 1 second
+            response.raise_for_status()
+        except Exception as e:
+            err = endpoint + "\n" + str(e) + "\n"
+            return "-", "timeout", "Error: See below", err
+        text = response.text
+        regex = re.compile("version: (.*?)\\n")
+        match = re.search(regex, text)
+        version = match.group(1)
+        ex = ""
+        response_time = str(response.elapsed.microseconds / 1000) + "ms"
+        return version, response_time, ex, ""
+
+    def _get_information_taskmanager(self, endpoint):
+        """get informations from taskmanager"""
+        try:
+            response = requests.post(f"http://{endpoint}/openmldb.taskmanager.TaskManagerServer/GetVersion", json={})
+            response.raise_for_status()
+        except Exception as e:
+            err = endpoint + "\n" + str(e) + "\n"
+            return "-", "timeout", "Error: See below", err
+        js = response.json()
+        version = js["taskmanagerVersion"]
+        ex = "batchVersion: " + js["batchVersion"][:-1]
+        response = requests.get(f"http://{endpoint}", timeout=1)
+        response_time = str(response.elapsed.microseconds / 1000) + "ms"
+        return version, response_time, ex, ""
 
     def offline_support(self):
         """True if have taskmanager, else False"""

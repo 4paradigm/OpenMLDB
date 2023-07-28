@@ -20,6 +20,7 @@ import com._4paradigm.openmldb.batch.catalog.OpenmldbCatalogService
 import com._4paradigm.openmldb.batch.utils.{DataTypeUtil, VersionCli}
 import com._4paradigm.openmldb.batch.utils.HybridseUtil.autoLoad
 import com._4paradigm.openmldb.batch.{OpenmldbBatchConfig, SparkPlanner}
+import org.apache.commons.lang3.exception.ExceptionUtils
 import org.apache.log4j.{Level, Logger}
 import org.apache.spark.{SPARK_VERSION, SparkConf}
 import org.apache.spark.sql.catalyst.QueryPlanningTracker
@@ -288,14 +289,21 @@ class OpenmldbSession {
           val path = offlineTableInfo.getPath
           val format = offlineTableInfo.getFormat
           val options = offlineTableInfo.getOptionsMap.asScala.toMap
+          val symbolicPathsSize = offlineTableInfo.getSymbolicPathsCount()
+
+          val symbolicPaths = if (symbolicPathsSize > 0) {
+            offlineTableInfo.getSymbolicPathsList().asScala.toList
+          } else {
+            List.empty[String]
+          }
 
           // TODO: Ignore the register exception which occurs when switching local and yarn mode
           try {
             // default offlineTableInfo required members 'path' & 'format' won't be null
-            if (path != null && path.nonEmpty && format != null && format.nonEmpty) {
+            if ((path != null && path.nonEmpty) || symbolicPathsSize > 0) {
               // Has offline table meta, use the meta and table schema to read data
               // hive load will use sparksql
-              val df = autoLoad(this, path, format, options, tableInfo.getColumnDescList)
+              val df = autoLoad(this, path, symbolicPaths, format, options, tableInfo.getColumnDescList)
               registerTable(dbName, tableName, df)
             } else {
               // Register empty df for table
@@ -314,7 +322,9 @@ class OpenmldbSession {
               registerTable(dbName, tableName, emptyDf)
             }
           } catch {
-            case e: Exception => logger.warn(s"Fail to register table $dbName.$tableName, error: ${e.getMessage}")
+            case e: Exception => {
+              logger.warn(s"Fail to register table $dbName.$tableName " + ExceptionUtils.getStackTrace(e))
+            }
           }
         }
       })

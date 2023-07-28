@@ -27,6 +27,7 @@
 #include "absl/strings/str_cat.h"
 #include "absl/strings/str_join.h"
 #include "absl/strings/string_view.h"
+#include "absl/strings/substitute.h"
 #include "boost/algorithm/string/case_conv.hpp"
 #include "glog/logging.h"
 #include "node/node_enum.h"
@@ -1112,208 +1113,95 @@ bool SelectQueryNode::Equals(const SqlNode *node) const {
            SqlEquals(this->limit_ptr_, that->limit_ptr_);
 }
 
-// Return the node type name
-// param type
-// return
-std::string NameOfSqlNodeType(const SqlNodeType &type) {
-    std::string output;
-    switch (type) {
-        case kCreateStmt:
-            output = "CREATE";
-            break;
-        case kCmdStmt:
-            output = "CMD";
-            break;
-        case kExplainStmt:
-            output = "EXPLAIN";
-        case kName:
-            output = "kName";
-            break;
-        case kType:
-            output = "kType";
-            break;
-        case kNodeList:
-            output = "kNodeList";
-            break;
-        case kResTarget:
-            output = "kResTarget";
-            break;
-        case kTableRef:
-            output = "kTableRef";
-            break;
-        case kQuery:
-            output = "kQuery";
-            break;
-        case kColumnDesc:
-            output = "kColumnDesc";
-            break;
-        case kColumnIndex:
-            output = "kColumnIndex";
-            break;
-        case kExpr:
-            output = "kExpr";
-            break;
-        case kWindowDef:
-            output = "kWindowDef";
-            break;
-        case kFrames:
-            output = "kFrame";
-            break;
-        case kFrameExtent:
-            output = "kFrameExtent";
-            break;
-        case kFrameBound:
-            output = "kBound";
-            break;
-        case kConst:
-            output = "kConst";
-            break;
-        case kLimit:
-            output = "kLimit";
-            break;
-        case kFnList:
-            output = "kFnList";
-            break;
-        case kFnDef:
-            output = "kFnDef";
-            break;
-        case kFnHeader:
-            output = "kFnHeader";
-            break;
-        case kFnPara:
-            output = "kFnPara";
-            break;
-        case kFnReturnStmt:
-            output = "kFnReturnStmt";
-            break;
-        case kFnAssignStmt:
-            output = "kFnAssignStmt";
-            break;
-        case kFnIfStmt:
-            output = "kFnIfStmt";
-            break;
-        case kFnElifStmt:
-            output = "kFnElseifStmt";
-            break;
-        case kFnElseStmt:
-            output = "kFnElseStmt";
-            break;
-        case kFnIfBlock:
-            output = "kFnIfBlock";
-            break;
-        case kFnElseBlock:
-            output = "kFnElseBlock";
-            break;
-        case kFnIfElseBlock:
-            output = "kFnIfElseBlock";
-            break;
-        case kFnElifBlock:
-            output = "kFnElIfBlock";
-            break;
-        case kFnValue:
-            output = "kFnValue";
-            break;
-        case kFnForInStmt:
-            output = "kFnForInStmt";
-            break;
-        case kFnForInBlock:
-            output = "kFnForInBlock";
-            break;
-        case kExternalFnDef:
-            output = "kExternFnDef";
-            break;
-        case kUdfDef:
-            output = "kUdfDef";
-            break;
-        case kUdfByCodeGenDef:
-            output = "kUdfByCodeGenDef";
-            break;
-        case kUdafDef:
-            output = "kUdafDef";
-            break;
-        case kLambdaDef:
-            output = "kLambdaDef";
-            break;
-        case kPartitionMeta:
-            output = "kPartitionMeta";
-            break;
-        case kCreateIndexStmt:
-            output = "kCreateIndexStmt";
-            break;
-        case kInsertStmt:
-            output = "kInsertStmt";
-            break;
-        case kWindowFunc:
-            output = "kWindowFunc";
-            break;
-        case kIndexKey:
-            output = "kIndexKey";
-            break;
-        case kIndexTs:
-            output = "kIndexTs";
-            break;
-        case kIndexTTLType:
-            output = "kIndexTTLType";
-            break;
-        case kIndexTTL:
-            output = "kIndexTTL";
-            break;
-        case kIndexVersion:
-            output = "kIndexVersion";
-            break;
-        case kReplicaNum:
-            output = "kReplicaNum";
-            break;
-        case kPartitionNum:
-            output = "kPartitionNum";
-            break;
-        case kStorageMode:
-            output = "kStorageMode";
-            break;
-        case kFn:
-            output = "kFn";
-            break;
-        case kFnParaList:
-            output = "kFnParaList";
-            break;
-        case kCreateSpStmt:
-            output = "kCreateSpStmt";
-            break;
-        case kDistributions:
-            output = "kDistributions";
-            break;
-        case kInputParameter:
-            output = "kInputParameter";
-            break;
-        case kDeployStmt:
-            output = "kDeployStmt";
-            break;
-        case kSelectIntoStmt:
-            output = "kSelectIntoStmt";
-            break;
-        case kLoadDataStmt:
-            output = "kLoadDataStmt";
-            break;
-        case kSetStmt:
-            output = "kSetStmt";
-            break;
-        case kDeleteStmt:
-            output = "kDeleteStmt";
-            break;
-        case kCreateFunctionStmt:
-            output = "kCreateFunctionStmt";
-            break;
-        case kDynamicUdfFnDef:
-            output = "kDynamicUdfFnDef";
-            break;
-        case kWithClauseEntry:
-            output = "kWithClauseEntry";
-            break;
-        case kUnknow:
-            output = "kUnknow";
-            break;
+static absl::flat_hash_map<SqlNodeType, absl::string_view> CreateSqlNodeTypeToNamesMap() {
+    absl::flat_hash_map<SqlNodeType, absl::string_view> map = {
+        {kCreateStmt, "CREATE"},
+        {kCmdStmt, "CMD"},
+        {kShowStmt, "kShowStmt"},
+        {kExplainStmt, "EXPLAIN"},
+        {kName, "kName"},
+        {kType, "kType"},
+        {kNodeList, "kNodeList"},
+        {kResTarget, "kResTarget"},
+        {kTableRef, "kTableRef"},
+        {kQuery, "kQuery"},
+        {kColumnDesc, "kColumnDesc"},
+        {kColumnIndex, "kColumnIndex"},
+        {kExpr, "kExpr"},
+        {kWindowDef, "kWindowDef"},
+        {kFrames, "kFrame"},
+        {kFrameExtent, "kFrameExtent"},
+        {kFrameBound, "kBound"},
+        {kConst, "kConst"},
+        {kLimit, "kLimit"},
+        {kFnList, "kFnList"},
+        {kFnDef, "kFnDef"},
+        {kFnHeader, "kFnHeader"},
+        {kFnPara, "kFnPara"},
+        {kFnReturnStmt, "kFnReturnStmt"},
+        {kFnAssignStmt, "kFnAssignStmt"},
+        {kFnIfStmt, "kFnIfStmt"},
+        {kFnElifStmt, "kFnElseifStmt"},
+        {kFnElseStmt, "kFnElseStmt"},
+        {kFnIfBlock, "kFnIfBlock"},
+        {kFnElseBlock, "kFnElseBlock"},
+        {kFnIfElseBlock, "kFnIfElseBlock"},
+        {kFnElifBlock, "kFnElIfBlock"},
+        {kFnValue, "kFnValue"},
+        {kFnForInStmt, "kFnForInStmt"},
+        {kFnForInBlock, "kFnForInBlock"},
+        {kExternalFnDef, "kExternFnDef"},
+        {kUdfDef, "kUdfDef"},
+        {kUdfByCodeGenDef, "kUdfByCodeGenDef"},
+        {kUdafDef, "kUdafDef"},
+        {kLambdaDef, "kLambdaDef"},
+        {kPartitionMeta, "kPartitionMeta"},
+        {kCreateIndexStmt, "kCreateIndexStmt"},
+        {kInsertStmt, "kInsertStmt"},
+        {kWindowFunc, "kWindowFunc"},
+        {kIndexKey, "kIndexKey"},
+        {kIndexTs, "kIndexTs"},
+        {kIndexTTLType, "kIndexTTLType"},
+        {kIndexTTL, "kIndexTTL"},
+        {kIndexVersion, "kIndexVersion"},
+        {kReplicaNum, "kReplicaNum"},
+        {kPartitionNum, "kPartitionNum"},
+        {kStorageMode, "kStorageMode"},
+        {kFn, "kFn"},
+        {kFnParaList, "kFnParaList"},
+        {kCreateSpStmt, "kCreateSpStmt"},
+        {kDistributions, "kDistributions"},
+        {kInputParameter, "kInputParameter"},
+        {kDeployStmt, "kDeployStmt"},
+        {kSelectIntoStmt, "kSelectIntoStmt"},
+        {kLoadDataStmt, "kLoadDataStmt"},
+        {kSetStmt, "kSetStmt"},
+        {kDeleteStmt, "kDeleteStmt"},
+        {kCreateFunctionStmt, "kCreateFunctionStmt"},
+        {kDynamicUdfFnDef, "kDynamicUdfFnDef"},
+        {kDynamicUdafFnDef, "kDynamicUdafFnDef"},
+        {kWithClauseEntry, "kWithClauseEntry"},
+        {kAlterTableStmt, "kAlterTableStmt"},
+    };
+    for (auto kind = 0; kind < SqlNodeType::kSqlNodeTypeLast; ++kind) {
+        DCHECK(map.find(static_cast<SqlNodeType>(kind)) != map.end())
+            << "name of " << kind << " not exist";
     }
-    return output;
+    return map;
+}
+
+static const auto& GetSqlNodeTypeToNamesMap() {
+    static const auto &map = *new auto(CreateSqlNodeTypeToNamesMap());
+    return map;
+}
+
+std::string NameOfSqlNodeType(const SqlNodeType &type) {
+    auto& map = GetSqlNodeTypeToNamesMap();
+    auto it = map.find(type);
+    if (it != map.end()) {
+        return std::string(it->second);
+    }
+    return "kUnknow";
 }
 
 absl::string_view CmdTypeName(const CmdType type) {
@@ -1406,8 +1294,7 @@ bool IsAggregationExpression(const udf::UdfLibrary *lib, const ExprNode *node_pt
 
 bool WindowOfExpression(const std::map<std::string, const WindowDefNode *> &windows, ExprNode *node_ptr,
                         const WindowDefNode **output) {
-    // try to resolved window ptr from expression like: call(args...) over
-    // window
+    // try to resolved window ptr from expression like: call(args...) over window
     if (kExprCall == node_ptr->GetExprType()) {
         CallExprNode *func_node_ptr = dynamic_cast<CallExprNode *>(node_ptr);
         if (nullptr != func_node_ptr->GetOver()) {
@@ -1678,6 +1565,26 @@ bool CmdNode::Equals(const SqlNode *node) const {
     return cnode != nullptr && GetCmdType() == cnode->GetCmdType() && IsIfNotExists() == cnode->IsIfNotExists() &&
            std::equal(std::begin(GetArgs()), std::end(GetArgs()), std::begin(cnode->GetArgs()),
                       std::end(cnode->GetArgs()));
+}
+
+bool ShowNode::Equals(const SqlNode *node) const {
+    if (!SqlNode::Equals(node)) {
+        return false;
+    }
+    auto* show_node = dynamic_cast<const ShowNode*>(node);
+    return show_node != nullptr && GetShowType() == show_node->GetShowType() && GetTarget() == show_node->GetTarget()
+        && GetLikeStr() == show_node->GetLikeStr();
+}
+
+void ShowNode::Print(std::ostream &output, const std::string &org_tab) const {
+    SqlNode::Print(output, org_tab);
+    const std::string tab = org_tab + INDENT + SPACE_ED;
+    output << "\n";
+    PrintValue(output, tab, ShowStmtTypeName(show_type_), "show type", false);
+    output << "\n";
+    PrintValue(output, tab, target_, "target", false);
+    output << "\n";
+    PrintValue(output, tab, like_str_, "like_str", true);
 }
 
 void CreateFunctionNode::Print(std::ostream &output, const std::string &org_tab) const {
@@ -2783,6 +2690,29 @@ bool WithClauseEntry::Equals(const SqlNode *node) const {
 
     auto rhs = dynamic_cast<const WithClauseEntry*>(node);
     return rhs != nullptr && alias_ == rhs->alias_ && SqlEquals(this, rhs);
+}
+
+void AlterTableStmt::Print(std::ostream &output, const std::string &org_tab) const {
+    SqlNode::Print(output, org_tab);
+    output << "\n";
+    auto tab = org_tab + INDENT;
+    PrintValue(output, tab, db_ + "." + table_, "path", false);
+    output << "\n";
+    output << tab << SPACE_ST << "actions:" << "\n";
+    for (decltype(actions_.size()) i = 0; i < actions_.size(); ++i) {
+        PrintValue(output, tab + INDENT, actions_[i]->DebugString(), std::to_string(i), false);
+        if (i + 1 < actions_.size()) {
+            output << "\n";
+        }
+    }
+}
+
+std::string AddPathAction::DebugString() const {
+    return absl::Substitute("AddPathAction ($0)", target_);
+}
+
+std::string DropPathAction::DebugString() const {
+    return absl::Substitute("DropPathAction ($0)", target_);
 }
 
 }  // namespace node

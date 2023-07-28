@@ -2,7 +2,7 @@
 
 本文将以 [Kaggle 上的出租车行车时间预测问题](https://www.kaggle.com/c/nyc-taxi-trip-duration/overview)为例，示范如何使用 OpenMLDB 和 LightGBM 联合来打造一个完整的机器学习应用。
 
-注意，本文档使用的是预编译好的 Docker 镜像。如果希望在自己编译和搭建的 OpenMLDB 环境下进行测试，需要配置使用[面向特征工程优化的 Spark 发行版](https://openmldb.ai/docs/zh/main/tutorial/openmldbspark_distribution.html)。请参考[针对 OpenMLDB 优化的 Spark 发行版文档](../tutorial/openmldbspark_distribution.md#openmldb-spark-发行版)和[安装部署文档](../deploy/install_deploy.md#2-修改配置文件conftaskmanagerproperties)。
+注意，本文档使用的是预编译好的 Docker 镜像。如果希望在自己编译和搭建的 OpenMLDB 环境下进行测试，需要配置使用[面向特征工程优化的 Spark 发行版](https://openmldb.ai/docs/zh/main/tutorial/openmldbspark_distribution.html)。请参考[针对 OpenMLDB 优化的 Spark 发行版文档](../tutorial/openmldbspark_distribution.md#openmldb-spark-发行版)和[安装部署文档](../deploy/install_deploy.md#修改配置文件conftaskmanagerproperties)。
 
 ## 准备和预备知识
 
@@ -15,7 +15,7 @@
 在命令行执行以下命令拉取 OpenMLDB 镜像，并启动 Docker 容器：
 
 ```bash
-docker run -it 4pdosc/openmldb:0.7.3 bash
+docker run -it 4pdosc/openmldb:0.8.2 bash
 ```
 
 该镜像预装了OpenMLDB，并预置了本案例所需要的所有脚本、三方库、开源工具以及训练数据。

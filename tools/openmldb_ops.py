@@ -144,7 +144,7 @@ def RecoverTable(executor : Executor, db, table_name) -> Status:
     log.info(f"recover {table_name} in {db}")
     status, table_info = executor.GetTableInfo(db, table_name)
     if not status.OK():
-        log.warn(f"get table info failed. msg is {status.GetMsg()}")
+        log.warning(f"get table info failed. msg is {status.GetMsg()}")
         return Status(-1, f"get table info failed. msg is {status.GetMsg()}")
     partition_dict = executor.ParseTableInfo(table_info)
     endpoints = set()
@@ -154,7 +154,7 @@ def RecoverTable(executor : Executor, db, table_name) -> Status:
     for endpoint in endpoints:
         status, result = executor.GetTableStatus(endpoint)
         if not status.OK():
-            log.warn(f"get table status failed. msg is {status.GetMsg()}")
+            log.warning(f"get table status failed. msg is {status.GetMsg()}")
             return Status(-1, f"get table status failed. msg is {status.GetMsg()}")
         endpoint_status[endpoint] = result
     max_pid = int(table_info[-1][2])
@@ -180,7 +180,7 @@ def RecoverTable(executor : Executor, db, table_name) -> Status:
     if status.OK():
         log.info(f"{table_name} in {db} recover success")
     else:
-        log.warn(status.GetMsg())
+        log.warning(status.GetMsg())
     return status
 
 def RecoverData(executor : Executor):
@@ -224,7 +224,8 @@ def ChangeLeader(db: str, partition: Partition, src_endpoint: str, desc_endpoint
 
 def MigratePartition(db : str, partition : Partition, src_endpoint : str, desc_endpoint : str, one_replica : bool) -> Status:
     if partition.IsLeader():
-        status = ChangeLeader(db, partition, src_endpoint, desc_endpoint, one_replica, True)
+        des = "" if not one_replica else desc_endpoint
+        status = ChangeLeader(db, partition, src_endpoint, des, one_replica, True)
         if not status.OK():
             log.error(status.GetMsg())
             return status

@@ -57,7 +57,7 @@ class Table {
         return Put(entry.ts(), entry.value(), entry.dimensions());
     }
 
-    virtual bool Delete(const std::string& pk, uint32_t idx) = 0;
+    virtual bool Delete(const ::openmldb::api::LogEntry& entry) = 0;
 
     virtual TableIterator* NewIterator(const std::string& pk,
                                        Ticket& ticket) = 0;  // NOLINT
@@ -71,7 +71,7 @@ class Table {
 
     virtual void SchedGc() = 0;
 
-    virtual uint64_t GetRecordCnt() const = 0;
+    virtual uint64_t GetRecordCnt() = 0;
 
     virtual bool IsExpire(const ::openmldb::api::LogEntry& entry) = 0;
 

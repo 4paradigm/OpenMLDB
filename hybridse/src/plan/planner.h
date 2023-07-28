@@ -31,6 +31,7 @@
 #include "node/plan_node.h"
 #include "node/sql_node.h"
 #include "proto/fe_type.pb.h"
+
 namespace hybridse {
 namespace plan {
 
@@ -55,16 +56,23 @@ class Planner {
 
     static int GetPlanTreeLimitCount(node::PlanNode *node);
 
-    // \param node Plan node tree going to validate.
-    // \param is_primary_path Whether the `node` is in the primary path of whole SQL, default to true.
-    //    for queries without WITH clause, it is always true, for queries inside WITH clause, the parameter
-    //    should be false when the referenced table node is not a primary node
-    static base::Status ValidPlanForRequestMode(node::PlanNode *node, bool is_primary_path = true)
-        ABSL_ATTRIBUTE_NONNULL();
+    /// Prepare plan node for request mode (or batch request mode):
+    /// - verify the plan node for supported OPs
+    ///
+    /// \param node Plan node tree going to validate.
+    static base::Status PreparePlanForRequestMode(node::PlanNode *node) ABSL_ATTRIBUTE_NONNULL();
 
  protected:
-    static bool IsTable(node::PlanNode *node, node::PlanNode **output);
-    static base::Status ValidateRequestTable(node::PlanNode *node, std::vector<node::PlanNode *> &request_tables);  // NOLINT
+    template <typename NodeType, typename OutputType, typename ConvertFn>
+    ABSL_MUST_USE_RESULT base::Status ConvertGuard(const node::SqlNode *node, OutputType **output, ConvertFn &&func) {
+        auto specific_node = dynamic_cast<std::add_pointer_t<std::add_const_t<NodeType>>>(node);
+        CHECK_TRUE(specific_node != nullptr, common::kUnsupportSql, "unable to cast");
+        return func(specific_node, output);
+    }
+
+    static absl::StatusOr<node::TablePlanNode *> IsTable(node::PlanNode *node);
+    static base::Status PrepareRequestTable(node::PlanNode *node,
+                                            std::vector<node::TablePlanNode *> &request_tables);  // NOLINT
     static base::Status ValidateOnlineServingOp(node::PlanNode *node);
     static base::Status ValidateClusterOnlineTrainingOp(node::PlanNode *node);
 
@@ -125,6 +133,8 @@ class SimplePlanner : public Planner {
                   const std::unordered_map<std::string, std::string>* extra_options = nullptr)
         : Planner(manager, is_batch_mode, is_cluster_optimized, enable_batch_window_parallelization, extra_options) {}
     ~SimplePlanner() {}
+
+ protected:
     base::Status CreatePlanTree(const NodePointVector &parser_trees,
                                 PlanNodeList &plan_trees);  // NOLINT
 };

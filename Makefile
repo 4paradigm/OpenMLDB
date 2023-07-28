@@ -34,6 +34,9 @@ endif
 ifdef SQL_JAVASDK_ENABLE
     OPENMLDB_CMAKE_FLAGS += -DSQL_JAVASDK_ENABLE=$(SQL_JAVASDK_ENABLE)
 endif
+ifdef INSTALL_CXXSDK
+	OPENMLDB_CMAKE_FLAGS += -DINSTALL_CXXSDK=$(INSTALL_CXXSDK)
+endif
 ifdef TESTING_ENABLE
     OPENMLDB_CMAKE_FLAGS += -DTESTING_ENABLE=$(TESTING_ENABLE)
 endif
@@ -45,6 +48,9 @@ ifdef TCMALLOC_ENABLE
 endif
 ifdef COVERAGE_ENABLE
     OPENMLDB_CMAKE_FLAGS += -DCOVERAGE_ENABLE=$(COVERAGE_ENABLE)
+endif
+ifdef COVERAGE_NO_DEPS
+    OPENMLDB_CMAKE_FLAGS += -DCOVERAGE_NO_DEPS=$(COVERAGE_NO_DEPS)
 endif
 ifdef SANITIZER_ENABLE
     OPENMLDB_CMAKE_FLAGS += -DSANITIZER_ENABLE=$(SANITIZER_ENABLE)
@@ -114,7 +120,7 @@ install: build
 
 test: build
 	# NOTE: some test require zookeeper start first, it should fixed
-	sh ./steps/ut_zookeeper.sh start
+	sh ./steps/ut_zookeeper.sh reset
 	$(CMAKE_PRG) --build $(OPENMLDB_BUILD_DIR) --target test -- -j$(NPROC)
 	sh ./steps/ut_zookeeper.sh stop
 
@@ -148,7 +154,7 @@ thirdparty-fast:
 	    if [ "$$new_zetasql_version" != "$(ZETASQL_VERSION)" ] ; then \
 		echo "[deps]: thirdparty up-to-date. reinstall zetasql from $(ZETASQL_VERSION) to $$new_zetasql_version"; \
 		$(MAKE) thirdparty-configure; \
-		$(CMAKE_PRG) --build $(THIRD_PARTY_BUILD_DIR) --target zetasql; \
+		$(CMAKE_PRG) --build $(THIRD_PARTY_BUILD_DIR) -j $(NPROC) --target zetasql; \
 	    else \
 		echo "[deps]: all up-to-date. zetasql already installed with version: $(ZETASQL_VERSION)"; \
 	    fi; \
@@ -160,7 +166,7 @@ thirdparty-fast:
 
 # third party compiled code install to 'OpenMLDB/.deps/usr', source code install to 'OpenMLDB/thirdsrc'
 thirdparty: thirdparty-configure
-	$(CMAKE_PRG) --build $(THIRD_PARTY_BUILD_DIR)
+	$(CMAKE_PRG) --build $(THIRD_PARTY_BUILD_DIR) -j $(NPROC)
 
 thirdparty-configure:
 	$(CMAKE_PRG) -S third-party -B $(THIRD_PARTY_BUILD_DIR) -DSRC_INSTALL_DIR=$(THIRD_PARTY_SRC_DIR) -DDEPS_INSTALL_DIR=$(THIRD_PARTY_DIR) $(THIRD_PARTY_CMAKE_FLAGS)

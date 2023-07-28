@@ -130,18 +130,21 @@ void dayofyear(int64_t ts, int32_t* out, bool* is_null) {
 int32_t dayofmonth(int64_t ts) {
     time_t time = (ts + TZ_OFFSET) / 1000;
     struct tm t;
+    memset(&t, 0, sizeof(struct tm));
     gmtime_r(&time, &t);
     return t.tm_mday;
 }
 int32_t dayofweek(int64_t ts) {
     time_t time = (ts + TZ_OFFSET) / 1000;
     struct tm t;
+    memset(&t, 0, sizeof(struct tm));
     gmtime_r(&time, &t);
     return t.tm_wday + 1;
 }
 int32_t weekofyear(int64_t ts) {
     time_t time = (ts + TZ_OFFSET) / 1000;
     struct tm t;
+    memset(&t, 0, sizeof(struct tm));
     gmtime_r(&time, &t);
     try {
         boost::gregorian::date d = boost::gregorian::date_from_tm(t);
@@ -153,12 +156,14 @@ int32_t weekofyear(int64_t ts) {
 int32_t month(int64_t ts) {
     time_t time = (ts + TZ_OFFSET) / 1000;
     struct tm t;
+    memset(&t, 0, sizeof(struct tm));
     gmtime_r(&time, &t);
     return t.tm_mon + 1;
 }
 int32_t year(int64_t ts) {
     time_t time = (ts + TZ_OFFSET) / 1000;
     struct tm t;
+    memset(&t, 0, sizeof(struct tm));
     gmtime_r(&time, &t);
     return t.tm_year + 1900;
 }
@@ -287,6 +292,7 @@ void date_format(const Timestamp *timestamp, const char *format,
                  char *buffer, size_t size) {
     time_t time = (timestamp->ts_ + TZ_OFFSET) / 1000;
     struct tm t;
+    memset(&t, 0, sizeof(struct tm));
     gmtime_r(&time, &t);
     strftime(buffer, size, format, &t);
 }
@@ -384,6 +390,7 @@ void timestamp_to_date(Timestamp *timestamp,
                        Date *output, bool *is_null) {
     time_t time = (timestamp->ts_ + TZ_OFFSET) / 1000;
     struct tm t;
+    memset(&t, 0, sizeof(struct tm));
     if (nullptr == gmtime_r(&time, &t)) {
         *is_null = true;
         return;
@@ -644,109 +651,47 @@ void string_to_bool(StringRef *str, bool *out, bool *is_null_ptr) {
     return;
 }
 void string_to_int(StringRef *str, int32_t *out, bool *is_null_ptr) {
-    // init
-    *out = 0;
-    *is_null_ptr = true;
     if (nullptr == str) {
+        *is_null_ptr = true;
         return;
     }
-    if (0 == str->size_) {
-        return;
-    }
-    try {
-        // string -> integer
-        // std::string::size_type sz;  // alias of size_t
-        // *out = std::stoi(str->ToString(), &sz);
-        // if (sz < str->size_) {
-        //    *out = 0;
-        //    *is_null_ptr = true;
-        //    return;
-        //}
-        std::string str_obj = str->ToString();
-        const char *c_str = str_obj.c_str();
-        char *end;
-        *out = strtol(c_str, &end, 10);
-        if (end < c_str + str->size_) {
-            *out = 0;
-            *is_null_ptr = true;
-            return;
-        }
+    auto [s, ret] = StrToIntegral()(str->ToString());
+    if (s.ok() && ret <= INT32_MAX && ret >= INT32_MIN) {
         *is_null_ptr = false;
-    } catch (...) {
-        // error management
-        return;
+        *out = ret;
+    } else {
+        *is_null_ptr = true;
     }
-    return;
 }
 void string_to_smallint(StringRef *str, int16_t *out,
                         bool *is_null_ptr) {
-    // init
-    *out = 0;
-    *is_null_ptr = true;
     if (nullptr == str) {
+        *is_null_ptr = true;
         return;
     }
-    if (0 == str->size_) {
-        return;
-    }
-    try {
-        // string -> integer
-        // std::string::size_type sz;  // alias of size_t
-        // int i = std::stoi(str->ToString(), &sz);
-        // if (sz < str->size_) {
-        //    *is_null_ptr = true;
-        //    return;
-        // }
-        std::string str_obj = str->ToString();
-        const char *c_str = str_obj.c_str();
-        char *end;
-        int i = strtol(c_str, &end, 10);
-        if (end < c_str + str->size_) {
-            *is_null_ptr = true;
-            return;
-        }
-        *out = static_cast<int16_t>(i);
+
+    auto [s, ret] = StrToIntegral()(str->ToString());
+    if (s.ok() && ret >= INT16_MIN && ret <= INT16_MAX) {
         *is_null_ptr = false;
-    } catch (...) {
-        // error management
-        return;
+        *out = ret;
+    } else {
+        *is_null_ptr = true;
     }
-    return;
 }
+
 void string_to_bigint(StringRef *str, int64_t *out, bool *is_null_ptr) {
-    // init
-    *out = 0;
-    *is_null_ptr = true;
     if (nullptr == str) {
+        *is_null_ptr = true;
         return;
     }
-    if (0 == str->size_) {
-        return;
-    }
-    try {
-        // string -> integer
-        // std::string::size_type sz;  // alias of size_t
-        // *out = std::stol(str->ToString(), &sz);
-        // if (sz < str->size_) {
-        //   *out = 0;
-        //    *is_null_ptr = true;
-        //    return;
-        // }
-        std::string str_obj = str->ToString();
-        const char *c_str = str_obj.c_str();
-        char *end;
-        *out = strtoll(c_str, &end, 0);
-        if (end < c_str + str->size_) {
-            *out = 0;
-            *is_null_ptr = true;
-            return;
-        }
+
+    auto [s, ret] = StrToIntegral()(str->ToString());
+    if (s.ok()) {
         *is_null_ptr = false;
-    } catch (...) {
-        // error management
-        return;
+        *out = ret;
+    } else {
+        *is_null_ptr = true;
     }
-    return;
 }
 void string_to_float(StringRef *str, float *out, bool *is_null_ptr) {
     // init
@@ -822,6 +767,7 @@ void string_to_date(StringRef *str, Date *output,
                     bool *is_null) {
     if (19 == str->size_) {
         struct tm timeinfo;
+        memset(&timeinfo, 0, sizeof(struct tm));
         if (nullptr ==
             strptime(str->ToString().c_str(), "%Y-%m-%d %H:%M:%S", &timeinfo)) {
             *is_null = true;
@@ -929,6 +875,7 @@ void string_to_timestamp(StringRef *str,
                          Timestamp *output, bool *is_null) {
     if (19 == str->size_) {
         struct tm timeinfo;
+        memset(&timeinfo, 0, sizeof(struct tm));
         if (nullptr ==
             strptime(str->ToString().c_str(), "%Y-%m-%d %H:%M:%S", &timeinfo)) {
             *is_null = true;

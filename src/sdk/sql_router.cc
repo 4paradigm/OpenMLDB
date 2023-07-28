@@ -43,9 +43,9 @@ std::shared_ptr<SQLRouter> NewStandaloneSQLRouter(const StandaloneOptions& optio
 
 // To avoid using protobuf message in swig, we use normal type in GenDDL/OutputSchema parameters,
 // so we should convert schema format here
-std::map<std::string, std::vector<openmldb::common::ColumnDesc>> convertSchema(
+base::TableDescMap convertSchema(
     const std::vector<std::pair<std::string, std::vector<std::pair<std::string, hybridse::sdk::DataType>>>>& schemas) {
-    std::map<std::string, std::vector<openmldb::common::ColumnDesc>> table_desc_map;
+    base::TableDescMap table_desc_map;
     for (auto& table_item : schemas) {
         auto table_name = table_item.first;
         auto column_list = table_item.second;
@@ -67,6 +67,20 @@ std::map<std::string, std::vector<openmldb::common::ColumnDesc>> convertSchema(
         if (!success) {
             LOG(WARNING) << "insert to map failed, table " << table_name << " already exists";
         }
+    }
+    return table_desc_map;
+}
+
+base::MultiDBTableDescMap convertSchema(
+    const std::vector<
+        std::pair<std::string,
+                  std::vector<std::pair<std::string, std::vector<std::pair<std::string, hybridse::sdk::DataType>>>>>>&
+        schemas) {
+    base::MultiDBTableDescMap table_desc_map;
+    for (auto& db_item : schemas) {
+        auto db_name = db_item.first;
+        auto& table_map = db_item.second;
+        table_desc_map.emplace(db_name, convertSchema(table_map));
     }
     return table_desc_map;
 }
@@ -138,7 +152,9 @@ std::vector<std::string> GenDDL(
         LOG_IF(WARNING, !schemas.empty()) << "input schemas is not emtpy, but conversion failed";
         return {};
     }
-    auto index_map = openmldb::base::DDLParser::ExtractIndexes(sql, table_desc_map);
+    // DDL only support single db, but ExtractIndexes support multi db
+    auto db_index_map = openmldb::base::DDLParser::ExtractIndexes(sql, "GenDDLDB", {{"GenDDLDB", table_desc_map}});
+    auto& index_map = db_index_map["GenDDLDB"];
     std::vector<std::string> ddl_vector;
     for (const auto& table_item : table_desc_map) {
         std::string ddl = "CREATE TABLE IF NOT EXISTS ";
@@ -188,36 +204,74 @@ std::vector<std::string> GenDDL(
 }
 
 std::shared_ptr<hybridse::sdk::Schema> GenOutputSchema(
-    const std::string& sql,
-    const std::vector<std::pair<std::string, std::vector<std::pair<std::string, hybridse::sdk::DataType>>>>& schemas) {
+    const std::string& sql, const std::string& db,
+    const std::vector<
+        std::pair<std::string,
+                  std::vector<std::pair<std::string, std::vector<std::pair<std::string, hybridse::sdk::DataType>>>>>>&
+        schemas) {
     auto table_desc_map = convertSchema(schemas);
     if (table_desc_map.empty()) {
         LOG_IF(WARNING, !schemas.empty()) << "input schemas is not emtpy, but conversion failed";
         return {};
     }
-    return openmldb::base::DDLParser::GetOutputSchema(sql, table_desc_map);
+    return openmldb::base::DDLParser::GetOutputSchema(sql, db, table_desc_map);
 }
 
 std::vector<std::string> ValidateSQLInBatch(
-    const std::string& sql,
-    const std::vector<std::pair<std::string, std::vector<std::pair<std::string, hybridse::sdk::DataType>>>>& schemas) {
+    const std::string& sql, const std::string& db,
+    const std::vector<
+        std::pair<std::string,
+                  std::vector<std::pair<std::string, std::vector<std::pair<std::string, hybridse::sdk::DataType>>>>>>&
+        schemas) {
     auto table_desc_map = convertSchema(schemas);
     if (table_desc_map.empty()) {
         LOG_IF(WARNING, !schemas.empty()) << "input schemas is not emtpy, but conversion failed";
         return {"schema convert failed(input schema may be empty)", "check convertSchema"};
     }
-    return openmldb::base::DDLParser::ValidateSQLInBatch(sql, table_desc_map);
+    return openmldb::base::DDLParser::ValidateSQLInBatch(sql, db, table_desc_map);
 }
 
 std::vector<std::string> ValidateSQLInRequest(
-    const std::string& sql,
-    const std::vector<std::pair<std::string, std::vector<std::pair<std::string, hybridse::sdk::DataType>>>>& schemas) {
+    const std::string& sql, const std::string& db,
+    const std::vector<
+        std::pair<std::string,
+                  std::vector<std::pair<std::string, std::vector<std::pair<std::string, hybridse::sdk::DataType>>>>>>&
+        schemas) {
     auto table_desc_map = convertSchema(schemas);
     if (table_desc_map.empty()) {
         LOG_IF(WARNING, !schemas.empty()) << "input schemas is not emtpy, but conversion failed";
         return {"schema convert failed(input schema may be empty)", "check convertSchema"};
     }
-    return openmldb::base::DDLParser::ValidateSQLInRequest(sql, table_desc_map);
+    return openmldb::base::DDLParser::ValidateSQLInRequest(sql, db, table_desc_map);
+}
+
+std::vector<std::pair<std::string, std::string>> GetDependentTables(
+    const std::string& sql, const std::string& db,
+    const std::vector<
+        std::pair<std::string,
+                  std::vector<std::pair<std::string, std::vector<std::pair<std::string, hybridse::sdk::DataType>>>>>>&
+        schemas) {
+    auto table_desc_map = convertSchema(schemas);
+    if (table_desc_map.empty()) {
+        LOG_IF(WARNING, !schemas.empty()) << "input schemas is not emtpy, but conversion failed";
+        return {};
+    }
+    hybridse::vm::ExplainOutput explain;
+    auto ok = openmldb::base::DDLParser::Explain(sql, db, table_desc_map, &explain);
+    if (!ok) {
+        LOG(WARNING) << "fail to explain sql";
+        return {};
+    }
+    std::vector<std::pair<std::string, std::string>> tables{
+        {explain.router.GetMainDb(), explain.router.GetMainTable()}};
+    auto it = explain.dependent_tables.find(tables[0]);
+    if (it == explain.dependent_tables.end()) {
+        LOG(WARNING) << "fail to find main table in dependent tables";
+    } else {
+        explain.dependent_tables.erase(it);
+    }
+    tables.insert(tables.end(), explain.dependent_tables.begin(), explain.dependent_tables.end());
+    return tables;
 }
 
 }  // namespace openmldb::sdk

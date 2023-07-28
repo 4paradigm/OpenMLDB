@@ -15,54 +15,104 @@
  */
 
 #include "sdk/sql_delete_row.h"
+
+#include <utility>
+#include "absl/strings/numbers.h"
 #include "codec/codec.h"
 #include "codec/fe_row_codec.h"
 
 namespace openmldb::sdk {
 
+SQLDeleteRow::SQLDeleteRow(const std::string& db, const std::string& table_name,
+            const std::vector<Condition>& condition_vec,
+            const std::vector<Condition>& parameter_vec) :
+        db_(db), table_name_(table_name), condition_vec_(condition_vec),
+        parameter_vec_(parameter_vec), result_(condition_vec_), value_(), pos_map_() {
+    for (size_t idx = 0; idx < parameter_vec_.size(); ++idx) {
+        int pos = 0;
+        if (absl::SimpleAtoi(parameter_vec.at(idx).val.value(), &pos)) {
+            pos_map_.emplace(pos, idx);
+        }
+    }
+}
+
 void SQLDeleteRow::Reset() {
-    val_.clear();
-    col_values_.clear();
+    result_.clear();
+    result_.insert(result_.end(), condition_vec_.begin(), condition_vec_.end());
 }
 
 bool SQLDeleteRow::SetString(int pos, const std::string& val) {
-    if (pos > static_cast<int>(col_names_.size())) {
+    auto iter = pos_map_.find(pos);
+    if (iter == pos_map_.end()) {
         return false;
     }
-    if (col_names_.size() == 1) {
-        if (val.empty()) {
-            val_ = hybridse::codec::EMPTY_STRING;
-        } else {
-            val_ = val;
-        }
-    } else {
-        auto iter = hole_column_map_.find(pos);
-        if (iter == hole_column_map_.end()) {
-            return false;
-        }
-        if (val.empty()) {
-            col_values_.emplace(iter->second, hybridse::codec::EMPTY_STRING);
-        } else {
-            col_values_.emplace(iter->second, val);
-        }
+    auto con = parameter_vec_.at(iter->second);
+    if (con.data_type != ::openmldb::type::kVarchar && con.data_type != ::openmldb::type::kString) {
+        return false;
     }
+    con.val = val;
+    if (con.val.value().empty()) {
+        con.val = hybridse::codec::EMPTY_STRING;
+    }
+    result_.emplace_back(std::move(con));
     return true;
 }
 
 bool SQLDeleteRow::SetBool(int pos, bool val) {
-    return SetString(pos, val ? "true" : "false");
+    auto iter = pos_map_.find(pos);
+    if (iter == pos_map_.end()) {
+        return false;
+    }
+    auto con = parameter_vec_.at(iter->second);
+    if (con.data_type != ::openmldb::type::kBool) {
+        return false;
+    }
+    con.val = val ? "true" : "false";
+    result_.emplace_back(std::move(con));
+    return true;
 }
 
 bool SQLDeleteRow::SetInt(int pos, int64_t val) {
-    return SetString(pos, std::to_string(val));
+    auto iter = pos_map_.find(pos);
+    if (iter == pos_map_.end()) {
+        return false;
+    }
+    auto con = parameter_vec_.at(iter->second);
+    if (con.data_type != ::openmldb::type::kSmallInt && con.data_type != ::openmldb::type::kInt &&
+        con.data_type != ::openmldb::type::kBigInt) {
+        return false;
+    }
+    con.val = std::to_string(val);
+    result_.emplace_back(std::move(con));
+    return true;
 }
 
 bool SQLDeleteRow::SetTimestamp(int pos, int64_t val) {
-    return SetString(pos, std::to_string(val));
+    auto iter = pos_map_.find(pos);
+    if (iter == pos_map_.end()) {
+        return false;
+    }
+    auto con = parameter_vec_.at(iter->second);
+    if (con.data_type != ::openmldb::type::kTimestamp) {
+        return false;
+    }
+    con.val = std::to_string(val);
+    result_.emplace_back(std::move(con));
+    return true;
 }
 
 bool SQLDeleteRow::SetDate(int pos, int32_t val) {
-    return SetString(pos, std::to_string(val));
+    auto iter = pos_map_.find(pos);
+    if (iter == pos_map_.end()) {
+        return false;
+    }
+    auto con = parameter_vec_.at(iter->second);
+    if (con.data_type != ::openmldb::type::kDate) {
+        return false;
+    }
+    con.val = std::to_string(val);
+    result_.emplace_back(std::move(con));
+    return true;
 }
 
 bool SQLDeleteRow::SetDate(int pos, uint32_t year, uint32_t month, uint32_t day) {
@@ -70,36 +120,23 @@ bool SQLDeleteRow::SetDate(int pos, uint32_t year, uint32_t month, uint32_t day)
     if (!openmldb::codec::RowBuilder::ConvertDate(year, month, day, &date)) {
         return false;
     }
-    return SetString(pos, std::to_string(date));
+    return SetDate(pos, date);
 }
 
 bool SQLDeleteRow::SetNULL(int pos) {
-    return SetString(pos, hybridse::codec::NONETOKEN);
+    auto iter = pos_map_.find(pos);
+    if (iter == pos_map_.end()) {
+        return false;
+    }
+    auto con = parameter_vec_.at(iter->second);
+    con.val = hybridse::codec::NONETOKEN;
+    result_.emplace_back(std::move(con));
+    return true;
 }
 
 bool SQLDeleteRow::Build() {
-    if (col_names_.size() == 1) {
-        return !val_.empty();
-    }
-    if (col_values_.size() != hole_column_map_.size()) {
-        return false;
-    }
-    val_.clear();
-    for (const auto& name : col_names_) {
-        if (!val_.empty()) {
-            val_.append("|");
-        }
-        auto iter = default_value_.find(name);
-        if (iter != default_value_.end()) {
-            val_.append(iter->second);
-            continue;
-        }
-        iter = col_values_.find(name);
-        if (iter == col_values_.end()) {
-            return false;
-        }
-        val_.append(iter->second);
-    }
+    value_.swap(result_);
+    result_.clear();
     return true;
 }
 

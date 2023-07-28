@@ -277,6 +277,8 @@ Spark Config中重点关注的配置如下：
 
 如果TaskManager配置文件中`spark.home`为空，则会尝试读取TaskManager启动时的环境变量`SPARK_HOME`。如二者都未配置，TaskManager将会启动失败，并提示`spark.home`未配置。
 
+如果使用一键部署工具，SPARK_HOME会被设置为`<package_home>/spark`。举例说明，如果TaskManager部署到host1的`/work/taskmanager`，那么host1的SPARK_HOME默认为`/work/taskmanager/spark`。如果需要单独配置，在openmldb-env.sh中配置。不要单独更改properties template文件，会被覆盖，请注意部署时`OPENMLDB envs:`的提示。
+
 #### spark.master
 
 `spark.master`配置Spark的模式，Spark模式配置更详细的解释请参考[Spark Master URL](https://spark.apache.org/docs/latest/submitting-applications.html#master-urls)。
@@ -301,9 +303,17 @@ local模式即Spark任务运行在本地（TaskManager所在主机），该模�
 "yarn"和"yarn-cluster"是同一个模式，即Spark任务运行在Yarn集群上，该模式下需要配置的参数较多，主要包括：
 - 在**启动TaskManager前**配置环境变量`HADOOP_CONF_DIR`为Hadoop和Yarn的配置文件所在目录，文件目录中应包含Hadoop的`core-site.xml`、`hdfs-site.xml`、Yarn的`yarn-site.xml`等配置文件，参考[Spark官方文档](https://spark.apache.org/docs/3.2.1/running-on-yarn.html#launching-spark-on-yarn)。
 - `spark.yarn.jars`配置Yarn需要读取的Spark运行jar包地址，必须是`hdfs://`地址。可以上传[OpenMLDB Spark 发行版](../../tutorial/openmldbspark_distribution.md)解压后的`jars`目录到HDFS上，并配置为`hdfs://<hdfs_path>/jars/*`（注意通配符）。[如果不配置该参数，Yarn会将`$SPARK_HOME/jars`打包上传分发，并且每次离线任务都要分发](https://spark.apache.org/docs/3.2.1/running-on-yarn.html#preparations)，效率较低，所以推荐配置。
-- `batchjob.jar.path`必须是HDFS路径，上传batchjob jar包到HDFS上，并配置为对应地址，保证Yarn集群上所有Worker可以获得batchjob包。
+- `batchjob.jar.path`必须是HDFS路径（具体到包名），上传batchjob jar包到HDFS上，并配置为对应地址，保证Yarn集群上所有Worker可以获得batchjob包。
 - `offline.data.prefix`必须是HDFS路径，保证Yarn集群上所有Worker可读写数据。应使用前面配置的环境变量`HADOOP_CONF_DIR`中的Hadoop集群地址。
 
 ##### yarn-client模式
 
 "yarn-client"模式，[driver运行在本地](https://spark.apache.org/docs/3.2.1/running-on-yarn.html#launching-spark-on-yarn)，executor运行在Yarn集群上，配置与yarn-cluster模式相同。
+
+#### spark.default.conf
+
+`spark.default.conf`配置Spark的参数，配置格式为`key=value`，多个配置用`;`分隔，例如：
+```
+spark.default.conf=spark.executor.instances=2;spark.executor.memory=2g;spark.executor.cores=2
+```
+等效于Spark的`--conf`参数，如果提示修改Spark高级参数，请将参数加入此项中。更多参数，参考[Spark 配置](https://spark.apache.org/docs/3.1.2/configuration.html)。

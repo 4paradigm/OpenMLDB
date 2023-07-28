@@ -15,6 +15,7 @@
  */
 
 #include "codegen/udf_ir_builder.h"
+#include <cstdint>
 #include <memory>
 #include <string>
 #include <utility>
@@ -609,12 +610,89 @@ TEST_F(UdfIRBuilderTest, PowerUdfTest) {
                                       2147483648, 65536);
 }
 
-TEST_F(UdfIRBuilderTest, RoundUdfTest) {
-    CheckUdf<int32_t, int16_t>("round", round(5), 5);
-    CheckUdf<int32_t, int32_t>("round", round(65536), 65536);
-    CheckUdf<int64_t, int64_t>("round", round(2147483648), 2147483648);
-    CheckUdf<double, float>("round", roundf(0.5f), 0.5f);
-    CheckUdf<double, double>("round", round(0.5), 0.5);
+TEST_F(UdfIRBuilderTest, RoundWithPositiveD) {
+    // We use string as expet result in case the inaccuracy of flaot points
+    std::initializer_list<std::pair<double, std::string>> cases = {
+        // before decimal position = 0
+        {0.5, "0.50"}, {0.12, "0.12"}, {0.123, "0.12"}, {0.1478, "0.15"},
+        {0, "0.00"}, {0.012, "0.01"}, {0.0012, "0.00"}, {0.0078, "0.01"},
+        // before decimal position > 0
+        {1.1, "1.10" }, {1.14, "1.14"}, {1.177, "1.18"}, {1.171, "1.17"},
+        {21.1, "21.10" }, {21.14, "21.14"}, {21.177, "21.18"}, {21.171, "21.17"},
+        {1889, "1889.00"},
+    };
+
+    for (auto& val : cases) {
+        // non-negative value
+        CheckUdf<double, double, int32_t>("round", std::stod(val.second), val.first, 2);
+        // negative value
+        std::string expect = "-" + val.second;
+        CheckUdf<double, double, int32_t>("round", std::stod(expect), -val.first, 2);
+    }
+
+    for (auto c :  {1, 2, 3, 4, 5, 6}) {
+        CheckUdf<int64_t, int64_t, int32_t>("round", c, c, 2);
+    }
+}
+
+TEST_F(UdfIRBuilderTest, RoundWithNegD) {
+    // We use string as expet result in case the inaccuracy of flaot points
+    std::initializer_list<std::pair<double, std::string>> cases = {
+        {0.0, "0.0"}, {1.23, "0"}, {100.12, "100"}, {3712.55, "3700"}, {4488, "4500"},
+        {88, "100"}, {175.4, "200"}
+    };
+
+    for (auto& val : cases) {
+        // non-negative value
+        CheckUdf<double, double, int32_t>("round", std::stod(val.second), val.first, -2);
+        // negative value
+        std::string expect = "-" + val.second;
+        CheckUdf<double, double, int32_t>("round", std::stod(expect), -val.first, -2);
+    }
+
+    std::initializer_list<std::pair<int32_t, int32_t>> icases = {{0, 0},     {1, 0},     {55, 100},     {100, 100},
+                                                                 {145, 100}, {199, 200}, {2312, 2300}};
+    for (auto c : icases) {
+        CheckUdf<int32_t, int32_t, int32_t>("round", c.second, c.first, -2);
+        CheckUdf<int32_t, int32_t, int32_t>("round", -c.second, -c.first, -2);
+    }
+}
+
+TEST_F(UdfIRBuilderTest, RoundWithZeroD) {
+    std::initializer_list<std::pair<double, std::string>> cases = {
+        {1.12, "1"}, {1.5, "2"}, {1.77, "2"}, {0.0, "0"}, {88, "88"}
+    };
+    for (auto& val : cases) {
+        // non-negative value
+        CheckUdf<double, double, int32_t>("round", std::stod(val.second), val.first, 0);
+        CheckUdf<double, double>("round", std::stod(val.second), val.first);
+        // negative value
+        std::string expect = "-" + val.second;
+        CheckUdf<double, double, int32_t>("round", std::stod(expect), -val.first, 0);
+        CheckUdf<double, double>("round", std::stod(expect), -val.first);
+    }
+
+    std::initializer_list<int32_t> icases = {1, 2, 3, 4, 5, 100, 88};
+    for (auto& val : icases) {
+        // non-negative value
+        CheckUdf<int32_t, int32_t, int32_t>("round", val, val, 0);
+        CheckUdf<int32_t, int32_t>("round", val, val);
+        // negative value
+        CheckUdf<int32_t, int32_t, int32_t>("round", -val, -val, 0);
+        CheckUdf<int32_t, int32_t>("round", -val, -val);
+    }
+}
+
+TEST_F(UdfIRBuilderTest, RoundFail) {
+    // first param: only one of [intXX, double, float]
+    CheckUdfFail<double, StringRef, int32_t>("round", 12.3, "12.34", 1);
+
+    // second param: only one of [intXX, double, float]
+    CheckUdfFail<double, double, StringRef>("round", 12.3, 12.34, "1");
+    CheckUdfFail<double, double, Timestamp>("round", 12.3, 12.34, Timestamp(12));
+
+    // no third or more params
+    CheckUdfFail<double, double, int32_t, int32_t>("round", 12.3, 12.34, 1, 1);
 }
 
 TEST_F(UdfIRBuilderTest, SinUdfTest) {
@@ -1023,42 +1101,84 @@ TEST_F(UdfIRBuilderTest, DateDiff) {
     CheckUdf<Nullable<int32_t>, Nullable<StringRef>, Nullable<Date>>(func_name, nullptr, nullptr, nullptr);
 }
 
-TEST_F(UdfIRBuilderTest, StringToSmallint0) {
-    CheckUdf<Nullable<int16_t>, Nullable<StringRef>>("int16", 1,
-                                                     StringRef("1"));
+
+class UdfIRCastTest : public ::testing::TestWithParam<std::pair<absl::string_view, Nullable<int64_t>>> {};
+
+static const std::vector<std::pair<absl::string_view, Nullable<int64_t>>>& GetCastCases() {
+    static const std::string& INT32_MAX_S = *new auto(std::to_string(INT32_MAX));
+    static const std::string& INT16_MIN_S = *new auto(std::to_string(INT16_MIN));
+    static const std::vector<std::pair<absl::string_view, Nullable<int64_t>>> cs{
+        {"12", 12},
+        {"012", 12},
+        {"0", 0},
+        {" 9", 9},
+        {" +100 ", 100},
+        {"-999\t", -999},
+        {"+0", 0},
+        {"-0", 0},
+        {"-1", -1},
+        {"-88", -88},
+        {"0x12", 18},
+        {"+0X2a", 42},
+        {"-0X2b", -43},
+        {"\t -0X2b", -43},
+        {"9223372036854775807", INT64_MAX},
+        {"0x7FFFFFFFFFFFFFFF", INT64_MAX},
+        {"-9223372036854775808", INT64_MIN},
+        // int32 overflows
+        {"21474770944", 0x4ffff0000},
+        {"-21474770944", -21474770944},
+        {INT32_MAX_S, INT32_MAX},
+        // int16 overflows
+        {"0x4eeee", 323310},
+        {"-323310", -323310},
+        {INT16_MIN_S, INT16_MIN},
+        {"", {}},
+        {"-", {}},
+        {"+", {}},
+        {"8g", {}},
+        {"80x99", {}},
+        {"0x12k", {}},
+        {"8l", {}},
+        {"8 l", {}},
+        {"gg", {}},
+        {"89223372036854775807", {}},
+        {"-19223372036854775807", {}},
+    };
+    return cs;
 }
-TEST_F(UdfIRBuilderTest, StringToSmallint1) {
-    CheckUdf<Nullable<int16_t>, Nullable<StringRef>>("int16", -1,
-                                                     StringRef("-1"));
+
+INSTANTIATE_TEST_SUITE_P(StrCastNumeric, UdfIRCastTest, ::testing::ValuesIn(GetCastCases()));
+TEST_P(UdfIRCastTest, ToI64) {
+    auto [in, out] = GetParam();
+    CheckUdf<Nullable<int64_t>, StringRef>("int64", out, in);
+    CheckUdf<Nullable<int64_t>, StringRef>("bigint", out, in);
 }
-TEST_F(UdfIRBuilderTest, StringToSmallint2) {
-    CheckUdf<Nullable<int16_t>, Nullable<StringRef>>("int16", nullptr,
-                                                     StringRef("abc"));
+
+TEST_P(UdfIRCastTest, ToI32) {
+    auto [in, out] = GetParam();
+    Nullable<int32_t> expect;
+    if (out.is_null() || out.value() > INT32_MAX || out.value() < INT32_MIN) {
+        expect = {};
+    } else {
+        expect = static_cast<int32_t>(out.value());
+    }
+    CheckUdf<Nullable<int32_t>, StringRef>("int32", expect, in);
+    CheckUdf<Nullable<int32_t>, StringRef>("int", expect, in);
 }
-TEST_F(UdfIRBuilderTest, StringToInt0) {
-    CheckUdf<Nullable<int32_t>, Nullable<StringRef>>("int32", 1,
-                                                     StringRef("1"));
+
+TEST_P(UdfIRCastTest, ToI16) {
+    auto [in, out] = GetParam();
+    Nullable<int16_t> expect;
+    if (out.is_null() || out.value() > INT16_MAX || out.value() < INT16_MIN) {
+        expect = {};
+    } else {
+        expect = static_cast<int16_t>(out.value());
+    }
+    CheckUdf<Nullable<int16_t>, StringRef>("int16", expect, in);
+    CheckUdf<Nullable<int16_t>, StringRef>("smallint", expect, in);
 }
-TEST_F(UdfIRBuilderTest, StringToInt1) {
-    CheckUdf<Nullable<int32_t>, Nullable<StringRef>>("int32", -1,
-                                                     StringRef("-1"));
-}
-TEST_F(UdfIRBuilderTest, StringToInt2) {
-    CheckUdf<Nullable<int32_t>, Nullable<StringRef>>("int32", nullptr,
-                                                     StringRef("abc"));
-}
-TEST_F(UdfIRBuilderTest, StringToBigint0) {
-    CheckUdf<Nullable<int64_t>, Nullable<StringRef>>(
-        "int64", 1589904000000L, StringRef("1589904000000"));
-}
-TEST_F(UdfIRBuilderTest, StringToBigint1) {
-    CheckUdf<Nullable<int64_t>, Nullable<StringRef>>(
-        "int64", -1589904000000L, StringRef("-1589904000000"));
-}
-TEST_F(UdfIRBuilderTest, StringToBigint2) {
-    CheckUdf<Nullable<int64_t>, Nullable<StringRef>>("int64", nullptr,
-                                                     StringRef("abc"));
-}
+
 TEST_F(UdfIRBuilderTest, StringToDouble0) {
     CheckUdf<Nullable<double>, Nullable<StringRef>>("double", 1.0,
                                                     StringRef("1.0"));
@@ -1328,6 +1448,19 @@ TEST_F(UdfIRBuilderTest, EarthDistanceError) {
     CheckUdf<Nullable<double>, double, double, double, double>("earth_distance", nullptr, 100, 44, 44, 44);
     CheckUdf<Nullable<double>, double, double, double, double>("earth_distance", nullptr, 77, 181, 44, 44);
     CheckUdf<Nullable<double>, double, double, double, double>("earth_distance", nullptr, 77, 99, -91, -184);
+}
+
+TEST_F(UdfIRBuilderTest, AddMonths) {
+    CheckUdf<Nullable<Date>, Date, int16_t>("add_months", Date(2022, 5, 5), Date(2022, 4, 5), 1);
+    CheckUdf<Nullable<Date>, Date, int32_t>("add_months", Date(2022, 4, 5), Date(2022, 4, 5), 0);
+    CheckUdf<Nullable<Date>, Date, int32_t>("add_months", Date(2022, 3, 5), Date(2022, 4, 5), -1);
+
+    CheckUdf<Nullable<Date>, Date, int32_t>("add_months", Date(2016, 9, 30), Date(2016, 8, 31), 1);
+    CheckUdf<Nullable<Date>, Date, int32_t>("add_months", Date(2011, 8, 31), Date(2012, 1, 31), -5);
+    CheckUdf<Nullable<Date>, Date, int32_t>("add_months", Date(2012, 2, 29), Date(2012, 1, 31), 1);
+    CheckUdf<Nullable<Date>, Date, int32_t>("add_months", Date(2011, 2, 28), Date(2011, 1, 31), 1);
+    CheckUdf<Nullable<Date>, Date, int64_t>("add_months", Date(2010, 11, 30), Date(2012, 1, 31), -14);
+    CheckUdf<Nullable<Date>, Date, int64_t>("add_months", Date(2013, 3, 31), Date(2012, 1, 31), 14);
 }
 
 }  // namespace codegen

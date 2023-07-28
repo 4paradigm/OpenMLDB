@@ -2683,3 +2683,83 @@ cases:
         6, g2, NULL, NULL, 9.0,  B,    2,    7.0,  1590738990003
         7, g2, NULL, 2,    9.0,  A,    2,    7.0,  1590738990003
         8, g2, NULL, NULL, 9.0,  C,    2,    7.0,  1590738990003
+
+  - id: 65
+    sql: |
+      select
+        idx,
+        `join`(split_by_key(count_cate(idx, val) over w, ",", ":"), "-") as ref,
+        at(split_by_key(count_cate(idx, val) over w, ",", ":"), 1) as out,
+        at(split_by_key(count_cate(idx, val) over w2, ",", ":"), 1) as out2
+      from t1
+      window w as (
+        partition by gp order by ts
+        rows_range between 10s preceding and current row),
+      w2 as (
+        partition by gp order by ts
+        rows_range between 10s preceding and 1s preceding)
+    inputs:
+      - name: t1
+        columns: ["idx int", "gp int", "val int", "ts timestamp"]
+        indexs: ['idx:gp:ts']
+        data: |
+          100, 1, 1, 1000
+          200, 1, 2, 2000
+          300, 1, 1, 3000
+          400, 1, 2, 4000
+    expect:
+      columns:
+        - idx int
+        - ref string
+        - out string
+        - out2 string
+      order: idx
+      data: |
+        100, 1, NULL, NULL
+        200, 1-2, 2,  NULL
+        300, 1-2, 2,  2
+        400, 1-2, 2,  2
+
+  - id: 66
+    desc: top_n_value_ratio_cate/top_n_key_ratio_cate
+    sql: |
+      select
+        idx,
+        top_n_value_ratio_cate(val, val > 100, cate, 2) over w as ratio_by_value,
+        top_n_key_ratio_cate(val, val > 100, cate, 2) over w as ratio_by_key,
+        top_n_value_ratio_cate(val, val > 100, cate, -1) over w as ratio_by_value_full,
+        top_n_key_ratio_cate(val, val > 100, cate, -2) over w as ratio_by_key_full,
+        top_n_value_ratio_cate(val, val > 100, cate, 0) over w as ratio_by_value_empty,
+        top_n_key_ratio_cate(val, val > 100, cate, 0) over w as ratio_by_key_empty,
+      from t1
+      window w as (
+        partition by gp order by ts
+        rows_range between 10s preceding and 1s preceding)
+    inputs:
+      - name: t1
+        columns: ["idx int", "gp int", "val int", "cate string", "ts timestamp"]
+        indexs: ['idx:gp:ts']
+        data: |
+          0,   1, 200, a, 1000
+          100, 1, 300, b, 2000
+          200, 1, 200, NULL, 3000
+          300, 1, 10,  b, 4000
+          400, 1, 101, c, 5000
+          500, 1, 101, c, 6000
+    expect:
+      columns:
+        - idx int
+        - ratio_by_value string
+        - ratio_by_key string
+        - ratio_by_value_full string
+        - ratio_by_key_full string
+        - ratio_by_value_empty string
+        - ratio_by_key_empty string
+      order: idx
+      rows:
+        - [0, "", "", "", "", "", ""]
+        - [100, "a:1.000000", "a:1.000000", "a:1.000000", "a:1.000000", "", ""]
+        - [200, "b:1.000000,a:1.000000", "b:1.000000,a:1.000000", "b:1.000000,a:1.000000", "b:1.000000,a:1.000000", "", ""]
+        - [300, "b:1.000000,a:1.000000", "b:1.000000,a:1.000000", "b:1.000000,a:1.000000", "b:1.000000,a:1.000000", "", ""]
+        - [400, "a:1.000000,b:0.500000", "b:0.500000,a:1.000000", "a:1.000000,b:0.500000", "b:0.500000,a:1.000000",  "", ""]
+        - [500, "c:1.000000,a:1.000000", "c:1.000000,b:0.500000", "c:1.000000,a:1.000000,b:0.500000", "c:1.000000,b:0.500000,a:1.000000", "", ""]

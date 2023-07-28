@@ -38,7 +38,7 @@ setup(
     ]},
     include_package_data=True,
     package_data={'': ['*.so']},
-    packages=find_packages(),
+    packages=find_packages(exclude=['tests']),
     entry_points={
         'sqlalchemy.dialects': [
             'openmldb = openmldb.sqlalchemy_openmldb.openmldb_dialect:OpenmldbDialect',

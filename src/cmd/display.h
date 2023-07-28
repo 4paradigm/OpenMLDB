@@ -430,9 +430,9 @@ __attribute__((unused)) static void PrintOfflineTableInfo(
         std::ostream& stream) {
     ::hybridse::base::TextTable t('-', ' ', ' ');
 
-    t.add("Offline path");
+    t.add("Data path");
+    t.add("Symbolic paths");
     t.add("Format");
-    t.add("Deep copy");
     t.add("Options");
     t.end_of_row();
 
@@ -448,9 +448,19 @@ __attribute__((unused)) static void PrintOfflineTableInfo(
         }
     }
 
+    std::string offline_symbolic_paths = "";
+    auto symbolic_paths = offline_table_info.symbolic_paths();
+    int symbolic_paths_size = offline_table_info.symbolic_paths_size();
+    for (int i = 0; i < symbolic_paths_size; i++) {
+        offline_symbolic_paths += symbolic_paths.Get(i);
+        if (i != symbolic_paths_size - 1) {
+            offline_symbolic_paths += ", ";
+        }
+    }
+
     t.add(offline_table_info.path());
+    t.add(offline_symbolic_paths);
     t.add(offline_table_info.format());
-    t.add(offline_table_info.deep_copy() ? "true" : "false");
     t.add(optionStr);
     t.end_of_row();
 

@@ -1,0 +1,53 @@
+# OpenMLDB tool jobs
+name: openmldb-tool
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'release/**'
+      - 'tools/**'
+  pull_request:
+    paths:
+      - 'release/**'
+      - 'tools/**'
+  workflow_dispatch:
+
+env:
+  GIT_SUBMODULE_STRATEGY: recursive
+  DEPLOY_DIR: /mnt/hdd0/openmldb_runner_work/openmldb_env
+  NODE_LIST: node-1,node-2,node-3
+
+jobs:
+  openmldb-tool-test:
+    runs-on: [self-hosted,seq-task]
+    if: github.repository == '4paradigm/OpenMLDB'
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: prepare env
+        run: |
+          VERSION=`git fetch --tags | git tag -l v[0-9].* | tail -n1`
+          VERSION=${VERSION#v}
+          echo "OPENMLDB_VETSION=$VERSION" >> $GITHUB_ENV
+          bash test/test-tool/openmldb-deploy/gen_conf.sh ${{ env.DEPLOY_DIR }} ${{ env.NODE_LIST }} > hosts
+          pip3 install requests openmldb pytest
+      - name: install openmldb
+        env:
+          OPENMLDB_VETSION: ${{ env.OPENMLDB_VETSION }}
+        run: |
+          bash test/test-tool/openmldb-deploy/install.sh ${{ env.OPENMLDB_VETSION }}
+      - name: run test
+        run: |
+          python3 -m pytest test/test-tool/openmldb-deploy/cases --junit-xml=pytest.xml
+      - name: clear env
+        run: |
+            bash openmldb/sbin/stop-all.sh && bash openmldb/sbin/clear-all.sh
+      - name: upload python test results
+        if: always()
+        uses: actions/upload-artifact@v2
+        with:
+          name: openmldb-tool-test-result-${{ github.sha }}
+          path: |
+            pytest.xml

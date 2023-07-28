@@ -26,8 +26,9 @@ Types in documents here may a little different from real types in OpenMLDB SQL, 
 \n\
 | Type literal | Same as any of those types in OpenMLDB SQL |\n\
 | ---------    | --------------------------------------     |\n\
-| number       | \`int16, int32, int64, float, double\`  |\n\
-| any          | \`bool, int16, int32, int64, float, double, string, timestamp, date\` |\n\
-| list<number> | \`list<int16>, list<int32>, list<int64>, list<float>, list<double>\` |\n\
+| \`number\`       | \`int16, int32, int64, float, double\`  |\n\
+| \`any\`          | \`bool, int16, int32, int64, float, double, string, timestamp, date\` |\n\
+| \`list<number>\` | \`list<int16>, list<int32>, list<int64>, list<float>, list<double>\` |\n\
+| \`list<any>\`    | \`list<bool>, list<int16>, list<int32>, list<int64>, list<float>, list<double>, list<string>, list<timestamp>, list<date>\` |\n\
 \n\
 ## Functions/g" "$PATCH_FILE"

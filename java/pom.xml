@@ -15,6 +15,7 @@
         <module>openmldb-jdbc</module>
         <module>openmldb-native</module>
         <module>openmldb-common</module>
+        <module>openmldb-synctool</module>
 
         <module>openmldb-spark-connector</module>
         <module>openmldb-batch</module>
@@ -52,9 +53,7 @@
         <scala.version>2.12.8</scala.version>
         <scala.binary.version>2.12</scala.binary.version>
         <spark.version>3.2.1</spark.version>
-
-        <hadoop.version>2.7.4</hadoop.version>
-
+        <hadoop.version>3.3.1</hadoop.version>
         <scalaCompatVersion>${scala.binary.version}</scalaCompatVersion>
         <scalatest.skip>false</scalatest.skip>
         <spark.dependencyScope>provided</spark.dependencyScope>
@@ -77,6 +76,9 @@
 
         <!-- Compatible with Spark 3.2.1 -->
         <guava.version>14.0.1</guava.version>
+
+        <!-- workaround to make git-commit-id work in Git worktree, refer https://github.com/git-commit-id/git-commit-id-maven-plugin/issues/215 -->
+        <maven.gitcommitid.nativegit>true</maven.gitcommitid.nativegit>
     </properties>
 
     <dependencies>
@@ -382,7 +384,8 @@
                 <plugin>
                   <groupId>pl.project13.maven</groupId>
                   <artifactId>git-commit-id-plugin</artifactId>
-                  <version>2.2.4</version>
+                   <!-- version 4.xx is the last version supports java 1.8 -->
+                  <version>4.9.10</version>
                   <executions>
                     <execution>
                       <id>get-the-git-infos</id>

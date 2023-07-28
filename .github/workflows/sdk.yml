@@ -13,6 +13,7 @@ on:
       - "release/**"
       - "tools/**"
       - "*.md"
+      - 'benchmark/**'
     tags:
       - v*
   pull_request:
@@ -24,6 +25,7 @@ on:
       - "release/**"
       - "tools/**"
       - "*.md"
+      - 'benchmark/**'
   workflow_dispatch:
 
 env:
@@ -258,8 +260,6 @@ jobs:
 
       - name: prepare python deps
         run: |
-          python3 -m easy_install pip
-          pip install setuptools wheel twine
           yum install -y net-tools
 
       - name: test sqlalchemy and generate coverage report
@@ -272,13 +272,14 @@ jobs:
         with:
           name: linux-ut-result-python-${{ github.sha }}
           path: |
-            python/openmldb_sdk/openmldb/tests/pytest.xml
+            python/openmldb_sdk/tests/pytest.xml
+            python/openmldb_tool/tests/pytest.xml
 
       - name: upload python coverage to codecov
         uses: codecov/codecov-action@v3
         with:
           name: coverage-python
-          files: python/openmldb_sdk/tests/coverage.xml
+          files: python/openmldb_sdk/tests/coverage.xml,python/openmldb_tool/tests/coverage.xml
           fail_ci_if_error: true
           verbose: true
 
@@ -286,6 +287,7 @@ jobs:
         if: >
           github.repository == '4paradigm/OpenMLDB' && startsWith(github.ref, 'refs/tags/v')
         run: |
+          pip install twine "urllib3>=1.26.0,<2.0.0"
           cp python/openmldb_sdk/dist/openmldb*.whl .
           cp python/openmldb_tool/dist/openmldb*.whl .
           twine upload openmldb*.whl
@@ -330,6 +332,7 @@ jobs:
           name: mac-ut-result-python-${{ github.sha }}
           path: |
             python/openmldb_sdk/openmldb/tests/pytest.xml
+            python/openmldb_tool/openmldb/tests/pytest.xml
 
       - name: upload to pypi
         if: >

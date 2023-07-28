@@ -66,6 +66,14 @@ inline const std::string ExplainTypeName(const ExplainType &explain_type) {
     }
 }
 
+inline const std::string ShowStmtTypeName(ShowStmtType type) {
+    switch (type) {
+        case ShowStmtType::kJobs:
+            return "Jobs";
+    }
+    return "Unknow";
+}
+
 inline const std::string JoinTypeName(const JoinType &type) {
     switch (type) {
         case kJoinTypeFull:
@@ -346,6 +354,59 @@ class SqlNode : public NodeBase<SqlNode> {
 };
 
 typedef std::vector<SqlNode *> NodePointVector;
+
+// Alter action for SQL
+// supported as:
+// - ADD PATH
+// - DROP PATH
+// all else is unsupported
+class AlterActionBase : public base::FeBaseObject {
+ public:
+    enum class ActionKind {
+        ADD_PATH = 0,
+        DROP_PATH
+    };
+
+    explicit AlterActionBase(ActionKind k) : kind_(k) {}
+    ~AlterActionBase() override {}
+
+    ActionKind kind() const { return kind_; }
+
+    virtual std::string DebugString() const = 0;
+
+ protected:
+    ActionKind kind_;
+};
+
+class AddPathAction : public AlterActionBase {
+ public:
+    explicit AddPathAction(absl::string_view t) : AlterActionBase(ActionKind::ADD_PATH), target_(t) {}
+    std::string DebugString() const override;
+
+    std::string target_;
+};
+
+class DropPathAction : public AlterActionBase {
+ public:
+    explicit DropPathAction(absl::string_view t) : AlterActionBase(ActionKind::DROP_PATH), target_(t) {}
+    std::string DebugString() const override;
+
+    std::string target_;
+};
+
+
+class AlterTableStmt: public SqlNode {
+ public:
+    AlterTableStmt(absl::string_view db, absl::string_view table, const std::vector<const AlterActionBase *> &actions)
+        : SqlNode(kAlterTableStmt, 0, 0), db_(db), table_(table), actions_(actions) {}
+    ~AlterTableStmt() override {}
+
+    void Print(std::ostream &output, const std::string &org_tab) const override;
+
+    std::string db_;
+    std::string table_;
+    std::vector<const AlterActionBase *> actions_;
+};
 
 class SqlNodeList : public SqlNode {
  public:
@@ -2014,6 +2075,23 @@ class CmdNode : public SqlNode {
     std::vector<std::string> args_;
     bool if_not_exist_ = false;
     bool if_exist_ = false;
+};
+
+class ShowNode : public SqlNode {
+ public:
+     ShowNode(ShowStmtType show_type, const std::string& target, const std::string like)
+         : SqlNode(kShowStmt, 0, 0), show_type_(show_type), target_(target), like_str_(like) {}
+
+     const std::string& GetTarget() const { return target_; }
+     ShowStmtType GetShowType() const { return show_type_; }
+     const std::string& GetLikeStr() const { return like_str_; }
+    void Print(std::ostream &output, const std::string &org_tab) const;
+    bool Equals(const SqlNode *node) const override;
+
+ private:
+    ShowStmtType show_type_;
+    std::string target_;
+    std::string like_str_;
 };
 
 enum class DeleteTarget {

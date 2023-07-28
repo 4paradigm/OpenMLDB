@@ -15,7 +15,7 @@ OpenMLDB仅支持上线[SELECT查询语句](../dql/SELECT_STATEMENT.md)。
 | SELECT 子句                                   | 说明                                                                                                                                       |
 |:-------------------------------------------|:-----------------------------------------------------------------------------------------------------------------------------------------|
 | 单张表的简单表达式计算                                | 简单的单表查询是对一张表进行列运算、使用运算表达式或单行处理函数（Scalar Function)以及它们的组合表达式作计算。需要遵循[在线请求模式下单表查询的使用规范](#在线请求模式下单表查询的使用规范)                                 |
-| [`JOIN` 子句](../dql/JOIN_CLAUSE.md)     | OpenMLDB目前仅支持**LAST JOIN**。需要遵循[在线请求模式下LAST JOIN的使用规范](#在线请求模式下last-join的使用规范)                                                           |
+| [`JOIN` 子句](../dql/JOIN_CLAUSE.md)     | OpenMLDB目前仅支持**LAST JOIN**。需要遵循[在线请求模式下LAST JOIN的使用规范](#在线请求模式下-last-join-的使用规范)                                                           |
 | [`WINDOW` 子句](../dql/WINDOW_CLAUSE.md) | 窗口子句用于定义一个或者若干个窗口。窗口可以是有名或者匿名的。用户可以在窗口上调用聚合函数进行分析计算。需要遵循[在线请求模式下Window的使用规范](#在线请求模式下window的使用规范) |
 
 ## 在线请求模式下 `SELECT` 子句的使用规范
@@ -59,7 +59,13 @@ SELECT substr(COL7, 3, 6) FROM t1;
 
 - 仅支持`LAST JOIN`类型。
 - 至少有一个JOIN条件是形如`left_source.column=right_source.column`的EQUAL条件，**并且`right_source.column`列需要命中右表的索引（key 列）**。
-- 带排序LAST JOIN的情况下，`ORDER BY`只支持单列的列引用表达式，**并且列需要命中右表索引的时间列**。
+- 带排序LAST JOIN的情况下，`ORDER BY`只支持单列的列引用表达式，列类型为 int16, int32, int64 or timestamp, **并且列需要命中右表索引的时间列**。
+- 右表 TableRef
+  - 可以指一张物理表, 或者子查询语句
+  - 子查询情况, 只支持
+    - 简单列筛选 (`select * from tb` or `select id, val from tb`)
+    - 窗口聚合子查询, 例如 `select id, count(val) over w as cnt from t1 window w as (...)`. 这种情况下, 子查询和 last join 的左表必须有相同的主表, 主表指计划树下最左边的物理表节点. 
+    - **Since OpenMLDB 0.8.0** 带 WHERE 条件过滤的简单列筛选 ( 例如 `select * from tb where id > 10`)
 
 **Example: 支持上线的 `LAST JOIN` 语句范例**
 创建两张表以供后续`LAST JOIN`。
@@ -116,7 +122,12 @@ desc t1;
 
 - 窗口边界仅支持`PRECEDING`和`CURRENT ROW`
 - 窗口类型仅支持`ROWS`和`ROWS_RANGE`。
-- 窗口`PARTITION BY`只支持列表达式，并且列需要命中索引
-- 窗口`ORDER BY`只支持列表达式，并且列需要命中索引的时间列
-- 可支持使用 `EXCLUDE CURRENT_ROW`，`EXCLUDE CURRENT_TIME`，`MAXSIZE`，`INSTANCE_NOT_IN_WINDOW`对窗口进行其他特殊限制，详见[OpenMLDB特有的 WindowSpec 元素](openmldb特有的-windowspec-元素)。
+- 窗口`PARTITION BY`只支持列表达式，可以是多列，并且所有列需要命中索引，主表和 union source 的表都需要符合要求
+- 窗口`ORDER BY`只支持列表达式，只能是单列，并且列需要命中索引的时间列，主表和 union source 的表都需要符合要求
+- 可支持使用 `EXCLUDE CURRENT_ROW`，`EXCLUDE CURRENT_TIME`，`MAXSIZE`，`INSTANCE_NOT_IN_WINDOW`对窗口进行其他特殊限制，详见[OpenMLDB特有的 WindowSpec 元素](#openmldb特有的-windowspec-元素)。
+- `WINDOW UNION` source 要求，支持如下格式的子查询:
+  - 表引用或者简单列筛选，例如 `t1` 或者 `select id, val from t1`。union source 和 主表的 schema 必须完全一致，并且 union source 对应的 `PARTITION BY`, `ORDER BY` 也需要命中索引
+  - **Since OpenMLDB 0.8.0**, 基于 LAST JOIN 的简单列筛选，例如 `UNION (select * from t1 last join t2 ON ...)`。索引要求：
+    - last join 查询满足 LAST JOIN 的上线要求，t1, t2 都是物理表
+    - `PARTITION BY`, `ORDER BY` 表达式对应的列只能指向 LAST JOIN 的最左边的 table (即 t1), 并且命中索引
 

@@ -34,7 +34,8 @@ src/
 ├── catalog        
 ├── client         // the difinition and implementation of ns/tablet/taskmanager client interfaces 
 ├── cmd            // CLI and OpenMLDB binary generation
-├── codec          // decode and encode 
+├── codec          // decode and encode
+├── datacollector  // online -> offline sync tool 
 ├── log            // the formats, reading and writing of binlog and snapshot
 ├── nameserver     
 ├── proto          // definition of protobuf
@@ -63,6 +64,7 @@ java/
 ├── openmldb-jmh             // used for performance and stability testing
 ├── openmldb-native          // codes generated automatically by swig
 ├── openmldb-spark-connector // the implementation of spark connector used for reading from and writing into OpenMLDB
+├── openmldb-synctool        // online -> offline sync tool 
 └── openmldb-taskmanager     // offline tasks management module 
 ```
 

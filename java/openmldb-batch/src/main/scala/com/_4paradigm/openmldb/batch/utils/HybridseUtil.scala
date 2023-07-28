@@ -158,6 +158,22 @@ object HybridseUtil {
     }
   }
 
+  def getIntOrDefault(node: ConstNode, default: String): String = {
+    if (node != null) {
+      node.GetInt().toString
+    } else {
+      default
+    }
+  }
+
+  def getIntOrNone(node: ConstNode): Option[Int] = {
+    if (node != null) {
+      Option(node.GetInt())
+    } else {
+      None
+    }
+  }
+
   def updateOptionsMap(options: mutable.Map[String, String], node: ConstNode, name: String, getValue: ConstNode =>
     String): Unit = {
     if (node != null) {
@@ -192,7 +208,8 @@ object HybridseUtil {
   // 'file' may change the option 'format':
   // If file starts with 'hive', format is hive, not the detail format in hive
   // If file starts with 'file'/'hdfs', format is the file format
-  def parseOptions[T](file: String, node: T): (String, Map[String, String], String, Option[Boolean]) = {
+  // result: format, options(spark write/read options), mode is common, if more options, set them to extra map
+  def parseOptions[T](file: String, node: T): (String, Map[String, String], String, Map[String, String]) = {
     // load data: read format, select into: write format
     val format = if (file.toLowerCase().startsWith("hive://")) {
       "hive"
@@ -201,36 +218,40 @@ object HybridseUtil {
     }
 
     // load data: read options, select into: write options
+    // parquet/hive format doesn't support any option now, consistent with write options(empty) when deep copy
     val options: mutable.Map[String, String] = mutable.Map()
-    // default values: https://spark.apache.org/docs/3.2.1/sql-data-sources-csv.html
-    // delimiter -> sep: ,(the same with spark3 default sep)
-    // header: true(different with spark)
-    // null_value -> nullValue: null(different with spark)
-    // quote: `"`(the same with spark3 default quote)
-    options += ("header" -> "true")
-    options += ("nullValue" -> "null")
-    updateOptionsMap(options, getOptionFromNode(node, "delimiter"), "sep", getStr)
-    updateOptionsMap(options, getOptionFromNode(node, "header"), "header", getBool)
-    updateOptionsMap(options, getOptionFromNode(node, "null_value"), "nullValue", getStr)
-    updateOptionsMap(options, getOptionFromNode(node, "quote"), "quote", getStr)
-
+    if (format.equals("csv")){
+      // default values: https://spark.apache.org/docs/3.2.1/sql-data-sources-csv.html
+      // delimiter -> sep: ,(the same with spark3 default sep)
+      // header: true(different with spark)
+      // null_value -> nullValue: null(different with spark)
+      // quote: `"`(the same with spark3 default quote)
+      options += ("header" -> "true")
+      options += ("nullValue" -> "null")
+      updateOptionsMap(options, getOptionFromNode(node, "delimiter"), "sep", getStr)
+      updateOptionsMap(options, getOptionFromNode(node, "header"), "header", getBool)
+      updateOptionsMap(options, getOptionFromNode(node, "null_value"), "nullValue", getStr)
+      updateOptionsMap(options, getOptionFromNode(node, "quote"), "quote", getStr)
+    }
     // load data: write mode(load data may write to offline storage or online storage, needs mode too)
     // select into: write mode
-    val modeStr = parseOption(getOptionFromNode(node, "mode"), "error_if_exists", HybridseUtil
-      .getStringOrDefault).toLowerCase
+    val modeStr = parseOption(getOptionFromNode(node, "mode"), "error_if_exists", getStringOrDefault).toLowerCase
     val mode = modeStr match {
       case "error_if_exists" => "errorifexists"
       // append/overwrite, stay the same
       case "append" | "overwrite" => modeStr
-      case others: Any => throw new UnsupportedHybridSeException(s"unsupported write mode $others")
+      case _ => throw new UnsupportedHybridSeException(s"unsupported write mode $modeStr")
     }
 
+    // extra options for some special case
     // only for PhysicalLoadDataNode
-    var deepCopy: Option[Boolean] = None
-    if (node.isInstanceOf[PhysicalLoadDataNode]) {
-      deepCopy = Option(parseOption(getOptionFromNode(node, "deep_copy"), "true", getBoolOrDefault).toBoolean)
-    }
-    (format, options.toMap, mode, deepCopy)
+    var extraOptions: mutable.Map[String, String] = mutable.Map()
+    extraOptions += ("deep_copy" -> parseOption(getOptionFromNode(node, "deep_copy"), "true", getBoolOrDefault))
+
+    // only for select into, "" means N/A
+    extraOptions += ("coalesce" -> parseOption(getOptionFromNode(node, "coalesce"), "0", getIntOrDefault))
+
+    (format, options.toMap, mode, extraOptions.toMap)
   }
 
   // result 'readSchema' & 'tsCols' is only for csv format, may not be used
@@ -290,22 +311,62 @@ object HybridseUtil {
     actual.zip(expect).forall{case (a, b) => (a.name, a.dataType) == (b.name, b.dataType)}
   }
 
-  // Decide which load method to use by arg `format`, DO NOT pass `hive://a.b` with format `csv`.
+  def autoLoad(openmldbSession: OpenmldbSession, file: String, format: String, options: Map[String, String],
+               columns: util.List[Common.ColumnDesc]): DataFrame = {
+    autoLoad(openmldbSession, file, List.empty[String], format, options, columns)
+  }
+
+  // Load df from file **and** symbol paths, they should in the same format and options.
+  // Decide which load method to use by arg `format`, DO NOT pass `hive://a.b` with format `csv`,
+  // the format should be `hive`.
   // Use `parseOptions` in LoadData/SelectInto to get the right format(filePath & option `format`).
   // valid pattern:
   //   1. hive path, format must be hive, discard other options
   //   2. file/hdfs path, format supports csv & parquet, other options take effect
   // We use OpenmldbSession for running sparksql in hiveLoad. If in 4pd Spark distribution, SparkSession.sql
   // will do openmldbSql first, and if DISABLE_OPENMLDB_FALLBACK, we can't use sparksql.
-  def autoLoad(openmldbSession: OpenmldbSession, file: String, format: String, options: Map[String, String],
-    columns: util.List[Common.ColumnDesc]): DataFrame = {
+  def autoLoad(openmldbSession: OpenmldbSession, file: String, symbolPaths: List[String], format: String,
+               options: Map[String, String], columns: util.List[Common.ColumnDesc]): DataFrame = {
     val fmt = format.toLowerCase
     if (fmt.equals("hive")) {
-      logger.info("load data from hive table {}", file)
-      HybridseUtil.hiveLoad(openmldbSession, file, columns);
+      logger.info(s"load data from hive table $file & $symbolPaths")
+      if (file.isEmpty) {
+        var outputDf: DataFrame = null
+        symbolPaths.zipWithIndex.foreach { case (path, index) =>
+          if (index == 0) {
+            outputDf = HybridseUtil.hiveLoad(openmldbSession, path, columns);
+          } else {
+            outputDf = outputDf.union(HybridseUtil.hiveLoad(openmldbSession, path, columns))
+          }
+        }
+        outputDf
+      } else {
+        var outputDf = HybridseUtil.hiveLoad(openmldbSession, file, columns)
+        for (path: String <- symbolPaths) {
+          outputDf = outputDf.union(HybridseUtil.hiveLoad(openmldbSession, path, columns))
+        }
+        outputDf
+      }
     } else {
-      logger.info("load data from file {} reader[format {}, options {}]", file, fmt, options)
-      HybridseUtil.autoFileLoad(openmldbSession, file, fmt, options, columns)
+      logger.info("load data from file {} & {} reader[format {}, options {}]", file, symbolPaths, fmt, options)
+
+      if (file.isEmpty) {
+        var outputDf: DataFrame = null
+        symbolPaths.zipWithIndex.foreach { case (path, index) =>
+          if (index == 0) {
+            outputDf = HybridseUtil.autoFileLoad(openmldbSession, path, fmt, options, columns);
+          } else {
+            outputDf = outputDf.union(HybridseUtil.autoFileLoad(openmldbSession, path, fmt, options, columns))
+          }
+        }
+        outputDf
+      } else {
+        var outputDf = HybridseUtil.autoFileLoad(openmldbSession, file, fmt, options, columns)
+        for (path: String <- symbolPaths) {
+          outputDf = outputDf.union(HybridseUtil.autoFileLoad(openmldbSession, path, fmt, options, columns))
+        }
+        outputDf
+      }
     }
   }
 

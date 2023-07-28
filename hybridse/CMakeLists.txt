@@ -119,6 +119,11 @@ elseif (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
     set(COMMON_LIBS ${Boost_LIBRARIES} ${LEVELDB_LIBRARY} ${Protobuf_LIBRARIES} ${GLOG_LIBRARY} ${Z_LIBRARY} ${SNAPPY_LIBRARY} ${OPENSSL_LIBRARIES} dl)
 endif ()
 
+if(CMAKE_CXX_COMPILER_ID MATCHES "GNU" AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS "9.1")
+    # GNU implementation prior to 9.1 requires linking with -lstdc++fs
+    list(APPEND COMMON_LIBS stdc++fs)
+endif()
+
 configure_file(
         "${PROJECT_SOURCE_DIR}/src/version.h.in"
         "${PROJECT_SOURCE_DIR}/src/hybridse_version.h"

@@ -20,7 +20,10 @@
 
 #include <string>
 #include <tuple>
+#include <utility>
 
+#include "absl/status/status.h"
+#include "absl/strings/ascii.h"
 #include "base/string_ref.h"
 #include "base/type.h"
 #include "codec/list_iterator_codec.h"
@@ -218,16 +221,21 @@ struct Pow {
 
 template <class V>
 struct Round {
-    using Args = std::tuple<V>;
+    using Args = std::tuple<V, int32_t>;
 
-    V operator()(V r) { return static_cast<V>(round(r)); }
-};
-
-template <class V>
-struct Round32 {
-    using Args = std::tuple<V>;
-
-    int32_t operator()(V r) { return static_cast<int32_t>(round(r)); }
+    V operator()(V val, int32_t decimal_number) {
+        if constexpr (std::is_integral_v<V>) {
+            if (decimal_number >= 0) {
+                return val;
+            } else {
+                double factor = std::pow(10, -decimal_number);
+                return static_cast<V>(std::round(val / factor) * factor);
+            }
+        } else {
+            // floats
+            return static_cast<V>(std::round(val * std::pow(10, decimal_number)) / std::pow(10, decimal_number));
+        }
+    }
 };
 
 template <class V>
@@ -386,6 +394,64 @@ void sub_string(StringRef *str, int32_t pos, int32_t len,
                 StringRef *output);
 int32_t strcmp(StringRef *s1, StringRef *s2);
 void bool_to_string(bool v, StringRef *output);
+
+// transform string into integral
+// base is default to 10, 16 if string starts with '0x' or '0X', other base is not considered.
+// for hex string, it's parsed unsigned, add minus('-') to the very begining for negative hex
+// returns (status, int64)
+struct StrToIntegral {
+    std::pair<absl::Status, int64_t> operator()(absl::string_view in) {
+        in = absl::StripAsciiWhitespace(in);
+        if (0 == in.size()) {
+            return {absl::InvalidArgumentError("empty or blank string"), {}};
+        }
+
+        // reset errno to 0 before call
+        errno = 0;
+
+        int base = 10;
+        auto copy = in;
+        if (copy[0] == '+' || copy[0] == '-') {
+            copy.remove_prefix(1);
+        }
+        copy = copy.substr(0, 2);
+        if (copy == "0x" || copy == "0X") {
+            base = 16;
+        }
+
+        std::string copy_of_str(in);
+        const char *str = copy_of_str.data();
+        char *endptr = NULL;
+        // always to int64
+        int64_t number = std::strtoll(str, &endptr, base);
+
+        if (str == endptr) {
+            //  invalid: no digits found
+            return {absl::InvalidArgumentError(absl::StrCat(in, " (no digitals found)")), {}};
+        } else if (errno == ERANGE && number == LLONG_MIN) {
+            return {absl::OutOfRangeError(absl::StrCat(in, " (underflow)")), number};
+        } else if (errno == ERANGE && number == LLONG_MAX) {
+            return {absl::OutOfRangeError(absl::StrCat(in, " (overflow)")), number};
+        } else if (errno == EINVAL) {
+            // not copy_of_str all c99 implementations - gcc OK
+            return {absl::InvalidArgumentError(absl::StrCat(in, " (base contains unsupported value)")), {}};
+        } else if (errno != 0 && number == 0) {
+            // invalid:  unspecified error occurred
+            return {absl::UnknownError(absl::StrCat(in, " (unspecified error: ", std::strerror(errno), ")")), {}};
+        } else if (errno == 0 && str) {
+            if (*endptr != 0) {
+                return {
+                    absl::InvalidArgumentError(absl::StrCat(in, " (digitals with extra non-space chars following)")),
+                    {}};
+            }
+            // valid  (and represents all characters read;
+            return {absl::OkStatus(), number};
+        }
+
+        return {absl::UnknownError(absl::StrCat(in, " (unspecified error)")), {}};
+    }
+};
+
 void string_to_bool(StringRef *str, bool *out, bool *is_null_ptr);
 void string_to_int(StringRef *str, int32_t *v, bool *is_null_ptr);
 void string_to_smallint(StringRef *str, int16_t *v, bool *is_null_ptr);

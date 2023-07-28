@@ -117,7 +117,7 @@ class Executor:
             for record in result:
                 if record[2] == "leader":
                     return Status(), record[0]
-        return Status(-1, "get ns leader falied"), None
+        return Status(-1, "get ns leader failed"), None
 
 
     def ParseResult(self, output) -> list:
@@ -212,10 +212,10 @@ class Executor:
         cmd.append("--cmd=gettablestatus " + tid + " " + pid)
         status, output = self.RunWithRetuncode(cmd)
         if not status.OK():
-            log.error("gettablestatus failed")
+            log.error("gettablestatus failed on " + str(cmd))
             return status, None
         if "failed" in output:
-            log.error("gettablestatus failed")
+            log.error("gettablestatus failed on " + str(cmd))
             return Status(-1, output), None
         result = {}
         for record in self.ParseResult(output):

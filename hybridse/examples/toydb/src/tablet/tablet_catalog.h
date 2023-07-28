@@ -33,7 +33,6 @@ using vm::OrderType;
 using vm::PartitionHandler;
 using vm::RowIterator;
 using vm::TableHandler;
-using vm::WindowIterator;
 
 class TabletPartitionHandler;
 class TabletTableHandler;
@@ -46,19 +45,19 @@ class TabletSegmentHandler : public TableHandler {
 
     ~TabletSegmentHandler();
 
-    inline const vm::Schema* GetSchema() {
+    const vm::Schema* GetSchema() override {
         return partition_hander_->GetSchema();
     }
 
-    inline const std::string& GetName() { return partition_hander_->GetName(); }
+    const std::string& GetName() override { return partition_hander_->GetName(); }
 
-    inline const std::string& GetDatabase() {
+    const std::string& GetDatabase() override {
         return partition_hander_->GetDatabase();
     }
 
-    inline const vm::Types& GetTypes() { return partition_hander_->GetTypes(); }
+    const vm::Types& GetTypes() override { return partition_hander_->GetTypes(); }
 
-    inline const vm::IndexHint& GetIndex() {
+    const vm::IndexHint& GetIndex() override {
         return partition_hander_->GetIndex();
     }
 
@@ -68,9 +67,8 @@ class TabletSegmentHandler : public TableHandler {
 
     std::unique_ptr<vm::RowIterator> GetIterator() override;
     RowIterator* GetRawIterator() override;
-    std::unique_ptr<vm::WindowIterator> GetWindowIterator(
-        const std::string& idx_name);
-    virtual const uint64_t GetCount();
+    std::unique_ptr<codec::WindowIterator> GetWindowIterator(const std::string& idx_name) override;
+    const uint64_t GetCount() override;
     Row At(uint64_t pos) override;
     const std::string GetHandlerTypeName() override {
         return "TabletSegmentHandler";
@@ -93,26 +91,23 @@ class TabletPartitionHandler
 
     ~TabletPartitionHandler() {}
 
-    const OrderType GetOrderType() const { return OrderType::kDescOrder; }
+    const OrderType GetOrderType() const override { return OrderType::kDescOrder; }
 
-    inline const vm::Schema* GetSchema() { return table_handler_->GetSchema(); }
+    const vm::Schema* GetSchema() override { return table_handler_->GetSchema(); }
 
-    inline const std::string& GetName() { return table_handler_->GetName(); }
+    const std::string& GetName() override { return table_handler_->GetName(); }
 
-    inline const std::string& GetDatabase() {
-        return table_handler_->GetDatabase();
-    }
+    const std::string& GetDatabase() override { return table_handler_->GetDatabase(); }
 
-    inline const vm::Types& GetTypes() { return table_handler_->GetTypes(); }
-    inline const vm::IndexHint& GetIndex() { return index_hint_; }
-    std::unique_ptr<vm::WindowIterator> GetWindowIterator() override {
+    const vm::Types& GetTypes() override { return table_handler_->GetTypes(); }
+    const vm::IndexHint& GetIndex() override { return index_hint_; }
+    std::unique_ptr<codec::WindowIterator> GetWindowIterator() override {
         return table_handler_->GetWindowIterator(index_name_);
     }
     const uint64_t GetCount() override;
 
-    virtual std::shared_ptr<TableHandler> GetSegment(const std::string& key) {
-        return std::shared_ptr<TabletSegmentHandler>(
-            new TabletSegmentHandler(shared_from_this(), key));
+    std::shared_ptr<TableHandler> GetSegment(const std::string& key) override {
+        return std::make_shared<TabletSegmentHandler>(shared_from_this(), key);
     }
     const std::string GetHandlerTypeName() override {
         return "TabletPartitionHandler";
@@ -155,7 +150,7 @@ class TabletTableHandler
     inline std::shared_ptr<storage::Table> GetTable() { return table_; }
     std::unique_ptr<RowIterator> GetIterator();
     RowIterator* GetRawIterator() override;
-    std::unique_ptr<WindowIterator> GetWindowIterator(
+    std::unique_ptr<codec::WindowIterator> GetWindowIterator(
         const std::string& idx_name);
     virtual const uint64_t GetCount();
     Row At(uint64_t pos) override;
