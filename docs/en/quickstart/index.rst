@@ -7,5 +7,5 @@ Quickstart
 
     openmldb_quickstart
     concepts/index
-    cli
+    cli_tutorial
     sdk/index
