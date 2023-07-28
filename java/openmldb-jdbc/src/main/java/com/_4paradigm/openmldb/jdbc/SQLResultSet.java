@@ -19,6 +19,7 @@ package com._4paradigm.openmldb.jdbc;
 import com._4paradigm.openmldb.DataType;
 import com._4paradigm.openmldb.QueryFuture;
 import com._4paradigm.openmldb.Schema;
+import com._4paradigm.openmldb.sdk.Common;
 
 import java.io.InputStream;
 import java.io.Reader;
@@ -34,11 +35,17 @@ public class SQLResultSet implements ResultSet {
     private int rowNum = 0;
     private QueryFuture queryFuture;
     private Schema schema;
+    private com._4paradigm.openmldb.sdk.Schema sdkSchema;
 
     public SQLResultSet(com._4paradigm.openmldb.ResultSet resultSet) {
         this.resultSet = resultSet;
         if (resultSet != null) {
             this.schema = resultSet.GetSchema();
+            try {
+                this.sdkSchema = Common.convertSchema(this.schema);
+            } catch(SQLException e) {
+                this.sdkSchema = null;
+            }
         }
     }
 
@@ -47,6 +54,11 @@ public class SQLResultSet implements ResultSet {
         this.queryFuture = future;
         if (resultSet != null) {
             this.schema = resultSet.GetSchema();
+            try {
+                this.sdkSchema = Common.convertSchema(this.schema);
+            } catch(SQLException e) {
+                this.sdkSchema = null;
+            }
         }
     }
 
@@ -67,7 +79,7 @@ public class SQLResultSet implements ResultSet {
         if (i <= 0) {
             throw new SQLException("index underflow");
         }
-        if (i > schema.GetColumnCnt()) {
+        if (sdkSchema == null || i > sdkSchema.getColumnList().size()) {
             throw new SQLException("index overflow");
         }
     }
@@ -79,7 +91,8 @@ public class SQLResultSet implements ResultSet {
     }
 
     private void checkDataType(int i, DataType type) throws SQLException {
-        if (schema.GetColumnType(i - 1) != type) {
+        if (sdkSchema == null ||
+            !Common.sqlTypeToDataType(sdkSchema.getColumnList().get(i - 1).getSqlType()).equals(type)) {
             throw new SQLException(String.format("data type not match, get %s and expect %s",
                     schema.GetColumnType(i - 1), type));
         }
