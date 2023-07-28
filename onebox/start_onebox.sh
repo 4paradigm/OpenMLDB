@@ -113,6 +113,8 @@ cluster_start_component() {
         "${extra_opts[@]}" > "$WORKSPACE/$canon_name.log" 2>&1 &
 
     echo $! > "$WORKSPACE/run/$canon_name.pid"
+
+    echo "started $role at $endpoint"
 }
 
 ZK_CLUSTER=$IP:6181
@@ -166,6 +168,8 @@ start_taskmanager() {
     LD_DEBUG=libs ./bin/taskmanager.sh > "$WORKSPACE/logs/taskmanager.log" 2>&1 &
     echo $! > "$WORKSPACE/run/taskmanager.pid"
     popd
+
+    echo "started taskmanager"
 }
 
 SA_NS=$IP:6527

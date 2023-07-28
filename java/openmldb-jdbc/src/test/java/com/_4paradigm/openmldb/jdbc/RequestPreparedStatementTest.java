@@ -113,8 +113,7 @@ public class RequestPreparedStatementTest {
             ok = executor.dropDB(dbname);
             Assert.assertTrue(ok);
         } catch (Exception e) {
-            e.printStackTrace();
-            Assert.fail();
+            Assert.fail("catched exception", e);
         } finally {
             try {
                 if (resultSet != null) {

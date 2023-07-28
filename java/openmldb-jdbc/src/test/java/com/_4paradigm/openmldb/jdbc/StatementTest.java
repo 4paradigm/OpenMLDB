@@ -121,8 +121,7 @@ public class StatementTest {
             Assert.assertEquals(result.get(1000L), "hello");
             Assert.assertEquals(result.get(1001L), "xxxx");
         } catch (Exception e) {
-            e.printStackTrace();
-            Assert.fail();
+            Assert.fail("catched exception", e);
         } finally {
             try {
                 state.close();

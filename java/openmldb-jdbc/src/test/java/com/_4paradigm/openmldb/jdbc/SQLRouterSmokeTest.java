@@ -66,7 +66,7 @@ public class SQLRouterSmokeTest {
             standaloneOption.setSessionTimeout(20000);
             standaloneExecutor = new SqlClusterExecutor(standaloneOption);
         } catch (Exception e) {
-            e.printStackTrace();
+            Assert.fail("cathed exception", e);
         }
     }
 
@@ -262,8 +262,7 @@ public class SQLRouterSmokeTest {
             ok = router.dropDB(dbname);
             Assert.assertTrue(ok);
         } catch (Exception e) {
-            e.printStackTrace();
-            Assert.fail();
+            Assert.fail("cathed exception", e);
         }
     }
 
@@ -282,7 +281,7 @@ public class SQLRouterSmokeTest {
 
             // queryable
             {
-                // FIXME: offline mode is not good for testing
+                // // disabled due to #3405
                 // statement.execute("set session execute_mode='offline'");
                 // statement.execute("set global sync_job=true");
                 // Assert.assertTrue(statement.execute("select cut2('hello')"));
@@ -301,8 +300,7 @@ public class SQLRouterSmokeTest {
                 Assert.assertEquals(result, "he");
             }
         } catch (Exception e) {
-            e.printStackTrace();
-            Assert.fail();
+            Assert.fail("cathed exception", e);
         } finally {
             // dropable
             try {
@@ -313,15 +311,15 @@ public class SQLRouterSmokeTest {
         }
     }
 
-    @Test(dataProvider = "executor")
-    public void testParameterizedQueryFail(SqlExecutor router) {
+    @Test(dataProvider = "executor", expectedExceptions = java.sql.SQLException.class, expectedExceptionsMessageRegExp = ".*Fail to get parameter type with position 2")
+    public void testParameterizedQueryFail(SqlExecutor router) throws SQLException{
+        String dbname = "SQLRouterSmokeTest" + System.currentTimeMillis();
+        String ddl = "create table tsql1010 ( col1 bigint, col2 string, index(key=col2, ts=col1));";
         try {
-            String dbname = "SQLRouterSmokeTest" + System.currentTimeMillis();
             // create db
             router.dropDB(dbname);
             boolean ok = router.createDB(dbname);
             Assert.assertTrue(ok);
-            String ddl = "create table tsql1010 ( col1 bigint, col2 string, index(key=col2, ts=col1));";
             // create table
             ok = router.executeDDL(dbname, ddl);
             Assert.assertTrue(ok);
@@ -336,8 +334,9 @@ public class SQLRouterSmokeTest {
                 Assert.fail("executeQuery is expected to throw exception");
                 rs4.close();
             }
-        } catch (Exception e) {
-            e.printStackTrace();
+        } finally {
+            router.executeSQL(dbname, "drop table tsql1010");
+            router.dropDB(dbname);
         }
     }
 
@@ -514,8 +513,7 @@ public class SQLRouterSmokeTest {
             ok = router.dropDB(dbname);
             Assert.assertTrue(ok);
         } catch (Exception e) {
-            e.printStackTrace();
-            Assert.fail();
+            Assert.fail("cathed exception", e);
         }
     }
 
@@ -650,8 +648,7 @@ public class SQLRouterSmokeTest {
             ok = router.dropDB(dbname);
             Assert.assertTrue(ok);
         } catch (Exception e) {
-            e.printStackTrace();
-            Assert.fail();
+            Assert.fail("cathed exception", e);
         }
     }
 

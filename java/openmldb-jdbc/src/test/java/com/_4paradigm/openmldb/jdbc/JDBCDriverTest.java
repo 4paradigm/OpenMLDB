@@ -60,8 +60,7 @@ public class JDBCDriverTest {
             connection = DriverManager.getConnection(
                     String.format("jdbc:openmldb:///%s?zk=%s&zkPath=%s&zkLogLevel=0", dbName, zk, zkPath));
         } catch (SQLException | ClassNotFoundException e) {
-            e.printStackTrace();
-            Assert.fail("jdbc connection failed");
+            Assert.fail("jdbc connection failed", e);
         }
     }
 
@@ -162,8 +161,7 @@ public class JDBCDriverTest {
             deleteStatement.setInt(1, 1);
             deleteStatement.execute();
         } catch (Exception e) {
-            e.printStackTrace();
-            Assert.fail();
+            Assert.fail("catched exception", e);
         }
 
         // useless but won't fail
@@ -227,8 +225,7 @@ public class JDBCDriverTest {
                     .prepareStatement("DELETE FROM " + tableName + " WHERE c1=?");
             preparedStatement.setInt(1, 1);
         } catch (Exception e) {
-            e.printStackTrace();
-            Assert.fail();
+            Assert.fail("catched exception", e);
         }
 
         // sink, catalog and schema patterns are always be null
