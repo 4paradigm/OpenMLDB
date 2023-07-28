@@ -290,7 +290,6 @@ jobs:
 
       - name: prepare python deps
         run: |
-          pip install twine "urllib3>=1.26.0,<2.0.0"
           yum install -y net-tools
 
       - name: test sqlalchemy and generate coverage report
@@ -318,6 +317,7 @@ jobs:
         if: >
           github.repository == '4paradigm/OpenMLDB' && startsWith(github.ref, 'refs/tags/v')
         run: |
+          pip install twine "urllib3>=1.26.0,<2.0.0"
           cp python/openmldb_sdk/dist/openmldb*.whl .
           cp python/openmldb_tool/dist/openmldb*.whl .
           twine upload openmldb*.whl

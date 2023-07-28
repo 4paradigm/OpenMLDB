@@ -989,6 +989,40 @@ TEST_P(DBSDKTest, DeletetRange) {
                     });
 }
 
+TEST_P(DBSDKTest, DeletetSameColIndex) {
+    auto cli = GetParam();
+    sr = cli->sr;
+    std::string db_name = "test2";
+    std::string table_name = "test1";
+    std::string ddl = "create table test1 (c1 string, c2 int, c3 bigint, c4 bigint, "
+        "INDEX(KEY=c1, ts=c3), INDEX(KEY=c1, ts=c4));";
+    ProcessSQLs(sr, {
+                        "set @@execute_mode = 'online'",
+                        absl::StrCat("create database ", db_name, ";"),
+                        absl::StrCat("use ", db_name, ";"),
+                        ddl,
+                    });
+    hybridse::sdk::Status status;
+    for (int i = 0; i < 10; i++) {
+        std::string key = absl::StrCat("key", i);
+        for (int j = 0; j < 10; j++) {
+            uint64_t ts = 1000 + j;
+            sr->ExecuteSQL(absl::StrCat("insert into ", table_name, " values ('", key, "', 11, ", ts, ",", ts, ");"),
+                    &status);
+        }
+    }
+
+    auto res = sr->ExecuteSQL(absl::StrCat("select * from ", table_name, ";"), &status);
+    ASSERT_EQ(res->Size(), 100);
+    ProcessSQLs(sr, {absl::StrCat("delete from ", table_name, " where c1 = 'key2';")});
+    res = sr->ExecuteSQL(absl::StrCat("select * from ", table_name, ";"), &status);
+    ASSERT_EQ(res->Size(), 90);
+    ProcessSQLs(sr, {
+                        absl::StrCat("drop table ", table_name),
+                        absl::StrCat("drop database ", db_name),
+                    });
+}
+
 TEST_P(DBSDKTest, SQLDeletetRow) {
     auto cli = GetParam();
     sr = cli->sr;

@@ -13,3 +13,4 @@ errors:
       - "fail to init zk handler with hosts"
     description: "Error: fail to init zk handler with hosts"
     solution: "zk_conn_err"
+

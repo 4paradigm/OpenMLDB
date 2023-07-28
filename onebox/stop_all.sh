@@ -28,4 +28,3 @@ for file in workspace/run/*.pid ; do
     rm -f "$file"
 done
 
-

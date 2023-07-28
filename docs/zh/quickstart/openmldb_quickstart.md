@@ -19,7 +19,7 @@ OpenMLDB 的主要使用场景为作为机器学习的实时特征平台。其�
 在命令行执行以下命令拉取 OpenMLDB 镜像，并启动 Docker 容器：
 
 ```bash
-docker run -it 4pdosc/openmldb:0.8.1 bash
+docker run -it 4pdosc/openmldb:0.8.2 bash
 ```
 
 ```{note}
@@ -83,7 +83,11 @@ LOAD DATA INFILE 'file:///work/taxi-trip/data/data.parquet' INTO TABLE demo_tabl
 这里使用 `SHOW JOBS` 查看任务状态，请等待任务运行成功（ `state` 转至 `FINISHED` 状态），再进行下面步骤。
 ![image-20220111141358808](./images/state_finished.png)
 
-任务完成以后，如果希望预览数据，可以使用 `SELECT * FROM demo_table1` 语句，推荐先将离线命令设置为同步模式（`SET @@sync_job=true`）；否则该命令会提交一个异步任务，结果会保存在 Spark 任务的日志文件中，查看较不方便。
+任务完成以后，如果希望预览数据，可以在同步模式`SET @@sync_job=true`下 `SELECT * FROM demo_table1` 语句。但它有一定的限制，详情见[离线命令同步模式](./function_boundary.md#离线命令同步模式)。
+
+默认的异步模式下，`SELECT * FROM demo_table1`会提交一个异步任务，结果会保存在 Spark 任务的日志文件中，查看较不方便。如果TaskManager为local，可以`SHOW JOBLOG <id>`查看stdout中的查询打印结果。
+
+最可靠的方式是，可以使用 `SELECT INTO` 命令，将数据导出到指定目录，或直接查看导入后的存储地址。
 
 ```{note}
 OpenMLDB 也支持链接形式的软拷贝来导入离线数据，无需数据硬拷贝。可以参考 [LOAD DATA INFILE 文档](../openmldb_sql/dml/LOAD_DATA_STATEMENT.md) 的参数 `deep_copy` 的说明。
