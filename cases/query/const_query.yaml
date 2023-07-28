@@ -72,11 +72,6 @@ cases:
   - id: 5
     desc: cast常量 using CAST operator
     db: db1
-    inputs:
-      - columns: ["c1 int", "c2 string", "c5 bigint"]
-        indexs: ["index1:c1:c5"]
-        rows:
-          - [1, "2020-05-22 10:43:40", 1]
     sql: |
       select CAST (10 as int) as c1, CAST (10 as bigint) as c2, CAST (10 as float) as c3, CAST (10 as double) as c4, CAST (1590115460000 as timestamp) as c5, CAST ("2020-05-20" as date) as c6, CAST (10 as string) as c7;
     expect:
@@ -86,11 +81,6 @@ cases:
   - id: 6
     desc: cast NULL常量 using CAST operator
     db: db1
-    inputs:
-      - columns: ["c1 int", "c2 string", "c5 bigint"]
-        indexs: ["index1:c1:c5"]
-        rows:
-          - [1, "2020-05-22 10:43:40", 1]
     sql: |
       select CAST (NULL as int) as c1, CAST (NULL as bigint) as c2, CAST (NULL as float) as c3, CAST (NULL as double) as c4, CAST (NULL as timestamp) as c5, CAST (NULL as date) as c6, CAST (NULL as string) as c7;
     expect:
@@ -100,11 +90,6 @@ cases:
   - id: 7
     desc: cast常量 using type() function
     db: db1
-    inputs:
-      - columns: ["c1 int", "c2 string", "c5 bigint"]
-        indexs: ["index1:c1:c5"]
-        rows:
-          - [1, "2020-05-22 10:43:40", 1]
     sql: |
       select int(10) as c1, bigint(10) as c2, float(10) as c3, double(10) as c4, timestamp(1590115460000) as c5, date("2020-05-20") as c6, string(10) as c7;
     expect:
@@ -114,11 +99,6 @@ cases:
   - id: 8
     desc: cast NULL常量 using type(NULL) function
     db: db1
-    inputs:
-      - columns: ["c1 int", "c2 string", "c5 bigint"]
-        indexs: ["index1:c1:c5"]
-        rows:
-          - [1, "2020-05-22 10:43:40", 1]
     sql: |
       select int(NULL) as c1, bigint(NULL) as c2, float(NULL) as c3, double(NULL) as c4, timestamp(NULL) as c5, date(NULL) as c6, string(NULL) as c7;
     expect:
