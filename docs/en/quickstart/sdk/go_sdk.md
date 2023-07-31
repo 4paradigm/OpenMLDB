@@ -1,46 +1,54 @@
-# Go SDK Quickstart
+# Go SDK
 
-**Requirements**:
-- OpenMLDB Version >= 0.7.0
-- API server component is running
+## Requirement
 
-## 1. Install the Go SDK Package
+- OpenMLDB version: >= v0.6.2
+
+- Deploy and run APIServer (refer to [APIServer deployment](https://openmldb.ai/docs/zh/main/deploy/install_deploy.html#apiserver) document)
+
+## Go SDK package installment
 
 ```bash
 go get github.com/4paradigm/OpenMLDB/go
 ```
 
-## 2. API
+## Go SDK usage
 
-### 2.1 Connect
+This section describes the basic use of Go SDK.
 
-Go SDK connects to API server.
+### Connect to OpenMLDB
 
-```go
+The Go SDK needs to be connected to the API server.
+
+```Go
 db, err := sql.Open("openmldb", "openmldb://127.0.0.1:8080/test_db")
 ```
 
-The DSN schema is
+The format of data source (DSN) is:
 
-```
+```plain
 openmldb://API_SERVER_HOST[:API_SERVER_PORT]/DB_NAME
 ```
 
-Note that an existed database is required.
+You must connect to an existing database.
 
-### 2.2 Create Table
+### Create Table
 
-```go
+Create a table `demo`:
+
+```Go
 db.ExecContext(ctx, "CREATE TABLE demo(c1 int, c2 string);")
 ```
 
-### 2.3 Insert Value
+### Insert data
+
+Insert date into table:
 
 ```go
 db.ExecContext(ctx, `INSERT INTO demo VALUES (1, "bb"), (2, "bb");`)
 ```
 
-### 2.4 Query
+### Query
 
 ```go
 rows, err := db.QueryContext(ctx, `SELECT c1, c2 FROM demo;`)
@@ -59,21 +67,21 @@ for rows.Next() {
 }
 ```
 
-### 3. An Example
+## Example
 
-```go
+```Go
 package main
 
 import (
-	"context"
-	"database/sql"
+  "context"
+  "database/sql"
 
-	// register openmldb driver
-	_ "github.com/4paradigm/OpenMLDB/go"
+  // 加载 OpenMLDB SDK
+  _ "github.com/4paradigm/OpenMLDB/go"
 )
 
 func main() {
-	db, err := sql.Open("openmldb", "openmldb://127.0.0.1:8080/test_db")
+  db, err := sql.Open("openmldb", "openmldb://127.0.0.1:8080/test_db")
   if err != nil {
     panic(err)
   }
@@ -106,3 +114,4 @@ func main() {
   }
 }
 ```
+
