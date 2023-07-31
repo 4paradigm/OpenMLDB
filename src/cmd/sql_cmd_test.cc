@@ -2999,7 +2999,7 @@ TEST_P(DBSDKTest, LongWindowsCleanup) {
         HandleSQL("use test2;");
         HandleSQL(create_sql);
         sr->ExecuteSQL(deploy_sql, &status);
-        ASSERT_TRUE(status.IsOK());
+        ASSERT_TRUE(status.IsOK()) << status.ToString();
         std::string msg;
         std::string result_sql = "select * from __INTERNAL_DB.PRE_AGG_META_INFO;";
         auto rs = sr->ExecuteSQL("", result_sql, &status);
@@ -3032,10 +3032,10 @@ TEST_P(DBSDKTest, CreateWithoutIndexCol) {
         "c8 date, index(ts=c7));";
     hybridse::sdk::Status status;
     sr->ExecuteSQL(create_sql, &status);
-    ASSERT_TRUE(status.IsOK());
+    ASSERT_TRUE(status.IsOK()) << status.ToString();
     std::string msg;
-    ASSERT_TRUE(cs->GetNsClient()->DropTable("test2", "trans", msg));
-    ASSERT_TRUE(cs->GetNsClient()->DropDatabase("test2", msg));
+    ASSERT_TRUE(cs->GetNsClient()->DropTable("test2", "trans", msg)) << msg;
+    ASSERT_TRUE(cs->GetNsClient()->DropDatabase("test2", msg)) << msg;
 }
 
 TEST_P(DBSDKTest, CreateIfNotExists) {

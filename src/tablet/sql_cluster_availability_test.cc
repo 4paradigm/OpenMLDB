@@ -235,8 +235,10 @@ TEST_F(SqlClusterTest, RecoverProcedure) {
     ::openmldb::tablet::TabletImpl* tablet2 = new ::openmldb::tablet::TabletImpl();
     StartTablet(&tb_server2, tablet2);
     sleep(3);
+    // ensure tablet added in sdk
+    ASSERT_TRUE(router->RefreshCatalog());
     rs = router->CallProcedure(db, sp_name, request_row, &status);
-    if (!rs) FAIL() << "call procedure failed";
+    if (!rs) FAIL() << "call procedure failed, " + status.ToString();
     schema = rs->GetSchema();
     ASSERT_EQ(schema->GetColumnCnt(), 3);
     ASSERT_TRUE(rs->Next());
