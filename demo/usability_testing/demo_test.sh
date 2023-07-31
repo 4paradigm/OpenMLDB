@@ -3,10 +3,10 @@ set -ex
 
 echo "start demo test"
 echo "simple test"
-cat simple_test.sql | /work/openmldb/bin/openmldb --zk_cluster=127.0.0.1:2181 --zk_root_path=/openmldb --role=sql_client --interactive=false
+< simple_test.sql | /work/openmldb/bin/openmldb --zk_cluster=127.0.0.1:2181 --zk_root_path=/openmldb --role=sql_client --interactive=false
 
 echo "offline test with mocked data"
-cat offline_test.sql | /work/openmldb/bin/openmldb --zk_cluster=127.0.0.1:2181 --zk_root_path=/openmldb --role=sql_client --interactive=false
+< offline_test.sql | /work/openmldb/bin/openmldb --zk_cluster=127.0.0.1:2181 --zk_root_path=/openmldb --role=sql_client --interactive=false
 OUT1=$(wc -l /tmp/openmldb_testout/t1_deep/*.csv | grep -v total | awk '{sum+=$1-1}END{print sum}')
 OUT2=$(wc -l /tmp/openmldb_testout/t1_soft/*.csv | grep -v total | awk '{sum+=$1-1}END{print sum}')
 OUT3=$(wc -l /tmp/openmldb_testout/t2_deep/*.csv | grep -v total | awk '{sum+=$1-1}END{print sum}')
@@ -23,4 +23,4 @@ curl -SLO https://openmldb.ai/download/testing/libtest_udf.so
 cp libtest_udf.so /tmp/openmldb/tablet-1/udf
 cp libtest_udf.so /tmp/openmldb/tablet-2/udf
 cp libtest_udf.so /work/openmldb/taskmanager/bin/udf
-cat udf_test.sql | /work/openmldb/bin/openmldb --zk_cluster=127.0.0.1:2181 --zk_root_path=/openmldb --role=sql_client --interactive=false
+< udf_test.sql | /work/openmldb/bin/openmldb --zk_cluster=127.0.0.1:2181 --zk_root_path=/openmldb --role=sql_client --interactive=false

@@ -22,7 +22,7 @@ This directory contains the simple tests. The tests are simple and can be run au
 ```shell
 /work/openmldb/bin/openmldb --zk_cluster=127.0.0.1:2181 --zk_root_path=/openmldb --role=sql_client --interactive=false < simple_test.sql
 # or
-cat simple_test.sql | /work/openmldb/bin/openmldb --zk_cluster=127.0.0.1:2181 --zk_root_path=/openmldb --role=sql_client --interactive=false
+< simple_test.sql | /work/openmldb/bin/openmldb --zk_cluster=127.0.0.1:2181 --zk_root_path=/openmldb --role=sql_client --interactive=false
 ```
 
 If some async jobs still running after drop, you can ignore them, just need to care about sync jobs. If you want check async jobs, you should comment out the `drop table/database` statement in the script. To check the result, you can `SHOW JOBS` or use diag tool to check the result.
@@ -76,7 +76,7 @@ ls /tmp/openmldb_test/t2/*.parquet
 
 Run(no matter source type):
 ```
-cat offline_test.sql | /work/openmldb/bin/openmldb --zk_cluster=127.0.0.1:2181 --zk_root_path=/openmldb --role=sql_client --interactive=false
+< offline_test.sql | /work/openmldb/bin/openmldb --zk_cluster=127.0.0.1:2181 --zk_root_path=/openmldb --role=sql_client --interactive=false
 ```
 
 Check:
@@ -115,5 +115,5 @@ curl -SLO https://openmldb.ai/download/testing/libtest_udf.so
 
 Run:
 ```
-cat udf_test.sql | /work/openmldb/bin/openmldb --zk_cluster=127.0.0.1:2181 --zk_root_path=/openmldb --role=sql_client --interactive=false
+< udf_test.sql | /work/openmldb/bin/openmldb --zk_cluster=127.0.0.1:2181 --zk_root_path=/openmldb --role=sql_client --interactive=false
 ```
