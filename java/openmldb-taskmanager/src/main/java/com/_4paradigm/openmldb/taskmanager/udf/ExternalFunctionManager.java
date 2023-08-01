@@ -37,14 +37,13 @@ public class ExternalFunctionManager {
 
     static public void addFunction(String fnName, String libraryFileName) throws Exception {
         if (hasFunction(fnName)) {
-            logger.warn(String.format("The function %s exists, ignore adding function", fnName));
-        } else {
-            String libraryFilePath = getLibraryFilePath(libraryFileName);
-            if(!(new File(libraryFilePath).exists())) {
-                throw new Exception("The library file does not exist in path: " + libraryFilePath);
-            }
-            nameFileMap.put(fnName, libraryFileName);
+            logger.warn(String.format("The function %s exists, replace", fnName));
+        } 
+        String libraryFilePath = getLibraryFilePath(libraryFileName);
+        if(!(new File(libraryFilePath).exists())) {
+            throw new Exception("The library file does not exist in path: " + libraryFilePath);
         }
+        nameFileMap.put(fnName, libraryFileName);
     }
 
     static public void dropFunction(String fnName) {

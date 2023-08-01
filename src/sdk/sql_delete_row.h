@@ -18,18 +18,30 @@
 #define SRC_SDK_SQL_DELETE_ROW_H_
 
 #include <map>
+#include <optional>
 #include <string>
 #include <vector>
 
+#include "node/node_manager.h"
+#include "proto/type.pb.h"
+
 namespace openmldb::sdk {
+
+struct Condition {
+    Condition(const std::string& name, hybridse::node::FnOperator con,
+            const std::optional<std::string>& v, openmldb::type::DataType type)
+        : col_name(name), op(con), val(v), data_type(type) {}
+    std::string col_name;
+    hybridse::node::FnOperator op;
+    std::optional<std::string> val;
+    openmldb::type::DataType data_type;
+};
 
 class SQLDeleteRow {
  public:
     SQLDeleteRow(const std::string& db, const std::string& table_name,
-            const std::string& index, const std::vector<std::string>& col_names,
-            const std::map<std::string, std::string>& default_value,
-            const std::map<int, std::string> hole_column_map) :
-        db_(db), table_name_(table_name), index_(index), col_names_(col_names) {}
+            const std::vector<Condition>& condition_vec,
+            const std::vector<Condition>& parameter_vec);
 
     void Reset();
 
@@ -42,20 +54,18 @@ class SQLDeleteRow {
     bool SetNULL(int pos);
     bool Build();
 
-    const std::string& GetValue() const { return val_; }
     const std::string& GetDatabase() const { return db_; }
     const std::string& GetTableName() const { return table_name_; }
-    const std::string& GetIndexName() const { return index_; }
+    const std::vector<Condition>& GetValue() const { return value_; }
 
  private:
     const std::string db_;
     const std::string table_name_;
-    const std::string index_;
-    const std::vector<std::string> col_names_;
-    const std::map<std::string, std::string> default_value_;
-    const std::map<int, std::string> hole_column_map_;
-    std::string val_;
-    std::map<std::string, std::string> col_values_;
+    std::vector<Condition> condition_vec_;
+    std::vector<Condition> parameter_vec_;
+    std::vector<Condition> result_;
+    std::vector<Condition> value_;
+    std::map<int, size_t> pos_map_;
 };
 
 }  // namespace openmldb::sdk

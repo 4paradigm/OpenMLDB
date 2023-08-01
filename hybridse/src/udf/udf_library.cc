@@ -256,29 +256,29 @@ Status UdfLibrary::RemoveDynamicUdf(const std::string& name, const std::vector<n
         lib_name.append(".").append(node::DataTypeName(type));
     }
     if (!HasFunction(canonical_name)) {
-        return Status(kCodegenError, "can not find the function " + canonical_name);
+        return Status(kCodegenError, "can not find the function in udf table: " + canonical_name);
     }
     if (IsUdaf(canonical_name)) {
         std::lock_guard<std::mutex> lock(mu_);
         if (table_.erase(canonical_name) <= 0) {
-            return Status(kCodegenError, "can not find the function " + canonical_name);
+            return Status(kCodegenError, "udaf function not present in udf table: " + canonical_name);
         }
         if (external_symbols_.erase(lib_name + ".init") <= 0) {
-            return Status(kCodegenError, "can not find the init function " + lib_name);
+            return Status(kCodegenError, "can not find the init function in symbol table: " + lib_name);
         }
         if (external_symbols_.erase(lib_name + ".update") <= 0) {
-            return Status(kCodegenError, "can not find the update function " + lib_name);
+            return Status(kCodegenError, "can not find the update function in symbol table: " + lib_name);
         }
         if (external_symbols_.erase(lib_name + ".output") <= 0) {
-            return Status(kCodegenError, "can not find the output function " + lib_name);
+            return Status(kCodegenError, "can not find the output function in symbol table: " + lib_name);
         }
     } else {
         std::lock_guard<std::mutex> lock(mu_);
         if (table_.erase(canonical_name) <= 0) {
-            return Status(kCodegenError, "can not find the function " + canonical_name);
+            return Status(kCodegenError, "udf function not present in udf table: " + canonical_name);
         }
         if (external_symbols_.erase(lib_name) <= 0) {
-            return Status(kCodegenError, "can not find the function " + lib_name);
+            return Status(kCodegenError, "can not find the function in symbol table: " + lib_name);
         }
     }
     return lib_manager_.RemoveHandler(file);

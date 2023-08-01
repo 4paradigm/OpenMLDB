@@ -1118,8 +1118,6 @@ void NameServerImpl::UpdateTablets(const std::vector<std::string>& endpoints) {
         }
     }
 
-
-
     auto it = tablet_endpoints.begin();
     for (; it != tablet_endpoints.end(); ++it) {
         alive.insert(*it);
@@ -3715,8 +3713,6 @@ void NameServerImpl::CreateTable(RpcController* controller, const CreateTableReq
         response->set_msg(response->msg());
     }
 }
-
-
 
 bool NameServerImpl::SaveTableInfo(std::shared_ptr<TableInfo> table_info) {
     std::string table_value;
@@ -9733,16 +9729,16 @@ void NameServerImpl::CreateFunction(RpcController* controller, const CreateFunct
     }
     auto tablets = GetAllHealthTablet();
     std::vector<std::shared_ptr<TabletInfo>> succ_tablets;
+    std::string error_msgs;
+    // try create on every tablet
     for (const auto& tablet : tablets) {
         std::string msg;
         if (!tablet->client_->CreateFunction(request->fun(), &msg)) {
-            PDLOG(WARNING, "create function failed. endpoint %s, msg %s",
-                    tablet->client_->GetEndpoint().c_str(), msg.c_str());
-            response->set_msg(msg);
-            break;
+            error_msgs.append("create function failed on " + tablet->client_->GetEndpoint() + ", reason: " + msg + ";");
         }
         succ_tablets.emplace_back(tablet);
     }
+    // rollback and return, it's ok if tablet rollback failed
     if (succ_tablets.size() < tablets.size()) {
         for (const auto& tablet : succ_tablets) {
             std::string msg;
@@ -9751,6 +9747,7 @@ void NameServerImpl::CreateFunction(RpcController* controller, const CreateFunct
             }
             PDLOG(INFO, "drop function on endpoint %s", tablet->client_->GetEndpoint().c_str());
         }
+        SET_RESP_AND_WARN(response, base::ReturnCode::kCreateFunctionFailedOnTablet, error_msgs);
         return;
     }
     auto fun = std::make_shared<::openmldb::common::ExternalFun>(request->fun());
@@ -9759,8 +9756,7 @@ void NameServerImpl::CreateFunction(RpcController* controller, const CreateFunct
         fun->SerializeToString(&value);
         std::string fun_node = zk_path_.external_function_path_ + "/" + fun->name();
         if (!zk_client_->CreateNode(fun_node, value)) {
-            PDLOG(WARNING, "create function node[%s] failed! value[%s] value_size[%u]",
-                  fun_node.c_str(), value.c_str(), value.length());
+            SET_RESP_AND_WARN(response, base::ReturnCode::kCreateZkFailed, "create function on zk failed: " + fun_node);
             return;
         }
     }
@@ -9771,9 +9767,8 @@ void NameServerImpl::CreateFunction(RpcController* controller, const CreateFunct
 }
 
 void NameServerImpl::DropFunction(RpcController* controller, const DropFunctionRequest* request,
-                                    DropFunctionResponse* response, Closure* done) {
+                                  DropFunctionResponse* response, Closure* done) {
     brpc::ClosureGuard done_guard(done);
-    response->set_code(base::kRPCRunError);
     std::shared_ptr<::openmldb::common::ExternalFun> fun;
     {
         std::lock_guard<std::mutex> lock(mu_);
@@ -9786,27 +9781,26 @@ void NameServerImpl::DropFunction(RpcController* controller, const DropFunctionR
         if (request->if_exists()) {
             base::SetResponseOK(response);
         } else {
-            response->set_msg("fun does not exist");
-            LOG(WARNING) << request->name() << " does not exist";
+            SET_RESP_AND_WARN(response, base::ReturnCode::kError, "fun does not exist in nameserver meta");
         }
         return;
     }
     auto tablets = GetAllHealthTablet();
     for (const auto& tablet : tablets) {
         std::string msg;
+        // if drop function failed on tablet, treat it as success(only log warning)
         if (!tablet->client_->DropFunction(*fun, &msg)) {
-            response->set_msg(msg);
-            LOG(WARNING) << "drop function failed on " << tablet->client_->GetEndpoint();
-            return;
+            LOG(WARNING) << "drop function failed on " << tablet->client_->GetEndpoint() << ", reason: " << msg;
         }
     }
     if (IsClusterMode()) {
         std::string fun_node = zk_path_.external_function_path_ + "/" + fun->name();
         if (!zk_client_->DeleteNode(fun_node)) {
-            PDLOG(WARNING, "delete function node[%s] failed", fun_node.c_str());
-            response->set_msg("delete function node failed");
+            // if drop zk node failed, the whole drop function failed
+            SET_RESP_AND_WARN(response, base::ReturnCode::kDelZkFailed, "delete function zk node failed:" + fun_node);
             return;
         }
+        // func in taskmanager is deleted by client, not in here
     }
     base::SetResponseOK(response);
     LOG(INFO) << "drop function " << request->name() << " success";
@@ -9815,7 +9809,7 @@ void NameServerImpl::DropFunction(RpcController* controller, const DropFunctionR
 }
 
 void NameServerImpl::ShowFunction(RpcController* controller, const ShowFunctionRequest* request,
-                                    ShowFunctionResponse* response, Closure* done) {
+                                  ShowFunctionResponse* response, Closure* done) {
     brpc::ClosureGuard done_guard(done);
     std::lock_guard<std::mutex> lock(mu_);
     if (request->has_name() && !request->name().empty()) {

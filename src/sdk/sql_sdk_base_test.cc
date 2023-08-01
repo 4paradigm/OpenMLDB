@@ -70,7 +70,7 @@ void SQLSDKTest::CreateTables(hybridse::sqlcase::SqlCase& sql_case,  // NOLINT
         std::string create;
         if (sql_case.BuildCreateSqlFromInput(i, &create, partition_num) && !create.empty()) {
             std::string placeholder = "{" + std::to_string(i) + "}";
-            boost::replace_all(create, placeholder, sql_case.inputs()[i].name_);
+            absl::StrReplaceAll({{placeholder, sql_case.inputs()[i].name_}}, &create);
             LOG(INFO) << create;
             router->ExecuteDDL(input_db_name, create, &status);
             ASSERT_TRUE(router->RefreshCatalog());
@@ -112,12 +112,12 @@ void SQLSDKTest::CreateProcedure(hybridse::sqlcase::SqlCase& sql_case,  // NOLIN
     std::string sql = sql_case.sql_str();
     for (size_t i = 0; i < sql_case.inputs().size(); i++) {
         std::string placeholder = "{" + std::to_string(i) + "}";
-        boost::replace_all(sql, placeholder, sql_case.inputs()[i].name_);
+        absl::StrReplaceAll({{placeholder, sql_case.inputs()[i].name_}}, &sql);
     }
-    boost::replace_all(
-        sql, "{auto}",
-        hybridse::sqlcase::SqlCase::GenRand("auto_t") + std::to_string(static_cast<int64_t>(time(NULL))));
-    boost::trim(sql);
+    absl::StrReplaceAll(
+        {{"{auto}",
+        hybridse::sqlcase::SqlCase::GenRand("auto_t") + std::to_string(static_cast<int64_t>(time(NULL)))}}, &sql);
+    absl::RemoveExtraAsciiWhitespace(&sql);
     LOG(INFO) << sql;
     sql_case.sp_name_ =
         hybridse::sqlcase::SqlCase::GenRand("auto_sp") + std::to_string(static_cast<int64_t>(time(NULL)));
@@ -139,7 +139,7 @@ void SQLSDKTest::CreateProcedure(hybridse::sqlcase::SqlCase& sql_case,  // NOLIN
 
     for (size_t i = 0; i < sql_case.inputs_.size(); i++) {
         std::string placeholder = "{" + std::to_string(i) + "}";
-        boost::replace_all(create_sp, placeholder, sql_case.inputs()[i].name_);
+        absl::StrReplaceAll({{placeholder, sql_case.inputs()[i].name_}}, &create_sp);
     }
     LOG(INFO) << create_sp;
     if (!create_sp.empty()) {
@@ -220,7 +220,7 @@ void SQLSDKTest::InsertTables(hybridse::sqlcase::SqlCase& sql_case,  // NOLINT
             }
             auto insert = inserts[row_idx];
             std::string placeholder = "{" + std::to_string(i) + "}";
-            boost::replace_all(insert, placeholder, sql_case.inputs()[i].name_);
+            absl::StrReplaceAll({{placeholder, sql_case.inputs()[i].name_}}, &insert);
             DLOG(INFO) << insert;
             if (!insert.empty()) {
                 for (int j = 0; j < sql_case.inputs()[i].repeat_; j++) {
@@ -294,15 +294,16 @@ void SQLSDKTest::BatchExecuteSQL(hybridse::sqlcase::SqlCase& sql_case,  // NOLIN
     std::string sql = sql_case.sql_str();
     for (size_t i = 0; i < sql_case.inputs().size(); i++) {
         std::string placeholder = "{" + std::to_string(i) + "}";
-        boost::replace_all(sql, placeholder, sql_case.inputs()[i].name_);
+        absl::StrReplaceAll({{placeholder, sql_case.inputs()[i].name_}}, &sql);
     }
-    boost::replace_all(
-        sql, "{auto}",
-        hybridse::sqlcase::SqlCase::GenRand("auto_t") + std::to_string(static_cast<int64_t>(time(NULL))));
+    absl::StrReplaceAll(
+        {{"{auto}",
+        hybridse::sqlcase::SqlCase::GenRand("auto_t") + std::to_string(static_cast<int64_t>(time(NULL)))}}, &sql);
     for (size_t endpoint_id = 0; endpoint_id < tbEndpoints.size(); endpoint_id++) {
-        boost::replace_all(sql, "{tb_endpoint_" + std::to_string(endpoint_id) + "}", tbEndpoints.at(endpoint_id));
+        absl::StrReplaceAll({{"{tb_endpoint_" + std::to_string(endpoint_id) + "}", tbEndpoints.at(endpoint_id)}}, &sql);
     }
-    std::string lower_sql = boost::to_lower_copy(sql);
+    std::string lower_sql = sql;
+    absl::AsciiStrToLower(&lower_sql);
     if (absl::StartsWith(lower_sql, "select") || absl::StartsWith(lower_sql, "with")) {
         std::shared_ptr<hybridse::sdk::ResultSet> rs;
         // parameterized batch query
@@ -381,12 +382,12 @@ void SQLSDKQueryTest::RequestExecuteSQL(hybridse::sqlcase::SqlCase& sql_case,  /
     std::string sql = sql_case.sql_str();
     for (size_t i = 0; i < sql_case.inputs().size(); i++) {
         std::string placeholder = "{" + std::to_string(i) + "}";
-        boost::replace_all(sql, placeholder, sql_case.inputs()[i].name_);
+        absl::StrReplaceAll({{placeholder, sql_case.inputs()[i].name_}}, &sql);
     }
-    boost::replace_all(sql, "{auto}", hybridse::sqlcase::SqlCase::GenRand("auto_t") +
-            std::to_string(static_cast<int64_t>(time(NULL))));
+    absl::StrReplaceAll({{"{auto}", hybridse::sqlcase::SqlCase::GenRand("auto_t") +
+            std::to_string(static_cast<int64_t>(time(NULL)))}}, &sql);
     std::string lower_sql = sql;
-    boost::to_lower(lower_sql);
+    absl::AsciiStrToLower(&lower_sql);
     if (absl::StartsWith(lower_sql, "select") || absl::StartsWith(lower_sql, "with")) {
         auto request_row = router->GetRequestRow(sql_case.db(), sql, &status);
         // success check
@@ -526,13 +527,13 @@ void SQLSDKQueryTest::BatchRequestExecuteSQLWithCommonColumnIndices(hybridse::sq
     std::string sql = sql_case.sql_str();
     for (size_t i = 0; i < sql_case.inputs().size(); i++) {
         std::string placeholder = "{" + std::to_string(i) + "}";
-        boost::replace_all(sql, placeholder, sql_case.inputs()[i].name_);
+        absl::StrReplaceAll({{placeholder, sql_case.inputs()[i].name_}}, &sql);
     }
-    boost::replace_all(sql, "{auto}", hybridse::sqlcase::SqlCase::GenRand("auto_t") +
-            std::to_string(static_cast<int64_t>(time(NULL))));
+    absl::StrReplaceAll({{"{auto}", hybridse::sqlcase::SqlCase::GenRand("auto_t") +
+            std::to_string(static_cast<int64_t>(time(NULL)))}}, &sql);
     LOG(INFO) << sql;
     std::string lower_sql = sql;
-    boost::to_lower(lower_sql);
+    absl::AsciiStrToLower(&lower_sql);
     if (!(absl::StartsWith(lower_sql, "select") || absl::StartsWith(lower_sql, "with"))) {
         FAIL() << "sql not support in request mode";
     }

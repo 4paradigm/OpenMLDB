@@ -8,7 +8,7 @@
 
 安装方式与使用：
 ```bash
-pip install openmldb-tool
+pip install openmldb-tool # openmldb-tool[rpc]
 openmldb_tool # 注意下划线
 ```
 有以下几个子命令可选择执行：
@@ -84,12 +84,12 @@ JOB 检查会检查集群中的离线任务，可以使用`inspect job`或`inspe
 
 以下是一些常见的state:
 
-state    | 描述
----------|--------
-finished | 成功完成的任务
-running  | 正在运行的任务
-failed   | 失败的任务
-killed   | 被终止的任务
+| state    | 描述           |
+| -------- | -------------- |
+| finished | 成功完成的任务 |
+| running  | 正在运行的任务 |
+| failed   | 失败的任务     |
+| killed   | 被终止的任务   |
 
 更多state信息详见[Spark State]( https://spark.apache.org/docs/3.2.1/api/java/org/apache/spark/launcher/SparkAppHandle.State.html)，[Yarn State](https://hadoop.apache.org/docs/current/api/org/apache/hadoop/yarn/api/records/YarnApplicationState.html)
 
@@ -193,6 +193,28 @@ nameserver:
 openmldb_tool static-check --conf_file=/work/openmldb/conf/hosts -VCL --local
 ```
 
+### rpc
+
+`openmldb_tool`还提供了一个RPC接口，但它是一个额外组件，需要通过`pip install openmldb-tool[rpc]`安装。使用方式是`openmldb_tool rpc`，例如，`openmldb_tool rpc ns ShowTable --field '{"show_all":true}'`可以调用`nameserver`的`ShowTable`接口，获取表的状态信息。
+
+NameServer与TaskManager只有一个活跃，所以我们用ns和tm来代表这两个组件。
+而TabletServer有多个，我们用`tablet1`，`tablet2`等来指定某个TabletServer，顺序可通过`openmldb_tool rpc`或`openmldb_tool status`来查看。
+
+如果对RPC服务的方法或者输入参数不熟悉，可以通过`openmldb_tool rpc <component> [method] --hint`查看帮助信息。例如：
+```bash
+$ openmldb_tool rpc ns ShowTable --hint
+...
+server proto version is 0.7.0-e1d35fcf6
+hint use pb2 files from /tmp/diag_cache
+You should input json like this, ignore round brackets in the key and double quotation marks in the value: --field '{
+    "(optional)name": "string",
+    "(optional)db": "string",
+    "(optional)show_all": "bool"
+}'
+```
+hint还需要额外的pb文件，帮助解析输入参数，默认是从`/tmp/diag_cache`中读取，如果不存在则自动下载。如果你已有相应的文件，或者已经手动下载，可以通过`--pbdir`指定该目录。
+
 ## 附加
 
 可使用`openmldb_tool --helpfull`查看所有配置项。例如，`--sdk_log`可以打印sdk的日志（zk，glog），可用于调试。
+  

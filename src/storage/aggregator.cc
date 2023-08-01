@@ -19,13 +19,13 @@
 #include <algorithm>
 #include <utility>
 
+#include "absl/strings/ascii.h"
 #include "absl/strings/match.h"
 #include "absl/strings/str_cat.h"
 #include "base/file_util.h"
 #include "base/glog_wrapper.h"
 #include "base/slice.h"
 #include "base/strings.h"
-#include "boost/algorithm/string.hpp"
 #include "common/timer.h"
 #include "storage/table.h"
 
@@ -97,13 +97,13 @@ Aggregator::Aggregator(const ::openmldb::api::TableMeta& base_meta, const ::open
 
 Aggregator::~Aggregator() {}
 
-bool Aggregator::Update(const std::string& key, const std::string& row, const uint64_t& offset, bool recover) {
+bool Aggregator::Update(const std::string& key, const std::string& row, uint64_t offset, bool recover) {
     if (!recover && GetStat() != AggrStat::kInited) {
         PDLOG(WARNING, "Aggregator status is not kInited");
         return false;
     }
-    int8_t* row_ptr = reinterpret_cast<int8_t*>(const_cast<char*>(row.c_str()));
-    int64_t cur_ts;
+    auto row_ptr = reinterpret_cast<const int8_t*>(row.c_str());
+    int64_t cur_ts = 0;
     switch (ts_col_type_) {
         case DataType::kBigInt: {
             base_row_view_.GetValue(row_ptr, ts_col_idx_, DataType::kBigInt, &cur_ts);
@@ -189,7 +189,7 @@ bool Aggregator::Update(const std::string& key, const std::string& row, const ui
     if (CheckBufferFilled(cur_ts, aggr_buffer.ts_end_, aggr_buffer.aggr_cnt_)) {
         AggrBuffer flush_buffer = aggr_buffer;
         uint64_t latest_binlog = aggr_buffer.binlog_offset_ + 1;
-        aggr_buffer.clear();
+        aggr_buffer.Clear();
         aggr_buffer.binlog_offset_ = latest_binlog;
         aggr_buffer.ts_begin_ = AlignedStart(cur_ts);
         if (window_type_ == WindowType::kRowsRange) {
@@ -219,21 +219,20 @@ bool Aggregator::Delete(const std::string& key) {
         // erase from the aggr_buffer_map_
         aggr_buffer_map_.erase(key);
     }
+    ::openmldb::api::LogEntry entry;
+    entry.set_term(aggr_replicator_->GetLeaderTerm());
+    entry.set_method_type(::openmldb::api::MethodType::kDelete);
+    auto dimension = entry.add_dimensions();
+    dimension->set_key(key);
+    dimension->set_idx(aggr_index_pos_);
 
     // delete the entries from the pre-aggr table
-    bool ok = aggr_table_->Delete(key, aggr_index_pos_);
+    bool ok = aggr_table_->Delete(entry);
     if (!ok) {
         PDLOG(ERROR, "Delete key %s from aggr table %s failed", key, aggr_table_->GetName());
         return false;
     }
 
-    // add delete entry to binlog
-    ::openmldb::api::LogEntry entry;
-    entry.set_term(aggr_replicator_->GetLeaderTerm());
-    entry.set_method_type(::openmldb::api::MethodType::kDelete);
-    ::openmldb::api::Dimension* dimension = entry.add_dimensions();
-    dimension->set_key(key);
-    dimension->set_idx(aggr_index_pos_);
     ok = aggr_replicator_->AppendEntry(entry);
     if (!ok) {
         PDLOG(ERROR, "Add Delete entry to binlog failed: key %s, aggr table %s", key, aggr_table_->GetName());
@@ -249,7 +248,7 @@ bool Aggregator::Delete(const std::string& key) {
 bool Aggregator::FlushAll() {
     // TODO(nauta): optimize the flush process
     std::unique_lock<std::mutex> lock(mu_);
-    std::unordered_map<std::string, std::unordered_map<std::string, AggrBuffer>> flushed_buffer_map;
+    absl::flat_hash_map<std::string, absl::flat_hash_map<std::string, AggrBuffer>> flushed_buffer_map;
     for (auto& it : aggr_buffer_map_) {
         for (auto& filter_it : it.second) {
             auto& aggr_buffer = filter_it.second.buffer_;
@@ -283,7 +282,7 @@ bool Aggregator::Init(std::shared_ptr<LogReplicator> base_replicator) {
     status_.store(AggrStat::kRecovering, std::memory_order_relaxed);
     auto log_parts = base_replicator->GetLogPart();
 
-    auto it = aggr_table_->NewTraverseIterator(0);
+    std::unique_ptr<TraverseIterator> it(aggr_table_->NewTraverseIterator(0));
     it->SeekToFirst();
     uint64_t recovery_offset = 0;
     uint64_t aggr_latest_offset = 0;
@@ -301,10 +300,10 @@ bool Aggregator::Init(std::shared_ptr<LogReplicator> base_replicator) {
         if (!aggr_row_view_.IsNULL(data_ptr, 6)) {
             aggr_row_view_.GetStrValue(data_ptr, 6, &filter_key);
         }
-        auto insert_pair = aggr_buffer_map_[pk].insert(std::make_pair(filter_key, AggrBufferLocked{}));
+        auto insert_pair = aggr_buffer_map_[pk].emplace(std::move(filter_key), AggrBufferLocked{});
         auto& buffer = insert_pair.first->second.buffer_;
         auto val = it->GetValue();
-        int8_t* aggr_row_ptr = reinterpret_cast<int8_t*>(const_cast<char*>(val.data()));
+        auto aggr_row_ptr = reinterpret_cast<const int8_t*>(val.data());
         bool ok = GetAggrBufferFromRowView(aggr_row_view_, aggr_row_ptr, &buffer);
         if (!ok) {
             PDLOG(ERROR, "GetAggrBufferFromRowView failed");
@@ -315,7 +314,7 @@ bool Aggregator::Init(std::shared_ptr<LogReplicator> base_replicator) {
         aggr_latest_offset = std::max(aggr_latest_offset, buffer.binlog_offset_);
         int64_t latest_ts = buffer.ts_end_ + 1;
         uint64_t latest_binlog = buffer.binlog_offset_ + 1;
-        buffer.clear();
+        buffer.Clear();
         buffer.ts_begin_ = latest_ts;
         buffer.binlog_offset_ = latest_binlog;
         if (window_type_ == WindowType::kRowsRange) {
@@ -370,8 +369,7 @@ bool Aggregator::Init(std::shared_ptr<LogReplicator> base_replicator) {
         if (cur_offset >= entry.log_index()) {
             continue;
         }
-        for (int i = 0; i < entry.dimensions_size(); i++) {
-            const auto& dimension = entry.dimensions(i);
+        for (const auto& dimension : entry.dimensions()) {
             if (dimension.idx() == index_pos_) {
                 if (entry.has_method_type() && entry.method_type() == ::openmldb::api::MethodType::kDelete) {
                     Delete(dimension.key());
@@ -472,33 +470,30 @@ bool Aggregator::EncodeAggrBuffer(const std::string& key, const std::string& fil
 }
 
 bool Aggregator::FlushAggrBuffer(const std::string& key, const std::string& filter_key, const AggrBuffer& buffer) {
-    std::string encoded_row;
+    ::openmldb::api::LogEntry entry;
+    std::string* encoded_row = entry.mutable_value();
     std::string aggr_val;
     if (!EncodeAggrVal(buffer, &aggr_val)) {
         PDLOG(ERROR, "Encode aggr value to row failed");
         return false;
     }
-    if (!EncodeAggrBuffer(key, filter_key, buffer, aggr_val, &encoded_row)) {
+    if (!EncodeAggrBuffer(key, filter_key, buffer, aggr_val, encoded_row)) {
         PDLOG(ERROR, "Encode aggr buffer failed");
         return false;
     }
 
     int64_t time = ::baidu::common::timer::get_micros() / 1000;
-    Dimensions dimensions;
-    auto dimension = dimensions.Add();
+    auto dimension = entry.add_dimensions();
     dimension->set_idx(aggr_index_pos_);
     dimension->set_key(key);
-    bool ok = aggr_table_->Put(time, encoded_row, dimensions);
+    bool ok = aggr_table_->Put(time, entry.value(), entry.dimensions());
     if (!ok) {
         PDLOG(ERROR, "Aggregator put failed");
         return false;
     }
-    ::openmldb::api::LogEntry entry;
     entry.set_pk(key);
     entry.set_ts(time);
-    entry.set_value(encoded_row);
     entry.set_term(aggr_replicator_->GetLeaderTerm());
-    entry.mutable_dimensions()->CopyFrom(dimensions);
     aggr_replicator_->AppendEntry(entry);
     if (FLAGS_binlog_notify_on_put) {
         aggr_replicator_->Notify();
@@ -508,18 +503,19 @@ bool Aggregator::FlushAggrBuffer(const std::string& key, const std::string& filt
 
 bool Aggregator::UpdateFlushedBuffer(const std::string& key, const std::string& filter_key, const int8_t* base_row_ptr,
                                      int64_t cur_ts, uint64_t offset) {
-    auto it = aggr_table_->NewTraverseIterator(0);
+    std::unique_ptr<TraverseIterator> it(aggr_table_->NewTraverseIterator(0));
     // If there is no repetition of ts, `seek` will locate to the position that less than ts.
     it->Seek(key, cur_ts + 1);
     AggrBuffer tmp_buffer;
     while (it->Valid()) {
         auto val = it->GetValue();
-        int8_t* aggr_row_ptr = reinterpret_cast<int8_t*>(const_cast<char*>(val.data()));
+        auto aggr_row_ptr = reinterpret_cast<const int8_t*>(val.data());
 
-        std::string pk;
-        aggr_row_view_.GetStrValue(aggr_row_ptr, 0, &pk);
+        char* ch = nullptr;
+        uint32_t length = 0;
+        aggr_row_view_.GetValue(aggr_row_ptr, 0, &ch, &length);
         // if pk doesn't match, break out
-        if (key.compare(pk) != 0) {
+        if (ch == nullptr || base::Slice(key).compare(base::Slice(ch, length)) != 0) {
             break;
         }
 
@@ -536,13 +532,13 @@ bool Aggregator::UpdateFlushedBuffer(const std::string& key, const std::string& 
             it->Next();
             continue;
         }
-
-        std::string fk;
+        ch = nullptr;
+        length = 0;
         if (!aggr_row_view_.IsNULL(aggr_row_ptr, 6)) {
-            aggr_row_view_.GetStrValue(aggr_row_ptr, 6, &fk);
+            aggr_row_view_.GetValue(aggr_row_ptr, 6, &ch, &length);
         }
         // filter_key doesn't match, continue
-        if (filter_key.compare(fk) != 0) {
+        if (ch != nullptr && base::Slice(filter_key).compare(base::Slice(ch, length)) != 0) {
             it->Next();
             continue;
         }
@@ -671,7 +667,7 @@ bool SumAggregator::EncodeAggrVal(const AggrBuffer& buffer, std::string* aggr_va
 }
 
 bool SumAggregator::DecodeAggrVal(const int8_t* row_ptr, AggrBuffer* buffer) {
-    char* aggr_val = NULL;
+    char* aggr_val = nullptr;
     uint32_t ch_length = 0;
     if (aggr_row_view_.GetValue(row_ptr, 4, &aggr_val, &ch_length) == 1) {
         return true;
@@ -755,7 +751,7 @@ bool MinMaxBaseAggregator::EncodeAggrVal(const AggrBuffer& buffer, std::string* 
 }
 
 bool MinMaxBaseAggregator::DecodeAggrVal(const int8_t* row_ptr, AggrBuffer* buffer) {
-    char* aggr_val = NULL;
+    char* aggr_val = nullptr;
     uint32_t ch_length = 0;
     if (aggr_row_view_.GetValue(row_ptr, 4, &aggr_val, &ch_length) == 1) {  // null value
         return true;
@@ -791,11 +787,11 @@ bool MinMaxBaseAggregator::DecodeAggrVal(const int8_t* row_ptr, AggrBuffer* buff
         case DataType::kString:
         case DataType::kVarchar: {
             auto& vstr = buffer->aggr_val_.vstring;
-            if (vstr.data != NULL && ch_length > vstr.len) {
+            if (vstr.data != nullptr && ch_length > vstr.len) {
                 delete[] vstr.data;
-                vstr.data = NULL;
+                vstr.data = nullptr;
             }
-            if (vstr.data == NULL) {
+            if (vstr.data == nullptr) {
                 vstr.data = new char[ch_length];
             }
             vstr.len = ch_length;
@@ -866,16 +862,16 @@ bool MinAggregator::UpdateAggrVal(const codec::RowView& row_view, const int8_t* 
         }
         case DataType::kString:
         case DataType::kVarchar: {
-            char* ch = NULL;
+            char* ch = nullptr;
             uint32_t ch_length = 0;
             row_view.GetValue(row_ptr, aggr_col_idx_, &ch, &ch_length);
             auto& aggr_val = aggr_buffer->aggr_val_.vstring;
             if (aggr_buffer->AggrValEmpty() || StringCompare(ch, ch_length, aggr_val.data, aggr_val.len) < 0) {
-                if (aggr_val.data != NULL && ch_length > aggr_val.len) {
+                if (aggr_val.data != nullptr && ch_length > aggr_val.len) {
                     delete[] aggr_val.data;
-                    aggr_val.data = NULL;
+                    aggr_val.data = nullptr;
                 }
-                if (aggr_val.data == NULL) {
+                if (aggr_val.data == nullptr) {
                     aggr_val.data = new char[ch_length];
                 }
                 aggr_val.len = ch_length;
@@ -948,16 +944,16 @@ bool MaxAggregator::UpdateAggrVal(const codec::RowView& row_view, const int8_t* 
         }
         case DataType::kString:
         case DataType::kVarchar: {
-            char* ch = NULL;
+            char* ch = nullptr;
             uint32_t ch_length = 0;
             row_view.GetValue(row_ptr, aggr_col_idx_, &ch, &ch_length);
             auto& aggr_val = aggr_buffer->aggr_val_.vstring;
             if (aggr_buffer->AggrValEmpty() || StringCompare(ch, ch_length, aggr_val.data, aggr_val.len) > 0) {
-                if (aggr_val.data != NULL && ch_length > aggr_val.len) {
+                if (aggr_val.data != nullptr && ch_length > aggr_val.len) {
                     delete[] aggr_val.data;
-                    aggr_val.data = NULL;
+                    aggr_val.data = nullptr;
                 }
-                if (aggr_val.data == NULL) {
+                if (aggr_val.data == nullptr) {
                     aggr_val.data = new char[ch_length];
                 }
                 aggr_val.len = ch_length;
@@ -993,7 +989,7 @@ bool CountAggregator::EncodeAggrVal(const AggrBuffer& buffer, std::string* aggr_
 }
 
 bool CountAggregator::DecodeAggrVal(const int8_t* row_ptr, AggrBuffer* buffer) {
-    char* aggr_val = NULL;
+    char* aggr_val = nullptr;
     uint32_t ch_length = 0;
     if (aggr_row_view_.GetValue(row_ptr, 4, &aggr_val, &ch_length) == 1) {
         return true;
@@ -1068,7 +1064,7 @@ bool AvgAggregator::EncodeAggrVal(const AggrBuffer& buffer, std::string* aggr_va
 }
 
 bool AvgAggregator::DecodeAggrVal(const int8_t* row_ptr, AggrBuffer* buffer) {
-    char* aggr_val = NULL;
+    char* aggr_val = nullptr;
     uint32_t ch_length = 0;
     if (aggr_row_view_.GetValue(row_ptr, 4, &aggr_val, &ch_length) == 1) {
         return true;
@@ -1082,11 +1078,11 @@ bool AvgAggregator::DecodeAggrVal(const int8_t* row_ptr, AggrBuffer* buffer) {
 std::shared_ptr<Aggregator> CreateAggregator(const ::openmldb::api::TableMeta& base_meta,
                                              const ::openmldb::api::TableMeta& aggr_meta,
                                              std::shared_ptr<Table> aggr_table,
-                                             std::shared_ptr<LogReplicator> aggr_replicator, const uint32_t& index_pos,
+                                             std::shared_ptr<LogReplicator> aggr_replicator, uint32_t index_pos,
                                              const std::string& aggr_col, const std::string& aggr_func,
                                              const std::string& ts_col, const std::string& bucket_size,
                                              const std::string& filter_col) {
-    std::string aggr_type = boost::to_lower_copy(aggr_func);
+    std::string aggr_type = absl::AsciiStrToLower(aggr_func);
     WindowType window_type;
     uint32_t window_size;
     if (::openmldb::base::IsNumber(bucket_size)) {
@@ -1100,7 +1096,7 @@ std::shared_ptr<Aggregator> CreateAggregator(const ::openmldb::api::TableMeta& b
         }
         char time_unit = tolower(bucket_size.back());
         std::string time_size = bucket_size.substr(0, bucket_size.size() - 1);
-        boost::trim(time_size);
+        absl::StripAsciiWhitespace(&time_size);
         if (!::openmldb::base::IsNumber(time_size)) {
             PDLOG(ERROR, "Bucket size is not a number");
             return {};
