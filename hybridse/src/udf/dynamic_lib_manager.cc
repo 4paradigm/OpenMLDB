@@ -75,12 +75,18 @@ base::Status DynamicLibManager::ExtractFunction(const std::string& name, bool is
 }
 
 base::Status DynamicLibManager::RemoveHandler(const std::string& file) {
-    std::lock_guard<std::mutex> lock(mu_);
-    if (auto iter = handle_map_.find(file); iter != handle_map_.end()) {
-        if (iter->second != nullptr) {
-            CHECK_TRUE(dlclose(iter->second) == 0, common::kExternalUDFError,
-                       "can not close the dynamic library: " + file + ", error: " + dlerror())
+    void* handle = nullptr;
+    {
+        std::lock_guard<std::mutex> lock(mu_);
+        if (auto iter = handle_map_.find(file); iter != handle_map_.end()) {
+            if (iter->second != nullptr) {
+                handle = iter->second;
+            }
         }
+    }
+    if (handle != nullptr) {
+        CHECK_TRUE(dlclose(handle) == 0, common::kExternalUDFError,
+                   "can not close the dynamic library: " + file + ", error: " + dlerror())
     }
     return {};
 }
