@@ -43,6 +43,9 @@ mkdir -p "${WORKDIR}/openmldb"
 tar xzf openmldb.tar.gz -C "${WORKDIR}/openmldb" --strip-components 1
 # remove symbols and sections
 strip -s "${WORKDIR}/openmldb/bin/openmldb"
+# do not install sync tools in demo docker
+rm "${WORKDIR}/openmldb/bin/data_collector"
+rm -rf "${WORKDIR}/openmldb/synctool"
 
 mkdir -p "${WORKDIR}/openmldb/spark-3.2.1-bin-openmldbspark"
 tar xzf spark-3.2.1-bin-openmldbspark.tgz -C "${WORKDIR}/openmldb/spark-3.2.1-bin-openmldbspark" --strip-components 1

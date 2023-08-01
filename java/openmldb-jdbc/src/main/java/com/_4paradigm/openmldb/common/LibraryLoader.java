@@ -82,8 +82,9 @@ public class LibraryLoader {
                 logger.error(String.format("Fail to find %s in resources", libraryPath));
             }
         } catch (IOException | UnsatisfiedLinkError e) {
-            logger.error(String.format("Error while load %s from local resource", libraryPath), e);
-            throw new UnsatisfiedLinkError(String.format("Fail to load library %s", libraryPath));
+            String msg = String.format("Error while load %s from local resource", libraryPath);
+            logger.error(msg, e);
+            throw new RuntimeException(msg, e);
         }
     }
 
