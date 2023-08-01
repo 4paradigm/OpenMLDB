@@ -27,15 +27,6 @@
 namespace hybridse {
 namespace udf {
 
-/*struct DynamicLibHandle {
-    explicit DynamicLibHandle(void* ptr) {
-        handle = ptr;
-        ref_cnt = 1;
-    }
-    void* handle = nullptr;
-    uint32_t ref_cnt = 0;
-};*/
-
 class DynamicLibManager {
  public:
     DynamicLibManager() = default;
@@ -50,7 +41,6 @@ class DynamicLibManager {
 
  private:
     std::mutex mu_;
-    // std::map<std::string, std::shared_ptr<DynamicLibHandle>> handle_map_;
     std::map<std::string, void*> handle_map_;
 };
 

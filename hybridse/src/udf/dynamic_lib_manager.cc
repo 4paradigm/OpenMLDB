@@ -39,32 +39,32 @@ base::Status DynamicLibManager::ExtractFunction(const std::string& name, bool is
                "can not open the dynamic library: " + file + ", error: " + dlerror())
     {
         std::lock_guard<std::mutex> lock(mu_);
-        handle_map_.[file] = so_handle;
+        handle_map_[file] = handle;
     }
     if (is_aggregate) {
         std::string init_fun_name = name + "_init";
-        auto init_fun = dlsym(so_handle, init_fun_name.c_str());
+        auto init_fun = dlsym(handle, init_fun_name.c_str());
         if (init_fun == nullptr) {
             RemoveHandler(file);
             return {common::kExternalUDFError, "can not find the init function: " + init_fun_name};
         }
         funs->emplace_back(init_fun);
         std::string update_fun_name = name + "_update";
-        auto update_fun = dlsym(so_handle, update_fun_name.c_str());
+        auto update_fun = dlsym(handle, update_fun_name.c_str());
         if (update_fun == nullptr) {
             RemoveHandler(file);
             return {common::kExternalUDFError, "can not find the update function: " + update_fun_name};
         }
         funs->emplace_back(update_fun);
         std::string output_fun_name = name + "_output";
-        auto output_fun = dlsym(so_handle, output_fun_name.c_str());
+        auto output_fun = dlsym(handle, output_fun_name.c_str());
         if (output_fun == nullptr) {
             RemoveHandler(file);
             return {common::kExternalUDFError, "can not find the output function: " + output_fun_name};
         }
         funs->emplace_back(output_fun);
     } else {
-        auto fun = dlsym(so_handle, name.c_str());
+        auto fun = dlsym(handle, name.c_str());
         if (fun == nullptr) {
             RemoveHandler(file);
             return {common::kExternalUDFError, "can not find the function: " + name};
@@ -75,14 +75,11 @@ base::Status DynamicLibManager::ExtractFunction(const std::string& name, bool is
 }
 
 base::Status DynamicLibManager::RemoveHandler(const std::string& file) {
-    void* so_handle;
-    {
-        std::lock_guard<std::mutex> lock(mu_);
-        if (auto iter = handle_map_.find(file); iter != handle_map_.end()) {
-            if (iter->second != nullptr) {
-                CHECK_TRUE(handle != nullptr, common::kExternalUDFError,
-                           "can not close the dynamic library: " + file + ", error: " + dlerror())
-            }
+    std::lock_guard<std::mutex> lock(mu_);
+    if (auto iter = handle_map_.find(file); iter != handle_map_.end()) {
+        if (iter->second != nullptr) {
+            CHECK_TRUE(dlclose(iter->second) == 0, common::kExternalUDFError,
+                       "can not close the dynamic library: " + file + ", error: " + dlerror())
         }
     }
     return {};
