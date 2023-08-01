@@ -2998,6 +2998,10 @@ TEST_P(DBSDKTest, LongWindowsCleanup) {
         HandleSQL("create database test2;");
         HandleSQL("use test2;");
         HandleSQL(create_sql);
+        sleep(5);
+        // TODO if refresh is not good, sleep more
+        // sp_cache_->ProcedureExist in tablet get deployment here, but nameserver no deployment
+        // refresh won't effet sp_cache_ in tablet
         sr->ExecuteSQL(deploy_sql, &status);
         ASSERT_TRUE(status.IsOK()) << status.ToString();
         std::string msg;
@@ -3016,7 +3020,6 @@ TEST_P(DBSDKTest, LongWindowsCleanup) {
         ASSERT_TRUE(cs->GetNsClient()->DropTable("test2", "trans", msg)) << msg;
         ASSERT_TRUE(sr->RefreshCatalog());  // avoid cache in sdk
         // helpful for debug
-        // TODO if refresh is not good, sleep more
         HandleSQL("show tables;");
         HandleSQL("show deployments;");
         ASSERT_TRUE(cs->GetNsClient()->DropDatabase("test2", msg)) << msg;

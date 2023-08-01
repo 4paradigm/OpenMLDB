@@ -5224,6 +5224,7 @@ void TabletImpl::CreateProcedure(RpcController* controller, const openmldb::api:
     const std::string& db_name = sp_info.db_name();
     const std::string& sp_name = sp_info.sp_name();
     const std::string& sql = sp_info.sql();
+    LOG(INFO) << "create procedure rpc in " << endpoint_; // no get size func << " with sp cache " << sp_cache_->
     if (sp_cache_->ProcedureExist(db_name, sp_name)) {
         response->set_code(::openmldb::base::ReturnCode::kProcedureAlreadyExists);
         response->set_msg("store procedure already exists");
@@ -5288,7 +5289,7 @@ void TabletImpl::CreateProcedure(RpcController* controller, const openmldb::api:
 
     response->set_code(::openmldb::base::ReturnCode::kOk);
     response->set_msg("ok");
-    LOG(INFO) << "create procedure success! sp_name: " << sp_name << ", db: " << db_name << ", sql: " << sql;
+    LOG(INFO) << "create procedure success! sp_name: " << sp_name << ", db: " << db_name << ", sql: " << sql << " on " << endpoint_;
 }
 
 void TabletImpl::DropProcedure(RpcController* controller, const ::openmldb::api::DropProcedureRequest* request,
@@ -5316,6 +5317,7 @@ void TabletImpl::DropProcedure(RpcController* controller, const ::openmldb::api:
     }
     response->set_code(::openmldb::base::ReturnCode::kOk);
     response->set_msg("ok");
+    LOG(INFO) << "drop succ in " << endpoint_;
     PDLOG(INFO, "drop procedure success. db_name[%s] sp_name[%s]", db_name.c_str(), sp_name.c_str());
 }
 
