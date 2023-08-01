@@ -12,13 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-set(BRPC_URL https://github.com/4paradigm/incubator-brpc/archive/a85d1bde8df3a3e2e59a64ea5a3ee3122f9c6daa.zip)
-message(STATUS "build brpc from ${BRPC_URL}")
+set(BRPC_URL https://github.com/apache/brpc)
+set(BRPC_TAG d2b73ec955dd04b06ab55065d9f3b4de1e608bbd)
+message(STATUS "build brpc from ${BRPC_URL}@${BRPC_TAG}")
 
 ExternalProject_Add(
   brpc
-  URL ${BRPC_URL}
-  URL_HASH SHA256=ea86d39313bed981357d2669daf1a858fcf1ec363465eda2eec60a8504a2c38e
+  GIT_REPOSITORY ${BRPC_URL}
+  GIT_TAG ${BRPC_TAG}
   PREFIX ${DEPS_BUILD_DIR}
   DOWNLOAD_DIR ${DEPS_DOWNLOAD_DIR}/brpc
   INSTALL_DIR ${DEPS_INSTALL_DIR}
