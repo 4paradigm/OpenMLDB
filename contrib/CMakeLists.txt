@@ -1,3 +1,6 @@
+include(FetchContent)
+set(FETCHCONTENT_QUIET OFF)
+
 set_property(DIRECTORY PROPERTY EXCLUDE_FROM_ALL 1)
 
 # add_contrib cmake_folder[ base_folder1[, ...base_folderN]]
@@ -25,4 +28,5 @@ function(add_contrib cmake_folder)
 endfunction()
 
 add_contrib(simdjson)
-
+add_contrib(farmhash)
+add_contrib(gflags)

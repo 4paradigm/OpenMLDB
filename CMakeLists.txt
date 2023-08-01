@@ -20,8 +20,7 @@ if (POLICY CMP0086)
 endif ()
 
 list(APPEND CMAKE_MODULE_PATH
-    "${CMAKE_SOURCE_DIR}/cmake-modules"
-    "${CMAKE_SOURCE_DIR}/cmake")
+    "${CMAKE_SOURCE_DIR}/cmake-modules")
 
 project(openmldb)
 
@@ -131,20 +130,14 @@ else()
     set(RocksDB_LIB ${RocksDB_LIBRARY})
 endif()
 
-# third party sources
-include(FetchContent)
-set(FETCHCONTENT_QUIET OFF)
-include(farmhash)
-include(gflags)
+# contrib libs
+add_subdirectory(contrib EXCLUDE_FROM_ALL)
 
 if (BUILD_SHARED_LIBS)
     set(GFLAGS_LIBRARY gflags_shared)
 else()
     set(GFLAGS_LIBRARY gflags_static)
 endif()
-
-# contrib libs
-add_subdirectory(contrib EXCLUDE_FROM_ALL)
 
 if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
     set(OS_LIB ${CMAKE_THREAD_LIBS_INIT} rt)
