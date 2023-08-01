@@ -9429,7 +9429,7 @@ void NameServerImpl::DropProcedure(RpcController* controller, const api::DropPro
         }
         NotifyTableChanged(::openmldb::type::NotifyType::kTable);
         // Refresh on tablet to avoid meta inconsistent, notify may be slow TODO refresh works on procedure?
-        RefreshHealthTabletsUnlockWith([](const std::shared_ptr<TabletInfo>& tablet_info) { return true; });
+        // RefreshHealthTabletsUnlockWith([](const std::shared_ptr<TabletInfo>& tablet_info) { return true; });
     }
     response->set_code(::openmldb::base::ReturnCode::kOk);
     response->set_msg("ok");
