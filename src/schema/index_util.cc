@@ -74,9 +74,9 @@ base::Status IndexUtil::CheckIndex(const std::map<std::string, ::openmldb::commo
             if (auto iter = column_map.find(column_key.ts_name()); iter == column_map.end()) {
                 return {base::ReturnCode::kError, "can not find col in schema. col: " + column_key.ts_name()};
             } else if (iter->second.data_type() != ::openmldb::type::kBigInt
-                  && iter->second.data_type() == ::openmldb::type::kTimestamp) {
+                  && iter->second.data_type() != ::openmldb::type::kTimestamp) {
                 return {base::ReturnCode::kError,
-                    "the type of ts column should be bigint or timestamp, column is: " + column_key.index_name()};
+                    "the type of ts column should be bigint or timestamp, column is: " + column_key.ts_name()};
             }
         }
         if (column_key.has_ttl()) {
