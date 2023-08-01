@@ -42,12 +42,12 @@ toydb_add_src_and_tests(testing)
 get_property(TOYDB_SRC_FILE_LIST_STR GLOBAL PROPERTY TOYDB_SRC_FILE_LIST)
 string(REPLACE " " ";" TOYDB_SRC_FILE_LIST ${TOYDB_SRC_FILE_LIST_STR})
 
-add_library(toydb_flags STATIC toydb_flags.cc)
+add_library(toydb_flags toydb_flags.cc)
 
 # toydb lib
 set(TOYDB_DEPS_LIBS toydb_flags hybridse_core hybridse_flags sqlite3
     ${yaml_libs} ${Boost_filesystem_LIBRARY} ${VM_LIBS} ${LLVM_LIBS} ${OS_LIB} ${GTEST_LIBRARIES})
-add_library(toydb_lib STATIC ${TOYDB_SRC_FILE_LIST} )
+add_library(toydb_lib ${TOYDB_SRC_FILE_LIST} )
 target_link_libraries(toydb_lib ${TOYDB_DEPS_LIBS})
 
 # toydb unittests

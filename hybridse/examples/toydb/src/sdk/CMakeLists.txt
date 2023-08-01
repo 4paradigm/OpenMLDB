@@ -36,7 +36,7 @@ foreach(SRC_FILE ${BM_FILES})
 endforeach()
 
 # toydb_sdk library
-add_library(toydb_sdk STATIC ${SDK_SRC_FILE_LIST})
+add_library(toydb_sdk ${SDK_SRC_FILE_LIST})
 target_link_libraries(toydb_sdk ${SDK_DEPS_LIBS})
 
 # toydb sdk testcases

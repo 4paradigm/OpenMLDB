@@ -108,7 +108,7 @@ compile_proto(taskmanager ${PROJECT_SOURCE_DIR})
 compile_proto(data_sync ${PROJECT_SOURCE_DIR})
 
 add_library(openmldb_proto STATIC ${PROTO_FILES})
-add_library(openmldb_flags STATIC flags.cc)
+add_library(openmldb_flags flags.cc)
 
 compile_lib(openmldb_codec codec "")
 compile_lib(openmldb_catalog catalog "")

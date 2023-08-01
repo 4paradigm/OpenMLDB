@@ -118,7 +118,6 @@ find_package(Protobuf 3.6 EXACT REQUIRED)
 message(STATUS "Found Protobuf Libraries: ${Protobuf_LIBRARIES}")
 
 find_library(GLOG_LIBRARY glog)
-find_library(GFLAGS_LIBRARY gflags)
 find_library(UNWIND_LIBRARY unwind)
 find_library(LEVELDB_LIBRARY leveldb)
 find_library(Z_LIBRARY z)
@@ -136,6 +135,13 @@ endif()
 include(FetchContent)
 set(FETCHCONTENT_QUIET OFF)
 include(farmhash)
+include(gflags)
+
+if (BUILD_SHARED_LIBS)
+    set(GFLAGS_LIBRARY gflags_shared)
+else()
+    set(GFLAGS_LIBRARY gflags_static)
+endif()
 
 # contrib libs
 add_subdirectory(contrib EXCLUDE_FROM_ALL)

@@ -38,7 +38,7 @@ if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
 endif ()
 
 # bm lib
-add_library(toydb_bm_lib STATIC ${BM_LIB_FILE_LIST})
+add_library(toydb_bm_lib ${BM_LIB_FILE_LIST})
 target_link_libraries(toydb_bm_lib toydb_lib toydb_sdk hybridse_sdk hybridse_flags ${BM_LIIBS})
 # bm executables
 set(BM_TARGET_LIST)
