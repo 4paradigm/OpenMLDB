@@ -24,8 +24,6 @@ namespace udf {
 DynamicLibManager::~DynamicLibManager() {
     for (const auto& kv : handle_map_) {
         auto so_handle = kv.second;
-        // if (so_handle) {
-        //     dlclose(so_handle->handle);
         if(so_handle != nullptr) {
             dlclose(so_handle);
         }
@@ -36,29 +34,15 @@ DynamicLibManager::~DynamicLibManager() {
 base::Status DynamicLibManager::ExtractFunction(const std::string& name, bool is_aggregate, const std::string& file,
                                                 std::vector<void*>* funs) {
     CHECK_TRUE(funs != nullptr, common::kExternalUDFError, "funs is nullptr")
-    // std::shared_ptr<DynamicLibHandle> so_handle;
-    void* so_handle;
+    void* handle = dlopen(file.c_str(), RTLD_LAZY);
+    CHECK_TRUE(handle != nullptr, common::kExternalUDFError,
+               "can not open the dynamic library: " + file + ", error: " + dlerror())
     {
         std::lock_guard<std::mutex> lock(mu_);
-        auto iter = handle_map_.find(file);
-        if (iter != handle_map_.end()) {
-            so_handle = iter->second;
-            // so_handle->ref_cnt++;
-        }
-    }
-    // if (!so_handle) {
-    if (so_handle == nullptr) {
-        void* handle = dlopen(file.c_str(), RTLD_LAZY);
-        CHECK_TRUE(handle != nullptr, common::kExternalUDFError,
-                   "can not open the dynamic library: " + file + ", error: " + dlerror())
-        // so_handle = std::make_shared<DynamicLibHandle>(handle);
-        so_handle = handle;
-        std::lock_guard<std::mutex> lock(mu_);
-        handle_map_.emplace(file, so_handle);
+        handle_map_.[file] = so_handle;
     }
     if (is_aggregate) {
         std::string init_fun_name = name + "_init";
-        // auto init_fun = dlsym(so_handle->handle, init_fun_name.c_str());
         auto init_fun = dlsym(so_handle, init_fun_name.c_str());
         if (init_fun == nullptr) {
             RemoveHandler(file);
@@ -66,7 +50,6 @@ base::Status DynamicLibManager::ExtractFunction(const std::string& name, bool is
         }
         funs->emplace_back(init_fun);
         std::string update_fun_name = name + "_update";
-        // auto update_fun = dlsym(so_handle->handle, update_fun_name.c_str());
         auto update_fun = dlsym(so_handle, update_fun_name.c_str());
         if (update_fun == nullptr) {
             RemoveHandler(file);
@@ -74,7 +57,6 @@ base::Status DynamicLibManager::ExtractFunction(const std::string& name, bool is
         }
         funs->emplace_back(update_fun);
         std::string output_fun_name = name + "_output";
-        // auto output_fun = dlsym(so_handle->handle, output_fun_name.c_str());
         auto output_fun = dlsym(so_handle, output_fun_name.c_str());
         if (output_fun == nullptr) {
             RemoveHandler(file);
@@ -82,7 +64,6 @@ base::Status DynamicLibManager::ExtractFunction(const std::string& name, bool is
         }
         funs->emplace_back(output_fun);
     } else {
-        // auto fun = dlsym(so_handle->handle, name.c_str());
         auto fun = dlsym(so_handle, name.c_str());
         if (fun == nullptr) {
             RemoveHandler(file);
@@ -94,23 +75,16 @@ base::Status DynamicLibManager::ExtractFunction(const std::string& name, bool is
 }
 
 base::Status DynamicLibManager::RemoveHandler(const std::string& file) {
-    // std::shared_ptr<DynamicLibHandle> so_handle;
     void* so_handle;
     {
         std::lock_guard<std::mutex> lock(mu_);
         if (auto iter = handle_map_.find(file); iter != handle_map_.end()) {
-            // iter->second->ref_cnt--;
-            // if (iter->second->ref_cnt == 0) {
-            if (iter->second != nullptr && dlclose(iter->second) == 0) {
-                so_handle = iter->second;
-                handle_map_.erase(iter);
+            if (iter->second != nullptr) {
+                CHECK_TRUE(handle != nullptr, common::kExternalUDFError,
+                           "can not close the dynamic library: " + file + ", error: " + dlerror())
             }
         }
     }
-   //  if (so_handle) {
-   //      CHECK_TRUE(dlclose(so_handle->handle) == 0, common::kExternalUDFError, "dlclose run error. file is " + file)
-   //  }
-    CHECK_TRUE(dlclose(so_handle) == 0, common::kExternalUDFError, "dlclose run error. file is " + file)
     return {};
 }
 
