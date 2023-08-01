@@ -553,8 +553,13 @@ void TabletImpl::Refresh(RpcController* controller, const ::openmldb::api::Refre
                          ::openmldb::api::GeneralResponse* response, Closure* done) {
     brpc::ClosureGuard done_guard(done);
     if (IsClusterMode()) {
-        if (RefreshSingleTable(request->tid())) {
-            PDLOG(INFO, "refresh success. tid %u", request->tid());
+        if(request->has_tid()) {
+            if (RefreshSingleTable(request->tid())) {
+                PDLOG(INFO, "refresh success. tid %u", request->tid());
+            }
+        } else {
+            LOG(INFO) << "refresh table info by RefreshRequest without tid";
+            RefreshTableInfo();
         }
     }
 }
