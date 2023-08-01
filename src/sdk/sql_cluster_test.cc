@@ -165,20 +165,20 @@ TEST_F(SQLClusterDDLTest, CreateTableWithDatabase) {
 TEST_F(SQLClusterDDLTest, CreateTableWithDatabaseWrongDDL) {
     std::string name = "test" + GenRand();
     ::hybridse::sdk::Status status;
-    std::string ddl;
+    std::string db = "db" + GenRand();
+    ASSERT_TRUE(router->CreateDB(db, &status));
 
     // create table db2.name when db2 not exist
+    std::string ddl;
     ddl = "create table db2." + name +
-          "("
-          "col1 int, col2 bigint, col3 string,"
+          "(col1 int, col2 bigint, col3 string,"
           "index(key=col3, ts=col2));";
     ASSERT_FALSE(router->ExecuteDDL(db, ddl, &status)) << "ddl: " << ddl;
     ASSERT_FALSE(router->ExecuteDDL(db, "drop table " + name + ";", &status));
 
     // create table db2.name when db2 not exit
     ddl = "create table db2." + name +
-          "("
-          "col1 int, col2 bigint, col3 string,"
+          "(col1 int, col2 bigint, col3 string,"
           "index(key=col3, ts=col2));";
     ASSERT_FALSE(router->ExecuteDDL("", ddl, &status)) << "ddl: " << ddl;
     ASSERT_FALSE(router->ExecuteDDL("", "drop table " + name + ";", &status));
@@ -186,6 +186,9 @@ TEST_F(SQLClusterDDLTest, CreateTableWithDatabaseWrongDDL) {
     ASSERT_FALSE(router->ExecuteDDL(db, ddl, &status)) << "ddl: " << ddl;
     ddl = "create table t1 (col1 string, col2 string, col3 string, index(key=col4));";
     ASSERT_FALSE(router->ExecuteDDL(db, ddl, &status)) << "ddl: " << ddl;
+    ddl = "create table t1 (col1 string, col2 string, col3 int, index(key=col4, ts=col3));";
+    ASSERT_FALSE(router->ExecuteDDL(db, ddl, &status)) << "ddl: " << ddl;
+    ASSERT_TRUE(router->DropDB(db, &status));
 }
 
 TEST_F(SQLClusterDDLTest, CreateIndexCheck) {
@@ -193,11 +196,14 @@ TEST_F(SQLClusterDDLTest, CreateIndexCheck) {
     std::string db = "db" + GenRand();
     ::hybridse::sdk::Status status;
     ASSERT_TRUE(router->CreateDB(db, &status));
-    std::string ddl = absl::StrCat("create table ", name, "(col1 string, col2 string, col3 string);");
+    std::string ddl = absl::StrCat("create table ", name, "(col1 string, col2 string, col3 string, col4 int);");
+    ASSERT_TRUE(router->RefreshCatalog());
     ASSERT_TRUE(router->ExecuteDDL(db, ddl, &status)) << "ddl: " << ddl;
-    router->ExecuteSQL(db, absl::StrCat("create index index1 on ", name, "t1(col2) OPTIONS(ts=col3);"), &status);
+    router->ExecuteSQL(db, absl::StrCat("create index index1 on ", name, "(col2) OPTIONS(ts=col3);"), &status);
     ASSERT_FALSE(status.IsOK());
-    router->ExecuteSQL(db, absl::StrCat("create index index1 on ", name, "t1(col4);"), &status);
+    router->ExecuteSQL(db, absl::StrCat("create index index1 on ", name, "(col5);"), &status);
+    ASSERT_FALSE(status.IsOK());
+    router->ExecuteSQL(db, absl::StrCat("create index index1 on ", name, "(col2) OPTIONS(ts=col4);"), &status);
     ASSERT_FALSE(status.IsOK());
 
     ASSERT_TRUE(router->ExecuteDDL(db, "drop table " + name + ";", &status));

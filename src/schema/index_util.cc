@@ -70,6 +70,15 @@ base::Status IndexUtil::CheckIndex(const std::map<std::string, ::openmldb::commo
                 return {base::ReturnCode::kError, "float or double column can not be index"};
             }
         }
+        if (column_key.has_ts_name()) {
+            if (auto iter = column_map.find(column_key.ts_name()); iter == column_map.end()) {
+                return {base::ReturnCode::kError, "can not find col in schema. col: " + column_key.ts_name()};
+            } else if (iter->second.data_type() != ::openmldb::type::kBigInt
+                  && iter->second.data_type() == ::openmldb::type::kTimestamp) {
+                return {base::ReturnCode::kError,
+                    "the type of ts column should be bigint or timestamp, column is: " + column_key.index_name()};
+            }
+        }
         if (column_key.has_ttl()) {
             if (!CheckTTL(column_key.ttl())) {
                 return {base::ReturnCode::kError, "ttl check failed"};
@@ -189,6 +198,14 @@ std::vector<::openmldb::common::ColumnKey> IndexUtil::Convert2Vector(const PBInd
         vec.push_back(column_key);
     }
     return vec;
+}
+
+PBIndex IndexUtil::Convert2PB(const std::vector<::openmldb::common::ColumnKey>& index) {
+    PBIndex pb_index;
+    for (const auto& column_key : index) {
+        pb_index.Add()->CopyFrom(column_key);
+    }
+    return pb_index;
 }
 
 std::string IndexUtil::GetIDStr(const ::openmldb::common::ColumnKey& column_key) {

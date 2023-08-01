@@ -88,6 +88,7 @@ enum ReturnCode {
     kCreateFunctionFailed = 159,
     kExceedMaxMemory = 160,
     kInvalidArgs = 161,
+    kCheckIndexFailed = 162,
     kNameserverIsNotLeader = 300,
     kAutoFailoverIsEnabled = 301,
     kEndpointIsNotExist = 302,

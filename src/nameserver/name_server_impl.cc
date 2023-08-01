@@ -8522,6 +8522,12 @@ void NameServerImpl::AddIndex(RpcController* controller, const AddIndexRequest* 
         openmldb::common::VersionPair* pair = table_info->add_schema_versions();
         pair->CopyFrom(new_pair);
     }
+    if (auto status = schema::IndexUtil::CheckIndex(col_map,
+                schema::IndexUtil::Convert2PB(column_key_vec)); !status.OK()) {
+        base::SetResponseStatus(ReturnCode::kCheckIndexFailed, status.msg, response);
+        LOG(WARNING) << status.msg;
+        return;
+    }
     if (IsClusterMode() && !request->skip_load_data()) {
         std::lock_guard<std::mutex> lock(mu_);
         if (IsExistActiveOp(db, name, api::kAddIndexOP)) {
