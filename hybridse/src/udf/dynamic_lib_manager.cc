@@ -25,7 +25,7 @@ namespace udf {
 DynamicLibManager::~DynamicLibManager() {
     for (const auto& kv : handle_map_) {
         auto so_handle = kv.second;
-        if(so_handle != nullptr) {
+        if (so_handle != nullptr) {
             dlclose(so_handle);
         }
     }
