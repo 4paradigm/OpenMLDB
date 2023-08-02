@@ -65,7 +65,7 @@ target_link_libraries(hybridse_flags ${GFLAGS_LIBRARY})
 add_library(hybridse_core ${SRC_FILE_LIST} $<TARGET_OBJECTS:hybridse_proto> case/case_data_mock.cc)
 target_link_libraries(hybridse_core
     ${yaml_libs} ${LLVM_LIBS} ${ZETASQL_LIBS} ${OS_LIB} ${COMMON_LIBS} ${g_libs}
-    ${LLVM_EXT_LIB} op_contrib::simdjson farmhash hybridse_flags)
+    ${LLVM_EXT_LIB} op_contrib::simdjson op_contrib::farmhash hybridse_flags)
 set(HYBRIDSE_CORE_LIBS hybridse_core)
 
 add_subdirectory(testing)

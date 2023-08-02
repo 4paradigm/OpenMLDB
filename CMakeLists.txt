@@ -134,10 +134,15 @@ endif()
 add_subdirectory(contrib EXCLUDE_FROM_ALL)
 
 if (BUILD_SHARED_LIBS)
-    set(GFLAGS_LIBRARY gflags_shared)
+    # NOTE: pre-compiled thirdparty skips a Findgflags.cmake file with rocksdb,
+    # which is not capable to distinct shared and static gflags library.
+    # So 'CONFIG' is mandatory: force pure config mode
+    find_package(gflags REQUIRED COMPONENTS shared CONFIG)
 else()
-    set(GFLAGS_LIBRARY gflags_static)
+    find_package(gflags REQUIRED COMPONENTS static CONFIG)
 endif()
+message(STATUS "Found GFLAGS LIBRARY: ${GFLAGS_LIBRARIES}")
+set(GFLAGS_LIBRARY ${GFLAGS_LIBRARIES})
 
 if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
     set(OS_LIB ${CMAKE_THREAD_LIBS_INIT} rt)

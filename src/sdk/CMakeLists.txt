@@ -311,7 +311,7 @@ endfunction(get_lib_path)
 # get linked libraries built in OpenMLDB
 get_target_property(CXXSDK_TGTS openmldb_api LINK_LIBRARIES)
 list(PREPEND CXXSDK_TGTS openmldb_api)
-list(APPEND CXXSDK_TGTS farmhash) # not a standalone lib, build-in, so use target file
+list(APPEND CXXSDK_TGTS op_contrib::farmhash) # not a standalone lib, build-in, so use target file
 list(REMOVE_ITEM CXXSDK_TGTS gcov)
 set(CXXSDK_LIBS )
 foreach(X IN LISTS CXXSDK_TGTS)

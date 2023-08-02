@@ -12,18 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-set(GFLAGS_URL https://github.com/gflags/gflags/archive/refs/tags/v2.2.0.tar.gz)
+set(GFLAGS_URL https://github.com/gflags/gflags)
+set(GFLAGS_TAG e171aa2d15ed9eb17054558e0b3a6a413bb01067) # v2.2.2
 
-message(STATUS "build gflags from ${GFLAGS_URL}")
+message(STATUS "build gflags from ${GFLAGS_URL}@${GFLAGS_TAG}")
 
 ExternalProject_Add(
   gflags
-  URL ${GFLAGS_URL}
-  URL_HASH SHA256=466c36c6508a451734e4f4d76825cf9cd9b8716d2b70ef36479ae40f08271f88
+  GIT_REPOSITORY ${GFLAGS_URL}
+  GIT_TAG ${GFLAGS_TAG}
   PREFIX ${DEPS_BUILD_DIR}
   DOWNLOAD_DIR ${DEPS_DOWNLOAD_DIR}/gflags
   INSTALL_DIR ${DEPS_INSTALL_DIR}
   CONFIGURE_COMMAND ${CMAKE_COMMAND} -H<SOURCE_DIR> -B <BINARY_DIR>
-    -DCMAKE_INSTALL_PREFIX=${DEPS_INSTALL_DIR} -DGFLAGS_NAMESPACE=google -DCMAKE_CXX_FLAGS=-fPIC
+    -DCMAKE_INSTALL_PREFIX=${DEPS_INSTALL_DIR} -DGFLAGS_BUILD_SHARED_LIBS=ON -DGFLAGS_BUILD_STATIC_LIBS=ON
+    -DGFLAGS_NAMESPACE=google -DCMAKE_CXX_FLAGS=-fPIC
   BUILD_COMMAND ${CMAKE_COMMAND} --build <BINARY_DIR>
   INSTALL_COMMAND ${CMAKE_COMMAND} --build <BINARY_DIR> --target install)

@@ -180,7 +180,6 @@ include_directories(
     ${LLVM_INCLUDE_DIRS}
     ${Boost_INCLUDE_DIRS}
     ${CMAKE_PREFIX_PATH}/include
-    ${farmhash_SOURCE_DIR}/src
 )
 
 link_directories(
