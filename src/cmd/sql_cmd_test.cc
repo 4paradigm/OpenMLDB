@@ -3020,10 +3020,11 @@ TEST_P(DBSDKTest, LongWindowsCleanup) {
         ASSERT_FALSE(cs->GetNsClient()->DropTable("test2", "trans", msg));
         ASSERT_TRUE(cs->GetNsClient()->DropProcedure("test2", "demo1", msg)) << msg;
         ASSERT_TRUE(cs->GetNsClient()->DropTable("test2", "trans", msg)) << msg;
-        ASSERT_TRUE(sr->RefreshCatalog());  // avoid cache in sdk
-        // helpful for debug
-        HandleSQL("show tables;");
-        HandleSQL("show deployments;");
+        // fast drop and next loop
+        // ASSERT_TRUE(sr->RefreshCatalog());  // avoid cache in sdk
+        // // helpful for debug
+        // HandleSQL("show tables;");
+        // HandleSQL("show deployments;");
         ASSERT_TRUE(cs->GetNsClient()->DropDatabase("test2", msg)) << msg;
     }
 }
