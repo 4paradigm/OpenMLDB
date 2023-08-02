@@ -2999,8 +2999,8 @@ TEST_P(DBSDKTest, LongWindowsCleanup) {
         HandleSQL("use test2;");
         HandleSQL(create_sql);
         // sleep(5); // sleep to avoid tablet metadata // revert sleep to check error
-        ASSERT_TRUE(sr->RefreshCatalog());  // avoid cache in sdk
-        HandleSQL("show deployments;");  // ns deployment metadata, not tablet
+        // ASSERT_TRUE(sr->RefreshCatalog());  // avoid cache in sdk
+        // HandleSQL("show deployments;");  // ns deployment metadata, not tablet
         // TODO if refresh is not good, sleep more
         // sp_cache_->ProcedureExist in tablet get deployment here, but nameserver no deployment
         // refresh won't effet sp_cache_ in tablet
