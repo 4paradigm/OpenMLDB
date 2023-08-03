@@ -29,3 +29,6 @@ endfunction()
 
 add_contrib(simdjson)
 add_contrib(farmhash)
+
+# TODO: load glog/glfags from source if BUILD_SHARED_LIBS=ON
+# add_contrib(gflags)
