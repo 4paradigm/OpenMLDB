@@ -262,26 +262,25 @@ public class RequestPreparedStatement implements java.sql.PreparedStatement {
         for (int i = 0; i < this.currentSchema.GetColumnCnt(); i++) {
             String columnName = this.currentSchema.GetColumnName(i);
             DataType dataType = this.currentSchema.GetColumnType(i);
-            Object o = data.get(columnName);
+            Object value = data.get(columnName);
             if (DataType.kTypeString.equals(dataType)) {
-                 if (o == null) {
+                 if (value == null) {
                      setNull(i);
                      return;
                  }
-                 String s = String.valueOf(o);
+                 String s = String.valueOf(value);
                  byte[] bytes = s.getBytes(CHARSET);
                  stringsLen.put(i, bytes.length);
             } else if (DataType.kTypeTimestamp.equals(dataType)) {
-                if (o == null) {
+                if (value == null) {
                     setNull(i);
                     return;
                 }
                 hasSet.set(i - 1, true);
-                Timestamp timestamp = Timestamp.valueOf(String.valueOf(o));
-                long ts = timestamp.getTime();
-                currentDatas.set(i - 1, ts);
+                Timestamp timestamp = Timestamp.valueOf(String.valueOf(value));
+                value = timestamp.getTime();
             }
-            currentDatas.set(i, o);
+            currentDatas.set(i, value);
             hasSet.set(i, true);
         }
         addBatch();
