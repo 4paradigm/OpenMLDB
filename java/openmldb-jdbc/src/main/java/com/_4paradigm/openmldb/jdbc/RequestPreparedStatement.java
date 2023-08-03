@@ -258,6 +258,15 @@ public class RequestPreparedStatement implements java.sql.PreparedStatement {
         currentDatas.set(i - 1, ts);
     }
 
+    public void setRow(Map<String, Object> data) throws SQLException {
+        for (int i = 0; i < this.currentSchema.GetColumnCnt(); i++) {
+            String columnName = this.currentSchema.GetColumnName(i);
+            currentDatas.set(i, data.get(columnName));
+            hasSet.set(i, true);
+        }
+        addBatch();
+    }
+
     @Override
     @Deprecated
     public void setAsciiStream(int i, InputStream inputStream, int i1) throws SQLException {
