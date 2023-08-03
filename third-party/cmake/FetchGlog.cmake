@@ -12,22 +12,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-set(GLOG_URL https://github.com/google/glog/archive/refs/tags/v0.4.0.tar.gz)
+set(GLOG_URL https://github.com/google/glog)
+set(GLOG_TAG b33e3bad4c46c8a6345525fd822af355e5ef9446) #0.6.0
 
-message(STATUS "build glog from ${GLOG_URL}")
+message(STATUS "build glog from ${GLOG_URL}@${GLOG_TAG}")
 
 find_program(MAKE_EXE NAMES gmake nmake make)
 ExternalProject_Add(
   glog
-  URL ${GLOG_URL}
-  URL_HASH SHA256=f28359aeba12f30d73d9e4711ef356dc842886968112162bc73002645139c39c
+  GIT_REPOSITORY ${GLOG_URL}
+  GIT_TAG ${GLOG_TAG}
   PREFIX ${DEPS_BUILD_DIR}
   DOWNLOAD_DIR ${DEPS_DOWNLOAD_DIR}/glog
   INSTALL_DIR ${DEPS_INSTALL_DIR}
   DEPENDS gflags
-  BUILD_IN_SOURCE TRUE
   CONFIGURE_COMMAND
-    ./autogen.sh
-    COMMAND CXXFLAGS=-fPIC ./configure --prefix=<INSTALL_DIR> --enable-shared=no --with-gflags=<INSTALL_DIR>
-  BUILD_COMMAND ${MAKE_EXE}
-  INSTALL_COMMAND ${MAKE_EXE} install)
+    ${CMAKE_COMMAND} -H<SOURCE_DIR> -B <BINARY_DIR>
+    -DCMAKE_INSTALL_PREFIX=${DEPS_INSTALL_DIR} -DCMAKE_PREFIX_PATH=${DEPS_INSTALL_DIR}
+    -DCMAKE_CXX_FLAGS=-fPIC -DWITH_GTEST=OFF -DBUILD_SHARED_LIBS=${BUILD_SHARED_LIBS}
+  BUILD_COMMAND ${CMAKE_COMMAND} --build <BINARY_DIR>
+  INSTALL_COMMAND ${CMAKE_COMMAND} --build <BINARY_DIR> --target install)

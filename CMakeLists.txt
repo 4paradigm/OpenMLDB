@@ -116,7 +116,6 @@ set(Protobuf_USE_STATIC_LIBS ON)
 find_package(Protobuf 3.6 EXACT REQUIRED)
 message(STATUS "Found Protobuf Libraries: ${Protobuf_LIBRARIES}")
 
-find_library(GLOG_LIBRARY glog)
 find_library(UNWIND_LIBRARY unwind)
 find_library(LEVELDB_LIBRARY leveldb)
 find_library(Z_LIBRARY z)
@@ -134,14 +133,21 @@ endif()
 add_subdirectory(contrib EXCLUDE_FROM_ALL)
 
 if (BUILD_SHARED_LIBS)
-    # NOTE: pre-compiled thirdparty skips a Findgflags.cmake file with rocksdb,
-    # which is not capable to distinct shared and static gflags library.
-    # So 'CONFIG' is mandatory: force pure config mode
     find_package(gflags REQUIRED COMPONENTS shared CONFIG)
+    find_package(glog REQUIRED CONFIG)
+
+    set(GFLAGS_LIBRARIES ${gflags_LIBRARIES})
+    if (NOT glog_FOUND)
+        message(FATAL_ERROR "glog not found")
+    endif()
+    set(GLOG_LIBRARY glog::glog)
 else()
+    # 'CONFIG' is mandatory: pre-compiled thirdparty skip a Findgflags.cmake not work well
     find_package(gflags REQUIRED COMPONENTS static CONFIG)
+    find_library(GLOG_LIBRARY glog)
 endif()
 message(STATUS "Found GFLAGS LIBRARY: ${GFLAGS_LIBRARIES}")
+message(STATUS "Found GLOG LIBRARY: ${GLOG_LIBRARY}")
 set(GFLAGS_LIBRARY ${GFLAGS_LIBRARIES})
 
 if (CMAKE_SYSTEM_NAME STREQUAL "Linux")

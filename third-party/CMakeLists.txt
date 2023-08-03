@@ -30,6 +30,7 @@ set(SRC_INSTALL_DIR "${CMAKE_BINARY_DIR}/src" CACHE PATH "Source code install di
 option(BUILD_BUNDLED "Build dependencies from source" OFF)
 option(BUILD_BUNDLED_ZETASQL "Build zetasql from source" ${BUILD_BUNDLED})
 option(WITH_ZETASQL "Download and build zetasql" ON)
+option(BUILD_SHARED_LIBS "Build shared lib for gflag/glog" OFF)
 
 option(BUILD_BUNDLED_ABSL "Build abseil-cpp from source" ${BUILD_BUNDLED})
 option(BUILD_BUNDLED_PROTOBUF "Build protobuf from source" ${BUILD_BUNDLED})
