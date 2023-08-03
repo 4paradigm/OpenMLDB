@@ -10,12 +10,12 @@
     <dependency>
         <groupId>com.4paradigm.openmldb</groupId>
         <artifactId>openmldb-jdbc</artifactId>
-        <version>0.8.0</version>
+        <version>0.8.2</version>
     </dependency>
     <dependency>
         <groupId>com.4paradigm.openmldb</groupId>
         <artifactId>openmldb-native</artifactId>
-        <version>0.8.0</version>
+        <version>0.8.2</version>
     </dependency>
     ```
 
@@ -27,16 +27,16 @@
     <dependency>
         <groupId>com.4paradigm.openmldb</groupId>
         <artifactId>openmldb-jdbc</artifactId>
-        <version>0.8.0</version>
+        <version>0.8.2</version>
     </dependency>
     <dependency>
         <groupId>com.4paradigm.openmldb</groupId>
         <artifactId>openmldb-native</artifactId>
-        <version>0.8.0-macos</version>
+        <version>0.8.2-macos</version>
     </dependency>
     ```
 
-注意：由于 openmldb-native 中包含了 OpenMLDB 编译的 C++ 静态库，默认是 Linux 静态库，macOS 上需将上述 openmldb-native 的 version 改成 `0.8.0-macos`，openmldb-jdbc 的版本保持不变。
+注意：由于 openmldb-native 中包含了 OpenMLDB 编译的 C++ 静态库，默认是 Linux 静态库，macOS 上需将上述 openmldb-native 的 version 改成 `0.8.2-macos`，openmldb-jdbc 的版本保持不变。
 
 openmldb-native 的 macOS 版本只支持 macOS 12，如需在 macOS 11 或 macOS 10.15上运行，需在相应 OS 上源码编译 openmldb-native 包，详细编译方法见[并发编译 Java SDK](https://openmldb.ai/docs/zh/main/deploy/compile.html#java-sdk)。使用自编译的 openmldb-native 包，推荐使用`mvn install`安装到本地仓库，然后在 pom 中引用本地仓库的 openmldb-native 包，不建议用`scope=system`的方式引用。
 
@@ -77,13 +77,9 @@ res = stmt.executeQuery("SELECT * from t1"); // 在线 select, executeQuery 可�
 
 其中，`LOAD DATA` 命令是异步命令，返回的 ResultSet 包含该 job 的 id、state 等信息。可通过执行 `show job <id>` 来查询 job 是否执行完成。注意 ResultSet 需要先执行 `next()` 游标才会指向第一行数据。
 
-也可以改为同步命令：
+离线模式默认为异步执行，返回的ResultSet是Job Info，可以通过`SET @@sync_job=true;`改为同步执行，但返回的ResultSet根据SQL不同，详情见[功能边界-离线命令同步模式](../function_boundary.md#离线命令同步模式)。只推荐在`LOAD DATA`/`SELECT INTO`时选择同步执行。
 
-```SQL
-SET @@sync_job=true;
-```
-
-如果同步命令实际耗时超过连接空闲默认的最大等待时间 0.5 小时，请[调整配置](../../openmldb_sql/ddl/SET_STATEMENT.md#离线命令配置详情)。
+如果同步命令超时，请参考[离线命令配置详情](../../openmldb_sql/ddl/SET_STATEMENT.md#离线命令配置详情)调整配置。
 
 ```{caution}
 `Statement`执行`SET @@execute_mode='offline'`不仅会影响当前`Statement`，还会影响该`Connection`已创建和未创建的所有`Statement`。所以，不建议创建多个`Statement`，并期望它们在不同的模式下执行。如果需要在不同模式下执行SQL，建议创建多个Connection。

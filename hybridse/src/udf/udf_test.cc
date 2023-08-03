@@ -1062,6 +1062,85 @@ TEST_F(ExternUdfTest, ReplaceNullable) {
     check2(true, nullptr, nullptr, nullptr);
 }
 
+struct StrCastCase {
+    absl::string_view input;
+    enum class ErrType {
+        OK = 0,
+        INVALID,
+        OUT_OF_RANGE,
+        UNKOWN_ERR,
+    };
+    ErrType type;
+    int64_t expect;
+
+    friend std::ostream& operator<<(std::ostream& os, const StrCastCase& val) {
+        return os << "{input=" << val.input << ", expect=" << val.expect << ", status=" << static_cast<int>(val.type)
+                  << "}";
+    }
+};
+
+class CastTest : public ::testing::TestWithParam<StrCastCase> {};
+
+TEST_P(CastTest, StrCastI64) {
+    auto& cs = GetParam();
+    auto [s, ret] = v1::StrToIntegral()(cs.input);
+    switch (cs.type) {
+        case StrCastCase::ErrType::OK: {
+            EXPECT_TRUE(s.ok()) << s;
+            EXPECT_EQ(cs.expect, ret);
+            break;
+        }
+        case StrCastCase::ErrType::INVALID: {
+            EXPECT_TRUE(absl::IsInvalidArgument(s)) << s;
+            break;
+        }
+        case StrCastCase::ErrType::OUT_OF_RANGE: {
+            EXPECT_TRUE(absl::IsOutOfRange(s)) << s;
+            break;
+        }
+        case StrCastCase::ErrType::UNKOWN_ERR: {
+            EXPECT_TRUE(absl::IsUnknown(s)) << s;
+            break;
+        }
+    }
+}
+
+static const std::vector<StrCastCase>& GetCastCases() {
+    static const std::vector<StrCastCase> cs{
+        {"12", StrCastCase::ErrType::OK, 12},
+        {"012", StrCastCase::ErrType::OK, 12},
+        {"0", StrCastCase::ErrType::OK, 0},
+        {" 9", StrCastCase::ErrType::OK, 9},
+        {" +100 ", StrCastCase::ErrType::OK, 100},
+        {"-999\t", StrCastCase::ErrType::OK, -999},
+        {"+0", StrCastCase::ErrType::OK, 0},
+        {"-0", StrCastCase::ErrType::OK, 0},
+        {"-1", StrCastCase::ErrType::OK, -1},
+        {"-88", StrCastCase::ErrType::OK, -88},
+        {"0x12", StrCastCase::ErrType::OK, 18},
+        {"+0X2a", StrCastCase::ErrType::OK, 42},
+        {"-0X2b", StrCastCase::ErrType::OK, -43},
+        {"\t -0X2b", StrCastCase::ErrType::OK, -43},
+        {"9223372036854775807", StrCastCase::ErrType::OK, INT64_MAX},
+        {"0x7FFFFFFFFFFFFFFF", StrCastCase::ErrType::OK, INT64_MAX},
+        {"-9223372036854775808", StrCastCase::ErrType::OK, INT64_MIN},
+        {"", StrCastCase::ErrType::INVALID, {}},
+        {"-", StrCastCase::ErrType::INVALID, {}},
+        {"+", StrCastCase::ErrType::INVALID, {}},
+        {"8g", StrCastCase::ErrType::INVALID, {}},
+        {"0x12k", StrCastCase::ErrType::INVALID, {}},
+        {"8l", StrCastCase::ErrType::INVALID, {}},
+        {"8 l", StrCastCase::ErrType::INVALID, {}},
+        {"gg", StrCastCase::ErrType::INVALID, {}},
+        {"80x99", StrCastCase::ErrType::INVALID, {}},
+        {"89223372036854775807", StrCastCase::ErrType::OUT_OF_RANGE, {}},
+        {"-19223372036854775807", StrCastCase::ErrType::OUT_OF_RANGE, {}},
+    };
+    return cs;
+}
+
+INSTANTIATE_TEST_SUITE_P(CastI64, CastTest, ::testing::ValuesIn(GetCastCases()));
+
 }  // namespace udf
 }  // namespace hybridse
 int main(int argc, char** argv) {

@@ -232,7 +232,7 @@ void RegisterBaseListLag(UdfLibrary* lib) {
             @endcode
 
         )")
-        .args<codec::ListRef<V>, int64_t>(reinterpret_cast<void*>(AtList<V>))
+        .args<codec::ListRef<V>, int64_t>(AtList<V>)
         .return_by_arg(true)
         .template returns<Nullable<V>>();
 }

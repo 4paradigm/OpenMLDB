@@ -115,7 +115,7 @@ partition key相等的所有行，还不是窗口，经由order by列排序后�
 
 | SELECT语句元素      | 离线模式  | 在线预览模式 | 在线请求模式 | 说明                                                                                                                                                                                                                                                                                          |
 |:----------------| --------- | ------------ | ------------ |:--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| WINDOW   Clause | **``✓``** |  **``✓(0.6.4 或者更高版本)``**  | **``✓``**    | 窗口子句用于定义一个或者若干个窗口。窗口可以是有名或者匿名的。用户可以在窗口上调用聚合函数来进行一些分析型计算的操作（```sql agg_func() over window_name```)。在线请求模式下，需要遵循[Online Request下Window的使用规范](../deployment_manage/ONLINE_REQUEST_REQUIREMENTS.md#online-serving下window的使用规范)                                                                  |
+| WINDOW   Clause | **``✓``** |  **``✓(0.6.4 或者更高版本)``**  | **``✓``**    | 窗口子句用于定义一个或者若干个窗口。窗口可以是有名或者匿名的。用户可以在窗口上调用聚合函数来进行一些分析型计算的操作（```sql agg_func() over window_name```)。在线请求模式下，需要遵循[Online Request下Window的使用规范](../deployment_manage/ONLINE_REQUEST_REQUIREMENTS.md#在线请求模式下window的使用规范)                                                                  |
 
 ## 基本的 WindowSpec 语法元素
 
@@ -154,7 +154,7 @@ WindowFrameBound
 共三部分：
 1. WindowFrameUnits: 窗口类型
 2. WindowFrameBounds: 窗口边界
-3. WindowFrameMaxSize (Optional) 窗口最大行数, 见 [Window With MAXSIZE](#4.-window-with-maxsize)
+3. WindowFrameMaxSize (Optional) 窗口最大行数, 见 [Window With MAXSIZE](#4-window-with-maxsize)
 
 #### Window Frame Units
 

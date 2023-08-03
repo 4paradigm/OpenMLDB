@@ -66,8 +66,8 @@ struct DataTypeTrait {
 template <typename T>
 struct Nullable {
     Nullable(std::nullptr_t) : data_(0), is_null_(true) {}  // NOLINT
+    Nullable() : data_(0), is_null_(true) {}
     Nullable(const T& t) : data_(t), is_null_(false) {}     // NOLINT
-    Nullable() : is_null_(false) {}
 
     const T& value() const { return data_; }
     bool is_null() const { return is_null_; }

@@ -17,16 +17,15 @@
 #include "nameserver/name_server_impl.h"
 
 #include <algorithm>
-#include <set>
-#include <random>
-#include <iterator>
 #include <iostream>
+#include <iterator>
+#include <random>
+#include <set>
 #include <vector>
 
-
+#include "absl/strings/numbers.h"
 #include "absl/strings/str_cat.h"
 #include "absl/strings/str_split.h"
-#include "absl/strings/numbers.h"
 #include "absl/time/time.h"
 #include "nameserver/system_table.h"
 #include "sdk/db_sdk.h"
@@ -44,10 +43,10 @@
 #include "base/strings.h"
 #include "boost/algorithm/string.hpp"
 #include "boost/bind.hpp"
+#include "codec/row_codec.h"
 #include "gflags/gflags.h"
 #include "schema/index_util.h"
 #include "schema/schema_adapter.h"
-#include "codec/row_codec.h"
 
 DECLARE_string(endpoint);
 DECLARE_string(zk_cluster);
@@ -74,7 +73,6 @@ DECLARE_int32(make_snapshot_check_interval);
 DECLARE_bool(use_name);
 DECLARE_bool(enable_distsql);
 DECLARE_uint32(sync_deploy_stats_timeout);
-
 
 namespace openmldb {
 namespace nameserver {
@@ -1119,8 +1117,6 @@ void NameServerImpl::UpdateTablets(const std::vector<std::string>& endpoints) {
             real_ep_map_.emplace(cur_endpoint, cur_endpoint);
         }
     }
-
-
 
     auto it = tablet_endpoints.begin();
     for (; it != tablet_endpoints.end(); ++it) {
@@ -3717,8 +3713,6 @@ void NameServerImpl::CreateTable(RpcController* controller, const CreateTableReq
         response->set_msg(response->msg());
     }
 }
-
-
 
 bool NameServerImpl::SaveTableInfo(std::shared_ptr<TableInfo> table_info) {
     std::string table_value;
@@ -8584,6 +8578,24 @@ bool NameServerImpl::AddIndexToTableInfo(const std::string& name, const std::str
         }
     }
     UpdateZkTableNode(table_info);
+    // refresh tablet here, cuz this func may be called by task
+    // if refresh failed, won't break the process of add index
+    std::set<std::string> endpoint_set;
+    for (const auto& part : table_info->table_partition()) {
+        for (const auto& meta : part.partition_meta()) {
+            endpoint_set.insert(meta.endpoint());
+        }
+    }
+    // locked on top
+    for (const auto& tablet : tablets_) {
+        if (!tablet.second->Health()) {
+            continue;
+        }
+        if (endpoint_set.count(tablet.first) == 0) {
+            tablet.second->client_->Refresh(table_info->tid());
+        }
+    }
+
     PDLOG(INFO, "add index ok. table %s index cnt %d", name.c_str(), column_key.size());
     if (task_info) {
         task_info->set_status(::openmldb::api::TaskStatus::kDone);
@@ -9561,9 +9573,8 @@ void NameServerImpl::ShowProcedure(RpcController* controller, const api::ShowPro
     }
 }
 
-std::shared_ptr<TabletInfo> NameServerImpl::GetTablet(const std::string& endpoint) {
+std::shared_ptr<TabletInfo> NameServerImpl::GetTabletUnlock(const std::string& endpoint) {
     std::shared_ptr<TabletInfo> tablet_ptr;
-    std::lock_guard<std::mutex> lock(mu_);
     auto iter = tablets_.find(endpoint);
     // check tablet if exist
     if (iter == tablets_.end()) {
@@ -9575,6 +9586,11 @@ std::shared_ptr<TabletInfo> NameServerImpl::GetTablet(const std::string& endpoin
         return {};
     }
     return tablet_ptr;
+}
+
+std::shared_ptr<TabletInfo> NameServerImpl::GetTablet(const std::string& endpoint) {
+    std::lock_guard<std::mutex> lock(mu_);
+    return GetTabletUnlock(endpoint);
 }
 
 void NameServerImpl::CreateDatabaseOrExit(const std::string& db) {
@@ -9713,16 +9729,16 @@ void NameServerImpl::CreateFunction(RpcController* controller, const CreateFunct
     }
     auto tablets = GetAllHealthTablet();
     std::vector<std::shared_ptr<TabletInfo>> succ_tablets;
+    std::string error_msgs;
+    // try create on every tablet
     for (const auto& tablet : tablets) {
         std::string msg;
         if (!tablet->client_->CreateFunction(request->fun(), &msg)) {
-            PDLOG(WARNING, "create function failed. endpoint %s, msg %s",
-                    tablet->client_->GetEndpoint().c_str(), msg.c_str());
-            response->set_msg(msg);
-            break;
+            error_msgs.append("create function failed on " + tablet->client_->GetEndpoint() + ", reason: " + msg + ";");
         }
         succ_tablets.emplace_back(tablet);
     }
+    // rollback and return, it's ok if tablet rollback failed
     if (succ_tablets.size() < tablets.size()) {
         for (const auto& tablet : succ_tablets) {
             std::string msg;
@@ -9731,6 +9747,7 @@ void NameServerImpl::CreateFunction(RpcController* controller, const CreateFunct
             }
             PDLOG(INFO, "drop function on endpoint %s", tablet->client_->GetEndpoint().c_str());
         }
+        SET_RESP_AND_WARN(response, base::ReturnCode::kCreateFunctionFailedOnTablet, error_msgs);
         return;
     }
     auto fun = std::make_shared<::openmldb::common::ExternalFun>(request->fun());
@@ -9739,8 +9756,7 @@ void NameServerImpl::CreateFunction(RpcController* controller, const CreateFunct
         fun->SerializeToString(&value);
         std::string fun_node = zk_path_.external_function_path_ + "/" + fun->name();
         if (!zk_client_->CreateNode(fun_node, value)) {
-            PDLOG(WARNING, "create function node[%s] failed! value[%s] value_size[%u]",
-                  fun_node.c_str(), value.c_str(), value.length());
+            SET_RESP_AND_WARN(response, base::ReturnCode::kCreateZkFailed, "create function on zk failed: " + fun_node);
             return;
         }
     }
@@ -9751,9 +9767,8 @@ void NameServerImpl::CreateFunction(RpcController* controller, const CreateFunct
 }
 
 void NameServerImpl::DropFunction(RpcController* controller, const DropFunctionRequest* request,
-                                    DropFunctionResponse* response, Closure* done) {
+                                  DropFunctionResponse* response, Closure* done) {
     brpc::ClosureGuard done_guard(done);
-    response->set_code(base::kRPCRunError);
     std::shared_ptr<::openmldb::common::ExternalFun> fun;
     {
         std::lock_guard<std::mutex> lock(mu_);
@@ -9766,27 +9781,26 @@ void NameServerImpl::DropFunction(RpcController* controller, const DropFunctionR
         if (request->if_exists()) {
             base::SetResponseOK(response);
         } else {
-            response->set_msg("fun does not exist");
-            LOG(WARNING) << request->name() << " does not exist";
+            SET_RESP_AND_WARN(response, base::ReturnCode::kError, "fun does not exist in nameserver meta");
         }
         return;
     }
     auto tablets = GetAllHealthTablet();
     for (const auto& tablet : tablets) {
         std::string msg;
+        // if drop function failed on tablet, treat it as success(only log warning)
         if (!tablet->client_->DropFunction(*fun, &msg)) {
-            response->set_msg(msg);
-            LOG(WARNING) << "drop function failed on " << tablet->client_->GetEndpoint();
-            return;
+            LOG(WARNING) << "drop function failed on " << tablet->client_->GetEndpoint() << ", reason: " << msg;
         }
     }
     if (IsClusterMode()) {
         std::string fun_node = zk_path_.external_function_path_ + "/" + fun->name();
         if (!zk_client_->DeleteNode(fun_node)) {
-            PDLOG(WARNING, "delete function node[%s] failed", fun_node.c_str());
-            response->set_msg("delete function node failed");
+            // if drop zk node failed, the whole drop function failed
+            SET_RESP_AND_WARN(response, base::ReturnCode::kDelZkFailed, "delete function zk node failed:" + fun_node);
             return;
         }
+        // func in taskmanager is deleted by client, not in here
     }
     base::SetResponseOK(response);
     LOG(INFO) << "drop function " << request->name() << " success";
@@ -9795,7 +9809,7 @@ void NameServerImpl::DropFunction(RpcController* controller, const DropFunctionR
 }
 
 void NameServerImpl::ShowFunction(RpcController* controller, const ShowFunctionRequest* request,
-                                    ShowFunctionResponse* response, Closure* done) {
+                                  ShowFunctionResponse* response, Closure* done) {
     brpc::ClosureGuard done_guard(done);
     std::lock_guard<std::mutex> lock(mu_);
     if (request->has_name() && !request->name().empty()) {

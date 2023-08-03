@@ -20,9 +20,9 @@
 #include <memory>
 #include <mutex>
 #include <string>
-#include <unordered_map>
 #include <vector>
 
+#include "absl/container/flat_hash_map.h"
 #include "codec/codec.h"
 #include "proto/tablet.pb.h"
 #include "proto/type.pb.h"
@@ -85,17 +85,17 @@ class AggrBuffer {
         non_null_cnt_ = buffer.non_null_cnt_;
         data_type_ = buffer.data_type_;
         if (data_type_ == DataType::kString || data_type_ == DataType::kVarchar) {
-            if (buffer.aggr_val_.vstring.data != NULL) {
+            if (buffer.aggr_val_.vstring.data != nullptr) {
                 aggr_val_.vstring.data = new char[buffer.aggr_val_.vstring.len];
                 memcpy(aggr_val_.vstring.data, buffer.aggr_val_.vstring.data, buffer.aggr_val_.vstring.len);
             }
         }
     }
     AggrBuffer& operator=(const AggrBuffer& buffer) = delete;
-    ~AggrBuffer() { clear(); }
-    void clear() {
+    ~AggrBuffer() { Clear(); }
+    void Clear() {
         if (data_type_ == DataType::kString || data_type_ == DataType::kVarchar) {
-            if (aggr_val_.vstring.data != NULL) {
+            if (aggr_val_.vstring.data != nullptr) {
                 delete[] aggr_val_.vstring.data;
             }
         }
@@ -127,7 +127,7 @@ class Aggregator {
 
     ~Aggregator();
 
-    bool Update(const std::string& key, const std::string& row, const uint64_t& offset, bool recover = false);
+    bool Update(const std::string& key, const std::string& row, uint64_t offset, bool recover = false);
 
     bool Delete(const std::string& key);
 
@@ -160,12 +160,11 @@ class Aggregator {
     codec::Schema base_table_schema_;
     codec::Schema aggr_table_schema_;
 
-    using FilterMap = std::unordered_map<std::string, AggrBufferLocked>;  // filter_column -> aggregator buffer
-    std::unordered_map<std::string, FilterMap> aggr_buffer_map_;          // key -> filter_map
+    using FilterMap = absl::flat_hash_map<std::string, AggrBufferLocked>;  // filter_column -> aggregator buffer
+    absl::flat_hash_map<std::string, FilterMap> aggr_buffer_map_;          // key -> filter_map
     std::mutex mu_;
     DataType aggr_col_type_;
     DataType ts_col_type_;
-    std::shared_ptr<LogReplicator> base_replicator_;
     std::shared_ptr<Table> aggr_table_;
     std::shared_ptr<LogReplicator> aggr_replicator_;
     std::atomic<AggrStat> status_;
@@ -308,7 +307,7 @@ class AvgAggregator : public Aggregator {
 std::shared_ptr<Aggregator> CreateAggregator(const ::openmldb::api::TableMeta& base_meta,
                                              const ::openmldb::api::TableMeta& aggr_meta,
                                              std::shared_ptr<Table> aggr_table,
-                                             std::shared_ptr<LogReplicator> aggr_replicator, const uint32_t& index_pos,
+                                             std::shared_ptr<LogReplicator> aggr_replicator, uint32_t index_pos,
                                              const std::string& aggr_col, const std::string& aggr_func,
                                              const std::string& ts_col, const std::string& bucket_size,
                                              const std::string& filter_col = "");
