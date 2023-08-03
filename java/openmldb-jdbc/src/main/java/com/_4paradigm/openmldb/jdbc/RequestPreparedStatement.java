@@ -259,6 +259,8 @@ public class RequestPreparedStatement implements java.sql.PreparedStatement {
     }
 
     public void setRow(Map<String, Object> data) throws SQLException {
+        checkClosed();
+        checkNull();
         for (int i = 0; i < this.currentSchema.GetColumnCnt(); i++) {
             String columnName = this.currentSchema.GetColumnName(i);
             DataType dataType = this.currentSchema.GetColumnType(i);
