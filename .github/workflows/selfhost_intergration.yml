@@ -279,7 +279,7 @@ jobs:
           
   java-sdk-yarn:
     needs: build-openmldb
-    if: ${{ github.event.inputs.EXEC_TEST_TYPE == 'all' || github.event.inputs.EXEC_TEST_TYPE == 'java' }}
+    if: ${{ github.event.inputs.EXEC_TEST_TYPE == 'all' || github.event.inputs.EXEC_TEST_TYPE == 'java' || github.event.inputs.EXEC_TEST_TYPE == 'yarn'}}
     runs-on: [self-hosted,common-user]
     steps:
       - uses: actions/checkout@v3
