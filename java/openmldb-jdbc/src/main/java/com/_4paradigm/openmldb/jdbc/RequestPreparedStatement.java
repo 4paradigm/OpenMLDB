@@ -324,10 +324,7 @@ public class RequestPreparedStatement implements java.sql.PreparedStatement {
                 throw new SQLException("data not enough, index is " + i);
             }
         }
-        int strLen = 0;
-        for (Map.Entry<Integer, Integer> entry : stringsLen.entrySet()) {
-            strLen += entry.getValue();
-        }
+        int strLen = stringsLen.values().stream().mapToInt(Integer::intValue).sum();
         boolean ok = this.currentRow.Init(strLen);
         if (!ok) {
             throw new SQLException("build data row failed");
