@@ -261,7 +261,27 @@ public class RequestPreparedStatement implements java.sql.PreparedStatement {
     public void setRow(Map<String, Object> data) throws SQLException {
         for (int i = 0; i < this.currentSchema.GetColumnCnt(); i++) {
             String columnName = this.currentSchema.GetColumnName(i);
-            currentDatas.set(i, data.get(columnName));
+            DataType dataType = this.currentSchema.GetColumnType(i);
+            Object o = data.get(columnName);
+            if (DataType.kTypeString.equals(dataType)) {
+                 if (o == null) {
+                     setNull(i);
+                     return;
+                 }
+                 String s = String.valueOf(o);
+                 byte[] bytes = s.getBytes(CHARSET);
+                 stringsLen.put(i, bytes.length);
+            } else if (DataType.kTypeTimestamp.equals(dataType)) {
+                if (o == null) {
+                    setNull(i);
+                    return;
+                }
+                hasSet.set(i - 1, true);
+                Timestamp timestamp = Timestamp.valueOf(String.valueOf(o));
+                long ts = timestamp.getTime();
+                currentDatas.set(i - 1, ts);
+            }
+            currentDatas.set(i, o);
             hasSet.set(i, true);
         }
         addBatch();
