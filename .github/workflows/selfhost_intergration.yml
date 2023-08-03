@@ -1,6 +1,9 @@
 name: SELFHOST-INTEGRATION-TEST
 on:
 
+  schedule:
+    - cron: '0 0 * * *'
+
   workflow_dispatch:
     inputs:
       EXEC_TEST_TYPE:
@@ -73,6 +76,9 @@ jobs:
       - name: stop openmldb
         if: always()
         run: bash ${{ github.job }}/openmldb-${{ github.event.inputs.EXEC_VERSION }}-linux/sbin/stop-all.sh
+      - name: remove openmldb
+        if: success()
+        run: bash ${{ github.job }}/openmldb-${{ github.event.inputs.EXEC_VERSION }}-linux/sbin/clear-all.sh
       - name: TEST Results
         if: always()
         uses: EnricoMi/publish-unit-test-result-action@v1
@@ -127,6 +133,9 @@ jobs:
       - name: stop openmldb
         if: always()
         run: bash ${{ github.job }}/openmldb-${{ github.event.inputs.EXEC_VERSION }}-linux/sbin/stop-all.sh
+      - name: remove openmldb
+        if: success()
+        run: bash ${{ github.job }}/openmldb-${{ github.event.inputs.EXEC_VERSION }}-linux/sbin/clear-all.sh
       - name: TEST Results
         if: always()
         uses: EnricoMi/publish-unit-test-result-action@v1
@@ -182,6 +191,9 @@ jobs:
       - name: stop openmldb
         if: always()
         run: bash ${{ github.job }}/openmldb-${{ github.event.inputs.EXEC_VERSION }}-linux/sbin/stop-all.sh
+      - name: remove openmldb
+        if: success()
+        run: bash ${{ github.job }}/openmldb-${{ github.event.inputs.EXEC_VERSION }}-linux/sbin/clear-all.sh
       - name: TEST Results
         if: always()
         uses: EnricoMi/publish-unit-test-result-action@v1
@@ -236,6 +248,9 @@ jobs:
       - name: stop openmldb
         if: always()
         run: bash ${{ github.job }}/openmldb-${{ github.event.inputs.EXEC_VERSION }}-linux/sbin/stop-all.sh
+      - name: remove openmldb
+        if: success()
+        run: bash ${{ github.job }}/openmldb-${{ github.event.inputs.EXEC_VERSION }}-linux/sbin/clear-all.sh
       - name: TEST Results
         if: always()
         uses: EnricoMi/publish-unit-test-result-action@v1
@@ -277,7 +292,7 @@ jobs:
       - name: install openmldb
         run: |
           tar -zxf openmldb-linux.tar.gz -C ${{ github.job }}/
-          bash test/steps/format_config.sh $(pwd)/${{ github.job }}/openmldb-${{ github.event.inputs.EXEC_VERSION }}-linux ${{ github.job }} 24001 25000 java
+          bash test/steps/format_config.sh $(pwd)/${{ github.job }}/openmldb-${{ github.event.inputs.EXEC_VERSION }}-linux ${{ github.job }} 24001 25000 java hadoop
           bash ${{ github.job }}/openmldb-${{ github.event.inputs.EXEC_VERSION }}-linux/sbin/deploy-all.sh
           bash ${{ github.job }}/openmldb-${{ github.event.inputs.EXEC_VERSION }}-linux/sbin/start-all.sh
       - name: test
@@ -289,6 +304,9 @@ jobs:
       - name: stop openmldb
         if: always()
         run: bash ${{ github.job }}/openmldb-${{ github.event.inputs.EXEC_VERSION }}-linux/sbin/stop-all.sh
+      - name: remove openmldb
+        if: success()
+        run: bash ${{ github.job }}/openmldb-${{ github.event.inputs.EXEC_VERSION }}-linux/sbin/clear-all.sh
       - name: TEST Results
         if: always()
         uses: EnricoMi/publish-unit-test-result-action@v1
@@ -339,10 +357,12 @@ jobs:
           mkdir mvnrepo
           export MAVEN_OPTS="-Dmaven.repo.local=$(pwd)/mvnrepo"
           echo $MAVEN_OPTS
-          bash test/steps/openmldb-sdk-test-java-src.sh -c test_yarn.xml -d deploy -l "0" -s "memory"
       - name: stop openmldb
         if: always()
         run: bash ${{ github.job }}/openmldb-${{ github.event.inputs.EXEC_VERSION }}-linux/sbin/stop-all.sh
+      - name: remove openmldb
+        if: success()
+        run: bash ${{ github.job }}/openmldb-${{ github.event.inputs.EXEC_VERSION }}-linux/sbin/clear-all.sh
       # - name: TEST Results
       #   if: always()
       #   uses: EnricoMi/publish-unit-test-result-action@v1

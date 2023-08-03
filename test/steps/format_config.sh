@@ -15,17 +15,20 @@ dirName=${jobName}-${version}-${curTime}
 Hosts=(node-3 node-4 node-1)
 
 AvaNode1Ports=$(ssh ${Hosts[0]} "comm -23 <(seq $portFrom $portTo | sort) <(sudo ss -Htan | awk '{print $4}' | cut -d':' -f2 | sort -u) | shuf | head -n 8")
-AvaNode2Ports=$(ssh ${Hosts[1]} "comm -23 <(seq $portFrom $portTo | sort) <(sudo ss -Htan | awk '{print $4}' | cut -d':' -f2 | sort -u) | shuf | head -n 1")
+AvaNode2Ports=$(ssh ${Hosts[1]} "comm -23 <(seq $portFrom $portTo | sort) <(sudo ss -Htan | awk '{print $4}' | cut -d':' -f2 | sort -u) | shuf | head -n 2")
 AvaNode3Ports=$(ssh ${Hosts[2]} "comm -23 <(seq $portFrom $portTo | sort) <(sudo ss -Htan | awk '{print $4}' | cut -d':' -f2 | sort -u) | shuf | head -n 1")
+taskmanagerHost=hostname
+taskmanagerPort=$(ssh $taskmanagerHost} "comm -23 <(seq $portFrom $portTo | sort) <(sudo ss -Htan | awk '{print $4}' | cut -d':' -f2 | sort -u) | shuf | head -n 1")
 
 tablet1Port=$(echo $AvaNode1Ports | awk  '{print $1}')
 tablet2Port=$(echo $AvaNode2Ports | awk  '{print $1}')
 tablet3Port=$(echo $AvaNode3Ports | awk  '{print $1}')
 ns1Port=$(echo $AvaNode1Ports | awk  '{print $2}')
-#ns2Port=$(echo $AvaNode1Ports | awk  '{print $3}')
+ns2Port=$(echo $AvaNode2Ports | awk  '{print $2}')
 apiserverPort=$(echo $AvaNode1Ports | awk  '{print $4}')
-taskmanagerPort=$(echo $AvaNode1Ports | awk  '{print $5}')
+#taskmanagerPort=$(echo $AvaNode1Ports | awk  '{print $5}')
 zookeeperPort1=$(echo $AvaNode1Ports | awk  '{print $6}')
+
 zookeeperPort2=$(echo $AvaNode1Ports | awk  '{print $7}')
 zookeeperPort3=$(echo $AvaNode1Ports | awk  '{print $8}')
 
@@ -37,10 +40,11 @@ ${Hosts[1]}:$tablet2Port /tmp/$dirName/tablet
 ${Hosts[2]}:$tablet3Port /tmp/$dirName/tablet
 [nameserver]
 ${Hosts[0]}:$ns1Port /tmp/$dirName/ns
+${Hosts[1]}:$ns2Port /tmp/$dirName/ns
 [apiserver]
 ${Hosts[0]}:$apiserverPort /tmp/$dirName/apiserver
 [taskmanager]
-${Hosts[0]}:$taskmanagerPort /tmp/$dirName/taskmanager
+${taskmanagerHost}:$taskmanagerPort /tmp/$dirName/taskmanager
 [zookeeper]
 ${Hosts[0]}:$zookeeperPort1:$zookeeperPort2:$zookeeperPort3 /tmp/$dirName/zk
 EOF
@@ -98,7 +102,7 @@ server.port=$taskmanagerPort
 job.log.path=./logs/
 spark.home=/tmp/spark/spark-$dirName
 spark.master=yarn-client
-offline.data.prefix=hdfs:///openmldb_integration_test/
+offline.data.prefix=hdfs://node-1/openmldb_integration_test/
 spark.default.conf=spark.hadoop.yarn.timeline-service.enabled=false
 hadoop.conf.dir=/4pd/home/liuqiyuan/hadoop
 hadoop.user.name=root
@@ -110,11 +114,10 @@ fi
 
 if [ "$Dependency" = "kafka" ]; then
 // install kafak& deploy connector with kafka address and openmldb address
-cat >$rootPath/conf/taskmanager.properties<<EOF
-// config  test/integration-test/openmldb-test-java/openmldb-ecosystem/src/test/resources/kafka_test_cases.yml
-// "bootstrap.servers": localhost:9092,
+cat >$rootPath/test/integration-test/openmldb-test-java/openmldb-ecosystem/src/test/resources/kafka_test_cases.ymls<<EOF
+// "bootstrap.servers": node-4:49092,
 //  "connect.listeners": http://:8083,
-// apiserver.address: localhost:9080
+// apiserver.address: ${Hosts[0]}:$apiserverPort
 // "connection.url": "jdbc:openmldb:///kafka_test?zk=127.0.0.1:2181&zkPath=/openmldb"
 // zk_root_path: "/openmldb-$dirName"
 EOF
