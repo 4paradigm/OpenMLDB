@@ -2,7 +2,7 @@ name: SELFHOST-INTEGRATION-TEST
 on:
 
   schedule:
-    - cron: '0 9 * * *'
+    - cron: '0 14 * * *'
 
   workflow_dispatch:
     inputs:
@@ -24,7 +24,7 @@ jobs:
   build-openmldb:
 
     runs-on: [self-hosted,generic]
-    if: github.repository == 'lqy222/OpenMLDB'
+    if: github.repository == '4paradigm/OpenMLDB'
     container:
       image: ghcr.io/4paradigm/hybridsql:latest
     env:
@@ -299,6 +299,8 @@ jobs:
           bash test/steps/format_config.sh $(pwd)/${{ github.job }}/openmldb-${{ env.E_VERSION }}-linux ${{ github.job }} 24001 25000 java hadoop
           bash ${{ github.job }}/openmldb-${{ env.E_VERSION }}-linux/sbin/deploy-all.sh
           bash ${{ github.job }}/openmldb-${{ env.E_VERSION }}-linux/sbin/start-all.sh
+          bash ${{ github.job }}/openmldb-${{ env.E_VERSION }}-linux/sbin/stop-taskmanager.sh
+          bash HADOOP_CONF_DIR=/mnt/hdd0/denglong/openmldb_runner_work/hadoop ${{ github.job }}/openmldb-${{ env.E_VERSION }}-linux/sbin/stop-taskmanager.sh
       - name: test
         run: |
           mkdir mvnrepo
