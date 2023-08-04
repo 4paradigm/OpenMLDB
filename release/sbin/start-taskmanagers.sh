@@ -37,7 +37,7 @@ else
     dir=$(echo "$line" | awk -F ' ' '{print $3}')
 
     echo "start taskmanager in $dir with endpoint $host:$port "
-    cmd="cd $dir &&HADOOP_CONF_DIR=/4pd/home/liuqiyuan/hadoop SPARK_HOME=${SPARK_HOME} bin/start.sh start taskmanager $*"
+    cmd="cd $dir && SPARK_HOME=${SPARK_HOME} bin/start.sh start taskmanager $*"
     run_auto "$host" "$cmd"
   done
   IFS="$old_IFS"

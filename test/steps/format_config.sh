@@ -84,8 +84,8 @@ fi
 if [ "$Dependency" = "ssd" ]; then
 mkdir -p /mnt/nvmessd/qytest/$dirName
 cat >>$rootPath/conf/tablet.flags.template<<EOF
---ssd_root_path=/mnt/nvmessd/qytest/$dirName/db
---recycle_bin_ssd_root_path=/mnt/nvmessd/qytest/$dirName/recycle_ssd
+--ssd_root_path=/mnt/nvmessd/selfintegration/$dirName/db
+--recycle_bin_ssd_root_path=/mnt/nvmessd/selfintegration/$dirName/recycle_ssd
 EOF
 # comment node-1 tablet , no ssd existed in node-1
 sed -i "s/.*node-1.*/#&/g" out/openmldb_info.yaml
@@ -103,7 +103,7 @@ spark.home=/tmp/spark/spark-$dirName
 spark.master=yarn-client
 offline.data.prefix=hdfs://node-1/openmldb_integration_test/
 spark.default.conf=spark.hadoop.yarn.timeline-service.enabled=false
-hadoop.conf.dir=/4pd/home/liuqiyuan/hadoop
+hadoop.conf.dir=/mnt/hdd0/denglong/openmldb_runner_worker/hadoop
 hadoop.user.name=root
 external.function.dir=/tmp/
 EOF
