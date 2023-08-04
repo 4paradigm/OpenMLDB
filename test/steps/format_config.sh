@@ -7,7 +7,7 @@ portFrom=$3
 portTo=$4
 Type=$5
 Dependency=$6
-version=$(echo $($rootPath/bin/openmldb --version) | awk '{print $3}')
+version=$(grep 'OPENMLDB_VERSION' $rootPath/conf/openmldb-env.sh | awk -F= '{print $2}')
 curTime=$(date "+%m%d%H%M")
 dirName=${jobName}-${version}-${curTime}
 
@@ -50,9 +50,8 @@ ${Hosts[0]}:$zookeeperPort1:$zookeeperPort2:$zookeeperPort3 /tmp/$dirName/zk
 EOF
 
 #write openmldb.env.sh
-curVersion=$(grep 'OPENMLDB_VERSION' $rootPath/conf/openmldb-env.sh | awk -F= '{print $2}')
 cat >$rootPath/conf/openmldb-env.sh<<EOF
-export OPENMLDB_VERSION=$curVersion
+export OPENMLDB_VERSION=$version
 export OPENMLDB_MODE=\${OPENMLDB_MODE:=cluster}
 export OPENMLDB_USE_EXISTING_ZK_CLUSTER=false
 export OPENMLDB_ZK_HOME=
