@@ -17,12 +17,12 @@ on:
 env:
   GIT_SUBMODULE_STRATEGY: recursive
   DEPLOY_DIR: /mnt/hdd0/openmldb_runner_work/openmldb_env
-  NODE_LIST: node-1,node-4,node-3
+  NODE_LIST: node-1,node-2,node-3
 
 jobs:
   openmldb-tool-test:
     runs-on: [self-hosted,seq-task]
-  #  if: github.repository == '4paradigm/OpenMLDB'
+    if: github.repository == '4paradigm/OpenMLDB'
     steps:
       - uses: actions/checkout@v2
 
