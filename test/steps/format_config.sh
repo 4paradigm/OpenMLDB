@@ -17,7 +17,7 @@ Hosts=(node-3 node-4 node-1)
 AvaNode1Ports=$(ssh ${Hosts[0]} "comm -23 <(seq $portFrom $portTo | sort) <(sudo ss -Htan | awk '{print $4}' | cut -d':' -f2 | sort -u) | shuf | head -n 8")
 AvaNode2Ports=$(ssh ${Hosts[1]} "comm -23 <(seq $portFrom $portTo | sort) <(sudo ss -Htan | awk '{print $4}' | cut -d':' -f2 | sort -u) | shuf | head -n 2")
 AvaNode3Ports=$(ssh ${Hosts[2]} "comm -23 <(seq $portFrom $portTo | sort) <(sudo ss -Htan | awk '{print $4}' | cut -d':' -f2 | sort -u) | shuf | head -n 1")
-taskmanagerHost=$(hostname)
+taskmanagerHost=$(hostname | awk -F"." '{print$1}' )
 taskmanagerPort=$(ssh ${taskmanagerHost} "comm -23 <(seq $portFrom $portTo | sort) <(sudo ss -Htan | awk '{print $4}' | cut -d':' -f2 | sort -u) | shuf | head -n 1")
 
 tablet1Port=$(echo $AvaNode1Ports | awk  '{print $1}')
