@@ -21,7 +21,7 @@ env:
 
 jobs:
   openmldb-tool-test:
-    runs-on: [self-hosted,generic]
+    runs-on: [self-hosted,seq-task]
   #  if: github.repository == '4paradigm/OpenMLDB'
     steps:
       - uses: actions/checkout@v2
@@ -29,7 +29,7 @@ jobs:
       - name: prepare env
         run: |
           VERSION=`git fetch --tags | git tag -l v[0-9].* | tail -n1`
-          VERSION='0.8.2'
+          VERSION=${VERSION#v}
           echo "OPENMLDB_VETSION=$VERSION" >> $GITHUB_ENV
           bash test/test-tool/openmldb-deploy/gen_conf.sh ${{ env.DEPLOY_DIR }} ${{ env.NODE_LIST }} > hosts
           pip3 install requests openmldb pytest
