@@ -212,10 +212,10 @@ class Executor:
         cmd.append("--cmd=gettablestatus " + tid + " " + pid)
         status, output = self.RunWithRetuncode(cmd)
         if not status.OK():
-            log.error("gettablestatus failed")
+            log.error("gettablestatus failed on " + str(cmd))
             return status, None
         if "failed" in output:
-            log.error("gettablestatus failed")
+            log.error("gettablestatus failed on " + str(cmd))
             return Status(-1, output), None
         result = {}
         for record in self.ParseResult(output):
