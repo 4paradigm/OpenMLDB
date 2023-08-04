@@ -2,7 +2,7 @@ name: SELFHOST-INTEGRATION-TEST
 on:
 
   schedule:
-    - cron: '0 0 * * *'
+    - cron: '0 5 * * *'
 
   workflow_dispatch:
     inputs:
@@ -29,14 +29,14 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - name: build
-        if: ${{ github.event.inputs.EXEC_VERSION == 'main' }}
+        if: ${{ github.event.inputs.EXEC_VERSION == 'main' ||  github.event.inputs.EXEC_VERSION == '' }}
         run: |
          make configure CMAKE_INSTALL_PREFIX=openmldb-linux
          make SQL_JAVASDK_ENABLE=ON && make SQL_JAVASDK_ENABLE=ON install
          mv openmldb-linux openmldb-main-linux
          tar -zcf openmldb-linux.tar.gz openmldb-main-linux
       - name: download
-        if: ${{ github.event.inputs.EXEC_VERSION != 'main' }}
+        if: ${{ github.event.inputs.EXEC_VERSION != '' && github.event.inputs.EXEC_VERSION != 'main' }}
         run: | 
          curl -SLO https://github.com/4paradigm/OpenMLDB/releases/download/v${{ github.event.inputs.EXEC_VERSION }}/openmldb-${{ github.event.inputs.EXEC_VERSION }}-linux.tar.gz
          tar -zxf openmldb-${{ github.event.inputs.EXEC_VERSION }}-linux.tar.gz 
@@ -51,7 +51,7 @@ jobs:
     
   java-sdk-cluster-memory-0:
     needs: build-openmldb
-    if: ${{ github.event.inputs.EXEC_TEST_TYPE == 'all' || github.event.inputs.EXEC_TEST_TYPE == 'java' }}
+    if: ${{ github.event.inputs.EXEC_TEST_TYPE == 'all' || github.event.inputs.EXEC_TEST_TYPE == 'java' || github.event.inputs.EXEC_TEST_TYPE == '' }}
     runs-on: [self-hosted,common-user]
     steps:
       - uses: actions/checkout@v3
@@ -108,7 +108,7 @@ jobs:
           
   java-sdk-cluster-memory-1:
     needs: build-openmldb
-    if: ${{ github.event.inputs.EXEC_TEST_TYPE == 'all' || github.event.inputs.EXEC_TEST_TYPE == 'java' }}
+    if: ${{ github.event.inputs.EXEC_TEST_TYPE == 'all' || github.event.inputs.EXEC_TEST_TYPE == 'java' || github.event.inputs.EXEC_TEST_TYPE == '' }}
     runs-on: [self-hosted,common-user]
     steps:
       - uses: actions/checkout@v3
@@ -166,7 +166,7 @@ jobs:
         
   java-sdk-cluster-hdd:
     needs: build-openmldb
-    if: ${{ github.event.inputs.EXEC_TEST_TYPE == 'all' || github.event.inputs.EXEC_TEST_TYPE == 'java' }}
+    if: ${{ github.event.inputs.EXEC_TEST_TYPE == 'all' || github.event.inputs.EXEC_TEST_TYPE == 'java' || github.event.inputs.EXEC_TEST_TYPE == '' }}
     runs-on: [self-hosted,common-user]
     steps:
       - uses: actions/checkout@v3
@@ -223,7 +223,7 @@ jobs:
 
   java-sdk-cluster-ssd:
     needs: build-openmldb
-    if: ${{ github.event.inputs.EXEC_TEST_TYPE == 'all' || github.event.inputs.EXEC_TEST_TYPE == 'java' }}
+    if: ${{ github.event.inputs.EXEC_TEST_TYPE == 'all' || github.event.inputs.EXEC_TEST_TYPE == 'java' || github.event.inputs.EXEC_TEST_TYPE == '' }}
     runs-on: [self-hosted,common-user]
     steps:
       - uses: actions/checkout@v3
@@ -279,7 +279,7 @@ jobs:
           
   java-sdk-yarn:
     needs: build-openmldb
-    if: ${{ github.event.inputs.EXEC_TEST_TYPE == 'all' || github.event.inputs.EXEC_TEST_TYPE == 'java' || github.event.inputs.EXEC_TEST_TYPE == 'yarn'}}
+    if: ${{ github.event.inputs.EXEC_TEST_TYPE == 'all' || github.event.inputs.EXEC_TEST_TYPE == 'java' || github.event.inputs.EXEC_TEST_TYPE == 'yarn' || github.event.inputs.EXEC_TEST_TYPE == ''}}
     runs-on: [self-hosted,common-user]
     steps:
       - uses: actions/checkout@v3
@@ -336,7 +336,7 @@ jobs:
 
   java-sdk-kafka:
     needs: build-openmldb
-    if: ${{ github.event.inputs.EXEC_TEST_TYPE == 'all' || github.event.inputs.EXEC_TEST_TYPE == 'java' }}
+    if: ${{ github.event.inputs.EXEC_TEST_TYPE == 'all' || github.event.inputs.EXEC_TEST_TYPE == 'java' || github.event.inputs.EXEC_TEST_TYPE == '' }}
     runs-on: [self-hosted,common-user]
     steps:
       - uses: actions/checkout@v3
