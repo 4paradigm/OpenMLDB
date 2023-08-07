@@ -17,12 +17,12 @@
 from setuptools import setup, find_packages
 
 setup(
-    name='openmldb-tool',
-    version='0.8.2a0',
-    author='OpenMLDB Team',
-    author_email=' ',
-    url='https://github.com/4paradigm/OpenMLDB',
-    description='OpenMLDB Tool',
+    name="openmldb-tool",
+    version="0.8.2a0",
+    author="OpenMLDB Team",
+    author_email=" ",
+    url="https://github.com/4paradigm/OpenMLDB",
+    description="OpenMLDB Tool",
     license="copyright 4paradigm.com",
     classifiers=[
         "Programming Language :: Python :: 3",
