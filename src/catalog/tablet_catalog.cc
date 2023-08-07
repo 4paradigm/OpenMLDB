@@ -499,8 +499,7 @@ void TabletCatalog::Refresh(const std::vector<::openmldb::nameserver::TableInfo>
         if (db_name.empty()) {
             continue;
         }
-        bool index_updated = false;
-        if (!UpdateTableInfo(table_info, &index_updated)) {
+        if (bool index_updated = false; !UpdateTableInfo(table_info, &index_updated)) {
             continue;
         } else if (index_updated) {
             *updated = true;

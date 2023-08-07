@@ -4247,12 +4247,12 @@ bool TabletImpl::RefreshSingleTable(uint32_t tid) {
         LOG(WARNING) << "fail to parse table proto. tid: " << tid << " value: " << value;
         return false;
     }
-    bool index_updated = false;
-    bool ret = catalog_->UpdateTableInfo(table_info, &index_updated);
-    if (ret && index_updated) {
+    if (bool index_updated = false; !catalog_->UpdateTableInfo(table_info, &index_updated)) {
+        return false;
+    } else if (index_updated) {
         engine_->ClearCacheLocked("");
     }
-    return ret;
+    return true;
 }
 
 void TabletImpl::UpdateGlobalVarTable() {
