@@ -39,11 +39,8 @@ ROOT=$(pwd)
 cmake_file="$ROOT/CMakeLists.txt"
 
 VERSION=$1
-# shellcheck disable=SC2001
-SUFFIX_VERSION=$(echo "$VERSION" | sed -e 's/^[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*//')
-BASE_VERSION=${VERSION%"$SUFFIX_VERSION"}
 # shellcheck disable=SC2206
-ARR=(${BASE_VERSION//./ })
+ARR=(${VERSION//./ })
 echo "splited version components: ${ARR[*]}"
 if [[ "${#ARR[*]}" -lt 3 ]]; then
     echo -e "${RED}inputed version should have at least three number${NC}"
@@ -67,8 +64,10 @@ popd
 
 # tweak python sdk version
 PY_VERSION=$VERSION
-if [[ ${VERSION} =~ "SNAPSHOT" ]]; then
-    PY_VERSION="${ARR[0]}.${ARR[1]}.${ARR[2]}a0"
+if [[ ${#ARR[@]} -gt 3 ]]; then
+    # has {pre-prelease-identifier}
+    # refer: https://www.python.org/dev/peps/pep-0440/#pre-releases
+    PY_VERSION="${ARR[0]}.${ARR[1]}.${ARR[2]}${ARR[3]}"
 fi
 
 # version in python sdk

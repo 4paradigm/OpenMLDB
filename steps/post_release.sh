@@ -25,4 +25,4 @@ fi
 sed -i"" -e "s/OPENMLDB_VERSION=[0-9]\.[0-9]\.[0-9]/OPENMLDB_VERSION=${VERSION}/g" demo/Dockerfile
 sed -i"" -e "s/SPARK_VERSION=[0-9]\.[0-9]\.[0-9]/SPARK_VERSION=${VERSION}/g" test/integration-test/openmldb-test-python/install.sh
 
-sh steps/prepare_release.sh "${VERSION}-SNAPSHOT"
+sh steps/prepare_release.sh "${VERSION}.a0"
