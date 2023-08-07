@@ -4247,7 +4247,12 @@ bool TabletImpl::RefreshSingleTable(uint32_t tid) {
         LOG(WARNING) << "fail to parse table proto. tid: " << tid << " value: " << value;
         return false;
     }
-    return catalog_->UpdateTableInfo(table_info);
+    bool index_updated = false;
+    bool ret = catalog_->UpdateTableInfo(table_info, &index_updated);
+    if (ret && index_updated) {
+        engine_->ClearCacheLocked("");
+    }
+    return ret;
 }
 
 void TabletImpl::UpdateGlobalVarTable() {
@@ -4369,7 +4374,11 @@ void TabletImpl::RefreshTableInfo() {
         }
     }
     auto old_db_sp_map = catalog_->GetProcedures();
-    catalog_->Refresh(table_info_vec, version, db_sp_map);
+    bool updated = false;
+    catalog_->Refresh(table_info_vec, version, db_sp_map, &updated);
+    if (updated) {
+        engine_->ClearCacheLocked("");
+    }
     // skip exist procedure, don`t need recompile
     for (const auto& db_sp_map_kv : db_sp_map) {
         const auto& db = db_sp_map_kv.first;
