@@ -34,7 +34,7 @@ ls jd-recommendation/
 export demodir=<your_path>/jd-recommendation/
 ```
 
-本例仅使用小数据集做演示。如果你想要使用全量数据集，请下载 [JD_data](http://openmldb.ai/download/jd-recommendation/JD_data.tgz)。
+本例仅使用小数据集做演示。如果你想要使用全量数据集，请下载 [JD_data](https://openmldb.ai/download/jd-recommendation/JD_data.tgz)。
 
 ### 安装 OneFlow 工具包
 
