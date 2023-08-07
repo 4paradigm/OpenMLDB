@@ -149,7 +149,7 @@ int64_t special_sum_output(::openmldb::base::UDFContext* ctx) {
 - 执行编译命令，其中 -I 指定inlcude目录的路径 -o 指定产出动态库的名称
 - 
 ```shell
-g++ -shared -o libtest_udf.so examples/test_udf.cc -I /work/OpenMLDB/include -std=c++11 -fPIC
+g++ -shared -o libtest_udf.so examples/test_udf.cc -I /work/OpenMLDB/include -std=c++17 -fPIC
 ```
 
 ### 2.3 拷贝动态库

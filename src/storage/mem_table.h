@@ -30,41 +30,12 @@
 #include "storage/ticket.h"
 #include "vm/catalog.h"
 
-using ::openmldb::api::LogEntry;
-using ::openmldb::base::Slice;
-
 namespace openmldb {
 namespace storage {
 
 typedef google::protobuf::RepeatedPtrField<::openmldb::api::Dimension> Dimensions;
-
-class MemTableTraverseIterator : public TraverseIterator {
- public:
-    MemTableTraverseIterator(Segment** segments, uint32_t seg_cnt, ::openmldb::storage::TTLType ttl_type,
-                             uint64_t expire_time, uint64_t expire_cnt, uint32_t ts_index);
-    ~MemTableTraverseIterator() override;
-    inline bool Valid() override;
-    void Next() override;
-    void NextPK() override;
-    void Seek(const std::string& key, uint64_t time) override;
-    openmldb::base::Slice GetValue() const override;
-    std::string GetPK() const override;
-    uint64_t GetKey() const override;
-    void SeekToFirst() override;
-    uint64_t GetCount() const override;
-
- private:
-    Segment** segments_;
-    uint32_t const seg_cnt_;
-    uint32_t seg_idx_;
-    KeyEntries::Iterator* pk_it_;
-    TimeEntries::Iterator* it_;
-    uint32_t record_idx_;
-    uint32_t ts_idx_;
-    TTLSt expire_value_;
-    Ticket ticket_;
-    uint64_t traverse_cnt_;
-};
+using ::openmldb::api::LogEntry;
+using ::openmldb::base::Slice;
 
 class MemTable : public Table {
  public:
@@ -87,7 +58,7 @@ class MemTable : public Table {
     bool BulkLoad(const std::vector<DataBlock*>& data_blocks,
                   const ::google::protobuf::RepeatedPtrField<::openmldb::api::BulkLoadIndex>& indexes);
 
-    bool Delete(const std::string& pk, uint32_t idx) override;
+    bool Delete(const ::openmldb::api::LogEntry& entry) override;
 
     // use the first demission
     TableIterator* NewIterator(const std::string& pk, Ticket& ticket) override;
@@ -115,7 +86,7 @@ class MemTable : public Table {
 
     uint64_t GetRecordByteSize() const override { return record_byte_size_.load(std::memory_order_relaxed); }
 
-    uint64_t GetRecordCnt() const override { return record_cnt_.load(std::memory_order_relaxed); }
+    uint64_t GetRecordCnt() override { return GetRecordIdxCnt(); }
 
     inline uint32_t GetSegCnt() const { return seg_cnt_; }
 
@@ -143,7 +114,6 @@ class MemTable : public Table {
     std::vector<Segment**> segments_;
     std::atomic<bool> enable_gc_;
     uint64_t ttl_offset_;
-    std::atomic<uint64_t> record_cnt_;
     bool segment_released_;
     std::atomic<uint64_t> record_byte_size_;
     uint32_t key_entry_max_height_;
