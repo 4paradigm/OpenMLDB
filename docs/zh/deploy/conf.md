@@ -138,6 +138,8 @@
 --ssd_root_path=./db_ssd
 # 配置数据回收站目录，drop表的数据就会放在这里
 --recycle_bin_ssd_root_path=./recycle_ssd
+# 配置是否开启回收站, 如果开启drop table后的数据会放到recycle目录里
+#--recycle_bin_enabled=true
 
 # snapshot conf
 # 配置做snapshot的时间，配置为一天中的几点。如23就表示每天23点做snapshot
