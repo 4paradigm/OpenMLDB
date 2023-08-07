@@ -67,11 +67,6 @@ popd
 
 # tweak python sdk version
 PY_VERSION=$VERSION
-if [[ ${#ARR[@]} -gt 3 ]]; then
-    # has {pre-prelease-identifier}
-    # refer: https://www.python.org/dev/peps/pep-0440/#pre-releases
-    PY_VERSION="${ARR[0]}.${ARR[1]}.${ARR[2]}${ARR[3]}"
-fi
 if [[ ${VERSION} =~ "SNAPSHOT" ]]; then
     PY_VERSION="${ARR[0]}.${ARR[1]}.${ARR[2]}a0"
 fi
