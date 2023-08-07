@@ -137,6 +137,9 @@ include(FetchContent)
 set(FETCHCONTENT_QUIET OFF)
 include(farmhash)
 
+# contrib libs
+add_subdirectory(contrib EXCLUDE_FROM_ALL)
+
 if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
     set(OS_LIB ${CMAKE_THREAD_LIBS_INIT} rt)
     set(BRPC_LIBS ${BRPC_LIBRARY} ${Protobuf_LIBRARIES} ${GLOG_LIBRARY} ${GFLAGS_LIBRARY} ${UNWIND_LIBRARY} ${OPENSSL_LIBRARIES} ${LEVELDB_LIBRARY} ${Z_LIBRARY} ${SNAPPY_LIBRARY} dl pthread ${OS_LIB})

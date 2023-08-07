@@ -1,11 +1,12 @@
 =============================
-Quickstart
+SDK
 =============================
 
 .. toctree::
     :maxdepth: 1
 
-    openmldb_quickstart
-    concepts/index
-    cli_tutorial
-    sdk/index
+    java_sdk
+    python_sdk
+    rest_api
+    go_sdk
+    cpp_sdk
