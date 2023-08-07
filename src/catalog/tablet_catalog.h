@@ -182,7 +182,8 @@ class TabletTableHandler : public ::hybridse::vm::TableHandler,
 
     int DeleteTable(uint32_t pid);
 
-    bool Update(const ::openmldb::nameserver::TableInfo &meta, const ClientManager &client_manager, bool* index_updated);
+    bool Update(const ::openmldb::nameserver::TableInfo &meta, const ClientManager &client_manager,
+            bool* index_updated);
 
  private:
     inline int32_t GetColumnIndex(const std::string &column) {
