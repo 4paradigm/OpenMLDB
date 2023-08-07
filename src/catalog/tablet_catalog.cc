@@ -480,8 +480,9 @@ bool TabletCatalog::UpdateTableInfo(const ::openmldb::nameserver::TableInfo& tab
         } else {
             handler = it->second;
         }
-        bool updated = false;
-        if (handler->Update(table_info, client_manager_, &updated) && updated) {
+        if (bool updated = false; !handler->Update(table_info, client_manager_, &updated)) {
+            return false;
+        } else if (updated) {
             *index_updated = true;
         }
     }
