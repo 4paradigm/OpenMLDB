@@ -100,6 +100,49 @@ class SQLClusterDDLTest : public SQLClusterTest {
     std::string db;
 };
 
+
+TEST_F(SQLClusterDDLTest, TestShowAndDropDeployment) {
+    std::string db2 = "db" + GenRand();
+    std::string table_name = "tb" + GenRand();
+    std::string deploy_name = "dp" + GenRand();
+    ::hybridse::sdk::Status status;
+
+    std::string ddl;
+    ddl = "create table " + table_name +
+          "("
+          "col1 int, col2 bigint, col3 string, "
+          "index(key = col3, ts = col2));";
+
+    ASSERT_TRUE(router->CreateDB(db2, &status));
+    ASSERT_TRUE(router->ExecuteDDL(db, ddl, &status));
+
+    ASSERT_TRUE(router->RefreshCatalog());
+    SetOnlineMode(router);
+
+    router->ExecuteSQL(db, "deploy " + deploy_name + " select col1 from " + table_name + ";", &status);
+    ASSERT_TRUE(status.IsOK());
+    router->ExecuteSQL(db2, "deploy " + deploy_name + " select col1 from " + db + "." + table_name + ";", &status);
+    ASSERT_TRUE(status.IsOK());
+
+    router->ExecuteSQL(db, "show deployment " + deploy_name + ";", &status);
+    ASSERT_TRUE(status.IsOK());
+    router->ExecuteSQL(db, "show deployment " + db2 + "." + deploy_name + ";", &status);
+    ASSERT_TRUE(status.IsOK());
+
+    router->ExecuteSQL(db, "drop deployment " + deploy_name + ";", &status);
+    ASSERT_TRUE(status.IsOK());
+    router->ExecuteSQL(db, "drop deployment " + db2 + "." + deploy_name + ";", &status);
+    ASSERT_TRUE(status.IsOK());
+
+    router->ExecuteSQL(db, "show deployment " + deploy_name + ";", &status);
+    ASSERT_FALSE(status.IsOK());
+    router->ExecuteSQL(db, "show deployment " + db2 + "." + deploy_name + ";", &status);
+    ASSERT_FALSE(status.IsOK());
+
+    ASSERT_TRUE(router->ExecuteDDL(db, "drop table " + table_name + ";", &status));
+    ASSERT_TRUE(router->DropDB(db2, &status));
+}
+
 TEST_F(SQLClusterDDLTest, TestShowSortedJobs) {
     std::string name = "job_info" + GenRand();
     ::hybridse::sdk::Status status;
