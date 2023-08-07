@@ -2981,7 +2981,6 @@ void NameServerImpl::DropTableInternel(const DropTableRequest& request, GeneralR
         for (const auto& kv : pkv.second) {
             if (!kv.second->DropTable(tid, pkv.first)) {
                 PDLOG(WARNING, "drop table failed. tid[%u] pid[%u] endpoint[%s]", tid, pkv.first, kv.first.c_str());
-                code = 313;  // if drop table failed, return error
                 continue;
             }
             PDLOG(INFO, "drop table. tid[%u] pid[%u] endpoint[%s]", tid, pkv.first, kv.first.c_str());
@@ -2993,7 +2992,7 @@ void NameServerImpl::DropTableInternel(const DropTableRequest& request, GeneralR
         if (!request.db().empty()) {
             if (IsClusterMode() && !zk_client_->DeleteNode(zk_path_.db_table_data_path_ + "/" + std::to_string(tid))) {
                 PDLOG(WARNING, "delete db table node[%s/%u] failed!", zk_path_.db_table_data_path_.c_str(), tid);
-                code = 304;
+                code = base::ReturnCode::kSetZkFailed;
             } else {
                 PDLOG(INFO, "delete table node[%s/%u]", zk_path_.db_table_data_path_.c_str(), tid);
                 db_table_info_[db].erase(name);
@@ -3001,7 +3000,7 @@ void NameServerImpl::DropTableInternel(const DropTableRequest& request, GeneralR
         } else {
             if (IsClusterMode() && !zk_client_->DeleteNode(zk_path_.table_data_path_ + "/" + name)) {
                 PDLOG(WARNING, "delete table node[%s/%s] failed!", zk_path_.table_data_path_.c_str(), name.c_str());
-                code = 304;
+                code = base::ReturnCode::kSetZkFailed;
             } else {
                 PDLOG(INFO, "delete table node[%s/%s]", zk_path_.table_data_path_.c_str(), name.c_str());
                 table_info_.erase(name);
@@ -3017,7 +3016,7 @@ void NameServerImpl::DropTableInternel(const DropTableRequest& request, GeneralR
                                       FLAGS_name_server_task_concurrency_for_replica_cluster) < 0) {
                     PDLOG(WARNING, "create DropTableRemoteOP for replica cluster failed, table_name: %s, alias: %s",
                           name.c_str(), kv.first.c_str());
-                    code = 505;
+                    code = base::ReturnCode::kCreateDroptableremoteopForReplicaClusterFailed;
                     continue;
                 }
             }
