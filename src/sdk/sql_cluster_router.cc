@@ -1743,8 +1743,9 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::HandleSQLCmd(const h
             if (!status->IsOK()) {
                 return {};
             }
+
             std::vector<api::ProcedureInfo> sps;
-            if (!ns_ptr->ShowProcedure(db, deploy_name, &sps, &msg)) {
+            if (!ns_ptr->ShowProcedure(db_name, deploy_name, &sps, &msg)) {
                 *status = {StatusCode::kCmdError, msg};
                 return {};
             }
@@ -1781,13 +1782,15 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::HandleSQLCmd(const h
             return ResultSetSQL::MakeResultSet({"DB", "Deployment"}, lines, status);
         }
         case hybridse::node::kCmdDropDeployment: {
-            if (db.empty()) {
-                *status = {StatusCode::kCmdError, "please enter database first"};
+            std::string db_name, deploy_name;
+            auto& args = cmd_node->GetArgs();
+            *status = ParseNamesFromArgs(db, args, &db_name, &deploy_name);
+            if (!status->IsOK()) {
                 return {};
             }
-            std::string deploy_name = cmd_node->GetArgs()[0];
+
             // check if deployment, avoid deleting the normal procedure
-            auto sp = cluster_sdk_->GetProcedureInfo(db, deploy_name, &msg);
+            auto sp = cluster_sdk_->GetProcedureInfo(db_name, deploy_name, &msg);
             if (!sp || sp->GetType() != hybridse::sdk::kReqDeployment) {
                 *status = {StatusCode::kCmdError, sp ? "not a deployment" : "deployment not found"};
                 return {};
@@ -1795,7 +1798,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::HandleSQLCmd(const h
             if (!CheckAnswerIfInteractive("deployment", deploy_name)) {
                 return {};
             }
-            if (ns_ptr->DropProcedure(db, deploy_name, msg)) {
+            if (ns_ptr->DropProcedure(db_name, deploy_name, msg)) {
                 RefreshCatalog();
                 *status = {};
             } else {
