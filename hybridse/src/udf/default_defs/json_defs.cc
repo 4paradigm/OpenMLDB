@@ -16,13 +16,14 @@
 
 #include "simdjson.h"
 #include "udf/default_udf_library.h"
+#include "udf/udf.h"
 #include "udf/udf_library.h"
 #include "udf/udf_registry.h"
 
 namespace hybridse {
 namespace udf {
 
-void json_array_length(openmldb::base::StringRef* in, int32_t* sz, bool* is_null) {
+void json_array_length(openmldb::base::StringRef* in, int32_t* sz, bool* is_null) noexcept {
     *is_null = true;
 
     simdjson::ondemand::parser parser;
@@ -47,6 +48,82 @@ void json_array_length(openmldb::base::StringRef* in, int32_t* sz, bool* is_null
     *sz = static_cast<int32_t>(arr_sz);
 }
 
+void get_json_object(openmldb::base::StringRef* in, openmldb::base::StringRef* json_path,
+                     openmldb::base::StringRef* out, bool* is_null) noexcept {
+    *is_null = true;
+
+    simdjson::ondemand::parser parser;
+    simdjson::padded_string json(in->data_, in->size_);
+    simdjson::ondemand::document doc;
+    simdjson::error_code err = simdjson::error_code::SUCCESS;
+
+    if (parser.iterate(json).tie(doc, err); err) {
+        return;
+    }
+
+    simdjson::ondemand::value val;
+    std::string_view path(json_path->data_, json_path->size_);
+    if (doc.at_pointer(path).tie(val, err); err) {
+        return;
+    }
+
+    simdjson::ondemand::json_type type;
+    if (val.type().tie(type, err); err) {
+        return;
+    }
+    std::string_view raw_str;
+    switch (type) {
+        // NOTE: JSON validation skipped for null/bool/number simplify for performance,
+        // for array/object, it only check from the outermost, whether it is valid inside array/object is not,
+        // string value always checked.
+        // Recheck here if u think more accurate syntax check is necessary.
+        case simdjson::ondemand::json_type::null:
+        case simdjson::ondemand::json_type::boolean:
+        case simdjson::ondemand::json_type::number: {
+            if (simdjson::to_json_string(val).tie(raw_str, err); err) {
+                return;
+            }
+            break;
+        }
+        case simdjson::ondemand::json_type::array: {
+            simdjson::ondemand::array arr;
+            if (val.get_array().tie(arr, err); err) {
+                return;
+            }
+            if (simdjson::to_json_string(arr).tie(raw_str, err); err) {
+                return;
+            }
+            break;
+        }
+        case simdjson::ondemand::json_type::object: {
+            simdjson::ondemand::object obj;
+            if (val.get_object().tie(obj, err); err) {
+                return;
+            }
+            if (simdjson::to_json_string(obj).tie(raw_str, err); err) {
+                return;
+            }
+            break;
+        }
+        case simdjson::ondemand::json_type::string: {
+            if (val.get_string().tie(raw_str, err); err) {
+                return;
+            }
+            break;
+        }
+        default:
+            return;
+    }
+
+    size_t sz = raw_str.size();
+    char* buf = v1::AllocManagedStringBuf(sz);
+    memcpy(buf, raw_str.data(), sz);
+
+    out->size_ = sz;
+    out->data_ = buf;
+    *is_null = false;
+}
+
 void DefaultUdfLibrary::InitJsonUdfs() {
     RegisterExternal("json_array_length")
     .args<openmldb::base::StringRef>(json_array_length)
@@ -68,6 +145,39 @@ void DefaultUdfLibrary::InitJsonUdfs() {
 
            select json_array_length('[1, 2')
            -- NULL
+         @endcode
+
+         @since 0.9.0)");
+
+    RegisterExternal("get_json_object")
+    .args<openmldb::base::StringRef, openmldb::base::StringRef>(get_json_object)
+    .doc(R"(
+         @brief Extracts a JSON object from [JSON Pointer](https://datatracker.ietf.org/doc/html/rfc6901)
+
+         NOTE JSON string is not fully validated. Which means that the function may still returns values even though returned string does not valid for JSON.
+         Precisely, if the part which json path refered to is array or object, whether content inside the array or object is not checked.
+
+         @param expr A string expression contains well formed JSON
+         @param path A string expression of JSON string representation from [JSON Pointer](https://datatracker.ietf.org/doc/html/rfc6901)
+
+         Example:
+
+         @code{.sql}
+           select get_json_object('{"boo": "baz"}', "/boo")
+           -- baz
+
+           select get_json_object('{"boo": [1, 2]}', "/boo/0")
+           -- 1
+
+           select get_json_object('{"m~n": 1}', "/m~0n")
+           -- 1
+
+           select get_json_object('{"m/n": 1}', "/m~1n")
+           -- 1
+
+           select get_json_object('{"foo": {"bar": bz}}', "/foo")
+           -- {"bar": bz}
+           --- returns value even input JSON is not a valid JSON
          @endcode
 
          @since 0.9.0)");
