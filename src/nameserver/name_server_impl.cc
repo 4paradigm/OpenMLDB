@@ -2981,6 +2981,7 @@ void NameServerImpl::DropTableInternel(const DropTableRequest& request, GeneralR
         for (const auto& kv : pkv.second) {
             if (!kv.second->DropTable(tid, pkv.first)) {
                 PDLOG(WARNING, "drop table failed. tid[%u] pid[%u] endpoint[%s]", tid, pkv.first, kv.first.c_str());
+                code = base::ReturnCode::kDropTableError;  // if drop table failed, return error
                 continue;
             }
             PDLOG(INFO, "drop table. tid[%u] pid[%u] endpoint[%s]", tid, pkv.first, kv.first.c_str());

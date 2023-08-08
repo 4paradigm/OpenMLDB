@@ -635,7 +635,7 @@ bool TabletClient::DropTable(uint32_t id, uint32_t pid, std::shared_ptr<TaskInfo
     ::openmldb::api::DropTableResponse response;
     bool ok = client_.SendRequest(&::openmldb::api::TabletServer_Stub::DropTable, &request, &response,
                                   FLAGS_request_timeout_ms, 1);
-    if (!ok || response.code() != 0) {
+    if (!ok || (response.code() != 0 && response.code() != base::ReturnCode::kTableIsNotExist)) {
         return false;
     }
     return true;
