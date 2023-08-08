@@ -15,7 +15,7 @@ OUT4=$(wc -l /tmp/openmldb_testout/t1_double/*.csv | grep -v total | awk '{sum+=
 OUT5=$(wc -l /tmp/openmldb_testout/t2_double/*.csv | grep -v total | awk '{sum+=$1-1}END{print sum}')
 if [ "$OUT1,$OUT2,$OUT3,$OUT4,$OUT5" != "10000,10000,10000,20000,20000" ]; then
     echo "offline test failed, $OUT1,$OUT2,$OUT3,$OUT4,$OUT5"
-    exit -1
+    exit 1
 fi
 
 echo "udf test"
