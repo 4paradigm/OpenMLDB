@@ -1532,6 +1532,10 @@ TEST_F(UdfIRBuilderTest, GetJsonObject) {
         {"-x", R"({"a": -x})", "/a"},
         {"[nx]", R"({"a": [nx]})", "/a"},
         {R"({"g": trx})", R"({"a": {"g": trx}})", "/a"},
+
+        // invalid array/object part result in strange behavior, won't assert in tests
+        // {R"({"g":}})", R"({"a": {"g":}})", "/a"},
+        // {"[xxy}", R"({"a": [xxy})", "/a"},
     };
 
     for (auto cs : cases) {

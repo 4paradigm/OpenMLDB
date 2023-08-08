@@ -73,34 +73,15 @@ void get_json_object(openmldb::base::StringRef* in, openmldb::base::StringRef* j
     }
     std::string_view raw_str;
     switch (type) {
-        // NOTE: JSON validation skipped for null/bool/number simplify for performance,
-        // for array/object, it only check from the outermost, whether it is valid inside array/object is not,
+        // NOTE: JSON validation skipped for null/bool/number/array/object simplify for performance,
         // string value always checked.
         // Recheck here if u think more accurate syntax check is necessary.
         case simdjson::ondemand::json_type::null:
         case simdjson::ondemand::json_type::boolean:
-        case simdjson::ondemand::json_type::number: {
-            if (simdjson::to_json_string(val).tie(raw_str, err); err) {
-                return;
-            }
-            break;
-        }
-        case simdjson::ondemand::json_type::array: {
-            simdjson::ondemand::array arr;
-            if (val.get_array().tie(arr, err); err) {
-                return;
-            }
-            if (simdjson::to_json_string(arr).tie(raw_str, err); err) {
-                return;
-            }
-            break;
-        }
+        case simdjson::ondemand::json_type::number:
+        case simdjson::ondemand::json_type::array:
         case simdjson::ondemand::json_type::object: {
-            simdjson::ondemand::object obj;
-            if (val.get_object().tie(obj, err); err) {
-                return;
-            }
-            if (simdjson::to_json_string(obj).tie(raw_str, err); err) {
+            if (simdjson::to_json_string(val).tie(raw_str, err); err) {
                 return;
             }
             break;
