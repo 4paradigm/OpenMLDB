@@ -136,7 +136,7 @@ void DefaultUdfLibrary::InitJsonUdfs() {
          @brief Extracts a JSON object from [JSON Pointer](https://datatracker.ietf.org/doc/html/rfc6901)
 
          NOTE JSON string is not fully validated. Which means that the function may still returns values even though returned string does not valid for JSON.
-         Precisely, if the part which json path refered to is array or object, whether content inside the array or object is not checked.
+         It's your responsibility to make sure input string is valid JSON
 
          @param expr A string expression contains well formed JSON
          @param path A string expression of JSON string representation from [JSON Pointer](https://datatracker.ietf.org/doc/html/rfc6901)
