@@ -5391,7 +5391,7 @@ void NameServerImpl::OnLocked() {
     CreateDatabaseOrExit(INTERNAL_DB);
     if (IsClusterMode()) {
         if (tablets_.size() < FLAGS_system_table_replica_num) {
-            LOG(FATAL) << "tablet num " << tablets_.size() << " is less then system table replica num "
+            LOG(ERROR) << "tablet num " << tablets_.size() << " is less then system table replica num "
                        << FLAGS_system_table_replica_num;
             exit(1);
         }
@@ -9596,7 +9596,7 @@ std::shared_ptr<TabletInfo> NameServerImpl::GetTablet(const std::string& endpoin
 void NameServerImpl::CreateDatabaseOrExit(const std::string& db) {
     auto status = CreateDatabase(db, true);
     if (!status.OK() && status.code != ::openmldb::base::ReturnCode::kDatabaseAlreadyExists) {
-        LOG(FATAL) << "create database failed. code=" << status.GetCode() << ", msg=" << status.GetMsg();
+        LOG(ERROR) << "create database failed. code=" << status.GetCode() << ", msg=" << status.GetMsg();
         exit(1);
     }
 }
@@ -9604,7 +9604,7 @@ void NameServerImpl::CreateDatabaseOrExit(const std::string& db) {
 void NameServerImpl::CreateSystemTableOrExit(SystemTableType type) {
     auto status = CreateSystemTable(type);
     if (!status.OK()) {
-        LOG(FATAL) << "create system table " << GetSystemTableName(type) << " failed. code=" << status.GetCode()
+        LOG(ERROR) << "create system table " << GetSystemTableName(type) << " failed. code=" << status.GetCode()
                    << ", msg=" << status.GetMsg();
         exit(1);
     }
