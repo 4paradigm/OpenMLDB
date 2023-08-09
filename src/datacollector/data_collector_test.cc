@@ -278,7 +278,7 @@ int main(int argc, char** argv) {
 
     srand(time(nullptr));
     // TODO(hw): skip this test, cuz it needs sync tool. It's better to mock the sync tool
-    bool ok = true;
+    int ok = 0;
     // ok = RUN_ALL_TESTS();
     // ::openmldb::sdk::mc_->Close();
     return ok;
