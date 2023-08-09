@@ -153,72 +153,18 @@ bool TabletClient::SQLBatchRequestQuery(const std::string& db, const std::string
     return true;
 }
 
-bool TabletClient::CreateTable(const std::string& name, uint32_t tid, uint32_t pid, uint64_t abs_ttl, uint64_t lat_ttl,
-                               bool leader, const std::vector<std::string>& endpoints,
-                               const ::openmldb::type::TTLType& type, uint32_t seg_cnt, uint64_t term,
-                               const ::openmldb::type::CompressType compress_type,
-                               ::openmldb::common::StorageMode storage_mode) {
-    ::openmldb::api::CreateTableRequest request;
-    if (type == ::openmldb::type::kLatestTime) {
-        if (lat_ttl > FLAGS_latest_ttl_max) {
-            return false;
-        }
-    } else if (type == ::openmldb::type::TTLType::kAbsoluteTime) {
-        if (abs_ttl > FLAGS_absolute_ttl_max) {
-            return false;
-        }
-    } else {
-        if (abs_ttl > FLAGS_absolute_ttl_max || lat_ttl > FLAGS_latest_ttl_max) {
-            return false;
-        }
-    }
-    ::openmldb::api::TableMeta* table_meta = request.mutable_table_meta();
-    table_meta->set_name(name);
-    table_meta->set_tid(tid);
-    table_meta->set_pid(pid);
-    table_meta->set_compress_type(compress_type);
-    table_meta->set_seg_cnt(seg_cnt);
-    table_meta->set_storage_mode(storage_mode);
-    if (leader) {
-        table_meta->set_mode(::openmldb::api::TableMode::kTableLeader);
-        table_meta->set_term(term);
-    } else {
-        table_meta->set_mode(::openmldb::api::TableMode::kTableFollower);
-    }
-    for (size_t i = 0; i < endpoints.size(); i++) {
-        table_meta->add_replicas(endpoints[i]);
-    }
-    ::openmldb::common::ColumnDesc* column_desc = table_meta->add_column_desc();
-    column_desc->set_name("idx0");
-    column_desc->set_data_type(::openmldb::type::kString);
-    ::openmldb::common::ColumnKey* index = table_meta->add_column_key();
-    index->set_index_name("idx0");
-    index->add_col_name("idx0");
-    ::openmldb::common::TTLSt* ttl = index->mutable_ttl();
-    ttl->set_abs_ttl(abs_ttl);
-    ttl->set_lat_ttl(lat_ttl);
-    ttl->set_ttl_type(type);
-    // table_meta->set_ttl_type(type);
-    ::openmldb::api::CreateTableResponse response;
-    bool ok = client_.SendRequest(&::openmldb::api::TabletServer_Stub::CreateTable, &request, &response,
-                                  FLAGS_request_timeout_ms * 2, 1);
-    if (ok && response.code() == 0) {
-        return true;
-    }
-    return false;
-}
-
-bool TabletClient::CreateTable(const ::openmldb::api::TableMeta& table_meta) {
+base::Status TabletClient::CreateTable(const ::openmldb::api::TableMeta& table_meta) {
     ::openmldb::api::CreateTableRequest request;
     ::openmldb::api::TableMeta* table_meta_ptr = request.mutable_table_meta();
     table_meta_ptr->CopyFrom(table_meta);
     ::openmldb::api::CreateTableResponse response;
-    bool ok = client_.SendRequest(&::openmldb::api::TabletServer_Stub::CreateTable, &request, &response,
-                                  FLAGS_request_timeout_ms * 2, 1);
-    if (ok && response.code() == 0) {
-        return true;
+    if (!client_.SendRequest(&::openmldb::api::TabletServer_Stub::CreateTable, &request, &response,
+                                  FLAGS_request_timeout_ms * 2, 1)) {
+        return {base::ReturnCode::kRPCError, "send request failed!"};
+    } else if (response.code() == 0) {
+        return {};
     }
-    return false;
+    return {response.code(), response.msg()};
 }
 
 bool TabletClient::UpdateTableMetaForAddField(uint32_t tid, const std::vector<openmldb::common::ColumnDesc>& cols,

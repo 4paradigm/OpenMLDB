@@ -70,7 +70,6 @@ base::Status IndexUtil::CheckIndex(const std::map<std::string, ::openmldb::commo
         if (column_key.has_ttl()) {
             if (auto status = CheckTTL(column_key.ttl()); !status.OK()) {
                 return status;
-                return {base::ReturnCode::kError, "ttl check failed"};
             }
         }
     }
