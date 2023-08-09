@@ -68,7 +68,8 @@ base::Status IndexUtil::CheckIndex(const std::map<std::string, ::openmldb::commo
             }
         }
         if (column_key.has_ttl()) {
-            if (!CheckTTL(column_key.ttl())) {
+            if (auto status = CheckTTL(column_key.ttl()); !status.OK()) {
+                return status;
                 return {base::ReturnCode::kError, "ttl check failed"};
             }
         }
@@ -76,11 +77,13 @@ base::Status IndexUtil::CheckIndex(const std::map<std::string, ::openmldb::commo
     return CheckUnique(index);
 }
 
-bool IndexUtil::CheckTTL(const ::openmldb::common::TTLSt& ttl) {
-    if (ttl.abs_ttl() > FLAGS_absolute_ttl_max || ttl.lat_ttl() > FLAGS_latest_ttl_max) {
-        return false;
+base::Status IndexUtil::CheckTTL(const ::openmldb::common::TTLSt& ttl) {
+    if (ttl.abs_ttl() > FLAGS_absolute_ttl_max) {
+        return {base::ReturnCode::kError, absl::StrCat("absolute ttl cannot be greater than ", FLAGS_absolute_ttl_max)};
+    } else if (ttl.lat_ttl() > FLAGS_latest_ttl_max) {
+        return {base::ReturnCode::kError, absl::StrCat("latest ttl cannot be greater than ", FLAGS_latest_ttl_max)};
     }
-    return true;
+    return {};
 }
 
 bool IndexUtil::AddDefaultIndex(openmldb::nameserver::TableInfo* table_info) {
