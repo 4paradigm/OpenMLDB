@@ -1,36 +1,39 @@
 #! /usr/bin/env bash
 
 #set DeployDir
-rootPath=$1
-jobName=$2
-portFrom=$3
-portTo=$4
-Type=$5
-Dependency=$6
-version=$(grep 'OPENMLDB_VERSION' $rootPath/conf/openmldb-env.sh | awk -F= '{print $2}')
+rootPath="$1"
+jobName="$2"
+portFrom="$3"
+portTo="$4"
+Type="$5"
+Dependency="$6"
+version=$(grep 'OPENMLDB_VERSION' "$rootPath"/conf/openmldb-env.sh | awk -F= '{print $2}')
 curTime=$(date "+%m%d%H%M")
-dirName=${jobName}-${version}-${curTime}
+dirName="${jobName}-${version}-${curTime}"
 
 #set Deploy Host and Ports
 Hosts=(node-3 node-4 node-1)
 
-AvaNode1Ports=$(ssh ${Hosts[0]} "comm -23 <(seq $portFrom $portTo | sort) <(sudo ss -Htan | awk '{print $4}' | cut -d':' -f2 | sort -u) | shuf | head -n 8")
-AvaNode2Ports=$(ssh ${Hosts[1]} "comm -23 <(seq $portFrom $portTo | sort) <(sudo ss -Htan | awk '{print $4}' | cut -d':' -f2 | sort -u) | shuf | head -n 2")
-AvaNode3Ports=$(ssh ${Hosts[2]} "comm -23 <(seq $portFrom $portTo | sort) <(sudo ss -Htan | awk '{print $4}' | cut -d':' -f2 | sort -u) | shuf | head -n 1")
-taskmanagerHost=$(hostname | awk -F"." '{print$1}' )
-taskmanagerPort=$(ssh ${taskmanagerHost} "comm -23 <(seq $portFrom $portTo | sort) <(sudo ss -Htan | awk '{print $4}' | cut -d':' -f2 | sort -u) | shuf | head -n 1")
+AvaNode1Ports=$(ssh "${Hosts[0]}" "comm -23 <(seq \"$portFrom\" \"$portTo\" | sort) <(sudo ss -Htan | awk '{print \"$4\"}' | cut -d':' -f2 | sort -u) | shuf | head -n 8")
+AvaNode2Ports=$(ssh "${Hosts[1]}" "comm -23 <(seq \"$portFrom\" \"$portTo\" | sort) <(sudo ss -Htan | awk '{print \"$4\"}' | cut -d':' -f2 | sort -u) | shuf | head -n 2")
+AvaNode3Ports=$(ssh "${Hosts[2]}" "comm -23 <(seq \"$portFrom\" \"$portTo\" | sort) <(sudo ss -Htan | awk '{print \"$4\"}' | cut -d':' -f2 | sort -u) | shuf | head -n 1")
 
-tablet1Port=$(echo $AvaNode1Ports | awk  '{print $1}')
-tablet2Port=$(echo $AvaNode2Ports | awk  '{print $1}')
-tablet3Port=$(echo $AvaNode3Ports | awk  '{print $1}')
-ns1Port=$(echo $AvaNode1Ports | awk  '{print $2}')
-ns2Port=$(echo $AvaNode2Ports | awk  '{print $2}')
-apiserverPort=$(echo $AvaNode1Ports | awk  '{print $4}')
+
+taskmanagerHost=$(hostname | awk -F"." '{print $1}' )
+
+taskmanagerPort=$(ssh "${taskmanagerHost}" "comm -23 <(seq \"$portFrom\" \"$portTo\" | sort) <(sudo ss -Htan | awk '{print \"$4\"}' | cut -d':' -f2 | sort -u) | shuf | head -n 1")
+
+
+tablet1Port=$(echo "$AvaNode1Ports" | awk  'BEGIN{ RS="";FS="\n"}{print $1}')
+tablet2Port=$(echo "$AvaNode2Ports" | awk  'BEGIN{ RS="";FS="\n"}{print $1}')
+tablet3Port=$(echo "$AvaNode3Ports" | awk  'BEGIN{ RS="";FS="\n"}{print $1}')
+ns1Port=$(echo "$AvaNode1Ports" | awk  'BEGIN{ RS="";FS="\n"}{print $2}')
+ns2Port=$(echo "$AvaNode2Ports" | awk  'BEGIN{ RS="";FS="\n"}{print $2}')
+apiserverPort=$(echo "$AvaNode1Ports" | awk  'BEGIN{ RS="";FS="\n"}{print $4}')
 #taskmanagerPort=$(echo $AvaNode1Ports | awk  '{print $5}')
-zookeeperPort1=$(echo $AvaNode1Ports | awk  '{print $6}')
-
-zookeeperPort2=$(echo $AvaNode1Ports | awk  '{print $7}')
-zookeeperPort3=$(echo $AvaNode1Ports | awk  '{print $8}')
+zookeeperPort1=$(echo "$AvaNode1Ports" | awk  'BEGIN{ RS="";FS="\n"}{print $6}')
+zookeeperPort2=$(echo "$AvaNode1Ports" | awk  'BEGIN{ RS="";FS="\n"}{print $7}')
+zookeeperPort3=$(echo "$AvaNode1Ports" | awk  'BEGIN{ RS="";FS="\n"}{print $8}')
 
 # write addr to hosts
 cat >$rootPath/conf/hosts<<EOF
@@ -111,13 +114,13 @@ fi
 
 
 
-if [ "$Dependency" = "kafka" ]; then
-// install kafak& deploy connector with kafka address and openmldb address
-cat >$rootPath/test/integration-test/openmldb-test-java/openmldb-ecosystem/src/test/resources/kafka_test_cases.ymls<<EOF
-// "bootstrap.servers": node-4:49092,
-//  "connect.listeners": http://:8083,
-// apiserver.address: ${Hosts[0]}:$apiserverPort
-// "connection.url": "jdbc:openmldb:///kafka_test?zk=127.0.0.1:2181&zkPath=/openmldb"
-// zk_root_path: "/openmldb-$dirName"
-EOF
-fi
+# if [ "$Dependency" = "kafka" ]; then
+#  install kafak& deploy connector with kafka address and openmldb address
+# cat >$rootPath/test/integration-test/openmldb-test-java/openmldb-ecosystem/src/test/resources/kafka_test_cases.ymls<<EOF
+# // "bootstrap.servers": node-4:49092,
+# //  "connect.listeners": http://:8083,
+# // apiserver.address: ${Hosts[0]}:$apiserverPort
+# // "connection.url": "jdbc:openmldb:///kafka_test?zk=127.0.0.1:2181&zkPath=/openmldb"
+# // zk_root_path: "/openmldb-$dirName"
+# EOF
+# fi
