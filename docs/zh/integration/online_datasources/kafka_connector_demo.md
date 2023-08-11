@@ -26,9 +26,9 @@ docker run -it -v `pwd`:/work/kafka 4pdosc/openmldb:0.8.2 bash
 
 ### 注意事项
 
-timestamp列精度为ms，可以是字符串格式？
+Timestamp列精度为ms，value配置为JsonConvertor，仅支持整型。根据消息的不同，可选配其他Convertor。
 
-connector可用于较早版本的Kafka server，例如1.1.1，但注意旧版本的Kafka Broker可能并未默认开启自动创建topic，需要开启[此选项](https://kafka.apache.org/documentation/#brokerconfigs_auto.create.topics.enable)。
+Connector可用于较早版本的Kafka Server，例如1.1.1，但注意旧版本的Kafka Broker可能并未默认开启“自动创建topic”，需要开启[此选项](https://kafka.apache.org/documentation/#brokerconfigs_auto.create.topics.enable)。
 
 ### 流程
 
