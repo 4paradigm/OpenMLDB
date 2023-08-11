@@ -14,14 +14,14 @@ dirName="${jobName}-${version}-${curTime}"
 #set Deploy Host and Ports
 Hosts=(node-3 node-4 node-1)
 
-AvaNode1Ports=$(ssh "${Hosts[0]}" "comm -23 <(seq \"$portFrom\" \"$portTo\" | sort) <(sudo ss -Htan | awk '{print \"$4\"}' | cut -d':' -f2 | sort -u) | shuf | head -n 8")
-AvaNode2Ports=$(ssh "${Hosts[1]}" "comm -23 <(seq \"$portFrom\" \"$portTo\" | sort) <(sudo ss -Htan | awk '{print \"$4\"}' | cut -d':' -f2 | sort -u) | shuf | head -n 2")
-AvaNode3Ports=$(ssh "${Hosts[2]}" "comm -23 <(seq \"$portFrom\" \"$portTo\" | sort) <(sudo ss -Htan | awk '{print \"$4\"}' | cut -d':' -f2 | sort -u) | shuf | head -n 1")
+AvaNode1Ports=$(ssh "${Hosts[0]}" "comm -23 <(seq "$portFrom" "$portTo" | sort) <(sudo ss -Htan | awk '{print $4}' | cut -d':' -f2 | sort -u) | shuf | head -n 8")
+AvaNode2Ports=$(ssh "${Hosts[1]}" "comm -23 <(seq "$portFrom" "$portTo" | sort) <(sudo ss -Htan | awk '{print $4}' | cut -d':' -f2 | sort -u) | shuf | head -n 2")
+AvaNode3Ports=$(ssh "${Hosts[2]}" "comm -23 <(seq "$portFrom" "$portTo" | sort) <(sudo ss -Htan | awk '{print $4}' | cut -d':' -f2 | sort -u) | shuf | head -n 1")
 
 
 taskmanagerHost=$(hostname | awk -F"." '{print $1}' )
 
-taskmanagerPort=$(ssh "${taskmanagerHost}" "comm -23 <(seq \"$portFrom\" \"$portTo\" | sort) <(sudo ss -Htan | awk '{print \"$4\"}' | cut -d':' -f2 | sort -u) | shuf | head -n 1")
+taskmanagerPort=$(ssh "${taskmanagerHost}" "comm -23 <(seq "$portFrom" "$portTo" | sort) <(sudo ss -Htan | awk '{print $4}' | cut -d':' -f2 | sort -u) | shuf | head -n 1")
 
 
 tablet1Port=$(echo "$AvaNode1Ports" | awk  'BEGIN{ RS="";FS="\n"}{print $1}')
@@ -36,7 +36,7 @@ zookeeperPort2=$(echo "$AvaNode1Ports" | awk  'BEGIN{ RS="";FS="\n"}{print $7}')
 zookeeperPort3=$(echo "$AvaNode1Ports" | awk  'BEGIN{ RS="";FS="\n"}{print $8}')
 
 # write addr to hosts
-cat >$rootPath/conf/hosts<<EOF
+cat >"$rootPath"/conf/hosts<<EOF
 [tablet]
 ${Hosts[0]}:$tablet1Port /tmp/$dirName/tablet
 ${Hosts[1]}:$tablet2Port /tmp/$dirName/tablet
@@ -53,7 +53,7 @@ ${Hosts[0]}:$zookeeperPort1:$zookeeperPort2:$zookeeperPort3 /tmp/$dirName/zk
 EOF
 
 #write openmldb.env.sh
-cat >$rootPath/conf/openmldb-env.sh<<EOF
+cat >"$rootPath"/conf/openmldb-env.sh<<EOF
 export OPENMLDB_VERSION=$version
 export OPENMLDB_MODE=\${OPENMLDB_MODE:=cluster}
 export OPENMLDB_USE_EXISTING_ZK_CLUSTER=false
@@ -85,18 +85,18 @@ fi
 
 
 if [ "$Dependency" = "ssd" ]; then
-mkdir -p /mnt/nvmessd/qytest/$dirName
-cat >>$rootPath/conf/tablet.flags.template<<EOF
+mkdir -p /mnt/nvmessd/qytest/"$dirName"
+cat >>"$rootPath"/conf/tablet.flags.template<<EOF
 --ssd_root_path=/mnt/nvmessd/selfintegration/$dirName/db
 --recycle_bin_ssd_root_path=/mnt/nvmessd/selfintegration/$dirName/recycle_ssd
 EOF
 # comment node-1 tablet , no ssd existed in node-1
 sed -i "s/.*node-1.*/#&/g" out/openmldb_info.yaml
-sed -i "s/.*node-1.*/#&/g" $rootPath/conf/hosts
+sed -i "s/.*node-1.*/#&/g" "$rootPath"/conf/hosts
 fi
 
 if [ "$Dependency" = "hadoop" ]; then
-cat >$rootPath/conf/taskmanager.properties<<EOF
+cat >"$rootPath"/conf/taskmanager.properties<<EOF
 server.host=${Hosts[0]}
 zookeeper.cluster=${Hosts[0]}:$zookeeperPort1
 zookeeper.root_path=/openmldb-$dirName
