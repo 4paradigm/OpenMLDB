@@ -16,7 +16,7 @@ OpenMLDB 的监控方案概述如下：
 [![PyPI](https://img.shields.io/pypi/v/openmldb-exporter?label=openmldb-exporter)](https://pypi.org/project/openmldb-exporter/)
 ![PyPI - Python Version](https://img.shields.io/pypi/pyversions/openmldb-exporter?style=flat-square)
 
-OpenMLDB exporter 是以 Python 实现的 prometheus exporter，核心是通过数据库 SDK 连接 OpenMLDB 实例并通过 SQL 语句查询暴露监控指标。Exporter 会发布到 PyPI，可以通过 pip 安装最新发布的 `openmldb-exporter`，开发使用说明详见代码目录 [README](https://github.com/4paradigm/openmldb-exporter)。
+OpenMLDB exporter 是以 Python 实现的 Prometheus exporter，核心是通过数据库 SDK 连接 OpenMLDB 实例并通过 SQL 语句查询暴露监控指标。Exporter 会发布到 PyPI，可以通过 pip 安装最新发布的 `openmldb-exporter`，开发使用说明详见代码目录 [README](https://github.com/4paradigm/openmldb-exporter)。
 
 ### 环境要求
 
@@ -35,7 +35,7 @@ OpenMLDB exporter 是以 Python 实现的 prometheus exporter，核心是通过�
 
    默认启动脚本 `bin/start.sh` 开启了 server status, 不需要额外配置。
    
-3. 注意：合理选择 OpenMLDB 各组件和 OpenMLDB exporter, 以及 prometheus, grafana 的绑定 IP 地址，确保 grafana 可以访问到 prometheus, 并且 prometheus，OpenMLDB exporter 和 OpenMLDB 各个组件之间可以相互访问。
+3. 注意：合理选择 OpenMLDB 各组件和 OpenMLDB exporter, 以及 Prometheus, Grafana 的绑定 IP 地址，确保 Grafana 可以访问到 Prometheus, 并且 Prometheus，OpenMLDB exporter 和 OpenMLDB 各个组件之间可以相互访问。
 
 ### 部署 OpenMLDB exporter
 
@@ -131,25 +131,25 @@ optional arguments:
 
 ## 部署 node exporter
 
-[node_exporter](https://github.com/prometheus/node_exporter) 是 prometheus 官方实现的暴露系统指标的组件。 安装使用详见它的 README。
+[node_exporter](https://github.com/prometheus/node_exporter) 是 Prometheus 官方实现的暴露系统指标的组件。 安装使用详见它的 README。
 
 
 ## 部署 Prometheus 和 Grafana
 
-如何安装部署 prometheus, grafana 详见官方文档 [promtheus get started](https://prometheus.io/docs/prometheus/latest/getting_started/) 和 [grafana get started](https://grafana.com/docs/grafana/latest/getting-started/getting-started-prometheus/) 。我们建议使用 Docker 容器快速部署, 并且 Grafana >= 8.3, Prometheus >= 1.0.0 。
+如何安装部署 Prometheus, Grafana 详见官方文档 [promtheus get started](https://prometheus.io/docs/prometheus/latest/getting_started/) 和 [Grafana get started](https://grafana.com/docs/grafana/latest/getting-started/getting-started-prometheus/) 。我们建议使用 Docker 容器快速部署, 并且 Grafana >= 8.3, Prometheus >= 1.0.0 。
 
-OpenMLDB 提供了 prometheus 和 grafana 配置文件以作参考，详见 [OpenMLDB mixin](https://github.com/4paradigm/openmldb-exporter/tree/main/openmldb_mixin):
+OpenMLDB 提供了 Prometheus 和 Grafana 配置文件以作参考，详见 [OpenMLDB mixin](https://github.com/4paradigm/openmldb-exporter/tree/main/openmldb_mixin):
 
-- prometheus_example.yml: prometheus 配置示例, 注意修改 `node`, `openmldb_components` 和 `openmldb_exporter` job 中的 target 地址
-- openmldb_dashboard.json: OpenMLDB metrics 的 grafana dashboard 配置, 分为两步:
-   1. 在 grafana data source 页面下，添加启动的 prometheus server 地址作为数据源
+- prometheus_example.yml: Prometheus 配置示例, 注意修改 `node`, `openmldb_components` 和 `openmldb_exporter` job 中的 target 地址
+- openmldb_dashboard.json: OpenMLDB metrics 的 Grafana dashboard 配置, 分为两步:
+   1. 在 Grafana data source 页面下，添加启动的 Prometheus server 地址作为数据源
    2. 在 dashboard 浏览页面下，点击导入一个 dashboard, 输入 dashboard ID `17843`, 或者直接上传该 json 配置文件
       - 导入详细说明见 [Grafana import dashboard](https://grafana.com/docs/grafana/latest/dashboards/manage-dashboards/#import-a-dashboard)
       - Grafana dashboard 配置见 https://grafana.com/grafana/dashboards/17843
 
 ## 理解现有的监控指标
 
-以 OpenMLDB 集群系统为例，监控指标根据 prometheus pull job 不同，分为两类：
+以 OpenMLDB 集群系统为例，监控指标根据 Prometheus pull job 不同，分为两类：
 
 ### 1. DB-Level 指标
 
@@ -186,7 +186,7 @@ OpenMLDB 提供了 prometheus 和 grafana 配置文件以作参考，详见 [Ope
 
 ### 2. Component-Level 指标
 
-OpenMLDB 的相关组件（即 nameserver, tablet, etc), 本身作为 BRPC server，暴露了 [prometheus 相关指标](https://github.com/apache/incubator-brpc/blob/master/docs/en/bvar.md#export-to-prometheus)， 只需要配置 prometheus server 从对应地址拉取指标即可。对应 `prometheus_example.yml`中 `job_name=openmldb_components` 项：
+OpenMLDB 的相关组件（即 nameserver, tablet, etc), 本身作为 BRPC server，暴露了 [Prometheus 相关指标](https://github.com/apache/incubator-brpc/blob/master/docs/en/bvar.md#export-to-prometheus)， 只需要配置 Prometheus server 从对应地址拉取指标即可。对应 `prometheus_example.yml`中 `job_name=openmldb_components` 项：
 
    ```yaml
      - job_name: openmldb_components

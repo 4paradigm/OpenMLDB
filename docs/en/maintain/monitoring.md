@@ -5,7 +5,7 @@
 
 The monitoring scheme of OpenMLDB is outlined as follows：
 
-- Use [prometheus](https://prometheus.io) to collect monitoring metrics, [grafana](https://grafana.com/oss/grafana/) to visualize metrics
+- Use [Prometheus](https://prometheus.io) to collect monitoring metrics, [Grafana](https://grafana.com/oss/grafana/) to visualize metrics
 - OpenMLDB exporter exposes database-level metrics
 - Each component as a server itself expose component-level metrics
 - Uses [node_exporter](https://github.com/prometheus/node_exporter) to expose machine and operating system related metrics
@@ -17,7 +17,7 @@ The monitoring scheme of OpenMLDB is outlined as follows：
 [![PyPI](https://img.shields.io/pypi/v/openmldb-exporter?label=openmldb-exporter)](https://pypi.org/project/openmldb-exporter/)
 ![PyPI - Python Version](https://img.shields.io/pypi/pyversions/openmldb-exporter?style=flat-square)
 
-The OpenMLDB exporter is a prometheus exporter implemented in Python. The core connects the OpenMLDB instance through the database SDK and will query the exposed monitoring indicators through SQL statements. Exporter publish into PyPI. You can install the latest `openmldb-exporter` through pip. For development instructions, please refer to the code directory [README](https://github.com/4paradigm/openmldb-exporter).
+The OpenMLDB exporter is a Prometheus exporter implemented in Python. The core connects the OpenMLDB instance through the database SDK and will query the exposed monitoring indicators through SQL statements. Exporter publish into PyPI. You can install the latest `openmldb-exporter` through pip. For development instructions, please refer to the code directory [README](https://github.com/4paradigm/openmldb-exporter).
 
 
 ### Environmental Requirements
@@ -39,7 +39,7 @@ The OpenMLDB exporter is a prometheus exporter implemented in Python. The core c
 
    The startup script `bin/start.sh` should enable server status by default.
    
-3. Note: Make sure to select the binding IP addresses of OpenMLDB components OpenMLDB exporter as well as prometheus and grafana to ensure that grafana can access prometheus, and that prometheus, OpenMLDB exporter, and OpenMLDB components can access each other.
+3. Note: Make sure to select the binding IP addresses of OpenMLDB components OpenMLDB exporter as well as Prometheus and Grafana to ensure that Grafana can access Prometheus, and that Prometheus, OpenMLDB exporter, and OpenMLDB components can access each other.
 
 
 ### Deploy the OpenMLDB exporter
@@ -135,24 +135,24 @@ optional arguments:
 
 ## Deploy Node Exporter
 
-[node_exporter](https://github.com/prometheus/node_exporter) is an official implementation of prometheus that exposes system metrics, read their README about setup.
+[node_exporter](https://github.com/prometheus/node_exporter) is an official implementation of Prometheus that exposes system metrics, read their README about setup.
 
 ## Deploy Prometheus and Grafana
 
-For installation and deployment of prometheus and grafana, please refer to the official documents [promtheus get started](https://prometheus.io/docs/prometheus/latest/getting_started/) and [grafana get started](https://grafana.com/docs/ grafana/latest/getting-started/getting-started-prometheus/). We recommend quick start with docker images, and use Grafana >= 8.3 and Prometheus >= 1.0.0 .
+For installation and deployment of Prometheus and Grafana, please refer to the official documents [promtheus get started](https://prometheus.io/docs/prometheus/latest/getting_started/) and [Grafana get started](https://grafana.com/docs/ grafana/latest/getting-started/getting-started-prometheus/). We recommend quick start with docker images, and use Grafana >= 8.3 and Prometheus >= 1.0.0 .
 
-OpenMLDB provides prometheus and grafana configuration files for reference, see [OpenMLDB mixin](https://github.com/4paradigm/openmldb-exporter/tree/main/openmldb_mixin):
+OpenMLDB provides Prometheus and Grafana configuration files for reference, see [OpenMLDB mixin](https://github.com/4paradigm/openmldb-exporter/tree/main/openmldb_mixin):
 
 - prometheus_example.yml: Prometheus configuration example, remember to modify the target address in `node`, `openmldb_components` and `openmldb_exporter` jobs for your environment
-- openmldb_dashboard.json: grafana dashboard configuration for OpenMLDB metrics, import it two steps:
-   1. Under the grafana data source page, add the started prometheus server address as the data source
+- openmldb_dashboard.json: Grafana dashboard configuration for OpenMLDB metrics, import it two steps:
+   1. Under the Grafana data source page, add the started Prometheus server address as the data source
    2. Under the dashboard browsing page, click the `Import` button, paste the dashboard ID `17843`, or upload this json file directly
       - Rad more in [Grafana import dashboard](https://grafana.com/docs/grafana/latest/dashboards/manage-dashboards/#import-a-dashboard)
-      - Page in grafana dashboard: https://grafana.com/grafana/dashboards/17843
+      - Page in Grafana dashboard: https://grafana.com/grafana/dashboards/17843
 
 ## Understand Existing Monitoring Metrics
 
-Taking the OpenMLDB cluster system as an example, there are two type of metrics categorized by prometheus pull jobs:
+Taking the OpenMLDB cluster system as an example, there are two type of metrics categorized by Prometheus pull jobs:
 
 ### 1. DB-Level metrics
 
@@ -187,7 +187,7 @@ Exposed through the OpenMLDB exporter, the `job_name=openmldb_exporter` entry in
 
 ### 2. Component-Level metrics
 
-The related components of OpenMLDB (nameserver, tablet, etc), themselves as BRPC server, and expose [prometheus related metrics](https://github.com/apache/incubator-brpc/blob/master/docs/en/bvar .md#export-to-prometheus), you only need to configure the prometheus server to pull metrics from the corresponding address. It corresponds to the `job_name=openmldb_components` item in `prometheus_example.yml`:
+The related components of OpenMLDB (nameserver, tablet, etc), themselves as BRPC server, and expose [prometheus related metrics](https://github.com/apache/incubator-brpc/blob/master/docs/en/bvar .md#export-to-prometheus), you only need to configure the Prometheus server to pull metrics from the corresponding address. It corresponds to the `job_name=openmldb_components` item in `prometheus_example.yml`:
 
    ```yaml
      - job_name: openmldb_components
