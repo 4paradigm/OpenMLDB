@@ -54,6 +54,14 @@ option(BUILD_BUNDLED_LLVM "Build llvm from source" ${BUILD_BUNDLED})
 option(BUILD_BUNDLED_COMMON "Build baidu common from source" ${BUILD_BUNDLED})
 option(BUILD_BUNDLED_ROCKSDB "Build rocksdb from source" ${BUILD_BUNDLED})
 
+if (BUILD_SHARED_LIBS)
+  # rebuilding gflags/glog shared
+  set (BUILD_BUNDLED_GFLAGS ON)
+  set (BUILD_BUNDLED_GLOG ON)
+  set (BUILD_BUNDLED_BRPC ON)
+  message(STATUS "rebuilding gflags/glog/brpc shared")
+endif()
+
 # '-O3 -fPIC' reserved for thirdparty compilation
 set(CMAKE_CXX_FLAGS "-O3 -fPIC ${CMAKE_CXX_FLAGS}")
 set(CMAKE_C_FLAGS "-O3 -fPIC ${CMAKE_C_FLAGS}")

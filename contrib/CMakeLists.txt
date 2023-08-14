@@ -29,4 +29,3 @@ endfunction()
 
 add_contrib(simdjson)
 add_contrib(farmhash)
-

@@ -133,22 +133,21 @@ endif()
 add_subdirectory(contrib EXCLUDE_FROM_ALL)
 
 if (BUILD_SHARED_LIBS)
+    # For shared build, gflags/glog requires shared lib,
+    # in case runtime problem arrise from java, a common issue is #3407:
+    # > ERROR: something wrong with flag 'logtostderr' in file 'src/logging.cc'. One possibility: file 'src/logging.cc' is being linked both statically and dynamically into this executable.
     find_package(gflags REQUIRED COMPONENTS shared CONFIG)
     find_package(glog REQUIRED CONFIG)
-
-    set(GFLAGS_LIBRARIES ${gflags_LIBRARIES})
-    if (NOT glog_FOUND)
-        message(FATAL_ERROR "glog not found")
-    endif()
     set(GLOG_LIBRARY glog::glog)
 else()
     # 'CONFIG' is mandatory: pre-compiled thirdparty skip a Findgflags.cmake not work well
     find_package(gflags REQUIRED COMPONENTS static CONFIG)
     find_library(GLOG_LIBRARY glog)
 endif()
-message(STATUS "Found GFLAGS LIBRARY: ${GFLAGS_LIBRARIES}")
+
+message(STATUS "Found GFLAGS LIBRARY: ${gflags_LIBRARIES}")
 message(STATUS "Found GLOG LIBRARY: ${GLOG_LIBRARY}")
-set(GFLAGS_LIBRARY ${GFLAGS_LIBRARIES})
+set(GFLAGS_LIBRARY ${gflags_LIBRARIES})
 
 if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
     set(OS_LIB ${CMAKE_THREAD_LIBS_INIT} rt)
