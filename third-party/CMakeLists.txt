@@ -15,6 +15,10 @@
 cmake_minimum_required(VERSION 3.10)
 project(hybridsql-deps)
 
+if (POLICY CMP0135)
+  cmake_policy(SET CMP0135 NEW)
+endif ()
+
 list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake")
 
 include(ExternalProject)
@@ -59,6 +63,7 @@ if (BUILD_SHARED_LIBS)
   set (BUILD_BUNDLED_GFLAGS ON)
   set (BUILD_BUNDLED_GLOG ON)
   set (BUILD_BUNDLED_BRPC ON)
+  set (BRPC_DEPENDS glog gflags)
   message(STATUS "rebuilding gflags/glog/brpc shared")
 endif()
 

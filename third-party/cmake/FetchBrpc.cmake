@@ -15,6 +15,12 @@
 set(BRPC_URL https://github.com/4paradigm/incubator-brpc/archive/a85d1bde8df3a3e2e59a64ea5a3ee3122f9c6daa.zip)
 message(STATUS "build brpc from ${BRPC_URL}")
 
+if (DEFINED BRPC_DEPENDS)
+  set (BRPC_DEPENDS_TARGETS ${BRPC_DEPENDS})
+else()
+  set (BRPC_DEPENDS_TARGETS gflags glog protobuf snappy leveldb gperf openssl)
+endif()
+
 ExternalProject_Add(
   brpc
   URL ${BRPC_URL}
@@ -22,7 +28,7 @@ ExternalProject_Add(
   PREFIX ${DEPS_BUILD_DIR}
   DOWNLOAD_DIR ${DEPS_DOWNLOAD_DIR}/brpc
   INSTALL_DIR ${DEPS_INSTALL_DIR}
-  DEPENDS gflags glog protobuf snappy leveldb gperf openssl
+  DEPENDS ${BRPC_DEPENDS_TARGETS}
   CONFIGURE_COMMAND ${CMAKE_COMMAND} -H<SOURCE_DIR> -B . -DWITH_GLOG=ON -DCMAKE_PREFIX_PATH=${DEPS_INSTALL_DIR} -DCMAKE_INSTALL_PREFIX=${DEPS_INSTALL_DIR} ${CMAKE_OPTS}
   BUILD_COMMAND ${CMAKE_COMMAND} --build . --target brpc-static -- ${MAKEOPTS}
   INSTALL_COMMAND bash -c "cp -rvf output/include/* <INSTALL_DIR>/include/"
