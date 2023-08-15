@@ -28,6 +28,23 @@ auto.create=false
 ```
 请确保已经建好了OpenMLDB表。
 
+### Message样式
+
+仅支持Json格式的Message，不用写schema，因此只需要`<col>:<value>`的Map，例如：
+```
+{
+    "c1_int16": 1,
+    "c2_int32": 2,
+    "c3_int64": 3,
+    "c4_float": 4.4,
+    "c5_double": 5.555,
+    "c6_boolean": true,
+    "c7_string": "c77777",
+    "c8_date": 19109,
+    "c9_timestamp": 1651051906000
+}
+```
+
 ### message convert for auto schema
 
 auto schema开启后，主要逻辑在[BufferedRecords](src/main/java/io/confluent/connect/jdbc/sink/BufferedRecords.java)
