@@ -63,7 +63,7 @@ if (BUILD_SHARED_LIBS)
   set (BUILD_BUNDLED_GFLAGS ON)
   set (BUILD_BUNDLED_GLOG ON)
   set (BUILD_BUNDLED_BRPC ON)
-  set (BRPC_DEPENDS glog gflags)
+  set (BRPC_DEPENDS glog)
   message(STATUS "rebuilding gflags/glog/brpc shared")
 endif()
 
@@ -124,6 +124,8 @@ endif()
 
 # Fetch hybridsql asserts
 if(NOT BUILD_BUNDLED)
+  set (GENERAL_DEPS hybridsql-asserts)
+
   init_hybridsql_thirdparty_urls()
 
   message(STATUS "Download pre-compiled hybridsql assert from ${HYBRIDSQL_ASSERTS_URL}")
