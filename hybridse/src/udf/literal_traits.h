@@ -88,9 +88,14 @@ struct Nullable {
 template <>
 struct Nullable<StringRef> {
     Nullable(std::nullptr_t) : data_(nullptr), is_null_(true) {}      // NOLINT
+    Nullable() : is_null_(true) {}
     Nullable(const StringRef& t) : data_(t), is_null_(false) {}  // NOLINT
     Nullable(const char* buf) : data_(buf), is_null_(false) {}    // NOLINT
-    Nullable() : is_null_(false) {}
+
+#if __cplusplus >= 201703L
+    template <typename Char>
+    Nullable(std::basic_string_view<Char> v) : data_(v), is_null_(false) {}  // NOLINT
+#endif
 
     const StringRef& value() const { return data_; }
     bool is_null() const { return is_null_; }
