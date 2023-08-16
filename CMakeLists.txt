@@ -142,7 +142,7 @@ if (BUILD_SHARED_LIBS)
     else()
         find_library(GLOG_LIBRARY NAMES libglog.so REQUIRED)
     endif()
-    find_library(BRPC_LIBRARY brpc REQUIRED)
+    find_library(BRPC_LIBRARY NAMES libbrpc.so REQUIRED)
 else()
     # 'CONFIG' is mandatory: pre-compiled thirdparty skip a Findgflags.cmake not work well
     find_package(gflags REQUIRED COMPONENTS static CONFIG)

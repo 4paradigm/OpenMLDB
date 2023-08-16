@@ -78,7 +78,9 @@ endif
 OPENMLDB_CMAKE_FLAGS += $(HYBRIDSE_CMAKE_FLAGS)
 
 # Extra cmake flags for third-party
-THIRD_PARTY_CMAKE_FLAGS ?=
+# default build type for thirdparty to Release, since gflags/glog output different
+# library names for Debug profile, which makes brpc fails to select the shared lib
+THIRD_PARTY_CMAKE_FLAGS ?= -DCMAKE_BUILD_TYPE=Release
 
 ifdef BUILD_BUNDLED
     THIRD_PARTY_CMAKE_FLAGS += -DBUILD_BUNDLED=$(BUILD_BUNDLED)
