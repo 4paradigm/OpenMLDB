@@ -58,6 +58,13 @@ option(BUILD_BUNDLED_LLVM "Build llvm from source" ${BUILD_BUNDLED})
 option(BUILD_BUNDLED_COMMON "Build baidu common from source" ${BUILD_BUNDLED})
 option(BUILD_BUNDLED_ROCKSDB "Build rocksdb from source" ${BUILD_BUNDLED})
 
+if (DEFINED CMAKE_BUILD_TYPE)
+  # propagate CMAKE_BUILD_TYPE as environment variable to subprocess from current cmake
+  # which makes third-party build respect -DCMAKE_BUILD_TYPE flag, instead of the CMAKE_BUILD_TYPE
+  # environment variable from parent process
+  set(ENV{CMAKE_BUILD_TYPE} ${CMAKE_BUILD_TYPE})
+endif()
+
 if (BUILD_SHARED_LIBS)
   # rebuilding gflags/glog shared
   set (BUILD_BUNDLED_GFLAGS ON)

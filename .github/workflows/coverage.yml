@@ -40,6 +40,7 @@ jobs:
       SQL_PYSDK_ENABLE: OFF
       SQL_JAVASDK_ENABLE: OFF
       NPROC: 2
+      MAKEOPTS: -j2
       BUILD_SHARED_LIBS: ON
       TESTING_ENABLE_STRIP: ON
     steps:
