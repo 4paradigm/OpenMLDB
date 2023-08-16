@@ -85,7 +85,6 @@ set(Boost_NO_BOOST_CMAKE ON)
 set(BOOST_ROOT "${CMAKE_PREFIX_PATH}")
 find_package(Boost COMPONENTS filesystem date_time regex REQUIRED)
 find_package(OpenSSL REQUIRED)
-find_library(BRPC_LIBRARY brpc)
 
 set(Protobuf_USE_STATIC_LIBS ON)
 find_package(Protobuf 3.6 EXACT REQUIRED)

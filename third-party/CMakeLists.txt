@@ -63,7 +63,6 @@ if (BUILD_SHARED_LIBS)
   set (BUILD_BUNDLED_GFLAGS ON)
   set (BUILD_BUNDLED_GLOG ON)
   set (BUILD_BUNDLED_BRPC ON)
-  set (BRPC_DEPENDS glog)
   message(STATUS "rebuilding gflags/glog/brpc shared")
 endif()
 

@@ -110,7 +110,6 @@ find_package(SWIG REQUIRED)
 include(UseSWIG)
 
 find_package(OpenSSL REQUIRED)
-find_library(BRPC_LIBRARY brpc)
 
 set(Protobuf_USE_STATIC_LIBS ON)
 find_package(Protobuf 3.6 EXACT REQUIRED)
@@ -137,12 +136,18 @@ if (BUILD_SHARED_LIBS)
     # in case runtime problem arrise from java, a common issue is #3407:
     # > ERROR: something wrong with flag 'logtostderr' in file 'src/logging.cc'. One possibility: file 'src/logging.cc' is being linked both statically and dynamically into this executable.
     find_package(gflags REQUIRED COMPONENTS shared CONFIG)
-    find_package(glog REQUIRED CONFIG)
-    set(GLOG_LIBRARY glog::glog)
+    find_package(glog CONFIG)
+    if (glog_FOUND)
+        set(GLOG_LIBRARY glog::glog)
+    else()
+        find_library(GLOG_LIBRARY NAMES libglog.so REQUIRED)
+    endif()
+    find_library(BRPC_LIBRARY brpc REQUIRED)
 else()
     # 'CONFIG' is mandatory: pre-compiled thirdparty skip a Findgflags.cmake not work well
     find_package(gflags REQUIRED COMPONENTS static CONFIG)
-    find_library(GLOG_LIBRARY glog)
+    find_library(GLOG_LIBRARY NAMES libglog.a REQUIRED)
+    find_library(BRPC_LIBRARY NAMES libbrpc.a REQUIRED)
 endif()
 
 message(STATUS "Found GFLAGS LIBRARY: ${gflags_LIBRARIES}")
