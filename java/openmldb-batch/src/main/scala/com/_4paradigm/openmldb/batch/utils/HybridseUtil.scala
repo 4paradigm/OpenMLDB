@@ -251,6 +251,7 @@ object HybridseUtil {
     // only for select into, "" means N/A
     extraOptions += ("coalesce" -> parseOption(getOptionFromNode(node, "coalesce"), "0", getIntOrDefault))
 
+    extraOptions += ("writer_type") -> parseOption(getOptionFromNode(node, "writer_type"), "single", getStr)
     (format, options.toMap, mode, extraOptions.toMap)
   }
 
