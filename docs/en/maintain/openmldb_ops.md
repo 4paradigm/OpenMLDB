@@ -39,5 +39,5 @@ python tools/openmldb_ops.py --openmldb_bin_path=./bin/openmldb --zk_cluster=172
 - --endpoints: specified the endpoints to migrate out. If there are two or more endoints, use `,` as delimiter. It will execute failed if the leftover tablet number less than replica number of tables
 
 ### System Requirements
-- python >= 3.6
+- python >= 2.7
 - `showopstatus` and `showtablestatus` require `prettytable` dependency
