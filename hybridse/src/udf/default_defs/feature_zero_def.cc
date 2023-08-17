@@ -33,6 +33,7 @@
 #include "udf/udf.h"
 #include "udf/udf_registry.h"
 #include "vm/jit_runtime.h"
+#include "simdjson.h"
 
 namespace hybridse {
 namespace udf {
@@ -587,8 +588,7 @@ struct FZTopNFrequency {
     }
 };
 
-void list_at(::openmldb::base::UDFContext *ctx,
-             ::openmldb::base::StringRef *list, int32_t idx,
+void list_at(::openmldb::base::StringRef *list, int32_t idx,
              ::openmldb::base::StringRef *del, ::openmldb::base::StringRef *out) {
   out->size_ = 0;
   if (list == nullptr || del == nullptr || out == nullptr) {
@@ -622,14 +622,13 @@ void list_at(::openmldb::base::UDFContext *ctx,
   }
 
   std::string_view o = data.substr(start_pos, pos - start_pos);
-  char* buf = ctx->pool->Alloc(o.size());
+  char* buf = v1::AllocManagedStringBuf(o.size());
   memcpy(buf, o.data(), o.size());
   out->data_ = buf;
   out->size_ = o.size();
 }
 
-void json_array_sort(::openmldb::base::UDFContext *ctx,
-                     ::openmldb::base::StringRef *json_array,
+void json_array_sort(::openmldb::base::StringRef *json_array,
                      ::openmldb::base::StringRef *order,
                      ::openmldb::base::StringRef *column, int32_t n, bool desc,
                      ::openmldb::base::StringRef *out) {
@@ -696,7 +695,7 @@ void json_array_sort(::openmldb::base::UDFContext *ctx,
 
   auto str = ss.str();
   auto ssz = str.size();
-  char *buf = ctx->pool->Alloc(ssz);
+  char *buf = v1::AllocManagedStringBuf(ssz);
   memcpy(buf, str.data(), ssz);
   out->data_ = buf;
   out->size_ = ssz;
