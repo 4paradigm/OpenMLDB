@@ -1187,8 +1187,29 @@ TEST_F(UdfIRBuilderTest, ReplaceNullable) {
     CheckUdf<Nullable<StringRef>, Nullable<StringRef>, Nullable<StringRef>>(fn_name, nullptr, nullptr, nullptr);
 }
 
+
+TEST_F(UdfIRBuilderTest, JsonArrayLength) {
+    CheckUdf<Nullable<int32_t>, Nullable<StringRef>>("json_array_length", 0, "[]");
+    CheckUdf<Nullable<int32_t>, Nullable<StringRef>>("json_array_length", 3, "[1,2,3]");
+    CheckUdf<Nullable<int32_t>, Nullable<StringRef>>("json_array_length", 5, R"([1,2,3,{"f1":1,"f2":[5,6]},4])");
+
+    CheckUdf<Nullable<int32_t>, Nullable<StringRef>>("json_array_length", nullptr, R"({})");
+    CheckUdf<Nullable<int32_t>, Nullable<StringRef>>("json_array_length", nullptr, "[1,2,3");
+    CheckUdf<Nullable<int32_t>, Nullable<StringRef>>("json_array_length", nullptr, nullptr);
+}
+
+TEST_F(UdfIRBuilderTest, CustUdfs) {
+    CheckUdf<Nullable<StringRef>, Nullable<StringRef>, int32_t, Nullable<StringRef>>("list_at", "a", "a,b,c", 0, ",");
+
+  openmldb::base::StringRef json =
+      R"([{"a": "1", "b": "2"}, {"a": "3", "b": "9"}])";
+  CheckUdf<StringRef, StringRef, StringRef, StringRef, int32_t, bool>("json_array_sort", "9,2", json, "a", "b", 10,
+                                                                      true);
+  CheckUdf<StringRef, StringRef, StringRef, StringRef, int32_t, bool>("json_array_sort", "2,9", json, "a", "b", 10,
+                                                                      false);
+}
+
 }  // namespace codegen
-}  // namespace hybridse
 
 int main(int argc, char **argv) {
     ::testing::InitGoogleTest(&argc, argv);
