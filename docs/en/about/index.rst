@@ -5,7 +5,7 @@ About
 .. toctree::
     :maxdepth: 1
 
-    intro    
-    milestones
+    intro
+    community
     release_notes
 
