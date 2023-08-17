@@ -45,8 +45,8 @@ public class BatchCallablePreparedStatementImpl extends CallablePreparedStatemen
         checkClosed();
         checkExecutorClosed();
         Status status = new Status();
-        com._4paradigm.openmldb.ResultSet resultSet = router.ExecuteSQLBatchRequest(
-                db, currentSql, currentRowBatch, status);
+        com._4paradigm.openmldb.ResultSet resultSet = router.CallSQLBatchRequestProcedure(
+                db, spName, currentRowBatch, status);
         if (status.getCode() != 0 || resultSet == null) {
             String msg = status.ToString();
             status.delete();

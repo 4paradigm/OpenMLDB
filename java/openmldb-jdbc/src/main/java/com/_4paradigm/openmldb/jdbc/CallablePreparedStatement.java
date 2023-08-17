@@ -44,8 +44,7 @@ public class CallablePreparedStatement extends RequestPreparedStatement {
             status.delete();
             throw new SQLException("show procedure failed, msg: " + msg);
         }
-        this.currentSql = procedureInfo.GetSql();
-        this.currentRow = router.GetRequestRow(db, procedureInfo.GetSql(), status);
+        this.currentRow = router.GetRequestRowByProcedure(db, spName, status);
         if (status.getCode() != 0 || this.currentRow == null) {
             String msg = status.ToString();
             status.delete();

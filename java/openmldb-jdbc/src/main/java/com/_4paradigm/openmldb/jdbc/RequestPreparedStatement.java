@@ -49,9 +49,6 @@ public class RequestPreparedStatement implements java.sql.PreparedStatement {
         if (db == null) {
             throw new SQLException("db is null");
         }
-        if (currentSql == null) {
-            throw new SQLException("sql is null");
-        }
         if (router == null) {
             throw new SQLException("SQLRouter is null");
         }
