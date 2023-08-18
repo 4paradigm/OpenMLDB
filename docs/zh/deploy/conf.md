@@ -271,6 +271,15 @@ hadoop.conf.dir=
 
 Spark Config中重点关注的配置如下：
 
+```{note}
+理解配置项与环境变量的关系。
+
+TaskManager会通过SparkSubmit创建Spark进程，因此环境变量不会简单的直接继承。举例说明：在0.8.2及以前的版本中，为了Spark进程可以读写HADOOP，可以连接YARN集群，需要配置环境变量`HADOOP_CONF_DIR`。在以后的版本中，可以通过配置项`hadoop.conf.dir`指定Hadoop配置文件所在目录，TaskManager会将此项作为环境变量传递给Spark进程。但最优先的是Spark自身的spark-env.sh，如果此处已经配置好了，TaskManager无法覆盖此项。
+所以，优先级为：spark-env.sh > TaskManager配置 > 当前环境变量HADOOP_CONF_DIR。
+
+其中，`spark.home`仅用于TaskManager来识别Spark安装目录，不会传递给Spark进程。`hadoop.conf.dir`, `hadoop.user.name` 将会传递给Spark进程。如果有其他的变量需要传递，需要修改代码。
+```
+
 #### spark.home
 
 `spark.home`配置为Spark安装目录，TaskManager会使用该目录下的Spark执行离线任务。通常配置为下载的[OpenMLDB Spark 发行版](../../tutorial/openmldbspark_distribution.md)解压后的目录。
