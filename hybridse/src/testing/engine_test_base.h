@@ -429,6 +429,12 @@ class BatchRequestEngineTestRunner : public EngineTestRunner {
                 offset += row_num;
             }
         }
+
+        if (request_rows_.empty()) {
+            // batch request rows will empty for const projects
+            // workaround by add the one empty row, which passes batch request tests for const project
+            request_rows_.push_back(Row());
+        }
         return Status::OK();
     }
 
