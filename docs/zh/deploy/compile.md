@@ -191,8 +191,13 @@ bash steps/centos6_build.sh
 
 #### 云编译
 
-Fork OpenMLDB仓库后，可以使用在`Actions`中触发workflow `Other OS Build`，编译产出在`Actions`的`Artifacts`中。workflow 配置 `os name`为`centos6`，
-如果不需要Java或Python SDK，可配置`java sdk enable`或`python sdk enable`为`OFF`，节约编译时间。
+Fork OpenMLDB仓库后，可以使用在`Actions`中触发workflow `Other OS Build`，编译产出在`Actions`的`Artifacts`中。workflow 配置方式：
+- 不要更换`Use workflow from`为某个tag，可以是其他分支。
+- 选择`os name`为`centos6`。
+- 如果不是编译main分支，在`The branch, tag or SHA to checkout, otherwise use the branch`中填写想要的分支名、Tag(e.g. v0.8.2)或SHA。
+- 编译产出在触发后的runs界面中，参考[成功产出的runs链接](https://github.com/4paradigm/OpenMLDB/actions/runs/6044951902)。
+  - 一定会产出openmldb binary文件。
+  - 如果不需要Java或Python SDK，可配置`java sdk enable`或`python sdk enable`为`OFF`，节约编译时间。
 
 此编译流程需要从源码编译thirdparty，且资源较少，无法开启较高的并发编译。因此编译时间较长，大约需要3h5m（2h thirdparty+1h OpenMLDB）。workflow会缓存thirdparty的编译产出，因此第二次编译会快很多（1h15m OpenMLDB）。
 

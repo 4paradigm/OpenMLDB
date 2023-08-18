@@ -664,3 +664,7 @@ SyncTool需要Java运行环境，没有额外要求，建议单独部署在一�
 SyncTool的同步任务管理工具SyncTool Helper，在部署包的`tools/synctool_helper.py`，需要Python3运行环境，无额外要求，可以远程使用，但由于支持不够完善，查看Tool的调试信息需要在SyncTool所在机器上使用Helper。
 
 具体部署方式见[在离线同步工具](../tutorial/online_offline_sync.md)，请仔细阅读在离线同步工具的版本条件与功能边界。
+
+## 运维基本要求
+
+

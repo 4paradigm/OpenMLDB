@@ -54,8 +54,8 @@ jobs:
         if: github.event_name != 'pull_request'
         with:
           add-paths: |
-            docs/en/reference/sql/functions_and_operators/Files/udfs_8h.md
-            docs/zh/openmldb_sql/functions_and_operators/Files/udfs_8h.md
+            docs/en/reference/sql/functions_and_operators/udfs_8h.md
+            docs/zh/openmldb_sql/functions_and_operators/udfs_8h.md
           labels: |
             udf
           branch: docs-udf-patch

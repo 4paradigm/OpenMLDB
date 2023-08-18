@@ -11,7 +11,7 @@
 #### 2.1.1 C++函数名规范
 - C++内置函数名统一使用[snake_case](https://en.wikipedia.org/wiki/Snake_case)风格
 - 要求函数名能清晰表达函数功能
-- 函数不能重名。函数名不能和内置函数及其他自定义函数重名。所有内置函数的列表参考[这里](../openmldb_sql/functions_and_operators/Files/udfs_8h.md)
+- 函数不能重名。函数名不能和内置函数及其他自定义函数重名。所有内置函数的列表参考[这里](../openmldb_sql/functions_and_operators/udfs_8h.md)
 #### 2.1.2 C++类型与SQL类型对应关系
 内置C++函数的参数类型限定为：BOOL类型，数值类型，时间戳日期类型和字符串类型。C++类型SQL类型对应关系如下：
 

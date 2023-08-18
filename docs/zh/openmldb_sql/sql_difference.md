@@ -127,7 +127,7 @@ OpenMLDB (>= v0.7.2) 支持非递归的 WITH 子句。WITH 子句等价于其它
 特殊限制：
 
 - OpenMLDB v0.6.0 开始支持在线预览模式的全表聚合，但注意所描述的[扫描限制配置](https://openmldb.feishu.cn/wiki/wikcnhBl4NsKcAX6BO9NDtKAxDf#doxcnLWICKzccMuPiWwdpVjSaIe)。
-- OpenMLDB 有较多的聚合函数扩展，请查看产品文档具体查询所支持的函数 [OpenMLDB 内置函数](../openmldb_sql/functions_and_operators/Files/udfs_8h.md)。
+- OpenMLDB 有较多的聚合函数扩展，请查看产品文档具体查询所支持的函数 [OpenMLDB 内置函数](../openmldb_sql/functions_and_operators/udfs_8h.md)。
 
 ## 扩展语法
 

@@ -16,4 +16,3 @@
     multi_cluster
     diagnose
     openmldb_ops
-    faq

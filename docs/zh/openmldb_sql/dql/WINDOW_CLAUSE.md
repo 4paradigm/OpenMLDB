@@ -86,27 +86,43 @@ SELECT select_expr [,select_expr...], window_function_name(expr) OVER window_nam
 再看窗口想要什么大小，这里要分窗口类型说明：
 1. 时间窗口：时间窗口通常使用s, m, h, d等时间单位，如果没有单位，默认为ms。比如：
 
-    [3小时前,当前行] - 3h preceding and current row
-    [3小时前，30分钟前] - 3h preceding and 30m preceding
+    - [3小时前，当前行] - 3h preceding and current row
+    - [3小时前，30分钟前] - 3h preceding and 30m preceding
 
 1. 条数窗口：条数不需要单位。比如：
-    [10条，当前行] - 10 preceding and current row
-    [10条，3条] - 10 preceding and 3 preceding
+    - [10条，当前行] - 10 preceding and current row
+    - [10条，3条] - 10 preceding and 3 preceding
 
 ### 如何推断窗口是什么样的？
 
 首先，先明确是什么执行模式：
 
-离线模式，即批模式，它是对from表的每一行都做一次窗口划分与计算。因此，每一行对应产生一行SQL结果。
-请求模式，会带一条请求行，它会将请求行当做from表的数据，只对该行做窗口划分和计算，因此，只产生一行SQL结果。
+离线模式或在线预览模式，合称为批模式，它是对from表的每一行都做一次窗口划分与计算。因此，每一行对应产生一行SQL结果。
+请求模式，会带一条请求行，它会将请求行当做from表的数据，只对该行做窗口划分和计算，因此，只产生一行SQL结果。注意，不会将请求行插入到表中。
 
-再看，如何划分窗口：
+我们将批模式看作多次请求模式来看待，所以请求模式查询如何划分窗口，我们分为三段来讲：
 
-我们将批模式看作多次请求模式来看待。所以，对一次请求行来说，窗口只可能包含，它自己，与它的partition by列值相等的行（可能的全集）。
+- 对一次请求行来说，窗口**只可能**包含，它自己，与它的partition by列值相等的行
 
-partition key相等的所有行，还不是窗口，经由order by列排序后，还需要排除窗口范围以外的数据。比如，10 preceding and current row的条数窗口，就要抛弃10行以外的数据行（第10行包含在窗口内），又因为包括current row，于是窗口一共有11行数据。
+- partition key相等的所有行，它们不是乱序，而是按**order by列**排序
 
-* preceding为闭区间，包含该条，开区间使用open preceding
+- 根据rows/rows_range排除窗口范围以外的数据
+    - rows：例如，10 preceding and current row的条数窗口，就要抛弃10行以外的数据行（第10行包含在窗口内），又因为包括current row，于是窗口一共有11行数据。
+    -rows_range：例如，10s preceding and current row的时间窗口，就要抛弃10s以外的数据行（第10s包含在窗口内），也包括current row，于是窗口只会出现order key值在`[current_row_order_key - 10s, current_row_order_key]`范围内的数据行。
+
+```{note}
+窗口划分范围，仅与order by列相关。如果认为窗口内行数或具体某数据不符合预期范围，一般是窗口写法的误解，极小概率是SQL引擎计算有误。请以某一个partition key为例，分步检查表的数据（以下操作都是在线模式）：
+- 提取与该key相等的所有数据。可以使用`select * from table where partition_key = xxx`来提取，或使用源数据文件，通过pandas/spark等工具提取。
+- 再按order by列排序，这类似于window设置窗口为unbounded preceding and current row。此处，可以将手动处理的数据和OpenMLDB的unbounded window计算结果进行对比。
+  - 由于OpenMLDB只支持在窗口内聚合，很难看到窗口的数据全貌，而且窗口内数据较多时，查看全部也是很难的。通常是使用count/min/max/lag等聚合函数来衡量窗口内数据的数量和范围。
+  - 如果仍需要通过窗口内具体数据来确认，可以使用top来展示前k大的值，但它会对列进行再排序，不能等同于窗口排序（order by列排序）。其他聚合函数，参考[udf函数](../udfs_8h.md)。
+- 最后，再检查窗口的rows/rows_range设置是否符合预期。
+  - 通常情况，如果前两步没问题，条数划分一般不会有问题。
+  - 时间划分，需要注意时间单位。OpenMLDB中order by列无论是timestamp还是bigint，都当作整数来计算的，timestamp是转换为ms为单位的整数。我们支持在窗口设置中使用时间单位，但不会对表中的order by列值做任何单位假设。例如，如果order by列
+并非timestamp，而是设置整数`20230905`，在时间窗口设置5ms时，窗口的范围是`[20230905 - 5, 20230905]`，而不是`[20230905 00:00:00 - 5ms, 20230905]`。**请谨慎对待order by列，最方便的做法是，任何时间格式都将其转换为timestamp或ms为单位的bigint**。
+```
+
+* preceding为闭区间，包含该条，开区间需使用open preceding
 
 窗口还可以exclude current time，current row等，详情见下文。
 
@@ -332,5 +348,5 @@ WINDOW w1 AS (PARTITION BY col1 ORDER BY col5 ROWS_RANGE BETWEEN 10s PRECEDING A
 ```
 
 ```{seealso}
-窗口计算可使用的聚合函数，参考[Built-in Functions](../functions_and_operators/Files/udfs_8h.md)
+窗口计算可使用的聚合函数，参考[Built-in Functions](../functions_and_operators/udfs_8h.md)
 ```
