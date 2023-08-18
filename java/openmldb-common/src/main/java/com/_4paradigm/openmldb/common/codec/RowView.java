@@ -19,52 +19,38 @@ package com._4paradigm.openmldb.common.codec;
 import com._4paradigm.openmldb.proto.Type.DataType;
 import com._4paradigm.openmldb.proto.Common.ColumnDesc;
 import org.joda.time.DateTime;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
-import java.sql.Date;
-import java.util.ArrayList;
 import java.util.List;
 
 public class RowView {
 
+    private CodecMetaData metaData;
     private final static byte BOOL_FALSE = 0;
     private ByteBuffer row = null;
     private int size = 0;
-    private List<ColumnDesc> schema = new ArrayList<>();
-    private int stringFieldCnt = 0;
-    private int strFieldStartOffset = 0;
-    private int strAddrLength = 0;
-    private List<Integer> offsetVec = new ArrayList<>();
+    private List<ColumnDesc> schema;
     private boolean isValid = false;
 
     public RowView(List<ColumnDesc> schema) throws Exception {
-        this.schema = schema;
-        this.isValid = true;
-        if (schema.size() == 0) {
-            isValid = false;
-            return;
-        }
-        init();
+        this(new CodecMetaData(schema, true));
     }
 
     public RowView(List<ColumnDesc> schema, ByteBuffer row, int size) throws Exception {
-        this.schema = schema;
-        this.isValid = true;
+        this(new CodecMetaData(schema, true));
         this.size = size;
         if (row.order() == ByteOrder.BIG_ENDIAN) {
             row = row.order(ByteOrder.LITTLE_ENDIAN);
         }
         this.row = row;
-        if (schema.size() == 0) {
-            isValid = false;
-            return;
-        }
-        if (init()) {
-            reset(row, size);
-        }
+        reset(row, size);
+    }
+
+    public RowView(CodecMetaData metaData) {
+        this.metaData = metaData;
+        this.schema = metaData.getSchema();
+        this.isValid = true;
     }
 
     public static int getSchemaVersion(ByteBuffer row) {
@@ -75,25 +61,6 @@ public class RowView {
         return bt;
     }
 
-    private boolean init() throws Exception {
-        strFieldStartOffset = CodecUtil.HEADER_LENGTH + CodecUtil.getBitMapSize(schema.size());
-        for (int idx = 0; idx < schema.size(); idx++) {
-            ColumnDesc column = schema.get(idx);
-            if (column.getDataType() == DataType.kVarchar || column.getDataType() == DataType.kString) {
-                offsetVec.add(stringFieldCnt);
-                stringFieldCnt++;
-            } else {
-                if (CodecUtil.TYPE_SIZE_MAP.get(column.getDataType()) == null) {
-                    isValid = false;
-                    throw new Exception("type is not supported");
-                } else {
-                    offsetVec.add(strFieldStartOffset);
-                    strFieldStartOffset += CodecUtil.TYPE_SIZE_MAP.get(column.getDataType());
-                }
-            }
-        }
-        return true;
-    }
 
     public boolean reset(ByteBuffer row, int size) {
         if (schema.size() == 0 || row == null || size <= CodecUtil.HEADER_LENGTH ||
@@ -106,7 +73,6 @@ public class RowView {
         }
         this.row = row;
         this.size = size;
-        strAddrLength = CodecUtil.getAddrLength(size);
         return true;
     }
 
@@ -124,7 +90,6 @@ public class RowView {
             isValid = false;
             return false;
         }
-        strAddrLength = CodecUtil.getAddrLength(size);
         return true;
     }
 
@@ -255,7 +220,7 @@ public class RowView {
         if (isNull(buf, index)) {
             return null;
         }
-        int offset = offsetVec.get(index);
+        int offset = metaData.getOffsetVec().get(index);
         switch (dt) {
             case kBool:
                 return buf.get(offset) == BOOL_FALSE ? false: true;
@@ -277,11 +242,11 @@ public class RowView {
             case kVarchar:
             case kString:
                 int nextStrFieldOffset = 0;
-                if (offset < stringFieldCnt - 1) {
+                if (offset < metaData.getStrFieldCnt() - 1) {
                     nextStrFieldOffset = offset + 1;
                 }
                 return getStrField(buf, offset, nextStrFieldOffset,
-                        strFieldStartOffset, localStrAddrLength, rowSize);
+                        metaData.getStrFieldStartOffset(), localStrAddrLength, rowSize);
             default:
                 throw new Exception("invalid column type" + dt.name());
         }

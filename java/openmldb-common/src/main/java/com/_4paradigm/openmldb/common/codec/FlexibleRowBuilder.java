@@ -1,3 +1,19 @@
+/*
+ * Copyright 2021 4Paradigm
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package com._4paradigm.openmldb.common.codec;
 
 import com._4paradigm.openmldb.proto.Common;
@@ -9,18 +25,12 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.sql.Date;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 public class FlexibleRowBuilder implements RowBuilder {
 
-    private List<Common.ColumnDesc> schema = new ArrayList<>();
-    private int schemaVersion = 1;
-    private int strFieldCnt = 0;
-    private int strFieldStartOffset = 0;
-    private int baseFieldStartOffset = 0;
-    private List<Integer> offsetVec = new ArrayList<>();
+    private CodecMetaData metaData;
+    private int strFieldStartOffset;
 
     private int curPos = 0;
     private ByteBitMap nullBitmap;
@@ -35,50 +45,33 @@ public class FlexibleRowBuilder implements RowBuilder {
     private int strAddrLen = 0;
 
     public FlexibleRowBuilder(List<Common.ColumnDesc> schema) throws Exception {
-        this(schema, 1);
+        this(new CodecMetaData(schema, 1));
     }
 
-    public FlexibleRowBuilder(List<Common.ColumnDesc> schema, int schemaversion) throws Exception {
-        this.schemaVersion = schemaversion;
-        baseFieldStartOffset = CodecUtil.HEADER_LENGTH + CodecUtil.getBitMapSize(schema.size());
-        this.schema = schema;
-        calcSchemaOffset(schema);
-        nullBitmap = new ByteBitMap(schema.size());
-        settedValue = new ByteBitMap(schema.size());
-        baseFieldBuf = ByteBuffer.allocate(strFieldStartOffset - baseFieldStartOffset).order(ByteOrder.LITTLE_ENDIAN);
-        strAddrLen = strAddrSize * strFieldCnt;
+    public FlexibleRowBuilder(List<Common.ColumnDesc> schema, int schemaVersion) throws Exception {
+        this(new CodecMetaData(schema, schemaVersion));
+    }
+
+    public FlexibleRowBuilder(CodecMetaData metaData) {
+        this.metaData = metaData;
+        nullBitmap = new ByteBitMap(metaData.getSchema().size());
+        settedValue = new ByteBitMap(metaData.getSchema().size());
+        strFieldStartOffset = metaData.getStrFieldStartOffset();
+        baseFieldBuf = ByteBuffer.allocate(strFieldStartOffset - metaData.getBaseFieldStartOffset()).order(ByteOrder.LITTLE_ENDIAN);
+        strAddrLen = strAddrSize * metaData.getStrFieldCnt();
         strAddrBuf = ByteBuffer.allocate(strAddrLen).order(ByteOrder.LITTLE_ENDIAN);
     }
 
-    private void calcSchemaOffset(List<Common.ColumnDesc> schema) throws Exception {
-        int baseOffset = 0;
-        for (int idx = 0; idx < schema.size(); idx++) {
-            Common.ColumnDesc column = schema.get(idx);
-            if (column.getDataType() == Type.DataType.kVarchar || column.getDataType() == Type.DataType.kString) {
-                offsetVec.add(strFieldCnt);
-                strFieldCnt++;
-            } else {
-                if (CodecUtil.TYPE_SIZE_MAP.get(column.getDataType()) == null) {
-                    throw new Exception("type is not supported");
-                } else {
-                    offsetVec.add(baseOffset);
-                    baseOffset += CodecUtil.TYPE_SIZE_MAP.get(column.getDataType());
-                }
-            }
-        }
-        strFieldStartOffset = baseFieldStartOffset + baseOffset;
-    }
-
     private boolean checkType(int pos, Type.DataType type) {
-        return CodecUtil.checkType(schema, pos, type);
+        return CodecUtil.checkType(metaData.getSchema(), pos, type);
     }
 
     private int getOffset(int idx) {
-        return offsetVec.get(idx);
+        return metaData.getOffsetVec().get(idx);
     }
 
     private void setStrOffset(int strPos) {
-        if (strPos >= strFieldCnt) {
+        if (strPos >= metaData.getStrFieldCnt()) {
             return;
         }
         int curOffset = strFieldStartOffset + strAddrLen + strTotalLen;
@@ -92,7 +85,7 @@ public class FlexibleRowBuilder implements RowBuilder {
     }
 
     private ByteBuffer expandStrLenBuf(int newStrAddrsize, int strPos) {
-        int newStrAddBufLen = newStrAddrsize * strFieldCnt;
+        int newStrAddBufLen = newStrAddrsize * metaData.getStrFieldCnt();
         ByteBuffer newStrAddrBuf = ByteBuffer.allocate(newStrAddBufLen).order(ByteOrder.LITTLE_ENDIAN);
         for (int i = 0; i < strPos; i++) {
             int strOffset = CodecUtil.getStrOffset(strAddrBuf, i * strAddrSize, strAddrSize);
@@ -113,7 +106,7 @@ public class FlexibleRowBuilder implements RowBuilder {
         curPos = 0;
         strTotalLen = 0;
         strAddrSize = 1;
-        strAddrLen = strAddrSize * strFieldCnt;
+        strAddrLen = strAddrSize * metaData.getStrFieldCnt();
         result = null;
     }
 
@@ -209,12 +202,12 @@ public class FlexibleRowBuilder implements RowBuilder {
 
     @Override
     public boolean setNULL(int idx) {
-        if (idx >= schema.size()) {
+        if (idx >= metaData.getSchema().size()) {
             return false;
         }
         nullBitmap.atPut(idx, true);
         settedValue.atPut(idx, true);
-        Type.DataType type = schema.get(idx).getDataType();
+        Type.DataType type = metaData.getSchema().get(idx).getDataType();
         if (type == Type.DataType.kVarchar || type == Type.DataType.kString) {
             int strPos = getOffset(idx);
             setStrOffset(strPos + 1);
@@ -337,13 +330,13 @@ public class FlexibleRowBuilder implements RowBuilder {
         }
         int totalSize = strFieldStartOffset + strAddrLen + strTotalLen;
         result = ByteBuffer.allocate(totalSize).order(ByteOrder.LITTLE_ENDIAN);;
-        result.put((byte)1);                     // FVersion
-        result.put((byte)schemaVersion);         // SVersion
-        result.putInt(totalSize);                // Size
-        result.put(nullBitmap.getBuffer());      // BitMap
-        result.put(baseFieldBuf.array());        // Base data type
-        result.put(strAddrBuf.array());          // String addr
-        result.put(stringWriter.toByteArray());  // String value
+        result.put((byte)1);                            // FVersion
+        result.put((byte)metaData.getSchemaVersion());  // SVersion
+        result.putInt(totalSize);                       // Size
+        result.put(nullBitmap.getBuffer());             // BitMap
+        result.put(baseFieldBuf.array());               // Base data type
+        result.put(strAddrBuf.array());                 // String addr
+        result.put(stringWriter.toByteArray());         // String value
         return true;
     }
 
