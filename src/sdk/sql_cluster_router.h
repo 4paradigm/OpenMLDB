@@ -150,6 +150,10 @@ class SQLClusterRouter : public SQLRouter {
                                                             std::shared_ptr<SQLRequestRow> row,
                                                             hybridse::sdk::Status* status) override;
 
+    std::shared_ptr<hybridse::sdk::ResultSet> CallProcedure(const std::string& db, const std::string& sp_name,
+                                                            char* buf, int len, const std::string& router_col,
+                                                            hybridse::sdk::Status* status) override;
+
     std::shared_ptr<hybridse::sdk::ResultSet> CallSQLBatchRequestProcedure(
         const std::string& db, const std::string& sp_name, std::shared_ptr<SQLRequestRowBatch> row_batch,
         hybridse::sdk::Status* status) override;
@@ -298,7 +302,7 @@ class SQLClusterRouter : public SQLRouter {
     inline bool CheckSQLSyntax(const std::string& sql);
 
     std::shared_ptr<openmldb::client::TabletClient> GetTablet(const std::string& db, const std::string& sp_name,
-                                                              hybridse::sdk::Status* status);
+            const std::string& router_col, hybridse::sdk::Status* status);
 
     bool ExtractDBTypes(const std::shared_ptr<hybridse::sdk::Schema>& schema,
                         std::vector<openmldb::type::DataType>* parameter_types);

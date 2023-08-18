@@ -1165,7 +1165,7 @@ bool TabletClient::Scan(const ::openmldb::api::ScanRequest& request, brpc::Contr
     return true;
 }
 
-bool TabletClient::CallProcedure(const std::string& db, const std::string& sp_name, const std::string& row,
+bool TabletClient::CallProcedure(const std::string& db, const std::string& sp_name, const base::Slice& row,
                                  brpc::Controller* cntl, openmldb::api::QueryResponse* response, bool is_debug,
                                  uint64_t timeout_ms) {
     if (cntl == NULL || response == NULL) return false;
@@ -1249,7 +1249,7 @@ bool TabletClient::DropProcedure(const std::string& db_name, const std::string& 
     return true;
 }
 
-bool TabletClient::CallProcedure(const std::string& db, const std::string& sp_name, const std::string& row,
+bool TabletClient::CallProcedure(const std::string& db, const std::string& sp_name, const base::Slice& row,
                                  uint64_t timeout_ms, bool is_debug,
                                  openmldb::RpcCallback<openmldb::api::QueryResponse>* callback) {
     if (callback == nullptr) {

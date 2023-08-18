@@ -225,7 +225,7 @@ class TabletClient : public Client {
 
     base::Status CreateProcedure(const openmldb::api::CreateProcedureRequest& sp_request);
 
-    bool CallProcedure(const std::string& db, const std::string& sp_name, const std::string& row,
+    bool CallProcedure(const std::string& db, const std::string& sp_name, const base::Slice& row,
                        brpc::Controller* cntl, openmldb::api::QueryResponse* response, bool is_debug,
                        uint64_t timeout_ms);
 
@@ -248,7 +248,7 @@ class TabletClient : public Client {
 
     bool DropFunction(const ::openmldb::common::ExternalFun& fun, std::string* msg);
 
-    bool CallProcedure(const std::string& db, const std::string& sp_name, const std::string& row, uint64_t timeout_ms,
+    bool CallProcedure(const std::string& db, const std::string& sp_name, const base::Slice& row, uint64_t timeout_ms,
                        bool is_debug, openmldb::RpcCallback<openmldb::api::QueryResponse>* callback);
 
     bool CallSQLBatchRequestProcedure(const std::string& db, const std::string& sp_name,
