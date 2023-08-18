@@ -39,12 +39,7 @@ import com._4paradigm.openmldb.common.Pair;
 import com._4paradigm.openmldb.jdbc.CallablePreparedStatement;
 import com._4paradigm.openmldb.jdbc.SQLResultSet;
 import com._4paradigm.openmldb.proto.NS;
-import com._4paradigm.openmldb.sdk.Column;
-import com._4paradigm.openmldb.sdk.Common;
-import com._4paradigm.openmldb.sdk.Schema;
-import com._4paradigm.openmldb.sdk.SdkOption;
-import com._4paradigm.openmldb.sdk.SqlException;
-import com._4paradigm.openmldb.sdk.SqlExecutor;
+import com._4paradigm.openmldb.sdk.*;
 import com._4paradigm.openmldb.sql_router_sdk;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -64,6 +59,7 @@ public class SqlClusterExecutor implements SqlExecutor {
 
     private static final AtomicBoolean initialized = new AtomicBoolean(false);
     private SQLRouter sqlRouter;
+    private DeploymentManager deploymentManager;
 
     public SqlClusterExecutor(SdkOption option, String libraryPath) throws SqlException {
         initJavaSdkLibrary(libraryPath);
@@ -80,6 +76,7 @@ public class SqlClusterExecutor implements SqlExecutor {
         if (sqlRouter == null) {
             throw new SqlException("fail to create sql executor");
         }
+        deploymentManager = new DeploymentManager(sqlRouter);
     }
 
     public SqlClusterExecutor(SdkOption option) throws SqlException {
@@ -199,7 +196,20 @@ public class SqlClusterExecutor implements SqlExecutor {
 
     @Override
     public CallablePreparedStatement getCallablePreparedStmt(String db, String deploymentName) throws SQLException {
-        return new CallablePreparedStatementImpl(db, deploymentName, this.sqlRouter);
+        Deployment deployment = deploymentManager.getDeployment(db, deploymentName);
+        if (deployment == null) {
+            ProcedureInfo procedureInfo = showProcedure(db, deploymentName);
+            if (procedureInfo == null) {
+                throw new SQLException(deploymentName + " does not exist in " + db);
+            }
+            try {
+                deployment = new Deployment(procedureInfo);
+                deploymentManager.addDeployment(db, deploymentName, deployment);
+            } catch (Exception e) {
+                throw new SQLException(e.getMessage());
+            }
+        }
+        return new CallablePreparedStatementImpl(deployment, this.sqlRouter);
     }
 
     @Override
@@ -284,15 +294,7 @@ public class SqlClusterExecutor implements SqlExecutor {
             throw new SQLException("ShowProcedure failed: " + msg);
         }
         status.delete();
-        com._4paradigm.openmldb.sdk.ProcedureInfo spInfo = new com._4paradigm.openmldb.sdk.ProcedureInfo();
-        spInfo.setDbName(procedureInfo.GetDbName());
-        spInfo.setProName(procedureInfo.GetSpName());
-        spInfo.setSql(procedureInfo.GetSql());
-        spInfo.setInputSchema(Common.convertSchema(procedureInfo.GetInputSchema()));
-        spInfo.setOutputSchema(Common.convertSchema(procedureInfo.GetOutputSchema()));
-        spInfo.setMainTable(procedureInfo.GetMainTable());
-        spInfo.setInputTables(procedureInfo.GetTables());
-        spInfo.setInputDbs(procedureInfo.GetDbs());
+        com._4paradigm.openmldb.sdk.ProcedureInfo spInfo = Common.convertProcedureInfo(procedureInfo);
         procedureInfo.delete();
         return spInfo;
     }

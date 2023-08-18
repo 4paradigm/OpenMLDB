@@ -17,6 +17,7 @@
 package com._4paradigm.openmldb.sdk;
 
 import com._4paradigm.openmldb.DataType;
+import com._4paradigm.openmldb.proto.Type;
 
 import java.sql.SQLException;
 import java.sql.Types;
@@ -48,6 +49,31 @@ public class Common {
         }
     }
 
+    public static com._4paradigm.openmldb.proto.Type.DataType sqlType2ProtoType(int sqlType) throws SQLException {
+        switch (sqlType) {
+            case Types.BOOLEAN:
+                return Type.DataType.kBool;
+            case Types.SMALLINT:
+                return Type.DataType.kSmallInt;
+            case Types.INTEGER:
+                return Type.DataType.kInt;
+            case Types.BIGINT:
+                return Type.DataType.kBigInt;
+            case Types.FLOAT:
+                return Type.DataType.kFloat;
+            case Types.DOUBLE:
+                return Type.DataType.kDouble;
+            case Types.VARCHAR:
+                return Type.DataType.kString;
+            case Types.TIMESTAMP:
+                return Type.DataType.kTimestamp;
+            case Types.DATE:
+                return Type.DataType.kDate;
+            default:
+                throw new SQLException("Unexpected value: " + sqlType);
+        }
+    }
+
     public static com._4paradigm.openmldb.sdk.Schema convertSchema(com._4paradigm.openmldb.Schema schema) throws SQLException {
         if (schema == null || schema.GetColumnCnt() == 0) {
             throw new SQLException("schema is null or empty");
@@ -62,6 +88,18 @@ public class Common {
             columnList.add(column);
         }
         return new com._4paradigm.openmldb.sdk.Schema(columnList);
+    }
+
+    public static List<com._4paradigm.openmldb.proto.Common.ColumnDesc> convert2ProtoSchema(com._4paradigm.openmldb.sdk.Schema schema) throws SQLException {
+        List<com._4paradigm.openmldb.proto.Common.ColumnDesc> columnList = new ArrayList<>();
+        for (Column column : schema.getColumnList()) {
+            com._4paradigm.openmldb.proto.Common.ColumnDesc.Builder builder = com._4paradigm.openmldb.proto.Common.ColumnDesc.newBuilder();
+            builder.setName(column.getColumnName())
+                    .setDataType(sqlType2ProtoType(column.getSqlType()))
+                    .setNotNull(column.isNotNull());
+            columnList.add(builder.build());
+        }
+        return columnList;
     }
 
     public static DataType sqlTypeToDataType(int sqlType) throws SQLException {
@@ -87,5 +125,19 @@ public class Common {
             default:
                 throw new SQLException("Unexpected Values: " + sqlType);
         }
+    }
+
+    public static ProcedureInfo convertProcedureInfo(com._4paradigm.openmldb.ProcedureInfo procedureInfo) throws SQLException {
+        ProcedureInfo spInfo = new ProcedureInfo();
+        spInfo.setDbName(procedureInfo.GetDbName());
+        spInfo.setProName(procedureInfo.GetSpName());
+        spInfo.setSql(procedureInfo.GetSql());
+        spInfo.setInputSchema(Common.convertSchema(procedureInfo.GetInputSchema()));
+        spInfo.setOutputSchema(Common.convertSchema(procedureInfo.GetOutputSchema()));
+        spInfo.setMainTable(procedureInfo.GetMainTable());
+        spInfo.setInputTables(procedureInfo.GetTables());
+        spInfo.setInputDbs(procedureInfo.GetDbs());
+        // for (int i = 0; i < procedureInfo.Get)
+        return spInfo;
     }
 }

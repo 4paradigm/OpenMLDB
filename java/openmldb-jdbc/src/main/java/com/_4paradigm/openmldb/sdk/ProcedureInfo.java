@@ -27,7 +27,10 @@ public class ProcedureInfo {
     private Schema outputSchema;
     private String mainTable;
     private List<String> inputTables = new ArrayList<>();
+
     private List<String> inputDbs= new ArrayList<>();
+
+    private List<String> routerCols = new ArrayList<>();
 
     public ProcedureInfo() {
     }
@@ -94,5 +97,13 @@ public class ProcedureInfo {
 
     public void setMainTable(String mainTable) {
         this.mainTable = mainTable;
+    }
+
+    public void setRouterCols(List<String> routerCols) {
+        this.routerCols = routerCols;
+    }
+
+    public List<String> getRouterCols() {
+        return routerCols;
     }
 }

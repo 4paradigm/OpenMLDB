@@ -36,7 +36,7 @@ public class CodecMetaData {
 
     public CodecMetaData(List<Common.ColumnDesc> schema, boolean addOffsetHeader) throws Exception  {
         this.schema = schema;
-        calcSchemaOffset(true);
+        calcSchemaOffset(addOffsetHeader);
     }
 
     public CodecMetaData(List<Common.ColumnDesc> schema, int schemaVersion) throws Exception {

@@ -38,6 +38,11 @@
             <artifactId>openmldb-native</artifactId>
             <version>${variant.native.version}</version>
         </dependency>
+        <dependency>
+            <groupId>com.4paradigm.openmldb</groupId>
+            <artifactId>openmldb-common</artifactId>
+            <version>${project.parent.version}</version>
+        </dependency>
 
         <!-- https://mvnrepository.com/artifact/org.slf4j/slf4j-log4j12 -->
         <dependency>
