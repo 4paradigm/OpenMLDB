@@ -789,10 +789,14 @@ void DefaultUdfLibrary::InitFeatureZero() {
     RegisterAlias("fz_topn_frequency", "topn_frequency");
 
     RegisterExternal("list_at")
-        .args<StringRef, int32_t, StringRef>(list_at);
+        .returns<StringRef>()
+        .return_by_arg(true)
+        .args<StringRef, int32_t, StringRef>(reinterpret_cast<void*>(list_at));
 
     RegisterExternal("json_array_sort")
-        .args<StringRef, StringRef, StringRef, int32_t, bool>(json_array_sort);
+        .returns<StringRef>()
+        .return_by_arg(true)
+        .args<StringRef, StringRef, StringRef, int32_t, bool>(reinterpret_cast<void*>(json_array_sort));
 }
 
 }  // namespace udf

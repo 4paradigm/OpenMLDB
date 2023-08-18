@@ -47,31 +47,7 @@ void json_array_length(openmldb::base::StringRef* in, int32_t* sz, bool* is_null
     *sz = static_cast<int32_t>(arr_sz);
 }
 
-void DefaultUdfLibrary::InitJsonUdfs() {
-    RegisterExternal("json_array_length")
-    .args<openmldb::base::StringRef>(json_array_length)
-    .doc(R"(
-         @brief Returns the number of elements in the outermost JSON array.
-
-         Null returned if input is not valid JSON array string.
-
-         @param jsonArray JSON arry in string
-
-         Example:
-
-         @code{.sql}
-           select json_array_length('[1, 2]')
-           -- 2
-
-           SELECT json_array_length('[1,2,3,{"f1":1,"f2":[5,6]},4]');
-           -- 5
-
-           select json_array_length('[1, 2')
-           -- NULL
-         @endcode
-
-         @since 0.9.0)");
-}
+void DefaultUdfLibrary::InitJsonUdfs() {}
 
 }  // namespace udf
 }  // namespace hybridse

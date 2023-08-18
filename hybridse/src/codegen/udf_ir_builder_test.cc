@@ -1188,16 +1188,6 @@ TEST_F(UdfIRBuilderTest, ReplaceNullable) {
 }
 
 
-TEST_F(UdfIRBuilderTest, JsonArrayLength) {
-    CheckUdf<Nullable<int32_t>, Nullable<StringRef>>("json_array_length", 0, "[]");
-    CheckUdf<Nullable<int32_t>, Nullable<StringRef>>("json_array_length", 3, "[1,2,3]");
-    CheckUdf<Nullable<int32_t>, Nullable<StringRef>>("json_array_length", 5, R"([1,2,3,{"f1":1,"f2":[5,6]},4])");
-
-    CheckUdf<Nullable<int32_t>, Nullable<StringRef>>("json_array_length", nullptr, R"({})");
-    CheckUdf<Nullable<int32_t>, Nullable<StringRef>>("json_array_length", nullptr, "[1,2,3");
-    CheckUdf<Nullable<int32_t>, Nullable<StringRef>>("json_array_length", nullptr, nullptr);
-}
-
 TEST_F(UdfIRBuilderTest, CustUdfs) {
     CheckUdf<Nullable<StringRef>, Nullable<StringRef>, int32_t, Nullable<StringRef>>("list_at", "a", "a,b,c", 0, ",");
 
@@ -1209,6 +1199,7 @@ TEST_F(UdfIRBuilderTest, CustUdfs) {
                                                                       false);
 }
 
+}
 }  // namespace codegen
 
 int main(int argc, char **argv) {
