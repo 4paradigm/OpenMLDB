@@ -1082,7 +1082,7 @@ std::shared_ptr<DataHandlerList> Runner::BatchRequestRun(RunnerContext& ctx) {
         batch_inputs[idx - 1] = producers_[idx - 1]->BatchRequestRun(ctx);
     }
 
-    for (size_t idx = 0; idx < static_cast<int>(ctx.GetRequestSize()); idx++) {
+    for (size_t idx = 0; idx < ctx.GetRequestSize(); idx++) {
         inputs.clear();
         for (size_t producer_idx = 0; producer_idx < producers_.size(); producer_idx++) {
             if (batch_inputs[producer_idx] == nullptr) {

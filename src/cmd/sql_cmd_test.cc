@@ -3641,7 +3641,7 @@ struct DeploymentEnv {
                          });
     }
 
-    // TODO: A bacth request increase deployment cnt by 1
+    // A bacth request increase deployment cnt by 1
     // yet may greatly impact deploy response time, if the batch size is huge
     // maybe it requires a revision
     void CallDeployProcedureBatch() {
