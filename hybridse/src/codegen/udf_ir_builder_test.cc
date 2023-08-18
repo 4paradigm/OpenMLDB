@@ -1463,6 +1463,9 @@ TEST_F(UdfIRBuilderTest, AddMonths) {
     CheckUdf<Nullable<Date>, Date, int64_t>("add_months", Date(2013, 3, 31), Date(2012, 1, 31), 14);
 }
 
+// ========================================================================= //
+//              JSON functions
+// ========================================================================= //
 TEST_F(UdfIRBuilderTest, JsonArrayLength) {
     CheckUdf<Nullable<int32_t>, Nullable<StringRef>>("json_array_length", 0, "[]");
     CheckUdf<Nullable<int32_t>, Nullable<StringRef>>("json_array_length", 3, "[1,2,3]");
@@ -1471,6 +1474,73 @@ TEST_F(UdfIRBuilderTest, JsonArrayLength) {
     CheckUdf<Nullable<int32_t>, Nullable<StringRef>>("json_array_length", nullptr, R"({})");
     CheckUdf<Nullable<int32_t>, Nullable<StringRef>>("json_array_length", nullptr, "[1,2,3");
     CheckUdf<Nullable<int32_t>, Nullable<StringRef>>("json_array_length", nullptr, nullptr);
+}
+
+TEST_F(UdfIRBuilderTest, GetJsonObject) {
+    std::string_view json = R"(
+        {
+          "foo": ["bar", "baz"],
+          "": 0,
+          "a/b": 1,
+          "c%d": 2,
+          "e^f": 3,
+          "g|h": 4,
+          "i\\j": 5,
+          "k\"l": 6,
+          " ": 7,
+          "m~n": 8,
+          "o\p": 9,
+        })";
+    std::initializer_list<std::vector<Nullable<StringRef>>> cases = {
+        // empty json path evaluate to whole document
+        {"[]", "[]", ""},
+        {R"({"k": "val"})", R"({"k": "val"})", ""},
+
+        {absl::StripAsciiWhitespace(json), json, ""},
+        {R"(["bar", "baz"])", json, "/foo"},
+        {"bar", json, "/foo/0"},
+        {"baz", json, "/foo/1"},
+        {nullptr, json, "/foo/2"},
+        {"0", json, "/"},
+        {"1", json, "/a~1b"},  // '/' encoded as '~1'
+        {"2", json, "/c%d"},
+        {"3", json, "/e^f"},
+        {"4", json, "/g|h"},
+        {"5", json, R"(/i\\j)"},
+        {"6", json, R"(/k\"l)"},
+        {"7", json, "/ "},
+        {"8", json, "/m~0n"},  // '~' encoded as '~0'
+        {"9", json, R"(/o\p)"},  // any character can be escaped
+        {nullptr, json, "/bar"},
+        {nullptr, json, "/bar/0"},
+
+        {"", R"({"a": ""})", "/a"},
+        {"str", R"({"a": "str"})", "/a"},
+        {"1", R"({"a": 1})", "/a"},
+        {"null", R"({"a": null})", "/a"},
+        {"true", R"({"a": true})", "/a"},
+        {"false", R"({"a": false})", "/a"},
+        {R"({"c": "d"})", R"({"a": {"c": "d"}})", "/a"},
+
+        {nullptr, "{", ""},
+        {nullptr, R"({"a"})", "/a"},
+
+        // get_json_object do not fully valid the querying object
+        {"flase", R"({"a": flase})", "/a"},
+        {"ni", R"({"a": ni})", "/a"},
+        {"9n", R"({"a": 9n})", "/a"},
+        {"-x", R"({"a": -x})", "/a"},
+        {"[nx]", R"({"a": [nx]})", "/a"},
+        {R"({"g": trx})", R"({"a": {"g": trx}})", "/a"},
+
+        // invalid array/object part result in strange behavior, won't assert in tests
+        // {R"({"g":}})", R"({"a": {"g":}})", "/a"},
+        // {"[xxy}", R"({"a": [xxy})", "/a"},
+    };
+
+    for (auto cs : cases) {
+        CheckUdf<Nullable<StringRef>, Nullable<StringRef>, Nullable<StringRef>>("get_json_object", cs[0], cs[1], cs[2]);
+    }
 }
 
 }  // namespace codegen
