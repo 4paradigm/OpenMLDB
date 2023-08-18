@@ -1485,7 +1485,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::CallProcedure(const 
 }
 
 std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::CallProcedure(const std::string& db,
-        const std::string& sp_name, char* buf, int len,
+        const std::string& sp_name, openmldb::sdk::NIOBUFFER buf, int len,
         const std::string& router_col, hybridse::sdk::Status* status) {
     RET_IF_NULL_AND_WARN(status, "output status is nullptr");
     if (buf == nullptr || len == 0) {
@@ -1500,7 +1500,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::CallProcedure(const 
 
     auto cntl = std::make_shared<::brpc::Controller>();
     auto response = std::make_shared<::openmldb::api::QueryResponse>();
-    bool ok = tablet->CallProcedure(db, sp_name, base::Slice(buf, len), cntl.get(), response.get(),
+    bool ok = tablet->CallProcedure(db, sp_name, base::Slice(reinterpret_cast<char*>(buf), len), cntl.get(), response.get(),
             options_->enable_debug, options_->request_timeout);
     if (!ok || response->code() != ::openmldb::base::kOk) {
         RPC_STATUS_AND_WARN(status, cntl, response, "CallProcedure failed");

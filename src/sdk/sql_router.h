@@ -37,6 +37,8 @@
 namespace openmldb {
 namespace sdk {
 
+typedef unsigned char *NIOBUFFER;
+
 struct BasicRouterOptions {
     virtual ~BasicRouterOptions() = default;
     bool enable_debug = false;
@@ -164,8 +166,8 @@ class SQLRouter {
                                                                     hybridse::sdk::Status* status) = 0;
 
     virtual std::shared_ptr<hybridse::sdk::ResultSet> CallProcedure(const std::string& db, const std::string& sp_name,
-                                                                    char* buf, int len, const std::string& router_col,
-                                                                    hybridse::sdk::Status* status) = 0;
+            openmldb::sdk::NIOBUFFER buf, int len, const std::string& router_col,
+            hybridse::sdk::Status* status) = 0;
 
     virtual std::shared_ptr<hybridse::sdk::ResultSet> CallSQLBatchRequestProcedure(
         const std::string& db, const std::string& sp_name, std::shared_ptr<openmldb::sdk::SQLRequestRowBatch> row_batch,

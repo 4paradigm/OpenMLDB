@@ -151,8 +151,8 @@ class SQLClusterRouter : public SQLRouter {
                                                             hybridse::sdk::Status* status) override;
 
     std::shared_ptr<hybridse::sdk::ResultSet> CallProcedure(const std::string& db, const std::string& sp_name,
-                                                            char* buf, int len, const std::string& router_col,
-                                                            hybridse::sdk::Status* status) override;
+            openmldb::sdk::NIOBUFFER buf, int len, const std::string& router_col,
+            hybridse::sdk::Status* status) override;
 
     std::shared_ptr<hybridse::sdk::ResultSet> CallSQLBatchRequestProcedure(
         const std::string& db, const std::string& sp_name, std::shared_ptr<SQLRequestRowBatch> row_batch,
