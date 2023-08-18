@@ -48,6 +48,7 @@ class DefaultUdfLibrary : public UdfLibrary {
     void initMaxByCateUdaFs();
     void InitAvgByCateUdafs();
     void InitFeatureZero();
+    void InitJsonUdfs();
 };
 
 }  // namespace udf
