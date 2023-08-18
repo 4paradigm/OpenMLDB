@@ -42,6 +42,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Arrays;
+import org.apache.commons.lang3.SystemUtils;
 
 public class SQLRouterSmokeTest {
     public static SqlExecutor clusterExecutor;
@@ -65,7 +66,7 @@ public class SQLRouterSmokeTest {
             standaloneOption.setSessionTimeout(20000);
             standaloneExecutor = new SqlClusterExecutor(standaloneOption);
         } catch (Exception e) {
-            e.printStackTrace();
+            Assert.fail("cathed exception", e);
         }
     }
 
@@ -261,20 +262,64 @@ public class SQLRouterSmokeTest {
             ok = router.dropDB(dbname);
             Assert.assertTrue(ok);
         } catch (Exception e) {
-            e.printStackTrace();
-            Assert.fail();
+            Assert.fail("cathed exception", e);
         }
     }
 
     @Test(dataProvider = "executor")
-    public void testParameterizedQueryFail(SqlExecutor router) {
+    public void testCreateFunction(SqlExecutor router) {
+        java.sql.Statement statement = router.getStatement();
+
         try {
-            String dbname = "SQLRouterSmokeTest" + System.currentTimeMillis();
+            // create function ok
+            if (SystemUtils.IS_OS_MAC) {
+                statement.execute("CREATE FUNCTION cut2(x STRING) RETURNS STRING OPTIONS (FILE='libtest_udf.dylib')");
+            } else if (SystemUtils.IS_OS_LINUX) {
+                statement.execute("CREATE FUNCTION cut2(x STRING) RETURNS STRING OPTIONS (FILE='libtest_udf.so')");
+            }
+            Assert.assertTrue(statement.execute("SHOW FUNCTIONS"));
+
+            // queryable
+            {
+                // // disabled due to #3405
+                // statement.execute("set session execute_mode='offline'");
+                // statement.execute("set global sync_job=true");
+                // Assert.assertTrue(statement.execute("select cut2('hello')"));
+                // java.sql.ResultSet resultset = statement.getResultSet();
+                // resultset.next();
+                // String result = resultset.getString(1);
+                // Assert.assertEquals(result, "he");
+            }
+
+            {
+                statement.execute("set session execute_mode='online'");
+                Assert.assertTrue(statement.execute("select cut2('hello')"));
+                java.sql.ResultSet resultset = statement.getResultSet();
+                resultset.next();
+                String result = resultset.getString(1);
+                Assert.assertEquals(result, "he");
+            }
+        } catch (Exception e) {
+            Assert.fail("cathed exception", e);
+        } finally {
+            // dropable
+            try {
+                statement.execute("DROP FUNCTION cut2");
+            } catch (Exception e) {
+                Assert.fail();
+            }
+        }
+    }
+
+    @Test(dataProvider = "executor", expectedExceptions = java.sql.SQLException.class, expectedExceptionsMessageRegExp = ".*Fail to get parameter type with position 2")
+    public void testParameterizedQueryFail(SqlExecutor router) throws SQLException{
+        String dbname = "SQLRouterSmokeTest" + System.currentTimeMillis();
+        String ddl = "create table tsql1010 ( col1 bigint, col2 string, index(key=col2, ts=col1));";
+        try {
             // create db
             router.dropDB(dbname);
             boolean ok = router.createDB(dbname);
             Assert.assertTrue(ok);
-            String ddl = "create table tsql1010 ( col1 bigint, col2 string, index(key=col2, ts=col1));";
             // create table
             ok = router.executeDDL(dbname, ddl);
             Assert.assertTrue(ok);
@@ -289,8 +334,9 @@ public class SQLRouterSmokeTest {
                 Assert.fail("executeQuery is expected to throw exception");
                 rs4.close();
             }
-        } catch (Exception e) {
-            e.printStackTrace();
+        } finally {
+            router.executeSQL(dbname, "drop table tsql1010");
+            router.dropDB(dbname);
         }
     }
 
@@ -467,8 +513,7 @@ public class SQLRouterSmokeTest {
             ok = router.dropDB(dbname);
             Assert.assertTrue(ok);
         } catch (Exception e) {
-            e.printStackTrace();
-            Assert.fail();
+            Assert.fail("cathed exception", e);
         }
     }
 
@@ -603,8 +648,7 @@ public class SQLRouterSmokeTest {
             ok = router.dropDB(dbname);
             Assert.assertTrue(ok);
         } catch (Exception e) {
-            e.printStackTrace();
-            Assert.fail();
+            Assert.fail("cathed exception", e);
         }
     }
 

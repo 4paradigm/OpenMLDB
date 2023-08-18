@@ -79,6 +79,8 @@
 
         <!-- workaround to make git-commit-id work in Git worktree, refer https://github.com/git-commit-id/git-commit-id-maven-plugin/issues/215 -->
         <maven.gitcommitid.nativegit>true</maven.gitcommitid.nativegit>
+
+        <testng.version>7.5.1</testng.version>
     </properties>
 
     <dependencies>
@@ -399,6 +401,8 @@
                     <generateGitPropertiesFile>true</generateGitPropertiesFile>
                     <generateGitPropertiesFilename>${project.build.outputDirectory}/git.properties</generateGitPropertiesFilename>
                     <injectAllReactorProjects>true</injectAllReactorProjects>
+                    <!-- do not fetch upstream -->
+                    <offline>true</offline>
                   </configuration>
                 </plugin>
                 <!-- site lifecycle, see https://maven.apache.org/ref/current/maven-core/lifecycles.html#site_Lifecycle -->

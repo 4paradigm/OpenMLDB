@@ -30,9 +30,6 @@ fi
 cd "$(dirname "$0")"/../ || exit 1
 ROOTDIR=$(pwd)
 BINDIR=$(pwd)/bin # the script dir
-# udf is <rootdir>/udf
-LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:$(pwd)/udf"
-export LD_LIBRARY_PATH
 RED='\E[1;31m'
 RES='\E[0m'
 

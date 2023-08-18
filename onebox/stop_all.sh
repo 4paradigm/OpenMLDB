@@ -14,11 +14,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-set -x -e
+set -e
+shopt -s nullglob
 
-if [[ "$OSTYPE" = "darwin"* ]]; then
-    pkill -9 -x -l openmldb
-else
-    pgrep -a -f "openmldb.*onebox.*" | awk '{print $1}' | xargs -I {} kill -9 {}
-fi
+cd "$(dirname "$0")"
+
+for file in workspace/run/*.pid ; do
+    if [[ "$OSTYPE" = "darwin"* ]]; then
+        pkill -9 -l -F "$file" || echo "pidfile $file not valid, ignoreing"
+    else
+        pkill -9 -e -F "$file" || echo "pidfile $file not valid, ignoreing"
+    fi
+    rm -f "$file"
+done
 

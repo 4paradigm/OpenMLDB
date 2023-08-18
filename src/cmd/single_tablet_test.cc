@@ -75,7 +75,7 @@ TEST_P(DBSDKTest, CreateFunction) {
         ProcessSQLs(sr_2, {"set @@execute_mode = 'online'"});
     }
     hybridse::sdk::Status status;
-    std::string so_path = openmldb::test::GetParentDir(openmldb::test::GetExeDir()) + "/libtest_udf.so";
+    std::string so_path = openmldb::test::GetParentDir(openmldb::test::GetExeDir()) + "/../udf/libtest_udf.so";
     std::string cut2_sql = absl::StrCat("CREATE FUNCTION cut2(x STRING) RETURNS STRING "
                             "OPTIONS (FILE='", so_path, "');");
     std::string strlength_sql = absl::StrCat("CREATE FUNCTION strlength(x STRING) RETURNS INT "
@@ -150,7 +150,7 @@ TEST_P(DBSDKTest, CreateUdafFunction) {
         ProcessSQLs(sr_2.get(), {"set @@execute_mode = 'online'"});
     }
     hybridse::sdk::Status status;
-    std::string so_path = openmldb::test::GetParentDir(openmldb::test::GetExeDir()) + "/libtest_udf.so";
+    std::string so_path = openmldb::test::GetParentDir(openmldb::test::GetExeDir()) + "/../udf/libtest_udf.so";
     std::string agg_fun_str = absl::StrCat("CREATE AGGREGATE FUNCTION special_sum(x BIGINT) RETURNS BIGINT "
                             "OPTIONS (FILE='", so_path, "');");
     std::string agg_fun_str1 = absl::StrCat("CREATE AGGREGATE FUNCTION count_null(x STRING) RETURNS BIGINT "

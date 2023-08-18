@@ -45,7 +45,7 @@ base::Status DynamicLibManager::ExtractFunction(const std::string& name, bool is
         }
     }
     if (!so_handle) {
-        void* handle = dlopen(file.c_str(), RTLD_LAZY);
+        void* handle = dlopen(file.c_str(), RTLD_LAZY | RTLD_LOCAL);
         if (handle == nullptr) {
             std::string err_msg;
             err_msg = "can not open the dynamic library: " + file + ", error: " + dlerror() + ", try to use abs path";
@@ -57,7 +57,7 @@ base::Status DynamicLibManager::ExtractFunction(const std::string& name, bool is
                 return {common::kExternalUDFError, err_msg};
             }
 
-            handle = dlopen(abs_path_buff, RTLD_LAZY);
+            handle = dlopen(abs_path_buff, RTLD_LAZY | RTLD_LOCAL);
             if (handle == nullptr) {
                 err_msg.append("dlopen abs path failed, error: ").append(dlerror());
                 return {common::kExternalUDFError, err_msg};
