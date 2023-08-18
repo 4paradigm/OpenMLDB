@@ -182,6 +182,10 @@ class SQLRouter {
                                                                       std::shared_ptr<openmldb::sdk::SQLRequestRow> row,
                                                                       hybridse::sdk::Status* status) = 0;
 
+    virtual std::shared_ptr<openmldb::sdk::QueryFuture> CallProcedure(const std::string& db, const std::string& sp_name,
+            int64_t timeout_ms, openmldb::sdk::NIOBUFFER buf, int len,
+            const std::string& router_col, hybridse::sdk::Status* status) = 0;
+
     virtual std::shared_ptr<openmldb::sdk::QueryFuture> CallSQLBatchRequestProcedure(
         const std::string& db, const std::string& sp_name, int64_t timeout_ms,
         std::shared_ptr<openmldb::sdk::SQLRequestRowBatch> row_batch, hybridse::sdk::Status* status) = 0;

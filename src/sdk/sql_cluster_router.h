@@ -170,6 +170,10 @@ class SQLClusterRouter : public SQLRouter {
                                                               int64_t timeout_ms, std::shared_ptr<SQLRequestRow> row,
                                                               hybridse::sdk::Status* status) override;
 
+    std::shared_ptr<openmldb::sdk::QueryFuture> CallProcedure(const std::string& db, const std::string& sp_name,
+            int64_t timeout_ms, openmldb::sdk::NIOBUFFER buf, int len,
+            const std::string& router_col, hybridse::sdk::Status* status) override;
+
     std::shared_ptr<openmldb::sdk::QueryFuture> CallSQLBatchRequestProcedure(
         const std::string& db, const std::string& sp_name, int64_t timeout_ms,
         std::shared_ptr<SQLRequestRowBatch> row_batch, hybridse::sdk::Status* status) override;
@@ -387,6 +391,13 @@ class SQLClusterRouter : public SQLRouter {
     bool CheckTableStatus(const std::string& db, const std::string& table_name, uint32_t tid,
                           const nameserver::TablePartition& partition_info, uint32_t replica_num,
                           const TableStatusMap& statuses, std::string* msg);
+
+    std::shared_ptr<hybridse::sdk::ResultSet> CallProcedure(const std::string& db, const std::string& sp_name,
+            const base::Slice& row, const std::string& router_col, hybridse::sdk::Status* status);
+
+    std::shared_ptr<openmldb::sdk::QueryFuture> CallProcedure(const std::string& db, const std::string& sp_name,
+            int64_t timeout_ms, const base::Slice& row,
+            const std::string& router_col, hybridse::sdk::Status* status);
 
  private:
     std::shared_ptr<BasicRouterOptions> options_;

@@ -1461,37 +1461,28 @@ std::shared_ptr<ExplainInfo> SQLClusterRouter::Explain(const std::string& db, co
 }
 
 std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::CallProcedure(const std::string& db,
-                                                                          const std::string& sp_name,
-                                                                          std::shared_ptr<SQLRequestRow> row,
-                                                                          hybridse::sdk::Status* status) {
-    RET_IF_NULL_AND_WARN(status, "output status is nullptr");
+        const std::string& sp_name, std::shared_ptr<SQLRequestRow> row, hybridse::sdk::Status* status) {
     if (!row || !row->OK()) {
         SET_STATUS_AND_WARN(status, StatusCode::kCmdError, "make sure the request row is built before execute sql");
         return nullptr;
     }
-    auto tablet = GetTablet(db, sp_name, "", status);
-    if (!tablet) {
-        return nullptr;
-    }
-    auto cntl = std::make_shared<::brpc::Controller>();
-    auto response = std::make_shared<::openmldb::api::QueryResponse>();
-    bool ok = tablet->CallProcedure(db, sp_name, row->GetRow(), cntl.get(), response.get(), options_->enable_debug,
-                                    options_->request_timeout);
-    if (!ok || response->code() != ::openmldb::base::kOk) {
-        RPC_STATUS_AND_WARN(status, cntl, response, "CallProcedure failed");
-        return nullptr;
-    }
-    return ResultSetSQL::MakeResultSet(response, cntl, status);
+    return CallProcedure(db, sp_name, base::Slice(row->GetRow()), "", status);
 }
 
 std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::CallProcedure(const std::string& db,
         const std::string& sp_name, openmldb::sdk::NIOBUFFER buf, int len,
         const std::string& router_col, hybridse::sdk::Status* status) {
-    RET_IF_NULL_AND_WARN(status, "output status is nullptr");
     if (buf == nullptr || len == 0) {
         SET_STATUS_AND_WARN(status, StatusCode::kCmdError, "invalid request row data");
         return nullptr;
     }
+    return CallProcedure(db, sp_name, base::Slice(reinterpret_cast<char*>(buf), len), router_col, status);
+}
+
+std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::CallProcedure(const std::string& db,
+        const std::string& sp_name, const base::Slice& row,
+        const std::string& router_col, hybridse::sdk::Status* status) {
+    RET_IF_NULL_AND_WARN(status, "output status is nullptr");
     auto tablet = GetTablet(db, sp_name, router_col, status);
     if (!tablet) {
         SET_STATUS_AND_WARN(status, StatusCode::kCmdError, "cannot get tablet");
@@ -1500,7 +1491,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::CallProcedure(const 
 
     auto cntl = std::make_shared<::brpc::Controller>();
     auto response = std::make_shared<::openmldb::api::QueryResponse>();
-    bool ok = tablet->CallProcedure(db, sp_name, base::Slice(reinterpret_cast<char*>(buf), len), cntl.get(), response.get(),
+    bool ok = tablet->CallProcedure(db, sp_name, row, cntl.get(), response.get(),
             options_->enable_debug, options_->request_timeout);
     if (!ok || response->code() != ::openmldb::base::kOk) {
         RPC_STATUS_AND_WARN(status, cntl, response, "CallProcedure failed");
@@ -2168,22 +2159,37 @@ std::shared_ptr<openmldb::sdk::QueryFuture> SQLClusterRouter::CallProcedure(cons
                                                                             int64_t timeout_ms,
                                                                             std::shared_ptr<SQLRequestRow> row,
                                                                             hybridse::sdk::Status* status) {
-    RET_IF_NULL_AND_WARN(status, "output status is nullptr");
     if (!row || !row->OK()) {
         SET_STATUS_AND_WARN(status, StatusCode::kCmdError, "make sure the request row is built before execute sql");
         return {};
     }
-    auto tablet = GetTablet(db, sp_name, "", status);
+    return CallProcedure(db, sp_name, timeout_ms, base::Slice(row->GetRow()), "", status);
+}
+
+std::shared_ptr<openmldb::sdk::QueryFuture> SQLClusterRouter::CallProcedure(const std::string& db,
+        const std::string& sp_name, int64_t timeout_ms, openmldb::sdk::NIOBUFFER buf, int len,
+        const std::string& router_col, hybridse::sdk::Status* status) {
+    if (buf == nullptr || len == 0) {
+        SET_STATUS_AND_WARN(status, StatusCode::kCmdError, "invalid request row data");
+        return nullptr;
+    }
+    return CallProcedure(db, sp_name, timeout_ms, base::Slice(reinterpret_cast<char*>(buf), len), router_col, status);
+}
+
+std::shared_ptr<openmldb::sdk::QueryFuture> SQLClusterRouter::CallProcedure(const std::string& db,
+        const std::string& sp_name, int64_t timeout_ms, const base::Slice& row,
+        const std::string& router_col, hybridse::sdk::Status* status) {
+    RET_IF_NULL_AND_WARN(status, "output status is nullptr");
+    auto tablet = GetTablet(db, sp_name, router_col, status);
     if (!tablet) {
         return {};
     }
-
     std::shared_ptr<openmldb::api::QueryResponse> response = std::make_shared<openmldb::api::QueryResponse>();
     std::shared_ptr<brpc::Controller> cntl = std::make_shared<brpc::Controller>();
     auto* callback = new openmldb::RpcCallback<openmldb::api::QueryResponse>(response, cntl);
 
     std::shared_ptr<openmldb::sdk::QueryFutureImpl> future = std::make_shared<openmldb::sdk::QueryFutureImpl>(callback);
-    bool ok = tablet->CallProcedure(db, sp_name, row->GetRow(), timeout_ms, options_->enable_debug, callback);
+    bool ok = tablet->CallProcedure(db, sp_name, row, timeout_ms, options_->enable_debug, callback);
     if (!ok) {
         // async rpc
         SET_STATUS_AND_WARN(status, StatusCode::kConnError, "CallProcedure failed(stub is null)");
