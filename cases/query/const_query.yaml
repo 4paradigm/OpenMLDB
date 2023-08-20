@@ -14,9 +14,12 @@
 
 debugs: []
 version: 0.5.0
+# FIXME: support request procedure for const project
+# requires GetTablet impl for non-table procedure
 cases:
   - id: 0
     desc: select const number
+    mode: procedure-unsupport
     db: db1
     sql: |
       select 1 as id, 2 as col1, 3.3 as col2;
@@ -28,6 +31,7 @@ cases:
         - [1, 2, 3.3]
   - id: 1
     desc: select str
+    mode: procedure-unsupport
     db: db1
     sql: |
       select 1 as id, "hello_world" as col1;
@@ -39,6 +43,7 @@ cases:
         - [1, "hello_world"]
   - id: 2
     desc: const substr pos len
+    mode: procedure-unsupport
     db: db1
     sql: |
       select 1 as id, substring("hello_world", 3, 6) as col1;
@@ -50,6 +55,7 @@ cases:
         - [1, "llo_wo"]
   - id: 3
     desc: const substr pos
+    mode: procedure-unsupport
     db: db1
     sql: |
       select 1 as id, substring("hello_world", 3) as col1;
@@ -61,6 +67,7 @@ cases:
         - [1, "llo_world"]
   - id: 4
     desc: const concat 1
+    mode: procedure-unsupport
     db: db1
     sql: |
       select 1 as id, concat("hello", "world", "abc") as col1;
@@ -71,6 +78,7 @@ cases:
         - [1, "helloworldabc"]
   - id: 5
     desc: cast常量 using CAST operator
+    mode: procedure-unsupport
     db: db1
     sql: |
       select CAST (10 as int) as c1, CAST (10 as bigint) as c2, CAST (10 as float) as c3, CAST (10 as double) as c4, CAST (1590115460000 as timestamp) as c5, CAST ("2020-05-20" as date) as c6, CAST (10 as string) as c7;
@@ -80,6 +88,7 @@ cases:
         - [10, 10, 10.0, 10.0, 1590115460000, '2020-05-20', "10"]
   - id: 6
     desc: cast NULL常量 using CAST operator
+    mode: procedure-unsupport
     db: db1
     sql: |
       select CAST (NULL as int) as c1, CAST (NULL as bigint) as c2, CAST (NULL as float) as c3, CAST (NULL as double) as c4, CAST (NULL as timestamp) as c5, CAST (NULL as date) as c6, CAST (NULL as string) as c7;
@@ -89,6 +98,7 @@ cases:
         - [NULL, NULL, NULL, NULL, NULL, NULL, NULL]
   - id: 7
     desc: cast常量 using type() function
+    mode: procedure-unsupport
     db: db1
     sql: |
       select int(10) as c1, bigint(10) as c2, float(10) as c3, double(10) as c4, timestamp(1590115460000) as c5, date("2020-05-20") as c6, string(10) as c7;
@@ -98,6 +108,7 @@ cases:
         - [10, 10, 10.0, 10.0, 1590115460000, '2020-05-20', "10"]
   - id: 8
     desc: cast NULL常量 using type(NULL) function
+    mode: procedure-unsupport
     db: db1
     sql: |
       select int(NULL) as c1, bigint(NULL) as c2, float(NULL) as c3, double(NULL) as c4, timestamp(NULL) as c5, date(NULL) as c6, string(NULL) as c7;
@@ -107,6 +118,7 @@ cases:
         - [NULL, NULL, NULL, NULL, NULL, NULL, NULL]
   - id: 9
     desc: differnt const node type
+    mode: procedure-unsupport
     db: db1
     sql: |
       select true c1, int16(3) c2, 13 c3, 10.0 c4, 'a string' c5, date(timestamp(1590115420000)) c6, timestamp(1590115420000) c7;
