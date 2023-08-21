@@ -54,7 +54,7 @@
 | LAST JOIN          | ✓            | ✓                | ✕                |
 | 子查询 / WITH 子句 | ✓            | ✓                | ✕                |
 
-虽然在线请求模式无法支持支持 `WHERE` 子句，但是部分功能可以通过带有 `_where` 后缀的计算函数实现，比如 `count_where`, `avg_wgere` 等，详情查看[内置计算函数文档](functions_and_operators/Files/udfs_8h.md)。
+虽然在线请求模式无法支持支持 `WHERE` 子句，但是部分功能可以通过带有 `_where` 后缀的计算函数实现，比如 `count_where`, `avg_where` 等，详情查看[内置计算函数文档](functions_and_operators/Files/udfs_8h.md)。
 
 ### LIMIT 子句
 
