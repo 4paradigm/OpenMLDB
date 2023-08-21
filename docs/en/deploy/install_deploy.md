@@ -2,25 +2,85 @@
 
 ## Software and Hardware Requirements
 
-* Operating system: CentOS 7, Ubuntu 20.04, macOS >= 10.15. Where Linux glibc version >= 2.17. Other operating system versions have not been fully tested and cannot be guaranteed to be fully compatible.
-* Memory: Depends on the amount of data, 8 GB and above is recommended.
-* CPU:
-  * Currently only the x86 architecture is supported, and architectures such as ARM are currently not supported.
-  * The number of cores is recommended to be no less than 4 cores. If the CPU does not support the AVX2 instruction set in the Linux environment, the deployment package needs to be recompiled from the source code.
+### Operating System
+
+The pre-compiled packages that have been released offer support for the following operating systems: CentOS 7.x, Ubuntu 20.04, SUSE 12 SP3, and macOS 12. For Linux, a glibc version of >= 2.17 is required. While pre-compiled packages for other operating system distributions have not undergone comprehensive testing and therefore cannot guarantee complete compatibility, you can explore [Compiling from Source](https://chat.openai.com/c/compile.md) to extend support to other operating systems.
+
+````{note}
+Linux users can assess their system's compatibility through the following commands:
+
+```shell
+cat /etc/os-release # most linux
+cat /etc/redhat-release # redhat only
+ldd --version
+strings /lib64/libc.so.6 | grep ^GLIBC_
+```
+Generally, ldd version should be >= 2.17, and GLIBC_2.17 should be present in libc.so.6. These factors indicate compatibility with glibc 2.17 for program and dynamic library operations. If the system's glibc version falls below 2.17, compiling from source code is necessary.
+````
+
+### Third-party component dependencies
+
+If you need to deploy ZooKeeper and TaskManager, you need a Java runtime environment.
+
+### Hardware
+
+Regarding hardware requirements:
+
+- CPU:
+  - X86 CPU is recommended, preferably with a minimum of 4 cores.
+  - For users of pre-compiled packages, AVX2 instruction set support is required. Otherwise, consider compiling from the [Source Code](https://chat.openai.com/c/compile.md).
+- Memory:
+  - It is recommended to have at least 8 GB of RAM. For business scenarios involving substantial data loads, 128 GB or more is advisable.
+- Other hardware components:
+  - No specific requirements exist. However, disk and network performance may influence OpenMLDB's latency and throughput performance.
 
 ## Deployment Package
-The precompiled OpenMLDB deployment package is used by default in this documentation ([Linux](https://github.com/4paradigm/OpenMLDB/releases/download/v0.8.2/openmldb-0.8.2-linux.tar.gz) , [macOS](https://github.com/4paradigm/OpenMLDB/releases/download/v0.8.2/openmldb-0.8.2-darwin.tar.gz)), the supported operating system requirements are: CentOS 7, Ubuntu 20.04, macOS >= 10.15. If the user wishes to compile by himself (for example, for OpenMLDB source code development, the operating system or CPU architecture is not in the support list of the precompiled deployment package, etc.), the user can choose to compile and use in the docker container or compile from the source code. For details, please refer to our [compile documentation](compile.md).
 
-## Configure Environment (Linux)
+### Download/Source Compilation
 
-### configure the size limit of coredump file and open file limit
+If your operating system is capable of running pre-compiled packages directly, you can download them from the following sources:
+
+- GitHub Release Page: https://github.com/4paradigm/OpenMLDB/releases
+- Mirror Site (China): http://43.138.115.238/download/
+
+The relationship between pre-compiled packages and compatible operating systems is as follows:
+
+- `openmldb-x.x.x-linux.tar.gz`: Compatible with CentOS 7.x, Ubuntu 20.04, SUSE 12 SP3
+- `openmldb-x.x.x-darwin.tar.gz`: Suitable for macOS 12
+
+In cases where the user's operating system is not mentioned above or if they intend to compile from source code, please refer to our [Source Code Compilation Document](https://chat.openai.com/c/compile.md).
+
+### Linux platform pre-testing
+
+Due to the variations among Linux platforms, the distribution package may not be entirely compatible with your machine. Therefore, it's recommended to conduct a preliminary compatibility test. For instance, after downloading the pre-compiled package `openmldb-0.8.2-linux.tar.gz`, execute:
+
+```
+tar -zxvf openmldb-0.8.2-linux.tar.gz
+./openmldb-0.8.2-linux/bin/openmldb --version
+```
+
+The result should display the version number of the program, similar to:
+
+```
+openmldb version 0.8.2-xxxx
+Debug build (NDEBUG not #defined)
+```
+
+If it does not run successfully, OpenMLDB needs to be compiled through source code.
+
+## Configure Environment
+
+To ensure a deployment that's both correct and stable, it's advisable to perform the following system configuration steps. These operations assume that the commands are executed on a Linux system.
+
+### Configure the size limit of coredump file and open file limit
+
 ```bash
 ulimit -c unlimited
 ulimit -n 655360
 ```
 
-The configurations set by `ulimit` command only take effect in the current session.
-If you want to persist the configurations, add the following configurations in `/etc/security/limits.conf`:
+The parameters configured through the `ulimit` command are applicable solely to the current session. For persistent configuration, you should incorporate the following settings into the `/etc/security/limits.conf` file:
+
 ```bash
 *       soft    core    unlimited
 *       hard    core    unlimited
@@ -30,24 +90,24 @@ If you want to persist the configurations, add the following configurations in `
 
 ### Disable system swap
 
-Check the status of the swap area.
+Check if the current system swap is disabled
 
 ```bash
 $ free
-              total used free shared buff/cache available
-Mem: 264011292 67445840 2230676 3269180 194334776 191204160
-Swap: 0 0 0
+              total        used        free      shared  buff/cache   available
+Mem:      264011292    67445840     2230676     3269180   194334776   191204160
+Swap:             0           0           0
 ```
 
-If the swap item is all 0, it means it has been closed, otherwise run the following command to disable all swap.
+If the swap item is all 0, it means it has been disabled, otherwise run the following command to disable all swap.
 
 ```
 swapoff -a
 ```
 
-### Disable THP (Transparent Huge Pages)
+### Disable THP(Transparent Huge Pages)
 
-Check the status of THP.
+Use the following command to check if THP is turned off
 
 ```
 $ cat /sys/kernel/mm/transparent_hugepage/enabled
@@ -56,14 +116,14 @@ $ cat /sys/kernel/mm/transparent_hugepage/defrag
 [always] madvise never
 ```
 
-If "never" is not surrounded by square brackets in the above two configurations, it needs to be set.
+If `never` is not written as (`[never]`) in the above two configurations, the following command needs to be used for configuration:
 
 ```bash
 echo 'never' > /sys/kernel/mm/transparent_hugepage/enabled
 echo 'never' > /sys/kernel/mm/transparent_hugepage/defrag
 ```
 
-Check whether the setting is successful. If "never" is surrounded by square brackets, it means that the setting has been successful, as shown below:
+Check if the settings were successful, as shown below:
 
 ```bash
 $ cat /sys/kernel/mm/transparent_hugepage/enabled
@@ -72,95 +132,50 @@ $ cat /sys/kernel/mm/transparent_hugepage/defrag
 always madvise [never]
 ```
 
-Note: You can also use the script to modify the above configurations, refer [here](#configure-node-environment-optional)
+Note: The above three items can also be modified with one-click through a script, refer to [Modify Machine Environment Configuration](#modifymachineenvironmentconfiguration-optional)
 
 ### Time and zone settings
 
-The OpenMLDB data expiration deletion mechanism relies on the system clock. If the system clock is incorrect, the expired data will not be deleted or the data that has not expired will be deleted.
+OpenMLDB's data expiration and deletion mechanism relies on the accuracy of the system clock. Incorrect system clock settings can result in either expired data not being removed or non-expired data being deleted.
 
-```bash
-$date
-Wed Aug 22 16:33:50 CST 2018
-```
-Please make sure the time is correct.
+### Network whitelist
 
-## Deploy Standalone Version
+The components comprising the OpenMLDB cluster's services require consistent network connectivity. When it comes to client communication with OpenMLDB clusters, two scenarios exist:
 
-OpenMLDB standalone version needs to deploy a nameserver and a tablet. The nameserver is used for table management and metadata storage, and the tablet is used for data storage. APIServer is optional. If you want to interact with OpenMLDB using REST APIs, you need to deploy this module.
+- To establish a connection between the client (CLI and SDKs) and the OpenMLDB cluster, it is essential to not only have connectivity with ZooKeeper but also ensure access to Nameserver/ TabletServer/ TaskManager.
+- If the service solely utilizes APIServer for communication, then the client is only required to ensure access to the APIServer port.
 
-### Download the OpenMLDB Release Package
+## Deploying High Availability Clusters
 
-```
-wget https://github.com/4paradigm/OpenMLDB/releases/download/v0.8.2/openmldb-0.8.2-linux.tar.gz
-tar -zxvf openmldb-0.8.2-linux.tar.gz
-cd openmldb-0.8.2-linux
-```
+In production environments, we strongly recommend deploying OpenMLDB clusters with high availability capabilities. For a high availability deployment architecture, we provide our recommended [High Availability Deployment Best Practices](https://chat.openai.com/maintain/backup.md).
 
-### Configuration
-If OpenMLDB is only accessed locally, can skip this step.
-#### 1. Configure tablet: conf/standalone_tablet.flags
+## Daemon startup method
 
-* Modify `endpoint`. The endpoint is the deployment machine ip/domain name and port number separated by colons.
+OpenMLDB offers two startup modes: Normal and Daemon. Daemon startup provides an additional layer of safeguard by automatically restarting the service process in case of unexpected termination. Regarding daemon startup:
 
-```
---endpoint=172.27.128.33:9527
-```
+- Daemon is not a system service; launching it unexpectedly will nullify its role as a daemon.
+- Each service process corresponds to an independent daemon.
+- Stopping the daemon using the `SIGKILL` signal will not lead to the exit of the associated daemon. To revert to normal startup mode for the daemon, you need to halt the associated process and then initiate it as a daemon.
+- If the daemon is halted by a non-`SIGKILL` signal, the associated processes will exit upon the daemon's termination.
 
-**Notice:**
+To commence daemon mode, use either `bash bin/start.sh start <component> mon` or `sbin/start-all.sh mon`. In daemon mode, `bin/<component>.pid` contains the PID of the mon process, while `bin/<component>.pid.child` stores the actual PID of the component.
 
-* The endpoint cannot use 0.0.0.0 and 127.0.0.1.
-* If the domain name is used here, all the machines where the client using OpenMLDB is located must be equipped with the corresponding host. Otherwise, it will not be accessible.
+## Deployment method 1: One-click deployment (recommended)
 
-#### 2. Configure nameserver: conf/standalone_nameserver.flags
+The OpenMLDB cluster version necessitates the deployment of modules such as ZooKeeper, NameServer, TabletServer, and TaskManager. ZooKeeper serves for service discovery and metadata preservation. NameServer manages TabletServer for achieving high availability and failover. TabletServer stores data and synchronizes master-slave data. APIServer is an optional component; if interaction with OpenMLDB via HTTP is desired, deploying this module is necessary. TaskManager oversees offline jobs. We provide a one-click deployment script to simplify the process, eliminating the need for manual downloading and configuration on each machine.
 
-* Modify `endpoint`. The endpoint is the deployment machine ip/domain name and port number separated by colons.
-* The `tablet` configuration item needs to be configured with the address of the tablet that was started earlier.
+**Note**: When deploying multiple components on the same machine, it is vital to allocate them distinct directories for streamlined management. This practice is especially crucial while deploying TabletServer, ensuring avoidance of conflicts between data files and log files.
 
-```
---endpoint=172.27.128.33:6527
---tablet=172.27.128.33:9527
-```
+DataCollector and SyncTool currently do not support one-click deployment. Please refer to the manual deployment method for these components.
 
-**Notice**: The endpoint cannot use 0.0.0.0 and 127.0.0.1.
+### Environment requirement
 
+- Deployment machines (machines executing deployment scripts) should have password-less access to other deployment nodes.
+- Deployment machine installation using the `rsync` tool.
+- Deployment machine installation using Python 3.
+- Install Java Runtime Environment (JRE) on machines designated for deploying ZooKeeper and TaskManager.
 
-#### 3. Configure apiserver: conf/standalone_apiserver.flags
-APIServer is responsible for receiving http requests, forwarding them to OpenMLDB and returning results. It is stateless and is not a must-deploy component of OpenMLDB.
-Before starting the APIServer, make sure that the OpenMLDB cluster has been started, otherwise APIServer will fail to initialize and exit the process.
-
-* Modify `endpoint`. The endpoint is the deployment machine ip/domain name and port number separated by colons.
-* Modify `nameserver` to be the address of Nameserver.
-
-```
---endpoint=172.27.128.33:8080
---nameserver=172.27.128.33:6527
-```
-
-**Notice:**
-
-* The endpoint cannot use 0.0.0.0 and 127.0.0.1. You can also choose not to set `--endpoint`, and only configure the port number `--port`.
-
-### Start All the Service
-Make sure `OPENMLDB_MODE=standalone` in the `conf/openmldb-env.sh` (default)
-```
-sbin/start-all.sh
-```
-
-After the service is started, the standalone_tablet.pid, standalone_nameserver.pid and standalone_apiserver.pid files will be generated in the `bin` directory, and the process numbers at startup will be saved in them. If the pid inside the file is running, the startup will fail.
-
-## Deploy Cluster Version (Auto)
-OpenMLDB cluster version needs to deploy Zookeeper, Nameserver, Tablet, TaskManager and other modules. Among them, Zookeeper is used for service discovery and saving metadata information. The Nameserver is used to manage the tablet, achieve high availability and failover. Tablets are used to store data and synchronize data between master and slave. APIServer is optional. If you want to interact with OpenMLDB in http, you need to deploy this module.
-
-Notice: It is best to deploy different components in different directories for easy upgrades individually. If multiple tablets are deployed on the same machine, they also need to be deployed in different directories.
-
-Environment Requirements:
-- the deploy node has password-free login to other nodes
-- `rsync` is required
-- Python3 is required
-- JRE (Java Runtime Environment) is required on the node where Zookeeper and TaskManager are deployed
-
-
-### Download the OpenMLDB Deployment Package
+### Download the OpenMLDB distribution
 
 ```
 wget https://github.com/4paradigm/OpenMLDB/releases/download/v0.8.2/openmldb-0.8.2-linux.tar.gz
@@ -168,32 +183,32 @@ tar -zxvf openmldb-0.8.2-linux.tar.gz
 cd openmldb-0.8.2-linux
 ```
 
-### Configuration
-#### Configure the environment
-The environment variables are defined in `conf/openmldb-env.sh`,
-which are listed below.
+### Environmental configuration
 
-| Environment Variables             | Default Values                                          | Definitons                                                                                            |
-|-----------------------------------|---------------------------------------------------------|-------------------------------------------------------------------------------------------------------|
-| OPENMLDB_VERSION                  | 0.8.2                                                   | OpenMLDB version                                                                                      |
-| OPENMLDB_MODE                     | standalone                                              | standalone or cluster mode                                                                            |
-| OPENMLDB_HOME                     | root directory of the release folder                    | openmldb root path                                                                                    |
-| SPARK_HOME                        | $OPENMLDB_HOME/spark                                    | the root path of openmldb spark release. if not exists, download from online                          |
-| OPENMLDB_TABLET_PORT              | 10921                                                   | the default port for tablet                                                                           |
-| OPENMLDB_NAMESERVER_PORT          | 7527                                                    | the default port for nameserver                                                                       |
-| OPENMLDB_TASKMANAGER_PORT         | 9902                                                    | the default port for taskmanager                                                                      |
-| OPENMLDB_APISERVER_PORT           | 9080                                                    | the default port for apiserver                                                                        |
-| OPENMLDB_USE_EXISTING_ZK_CLUSTER  | false                                                   | whether use an existing zookeeper cluster. If `false`, start its own zk cluster in the deploy scripts |
-| OPENMLDB_ZK_HOME                  | $OPENMLDB_HOME/zookeeper                                | the root path of zookeeper release                                                                    |
-| OPENMLDB_ZK_CLUSTER               | auto derived from `[zookeeper]` section in `conf/hosts` | the zookeeper cluster address                                                                         |
-| OPENMLDB_ZK_ROOT_PATH             | /openmldb                                               | zookeeper root path                                                                                   |
-| OPENMLDB_ZK_CLUSTER_CLIENT_PORT   | 2181                                                    | zookeeper client port, i.e., clientPort in zoo.cfg                                                    |
-| OPENMLDB_ZK_CLUSTER_PEER_PORT     | 2888                                                    | zookeeper peer port, which is the first port in this config server.1=zoo1:2888:3888 in zoo.cfg        |
-| OPENMLDB_ZK_CLUSTER_ELECTION_PORT | 3888                                                    | zookeeper election port, which is the second port in this config server.1=zoo1:2888:3888 in zoo.cfg   |
+The environment variables are defined in `conf/openmldb-env.sh`, as shown in the following table:
 
-#### Configure the deployment node
+| Environment Variable              | Default Value                                           | 定义                                                         |
+| --------------------------------- | ------------------------------------------------------- | ------------------------------------------------------------ |
+| OPENMLDB_VERSION                  | 0.8.2                                                   | OpenMLDB版本                                                 |
+| OPENMLDB_MODE                     | standalone                                              | standalone或者cluster                                        |
+| OPENMLDB_HOME                     | root directory of the release folder                    | openmldb发行版根目录                                         |
+| SPARK_HOME                        | $OPENMLDB_HOME/spark                                    | openmldb spark发行版根目录，如果该目录不存在，自动从网上下载 |
+| OPENMLDB_TABLET_PORT              | 10921                                                   | TabletServer默认端口                                         |
+| OPENMLDB_NAMESERVER_PORT          | 7527                                                    | NameServer默认端口                                           |
+| OPENMLDB_TASKMANAGER_PORT         | 9902                                                    | taskmanager默认端口                                          |
+| OPENMLDB_APISERVER_PORT           | 9080                                                    | APIServer默认端口                                            |
+| OPENMLDB_USE_EXISTING_ZK_CLUSTER  | false                                                   | 是否使用已经部署的ZooKeeper集群。如果是`false`，会在部署脚本里自动启动ZooKeeper集群 |
+| OPENMLDB_ZK_HOME                  | $OPENMLDB_HOME/zookeeper                                | ZooKeeper发行版根目录                                        |
+| OPENMLDB_ZK_CLUSTER               | auto derived from `[zookeeper]` section in `conf/hosts` | ZooKeeper集群地址                                            |
+| OPENMLDB_ZK_ROOT_PATH             | /openmldb                                               | OpenMLDB在ZooKeeper的根目录                                  |
+| OPENMLDB_ZK_CLUSTER_CLIENT_PORT   | 2181                                                    | ZooKeeper client port, 即zoo.cfg里面的clientPort             |
+| OPENMLDB_ZK_CLUSTER_PEER_PORT     | 2888                                                    | ZooKeeper peer port，即zoo.cfg里面这种配置server.1=zoo1:2888:3888中的第一个端口配置 |
+| OPENMLDB_ZK_CLUSTER_ELECTION_PORT | 3888                                                    | ZooKeeper election port, 即zoo.cfg里面这种配置server.1=zoo1:2888:3888中的第二个端口配置 |
 
-The node list is defined in `conf/hosts`, for example:
+### Node configuration
+
+The node configuration file is `conf/hosts`, as shown in the following example:
+
 ```bash
 [tablet]
 node1:10921 /tmp/openmldb/tablet
@@ -206,81 +221,99 @@ node3:7527
 node3:9080
 
 [taskmanager]
-localhost:9902
+node3:9902
 
 [zookeeper]
 node3:2181:2888:3888 /tmp/openmldb/zk-1
 ```
 
-The configuration file is divided into four sections, identified by `[]`:
-- `[tablet]`：tablet node list
-- `[nameserver]`：nameserver node list
-- `[apiserver]`：apiserver node list
-- `[taskmanager]`：taskmanager node list
-- `[zookeeper]`：zookeeper node list
+The configuration file is segmented into four sections, each identified by `[ ]` brackets:
 
-For each node list, one line represents one node, with the format of `host:port WORKDIR`.
-Specially, for the `[zookeeper]`, its format is `host:port:zk_peer_port:zk_election_port WORKDIR`,
-where there are extra port parameters,
-including `zk_peer_port` for the connection between followers and leader,
-and `zk_election_port` for the leader election.
+- `[tablet]`: Configure the node list for deploying TabletServer.
+- `[nameserver]`: Specify the node list for deploying NameServer.
+- `[apiserver]`: Define the node list for deploying APIServer.
+- `[taskmanager]`: List the nodes for configuring and deploying TaskManager.
+- `[zookeeper]`: Indicate the node list for deploying ZooKeeper.
 
-Note that for every node configuration, only the `host` is required, while others are optional.
-If the optional parameters are not provided,
-default values are used, which are defined in `conf/openmldb-env.sh`.
+For each region's node list, each entry follows the format `host:port WORKDIR`.
+
+In the case of `[zookeeper]`, additional port parameters are included: `zk_peer_port` for follower connection to the leader, and `zk_election_port` for leader election. The format is `host:port:zk_peer_port:zk_election_port WORKDIR`.
+
+Except for the mandatory `host`, other elements in each row of the node list are optional. If omitted, default configurations will be utilized, referencing `conf/openmldb-env.sh` for defaults.
 
 ```{warning}
-If multiple TaskManager instances are deployed in different machines，the `offline.data.prefix` should be configured to be globally accessabile by these machines (e.g., hdfs path).
+If multiple TaskManager instances are deployed on distinct machines, the configured paths for offline.data.prefix must be accessible across these machines. Configuring the HDFS path is recommended.
 ```
 
-### Configure Node Environment (Optional)
+### Modify machine environment configuration (optional)
+
 ```
 bash sbin/init_env.sh
 ```
-Note:
-- The script needs to be executed by the `root` user.
-- The script will modify the `limit`, disable the `swap` and `THP`. 
 
+Explanation:
+
+- This script requires execution by the root user. Execution of other scripts does not necessitate root privileges.
+- The script exclusively modifies limit configurations, disabling swap and THP.
 
 ### Deployment
+
 ```bash
 sbin/deploy-all.sh
 ```
-It will distribute all the required files to the nodes defined in `conf/hosts`,
-and conduct custom configuration based on `conf/hosts` and `conf/openmldb-env.sh`.
 
-If users want to do other custom configurations, users can modify the `conf/xx.template`
-before running the `deploy-all.sh` script,
-so that the updated configurations will be reflected in the deployed nodes.
+This script will distribute pertinent files to machines configured in `conf/hosts`. Simultaneously, it will incorporate updates to the configuration of related components based on `conf/hosts` and `conf/openmldb-env.sh`.
 
-Repeated execution of `sbin/deploy-all.sh` will overwrite the last deployment.
+If you wish to include additional customized configurations for each node, you can modify the settings in `conf/xx.template` prior to running the deployment script. By doing so, when distributing configuration files, each node can utilize the altered configuration.
+
+Running `sbin/deploy-all.sh` repeatedly will overwrite previous configurations.
+
+For comprehensive configuration instructions, kindly consult the [Configuration File](https://chat.openai.com/c/conf.md). It's important to focus on the selection and detailed configuration of TaskManager Spark, as outlined in [Spark Config Details](https://chat.openai.com/c/conf.md#spark-config-details).
 
 ### Start the Services
+
+Start normal mode:
+
 ```bash
 sbin/start-all.sh
 ```
-This script will launch all the services defined in `conf/hosts`.
 
-Users can use `sbin/openmldb-cli.sh` to connect the cluster and verify
-the services are launched successfully.
+Alternatively, use daemon mode to start:
 
-#### Stop the Services
-If users want to stop all the services, can execute the following script:
+```bash
+sbin/start-all.sh mon
+```
+
+This script will initiate all services configured in `conf/hosts`. After completion of startup, you can utilize the auxiliary script to initiate the CLI (`sbin/openmldb-cli.sh`) for verifying the cluster's normal startup.
+
+```{tip}
+start-all.sh is an immensely useful tool. Beyond the deployment phase, it can be employed during operation and maintenance to launch an offline OpenMLDB process. For instance, if a tablet process unexpectedly goes offline, you can directly execute start-all.sh. This script won't impact already initiated processes, but will automatically start configured but uninitiated processes.
+```
+
+### Stop the services
+
+If you need to stop all services, you can execute the following script:
+
 ```bash
 sbin/stop-all.sh
 ```
 
-## Deploy Cluster Version (Manual)
 
-OpenMLDB cluster version needs to deploy Zookeeper, Nameserver, Tablet, TaskManager and other modules. Among them, Zookeeper is used for service discovery and saving metadata information. The Nameserver is used to manage the tablet, achieve high availability and failover. Tablets are used to store data and synchronize data between master and slave. APIServer is optional. If you want to interact with OpenMLDB in http, you need to deploy this module.
+## Deployment Method 2: Manual Deployment
 
-**Notice:** It is best to deploy different components in different directories for easy upgrades individually. If multiple tablets are deployed on the same machine, they also need to be deployed in different directories.
+The OpenMLDB cluster version necessitates the deployment of modules like ZooKeeper, NameServer, TabletServer, and TaskManager. ZooKeeper serves the purposes of service discovery and metadata information preservation. NameServer is employed to manage TabletServer, ensuring high availability and facilitating failover. TabletServer is responsible for data storage and the synchronization of master-slave data. The presence of APIServer is optional; if you intend to interact with OpenMLDB via HTTP, this module must be deployed. TaskManager, on the other hand, oversees offline jobs.
 
-### Deploy Zookeeper
+**Note 1**: When deploying multiple components on the same machine, it's crucial to place them in distinct directories for streamlined management. This is particularly important while deploying TabletServer, as it's essential to avoid directory reuse to prevent conflicts between data and log files.
 
-The required zookeeper version is >= 3.4 and <= 3.6, it is recommended to deploy version 3.4.14. You can skip this step if there is an available zookeeper cluster.
+**Note 2**: The text below uses regular background process mode to initiate components. If you prefer to start components in daemon mode, utilize a command format like `bash bin/start.sh start <component> mon`.
 
-#### 1. Download the Zookeeper Installation Package
+(zookeeper_addr)=
+
+### Deploy ZooKeeper
+
+ZooKeeper requires a version between 3.4 and 3.6, with version 3.4.14 being recommended for deployment. If existing ZooKeeper clusters are available, this step can be skipped. If you're aiming to deploy a ZooKeeper cluster, refer to [here](https://zookeeper.apache.org/doc/r3.4.14/zookeeperStarted.html#sc_RunningReplicatedZooKeeper). This step primarily demonstrates standalone ZooKeeper deployment.
+
+**1. Download the ZooKeeper installation package**
 
 ```
 wget https://archive.apache.org/dist/zookeeper/zookeeper-3.4.14/zookeeper-3.4.14.tar.gz
@@ -289,8 +322,7 @@ cd zookeeper-3.4.14
 cp conf/zoo_sample.cfg conf/zoo.cfg
 ```
 
-#### 2. Modify the Configuration File
-
+**2. Modify the configuration file**
 Open the file `conf/zoo.cfg` and modify `dataDir` and `clientPort`.
 
 ```
@@ -298,17 +330,45 @@ dataDir=./data
 clientPort=7181
 ```
 
-#### 3. Start Zookeeper
+**3. Start ZooKeeper**
 
 ```
 bash bin/zkServer.sh start
 ```
 
-Deploy the Zookeeper cluster [refer to here](https://zookeeper.apache.org/doc/r3.4.14/zookeeperStarted.html#sc_RunningReplicatedZooKeeper).
+The successful startup will be shown in the following figure, with a prompt of `STARTED`.
 
-### Deploy Tablet
+![zk started](C:\Users\65972\Documents\GitHub\fix_docs\OpenMLDB\docs\en\deploy\images\zk_started.png)
 
-#### 1. Download the OpenMLDB Deployment Package
+You can also see the ZooKeeper process running through `ps f|grep zoo.cfg`.
+
+![zk ps](C:\Users\65972\Documents\GitHub\fix_docs\OpenMLDB\docs\en\deploy\images\zk_ps.png)
+
+```{attention}
+If you find that the ZooKeeper process failed to start, please check the ZooKeeper.out log in the current directory.
+```
+
+**4. Record ZooKeeper service address and connection testing**
+
+In the subsequent stages, while connecting TabletServer, NameServer, and TaskManager to ZooKeeper, you'll need to configure the ZooKeeper service address. To enable cross-host access to the ZooKeeper service, you'll require a public IP (assuming `172.27.128.33` here; remember to input your actual ZooKeeper deployment machine IP). The ZooKeeper service address is inferred from the `clientPort` value entered in the second step, which in this case is `172.27.128.33:7181`.
+
+To test the connection with ZooKeeper, use `zookeeper-3.4.14/bin/zkCli.sh`, and ensure you run it from within the `zookeeper-3.4.14` directory.
+
+```
+bash bin/zkCli.sh -server 172.27.128.33:7181
+```
+
+You can enter the zk client program, as shown in the following figure, with a prompt of `CONNECTED`.
+
+![zk cli](C:\Users\65972\Documents\GitHub\fix_docs\OpenMLDB\docs\en\deploy\images\zk_cli.png)
+
+Enter `quit` or `Ctrl+C` to exit the zk client.
+
+### Deploy TabletServer
+
+Note that at least two TabletServer need to be deployed, otherwise errors may occur and the deployment cannot be completed correctly.
+
+**1. Download the OpenMLDB deployment package**
 
 ```
 wget https://github.com/4paradigm/OpenMLDB/releases/download/v0.8.2/openmldb-0.8.2-linux.tar.gz
@@ -317,98 +377,181 @@ mv openmldb-0.8.2-linux openmldb-tablet-0.8.2
 cd openmldb-tablet-0.8.2
 ```
 
-#### 2. Modify the Configuration File: conf/tablet.flags
+**2. Modify the configuration file `conf/tablet.flags`**
+
 ```bash
-# can update the config based on the template provided
+# Modifications can be made based on the sample configuration file
 cp conf/tablet.flags.template conf/tablet.flags
 ```
 
-* Modify `endpoint`. The endpoint is the deployment machine ip/domain name and port number separated by colons.
-* Modify `zk_cluster` to the already started zk cluster address.
-* If you share zk with other OpenMLDB, you need to modify `zk_root_path`.
+```{attention}
+Please note that the configuration file to modify is conf/tablet.flags, not any other configuration file. Even when starting multiple TabletServers (with independent, non-shareable directories for each), the same configuration file should be modified.
+```
+
+Here are the steps for modification:
+
+- Modify the `endpoint`: The `endpoint` comprises an IP address/domain name and port number, separated by a colon (Note: endpoint cannot be set to 0.0.0.0 or 127.0.0.1; it must be a public IP).
+- Update `zk_cluster` with the address of the ZooKeeper service that has already been initiated (refer to [Deploy ZooKeeper - 4. Record ZooKeeper service address and connection testing](https://chat.openai.com/c/zookeeper_addr)). If the ZooKeeper service is in a cluster, multiple addresses can be specified, separated by commas. For instance: `172.27.128.33:7181,172.27.128.32:7181,172.27.128.31:7181`.
+- Modify `zk_root_path` with the appropriate value; in this example, `/openmldb_cluster` is utilized. It's crucial to note that **components within the same cluster share the same `zk_root_path`**. In this deployment, all component `zk_root_path` values are set to `/openmldb_cluster`.
 
 ```
 --endpoint=172.27.128.33:9527
 --role=tablet
 
-# If tablet run as cluster mode zk_cluster and zk_root_path should be set:
---zk_cluster=172.27.128.33:7181,172.27.128.32:7181,172.27.128.31:7181
+# if tablet run as cluster mode zk_cluster and zk_root_path should be set
+--zk_cluster=172.27.128.33:7181
 --zk_root_path=/openmldb_cluster
 ```
 
-**Notice:**
+**Note:**
 
-* The endpoint cannot use 0.0.0.0 and 127.0.0.1.
-* If the domain name is used here, all the machines with OpenMLDB clients must be configured with the corresponding host. Otherwise, it will not be accessible.
-* The configuration of `zk_cluster` and `zk_root_path` is consistent with that of Nameserver.
+* If the endpoint configuration employs a domain name, all machines utilizing the OpenMLDB client must have the corresponding host configured. Otherwise, access won't be possible.
 
-#### 3. Start the Service
+**3. Start the service**
 
 ```
 bash bin/start.sh start tablet
 ```
 
-Repeat the above steps to deploy multiple tablets.
-
-**Notice:**
-
-* After the service is started, the tablet.pid file will be generated in the bin directory, and the process number at startup will be saved in it. If the pid inside the file is running, the startup will fail.
-* Cluster version needs to deploy at least 2 tablets.
-* If you need to deploy multiple tablets, deploy all the tablets before deploying the Nameserver.
-
-### Deploy Nameserver
-
-#### 1. Download the OpenMLDB Deployment Package
+After startup, there should be a `success` prompt, as shown below.
 
 ```
+Starting tablet ...
+Start tablet success
+```
+
+View the process status through the `ps f | grep tablet`.
+![tablet ps](C:\Users\65972\Documents\GitHub\fix_docs\OpenMLDB\docs\en\deploy\images\tablet_ps.png)
+
+Through `curl http://<tablet_ip>:<port>/status` You can also test whether TabletServer is running normally.
+
+```{attention}
+If you encounter issues like TabletServer failing to start or the process exiting after running for a while, you can examine the logs/tablet.WARNING file within the TabletServer's startup directory. For more detailed information, refer to the logs/tablet.INFO file. If the IP address is already in use, modify the TabletServer's endpoint port and restart it. Prior to starting, ensure that there are no db, logs, or recycle directories within the startup directory. You can use the command rm -rf db logs recycle to delete these directories, preventing legacy files and logs from interfering with current operations. If you are unable to resolve the issue, reach out to the development community and provide the logs for assistance.
+```
+
+**4. Repeat the above steps to deploy multiple TabletServers**
+
+```{important}
+For clustered versions, the number of TabletServers must be 2 or more. If there's only 1 TabletServer, starting the NameServer will fail. The NameServer logs (logs/nameserver.WARNING) will contain logs indicating "is less than system table replica num."
+```
+
+To start the next TabletServer on a different machine, simply repeat the aforementioned steps on that machine. If starting the next TabletServer on the same machine, ensure it's in a different directory and do not reuse a directory where TabletServer is already running.
+
+For instance, you can decompress the compressed package again (avoid using a directory where TabletServer is already running, as files generated after startup may be affected), and name the directory `openmldb-tablet-0.8.2-2`.
+
+```
+tar -zxvf openmldb-0.8.2-linux.tar.gz
+mv openmldb-0.8.2-linux openmldb-tablet-0.8.2-2
+cd openmldb-tablet-0.8.2-2
+```
+
+Modify the configuration again and start the TabletServer. Note that if all TabletServers are on the same machine, use different port numbers to avoid a "Fail to listen" message in the logs (`logs/tablet.WARNING`).
+
+**Note:**
+
+- After the service starts, a `tablet.pid` file will be generated in the `bin` directory, storing the process number during startup. If the PID in this file is already running, starting the service will fail.
+
+### Deploy NameServer
+
+```{attention}
+Please ensure that all TabletServer have been successfully started before deploying NameServer. The deployment order cannot be changed.
+```
+
+**1. Download the OpenMLDB deployment package**
+
+````
 wget https://github.com/4paradigm/OpenMLDB/releases/download/v0.8.2/openmldb-0.8.2-linux.tar.gz
 tar -zxvf openmldb-0.8.2-linux.tar.gz
 mv openmldb-0.8.2-linux openmldb-ns-0.8.2
 cd openmldb-ns-0.8.2
-```
+````
 
-#### 2. Modify the Configuration File: conf/nameserver.flags
+**2.  Modify the configuration file conf/nameserver.flags**
+
 ```bash
-# can update the config based on the template provided
+# Modifications can be made based on the sample configuration file
 cp conf/nameserver.flags.template conf/nameserver.flags
 ```
 
-* Modify `endpoint`. The endpoint is the deployment machine ip/domain name and port number separated by colons.
-* Modify `zk_cluster` to the address of the zk cluster that has been started. IP is the machine address where zk is located, and port is the port number configured by clientPort in the zk configuration file. If zk is in cluster mode, separate it with commas, and the format is ip1:port1,ip2:port2, ip3:port3.
-* If you share zk with other OpenMLDB, you need to modify `zk_root_path`.
+```{attention}
+Please note that the configuration file is conf/nameserver.flags and not any other configuration file. When starting multiple NameServers (each in an independent directory, not shareable), you should modify the configuration file accordingly.
+```
+
+* Modify the `endpoint`. The `endpoint` consists of a colon-separated deployment machine IP/domain name and port number (endpoints cannot use 0.0.0.0 and 127.0.0.1, and must be a public IP).
+* Modify `zk_cluster` to point to the address of the ZooKeeper service that has already been started (see [Deploy ZooKeeper - 4. Record ZooKeeper Service Address and Connection Testing](https://chat.openai.com/c/zookeeper_addr)). If the ZooKeeper service is a cluster, separate the addresses with commas, for example, `172.27.128.33:7181,172.27.128.32:7181,172.27.128.31:7181`.
+* Modify `zk_root_path`. In this example, `/openmldb_cluster` is used. Note that **components under the same cluster share the same `zk_root_path`**. So in this deployment, the `zk_root_path` for each component's configuration is `/openmldb_cluster`.
 
 ```
 --endpoint=172.27.128.31:6527
---zk_cluster=172.27.128.33:7181,172.27.128.32:7181,172.27.128.31:7181
+--zk_cluster=172.27.128.33:7181
 --zk_root_path=/openmldb_cluster
 ```
 
-**Notice:** The endpoint cannot use 0.0.0.0 and 127.0.0.1.
-
-#### 3. Start the Service
+**3. Start the service**
 
 ```
 bash bin/start.sh start nameserver
 ```
 
-Repeat the above steps to deploy multiple nameservers.
+After startup, there should be a `success` prompt, as shown below.
 
-#### 4. Verify the Running Status of the Service
+```
+Starting nameserver ...
+Start nameserver success
+```
+
+You can also use `curl http://<ns_ip>:<port>/status` to check if NameServer is running properly.
+
+**4. Repeat the above steps to deploy multiple NameServer**
+
+Only one NameServer is allowed, and if you need high availability, you can deploy multiple NameServers.
+
+To start the next NameServer on another machine, simply repeat the above steps on that machine. If starting the next NameServer on the same machine, ensure it's in a different directory and do not reuse the directory where NameServer has already been started.
+
+For instance, you can decompress the compressed package again (avoid using the directory where NameServer is already running, as files generated after startup may be affected) and name the directory `openmldb-ns-0.8.2-2`.
+
+```
+tar -zxvf openmldb-0.8.2-linux.tar.gz
+mv openmldb-0.8.2-linux openmldb-ns-0.8.2-2
+cd openmldb-ns-0.8.2-2
+```
+
+Then modify the configuration and start.
+
+**Note:**
+
+- After the service starts, a `nameserver.pid` file will be generated in the `bin` directory, storing the process number at startup. If the PID in this file is already running, starting the service will fail.
+- Please deploy all TabletServers before deploying the NameServer.
+
+**5. Check if the service is started**
+
+```{attention}
+At least one NameServer must be deployed to query the service components that have been started by the current cluster using the following method.
+```
 
 ```bash
-$ ./bin/openmldb --zk_cluster=172.27.128.31:7181,172.27.128.32:7181,172.27.128.33:7181 --zk_root_path=/openmldb_cluster --role=ns_client
-> shown
-  endpoint role
------------------------------
-  172.27.128.31:6527 leader
+echo "show components;" | ./bin/openmldb --zk_cluster=172.27.128.33:7181 --zk_root_path=/openmldb_cluster --role=sql_client
+```
+
+The result is **similar** to the figure below, where you can see all the TabletServer and NameServer that you have already deployed.
+
+```
+ ------------------- ------------ --------------- -------- ---------
+  Endpoint            Role         Connect_time    Status   Ns_role
+ ------------------- ------------ --------------- -------- ---------
+  172.27.128.33:9527  tablet       1665568158749   online   NULL
+  172.27.128.33:9528  tablet       1665568158741   online   NULL
+  172.27.128.31:6527  nameserver   1665568159782   online   master
+ ------------------- ------------ --------------- -------- ---------
 ```
 
 ### Deploy APIServer
 
-APIServer is responsible for receiving http requests, forwarding them to OpenMLDB and returning results. It is stateless and is not a must-deploy component of OpenMLDB.
-Before running, make sure that the OpenMLDB cluster has been started, otherwise APIServer will fail to initialize and exit the process.
+APIServer is responsible for receiving HTTP requests, forwarding them to the OpenMLDB cluster, and returning the results. It operates in a stateless manner. APIServer is an optional component for OpenMLDB deployment. If you don't require the HTTP interface, you can skip this step and proceed to the next step [Deploy TaskManager](https://chat.openai.com/c/deploy_taskmanager).
 
-#### 1. Download the OpenMLDB Deployment Package
+Before running APIServer, ensure that the TabletServer and NameServer processes of the OpenMLDB cluster have been started (TaskManager doesn't affect the startup of APIServer). Failure to do so will result in APIServer failing to initialize and exiting the process.
+
+**1. Download the OpenMLDB deployment package**
 
 ```
 wget https://github.com/4paradigm/OpenMLDB/releases/download/v0.8.2/openmldb-0.8.2-linux.tar.gz
@@ -417,70 +560,105 @@ mv openmldb-0.8.2-linux openmldb-apiserver-0.8.2
 cd openmldb-apiserver-0.8.2
 ```
 
-#### 2. Modify the Configuration File: conf/apiserver.flags
+**2. Modify the configuration file conf/apiserver.flags**
+
 ```bash
-# can update the config based on the template provided
+# Modifications can be made based on the sample configuration file
 cp conf/apiserver.flags.template conf/apiserver.flags
 ```
 
-* Modify `endpoint`. The endpoint is the deployment machine ip/domain name and port number separated by colons.
-* Modify ``zk_cluster`` to the zk cluster address of OpenMLDB to be forwarded to.
+* Modify the `endpoint`. The `endpoint` consists of a colon-separated deployment machine IP/domain name and port number (endpoints cannot use 0.0.0.0 and 127.0.0.1, and must be a public IP).
+* Modify `zk_cluster` to point to the address of the ZooKeeper service that has already been started (see [Deploy ZooKeeper - 4. Record ZooKeeper Service Address and Connection Testing](https://chat.openai.com/c/zookeeper_addr)). If the ZooKeeper service is a cluster, separate the addresses with commas, for example, `172.27.128.33:7181,172.27.128.32:7181,172.27.128.31:7181`.
+* Modify `zk_root_path`. In this example, `/openmldb_cluster` is used. Note that **components under the same cluster share the same `zk_root_path`**. So in this deployment, the `zk_root_path` for each component's configuration is `/openmldb_cluster`.
 
 ```
 --endpoint=172.27.128.33:8080
---role=apiserver
---zk_cluster=172.27.128.33:7181,172.27.128.32:7181,172.27.128.31:7181
+--zk_cluster=172.27.128.33:7181
 --zk_root_path=/openmldb_cluster
---openmldb_log_dir=./logs
 ```
 
-**Notice:**
+**Note**:
 
-* The endpoint cannot use 0.0.0.0 and 127.0.0.1. You can also choose not to set `--endpoint`, and only configure the port number `--port`.
-* You can also configure the number of threads of APIServer, `--thread_pool_size`, the default is 16.
+- If the concurrency of HTTP requests is high, you can increase the number of `--thread_pool_size` on the APIServer, set the default to 16, and restart for changes to take effect.
 
-#### 3. Start the Service
+**3. Start the service**
 
 ```
 bash bin/start.sh start apiserver
 ```
 
-**Notice:** If the program crashes when starting the nameserver/tablet/apiserver using the OpenMLDB release package, it is very likely that the instruction set is incompatible, and you need to compile OpenMLDB through the source code. For source code compilation, please refer to [here](./compile.md), you need to use method 3 to compile the complete source code.
+After startup, there should be a `success` prompt, as shown below.
+
+```
+Starting apiserver ...
+Start apiserver success
+```
+
+```{attention}
+APIServer is a non essential component, so it will not appear in `show components;`.
+```
+
+You can use the following command to check if APIServer is running normally. However, it is recommended to test its normal operation by executing SQL commands. To do this:
+
+- Connect to the APIServer using a SQL client
+- Execute SQL commands to verify its functionality
+
+```
+curl http://<apiserver_ip>:<port>/dbs/foo -X POST -d'{"mode":"online","sql":"show components;"}'
+```
+
+The results should include information about all TabletServer and NameServer that have been started.
+
+(deploy_taskmanager)=
 
 ### Deploy TaskManager
 
-TaskManager can be deployed in single server. You can deploy multiple instances for high availability. If the master server of TaskManagers fails, the slaves will replace the master for failover  and the client will reconnect automatically.
+For TaskManager deployment:
 
-#### 1. Download the OpenMLDB Spark Distribution that is Optimized for Feature Engineering
+- There can only be one TaskManager instance.
+- For high availability, multiple TaskManagers can be deployed, ensuring avoidance of IP port conflicts.
+- If the master node of TaskManager fails, the slave node will automatically recover and replace the master node. Client access to the TaskManager service can continue without any modifications.
+
+**1. Download the OpenMLDB deployment package and Spark distribution for feature engineering optimization**
+
+Spark distribution：
+
+```shell
+wget https://github.com/4paradigm/spark/releases/download/v3.2.1-openmldb0.8.2/spark-3.2.1-bin-openmldbspark.tgz
+# Image address (China)：http://43.138.115.238/download/v0.8.2/spark-3.2.1-bin-openmldbspark.tgz
+tar -zxvf spark-3.2.1-bin-openmldbspark.tgz 
+export SPARK_HOME=`pwd`/spark-3.2.1-bin-openmldbspark/
+```
+
+OpenMLDB deployment package：
 
 ```
-wget https://github.com/4paradigm/spark/releases/download/v3.2.1-openmldb0.8.2/spark-3.2.1-bin-openmldbspark.tgz
-tar -zxvf spark-3.2.1-bin-openmldbspark.tgz
 wget https://github.com/4paradigm/OpenMLDB/releases/download/v0.8.2/openmldb-0.8.2-linux.tar.gz
 tar -zxvf openmldb-0.8.2-linux.tar.gz
 mv openmldb-0.8.2-linux openmldb-taskmanager-0.8.2
 cd openmldb-taskmanager-0.8.2
 ```
 
-#### 2. Modify the Configuration File conf/taskmanager.properties
+**2. Modify the configuration file conf/taskmanager.properties**
+
 ```bash
-# can update the config based on the template provided
+# Modifications can be made based on the sample configuration file
 cp conf/taskmanager.properties.template conf/taskmanager.properties
 ```
 
-* Modify `server.host`. The host is the ip/domain name of the deployment machine.
-* Modify `server.port`. The port is the port number of the deployment machine.
-* Modify `zk_cluster` to the address of the zk cluster that has been started. IP is the address of the machine where zk is located, and port is the port number configured by clientPort in the zk configuration file. If zk is in cluster mode, it is separated by commas, and the format is ip1:port1,ip2:port2,ip3:port3.
-* If you share zk with other OpenMLDB, you need to modify zookeeper.root_path.
-* Modify `batchjob.jar.path` to the BatchJob Jar file path. If it is set to empty, it will search in the upper-level lib directory. If you use Yarn mode, you need to modify it to the corresponding HDFS path.
-* Modify `offline.data.prefix` to the offline table storage path. If Yarn mode is used, it needs to be modified to the corresponding HDFS path.
-* Modify `spark.master` to run in offline task mode, currently supports local and yarn modes.
-* Modify `spark.home` to the Spark environment path. If it is not configured or the configuration is empty, the configuration of the SPARK_HOME environment variable will be used. It needs to be set as the directory where the spark-optimized package is extracted in the first step, and the path is an absolute path.
+* Modify `server.host`: Set it to the IP address or domain name of the deployment machine.
+* Modify `server.port`: Set it to the port number of the deployment machine.
+* Modify `zk_cluster`: Set it to the address of the ZooKeeper cluster that has been started. The IP should point to the machine where ZooKeeper is located, and the port should match the `clientPort` configured in the ZooKeeper configuration file. If ZooKeeper is in cluster mode, separate addresses using commas in the format `ip1:port1,ip2:port2,ip3:port3`.
+* If sharing ZooKeeper with other OpenMLDB instances, modify `zookeeper.root_path`.
+* Modify `batchjob.jar.path`: Set it to the BatchJob Jar file path. If left empty, the system will search in the upper-level lib directory. In Yarn mode, modify it to the corresponding HDFS path.
+* Modify `offline.data.prefix`: Set it to the storage path for offline tables. In Yarn mode, modify it to the corresponding HDFS path.
+* Modify `spark.master`: Set it according to the desired mode. Currently supports local and yarn modes for running offline tasks.
+* Modify `spark.home`: Set it to the Spark environment path. If not configured, the SPARK_HOME environment variable will be used. It should be the directory where the spark-optimized package was extracted in the first step, and it must be an absolute path.
 
 ```
-server.host=0.0.0.0
+server.host=172.27.128.33
 server.port=9902
-zookeeper.cluster=172.27.128.31:7181,172.27.128.32:7181,172.27.128.33:7181
+zookeeper.cluster=172.27.128.33:7181
 zookeeper.root_path=/openmldb_cluster
 batchjob.jar.path=
 offline.data.prefix=file:///tmp/openmldb_offline_storage/
@@ -488,18 +666,69 @@ spark.master=local
 spark.home=
 ```
 
-#### 3. Start the Service
+For more instructions on Spark related configurations, please refer to the [Spark Config Detail](./conf.md#spark-config-detail).
 
-```bash
+```{attention}
+For distributed deployment clusters, avoid using local files from clients as source data imports. It is strongly recommended to use HDFS paths for this purpose.
+
+When spark.master=yarn, you must use HDFS paths.
+When spark.master=local, if you must use a local file, you can copy the file to the host where TaskManager runs and provide the absolute path address on the TaskManager host.
+
+For cases involving large amounts of offline data, it's also advisable to use HDFS for offline.data.prefix instead of local files.
+```
+
+**3. Start the service**
+
+```
 bash bin/start.sh start taskmanager
 ```
 
-#### 4. Verify the Running Status of the Service
+`ps f|grep taskmanager` should run normally, you can query the status of taskmanager process in `curl http://<taskmanager_ip>:<port>/status `.
+
+```{note}
+TaskManager logs are categorized into the TaskManager process logs and job logs for each offline command. These logs are located in the <startup directory>/taskmanager/bin/logs path:
+
+taskmanager.log and taskmanager.out are the TaskManager process logs. Review these logs if the TaskManager process exits unexpectedly.
+job_x_error.log contains the running log of a single job, while job_x.log contains the print log of a single job (results of asynchronous selects are printed here). In case of offline task failures, such as job 10, you can retrieve log information using the SQL command SHOW JOBLOG 10;. If your version does not support JOBLOG, locate the corresponding log job on the machine where the TaskManager is located. These logs are named job_10.log and job_10_error.log.
+```
+
+**4. Check if the service is started**
 
 ```bash
-$ ./bin/openmldb --zk_cluster=172.27.128.31:7181,172.27.128.32:7181,172.27.128.33:7181 --zk_root_path=/openmldb_cluster --role=sql_client
-> show jobs;
----- ---------- ------- ------------ ---------- ------- ---- --------- ---------------- -------
- id job_type state start_time end_time parameter cluster application_id error
----- ---------- ------- ------------ ---------- ------- ---- --------- ---------------- -------
+$ ./bin/openmldb --zk_cluster=172.27.128.33:7181  --zk_root_path=/openmldb_cluster --role=sql_client
+> show components;
 ```
+
+The results should be similar to the following table, including all cluster components (except for APIServer).
+
+```
+ ------------------- ------------ --------------- -------- ---------
+  Endpoint            Role         Connect_time    Status   Ns_role
+ ------------------- ------------ --------------- -------- ---------
+  172.27.128.33:9527  tablet       1665568158749   online   NULL
+  172.27.128.33:9528  tablet       1665568158741   online   NULL
+  172.27.128.31:6527  nameserver   1665568159782   online   master
+  172.27.128.33:9902  taskmanager  1665649276766   online   NULL
+ ------------------- ------------ --------------- -------- ---------
+```
+
+To test the normal functioning of the cluster in the SQL client, you can execute the following SQL commands to read and write simple tables (online portion only, for simplicity).
+
+```
+create database simple_test;
+use simple_test;
+create table t1(c1 int, c2 string);
+set @@execute_mode='online';
+Insert into t1 values (1, 'a'),(2,'b');
+select * from t1;
+```
+
+### Deployed in offline synchronization tool (optional)
+
+DataCollector in the offline synchronization tool needs to be deployed on the same machine as the TabletServer. Therefore, if offline synchronization is required, DataCollector can be deployed in all TabletServer deployment directories.
+
+SyncTool requires a Java runtime environment and doesn't have any additional requirements. It is recommended to deploy it separately on a single machine.
+
+SyncTool Helper, a synchronization task management tool for SyncTool, can be found in the `tools/synctool_helper.py` section of the deployment package. It requires a Python 3 runtime environment, has no additional requirements, and can be used remotely. However, viewing the debugging information of the Tool requires using Helper on the machine where SyncTool is located.
+
+For detailed deployment instructions, refer to the [Offline Synchronization Tool](https://chat.openai.com/tutorial/online_offline_sync.md). Pay close attention to the version conditions and functional boundaries of the offline synchronization tool.
