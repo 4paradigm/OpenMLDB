@@ -322,6 +322,7 @@ cases:
     id: 10
     version: 0.6.1
     desc: delete pk
+    mode: cluster-unsupport
     longWindow: w1:2s
     inputs:
       -
@@ -359,6 +360,7 @@ cases:
     id: 11
     version: 0.6.1
     desc: delete 组合索引
+    mode: cluster-unsupport
     longWindow: w1:2s
     inputs:
       -
