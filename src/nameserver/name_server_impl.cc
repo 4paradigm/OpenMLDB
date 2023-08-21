@@ -9735,8 +9735,9 @@ void NameServerImpl::CreateFunction(RpcController* controller, const CreateFunct
         std::string msg;
         if (!tablet->client_->CreateFunction(request->fun(), &msg)) {
             error_msgs.append("create function failed on " + tablet->client_->GetEndpoint() + ", reason: " + msg + ";");
+        } else {
+            succ_tablets.emplace_back(tablet);
         }
-        succ_tablets.emplace_back(tablet);
     }
     // rollback and return, it's ok if tablet rollback failed
     if (succ_tablets.size() < tablets.size()) {
