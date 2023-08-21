@@ -30,8 +30,10 @@ public class CallablePreparedStatement extends PreparedStatement {
     protected RowBuilder rowBuilder;
     protected String deploymentName;
 
-    public CallablePreparedStatement(Deployment deployment, SQLRouter router) throws SQLException {
+    public CallablePreparedStatement(String db, Deployment deployment, SQLRouter router) throws SQLException {
         if (router == null) throw new SQLException("router is null");
+        this.db = db;
+        this.router = router;
         this.deployment = deployment;
         deploymentName = deployment.getName();
         rowBuilder = new FlexibleRowBuilder(deployment.getInputMetaData(), true);

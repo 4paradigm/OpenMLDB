@@ -32,8 +32,8 @@ public class CallablePreparedStatementImpl extends CallablePreparedStatement {
     private int routerCol;
     private String routerValue = new String();
 
-    public CallablePreparedStatementImpl(Deployment deployment, SQLRouter router) throws SQLException {
-        super(deployment, router);
+    public CallablePreparedStatementImpl(String db, Deployment deployment, SQLRouter router) throws SQLException {
+        super(db, deployment, router);
         routerCol = deployment.getRouterCol();
     }
 

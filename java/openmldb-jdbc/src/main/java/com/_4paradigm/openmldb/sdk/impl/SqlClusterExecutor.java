@@ -209,7 +209,7 @@ public class SqlClusterExecutor implements SqlExecutor {
                 throw new SQLException(e.getMessage());
             }
         }
-        return new CallablePreparedStatementImpl(deployment, this.sqlRouter);
+        return new CallablePreparedStatementImpl(db, deployment, this.sqlRouter);
     }
 
     @Override

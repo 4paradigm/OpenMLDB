@@ -48,7 +48,8 @@ public class DeploymentManager {
     public void addDeployment(String db, String name, Deployment deployment) {
         ConcurrentHashMap<String, Deployment> deployMap = deployments.get(db);
         if (deployMap == null) {
-            deployMap = deployments.put(db, new ConcurrentHashMap<String, Deployment>());
+            deployMap = new ConcurrentHashMap<String, Deployment>();
+            deployments.put(db, deployMap);
         }
         deployMap.put(name, deployment);
     }
