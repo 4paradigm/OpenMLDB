@@ -134,7 +134,7 @@ class ProcedureInfo {
     virtual ProcedureType GetType() const = 0;
     virtual const std::string* GetOption(const std::string& key) const = 0;
     virtual const std::unordered_map<std::string, std::string>* GetOption() const = 0;
-    virtual const std::string& GetRouterCol() const = 0;
+    virtual int GetRouterCol() const = 0;
 };
 
 }  // namespace sdk
