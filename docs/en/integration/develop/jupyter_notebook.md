@@ -1,0 +1,64 @@
+# Jupyter Notebook
+
+Jupyter Notebook offers various functionalities, such as data computation, code development, document editing, code execution, and result display, through a browser-based web page. It is currently one of the most popular and user-friendly development environments. This article introduces the seamless integration of OpenMLDB and Notebook, harnessing the functional features of OpenMLDB and the convenience of Notebook to create a fast and user-friendly machine-learning development environment.
+
+## The magic function cluster
+
+The first integration feature between Notebook and OpenMLDB is the SQL magic function. The magic function is an extension of Notebook that allows users to execute SQL commands directly in a Notebook cell without the need to write complex Python code. It also enables customizing output styles. OpenMLDB has provided a standard SQL magic function that allows users to write and run SQL statements directly in the Notebook. These statements are then submitted to OpenMLDB for execution, and the results are previewed and displayed in the Notebook.
+
+### Register OpenMLDB SQL magic function
+
+To support OpenMLDB magic function in Notebook, it is first necessary to register as follows:
+
+  ```Python
+  import openmldb
+  db = openmldb.dbapi.connect(database='demo_db',zk='0.0.0.0:2181',zkPath='/openmldb')
+  openmldb.sql_magic.register(db)
+  ```
+
+### Execute a single SQL statement
+
+Developers can use the prompt `%` to execute a single-line SQL statement, as shown in the following figure.
+
+![img](images/single.png)
+
+### Execute multiple SQL statement
+
+Developers can also use the prompt `%%` to write multiple SQL statements, as shown in the following figure.
+
+![img](images/muti.png)
+
+Please note that currently, executing multiple SQL statements simultaneously within a Notebook cell is not supported. Each SQL statement needs to be executed separately in different cells.
+
+### The supporting feature of the magic function
+
+The SQL magic function provided by OpenMLDB can execute all supported SQL syntax, including the unique offline mode of OpenMLDB, which allows for asynchronously submitting complex Big data SQL statements to the offline execution engine, as shown in the following figure.
+
+![img](images/support_function.png)
+
+For more detailed instructions on using the OpenMLDB magic function, please refer to [The Using of Notebook Magic Function](https://openmldb.ai/docs/en/main/quickstart/sdk/python_sdk.html#notebook-magic-function).
+
+## The Notebook clusters of OpenMLDB Python SDK
+
+The second feature of integrating OpenMLDB and Notebook is the cluster with the OpenMLDB Python SDK. The Notebook supports the Python runtime kernel, enabling the import and usage of various Python libraries through import statements. OpenMLDB provides a fully functional Python SDK that can be called within Notebook. The OpenMLDB Python SDK not only offers a DBAPI based on the Python PEP249 standard but also supports the mainstream SQLAlchemy interface in the Python industry. Connecting to existing OpenMLDB clusters requires just one line of code.
+
+### Using OpenMLDB DBAPI
+
+Using the DBAPI interface is straightforward. You only need to specify the ZooKeeper address and node path for connection. Upon successful connection, corresponding log information will be displayed. You can call the DBAPI interface of the OpenMLDB Python SDK within Notebook for development, as detailed in [Using OpenMLDB DBAPI](https://openmldb.ai/docs/en/main/quickstart/sdk/python_sdk.html#openmldb-dbapi).
+
+```Python
+import openmldb.dbapi
+db = openmldb.dbapi.connect('demo_db','0.0.0.0:2181','/openmldb')
+```
+
+### Using OpenMLDB SQLAlchemy
+
+Using SQLAlchemy is also simple. You can establish the connection by specifying the URI of OpenMLDB through the SQLAlchemy library. Alternatively, you can connect to a standalone OpenMLDB database using IP and port as parameters, as shown below.
+
+```Python
+import sqlalchemy as db
+engine = db.create_engine('openmldb://demo_db?zk=127.0.0.1:2181&zkPath=/openmldb')
+connection = engine.connect()
+```
+
+After successful connection, development can be carried out through the SQLAlchemy interface of the OpenMLDB Python SDK, as detailed in [Using OpenMLDB SQLAlchemy](https://openmldb.ai/docs/en/main/quickstart/sdk/python_sdk.html#openmldb-sqlalchemy).
