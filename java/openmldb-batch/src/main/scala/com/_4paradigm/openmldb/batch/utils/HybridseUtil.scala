@@ -365,14 +365,16 @@ object HybridseUtil {
           if (index == 0) {
             outputDf = HybridseUtil.autoFileLoad(openmldbSession, path, fmt, options, columns, loadDataSql)
           } else {
-            outputDf = outputDf.union(HybridseUtil.autoFileLoad(openmldbSession, path, fmt, options, columns, loadDataSql))
+            outputDf = outputDf.union(HybridseUtil.autoFileLoad(openmldbSession, path, fmt, options, columns,
+              loadDataSql))
           }
         }
         outputDf
       } else {
         var outputDf = HybridseUtil.autoFileLoad(openmldbSession, file, fmt, options, columns, loadDataSql)
         for (path: String <- symbolPaths) {
-          outputDf = outputDf.union(HybridseUtil.autoFileLoad(openmldbSession, path, fmt, options, columns, loadDataSql))
+          outputDf = outputDf.union(HybridseUtil.autoFileLoad(openmldbSession, path, fmt, options, columns,
+            loadDataSql))
         }
         outputDf
       }
