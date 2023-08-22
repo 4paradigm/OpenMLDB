@@ -27,6 +27,7 @@
 #include "absl/strings/ascii.h"
 #include "absl/strings/numbers.h"
 #include "absl/strings/str_cat.h"
+#include "absl/strings/str_split.h"
 #include "absl/strings/strip.h"
 #include "absl/strings/substitute.h"
 #include "absl/types/span.h"
@@ -421,7 +422,7 @@ std::shared_ptr<openmldb::sdk::SQLDeleteRow> SQLClusterRouter::GetDeleteRow(cons
     std::vector<Condition> condition_vec;
     std::vector<Condition> parameter_vec;
     auto binary_node = dynamic_cast<const hybridse::node::BinaryExpr*>(condition);
-    *status = NodeAdapter::ParseExprNode(binary_node, col_map, table_info->column_key(),
+    *status = NodeAdapter::ExtractCondition(binary_node, col_map, table_info->column_key(),
         &condition_vec, &parameter_vec);
     if (!status->IsOK()) {
         LOG(WARNING) << status->ToString();
@@ -1674,18 +1675,22 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::HandleSQLCmd(const h
             std::string name = cmd_node->GetArgs()[0];
             auto base_status = ns_ptr->DropFunction(name, cmd_node->IsIfExists());
             if (base_status.OK()) {
+                *status = {};
+                // zk deleted already, remove from cluster_sdk, only failed when func not exist in sdk, ignore error
                 cluster_sdk_->RemoveExternalFun(name);
+                // drop function from taskmanager, ignore error, taskmanager can recreate the function
                 auto taskmanager_client = cluster_sdk_->GetTaskManagerClient();
                 if (taskmanager_client) {
                     base_status = taskmanager_client->DropFunction(name, GetJobTimeout());
                     if (!base_status.OK()) {
-                        *status = {StatusCode::kCmdError, base_status.msg};
+                        LOG(WARNING) << "drop function " << name << " failed: [" << base_status.GetCode() << "] "
+                                     << base_status.GetMsg();
                         return {};
                     }
                 }
-                *status = {};
             } else {
-                *status = {StatusCode::kCmdError, base_status.msg};
+                // not exists or nameserver delete failed on zk
+                APPEND_FROM_BASE_AND_WARN(status, base_status, "drop function failed");
             }
             return {};
         }
@@ -1738,8 +1743,9 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::HandleSQLCmd(const h
             if (!status->IsOK()) {
                 return {};
             }
+
             std::vector<api::ProcedureInfo> sps;
-            if (!ns_ptr->ShowProcedure(db, deploy_name, &sps, &msg)) {
+            if (!ns_ptr->ShowProcedure(db_name, deploy_name, &sps, &msg)) {
                 *status = {StatusCode::kCmdError, msg};
                 return {};
             }
@@ -1776,13 +1782,15 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::HandleSQLCmd(const h
             return ResultSetSQL::MakeResultSet({"DB", "Deployment"}, lines, status);
         }
         case hybridse::node::kCmdDropDeployment: {
-            if (db.empty()) {
-                *status = {StatusCode::kCmdError, "please enter database first"};
+            std::string db_name, deploy_name;
+            auto& args = cmd_node->GetArgs();
+            *status = ParseNamesFromArgs(db, args, &db_name, &deploy_name);
+            if (!status->IsOK()) {
                 return {};
             }
-            std::string deploy_name = cmd_node->GetArgs()[0];
+
             // check if deployment, avoid deleting the normal procedure
-            auto sp = cluster_sdk_->GetProcedureInfo(db, deploy_name, &msg);
+            auto sp = cluster_sdk_->GetProcedureInfo(db_name, deploy_name, &msg);
             if (!sp || sp->GetType() != hybridse::sdk::kReqDeployment) {
                 *status = {StatusCode::kCmdError, sp ? "not a deployment" : "deployment not found"};
                 return {};
@@ -1790,7 +1798,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::HandleSQLCmd(const h
             if (!CheckAnswerIfInteractive("deployment", deploy_name)) {
                 return {};
             }
-            if (ns_ptr->DropProcedure(db, deploy_name, msg)) {
+            if (ns_ptr->DropProcedure(db_name, deploy_name, msg)) {
                 RefreshCatalog();
                 *status = {};
             } else {
@@ -1930,11 +1938,12 @@ base::Status SQLClusterRouter::HandleSQLCreateTable(hybridse::node::CreatePlanNo
         return base::Status(base::ReturnCode::kSQLCmdRunError, "fail to execute plan : null pointer");
     }
 
-    if (create_node->like_clause_ == nullptr) {
-        std::string db_name = create_node->GetDatabase().empty() ? db : create_node->GetDatabase();
-        if (db_name.empty()) {
-            return base::Status(base::ReturnCode::kSQLCmdRunError, "ERROR: Please use database first");
+    std::string db_name = create_node->GetDatabase().empty() ? db : create_node->GetDatabase();
+    if (db_name.empty()) {
+        return base::Status(base::ReturnCode::kSQLCmdRunError, "ERROR: Please use database first");
         }
+
+    if (create_node->like_clause_ == nullptr) {
         ::openmldb::nameserver::TableInfo table_info;
         table_info.set_db(db_name);
 
@@ -1955,6 +1964,12 @@ base::Status SQLClusterRouter::HandleSQLCreateTable(hybridse::node::CreatePlanNo
             return base::Status(base::ReturnCode::kSQLCmdRunError, msg);
         }
     } else {
+        auto dbs = cluster_sdk_->GetAllDbs();
+        auto it = std::find(dbs.begin(), dbs.end(), db_name);
+        if (it == dbs.end()) {
+             return base::Status(base::ReturnCode::kSQLCmdRunError, "fail to create, database does not exist!");
+         }
+
         LOG(WARNING) << "CREATE TABLE LIKE will run in offline job, please wait.";
 
         std::map<std::string, std::string> config;
@@ -3193,7 +3208,7 @@ hybridse::sdk::Status SQLClusterRouter::HandleDelete(const std::string& db, cons
     std::vector<Condition> parameter_vec;
     auto binary_node = dynamic_cast<const hybridse::node::BinaryExpr*>(condition);
     auto col_map = schema::SchemaAdapter::GetColMap(*table_info);
-    auto status = NodeAdapter::ParseExprNode(binary_node, col_map, table_info->column_key(),
+    auto status = NodeAdapter::ExtractCondition(binary_node, col_map, table_info->column_key(),
         &condition_vec, &parameter_vec);
     if (!status.IsOK()) {
         return status;
@@ -3225,7 +3240,7 @@ hybridse::sdk::Status SQLClusterRouter::SendDeleteRequst(
         for (size_t idx = 0; idx < tablets.size(); idx++) {
             auto tablet_client = tablets.at(idx)->GetClient();
             if (auto status = tablet_client->Delete(table_info->tid(), idx,
-                        option->index_map, option->start_ts, option->end_ts); !status.OK()) {
+                        option->index_map, option->ts_name, option->start_ts, option->end_ts); !status.OK()) {
                 return {StatusCode::kCmdError, status.GetMsg()};
             }
         }
@@ -3248,7 +3263,8 @@ hybridse::sdk::Status SQLClusterRouter::SendDeleteRequst(
             if (!tablet_client) {
                 return {StatusCode::kCmdError, "tablet client is null"};
             }
-            auto ret = tablet_client->Delete(table_info->tid(), kv.first, kv.second, option->start_ts, option->end_ts);
+            auto ret = tablet_client->Delete(table_info->tid(), kv.first, kv.second,
+                    option->ts_name, option->start_ts, option->end_ts);
             if (!ret.OK()) {
                 return {StatusCode::kCmdError, ret.GetMsg()};
             }
@@ -3323,22 +3339,25 @@ hybridse::sdk::Status SQLClusterRouter::HandleCreateFunction(const hybridse::nod
         }
         fun->set_arg_nullable(iter->second->GetBool());
     }
+    hybridse::sdk::Status st;
     if (cluster_sdk_->IsClusterMode()) {
         auto taskmanager_client = cluster_sdk_->GetTaskManagerClient();
         if (taskmanager_client) {
             auto ret = taskmanager_client->CreateFunction(fun, GetJobTimeout());
             if (!ret.OK()) {
-                return {StatusCode::kCmdError, ret.msg};
+                APPEND_FROM_BASE_AND_WARN(&st, ret, "create function failed on taskmanager");
+                return st;
             }
         }
     }
     auto ns = cluster_sdk_->GetNsClient();
     auto ret = ns->CreateFunction(*fun);
     if (!ret.OK()) {
-        return {StatusCode::kCmdError, ret.msg};
+        APPEND_FROM_BASE_AND_WARN(&st, ret, "create function failed on nameserver");
+        return st;
     }
     cluster_sdk_->RegisterExternalFun(fun);
-    return {};
+    return st;
 }
 
 hybridse::sdk::Status SQLClusterRouter::HandleDeploy(const std::string& db,
@@ -3634,10 +3653,10 @@ hybridse::sdk::Status SQLClusterRouter::HandleLongWindows(
         std::string base_db = table_pair.begin()->first;
         std::string base_table = table_pair.begin()->second;
         std::vector<std::string> windows;
-        boost::split(windows, long_window_param, boost::is_any_of(","));
+        windows = absl::StrSplit(long_window_param, ",");
         for (auto& window : windows) {
             std::vector<std::string> window_info;
-            boost::split(window_info, window, boost::is_any_of(":"));
+            window_info = absl::StrSplit(window, ":");
 
             if (window_info.size() == 2) {
                 long_window_map[window_info[0]] = window_info[1];

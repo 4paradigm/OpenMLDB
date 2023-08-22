@@ -19,7 +19,6 @@ from absl import logging
 from prettytable import PrettyTable
 import re
 import requests
-import time
 
 from .connector import Connector
 from .dist_conf import DistConf, COMPONENT_ROLES, ServerInfo
@@ -43,19 +42,25 @@ class StatusChecker:
         t.title = "Connections"
         t.field_names = ["Endpoint", "Version", "Cost_time", "Extra"]
         err = ""
-        taskmanager = component_map.pop("taskmanager")  # extract taskmanager
+        taskmanager = []
+        if "taskmanager" in component_map:
+            taskmanager = component_map.pop("taskmanager")  # extract taskmanager
         other_components = [component for role in component_map.values() for component in role]  # extract other components
+        conns = []
         for (endpoint, _) in other_components:
             version, response_time, ex, e = self._get_information(endpoint)
-            t.add_row([endpoint, version, response_time, ex])
+            conns.append([endpoint, version, response_time, ex])
             err += e
         for (endpoint, _) in taskmanager:
             version, response_time, ex, e = self._get_information_taskmanager(endpoint)
-            t.add_row([endpoint, version, response_time, ex])
+            conns.append([endpoint, version, response_time, ex])
             err += e
+        for conn in conns:
+            t.add_row(conn)
         print(t)
         if err:
             print(err)
+        return conns
 
     def _get_information(self, endpoint):
         """get informations from components except taskmanager"""

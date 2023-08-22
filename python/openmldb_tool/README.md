@@ -3,14 +3,20 @@
 In `diagnostic_tool/`:
 
 ```
-|-- collector.py # collect version/config/logs (local or remote ssh/scp, defined by distribution conf file)
-|-- conf_validator.py
-|-- connector.py # openmldb singleton connection
-|-- diagnose.py # main
-|-- dist_conf.py # read distribution conf file, dist.yml or hosts
-|-- log_analyzer.py # analyze log, you can add your own rules
-|-- server_checker.py # server status checker, sql tester, you can add more checks
-`-- util.py
+├── collector.py # collect version/config/logs (local or remote ssh/scp, defined by distribution conf file)
+├── common_err.yml
+├── conf_validator.py
+├── connector.py # openmldb singleton connection
+├── diagnose.py # main
+├── dist_conf.py # read distribution conf file, dist.yml or hosts
+├── __init__.py
+├── log_analyzer.py  analyze log, you can add your own rules
+├── parser.py
+├── __pycache__
+├── rpc.py # optional module, rpc helper and executor for servers
+├── server_checker.py # server status checker, sql tester, you can add more checks
+├── table_checker.py
+└── util.py
 ```
 
 ## Subcommands
@@ -25,6 +31,7 @@ inspect   no sub means inspect all
 test   test online insert&select, test offline select if taskmanager exists
 static-check needs config file(dist.yml or hosts)
               [-V,--version/-C,--conf/-L,--log/-VCL]
+rpc    user-friendly rpc tool
 ```
 
 For example:
@@ -122,3 +129,15 @@ log_analysis.py read logs from local collection path `<dest>`.
 
 - show warning logs in `nameserver.info.log`, `tablet.info.log`
 - show warning logs and exceptions in `taskmanager.log`
+
+## RPC
+
+Optional module, rpc helper and executor for servers. You can install it by `pip install openmldb[rpc]`. You can execute rpc directly, but if you want rpc hint, you need to download or compile protobuf files in `OpenMLDB/src/proto`.
+
+```bash
+cd OpenMLDB
+make thirdparty
+# install to any dir
+.deps/usr/bin/protoc --python_out=$(pwd)/pb2 --proto_path=src/proto/ src/proto/*.proto
+```
+Then use `openmldb_tool rpc --pbdir=<pb2_dir>` to run rpc commands.

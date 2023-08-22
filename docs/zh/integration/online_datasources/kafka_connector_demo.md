@@ -14,8 +14,8 @@ OpenMLDB Kafka Connector实现见[extensions/kafka-connect-jdbc](https://github.
 ### 下载与准备
 
 - 你需要下载kafka，请点击[kafka官网下载](https://kafka.apache.org/downloads)下载kafka_2.13-3.1.0.tgz。
-- 你需要下载connector包以及依赖，请点击[kafka-connect-jdbc.tgz](http://openmldb.ai/download/kafka-connector/kafka-connect-jdbc.tgz)。
-- 你需要下载本文中所需要的配置与脚本等文件，请点击[kafka_demo_files.tgz](http://openmldb.ai/download/kafka-connector/kafka_demo_files.tgz)下载。
+- 你需要下载connector包以及依赖，请点击[kafka-connect-jdbc.tgz](https://openmldb.ai/download/kafka-connector/kafka-connect-jdbc.tgz)。
+- 你需要下载本文中所需要的配置与脚本等文件，请点击[kafka_demo_files.tgz](https://openmldb.ai/download/kafka-connector/kafka_demo_files.tgz)下载。
 
 本文将使用docker方式启动OpenMLDB，所以无需单独下载OpenMLDB。并且，kafka与connector的启动，都可以在同一个容器中进行。
 
@@ -23,6 +23,12 @@ OpenMLDB Kafka Connector实现见[extensions/kafka-connect-jdbc](https://github.
 ```
 docker run -it -v `pwd`:/work/kafka 4pdosc/openmldb:0.8.2 bash
 ```
+
+### 注意事项
+
+Timestamp列精度为ms，value配置为JsonConvertor，仅支持整型。根据消息的不同，可选配其他Convertor。
+
+Connector可用于较早版本的Kafka Server，例如1.1.1，但注意旧版本的Kafka Broker可能并未默认开启“自动创建topic”，需要开启[此选项](https://kafka.apache.org/documentation/#brokerconfigs_auto.create.topics.enable)。
 
 ### 流程
 

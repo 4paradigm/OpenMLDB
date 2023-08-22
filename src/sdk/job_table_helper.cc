@@ -16,6 +16,7 @@
 
 #include "sdk/job_table_helper.h"
 
+#include <algorithm>
 #include <unordered_map>
 #include <utility>
 #include "codec/schema_codec.h"
@@ -164,6 +165,21 @@ std::shared_ptr<hybridse::sdk::ResultSet> JobTableHelper::MakeResultSet(
         vec.push_back("TaskManager");
         records.emplace_back(std::move(vec));
     }
+
+    // sort jobs by id(asc)
+    std::sort(records.begin(), records.end(),
+              [](const std::vector<std::string>& vec1, const std::vector<std::string>& vec2) {
+              if (vec1.empty()) {
+                  return true;
+              }
+              if (vec2.empty()) {
+                  return false;
+              }
+              uint64_t id1, id2;
+              if (!absl::SimpleAtoi(vec1[0], &id1) || !absl::SimpleAtoi(vec2[0], &id2)) {
+                  return vec1[0] < vec2[0];
+              }
+              return id1 < id2;});
     *status = {};
     return ResultSetSQL::MakeResultSet(schema, records, status);
 }

@@ -1593,6 +1593,9 @@ void TabletImpl::Delete(RpcController* controller, const ::openmldb::api::Delete
     if (request->has_end_ts()) {
         entry.set_end_ts(request->end_ts());
     }
+    if (request->has_ts_name()) {
+        entry.set_ts_name(request->ts_name());
+    }
     if (entry.dimensions_size() == 0 && !entry.has_ts() && !entry.has_end_ts()) {
         response->set_code(base::ReturnCode::kInvalidArgs);
         response->set_msg("invalid args");
@@ -3504,6 +3507,7 @@ void TabletImpl::GetTableFollower(RpcController* controller, const ::openmldb::a
     if (info_map.empty()) {
         response->set_msg("has no follower");
         response->set_code(::openmldb::base::ReturnCode::kNoFollower);
+        return;
     }
     for (const auto& kv : info_map) {
         ::openmldb::api::FollowerInfo* follower_info = response->add_follower_info();
@@ -5635,9 +5639,10 @@ void TabletImpl::DropFunction(RpcController* controller, const openmldb::api::Dr
         LOG(INFO) << "Drop function success. name " << fun.name() << " path " << fun.file();
         base::SetResponseOK(response);
     } else {
-        LOG(WARNING) << "Drop function failed. name " << fun.name() << " msg " << status.msg;
-        response->set_msg(status.msg);
-        response->set_code(base::kRPCRunError);
+        // udf remove failed but it's ok to recreate even it exists, nameserver should treat it as success
+        SET_RESP_AND_WARN(response, base::ReturnCode::kDeleteFailed,
+                          absl::StrCat("drop function failed, name ", fun.name(), ", error: [", status.GetCode(), "] ",
+                                       status.str()));
     }
 }
 

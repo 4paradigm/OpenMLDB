@@ -72,6 +72,7 @@ title: udfs/udfs.h
 | **[is_null](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-is-null)**()| <br>Check if input value is null, return bool. |
 | **[isnull](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-isnull)**()| |
 | **[join](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-join)**()| <br>For each string value from specified column of window, join by delimeter. Null values are skipped. |
+| **[json_array_length](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-json-array-length)**()| <br>Returns the number of elements in the outermost JSON array. |
 | **[lag](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-lag)**()| <br>Returns value evaluated at the row that is offset rows before the current row within the partition. Offset is evaluated with respect to the current row. |
 | **[last_day](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-last-day)**()| <br>Return the last day of the month to which the date belongs to. |
 | **[lcase](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-lcase)**()| <br>Convert all the characters to lowercase. Note that characters with values > 127 are simply returned. |
@@ -2138,6 +2139,47 @@ select `join`(split("k1:v1,k2:v2", ","), " ");
 **Supported Types**:
 
 * [`list<string>`, `string`] 
+
+### function json_array_length
+
+```cpp
+json_array_length()
+```
+
+**Description**:
+
+Returns the number of elements in the outermost JSON array. 
+
+**Parameters**: 
+
+  * **jsonArray** JSON arry in string
+
+
+**Since**:
+0.9.0
+
+
+Null returned if input is not valid JSON array string.
+
+
+Example:
+
+```sql
+
+select json_array_length('[1, 2]')
+-- 2
+
+SELECT json_array_length('[1,2,3,{"f1":1,"f2":[5,6]},4]');
+-- 5
+
+select json_array_length('[1, 2')
+-- NULL
+```
+
+
+**Supported Types**:
+
+* [`string`] 
 
 ### function lag
 
