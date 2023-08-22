@@ -16,3 +16,4 @@ OpenMLDB SQL
     deployment_manage/index
     task_manage/index
     udf_develop_guide
+    notice
