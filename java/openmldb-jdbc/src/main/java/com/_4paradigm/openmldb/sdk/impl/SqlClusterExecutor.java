@@ -198,15 +198,20 @@ public class SqlClusterExecutor implements SqlExecutor {
     public CallablePreparedStatement getCallablePreparedStmt(String db, String deploymentName) throws SQLException {
         Deployment deployment = deploymentManager.getDeployment(db, deploymentName);
         if (deployment == null) {
-            ProcedureInfo procedureInfo = showProcedure(db, deploymentName);
-            if (procedureInfo == null) {
-                throw new SQLException(deploymentName + " does not exist in " + db);
-            }
-            try {
-                deployment = new Deployment(procedureInfo);
-                deploymentManager.addDeployment(db, deploymentName, deployment);
-            } catch (Exception e) {
-                throw new SQLException(e.getMessage());
+            synchronized (this) {
+                deployment = deploymentManager.getDeployment(db, deploymentName);
+                if (deployment == null) {
+                    ProcedureInfo procedureInfo = showProcedure(db, deploymentName);
+                    if (procedureInfo == null) {
+                        throw new SQLException(deploymentName + " does not exist in " + db);
+                    }
+                    try {
+                        deployment = new Deployment(procedureInfo);
+                        deploymentManager.addDeployment(db, deploymentName, deployment);
+                    } catch (Exception e) {
+                        throw new SQLException(e.getMessage());
+                    }
+                }
             }
         }
         return new CallablePreparedStatementImpl(db, deployment, this.sqlRouter);

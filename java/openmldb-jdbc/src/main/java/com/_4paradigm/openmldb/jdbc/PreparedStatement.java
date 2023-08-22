@@ -17,6 +17,7 @@
 package com._4paradigm.openmldb.jdbc;
 
 import com._4paradigm.openmldb.*;
+import com._4paradigm.openmldb.sdk.Common;
 import com._4paradigm.openmldb.sdk.impl.Util;
 
 import java.io.InputStream;
@@ -381,7 +382,7 @@ public class PreparedStatement implements java.sql.PreparedStatement {
     public ResultSetMetaData getMetaData() throws SQLException {
         checkClosed();
         checkNull();
-        return new SQLResultSetMetaData(this.currentSchema);
+        return new SQLResultSetMetaData(Common.convertSchema(this.currentSchema));
     }
 
     @Override

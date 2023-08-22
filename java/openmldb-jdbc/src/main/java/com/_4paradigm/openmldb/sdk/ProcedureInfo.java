@@ -30,7 +30,7 @@ public class ProcedureInfo {
 
     private List<String> inputDbs= new ArrayList<>();
 
-    private List<String> routerCols = new ArrayList<>();
+    private int routerCol = -1;
 
     public ProcedureInfo() {
     }
@@ -99,11 +99,11 @@ public class ProcedureInfo {
         this.mainTable = mainTable;
     }
 
-    public void setRouterCols(List<String> routerCols) {
-        this.routerCols = routerCols;
+    public void setRouterCol(int routerCol) {
+        this.routerCol = routerCol;
     }
 
-    public List<String> getRouterCols() {
-        return routerCols;
+    public int getRouterCol() {
+        return routerCol;
     }
 }

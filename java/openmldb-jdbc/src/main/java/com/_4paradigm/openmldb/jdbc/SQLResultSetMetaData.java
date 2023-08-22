@@ -16,10 +16,7 @@
 
 package com._4paradigm.openmldb.jdbc;
 
-import com._4paradigm.openmldb.DataType;
-import com._4paradigm.openmldb.Schema;
-import com._4paradigm.openmldb.sdk.Common;
-
+import com._4paradigm.openmldb.sdk.Schema;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 
@@ -31,30 +28,22 @@ public class SQLResultSetMetaData implements ResultSetMetaData {
         this.schema = schema;
     }
 
-    private void checkSchemaNull() throws SQLException {
-        if (schema == null) {
-            throw new SQLException("schema is null");
-        }
-    }
-
     private void checkIdx(int i) throws SQLException {
         if (i <= 0) {
             throw new SQLException("index underflow");
         }
-        if (i > schema.GetColumnCnt()) {
+        if (i > schema.getColumnList().size()) {
             throw new SQLException("index overflow");
         }
     }
 
     public void check(int i) throws SQLException {
         checkIdx(i);
-        checkSchemaNull();
     }
 
     @Override
     public int getColumnCount() throws SQLException {
-        checkSchemaNull();
-        return schema.GetColumnCnt();
+        return schema.getColumnList().size();
     }
 
     @Override
@@ -84,7 +73,7 @@ public class SQLResultSetMetaData implements ResultSetMetaData {
     @Override
     public int isNullable(int i) throws SQLException {
         check(i);
-        if (schema.IsColumnNotNull(i - 1)) {
+        if (schema.getColumnList().get(i - 1).isNotNull()) {
             return columnNoNulls;
         } else {
             return columnNullable;
@@ -112,7 +101,7 @@ public class SQLResultSetMetaData implements ResultSetMetaData {
     @Override
     public String getColumnName(int i) throws SQLException {
         check(i);
-        return schema.GetColumnName(i - 1);
+        return schema.getColumnList().get(i - 1).getColumnName();
     }
 
     @Override
@@ -148,8 +137,7 @@ public class SQLResultSetMetaData implements ResultSetMetaData {
     @Override
     public int getColumnType(int i) throws SQLException {
         check(i);
-        DataType dataType = schema.GetColumnType(i - 1);
-        return Common.type2SqlType(dataType);
+        return schema.getColumnList().get(i - 1).getSqlType();
     }
 
     @Override

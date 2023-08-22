@@ -18,16 +18,14 @@ package com._4paradigm.openmldb.sdk.impl;
 
 import com._4paradigm.openmldb.common.codec.CodecMetaData;
 import com._4paradigm.openmldb.sdk.Common;
+import com._4paradigm.openmldb.sdk.Schema;
 import com._4paradigm.openmldb.sdk.ProcedureInfo;
-
-import java.sql.SQLException;
 
 public class Deployment {
 
     private CodecMetaData inputMetaData;
     private CodecMetaData outputMetaData;
     private ProcedureInfo proInfo;
-    private int routerCol = -1;
 
     public Deployment(com._4paradigm.openmldb.ProcedureInfo info) throws Exception {
         proInfo = Common.convertProcedureInfo(info);
@@ -39,6 +37,7 @@ public class Deployment {
         proInfo = info;
         inputMetaData = new CodecMetaData(Common.convert2ProtoSchema(proInfo.getInputSchema()));
         outputMetaData = new CodecMetaData(Common.convert2ProtoSchema(proInfo.getOutputSchema()));
+
     }
 
     public CodecMetaData getInputMetaData() {
@@ -50,7 +49,7 @@ public class Deployment {
     }
 
     public int getRouterCol() {
-        return routerCol;
+        return proInfo.getRouterCol();
     }
 
     public String getDatabase() {
@@ -63,5 +62,17 @@ public class Deployment {
 
     public String getSQL() {
         return proInfo.getSql();
+    }
+
+    public ProcedureInfo getProcedureInfo() {
+        return proInfo;
+    }
+
+    public Schema getInputSchema() {
+        return proInfo.getInputSchema();
+    }
+
+    public Schema getOutputSchema() {
+        return proInfo.getOutputSchema();
     }
 }

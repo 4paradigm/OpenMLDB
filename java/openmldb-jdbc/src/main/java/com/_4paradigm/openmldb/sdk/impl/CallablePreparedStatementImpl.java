@@ -21,16 +21,18 @@ import com._4paradigm.openmldb.Status;
 import com._4paradigm.openmldb.common.codec.CodecUtil;
 import com._4paradigm.openmldb.jdbc.CallablePreparedStatement;
 import com._4paradigm.openmldb.jdbc.SQLResultSet;
+import com._4paradigm.openmldb.jdbc.SQLResultSetMetaData;
 import com._4paradigm.openmldb.sdk.QueryFuture;
 
 import java.nio.ByteBuffer;
+import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.util.concurrent.TimeUnit;
 
 public class CallablePreparedStatementImpl extends CallablePreparedStatement {
     private int routerCol;
-    private String routerValue = new String();
+    private String routerValue = "";
 
     public CallablePreparedStatementImpl(String db, Deployment deployment, SQLRouter router) throws SQLException {
         super(db, deployment, router);
@@ -57,7 +59,7 @@ public class CallablePreparedStatementImpl extends CallablePreparedStatement {
             throw new SQLException("call procedure fail, msg: " + msg);
         }
         status.delete();
-        SQLResultSet rs = new SQLResultSet(resultSet);
+        SQLResultSet rs = new SQLResultSet(resultSet, deployment.getOutputSchema());
         if (closeOnComplete) {
             closed = true;
         }
@@ -85,6 +87,11 @@ public class CallablePreparedStatementImpl extends CallablePreparedStatement {
         }
         status.delete();
         return new QueryFuture(queryFuture);
+    }
+
+    @Override
+    public ResultSetMetaData getMetaData() {
+        return new SQLResultSetMetaData(deployment.getInputSchema());
     }
 
     @Override

@@ -137,7 +137,7 @@ public class Common {
         spInfo.setMainTable(procedureInfo.GetMainTable());
         spInfo.setInputTables(procedureInfo.GetTables());
         spInfo.setInputDbs(procedureInfo.GetDbs());
-        // for (int i = 0; i < procedureInfo.Get)
+        spInfo.setRouterCol(procedureInfo.GetRouterCol());
         return spInfo;
     }
 }
