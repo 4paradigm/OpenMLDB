@@ -28,22 +28,18 @@ public class SQLResultSetMetaData implements ResultSetMetaData {
         this.schema = schema;
     }
 
-    private void checkIdx(int i) throws SQLException {
+    private void check(int i) throws SQLException {
         if (i <= 0) {
             throw new SQLException("index underflow");
         }
-        if (i > schema.getColumnList().size()) {
+        if (i > schema.size()) {
             throw new SQLException("index overflow");
         }
     }
 
-    public void check(int i) throws SQLException {
-        checkIdx(i);
-    }
-
     @Override
     public int getColumnCount() throws SQLException {
-        return schema.getColumnList().size();
+        return schema.size();
     }
 
     @Override
@@ -73,10 +69,10 @@ public class SQLResultSetMetaData implements ResultSetMetaData {
     @Override
     public int isNullable(int i) throws SQLException {
         check(i);
-        if (schema.getColumnList().get(i - 1).isNotNull()) {
-            return columnNoNulls;
-        } else {
+        if (schema.isNullable(i - 1)) {
             return columnNullable;
+        } else {
+            return columnNoNulls;
         }
     }
 
@@ -101,7 +97,7 @@ public class SQLResultSetMetaData implements ResultSetMetaData {
     @Override
     public String getColumnName(int i) throws SQLException {
         check(i);
-        return schema.getColumnList().get(i - 1).getColumnName();
+        return schema.getColumnName(i - 1);
     }
 
     @Override
@@ -137,7 +133,7 @@ public class SQLResultSetMetaData implements ResultSetMetaData {
     @Override
     public int getColumnType(int i) throws SQLException {
         check(i);
-        return schema.getColumnList().get(i - 1).getSqlType();
+        return schema.getColumnType(i - 1);
     }
 
     @Override
