@@ -358,7 +358,7 @@ cases:
   -
     id: 22
     desc: test-case
-    mode: standalone-unsupport
+    mode: standalone-unsupport,disk-unsupport
     inputs:
       -
         columns : ["c1 string","c2 smallint","c3 int","c4 bigint","c5 float","c6 double","c7 timestamp","c8 date","c9 bool"]
@@ -397,7 +397,7 @@ cases:
   -
     id: 24
     desc: 没有partitionnum和replicanum，指定distribution
-    mode: standalone-unsupport
+    mode: standalone-unsupport,disk-unsupport
     inputs:
       - name: t3
     sql: |

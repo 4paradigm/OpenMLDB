@@ -60,7 +60,7 @@ distribute() {
         rsync -arz "${SPARK_HOME}/" "$host:${SPARK_HOME}/"
       fi
     else
-      dir_list=(bin sbin conf)
+      dir_list=(bin sbin conf udf)
     fi
     for folder in "${dir_list[@]}"
     do
