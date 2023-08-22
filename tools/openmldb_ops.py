@@ -383,15 +383,15 @@ def ScaleInEndpoint(executor, endpoint, desc_endpoints):
                 db=db, name=name, pid=record[1], endpoint=endpoint))
             continue
         log.info("migrate table {name} partition {pid} in {db} from {endpoint} to {desc_endpoint}".format(
-            partition.GetName(), pid=partition.GetPid(), db=db, endpoint=endpoint, desc_endpoint=desc_endpoint))
+            name=partition.GetName(), pid=partition.GetPid(), db=db, endpoint=endpoint, desc_endpoint=desc_endpoint))
         status = MigratePartition(db, partition, endpoint, desc_endpoint, replica_map[partition.GetKey()] == 1)
         if not status.OK():
             log.error(status.GetMsg())
             log.error("migrate table {name} partition {pid} in {db} from {endpoint} to {desc_endpoint} failed".format(
-                partition.GetName(), pid=partition.GetPid(), db=db, endpoint=endpoint, desc_endpoint=desc_endpoint))
+                name=partition.GetName(), pid=partition.GetPid(), db=db, endpoint=endpoint, desc_endpoint=desc_endpoint))
             return status
         log.info("migrate table {name} partition {pid} in {db} from {endpoint} to {desc_endpoint} success".format(
-            partition.GetName(), pid=partition.GetPid(), db=db, endpoint=endpoint, desc_endpoint=desc_endpoint))
+            name=partition.GetName(), pid=partition.GetPid(), db=db, endpoint=endpoint, desc_endpoint=desc_endpoint))
 
     return Status()
 
