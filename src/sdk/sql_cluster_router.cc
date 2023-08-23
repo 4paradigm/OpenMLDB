@@ -72,6 +72,8 @@ using hybridse::plan::PlanAPI;
 
 constexpr const char* SKIP_INDEX_CHECK_OPTION = "skip_index_check";
 constexpr const char* SYNC_OPTION = "sync";
+constexpr const char* RANGE_BIAS_OPTION = "range_bias";
+constexpr const char* ROWS_BIAS_OPTION = "rows_bias";
 
 class ExplainInfoImpl : public ExplainInfo {
  public:
@@ -385,8 +387,8 @@ std::shared_ptr<openmldb::sdk::SQLDeleteRow> SQLClusterRouter::GetDeleteRow(cons
         if (delete_cache) {
             status->code = 0;
             return std::make_shared<openmldb::sdk::SQLDeleteRow>(
-                delete_cache->GetDatabase(), delete_cache->GetTableName(),
-                delete_cache->GetDefaultCondition(), delete_cache->GetCondition());
+                delete_cache->GetDatabase(), delete_cache->GetTableName(), delete_cache->GetDefaultCondition(),
+                delete_cache->GetCondition());
         }
     }
     ::hybridse::node::NodeManager nm;
@@ -422,18 +424,19 @@ std::shared_ptr<openmldb::sdk::SQLDeleteRow> SQLClusterRouter::GetDeleteRow(cons
     std::vector<Condition> condition_vec;
     std::vector<Condition> parameter_vec;
     auto binary_node = dynamic_cast<const hybridse::node::BinaryExpr*>(condition);
-    *status = NodeAdapter::ExtractCondition(binary_node, col_map, table_info->column_key(),
-        &condition_vec, &parameter_vec);
+    *status =
+        NodeAdapter::ExtractCondition(binary_node, col_map, table_info->column_key(), &condition_vec, &parameter_vec);
     if (!status->IsOK()) {
         LOG(WARNING) << status->ToString();
         return {};
     }
-    auto delete_cache = std::make_shared<DeleteSQLCache>(
-        db, table_info->tid(), table_name, condition_vec, parameter_vec);
+    auto delete_cache =
+        std::make_shared<DeleteSQLCache>(db, table_info->tid(), table_name, condition_vec, parameter_vec);
     SetCache(db, sql, hybridse::vm::kBatchMode, delete_cache);
     *status = {};
     return std::make_shared<openmldb::sdk::SQLDeleteRow>(delete_cache->GetDatabase(), delete_cache->GetTableName(),
-                delete_cache->GetDefaultCondition(), delete_cache->GetCondition());
+                                                         delete_cache->GetDefaultCondition(),
+                                                         delete_cache->GetCondition());
 }
 
 std::shared_ptr<SQLInsertRow> SQLClusterRouter::GetInsertRow(const std::string& db, const std::string& sql,
@@ -1921,7 +1924,9 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::HandleSQLCmd(const h
             const auto& args = cmd_node->GetArgs();
             return ExecuteShowTableStatus(db, args.size() > 0 ? args[0] : "", status);
         }
-        default: { *status = {StatusCode::kCmdError, "fail to execute script with unsupported type"}; }
+        default: {
+            *status = {StatusCode::kCmdError, "fail to execute script with unsupported type"};
+        }
     }
     return {};
 }
@@ -1941,7 +1946,7 @@ base::Status SQLClusterRouter::HandleSQLCreateTable(hybridse::node::CreatePlanNo
     std::string db_name = create_node->GetDatabase().empty() ? db : create_node->GetDatabase();
     if (db_name.empty()) {
         return base::Status(base::ReturnCode::kSQLCmdRunError, "ERROR: Please use database first");
-        }
+    }
 
     if (create_node->like_clause_ == nullptr) {
         ::openmldb::nameserver::TableInfo table_info;
@@ -1967,8 +1972,8 @@ base::Status SQLClusterRouter::HandleSQLCreateTable(hybridse::node::CreatePlanNo
         auto dbs = cluster_sdk_->GetAllDbs();
         auto it = std::find(dbs.begin(), dbs.end(), db_name);
         if (it == dbs.end()) {
-             return base::Status(base::ReturnCode::kSQLCmdRunError, "fail to create, database does not exist!");
-         }
+            return base::Status(base::ReturnCode::kSQLCmdRunError, "fail to create, database does not exist!");
+        }
 
         LOG(WARNING) << "CREATE TABLE LIKE will run in offline job, please wait.";
 
@@ -3208,8 +3213,8 @@ hybridse::sdk::Status SQLClusterRouter::HandleDelete(const std::string& db, cons
     std::vector<Condition> parameter_vec;
     auto binary_node = dynamic_cast<const hybridse::node::BinaryExpr*>(condition);
     auto col_map = schema::SchemaAdapter::GetColMap(*table_info);
-    auto status = NodeAdapter::ExtractCondition(binary_node, col_map, table_info->column_key(),
-        &condition_vec, &parameter_vec);
+    auto status =
+        NodeAdapter::ExtractCondition(binary_node, col_map, table_info->column_key(), &condition_vec, &parameter_vec);
     if (!status.IsOK()) {
         return status;
     }
@@ -3225,8 +3230,7 @@ hybridse::sdk::Status SQLClusterRouter::HandleDelete(const std::string& db, cons
 }
 
 hybridse::sdk::Status SQLClusterRouter::SendDeleteRequst(
-        const std::shared_ptr<::openmldb::nameserver::TableInfo>& table_info,
-        const DeleteOption* option) {
+    const std::shared_ptr<::openmldb::nameserver::TableInfo>& table_info, const DeleteOption* option) {
     if (option->index_map.empty()) {
         std::vector<std::shared_ptr<::openmldb::catalog::TabletAccessor>> tablets;
         if (!cluster_sdk_->GetTablet(table_info->db(), table_info->name(), &tablets)) {
@@ -3239,8 +3243,9 @@ hybridse::sdk::Status SQLClusterRouter::SendDeleteRequst(
         }
         for (size_t idx = 0; idx < tablets.size(); idx++) {
             auto tablet_client = tablets.at(idx)->GetClient();
-            if (auto status = tablet_client->Delete(table_info->tid(), idx,
-                        option->index_map, option->ts_name, option->start_ts, option->end_ts); !status.OK()) {
+            if (auto status = tablet_client->Delete(table_info->tid(), idx, option->index_map, option->ts_name,
+                                                    option->start_ts, option->end_ts);
+                !status.OK()) {
                 return {StatusCode::kCmdError, status.GetMsg()};
             }
         }
@@ -3263,8 +3268,8 @@ hybridse::sdk::Status SQLClusterRouter::SendDeleteRequst(
             if (!tablet_client) {
                 return {StatusCode::kCmdError, "tablet client is null"};
             }
-            auto ret = tablet_client->Delete(table_info->tid(), kv.first, kv.second,
-                    option->ts_name, option->start_ts, option->end_ts);
+            auto ret = tablet_client->Delete(table_info->tid(), kv.first, kv.second, option->ts_name, option->start_ts,
+                                             option->end_ts);
             if (!ret.OK()) {
                 return {StatusCode::kCmdError, ret.GetMsg()};
             }
@@ -3456,9 +3461,25 @@ hybridse::sdk::Status SQLClusterRouter::HandleDeploy(const std::string& db,
         }
     }
 
+    // bias parse
+    // range bias: int means xx ms, int & interval will covert to minutes, if == 0, no bias, if has part < 1min, add 1min
+    Bias bias;
+    iter = deploy_node->Options()->find(RANGE_BIAS_OPTION);
+    if (iter != deploy_node->Options()->end()) {
+        if (!bias.SetRange(iter->second)) {
+            return {StatusCode::kCmdError, "range bias '" + iter->second->GetExprString() + "' is illegal"};
+        }
+    }
+    iter = deploy_node->Options()->find(ROWS_BIAS_OPTION);
+    if (iter != deploy_node->Options()->end()) {
+        if (!bias.SetRows(iter->second)) {
+            return {StatusCode::kCmdError, "rows bias '" + iter->second->GetExprString() + "' is illegal"};
+        }
+    }
+
     base::MultiDBIndexMap new_index_map;
-    // merge index, update exists index ttl in table, get new index to create
-    auto get_index_status = GetNewIndex(table_map, select_sql, db, skip_index_check, &new_index_map);
+    // merge index, update exists index ttl(add bias) in table, get new index(add bias) to create
+    auto get_index_status = GetNewIndex(table_map, select_sql, db, skip_index_check, bias, &new_index_map);
     if (!get_index_status.IsOK()) {
         return get_index_status;
     }
@@ -3536,7 +3557,7 @@ hybridse::sdk::Status SQLClusterRouter::HandleDeploy(const std::string& db,
 }
 
 hybridse::sdk::Status SQLClusterRouter::GetNewIndex(const TableInfoMap& table_map, const std::string& select_sql,
-                                                    const std::string& db, bool skip_index_check,
+                                                    const std::string& db, bool skip_index_check, const Bias& bias,
                                                     base::MultiDBIndexMap* new_index_map) {
     // convert info map to desc map
     base::MultiDBTableDescMap table_desc_map;
@@ -3549,6 +3570,7 @@ hybridse::sdk::Status SQLClusterRouter::GetNewIndex(const TableInfoMap& table_ma
     }
     auto index_map = base::DDLParser::ExtractIndexes(select_sql, db, table_desc_map);
     auto ns = cluster_sdk_->GetNsClient();
+    // add bias in the loop
     for (auto& db_index : index_map) {
         auto& db_name = db_index.first;
         for (auto& kv : db_index.second) {
@@ -3588,13 +3610,18 @@ hybridse::sdk::Status SQLClusterRouter::GetNewIndex(const TableInfoMap& table_ma
             // the existed ones
             std::vector<::openmldb::common::ColumnKey> new_indexs;
             for (auto& column_key : extract_column_keys) {
-                auto index_id = openmldb::schema::IndexUtil::GetIDStr(column_key);
+                // add bias on extracted index
+                auto new_column_key = bias.AddBias(column_key);
+                LOG(WARNING) << "add bias on index " << column_key.ShortDebugString() << " to "
+                             << new_column_key.ShortDebugString() << " with bias " << bias;
+
+                auto index_id = openmldb::schema::IndexUtil::GetIDStr(new_column_key);
                 auto it = exists_index_map.find(index_id);
                 if (it != exists_index_map.end()) {
                     auto& old_column_key = it->second;
                     common::TTLSt result;
                     // if skip index check, we don't do update ttl, for backward compatibility(server <=0.8.0)
-                    if (base::TTLMerge(old_column_key.ttl(), column_key.ttl(), &result) && !skip_index_check) {
+                    if (base::TTLMerge(old_column_key.ttl(), new_column_key.ttl(), &result) && !skip_index_check) {
                         // update ttl
                         auto ns_ptr = cluster_sdk_->GetNsClient();
                         std::string err;
@@ -3604,10 +3631,10 @@ hybridse::sdk::Status SQLClusterRouter::GetNewIndex(const TableInfoMap& table_ma
                         }
                     }
                 } else {
-                    column_key.set_index_name(
+                    new_column_key.set_index_name(
                         absl::StrCat("INDEX_", cur_index_num + add_index_num, "_", ::baidu::common::timer::now_time()));
                     add_index_num++;
-                    new_indexs.emplace_back(column_key);
+                    new_indexs.emplace_back(new_column_key);
                 }
             }
 
@@ -4390,6 +4417,64 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::GetNameServerJobResu
         return std::make_shared<ReadableResultSetSQL>(rs);
     }
     return rs;
+}
+
+common::ColumnKey Bias::AddBias(const common::ColumnKey& index) const {
+    if (!index.has_ttl()) {
+        LOG(WARNING) << "index has no ttl, skip bias";
+        return index;
+    }
+    auto new_index = index;
+    auto ttl = new_index.mutable_ttl();
+    if (ttl->ttl_type() != type::TTLType::kLatestTime) {
+        // add bias to ttl when abs / abs||. / abs&&.
+        if (range_inf) {
+            ttl->set_abs_ttl(0);
+        } else {
+            ttl->set_abs_ttl(ttl->abs_ttl() + range_bias);
+        }
+    }
+    if (ttl->ttl_type() != type::TTLType::kAbsoluteTime) {
+        // add bias to ttl when lat / .||lat / .&&lat
+        if (rows_inf) {
+            ttl->set_lat_ttl(0);
+        } else {
+            ttl->set_lat_ttl(ttl->lat_ttl() + rows_bias);
+        }
+    }
+    return new_index;
+}
+
+bool Bias::Set(const hybridse::node::ConstNode* node, bool is_row_type) {
+    if (node == nullptr) {
+        return false;
+    }
+    // both range and rows can be int & string 'inf'
+    if (node->IsNumber()) {
+        SetBias(is_row_type, node->GetAsInt64());
+        return true;
+    }
+    auto str = node->GetAsString();
+    if (absl::EqualsIgnoreCase(str, "inf")) {
+        SetInf(is_row_type);
+        return true;
+    }
+    // row bias shouldn't be interval, rang bias can be 0d, 0h, ...
+    if (is_row_type) {
+        return false;
+    }
+    auto v = node->GetMillis();
+    if (v == -1) {
+        return false;
+    }
+    // abs time should be min, 0 means no bias, if has part which < 1 min, add 1 min
+    SetBias(is_row_type, v);
+    return true;
+}
+
+std::ostream& operator<<(std::ostream& os, const Bias& bias) {  // NOLINT
+    os << "Bias[" << bias.ToString() << "]";
+    return os;
 }
 
 }  // namespace sdk
