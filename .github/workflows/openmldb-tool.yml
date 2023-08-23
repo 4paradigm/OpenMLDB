@@ -8,10 +8,12 @@ on:
     paths:
       - 'release/**'
       - 'tools/**'
+      - 'test/test-tool/openmldb-deploy/**'
   pull_request:
     paths:
       - 'release/**'
       - 'tools/**'
+      - 'test/test-tool/openmldb-deploy/**'
   workflow_dispatch:
 
 env:
@@ -65,6 +67,7 @@ jobs:
       - name: install openmldb
         run: |
           VERSION=`git fetch --tags | git tag -l v[0-9].* | tail -n1`
+          echo ${VERSION}
           VERSION=${VERSION#v}
           bash test/test-tool/openmldb-deploy/install_with_name.sh ${VERSION}
       - name: run test

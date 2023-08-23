@@ -16,7 +16,7 @@
 # limitations under the License.
 
 set -eE -x
-VERSION="$1"
+VERSION=$1
 if [[ -z ${VERSION} ]]; then
     VERSION=0.7.2
 fi
