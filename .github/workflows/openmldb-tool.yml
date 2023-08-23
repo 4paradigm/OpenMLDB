@@ -67,7 +67,8 @@ jobs:
           pip3 install requests openmldb pytest
       - name: install openmldb
         run: |
-          VERSION=`git fetch --tags | git tag -l v[0-9].* | tail -n1`
+          git fetch --tags
+          VERSION=$(git describe --always --tags `git rev-list --tags --max-count=1`)
           echo ${VERSION}
           VERSION=${VERSION#v}
           bash test/test-tool/openmldb-deploy/install_with_name.sh ${VERSION}
