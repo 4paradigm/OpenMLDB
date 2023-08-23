@@ -143,7 +143,7 @@ case $OP in
                 PID=$!
                 echo "process pid is $PID"
             fi
-            if [ -x "$(command -v curl)" ]; then
+            if [ -x "$(command -v curl)" ] && ! grep -q '^--use_name=true' "conf/${COMPONENT}.flags"; then
                 sleep 3
                 ENDPOINT=$(grep '^\--endpoint' ./conf/"$COMPONENT".flags | grep -v '#' | awk -F '=' '{print $2}')
                 COUNT=1
@@ -164,8 +164,8 @@ case $OP in
                     fi
                 done
             else
-                echo "no curl, sleep 10s and then check the process running status"
-                sleep 10
+                echo "no curl, sleep 12s and then check the process running status"
+                sleep 12
                 if kill -0 "$PID" > /dev/null 2>&1; then
                     if [ "$DAEMON_MODE" != "true" ]; then
                         echo $PID > "$OPENMLDB_PID_FILE"
