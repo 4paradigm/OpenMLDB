@@ -56,3 +56,20 @@ done
 
 sh sbin/start-all.sh
 popd
+
+pushd test/test-tool/openmldb-deploy
+echo "collect_ignore_glob = [\"test_install.py\"]" > cases/conftest.py
+cat >> hosts <<EOF
+[tablet]
+tablet-0 /tmp/openmldb/tablet-0
+tablet-1 /tmp/openmldb/tablet-1
+tablet-2 /tmp/openmldb/tablet-2
+
+[nameserver]
+ns-0 /tmp/openmldb/ns-0
+ns-1 /tmp/openmldb/ns-1
+
+[zookeeper]
+localhost:2181:2888:3888 /tmp/openmldb/zookeeper
+EOF
+popd

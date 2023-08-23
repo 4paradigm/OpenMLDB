@@ -167,7 +167,7 @@ case $OP in
                 echo "no curl, sleep 12s and then check the process running status"
                 sleep 12
                 if kill -0 "$PID" > /dev/null 2>&1; then
-                    if [ "$DAEMON_MODE" != "true" ]; then
+                    if [ "${DAEMON_MODE}" != "true" ]; then
                         echo $PID > "$OPENMLDB_PID_FILE"
                     fi
                     echo "Start ${COMPONENT} success"

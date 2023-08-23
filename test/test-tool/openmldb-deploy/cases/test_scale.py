@@ -21,7 +21,7 @@ import random
 from tool import Executor
 from tool import Partition
 from tool import Status
-from tool import Util
+from util import Util
 
 class TestScale:
     db = None
