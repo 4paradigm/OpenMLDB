@@ -30,7 +30,7 @@ rm -f bin/*.sh
 cp -r ../release/sbin ../release/conf ./
 cp -f ../release/bin/*.sh bin/
 
-cp -f ../test-tool/openmldb-deploy/hosts conf/hosts
+cp -f ../test/test-tool/openmldb-deploy/hosts conf/hosts
 sed -i"" -e "s/OPENMLDB_VERSION=[0-9]\.[0-9]\.[0-9]/OPENMLDB_VERSION=${VERSION}/g" conf/openmldb-env.sh
 sed -i"" -e "s/OPENMLDB_MODE:=standalone/OPENMLDB_MODE:=cluster/g" conf/openmldb-env.sh
 sh sbin/deploy-all.sh
@@ -40,7 +40,7 @@ do
     mkdir -p /tmp/openmldb/tablet-${i}/data && echo "tablet-${i}" > /tmp/openmldb/tablet-${i}/data/name.txt
     conf_file="/tmp/openmldb/tablet-${i}/conf/tablet.flags"
     sed -i "s/^--endpoint/# --endpoint/g" ${conf_file} 
-    port=`expr ${i} + 10921`
+    port=$((${i} + 10921))
     echo "--port=${port}" >> ${conf_file}
     echo "--use_name=true" >> ${conf_file}
 done
@@ -49,7 +49,7 @@ do
     conf_file="/tmp/openmldb/ns-${i}/conf/nameserver.flags"
     mkdir -p /tmp/openmldb/ns-${i}/data && echo "ns-${i}" > /tmp/openmldb/ns-${i}/data/name.txt
     sed -i "s/^--endpoint/# --endpoint/g" ${conf_file} 
-    port=`expr ${i} + 7527`
+    port=$((${i} + 7527))
     echo "--port=${port}" >> ${conf_file}
     echo "--use_name=true" >> ${conf_file}
 done
