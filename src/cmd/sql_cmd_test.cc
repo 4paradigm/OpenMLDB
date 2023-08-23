@@ -1027,6 +1027,8 @@ TEST_P(DBSDKTest, DeployWithBias) {
     index_res = rows_test("rows_bias='inf'");
     ASSERT_EQ(index_res.ttl().lat_ttl(), 0);
 
+    // sp in tablet may be stored a bit late, wait
+    sleep(3);
     std::string msg;
     for (int j = 0; j < i; j++) {
         ASSERT_TRUE(cs->GetNsClient()->DropProcedure(db, "d" + std::to_string(j), msg));
