@@ -34,12 +34,12 @@ import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.sql.Types;
 
-public class OpenmldbDataWriter implements DataWriter<InternalRow> {
+public class OpenmldbDataSingleWriter implements DataWriter<InternalRow> {
     private final int partitionId;
     private final long taskId;
     private PreparedStatement preparedStatement = null;
 
-    public OpenmldbDataWriter(OpenmldbWriteConfig config, int partitionId, long taskId) {
+    public OpenmldbDataSingleWriter(OpenmldbWriteConfig config, int partitionId, long taskId) {
         try {
             SdkOption option = new SdkOption();
             option.setZkCluster(config.zkCluster);
@@ -70,74 +70,20 @@ public class OpenmldbDataWriter implements DataWriter<InternalRow> {
             // record to openmldb row
             ResultSetMetaData metaData = preparedStatement.getMetaData();
             Preconditions.checkState(record.numFields() == metaData.getColumnCount());
-            addRow(record, preparedStatement);
-            preparedStatement.addBatch();
+            OpenmldbDataWriter.addRow(record, preparedStatement);
+            preparedStatement.execute();
         } catch (Exception e) {
-            throw new IOException("convert to openmldb row failed on " + record, e);
-        }
-    }
-
-    static void addRow(InternalRow record, PreparedStatement preparedStatement) throws SQLException {
-        // idx in preparedStatement starts from 1
-        ResultSetMetaData metaData = preparedStatement.getMetaData();
-        for (int i = 0; i < record.numFields(); i++) {
-            // sqlType
-            int type = metaData.getColumnType(i + 1);
-            if (record.isNullAt(i)) {
-                preparedStatement.setNull(i + 1, type);
-                continue;
-            }
-            switch (type) {
-                case Types.BOOLEAN:
-                    preparedStatement.setBoolean(i + 1, record.getBoolean(i));
-                    break;
-                case Types.SMALLINT:
-                    preparedStatement.setShort(i + 1, record.getShort(i));
-                    break;
-                case Types.INTEGER:
-                    preparedStatement.setInt(i + 1, record.getInt(i));
-                    break;
-                case Types.BIGINT:
-                    preparedStatement.setLong(i + 1, record.getLong(i));
-                    break;
-                case Types.FLOAT:
-                    preparedStatement.setFloat(i + 1, record.getFloat(i));
-                    break;
-                case Types.DOUBLE:
-                    preparedStatement.setDouble(i + 1, record.getDouble(i));
-                    break;
-                case Types.VARCHAR:
-                    preparedStatement.setString(i + 1, record.getString(i));
-                    break;
-                case Types.DATE:
-                    // the new Date() parameter is the number of milliseconds elapsed since January 1, 1970 00:00:00 GMT
-                    // where record.getInt(i) gets the number of days elapsed, and 86400000 is the number of milliseconds in a day.
-                    preparedStatement.setDate(i + 1, new Date(record.getInt(i) * 86400000l));
-                    break;
-                case Types.TIMESTAMP:
-                    // record.getLong(spark sql TimestampType) gets us timestamp, and sql timestamp unit is ms
-                    preparedStatement.setTimestamp(i + 1, new Timestamp(record.getLong(i) / 1000));
-                    break;
-                default:
-                    throw new RuntimeException("unsupported sql type " + type);
-            }
+            throw new IOException("write row to openmldb failed on " + record, e);
         }
     }
 
     @Override
     public WriterCommitMessage commit() throws IOException {
         try {
-            int[] rc = preparedStatement.executeBatch();
-            for(int i = 0; i < rc.length; i++) {
-                int code = rc[i];
-                if (code < 0) {
-                    throw new SQLException("insert failed on " + i + ", result code " + code);
-                } 
-            }
             preparedStatement.close();
         } catch (SQLException e) {
             e.printStackTrace();
-            throw new IOException("commit(write to openmldb) error", e);
+            throw new IOException("commit error", e);
         }
         // TODO(hw): need to return new WriterCommitMessageImpl(partitionId, taskId); ?
         return null;

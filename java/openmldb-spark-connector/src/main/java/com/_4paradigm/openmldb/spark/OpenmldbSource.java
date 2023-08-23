@@ -37,6 +37,9 @@ public class OpenmldbSource implements TableProvider, DataSourceRegister {
     private String dbName;
     private String tableName;
     private SdkOption option = null;
+    // single: insert when read one row
+    // batch: insert when commit(after read a whole partition)
+    private String writerType = "single";
 
     @Override
     public StructType inferSchema(CaseInsensitiveStringMap options) {
@@ -63,12 +66,16 @@ public class OpenmldbSource implements TableProvider, DataSourceRegister {
             option.setEnableDebug(Boolean.valueOf(debug));
         }
 
+        if (options.containsKey("writerType")) {
+            writerType = options.get("writerType");
+        }
+
         return null;
     }
 
     @Override
     public Table getTable(StructType schema, Transform[] partitioning, Map<String, String> properties) {
-        return new OpenmldbTable(dbName, tableName, option);
+        return new OpenmldbTable(dbName, tableName, option, writerType);
     }
 
     @Override
