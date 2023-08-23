@@ -31,6 +31,7 @@ jobs:
       - name: prepare env
         run: |
           bash test/test-tool/openmldb-deploy/gen_conf.sh ${{ env.DEPLOY_DIR }} ${{ env.NODE_LIST }} > hosts
+          /bin/cp -f hosts test/test-tool/openmldb-deploy/
           pip3 install requests openmldb pytest
       - name: install openmldb
         run: |
