@@ -2039,10 +2039,18 @@ base::Status ConvertDropStatement(const zetasql::ASTDropStatement* root, node::N
             return base::Status::OK();
         }
         case zetasql::SchemaObjectKind::kDeployment: {
-            CHECK_TRUE(1 == names.size(), common::kSqlAstError, "Invalid deployment path expression ",
+            CHECK_TRUE(2 >= names.size(), common::kSqlAstError, "Invalid deployment path expression ",
                        root->name()->ToIdentifierPathString())
-            *output =
-                dynamic_cast<node::CmdNode*>(node_manager->MakeCmdNode(node::CmdType::kCmdDropDeployment, names[0]));
+            if (names.size() == 1) {
+                *output =
+                    dynamic_cast<node::CmdNode*>(node_manager->MakeCmdNode(node::CmdType::kCmdDropDeployment,
+                                                                           names.back()));
+
+            } else {
+                *output =
+                    dynamic_cast<node::CmdNode*>(node_manager->MakeCmdNode(node::CmdType::kCmdDropDeployment,
+                                                                           names[0], names[1]));
+            }
             return base::Status::OK();
         }
         default: {

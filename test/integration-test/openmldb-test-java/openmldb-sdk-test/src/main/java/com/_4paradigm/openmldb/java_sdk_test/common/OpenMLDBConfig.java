@@ -72,7 +72,8 @@ public class OpenMLDBConfig {
     }
 
     public static boolean isCluster() {
-        return OpenMLDBGlobalVar.env.equals("cluster");
+        
+        return OpenMLDBGlobalVar.env.equals("cluster")||OpenMLDBGlobalVar.env.equals("deploy");
     }
 
 }

@@ -57,6 +57,7 @@ title: udfs/udfs.h
 | **[first_value](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-first-value)**()| <br>Returns the value of expr from the latest row (last row) of the window frame. |
 | **[float](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-float)**()| <br>Cast string expression to float. |
 | **[floor](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-floor)**()| <br>Return the largest integer value not less than the expr. |
+| **[get_json_object](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-get-json-object)**()| <br>Extracts a JSON object from [JSON Pointer](https://datatracker.ietf.org/doc/html/rfc6901)|
 | **[hash64](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-hash64)**()| <br>Returns a hash value of the arguments. It is not a cryptographic hash function and should not be used as such. |
 | **[hex](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-hex)**()| <br>Convert integer to hexadecimal. |
 | **[hour](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-hour)**()| <br>Return the hour for a timestamp. |
@@ -72,6 +73,7 @@ title: udfs/udfs.h
 | **[is_null](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-is-null)**()| <br>Check if input value is null, return bool. |
 | **[isnull](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-isnull)**()| |
 | **[join](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-join)**()| <br>For each string value from specified column of window, join by delimeter. Null values are skipped. |
+| **[json_array_length](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-json-array-length)**()| <br>Returns the number of elements in the outermost JSON array. |
 | **[lag](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-lag)**()| <br>Returns value evaluated at the row that is offset rows before the current row within the partition. Offset is evaluated with respect to the current row. |
 | **[last_day](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-last-day)**()| <br>Return the last day of the month to which the date belongs to. |
 | **[lcase](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-lcase)**()| <br>Convert all the characters to lowercase. Note that characters with values > 127 are simply returned. |
@@ -1715,6 +1717,55 @@ SELECT FLOOR(1.23);
 * [`bool`]
 * [`number`] 
 
+### function get_json_object
+
+```cpp
+get_json_object()
+```
+
+**Description**:
+
+Extracts a JSON object from [JSON Pointer](https://datatracker.ietf.org/doc/html/rfc6901)
+
+**Parameters**: 
+
+  * **expr** A string expression contains well formed JSON 
+  * **path** A string expression of JSON string representation from [JSON Pointer](https://datatracker.ietf.org/doc/html/rfc6901)
+
+
+**Since**:
+0.9.0
+
+
+NOTE JSON string is not fully validated. Which means that the function may still returns values even though returned string does not valid for JSON. It's your responsibility to make sure input string is valid JSON
+
+
+Example:
+
+```sql
+
+select get_json_object('{"boo": "baz"}', "/boo")
+-- baz
+
+select get_json_object('{"boo": [1, 2]}', "/boo/0")
+-- 1
+
+select get_json_object('{"m~n": 1}', "/m~0n")
+-- 1
+
+select get_json_object('{"m/n": 1}', "/m~1n")
+-- 1
+
+select get_json_object('{"foo": {"bar": bz}}', "/foo")
+-- {"bar": bz}
+--- returns value even input JSON is not a valid JSON
+```
+
+
+**Supported Types**:
+
+* [`string`, `string`] 
+
 ### function hash64
 
 ```cpp
@@ -2138,6 +2189,47 @@ select `join`(split("k1:v1,k2:v2", ","), " ");
 **Supported Types**:
 
 * [`list<string>`, `string`] 
+
+### function json_array_length
+
+```cpp
+json_array_length()
+```
+
+**Description**:
+
+Returns the number of elements in the outermost JSON array. 
+
+**Parameters**: 
+
+  * **jsonArray** JSON arry in string
+
+
+**Since**:
+0.9.0
+
+
+Null returned if input is not valid JSON array string.
+
+
+Example:
+
+```sql
+
+select json_array_length('[1, 2]')
+-- 2
+
+SELECT json_array_length('[1,2,3,{"f1":1,"f2":[5,6]},4]');
+-- 5
+
+select json_array_length('[1, 2')
+-- NULL
+```
+
+
+**Supported Types**:
+
+* [`string`] 
 
 ### function lag
 
