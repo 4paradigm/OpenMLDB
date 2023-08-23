@@ -1003,7 +1003,7 @@ TEST_P(DBSDKTest, DeployWithBias) {
     rows_test("rows_bias=20s", false);
 
     // test range bias
-    auto rows_test = [&](std::string option, bool expect = true) {
+    auto range_test = [&](std::string option, bool expect = true) {
         sr->ExecuteSQL(absl::StrCat("DEPLOY d", i++, " OPTIONS(", option, ") ", range_deployment_part), &status);
         if (expect)
             EXPECT_TRUE(status.IsOK());
@@ -1013,12 +1013,12 @@ TEST_P(DBSDKTest, DeployWithBias) {
         auto info = sr->GetTableInfo(db, "t1");
         return info.column_key().Get(1);
     };
-    index_res = rows_test("range_bias=0");
+    index_res = range_test("range_bias=0");
     ASSERT_EQ(index_res.ttl().abs_ttl(), 1);
-    index_res = rows_test("range_bias=20");
+    index_res = range_test("range_bias=20");
     ASSERT_EQ(index_res.ttl().abs_ttl(), 2);
     // rows bias won't work cuz no **new** lat index in deploy, just new abs index + the old index
-    index_res = rows_test("range_bias=1d, rows_bias=100");
+    index_res = range_test("range_bias=1d, rows_bias=100");
     ASSERT_EQ(index_res.ttl().abs_ttl(), 1441);
 
     // set inf in the end, if not, all bias + inf = inf
