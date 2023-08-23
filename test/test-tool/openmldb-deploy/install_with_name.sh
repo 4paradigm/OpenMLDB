@@ -27,10 +27,10 @@ tar xzf openmldb.tar.gz -C "openmldb" --strip-components 1
 pushd "openmldb"
 rm -rf sbin conf
 rm -f bin/*.sh
-cp -r ../release/sbin ../release/conf ./
-cp -f ../release/bin/*.sh bin/
+/bin/cp -r ../release/sbin ../release/conf ./
+/bin/cp -f ../release/bin/*.sh bin/
 
-cp -f ../test/test-tool/openmldb-deploy/hosts conf/hosts
+/bin/cp -f ../test/test-tool/openmldb-deploy/hosts conf/hosts
 sed -i"" -e "s/OPENMLDB_VERSION=[0-9]\.[0-9]\.[0-9]/OPENMLDB_VERSION=${VERSION}/g" conf/openmldb-env.sh
 sed -i"" -e "s/OPENMLDB_MODE:=standalone/OPENMLDB_MODE:=cluster/g" conf/openmldb-env.sh
 sh sbin/deploy-all.sh
