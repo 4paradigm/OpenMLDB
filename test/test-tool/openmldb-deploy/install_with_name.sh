@@ -40,7 +40,7 @@ do
     mkdir -p /tmp/openmldb/tablet-${i}/data && echo "tablet-${i}" > /tmp/openmldb/tablet-${i}/data/name.txt
     conf_file="/tmp/openmldb/tablet-${i}/conf/tablet.flags"
     sed -i "s/^--endpoint/# --endpoint/g" ${conf_file} 
-    port=$((${i} + 10921))
+    port=$((i + 10921))
     echo "--port=${port}" >> ${conf_file}
     echo "--use_name=true" >> ${conf_file}
 done
@@ -49,7 +49,7 @@ do
     conf_file="/tmp/openmldb/ns-${i}/conf/nameserver.flags"
     mkdir -p /tmp/openmldb/ns-${i}/data && echo "ns-${i}" > /tmp/openmldb/ns-${i}/data/name.txt
     sed -i "s/^--endpoint/# --endpoint/g" ${conf_file} 
-    port=$((${i} + 7527))
+    port=$((i + 7527))
     echo "--port=${port}" >> ${conf_file}
     echo "--use_name=true" >> ${conf_file}
 done
