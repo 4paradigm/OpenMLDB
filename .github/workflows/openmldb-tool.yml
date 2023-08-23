@@ -51,3 +51,35 @@ jobs:
           name: openmldb-tool-test-result-${{ github.sha }}
           path: |
             pytest.xml
+
+  openmldb-tool-name:
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/4paradigm/hybridsql:latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: prepare env
+        run: |
+          VERSION=`git fetch --tags | git tag -l v[0-9].* | tail -n1`
+          VERSION=${VERSION#v}
+          echo "OPENMLDB_VETSION=$VERSION" >> $GITHUB_ENV
+          pip3 install requests openmldb pytest
+      - name: install openmldb
+        env:
+          OPENMLDB_VETSION: ${{ env.OPENMLDB_VETSION }}
+        run: |
+          bash test/test-tool/openmldb-deploy/install_with_name.sh ${{ env.OPENMLDB_VETSION }}
+      - name: run test
+        run: |
+          python3 -m pytest test/test-tool/openmldb-deploy/cases --junit-xml=pytest.xml
+      - name: clear env
+        run: |
+            bash openmldb/sbin/stop-all.sh && bash openmldb/sbin/clear-all.sh
+      - name: upload python test results
+        if: always()
+        uses: actions/upload-artifact@v2
+        with:
+          name: openmldb-tool-test-result-${{ github.sha }}
+          path: |
+            pytest.xml
