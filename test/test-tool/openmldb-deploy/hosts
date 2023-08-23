@@ -9,7 +9,7 @@ localhost:10923 /tmp/openmldb/tablet-2
 
 [nameserver]
 localhost:7527 /tmp/openmldb/ns-0
-localhost:7528 /tmp/openmldb/ns-2
+localhost:7528 /tmp/openmldb/ns-1
 
 [zookeeper]
 localhost:2181:2888:3888 /tmp/openmldb/zookeeper
