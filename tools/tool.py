@@ -77,18 +77,41 @@ class Executor:
                             "--zk_root_path=" + self.zk_root_path,
                             "--role=sql_client",
                             "--interactive=false"]
+        self.endpoint_map = {}
 
     def Connect(self):
-        status, endpoint = self.GetNsLeader()
-        if status.OK() and status.GetMsg().find("zk client init failed") == -1:
-            self.ns_leader = endpoint
-            log.info("ns leader: {ns_leader}".format(ns_leader = self.ns_leader))
-            self.ns_base_cmd = [self.openmldb_bin_path,
-                                "--endpoint=" + self.ns_leader,
-                                "--role=ns_client",
-                                "--interactive=false"]
-            return Status()
-        return Status(-1, "connect OpenMLDB failed")
+        cmd = list(self.ns_base_cmd)
+        cmd.append("--cmd=showns")
+        status, output = self.RunWithRetuncode(cmd)
+        if not status.OK() or status.GetMsg().find("zk client init failed") != -1:
+            return Status(-1, "get ns failed"), None
+        result = self.ParseResult(output)
+        for record in result:
+            if record[2] == "leader":
+                self.ns_leader = record[0]
+            if record[1] != '-':
+                self.endpoint_map[record[0]] = record[1]
+            else:
+                self.endpoint_map[record[0]] = record[0]
+        cmd = list(self.ns_base_cmd)
+        cmd.append("--cmd=showtablet")
+        status, output = self.RunWithRetuncode(cmd)
+        if not status.OK():
+            return Status(-1, "get tablet failed"), None
+        result = self.ParseResult(output)
+        for record in result:
+            if record[1] != '-':
+                self.endpoint_map[record[0]] = record[1]
+            else:
+                self.endpoint_map[record[0]] = record[0]
+
+
+        log.info("ns leader: {ns_leader}".format(ns_leader = self.ns_leader))
+        self.ns_base_cmd = [self.openmldb_bin_path,
+                            "--endpoint=" + self.endpoint_map[self.ns_leader],
+                            "--role=ns_client",
+                            "--interactive=false"]
+        return Status()
 
     def RunWithRetuncode(self, command,
                          universal_newlines = True,
@@ -207,7 +230,7 @@ class Executor:
 
     def GetTableStatus(self, endpoint, tid = '', pid = ''):
         cmd = list(self.tablet_base_cmd)
-        cmd.append("--endpoint=" + endpoint)
+        cmd.append("--endpoint=" + self.endpoint_map[endpoint])
         cmd.append("--cmd=gettablestatus " + tid + " " + pid)
         status, output = self.RunWithRetuncode(cmd)
         if not status.OK():
@@ -251,7 +274,7 @@ class Executor:
 
     def LoadTable(self, endpoint, name, tid, pid, sync = True):
         cmd = list(self.tablet_base_cmd)
-        cmd.append("--endpoint=" + endpoint)
+        cmd.append("--endpoint=" + self.endpoint_map[endpoint])
         cmd.append("--cmd=loadtable {} {} {} 0 8".format(name, tid, pid))
         status, output = self.RunWithRetuncode(cmd)
         if status.OK() and output.find("LoadTable ok") != -1:
@@ -274,7 +297,7 @@ class Executor:
 
     def GetLeaderFollowerOffset(self, endpoint, tid, pid):
         cmd = list(self.tablet_base_cmd)
-        cmd.append("--endpoint=" + endpoint)
+        cmd.append("--endpoint=" + self.endpoint_map[endpoint])
         cmd.append("--cmd=getfollower {} {}".format(tid, pid))
         status, output = self.RunWithRetuncode(cmd)
         if not status.OK():
