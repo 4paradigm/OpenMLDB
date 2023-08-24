@@ -3462,7 +3462,8 @@ hybridse::sdk::Status SQLClusterRouter::HandleDeploy(const std::string& db,
     }
 
     // bias parse
-    // range bias: int means xx ms, int & interval will covert to minutes, if == 0, no bias, if has part < 1min, add 1min
+    // range bias: int means xx ms, int & interval will covert to minutes, if == 0, no bias, if has part < 1min, add
+    // 1min
     Bias bias;
     iter = deploy_node->Options()->find(RANGE_BIAS_OPTION);
     if (iter != deploy_node->Options()->end()) {
@@ -3610,7 +3611,7 @@ hybridse::sdk::Status SQLClusterRouter::GetNewIndex(const TableInfoMap& table_ma
             // the existed ones
             std::vector<::openmldb::common::ColumnKey> new_indexs;
             for (auto& column_key : extract_column_keys) {
-                // add bias on extracted index
+                // add bias on extracted index, 0 means unbounded
                 auto new_column_key = bias.AddBias(column_key);
                 LOG(WARNING) << "add bias on index " << column_key.ShortDebugString() << " to "
                              << new_column_key.ShortDebugString() << " with bias " << bias;
@@ -4430,7 +4431,8 @@ common::ColumnKey Bias::AddBias(const common::ColumnKey& index) const {
         // add bias to ttl when abs / abs||. / abs&&.
         if (range_inf) {
             ttl->set_abs_ttl(0);
-        } else {
+        } else if (ttl->abs_ttl() > 0) {
+            // in ttl, 0 means unlimited, no need to add bias
             ttl->set_abs_ttl(ttl->abs_ttl() + range_bias);
         }
     }
@@ -4438,7 +4440,8 @@ common::ColumnKey Bias::AddBias(const common::ColumnKey& index) const {
         // add bias to ttl when lat / .||lat / .&&lat
         if (rows_inf) {
             ttl->set_lat_ttl(0);
-        } else {
+        } else if (ttl->lat_ttl() > 0) {
+            // in ttl, 0 means unlimited, no need to add bias
             ttl->set_lat_ttl(ttl->lat_ttl() + rows_bias);
         }
     }
