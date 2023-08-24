@@ -67,7 +67,7 @@ jobs:
           yum install -y rsync
       - name: install openmldb
         run: |
-          git fetch --tags
+          git fetch --tags --force
           VERSION=$(git describe --always --tags `git rev-list --tags --max-count=1`)
           VERSION=${VERSION#v}
           bash test/test-tool/openmldb-deploy/install_with_name.sh ${VERSION}
