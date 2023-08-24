@@ -41,6 +41,7 @@ jobs:
       - name: run test
         run: |
           cp -f tools/tool.py test/test-tool/openmldb-deploy/cases/
+          /bin/cp -f tools/* openmldb/tools/
           python3 -m pytest test/test-tool/openmldb-deploy/cases --junit-xml=pytest.xml
       - name: clear env
         run: |
@@ -73,7 +74,8 @@ jobs:
           bash test/test-tool/openmldb-deploy/install_with_name.sh ${VERSION}
       - name: run test
         run: |
-          cp -f tools/tool.py test/test-tool/openmldb-deploy/cases/
+          /bin/cp -f tools/tool.py test/test-tool/openmldb-deploy/cases/
+          /bin/cp -f tools/* openmldb/tools/
           python3 -m pytest test/test-tool/openmldb-deploy/cases --junit-xml=pytest.xml
       - name: clear env
         run: |
