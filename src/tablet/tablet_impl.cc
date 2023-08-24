@@ -553,8 +553,13 @@ void TabletImpl::Refresh(RpcController* controller, const ::openmldb::api::Refre
                          ::openmldb::api::GeneralResponse* response, Closure* done) {
     brpc::ClosureGuard done_guard(done);
     if (IsClusterMode()) {
-        if (RefreshSingleTable(request->tid())) {
-            PDLOG(INFO, "refresh success. tid %u", request->tid());
+        if(request->has_tid()) {
+            if (RefreshSingleTable(request->tid())) {
+                PDLOG(INFO, "refresh success. tid %u", request->tid());
+            }
+        } else {
+            LOG(INFO) << "refresh all by rpc without tid";
+            RefreshTableInfo();
         }
     }
 }
@@ -5222,7 +5227,8 @@ void TabletImpl::CreateProcedure(RpcController* controller, const openmldb::api:
     if (sp_cache_->ProcedureExist(db_name, sp_name)) {
         response->set_code(::openmldb::base::ReturnCode::kProcedureAlreadyExists);
         response->set_msg("store procedure already exists");
-        PDLOG(WARNING, "store procedure[%s] already exists in db[%s]", sp_name.c_str(), db_name.c_str());
+        // print endpoint for ut debug
+        PDLOG(WARNING, "store procedure[%s] already exists in db[%s] on %s", sp_name.c_str(), db_name.c_str(), endpoint_.c_str());
         return;
     }
     ::hybridse::base::Status status;
@@ -5283,7 +5289,7 @@ void TabletImpl::CreateProcedure(RpcController* controller, const openmldb::api:
 
     response->set_code(::openmldb::base::ReturnCode::kOk);
     response->set_msg("ok");
-    LOG(INFO) << "create procedure success! sp_name: " << sp_name << ", db: " << db_name << ", sql: " << sql;
+    LOG(INFO) << "create procedure success! sp_name: " << sp_name << ", db: " << db_name << ", sql: " << sql << " on " << endpoint_;
 }
 
 void TabletImpl::DropProcedure(RpcController* controller, const ::openmldb::api::DropProcedureRequest* request,
@@ -5311,7 +5317,7 @@ void TabletImpl::DropProcedure(RpcController* controller, const ::openmldb::api:
     }
     response->set_code(::openmldb::base::ReturnCode::kOk);
     response->set_msg("ok");
-    PDLOG(INFO, "drop procedure success. db_name[%s] sp_name[%s]", db_name.c_str(), sp_name.c_str());
+    PDLOG(INFO, "drop procedure success. db_name[%s] sp_name[%s] on %s", db_name.c_str(), sp_name.c_str(), endpoint_.c_str());
 }
 
 void TabletImpl::RunRequestQuery(RpcController* ctrl, const openmldb::api::QueryRequest& request,
@@ -5395,7 +5401,7 @@ void TabletImpl::CreateProcedure(const std::shared_ptr<hybridse::sdk::ProcedureI
     }
     sp_cache_->InsertSQLProcedureCacheEntry(db_name, sp_name, sp_info, session.GetCompileInfo(),
                                             batch_session.GetCompileInfo());
-
+    // only called by RefreshTableInfo
     LOG(INFO) << "refresh procedure success! sp_name: " << sp_name << ", db: " << db_name << ", sql: " << sql;
 }
 

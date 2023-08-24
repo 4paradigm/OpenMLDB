@@ -2998,8 +2998,15 @@ TEST_P(DBSDKTest, LongWindowsCleanup) {
         HandleSQL("create database test2;");
         HandleSQL("use test2;");
         HandleSQL(create_sql);
+        // sleep(5); // sleep to avoid tablet metadata // revert sleep to check error
+        ASSERT_TRUE(sr->RefreshCatalog());  // avoid cache in sdk
+        HandleSQL("show deployments;");  // ns deployment metadata, not tablet
+        // TODO if refresh is not good, sleep more
+        // sp_cache_->ProcedureExist in tablet get deployment here, but nameserver no deployment
+        // refresh won't effet sp_cache_ in tablet
         sr->ExecuteSQL(deploy_sql, &status);
-        ASSERT_TRUE(status.IsOK());
+        // may get error `Fail to transform data_provider op: table test2.trans not exist!` TODO
+        ASSERT_TRUE(status.IsOK()) << "deploy failed on " << status.ToString();
         std::string msg;
         std::string result_sql = "select * from __INTERNAL_DB.PRE_AGG_META_INFO;";
         auto rs = sr->ExecuteSQL("", result_sql, &status);
@@ -3014,6 +3021,8 @@ TEST_P(DBSDKTest, LongWindowsCleanup) {
         ASSERT_FALSE(cs->GetNsClient()->DropTable("test2", "trans", msg));
         ASSERT_TRUE(cs->GetNsClient()->DropProcedure("test2", "demo1", msg)) << msg;
         ASSERT_TRUE(cs->GetNsClient()->DropTable("test2", "trans", msg)) << msg;
+
+        ASSERT_TRUE(sr->RefreshCatalog());  // avoid cache in sdk
         // helpful for debug
         HandleSQL("show tables;");
         HandleSQL("show deployments;");
@@ -3032,10 +3041,10 @@ TEST_P(DBSDKTest, CreateWithoutIndexCol) {
         "c8 date, index(ts=c7));";
     hybridse::sdk::Status status;
     sr->ExecuteSQL(create_sql, &status);
-    ASSERT_TRUE(status.IsOK());
+    ASSERT_TRUE(status.IsOK()) << status.ToString();
     std::string msg;
-    ASSERT_TRUE(cs->GetNsClient()->DropTable("test2", "trans", msg));
-    ASSERT_TRUE(cs->GetNsClient()->DropDatabase("test2", msg));
+    ASSERT_TRUE(cs->GetNsClient()->DropTable("test2", "trans", msg)) << msg;
+    ASSERT_TRUE(cs->GetNsClient()->DropDatabase("test2", msg)) << msg;
 }
 
 TEST_P(DBSDKTest, CreateIfNotExists) {

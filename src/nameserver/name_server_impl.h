@@ -682,6 +682,8 @@ class NameServerImpl : public NameServer {
 
     bool IsExistDataBase(const std::string& db);
 
+    template<typename T> bool RefreshHealthTabletsUnlockWith(T pred);
+
  private:
     std::mutex mu_;
     Tablets tablets_;

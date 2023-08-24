@@ -8586,7 +8586,7 @@ bool NameServerImpl::AddIndexToTableInfo(const std::string& name, const std::str
             endpoint_set.insert(meta.endpoint());
         }
     }
-    // locked on top
+    // locked on top TODO(hw):
     for (const auto& tablet : tablets_) {
         if (!tablet.second->Health()) {
             continue;
@@ -9428,6 +9428,8 @@ void NameServerImpl::DropProcedure(RpcController* controller, const api::DropPro
             db_sp_info_map_.erase(db_name);
         }
         NotifyTableChanged(::openmldb::type::NotifyType::kTable);
+        // Refresh on tablet to avoid meta inconsistent, notify may be slow TODO refresh works on procedure?
+        // RefreshHealthTabletsUnlockWith([](const std::shared_ptr<TabletInfo>& tablet_info) { return true; });
     }
     response->set_code(::openmldb::base::ReturnCode::kOk);
     response->set_msg("ok");
@@ -10510,6 +10512,20 @@ base::Status NameServerImpl::CreateDeployOP(const DeploySQLRequest& request, uin
     PDLOG(INFO, "create DeployOP success. op id %lu deploy name %s", op_data->GetOpId(), deploy_name.c_str());
     *op_id = op_data->GetOpId();
     return {};
+}
+
+template <typename T>
+inline bool NameServerImpl::RefreshHealthTabletsUnlockWith(T pred) {
+    bool ret = true;
+    for (const auto& tablet : tablets_) {
+        if (!tablet.second->Health()) {
+            continue;
+        }
+        if (pred(tablet.second)) {
+            ret &= tablet.second->client_->Refresh();
+        }
+    }
+    return ret;
 }
 
 }  // namespace nameserver
