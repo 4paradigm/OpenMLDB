@@ -30,6 +30,9 @@ public class OpenmldbDataWriterFactory implements DataWriterFactory {
 
     @Override
     public DataWriter<InternalRow> createWriter(int partitionId, long taskId) {
+        if (!config.writerType.equals("batch")) {
+            return new OpenmldbDataSingleWriter(config, partitionId, taskId);
+        }
         return new OpenmldbDataWriter(config, partitionId, taskId);
     }
 }

@@ -10,12 +10,16 @@ services:
       - ./java_quickstart/demo/target:/work/java_quickstart
       - ./python_quickstart:/work/python_quickstart
       - ./cxx_quickstart:/work/cxx_quickstart
+      - ./usability_testing:/work/usability_testing
     # You can add `cat <log_file>` here(e.g. `cat /work/openmldb/taskmanager/bin/logs/job_1_error.log`, cat `predict.log`), to check the log info. 
     # No need to docker-compose build again. But if you modified the Dockerfile, must rebuild it.
     command:
       - /bin/bash
       - -ecx # -e, otherwise, the command may not exit when 'exit'
       - |
+        # deploy-all miss udf dir <=0.8.2, mkdir first until new version released
+        mkdir -p /tmp/openmldb/tablet-1/udf
+        mkdir -p /tmp/openmldb/tablet-2/udf
         ./init.sh
         sleep 5
         # quickstart test
@@ -61,8 +65,11 @@ services:
         # check deployment, jobs will be checked by openmldb_tool
         curl http://127.0.0.1:9080/dbs/JD_db/deployments/demo | grep "ok" || exit -1
 
-        # TODO(hw): udf test
-        
+        # usability testing, don't miss interactive flag
+        cd /work/usability_testing
+        bash demo_setup.sh
+        bash demo_test.sh
+
         cd /work
         openmldb_tool status --diff -f /work/openmldb/conf/hosts 
         openmldb_tool inspect

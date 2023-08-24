@@ -26,6 +26,7 @@
 #include "codec/fe_row_codec.h"
 #include "gflags/gflags.h"
 #include "gtest/gtest.h"
+#include "sdk/job_table_helper.h"
 #include "sdk/mini_cluster.h"
 #include "sdk/sql_cluster_router.h"
 #include "sdk/sql_router.h"
@@ -98,6 +99,92 @@ class SQLClusterDDLTest : public SQLClusterTest {
     std::shared_ptr<SQLRouter> router;
     std::string db;
 };
+
+
+TEST_F(SQLClusterDDLTest, TestShowAndDropDeployment) {
+    std::string db2 = "db" + GenRand();
+    std::string table_name = "tb" + GenRand();
+    std::string deploy_name = "dp" + GenRand();
+    ::hybridse::sdk::Status status;
+
+    std::string ddl;
+    ddl = "create table " + table_name +
+          "("
+          "col1 int, col2 bigint, col3 string, "
+          "index(key = col3, ts = col2));";
+
+    ASSERT_TRUE(router->CreateDB(db2, &status));
+    ASSERT_TRUE(router->ExecuteDDL(db, ddl, &status));
+
+    ASSERT_TRUE(router->RefreshCatalog());
+    SetOnlineMode(router);
+
+    router->ExecuteSQL(db, "deploy " + deploy_name + " select col1 from " + table_name + ";", &status);
+    ASSERT_TRUE(status.IsOK());
+    router->ExecuteSQL(db2, "deploy " + deploy_name + " select col1 from " + db + "." + table_name + ";", &status);
+    ASSERT_TRUE(status.IsOK());
+
+    router->ExecuteSQL(db, "show deployment " + deploy_name + ";", &status);
+    ASSERT_TRUE(status.IsOK());
+    router->ExecuteSQL(db, "show deployment " + db2 + "." + deploy_name + ";", &status);
+    ASSERT_TRUE(status.IsOK());
+
+    router->ExecuteSQL(db, "drop deployment " + deploy_name + ";", &status);
+    ASSERT_TRUE(status.IsOK());
+    router->ExecuteSQL(db, "drop deployment " + db2 + "." + deploy_name + ";", &status);
+    ASSERT_TRUE(status.IsOK());
+
+    router->ExecuteSQL(db, "show deployment " + deploy_name + ";", &status);
+    ASSERT_FALSE(status.IsOK());
+    router->ExecuteSQL(db, "show deployment " + db2 + "." + deploy_name + ";", &status);
+    ASSERT_FALSE(status.IsOK());
+
+    ASSERT_TRUE(router->ExecuteDDL(db, "drop table " + table_name + ";", &status));
+    ASSERT_TRUE(router->DropDB(db2, &status));
+}
+
+TEST_F(SQLClusterDDLTest, TestShowSortedJobs) {
+    std::string name = "job_info" + GenRand();
+    ::hybridse::sdk::Status status;
+
+    std::string sql;
+    sql = "create table " + name +
+          "("
+          "id int, job_type string, state string, start_time timestamp, end_time timestamp, "
+          "parameter string, cluster string, application_id string, error string, "
+          "index(key=id));";
+    ASSERT_TRUE(router->ExecuteDDL(db, sql, &status)) << "ddl: " << sql;
+    ASSERT_TRUE(router->RefreshCatalog());
+
+    std::vector<int> randint;
+    for (int i = 1; i < 100; i++) {
+        randint.push_back(i);
+    }
+    std::random_shuffle(randint.begin(), randint.end());
+    for (uint64_t i = 0; i < randint.size(); i++) {
+        std::string id = std::to_string(randint[i]);
+        sql = "insert into " + name +
+          " values(" + id + ", \"Type\", \"State\", 0, " + id + ", "
+          "\"/tmp/sql-000000000000000000" + id + "\", \"local[*]\", \"local-0000000000000" + id + "\", \"\");";
+        router->ExecuteSQL(db, sql, &status);
+        ASSERT_TRUE(status.IsOK());
+    }
+
+    auto rs = router->ExecuteSQL(db, "select * from " + name + ";", &status);
+    ASSERT_TRUE(status.IsOK());
+
+    rs = JobTableHelper::MakeResultSet(rs, "", &status);
+    ASSERT_TRUE(status.IsOK());
+
+    int id_current = 0, id_next;
+    while (rs->Next()) {
+        ASSERT_TRUE(rs->GetInt32(0, &id_next));
+        ASSERT_LT(id_current, id_next);
+        id_current = id_next;
+    }
+
+    ASSERT_TRUE(router->ExecuteDDL(db, "drop table " + name + ";", &status));
+}
 
 TEST_F(SQLClusterDDLTest, TestCreateTableLike) {
     ::hybridse::sdk::Status status;

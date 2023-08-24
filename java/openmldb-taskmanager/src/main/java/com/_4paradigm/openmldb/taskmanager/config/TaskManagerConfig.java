@@ -132,18 +132,12 @@ public class TaskManagerConfig {
             }
         }
 
-        SPARK_HOME = prop.getProperty("spark.home", "");
-        if (SPARK_HOME.isEmpty()) {
-            try {
-                if(System.getenv("SPARK_HOME") == null) {
-                    throw new ConfigException("spark.home", "should set config 'spark.home' or environment variable 'SPARK_HOME'");
-                } else {
-                    SPARK_HOME = System.getenv("SPARK_HOME");
-                }
-            } catch (Exception e) {
-                throw new ConfigException("spark.home", "should set environment variable 'SPARK_HOME' if 'spark.home' is null");
-            }
+        SPARK_HOME = firstNonEmpty(prop.getProperty("spark.home"), System.getenv("SPARK_HOME"));
+        // isEmpty checks null and empty
+        if(isEmpty(SPARK_HOME)) {
+            throw new ConfigException("spark.home", "should set config 'spark.home' or environment variable 'SPARK_HOME'");
         }
+
         // TODO: Check if we can get spark-submit
 
         PREFETCH_JOBID_NUM = Integer.parseInt(prop.getProperty("prefetch.jobid.num", "1"));
@@ -242,19 +236,12 @@ public class TaskManagerConfig {
             }
         }
 
-        HADOOP_USER_NAME = prop.getProperty("hadoop.user.name", "root");
+        // TODO(hw): need default root?
+        HADOOP_USER_NAME = firstNonEmpty(prop.getProperty("hadoop.user.name"),  System.getenv("HADOOP_USER_NAME"));
 
-        HADOOP_CONF_DIR = prop.getProperty("hadoop.conf.dir", "");
-        if (isYarn && HADOOP_CONF_DIR.isEmpty()) {
-            try {
-                if(System.getenv("HADOOP_CONF_DIR") == null) {
-                    throw new ConfigException("hadoop.conf.dir", "should set config 'hadoop.conf.dir' or environment variable 'HADOOP_CONF_DIR'");
-                } else {
-                    HADOOP_CONF_DIR = System.getenv("HADOOP_CONF_DIR");
-                }
-            } catch (Exception e) {
-                throw new ConfigException("hadoop.conf.dir", "should set environment variable 'HADOOP_CONF_DIR' if 'hadoop.conf.dir' is null");
-            }
+        HADOOP_CONF_DIR = firstNonEmpty(prop.getProperty("hadoop.conf.dir"), System.getenv("HADOOP_CONF_DIR"));
+        if (isYarn && isEmpty(HADOOP_CONF_DIR)) {
+            throw new ConfigException("hadoop.conf.dir", "should set config 'hadoop.conf.dir' or environment variable 'HADOOP_CONF_DIR'");
         }
         // TODO: Check if we can get core-site.xml
 
@@ -275,5 +262,18 @@ public class TaskManagerConfig {
     public static boolean isYarnCluster() throws ConfigException {
         parse();
         return SPARK_MASTER.equals("yarn") || SPARK_MASTER.equals("yarn-cluster");
+    }
+
+    // ref org.apache.spark.launcher.CommandBuilderUtils
+    public static String firstNonEmpty(String... strings) {
+        for (String s : strings) {
+            if (!isEmpty(s)) {
+                return s;
+            }
+        }
+        return null;
+    }
+    public static boolean isEmpty(String s) {
+        return s == null || s.isEmpty();
     }
 }

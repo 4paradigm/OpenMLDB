@@ -104,9 +104,7 @@ TEST_F(DataCollectorTest, readSnapshot) {
     // read the manifest to get the offset
     api::Manifest manifest;
     std::string manifest_file = snapshot_hardlink_path + "MANIFEST";
-    if (storage::Snapshot::GetLocalManifest(manifest_file, manifest) != 0) {
-        LOG(FATAL) << "get manifest failed";
-    }
+    ASSERT_TRUE(storage::Snapshot::GetLocalManifest(manifest_file, manifest) == 0) << "get manifest failed";
     LOG(INFO) << "manifest: " << manifest.ShortDebugString();
     // mock table
     auto meta = GetTableSchema(6, 0);
@@ -221,7 +219,7 @@ TEST_F(DataCollectorTest, taskAndRate) {
     datasync::AddSyncTaskRequest request;
     request.set_tid(6);
     request.set_pid(0);
-    request.set_mode(datasync::SyncMode::FULL);
+    request.set_mode(datasync::SyncMode::kFull);
     auto sync_point = request.mutable_sync_point();
     sync_point->set_type(datasync::SyncType::kSNAPSHOT);
     // no pk&ts, means start from 0
@@ -236,7 +234,7 @@ TEST_F(DataCollectorTest, taskAndRate) {
     // sleep to call SyncOnce more
     sleep(1);
     // new token task but snapshot in db doesn't change, so the snapshot env is not changed
-    request.set_mode(datasync::SyncMode::INCREMENTAL_BY_TIMESTAMP);
+    request.set_mode(datasync::SyncMode::kIncrementalByTimestamp);
     request.set_start_ts(3);
     request.set_token("newer_one");
     dc.AddSyncTask(nullptr, &request, &response, &closure);
@@ -280,7 +278,7 @@ int main(int argc, char** argv) {
 
     srand(time(nullptr));
     // TODO(hw): skip this test, cuz it needs sync tool. It's better to mock the sync tool
-    bool ok = true;
+    int ok = 0;
     // ok = RUN_ALL_TESTS();
     // ::openmldb::sdk::mc_->Close();
     return ok;

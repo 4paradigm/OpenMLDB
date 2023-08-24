@@ -6,7 +6,7 @@
     <parent>
         <artifactId>openmldb-parent</artifactId>
         <groupId>com.4paradigm.openmldb</groupId>
-        <version>0.7.0-SNAPSHOT</version>
+        <version>0.8.2-SNAPSHOT</version>
     </parent>
     <artifactId>openmldb-taskmanager</artifactId>
     <name>openmldb-taskmanager</name>

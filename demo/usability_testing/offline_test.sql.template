@@ -1,0 +1,39 @@
+create database if not exists offline_test;
+use offline_test;
+drop table if exists t1;
+create table t1(c1 int, c2 string);
+/* offline load test, still use getDeepCopy when drop soft, so it'll get ERROR Get unsupported file path, fix later */
+set @@execute_mode='offline';
+set @@sync_job=true;
+-- deep copy
+load data infile '<src_path>/t1' into table t1;
+set @@sync_job=false;
+select * from t1;
+set @@sync_job=true;
+select * from t1 into outfile '<dst_path>/t1_deep' options(mode='overwrite');
+-- rewrite offline storage, soft csv
+load data infile '<src_path>/t1' into table t1 options(deep_copy=false, mode='overwrite');
+select * from t1 into outfile '<dst_path>/t1_soft' options(mode='overwrite');
+-- add a soft path, csv too
+alter table t1 add offline_path '<dst_path>/t1_deep';
+select * from t1 into outfile '<dst_path>/t1_double' options(mode='overwrite');
+
+drop table if exists t2;
+create table t2 like parquet '<src_path>/t2';
+set @@sync_job=true;
+load data infile '<src_path>/t2' into table t2 options(format='parquet');
+select * from t2 into outfile '<dst_path>/t2_deep' options(mode='overwrite');
+alter table t2 add offline_path '<src_path>/t2';
+select * from t2 into outfile '<dst_path>/t2_double' options(mode='overwrite');
+
+/* online load test */
+set @@execute_mode='online';
+load data infile '<src_path>/t1' into table t1 options(mode='append');
+show table status;
+load data infile '<src_path>/t1' into table t1 options(mode='append');
+show table status;
+
+/*check outfile later, so the table can be droped, but Get unsupported file path in 0.8.2 onebox, will be fixed in new version*/
+drop table t1;
+drop table t2;
+drop database offline_test;
