@@ -3613,8 +3613,8 @@ hybridse::sdk::Status SQLClusterRouter::GetNewIndex(const TableInfoMap& table_ma
             for (auto& column_key : extract_column_keys) {
                 // add bias on extracted index, 0 means unbounded
                 auto new_column_key = bias.AddBias(column_key);
-                LOG(WARNING) << "add bias on index " << column_key.ShortDebugString() << " to "
-                             << new_column_key.ShortDebugString() << " with bias " << bias;
+                LOG(INFO) << "add bias on extracted index " << column_key.ShortDebugString() << " with bias " << bias
+                          << ", result " << new_column_key.ShortDebugString();
 
                 auto index_id = openmldb::schema::IndexUtil::GetIDStr(new_column_key);
                 auto it = exists_index_map.find(index_id);

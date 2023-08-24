@@ -182,7 +182,7 @@ deploy demo options(SYNC="false") SELECT t1.col1, t2.col2, sum(col4) OVER w1 as 
 
 If you don't want data to be expired by the deployed index, or want data expired later, you can set bias when deploy, which is usually used in the case of data timestamp is not real-time, test, etc. If the index ttl after deploy is abs 3h, but the data timestamp is 3h ago(based on system time), then the data will be eliminated and cannot participate in the calculation. Setting a certain time or permanent bias can make the data stay in the online table for a longer time.
 
-Range bias can be `ms`, `s`, `m`, `h`, `d`, or integer(unit is ms), or `inf`. Rows bias can be integer, or `inf`. 0 means no bias.
+Range bias can be `s`, `m`, `h`, `d`, or integer(unit is ms), or `inf`(means infinite, never expire). Rows bias can be integer, or `inf`(means infinite, never expire). In both type, 0 means no bias.
 
 Notice that, we only add bias to deployed index, which is new index. It's not the final index. The final index is `bias + new_index` if deployment will create index. And the final index is `merge(old_index, bias + new_index)` if deployment will update index.
 
