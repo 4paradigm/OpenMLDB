@@ -3005,7 +3005,8 @@ TEST_P(DBSDKTest, LongWindowsCleanup) {
         // sp_cache_->ProcedureExist in tablet get deployment here, but nameserver no deployment
         // refresh won't effet sp_cache_ in tablet
         sr->ExecuteSQL(deploy_sql, &status);
-        ASSERT_TRUE(status.IsOK()) << status.ToString();
+        // may get error `Fail to transform data_provider op: table test2.trans not exist!` TODO
+        ASSERT_TRUE(status.IsOK()) << "deploy failed on " << status.ToString();
         std::string msg;
         std::string result_sql = "select * from __INTERNAL_DB.PRE_AGG_META_INFO;";
         auto rs = sr->ExecuteSQL("", result_sql, &status);
