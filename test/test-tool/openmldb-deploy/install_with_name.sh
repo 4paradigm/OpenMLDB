@@ -58,7 +58,7 @@ sh sbin/start-all.sh
 popd
 
 pushd test/test-tool/openmldb-deploy
-echo "collect_ignore_glob = [\"test_install.py\", \"test_recoverdata.py\"]" > cases/conftest.py
+echo "collect_ignore_glob = [\"test_install.py\"]" > cases/conftest.py
 cat > hosts <<EOF
 [tablet]
 tablet-0 /tmp/openmldb/tablet-0

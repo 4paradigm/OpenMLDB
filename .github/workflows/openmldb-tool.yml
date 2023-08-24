@@ -54,7 +54,7 @@ jobs:
             pytest.xml
 
   openmldb-tool-name:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted,generic]
     if: github.repository == '4paradigm/OpenMLDB'
     container:
       image: ghcr.io/4paradigm/hybridsql:latest
