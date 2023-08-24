@@ -277,6 +277,7 @@ class Executor:
         cmd.append("--endpoint=" + self.endpoint_map[endpoint])
         cmd.append("--cmd=loadtable {} {} {} 0 8".format(name, tid, pid))
         status, output = self.RunWithRetuncode(cmd)
+        time.sleep(1)
         if status.OK() and output.find("LoadTable ok") != -1:
             if not sync:
                 return Status()

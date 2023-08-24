@@ -168,6 +168,7 @@ def RecoverTable(executor, db, table_name):
     for pid in range(max_pid + 1):
         RecoverPartition(executor, db, partition_dict[str(pid)], endpoint_status)
     # wait op
+    time.sleep(2)
     while True:
         status, result = executor.ShowOpStatus(db, table_name)
         is_finish = True
