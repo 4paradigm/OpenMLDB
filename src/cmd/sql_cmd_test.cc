@@ -1001,6 +1001,7 @@ TEST_P(DBSDKTest, DeployWithBias) {
     index_res = rows_test("rows_bias=20, range_bias='inf'");
     ASSERT_EQ(index_res.ttl().lat_ttl(), 22);
     rows_test("rows_bias=20s", false);
+    i--;  // last one is failed, reset the num
 
     // test range bias
     auto range_test = [&](std::string option, bool expect = true) {
