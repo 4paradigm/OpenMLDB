@@ -47,6 +47,8 @@ constexpr const char* FORMAT_STRING_KEY = "!%$FORMAT_STRING_KEY";
 class DeleteOption;
 using TableInfoMap = std::map<std::string, std::map<std::string, ::openmldb::nameserver::TableInfo>>;
 
+class Bias;
+
 class SQLClusterRouter : public SQLRouter {
  public:
     using TableStatusMap =
@@ -339,7 +341,7 @@ class SQLClusterRouter : public SQLRouter {
                                        const hybridse::node::ExprNode* condition);
 
     hybridse::sdk::Status SendDeleteRequst(const std::shared_ptr<nameserver::TableInfo>& table_info,
-        const DeleteOption* option);
+                                           const DeleteOption* option);
 
     hybridse::sdk::Status HandleIndex(const std::string& db,
                                       const std::set<std::pair<std::string, std::string>>& table_pair,
@@ -347,7 +349,7 @@ class SQLClusterRouter : public SQLRouter {
     // update existing index, return index need to be created
     // NOTE: table index may be changed, can't revert
     hybridse::sdk::Status GetNewIndex(const TableInfoMap& table_map, const std::string& select_sql,
-                                      const std::string& db, bool skip_index_check,
+                                      const std::string& db, bool skip_index_check, const Bias& bias,
                                       base::MultiDBIndexMap* new_index_map);
 
     hybridse::sdk::Status AddNewIndex(const base::MultiDBIndexMap& new_index_map);
@@ -376,9 +378,9 @@ class SQLClusterRouter : public SQLRouter {
     std::shared_ptr<hybridse::sdk::ResultSet> GetJobResultSet(int job_id, ::hybridse::sdk::Status* status);
     std::shared_ptr<hybridse::sdk::ResultSet> GetJobResultSet(::hybridse::sdk::Status* status);
     std::shared_ptr<hybridse::sdk::ResultSet> GetNameServerJobResult(const std::string& like_pattern,
-            ::hybridse::sdk::Status* status);
+                                                                     ::hybridse::sdk::Status* status);
     std::shared_ptr<hybridse::sdk::ResultSet> GetTaskManagerJobResult(const std::string& like_pattern,
-            ::hybridse::sdk::Status* status);
+                                                                      ::hybridse::sdk::Status* status);
 
     bool CheckTableStatus(const std::string& db, const std::string& table_name, uint32_t tid,
                           const nameserver::TablePartition& partition_info, uint32_t replica_num,
@@ -396,6 +398,46 @@ class SQLClusterRouter : public SQLRouter {
     ::openmldb::base::SpinMutex mu_;
     ::openmldb::base::Random rand_;
 };
+
+class Bias {
+ public:
+    // If get failed, return false and won't change bias. Check negative bias value for your own logic
+    bool SetRange(const hybridse::node::ConstNode* node) { return Set(node, false); }
+    bool SetRows(const hybridse::node::ConstNode* node) { return Set(node, true); }
+    common::ColumnKey AddBias(const common::ColumnKey& index) const;
+    std::string ToString() const {
+        std::stringstream ss;
+        ss << "range_bias: " << range_bias << ", range_inf: " << range_inf << ", rows_bias: " << rows_bias
+           << ", rows_inf: " << rows_inf;
+        return ss.str();
+    }
+
+ private:
+    bool Set(const hybridse::node::ConstNode* node, bool is_row_type);
+    // if range type, v means ms and convert to min
+    void SetBias(bool is_row_type, int64_t v) {
+        if (is_row_type) {
+            rows_bias = v;
+        } else {
+            range_bias = v / 60000 + (v % 60000 ? 1 : 0);
+        }
+    }
+    void SetInf(bool is_row_type) {
+        if (is_row_type) {
+            rows_inf = true;
+        } else {
+            range_inf = true;
+        }
+    }
+
+ private:
+    int64_t range_bias = 0;
+    bool range_inf = false;
+    int64_t rows_bias = 0;
+    bool rows_inf = false;
+};
+
+std::ostream& operator<<(std::ostream& os, const Bias& bias);  // NO LINT
 
 }  // namespace openmldb::sdk
 #endif  // SRC_SDK_SQL_CLUSTER_ROUTER_H_

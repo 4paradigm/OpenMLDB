@@ -564,7 +564,8 @@ int64_t LatTTLConvert(int64_t lat, bool zero_eq_unbounded) {
 
 // history_range_start == INT64_MIN: unbounded
 // history_range_start == 0: not unbounded
-// NOTICE: do not convert invalid range/rows start. It'll get 0 from `GetHistoryRangeStart`.
+// And after convert, 0 means unbounded, history_range_start 0 will be converted to 1
+// NOTICE: do not convert invalid range/rows start, it'll return 0 by `GetHistoryRangeStart`.
 int64_t AbsTTLConvert(int64_t history_range_start) {
     return history_range_start == INT64_MIN ? 0 : AbsTTLConvert(-1 * history_range_start, false);
 }
