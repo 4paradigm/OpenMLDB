@@ -27,17 +27,10 @@ public class Deployment {
     private CodecMetaData outputMetaData;
     private ProcedureInfo proInfo;
 
-    public Deployment(com._4paradigm.openmldb.ProcedureInfo info) throws Exception {
+    public Deployment(com._4paradigm.openmldb.proto.SQLProcedure.ProcedureInfo info) throws Exception {
         proInfo = Common.convertProcedureInfo(info);
-        inputMetaData = new CodecMetaData(Common.convert2ProtoSchema(proInfo.getInputSchema()));
-        outputMetaData = new CodecMetaData(Common.convert2ProtoSchema(proInfo.getOutputSchema()));
-    }
-
-    public Deployment(ProcedureInfo info) throws Exception {
-        proInfo = info;
-        inputMetaData = new CodecMetaData(Common.convert2ProtoSchema(proInfo.getInputSchema()));
-        outputMetaData = new CodecMetaData(Common.convert2ProtoSchema(proInfo.getOutputSchema()));
-
+        inputMetaData = new CodecMetaData(info.getInputSchemaList());
+        outputMetaData = new CodecMetaData(info.getOutputSchemaList());
     }
 
     public CodecMetaData getInputMetaData() {
@@ -62,10 +55,6 @@ public class Deployment {
 
     public String getSQL() {
         return proInfo.getSql();
-    }
-
-    public ProcedureInfo getProcedureInfo() {
-        return proInfo;
     }
 
     public Schema getInputSchema() {

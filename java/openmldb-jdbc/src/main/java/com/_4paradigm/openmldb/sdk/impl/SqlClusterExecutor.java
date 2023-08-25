@@ -36,6 +36,8 @@ import com._4paradigm.openmldb.TableReader;
 import com._4paradigm.openmldb.VectorString;
 import com._4paradigm.openmldb.common.LibraryLoader;
 import com._4paradigm.openmldb.common.Pair;
+import com._4paradigm.openmldb.common.zk.ZKClient;
+import com._4paradigm.openmldb.common.zk.ZKConfig;
 import com._4paradigm.openmldb.jdbc.CallablePreparedStatement;
 import com._4paradigm.openmldb.jdbc.SQLResultSet;
 import com._4paradigm.openmldb.proto.NS;
@@ -60,6 +62,7 @@ public class SqlClusterExecutor implements SqlExecutor {
     private static final AtomicBoolean initialized = new AtomicBoolean(false);
     private SQLRouter sqlRouter;
     private DeploymentManager deploymentManager;
+    private ZKClient zkClient;
 
     public SqlClusterExecutor(SdkOption option, String libraryPath) throws SqlException {
         initJavaSdkLibrary(libraryPath);
@@ -76,7 +79,19 @@ public class SqlClusterExecutor implements SqlExecutor {
         if (sqlRouter == null) {
             throw new SqlException("fail to create sql executor");
         }
-        deploymentManager = new DeploymentManager(sqlRouter);
+        zkClient = new ZKClient(ZKConfig.builder()
+                .cluster(option.getZkCluster())
+                .namespace(option.getZkPath())
+                .sessionTimeout((int)option.getSessionTimeout())
+                .build());
+        try {
+            if (!zkClient.connect()) {
+                throw new SqlException("zk client connect failed.");
+            }
+        } catch (Exception e) {
+            throw new SqlException("init zk client failed. " + e.getMessage());
+        }
+        deploymentManager = new DeploymentManager(zkClient);
     }
 
     public SqlClusterExecutor(SdkOption option) throws SqlException {
@@ -198,21 +213,7 @@ public class SqlClusterExecutor implements SqlExecutor {
     public CallablePreparedStatement getCallablePreparedStmt(String db, String deploymentName) throws SQLException {
         Deployment deployment = deploymentManager.getDeployment(db, deploymentName);
         if (deployment == null) {
-            synchronized (this) {
-                deployment = deploymentManager.getDeployment(db, deploymentName);
-                if (deployment == null) {
-                    ProcedureInfo procedureInfo = showProcedure(db, deploymentName);
-                    if (procedureInfo == null) {
-                        throw new SQLException(deploymentName + " does not exist in " + db);
-                    }
-                    try {
-                        deployment = new Deployment(procedureInfo);
-                        deploymentManager.addDeployment(db, deploymentName, deployment);
-                    } catch (Exception e) {
-                        throw new SQLException(e.getMessage());
-                    }
-                }
-            }
+            throw new SQLException("deployment does not exist. db name " + db + " deployment name " + deploymentName);
         }
         return new CallablePreparedStatementImpl(db, deployment, this.sqlRouter);
     }

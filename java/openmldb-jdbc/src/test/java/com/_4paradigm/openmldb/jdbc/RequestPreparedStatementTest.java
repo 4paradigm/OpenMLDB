@@ -173,6 +173,7 @@ public class RequestPreparedStatementTest {
 
         ResultSet resultSet = null;
         try {
+            Thread.sleep(1000);
             pstmt = executor.getCallablePreparedStmt(dbname, deploymentName);
 
             pstmt.setString(1, "bb");

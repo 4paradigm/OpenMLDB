@@ -17,16 +17,63 @@
 package com._4paradigm.openmldb.sdk.impl;
 
 import com._4paradigm.openmldb.SQLRouter;
+import com._4paradigm.openmldb.common.zk.ZKClient;
+import com._4paradigm.openmldb.sdk.SqlException;
+import com.google.protobuf.InvalidProtocolBufferException;
+import org.apache.curator.framework.recipes.cache.NodeCache;
+import org.apache.curator.framework.recipes.cache.NodeCacheListener;
+import com._4paradigm.openmldb.proto.SQLProcedure;
+import com._4paradigm.openmldb.proto.Type;
+import org.xerial.snappy.Snappy;
+
+import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class DeploymentManager {
 
-    private ConcurrentHashMap<String, ConcurrentHashMap<String, Deployment>> deployments;
-    private SQLRouter sqlRouter;
+    private ConcurrentHashMap<String, ConcurrentHashMap<String, Deployment>> deployments = new ConcurrentHashMap<>();
+    private ZKClient zkClient;
+    private NodeCache nodeCache;
+    private String spPath;
 
-    public DeploymentManager(SQLRouter sqlRouter) {
-        deployments = new ConcurrentHashMap<String, ConcurrentHashMap<String, Deployment>>();
-        this.sqlRouter = sqlRouter;
+    public DeploymentManager(ZKClient zkClient) throws SqlException {
+        this.zkClient = zkClient;
+        spPath = zkClient.getConfig().getNamespace() + "/store_procedure/db_sp_data";
+        nodeCache = new NodeCache(zkClient.getClient(), zkClient.getConfig().getNamespace() + "/table/notify");
+        try {
+            parseAllDeployment();
+            nodeCache.start();
+            nodeCache.getListenable().addListener(new NodeCacheListener() {
+                @Override
+                public void nodeChanged() throws Exception {
+                    parseAllDeployment();
+                }
+            });
+        } catch (Exception e) {
+            throw new SqlException("start NodeCache failed. " + e.getMessage());
+        }
+    }
+
+    public void parseAllDeployment() throws Exception {
+        if (!zkClient.checkExists(spPath)) {
+            return;
+        }
+        List<String> children = zkClient.getChildren(spPath);
+        for (String path : children) {
+            byte[] bytes = zkClient.getClient().getData().forPath(spPath + "/" + path);
+            byte[] data = Snappy.uncompress(bytes);
+            SQLProcedure.ProcedureInfo procedureInfo = SQLProcedure.ProcedureInfo.parseFrom(data);
+            if (procedureInfo.getType() != Type.ProcedureType.kReqDeployment) {
+                continue;
+            }
+            Deployment deployment = getDeployment(procedureInfo.getDbName(), procedureInfo.getSpName());
+            if (deployment != null) {
+                if (deployment.getSQL().equals(procedureInfo.getSql())) {
+                    continue;
+                }
+            }
+            addDeployment(procedureInfo.getDbName(), procedureInfo.getSpName(), new Deployment(procedureInfo));
+        }
     }
 
     public boolean hasDeployment(String db, String name) {
@@ -48,7 +95,8 @@ public class DeploymentManager {
     public void addDeployment(String db, String name, Deployment deployment) {
         ConcurrentHashMap<String, Deployment> deployMap = deployments.get(db);
         if (deployMap == null) {
-            deployMap = new ConcurrentHashMap<String, Deployment>();
+            // may have some problems if there are multi-threads put
+            deployMap = new ConcurrentHashMap<>();
             deployments.put(db, deployMap);
         }
         deployMap.put(name, deployment);
