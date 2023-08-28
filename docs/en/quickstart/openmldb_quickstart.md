@@ -176,7 +176,7 @@ According to the default deployment configuration, the http port for APIServer i
 http://127.0.0.1:9080/dbs/demo_db/deployments/demo_data_service
         \___________/      \____/              \_____________/
               |               |                        |
-        APIServer地址     Database名字            Deployment名字
+      APIServerAddress  Database Name           Deployment Name
 ```
 
 Real-time requests accept input data in JSON format. Here are two examples: putting a row of data in the `input` field of the request.
