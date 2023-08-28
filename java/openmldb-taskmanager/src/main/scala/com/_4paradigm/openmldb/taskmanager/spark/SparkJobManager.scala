@@ -36,12 +36,21 @@ object SparkJobManager {
    * @return the SparkLauncher object
    */
   def createSparkLauncher(mainClass: String): SparkLauncher = {
-
-    val launcher = new SparkLauncher()
+    val env: java.util.Map[String, String] = new java.util.HashMap[String, String]
+    // config may empty, need check
+    if (!TaskManagerConfig.isEmpty(TaskManagerConfig.HADOOP_CONF_DIR)) {
+      env.put("HADOOP_CONF_DIR", TaskManagerConfig.HADOOP_CONF_DIR)
+    }
+    // env.put("YARN_CONF_DIR", TaskManagerConfig.HADOOP_CONF_DIR)  // unused now
+    if (!TaskManagerConfig.isEmpty(TaskManagerConfig.HADOOP_USER_NAME)){
+      env.put("HADOOP_USER_NAME", TaskManagerConfig.HADOOP_USER_NAME)
+    }
+  
+    val launcher = new SparkLauncher(env)
       .setAppResource(TaskManagerConfig.BATCHJOB_JAR_PATH)
       .setMainClass(mainClass)
 
-    if (TaskManagerConfig.SPARK_HOME != null && TaskManagerConfig.SPARK_HOME.nonEmpty) {
+    if (!TaskManagerConfig.isEmpty(TaskManagerConfig.SPARK_HOME)) {
       launcher.setSparkHome(TaskManagerConfig.SPARK_HOME)
     }
 
@@ -57,7 +66,7 @@ object SparkJobManager {
       }
     }
 
-    if (TaskManagerConfig.SPARK_YARN_JARS != null && TaskManagerConfig.SPARK_YARN_JARS.nonEmpty) {
+    if (!TaskManagerConfig.isEmpty(TaskManagerConfig.SPARK_YARN_JARS)) {
       launcher.setConf("spark.yarn.jars", TaskManagerConfig.SPARK_YARN_JARS)
     }
 
