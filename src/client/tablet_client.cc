@@ -1236,6 +1236,87 @@ bool TabletClient::CallSQLBatchRequestProcedure(const std::string& db, const std
     return true;
 }
 
+bool static ParseBatchRequestMeta(const base::Slice& meta, const base::Slice& data,
+        ::openmldb::api::SQLBatchRequestQueryRequest* request) {
+    uint64_t total_len = 0;
+    const int32_t* buf = reinterpret_cast<const int32_t*>(meta.data());
+    int32_t cnt = meta.size() / sizeof(int32_t);
+    for (int32_t idx = 0; idx < cnt; idx++) {
+        // the first field is for common_slice
+        if (idx == 0) {
+            if (buf[idx] == 0) {
+                request->set_common_slices(0);
+            } else {
+                request->set_common_slices(1);
+                request->add_row_sizes(buf[idx]);
+            }
+        } else {
+            request->add_row_sizes(buf[idx]);
+        }
+        total_len += buf[idx];
+    }
+    if (total_len != data.size()) {
+        return false;
+    }
+    return true;
+}
+
+base::Status TabletClient::CallSQLBatchRequestProcedure(const std::string& db, const std::string& sp_name,
+        const base::Slice& meta, const base::Slice& data,
+        bool is_debug, uint64_t timeout_ms,
+        brpc::Controller* cntl, openmldb::api::SQLBatchRequestQueryResponse* response) {
+    ::openmldb::api::SQLBatchRequestQueryRequest request;
+    request.set_sp_name(sp_name);
+    request.set_is_procedure(true);
+    request.set_db(db);
+    request.set_is_debug(is_debug);
+    request.set_common_slices(0);
+    request.set_non_common_slices(1);
+    cntl->set_timeout_ms(timeout_ms);
+    if (!ParseBatchRequestMeta(meta, data, &request)) {
+        return {base::ReturnCode::kError, "parse meta data failed"};
+    }
+    auto& io_buf = cntl->request_attachment();
+    if (io_buf.append(data.data(), data.size()) != 0) {
+        return {base::ReturnCode::kError, "append to iobuf error"};
+    }
+    bool ok = client_.SendRequest(&::openmldb::api::TabletServer_Stub::SQLBatchRequestQuery, cntl, &request, response);
+    if (!ok || response->code() != ::openmldb::base::kOk) {
+        LOG(WARNING) << "fail to query tablet";
+        return {base::ReturnCode::kError, "fail to query tablet. " + response->msg()};
+    }
+    return {};
+}
+
+base::Status TabletClient::CallSQLBatchRequestProcedure(const std::string& db, const std::string& sp_name,
+        const base::Slice& meta, const base::Slice& data,
+        bool is_debug, uint64_t timeout_ms,
+        openmldb::RpcCallback<openmldb::api::SQLBatchRequestQueryResponse>* callback) {
+    if (callback == nullptr) {
+        return {base::ReturnCode::kError, "callback is null"};
+    }
+    ::openmldb::api::SQLBatchRequestQueryRequest request;
+    request.set_sp_name(sp_name);
+    request.set_is_procedure(true);
+    request.set_db(db);
+    request.set_is_debug(is_debug);
+    request.set_common_slices(0);
+    request.set_non_common_slices(1);
+    if (!ParseBatchRequestMeta(meta, data, &request)) {
+        return {base::ReturnCode::kError, "parse meta data failed"};
+    }
+    auto& io_buf = callback->GetController()->request_attachment();
+    if (io_buf.append(data.data(), data.size()) != 0) {
+        return {base::ReturnCode::kError, "append to iobuf error"};
+    }
+    callback->GetController()->set_timeout_ms(timeout_ms);
+    if (!client_.SendRequest(&::openmldb::api::TabletServer_Stub::SQLBatchRequestQuery,
+                               callback->GetController().get(), &request, callback->GetResponse().get(), callback)) {
+        return {base::ReturnCode::kError, "stub is null"};
+    }
+    return {};
+}
+
 bool TabletClient::DropProcedure(const std::string& db_name, const std::string& sp_name) {
     ::openmldb::api::DropProcedureRequest request;
     ::openmldb::api::GeneralResponse response;

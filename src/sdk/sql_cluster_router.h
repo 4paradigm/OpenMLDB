@@ -158,6 +158,11 @@ class SQLClusterRouter : public SQLRouter {
         const std::string& db, const std::string& sp_name, std::shared_ptr<SQLRequestRowBatch> row_batch,
         hybridse::sdk::Status* status) override;
 
+    std::shared_ptr<hybridse::sdk::ResultSet> CallSQLBatchRequestProcedure(
+        const std::string& db, const std::string& sp_name, openmldb::sdk::NIOBUFFER meta, int meta_len,
+        openmldb::sdk::NIOBUFFER buf, int len,
+        hybridse::sdk::Status* status) override;
+
     std::shared_ptr<hybridse::sdk::ProcedureInfo> ShowProcedure(const std::string& db, const std::string& sp_name,
                                                                 hybridse::sdk::Status* status) override;
 
@@ -177,6 +182,12 @@ class SQLClusterRouter : public SQLRouter {
     std::shared_ptr<openmldb::sdk::QueryFuture> CallSQLBatchRequestProcedure(
         const std::string& db, const std::string& sp_name, int64_t timeout_ms,
         std::shared_ptr<SQLRequestRowBatch> row_batch, hybridse::sdk::Status* status) override;
+
+    std::shared_ptr<openmldb::sdk::QueryFuture> CallSQLBatchRequestProcedure(
+        const std::string& db, const std::string& sp_name, int64_t timeout_ms,
+        openmldb::sdk::NIOBUFFER meta, int meta_len,
+        openmldb::sdk::NIOBUFFER buf, int len,
+        hybridse::sdk::Status* status) override;
 
     std::shared_ptr<::openmldb::client::TabletClient> GetTabletClient(const std::string& db, const std::string& sql,
                                                                       ::hybridse::vm::EngineMode engine_mode,

@@ -234,6 +234,11 @@ class TabletClient : public Client {
                                       openmldb::api::SQLBatchRequestQueryResponse* response, bool is_debug,
                                       uint64_t timeout_ms);
 
+    base::Status CallSQLBatchRequestProcedure(const std::string& db, const std::string& sp_name,
+            const base::Slice& meta, const base::Slice& data,
+            bool is_debug, uint64_t timeout_ms,
+            brpc::Controller* cntl, openmldb::api::SQLBatchRequestQueryResponse* response);
+
     bool DropProcedure(const std::string& db_name, const std::string& sp_name);
 
     bool Refresh(uint32_t tid);
@@ -255,6 +260,11 @@ class TabletClient : public Client {
                                       std::shared_ptr<::openmldb::sdk::SQLRequestRowBatch> row_batch, bool is_debug,
                                       uint64_t timeout_ms,
                                       openmldb::RpcCallback<openmldb::api::SQLBatchRequestQueryResponse>* callback);
+
+    base::Status CallSQLBatchRequestProcedure(const std::string& db, const std::string& sp_name,
+            const base::Slice& meta, const base::Slice& data,
+            bool is_debug, uint64_t timeout_ms,
+            openmldb::RpcCallback<openmldb::api::SQLBatchRequestQueryResponse>* callback);
 
     bool CreateAggregator(const ::openmldb::api::TableMeta& base_table_meta,
                           uint32_t aggr_tid, uint32_t aggr_pid, uint32_t index_pos,

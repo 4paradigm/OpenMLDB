@@ -1529,6 +1529,38 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::CallSQLBatchRequestP
     return rs;
 }
 
+std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::CallSQLBatchRequestProcedure(
+    const std::string& db, const std::string& sp_name,
+    openmldb::sdk::NIOBUFFER meta, int meta_len,
+    openmldb::sdk::NIOBUFFER buf, int len,
+    hybridse::sdk::Status* status) {
+    RET_IF_NULL_AND_WARN(status, "output status is nullptr");
+    if (meta == nullptr || meta_len == 0 || buf == nullptr || len == 0) {
+        SET_STATUS_AND_WARN(status, StatusCode::kNullInputPointer, "input data is null");
+        return nullptr;
+    }
+    auto tablet = GetTablet(db, sp_name, "", status);
+    if (!tablet) {
+        return nullptr;
+    }
+
+    auto cntl = std::make_shared<::brpc::Controller>();
+    auto response = std::make_shared<::openmldb::api::SQLBatchRequestQueryResponse>();
+    auto ret = tablet->CallSQLBatchRequestProcedure(db, sp_name, base::Slice(reinterpret_cast<char*>(meta), meta_len),
+            base::Slice(reinterpret_cast<char*>(buf), len),
+            options_->enable_debug, options_->request_timeout, cntl.get(), response.get());
+    if (!ret.OK()) {
+        RPC_STATUS_AND_WARN(status, cntl, response, "CallSQLBatchRequestProcedure failed" + ret.GetMsg());
+        return nullptr;
+    }
+    auto rs = std::make_shared<::openmldb::sdk::SQLBatchRequestResultSet>(response, cntl);
+    if (!rs->Init()) {
+        SET_STATUS_AND_WARN(status, StatusCode::kCmdError, "SQLBatchRequestResultSet init failed");
+        return nullptr;
+    }
+    return rs;
+}
+
 std::shared_ptr<hybridse::sdk::ProcedureInfo> SQLClusterRouter::ShowProcedure(const std::string& db,
                                                                               const std::string& sp_name,
                                                                               hybridse::sdk::Status* status) {
@@ -2223,6 +2255,33 @@ std::shared_ptr<openmldb::sdk::QueryFuture> SQLClusterRouter::CallSQLBatchReques
     if (!ok) {
         // async rpc only check ok
         SET_STATUS_AND_WARN(status, StatusCode::kConnError, "CallSQLBatchRequestProcedure failed(stub is null)");
+        return nullptr;
+    }
+    return future;
+}
+
+std::shared_ptr<openmldb::sdk::QueryFuture> SQLClusterRouter::CallSQLBatchRequestProcedure(
+    const std::string& db, const std::string& sp_name, int64_t timeout_ms,
+    openmldb::sdk::NIOBUFFER meta, int meta_len,
+    openmldb::sdk::NIOBUFFER buf, int len,
+    hybridse::sdk::Status* status) {
+    RET_IF_NULL_AND_WARN(status, "output status is nullptr");
+    if (meta == nullptr || meta_len == 0 || buf == nullptr || len == 0) {
+        SET_STATUS_AND_WARN(status, StatusCode::kNullInputPointer, "input data is null");
+        return nullptr;
+    }
+    auto tablet = GetTablet(db, sp_name, "", status);
+    if (!tablet) {
+        return nullptr;
+    }
+    std::shared_ptr<brpc::Controller> cntl = std::make_shared<brpc::Controller>();
+    auto response = std::make_shared<openmldb::api::SQLBatchRequestQueryResponse>();
+    auto callback = new openmldb::RpcCallback<openmldb::api::SQLBatchRequestQueryResponse>(response, cntl);
+    auto future = std::make_shared<openmldb::sdk::BatchQueryFutureImpl>(callback);
+    auto ret = tablet->CallSQLBatchRequestProcedure(db, sp_name, base::Slice(reinterpret_cast<char*>(meta), meta_len),
+            base::Slice(reinterpret_cast<char*>(buf), len), options_->enable_debug, timeout_ms, callback);
+    if (!ret.OK()) {
+        SET_STATUS_AND_WARN(status, StatusCode::kConnError, "CallSQLBatchRequestProcedure failed " + ret.GetMsg());
         return nullptr;
     }
     return future;
