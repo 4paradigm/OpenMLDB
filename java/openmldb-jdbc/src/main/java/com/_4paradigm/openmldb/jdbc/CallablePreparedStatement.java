@@ -18,34 +18,33 @@ package com._4paradigm.openmldb.jdbc;
 
 import com._4paradigm.openmldb.SQLRouter;
 import com._4paradigm.openmldb.common.codec.FlexibleRowBuilder;
-import com._4paradigm.openmldb.common.codec.RowBuilder;
 import com._4paradigm.openmldb.sdk.QueryFuture;
 import com._4paradigm.openmldb.sdk.impl.Deployment;
 
+import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.util.concurrent.TimeUnit;
 
-public class CallablePreparedStatement extends PreparedStatement {
+public abstract class CallablePreparedStatement extends PreparedStatement {
     protected Deployment deployment;
-    protected RowBuilder rowBuilder;
+    protected FlexibleRowBuilder rowBuilder;
+    protected String db;
     protected String deploymentName;
 
-    public CallablePreparedStatement(String db, Deployment deployment, SQLRouter router) throws SQLException {
+    public CallablePreparedStatement(Deployment deployment, SQLRouter router) throws SQLException {
         if (router == null) throw new SQLException("router is null");
-        this.db = db;
         this.router = router;
         this.deployment = deployment;
+        db = deployment.getDatabase();
         deploymentName = deployment.getName();
-        rowBuilder = new FlexibleRowBuilder(deployment.getInputMetaData(), true);
-    }
-
-    public CallablePreparedStatement(String db, String spName, SQLRouter router) throws SQLException {
-
     }
 
     public QueryFuture executeQueryAsync(long timeOut, TimeUnit unit) throws SQLException {
         throw new SQLException("current do not support this method");
     }
 
-
+    @Override
+    public ResultSetMetaData getMetaData() {
+        return new SQLResultSetMetaData(deployment.getInputSchema());
+    }
 }

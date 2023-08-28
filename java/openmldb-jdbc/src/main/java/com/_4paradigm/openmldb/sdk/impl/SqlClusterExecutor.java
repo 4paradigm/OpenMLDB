@@ -213,15 +213,31 @@ public class SqlClusterExecutor implements SqlExecutor {
     public CallablePreparedStatement getCallablePreparedStmt(String db, String deploymentName) throws SQLException {
         Deployment deployment = deploymentManager.getDeployment(db, deploymentName);
         if (deployment == null) {
-            throw new SQLException("deployment does not exist. db name " + db + " deployment name " + deploymentName);
+            try {
+                ProcedureInfo procedureInfo = showProcedure(db, deploymentName);
+                deployment = new Deployment(procedureInfo);
+                deploymentManager.addDeployment(db, deploymentName, deployment);
+            } catch (Exception e) {
+                throw new SQLException("deployment does not exist. db name " + db + " deployment name " + deploymentName);
+            }
         }
-        return new CallablePreparedStatementImpl(db, deployment, this.sqlRouter);
+        return new CallablePreparedStatementImpl(deployment, this.sqlRouter);
     }
 
     @Override
     public CallablePreparedStatement getCallablePreparedStmtBatch(String db, String deploymentName)
             throws SQLException {
-        return new BatchCallablePreparedStatementImpl(db, deploymentName, this.sqlRouter);
+        Deployment deployment = deploymentManager.getDeployment(db, deploymentName);
+        if (deployment == null) {
+            try {
+                ProcedureInfo procedureInfo = showProcedure(db, deploymentName);
+                deployment = new Deployment(procedureInfo);
+                deploymentManager.addDeployment(db, deploymentName, deployment);
+            } catch (Exception e) {
+                throw new SQLException("deployment does not exist. db name " + db + " deployment name " + deploymentName);
+            }
+        }
+        return new BatchCallablePreparedStatementImpl(deployment, this.sqlRouter);
     }
 
     @Override

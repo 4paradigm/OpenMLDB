@@ -33,6 +33,12 @@ public class Deployment {
         outputMetaData = new CodecMetaData(info.getOutputSchemaList());
     }
 
+    public Deployment(ProcedureInfo procedureInfo) throws Exception {
+        proInfo = procedureInfo;
+        inputMetaData = new CodecMetaData(Common.convert2ProtoSchema(procedureInfo.getInputSchema()));
+        outputMetaData = new CodecMetaData(Common.convert2ProtoSchema(procedureInfo.getOutputSchema()));
+    }
+
     public CodecMetaData getInputMetaData() {
         return inputMetaData;
     }

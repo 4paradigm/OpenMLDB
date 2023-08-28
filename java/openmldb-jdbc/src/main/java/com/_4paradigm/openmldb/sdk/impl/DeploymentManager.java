@@ -16,22 +16,22 @@
 
 package com._4paradigm.openmldb.sdk.impl;
 
-import com._4paradigm.openmldb.SQLRouter;
 import com._4paradigm.openmldb.common.zk.ZKClient;
 import com._4paradigm.openmldb.sdk.SqlException;
-import com.google.protobuf.InvalidProtocolBufferException;
 import org.apache.curator.framework.recipes.cache.NodeCache;
 import org.apache.curator.framework.recipes.cache.NodeCacheListener;
 import com._4paradigm.openmldb.proto.SQLProcedure;
 import com._4paradigm.openmldb.proto.Type;
 import org.xerial.snappy.Snappy;
 
+import java.util.AbstractMap;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class DeploymentManager {
 
     private ConcurrentHashMap<String, ConcurrentHashMap<String, Deployment>> deployments = new ConcurrentHashMap<>();
+    // private ConcurrentHashMap<AbstractMap.SimpleImmutableEntry<String, String>, Deployment> deployments;
     private ZKClient zkClient;
     private NodeCache nodeCache;
     private String spPath;
@@ -92,13 +92,15 @@ public class DeploymentManager {
         return innerMap.get(name);
     }
 
-    public void addDeployment(String db, String name, Deployment deployment) {
+    public synchronized void addDeployment(String db, String name, Deployment deployment) {
         ConcurrentHashMap<String, Deployment> deployMap = deployments.get(db);
         if (deployMap == null) {
-            // may have some problems if there are multi-threads put
             deployMap = new ConcurrentHashMap<>();
             deployments.put(db, deployMap);
         }
-        deployMap.put(name, deployment);
+        Deployment curDeployment = deployMap.get(name);
+        if (curDeployment == null || !curDeployment.getSQL().equals(deployment.getSQL())) {
+            deployMap.put(name, deployment);
+        }
     }
 }
