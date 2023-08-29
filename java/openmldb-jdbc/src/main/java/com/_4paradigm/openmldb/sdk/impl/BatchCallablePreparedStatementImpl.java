@@ -48,8 +48,8 @@ public class BatchCallablePreparedStatementImpl extends CallablePreparedStatemen
         if (datas.isEmpty()) {
             throw new SQLException("no data");
         }
-        meta = ByteBuffer.allocateDirect(4 * (datas.size())).order(ByteOrder.LITTLE_ENDIAN);
-        meta.putInt(0);
+        meta = ByteBuffer.allocateDirect(4 * (datas.size() + 1)).order(ByteOrder.LITTLE_ENDIAN);
+        meta.putInt(0);  // reserved for common slice
         result = ByteBuffer.allocateDirect(totalSize);
         for (ByteBuffer buf : datas) {
             meta.putInt(buf.capacity());
