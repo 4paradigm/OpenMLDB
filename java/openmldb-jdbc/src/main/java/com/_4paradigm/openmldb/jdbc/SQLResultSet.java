@@ -16,7 +16,6 @@
 
 package com._4paradigm.openmldb.jdbc;
 
-import com._4paradigm.openmldb.DataType;
 import com._4paradigm.openmldb.QueryFuture;
 import com._4paradigm.openmldb.sdk.Common;
 import com._4paradigm.openmldb.sdk.Schema;
@@ -59,8 +58,6 @@ public class SQLResultSet implements ResultSet {
     }
 
     private void check(int i, int type) throws SQLException {
-        checkClosed();
-        checkResultSetNull();
         checkIdx(i);
         checkDataType(i, type);
     }
