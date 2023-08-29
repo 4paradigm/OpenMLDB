@@ -18,6 +18,7 @@ package com._4paradigm.openmldb.sdk;
 
 import com._4paradigm.openmldb.Status;
 import com._4paradigm.openmldb.jdbc.SQLResultSet;
+import com._4paradigm.openmldb.sdk.Schema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -29,9 +30,12 @@ import java.util.concurrent.TimeoutException;
 public class QueryFuture implements Future<java.sql.ResultSet>{
     private static final Logger logger = LoggerFactory.getLogger(QueryFuture.class);
     com._4paradigm.openmldb.QueryFuture queryFuture;
+    private Schema schema;
 
-    public QueryFuture(com._4paradigm.openmldb.QueryFuture queryFuture) {
+
+    public QueryFuture(com._4paradigm.openmldb.QueryFuture queryFuture, Schema schema) {
         this.queryFuture = queryFuture;
+        this.schema = schema;
     }
 
     @Override
@@ -58,13 +62,11 @@ public class QueryFuture implements Future<java.sql.ResultSet>{
         if (status.getCode() != 0 || resultSet == null) {
             String msg = status.ToString();
             status.delete();
-            status = null;
             logger.error("call procedure failed: {}", msg);
             throw new ExecutionException(new SqlException("call procedure failed: " + msg));
         }
         status.delete();
-        status = null;
-        return new SQLResultSet(resultSet, queryFuture);
+        return new SQLResultSet(resultSet, queryFuture, schema);
     }
 
     /**

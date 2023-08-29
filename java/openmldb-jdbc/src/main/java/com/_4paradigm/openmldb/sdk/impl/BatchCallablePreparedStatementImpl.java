@@ -74,7 +74,7 @@ public class BatchCallablePreparedStatementImpl extends CallablePreparedStatemen
             throw new SQLException("execute sql fail: " + msg);
         }
         status.delete();
-        SQLResultSet rs = new SQLResultSet(resultSet);
+        SQLResultSet rs = new SQLResultSet(resultSet, deployment.getOutputSchema());
         if (closeOnComplete) {
             closed = true;
         }
@@ -100,7 +100,7 @@ public class BatchCallablePreparedStatementImpl extends CallablePreparedStatemen
         }
         status.delete();
         clearParameters();
-        return new QueryFuture(queryFuture);
+        return new QueryFuture(queryFuture, deployment.getOutputSchema());
     }
 
     @Override

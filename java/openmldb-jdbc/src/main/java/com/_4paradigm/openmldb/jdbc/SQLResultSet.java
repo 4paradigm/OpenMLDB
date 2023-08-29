@@ -52,16 +52,10 @@ public class SQLResultSet implements ResultSet {
         this.schema = schema;
     }
 
-    public SQLResultSet(com._4paradigm.openmldb.ResultSet resultSet, QueryFuture future) {
+    public SQLResultSet(com._4paradigm.openmldb.ResultSet resultSet, QueryFuture future, Schema schema) {
         this.resultSet = resultSet;
         this.queryFuture = future;
-        if (resultSet != null) {
-            try {
-                this.schema = Common.convertSchema(resultSet.GetSchema());
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        }
+        this.schema = schema;
     }
 
     private void check(int i, int type) throws SQLException {
@@ -81,7 +75,7 @@ public class SQLResultSet implements ResultSet {
         if (i <= 0) {
             throw new SQLException("index underflow");
         }
-        if (i > schema.getColumnList().size()) {
+        if (i > schema.size()) {
             throw new SQLException("index overflow");
         }
     }
@@ -93,9 +87,9 @@ public class SQLResultSet implements ResultSet {
     }
 
     private void checkDataType(int i, int type) throws SQLException {
-        if (schema.getColumnList().get(i - 1).getSqlType() != type) {
+        if (schema.getColumnType(i - 1) != type) {
             throw new SQLException(String.format("data type not match, get %d and expect %d",
-                    schema.getColumnList().get(i - 1).getSqlType(), type));
+                    schema.getColumnType(i - 1), type));
         }
     }
 

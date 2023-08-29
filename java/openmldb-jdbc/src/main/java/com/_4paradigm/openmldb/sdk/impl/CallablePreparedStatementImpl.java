@@ -26,7 +26,6 @@ import com._4paradigm.openmldb.jdbc.SQLResultSetMetaData;
 import com._4paradigm.openmldb.sdk.QueryFuture;
 
 import java.nio.ByteBuffer;
-import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.util.concurrent.TimeUnit;
@@ -90,7 +89,7 @@ public class CallablePreparedStatementImpl extends CallablePreparedStatement {
         }
         status.delete();
         clearParameters();
-        return new QueryFuture(queryFuture);
+        return new QueryFuture(queryFuture, deployment.getOutputSchema());
     }
 
     @Override

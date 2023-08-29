@@ -131,9 +131,9 @@ public class SQLRouterSmokeTest {
             com._4paradigm.openmldb.jdbc.SQLResultSet rs1 = (com._4paradigm.openmldb.jdbc.SQLResultSet) router
                     .executeSQL(dbname, select1);
 
-            Assert.assertEquals(2, rs1.GetInternalSchema().GetColumnCnt());
-            Assert.assertEquals("kTypeInt64", rs1.GetInternalSchema().GetColumnType(0).toString());
-            Assert.assertEquals("kTypeString", rs1.GetInternalSchema().GetColumnType(1).toString());
+            Assert.assertEquals(2, rs1.GetInternalSchema().getColumnList().size());
+            Assert.assertEquals(Types.BIGINT, rs1.GetInternalSchema().getColumnType(0));
+            Assert.assertEquals(Types.VARCHAR, rs1.GetInternalSchema().getColumnType(1));
 
             List<Long> col1Insert = new ArrayList<>();
             List<String> col2Insert = new ArrayList<>();
@@ -152,8 +152,8 @@ public class SQLRouterSmokeTest {
             String select2 = "select col1 from tsql1010;";
             com._4paradigm.openmldb.jdbc.SQLResultSet rs2 = (com._4paradigm.openmldb.jdbc.SQLResultSet) router
                     .executeSQL(dbname, select2);
-            Assert.assertEquals(1, rs2.GetInternalSchema().GetColumnCnt());
-            Assert.assertEquals("kTypeInt64", rs2.GetInternalSchema().GetColumnType(0).toString());
+            Assert.assertEquals(1, rs2.GetInternalSchema().size());
+            Assert.assertEquals(Types.BIGINT, rs2.GetInternalSchema().getColumnType(0));
 
             List<Long> col1InsertRes = new ArrayList<>();
             while (rs2.next()) {
@@ -167,8 +167,8 @@ public class SQLRouterSmokeTest {
             String select3 = "select col2 from tsql1010;";
             com._4paradigm.openmldb.jdbc.SQLResultSet rs3 = (com._4paradigm.openmldb.jdbc.SQLResultSet) router
                     .executeSQL(dbname, select3);
-            Assert.assertEquals(1, rs3.GetInternalSchema().GetColumnCnt());
-            Assert.assertEquals("kTypeString", rs3.GetInternalSchema().GetColumnType(0).toString());
+            Assert.assertEquals(1, rs3.GetInternalSchema().size());
+            Assert.assertEquals(Types.VARCHAR, rs3.GetInternalSchema().getColumnType(0));
 
             List<String> col2InsertRes = new ArrayList<>();
             while (rs3.next()) {
@@ -187,9 +187,9 @@ public class SQLRouterSmokeTest {
                 query_statement.setLong(2, 1003);
                 com._4paradigm.openmldb.jdbc.SQLResultSet rs4 = (com._4paradigm.openmldb.jdbc.SQLResultSet) query_statement
                         .executeQuery();
-                Assert.assertEquals(2, rs4.GetInternalSchema().GetColumnCnt());
-                Assert.assertEquals("kTypeInt64", rs4.GetInternalSchema().GetColumnType(0).toString());
-                Assert.assertEquals("kTypeString", rs4.GetInternalSchema().GetColumnType(1).toString());
+                Assert.assertEquals(2, rs4.GetInternalSchema().size());
+                Assert.assertEquals(Types.BIGINT, rs4.GetInternalSchema().getColumnType(0));
+                Assert.assertEquals(Types.VARCHAR, rs4.GetInternalSchema().getColumnType(1));
                 Assert.assertTrue(rs4.next());
                 Assert.assertEquals(1002, rs4.getLong(1));
                 Assert.assertEquals("hi", rs4.getString(2));
@@ -202,9 +202,9 @@ public class SQLRouterSmokeTest {
                 query_statement.setLong(2, 1002);
                 com._4paradigm.openmldb.jdbc.SQLResultSet rs4 = (com._4paradigm.openmldb.jdbc.SQLResultSet) query_statement
                         .executeQuery();
-                Assert.assertEquals(2, rs4.GetInternalSchema().GetColumnCnt());
-                Assert.assertEquals("kTypeInt64", rs4.GetInternalSchema().GetColumnType(0).toString());
-                Assert.assertEquals("kTypeString", rs4.GetInternalSchema().GetColumnType(1).toString());
+                Assert.assertEquals(2, rs4.GetInternalSchema().size());
+                Assert.assertEquals(Types.BIGINT, rs4.GetInternalSchema().getColumnType(0));
+                Assert.assertEquals(Types.VARCHAR, rs4.GetInternalSchema().getColumnType(1));
                 Assert.assertFalse(rs4.next());
                 rs4.close();
             }
@@ -214,9 +214,9 @@ public class SQLRouterSmokeTest {
                 query_statement.setLong(2, 1003);
                 com._4paradigm.openmldb.jdbc.SQLResultSet rs4 = (com._4paradigm.openmldb.jdbc.SQLResultSet) query_statement
                         .executeQuery();
-                Assert.assertEquals(2, rs4.GetInternalSchema().GetColumnCnt());
-                Assert.assertEquals("kTypeInt64", rs4.GetInternalSchema().GetColumnType(0).toString());
-                Assert.assertEquals("kTypeString", rs4.GetInternalSchema().GetColumnType(1).toString());
+                Assert.assertEquals(2, rs4.GetInternalSchema().size());
+                Assert.assertEquals(Types.BIGINT, rs4.GetInternalSchema().getColumnType(0));
+                Assert.assertEquals(Types.VARCHAR, rs4.GetInternalSchema().getColumnType(1));
                 Assert.assertTrue(rs4.next());
                 Assert.assertEquals(1001, rs4.getLong(1));
                 Assert.assertEquals("world", rs4.getString(2));
@@ -229,9 +229,9 @@ public class SQLRouterSmokeTest {
                 query_statement.setLong(2, 1003);
                 com._4paradigm.openmldb.jdbc.SQLResultSet rs4 = (com._4paradigm.openmldb.jdbc.SQLResultSet) query_statement
                         .executeQuery();
-                Assert.assertEquals(2, rs4.GetInternalSchema().GetColumnCnt());
-                Assert.assertEquals("kTypeInt64", rs4.GetInternalSchema().GetColumnType(0).toString());
-                Assert.assertEquals("kTypeString", rs4.GetInternalSchema().GetColumnType(1).toString());
+                Assert.assertEquals(2, rs4.GetInternalSchema().size());
+                Assert.assertEquals(Types.BIGINT, rs4.GetInternalSchema().getColumnType(0));
+                Assert.assertEquals(Types.VARCHAR, rs4.GetInternalSchema().getColumnType(1));
                 Assert.assertTrue(rs4.next());
                 Assert.assertEquals(1000, rs4.getLong(1));
                 Assert.assertEquals("hello", rs4.getString(2));
@@ -244,9 +244,9 @@ public class SQLRouterSmokeTest {
                 query_statement.setLong(2, 1003);
                 com._4paradigm.openmldb.jdbc.SQLResultSet rs4 = (com._4paradigm.openmldb.jdbc.SQLResultSet) query_statement
                         .executeQuery();
-                Assert.assertEquals(2, rs4.GetInternalSchema().GetColumnCnt());
-                Assert.assertEquals("kTypeInt64", rs4.GetInternalSchema().GetColumnType(0).toString());
-                Assert.assertEquals("kTypeString", rs4.GetInternalSchema().GetColumnType(1).toString());
+                Assert.assertEquals(2, rs4.GetInternalSchema().size());
+                Assert.assertEquals(Types.BIGINT, rs4.GetInternalSchema().getColumnType(0));
+                Assert.assertEquals(Types.VARCHAR, rs4.GetInternalSchema().getColumnType(1));
                 Assert.assertFalse(rs4.next());
                 rs4.close();
             }
@@ -428,12 +428,12 @@ public class SQLRouterSmokeTest {
             String select1 = "select * from tsql1010;";
             com._4paradigm.openmldb.jdbc.SQLResultSet rs1 = (com._4paradigm.openmldb.jdbc.SQLResultSet) router
                     .executeSQL(dbname, select1);
-            Assert.assertEquals(5, rs1.GetInternalSchema().GetColumnCnt());
-            Assert.assertEquals("kTypeInt64", rs1.GetInternalSchema().GetColumnType(0).toString());
-            Assert.assertEquals("kTypeDate", rs1.GetInternalSchema().GetColumnType(1).toString());
-            Assert.assertEquals("kTypeString", rs1.GetInternalSchema().GetColumnType(2).toString());
-            Assert.assertEquals("kTypeString", rs1.GetInternalSchema().GetColumnType(3).toString());
-            Assert.assertEquals("kTypeInt32", rs1.GetInternalSchema().GetColumnType(4).toString());
+            Assert.assertEquals(5, rs1.GetInternalSchema().size());
+            Assert.assertEquals(Types.BIGINT, rs1.GetInternalSchema().getColumnType(0));
+            Assert.assertEquals(Types.DATE, rs1.GetInternalSchema().getColumnType(1));
+            Assert.assertEquals(Types.VARCHAR, rs1.GetInternalSchema().getColumnType(2));
+            Assert.assertEquals(Types.VARCHAR, rs1.GetInternalSchema().getColumnType(3));
+            Assert.assertEquals(Types.INTEGER, rs1.GetInternalSchema().getColumnType(4));
             while (rs1.next()) {
                 int idx = rs1.getInt(5);
                 int suffix = idx - 1;
@@ -453,8 +453,8 @@ public class SQLRouterSmokeTest {
             String select2 = "select col1 from tsql1010;";
             com._4paradigm.openmldb.jdbc.SQLResultSet rs2 = (com._4paradigm.openmldb.jdbc.SQLResultSet) router
                     .executeSQL(dbname, select2);
-            Assert.assertEquals(1, rs2.GetInternalSchema().GetColumnCnt());
-            Assert.assertEquals("kTypeInt64", rs2.GetInternalSchema().GetColumnType(0).toString());
+            Assert.assertEquals(1, rs2.GetInternalSchema().size());
+            Assert.assertEquals(Types.BIGINT, rs2.GetInternalSchema().getColumnType(0));
             rs2.close();
             // drop table
             String drop = "drop table tsql1010;";
@@ -538,7 +538,7 @@ public class SQLRouterSmokeTest {
             String select1 = "select * from tsql1010;";
             com._4paradigm.openmldb.jdbc.SQLResultSet rs1 = (com._4paradigm.openmldb.jdbc.SQLResultSet) router
                     .executeSQL(dbname, select1);
-            Assert.assertEquals(6, rs1.GetInternalSchema().GetColumnCnt());
+            Assert.assertEquals(6, rs1.GetInternalSchema().size());
             rs1.close();
             i++;
             PreparedStatement impl2 = router.getInsertPreparedStmt(dbname, (String) batchData[i][0]);
@@ -585,7 +585,7 @@ public class SQLRouterSmokeTest {
             String select2 = "select * from tsql1010;";
             com._4paradigm.openmldb.jdbc.SQLResultSet rs2 = (com._4paradigm.openmldb.jdbc.SQLResultSet) router
                     .executeSQL(dbname, select1);
-            Assert.assertEquals(6, rs2.GetInternalSchema().GetColumnCnt());
+            Assert.assertEquals(6, rs2.GetInternalSchema().size());
             int recordCnt = 0;
             while (rs2.next()) {
                 recordCnt++;

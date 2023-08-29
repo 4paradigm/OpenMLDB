@@ -35,14 +35,11 @@ import com._4paradigm.openmldb.sdk.Common;
 public class PreparedStatementImpl extends PreparedStatement  {
     private String db;
     private String currentSql;
-    private SQLRouter router;
     private SQLRequestRow currentRow;
     private Schema currentSchema;
     private TreeMap<Integer, com._4paradigm.openmldb.DataType> types;
     private TreeMap<Integer, com._4paradigm.openmldb.DataType> orgTypes;
     private TreeMap<Integer, Object> currentDatas;
-    private boolean closed = false;
-    private boolean closeOnComplete = false;
     private Map<Integer, Integer> stringsLen = new HashMap<>();
     public static final Charset CHARSET = StandardCharsets.UTF_8;
 

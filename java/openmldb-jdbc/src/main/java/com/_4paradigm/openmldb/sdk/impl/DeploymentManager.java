@@ -38,19 +38,21 @@ public class DeploymentManager {
 
     public DeploymentManager(ZKClient zkClient) throws SqlException {
         this.zkClient = zkClient;
-        spPath = zkClient.getConfig().getNamespace() + "/store_procedure/db_sp_data";
-        nodeCache = new NodeCache(zkClient.getClient(), zkClient.getConfig().getNamespace() + "/table/notify");
-        try {
-            parseAllDeployment();
-            nodeCache.start();
-            nodeCache.getListenable().addListener(new NodeCacheListener() {
-                @Override
-                public void nodeChanged() throws Exception {
-                    parseAllDeployment();
-                }
-            });
-        } catch (Exception e) {
-            throw new SqlException("start NodeCache failed. " + e.getMessage());
+        if (zkClient != null) {
+            spPath = zkClient.getConfig().getNamespace() + "/store_procedure/db_sp_data";
+            nodeCache = new NodeCache(zkClient.getClient(), zkClient.getConfig().getNamespace() + "/table/notify");
+            try {
+                parseAllDeployment();
+                nodeCache.start();
+                nodeCache.getListenable().addListener(new NodeCacheListener() {
+                    @Override
+                    public void nodeChanged() throws Exception {
+                        parseAllDeployment();
+                    }
+                });
+            } catch (Exception e) {
+                throw new SqlException("start NodeCache failed. " + e.getMessage());
+            }
         }
     }
 

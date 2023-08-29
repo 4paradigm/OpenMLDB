@@ -71,6 +71,18 @@ public class SqlClusterExecutor implements SqlExecutor {
             SQLRouterOptions sqlOpt = option.buildSQLRouterOptions();
             this.sqlRouter = sql_router_sdk.NewClusterSQLRouter(sqlOpt);
             sqlOpt.delete();
+            zkClient = new ZKClient(ZKConfig.builder()
+                    .cluster(option.getZkCluster())
+                    .namespace(option.getZkPath())
+                    .sessionTimeout((int)option.getSessionTimeout())
+                    .build());
+            try {
+                if (!zkClient.connect()) {
+                    throw new SqlException("zk client connect failed.");
+                }
+            } catch (Exception e) {
+                throw new SqlException("init zk client failed. " + e.getMessage());
+            }
         } else {
             StandaloneOptions sqlOpt = option.buildStandaloneOptions();
             this.sqlRouter = sql_router_sdk.NewStandaloneSQLRouter(sqlOpt);
@@ -78,18 +90,6 @@ public class SqlClusterExecutor implements SqlExecutor {
         }
         if (sqlRouter == null) {
             throw new SqlException("fail to create sql executor");
-        }
-        zkClient = new ZKClient(ZKConfig.builder()
-                .cluster(option.getZkCluster())
-                .namespace(option.getZkPath())
-                .sessionTimeout((int)option.getSessionTimeout())
-                .build());
-        try {
-            if (!zkClient.connect()) {
-                throw new SqlException("zk client connect failed.");
-            }
-        } catch (Exception e) {
-            throw new SqlException("init zk client failed. " + e.getMessage());
         }
         deploymentManager = new DeploymentManager(zkClient);
     }
