@@ -7,5 +7,6 @@ About
 
     intro
     community
-    release_notes
+    milestone <https://openmldb.ai/en/history/>
+    change_logs <https://github.com/4paradigm/OpenMLDB/blob/main/CHANGELOG.md>
 
