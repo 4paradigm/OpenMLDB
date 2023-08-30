@@ -1,6 +1,7 @@
 package com._4paradigm.openmldb.jdbc;
 import com._4paradigm.openmldb.SQLRouter;
 import com._4paradigm.openmldb.Status;
+import com._4paradigm.openmldb.sdk.impl.SQLResultSet;
 
 import java.sql.*;
 

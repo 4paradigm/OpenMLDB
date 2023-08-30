@@ -27,7 +27,6 @@ import java.util.TreeMap;
 import com._4paradigm.openmldb.DataType;
 import com._4paradigm.openmldb.SQLRouter;
 import com._4paradigm.openmldb.jdbc.PreparedStatement;
-import com._4paradigm.openmldb.jdbc.SQLResultSet;
 import com._4paradigm.openmldb.*;
 import com._4paradigm.openmldb.jdbc.SQLResultSetMetaData;
 import com._4paradigm.openmldb.sdk.Common;
@@ -85,7 +84,7 @@ public class PreparedStatementImpl extends PreparedStatement  {
     }
 
     @Override
-    public SQLResultSet executeQuery() throws SQLException {
+    public java.sql.ResultSet executeQuery() throws SQLException {
         checkClosed();
         checkExecutorClosed();
         dataBuild();
@@ -100,7 +99,7 @@ public class PreparedStatementImpl extends PreparedStatement  {
             throw new SQLException("execute sql fail, msg: " + msg);
         }
         status.delete();
-        SQLResultSet rs = new SQLResultSet(resultSet);
+        java.sql.ResultSet rs = new SQLResultSet(resultSet);
         if (closeOnComplete) {
             closed = true;
         }

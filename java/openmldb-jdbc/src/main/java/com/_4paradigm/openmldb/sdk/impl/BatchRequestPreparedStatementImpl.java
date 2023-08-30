@@ -20,7 +20,6 @@ import com._4paradigm.openmldb.ColumnIndicesSet;
 import com._4paradigm.openmldb.SQLRequestRowBatch;
 import com._4paradigm.openmldb.SQLRouter;
 import com._4paradigm.openmldb.Status;
-import com._4paradigm.openmldb.jdbc.SQLResultSet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

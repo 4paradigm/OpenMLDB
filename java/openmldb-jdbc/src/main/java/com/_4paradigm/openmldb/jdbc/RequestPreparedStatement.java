@@ -18,6 +18,7 @@ package com._4paradigm.openmldb.jdbc;
 
 import com._4paradigm.openmldb.*;
 import com._4paradigm.openmldb.sdk.Common;
+import com._4paradigm.openmldb.sdk.impl.SQLResultSet;
 
 import java.io.InputStream;
 import java.io.Reader;

@@ -39,7 +39,6 @@ import com._4paradigm.openmldb.common.Pair;
 import com._4paradigm.openmldb.common.zk.ZKClient;
 import com._4paradigm.openmldb.common.zk.ZKConfig;
 import com._4paradigm.openmldb.jdbc.CallablePreparedStatement;
-import com._4paradigm.openmldb.jdbc.SQLResultSet;
 import com._4paradigm.openmldb.proto.NS;
 import com._4paradigm.openmldb.sdk.*;
 import com._4paradigm.openmldb.sql_router_sdk;
