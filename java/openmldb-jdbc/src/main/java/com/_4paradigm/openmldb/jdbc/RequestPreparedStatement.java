@@ -97,7 +97,7 @@ public class RequestPreparedStatement implements java.sql.PreparedStatement {
     }
 
     @Override
-    public SQLResultSet executeQuery() throws SQLException {
+    public ResultSet executeQuery() throws SQLException {
         checkClosed();
         checkExecutorClosed();
         dataBuild();
@@ -112,7 +112,7 @@ public class RequestPreparedStatement implements java.sql.PreparedStatement {
             throw new SQLException("execute sql fail, msg: " + msg);
         }
         status.delete();
-        SQLResultSet rs = new SQLResultSet(resultSet);
+        ResultSet rs = new SQLResultSet(resultSet);
         if (closeOnComplete) {
             closed = true;
         }

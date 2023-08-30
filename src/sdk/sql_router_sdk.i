@@ -29,28 +29,28 @@
 %include "swig_library/java/protobuf.i"
 %protobuf(openmldb::nameserver::TableInfo, com._4paradigm.openmldb.proto.NS.TableInfo);
 
-%typemap(jni) openmldb::sdk::NIOBUFFER "jobject"
-%typemap(jtype) openmldb::sdk::NIOBUFFER "java.nio.ByteBuffer"
-%typemap(jstype) openmldb::sdk::NIOBUFFER "java.nio.ByteBuffer"
+%typemap(jni) hybridse::sdk::NIOBUFFER "jobject"
+%typemap(jtype) hybridse::sdk::NIOBUFFER "java.nio.ByteBuffer"
+%typemap(jstype) hybridse::sdk::NIOBUFFER "java.nio.ByteBuffer"
 %typemap(javain,
-  pre="  assert $javainput.isDirect() : \"Buffer must be allocated direct.\";") openmldb::sdk::NIOBUFFER "$javainput"
-%typemap(javaout) openmldb::sdk::NIOBUFFER {
+  pre="  assert $javainput.isDirect() : \"Buffer must be allocated direct.\";") hybridse::sdk::NIOBUFFER "$javainput"
+%typemap(javaout) hybridse::sdk::NIOBUFFER {
   return $jnicall;
 }
-%typemap(in) openmldb::sdk::NIOBUFFER {
+%typemap(in) hybridse::sdk::NIOBUFFER {
   $1 = (unsigned char *) JCALL1(GetDirectBufferAddress, jenv, $input);
   if ($1 == NULL) {
     SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException, "Unable to get address of a java.nio.ByteBuffer direct byte buffer. Buffer must be a direct buffer and not a non-direct buffer.");
   }
 }
-%typemap(memberin) openmldb::sdk::NIOBUFFER {
+%typemap(memberin) hybridse::sdk::NIOBUFFER {
   if ($input) {
     $1 = $input;
   } else {
     $1 = 0;
   }
 }
-%typemap(freearg) openmldb::sdk::NIOBUFFER ""
+%typemap(freearg) hybridse::sdk::NIOBUFFER ""
 
 #endif
 

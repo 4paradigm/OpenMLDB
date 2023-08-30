@@ -22,6 +22,7 @@ import org.joda.time.DateTime;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.sql.Date;
 import java.util.List;
 
 public class RowView {
@@ -63,13 +64,16 @@ public class RowView {
 
 
     public boolean reset(ByteBuffer row, int size) {
-        if (schema.size() == 0 || row == null || size <= CodecUtil.HEADER_LENGTH ||
-                row.getInt(CodecUtil.VERSION_LENGTH) != size) {
+        if (schema.size() == 0 || row == null || size <= CodecUtil.HEADER_LENGTH) {
             isValid = false;
             return false;
         }
         if (row.order() == ByteOrder.BIG_ENDIAN) {
             row = row.order(ByteOrder.LITTLE_ENDIAN);
+        }
+        if (row.getInt(CodecUtil.VERSION_LENGTH) != size) {
+            isValid = false;
+            return false;
         }
         this.row = row;
         this.size = size;
@@ -151,6 +155,10 @@ public class RowView {
 
     public Double getDouble(int idx) throws Exception {
         return (Double) getValue(row, idx, DataType.kDouble);
+    }
+
+    public Date getDate(int idx) throws Exception {
+        return (Date) getValue(row, idx, DataType.kDate);
     }
 
     public Object getIntegersNum(ByteBuffer row, int idx, DataType type) throws Exception {

@@ -18,10 +18,8 @@ package com._4paradigm.openmldb.sdk.impl;
 
 import com._4paradigm.openmldb.*;
 
-import com._4paradigm.openmldb.common.codec.CodecUtil;
 import com._4paradigm.openmldb.common.codec.FlexibleRowBuilder;
 import com._4paradigm.openmldb.jdbc.CallablePreparedStatement;
-import com._4paradigm.openmldb.jdbc.SQLResultSet;
 import com._4paradigm.openmldb.sdk.QueryFuture;
 
 import java.nio.ByteBuffer;
@@ -58,7 +56,7 @@ public class BatchCallablePreparedStatementImpl extends CallablePreparedStatemen
     }
 
     @Override
-    public SQLResultSet executeQuery() throws SQLException {
+    public java.sql.ResultSet executeQuery() throws SQLException {
         checkClosed();
         checkExecutorClosed();
         build();
@@ -74,7 +72,12 @@ public class BatchCallablePreparedStatementImpl extends CallablePreparedStatemen
             throw new SQLException("execute sql fail: " + msg);
         }
         status.delete();
-        SQLResultSet rs = new SQLResultSet(resultSet, deployment.getOutputSchema());
+        int totalRows = resultSet.Size();
+        int dataLength = resultSet.GetDataLength();
+        ByteBuffer dataBuf = ByteBuffer.allocateDirect(dataLength).order(ByteOrder.LITTLE_ENDIAN);
+        resultSet.CopyTo(dataBuf);
+        resultSet.delete();
+        java.sql.ResultSet rs = new CallableDirectResultSet(dataBuf, totalRows, deployment.getOutputSchema(), deployment.getOutputMetaData());
         if (closeOnComplete) {
             closed = true;
         }
@@ -100,7 +103,7 @@ public class BatchCallablePreparedStatementImpl extends CallablePreparedStatemen
         }
         status.delete();
         clearParameters();
-        return new QueryFuture(queryFuture, deployment.getOutputSchema());
+        return new QueryFuture(queryFuture, deployment.getOutputSchema(), deployment.getOutputMetaData());
     }
 
     @Override

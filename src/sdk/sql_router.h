@@ -37,8 +37,6 @@
 namespace openmldb {
 namespace sdk {
 
-typedef unsigned char *NIOBUFFER;
-
 struct BasicRouterOptions {
     virtual ~BasicRouterOptions() = default;
     bool enable_debug = false;
@@ -166,7 +164,7 @@ class SQLRouter {
                                                                     hybridse::sdk::Status* status) = 0;
 
     virtual std::shared_ptr<hybridse::sdk::ResultSet> CallProcedure(const std::string& db, const std::string& sp_name,
-            openmldb::sdk::NIOBUFFER buf, int len, const std::string& router_col,
+            hybridse::sdk::NIOBUFFER buf, int len, const std::string& router_col,
             hybridse::sdk::Status* status) = 0;
 
     virtual std::shared_ptr<hybridse::sdk::ResultSet> CallSQLBatchRequestProcedure(
@@ -174,8 +172,8 @@ class SQLRouter {
         hybridse::sdk::Status* status) = 0;
 
     virtual std::shared_ptr<hybridse::sdk::ResultSet> CallSQLBatchRequestProcedure(
-        const std::string& db, const std::string& sp_name, openmldb::sdk::NIOBUFFER meta, int meta_len,
-        openmldb::sdk::NIOBUFFER buf, int len,
+        const std::string& db, const std::string& sp_name, hybridse::sdk::NIOBUFFER meta, int meta_len,
+        hybridse::sdk::NIOBUFFER buf, int len,
         hybridse::sdk::Status* status) = 0;
 
     virtual std::shared_ptr<hybridse::sdk::ProcedureInfo> ShowProcedure(const std::string& db,
@@ -188,7 +186,7 @@ class SQLRouter {
                                                                       hybridse::sdk::Status* status) = 0;
 
     virtual std::shared_ptr<openmldb::sdk::QueryFuture> CallProcedure(const std::string& db, const std::string& sp_name,
-            int64_t timeout_ms, openmldb::sdk::NIOBUFFER buf, int len,
+            int64_t timeout_ms, hybridse::sdk::NIOBUFFER buf, int len,
             const std::string& router_col, hybridse::sdk::Status* status) = 0;
 
     virtual std::shared_ptr<openmldb::sdk::QueryFuture> CallSQLBatchRequestProcedure(
@@ -197,8 +195,8 @@ class SQLRouter {
 
     virtual std::shared_ptr<openmldb::sdk::QueryFuture> CallSQLBatchRequestProcedure(
         const std::string& db, const std::string& sp_name, int64_t timeout_ms,
-        openmldb::sdk::NIOBUFFER meta, int meta_len,
-        openmldb::sdk::NIOBUFFER buf, int len,
+        hybridse::sdk::NIOBUFFER meta, int meta_len,
+        hybridse::sdk::NIOBUFFER buf, int len,
         hybridse::sdk::Status* status) = 0;
 
     virtual std::shared_ptr<hybridse::sdk::Schema> GetTableSchema(const std::string& db,

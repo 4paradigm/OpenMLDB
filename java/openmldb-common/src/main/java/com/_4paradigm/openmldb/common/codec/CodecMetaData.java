@@ -31,7 +31,7 @@ public class CodecMetaData {
     private int baseFieldStartOffset = 0;
 
     public CodecMetaData(List<Common.ColumnDesc> schema) throws Exception  {
-        this(schema, 1);
+        this(schema, 1, true);
     }
 
     public CodecMetaData(List<Common.ColumnDesc> schema, boolean addOffsetHeader) throws Exception  {
@@ -39,10 +39,10 @@ public class CodecMetaData {
         calcSchemaOffset(addOffsetHeader);
     }
 
-    public CodecMetaData(List<Common.ColumnDesc> schema, int schemaVersion) throws Exception {
+    public CodecMetaData(List<Common.ColumnDesc> schema, int schemaVersion, boolean addOffsetHeader) throws Exception {
         this.schema = schema;
         this.schemaVersion = schemaVersion;
-        calcSchemaOffset(false);
+        calcSchemaOffset(addOffsetHeader);
     }
 
     private void calcSchemaOffset(boolean addOffsetHeader) throws Exception {

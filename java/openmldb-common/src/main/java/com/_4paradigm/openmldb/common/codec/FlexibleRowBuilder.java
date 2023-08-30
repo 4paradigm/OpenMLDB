@@ -46,11 +46,7 @@ public class FlexibleRowBuilder implements RowBuilder {
     private boolean allocDirect = false;
 
     public FlexibleRowBuilder(List<Common.ColumnDesc> schema) throws Exception {
-        this(new CodecMetaData(schema, 1));
-    }
-
-    public FlexibleRowBuilder(List<Common.ColumnDesc> schema, int schemaVersion) throws Exception {
-        this(new CodecMetaData(schema, schemaVersion));
+        this(new CodecMetaData(schema, 1, false));
     }
 
     public FlexibleRowBuilder(CodecMetaData metaData) {

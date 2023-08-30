@@ -1470,7 +1470,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::CallProcedure(const 
 }
 
 std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::CallProcedure(const std::string& db,
-        const std::string& sp_name, openmldb::sdk::NIOBUFFER buf, int len,
+        const std::string& sp_name, hybridse::sdk::NIOBUFFER buf, int len,
         const std::string& router_col, hybridse::sdk::Status* status) {
     if (buf == nullptr || len == 0) {
         SET_STATUS_AND_WARN(status, StatusCode::kCmdError, "invalid request row data");
@@ -1531,8 +1531,8 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::CallSQLBatchRequestP
 
 std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::CallSQLBatchRequestProcedure(
     const std::string& db, const std::string& sp_name,
-    openmldb::sdk::NIOBUFFER meta, int meta_len,
-    openmldb::sdk::NIOBUFFER buf, int len,
+    hybridse::sdk::NIOBUFFER meta, int meta_len,
+    hybridse::sdk::NIOBUFFER buf, int len,
     hybridse::sdk::Status* status) {
     RET_IF_NULL_AND_WARN(status, "output status is nullptr");
     if (meta == nullptr || meta_len == 0 || buf == nullptr || len == 0) {
@@ -2199,7 +2199,7 @@ std::shared_ptr<openmldb::sdk::QueryFuture> SQLClusterRouter::CallProcedure(cons
 }
 
 std::shared_ptr<openmldb::sdk::QueryFuture> SQLClusterRouter::CallProcedure(const std::string& db,
-        const std::string& sp_name, int64_t timeout_ms, openmldb::sdk::NIOBUFFER buf, int len,
+        const std::string& sp_name, int64_t timeout_ms, hybridse::sdk::NIOBUFFER buf, int len,
         const std::string& router_col, hybridse::sdk::Status* status) {
     if (buf == nullptr || len == 0) {
         SET_STATUS_AND_WARN(status, StatusCode::kCmdError, "invalid request row data");
@@ -2262,8 +2262,8 @@ std::shared_ptr<openmldb::sdk::QueryFuture> SQLClusterRouter::CallSQLBatchReques
 
 std::shared_ptr<openmldb::sdk::QueryFuture> SQLClusterRouter::CallSQLBatchRequestProcedure(
     const std::string& db, const std::string& sp_name, int64_t timeout_ms,
-    openmldb::sdk::NIOBUFFER meta, int meta_len,
-    openmldb::sdk::NIOBUFFER buf, int len,
+    hybridse::sdk::NIOBUFFER meta, int meta_len,
+    hybridse::sdk::NIOBUFFER buf, int len,
     hybridse::sdk::Status* status) {
     RET_IF_NULL_AND_WARN(status, "output status is nullptr");
     if (meta == nullptr || meta_len == 0 || buf == nullptr || len == 0) {

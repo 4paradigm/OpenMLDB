@@ -21,11 +21,12 @@ import com._4paradigm.openmldb.Status;
 import com._4paradigm.openmldb.common.codec.CodecUtil;
 import com._4paradigm.openmldb.common.codec.FlexibleRowBuilder;
 import com._4paradigm.openmldb.jdbc.CallablePreparedStatement;
-import com._4paradigm.openmldb.jdbc.SQLResultSet;
 import com._4paradigm.openmldb.jdbc.SQLResultSetMetaData;
 import com._4paradigm.openmldb.sdk.QueryFuture;
 
 import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.util.concurrent.TimeUnit;
@@ -41,7 +42,7 @@ public class CallablePreparedStatementImpl extends CallablePreparedStatement {
     }
 
     @Override
-    public SQLResultSet executeQuery() throws SQLException {
+    public ResultSet executeQuery() throws SQLException {
         checkClosed();
         checkExecutorClosed();
         if (!rowBuilder.build()) {
@@ -60,7 +61,12 @@ public class CallablePreparedStatementImpl extends CallablePreparedStatement {
             throw new SQLException("call procedure fail, msg: " + msg);
         }
         status.delete();
-        SQLResultSet rs = new SQLResultSet(resultSet, deployment.getOutputSchema());
+        int totalRows = resultSet.Size();
+        int dataLength = resultSet.GetDataLength();
+        ByteBuffer dataBuf = ByteBuffer.allocateDirect(dataLength).order(ByteOrder.LITTLE_ENDIAN);
+        resultSet.CopyTo(dataBuf);
+        resultSet.delete();
+        ResultSet rs = new CallableDirectResultSet(dataBuf, totalRows, deployment.getOutputSchema(), deployment.getOutputMetaData());
         clearParameters();
         if (closeOnComplete) {
             closed = true;
@@ -89,7 +95,7 @@ public class CallablePreparedStatementImpl extends CallablePreparedStatement {
         }
         status.delete();
         clearParameters();
-        return new QueryFuture(queryFuture, deployment.getOutputSchema());
+        return new QueryFuture(queryFuture, deployment.getOutputSchema(), deployment.getOutputMetaData());
     }
 
     @Override

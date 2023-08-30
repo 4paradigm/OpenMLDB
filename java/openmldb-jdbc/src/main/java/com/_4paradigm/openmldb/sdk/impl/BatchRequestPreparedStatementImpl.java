@@ -24,6 +24,7 @@ import com._4paradigm.openmldb.jdbc.SQLResultSet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
 
@@ -48,7 +49,7 @@ public class BatchRequestPreparedStatementImpl extends RequestPreparedStatementI
     }
 
     @Override
-    public SQLResultSet executeQuery() throws SQLException {
+    public ResultSet executeQuery() throws SQLException {
         checkClosed();
         checkExecutorClosed();
         Status status = new Status();
@@ -63,7 +64,7 @@ public class BatchRequestPreparedStatementImpl extends RequestPreparedStatementI
             throw new SQLException("execute sql fail: " + msg);
         }
         status.delete();
-        SQLResultSet rs = new SQLResultSet(resultSet);
+        ResultSet rs = new SQLResultSet(resultSet);
         if (closeOnComplete) {
             closed = true;
         }

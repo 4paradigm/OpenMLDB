@@ -96,7 +96,7 @@ class ResultSetSQL : public ::hybridse::sdk::ResultSet {
 
     int32_t Size() override { return result_set_base_->Size(); }
 
-    void CopyTo(void* buf) override { return result_set_base_->CopyTo(buf); }
+    void CopyTo(hybridse::sdk::NIOBUFFER buf) override { return result_set_base_->CopyTo(reinterpret_cast<void*>(buf)); }
 
     int32_t GetDataLength() override { return result_set_base_->GetDataLength(); }
 
@@ -217,7 +217,7 @@ class MultipleResultSetSQL : public ::hybridse::sdk::ResultSet {
 
     // TODO: dl239
     int32_t GetDataLength() override { return 0; }
-    void CopyTo(void* buf) override { }
+    void CopyTo(hybridse::sdk::NIOBUFFER buf) override { }
 
  private:
     std::vector<std::shared_ptr<ResultSetSQL>> result_set_list_;
@@ -270,7 +270,7 @@ class ReadableResultSetSQL : public ::hybridse::sdk::ResultSet {
     const bool GetAsString(uint32_t idx, std::string& val) override;
 
     int32_t GetDataLength() override { return rs_->GetDataLength(); }
-    void CopyTo(void* buf) override { rs_->CopyTo(buf); }
+    void CopyTo(hybridse::sdk::NIOBUFFER buf) override { rs_->CopyTo(buf); }
 
  private:
     std::shared_ptr<::hybridse::sdk::ResultSet> rs_;

@@ -17,11 +17,13 @@
 package com._4paradigm.openmldb.sdk;
 
 import com._4paradigm.openmldb.Status;
-import com._4paradigm.openmldb.jdbc.SQLResultSet;
-import com._4paradigm.openmldb.sdk.Schema;
+import com._4paradigm.openmldb.common.codec.CodecMetaData;
+import com._4paradigm.openmldb.sdk.impl.CallableDirectResultSet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
@@ -30,12 +32,13 @@ import java.util.concurrent.TimeoutException;
 public class QueryFuture implements Future<java.sql.ResultSet>{
     private static final Logger logger = LoggerFactory.getLogger(QueryFuture.class);
     com._4paradigm.openmldb.QueryFuture queryFuture;
-    private Schema schema;
+    Schema schema;
+    CodecMetaData metaData;
 
-
-    public QueryFuture(com._4paradigm.openmldb.QueryFuture queryFuture, Schema schema) {
+    public QueryFuture(com._4paradigm.openmldb.QueryFuture queryFuture, Schema schema, CodecMetaData metaData) {
         this.queryFuture = queryFuture;
         this.schema = schema;
+        this.metaData = metaData;
     }
 
     @Override
@@ -66,7 +69,12 @@ public class QueryFuture implements Future<java.sql.ResultSet>{
             throw new ExecutionException(new SqlException("call procedure failed: " + msg));
         }
         status.delete();
-        return new SQLResultSet(resultSet, queryFuture, schema);
+        int totalRows = resultSet.Size();
+        int dataLength = resultSet.GetDataLength();
+        ByteBuffer dataBuf = ByteBuffer.allocateDirect(dataLength).order(ByteOrder.LITTLE_ENDIAN);
+        resultSet.CopyTo(dataBuf);
+        resultSet.delete();
+        return new CallableDirectResultSet(dataBuf, totalRows, schema, metaData);
     }
 
     /**

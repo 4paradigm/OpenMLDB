@@ -151,7 +151,7 @@ class SQLClusterRouter : public SQLRouter {
                                                             hybridse::sdk::Status* status) override;
 
     std::shared_ptr<hybridse::sdk::ResultSet> CallProcedure(const std::string& db, const std::string& sp_name,
-            openmldb::sdk::NIOBUFFER buf, int len, const std::string& router_col,
+            hybridse::sdk::NIOBUFFER buf, int len, const std::string& router_col,
             hybridse::sdk::Status* status) override;
 
     std::shared_ptr<hybridse::sdk::ResultSet> CallSQLBatchRequestProcedure(
@@ -159,8 +159,8 @@ class SQLClusterRouter : public SQLRouter {
         hybridse::sdk::Status* status) override;
 
     std::shared_ptr<hybridse::sdk::ResultSet> CallSQLBatchRequestProcedure(
-        const std::string& db, const std::string& sp_name, openmldb::sdk::NIOBUFFER meta, int meta_len,
-        openmldb::sdk::NIOBUFFER buf, int len,
+        const std::string& db, const std::string& sp_name, hybridse::sdk::NIOBUFFER meta, int meta_len,
+        hybridse::sdk::NIOBUFFER buf, int len,
         hybridse::sdk::Status* status) override;
 
     std::shared_ptr<hybridse::sdk::ProcedureInfo> ShowProcedure(const std::string& db, const std::string& sp_name,
@@ -176,7 +176,7 @@ class SQLClusterRouter : public SQLRouter {
                                                               hybridse::sdk::Status* status) override;
 
     std::shared_ptr<openmldb::sdk::QueryFuture> CallProcedure(const std::string& db, const std::string& sp_name,
-            int64_t timeout_ms, openmldb::sdk::NIOBUFFER buf, int len,
+            int64_t timeout_ms, hybridse::sdk::NIOBUFFER buf, int len,
             const std::string& router_col, hybridse::sdk::Status* status) override;
 
     std::shared_ptr<openmldb::sdk::QueryFuture> CallSQLBatchRequestProcedure(
@@ -185,8 +185,8 @@ class SQLClusterRouter : public SQLRouter {
 
     std::shared_ptr<openmldb::sdk::QueryFuture> CallSQLBatchRequestProcedure(
         const std::string& db, const std::string& sp_name, int64_t timeout_ms,
-        openmldb::sdk::NIOBUFFER meta, int meta_len,
-        openmldb::sdk::NIOBUFFER buf, int len,
+        hybridse::sdk::NIOBUFFER meta, int meta_len,
+        hybridse::sdk::NIOBUFFER buf, int len,
         hybridse::sdk::Status* status) override;
 
     std::shared_ptr<::openmldb::client::TabletClient> GetTabletClient(const std::string& db, const std::string& sql,
