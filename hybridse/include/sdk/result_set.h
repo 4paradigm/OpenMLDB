@@ -235,6 +235,9 @@ class ResultSet {
     virtual bool IsNULL(int index) = 0;
 
     virtual int32_t Size() = 0;
+
+    virtual void CopyTo(void* buf) = 0;
+    virtual int32_t GetDataLength() = 0;
 };
 
 }  // namespace sdk
