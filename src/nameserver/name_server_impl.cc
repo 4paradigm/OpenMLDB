@@ -2182,9 +2182,9 @@ int NameServerImpl::SetPartitionInfo(TableInfo& table_info) {
     return 0;
 }
 
-int NameServerImpl::CreateTableOnTablet(const std::shared_ptr<::openmldb::nameserver::TableInfo>& table_info,
-                                        bool is_leader, std::map<uint32_t, std::vector<std::string>>& endpoint_map,
-                                        uint64_t term) {
+base::Status NameServerImpl::CreateTableOnTablet(const std::shared_ptr<::openmldb::nameserver::TableInfo>& table_info,
+                                        bool is_leader, uint64_t term,
+                                        std::map<uint32_t, std::vector<std::string>>* endpoint_map) {
     ::openmldb::type::CompressType compress_type = ::openmldb::type::CompressType::kNoCompress;
     if (table_info->compress_type() == ::openmldb::type::kSnappy) {
         compress_type = ::openmldb::type::CompressType::kSnappy;
@@ -2201,18 +2201,16 @@ int NameServerImpl::CreateTableOnTablet(const std::shared_ptr<::openmldb::namese
         table_meta.set_key_entry_max_height(table_info->key_entry_max_height());
     }
     for (int idx = 0; idx < table_info->column_desc_size(); idx++) {
-        ::openmldb::common::ColumnDesc* column_desc = table_meta.add_column_desc();
-        column_desc->CopyFrom(table_info->column_desc(idx));
+        table_meta.add_column_desc()->CopyFrom(table_info->column_desc(idx));
     }
     for (int idx = 0; idx < table_info->column_key_size(); idx++) {
-        ::openmldb::common::ColumnKey* column_key = table_meta.add_column_key();
-        column_key->CopyFrom(table_info->column_key(idx));
+        table_meta.add_column_key()->CopyFrom(table_info->column_key(idx));
     }
     for (const auto& table_partition : table_info->table_partition()) {
-        ::openmldb::common::TablePartition* partition = table_meta.add_table_partition();
+        auto partition = table_meta.add_table_partition();
         partition->set_pid(table_partition.pid());
         for (const auto& partition_meta : table_partition.partition_meta()) {
-            ::openmldb::common::PartitionMeta* meta = partition->add_partition_meta();
+            auto meta = partition->add_partition_meta();
             meta->set_endpoint(partition_meta.endpoint());
             meta->set_is_leader(partition_meta.is_leader());
             meta->set_is_alive(true);
@@ -2229,36 +2227,37 @@ int NameServerImpl::CreateTableOnTablet(const std::shared_ptr<::openmldb::namese
             std::string endpoint = table_info->table_partition(idx).partition_meta(meta_idx).endpoint();
             auto tablet_ptr = GetTablet(endpoint);
             if (!tablet_ptr) {
-                PDLOG(WARNING, "endpoint[%s] can not find client", endpoint.c_str());
-                return -1;
+                PDLOG(WARNING, "endpoint[%s] cannot find client", endpoint.c_str());
+                return {base::ReturnCode::kServerConnError, absl::StrCat("endpoint ", endpoint, " cannot find client")};
             }
             if (is_leader) {
-                ::openmldb::nameserver::TablePartition* table_partition = table_info->mutable_table_partition(idx);
-                ::openmldb::nameserver::TermPair* term_pair = table_partition->add_term_offset();
+                auto table_partition = table_info->mutable_table_partition(idx);
+                auto term_pair = table_partition->add_term_offset();
                 term_pair->set_term(term);
                 term_pair->set_offset(0);
                 table_meta.set_mode(::openmldb::api::TableMode::kTableLeader);
                 table_meta.set_term(term);
-                for (const auto& e : endpoint_map[pid]) {
+                for (const auto& e : (*endpoint_map)[pid]) {
                     table_meta.add_replicas(e);
                 }
             } else {
-                if (endpoint_map.find(pid) == endpoint_map.end()) {
-                    endpoint_map.insert(std::make_pair(pid, std::vector<std::string>()));
+                auto iter = endpoint_map->find(pid);
+                if (iter == endpoint_map->end()) {
+                    iter = endpoint_map->emplace(pid, std::vector<std::string>()).first;
                 }
-                endpoint_map[pid].push_back(endpoint);
+                iter->second.push_back(endpoint);
                 table_meta.set_mode(::openmldb::api::TableMode::kTableFollower);
             }
-            if (!tablet_ptr->client_->CreateTable(table_meta)) {
-                PDLOG(WARNING, "create table failed. tid[%u] pid[%u] endpoint[%s]", table_info->tid(), pid,
-                      endpoint.c_str());
-                return -1;
+            if (auto status = tablet_ptr->client_->CreateTable(table_meta); !status.OK()) {
+                PDLOG(WARNING, "create table failed. tid[%u] pid[%u] endpoint[%s] msg[%s]",
+                        table_info->tid(), pid, endpoint.c_str(), status.GetMsg().c_str());
+                return status;
             }
             PDLOG(INFO, "create table success. tid[%u] pid[%u] endpoint[%s] idx[%d]", table_info->tid(), pid,
                   endpoint.c_str(), idx);
         }
     }
-    return 0;
+    return {};
 }
 
 int NameServerImpl::DropTableOnTablet(std::shared_ptr<::openmldb::nameserver::TableInfo> table_info) {
@@ -3758,11 +3757,18 @@ void NameServerImpl::CreateTableInternel(GeneralResponse& response,
                                          std::shared_ptr<::openmldb::api::TaskInfo> task_ptr) {
     std::map<uint32_t, std::vector<std::string>> endpoint_map;
     do {
-        if (CreateTableOnTablet(table_info, false, endpoint_map, cur_term) < 0 ||
-            CreateTableOnTablet(table_info, true, endpoint_map, cur_term) < 0) {
-            response.set_code(::openmldb::base::ReturnCode::kCreateTableFailedOnTablet);
-            response.set_msg("create table failed on tablet");
-            PDLOG(WARNING, "create table failed. name[%s] tid[%u]", table_info->name().c_str(), tid);
+        auto status = CreateTableOnTablet(table_info, false, cur_term, &endpoint_map);
+        if (!status.OK()) {
+            base::SetResponseStatus(status, &response);
+            PDLOG(WARNING, "create table failed. name[%s] tid[%u] msg[%s]",
+                    table_info->name().c_str(), tid, status.GetMsg().c_str());
+            break;
+        }
+        status = CreateTableOnTablet(table_info, true, cur_term, &endpoint_map);
+        if (!status.OK()) {
+            base::SetResponseStatus(status, &response);
+            PDLOG(WARNING, "create table failed. name[%s] tid[%u] msg[%s]",
+                    table_info->name().c_str(), tid, status.GetMsg().c_str());
             break;
         }
         if (!IsClusterMode()) {

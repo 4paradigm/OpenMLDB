@@ -46,7 +46,7 @@ class IndexUtil {
 
     static base::Status CheckUnique(const PBIndex& index);
 
-    static bool CheckTTL(const ::openmldb::common::TTLSt& ttl);
+    static base::Status CheckTTL(const ::openmldb::common::TTLSt& ttl);
 
     static bool AddDefaultIndex(openmldb::nameserver::TableInfo* table_info);
 
