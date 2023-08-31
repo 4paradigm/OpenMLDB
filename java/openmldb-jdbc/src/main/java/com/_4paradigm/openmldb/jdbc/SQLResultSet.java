@@ -10,7 +10,7 @@ import java.sql.*;
 import java.util.Calendar;
 import java.util.Map;
 
-public abstract class OpenMLDBResultSet implements ResultSet {
+public abstract class SQLResultSet implements ResultSet {
     protected boolean closed = false;
     protected int rowNum = 0;
     protected int totalRows = 0;

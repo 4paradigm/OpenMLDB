@@ -22,7 +22,7 @@ import com._4paradigm.openmldb.sdk.Schema;
 import java.nio.ByteBuffer;
 import java.sql.*;
 
-public abstract class DirectResultSet extends OpenMLDBResultSet {
+public abstract class DirectResultSet extends SQLResultSet {
 
     protected ByteBuffer buf;
     protected RowView rowView;

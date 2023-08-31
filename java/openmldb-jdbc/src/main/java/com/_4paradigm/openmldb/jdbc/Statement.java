@@ -1,7 +1,7 @@
 package com._4paradigm.openmldb.jdbc;
 import com._4paradigm.openmldb.SQLRouter;
 import com._4paradigm.openmldb.Status;
-import com._4paradigm.openmldb.sdk.impl.SQLResultSet;
+import com._4paradigm.openmldb.sdk.impl.NativeResultSet;
 
 import java.sql.*;
 
@@ -37,7 +37,7 @@ public class Statement implements java.sql.Statement {
         if (resultSet == null) {
             throw new SQLException("no result set");
         }
-        return new SQLResultSet(resultSet);
+        return new NativeResultSet(resultSet);
     }
 
     // TODO(hw): why return sqlresultset?
@@ -52,7 +52,7 @@ public class Statement implements java.sql.Statement {
             throw new SQLException("executeSQL fail: " + msg);
         }
         status.delete();
-        return new SQLResultSet(resultSet);
+        return new NativeResultSet(resultSet);
     }
 
     @Override

@@ -20,10 +20,10 @@ import com._4paradigm.openmldb.ColumnIndicesSet;
 import com._4paradigm.openmldb.SQLRequestRowBatch;
 import com._4paradigm.openmldb.SQLRouter;
 import com._4paradigm.openmldb.Status;
+import com._4paradigm.openmldb.jdbc.SQLResultSet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
 
@@ -48,7 +48,7 @@ public class BatchRequestPreparedStatementImpl extends RequestPreparedStatementI
     }
 
     @Override
-    public ResultSet executeQuery() throws SQLException {
+    public SQLResultSet executeQuery() throws SQLException {
         checkClosed();
         checkExecutorClosed();
         Status status = new Status();
@@ -63,7 +63,7 @@ public class BatchRequestPreparedStatementImpl extends RequestPreparedStatementI
             throw new SQLException("execute sql fail: " + msg);
         }
         status.delete();
-        ResultSet rs = new SQLResultSet(resultSet);
+        SQLResultSet rs = new NativeResultSet(resultSet);
         if (closeOnComplete) {
             closed = true;
         }

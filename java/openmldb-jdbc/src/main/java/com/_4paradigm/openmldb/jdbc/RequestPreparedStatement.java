@@ -18,7 +18,7 @@ package com._4paradigm.openmldb.jdbc;
 
 import com._4paradigm.openmldb.*;
 import com._4paradigm.openmldb.sdk.Common;
-import com._4paradigm.openmldb.sdk.impl.SQLResultSet;
+import com._4paradigm.openmldb.sdk.impl.NativeResultSet;
 
 import java.io.InputStream;
 import java.io.Reader;
@@ -98,7 +98,7 @@ public class RequestPreparedStatement implements java.sql.PreparedStatement {
     }
 
     @Override
-    public ResultSet executeQuery() throws SQLException {
+    public SQLResultSet executeQuery() throws SQLException {
         checkClosed();
         checkExecutorClosed();
         dataBuild();
@@ -113,7 +113,7 @@ public class RequestPreparedStatement implements java.sql.PreparedStatement {
             throw new SQLException("execute sql fail, msg: " + msg);
         }
         status.delete();
-        ResultSet rs = new SQLResultSet(resultSet);
+        SQLResultSet rs = new NativeResultSet(resultSet);
         if (closeOnComplete) {
             closed = true;
         }

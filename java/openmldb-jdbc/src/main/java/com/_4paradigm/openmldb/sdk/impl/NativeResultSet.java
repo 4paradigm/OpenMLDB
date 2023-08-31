@@ -16,14 +16,14 @@
 
 package com._4paradigm.openmldb.sdk.impl;
 
-import com._4paradigm.openmldb.jdbc.OpenMLDBResultSet;
+import com._4paradigm.openmldb.jdbc.SQLResultSet;
 import com._4paradigm.openmldb.sdk.Common;
 import java.sql.*;
 
-public class SQLResultSet extends OpenMLDBResultSet {
+public class NativeResultSet extends SQLResultSet {
     private com._4paradigm.openmldb.ResultSet resultSet;
 
-    public SQLResultSet(com._4paradigm.openmldb.ResultSet resultSet) {
+    public NativeResultSet(com._4paradigm.openmldb.ResultSet resultSet) {
         this.resultSet = resultSet;
         if (resultSet != null) {
             totalRows = resultSet.Size();

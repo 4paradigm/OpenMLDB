@@ -162,7 +162,7 @@ public class SqlClusterExecutor implements SqlExecutor {
             logger.error("executeSQL failed: {}", status.ToString());
         }
         status.delete();
-        return new SQLResultSet(rs);
+        return new NativeResultSet(rs);
     }
 
     @Override

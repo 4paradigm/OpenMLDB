@@ -24,7 +24,6 @@ import com._4paradigm.openmldb.sdk.Column;
 import com._4paradigm.openmldb.sdk.Schema;
 import com._4paradigm.openmldb.sdk.SdkOption;
 import com._4paradigm.openmldb.sdk.SqlExecutor;
-import com._4paradigm.openmldb.sdk.impl.SQLResultSet;
 import com._4paradigm.openmldb.sdk.impl.SqlClusterExecutor;
 
 import org.testng.Assert;
@@ -129,8 +128,7 @@ public class SQLRouterSmokeTest {
 
             // select
             String select1 = "select * from tsql1010;";
-            SQLResultSet rs1 = (SQLResultSet) router
-                    .executeSQL(dbname, select1);
+            SQLResultSet rs1 = (SQLResultSet) router .executeSQL(dbname, select1);
 
             Assert.assertEquals(2, rs1.GetInternalSchema().getColumnList().size());
             Assert.assertEquals(Types.BIGINT, rs1.GetInternalSchema().getColumnType(0));
@@ -151,8 +149,7 @@ public class SQLRouterSmokeTest {
             rs1.close();
 
             String select2 = "select col1 from tsql1010;";
-            SQLResultSet rs2 = (SQLResultSet) router
-                    .executeSQL(dbname, select2);
+            SQLResultSet rs2 = (SQLResultSet) router .executeSQL(dbname, select2);
             Assert.assertEquals(1, rs2.GetInternalSchema().size());
             Assert.assertEquals(Types.BIGINT, rs2.GetInternalSchema().getColumnType(0));
 
@@ -166,8 +163,7 @@ public class SQLRouterSmokeTest {
             rs2.close();
 
             String select3 = "select col2 from tsql1010;";
-            SQLResultSet rs3 = (SQLResultSet) router
-                    .executeSQL(dbname, select3);
+            SQLResultSet rs3 = (SQLResultSet) router .executeSQL(dbname, select3);
             Assert.assertEquals(1, rs3.GetInternalSchema().size());
             Assert.assertEquals(Types.VARCHAR, rs3.GetInternalSchema().getColumnType(0));
 
@@ -186,8 +182,7 @@ public class SQLRouterSmokeTest {
             {
                 query_statement.setString(1, "hi");
                 query_statement.setLong(2, 1003);
-                SQLResultSet rs4 = (SQLResultSet) query_statement
-                        .executeQuery();
+                SQLResultSet rs4 = (SQLResultSet) query_statement .executeQuery();
                 Assert.assertEquals(2, rs4.GetInternalSchema().size());
                 Assert.assertEquals(Types.BIGINT, rs4.GetInternalSchema().getColumnType(0));
                 Assert.assertEquals(Types.VARCHAR, rs4.GetInternalSchema().getColumnType(1));
@@ -201,8 +196,7 @@ public class SQLRouterSmokeTest {
             {
                 query_statement.setString(1, "hi");
                 query_statement.setLong(2, 1002);
-                SQLResultSet rs4 = (SQLResultSet) query_statement
-                        .executeQuery();
+                SQLResultSet rs4 = (SQLResultSet) query_statement .executeQuery();
                 Assert.assertEquals(2, rs4.GetInternalSchema().size());
                 Assert.assertEquals(Types.BIGINT, rs4.GetInternalSchema().getColumnType(0));
                 Assert.assertEquals(Types.VARCHAR, rs4.GetInternalSchema().getColumnType(1));
@@ -213,8 +207,7 @@ public class SQLRouterSmokeTest {
             {
                 query_statement.setString(1, "world");
                 query_statement.setLong(2, 1003);
-                SQLResultSet rs4 = (SQLResultSet) query_statement
-                        .executeQuery();
+                SQLResultSet rs4 = (SQLResultSet) query_statement .executeQuery();
                 Assert.assertEquals(2, rs4.GetInternalSchema().size());
                 Assert.assertEquals(Types.BIGINT, rs4.GetInternalSchema().getColumnType(0));
                 Assert.assertEquals(Types.VARCHAR, rs4.GetInternalSchema().getColumnType(1));
@@ -228,8 +221,7 @@ public class SQLRouterSmokeTest {
             {
                 query_statement.setString(1, "hello");
                 query_statement.setLong(2, 1003);
-                SQLResultSet rs4 = (SQLResultSet) query_statement
-                        .executeQuery();
+                SQLResultSet rs4 = (SQLResultSet) query_statement .executeQuery();
                 Assert.assertEquals(2, rs4.GetInternalSchema().size());
                 Assert.assertEquals(Types.BIGINT, rs4.GetInternalSchema().getColumnType(0));
                 Assert.assertEquals(Types.VARCHAR, rs4.GetInternalSchema().getColumnType(1));
@@ -243,8 +235,7 @@ public class SQLRouterSmokeTest {
             {
                 query_statement.setString(1, "word");
                 query_statement.setLong(2, 1003);
-                SQLResultSet rs4 = (SQLResultSet) query_statement
-                        .executeQuery();
+                SQLResultSet rs4 = (SQLResultSet) query_statement .executeQuery();
                 Assert.assertEquals(2, rs4.GetInternalSchema().size());
                 Assert.assertEquals(Types.BIGINT, rs4.GetInternalSchema().getColumnType(0));
                 Assert.assertEquals(Types.VARCHAR, rs4.GetInternalSchema().getColumnType(1));
@@ -285,8 +276,7 @@ public class SQLRouterSmokeTest {
             // missing 2nd parameter
             {
                 query_statement.setString(1, "hi");
-                SQLResultSet rs4 = (SQLResultSet) query_statement
-                        .executeQuery();
+                SQLResultSet rs4 = (SQLResultSet) query_statement .executeQuery();
                 Assert.fail("executeQuery is expected to throw exception");
                 rs4.close();
             }
@@ -427,8 +417,7 @@ public class SQLRouterSmokeTest {
             Assert.assertTrue(ok);
             // select
             String select1 = "select * from tsql1010;";
-            SQLResultSet rs1 = (SQLResultSet) router
-                    .executeSQL(dbname, select1);
+            SQLResultSet rs1 = (SQLResultSet) router .executeSQL(dbname, select1);
             Assert.assertEquals(5, rs1.GetInternalSchema().size());
             Assert.assertEquals(Types.BIGINT, rs1.GetInternalSchema().getColumnType(0));
             Assert.assertEquals(Types.DATE, rs1.GetInternalSchema().getColumnType(1));
@@ -452,8 +441,7 @@ public class SQLRouterSmokeTest {
             rs1.close();
 
             String select2 = "select col1 from tsql1010;";
-            SQLResultSet rs2 = (SQLResultSet) router
-                    .executeSQL(dbname, select2);
+            SQLResultSet rs2 = (SQLResultSet) router .executeSQL(dbname, select2);
             Assert.assertEquals(1, rs2.GetInternalSchema().size());
             Assert.assertEquals(Types.BIGINT, rs2.GetInternalSchema().getColumnType(0));
             rs2.close();
@@ -537,8 +525,7 @@ public class SQLRouterSmokeTest {
             impl.executeBatch();
             Assert.assertTrue(ok);
             String select1 = "select * from tsql1010;";
-            SQLResultSet rs1 = (SQLResultSet) router
-                    .executeSQL(dbname, select1);
+            SQLResultSet rs1 = (SQLResultSet) router .executeSQL(dbname, select1);
             Assert.assertEquals(6, rs1.GetInternalSchema().size());
             rs1.close();
             i++;
@@ -584,8 +571,7 @@ public class SQLRouterSmokeTest {
             Assert.assertEquals(result, expected);
 
             String select2 = "select * from tsql1010;";
-            SQLResultSet rs2 = (SQLResultSet) router
-                    .executeSQL(dbname, select1);
+            SQLResultSet rs2 = (SQLResultSet) router .executeSQL(dbname, select1);
             Assert.assertEquals(6, rs2.GetInternalSchema().size());
             int recordCnt = 0;
             while (rs2.next()) {

@@ -20,6 +20,7 @@ import com._4paradigm.openmldb.*;
 
 import com._4paradigm.openmldb.common.codec.FlexibleRowBuilder;
 import com._4paradigm.openmldb.jdbc.CallablePreparedStatement;
+import com._4paradigm.openmldb.jdbc.SQLResultSet;
 import com._4paradigm.openmldb.sdk.QueryFuture;
 
 import java.nio.ByteBuffer;
@@ -56,7 +57,7 @@ public class BatchCallablePreparedStatementImpl extends CallablePreparedStatemen
     }
 
     @Override
-    public java.sql.ResultSet executeQuery() throws SQLException {
+    public SQLResultSet executeQuery() throws SQLException {
         checkClosed();
         checkExecutorClosed();
         build();
@@ -77,7 +78,7 @@ public class BatchCallablePreparedStatementImpl extends CallablePreparedStatemen
         ByteBuffer dataBuf = ByteBuffer.allocateDirect(dataLength).order(ByteOrder.LITTLE_ENDIAN);
         resultSet.CopyTo(dataBuf);
         resultSet.delete();
-        java.sql.ResultSet rs = new CallableDirectResultSet(dataBuf, totalRows, deployment.getOutputSchema(), deployment.getOutputMetaData());
+        SQLResultSet rs = new CallableDirectResultSet(dataBuf, totalRows, deployment.getOutputSchema(), deployment.getOutputMetaData());
         if (closeOnComplete) {
             closed = true;
         }
