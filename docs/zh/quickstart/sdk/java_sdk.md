@@ -1,5 +1,7 @@
 # Java SDK
 
+Java SDK默认执行模式为在线。
+
 ## Java SDK 包安装
 
 - Linux 下 Java SDK 包安装
