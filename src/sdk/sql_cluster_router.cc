@@ -2410,9 +2410,13 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(const std
 
 std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(const std::string& db, const std::string& sql,
                                                                        hybridse::sdk::Status* status) {
-    // To avoid setting sync job timeout by user, we set offline_job_timeout to the biggest value
+    // To avoid small sync job timeout, we set offline_job_timeout to the biggest value, user can set >
+    // FLAGS_sync_job_timeout
     auto sync_job = IsSyncJob();
-    auto timeout = sync_job ? FLAGS_sync_job_timeout : GetJobTimeout();
+    auto timeout = GetJobTimeout();
+    if (sync_job && FLAGS_sync_job_timeout > timeout) {
+        timeout = FLAGS_sync_job_timeout;
+    }
     return ExecuteSQL(db, sql, IsOnlineMode(), sync_job, timeout, status);
 }
 
