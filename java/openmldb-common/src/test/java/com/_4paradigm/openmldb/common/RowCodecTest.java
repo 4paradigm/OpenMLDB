@@ -29,6 +29,7 @@ import org.testng.annotations.Test;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.sql.Timestamp;
+import java.sql.Date;
 import java.util.*;
 
 public class RowCodecTest {
@@ -571,7 +572,7 @@ public class RowCodecTest {
 
     @DataProvider(name = "columnNum")
     Object[] getColNum() {
-        return new Object[] {1, 5, 10, 20, 50, 100, 1000, 5000, 10000, 20000, 100000};
+        return new Object[] {1, 3, 5, 10, 20, 30, 50, 100, 200, 300, 500, 1000, 2000, 3000, 5000, 10000, 20000, 100000};
     }
 
     Object[] genData(List<ColumnDesc> schema) {
@@ -723,7 +724,12 @@ public class RowCodecTest {
             ByteBuffer buffer = builder.getValue();
             RowView rowView = new RowView(schema, buffer, buffer.capacity());
             for (Integer i : idx) {
-                checkData(rowView, i, schema.get(i).getDataType(), data[i]);
+                try {
+                    checkData(rowView, i, schema.get(i).getDataType(), data[i]);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    Assert.fail();
+                }
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -731,5 +737,207 @@ public class RowCodecTest {
         }
     }
 
+    @Test(dataProvider = "builder")
+    public void testSetMultiTimes(String builderName) {
+        try {
+            List<ColumnDesc> schema = new ArrayList<ColumnDesc>();
+            for (int i = 0; i < 10; i++) {
+                ColumnDesc.Builder col = ColumnDesc.newBuilder();
+                col.setName("col" + String.valueOf(i));
+                if (i % 2 == 0) {
+                    col.setDataType(DataType.kBigInt);
+                } else {
+                    col.setDataType(DataType.kVarchar);
+                }
+                schema.add(col.build());
+            }
+            List<Object> row = new ArrayList<>();
+            for (int i = 0; i < 10; i++) {
+                if (i % 2 == 0) {
+                    row.add(Long.valueOf(i));
+                } else {
+                    row.add(new String("aaa") + String.valueOf(i));
+                }
+            }
+            RowBuilder builder;
+            if (builderName.equals("classic")) {
+                ClassicRowBuilder cBuilder = new ClassicRowBuilder(schema);
+                int size = cBuilder.calTotalLength(row);
+                ByteBuffer buffer = ByteBuffer.allocate(size).order(ByteOrder.LITTLE_ENDIAN);
+                cBuilder.setBuffer(buffer, size);
+                builder = cBuilder;
+            } else {
+                builder = new FlexibleRowBuilder(schema);
+            }
+
+            for (int i = 0; i < 10; i++) {
+                if (i % 2 == 0) {
+                    Assert.assertTrue(builder.setBigInt(i, (Long)row.get(i)));
+                    if (builder instanceof ClassicRowBuilder) {
+                        Assert.assertFalse(builder.setBigInt(i, (Long)row.get(i)));
+                    } else {
+                        Assert.assertTrue(builder.setBigInt(i, (Long)row.get(i)));
+                    }
+                } else {
+                    Assert.assertTrue(builder.setString(i, (String)row.get(i)));
+                    Assert.assertFalse(builder.setString(i, (String)row.get(i)));
+                }
+            }
+            Assert.assertFalse(builder.appendSmallInt((short) 1));
+            Assert.assertTrue(builder.build());
+            ByteBuffer buffer = builder.getValue();
+
+            RowView rowView = new RowView(schema, buffer, buffer.capacity());
+            for (int i = 0; i < 10; i++) {
+                if (i % 2 == 0) {
+                    Assert.assertTrue(rowView.getBigInt(i) == i);
+                } else {
+                    Assert.assertEquals(new String("aaa") + String.valueOf(i), rowView.getString(i));
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            Assert.fail();
+        }
+    }
+
+    @Test
+    public void testSpecialCase() {
+        List<DataType> types = new ArrayList<>(Arrays.asList(
+                /* 0  */ DataType.kTimestamp,
+                /* 1  */ DataType.kBool,
+                /* 2  */ DataType.kSmallInt,
+                /* 3  */ DataType.kInt,
+                /* 4  */ DataType.kVarchar,
+                /* 5  */ DataType.kBool,
+                /* 6  */ DataType.kTimestamp,
+                /* 7  */ DataType.kFloat,
+                /* 8  */ DataType.kInt,
+                /* 9  */ DataType.kInt,
+                /* 10 */ DataType.kString,
+                /* 11 */ DataType.kVarchar,
+                /* 12 */ DataType.kInt,
+                /* 13 */ DataType.kTimestamp,
+                /* 14 */ DataType.kBool,
+                /* 15 */ DataType.kInt,
+                /* 16 */ DataType.kInt,
+                /* 17 */ DataType.kDouble,
+                /* 18 */ DataType.kInt,
+                /* 19 */ DataType.kDate,
+                /* 20 */ DataType.kDate,
+                /* 21 */ DataType.kSmallInt,
+                /* 22 */ DataType.kString,
+                /* 23 */ DataType.kDouble,
+                /* 24 */ DataType.kBigInt,
+                /* 25 */ DataType.kBigInt,
+                /* 26 */ DataType.kVarchar,
+                /* 27 */ DataType.kSmallInt,
+                /* 28 */ DataType.kBigInt,
+                /* 29 */ DataType.kDate,
+                /* 30 */ DataType.kDate,
+                /* 31 */ DataType.kDouble,
+                /* 32 */ DataType.kString,
+                /* 33 */ DataType.kFloat,
+                /* 34 */ DataType.kBool,
+                /* 35 */ DataType.kTimestamp,
+                /* 36 */ DataType.kBool,
+                /* 37 */ DataType.kFloat,
+                /* 38 */ DataType.kVarchar,
+                /* 39 */ DataType.kInt,
+                /* 40 */ DataType.kBool,
+                /* 41 */ DataType.kFloat,
+                /* 42 */ DataType.kInt,
+                /* 43 */ DataType.kDate,
+                /* 44 */ DataType.kTimestamp,
+                /* 45 */ DataType.kBigInt,
+                /* 46 */ DataType.kSmallInt,
+                /* 47 */ DataType.kInt,
+                /* 48 */ DataType.kVarchar,
+                /* 49 */ DataType.kBool
+        ));
+        List<ColumnDesc> schema = new ArrayList<ColumnDesc>();
+        List<Integer> idx = new ArrayList<>(Arrays.asList(
+                36, 3, 31, 8, 27, 10, 49, 44, 23, 20, 40, 28, 25, 19, 29, 24, 11, 21, 13, 30, 46, 26, 41, 1, 17,
+                5, 45, 37, 43, 0, 38, 33, 22, 35, 39, 12, 9, 16, 48, 6, 7, 34, 47, 42, 4, 15, 14, 2, 32, 18
+        ));
+        for (int i = 0; i < types.size(); i++) {
+            ColumnDesc.Builder col = ColumnDesc.newBuilder();
+            col.setName("col" + i);
+            DataType type = types.get(i);
+            col.setDataType(type);
+            schema.add(col.build());
+        }
+        Object[] data = {
+                /* 0  */ new Timestamp(System.currentTimeMillis()),
+                /* 1  */ true,
+                /* 2  */ null,
+                /* 3  */ null,
+                /* 4  */ "val10417",
+                /* 5  */ false,
+                /* 6  */ new Timestamp(System.currentTimeMillis()),
+                /* 7  */ 0.759f,
+                /* 8  */ 9053,
+                /* 9  */ null,
+                /* 10 */ "val10564",
+                /* 11 */ "",
+                /* 12 */ 5870,
+                /* 13 */ new Timestamp(System.currentTimeMillis()),
+                /* 14 */ false,
+                /* 15 */ 3155,
+                /* 16 */ 3022,
+                /* 17 */ 0.78d,
+                /* 18 */ 8100,
+                /* 19 */ null,
+                /* 20 */ new Date(2542, 3, 13),
+                /* 21 */ (short)8712,
+                /* 22 */ "val10187",
+                /* 23 */ 0.39d,
+                /* 24 */ (long)1941,
+                /* 25 */ 357l,
+                /* 26 */ "val10139",
+                /* 27 */ (short)376,
+                /* 28 */ null,
+                /* 29 */ new Date(3041, 3, 8),
+                /* 30 */ new Date(2782, 6, 22),
+                /* 31 */ 0.22d,
+                /* 32 */ "val10117",
+                /* 33 */ 0.19f,
+                /* 34 */ false,
+                /* 35 */ new Timestamp(System.currentTimeMillis()),
+                /* 36 */ false,
+                /* 37 */ 0.49f,
+                /* 38 */ "",
+                /* 39 */ 1117,
+                /* 40 */ false,
+                /* 41 */ 0.61f,
+                /* 42 */ 489,
+                /* 43 */ new Date(5282, 8, 8),
+                /* 44 */ null,
+                /* 45 */ null,
+                /* 46 */ null,
+                /* 47 */ null,
+                /* 48 */ "val10738",
+                /* 49 */ false
+        };
+        try {
+            FlexibleRowBuilder builder = new FlexibleRowBuilder(schema);
+            for (Integer i : idx) {
+                setData(builder, i, schema.get(i).getDataType(), data[i]);
+            }
+            Assert.assertTrue(builder.build());
+            ByteBuffer buffer = builder.getValue();
+            RowView rowView = new RowView(schema, buffer, buffer.capacity());
+            for (Integer i : idx) {
+                try {
+                    checkData(rowView, i, schema.get(i).getDataType(), data[i]);
+                } catch (Exception e) {
+                    Assert.fail();
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            Assert.fail();
+        }
+    }
 }
 

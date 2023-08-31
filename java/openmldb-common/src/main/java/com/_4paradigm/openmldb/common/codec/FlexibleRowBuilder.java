@@ -327,15 +327,18 @@ public class FlexibleRowBuilder implements RowBuilder {
         if (!checkType(idx, Type.DataType.kString) && !checkType(idx, Type.DataType.kVarchar)) {
             return false;
         }
+        if (settedValue.at(idx)) {
+            return false;
+        }
+        if (curStrIdx >= metaData.getStrIdxList().size()) {
+            return false;
+        }
         if (idx != metaData.getStrIdxList().get(curStrIdx)) {
             if (stringValueCache == null) {
                 stringValueCache = new TreeMap<>();
             }
             stringValueCache.put(idx, val);
         } else {
-            if (settedValue.at(idx)) {
-                return false;
-            }
             settedValue.atPut(idx, true);
             byte[] bytes = val.getBytes(CodecUtil.CHARSET);
             stringWriter.write(bytes);
@@ -369,6 +372,12 @@ public class FlexibleRowBuilder implements RowBuilder {
             return false;
         }
         int totalSize = strFieldStartOffset + strAddrLen + strTotalLen;
+        int curStrAddrSize = CodecUtil.getAddrLength(totalSize);
+        if (curStrAddrSize > strAddrSize) {
+            strAddrBuf = expandStrLenBuf(curStrAddrSize, settedStrCnt);
+            strAddrSize = curStrAddrSize;
+            totalSize = strFieldStartOffset + strAddrLen + strTotalLen;
+        }
         if (allocDirect) {
             result = ByteBuffer.allocateDirect(totalSize).order(ByteOrder.LITTLE_ENDIAN);
         } else {
