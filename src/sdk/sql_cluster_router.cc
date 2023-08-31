@@ -2504,9 +2504,10 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(
             }
             column_key.set_index_name(create_index_node->index_name_);
             if (ns_ptr->AddIndex(db_name, create_index_node->table_name_, column_key, nullptr, msg)) {
-                *status = {};
+                *status = {::hybridse::common::StatusCode::kOk,
+                    "AddIndex is an asynchronous job. Run 'SHOW JOBS FROM NAMESERVER' to see the job status"};
             } else {
-                SET_STATUS_AND_WARN(status, StatusCode::kCmdError, "ns add index failed");
+                SET_STATUS_AND_WARN(status, StatusCode::kCmdError, absl::StrCat("ns add index failed. msg: ", msg));
             }
             return {};
         }
