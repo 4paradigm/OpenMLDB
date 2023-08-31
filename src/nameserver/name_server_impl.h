@@ -682,6 +682,8 @@ class NameServerImpl : public NameServer {
 
     bool IsExistDataBase(const std::string& db);
 
+    bool IsExistActiveOp(const std::string& db, const std::string& name, api::OPType op_type);
+
  private:
     std::mutex mu_;
     Tablets tablets_;
