@@ -204,7 +204,7 @@ public class BatchCallablePreparedStatementImpl extends CallablePreparedStatemen
     @Override
     public void setTimestamp(int i, Timestamp timestamp) throws SQLException {
         int realIdx = i - 1;
-        if (!rowBuilder.setTimestamp(realIdx, timestamp.getTime())) {
+        if (!rowBuilder.setTimestamp(realIdx, timestamp)) {
             throw new SQLException("set timestamp failed. idx is " + i);
         }
     }

@@ -41,9 +41,6 @@ public abstract class DirectResultSet extends SQLResultSet {
     @Override
     public String getString(int i) throws SQLException {
         int realIdx = i - 1;
-        if (rowView.isNull(realIdx)) {
-            return null;
-        }
         try {
             return rowView.getString(realIdx);
         } catch (Exception e) {
@@ -63,8 +60,6 @@ public abstract class DirectResultSet extends SQLResultSet {
             throw new SQLException(e.getMessage());
         }
     }
-
-
 
     @Override
     public short getShort(int i) throws SQLException {
@@ -134,9 +129,6 @@ public abstract class DirectResultSet extends SQLResultSet {
     @Override
     public Date getDate(int i) throws SQLException {
         int realIdx = i - 1;
-        if (rowView.isNull(realIdx)) {
-            return null;
-        }
         try {
             return rowView.getDate(realIdx);
         } catch (Exception e) {
@@ -148,11 +140,8 @@ public abstract class DirectResultSet extends SQLResultSet {
     @Override
     public Timestamp getTimestamp(int i) throws SQLException {
         int realIdx = i - 1;
-        if (rowView.isNull(realIdx)) {
-            return null;
-        }
         try {
-            return new Timestamp(rowView.getTimestamp(realIdx));
+            return rowView.getTimestamp(realIdx);
         } catch (Exception e) {
             throw new SQLException(e.getMessage());
         }
@@ -161,9 +150,6 @@ public abstract class DirectResultSet extends SQLResultSet {
     @Override
     public String getNString(int i) throws SQLException {
         int realIdx = i - 1;
-        if (rowView.isNull(i - 1)) {
-            return null;
-        }
         try {
             return rowView.getString(realIdx);
         } catch (Exception e) {

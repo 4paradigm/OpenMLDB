@@ -201,13 +201,13 @@ public class ClassicRowBuilder implements RowBuilder {
     }
 
     @Override
-    public boolean appendTimestamp(long val) {
+    public boolean appendTimestamp(Timestamp val) {
         if (!check(DataType.kTimestamp)) {
             return false;
         }
         setField(cnt);
         buf.position(offsetVec.get(cnt));
-        buf.putLong(val);
+        buf.putLong(val.getTime());
         cnt++;
         return true;
     }
@@ -317,12 +317,10 @@ public class ClassicRowBuilder implements RowBuilder {
                     ok = builder.appendInt((Integer) column);
                     break;
                 case kTimestamp:
-                    if (column instanceof DateTime) {
-                        ok = builder.appendTimestamp(((DateTime) column).getMillis());
-                    }else if (column instanceof Timestamp) {
-                        ok = builder.appendTimestamp(((Timestamp) column).getTime());
-                    }else {
-                        ok = builder.appendTimestamp((Long) column);
+                    if (column instanceof Timestamp) {
+                        ok = builder.appendTimestamp((Timestamp) column);
+                    } else {
+                        ok = false;
                     }
                     break;
                 case kBigInt:
@@ -382,12 +380,10 @@ public class ClassicRowBuilder implements RowBuilder {
                     ok = builder.appendInt((Integer) column);
                     break;
                 case kTimestamp:
-                    if (column instanceof DateTime) {
-                        ok = builder.appendTimestamp(((DateTime) column).getMillis());
-                    }else if (column instanceof Timestamp) {
-                        ok = builder.appendTimestamp(((Timestamp) column).getTime());
+                    if (column instanceof Timestamp) {
+                        ok = builder.appendTimestamp((Timestamp)column);
                     }else {
-                        ok = builder.appendTimestamp((Long) column);
+                        ok = false;
                     }
                     break;
                 case kBigInt:
@@ -449,7 +445,7 @@ public class ClassicRowBuilder implements RowBuilder {
     }
 
     @Override
-    public boolean setTimestamp(int idx, long val) {
+    public boolean setTimestamp(int idx, Timestamp val) {
         if (idx != curPos) {
             return false;
         }

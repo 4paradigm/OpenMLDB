@@ -23,6 +23,7 @@ import org.joda.time.DateTime;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.sql.Date;
+import java.sql.Timestamp;
 import java.util.List;
 
 public class RowView {
@@ -137,8 +138,8 @@ public class RowView {
         return (Integer) getValue(row, idx, DataType.kInt);
     }
 
-    public Long getTimestamp(int idx) throws Exception {
-        return (Long) getValue(row, idx, DataType.kTimestamp);
+    public Timestamp getTimestamp(int idx) throws Exception {
+        return (Timestamp) getValue(row, idx, DataType.kTimestamp);
     }
 
     public Long getBigInt(int idx) throws Exception {
@@ -208,7 +209,13 @@ public class RowView {
         }
         ColumnDesc column = schema.get(idx);
         if (column.getDataType() != type) {
-            throw new Exception("data type mismatch");
+            if (type == DataType.kString || type == DataType.kVarchar) {
+                if (column.getDataType() != DataType.kString && column.getDataType() != DataType.kVarchar) {
+                    throw new Exception("data type mismatch");
+                }
+            } else {
+                throw new Exception("data type mismatch");
+            }
         }
         int rowSize = getSize(row);
         if (rowSize <= CodecUtil.HEADER_LENGTH) {
@@ -228,7 +235,7 @@ public class RowView {
         if (isNull(buf, index)) {
             return null;
         }
-        int offset = metaData.getOffsetVec().get(index);
+        int offset = metaData.getOffsetList().get(index);
         switch (dt) {
             case kBool:
                 return buf.get(offset) == BOOL_FALSE ? false: true;
@@ -243,7 +250,7 @@ public class RowView {
             case kDouble:
                 return buf.getDouble(offset);
             case kTimestamp:
-                return new DateTime(buf.getLong(offset));
+                return new Timestamp(buf.getLong(offset));
             case kDate:
                 int date = buf.getInt(offset);
                 return CodecUtil.dateIntToDate(date);

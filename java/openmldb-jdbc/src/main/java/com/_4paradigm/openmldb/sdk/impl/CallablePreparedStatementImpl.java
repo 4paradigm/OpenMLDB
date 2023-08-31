@@ -189,7 +189,7 @@ public class CallablePreparedStatementImpl extends CallablePreparedStatement {
         if (realIdx == routerCol) {
             routerValue = String.valueOf(timestamp.getTime());
         }
-        if (!rowBuilder.setTimestamp(realIdx, timestamp.getTime())) {
+        if (!rowBuilder.setTimestamp(realIdx, timestamp)) {
             throw new SQLException("set timestamp failed. idx is " + i);
         }
     }

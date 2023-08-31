@@ -25,7 +25,8 @@ import java.util.List;
 public class CodecMetaData {
     private List<Common.ColumnDesc> schema;
     private int schemaVersion = 1;
-    List<Integer> offsetVec = new ArrayList<>();
+    List<Integer> offsetList = new ArrayList<>();
+    List<Integer> strIdxList = new ArrayList<>();
     private int strFieldCnt = 0;
     private int strFieldStartOffset = 0;
     private int baseFieldStartOffset = 0;
@@ -54,16 +55,17 @@ public class CodecMetaData {
         for (int idx = 0; idx < schema.size(); idx++) {
             Common.ColumnDesc column = schema.get(idx);
             if (column.getDataType() == Type.DataType.kVarchar || column.getDataType() == Type.DataType.kString) {
-                offsetVec.add(strFieldCnt);
+                offsetList.add(strFieldCnt);
                 strFieldCnt++;
+                strIdxList.add(idx);
             } else {
                 if (CodecUtil.TYPE_SIZE_MAP.get(column.getDataType()) == null) {
                     throw new Exception("type is not supported");
                 } else {
                     if (addOffsetHeader) {
-                        offsetVec.add(baseOffset + baseFieldStartOffset);
+                        offsetList.add(baseOffset + baseFieldStartOffset);
                     } else {
-                        offsetVec.add(baseOffset);
+                        offsetList.add(baseOffset);
                     }
                     baseOffset += CodecUtil.TYPE_SIZE_MAP.get(column.getDataType());
                 }
@@ -80,8 +82,8 @@ public class CodecMetaData {
         return schemaVersion;
     }
 
-    public List<Integer> getOffsetVec() {
-        return offsetVec;
+    public List<Integer> getOffsetList() {
+        return offsetList;
     }
 
     public int getStrFieldCnt() {
@@ -95,4 +97,9 @@ public class CodecMetaData {
     public int getBaseFieldStartOffset() {
         return baseFieldStartOffset;
     }
+
+    public List<Integer> getStrIdxList() {
+        return strIdxList;
+    }
+
 }

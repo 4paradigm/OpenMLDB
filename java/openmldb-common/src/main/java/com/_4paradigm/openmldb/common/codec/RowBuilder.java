@@ -18,6 +18,7 @@ package com._4paradigm.openmldb.common.codec;
 
 import java.nio.ByteBuffer;
 import java.sql.Date;
+import java.sql.Timestamp;
 
 public interface RowBuilder {
 
@@ -25,7 +26,7 @@ public interface RowBuilder {
     boolean appendBool(boolean val);
     boolean appendInt(int val);
     boolean appendSmallInt(short val);
-    boolean appendTimestamp(long val);
+    boolean appendTimestamp(Timestamp val);
     boolean appendBigInt(long val);
     boolean appendFloat(float val);
     boolean appendDouble(double val);
@@ -36,7 +37,7 @@ public interface RowBuilder {
     boolean setBool(int idx, boolean val);
     boolean setInt(int idx, int val);
     boolean setSmallInt(int idx, short val);
-    boolean setTimestamp(int idx, long val);
+    boolean setTimestamp(int idx, Timestamp val);
     boolean setBigInt(int idx, long val);
     boolean setFloat(int idx, float val);
     boolean setDouble(int idx, double val);

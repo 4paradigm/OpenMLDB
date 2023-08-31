@@ -24,8 +24,10 @@ import com.google.common.io.ByteStreams;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.sql.Date;
-import java.util.ArrayList;
+import java.sql.Timestamp;
 import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
 
 public class FlexibleRowBuilder implements RowBuilder {
 
@@ -44,6 +46,9 @@ public class FlexibleRowBuilder implements RowBuilder {
     private int strTotalLen = 0;
     private int strAddrLen = 0;
     private boolean allocDirect = false;
+    // Cache string values in case of out-of-order insertion
+    private Map<Integer, String> stringValueCache;
+    private int curStrIdx = 0;
 
     public FlexibleRowBuilder(List<Common.ColumnDesc> schema) throws Exception {
         this(new CodecMetaData(schema, 1, false));
@@ -69,7 +74,7 @@ public class FlexibleRowBuilder implements RowBuilder {
     }
 
     private int getOffset(int idx) {
-        return metaData.getOffsetVec().get(idx);
+        return metaData.getOffsetList().get(idx);
     }
 
     private void setStrOffset(int strPos) {
@@ -110,6 +115,11 @@ public class FlexibleRowBuilder implements RowBuilder {
         strAddrSize = 1;
         strAddrLen = strAddrSize * metaData.getStrFieldCnt();
         result = null;
+        curStrIdx = 0;
+        if (stringValueCache != null) {
+            stringValueCache.clear();
+            stringValueCache = null;
+        }
     }
 
     @Override
@@ -149,7 +159,7 @@ public class FlexibleRowBuilder implements RowBuilder {
     }
 
     @Override
-    public boolean appendTimestamp(long val) {
+    public boolean appendTimestamp(Timestamp val) {
         if (!setTimestamp(curPos, val)) {
             return false;
         }
@@ -207,14 +217,23 @@ public class FlexibleRowBuilder implements RowBuilder {
         if (idx >= metaData.getSchema().size()) {
             return false;
         }
-        nullBitmap.atPut(idx, true);
-        settedValue.atPut(idx, true);
         Type.DataType type = metaData.getSchema().get(idx).getDataType();
         if (type == Type.DataType.kVarchar || type == Type.DataType.kString) {
-            int strPos = getOffset(idx);
-            setStrOffset(strPos + 1);
-            settedStrCnt++;
+            if (idx != metaData.getStrIdxList().get(curStrIdx)) {
+                if (stringValueCache == null) {
+                    stringValueCache = new TreeMap<>();
+                }
+                stringValueCache.put(idx, null);
+                return true;
+            } else {
+                int strPos = getOffset(idx);
+                setStrOffset(strPos + 1);
+                settedStrCnt++;
+                curStrIdx++;
+            }
         }
+        nullBitmap.atPut(idx, true);
+        settedValue.atPut(idx, true);
         return true;
     }
 
@@ -253,12 +272,12 @@ public class FlexibleRowBuilder implements RowBuilder {
     }
 
     @Override
-    public boolean setTimestamp(int idx, long val) {
+    public boolean setTimestamp(int idx, Timestamp val) {
         if (!checkType(idx, Type.DataType.kTimestamp)) {
             return false;
         }
         settedValue.atPut(idx, true);
-        baseFieldBuf.putLong(getOffset(idx), val);
+        baseFieldBuf.putLong(getOffset(idx), val.getTime());
         return true;
     }
 
@@ -308,25 +327,44 @@ public class FlexibleRowBuilder implements RowBuilder {
         if (!checkType(idx, Type.DataType.kString) && !checkType(idx, Type.DataType.kVarchar)) {
             return false;
         }
-        if (settedValue.at(idx)) {
-            return false;
-        }
-        settedValue.atPut(idx, true);
-        byte[] bytes = val.getBytes(CodecUtil.CHARSET);
-        stringWriter.write(bytes);
-        if (settedStrCnt == 0) {
+        if (idx != metaData.getStrIdxList().get(curStrIdx)) {
+            if (stringValueCache == null) {
+                stringValueCache = new TreeMap<>();
+            }
+            stringValueCache.put(idx, val);
+        } else {
+            if (settedValue.at(idx)) {
+                return false;
+            }
+            settedValue.atPut(idx, true);
+            byte[] bytes = val.getBytes(CodecUtil.CHARSET);
+            stringWriter.write(bytes);
+            if (settedStrCnt == 0) {
+                setStrOffset(settedStrCnt);
+            }
+            strTotalLen += bytes.length;
+            settedStrCnt++;
             setStrOffset(settedStrCnt);
+            curStrIdx++;
         }
-        strTotalLen += bytes.length;
-        settedStrCnt++;
-        setStrOffset(settedStrCnt);
-
-        // TODO:  process disorder set
         return true;
     }
 
     @Override
     public boolean build() {
+        if (stringValueCache != null) {
+            for (Map.Entry<Integer, String> kv : stringValueCache.entrySet()) {
+                if (kv.getValue() == null) {
+                    if (!setNULL(kv.getKey())) {
+                        return false;
+                    }
+                } else {
+                    if (!setString(kv.getKey(), kv.getValue())) {
+                        return false;
+                    }
+                }
+            }
+        }
         if (!settedValue.allSetted()) {
             return false;
         }
