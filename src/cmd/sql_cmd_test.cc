@@ -3681,10 +3681,13 @@ TEST_F(SqlCmdTest, SelectWithAddNewIndex) {
     ASSERT_EQ(res->Size(), 3);
     res = sr->ExecuteSQL(absl::StrCat("select id,c1,c2,c3 from ", tb1_name, " where c2=1;"), &status);
     ASSERT_EQ(res->Size(), 3);
+    ProcessSQLs(sr, {absl::StrCat("drop index ", db1_name, ".", tb1_name, ".index1")});
+    absl::SleepFor(absl::Seconds(2));
+    res = sr->ExecuteSQL(absl::StrCat("select id,c1,c2,c3 from ", tb1_name, " where c2=1;"), &status);
+    ASSERT_EQ(res->Size(), 3);
 
     ProcessSQLs(sr, {
                         absl::StrCat("use ", db1_name, ";"),
-                        absl::StrCat("drop index ", db1_name, ".", tb1_name, ".index1"),
                         absl::StrCat("drop table ", tb1_name),
                         absl::StrCat("drop database ", db1_name),
                     });
