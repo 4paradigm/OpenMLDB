@@ -78,41 +78,56 @@ jobs:
           shell: bash
           run: |
             cd /root/OpenMLDB
+            # centos6_build.sh will try build zetasql even cache hit, just ignore the failure
             IN_WORKFLOW=true bash steps/centos6_build.sh
             # bazel bin
             export PATH=$PATH:`pwd`
             source /opt/rh/devtoolset-8/enable
             if [[ "${USE_DEPS_CACHE}" != "true" ]]; then
-              echo "build thirdparty"
-              make thirdparty CMAKE_INSTALL_PREFIX=${OPENMLDB_PREFIX} BUILD_BUNDLE=ON NPROC=8
+              echo "build thirdparty, make opt is better than nproc?"
+              make thirdparty CMAKE_INSTALL_PREFIX=${OPENMLDB_PREFIX} BUILD_BUNDLE=ON THIRD_PARTY_CMAKE_FLAGS=-DMAKEOPTS=-j8
+              # 5.8G	./.deps, avail 8G
               rm -rf .deps/build # GitHub runner disk space is limited
             fi
             echo "build"
+            # 1.4G	./.deps, avail 13G
+
+            # will failed if openmldb_sdk is on
             cmake -S . -B `pwd`/build -DCMAKE_PREFIX_PATH=`pwd`/.deps/usr -DCMAKE_BUILD_TYPE=RelWithDebInfo \
             -DSQL_PYSDK_ENABLE=${SQL_PYSDK_ENABLE} -DSQL_JAVASDK_ENABLE=OFF \
             -DTESTING_ENABLE=OFF -DCMAKE_INSTALL_PREFIX=${OPENMLDB_PREFIX}  \
             -DHYBRIDSE_TESTING_ENABLE=OFF -DEXAMPLES_ENABLE=OFF -DEXAMPLES_TESTING_ENABLE=OFF
-            cmake --build build --target install -- -j2
-            # clean up to save disk space(~11G), don't know which is relative, build again in next step
-            rm -rf build
+            # target openmldb 6.7G    ./build(no py/java), avail 5.2G
+            # openmldb+cp_python_sdk_so 7.7G    ./build(has py), python just ~180M
+            # target 'install' cost more, preinstall/fast won't build all, so use install/fast if needed
+            # or https://cmake.org/cmake/help/latest/variable/CMAKE_SKIP_INSTALL_ALL_DEPENDENCY.html
+            cmake --build build --target openmldb cp_python_sdk_so -- -j2
+            du -h --max-depth=1
+            df -h
+            # clean up to save disk space(~8G), don't know which is relative, build again in next step
+            # leave build/bin
+            rm build/hybridse build/src -rf
             if [[ "${SQL_JAVASDK_ENABLE}" == "ON" ]]; then
               echo "build java sdk"
               cmake -S . -B `pwd`/build -DCMAKE_PREFIX_PATH=`pwd`/.deps/usr -DCMAKE_BUILD_TYPE=RelWithDebInfo \
               -DSQL_PYSDK_ENABLE=OFF -DSQL_JAVASDK_ENABLE=ON \
               -DTESTING_ENABLE=OFF -DCMAKE_INSTALL_PREFIX=${OPENMLDB_PREFIX}  \
               -DHYBRIDSE_TESTING_ENABLE=OFF -DEXAMPLES_ENABLE=OFF -DEXAMPLES_TESTING_ENABLE=OFF
-              cmake --build build --target sql_javasdk_package -- -j2
+              # if build the whole java, 7.6G	./build, 5.7G  ./java, avail 331M
+              # so split it and build native only
+              # 7.6G	./build,  1.8G	./java, avail 5.2G
+              cmake --build build --target cp_native_so -- -j2
+              du -h --max-depth=1
+              df -h
+              rm build/hybridse build/src -rf
+              cd java
+              ./mvnw -pl openmldb-native clean package -DskipTests=true -Dscalatest.skip=true -Dwagon.skip=true -Dmaven.test.skip=true --batch-mode 
             fi
-
-      - name: package    
-        run: |
-          tar czf ${{ env.OPENMLDB_PREFIX }}.tar.gz ${{ env.OPENMLDB_PREFIX }}/
-
       - name: upload binary
         uses: actions/upload-artifact@v2
         with:
-          path: openmldb-*.tar.gz
-          name: binary-package
+          path: build/bin/openmldb
+          name: binary
 
       - name: upload java native
         if: ${{ env.SQL_JAVASDK_ENABLE == 'ON' }}
@@ -127,8 +142,7 @@ jobs:
         with: 
           name: python-whl
           path: |
-            python/openmldb_sdk/dist/openmldb*.whl  
-    
+            python/openmldb_sdk/dist/openmldb*.whl
       # TODO(hw): upload cxx sdk
 
   # macos no need to build thirdparty, but binary/os needs to be built on each os

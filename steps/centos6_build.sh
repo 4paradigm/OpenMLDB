@@ -19,6 +19,7 @@ set +x
 
 # self build or workflow
 IN_WORKFLOW=${IN_WORKFLOW:-"false"}
+USE_DEPS_CACHE=${USE_DEPS_CACHE:-"false"}
 # if download from openmldb.ai
 OPENMLDB_SOURCE=${OPENMLDB_SOURCE:-"false"}
 
@@ -35,6 +36,13 @@ function tool_install() {
     fi
     chmod +x bazel
 }
+
+if [ "$USE_DEPS_CACHE" == "true" ]; then
+    echo "use deps cache, exit"
+    exit 0
+else
+    echo "not use deps cache, install tools and build deps"
+fi
 
 if [ "$IN_WORKFLOW" == "true" ]; then
     echo "in workflow"

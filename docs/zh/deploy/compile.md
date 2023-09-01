@@ -110,7 +110,7 @@ make CMAKE_BUILD_TYPE=Debug
 
 - CMAKE_EXTRA_FLAGS: 传递给 cmake 的额外参数
 
-  默认: ‘’
+  默认: ''
 
 - BUILD_BUNDLED: 从源码编译 thirdparty 依赖，而不是下载预编译包
 
@@ -123,6 +123,9 @@ make CMAKE_BUILD_TYPE=Debug
 - OPENMLDB_BUILD_TARGET: 只需编译某些target时使用。例如，只想要编译一个测试程序ddl_parser_test，你可以设置`OPENMLDB_BUILD_TARGET=ddl_parser_test`。如果是多个target，用空格隔开。可以减少编译时间，减少编译产出文件，节约存储空间。
 
   默认: all
+
+- THIRD_PARTY_CMAKE_FLAGS: 编译thirdparty时可以配置额外参数。例如，配置每个thirdparty项目并发编译，`THIRD_PARTY_CMAKE_FLAGS=-DMAKEOPTS=-j8`。thirdparty不受NPROC影响，thirdparty的多项目将会串行执行。
+  默认：''
 
 ### 并发编译Java SDK
 
@@ -185,14 +188,26 @@ docker run -it -v`pwd`:/root/OpenMLDB ghcr.io/4paradigm/centos6_gcc7_hybridsql b
 ```bash
 cd OpenMLDB
 bash steps/centos6_build.sh
+# THIRD_PARTY_CMAKE_FLAGS=-DMAKEOPTS=-j8 bash steps/centos6_build.sh # run fast when build single project
 # OPENMLDB_SOURCE=true bash steps/centos6_build.sh
-# SQL_JAVASDK_ENABLE=ON SQL_PYSDK_ENABLE=ON NRPOC=8 bash steps/centos6_build.sh
+# SQL_JAVASDK_ENABLE=ON SQL_PYSDK_ENABLE=ON NRPOC=8 bash steps/centos6_build.sh # NPOC will build openmldb in parallel, thirdparty should use THIRD_PARTY_CMAKE_FLAGS
 ```
+
+thirdparty 32线程
+31m12.360s zetasql前
+zetasql 20min
+boost 9min
+OpenMLDB本体 7min
 
 #### 云编译
 
-Fork OpenMLDB仓库后，可以使用在`Actions`中触发workflow `Other OS Build`，编译产出在`Actions`的`Artifacts`中。workflow 配置 `os name`为`centos6`，
-如果不需要Java或Python SDK，可配置`java sdk enable`或`python sdk enable`为`OFF`，节约编译时间。
+Fork OpenMLDB仓库后，可以使用在`Actions`中触发workflow `Other OS Build`，编译产出在`Actions`的`Artifacts`中。workflow 配置方式：
+- 不要更换`Use workflow from`为某个tag，可以是其他分支。
+- 选择`os name`为`centos6`。
+- 如果不是编译main分支，在`The branch, tag or SHA to checkout, otherwise use the branch`中填写想要的分支名、Tag(e.g. v0.8.2)或SHA。
+- 编译产出在触发后的runs界面中，参考[成功产出的runs链接](https://github.com/4paradigm/OpenMLDB/actions/runs/6044951902)。
+  - 一定会产出openmldb binary文件。
+  - 如果不需要Java或Python SDK，可配置`java sdk enable`或`python sdk enable`为`OFF`，节约编译时间。
 
 此编译流程需要从源码编译thirdparty，且资源较少，无法开启较高的并发编译。因此编译时间较长，大约需要3h5m（2h thirdparty+1h OpenMLDB）。workflow会缓存thirdparty的编译产出，因此第二次编译会快很多（1h15m OpenMLDB）。
 
