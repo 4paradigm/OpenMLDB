@@ -575,6 +575,15 @@ public class RowCodecTest {
         return new Object[] {1, 3, 5, 10, 20, 30, 50, 100, 200, 300, 500, 1000, 2000, 3000, 5000, 10000, 20000, 100000};
     }
 
+    public String genRandomString(int len) {
+        Random r = new Random();
+        char[] arr = new char[len];
+        for (int i = 0; i < len; i++) {
+            arr[i] = (char)(32 + (int)(94 * r.nextDouble()));
+        }
+        return new String(arr);
+    }
+
     Object[] genData(List<ColumnDesc> schema) {
         Random r = new Random();
         Object[] data = new Object[schema.size()];
@@ -601,7 +610,7 @@ public class RowCodecTest {
             } else if (type == DataType.kTimestamp) {
                 data[idx] = new Timestamp(System.currentTimeMillis());
             } else if (type == DataType.kVarchar || type == DataType.kString) {
-                data[idx] = r.nextInt() % 3 == 0 ? "" : "val" + (10000 + r.nextInt(1000));
+                data[idx] = r.nextInt() % 3 == 0 ? "" : genRandomString(r.nextInt(10));
             }
         }
         return data;
@@ -715,6 +724,44 @@ public class RowCodecTest {
         }
         Collections.shuffle(idx);
         Object[] data = genData(schema);
+        try {
+            FlexibleRowBuilder builder = new FlexibleRowBuilder(schema);
+            for (Integer i : idx) {
+                setData(builder, i, schema.get(i).getDataType(), data[i]);
+            }
+            Assert.assertTrue(builder.build());
+            ByteBuffer buffer = builder.getValue();
+            RowView rowView = new RowView(schema, buffer, buffer.capacity());
+            for (Integer i : idx) {
+                try {
+                    checkData(rowView, i, schema.get(i).getDataType(), data[i]);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    Assert.fail();
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            Assert.fail();
+        }
+    }
+
+    @Test(dataProvider = "columnNum")
+    public void testDisorderStringOnly(int columnNum) {
+        Random r = new Random();
+        List<ColumnDesc> schema = new ArrayList<ColumnDesc>();
+        List<Integer> idx = new ArrayList<>();
+        String[] data = new String[columnNum];
+        for (int i = 0; i < columnNum; i++) {
+            ColumnDesc.Builder col = ColumnDesc.newBuilder();
+            col.setName("col" + i);
+            col.setDataType(DataType.kString);
+            schema.add(col.build());
+            idx.add(i);
+            data[i] = genRandomString(r.nextInt(1000));
+        }
+        Collections.shuffle(idx);
+
         try {
             FlexibleRowBuilder builder = new FlexibleRowBuilder(schema);
             for (Integer i : idx) {
