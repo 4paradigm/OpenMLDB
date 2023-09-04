@@ -104,9 +104,9 @@ jobs:
             cmake --build build --target openmldb cp_python_sdk_so -- -j2
             du -h --max-depth=1
             df -h
-            # clean up to save disk space(~8G), don't know which is relative, build again in next step
-            # leave build/bin
-            rm build/hybridse build/src -rf
+            # if target above cost too much disk, make java build failed, try to rm build cache
+            # don't rm cache now cuz build java from emtpy will cost 20min
+            # rm build/hybridse build/src -rf
             if [[ "${SQL_JAVASDK_ENABLE}" == "ON" ]]; then
               echo "build java sdk"
               cmake -S . -B `pwd`/build -DCMAKE_PREFIX_PATH=`pwd`/.deps/usr -DCMAKE_BUILD_TYPE=RelWithDebInfo \
@@ -123,6 +123,10 @@ jobs:
               cd java
               ./mvnw -pl openmldb-native clean package -DskipTests=true -Dscalatest.skip=true -Dwagon.skip=true -Dmaven.test.skip=true --batch-mode 
             fi
+            rm build/hybridse build/src -rf
+            du -h --max-depth=1
+            df -h
+
       - name: upload binary
         uses: actions/upload-artifact@v2
         with:
