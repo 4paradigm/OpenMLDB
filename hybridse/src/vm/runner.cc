@@ -44,6 +44,7 @@ static bool IsPartitionProvider(vm::PhysicalOpNode* n) {
     switch (n->GetOpType()) {
         case kPhysicalOpSimpleProject:
         case kPhysicalOpRename:
+        case kPhysicalOpRequestJoin:
             return IsPartitionProvider(n->GetProducer(0));
         case kPhysicalOpDataProvider:
             return dynamic_cast<vm::PhysicalDataProviderNode*>(n)->provider_type_ == kProviderTypePartition;
