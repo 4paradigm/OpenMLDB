@@ -24,14 +24,12 @@ import com._4paradigm.openmldb.proto.SQLProcedure;
 import com._4paradigm.openmldb.proto.Type;
 import org.xerial.snappy.Snappy;
 
-import java.util.AbstractMap;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class DeploymentManager {
 
-    private ConcurrentHashMap<String, ConcurrentHashMap<String, Deployment>> deployments = new ConcurrentHashMap<>();
-    // private ConcurrentHashMap<AbstractMap.SimpleImmutableEntry<String, String>, Deployment> deployments;
+    private Map<AbstractMap.SimpleImmutableEntry<String, String>, Deployment> deployments = new ConcurrentHashMap<>();
     private ZKClient zkClient;
     private NodeCache nodeCache;
     private String spPath;
@@ -61,6 +59,7 @@ public class DeploymentManager {
             return;
         }
         List<String> children = zkClient.getChildren(spPath);
+        Set<AbstractMap.SimpleImmutableEntry<String, String>> curDeployments = new HashSet<>();
         for (String path : children) {
             byte[] bytes = zkClient.getClient().getData().forPath(spPath + "/" + path);
             byte[] data = Snappy.uncompress(bytes);
@@ -74,35 +73,32 @@ public class DeploymentManager {
                     continue;
                 }
             }
-            addDeployment(procedureInfo.getDbName(), procedureInfo.getSpName(), new Deployment(procedureInfo));
+            deployment = new Deployment(procedureInfo);
+            AbstractMap.SimpleImmutableEntry<String, String> key =
+                    new AbstractMap.SimpleImmutableEntry<>(procedureInfo.getDbName(), procedureInfo.getSpName());
+            addDeployment(key, deployment);
+            curDeployments.add(key);
         }
-    }
-
-    public boolean hasDeployment(String db, String name) {
-        ConcurrentHashMap<String, Deployment> innerMap = deployments.get(db);
-        if (innerMap == null) {
-            return false;
+        if (deployments.size() > children.size()) {
+            Iterator<AbstractMap.SimpleImmutableEntry<String, String>> iterator = deployments.keySet().iterator();
+            while (iterator.hasNext()) {
+                AbstractMap.SimpleImmutableEntry<String, String> key = iterator.next();
+                if (!curDeployments.contains(key)) {
+                    iterator.remove();
+                }
+            }
         }
-        return innerMap.containsKey(name);
     }
 
     public Deployment getDeployment(String db, String name) {
-        ConcurrentHashMap<String, Deployment> innerMap = deployments.get(db);
-        if (innerMap == null) {
-            return null;
-        }
-        return innerMap.get(name);
+        return deployments.get(new AbstractMap.SimpleImmutableEntry<>(db, name));
     }
 
-    public synchronized void addDeployment(String db, String name, Deployment deployment) {
-        ConcurrentHashMap<String, Deployment> deployMap = deployments.get(db);
-        if (deployMap == null) {
-            deployMap = new ConcurrentHashMap<>();
-            deployments.put(db, deployMap);
-        }
-        Deployment curDeployment = deployMap.get(name);
-        if (curDeployment == null || !curDeployment.getSQL().equals(deployment.getSQL())) {
-            deployMap.put(name, deployment);
-        }
+    public void addDeployment(String db, String name, Deployment deployment) {
+        addDeployment(new AbstractMap.SimpleImmutableEntry<>(db, name), deployment);
+    }
+
+    public void addDeployment(AbstractMap.SimpleImmutableEntry<String, String> key, Deployment deployment) {
+        deployments.put(key, deployment);
     }
 }
