@@ -64,13 +64,12 @@ echo "add patch in fetch cmake"
 sed -i'' '34s/WITH_TOOLS=OFF$/WITH_TOOLS=OFF -DWITH_CORE_TOOLS=OFF/' third-party/cmake/FetchRocksDB.cmake
 
 # if BUILD_BUNDLED=OFF will download pre-built thirdparty, not good
-# so we use cmake to build zetasql only
-# it's hard to avoid add zetasql patch twice, so we check the dir to avoid
-if [ -d ".deps/build/src/zetasql" ]; then
-    echo "zetasql already exists, skip add patch, if you want, rm .deps/build/src/zetasql* -rf"
+# so we use cmake to build zetasql only and add patch to it
+# it's hard to avoid add zetasql patch twice, so we check the stamp to avoid
+if [ -e ".deps/build/src/zetasql-stamp/zetasql-build" ]; then
+    echo "zetasql already exists, skip add patch, if you want, rm .deps/build/src/zetasql-stamp/zetasql-build or whole .deps/build/src/zetasql*"
 else
     echo  "modify in .deps needs a make first, download&build zetasql first(build will fail)"
-    # sed -i'' '31s/${BUILD_BUNDLED}/ON/' third-party/CMakeLists.txt
     cmake -S third-party -B "$(pwd)"/.deps -DSRC_INSTALL_DIR="$(pwd)"/thirdsrc -DDEPS_INSTALL_DIR="$(pwd)"/.deps/usr -DBUILD_BUNDLED=ON
     cmake --build "$(pwd)"/.deps --target zetasql
     echo "add patch in .deps zetasql"

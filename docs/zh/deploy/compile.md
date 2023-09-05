@@ -193,11 +193,10 @@ bash steps/centos6_build.sh
 # SQL_JAVASDK_ENABLE=ON SQL_PYSDK_ENABLE=ON NRPOC=8 bash steps/centos6_build.sh # NPOC will build openmldb in parallel, thirdparty should use THIRD_PARTY_CMAKE_FLAGS
 ```
 
-thirdparty 32线程
-31m12.360s zetasql前
-zetasql 20min
-boost 9min
-OpenMLDB本体 7min
+本地2.20GHz CPU，SSD硬盘，32线程编译三方库与OpenMLDB主体，耗时参考：
+`THIRD_PARTY_CMAKE_FLAGS=-DMAKEOPTS=-j32 SQL_JAVASDK_ENABLE=ON SQL_PYSDK_ENABLE=ON NRPOC=32 bash steps/centos6_build.sh`
+- thirdparty（不包括下载src时间）~40m：zetasql打patch 13m，所有thirdparty编译30m
+- OpenMLDB 本体，包括python和java native，~12min
 
 #### 云编译
 
