@@ -20,9 +20,13 @@
 #include <string>
 
 #include "base/slice.h"
+#include "version.h"  // NOLINT
 
 namespace openmldb {
 namespace base {
+
+inline const std::string NOTICE_URL = "https://openmldb.ai/docs/zh/v" + std::to_string(OPENMLDB_VERSION_MAJOR) + "." +
+    std::to_string(OPENMLDB_VERSION_MINOR) + "/openmldb_sql/notice.html";
 
 enum ReturnCode {
     kError = -1,

@@ -1358,7 +1358,10 @@ bool SQLClusterRouter::PutRow(uint32_t tid, const std::shared_ptr<SQLInsertRow>&
                     bool ret = client->Put(tid, pid, cur_ts, row->GetRow(), kv.second);
                     if (!ret) {
                         SET_STATUS_AND_WARN(status, StatusCode::kCmdError,
-                                            "fail to make a put request to table. tid " + std::to_string(tid));
+                                "INSERT failed, tid " + std::to_string(tid) +
+                                ". Note that data might have been partially inserted. "
+                                "You are encouraged to perform DELETE to remove any partially "
+                                "inserted data before trying INSERT again.");
                         return false;
                     }
                     continue;
@@ -1676,6 +1679,9 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::HandleSQLCmd(const h
         }
         case hybridse::node::kCmdDropFunction: {
             std::string name = cmd_node->GetArgs()[0];
+            if (!CheckAnswerIfInteractive("function", name)) {
+                return {};
+            }
             auto base_status = ns_ptr->DropFunction(name, cmd_node->IsIfExists());
             if (base_status.OK()) {
                 *status = {};
@@ -1688,6 +1694,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::HandleSQLCmd(const h
                     if (!base_status.OK()) {
                         LOG(WARNING) << "drop function " << name << " failed: [" << base_status.GetCode() << "] "
                                      << base_status.GetMsg();
+                        APPEND_FROM_BASE_AND_WARN(status, base_status, "drop function failed from taskmanager");
                         return {};
                     }
                 }
@@ -1967,6 +1974,12 @@ base::Status SQLClusterRouter::HandleSQLCreateTable(hybridse::node::CreatePlanNo
         std::string msg;
         if (!ns_ptr->CreateTable(table_info, create_node->GetIfNotExist(), msg)) {
             return base::Status(base::ReturnCode::kSQLCmdRunError, msg);
+        }
+        if (interactive_ && table_info.column_key_size() == 0) {
+            return base::Status{base::ReturnCode::kOk,
+                  "As there is no index specified, a default index type `absolute 0` will be created. "
+                  "The data attached to the index will never expire to be deleted. "
+                  "Please refer to this link for more details: " + base::NOTICE_URL};
         }
     } else {
         auto dbs = cluster_sdk_->GetAllDbs();
@@ -2466,7 +2479,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(
             auto base_status = HandleSQLCreateTable(create_node, db, ns_ptr, sql);
             if (base_status.OK()) {
                 RefreshCatalog();
-                *status = {};
+                *status = {StatusCode::kOk, base_status.msg};
             } else {
                 *status = {StatusCode::kCmdError, base_status.msg};
             }
@@ -2542,6 +2555,10 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(
                     return ResultSetSQL::MakeResultSet(job_schema, {value}, status);
                 }
                 RefreshCatalog();
+                *status = {StatusCode::kOk,
+                    "\n- DEPLOY may modify table TTL. Data imported before DEPLOY may expire before the new TTL.\n"
+                    "- DEPLOY will fail if the disk table requires creating an index, "
+                        "the partial index may have been created."};
             }
             return {};
         }
@@ -2897,6 +2914,30 @@ int SQLClusterRouter::GetJobTimeout() {
 
 bool SQLClusterRouter::CheckAnswerIfInteractive(const std::string& drop_type, const std::string& name) {
     if (interactive_) {
+        std::string msg;
+        if (drop_type == "table") {
+            msg = "DROP TABLE is a dangerous operation. Once deleted, it is very difficult to recover. \n"
+                  "You may also note that: \n"
+                  "- If a snapshot of a partition is being generated while dropping a table, "
+                  "the partition will not be deleted successfully.\n"
+                  "- By default, the deleted data is moved to the folder `recycle`.\n"
+                  "Please refer to this link for more details: " + base::NOTICE_URL;
+        } else if (drop_type == "deployment") {
+            msg = "- DROP DEPLOYMENT will not delete the index that is created automatically.\n"
+                  "- DROP DEPLOYMENT will not delete data in the pre-aggregation table in the long window setting.";
+        } else if (drop_type == "index") {
+            msg = "DROP INDEX is a dangerous operation. Once deleted, it is very difficult to recover.\n"
+                  "You may also note that: \n"
+                  "- You have to wait for 2 garbage collection intervals (gc_interval) to create the same index.\n"
+                  "- The index will not be deleted immediately, "
+                    "it remains until after 2 garbage collection intervals.\n"
+                  "Please refer to the doc for more details: " + base::NOTICE_URL;
+        } else if (drop_type == "function") {
+           msg = "This will lead to execution failure or system crash if any active deployment is using the function.";
+        }
+        if (!msg.empty()) {
+            printf("%s\n", msg.c_str());
+        }
         printf("Drop %s %s? yes/no\n", drop_type.c_str(), name.c_str());
         std::string input;
         std::cin >> input;
@@ -3227,7 +3268,16 @@ hybridse::sdk::Status SQLClusterRouter::HandleDelete(const std::string& db, cons
     if (!status.IsOK()) {
         return status;
     }
-    return SendDeleteRequst(table_info, &option);
+    status = SendDeleteRequst(table_info, &option);
+    if (status.IsOK()) {
+        status = {StatusCode::kOk,
+            "DELETE is a dangerous operation. Once deleted, it is very difficult to recover. You may also note that:\n"
+            "- The deleted data will not be released immediately from the main memory; "
+                "it remains until after a garbage collection interval (gc_interval)\n"
+            "- Data in the pre-aggregation table will not be updated.\n"
+            "Please refer to this link for more details: " + base::NOTICE_URL};
+    }
+    return status;
 }
 
 hybridse::sdk::Status SQLClusterRouter::SendDeleteRequst(
