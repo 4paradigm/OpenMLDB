@@ -343,6 +343,7 @@ public class TaskManagerConfig {
             throw new ConfigException("spark.yarn.jars", "should not use local filesystem for yarn mode");
         }
 
+
         if (props.getProperty("spark.home", "").isEmpty()) {
             if (System.getenv("SPARK_HOME") == null) {
                 throw new ConfigException("spark.home", "should set config 'spark.home' or environment variable 'SPARK_HOME'");
@@ -352,6 +353,14 @@ public class TaskManagerConfig {
             }
         }
 
+        String SPARK_HOME = firstNonEmpty(props.getProperty("spark.home"), System.getenv("SPARK_HOME"));
+        // isEmpty checks null and empty
+        if (isEmpty(SPARK_HOME)) {
+            throw new ConfigException("spark.home", "should set config 'spark.home' or environment variable 'SPARK_HOME'");
+        }
+        props.setProperty("spark.home", SPARK_HOME);
+
+        // TODO: Check if we can get spark-submit
 
         if (props.getProperty("prefetch.jobid.num") == null) {
             props.setProperty("prefetch.jobid.num", "1");
@@ -449,7 +458,7 @@ public class TaskManagerConfig {
             throw new ConfigException("offline.data.prefix", "should not be null");
         } else {
             if (isYarn() || isK8s()) {
-                if(getOfflineDataPrefix().startsWith("file://")) {
+                if (getOfflineDataPrefix().startsWith("file://")) {
                     throw new ConfigException("offline.data.prefix", "should not use local filesystem for yarn mode or k8s mode");
                 }
             }
@@ -457,14 +466,6 @@ public class TaskManagerConfig {
 
         if (props.getProperty("batchjob.jar.path", "").isEmpty()) {
             props.setProperty("batchjob.jar.path", BatchJobUtil.findLocalBatchJobJar());
-        }
-
-        if (props.getProperty("hadoop.user.name") == null) {
-            props.setProperty("hadoop.user.name", "root");
-        }
-
-        if (props.getProperty("hadoop.conf.dir") == null) {
-            props.setProperty("hadoop.conf.dir", "");
         }
 
         if (isYarn() && getHadoopConfDir().isEmpty()) {
@@ -476,10 +477,19 @@ public class TaskManagerConfig {
             }
         }
 
+        // TODO(hw): need default root?
+        String HADOOP_USER_NAME = firstNonEmpty(props.getProperty("hadoop.user.name"),  System.getenv("HADOOP_USER_NAME"));
+        props.setProperty("hadoop.user.name", HADOOP_USER_NAME);
+
+        String HADOOP_CONF_DIR = firstNonEmpty(props.getProperty("hadoop.conf.dir"), System.getenv("HADOOP_CONF_DIR"));
+        if (isYarn() && isEmpty(HADOOP_CONF_DIR)) {
+            throw new ConfigException("hadoop.conf.dir", "should set config 'hadoop.conf.dir' or environment variable 'HADOOP_CONF_DIR'");
+        }
+        props.setProperty("hadoop.conf.dir", HADOOP_CONF_DIR);
+
         if (props.getProperty("enable.hive.support") == null) {
             props.setProperty("enable.hive.support", "true");
         }
-
 
         if (props.getProperty("batch.job.result.max.wait.time") == null) {
             props.setProperty("batch.job.result.max.wait.time", "600000");
@@ -493,6 +503,24 @@ public class TaskManagerConfig {
             props.setProperty("k8s.mount.local.path", "/tmp");
         }
     }
+
+
+    // ref org.apache.spark.launcher.CommandBuilderUtils
+    public static String firstNonEmpty(String... strings) {
+        for (String s : strings) {
+            if (!isEmpty(s)) {
+                return s;
+            }
+        }
+        return null;
+    }
+
+
+    public static boolean isEmpty(String s) {
+        return s == null || s.isEmpty();
+    }
+
+
 
 }
 

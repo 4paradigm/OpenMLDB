@@ -37,12 +37,23 @@ object SparkJobManager {
    */
   def createSparkLauncher(mainClass: String): SparkLauncher = {
 
+
     val launcher = new SparkLauncher()
       .setAppResource(TaskManagerConfig.getBatchjobJarPath)
       .setMainClass(mainClass)
 
     if (TaskManagerConfig.getSparkHome != null && TaskManagerConfig.getSparkHome.nonEmpty) {
       launcher.setSparkHome(TaskManagerConfig.getSparkHome)
+    }
+
+    val env: java.util.Map[String, String] = new java.util.HashMap[String, String]
+    // config may empty, need check
+    if (TaskManagerConfig.getHadoopConfDir.nonEmpty) {
+      env.put("HADOOP_CONF_DIR", TaskManagerConfig.getHadoopConfDir)
+    }
+    // env.put("YARN_CONF_DIR", TaskManagerConfig.HADOOP_CONF_DIR)  // unused now
+    if (TaskManagerConfig.getHadoopUserName.nonEmpty){
+      env.put("HADOOP_USER_NAME", TaskManagerConfig.getHadoopUserName)
     }
 
     if (TaskManagerConfig.getSparkMaster.startsWith("local")) {
@@ -56,7 +67,7 @@ object SparkJobManager {
         case _ => throw new Exception(s"Unsupported Spark master ${TaskManagerConfig.getSparkMaster}")
       }
     }
-
+    
     if (TaskManagerConfig.getSparkYarnJars != null && TaskManagerConfig.getSparkYarnJars.nonEmpty) {
       launcher.setConf("spark.yarn.jars", TaskManagerConfig.getSparkYarnJars)
     }

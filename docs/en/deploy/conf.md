@@ -135,6 +135,8 @@
 --ssd_root_path=./db_ssd
 #Configure the data recycle bin directory, where the data of the drop table will be placed
 --recycle_bin_ssd_root_path=./recycle_ssd
+# Configure whether to enable recycle
+#--recycle_bin_enabled=true
 
 # snapshot conf
 # Configure the time to do snapshots, the time of day. For example, 23 means taking a snapshot at 23 o'clock every day.

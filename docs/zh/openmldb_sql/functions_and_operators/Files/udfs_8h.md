@@ -57,6 +57,7 @@ title: udfs/udfs.h
 | **[first_value](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-first-value)**()| <br>Returns the value of expr from the latest row (last row) of the window frame. |
 | **[float](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-float)**()| <br>Cast string expression to float. |
 | **[floor](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-floor)**()| <br>Return the largest integer value not less than the expr. |
+| **[get_json_object](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-get-json-object)**()| <br>Extracts a JSON object from [JSON Pointer](https://datatracker.ietf.org/doc/html/rfc6901)|
 | **[hash64](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-hash64)**()| <br>Returns a hash value of the arguments. It is not a cryptographic hash function and should not be used as such. |
 | **[hex](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-hex)**()| <br>Convert integer to hexadecimal. |
 | **[hour](/openmldb_sql/functions_and_operators/Files/udfs_8h.md#function-hour)**()| <br>Return the hour for a timestamp. |
@@ -1715,6 +1716,55 @@ SELECT FLOOR(1.23);
 
 * [`bool`]
 * [`number`] 
+
+### function get_json_object
+
+```cpp
+get_json_object()
+```
+
+**Description**:
+
+Extracts a JSON object from [JSON Pointer](https://datatracker.ietf.org/doc/html/rfc6901)
+
+**Parameters**: 
+
+  * **expr** A string expression contains well formed JSON 
+  * **path** A string expression of JSON string representation from [JSON Pointer](https://datatracker.ietf.org/doc/html/rfc6901)
+
+
+**Since**:
+0.9.0
+
+
+NOTE JSON string is not fully validated. Which means that the function may still returns values even though returned string does not valid for JSON. It's your responsibility to make sure input string is valid JSON
+
+
+Example:
+
+```sql
+
+select get_json_object('{"boo": "baz"}', "/boo")
+-- baz
+
+select get_json_object('{"boo": [1, 2]}', "/boo/0")
+-- 1
+
+select get_json_object('{"m~n": 1}', "/m~0n")
+-- 1
+
+select get_json_object('{"m/n": 1}', "/m~1n")
+-- 1
+
+select get_json_object('{"foo": {"bar": bz}}', "/foo")
+-- {"bar": bz}
+--- returns value even input JSON is not a valid JSON
+```
+
+
+**Supported Types**:
+
+* [`string`, `string`] 
 
 ### function hash64
 
