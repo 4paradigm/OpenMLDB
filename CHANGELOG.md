@@ -11,7 +11,7 @@
 - Support loading data from HIVE with SQL option (#3380 @tobegit3hub)
 - Support showing and dropping deployment with database (#3353 @emo-coder)
 - Support inheriting environment variables for Spark (#3450 @vagetablechicken)
-- Optimize the ouput message in SDK/CLI (#3384 @vagetablechicken, #3434 #3494 @dl239)
+- Optimize the ouput message for SDK/CLI (#3384 @vagetablechicken, #3434 #3494 @dl239)
 - Enhance the diagnostic tool (#3330 @zhangziheng01233)
 - Enhance the operation tool (#3455 @dl239)
 - Remove the sync tools from demo docker image (#3390 @dl239)
