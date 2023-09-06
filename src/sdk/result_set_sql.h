@@ -96,7 +96,9 @@ class ResultSetSQL : public ::hybridse::sdk::ResultSet {
 
     int32_t Size() override { return result_set_base_->Size(); }
 
-    void CopyTo(hybridse::sdk::NIOBUFFER buf) override { return result_set_base_->CopyTo(reinterpret_cast<void*>(buf)); }
+    void CopyTo(hybridse::sdk::NIOBUFFER buf) override {
+        return result_set_base_->CopyTo(reinterpret_cast<void*>(buf));
+    }
 
     int32_t GetDataLength() override { return result_set_base_->GetDataLength(); }
 
@@ -215,7 +217,6 @@ class MultipleResultSetSQL : public ::hybridse::sdk::ResultSet {
         return total_size;
     }
 
-    // TODO: dl239
     int32_t GetDataLength() override { return 0; }
     void CopyTo(hybridse::sdk::NIOBUFFER buf) override { }
 
