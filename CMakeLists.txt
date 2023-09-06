@@ -30,7 +30,11 @@ if (CMAKE_BUILD_TYPE STREQUAL "")
 endif ()
 
 if (NOT DEFINED CMAKE_PREFIX_PATH)
-    set(CMAKE_PREFIX_PATH "${CMAKE_SOURCE_DIR}/.deps/usr")
+    if (DEFINED ENV{THIRD_PARTY_DIR})
+        set(CMAKE_PREFIX_PATH $ENV{THIRD_PARTY_DIR})
+    else()
+        set(CMAKE_PREFIX_PATH "${CMAKE_SOURCE_DIR}/.deps/usr")
+    endif()
 endif()
 
 message (STATUS "CMAKE_BUILD_TYPE: ${CMAKE_BUILD_TYPE}")
