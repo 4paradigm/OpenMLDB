@@ -8,6 +8,7 @@
 - Optimize the performance of Java SDK (#3445 @dl239)
 - Optimize writing performance of Spark connector (#3443 @vagetablechicken)
 - Support const project in online mode (#3376 @aceforeverd)
+- Support loading data from HIVE with SQL option (#3380 @tobegit3hub)
 - Support showing and dropping deployment with database (#3353 @emo-coder)
 - Support inheriting environment variables for Spark (#3450 @vagetablechicken)
 - Optimize the ouput message in SDK/CLI (#3384 @vagetablechicken, #3434 #3494 @dl239)
