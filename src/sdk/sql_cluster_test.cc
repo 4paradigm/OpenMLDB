@@ -260,23 +260,49 @@ TEST_F(SQLClusterDDLTest, CreateTableWithDatabase) {
 TEST_F(SQLClusterDDLTest, CreateTableWithDatabaseWrongDDL) {
     std::string name = "test" + GenRand();
     ::hybridse::sdk::Status status;
-    std::string ddl;
+    std::string db = "db" + GenRand();
+    ASSERT_TRUE(router->CreateDB(db, &status));
 
     // create table db2.name when db2 not exist
+    std::string ddl;
     ddl = "create table db2." + name +
-          "("
-          "col1 int, col2 bigint, col3 string,"
+          "(col1 int, col2 bigint, col3 string,"
           "index(key=col3, ts=col2));";
     ASSERT_FALSE(router->ExecuteDDL(db, ddl, &status)) << "ddl: " << ddl;
     ASSERT_FALSE(router->ExecuteDDL(db, "drop table " + name + ";", &status));
 
     // create table db2.name when db2 not exit
     ddl = "create table db2." + name +
-          "("
-          "col1 int, col2 bigint, col3 string,"
+          "(col1 int, col2 bigint, col3 string,"
           "index(key=col3, ts=col2));";
     ASSERT_FALSE(router->ExecuteDDL("", ddl, &status)) << "ddl: " << ddl;
     ASSERT_FALSE(router->ExecuteDDL("", "drop table " + name + ";", &status));
+    ddl = "create table t1 (col1 string, col2 string, col3 string, index(key=col1, ts=col2));";
+    ASSERT_FALSE(router->ExecuteDDL(db, ddl, &status)) << "ddl: " << ddl;
+    ddl = "create table t1 (col1 string, col2 string, col3 string, index(key=col4));";
+    ASSERT_FALSE(router->ExecuteDDL(db, ddl, &status)) << "ddl: " << ddl;
+    ddl = "create table t1 (col1 string, col2 string, col3 int, index(key=col4, ts=col3));";
+    ASSERT_FALSE(router->ExecuteDDL(db, ddl, &status)) << "ddl: " << ddl;
+    ASSERT_TRUE(router->DropDB(db, &status));
+}
+
+TEST_F(SQLClusterDDLTest, CreateIndexCheck) {
+    std::string name = "test" + GenRand();
+    std::string db = "db" + GenRand();
+    ::hybridse::sdk::Status status;
+    ASSERT_TRUE(router->CreateDB(db, &status));
+    std::string ddl = absl::StrCat("create table ", name, "(col1 string, col2 string, col3 string, col4 int);");
+    ASSERT_TRUE(router->RefreshCatalog());
+    ASSERT_TRUE(router->ExecuteDDL(db, ddl, &status)) << "ddl: " << ddl;
+    router->ExecuteSQL(db, absl::StrCat("create index index1 on ", name, "(col2) OPTIONS(ts=col3);"), &status);
+    ASSERT_FALSE(status.IsOK());
+    router->ExecuteSQL(db, absl::StrCat("create index index1 on ", name, "(col5);"), &status);
+    ASSERT_FALSE(status.IsOK());
+    router->ExecuteSQL(db, absl::StrCat("create index index1 on ", name, "(col2) OPTIONS(ts=col4);"), &status);
+    ASSERT_FALSE(status.IsOK());
+
+    ASSERT_TRUE(router->ExecuteDDL(db, "drop table " + name + ";", &status));
+    ASSERT_TRUE(router->DropDB(db, &status));
 }
 
 TEST_F(SQLClusterDDLTest, TestDelete) {
@@ -1044,15 +1070,9 @@ TEST_P(SQLSDKQueryTest, SqlSdkDistributeRequestProcedureAsyncTest) {
 }
 
 TEST_F(SQLClusterTest, CreateTable) {
-    SQLRouterOptions sql_opt;
-    sql_opt.zk_cluster = mc_->GetZkCluster();
-    sql_opt.zk_path = mc_->GetZkPath();
-    auto router = NewClusterSQLRouter(sql_opt);
-    ASSERT_TRUE(router != nullptr);
-    SetOnlineMode(router);
     std::string db = "db" + GenRand();
     ::hybridse::sdk::Status status;
-    bool ok = router->CreateDB(db, &status);
+    bool ok = router_->CreateDB(db, &status);
     ASSERT_TRUE(ok);
     for (int i = 0; i < 2; i++) {
         std::string name = "test" + std::to_string(i);
@@ -1061,10 +1081,10 @@ TEST_F(SQLClusterTest, CreateTable) {
                           "col1 string, col2 bigint,"
                           "index(key=col1, ts=col2)) "
                           "options(partitionnum=3);";
-        ok = router->ExecuteDDL(db, ddl, &status);
+        ok = router_->ExecuteDDL(db, ddl, &status);
         ASSERT_TRUE(ok);
     }
-    ASSERT_TRUE(router->RefreshCatalog());
+    ASSERT_TRUE(router_->RefreshCatalog());
     auto ns_client = mc_->GetNsClient();
     std::vector<::openmldb::nameserver::TableInfo> tables;
     std::string msg;
@@ -1083,9 +1103,9 @@ TEST_F(SQLClusterTest, CreateTable) {
     }
     ASSERT_EQ(pid_map.size(), 3u);
     ASSERT_EQ(pid_map.begin()->second, pid_map.rbegin()->second);
-    ASSERT_TRUE(router->ExecuteDDL(db, "drop table test0;", &status));
-    ASSERT_TRUE(router->ExecuteDDL(db, "drop table test1;", &status));
-    ASSERT_TRUE(router->DropDB(db, &status));
+    ASSERT_TRUE(router_->ExecuteDDL(db, "drop table test0;", &status));
+    ASSERT_TRUE(router_->ExecuteDDL(db, "drop table test1;", &status));
+    ASSERT_TRUE(router_->DropDB(db, &status));
 }
 
 TEST_F(SQLClusterTest, GetTableSchema) {
