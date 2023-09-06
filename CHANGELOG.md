@@ -1,5 +1,36 @@
 # Changelog
 
+## [0.8.3] - 2023-09-15
+
+### Features
+- Support new built-in functions `json_array_length` and `get_json_object` (#3414 #3429 @aceforeverd)
+- Add new options `RANGE_BIAS` and `ROWS_BIAS` for `DEPLOYMENT` statement (#3456 @vagetablechicken)
+- Optimize the performance of Java SDK (#3445 @dl239)
+- Optimize writing performance of Spark connector (#3443 @vagetablechicken)
+- Support const project in online mode (#3376 @aceforeverd)
+- Support showing and dropping deployment with database (#3353 @emo-coder)
+- Support inheriting environment variables for Spark (#3450 @vagetablechicken)
+- Optimize the ouput message in SDK/CLI (#3384 @vagetablechicken, #3434 #3494 @dl239)
+- Enhance the diagnostic tool (#3330 @zhangziheng01233)
+- Enhance the operation tool (#3455 @dl239)
+- Remove the sync tools from demo docker image (#3390 @dl239)
+- Improve the documents (#3383 #3392 #3410 @vagetablechicken, #3175 #3447 ##3463 @TanZiYen, #3436 @aceforeverd, #3451 @wangerry, #3453 #3462 @dl239)
+
+### Bug Fixes
+- `CREATE TABLE LIKE HIVE` return success if database is not found (#3379 @emo-coder)
+- If an error ooccurred when executing `DROP FUNCTION`, it cannot be deleted again. (#3362 @vagetablechicken, #3441 @dl239)
+- The result of `SHOW JOBS` are not sorted by `id` (#3371 @emo-coder)
+- NameServer will coredump if creating system table failed. (#3432 @dl239)
+- `CREATE INDEX` command may fails if the previous `CREATE INDEX` command with the same table have not finished. (#3393 @dl239)
+- The result of `SELECT` on the deleted index col is empty (#3426 @dl239)
+- Other minor bug fixes (#3391 #3408 @vagetablechicken, #3386 #3427 #3459 @dl239, #3367 #3495 @aceforeverd)
+
+### Code Refactoring
+#3397 @emo-coder, #3411 @vagetablechicken, #3435 @aceforeverd, #3473 @lqy222
+
+### Breaking Changes
+The return type of `GetInternalSchema` in `SQLResultSet` changes from native Schema to `com._4paradigm.openmldb.sdk.Schema` #3445
+
 ## [0.8.2] - 2023-07-20
 
 ### Features
@@ -16,7 +47,7 @@
 - The bool type is not properly packed in APIServer. (#3366 @vagetablechicken)
 - The table can be created successfully when there are duplicated indexs. (#3306 @dl239)
 
-### Breaking Changes:
+### Breaking Changes
 - The field `Offline_deep_copy` will be replaced by `Offline_symbolic_paths` in the result of `SHOW TABLE STATUS` #3349.
 
 ## [0.8.1] - 2023-06-28
@@ -618,6 +649,7 @@ Removed
 - openmldb-0.2.0-linux.tar.gz targets on x86_64
 - aarch64 artifacts consider experimental
 
+[0.8.2]: https://github.com/4paradigm/OpenMLDB/compare/v0.8.2...v0.8.3
 [0.8.2]: https://github.com/4paradigm/OpenMLDB/compare/v0.8.1...v0.8.2
 [0.8.1]: https://github.com/4paradigm/OpenMLDB/compare/v0.8.0...v0.8.1
 [0.8.0]: https://github.com/4paradigm/OpenMLDB/compare/v0.7.3...v0.8.0
