@@ -29,7 +29,7 @@ bash bin/start.sh stop nameserver
 ```
 **4. 停止 TaskManager**
 
-如果没有部署 TaskManager 可以跳过此步
+如果没有部署 TaskManager 可以跳过此步  
 到每一个部署 TaskManager 节点的部署目录里执行如下命令
 ```
 bash bin/start.sh stop taskmanager
@@ -37,7 +37,7 @@ bash bin/start.sh stop taskmanager
 
 **5. 停止 APIServer**
 
-如果没有部署 APIServer 可以跳过此步
+如果没有部署 APIServer 可以跳过此步  
 到每一个部署 TaskManager 节点的部署目录里执行如下命令
 ```
 bash bin/start.sh stop apiserver
@@ -121,7 +121,8 @@ confset auto_failover true
 
 **7. 恢复数据**
 
-使用OpenMLDB运维工具中的一键数据恢复来恢复数据。关于运维工具的使用和说明参考[OpenMLDB运维工具](./openmldb_ops.md)  
+使用OpenMLDB运维工具中的一键数据恢复来恢复数据。关于运维工具的使用和说明参考[OpenMLDB运维工具](./openmldb_ops.md)
+
 到任意一个OpenMLDB的部署目录中执行如下命令，其中`zk_cluster`和`zk_root_path`的值替换为配置文件中对应的值。此命令只需要执行一次，执行过程中不要中断
 ```
 python tools/openmldb_ops.py --openmldb_bin_path=./bin/openmldb --zk_cluster=172.27.2.52:12200 --zk_root_path=/openmldb --cmd=recoverdata
@@ -131,7 +132,7 @@ python tools/openmldb_ops.py --openmldb_bin_path=./bin/openmldb --zk_cluster=172
 
 ### 停止集群
 
-到部署集群的目录执行
+到部署集群的目录执行，确保该目录下 conf/hosts 文件内容和实际各组件的部署信息一致
 ```
 sbin/stop-all.sh
 ```
@@ -139,5 +140,5 @@ sbin/stop-all.sh
 ### 启动集群
 到部署集群的目录执行
 ```
-sbin/stop-all.sh
+sbin/start-all.sh
 ```
