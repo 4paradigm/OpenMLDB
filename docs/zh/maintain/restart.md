@@ -68,12 +68,16 @@ Starting nameserver ...
 Start nameserver success
 ```
 **3. 启动 TaskManager**
+
+如果没有部署 TaskManager 可以跳过此步  
 到每一个部署 TaskManager 节点的部署目录里执行如下命令
 ```
 bash bin/start.sh start taskmanager
 ```
 
 **4. 启动 APIServer**
+
+如果没有部署 APIServer 可以跳过此步  
 到每一个部署 APIServer 节点的部署目录里执行如下命令
 ```
 bash bin/start.sh start apiserver
