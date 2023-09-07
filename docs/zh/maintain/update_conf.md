@@ -19,7 +19,7 @@
 ## 更新 tablet 配置文件
 
 ```{important}
-如果有多个 tablet，请务必对每一个 tablet 进行顺序操作，不要同时对多个 tablet 进行更新配置操作。即对一个 tablet 完成配置更新，结果确认以后，再进行下一个 tablet 的更新配置操作。否则会导致集群状态异常。如果并行误操作导致集群异常，可以尝试使用[运维工具](openmldb_ops.md)的 recoverdata 进行恢复。
+如果有多个 tablet，请务必对每一个 tablet 进行顺序操作，不要同时对多个 tablet 进行更新配置操作。即对一个 tablet 完成配置更新，结果确认以后，再进行下一个 tablet 的更新配置操作。否则会导致集群状态异常。如果误操作导致集群异常，可以尝试使用[运维工具](openmldb_ops.md)的 `recoverdata` 进行恢复。
 ```
 
 更新过程对服务的影响:

@@ -27,7 +27,7 @@
 ## 2. 升级tablet
 
 ```{important}
-如果有多个 tablet，请务必对每一个 tablet 进行顺序操作，不要同时对多个 tablet 进行升级操作。即对一个 tablet 完成升级，结果确认以后，再进行下一个 tablet 的升级操作。否则会导致集群状态异常。如果并行误操作导致集群异常，可以尝试使用[运维工具](openmldb_ops.md)的 recoverdata 进行恢复。
+如果有多个 tablet，请务必对每一个 tablet 进行顺序操作，不要同时对多个 tablet 进行升级操作。即对一个 tablet 完成升级，结果确认以后，再进行下一个 tablet 的升级操作。否则会导致集群状态异常。如果误操作导致集群异常，可以尝试使用[运维工具](openmldb_ops.md)的 `recoverdata` 进行恢复。
 ```
 
 * 升级前准备`pre-upgrade`：为了避免对线上服务的影响，需要在升级tablet前，进行`pre-upgrade`操作，把该tablet上的leader分片迁移到其它tablets上（详细命令说明可以参考：[OpenMLDB运维工具](./openmldb_ops.md)）
