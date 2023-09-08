@@ -28,7 +28,7 @@ wget https://openmldb.ai/download/airflow_demo/airflow_demo_files.tar.gz
 tar zxf airflow_demo_files.tar.gz
 ls airflow_demo_files
 ```
-#### 0.2 Start image
+#### 0.2 Start Image
 
 For the smooth functioning of the setup, we recommend starting OpenMLDB using the docker image and installing Airflow within the docker container.
 
@@ -38,14 +38,14 @@ Since Airflow Web requires an external port for login, the container's port need
 docker run -p 8080:8080 -v `pwd`/airflow_demo_files:/work/airflow_demo_files -it 4pdosc/openmldb:0.8.0 bash
 ```
 
-#### 0.3 Download and install Airflow and Airflow OpenMLDB Provider
+#### 0.3 Download and Install Airflow and Airflow OpenMLDB Provider
 In the docker container, execute:
 ```
 pip3 install airflow-provider-openmldb
 ```
 Due to airflow-provider-openmldb relying on airflow, they will be downloaded together.
 
-#### 0.4 Source data and DAG preparation
+#### 0.4 Source Data and DAG Preparation
 To ensure the successful execution of the DAG, we must copy the sample data file, named `/tmp/train_sample.csv`, to the tmp directory. Additionally, both the Airflow DAG files and the training scripts used in the DAG must be copied to the Airflow directory.
 
 ```
@@ -71,7 +71,7 @@ When running Airflow standalone, you will be prompted to log in with your userna
 To access the Airflow Web interface, visit `http://localhost:8080` and enter your designated username and password.
 
 ```{caution}
-`airflow standalone` is a front-end program that exits with Airflow. You can exit Airflow with Step 3 - Testing (# 3- Testing) after completing the Dag run, or place the Airflow process in the background.
+`airflow standalone` is a front-end program that exits with Airflow. You can exit Airflow with [Step 3-Testing](#3-Testing) after completing the Dag run, or place the Airflow process in the background.
 ```
 
 ### 2 Running DAG
@@ -84,7 +84,7 @@ In the code, you will notice the usage of `openmldb_conn_id`, as depicted in the
 
 ![dag code](images/dag_code.png)
 
-#### 2.1 Create connection
+#### 2.1 Create Connection
 Click connections on the Admin page.
 ![connection](images/connection.png)
 
@@ -106,7 +106,7 @@ Run the DAG to complete the training of the model, SQL deployment, and model dep
 
 If Airflow is currently running in the foreground within the container, you may exit the process now. The upcoming tests will not be dependent on Airflow.
 
-#### 3.1 Import online
+#### 3.1 Import Online
 The SQL and model launch stages have been successfully executed in the Airflow DAG. However, there is currently no data in the online storage, necessitating an online data import.
 
 ```
@@ -127,7 +127,7 @@ The result is as shown.
 ![result](images/airflow_test_result.png)
 
 
-### Non-interactive testing
+### Non-Interactive Testing
 
 Check if DAG has been successfully load-on:
 ```
