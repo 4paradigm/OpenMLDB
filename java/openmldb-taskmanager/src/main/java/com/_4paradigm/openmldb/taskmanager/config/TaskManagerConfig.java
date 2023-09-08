@@ -381,8 +381,8 @@ public class TaskManagerConfig {
         File jobLogDirectory = new File(getJobLogPath());
         if (!jobLogDirectory.exists()) {
             logger.info("The log path does not exist, try to create directory: " + getJobLogPath());
-            boolean created = jobLogDirectory.mkdirs();
-            if (created) {
+            jobLogDirectory.mkdirs();
+            if (!jobLogDirectory.exists()) {
                 throw new ConfigException("job.log.path", "fail to create log path: " + jobLogDirectory);
             }
         }
@@ -395,8 +395,8 @@ public class TaskManagerConfig {
         if (!externalFunctionDir.exists()) {
             logger.info("The external function dir does not exist, try to create directory: "
                     + getExternalFunctionDir());
-            boolean created = externalFunctionDir.mkdirs();
-            if (created) {
+            externalFunctionDir.mkdirs();
+            if (!externalFunctionDir.exists()) {
                 throw new ConfigException("job.log.path", "fail to create external function path: " + externalFunctionDir);
             }
         }
