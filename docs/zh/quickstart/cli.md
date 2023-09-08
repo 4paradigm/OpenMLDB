@@ -5,6 +5,8 @@ CLI，指OpenMLDB的shell客户端，使用发布包`bin`中的binary程序`open
 如果是使用sbin部署的集群，可以使用sbin中的openmldb-cli.sh脚本启动CLI，脚本会自动填充参数。例如，在demo集群中，启动CLI的命令为`OPENMLDB_MODE=cluster /work/openmldb/sbin/openmldb-cli.sh`。
 ```
 
+CLI默认执行模式为离线，其他SDK的默认可能不同。
+
 本文将介绍常用的一些CLI可配置项与便利的非交互式使用方法，完整的可配置项见`bin/openmldb --help`。
 
 ## 基本使用

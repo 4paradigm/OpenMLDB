@@ -1,5 +1,7 @@
 # Java SDK
 
+Java SDK中，JDBC Statement的默认执行模式为在线，SqlClusterExecutor的默认执行模式则是离线，请注意。
+
 ## Java SDK 包安装
 
 - Linux 下 Java SDK 包安装
