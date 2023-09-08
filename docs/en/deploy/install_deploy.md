@@ -132,7 +132,7 @@ $ cat /sys/kernel/mm/transparent_hugepage/defrag
 always madvise [never]
 ```
 
-Note: The above three configurations can also be modified through a script, refer to [Modify Machine Environment Configuration](#modifymachineenvironmentconfiguration-optional)
+Note: The above three configurations can also be modified through a script, refer to [Modify Machine Environment Configuration](#modify-machine-environment-configuration-optional)
 
 ### Time Zone Settings
 
