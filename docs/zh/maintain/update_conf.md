@@ -18,7 +18,12 @@
 
 ## 更新 tablet 配置文件
 
+```{important}
+如果有多个 tablet，请务必对每一个 tablet 进行顺序操作，不要同时对多个 tablet 进行更新配置操作。即对一个 tablet 完成配置更新，结果确认以后，再进行下一个 tablet 的更新配置操作。否则会导致集群状态异常。如果误操作导致集群异常，可以尝试使用[运维工具](openmldb_ops.md)的 `recoverdata` 进行恢复。
+```
+
 更新过程对服务的影响:
+
 * 如果创建的表是单副本，用户可以选择：
    - 通过`pre-upgrade`和`post-upgrade`，重启前自动添加副本，重启后自动删除新添加的副本。这样行为和多副本保持一致
    - 如果允许单副本表在重启过程中不可用，可以在`pre-upgrade`的时候添加`--allow_single_replica`选项，在内存紧张的环境下，可以避免添加副本可能造成的OOM
@@ -47,7 +52,7 @@
     ```bash
     python tools/openmldb_ops.py --openmldb_bin_path=./bin/openmldb --zk_cluster=172.24.4.40:30481 --zk_root_path=/openmldb --cmd=post-upgrade --endpoints=127.0.0.1:10921
     ```
-  
+
 ### 重启结果确认
 * `showopstatus`命令查看是否有操作为kFailed, 如果有查看日志排查原因
     ```bash
@@ -57,7 +62,7 @@
     ```bash
     python tools/openmldb_ops.py --openmldb_bin_path=./bin/openmldb --zk_cluster=172.24.4.40:30481 --zk_root_path=/openmldb --cmd=showtablestatus
     ```
-一个tablet节点更新完成后，对其他tablet重复上述步骤。
+    一个tablet节点更新完成后，对其他tablet重复上述步骤。
 
 所有节点更新完成后恢复写操作，可以通过执行`showtablestatus`命令查看列 `Rows`，确认是否有新数据成功写入。
 
