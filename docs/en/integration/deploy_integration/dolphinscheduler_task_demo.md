@@ -4,17 +4,17 @@
 Throughout the process of machine learning, from development to deployment, various tasks such as data processing, feature development, and model training demand significant time and effort. To streamline the construction and deployment of AI models and simplify the overall machine-learning process, we have introduced the DolphinScheduler OpenMLDB Task. This task seamlessly integrates the capabilities of the feature platform into DolphinScheduler's workflow, effectively bridging feature engineering with scheduling functionalities, resulting in a comprehensive end-to-end MLOps workflow. By doing so, developers can now allocate more focus on exploring the true business value. In this article, we will present a concise introduction and practical demonstration of the operational procedures of the DolphinScheduler OpenMLDB Task.
 
 ```{seealso}
-For detailed information on the OpenMLDB Task, please refer to the DolphinScheduler OpenMLDB Task Official Documentation.
+For detailed information on the OpenMLDB Task, please refer to the [DolphinScheduler OpenMLDB Task Official Documentation](https://dolphinscheduler.apache.org/zh-cn/docs/3.1.5/guide/task/openmldb).
 ```
 
 ## Scenarios and Functions
-### Why develop DolphinScheduler OpenMLDB Task
+### Why Develop DolphinScheduler OpenMLDB Task
 
 ![eco](images/ecosystem.png)
 
 As an open-source machine learning database providing a comprehensive solution for production-level data and feature development, the key to enhancing OpenMLDB's usability and reducing usage barriers lies in upstream and downstream connectivity. As depicted in the diagram above, accessing the data source allows seamless data flow from DataOps into OpenMLDB, and the features provided by OpenMLDB need to smoothly integrate with ModelOps for training. To alleviate the significant workload resulting from manual connections by developers and enhance the convenience of using OpenMLDB, we have developed OpenMLDB connection deployment and monitoring functions. The focus of this presentation is to introduce the framework for integrating OpenMLDB into the DolphinScheduler workflow. The DolphinScheduler OpenMLDB Task simplifies the operation of OpenMLDB, and OpenMLDB tasks are efficiently managed by Workflow, enabling greater automation.
 
-### What can DolphinScheduler OpenMLDB Task do
+### What Can DolphinScheduler OpenMLDB Task Do
 
 OpenMLDB aims to expedite development launch, enabling developers to focus on the essence of their work rather than expending excessive effort on engineering implementation. By writing OpenMLDB Tasks, we can fulfil the offline import, feature extraction, SQL deployment, and online import requirements of OpenMLDB. Furthermore, we can also implement complete training and online processes using OpenMLDB in DolphinScheduler.
 
@@ -24,8 +24,8 @@ For instance, the most straightforward user operation process we envision, as il
 
 In addition to SQL execution in OpenMLDB, real-time prediction also requires model deployment. Therefore, we will demonstrate how to utilize the DolphinScheduler OpenMLDB Task to coordinate a comprehensive machine learning training and online process, based on the TalkingData advertising fraud detection scenario from the Kaggle competition. Further information about the TalkingData competition can be found at [talkingdata-adtracking-fraud-detection](https://www.kaggle.com/competitions/talkingdata-adtracking-fraud-detection/discussion).
 
-## Practical demonstration
-### Environmental configuration
+## Practical Demonstration
+### Environmental Configuration
 
 **Run OpenMLDB Image**
 
@@ -37,7 +37,7 @@ docker run -it -p 12345:12345 4pdosc/openmldb:0.8.0 bash
 For proper configuration of DolphinScheduler, the tenant should be set up as a user of the operating system, and this user must have sudo permissions. It is advised to download and initiate DolphinScheduler within the OpenMLDB container. Otherwise, please ensure that the operating system users with sudo permissions are prepared.
 ```
 
-As our current Docker image does not have sudo installed, and DolphinScheduler requires sudo for running workflows, please install sudo in the container first: [Instructions for installing sudo] (provide relevant instructions).
+As our current Docker image does not have sudo installed, and DolphinScheduler requires sudo for running workflows, please install sudo in the container first: [Instructions For Installing Sudo] (provide relevant instructions).
 ```
 apt update && apt install sudo
 ```
@@ -48,7 +48,7 @@ dpkg-reconfigure dash
 ```
 Enter `no`.
 
-**Source data preparation**
+**Source Data Preparation**
 
 The workflow used in the following text will start from `/tmp/train'_ Sample. csv ` to import data to OpenMLDB, so first download the source data to this address:
 ```
@@ -72,7 +72,7 @@ python3 predict_server.py --no-init > predict.log 2>&1 &
 If an error is returned in the 'online prediction test', please check the log `/work/predict.log`.
 ```
 
-**Download and run DolphinScheduler**
+**Download and Run DolphinScheduler**
 
 Please note that DolphinScheduler supports OpenMLDB Task versions 3.1.3 and above. In this article, we will be using version 3.1.5, which can be downloaded from the [Official Website](https://dolphinscheduler.apache.org/zh-cn/download/3.1.5) or from a mirrored website.
 
@@ -91,18 +91,18 @@ sed -i s#/opt/soft/python#/usr/bin/python3#g bin/env/dolphinscheduler_env.sh
 ```{hint}
 In the official release version of DolphinScheduler, there is an issue with OpenMLDB Task in versions older than 3.1.3, making it incompatible for direct use. If you are using an older version, you can contact us to obtain a corresponding version of OpenMLDB Task for fixing. This problem has been resolved in versions 3.1.3 and later, making them suitable for use with the official release version.
 
-In other versions of DolphinScheduler, there may be a change in bin/env/dolphinscheduler_env.sh. If bin/env/dolphinscheduler_env.sh does not exist in PYTHON_HOME, additional configuration is required. You can modify it using the command echo "export PYTHON_HOME=/usr/bin/python3" >>bin/env/dolphinscheduler_env.sh.
+In other versions of DolphinScheduler, there may be a change in `bin/env/dolphinscheduler_env.sh`. If `bin/env/dolphinscheduler_env.sh` does not exist in `PYTHON_HOME`, additional configuration is required. You can modify it using the command `echo "export PYTHON_HOME=/usr/bin/python3" >>bin/env/dolphinscheduler_env.sh`.
 ```
 
 To access the system UI, open your browser and go to the address http://localhost:12345/dolphinscheduler/ui (the default configuration allows cross-host access, but you need to ensure a smooth IP connection). The default username and password are admin/dolphinscheduler123.
 
 ```{note}
-The DolphinScheduler worker server requires the OpenMLDB Python SDK. For the DolphinScheduler standalone worker, it is native, so you only need to install the OpenMLDB Python SDK locally. We have already installed it in our OpenMLDB image. If you are in a different environment, please install the openmldb SDK using the command pip3 install openmldb.
+The DolphinScheduler worker server requires the OpenMLDB Python SDK. For the DolphinScheduler standalone worker, it is native, so you only need to install the OpenMLDB Python SDK locally. We have already installed it in our OpenMLDB image. If you are in a different environment, please install the openmldb SDK using the command `pip3 install openmldb`.
 ```
 
-**Download workflow configuration**
+**Download Workflow Configuration**
 
-Workflow can be manually created, but for the purpose of simplifying the demonstration, we have provided a JSON workflow file directly, which you can download from the following link: [Click to download](http://openmldb.ai/download/dolphinschduler-task/workflow_openmldb_demo.json). Later, you can upload this file directly to the DolphinScheduler environment and make simple modifications (as shown in the demonstration below) to complete the entire workflow.
+Workflow can be manually created, but for the purpose of simplifying the demonstration, we have provided a JSON workflow file directly, which you can download from the following link: [Click to Download](http://openmldb.ai/download/dolphinschduler-task/workflow_openmldb_demo.json). Later, you can upload this file directly to the DolphinScheduler environment and make simple modifications (as shown in the demonstration below) to complete the entire workflow.
 
 Please note that the download will not be saved within the container but to the browser host you are using. The upload will be done on the web page later.
 
@@ -121,7 +121,7 @@ Bind the tenant to the user again. For simplicity, we directly bind to the admin
 After binding, the user status is similar as shown below.
 ![bind status](images/ds_bind_status.png)
 
-#### 2. Create workflow
+#### 2. Create Workflow
 In DolphinScheduler, you need to create a project first, and then create a workflow within that project.
 
 To begin, create a test project. As shown in the following figure, click on "Create Project" and enter the project name.
@@ -156,7 +156,7 @@ Once the modifications are completed, save the workflow directly. The default va
 
 ![set tenant](images/ds_set_tenant.png)
 
-#### 3. Run online workflow
+#### 3. Run Online Workflow
 
 After saving the workflow, it needs to be launched before running. Once it goes online, the run button will be activated. As illustrated in the following figure.
 
@@ -168,14 +168,14 @@ After clicking "Run," wait for the workflow to complete. You can view the detail
 To demonstrate the process of successful product launch, validation was not actually validated but returned a successful validation and flowed into the deploy branch. After running the deploy branch and successfully deploying SQL and subsequent tasks, the predict server receives the latest model.
 
 ```{note}
-If the Failed notification appears on the workflow instance, please click on the instance name and go to the detailed page to see which task execution error occurred. Double click on the task and click on "View Log" in the upper right corner to view detailed error information.
+If the `Failed` notification appears on the workflow instance, please click on the instance name and go to the detailed page to see which task execution error occurred. Double click on the task and click on "View Log" in the upper right corner to view detailed error information.
 
-Load offline data, feature extraction, and load online may display successful task execution in the DolphinScheduler, but actual task execution fails in OpenMLDB. This may lead to errors in the train task, where there is no source feature data to concatenate (Traceback pd.concat).
+`load offline data`, `feature extraction`, and `load online` may display successful task execution in the DolphinScheduler, but actual task execution fails in OpenMLDB. This may lead to errors in the `train` task, where there is no source feature data to concatenate (Traceback `pd.concat`).
 
-When such problems occur, please query the true status of each task in OpenMLDB and run it directly using the command: Echo "show jobs;" | /work/openmldb/bin/openmldb --zk_cluster=127.0.1:2181 --zk_root_path=/openmldb --role=SQL_client. If the status of a task is FAILED, please query the log of that task. The method can be found in [Task Log] (../quickstart/beginninger_mustread.md#offline).
+When such problems occur, please query the true status of each task in OpenMLDB and run it directly using the command: `echo "show jobs;" | /work/openmldb/bin/openmldb --zk_cluster=127.0.1:2181 --zk_root_path=/openmldb --role=SQL_client`. If the status of a task is `FAILED`, please query the log of that task. The method can be found in [Task Log](../quickstart/beginninger_mustread.md#offline).
 ```
 
-#### 4. Online predictive testing
+#### 4. Online Predictive Testing
 The predict server also provides online prediction services, requesting through `curl/predict`. We simply construct a real-time request and send it to the predict server.
 ```
 curl -X POST 127.0.0.1:8881/predict -d '{"ip": 114904,
@@ -202,10 +202,10 @@ You can confirm whether the deployment has been deleted by using the following c
 /work/openmldb/bin/openmldb --zk_cluster=127.0.0.1:2181 --zk_root_path=/openmldb --role=sql_client --database=demo_db --interactive=false --cmd="show deployment demo;"
 ```
 
-Restart the DolphinScheduler server (note that restarting this will clear the metadata and require reconfiguring the environment and creating workflows):
+Restart the DolphinScheduler server (Note that restarting this will clear the metadata and require reconfiguring the environment and creating workflows):
 ```
 ./bin/dolphinscheduler-daemon.sh stop standalone-server
 ./bin/dolphinscheduler-daemon.sh start standalone-server
 ```
 
-If you want to preserve metadata, please refer to [pseudo cluster deployment](https://dolphinscheduler.apache.org/zh-cn/docs/3.1.5/guide/installation/pseudo-cluster) to configure the database.
+If you want to preserve metadata, please refer to [Pseudo Cluster Deployment](https://dolphinscheduler.apache.org/zh-cn/docs/3.1.5/guide/installation/pseudo-cluster) to configure the database.
