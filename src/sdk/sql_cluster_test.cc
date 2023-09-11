@@ -628,6 +628,40 @@ TEST_F(SQLSDKQueryTest, GetTabletClient) {
     ASSERT_TRUE(router->DropDB(db, &status));
 }
 
+TEST_F(SQLClusterTest, DeployWithMultiDB) {
+    SQLRouterOptions sql_opt;
+    sql_opt.zk_cluster = mc_->GetZkCluster();
+    sql_opt.zk_path = mc_->GetZkPath();
+    auto router = NewClusterSQLRouter(sql_opt);
+    SetOnlineMode(router);
+    ASSERT_TRUE(router != nullptr);
+    std::string base_table = "test" + GenRand();
+    std::string db1 = "db1";
+    std::string db2 = "db2";
+    ::hybridse::sdk::Status status;
+    ASSERT_TRUE(router->ExecuteDDL(db1, "drop table if exists db1.t1;", &status));
+    ASSERT_TRUE(router->ExecuteDDL(db2, "drop table if exists db2.t1;", &status));
+    ASSERT_TRUE(router->ExecuteDDL(db1, "drop database if exists db1;", &status));
+    ASSERT_TRUE(router->ExecuteDDL(db2, "drop database if exists db2;", &status));
+    ASSERT_TRUE(router->CreateDB(db1, &status));
+    ASSERT_TRUE(router->CreateDB(db2, &status));
+    std::string sql1 = "create table db1.t1 (c1 string, c2 int, c3 bigint, c4 timestamp, index(key=c1, ts=c4));";
+    std::string sql2 = "create table db2.t1 (c1 string, c2 int, c3 bigint, c4 timestamp, index(key=c1, ts=c3));";
+    ASSERT_TRUE(router->ExecuteDDL(db1, sql1, &status));
+    ASSERT_TRUE(router->ExecuteDDL(db2, sql2, &status));
+    ASSERT_TRUE(router->ExecuteDDL(db1, "use " + db1 + ";", &status));
+    std::string sql = "deploy demo select db1.t1.c1,db1.t1.c2,db2.t1.c3,db2.t1.c4 from db1.t1 "
+        "last join db2.t1 ORDER BY db2.t1.c3 on db1.t1.c1=db2.t1.c1;";
+    ASSERT_TRUE(router->RefreshCatalog());
+    router->ExecuteSQL(sql, &status);
+    ASSERT_TRUE(status.IsOK());
+    ASSERT_TRUE(router->ExecuteDDL(db1, "drop deployment demo;", &status));
+    ASSERT_TRUE(router->ExecuteDDL(db1, "drop table t1;", &status));
+    ASSERT_TRUE(router->ExecuteDDL(db2, "drop table t1;", &status));
+    ASSERT_TRUE(router->DropDB(db1, &status));
+    ASSERT_TRUE(router->DropDB(db2, &status));
+}
+
 TEST_F(SQLClusterTest, CreatePreAggrTable) {
     SQLRouterOptions sql_opt;
     sql_opt.zk_cluster = mc_->GetZkCluster();

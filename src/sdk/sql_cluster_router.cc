@@ -3631,8 +3631,8 @@ hybridse::sdk::Status SQLClusterRouter::GetNewIndex(const TableInfoMap& table_ma
                         // update ttl
                         auto ns_ptr = cluster_sdk_->GetNsClient();
                         std::string err;
-                        if (!ns_ptr->UpdateTTL(table_name, result.ttl_type(), result.abs_ttl(), result.lat_ttl(),
-                                               old_column_key.index_name(), err)) {
+                        if (!ns_ptr->UpdateTTL(db_name, table_name, result.ttl_type(),
+                                    result.abs_ttl(), result.lat_ttl(), old_column_key.index_name(), err)) {
                             return {StatusCode::kCmdError, "update ttl failed"};
                         }
                     }
