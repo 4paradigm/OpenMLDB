@@ -40,9 +40,9 @@ else
     cmd="cd $dir && SPARK_HOME=${SPARK_HOME} bin/start.sh start taskmanager $*"
     run_auto "$host" "$cmd"
 
-    echo "tobe1: print the taskmanager log: "
-    cmd="cd $dir && cat taskmanager/bin/logs/taskmanager.log"
-    run_auto "$host" "$cmd"
+    # Print the log of taskmanager if fail
+    #cmd="cd $dir && cat taskmanager/bin/logs/taskmanager.log"
+    #run_auto "$host" "$cmd"
   done
   IFS="$old_IFS"
 fi

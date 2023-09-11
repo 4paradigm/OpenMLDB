@@ -358,7 +358,9 @@ public class TaskManagerConfig {
         if (isEmpty(SPARK_HOME)) {
             throw new ConfigException("spark.home", "should set config 'spark.home' or environment variable 'SPARK_HOME'");
         }
-        props.setProperty("spark.home", SPARK_HOME);
+        if (SPARK_HOME != null) {
+            props.setProperty("spark.home", SPARK_HOME);
+        }
 
         // TODO: Check if we can get spark-submit
 
@@ -479,13 +481,19 @@ public class TaskManagerConfig {
 
         // TODO(hw): need default root?
         String HADOOP_USER_NAME = firstNonEmpty(props.getProperty("hadoop.user.name"),  System.getenv("HADOOP_USER_NAME"));
-        props.setProperty("hadoop.user.name", HADOOP_USER_NAME);
+        if (HADOOP_USER_NAME != null) {
+            props.setProperty("hadoop.user.name", HADOOP_USER_NAME);
+        }
+
 
         String HADOOP_CONF_DIR = firstNonEmpty(props.getProperty("hadoop.conf.dir"), System.getenv("HADOOP_CONF_DIR"));
         if (isYarn() && isEmpty(HADOOP_CONF_DIR)) {
             throw new ConfigException("hadoop.conf.dir", "should set config 'hadoop.conf.dir' or environment variable 'HADOOP_CONF_DIR'");
         }
-        props.setProperty("hadoop.conf.dir", HADOOP_CONF_DIR);
+        if (HADOOP_CONF_DIR != null) {
+            props.setProperty("hadoop.conf.dir", HADOOP_CONF_DIR);
+        }
+
 
         if (props.getProperty("enable.hive.support") == null) {
             props.setProperty("enable.hive.support", "true");
