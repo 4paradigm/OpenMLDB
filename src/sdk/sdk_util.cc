@@ -14,8 +14,9 @@
  * limitations under the License.
  */
 
-#include <sstream>
 #include "sdk/sdk_util.h"
+
+#include <sstream>
 #include "codec/schema_codec.h"
 
 namespace openmldb {
@@ -28,11 +29,11 @@ std::string SDKUtil::GenCreateTableSQL(const ::openmldb::nameserver::TableInfo& 
         auto it = openmldb::codec::DATA_TYPE_STR_MAP.find(column.data_type());
         if (it != openmldb::codec::DATA_TYPE_STR_MAP.end()) {
             ss << "`" << column.name() << "` " << it->second;
-            if (column.not_null()) {
-                ss << " NOT NULL ";
-            }
             if (column.has_default_value()) {
-                ss << " DEFAULT \"" << column.default_value() << "\"";
+                ss << " DEFAULT '" << column.default_value() << "'";
+            }
+            if (column.not_null()) {
+                ss << " NOT NULL";
             }
             ss << ",\n";
         }
