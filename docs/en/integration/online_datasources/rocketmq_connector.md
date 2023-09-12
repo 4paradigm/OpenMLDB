@@ -1,11 +1,11 @@
 # RocketMQ
 
-## 1. Why choose RocketMQ OpenMLDB Connector
+## 1. Why Choose RocketMQ OpenMLDB Connector
 
-- To enable efficient and stable transmission channels between OpenMLDB and RocketMQ, the RocketMQ OpenMLDB Connector offers a range of outstanding features, including but not limited to:
-  - **User-friendly setup**: No coding is required; a straightforward configuration allows for seamless flow of RocketMQ messages into OpenMLDB through the RocketMQ OpenMLDB Connector. This simplified data import process significantly enhances the effective utilization of enterprise data.
+To enable efficient and stable transmission channels between OpenMLDB and RocketMQ, the RocketMQ OpenMLDB Connector offers a range of outstanding features, including but not limited to:
+  - **User-friendly setup**: No coding is required; a **straightforward configuration** allows for seamless flow of RocketMQ messages into OpenMLDB through the RocketMQ OpenMLDB Connector. This simplified data import process **significantly enhances** the effective utilization of enterprise data.
   - **Flexible deployment**: Depending on the specific business requirements, the RocketMQ OpenMLDB Connector can be deployed on a **single machine or as a cluster**, enabling enterprises to build real-time data pipelines.
-  - **Robust reliability**: The cluster deployment method of the RocketMQ OpenMLDB Connector incorporates Failover capability, ensuring smooth task scheduling from problematic nodes to normal nodes and maintaining cluster load balancing. This enhances the focus and efficiency of enterprises in exploring the commercial value of their data.
+  - **Robust reliability**: The cluster deployment method of the RocketMQ OpenMLDB Connector incorporates Failover capability, ensuring smooth task scheduling from problematic nodes to normal nodes and maintaining cluster load balancing. This enhances the **focus and efficiency** of enterprises in exploring the commercial value of their data.
   - **Low latency**: With a capacity to meet real-time data and feature development scenarios with just a **second-level delay**, the RocketMQ OpenMLDB Connector facilitates timely and efficient data processing.
 
 ## 2. RocketMQ OpenMLDB Connector
@@ -22,9 +22,9 @@ The RocketMQ OpenMLDB Connector serves as a dependable and scalable solution for
 
 It can enable RocketMQ messages to flow into OpenMLDB online storage.
 
-![img](C:\Users\65972\Documents\GitHub\fix_docs\OpenMLDB\docs\en\integration\online_datasources\images\rocketmq_overview.png)
+![img](images/rocketmq_overview.png)
 
-**Connector plugin compilation**
+**Connector Plugin Compilation**
 
 RocketMQ OpenMLDB Connector
 
@@ -36,9 +36,9 @@ $ mvn clean package -Dmaven.test.skip=true
 
 Last but not least, place the compiled plugin package at the loading address specified by RocketMQ connect.
 
-### 2.2. Connector usage demonstration
+### 2.2. Connector Usage Demonstration
 
-**Process introduction**
+**Process Introduction**
 
 Specifically designed for real-time data stream access in OpenMLDB's online mode, the RocketMQ OpenMLDB Connector follows a straightforward four-step usage process:
 
@@ -47,9 +47,8 @@ Specifically designed for real-time data stream access in OpenMLDB's online mode
 - Launch the RocketMQ OpenMLDB Connector to establish the connection and enable data streaming between RocketMQ and OpenMLDB.
 - Proceed with testing or commence normal use to ensure the smooth and efficient transfer of data.
 
-![img](C:\Users\65972\Documents\GitHub\fix_docs\OpenMLDB\docs\en\integration\online_datasources\images\rocketmq_workflow.png)
-
-**The key steps**
+![img](images/rocketmq_workflow.png)
+**The Key Steps**
 
 The key steps for using this connector is stated below:
 
@@ -66,7 +65,7 @@ echo "create database rocketmq_test;" | /work/openmldb/bin/openmldb --zk_cluster
 **Step 2 | Start RocketMQ**
 
 ```bash
-Build RocketMQ and start RocketMQ
+Build RocketMQ and Start RocketMQ
 1. Downlaod RocketMQ
 $ wget https://dlcdn.apache.org/rocketmq/4.9.3/rocketmq-all-4.9.3-source-release.zip
 
@@ -155,11 +154,11 @@ $ sh bin/connect-standalone.sh -c conf/connect-standalone.conf &
 
 The following indicates that RocketMQ connect runtime has run successfully:
 
-![img](C:\Users\65972\Documents\GitHub\fix_docs\OpenMLDB\docs\en\integration\online_datasources\images\rocketmq_runtime.png)
+![img](images/rocketmq_runtime.png)
 
 **Step 4 | Test**
 
-![img](C:\Users\65972\Documents\GitHub\fix_docs\OpenMLDB\docs\en\integration\online_datasources\images\rocketmq_test.png)
+![img](images/rocketmq_test.png)
 
 - Create a Mysql data table and initialize test data
 
@@ -221,7 +220,8 @@ curl -X POST -H "Content-Type: application/json" http://127.0.0.1:8082/connector
 }'st
 ```
 
-Confirm task initiation and start pulling data:![img](https://pic3.zhimg.com/80/v2-80395baf4060f32bb0e86d959ad6ecae_1440w.webp)
+Confirm task initiation and start pulling data:
+![img](https://pic3.zhimg.com/80/v2-80395baf4060f32bb0e86d959ad6ecae_1440w.webp)
 
 ![img](https://pic2.zhimg.com/80/v2-2e76f61a818c5bc31cdd18eca2a8b4ed_1440w.webp)
 
