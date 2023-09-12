@@ -182,7 +182,8 @@ class TabletTableHandler : public ::hybridse::vm::TableHandler,
 
     int DeleteTable(uint32_t pid);
 
-    void Update(const ::openmldb::nameserver::TableInfo &meta, const ClientManager &client_manager);
+    bool Update(const ::openmldb::nameserver::TableInfo &meta, const ClientManager &client_manager,
+            bool* index_updated);
 
  private:
     inline int32_t GetColumnIndex(const std::string &column) {
@@ -223,7 +224,7 @@ class TabletCatalog : public ::hybridse::vm::Catalog {
 
     bool UpdateTableMeta(const ::openmldb::api::TableMeta &meta);
 
-    bool UpdateTableInfo(const ::openmldb::nameserver::TableInfo& table_info);
+    bool UpdateTableInfo(const ::openmldb::nameserver::TableInfo& table_info, bool* index_updated);
 
     std::shared_ptr<::hybridse::type::Database> GetDatabase(const std::string &db) override;
 
@@ -237,7 +238,7 @@ class TabletCatalog : public ::hybridse::vm::Catalog {
     bool DeleteDB(const std::string &db);
 
     void Refresh(const std::vector<::openmldb::nameserver::TableInfo> &table_info_vec, uint64_t version,
-                 const Procedures &db_sp_map);
+                 const Procedures &db_sp_map, bool* updated);
 
     bool AddProcedure(const std::string &db, const std::string &sp_name,
                       const std::shared_ptr<hybridse::sdk::ProcedureInfo> &sp_info);

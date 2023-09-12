@@ -54,12 +54,7 @@ class TabletClient : public Client {
 
     int Init() override;
 
-    bool CreateTable(const std::string& name, uint32_t tid, uint32_t pid, uint64_t abs_ttl, uint64_t lat_ttl,
-                     bool leader, const std::vector<std::string>& endpoints, const ::openmldb::type::TTLType& type,
-                     uint32_t seg_cnt, uint64_t term, const ::openmldb::type::CompressType compress_type,
-                     ::openmldb::common::StorageMode storage_mode = ::openmldb::common::kMemory);
-
-    bool CreateTable(const ::openmldb::api::TableMeta& table_meta);
+    base::Status CreateTable(const ::openmldb::api::TableMeta& table_meta);
 
     bool UpdateTableMetaForAddField(uint32_t tid, const std::vector<openmldb::common::ColumnDesc>& cols,
                                     const openmldb::common::VersionPair& pair,
