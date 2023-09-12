@@ -2,11 +2,11 @@
 
 Jupyter Notebook offers various functionalities, such as data computation, code development, document editing, code execution, and result display, through a browser-based web page. It is currently one of the most popular and user-friendly development environments. This article introduces the seamless integration of OpenMLDB and Notebook, harnessing the functional features of OpenMLDB and the convenience of Notebook to create a fast and user-friendly machine-learning development environment.
 
-## The magic function cluster
+## The Magic Function Cluster
 
 The first integration feature between Notebook and OpenMLDB is the SQL magic function. The magic function is an extension of Notebook that allows users to execute SQL commands directly in a Notebook cell without the need to write complex Python code. It also enables customizing output styles. OpenMLDB has provided a standard SQL magic function that allows users to write and run SQL statements directly in the Notebook. These statements are then submitted to OpenMLDB for execution, and the results are previewed and displayed in the Notebook.
 
-### Register OpenMLDB SQL magic function
+### Register OpenMLDB SQL Magic Function
 
 To support OpenMLDB magic function in Notebook, it is first necessary to register as follows:
 
@@ -16,7 +16,7 @@ To support OpenMLDB magic function in Notebook, it is first necessary to registe
   openmldb.sql_magic.register(db)
   ```
 
-### Execute a single SQL statement
+### Execute a Single SQL Statement
 
 Developers can use the prompt `%` to execute a single-line SQL statement, as shown in the following figure.
 
@@ -30,21 +30,21 @@ Developers can also use the prompt `%%` to write multiple SQL statements, as sho
 
 Please note that currently, executing multiple SQL statements simultaneously within a Notebook cell is not supported. Each SQL statement needs to be executed separately in different cells.
 
-### The supporting feature of the magic function
+### The Supporting Feature of the Magic Function
 
 The SQL magic function provided by OpenMLDB can execute all supported SQL syntax, including the unique offline mode of OpenMLDB, which allows for asynchronously submitting complex Big data SQL statements to the offline execution engine, as shown in the following figure.
 
 ![img](images/support_function.png)
 
-For more detailed instructions on using the OpenMLDB magic function, please refer to [The Using of Notebook Magic Function](https://openmldb.ai/docs/en/main/quickstart/sdk/python_sdk.html#notebook-magic-function).
+For more detailed instructions on using the OpenMLDB magic function, please refer to [The Use of Notebook Magic Function](https://openmldb.ai/docs/en/main/quickstart/sdk/python_sdk.html#notebook-magic-function).
 
-## The Notebook clusters of OpenMLDB Python SDK
+## The Notebook Clusters of OpenMLDB Python SDK
 
 The second feature of integrating OpenMLDB and Notebook is the cluster with the OpenMLDB Python SDK. The Notebook supports the Python runtime kernel, enabling the import and usage of various Python libraries through import statements. OpenMLDB provides a fully functional Python SDK that can be called within Notebook. The OpenMLDB Python SDK not only offers a DBAPI based on the Python PEP249 standard but also supports the mainstream SQLAlchemy interface in the Python industry. Connecting to existing OpenMLDB clusters requires just one line of code.
 
-### Using OpenMLDB DBAPI
+### The Use of OpenMLDB DBAPI
 
-Using the DBAPI interface is straightforward. You only need to specify the ZooKeeper address and node path for connection. Upon successful connection, corresponding log information will be displayed. You can call the DBAPI interface of the OpenMLDB Python SDK within Notebook for development, as detailed in [Using OpenMLDB DBAPI](https://openmldb.ai/docs/en/main/quickstart/sdk/python_sdk.html#openmldb-dbapi).
+Using the DBAPI interface is straightforward. You only need to specify the ZooKeeper address and node path for connection. Upon successful connection, corresponding log information will be displayed. You can call the DBAPI interface of the OpenMLDB Python SDK within Notebook for development, as detailed in [The Use of OpenMLDB DBAPI](https://openmldb.ai/docs/en/main/quickstart/sdk/python_sdk.html#openmldb-dbapi).
 
 ```Python
 import openmldb.dbapi
