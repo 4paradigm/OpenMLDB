@@ -131,7 +131,9 @@ else
     if [[ -e "${spark_tar}" ]]; then
       echo "Skip downloading openmldbspark as ${spark_tar} already exists"
     else
-      url="https://github.com/4paradigm/spark/releases/download/v3.2.1-openmldb${OPENMLDB_VERSION}/${spark_tar}"
+      #url="https://github.com/4paradigm/spark/releases/download/v3.2.1-openmldb${OPENMLDB_VERSION}/${spark_tar}"
+      # TODO: Change to 0.7.1
+      url="https://github.com/4paradigm/spark/releases/download/v3.2.1-openmldb0.7.1/${spark_tar}"
       echo "Download spark from $url"
       curl -SLo ${spark_tar} "$url"
     fi
