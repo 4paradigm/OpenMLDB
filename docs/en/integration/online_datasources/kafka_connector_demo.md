@@ -12,7 +12,7 @@ The implementation of the OpenMLDB Kafka Connector can be found in the [extensio
 
 ## Overview
 
-### Download and preperation
+### Download and Preperation
 
 - If you need to download Kafka, please click on the [Kafka Official Download](https://kafka.apache.org/downloads) link and download `kafka_2.13-3.1.0.tgz`.
 - If you need to download the connector package and its dependencies, please click on [kafka-connect-jdbc.tgz](http://openmldb.ai/download/kafka-connector/kafka-connect-jdbc.tgz).
@@ -40,11 +40,11 @@ Overall, the usage process can be summarized into four steps:
 
 4. Conduct testing or normal use
 
-![demo steps](C:\Users\65972\Documents\GitHub\fix_docs\OpenMLDB\docs\en\integration\online_datasources\images\kafka_connector_steps.png)
+![demo steps](images/kafka_connector_steps.png)
 
-## Step 1: Start OpenMLDB and create database
+## Step 1: Start OpenMLDB and Create Database
 
-### Start OpenMLDB cluster
+### Start OpenMLDB Cluster
 
 Start cluster in OpenMLDB container:
 
@@ -56,7 +56,7 @@ Start cluster in OpenMLDB container:
 Currently, only the OpenMLDB cluster version can serve as the receiver of sink, and data will only be sink to the online storage of the cluster.
 ```
 
-### Create database
+### Create Database
 
 We can quickly create a database through the pipe without logging into the client CLI:
 
@@ -64,7 +64,7 @@ We can quickly create a database through the pipe without logging into the clien
 echo "create database kafka_test;" | /work/openmldb/bin/openmldb --zk_cluster=127.0.0.1:2181 --zk_root_path=/openmldb --role=sql_client
 ```
 
-## Step 2: Start Kafka and create topic
+## Step 2: Start Kafka and Create Topic
 
 ### Start Kafka
 
@@ -87,7 +87,7 @@ You can use the `ps` command to check whether Kafka is running normally. If the 
 ps axu|grep kafka
 ```
 
-### Create topic
+### Create Topic
 
 We have created a topic named `topic1`. Please note that special characters should be avoided as much as possible in the topic name.
 
@@ -101,7 +101,7 @@ You can `describe` topic to double-check if it is running normally.
 ./bin/kafka-topics.sh --describe --topic topic1 --bootstrap-server localhost:9092
 ```
 
-![topic status](C:\Users\65972\Documents\GitHub\fix_docs\OpenMLDB\docs\en\integration\online_datasources\images\kafka_topic_describe.png)
+![topic status](images/kafka_topic_describe.png)
 
 ## Step 3: Start Connector
 
@@ -141,14 +141,14 @@ value.converter=org.apache.kafka.connect.json.JsonConverter
 value.converter.schemas.enable=true
 ```
 
-In the connection configuration, it is essential to fill in the correct OpenMLDB URL address. This connector receives messages from `topic1` and automatically creates a table (`auto.create`). We have set the value converter in the `openmldb-sink.properties` configuration of the connector. Alternatively, you can set the default converter in the `connect-standalone.properties` of the connector worker without the need for additional configuration in the connector.
+In the connection configuration, it is essential to fill in the correct OpenMLDB URL address. This connector receives messages from `topic1` and automatically creates a table (auto.create). We have set the value converter in the `openmldb-sink.properties` configuration of the connector. Alternatively, you can set the default converter in the `connect-standalone.properties` of the connector worker without the need for additional configuration in the connector.
 
 ```{tip}
-Details of configuration items can be found in the Kafka documentation under Configuring Connectors.
+Details of configuration items can be found in the Kafka documentation under [Configuring Connectors](https://kafka.apache.org/documentation/#connect_configuring).
 
-Among them, connection.url needs to be configured with the correct OpenMLDB cluster address and database name, and the database must already exist.
+Among them, `connection.url` needs to be configured with the correct OpenMLDB cluster address and database name, and the database must already exist.
 
-Attributes such as value.converter can also be configured at the connector, and they will override the default configuration of the connector worker. After the connector is started, properties can also be dynamically modified through the HTTP API.
+Attributes such as `value.converter` can also be configured at the connector, and they will override the default configuration of the connector worker. After the connector is started, properties can also be dynamically modified through the HTTP API.
 ```
 
 Next, use Kafka Connector standalone mode to start the connect worker.
@@ -162,7 +162,7 @@ Please confirm whether the connect worker is running and if the sink task is cor
 
 ## Step 4: Testing
 
-### Transmit data
+### Transmit Data
 
 For testing, we will use the console producer provided by Kafka as the messaging tool.
 
@@ -198,7 +198,7 @@ You can directly run the query script to query:
 /work/openmldb/bin/openmldb --zk_cluster=127.0.0.1:2181 --zk_root_path=/openmldb --role=sql_client < ../kafka_demo_files/select.sql
 ```
 
-![openmldb result](C:\Users\65972\Documents\GitHub\fix_docs\OpenMLDB\docs\en\integration\online_datasources\images\kafka_openmldb_result.png)
+![openmldb result](images/kafka_openmldb_result.png)
 
 ## Debugging
 
