@@ -200,15 +200,15 @@ public class OpenMLDBPerfBenchmark {
     }
 
     public static void main(String[] args) {
-        OpenMLDBPerfBenchmark benchmark = new OpenMLDBPerfBenchmark();
+        /*OpenMLDBPerfBenchmark benchmark = new OpenMLDBPerfBenchmark();
         benchmark.initEnv();
         while (true) {
             benchmark.executeDeployment();
-        }
+        }*/
 
         //benchmark.cleanEnv();
 
-        /*try {
+        try {
             Options opt = new OptionsBuilder()
                     .include(OpenMLDBPerfBenchmark.class.getSimpleName())
                     .forks(1)
@@ -216,6 +216,6 @@ public class OpenMLDBPerfBenchmark {
             new Runner(opt).run();
         } catch (Exception e) {
             e.printStackTrace();
-        }*/
+        }
     }
 }

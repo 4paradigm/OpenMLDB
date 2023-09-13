@@ -48,7 +48,6 @@ public class BenchmarkConfig {
             prop.load(BenchmarkConfig.class.getClassLoader().getResourceAsStream("conf.properties"));
             ZK_CLUSTER = prop.getProperty("ZK_CLUSTER");
             ZK_PATH = prop.getProperty("ZK_PATH");
-            TS_BASE = Long.parseLong(prop.getProperty("TS_BASE"));
             PK_BASE = Integer.parseInt(prop.getProperty("PK_BASE"));
             DATABASE = prop.getProperty("DATABASE");
             DEPLOY_NAME = prop.getProperty("DEPLOY_NAME");
