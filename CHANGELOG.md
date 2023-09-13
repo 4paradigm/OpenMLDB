@@ -17,7 +17,7 @@
 - Enhance the operation tool (#3455 @dl239)
 - Use the timeout value set by an user only if that is greater than the default value (#3484 @vagetablechicken)
 - Remove the sync tool from the demo docker image (#3390 @dl239)
-- Improve the documents (#3383 #3392 #3410 @vagetablechicken, #3175 #3447 ##3463 @TanZiYen, #3436 @aceforeverd, #3451 @wangerry, #3453 #3462 @dl239)
+- Improve the documents (#3383 #3392 #3410 @vagetablechicken, #3175 #3447 ##3463 @TanZiYen, #3436 @aceforeverd, #3451 @wangerry, #3453 #3462 #3498 @dl239)
 
 ### Bug Fixes
 - `CREATE TABLE LIKE HIVE` returns success even if a database is not found (#3379 @emo-coder)
@@ -32,7 +32,8 @@
 #3397 @emo-coder, #3411 @vagetablechicken, #3435 @aceforeverd, #3473 @lqy222
 
 ### Breaking Changes
-The return type of `GetInternalSchema` in `SQLResultSet` changes from native Schema to `com._4paradigm.openmldb.sdk.Schema` #3445
+- The return type of `GetInternalSchema` in `SQLResultSet` changes from native Schema to `com._4paradigm.openmldb.sdk.Schema` #3445
+- Remove the deprecated TaskManager configuration `namenode.uri` #3369
 
 ## [0.8.2] - 2023-07-20
 
