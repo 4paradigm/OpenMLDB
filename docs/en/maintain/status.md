@@ -1,4 +1,4 @@
-# Operation and maintenance command status
+# Operation and Maintenance Command Status
 
 After executing various maintenance operations, you can monitor the outcomes of these operations, along with the current health status of the database, through a series of commonly used command combinations. By sequentially running the `showopstatus` and `showtablestatus` commands, you can ultimately verify the successful completion of the relevant maintenance tasks.
 
@@ -22,7 +22,7 @@ Once the command running status changes to `kDone`, it signifies successful exec
 
 ## Step 2: View Table Status `showtablestatus`
 
-After successfully executing the relevant maintenance commands, it's crucial to perform an additional verification to identify any anomalies in the table status. This verification can be conducted using the `showtablestatus` command within the [OpenMLDB operations and maintenance tool](https://chat.openai.com/openmldb_ops.md). For instance:
+After successfully executing the relevant maintenance commands, it's crucial to perform an additional verification to identify any anomalies in the table status. This verification can be conducted using the `showtablestatus` command within the [OpenMLDB Operations and Maintenance Tool](https://chat.openai.com/openmldb_ops.md). For instance:
 
 ```bash
 python tools/openmldb_ops.py --openmldb_bin_path=./bin/openmldb --zk_cluster=127.0.0.1:2181 --zk_root_path=/openmldb --cmd=showtablestatus
