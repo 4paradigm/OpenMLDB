@@ -55,16 +55,25 @@ public class QueryFuture implements Future<java.sql.ResultSet>{
 
     @Override
     public boolean isDone() {
-        return queryFuture.IsDone();
+        if (queryFuture != null) {
+            return queryFuture.IsDone();
+        }
+        return true;
     }
 
     @Override
     public java.sql.ResultSet get() throws InterruptedException, ExecutionException {
+        if (queryFuture == null) {
+            throw new ExecutionException(new SqlException("queryFuture is null"));
+        }
         Status status = new Status();
         com._4paradigm.openmldb.ResultSet resultSet = queryFuture.GetResultSet(status);
         if (status.getCode() != 0 || resultSet == null) {
             String msg = status.ToString();
             status.delete();
+            if (resultSet != null) {
+                resultSet.delete();
+            }
             logger.error("call procedure failed: {}", msg);
             throw new ExecutionException(new SqlException("call procedure failed: " + msg));
         }
@@ -74,6 +83,8 @@ public class QueryFuture implements Future<java.sql.ResultSet>{
         ByteBuffer dataBuf = ByteBuffer.allocateDirect(dataLength).order(ByteOrder.LITTLE_ENDIAN);
         resultSet.CopyTo(dataBuf);
         resultSet.delete();
+        queryFuture.delete();
+        queryFuture = null;
         return new CallableDirectResultSet(dataBuf, totalRows, schema, metaData);
     }
 

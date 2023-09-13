@@ -64,9 +64,6 @@ public class DeploymentManager {
             byte[] bytes = zkClient.getClient().getData().forPath(spPath + "/" + path);
             byte[] data = Snappy.uncompress(bytes);
             SQLProcedure.ProcedureInfo procedureInfo = SQLProcedure.ProcedureInfo.parseFrom(data);
-            if (procedureInfo.getType() != Type.ProcedureType.kReqDeployment) {
-                continue;
-            }
             Deployment deployment = getDeployment(procedureInfo.getDbName(), procedureInfo.getSpName());
             if (deployment != null) {
                 if (deployment.getSQL().equals(procedureInfo.getSql())) {
