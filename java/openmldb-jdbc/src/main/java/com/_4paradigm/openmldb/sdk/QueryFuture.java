@@ -80,8 +80,8 @@ public class QueryFuture implements Future<java.sql.ResultSet>{
         status.delete();
         int totalRows = resultSet.Size();
         int dataLength = resultSet.GetDataLength();
-        ByteBuffer dataBuf = ByteBuffer.allocateDirect(dataLength).order(ByteOrder.LITTLE_ENDIAN);
-        resultSet.CopyTo(dataBuf);
+        ByteBuffer dataBuf = ByteBuffer.allocate(dataLength).order(ByteOrder.LITTLE_ENDIAN);
+        resultSet.CopyTo(dataBuf.array());
         resultSet.delete();
         queryFuture.delete();
         queryFuture = null;

@@ -45,7 +45,6 @@ public class FlexibleRowBuilder implements RowBuilder {
     private ByteBuffer result;
     private int strTotalLen = 0;
     private int strAddrLen = 0;
-    private boolean allocDirect = false;
     // Cache string values in case of out-of-order insertion
     private Map<Integer, String> stringValueCache;
     private int curStrIdx = 0;
@@ -55,10 +54,6 @@ public class FlexibleRowBuilder implements RowBuilder {
     }
 
     public FlexibleRowBuilder(CodecMetaData metaData) {
-        this(metaData, false);
-    }
-
-    public FlexibleRowBuilder(CodecMetaData metaData, boolean allocDirect) {
         this.metaData = metaData;
         nullBitmap = new ByteBitMap(metaData.getSchema().size());
         settedValue = new ByteBitMap(metaData.getSchema().size());
@@ -66,7 +61,6 @@ public class FlexibleRowBuilder implements RowBuilder {
         baseFieldBuf = ByteBuffer.allocate(strFieldStartOffset - metaData.getBaseFieldStartOffset()).order(ByteOrder.LITTLE_ENDIAN);
         strAddrLen = strAddrSize * metaData.getStrFieldCnt();
         strAddrBuf = ByteBuffer.allocate(strAddrLen).order(ByteOrder.LITTLE_ENDIAN);
-        this.allocDirect = allocDirect;
     }
 
     private boolean checkType(int pos, Type.DataType type) {
@@ -378,11 +372,7 @@ public class FlexibleRowBuilder implements RowBuilder {
             strAddrSize = curStrAddrSize;
             totalSize = strFieldStartOffset + strAddrLen + strTotalLen;
         }
-        if (allocDirect) {
-            result = ByteBuffer.allocateDirect(totalSize).order(ByteOrder.LITTLE_ENDIAN);
-        } else {
-            result = ByteBuffer.allocate(totalSize).order(ByteOrder.LITTLE_ENDIAN);
-        }
+        result = ByteBuffer.allocate(totalSize).order(ByteOrder.LITTLE_ENDIAN);
         result.put((byte)1);                            // FVersion
         result.put((byte)metaData.getSchemaVersion());  // SVersion
         result.putInt(totalSize);                       // Size

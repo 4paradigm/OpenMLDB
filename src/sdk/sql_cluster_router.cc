@@ -1476,13 +1476,13 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::CallProcedure(const 
 }
 
 std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::CallProcedure(const std::string& db,
-        const std::string& sp_name, hybridse::sdk::NIOBUFFER buf, int len,
+        const std::string& sp_name, hybridse::sdk::ByteArrayPtr buf, int len,
         const std::string& router_col, hybridse::sdk::Status* status) {
     if (buf == nullptr || len == 0) {
         SET_STATUS_AND_WARN(status, StatusCode::kCmdError, "invalid request row data");
         return nullptr;
     }
-    return CallProcedure(db, sp_name, base::Slice(reinterpret_cast<char*>(buf), len), router_col, status);
+    return CallProcedure(db, sp_name, base::Slice(buf, len), router_col, status);
 }
 
 std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::CallProcedure(const std::string& db,
@@ -1537,8 +1537,8 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::CallSQLBatchRequestP
 
 std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::CallSQLBatchRequestProcedure(
     const std::string& db, const std::string& sp_name,
-    hybridse::sdk::NIOBUFFER meta, int meta_len,
-    hybridse::sdk::NIOBUFFER buf, int len,
+    hybridse::sdk::ByteArrayPtr meta, int meta_len,
+    hybridse::sdk::ByteArrayPtr buf, int len,
     hybridse::sdk::Status* status) {
     RET_IF_NULL_AND_WARN(status, "output status is nullptr");
     if (meta == nullptr || meta_len == 0 || buf == nullptr || len == 0) {
@@ -1552,8 +1552,8 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::CallSQLBatchRequestP
 
     auto cntl = std::make_shared<::brpc::Controller>();
     auto response = std::make_shared<::openmldb::api::SQLBatchRequestQueryResponse>();
-    auto ret = tablet->CallSQLBatchRequestProcedure(db, sp_name, base::Slice(reinterpret_cast<char*>(meta), meta_len),
-            base::Slice(reinterpret_cast<char*>(buf), len),
+    auto ret = tablet->CallSQLBatchRequestProcedure(db, sp_name, base::Slice(meta, meta_len),
+            base::Slice(buf, len),
             options_->enable_debug, options_->request_timeout, cntl.get(), response.get());
     if (!ret.OK()) {
         RPC_STATUS_AND_WARN(status, cntl, response, "CallSQLBatchRequestProcedure failed" + ret.GetMsg());
@@ -2217,13 +2217,13 @@ std::shared_ptr<openmldb::sdk::QueryFuture> SQLClusterRouter::CallProcedure(cons
 }
 
 std::shared_ptr<openmldb::sdk::QueryFuture> SQLClusterRouter::CallProcedure(const std::string& db,
-        const std::string& sp_name, int64_t timeout_ms, hybridse::sdk::NIOBUFFER buf, int len,
+        const std::string& sp_name, int64_t timeout_ms, hybridse::sdk::ByteArrayPtr buf, int len,
         const std::string& router_col, hybridse::sdk::Status* status) {
     if (buf == nullptr || len == 0) {
         SET_STATUS_AND_WARN(status, StatusCode::kCmdError, "invalid request row data");
         return nullptr;
     }
-    return CallProcedure(db, sp_name, timeout_ms, base::Slice(reinterpret_cast<char*>(buf), len), router_col, status);
+    return CallProcedure(db, sp_name, timeout_ms, base::Slice(buf, len), router_col, status);
 }
 
 std::shared_ptr<openmldb::sdk::QueryFuture> SQLClusterRouter::CallProcedure(const std::string& db,
@@ -2280,9 +2280,8 @@ std::shared_ptr<openmldb::sdk::QueryFuture> SQLClusterRouter::CallSQLBatchReques
 
 std::shared_ptr<openmldb::sdk::QueryFuture> SQLClusterRouter::CallSQLBatchRequestProcedure(
     const std::string& db, const std::string& sp_name, int64_t timeout_ms,
-    hybridse::sdk::NIOBUFFER meta, int meta_len,
-    hybridse::sdk::NIOBUFFER buf, int len,
-    hybridse::sdk::Status* status) {
+    hybridse::sdk::ByteArrayPtr meta, int meta_len,
+    hybridse::sdk::ByteArrayPtr buf, int len, hybridse::sdk::Status* status) {
     RET_IF_NULL_AND_WARN(status, "output status is nullptr");
     if (meta == nullptr || meta_len == 0 || buf == nullptr || len == 0) {
         SET_STATUS_AND_WARN(status, StatusCode::kNullInputPointer, "input data is null");
@@ -2296,8 +2295,8 @@ std::shared_ptr<openmldb::sdk::QueryFuture> SQLClusterRouter::CallSQLBatchReques
     auto response = std::make_shared<openmldb::api::SQLBatchRequestQueryResponse>();
     auto callback = new openmldb::RpcCallback<openmldb::api::SQLBatchRequestQueryResponse>(response, cntl);
     auto future = std::make_shared<openmldb::sdk::BatchQueryFutureImpl>(callback);
-    auto ret = tablet->CallSQLBatchRequestProcedure(db, sp_name, base::Slice(reinterpret_cast<char*>(meta), meta_len),
-            base::Slice(reinterpret_cast<char*>(buf), len), options_->enable_debug, timeout_ms, callback);
+    auto ret = tablet->CallSQLBatchRequestProcedure(db, sp_name, base::Slice(meta, meta_len),
+            base::Slice(buf, len), options_->enable_debug, timeout_ms, callback);
     if (!ret.OK()) {
         SET_STATUS_AND_WARN(status, StatusCode::kConnError, "CallSQLBatchRequestProcedure failed " + ret.GetMsg());
         return nullptr;

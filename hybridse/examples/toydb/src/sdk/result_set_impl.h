@@ -71,7 +71,7 @@ class ResultSetImpl : public ResultSet {
 
     inline int32_t Size() { return response_->count(); }
 
-    void CopyTo(hybridse::sdk::NIOBUFFER buf) override {
+    void CopyTo(hybridse::sdk::ByteArrayPtr buf) override {
         cntl_->response_attachment().copy_to(reinterpret_cast<void*>(buf));
     }
 

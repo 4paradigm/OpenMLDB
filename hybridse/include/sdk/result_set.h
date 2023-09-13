@@ -26,7 +26,7 @@
 namespace hybridse {
 namespace sdk {
 
-typedef unsigned char *NIOBUFFER;
+typedef char* ByteArrayPtr;
 
 struct Date {
     int32_t year;
@@ -239,7 +239,7 @@ class ResultSet {
 
     virtual int32_t Size() = 0;
 
-    virtual void CopyTo(hybridse::sdk::NIOBUFFER buf) = 0;
+    virtual void CopyTo(hybridse::sdk::ByteArrayPtr buf) = 0;
     virtual int32_t GetDataLength() = 0;
 };
 

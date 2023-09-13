@@ -47,9 +47,9 @@ public class BatchCallablePreparedStatementImpl extends CallablePreparedStatemen
         if (datas.isEmpty()) {
             throw new SQLException("no data");
         }
-        meta = ByteBuffer.allocateDirect(4 * (datas.size() + 1)).order(ByteOrder.LITTLE_ENDIAN);
+        meta = ByteBuffer.allocate(4 * (datas.size() + 1)).order(ByteOrder.LITTLE_ENDIAN);
         meta.putInt(0);  // reserved for common slice
-        result = ByteBuffer.allocateDirect(totalSize);
+        result = ByteBuffer.allocate(totalSize);
         for (ByteBuffer buf : datas) {
             meta.putInt(buf.capacity());
             result.put(buf.array());
@@ -63,7 +63,7 @@ public class BatchCallablePreparedStatementImpl extends CallablePreparedStatemen
         build();
         Status status = new Status();
         com._4paradigm.openmldb.ResultSet resultSet = router.CallSQLBatchRequestProcedure(
-                db, deploymentName, meta, meta.capacity(), result, result.capacity(), status);
+                db, deploymentName, meta.array(), meta.capacity(), result.array(), result.capacity(), status);
         if (status.getCode() != 0 || resultSet == null) {
             String msg = status.ToString();
             status.delete();
@@ -75,8 +75,8 @@ public class BatchCallablePreparedStatementImpl extends CallablePreparedStatemen
         status.delete();
         int totalRows = resultSet.Size();
         int dataLength = resultSet.GetDataLength();
-        ByteBuffer dataBuf = ByteBuffer.allocateDirect(dataLength).order(ByteOrder.LITTLE_ENDIAN);
-        resultSet.CopyTo(dataBuf);
+        ByteBuffer dataBuf = ByteBuffer.allocate(dataLength).order(ByteOrder.LITTLE_ENDIAN);
+        resultSet.CopyTo(dataBuf.array());
         resultSet.delete();
         SQLResultSet rs = new CallableDirectResultSet(dataBuf, totalRows, deployment.getOutputSchema(), deployment.getOutputMetaData());
         if (closeOnComplete) {
@@ -93,7 +93,7 @@ public class BatchCallablePreparedStatementImpl extends CallablePreparedStatemen
         build();
         Status status = new Status();
         com._4paradigm.openmldb.QueryFuture queryFuture = router.CallSQLBatchRequestProcedure(db, deploymentName, unit.toMillis(timeOut),
-                meta, meta.capacity(), result, result.capacity(), status);
+                meta.array(), meta.capacity(), result.array(), result.capacity(), status);
         if (status.getCode() != 0 || queryFuture == null) {
             String msg = status.ToString();
             status.delete();

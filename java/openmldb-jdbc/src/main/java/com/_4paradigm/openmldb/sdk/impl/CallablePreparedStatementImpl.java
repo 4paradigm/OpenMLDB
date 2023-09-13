@@ -36,7 +36,7 @@ public class CallablePreparedStatementImpl extends CallablePreparedStatement {
 
     public CallablePreparedStatementImpl(Deployment deployment, SQLRouter router) throws SQLException {
         super(deployment, router);
-        rowBuilder = new FlexibleRowBuilder(deployment.getInputMetaData(), true);
+        rowBuilder = new FlexibleRowBuilder(deployment.getInputMetaData());
         routerCol = deployment.getRouterCol();
     }
 
@@ -50,7 +50,7 @@ public class CallablePreparedStatementImpl extends CallablePreparedStatement {
         ByteBuffer buf = rowBuilder.getValue();
         Status status = new Status();
         com._4paradigm.openmldb.ResultSet resultSet = router.CallProcedure(db, deploymentName,
-                buf, buf.capacity(), routerValue, status);
+                buf.array(), buf.capacity(), routerValue, status);
         if (status.getCode() != 0 || resultSet == null) {
             String msg = status.ToString();
             status.delete();
@@ -62,8 +62,8 @@ public class CallablePreparedStatementImpl extends CallablePreparedStatement {
         status.delete();
         int totalRows = resultSet.Size();
         int dataLength = resultSet.GetDataLength();
-        ByteBuffer dataBuf = ByteBuffer.allocateDirect(dataLength).order(ByteOrder.LITTLE_ENDIAN);
-        resultSet.CopyTo(dataBuf);
+        ByteBuffer dataBuf = ByteBuffer.allocate(dataLength).order(ByteOrder.LITTLE_ENDIAN);
+        resultSet.CopyTo(dataBuf.array());
         resultSet.delete();
         ResultSet rs = new CallableDirectResultSet(dataBuf, totalRows, deployment.getOutputSchema(), deployment.getOutputMetaData());
         clearParameters();
@@ -83,7 +83,7 @@ public class CallablePreparedStatementImpl extends CallablePreparedStatement {
         ByteBuffer buf = rowBuilder.getValue();
         Status status = new Status();
         com._4paradigm.openmldb.QueryFuture queryFuture = router.CallProcedure(db, deploymentName,
-                unit.toMillis(timeOut), buf, buf.capacity(), routerValue, status);
+                unit.toMillis(timeOut), buf.array(), buf.capacity(), routerValue, status);
         if (status.getCode() != 0 || queryFuture == null) {
             String msg = status.ToString();
             status.delete();

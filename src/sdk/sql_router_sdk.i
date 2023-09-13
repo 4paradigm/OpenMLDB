@@ -29,28 +29,24 @@
 %include "swig_library/java/protobuf.i"
 %protobuf(openmldb::nameserver::TableInfo, com._4paradigm.openmldb.proto.NS.TableInfo);
 
-%typemap(jni) hybridse::sdk::NIOBUFFER "jobject"
-%typemap(jtype) hybridse::sdk::NIOBUFFER "java.nio.ByteBuffer"
-%typemap(jstype) hybridse::sdk::NIOBUFFER "java.nio.ByteBuffer"
-%typemap(javain,
-  pre="  assert $javainput.isDirect() : \"Buffer must be allocated direct.\";") hybridse::sdk::NIOBUFFER "$javainput"
-%typemap(javaout) hybridse::sdk::NIOBUFFER {
-  return $jnicall;
+// refer https://github.com/swig/swig/blob/master/Lib/java/various.i
+
+%typemap(jni) hybridse::sdk::ByteArrayPtr "jbyteArray"
+%typemap(jtype) hybridse::sdk::ByteArrayPtr "byte[]"
+%typemap(jstype) hybridse::sdk::ByteArrayPtr "byte[]"
+%typemap(in) hybridse::sdk::ByteArrayPtr {
+  $1 = (hybridse::sdk::ByteArrayPtr) JCALL2(GetByteArrayElements, jenv, $input, 0);
 }
-%typemap(in) hybridse::sdk::NIOBUFFER {
-  $1 = (unsigned char *) JCALL1(GetDirectBufferAddress, jenv, $input);
-  if ($1 == NULL) {
-    SWIG_JavaThrowException(jenv, SWIG_JavaRuntimeException, "Unable to get address of a java.nio.ByteBuffer direct byte buffer. Buffer must be a direct buffer and not a non-direct buffer.");
-  }
+
+%typemap(argout) hybridse::sdk::ByteArrayPtr {
+  JCALL3(ReleaseByteArrayElements, jenv, $input, (jbyte *) $1, 0);
 }
-%typemap(memberin) hybridse::sdk::NIOBUFFER {
-  if ($input) {
-    $1 = $input;
-  } else {
-    $1 = 0;
-  }
-}
-%typemap(freearg) hybridse::sdk::NIOBUFFER ""
+
+%typemap(javain) hybridse::sdk::ByteArrayPtr "$javainput"
+%typemap(javaout) hybridse::sdk::ByteArrayPtr "{ return $jnicall; }"
+
+/* Prevent default freearg typemap from being used */
+%typemap(freearg) hybridse::sdk::ByteArrayPtr ""
 
 #endif
 
