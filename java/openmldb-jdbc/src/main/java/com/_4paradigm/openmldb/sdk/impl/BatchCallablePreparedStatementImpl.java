@@ -22,7 +22,6 @@ import com._4paradigm.openmldb.common.codec.FlexibleRowBuilder;
 import com._4paradigm.openmldb.jdbc.CallablePreparedStatement;
 import com._4paradigm.openmldb.jdbc.SQLResultSet;
 import com._4paradigm.openmldb.sdk.QueryFuture;
-import sun.nio.ch.DirectBuffer;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -57,13 +56,6 @@ public class BatchCallablePreparedStatementImpl extends CallablePreparedStatemen
         }
     }
 
-    public void clearBuff() {
-        meta.clear();
-        result.clear();
-        ((DirectBuffer)meta).cleaner().clean();
-        ((DirectBuffer)result).cleaner().clean();
-    }
-
     @Override
     public SQLResultSet executeQuery() throws SQLException {
         checkClosed();
@@ -72,7 +64,6 @@ public class BatchCallablePreparedStatementImpl extends CallablePreparedStatemen
         Status status = new Status();
         com._4paradigm.openmldb.ResultSet resultSet = router.CallSQLBatchRequestProcedure(
                 db, deploymentName, meta, meta.capacity(), result, result.capacity(), status);
-        clearBuff();
         if (status.getCode() != 0 || resultSet == null) {
             String msg = status.ToString();
             status.delete();
@@ -103,7 +94,6 @@ public class BatchCallablePreparedStatementImpl extends CallablePreparedStatemen
         Status status = new Status();
         com._4paradigm.openmldb.QueryFuture queryFuture = router.CallSQLBatchRequestProcedure(db, deploymentName, unit.toMillis(timeOut),
                 meta, meta.capacity(), result, result.capacity(), status);
-        clearBuff();
         if (status.getCode() != 0 || queryFuture == null) {
             String msg = status.ToString();
             status.delete();
