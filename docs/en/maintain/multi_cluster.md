@@ -1,4 +1,4 @@
-# [Alpha] The disaster recovery plan of the cross-generator room
+# [Alpha] The Disaster Recovery Plan of the Cross-Generator Room
 
 ## Background
 
@@ -8,7 +8,7 @@ In this solution, users can establish independent OpenMLDB clusters in multiple 
 
 ## Architecture
 
-### Definition of terms
+### Definition of Terms
 
 - **Master Cluster**: This cluster supports both read and write operations and synchronizes data with sub-clusters. A main cluster can consist of multiple sub-clusters.
 - **Slave Cluster**: A cluster dedicated to providing read requests, maintaining data consistency with the main cluster. It can be seamlessly promoted to the main cluster when necessary and can be deployed in multiple instances.
@@ -25,11 +25,11 @@ For a more comprehensive understanding of these terms, please consult the OpenML
 - In the event of an unexpected master cluster outage, a manual switch can promote a slave cluster to the master cluster role.
 - Automatic handling is in place for scenarios involving offline or unavailable master clusters and internal nodes within the slave clusters, including nameservers and tablets.
 
-### Technical solutions
+### Technical Solutions
 
 The overall technical architecture of the master-slave cluster is shown in the following figure:
 
-![img](C:\Users\65972\Documents\GitHub\fix_docs\OpenMLDB\docs\en\maintain\images\leader_follower_cluster.png)
+![img](images/leader_follower_cluster.png)
 
 Synchronization information between master-slave clusters primarily encompasses data synchronization and metadata information synchronization.
 
@@ -56,7 +56,7 @@ Data synchronization between master and slave clusters primarily relies on binlo
 
 The subsequent visualization illustrates the synchronization logic and data flow direction.
 
-![img](C:\Users\65972\Documents\GitHub\fix_docs\OpenMLDB\docs\en\maintain\images\leader_follower_flow.png)
+![img](images/leader_follower_flow.png)
 
 Assuming a slave cluster comprises three replicas of a table, the specific process unfolds as follows: The leader of the master cluster partition initiates the creation of two replicator threads responsible for intra-cluster data synchronization, along with one replicator thread dedicated to synchronizing data to the leader of the slave cluster. Furthermore, two replicator threads are generated from the leader of the slave cluster to synchronize data with the followers within that slave cluster.
 
@@ -67,7 +67,7 @@ The replicator operates based on the following synchronization logic:
 
 By default, the replicator continuously reads the most recent binlog. If no recent data is available, it waits for a brief period (default is 100ms) before attempting to read. In scenarios with stringent synchronization timeliness requirements, adjusting the default configuration (parameter `binlog_sync_wait_time`, see documentation [Configuration Document](https://chat.openai.com/deploy/conf.md)) can reduce latency but may lead to increased CPU resource consumption.
 
-**Automatic Failover within a Cluster**
+**Automatic Failover Within a Cluster**
 
 When the master cluster's nameserver is offline:
 
@@ -99,7 +99,7 @@ When the slave cluster is unavailable:
 
 If the business initially directed read traffic to the slave cluster (if applicable), it is necessary to switch all such traffic to the master cluster. The business system must oversee the process of this traffic migration.
 
-## Master-slave cluster-related commands
+## Master-Slave Cluster-Related Commands
 
 Once the cluster is up and running, it defaults to the master cluster state. Additional clusters can be introduced as slave clusters to existing ones, and manipulation such as switching or removal can be carried out via commands.
 
@@ -133,7 +133,7 @@ addrepcluster 10.1.1.1:2181,10.1.1.2:2181 /openmldb_cluster  prod_dc01
 
 This operation integrates the designated slave cluster into the master-slave cluster configuration.
 
-**Removing the slave cluster**
+**Removing the Slave Cluster**
 
 To remove a slave cluster, you can use the `removerepcluster` command. For instance, to delete the previously added slave cluster named `prod_dc01`, execute:
 
@@ -141,7 +141,7 @@ To remove a slave cluster, you can use the `removerepcluster` command. For insta
 removerepcluster prod_dc01
 ```
 
-**Switching cluster roles**
+**Switching Cluster Roles**
 
 The `switchmode` command is utilized to alter a cluster's role. The parameter options are `leader` or `normal`. To promote a slave cluster to the master cluster, set the parameter as `leader`. To change it to a regular cluster, set the parameter to `normal`.
 
@@ -149,11 +149,11 @@ The `switchmode` command is utilized to alter a cluster's role. The parameter op
 switchmode leader
 ```
 
-**Query the slave cluster**
+**Query the Slave Cluster**
 
 To retrieve information about all slave clusters, the `showrepcluster` command is employed. The output provides results in a similar format:
 
-![img](C:\Users\65972\Documents\GitHub\fix_docs\OpenMLDB\docs\zh\maintain\images\showrepcluster.png)
+![img](images/showrepcluster.png)
 
 ## FAQ
 
@@ -177,13 +177,13 @@ While the master-slave cluster scheme enhances high availability, it does not gu
 
 A master cluster can indeed support multiple slave clusters by executing the `addrepcluster` command on the master cluster.
 
-5. **Comparison with other master-slave cluster solutions in the industry**
+5. **Comparison with Other Master-Slave Cluster Solutions in the Industry**
 
-![img](C:\Users\65972\Documents\GitHub\fix_docs\OpenMLDB\docs\en\maintain\images\tikv_mysql.png)
+![img](images/tikv_mysql.png)
 
 For comparison, two widely-used databases in the industry, TiDB and MySQL, were mentioned. OpenMLDB's architecture bears similarities to both. TiDB transfers data from TiKV to TiFlash in a manner analogous to OpenMLDB's leader of the slave cluster concept. TiFlash's Learner parallels this role, synchronizing data from TiKV and performing in-cluster data synchronization. MySQL's master-slave replication shares similarities, periodically synchronizing data to slave clusters through binlogs and subsequently propagating the synchronization within the cluster via binlogs.
 
-## Development progress
+## Development Progress
 
 Currently, the alpha version of the master-slave cluster solution is in the experimental phase, with its core functionalities fully developed and thoroughly tested. The primary outstanding issues are as follows:
 
