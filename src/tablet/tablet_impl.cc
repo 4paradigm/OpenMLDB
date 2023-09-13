@@ -3304,7 +3304,7 @@ int32_t TabletImpl::DeleteTableInternal(uint32_t tid, uint32_t pid,
         std::shared_ptr<LogReplicator> replicator = GetReplicator(tid, pid);
         {
             std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
-            engine_->ClearCacheLocked(table->GetTableMeta()->db());
+            engine_->ClearCacheLocked("");
             tables_[tid].erase(pid);
             replicators_[tid].erase(pid);
             snapshots_[tid].erase(pid);
@@ -3927,7 +3927,7 @@ int TabletImpl::CreateTableInternal(const ::openmldb::api::TableMeta* table_meta
         } else {
             LOG(WARNING) << "fail to add table " << table_meta->name() << " to catalog with db " << table_meta->db();
         }
-        engine_->ClearCacheLocked(table_meta->db());
+        engine_->ClearCacheLocked("");
 
         // we always refresh the aggr catalog in case zk notification arrives later than the `deploy` sql
         if (boost::iequals(table_meta->db(), openmldb::nameserver::PRE_AGG_DB)) {
