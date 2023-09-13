@@ -4131,7 +4131,7 @@ static const std::initializer_list<std::string> GetTableStatusSchema() {
 //    1. memory:  binlog + snapshot
 //    2. SSD/HDD: binlog + rocksdb data (sst files), wal files and checkpoints are not included
 // - Partition: partition number
-// - partition_unalive: partition number that is unalive
+// - Partition_unalive: partition number that is unalive
 // - Replica: replica number
 // - Offline_path: data path for offline data
 // - Offline_format: format for offline data
