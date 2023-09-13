@@ -27,12 +27,12 @@ xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xs
         <dependency>
             <groupId>com.4paradigm.openmldb</groupId>
             <artifactId>openmldb-jdbc</artifactId>
-            <version>0.6.2</version>
+            <version>0.8.2-SNAPSHOT</version>
         </dependency>
         <dependency>
             <groupId>com.4paradigm.openmldb</groupId>
             <artifactId>openmldb-native</artifactId>
-            <version>0.6.2-allinone</version>
+            <version>0.8.2-SNAPSHOT</version>
         </dependency>
         <dependency>
             <groupId>org.slf4j</groupId>
