@@ -10,12 +10,12 @@
 <dependency>
     <groupId>com.4paradigm.openmldb</groupId>
     <artifactId>openmldb-jdbc</artifactId>
-    <version>0.7.2</version>
+    <version>0.8.3</version>
 </dependency>
 <dependency>
     <groupId>com.4paradigm.openmldb</groupId>
     <artifactId>openmldb-native</artifactId>
-    <version>0.7.2</version>
+    <version>0.8.3</version>
 </dependency>
 ```
 
@@ -27,16 +27,16 @@
 <dependency>
     <groupId>com.4paradigm.openmldb</groupId>
     <artifactId>openmldb-jdbc</artifactId>
-    <version>0.7.2</version>
+    <version>0.8.3</version>
 </dependency>
 <dependency>
     <groupId>com.4paradigm.openmldb</groupId>
     <artifactId>openmldb-native</artifactId>
-    <version>0.7.2-macos</version>
+    <version>0.8.3-macos</version>
 </dependency>
 ```
 
-Note: Since the openmldb-native package contains the C++ static library compiled for OpenMLDB, it is defaults to the Linux static library. For macOS, the version of openmldb-native should be changed to `0.7.2-macos`, while the version of openmldb-jdbc should remain unchanged.
+Note: Since the openmldb-native package contains the C++ static library compiled for OpenMLDB, it is defaults to the Linux static library. For macOS, the version of openmldb-native should be changed to `0.8.3-macos`, while the version of openmldb-jdbc should remain unchanged.
 
 The macOS version of openmldb-native only supports macOS 12. To run it on macOS 11 or macOS 10.15, the openmldb-native package needs to be compiled from source code on the corresponding OS. For detailed compilation methods, please refer to [Concurrent Compilation of Java SDK](https://openmldb.ai/docs/zh/main/deploy/compile.html#java-sdk).
 
