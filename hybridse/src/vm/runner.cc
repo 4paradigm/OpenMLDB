@@ -1673,18 +1673,15 @@ const Row Runner::RowLastJoinTable(size_t left_slices, const Row& left_row,
                                    ConditionGenerator& cond_gen) {
     right_table = right_sort.Sort(right_table, true);
     if (!right_table) {
-        LOG(WARNING) << "Last Join right table is empty";
         return Row(left_slices, left_row, right_slices, Row());
     }
     auto right_iter = right_table->GetIterator();
     if (!right_iter) {
-        DLOG(WARNING) << "Last Join right table is empty";
         return Row(left_slices, left_row, right_slices, Row());
     }
     right_iter->SeekToFirst();
 
     if (!right_iter->Valid()) {
-        LOG(WARNING) << "Last Join right table is empty";
         return Row(left_slices, left_row, right_slices, Row());
     }
 
