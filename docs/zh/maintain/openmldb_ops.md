@@ -35,5 +35,5 @@ python tools/openmldb_ops.py --openmldb_bin_path=./bin/openmldb --zk_cluster=172
 ```
 
 ### 系统要求
-- 要求python3.6及以上版本
+- 要求python2.7及以上版本
 - `showopstatus`和`showtablestatus`需要`prettytable`依赖

@@ -21,7 +21,7 @@ import random
 from tool import Executor
 from tool import Partition
 from tool import Status
-from tool import Util
+from util import Util
 
 class TestScale:
     db = None
@@ -37,8 +37,8 @@ class TestScale:
         cls.bin_path = cls.openmldb_path + "/bin/openmldb"
         cls.executor = Executor(cls.bin_path, case_conf.conf["zk_cluster"], case_conf.conf["zk_root_path"])
 
-    def execute_scale(self, scale_cmd : str, endpoint : str = ""):
-        cmd = ["python3"]
+    def execute_scale(self, python_bin, scale_cmd : str, endpoint : str = ""):
+        cmd = [python_bin]
         cmd.append(f"{self.base_dir}/tools/openmldb_ops.py")
         cmd.append(f"--openmldb_bin_path={self.bin_path}")
         cmd.append("--zk_cluster=" + case_conf.conf["zk_cluster"])
@@ -50,7 +50,8 @@ class TestScale:
         return status
 
     @pytest.mark.parametrize("replica_num, partition_num", [(2, 8), (1, 10)])
-    def test_scalein(self, replica_num, partition_num):
+    @pytest.mark.parametrize("python_bin", ["python2", "python3"])
+    def test_scalein(self, python_bin, replica_num, partition_num):
         assert len(case_conf.conf["components"]["tablet"]) > 2
         status, distribution = Util.gen_distribution(case_conf.conf["components"]["tablet"], replica_num, partition_num)
         assert status.OK()
@@ -74,7 +75,7 @@ class TestScale:
             assert item[5] == "yes"
         assert len(endpoints) == len(case_conf.conf["components"]["tablet"])
 
-        assert self.execute_scale("scalein", case_conf.conf["components"]["tablet"][0]).OK()
+        assert self.execute_scale(python_bin, "scalein", case_conf.conf["components"]["tablet"][0]).OK()
 
         status, result = self.executor.GetTableInfo("test", "")
         assert status.OK()
@@ -88,7 +89,8 @@ class TestScale:
         self.cursor.execute(f"drop table {table_name}")
 
     @pytest.mark.parametrize("replica_num, partition_num", [(2, 8), (1, 10)])
-    def test_scaleout(self, replica_num, partition_num):
+    @pytest.mark.parametrize("python_bin", ["python2", "python3"])
+    def test_scaleout(self, python_bin, replica_num, partition_num):
         assert len(case_conf.conf["components"]["tablet"]) > 2
         status, distribution = Util.gen_distribution(case_conf.conf["components"]["tablet"][1:], replica_num, partition_num)
         assert status.OK()
@@ -113,7 +115,7 @@ class TestScale:
         assert len(endpoints) == len(case_conf.conf["components"]["tablet"]) - 1
         assert case_conf.conf["components"]["tablet"][0] not in endpoints
 
-        assert self.execute_scale("scaleout").OK()
+        assert self.execute_scale(python_bin, "scaleout").OK()
 
         status, result = self.executor.GetTableInfo("test", "")
         assert status.OK()
