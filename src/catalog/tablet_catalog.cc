@@ -484,7 +484,6 @@ bool TabletCatalog::UpdateTableInfo(const ::openmldb::nameserver::TableInfo& tab
             auto result = tables_.emplace(db_name, std::map<std::string, std::shared_ptr<TabletTableHandler>>());
             db_it = result.first;
         }
-        std::shared_ptr<TabletTableHandler> handle;
         auto it = db_it->second.find(table_name);
         if (it != db_it->second.end()) {
             if (table_info.tid() > it->second->GetTid()) {
@@ -494,10 +493,10 @@ bool TabletCatalog::UpdateTableInfo(const ::openmldb::nameserver::TableInfo& tab
                     << table_info.tid();
                 return false;
             } else {
-                handle = it->second;
+                handler = it->second;
             }
         }
-        if (!handle) {
+        if (!handler) {
             handler = std::make_shared<TabletTableHandler>(table_info, local_tablet_);
             if (!handler->Init(client_manager_)) {
                 LOG(WARNING) << "tablet handler init failed";
