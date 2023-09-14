@@ -406,7 +406,7 @@ bool TabletCatalog::DeleteTable(const std::string& db, const std::string& table_
         LOG(WARNING) << "delete failed. current tid " << it->second->GetTid() << " is greater than " << tid;
         return false;
     }
-    LOG(INFO) << "delete table from catalog. db " << db << ", name " << table_name << ", pid " << pid;
+    LOG(INFO) << "delete table from catalog. db " << db << " name " << table_name << " tid " << tid << " pid " << pid;
     if (it->second->DeleteTable(pid) < 1) {
         db_it->second.erase(it);
     }
@@ -462,6 +462,9 @@ bool TabletCatalog::UpdateTableMeta(const ::openmldb::api::TableMeta& meta) {
     auto it = db_it->second.find(table_name);
     if (it == db_it->second.end()) {
         LOG(WARNING) << "table " << table_name << " does not exist in db " << db_name;
+        return false;
+    } else if (it->second->GetTid() != static_cast<uint32_t>(meta.tid())) {
+        LOG(WARNING) << "tid is not match. tid " << it->second->GetTid() << " new tid " << meta.tid();
         return false;
     } else {
         handler = it->second;
