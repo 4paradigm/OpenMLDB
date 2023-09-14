@@ -1150,7 +1150,7 @@ bool TabletClient::SubBatchRequestQuery(const ::openmldb::api::SQLBatchRequestQu
     if (callback == nullptr) {
         return false;
     }
-    return client_.SendRequest(&::openmldb::api::TabletServer_Stub::SQLBatchRequestQuery,
+    return client_.SendRequest(&::openmldb::api::TabletServer_Stub::SubBatchRequestQuery,
                                callback->GetController().get(), &request, callback->GetResponse().get(), callback);
 }
 

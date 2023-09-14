@@ -665,11 +665,6 @@ class NameServerImpl : public NameServer {
 
     uint64_t GetTerm() const;
 
-    // write deploy statistics into table
-    void SyncDeployStats();
-
-    void ScheduleSyncDeployStats();
-
     bool GetSdkConnection();
 
     void FreeSdkConnection();

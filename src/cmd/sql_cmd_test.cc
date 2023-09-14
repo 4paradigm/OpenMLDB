@@ -3697,7 +3697,7 @@ TEST_F(SqlCmdTest, SelectWithAddNewIndex) {
 
 // --------------------------------------------------------------------------------------
 // basic functional UTs to test if it is correct for deploy query response time collection
-// see NameServerImpl::SyncDeployStats & TabletImpl::TryCollectDeployStats
+// see TabletImpl::CollectDeployStats
 // --------------------------------------------------------------------------------------
 
 // a proxy class to create and cleanup deployment stats more gracefully
@@ -3766,12 +3766,6 @@ struct DeploymentEnv {
         ASSERT_TRUE(status.IsOK()) << status.msg << "\n" << status.trace;
     }
 
-    void EnableDeployStats() {
-        ProcessSQLs(sr_, {
-                             "set global deploy_stats = 'on'",
-                         });
-    }
-
     sdk::SQLClusterRouter* sr_;
     absl::BitGen gen_;
     // variables generate randomly in SetUp
@@ -3797,111 +3791,6 @@ struct DeploymentEnv {
         *rs = res;
     }
 };
-
-static const char QueryDeployResponseTime[] = "select * from INFORMATION_SCHEMA.DEPLOY_RESPONSE_TIME";
-
-TEST_P(DBSDKTest, DeployStatsNotEnableByDefault) {
-    auto cli = GetParam();
-    cs = cli->cs;
-    sr = cli->sr;
-
-    DeploymentEnv env(sr);
-    env.SetUp();
-    env.CallDeployProcedureBatch();
-    env.CallDeployProcedure();
-
-    absl::SleepFor(absl::Seconds(3));
-
-    hybridse::sdk::Status status;
-    auto rs = sr->ExecuteSQLParameterized("", QueryDeployResponseTime, {}, &status);
-    ASSERT_TRUE(status.IsOK());
-    ASSERT_EQ(0, rs->Size());
-
-    env.EnableDeployStats();
-
-    absl::SleepFor(absl::Seconds(3));
-
-    // HandleSQL exists only for purpose of printing
-    HandleSQL(QueryDeployResponseTime);
-    rs = sr->ExecuteSQLParameterized("", QueryDeployResponseTime, {}, &status);
-    ASSERT_TRUE(status.IsOK());
-    ASSERT_EQ(0, rs->Size());
-}
-
-TEST_P(DBSDKTest, DeployStatsEnabledAfterSetGlobal) {
-    auto cli = GetParam();
-    cs = cli->cs;
-    sr = cli->sr;
-
-    // FIXME(#1547): test skiped due to Deploy Response Time can't enable in standalone mode
-    if (cs->IsClusterMode()) {
-        DeploymentEnv env(sr);
-        env.SetUp();
-        env.EnableDeployStats();
-        // sleep a while for global variable notification
-        absl::SleepFor(absl::Seconds(2));
-
-        hybridse::sdk::Status status;
-        auto rs = sr->ExecuteSQLParameterized("", QueryDeployResponseTime, {}, &status);
-        ASSERT_TRUE(status.IsOK());
-        // as deploy stats in tablet is lazy managed, the deploy stats will stay empty util the first procedure call
-        // happens
-        ASSERT_EQ(0, rs->Size());
-
-        // warm up deploy stats
-        env.CallDeployProcedureBatch();
-        env.CallDeployProcedure();
-
-        absl::SleepFor(absl::Seconds(3));
-
-        HandleSQL(QueryDeployResponseTime);
-        rs = sr->ExecuteSQLParameterized("", QueryDeployResponseTime, {}, &status);
-        ASSERT_TRUE(status.IsOK());
-        ASSERT_EQ(TIME_DISTRIBUTION_BUCKET_COUNT, rs->Size());
-
-        int cnt = 0;
-        while (rs->Next()) {
-            EXPECT_EQ(absl::StrCat(env.db_, ".", env.dp_name_), rs->GetAsStringUnsafe(0));
-            cnt += rs->GetInt32Unsafe(2);
-        }
-        EXPECT_EQ(2, cnt);
-    }
-}
-
-TEST_P(DBSDKTest, DeployStatsOnlyCollectDeployProcedure) {
-    auto cli = GetParam();
-    cs = cli->cs;
-    sr = cli->sr;
-    if (cs->IsClusterMode()) {
-        DeploymentEnv env(sr);
-        env.SetUp();
-
-        env.EnableDeployStats();
-        absl::SleepFor(absl::Seconds(2));
-
-        for (int i = 0; i < 5; ++i) {
-            env.CallProcedure();
-        }
-
-        for (int i = 0; i < 10; ++i) {
-            env.CallDeployProcedureBatch();
-            env.CallDeployProcedure();
-        }
-        absl::SleepFor(absl::Seconds(3));
-
-        HandleSQL(QueryDeployResponseTime);
-        hybridse::sdk::Status status;
-        auto rs = sr->ExecuteSQLParameterized("", QueryDeployResponseTime, {}, &status);
-        ASSERT_TRUE(status.IsOK());
-        ASSERT_EQ(TIME_DISTRIBUTION_BUCKET_COUNT, rs->Size());
-        int cnt = 0;
-        while (rs->Next()) {
-            EXPECT_EQ(absl::StrCat(env.db_, ".", env.dp_name_), rs->GetAsStringUnsafe(0));
-            cnt += rs->GetInt32Unsafe(2);
-        }
-        EXPECT_EQ(10 + 10, cnt);
-    }
-}
 
 class StripSpaceTest : public ::testing::TestWithParam<std::pair<std::string_view, std::string_view>> {};
 

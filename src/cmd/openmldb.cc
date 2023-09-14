@@ -3878,7 +3878,7 @@ void StartAPIServer() {
         GetRealEndpoint(&real_endpoint);
     }
 
-    auto api_service = std::make_unique<::openmldb::apiserver::APIServerImpl>();
+    auto api_service = std::make_unique<::openmldb::apiserver::APIServerImpl>(real_endpoint);
     if (!FLAGS_nameserver.empty()) {
         std::vector<std::string> vec;
         boost::split(vec, FLAGS_nameserver, boost::is_any_of(":"));

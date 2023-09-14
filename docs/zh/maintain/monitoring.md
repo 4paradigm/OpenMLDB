@@ -31,10 +31,8 @@ OpenMLDB exporter 是以 Python 实现的 Prometheus exporter，核心是通过�
 
 2. 启动 OpenMLDB
 
-   参见 [install_deploy](../deploy/install_deploy.md) 如何搭建 OpenMLDB。组件启动时需要保证有 flag `--enable_status_service=true`, 或者确认启动 flag 文件 (`conf/(tablet|nameserver).flags`) 中有 `--enable_status_service=true`。
+   参见 [install_deploy](../deploy/install_deploy.md) 如何搭建 OpenMLDB。组件启动时需要保证有 flag `--enable_status_service=true`, OpenMLDB启动脚本（无论是sbin或bin）都已配置为true，如果你使用个人方式启动，需要保证启动 flag 文件 (`conf/(tablet|nameserver).flags`) 中有 `--enable_status_service=true`。
 
-   默认启动脚本 `bin/start.sh` 开启了 server status, 不需要额外配置。
-   
 3. 注意：合理选择 OpenMLDB 各组件和 OpenMLDB exporter, 以及 Prometheus, Grafana 的绑定 IP 地址，确保 Grafana 可以访问到 Prometheus, 并且 Prometheus，OpenMLDB exporter 和 OpenMLDB 各个组件之间可以相互访问。
 
 ### 部署 OpenMLDB exporter
@@ -168,13 +166,6 @@ OpenMLDB 提供了 Prometheus 和 Grafana 配置文件以作参考，详见 [Ope
 
    - component status: 集群组件状态
    - table status: 数据库表相关信息，如 `rows_count`, `memory_bytes`
-   - deploy query response time: deployment query 在 tablet 内部的运行时间
-
-   **除了 deploy query response time 指标外, 成功配置监控之后都可以直接查询到指标. Deploy query response time 需要全局变量 `deploy_stats` 开启后才会有数据, 在 OpenMLDB CLI 中输入 SQL:**
-
-   ```sql
-   SET GLOBAL deploy_stats = 'on';
-   ```
 
    你可以通过
 
@@ -184,9 +175,25 @@ OpenMLDB 提供了 Prometheus 和 Grafana 配置文件以作参考，详见 [Ope
 
    查看完整 DB-Level 指标和帮助信息。
 
+通过Component-Level 指标通过Grafana聚合的DB-Level 指标（未单独声明时，time单位为us）：
+
+- deploy query response time: deployment query 在OpenMLDB内部的运行时间，按DB.DEPLOYMENT汇总
+  需要全局变量 `deploy_stats` 开启后才会开始统计, 在 OpenMLDB CLI 中输入 SQL:**
+
+   ```sql
+   SET GLOBAL deploy_stats = 'on';
+   ```
+   然后，还需要执行deployment，才会出现相应的指标。
+   如果SET变量为off，会清空server中的所有deployment指标并停止统计（已被Prometheus抓取的数据不影响）。
+
+- api server http time: 各API接口的处理耗时（不包含route），只监测接口耗时，不做细粒度区分，目前也不通过Grafana展示，可以通过Prometheus手动查询。目前监测`deployment`、`sp`和`query`三种方法。
+   - api server route time: APIServer进行http route的耗时，通常为us级别，一般忽略不计
+
+以上聚合指标的获取方式见下文。在组件指标中，deploy query response time关键字为`deployment`，api server http time关键字为`http_method`。如果指标展示不正常，可以查询组件指标定位问题。
+
 ### 2. Component-Level 指标
 
-OpenMLDB 的相关组件（即 nameserver, tablet, etc), 本身作为 BRPC server，暴露了 [Prometheus 相关指标](https://github.com/apache/incubator-brpc/blob/master/docs/en/bvar.md#export-to-prometheus)， 只需要配置 Prometheus server 从对应地址拉取指标即可。对应 `prometheus_example.yml`中 `job_name=openmldb_components` 项：
+OpenMLDB 的相关组件（即 nameserver, tablet, etc）, 本身作为 BRPC server，暴露了 [Prometheus 相关指标](https://github.com/apache/brpc/blob/master/docs/en/bvar.md#export-to-prometheus)， 只需要配置 Prometheus server 从对应地址拉取指标即可。对应 `prometheus_example.yml`中 `job_name=openmldb_components` 项：
 
    ```yaml
      - job_name: openmldb_components
@@ -203,6 +210,7 @@ OpenMLDB 的相关组件（即 nameserver, tablet, etc), 本身作为 BRPC serve
 
    - BRPC server 进程相关信息
    - 对应 BRPC server 定义的 RPC method 相关指标，例如该 RPC 的请求 `count`, `error_count`, `qps` 和 `response_time`
+   - Deployment 相关指标，分deployment，但只统计该tablet上的deployment请求。区别于Grafana做的集群级别整合。
 
    通过
 

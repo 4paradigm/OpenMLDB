@@ -1145,7 +1145,8 @@ TEST_F(APIServerTest, jsonInput) {
     ASSERT_FALSE(show_cntl.Failed()) << show_cntl.ErrorText();
     LOG(INFO) << "get sp resp: " << show_cntl.response_attachment();
 
-    // call deployment in json style input(won't check if it's a sp or deployment)
+    // call sp in deployment api with json style input(won't check if it's a sp or deployment), so it'll have field
+    // `common_cols_data`
     {
         brpc::Controller cntl;
         cntl.http_request().set_method(brpc::HTTP_METHOD_POST);
