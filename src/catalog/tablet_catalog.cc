@@ -359,15 +359,24 @@ bool TabletCatalog::AddTable(const ::openmldb::api::TableMeta& meta,
     }
     const std::string& table_name = meta.name();
     auto it = db_it->second.find(table_name);
-    if (it == db_it->second.end()) {
+    if (it != db_it->second.end()) {
+        if (it->second->GetTid() < static_cast<uint32_t>(meta.tid())) {
+            db_it->second.erase(it);
+        } else if (it->second->GetTid() > static_cast<uint32_t>(meta.tid())) {
+            LOG(WARNING) << "current tid " << it->second->GetTid() << " is greater than new table info tid "
+                << meta.tid();
+            return false;
+        } else {
+            handler = it->second;
+        }
+    }
+    if (!handler) {
         handler = std::make_shared<TabletTableHandler>(meta, local_tablet_);
         if (!handler->Init(client_manager_)) {
             LOG(WARNING) << "tablet handler init failed";
             return false;
         }
         db_it->second.emplace(table_name, handler);
-    } else {
-        handler = it->second;
     }
     handler->AddTable(table);
     return true;
@@ -383,7 +392,7 @@ bool TabletCatalog::AddDB(const ::hybridse::type::Database& db) {
     return true;
 }
 
-bool TabletCatalog::DeleteTable(const std::string& db, const std::string& table_name, uint32_t pid) {
+bool TabletCatalog::DeleteTable(const std::string& db, const std::string& table_name, uint32_t tid, uint32_t pid) {
     std::lock_guard<::openmldb::base::SpinMutex> spin_lock(mu_);
     auto db_it = tables_.find(db);
     if (db_it == tables_.end()) {
@@ -391,6 +400,10 @@ bool TabletCatalog::DeleteTable(const std::string& db, const std::string& table_
     }
     auto it = db_it->second.find(table_name);
     if (it == db_it->second.end()) {
+        return false;
+    }
+    if (it->second->GetTid() > tid) {
+        LOG(WARNING) << "delete failed. current tid " << it->second->GetTid() << " is greater than " << tid;
         return false;
     }
     LOG(INFO) << "delete table from catalog. db " << db << ", name " << table_name << ", pid " << pid;
@@ -468,17 +481,27 @@ bool TabletCatalog::UpdateTableInfo(const ::openmldb::nameserver::TableInfo& tab
             auto result = tables_.emplace(db_name, std::map<std::string, std::shared_ptr<TabletTableHandler>>());
             db_it = result.first;
         }
+        std::shared_ptr<TabletTableHandler> handle;
         auto it = db_it->second.find(table_name);
-        if (it == db_it->second.end()) {
+        if (it != db_it->second.end()) {
+            if (table_info.tid() > it->second->GetTid()) {
+                db_it->second.erase(it);
+            } else if (table_info.tid() < it->second->GetTid()) {
+                LOG(INFO) << "current tid " << it->second->GetTid() << " is greater than new table info tid "
+                    << table_info.tid();
+                return false;
+            } else {
+                handle = it->second;
+            }
+        }
+        if (!handle) {
             handler = std::make_shared<TabletTableHandler>(table_info, local_tablet_);
             if (!handler->Init(client_manager_)) {
                 LOG(WARNING) << "tablet handler init failed";
                 return false;
             }
             db_it->second.emplace(table_name, handler);
-            LOG(INFO) << "add table " << table_name << "to db " << db_name;
-        } else {
-            handler = it->second;
+            LOG(INFO) << "add table " << table_name << "to db " << db_name << " tid " << table_info.tid();
         }
         if (bool updated = false; !handler->Update(table_info, client_manager_, &updated)) {
             return false;
