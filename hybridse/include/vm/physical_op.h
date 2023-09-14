@@ -738,7 +738,7 @@ class PhysicalConstProjectNode : public PhysicalOpNode {
         fn_infos_.push_back(&project_.fn_info());
     }
     virtual ~PhysicalConstProjectNode() {}
-    virtual void Print(std::ostream &output, const std::string &tab) const;
+    void Print(std::ostream &output, const std::string &tab) const override;
     static PhysicalConstProjectNode *CastFrom(PhysicalOpNode *node);
     const ColumnProjects &project() const { return project_; }
 

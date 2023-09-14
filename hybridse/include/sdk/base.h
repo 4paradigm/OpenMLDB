@@ -71,7 +71,7 @@ struct Status {
         cm.append("] ");
         cm.append(msg);
         return cm;
-    };
+    }
 
     int code;
     // msg use prepend and append, it's better to use absl::Cord, but we may directly use msg

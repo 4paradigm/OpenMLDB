@@ -1074,11 +1074,10 @@ std::shared_ptr<DataHandlerList> Runner::BatchRequestRun(RunnerContext& ctx) {
             return cached;
         }
     }
-    std::shared_ptr<DataHandlerVector> outputs =
-        std::make_shared<DataHandlerVector>();
+
+    std::shared_ptr<DataHandlerVector> outputs = std::make_shared<DataHandlerVector>();
     std::vector<std::shared_ptr<DataHandler>> inputs(producers_.size());
-    std::vector<std::shared_ptr<DataHandlerList>> batch_inputs(
-        producers_.size());
+    std::vector<std::shared_ptr<DataHandlerList>> batch_inputs(producers_.size());
     for (size_t idx = producers_.size(); idx > 0; idx--) {
         batch_inputs[idx - 1] = producers_[idx - 1]->BatchRequestRun(ctx);
     }
