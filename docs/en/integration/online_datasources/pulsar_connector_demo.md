@@ -7,7 +7,7 @@ Apache Pulsar is a cloud-native, distributed messaging platform that can serve a
 Please note that for the sake of simplicity, this article will use Pulsar Standalone, an OpenMLDB cluster, and a simple JSON message producer program to demonstrate how the OpenMLDB JDBC Connector works. However, this connector is fully functional in a Pulsar Cluster.
 
 ```{seealso}
-For detailed information on Pulsar's OpenMLDB Connector, you can also refer to Pulsar's official website for relevant information （https://pulsar.apache.org/docs/en/next/io-connectors/#jdbc -Openmldb).
+For detailed information on Pulsar's OpenMLDB Connector, you can also refer to Pulsar's [Official Website for Relevant Information]（https://pulsar.apache.org/docs/en/next/io-connectors/#jdbc-Openmldb).
 ```
 
 ## Overview
@@ -16,11 +16,11 @@ For detailed information on Pulsar's OpenMLDB Connector, you can also refer to P
 
 - To proceed with the usage, you will need to download all the necessary files for this article. Please click on [files](https://openmldb.ai/download/pulsar-connector/files.tar.gz) to download them. These files include the connector packages, schema files, configuration files, and more.
 
-  Alternatively, if you only want to download the connector package for your own project, please click on [connector snapshot](https://github.com/4paradigm/OpenMLDB/releases/download/v0.4.4/pulsar-io-jdbc-openmldb-2.11.0-SNAPSHOT.nar).
+- Alternatively, if you only want to download the connector package for your own project, please click on [connector snapshot](https://github.com/4paradigm/OpenMLDB/releases/download/v0.4.4/pulsar-io-jdbc-openmldb-2.11.0-SNAPSHOT.nar).
 
-### The process
+### The Process
 
-The overall process of using the connector is illustrated in the figure below. We will now provide a detailed introduction to each step. Additionally, we have recorded the complete steps, and the details can be found in [terminalizer share](https://terminalizer.com/view/be2309235671). You can also download the recorded script in [demo.yml](https://github.com/vagetablechicken/pulsar-openmldb-connector-demo/blob/main/demo.yml).
+The overall process of using the connector is illustrated in the figure below. We will now provide a detailed introduction to each step. Additionally, we have recorded the complete steps, and the details can be found in [Sharing the terminalizer](https://terminalizer.com/view/be2309235671). You can also download the recorded script in [demo.yml](https://github.com/vagetablechicken/pulsar-openmldb-connector-demo/blob/main/demo.yml).
 
 In summary, the usage process can be broken down into three steps:
 
@@ -28,13 +28,13 @@ In summary, the usage process can be broken down into three steps:
 2. Create a sink in Pulsar to connect the Pulsar data stream with OpenMLDB and configure the corresponding schema in Pulsar to ensure that the data stream is correctly received by OpenMLDB and stored in the online database.
 3. Conduct testing or normal use.
 
-![demo steps](C:\Users\65972\Documents\GitHub\fix_docs\OpenMLDB\docs\en\integration\online_datasources\images\demo_steps.png)
+![demo steps](images/demo_steps.png)
 
-## Step 1: Create a database and data table in OpenMLDB
+## Step 1: Create a Database and Data Table in OpenMLDB
 
 ### Start OpenMLDB Cluster
 
-Using Docker, you can quickly start OpenMLDB and create tables for testing. For more information on creating an OpenMLDB cluster, please refer to [The quickstart of OpenMLDB cluster version](https://chat.openai.com/en/quickstart/openmldb_quickstart#3-the-quickstart-of-openmldb-cluster-version).
+Using Docker, you can quickly start OpenMLDB and create tables for testing. For more information on creating an OpenMLDB cluster, please refer to [The Quickstart of OpenMLDB Cluster Version](https://chat.openai.com/en/quickstart/openmldb_quickstart#3-the-quickstart-of-openmldb-cluster-version).
 
 ```{caution}
 Currently, only the OpenMLDB cluster version can act as the receiver of sinks, and data will only be sunk to the online storage of the cluster.
@@ -57,7 +57,7 @@ Start cluster in OpenMLDB cluster:
 Please note that on the macOS platform, even when using the host network, it is not supported to connect to the OpenMLDB server inside the container from outside. However, it is feasible to connect to OpenMLDB services in other containers from within the container.
 ```
 
-### Create table
+### Create Table
 
 We use a script to quickly create tables, with the following content:
 
@@ -74,13 +74,13 @@ Executing script:
 /work/openmldb/bin/openmldb --zk_cluster=127.0.0.1:2181 --zk_root_path=/openmldb --role=sql_client < /work/pulsar_files/create.sql
 ```
 
-![table desc](C:\Users\65972\Documents\GitHub\fix_docs\OpenMLDB\docs\en\integration\online_datasources\images\table.png)
+![table desc](images/table.png)
 
 ```{note}
 Currently, both JSONSchema and JDBC base connectors in Pulsar do not support 'java.sql.Timestamp'. Therefore, we use 'long' as the data type for the timestamp column (in OpenMLDB, long can be used as the timestamp).
 ```
 
-## Step 2: Create sink and schema in Pulsar
+## Step 2: Create Sink and Schema in Pulsar
 
 ### Start Pulsar Standalone
 
@@ -107,12 +107,12 @@ You can use `ps` to check whether Pulsar is running normally. If the startup fai
 ps axu|grep pulsar
 ```
 
-When you start a local standalone cluster, it will automatically create a 'public/default' namespace. This namespace is used for development, as mentioned in the [Pulsar documentation](https://pulsar.apache.org/docs/en/2.9.0/standalone/#start-pulsar-standalone).
+When you start a local standalone cluster, it will automatically create a 'public/default' namespace. This namespace is used for development, as mentioned in the [Pulsar Documentation](https://pulsar.apache.org/docs/en/2.9.0/standalone/#start-pulsar-standalone).
 
 **We will create sink in this namespace**
 
 ```{seealso}
-If you want to directly start Pulsar locally, refer to [Set up a standalone Pulsar locally] (https://pulsar.apache.org/docs/en/standalone/)
+If you want to directly start Pulsar locally, refer to [Set Up a Standalone Pulsar Locally] (https://pulsar.apache.org/docs/en/standalone/)
 ```
 
 #### Q&A
@@ -154,7 +154,7 @@ bin/pulsar-admin sinks reload
 
 When the OpenMLDB connector becomes a built-in connector, its sink type name is 'jdbc-openmldb', and you can directly use this type name to specify the use of the OpenMLDB connector.
 
-### Create sink
+### Create Sink
 
 We use the 'public/default' namespace to create a sink, and we need a configuration file for the sink, which is located in `files/pulsar-openmldb-jdbc-sink.yaml`. The content is as follows:
 
@@ -186,7 +186,7 @@ Next, create a sink and check. Please note that the input topic we set is 'test_
 ./bin/pulsar-admin sinks status --name openmldb-test-sink
 ```
 
-![init sink status](C:\Users\65972\Documents\GitHub\fix_docs\OpenMLDB\docs\en\integration\online_datasources\images\init_sink_status.png)
+![init sink status](images/init_sink_status.png)
 
 ### Create Schema
 
@@ -207,17 +207,19 @@ The command to upload and check the schema is as follows:
 ./bin/pulsar-admin schemas get test_openmldb
 ```
 
-![topic schema](C:\Users\65972\Documents\GitHub\fix_docs\OpenMLDB\docs\en\integration\online_datasources\images\topic_schema.png)
+![topic schema](images/topic_schema.png)
 
 ## Step 3: Testing
 
-### Sending information
+### Sending Information
 
-We use two OpenMLDB images with `data/taxi_tour_table_train_simple.csv` as the sample data of the testing message. The data is shown in the following figure:![test data](C:\Users\65972\Documents\GitHub\fix_docs\OpenMLDB\docs\en\integration\online_datasources\images\test_data.png)
+We use two OpenMLDB images with `data/taxi_tour_table_train_simple.csv` as the sample data of the testing message. The data is shown in the following figure:
+![test data](images/test_data.png)
 
 #### Java Producer
 
-For the Producer JAVA code, see detailed in [demo producer](https://github.com/vagetablechicken/pulsar-client-java). The core code is as follows:![snippet](C:\Users\65972\Documents\GitHub\fix_docs\OpenMLDB\docs\en\integration\online_datasources\images\producer_code.png)
+For the Producer JAVA code, see detailed in [demo producer](https://github.com/vagetablechicken/pulsar-client-java). The core code is as follows:
+![snippet](images/producer_code.png)
 
 As you can see, the producer will send two messages to the topic 'test_openmldb'. Afterward, Pulsar will read the messages and write them to the online storage of the OpenMLDB cluster.
 
@@ -242,12 +244,12 @@ python3 files/pulsar_client.py
 ```
 
 ```{note}
-Known issue: If the value of a Long type in the message is relatively small, during the jdbc bindValue phase of the Pulsar Function sink, it may read the value from the JsonRecord as a Java Integer type, resulting in using statement.setInt instead of setLong when calling [setColumnValue](https://github.com/apache/pulsar/blob/82237d3684fe506bcb6426b3b23f413422e6e4fb/pulsar-io/jdbc/core/src/main/java/org/apache/pulsar/io/jdbc/BaseJdbcAutoSchemaSink.java#L170)) for the Long type column. As a result, it will generate an SQLException with "data type not match".
+Known issue: If the value of a Long type in the message is relatively small, during the jdbc bindValue phase of the Pulsar Function sink, it may read the value from the JsonRecord as a Java Integer type, resulting in using `statement.setInt` instead of `setLong` when calling [setColumnValue](https://github.com/apache/pulsar/blob/82237d3684fe506bcb6426b3b23f413422e6e4fb/pulsar-io/jdbc/core/src/main/java/org/apache/pulsar/io/jdbc/BaseJdbcAutoSchemaSink.java#L170)) for the Long type column. As a result, it will generate an SQLException with `data type not match`.
 
-If you want to see which specific column has the data type issue, please open the function's debug level logs. The method is described in Debugging(#debugging).
+If you want to see which specific column has the data type issue, please open the function's debug level logs. The method is described in [Debugging](#debugging).
 ```
 
-### To check
+### To Check
 
 #### Check in Pulsar
 
@@ -257,7 +259,7 @@ We can check the sink status in Pulsar:
 ./bin/pulsar-admin sinks status --name openmldb-test-sink 
 ```
 
-![sink status](C:\Users\65972\Documents\GitHub\fix_docs\OpenMLDB\docs\en\integration\online_datasources\images\sink_status.png)
+![sink status](images/sink_status.png)
 
 ```{note}
 "numReadFromPulsar": Pulsar sent 2 messages to the sink example.
@@ -281,7 +283,7 @@ Execute the script in OpenMLDB container:
 /work/openmldb/bin/openmldb --zk_cluster=127.0.0.1:2181 --zk_root_path=/openmldb --role=sql_client < /work/pulsar_files/select.sql
 ```
 
-![openmldb result](C:\Users\65972\Documents\GitHub\fix_docs\OpenMLDB\docs\en\integration\online_datasources\images\openmldb_result.png)
+![openmldb result](images/openmldb_result.png)
 
 
 ### Debugging
