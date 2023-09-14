@@ -48,11 +48,11 @@ object SparkJobManager {
 
     val env: java.util.Map[String, String] = new java.util.HashMap[String, String]
     // config may empty, need check
-    if (TaskManagerConfig.getHadoopConfDir.nonEmpty) {
+    if (TaskManagerConfig.getHadoopConfDir != null && TaskManagerConfig.getHadoopConfDir.nonEmpty) {
       env.put("HADOOP_CONF_DIR", TaskManagerConfig.getHadoopConfDir)
     }
-    // env.put("YARN_CONF_DIR", TaskManagerConfig.HADOOP_CONF_DIR)  // unused now
-    if (TaskManagerConfig.getHadoopUserName.nonEmpty){
+
+    if (TaskManagerConfig.getHadoopUserName != null && TaskManagerConfig.getHadoopUserName.nonEmpty){
       env.put("HADOOP_USER_NAME", TaskManagerConfig.getHadoopUserName)
     }
 
