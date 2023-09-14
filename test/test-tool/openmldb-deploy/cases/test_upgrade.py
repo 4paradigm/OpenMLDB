@@ -21,7 +21,7 @@ import random
 from tool import Executor
 from tool import Partition
 from tool import Status
-from tool import Util
+from util import Util
 
 class TestUpgrade:
     db = None
@@ -37,8 +37,8 @@ class TestUpgrade:
         cls.bin_path = cls.openmldb_path + "/bin/openmldb"
         cls.executor = Executor(cls.bin_path, case_conf.conf["zk_cluster"], case_conf.conf["zk_root_path"])
 
-    def execute_upgrade(self, upgrade_cmd : str, endpoint : str):
-        cmd = ["python3"]
+    def execute_upgrade(self, python_bin, upgrade_cmd : str, endpoint : str):
+        cmd = [python_bin]
         cmd.append(f"{self.base_dir}/tools/openmldb_ops.py")
         cmd.append(f"--openmldb_bin_path={self.bin_path}")
         cmd.append("--zk_cluster=" + case_conf.conf["zk_cluster"])
@@ -71,7 +71,8 @@ class TestUpgrade:
 
 
     @pytest.mark.parametrize("replica_num, partition_num", [(3, 10), (2, 10), (1, 10)])
-    def test_upgrade(self, replica_num, partition_num):
+    @pytest.mark.parametrize("python_bin", ["python2", "python3"])
+    def test_upgrade(self, python_bin, replica_num, partition_num):
         assert len(case_conf.conf["components"]["tablet"]) > 2
         status, distribution = Util.gen_distribution(case_conf.conf["components"]["tablet"], replica_num, partition_num)
         assert status.OK()
@@ -92,7 +93,7 @@ class TestUpgrade:
         status, unalive_cnt = self.get_unalive_cnt("test", table_name)
         assert status.OK() and unalive_cnt == 0
 
-        assert self.execute_upgrade("pre-upgrade", case_conf.conf["components"]["tablet"][0]).OK()
+        assert self.execute_upgrade(python_bin, "pre-upgrade", case_conf.conf["components"]["tablet"][0]).OK()
 
         status, cnt1 = self.get_leader_cnt("test", table_name, case_conf.conf["components"]["tablet"][0])
         assert status.OK() and cnt1 == 0
@@ -102,7 +103,7 @@ class TestUpgrade:
         data = result.fetchall()
         assert len(data) == key_num
 
-        assert self.execute_upgrade("post-upgrade", case_conf.conf["components"]["tablet"][0]).OK()
+        assert self.execute_upgrade(python_bin, "post-upgrade", case_conf.conf["components"]["tablet"][0]).OK()
 
         status, cnt2 = self.get_leader_cnt("test", table_name, case_conf.conf["components"]["tablet"][0])
         assert status.OK() and cnt2 == cnt
