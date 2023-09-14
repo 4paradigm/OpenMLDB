@@ -1,20 +1,19 @@
 # OpenMLDB Quickstart
 
-## Basic concepts
+## Basic Concepts
 
 The main use case of OpenMLDB is as a real-time feature platform for machine learning. The basic usage process is shown in the following diagram:
+![modes-flow](concepts/images/modes-flow.png))
 
-![modes-flow](https://openmldb.ai/docs/zh/main/_images/modes-flow.png)
+As can be seen, OpenMLDB covers the feature computing process of machine learning, from offline development to real-time request service online, providing a complete process. Please refer to the documentation for [The Usage Process and Execution Mode](https://openmldb.ai/docs/zh/main/quickstart/concepts/modes.html) in detail. This article will demonstrate a quick start and understanding of OpenMLDB step by step, following the basic usage process.
 
-As can be seen, OpenMLDB covers the feature computing process of machine learning, from offline development to real-time request service online, providing a complete process. Please refer to the documentation for [the usage process and execution mode](https://openmldb.ai/docs/zh/main/quickstart/concepts/modes.html) in detail. This article will demonstrate a quick start and understanding of OpenMLDB step by step, following the basic usage process.
-
-## The preparation
+## The Preparation
 
 This article is developed and deployed based on OpenMLDB CLI, and it is necessary to download the sample data and start OpenMLDB CLI first. It is recommended to use Docker image for a quick experience (Note: due to some known issues of Docker on macOS, the sample program in this article may encounter problems in completing the operation smoothly on macOS. It is recommended to run it on **Linux or Windows**).
 
 - Docker Version: >= 18.03
 
-### Pulls the image
+### Pulls the Image
 
 Execute the following command in the command line to pull the OpenMLDB image and start the Docker container:
 
@@ -23,18 +22,10 @@ docker run -it 4pdosc/openmldb:0.8.2 bash
 ```
 
 ``` {note}
-After successfully starting the container, all subsequent commands in this tutorial are executed inside the container by default. If you need to access the OpenMLDB server inside the container from outside the container, please refer to the [CLI/SDK-container onebox documentation](https://openmldb.ai/docs/zh/main/reference/ip_tips.html#id3).
+After successfully starting the container, all subsequent commands in this tutorial are executed inside the container by default. If you need to access the OpenMLDB server inside the container from outside the container, please refer to the [CLI/SDK-container onebox documentation](../reference/ip_tips.md#clisdk-containeronebox).
 ```
 
-### Download sample data
-
-Execute the following command inside the container to download the sample data used in the subsequent process (**this step can be skipped for versions 0.7.0 and later**, as the data is already stored in the image):
-
-```bash
-curl https://openmldb.ai/demo/data.parquet --output /work/taxi-trip/data/data.parquet
-```
-
-### Start the server and client
+### Start the Server and Client
 
 Start the OpenMLDB server:
 
@@ -50,9 +41,9 @@ Start the OpenMLDB CLI client:
 
 After successfully starting OpenMLDB CLI, it will be displayed as shown in the following figure:
 
-![image](https://openmldb.ai/docs/zh/main/_images/cli_cluster.png)
+![image](./images/cli_cluster.png)
 
-## Use process
+## Use Process
 
 Referring to the core concepts, the process of using OpenMLDB generally includes six steps: creating databases and tables, importing offline data, offline feature computing, deploying SQL solutions, importing online data, and online real-time feature computing.
 
@@ -60,7 +51,7 @@ Referring to the core concepts, the process of using OpenMLDB generally includes
 Unless otherwise specified, the commands demonstrated below are executed by default in OpenMLDB CLI.
 ```
 
-### Step 1: Create database and table
+### Step 1: Create Database and Table
 
 Create `demo_db` and table `demo_table1`:
 
@@ -71,7 +62,7 @@ USE demo_db;
 CREATE TABLE demo_table1(c1 string, c2 int, c3 bigint, c4 float, c5 double, c6 timestamp, c7 date);
 ```
 
-### Step 2: Importing offline data
+### Step 2: Importing Offline Data
 
 Switch to the offline execution mode, and import the sample data as offline data for offline feature calculation.
 
@@ -92,15 +83,19 @@ Note that the `LOAD DATA` command is an asynchronous command by default. You can
 
 Here, we use `SHOW JOBS` to check the task status. Please wait for the task to be successfully completed (the `state` is changed to `FINISHED`), and then proceed to the next step.
 
-![image-20220111141358808](https://openmldb.ai/docs/zh/main/_images/state_finished.png)
+![image-20220111141358808](./images/state_finished.png)
 
-After the task is completed, if you want to preview the data, you can use the `SELECT * FROM demo_table1` statement. It is recommended to first set the offline command to synchronous mode (`SET @@sync_job=true`); otherwise, the command will submit an asynchronous task, and the result will be saved in the log file of the Spark task, which is less convenient to view.
+After the task is completed, if you wish to preview the data, you can execute the `SELECT * FROM demo_table1` statement in synchronous mode by setting `SET @@sync_job=true`. However, this approach has certain limitations, which are detailed in the [Offline Command Synchronous Mode](./function_boundary.md#offlinecommandsynchronousmode) section.
+
+In the default asynchronous mode, executing `SELECT * FROM demo_table1` will initiate an asynchronous task, and the results will be stored in the log files of the Spark job, making them less convenient to access. If TaskManager is in local mode, you can use `SHOW JOBLOG <id>` to view the query print results in the stdout section.
+
+The most reliable way to access the data is to use the `SELECT INTO` command to export the data to a specified directory or directly examine the storage location after importing it.
 
 ```{note}
-OpenMLDB also supports importing offline data through linked soft copies, without the need for hard data copying. Please refer to the parameter `deep_copy` in the [LOAD DATA INFILE documentation](https://openmldb.ai/docs/zh/main/openmldb_sql/dml/LOAD_DATA_STATEMENT.html) for more information.
+OpenMLDB also supports importing offline data through linked soft copies, without the need for hard data copying. Please refer to the parameter `deep_copy` in the [LOAD DATA INFILE Documentation](../openmldb_sql/dml/LOAD_DATA_STATEMENT.md) for more information.
 ```
 
-### Step 3: Offline feature computing
+### Step 3: Offline Feature Computing
 
 Assuming that we have determined the SQL script (`SELECT` statement) to be used for feature computation, we can use the following command for offline feature computation:
 
@@ -120,7 +115,7 @@ Note:
 
 - The `SELECT` statement is used to perform SQL-based feature extraction and store the generated features in the directory specified by the `OUTFILE` parameter as `feature_data`, which can be used for subsequent machine learning model training.
 
-### Step 4: Deploying SQL solutions
+### Step 4: Deploying SQL Solutions
 
 Switch to online preview mode, and deploy the explored SQL plan to online. The SQL plan is named `demo_data_service`, and the online SQL used for feature extraction needs to be consistent with the corresponding offline feature calculation SQL.
 
@@ -133,7 +128,7 @@ DEPLOY demo_data_service SELECT c1, c2, sum(c3) OVER w1 AS w1_c3_sum FROM demo_t
 
 After the deployment, you can use the command `SHOW DEPLOYMENTS` to view the deployed SQL solutions.
 
-### Step 5: Importing online data
+### Step 5: Importing Online Data
 
 Import the downloaded sample data as online data for online feature computation in online preview mode.
 
@@ -161,7 +156,7 @@ Note that currently, it is required to successfully deploy the SQL plan before i
 The tutorial skips the step of real-time data access after importing data. In practical scenarios, as time progresses, the latest real-time data needs to be updated in the online database. This can be achieved through the OpenMLDB SDK or online data source connectors such as Kafka, Pulsar, etc.
 ```
 
-### Step 6: Online real-time feature computing
+### Step 6: Online Real-Time Feature Computing
 
 The development and deployment work based on OpenMLDB CLI is completed. Next, you can make real-time feature calculation requests in real-time request mode. First, exit OpenMLDB CLI and return to the command line of the operating system.
 
@@ -205,7 +200,7 @@ Expected query result:
 {"code":0,"msg":"ok","data":{"data":[["aaa",11,66]]}}
 ```
 
-### Description of real-time feature computing results
+### Description of Real-Time Feature Computing Results
 
 The SQL execution for online real-time requests is different from batch processing mode. The request mode only performs SQL calculations on the data of the request row. In the previous example, it is the input of the POST request that serves as the request row. The specific process is as follows: Assuming that this row of data exists in the table `demo_table1`, and the following feature calculation SQL is executed on it:
 
@@ -213,7 +208,7 @@ The SQL execution for online real-time requests is different from batch processi
 SELECT c1, c2, sum(c3) OVER w1 AS w1_c3_sum FROM demo_table1 WINDOW w1 AS (PARTITION BY demo_table1.c1 ORDER BY demo_table1.c6 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
 ```
 
-**The calculation logic for Example 1 is as follows:**
+**The Calculation Logic for Example 1 is as Follows:**
 
 1. Filter rows in column c1 with the value "aaa" based on the `PARTITION BY` partition of the request row and window, and sort them in ascending order by column c6. Therefore, in theory, the intermediate data table sorted by partition should be as follows. The request row is the first row after sorting.
 
@@ -238,7 +233,7 @@ aaa   11      22
 ----- ---- -----------
 ```
 
-**The calculation logic for Example 2 is as follows:**
+**The Calculation Logic for Example 2 is as Follows:**
 
 1. According to the partition of the request line and window by `PARTITION BY`, select the rows where column c1 is "aaa" and sort them in ascending order by column c6. Therefore, theoretically, the intermediate data table after partition and sorting should be as shown in the table below. The request row is the last row after sorting.
 
