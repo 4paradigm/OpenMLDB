@@ -1168,7 +1168,7 @@ TEST_F(SqlCaseTest, BuildCreateSpSqlFromInputTest) {
         sql_case.sp_name_ = "sp";
         std::string sql = " select c1, c2, c3, c4 from t1   ";
         std::string sp_sql = "";
-        auto s = sql_case.BuildCreateSpSqlFromInput(0, sql, {});
+        auto s = sql_case.BuildCreateSpSql(sql, {}, 0);
         ASSERT_TRUE(s.ok()) << s.status();
         ASSERT_EQ(R"s(CREATE PROCEDURE sp (
 c1 string,
@@ -1190,7 +1190,7 @@ END;)s",
         sql_case.inputs_.push_back(input);
         std::string sql = "select c1, c2, c3, c4 from t1;";
         std::string sp_sql = "";
-        auto s = sql_case.BuildCreateSpSqlFromInput(0, sql, {0, 1, 3});
+        auto s = sql_case.BuildCreateSpSql(sql, {0, 1, 3}, 0);
         ASSERT_TRUE(s.ok()) << s.status();
         ASSERT_EQ(R"s(CREATE PROCEDURE sp1 (
 const c1 string,

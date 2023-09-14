@@ -3740,12 +3740,16 @@ struct DeploymentEnv {
                          });
     }
 
+    // A bacth request increase deployment cnt by 1
+    // yet may greatly impact deploy response time, if the batch size is huge
+    // maybe it requires a revision
     void CallDeployProcedureBatch() {
         hybridse::sdk::Status status;
         std::shared_ptr<sdk::SQLRequestRow> rr = std::make_shared<sdk::SQLRequestRow>();
         GetRequestRow(&rr, dp_name_);
-        auto common_column_indices = std::make_shared<sdk::ColumnIndicesSet>(rr->GetSchema());
+        auto common_column_indices = std::make_shared<sdk::ColumnIndicesSet>();
         auto row_batch = std::make_shared<sdk::SQLRequestRowBatch>(rr->GetSchema(), common_column_indices);
+        ASSERT_TRUE(row_batch->AddRow(rr));
         sr->CallSQLBatchRequestProcedure(db_, dp_name_, row_batch, &status);
         ASSERT_TRUE(status.IsOK()) << status.msg << "\n" << status.trace;
     }
