@@ -3114,6 +3114,7 @@ TEST_P(DBSDKTest, LongWindowsCleanup) {
         HandleSQL("show tables;");
         HandleSQL("show deployments;");
         ASSERT_TRUE(cs->GetNsClient()->DropDatabase("test2", msg)) << msg;
+        sleep(1);
     }
 }
 
