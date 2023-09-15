@@ -16,6 +16,8 @@ set(BRPC_URL https://github.com/apache/brpc)
 set(BRPC_TAG d2b73ec955dd04b06ab55065d9f3b4de1e608bbd)
 message(STATUS "build brpc from ${BRPC_URL}@${BRPC_TAG}")
 
+find_package(Git REQUIRED)
+
 ExternalProject_Add(
   brpc
   GIT_REPOSITORY ${BRPC_URL}
@@ -23,6 +25,10 @@ ExternalProject_Add(
   PREFIX ${DEPS_BUILD_DIR}
   DOWNLOAD_DIR ${DEPS_DOWNLOAD_DIR}/brpc
   INSTALL_DIR ${DEPS_INSTALL_DIR}
+  PATCH_COMMAND ${GIT_EXECUTABLE} checkout .
+    COMMAND ${GIT_EXECUTABLE} clean -dfx .
+    COMMAND ${GIT_EXECUTABLE} apply ${PROJECT_SOURCE_DIR}/patches/brpc-1.6.0.patch
+    COMMAND ${GIT_EXECUTABLE} apply ${PROJECT_SOURCE_DIR}/patches/brpc-1.6.0-2235.patch
   DEPENDS gflags glog protobuf snappy leveldb gperf openssl
   CONFIGURE_COMMAND ${CMAKE_COMMAND} -H<SOURCE_DIR> -B . -DWITH_GLOG=ON -DCMAKE_PREFIX_PATH=${DEPS_INSTALL_DIR} -DCMAKE_INSTALL_PREFIX=${DEPS_INSTALL_DIR} ${CMAKE_OPTS}
   BUILD_COMMAND ${CMAKE_COMMAND} --build . --target brpc-static -- ${MAKEOPTS}
