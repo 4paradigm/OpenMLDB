@@ -63,7 +63,7 @@ public class BatchRequestPreparedStatementImpl extends RequestPreparedStatementI
             throw new SQLException("execute sql fail: " + msg);
         }
         status.delete();
-        SQLResultSet rs = new SQLResultSet(resultSet);
+        SQLResultSet rs = new NativeResultSet(resultSet);
         if (closeOnComplete) {
             closed = true;
         }
