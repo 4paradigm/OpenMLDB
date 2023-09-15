@@ -25,6 +25,9 @@
 
 namespace hybridse {
 namespace sdk {
+
+typedef char* ByteArrayPtr;
+
 struct Date {
     int32_t year;
     int32_t month;
@@ -235,6 +238,9 @@ class ResultSet {
     virtual bool IsNULL(int index) = 0;
 
     virtual int32_t Size() = 0;
+
+    virtual void CopyTo(hybridse::sdk::ByteArrayPtr buf) = 0;
+    virtual int32_t GetDataLength() = 0;
 };
 
 }  // namespace sdk

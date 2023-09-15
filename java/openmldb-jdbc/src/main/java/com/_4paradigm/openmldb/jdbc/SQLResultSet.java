@@ -1,24 +1,6 @@
-/*
- * Copyright 2021 4Paradigm
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *   http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
 package com._4paradigm.openmldb.jdbc;
 
-import com._4paradigm.openmldb.DataType;
-import com._4paradigm.openmldb.QueryFuture;
-import com._4paradigm.openmldb.Schema;
+import com._4paradigm.openmldb.sdk.Schema;
 
 import java.io.InputStream;
 import java.io.Reader;
@@ -28,167 +10,30 @@ import java.sql.*;
 import java.util.Calendar;
 import java.util.Map;
 
-public class SQLResultSet implements ResultSet {
-    private com._4paradigm.openmldb.ResultSet resultSet;
-    private boolean closed = false;
-    private int rowNum = 0;
-    private QueryFuture queryFuture;
-    private Schema schema;
-
-    public SQLResultSet(com._4paradigm.openmldb.ResultSet resultSet) {
-        this.resultSet = resultSet;
-        if (resultSet != null) {
-            this.schema = resultSet.GetSchema();
-        }
-    }
-
-    public SQLResultSet(com._4paradigm.openmldb.ResultSet resultSet, QueryFuture future) {
-        this.resultSet = resultSet;
-        this.queryFuture = future;
-        if (resultSet != null) {
-            this.schema = resultSet.GetSchema();
-        }
-    }
-
-    private void check(int i, DataType type) throws SQLException {
-        checkClosed();
-        checkResultSetNull();
-        checkIdx(i);
-        checkDataType(i, type);
-    }
-
-    private void checkClosed() throws SQLException {
-        if (closed) {
-            throw new SQLException("resultset closed");
-        }
-    }
-
-    private void checkIdx(int i) throws SQLException {
-        if (i <= 0) {
-            throw new SQLException("index underflow");
-        }
-        if (i > schema.GetColumnCnt()) {
-            throw new SQLException("index overflow");
-        }
-    }
-
-    private void checkResultSetNull() throws SQLException{
-        if (this.resultSet == null) {
-            throw new SQLException("resultset is null");
-        }
-    }
-
-    private void checkDataType(int i, DataType type) throws SQLException {
-        if (schema.GetColumnType(i - 1) != type) {
-            throw new SQLException(String.format("data type not match, get %s and expect %s",
-                    schema.GetColumnType(i - 1), type));
-        }
-    }
+public abstract class SQLResultSet implements ResultSet {
+    protected boolean closed = false;
+    protected int rowNum = 0;
+    protected int totalRows = 0;
+    protected Schema schema;
 
     public Schema GetInternalSchema() {
         return schema;
     }
 
     @Override
-    public boolean next() throws SQLException {
-        checkClosed();
-        checkResultSetNull();
-        if (this.resultSet.Next()) {
-            this.rowNum++;
-            return true;
-        } else {
-            return false;
-        }
+    public SQLResultSetMetaData getMetaData() throws SQLException {
+        return new SQLResultSetMetaData(schema);
     }
 
     @Override
-    public void close() throws SQLException {
-        if (schema != null) {
-            schema.delete();
-            schema = null;
-        }
-        this.resultSet.delete();
-        this.resultSet = null;
-        if (queryFuture != null) {
-            queryFuture.delete();
-            queryFuture = null;
-        }
-        this.closed = true;
+    public boolean isClosed() throws SQLException {
+        return closed;
     }
 
     @Override
     @Deprecated
     public boolean wasNull() throws SQLException {
         throw new SQLException("current do not support this method");
-    }
-
-    @Override
-    public String getString(int i) throws SQLException {
-        check(i, DataType.kTypeString);
-        if (this.resultSet.IsNULL(i - 1)) {
-            return null;
-        }
-        return this.resultSet.GetStringUnsafe(i - 1);
-    }
-
-    @Override
-    public boolean getBoolean(int i) throws SQLException {
-        check(i, DataType.kTypeBool);
-        if (this.resultSet.IsNULL(i - 1)) {
-            return false;
-        }
-        return this.resultSet.GetBoolUnsafe(i - 1);
-    }
-
-    @Override
-    @Deprecated
-    public byte getByte(int i) throws SQLException {
-        throw new SQLException("current do not support this method");
-    }
-
-    @Override
-    public short getShort(int i) throws SQLException {
-        check(i, DataType.kTypeInt16);
-        if (this.resultSet.IsNULL(i - 1)) {
-            return 0;
-        }
-        return this.resultSet.GetInt16Unsafe(i - 1);
-    }
-
-    @Override
-    public int getInt(int i) throws SQLException {
-        check(i, DataType.kTypeInt32);
-        if (this.resultSet.IsNULL(i - 1)) {
-            return 0;
-        }
-        return resultSet.GetInt32Unsafe(i - 1);
-    }
-
-    @Override
-    public long getLong(int i) throws SQLException {
-        check(i, DataType.kTypeInt64);
-        if (this.resultSet.IsNULL(i - 1)) {
-            return 0;
-        }
-        return this.resultSet.GetInt64Unsafe(i - 1);
-    }
-
-    @Override
-    public float getFloat(int i) throws SQLException {
-        check(i, DataType.kTypeFloat);
-        if (this.resultSet.IsNULL(i - 1)) {
-            return 0.0f;
-        }
-        return this.resultSet.GetFloatUnsafe(i - 1);
-    }
-
-    @Override
-    public double getDouble(int i) throws SQLException {
-        check(i, DataType.kTypeDouble);
-        if (this.resultSet.IsNULL(i - 1)) {
-            return 0.0;
-        }
-        return resultSet.GetDoubleUnsafe(i - 1);
     }
 
     @Override
@@ -204,28 +49,9 @@ public class SQLResultSet implements ResultSet {
     }
 
     @Override
-    public Date getDate(int i) throws SQLException {
-        check(i, DataType.kTypeDate);
-        if (this.resultSet.IsNULL(i - 1)) {
-            return null;
-        }
-        com._4paradigm.openmldb.Date date = this.resultSet.GetStructDateUnsafe(i - 1);
-        return new Date(date.getYear() - 1900, date.getMonth() - 1, date.getDay());
-    }
-
-    @Override
     @Deprecated
     public Time getTime(int i) throws SQLException {
         throw new SQLException("current do not support this method");
-    }
-
-    @Override
-    public Timestamp getTimestamp(int i) throws SQLException {
-        check(i, DataType.kTypeTimestamp);
-        if (this.resultSet.IsNULL(i - 1)) {
-            return null;
-        }
-        return new Timestamp(this.resultSet.GetTimeUnsafe(i -1));
     }
 
     @Override
@@ -365,10 +191,9 @@ public class SQLResultSet implements ResultSet {
     }
 
     @Override
-    public SQLResultSetMetaData getMetaData() throws SQLException {
-        checkClosed();
-        checkResultSetNull();
-        return new SQLResultSetMetaData(schema);
+    @Deprecated
+    public byte getByte(int i) throws SQLException {
+        throw new SQLException("current do not support this method");
     }
 
     @Override
@@ -463,8 +288,6 @@ public class SQLResultSet implements ResultSet {
 
     @Override
     public int getRow() throws SQLException {
-        checkClosed();
-        checkResultSetNull();
         return this.rowNum;
     }
 
@@ -507,9 +330,7 @@ public class SQLResultSet implements ResultSet {
     @Override
     @Deprecated
     public int getFetchSize() throws SQLException {
-        checkClosed();
-        checkResultSetNull();
-        return this.resultSet.Size();
+        return totalRows;
     }
 
     @Override
@@ -1005,11 +826,6 @@ public class SQLResultSet implements ResultSet {
     }
 
     @Override
-    public boolean isClosed() throws SQLException {
-        return closed;
-    }
-
-    @Override
     @Deprecated
     public void updateNString(int i, String s) throws SQLException {
         throw new SQLException("current do not support this method");
@@ -1067,17 +883,6 @@ public class SQLResultSet implements ResultSet {
     @Deprecated
     public void updateSQLXML(String s, SQLXML sqlxml) throws SQLException {
         throw new SQLException("current do not support this method");
-    }
-
-    @Override
-    public String getNString(int i) throws SQLException {
-        checkClosed();
-        checkResultSetNull();
-        checkIdx(i);
-        if (this.resultSet.IsNULL(i - 1)) {
-            return null;
-        }
-        return this.resultSet.GetAsStringUnsafe(i - 1);
     }
 
     @Override

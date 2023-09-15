@@ -36,6 +36,7 @@ message ProcedureInfo {
     repeated openmldb.common.DbTableNamePair tables = 8; // dependent tables
     optional openmldb.type.ProcedureType type = 9 [default = kReqProcedure];
     repeated google.protobuf.Option options = 10;
+    repeated int32 router_col = 11;
 }
 
 message CreateProcedureRequest {
