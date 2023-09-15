@@ -53,7 +53,7 @@ mkdir -p /work/airflow/dags
 cp /work/airflow_demo_files/example_openmldb_complex.py /work/airflow_demo_files/xgboost_train_sample.py /work/airflow/dags
 ```
 
-### 步骤一：启动OpenMLDB与Airflow
+### 步骤1：启动OpenMLDB与Airflow
 以下命令将启动OpenMLDB cluster，支持上线并测试的predict server，与Airflow standalone。
 ```
 /work/init.sh
@@ -73,7 +73,7 @@ Airflow standalone运行输出将提示登录用户名和密码，如下图所�
 `airflow standalone`为前台程序，退出即airflow退出。你可以在dag运行完成后再退出airflow进行[第三步————测试](#3-测试)，或者将airflow进程放入后台。
 ```
 
-### 步骤二：运行DAG
+### 步骤2：运行DAG
 在Airflow Web中点击DAG example_openmldb_complex，可以点击`Code`查看DAG的详情，见下图。
 
 ![dag home](images/dag_home.png)
@@ -100,7 +100,7 @@ Airflow OpenMLDB Provider是连接OpenMLDB Api Server的，所以此处配置中
 运行dag，即完成一次训练模型、sql部署与模型部署。成功运行的结果，类似下图。
 ![dag run](images/dag_run.png)
 
-### 步骤三：测试
+### 步骤3：测试
 
 Airflow如果在容器中是前台运行的，现在可以退出，以下测试将不依赖airflow。
 
