@@ -490,6 +490,7 @@ absl::StatusOr<node::TablePlanNode*> Planner::IsTable(node::PlanNode *node) {
 //   - SELECT
 //   - JOIN
 //   - WINDOW
+//   - CONST PROJECT
 // - UnSupport Ops::
 //   - CREATE TABLE
 //   - INSERT TABLE
@@ -500,8 +501,10 @@ absl::StatusOr<node::TablePlanNode*> Planner::IsTable(node::PlanNode *node) {
 // - Not Impl
 //   - Order By
 base::Status Planner::ValidateOnlineServingOp(node::PlanNode *node) {
-    CHECK_TRUE(nullptr != node, common::kNullInputPointer,
-               "Fail to validate request table: input node is null")
+    if (node == nullptr) {
+        // null is fine, e.g the const project
+        return {};
+    }
     switch (node->type_) {
         case node::kPlanTypeProject: {
             auto project_node = dynamic_cast<node::ProjectPlanNode *>(node);

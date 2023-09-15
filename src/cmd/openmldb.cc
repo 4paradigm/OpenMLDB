@@ -479,7 +479,8 @@ void HandleNSClientSetTTL(const std::vector<std::string>& parts, ::openmldb::cli
         }
         bool ok = client->UpdateTTL(parts[1], type, abs_ttl, lat_ttl, index_name, err);
         if (ok) {
-            std::cout << "Set ttl ok !" << std::endl;
+            std::cout << "Set ttl ok ! Note that, "
+                "it will take effect after two garbage collection intervals (i.e. gc_interval)." << std::endl;
         } else {
             std::cout << "Set ttl failed! " << err << std::endl;
         }
@@ -908,7 +909,8 @@ void HandleNSClientChangeLeader(const std::vector<std::string>& parts, ::openmld
         std::cout << "Invalid args. pid should be uint32_t" << std::endl;
         return;
     }
-    std::cout << "change leader ok" << std::endl;
+    std::cout << "change leader ok. "
+        "If there are writing operations while changing a leader, it may cause data loss." << std::endl;
 }
 
 void HandleNSClientOfflineEndpoint(const std::vector<std::string>& parts, ::openmldb::client::NsClient* client) {

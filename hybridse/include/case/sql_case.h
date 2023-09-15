@@ -205,10 +205,10 @@ class SqlCase {
     static std::string GenRand(const std::string& prefix) {
         return prefix + std::to_string(rand() % 10000000 + 1);  // NOLINT
     }
-    absl::StatusOr<std::string> BuildCreateSpSqlFromInput(int32_t input_idx, absl::string_view sql,
-                                                          const std::set<size_t>& common_idx);
-    absl::StatusOr<std::string> BuildCreateSpSqlFromSchema(const type::TableDef& table, absl::string_view select_sql,
-                                                           const std::set<size_t>& common_idx);
+    absl::StatusOr<std::string> BuildCreateSpSql(absl::string_view sql, const std::set<size_t>& common_idx,
+                                                 std::optional<int32_t> input_idx);
+    absl::StatusOr<std::string> BuildCreateSpSql(absl::string_view select_sql, const std::set<size_t>& common_idx,
+                                                 std::optional<const type::TableDef*> table);
 
     friend std::ostream& operator<<(std::ostream& output, const SqlCase& thiz);
     static bool IS_PERF() {
