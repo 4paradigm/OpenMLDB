@@ -14,37 +14,36 @@
  * limitations under the License.
  */
 
-package com._4paradigm.openmldb.taskmanager
+package com._4paradigm.openmldb.taskmanager.util
 
 import com._4paradigm.openmldb.taskmanager.config.TaskManagerConfig
+import org.apache.hadoop.conf.Configuration
+import org.apache.hadoop.fs.{FileSystem, Path}
 import org.slf4j.LoggerFactory
 
-import java.io.File
-import java.nio.file.Paths
+object HdfsUtil {
 
-object LogManager {
   private val logger = LoggerFactory.getLogger(this.getClass)
 
-  def getJobLogFile(id: Int): File = {
-    Paths.get(TaskManagerConfig.getJobLogPath, s"job_${id}.log").toFile
-  }
+  def deleteHdfsDir(path: String): Unit = {
 
-  def getJobErrorLogFile(id: Int): File = {
-    Paths.get(TaskManagerConfig.getJobLogPath, s"job_${id}_error.log").toFile
-  }
+    val conf = new Configuration()
+    conf.addResource(new Path(TaskManagerConfig.getHadoopConfDir, "core-site.xml"))
+    conf.addResource(new Path(TaskManagerConfig.getHadoopConfDir, "hdfs-site.xml"))
 
-  def getFileContent(inputFile: File): String = {
-    val source = scala.io.Source.fromFile(inputFile)
-    val content = try source.mkString finally source.close()
-    content
-  }
+    val fs = FileSystem.get(conf)
 
-  def getJobLog(id: Int): String = {
-    getFileContent(getJobLogFile(id))
-  }
+    val pathToDelete = new Path(path)
 
-  def getJobErrorLog(id: Int): String = {
-    getFileContent(getJobErrorLogFile(id))
+    if (fs.exists(pathToDelete)) {
+      fs.delete(pathToDelete, true);
+      logger.info("File deleted successfully: " + path)
+    } else {
+      logger.warn("File does not exist: " + path)
+    }
+
+    fs.close()
+
   }
 
 }

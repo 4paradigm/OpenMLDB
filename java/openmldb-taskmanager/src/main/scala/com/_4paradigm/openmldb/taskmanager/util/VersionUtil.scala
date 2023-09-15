@@ -27,7 +27,7 @@ object VersionUtil {
   private val logger = LoggerFactory.getLogger(this.getClass)
 
   def getBatchVersion(): String = {
-    val sparkJarsPath = Paths.get(TaskManagerConfig.SPARK_HOME, "jars").toString
+    val sparkJarsPath = Paths.get(TaskManagerConfig.getSparkHome, "jars").toString
     val batchJarPath = BatchJobUtil.findOpenmldbBatchJar(sparkJarsPath)
     if (batchJarPath == null) {
       logger.error("Fail to find batch jar file and the version is unknown")
