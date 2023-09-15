@@ -108,7 +108,7 @@ DolphinScheduler 的 worker server 需要 OpenMLDB Python SDK, DolphinScheduler 
 
 ### Demo 演示
 
-#### 1. 初始配置
+#### 步骤1：初始配置
 
 在 DolphinScheduler Web中创建租户，进入租户管理界面，填写**有 sudo 权限的操作系统用户**，queue 可以使用 default。docker容器内可直接使用root用户。
 
@@ -121,7 +121,7 @@ DolphinScheduler 的 worker server 需要 OpenMLDB Python SDK, DolphinScheduler 
 绑定后，用户状态类似下图。
 ![bind status](images/ds_bind_status.png)
 
-#### 2. 创建工作流
+#### 步骤2：创建工作流
 DolphinScheduler 中，需要先创建项目，再在项目中创建工作流。
 
 所以，首先创建一个test项目，如下图所示，点击创建项目并进入项目。
@@ -155,7 +155,7 @@ DolphinScheduler 中，需要先创建项目，再在项目中创建工作流。
 
 ![set tenant](images/ds_set_tenant.png)
 
-#### 3. 上线运行工作流
+#### 步骤3：上线运行工作流
 
 工作流保存后，需要先上线再运行。上线后，运行按钮才会点亮。如下图所示。
 
@@ -175,7 +175,7 @@ DolphinScheduler 中，需要先创建项目，再在项目中创建工作流。
 `echo "show jobs;" | /work/openmldb/bin/openmldb --zk_cluster=127.0.0.1:2181 --zk_root_path=/openmldb --role=sql_client`。如果某个任务状态是`FAILED`，请查询该任务的日志，方法见[任务日志](../../quickstart/beginner_must_read.md#离线)。
 ```
 
-#### 4. 在线预测测试
+#### 步骤4：在线预测测试
 predict server同时提供了在线预测服务，通过`curl /predict`请求。我们简单地构造一个实时请求，发送至predict server。
 ```
 curl -X POST 127.0.0.1:8881/predict -d '{"ip": 114904,
