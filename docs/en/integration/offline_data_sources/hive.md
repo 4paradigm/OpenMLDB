@@ -8,10 +8,10 @@
 
 ### Installation
 
-For users employing [The OpenMLDB Spark distribution version](https://chat.openai.com/tutorial/openmldbspark_distribution.md), specifically v0.6.7 and newer iterations, the essential Hive dependencies are already integrated. However, if you are working with an alternative Spark distribution, you can follow these steps for installation.
+For users employing [The OpenMLDB Spark Distribution Version](../../tutorial/openmldbspark_distribution.md), specifically v0.6.7 and newer iterations, the essential Hive dependencies are already integrated. However, if you are working with an alternative Spark distribution, you can follow these steps for installation.
 
 ```{note}
-Should you opt not to utilize Hive support and refrain from incorporating Hive dependency packages into your Spark dependencies, it becomes imperative to insert enable.hive.support=false within the taskmanager configuration. Failing to do so may lead to errors within the Job execution process due to the unavailability of Hive-related classes.
+Should you opt not to utilize Hive support and refrain from incorporating Hive dependency packages into your Spark dependencies, it becomes imperative to insert `enable.hive.support=false` within the taskmanager configuration. Failing to do so may lead to errors within the Job execution process due to the unavailability of Hive-related classes.
 ```
 
 1. Execute the following command in Spark to compile Hive dependencies
@@ -24,14 +24,14 @@ Should you opt not to utilize Hive support and refrain from incorporating Hive d
 
 2. Add all dependent packages to Spark's class path.
 
-### Configure
+### Configuration
 
 At present, OpenMLDB exclusively supports utilizing metastore services for establishing connections to Hive. You can adopt either of the two provided configuration methods to access the Hive data source:
 
 - Using the `spark.conf` Approach: You can set up `spark.hadoop.hive.metastore.uris` within the Spark configuration. This can be accomplished in two ways:
-  - **taskmanager.properties**: Include `spark.hadoop.hive.metastore.uris=thrift://...` within the `spark.default.conf` configuration item, followed by restarting the taskmanager.
-  - **CLI (Command Line Interface)**: Integrate this configuration directive into the ini configuration and utilize `--spark_conf` while initiating the CLI. [Client Spark configuration file](https://chat.openai.com/reference/client_config/client_spark_config.md) can guide this process.
-- **hive-site.xml**: Alternatively, you can configure `hive.metastore.uris` within the `hive-site.xml` file. Place this configuration file within the `conf/` directory of the Spark home. If the `HADOOP_CONF_DIR` environment variable is already set, you can also position the configuration file there. For instance:
+  - taskmanager.properties: Include `spark.hadoop.hive.metastore.uris=thrift://...` within the `spark.default.conf` configuration item, followed by restarting the taskmanager.
+  - CLI (Command Line Interface): Integrate this configuration directive into the ini configuration and utilize `--spark_conf` while initiating the CLI. [Client Spark Configuration File](../../reference/client_config/client_spark_config.md) can guide this process.
+- hive-site.xml: Alternatively, you can configure `hive.metastore.uris` within the `hive-site.xml` file. Place this configuration file within the `conf/` directory of the Spark home. If the `HADOOP_CONF_DIR` environment variable is already set, you can also position the configuration file there. For instance:
 
 ```xml
 <configuration>
@@ -58,14 +58,14 @@ In such cases, the error points to a lack of authorization for accessing the HDF
 If you have any inquiries, kindly ascertain the permission management approach implemented within your Hive cluster. For guidance, you can consult the [Permission Management] (https://cwiki.apache.org/confluence/display/Hive/LanguageManual+Authorization#LanguageManualAuthorization-OverviewofAuthorizationModes) documentation to gain an understanding of the various authorization modes available.
 ```
 
-### Debug information
+### Debug Information
 
 Verify whether the task is connected to the appropriate Hive cluster by examining the task log. Here's how you can proceed:
 
 - Check for the entry `INFO HiveConf:` in the log, which will indicate the Hive configuration file that was utilized. If you require further information about the loading process, you can review the Spark logs.
 - When connecting to the Hive metastore, there should be a log entry similar to `INFO metastore: Trying to connect to metastore with URI`. A successful connection will be denoted by a log entry reading `INFO metastore: Connected to metastore.`
 
-## Data format
+## Data Format
 
 Currently, it only supports the following Hive data format:
 
@@ -81,7 +81,7 @@ Currently, it only supports the following Hive data format:
 | TIMESTAMP            | TIMESTAMP        |
 | STRING               | STRING           |
 
-## Quickly create tables through the `LIKE` syntax
+## Quickly Create Tables Through the `LIKE` Syntax
 
 We offer the convenience of utilizing the `LIKE` syntax to facilitate the creation of tables with identical schemas in OpenMLDB, leveraging existing Hive tables. This is demonstrated in the example below.
 
@@ -93,12 +93,12 @@ CREATE TABLE db1.t1 LIKE HIVE 'hive://hive_db.t1';
 
 It's worth noting that there are certain known issues associated with using the `LIKE` syntax for creating tables based on Hive shortcuts:
 
-- When employing the default timeout configuration via the command line, the table creation process might exhibit a timeout message despite the execution being successful. The final outcome can be verified by utilizing the `SHOW TABLES` command. If you need to adjust the timeout duration, refer to [Adjusting Configuration](https://chat.openai.com/openmldb_sql/ddl/SET_STATEMENT.md#offline-command-configuration-details).
+- When employing the default timeout configuration via the command line, the table creation process might exhibit a timeout message despite the execution being successful. The final outcome can be verified by utilizing the `SHOW TABLES` command. If you need to adjust the timeout duration, refer to [Adjusting Configuration](../../openmldb_sql/ddl/SET_STATEMENT.md#offline-command-configuration-details).
 - Should the Hive table contain column constraints (such as `NOT NULL`), these particular constraints won't be incorporated into the newly created table.
 
-## Import Hive data to OpenMLDB
+## Import Hive Data to OpenMLDB
 
-Importing data from Hive sources is facilitated through the API [`LOAD DATA INFILE`](https://chat.openai.com/openmldb_sql/dml/LOAD_DATA_STATEMENT.md). This operation employs a specialized URI format, `hive://[db].table`, to seamlessly import data from Hive. Here are some important considerations:
+Importing data from Hive sources is facilitated through the API [`LOAD DATA INFILE`](../../openmldb_sql/dml/LOAD_DATA_STATEMENT.md). This operation employs a specialized URI format, `hive://[db].table`, to seamlessly import data from Hive. Here are some important considerations:
 
 - Both offline and online engines are capable of importing data from Hive sources.
 - The Hive data import feature supports soft connections. This approach minimizes the need for redundant data copies and ensures that OpenMLDB can access Hive's most up-to-date data at any given time. To activate the soft link mechanism for data import, utilize the `deep_copy=false` parameter.
@@ -110,9 +110,9 @@ For example:
 LOAD DATA INFILE 'hive://db1.t1' INTO TABLE t1 OPTIONS(deep_copy=false);
 ```
 
-## Export OpenMLDB data to Hive
+## Export OpenMLDB Data to Hive
 
-Exporting data to Hive sources is facilitated through the API [`SELECT INTO`](https://chat.openai.com/openmldb_sql/dql/SELECT_INTO_STATEMENT.md), which employs a distinct URI format, `hive://[db].table`, to seamlessly transfer data to the Hive data warehouse. Here are some key considerations:
+Exporting data to Hive sources is facilitated through the API [`SELECT INTO`](../../openmldb_sql/dql/SELECT_INTO_STATEMENT.md), which employs a distinct URI format, `hive://[db].table`, to seamlessly transfer data to the Hive data warehouse. Here are some key considerations:
 
 - If you omit specifying a database name, the default database name used will be `default_Db`.
 - When a database name is explicitly provided, it's imperative that the database already exists. Currently, the system does not support the automatic creation of non-existent databases.
