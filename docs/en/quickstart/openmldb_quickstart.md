@@ -19,7 +19,7 @@ This article is developed and deployed based on OpenMLDB CLI, and it is necessar
 Execute the following command in the command line to pull the OpenMLDB image and start the Docker container:
 
 ```bash
-docker run -it 4pdosc/openmldb:0.8.2 bash
+docker run -it 4pdosc/openmldb:0.8.3 bash
 ```
 
 ``` {note}
