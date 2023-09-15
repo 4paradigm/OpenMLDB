@@ -50,33 +50,53 @@ TEST_F(ASTNodeConverterTest, UnSupportBinaryOp) {
     ASSERT_FALSE(status.isOK());
     ASSERT_EQ("Unsupport binary operator: <UNKNOWN OPERATOR>", status.msg);
 }
-TEST_F(ASTNodeConverterTest, InvalidASTIntLiteralTest) {
-    node::NodeManager node_manager;
-    {
-        zetasql::ASTIntLiteral expression;
-        expression.set_image("0XFFFF");
-        node::ExprNode* output = nullptr;
-        base::Status status = ConvertExprNode(&expression, &node_manager, &output);
-        ASSERT_FALSE(status.isOK());
-        ASSERT_EQ("Un-support hex integer literal: 0XFFFF", status.msg);
-    }
-    {
-        zetasql::ASTIntLiteral expression;
-        expression.set_image("abc123");
-        node::ExprNode* output = nullptr;
-        base::Status status = ConvertExprNode(&expression, &node_manager, &output);
-        ASSERT_FALSE(status.isOK());
-        ASSERT_EQ("Invalid integer literal: abc123", status.msg);
-    }
-    {
-        zetasql::ASTIntLiteral expression;
-        expression.set_image("abc123L");
-        node::ExprNode* output = nullptr;
-        base::Status status = ConvertExprNode(&expression, &node_manager, &output);
-        ASSERT_FALSE(status.isOK());
-        ASSERT_EQ("Invalid integer literal: abc123L", status.msg);
+
+using LiteralCase = std::pair<absl::string_view, std::variant<absl::string_view, int32_t, int64_t>>;
+static const std::vector<LiteralCase>& GetCastCases() {
+    using T = LiteralCase::second_type;
+    static const auto& ret = *new auto(std::vector<LiteralCase>{
+        // whitespace, signs never appear in IntLiteral, hence won't tested
+        {"0XFFFF", "Un-support hex integer literal: 0XFFFF"},
+        {"abc123", "Invalid integer literal<INVALID_ARGUMENT: abc123 (no digitals found)>"},
+        {"abc123L", "Invalid integer literal<INVALID_ARGUMENT: abc123 (no digitals found)>"},
+        {"12", T{std::in_place_type<int32_t>, 12}},
+        {"012", T{std::in_place_type<int32_t>, 12}},
+        {"0", T{std::in_place_type<int32_t>, 0}},
+        {"9223372036854775807", T{std::in_place_type<int64_t>, INT64_MAX}},
+        {"89223372036854775807", "Invalid integer literal<OUT_OF_RANGE: 89223372036854775807 (overflow)>"},
+    });
+    return ret;
+}
+
+class AstLiteralTest: public ::testing::TestWithParam<LiteralCase> {
+ protected:
+    node::NodeManager nm;
+};
+
+INSTANTIATE_TEST_SUITE_P(NumericLiteral, AstLiteralTest, ::testing::ValuesIn(GetCastCases()));
+
+TEST_P(AstLiteralTest, IntegerLiteral) {
+    auto [input, result] = GetParam();
+    zetasql::ASTIntLiteral expression;
+    expression.set_image(std::string(input));
+    node::ExprNode* output = nullptr;
+    base::Status status = ConvertExprNode(&expression, &nm, &output);
+    if (std::holds_alternative<absl::string_view>(result)) {
+        EXPECT_FALSE(status.isOK());
+        EXPECT_EQ(std::get<absl::string_view>(result), status.msg);
+    } else if (std::holds_alternative<int64_t>(result)) {
+        EXPECT_TRUE(status.isOK()) << status;
+        ASSERT_TRUE(output->GetExprType() == node::kExprPrimary);
+        ASSERT_TRUE(dynamic_cast<node::ConstNode*>(output)->GetDataType() == node::DataType::kInt64);
+        EXPECT_EQ(std::get<int64_t>(result), dynamic_cast<node::ConstNode*>(output)->GetAsInt64());
+    } else if (std::holds_alternative<int32_t>(result)) {
+        EXPECT_TRUE(status.isOK()) << status;
+        ASSERT_TRUE(output->GetExprType() == node::kExprPrimary);
+        ASSERT_TRUE(dynamic_cast<node::ConstNode*>(output)->GetDataType() == node::DataType::kInt32);
+        EXPECT_EQ(std::get<int32_t>(result), dynamic_cast<node::ConstNode*>(output)->GetAsInt32());
     }
 }
+
 TEST_F(ASTNodeConverterTest, InvalidASTFloatLiteralTest) {
     node::NodeManager node_manager;
     {
@@ -184,7 +204,7 @@ TEST_F(ASTNodeConverterTest, InvalidASTIntervalLiteralTest) {
         node::ExprNode* output = nullptr;
         base::Status status = ConvertExprNode(&expression, &node_manager, &output);
         ASSERT_FALSE(status.isOK());
-        ASSERT_EQ("Invalid interval literal: 1abds", status.msg);
+        ASSERT_EQ("Invalid interval literal<INVALID_ARGUMENT: 1abd (digitals with extra non-space chars following)>", status.msg);
     }
 }
 TEST_F(ASTNodeConverterTest, InvalidASTBoolLiteralTest) {
@@ -346,7 +366,23 @@ TEST_F(ASTNodeConverterTest, ConvertCreateTableNodeOkTest) {
     {
         const std::string sql =
             "create table t1 (a int, b string, index(key=(a, b), dump='12', ts=column2, ttl=1d, ttl_type=absolute, "
-            "version=(column5, 3) ) ) options (replicanum = 3, partitionnum = 3, ignored_option = 'abc', distribution "
+            "version=(column5, 3) ) ) options (replicanum = 3, partitionnum = 3, invalid_option = 'abc', distribution "
+            "= [ ('leader1', ['fo1', 'fo2']) ]);";
+
+        std::unique_ptr<zetasql::ParserOutput> parser_output;
+        ZETASQL_ASSERT_OK(zetasql::ParseStatement(sql, zetasql::ParserOptions(), &parser_output));
+        const auto* statement = parser_output->statement();
+        ASSERT_TRUE(statement->Is<zetasql::ASTCreateTableStatement>());
+
+        const auto create_stmt = statement->GetAsOrDie<zetasql::ASTCreateTableStatement>();
+        node::CreateStmt* output = nullptr;
+        auto status = ConvertCreateTableNode(create_stmt, &node_manager, &output);
+        EXPECT_EQ(common::kSqlAstError, status.code) << status;
+    }
+    {
+        const std::string sql =
+            "create table t1 (a int, b string, index(key=(a, b), dump='12', ts=column2, ttl=1d, ttl_type=absolute, "
+            "version=(column5, 3) ) ) options (replicanum = 3, partitionnum = 3, distribution "
             "= [ ('leader1', ['fo1', 'fo2']) ]);";
 
         std::unique_ptr<zetasql::ParserOutput> parser_output;
@@ -408,7 +444,7 @@ TEST_F(ASTNodeConverterTest, ConvertCreateTableNodeOkTest) {
     {
         const std::string sql =
             "create table if not exists t1 (a i16, b float32, index(key=a, ignored_key='seb', ts=b, ttl=(1h, 1800), "
-            "ttl_type=latest, version=a ) ) options (replicanum = 2, partitionnum = 5, ignored_option = 'abc', "
+            "ttl_type=latest, version=a ) ) options (replicanum = 2, partitionnum = 5, "
             "distribution = [ ('leader1', ['fo1', 'fo2']) ]);";
 
         std::unique_ptr<zetasql::ParserOutput> parser_output;
@@ -434,7 +470,7 @@ TEST_F(ASTNodeConverterTest, ConvertCreateTableNodeOkTest) {
     {
         const std::string sql =
             "create table if not exists t3 (a int32, b timestamp, index(key=a, ignored_key='seb', ts=b, ttl=1800, "
-            "ttl_type=absorlat, version=a ) ) options (replicanum = 4, partitionnum = 5, ignored_option = 'abc', "
+            "ttl_type=absorlat, version=a ) ) options (replicanum = 4, partitionnum = 5, "
             "distribution = [ ('leader1', ['fo1', 'fo2']) ]);";
 
         std::unique_ptr<zetasql::ParserOutput> parser_output;
@@ -476,7 +512,7 @@ TEST_F(ASTNodeConverterTest, ConvertCreateTableNodeOkTest) {
     {
         const std::string sql =
             "create table if not exists t3 (a int32, b timestamp, index(key=a, ignored_key='seb', ts=b, ttl=1800, "
-            "ttl_type=absorlat, version=a ) ) options (replicanum = 4, partitionnum = 5, ignored_option = 'abc', "
+            "ttl_type=absorlat, version=a ) ) options (replicanum = 4, partitionnum = 5, "
             "distribution = [ ('leader1', ['fo1', 'fo2']), ('leader2', ['fo3', 'fo4']) ]);";
 
         std::unique_ptr<zetasql::ParserOutput> parser_output;
@@ -850,11 +886,6 @@ TEST_F(ASTNodeConverterTest, ConvertStmtFailTest) {
         EXPECT_EQ(code, s.code);
         EXPECT_STREQ(msg.c_str(), s.msg.c_str()) << s;
     };
-
-    expect_converted(R"sql(
-        ALTER TABLE foo ALTER COLUMN bar SET DATA TYPE STRING;
-    )sql",
-                     common::kSqlAstError, "Un-support statement type: AlterTableStatement");
 
     expect_converted(R"sql(
         SHOW procedurxs;

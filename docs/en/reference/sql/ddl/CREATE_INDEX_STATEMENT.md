@@ -1,7 +1,6 @@
 # CREATE INDEX
 
-The `CREATE INDEX` statement is used to create a new index on existing table. If there is data in the table, data will be loaded asynchronously. 
-The job status can be checked through the `showopstatus` command of `ns_client`, see [Operations in CLI](../../../maintain/cli.md#showopstatus).
+The `CREATE INDEX` statement is used to create a new index on existing table. Running `CREATE INDEX` will initiates an asynchronous job, and you can check the status of the job by executing `SHOW JOBS FROM NAMESERVER`.
 
 ## Syntax
 
@@ -48,7 +47,8 @@ CREATE INDEX index2 ON t5 (col2);
 -- SUCCEED
 ```
 ```{note}
-If `OPTIONS` is not provided, the SQL with the created index cannot be deployed online, since the index doesn't have TS (timestamp).
+1. If `OPTIONS` is not provided, the SQL with the created index cannot be deployed online, since the index doesn't have TS (timestamp).
+2. The data type of `TS` column should be BigInt or Timestamp.
 ```
 We can also set `TS` column as below:
 ```SQL

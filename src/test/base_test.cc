@@ -20,10 +20,13 @@
 #include "glog/logging.h"
 #include "sdk/base.h"
 #include "sdk/result_set.h"
+
 #define MAX_DEBUG_LINES_CNT 20
 #define MAX_DEBUG_COLUMN_CNT 20
+
 namespace openmldb {
 namespace test {
+
 std::string SQLCaseTest::GenRand(const std::string &prefix) {
     return prefix + std::to_string(rand() % 10000000 + 1);  // NOLINT
 }
@@ -68,7 +71,7 @@ void SQLCaseTest::InitCases(const std::string &dir_path, const std::string &yaml
                             std::vector<hybridse::sqlcase::SqlCase> &cases) {  // NOLINT
     std::vector<std::string> filters = {"hybridse-only"};
     if (!hybridse::sqlcase::SqlCase::CreateSqlCasesFromYaml(dir_path, yaml_path, cases, filters)) {
-        FAIL() << "load cases from path " <<  yaml_path << " fail!";
+        FAIL() << "load cases from path " << yaml_path << " fail!";
     }
 }
 
@@ -212,7 +215,7 @@ void SQLCaseTest::PrintRows(const hybridse::vm::Schema &schema, const std::vecto
         }
     }
     oss << t << std::endl;
-    LOG(INFO) << "\n" << oss.str() << "\n";
+    DLOG(INFO) << "\n" << oss.str() << "\n";
 }
 
 const std::vector<hybridse::codec::Row> SQLCaseTest::SortRows(const hybridse::vm::Schema &schema,
@@ -485,7 +488,7 @@ void SQLCaseTest::CheckRows(const hybridse::vm::Schema &schema, const std::strin
     std::map<std::string, std::pair<hybridse::codec::Row, bool>> rows_map;
     if (order_idx >= 0) {
         int32_t row_id = 0;
-        for (auto& row : rows) {
+        for (auto &row : rows) {
             row_view.Reset(row.buf());
             std::string key = row_view.GetAsString(order_idx);
             LOG(INFO) << "Get Order String: " << row_id++ << " key: " << key;

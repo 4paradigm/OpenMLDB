@@ -35,28 +35,27 @@ SelectInfoOptionItem
 | null_value | String  | null            | NULL填充值，默认填充`"null"`                                                                                                                                                               |
 | format     | String  | csv             | 输出文件格式:<br />`csv`:不显示指明format时，默认为该值<br />`parquet`:集群版离线模式支持导出parquet格式文件，但集群在线和单机版不支持                                                                                                    |
 | mode       | String  | error_if_exists | 输出模式:<br />`error_if_exists`: 表示若文件已经在则报错。<br />`overwrite`: 表示若文件已存在，数据将覆盖原文件内容。<br />`append`：表示若文件已存在，数据将追加到原文件后面。<br />不显示配置时，默认为`error_if_exists`。                            |
-| quote      | String  | ""              | 输出数据的包围字符串，字符串长度<=1。默认为""，表示输出数据包围字符串为空。当配置包围字符串时，将使用包围字符串包围一个field。例如，我们配置包围字符串为`"#"`，原始数据为{1, 1.0, This is a string, with comma}。输出的文本为`1, 1.0, #This is a string, with comma#。` |
+| quote      | String  | ""              | 输出数据的包围字符串，字符串长度<=1。默认为""，表示输出数据包围字符串为空。当配置包围字符串时，将使用包围字符串包围一个field。例如，我们配置包围字符串为`"#"`，原始数据为{1, 1.0, This is a string, with comma}。输出的文本为`1, 1.0, #This is a string, with comma#`。 |
+| coalesce   | Int     | 0             | 仅集群版离线模式支持，默认值为0，不进行合并（可能输出多个文件），可指定最终输出几个文件。例如，coalesce=1，会将所有part合并为1个文件。 |
+
 
 ````{important}
 请注意，目前仅有集群版支持quote字符的转义。所以，如果您使用的是单机版，请谨慎选择quote字符，保证原始字符串内并不包含quote字符。
 ````
-
-## FilePath
-
-FilePath支持'file://', 'hdfs://', 'hive://'三种。
-
-### 导出到Hive
-
-路径格式：'hive://[db.]table'。不指定db则导入到Hive的'default_db'。表可以不存在，但如果指定db，db必须存在。
-
-- Hive需要Spark支持与连接到Hive的配置，请参考[Hive 支持](../dml/LOAD_DATA_STATEMENT.md#hive-支持)。
-- 不支持导出到Hive不存在的数据库。如果指定的Hive数据库不存在，OpenMLDB不会为此在Hive中创建该数据库。（OpenMLDB创建Hive数据库，会导致该数据库的表存储路径变化。）
 
 ## SQL语句模版
 
 ```sql
 SELECT ... INTO OUTFILE 'file_path' OPTIONS (key = value, ...)
 ```
+
+## FilePath
+
+FilePath支持'file://', 'hdfs://', 'hive://'三种。其中'file://'和'hdfs://'地址为目录，而非文件名，'hive://'导出到Hive表中，格式为`hive://<db>.<table>`。
+
+## Hive 支持
+
+OpenMLDB 支持导出数据到 Hive，但需要额外的设置和功能限制，详情见 [Hive 支持](../../integration/offline_data_sources/hive.md)。
 
 ## Examples
 
@@ -70,6 +69,12 @@ SELECT col1, col2, col3 FROM t1 INTO OUTFILE 'data.csv' OPTIONS ( delimiter = ',
 
 ```SQL
 SELECT col1, col2, col3 FROM t1 INTO OUTFILE 'data2.csv' OPTIONS ( delimiter = '|', null_value='NA');
+```
+
+- 导出表格 t1 到 Hive 数据库
+
+```sql
+SELECT col1, col2, col3 FROM t1 INTO OUTFILE 'hive://db1.t1';
 ```
 
 ## Q&A

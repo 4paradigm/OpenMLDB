@@ -20,7 +20,8 @@
 #include <gflags/gflags.h>
 #include <memory>
 #include <string>
-#include <boost/algorithm/string/predicate.hpp>
+#include "absl/strings/str_cat.h"
+#include "absl/strings/match.h"
 #include "base/file_util.h"
 #include "base/glog_wrapper.h"
 #include "base/strings.h"
@@ -34,7 +35,7 @@ DiskTableSnapshot::DiskTableSnapshot(uint32_t tid, uint32_t pid, const std::stri
     : Snapshot(tid, pid), db_root_path_(db_root_path) {}
 
 bool DiskTableSnapshot::Init() {
-    snapshot_path_ = db_root_path_ + "/" + std::to_string(tid_) + "_" + std::to_string(pid_) + "/snapshot/";
+    snapshot_path_ = absl::StrCat(db_root_path_, "/", tid_, "_" , pid_, "/snapshot/");
     if (!::openmldb::base::MkdirRecur(snapshot_path_)) {
         PDLOG(WARNING, "fail to create db meta path %s", snapshot_path_.c_str());
         return false;
@@ -45,7 +46,7 @@ bool DiskTableSnapshot::Init() {
         return false;
     }
     snapshot_path_.assign(abs_path_buff);
-    if (!boost::ends_with(snapshot_path_, "/")) {
+    if (!absl::EndsWith(snapshot_path_, "/")) {
         snapshot_path_.append("/");
     }
     return true;
@@ -77,7 +78,7 @@ int DiskTableSnapshot::MakeSnapshot(std::shared_ptr<Table> table, uint64_t& out_
             }
         }
         DiskTable* disk_table = dynamic_cast<DiskTable*>(table.get());
-        if (disk_table == NULL) {
+        if (disk_table == nullptr) {
             break;
         }
         uint64_t record_count = disk_table->GetRecordCnt();
@@ -86,8 +87,9 @@ int DiskTableSnapshot::MakeSnapshot(std::shared_ptr<Table> table, uint64_t& out_
             PDLOG(WARNING, "create checkpoint failed. checkpoint dir[%s]", snapshot_dir_tmp.c_str());
             break;
         }
+        std::string snapshot_dir_bak;
         if (::openmldb::base::IsExists(snapshot_dir)) {
-            std::string snapshot_dir_bak = snapshot_dir + ".bak";
+            snapshot_dir_bak = snapshot_dir + ".bak";
             if (::openmldb::base::IsExists(snapshot_dir_bak)) {
                 if (!::openmldb::base::RemoveDir(snapshot_dir_bak)) {
                     PDLOG(WARNING, "delete checkpoint bak failed. checkpoint bak dir[%s]", snapshot_dir_bak.c_str());
@@ -106,10 +108,15 @@ int DiskTableSnapshot::MakeSnapshot(std::shared_ptr<Table> table, uint64_t& out_
         ::openmldb::api::Manifest manifest;
         GetLocalManifest(snapshot_path_ + MANIFEST, manifest);
         if (GenManifest(snapshot_dir_name, record_count, cur_offset, term) == 0) {
-            if (manifest.has_name() && manifest.name() != snapshot_dir) {
+            if (manifest.has_name() && manifest.name() != snapshot_dir_name) {
                 DEBUGLOG("delete old checkpoint[%s]", manifest.name().c_str());
                 if (!::openmldb::base::RemoveDir(snapshot_path_ + manifest.name())) {
                     PDLOG(WARNING, "delete checkpoint failed. checkpoint dir[%s]", snapshot_dir.c_str());
+                }
+            }
+            if (!snapshot_dir_bak.empty() && ::openmldb::base::IsExists(snapshot_dir_bak)) {
+                if (!::openmldb::base::RemoveDir(snapshot_dir_bak)) {
+                    PDLOG(WARNING, "delete checkpoint backup failed. backup dir[%s]", snapshot_dir_bak.c_str());
                 }
             }
             offset_ = cur_offset;

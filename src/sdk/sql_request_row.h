@@ -119,6 +119,7 @@ class SQLRequestRowBatch {
 
 class ColumnIndicesSet {
  public:
+    ColumnIndicesSet() {}
     explicit ColumnIndicesSet(std::shared_ptr<hybridse::sdk::Schema> schema) : bound_(schema->GetColumnCnt()) {}
 
     bool Empty() const { return common_column_indices_.empty(); }
@@ -127,7 +128,7 @@ class ColumnIndicesSet {
 
  private:
     friend class SQLRequestRowBatch;
-    size_t bound_;
+    size_t bound_ = 0;
     std::set<size_t> common_column_indices_;
 };
 

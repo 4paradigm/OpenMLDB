@@ -29,7 +29,7 @@ pytest tests/xxx.py::<test_class>::<test_func>
 
 ## Tool 测试
 
-由于Tool中的诊断工具需要ssh免密，所以，即使在本地测试（本地ssh到本地），也需要将当前用户的ssh pub key写入当前用户的authorized_keys。
+由于Tool中的诊断工具静态诊断需要ssh免密（其他子命令不需要ssh），所以，即使在本地测试（本地ssh到本地），也需要将当前用户的ssh pub key写入当前用户的authorized_keys。
 
 普通测试：
 ```
@@ -37,9 +37,14 @@ cd python/openmldb_tool
 pytest tests/
 ```
 
-测试如果需要python log信息:
+测试如果需要python log信息（成功的测试也会打印）:
 ```
-pytest -o log_cli=true --log-cli-level=DEBUG tests/
+pytest -so log_cli=true --log-cli-level=DEBUG tests/
+```
+
+也可以使用module模式运行，适合做实际运行测试：
+```
+python -m diagnostic_tool.diagnose ...
 ```
 
 ## Conda

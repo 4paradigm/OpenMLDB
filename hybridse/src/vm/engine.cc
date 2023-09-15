@@ -31,6 +31,7 @@
 #include "vm/local_tablet_handler.h"
 #include "vm/mem_catalog.h"
 #include "vm/sql_compiler.h"
+#include "vm/internal/node_helper.h"
 
 DECLARE_bool(enable_spark_unsaferow_format);
 
@@ -66,98 +67,52 @@ void Engine::InitializeUnsafeRowOptFlag(bool isUnsafeRowOpt) {
     FLAGS_enable_spark_unsaferow_format = isUnsafeRowOpt;
 }
 
-bool Engine::GetDependentTables(const std::string& sql, const std::string& db, EngineMode engine_mode,
+bool Engine::GetDependentTables(const std::string& sql, const std::string& db,
                                 std::set<std::pair<std::string, std::string>>* db_tables, base::Status& status) {
-    auto info = std::make_shared<hybridse::vm::SqlCompileInfo>();
-    info->get_sql_context().sql = sql;
-    info->get_sql_context().db = db;
-    info->get_sql_context().engine_mode = engine_mode;
-    SqlCompiler compiler(std::atomic_load_explicit(&cl_, std::memory_order_acquire), options_.IsKeepIr(), false,
-                         options_.IsPlanOnly());
-    bool ok = compiler.Parse(info->get_sql_context(), status);
-    if (!ok || 0 != status.code) {
-        // TODO(chenjing): do clean
-        status.msg = "fail to get depend tables:" + status.str();
-        return false;
-    }
-
-    auto& logical_plan = info->get_sql_context().logical_plan;
-
-    if (logical_plan.empty()) {
-        status.msg = "fail to get depend tables: logical plan is empty";
-        return false;
-    }
-
-    for (auto iter = logical_plan.cbegin(); iter != logical_plan.cend(); iter++) {
-        if (!GetDependentTables(*iter, db, db_tables, status)) {
-            return false;
-        }
-    }
-    return true;
-}
-
-/**
- * Get Dependent tables for given logical node.
- *
- * @param node
- * @param tables
- * @param status
- * @return
- */
-bool Engine::GetDependentTables(const node::PlanNode* node, const std::string& default_db,
-                                std::set<std::pair<std::string, std::string>>* db_tables,
-                                base::Status& status) {  // NOLINT
     if (nullptr == db_tables) {
         status.code = common::kNullPointer;
         status.msg = "fail to get sql depend tables, output tables vector is null";
         return false;
     }
 
-    if (nullptr != node) {
-        switch (node->GetType()) {
-            case node::kPlanTypeTable: {
-                const node::TablePlanNode* table_node = dynamic_cast<const node::TablePlanNode*>(node);
-                db_tables->insert(std::make_pair(table_node->db_.empty() ? default_db : table_node->db_,
-                                                 table_node->table_));
-                return true;
-            }
-            case node::kPlanTypeProject: {
-                const node::ProjectPlanNode* project_plan = dynamic_cast<const node::ProjectPlanNode*>(node);
-                if (!project_plan->project_list_vec_.empty()) {
-                    for (node::PlanNode* item : project_plan->project_list_vec_) {
-                        node::ProjectListNode* project_list = dynamic_cast<node::ProjectListNode*>(item);
-                        if (nullptr != project_list->GetW()) {
-                            if (!project_list->GetW()->union_tables().empty()) {
-                                for (node::PlanNode* union_table : project_list->GetW()->union_tables()) {
-                                    if (!GetDependentTables(union_table, default_db, db_tables, status)) {
-                                        return false;
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-                if (node->GetChildrenSize() > 0) {
-                    for (auto child : node->GetChildren()) {
-                        if (!GetDependentTables(child, default_db, db_tables, status)) {
-                            return false;
-                        }
-                    }
-                }
-                return true;
-            }
-            default: {
-                if (node->GetChildrenSize() > 0) {
-                    for (auto child : node->GetChildren()) {
-                        if (!GetDependentTables(child, default_db, db_tables, status)) {
-                            return false;
-                        }
-                    }
-                }
-            }
-        }
+    auto info = std::make_shared<hybridse::vm::SqlCompileInfo>();
+    info->get_sql_context().sql = sql;
+    info->get_sql_context().db = db;
+    info->get_sql_context().engine_mode = kBatchMode;
+    SqlCompiler compiler(std::atomic_load_explicit(&cl_, std::memory_order_acquire), false, false, false);
+    bool ok = compiler.Compile(info->get_sql_context(), status);
+    if (!ok || 0 != status.code) {
+        // TODO(chenjing): do clean
+        status.msg = "fail to get depend tables:" + status.str();
+        return false;
     }
-    return true;
+
+    auto* physical_plan = info->get_sql_context().physical_plan;
+
+    if (physical_plan == nullptr) {
+        status.msg = "fail to get depend tables: physical plan is empty";
+        return false;
+    }
+
+    status = GetDependentTables(physical_plan, db_tables);
+    return status.isOK();
+}
+
+Status Engine::GetDependentTables(const PhysicalOpNode* root, std::set<std::pair<std::string, std::string>>* db_tbs) {
+    using OUT = std::set<std::pair<std::string, std::string>>;
+    *db_tbs = internal::ReduceNode(
+        root, OUT{},
+        [](OUT init, const PhysicalOpNode* node) {
+            if (node->GetOpType() == kPhysicalOpDataProvider) {
+                auto* data_op = dynamic_cast<const PhysicalDataProviderNode*>(node);
+                if (data_op != nullptr) {
+                    init.emplace(data_op->GetDb(), data_op->GetName());
+                }
+            }
+            return init;
+        },
+        [](const PhysicalOpNode* node) { return node->GetDependents(); });
+    return Status::OK();
 }
 
 bool Engine::IsCompatibleCache(RunSession& session,  // NOLINT
@@ -262,14 +217,14 @@ bool Engine::Get(const std::string& sql, const std::string& db, RunSession& sess
     return true;
 }
 
-base::Status Engine::RegisterExternalFunction(const std::string& name, node::DataType return_type,
-                                         const std::vector<node::DataType>& arg_types, bool is_aggregate,
-                                         const std::string& file) {
+base::Status Engine::RegisterExternalFunction(const std::string& name, node::DataType return_type, bool return_nullable,
+                                         const std::vector<node::DataType>& arg_types, bool arg_nullable,
+                                         bool is_aggregate, const std::string& file) {
     if (name.empty()) {
         return {common::kExternalUDFError, "function name is empty"};
     }
     auto lib = udf::DefaultUdfLibrary::get();
-    return lib->RegisterDynamicUdf(name, return_type, arg_types, is_aggregate, file);
+    return lib->RegisterDynamicUdf(name, return_type, return_nullable, arg_types, arg_nullable, is_aggregate, file);
 }
 
 base::Status Engine::RemoveExternalFunction(const std::string& name,
@@ -315,15 +270,17 @@ bool Engine::Explain(const std::string& sql, const std::string& db, EngineMode e
     explain_output->request_name = ctx.request_name;
     explain_output->request_db_name = ctx.request_db_name;
     explain_output->limit_cnt = ctx.limit_cnt;
+
+    auto s = GetDependentTables(ctx.physical_plan, &explain_output->dependent_tables);
+    if (!s.isOK()) {
+        LOG(ERROR) << s;
+        status->code = common::kPhysicalPlanError;
+        status->msg = "fail to get dependent tables";
+        return false;
+    }
+
     if (engine_mode == ::hybridse::vm::kBatchMode) {
-        std::set<std::pair<std::string, std::string>> tables;
-        base::Status status;
-        for (auto iter = ctx.logical_plan.cbegin(); iter != ctx.logical_plan.cend(); iter++) {
-            if (!GetDependentTables(*iter, db, &tables, status)) {
-                DLOG(WARNING) << "Fail to get dependent tables ";
-                break;
-            }
-        }
+        auto& tables = explain_output->dependent_tables;
         if (!tables.empty()) {
             explain_output->router.SetMainDb(tables.begin()->first);
             explain_output->router.SetMainTable(tables.begin()->second);
@@ -333,6 +290,7 @@ bool Engine::Explain(const std::string& sql, const std::string& db, EngineMode e
         explain_output->router.SetMainTable(ctx.request_name);
         explain_output->router.Parse(ctx.physical_plan);
     }
+
     if (engine_mode == ::hybridse::vm::kBatchRequestMode) {
         // fill common output column info
         auto& output_common_indices = ctx.batch_request_info.output_common_column_indices;

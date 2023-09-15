@@ -6,6 +6,7 @@ Maintenance
     :maxdepth: 1
 
     upgrade
+    update_conf
     backup
     monitoring
     cli

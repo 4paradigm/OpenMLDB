@@ -16,13 +16,13 @@
 #include <fstream>
 #include <iostream>
 #include <string>
+
 #include "gflags/gflags.h"
 #include "glog/logging.h"
-#include "yaml-cpp/yaml.h"
-
 #include "passes/resolve_fn_and_attrs.h"
 #include "udf/default_udf_library.h"
 #include "udf/udf_registry.h"
+#include "yaml-cpp/yaml.h"
 
 DEFINE_string(output_dir, ".", "Output directory path");
 DEFINE_string(output_file, "udf_defs.yaml", "Output yaml filename");
@@ -111,22 +111,30 @@ class UdfTypeExtractor {
 int ExportUdfInfo(const std::string& dir, const std::string& filename) {
     auto library = udf::DefaultUdfLibrary::get();
     auto registries = library->GetAllRegistries();
+
     YAML::Emitter yaml_out;
 
     UdfTypeExtractor udf_extractor;
 
     yaml_out << YAML::BeginMap;
     for (auto& pair : registries) {
-        std::string name = pair.first;
+        const std::string& name = pair.first;
         auto signature_table = pair.second->signature_table.GetTable();
 
         yaml_out << YAML::Key << name;
+
+        if (name != pair.second->fn_name) {
+            // alias
+            yaml_out << YAML::Value << absl::StrCat("alias to ", pair.second->fn_name);
+            continue;
+        }
+
         yaml_out << YAML::Value;
         yaml_out << YAML::BeginSeq;
 
-        for (auto& pair : signature_table) {
-            auto key = pair.first;
-            auto& regitem = pair.second;
+        for (auto& sub_pair : signature_table) {
+            auto key = sub_pair.first;
+            auto& regitem = sub_pair.second;
             auto registry = regitem.value;
 
             std::vector<UdfTypeInfo> expand_type_infos;

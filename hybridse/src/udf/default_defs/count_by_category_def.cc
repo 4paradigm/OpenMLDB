@@ -38,7 +38,7 @@ struct CountCateDef {
         helper.library()
             ->RegisterUdafTemplate<Impl>("count_cate")
             .doc(helper.GetDoc())
-            .template args_in<int16_t, int32_t, int64_t, float, double>();
+            .template args_in<bool, int16_t, int32_t, int64_t, float, double, StringRef, Date, Timestamp>();
     }
 
     template <typename V>
@@ -94,7 +94,7 @@ struct CountCateWhereDef {
         helper.library()
             ->RegisterUdafTemplate<Impl>("count_cate_where")
             .doc(helper.GetDoc())
-            .template args_in<int16_t, int32_t, int64_t, float, double>();
+            .template args_in<bool, int16_t, int32_t, int64_t, float, double, StringRef, Timestamp, Date>();
     }
 
     template <typename V>
@@ -204,7 +204,7 @@ template <typename K>
 struct TopNValueCountCateWhereDef {
     void operator()(UdafRegistryHelper& helper) {  // NOLINT
         helper.library()
-            ->RegisterUdafTemplate<container::TopNValueImpl<CountCateDef<K>::template Impl>::template Impl>(
+            ->RegisterUdafTemplate<container::TopNCateWhereImpl<CountCateDef<K>::template Impl>::template Impl>(
                 helper.name())
             .doc(helper.GetDoc())
             // type of value
@@ -245,9 +245,9 @@ void DefaultUdfLibrary::InitCountByCateUdafs() {
     category key and output string. Each group is represented as 'K:V' and
     separated by comma in outputs and are sorted by key in ascend order.
 
-            @param catagory  Specify catagory column to group by.
             @param value  Specify value column to aggregate on.
             @param condition  Specify condition column.
+            @param catagory  Specify catagory column to group by.
 
             Example:
 
@@ -260,7 +260,7 @@ void DefaultUdfLibrary::InitCountByCateUdafs() {
             4|true|x
 
             @code{.sql}
-                SELECT count_cate_where(catagory, value, condition) OVER w;
+                SELECT count_cate_where(value, condition, category) OVER w;
                 -- output "x:2,y:1"
             @endcode
             )")
@@ -294,6 +294,8 @@ void DefaultUdfLibrary::InitCountByCateUdafs() {
     OVER w;
                 -- output "z:2,y:2"
             @endcode
+
+            @since 0.1.0
             )")
         // type of category
         .args_in<int16_t, int32_t, int64_t, Date, Timestamp, StringRef>();
@@ -326,6 +328,8 @@ void DefaultUdfLibrary::InitCountByCateUdafs() {
     OVER w;
                 -- output "x:3,y:2"
             @endcode
+
+            @since 0.6.4
             )")
         // type of category
         .args_in<int16_t, int32_t, int64_t, Date, Timestamp, StringRef>();

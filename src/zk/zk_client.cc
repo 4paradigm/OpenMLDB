@@ -488,7 +488,7 @@ bool ZkClient::WatchItem(const std::string& path, ItemChangedCallback callback) 
     int buffer_len = ZK_MAX_BUFFER_SIZE;
     int ret = zoo_wget(zk_, path.data(), ItemWatcher, NULL, buffer_, &buffer_len, NULL);
     if (ret != ZOK) {
-        PDLOG(WARNING, "fail to watch item %s errno %d", nodes_root_path_.c_str(), ret);
+        PDLOG(WARNING, "fail to watch item %s errno %d", path.c_str(), ret);
         return false;
     }
     return true;

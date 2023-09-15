@@ -43,7 +43,7 @@ struct MinCateDef {
 
     template <typename V>
     struct Impl {
-        using ContainerT = udf::container::BoundedGroupByDict<K, V, V>;
+        using ContainerT = udf::container::BoundedGroupByDict<K, V>;
         using InputK = typename ContainerT::InputK;
         using InputV = typename ContainerT::InputV;
 
@@ -106,7 +106,7 @@ struct MinCateWhereDef {
 
     template <typename V>
     struct Impl {
-        using ContainerT = udf::container::BoundedGroupByDict<K, V, V>;
+        using ContainerT = udf::container::BoundedGroupByDict<K, V>;
         using InputK = typename ContainerT::InputK;
         using InputV = typename ContainerT::InputV;
 
@@ -149,7 +149,7 @@ struct TopKMinCateWhereDef {
 
     template <typename V>
     struct Impl {
-        using ContainerT = udf::container::BoundedGroupByDict<K, V, V>;
+        using ContainerT = udf::container::BoundedGroupByDict<K, V>;
         using InputK = typename ContainerT::InputK;
         using InputV = typename ContainerT::InputV;
 
@@ -217,7 +217,8 @@ template <typename K>
 struct TopNValueMinCateWhereDef {
     void operator()(UdafRegistryHelper& helper) {  // NOLINT
         helper.library()
-            ->RegisterUdafTemplate<container::TopNValueImpl<MinCateDef<K>::template Impl>::template Impl>(helper.name())
+            ->RegisterUdafTemplate<container::TopNCateWhereImpl<MinCateDef<K>::template Impl>::template Impl>(
+                helper.name())
             .doc(helper.GetDoc())
             .template args_in<int16_t, int32_t, int64_t, float, double>();
     }
@@ -255,9 +256,9 @@ void DefaultUdfLibrary::InitMinByCateUdafs() {
     category key and output string. Each group is represented as 'K:V' and
     separated by comma in outputs and are sorted by key in ascend order.
 
-            @param catagory  Specify catagory column to group by.
             @param value  Specify value column to aggregate on.
             @param condition  Specify condition column.
+            @param catagory  Specify catagory column to group by.
 
             Example:
 
@@ -271,7 +272,7 @@ void DefaultUdfLibrary::InitMinByCateUdafs() {
             3|true|y
 
             @code{.sql}
-                SELECT min_cate_where(catagory, value, condition) OVER w;
+                SELECT min_cate_where(value, condition, category) OVER w;
                 -- output "x:0,y:1"
             @endcode
             )")
@@ -305,6 +306,8 @@ void DefaultUdfLibrary::InitMinByCateUdafs() {
     OVER w;
                 -- output "z:5,y:1"
             @endcode
+
+            @since 0.1.0
             )")
         .args_in<int16_t, int32_t, int64_t, Date, Timestamp, StringRef>();
 
@@ -336,6 +339,8 @@ void DefaultUdfLibrary::InitMinByCateUdafs() {
     OVER w;
                 -- output "z:5,x:2"
             @endcode
+
+            @since 0.6.4
             )")
         .args_in<int16_t, int32_t, int64_t, Date, Timestamp, StringRef>();
 }

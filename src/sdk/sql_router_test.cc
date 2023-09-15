@@ -1136,10 +1136,10 @@ TEST_F(SQLRouterTest, DDLParseMethods) {
     // sorted by table name, so adinfo is the first table
     EXPECT_EQ(
         "CREATE TABLE IF NOT EXISTS adinfo(\n\tid string,\n\tbrandName string,\n\tbrandId string,\n\tname "
-        "string,\n\tingestionTime timestamp,\n\tindex(key=(id), ttl=0m, ttl_type=absolute)\n);",
+        "string,\n\tingestionTime timestamp,\n\tindex(key=(id), ttl=1, ttl_type=latest)\n);",
         ddl_list.at(0));
 
-    auto output_schema = GenOutputSchema(sql, table_map);
+    auto output_schema = GenOutputSchema(sql, "foo", {{"foo", table_map}});
     ASSERT_EQ(output_schema->GetColumnCnt(), 7);
     std::vector<std::string> output_col_names;
     output_col_names.reserve(output_schema->GetColumnCnt());
@@ -1148,6 +1148,37 @@ TEST_F(SQLRouterTest, DDLParseMethods) {
     }
     std::vector<std::string> expected{"itemId", "ip", "query", "mcuid", "name", "brandId", "label"};
     ASSERT_EQ(output_col_names, expected);
+
+    // multi db output schema
+    std::vector<std::pair<std::string, decltype(table_map)>> db_table_map;
+    db_table_map.emplace_back("db1", table_map);
+    db_table_map.emplace_back("db2", table_map);
+    // feedbackTable is in db1(used_db)
+    auto multi_db_output_schema = GenOutputSchema(
+        "SELECT\n db1.behaviourTable.itemId as itemId,\n  db1.behaviourTable.ip as ip,\n  db1.behaviourTable.query as "
+        "query,\n  "
+        "db1.behaviourTable.mcuid as mcuid,\n db2.adinfo.brandName as name,\n  db2.adinfo.brandId as brandId,\n "
+        "feedbackTable.actionValue as label\n FROM db1.behaviourTable\n LAST JOIN feedbackTable ON "
+        "feedbackTable.itemId = "
+        "behaviourTable.itemId\n LAST JOIN db2.adinfo ON behaviourTable.itemId = db2.adinfo.id;",
+        "db1", db_table_map);
+    ASSERT_TRUE(multi_db_output_schema);
+    ASSERT_EQ(multi_db_output_schema->GetColumnCnt(), 7);
+
+    // no use db
+    auto db_table_sql =
+        "SELECT\n db1.behaviourTable.itemId as itemId,\n  db1.behaviourTable.ip as ip,\n  db1.behaviourTable.query as "
+        "query,\n  "
+        "db1.behaviourTable.mcuid as mcuid,\n db2.adinfo.brandName as name,\n  db2.adinfo.brandId as brandId,\n "
+        "feedbackTable.actionValue as label\n FROM db1.behaviourTable behaviourTable\n LAST JOIN db1.feedbackTable "
+        "feedbackTable ON feedbackTable.itemId = behaviourTable.itemId\n LAST JOIN db2.adinfo ON behaviourTable.itemId "
+        "= db2.adinfo.id;";
+    multi_db_output_schema = GenOutputSchema(db_table_sql, "", db_table_map);
+    ASSERT_TRUE(multi_db_output_schema);
+    ASSERT_EQ(multi_db_output_schema->GetColumnCnt(), 7);
+
+    auto tables = GetDependentTables(db_table_sql, "", db_table_map);
+    ASSERT_EQ(tables.size(), 3);
 }
 
 TEST_F(SQLRouterTest, DDLParseMethodsCombineIndex) {

@@ -28,7 +28,7 @@ DECLARE_bool(enable_localtablet);
     }                                                                 \
     BENCHMARK(BM_Request_##NAME);
 
-const char* DEFAULT_YAML_PATH = "/cases/benchmark/request_benchmark.yaml";
+const char* DEFAULT_YAML_PATH = "cases/benchmark/request_benchmark.yaml";
 DEFINE_REQUEST_CASE(BM_SimpleLastJoin2Right, DEFAULT_YAML_PATH, "0");
 DEFINE_REQUEST_CASE(BM_SimpleLastJoin4Right, DEFAULT_YAML_PATH, "1");
 

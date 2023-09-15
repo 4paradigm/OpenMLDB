@@ -17,11 +17,11 @@ DeploymentName
 ```
 
 
-`DeployOption`的定义详见[DEPLOYMENT属性DeployOption（可选）](#DeployOption可选)。
+`DeployOption`的定义详见[DEPLOYMENT属性DeployOption（可选）](#deployoption可选)。
 
 `SelectStmt`的定义详见[Select查询语句](../dql/SELECT_STATEMENT.md)。
 
-`DEPLOY`语句可以将SQL部署到线上。OpenMLDB仅支持部署Select查询语句，并且需要满足[OpenMLDB SQL上线规范和要求](../deployment_manage/ONLINE_SERVING_REQUIREMENTS.md)。
+`DEPLOY`语句可以将SQL部署到线上。OpenMLDB仅支持部署Select查询语句，并且需要满足[OpenMLDB SQL上线规范和要求](../deployment_manage/ONLINE_REQUEST_REQUIREMENTS.md)。
 
 
 
@@ -97,12 +97,15 @@ DeployOption
 						::= 'OPTIONS' '(' DeployOptionItem (',' DeployOptionItem)* ')'
 
 DeployOptionItem
-						::= LongWindowOption
+            ::= 'LONG_WINDOWS' '=' LongWindowDefinitions
+            | 'SKIP_INDEX_CHECK' '=' string_literal
+            | 'SYNC' '=' string_literal
+            | 'RANGE_BIAS' '=' RangeBiasValueExpr
+            | 'ROWS_BIAS' '=' RowsBiasValueExpr
 
-LongWindowOption
-						::= 'LONG_WINDOWS' '=' LongWindowDefinitions
+RangeBiasValueExpr ::= int_literal | interval_literal | string_literal
+RowsBiasValueExpr ::= int_literal | string_literal
 ```
-目前只支持长窗口`LONG_WINDOWS`的优化选项。
 
 #### 长窗口优化
 ```sql
@@ -153,6 +156,34 @@ DEPLOY demo_deploy OPTIONS(long_windows="w1:1d") SELECT c1, sum(c2) OVER w1 FROM
     WINDOW w1 AS (PARTITION BY c1 ORDER BY c2 ROWS_RANGE BETWEEN 5d PRECEDING AND CURRENT ROW);
 -- SUCCEED
 ```
+
+#### 关闭索引类型校验
+默认情况下`SKIP_INDEX_CHECK`选项为`false`, deploy SQL时如果存在和期望索引key与ts相同的现有索引，还会校验现有索引和期望索引的TTL类型是否一致，并更新表的索引，如果集群版本是0.8.0或更早的，将不支持更新索引的TTL类型。如果这个选项设置为`true`, deploy的时候不会校验现有索引，也不会修改现有索引的TTL，仅创建新的期望索引。
+
+**Example**
+```sql
+DEPLOY demo OPTIONS (SKIP_INDEX_CHECK="TRUE")
+    SELECT * FROM t1 LAST JOIN t2 ORDER BY t2.col3 ON t1.col1 = t2.col1;
+```
+
+#### 设置同步/异步
+执行deploy的时候可以通过`SYNC`选项来设置同步/异步模式, 默认为`true`即同步模式。如果deploy语句中涉及的相关表有数据，并且需要添加索引的情况下，执行deploy会发起数据加载等任务，如果`SYNC`选项设置为`false`就会返回一个任务id。可以通过`SHOW JOBS FROM NAMESERVER LIKE '{job_id}'`来查看任务执行状态。
+
+**Example**
+```sql
+deploy demo options(SYNC="false") SELECT t1.col1, t2.col2, sum(col4) OVER w1 as w1_col4_sum FROM t1 LAST JOIN t2 ORDER BY t2.col3 ON t1.col2 = t2.col2
+    WINDOW w1 AS (PARTITION BY t1.col2 ORDER BY t1.col3 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
+```
+
+#### 设置偏移
+
+如果你并不希望数据根据deploy的索引淘汰，或者希望晚一点淘汰，可以在deploy时设置偏移，常用于数据时间戳并不实时的情况、测试等情况。如果deploy后的索引ttl为abs 3h，但是数据的时间戳是3h前的(以系统时间为基准)，那么这条数据就会被淘汰，无法参与计算。设置一定时间或永久的偏移，则可以让数据更久的停留在在线表中。
+
+时间偏移，单位可以是`s`、`m`、`h`、`d`，也可以是整数，单位为`ms`，也可以是`inf`，表示永不淘汰；如果是行数偏移，可以是整数，单位是`row`，也可以是`inf`，表示永不淘汰。两种偏移中，0均表示不偏移。
+
+注意，我们只将偏移加在deploy的解析索引中，也就是新索引，它们并不是最终索引。最终索引的计算方式是，如果是创建索引，最终索引是`解析索引 + 偏移`；如果是更新索引，最终索引是`merge(旧索引, 新索引 + 偏移)`。
+
+而时间偏移的单位是`min`，我们会在内部将其转换为`min`，并且取上界。比如，新索引ttl是abs 2min，加上偏移20s，结果是`2min + ub(20s) = 3min`，然后和旧索引1min取上界，最终索引ttl是`max(1min, 3min) = 3min`。
 
 ## 相关SQL
 

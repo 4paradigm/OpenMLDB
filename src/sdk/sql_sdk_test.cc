@@ -30,7 +30,9 @@
 #include "gflags/gflags.h"
 #include "sdk/mini_cluster.h"
 #include "sdk/sql_router.h"
+#include "sdk/sql_sdk_base_test.h"
 #include "test/base_test.h"
+#include "test/util.h"
 #include "vm/catalog.h"
 
 namespace openmldb {
@@ -139,7 +141,7 @@ TEST_P(SQLSDKQueryTest, SqlSdkBatchTest) {
 TEST_P(SQLSDKQueryTest, SqlSdkRequestProcedureTest) {
     auto sql_case = GetParam();
     LOG(INFO) << "ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
-    if (!IsRequestSupportMode(sql_case.mode())) {
+    if (!IsRequestSupportMode(sql_case.mode()) || "procedure-unsupport" == sql_case.mode()) {
         LOG(WARNING) << "Unsupport mode: " << sql_case.mode();
         return;
     }
@@ -151,7 +153,7 @@ TEST_P(SQLSDKQueryTest, SqlSdkRequestProcedureTest) {
 TEST_P(SQLSDKQueryTest, SqlSdkRequestProcedureAsynTest) {
     auto sql_case = GetParam();
     LOG(INFO) << "ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
-    if (!IsRequestSupportMode(sql_case.mode())) {
+    if (!IsRequestSupportMode(sql_case.mode()) || "procedure-unsupport" == sql_case.mode()) {
         LOG(WARNING) << "Unsupport mode: " << sql_case.mode();
         return;
     }
@@ -159,6 +161,21 @@ TEST_P(SQLSDKQueryTest, SqlSdkRequestProcedureAsynTest) {
     RunRequestProcedureModeSDK(sql_case, router_, true);
     LOG(INFO) << "Finish sql_sdk_request_procedure_asyn_test: ID: " << sql_case.id() << ", DESC: " << sql_case.desc();
 }
+
+TEST_P(SQLSDKQueryTest, SqlSdkDeployTest) {
+    auto sql_case = GetParam();
+    if (!sql_case.deployable_) {
+        LOG(INFO) << "SKIPPED for not deployable";
+        return;
+    }
+    ASSERT_TRUE(router_ != nullptr) << "Fail new cluster sql router";
+    {
+        DeploymentEnv env(router_, &sql_case);
+        env.SetUp();
+        env.CallDeployProcedure();
+    }
+}
+
 TEST_P(SQLSDKBatchRequestQueryTest, SqlSdkBatchRequestTest) {
     auto sql_case = GetParam();
     if (!IsBatchRequestSupportMode(sql_case.mode())) {
@@ -176,7 +193,7 @@ TEST_P(SQLSDKBatchRequestQueryTest, SqlSdkBatchRequestTest) {
 }
 TEST_P(SQLSDKBatchRequestQueryTest, SqlSdkBatchRequestProcedureTest) {
     auto sql_case = GetParam();
-    if (!IsBatchRequestSupportMode(sql_case.mode())) {
+    if (!IsBatchRequestSupportMode(sql_case.mode()) || "procedure-unsupport" == sql_case.mode()) {
         LOG(WARNING) << "Unsupport mode: " << sql_case.mode();
         return;
     }
@@ -192,7 +209,7 @@ TEST_P(SQLSDKBatchRequestQueryTest, SqlSdkBatchRequestProcedureTest) {
 
 TEST_P(SQLSDKBatchRequestQueryTest, SqlSdkBatchRequestProcedureAsynTest) {
     auto sql_case = GetParam();
-    if (!IsBatchRequestSupportMode(sql_case.mode())) {
+    if (!IsBatchRequestSupportMode(sql_case.mode()) || "procedure-unsupport" == sql_case.mode()) {
         LOG(WARNING) << "Unsupport mode: " << sql_case.mode();
         return;
     }

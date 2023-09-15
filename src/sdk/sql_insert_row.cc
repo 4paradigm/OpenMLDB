@@ -188,6 +188,9 @@ bool SQLInsertRow::AppendInt32(int32_t val) {
 }
 
 bool SQLInsertRow::AppendInt64(int64_t val) {
+    if (val < 0 && IsTsCol()) {
+        return false;
+    }
     if (IsDimension()) {
         PackDimension(std::to_string(val));
     }
@@ -198,6 +201,9 @@ bool SQLInsertRow::AppendInt64(int64_t val) {
 }
 
 bool SQLInsertRow::AppendTimestamp(int64_t val) {
+    if (val < 0) {
+        return false;
+    }
     if (IsDimension()) {
         PackDimension(std::to_string(val));
     }
@@ -279,7 +285,7 @@ bool SQLInsertRow::AppendNULL() {
     if (IsDimension()) {
         PackDimension(hybridse::codec::NONETOKEN);
     }
-    if (ts_set_.count(rb_.GetAppendPos())) {
+    if (IsTsCol()) {
         return false;
     }
     if (rb_.AppendNULL()) {

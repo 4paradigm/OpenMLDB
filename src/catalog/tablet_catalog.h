@@ -63,8 +63,8 @@ class TabletSegmentHandler : public ::hybridse::vm::TableHandler {
 
     ::hybridse::vm::RowIterator *GetRawIterator() override;
 
-    std::unique_ptr<::hybridse::vm::WindowIterator> GetWindowIterator(const std::string &idx_name) override {
-        return std::unique_ptr<::hybridse::vm::WindowIterator>();
+    std::unique_ptr<::hybridse::codec::WindowIterator> GetWindowIterator(const std::string &idx_name) override {
+        return std::unique_ptr<::hybridse::codec::WindowIterator>();
     }
 
     const uint64_t GetCount() override;
@@ -104,7 +104,7 @@ class TabletPartitionHandler : public ::hybridse::vm::PartitionHandler,
 
     const ::hybridse::vm::IndexHint &GetIndex() override { return table_handler_->GetIndex(); }
 
-    std::unique_ptr<::hybridse::vm::WindowIterator> GetWindowIterator() override {
+    std::unique_ptr<::hybridse::codec::WindowIterator> GetWindowIterator() override {
         DLOG(INFO) << "get window it with name " << index_name_;
         return table_handler_->GetWindowIterator(index_name_);
     }
@@ -174,7 +174,7 @@ class TabletTableHandler : public ::hybridse::vm::TableHandler,
     std::shared_ptr<::hybridse::vm::Tablet> GetTablet(const std::string &index_name,
                                                       const std::vector<std::string> &pks) override;
 
-    inline int32_t GetTid() { return table_st_.GetTid(); }
+    inline uint32_t GetTid() { return table_st_.GetTid(); }
 
     void AddTable(std::shared_ptr<::openmldb::storage::Table> table);
 
@@ -182,7 +182,8 @@ class TabletTableHandler : public ::hybridse::vm::TableHandler,
 
     int DeleteTable(uint32_t pid);
 
-    void Update(const ::openmldb::nameserver::TableInfo &meta, const ClientManager &client_manager);
+    bool Update(const ::openmldb::nameserver::TableInfo &meta, const ClientManager &client_manager,
+            bool* index_updated);
 
  private:
     inline int32_t GetColumnIndex(const std::string &column) {
@@ -223,7 +224,7 @@ class TabletCatalog : public ::hybridse::vm::Catalog {
 
     bool UpdateTableMeta(const ::openmldb::api::TableMeta &meta);
 
-    bool UpdateTableInfo(const ::openmldb::nameserver::TableInfo& table_info);
+    bool UpdateTableInfo(const ::openmldb::nameserver::TableInfo& table_info, bool* index_updated);
 
     std::shared_ptr<::hybridse::type::Database> GetDatabase(const std::string &db) override;
 
@@ -232,12 +233,12 @@ class TabletCatalog : public ::hybridse::vm::Catalog {
 
     bool IndexSupport() override;
 
-    bool DeleteTable(const std::string &db, const std::string &table_name, uint32_t pid);
+    bool DeleteTable(const std::string &db, const std::string &table_name, uint32_t tid, uint32_t pid);
 
     bool DeleteDB(const std::string &db);
 
     void Refresh(const std::vector<::openmldb::nameserver::TableInfo> &table_info_vec, uint64_t version,
-                 const Procedures &db_sp_map);
+                 const Procedures &db_sp_map, bool* updated);
 
     bool AddProcedure(const std::string &db, const std::string &sp_name,
                       const std::shared_ptr<hybridse::sdk::ProcedureInfo> &sp_info);

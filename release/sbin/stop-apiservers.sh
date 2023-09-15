@@ -34,8 +34,9 @@ else
     port=$(echo "$line" | awk -F ' ' '{print $2}')
     dir=$(echo "$line" | awk -F ' ' '{print $3}')
 
-    echo "stop apiserver in $dir with endpoint $host:$port "
-    cmd="cd $dir; bin/start.sh stop apiserver"
+    component="apiserver"
+    echo "stop $component in $dir with endpoint $host:$port "
+    cmd="if [[ -d $dir ]]; then cd $dir && bin/start.sh stop $component; else echo $dir is not exist; fi"
     run_auto "$host" "$cmd"
   done
   IFS="$old_IFS"

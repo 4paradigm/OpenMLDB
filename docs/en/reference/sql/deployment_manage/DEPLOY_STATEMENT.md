@@ -97,12 +97,14 @@ DeployOption
 						::= 'OPTIONS' '(' DeployOptionItem (',' DeployOptionItem)* ')'
 
 DeployOptionItem
-						::= LongWindowOption
+            ::= 'LONG_WINDOWS' '=' LongWindowDefinitions
+            | 'SKIP_INDEX_CHECK' '=' string_literal
+            | 'RANGE_BIAS' '=' RangeBiasValueExpr
+            | 'ROWS_BIAS' '=' RowsBiasValueExpr
 
-LongWindowOption
-						::= 'LONG_WINDOWS' '=' LongWindowDefinitions
+RangeBiasValueExpr ::= int_literal | interval_literal | string_literal
+RowsBiasValueExpr ::= int_literal | string_literal
 ```
-Currently, only the optimization option of long windows `LONG_WINDOWS` is supported.
 
 #### Long Window Optimization
 ```sql
@@ -156,6 +158,35 @@ DEPLOY demo_deploy OPTIONS(long_windows="w1:1d") SELECT c1, sum(c2) OVER w1 FROM
 -- SUCCEED
 ```
 
+#### Skip Index Check
+
+By default, the value of `SKIP_INDEX_CHECK` option is `false`. It means that when deploying SQL, it will check whether the existing index
+is match the required index. An error will be reported if it does not matched. If this option is set to `true`, the existing index will not be verified and modified when deploying.
+
+**Example**
+```sql
+DEPLOY demo OPTIONS (SKIP_INDEX_CHECK="TRUE")
+    SELECT * FROM t1 LAST JOIN t2 ORDER BY t2.col3 ON t1.col1 = t2.col1;
+```
+
+#### Synchronization/Asynchronization Settings
+When executing deploy, you can set the synchronous/asynchronous mode through the `SYNC` option. The default value of `SYNC` is `true`, that is, the synchronous mode. If the relevant tables involved in the deploy statement have data and needs to add one or more indexs, executing deploy will initiate a job to execute a series of tasks such as loading data. In this case a job id will be returned if the `SYNC` option is set to `false`. You can get the job execution status by `SHOW JOBS FROM NAMESERVER LIKE '{job_id}'`
+
+**Example**
+```sql
+deploy demo options(SYNC="false") SELECT t1.col1, t2.col2, sum(col4) OVER w1 as w1_col4_sum FROM t1 LAST JOIN t2 ORDER BY t2.col3 ON t1.col2 = t2.col2
+    WINDOW w1 AS (PARTITION BY t1.col2 ORDER BY t1.col3 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
+```
+
+#### BIAS
+
+If you don't want data to be expired by the deployed index, or want data expired later, you can set bias when deploy, which is usually used in the case of data timestamp is not real-time, test, etc. If the index ttl after deploy is abs 3h, but the data timestamp is 3h ago(based on system time), then the data will be eliminated and cannot participate in the calculation. Setting a certain time or permanent bias can make the data stay in the online table for a longer time.
+
+Range bias can be `s`, `m`, `h`, `d`, or integer(unit is ms), or `inf`(means infinite, never expire). Rows bias can be integer, or `inf`(means infinite, never expire). In both type, 0 means no bias.
+
+Notice that, we only add bias to deployed index, which is new index. It's not the final index. The final index is `bias + new_index` if deployment will create index. And the final index is `merge(old_index, bias + new_index)` if deployment will update index.
+
+And range bias unit is `min`, we'll convert it to `min` and get upper bound. e.g. deployed index ttl is abs 2min, add range bias 20s, the result is `2min + ub(20s) = 3min`, and merge with old index 1min, the final index is `max(1min, 3min) = 3min`.
 
 ## Relevant SQL
 

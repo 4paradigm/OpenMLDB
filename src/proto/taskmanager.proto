@@ -61,7 +61,9 @@ message DeleteJobResponse {
     optional string msg = 2;
 };
 
-message ShowBatchVersionRequest {};
+message ShowBatchVersionRequest {
+    optional bool sync_job = 1 [default = false];
+};
 
 message RunBatchSqlRequest {
     required string sql = 1;
@@ -148,6 +150,16 @@ message GetVersionResponse {
 
 message EmptyMessage {};
 
+message SaveJobResultRequest {
+    required int32 result_id = 1;
+    required string json_data = 2;
+}
+
+message SaveJobResultResponse {
+    required int32 code = 1;
+    optional string msg = 2; 
+}
+
 service TaskManagerServer {
     // Job management
     rpc ShowJobs(ShowJobsRequest) returns (ShowJobsResponse);
@@ -169,4 +181,5 @@ service TaskManagerServer {
 
     // Other APIs
     rpc GetVersion(EmptyMessage) returns (GetVersionResponse);
+    rpc SaveJobResult(SaveJobResultRequest) returns (SaveJobResultResponse);
 };

@@ -23,5 +23,23 @@ sbin="$(cd "$(dirname "$0")" || exit 1; pwd)"
 . "$sbin"/init.sh
 cd "$home" || exit 1
 
-# stop taskmanager
-bin/start.sh stop taskmanager
+if [[ ${OPENMLDB_MODE} == "standalone" ]]; then
+  echo "No taskmanager instance to stop in Standalone Mode"
+  pass
+else
+  old_IFS="$IFS"
+  IFS=$'\n'
+  for line in $(parse_host conf/hosts taskmanager)
+  do
+    host=$(echo "$line" | awk -F ' ' '{print $1}')
+    port=$(echo "$line" | awk -F ' ' '{print $2}')
+    dir=$(echo "$line" | awk -F ' ' '{print $3}')
+
+    component="taskmanager"
+    echo "stop $component in $dir with endpoint $host:$port "
+    cmd="if [[ -d $dir ]]; then cd $dir && bin/start.sh stop $component; else echo $dir is not exist; fi"
+    run_auto "$host" "$cmd"
+    sleep 2
+  done
+  IFS="$old_IFS"
+fi

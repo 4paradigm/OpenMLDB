@@ -142,7 +142,8 @@ bool DBSDK::RegisterExternalFun(const std::shared_ptr<openmldb::common::External
         ::openmldb::schema::SchemaAdapter::ConvertType(fun->arg_type(i), &data_type);
         arg_types.emplace_back(data_type);
     }
-    if (engine_->RegisterExternalFunction(fun->name(), return_type, arg_types, fun->is_aggregate(), "").isOK()) {
+    if (engine_->RegisterExternalFunction(fun->name(), return_type, fun->return_nullable(),
+                arg_types, fun->arg_nullable(), fun->is_aggregate(), "").isOK()) {
         std::lock_guard<::openmldb::base::SpinMutex> lock(mu_);
         external_fun_.emplace(fun->name(), fun);
         return true;
@@ -425,6 +426,15 @@ bool ClusterSDK::BuildCatalog() {
     return UpdateCatalog(table_datas, sp_datas);
 }
 
+std::vector<std::string> DBSDK::GetAllDbs() {
+    std::lock_guard<::openmldb::base::SpinMutex> lock(mu_);
+    std::vector<std::string> all_dbs;
+    for (auto db_name_iter = table_to_tablets_.begin(); db_name_iter != table_to_tablets_.end(); db_name_iter++) {
+        all_dbs.push_back(db_name_iter->first);
+    }
+    return all_dbs;
+}
+
 uint32_t DBSDK::GetTableId(const std::string& db, const std::string& tname) {
     auto table_handler = GetCatalog()->GetTable(db, tname);
     auto* sdk_table_handler = dynamic_cast<::openmldb::catalog::SDKTableHandler*>(table_handler.get());
@@ -607,7 +617,7 @@ std::shared_ptr<hybridse::sdk::ProcedureInfo> DBSDK::GetProcedureInfo(const std:
 std::vector<std::shared_ptr<hybridse::sdk::ProcedureInfo>> DBSDK::GetProcedureInfo(std::string* msg) {
     std::vector<std::shared_ptr<hybridse::sdk::ProcedureInfo>> sp_infos;
     if (msg == nullptr) {
-        return std::move(sp_infos);
+        return sp_infos;
     }
     std::lock_guard<::openmldb::base::SpinMutex> lock(mu_);
     auto& db_sp_map = catalog_->GetProcedures();
@@ -618,9 +628,9 @@ std::vector<std::shared_ptr<hybridse::sdk::ProcedureInfo>> DBSDK::GetProcedureIn
     }
     if (sp_infos.empty()) {
         *msg = "procedure set is empty";
-        return std::move(sp_infos);
+        return sp_infos;
     }
-    return std::move(sp_infos);
+    return sp_infos;
 }
 
 bool StandAloneSDK::Init() {

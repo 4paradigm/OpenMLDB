@@ -1,4 +1,4 @@
-# 版本升级
+# 升级
 
 升级过程对服务的影响:
 * 如果创建的表是单副本，用户可以选择：
@@ -26,10 +26,15 @@
 
 ## 2. 升级tablet
 
+```{important}
+如果有多个 tablet，请务必对每一个 tablet 进行顺序操作，不要同时对多个 tablet 进行升级操作。即对一个 tablet 完成升级，结果确认以后，再进行下一个 tablet 的升级操作。否则会导致集群状态异常。如果误操作导致集群异常，可以尝试使用[运维工具](openmldb_ops.md)的 `recoverdata` 进行恢复。
+```
+
 * 升级前准备`pre-upgrade`：为了避免对线上服务的影响，需要在升级tablet前，进行`pre-upgrade`操作，把该tablet上的leader分片迁移到其它tablets上（详细命令说明可以参考：[OpenMLDB运维工具](./openmldb_ops.md)）
-    ```bash
-    python tools/openmldb_ops.py --openmldb_bin_path=./bin/openmldb --zk_cluster=172.24.4.40:30481 --zk_root_path=/openmldb --cmd=pre-upgrade --endpoints=127.0.0.1:10921
-    ```
+
+  ```bash
+  python tools/openmldb_ops.py --openmldb_bin_path=./bin/openmldb --zk_cluster=172.24.4.40:30481 --zk_root_path=/openmldb --cmd=pre-upgrade --endpoints=127.0.0.1:10921
+  ```
   如果允许单副本表在升级过程中不可用，可以添加`--allow_single_replica`来避免添加新的副本。
 * 停止tablet
     ```bash
@@ -49,7 +54,7 @@
     ```bash
     python tools/openmldb_ops.py --openmldb_bin_path=./bin/openmldb --zk_cluster=172.24.4.40:30481 --zk_root_path=/openmldb --cmd=post-upgrade --endpoints=127.0.0.1:10921
     ```
-  
+
 ### 升级结果确认
 * `showopstatus`命令查看是否有操作为kFailed, 如果有查看日志排查原因
     ```bash
@@ -59,7 +64,7 @@
     ```bash
     python tools/openmldb_ops.py --openmldb_bin_path=./bin/openmldb --zk_cluster=172.24.4.40:30481 --zk_root_path=/openmldb --cmd=showtablestatus
     ```
-一个tablet节点升级完成后，对其他tablet重复上述步骤。
+    一个tablet节点升级完成后，对其他tablet重复上述步骤。
 
 所有节点升级完成后恢复写操作, 执行`showtablestatus`命令查看`Rows`是否增加。
 
@@ -88,6 +93,12 @@
     ```bash
     bash bin/start.sh start taskmanager
     ```
+
+### Yarn模式下的升级
+
+Yarn模式下，第一步替换Spark时，还需要注意`spark.yarn.jars`和`batchjob.jar.path`的配置，如果指向HDFS路径，那么HDFS路径上的包也需要更新。这种情况下，更新TaskMananger的本地`$SPARK_HOME`目录不会影响到Yarn模式下的Spark。
+
+剩下的TaskManager升级步骤和上文的步骤一致。
 
 ## 5. 升级SDK
 

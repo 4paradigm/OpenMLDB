@@ -33,7 +33,7 @@
 DECLARE_string(db_root_path);
 DECLARE_uint32(traverse_cnt_limit);
 DECLARE_uint32(max_traverse_cnt);
-DECLARE_uint32(max_traverse_pk_cnt);
+DECLARE_uint32(max_traverse_key_cnt);
 
 namespace openmldb {
 namespace catalog {
@@ -150,7 +150,8 @@ TEST_F(DistributeIteratorTest, Empty) {
 
 TEST_F(DistributeIteratorTest, AllInRemote) {
     uint32_t tid = 3;
-    FLAGS_db_root_path = "/tmp/" + ::openmldb::test::GenRand();
+    ::openmldb::test::TempPath tmp_path;
+    FLAGS_db_root_path = tmp_path.GetTempPath();
     std::vector<std::string> endpoints = {"127.0.0.1:9230", "127.0.0.1:9231"};
     brpc::Server tablet1;
     ASSERT_TRUE(::openmldb::test::StartTablet(endpoints[0], &tablet1));
@@ -161,8 +162,8 @@ TEST_F(DistributeIteratorTest, AllInRemote) {
     auto client2 = std::make_shared<openmldb::client::TabletClient>(endpoints[1], endpoints[1]);
     ASSERT_EQ(client2->Init(), 0);
     std::vector<::openmldb::api::TableMeta> metas = {CreateTableMeta(tid, 1), CreateTableMeta(tid, 4)};
-    ASSERT_TRUE(client1->CreateTable(metas[0]));
-    ASSERT_TRUE(client2->CreateTable(metas[1]));
+    ASSERT_TRUE(client1->CreateTable(metas[0]).OK());
+    ASSERT_TRUE(client2->CreateTable(metas[1]).OK());
     std::map<uint32_t, std::shared_ptr<openmldb::client::TabletClient>> tablet_clients = {{1, client1}, {4, client2}};
     FullTableIterator it(tid, {}, tablet_clients);
     it.SeekToFirst();
@@ -187,7 +188,8 @@ TEST_F(DistributeIteratorTest, AllInRemote) {
 
 TEST_F(DistributeIteratorTest, Hybrid) {
     uint32_t tid = 3;
-    FLAGS_db_root_path = "/tmp/" + ::openmldb::test::GenRand();
+    ::openmldb::test::TempPath tmp_path;
+    FLAGS_db_root_path = tmp_path.GetTempPath();
     auto tables = std::make_shared<Tables>();
     auto table1 = CreateTable(tid, 3);
     auto table2 = CreateTable(tid, 7);
@@ -203,8 +205,8 @@ TEST_F(DistributeIteratorTest, Hybrid) {
     auto client2 = std::make_shared<openmldb::client::TabletClient>(endpoints[1], endpoints[1]);
     ASSERT_EQ(client2->Init(), 0);
     std::vector<::openmldb::api::TableMeta> metas = {CreateTableMeta(tid, 1), CreateTableMeta(tid, 4)};
-    ASSERT_TRUE(client1->CreateTable(metas[0]));
-    ASSERT_TRUE(client2->CreateTable(metas[1]));
+    ASSERT_TRUE(client1->CreateTable(metas[0]).OK());
+    ASSERT_TRUE(client2->CreateTable(metas[1]).OK());
     std::map<uint32_t, std::shared_ptr<openmldb::client::TabletClient>> tablet_clients = {{1, client1}, {4, client2}};
     FullTableIterator it(tid, tables, tablet_clients);
     it.SeekToFirst();
@@ -246,7 +248,8 @@ TEST_F(DistributeIteratorTest, FullTableTraverseLimit) {
     uint32_t old_limit = FLAGS_max_traverse_cnt;
     FLAGS_max_traverse_cnt = 100;
     uint32_t tid = 3;
-    FLAGS_db_root_path = "/tmp/" + ::openmldb::test::GenRand();
+    ::openmldb::test::TempPath tmp_path;
+    FLAGS_db_root_path = tmp_path.GetTempPath();
     auto tables = std::make_shared<Tables>();
     auto table1 = CreateTable(tid, 3);
     auto table2 = CreateTable(tid, 7);
@@ -262,8 +265,8 @@ TEST_F(DistributeIteratorTest, FullTableTraverseLimit) {
     auto client2 = std::make_shared<openmldb::client::TabletClient>(endpoints[1], endpoints[1]);
     ASSERT_EQ(client2->Init(), 0);
     std::vector<::openmldb::api::TableMeta> metas = {CreateTableMeta(tid, 1), CreateTableMeta(tid, 4)};
-    ASSERT_TRUE(client1->CreateTable(metas[0]));
-    ASSERT_TRUE(client2->CreateTable(metas[1]));
+    ASSERT_TRUE(client1->CreateTable(metas[0]).OK());
+    ASSERT_TRUE(client2->CreateTable(metas[1]).OK());
     std::map<uint32_t, std::shared_ptr<openmldb::client::TabletClient>> tablet_clients = {{1, client1}, {4, client2}};
     FullTableIterator it(tid, tables, tablet_clients);
     it.SeekToFirst();
@@ -306,14 +309,15 @@ TEST_F(DistributeIteratorTest, TraverseLimitSingle) {
     uint32_t old_limit = FLAGS_traverse_cnt_limit;
     FLAGS_traverse_cnt_limit = 3;
     uint32_t tid = 3;
-    FLAGS_db_root_path = "/tmp/" + ::openmldb::test::GenRand();
+    ::openmldb::test::TempPath tmp_path;
+    FLAGS_db_root_path = tmp_path.GetTempPath();
     brpc::Server tablet1;
     std::vector<std::string> endpoints = {"127.0.0.1:9230", "127.0.0.1:9231"};
     ASSERT_TRUE(::openmldb::test::StartTablet(endpoints[0], &tablet1));
     auto client1 = std::make_shared<openmldb::client::TabletClient>(endpoints[0], endpoints[0]);
     ASSERT_EQ(client1->Init(), 0);
     std::vector<::openmldb::api::TableMeta> metas = {CreateTableMeta(tid, 0)};
-    ASSERT_TRUE(client1->CreateTable(metas[0]));
+    ASSERT_TRUE(client1->CreateTable(metas[0]).OK());
     std::map<uint32_t, std::shared_ptr<openmldb::client::TabletClient>> tablet_clients = {{0, client1}};
     for (int i = 0; i < 10; i++) {
         std::string key = "card" + std::to_string(i);
@@ -334,7 +338,8 @@ TEST_F(DistributeIteratorTest, TraverseLimit) {
     uint32_t old_limit = FLAGS_traverse_cnt_limit;
     FLAGS_traverse_cnt_limit = 100;
     uint32_t tid = 3;
-    FLAGS_db_root_path = "/tmp/" + ::openmldb::test::GenRand();
+    ::openmldb::test::TempPath tmp_path;
+    FLAGS_db_root_path = tmp_path.GetTempPath();
     auto tables = std::make_shared<Tables>();
     auto table1 = CreateTable(tid, 0);
     auto table2 = CreateTable(tid, 2);
@@ -350,8 +355,8 @@ TEST_F(DistributeIteratorTest, TraverseLimit) {
     auto client2 = std::make_shared<openmldb::client::TabletClient>(endpoints[1], endpoints[1]);
     ASSERT_EQ(client2->Init(), 0);
     std::vector<::openmldb::api::TableMeta> metas = {CreateTableMeta(tid, 1), CreateTableMeta(tid, 3)};
-    ASSERT_TRUE(client1->CreateTable(metas[0]));
-    ASSERT_TRUE(client2->CreateTable(metas[1]));
+    ASSERT_TRUE(client1->CreateTable(metas[0]).OK());
+    ASSERT_TRUE(client2->CreateTable(metas[1]).OK());
     std::map<uint32_t, std::shared_ptr<openmldb::client::TabletClient>> tablet_clients = {{1, client1}, {3, client2}};
     std::map<uint32_t, uint32_t> cout_map = {{0, 0}, {1, 0}, {2, 0}, {3, 0}};
     for (int i = 0; i < 100; i++) {
@@ -377,7 +382,8 @@ TEST_F(DistributeIteratorTest, TraverseLimit) {
 
 TEST_F(DistributeIteratorTest, WindowIterator) {
     uint32_t tid = 3;
-    FLAGS_db_root_path = "/tmp/" + ::openmldb::test::GenRand();
+    ::openmldb::test::TempPath tmp_path;
+    FLAGS_db_root_path = tmp_path.GetTempPath();
     auto tables = std::make_shared<Tables>();
     auto table1 = CreateTable(tid, 0);
     auto table2 = CreateTable(tid, 2);
@@ -393,8 +399,8 @@ TEST_F(DistributeIteratorTest, WindowIterator) {
     auto client2 = std::make_shared<openmldb::client::TabletClient>(endpoints[1], endpoints[1]);
     ASSERT_EQ(client2->Init(), 0);
     std::vector<::openmldb::api::TableMeta> metas = {CreateTableMeta(tid, 1), CreateTableMeta(tid, 3)};
-    ASSERT_TRUE(client1->CreateTable(metas[0]));
-    ASSERT_TRUE(client2->CreateTable(metas[1]));
+    ASSERT_TRUE(client1->CreateTable(metas[0]).OK());
+    ASSERT_TRUE(client2->CreateTable(metas[1]).OK());
     std::map<uint32_t, std::shared_ptr<openmldb::client::TabletClient>> tablet_clients = {{1, client1}, {3, client2}};
     for (int i = 0; i < 20; i++) {
         std::string key = "card" + std::to_string(i);
@@ -448,14 +454,15 @@ TEST_F(DistributeIteratorTest, RemoteIterator) {
     FLAGS_traverse_cnt_limit = 7;
     uint32_t tid = 3;
     auto tables = std::make_shared<Tables>();
-    FLAGS_db_root_path = "/tmp/" + ::openmldb::test::GenRand();
+    ::openmldb::test::TempPath tmp_path;
+    FLAGS_db_root_path = tmp_path.GetTempPath();
     std::vector<std::string> endpoints = {"127.0.0.1:9230"};
     brpc::Server tablet1;
     ASSERT_TRUE(::openmldb::test::StartTablet(endpoints[0], &tablet1));
     auto client1 = std::make_shared<openmldb::client::TabletClient>(endpoints[0], endpoints[0]);
     ASSERT_EQ(client1->Init(), 0);
     std::vector<::openmldb::api::TableMeta> metas = {CreateTableMeta(tid, 0)};
-    ASSERT_TRUE(client1->CreateTable(metas[0]));
+    ASSERT_TRUE(client1->CreateTable(metas[0]).OK());
     std::map<uint32_t, std::shared_ptr<openmldb::client::TabletClient>> tablet_clients = {{0, client1}};
     codec::SDKCodec codec(metas[0]);
     int64_t now = 1999;
@@ -525,14 +532,15 @@ TEST_F(DistributeIteratorTest, RemoteIteratorSecondIndex) {
     FLAGS_traverse_cnt_limit = 7;
     uint32_t tid = 3;
     auto tables = std::make_shared<Tables>();
-    FLAGS_db_root_path = "/tmp/" + ::openmldb::test::GenRand();
+    ::openmldb::test::TempPath tmp_path;
+    FLAGS_db_root_path = tmp_path.GetTempPath();
     std::vector<std::string> endpoints = {"127.0.0.1:9230"};
     brpc::Server tablet1;
     ASSERT_TRUE(::openmldb::test::StartTablet(endpoints[0], &tablet1));
     auto client1 = std::make_shared<openmldb::client::TabletClient>(endpoints[0], endpoints[0]);
     ASSERT_EQ(client1->Init(), 0);
     std::vector<::openmldb::api::TableMeta> metas = {CreateTableMeta(tid, 0)};
-    ASSERT_TRUE(client1->CreateTable(metas[0]));
+    ASSERT_TRUE(client1->CreateTable(metas[0]).OK());
     std::map<uint32_t, std::shared_ptr<openmldb::client::TabletClient>> tablet_clients = {{0, client1}};
     codec::SDKCodec codec(metas[0]);
     uint64_t now = ::baidu::common::timer::get_micros() / 1000;
@@ -653,7 +661,8 @@ TEST_F(DistributeIteratorTest, MoreTsCnt) {
     uint32_t old_limit = FLAGS_traverse_cnt_limit;
     FLAGS_traverse_cnt_limit = 7;
     uint32_t tid = 3;
-    FLAGS_db_root_path = "/tmp/" + ::openmldb::test::GenRand();
+    ::openmldb::test::TempPath tmp_path;
+    FLAGS_db_root_path = tmp_path.GetTempPath();
     auto tables = std::make_shared<Tables>();
     auto table1 = CreateTable(tid, 0);
     auto table2 = CreateTable(tid, 2);
@@ -669,8 +678,8 @@ TEST_F(DistributeIteratorTest, MoreTsCnt) {
     auto client2 = std::make_shared<openmldb::client::TabletClient>(endpoints[1], endpoints[1]);
     ASSERT_EQ(client2->Init(), 0);
     std::vector<::openmldb::api::TableMeta> metas = {CreateTableMeta(tid, 1), CreateTableMeta(tid, 3)};
-    ASSERT_TRUE(client1->CreateTable(metas[0]));
-    ASSERT_TRUE(client2->CreateTable(metas[1]));
+    ASSERT_TRUE(client1->CreateTable(metas[0]).OK());
+    ASSERT_TRUE(client2->CreateTable(metas[1]).OK());
     std::map<uint32_t, std::shared_ptr<openmldb::client::TabletClient>> tablet_clients = {{1, client1}, {3, client2}};
     std::map<uint32_t, uint32_t> cout_map = {{0, 0}, {1, 0}, {2, 0}, {3, 0}};
     for (int i = 0; i < 50; i++) {
@@ -733,7 +742,8 @@ TEST_F(DistributeIteratorTest, TraverseSameTs) {
     uint32_t old_limit = FLAGS_traverse_cnt_limit;
     FLAGS_traverse_cnt_limit = 7;
     uint32_t tid = 3;
-    FLAGS_db_root_path = "/tmp/" + ::openmldb::test::GenRand();
+    ::openmldb::test::TempPath tmp_path;
+    FLAGS_db_root_path = tmp_path.GetTempPath();
     auto tables = std::make_shared<Tables>();
     auto table1 = CreateTable(tid, 0);
     auto table2 = CreateTable(tid, 2);
@@ -749,8 +759,8 @@ TEST_F(DistributeIteratorTest, TraverseSameTs) {
     auto client2 = std::make_shared<openmldb::client::TabletClient>(endpoints[1], endpoints[1]);
     ASSERT_EQ(client2->Init(), 0);
     std::vector<::openmldb::api::TableMeta> metas = {CreateTableMeta(tid, 1), CreateTableMeta(tid, 3)};
-    ASSERT_TRUE(client1->CreateTable(metas[0]));
-    ASSERT_TRUE(client2->CreateTable(metas[1]));
+    ASSERT_TRUE(client1->CreateTable(metas[0]).OK());
+    ASSERT_TRUE(client2->CreateTable(metas[1]).OK());
     std::map<uint32_t, std::shared_ptr<openmldb::client::TabletClient>> tablet_clients = {{1, client1}, {3, client2}};
     std::map<uint32_t, uint32_t> cout_map = {{0, 0}, {1, 0}, {2, 0}, {3, 0}};
     for (int i = 0; i < 20; i++) {
@@ -775,9 +785,10 @@ TEST_F(DistributeIteratorTest, TraverseSameTs) {
 }
 
 TEST_F(DistributeIteratorTest, WindowIteratorLimit) {
-    uint32_t old_max_pk_cnt = FLAGS_max_traverse_pk_cnt;
+    uint32_t old_max_pk_cnt = FLAGS_max_traverse_key_cnt;
     uint32_t tid = 3;
-    FLAGS_db_root_path = "/tmp/" + ::openmldb::test::GenRand();
+    ::openmldb::test::TempPath tmp_path;
+    FLAGS_db_root_path = tmp_path.GetTempPath();
     auto tables = std::make_shared<Tables>();
     auto table1 = CreateTable(tid, 0);
     auto table2 = CreateTable(tid, 2);
@@ -793,8 +804,8 @@ TEST_F(DistributeIteratorTest, WindowIteratorLimit) {
     auto client2 = std::make_shared<openmldb::client::TabletClient>(endpoints[1], endpoints[1]);
     ASSERT_EQ(client2->Init(), 0);
     std::vector<::openmldb::api::TableMeta> metas = {CreateTableMeta(tid, 1), CreateTableMeta(tid, 3)};
-    ASSERT_TRUE(client1->CreateTable(metas[0]));
-    ASSERT_TRUE(client2->CreateTable(metas[1]));
+    ASSERT_TRUE(client1->CreateTable(metas[0]).OK());
+    ASSERT_TRUE(client2->CreateTable(metas[1]).OK());
     std::map<uint32_t, std::shared_ptr<openmldb::client::TabletClient>> tablet_clients = {{1, client1}, {3, client2}};
     for (int i = 0; i < 20; i++) {
         std::string key = "card" + std::to_string(i);
@@ -806,7 +817,7 @@ TEST_F(DistributeIteratorTest, WindowIteratorLimit) {
         }
     }
 
-    FLAGS_max_traverse_pk_cnt = 10;
+    FLAGS_max_traverse_key_cnt = 10;
     {
         DistributeWindowIterator w_it(tid, 4, tables, 0, "card", tablet_clients);
         for (int i = 0; i < 20; i++) {
@@ -829,24 +840,24 @@ TEST_F(DistributeIteratorTest, WindowIteratorLimit) {
             count++;
             w_it.Next();
         }
-        ASSERT_EQ(count, FLAGS_max_traverse_pk_cnt);
+        ASSERT_EQ(count, FLAGS_max_traverse_key_cnt);
         w_it.Seek("card11");
         count = 0;
         while (w_it.Valid()) {
             count++;
             w_it.Next();
         }
-        ASSERT_EQ(count, FLAGS_max_traverse_pk_cnt);
+        ASSERT_EQ(count, FLAGS_max_traverse_key_cnt);
         w_it.Seek("card15");
         count = 0;
         while (w_it.Valid()) {
             count++;
             w_it.Next();
         }
-        ASSERT_EQ(count, FLAGS_max_traverse_pk_cnt);
+        ASSERT_EQ(count, FLAGS_max_traverse_key_cnt);
     }
 
-    FLAGS_max_traverse_pk_cnt = 20;
+    FLAGS_max_traverse_key_cnt = 20;
     {
         DistributeWindowIterator w_it(tid, 4, tables, 0, "card", tablet_clients);
         for (int i = 0; i < 20; i++) {
@@ -869,7 +880,7 @@ TEST_F(DistributeIteratorTest, WindowIteratorLimit) {
             count++;
             w_it.Next();
         }
-        ASSERT_EQ(count, FLAGS_max_traverse_pk_cnt);
+        ASSERT_EQ(count, FLAGS_max_traverse_key_cnt);
         w_it.Seek("card11");
         count = 0;
         while (w_it.Valid()) {
@@ -886,14 +897,15 @@ TEST_F(DistributeIteratorTest, WindowIteratorLimit) {
         ASSERT_EQ(count, 10);
     }
 
-    FLAGS_max_traverse_pk_cnt = old_max_pk_cnt;
+    FLAGS_max_traverse_key_cnt = old_max_pk_cnt;
 }
 
 TEST_F(DistributeIteratorTest, IteratorZero) {
     uint32_t old_limit = FLAGS_traverse_cnt_limit;
     FLAGS_traverse_cnt_limit = 7;
     uint32_t tid = 3;
-    FLAGS_db_root_path = "/tmp/" + ::openmldb::test::GenRand();
+    ::openmldb::test::TempPath tmp_path;
+    FLAGS_db_root_path = tmp_path.GetTempPath();
     auto tables = std::make_shared<Tables>();
     auto table1 = CreateTable(tid, 0);
     auto table2 = CreateTable(tid, 2);
@@ -909,8 +921,8 @@ TEST_F(DistributeIteratorTest, IteratorZero) {
     auto client2 = std::make_shared<openmldb::client::TabletClient>(endpoints[1], endpoints[1]);
     ASSERT_EQ(client2->Init(), 0);
     std::vector<::openmldb::api::TableMeta> metas = {CreateTableMeta(tid, 1), CreateTableMeta(tid, 3)};
-    ASSERT_TRUE(client1->CreateTable(metas[0]));
-    ASSERT_TRUE(client2->CreateTable(metas[1]));
+    ASSERT_TRUE(client1->CreateTable(metas[0]).OK());
+    ASSERT_TRUE(client2->CreateTable(metas[1]).OK());
     std::map<uint32_t, std::shared_ptr<openmldb::client::TabletClient>> tablet_clients = {{1, client1}, {3, client2}};
     std::map<uint32_t, uint32_t> cout_map = {{0, 0}, {1, 0}, {2, 0}, {3, 0}};
     int expect = 0;

@@ -37,6 +37,8 @@
 namespace openmldb {
 namespace sdk {
 
+typedef char* ByteArrayPtr;
+
 struct BasicRouterOptions {
     virtual ~BasicRouterOptions() = default;
     bool enable_debug = false;
@@ -163,8 +165,17 @@ class SQLRouter {
                                                                     std::shared_ptr<openmldb::sdk::SQLRequestRow> row,
                                                                     hybridse::sdk::Status* status) = 0;
 
+    virtual std::shared_ptr<hybridse::sdk::ResultSet> CallProcedure(const std::string& db, const std::string& sp_name,
+            hybridse::sdk::ByteArrayPtr buf, int len, const std::string& router_col,
+            hybridse::sdk::Status* status) = 0;
+
     virtual std::shared_ptr<hybridse::sdk::ResultSet> CallSQLBatchRequestProcedure(
         const std::string& db, const std::string& sp_name, std::shared_ptr<openmldb::sdk::SQLRequestRowBatch> row_batch,
+        hybridse::sdk::Status* status) = 0;
+
+    virtual std::shared_ptr<hybridse::sdk::ResultSet> CallSQLBatchRequestProcedure(
+        const std::string& db, const std::string& sp_name, hybridse::sdk::ByteArrayPtr meta, int meta_len,
+        hybridse::sdk::ByteArrayPtr buf, int len,
         hybridse::sdk::Status* status) = 0;
 
     virtual std::shared_ptr<hybridse::sdk::ProcedureInfo> ShowProcedure(const std::string& db,
@@ -176,9 +187,19 @@ class SQLRouter {
                                                                       std::shared_ptr<openmldb::sdk::SQLRequestRow> row,
                                                                       hybridse::sdk::Status* status) = 0;
 
+    virtual std::shared_ptr<openmldb::sdk::QueryFuture> CallProcedure(const std::string& db, const std::string& sp_name,
+            int64_t timeout_ms, hybridse::sdk::ByteArrayPtr buf, int len,
+            const std::string& router_col, hybridse::sdk::Status* status) = 0;
+
     virtual std::shared_ptr<openmldb::sdk::QueryFuture> CallSQLBatchRequestProcedure(
         const std::string& db, const std::string& sp_name, int64_t timeout_ms,
         std::shared_ptr<openmldb::sdk::SQLRequestRowBatch> row_batch, hybridse::sdk::Status* status) = 0;
+
+    virtual std::shared_ptr<openmldb::sdk::QueryFuture> CallSQLBatchRequestProcedure(
+        const std::string& db, const std::string& sp_name, int64_t timeout_ms,
+        hybridse::sdk::ByteArrayPtr meta, int meta_len,
+        hybridse::sdk::ByteArrayPtr buf, int len,
+        hybridse::sdk::Status* status) = 0;
 
     virtual std::shared_ptr<hybridse::sdk::Schema> GetTableSchema(const std::string& db,
                                                                   const std::string& table_name) = 0;
@@ -257,17 +278,36 @@ std::vector<std::string> GenDDL(
     const std::string& sql,
     const std::vector<std::pair<std::string, std::vector<std::pair<std::string, hybridse::sdk::DataType>>>>& schemas);
 
+// support multi db, input schema: vector<db, vector<table, vector<column, type>>>
+// if using db is empty, use the first db in schemas
 std::shared_ptr<hybridse::sdk::Schema> GenOutputSchema(
-    const std::string& sql,
-    const std::vector<std::pair<std::string, std::vector<std::pair<std::string, hybridse::sdk::DataType>>>>& schemas);
+    const std::string& sql, const std::string& db,
+    const std::vector<
+        std::pair<std::string,
+                  std::vector<std::pair<std::string, std::vector<std::pair<std::string, hybridse::sdk::DataType>>>>>>&
+        schemas);
 
 std::vector<std::string> ValidateSQLInBatch(
-    const std::string& sql,
-    const std::vector<std::pair<std::string, std::vector<std::pair<std::string, hybridse::sdk::DataType>>>>& schemas);
+    const std::string& sql, const std::string& db,
+    const std::vector<
+        std::pair<std::string,
+                  std::vector<std::pair<std::string, std::vector<std::pair<std::string, hybridse::sdk::DataType>>>>>>&
+        schemas);
 
 std::vector<std::string> ValidateSQLInRequest(
-    const std::string& sql,
-    const std::vector<std::pair<std::string, std::vector<std::pair<std::string, hybridse::sdk::DataType>>>>& schemas);
+    const std::string& sql, const std::string& db,
+    const std::vector<
+        std::pair<std::string,
+                  std::vector<std::pair<std::string, std::vector<std::pair<std::string, hybridse::sdk::DataType>>>>>>&
+        schemas);
+
+// vector[0] is the main db.table
+std::vector<std::pair<std::string, std::string>> GetDependentTables(
+    const std::string& sql, const std::string& db,
+    const std::vector<
+        std::pair<std::string,
+                  std::vector<std::pair<std::string, std::vector<std::pair<std::string, hybridse::sdk::DataType>>>>>>&
+        schemas);
 
 }  // namespace sdk
 }  // namespace openmldb

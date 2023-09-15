@@ -5,6 +5,9 @@
 .. toctree::
     :maxdepth: 1
 
-    compile
     install_deploy
     conf
+    compile
+    integrate_hadoop
+    offline_integrate_kubernetes
+    [Alpha]在线引擎基于 Kubernetes 部署 <https://github.com/4paradigm/openmldb-k8s>

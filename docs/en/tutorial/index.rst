@@ -12,3 +12,5 @@ Tutorials
     data_import
     openmldbspark_distribution
     autofe
+    common_architecture
+    online_offline_sync

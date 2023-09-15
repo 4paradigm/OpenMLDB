@@ -1,7 +1,6 @@
 # CREATE INDEX
 
-`CREATE INDEX` 语句用来创建索引。 如果表里有数据，添加索引会发起异步任务来加载数据。
-通过`ns_client`中的`showopstatus`命令可以查看任务状态，详见[运维 CLI](../../../maintain/cli.md#showopstatus)。
+`CREATE INDEX` 语句用来创建索引。添加索引会发起异步任务来加载数据, 可以通过执行`SHOW JOBS FROM NAMESERVER`来查看任务状态
 
 ## 语法
 
@@ -40,15 +39,14 @@ OptionEntry ::=
 
 ```
 
-
-
 ## **示例**
 ```SQL
 CREATE INDEX index2 ON t5 (col2);
 -- SUCCEED
 ```
 ```{note}
-如果不指定Options, 创建的索引就没有指定`TS`列，因此不能用在需要上线的SQL中。
+1. 如果不指定Options, 创建的索引就没有指定`TS`列，因此不能用在需要上线的SQL中。
+2. 指定`TS`列的类型只能是BitInt或者Timestamp
 ```
 我们可以通过类似如下命令在创建索引时指定`TS`列:
 ```SQL

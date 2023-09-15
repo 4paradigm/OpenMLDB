@@ -135,9 +135,11 @@ TEST_F(ExprNodeTest, CondExprNodeTest) {
     CheckInfer<float, bool, float, float>(do_build);
     CheckInfer<Nullable<float>, bool, Nullable<float>, float>(do_build);
     CheckInfer<Nullable<float>, bool, float, Nullable<float>>(do_build);
+    CheckInfer<double, bool, double, float>(do_build);
+    CheckInfer<double, bool, int64_t, float>(do_build);
+    CheckInfer<codec::StringRef, bool, int64_t, codec::StringRef>(do_build);
 
     CheckInferError<int32_t, float, float>(do_build);
-    CheckInferError<bool, double, float>(do_build);
 }
 template <typename RET, typename LHS, typename RHS>
 void CheckBinaryOpInfer(FnOperator op) {

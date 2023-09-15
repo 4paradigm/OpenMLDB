@@ -35,8 +35,8 @@ endif()
 
 message (STATUS "CMAKE_BUILD_TYPE: ${CMAKE_BUILD_TYPE}")
 set(OPENMLDB_VERSION_MAJOR 0)
-set(OPENMLDB_VERSION_MINOR 6)
-set(OPENMLDB_VERSION_BUG 5)
+set(OPENMLDB_VERSION_MINOR 8)
+set(OPENMLDB_VERSION_BUG 2)
 
 function(get_commitid CODE_DIR COMMIT_ID)
     find_package(Git REQUIRED)
@@ -90,8 +90,10 @@ option(TESTING_ENABLE "Enable test" OFF)
 option(TCMALLOC_ENABLE "Enable TCMALLOC" ON)
 option(SQL_PYSDK_ENABLE "Enable sql pysdk" OFF)
 option(SQL_JAVASDK_ENABLE "Enable sql javasdk" OFF)
+option(INSTALL_CXXSDK "Enable sql cxxsdk install" OFF)
 option(MAC_TABLET_ENABLE "Enable Table on Mac OS" ON)
 option(COVERAGE_ENABLE "Enable Coverage" OFF)
+option(COVERAGE_NO_DEPS "Coverage without test deps, should ensure test built" OFF)
 option(SANITIZER_ENABLE "Enable AddressSanitizer in Debug mode" OFF)
 # add_library can reply on this variable
 # see https://cmake.org/cmake/help/latest/variable/BUILD_SHARED_LIBS.html#variable:BUILD_SHARED_LIBS
@@ -135,6 +137,9 @@ include(FetchContent)
 set(FETCHCONTENT_QUIET OFF)
 include(farmhash)
 
+# contrib libs
+add_subdirectory(contrib EXCLUDE_FROM_ALL)
+
 if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
     set(OS_LIB ${CMAKE_THREAD_LIBS_INIT} rt)
     set(BRPC_LIBS ${BRPC_LIBRARY} ${Protobuf_LIBRARIES} ${GLOG_LIBRARY} ${GFLAGS_LIBRARY} ${UNWIND_LIBRARY} ${OPENSSL_LIBRARIES} ${LEVELDB_LIBRARY} ${Z_LIBRARY} ${SNAPPY_LIBRARY} dl pthread ${OS_LIB})
@@ -173,6 +178,7 @@ if (COVERAGE_ENABLE)
         message(FATAL_ERROR "Coverage is only supported on linux")
     endif ()
     find_program(LCOV_EXE NAMES lcov DOC "coverage requires lcov installed" REQUIRED)
+    message(STATUS "include CodeCoverage, if file not found, please git submodule update --init to get file")
     include(CodeCoverage)
     APPEND_COVERAGE_COMPILER_FLAGS()
 endif ()
@@ -193,7 +199,7 @@ set(LLVM_DIR "${CMAKE_PREFIX_PATH}/lib/cmake/llvm")
 find_package(LLVM REQUIRED CONFIG)
 message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
 message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
-llvm_map_components_to_libnames(LLVM_LIBS support core orcjit nativecodegen)
+llvm_map_components_to_libnames(LLVM_LIBS support core irreader orcjit nativecodegen)
 message(STATUS "Using LLVM components: ${LLVM_LIBS}")
 add_definitions(${LLVM_DEFINITIONS})
 
@@ -220,6 +226,7 @@ list(
         absl::random_random
         absl::strings
         absl::strings_internal
+        absl::str_format
         absl::synchronization
         absl::time
         absl::status
@@ -236,27 +243,16 @@ if (NOT ICU_FOUND)
 endif ()
 message(STATUS "Found ICU Libraries: ${ICU_LIBRARIES}")
 
-list(APPEND file_based_test_driver_LIBS
-        alternations
-        test_case_options
-        test_case_outputs
-        test_case_mode
-        logging
-        path
-        status
-        unified_diff_oss
-        ret_check
-        )
+find_library(zetasql_LIB zetasql)
+find_library(re2_LIB re2)
 set(ZETASQL_LIBS
-        zetasql
-        ${file_based_test_driver_LIBS}
+        ${zetasql_LIB}
         ${ABSL_LIBS}
-        re2
+        ${re2_LIB}
         ${ICU_LIBRARIES}
-        date_proto
-        timeofday_proto
-        latlng_proto
         )
+
+find_library(zookeeper_mt_LIB zookeeper_mt)
 
 if (TCMALLOC_ENABLE)
     set(CMAKE_EXE_LINKER_FLAGS "-fno-builtin-malloc -fno-builtin-calloc -fno-builtin-realloc -fno-builtin-free ${CMAKE_EXE_LINKER_FLAGS}")
@@ -285,10 +281,15 @@ link_directories(
 add_subdirectory(src)
 
 if (COVERAGE_ENABLE AND CMAKE_COMPILER_IS_GNUCXX)
-  # FIXME(aceforeverd): api_server_test failed to run on debug mode, skip temporarily
-  SETUP_TARGET_FOR_COVERAGE_LCOV(NAME coverage
-    EXECUTABLE ctest --force-new-ctest-process --output-on-failure -E "api_server_test"
-    DEPENDENCIES ${test_list})
+  if (COVERAGE_NO_DEPS)
+        SETUP_TARGET_FOR_COVERAGE_LCOV(NAME coverage
+        EXECUTABLE ctest --force-new-ctest-process --output-on-failure -E "api_server_test")
+  else ()
+    # FIXME(aceforeverd): api_server_test failed to run on debug mode, skip temporarily
+    SETUP_TARGET_FOR_COVERAGE_LCOV(NAME coverage
+        EXECUTABLE ctest --force-new-ctest-process --output-on-failure -E "api_server_test"
+        DEPENDENCIES ${test_list})
+  endif ()
 endif ()
 
 
@@ -321,3 +322,4 @@ install(
   DESTINATION tools
   PERMISSIONS OWNER_EXECUTE OWNER_WRITE OWNER_READ GROUP_EXECUTE GROUP_READ WORLD_EXECUTE WORLD_READ
 )
+install(DIRECTORY DESTINATION udf)

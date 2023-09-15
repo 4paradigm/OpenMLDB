@@ -1,5 +1,202 @@
 # Changelog
 
+## [0.8.3] - 2023-09-15
+
+### Features
+- Optimize the performance of Java SDK (#3445 @dl239)
+- Optimize the writing performance and significantly reduce the memory consumption of the Spark connector (#3443 @vagetablechicken)
+- Support loading data from HIVE with customized SQLs (#3380 @tobegit3hub)
+- Improve the output message for SDK and CLI (#3384 @vagetablechicken, #3434 #3494 @dl239)
+- Support new built-in functions `json_array_length` and `get_json_object` (#3414 #3429 @aceforeverd)
+- Add new options `RANGE_BIAS` and `ROWS_BIAS` for the `DEPLOYMENT` statement (#3456 @vagetablechicken)
+- Support `const` project in online mode (#3376 @aceforeverd)
+- Support `SHOW DEPLOYMENT` and `DROP DEPLOYMENT` with a database name (#3353 @emo-coder)
+- Support inheriting environment variables for Spark (#3450 @vagetablechicken)
+- Support deleting HDFS files when dropping tables (#3369 @tobegit3hub)
+- Enhance the diagnostic tool (#3330 @zhangziheng01233)
+- Enhance the operation tool (#3455 @dl239)
+- Use the timeout value set by an user only if that is greater than the default value (#3484 @vagetablechicken)
+- Remove the sync tool from the demo docker image (#3390 @dl239)
+- Improve the documents (#3383 #3392 #3410 @vagetablechicken, #3175 #3447 ##3463 @TanZiYen, #3436 @aceforeverd, #3451 @wangerry, #3453 #3462 #3498 @dl239)
+
+### Bug Fixes
+- `CREATE TABLE LIKE HIVE` returns success even if a database is not found (#3379 @emo-coder)
+- If an error occurred when executing `DROP FUNCTION`, the function cannot be deleted again. (#3362 @vagetablechicken, #3441 @dl239)
+- The results of `SHOW JOBS` are not sorted by `id` (#3371 @emo-coder)
+- NameServer will crash if creating system tables fails. (#3432 @dl239)
+- `CREATE INDEX` may fail if the previous `CREATE INDEX` command on the same table has not finished. (#3393 @dl239)
+- The result of `SELECT` on the deleted index column is empty (#3426 @dl239)
+- Other minor bug fixes (#3391 #3408 @vagetablechicken, #3386 #3427 #3459 @dl239, #3367 #3495 @aceforeverd)
+
+### Code Refactoring
+#3397 @emo-coder, #3411 @vagetablechicken, #3435 @aceforeverd, #3473 @lqy222
+
+### Breaking Changes
+- The return type of `GetInternalSchema` in `SQLResultSet` changes from native Schema to `com._4paradigm.openmldb.sdk.Schema` #3445
+- Remove the deprecated TaskManager configuration `namenode.uri` #3369
+
+## [0.8.2] - 2023-07-20
+
+### Features
+- Enhance the `delete` statement (#3301 #3374 @dl239)
+- Enhance the C++ SDK (#3334 @vagetablechicken)
+- Support the new option `IF EXISTS` in the `DROP TABLE/DATABASE` statement (#3348 @emo-coder)
+- Improve the documents (#3344 #3152 #3355 #3360 @vagetablechicken, #3341 @aceforeverd, #3343 #3372 @dl239, #2968 @selenachenjingxin)
+- Upgrade the version of Kafka connector to `10.5.0-SNAPSHOT-0.8.1` (#3365 @vagetablechicken)
+
+### Bug Fixes
+- Loading external UDF libraries fails under certain environment when runing an offline task (#3350 #3359 @vagetablechicken)
+- Loading data fails with Hive soft links (#3349 @vagetablechicken)
+- Insertion succeeds but with an invalid timestamp (#3313 @aceforeverd)
+- The bool type is not properly packed in APIServer. (#3366 @vagetablechicken)
+- The table can be created successfully when there are duplicated indexs. (#3306 @dl239)
+
+### Breaking Changes
+- The field `Offline_deep_copy` will be replaced by `Offline_symbolic_paths` in the result of `SHOW TABLE STATUS` #3349.
+
+## [0.8.1] - 2023-06-28
+
+### Features
+- Support a new SQL statement `ALTER TABLE ... ADD/DROP OFFLINE_PATH ...` (#3286 @aceforeverd, #3323 @tobegit3hub)
+- Support deploying SQLs in which the involved tables have data but without pre-aggregation defined (#3288 @dl239)
+- Support new built-in functions `top_n_value_ratio_cate`, `top_n_key_ratio_cate`, `list_except_by_key` and `list_except_by_value` (#3329 @aceforeverd)
+- Add a new SDK API to merge multiple SQLs for deployment (#3297 @vagetablechicken)
+- Support mapping topic tables in the Kafka connector (#3282 @vagetablechicken)
+- Support deploying the Kafka connector in Docker and Kubernetes (#3276 @tobegit3hub)
+- Support fetching jobs from NameServer (#3293 @dl239)
+- Enhance the diagnostic tool (#3224 #3208 #3285 #3258 #3303 @zhangziheng01233)
+- Enhance the `SELECT INTO ...` statement (#2529 @vagetablechicken)
+- Improve the documents (#3308 @aceforeverd)
+- Other minor features (#3312 #3314 @vagetablechicken, #3298 @aceforeverd)
+
+### Bug Fixes
+- SQL deployment fails in some cases (#3328 @vagetablechicken)
+- Creating UDFs/UDAFs may fail as the `udf` directory does not exist by default. (#3326 @vagetablechicken)
+- Other minor bug fixes (#3281 #3284 @vagetablechicken)
+
+### Code Refactoring
+#3226 @dl239, #3294 @aceforeverd
+
+## [0.8.0] - 2023-05-12
+
+### Features
+- Add a new synchronization tool to automatically synchronize data from online storage to offline storage (#3256 @vagetablechicken)
+- Support the new built-in functions `var_samp`, `var_pop`, `entropy`, `earth_distance`, `nth_value_where` and `add_months` (#3046 #3193 @aceforeverd)
+- Support batch read for openmldb-spark-connector (#3070 @tobegit3hub)
+- [Alpha] Support Kubernetes as a TaskManager backend for the offline engine (#3147 #3157 #3185 @tobegit3hub)
+- Support LAST JOIN over WHERE clause (#3134 @aceforeverd)
+- Support LAST JOIN in WINDOW UNION clause (#3205 @aceforeverd)
+- Supports a decimal place as the second parameter in the function `round` (#3221 @aceforeverd)
+- Support Amazon S3 as an offline data source (#3229 #3261 @tobegit3hub)
+- Add the new option `SKIP_INDEX_CHECK` to skip index checking when deploying SQLs (#3241 @dl239)
+- Support symbolic paths for offline table (#3235 @tobegit3hub)
+- Improve the documents (#3104 #2993 @selenachenjingxin, #3113 #3118 #3239 @tobegit3hub, #3150 #3184 #3237 #3255 @aceforeverd, #3160 #3195 #3197 #3223 @lumianph, #3192 #3215 @haseeb-xd, #3201 #3220 #3232 #3236 #3254 @vagetablechicken, #3213 @alexab612, #3189 #3199 @TanZiYen)
+- Other minor features (#3115 #3143 #3182 @tobegit3hub, #2818 #3123 @aceforeverd, #3128 #3127 @dl239)
+
+### Bug Fixes
+- There is curator conflict problem when executing offline SQLs under certain circumstances. (#3090 @tobegit3hub)
+- `CREATE TABLE ... LIKE HIVE ...` statement execution fails if there is no database in a table name. (#3063 @tobegit3hub)
+- The CLI shows `success` even though `CREATE TABLE ... LIKE ...` execution fails. (#3080 @tobegit3hub)
+- `SELECT ... INTO ...` statement execution fails in the offline mode if there is no source table. (#3116 @tobegit3hub)
+- Compilation fails when `SELECT * ` over two LAST JOIN. (#3117 @aceforeverd)
+- The syncing job thread will enter an infinite loop if querying `JOB_INFO` fails. (#3169 @vagetablechicken)
+- SQLs deployment fails if there are more than one conditions on a JOIN statement. (#3196 @vagetablechicken)
+- Registered tables cannot be fetched when enabling SparkSQL for the offline engine (#3057 @tobegit3hub)
+- Other minor bug fixes (#3097 #3095 @dl239, #3109 #3141 #3162 #3234 @aceforeverd, #3096 #3112 @tobegit3hub, #3231 #3251 @vagetablechicken)
+
+### Code Refactoring
+#3188 @tobegit3hub
+
+## [0.7.3] - 2023-03-22
+
+### Features
+- Support C/C++ based User-Defined Aggregated Functions (UDAFs) (#2825 @dl239)
+- Improve the diagnostic tool to support a few new sub-commands (#3106 @vagetablechicken)
+- Add a new script to modify the node environment configuration (#3142 @dl239)
+- Change the default value of `max_traverse_cnt` to unlimited to avoid result truncated when performing queries in CLI (#2999 @dl239)
+- Improve the documents (#3111 #3093 #3119 @selenachenjingxin, #3105 #3125 #3120 @vagetablechicken, #3114 #3126 @dl239, #3128 @lumianph)
+
+### Bug Fixes
+- The user-provided `SPARK_HOME` does not work in the deployment scripts. (#3085 @zhanghaohit)
+- The result of `SELECT timestamp(string_val)` is incorrect at the offline mode. (#3088 @tobegit3hub)
+
+### Code Refactoring
+#3122 @haseeb-xd
+
+Note:
+If the configuration of a tablet has not been updated when upgrading to this new version, the query result still may be truncated as the old version (#2999).
+
+## [0.7.2] - 2023-02-17
+
+### Features
+- [Alpha] Support the new SQL clause `WITH` (#2846 @aceforeverd)
+- Support deploying multiple TaskManagers (#3004 @zhanghaohit)
+- Support the new built-in functions `std`, `stddev`, `stddev_samp`, `stddev_pop`, `ew_avg` and `drawdown` (#3025 #3032 #3029 @zhanghaohit)
+- Add the new configurations to specify the maximum size of RocksDB's log files (#2991 @dl239)
+- The `CREATE TABLE ... LIKE PARQUET ...` statement supports a parquet file as the input in the offline mode. (#2996 @tobegit3hub)
+- Support showing query results of synchronous jobs in TaskManager (#3034 @vagetablechicken)
+- Change the default timeout of synchronous jobs to 30 minutes, and add a corresponding CLI parameter for configuration (#3061 @vagetablechicken)
+- Improve the documents (#2938 #2984 #3016 @vagetablechicken, #2958 #2973 #2980 #2987 #2988 #3035 @lumianph, #2990 @lukeAyin, #2997 #3065 @tobegit3hub, #3011 #3027 @dl239, #3020 #3066 #3071 #3074 @aceforeverd, #3033 #3036 @selenachenjingxin)
+
+### Bug Fixes
+- Disk table does not clean the expired data. (#2963 @dl239)
+- Incorrect index will be added if there is `LAST JOIN` statement in a deployed SQL. (#2979 @dl239)
+- The result is incorrect if a window frame is specified by `EXCLUDE CURRENT_ROW` (#2930 @aceforeverd)
+- SQL compiling fails if there is an UDF function in an UDAF expression. (#3018 @aceforeverd)
+- Although the return information indicates success, index creation may still fail in some cases. (#3042 @vagetablechicken)
+- The `recoverdata` command fails if there are a large number of records in a memory table. (#3060 @dl239)
+- The `deploy-all` tool deploys the Spark package to local nodes only. (#3022 @zhanghaohit)
+- Other minor bug fixes (#2970 #3028 #3026 #3003 #3064 @dl239)
+
+### Code Refactoring
+#2995 #3030 @aceforeverd
+
+Note:  
+While we have resolved the overflow issue in the current version of the monitor component #3003, it may still persist when upgrading from an older version.
+
+## [0.7.1] - 2023-01-13
+
+### Features
+- Support data import from Hive using a symbolic link (#2948 @vagetablechicken)
+- Support the new SQL statement `CREATE TABLE LIKE` (#2949 @aceforeverd, #2962 @tobegit3hub)
+- Improve the non-interactive CLI (#2898 @vagetablechicken)
+- Improve the documents (#2904 #2921 #2932 #2942 @selenachenjingxin, #2925 #2928 #2934 #2954 @vagetablechicken, @2924 @dl239, #2945 #2952 @lumianph, #2946 @aceforeverd)
+
+### Bug Fixes
+- The result of `_*_cate` is incorrect. (#2939 @zhanghaohit)
+- The deployment of SQL fails if the column name of a major table is a keyword. (#2894 @dl239)
+- Tablet may core dump when executing SQLs with disk tables. (#2926 @dl239)
+- There is memory leak when writing data into disk tables. (#2943 @dl239)
+- The result of `show components` is incorrect in certain cases. (#2940 @dl239)
+- Offline jobs execution fails in certain cases because the `Curator` component causes an incompatible issue. (#2936 @tobegit3hub)
+- Disabling the monitor log (#2953 @dl239)
+
+### Code Refactoring
+#2875 #2937 @dl239
+
+## [0.7.0] - 2022-12-30
+
+### Features
+- Improve the messages and errors when inserting rows (#2834 @vagetablechicken)
+- Add a new configuration `max_memory` to limit the memory usage of a tablet (#2815 @dl239)
+- Add new maintenance tools `deploy-all` and `start-all` (#2809 @zhanghaohit)
+- Insertion returns errors if the value of timestamp field is negative (#2776 @dl239)
+- Support the new built-in functions `unix_timestamp`, `pmod`, `datediff`, and `size` (#2843 #2839 #2847 #2864 @zhanghaohit)
+- Add the new data type of `ARRAY` in UDFs (#2817 @aceforeverd)
+- Improve the documents (#2868 @haseeb-xd, #2878 @Jake-00, #2879 #2876 #2889 #2890 @vagetablechicken, #2881 #2907 #2908 #2897 @selenachenjingxin, #2859 @AdvancedUno, #2893 @lumianph, #2916 @aceforeverd)
+
+### Bug Fixes
+- Window over a subquery(t1 LAST JOIN t2) fails due to column renaming in the subquery. (#2739 @aceforeverd)
+- `SHOW JOBLOG` fails under certain circumstances. (#2874 @tobegit3hub)
+- `OP` is not deleted if the related table has been dropped. (#2548 @dl239)
+- Memory is not released when deleting an index in some cases. (#2806 @dl239)
+- Changing a leader to a specified endpoint fails if there are data writing. (#2858 @dl239)
+- UDFs do not work for `yarn-client` and `yarn-cluster` in the offline mode. (#2802 @tobegit3hub)
+- Other minor bug fixes (#2828 #2903 #2906 @vagetablechicken, #2867 #2912 @dl239)
+
+### Code Refactoring
+#2860 @mammar11, #2865 #2863 @vagetablechicken, #2861 #2862 #2871 @Ziy1-Tan
+
 ## [0.6.9] - 2022-12-08
 
 ### Features
@@ -456,6 +653,14 @@ Removed
 - openmldb-0.2.0-linux.tar.gz targets on x86_64
 - aarch64 artifacts consider experimental
 
+[0.8.3]: https://github.com/4paradigm/OpenMLDB/compare/v0.8.2...v0.8.3
+[0.8.2]: https://github.com/4paradigm/OpenMLDB/compare/v0.8.1...v0.8.2
+[0.8.1]: https://github.com/4paradigm/OpenMLDB/compare/v0.8.0...v0.8.1
+[0.8.0]: https://github.com/4paradigm/OpenMLDB/compare/v0.7.3...v0.8.0
+[0.7.3]: https://github.com/4paradigm/OpenMLDB/compare/v0.7.2...v0.7.3
+[0.7.2]: https://github.com/4paradigm/OpenMLDB/compare/v0.7.1...v0.7.2
+[0.7.1]: https://github.com/4paradigm/OpenMLDB/compare/v0.7.0...v0.7.1
+[0.7.0]: https://github.com/4paradigm/OpenMLDB/compare/v0.6.9...v0.7.0
 [0.6.9]: https://github.com/4paradigm/OpenMLDB/compare/v0.6.8...v0.6.9
 [0.6.8]: https://github.com/4paradigm/OpenMLDB/compare/v0.6.7...v0.6.8
 [0.6.7]: https://github.com/4paradigm/OpenMLDB/compare/v0.6.6...v0.6.7

@@ -87,6 +87,9 @@
 # 日志文件路径
 --openmldb_log_dir=./logs
 
+# 配置tablet最大内存使用, 如果超过配置的值写入就会失败. 默认值为0即不限制
+#--max_memory_mb=0
+
 # binlog conf
 # binlog没有新数据添加时的等待时间，单位是毫秒
 #--binlog_coffee_time=1000
@@ -135,6 +138,8 @@
 --ssd_root_path=./db_ssd
 # 配置数据回收站目录，drop表的数据就会放在这里
 --recycle_bin_ssd_root_path=./recycle_ssd
+# 配置是否开启回收站, 如果开启drop table后的数据会放到recycle目录里
+#--recycle_bin_enabled=true
 
 # snapshot conf
 # 配置做snapshot的时间，配置为一天中的几点。如23就表示每天23点做snapshot
@@ -179,10 +184,10 @@
 #--key_entry_max_height=8
 
 # 查询配置
-# 最大扫描条数（全表扫描/全表聚合），默认：50000
-#--max_traverse_cnt=50000
-# 最大扫描pk数（批处理），默认：5000
-#--max_traverse_pk_cnt=5000
+# 最大扫描条数(全表扫描/全表聚合)，默认：0
+#--max_traverse_cnt=0
+# 最大扫描不同key的个数(批处理)，默认：0
+#--max_traverse_key_cnt=0
 # 结果最大大小（byte)，默认：2MB
 #--scan_max_bytes_size=2097152
 
@@ -193,9 +198,19 @@
 #--load_table_thread_num=3
 # load线程池的最大队列长度
 #--load_table_queue_size=1000
+
+# rocksdb相关配置
+#--disable_wal=true
+# 文件是否压缩, 支持的压缩格式为pz, lz4, zlib
+#--file_compression=off
+#--block_cache_mb=4096
+#--block_cache_shardbits=8
+#--verify_compression=false
+#--max_log_file_size=100 * 1024 * 1024
+#--keep_log_file_num=5
 ```
 
-## apiserver配置文件 conf/tablet.flags
+## apiserver配置文件 conf/apiserver.flags
 ```
 # apiserver.conf
 # 配置启动apiserver的ip/域名和端口号
@@ -242,7 +257,7 @@ zookeeper.max_connect_waitTime=30000
 
 # Spark Config
 spark.home=
-spark.master=local
+spark.master=local[*]
 spark.yarn.jars=
 spark.default.conf=
 spark.eventLog.dir=
@@ -251,7 +266,65 @@ batchjob.jar.path=
 namenode.uri=
 offline.data.prefix=file:///tmp/openmldb_offline_storage/
 hadoop.conf.dir=
+#enable.hive.support=false
 ```
 
-* 如果没有配置`spark.home`，则需要在TaskManager运行的环境变量配置`SPARK_HOME`。
-* `spark.master`默认配置为`local`，可以配置为`local[*]`、`yarn`、`yarn-cluster`、`yarn-client`等。如果配置为Yarn集群模式，则需要修改`offline.data.prefix`配置为HDFS路径，避免保存离线文件到Yarn容器本地，同时需要配置环境变量`HADOOP_CONF_DIR`为Hadoop配置文件所在目录。
+### Spark Config详解
+
+Spark Config中重点关注的配置如下：
+
+```{note}
+理解配置项与环境变量的关系。
+
+TaskManager会通过SparkSubmit创建Spark进程，因此环境变量不会简单的直接继承。举例说明：在0.8.2及以前的版本中，为了Spark进程可以读写HADOOP，可以连接YARN集群，需要配置环境变量`HADOOP_CONF_DIR`。在以后的版本中，可以通过配置项`hadoop.conf.dir`指定Hadoop配置文件所在目录，TaskManager会将此项作为环境变量传递给Spark进程。但最优先的是Spark自身的spark-env.sh，如果此处已经配置好了，TaskManager无法覆盖此项。
+所以，优先级为：spark-env.sh > TaskManager配置 > 当前环境变量HADOOP_CONF_DIR。
+
+其中，`spark.home`仅用于TaskManager来识别Spark安装目录，不会传递给Spark进程。`hadoop.conf.dir`, `hadoop.user.name` 将会传递给Spark进程。如果有其他的变量需要传递，需要修改代码。
+```
+
+#### spark.home
+
+`spark.home`配置为Spark安装目录，TaskManager会使用该目录下的Spark执行离线任务。通常配置为下载的[OpenMLDB Spark 发行版](../../tutorial/openmldbspark_distribution.md)解压后的目录。
+
+如果TaskManager配置文件中`spark.home`为空，则会尝试读取TaskManager启动时的环境变量`SPARK_HOME`。如二者都未配置，TaskManager将会启动失败，并提示`spark.home`未配置。
+
+如果使用一键部署工具，SPARK_HOME会被设置为`<package_home>/spark`。举例说明，如果TaskManager部署到host1的`/work/taskmanager`，那么host1的SPARK_HOME默认为`/work/taskmanager/spark`。如果需要单独配置，在openmldb-env.sh中配置。不要单独更改properties template文件，会被覆盖，请注意部署时`OPENMLDB envs:`的提示。
+
+#### spark.master
+
+`spark.master`配置Spark的模式，Spark模式配置更详细的解释请参考[Spark Master URL](https://spark.apache.org/docs/latest/submitting-applications.html#master-urls)。
+
+TaskManager只接受`local`及其变种、`yarn`、`yarn-cluster`、`yarn-client`四种配置模式，默认配置为`local[*]`，即多线程本地模式（线程数为逻辑CPU数量）。Spark集群`spark://`、Mesos集群`mesos://`、Kubernetes集群`k8s://`等模式暂不支持。
+
+##### local模式
+
+local模式即Spark任务运行在本地（TaskManager所在主机），该模式下不需要太多配置，只需要注意两点：
+- 离线表的存储地址`offline.data.prefix`，默认为`file:///tmp/openmldb_offline_storage/`，即TaskManager所在主机的`/tmp`目录，你可以修改该配置为其他目录。
+  - 可以配置为HDFS路径，需要在**启动TaskManager前**配置环境变量`HADOOP_CONF_DIR`为Hadoop配置文件所在目录（注意是环境变量，不是TaskManager的配置项），文件目录中应包含Hadoop的`core-site.xml`、`hdfs-site.xml`等配置文件，更多见[Spark官方文档](https://spark.apache.org/docs/3.2.1/configuration.html#inheriting-hadoop-cluster-configuration)。
+  ```{note}
+  HDFS路径目前需要配置`namenode.uri`，删除离线表时会连接HDFS FileSystem`namenode.uri`，并删除离线表的存储目录（Offline Table Path）。未来将废弃此配置项。
+  ```
+- batchjob的路径`batchjob.jar.path`可自动获取，无需配置，如果你要使用别处的batchjob，可以配置该参数。
+
+```{seealso}
+如果Hadoop/Yarn需要Kerberos认证，参考[FAQ](../maintain/faq.md#4-如何配置taskmanager来访问开启kerberos的yarn集群)。
+```
+##### yarn/yarn-cluster模式
+
+"yarn"和"yarn-cluster"是同一个模式，即Spark任务运行在Yarn集群上，该模式下需要配置的参数较多，主要包括：
+- 在**启动TaskManager前**配置环境变量`HADOOP_CONF_DIR`为Hadoop和Yarn的配置文件所在目录，文件目录中应包含Hadoop的`core-site.xml`、`hdfs-site.xml`、Yarn的`yarn-site.xml`等配置文件，参考[Spark官方文档](https://spark.apache.org/docs/3.2.1/running-on-yarn.html#launching-spark-on-yarn)。
+- `spark.yarn.jars`配置Yarn需要读取的Spark运行jar包地址，必须是`hdfs://`地址。可以上传[OpenMLDB Spark 发行版](../../tutorial/openmldbspark_distribution.md)解压后的`jars`目录到HDFS上，并配置为`hdfs://<hdfs_path>/jars/*`（注意通配符）。[如果不配置该参数，Yarn会将`$SPARK_HOME/jars`打包上传分发，并且每次离线任务都要分发](https://spark.apache.org/docs/3.2.1/running-on-yarn.html#preparations)，效率较低，所以推荐配置。
+- `batchjob.jar.path`必须是HDFS路径（具体到包名），上传batchjob jar包到HDFS上，并配置为对应地址，保证Yarn集群上所有Worker可以获得batchjob包。
+- `offline.data.prefix`必须是HDFS路径，保证Yarn集群上所有Worker可读写数据。应使用前面配置的环境变量`HADOOP_CONF_DIR`中的Hadoop集群地址。
+
+##### yarn-client模式
+
+"yarn-client"模式，[driver运行在本地](https://spark.apache.org/docs/3.2.1/running-on-yarn.html#launching-spark-on-yarn)，executor运行在Yarn集群上，配置与yarn-cluster模式相同。
+
+#### spark.default.conf
+
+`spark.default.conf`配置Spark的参数，配置格式为`key=value`，多个配置用`;`分隔，例如：
+```
+spark.default.conf=spark.executor.instances=2;spark.executor.memory=2g;spark.executor.cores=2
+```
+等效于Spark的`--conf`参数，如果提示修改Spark高级参数，请将参数加入此项中。更多参数，参考[Spark 配置](https://spark.apache.org/docs/3.1.2/configuration.html)。

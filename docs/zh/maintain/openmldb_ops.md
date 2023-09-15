@@ -1,11 +1,11 @@
-# OpenMLDB运维工具
+# 运维工具
 
 ## 概述
 
 为了用户更方便的维护OpenMLDB，我们提供了OpenMLDB运维工具，主要包括以下功能:
 - 一键数据恢复：`recoverdata`
 - 自动分片均衡: `scaleout`
-- 将缩容节点的分片迁移到其他机器上: `scaleint`
+- 将缩容节点的分片迁移到其他机器上: `scalein`
 - 升级tablet前处理和后处理：`pre-upgrade`和`post-upgrade`
 - 查询操作状态：`showopstatus`
 - 查询表状态：`showtablestatus`
@@ -35,5 +35,5 @@ python tools/openmldb_ops.py --openmldb_bin_path=./bin/openmldb --zk_cluster=172
 ```
 
 ### 系统要求
-- 要求python3.6及以上版本
+- 要求python2.7及以上版本
 - `showopstatus`和`showtablestatus`需要`prettytable`依赖

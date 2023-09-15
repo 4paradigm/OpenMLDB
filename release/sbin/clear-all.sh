@@ -21,9 +21,33 @@ sbin="$(cd "$(dirname "$0")" || exit 1; pwd)"
 . "$sbin"/init.sh
 cd "$home" || exit 1
 
+rm_dir() {
+    local host=$1
+    local dir=$2
+    if [[ $dir == "" ]]; then
+        echo "empty dir"
+        exit 1
+    fi
+    local cmd="rm -rf \"$dir\""
+    run_auto "$host" "$cmd"
+}
+
 if [[ ${OPENMLDB_MODE} == "standalone" ]]; then
   rm -rf standalone_db standalone_logs
 else
+  conf_file="conf/tablet.flags.template"
+  dirname=()
+  while IFS= read -r line
+  do
+    if echo "$line" | grep -q '^#'; then
+      continue
+    fi
+    if echo "$line" | grep -v "zk_root_path" | grep -q "root_path" ||
+        echo "$line" |  grep -q "openmldb_log_dir"; then
+      var=$(echo "${line}" | awk -F '=' '{print $2}')
+      dirname+=("$var")
+    fi
+  done < "$conf_file"
   old_IFS="$IFS"
   IFS=$'\n'
   # delete tablet data and log
@@ -32,10 +56,18 @@ else
     host=$(echo "$line" | awk -F ' ' '{print $1}')
     port=$(echo "$line" | awk -F ' ' '{print $2}')
     dir=$(echo "$line" | awk -F ' ' '{print $3}')
-
-    echo "clear tablet data and log in $dir with endpoint $host:$port "
-    cmd="cd $dir; rm -rf recycle db logs"
-    run_auto "$host" "$cmd"
+    if [[ ${CLEAR_OPENMLDB_INSTALL_DIR} == "true" ]]; then
+      echo "clear $dir with endpoint $host:$port "
+      rm_dir "$host" "$dir"
+    else
+      echo "clear tablet data and log in $dir with endpoint $host:$port "
+      for item in "${dirname[@]}"
+      do
+        echo "clear $item with endpoint $host:$port "
+        cmd="cd $dir && rm -rf \"${item}\""
+        run_auto "$host" "$cmd"
+      done
+    fi
   done
 
   # delete apiserver log
@@ -44,10 +76,14 @@ else
     host=$(echo "$line" | awk -F ' ' '{print $1}')
     port=$(echo "$line" | awk -F ' ' '{print $2}')
     dir=$(echo "$line" | awk -F ' ' '{print $3}')
-
-    echo "clear apiserver log in $dir with endpoint $host:$port "
-    cmd="cd $dir; rm -rf logs"
-    run_auto "$host" "$cmd"
+    if [[ ${CLEAR_OPENMLDB_INSTALL_DIR} == "true" ]]; then
+      echo "clear $dir with endpoint $host:$port "
+      rm_dir "$host" "$dir"
+    else
+      echo "clear apiserver log in $dir with endpoint $host:$port "
+      cmd="cd $dir && rm -rf logs"
+      run_auto "$host" "$cmd"
+    fi
   done
 
   # delete nameserver log
@@ -56,17 +92,36 @@ else
     host=$(echo "$line" | awk -F ' ' '{print $1}')
     port=$(echo "$line" | awk -F ' ' '{print $2}')
     dir=$(echo "$line" | awk -F ' ' '{print $3}')
-
-    echo "clear nameserver log in $dir with endpoint $host:$port "
-    cmd="cd $dir; rm -rf logs"
-    run_auto "$host" "$cmd"
+    if [[ ${CLEAR_OPENMLDB_INSTALL_DIR} == "true" ]]; then
+      echo "clear $dir with endpoint $host:$port "
+      rm_dir "$host" "$dir"
+    else
+      echo "clear nameserver log in $dir with endpoint $host:$port "
+      cmd="cd $dir && rm -rf logs"
+      run_auto "$host" "$cmd"
+    fi
   done
 
   # delete taskmanager data and log
-  echo "clear taskmanager data and log in /tmp/openmldb_offline_storage/ and $home/logs"
-  rm -rf "$home"/logs
-  rm -rf "$home"/taskmanager/bin/logs
-  rm -rf /tmp/openmldb_offline_storage/
+  for line in $(parse_host conf/hosts taskmanager)
+  do
+    host=$(echo "$line" | awk -F ' ' '{print $1}')
+    port=$(echo "$line" | awk -F ' ' '{print $2}')
+    dir=$(echo "$line" | awk -F ' ' '{print $3}')
+
+    if [[ ${CLEAR_OPENMLDB_INSTALL_DIR} == "true" ]]; then
+      echo "clear $dir with endpoint $host:$port "
+      rm_dir "$host" "$dir"
+    else
+      echo "clear taskmanager log in $dir with endpoint $host:$port "
+      cmd="cd $dir && rm -rf logs taskmanager/bin/logs"
+      run_auto "$host" "$cmd"
+    fi
+    # TODO(zhanghao): support to delete file:// or hdfs:// style path
+    cmd="rm -rf /tmp/openmldb_offline_storage/"
+    echo "clear taskmanager data in $dir with endpoint $host:$port "
+    run_auto "$host" "$cmd"
+  done
 
   # delete zk data
   if [[ "${OPENMLDB_USE_EXISTING_ZK_CLUSTER}" != "true" ]]; then
@@ -75,12 +130,17 @@ else
       host=$(echo "$line" | awk -F ' ' '{print $1}')
       port=$(echo "$line" | awk -F ' ' '{print $2}')
       dir=$(echo "$line" | awk -F ' ' '{print $3}')
+      if [[ ${CLEAR_OPENMLDB_INSTALL_DIR} == "true" ]]; then
+        echo "clear $dir with endpoint $host:$port "
+        rm_dir "$host" "$dir"
+      else
 
-      echo "clear zookeeper data and log in $dir with endpoint $host:$port"
-      cmd="cd $dir; rm zookeeper.out > /dev/null 2>&1"
-      run_auto "$host" "$cmd"
-      cmd="cd $dir/data; find -type d -not -path '.' -exec rm -rf {} +"
-      run_auto "$host" "$cmd"
+        echo "clear zookeeper data and log in $dir with endpoint $host:$port"
+        cmd="cd $dir && rm zookeeper.out > /dev/null 2>&1"
+        run_auto "$host" "$cmd"
+        cmd="cd $dir/data; find -type d -not -path '.' -exec rm -rf {} +"
+        run_auto "$host" "$cmd"
+      fi
     done
   fi
   IFS="$old_IFS"

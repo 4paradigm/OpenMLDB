@@ -32,7 +32,7 @@ using hybridse::vm::PhysicalOpNode;
 using hybridse::vm::PhysicalPlanContext;
 
 enum PhysicalPlanPassType {
-    kPassColumnProjectsOptimized,
+    kPassSimpleProjectsOptimized,
     kPassFilterOptimized,
     kPassGroupAndSortOptimized,
     kPassLeftJoinOptimized,
@@ -42,28 +42,7 @@ enum PhysicalPlanPassType {
     kPassSplitAggregationOptimized
 };
 
-inline std::string PhysicalPlanPassTypeName(PhysicalPlanPassType type) {
-    switch (type) {
-        case kPassColumnProjectsOptimized:
-            return "PassColumnProjectsOptimized";
-        case kPassFilterOptimized:
-            return "PassFilterOptimized";
-        case kPassGroupAndSortOptimized:
-            return "PassGroupByOptimized";
-        case kPassLeftJoinOptimized:
-            return "PassLeftJoinOptimized";
-        case kPassLimitOptimized:
-            return "PassLimitOptimized";
-        case kPassClusterOptimized:
-            return "PassClusterOptimized";
-        case kPassLongWindowOptimized:
-            return "PassLongWindowOptimized";
-        case kPassSplitAggregationOptimized:
-            return "SplitAggregationOptimized";
-        default:
-            return "unknowPass";
-    }
-}
+std::string PhysicalPlanPassTypeName(PhysicalPlanPassType type);
 
 struct ExprPair {
     node::ExprNode* left_expr_ = nullptr;
@@ -100,7 +79,7 @@ class TransformUpPysicalPass : public PhysicalPass {
      * Applies a physical plan optimization strategy in a post-DFS style(aka
      * transform up), optimize every producer then current one.
      */
-    virtual bool Apply(PhysicalOpNode* in, PhysicalOpNode** out);
+    bool Apply(PhysicalOpNode* in, PhysicalOpNode** out);
 
     /**
      * Transforms physical node `in` into `out` with a physical node

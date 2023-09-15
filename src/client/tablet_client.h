@@ -54,12 +54,7 @@ class TabletClient : public Client {
 
     int Init() override;
 
-    bool CreateTable(const std::string& name, uint32_t tid, uint32_t pid, uint64_t abs_ttl, uint64_t lat_ttl,
-                     bool leader, const std::vector<std::string>& endpoints, const ::openmldb::type::TTLType& type,
-                     uint32_t seg_cnt, uint64_t term, const ::openmldb::type::CompressType compress_type,
-                     ::openmldb::common::StorageMode storage_mode = ::openmldb::common::kMemory);
-
-    bool CreateTable(const ::openmldb::api::TableMeta& table_meta);
+    base::Status CreateTable(const ::openmldb::api::TableMeta& table_meta);
 
     bool UpdateTableMetaForAddField(uint32_t tid, const std::vector<openmldb::common::ColumnDesc>& cols,
                                     const openmldb::common::VersionPair& pair,
@@ -92,6 +87,9 @@ class TabletClient : public Client {
 
     bool Delete(uint32_t tid, uint32_t pid, const std::string& pk, const std::string& idx_name,
                 std::string& msg);  // NOLINT
+
+    base::Status Delete(uint32_t tid, uint32_t pid, const std::map<uint32_t, std::string>& index_val,
+            const std::string& ts_name, const std::optional<uint64_t> start_ts, const std::optional<uint64_t>& end_ts);
 
     bool Count(uint32_t tid, uint32_t pid, const std::string& pk, const std::string& idx_name, bool filter_expired_data,
                uint64_t& value, std::string& msg);  // NOLINT
@@ -200,13 +198,9 @@ class TabletClient : public Client {
     bool AddIndex(uint32_t tid, uint32_t pid, const ::openmldb::common::ColumnKey& column_key,
                   std::shared_ptr<TaskInfo> task_info);
 
-    base::Status AddMultiIndex(uint32_t tid, uint32_t pid,
+    bool AddMultiIndex(uint32_t tid, uint32_t pid,
             const std::vector<::openmldb::common::ColumnKey>& column_keys,
             std::shared_ptr<TaskInfo> task_info);
-
-    bool DumpIndexData(uint32_t tid, uint32_t pid, uint32_t partition_num,
-                       const ::openmldb::common::ColumnKey& column_key, uint32_t idx,
-                       std::shared_ptr<TaskInfo> task_info);
 
     bool GetCatalog(uint64_t* version);
 
@@ -216,20 +210,17 @@ class TabletClient : public Client {
     bool LoadIndexData(uint32_t tid, uint32_t pid, uint32_t partition_num, std::shared_ptr<TaskInfo> task_info);
 
     bool ExtractIndexData(uint32_t tid, uint32_t pid, uint32_t partition_num,
-                          const ::openmldb::common::ColumnKey& column_key, uint32_t idx,
+                          const std::vector<::openmldb::common::ColumnKey>& column_key,
+                          uint64_t offset, bool dump_data,
                           std::shared_ptr<TaskInfo> task_info);
-
-    bool ExtractMultiIndexData(uint32_t tid, uint32_t pid, uint32_t partition_num,
-                          const std::vector<::openmldb::common::ColumnKey>& column_key_vec);
 
     bool CancelOP(const uint64_t op_id);
 
     bool UpdateRealEndpointMap(const std::map<std::string, std::string>& map);
 
-    bool CreateProcedure(const openmldb::api::CreateProcedureRequest& sp_request,
-                         std::string& msg);  // NOLINT
+    base::Status CreateProcedure(const openmldb::api::CreateProcedureRequest& sp_request);
 
-    bool CallProcedure(const std::string& db, const std::string& sp_name, const std::string& row,
+    bool CallProcedure(const std::string& db, const std::string& sp_name, const base::Slice& row,
                        brpc::Controller* cntl, openmldb::api::QueryResponse* response, bool is_debug,
                        uint64_t timeout_ms);
 
@@ -237,6 +228,11 @@ class TabletClient : public Client {
                                       std::shared_ptr<::openmldb::sdk::SQLRequestRowBatch>, brpc::Controller* cntl,
                                       openmldb::api::SQLBatchRequestQueryResponse* response, bool is_debug,
                                       uint64_t timeout_ms);
+
+    base::Status CallSQLBatchRequestProcedure(const std::string& db, const std::string& sp_name,
+            const base::Slice& meta, const base::Slice& data,
+            bool is_debug, uint64_t timeout_ms,
+            brpc::Controller* cntl, openmldb::api::SQLBatchRequestQueryResponse* response);
 
     bool DropProcedure(const std::string& db_name, const std::string& sp_name);
 
@@ -252,13 +248,18 @@ class TabletClient : public Client {
 
     bool DropFunction(const ::openmldb::common::ExternalFun& fun, std::string* msg);
 
-    bool CallProcedure(const std::string& db, const std::string& sp_name, const std::string& row, uint64_t timeout_ms,
+    bool CallProcedure(const std::string& db, const std::string& sp_name, const base::Slice& row, uint64_t timeout_ms,
                        bool is_debug, openmldb::RpcCallback<openmldb::api::QueryResponse>* callback);
 
     bool CallSQLBatchRequestProcedure(const std::string& db, const std::string& sp_name,
                                       std::shared_ptr<::openmldb::sdk::SQLRequestRowBatch> row_batch, bool is_debug,
                                       uint64_t timeout_ms,
                                       openmldb::RpcCallback<openmldb::api::SQLBatchRequestQueryResponse>* callback);
+
+    base::Status CallSQLBatchRequestProcedure(const std::string& db, const std::string& sp_name,
+            const base::Slice& meta, const base::Slice& data,
+            bool is_debug, uint64_t timeout_ms,
+            openmldb::RpcCallback<openmldb::api::SQLBatchRequestQueryResponse>* callback);
 
     bool CreateAggregator(const ::openmldb::api::TableMeta& base_table_meta,
                           uint32_t aggr_tid, uint32_t aggr_pid, uint32_t index_pos,

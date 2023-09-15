@@ -479,7 +479,8 @@ void HandleNSClientSetTTL(const std::vector<std::string>& parts, ::openmldb::cli
         }
         bool ok = client->UpdateTTL(parts[1], type, abs_ttl, lat_ttl, index_name, err);
         if (ok) {
-            std::cout << "Set ttl ok !" << std::endl;
+            std::cout << "Set ttl ok ! Note that, "
+                "it will take effect after two garbage collection intervals (i.e. gc_interval)." << std::endl;
         } else {
             std::cout << "Set ttl failed! " << err << std::endl;
         }
@@ -908,7 +909,8 @@ void HandleNSClientChangeLeader(const std::vector<std::string>& parts, ::openmld
         std::cout << "Invalid args. pid should be uint32_t" << std::endl;
         return;
     }
-    std::cout << "change leader ok" << std::endl;
+    std::cout << "change leader ok. "
+        "If there are writing operations while changing a leader, it may cause data loss." << std::endl;
 }
 
 void HandleNSClientOfflineEndpoint(const std::vector<std::string>& parts, ::openmldb::client::NsClient* client) {
@@ -2717,7 +2719,6 @@ void HandleNSShowOPStatus(const std::vector<std::string>& parts, ::openmldb::cli
     ::baidu::common::TPrinter tp(row.size(), FLAGS_max_col_display_length);
     tp.AddRow(row);
     ::openmldb::nameserver::ShowOPStatusResponse response;
-    std::string msg;
     std::string name;
     uint32_t pid = ::openmldb::client::INVALID_PID;
     if (parts.size() > 1) {
@@ -2731,9 +2732,9 @@ void HandleNSShowOPStatus(const std::vector<std::string>& parts, ::openmldb::cli
             return;
         }
     }
-    bool ok = client->ShowOPStatus(response, name, pid, msg);
-    if (!ok) {
-        std::cout << "Fail to show tablets. error msg: " << msg << std::endl;
+    auto status = client->ShowOPStatus(name, pid, &response);
+    if (!status.OK()) {
+        std::cout << "Fail to show tablets. error msg: " << status.GetMsg() << std::endl;
         return;
     }
     for (int idx = 0; idx < response.op_status_size(); idx++) {
@@ -3927,8 +3928,11 @@ void StartAPIServer() {
 int main(int argc, char* argv[]) {
     ::google::SetVersionString(OPENMLDB_VERSION);
     ::google::ParseCommandLineFlags(&argc, &argv, true);
-
-    if (FLAGS_role == "ns_client") {
+    if (FLAGS_role.empty()) {
+        std::cout << "client start in stand-alone mode" << std::endl;
+        // TODO(hw): standalonesdk refresh every 2s, too many logs in Debug mode
+        ::openmldb::cmd::StandAloneSQLClient();
+    } else if (FLAGS_role == "ns_client") {
         StartNsClient();
     } else if (FLAGS_role == "sql_client") {
         ::openmldb::cmd::ClusterSQLClient();
@@ -3943,9 +3947,7 @@ int main(int argc, char* argv[]) {
         StartAPIServer();
 #endif
     } else {
-        std::cout << "client start in stand-alone mode" << std::endl;
-        // TODO(hw): standalonesdk refresh every 2s, too many logs in Debug mode
-        ::openmldb::cmd::StandAloneSQLClient();
+        std::cout << "Invalid role: " << FLAGS_role << std::endl;
     }
     return 0;
 }

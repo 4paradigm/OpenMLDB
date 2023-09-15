@@ -1,0 +1,26 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: openmldb-kafka-connect
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: openmldb-kafka-connect
+  template:
+    metadata:
+      labels:
+        app: openmldb-kafka-connect
+    spec:
+      containers:
+        - name: openmldb-kafka-connect
+          image: registry.cn-shenzhen.aliyuncs.com/tobe43/openmldb-kafka-connect
+          imagePullPolicy: Always
+          volumeMounts:
+            - name: openmldb-kafka-connect-volume
+              mountPath: /kafka_config
+      volumes:
+        - name: openmldb-kafka-connect-volume
+          configMap:
+            # kubectl create configmap openmldb-kafka-connect-configmap --from-file=connect-standalone.properties=connect-standalone.properties --from-file=openmldb-sink.properties=openmldb-sink.properties
+            name: openmldb-kafka-connect-configmap

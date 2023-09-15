@@ -76,6 +76,38 @@ class SqlCmdTest : public ::testing::Test {
 
 class DBSDKTest : public ::testing::TestWithParam<CLI*> {};
 
+bool EmptyDB(std::shared_ptr<openmldb::client::NsClient> ns_client, std::string db) {
+    std::vector<nameserver::TableInfo> tables;
+    auto ret = ns_client->ShowDBTable(db, &tables);
+    if (!ret.OK()) {
+        LOG(INFO) << "show table failed: " << ret.GetMsg();
+        return false;
+    }
+    if (!tables.empty()) {
+        LOG(INFO) << "db " << db << " is not empty:";
+        for (auto& table : tables) {
+            LOG(INFO) << "table " << table.name();
+        }
+        return false;
+    }
+    // if no table, it can't have deployments, but it's better to check for debug
+    std::vector<api::ProcedureInfo> procedures;
+    std::string msg;
+    auto ok = ns_client->ShowProcedure(db, "", &procedures, &msg);
+    if (!ok) {
+        LOG(INFO) << "show procedure failed: " << msg;
+        return false;
+    }
+    if (!procedures.empty()) {
+        LOG(INFO) << "db " << db << " is not empty:";
+        for (auto& procedure : procedures) {
+            LOG(INFO) << "procedure " << procedure.sp_name();
+        }
+        return false;
+    }
+    return true;
+}
+
 TEST_F(SqlCmdTest, showDeployment) {
     auto cli = cluster_cli;
     auto sr = cli.sr;
@@ -209,18 +241,60 @@ TEST_P(DBSDKTest, CreateDatabase) {
     cs = cli->cs;
     sr = cli->sr;
     hybridse::sdk::Status status;
-
     auto db1 = absl::StrCat("db_", GenRand());
-
+    auto db2 = absl::StrCat("db_", GenRand());
     ProcessSQLs(sr, {
                         absl::StrCat("CREATE DATABASE ", db1),
+                        absl::StrCat("CREATE DATABASE ", db2),
                         absl::StrCat("CREATE DATABASE IF NOT EXISTS ", db1),
                     });
-
     sr->ExecuteSQL(absl::StrCat("CREATE DATABASE ", db1), &status);
     EXPECT_FALSE(status.IsOK());
+    auto rs = sr->ExecuteSQL("SHOW DATABASES", &status);
+    std::set<std::string> dbs;
+    while (rs->Next()) {
+        std::string val;
+        rs->GetString(0, &val);
+        dbs.insert(val);
+    }
+    ASSERT_EQ(dbs.count(db1), 1);
+    ASSERT_EQ(dbs.count(db2), 1);
+    ProcessSQLs(sr, {absl::StrCat("DROP DATABASE ", db1), absl::StrCat("DROP DATABASE ", db2)});
+}
 
-    ProcessSQLs(sr, {absl::StrCat("DROP DATABASE ", db1)});
+TEST_P(DBSDKTest, CreateAndShowTable) {
+    auto cli = GetParam();
+    cs = cli->cs;
+    sr = cli->sr;
+    auto db = absl::StrCat("db_", GenRand());
+    auto t1 = absl::StrCat("table_", GenRand());
+    auto t2 = absl::StrCat("table_", GenRand());
+    ProcessSQLs(sr, {
+                        absl::StrCat("CREATE DATABASE ", db),
+                        absl::StrCat("USE ", db),
+                        absl::StrCat("CREATE TABLE ", t1, " (col1 string);"),
+                        absl::StrCat("CREATE TABLE ", t2, " (col1 string);"),
+                    });
+    std::set<std::string> dbs = {t1, t2};
+    hybridse::sdk::Status status;
+    auto rs = sr->ExecuteSQL("SHOW TABLES", &status);
+    rs->Next();
+    std::string val;
+    rs->GetString(0, &val);
+    ASSERT_EQ(dbs.count(val), 1);
+    rs->Next();
+    val.clear();
+    rs->GetString(0, &val);
+    ASSERT_EQ(dbs.count(val), 1);
+    ASSERT_FALSE(rs->Next());
+    ProcessSQLs(sr, {absl::StrCat("DROP TABLE ", t1)});
+    rs = sr->ExecuteSQL("SHOW TABLES", &status);
+    rs->Next();
+    val.clear();
+    rs->GetString(0, &val);
+    ASSERT_EQ(val, t2);
+    ASSERT_FALSE(rs->Next());
+    ProcessSQLs(sr, {absl::StrCat("DROP TABLE ", t2), absl::StrCat("DROP DATABASE ", db)});
 }
 
 TEST_P(DBSDKTest, Select) {
@@ -245,6 +319,9 @@ TEST_P(DBSDKTest, Select) {
     std::string insert_sql = "insert into trans values ('aaa', 11, 22, 1.2, 1.3, 1635247427000, \"2021-05-20\");";
     sr->ExecuteSQL(insert_sql, &status);
     ASSERT_TRUE(status.IsOK());
+    insert_sql = "insert into trans values ('aaa', 11, 22, 1.2, 1.3, -123, \"2021-05-20\");";
+    sr->ExecuteSQL(insert_sql, &status);
+    ASSERT_FALSE(status.IsOK());
     auto rs = sr->ExecuteSQL("select * from trans", &status);
     ASSERT_TRUE(status.IsOK());
     ASSERT_EQ(1, rs->Size());
@@ -283,6 +360,32 @@ TEST_F(SqlCmdTest, SelectMultiPartition) {
     }
     EXPECT_EQ(count, expect);
     ProcessSQLs(sr, {absl::StrCat("drop table ", name, ";"), absl::StrCat("drop database ", db_name, ";")});
+}
+
+TEST_F(SqlCmdTest, ShowNameserverJob) {
+    sr = cluster_cli.sr;
+    std::string db_name = "test" + GenRand();
+    std::string name = "table" + GenRand();
+    std::string ddl = "create table " + name +
+                      "(col1 string, col2 string, col3 bigint, index(key=col1, ts=col3, TTL_TYPE=absolute)) "
+                      "options (partitionnum=2, replicanum=1)";
+    ProcessSQLs(sr, {"set @@execute_mode = 'online'", absl::StrCat("create database ", db_name, ";"),
+                     absl::StrCat("use ", db_name, ";"), ddl});
+    absl::Cleanup clean = [&]() {
+        ProcessSQLs(sr, {absl::StrCat("drop table ", name, ";"), absl::StrCat("drop database ", db_name, ";")});
+    };
+    hybridse::sdk::Status status;
+    std::string sql;
+    for (int i = 0; i < 10; i++) {
+        sql = absl::StrCat("insert into ", name, " values('", i, "', '", i, "', 1635247427000);");
+        ASSERT_TRUE(sr->ExecuteInsert(db_name, sql, &status));
+    }
+    sql = absl::StrCat("create index index2 on ", name, " (col2) options(ts=col3);");
+    sr->ExecuteSQL(db_name, sql, &status);
+    ASSERT_TRUE(status.IsOK());
+    auto rs = sr->ExecuteSQL(db_name, "show jobs from nameserver;", &status);
+    ASSERT_TRUE(status.IsOK());
+    ASSERT_GT(rs->Size(), 0);
 }
 
 TEST_F(SqlCmdTest, TableReader) {
@@ -614,10 +717,10 @@ TEST_P(DBSDKTest, Deploy) {
     HandleSQL("use test1;");
     std::string create_sql =
         "create table trans (c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, "
-        "c8 date, index(key=c3, ts=c7, abs_ttl=0, ttl_type=absolute));";
+        "c8 date, `index` bigint, index(key=c3, ts=c7, abs_ttl=0, ttl_type=absolute));";
     HandleSQL(create_sql);
     if (!cs->IsClusterMode()) {
-        HandleSQL("insert into trans values ('aaa', 11, 22, 1.2, 1.3, 1635247427000, \"2021-05-20\");");
+        HandleSQL("insert into trans values ('aaa', 11, 22, 1.2, 1.3, 1635247427000, \"2021-05-20\", 113);");
     }
 
     std::string deploy_sql =
@@ -650,8 +753,11 @@ TEST_P(DBSDKTest, DeployWithSameIndex) {
     cs = cli->cs;
     sr = cli->sr;
     HandleSQL("set @@execute_mode = 'online';");
-    HandleSQL("create database test1;");
-    HandleSQL("use test1;");
+    auto db = "db" + GenRand();
+    HandleSQL("create database " + db);
+    HandleSQL("use " + db);
+    // ensure no table and deployment in db
+    ASSERT_TRUE(EmptyDB(cs->GetNsClient(), db));
     std::string create_sql =
         "create table trans (c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, "
         "c8 date, index(key=c1, ts=c7, ttl=1, ttl_type=latest));";
@@ -665,7 +771,7 @@ TEST_P(DBSDKTest, DeployWithSameIndex) {
     std::string msg;
     auto ns_client = cs->GetNsClient();
     std::vector<::openmldb::nameserver::TableInfo> tables;
-    ASSERT_TRUE(ns_client->ShowTable("trans", "test1", false, tables, msg));
+    ASSERT_TRUE(ns_client->ShowTable("trans", db, false, tables, msg));
     ::openmldb::nameserver::TableInfo table = tables[0];
 
     ASSERT_EQ(table.column_key_size(), 1);
@@ -682,11 +788,11 @@ TEST_P(DBSDKTest, DeployWithSameIndex) {
         " WINDOW w1 AS (PARTITION BY trans.c1 ORDER BY trans.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);";
     hybridse::sdk::Status status;
     sr->ExecuteSQL(deploy_sql, &status);
-    ASSERT_TRUE(status.IsOK());
+    ASSERT_TRUE(status.IsOK()) << status.ToString();
 
     // new index, update ttl
     tables.clear();
-    ASSERT_TRUE(ns_client->ShowTable("trans", "test1", false, tables, msg));
+    ASSERT_TRUE(ns_client->ShowTable("trans", db, false, tables, msg));
     table = tables[0];
 
     ASSERT_EQ(table.column_key_size(), 1);
@@ -698,7 +804,7 @@ TEST_P(DBSDKTest, DeployWithSameIndex) {
     ASSERT_EQ(column_key.ttl().ttl_type(), ::openmldb::type::TTLType::kLatestTime);
     ASSERT_EQ(column_key.ttl().lat_ttl(), 2);
 
-    // type mismatch case
+    // type mismatch case, still ok
     create_sql =
         "create table trans1 (c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, "
         "c8 date, index(key=c1, ts=c7, ttl=1m, ttl_type=absolute));";
@@ -707,17 +813,17 @@ TEST_P(DBSDKTest, DeployWithSameIndex) {
         HandleSQL("insert into trans1 values ('aaa', 11, 22, 1.2, 1.3, 1635247427000, \"2021-05-20\");");
     }
     deploy_sql =
-        "deploy demo SELECT c1, c3, sum(c4) OVER w1 as w1_c4_sum FROM trans1 "
+        "deploy demo1 SELECT c1, c3, sum(c4) OVER w1 as w1_c4_sum FROM trans1 "
         " WINDOW w1 AS (PARTITION BY trans1.c1 ORDER BY trans1.c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);";
     sr->ExecuteSQL(deploy_sql, &status);
-    ASSERT_FALSE(status.IsOK());
-    ASSERT_EQ(status.msg, "new ttl type kLatestTime doesn't match the old ttl type kAbsoluteTime");
+    ASSERT_TRUE(status.IsOK()) << status.ToString();
 
-    ASSERT_FALSE(cs->GetNsClient()->DropTable("test1", "trans", msg));
-    ASSERT_TRUE(cs->GetNsClient()->DropProcedure("test1", "demo", msg));
-    ASSERT_TRUE(cs->GetNsClient()->DropTable("test1", "trans", msg));
-    ASSERT_TRUE(cs->GetNsClient()->DropTable("test1", "trans1", msg));
-    ASSERT_TRUE(cs->GetNsClient()->DropDatabase("test1", msg));
+    ASSERT_FALSE(cs->GetNsClient()->DropTable(db, "trans", msg));
+    ASSERT_TRUE(cs->GetNsClient()->DropProcedure(db, "demo", msg));
+    ASSERT_TRUE(cs->GetNsClient()->DropProcedure(db, "demo1", msg));
+    ASSERT_TRUE(cs->GetNsClient()->DropTable(db, "trans", msg));
+    ASSERT_TRUE(cs->GetNsClient()->DropTable(db, "trans1", msg));
+    ASSERT_TRUE(cs->GetNsClient()->DropDatabase(db, msg));
 }
 
 TEST_P(DBSDKTest, DeployCol) {
@@ -747,7 +853,273 @@ TEST_P(DBSDKTest, DeployCol) {
     ASSERT_TRUE(cs->GetNsClient()->DropDatabase("test2", msg));
 }
 
-TEST_P(DBSDKTest, Delete) {
+TEST_P(DBSDKTest, DeploySkipIndexCheck) {
+    auto cli = GetParam();
+    cs = cli->cs;
+    sr = cli->sr;
+    std::string ddl1 =
+        "create table if not exists t1 (col1 string, col2 string, col3 bigint, "
+        "index(key=col1, ts=col3, TTL_TYPE=absolute));";
+    std::string ddl2 =
+        "create table if not exists t2 (col1 string, col2 string, col3 bigint, "
+        "index(key=col1, ts=col3, TTL_TYPE=absolute));";
+    ProcessSQLs(sr, {
+                        "set @@execute_mode = 'online';",
+                        "create database test2;",
+                        "use test2;",
+                        ddl1,
+                        ddl2,
+                    });
+    std::string deploy_sql = "deploy demo SELECT * FROM t1 LAST JOIN t2 ORDER BY t2.col3 ON t1.col1 = t2.col1;";
+    hybridse::sdk::Status status;
+    std::string msg;
+    sr->ExecuteSQL(deploy_sql, &status);
+    ASSERT_TRUE(status.IsOK()) << status.ToString();
+    ASSERT_TRUE(cs->GetNsClient()->DropProcedure("test2", "demo", msg)) << msg;
+    deploy_sql =
+        "deploy demo OPTIONS (skip_index_check=\"false\") "
+        "SELECT * FROM t1 LAST JOIN t2 ORDER BY t2.col3 ON t1.col1 = t2.col1;";
+    sr->ExecuteSQL(deploy_sql, &status);
+    ASSERT_TRUE(status.IsOK()) << status.ToString();
+    ASSERT_TRUE(cs->GetNsClient()->DropProcedure("test2", "demo", msg)) << msg;
+    deploy_sql =
+        "deploy demo OPTIONS (skip_index_check=\"false\") "
+        "SELECT * FROM t1 LAST JOIN t2 ORDER BY t2.col3 ON t1.col1 = t2.col1;";
+    sr->ExecuteSQL(deploy_sql, &status);
+    ASSERT_TRUE(status.IsOK()) << status.ToString();
+    ASSERT_TRUE(cs->GetNsClient()->DropProcedure("test2", "demo", msg)) << msg;
+    // skip index check won't update the existing index of table TODO(hw): check index?
+    deploy_sql =
+        "deploy demo OPTIONS (skip_index_check=\"true\") "
+        "SELECT * FROM t1 LAST JOIN t2 ORDER BY t2.col3 ON t1.col1 = t2.col1;";
+    sr->ExecuteSQL(deploy_sql, &status);
+    ASSERT_TRUE(status.IsOK()) << status.ToString();
+    ASSERT_TRUE(cs->GetNsClient()->DropProcedure("test2", "demo", msg)) << msg;
+    deploy_sql =
+        "deploy demo OPTIONS (SKIP_INDEX_CHECK=\"TRUE\") "
+        "SELECT * FROM t1 LAST JOIN t2 ORDER BY t2.col3 ON t1.col1 = t2.col1;";
+    sr->ExecuteSQL(deploy_sql, &status);
+    ASSERT_TRUE(status.IsOK()) << status.ToString();
+    ASSERT_TRUE(cs->GetNsClient()->DropProcedure("test2", "demo", msg));
+    ASSERT_TRUE(cs->GetNsClient()->DropTable("test2", "t1", msg));
+    ASSERT_TRUE(cs->GetNsClient()->DropTable("test2", "t2", msg));
+    ASSERT_TRUE(cs->GetNsClient()->DropDatabase("test2", msg));
+}
+
+TEST_P(DBSDKTest, DeployWithData) {
+    auto cli = GetParam();
+    cs = cli->cs;
+    sr = cli->sr;
+    std::string ddl1 =
+        "create table if not exists t1 (col1 string, col2 string, col3 bigint, col4 int, "
+        "index(key=col1, ts=col3, TTL_TYPE=absolute)) options (partitionnum=2, replicanum=1);";
+    std::string ddl2 =
+        "create table if not exists t2 (col1 string, col2 string, col3 bigint, "
+        "index(key=col1, ts=col3, TTL_TYPE=absolute)) options (partitionnum=2, replicanum=1);";
+    ProcessSQLs(sr, {
+                        "set @@execute_mode = 'online';",
+                        "create database test2;",
+                        "use test2;",
+                        ddl1,
+                        ddl2,
+                    });
+    hybridse::sdk::Status status;
+    for (int i = 0; i < 100; i++) {
+        std::string key1 = absl::StrCat("col1", i);
+        std::string key2 = absl::StrCat("col2", i);
+        sr->ExecuteSQL(absl::StrCat("insert into t1 values ('", key1, "', '", key2, "', 1635247427000, 5);"), &status);
+        sr->ExecuteSQL(absl::StrCat("insert into t2 values ('", key1, "', '", key2, "', 1635247427000);"), &status);
+    }
+    sleep(2);
+    std::string deploy_sql =
+        "deploy demo SELECT t1.col1, t2.col2, sum(col4) OVER w1 as w1_col4_sum FROM t1 "
+        "LAST JOIN t2 ORDER BY t2.col3 ON t1.col2 = t2.col2 "
+        "WINDOW w1 AS (PARTITION BY t1.col2 ORDER BY t1.col3 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);";
+    sr->ExecuteSQL(deploy_sql, &status);
+    ASSERT_TRUE(status.IsOK());
+    std::string msg;
+    ASSERT_TRUE(cs->GetNsClient()->DropProcedure("test2", "demo", msg));
+    ASSERT_TRUE(cs->GetNsClient()->DropTable("test2", "t1", msg));
+    ASSERT_TRUE(cs->GetNsClient()->DropTable("test2", "t2", msg));
+    ASSERT_TRUE(cs->GetNsClient()->DropDatabase("test2", msg));
+}
+
+TEST_P(DBSDKTest, DeployWithBias) {
+    auto cli = GetParam();
+    cs = cli->cs;
+    sr = cli->sr;
+    std::string db = "test_bias";
+    std::string ddl1 =
+        "create table if not exists t1 (col1 string, col2 string, col3 bigint, col4 int, "
+        "index(key=col1, ts=col3, TTL_TYPE=absolute)) options (partitionnum=2, replicanum=1);";
+    std::string ddl2 =
+        "create table if not exists t2 (col1 string, col2 string, col3 bigint, "
+        "index(key=col1, ts=col3, TTL_TYPE=absolute)) options (partitionnum=2, replicanum=1);";
+    ProcessSQLs(sr, {
+                        "set @@execute_mode = 'online';",
+                        "create database " + db ,
+                        "use " + db,
+                        ddl1,
+                        ddl2,
+                    });
+    hybridse::sdk::Status status;
+    for (int i = 0; i < 100; i++) {
+        std::string key1 = absl::StrCat("col1", i);
+        std::string key2 = absl::StrCat("col2", i);
+        sr->ExecuteSQL(absl::StrCat("insert into t1 values ('", key1, "', '", key2, "', 1635247427000, 5);"), &status);
+        sr->ExecuteSQL(absl::StrCat("insert into t2 values ('", key1, "', '", key2, "', 1635247427000);"), &status);
+    }
+    sleep(2);
+
+    std::string rows_deployment_part =
+        "SELECT t1.col1, t2.col2, sum(col4) OVER w1 as w1_col4_sum "
+        "FROM t1 "
+        "LAST JOIN t2 ORDER BY t2.col3 ON t1.col2 = t2.col2 "
+        "WINDOW w1 AS (PARTITION BY t1.col2 ORDER BY t1.col3 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);";
+    auto range_deployment_part =
+        "SELECT t1.col1, t2.col2, sum(col4) OVER w1 as w1_col4_sum "
+        "FROM t1 "
+        "LAST JOIN t2 ORDER BY t2.col3 ON t1.col2 = t2.col2 "
+        "WINDOW w1 AS (PARTITION BY t1.col2 ORDER BY t1.col3 ROWS_RANGE BETWEEN 2 PRECEDING AND CURRENT ROW);";
+
+    // test rows bias
+    auto i = 0;
+    auto rows_test = [&](std::string option, bool expect = true) {
+        sr->ExecuteSQL(absl::StrCat("DEPLOY d", i++, " OPTIONS(", option, ") ", rows_deployment_part), &status);
+        if (expect)
+            EXPECT_TRUE(status.IsOK());
+        else
+            EXPECT_FALSE(status.IsOK());
+        // check table index
+        auto info = sr->GetTableInfo(db, "t1");
+        return info.column_key().Get(1);
+    };
+
+    auto index_res = rows_test("rows_bias=0");
+    ASSERT_EQ(index_res.ttl().lat_ttl(), 2);
+    // range bias won't work cuz no new abs index in deploy
+    index_res = rows_test("rows_bias=20, range_bias='inf'");
+    ASSERT_EQ(index_res.ttl().lat_ttl(), 22);
+    rows_test("rows_bias=20s", false);
+    i--;  // last one is failed, reset the num
+
+    // test range bias
+    auto range_test = [&](std::string option, bool expect = true) {
+        sr->ExecuteSQL(absl::StrCat("DEPLOY d", i++, " OPTIONS(", option, ") ", range_deployment_part), &status);
+        if (expect)
+            EXPECT_TRUE(status.IsOK());
+        else
+            EXPECT_FALSE(status.IsOK());
+        // check table index
+        auto info = sr->GetTableInfo(db, "t1");
+        return info.column_key().Get(1);
+    };
+    index_res = range_test("range_bias=0");
+    ASSERT_EQ(index_res.ttl().abs_ttl(), 1);
+    index_res = range_test("range_bias=20");
+    ASSERT_EQ(index_res.ttl().abs_ttl(), 2);
+    // rows bias won't work cuz no **new** lat index in deploy, just new abs index + the old index
+    index_res = range_test("range_bias=1d, rows_bias=100");
+    ASSERT_EQ(index_res.ttl().abs_ttl(), 1441);
+
+    // set inf in the end, if not, all bias + inf = inf
+    index_res = rows_test("range_bias='inf'");
+    ASSERT_EQ(index_res.ttl().abs_ttl(), 0);
+    index_res = rows_test("rows_bias='inf'");
+    ASSERT_EQ(index_res.ttl().lat_ttl(), 0);
+
+    // sp in tablet may be stored a bit late, wait
+    sleep(3);
+    std::string msg;
+    for (int j = 0; j < i; j++) {
+        ASSERT_TRUE(cs->GetNsClient()->DropProcedure(db, "d" + std::to_string(j), msg));
+    }
+    ASSERT_TRUE(cs->GetNsClient()->DropTable(db, "t1", msg));
+    ASSERT_TRUE(cs->GetNsClient()->DropTable(db, "t2", msg));
+    ASSERT_TRUE(cs->GetNsClient()->DropDatabase(db, msg));
+}
+
+TEST_P(DBSDKTest, DeletetRange) {
+    auto cli = GetParam();
+    sr = cli->sr;
+    std::string db_name = "test2";
+    std::string table_name = "test1";
+    std::string ddl = "create table test1 (c1 string, c2 int, c3 bigint, INDEX(KEY=c1, ts=c3));";
+    ProcessSQLs(sr, {
+                        "set @@execute_mode = 'online'",
+                        absl::StrCat("create database ", db_name, ";"),
+                        absl::StrCat("use ", db_name, ";"),
+                        ddl,
+                    });
+    hybridse::sdk::Status status;
+    for (int i = 0; i < 10; i++) {
+        std::string key = absl::StrCat("key", i);
+        for (int j = 0; j < 10; j++) {
+            uint64_t ts = 1000 + j;
+            sr->ExecuteSQL(absl::StrCat("insert into ", table_name, " values ('", key, "', 11, ", ts, ");"), &status);
+        }
+    }
+
+    auto res = sr->ExecuteSQL(absl::StrCat("select * from ", table_name, ";"), &status);
+    ASSERT_EQ(res->Size(), 100);
+    ProcessSQLs(sr, {absl::StrCat("delete from ", table_name, " where c1 = 'key2';")});
+    res = sr->ExecuteSQL(absl::StrCat("select * from ", table_name, ";"), &status);
+    ASSERT_EQ(res->Size(), 90);
+    ProcessSQLs(sr, {absl::StrCat("delete from ", table_name, " where c1 = 'key3' and c3 = 1001;")});
+    res = sr->ExecuteSQL(absl::StrCat("select * from ", table_name, ";"), &status);
+    ASSERT_EQ(res->Size(), 89);
+    ProcessSQLs(sr, {absl::StrCat("delete from ", table_name, " where c1 = 'key4' and c3 > 1005;")});
+    res = sr->ExecuteSQL(absl::StrCat("select * from ", table_name, ";"), &status);
+    ASSERT_EQ(res->Size(), 85);
+    ProcessSQLs(sr, {absl::StrCat("delete from ", table_name, " where c1 = 'key4' and c3 > 1002 and c3 < 1006;")});
+    res = sr->ExecuteSQL(absl::StrCat("select * from ", table_name, ";"), &status);
+    ASSERT_EQ(res->Size(), 82);
+    ProcessSQLs(sr, {absl::StrCat("delete from ", table_name, " where c3 > 1007;")});
+    res = sr->ExecuteSQL(absl::StrCat("select * from ", table_name, ";"), &status);
+    ASSERT_EQ(res->Size(), 66);
+    ProcessSQLs(sr, {
+                        absl::StrCat("use ", db_name, ";"),
+                        absl::StrCat("drop table ", table_name),
+                        absl::StrCat("drop database ", db_name),
+                    });
+}
+
+TEST_P(DBSDKTest, DeletetSameColIndex) {
+    auto cli = GetParam();
+    sr = cli->sr;
+    std::string db_name = "test2";
+    std::string table_name = "test1";
+    std::string ddl =
+        "create table test1 (c1 string, c2 int, c3 bigint, c4 bigint, "
+        "INDEX(KEY=c1, ts=c3), INDEX(KEY=c1, ts=c4));";
+    ProcessSQLs(sr, {
+                        "set @@execute_mode = 'online'",
+                        absl::StrCat("create database ", db_name, ";"),
+                        absl::StrCat("use ", db_name, ";"),
+                        ddl,
+                    });
+    hybridse::sdk::Status status;
+    for (int i = 0; i < 10; i++) {
+        std::string key = absl::StrCat("key", i);
+        for (int j = 0; j < 10; j++) {
+            uint64_t ts = 1000 + j;
+            sr->ExecuteSQL(absl::StrCat("insert into ", table_name, " values ('", key, "', 11, ", ts, ",", ts, ");"),
+                           &status);
+        }
+    }
+
+    auto res = sr->ExecuteSQL(absl::StrCat("select * from ", table_name, ";"), &status);
+    ASSERT_EQ(res->Size(), 100);
+    ProcessSQLs(sr, {absl::StrCat("delete from ", table_name, " where c1 = 'key2';")});
+    res = sr->ExecuteSQL(absl::StrCat("select * from ", table_name, ";"), &status);
+    ASSERT_EQ(res->Size(), 90);
+    ProcessSQLs(sr, {
+                        absl::StrCat("drop table ", table_name),
+                        absl::StrCat("drop database ", db_name),
+                    });
+}
+
+TEST_P(DBSDKTest, SQLDeletetRow) {
     auto cli = GetParam();
     sr = cli->sr;
     std::string db_name = "test2";
@@ -2736,9 +3108,12 @@ TEST_P(DBSDKTest, LongWindowsCleanup) {
         rs = sr->ExecuteSQL("", result_sql, &status);
         ASSERT_EQ(0, rs->Size());
         ASSERT_FALSE(cs->GetNsClient()->DropTable("test2", "trans", msg));
-        ASSERT_TRUE(cs->GetNsClient()->DropProcedure("test2", "demo1", msg));
-        ASSERT_TRUE(cs->GetNsClient()->DropTable("test2", "trans", msg));
-        ASSERT_TRUE(cs->GetNsClient()->DropDatabase("test2", msg));
+        ASSERT_TRUE(cs->GetNsClient()->DropProcedure("test2", "demo1", msg)) << msg;
+        ASSERT_TRUE(cs->GetNsClient()->DropTable("test2", "trans", msg)) << msg;
+        // helpful for debug
+        HandleSQL("show tables;");
+        HandleSQL("show deployments;");
+        ASSERT_TRUE(cs->GetNsClient()->DropDatabase("test2", msg)) << msg;
     }
 }
 
@@ -2779,8 +3154,8 @@ TEST_P(DBSDKTest, CreateIfNotExists) {
     ASSERT_TRUE(status.IsOK());
 
     std::string msg;
-    ASSERT_TRUE(cs->GetNsClient()->DropTable("test2", "trans", msg));
-    ASSERT_TRUE(cs->GetNsClient()->DropDatabase("test2", msg));
+    ASSERT_TRUE(cs->GetNsClient()->DropTable("test2", "trans", msg)) << msg;
+    ASSERT_TRUE(cs->GetNsClient()->DropDatabase("test2", msg)) << msg;
 }
 
 TEST_P(DBSDKTest, ShowComponents) {
@@ -2883,7 +3258,7 @@ void ExpectShowTableStatusResult(const std::vector<std::vector<test::CellExpectI
 
     std::vector<std::vector<test::CellExpectInfo>> merged_expect = {
         {"Table_id", "Table_name", "Database_name", "Storage_type", "Rows", "Memory_data_size", "Disk_data_size",
-         "Partition", "Partition_unalive", "Replica", "Offline_path", "Offline_format", "Offline_deep_copy",
+         "Partition", "Partition_unalive", "Replica", "Offline_path", "Offline_format", "Offline_symbolic_paths",
          "Warnings"}};
     merged_expect.insert(merged_expect.end(), expect.begin(), expect.end());
     if (all_db) {
@@ -2894,9 +3269,7 @@ void ExpectShowTableStatusResult(const std::vector<std::vector<test::CellExpectI
                                  SystemStandaloneTableStatus.end());
         }
     }
-    ExpectResultSetStrEq(
-        merged_expect,
-        rs);
+    ExpectResultSetStrEq(merged_expect, rs);
 }
 
 TEST_P(DBSDKTest, ShowTableStatusEmptySet) {
@@ -3093,8 +3466,7 @@ TEST_P(DBSDKTest, ShowTableStatusForHddTable) {
 
     // TODO(ace): Memory_data_size not asserted because not implemented
     ExpectShowTableStatusResult(
-        {{{}, tb_name, db_name, "hdd", "1", {}, {{}, "0"}, "1", "0", "1", "NULL", "NULL", "NULL", ""}},
-        rs.get());
+        {{{}, tb_name, db_name, "hdd", "1", {}, {{}, "0"}, "1", "0", "1", "NULL", "NULL", "NULL", ""}}, rs.get());
 
     // runs HandleSQL only for the purpose of pretty print result in console
     HandleSQL("show table status");
@@ -3309,10 +3681,13 @@ TEST_F(SqlCmdTest, SelectWithAddNewIndex) {
     ASSERT_EQ(res->Size(), 3);
     res = sr->ExecuteSQL(absl::StrCat("select id,c1,c2,c3 from ", tb1_name, " where c2=1;"), &status);
     ASSERT_EQ(res->Size(), 3);
+    ProcessSQLs(sr, {absl::StrCat("drop index ", db1_name, ".", tb1_name, ".index1")});
+    absl::SleepFor(absl::Seconds(2));
+    res = sr->ExecuteSQL(absl::StrCat("select id,c1,c2,c3 from ", tb1_name, " where c2=1;"), &status);
+    ASSERT_EQ(res->Size(), 3);
 
     ProcessSQLs(sr, {
                         absl::StrCat("use ", db1_name, ";"),
-                        absl::StrCat("drop index ", db1_name, ".", tb1_name, ".index1"),
                         absl::StrCat("drop table ", tb1_name),
                         absl::StrCat("drop database ", db1_name),
                     });
@@ -3339,23 +3714,20 @@ struct DeploymentEnv {
     void SetUp() {
         ProcessSQLs(
             sr_,
-            {
-                "set session execute_mode = 'online'",
-                absl::StrCat("create database ", db_),
-                absl::StrCat("use ", db_),
-                absl::StrCat("create table ", table_,
-                             " (c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, "
-                             "c8 date, index(key=c1, ts=c4, abs_ttl=0, ttl_type=absolute)) "
-                             "OPTIONS(partitionnum=1,replicanum=1);"),
-                absl::StrCat("deploy ", dp_name_, " SELECT c1, c3, sum(c4) OVER w1 as w1_c4_sum FROM ", table_,
-                             " WINDOW w1 AS (PARTITION BY c1 ORDER BY c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);"),
-                absl::StrCat(
-                    "create procedure ", procedure_name_,
-                    " (c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, c8 date) BEGIN SELECT c1, c3, "
-                    "sum(c4) OVER w1 as w1_c4_sum FROM ",
-                    table_,
-                    " WINDOW w1 AS (PARTITION BY c1 ORDER BY c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW); END"),
-            });
+            {"set session execute_mode = 'online'", absl::StrCat("create database ", db_), absl::StrCat("use ", db_),
+             absl::StrCat("create table ", table_,
+                          " (c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, "
+                          "c8 date, index(key=c1, ts=c4, abs_ttl=0, ttl_type=absolute)) "
+                          "OPTIONS(partitionnum=1,replicanum=1);"),
+             // deploy will create index c1,c7,lat 2, may fail in workflow cpp
+             absl::StrCat("deploy ", dp_name_, " SELECT c1, c3, sum(c4) OVER w1 as w1_c4_sum FROM ", table_,
+                          " WINDOW w1 AS (PARTITION BY c1 ORDER BY c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);"),
+             absl::StrCat(
+                 "create procedure ", procedure_name_,
+                 " (c1 string, c3 int, c4 bigint, c5 float, c6 double, c7 timestamp, c8 date) BEGIN SELECT c1, "
+                 "c3, "
+                 "sum(c4) OVER w1 as w1_c4_sum FROM ",
+                 table_, " WINDOW w1 AS (PARTITION BY c1 ORDER BY c7 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW); END")});
     }
 
     void TearDown() {
@@ -3368,12 +3740,16 @@ struct DeploymentEnv {
                          });
     }
 
+    // A bacth request increase deployment cnt by 1
+    // yet may greatly impact deploy response time, if the batch size is huge
+    // maybe it requires a revision
     void CallDeployProcedureBatch() {
         hybridse::sdk::Status status;
         std::shared_ptr<sdk::SQLRequestRow> rr = std::make_shared<sdk::SQLRequestRow>();
         GetRequestRow(&rr, dp_name_);
-        auto common_column_indices = std::make_shared<sdk::ColumnIndicesSet>(rr->GetSchema());
+        auto common_column_indices = std::make_shared<sdk::ColumnIndicesSet>();
         auto row_batch = std::make_shared<sdk::SQLRequestRowBatch>(rr->GetSchema(), common_column_indices);
+        ASSERT_TRUE(row_batch->AddRow(rr));
         sr->CallSQLBatchRequestProcedure(db_, dp_name_, row_batch, &status);
         ASSERT_TRUE(status.IsOK()) << status.msg << "\n" << status.trace;
     }
@@ -3630,6 +4006,7 @@ int main(int argc, char** argv) {
     ::openmldb::sdk::ClusterOptions copt;
     copt.zk_cluster = mc.GetZkCluster();
     copt.zk_path = mc.GetZkPath();
+    copt.zk_session_timeout = FLAGS_zk_session_timeout;
     ::openmldb::cmd::cluster_cli.cs = new ::openmldb::sdk::ClusterSDK(copt);
     ::openmldb::cmd::cluster_cli.cs->Init();
     ::openmldb::cmd::cluster_cli.sr = new ::openmldb::sdk::SQLClusterRouter(::openmldb::cmd::cluster_cli.cs);

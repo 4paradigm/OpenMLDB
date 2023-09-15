@@ -9,3 +9,4 @@
     arch/index
     ip_tips
     client_config/index
+    error_code

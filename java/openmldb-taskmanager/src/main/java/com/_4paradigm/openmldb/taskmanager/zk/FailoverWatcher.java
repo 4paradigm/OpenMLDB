@@ -51,13 +51,13 @@ public class FailoverWatcher implements Watcher {
    */
   public FailoverWatcher() throws IOException {
 
-    baseZnode = TaskManagerConfig.ZK_ROOT_PATH + "/taskmanager";
+    baseZnode = TaskManagerConfig.getZkRootPath() + "/taskmanager";
     masterZnode =  baseZnode + "/leader";
-    zkQuorum = TaskManagerConfig.ZK_CLUSTER;
-    sessionTimeout = TaskManagerConfig.ZK_SESSION_TIMEOUT;
+    zkQuorum = TaskManagerConfig.getZkCluster();
+    sessionTimeout = TaskManagerConfig.getZkSessionTimeout();
     connectRetryTimes = 3;
-    String serverHost = TaskManagerConfig.HOST;
-    int serverPort = TaskManagerConfig.PORT;
+    String serverHost = TaskManagerConfig.getServerHost();
+    int serverPort = TaskManagerConfig.getServerPort();
     hostPort = new HostPort(serverHost, serverPort);
 
     connectZooKeeper();
@@ -91,7 +91,7 @@ public class FailoverWatcher implements Watcher {
    */
   protected void initZnode() {
     try {
-      ZooKeeperUtil.createAndFailSilent(this, TaskManagerConfig.ZK_ROOT_PATH);
+      ZooKeeperUtil.createAndFailSilent(this, TaskManagerConfig.getZkRootPath());
       ZooKeeperUtil.createAndFailSilent(this, baseZnode);
     } catch (Exception e) {
       LOG.fatal("Error to create znode " + baseZnode

@@ -354,7 +354,7 @@ bool RowBuilder::AppendTimestamp(int64_t val) {
 bool RowBuilder::SetTimestamp(uint32_t index, int64_t val) { return SetTimestamp(buf_, index, val); }
 
 bool RowBuilder::SetTimestamp(int8_t* buf, uint32_t index, int64_t val) {
-    if (!Check(index, ::openmldb::type::kTimestamp)) return false;
+    if (!Check(index, ::openmldb::type::kTimestamp) || val < 0) return false;
     SetField(buf, index);
     int8_t* ptr = buf + offset_vec_[index];
     *(reinterpret_cast<int64_t*>(ptr)) = val;
@@ -751,14 +751,14 @@ int32_t RowView::GetInteger(const int8_t* row, uint32_t idx, ::openmldb::type::D
         }
         case ::openmldb::type::kInt: {
             int32_t tmp_val = 0;
-            GetValue(row, idx, type, &tmp_val);
+            ret = GetValue(row, idx, type, &tmp_val);
             if (ret == 0) *val = tmp_val;
             break;
         }
         case ::openmldb::type::kTimestamp:
         case ::openmldb::type::kBigInt: {
             int64_t tmp_val = 0;
-            GetValue(row, idx, type, &tmp_val);
+            ret = GetValue(row, idx, type, &tmp_val);
             if (ret == 0) *val = tmp_val;
             break;
         }
@@ -1086,71 +1086,62 @@ bool RowProject::Project(const int8_t* row_ptr, uint32_t size, int8_t** output_p
     for (int32_t i = 0; i < plist_.size(); i++) {
         uint32_t idx = plist_.Get(i);
         const ::openmldb::common::ColumnDesc& column = cur_schema_->Get(idx);
-        int32_t ret = 0;
+        bool ret = false;
         if (cur_rv_->IsNULL(idx)) {
-            row_builder_->AppendNULL();
-            continue;
+            ret = row_builder_->AppendNULL();
+        } else {
+            switch (column.data_type()) {
+                case ::openmldb::type::kBool: {
+                    bool val = false;
+                    ret = cur_rv_->GetBool(idx, &val) == 0 && row_builder_->AppendBool(val);
+                    break;
+                }
+                case ::openmldb::type::kSmallInt: {
+                    int16_t val = 0;
+                    ret = cur_rv_->GetInt16(idx, &val) == 0 && row_builder_->AppendInt16(val);
+                    break;
+                }
+                case ::openmldb::type::kInt: {
+                    int32_t val = 0;
+                    ret = cur_rv_->GetInt32(idx, &val) == 0 && row_builder_->AppendInt32(val);
+                    break;
+                }
+                case ::openmldb::type::kDate: {
+                    int32_t val = 0;
+                    ret = cur_rv_->GetDate(idx, &val) == 0 && row_builder_->AppendDate(val);
+                    break;
+                }
+                case ::openmldb::type::kBigInt: {
+                    int64_t val = 0;
+                    ret = cur_rv_->GetInt64(idx, &val) == 0 && row_builder_->AppendInt64(val);
+                    break;
+                }
+                case ::openmldb::type::kTimestamp: {
+                    int64_t val = 0;
+                    ret = cur_rv_->GetTimestamp(idx, &val) == 0 && row_builder_->AppendTimestamp(val);
+                    break;
+                }
+                case ::openmldb::type::kFloat: {
+                    float val = 0;
+                    ret = cur_rv_->GetFloat(idx, &val) == 0 && row_builder_->AppendFloat(val);
+                    break;
+                }
+                case ::openmldb::type::kDouble: {
+                    double val = 0;
+                    ret = cur_rv_->GetDouble(idx, &val) == 0 && row_builder_->AppendDouble(val);
+                    break;
+                }
+                case ::openmldb::type::kString:
+                case ::openmldb::type::kVarchar: {
+                    char* val = NULL;
+                    uint32_t size = 0;
+                    ret = cur_rv_->GetString(idx, &val, &size) == 0 && row_builder_->AppendString(val, size);
+                    break;
+                }
+                default: { PDLOG(WARNING, "not supported type"); }
+            }
         }
-        switch (column.data_type()) {
-            case ::openmldb::type::kBool: {
-                bool val = false;
-                ret = cur_rv_->GetBool(idx, &val);
-                if (ret == 0) row_builder_->AppendBool(val);
-                break;
-            }
-            case ::openmldb::type::kSmallInt: {
-                int16_t val = 0;
-                ret = cur_rv_->GetInt16(idx, &val);
-                if (ret == 0) row_builder_->AppendInt16(val);
-                break;
-            }
-            case ::openmldb::type::kInt: {
-                int32_t val = 0;
-                ret = cur_rv_->GetInt32(idx, &val);
-                if (ret == 0) row_builder_->AppendInt32(val);
-                break;
-            }
-            case ::openmldb::type::kDate: {
-                int32_t val = 0;
-                ret = cur_rv_->GetDate(idx, &val);
-                if (ret == 0) row_builder_->AppendDate(val);
-                break;
-            }
-            case ::openmldb::type::kBigInt: {
-                int64_t val = 0;
-                ret = cur_rv_->GetInt64(idx, &val);
-                if (ret == 0) row_builder_->AppendInt64(val);
-                break;
-            }
-            case ::openmldb::type::kTimestamp: {
-                int64_t val = 0;
-                ret = cur_rv_->GetTimestamp(idx, &val);
-                if (ret == 0) row_builder_->AppendTimestamp(val);
-                break;
-            }
-            case ::openmldb::type::kFloat: {
-                float val = 0;
-                ret = cur_rv_->GetFloat(idx, &val);
-                if (ret == 0) row_builder_->AppendFloat(val);
-                break;
-            }
-            case ::openmldb::type::kDouble: {
-                double val = 0;
-                ret = cur_rv_->GetDouble(idx, &val);
-                if (ret == 0) row_builder_->AppendDouble(val);
-                break;
-            }
-            case ::openmldb::type::kString:
-            case ::openmldb::type::kVarchar: {
-                char* val = NULL;
-                uint32_t size = 0;
-                ret = cur_rv_->GetString(idx, &val, &size);
-                if (ret == 0) row_builder_->AppendString(val, size);
-                break;
-            }
-            default: { PDLOG(WARNING, "not supported type"); }
-        }
-        if (ret != 0) {
+        if (!ret) {
             delete[] ptr;
             PDLOG(WARNING, "fail to project column %s with idx %u", column.name().c_str(), idx);
             return false;

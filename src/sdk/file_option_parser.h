@@ -22,6 +22,7 @@
 #include <string>
 #include <utility>
 
+#include "absl/strings/ascii.h"
 #include "base/status.h"
 #include "node/node_manager.h"
 
@@ -44,7 +45,7 @@ class FileOptionsParser {
     ::openmldb::base::Status Parse(const std::shared_ptr<hybridse::node::OptionsMap>& options_map) {
         for (const auto& item : *options_map) {
             std::string key = item.first;
-            boost::to_lower(key);
+            absl::AsciiStrToLower(&key);
             auto pair = check_map_.find(key);
             if (pair == check_map_.end()) {
                 return {openmldb::base::kSQLCmdRunError, "this option " + key + " is not currently supported"};
@@ -102,7 +103,7 @@ class FileOptionsParser {
     std::function<bool(const hybridse::node::ConstNode* node)> CheckFormat() {
         return [this](const hybridse::node::ConstNode* node) {
             format_ = node->GetAsString();
-            boost::to_lower(format_);
+            absl::AsciiStrToLower(&format_);
             if (format_ != "csv" && format_ != "parquet") {
                 return false;
             }
@@ -149,7 +150,7 @@ class FileOptionsParser {
     std::function<bool(const hybridse::node::ConstNode* node)> CheckMode() {
         return [this](const hybridse::node::ConstNode* node) {
             mode_ = node->GetAsString();
-            boost::to_lower(mode_);
+            absl::AsciiStrToLower(&mode_);
             if (mode_ != "error_if_exists" && mode_ != "overwrite" && mode_ != "append") {
                 return false;
             }
@@ -180,7 +181,7 @@ class ReadFileOptionsParser : public FileOptionsParser {
     std::function<bool(const hybridse::node::ConstNode* node)> CheckLoadMode() {
         return [this](const hybridse::node::ConstNode* node) {
             load_mode_ = node->GetAsString();
-            boost::to_lower(load_mode_);
+            absl::AsciiStrToLower(&load_mode_);
             if (load_mode_ != "local" && load_mode_ != "cluster") {
                 return false;
             }

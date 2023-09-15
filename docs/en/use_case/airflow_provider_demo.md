@@ -34,7 +34,7 @@ For the newest version, please visit [GitHub example_dags](https://github.com/4p
 - Please project the previously downloaded files to the path `/work/airflow/dags`, where Airflow will access for the DAG.
 
 ```
-docker run -p 8080:8080 -v `pwd`/airflow_demo_files:/work/airflow/dags -it 4pdosc/openmldb:0.6.9 bash
+docker run -p 8080:8080 -v `pwd`/airflow_demo_files:/work/airflow/dags -it 4pdosc/openmldb:0.8.3 bash
 ```
 
 #### 0.3 Download and Install the Airflow and the Airflow OpenMLDB Provider 

@@ -48,6 +48,11 @@ static base::Status ConvertArrayType(const zetasql::ASTArrayConstructor* array_e
 
 static base::Status ConvertASTType(const zetasql::ASTType* ast_type, node::NodeManager* nm,  node::TypeNode** out);
 
+static base::Status convertAlterAction(const zetasql::ASTAlterAction* action, node::NodeManager* nm,
+                                       node::AlterActionBase** out);
+static base::Status ConvertAlterTableStmt(const zetasql::ASTAlterTableStatement* stmt, node::NodeManager* nm,
+                                          node::SqlNode** out);
+
 /// Used to convert zetasql ASTExpression Node into our ExprNode
 base::Status ConvertExprNode(const zetasql::ASTExpression* ast_expression, node::NodeManager* node_manager,
                              node::ExprNode** output) {
@@ -397,8 +402,8 @@ base::Status ConvertExprNode(const zetasql::ASTExpression* ast_expression, node:
             int64_t int_value;
             CHECK_STATUS(ASTIntLiteralToNum(ast_expression, &int_value));
 
-            if (!literal->is_long() && int_value <= INT_MAX && int_value >= INT_MIN) {
-                *output = node_manager->MakeConstNode(static_cast<int>(int_value));
+            if (!literal->is_long() && int_value <= INT32_MAX && int_value >= INT32_MIN) {
+                *output = node_manager->MakeConstNode(static_cast<int32_t>(int_value));
             } else {
                 *output = node_manager->MakeConstNode(int_value);
             }
@@ -670,6 +675,12 @@ base::Status ConvertStatement(const zetasql::ASTStatement* statement, node::Node
             *output = node_manager->MakeCmdNode(node::CmdType::kCmdUseDatabase, db_name);
             break;
         }
+        case zetasql::AST_EXIT_STATEMENT: {
+            const auto exit_stmt = statement->GetAsOrNull<zetasql::ASTExitStatement>();
+            CHECK_TRUE(nullptr != exit_stmt, common::kSqlAstError, "not an ASTExitStatement");
+            *output = node_manager->MakeCmdNode(node::CmdType::kCmdExit);
+            break;
+        }
         case zetasql::AST_SYSTEM_VARIABLE_ASSIGNMENT: {
             /// support system variable setting and showing in OpenMLDB since v0.4.0
             /// non-support local variable setting in v0.4.0
@@ -689,11 +700,11 @@ base::Status ConvertStatement(const zetasql::ASTStatement* statement, node::Node
                 *output = node_manager->MakeSetNode(node::VariableScope::kSessionSystemVariable,
                                                     path[0], dynamic_cast<node::ConstNode*>(value));
             } else if (path.size() == 2) {
-                boost::to_lower(path[0]);
-                if (path[0] == "global") {
+                absl::string_view path_v(path[0]);
+                if (absl::EqualsIgnoreCase(path_v, "global")) {
                     *output = node_manager->MakeSetNode(node::VariableScope::kGlobalSystemVariable, path[1],
                                                         dynamic_cast<node::ConstNode*>(value));
-                } else if (path[0] == "session") {
+                } else if (absl::EqualsIgnoreCase(path_v, "session")) {
                     *output = node_manager->MakeSetNode(node::VariableScope::kSessionSystemVariable, path[1],
                                                         dynamic_cast<node::ConstNode*>(value));
                 } else {
@@ -817,6 +828,11 @@ base::Status ConvertStatement(const zetasql::ASTStatement* statement, node::Node
             node::CreateFunctionNode* create_fun_node = nullptr;
             CHECK_STATUS(ConvertCreateFunctionNode(ast_create_function_stmt, node_manager, &create_fun_node));
             *output = create_fun_node;
+            break;
+        }
+        case zetasql::AST_ALTER_TABLE_STATEMENT: {
+            CHECK_STATUS(
+                ConvertGuard<zetasql::ASTAlterTableStatement>(statement, node_manager, output, ConvertAlterTableStmt));
             break;
         }
         default: {
@@ -979,8 +995,7 @@ base::Status ConvertFrameNode(const zetasql::ASTWindowFrame* window_frame, node:
     auto* frame_ext = node_manager->MakeFrameExtent(start, end);
     CHECK_TRUE(frame_ext->Valid(), common::kSqlAstError,
                "The lower bound of a window frame must be less than or equal to the upper bound");
-    *output = dynamic_cast<node::FrameNode*>(
-        node_manager->MakeFrameNode(frame_type, frame_ext, frame_max_size));
+    *output = node_manager->MakeFrameNode(frame_type, frame_ext, frame_max_size);
     return base::Status::OK();
 }
 base::Status ConvertWindowDefinition(const zetasql::ASTWindowDefinition* window_definition,
@@ -1009,7 +1024,9 @@ base::Status ConvertWindowSpecification(const zetasql::ASTWindowSpecification* w
         CHECK_STATUS(ConvertOrderBy(window_spec->order_by(), node_manager, &order_by))
     }
     if (nullptr != window_spec->window_frame()) {
-        CHECK_STATUS(ConvertFrameNode(window_spec->window_frame(), node_manager, &frame_node))
+        CHECK_STATUS(ConvertFrameNode(window_spec->window_frame(), node_manager, &frame_node));
+        CHECK_TRUE(frame_node != nullptr, common::kPlanError);
+        frame_node->exclude_current_row_ = window_spec->is_exclude_current_row();
     }
 
     node::SqlNodeList* union_tables = nullptr;
@@ -1024,7 +1041,7 @@ base::Status ConvertWindowSpecification(const zetasql::ASTWindowSpecification* w
     }
     *output = dynamic_cast<node::WindowDefNode*>(node_manager->MakeWindowDefNode(
         union_tables, partition_by, order_by, frame_node, window_spec->is_exclude_current_time(),
-        window_spec->is_exclude_current_row(), window_spec->is_instance_not_in_window()));
+        window_spec->is_instance_not_in_window()));
     if (nullptr != window_spec->base_window_name()) {
         (*output)->SetName(window_spec->base_window_name()->GetAsString());
     }
@@ -1237,6 +1254,14 @@ base::Status ConvertQueryNode(const zetasql::ASTQuery* root, node::NodeManager* 
 
     node::QueryNode* query_node = nullptr;
     CHECK_STATUS(ConvertQueryExpr(query_expression, node_manager, &query_node));
+
+    if (root->with_clause() != nullptr) {
+        auto* list = node_manager->MakeList<node::WithClauseEntry>();
+        CHECK_STATUS(ConvertWithClause(root->with_clause(), node_manager, list));
+        auto span = absl::MakeSpan(list->data_);
+        query_node->SetWithClauses(span);
+    }
+
     // HACK: set SelectQueryNode's limit and order
     //   UnionQueryNode do not match zetasql's union stmt
     if (query_node->query_type_ == node::kQuerySelect) {
@@ -1328,7 +1353,7 @@ base::Status ConvertQueryExpr(const zetasql::ASTQueryExpression* query_expressio
 }
 
 // ASTCreateTableStatement
-//   (table_name, ASTTableElementList, ASTOptionsList, not_exist, _)
+//   (table_name, ASTTableElementList, ASTOptionsList, not_exist, like_clause)
 //     -> (ASTTableElementList -> SqlNodeList)
 //     -> (ASTOptionsList -> SqlNodeList)
 //     -> CreateStmt
@@ -1357,6 +1382,27 @@ base::Status ConvertCreateTableNode(const zetasql::ASTCreateTableStatement* ast_
         }
     }
 
+    std::shared_ptr<node::CreateTableLikeClause> like_clause = nullptr;
+    if (ast_create_stmt->like_table_clause() != nullptr) {
+        like_clause = std::make_shared<node::CreateTableLikeClause>();
+        // handling `LIKE PARQUET '...'`
+        switch (ast_create_stmt->like_table_clause()->kind()) {
+            case zetasql::ASTLikeTableClause::TableKind::PARQUET: {
+                like_clause->kind_ = node::CreateTableLikeClause::PARQUET;
+                break;
+            }
+            case zetasql::ASTLikeTableClause::TableKind::HIVE: {
+                like_clause->kind_ = node::CreateTableLikeClause::HIVE;
+                break;
+            }
+            default: {
+                FAIL_STATUS(common::kSqlAstError, "unknown like clause kind for create table");
+            }
+        }
+
+        like_clause->path_ = ast_create_stmt->like_table_clause()->path()->string_value();
+    }
+
     const auto ast_option_list = ast_create_stmt->options_list();
     node::SqlNodeList* option_list = nullptr;
 
@@ -1372,8 +1418,9 @@ base::Status ConvertCreateTableNode(const zetasql::ASTCreateTableStatement* ast_
         }
     }
 
-    *output = static_cast<node::CreateStmt*>(
-        node_manager->MakeCreateTableNode(if_not_exist, db_name, table_name, column_desc_list, option_list));
+    auto* create = node_manager->MakeCreateTableNode(if_not_exist, db_name, table_name, column_desc_list, option_list);
+    create->like_clause_.swap(like_clause);
+    *output = create;
 
     return base::Status::OK();
 }
@@ -1514,8 +1561,8 @@ base::Status ConvertColumnIndexNode(const zetasql::ASTIndexDefinition* ast_def_n
 base::Status ConvertIndexOption(const zetasql::ASTOptionsEntry* entry, node::NodeManager* node_manager,
                                 node::SqlNode** output) {
     auto name = entry->name()->GetAsString();
-    boost::to_lower(name);
-    if (boost::equals("key", name)) {
+    absl::string_view name_v(name);
+    if (absl::EqualsIgnoreCase("key", name_v)) {
         switch (entry->value()->node_kind()) {
             case zetasql::AST_PATH_EXPRESSION: {
                 std::string column_name;
@@ -1559,7 +1606,7 @@ base::Status ConvertIndexOption(const zetasql::ASTOptionsEntry* entry, node::Nod
                                                                        entry->value()->GetNodeKindString()));
             }
         }
-    } else if (boost::equals("ts", name)) {
+    } else if (absl::EqualsIgnoreCase("ts", name_v)) {
         std::string column_name;
         CHECK_TRUE(zetasql::AST_PATH_EXPRESSION == entry->value()->node_kind(), common::kSqlAstError,
                    "Invaid index ts, should be path expression");
@@ -1567,7 +1614,7 @@ base::Status ConvertIndexOption(const zetasql::ASTOptionsEntry* entry, node::Nod
             AstPathExpressionToString(entry->value()->GetAsOrNull<zetasql::ASTPathExpression>(), &column_name));
         *output = node_manager->MakeIndexTsNode(column_name);
         return base::Status::OK();
-    } else if (boost::equals("ttl", name)) {
+    } else if (absl::EqualsIgnoreCase("ttl", name_v)) {
         // case entry->value()
         //   ASTIntervalLiteral                  -> [ConstNode(kDay | kHour | kMinute)]
         //   ASTIntLiteral                       -> [ConstNode(kLatest)]
@@ -1615,14 +1662,14 @@ base::Status ConvertIndexOption(const zetasql::ASTOptionsEntry* entry, node::Nod
 
         *output = node_manager->MakeIndexTTLNode(ttl_list);
         return base::Status::OK();
-    } else if (boost::equals("ttl_type", name)) {
+    } else if (absl::EqualsIgnoreCase("ttl_type", name_v)) {
         std::string ttl_type;
         CHECK_TRUE(zetasql::AST_PATH_EXPRESSION == entry->value()->node_kind(), common::kSqlAstError,
                    "Invalid ttl_type, should be path expression");
         CHECK_STATUS(AstPathExpressionToString(entry->value()->GetAsOrNull<zetasql::ASTPathExpression>(), &ttl_type));
         *output = node_manager->MakeIndexTTLTypeNode(ttl_type);
         return base::Status::OK();
-    } else if (boost::equals("version", name)) {
+    } else if (absl::EqualsIgnoreCase("version", name_v)) {
         switch (entry->value()->node_kind()) {
             case zetasql::AST_PATH_EXPRESSION: {
                 std::string version;
@@ -1668,16 +1715,16 @@ base::Status ConvertIndexOption(const zetasql::ASTOptionsEntry* entry, node::Nod
 base::Status ConvertTableOption(const zetasql::ASTOptionsEntry* entry, node::NodeManager* node_manager,
                                 node::SqlNode** output) {
     auto identifier = entry->name()->GetAsString();
-    boost::to_lower(identifier);
-    if (boost::equals("partitionnum", identifier)) {
+    absl::string_view identifier_v(identifier);
+    if (absl::EqualsIgnoreCase("partitionnum", identifier_v)) {
         int64_t value = 0;
         CHECK_STATUS(ASTIntLiteralToNum(entry->value(), &value));
         *output = node_manager->MakePartitionNumNode(value);
-    } else if (boost::equals("replicanum", identifier)) {
+    } else if (absl::EqualsIgnoreCase("replicanum", identifier_v)) {
         int64_t value = 0;
         CHECK_STATUS(ASTIntLiteralToNum(entry->value(), &value));
         *output = node_manager->MakeReplicaNumNode(value);
-    } else if (boost::equals("distribution", identifier)) {
+    } else if (absl::EqualsIgnoreCase("distribution", identifier_v)) {
         const auto arry_expr = entry->value()->GetAsOrNull<zetasql::ASTArrayConstructor>();
         CHECK_TRUE(arry_expr != nullptr, common::kSqlAstError, "distribution not and ASTArrayConstructor");
         CHECK_TRUE(!arry_expr->elements().empty(), common::kSqlAstError, "Un-support empty distributions currently")
@@ -1711,13 +1758,13 @@ base::Status ConvertTableOption(const zetasql::ASTOptionsEntry* entry, node::Nod
             }
         }
         *output = node_manager->MakeDistributionsNode(distribution_list);
-    } else if (boost::equals("storage_mode", identifier)) {
+    } else if (absl::EqualsIgnoreCase("storage_mode", identifier_v)) {
         std::string storage_mode;
         CHECK_STATUS(AstStringLiteralToString(entry->value(), &storage_mode));
         boost::to_lower(storage_mode);
         *output = node_manager->MakeStorageModeNode(node::NameToStorageMode(storage_mode));
     } else {
-        return base::Status(common::kOk, "create table option ignored");
+        return base::Status(common::kSqlAstError, absl::StrCat("invalid option ", identifier));
     }
 
     return base::Status::OK();
@@ -1811,17 +1858,17 @@ base::Status AstPathExpressionToStringList(const zetasql::ASTPathExpression* pat
 base::Status ASTIntLiteralToNum(const zetasql::ASTExpression* ast_expr, int64_t* val) {
     const auto int_literal = ast_expr->GetAsOrNull<zetasql::ASTIntLiteral>();
     CHECK_TRUE(int_literal != nullptr, common::kSqlAstError, "not an ASTIntLiteral");
-    bool is_null = false;
+    auto img = int_literal->image();
     if (int_literal->is_long()) {
-        const int size = int_literal->image().size();
-        codec::StringRef str_ref(size - 1, int_literal->image().data());
-        udf::v1::string_to_bigint(&str_ref, val, &is_null);
-    } else {
-        codec::StringRef str_ref(int_literal->image().size(), int_literal->image().data());
-        udf::v1::string_to_bigint(&str_ref, val, &is_null);
+        img.remove_suffix(1);
     }
-    CHECK_TRUE(!is_null, common::kSqlAstError, "Invalid integer literal: ", int_literal->image());
-    return base::Status::OK();
+
+    auto [status, ret] = udf::v1::StrToIntegral()(img);
+    if (status.ok()) {
+        *val = ret;
+        return base::Status::OK();
+    }
+    FAIL_STATUS(common::kSqlAstError, "Invalid integer literal<", status.ToString(), ">");
 }
 
 // transform zetasql::ASTIntervalLiteral into (number, unit)
@@ -1850,13 +1897,15 @@ base::Status ASTIntervalLIteralToNum(const zetasql::ASTExpression* ast_expr, int
             FAIL_STATUS(common::kTypeError, "Invalid interval literal ", interval_literal->image(),
                         ": invalid interval unit")
     }
-    bool is_null = false;
-    codec::StringRef str_ref(interval_literal->image().size() - 1, interval_literal->image().data());
-    udf::v1::string_to_bigint(&str_ref, val, &is_null);
+    auto img = interval_literal->image();
+    img.remove_suffix(1);
 
-    CHECK_TRUE(!is_null, common::kTypeError, "Invalid interval literal: ", interval_literal->image());
-
-    return base::Status::OK();
+    auto [status, ret] = udf::v1::StrToIntegral()(img);
+    if (status.ok()) {
+        *val = ret;
+        return base::Status::OK();
+    }
+    FAIL_STATUS(common::kSqlAstError, "Invalid interval literal<", status.ToString(), ">");
 }
 
 base::Status ConvertDeleteNode(const zetasql::ASTDeleteStatement* delete_stmt, node::NodeManager* node_manager,
@@ -1964,6 +2013,7 @@ base::Status ConvertDropStatement(const zetasql::ASTDropStatement* root, node::N
                 *output = dynamic_cast<node::CmdNode*>(
                     node_manager->MakeCmdNode(node::CmdType::kCmdDropTable, names[0], names[1]));
             }
+            (*output)->SetIfExists(root->is_if_exists());
             return base::Status::OK();
         }
         case zetasql::SchemaObjectKind::kDatabase: {
@@ -1971,6 +2021,7 @@ base::Status ConvertDropStatement(const zetasql::ASTDropStatement* root, node::N
                        root->name()->ToIdentifierPathString())
             *output =
                 dynamic_cast<node::CmdNode*>(node_manager->MakeCmdNode(node::CmdType::kCmdDropDatabase, names[0]));
+            (*output)->SetIfExists(root->is_if_exists());
             return base::Status::OK();
         }
         case zetasql::SchemaObjectKind::kIndex: {
@@ -1988,10 +2039,18 @@ base::Status ConvertDropStatement(const zetasql::ASTDropStatement* root, node::N
             return base::Status::OK();
         }
         case zetasql::SchemaObjectKind::kDeployment: {
-            CHECK_TRUE(1 == names.size(), common::kSqlAstError, "Invalid deployment path expression ",
+            CHECK_TRUE(2 >= names.size(), common::kSqlAstError, "Invalid deployment path expression ",
                        root->name()->ToIdentifierPathString())
-            *output =
-                dynamic_cast<node::CmdNode*>(node_manager->MakeCmdNode(node::CmdType::kCmdDropDeployment, names[0]));
+            if (names.size() == 1) {
+                *output =
+                    dynamic_cast<node::CmdNode*>(node_manager->MakeCmdNode(node::CmdType::kCmdDropDeployment,
+                                                                           names.back()));
+
+            } else {
+                *output =
+                    dynamic_cast<node::CmdNode*>(node_manager->MakeCmdNode(node::CmdType::kCmdDropDeployment,
+                                                                           names[0], names[1]));
+            }
             return base::Status::OK();
         }
         default: {
@@ -2121,17 +2180,35 @@ static const absl::flat_hash_map<std::string_view, ShowTargetInfo> showTargetMap
     {"JOBLOG", {node::CmdType::kCmdShowJobLog, true}},
 };
 
+static const absl::flat_hash_map<std::string_view, node::ShowStmtType> SHOW_STMT_TYPE_MAP = {
+    {"JOBS", node::ShowStmtType::kJobs},
+};
+
 base::Status convertShowStmt(const zetasql::ASTShowStatement* show_statement, node::NodeManager* node_manager,
                              node::SqlNode** output) {
     CHECK_TRUE(nullptr != show_statement && nullptr != show_statement->identifier(), common::kSqlAstError,
                "not an ASTShowStatement")
 
     auto show_id = show_statement->identifier()->GetAsStringView();
+    // TODO(dl239): move all show statement from CmdNode to ShowNode
+    if (auto iter = SHOW_STMT_TYPE_MAP.find(absl::AsciiStrToUpper(show_id));
+            iter != SHOW_STMT_TYPE_MAP.end() && show_statement->optional_name() != nullptr) {
+        std::vector<std::string> names;
+        CHECK_STATUS(AstPathExpressionToStringList(show_statement->optional_name(), names));
+        CHECK_TRUE(names.size() == 1, common::kSqlAstError, "illegal optional name in show statement");
+        std::string like;
+        if (show_statement->optional_like_string() != nullptr) {
+            like = show_statement->optional_like_string()->string_value();
+        }
+        *output = node_manager->MakeNode<node::ShowNode>(iter->second, names.back(), like);
+        return base::Status::OK();
+    }
 
     auto show_info = showTargetMap.find(absl::AsciiStrToUpper(show_id));
     if (show_info == showTargetMap.end()) {
         FAIL_STATUS(common::kSqlAstError, "Un-support SHOW: ", show_id)
     }
+
     CHECK_TRUE(show_info->second.with_like_string_ || nullptr == show_statement->optional_like_string(),
                common::kSqlAstError, absl::StrCat("Non-support LIKE in SHOW ", show_info->first, " statement"))
 
@@ -2221,6 +2298,72 @@ base::Status ConvertASTType(const zetasql::ASTType* ast_type, node::NodeManager*
             return base::Status(common::kSqlAstError, "Un-support type: " + ast_type->GetNodeKindString());
         }
     }
+    return base::Status::OK();
+}
+
+base::Status ConvertWithClause(const zetasql::ASTWithClause* with_clause, node::NodeManager* nm,
+                               base::BaseList<node::WithClauseEntry>* out) {
+    for (auto clause : with_clause->with()) {
+        node::QueryNode* query = nullptr;
+        CHECK_STATUS(ConvertQueryNode(clause->query(), nm, &query));
+
+        auto* with_entry = nm->MakeNode<node::WithClauseEntry>(clause->alias()->GetAsString(), query);
+
+        out->data_.push_back(with_entry);
+    }
+    return base::Status::OK();
+}
+
+base::Status convertAlterAction(const zetasql::ASTAlterAction* action, node::NodeManager* nm,
+                                node::AlterActionBase** out) {
+    switch (action->node_kind()) {
+        case zetasql::AST_ADD_PATH_ACTION: {
+            node::AddPathAction* ac = nullptr;
+            CHECK_STATUS(ConvertGuard<zetasql::ASTAddOfflinePathAction>(
+                action, nm, &ac,
+                [](const zetasql::ASTAddOfflinePathAction* in, node::NodeManager* nm, node::AddPathAction** out) {
+                    *out = nm->MakeObj<node::AddPathAction>(in->path()->string_value());
+                    return base::Status::OK();
+                }));
+            *out = ac;
+            break;
+        }
+        case zetasql::AST_DROP_PATH_ACTION: {
+            node::DropPathAction* ac = nullptr;
+            CHECK_STATUS(ConvertGuard<zetasql::ASTDropOfflinePathAction>(
+                action, nm, &ac,
+                [](const zetasql::ASTDropOfflinePathAction* in, node::NodeManager* nm, node::DropPathAction** out) {
+                    *out = nm->MakeObj<node::DropPathAction>(in->path()->string_value());
+                    return base::Status::OK();
+                }));
+            *out = ac;
+            break;
+        }
+        default:
+            FAIL_STATUS(common::kUnsupportSql, action->SingleNodeDebugString());
+    }
+    return base::Status::OK();
+}
+
+base::Status ConvertAlterTableStmt(const zetasql::ASTAlterTableStatement* ast_node_, node::NodeManager* nm,
+                                   node::SqlNode** out) {
+    std::vector<const node::AlterActionBase *> actions;
+    for (auto &ac : ast_node_->action_list()->actions()) {
+        node::AlterActionBase *ac_out = nullptr;
+        CHECK_STATUS(convertAlterAction(ac, nm, &ac_out));
+        actions.push_back(ac_out);
+    }
+
+    auto path = ast_node_->path();
+    if (path->num_names() == 1) {
+        *out = nm->MakeNode<node::AlterTableStmt>("", path->name(0)->GetAsStringView(), actions);
+    } else if (path->num_names() == 2) {
+        *out = nm->MakeNode<node::AlterTableStmt>(path->name(0)->GetAsStringView(), path->name(1)->GetAsStringView(),
+                                                  actions);
+    } else {
+        FAIL_STATUS(common::kSyntaxError, "invalid table name: ", path->ToIdentifierPathString());
+    }
+
     return base::Status::OK();
 }
 

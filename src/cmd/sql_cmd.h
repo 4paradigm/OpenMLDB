@@ -34,7 +34,7 @@
 #include "version.h"  // NOLINT
 
 DEFINE_bool(interactive, true, "Set the interactive");
-DEFINE_string(database, "", "Set database");
+DEFINE_string(database, "", "Set database, only works in sql_client when cmd is not empty, or ns_client");
 DECLARE_string(cmd);
 DEFINE_string(spark_conf, "", "The config file of Spark job");
 
@@ -93,7 +93,8 @@ void StripStartingSpaceOfLastStmt(absl::string_view input, std::string* output) 
     }
 }
 
-void HandleSQL(const std::string& sql) {
+std::string ExecFetch(const std::string& sql) {
+    std::stringstream ss;
     hybridse::sdk::Status status;
     auto result_set = sr->ExecuteSQL(sql, &status);
     if (status.IsOK()) {
@@ -103,7 +104,7 @@ void HandleSQL(const std::string& sql) {
                 while (result_set->Next()) {
                     std::string val;
                     result_set->GetAsString(0, val);
-                    std::cout << val;
+                    ss << val;
                 }
             } else {
                 ::hybridse::base::TextTable t('-', ' ', ' ');
@@ -119,38 +120,55 @@ void HandleSQL(const std::string& sql) {
                     }
                     t.end_of_row();
                 }
-                std::cout << t;
-                std::cout << std::endl << result_set->Size() << " rows in set" << std::endl;
+                ss << t;
+                ss << std::endl << result_set->Size() << " rows in set" << std::endl;
             }
         } else {
             if (status.msg != "ok") {
-                std::cout << "SUCCEED: " << status.msg << std::endl;
+                // status is ok, but we want to print more info by msg
+                ss << "SUCCEED: " << status.msg << std::endl;
             } else {
-                std::cout << "SUCCEED" << std::endl;
+                ss << "SUCCEED" << std::endl;
             }
         }
     } else {
         std::cout << "Error: " << status.ToString() << std::endl;
         if (sr->IsEnableTrace()) {
             // trace has '\n' already
-            std::cout << status.trace;
+            ss << status.trace;
         }
     }
+    return ss.str();
 }
 
-// cluster mode: if zk_cluster is not empty,
-// standalone mode:
+void HandleSQL(const std::string& sql) {
+    std::cout << ExecFetch(sql);
+}
+
+// cluster mode if zk_cluster is not empty, otherwise standalone mode
 void Shell() {
-    if (!FLAGS_cmd.empty()) {
-        FLAGS_interactive = false;
-    }
     DCHECK(cs);
     DCHECK(sr);
+    // If use FLAGS_cmd, non-interactive. No Logo and make sure router interactive is false
+    if (!FLAGS_cmd.empty()) {
+        std::string db = FLAGS_database;
+        auto ns = cs->GetNsClient();
+        std::string error;
+        ns->Use(db, error);
+        sr->SetDatabase(db);
+        sr->SetInteractive(false);
+        // No multi sql in cmd str, it'll cause some add troubles.
+        // e.g. the first sql is cmd, the following sql won't be executed;
+        // the first sql is select, it'll send to offline, all sql will be executed(cmd plan is invalid), output is the
+        // last result
+        HandleSQL(FLAGS_cmd);
+        return;
+    }
+
     if (FLAGS_interactive) {
         std::cout << LOGO << std::endl;
         std::cout << "v" << VERSION << std::endl;
     }
-
     std::string ns_endpoint;
     auto ns_client = cs->GetNsClient();
     if (!ns_client) {
@@ -159,47 +177,31 @@ void Shell() {
     } else {
         ns_endpoint = ns_client->GetEndpoint();
     }
-
     std::string display_prefix = ns_endpoint + "/" + sr->GetDatabase() + "> ";
     std::string multi_line_perfix = std::string(display_prefix.length() - 3, ' ') + "-> ";
     std::string sql;
     bool multi_line = false;
     while (true) {
         std::string buffer;
-        if (!FLAGS_cmd.empty()) {
-            buffer = FLAGS_cmd;
-            std::string db = FLAGS_database;
-            auto ns = cs->GetNsClient();
-            std::string error;
-            ns->Use(db, error);
-            sr->SetDatabase(db);
-        } else {
-            char* line = ::openmldb::base::linenoise(multi_line ? multi_line_perfix.c_str() : display_prefix.c_str());
-            if (line == nullptr) {
-                return;
-            }
-            if (line[0] != '\0' && line[0] != '/') {
-                buffer.assign(line);
-                if (!buffer.empty()) {
-                    ::openmldb::base::linenoiseHistoryAdd(line);
-                }
-            }
-            ::openmldb::base::linenoiseFree(line);
-            if (buffer.empty()) {
-                continue;
+        char* line = ::openmldb::base::linenoise(multi_line ? multi_line_perfix.c_str() : display_prefix.c_str());
+        if (line == nullptr) {
+            return;
+        }
+        if (line[0] != '\0' && line[0] != '/') {
+            buffer.assign(line);
+            if (!buffer.empty()) {
+                ::openmldb::base::linenoiseHistoryAdd(line);
             }
         }
+        ::openmldb::base::linenoiseFree(line);
+        if (buffer.empty()) {
+            continue;
+        }
+
         // todo: should support multiple sql.
         // trim space after last semicolon in sql
         StripStartingSpaceOfLastStmt(buffer, &sql);
 
-        if (sql.length() == 4 || sql.length() == 5) {
-            if (absl::EqualsIgnoreCase(sql, "quit;") || absl::EqualsIgnoreCase(sql, "exit;") ||
-                absl::EqualsIgnoreCase(sql, "quit") || absl::EqualsIgnoreCase(sql, "exit")) {
-                std::cout << "Bye" << std::endl;
-                return;
-            }
-        }
         if (sql.back() == ';') {
             HandleSQL(sql);
             multi_line = false;
@@ -209,9 +211,6 @@ void Shell() {
         } else {
             sql.append("\n");
             multi_line = true;
-        }
-        if (!FLAGS_interactive) {
-            return;
         }
     }
 }

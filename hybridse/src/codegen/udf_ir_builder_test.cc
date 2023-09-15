@@ -15,6 +15,7 @@
  */
 
 #include "codegen/udf_ir_builder.h"
+#include <cstdint>
 #include <memory>
 #include <string>
 #include <utility>
@@ -609,12 +610,89 @@ TEST_F(UdfIRBuilderTest, PowerUdfTest) {
                                       2147483648, 65536);
 }
 
-TEST_F(UdfIRBuilderTest, RoundUdfTest) {
-    CheckUdf<int32_t, int16_t>("round", round(5), 5);
-    CheckUdf<int32_t, int32_t>("round", round(65536), 65536);
-    CheckUdf<int64_t, int64_t>("round", round(2147483648), 2147483648);
-    CheckUdf<double, float>("round", roundf(0.5f), 0.5f);
-    CheckUdf<double, double>("round", round(0.5), 0.5);
+TEST_F(UdfIRBuilderTest, RoundWithPositiveD) {
+    // We use string as expet result in case the inaccuracy of flaot points
+    std::initializer_list<std::pair<double, std::string>> cases = {
+        // before decimal position = 0
+        {0.5, "0.50"}, {0.12, "0.12"}, {0.123, "0.12"}, {0.1478, "0.15"},
+        {0, "0.00"}, {0.012, "0.01"}, {0.0012, "0.00"}, {0.0078, "0.01"},
+        // before decimal position > 0
+        {1.1, "1.10" }, {1.14, "1.14"}, {1.177, "1.18"}, {1.171, "1.17"},
+        {21.1, "21.10" }, {21.14, "21.14"}, {21.177, "21.18"}, {21.171, "21.17"},
+        {1889, "1889.00"},
+    };
+
+    for (auto& val : cases) {
+        // non-negative value
+        CheckUdf<double, double, int32_t>("round", std::stod(val.second), val.first, 2);
+        // negative value
+        std::string expect = "-" + val.second;
+        CheckUdf<double, double, int32_t>("round", std::stod(expect), -val.first, 2);
+    }
+
+    for (auto c :  {1, 2, 3, 4, 5, 6}) {
+        CheckUdf<int64_t, int64_t, int32_t>("round", c, c, 2);
+    }
+}
+
+TEST_F(UdfIRBuilderTest, RoundWithNegD) {
+    // We use string as expet result in case the inaccuracy of flaot points
+    std::initializer_list<std::pair<double, std::string>> cases = {
+        {0.0, "0.0"}, {1.23, "0"}, {100.12, "100"}, {3712.55, "3700"}, {4488, "4500"},
+        {88, "100"}, {175.4, "200"}
+    };
+
+    for (auto& val : cases) {
+        // non-negative value
+        CheckUdf<double, double, int32_t>("round", std::stod(val.second), val.first, -2);
+        // negative value
+        std::string expect = "-" + val.second;
+        CheckUdf<double, double, int32_t>("round", std::stod(expect), -val.first, -2);
+    }
+
+    std::initializer_list<std::pair<int32_t, int32_t>> icases = {{0, 0},     {1, 0},     {55, 100},     {100, 100},
+                                                                 {145, 100}, {199, 200}, {2312, 2300}};
+    for (auto c : icases) {
+        CheckUdf<int32_t, int32_t, int32_t>("round", c.second, c.first, -2);
+        CheckUdf<int32_t, int32_t, int32_t>("round", -c.second, -c.first, -2);
+    }
+}
+
+TEST_F(UdfIRBuilderTest, RoundWithZeroD) {
+    std::initializer_list<std::pair<double, std::string>> cases = {
+        {1.12, "1"}, {1.5, "2"}, {1.77, "2"}, {0.0, "0"}, {88, "88"}
+    };
+    for (auto& val : cases) {
+        // non-negative value
+        CheckUdf<double, double, int32_t>("round", std::stod(val.second), val.first, 0);
+        CheckUdf<double, double>("round", std::stod(val.second), val.first);
+        // negative value
+        std::string expect = "-" + val.second;
+        CheckUdf<double, double, int32_t>("round", std::stod(expect), -val.first, 0);
+        CheckUdf<double, double>("round", std::stod(expect), -val.first);
+    }
+
+    std::initializer_list<int32_t> icases = {1, 2, 3, 4, 5, 100, 88};
+    for (auto& val : icases) {
+        // non-negative value
+        CheckUdf<int32_t, int32_t, int32_t>("round", val, val, 0);
+        CheckUdf<int32_t, int32_t>("round", val, val);
+        // negative value
+        CheckUdf<int32_t, int32_t, int32_t>("round", -val, -val, 0);
+        CheckUdf<int32_t, int32_t>("round", -val, -val);
+    }
+}
+
+TEST_F(UdfIRBuilderTest, RoundFail) {
+    // first param: only one of [intXX, double, float]
+    CheckUdfFail<double, StringRef, int32_t>("round", 12.3, "12.34", 1);
+
+    // second param: only one of [intXX, double, float]
+    CheckUdfFail<double, double, StringRef>("round", 12.3, 12.34, "1");
+    CheckUdfFail<double, double, Timestamp>("round", 12.3, 12.34, Timestamp(12));
+
+    // no third or more params
+    CheckUdfFail<double, double, int32_t, int32_t>("round", 12.3, 12.34, 1, 1);
 }
 
 TEST_F(UdfIRBuilderTest, SinUdfTest) {
@@ -852,7 +930,7 @@ TEST_F(UdfIRBuilderTest, StrcmpUdfTest) {
         "strcmp", nullptr, nullptr, StringRef(""));
 }
 
-TEST_F(UdfIRBuilderTest, NullProcessTest) {
+TEST_F(UdfIRBuilderTest, IfNull) {
     CheckUdf<bool, Nullable<double>>("is_null", true, nullptr);
     CheckUdf<bool, Nullable<double>>("is_null", false, 1.0);
 
@@ -867,12 +945,26 @@ TEST_F(UdfIRBuilderTest, NullProcessTest) {
     // nvl is synonym to is_null
     CheckUdf<double, Nullable<double>, Nullable<double>>("nvl", 2.0, nullptr, 2.0);
     CheckUdf<double, Nullable<double>, Nullable<double>>("nvl", 1.0, 1.0, 2.0);
+}
 
-    // nvl2
+TEST_F(UdfIRBuilderTest, Nvl2) {
     CheckUdf<double, Nullable<double>, double, double>("nvl2", 2.0, nullptr, 1.0, 2.0);
     CheckUdf<double, Nullable<double>, double, double>("nvl2", 1.0, 12.0, 1.0, 2.0);
     CheckUdf<StringRef, Nullable<int>, StringRef, StringRef>("nvl2", StringRef("abc"), 12, StringRef("abc"),
                                                              StringRef("def"));
+}
+
+// a cond expr (nvl/nvl2) returns compatiable type if left and right not same
+TEST_F(UdfIRBuilderTest, CondCompatiableType) {
+    CheckUdf<int64_t, int64_t, int32_t>("if_null", 12, 12, 1);
+    CheckUdf<int64_t, Nullable<int32_t>, int64_t>("if_null", 1, nullptr, 1);
+
+    CheckUdf<double, float, int64_t>("if_null", 20.0, 20.0, 9);
+    CheckUdf<double, Nullable<float>, int64_t>("if_null", 20.0, nullptr, 20);
+
+    CheckUdf<StringRef, Nullable<int16_t>, StringRef>("if_null", "20", nullptr, "20");
+
+    CheckUdf<StringRef, bool, int64_t, StringRef>("nvl2", "100", true, 100, "88");
 }
 
 TEST_F(UdfIRBuilderTest, DateToTimestampTest0) {
@@ -1009,42 +1101,84 @@ TEST_F(UdfIRBuilderTest, DateDiff) {
     CheckUdf<Nullable<int32_t>, Nullable<StringRef>, Nullable<Date>>(func_name, nullptr, nullptr, nullptr);
 }
 
-TEST_F(UdfIRBuilderTest, StringToSmallint0) {
-    CheckUdf<Nullable<int16_t>, Nullable<StringRef>>("int16", 1,
-                                                     StringRef("1"));
+
+class UdfIRCastTest : public ::testing::TestWithParam<std::pair<absl::string_view, Nullable<int64_t>>> {};
+
+static const std::vector<std::pair<absl::string_view, Nullable<int64_t>>>& GetCastCases() {
+    static const std::string& INT32_MAX_S = *new auto(std::to_string(INT32_MAX));
+    static const std::string& INT16_MIN_S = *new auto(std::to_string(INT16_MIN));
+    static const std::vector<std::pair<absl::string_view, Nullable<int64_t>>> cs{
+        {"12", 12},
+        {"012", 12},
+        {"0", 0},
+        {" 9", 9},
+        {" +100 ", 100},
+        {"-999\t", -999},
+        {"+0", 0},
+        {"-0", 0},
+        {"-1", -1},
+        {"-88", -88},
+        {"0x12", 18},
+        {"+0X2a", 42},
+        {"-0X2b", -43},
+        {"\t -0X2b", -43},
+        {"9223372036854775807", INT64_MAX},
+        {"0x7FFFFFFFFFFFFFFF", INT64_MAX},
+        {"-9223372036854775808", INT64_MIN},
+        // int32 overflows
+        {"21474770944", 0x4ffff0000},
+        {"-21474770944", -21474770944},
+        {INT32_MAX_S, INT32_MAX},
+        // int16 overflows
+        {"0x4eeee", 323310},
+        {"-323310", -323310},
+        {INT16_MIN_S, INT16_MIN},
+        {"", {}},
+        {"-", {}},
+        {"+", {}},
+        {"8g", {}},
+        {"80x99", {}},
+        {"0x12k", {}},
+        {"8l", {}},
+        {"8 l", {}},
+        {"gg", {}},
+        {"89223372036854775807", {}},
+        {"-19223372036854775807", {}},
+    };
+    return cs;
 }
-TEST_F(UdfIRBuilderTest, StringToSmallint1) {
-    CheckUdf<Nullable<int16_t>, Nullable<StringRef>>("int16", -1,
-                                                     StringRef("-1"));
+
+INSTANTIATE_TEST_SUITE_P(StrCastNumeric, UdfIRCastTest, ::testing::ValuesIn(GetCastCases()));
+TEST_P(UdfIRCastTest, ToI64) {
+    auto [in, out] = GetParam();
+    CheckUdf<Nullable<int64_t>, StringRef>("int64", out, in);
+    CheckUdf<Nullable<int64_t>, StringRef>("bigint", out, in);
 }
-TEST_F(UdfIRBuilderTest, StringToSmallint2) {
-    CheckUdf<Nullable<int16_t>, Nullable<StringRef>>("int16", nullptr,
-                                                     StringRef("abc"));
+
+TEST_P(UdfIRCastTest, ToI32) {
+    auto [in, out] = GetParam();
+    Nullable<int32_t> expect;
+    if (out.is_null() || out.value() > INT32_MAX || out.value() < INT32_MIN) {
+        expect = {};
+    } else {
+        expect = static_cast<int32_t>(out.value());
+    }
+    CheckUdf<Nullable<int32_t>, StringRef>("int32", expect, in);
+    CheckUdf<Nullable<int32_t>, StringRef>("int", expect, in);
 }
-TEST_F(UdfIRBuilderTest, StringToInt0) {
-    CheckUdf<Nullable<int32_t>, Nullable<StringRef>>("int32", 1,
-                                                     StringRef("1"));
+
+TEST_P(UdfIRCastTest, ToI16) {
+    auto [in, out] = GetParam();
+    Nullable<int16_t> expect;
+    if (out.is_null() || out.value() > INT16_MAX || out.value() < INT16_MIN) {
+        expect = {};
+    } else {
+        expect = static_cast<int16_t>(out.value());
+    }
+    CheckUdf<Nullable<int16_t>, StringRef>("int16", expect, in);
+    CheckUdf<Nullable<int16_t>, StringRef>("smallint", expect, in);
 }
-TEST_F(UdfIRBuilderTest, StringToInt1) {
-    CheckUdf<Nullable<int32_t>, Nullable<StringRef>>("int32", -1,
-                                                     StringRef("-1"));
-}
-TEST_F(UdfIRBuilderTest, StringToInt2) {
-    CheckUdf<Nullable<int32_t>, Nullable<StringRef>>("int32", nullptr,
-                                                     StringRef("abc"));
-}
-TEST_F(UdfIRBuilderTest, StringToBigint0) {
-    CheckUdf<Nullable<int64_t>, Nullable<StringRef>>(
-        "int64", 1589904000000L, StringRef("1589904000000"));
-}
-TEST_F(UdfIRBuilderTest, StringToBigint1) {
-    CheckUdf<Nullable<int64_t>, Nullable<StringRef>>(
-        "int64", -1589904000000L, StringRef("-1589904000000"));
-}
-TEST_F(UdfIRBuilderTest, StringToBigint2) {
-    CheckUdf<Nullable<int64_t>, Nullable<StringRef>>("int64", nullptr,
-                                                     StringRef("abc"));
-}
+
 TEST_F(UdfIRBuilderTest, StringToDouble0) {
     CheckUdf<Nullable<double>, Nullable<StringRef>>("double", 1.0,
                                                     StringRef("1.0"));
@@ -1206,10 +1340,24 @@ TEST_F(UdfIRBuilderTest, CharLengthUdfTest) {
 }
 TEST_F(UdfIRBuilderTest, DegreeToRadiusCheck) {
     auto udf_name = "radians";
-    CheckUdf<double, double>(udf_name, 3.141592653589793238463, 180);
-    CheckUdf<double, double>(udf_name, 1.570796326794896619231, 90);
+    CheckUdf<double, double>(udf_name, M_PI, 180);
+    CheckUdf<double, double>(udf_name, M_PI / 2 , 90);
+    CheckUdf<double, int16_t>(udf_name, M_PI / 2 , 90);
+    CheckUdf<double, int32_t>(udf_name, M_PI / 2 , 90);
+    CheckUdf<double, int64_t>(udf_name, M_PI / 2 , 90);
+    CheckUdf<double, float>(udf_name, M_PI / 2 , 90);
+    CheckUdf<double, double>(udf_name, M_PI / 2 , 90);
     CheckUdf<double, double>(udf_name, 0, 0);
     CheckUdf<Nullable<double>, Nullable<double>>(udf_name, nullptr, nullptr);
+}
+
+
+TEST_F(UdfIRBuilderTest, DegreeToRadiusFail) {
+    auto udf_name = "radians";
+    CheckUdfFail<double, StringRef>(udf_name, 0, "0");
+    CheckUdfFail<double, Timestamp>(udf_name, 0, Timestamp(12000));
+    CheckUdfFail<double, Date>(udf_name, 0, Date(2012, 12, 12));
+    CheckUdfFail<double, bool>(udf_name, 0, false);
 }
 
 TEST_F(UdfIRBuilderTest, Replace) {
@@ -1294,6 +1442,105 @@ TEST_F(UdfIRBuilderTest, TestPMod) {
     CheckUdf<Nullable<int64_t>, Nullable<int32_t>, Nullable<int64_t>>(fn_name, 2, -10, 3);
     CheckUdf<Nullable<int32_t>, Nullable<int32_t>, Nullable<int16_t>>(fn_name, 2, -10, 3);
     CheckUdf<Nullable<int64_t>, Nullable<int64_t>, Nullable<int16_t>>(fn_name, 2, -10, 3);
+}
+
+TEST_F(UdfIRBuilderTest, EarthDistanceError) {
+    CheckUdf<Nullable<double>, double, double, double, double>("earth_distance", nullptr, 100, 44, 44, 44);
+    CheckUdf<Nullable<double>, double, double, double, double>("earth_distance", nullptr, 77, 181, 44, 44);
+    CheckUdf<Nullable<double>, double, double, double, double>("earth_distance", nullptr, 77, 99, -91, -184);
+}
+
+TEST_F(UdfIRBuilderTest, AddMonths) {
+    CheckUdf<Nullable<Date>, Date, int16_t>("add_months", Date(2022, 5, 5), Date(2022, 4, 5), 1);
+    CheckUdf<Nullable<Date>, Date, int32_t>("add_months", Date(2022, 4, 5), Date(2022, 4, 5), 0);
+    CheckUdf<Nullable<Date>, Date, int32_t>("add_months", Date(2022, 3, 5), Date(2022, 4, 5), -1);
+
+    CheckUdf<Nullable<Date>, Date, int32_t>("add_months", Date(2016, 9, 30), Date(2016, 8, 31), 1);
+    CheckUdf<Nullable<Date>, Date, int32_t>("add_months", Date(2011, 8, 31), Date(2012, 1, 31), -5);
+    CheckUdf<Nullable<Date>, Date, int32_t>("add_months", Date(2012, 2, 29), Date(2012, 1, 31), 1);
+    CheckUdf<Nullable<Date>, Date, int32_t>("add_months", Date(2011, 2, 28), Date(2011, 1, 31), 1);
+    CheckUdf<Nullable<Date>, Date, int64_t>("add_months", Date(2010, 11, 30), Date(2012, 1, 31), -14);
+    CheckUdf<Nullable<Date>, Date, int64_t>("add_months", Date(2013, 3, 31), Date(2012, 1, 31), 14);
+}
+
+// ========================================================================= //
+//              JSON functions
+// ========================================================================= //
+TEST_F(UdfIRBuilderTest, JsonArrayLength) {
+    CheckUdf<Nullable<int32_t>, Nullable<StringRef>>("json_array_length", 0, "[]");
+    CheckUdf<Nullable<int32_t>, Nullable<StringRef>>("json_array_length", 3, "[1,2,3]");
+    CheckUdf<Nullable<int32_t>, Nullable<StringRef>>("json_array_length", 5, R"([1,2,3,{"f1":1,"f2":[5,6]},4])");
+
+    CheckUdf<Nullable<int32_t>, Nullable<StringRef>>("json_array_length", nullptr, R"({})");
+    CheckUdf<Nullable<int32_t>, Nullable<StringRef>>("json_array_length", nullptr, "[1,2,3");
+    CheckUdf<Nullable<int32_t>, Nullable<StringRef>>("json_array_length", nullptr, nullptr);
+}
+
+TEST_F(UdfIRBuilderTest, GetJsonObject) {
+    std::string_view json = R"(
+        {
+          "foo": ["bar", "baz"],
+          "": 0,
+          "a/b": 1,
+          "c%d": 2,
+          "e^f": 3,
+          "g|h": 4,
+          "i\\j": 5,
+          "k\"l": 6,
+          " ": 7,
+          "m~n": 8,
+          "o\p": 9,
+        })";
+    std::initializer_list<std::vector<Nullable<StringRef>>> cases = {
+        // empty json path evaluate to whole document
+        {"[]", "[]", ""},
+        {R"({"k": "val"})", R"({"k": "val"})", ""},
+
+        {absl::StripAsciiWhitespace(json), json, ""},
+        {R"(["bar", "baz"])", json, "/foo"},
+        {"bar", json, "/foo/0"},
+        {"baz", json, "/foo/1"},
+        {nullptr, json, "/foo/2"},
+        {"0", json, "/"},
+        {"1", json, "/a~1b"},  // '/' encoded as '~1'
+        {"2", json, "/c%d"},
+        {"3", json, "/e^f"},
+        {"4", json, "/g|h"},
+        {"5", json, R"(/i\\j)"},
+        {"6", json, R"(/k\"l)"},
+        {"7", json, "/ "},
+        {"8", json, "/m~0n"},  // '~' encoded as '~0'
+        {"9", json, R"(/o\p)"},  // any character can be escaped
+        {nullptr, json, "/bar"},
+        {nullptr, json, "/bar/0"},
+
+        {"", R"({"a": ""})", "/a"},
+        {"str", R"({"a": "str"})", "/a"},
+        {"1", R"({"a": 1})", "/a"},
+        {"null", R"({"a": null})", "/a"},
+        {"true", R"({"a": true})", "/a"},
+        {"false", R"({"a": false})", "/a"},
+        {R"({"c": "d"})", R"({"a": {"c": "d"}})", "/a"},
+
+        {nullptr, "{", ""},
+        {nullptr, R"({"a"})", "/a"},
+
+        // get_json_object do not fully valid the querying object
+        {"flase", R"({"a": flase})", "/a"},
+        {"ni", R"({"a": ni})", "/a"},
+        {"9n", R"({"a": 9n})", "/a"},
+        {"-x", R"({"a": -x})", "/a"},
+        {"[nx]", R"({"a": [nx]})", "/a"},
+        {R"({"g": trx})", R"({"a": {"g": trx}})", "/a"},
+
+        // invalid array/object part result in strange behavior, won't assert in tests
+        // {R"({"g":}})", R"({"a": {"g":}})", "/a"},
+        // {"[xxy}", R"({"a": [xxy})", "/a"},
+    };
+
+    for (auto cs : cases) {
+        CheckUdf<Nullable<StringRef>, Nullable<StringRef>, Nullable<StringRef>>("get_json_object", cs[0], cs[1], cs[2]);
+    }
 }
 
 }  // namespace codegen

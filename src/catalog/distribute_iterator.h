@@ -81,7 +81,7 @@ class FullTableIterator : public ::hybridse::codec::ConstIterator<uint64_t, ::hy
     // refer to next_row_iterator() in udf.cc for the reason why we must make sure the `value_` is valid
     // the call steps in next_row_iterator are: res = GetValue() -> Next() -> return res
     bool valid_value_ = false;
-    std::vector<std::shared_ptr<::google::protobuf::Message>> response_vec_;
+    std::vector<hybridse::base::RefCountedSlice> buffered_slices_;
     int64_t cnt_ = 0;
 };
 
@@ -124,7 +124,6 @@ class RemoteWindowIterator : public ::hybridse::vm::RowIterator {
     uint32_t pid_;
     std::string index_name_;
     std::shared_ptr<::openmldb::base::KvIterator> kv_it_;
-    std::vector<std::shared_ptr<::google::protobuf::Message>> response_vec_;
     std::shared_ptr<openmldb::client::TabletClient> tablet_client_;
     ::hybridse::codec::Row row_;
     // use an extra flag to indicate whether the `row_` contains a valid value
@@ -186,8 +185,6 @@ class DistributeWindowIterator : public ::hybridse::codec::WindowIterator {
     IT it_;
     // iterator to remote data, only zero or one of `it_` and `kv_it_` can be non-null
     KV_IT kv_it_;
-    // underlaying data pointed by `kv_it_`
-    std::vector<std::shared_ptr<::google::protobuf::Message>> response_vec_;
     int64_t pk_cnt_ = 0;
 };
 

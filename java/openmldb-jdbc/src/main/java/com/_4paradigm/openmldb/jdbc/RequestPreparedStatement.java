@@ -17,6 +17,8 @@
 package com._4paradigm.openmldb.jdbc;
 
 import com._4paradigm.openmldb.*;
+import com._4paradigm.openmldb.sdk.Common;
+import com._4paradigm.openmldb.sdk.impl.NativeResultSet;
 
 import java.io.InputStream;
 import java.io.Reader;
@@ -48,9 +50,6 @@ public class RequestPreparedStatement implements java.sql.PreparedStatement {
     private void checkNull() throws SQLException {
         if (db == null) {
             throw new SQLException("db is null");
-        }
-        if (currentSql == null) {
-            throw new SQLException("sql is null");
         }
         if (router == null) {
             throw new SQLException("SQLRouter is null");
@@ -114,7 +113,7 @@ public class RequestPreparedStatement implements java.sql.PreparedStatement {
             throw new SQLException("execute sql fail, msg: " + msg);
         }
         status.delete();
-        SQLResultSet rs = new SQLResultSet(resultSet);
+        SQLResultSet rs = new NativeResultSet(resultSet);
         if (closeOnComplete) {
             closed = true;
         }
@@ -399,7 +398,7 @@ public class RequestPreparedStatement implements java.sql.PreparedStatement {
     public ResultSetMetaData getMetaData() throws SQLException {
         checkClosed();
         checkNull();
-        return new SQLResultSetMetaData(this.currentSchema);
+        return new SQLResultSetMetaData(Common.convertSchema(this.currentSchema));
     }
 
     @Override

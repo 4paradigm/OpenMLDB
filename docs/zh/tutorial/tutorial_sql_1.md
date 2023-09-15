@@ -57,7 +57,7 @@
 | city       | STRING    | 城市                      |
 | label      | BOOL      | 样本label, `true`或`false` |
 
-除了主表以外，数据库中可能还存在着其他存储相关辅助信息的数据表格，可以通过 join 操作和主表进行拼接，这些表格称为**副表**（注意副表可能有多张）。比如我们可以有一张副表存储着商户流水历史记录。在做特征工程过程中，把主表和副标的信息拼接起来，可以获得更为有价值的信息。关于多表的特征工程，我们将在[本系列的下篇](../tutorial_sql_2.md)详细介绍。
+除了主表以外，数据库中可能还存在着其他存储相关辅助信息的数据表格，可以通过 join 操作和主表进行拼接，这些表格称为**副表**（注意副表可能有多张）。比如我们可以有一张副表存储着商户流水历史记录。在做特征工程过程中，把主表和副标的信息拼接起来，可以获得更为有价值的信息。关于多表的特征工程，我们将在[本系列的下篇](../../tutorial/tutorial_sql_2.md)详细介绍。
 
 ### 3.1.2. 特征分类
 
@@ -296,22 +296,22 @@ window w30d as (PARTITION BY uid ORDER BY trans_time ROWS_RANGE BETWEEN 30d PREC
 
 通常，我们会对类型特征进行频率的统计。例如，我们可能需要统计各个类别中，最高频次的类型，最高频的类型的频度占比等。
 
-**Top ratio 特征`fz_top1_ratio`**：求窗口内某列数量最多的类别占窗口总数据的比例。
+**Top ratio 特征`top1_ratio`**：求窗口内某列数量最多的类别占窗口总数据的比例。
 
-以下SQL使用`fz_top1_ratio`求t1中最近30天的交易次数最大的城市的交易次数占比。
+以下SQL使用`top1_ratio`求t1中最近30天的交易次数最大的城市的交易次数占比。
 ```sql
 SELECT 
-fz_top1_ratio(city) over w30d as top_city_ratio 
+top1_ratio(city) over w30d as top_city_ratio 
 FROM t1 
 window w30d as (PARTITION BY uid ORDER BY trans_time ROWS_RANGE BETWEEN 30d PRECEDING AND CURRENT ROW);
 ```
 
-**Top N 特征`fz_topn_frequency(col, top_n)`**: 求取窗口内某列频率最高的N个类别
+**Top N 特征`topn_frequency(col, top_n)`**: 求取窗口内某列频率最高的N个类别
 
-以下SQL使用`fz_topn_frequency`求t1中最近30天的交易次数最大的2个城市。
+以下SQL使用`topn_frequency`求t1中最近30天的交易次数最大的2个城市。
 ```sql
 SELECT 
-fz_topn_frequency(city, 2) over w30d as top_city_ratio
+topn_frequency(city, 2) over w30d as top_city_ratio
 FROM t1 
 window w30d as (PARTITION BY uid ORDER BY trans_time ROWS_RANGE BETWEEN 30d PRECEDING AND CURRENT ROW);
 ```

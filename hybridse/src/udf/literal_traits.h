@@ -66,8 +66,8 @@ struct DataTypeTrait {
 template <typename T>
 struct Nullable {
     Nullable(std::nullptr_t) : data_(0), is_null_(true) {}  // NOLINT
+    Nullable() : data_(0), is_null_(true) {}
     Nullable(const T& t) : data_(t), is_null_(false) {}     // NOLINT
-    Nullable() : is_null_(false) {}
 
     const T& value() const { return data_; }
     bool is_null() const { return is_null_; }
@@ -88,9 +88,14 @@ struct Nullable {
 template <>
 struct Nullable<StringRef> {
     Nullable(std::nullptr_t) : data_(nullptr), is_null_(true) {}      // NOLINT
+    Nullable() : is_null_(true) {}
     Nullable(const StringRef& t) : data_(t), is_null_(false) {}  // NOLINT
     Nullable(const char* buf) : data_(buf), is_null_(false) {}    // NOLINT
-    Nullable() : is_null_(false) {}
+
+#if __cplusplus >= 201703L
+    template <typename Char>
+    Nullable(std::basic_string_view<Char> v) : data_(v), is_null_(false) {}  // NOLINT
+#endif
 
     const StringRef& value() const { return data_; }
     bool is_null() const { return is_null_; }
@@ -484,12 +489,19 @@ struct CCallDataTypeTrait {
 
 template <typename V>
 struct CCallDataTypeTrait<V*> {
-    using LiteralTag = Opaque<V>;
+    using LiteralTag = std::conditional_t<std::is_integral_v<V> || std::is_same_v<bool, V> ||
+                                              std::is_same_v<float, V> || std::is_same_v<double, V>,
+                                          V, Opaque<V>>;
 };
 
 template <typename T>
 struct CCallDataTypeTrait<ArrayRef<T>*> {
     using LiteralTag = ArrayRef<T>;
+};
+
+template <>
+struct CCallDataTypeTrait<void> {
+    using LiteralTag = void;
 };
 
 template <>

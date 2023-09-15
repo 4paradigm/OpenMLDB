@@ -37,7 +37,7 @@ http_rpc_protocol.cpp:911] Fail to write into Socket{id=xx fd=xx addr=xxx} (0x7a
 这是server端会打印的日志。一般是client端使用了连接池或短连接模式，在RPC超时后会关闭连接，server写回response时发现连接已经关了就报这个错。Got EOF就是指之前已经收到了EOF（对端正常关闭了连接）。client端使用单连接模式server端一般不会报这个。
 
 ### 2. 表数据的ttl初始设置不合适，如何调整？
-这需要使用nsclient来修改，普通client无法做到。nsclient启动方式与命令，见[ns client](../reference/cli.md#ns-client)。
+这需要使用nsclient来修改，普通client无法做到。nsclient启动方式与命令，见[ns client](../maintain/cli.md#ns-client)。
 
 在nsclient中使用命令`setttl`可以更改一个表的ttl，类似
 ```
@@ -63,27 +63,19 @@ setttl table_name ttl_type ttl [ttl] [index_name]
 ```
 rpc_client.h:xxx] request error. [E1008] Reached timeout=xxxms
 ```
-这是由于client端本身发送的rpc request的timeout设置小了，client端自己主动断开。注意，这是rpc的超时。
-
-分为以下情况处理：
-#### 同步的离线job
-在使用同步的离线命令时，容易出现这个情况。你可以使用
-```sql
-> SET @@job_timeout = "600000";
-```
-来调大rpc的timeout时间，单位为ms。
-#### 普通请求
-如果是简单的query或insert，都会出现超时，需要更改通用的`request_timeout`配置。
+这是由于client端本身发送的rpc request的timeout设置小了，client端自己主动断开，注意这是rpc的超时。需要更改通用的`request_timeout`配置。
 1. CLI: 启动时配置`--request_timeout_ms`
 2. JAVA/Python SDK: Option或url中调整`SdkOption.requestTimeout`
-
+```{note}
+同步的离线命令通常不会出现这个错误，因为同步离线命令的timeout设置为了TaskManager可接受的最长时间。
+```
 ### 2. 为什么收到 Got EOF of Socket 的警告日志？
 ```
 rpc_client.h:xxx] request error. [E1014]Got EOF of Socket{id=x fd=x addr=xxx} (xx)
 ```
-这是因为`addr`端主动断开了连接，`addr`的地址大概率是taskmanager。这不代表taskmanager不正常，而是taskmanager端认为这个连接没有活动，超过keepAliveTime了，而主动断开通信channel。
-在0.5.0及以后的版本中，可以调大taskmanager的`server.channel_keep_alive_time`来提高对不活跃channel的容忍度。默认值为1800s(0.5h)，特别是使用同步的离线命令时，这个值可能需要适当调大。
-在0.5.0以前的版本中，无法更改此配置，请升级taskmanager版本。
+这是因为`addr`端主动断开了连接，`addr`的地址大概率是TaskManager。这不代表TaskManager不正常，而是TaskManager端认为这个连接没有活动，超过keepAliveTime了，而主动断开通信channel。
+在0.5.0及以后的版本中，可以调大TaskManager的`server.channel_keep_alive_time`来提高对不活跃channel的容忍度。默认值为1800s(0.5h)，特别是使用同步的离线命令时，这个值可能需要适当调大。
+在0.5.0以前的版本中，无法更改此配置，请升级TaskManager版本。
 
 ### 3. 离线查询结果显示中文为什么乱码？
 
@@ -113,14 +105,14 @@ zk日志：
 1. CLI：启动时配置`--zk_log_level`调整level,`--zk_log_file`配置日志保存文件。
 2. JAVA/Python SDK：Option或url中使用`zkLogLevel`调整level，`zkLogFile`配置日志保存文件。
 
-- `zk_log_level`(int, 默认=3, 即INFO): 
+- `zk_log_level`(int, 默认=0, 即DISABLE_LOGGING): 
 打印这个等级及**以下**等级的日志。0-禁止所有zk log, 1-error, 2-warn, 3-info, 4-debug。
 
 sdk日志（glog日志）：
 1. CLI：启动时配置`--glog_level`调整level,`--glog_dir`配置日志保存文件。
 2. JAVA/Python SDK：Option或url中使用`glogLevel`调整level，`glogDir`配置日志保存文件。
 
-- `glog_level`(int, 默认=0, 即INFO):
+- `glog_level`(int, 默认=1, 即WARNING):
 打印这个等级及**以上**等级的日志。 INFO, WARNING, ERROR, and FATAL日志分别对应 0, 1, 2, and 3。
 
 
@@ -132,4 +124,7 @@ sdk日志（glog日志）：
 
 ### 7. 离线命令错误`java.lang.OutOfMemoryError: Java heap space`
 
-离线命令的spark配置默认为`local[*]`，并发较高可能出现OutOfMemoryError错误，请调整`spark.driver.memory`和`spark.executor.memory`两个spark配置项。可以写在taskmanager运行目录的`conf/taskmanager.properties`内并重启taskmanager，或者使用CLI客户端进行配置，参考[客户端Spark配置文件](../reference/client_config/client_spark_config.md#)。
+离线命令的Spark配置默认为`local[*]`，并发较高可能出现OutOfMemoryError错误，请调整`spark.driver.memory`和`spark.executor.memory`两个spark配置项。可以写在TaskManager运行目录的`conf/taskmanager.properties`的`spark.default.conf`并重启TaskManager，或者使用CLI客户端进行配置，参考[客户端Spark配置文件](../reference/client_config/client_spark_config.md)。
+```
+spark.default.conf=spark.driver.memory=16g;spark.executor.memory=16g
+```

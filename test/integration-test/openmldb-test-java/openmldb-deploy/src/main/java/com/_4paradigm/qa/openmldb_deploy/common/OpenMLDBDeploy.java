@@ -51,6 +51,10 @@ public class OpenMLDBDeploy {
     private String offlineDataPrefix = "file:///tmp/openmldb_offline_storage/";
     private String nameNodeUri = "172.27.12.215:8020";
     private int systemTableReplicaNum = 2;
+    private String sparkDefaultConf = "";
+    private String externalFunctionDir = "./udf/";
+    private String hadoopConfDir = "";
+    private String hadoopUserName = "root";
 
     public static final int SLEEP_TIME = 10*1000;
 
@@ -234,6 +238,7 @@ public class OpenMLDBDeploy {
             String ns_name = "/openmldb-ns-"+index;
             List<String> commands = Lists.newArrayList(
                     "cp -r " + testPath + "/" + openMLDBDirectoryName + " " + testPath + ns_name,
+                    "cp " + testPath + ns_name + "/conf/nameserver.flags.template " + testPath + ns_name + "/conf/nameserver.flags",
                     "sed -i "+sedSeparator+" 's#--zk_cluster=.*#--zk_cluster=" + zk_endpoint + "#' " + testPath + ns_name + "/conf/nameserver.flags",
                     "sed -i "+sedSeparator+" 's@--zk_root_path=.*@--zk_root_path=/openmldb@' "+testPath+ns_name+"/conf/nameserver.flags",
                     "sed -i "+sedSeparator+" 's@#--zk_cluster=.*@--zk_cluster=" + zk_endpoint + "@' " + testPath + ns_name + "/conf/nameserver.flags",
@@ -286,6 +291,7 @@ public class OpenMLDBDeploy {
             String tablet_name = "/openmldb-tablet-"+index;
             List<String> commands = Lists.newArrayList(
                     "cp -r "+testPath+"/"+ openMLDBDirectoryName +" "+testPath+tablet_name,
+                    "cp " + testPath+tablet_name + "/conf/tablet.flags.template " + testPath+tablet_name + "/conf/tablet.flags",
                     "sed -i "+sedSeparator+" 's/--zk_cluster=.*/--zk_cluster="+zk_endpoint+"/' "+testPath+tablet_name+"/conf/tablet.flags",
                     "sed -i "+sedSeparator+" 's@--zk_root_path=.*@--zk_root_path=/openmldb@' "+testPath+tablet_name+"/conf/tablet.flags",
                     "sed -i "+sedSeparator+" 's@#--zk_cluster=.*@--zk_cluster="+zk_endpoint+"@' "+testPath+tablet_name+"/conf/tablet.flags",
@@ -339,6 +345,7 @@ public class OpenMLDBDeploy {
             String apiserver_name = "/openmldb-apiserver-"+index;
             List<String> commands = Lists.newArrayList(
                     "cp -r "+testPath+"/"+ openMLDBDirectoryName +" "+testPath+apiserver_name,
+                    "cp " + testPath + apiserver_name + "/conf/apiserver.flags.template " + testPath + apiserver_name + "/conf/apiserver.flags",
                     "sed -i "+sedSeparator+" 's/--zk_cluster=.*/--zk_cluster="+zk_endpoint+"/' "+testPath+apiserver_name+"/conf/apiserver.flags",
                     "sed -i "+sedSeparator+" 's@--zk_root_path=.*@--zk_root_path=/openmldb@' "+testPath+apiserver_name+"/conf/apiserver.flags",
                     "sed -i "+sedSeparator+" 's@#--zk_cluster=.*@--zk_cluster="+zk_endpoint+"@' "+testPath+apiserver_name+"/conf/apiserver.flags",
@@ -383,7 +390,7 @@ public class OpenMLDBDeploy {
     public String deploySpark(String testPath){
         try {
             ExecutorUtil.run("wget -P "+testPath+" -q "+ OpenMLDBDeployConfig.getSparkUrl(version));
-            String tarName = ExecutorUtil.run("ls "+ testPath +" | grep spark").get(0);
+            String tarName = ExecutorUtil.run("ls "+ testPath +" | grep spark.tgz").get(0);
             ExecutorUtil.run("tar -zxvf " + testPath + "/"+tarName+" -C "+testPath);
             String sparkDirectoryName = ExecutorUtil.run("ls "+ testPath +" | grep spark | grep  -v .tgz ").get(0);
             String sparkPath = testPath+"/"+sparkDirectoryName;
@@ -409,6 +416,7 @@ public class OpenMLDBDeploy {
             }
 
             List<String> commands = Lists.newArrayList(
+                    "cp " + testPath + task_manager_name + "/conf/taskmanager.properties.template " + testPath + task_manager_name + "/conf/taskmanager.properties",
                     "sed -i "+sedSeparator+" 's#server.host=.*#server.host=" + ip + "#' " + testPath + task_manager_name + "/conf/taskmanager.properties",
                     "sed -i "+sedSeparator+" 's#server.port=.*#server.port=" + port + "#' " + testPath + task_manager_name + "/conf/taskmanager.properties",
                     "sed -i "+sedSeparator+" 's#zookeeper.cluster=.*#zookeeper.cluster=" + zk_endpoint + "#' " + testPath + task_manager_name + "/conf/taskmanager.properties",
@@ -418,10 +426,51 @@ public class OpenMLDBDeploy {
                     "sed -i "+sedSeparator+" 's@batchjob.jar.path=.*@batchjob.jar.path=" + batchJobJarPath + "@' "+testPath + task_manager_name+ "/conf/taskmanager.properties",
                     "sed -i "+sedSeparator+" 's@spark.yarn.jars=.*@spark.yarn.jars=" + sparkYarnJars + "@' "+testPath + task_manager_name+ "/conf/taskmanager.properties",
                     "sed -i "+sedSeparator+" 's@offline.data.prefix=.*@offline.data.prefix=" + offlineDataPrefix + "@' "+testPath + task_manager_name+ "/conf/taskmanager.properties",
-                    "sed -i "+sedSeparator+" 's@namenode.uri=.*@namenode.uri=" + nameNodeUri + "@' "+testPath + task_manager_name+ "/conf/taskmanager.properties"
+                    "sed -i "+sedSeparator+" 's@namenode.uri=.*@namenode.uri=" + nameNodeUri + "@' "+testPath + task_manager_name+ "/conf/taskmanager.properties",
+                    "sed -i "+sedSeparator+" 's@spark.default.conf=.*@spark.default.conf=" + sparkDefaultConf + "@' "+testPath + task_manager_name+ "/conf/taskmanager.properties",
+                    "echo -e \"\nexternal.function.dir=" + externalFunctionDir + "\" >> " +testPath + task_manager_name + "/conf/taskmanager.properties",
+                    "echo -e \"\nhadoop.conf.dir=" + hadoopConfDir + "\" >> " +testPath + task_manager_name + "/conf/taskmanager.properties",
+                    "echo -e \"\nhadoop.user.name=" + hadoopUserName + "\" >> " +testPath + task_manager_name + "/conf/taskmanager.properties"
             );
+
             commands.forEach(ExecutorUtil::run);
-            ExecutorUtil.run("sh "+testPath+task_manager_name+"/bin/start.sh start taskmanager");
+
+            // Download dynamic library file
+            ExecutorUtil.run("curl -o /tmp/libtest_udf.so https://openmldb.ai/download/self_host_hadoop_config/libtest_udf.so");
+
+            String taskmanagerUdfPath = testPath + task_manager_name + "/taskmanager/bin/udf/";
+            //ExecutorUtil.run("touch " + taskmanagerUdfPath);
+            //ExecutorUtil.run("cp /tmp/libtest_udf.so " + taskmanagerUdfPath);
+
+            String tabletUdfPath = testPath + "/openmldb-tablet-1/udf/";
+            ExecutorUtil.run("touch " + tabletUdfPath);
+            ExecutorUtil.run("cp /tmp/libtest_udf.so " + tabletUdfPath);
+
+            tabletUdfPath = testPath + "/openmldb-tablet-2/udf/";
+            ExecutorUtil.run("touch " + tabletUdfPath);
+            ExecutorUtil.run("cp /tmp/libtest_udf.so " + tabletUdfPath);
+
+            tabletUdfPath = testPath + "/openmldb-tablet-3/udf/";
+            ExecutorUtil.run("touch " + tabletUdfPath);
+            ExecutorUtil.run("cp /tmp/libtest_udf.so " + tabletUdfPath);
+
+            if (sparkMaster.startsWith("yarn")) {
+                log.info("Try to deploy TaskManager with yarn mode");
+                ExecutorUtil.run("curl -o /tmp/hadoop_conf.tar.gz https://openmldb.ai/download/self_host_hadoop_config/hadoop_conf.tar.gz");
+                ExecutorUtil.run("tar xzf /tmp/hadoop_conf.tar.gz -C /tmp");
+                ExecutorUtil.run("HADOOP_CONF_DIR=/tmp/hadoop/ sh "+testPath+task_manager_name+"/bin/start.sh start taskmanager");
+            } else {
+                ExecutorUtil.run("sh "+testPath+task_manager_name+"/bin/start.sh start taskmanager");
+            }
+
+            /*
+            String command = "cat " +testPath+task_manager_name + "/taskmanager/bin/logs/taskmanager.log";
+            List<String> result = ExecutorUtil.run(command);
+            for (String line : result) {
+                System.out.println(line);
+            }
+            */
+
             boolean used = LinuxUtil.checkPortIsUsed(port,3000,30);
             if(used){
                 log.info("task manager部署成功，port："+port);
@@ -430,6 +479,9 @@ public class OpenMLDBDeploy {
         }catch (Exception e){
             e.printStackTrace();
         }
+
+
+
         throw new RuntimeException("task manager部署失败");
     }
 

@@ -15,25 +15,16 @@
  */
 
 #include "node/plan_node.h"
+
 #include <string>
+
+#include "absl/algorithm/container.h"
 namespace hybridse {
 namespace node {
 
 bool PlanListEquals(const std::vector<PlanNode *> &list1,
                     const std::vector<PlanNode *> &list2) {
-    if (list1.size() != list2.size()) {
-        return false;
-    }
-    auto iter1 = list1.cbegin();
-    auto iter2 = list2.cbegin();
-    while (iter1 != list1.cend()) {
-        if (!(*iter1)->Equals(*iter2)) {
-            return false;
-        }
-        iter1++;
-        iter2++;
-    }
-    return true;
+    return absl::c_equal(list1, list2, [](PlanNode *lhs, PlanNode *rhs) { return PlanEquals(lhs, rhs); });
 }
 
 bool PlanEquals(const PlanNode *left, const PlanNode *right) {
@@ -227,6 +218,12 @@ std::string NameOfPlanNodeType(const PlanType &type) {
             return "kPlanTypeDelete";
         case kPlanTypeCreateFunction:
             return "kPlanTypeCreateFunction";
+        case kPlanTypeWithClauseEntry:
+            return "kPlanTypeWithClauseEntry";
+        case kPlanTypeShow:
+            return "kPlanTypeShow";
+        case kPlanTypeAlterTable:
+            return "kPlanTypeAlterTable";
         case kUnknowPlan:
             return std::string("kUnknow");
     }
@@ -482,8 +479,9 @@ void TablePlanNode::Print(std::ostream &output,
                           const std::string &org_tab) const {
     PlanNode::Print(output, org_tab);
     output << "\n";
-    PrintValue(output, org_tab + INDENT, GetPathString(), is_primary_ ? "primary_table" : "table", true);
+    PrintValue(output, org_tab + INDENT, GetPathString(), "table", true);
 }
+
 bool TablePlanNode::Equals(const PlanNode *node) const {
     if (nullptr == node) {
         return false;
@@ -497,9 +495,9 @@ bool TablePlanNode::Equals(const PlanNode *node) const {
         return false;
     }
     const TablePlanNode *that = dynamic_cast<const TablePlanNode *>(node);
-    return is_primary_ == that->is_primary_ &&
-           db_ == that->db_ && table_ == that->table_ && LeafPlanNode::Equals(that);
+    return db_ == that->db_ && table_ == that->table_ && LeafPlanNode::Equals(that);
 }
+
 void RenamePlanNode::Print(std::ostream &output,
                            const std::string &org_tab) const {
     PlanNode::Print(output, org_tab);
@@ -671,13 +669,29 @@ bool UnionPlanNode::Equals(const PlanNode *node) const {
 void QueryPlanNode::Print(std::ostream &output,
                           const std::string &org_tab) const {
     hybridse::node::UnaryPlanNode::Print(output, org_tab);
+
+    std::string new_tab = org_tab + INDENT;
+    if (!with_clauses_.empty()) {
+        output << "\n" << new_tab << SPACE_ST << "with_clause[list]:";
+        for (size_t i = 0; i < with_clauses_.size(); ++i) {
+            output << "\n";
+            auto node = with_clauses_[i];
+            PrintPlanNode(output, new_tab + INDENT, node, "", false);
+        }
+    }
+
     if (config_options_ != nullptr) {
         output << "\n";
         PrintValue(output, org_tab + INDENT, config_options_.get(), "config_options", false);
     }
 }
 bool QueryPlanNode::Equals(const PlanNode *node) const {
-    return UnaryPlanNode::Equals(node);
+    if (!UnaryPlanNode::Equals(node)) { return false; }
+    auto rhs = dynamic_cast<const QueryPlanNode *>(node);
+    return rhs != nullptr &&
+    absl::c_equal(with_clauses_, rhs->with_clauses_, [](WithClauseEntryPlanNode* lhs, WithClauseEntryPlanNode* rhs) {
+                      return PlanEquals(lhs, rhs);
+                  });
 }
 
 void CreatePlanNode::Print(std::ostream &output, const std::string &org_tab) const {
@@ -692,6 +706,9 @@ void CreatePlanNode::Print(std::ostream &output, const std::string &org_tab) con
     output << "\n";
     PrintSqlVector(output, tab, column_desc_list_, "column_desc_list", false);
     output << "\n";
+    if (like_clause_ != nullptr) {
+        like_clause_->Print(output, tab);
+    }
     PrintSqlVector(output, tab, table_option_list_, "table_option_list", true);
 }
 void DeployPlanNode::Print(std::ostream &output, const std::string &tab) const {
@@ -783,6 +800,22 @@ void DeletePlanNode::Print(std::ostream& output, const std::string& tab) const {
     }
 }
 
+bool ShowPlanNode::Equals(const PlanNode *that) const {
+    auto other = dynamic_cast<const ShowPlanNode *>(that);
+    return LeafPlanNode::Equals(that) && type_ == that->type_ && GetShowType() == other->GetShowType()
+        && GetTarget() == other->GetTarget() && GetLikeStr() == other->GetLikeStr();
+}
+void ShowPlanNode::Print(std::ostream& output, const std::string& tab) const {
+    PlanNode::Print(output, tab);
+    const std::string next_tab = tab + INDENT + SPACE_ED;
+    output << "\n";
+    PrintValue(output, next_tab, ShowStmtTypeName(show_type_), "show type", false);
+    output << "\n";
+    PrintValue(output, next_tab, target_, "target", false);
+    output << "\n";
+    PrintValue(output, next_tab, like_str_, "like_str", true);
+}
+
 bool CmdPlanNode::Equals(const PlanNode *that) const {
     if (!LeafPlanNode::Equals(that)) {
         return false;
@@ -792,5 +825,37 @@ bool CmdPlanNode::Equals(const PlanNode *that) const {
            std::equal(std::begin(GetArgs()), std::end(GetArgs()), std::begin(cnode->GetArgs()),
                       std::end(cnode->GetArgs()));
 }
+
+
+void WithClauseEntryPlanNode::Print(std::ostream &output, const std::string &org_tab) const {
+    UnaryPlanNode::Print(output, org_tab);
+
+    output << "\n";
+    PrintValue(output, org_tab + INDENT, alias_, "alias", false);
+}
+
+bool WithClauseEntryPlanNode::Equals(const PlanNode *node) const {
+    return EqualsOverride<WithClauseEntryPlanNode>(
+        node, [](const WithClauseEntryPlanNode *lhs, const WithClauseEntryPlanNode *rhs) {
+            return lhs->alias_ == rhs->alias_;
+        });
+}
+
+void AlterTableStmtPlanNode::Print(std::ostream &output, const std::string &org_tab) const {
+    LeafPlanNode::Print(output, org_tab);
+    output << "\n";
+    auto tab = org_tab + INDENT;
+    PrintValue(output, tab, absl::StrCat(db_, ".", table_), "path", false);
+    output << "\n";
+    output << tab << SPACE_ST << "actions:"
+           << "\n";
+    for (decltype(actions_.size()) i = 0; i < actions_.size(); ++i) {
+        PrintValue(output, tab + INDENT, actions_[i]->DebugString(), std::to_string(i), false);
+        if (i + 1 < actions_.size()) {
+            output << "\n";
+        }
+    }
+}
+
 }  // namespace node
 }  // namespace hybridse

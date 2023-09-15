@@ -18,7 +18,6 @@
 #include <gflags/gflags.h>
 #include <unistd.h>
 
-#include "base/glog_wrapper.h"
 #include "client/ns_client.h"
 #include "common/timer.h"
 #include "gtest/gtest.h"
@@ -28,6 +27,7 @@
 #include "rpc/rpc_client.h"
 #include "sdk/sql_router.h"
 #include "tablet/tablet_impl.h"
+#include "test/util.h"
 
 DECLARE_string(endpoint);
 DECLARE_string(db_root_path);
@@ -42,10 +42,6 @@ using ::openmldb::nameserver::NameServerImpl;
 
 namespace openmldb {
 namespace tablet {
-
-inline std::string GenRand() {
-    return std::to_string(rand() % 10000000 + 1);  // NOLINT
-}
 
 class SqlClusterTest : public ::testing::Test {
  public:
@@ -139,7 +135,7 @@ void ShowTable(::openmldb::RpcClient<::openmldb::nameserver::NameServer_Stub>& n
 TEST_F(SqlClusterTest, RecoverProcedure) {
     FLAGS_auto_failover = true;
     FLAGS_zk_cluster = "127.0.0.1:6181";
-    FLAGS_zk_root_path = "/rtidb4" + GenRand();
+    FLAGS_zk_root_path = "/rtidb4" + ::openmldb::test::GenRand();
 
     // ns1
     FLAGS_endpoint = "127.0.0.1:9631";
@@ -150,7 +146,8 @@ TEST_F(SqlClusterTest, RecoverProcedure) {
 
     // tablet1
     FLAGS_endpoint = "127.0.0.1:9831";
-    FLAGS_db_root_path = "/tmp/" + GenRand();
+    ::openmldb::test::TempPath tmp_path;
+    FLAGS_db_root_path = tmp_path.GetTempPath();
     brpc::Server tb_server1;
     ::openmldb::tablet::TabletImpl* tablet1 = new ::openmldb::tablet::TabletImpl();
     StartTablet(&tb_server1, tablet1);
@@ -264,7 +261,7 @@ TEST_F(SqlClusterTest, RecoverProcedure) {
 TEST_F(SqlClusterTest, DropProcedureBeforeDropTable) {
     FLAGS_auto_failover = true;
     FLAGS_zk_cluster = "127.0.0.1:6181";
-    FLAGS_zk_root_path = "/rtidb4" + GenRand();
+    FLAGS_zk_root_path = "/rtidb4" + ::openmldb::test::GenRand();
 
     // ns1
     FLAGS_endpoint = "127.0.0.1:9632";
@@ -275,7 +272,8 @@ TEST_F(SqlClusterTest, DropProcedureBeforeDropTable) {
 
     // tablet1
     FLAGS_endpoint = "127.0.0.1:9832";
-    FLAGS_db_root_path = "/tmp/" + GenRand();
+    ::openmldb::test::TempPath tmp_path;
+    FLAGS_db_root_path = tmp_path.GetTempPath();
     brpc::Server tb_server1;
     ::openmldb::tablet::TabletImpl* tablet1 = new ::openmldb::tablet::TabletImpl();
     StartTablet(&tb_server1, tablet1);

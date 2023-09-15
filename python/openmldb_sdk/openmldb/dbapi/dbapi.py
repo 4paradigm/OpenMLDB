@@ -247,52 +247,56 @@ class Cursor(object):
                     format(row_idx))
 
     def execute(self, operation, parameters=()):
-        command = operation.strip(' \t\n\r') if operation else None
-        if command is None:
+        if not operation:
             raise Exception("None operation")
+
+        command = operation.strip(' \t\n\r')
+        
         if insertRE.match(command):
             question_mark_count = command.count('?')
+            
             if question_mark_count > 0:
                 if len(parameters) != question_mark_count:
                     raise DatabaseError("parameters is not enough")
-                ok, builder = self.connection._sdk.getInsertBuilder(
-                    None, command)
+                
+                ok, builder = self.connection._sdk.getInsertBuilder(None, command)
                 if not ok:
                     raise DatabaseError(f"get insert builder fail, error: {builder}")
+                
                 schema = builder.GetSchema()
-                # holeIdxes is in stmt column order
                 hole_idxes = builder.GetHoleIdx()
                 sorted_holes = build_sorted_holes(hole_idxes)
-                append_map = self.__get_append_map(builder, parameters,
-                                                   hole_idxes, schema)
-                self.__add_row_to_builder(parameters, sorted_holes, schema,
-                                          builder, append_map)
-                ok, error = self.connection._sdk.executeInsert(
-                    None, command, builder)
+                append_map = self.__get_append_map(builder, parameters, hole_idxes, schema)
+                self.__add_row_to_builder(parameters, sorted_holes, schema, builder, append_map)
+                ok, error = self.connection._sdk.executeInsert(None, command, builder)
             else:
                 ok, error = self.connection._sdk.executeInsert(None, command)
+
             if not ok:
                 raise DatabaseError(error)
+        
         elif selectRE.match(command):
             if parameters:
                 logging.debug("selectRE: %s", str(parameters))
-                
+
             if isinstance(parameters, tuple) and len(parameters) > 0:
-                ok, rs = self.connection._sdk.doParameterizedQuery(
-                    None, command, parameters)
+                ok, rs = self.connection._sdk.doParameterizedQuery(None, command, parameters)
             elif isinstance(parameters, dict):
-                ok, rs = self.connection._sdk.doRequestQuery(
-                    None, command, parameters)
+                ok, rs = self.connection._sdk.doRequestQuery(None, command, parameters)
             else:
                 ok, rs = self.connection._sdk.doQuery(None, command)
+
             if not ok:
-                raise DatabaseError("execute select fail, error: {}".format(rs))
+                raise DatabaseError(f"execute select fail, error: {rs}")
+
             self._pre_process_result(rs)
             return self
+        
         else:
             ok, rs = self.connection._sdk.execute(command)
             if not ok:
                 raise DatabaseError(rs)
+            
             self._pre_process_result(rs)
             return self
 
@@ -369,39 +373,38 @@ class Cursor(object):
                     operation,
                     parameters: Union[List[tuple], List[dict]],
                     batch_number=200):
-        """ use current database """
-        parameters_length = len(parameters)
-        command = operation.strip(' \t\n\r') if operation else None
-        if command is None:
+        if not operation:
             raise Exception("None operation")
-        if command.count("?") == 0:
+
+        command = operation.strip(' \t\n\r')
+        parameters_length = len(parameters)
+        question_mark_count = command.count("?")
+
+        if question_mark_count == 0:
             logging.warning(
-                "Only {} is valid, params: {} are invalid, maybe not exists mark '?' in sql"
-                .format(operation, parameters))
+                f"Only {operation} is valid, params: {parameters} are invalid, maybe not exists mark '?' in sql")
             return self.execute(operation, parameters)
+
         if isinstance(parameters, list) and parameters_length == 0:
             return self.execute(operation, parameters)
 
         if insertRE.match(command):
-            question_mark_count = command.count("?")
             if question_mark_count > 0:
-                # Because the object obtained by getInsertBatchBuilder has no GetSchema method,
-                # use the object obtained by getInsertBatchBuilder
-                ok, builder = self.connection._sdk.getInsertBuilder(
-                    None, command)
+                ok, builder = self.connection._sdk.getInsertBuilder(None, command)
                 if not ok:
                     raise DatabaseError(f"get insert builder fail, error: {builder}")
+
                 schema = builder.GetSchema()
                 hole_idxes = builder.GetHoleIdx()
                 hole_pairs = build_sorted_holes(hole_idxes)
+
                 for i in range(0, parameters_length, batch_number):
                     rows = parameters[i:i + batch_number]
-                    ok, batch_builder = self.connection._sdk.getInsertBatchBuilder(
-                        None, command)
+                    ok, batch_builder = self.connection._sdk.getInsertBatchBuilder(None, command)
                     if not ok:
                         raise DatabaseError("get insert builder fail")
-                    self.__insert_rows(rows, hole_idxes, hole_pairs, schema,
-                                       batch_builder, command)
+
+                    self.__insert_rows(rows, hole_idxes, hole_pairs, schema, batch_builder, command)
             else:
                 ok, rs = self.connection._sdk.execute(command)
                 if not ok:
@@ -409,7 +412,7 @@ class Cursor(object):
                 self._pre_process_result(rs)
                 return self
         else:
-            raise DatabaseError("unsupport sql")
+            raise DatabaseError("unsupported sql")
 
     def is_online_mode(self):
         return self.connection._sdk.isOnlineMode()

@@ -147,8 +147,7 @@ CREATE TABLE t1 (col0 STRING, col1 int, std_time TIMESTAMP, INDEX(KEY=col1, TS=s
     (At /Users/chenjing/work/chenjing/OpenMLDB/hybridse/src/vm/transform.cc:1997)
 ```
 
-### Configure Synchronous Execution for Offline Commands
-
+### Offline Commands Configuration Details
 
 - Set the synchronous execution for offline commands:
 
@@ -156,7 +155,15 @@ CREATE TABLE t1 (col0 STRING, col1 int, std_time TIMESTAMP, INDEX(KEY=col1, TS=s
 > SET @@sync_job = "true";
 ```
 
-- Set the waiting time for synchronization commands (in milliseconds):
+```{caution}
+If offline sync job is longer than 30min(the default timeout for offline sync job), you should change the config of TaskManager and client.
+- set `server.channel_keep_alive_time` bigger in TaskManager config file.
+- choose one:
+    - set a bigger session job_timeout, we'll use `max(session_job_timeout, default_gflag_sync_job_timeout)`.
+    - set `--sync_job_timeout` of sql client, less than `server.channel_keep_alive_time`. SDK can't change the config now.
+```
+
+- Set the waiting time for offline async commands or offline admin commands (in milliseconds):
 ```sql
 > SET @@job_timeout = "600000";
 ```

@@ -65,7 +65,7 @@ TEST_P(DBSDKTest, CreateFunction) {
     sr = cli->sr;
     ::openmldb::sdk::SQLClusterRouter* sr_2 = nullptr;
     if (cs->IsClusterMode()) {
-    ::openmldb::sdk::ClusterOptions copt;
+        ::openmldb::sdk::ClusterOptions copt;
         copt.zk_cluster = mc.GetZkCluster();
         copt.zk_path = mc.GetZkPath();
         auto cur_cs = new ::openmldb::sdk::ClusterSDK(copt);
@@ -75,6 +75,10 @@ TEST_P(DBSDKTest, CreateFunction) {
         ProcessSQLs(sr_2, {"set @@execute_mode = 'online'"});
     }
     hybridse::sdk::Status status;
+    std::string err_cut2_sql = absl::StrCat("CREATE FUNCTION cut2(x STRING) RETURNS STRING "
+                            "OPTIONS (FILE='libnotfound_udf.so');");
+    sr->ExecuteSQL(err_cut2_sql, &status);
+    ASSERT_FALSE(status.IsOK());
     std::string so_path = openmldb::test::GetParentDir(openmldb::test::GetExeDir()) + "/libtest_udf.so";
     std::string cut2_sql = absl::StrCat("CREATE FUNCTION cut2(x STRING) RETURNS STRING "
                             "OPTIONS (FILE='", so_path, "');");
@@ -96,11 +100,12 @@ TEST_P(DBSDKTest, CreateFunction) {
                     int2str_sql
                 });
     auto result = sr->ExecuteSQL("show functions", &status);
-    ExpectResultSetStrEq({{"Name", "Return_type", "Arg_type", "Is_aggregate", "File"},
-                          {"cut2", "Varchar", "Varchar", "false", so_path},
-                          {"int2str", "Varchar", "Int", "false", so_path},
-                          {"strlength", "Int", "Varchar", "false", so_path}},
-                         result.get());
+    ExpectResultSetStrEq({{"Name", "Return_type", "Arg_type", "Is_aggregate", "File",
+                                "Return_nullable", "Arg_nullable"},
+                          {"cut2", "Varchar", "Varchar", "false", so_path, "false", "false"},
+                          {"int2str", "Varchar", "Int", "false", so_path, "false", "false"},
+                          {"strlength", "Int", "Varchar", "false", so_path, "false", "false"}},
+                          result.get());
     result = sr->ExecuteSQL("select cut2(c1), strlength(c1), int2str(c2) from t1;", &status);
     ASSERT_TRUE(status.IsOK());
     ASSERT_EQ(1, result->Size());
@@ -131,6 +136,85 @@ TEST_P(DBSDKTest, CreateFunction) {
                     absl::StrCat("drop table ", tb_name, ";"),
                     absl::StrCat("drop database ", db_name, ";"),
                 });
+}
+
+TEST_P(DBSDKTest, CreateUdafFunction) {
+    auto cli = GetParam();
+    cs = cli->cs;
+    sr = cli->sr;
+    std::unique_ptr<::openmldb::sdk::SQLClusterRouter> sr_2;
+    if (cs->IsClusterMode()) {
+    ::openmldb::sdk::ClusterOptions copt;
+        copt.zk_cluster = mc.GetZkCluster();
+        copt.zk_path = mc.GetZkPath();
+        auto cur_cs = new ::openmldb::sdk::ClusterSDK(copt);
+        cur_cs->Init();
+        sr_2 = std::make_unique<::openmldb::sdk::SQLClusterRouter>(cur_cs);
+        sr_2->Init();
+        ProcessSQLs(sr_2.get(), {"set @@execute_mode = 'online'"});
+    }
+    hybridse::sdk::Status status;
+    std::string so_path = openmldb::test::GetParentDir(openmldb::test::GetExeDir()) + "/libtest_udf.so";
+    std::string agg_fun_str = absl::StrCat("CREATE AGGREGATE FUNCTION special_sum(x BIGINT) RETURNS BIGINT "
+                            "OPTIONS (FILE='", so_path, "');");
+    std::string agg_fun_str1 = absl::StrCat("CREATE AGGREGATE FUNCTION count_null(x STRING) RETURNS BIGINT "
+                            "OPTIONS (FILE='", so_path, "', ARG_NULLABLE=true);");
+    std::string agg_fun_str2 = absl::StrCat("CREATE AGGREGATE FUNCTION third(x BIGINT) RETURNS BIGINT "
+                            "OPTIONS (FILE='", so_path, "', ARG_NULLABLE=true, RETURN_NULLABLE=true);");
+    std::string db_name = "test" + GenRand();
+    std::string tb_name = "t1";
+    ProcessSQLs(sr,
+                {
+                    "set @@execute_mode = 'online'",
+                    absl::StrCat("create database ", db_name, ";"),
+                    absl::StrCat("use ", db_name, ";"),
+                    absl::StrCat("create table ", tb_name, " (c1 string, c2 bigint, c3 double);"),
+                    absl::StrCat("insert into ", tb_name, " values ('aab', 11, 1.2);"),
+                    absl::StrCat("insert into ", tb_name, " values ('aac', null, 1.2);"),
+                    absl::StrCat("insert into ", tb_name, " values (null, 12, 1.2);"),
+                    agg_fun_str,
+                    agg_fun_str1,
+                    agg_fun_str2
+                });
+    auto result = sr->ExecuteSQL("show functions", &status);
+    ExpectResultSetStrEq({{"Name", "Return_type", "Arg_type", "Is_aggregate", "File",
+                                "Return_nullable", "Arg_nullable"},
+                          {"count_null", "BigInt", "Varchar", "true", so_path, "false", "true"},
+                          {"special_sum", "BigInt", "BigInt", "true", so_path, "false", "false"},
+                          {"third", "BigInt", "BigInt", "true", so_path, "true", "true"}},
+                         result.get());
+    std::string select_sql = "select special_sum(c2) as sumc2, count_null(c1) as c1_null, "
+                                "third(c2) as c2_third from t1;";
+    result = sr->ExecuteSQL(select_sql, &status);
+    ASSERT_TRUE(status.IsOK());
+    ASSERT_EQ(1, result->Size());
+    result->Next();
+    int64_t value = 0;
+    ASSERT_FALSE(result->IsNULL(0));
+    result->GetInt64(0, &value);
+    ASSERT_EQ(value, 38);
+    ASSERT_FALSE(result->IsNULL(1));
+    result->GetInt64(1, &value);
+    ASSERT_TRUE(result->IsNULL(2));
+    if (cs->IsClusterMode()) {
+        ProcessSQLs(sr_2.get(), {"set @@execute_mode = 'online'", absl::StrCat("use ", db_name, ";")});
+        // check function in another sdk
+        result = sr_2->ExecuteSQL(select_sql, &status);
+        ASSERT_TRUE(status.IsOK()) << status.msg;
+        ASSERT_EQ(1, result->Size());
+        result->Next();
+        int64_t value = 0;
+        result->GetInt64(0, &value);
+        ASSERT_EQ(value, 38);
+        result->GetInt64(1, &value);
+        ASSERT_EQ(value, 1);
+        ASSERT_TRUE(result->IsNULL(2));
+    }
+    ProcessSQLs(sr, {"DROP FUNCTION special_sum;",
+                    "DROP FUNCTION count_null;",
+                    "DROP FUNCTION third"});
+    result = sr->ExecuteSQL(select_sql, &status);
+    ASSERT_FALSE(status.IsOK());
 }
 #endif
 

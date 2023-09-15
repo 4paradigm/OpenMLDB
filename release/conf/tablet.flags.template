@@ -17,11 +17,13 @@
 --openmldb_log_dir=./logs
 --log_level=info
 
+#--max_memory_mb=0
+
 # binlog conf
 #--binlog_coffee_time=1000
 #--binlog_match_logoffset_interval=1000
 --binlog_notify_on_put=true
---binlog_single_file_max_size=2048
+--binlog_single_file_max_size=1024
 #--binlog_sync_batch_size=32
 --binlog_sync_to_disk_interval=5000
 #--binlog_sync_wait_time=100
@@ -35,6 +37,20 @@
 --db_root_path=./db
 --recycle_bin_root_path=./recycle
 
+# HDD表数据文件路径
+# 配置数据目录，多个磁盘使用英文符号, 隔开
+--hdd_root_path=./db_hdd
+# 配置数据回收站目录，drop表的数据就会放在这里
+--recycle_bin_hdd_root_path=./recycle_hdd
+#
+# SSD表数据文件路径（可选，默认为空）
+# 配置数据目录，多个磁盘使用英文符号, 隔开
+#--ssd_root_path=./db_ssd
+# 配置数据回收站目录，drop表的数据就会放在这里
+#--recycle_bin_ssd_root_path=./recycle_ssd
+# 配置是否开启回收站, 如果开启drop table后的数据会放到recycle目录里
+#--recycle_bin_enabled=true
+
 # snapshot conf
 # 每天23点做snapshot
 --make_snapshot_time=23
@@ -44,8 +60,9 @@
 #--snapshot_compression=off
 
 # garbage collection conf
-# 60m
---gc_interval=60
+# the unit of interval is minute
+--gc_interval=120
+--disk_gc_interval=1440
 --gc_pool_size=2
 # 1m
 #--gc_safe_offset=1
@@ -66,10 +83,10 @@
 #--key_entry_max_height=8
 
 # query conf
-# max table traverse iteration（full table scan/aggregation）,default: 50000
-#--max_traverse_cnt=50000
-# max table traverse pk number（batch query）, default: 5000
-#--max_traverse_pk_cnt=5000
+# max table traverse iteration(full table scan/aggregation),default: 0
+#--max_traverse_cnt=0
+# max table traverse unique key number(batch query), default: 0
+#--max_traverse_key_cnt=0
 # max result size in byte (default: 2MB)
 #--scan_max_bytes_size=2097152
 

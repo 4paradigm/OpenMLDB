@@ -57,7 +57,7 @@ class Table {
         return Put(entry.ts(), entry.value(), entry.dimensions());
     }
 
-    virtual bool Delete(const std::string& pk, uint32_t idx) = 0;
+    virtual bool Delete(const ::openmldb::api::LogEntry& entry) = 0;
 
     virtual TableIterator* NewIterator(const std::string& pk,
                                        Ticket& ticket) = 0;  // NOLINT
@@ -71,7 +71,7 @@ class Table {
 
     virtual void SchedGc() = 0;
 
-    virtual uint64_t GetRecordCnt() const = 0;
+    virtual uint64_t GetRecordCnt() = 0;
 
     virtual bool IsExpire(const ::openmldb::api::LogEntry& entry) = 0;
 
@@ -189,7 +189,7 @@ class Table {
     std::atomic<uint64_t> diskused_;
     bool is_leader_;
     uint64_t ttl_offset_;
-    std::atomic<uint32_t> table_status_;
+    std::atomic<uint32_t> table_status_ = ::openmldb::storage::TableStat::kUndefined;
     TableIndex table_index_;
     ::openmldb::type::CompressType compress_type_;
     std::shared_ptr<::openmldb::api::TableMeta> table_meta_;

@@ -110,6 +110,8 @@ class LogReplicator {
 
     const std::string& GetLogPath() {return log_path_;}
 
+    uint64_t GetSnapshotLastOffset() { return snapshot_last_offset_.load(std::memory_order_relaxed); }
+
  private:
     bool OpenSeqFile(const std::string& path, SequentialFile** sf);
 

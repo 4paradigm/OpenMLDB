@@ -46,6 +46,7 @@ struct AvgCateDef {
         using ContainerT = udf::container::BoundedGroupByDict<K, V, std::pair<int64_t, double>>;
         using InputK = typename ContainerT::InputK;
         using InputV = typename ContainerT::InputV;
+        using StorageValue = typename ContainerT::StorageValue;
 
         void operator()(UdafRegistryHelper& helper) {  // NOLINT
             std::string suffix = ".opaque_dict_" +
@@ -60,7 +61,7 @@ struct AvgCateDef {
         }
 
         // FormatValueF
-        static uint32_t FormatValueFn(const typename ContainerT::StorageValue& val, char* buf, size_t size) {
+        static uint32_t FormatValueFn(const StorageValue& val, char* buf, size_t size) {
             double avg = val.second / val.first;
             return v1::format_string(avg, buf, size);
         }
@@ -217,7 +218,8 @@ template <typename K>
 struct TopNValueAvgCateWhereDef {
     void operator()(UdafRegistryHelper& helper) {  // NOLINT
         helper.library()
-            ->RegisterUdafTemplate<container::TopNValueImpl<AvgCateDef<K>::template Impl>::template Impl>(helper.name())
+            ->RegisterUdafTemplate<container::TopNCateWhereImpl<AvgCateDef<K>::template Impl>::template Impl>(
+                helper.name())
             .doc(helper.GetDoc())
             .template args_in<int16_t, int32_t, int64_t, float, double>();
     }
@@ -251,13 +253,12 @@ void DefaultUdfLibrary::InitAvgByCateUdafs() {
 
     RegisterUdafTemplate<AvgCateWhereDef>("avg_cate_where")
         .doc(R"(
-            @brief Compute average of values matching specified condition grouped by
-    category key and output string. Each group is represented as 'K:V' and
-    separated by comma in outputs and are sorted by key in ascend order.
+            @brief Compute average of values matching specified condition grouped by category key and output string.
+            Each group is represented as 'K:V', separated by comma, and sorted by key in ascend order.
 
-            @param catagory  Specify catagory column to group by.
             @param value  Specify value column to aggregate on.
             @param condition  Specify condition column.
+            @param catagory  Specify catagory column to group by.
 
             Example:
 
@@ -269,7 +270,7 @@ void DefaultUdfLibrary::InitAvgByCateUdafs() {
             3|true|y
             4|true|x
             @code{.sql}
-                SELECT avg_cate_where(catagory, value, condition) OVER w;
+                SELECT avg_cate_where(value, condition, category) OVER w;
                 -- output "x:2,y:3"
             @endcode
             )")
@@ -303,6 +304,8 @@ void DefaultUdfLibrary::InitAvgByCateUdafs() {
     OVER w;
                 -- output "z:5,y:3"
             @endcode
+
+            @since 0.1.0
             )")
         .args_in<int16_t, int32_t, int64_t, Date, Timestamp, StringRef>();
 
@@ -334,6 +337,8 @@ void DefaultUdfLibrary::InitAvgByCateUdafs() {
     OVER w;
                 -- output "z:5,x:4"
             @endcode
+
+            @since 0.6.4
             )")
         .args_in<int16_t, int32_t, int64_t, Date, Timestamp, StringRef>();
 }

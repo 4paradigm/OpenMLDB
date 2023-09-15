@@ -22,7 +22,23 @@ TableElement ::=
 
 建表语句中需要定义`TableElementList`，即`TableElement`列表。`TableElement`分为列描述`ColumnDef`和列索引`ColumnIndex`。OpenMLDB要求`TableElement`列表中至少包含一个`ColumnDef`。
 
+或者基于 `LIKE` 语法建表，目前支持基于 Hive 和 Parquet 格式。
 
+```sql
+CreateTableStmt ::=
+    'CREATE' 'TABLE' TableName LIKE LikeType PATH
+
+TableName ::=
+    Identifier ('.' Identifier)?
+
+LikeType ::=
+    'HIVE' | 'PARQUET'
+
+PATH ::=
+    string_literal
+```
+
+基于 Hive 建表的详情可查看文档 [Hive 数据源支持](../../integration/offline_data_sources/hive.md)。
 
 ### 列描述ColumnDef（必要）
 
@@ -57,7 +73,7 @@ DefaultValueExpr ::=
 一张表中包含一个或多个列。每一列的列描述`ColumnDef`描述了列名、列类型以及列约束配置。
 
 - 列名：列在表中的名字。同一张表内的列名必须是唯一的。
-- 列类型：列的类型。关于OpenMLDB支持的数据类型，详见[数据类型](../data_types)。
+- 列类型：列的类型。关于OpenMLDB支持的数据类型，详见[数据类型](../../openmldb_sql/data_types)。
 - 列约束配置：
   - `NOT NULL`: 该列的取值不允许为空。
   - `DEFAULT`: 设置该列的默认值。`NOT NULL`的属性推荐同时配置`DEFAULT`默认值，在插入数据时，若没有定义该列的值，会插入默认值。若设置了`NOT NULL`属性但没有配置`DEFAULT`值，插入语句中未定义该列值时，OpenMLDB会抛出错误。
@@ -173,6 +189,21 @@ desc t4;
  --------------
 ```
 
+**示例5：基于 Hive 表创建新表**
+
+首先[配置OpenMLDB支持Hive](../../integration/offline_data_sources/hive.md)，然后使用以下语句。
+
+```sql
+CREATE TABLE t1 LIKE HIVE 'hive://hive_db.t1';
+-- SUCCEED
+```
+
+**示例6：基于 Parquet 文件创建新表**
+
+```sql
+CREATE TABLE t1 LIKE PARQUET 'file://t1.parquet';
+-- SUCCEED
+```
 
 ### 列索引ColumnIndex（可选）
 
@@ -192,7 +223,7 @@ IndexOption ::=
 | 配置项        | 描述                                                                                                      | expr                                                                                                           | 用法示例                                                                                   |
 |------------|---------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------|
 | `KEY`      | 索引列（必选）。OpenMLDB支持单列索引，也支持联合索引。当`KEY`后只有一列时，仅在该列上建立索引。当`KEY`后有多列时，建立这几列的联合索引：将多列按顺序拼接成一个字符串作为索引。        | 支持单列索引：`ColumnName`<br/>或联合索引：<br/>`(ColumnName (, ColumnName)* ) `                                            | 单列索引：`INDEX(KEY=col1)`<br />联合索引：`INDEX(KEY=(col1, col2))`                             |
-| `TS`       | 索引时间列（可选）。同一个索引上的数据将按照时间索引列排序。当不显式配置`TS`时，使用数据插入的时间戳作为索引时间。                                             | `ColumnName`                                                                                                   | `INDEX(KEY=col1, TS=std_time)`。索引列为col1,col1相同的数据行按std_time排序。                         |
+| `TS`       | 索引时间列（可选）。同一个索引上的数据将按照时间索引列排序。当不显式配置`TS`时，使用数据插入的时间戳作为索引时间。时间列的类型只能为BigInt或者Timestamp                                             | `ColumnName`                                                                                                   | `INDEX(KEY=col1, TS=std_time)`。索引列为col1,col1相同的数据行按std_time排序。                         |
 | `TTL_TYPE` | 淘汰规则（可选）。包括四种类型，当不显式配置`TTL_TYPE`时，默认使用`ABSOLUTE`过期配置。                                                   | 支持的expr如下：`ABSOLUTE` <br/> `LATEST`<br/>`ABSORLAT`<br/> `ABSANDLAT`。                                           | 具体用法可以参考下文“TTL和TTL_TYPE的配置细则”                                                          |
 | `TTL`      | 最大存活时间/条数（可选）。依赖于`TTL_TYPE`，不同的`TTL_TYPE`有不同的`TTL` 配置方式。当不显式配置`TTL`时，`TTL=0`，表示不设置淘汰规则，OpenMLDB将不会淘汰记录。 | 支持数值：`int_literal`<br/>  或数值带时间单位(`S,M,H,D`)：`interval_literal`<br/>或元组形式：`( interval_literal , int_literal )` |具体用法可以参考下文“TTL和TTL_TYPE的配置细则” |
 
@@ -205,6 +236,9 @@ IndexOption ::=
 | `ABSORLAT`  | 配置过期时间和最大存活条数。配置值是一个2元组，形如`(100m, 10), (1d, 1)`。最大可以配置`(15768000m, 1000)`。 | 当且仅当记录过期**或**记录超过最大条数时，才会淘汰。 | `INDEX(key=c1, ts=c6, ttl=(120min, 100), ttl_type=absorlat)`。当记录超过100条，**或者**当记录过期时，会被淘汰 |
 | `ABSANDLAT` | 配置过期时间和最大存活条数。配置值是一个2元组，形如`(100m, 10), (1d, 1)`。最大可以配置`(15768000m, 1000)`。 | 当记录过期**且**记录超过最大条数时，记录会被淘汰。   | `INDEX(key=c1, ts=c6, ttl=(120min, 100), ttl_type=absandlat)`。当记录超过100条，**而且**记录过期时，会被淘汰 |
 
+```{note}
+最大过期时间和最大存活条数的限制，是出于性能考虑。如果你一定要配置更大的TTL值，请使用UpdateTTL来增大（可无视max限制），或者调整nameserver配置`absolute_ttl_max`和`latest_ttl_max`，重启生效。
+```
 #### Example
 **示例1：创建一张带单列索引的表**
 

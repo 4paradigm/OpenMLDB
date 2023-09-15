@@ -8,13 +8,24 @@ LAST JOIN可以看作一种特殊的LEFT JOIN。在满足JOIN条件的前提下�
 - 排序拼接是指：先对右表排序，然后再拼接。
 
 与LEFT JOIN相同，LAST JOIN也会返回左表中所有行，即使右表中没有匹配的行。
+
 ## Syntax
 
 ```
 JoinClause
-         ::= TableRef JoinType 'JOIN' TableRef [OrderClause] 'ON' Expression 
+         ::= TableRef JoinType 'JOIN' TableRef [OrderByClause] 'ON' Expression 
+
 JoinType ::= 'LAST'       
+
+OrderByClause :=  'ORDER' 'BY' <COLUMN_NAME>
 ```
+
+### 使用限制说明
+
+- ORDER BY CLAUSE
+  - `<COLUMN_NAME>` 须是单列, 类型 int16, int32, int64, timestamp, 不支持 ORDER BY 多列
+  - 不支持 ORDER BY DESC
+- TableRef: 可以指一张物理表, 或者子查询语句
 
 ## SQL语句模版
 
@@ -26,7 +37,7 @@ SELECT ... FROM table_ref LAST JOIN table_ref ON expression;
 
 | SELECT语句元素                                 | 离线模式  | 在线预览模式 | 在线请求模式 | 说明                                                                                                                                                                                                 |
 | :--------------------------------------------- | --------- | ------------ | ------------ |:---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| JOIN Clause| **``✓``** | **``✓``** | **``✓``** | 表示数据来源多个表JOIN。OpenMLDB目前仅支持LAST JOIN。在线请求模式下，需要遵循[在线请求模式下LAST JOIN的使用规范](../deployment_manage/ONLINE_REQUEST_REQUIREMENTS.md#online-serving下last-join的使用规范)                                        |
+| JOIN Clause| **``✓``** | **``x``** | **``✓``** | 表示数据来源多个表JOIN。OpenMLDB目前仅支持LAST JOIN。在线请求模式下，需要遵循[在线请求模式下LAST JOIN的使用规范](../deployment_manage/ONLINE_REQUEST_REQUIREMENTS.md#在线请求模式下-last-join-的使用规范)                                        |
 
 
 ### 未排序的LAST JOIN 
@@ -43,7 +54,7 @@ SELECT ... FROM table_ref LAST JOIN table_ref ON expression;
 ![Figure 8: last join without order result](../dql/images/last_join_without_order2.png)
 
 ```{note}
-为了实现上图展示的拼接效果，即使您使用的是离线模式，也请遵循[在线请求模式下LAST JOIN的使用规范](../deployment_manage/ONLINE_SERVING_REQUIREMENTS.md#online-serving下last-join的使用规范)，如下文的SQL样例所示。
+为了实现上图展示的拼接效果，即使您使用的是离线模式，也请遵循[在线请求模式下LAST JOIN的使用规范](../deployment_manage/ONLINE_REQUEST_REQUIREMENTS.md#在线请求模式下-last-join-的使用规范)，如下文的SQL样例所示。
 否则由于底层存储顺序的不确定，尽管执行结果也是正确的，却可能无法复现上述拼接结果。
 ```
 
@@ -75,7 +86,7 @@ SUCCEED
  ---- ------ ----------------
 
 3 rows in set
-```      
+```
 
 建立上述右表t2，建立索引，插入数据。
 ```{note}

@@ -97,13 +97,23 @@ public class JdbcDbWriter {
   }
 
   TableId destinationTable(String topic) {
-    final String tableName = config.tableNameFormat.replace("${topic}", topic);
+    // if set topic table mapping, use it in priority
+    String tableName;
+    if (!config.topicTableMapping.isEmpty()) {
+      tableName = config.topicTableMapping.get(topic);
+      if (tableName == null) {
+        log.debug("Destination table name for topic '{}' is empty using the mapping '{}'", topic,
+            config.topicTableMapping);
+      } else {
+        return dbDialect.parseTableIdentifier(tableName);
+      }
+    }
+    tableName = config.tableNameFormat.replace("${topic}", topic);
     if (tableName.isEmpty()) {
       throw new ConnectException(String.format(
           "Destination table name for topic '%s' is empty using the format string '%s'",
           topic,
-          config.tableNameFormat
-      ));
+          config.tableNameFormat));
     }
     return dbDialect.parseTableIdentifier(tableName);
   }

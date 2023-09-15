@@ -17,6 +17,7 @@ on:
       - 'release/**'
       - 'tools/**'
       - '*.md'
+      - 'benchmark/**'
   pull_request:
     paths-ignore:
       - 'docs/**'
@@ -26,6 +27,7 @@ on:
       - 'release/**'
       - 'tools/**'
       - '*.md'
+      - 'benchmark/**'
   workflow_dispatch:
 
 jobs:
@@ -39,6 +41,7 @@ jobs:
       SQL_JAVASDK_ENABLE: OFF
       NPROC: 2
       BUILD_SHARED_LIBS: ON
+      TESTING_ENABLE_STRIP: ON
     steps:
       - uses: actions/checkout@v3
         with:
@@ -63,10 +66,16 @@ jobs:
       - name: start service
         run: |
           ./steps/ut_zookeeper.sh start
-
+      # make coverage-cpp will gen 16G build/ (no run), run test will take 2G more, so split make and test
       - name: Coverage CPP
         run: |
           make coverage-cpp
+
+      - name: debug
+        if: always()
+        run: | 
+          du -d 1 -h build
+          df -h
 
       - name: Upload Coverage Report
         uses: codecov/codecov-action@v3
