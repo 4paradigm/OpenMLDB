@@ -92,6 +92,9 @@ bool TabletTableHandler::UpdateIndex(
     index_hint_vec_[pos].clear();
     for (int32_t i = 0; i < indexs.size(); i++) {
         const auto& column_key = indexs.Get(i);
+        if (column_key.flag() != 0) {
+            continue;
+        }
         ::hybridse::vm::IndexSt index_st;
         index_st.index = i;
         index_st.ts_pos = ::hybridse::vm::INVALID_POS;
@@ -229,7 +232,9 @@ int TabletTableHandler::DeleteTable(uint32_t pid) {
     return new_tables->size();
 }
 
-void TabletTableHandler::Update(const ::openmldb::nameserver::TableInfo& meta, const ClientManager& client_manager) {
+bool TabletTableHandler::Update(const ::openmldb::nameserver::TableInfo& meta, const ClientManager& client_manager,
+        bool* index_updated) {
+    *index_updated = false;
     ::openmldb::storage::TableSt new_table_st(meta);
     for (const auto& partition_st : *(new_table_st.GetPartitions())) {
         uint32_t pid = partition_st.GetPid();
@@ -238,10 +243,28 @@ void TabletTableHandler::Update(const ::openmldb::nameserver::TableInfo& meta, c
         }
         table_client_manager_->UpdatePartitionClientManager(partition_st, client_manager);
     }
-    if (meta.column_key_size() != static_cast<int>(GetIndex().size())) {
-        LOG(INFO) << "index size changed, update index" << meta.column_key_size() << " " << GetIndex().size();
-        UpdateIndex(meta.column_key());
+    const auto& index_hint = GetIndex();
+    size_t index_cnt = 0;
+    bool has_new_index = false;
+    for (const auto& column_key : meta.column_key()) {
+        if (column_key.flag() != 0) {
+            continue;
+        }
+        index_cnt++;
+        if (index_hint.find(column_key.index_name()) == index_hint.end()) {
+            has_new_index = true;
+            break;
+        }
     }
+    if (index_cnt != index_hint.size() || has_new_index) {
+        LOG(INFO) << "index size changed. current index size " << index_hint.size()
+            << " , new index size " << index_cnt;
+        if (!UpdateIndex(meta.column_key())) {
+            return false;
+        }
+        *index_updated = true;
+    }
+    return true;
 }
 
 std::shared_ptr<::hybridse::vm::Tablet> TabletTableHandler::GetTablet(const std::string& index_name,
@@ -336,15 +359,24 @@ bool TabletCatalog::AddTable(const ::openmldb::api::TableMeta& meta,
     }
     const std::string& table_name = meta.name();
     auto it = db_it->second.find(table_name);
-    if (it == db_it->second.end()) {
+    if (it != db_it->second.end()) {
+        if (it->second->GetTid() < static_cast<uint32_t>(meta.tid())) {
+            db_it->second.erase(it);
+        } else if (it->second->GetTid() > static_cast<uint32_t>(meta.tid())) {
+            LOG(WARNING) << "current tid " << it->second->GetTid() << " is greater than new table info tid "
+                << meta.tid();
+            return false;
+        } else {
+            handler = it->second;
+        }
+    }
+    if (!handler) {
         handler = std::make_shared<TabletTableHandler>(meta, local_tablet_);
         if (!handler->Init(client_manager_)) {
             LOG(WARNING) << "tablet handler init failed";
             return false;
         }
         db_it->second.emplace(table_name, handler);
-    } else {
-        handler = it->second;
     }
     handler->AddTable(table);
     return true;
@@ -360,7 +392,7 @@ bool TabletCatalog::AddDB(const ::hybridse::type::Database& db) {
     return true;
 }
 
-bool TabletCatalog::DeleteTable(const std::string& db, const std::string& table_name, uint32_t pid) {
+bool TabletCatalog::DeleteTable(const std::string& db, const std::string& table_name, uint32_t tid, uint32_t pid) {
     std::lock_guard<::openmldb::base::SpinMutex> spin_lock(mu_);
     auto db_it = tables_.find(db);
     if (db_it == tables_.end()) {
@@ -370,7 +402,11 @@ bool TabletCatalog::DeleteTable(const std::string& db, const std::string& table_
     if (it == db_it->second.end()) {
         return false;
     }
-    LOG(INFO) << "delete table from catalog. db " << db << ", name " << table_name << ", pid " << pid;
+    if (it->second->GetTid() > tid) {
+        LOG(WARNING) << "delete failed. current tid " << it->second->GetTid() << " is greater than " << tid;
+        return false;
+    }
+    LOG(INFO) << "delete table from catalog. db " << db << " name " << table_name << " tid " << tid << " pid " << pid;
     if (it->second->DeleteTable(pid) < 1) {
         db_it->second.erase(it);
     }
@@ -427,13 +463,17 @@ bool TabletCatalog::UpdateTableMeta(const ::openmldb::api::TableMeta& meta) {
     if (it == db_it->second.end()) {
         LOG(WARNING) << "table " << table_name << " does not exist in db " << db_name;
         return false;
+    } else if (it->second->GetTid() != static_cast<uint32_t>(meta.tid())) {
+        LOG(WARNING) << "tid is not match. tid " << it->second->GetTid() << " new tid " << meta.tid();
+        return false;
     } else {
         handler = it->second;
     }
     return handler->UpdateIndex(meta.column_key());
 }
 
-bool TabletCatalog::UpdateTableInfo(const ::openmldb::nameserver::TableInfo& table_info) {
+bool TabletCatalog::UpdateTableInfo(const ::openmldb::nameserver::TableInfo& table_info, bool* index_updated) {
+    *index_updated = false;
     const std::string& db_name = table_info.db();
     const std::string& table_name = table_info.name();
     std::shared_ptr<TabletTableHandler> handler;
@@ -445,24 +485,38 @@ bool TabletCatalog::UpdateTableInfo(const ::openmldb::nameserver::TableInfo& tab
             db_it = result.first;
         }
         auto it = db_it->second.find(table_name);
-        if (it == db_it->second.end()) {
+        if (it != db_it->second.end()) {
+            if (table_info.tid() > it->second->GetTid()) {
+                db_it->second.erase(it);
+            } else if (table_info.tid() < it->second->GetTid()) {
+                LOG(INFO) << "current tid " << it->second->GetTid() << " is greater than new table info tid "
+                    << table_info.tid();
+                return false;
+            } else {
+                handler = it->second;
+            }
+        }
+        if (!handler) {
             handler = std::make_shared<TabletTableHandler>(table_info, local_tablet_);
             if (!handler->Init(client_manager_)) {
                 LOG(WARNING) << "tablet handler init failed";
                 return false;
             }
             db_it->second.emplace(table_name, handler);
-            LOG(INFO) << "add table " << table_name << "to db " << db_name;
-        } else {
-            handler = it->second;
+            LOG(INFO) << "add table " << table_name << "to db " << db_name << " tid " << table_info.tid();
         }
-        handler->Update(table_info, client_manager_);
+        if (bool updated = false; !handler->Update(table_info, client_manager_, &updated)) {
+            return false;
+        } else if (updated) {
+            *index_updated = true;
+        }
     }
     return true;
 }
 
 void TabletCatalog::Refresh(const std::vector<::openmldb::nameserver::TableInfo>& table_info_vec, uint64_t version,
-                            const Procedures& db_sp_map) {
+                            const Procedures& db_sp_map, bool* updated) {
+    *updated = false;
     std::map<std::string, std::set<std::string>> table_map;
     for (const auto& table_info : table_info_vec) {
         const std::string& db_name = table_info.db();
@@ -470,8 +524,10 @@ void TabletCatalog::Refresh(const std::vector<::openmldb::nameserver::TableInfo>
         if (db_name.empty()) {
             continue;
         }
-        if (!UpdateTableInfo(table_info)) {
+        if (bool index_updated = false; !UpdateTableInfo(table_info, &index_updated)) {
             continue;
+        } else if (index_updated) {
+            *updated = true;
         }
         auto cur_db_it = table_map.find(db_name);
         if (cur_db_it == table_map.end()) {
@@ -494,6 +550,7 @@ void TabletCatalog::Refresh(const std::vector<::openmldb::nameserver::TableInfo>
                 !table_it->second->HasLocalTable()) {
                 LOG(INFO) << "delete table from catalog. db: " << db_it->first << ", table: " << table_it->first;
                 table_it = db_it->second.erase(table_it);
+                *updated = true;
                 continue;
             }
             ++table_it;

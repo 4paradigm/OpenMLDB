@@ -65,7 +65,7 @@ TEST_P(DBSDKTest, CreateFunction) {
     sr = cli->sr;
     ::openmldb::sdk::SQLClusterRouter* sr_2 = nullptr;
     if (cs->IsClusterMode()) {
-    ::openmldb::sdk::ClusterOptions copt;
+        ::openmldb::sdk::ClusterOptions copt;
         copt.zk_cluster = mc.GetZkCluster();
         copt.zk_path = mc.GetZkPath();
         auto cur_cs = new ::openmldb::sdk::ClusterSDK(copt);
@@ -75,6 +75,10 @@ TEST_P(DBSDKTest, CreateFunction) {
         ProcessSQLs(sr_2, {"set @@execute_mode = 'online'"});
     }
     hybridse::sdk::Status status;
+    std::string err_cut2_sql = absl::StrCat("CREATE FUNCTION cut2(x STRING) RETURNS STRING "
+                            "OPTIONS (FILE='libnotfound_udf.so');");
+    sr->ExecuteSQL(err_cut2_sql, &status);
+    ASSERT_FALSE(status.IsOK());
     std::string so_path = openmldb::test::GetParentDir(openmldb::test::GetExeDir()) + "/libtest_udf.so";
     std::string cut2_sql = absl::StrCat("CREATE FUNCTION cut2(x STRING) RETURNS STRING "
                             "OPTIONS (FILE='", so_path, "');");

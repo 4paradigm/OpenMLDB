@@ -151,7 +151,7 @@ For more UDF implementation, see [here](../../../src/examples/test_udf.cc).
 - Run the compiling command. `-I` specifies the path of `include` directory. `-o` specifies the name of the dynamic library.
 
 ```shell
-g++ -shared -o libtest_udf.so examples/test_udf.cc -I /work/OpenMLDB/include -std=c++11 -fPIC
+g++ -shared -o libtest_udf.so examples/test_udf.cc -I /work/OpenMLDB/include -std=c++17 -fPIC
 ```
 
 ### 2.3 Copy the Dynamic Library

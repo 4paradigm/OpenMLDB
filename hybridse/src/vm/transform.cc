@@ -2300,7 +2300,9 @@ Status RequestModeTransformer::TransformProjectPlanOp(
                "Input node or output node is null");
 
     PhysicalOpNode* depend = nullptr;
-    CHECK_STATUS(TransformPlanOp(node->GetChildren()[0], &depend));
+    if (!node->GetChildren().empty() && nullptr != node->GetChildren()[0]) {
+        CHECK_STATUS(TransformPlanOp(node->GetChildren()[0], &depend));
+    }
 
     CHECK_STATUS(CompleteProjectList(node, depend));
 
@@ -2468,8 +2470,6 @@ Status RequestModeTransformer::ValidateRequestTable(
             return Status::OK();
         }
         case vm::kPhysicalOpConstProject: {
-            FAIL_STATUS(kPlanError,
-                       "Non-support Const Project in request mode", in->GetTreeString());
             break;
         }
         default: {
@@ -2487,6 +2487,9 @@ Status RequestModeTransformer::TransformProjectOp(
     node::ProjectListNode* project_list, PhysicalOpNode* depend,
     bool append_input, PhysicalOpNode** output) {
     PhysicalOpNode* new_depend = depend;
+    if (nullptr == depend) {
+        return CreatePhysicalConstProjectNode(project_list, output);
+    }
     if (nullptr != project_list->GetW()) {
         CHECK_STATUS(TransformWindowOp(depend, project_list->GetW(), &new_depend));
     }

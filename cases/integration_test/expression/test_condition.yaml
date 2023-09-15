@@ -252,7 +252,12 @@ cases:
     sql: |
       select col1,ifnull(col2,"abc") as e1 from {0};
     expect:
-      success: false
+      columns: ["col1 int", "e1 string"]
+      order: col1
+      rows:
+        - [1, '0']
+        - [2, 'abc']
+        - [3, '1']
   - id: 10
     desc: IFNULL-表达式
     sqlDialect: ["HybridSQL"]
@@ -285,7 +290,12 @@ cases:
     sql: |
       select col1,ifnull(col2 /0 ,100) as e3 from {0};
     expect:
-      success: false
+      columns: ["col1 int", "e3 double"]
+      order: col1
+      rows:
+        - [1, 100]
+        - [2, 100]
+        - [3, 100]
   - id: 11-2
     mode: cli-unsupport
     desc: NVL is synonyms to ifnull
@@ -317,7 +327,12 @@ cases:
     sql: |
       select col1,nvl(col2 /0 ,100) as e3 from {0};
     expect:
-      success: false
+      columns: ["col1 int", "e3 double"]
+      order: col1
+      rows:
+        - [1, 100]
+        - [2, 100]
+        - [3, 100]
   - id: 12
     desc: IFNULL-兼容类型
     sqlDialect: ["HybridSQL"]
@@ -331,7 +346,13 @@ cases:
     sql: |
       select col1,ifnull(col2,100) as e1 from {0};
     expect:
-      success: false
+      columns: ["col1 int", "e1 bigint"]
+      order: col1
+      rows:
+        - [1, 0]
+        - [2, 100]
+        - [3, 1]
+
   - id: 13
     desc: IFNULL-浮点型
     sqlDialect: ["HybridSQL"]
@@ -345,7 +366,13 @@ cases:
     sql: |
       select col1,ifnull(col2,1.1) as e2 from {0};
     expect:
-      success: false
+      columns: ["col1 int", "e2 double"]
+      order: col1
+      rows:
+        - [1, 0]
+        - [2, 1.1]
+        - [3, 1]
+
 
   - id: NVL2-1
     desc: NVL2
@@ -378,7 +405,13 @@ cases:
     sql: |
       select col1,nvl2(col2, "abc", col1 + 1) as e1 from {0};
     expect:
-      success: false
+      columns: ["col1 int", "e1 string"]
+      order: col1
+      rows:
+        - [1, 'abc']
+        - [2, '3']
+        - [3, 'abc']
+
 
   - id: NVL2-3
     desc: NVL2, sub expression

@@ -72,6 +72,11 @@ class SQLBatchRequestResultSet : public ::hybridse::sdk::ResultSet {
 
     inline int32_t Size() { return response_->count(); }
 
+    int32_t GetDataLength() override { return cntl_->response_attachment().size(); }
+    void CopyTo(hybridse::sdk::ByteArrayPtr buf) override {
+        cntl_->response_attachment().copy_to(reinterpret_cast<void*>(buf));
+    }
+
  private:
     inline uint32_t GetRecordSize() { return response_->count(); }
 

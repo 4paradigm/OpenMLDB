@@ -34,7 +34,7 @@ ls jd-recommendation/
 export demodir=<your_path>/jd-recommendation/
 ```
 
-本例仅使用小数据集做演示。如果你想要使用全量数据集，请下载 [JD_data](http://openmldb.ai/download/jd-recommendation/JD_data.tgz)。
+本例仅使用小数据集做演示。如果你想要使用全量数据集，请下载 [JD_data](https://openmldb.ai/download/jd-recommendation/JD_data.tgz)。
 
 ### 安装 OneFlow 工具包
 
@@ -74,7 +74,7 @@ docker pull oneflowinc/oneflow-serving:nightly
 由于 OpenMLDB 集群需要和其他组件网络通信，我们直接使用 host 网络。本例将在容器中使用已下载的脚本，所以请将数据脚本所在目录 `demodir` 映射为容器中的目录：
 
 ```bash
-docker run -dit --name=openmldb --network=host -v $demodir:/work/oneflow_demo 4pdosc/openmldb:0.8.2 bash
+docker run -dit --name=openmldb --network=host -v $demodir:/work/oneflow_demo 4pdosc/openmldb:0.8.3 bash
 docker exec -it openmldb bash
 ```
 

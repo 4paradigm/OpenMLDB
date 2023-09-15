@@ -73,11 +73,11 @@ public class OpenmldbDataWriter implements DataWriter<InternalRow> {
             addRow(record, preparedStatement);
             preparedStatement.addBatch();
         } catch (Exception e) {
-            throw new IOException("convert to openmldb row failed on " + record + ", err: "+ e, e);
+            throw new IOException("convert to openmldb row failed on " + record, e);
         }
     }
 
-    private void addRow(InternalRow record, PreparedStatement preparedStatement) throws SQLException {
+    static void addRow(InternalRow record, PreparedStatement preparedStatement) throws SQLException {
         // idx in preparedStatement starts from 1
         ResultSetMetaData metaData = preparedStatement.getMetaData();
         for (int i = 0; i < record.numFields(); i++) {
@@ -131,13 +131,13 @@ public class OpenmldbDataWriter implements DataWriter<InternalRow> {
             for(int i = 0; i < rc.length; i++) {
                 int code = rc[i];
                 if (code < 0) {
-                    throw new SQLException("insert failed. result code: " + code);
+                    throw new SQLException("insert failed on " + i + ", result code " + code);
                 } 
             }
             preparedStatement.close();
         } catch (SQLException e) {
             e.printStackTrace();
-            throw new IOException(e.getMessage());
+            throw new IOException("commit(write to openmldb) error", e);
         }
         // TODO(hw): need to return new WriterCommitMessageImpl(partitionId, taskId); ?
         return null;
@@ -149,7 +149,7 @@ public class OpenmldbDataWriter implements DataWriter<InternalRow> {
             preparedStatement.close();
         } catch (SQLException e) {
             e.printStackTrace();
-            throw new IOException(e.getMessage());
+            throw new IOException("abort error", e);
         }
     }
 
@@ -159,7 +159,7 @@ public class OpenmldbDataWriter implements DataWriter<InternalRow> {
             preparedStatement.close();
         } catch (SQLException e) {
             e.printStackTrace();
-            throw new IOException(e.getMessage());
+            throw new IOException("close error", e);
         }
     }
 }

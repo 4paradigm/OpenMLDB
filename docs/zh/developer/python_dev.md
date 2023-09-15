@@ -42,6 +42,11 @@ pytest tests/
 pytest -so log_cli=true --log-cli-level=DEBUG tests/
 ```
 
+也可以使用module模式运行，适合做实际运行测试：
+```
+python -m diagnostic_tool.diagnose ...
+```
+
 ## Conda
 
 如果使用Conda环境，`pytest`命令可能找到错误的python环境，而导致类似`ModuleNotFoundError: No module named 'IPython'`的问题。请使用`python -m pytest`。

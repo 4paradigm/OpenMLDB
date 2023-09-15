@@ -26,11 +26,11 @@ object LogManager {
   private val logger = LoggerFactory.getLogger(this.getClass)
 
   def getJobLogFile(id: Int): File = {
-    Paths.get(TaskManagerConfig.JOB_LOG_PATH, s"job_${id}.log").toFile
+    Paths.get(TaskManagerConfig.getJobLogPath, s"job_${id}.log").toFile
   }
 
   def getJobErrorLogFile(id: Int): File = {
-    Paths.get(TaskManagerConfig.JOB_LOG_PATH, s"job_${id}_error.log").toFile
+    Paths.get(TaskManagerConfig.getJobLogPath, s"job_${id}_error.log").toFile
   }
 
   def getFileContent(inputFile: File): String = {

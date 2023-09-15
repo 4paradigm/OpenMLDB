@@ -36,15 +36,11 @@ import com._4paradigm.openmldb.TableReader;
 import com._4paradigm.openmldb.VectorString;
 import com._4paradigm.openmldb.common.LibraryLoader;
 import com._4paradigm.openmldb.common.Pair;
+import com._4paradigm.openmldb.common.zk.ZKClient;
+import com._4paradigm.openmldb.common.zk.ZKConfig;
 import com._4paradigm.openmldb.jdbc.CallablePreparedStatement;
-import com._4paradigm.openmldb.jdbc.SQLResultSet;
 import com._4paradigm.openmldb.proto.NS;
-import com._4paradigm.openmldb.sdk.Column;
-import com._4paradigm.openmldb.sdk.Common;
-import com._4paradigm.openmldb.sdk.Schema;
-import com._4paradigm.openmldb.sdk.SdkOption;
-import com._4paradigm.openmldb.sdk.SqlException;
-import com._4paradigm.openmldb.sdk.SqlExecutor;
+import com._4paradigm.openmldb.sdk.*;
 import com._4paradigm.openmldb.sql_router_sdk;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -64,6 +60,8 @@ public class SqlClusterExecutor implements SqlExecutor {
 
     private static final AtomicBoolean initialized = new AtomicBoolean(false);
     private SQLRouter sqlRouter;
+    private DeploymentManager deploymentManager;
+    private ZKClient zkClient;
 
     public SqlClusterExecutor(SdkOption option, String libraryPath) throws SqlException {
         initJavaSdkLibrary(libraryPath);
@@ -72,6 +70,18 @@ public class SqlClusterExecutor implements SqlExecutor {
             SQLRouterOptions sqlOpt = option.buildSQLRouterOptions();
             this.sqlRouter = sql_router_sdk.NewClusterSQLRouter(sqlOpt);
             sqlOpt.delete();
+            zkClient = new ZKClient(ZKConfig.builder()
+                    .cluster(option.getZkCluster())
+                    .namespace(option.getZkPath())
+                    .sessionTimeout((int)option.getSessionTimeout())
+                    .build());
+            try {
+                if (!zkClient.connect()) {
+                    throw new SqlException("zk client connect failed.");
+                }
+            } catch (Exception e) {
+                throw new SqlException("init zk client failed. " + e.getMessage());
+            }
         } else {
             StandaloneOptions sqlOpt = option.buildStandaloneOptions();
             this.sqlRouter = sql_router_sdk.NewStandaloneSQLRouter(sqlOpt);
@@ -80,6 +90,7 @@ public class SqlClusterExecutor implements SqlExecutor {
         if (sqlRouter == null) {
             throw new SqlException("fail to create sql executor");
         }
+        deploymentManager = new DeploymentManager(zkClient);
     }
 
     public SqlClusterExecutor(SdkOption option) throws SqlException {
@@ -151,7 +162,7 @@ public class SqlClusterExecutor implements SqlExecutor {
             logger.error("executeSQL failed: {}", status.ToString());
         }
         status.delete();
-        return new SQLResultSet(rs);
+        return new NativeResultSet(rs);
     }
 
     @Override
@@ -199,13 +210,33 @@ public class SqlClusterExecutor implements SqlExecutor {
 
     @Override
     public CallablePreparedStatement getCallablePreparedStmt(String db, String deploymentName) throws SQLException {
-        return new CallablePreparedStatementImpl(db, deploymentName, this.sqlRouter);
+        Deployment deployment = deploymentManager.getDeployment(db, deploymentName);
+        if (deployment == null) {
+            try {
+                ProcedureInfo procedureInfo = showProcedure(db, deploymentName);
+                deployment = new Deployment(procedureInfo);
+                deploymentManager.addDeployment(db, deploymentName, deployment);
+            } catch (Exception e) {
+                throw new SQLException("deployment does not exist. db name " + db + " deployment name " + deploymentName);
+            }
+        }
+        return new CallablePreparedStatementImpl(deployment, this.sqlRouter);
     }
 
     @Override
     public CallablePreparedStatement getCallablePreparedStmtBatch(String db, String deploymentName)
             throws SQLException {
-        return new BatchCallablePreparedStatementImpl(db, deploymentName, this.sqlRouter);
+        Deployment deployment = deploymentManager.getDeployment(db, deploymentName);
+        if (deployment == null) {
+            try {
+                ProcedureInfo procedureInfo = showProcedure(db, deploymentName);
+                deployment = new Deployment(procedureInfo);
+                deploymentManager.addDeployment(db, deploymentName, deployment);
+            } catch (Exception e) {
+                throw new SQLException("deployment does not exist. db name " + db + " deployment name " + deploymentName);
+            }
+        }
+        return new BatchCallablePreparedStatementImpl(deployment, this.sqlRouter);
     }
 
     @Override
@@ -284,15 +315,7 @@ public class SqlClusterExecutor implements SqlExecutor {
             throw new SQLException("ShowProcedure failed: " + msg);
         }
         status.delete();
-        com._4paradigm.openmldb.sdk.ProcedureInfo spInfo = new com._4paradigm.openmldb.sdk.ProcedureInfo();
-        spInfo.setDbName(procedureInfo.GetDbName());
-        spInfo.setProName(procedureInfo.GetSpName());
-        spInfo.setSql(procedureInfo.GetSql());
-        spInfo.setInputSchema(Common.convertSchema(procedureInfo.GetInputSchema()));
-        spInfo.setOutputSchema(Common.convertSchema(procedureInfo.GetOutputSchema()));
-        spInfo.setMainTable(procedureInfo.GetMainTable());
-        spInfo.setInputTables(procedureInfo.GetTables());
-        spInfo.setInputDbs(procedureInfo.GetDbs());
+        com._4paradigm.openmldb.sdk.ProcedureInfo spInfo = Common.convertProcedureInfo(procedureInfo);
         procedureInfo.delete();
         return spInfo;
     }

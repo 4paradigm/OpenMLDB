@@ -1,5 +1,7 @@
 # Python SDK
 
+Python SDK默认执行模式为在线。
+
 ## Python SDK 包安装
 
 执行以下命令安装 Python SDK 包：
@@ -10,7 +12,7 @@ pip install openmldb
 
 ## 使用 OpenMLDB DBAPI
 
-本节演示 OpenMLDB DBAPI 的基本使用。
+本节演示 OpenMLDB DBAPI 的基本使用。所有dbapi接口如果执行失败，会抛出异常`DatabaseError`，用户可自行捕获异常并处理。返回值为`Cursor`，DDL SQL 不用处理返回值，其他 SQL 的返回值处理参考下方具体示例。
 
 ### 创建连接
 
@@ -70,6 +72,22 @@ result = cursor.batch_row_request("SELECT * FROM t1", ["col1","col2"], ({"col1":
 print(result.fetchone())
 ```
 
+### 执行 Deployment
+
+请注意，执行 Deployment只有DBAPI支持，OpenMLDB SQLAlchemy无对应接口。而且，仅支持单行请求，不支持批量请求。
+
+```python
+cursor.execute("DEPLOY d1 SELECT col1 FROM t1")
+# dict style
+result = cursor.callproc("d1", {"col1": 1000, "col2": None, "col3": None, "col4": None, "col5": None})
+print(result.fetchall())
+# tuple style
+result = cursor.callproc("d1", (1001, "2023-07-20", "abc", "def", 1))
+print(result.fetchall())
+# drop deployment before drop table
+cursor.execute("DROP DEPLOYMENT d1")
+```
+
 ### 删除表
 
 删除表 `t1`：
@@ -94,7 +112,7 @@ cursor.close()
 
 ## 使用 OpenMLDB SQLAlchemy
 
-本节演示通过 OpenMLDB SQLAlchemy 使用 Python SDK。
+本节演示通过 OpenMLDB SQLAlchemy 使用 Python SDK。同样的，所有dbapi接口如果执行失败，会抛出异常`DatabaseError`，用户可自行捕获异常并处理。返回值处理参考SQLAlchemy标准。
 
 ### 创建连接
 
@@ -166,7 +184,7 @@ try:
     for row in rs:
         print(row)
     rs = connection.execute("SELECT * FROM t1 WHERE col3 = ?;", ('hefei'))
-    rs = connection.execute("SELECT * FROM t1 WHERE col3 = ?;",[('hefei'), ('shanghai')])
+    rs = connection.execute("SELECT * FROM t1 WHERE col3 = ?;", [('hefei'), ('shanghai')])
 except Exception as e:
     print(e)
 ```
@@ -210,7 +228,7 @@ OpenMLDB Python SDK 支持了 Notebook magic function 拓展，使用以下语�
 
 ```python
 import openmldb
-db = openmldb.dbapi.connect(database='demo_db',zk='0.0.0.0:2181',zkPath='/openmldb')
+db = openmldb.dbapi.connect(database='demo_db', zk='0.0.0.0:2181', zkPath='/openmldb')
 openmldb.sql_magic.register(db)
 ```
 

@@ -282,17 +282,14 @@ Row JoinGenerator::RowLastJoinTable(const Row& left_row,
         table = right_sort_gen_.Sort(table, true);
     }
     if (!table) {
-        LOG(WARNING) << "Last Join right table is empty";
         return Row(left_slices_, left_row, right_slices_, Row());
     }
     auto right_iter = table->GetIterator();
     if (!right_iter) {
-        LOG(WARNING) << "Last Join right table is empty";
         return Row(left_slices_, left_row, right_slices_, Row());
     }
     right_iter->SeekToFirst();
     if (!right_iter->Valid()) {
-        LOG(WARNING) << "Last Join right table is empty";
         return Row(left_slices_, left_row, right_slices_, Row());
     }
 

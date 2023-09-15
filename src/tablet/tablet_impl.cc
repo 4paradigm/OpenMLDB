@@ -2054,7 +2054,7 @@ void TabletImpl::ChangeRole(RpcController* controller, const ::openmldb::api::Ch
         }
         PDLOG(INFO, "change to follower. tid[%u] pid[%u]", tid, pid);
         if (!table->GetDB().empty()) {
-            catalog_->DeleteTable(table->GetDB(), table->GetName(), pid);
+            catalog_->DeleteTable(table->GetDB(), table->GetName(), tid, pid);
         }
     }
     response->set_code(::openmldb::base::ReturnCode::kOk);
@@ -3304,7 +3304,6 @@ int32_t TabletImpl::DeleteTableInternal(uint32_t tid, uint32_t pid,
         std::shared_ptr<LogReplicator> replicator = GetReplicator(tid, pid);
         {
             std::lock_guard<SpinMutex> spin_lock(spin_mutex_);
-            engine_->ClearCacheLocked(table->GetTableMeta()->db());
             tables_[tid].erase(pid);
             replicators_[tid].erase(pid);
             snapshots_[tid].erase(pid);
@@ -3318,12 +3317,13 @@ int32_t TabletImpl::DeleteTableInternal(uint32_t tid, uint32_t pid,
                 snapshots_.erase(tid);
             }
         }
+        engine_->ClearCacheLocked("");
         if (replicator) {
             replicator->DelAllReplicateNode();
             PDLOG(INFO, "drop replicator for tid %u, pid %u", tid, pid);
         }
         if (!table->GetDB().empty()) {
-            catalog_->DeleteTable(table->GetDB(), table->GetName(), pid);
+            catalog_->DeleteTable(table->GetDB(), table->GetName(), tid, pid);
         }
         // delete related aggregator
         uint32_t base_tid = table->GetTableMeta()->base_table_tid();
@@ -3507,6 +3507,7 @@ void TabletImpl::GetTableFollower(RpcController* controller, const ::openmldb::a
     if (info_map.empty()) {
         response->set_msg("has no follower");
         response->set_code(::openmldb::base::ReturnCode::kNoFollower);
+        return;
     }
     for (const auto& kv : info_map) {
         ::openmldb::api::FollowerInfo* follower_info = response->add_follower_info();
@@ -3926,7 +3927,7 @@ int TabletImpl::CreateTableInternal(const ::openmldb::api::TableMeta* table_meta
         } else {
             LOG(WARNING) << "fail to add table " << table_meta->name() << " to catalog with db " << table_meta->db();
         }
-        engine_->ClearCacheLocked(table_meta->db());
+        engine_->ClearCacheLocked("");
 
         // we always refresh the aggr catalog in case zk notification arrives later than the `deploy` sql
         if (boost::iequals(table_meta->db(), openmldb::nameserver::PRE_AGG_DB)) {
@@ -4246,7 +4247,12 @@ bool TabletImpl::RefreshSingleTable(uint32_t tid) {
         LOG(WARNING) << "fail to parse table proto. tid: " << tid << " value: " << value;
         return false;
     }
-    return catalog_->UpdateTableInfo(table_info);
+    if (bool index_updated = false; !catalog_->UpdateTableInfo(table_info, &index_updated)) {
+        return false;
+    } else if (index_updated) {
+        engine_->ClearCacheLocked("");
+    }
+    return true;
 }
 
 void TabletImpl::UpdateGlobalVarTable() {
@@ -4368,7 +4374,11 @@ void TabletImpl::RefreshTableInfo() {
         }
     }
     auto old_db_sp_map = catalog_->GetProcedures();
-    catalog_->Refresh(table_info_vec, version, db_sp_map);
+    bool updated = false;
+    catalog_->Refresh(table_info_vec, version, db_sp_map, &updated);
+    if (updated) {
+        engine_->ClearCacheLocked("");
+    }
     // skip exist procedure, don`t need recompile
     for (const auto& db_sp_map_kv : db_sp_map) {
         const auto& db = db_sp_map_kv.first;
@@ -5638,9 +5648,10 @@ void TabletImpl::DropFunction(RpcController* controller, const openmldb::api::Dr
         LOG(INFO) << "Drop function success. name " << fun.name() << " path " << fun.file();
         base::SetResponseOK(response);
     } else {
-        LOG(WARNING) << "Drop function failed. name " << fun.name() << " msg " << status.msg;
-        response->set_msg(status.msg);
-        response->set_code(base::kRPCRunError);
+        // udf remove failed but it's ok to recreate even it exists, nameserver should treat it as success
+        SET_RESP_AND_WARN(response, base::ReturnCode::kDeleteFailed,
+                          absl::StrCat("drop function failed, name ", fun.name(), ", error: [", status.GetCode(), "] ",
+                                       status.str()));
     }
 }
 

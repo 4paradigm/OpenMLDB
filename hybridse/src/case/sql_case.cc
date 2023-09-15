@@ -751,6 +751,9 @@ const std::string SqlCase::case_name() const {
 }
 bool SqlCase::ExtractInputTableDef(type::TableDef& table,
                                    int32_t input_idx) const {
+    if (inputs_.size() <= input_idx) {
+        return false;
+    }
     return ExtractInputTableDef(inputs_[input_idx], table);
 }
 bool SqlCase::ExtractInputTableDef(const TableInfo& input,
@@ -1639,35 +1642,41 @@ void InitCases(std::string yaml_path, std::vector<SqlCase>& cases,  // NOLINT
                const std::vector<std::string>& filters) {
     SqlCase::CreateSqlCasesFromYaml(hybridse::sqlcase::FindSqlCaseBaseDirPath(), yaml_path, cases, filters);
 }
-absl::StatusOr<std::string> SqlCase::BuildCreateSpSqlFromInput(int32_t input_idx,
-                                        absl::string_view select_sql,
-                                        const std::set<size_t>& common_idx) {
-    type::TableDef table;
-    if (!ExtractInputTableDef(table, input_idx)) {
-        return absl::FailedPreconditionError("Fail to extract table schema");
-    }
+absl::StatusOr<std::string> SqlCase::BuildCreateSpSql(absl::string_view select_sql, const std::set<size_t>& common_idx,
+                                                      std::optional<int32_t> input_idx) {
+    if (input_idx.has_value()) {
+        type::TableDef table;
+        if (!ExtractInputTableDef(table, input_idx.value())) {
+            return absl::FailedPreconditionError("Fail to extract table schema");
+        }
 
-    return BuildCreateSpSqlFromSchema(table, select_sql, common_idx);
+        return BuildCreateSpSql(select_sql, common_idx, &table);
+    }
+    std::optional<const type::TableDef*> tab = {};
+    return BuildCreateSpSql(select_sql, common_idx, tab);
 }
 
-absl::StatusOr<std::string> SqlCase::BuildCreateSpSqlFromSchema(const type::TableDef& table,
-                                                                absl::string_view select_sql,
-                                                                const std::set<size_t>& common_idx) {
-    auto sql_view = absl::StripAsciiWhitespace(select_sql);
-    std::string query_stmt(sql_view);
-    if (query_stmt.back() != ';') {
+absl::StatusOr<std::string> SqlCase::BuildCreateSpSql(absl::string_view select_sql, const std::set<size_t>& common_idx,
+                                                      std::optional<const type::TableDef*> tab) {
+        auto sql_view = absl::StripAsciiWhitespace(select_sql);
+        std::string query_stmt(sql_view);
+        if (query_stmt.back() != ';') {
         absl::StrAppend(&query_stmt, ";");
     }
 
     std::string sql = absl::Substitute("CREATE PROCEDURE $0 (\n", sp_name_);
-    for (int i = 0; i < table.columns_size(); i++) {
-        auto column = table.columns(i);
-        if (!common_idx.empty() && common_idx.count(i)) {
-            absl::StrAppend(&sql, "const ");
-        }
-        absl::SubstituteAndAppend(&sql, "$0 $1", column.name(), TypeString(column.type()));
-        if (i < table.columns_size() - 1) {
-            absl::StrAppend(&sql, ",\n");
+    if (tab.has_value()) {
+        auto table = tab.value();
+
+        for (int i = 0; i < table->columns_size(); i++) {
+            auto column = table->columns(i);
+            if (!common_idx.empty() && common_idx.count(i)) {
+                absl::StrAppend(&sql, "const ");
+            }
+            absl::SubstituteAndAppend(&sql, "$0 $1", column.name(), TypeString(column.type()));
+            if (i < table->columns_size() - 1) {
+                absl::StrAppend(&sql, ",\n");
+            }
         }
     }
     absl::SubstituteAndAppend(&sql, ")\nBEGIN\n$0\nEND;", query_stmt);

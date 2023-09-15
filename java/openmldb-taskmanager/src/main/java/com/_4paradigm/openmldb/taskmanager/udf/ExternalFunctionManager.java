@@ -32,19 +32,18 @@ public class ExternalFunctionManager {
     static private Map<String, String> nameFileMap = new ConcurrentHashMap<>();
 
     static public String getLibraryFilePath(String libraryFileName) {
-        return Paths.get(TaskManagerConfig.EXTERNAL_FUNCTION_DIR, libraryFileName).toString();
+        return Paths.get(TaskManagerConfig.getExternalFunctionDir(), libraryFileName).toString();
     }
 
     static public void addFunction(String fnName, String libraryFileName) throws Exception {
         if (hasFunction(fnName)) {
-            logger.warn(String.format("The function %s exists, ignore adding function", fnName));
-        } else {
-            String libraryFilePath = getLibraryFilePath(libraryFileName);
-            if(!(new File(libraryFilePath).exists())) {
-                throw new Exception("The library file does not exist in path: " + libraryFilePath);
-            }
-            nameFileMap.put(fnName, libraryFileName);
+            logger.warn(String.format("The function %s exists, replace", fnName));
+        } 
+        String libraryFilePath = getLibraryFilePath(libraryFileName);
+        if(!(new File(libraryFilePath).exists())) {
+            throw new Exception("The library file does not exist in path: " + libraryFilePath);
         }
+        nameFileMap.put(fnName, libraryFileName);
     }
 
     static public void dropFunction(String fnName) {

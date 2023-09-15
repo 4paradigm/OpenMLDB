@@ -944,6 +944,101 @@ TEST_P(DBSDKTest, DeployWithData) {
     ASSERT_TRUE(cs->GetNsClient()->DropDatabase("test2", msg));
 }
 
+TEST_P(DBSDKTest, DeployWithBias) {
+    auto cli = GetParam();
+    cs = cli->cs;
+    sr = cli->sr;
+    std::string db = "test_bias";
+    std::string ddl1 =
+        "create table if not exists t1 (col1 string, col2 string, col3 bigint, col4 int, "
+        "index(key=col1, ts=col3, TTL_TYPE=absolute)) options (partitionnum=2, replicanum=1);";
+    std::string ddl2 =
+        "create table if not exists t2 (col1 string, col2 string, col3 bigint, "
+        "index(key=col1, ts=col3, TTL_TYPE=absolute)) options (partitionnum=2, replicanum=1);";
+    ProcessSQLs(sr, {
+                        "set @@execute_mode = 'online';",
+                        "create database " + db ,
+                        "use " + db,
+                        ddl1,
+                        ddl2,
+                    });
+    hybridse::sdk::Status status;
+    for (int i = 0; i < 100; i++) {
+        std::string key1 = absl::StrCat("col1", i);
+        std::string key2 = absl::StrCat("col2", i);
+        sr->ExecuteSQL(absl::StrCat("insert into t1 values ('", key1, "', '", key2, "', 1635247427000, 5);"), &status);
+        sr->ExecuteSQL(absl::StrCat("insert into t2 values ('", key1, "', '", key2, "', 1635247427000);"), &status);
+    }
+    sleep(2);
+
+    std::string rows_deployment_part =
+        "SELECT t1.col1, t2.col2, sum(col4) OVER w1 as w1_col4_sum "
+        "FROM t1 "
+        "LAST JOIN t2 ORDER BY t2.col3 ON t1.col2 = t2.col2 "
+        "WINDOW w1 AS (PARTITION BY t1.col2 ORDER BY t1.col3 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);";
+    auto range_deployment_part =
+        "SELECT t1.col1, t2.col2, sum(col4) OVER w1 as w1_col4_sum "
+        "FROM t1 "
+        "LAST JOIN t2 ORDER BY t2.col3 ON t1.col2 = t2.col2 "
+        "WINDOW w1 AS (PARTITION BY t1.col2 ORDER BY t1.col3 ROWS_RANGE BETWEEN 2 PRECEDING AND CURRENT ROW);";
+
+    // test rows bias
+    auto i = 0;
+    auto rows_test = [&](std::string option, bool expect = true) {
+        sr->ExecuteSQL(absl::StrCat("DEPLOY d", i++, " OPTIONS(", option, ") ", rows_deployment_part), &status);
+        if (expect)
+            EXPECT_TRUE(status.IsOK());
+        else
+            EXPECT_FALSE(status.IsOK());
+        // check table index
+        auto info = sr->GetTableInfo(db, "t1");
+        return info.column_key().Get(1);
+    };
+
+    auto index_res = rows_test("rows_bias=0");
+    ASSERT_EQ(index_res.ttl().lat_ttl(), 2);
+    // range bias won't work cuz no new abs index in deploy
+    index_res = rows_test("rows_bias=20, range_bias='inf'");
+    ASSERT_EQ(index_res.ttl().lat_ttl(), 22);
+    rows_test("rows_bias=20s", false);
+    i--;  // last one is failed, reset the num
+
+    // test range bias
+    auto range_test = [&](std::string option, bool expect = true) {
+        sr->ExecuteSQL(absl::StrCat("DEPLOY d", i++, " OPTIONS(", option, ") ", range_deployment_part), &status);
+        if (expect)
+            EXPECT_TRUE(status.IsOK());
+        else
+            EXPECT_FALSE(status.IsOK());
+        // check table index
+        auto info = sr->GetTableInfo(db, "t1");
+        return info.column_key().Get(1);
+    };
+    index_res = range_test("range_bias=0");
+    ASSERT_EQ(index_res.ttl().abs_ttl(), 1);
+    index_res = range_test("range_bias=20");
+    ASSERT_EQ(index_res.ttl().abs_ttl(), 2);
+    // rows bias won't work cuz no **new** lat index in deploy, just new abs index + the old index
+    index_res = range_test("range_bias=1d, rows_bias=100");
+    ASSERT_EQ(index_res.ttl().abs_ttl(), 1441);
+
+    // set inf in the end, if not, all bias + inf = inf
+    index_res = rows_test("range_bias='inf'");
+    ASSERT_EQ(index_res.ttl().abs_ttl(), 0);
+    index_res = rows_test("rows_bias='inf'");
+    ASSERT_EQ(index_res.ttl().lat_ttl(), 0);
+
+    // sp in tablet may be stored a bit late, wait
+    sleep(3);
+    std::string msg;
+    for (int j = 0; j < i; j++) {
+        ASSERT_TRUE(cs->GetNsClient()->DropProcedure(db, "d" + std::to_string(j), msg));
+    }
+    ASSERT_TRUE(cs->GetNsClient()->DropTable(db, "t1", msg));
+    ASSERT_TRUE(cs->GetNsClient()->DropTable(db, "t2", msg));
+    ASSERT_TRUE(cs->GetNsClient()->DropDatabase(db, msg));
+}
+
 TEST_P(DBSDKTest, DeletetRange) {
     auto cli = GetParam();
     sr = cli->sr;
@@ -994,7 +1089,8 @@ TEST_P(DBSDKTest, DeletetSameColIndex) {
     sr = cli->sr;
     std::string db_name = "test2";
     std::string table_name = "test1";
-    std::string ddl = "create table test1 (c1 string, c2 int, c3 bigint, c4 bigint, "
+    std::string ddl =
+        "create table test1 (c1 string, c2 int, c3 bigint, c4 bigint, "
         "INDEX(KEY=c1, ts=c3), INDEX(KEY=c1, ts=c4));";
     ProcessSQLs(sr, {
                         "set @@execute_mode = 'online'",
@@ -1008,7 +1104,7 @@ TEST_P(DBSDKTest, DeletetSameColIndex) {
         for (int j = 0; j < 10; j++) {
             uint64_t ts = 1000 + j;
             sr->ExecuteSQL(absl::StrCat("insert into ", table_name, " values ('", key, "', 11, ", ts, ",", ts, ");"),
-                    &status);
+                           &status);
         }
     }
 
@@ -3585,10 +3681,13 @@ TEST_F(SqlCmdTest, SelectWithAddNewIndex) {
     ASSERT_EQ(res->Size(), 3);
     res = sr->ExecuteSQL(absl::StrCat("select id,c1,c2,c3 from ", tb1_name, " where c2=1;"), &status);
     ASSERT_EQ(res->Size(), 3);
+    ProcessSQLs(sr, {absl::StrCat("drop index ", db1_name, ".", tb1_name, ".index1")});
+    absl::SleepFor(absl::Seconds(2));
+    res = sr->ExecuteSQL(absl::StrCat("select id,c1,c2,c3 from ", tb1_name, " where c2=1;"), &status);
+    ASSERT_EQ(res->Size(), 3);
 
     ProcessSQLs(sr, {
                         absl::StrCat("use ", db1_name, ";"),
-                        absl::StrCat("drop index ", db1_name, ".", tb1_name, ".index1"),
                         absl::StrCat("drop table ", tb1_name),
                         absl::StrCat("drop database ", db1_name),
                     });
@@ -3641,12 +3740,16 @@ struct DeploymentEnv {
                          });
     }
 
+    // A bacth request increase deployment cnt by 1
+    // yet may greatly impact deploy response time, if the batch size is huge
+    // maybe it requires a revision
     void CallDeployProcedureBatch() {
         hybridse::sdk::Status status;
         std::shared_ptr<sdk::SQLRequestRow> rr = std::make_shared<sdk::SQLRequestRow>();
         GetRequestRow(&rr, dp_name_);
-        auto common_column_indices = std::make_shared<sdk::ColumnIndicesSet>(rr->GetSchema());
+        auto common_column_indices = std::make_shared<sdk::ColumnIndicesSet>();
         auto row_batch = std::make_shared<sdk::SQLRequestRowBatch>(rr->GetSchema(), common_column_indices);
+        ASSERT_TRUE(row_batch->AddRow(rr));
         sr->CallSQLBatchRequestProcedure(db_, dp_name_, row_batch, &status);
         ASSERT_TRUE(status.IsOK()) << status.msg << "\n" << status.trace;
     }

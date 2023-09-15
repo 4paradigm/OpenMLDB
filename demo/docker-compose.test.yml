@@ -5,44 +5,58 @@ services:
       context: .
     volumes:
       - ./jd-recommendation:/work/oneflow_demo
-      - ./job_checker.py:/work/job_checker.py
       - ./quick_start:/work/quick_start
       # no mvn in image, so build the java demo outside and mount the jar
-      - ./java_quickstart/demo/target/demo-1.0-SNAPSHOT.jar:/work/java_quickstart/demo-1.0-SNAPSHOT.jar
+      - ./java_quickstart/demo/target:/work/java_quickstart
       - ./python_quickstart:/work/python_quickstart
+      - ./cxx_quickstart:/work/cxx_quickstart
+      - ./usability_testing:/work/usability_testing
     # You can add `cat <log_file>` here(e.g. `cat /work/openmldb/taskmanager/bin/logs/job_1_error.log`, cat `predict.log`), to check the log info. 
     # No need to docker-compose build again. But if you modified the Dockerfile, must rebuild it.
     command:
       - /bin/bash
-      - -cx
+      - -ecx # -e, otherwise, the command may not exit when 'exit'
       - |
+        # deploy-all miss udf dir <=0.8.2, mkdir first until new version released
+        mkdir -p /tmp/openmldb/tablet-1/udf
+        mkdir -p /tmp/openmldb/tablet-2/udf
         ./init.sh
         sleep 5
         # quickstart test
         cd /work/quick_start
         /work/openmldb/bin/openmldb --zk_cluster=127.0.0.1:2181 --zk_root_path=/openmldb --role=sql_client < cluster_quickstart.sql
-        python3 request_test.py
+        python3 request_test.py || exit -1
 
         # java/python sdk, no jar in ci, so we should check the java result manually
         cd /work/java_quickstart
+        # if no jar, download it
+        if [ ! -f demo-1.0-SNAPSHOT.jar ]; then
+            curl -SLO https://openmldb.ai/download/testing/demo-1.0-SNAPSHOT.jar
+        fi
         java -cp demo-1.0-SNAPSHOT.jar com.openmldb.demo.App
         cd /work/python_quickstart
         python3 demo.py || exit -1
+        cd /work/cxx_quickstart
+        if [ ! -f demo ]; then
+            curl -SLO https://openmldb.ai/download/testing/demo
+        fi
+        chmod +x demo
+        ./demo
 
         # taxi use case test
         cd /work/taxi-trip
         /work/openmldb/bin/openmldb --zk_cluster=127.0.0.1:2181 --zk_root_path=/openmldb --role=sql_client < taxi.sql
-        python3 train.py /tmp/feature_data /tmp/model.txt
+        python3 train.py /tmp/feature_data /tmp/model.txt || exit -1
         # port 8887
         ./start_predict_server.sh 127.0.0.1:9080 /tmp/model.txt
-        python3 predict.py || (cat /tmp/p.log && exit -1)
+        python3 predict.py || ( cat /tmp/p.log && exit -1 )
 
         # talkingdata demo test
         cd /work/talkingdata
         # port 8881
         python3 predict_server.py --no-init > predict.log 2>&1 &
-        python3 train_and_serve.py
-        python3 predict.py || (cat predict.log && exit -1)
+        python3 train_and_serve.py || exit -1
+        python3 predict.py || ( cat predict.log && exit -1 )
 
         # oneflow sql test
         cd /work/oneflow_demo/sql_scripts
@@ -51,7 +65,11 @@ services:
         # check deployment, jobs will be checked by openmldb_tool
         curl http://127.0.0.1:9080/dbs/JD_db/deployments/demo | grep "ok" || exit -1
 
-        # open it after new diag tool released, or you can test in local by USE_ADD_WHL
+        # usability testing, don't miss interactive flag
+        cd /work/usability_testing
+        bash demo_setup.sh
+        bash demo_test.sh
+
         cd /work
         openmldb_tool status --diff -f /work/openmldb/conf/hosts 
         openmldb_tool inspect

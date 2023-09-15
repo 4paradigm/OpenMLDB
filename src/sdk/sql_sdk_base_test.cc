@@ -70,7 +70,7 @@ void SQLSDKTest::CreateTables(hybridse::sqlcase::SqlCase& sql_case,  // NOLINT
         std::string create;
         if (sql_case.BuildCreateSqlFromInput(i, &create, partition_num) && !create.empty()) {
             std::string placeholder = "{" + std::to_string(i) + "}";
-            boost::replace_all(create, placeholder, sql_case.inputs()[i].name_);
+            absl::StrReplaceAll({{placeholder, sql_case.inputs()[i].name_}}, &create);
             LOG(INFO) << create;
             router->ExecuteDDL(input_db_name, create, &status);
             ASSERT_TRUE(router->RefreshCatalog());
@@ -105,19 +105,19 @@ void SQLSDKTest::CreateProcedure(hybridse::sqlcase::SqlCase& sql_case,  // NOLIN
                                  std::shared_ptr<SQLRouter> router, bool is_batch) {
     DLOG(INFO) << "Create Procedure BEGIN";
     hybridse::sdk::Status status;
-    if (sql_case.inputs()[0].name_.empty()) {
+    if (!sql_case.inputs().empty() && sql_case.inputs()[0].name_.empty()) {
         sql_case.set_input_name(
             hybridse::sqlcase::SqlCase::GenRand("auto_t") + std::to_string(static_cast<int64_t>(time(NULL))), 0);
     }
     std::string sql = sql_case.sql_str();
     for (size_t i = 0; i < sql_case.inputs().size(); i++) {
         std::string placeholder = "{" + std::to_string(i) + "}";
-        boost::replace_all(sql, placeholder, sql_case.inputs()[i].name_);
+        absl::StrReplaceAll({{placeholder, sql_case.inputs()[i].name_}}, &sql);
     }
-    boost::replace_all(
-        sql, "{auto}",
-        hybridse::sqlcase::SqlCase::GenRand("auto_t") + std::to_string(static_cast<int64_t>(time(NULL))));
-    boost::trim(sql);
+    absl::StrReplaceAll(
+        {{"{auto}",
+        hybridse::sqlcase::SqlCase::GenRand("auto_t") + std::to_string(static_cast<int64_t>(time(NULL)))}}, &sql);
+    absl::RemoveExtraAsciiWhitespace(&sql);
     LOG(INFO) << sql;
     sql_case.sp_name_ =
         hybridse::sqlcase::SqlCase::GenRand("auto_sp") + std::to_string(static_cast<int64_t>(time(NULL)));
@@ -126,20 +126,23 @@ void SQLSDKTest::CreateProcedure(hybridse::sqlcase::SqlCase& sql_case,  // NOLIN
         hybridse::type::TableDef batch_request_schema;
         ASSERT_TRUE(sql_case.ExtractTableDef(sql_case.batch_request().columns_, sql_case.batch_request().indexs_,
                                              batch_request_schema));
-        auto s = sql_case.BuildCreateSpSqlFromSchema(batch_request_schema, sql,
-                                                     sql_case.batch_request().common_column_indices_);
+        auto s = sql_case.BuildCreateSpSql(sql, sql_case.batch_request().common_column_indices_, &batch_request_schema);
         ASSERT_TRUE(s.ok()) << s.status();
         create_sp = s.value();
     } else {
         std::set<size_t> common_idx;
-        auto s = sql_case.BuildCreateSpSqlFromInput(0, sql, common_idx);
+        std::optional<int32_t> idx = {};
+        if (!sql_case.inputs().empty()) {
+            idx = 0;
+        }
+        auto s = sql_case.BuildCreateSpSql(sql, common_idx, idx);
         ASSERT_TRUE(s.ok()) << s.status();
         create_sp = s.value();
     }
 
     for (size_t i = 0; i < sql_case.inputs_.size(); i++) {
         std::string placeholder = "{" + std::to_string(i) + "}";
-        boost::replace_all(create_sp, placeholder, sql_case.inputs()[i].name_);
+        absl::StrReplaceAll({{placeholder, sql_case.inputs()[i].name_}}, &create_sp);
     }
     LOG(INFO) << create_sp;
     if (!create_sp.empty()) {
@@ -220,7 +223,7 @@ void SQLSDKTest::InsertTables(hybridse::sqlcase::SqlCase& sql_case,  // NOLINT
             }
             auto insert = inserts[row_idx];
             std::string placeholder = "{" + std::to_string(i) + "}";
-            boost::replace_all(insert, placeholder, sql_case.inputs()[i].name_);
+            absl::StrReplaceAll({{placeholder, sql_case.inputs()[i].name_}}, &insert);
             DLOG(INFO) << insert;
             if (!insert.empty()) {
                 for (int j = 0; j < sql_case.inputs()[i].repeat_; j++) {
@@ -294,15 +297,16 @@ void SQLSDKTest::BatchExecuteSQL(hybridse::sqlcase::SqlCase& sql_case,  // NOLIN
     std::string sql = sql_case.sql_str();
     for (size_t i = 0; i < sql_case.inputs().size(); i++) {
         std::string placeholder = "{" + std::to_string(i) + "}";
-        boost::replace_all(sql, placeholder, sql_case.inputs()[i].name_);
+        absl::StrReplaceAll({{placeholder, sql_case.inputs()[i].name_}}, &sql);
     }
-    boost::replace_all(
-        sql, "{auto}",
-        hybridse::sqlcase::SqlCase::GenRand("auto_t") + std::to_string(static_cast<int64_t>(time(NULL))));
+    absl::StrReplaceAll(
+        {{"{auto}",
+        hybridse::sqlcase::SqlCase::GenRand("auto_t") + std::to_string(static_cast<int64_t>(time(NULL)))}}, &sql);
     for (size_t endpoint_id = 0; endpoint_id < tbEndpoints.size(); endpoint_id++) {
-        boost::replace_all(sql, "{tb_endpoint_" + std::to_string(endpoint_id) + "}", tbEndpoints.at(endpoint_id));
+        absl::StrReplaceAll({{"{tb_endpoint_" + std::to_string(endpoint_id) + "}", tbEndpoints.at(endpoint_id)}}, &sql);
     }
-    std::string lower_sql = boost::to_lower_copy(sql);
+    std::string lower_sql = sql;
+    absl::AsciiStrToLower(&lower_sql);
     if (absl::StartsWith(lower_sql, "select") || absl::StartsWith(lower_sql, "with")) {
         std::shared_ptr<hybridse::sdk::ResultSet> rs;
         // parameterized batch query
@@ -381,12 +385,12 @@ void SQLSDKQueryTest::RequestExecuteSQL(hybridse::sqlcase::SqlCase& sql_case,  /
     std::string sql = sql_case.sql_str();
     for (size_t i = 0; i < sql_case.inputs().size(); i++) {
         std::string placeholder = "{" + std::to_string(i) + "}";
-        boost::replace_all(sql, placeholder, sql_case.inputs()[i].name_);
+        absl::StrReplaceAll({{placeholder, sql_case.inputs()[i].name_}}, &sql);
     }
-    boost::replace_all(sql, "{auto}", hybridse::sqlcase::SqlCase::GenRand("auto_t") +
-            std::to_string(static_cast<int64_t>(time(NULL))));
+    absl::StrReplaceAll({{"{auto}", hybridse::sqlcase::SqlCase::GenRand("auto_t") +
+            std::to_string(static_cast<int64_t>(time(NULL)))}}, &sql);
     std::string lower_sql = sql;
-    boost::to_lower(lower_sql);
+    absl::AsciiStrToLower(&lower_sql);
     if (absl::StartsWith(lower_sql, "select") || absl::StartsWith(lower_sql, "with")) {
         auto request_row = router->GetRequestRow(sql_case.db(), sql, &status);
         // success check
@@ -404,33 +408,38 @@ void SQLSDKQueryTest::RequestExecuteSQL(hybridse::sqlcase::SqlCase& sql_case,  /
         hybridse::type::TableDef insert_table;
         std::vector<hybridse::codec::Row> insert_rows;
         std::vector<std::string> inserts;
-        if (!has_batch_request) {
-            ASSERT_TRUE(sql_case.ExtractInputTableDef(insert_table, 0));
-            ASSERT_TRUE(sql_case.ExtractInputData(insert_rows, 0));
-            sql_case.BuildInsertSqlListFromInput(0, &inserts);
+        if (!sql_case.inputs().empty()) {
+            if (!has_batch_request) {
+                ASSERT_TRUE(sql_case.ExtractInputTableDef(insert_table, 0));
+                ASSERT_TRUE(sql_case.ExtractInputData(insert_rows, 0));
+                sql_case.BuildInsertSqlListFromInput(0, &inserts);
+            } else {
+                ASSERT_TRUE(sql_case.ExtractInputTableDef(sql_case.batch_request_, insert_table));
+                ASSERT_TRUE(sql_case.ExtractInputData(sql_case.batch_request_, insert_rows));
+            }
+            CheckSchema(insert_table.columns(), *(request_row->GetSchema().get()));
+            DLOG(INFO) << "Request Row:\n";
+            PrintRows(insert_table.columns(), insert_rows);
         } else {
-            ASSERT_TRUE(sql_case.ExtractInputTableDef(sql_case.batch_request_, insert_table));
-            ASSERT_TRUE(sql_case.ExtractInputData(sql_case.batch_request_, insert_rows));
+            // prepare a empty row in case result check for const projects
+            insert_rows.push_back(hybridse::codec::Row());
         }
-        CheckSchema(insert_table.columns(), *(request_row->GetSchema().get()));
-        LOG(INFO) << "Request Row:\n";
-        PrintRows(insert_table.columns(), insert_rows);
 
         hybridse::codec::RowView row_view(insert_table.columns());
         std::vector<std::shared_ptr<hybridse::sdk::ResultSet>> results;
-        LOG(INFO) << "Request execute sql start!";
+        DLOG(INFO) << "Request execute sql start!";
         for (size_t i = 0; i < insert_rows.size(); i++) {
             row_view.Reset(insert_rows[i].buf());
             CovertHybridSERowToRequestRow(&row_view, request_row);
             std::shared_ptr<hybridse::sdk::ResultSet> rs;
             if (is_procedure) {
                 if (is_asyn) {
-                    LOG(INFO) << "-------asyn procedure----------";
+                    DLOG(INFO) << "-------asyn procedure----------";
                     auto future = router->CallProcedure(sql_case.db(), sql_case.sp_name_, 1000, request_row, &status);
                     if (!future || status.code != 0) FAIL() << "sql case expect success == true" << status.msg;
                     rs = future->GetResultSet(&status);
                 } else {
-                    LOG(INFO) << "--------syn procedure----------";
+                    DLOG(INFO) << "--------syn procedure----------";
                     rs = router->CallProcedure(sql_case.db(), sql_case.sp_name_, request_row, &status);
                 }
             } else {
@@ -438,8 +447,8 @@ void SQLSDKQueryTest::RequestExecuteSQL(hybridse::sqlcase::SqlCase& sql_case,  /
             }
             if (!rs || status.code != 0) FAIL() << "sql case expect success == true" << status.msg;
             results.push_back(rs);
-            if (!has_batch_request) {
-                LOG(INFO) << "insert request: \n" << inserts[i];
+            if (!has_batch_request && !sql_case.inputs().empty()) {
+                DLOG(INFO) << "insert request: \n" << inserts[i];
                 bool ok = router->ExecuteInsert(insert_table.catalog(), inserts[i], &status);
                 ASSERT_TRUE(ok);
             }
@@ -526,13 +535,13 @@ void SQLSDKQueryTest::BatchRequestExecuteSQLWithCommonColumnIndices(hybridse::sq
     std::string sql = sql_case.sql_str();
     for (size_t i = 0; i < sql_case.inputs().size(); i++) {
         std::string placeholder = "{" + std::to_string(i) + "}";
-        boost::replace_all(sql, placeholder, sql_case.inputs()[i].name_);
+        absl::StrReplaceAll({{placeholder, sql_case.inputs()[i].name_}}, &sql);
     }
-    boost::replace_all(sql, "{auto}", hybridse::sqlcase::SqlCase::GenRand("auto_t") +
-            std::to_string(static_cast<int64_t>(time(NULL))));
+    absl::StrReplaceAll({{"{auto}", hybridse::sqlcase::SqlCase::GenRand("auto_t") +
+            std::to_string(static_cast<int64_t>(time(NULL)))}}, &sql);
     LOG(INFO) << sql;
     std::string lower_sql = sql;
-    boost::to_lower(lower_sql);
+    absl::AsciiStrToLower(&lower_sql);
     if (!(absl::StartsWith(lower_sql, "select") || absl::StartsWith(lower_sql, "with"))) {
         FAIL() << "sql not support in request mode";
     }
