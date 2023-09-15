@@ -314,6 +314,30 @@ TEST_F(TabletCatalogTest, segment_handler_test) {
     }
 }
 
+TEST_F(TabletCatalogTest, add_drop_test) {
+    TestArgs args = PrepareTable("t1");
+    std::shared_ptr<TabletCatalog> catalog(new TabletCatalog());
+    ASSERT_TRUE(catalog->Init());
+    ::openmldb::api::TableMeta meta = args.meta[0];
+    meta.set_tid(2);
+    ASSERT_TRUE(catalog->AddTable(meta, args.tables[0]));
+    uint32_t tid = meta.tid();
+    uint32_t pid = meta.pid();
+    std::string db = meta.db();
+    std::string name = meta.name();
+    ASSERT_FALSE(catalog->DeleteTable(db, name, tid - 1, pid));
+    ::openmldb::api::TableMeta new_meta = meta;
+    new_meta.set_tid(1);
+    ASSERT_FALSE(catalog->UpdateTableMeta(new_meta));
+    ::openmldb::nameserver::TableInfo table_info;
+    table_info.set_db(db);
+    table_info.set_tid(1);
+    table_info.set_name(name);
+    bool index_updated = false;
+    ASSERT_FALSE(catalog->UpdateTableInfo(table_info, &index_updated));
+    ASSERT_TRUE(catalog->DeleteTable(db, name, tid, pid));
+}
+
 TEST_F(TabletCatalogTest, segment_handler_pk_not_exist_test) {
     TestArgs args = PrepareTable("t1");
     auto handler = std::shared_ptr<TabletTableHandler>(

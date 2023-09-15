@@ -2054,7 +2054,7 @@ void TabletImpl::ChangeRole(RpcController* controller, const ::openmldb::api::Ch
         }
         PDLOG(INFO, "change to follower. tid[%u] pid[%u]", tid, pid);
         if (!table->GetDB().empty()) {
-            catalog_->DeleteTable(table->GetDB(), table->GetName(), pid);
+            catalog_->DeleteTable(table->GetDB(), table->GetName(), tid, pid);
         }
     }
     response->set_code(::openmldb::base::ReturnCode::kOk);
@@ -3323,7 +3323,7 @@ int32_t TabletImpl::DeleteTableInternal(uint32_t tid, uint32_t pid,
             PDLOG(INFO, "drop replicator for tid %u, pid %u", tid, pid);
         }
         if (!table->GetDB().empty()) {
-            catalog_->DeleteTable(table->GetDB(), table->GetName(), pid);
+            catalog_->DeleteTable(table->GetDB(), table->GetName(), tid, pid);
         }
         // delete related aggregator
         uint32_t base_tid = table->GetTableMeta()->base_table_tid();
