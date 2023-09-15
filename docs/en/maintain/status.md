@@ -1,12 +1,12 @@
-# Operation and Maintenance Command Status
+# Maintenance Command Status
 
-After executing various maintenance operations, you can monitor the outcomes of these operations, along with the current health status of the database, through a series of commonly used command combinations. By sequentially running the `showopstatus` and `showtablestatus` commands, you can ultimately verify the successful completion of the relevant maintenance tasks.
+After executing maintenance operations, you can monitor the outcomes of these operations, along with the current health status of the database, through a series of commonly used command combinations. By sequentially running the `showopstatus` and `showtablestatus` commands, you can ultimately verify the successful completion of the relevant maintenance tasks.
 
-## Step 1: View Command Status `showopstatus`
+## Step 1: View Command Status with `showopstatus`
 
-The `showopstatus` command serves the purpose of observing the execution status of specific maintenance commands. The current NS client supports this command to track the status of maintenance commands like `addreplica`, `delreplica`, `migrate`, `offlineendpoint`, `recoverendpoint`, `changeleader`, and `recovertable`. For a comprehensive understanding of these supported maintenance commands, refer to the [Operations CLI](https://chat.openai.com/cli.md) document.
+The `showopstatus` command serves the purpose of observing the execution status of specific maintenance commands. The current NS client supports this command to track the status of maintenance commands like `addreplica`, `delreplica`, `migrate`, `offlineendpoint`, `recoverendpoint`, `changeleader`, and `recovertable`. For a comprehensive understanding of these supported maintenance commands, refer to the [Operations CLI](./cli.md) document.
 
-You can monitor the status of relevant commands by utilizing the `showopstatus` command of the [OpenMLDB Operations Tool](https://chat.openai.com/openmldb_ops.md) `openmldb_ops.py`, as shown in the example below:
+You can monitor the status of relevant commands by utilizing the `showopstatus` command of the [OpenMLDB Operations Tool](./openmldb_ops.md) `openmldb_ops.py`, as shown in the example below:
 
 ```bash
 python tools/openmldb_ops.py --openmldb_bin_path=./bin/openmldb --zk_cluster=127.0.0.1:2181 --zk_root_path=/openmldb --cmd=showopstatus
@@ -18,11 +18,11 @@ Due to the asynchronous nature of maintenance command execution, you might need 
 2. kInited => kDoing => kFailed: Denotes a failed command execution.
 3. kInited => kCancelled: This state may arise after manually executing the `cancelop` command.
 
-Once the command running status changes to `kDone`, it signifies successful execution of relevant commands. You can then proceed to the subsequent steps and use the `showtablestatus` command to inspect the status of tables.
+Once the command running status changes to `kDone`, it signifies the successful execution of relevant commands. You can then proceed to the subsequent steps and use the `showtablestatus` command to inspect the status of tables.
 
-## Step 2: View Table Status `showtablestatus`
+## Step 2: View Table Status with `showtablestatus`
 
-After successfully executing the relevant maintenance commands, it's crucial to perform an additional verification to identify any anomalies in the table status. This verification can be conducted using the `showtablestatus` command within the [OpenMLDB Operations and Maintenance Tool](https://chat.openai.com/openmldb_ops.md). For instance:
+After successfully executing the relevant maintenance commands, it's crucial to perform an additional verification to identify any anomalies in the table status. This verification can be conducted using the `showtablestatus` command within the [OpenMLDB Operations and Maintenance Tool](./openmldb_ops.md). For instance:
 
 ```bash
 python tools/openmldb_ops.py --openmldb_bin_path=./bin/openmldb --zk_cluster=127.0.0.1:2181 --zk_root_path=/openmldb --cmd=showtablestatus
