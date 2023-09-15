@@ -6,8 +6,8 @@ This article demonstrates how to use [OpenMLDB](https://github.com/4paradigm/Ope
 
 ### 1.1 Install OpenMLDB Engine
 
-1. This example recommends using the OpenMLDB cluster version running in a Docker container. For installation steps, please refer to [OpenMLDB Quickstart](https://chat.openai.com/quickstart/openmldb_quickstart.md).
-2. In this example, although the Byzer engine is on the same host, it needs to access OpenMLDB services from outside the container. Therefore, the service port of the OpenMLDB cluster needs to be exposed. It is recommended to use the `--network host` method, as detailed in the [IP Configuration Documentation - CLI/SDK->containeronebox](https://chat.openai.com/reference/ip_tips.md#clisdk-containeronebox).
+1. This example recommends using the OpenMLDB cluster version running in a Docker container. For installation steps, please refer to [OpenMLDB Quickstart](../../quickstart/openmldb_quickstart.md).
+2. In this example, although the Byzer engine is on the same host, it needs to access OpenMLDB services from outside the container. Therefore, the service port of the OpenMLDB cluster needs to be exposed. It is recommended to use the `--network host` method, as detailed in the [IP Configuration Documentation - CLI/SDK->containeronebox](../../reference/ip_tips.md#clisdk-containeronebox).
 3. For simplicity, we use the file format to import and export OpenMLDB cluster data, so Byzer and OpenMLDB need to share the file path. Here, we map `/mlsql/admin` to `/byzermnt`, and use `/byzermnt` as the file path in SQL commands that interact with OpenMLDB.
 4. We also need to create a database named `db1` in the OpenMLDB cluster, and then use this database in Byzer (currently cannot be executed in Byzer, and Byzer must specify a usable db to connect to OpenMLDB).
 
@@ -25,7 +25,7 @@ exit # exit container
 The example uses [Byzer All In One Deployment](https://docs.byzer.org/#/byzer-lang/en-us/) and [Byzer Notebook Binary System Installation](https://docs.byzer.org/#/byzer-notebook/zh-cn/installation/install_uninstall) method to install Byzer component.
 
 ```{note}
-If you only need to install the OpenMLDB plugin offline, you can also use the [Sandbox Container Deployment](https://docs.byzer.org/#/byzer-Lang/zh-cn/installation/containerized-deployment/sandbox-standalone), where you can start and install the OpenMLDB plugin offline with just one click.
+If you only need to install the OpenMLDB plugin offline, you can also use the [Sandbox Container Deployment](https://docs.byzer.org/#/byzer-lang/zh-cn/installation/containerized-deployment/sandbox-standalone), where you can start and install the OpenMLDB plugin offline with just one click.
 
 If you use VSCode, you can also choose the [Byzer Plugin in VSCode] (https://docs.byzer.org/#/byzer-Lang/zh-cn/installation/vscode/byzer-vscode-extension-installation). The plugin includes the built-in Byzer All In One, eliminating the need for manual installation.
 
@@ -126,7 +126,7 @@ After the task is completed, the Result should have a prompt of `FINISHED`. Plea
 
 ### 2.3 Perform Offline Feature Computation
 
-Usually, this step involves feature design. However, in this example, we will skip the design phase and directly use the features designed in section 2.3 of [OpenMLDB + LightGBM: Taxi Travel Time Prediction](https://chat.openai.com/taxi_tour_duration_prediction.md) for offline feature computation. The processed dataset will be exported as a local parquet file (parquet format is recommended; CSV load requires additional schema).
+Usually, this step involves feature design. However, in this example, we will skip the design phase and directly use the features designed in section 2.3 of [OpenMLDB + LightGBM: Taxi Travel Time Prediction](../../use_case/taxi_tour_duration_prediction.md) for offline feature computation. The processed dataset will be exported as a local parquet file (parquet format is recommended; CSV load requires additional schema).
 
 ```sql
 run command as FeatureStoreExt.`` where
@@ -203,7 +203,7 @@ as training_table;
 
 ### 2.5 Model Training
 
-Use the `train` command with the [Built-In Linear Regression Algorithm](https://docs.byzer.org/#/byzer-lang/en-us/) to train the model and save it to the specified path `/model/taxi-trip`.
+Use the `train` command with the [Built-In Linear Regression Algorithm]([https://docs.byzer.org/#/byzer-lang/en-us/](https://docs.byzer.org/#/byzer-lang/zh-cn/ml/algs/linear_regression)) to train the model and save it to the specified path `/model/taxi-trip`.
 
 ```sql
 train training_table as LinearRegression.`/model/taxi-trip` where
@@ -288,7 +288,7 @@ register LinearRegression.`/model/taxi-trip` as taxi_trip_model_predict;
 
 ### 2.9 Real-Time Predictive Testing
 
-Typically, real-time feature prediction is driven by real-time data. For the convenience of this demonstration, we will still perform "real-time feature computation + prediction" in the Notebook. We will use the [Python Environment](https://docs.byzer.org/#/byzer-lang/en-us/) for real-time feature computation by using the requirements file.
+Typically, real-time feature prediction is driven by real-time data. For the convenience of this demonstration, we will still perform "real-time feature computation + prediction" in the Notebook. We will use the [Python Environment]([https://docs.byzer.org/#/byzer-lang/en-us/](https://docs.byzer.org/#/byzer-lang/zh-cn/python/env)) for real-time feature computation by using the requirements file.
 
 ```
 pyarrow==4.0.1
