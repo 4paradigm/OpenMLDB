@@ -18,9 +18,9 @@ In the following demonstration, you can directly import this DAG and run in Airf
 
 We import the above DAG to perform feature computation and deployment for the TalkingData Demo, then perform real-time inference using the predict server of TalkingData Demo.
 
-### 0 Preparation
+### Preparation
 
-#### 0.1 Download DAG
+#### Step 1. Download DAG
 
 Along with the DAG files, training scripts are also required. For convenience, we provide the [code package](https://openmldb.ai/download/airflow_demo/airflow_demo_files.tar.gz) for direct download. If you prefer to use the latest version, you can obtain it from [github example_dags](https://github.com/4paradigm/OpenMLDB/tree/main/extensions/airflow-provider-openmldb/openmldb_provider/example_dags).
 
@@ -29,7 +29,7 @@ wget https://openmldb.ai/download/airflow_demo/airflow_demo_files.tar.gz
 tar zxf airflow_demo_files.tar.gz
 ls airflow_demo_files
 ```
-#### 0.2 Start Docker Image
+#### Step 2. Start Docker Image
 
 For smooth function, we recommend starting OpenMLDB using the docker image and installing Airflow within the docker container.
 
@@ -39,14 +39,14 @@ Since Airflow Web requires an external port for login, the container's port must
 docker run -p 8080:8080 -v `pwd`/airflow_demo_files:/work/airflow_demo_files -it 4pdosc/openmldb:0.8.0 bash
 ```
 
-#### 0.3 Download and Install Airflow and Airflow OpenMLDB Provider
+#### Step 3. Download and Install Airflow and Airflow OpenMLDB Provider
 In the docker container, execute:
 ```
 pip3 install airflow-provider-openmldb
 ```
 Airflow will be downloaded as a dependency.
 
-#### 0.4 Source Data and DAG Preparation
+#### Step 4. Source Data and DAG Preparation
 Copy the sample data file, named `/tmp/train_sample.csv`, to the tmp directory. Airflow DAG files and training scripts used in the DAG must also be copied to the Airflow directory.
 
 ```
