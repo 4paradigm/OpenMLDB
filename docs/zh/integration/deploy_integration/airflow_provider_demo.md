@@ -17,9 +17,9 @@ DAG流程如上图所示，首先建表，然后进行离线数据导入与特�
 
 我们导入上述的DAG完成TalkingData Demo中的特征计算与上线，并使用TalkingData Demo的predict server来进行上线后的实时推理测试。
 
-### 0 准备
+### 准备工作
 
-#### 0.1 下载DAG
+#### 步骤1：下载DAG
 
 除了DAG文件，还需要训练的脚本，所以我们提供了[下载包](https://openmldb.ai/download/airflow_demo/airflow_demo_files.tar.gz)，可以直接下载。如果想要使用最新版本，请在[github example_dags](https://github.com/4paradigm/OpenMLDB/tree/main/extensions/airflow-provider-openmldb/openmldb_provider/example_dags)中获取。
 
@@ -28,7 +28,7 @@ wget https://openmldb.ai/download/airflow_demo/airflow_demo_files.tar.gz
 tar zxf airflow_demo_files.tar.gz
 ls airflow_demo_files
 ```
-#### 0.2 启动镜像
+#### 步骤2：启动镜像
 
 我们推荐使用docker镜像直接启动OpenMLDB，并在docker内部安装启动Airflow。
 
@@ -38,14 +38,14 @@ ls airflow_demo_files
 docker run -p 8080:8080 -v `pwd`/airflow_demo_files:/work/airflow_demo_files -it 4pdosc/openmldb:0.8.2 bash
 ```
 
-#### 0.3 下载安装Airflow与Airflow OpenMLDB Provider
+#### 步骤3：下载安装Airflow与Airflow OpenMLDB Provider
 在docker容器中，执行：
 ```
 pip3 install airflow-provider-openmldb
 ```
 由于airflow-provider-openmldb依赖airflow，所以会一起下载。
 
-#### 0.4 源数据与DAG准备
+#### 步骤4：源数据与DAG准备
 由于在DAG中导入数据用的文件为`/tmp/train_sample.csv`，所以我们需要将sample数据文件拷贝到tmp目录。Airflow 的DAG文件和DAG中使用的训练脚本也需要拷贝到airflow目录中。
 ```
 cp /work/airflow_demo_files/train_sample.csv /tmp/
