@@ -31,6 +31,8 @@ from diagnostic_tool.collector import Collector
 import diagnostic_tool.server_checker as checker
 from diagnostic_tool.table_checker import TableChecker
 from diagnostic_tool.parser import LogParser
+from .inspect import server_ins, table_ins, partition_ins, ops_ins, inspect_hint
+from .rpc import RPC
 
 from absl import app
 from absl import flags
@@ -81,7 +83,7 @@ def status(args):
 
     # --diff with dist conf file, conf_file is required
     if args.diff:
-        assert flags.FLAGS.conf_file, "need --conf_file"
+        assert flags.FLAGS.conf_file, "need --conf_file/-f"
         print(
             "only check components in conf file, if cluster has more components, ignore them"
         )
@@ -96,8 +98,31 @@ def status(args):
 
 
 def inspect(args):
-    insepct_online(args)
-    inspect_offline(args)
+    # report all
+    # 1. server level
+    connect = Connector()
+    status_checker = checker.StatusChecker(connect)
+    server_map = status_checker._get_components()
+    offlines = server_ins(server_map)
+
+    # 2. table level
+    # we use `show table status` instead of partition inspection, cuz it's simple and quick
+    warn_tables = table_ins(connect)
+
+    # if has unhealthy tables, do partition and ops check, otherwise skip
+    hints = []
+    if warn_tables:
+        # 3. ns ops
+        related_ops = ops_ins(connect)
+        # 4. partition level and get some hint about table
+        hints = partition_ins(server_map, related_ops)
+
+    # 5. hint
+    # let user know what to do
+    # 1) start offline servers
+    # 2) let user know the warning table is fatal or not, related ops, warn if offset is too large
+    # 3) if table not healthy and no related ops, use recoverdata
+    inspect_hint(offlines, hints)
 
 
 def insepct_online(args):
@@ -121,7 +146,9 @@ def insepct_online(args):
 
     if getattr(args, "dist", False):
         table_checker = TableChecker(conn)
-        table_checker.check_distribution(dbs=flags.FLAGS.db.split(","))
+        dbs = flags.FLAGS.db
+        db_list = dbs.split(",") if dbs else None
+        table_checker.check_distribution(dbs=db_list)
 
 
 def inspect_offline(args):
@@ -241,7 +268,6 @@ def rpc(args):
         tm: taskmanager"""
         )
         return
-    from diagnostic_tool.rpc import RPC
 
     # use status connction to get version
     conns_with_version = {
@@ -313,18 +339,19 @@ def parse_arg(argv):
     # sub inspect
     inspect_parser = subparsers.add_parser(
         "inspect",
-        help="Inspect online and offline. Use `inspect [online/offline]` to inspect one.",
+        help="Get full inspect report, --nocolor for batch mode, --table_width for partition tables display",
     )
-    # inspect online & offline
+    # TODO
     inspect_parser.set_defaults(command=inspect)
+
     inspect_sub = inspect_parser.add_subparsers()
-    # inspect online
+    # inspect online TODO
     online = inspect_sub.add_parser("online", help="only inspect online table.")
     online.set_defaults(command=insepct_online)
     online.add_argument(
         "--dist", action="store_true", help="Inspect online distribution."
     )
-    # inspect offline
+    # inspect offline TODO
     offline = inspect_sub.add_parser("offline", help="only inspect offline jobs.")
     offline.set_defaults(command=inspect_offline)
     # inspect job
