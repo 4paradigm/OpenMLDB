@@ -18,8 +18,6 @@ set -ex
 
 ROOT_DIR=$(pwd)
 
-bash onebox/stop_all.sh
-
 # on hybridsql 0.4.1 or later, 'THIRD_PARTY_SRC_DIR' is defined and is '/deps/src'
 THIRDSRC=${THIRD_PARTY_SRC_DIR:-thirdsrc}
 
