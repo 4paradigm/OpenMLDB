@@ -152,11 +152,12 @@ std::string SafeGetString(std::shared_ptr<hybridse::sdk::ResultSet> rs, int idx)
     return tmp;
 }
 
-void CheckAllTableStatus() {
+bool CheckAllTableStatus() {
     hybridse::sdk::Status status;
     auto rs = sr->ExecuteSQL("show table status like '%'", &status);
+    bool is_ok = true;
     if (status.IsOK()) {
-        // ref GetTableStatusSchema, just use idx to get column 8, 13
+        // ref GetTableStatusSchema, just use idx to get column
         while (rs->Next()) {
             auto table = SafeGetString(rs, 1);
             auto db = SafeGetString(rs, 2);
@@ -173,12 +174,15 @@ void CheckAllTableStatus() {
                 msg.append(", warning preview: ").append(warnings.substr(0, 100));
             }
             if (is_broken) {
-                LOG(WARNING) << msg;
+                is_ok = false;
+                std::cout << "ERROR: " << msg << std::endl;
             }
         }
     } else {
-        LOG(ERROR) << "fail to get all table status, " << status.ToString();
+        std::cout << "ERROR: fail to get all table status, " << status.ToString() << std::endl;
+        is_ok = false;
     }
+    return is_ok;
 }
 
 // cluster mode if zk_cluster is not empty, otherwise standalone mode
@@ -186,7 +190,9 @@ void Shell() {
     DCHECK(cs);
     DCHECK(sr);
     // before all, check all table status
-    CheckAllTableStatus();
+    if (!CheckAllTableStatus()) {
+        std::cout << "HINT: Use `openmldb_tool inspect` to get full report." << std::endl;
+    }
 
     // If use FLAGS_cmd, non-interactive. No Logo and make sure router interactive is false
     if (!FLAGS_cmd.empty()) {
