@@ -393,7 +393,7 @@ bash train_deepfm.sh $demodir/feature_preprocess/out
     ```sql
     -- OpenMLDB CLI
     USE JD_db;
-    DEPLOY demo <SQL>;
+    DEPLOY demo OPTIONS(RANGE_BIAS='inf', ROWS_BIAS='inf') <SQL>;
     ```
 
     也可以在 Docker 容器内直接运行部署脚本：

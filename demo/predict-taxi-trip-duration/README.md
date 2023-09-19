@@ -85,7 +85,7 @@ python3 train.py /tmp/feature_data /tmp/model.txt
 # The below commands are executed in the CLI
 > USE demo_db;
 > SET @@execute_mode='online';
-> DEPLOY demo SELECT trip_duration, passenger_count,
+> DEPLOY demo OPTIONS(RANGE_BIAS="inf", ROWS_BIAS="inf") SELECT trip_duration, passenger_count,
 sum(pickup_latitude) OVER w AS vendor_sum_pl,
 max(pickup_latitude) OVER w AS vendor_max_pl,
 min(pickup_latitude) OVER w AS vendor_min_pl,
@@ -193,7 +193,7 @@ python3 train.py /tmp/feature.csv /tmp/model.txt
 ```sql
 # The below commands are executed in the CLI
 > USE demo_db;
-> DEPLOY demo SELECT trip_duration, passenger_count,
+> DEPLOY demo OPTIONS(RANGE_BIAS="inf", ROWS_BIAS="inf") SELECT trip_duration, passenger_count,
 sum(pickup_latitude) OVER w AS vendor_sum_pl,
 max(pickup_latitude) OVER w AS vendor_max_pl,
 min(pickup_latitude) OVER w AS vendor_min_pl,

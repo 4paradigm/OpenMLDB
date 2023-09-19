@@ -185,6 +185,12 @@ deploy demo options(SYNC="false") SELECT t1.col1, t2.col2, sum(col4) OVER w1 as 
 
 而时间偏移的单位是`min`，我们会在内部将其转换为`min`，并且取上界。比如，新索引ttl是abs 2min，加上偏移20s，结果是`2min + ub(20s) = 3min`，然后和旧索引1min取上界，最终索引ttl是`max(1min, 3min) = 3min`。
 
+**Example**
+```sql
+DEPLOY demo OPTIONS(RANGE_BIAS="inf", ROWS_BIAS="inf") SELECT t1.col1, t2.col2, sum(col4) OVER w1 as w1_col4_sum FROM t1 LAST JOIN t2 ORDER BY t2.col3 ON t1.col2 = t2.col2
+    WINDOW w1 AS (PARTITION BY t1.col2 ORDER BY t1.col3 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
+```
+
 ## 相关SQL
 
 [USE DATABASE](../ddl/USE_DATABASE_STATEMENT.md)

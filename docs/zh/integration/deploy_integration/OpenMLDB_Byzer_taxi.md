@@ -232,7 +232,7 @@ and `sql-0`='''
 SET @@execute_mode='online';
 '''
 and `sql-1`='''
-DEPLOY d1 SELECT trip_duration, passenger_count,
+DEPLOY d1 OPTIONS(RANGE_BIAS='inf', ROWS_BIAS='inf') SELECT trip_duration, passenger_count,
 sum(pickup_latitude) OVER w AS vendor_sum_pl,
 max(pickup_latitude) OVER w AS vendor_max_pl,
 min(pickup_latitude) OVER w AS vendor_min_pl,
