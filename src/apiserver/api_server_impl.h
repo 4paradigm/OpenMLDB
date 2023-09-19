@@ -24,6 +24,7 @@
 #include <utility>
 #include <vector>
 
+#include "absl/status/status.h"
 #include "apiserver/interface_provider.h"
 #include "apiserver/json_helper.h"
 #include "json2pb/rapidjson.h"  // rapidjson's DOM-style API
@@ -69,12 +70,12 @@ class APIServerImpl : public APIServer {
     void ExecuteProcedure(bool has_common_col, const InterfaceProvider::Params& param, const butil::IOBuf& req_body,
                           JsonWriter& writer);  // NOLINT
 
-    static bool JsonArray2SQLRequestRow(const butil::rapidjson::Value& non_common_cols_v,
-                                        const butil::rapidjson::Value& common_cols_v,
-                                        std::shared_ptr<openmldb::sdk::SQLRequestRow> row);
-    static bool JsonMap2SQLRequestRow(const butil::rapidjson::Value& non_common_cols_v,
-                                      const butil::rapidjson::Value& common_cols_v,
-                                      std::shared_ptr<openmldb::sdk::SQLRequestRow> row);
+    static absl::Status JsonArray2SQLRequestRow(const butil::rapidjson::Value& non_common_cols_v,
+                                                const butil::rapidjson::Value& common_cols_v,
+                                                std::shared_ptr<openmldb::sdk::SQLRequestRow> row);
+    static absl::Status JsonMap2SQLRequestRow(const butil::rapidjson::Value& non_common_cols_v,
+                                              const butil::rapidjson::Value& common_cols_v,
+                                              std::shared_ptr<openmldb::sdk::SQLRequestRow> row);
     template <typename T>
     static bool AppendJsonValue(const butil::rapidjson::Value& v, hybridse::sdk::DataType type, bool is_not_null,
                                 T row);
