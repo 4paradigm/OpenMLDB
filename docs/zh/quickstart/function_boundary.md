@@ -28,7 +28,7 @@ spark.default.conf=spark.port.maxRetries=32;foo=bar
 
 通过 `DEPLOY <deploy_name> <sql>` 可以部署上线 SQL 方案，这个操作也会自动解析 SQL 帮助创建索引（可以通过 `DESC <table_name>` 查看索引详情），详情可参考 [DEPLOY STATEMENT](../openmldb_sql/deployment_manage/DEPLOY_STATEMENT.md)。
 
-部署操作是否成功，跟表的在线数据有一定关系。
+部署上线操作是否成功，是否可以开始使用，跟表的在线数据有一定关系。
 
 ### 长窗口 SQL
 
@@ -37,17 +37,18 @@ spark.default.conf=spark.port.maxRetries=32;foo=bar
 ### 普通 SQL
 
 - 如果部署之前已存在相关的索引，那么这一次部署操作不会创建索引。无论表中有无在线数据，`DEPLOY` 操作将成功。
-- 如果部署时需要创建新的索引，而此时表中已有在线数据，那么 `DEPLOY` 操作将失败。
+    - 如果索引需要更新ttl，仅更新ttl value是可以成功的，但ttl更新生效需要2个gc interval，并且更新ttl前被淘汰的数据不会找回。如果ttl需要更新type，在<0.8.1的版本中将会失败，>=0.8.1的版本可以成功。
+- 如果部署时需要创建新的索引，而此时表中已有在线数据，版本<0.8.1将 `DEPLOY` 失败，>=0.8.1将在后台进行数据复制到新索引，需要等待一定时间。 
 
-解决方案有两种：
+对于旧版本解决方案有两种：
 
 - 严格保持先 `DEPLOY` 再导入在线数据，不要在表中有在线数据后做 `DEPLOY`。
-- `CRATE INDEX` 语句可以在创建新索引时，自动导入已存在的在线数据（已有索引里的数据）。如果一定需要在表已有在线数据的情况下 `DEPLOY`，可以先手动 `CRATE INDEX` 创建需要的索引（新索引就有数据了），再 `DEPLOY`（这时的 `DEPLOY` 不会创建新索引，计算时直接使用手动创建的那些索引）。
+- `CRATE INDEX` 语句可以在创建新索引时，自动导入已存在的在线数据（已有索引里的数据）。如果一定需要在表已有在线数据的情况下 `DEPLOY`，可以先手动 `CREATE INDEX` 创建需要的索引（新索引就有数据了），再 `DEPLOY`（这时的 `DEPLOY` 不会创建新索引，计算时直接使用手动创建的那些索引）。
 
 ```{note}
-如何知道应该创建哪些索引？ 
+如果你只能使用旧版本，如何知道应该创建哪些索引？ 
 
-目前只有 Java SDK 支持，可以通过 `SqlClusterExecutor.genDDL` 获取需要创建的所有索引。（但 `genDDL` 是获得建表语句，所以需要手动转换为 `CREATE INDEX`。） 未来将支持**直接获取创建索引语句**，或支持 `DEPLOY` **自动导入数据到新索引**。
+目前只有 Java SDK 支持，可以通过 `SqlClusterExecutor.genDDL` 获取需要创建的所有索引（静态方法，无需连接集群）。但 `genDDL` 是获得建表语句，所以需要手动转换为 `CREATE INDEX`。
 ```
 
 ## DML 边界

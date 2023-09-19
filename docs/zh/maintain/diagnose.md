@@ -193,9 +193,9 @@ nameserver:
 openmldb_tool static-check --conf_file=/work/openmldb/conf/hosts -VCL --local
 ```
 
-### rpc
+### RPC 接口
 
-`openmldb_tool`还提供了一个RPC接口，但它是一个额外组件，需要通过`pip install openmldb-tool[rpc]`安装。使用方式是`openmldb_tool rpc`，例如，`openmldb_tool rpc ns ShowTable --field '{"show_all":true}'`可以调用`nameserver`的`ShowTable`接口，获取表的状态信息。
+`openmldb_tool`还提供了一个RPC接口，但它是一个额外组件，需要通过`pip install openmldb-tool[rpc]`安装。它可以让我们发送RPC更容易，不需要定位Server的IP，拼接RPC方法URL路径，也可以提供RPC的输入结构。使用方式是`openmldb_tool rpc`，例如，`openmldb_tool rpc ns ShowTable --field '{"show_all":true}'`就可以调用`nameserver`的`ShowTable`接口，获取表的状态信息。
 
 NameServer与TaskManager只有一个活跃，所以我们用ns和tm来代表这两个组件。
 而TabletServer有多个，我们用`tablet1`，`tablet2`等来指定某个TabletServer，顺序可通过`openmldb_tool rpc`或`openmldb_tool status`来查看。
@@ -217,4 +217,3 @@ hint还需要额外的pb文件，帮助解析输入参数，默认是从`/tmp/di
 ## 附加
 
 可使用`openmldb_tool --helpfull`查看所有配置项。例如，`--sdk_log`可以打印sdk的日志（zk，glog），可用于调试。
-  
