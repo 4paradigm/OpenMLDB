@@ -65,6 +65,7 @@
 %shared_ptr(openmldb::sdk::QueryFuture);
 %shared_ptr(openmldb::sdk::TableReader);
 %shared_ptr(hybridse::node::CreateTableLikeClause);
+%shared_ptr(openmldb::sdk::DefaultValueContainer);
 %template(VectorUint32) std::vector<uint32_t>;
 %template(VectorString) std::vector<std::string>;
 
@@ -93,6 +94,7 @@ using openmldb::sdk::ExplainInfo;
 using hybridse::sdk::ProcedureInfo;
 using openmldb::sdk::QueryFuture;
 using openmldb::sdk::TableReader;
+using openmldb::sdk::DefaultValueContainer;
 %}
 
 %include "sdk/sql_router.h"

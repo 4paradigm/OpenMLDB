@@ -29,11 +29,74 @@
 #include "codec/fe_row_codec.h"
 #include "node/sql_node.h"
 #include "proto/name_server.pb.h"
+#include "schema/schema_adapter.h"
 #include "sdk/base.h"
 
 namespace openmldb::sdk {
 
 typedef std::shared_ptr<std::map<uint32_t, std::shared_ptr<::hybridse::node::ConstNode>>> DefaultValueMap;
+
+// used in java to build InsertPreparedStatementCache
+class DefaultValueContainer {
+ public:
+    DefaultValueContainer(const DefaultValueMap& default_map) : default_map_(default_map) {}
+
+    bool IsValid(int idx) {
+        return idx >= 0 && idx < Size();
+    }
+
+    int Size() {
+        return default_map_->size();
+    }
+
+    bool IsNull(int idx) {
+        return default_map_->at(idx)->IsNull();
+    }
+
+    openmldb::type::DataType GetType(int idx) {
+        openmldb::type::DataType type;
+        schema::SchemaAdapter::ConvertType(default_map_->at(idx)->GetDataType(), &type);
+        return type;
+    }
+
+    bool GetBool(int idx) {
+        return default_map_->at(idx)->GetBool();
+    }
+
+    int16_t GetSmallInt(int idx) {
+        return default_map_->at(idx)->GetSmallInt();
+    }
+
+    int32_t GetInt(int idx) {
+        return default_map_->at(idx)->GetInt();
+    }
+
+    int64_t GetBigInt(int idx) {
+        return default_map_->at(idx)->GetLong();
+    }
+
+    float GetFloat(int idx) {
+        return default_map_->at(idx)->GetFloat();
+    }
+
+    double GetDouble(int idx) {
+        return default_map_->at(idx)->GetDouble();
+    }
+
+    int32_t GetDate(int idx) {
+        return default_map_->at(idx)->GetInt();
+    }
+
+    int64_t GetTimeStamp(int idx) {
+        return default_map_->at(idx)->GetLong();
+    }
+
+    std::string GetString(int idx) {
+        return default_map_->at(idx)->GetStr();
+    }
+ private:
+    DefaultValueMap default_map_;
+};
 
 class SQLInsertRow {
  public:
@@ -80,6 +143,10 @@ class SQLInsertRow {
     static std::vector<uint32_t> GetHoleIdxArr(const DefaultValueMap& default_map,
                                                const std::vector<uint32_t>& stmt_column_idx_in_table,
                                                const std::shared_ptr<::hybridse::sdk::Schema>& schema);
+
+    std::shared_ptr<DefaultValueContainer> GetDefaultValue() {
+        return std::make_shared<DefaultValueContainer>(default_map_);
+    }
 
  private:
     bool MakeDefault();
