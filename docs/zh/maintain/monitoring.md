@@ -178,13 +178,15 @@ OpenMLDB 提供了 Prometheus 和 Grafana 配置文件以作参考，详见 [Ope
 通过Component-Level 指标通过Grafana聚合的DB-Level 指标（未单独声明时，time单位为us）：
 
 - deploy query response time: deployment query 在OpenMLDB内部的运行时间，按DB.DEPLOYMENT汇总
-  需要全局变量 `deploy_stats` 开启后才会开始统计, 在 OpenMLDB CLI 中输入 SQL:**
+  **需要全局变量 `deploy_stats` 开启后才会开始统计, 在 OpenMLDB CLI 中输入 SQL:**
 
    ```sql
    SET GLOBAL deploy_stats = 'on';
    ```
-   然后，还需要执行deployment，才会出现相应的指标。
+   然后，还需要执行deplpoyment，才会出现相应的指标。
    如果SET变量为off，会清空server中的所有deployment指标并停止统计（已被Prometheus抓取的数据不影响）。
+   - count：count类统计值从deploy_stats on时开始统计，不区分请求的成功和失败。
+   - latency, qps：这类指标只统计`[current_time - interval, current_time]`时间窗口内的数据，interval由Tablet Server配置项`bvar_dump_interval`配置，默认为75秒。
 
 - api server http time: 各API接口的处理耗时（不包含route），只监测接口耗时，不做细粒度区分，目前也不通过Grafana展示，可以通过Prometheus手动查询。目前监测`deployment`、`sp`和`query`三种方法。
    - api server route time: APIServer进行http route的耗时，通常为us级别，一般忽略不计
@@ -210,7 +212,7 @@ OpenMLDB 的相关组件（即 nameserver, tablet, etc）, 本身作为 BRPC ser
 
    - BRPC server 进程相关信息
    - 对应 BRPC server 定义的 RPC method 相关指标，例如该 RPC 的请求 `count`, `error_count`, `qps` 和 `response_time`
-   - Deployment 相关指标，分deployment，但只统计该tablet上的deployment请求。区别于Grafana做的集群级别整合。
+   - Deployment 相关指标，分deployment统计，但只统计该tablet上的deployment请求。区别于Grafana做的集群级别整合。
 
    通过
 
