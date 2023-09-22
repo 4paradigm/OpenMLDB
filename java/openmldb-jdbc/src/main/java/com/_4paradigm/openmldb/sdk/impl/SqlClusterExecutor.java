@@ -52,6 +52,7 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
@@ -62,6 +63,7 @@ public class SqlClusterExecutor implements SqlExecutor {
     private SQLRouter sqlRouter;
     private DeploymentManager deploymentManager;
     private ZKClient zkClient;
+    private Map<String, InsertPreparedStatementCache> cacheMap = new ConcurrentHashMap<>();
 
     public SqlClusterExecutor(SdkOption option, String libraryPath) throws SqlException {
         initJavaSdkLibrary(libraryPath);
@@ -183,7 +185,23 @@ public class SqlClusterExecutor implements SqlExecutor {
 
     @Override
     public PreparedStatement getInsertPreparedStmt(String db, String sql) throws SQLException {
-        return new InsertPreparedStatementImpl(db, sql, this.sqlRouter);
+        InsertPreparedStatementCache cache = cacheMap.get(sql);
+        if (cache == null) {
+            Status status = new Status();
+            SQLInsertRow row = sqlRouter.GetInsertRow(db, sql, status);
+            if (!status.IsOK()) {
+                String msg = status.ToString();
+                status.delete();
+                if (row != null) {
+                    row.delete();
+                }
+                throw new SQLException("getSQLInsertRow failed, " + msg);
+            }
+            cache = new InsertPreparedStatementCache(sql, row);
+            row.delete();
+            cacheMap.putIfAbsent(sql, cache);
+        }
+        return new InsertPreparedStatementImpl(cache, this.sqlRouter);
     }
 
     @Override

@@ -18,10 +18,7 @@ package com._4paradigm.openmldb.jdbc;
 
 import static com._4paradigm.openmldb.sdk.impl.Util.sqlTypeToString;
 
-import com._4paradigm.openmldb.DataType;
-import com._4paradigm.openmldb.Schema;
-import com._4paradigm.openmldb.common.Pair;
-import com._4paradigm.openmldb.sdk.Common;
+import com._4paradigm.openmldb.sdk.Schema;
 
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
@@ -29,42 +26,30 @@ import java.util.List;
 
 public class SQLInsertMetaData implements ResultSetMetaData {
 
-    private final List<DataType> schema;
-    private final Schema realSchema;
-    private final List<Pair<Long, Integer>> idx;
+    private final Schema schema;
+    private final List<Integer> holeIdx;
 
-    public SQLInsertMetaData(List<DataType> schema,
-                             Schema realSchema,
-                             List<Pair<Long, Integer>> idx) {
+    public SQLInsertMetaData(Schema schema, List<Integer> holeIdx) {
         this.schema = schema;
-        this.realSchema = realSchema;
-        this.idx = idx;
-    }
-
-    private void checkSchemaNull() throws SQLException {
-        if (schema == null) {
-            throw new SQLException("schema is null");
-        }
+        this.holeIdx = holeIdx;
     }
 
     private void checkIdx(int i) throws SQLException {
         if (i <= 0) {
             throw new SQLException("index underflow");
         }
-        if (i > schema.size()) {
+        if (i > holeIdx.size()) {
             throw new SQLException("index overflow");
         }
     }
 
     public void check(int i) throws SQLException {
         checkIdx(i);
-        checkSchemaNull();
     }
 
     @Override
     public int getColumnCount() throws SQLException {
-        checkSchemaNull();
-        return schema.size();
+        return holeIdx.size();
     }
 
     @Override
@@ -94,8 +79,8 @@ public class SQLInsertMetaData implements ResultSetMetaData {
     @Override
     public int isNullable(int i) throws SQLException {
         check(i);
-        Long index = idx.get(i - 1).getKey();
-        if (realSchema.IsColumnNotNull(index)) {
+        boolean nullable = schema.isNullable(holeIdx.get(i));
+        if (!nullable) {
             return columnNoNulls;
         } else {
             return columnNullable;
@@ -123,8 +108,7 @@ public class SQLInsertMetaData implements ResultSetMetaData {
     @Override
     public String getColumnName(int i) throws SQLException {
         check(i);
-        Long index = idx.get(i - 1).getKey();
-        return realSchema.GetColumnName(index);
+        return schema.getColumnName(holeIdx.get(i));
     }
 
     @Override
@@ -160,8 +144,7 @@ public class SQLInsertMetaData implements ResultSetMetaData {
     @Override
     public int getColumnType(int i) throws SQLException {
         check(i);
-        Long index = idx.get(i - 1).getKey();
-        return Common.type2SqlType(realSchema.GetColumnType(index));
+        return schema.getColumnType(holeIdx.get(i));
     }
 
     @Override

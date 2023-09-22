@@ -41,6 +41,14 @@ class DefaultValueContainer {
  public:
     DefaultValueContainer(const DefaultValueMap& default_map) : default_map_(default_map) {}
 
+    std::vector<uint32_t> GetAllPosition() {
+        std::vector<uint32_t> vec;
+        for (const auto& kv : *default_map_) {
+            vec.push_back(kv.first);
+        }
+        return vec;
+    }
+
     bool IsValid(int idx) {
         return idx >= 0 && idx < Size();
     }
@@ -51,12 +59,6 @@ class DefaultValueContainer {
 
     bool IsNull(int idx) {
         return default_map_->at(idx)->IsNull();
-    }
-
-    openmldb::type::DataType GetType(int idx) {
-        openmldb::type::DataType type;
-        schema::SchemaAdapter::ConvertType(default_map_->at(idx)->GetDataType(), &type);
-        return type;
     }
 
     bool GetBool(int idx) {
@@ -146,6 +148,10 @@ class SQLInsertRow {
 
     std::shared_ptr<DefaultValueContainer> GetDefaultValue() {
         return std::make_shared<DefaultValueContainer>(default_map_);
+    }
+
+    ::openmldb::nameserver::TableInfo GetTableInfo() {
+        return *table_info_;
     }
 
  private:
