@@ -114,3 +114,15 @@ X：表示从原类型转换为目标类型的转换是不支持的
 | 操作符名 | 功能描述                  |
 | :------- | :------------------------ |
 | `=`      | 赋值 (可用于 SET 语句中 ) |
+
+## 表达式
+
+- CASE WHEN
+```sql
+SELECT case 'bb' when 'aa' then 'apple' else 'nothing' end; -- SIMPLE CASE WHEN
+SELECT case
+        when 'bb'='aa' then 'apple'
+        when 'bb'='bb' then 'banana'
+        else 'nothing'
+    end; -- SEARCHED CASE WHEN
+```
