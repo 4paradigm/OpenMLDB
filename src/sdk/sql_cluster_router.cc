@@ -1451,9 +1451,9 @@ bool SQLClusterRouter::ExecuteInsert(const std::string& db, const std::string& n
     while (pos < dimension_len) {
         int idx = *(reinterpret_cast<int*>(dimension + pos));
         pos += sizeof(int);
-        int len = *(reinterpret_cast<int*>(dimension + pos));
+        int key_len = *(reinterpret_cast<int*>(dimension + pos));
         pos += sizeof(int);
-        base::Slice key(dimension + pos, len);
+        base::Slice key(dimension + pos, key_len);
         uint32_t pid = static_cast<uint32_t>(::openmldb::base::hash64(key.data(), key.size()) % partition_num);
         auto it = dimensions_map.find(pid);
         if (it == dimensions_map.end()) {
@@ -1462,6 +1462,7 @@ bool SQLClusterRouter::ExecuteInsert(const std::string& db, const std::string& n
         auto dim = it->second.Add();
         dim->set_idx(idx);
         dim->set_key(key.data(), key.size());
+        pos += key_len;
     }
     base::Slice row_value(value, len);
     uint64_t cur_ts = ::baidu::common::timer::get_micros() / 1000;

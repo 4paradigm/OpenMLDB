@@ -56,8 +56,8 @@ public class InsertPreparedStatementImpl extends PreparedStatement {
         batchValues = new ArrayList<>();
     }
 
-    private int getSchemaIdx(int idx) {
-        return cache.getSchemaIdx(idx);
+    private int getSchemaIdx(int idx) throws SQLException {
+        return cache.getSchemaIdx(idx - 1);
     }
 
     @Override
@@ -72,26 +72,30 @@ public class InsertPreparedStatementImpl extends PreparedStatement {
         throw new SQLException("current do not support this method");
     }
 
-    private void setNull(int i) throws SQLException {
+    private boolean setNull(int i) throws SQLException {
         if (!cache.getSchema().isNullable(i)) {
             throw new SQLException("this column not allow null");
         }
-        rowBuilder.setNULL(i);
+        return rowBuilder.setNULL(i);
     }
 
     @Override
     public void setNull(int i, int i1) throws SQLException {
         int realIdx = getSchemaIdx(i);
+        if (!setNull(realIdx)) {
+            throw new SQLException("set null failed. pos is " + i);
+        }
         if (indexCol.contains(realIdx)) {
             indexValue.put(realIdx, InsertPreparedStatementCache.NONETOKEN);
         }
-        setNull(realIdx);
     }
 
     @Override
     public void setBoolean(int i, boolean b) throws SQLException {
         int realIdx = getSchemaIdx(i);
-        rowBuilder.setBool(realIdx, b);
+        if (!rowBuilder.setBool(realIdx, b)) {
+            throw new SQLException("set bool failed. pos is " + i);
+        }
         if (indexCol.contains(realIdx)) {
             indexValue.put(realIdx, String.valueOf(b));
         }
@@ -100,7 +104,9 @@ public class InsertPreparedStatementImpl extends PreparedStatement {
     @Override
     public void setShort(int i, short i1) throws SQLException {
         int realIdx = getSchemaIdx(i);
-        rowBuilder.setSmallInt(realIdx, i1);
+        if (!rowBuilder.setSmallInt(realIdx, i1)) {
+            throw new SQLException("set short failed. pos is " + i);
+        }
         if (indexCol.contains(realIdx)) {
             indexValue.put(realIdx, String.valueOf(i1));
         }
@@ -109,7 +115,9 @@ public class InsertPreparedStatementImpl extends PreparedStatement {
     @Override
     public void setInt(int i, int i1) throws SQLException {
         int realIdx = getSchemaIdx(i);
-        rowBuilder.setInt(realIdx, i1);
+        if (!rowBuilder.setInt(realIdx, i1)) {
+            throw new SQLException("set int failed. pos is " + i);
+        }
         if (indexCol.contains(realIdx)) {
             indexValue.put(realIdx, String.valueOf(i1));
         }
@@ -118,7 +126,9 @@ public class InsertPreparedStatementImpl extends PreparedStatement {
     @Override
     public void setLong(int i, long l) throws SQLException {
         int realIdx = getSchemaIdx(i);
-        rowBuilder.setBigInt(realIdx, l);
+        if (!rowBuilder.setBigInt(realIdx, l)) {
+            throw new SQLException("set long failed. pos is " + i);
+        }
         if (indexCol.contains(realIdx)) {
             indexValue.put(realIdx, String.valueOf(l));
         }
@@ -126,31 +136,38 @@ public class InsertPreparedStatementImpl extends PreparedStatement {
 
     @Override
     public void setFloat(int i, float v) throws SQLException {
-        rowBuilder.setFloat(getSchemaIdx(i), v);
+        if (!rowBuilder.setFloat(getSchemaIdx(i), v)) {
+            throw new SQLException("set float failed. pos is " + i);
+        }
     }
 
     @Override
     public void setDouble(int i, double v) throws SQLException {
-        rowBuilder.setDouble(getSchemaIdx(i), v);
+        if (!rowBuilder.setDouble(getSchemaIdx(i), v)) {
+            throw new SQLException("set double failed. pos is " + i);
+        }
     }
 
     @Override
     public void setString(int i, String s) throws SQLException {
         int realIdx = getSchemaIdx(i);
-        if (indexCol.contains(realIdx)) {
-            if (s == null) {
+        if (s == null) {
+            setNull(realIdx);
+            if (indexCol.contains(realIdx)) {
                 indexValue.put(realIdx, InsertPreparedStatementCache.NONETOKEN);
-            } else if (s.isEmpty()) {
+            }
+            return;
+        }
+        if (!rowBuilder.setString(getSchemaIdx(i), s)) {
+            throw new SQLException("set string failed. pos is " + i);
+        }
+        if (indexCol.contains(realIdx)) {
+            if (s.isEmpty()) {
                 indexValue.put(realIdx, InsertPreparedStatementCache.EMPTY_STRING);
             } else {
                 indexValue.put(realIdx, s);
             }
         }
-        if (s == null) {
-            setNull(realIdx);
-            return;
-        }
-        rowBuilder.setString(getSchemaIdx(i), s);
     }
 
     @Override
@@ -164,10 +181,14 @@ public class InsertPreparedStatementImpl extends PreparedStatement {
             }
         }
         if (date == null) {
-            setNull(realIdx);
+            if (!setNull(realIdx)) {
+                throw new SQLException("set date failed. pos is " + i);
+            }
             return;
         }
-        rowBuilder.setDate(realIdx, date);
+        if (!rowBuilder.setDate(realIdx, date)) {
+            throw new SQLException("set date failed. pos is " + i);
+        }
     }
 
 
@@ -182,10 +203,14 @@ public class InsertPreparedStatementImpl extends PreparedStatement {
             }
         }
         if (timestamp == null) {
-            setNull(realIdx);
+            if (!setNull(realIdx)) {
+                throw new SQLException("set timestamp failed. pos is " + i);
+            }
             return;
         }
-        rowBuilder.setTimestamp(realIdx, timestamp);
+        if (!rowBuilder.setTimestamp(realIdx, timestamp)) {
+            throw new SQLException("set timestamp failed. pos is " + i);
+        }
     }
 
     @Override
@@ -218,8 +243,9 @@ public class InsertPreparedStatementImpl extends PreparedStatement {
             Integer indexPos = entry.getKey();
             dimensionValue.putInt(indexPos);
             dimensionValue.putInt(lenMap.get(indexPos));
-            for (Integer pos : entry.getValue()) {
-                if (pos > 0) {
+            for (int i = 0; i < entry.getValue().size(); i++) {
+                int pos = entry.getValue().get(i);
+                if (i > 0) {
                     dimensionValue.put((byte)'|');
                 }
                 if (indexValue.containsKey(pos)) {
@@ -284,11 +310,15 @@ public class InsertPreparedStatementImpl extends PreparedStatement {
         if (closed) {
             throw new SQLException("InsertPreparedStatement closed");
         }
+        if (!batchValues.isEmpty()) {
+            throw new SQLException("please use executeBatch");
+        }
         ByteBuffer dimensions = buildDimension();
         ByteBuffer value = buildRow();
         Status status = new Status();
         // actually only one row
-        boolean ok = router.ExecuteInsert(cache.getDatabase(), cache.getName(), cache.getTid(),
+        boolean ok = router.ExecuteInsert(cache.getDatabase(), cache.getName(),
+                cache.getTid(), cache.getPartitionNum(),
                 dimensions.array(), dimensions.capacity(), value.array(), value.capacity(), status);
         // cleanup rows even if insert failed
         // we can't execute() again without set new row, so we must clean up here
@@ -348,7 +378,8 @@ public class InsertPreparedStatementImpl extends PreparedStatement {
         Status status = new Status();
         for (int i = 0; i < batchValues.size(); i++) {
             AbstractMap.SimpleImmutableEntry<ByteBuffer, ByteBuffer> pair = batchValues.get(i);
-            boolean ok = router.ExecuteInsert(cache.getDatabase(), cache.getName(), cache.getTid(),
+            boolean ok = router.ExecuteInsert(cache.getDatabase(), cache.getName(),
+                    cache.getTid(), cache.getPartitionNum(),
                     pair.getKey().array(), pair.getKey().capacity(),
                     pair.getValue().array(), pair.getValue().capacity(), status);
             if (!ok) {

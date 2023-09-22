@@ -9,6 +9,7 @@ import com._4paradigm.openmldb.proto.NS;
 import com._4paradigm.openmldb.sdk.Common;
 import com._4paradigm.openmldb.sdk.Schema;
 
+import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.sql.Types;
 import java.util.*;
@@ -36,7 +37,7 @@ public class InsertPreparedStatementCache {
         NS.TableInfo tableInfo = insertRow.GetTableInfo();
         try {
             schema = Common.convertSchema(tableInfo.getColumnDescList());
-            codecMetaData = new CodecMetaData(tableInfo.getColumnDescList());
+            codecMetaData = new CodecMetaData(tableInfo.getColumnDescList(), false);
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -193,7 +194,10 @@ public class InsertPreparedStatementCache {
         return sql;
     }
 
-    public int getSchemaIdx(int idx) {
+    public int getSchemaIdx(int idx) throws SQLException {
+        if (idx >= holeIdx.size()) {
+            throw new SQLException("out of data range");
+        }
         return holeIdx.get(idx);
     }
 

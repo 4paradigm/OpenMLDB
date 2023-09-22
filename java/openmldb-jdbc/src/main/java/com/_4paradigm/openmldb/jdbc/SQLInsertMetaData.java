@@ -34,17 +34,13 @@ public class SQLInsertMetaData implements ResultSetMetaData {
         this.holeIdx = holeIdx;
     }
 
-    private void checkIdx(int i) throws SQLException {
-        if (i <= 0) {
+    private void check(int i) throws SQLException {
+        if (i < 0) {
             throw new SQLException("index underflow");
         }
-        if (i > holeIdx.size()) {
+        if (i >= holeIdx.size()) {
             throw new SQLException("index overflow");
         }
-    }
-
-    public void check(int i) throws SQLException {
-        checkIdx(i);
     }
 
     @Override
@@ -78,8 +74,9 @@ public class SQLInsertMetaData implements ResultSetMetaData {
 
     @Override
     public int isNullable(int i) throws SQLException {
-        check(i);
-        boolean nullable = schema.isNullable(holeIdx.get(i));
+        int realIdx = i - 1;
+        check(realIdx);
+        boolean nullable = schema.isNullable(holeIdx.get(realIdx));
         if (!nullable) {
             return columnNoNulls;
         } else {
@@ -107,8 +104,9 @@ public class SQLInsertMetaData implements ResultSetMetaData {
 
     @Override
     public String getColumnName(int i) throws SQLException {
-        check(i);
-        return schema.getColumnName(holeIdx.get(i));
+        int realIdx = i - 1;
+        check(realIdx);
+        return schema.getColumnName(holeIdx.get(realIdx));
     }
 
     @Override
@@ -143,8 +141,9 @@ public class SQLInsertMetaData implements ResultSetMetaData {
 
     @Override
     public int getColumnType(int i) throws SQLException {
-        check(i);
-        return schema.getColumnType(holeIdx.get(i));
+        int realIdx = i - 1;
+        check(realIdx);
+        return schema.getColumnType(holeIdx.get(realIdx));
     }
 
     @Override
