@@ -84,6 +84,10 @@ class SQLClusterRouter : public SQLRouter {
     bool ExecuteInsert(const std::string& db, const std::string& sql, std::shared_ptr<SQLInsertRows> rows,
                        hybridse::sdk::Status* status) override;
 
+    bool ExecuteInsert(const std::string& db, const std::string& name, int tid, int partition_num,
+                hybridse::sdk::ByteArrayPtr dimension, int dimension_len,
+                hybridse::sdk::ByteArrayPtr value, int len, hybridse::sdk::Status* status) override;
+
     bool ExecuteDelete(std::shared_ptr<SQLDeleteRow> row, hybridse::sdk::Status* status) override;
 
     std::shared_ptr<TableReader> GetTableReader() override;

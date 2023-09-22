@@ -39,7 +39,7 @@ typedef std::shared_ptr<std::map<uint32_t, std::shared_ptr<::hybridse::node::Con
 // used in java to build InsertPreparedStatementCache
 class DefaultValueContainer {
  public:
-    DefaultValueContainer(const DefaultValueMap& default_map) : default_map_(default_map) {}
+    explicit DefaultValueContainer(const DefaultValueMap& default_map) : default_map_(default_map) {}
 
     std::vector<uint32_t> GetAllPosition() {
         std::vector<uint32_t> vec;
@@ -96,6 +96,7 @@ class DefaultValueContainer {
     std::string GetString(int idx) {
         return default_map_->at(idx)->GetStr();
     }
+
  private:
     DefaultValueMap default_map_;
 };

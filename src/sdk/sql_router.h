@@ -110,6 +110,10 @@ class SQLRouter {
     virtual bool ExecuteInsert(const std::string& db, const std::string& sql,
                                std::shared_ptr<openmldb::sdk::SQLInsertRows> row, hybridse::sdk::Status* status) = 0;
 
+    virtual bool ExecuteInsert(const std::string& db, const std::string& name, int tid, int partition_num,
+                hybridse::sdk::ByteArrayPtr dimension, int dimension_len,
+                hybridse::sdk::ByteArrayPtr value, int len, hybridse::sdk::Status* status) = 0;
+
     virtual bool ExecuteDelete(std::shared_ptr<openmldb::sdk::SQLDeleteRow> row, hybridse::sdk::Status* status) = 0;
 
     virtual std::shared_ptr<openmldb::sdk::TableReader> GetTableReader() = 0;
