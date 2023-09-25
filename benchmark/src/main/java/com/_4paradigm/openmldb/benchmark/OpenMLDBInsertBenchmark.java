@@ -13,10 +13,10 @@ import java.util.concurrent.TimeUnit;
 @BenchmarkMode(Mode.SampleTime)
 @OutputTimeUnit(TimeUnit.MICROSECONDS)
 @State(Scope.Benchmark)
-@Threads(1)
+@Threads(10)
 @Fork(value = 1, jvmArgs = {"-Xms8G", "-Xmx8G"})
-@Warmup(iterations = 1)
-@Measurement(iterations = 1, time = 30)
+@Warmup(iterations = 2)
+@Measurement(iterations = 5, time = 60)
 
 public class OpenMLDBPutBenchmark {
     private SqlExecutor executor;
