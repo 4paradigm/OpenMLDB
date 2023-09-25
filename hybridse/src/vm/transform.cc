@@ -21,6 +21,7 @@
 #include <unordered_map>
 
 #include "absl/cleanup/cleanup.h"
+#include "base/fe_status.h"
 #include "codegen/context.h"
 #include "codegen/fn_ir_builder.h"
 #include "codegen/fn_let_ir_builder.h"
@@ -38,6 +39,7 @@
 #include "passes/physical/transform_up_physical_pass.h"
 #include "passes/physical/window_column_pruning.h"
 #include "plan/planner.h"
+#include "proto/fe_common.pb.h"
 #include "vm/physical_op.h"
 #include "vm/schemas_context.h"
 #include "vm/internal/node_helper.h"
@@ -822,6 +824,7 @@ Status RequestModeTransformer::OptimizeSimpleProjectAsWindowProducer(PhysicalSim
     return Status::OK();
 }
 
+// From window (t1 last join t2 [ last join t3]...)
 // Optimize
 //   RequestJoin(Request(left_table), DataSource(right_table))
 // ->
@@ -1603,11 +1606,8 @@ bool BatchModeTransformer::isSourceFromTableOrPartition(PhysicalOpNode* in) {
         kPhysicalOpFilter == in->GetOpType()) {
         return isSourceFromTableOrPartition(in->GetProducer(0));
     } else if (kPhysicalOpDataProvider == in->GetOpType()) {
-        return kProviderTypePartition ==
-                   dynamic_cast<PhysicalDataProviderNode*>(in)
-                       ->provider_type_ ||
-               kProviderTypeTable ==
-                   dynamic_cast<PhysicalDataProviderNode*>(in)->provider_type_;
+        return kProviderTypePartition == dynamic_cast<PhysicalDataProviderNode*>(in)->provider_type_ ||
+               kProviderTypeTable == dynamic_cast<PhysicalDataProviderNode*>(in)->provider_type_;
     }
     return false;
 }
@@ -1654,11 +1654,9 @@ Status BatchModeTransformer::ValidatePartitionDataProvider(PhysicalOpNode* in) {
         CHECK_STATUS(ValidatePartitionDataProvider(in->GetProducer(0)));
         CHECK_STATUS(ValidatePartitionDataProvider(in->GetProducer(1)));
     } else {
-        CHECK_TRUE(
-            kPhysicalOpDataProvider == in->GetOpType() &&
-                kProviderTypePartition ==
-                    dynamic_cast<PhysicalDataProviderNode*>(in)->provider_type_,
-            kPlanError, "Isn't partition provider:", in->GetTreeString());
+        CHECK_TRUE(kPhysicalOpDataProvider == in->GetOpType() &&
+                       kProviderTypePartition == dynamic_cast<PhysicalDataProviderNode*>(in)->provider_type_,
+                   kPlanError, "Isn't partition provider:", in->GetTreeString());
     }
     return Status::OK();
 }
@@ -2424,16 +2422,32 @@ Status RequestModeTransformer::TransformScanOp(const node::TablePlanNode* node,
 }
 Status RequestModeTransformer::ValidateRequestTable(
     PhysicalOpNode* in, PhysicalOpNode** request_table) {
-    CHECK_TRUE(in != NULL, kPlanError, "NULL Physical Node");
+    auto req = ExtractRequestNode(in);
+    CHECK_TRUE(req.ok(), kPlanError, req.status());
+    CHECK_TRUE(req.value() != nullptr, kPlanError, "no request node found");
+
+    *request_table = req.value();
+    return Status::OK();
+}
+
+absl::StatusOr<PhysicalOpNode*> RequestModeTransformer::ExtractRequestNode(PhysicalOpNode* in) {
+    if (in == nullptr) {
+        return absl::InvalidArgumentError("null input node");
+    }
 
     switch (in->GetOpType()) {
         case vm::kPhysicalOpDataProvider: {
-            CHECK_TRUE(kProviderTypeRequest == dynamic_cast<PhysicalDataProviderNode*>(in)->provider_type_, kPlanError,
-                       "Expect a request table but a ",
-                       vm::DataProviderTypeName(dynamic_cast<PhysicalDataProviderNode*>(in)->provider_type_), " ",
-                       in->GetTreeString())
-            *request_table = in;
-            return Status::OK();
+            auto tp = dynamic_cast<PhysicalDataProviderNode*>(in)->provider_type_;
+            if (tp == kProviderTypeRequest) {
+                return in;
+            }
+
+            if (tp == kProviderTypePartition) {
+                return nullptr;
+            }
+
+            return absl::NotFoundError(
+                absl::StrCat("un-optimized data provider node not suitable for online: ", in->GetTreeString()));
         }
         case vm::kPhysicalOpJoin:
         case vm::kPhysicalOpUnion:
@@ -2441,45 +2455,41 @@ Status RequestModeTransformer::ValidateRequestTable(
         case vm::kPhysicalOpRequestUnion:
         case vm::kPhysicalOpRequestAggUnion:
         case vm::kPhysicalOpRequestJoin: {
-            vm::PhysicalOpNode* left_primary_source = nullptr;
-            CHECK_STATUS(ValidateRequestTable(in->GetProducer(0), &left_primary_source))
-            CHECK_TRUE(
-                nullptr != left_primary_source, kPlanError,
-                "Fail to infer a request table")
-            // Case 1:
-            // binary_node
-            //    + Left - PrimarySource
-            //    + Right - TableProvider
-            if (isSourceFromTableOrPartition(in->GetProducer(1))) {
-                *request_table = left_primary_source;
-                return Status::OK();
+            auto left = ExtractRequestNode(in->GetProducer(0));
+            if (!left.ok()) {
+                return left;
+            }
+            auto right = ExtractRequestNode(in->GetProducer(1));
+            if (!right.ok()) {
+                return right;
             }
 
-            vm::PhysicalOpNode* right_primary_source = nullptr;
-            CHECK_STATUS(ValidateRequestTable(in->GetProducer(1), &right_primary_source))
-            CHECK_TRUE(
-                nullptr != right_primary_source, kPlanError,
-                "Fail to infer a request table")
-            // Case 2:
-            // binary_node
-            //      + Left <-- SamePrimarySource1
-            //      + Right <-- SamePrimarySource1
-            CHECK_TRUE(left_primary_source->Equals(right_primary_source), kPlanError,
-                       "left path and right path has different request table")
-            *request_table = left_primary_source;
-            return Status::OK();
-        }
-        case vm::kPhysicalOpConstProject: {
-            break;
+            if (left.value() != nullptr && right.value() != nullptr) {
+                if (!left.value()->Equals(right.value())) {
+                    return absl::NotFoundError(
+                        absl::StrCat("different request table from left and right path:\n", in->GetTreeString()));
+                }
+            }
+
+            return left.value();
         }
         default: {
-            CHECK_TRUE(in->GetProducerCnt() == 1, kPlanError,
-                       "Non-support Op ", PhysicalOpTypeName(in->GetOpType()))
-            CHECK_STATUS(ValidateRequestTable(in->GetProducer(0), request_table));
-            return Status::OK();
+            break;
         }
     }
-    return Status::OK();
+
+    if (in->GetProducerCnt() == 0) {
+        // leaf node excepting DataProdiverNode
+        // consider ok as right source of one of the supported binary op
+        return nullptr;
+    }
+
+    if (in->GetProducerCnt() > 1) {
+        return absl::UnimplementedError(
+            absl::StrCat("Non-support op with more than one producer:\n", in->GetTreeString()));
+    }
+
+    return ExtractRequestNode(in->GetProducer(0));
 }
 
 // transform a single `ProjectListNode` of `ProjectPlanNode`

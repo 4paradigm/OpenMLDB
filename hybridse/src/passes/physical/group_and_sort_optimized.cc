@@ -25,6 +25,7 @@
 #include <vector>
 
 #include "absl/strings/string_view.h"
+#include "passes/expression/expr_pass.h"
 #include "vm/physical_op.h"
 
 namespace hybridse {
@@ -47,9 +48,44 @@ using hybridse::vm::PhysicalSimpleProjectNode;
 using hybridse::vm::PhysicalWindowAggrerationNode;
 using hybridse::vm::ProjectType;
 
-static bool ResolveColumnToSourceColumnName(const node::ColumnRefNode* col,
-                                            const SchemasContext* schemas_ctx,
+static bool ResolveColumnToSourceColumnName(const node::ColumnRefNode* col, const SchemasContext* schemas_ctx,
                                             std::string* source_name);
+
+// ExprNode may be resolving under differenet SchemasContext later (say one of its descendants context),
+// with column name etc may not able to resvole since a column rename may happen in SimpleProject node.
+// With the column id hint written to corresponding ColumnRefNode earlier, resolving issue can be mitigated.
+static void BuildExprHint(node::ExprNode* node, const SchemasContext* sc) {
+    if (node == nullptr) {
+        return;
+    }
+
+    switch (node->GetExprType()) {
+        case node::kExprColumnRef: {
+            auto ref = dynamic_cast<node::ColumnRefNode*>(node);
+
+            if (ref->column_id_hint().has_value()) {
+                break;
+            }
+
+            size_t sc_idx = 0, col_idx = 0;
+            auto s = sc->ResolveColumnRefIndex(ref, &sc_idx, &col_idx);
+            if (s.isOK()) {
+                break;
+            }
+
+            auto column_id = sc->GetSchemaSource(sc_idx)->GetColumnID(col_idx);
+
+            ref->set_column_id_hint(column_id);
+            break;
+        }
+        default:
+            break;
+    }
+
+    for (uint32_t i = 0; i < node->GetChildNum(); ++i) {
+        BuildExprHint(node->GetChild(i), sc);
+    }
+}
 
 bool GroupAndSortOptimized::Transform(PhysicalOpNode* in,
                                       PhysicalOpNode** output) {
@@ -266,6 +302,14 @@ bool GroupAndSortOptimized::KeysOptimized(const SchemasContext* root_schemas_ctx
         return false;
     }
 
+    BuildExprHint(left_key->mut_keys(), root_schemas_ctx);
+    BuildExprHint(index_key->mut_keys(), root_schemas_ctx);
+    if (right_key != nullptr) {
+        BuildExprHint(right_key->mut_keys(), root_schemas_ctx);
+    }
+    if (sort != nullptr) {
+        BuildExprHint(sort->mut_orders(), root_schemas_ctx);
+    }
 
     if (PhysicalOpType::kPhysicalOpDataProvider == in->GetOpType()) {
         auto scan_op = dynamic_cast<PhysicalDataProviderNode*>(in);
@@ -438,16 +482,36 @@ bool GroupAndSortOptimized::KeysOptimized(const SchemasContext* root_schemas_ctx
         // try optimze left source of request join with window definition
         // window partition by and order by columns must refer to the left most table only
         PhysicalOpNode* new_depend = nullptr;
-        if (!KeysOptimized(request_join->GetProducer(0)->schemas_ctx(), request_join->GetProducer(0), left_key,
-                           index_key, right_key, sort, &new_depend)) {
+        auto* rebase_sc = request_join->GetProducer(0)->schemas_ctx();
+        if (!KeysOptimized(rebase_sc, request_join->GetProducer(0), left_key, index_key, right_key, sort,
+                           &new_depend)) {
             return false;
         }
         PhysicalRequestJoinNode* new_join = nullptr;
         auto s = plan_ctx_->CreateOp<PhysicalRequestJoinNode>(&new_join, new_depend, request_join->GetProducer(1),
-                                                                  request_join->join(),
-                                                                  request_join->output_right_only());
+                                                              request_join->join(), request_join->output_right_only());
         if (!s.isOK()) {
             LOG(WARNING) << "Fail to create new request join op: " << s;
+            return false;
+        }
+
+        *new_in = new_join;
+        return true;
+    } else if (PhysicalOpType::kPhysicalOpJoin == in->GetOpType()) {
+        auto* join = dynamic_cast<PhysicalJoinNode*>(in);
+        // try optimze left source of request join with window definition
+        // window partition by and order by columns must refer to the left most table only
+        PhysicalOpNode* new_depend = nullptr;
+        auto* rebase_sc = in->GetProducer(0)->schemas_ctx();
+        if (!KeysOptimized(rebase_sc, in->GetProducer(0), left_key, index_key, right_key, sort,
+                           &new_depend)) {
+            return false;
+        }
+        PhysicalJoinNode* new_join = nullptr;
+        auto s = plan_ctx_->CreateOp<PhysicalJoinNode>(&new_join, new_depend, join->GetProducer(1),
+                                                       join->join(), join->output_right_only());
+        if (!s.isOK()) {
+            LOG(WARNING) << "Fail to create new join op: " << s;
             return false;
         }
 
@@ -520,39 +584,6 @@ bool GroupAndSortOptimized::KeyAndOrderOptimized(
     Key mock_key;
     return KeysAndOrderFilterOptimized(root_schemas_ctx, in, group, &mock_key,
                                        sort, new_in);
-}
-
-bool GroupAndSortOptimized::SortOptimized(
-    const SchemasContext* root_schemas_ctx, PhysicalOpNode* in, Sort* sort) {
-    if (nullptr == sort) {
-        return false;
-    }
-    if (PhysicalOpType::kPhysicalOpDataProvider == in->GetOpType()) {
-        auto scan_op = dynamic_cast<PhysicalDataProviderNode*>(in);
-        if (DataProviderType::kProviderTypePartition !=
-            scan_op->provider_type_) {
-            return false;
-        }
-        auto partition_provider =
-            dynamic_cast<PhysicalPartitionProviderNode*>(scan_op);
-        const node::OrderByNode* new_orders = nullptr;
-
-        auto& index_hint = partition_provider->table_handler_->GetIndex();
-        std::string index_name = partition_provider->index_name_;
-        auto index_st = index_hint.at(index_name);
-        TransformOrderExpr(root_schemas_ctx, sort->orders(),
-                           *(scan_op->table_handler_->GetSchema()), index_st,
-                           &new_orders);
-        sort->set_orders(new_orders);
-        return true;
-    } else if (PhysicalOpType::kPhysicalOpSimpleProject == in->GetOpType()) {
-        auto simple_project = dynamic_cast<PhysicalSimpleProjectNode*>(in);
-        return SortOptimized(root_schemas_ctx, simple_project->producers()[0],
-                             sort);
-    } else if (PhysicalOpType::kPhysicalOpRename == in->GetOpType()) {
-        return SortOptimized(root_schemas_ctx, in->producers()[0], sort);
-    }
-    return false;
 }
 
 bool GroupAndSortOptimized::TransformKeysAndOrderExpr(const SchemasContext* root_schemas_ctx,
@@ -806,15 +837,24 @@ bool GroupAndSortOptimized::TransformOrderExpr(
 static bool ResolveColumnToSourceColumnName(const node::ColumnRefNode* col,
                                             const SchemasContext* schemas_ctx,
                                             std::string* source_name) {
-    // use detailed column resolve utility
+    auto db = col->GetDBName();
+    auto rel = col->GetRelationName();
+    auto col_name = col->GetColumnName();
+    if (col->column_id_hint().has_value()) {
+        // prefer id hint over column names
+        // since the ColumnRefNode might comes from ancestors of the SchemasContext
+        auto s = schemas_ctx->ResolveDbTableColumnByID(col->column_id_hint().value(), &db, &rel, &col_name);
+        if (!s.isOK()) {
+            return false;
+        }
+    }
     size_t column_id;
     int path_idx;
     size_t child_column_id;
     size_t source_column_id;
     const PhysicalOpNode* source;
-    Status status = schemas_ctx->ResolveColumnID(col->GetDBName(),
-        col->GetRelationName(), col->GetColumnName(), &column_id, &path_idx,
-        &child_column_id, &source_column_id, &source);
+    Status status = schemas_ctx->ResolveColumnID(db, rel, col_name, &column_id, &path_idx, &child_column_id,
+                                                 &source_column_id, &source);
 
     // try loose the relation
     if (!status.isOK() && !col->GetRelationName().empty()) {

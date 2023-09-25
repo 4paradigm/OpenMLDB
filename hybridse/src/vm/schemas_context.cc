@@ -383,6 +383,7 @@ Status DoSearchExprDependentColumns(const node::ExprNode* expr, std::vector<cons
             break;
         }
         case node::kExprBetween: {
+            // TODO:WHY ? no need
             std::vector<node::ExprNode*> expr_list;
             auto between_expr = dynamic_cast<const node::BetweenExpr*>(expr);
             CHECK_STATUS(DoSearchExprDependentColumns(between_expr->GetLow(),

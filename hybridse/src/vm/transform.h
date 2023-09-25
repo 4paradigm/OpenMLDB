@@ -319,7 +319,15 @@ class RequestModeTransformer : public BatchModeTransformer {
 
     absl::StatusOr<PhysicalOpNode*> ResolveCTERef(absl::string_view tb_name) override;
 
+    // Valid the final optimized PhysicalOpNode, has one and only one request table
     Status ValidateRequestTable(PhysicalOpNode* in, PhysicalOpNode** request_table);
+
+    // Extract request node of the node tree
+    // returns
+    // - Request node on success
+    // - NULL if tree do not has request table but sufficient as as input tree of the big one
+    // - Error status otherwise
+    static absl::StatusOr<PhysicalOpNode*> ExtractRequestNode(PhysicalOpNode* in);
 
  private:
     // Optimize simple project node which is the producer of window project

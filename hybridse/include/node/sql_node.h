@@ -476,9 +476,10 @@ class ExprNode : public SqlNode {
     virtual bool IsListReturn(ExprAnalysisContext *ctx) const { return false; }
 
     /**
-     * Default expression node deep copy implementation
+     * Returns new ExprNode with all of fields copyed, excepting descendants ExprNodes.
      */
     virtual ExprNode *ShadowCopy(NodeManager *) const = 0;
+
     ExprNode *DeepCopy(NodeManager *) const override;
 
     // Get the compatible type that lhs and rhs can both casted into
@@ -597,8 +598,10 @@ class OrderExpression : public ExprNode {
 };
 class OrderByNode : public ExprNode {
  public:
-    explicit OrderByNode(const ExprListNode *order_expressions)
-        : ExprNode(kExprOrder), order_expressions_(order_expressions) {}
+    explicit OrderByNode(ExprListNode *order_expressions)
+        : ExprNode(kExprOrder), order_expressions_(order_expressions) {
+        AddChild(order_expressions);
+    }
     ~OrderByNode() {}
 
     void Print(std::ostream &output, const std::string &org_tab) const;
@@ -623,7 +626,7 @@ class OrderByNode : public ExprNode {
         return order_expression->expr();
     }
     bool is_asc() const { return false; }
-    const ExprListNode *order_expressions_;
+    ExprListNode *order_expressions_;
 };
 class TableRefNode : public SqlNode {
  public:
@@ -1657,10 +1660,21 @@ class ColumnRefNode : public ExprNode {
 
     bool IsListReturn(ExprAnalysisContext *ctx) const override { return true; }
 
+    auto column_id_hint() const { return column_id_hint_; }
+    void set_column_id_hint(size_t hint) { column_id_hint_ = hint; }
+
  private:
     std::string column_name_;
     std::string relation_name_;
     std::string db_name_;
+
+    // Due to impl limitation, ColumnRefNode may be resoloving in a SchemasContext that
+    // may not able to correctly resolve it, e.g the node is resolving in the SchemasContext
+    // of one descendants from corrent node.
+    //
+    // This column id hint, if set, is preferred to resolve desired column.
+    // It fallbacks if not set
+    std::optional<size_t> column_id_hint_;
 };
 
 class ColumnIdNode : public ExprNode {

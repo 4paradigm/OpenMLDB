@@ -127,10 +127,6 @@ class SchemasContext {
     base::Status ResolveColumnRefIndex(const node::ColumnRefNode* column_ref,
                                        size_t* schema_idx,
                                        size_t* col_idx) const;
-    /**
-     * Resolve column id with given column expression [ColumnRefNode, ColumnId]
-     */
-    base::Status ResolveColumnID(const node::ExprNode* column, size_t* column_id) const;
 
     /**
      * Given relation name and column name, return column unique id

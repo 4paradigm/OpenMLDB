@@ -15,7 +15,7 @@
 cases:
   - id: 0
     desc: LAST JOIN 右表未命中索引
-    mode: rtidb-unsupport
+    mode: request-unsupport
     sql: |
       SELECT t1.col1 as id, t1.col0 as t1_col0, t1.col1 + t2.col1 + 1 as test_col1, t1.col2 as t1_col2, str1 FROM t1
       last join t2 order by t2.col5 on t1.col1=t2.col1 and t1.col5 = t2.col5;
@@ -335,8 +335,6 @@ cases:
         5, 2, 1590115423900
 
   - id: 10
-    desc: 右表没有匹配[FEX-903]
-    mode: offline-unsupport
     inputs:
       - name: t1
         columns: ["c1 string","c2 int","c3 bigint","c4 timestamp"]
@@ -361,3 +359,71 @@ cases:
         - ["aa",2,13,1590738989000]
         - ["bb",21,131,1590738990000]
         - ["cc",41,null,null]
+
+  ####################################################################################################
+  #  LAZY LAST JOINs
+  ####################################################################################################
+  - id: 11
+    # t1------>(t2------->t3)
+    # │         └-(t3.c1)-┘
+    # └--(t2.c1)-┘
+    # Easiest path, t1 finally joins t2's column
+    inputs:
+      - name: t1
+        columns: ["c1 string","c2 int","c4 timestamp"]
+        indexs: ["index1:c1:c4"]
+        rows:
+          - ["aa",2,1590738989000]
+          - ["bb",3,1590738990000]
+          - ["cc",4,1590738991000]
+      - name: t2
+        columns: ["c1 string","c4 timestamp"]
+        indexs: ["index1:c1:c4"]
+        rows:
+          - ["aa",1590738989000]
+          - ["bb",1590738990000]
+          - ["dd",1590738991000]
+      - name: t3
+        columns: ["c1 string","c2 int","c3 bigint","c4 timestamp"]
+        indexs: ["index1:c1:c4"]
+        rows:
+          - ["aa",2,13,1590738989000]
+          - ["cc",21,131,1590738990000]
+          - ["dd",41,151,1590738991000]
+    sql: |
+      select t1.c1, t1.c2, tx.c1 as c1l, c1r, c2r
+      from t1 last join (
+        select t2.*, t3.c1 as c1r, t3.c2 as c2r
+        from t2 last join t3 on t2.c1 = t3.c1
+      ) tx
+      on t1.c1 = tx.c1
+    request_plan: |
+      SIMPLE_PROJECT(sources=(t1.c1, t1.c2, tx.c1 -> c1l, c1r, c2r))
+        REQUEST_JOIN(type=LastJoin, condition=, left_keys=(), right_keys=(), index_keys=(t1.c1))
+          DATA_PROVIDER(request=t1)
+          RENAME(name=tx)
+            SIMPLE_PROJECT(sources=(t2.c1, t2.c4, t3.c1 -> c1r, t3.c2 -> c2r))
+              REQUEST_JOIN(type=LastJoin, condition=, left_keys=(), right_keys=(), index_keys=(t2.c1))
+                DATA_PROVIDER(type=Partition, table=t2, index=index1)
+                DATA_PROVIDER(type=Partition, table=t3, index=index1)
+    batch_plan: |
+      SIMPLE_PROJECT(sources=(t1.c1, t1.c2, tx.c1 -> c1l, c1r, c2r))
+        JOIN(type=LastJoin, condition=, left_keys=(), right_keys=(), index_keys=(t1.c1))
+          DATA_PROVIDER(table=t1)
+          RENAME(name=tx)
+            SIMPLE_PROJECT(sources=(t2.c1, t2.c4, t3.c1 -> c1r, t3.c2 -> c2r))
+              JOIN(type=LastJoin, condition=, left_keys=(), right_keys=(), index_keys=(t2.c1))
+                DATA_PROVIDER(type=Partition, table=t2, index=index1)
+                DATA_PROVIDER(type=Partition, table=t3, index=index1)
+    expect:
+      order: c1
+      columns:
+        - c1 string
+        - c2 int
+        - c1l string
+        - c1r string
+        - c2r int
+      data: |
+        aa, 2, aa, aa, 2
+        bb, 3, bb, NULL, NULL
+        cc, 4, NULL, NULL, NULL

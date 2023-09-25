@@ -115,8 +115,7 @@ class GroupAndSortOptimized : public TransformUpPysicalPass {
     bool GroupOptimized(const SchemasContext* root_schemas_ctx,
                         PhysicalOpNode* in, Key* group,
                         PhysicalOpNode** new_in);
-    bool SortOptimized(const SchemasContext* root_schemas_ctx,
-                       PhysicalOpNode* in, Sort* sort);
+
     bool TransformOrderExpr(const SchemasContext* schemas_ctx,
                             const node::OrderByNode* order,
                             const Schema& schema, const IndexSt& index_st,

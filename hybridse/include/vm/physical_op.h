@@ -155,8 +155,11 @@ class Sort : public FnComponent {
  public:
     explicit Sort(const node::OrderByNode *orders) : orders_(orders) {}
     virtual ~Sort() {}
+
+    auto mut_orders() const { return const_cast<node::OrderByNode *>(orders_); }
     const node::OrderByNode *orders() const { return orders_; }
     void set_orders(const node::OrderByNode *orders) { orders_ = orders; }
+
     const bool is_asc() const {
         const node::OrderExpression *first_order_expression =
             nullptr == orders_ ? nullptr : orders_->GetOrderExpression(0);
@@ -286,8 +289,11 @@ class Key : public FnComponent {
         return oss.str();
     }
     const bool ValidKey() const { return !node::ExprListNullOrEmpty(keys_); }
+
     const node::ExprListNode *keys() const { return keys_; }
+    node::ExprListNode *mut_keys() const { return const_cast<node::ExprListNode *>(keys_); }
     void set_keys(const node::ExprListNode *keys) { keys_ = keys; }
+
     const node::ExprListNode *PhysicalProjectNode() const { return keys_; }
     const std::string FnDetail() const { return "keys=" + fn_info_.fn_name(); }
 
