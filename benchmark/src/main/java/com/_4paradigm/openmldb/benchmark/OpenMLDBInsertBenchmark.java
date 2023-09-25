@@ -18,7 +18,7 @@ import java.util.concurrent.TimeUnit;
 @Warmup(iterations = 2)
 @Measurement(iterations = 5, time = 60)
 
-public class OpenMLDBPutBenchmark {
+public class OpenMLDBInsertBenchmark {
     private SqlExecutor executor;
     private String database = "test_put_db";
     private String tableName = "test_put_t1";
@@ -30,7 +30,7 @@ public class OpenMLDBPutBenchmark {
     int timestampNum = 5;
     int bigintNum = 5;
 
-    public OpenMLDBPutBenchmark() {
+    public OpenMLDBInsertBenchmark() {
         executor = BenchmarkConfig.GetSqlExecutor(false);
         indexNum = BenchmarkConfig.WINDOW_NUM;
         random = new Random();
@@ -67,12 +67,12 @@ public class OpenMLDBPutBenchmark {
                     if (i < indexNum) {
                         pstmt.setString(idx, String.valueOf(BenchmarkConfig.PK_BASE + random.nextInt(BenchmarkConfig.PK_NUM)));
                     } else {
-                        pstmt.setString(idx, "aabbcc");
+                        pstmt.setString(idx, "v" + String.valueOf(100000 + random.nextInt(100000)));
                     }
                     idx++;
                 }
                 for (int i = 0; i < doubleNum; i++) {
-                    pstmt.setDouble(idx, 1.4f);
+                    pstmt.setDouble(idx, random.nextDouble());
                     idx++;
                 }
                 for (int i = 0; i < timestampNum; i++) {
@@ -80,7 +80,7 @@ public class OpenMLDBPutBenchmark {
                     idx++;
                 }
                 for (int i = 0; i < bigintNum; i++) {
-                    pstmt.setLong(idx, System.currentTimeMillis());
+                    pstmt.setLong(idx, random.nextLong());
                     idx++;
                 }
                 if (BenchmarkConfig.PUT_BACH_SIZE > 1) {
@@ -120,7 +120,7 @@ public class OpenMLDBPutBenchmark {
 
         try {
             Options opt = new OptionsBuilder()
-                    .include(OpenMLDBPutBenchmark.class.getSimpleName())
+                    .include(OpenMLDBInsertBenchmark.class.getSimpleName())
                     .forks(1)
                     .build();
             new Runner(opt).run();
