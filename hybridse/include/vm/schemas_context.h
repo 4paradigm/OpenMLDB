@@ -58,7 +58,8 @@ class SchemaSource {
     size_t size() const;
     void Clear();
 
-    std::string ToString() const;
+    std::string DebugString() const;
+    friend std::ostream& operator<<(std::ostream& os, const SchemaSource& sc) { return os << sc.DebugString(); }
 
  private:
     bool CheckSourceSetIndex(size_t idx) const;
@@ -245,6 +246,10 @@ class SchemasContext {
      */
     void BuildTrivial(const std::vector<const codec::Schema*>& schemas);
     void BuildTrivial(const std::string& default_db, const std::vector<const type::TableDef*>& tables);
+
+    std::string DebugString() const;
+
+    friend std::ostream& operator<<(std::ostream& os, const SchemasContext& sc) { return os << sc.DebugString(); }
 
  private:
     bool IsColumnAmbiguous(const std::string& column_name) const;
