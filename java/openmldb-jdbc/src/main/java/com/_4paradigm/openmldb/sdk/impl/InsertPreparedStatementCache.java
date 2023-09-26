@@ -1,219 +1,77 @@
 package com._4paradigm.openmldb.sdk.impl;
 
-import com._4paradigm.openmldb.SQLInsertRow;
-import com._4paradigm.openmldb.DefaultValueContainer;
-import com._4paradigm.openmldb.VectorUint32;
-import com._4paradigm.openmldb.common.codec.CodecMetaData;
-import com._4paradigm.openmldb.common.codec.CodecUtil;
+import com._4paradigm.openmldb.common.zk.ZKClient;
 import com._4paradigm.openmldb.proto.NS;
-import com._4paradigm.openmldb.sdk.Common;
-import com._4paradigm.openmldb.sdk.Schema;
+import com._4paradigm.openmldb.sdk.SqlException;
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
+import org.apache.curator.framework.recipes.cache.NodeCache;
+import org.apache.curator.framework.recipes.cache.NodeCacheListener;
 
-import java.sql.SQLException;
-import java.sql.Timestamp;
-import java.sql.Types;
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 
 public class InsertPreparedStatementCache {
+    static final int CACHE_SIZE = 100000;
+    static final int EXPIRE_TIME = 1000 * 60;  // 1 minute
 
-    public static String NONETOKEN = "!N@U#L$L%";
-    public static String EMPTY_STRING = "!@#$%";
+    private Cache<AbstractMap.SimpleImmutableEntry<String, String>, InsertPreparedStatementMeta> cache;
 
-    private String sql;
-    private String db;
-    private String name;
-    private int tid;
-    private int partitionNum;
-    private Schema schema;
-    private CodecMetaData codecMetaData;
-    private Map<Integer, Object> defaultValue = new HashMap<>();
-    private List<Integer> holeIdx = new ArrayList<>();
-    private Set<Integer> indexPos = new HashSet<>();
-    private Map<Integer, List<Integer>> indexMap = new HashMap<>();
-    private Map<Integer, String> defaultIndexValue = new HashMap<>();
+    private ZKClient zkClient;
+    private NodeCache nodeCache;
+    private String tablePath;
 
-    public InsertPreparedStatementCache(String sql, SQLInsertRow insertRow) {
-        this.sql = sql;
-        NS.TableInfo tableInfo = insertRow.GetTableInfo();
-        try {
-            schema = Common.convertSchema(tableInfo.getColumnDescList());
-            codecMetaData = new CodecMetaData(tableInfo.getColumnDescList(), false);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        db = tableInfo.getDb();
-        name = tableInfo.getName();
-        tid = tableInfo.getTid();
-        partitionNum = tableInfo.getTablePartitionCount();
-        buildIndex(tableInfo);
-        DefaultValueContainer value = insertRow.GetDefaultValue();
-        buildDefaultValue(value);
-        value.delete();
-        VectorUint32 idxArray = insertRow.GetHoleIdx();
-        buildHoleIdx(idxArray);
-        idxArray.delete();
-    }
-
-    private void buildIndex(NS.TableInfo tableInfo) {
-        Map<String, Integer> nameIdxMap = new HashMap<>();
-        for (int i = 0; i < schema.size(); i++) {
-            nameIdxMap.put(schema.getColumnName(i), i);
-        }
-        for (int i = 0; i < tableInfo.getColumnKeyList().size(); i++) {
-            com._4paradigm.openmldb.proto.Common.ColumnKey columnKey = tableInfo.getColumnKeyList().get(i);
-            List<Integer> colList = new ArrayList<>(columnKey.getColNameCount());
-            for (String name : columnKey.getColNameList()) {
-                colList.add(nameIdxMap.get(name));
-                indexPos.add(nameIdxMap.get(name));
-            }
-            indexMap.put(i, colList);
-        }
-    }
-
-    private void buildHoleIdx(VectorUint32 idxArray) {
-        int size = idxArray.size();
-        for (int i = 0; i < size; i++) {
-            holeIdx.add(idxArray.get(i).intValue());
-        }
-    }
-
-    private void buildDefaultValue(DefaultValueContainer valueContainer) {
-        VectorUint32 defaultPos = valueContainer.GetAllPosition();
-        int size = defaultPos.size();
-        for (int i = 0; i < size; i++) {
-            int schemaIdx = defaultPos.get(i).intValue();
-            boolean isIndexVal = indexPos.contains(schemaIdx);
-            if (valueContainer.IsNull(schemaIdx)) {
-                defaultValue.put(schemaIdx, null);
-                if (isIndexVal) {
-                    defaultIndexValue.put(schemaIdx, NONETOKEN);
-                }
-            } else {
-                switch (schema.getColumnType(schemaIdx)) {
-                    case Types.BOOLEAN: {
-                        boolean val = valueContainer.GetBool(schemaIdx);
-                        defaultValue.put(schemaIdx, val);
-                        if (isIndexVal) {
-                            defaultIndexValue.put(schemaIdx, String.valueOf(val));
-                        }
-                        break;
+    public InsertPreparedStatementCache(ZKClient zkClient) throws SqlException {
+        cache = Caffeine.newBuilder().maximumSize(CACHE_SIZE).expireAfterAccess(EXPIRE_TIME, TimeUnit.MILLISECONDS).build();
+        this.zkClient = zkClient;
+        if (zkClient != null) {
+            tablePath = zkClient.getConfig().getNamespace() + "/table/db_table_data";
+            nodeCache = new NodeCache(zkClient.getClient(), zkClient.getConfig().getNamespace() + "/table/notify");
+            try {
+                nodeCache.start();
+                nodeCache.getListenable().addListener(new NodeCacheListener() {
+                    @Override
+                    public void nodeChanged() throws Exception {
+                        checkAndInvalid();
                     }
-                    case Types.SMALLINT: {
-                        short val = valueContainer.GetSmallInt(schemaIdx);
-                        defaultValue.put(schemaIdx, val);
-                        if (isIndexVal) {
-                            defaultIndexValue.put(schemaIdx, String.valueOf(val));
-                        }
-                        break;
-                    }
-                    case Types.INTEGER: {
-                        int val = valueContainer.GetInt(schemaIdx);
-                        defaultValue.put(schemaIdx, val);
-                        if (isIndexVal) {
-                            defaultIndexValue.put(schemaIdx, String.valueOf(val));
-                        }
-                        break;
-                    }
-                    case Types.BIGINT: {
-                        long val = valueContainer.GetBigInt(schemaIdx);
-                        defaultValue.put(schemaIdx, val);
-                        if (isIndexVal) {
-                            defaultIndexValue.put(schemaIdx, String.valueOf(val));
-                        }
-                        break;
-                    }
-                    case Types.FLOAT:
-                        defaultValue.put(schemaIdx, valueContainer.GetFloat(schemaIdx));
-                        break;
-                    case Types.DOUBLE:
-                        defaultValue.put(schemaIdx, valueContainer.GetDouble(schemaIdx));
-                        break;
-                    case Types.DATE: {
-                        int val = valueContainer.GetDate(schemaIdx);
-                        defaultValue.put(schemaIdx, CodecUtil.dateIntToDate(val));
-                        if (isIndexVal) {
-                            defaultIndexValue.put(schemaIdx, String.valueOf(val));
-                        }
-                        break;
-                    }
-                    case Types.TIMESTAMP: {
-                        long val = valueContainer.GetTimeStamp(schemaIdx);
-                        defaultValue.put(schemaIdx, new Timestamp(val));
-                        if (isIndexVal) {
-                            defaultIndexValue.put(schemaIdx, String.valueOf(val));
-                        }
-                        break;
-                    }
-                    case Types.VARCHAR: {
-                        String val = valueContainer.GetString(schemaIdx);
-                        defaultValue.put(schemaIdx, val);
-                        if (isIndexVal) {
-                            if (val.isEmpty()) {
-                                defaultIndexValue.put(schemaIdx, EMPTY_STRING);
-                            } else {
-                                defaultIndexValue.put(schemaIdx, val);
-                            }
-                        }
-                        break;
-                    }
-                }
+                });
+            } catch (Exception e) {
+                throw new SqlException("NodeCache exception: " + e.getMessage());
             }
         }
-        defaultPos.delete();
     }
 
-    public Schema getSchema() {
-        return schema;
+    public InsertPreparedStatementMeta get(String db, String sql) {
+        return cache.getIfPresent(new AbstractMap.SimpleImmutableEntry<>(db, sql));
     }
 
-    public String getDatabase() {
-        return db;
+    public void put(String db, String sql, InsertPreparedStatementMeta meta) {
+        cache.put(new AbstractMap.SimpleImmutableEntry<>(db, sql), meta);
     }
 
-    public String getName() {
-        return name;
-    }
-
-    public int getTid() {
-        return tid;
-    }
-
-    public int getPartitionNum() {
-        return partitionNum;
-    }
-
-    public CodecMetaData getCodecMeta() {
-        return codecMetaData;
-    }
-
-    public Map<Integer, Object> getDefaultValue() {
-        return defaultValue;
-    }
-
-    public String getSql() {
-        return sql;
-    }
-
-    public int getSchemaIdx(int idx) throws SQLException {
-        if (idx >= holeIdx.size()) {
-            throw new SQLException("out of data range");
+    public void checkAndInvalid() throws Exception {
+        if (!zkClient.checkExists(tablePath)) {
+            return;
         }
-        return holeIdx.get(idx);
-    }
-
-    List<Integer> getHoleIdx() {
-        return holeIdx;
-    }
-
-    Set<Integer> getIndexPos() {
-        return indexPos;
-    }
-
-    Map<Integer, List<Integer>> getIndexMap() {
-        return indexMap;
-    }
-
-    Map<Integer, String> getDefaultIndexValue() {
-        return defaultIndexValue;
+        List<String> children = zkClient.getChildren(tablePath);
+        Map<AbstractMap.SimpleImmutableEntry<String, String>, InsertPreparedStatementMeta> view = cache.asMap();
+        Map<AbstractMap.SimpleImmutableEntry<String, String>, Integer> tableMap = new HashMap<>();
+        for (String path : children) {
+            byte[] bytes = zkClient.getClient().getData().forPath(tablePath + "/" + path);
+            NS.TableInfo tableInfo = NS.TableInfo.parseFrom(bytes);
+            tableMap.put(new AbstractMap.SimpleImmutableEntry<>(tableInfo.getDb(), tableInfo.getName()), tableInfo.getTid());
+        }
+        Iterator<Map.Entry<AbstractMap.SimpleImmutableEntry<String, String>, InsertPreparedStatementMeta>> iterator
+                = view.entrySet().iterator();
+        while (iterator.hasNext()) {
+            Map.Entry<AbstractMap.SimpleImmutableEntry<String, String>, InsertPreparedStatementMeta> entry = iterator.next();
+            String db = entry.getKey().getKey();
+            InsertPreparedStatementMeta meta = entry.getValue();
+            String name = meta.getName();
+            Integer tid = tableMap.get(new AbstractMap.SimpleImmutableEntry<>(db, name));
+            if (tid != null && tid != meta.getTid()) {
+                cache.invalidate(entry.getKey());
+            }
+        }
     }
 }

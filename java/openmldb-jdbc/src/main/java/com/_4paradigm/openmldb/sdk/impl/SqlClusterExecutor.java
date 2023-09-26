@@ -63,7 +63,7 @@ public class SqlClusterExecutor implements SqlExecutor {
     private SQLRouter sqlRouter;
     private DeploymentManager deploymentManager;
     private ZKClient zkClient;
-    private Map<String, InsertPreparedStatementCache> cacheMap = new ConcurrentHashMap<>();
+    private InsertPreparedStatementCache insertCache;
 
     public SqlClusterExecutor(SdkOption option, String libraryPath) throws SqlException {
         initJavaSdkLibrary(libraryPath);
@@ -93,6 +93,7 @@ public class SqlClusterExecutor implements SqlExecutor {
             throw new SqlException("fail to create sql executor");
         }
         deploymentManager = new DeploymentManager(zkClient);
+        insertCache = new InsertPreparedStatementCache(zkClient);
     }
 
     public SqlClusterExecutor(SdkOption option) throws SqlException {
@@ -185,8 +186,8 @@ public class SqlClusterExecutor implements SqlExecutor {
 
     @Override
     public PreparedStatement getInsertPreparedStmt(String db, String sql) throws SQLException {
-        InsertPreparedStatementCache cache = cacheMap.get(sql);
-        if (cache == null) {
+        InsertPreparedStatementMeta meta = insertCache.get(db, sql);
+        if (meta == null) {
             Status status = new Status();
             SQLInsertRow row = sqlRouter.GetInsertRow(db, sql, status);
             if (!status.IsOK()) {
@@ -197,11 +198,14 @@ public class SqlClusterExecutor implements SqlExecutor {
                 }
                 throw new SQLException("getSQLInsertRow failed, " + msg);
             }
-            cache = new InsertPreparedStatementCache(sql, row);
+            status.delete();
+            String name = row.GetTableInfo().getName();
+            NS.TableInfo tableInfo = getTableInfo(db, name);
+            meta = new InsertPreparedStatementMeta(sql, tableInfo, row);
             row.delete();
-            cacheMap.putIfAbsent(sql, cache);
+            insertCache.put(db, sql, meta);
         }
-        return new InsertPreparedStatementImpl(cache, this.sqlRouter);
+        return new InsertPreparedStatementImpl(meta, this.sqlRouter);
     }
 
     @Override

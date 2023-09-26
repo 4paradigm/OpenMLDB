@@ -37,7 +37,7 @@ public class InsertPreparedStatementImpl extends PreparedStatement {
 
     private SQLRouter router;
     private FlexibleRowBuilder rowBuilder;
-    private InsertPreparedStatementCache cache;
+    private InsertPreparedStatementMeta cache;
 
     private Set<Integer> indexCol;
     private Map<Integer, List<Integer>> indexMap;
@@ -45,7 +45,7 @@ public class InsertPreparedStatementImpl extends PreparedStatement {
     private Map<Integer, String> defaultIndexValue;
     private List<AbstractMap.SimpleImmutableEntry<ByteBuffer, ByteBuffer>> batchValues;
 
-    public InsertPreparedStatementImpl(InsertPreparedStatementCache cache, SQLRouter router) throws SQLException {
+    public InsertPreparedStatementImpl(InsertPreparedStatementMeta cache, SQLRouter router) throws SQLException {
         this.router = router;
         rowBuilder = new FlexibleRowBuilder(cache.getCodecMeta());
         this.cache = cache;
@@ -86,7 +86,7 @@ public class InsertPreparedStatementImpl extends PreparedStatement {
             throw new SQLException("set null failed. pos is " + i);
         }
         if (indexCol.contains(realIdx)) {
-            indexValue.put(realIdx, InsertPreparedStatementCache.NONETOKEN);
+            indexValue.put(realIdx, InsertPreparedStatementMeta.NONETOKEN);
         }
     }
 
@@ -154,7 +154,7 @@ public class InsertPreparedStatementImpl extends PreparedStatement {
         if (s == null) {
             setNull(realIdx);
             if (indexCol.contains(realIdx)) {
-                indexValue.put(realIdx, InsertPreparedStatementCache.NONETOKEN);
+                indexValue.put(realIdx, InsertPreparedStatementMeta.NONETOKEN);
             }
             return;
         }
@@ -163,7 +163,7 @@ public class InsertPreparedStatementImpl extends PreparedStatement {
         }
         if (indexCol.contains(realIdx)) {
             if (s.isEmpty()) {
-                indexValue.put(realIdx, InsertPreparedStatementCache.EMPTY_STRING);
+                indexValue.put(realIdx, InsertPreparedStatementMeta.EMPTY_STRING);
             } else {
                 indexValue.put(realIdx, s);
             }
@@ -177,7 +177,7 @@ public class InsertPreparedStatementImpl extends PreparedStatement {
             if (date != null) {
                 indexValue.put(realIdx, String.valueOf(CodecUtil.dateToDateInt(date)));
             } else {
-                indexValue.put(realIdx, InsertPreparedStatementCache.NONETOKEN);
+                indexValue.put(realIdx, InsertPreparedStatementMeta.NONETOKEN);
             }
         }
         if (date == null) {
@@ -199,7 +199,7 @@ public class InsertPreparedStatementImpl extends PreparedStatement {
             if (timestamp != null) {
                 indexValue.put(realIdx, String.valueOf(timestamp.getTime()));
             } else {
-                indexValue.put(realIdx, InsertPreparedStatementCache.NONETOKEN);
+                indexValue.put(realIdx, InsertPreparedStatementMeta.NONETOKEN);
             }
         }
         if (timestamp == null) {
