@@ -13,7 +13,6 @@ import java.util.concurrent.TimeUnit;
 
 public class InsertPreparedStatementCache {
     static final int CACHE_SIZE = 100000;
-    static final int EXPIRE_TIME = 1000 * 60;  // 1 minute
 
     private Cache<AbstractMap.SimpleImmutableEntry<String, String>, InsertPreparedStatementMeta> cache;
 
@@ -22,7 +21,7 @@ public class InsertPreparedStatementCache {
     private String tablePath;
 
     public InsertPreparedStatementCache(ZKClient zkClient) throws SqlException {
-        cache = Caffeine.newBuilder().maximumSize(CACHE_SIZE).expireAfterAccess(EXPIRE_TIME, TimeUnit.MILLISECONDS).build();
+        cache = Caffeine.newBuilder().maximumSize(CACHE_SIZE).build();
         this.zkClient = zkClient;
         if (zkClient != null) {
             tablePath = zkClient.getConfig().getNamespace() + "/table/db_table_data";
