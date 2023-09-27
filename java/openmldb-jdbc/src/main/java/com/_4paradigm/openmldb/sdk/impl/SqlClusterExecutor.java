@@ -93,7 +93,7 @@ public class SqlClusterExecutor implements SqlExecutor {
             throw new SqlException("fail to create sql executor");
         }
         deploymentManager = new DeploymentManager(zkClient);
-        insertCache = new InsertPreparedStatementCache(zkClient);
+        insertCache = new InsertPreparedStatementCache(option.getMaxSqlCacheSize(), zkClient);
     }
 
     public SqlClusterExecutor(SdkOption option) throws SqlException {
