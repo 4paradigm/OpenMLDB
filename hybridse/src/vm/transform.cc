@@ -1611,20 +1611,7 @@ bool BatchModeTransformer::isSourceFromTableOrPartition(PhysicalOpNode* in) {
     }
     return false;
 }
-bool BatchModeTransformer::isSourceFromTable(PhysicalOpNode* in) {
-    if (nullptr == in) {
-        DLOG(WARNING) << "Invalid physical node: null";
-        return false;
-    }
-    if (kPhysicalOpSimpleProject == in->GetOpType() ||
-        kPhysicalOpRename == in->GetOpType()) {
-        return isSourceFromTableOrPartition(in->GetProducer(0));
-    } else if (kPhysicalOpDataProvider == in->GetOpType()) {
-        return kProviderTypeTable ==
-               dynamic_cast<PhysicalDataProviderNode*>(in)->provider_type_;
-    }
-    return false;
-}
+
 Status BatchModeTransformer::ValidateTableProvider(PhysicalOpNode* in) {
     CHECK_TRUE(nullptr != in, kPlanError, "Invalid physical node: null");
     CHECK_TRUE(isSourceFromTableOrPartition(in), kPlanError,
@@ -1793,10 +1780,9 @@ Status BatchModeTransformer::ValidatePlanSupported(const PhysicalOpNode* in) {
 //  - ValidateNotAggregationOverTable
 Status RequestModeTransformer::ValidatePlan(PhysicalOpNode* node) {
     CHECK_STATUS(BatchModeTransformer::ValidatePlan(node))
-    PhysicalOpNode* primary_source = nullptr;
 
     // OnlineServing restriction: Expect to infer one and only one request table from given SQL
-    CHECK_STATUS(ValidateRequestTable(node, &primary_source), "Fail to validate physical plan")
+    CHECK_STATUS(ValidateRequestTable(node), "Fail to validate physical plan")
 
     // For Online serving, SQL queries should be designed extremely performance-sensitive to satisfy the real-time
     // requirements. Thus, we need to Validate if the SQL has been optimized well enough
@@ -2420,8 +2406,7 @@ Status RequestModeTransformer::TransformScanOp(const node::TablePlanNode* node,
         return BatchModeTransformer::TransformScanOp(node, output);
     }
 }
-Status RequestModeTransformer::ValidateRequestTable(
-    PhysicalOpNode* in, PhysicalOpNode** request_table) {
+Status RequestModeTransformer::ValidateRequestTable(PhysicalOpNode* in) {
     auto req = ExtractRequestNode(in);
     CHECK_TRUE(req.ok(), kPlanError, req.status());
 
@@ -2429,7 +2414,6 @@ Status RequestModeTransformer::ValidateRequestTable(
     CHECK_STATUS(internal::GetDependentTables(in, &db_tables));
     CHECK_TRUE(req.value() != nullptr || db_tables.empty(), kPlanError, "no request node found");
 
-    *request_table = req.value();
     return Status::OK();
 }
 
@@ -2446,8 +2430,7 @@ absl::StatusOr<PhysicalOpNode*> RequestModeTransformer::ExtractRequestNode(Physi
             }
 
             // else data provider is fine inside node tree,
-            // generally it is of type Partition, but can be Table as well
-            // for window (t1 instance_not_in_window)
+            // generally it is of type Partition, but can be Table as well e.g window (t1 instance_not_in_window)
             return nullptr;
         }
         case vm::kPhysicalOpJoin:
@@ -2460,7 +2443,7 @@ absl::StatusOr<PhysicalOpNode*> RequestModeTransformer::ExtractRequestNode(Physi
             // - left or right status not ok -> error
             // - left and right both has non-null value
             //   - the two not equals -> error
-            // - left as request node
+            // - otherwise -> left as request node
             auto left = ExtractRequestNode(in->GetProducer(0));
             if (!left.ok()) {
                 return left;
@@ -2486,7 +2469,7 @@ absl::StatusOr<PhysicalOpNode*> RequestModeTransformer::ExtractRequestNode(Physi
 
     if (in->GetProducerCnt() == 0) {
         // leaf node excepting DataProdiverNode
-        // consider ok as right source of one of the supported binary op
+        // consider ok as right source from one of the supported binary op
         return nullptr;
     }
 

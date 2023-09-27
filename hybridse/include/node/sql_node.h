@@ -1660,7 +1660,7 @@ class ColumnRefNode : public ExprNode {
 
     bool IsListReturn(ExprAnalysisContext *ctx) const override { return true; }
 
-    auto column_id_hint() const { return column_id_hint_; }
+    std::optional<size_t> column_id_hint() const { return column_id_hint_; }
     void set_column_id_hint(size_t hint) { column_id_hint_ = hint; }
 
  private:

@@ -90,29 +90,6 @@ Status ExprReplacer::Replace(node::ExprNode* root,
     return DoReplace(root, &visited, output);
 }
 
-base::Status ExprReplacer::ReplaceDeep(const node::ExprNode* root, node::NodeManager* nm,
-                                       node::ExprNode** output) const {
-    auto res = FindReplacement(root);
-    node::ExprNode* cp = nullptr;
-    // replacemnet only happens node level,
-    if (res.ok()) {
-        cp = res.value()->ShadowCopy(nm);
-    } else {
-        cp = root->ShadowCopy(nm);
-    }
-
-    for (size_t i = 0; i < root->GetChildNum(); ++i) {
-        node::ExprNode* sub = nullptr;
-        CHECK_STATUS(ReplaceDeep(cp->GetChild(i), nm, &sub));
-        if (sub != nullptr) {
-            cp->SetChild(i, sub);
-        }
-    }
-
-    *output = cp;
-    return Status::OK();
-}
-
 Status ExprReplacer::DoReplace(node::ExprNode* root,
                                std::unordered_set<size_t>* visited,
                                node::ExprNode** output) const {
@@ -164,37 +141,6 @@ Status ExprReplacer::DoReplace(node::ExprNode* root,
     visited->insert(root->node_id());
     *output = root;
     return Status::OK();
-}
-
-absl::StatusOr<node::ExprNode*>ExprReplacer::FindReplacement(const node::ExprNode* root) const {
-    if (root->GetExprType() == node::kExprId) {
-        auto arg = dynamic_cast<const node::ExprIdNode*>(root);
-        if (arg->IsResolved()) {
-            auto iter = arg_id_map_.find(arg->GetId());
-            if (iter != arg_id_map_.end()) {
-                return iter->second;
-            }
-
-            return absl::NotFoundError(absl::StrCat("expr id #", arg->GetId(), " not found"));
-        }
-    } else if (root->GetExprType() == node::kExprColumnRef) {
-        auto col = dynamic_cast<const node::ColumnRefNode*>(root);
-        auto name = col->GetRelationName() + "." + col->GetColumnName();
-        auto iter = column_name_map_.find(name);
-        if (iter != column_name_map_.end()) {
-            return iter->second;
-        }
-        return absl::NotFoundError(absl::StrCat("column ref '", name, "' not found"));
-    } else if (root->GetExprType() == node::kExprColumnId) {
-        auto col = dynamic_cast<const node::ColumnIdNode*>(root);
-        auto iter = column_id_map_.find(col->GetColumnID());
-        if (iter != column_id_map_.end()) {
-            return iter->second;
-        }
-        return absl::NotFoundError(absl::StrCat("expr id #", col->GetColumnID(), " not found"));
-    }
-
-    return absl::NotFoundError(absl::StrCat("unsupported expr type ", node::ExprTypeName(root->GetExprType())));
 }
 
 node::ExprIdNode* ExprPass::GetWindow() const { return window_; }

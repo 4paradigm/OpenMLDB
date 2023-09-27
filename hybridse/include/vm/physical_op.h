@@ -156,7 +156,7 @@ class Sort : public FnComponent {
     explicit Sort(const node::OrderByNode *orders) : orders_(orders) {}
     virtual ~Sort() {}
 
-    auto mut_orders() const { return const_cast<node::OrderByNode *>(orders_); }
+    node::OrderByNode *mut_orders() const { return const_cast<node::OrderByNode *>(orders_); }
     const node::OrderByNode *orders() const { return orders_; }
     void set_orders(const node::OrderByNode *orders) { orders_ = orders; }
 

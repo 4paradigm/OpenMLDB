@@ -382,30 +382,16 @@ Status DoSearchExprDependentColumns(const node::ExprNode* expr, std::vector<cons
             columns->push_back(expr);
             break;
         }
-        case node::kExprBetween: {
-            // TODO:WHY ? no need
-            std::vector<node::ExprNode*> expr_list;
-            auto between_expr = dynamic_cast<const node::BetweenExpr*>(expr);
-            CHECK_STATUS(DoSearchExprDependentColumns(between_expr->GetLow(),
-                                                      columns));
-            CHECK_STATUS(DoSearchExprDependentColumns(between_expr->GetHigh(),
-                                                      columns));
-            CHECK_STATUS(DoSearchExprDependentColumns(between_expr->GetLhs(),
-                                                      columns));
-            break;
-        }
         case node::kExprCall: {
             auto call_expr = dynamic_cast<const node::CallExprNode*>(expr);
             if (nullptr != call_expr->GetOver()) {
                 auto orders = call_expr->GetOver()->GetOrders();
                 if (nullptr != orders) {
-                    CHECK_STATUS(
-                        DoSearchExprDependentColumns(orders, columns));
+                    CHECK_STATUS(DoSearchExprDependentColumns(orders, columns));
                 }
                 auto partitions = call_expr->GetOver()->GetPartitions();
                 if (nullptr != partitions) {
-                    CHECK_STATUS(
-                        DoSearchExprDependentColumns(partitions, columns));
+                    CHECK_STATUS(DoSearchExprDependentColumns(partitions, columns));
                 }
             }
             break;

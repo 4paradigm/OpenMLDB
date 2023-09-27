@@ -51,8 +51,8 @@ using hybridse::vm::ProjectType;
 static bool ResolveColumnToSourceColumnName(const node::ColumnRefNode* col, const SchemasContext* schemas_ctx,
                                             std::string* source_name);
 
-// ExprNode may be resolving under differenet SchemasContext later (say one of its descendants context),
-// with column name etc may not able to resvole since a column rename may happen in SimpleProject node.
+// ExprNode may be resolving under different SchemasContext later (say one of its descendants context),
+// with column name etc it may not able to resvole since a column rename may happen in SimpleProject node.
 // With the column id hint written to corresponding ColumnRefNode earlier, resolving issue can be mitigated.
 static void BuildExprHint(node::ExprNode* node, const SchemasContext* sc) {
     if (node == nullptr) {

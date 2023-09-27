@@ -141,7 +141,6 @@ class BatchModeTransformer {
     Status GenRange(Range* sort, const SchemasContext* schemas_ctx);
 
     static bool isSourceFromTableOrPartition(PhysicalOpNode* in);
-    bool isSourceFromTable(PhysicalOpNode* in);
     std::string ExtractSchemaName(PhysicalOpNode* in);
 
     static Status ValidateIndexOptimization(PhysicalOpNode* physical_plan);
@@ -319,8 +318,10 @@ class RequestModeTransformer : public BatchModeTransformer {
 
     absl::StatusOr<PhysicalOpNode*> ResolveCTERef(absl::string_view tb_name) override;
 
-    // Valid the final optimized PhysicalOpNode, has one and only one request table
-    Status ValidateRequestTable(PhysicalOpNode* in, PhysicalOpNode** request_table);
+    // Valid the final optimized PhysicalOpNode is either:
+    // - has one and only one request table
+    // - do not has any physical table refered
+    Status ValidateRequestTable(PhysicalOpNode* in);
 
     // Extract request node of the node tree
     // returns
