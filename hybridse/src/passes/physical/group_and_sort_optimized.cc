@@ -856,14 +856,6 @@ static bool ResolveColumnToSourceColumnName(const node::ColumnRefNode* col,
     Status status = schemas_ctx->ResolveColumnID(db, rel, col_name, &column_id, &path_idx, &child_column_id,
                                                  &source_column_id, &source);
 
-    // try loose the relation
-    if (!status.isOK() && !col->GetRelationName().empty()) {
-        status = schemas_ctx->ResolveColumnID(
-            col->GetDBName(), col->GetRelationName(), col->GetColumnName(),
-            &column_id, &path_idx, &child_column_id,
-            &source_column_id, &source);
-    }
-
     if (!status.isOK()) {
         LOG(WARNING) << "Illegal index column: " << col->GetExprString();
         return false;

@@ -2424,7 +2424,10 @@ Status RequestModeTransformer::ValidateRequestTable(
     PhysicalOpNode* in, PhysicalOpNode** request_table) {
     auto req = ExtractRequestNode(in);
     CHECK_TRUE(req.ok(), kPlanError, req.status());
-    CHECK_TRUE(req.value() != nullptr, kPlanError, "no request node found");
+
+    std::set<std::pair<std::string, std::string>> db_tables;
+    CHECK_STATUS(internal::GetDependentTables(in, &db_tables));
+    CHECK_TRUE(req.value() != nullptr || db_tables.empty(), kPlanError, "no request node found");
 
     *request_table = req.value();
     return Status::OK();
@@ -2442,12 +2445,10 @@ absl::StatusOr<PhysicalOpNode*> RequestModeTransformer::ExtractRequestNode(Physi
                 return in;
             }
 
-            if (tp == kProviderTypePartition) {
-                return nullptr;
-            }
-
-            return absl::NotFoundError(
-                absl::StrCat("un-optimized data provider node not suitable for online: ", in->GetTreeString()));
+            // else data provider is fine inside node tree,
+            // generally it is of type Partition, but can be Table as well
+            // for window (t1 instance_not_in_window)
+            return nullptr;
         }
         case vm::kPhysicalOpJoin:
         case vm::kPhysicalOpUnion:
@@ -2455,6 +2456,11 @@ absl::StatusOr<PhysicalOpNode*> RequestModeTransformer::ExtractRequestNode(Physi
         case vm::kPhysicalOpRequestUnion:
         case vm::kPhysicalOpRequestAggUnion:
         case vm::kPhysicalOpRequestJoin: {
+            // Binary Node
+            // - left or right status not ok -> error
+            // - left and right both has non-null value
+            //   - the two not equals -> error
+            // - left as request node
             auto left = ExtractRequestNode(in->GetProducer(0));
             if (!left.ok()) {
                 return left;
