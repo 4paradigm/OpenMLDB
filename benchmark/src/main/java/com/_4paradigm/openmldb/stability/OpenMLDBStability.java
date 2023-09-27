@@ -102,10 +102,24 @@ public class OpenMLDBStability {
             for (String name : tables) {
                 NS.TableInfo tableInfo = executor.getTableInfo(db, name);
                 tableMap.put(name, new TableInfo(tableInfo));
+                tableInsertSqlMap.put(name, buildStatementSQL(name, tableInfo.getColumnDescList().size()));
             }
         } catch (Exception e) {
             e.printStackTrace();
         }
+    }
+
+    private String buildStatementSQL(String name, int colSize) {
+        StringBuilder builder = new StringBuilder();
+        builder.append("INSERT INTO ").append(name).append(" VALUES (");
+        for (int i = 0; i < colSize; i++) {
+            if (i > 0) {
+                builder.append(", ");
+            }
+            builder.append("?");
+        }
+        builder.append(");");
+        return builder.toString();
     }
 
     public long getInsertTotalCnt() {
@@ -315,15 +329,15 @@ public class OpenMLDBStability {
 
     private void insert() {
         while (running.get()) {
-            /*if (random.nextFloat() < Config.INSERT_RATIO) {
+            if (random.nextFloat() < Config.INSERT_RATIO) {
                 for (TableInfo table : tableMap.values()) {
                     insertTableData(table);
                 }
-            } else {*/
+            } else {
                 for (TableInfo table : tableMap.values()) {
                     putTableData(table);
                 }
-            //}
+            }
         }
     }
 
@@ -338,14 +352,14 @@ public class OpenMLDBStability {
         try {
             ps = getInsertPstmt(table, pkNum, tableInsertSqlMap.get(table.getName()));
             ps.execute();
-        } catch (SQLException throwables) {
-            throwables.printStackTrace();
+        } catch (SQLException e) {
+            e.printStackTrace();
         } finally {
             if (ps != null) {
                 try {
                     ps.close();
-                } catch (SQLException throwables) {
-                    throwables.printStackTrace();
+                } catch (SQLException e) {
+                    e.printStackTrace();
                 }
             }
         }
