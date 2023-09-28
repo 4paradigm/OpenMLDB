@@ -1,6 +1,6 @@
-# 运维 FAQ
+# Server FAQ
 
-运维中有任何上下线变化或问题，都先openmldb_tool status + inspect online看下情况。
+Server中有任何上下线变化或问题，都先openmldb_tool status + inspect online检查下集群是否正常。
 
 ## 部署和启动 FAQ
 

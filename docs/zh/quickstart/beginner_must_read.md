@@ -196,14 +196,4 @@ deployment耗时统计需要开启：
 ```
 SET GLOBAL deploy_stats = 'on';
 ```
-开启后的Deployment执行都将被统计，之前的不会被统计，表中的数据不包含集群外部的网络耗时，仅统计deployment在server端从开始执行到结束的时间。推荐直接查询统计表：
-```
-set @@execute_mode='online';
-select * from INFORMATION_SCHEMA.DEPLOY_RESPONSE_TIME;
-```
-表的读法，可参考[mariadb response-time-distribution](https://mariadb.com/kb/en/query-response-time-plugin/#response-time-distribution)。
-
-
-在监控项目[OpenMLDB Exporter](https://github.com/4paradigm/openmldb-exporter)中的deploy相关指标，都是从这个统计表中提取并再计算的结果。
-
-https://github.com/4paradigm/openmldb-exporter/blob/493974b5c7b003d1f3d06c9db18b470cb4462c65/openmldb_exporter/collector/collectors.py#L75
+开启后的Deployment执行都将被统计，之前的不会被统计，表中的数据不包含集群外部的网络耗时，仅统计deployment在server端从开始执行到结束的时间。
