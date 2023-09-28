@@ -302,8 +302,7 @@ absl::Status APIServerImpl::JsonMap2SQLRequestRow(const butil::rapidjson::Value&
             if (sch->GetColumnType(i) == hybridse::sdk::kTypeString) {
                 auto v = non_common_cols_v.FindMember(sch->GetColumnName(i).c_str());
                 if (v == non_common_cols_v.MemberEnd()) {
-                    LOG(WARNING) << "can't find " << sch->GetColumnName(i);
-                    return false;
+                    return absl::InvalidArgumentError("can't find " + sch->GetColumnName(i));
                 }
                 str_len_sum += v->value.GetStringLength();
             }
