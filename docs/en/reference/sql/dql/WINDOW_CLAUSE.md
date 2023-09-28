@@ -320,5 +320,5 @@ WINDOW w1 AS (PARTITION BY col1 ORDER BY col5 ROWS_RANGE BETWEEN 10s PRECEDING A
 ```
 
 ```{seealso}
-Please refer to [Built-in Functions](../functions_and_operators/udfs_8h.md) for aggregate functions that can be used in window computation.
+Please refer to [Built-in Functions](../udfs_8h.md) for aggregate functions that can be used in window computation.
 ````

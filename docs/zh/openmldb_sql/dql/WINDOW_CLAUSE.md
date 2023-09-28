@@ -348,5 +348,5 @@ WINDOW w1 AS (PARTITION BY col1 ORDER BY col5 ROWS_RANGE BETWEEN 10s PRECEDING A
 ```
 
 ```{seealso}
-窗口计算可使用的聚合函数，参考[Built-in Functions](../functions_and_operators/udfs_8h.md)
+窗口计算可使用的聚合函数，参考[Built-in Functions](../udfs_8h.md)
 ```
