@@ -3,7 +3,7 @@
 ## Basic Concepts
 
 The main use case of OpenMLDB is as a real-time feature platform for machine learning. The basic usage process is shown in the following diagram:
-![modes-flow](concepts/images/modes-flow.png))
+![modes-flow](concepts/images/modes-flow.png)
 
 As can be seen, OpenMLDB covers the feature computing process of machine learning, from offline development to real-time request service online, providing a complete process. Please refer to the documentation for [The Usage Process and Execution Mode](https://openmldb.ai/docs/zh/main/quickstart/concepts/modes.html) in detail. This article will demonstrate a quick start and understanding of OpenMLDB step by step, following the basic usage process.
 
