@@ -908,7 +908,8 @@ Status FixupWindowOverSimpleNLastJoin(const node::WindowPlanNode* w_ptr, const S
 
                     size_t id = 0;
                     CHECK_STATUS(window_depend_sc->ResolveColumnID(ref->GetDBName(), ref->GetRelationName(),
-                                                                   ref->GetColumnName(), &id));
+                                                                   ref->GetColumnName(), &id),
+                                 "fail to resolve ", ref->GetExprString());
                     std::string name;
                     CHECK_STATUS(
                         left_join_sc->ResolveColumnNameByID(id, &name),
@@ -933,7 +934,8 @@ Status FixupWindowOverSimpleNLastJoin(const node::WindowPlanNode* w_ptr, const S
 
                     size_t id = 0;
                     CHECK_STATUS(window_depend_sc->ResolveColumnID(ref->GetDBName(), ref->GetRelationName(),
-                                                                   ref->GetColumnName(), &id));
+                                                                   ref->GetColumnName(), &id),
+                                 "fail to resolve ", ref->GetExprString());
                     std::string name;
                     CHECK_STATUS(left_join_sc->ResolveColumnNameByID(id, &name),
                                  "Fail to handle window: window order expression should belong to left table of join");

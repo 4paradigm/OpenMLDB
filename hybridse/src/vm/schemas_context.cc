@@ -396,13 +396,6 @@ Status DoSearchExprDependentColumns(const node::ExprNode* expr, std::vector<cons
             }
             break;
         }
-        case node::kExprOrderExpression: {
-            auto refx = dynamic_cast<const node::OrderExpression*>(expr);
-            CHECK_TRUE(refx != nullptr, common::kTypeError);
-            CHECK_STATUS(DoSearchExprDependentColumns(refx->expr(), columns));
-
-            break;
-        }
         default:
             break;
     }

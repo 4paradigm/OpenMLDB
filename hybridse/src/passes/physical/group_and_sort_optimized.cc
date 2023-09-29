@@ -24,6 +24,8 @@
 #include <utility>
 #include <vector>
 
+#include "absl/cleanup/cleanup.h"
+#include "absl/status/status.h"
 #include "absl/strings/string_view.h"
 #include "passes/expression/expr_pass.h"
 #include "vm/physical_op.h"
@@ -49,33 +51,32 @@ using hybridse::vm::PhysicalWindowAggrerationNode;
 using hybridse::vm::ProjectType;
 
 static bool ResolveColumnToSourceColumnName(const node::ColumnRefNode* col, const SchemasContext* schemas_ctx,
-                                            std::string* source_name);
+                                            std::string* db, std::string* table, std::string* source_name);
 
 // ExprNode may be resolving under different SchemasContext later (say one of its descendants context),
 // with column name etc it may not able to resvole since a column rename may happen in SimpleProject node.
 // With the column id hint written to corresponding ColumnRefNode earlier, resolving issue can be mitigated.
-static void BuildExprHint(node::ExprNode* node, const SchemasContext* sc) {
+absl::Status GroupAndSortOptimized::BuildExprCache(node::ExprNode* node, const SchemasContext* sc) {
     if (node == nullptr) {
-        return;
+        return {};
     }
 
     switch (node->GetExprType()) {
         case node::kExprColumnRef: {
             auto ref = dynamic_cast<node::ColumnRefNode*>(node);
 
-            if (ref->column_id_hint().has_value()) {
+            if (expr_cache_.find(ref) != expr_cache_.end()) {
                 break;
             }
 
-            size_t sc_idx = 0, col_idx = 0;
-            auto s = sc->ResolveColumnRefIndex(ref, &sc_idx, &col_idx);
-            if (s.isOK()) {
-                break;
+            std::string source_name;
+            std::string source_db;
+            std::string source_table;
+            if (!ResolveColumnToSourceColumnName(ref, sc, &source_db, &source_table, &source_name)) {
+                return absl::InternalError(absl::StrCat("unable to resolve ", ref->GetExprString()));
             }
 
-            auto column_id = sc->GetSchemaSource(sc_idx)->GetColumnID(col_idx);
-
-            ref->set_column_id_hint(column_id);
+            expr_cache_.emplace(ref, source_name);
             break;
         }
         default:
@@ -83,8 +84,12 @@ static void BuildExprHint(node::ExprNode* node, const SchemasContext* sc) {
     }
 
     for (uint32_t i = 0; i < node->GetChildNum(); ++i) {
-        BuildExprHint(node->GetChild(i), sc);
+        auto s = BuildExprCache(node->GetChild(i), sc);
+        if (!s.ok()) {
+            return s;
+        }
     }
+    return {};
 }
 
 bool GroupAndSortOptimized::Transform(PhysicalOpNode* in,
@@ -275,6 +280,48 @@ bool GroupAndSortOptimized::Transform(PhysicalOpNode* in,
     return false;
 }
 
+bool GroupAndSortOptimized::KeysOptimized(const SchemasContext* root_schemas_ctx,
+                                          PhysicalOpNode* in,
+                                          Key* left_key,
+                                          Key* index_key,
+                                          Key* right_key,
+                                          Sort* sort,
+                                          PhysicalOpNode** new_in) {
+    if (nullptr == left_key || nullptr == index_key || !left_key->ValidKey()) {
+        return false;
+    }
+
+    if (right_key != nullptr && !right_key->ValidKey()) {
+        return false;
+    }
+
+    absl::Cleanup clean = [&]() {
+        expr_cache_.clear();
+    };
+
+    auto s = BuildExprCache(left_key->mut_keys(), root_schemas_ctx);
+    if (!s.ok()) {
+        return false;
+    }
+    s = BuildExprCache(index_key->mut_keys(), root_schemas_ctx);
+    if (!s.ok()) {
+        return false;
+    }
+    if (right_key != nullptr) {
+        s = BuildExprCache(right_key->mut_keys(), root_schemas_ctx);
+        if (!s.ok()) {
+            return false;
+        }
+    }
+    if (sort != nullptr) {
+        s = BuildExprCache(sort->mut_orders(), root_schemas_ctx);
+        if (!s.ok()) {
+            return false;
+        }
+    }
+    return KeysOptimizedImpl(root_schemas_ctx, in, left_key, index_key, right_key, sort, new_in);
+}
+
 /**
  * optimize keys on condition. Remove keys from upper node if key match indexes
  * defined in table schema `left_key` & `index_key` is required, `right_key` is
@@ -285,7 +332,7 @@ bool GroupAndSortOptimized::Transform(PhysicalOpNode* in,
  * otherwise:
  *   - `left_key`, `index_key` corresponding to Key group & Key hash
  */
-bool GroupAndSortOptimized::KeysOptimized(const SchemasContext* root_schemas_ctx,
+bool GroupAndSortOptimized::KeysOptimizedImpl(const SchemasContext* root_schemas_ctx,
                                           PhysicalOpNode* in,
                                           Key* left_key,
                                           Key* index_key,
@@ -293,23 +340,6 @@ bool GroupAndSortOptimized::KeysOptimized(const SchemasContext* root_schemas_ctx
                                           Sort* sort,
                                           PhysicalOpNode** new_in) {
     TransformCxtGuard<decltype(ctx_)> guard(&ctx_, KeysInfo(in->GetOpType(), left_key, right_key, index_key, sort));
-
-    if (nullptr == left_key || nullptr == index_key || !left_key->ValidKey()) {
-        return false;
-    }
-
-    if (right_key != nullptr && !right_key->ValidKey()) {
-        return false;
-    }
-
-    BuildExprHint(left_key->mut_keys(), root_schemas_ctx);
-    BuildExprHint(index_key->mut_keys(), root_schemas_ctx);
-    if (right_key != nullptr) {
-        BuildExprHint(right_key->mut_keys(), root_schemas_ctx);
-    }
-    if (sort != nullptr) {
-        BuildExprHint(sort->mut_orders(), root_schemas_ctx);
-    }
 
     if (PhysicalOpType::kPhysicalOpDataProvider == in->GetOpType()) {
         auto scan_op = dynamic_cast<PhysicalDataProviderNode*>(in);
@@ -430,12 +460,13 @@ bool GroupAndSortOptimized::KeysOptimized(const SchemasContext* root_schemas_ctx
             return true;
         }
     } else if (PhysicalOpType::kPhysicalOpSimpleProject == in->GetOpType()) {
-        auto simple_project = dynamic_cast<PhysicalSimpleProjectNode*>(in);
         PhysicalOpNode* new_depend;
-        if (!KeysOptimized(root_schemas_ctx, simple_project->producers()[0],
-                           left_key, index_key, right_key, sort, &new_depend)) {
+        if (!KeysOptimized(in->GetProducer(0)->schemas_ctx(), in->GetProducer(0), left_key, index_key, right_key, sort,
+                           &new_depend)) {
             return false;
         }
+
+        auto simple_project = dynamic_cast<PhysicalSimpleProjectNode*>(in);
         PhysicalSimpleProjectNode* new_simple_op = nullptr;
         Status status =
             plan_ctx_->CreateOp<PhysicalSimpleProjectNode>(&new_simple_op, new_depend, simple_project->project());
@@ -447,7 +478,7 @@ bool GroupAndSortOptimized::KeysOptimized(const SchemasContext* root_schemas_ctx
         return true;
     } else if (PhysicalOpType::kPhysicalOpRename == in->GetOpType()) {
         PhysicalOpNode* new_depend;
-        if (!KeysOptimized(root_schemas_ctx, in->producers()[0], left_key,
+        if (!KeysOptimized(in->GetProducer(0)->schemas_ctx(), in->producers()[0], left_key,
                            index_key, right_key, sort, &new_depend)) {
             return false;
         }
@@ -482,8 +513,8 @@ bool GroupAndSortOptimized::KeysOptimized(const SchemasContext* root_schemas_ctx
         // try optimze left source of request join with window definition
         // window partition by and order by columns must refer to the left most table only
         PhysicalOpNode* new_depend = nullptr;
-        auto* rebase_sc = request_join->GetProducer(0)->schemas_ctx();
-        if (!KeysOptimized(rebase_sc, request_join->GetProducer(0), left_key, index_key, right_key, sort,
+        auto* rebase_sc = in->GetProducer(0)->schemas_ctx();
+        if (!KeysOptimized(rebase_sc, in->GetProducer(0), left_key, index_key, right_key, sort,
                            &new_depend)) {
             return false;
         }
@@ -613,13 +644,13 @@ bool GroupAndSortOptimized::TransformKeysAndOrderExpr(const SchemasContext* root
         switch (group->expr_type_) {
             case node::kExprColumnRef: {
                 auto column = dynamic_cast<node::ColumnRefNode*>(group);
-                std::string source_column_name;
-                if (!ResolveColumnToSourceColumnName(column, root_schemas_ctx, &source_column_name)) {
+                auto op = expr_cache_.find(column);
+                if (op == expr_cache_.end()) {
                     return false;
                 }
 
                 result_bitmap_mapping[columns.size()] = i;
-                columns.push_back(source_column_name);
+                columns.emplace_back(op->second);
                 break;
             }
             default: {
@@ -633,11 +664,11 @@ bool GroupAndSortOptimized::TransformKeysAndOrderExpr(const SchemasContext* root
             auto expr = order->GetOrderExpressionExpr(i);
             if (nullptr != expr && expr->GetExprType() == node::kExprColumnRef) {
                 auto column = dynamic_cast<const node::ColumnRefNode*>(expr);
-                std::string source_column_name;
-                if (!ResolveColumnToSourceColumnName(column, root_schemas_ctx, &source_column_name)) {
+                auto op = expr_cache_.find(column);
+                if (op == expr_cache_.end()) {
                     return false;
                 }
-                order_columns.push_back(source_column_name);
+                order_columns.emplace_back(op->second);
             }
         }
     }
@@ -785,69 +816,14 @@ bool GroupAndSortOptimized::MatchBestIndex(const std::vector<std::string>& colum
     return succ;
 }
 
-bool GroupAndSortOptimized::TransformOrderExpr(
-    const SchemasContext* schemas_ctx, const node::OrderByNode* order,
-    const Schema& schema, const IndexSt& index_st,
-    const node::OrderByNode** output) {
-    *output = order;
-    if (nullptr == order || nullptr == output) {
-        DLOG(WARNING)
-            << "fail to optimize order expr : order expr or output is null";
-        return false;
-    }
-    if (index_st.ts_pos == INVALID_POS) {
-        DLOG(WARNING) << "not set ts col";
-        return false;
-    }
-    auto& ts_column = schema.Get(index_st.ts_pos);
-    *output = order;
-    int succ_match = -1;
-    for (size_t i = 0; i < order->order_expressions()->GetChildNum(); ++i) {
-        auto expr = order->GetOrderExpressionExpr(i);
-        if (nullptr != expr && expr->GetExprType() == node::kExprColumnRef) {
-            auto column = dynamic_cast<const node::ColumnRefNode*>(expr);
-            std::string source_column_name;
-            if (ResolveColumnToSourceColumnName(column, schemas_ctx,
-                                                &source_column_name)) {
-                if (ts_column.name() == source_column_name) {
-                    succ_match = i;
-                    break;
-                }
-            }
-        }
-    }
-    if (succ_match >= 0) {
-        node::ExprListNode* expr_list = node_manager_->MakeExprList();
-        for (size_t i = 0; i < order->order_expressions()->GetChildNum(); ++i) {
-            if (static_cast<size_t>(succ_match) != i) {
-                expr_list->AddChild(order->order_expressions()->GetChild(i));
-            }
-        }
-        *output = dynamic_cast<node::OrderByNode*>(
-            node_manager_->MakeOrderByNode(expr_list));
-        return true;
-    } else {
-        return false;
-    }
-}
-
 /**
  * Resolve column reference to possible source table's column name
  */
-static bool ResolveColumnToSourceColumnName(const node::ColumnRefNode* col,
-                                            const SchemasContext* schemas_ctx,
-                                            std::string* source_name) {
+static bool ResolveColumnToSourceColumnName(const node::ColumnRefNode* col, const SchemasContext* schemas_ctx,
+                                            std::string* src_db, std::string* src_table, std::string* src_name) {
     auto db = col->GetDBName();
     auto rel = col->GetRelationName();
     auto col_name = col->GetColumnName();
-    if (col->column_id_hint().has_value()) {
-        // prefer id hint over column names
-        // since the ColumnRefNode might comes from ancestors of the SchemasContext
-        auto s = schemas_ctx->ResolveDbTableColumnByID(col->column_id_hint().value(), &db, &rel, &col_name);
-        if (!s.isOK()) {
-            return false;
-        }
-    }
     size_t column_id;
     int path_idx;
     size_t child_column_id;
@@ -866,13 +842,17 @@ static bool ResolveColumnToSourceColumnName(const node::ColumnRefNode* col,
                      << col->GetExprString();
         return false;
     }
-    status = source->schemas_ctx()->ResolveColumnNameByID(source_column_id,
-                                                          source_name);
+
+    std::string sc_db, sc_table, sc_col;
+    status = source->schemas_ctx()->ResolveDbTableColumnByID(source_column_id, &sc_db, &sc_table, &sc_col);
     if (!status.isOK()) {
-        LOG(WARNING) << "Illegal source column id #" << source_column_id
-                     << " for index column " << col->GetExprString();
+        LOG(WARNING) << "Illegal source column id #" << source_column_id << " for index column "
+                     << col->GetExprString();
         return false;
     }
+    *src_db = sc_db;
+    *src_table = sc_table;
+    *src_name = sc_col;
     return true;
 }
 

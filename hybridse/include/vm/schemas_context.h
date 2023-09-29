@@ -72,7 +72,8 @@ class SchemaSource {
     // column identifier of each output column
     std::vector<size_t> column_ids_;
 
-    // trace which child and which column id each column come from
+    // trace which child and which column id each column comes from, index is measured
+    // based on the physical node tree, starts from 0.
     // -1 means the column is created from current node
     std::vector<int> source_child_idxs_;
     std::vector<size_t> source_child_column_ids_;

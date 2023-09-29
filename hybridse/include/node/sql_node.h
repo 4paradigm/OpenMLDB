@@ -582,8 +582,13 @@ class FnNodeList : public FnNode {
 };
 class OrderExpression : public ExprNode {
  public:
+    // expr maybe null
     OrderExpression(const ExprNode *expr, const bool is_asc)
-        : ExprNode(kExprOrderExpression), expr_(expr), is_asc_(is_asc) {}
+        : ExprNode(kExprOrderExpression), expr_(expr), is_asc_(is_asc) {
+        if (expr != nullptr) {
+            AddChild(const_cast<ExprNode *>(expr));
+        }
+    }
     ~OrderExpression() {}
     void Print(std::ostream &output, const std::string &org_tab) const;
     const std::string GetExprString() const;
@@ -1651,7 +1656,7 @@ class ColumnRefNode : public ExprNode {
 
     static ColumnRefNode *CastFrom(ExprNode *node);
     void Print(std::ostream &output, const std::string &org_tab) const;
-    const std::string GetExprString() const;
+    const std::string GetExprString() const override;
     const std::string GenerateExpressionName() const;
     virtual bool Equals(const ExprNode *node) const;
     ColumnRefNode *ShadowCopy(NodeManager *) const override;
@@ -1660,21 +1665,10 @@ class ColumnRefNode : public ExprNode {
 
     bool IsListReturn(ExprAnalysisContext *ctx) const override { return true; }
 
-    std::optional<size_t> column_id_hint() const { return column_id_hint_; }
-    void set_column_id_hint(size_t hint) { column_id_hint_ = hint; }
-
  private:
     std::string column_name_;
     std::string relation_name_;
     std::string db_name_;
-
-    // Due to impl limitation, ColumnRefNode may be resoloving in a SchemasContext that
-    // may not able to correctly resolve it, e.g the node is resolving in the SchemasContext
-    // of one descendants from corrent node.
-    //
-    // This column id hint, if set, is preferred to resolve desired column.
-    // It fallbacks if not set
-    std::optional<size_t> column_id_hint_;
 };
 
 class ColumnIdNode : public ExprNode {

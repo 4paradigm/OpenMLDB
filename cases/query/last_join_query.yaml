@@ -367,7 +367,7 @@ cases:
     mode: batch-request-unsupport
     # t1------>(t2------->t3)
     # │         └-(t3.c1)-┘
-    # └--(t2.c1)-┘
+    # └-(t2.c1)-┘
     # Easiest path, t1 finally joins t2's column
     inputs:
       - name: t1
@@ -398,15 +398,6 @@ cases:
         from t2 last join t3 on t2.c1 = t3.c1
       ) tx
       on t1.c1 = tx.c1
-    request_plan: |
-      SIMPLE_PROJECT(sources=(t1.c1, t1.c2, tx.c1 -> c1l, c1r, c2r))
-        REQUEST_JOIN(type=LastJoin, condition=, left_keys=(), right_keys=(), index_keys=(t1.c1))
-          DATA_PROVIDER(request=t1)
-          RENAME(name=tx)
-            SIMPLE_PROJECT(sources=(t2.c1, t2.c4, t3.c1 -> c1r, t3.c2 -> c2r))
-              REQUEST_JOIN(type=LastJoin, condition=, left_keys=(), right_keys=(), index_keys=(t2.c1))
-                DATA_PROVIDER(type=Partition, table=t2, index=index1)
-                DATA_PROVIDER(type=Partition, table=t3, index=index1)
     batch_plan: |
       SIMPLE_PROJECT(sources=(t1.c1, t1.c2, tx.c1 -> c1l, c1r, c2r))
         JOIN(type=LastJoin, condition=, left_keys=(), right_keys=(), index_keys=(t1.c1))
@@ -416,6 +407,16 @@ cases:
               JOIN(type=LastJoin, condition=, left_keys=(), right_keys=(), index_keys=(t2.c1))
                 DATA_PROVIDER(type=Partition, table=t2, index=index1)
                 DATA_PROVIDER(type=Partition, table=t3, index=index1)
+    request_plan: |
+      SIMPLE_PROJECT(sources=(t1.c1, t1.c2, tx.c1 -> c1l, c1r, c2r))
+        REQUEST_JOIN(type=LastJoin, condition=, left_keys=(), right_keys=(), index_keys=(t1.c1))
+          DATA_PROVIDER(request=t1)
+          RENAME(name=tx)
+            SIMPLE_PROJECT(sources=(t2.c1, t2.c4, t3.c1 -> c1r, t3.c2 -> c2r))
+              REQUEST_JOIN(type=LastJoin, condition=, left_keys=(), right_keys=(), index_keys=(t2.c1))
+                DATA_PROVIDER(type=Partition, table=t2, index=index1)
+                DATA_PROVIDER(type=Partition, table=t3, index=index1)
+    cluster_request_plan: |
     expect:
       order: c1
       columns:

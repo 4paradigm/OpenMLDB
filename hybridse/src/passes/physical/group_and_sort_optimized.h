@@ -16,12 +16,13 @@
 #ifndef HYBRIDSE_SRC_PASSES_PHYSICAL_GROUP_AND_SORT_OPTIMIZED_H_
 #define HYBRIDSE_SRC_PASSES_PHYSICAL_GROUP_AND_SORT_OPTIMIZED_H_
 
+#include <list>
 #include <memory>
 #include <optional>
 #include <string>
-#include <vector>
-#include <list>
+#include <unordered_map>
 #include <utility>
+#include <vector>
 
 #include "passes/physical/transform_up_physical_pass.h"
 
@@ -91,6 +92,9 @@ class GroupAndSortOptimized : public TransformUpPysicalPass {
     bool KeysOptimized(const SchemasContext* root_schemas_ctx, PhysicalOpNode* in, Key* left_key, Key* index_key,
                        Key* right_key, Sort* sort, PhysicalOpNode** new_in);
 
+    bool KeysOptimizedImpl(const SchemasContext* root_schemas_ctx, PhysicalOpNode* in, Key* left_key, Key* index_key,
+                           Key* right_key, Sort* sort, PhysicalOpNode** new_in);
+
     bool FilterAndOrderOptimized(const SchemasContext* root_schemas_ctx,
                                  PhysicalOpNode* in, Filter* filter, Sort* sort,
                                  PhysicalOpNode** new_in);
@@ -116,10 +120,6 @@ class GroupAndSortOptimized : public TransformUpPysicalPass {
                         PhysicalOpNode* in, Key* group,
                         PhysicalOpNode** new_in);
 
-    bool TransformOrderExpr(const SchemasContext* schemas_ctx,
-                            const node::OrderByNode* order,
-                            const Schema& schema, const IndexSt& index_st,
-                            const node::OrderByNode** output);
     bool TransformKeysAndOrderExpr(const SchemasContext* schemas_ctx,
                                    const node::ExprListNode* groups,
                                    const node::OrderByNode* order,
@@ -133,8 +133,15 @@ class GroupAndSortOptimized : public TransformUpPysicalPass {
                         std::string* index_name,
                         IndexBitMap* best_bitmap);
 
+    absl::Status BuildExprCache(node::ExprNode* node, const SchemasContext* sc);
+
  private:
     std::list<KeysInfo> ctx_;
+
+    // Map ExprNode to source column name
+    // A source column name is the column name in string that refers to a physical table,
+    // only one table got optimized each time
+    std::unordered_map<const node::ColumnRefNode*, std::string> expr_cache_;
 };
 }  // namespace passes
 }  // namespace hybridse
