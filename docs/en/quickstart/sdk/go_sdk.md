@@ -76,7 +76,7 @@ import (
   "context"
   "database/sql"
 
-  // 加载 OpenMLDB SDK
+  // Load OpenMLDB SDK
   _ "github.com/4paradigm/OpenMLDB/go"
 )
 

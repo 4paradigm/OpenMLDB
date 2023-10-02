@@ -1,12 +1,12 @@
 # REST API
 
-## Important information
+## Important Information
 
 REST APIs interact with the services of APIServer and OpenMLDB, so the APIServer module must be properly deployed to be used effectively. APIServer is an optional module during installation and deployment. Refer to the APIServer deployment document.
 
 At this stage, APIServer is mainly used for functional testing, not recommended for performance testing, nor recommended for the production environment. The default deployment of APIServer does not have a high availability mechanism at present and introduces additional network and codec overhead.
 
-## Data insertion
+## Data Insertion
 
 Request address: http://ip:port/dbs/{db_name}/tables/{table_name}
 
@@ -44,7 +44,7 @@ Response:
 }
 ```
 
-## Real-time feature computing
+## Real-Time Feature Computing
 
 Request address: http://ip:port/dbs/{db_name}/deployments/{deployment_name}
 
@@ -81,7 +81,7 @@ Requestor
 
 - Input data in JSON format can have redundant columns.
 
-**Sample request data**
+**Sample Request Data**
 
 Example 1: Array format
 
@@ -152,7 +152,7 @@ Request parameters:
 | schema     | Array  | No          | Support data types (case insensitive): `Bool`, `Int16`, `Int32`, `Int64`, `Float`, `Double`, `String`, `Date and Timestamp` |
 | data       | Array  | No          |                                                              |
 
-**Sample request data**
+**Sample Request Data**
 
 Example 1: General query
 
@@ -202,7 +202,7 @@ Response:
 }
 ```
 
-## Query deployment information
+## Query Deployment Information
 
 Request address: http://ip:port/dbs/{db_name}/deployments/{deployment_name}
 
@@ -239,7 +239,7 @@ Response:
 }
 ```
 
-## Acquire all library names
+## Acquire All Library Names
 
 Request address: http://ip:port/dbs
 
@@ -257,7 +257,7 @@ Response:
 }
 ```
 
-## Acquire all table names
+## Acquire All Table Names
 
 Request address: http://ip:port/dbs/{db}/tables
 
@@ -310,7 +310,7 @@ Response:
 }
 ```
 
-## Refresh APIServer metadata cache
+## Refresh APIServer Metadata Cache
 
 Request address: http://ip:port/refresh
 
