@@ -6,7 +6,7 @@ OpenMLDB supports different execution modes at different stages of the feature e
 
 The following diagram illustrates the typical process of using OpenMLDB for feature engineering development and deployment, as well as the execution modes used in the process:
 
-![image-20220310170024349](https://openmldb.ai/docs/zh/main/_images/modes-flow.png)
+![image-20220310170024349](images/modes-flow.png)
 
 1. Offline Data Import: Import offline data for offline feature engineering development and debugging.
 2. Offline Feature Development: Develop feature engineering scripts and debug them until satisfactory results are achieved. This step involves joint debugging of machine learning models (such as XGBoost, LightGBM, etc.), but this article mainly focuses on feature engineering development related to OpenMLDB.
@@ -78,7 +78,7 @@ The online request mode requires three inputs:
 
 Based on the above inputs, for each real-time request row, the online request mode will return a feature extraction result. The computing logic is as follows: The request row is virtually inserted into the correct position of the online data table based on the logic in the SQL script (such as `PARTITION BY`, `ORDER BY`, etc.), and then only the feature aggregation computing is performed on that row, returning the unique corresponding extraction result. The following diagram intuitively explains the operation process of the online request mode.
 
-![modes-request](https://openmldb.ai/docs/zh/main/_images/modes-request.png)
+![modes-request](images/modes-request.png)
 
 Online request mode is supported in the following ways:
 
