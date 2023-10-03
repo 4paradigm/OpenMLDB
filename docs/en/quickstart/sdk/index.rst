@@ -7,6 +7,6 @@ SDK
 
     java_sdk
     python_sdk
-    rest_api
     go_sdk
-    cpp_sdk
+    cxx_sdk
+    rest_api
