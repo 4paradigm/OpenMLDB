@@ -125,7 +125,7 @@ Ensure that the replication script is functional locally to reproduce the issue,
 Please be aware that offline jobs default to asynchronous mode. If you intend to import and query offline, remember to set it to synchronous mode. For additional information, consult [Offline Command Configuration Details](../openmldb_sql/ddl/SET_STATEMENT.md#offline-command-configuration-details). Without this adjustment, querying before the import is completed will not yield meaningful results.
 ```
 
-## Provide configuration and logs for technical support
+## Provide Configuration and Logs for Technical Support
 
 If your SQL execution issue cannot be replicated through replication scripts or if it's not related to SQL execution but rather a cluster management problem, we kindly request that you provide us with configuration details and logs from both the client and server for further investigation.
 
