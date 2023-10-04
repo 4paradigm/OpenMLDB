@@ -178,6 +178,19 @@ cases:
           Z, 3, 3
           U, 4, 4
           V, 5, 5
+    cluster_request_plan: |
+      SIMPLE_PROJECT(sources=(t1.col1 -> id, t1.col0, t2.c0, t3.column0))
+        REQUEST_JOIN(type=kJoinTypeConcat)
+          REQUEST_JOIN(type=kJoinTypeConcat)
+            DATA_PROVIDER(request=t1)
+            REQUEST_JOIN(OUTPUT_RIGHT_ONLY, type=LastJoin, right_sort=(ASC), condition=, left_keys=(), right_keys=(), index_keys=(#5))
+              SIMPLE_PROJECT(sources=(#5 -> t1.col1))
+                DATA_PROVIDER(request=t1)
+              DATA_PROVIDER(type=Partition, table=t2, index=index1)
+          REQUEST_JOIN(OUTPUT_RIGHT_ONLY, type=LastJoin, right_sort=(ASC), condition=, left_keys=(), right_keys=(), index_keys=(#5))
+            SIMPLE_PROJECT(sources=(#5 -> t1.col1))
+              DATA_PROVIDER(request=t1)
+            DATA_PROVIDER(type=Partition, table=t3, index=index1)
     expect:
       schema: id:int32, col0:string, c0:string, column0:string
       order: id
