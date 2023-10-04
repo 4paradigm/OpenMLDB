@@ -146,7 +146,7 @@ Online data is usually distributed across multiple locations, and when you run `
 
 ### Offline Mode and Online Request Mode
 
-In the [Full Process of Feature Engineering Development and Launch](../concepts/modes.md), offline mode and online request mode play prominent roles:
+In the [full process](./concepts/modes.md) of feature engineering development and deployment, offline mode and online request mode play prominent roles:
 
 - Offline Mode Batch Query: Used for offline feature generation.
 - Query in Online Request Mode: Employed for real-time feature computation.
