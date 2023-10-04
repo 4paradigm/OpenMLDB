@@ -10,7 +10,7 @@ If you have any questions about SQL statements, please refer to OpenMLDB SQL or 
 
 You can configure the TaskManager to define various settings, including the offline storage address (`offline.data.prefix`) and the Spark mode required for offline job computation (`spark.master`), among others.
 
-- `offline.data.prefix`: This can be configured as either a file path or an HDFS path. It is recommended to use an HDFS path for production environments, while a local file path can be configured for testing environments (specifically for single-box setups, such as running within a Docker container). Note that using a file path as offline storage will not support distributed deployment with multiple Task Managers (data won't be transferred between Task Managers). If you plan to deploy Task Managers on multiple hosts, please use storage media like HDFS that can be accessed simultaneously by multiple hosts. If you intend to test the collaboration of multiple Task Managers, you can deploy multiple Task Managers on a single host and use a file path as offline storage.
+- `offline.data.prefix`: This can be configured as either a file path or an HDFS path. It is recommended to use an HDFS path for production environments, while a local file path can be configured for testing environments (specifically for onebox, such as running within a Docker container). Note that using a file path as offline storage will not support distributed deployment with multiple Task Managers (data won't be transferred between Task Managers). If you plan to deploy Task Managers on multiple hosts, please use storage media like HDFS that can be accessed simultaneously by multiple hosts. If you intend to test the collaboration of multiple Task Managers, you can deploy multiple Task Managers on a single host and use a file path as offline storage.
 - `spark.master=local[*]`: The default Spark configuration is in `local[*]` mode, which automatically binds CPU cores. If offline tasks are found to be slow, it is recommended to use the Yarn mode. After changing the configuration, you need to restart the Task Manager for the changes to take effect. For more configurations, please refer to [master-urls](https://spark.apache.org/docs/3.1.2/submitting-applications.html#master-urls).
 
 ### spark.default.conf
@@ -25,13 +25,13 @@ spark.default.conf=spark.port.maxRetries=32;foo=bar
 
 ## DDL Boundary - DEPLOY Statement
 
-You can deploy an online SQL solution using the `DEPLOY <deploy_name> <sql>` command. This operation automatically parses the SQL statement and helps create indexes (you can view index details using `DESC <table_name>`). For more information, please refer to the [DEPLOY STATEMENT](https://chat.openai.com/openmldb_sql/deployment_manage/DEPLOY_STATEMENT.md) documentation.
+You can deploy an online SQL solution using the `DEPLOY <deploy_name> <sql>` command. This operation automatically parses the SQL statement and helps create indexes (you can view index details using `DESC <table_name>`). For more information, please refer to the [DEPLOY STATEMENT](../openmldb_sql/deployment_manage/DEPLOY_STATEMENT.md) documentation.
 
 The success of the deployment operation is dependent on the presence of online data in the table.
 
 ### Long Window SQL
 
-Long Window SQL: This refers to the `DEPLOY` statement with the `OPTIONS(long_windows=...)` configuration item. For syntax details, please refer to [Long Window](https://chat.openai.com/openmldb_sql/deployment_manage/DEPLOY_STATEMENT.md#longwindowoptimazation). Deployment conditions for long-window SQL are relatively strict, and it's essential to ensure that the tables used in the SQL statements do not contain online data. Otherwise, even if deploying SQL that matches the previous one, the operation will still fail.
+Long Window SQL: This refers to the `DEPLOY` statement with the `OPTIONS(long_windows=...)` configuration item. For syntax details, please refer to [Long Window](../openmldb_sql/deployment_manage/DEPLOY_STATEMENT.md#long-window-optimazation). Deployment conditions for long-window SQL are relatively strict, and it's essential to ensure that the tables used in the SQL statements do not contain online data. Otherwise, even if deploying SQL that matches the previous one, the operation will still fail.
 
 ### Normal SQL
 
@@ -46,7 +46,7 @@ There are two solutions:
 ```{note}
 How can you determine which indexes to create?
 
-Currently, only the Java SDK supports this feature, and all the required indexes can be obtained through SqlClusterExecutor.genDDL. However, you will need to manually convert them into CREATE INDEX statements as genDDL provides table creation statements. In the future, it will support directly obtaining index creation statements or automatically importing data into a new index during DEPLOY.
+Currently, only the Java SDK supports this feature, and all the required indexes can be obtained through `SqlClusterExecutor.genDDL`. However, you will need to manually convert them into `CREATE INDE`X statements as `genDD`L provides table creation statements. In the future, it will support ** directly obtaining index creation statements** or **automatically importing data into a new index** with `DEPLOY`.
 ```
 
 ## DML Boundary
@@ -59,13 +59,13 @@ The key difference between `offline_path` and `symbolic_paths` is that `offline_
 
 Therefore, if `offline_path` already exists offline, the `LOAD DATA` command can only modify `symbolic_paths`. If `symbolic_paths` already exist offline, the `LOAD DATA` command can be used to modify both `offline_path` and `symbolic_paths`.
 
-The `errorifexists` option will raise an error if there is offline information for the table. It will also result in an error if there is a hard copy when a symbolic link exists or if there is a symbolic link when a hard copy exists.
+The `errorifexists` option will raise an error if there is offline information in the table. It will raise errors if performing hard copy when there's soft links, or performing soft copy when a hard copy exisits. 
 
 ### LOAD DATA
 
 Regardless of whether data is imported online or offline using the `LOAD DATA` command, it is considered an offline job. The format rules for source data are the same for both offline and online scenarios.
 
-It is recommended to use HDFS files as source data. This approach allows for successful import whether TaskManager is in local mode, Yarn mode, or running on another host. However, if the source data is a local file, the ability to import it smoothly depends on the TaskManager mode and the host where it is running:
+It is recommended to use HDFS files as source data. This approach allows for successful import whether TaskManager is in local mode, Yarn mode, or running on another host. However, if the source data is a local file, the ability to import it smoothly depends on the mode of TaskManager and the host where it is running:
 
 - In local mode, TaskManager can successfully import source data only if the source data is placed on the same host as the TaskManager process.
 - When TaskManager is in Yarn mode (both client and cluster), a file path cannot be used as the source data address because it is not known on which host the container is running.
@@ -88,7 +88,7 @@ select * from t1;
 select * from t1 where c2=2;
 ```
 
-The results is as follows:
+The results are as follows:
 
 ```Plain
  --- ------- ------ ------ ---------
@@ -125,7 +125,7 @@ The results is as follows:
 
 Explanation:
 
-Consider a table `t1` with multiple indexes (which may be automatically created during `DEPLOY`). If you run `delete from t1 where c2=2`, it may only delete data in the second index, while the data in the first index remains unaffected. Therefore, if you subsequently run `select * from t1` and it uses the first index, there may still be two pieces of data that haven't been deleted. However, if the result from the second index of `select * from t1 where c2=2` is empty, it means the data has been successfully deleted from that index.
+Table `t1` has multiple indexes (which may be automatically created during `DEPLOY`). If you run `delete from t1 where c2=2`, it only deletes data in the second index, while the data in the first index remains unaffected. Therefore, if you subsequently run `select * from t1` and it uses the first index, there are two pieces of data that haven't been deleted. `select * from t1 where c2=2` uses the second index, and the result is empty, with data being successfully deleted.
 
 ## DQL Boundary
 
@@ -138,28 +138,28 @@ The supported query modes (i.e. `SELECT` statements) vary depending on the execu
 
 ### Online Preview Mode
 
-In OpenMLDB CLI, executing SQL in online mode puts it in online preview mode. Please note that online preview mode has limited support; you can refer to the [SELECT STATEMENT](https://chat.openai.com/openmldb_sql/dql/SELECT_STATEMENT) documentation for more details.
+In OpenMLDB CLI, executing SQL in online mode puts it in online preview mode. Please note that online preview mode has limited support; you can refer to the [SELECT STATEMENT](../openmldb_sql/dql/SELECT_STATEMENT) documentation for more details.
 
 Online preview mode is primarily for previewing query results. If you need to run complex SQL queries, it's recommended to use offline mode. To query complete online data, consider using a data export tool such as the `SELECT INTO` command. Keep in mind that if the online table contains a large volume of data, it might trigger data truncation, and executing `SELECT * FROM table` could result in some data not being returned.
 
-Online data is typically distributed across multiple locations, and when you run `SELECT * FROM table`, it retrieves results from various Tablet Servers without performing global sorting. As a result, the order of results can be somewhat random with each execution of `SELECT * FROM table`.
+Online data is usually distributed across multiple locations, and when you run `SELECT * FROM table`, it retrieves results from various Tablet Servers without performing global sorting. As a result, the order of data will be different with each execution of `SELECT * FROM table`.
 
 ### Offline Mode and Online Request Mode
 
-In the [Full Process of Feature Engineering Development and Launch](https://chat.openai.com/tutorial/concepts/modes.md#11-fullprocessoffeatureengineeringdevelopmentandlaunch), offline mode and online request mode play prominent roles:
+In the [Full Process of Feature Engineering Development and Launch](../concepts/modes.md), offline mode and online request mode play prominent roles:
 
 - Offline Mode Batch Query: Used for offline feature generation.
-- Request Query in Online Request Mode: Employed for real-time feature computation.
+- Query in Online Request Mode: Employed for real-time feature computation.
 
-While these two modes share the same SQL statements and produce consistent computation results, due to the use of two different execution engines (offline and online), not all SQL statements that work offline can necessarily be deployed online. SQL that can be executed in online request mode is a subset of offline executable SQL. Therefore, it's essential to test whether SQL can be deployed using `DEPLOY` after completing offline SQL development.
+While these two modes share the same SQL statements and produce consistent computation results, due to the use of two different execution engines (offline and online), not all SQL statements that work offline can be deployed online. SQL that can be executed in online request mode is a subset of offline executable SQL. Therefore, it's essential to test whether SQL can be deployed using `DEPLOY` after completing offline SQL development.
 
 ## Offline Command Synchronization Mode
 
-All offline commands can be executed in synchronous mode using `set @@sync_job=true;`. In this mode, the command will only return after completion, whereas in asynchronous mode, job information for the offline task is immediately returned. To check the execution status of the job, you can use `SHOW JOB <id>`. The return values differ depending on the command in synchronous mode:
+All offline commands can be executed in synchronous mode using `set @@sync_job=true;`. In this mode, the command will only return after completion, whereas in asynchronous mode, job info is immediately returned, requires usage of `SHOW JOB <id>` to check the execution status of the job. In synchronous mode, the return values differ depending on the command.
 
-- DML commands like `LOAD DATA` and DQL commands like `SELECT INTO` return the ResultSet of Job Info. These results are identical to those in asynchronous mode, with the only difference being the return time. The ResultSet of Job Info can also be parsed.
-- Regular `SELECT` queries in DQL return Job Info in asynchronous mode and query results in synchronous mode. However, support for this feature is currently incomplete, as explained in [Offline Sync Mode-select](https://chat.openai.com/openmldb_sql/dql/SELECT_STATEMENT.md#offlinesyncmode-select). The results are in CSV format, but data integrity is not guaranteed, so it's not recommended to rely on them for accurate query results.
+- DML commands like `LOAD DATA` and DQL commands like `SELECT INTO` return the ResultSet of Job Info. These results are identical to those in asynchronous mode, with the only difference being the return time. 
+- Normal `SELECT` queries in DQL return Job Info in asynchronous mode and query results in synchronous mode. However, support for this feature is currently incomplete, as explained in [Offline Sync Mode-select](../openmldb_sql/dql/SELECT_STATEMENT.md#offline-sync-mode-select). The results are in CSV format, but data integrity is not guaranteed, so it's not recommended to use as accurate query results.
   - In the CLI interactive mode, the results are printed directly.
-  - In the SDK, a row-column ResultSet is returned, providing the entire query result as a string. Consequently, it's not recommended to use synchronous mode queries in the SDK and process their results.
+  - In the SDK, ResultSet is returned, the query result as a string. Consequently, it's not recommended to use synchronous mode queries in the SDK and process their results.
 
-Synchronous mode comes with timeout considerations, which are detailed in [Adjusting Configuration](https://chat.openai.com/openmldb_sql/ddl/SET_STATEMENT.md#offlinecommandconfiguarationdetails).
+Synchronous mode comes with timeout considerations, which are detailed in [Configuration](../openmldb_sql/ddl/SET_STATEMENT.md#offline-command-configuaration-details).
