@@ -18,32 +18,31 @@ The following diagram illustrates the typical process of using OpenMLDB for feat
 
 ## Overview of execution mode
 
-As the data objects for offline and online scenarios are different, their underlying storage and computing nodes are also different. Therefore, OpenMLDB provides several built-in execution modes to support completing the above steps. The following table summarizes the execution modes and development tools used for each step, and three execution modes will be discussed in detail later.
+As the data objects for offline and online scenarios are different, their underlying storage and computing nodes are also different. Therefore, OpenMLDB provides several built-in execution modes to support the above steps. The following table summarizes the execution modes and development tools used for each step, and three execution modes will be discussed in detail later.
 
 | Steps                          | Execution Mode      | Development Tool                                             |
 | ------------------------------ | ------------------- | ------------------------------------------------------------ |
 | 1. Offline Data Import         | Offline Mode        | OpenMLDB CLI, SDKs                                           |
-| Offline Feature Development    | Offline Mode        | OpenMLDB CLI, SDKs                                           |
-| Feature Deployment             | Offline Mode        | OpenMLDB CLI, SDKs                                           |
-| Cold Start Online Data Import  | Online Preview Mode | OpenMLDB CLI, SDKs, [Data Import Tool](https://openmldb.ai/docs/zh/main/tutorial/data_import.html) |
-| Real-time Data Integration     | Online Preview Mode | Connectors, SDKs                                             |
-| Online Data Preview (optional) | Online Preview Mode | OpenMLDB CLI, SDKs, [Data Export Tool](https://openmldb.ai/docs/zh/main/tutorial/data_export.html) |
-| Real-time Feature Calculation  | Online Request Mode | CLI (REST APIs), SDKs                                        |
+| 2. Offline Feature Development    | Offline Mode        | OpenMLDB CLI, SDKs                                           |
+| 3. Feature Deployment             | Offline Mode        | OpenMLDB CLI, SDKs                                           |
+| 4. Cold Start Online Data Import  | Online Preview Mode | OpenMLDB CLI, SDKs, [Data Import Tool](../../tutorial/data_import.md) |
+| 5. Real-time Data Integration     | Online Preview Mode | Connectors, SDKs                                             |
+| 6. Online Data Preview (optional) | Online Preview Mode | OpenMLDB CLI, SDKs, [Data Export Tool](../../tutorial/data_export.md) |
+| 7. Real-time Feature Calculation  | Online Request Mode | CLI (REST APIs), SDKs                                        |
 
 ### Offline Mode
 
-After starting OpenMLDB CLI, the **default mode is offline mode**. Offline data import, offline feature development, and feature deployment are all executed in offline mode. The purpose of offline mode is to manage and compute offline data. The computing nodes involved are supported by OpenMLDB Spark optimized for feature engineering, and the storage nodes support commonly used storage systems such as HDFS.
+After starting OpenMLDB CLI, the **default mode is offline mode**. Offline data import, offline feature development, and feature deployment are all executed in offline mode. The purpose of offline mode is to manage and compute offline data. The computing nodes involved are supported by [OpenMLDB Spark Distribution](../../tutorial/openmldbspark_distribution.md) optimized for feature engineering, and the storage nodes support commonly used storage systems such as HDFS.
 
 Offline mode has the following main features:
 
-- The offline mode supports most of the SQL syntax provided by OpenMLDB, including complex SQL syntaxes such as `LAST JOIN` and `WINDOW UNION`, which are optimized for feature engineering.
+- The offline mode supports most of the SQL syntax provided by OpenMLDB, including complex SQL syntax such as `LAST JOIN` and `WINDOW UNION`.
 
-- In offline mode, some SQL commands are executed asynchronously, such as `LOAD DATA`, `SELECT`, and `SELECT INTO` commands. Other SQL commands are executed synchronously.
+- In offline mode, some SQL commands are executed asynchronously, such as `LOAD DATA`, `SELECT`, and `SELECT INTO`. Other SQL commands are executed synchronously.
 
 - The asynchronous SQL is managed by the internal TaskManager and can be viewed and managed through commands such as `SHOW JOBS`, `SHOW JOB`, and `STOP JOB`.
 
-```{tip}
-:::
+:::{tip}
 Unlike many relational database systems, the `SELECT` command in offline mode is executed asynchronously by default. If you need to set it to synchronous execution, refer to setting the command to run synchronously in offline mode. During offline feature development, if asynchronous execution is used, it is strongly recommended to use the `SELECT INTO` statement for development and debugging, which can export the results to a file for easy viewing.
 :::
 ```
