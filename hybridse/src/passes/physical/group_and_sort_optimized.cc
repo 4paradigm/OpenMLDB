@@ -15,10 +15,8 @@
  */
 #include "passes/physical/group_and_sort_optimized.h"
 
-#include <algorithm>
 #include <map>
 #include <memory>
-#include <set>
 #include <string>
 #include <unordered_map>
 #include <utility>
@@ -27,7 +25,6 @@
 #include "absl/cleanup/cleanup.h"
 #include "absl/status/status.h"
 #include "absl/strings/string_view.h"
-#include "passes/expression/expr_pass.h"
 #include "vm/physical_op.h"
 
 namespace hybridse {
@@ -51,7 +48,7 @@ using hybridse::vm::PhysicalWindowAggrerationNode;
 using hybridse::vm::ProjectType;
 
 static bool ResolveColumnToSourceColumnName(const node::ColumnRefNode* col, const SchemasContext* schemas_ctx,
-                                            std::string* db, std::string* table, std::string* source_name);
+                                            std::string* db, std::string* table, std::string* source_col);
 
 // ExprNode may be resolving under different SchemasContext later (say one of its descendants context),
 // with column name etc it may not able to resvole since a column rename may happen in SimpleProject node.
@@ -69,14 +66,14 @@ absl::Status GroupAndSortOptimized::BuildExprCache(node::ExprNode* node, const S
                 break;
             }
 
-            std::string source_name;
+            std::string source_col;
             std::string source_db;
             std::string source_table;
-            if (!ResolveColumnToSourceColumnName(ref, sc, &source_db, &source_table, &source_name)) {
+            if (!ResolveColumnToSourceColumnName(ref, sc, &source_db, &source_table, &source_col)) {
                 return absl::InternalError(absl::StrCat("unable to resolve ", ref->GetExprString()));
             }
 
-            expr_cache_.emplace(ref, source_name);
+            expr_cache_.emplace(ref, SrcColInfo{source_col, source_table, source_db});
             break;
         }
         default:
@@ -649,8 +646,13 @@ bool GroupAndSortOptimized::TransformKeysAndOrderExpr(const SchemasContext* root
                     return false;
                 }
 
+                if (table_handler->GetName() != op->second.tb_name ||
+                    table_handler->GetDatabase() != op->second.db_name) {
+                    return false;
+                }
+
                 result_bitmap_mapping[columns.size()] = i;
-                columns.emplace_back(op->second);
+                columns.emplace_back(op->second.col_name);
                 break;
             }
             default: {
@@ -668,7 +670,13 @@ bool GroupAndSortOptimized::TransformKeysAndOrderExpr(const SchemasContext* root
                 if (op == expr_cache_.end()) {
                     return false;
                 }
-                order_columns.emplace_back(op->second);
+
+                if (table_handler->GetName() != op->second.tb_name ||
+                    table_handler->GetDatabase() != op->second.db_name) {
+                    return false;
+                }
+
+                order_columns.emplace_back(op->second.col_name);
             }
         }
     }
@@ -820,7 +828,7 @@ bool GroupAndSortOptimized::MatchBestIndex(const std::vector<std::string>& colum
  * Resolve column reference to possible source table's column name
  */
 static bool ResolveColumnToSourceColumnName(const node::ColumnRefNode* col, const SchemasContext* schemas_ctx,
-                                            std::string* src_db, std::string* src_table, std::string* src_name) {
+                                            std::string* src_db, std::string* src_table, std::string* src_col) {
     auto db = col->GetDBName();
     auto rel = col->GetRelationName();
     auto col_name = col->GetColumnName();
@@ -843,8 +851,8 @@ static bool ResolveColumnToSourceColumnName(const node::ColumnRefNode* col, cons
         return false;
     }
 
-    std::string sc_db, sc_table, sc_col;
-    status = source->schemas_ctx()->ResolveDbTableColumnByID(source_column_id, &sc_db, &sc_table, &sc_col);
+    std::string sc_db, sc_table, sc_column;
+    status = source->schemas_ctx()->ResolveDbTableColumnByID(source_column_id, &sc_db, &sc_table, &sc_column);
     if (!status.isOK()) {
         LOG(WARNING) << "Illegal source column id #" << source_column_id << " for index column "
                      << col->GetExprString();
@@ -852,7 +860,7 @@ static bool ResolveColumnToSourceColumnName(const node::ColumnRefNode* col, cons
     }
     *src_db = sc_db;
     *src_table = sc_table;
-    *src_name = sc_col;
+    *src_col = sc_column;
     return true;
 }
 
