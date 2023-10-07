@@ -134,10 +134,13 @@ bool ClusterOptimized::Transform(PhysicalOpNode* in, PhysicalOpNode** output) {
                 case node::kJoinTypeLast: {
                     auto left = join_op->producers()[0];
                     auto right = join_op->producers()[1];
-                    if (vm::PhysicalSchemaType::kSchemaTypeRow ==
-                        right->GetOutputType()) {
-                        DLOG(INFO)
-                            << "request join optimized skip: row and row join";
+                    if (vm::PhysicalSchemaType::kSchemaTypeRow != left->GetOutputType()) {
+                        DLOG(INFO) << "request join optimized skip: left source is not a row";
+                        return false;
+                    }
+
+                    if (vm::PhysicalSchemaType::kSchemaTypeRow == right->GetOutputType()) {
+                        DLOG(INFO) << "request join optimized skip: row and row join";
                         return false;
                     }
                     auto simplify_left = left;
