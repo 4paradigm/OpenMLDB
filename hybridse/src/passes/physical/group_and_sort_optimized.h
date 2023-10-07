@@ -140,7 +140,7 @@ class GroupAndSortOptimized : public TransformUpPysicalPass {
                         std::string* index_name,
                         IndexBitMap* best_bitmap);
 
-    absl::Status BuildExprCache(node::ExprNode* node, const SchemasContext* sc);
+    absl::Status BuildExprCache(const node::ExprNode* node, const SchemasContext* sc);
 
  private:
     std::list<KeysInfo> ctx_;

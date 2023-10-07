@@ -53,14 +53,14 @@ static bool ResolveColumnToSourceColumnName(const node::ColumnRefNode* col, cons
 // ExprNode may be resolving under different SchemasContext later (say one of its descendants context),
 // with column name etc it may not able to resvole since a column rename may happen in SimpleProject node.
 // With the column id hint written to corresponding ColumnRefNode earlier, resolving issue can be mitigated.
-absl::Status GroupAndSortOptimized::BuildExprCache(node::ExprNode* node, const SchemasContext* sc) {
+absl::Status GroupAndSortOptimized::BuildExprCache(const node::ExprNode* node, const SchemasContext* sc) {
     if (node == nullptr) {
         return {};
     }
 
     switch (node->GetExprType()) {
         case node::kExprColumnRef: {
-            auto ref = dynamic_cast<node::ColumnRefNode*>(node);
+            auto ref = dynamic_cast<const node::ColumnRefNode*>(node);
 
             if (expr_cache_.find(ref) != expr_cache_.end()) {
                 break;
@@ -296,22 +296,22 @@ bool GroupAndSortOptimized::KeysOptimized(const SchemasContext* root_schemas_ctx
         expr_cache_.clear();
     };
 
-    auto s = BuildExprCache(left_key->mut_keys(), root_schemas_ctx);
+    auto s = BuildExprCache(left_key->keys(), root_schemas_ctx);
     if (!s.ok()) {
         return false;
     }
-    s = BuildExprCache(index_key->mut_keys(), root_schemas_ctx);
+    s = BuildExprCache(index_key->keys(), root_schemas_ctx);
     if (!s.ok()) {
         return false;
     }
     if (right_key != nullptr) {
-        s = BuildExprCache(right_key->mut_keys(), root_schemas_ctx);
+        s = BuildExprCache(right_key->keys(), root_schemas_ctx);
         if (!s.ok()) {
             return false;
         }
     }
     if (sort != nullptr) {
-        s = BuildExprCache(sort->mut_orders(), root_schemas_ctx);
+        s = BuildExprCache(sort->orders(), root_schemas_ctx);
         if (!s.ok()) {
             return false;
         }

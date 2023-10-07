@@ -156,7 +156,6 @@ class Sort : public FnComponent {
     explicit Sort(const node::OrderByNode *orders) : orders_(orders) {}
     virtual ~Sort() {}
 
-    node::OrderByNode *mut_orders() const { return const_cast<node::OrderByNode *>(orders_); }
     const node::OrderByNode *orders() const { return orders_; }
     void set_orders(const node::OrderByNode *orders) { orders_ = orders; }
 
@@ -284,7 +283,6 @@ class Key : public FnComponent {
     const bool ValidKey() const { return !node::ExprListNullOrEmpty(keys_); }
 
     const node::ExprListNode *keys() const { return keys_; }
-    node::ExprListNode *mut_keys() const { return const_cast<node::ExprListNode *>(keys_); }
     void set_keys(const node::ExprListNode *keys) { keys_ = keys; }
 
     const node::ExprListNode *PhysicalProjectNode() const { return keys_; }
