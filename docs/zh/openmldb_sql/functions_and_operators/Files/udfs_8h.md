@@ -1178,7 +1178,12 @@ Supported date string style:
 
 * yyyy-mm-dd
 * yyyymmdd
-* yyyy-mm-dd hh:mm:ss
+* yyyy-mm-dd HH:MM:SS
+* yyyy-mm-ddTHH:MM:SS.fff+HH:MM (RFC3399 format)
+
+Dates from string are transformed into the same time zone (which is currently always UTC+8) before differentiation, dates from date type by default is at UTC+8, you may see a +1/-1 difference if the two date string have different time zones.
+
+Hint: since openmldb date type limits range from year 1900, to datadiff from/to a date before 1900, pass it as string.
 
 Example:
 
