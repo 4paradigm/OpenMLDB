@@ -16,13 +16,9 @@
 
 #ifndef HYBRIDSE_SRC_CODEGEN_DATE_IR_BUILDER_H_
 #define HYBRIDSE_SRC_CODEGEN_DATE_IR_BUILDER_H_
+
 #include "base/fe_status.h"
-#include "codegen/cast_expr_ir_builder.h"
-#include "codegen/null_ir_builder.h"
-#include "codegen/scope_var.h"
 #include "codegen/struct_ir_builder.h"
-#include "llvm/IR/IRBuilder.h"
-#include "proto/fe_type.pb.h"
 
 namespace hybridse {
 namespace codegen {

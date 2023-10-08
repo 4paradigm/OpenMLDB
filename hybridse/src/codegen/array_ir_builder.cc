@@ -17,6 +17,7 @@
 #include "codegen/array_ir_builder.h"
 
 #include <string>
+#include "codegen/ir_base_builder.h"
 
 namespace hybridse {
 namespace codegen {

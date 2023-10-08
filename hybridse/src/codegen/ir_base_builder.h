@@ -19,7 +19,6 @@
 
 #include <string>
 #include <vector>
-#include "glog/logging.h"
 #include "llvm/IR/IRBuilder.h"
 #include "node/sql_node.h"
 #include "node/type_node.h"

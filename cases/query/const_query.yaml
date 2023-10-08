@@ -126,3 +126,15 @@ cases:
       columns: ['c1 bool', 'c2 int16', 'c3 int', 'c4 double', 'c5 string', 'c6 date', 'c7 timestamp' ]
       rows:
         - [ true, 3, 13, 10.0, 'a string', '2020-05-22', 1590115420000 ]
+  - id: 10
+    mode: procedure-unsupport
+    sql: |
+      select
+        datediff(Date(timestamp(-1)), Date("2021-05-01")) as out1,
+        datediff(Date(timestamp(-2177481600)), Date("2021-05-01")) as out2,
+        datediff(cast(NULL as date), Date("2021-05-01")) as out3
+        ;
+    expect:
+      columns: ["out1 int", "out2 int", "out3 int"]
+      data: |
+        NULL, NULL, NULL

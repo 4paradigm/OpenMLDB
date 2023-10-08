@@ -18,11 +18,10 @@
 #define HYBRIDSE_SRC_CODEGEN_TYPE_IR_BUILDER_H_
 
 #include <string>
-#include <vector>
+
 #include "base/fe_status.h"
-#include "codec/fe_row_codec.h"
-#include "codegen/ir_base_builder.h"
-#include "node/node_enum.h"
+#include "llvm/IR/Module.h"
+#include "llvm/IR/Type.h"
 #include "node/sql_node.h"
 #include "node/type_node.h"
 

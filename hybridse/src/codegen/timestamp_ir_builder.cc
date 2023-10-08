@@ -15,14 +15,15 @@
  */
 
 #include "codegen/timestamp_ir_builder.h"
+
 #include <string>
 #include <vector>
+
 #include "codegen/arithmetic_expr_ir_builder.h"
 #include "codegen/ir_base_builder.h"
 #include "codegen/null_ir_builder.h"
 #include "codegen/predicate_expr_ir_builder.h"
 #include "glog/logging.h"
-#include "node/sql_node.h"
 
 using hybridse::common::kCodegenError;
 

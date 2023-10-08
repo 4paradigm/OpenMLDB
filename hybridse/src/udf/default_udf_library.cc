@@ -26,7 +26,6 @@
 #include <queue>
 #include <functional>
 
-#include "absl/strings/str_cat.h"
 #include "codegen/date_ir_builder.h"
 #include "codegen/string_ir_builder.h"
 #include "codegen/timestamp_ir_builder.h"
@@ -2169,11 +2168,7 @@ void DefaultUdfLibrary::InitTypeUdf() {
         )");
 
     RegisterExternal("date")
-        .args<Timestamp>(reinterpret_cast<void*>(
-            static_cast<void (*)(Timestamp*, Date*, bool*)>(
-                v1::timestamp_to_date)))
-        .return_by_arg(true)
-        .returns<Nullable<Date>>()
+        .args<Nullable<Timestamp>>(v1::timestamp_to_date)
         .doc(R"(
             @brief Cast timestamp or string expression to date (date >= 1900-01-01)
 
@@ -2192,11 +2187,7 @@ void DefaultUdfLibrary::InitTypeUdf() {
             @endcode
             @since 0.1.0)");
     RegisterExternal("date")
-        .args<StringRef>(reinterpret_cast<void*>(
-            static_cast<void (*)(StringRef*, Date*, bool*)>(
-                v1::string_to_date)))
-        .return_by_arg(true)
-        .returns<Nullable<Date>>();
+        .args<Nullable<StringRef>>(v1::string_to_date);
 
     RegisterExternal("timestamp")
         .args<Date>(reinterpret_cast<void*>(

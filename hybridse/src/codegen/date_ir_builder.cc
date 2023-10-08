@@ -19,6 +19,7 @@
 #include <vector>
 #include "codegen/arithmetic_expr_ir_builder.h"
 #include "codegen/ir_base_builder.h"
+#include "codegen/null_ir_builder.h"
 
 namespace hybridse {
 namespace codegen {
@@ -122,12 +123,12 @@ base::Status DateIRBuilder::CastFrom(::llvm::BasicBlock* block,
 
         auto cast_func = m_->getOrInsertFunction(
             fn_name,
-            ::llvm::FunctionType::get(builder.getVoidTy(),
-                                      {src.GetType(), dist->getType(),
-                                       builder.getInt1Ty()->getPointerTo()},
-                                      false));
-        builder.CreateCall(cast_func,
-                           {src.GetValue(&builder), dist, is_null_ptr});
+            ::llvm::FunctionType::get(
+                builder.getVoidTy(),
+                {src.GetType(), builder.getInt1Ty(), dist->getType(), builder.getInt1Ty()->getPointerTo()}, false));
+
+        builder.CreateCall(cast_func, {src.GetValue(&builder), src.GetIsNull(&builder), dist, is_null_ptr});
+
         ::llvm::Value* should_return_null = builder.CreateLoad(is_null_ptr);
         null_ir_builder.CheckAnyNull(block, src, &should_return_null);
         *output = NativeValue::CreateWithFlag(dist, should_return_null);

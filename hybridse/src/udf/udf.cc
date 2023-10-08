@@ -20,8 +20,6 @@
 #include <time.h>
 
 #include <ctime>
-#include <map>
-#include <set>
 #include <utility>
 
 #include "absl/strings/ascii.h"
@@ -29,20 +27,17 @@
 #include "absl/time/civil_time.h"
 #include "absl/time/time.h"
 #include "base/iterator.h"
-#include "boost/date_time.hpp"
+#include "boost/date_time/gregorian/conversion.hpp"
 #include "boost/date_time/gregorian/parsers.hpp"
-#include "boost/date_time/posix_time/posix_time.hpp"
 #include "bthread/types.h"
-#include "codec/list_iterator_codec.h"
 #include "codec/row.h"
 #include "codec/type_codec.h"
-#include "codegen/fn_ir_builder.h"
 #include "farmhash.h"
 #include "node/node_manager.h"
 #include "node/sql_node.h"
 #include "re2/re2.h"
-#include "udf/default_udf_library.h"
 #include "udf/literal_traits.h"
+#include "udf/udf_library.h"
 #include "vm/jit_runtime.h"
 
 namespace hybridse {
@@ -394,8 +389,11 @@ void bool_to_string(bool v, StringRef *output) {
     }
 }
 
-void timestamp_to_date(Timestamp *timestamp,
-                       Date *output, bool *is_null) {
+void timestamp_to_date(Timestamp *timestamp, bool arg_is_null, Date *output, bool *is_null) {
+    if (arg_is_null) {
+        *is_null = true;
+        return;
+    }
     time_t time = (timestamp->ts_ + TZ_OFFSET) / 1000;
     struct tm t;
     memset(&t, 0, sizeof(struct tm));
@@ -771,8 +769,12 @@ void string_to_double(StringRef *str, double *out, bool *is_null_ptr) {
     }
     return;
 }
-void string_to_date(StringRef *str, Date *output,
-                    bool *is_null) {
+void string_to_date(StringRef *str, bool arg_is_null, Date *output, bool *is_null) {
+    if (arg_is_null) {
+        *is_null = true;
+        return;
+    }
+
     if (19 == str->size_) {
         struct tm timeinfo;
         memset(&timeinfo, 0, sizeof(struct tm));
