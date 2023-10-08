@@ -283,6 +283,7 @@ enum CmdType {
     kCmdShowFunctions,
     kCmdDropFunction,
     kCmdShowJobLog,
+    kCmdTruncate,
     kCmdFake,  // not a real cmd, for testing purpose only
     kLastCmd = kCmdFake,
 };

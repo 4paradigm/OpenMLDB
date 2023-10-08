@@ -649,6 +649,22 @@ cases:
           +-cmd_type: drop function
           +-if_exists: true
           +-args: [func1]
+  - id: truncate_stmt
+    desc: truncate
+    sql: TRUNCATE TABLE t1;
+    expect:
+      node_tree_str: |
+        +-node[CMD]
+          +-cmd_type: truncate table
+          +-args: [t1]
+  - id: truncate_stmt_db
+    desc: truncate
+    sql: TRUNCATE TABLE db1.t1;
+    expect:
+      node_tree_str: |
+        +-node[CMD]
+          +-cmd_type: truncate table
+          +-args: [db1, t1]
   - id: exit_stmt
     desc: exit statement
     sql: EXIT;
