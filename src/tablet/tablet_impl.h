@@ -109,6 +109,9 @@ class TabletImpl : public ::openmldb::api::TabletServer {
     void DropTable(RpcController* controller, const ::openmldb::api::DropTableRequest* request,
                    ::openmldb::api::DropTableResponse* response, Closure* done);
 
+    void TruncateTable(RpcController* controller, const ::openmldb::api::TruncateTableRequest* request,
+                   ::openmldb::api::TruncateTableResponse* response, Closure* done);
+
     void Refresh(RpcController* controller, const ::openmldb::api::RefreshRequest* request,
                  ::openmldb::api::GeneralResponse* response, Closure* done);
 

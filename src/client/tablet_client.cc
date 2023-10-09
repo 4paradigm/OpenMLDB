@@ -153,6 +153,20 @@ bool TabletClient::SQLBatchRequestQuery(const std::string& db, const std::string
     return true;
 }
 
+base::Status TabletClient::TruncateTable(uint32_t tid, uint32_t pid) {
+    ::openmldb::api::TruncateTableRequest request;
+    ::openmldb::api::TruncateTableResponse response;
+    request.set_tid(tid);
+    request.set_pid(pid);
+    if (!client_.SendRequest(&::openmldb::api::TabletServer_Stub::TruncateTable, &request, &response,
+                                  FLAGS_request_timeout_ms, 1)) {
+        return {base::ReturnCode::kRPCError, "send request failed!"};
+    } else if (response.code() == 0) {
+        return {};
+    }
+    return {response.code(), response.msg()};
+}
+
 base::Status TabletClient::CreateTable(const ::openmldb::api::TableMeta& table_meta) {
     ::openmldb::api::CreateTableRequest request;
     ::openmldb::api::TableMeta* table_meta_ptr = request.mutable_table_meta();

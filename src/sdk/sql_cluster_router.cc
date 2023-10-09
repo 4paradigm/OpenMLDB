@@ -1932,19 +1932,32 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::HandleSQLCmd(const h
             *status = {};
             std::string db_name = db;
             std::string table_name;
-            if (cmd_node->GetArgs().size() == 2) {
-                db_name = cmd_node->GetArgs()[0];
-                table_name = cmd_node->GetArgs()[1];
-            } else if (cmd_node->GetArgs().size() == 1) {
-                table_name = cmd_node->GetArgs()[0];
-            } else {
-                *status = {StatusCode::kCmdError, "Invalid Cmd Args size"};
+            if (!ParseNamesFromArgs(db, cmd_node->GetArgs(), &db_name, &table_name).IsOK()) {
+                *status = {StatusCode::kCmdError, msg};
+                return {};
             }
             if (!CheckAnswerIfInteractive("table", table_name)) {
                 return {};
             }
             if (DropTable(db_name, table_name, cmd_node->IsIfExists(), status)) {
                 RefreshCatalog();
+            }
+            return {};
+        }
+        case hybridse::node::kCmdTruncate: {
+            *status = {};
+            std::string db_name;
+            std::string table_name;
+            if (!ParseNamesFromArgs(db, cmd_node->GetArgs(), &db_name, &table_name).IsOK()) {
+                *status = {StatusCode::kCmdError, msg};
+                return {};
+            }
+            if (!CheckAnswerIfInteractive("truncate", table_name)) {
+                return {};
+            }
+            auto base_status = ns_ptr->TruncateTable(db_name, table_name);
+            if (!base_status.OK()) {
+                *status = {StatusCode::kCmdError, base_status.GetMsg()};
             }
             return {};
         }
@@ -2989,18 +3002,16 @@ int SQLClusterRouter::GetJobTimeout() {
 }
 
 ::hybridse::sdk::Status SQLClusterRouter::ParseNamesFromArgs(const std::string& db,
-                                                             const std::vector<std::string>& args, std::string* db_name,
-                                                             std::string* sp_name) {
+        const std::vector<std::string>& args, std::string* db_name, std::string* target_name) {
     if (args.size() == 1) {
-        // only sp name, no db_name
         if (db.empty()) {
             return {StatusCode::kCmdError, "Please enter database first"};
         }
         *db_name = db;
-        *sp_name = args[0];
+        *target_name = args[0];
     } else if (args.size() == 2) {
         *db_name = args[0];
-        *sp_name = args[1];
+        *target_name = args[1];
     } else {
         return {StatusCode::kCmdError, "Invalid args"};
     }

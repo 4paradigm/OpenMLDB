@@ -112,6 +112,8 @@ class NsClient : public Client {
     bool DropTable(const std::string& db, const std::string& name,
                    std::string& msg);  // NOLINT
 
+    base::Status TruncateTable(const std::string& db, const std::string& name);
+
     bool SyncTable(const std::string& name, const std::string& cluster_alias, uint32_t pid,
                    std::string& msg);  // NOLINT
 

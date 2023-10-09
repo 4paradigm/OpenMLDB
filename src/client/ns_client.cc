@@ -297,6 +297,19 @@ bool NsClient::DropTable(const std::string& db, const std::string& name, std::st
     return false;
 }
 
+base::Status NsClient::TruncateTable(const std::string& db, const std::string& name) {
+    ::openmldb::nameserver::TruncateTableRequest request;
+    request.set_name(name);
+    request.set_db(db);
+    ::openmldb::nameserver::TruncateTableResponse response;
+    bool ok = client_.SendRequest(&::openmldb::nameserver::NameServer_Stub::TruncateTable, &request, &response,
+                                  FLAGS_request_timeout_ms, 1);
+    if (ok && response.code() == 0) {
+        return {};
+    }
+    return {response.code(), response.msg()};
+}
+
 bool NsClient::SyncTable(const std::string& name, const std::string& cluster_alias, uint32_t pid, std::string& msg) {
     ::openmldb::nameserver::SyncTableRequest request;
     request.set_name(name);

@@ -3458,6 +3458,14 @@ void TabletImpl::CreateTable(RpcController* controller, const ::openmldb::api::C
     response->set_msg("ok");
 }
 
+void TabletImpl::TruncateTable(RpcController* controller, const ::openmldb::api::TruncateTableRequest* request,
+        ::openmldb::api::TruncateTableResponse* response, Closure* done) {
+    brpc::ClosureGuard done_guard(done);
+
+    response->set_code(::openmldb::base::ReturnCode::kOk);
+    response->set_msg("ok");
+}
+
 void TabletImpl::ExecuteGc(RpcController* controller, const ::openmldb::api::ExecuteGcRequest* request,
                            ::openmldb::api::GeneralResponse* response, Closure* done) {
     brpc::ClosureGuard done_guard(done);

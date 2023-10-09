@@ -56,6 +56,8 @@ class TabletClient : public Client {
 
     base::Status CreateTable(const ::openmldb::api::TableMeta& table_meta);
 
+    base::Status TruncateTable(uint32_t tid, uint32_t pid);
+
     bool UpdateTableMetaForAddField(uint32_t tid, const std::vector<openmldb::common::ColumnDesc>& cols,
                                     const openmldb::common::VersionPair& pair,
                                     std::string& msg);  // NOLINT
