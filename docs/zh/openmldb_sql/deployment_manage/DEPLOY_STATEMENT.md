@@ -175,9 +175,9 @@ deploy demo options(SYNC="false") SELECT t1.col1, t2.col2, sum(col4) OVER w1 as 
     WINDOW w1 AS (PARTITION BY t1.col2 ORDER BY t1.col3 ROWS BETWEEN 2 PRECEDING AND CURRENT ROW);
 ```
 
-#### 设置偏移
+#### 设置偏移BIAS
 
-如果你并不希望数据根据deploy的索引淘汰，或者希望晚一点淘汰，可以在deploy时设置偏移，常用于数据时间戳并不实时的情况、测试等情况。如果deploy后的索引ttl为abs 3h，但是数据的时间戳是3h前的(以系统时间为基准)，那么这条数据就会被淘汰，无法参与计算。设置一定时间或永久的偏移，则可以让数据更久的停留在在线表中。
+如果你并不希望数据根据deploy的索引淘汰，或者希望晚一点淘汰，可以在deploy时设置偏移BIAS，常用于数据时间戳并不实时的情况、测试等情况。如果deploy后的索引ttl为abs 3h，但是数据的时间戳是3h前的(以系统时间为基准)，那么这条数据就会被淘汰，无法参与计算。设置一定时间或永久的偏移，则可以让数据更久的停留在在线表中。
 
 时间偏移，单位可以是`s`、`m`、`h`、`d`，也可以是整数，单位为`ms`，也可以是`inf`，表示永不淘汰；如果是行数偏移，可以是整数，单位是`row`，也可以是`inf`，表示永不淘汰。两种偏移中，0均表示不偏移。
 

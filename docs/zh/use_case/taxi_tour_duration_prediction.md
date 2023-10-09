@@ -167,6 +167,10 @@ w2 AS (PARTITION BY passenger_count ORDER BY pickup_datetime ROWS_RANGE BETWEEN 
     w2 AS (PARTITION BY passenger_count ORDER BY pickup_datetime ROWS_RANGE BETWEEN 1d PRECEDING AND CURRENT ROW);
     ```
 
+```{note}
+此处DEPLOY包含BIAS OPTIONS，是因为导入在线存储的数据文件不会更新，对于当前时间来讲，可能会超过DEPLOY后的表索引的时间TTL，导致表淘汰掉这些数据。时间淘汰，只看每个索引的ts列和ttl，只要数据中该列的值<(当前时间-abs_ttl)，在该索引上就会被淘汰，与其他因素无关，各个索引也互相不影响。如果你的数据不是实时产生的新timestamp，也需要考虑带上BIAS OPTIONS。
+```
+
 ### 步骤 7：导入在线数据
 
 首先，请切换到**在线**执行模式。接着在在线模式下，导入样例数据 `/work/taxi-trip/data/taxi_tour_table_train_simple.csv` 作为在线数据，用于在线特征计算。
