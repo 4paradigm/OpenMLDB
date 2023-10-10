@@ -205,7 +205,7 @@ def RecoverData(executor):
             return
         for name in tables:
             if not RecoverTable(executor, db, name).OK():
-                return
+                log.error(f"recover table failed. db {db} name {name}, check log for detail")
 
 def ChangeLeader(db, partition, src_endpoint, desc_endpoint, one_replica, restore = True):
     log.info(

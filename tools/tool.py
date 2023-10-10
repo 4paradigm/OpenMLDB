@@ -276,6 +276,7 @@ class Executor:
         cmd = list(self.tablet_base_cmd)
         cmd.append("--endpoint=" + self.endpoint_map[endpoint])
         cmd.append("--cmd=loadtable {} {} {} 0 8".format(name, tid, pid))
+        log.info(f"run {cmd}")
         status, output = self.RunWithRetuncode(cmd)
         time.sleep(1)
         if status.OK() and output.find("LoadTable ok") != -1:
@@ -289,12 +290,12 @@ class Executor:
                     if table_stat == "kTableNormal":
                         return Status()
                     elif table_stat == "kTableLoading" or table_stat == "kTableUndefined":
-                        log.info("table is loading... tid {tid} pid {pid}".format(tid, pid))
+                        log.info(f"table is loading... tid {tid} pid {pid}")
                     else:
-                        return Status(-1, "table stat is {table_stat}".format(table_stat))
+                        return Status(-1, f"table stat is {table_stat}")
                 time.sleep(2)
 
-        return Status(-1, "execute load table failed")
+        return Status(-1, f"execute load table failed, status {status.GetMsg()}, output {output}")
 
     def GetLeaderFollowerOffset(self, endpoint, tid, pid):
         cmd = list(self.tablet_base_cmd)
