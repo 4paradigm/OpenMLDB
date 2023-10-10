@@ -118,8 +118,8 @@ def RecoverPartition(executor, db, partitions, endpoint_status):
             db=db, table_name=table_name, pid=pid, leader_endpoint=leader_endpoint))
         status = executor.LoadTable(leader_endpoint, table_name, tid, pid)
         if not status.OK():
-            log.error("load table failed. db {db} name {table_name} tid {tid} pid {pid} endpoint {leader_endpoint} msg {status.GetMsg()}".format(
-                db=db, table_name=table_name, tid=tid, pid=pid, leader_endpoint=leader_endpoint, status=status))
+            log.error("load table failed. db {db} name {table_name} tid {tid} pid {pid} endpoint {leader_endpoint} msg {status}".format(
+                db=db, table_name=table_name, tid=tid, pid=pid, leader_endpoint=leader_endpoint, status=status.GetMsg()))
             return Status(-1, "recover partition failed")
     if not partitions[leader_pos].IsAlive():
         status =  executor.UpdateTableAlive(db, table_name, pid, leader_endpoint, "yes")
