@@ -44,6 +44,15 @@ void DateIRBuilder::InitStructType() {
     struct_type_ = stype;
     return;
 }
+
+base::Status DateIRBuilder::CreateNull(::llvm::BasicBlock* block, NativeValue* output) {
+    ::llvm::Value* value = nullptr;
+    CHECK_TRUE(CreateDefault(block, &value), common::kCodegenError, "Fail to construct string")
+    ::llvm::IRBuilder<> builder(block);
+    *output = NativeValue::CreateWithFlag(value, builder.getInt1(true));
+    return base::Status::OK();
+}
+
 bool DateIRBuilder::CreateDefault(::llvm::BasicBlock* block,
                                   ::llvm::Value** output) {
     return NewDate(block, output);
@@ -123,11 +132,10 @@ base::Status DateIRBuilder::CastFrom(::llvm::BasicBlock* block,
 
         auto cast_func = m_->getOrInsertFunction(
             fn_name,
-            ::llvm::FunctionType::get(
-                builder.getVoidTy(),
-                {src.GetType(), builder.getInt1Ty(), dist->getType(), builder.getInt1Ty()->getPointerTo()}, false));
+            ::llvm::FunctionType::get(builder.getVoidTy(),
+                                      {src.GetType(), dist->getType(), builder.getInt1Ty()->getPointerTo()}, false));
 
-        builder.CreateCall(cast_func, {src.GetValue(&builder), src.GetIsNull(&builder), dist, is_null_ptr});
+        builder.CreateCall(cast_func, {src.GetValue(&builder), dist, is_null_ptr});
 
         ::llvm::Value* should_return_null = builder.CreateLoad(is_null_ptr);
         null_ir_builder.CheckAnyNull(block, src, &should_return_null);

@@ -389,11 +389,7 @@ void bool_to_string(bool v, StringRef *output) {
     }
 }
 
-void timestamp_to_date(Timestamp *timestamp, bool arg_is_null, Date *output, bool *is_null) {
-    if (arg_is_null) {
-        *is_null = true;
-        return;
-    }
+void timestamp_to_date(Timestamp *timestamp, Date *output, bool *is_null) {
     time_t time = (timestamp->ts_ + TZ_OFFSET) / 1000;
     struct tm t;
     memset(&t, 0, sizeof(struct tm));
@@ -769,12 +765,7 @@ void string_to_double(StringRef *str, double *out, bool *is_null_ptr) {
     }
     return;
 }
-void string_to_date(StringRef *str, bool arg_is_null, Date *output, bool *is_null) {
-    if (arg_is_null) {
-        *is_null = true;
-        return;
-    }
-
+void string_to_date(StringRef *str, Date *output, bool *is_null) {
     if (19 == str->size_) {
         struct tm timeinfo;
         memset(&timeinfo, 0, sizeof(struct tm));

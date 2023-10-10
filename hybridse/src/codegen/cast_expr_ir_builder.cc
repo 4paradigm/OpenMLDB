@@ -126,6 +126,11 @@ Status CastExprIRBuilder::UnSafeCast(const NativeValue& value,
             StringIRBuilder string_ir_builder(block_->getModule());
             CHECK_STATUS(string_ir_builder.CreateNull(block_, output));
             return base::Status::OK();
+
+        } else if (TypeIRBuilder::IsDatePtr(type)) {
+            DateIRBuilder date_ir(block_->getModule());
+            CHECK_STATUS(date_ir.CreateNull(block_, output));
+            return base::Status::OK();
         } else {
             *output = NativeValue::CreateNull(type);
         }

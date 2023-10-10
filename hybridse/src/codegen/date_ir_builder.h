@@ -27,17 +27,17 @@ class DateIRBuilder : public StructTypeIRBuilder {
  public:
     explicit DateIRBuilder(::llvm::Module* m);
     ~DateIRBuilder();
-    void InitStructType();
-    bool CreateDefault(::llvm::BasicBlock* block, ::llvm::Value** output);
+    void InitStructType() override;
+
+    base::Status CreateNull(::llvm::BasicBlock* block, NativeValue* output);
+    bool CreateDefault(::llvm::BasicBlock* block, ::llvm::Value** output) override;
+
     bool NewDate(::llvm::BasicBlock* block, ::llvm::Value** output);
     bool NewDate(::llvm::BasicBlock* block, ::llvm::Value* date,
                  ::llvm::Value** output);
-    bool CopyFrom(::llvm::BasicBlock* block, ::llvm::Value* src,
-                  ::llvm::Value* dist);
-    base::Status CastFrom(::llvm::BasicBlock* block, const NativeValue& src,
-                          NativeValue* output);
-    base::Status CastFrom(::llvm::BasicBlock* block, ::llvm::Value* src,
-                          ::llvm::Value** output);
+    bool CopyFrom(::llvm::BasicBlock* block, ::llvm::Value* src, ::llvm::Value* dist);
+    base::Status CastFrom(::llvm::BasicBlock* block, const NativeValue& src, NativeValue* output);
+
     bool GetDate(::llvm::BasicBlock* block, ::llvm::Value* date,
                  ::llvm::Value** output);
     bool SetDate(::llvm::BasicBlock* block, ::llvm::Value* date,

@@ -2168,7 +2168,7 @@ void DefaultUdfLibrary::InitTypeUdf() {
         )");
 
     RegisterExternal("date")
-        .args<Nullable<Timestamp>>(v1::timestamp_to_date)
+        .args<Timestamp>(v1::timestamp_to_date)
         .doc(R"(
             @brief Cast timestamp or string expression to date (date >= 1900-01-01)
 
@@ -2187,7 +2187,7 @@ void DefaultUdfLibrary::InitTypeUdf() {
             @endcode
             @since 0.1.0)");
     RegisterExternal("date")
-        .args<Nullable<StringRef>>(v1::string_to_date);
+        .args<StringRef>(v1::string_to_date);
 
     RegisterExternal("timestamp")
         .args<Date>(reinterpret_cast<void*>(

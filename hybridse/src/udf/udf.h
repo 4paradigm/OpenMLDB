@@ -359,7 +359,7 @@ void date_format(Date *date, StringRef *format,
 
 void timestamp_to_string(Timestamp *timestamp,
                          StringRef *output);
-void timestamp_to_date(Timestamp *timestamp, bool arg_is_null, Date *output, bool *is_null);
+void timestamp_to_date(Timestamp *timestamp, Date *output, bool *is_null);
 
 void date_to_string(Date *date, StringRef *output);
 
@@ -379,7 +379,7 @@ void regexp_like(StringRef *name, StringRef *pattern, StringRef *flags, bool *ou
 void regexp_like(StringRef *name, StringRef *pattern, bool *out, bool *is_null);
 
 void date_to_timestamp(Date *date, Timestamp *output, bool *is_null);
-void string_to_date(StringRef *str, bool arg_is_null, Date *output, bool *is_null);
+void string_to_date(StringRef *str, Date *output, bool *is_null);
 absl::StatusOr<absl::Time> string_to_time(absl::string_view str);
 
 void string_to_timestamp(StringRef *str, Timestamp *output, bool *is_null);
