@@ -8235,6 +8235,13 @@ void NameServerImpl::DeleteIndex(RpcController* controller, const DeleteIndexReq
         PDLOG(WARNING, "table[%s] does not exist!", request->table_name().c_str());
         return;
     }
+    if (table_info->storage_mode() != ::openmldb::common::kMemory) {
+        response->set_code(ReturnCode::kOperatorNotSupport);
+        std::string msg = "DROP INDEX is not supported on a disk table, as its index is fully managed by the system.";
+        response->set_msg(msg);
+        LOG(WARNING) << msg;
+        return;
+    }
     {
         std::lock_guard<std::mutex> lock(mu_);
         if (table_info->column_key_size() == 0) {
@@ -8435,7 +8442,8 @@ void NameServerImpl::AddIndex(RpcController* controller, const AddIndexRequest* 
     }
     if (table_info->storage_mode() != ::openmldb::common::kMemory) {
         response->set_code(ReturnCode::kOperatorNotSupport);
-        response->set_msg("only memory support addindex");
+        response->set_msg("CREATE INDEX is not supported on a disk table, as its index is fully managed by the system. "
+                "Please refer to this link for more details: " + base::NOTICE_URL);
         LOG(WARNING) << "cannot add index. table " << name;
         return;
     }

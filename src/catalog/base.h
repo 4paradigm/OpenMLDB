@@ -63,6 +63,10 @@ class ProcedureInfoImpl : public hybridse::sdk::ProcedureInfo {
         return &options_;
     }
 
+    int GetRouterCol() const override {
+        return router_col_;
+    }
+
  private:
     std::string db_name_;
     std::string sp_name_;
@@ -75,6 +79,7 @@ class ProcedureInfoImpl : public hybridse::sdk::ProcedureInfo {
     std::string main_db_;
     ::hybridse::sdk::ProcedureType type_;
     std::unordered_map<std::string, std::string> options_;
+    int router_col_ = -1;
 };
 
 }  // namespace catalog

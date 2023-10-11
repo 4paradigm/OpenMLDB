@@ -31,7 +31,7 @@ class YarnJobTrackerThread(job: JobInfo) extends Thread {
       }
 
       // Sleep for interval time
-      Thread.sleep(TaskManagerConfig.JOB_TRACKER_INTERVAL * 1000)
+      Thread.sleep(TaskManagerConfig.getJobTrackerInterval * 1000)
 
       val currentYarnState = appReport.getYarnApplicationState.toString.toLowerCase()
 

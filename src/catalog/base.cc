@@ -45,6 +45,9 @@ ProcedureInfoImpl::ProcedureInfoImpl(const ::openmldb::api::ProcedureInfo& proce
     for (const auto& op : procedure.options()) {
         options_[op.name()] = op.value().value();
     }
+    if (procedure.router_col_size() > 0) {
+        router_col_ = procedure.router_col(0);
+    }
 }
 
 }  // namespace catalog

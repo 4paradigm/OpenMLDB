@@ -393,8 +393,8 @@ bool GroupAndSortOptimized::KeysOptimized(const SchemasContext* root_schemas_ctx
             return false;
         }
         PhysicalSimpleProjectNode* new_simple_op = nullptr;
-        Status status = plan_ctx_->CreateOp<PhysicalSimpleProjectNode>(
-            &new_simple_op, new_depend, simple_project->project());
+        Status status =
+            plan_ctx_->CreateOp<PhysicalSimpleProjectNode>(&new_simple_op, new_depend, simple_project->project());
         if (!status.isOK()) {
             LOG(WARNING) << "Fail to create simple project op: " << status;
             return false;
@@ -442,11 +442,16 @@ bool GroupAndSortOptimized::KeysOptimized(const SchemasContext* root_schemas_ctx
                            index_key, right_key, sort, &new_depend)) {
             return false;
         }
-        if (!ResetProducer(plan_ctx_, request_join, 0, new_depend)) {
+        PhysicalRequestJoinNode* new_join = nullptr;
+        auto s = plan_ctx_->CreateOp<PhysicalRequestJoinNode>(&new_join, new_depend, request_join->GetProducer(1),
+                                                                  request_join->join(),
+                                                                  request_join->output_right_only());
+        if (!s.isOK()) {
+            LOG(WARNING) << "Fail to create new request join op: " << s;
             return false;
         }
 
-        *new_in = request_join;
+        *new_in = new_join;
         return true;
     }
     return false;

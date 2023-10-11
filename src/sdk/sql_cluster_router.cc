@@ -1145,17 +1145,21 @@ std::shared_ptr<TableReader> SQLClusterRouter::GetTableReader() {
 }
 
 std::shared_ptr<openmldb::client::TabletClient> SQLClusterRouter::GetTablet(const std::string& db,
-                                                                            const std::string& sp_name,
-                                                                            hybridse::sdk::Status* status) {
+        const std::string& sp_name, const std::string& router_col, hybridse::sdk::Status* status) {
     RET_IF_NULL_AND_WARN(status, "output status is nullptr");
-    std::shared_ptr<hybridse::sdk::ProcedureInfo> sp_info = cluster_sdk_->GetProcedureInfo(db, sp_name, &status->msg);
+    auto sp_info = cluster_sdk_->GetProcedureInfo(db, sp_name, &status->msg);
     if (!sp_info) {
         CODE_PREPEND_AND_WARN(status, StatusCode::kCmdError, "procedure not found");
         return nullptr;
     }
     const std::string& table = sp_info->GetMainTable();
     const std::string& db_name = sp_info->GetMainDb().empty() ? db : sp_info->GetMainDb();
-    auto tablet = cluster_sdk_->GetTablet(db_name, table);
+    std::shared_ptr<::openmldb::catalog::TabletAccessor> tablet;
+    if (router_col.empty()) {
+        tablet = cluster_sdk_->GetTablet(db_name, table);
+    } else {
+        tablet = cluster_sdk_->GetTablet(db_name, table, router_col);
+    }
     if (!tablet) {
         SET_STATUS_AND_WARN(status, StatusCode::kCmdError, "fail to get tablet, table " + db_name + "." + table);
         return nullptr;
@@ -1358,7 +1362,10 @@ bool SQLClusterRouter::PutRow(uint32_t tid, const std::shared_ptr<SQLInsertRow>&
                     bool ret = client->Put(tid, pid, cur_ts, row->GetRow(), kv.second);
                     if (!ret) {
                         SET_STATUS_AND_WARN(status, StatusCode::kCmdError,
-                                            "fail to make a put request to table. tid " + std::to_string(tid));
+                                "INSERT failed, tid " + std::to_string(tid) +
+                                ". Note that data might have been partially inserted. "
+                                "You are encouraged to perform DELETE to remove any partially "
+                                "inserted data before trying INSERT again.");
                         return false;
                     }
                     continue;
@@ -1460,29 +1467,43 @@ std::shared_ptr<ExplainInfo> SQLClusterRouter::Explain(const std::string& db, co
 }
 
 std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::CallProcedure(const std::string& db,
-                                                                          const std::string& sp_name,
-                                                                          std::shared_ptr<SQLRequestRow> row,
-                                                                          hybridse::sdk::Status* status) {
-    RET_IF_NULL_AND_WARN(status, "output status is nullptr");
+        const std::string& sp_name, std::shared_ptr<SQLRequestRow> row, hybridse::sdk::Status* status) {
     if (!row || !row->OK()) {
         SET_STATUS_AND_WARN(status, StatusCode::kCmdError, "make sure the request row is built before execute sql");
         return nullptr;
     }
-    auto tablet = GetTablet(db, sp_name, status);
+    return CallProcedure(db, sp_name, base::Slice(row->GetRow()), "", status);
+}
+
+std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::CallProcedure(const std::string& db,
+        const std::string& sp_name, hybridse::sdk::ByteArrayPtr buf, int len,
+        const std::string& router_col, hybridse::sdk::Status* status) {
+    if (buf == nullptr || len == 0) {
+        SET_STATUS_AND_WARN(status, StatusCode::kCmdError, "invalid request row data");
+        return nullptr;
+    }
+    return CallProcedure(db, sp_name, base::Slice(buf, len), router_col, status);
+}
+
+std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::CallProcedure(const std::string& db,
+        const std::string& sp_name, const base::Slice& row,
+        const std::string& router_col, hybridse::sdk::Status* status) {
+    RET_IF_NULL_AND_WARN(status, "output status is nullptr");
+    auto tablet = GetTablet(db, sp_name, router_col, status);
     if (!tablet) {
+        SET_STATUS_AND_WARN(status, StatusCode::kCmdError, "cannot get tablet");
         return nullptr;
     }
 
     auto cntl = std::make_shared<::brpc::Controller>();
     auto response = std::make_shared<::openmldb::api::QueryResponse>();
-    bool ok = tablet->CallProcedure(db, sp_name, row->GetRow(), cntl.get(), response.get(), options_->enable_debug,
-                                    options_->request_timeout);
+    bool ok = tablet->CallProcedure(db, sp_name, row, cntl.get(), response.get(),
+            options_->enable_debug, options_->request_timeout);
     if (!ok || response->code() != ::openmldb::base::kOk) {
         RPC_STATUS_AND_WARN(status, cntl, response, "CallProcedure failed");
         return nullptr;
     }
-    auto rs = ResultSetSQL::MakeResultSet(response, cntl, status);
-    return rs;
+    return ResultSetSQL::MakeResultSet(response, cntl, status);
 }
 
 std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::CallSQLBatchRequestProcedure(
@@ -1493,7 +1514,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::CallSQLBatchRequestP
         SET_STATUS_AND_WARN(status, StatusCode::kNullInputPointer, "row_batch is nullptr");
         return nullptr;
     }
-    auto tablet = GetTablet(db, sp_name, status);
+    auto tablet = GetTablet(db, sp_name, "", status);
     if (!tablet) {
         return nullptr;
     }
@@ -1504,6 +1525,38 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::CallSQLBatchRequestP
                                                    options_->enable_debug, options_->request_timeout);
     if (!ok || response->code() != ::openmldb::base::kOk) {
         RPC_STATUS_AND_WARN(status, cntl, response, "CallSQLBatchRequestProcedure failed");
+        return nullptr;
+    }
+    auto rs = std::make_shared<::openmldb::sdk::SQLBatchRequestResultSet>(response, cntl);
+    if (!rs->Init()) {
+        SET_STATUS_AND_WARN(status, StatusCode::kCmdError, "SQLBatchRequestResultSet init failed");
+        return nullptr;
+    }
+    return rs;
+}
+
+std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::CallSQLBatchRequestProcedure(
+    const std::string& db, const std::string& sp_name,
+    hybridse::sdk::ByteArrayPtr meta, int meta_len,
+    hybridse::sdk::ByteArrayPtr buf, int len,
+    hybridse::sdk::Status* status) {
+    RET_IF_NULL_AND_WARN(status, "output status is nullptr");
+    if (meta == nullptr || meta_len == 0 || buf == nullptr || len == 0) {
+        SET_STATUS_AND_WARN(status, StatusCode::kNullInputPointer, "input data is null");
+        return nullptr;
+    }
+    auto tablet = GetTablet(db, sp_name, "", status);
+    if (!tablet) {
+        return nullptr;
+    }
+
+    auto cntl = std::make_shared<::brpc::Controller>();
+    auto response = std::make_shared<::openmldb::api::SQLBatchRequestQueryResponse>();
+    auto ret = tablet->CallSQLBatchRequestProcedure(db, sp_name, base::Slice(meta, meta_len),
+            base::Slice(buf, len),
+            options_->enable_debug, options_->request_timeout, cntl.get(), response.get());
+    if (!ret.OK()) {
+        RPC_STATUS_AND_WARN(status, cntl, response, "CallSQLBatchRequestProcedure failed" + ret.GetMsg());
         return nullptr;
     }
     auto rs = std::make_shared<::openmldb::sdk::SQLBatchRequestResultSet>(response, cntl);
@@ -1676,6 +1729,9 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::HandleSQLCmd(const h
         }
         case hybridse::node::kCmdDropFunction: {
             std::string name = cmd_node->GetArgs()[0];
+            if (!CheckAnswerIfInteractive("function", name)) {
+                return {};
+            }
             auto base_status = ns_ptr->DropFunction(name, cmd_node->IsIfExists());
             if (base_status.OK()) {
                 *status = {};
@@ -1688,6 +1744,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::HandleSQLCmd(const h
                     if (!base_status.OK()) {
                         LOG(WARNING) << "drop function " << name << " failed: [" << base_status.GetCode() << "] "
                                      << base_status.GetMsg();
+                        APPEND_FROM_BASE_AND_WARN(status, base_status, "drop function failed from taskmanager");
                         return {};
                     }
                 }
@@ -1968,6 +2025,12 @@ base::Status SQLClusterRouter::HandleSQLCreateTable(hybridse::node::CreatePlanNo
         if (!ns_ptr->CreateTable(table_info, create_node->GetIfNotExist(), msg)) {
             return base::Status(base::ReturnCode::kSQLCmdRunError, msg);
         }
+        if (interactive_ && table_info.column_key_size() == 0) {
+            return base::Status{base::ReturnCode::kOk,
+                  "As there is no index specified, a default index type `absolute 0` will be created. "
+                  "The data attached to the index will never expire to be deleted. "
+                  "Please refer to this link for more details: " + base::NOTICE_URL};
+        }
     } else {
         auto dbs = cluster_sdk_->GetAllDbs();
         auto it = std::find(dbs.begin(), dbs.end(), db_name);
@@ -2146,22 +2209,37 @@ std::shared_ptr<openmldb::sdk::QueryFuture> SQLClusterRouter::CallProcedure(cons
                                                                             int64_t timeout_ms,
                                                                             std::shared_ptr<SQLRequestRow> row,
                                                                             hybridse::sdk::Status* status) {
-    RET_IF_NULL_AND_WARN(status, "output status is nullptr");
     if (!row || !row->OK()) {
         SET_STATUS_AND_WARN(status, StatusCode::kCmdError, "make sure the request row is built before execute sql");
         return {};
     }
-    auto tablet = GetTablet(db, sp_name, status);
+    return CallProcedure(db, sp_name, timeout_ms, base::Slice(row->GetRow()), "", status);
+}
+
+std::shared_ptr<openmldb::sdk::QueryFuture> SQLClusterRouter::CallProcedure(const std::string& db,
+        const std::string& sp_name, int64_t timeout_ms, hybridse::sdk::ByteArrayPtr buf, int len,
+        const std::string& router_col, hybridse::sdk::Status* status) {
+    if (buf == nullptr || len == 0) {
+        SET_STATUS_AND_WARN(status, StatusCode::kCmdError, "invalid request row data");
+        return nullptr;
+    }
+    return CallProcedure(db, sp_name, timeout_ms, base::Slice(buf, len), router_col, status);
+}
+
+std::shared_ptr<openmldb::sdk::QueryFuture> SQLClusterRouter::CallProcedure(const std::string& db,
+        const std::string& sp_name, int64_t timeout_ms, const base::Slice& row,
+        const std::string& router_col, hybridse::sdk::Status* status) {
+    RET_IF_NULL_AND_WARN(status, "output status is nullptr");
+    auto tablet = GetTablet(db, sp_name, router_col, status);
     if (!tablet) {
         return {};
     }
-
     std::shared_ptr<openmldb::api::QueryResponse> response = std::make_shared<openmldb::api::QueryResponse>();
     std::shared_ptr<brpc::Controller> cntl = std::make_shared<brpc::Controller>();
     auto* callback = new openmldb::RpcCallback<openmldb::api::QueryResponse>(response, cntl);
 
     std::shared_ptr<openmldb::sdk::QueryFutureImpl> future = std::make_shared<openmldb::sdk::QueryFutureImpl>(callback);
-    bool ok = tablet->CallProcedure(db, sp_name, row->GetRow(), timeout_ms, options_->enable_debug, callback);
+    bool ok = tablet->CallProcedure(db, sp_name, row, timeout_ms, options_->enable_debug, callback);
     if (!ok) {
         // async rpc
         SET_STATUS_AND_WARN(status, StatusCode::kConnError, "CallProcedure failed(stub is null)");
@@ -2178,7 +2256,7 @@ std::shared_ptr<openmldb::sdk::QueryFuture> SQLClusterRouter::CallSQLBatchReques
         // todo
         return nullptr;
     }
-    auto tablet = GetTablet(db, sp_name, status);
+    auto tablet = GetTablet(db, sp_name, "", status);
     if (!tablet) {
         return nullptr;
     }
@@ -2195,6 +2273,32 @@ std::shared_ptr<openmldb::sdk::QueryFuture> SQLClusterRouter::CallSQLBatchReques
     if (!ok) {
         // async rpc only check ok
         SET_STATUS_AND_WARN(status, StatusCode::kConnError, "CallSQLBatchRequestProcedure failed(stub is null)");
+        return nullptr;
+    }
+    return future;
+}
+
+std::shared_ptr<openmldb::sdk::QueryFuture> SQLClusterRouter::CallSQLBatchRequestProcedure(
+    const std::string& db, const std::string& sp_name, int64_t timeout_ms,
+    hybridse::sdk::ByteArrayPtr meta, int meta_len,
+    hybridse::sdk::ByteArrayPtr buf, int len, hybridse::sdk::Status* status) {
+    RET_IF_NULL_AND_WARN(status, "output status is nullptr");
+    if (meta == nullptr || meta_len == 0 || buf == nullptr || len == 0) {
+        SET_STATUS_AND_WARN(status, StatusCode::kNullInputPointer, "input data is null");
+        return nullptr;
+    }
+    auto tablet = GetTablet(db, sp_name, "", status);
+    if (!tablet) {
+        return nullptr;
+    }
+    std::shared_ptr<brpc::Controller> cntl = std::make_shared<brpc::Controller>();
+    auto response = std::make_shared<openmldb::api::SQLBatchRequestQueryResponse>();
+    auto callback = new openmldb::RpcCallback<openmldb::api::SQLBatchRequestQueryResponse>(response, cntl);
+    auto future = std::make_shared<openmldb::sdk::BatchQueryFutureImpl>(callback);
+    auto ret = tablet->CallSQLBatchRequestProcedure(db, sp_name, base::Slice(meta, meta_len),
+            base::Slice(buf, len), options_->enable_debug, timeout_ms, callback);
+    if (!ret.OK()) {
+        SET_STATUS_AND_WARN(status, StatusCode::kConnError, "CallSQLBatchRequestProcedure failed " + ret.GetMsg());
         return nullptr;
     }
     return future;
@@ -2410,9 +2514,13 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(const std
 
 std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(const std::string& db, const std::string& sql,
                                                                        hybridse::sdk::Status* status) {
-    // To avoid setting sync job timeout by user, we set offline_job_timeout to the biggest value
+    // To avoid small sync job timeout, we set offline_job_timeout to the biggest value, user can set >
+    // FLAGS_sync_job_timeout
     auto sync_job = IsSyncJob();
-    auto timeout = sync_job ? FLAGS_sync_job_timeout : GetJobTimeout();
+    auto timeout = GetJobTimeout();
+    if (sync_job && FLAGS_sync_job_timeout > timeout) {
+        timeout = FLAGS_sync_job_timeout;
+    }
     return ExecuteSQL(db, sql, IsOnlineMode(), sync_job, timeout, status);
 }
 
@@ -2466,7 +2574,7 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(
             auto base_status = HandleSQLCreateTable(create_node, db, ns_ptr, sql);
             if (base_status.OK()) {
                 RefreshCatalog();
-                *status = {};
+                *status = {StatusCode::kOk, base_status.msg};
             } else {
                 *status = {StatusCode::kCmdError, base_status.msg};
             }
@@ -2542,6 +2650,10 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::ExecuteSQL(
                     return ResultSetSQL::MakeResultSet(job_schema, {value}, status);
                 }
                 RefreshCatalog();
+                *status = {StatusCode::kOk,
+                    "\n- DEPLOY may modify table TTL. Data imported before DEPLOY may expire before the new TTL.\n"
+                    "- DEPLOY will fail if the disk table requires creating an index, "
+                        "the partial index may have been created."};
             }
             return {};
         }
@@ -2897,6 +3009,30 @@ int SQLClusterRouter::GetJobTimeout() {
 
 bool SQLClusterRouter::CheckAnswerIfInteractive(const std::string& drop_type, const std::string& name) {
     if (interactive_) {
+        std::string msg;
+        if (drop_type == "table") {
+            msg = "DROP TABLE is a dangerous operation. Once deleted, it is very difficult to recover. \n"
+                  "You may also note that: \n"
+                  "- If a snapshot of a partition is being generated while dropping a table, "
+                  "the partition will not be deleted successfully.\n"
+                  "- By default, the deleted data is moved to the folder `recycle`.\n"
+                  "Please refer to this link for more details: " + base::NOTICE_URL;
+        } else if (drop_type == "deployment") {
+            msg = "- DROP DEPLOYMENT will not delete the index that is created automatically.\n"
+                  "- DROP DEPLOYMENT will not delete data in the pre-aggregation table in the long window setting.";
+        } else if (drop_type == "index") {
+            msg = "DROP INDEX is a dangerous operation. Once deleted, it is very difficult to recover.\n"
+                  "You may also note that: \n"
+                  "- You have to wait for 2 garbage collection intervals (gc_interval) to create the same index.\n"
+                  "- The index will not be deleted immediately, "
+                    "it remains until after 2 garbage collection intervals.\n"
+                  "Please refer to the doc for more details: " + base::NOTICE_URL;
+        } else if (drop_type == "function") {
+           msg = "This will lead to execution failure or system crash if any active deployment is using the function.";
+        }
+        if (!msg.empty()) {
+            printf("%s\n", msg.c_str());
+        }
         printf("Drop %s %s? yes/no\n", drop_type.c_str(), name.c_str());
         std::string input;
         std::cin >> input;
@@ -3227,7 +3363,16 @@ hybridse::sdk::Status SQLClusterRouter::HandleDelete(const std::string& db, cons
     if (!status.IsOK()) {
         return status;
     }
-    return SendDeleteRequst(table_info, &option);
+    status = SendDeleteRequst(table_info, &option);
+    if (status.IsOK()) {
+        status = {StatusCode::kOk,
+            "DELETE is a dangerous operation. Once deleted, it is very difficult to recover. You may also note that:\n"
+            "- The deleted data will not be released immediately from the main memory; "
+                "it remains until after a garbage collection interval (gc_interval)\n"
+            "- Data in the pre-aggregation table will not be updated.\n"
+            "Please refer to this link for more details: " + base::NOTICE_URL};
+    }
+    return status;
 }
 
 hybridse::sdk::Status SQLClusterRouter::SendDeleteRequst(
@@ -3408,7 +3553,7 @@ hybridse::sdk::Status SQLClusterRouter::HandleDeploy(const std::string& db,
         db_table->set_db_name(table.first);
         db_table->set_table_name(table.second);
     }
-
+    const auto& router_col = explain_output.router.GetRouterCol();
     std::stringstream str_stream;
     str_stream << "CREATE PROCEDURE " << deploy_node->Name() << " (";
     for (int idx = 0; idx < input_schema->size(); idx++) {
@@ -3420,6 +3565,9 @@ hybridse::sdk::Status SQLClusterRouter::HandleDeploy(const std::string& db,
         str_stream << "`" << col.name() << "` " << it->second;
         if (idx != input_schema->size() - 1) {
             str_stream << ", ";
+        }
+        if (col.name() == router_col) {
+            sp_info.add_router_col(idx);
         }
     }
     str_stream << ") BEGIN " << select_sql << " END;";

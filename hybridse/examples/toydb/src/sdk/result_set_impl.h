@@ -71,6 +71,14 @@ class ResultSetImpl : public ResultSet {
 
     inline int32_t Size() { return response_->count(); }
 
+    void CopyTo(hybridse::sdk::ByteArrayPtr buf) override {
+        cntl_->response_attachment().copy_to(reinterpret_cast<void*>(buf));
+    }
+
+    int32_t GetDataLength() override {
+        return cntl_->response_attachment().size();
+    }
+
  private:
     inline uint32_t GetRecordSize() { return response_->count(); }
 

@@ -32,168 +32,396 @@ import java.util.Properties;
 public class TaskManagerConfig {
     private static Logger logger = LoggerFactory.getLogger(TaskManagerConfig.class);
 
-    public static String HOST;
-    public static int PORT;
-    public static int WORKER_THREAD;
-    public static int IO_THREAD;
-    public static int CHANNEL_KEEP_ALIVE_TIME;
-    public static String ZK_CLUSTER;
-    public static String ZK_ROOT_PATH;
-    public static String ZK_TASKMANAGER_PATH;
-    public static String ZK_MAX_JOB_ID_PATH;
-    public static int ZK_SESSION_TIMEOUT;
-    public static int ZK_CONNECTION_TIMEOUT;
-    public static int ZK_BASE_SLEEP_TIME;
-    public static int ZK_MAX_CONNECT_WAIT_TIME;
-    public static int ZK_MAX_RETRIES;
-    public static String SPARK_MASTER;
-    public static String SPARK_YARN_JARS;
-    public static String SPARK_HOME;
-    public static int PREFETCH_JOBID_NUM;
-    public static String JOB_LOG_PATH;
-    public static String EXTERNAL_FUNCTION_DIR;
-    public static boolean TRACK_UNFINISHED_JOBS;
-    public static int JOB_TRACKER_INTERVAL;
-    public static String SPARK_DEFAULT_CONF;
-    public static String SPARK_EVENTLOG_DIR;
-    public static int SPARK_YARN_MAXAPPATTEMPTS;
-    public static String OFFLINE_DATA_PREFIX;
-    public static String NAMENODE_URI;
-    public static String BATCHJOB_JAR_PATH;
-    public static String HADOOP_CONF_DIR;
-    public static String HADOOP_USER_NAME;
-    public static boolean ENABLE_HIVE_SUPPORT;
-    public static long BATCH_JOB_RESULT_MAX_WAIT_TIME;
-    public static String K8S_HADOOP_CONFIGMAP_NAME;
-    public static String K8S_MOUNT_LOCAL_PATH;
+    private volatile static TaskManagerConfig instance;
 
-    private static volatile boolean isParsed = false;
+    private volatile static Properties props;
 
-    public static void parse() throws ConfigException {
-        if (!isParsed) {
-            doParse();
-            isParsed = true;
-        }
+    public static Properties getProps() {
+        return props;
     }
 
-    public static void doParse() throws ConfigException {
-        Properties prop = new Properties();
+    private static TaskManagerConfig getInstance() throws ConfigException {
+        if (instance == null) {
+            instance = new TaskManagerConfig();
+            instance.init();
+        }
+        return instance;
+    }
+
+    public static void parse() throws ConfigException {
+        getInstance();
+    }
+
+    protected static String getString(String key) {
+        return props.getProperty(key);
+    }
+
+    protected static int getInt(String key) {
+        return Integer.parseInt(getString(key));
+    }
+
+    protected static long getLong(String key) {
+        return Long.parseLong(getString(key));
+    }
+
+    protected static boolean getBool(String key) {
+        return Boolean.parseBoolean(getString(key));
+    }
+
+
+    public static String getServerHost() {
+        return getString("server.host");
+    }
+
+    public static int getServerPort() {
+        return getInt("server.port");
+    }
+
+    public static int getServerWorkerThreads() {
+        return getInt("server.worker_threads");
+    }
+
+    public static int getServerIoThreads() {
+        return getInt("server.io_threads");
+    }
+
+    public static int getChannelKeepAliveTime() {
+        return getInt("server.channel_keep_alive_time");
+    }
+
+    public static int getZkSessionTimeout() {
+        return getInt("zookeeper.session_timeout");
+    }
+
+    public static String getZkCluster() {
+        return getString("zookeeper.cluster");
+    }
+
+    public static String getZkRootPath() {
+        return getString("zookeeper.root_path");
+    }
+
+    public static int getZkConnectionTimeout() {
+        return getInt("zookeeper.connection_timeout");
+    }
+
+    public static int getZkBaseSleepTime() {
+        return getInt("zookeeper.base_sleep_time");
+    }
+
+    public static int getZkMaxRetries() {
+        return getInt("zookeeper.max_retries");
+    }
+
+    public static int getZkMaxConnectWaitTime() {
+        return getInt("zookeeper.max_connect_waitTime");
+    }
+
+    public static String getSparkMaster() {
+        return getString("spark.master");
+    }
+
+    public static String getSparkYarnJars() {
+        return getString("spark.yarn.jars");
+    }
+
+    public static String getSparkHome() {
+        return getString("spark.home");
+    }
+
+    public static int getPrefetchJobidNum() {
+        return getInt("prefetch.jobid.num");
+    }
+
+    public static String getJobLogPath() {
+        return getString("job.log.path");
+    }
+
+    public static String getExternalFunctionDir() {
+        return getString("external.function.dir");
+    }
+
+    public static boolean getTrackUnfinishedJobs() {
+        return getBool("track.unfinished.jobs");
+    }
+
+    public static int getJobTrackerInterval() {
+        return getInt("job.tracker.interval");
+    }
+
+    public static String getSparkDefaultConf() {
+        return getString("spark.default.conf");
+    }
+
+    public static String getSparkEventlogDir() {
+        return getString("spark.eventLog.dir");
+    }
+
+    public static int getSparkYarnMaxappattempts() {
+        return getInt("spark.yarn.maxAppAttempts");
+    }
+
+    public static String getOfflineDataPrefix() {
+        return getString("offline.data.prefix");
+    }
+
+    public static String getBatchjobJarPath() {
+        return getString("batchjob.jar.path");
+    }
+
+
+    public static String getHadoopConfDir() {
+        return getString("hadoop.conf.dir");
+    }
+
+    public static boolean getEnableHiveSupport() {
+        return getBool("enable.hive.support");
+    }
+
+    public static long getBatchJobResultMaxWaitTime() {
+        return getLong("batch.job.result.max.wait.time");
+    }
+
+
+    public static String getK8sHadoopConfigmapName() {
+        return getString("k8s.hadoop.configmap");
+    }
+
+    public static String getK8sMountLocalPath() {
+        return getString("k8s.mount.local.path");
+    }
+
+    public static String getHadoopUserName() {
+        return getString("hadoop.user.name");
+    }
+
+    public static String getZkTaskmanagerPath() {
+        return getZkRootPath() + "/taskmanager";
+    }
+
+    public static String getZkMaxJobIdPath() {
+        return getZkTaskmanagerPath() + "/max_job_id";
+    }
+
+    public static boolean isK8s() {
+        return getSparkMaster().equals("k8s") || getSparkMaster().equals("kubernetes");
+    }
+
+    public static boolean isYarnCluster() {
+        return getSparkMaster().equals("yarn") || getSparkMaster().equals("yarn-cluster");
+    }
+
+    public static boolean isYarn() {
+        return getSparkMaster().startsWith("yarn");
+    }
+
+    public static void print() throws ConfigException {
+        parse();
+
+        StringBuilder builder = new StringBuilder();
+
+        for (String key : props.stringPropertyNames()) {
+            String value = props.getProperty(key);
+            builder.append(key + " = " + value + "\n");
+        }
+
+        logger.info("Final TaskManager config: \n" + builder.toString());
+    }
+
+    private void init() throws ConfigException {
+        props = new Properties();
+
+        // Load local properties file
         try {
-            prop.load(TaskManagerConfig.class.getClassLoader().getResourceAsStream("taskmanager.properties"));
+            props.load(TaskManagerConfig.class.getClassLoader().getResourceAsStream("taskmanager.properties"));
         } catch (IOException e) {
             throw new ConfigException(String.format("Fail to load taskmanager.properties, message: ", e.getMessage()));
         }
 
-        HOST = prop.getProperty("server.host", "0.0.0.0");
-        PORT = Integer.parseInt(prop.getProperty("server.port", "9902"));
-        if (PORT < 1 || PORT > 65535) {
+        // Get properties and check
+        if (props.getProperty("server.host") == null) {
+            props.setProperty("server.host", "0.0.0.0");
+        }
+
+        if (props.getProperty("server.port") == null) {
+            props.setProperty("server.port", "9902");
+        }
+
+        if (getServerPort() < 1 || getServerPort() > 65535) {
             throw new ConfigException("server.port", "invalid port, should be in range of 1 through 65535");
         }
-        WORKER_THREAD = Integer.parseInt(prop.getProperty("server.worker_threads", "16"));
-        IO_THREAD = Integer.parseInt(prop.getProperty("server.io_threads", "4"));
-        // alive time seconds
-        CHANNEL_KEEP_ALIVE_TIME = Integer.parseInt(prop.getProperty("server.channel_keep_alive_time", "1800"));
-        ZK_SESSION_TIMEOUT = Integer.parseInt(prop.getProperty("zookeeper.session_timeout", "5000"));
 
-        ZK_CLUSTER = prop.getProperty("zookeeper.cluster", "");
-        if (ZK_CLUSTER.isEmpty()) {
+        if (props.getProperty("server.worker_threads") == null) {
+            props.setProperty("server.worker_threads", "16");
+        }
+
+        if (getServerWorkerThreads() <= 0) {
+            throw new ConfigException("server.worker_threads", "should be larger than 0");
+        }
+
+        if (props.getProperty("server.io_threads") == null) {
+            props.setProperty("server.io_threads", "4");
+        }
+
+        if (getServerIoThreads() <= 0) {
+            throw new ConfigException("server.io_threads", "should be larger than 0");
+        }
+
+        if (props.getProperty("server.channel_keep_alive_time") == null) {
+            props.setProperty("server.channel_keep_alive_time", "1800");
+        }
+
+        if (getChannelKeepAliveTime() <= 0) {
+            throw new ConfigException("server.channel_keep_alive_time", "should be larger than 0");
+        }
+
+        if (props.getProperty("zookeeper.session_timeout") == null) {
+            props.setProperty("zookeeper.session_timeout", "5000");
+        }
+
+        if (getZkSessionTimeout() <= 0) {
+            throw new ConfigException("zookeeper.session_timeout", "should be larger than 0");
+        }
+
+        if (props.getProperty("zookeeper.cluster") == null) {
+            props.setProperty("", "");
+        }
+
+        if (getZkCluster().isEmpty()) {
             throw new ConfigException("zookeeper.cluster", "should not be empty");
         }
 
-        ZK_ROOT_PATH = prop.getProperty("zookeeper.root_path", "");
-        if (ZK_ROOT_PATH.isEmpty()) {
-            throw new ConfigException("zookeeper.root_path", "should not be empty");
+        if (props.getProperty("zookeeper.connection_timeout") == null) {
+            props.setProperty("zookeeper.connection_timeout", "5000");
         }
 
-        ZK_TASKMANAGER_PATH = ZK_ROOT_PATH + "/taskmanager";
-        ZK_MAX_JOB_ID_PATH = ZK_TASKMANAGER_PATH + "/max_job_id";
-        ZK_CONNECTION_TIMEOUT = Integer.parseInt(prop.getProperty("zookeeper.connection_timeout", "5000"));
-        ZK_BASE_SLEEP_TIME = Integer.parseInt(prop.getProperty("zookeeper.base_sleep_time", "1000"));
-        ZK_MAX_RETRIES = Integer.parseInt(prop.getProperty("zookeeper.max_retries", "10"));
-        ZK_MAX_CONNECT_WAIT_TIME = Integer.parseInt(prop.getProperty("zookeeper.max_connect_waitTime", "30000"));
+        if (getZkConnectionTimeout() <= 0) {
+            throw new ConfigException("zookeeper.connection_timeout", "should be larger than 0");
+        }
 
-        SPARK_MASTER = prop.getProperty("spark.master", "local[*]").toLowerCase();
-        if (!SPARK_MASTER.startsWith("local")) {
-            if (!Arrays.asList("yarn", "yarn-cluster", "yarn-client", "k8s", "kubernetes").contains(SPARK_MASTER)) {
+        if (props.getProperty("zookeeper.base_sleep_time") == null) {
+            props.setProperty("zookeeper.base_sleep_time", "1000");
+        }
+
+        if (getZkBaseSleepTime() <= 0) {
+            throw new ConfigException("zookeeper.base_sleep_time", "should be larger than 0");
+        }
+
+        if (props.getProperty("zookeeper.max_retries") == null) {
+            props.setProperty("zookeeper.max_retries", "10");
+        }
+
+        if (getZkMaxRetries() <= 0) {
+            throw new ConfigException("zookeeper.max_retries", "should be larger than 0");
+        }
+
+        if (props.getProperty("zookeeper.max_connect_waitTime") == null) {
+            props.setProperty("zookeeper.max_connect_waitTime", "30000");
+        }
+
+        if (getZkMaxConnectWaitTime() <= 0) {
+            throw new ConfigException("zookeeper.max_connect_waitTime", "should be larger than 0");
+        }
+
+        if (props.getProperty("spark.master") == null) {
+            props.setProperty("spark.master", "local[*]");
+        } else {
+            props.setProperty("spark.master", props.getProperty("spark.master").toLowerCase());
+        }
+
+        if (!getSparkMaster().startsWith("local")) {
+            if (!Arrays.asList("yarn", "yarn-cluster", "yarn-client", "k8s", "kubernetes").contains(getSparkMaster())) {
                 throw new ConfigException("spark.master", "should be local, yarn, yarn-cluster, yarn-client, k8s or kubernetes");
             }
         }
-        boolean isLocal = SPARK_MASTER.startsWith("local");
-        boolean isYarn = SPARK_MASTER.startsWith("yarn");
-        boolean isYarnCluster = SPARK_MASTER.equals("yarn") || SPARK_MASTER.equals("yarn-cluster");
 
-        SPARK_YARN_JARS = prop.getProperty("spark.yarn.jars", "");
-        if (isLocal && !SPARK_YARN_JARS.isEmpty()) {
-            logger.warn("Ignore the config of spark.yarn.jars which is invalid for local mode");
+        if (props.getProperty("spark.yarn.jars") == null) {
+            props.setProperty("spark.yarn.jars", "");
         }
-        if (isYarn) {
-            if (!SPARK_YARN_JARS.isEmpty() && SPARK_YARN_JARS.startsWith("file://")) {
-                throw new ConfigException("spark.yarn.jars", "should not use local filesystem for yarn mode");
+
+        if (isYarn() && !getSparkYarnJars().isEmpty() && getSparkYarnJars().startsWith("file://")) {
+            throw new ConfigException("spark.yarn.jars", "should not use local filesystem for yarn mode");
+        }
+
+
+        if (props.getProperty("spark.home", "").isEmpty()) {
+            if (System.getenv("SPARK_HOME") == null) {
+                throw new ConfigException("spark.home", "should set config 'spark.home' or environment variable 'SPARK_HOME'");
+            } else {
+                logger.info("Use SPARK_HOME from environment variable: " + System.getenv("SPARK_HOME"));
+                props.setProperty("spark.home", System.getenv("SPARK_HOME"));
             }
         }
 
-        SPARK_HOME = firstNonEmpty(prop.getProperty("spark.home"), System.getenv("SPARK_HOME"));
+        String SPARK_HOME = firstNonEmpty(props.getProperty("spark.home"), System.getenv("SPARK_HOME"));
         // isEmpty checks null and empty
-        if(isEmpty(SPARK_HOME)) {
+        if (isEmpty(SPARK_HOME)) {
             throw new ConfigException("spark.home", "should set config 'spark.home' or environment variable 'SPARK_HOME'");
+        }
+        if (SPARK_HOME != null) {
+            props.setProperty("spark.home", SPARK_HOME);
         }
 
         // TODO: Check if we can get spark-submit
 
-        PREFETCH_JOBID_NUM = Integer.parseInt(prop.getProperty("prefetch.jobid.num", "1"));
-        if (PREFETCH_JOBID_NUM < 1) {
+        if (props.getProperty("prefetch.jobid.num") == null) {
+            props.setProperty("prefetch.jobid.num", "1");
+        }
+
+        if (getPrefetchJobidNum() < 1) {
             throw new ConfigException("prefetch.jobid.num", "should be larger or equal to 1");
         }
 
-        NAMENODE_URI = prop.getProperty("namenode.uri", "");
-        if (!NAMENODE_URI.isEmpty()) {
-            logger.warn("Config of 'namenode.uri' will be deprecated later");
+        if (props.getProperty("job.log.path") == null) {
+            props.setProperty("job.log.path", "../log/");
         }
 
-        JOB_LOG_PATH = prop.getProperty("job.log.path", "../log/");
-        if (JOB_LOG_PATH.isEmpty()) {
-            throw new ConfigException("job.log.path", "should not be null");
-        } else {
-            if (JOB_LOG_PATH.startsWith("hdfs") || JOB_LOG_PATH.startsWith("s3")) {
-                throw new ConfigException("job.log.path", "only support local filesystem");
-            }
+        if (getJobLogPath().startsWith("hdfs") || getJobLogPath().startsWith("s3")) {
+            throw new ConfigException("job.log.path", "only support local filesystem");
+        }
 
-            File directory = new File(JOB_LOG_PATH);
-            if (!directory.exists()) {
-                logger.info("The log path does not exist, try to create directory: " + JOB_LOG_PATH);
-                boolean created = directory.mkdirs();
-                if (created) {
-                    throw new ConfigException("job.log.path", "fail to create log path");
-                }
+        File jobLogDirectory = new File(getJobLogPath());
+        if (!jobLogDirectory.exists()) {
+            logger.info("The log path does not exist, try to create directory: " + getJobLogPath());
+            jobLogDirectory.mkdirs();
+            if (!jobLogDirectory.exists()) {
+                throw new ConfigException("job.log.path", "fail to create log path: " + jobLogDirectory);
             }
         }
 
-        EXTERNAL_FUNCTION_DIR = prop.getProperty("external.function.dir", "./udf/");
-        if (EXTERNAL_FUNCTION_DIR.isEmpty()) {
-            throw new ConfigException("external.function.dir", "should not be null");
-        } else {
-            File directory = new File(EXTERNAL_FUNCTION_DIR);
-            if (!directory.exists()) {
-                logger.info("The external function dir does not exist, try to create directory: "
-                        + EXTERNAL_FUNCTION_DIR);
-                boolean created = directory.mkdirs();
-                if (created) {
-                    logger.warn("Fail to create external function directory: " + EXTERNAL_FUNCTION_DIR);
-                }
+        if (props.getProperty("external.function.dir") == null) {
+            props.setProperty("external.function.dir", "./udf/");
+        }
+
+        File externalFunctionDir = new File(getExternalFunctionDir());
+        if (!externalFunctionDir.exists()) {
+            logger.info("The external function dir does not exist, try to create directory: "
+                    + getExternalFunctionDir());
+            externalFunctionDir.mkdirs();
+            if (!externalFunctionDir.exists()) {
+                throw new ConfigException("job.log.path", "fail to create external function path: " + externalFunctionDir);
             }
         }
 
-        TRACK_UNFINISHED_JOBS = Boolean.parseBoolean(prop.getProperty("track.unfinished.jobs", "true"));
-
-        JOB_TRACKER_INTERVAL = Integer.parseInt(prop.getProperty("job.tracker.interval", "30"));
-        if (JOB_TRACKER_INTERVAL <= 0) {
-            throw new ConfigException("job.tracker.interval", "interval should be larger than 0");
+        if (props.getProperty("track.unfinished.jobs") == null) {
+            props.setProperty("track.unfinished.jobs", "true");
         }
 
-        SPARK_DEFAULT_CONF = prop.getProperty("spark.default.conf", "");
-        if (!SPARK_DEFAULT_CONF.isEmpty()) {
-            String[] defaultSparkConfs = TaskManagerConfig.SPARK_DEFAULT_CONF.split(";");
-            for (String sparkConfMap: defaultSparkConfs) {
+        if (props.getProperty("job.tracker.interval") == null) {
+            props.setProperty("job.tracker.interval", "30");
+        }
+
+        if (getJobTrackerInterval() <= 0) {
+            throw new ConfigException("job.tracker.interval", "should be larger than 0");
+        }
+
+        if (props.getProperty("spark.default.conf") == null) {
+            props.setProperty("spark.default.conf", "");
+        }
+
+        if (!getSparkDefaultConf().isEmpty()) {
+            String[] defaultSparkConfs = getSparkDefaultConf().split(";");
+            for (String sparkConfMap : defaultSparkConfs) {
                 if (!sparkConfMap.isEmpty()) {
                     String[] kv = sparkConfMap.split("=");
                     if (kv.length < 2) {
@@ -205,64 +433,85 @@ public class TaskManagerConfig {
             }
         }
 
-        SPARK_EVENTLOG_DIR = prop.getProperty("spark.eventLog.dir", "");
-        if (!SPARK_EVENTLOG_DIR.isEmpty() && isYarn) {
-            // TODO: Check if we can use local filesystem with yarn-client mode
-            if (SPARK_EVENTLOG_DIR.startsWith("file://")) {
+        if (props.getProperty("spark.eventLog.dir") == null) {
+            props.setProperty("spark.eventLog.dir", "");
+        }
+
+        if (!getSparkEventlogDir().isEmpty() && isYarn()) {
+            if (getSparkEventlogDir().startsWith("file://")) {
                 throw new ConfigException("spark.eventLog.dir", "should not use local filesystem for yarn mode");
             }
         }
 
-        SPARK_YARN_MAXAPPATTEMPTS = Integer.parseInt(prop.getProperty("spark.yarn.maxAppAttempts", "1"));
-        if (SPARK_YARN_MAXAPPATTEMPTS < 1) {
-            throw new ConfigException("spark.yarn.maxAppAttempts", "should be larger or equal to 1");
+        if (props.getProperty("spark.yarn.maxAppAttempts") == null) {
+            props.setProperty("spark.yarn.maxAppAttempts", "1");
         }
 
-        OFFLINE_DATA_PREFIX = prop.getProperty("offline.data.prefix", "file:///tmp/openmldb_offline_storage/");
-        if (OFFLINE_DATA_PREFIX.isEmpty()) {
-            throw new  ConfigException("offline.data.prefix", "should not be null");
+        if (getSparkYarnMaxappattempts() <= 0) {
+            throw new ConfigException("spark.yarn.maxAppAttempts", "should be larger than 0");
+        }
+
+
+        if (props.getProperty("offline.data.prefix") == null) {
+            props.setProperty("offline.data.prefix", "file:///tmp/openmldb_offline_storage/");
+        }
+
+        if (getOfflineDataPrefix().isEmpty()) {
+            throw new ConfigException("offline.data.prefix", "should not be null");
         } else {
-            if (isYarnCluster && OFFLINE_DATA_PREFIX.startsWith("file://") ) {
-                throw new ConfigException("offline.data.prefix", "should not use local filesystem for yarn mode");
+            if (isYarn() || isK8s()) {
+                if (getOfflineDataPrefix().startsWith("file://")) {
+                    throw new ConfigException("offline.data.prefix", "should not use local filesystem for yarn mode or k8s mode");
+                }
             }
         }
 
-        BATCHJOB_JAR_PATH = prop.getProperty("batchjob.jar.path", "");
-        if (BATCHJOB_JAR_PATH.isEmpty()) {
-            try {
-                BATCHJOB_JAR_PATH = BatchJobUtil.findLocalBatchJobJar();
-            } catch (Exception e) {
-                throw new ConfigException("batchjob.jar.path", "config is null and fail to load default openmldb-batchjob jar");
+        if (props.getProperty("batchjob.jar.path", "").isEmpty()) {
+            props.setProperty("batchjob.jar.path", BatchJobUtil.findLocalBatchJobJar());
+        }
+
+        if (isYarn() && getHadoopConfDir().isEmpty()) {
+            if (System.getenv("HADOOP_CONF_DIR") == null) {
+                throw new ConfigException("hadoop.conf.dir", "should set config 'hadoop.conf.dir' or environment variable 'HADOOP_CONF_DIR'");
+            } else {
+                // TODO: Check if we can get core-site.xml
+                props.setProperty("hadoop.conf.dir", System.getenv("HADOOP_CONF_DIR"));
             }
         }
 
         // TODO(hw): need default root?
-        HADOOP_USER_NAME = firstNonEmpty(prop.getProperty("hadoop.user.name"),  System.getenv("HADOOP_USER_NAME"));
+        String HADOOP_USER_NAME = firstNonEmpty(props.getProperty("hadoop.user.name"),  System.getenv("HADOOP_USER_NAME"));
+        if (HADOOP_USER_NAME != null) {
+            props.setProperty("hadoop.user.name", HADOOP_USER_NAME);
+        }
 
-        HADOOP_CONF_DIR = firstNonEmpty(prop.getProperty("hadoop.conf.dir"), System.getenv("HADOOP_CONF_DIR"));
-        if (isYarn && isEmpty(HADOOP_CONF_DIR)) {
+
+        String HADOOP_CONF_DIR = firstNonEmpty(props.getProperty("hadoop.conf.dir"), System.getenv("HADOOP_CONF_DIR"));
+        if (isYarn() && isEmpty(HADOOP_CONF_DIR)) {
             throw new ConfigException("hadoop.conf.dir", "should set config 'hadoop.conf.dir' or environment variable 'HADOOP_CONF_DIR'");
         }
-        // TODO: Check if we can get core-site.xml
+        if (HADOOP_CONF_DIR != null) {
+            props.setProperty("hadoop.conf.dir", HADOOP_CONF_DIR);
+        }
 
-        ENABLE_HIVE_SUPPORT = Boolean.parseBoolean(prop.getProperty("enable.hive.support", "true"));
 
-        BATCH_JOB_RESULT_MAX_WAIT_TIME = Long.parseLong(prop.getProperty("batch.job.result.max.wait.time", "600000")); // 10min
+        if (props.getProperty("enable.hive.support") == null) {
+            props.setProperty("enable.hive.support", "true");
+        }
 
-        K8S_HADOOP_CONFIGMAP_NAME = prop.getProperty("k8s.hadoop.configmap", "hadoop-config");
+        if (props.getProperty("batch.job.result.max.wait.time") == null) {
+            props.setProperty("batch.job.result.max.wait.time", "600000");
+        }
 
-        K8S_MOUNT_LOCAL_PATH = prop.getProperty("k8s.mount.local.path", "/tmp");
+        if (props.getProperty("k8s.hadoop.configmap") == null) {
+            props.setProperty("k8s.hadoop.configmap", "hadoop-config");
+        }
+
+        if (props.getProperty("k8s.mount.local.path") == null) {
+            props.setProperty("k8s.mount.local.path", "/tmp");
+        }
     }
 
-    public static boolean isK8s() throws ConfigException {
-        parse();
-        return SPARK_MASTER.equals("k8s") || SPARK_MASTER.equals("kubernetes");
-    }
-
-    public static boolean isYarnCluster() throws ConfigException {
-        parse();
-        return SPARK_MASTER.equals("yarn") || SPARK_MASTER.equals("yarn-cluster");
-    }
 
     // ref org.apache.spark.launcher.CommandBuilderUtils
     public static String firstNonEmpty(String... strings) {
@@ -273,7 +522,13 @@ public class TaskManagerConfig {
         }
         return null;
     }
+
+
     public static boolean isEmpty(String s) {
         return s == null || s.isEmpty();
     }
+
+
+
 }
+

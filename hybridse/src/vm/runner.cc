@@ -44,6 +44,7 @@ static bool IsPartitionProvider(vm::PhysicalOpNode* n) {
     switch (n->GetOpType()) {
         case kPhysicalOpSimpleProject:
         case kPhysicalOpRename:
+        case kPhysicalOpRequestJoin:
             return IsPartitionProvider(n->GetProducer(0));
         case kPhysicalOpDataProvider:
             return dynamic_cast<vm::PhysicalDataProviderNode*>(n)->provider_type_ == kProviderTypePartition;
@@ -1074,11 +1075,10 @@ std::shared_ptr<DataHandlerList> Runner::BatchRequestRun(RunnerContext& ctx) {
             return cached;
         }
     }
-    std::shared_ptr<DataHandlerVector> outputs =
-        std::make_shared<DataHandlerVector>();
+
+    std::shared_ptr<DataHandlerVector> outputs = std::make_shared<DataHandlerVector>();
     std::vector<std::shared_ptr<DataHandler>> inputs(producers_.size());
-    std::vector<std::shared_ptr<DataHandlerList>> batch_inputs(
-        producers_.size());
+    std::vector<std::shared_ptr<DataHandlerList>> batch_inputs(producers_.size());
     for (size_t idx = producers_.size(); idx > 0; idx--) {
         batch_inputs[idx - 1] = producers_[idx - 1]->BatchRequestRun(ctx);
     }
@@ -1673,18 +1673,15 @@ const Row Runner::RowLastJoinTable(size_t left_slices, const Row& left_row,
                                    ConditionGenerator& cond_gen) {
     right_table = right_sort.Sort(right_table, true);
     if (!right_table) {
-        LOG(WARNING) << "Last Join right table is empty";
         return Row(left_slices, left_row, right_slices, Row());
     }
     auto right_iter = right_table->GetIterator();
     if (!right_iter) {
-        DLOG(WARNING) << "Last Join right table is empty";
         return Row(left_slices, left_row, right_slices, Row());
     }
     right_iter->SeekToFirst();
 
     if (!right_iter->Valid()) {
-        LOG(WARNING) << "Last Join right table is empty";
         return Row(left_slices, left_row, right_slices, Row());
     }
 

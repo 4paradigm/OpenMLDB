@@ -220,7 +220,7 @@ class TabletClient : public Client {
 
     base::Status CreateProcedure(const openmldb::api::CreateProcedureRequest& sp_request);
 
-    bool CallProcedure(const std::string& db, const std::string& sp_name, const std::string& row,
+    bool CallProcedure(const std::string& db, const std::string& sp_name, const base::Slice& row,
                        brpc::Controller* cntl, openmldb::api::QueryResponse* response, bool is_debug,
                        uint64_t timeout_ms);
 
@@ -228,6 +228,11 @@ class TabletClient : public Client {
                                       std::shared_ptr<::openmldb::sdk::SQLRequestRowBatch>, brpc::Controller* cntl,
                                       openmldb::api::SQLBatchRequestQueryResponse* response, bool is_debug,
                                       uint64_t timeout_ms);
+
+    base::Status CallSQLBatchRequestProcedure(const std::string& db, const std::string& sp_name,
+            const base::Slice& meta, const base::Slice& data,
+            bool is_debug, uint64_t timeout_ms,
+            brpc::Controller* cntl, openmldb::api::SQLBatchRequestQueryResponse* response);
 
     bool DropProcedure(const std::string& db_name, const std::string& sp_name);
 
@@ -243,13 +248,18 @@ class TabletClient : public Client {
 
     bool DropFunction(const ::openmldb::common::ExternalFun& fun, std::string* msg);
 
-    bool CallProcedure(const std::string& db, const std::string& sp_name, const std::string& row, uint64_t timeout_ms,
+    bool CallProcedure(const std::string& db, const std::string& sp_name, const base::Slice& row, uint64_t timeout_ms,
                        bool is_debug, openmldb::RpcCallback<openmldb::api::QueryResponse>* callback);
 
     bool CallSQLBatchRequestProcedure(const std::string& db, const std::string& sp_name,
                                       std::shared_ptr<::openmldb::sdk::SQLRequestRowBatch> row_batch, bool is_debug,
                                       uint64_t timeout_ms,
                                       openmldb::RpcCallback<openmldb::api::SQLBatchRequestQueryResponse>* callback);
+
+    base::Status CallSQLBatchRequestProcedure(const std::string& db, const std::string& sp_name,
+            const base::Slice& meta, const base::Slice& data,
+            bool is_debug, uint64_t timeout_ms,
+            openmldb::RpcCallback<openmldb::api::SQLBatchRequestQueryResponse>* callback);
 
     bool CreateAggregator(const ::openmldb::api::TableMeta& base_table_meta,
                           uint32_t aggr_tid, uint32_t aggr_pid, uint32_t index_pos,

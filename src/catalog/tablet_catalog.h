@@ -174,7 +174,7 @@ class TabletTableHandler : public ::hybridse::vm::TableHandler,
     std::shared_ptr<::hybridse::vm::Tablet> GetTablet(const std::string &index_name,
                                                       const std::vector<std::string> &pks) override;
 
-    inline int32_t GetTid() { return table_st_.GetTid(); }
+    inline uint32_t GetTid() { return table_st_.GetTid(); }
 
     void AddTable(std::shared_ptr<::openmldb::storage::Table> table);
 
@@ -233,7 +233,7 @@ class TabletCatalog : public ::hybridse::vm::Catalog {
 
     bool IndexSupport() override;
 
-    bool DeleteTable(const std::string &db, const std::string &table_name, uint32_t pid);
+    bool DeleteTable(const std::string &db, const std::string &table_name, uint32_t tid, uint32_t pid);
 
     bool DeleteDB(const std::string &db);
 
