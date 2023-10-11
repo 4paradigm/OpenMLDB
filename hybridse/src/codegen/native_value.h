@@ -21,9 +21,7 @@
 #include <utility>
 #include <vector>
 
-#include "glog/logging.h"
 #include "llvm/IR/IRBuilder.h"
-#include "llvm/IR/Module.h"
 
 namespace hybridse {
 namespace codegen {
@@ -93,9 +91,9 @@ class NativeValue {
     NativeValue WithFlag(::llvm::Value*) const;
 
     NativeValue() : raw_(nullptr), flag_(nullptr), type_(nullptr) {}
+    NativeValue(::llvm::Value* raw, ::llvm::Value* flag, ::llvm::Type* type);
 
  private:
-    NativeValue(::llvm::Value* raw, ::llvm::Value* flag, ::llvm::Type* type);
     ::llvm::Value* raw_;
     ::llvm::Value* flag_;
     ::llvm::Type* type_;

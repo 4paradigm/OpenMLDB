@@ -45,14 +45,6 @@ void DateIRBuilder::InitStructType() {
     return;
 }
 
-base::Status DateIRBuilder::CreateNull(::llvm::BasicBlock* block, NativeValue* output) {
-    ::llvm::Value* value = nullptr;
-    CHECK_TRUE(CreateDefault(block, &value), common::kCodegenError, "Fail to construct string")
-    ::llvm::IRBuilder<> builder(block);
-    *output = NativeValue::CreateWithFlag(value, builder.getInt1(true));
-    return base::Status::OK();
-}
-
 bool DateIRBuilder::CreateDefault(::llvm::BasicBlock* block,
                                   ::llvm::Value** output) {
     return NewDate(block, output);
