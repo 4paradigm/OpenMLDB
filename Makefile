@@ -154,7 +154,7 @@ thirdparty-fast:
 	    if [ "$$new_zetasql_version" != "$(ZETASQL_VERSION)" ] ; then \
 		echo "[deps]: thirdparty up-to-date. reinstall zetasql from $(ZETASQL_VERSION) to $$new_zetasql_version"; \
 		$(MAKE) thirdparty-configure; \
-		$(CMAKE_PRG) --build $(THIRD_PARTY_BUILD_DIR) -j $(NPROC) --target zetasql; \
+		$(CMAKE_PRG) --build $(THIRD_PARTY_BUILD_DIR) --target zetasql; \
 	    else \
 		echo "[deps]: all up-to-date. zetasql already installed with version: $(ZETASQL_VERSION)"; \
 	    fi; \
@@ -166,7 +166,7 @@ thirdparty-fast:
 
 # third party compiled code install to 'OpenMLDB/.deps/usr', source code install to 'OpenMLDB/thirdsrc'
 thirdparty: thirdparty-configure
-	$(CMAKE_PRG) --build $(THIRD_PARTY_BUILD_DIR) -j $(NPROC)
+	$(CMAKE_PRG) --build $(THIRD_PARTY_BUILD_DIR)
 
 thirdparty-configure:
 	$(CMAKE_PRG) -S third-party -B $(THIRD_PARTY_BUILD_DIR) -DSRC_INSTALL_DIR=$(THIRD_PARTY_SRC_DIR) -DDEPS_INSTALL_DIR=$(THIRD_PARTY_DIR) $(THIRD_PARTY_CMAKE_FLAGS)
