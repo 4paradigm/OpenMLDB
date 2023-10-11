@@ -239,13 +239,13 @@ bool APIServerImpl::AppendJsonValue(const butil::rapidjson::Value& v, hybridse::
             return row->AppendInt64(v.GetInt64());
         }
         case hybridse::sdk::kTypeFloat: {
-            if (!v.IsDouble()) {
+            if (!v.IsNumber()) { // relax check, int can get as double
                 return false;
             }
             return row->AppendFloat(boost::lexical_cast<float>(v.GetDouble()));
         }
         case hybridse::sdk::kTypeDouble: {
-            if (!v.IsDouble()) {
+            if (!v.IsNumber()) {
                 return false;
             }
             return row->AppendDouble(v.GetDouble());
