@@ -200,9 +200,9 @@ class Range : public FnComponent {
     const bool Valid() const { return nullptr != range_key_; }
     const std::string ToString() const {
         std::ostringstream oss;
-        if (nullptr != range_key_ && nullptr != frame_) {
+        if (nullptr != frame_) {
             if (nullptr != frame_->frame_range()) {
-                oss << "range=(" << range_key_->GetExprString() << ", "
+                oss << "range=(" << node::ExprString(range_key_) << ", "
                     << frame_->frame_range()->start()->GetExprString() << ", "
                     << frame_->frame_range()->end()->GetExprString();
 
@@ -216,7 +216,7 @@ class Range : public FnComponent {
                 if (nullptr != frame_->frame_range()) {
                     oss << ", ";
                 }
-                oss << "rows=(" << range_key_->GetExprString() << ", "
+                oss << "rows=(" << node::ExprString(range_key_) << ", "
                     << frame_->frame_rows()->start()->GetExprString() << ", "
                     << frame_->frame_rows()->end()->GetExprString() << ")";
             }
@@ -578,7 +578,7 @@ class PhysicalRequestProviderNode : public PhysicalDataProviderNode {
                                  PhysicalOpNode **out) override;
 
     virtual ~PhysicalRequestProviderNode() {}
-    virtual void Print(std::ostream &output, const std::string &tab) const;
+    void Print(std::ostream &output, const std::string &tab) const override;
 };
 
 class PhysicalRequestProviderNodeWithCommonColumn
@@ -846,9 +846,7 @@ class WindowOp {
         std::ostringstream oss;
         oss << "partition_" << partition_.ToString();
         oss << ", " << sort_.ToString();
-        if (range_.Valid()) {
-            oss << ", " << range_.ToString();
-        }
+        oss << ", " << range_.ToString();
         return oss.str();
     }
     const std::string FnDetail() const {

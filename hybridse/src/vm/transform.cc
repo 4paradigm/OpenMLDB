@@ -25,8 +25,6 @@
 #include "codegen/context.h"
 #include "codegen/fn_ir_builder.h"
 #include "codegen/fn_let_ir_builder.h"
-#include "passes/expression/expr_pass.h"
-#include "passes/lambdafy_projects.h"
 #include "passes/physical/batch_request_optimize.h"
 #include "passes/physical/cluster_optimized.h"
 #include "passes/physical/condition_optimized.h"
@@ -2230,12 +2228,28 @@ Status BatchModeTransformer::CheckWindow(
     const node::WindowPlanNode* w_ptr, const vm::SchemasContext* schemas_ctx) {
     CHECK_TRUE(w_ptr != nullptr, common::kPlanError, "NULL Window");
     CHECK_TRUE(!node::ExprListNullOrEmpty(w_ptr->GetKeys()), common::kPlanError,
-               "Invalid Window: Do not support window on non-partition");
-    CHECK_TRUE(nullptr != w_ptr->GetOrders() &&
-                   !node::ExprListNullOrEmpty(w_ptr->GetOrders()->order_expressions_),
-               common::kPlanError,
-               "Invalid Window: Do not support window on non-order");
+               "un-implemented: WINDOW without PARTITION BY clause");
     CHECK_STATUS(CheckHistoryWindowFrame(w_ptr));
+
+    //  without ORDER BY clause:
+    if (w_ptr->GetOrders() == nullptr || node::ExprListNullOrEmpty(w_ptr->GetOrders()->order_expressions())) {
+        //  1. forbidden: RANGE/ROWS_RANGE WINDOW WITH offset PRECEDING/FOLLOWING
+        if (w_ptr->frame_node()->frame_type() != node::FrameType::kFrameRows) {
+            auto* range = w_ptr->frame_node()->frame_range();
+            if ((range->start() && range->start()->is_offset_bound()) ||
+                (range->end() && range->end()->is_offset_bound())) {
+                CHECK_TRUE(
+                    false, common::kPlanError,
+                    "RANGE/ROWS_RANGE-type FRAME with offset PRECEDING/FOLLOWING requires exactly one ORDER BY column")
+            }
+        }
+
+        // 2. forbidden: WINDOW without ORDER BY + EXCLUDE CURRENT_TIME
+        if (w_ptr->exclude_current_time()) {
+            CHECK_TRUE(false, common::kPlanError,
+                       "WINDOW with EXCLUDE CURRENT_TIME requires exactly one ORDER BY column");
+        }
+    }
 
     CHECK_STATUS(CheckTimeOrIntegerOrderColumn(w_ptr->GetOrders(), schemas_ctx));
 
