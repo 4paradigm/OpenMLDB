@@ -58,3 +58,7 @@ The differences in SQL query capabilities supported by the cluster version and t
   - It only supports column, expression, and single-row processing functions (scalar functions) and their combined expression operations
   - A single table query does not contain [GROUP BY clause](../reference/sql/dql/JOIN_CLAUSE.md), [HAVING clause](../reference/sql/dql/HAVING_CLAUSE.md) and [WINDOW sub-clause](../reference/sql/dql/WINDOW_CLAUSE.md).
   - A single table query only involves the query on a single table, but no [JOIN](../reference/sql/dql/JOIN_CLAUSE.md) based multiple table computation.
+
+### The Supporting SDK
+
+OpenMLDB Python SDK and Java SDK both support the use of the standalone version and cluster version.

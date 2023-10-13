@@ -1,6 +1,6 @@
 # AutoFE
 
-AutoFe support to choose top features from dataset, and generate the SQL for top features. You can use the SQL to be the feature extraction script.
+AutoFe supports choosing top features from the dataset and generating the SQL for top features. You can use SQL to be the feature extraction script.
 
 ## Usage
 
@@ -11,9 +11,9 @@ pip install .
 openmldb_autofe <yaml_path>
 ```
 
-## yaml config
+## yaml Configuration
 
-More detail example is in 配[AutoFE test yaml](https://github.com/4paradigm/OpenMLDB/tree/main/python/openmldb_autofe/tests/test.yaml)
+More detailed example is in [AutoFE test yaml](https://github.com/4paradigm/OpenMLDB/tree/main/python/openmldb_autofe/tests/test.yaml)
 
 The required options are shown below：
 ```
