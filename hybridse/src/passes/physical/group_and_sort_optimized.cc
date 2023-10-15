@@ -458,7 +458,7 @@ bool GroupAndSortOptimized::KeysOptimizedImpl(const SchemasContext* root_schemas
         }
     } else if (PhysicalOpType::kPhysicalOpSimpleProject == in->GetOpType()) {
         PhysicalOpNode* new_depend;
-        if (!KeysOptimized(in->GetProducer(0)->schemas_ctx(), in->GetProducer(0), left_key, index_key, right_key, sort,
+        if (!KeysOptimizedImpl(in->GetProducer(0)->schemas_ctx(), in->GetProducer(0), left_key, index_key, right_key, sort,
                            &new_depend)) {
             return false;
         }
@@ -475,7 +475,7 @@ bool GroupAndSortOptimized::KeysOptimizedImpl(const SchemasContext* root_schemas
         return true;
     } else if (PhysicalOpType::kPhysicalOpRename == in->GetOpType()) {
         PhysicalOpNode* new_depend;
-        if (!KeysOptimized(in->GetProducer(0)->schemas_ctx(), in->producers()[0], left_key,
+        if (!KeysOptimizedImpl(in->GetProducer(0)->schemas_ctx(), in->producers()[0], left_key,
                            index_key, right_key, sort, &new_depend)) {
             return false;
         }
@@ -493,7 +493,7 @@ bool GroupAndSortOptimized::KeysOptimizedImpl(const SchemasContext* root_schemas
         PhysicalFilterNode* filter_op = dynamic_cast<PhysicalFilterNode*>(in);
 
         PhysicalOpNode* new_depend;
-        if (!KeysOptimized(root_schemas_ctx, in->producers()[0], left_key, index_key, right_key, sort, &new_depend)) {
+        if (!KeysOptimizedImpl(root_schemas_ctx, in->producers()[0], left_key, index_key, right_key, sort, &new_depend)) {
             return false;
         }
         PhysicalFilterNode* new_filter = nullptr;
@@ -511,7 +511,7 @@ bool GroupAndSortOptimized::KeysOptimizedImpl(const SchemasContext* root_schemas
         // window partition by and order by columns must refer to the left most table only
         PhysicalOpNode* new_depend = nullptr;
         auto* rebase_sc = in->GetProducer(0)->schemas_ctx();
-        if (!KeysOptimized(rebase_sc, in->GetProducer(0), left_key, index_key, right_key, sort,
+        if (!KeysOptimizedImpl(rebase_sc, in->GetProducer(0), left_key, index_key, right_key, sort,
                            &new_depend)) {
             return false;
         }
@@ -531,7 +531,7 @@ bool GroupAndSortOptimized::KeysOptimizedImpl(const SchemasContext* root_schemas
         // window partition by and order by columns must refer to the left most table only
         PhysicalOpNode* new_depend = nullptr;
         auto* rebase_sc = in->GetProducer(0)->schemas_ctx();
-        if (!KeysOptimized(rebase_sc, in->GetProducer(0), left_key, index_key, right_key, sort,
+        if (!KeysOptimizedImpl(rebase_sc, in->GetProducer(0), left_key, index_key, right_key, sort,
                            &new_depend)) {
             return false;
         }
