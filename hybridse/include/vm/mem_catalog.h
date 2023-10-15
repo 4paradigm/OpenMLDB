@@ -25,8 +25,6 @@
 #include <string>
 #include <utility>
 #include <vector>
-#include "base/fe_slice.h"
-#include "codec/list_iterator_codec.h"
 #include "glog/logging.h"
 #include "vm/catalog.h"
 
@@ -674,6 +672,7 @@ class MemPartitionHandler
     IndexHint index_hint_;
     OrderType order_type_;
 };
+
 class ConcatTableHandler : public MemTimeTableHandler {
  public:
     ConcatTableHandler(std::shared_ptr<TableHandler> left, size_t left_slices,
@@ -692,19 +691,19 @@ class ConcatTableHandler : public MemTimeTableHandler {
         status_ = SyncValue();
         return MemTimeTableHandler::At(pos);
     }
-    std::unique_ptr<RowIterator> GetIterator() {
+    std::unique_ptr<RowIterator> GetIterator() override {
         if (status_.isRunning()) {
             status_ = SyncValue();
         }
         return MemTimeTableHandler::GetIterator();
     }
-    RowIterator* GetRawIterator() {
+    RowIterator* GetRawIterator() override {
         if (status_.isRunning()) {
             status_ = SyncValue();
         }
         return MemTimeTableHandler::GetRawIterator();
     }
-    virtual const uint64_t GetCount() {
+    const uint64_t GetCount() override {
         if (status_.isRunning()) {
             status_ = SyncValue();
         }

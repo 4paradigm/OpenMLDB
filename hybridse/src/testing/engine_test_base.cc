@@ -536,6 +536,8 @@ INSTANTIATE_TEST_SUITE_P(EngineLastJoinQuery, EngineTest,
 
 INSTANTIATE_TEST_SUITE_P(EngineLastJoinWindowQuery, EngineTest,
                         testing::ValuesIn(sqlcase::InitCases("cases/query/last_join_window_query.yaml")));
+INSTANTIATE_TEST_SUITE_P(EngineLastJoinSubqueryWindow, EngineTest,
+                        testing::ValuesIn(sqlcase::InitCases("cases/query/last_join_subquery_window.yml")));
 INSTANTIATE_TEST_SUITE_P(EngineLastJoinWhere, EngineTest,
                         testing::ValuesIn(sqlcase::InitCases("cases/query/last_join_where.yaml")));
 INSTANTIATE_TEST_SUITE_P(EngineWindowQuery, EngineTest,

@@ -785,7 +785,11 @@ class PhysicalAggregationNode : public PhysicalProjectNode {
  public:
     PhysicalAggregationNode(PhysicalOpNode *node, const ColumnProjects &project, const node::ExprNode *condition)
         : PhysicalProjectNode(node, kAggregation, project, true), having_condition_(condition) {
-        output_type_ = kSchemaTypeRow;
+        if (node->GetOutputType() == kSchemaTypeGroup) {
+            output_type_ = kSchemaTypeGroup;
+        } else {
+            output_type_ = kSchemaTypeRow;
+        }
         fn_infos_.push_back(&having_condition_.fn_info());
     }
     virtual ~PhysicalAggregationNode() {}
@@ -1065,7 +1069,7 @@ class RequestWindowUnionList {
     RequestWindowUnionList() : window_unions_() {}
     virtual ~RequestWindowUnionList() {}
     void AddWindowUnion(PhysicalOpNode *node, const RequestWindowOp &window) {
-        window_unions_.push_back(std::make_pair(node, window));
+        window_unions_.emplace_back(node, window);
     }
     const PhysicalOpNode *GetKey(uint32_t index) {
         auto iter = window_unions_.begin();
@@ -1415,7 +1419,7 @@ class PhysicalRequestUnionNode : public PhysicalBinaryNode {
           instance_not_in_window_(false),
           exclude_current_time_(false),
           output_request_row_(true) {
-        output_type_ = kSchemaTypeTable;
+        InitOuptput();
 
         fn_infos_.push_back(&window_.partition_.fn_info());
         fn_infos_.push_back(&window_.index_key_.fn_info());
@@ -1427,7 +1431,7 @@ class PhysicalRequestUnionNode : public PhysicalBinaryNode {
           instance_not_in_window_(w_ptr->instance_not_in_window()),
           exclude_current_time_(w_ptr->exclude_current_time()),
           output_request_row_(true) {
-        output_type_ = kSchemaTypeTable;
+        InitOuptput();
 
         fn_infos_.push_back(&window_.partition_.fn_info());
         fn_infos_.push_back(&window_.sort_.fn_info());
@@ -1443,7 +1447,7 @@ class PhysicalRequestUnionNode : public PhysicalBinaryNode {
           instance_not_in_window_(instance_not_in_window),
           exclude_current_time_(exclude_current_time),
           output_request_row_(output_request_row) {
-        output_type_ = kSchemaTypeTable;
+        InitOuptput();
 
         fn_infos_.push_back(&window_.partition_.fn_info());
         fn_infos_.push_back(&window_.sort_.fn_info());
@@ -1455,7 +1459,8 @@ class PhysicalRequestUnionNode : public PhysicalBinaryNode {
     virtual void Print(std::ostream &output, const std::string &tab) const;
     const bool Valid() { return true; }
     static PhysicalRequestUnionNode *CastFrom(PhysicalOpNode *node);
-    bool AddWindowUnion(PhysicalOpNode *node) {
+    bool AddWindowUnion(PhysicalOpNode *node) { return AddWindowUnion(node, window_); }
+    bool AddWindowUnion(PhysicalOpNode *node, const RequestWindowOp& window) {
         if (nullptr == node) {
             LOG(WARNING) << "Fail to add window union : table is null";
             return false;
@@ -1472,9 +1477,8 @@ class PhysicalRequestUnionNode : public PhysicalBinaryNode {
                 << "Union Table and window input schema aren't consistent";
             return false;
         }
-        window_unions_.AddWindowUnion(node, window_);
-        RequestWindowOp &window_union =
-            window_unions_.window_unions_.back().second;
+        window_unions_.AddWindowUnion(node, window);
+        RequestWindowOp &window_union = window_unions_.window_unions_.back().second;
         fn_infos_.push_back(&window_union.partition_.fn_info());
         fn_infos_.push_back(&window_union.sort_.fn_info());
         fn_infos_.push_back(&window_union.range_.fn_info());
@@ -1484,11 +1488,10 @@ class PhysicalRequestUnionNode : public PhysicalBinaryNode {
 
     std::vector<PhysicalOpNode *> GetDependents() const override;
 
-    const bool instance_not_in_window() const {
-        return instance_not_in_window_;
-    }
-    const bool exclude_current_time() const { return exclude_current_time_; }
-    const bool output_request_row() const { return output_request_row_; }
+    bool instance_not_in_window() const { return instance_not_in_window_; }
+    bool exclude_current_time() const { return exclude_current_time_; }
+    bool output_request_row() const { return output_request_row_; }
+    void set_output_request_row(bool flag) { output_request_row_ = flag; }
     const RequestWindowOp &window() const { return window_; }
     const RequestWindowUnionList &window_unions() const {
         return window_unions_;
@@ -1506,10 +1509,20 @@ class PhysicalRequestUnionNode : public PhysicalBinaryNode {
     }
 
     RequestWindowOp window_;
-    const bool instance_not_in_window_;
-    const bool exclude_current_time_;
-    const bool output_request_row_;
+    bool instance_not_in_window_;
+    bool exclude_current_time_;
+    bool output_request_row_;
     RequestWindowUnionList window_unions_;
+
+ private:
+    void InitOuptput() {
+        auto left = GetProducer(0);
+        if (left->GetOutputType() == kSchemaTypeRow) {
+            output_type_ = kSchemaTypeTable;
+        } else {
+            output_type_ = kSchemaTypeGroup;
+        }
+    }
 };
 
 class PhysicalRequestAggUnionNode : public PhysicalOpNode {

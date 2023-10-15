@@ -153,7 +153,7 @@ bool Engine::Get(const std::string& sql, const std::string& db, RunSession& sess
     DLOG(INFO) << "Compile Engine ...";
     status = base::Status::OK();
     std::shared_ptr<SqlCompileInfo> info = std::make_shared<SqlCompileInfo>();
-    auto& sql_context = std::dynamic_pointer_cast<SqlCompileInfo>(info)->get_sql_context();
+    auto& sql_context = info->get_sql_context();
     sql_context.sql = sql;
     sql_context.db = db;
     sql_context.engine_mode = session.engine_mode();

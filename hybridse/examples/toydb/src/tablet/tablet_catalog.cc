@@ -136,22 +136,6 @@ RowIterator* TabletTableHandler::GetRawIterator() {
     return new storage::FullTableIterator(table_->GetSegments(),
                                           table_->GetSegCnt(), table_);
 }
-const uint64_t TabletTableHandler::GetCount() {
-    auto iter = GetIterator();
-    uint64_t cnt = 0;
-    while (iter->Valid()) {
-        iter->Next();
-        cnt++;
-    }
-    return cnt;
-}
-Row TabletTableHandler::At(uint64_t pos) {
-    auto iter = GetIterator();
-    while (pos-- > 0 && iter->Valid()) {
-        iter->Next();
-    }
-    return iter->Valid() ? iter->GetValue() : Row();
-}
 
 TabletCatalog::TabletCatalog() : tables_(), db_() {}
 
@@ -249,22 +233,6 @@ std::unique_ptr<WindowIterator> TabletSegmentHandler::GetWindowIterator(
     const std::string& idx_name) {
     return std::unique_ptr<WindowIterator>();
 }
-const uint64_t TabletSegmentHandler::GetCount() {
-    auto iter = GetIterator();
-    uint64_t cnt = 0;
-    while (iter->Valid()) {
-        cnt++;
-        iter->Next();
-    }
-    return cnt;
-}
-Row TabletSegmentHandler::At(uint64_t pos) {
-    auto iter = GetIterator();
-    while (pos-- > 0 && iter->Valid()) {
-        iter->Next();
-    }
-    return iter->Valid() ? iter->GetValue() : Row();
-}
 
 const uint64_t TabletPartitionHandler::GetCount() {
     auto iter = GetWindowIterator();
@@ -275,5 +243,6 @@ const uint64_t TabletPartitionHandler::GetCount() {
     }
     return cnt;
 }
+
 }  // namespace tablet
 }  // namespace hybridse

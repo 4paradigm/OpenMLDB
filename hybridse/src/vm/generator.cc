@@ -16,6 +16,7 @@
 
 #include "vm/generator.h"
 
+#include "vm/catalog_wrapper.h"
 #include "vm/runner.h"
 
 namespace hybridse {
