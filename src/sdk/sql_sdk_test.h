@@ -50,6 +50,8 @@ INSTANTIATE_TEST_SUITE_P(SQLSDKLastJoinQuery, SQLSDKQueryTest,
                          testing::ValuesIn(SQLSDKQueryTest::InitCases("cases/query/last_join_query.yaml")));
 INSTANTIATE_TEST_SUITE_P(SQLSDKLastJoinWindowQuery, SQLSDKQueryTest,
                          testing::ValuesIn(SQLSDKQueryTest::InitCases("cases/query/last_join_window_query.yaml")));
+INSTANTIATE_TEST_SUITE_P(SQLSDKLastJoinSubqueryWindow, SQLSDKQueryTest,
+                         testing::ValuesIn(SQLSDKQueryTest::InitCases("cases/query/last_join_subquery_window.yml")));
 INSTANTIATE_TEST_SUITE_P(SQLSDKLastJoinWhere, SQLSDKQueryTest,
                          testing::ValuesIn(SQLSDKQueryTest::InitCases("cases/query/last_join_where.yaml")));
 INSTANTIATE_TEST_SUITE_P(SQLSDKParameterizedQuery, SQLSDKQueryTest,

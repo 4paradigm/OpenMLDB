@@ -25,6 +25,7 @@
 #include "absl/strings/str_cat.h"
 #include "absl/strings/substitute.h"
 #include "base/texttable.h"
+#include "vm/catalog.h"
 #include "vm/catalog_wrapper.h"
 #include "vm/core_api.h"
 #include "vm/internal/eval.h"
@@ -49,6 +50,15 @@ static bool IsPartitionProvider(vm::PhysicalOpNode* n) {
             return dynamic_cast<vm::PhysicalDataProviderNode*>(n)->provider_type_ == kProviderTypePartition;
         default:
             return false;
+    }
+}
+
+static vm::PhysicalDataProviderNode* request_node(vm::PhysicalOpNode* n) {
+    switch (n->GetOpType()) {
+        case kPhysicalOpDataProvider:
+            return dynamic_cast<vm::PhysicalDataProviderNode*>(n);
+        default:
+            return request_node(n->GetProducer(0));
     }
 }
 
@@ -328,6 +338,16 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                     }
                 }
             }
+            if (support_cluster_optimized_) {
+                if (IsPartitionProvider(node->GetProducer(0))) {
+                    // route by index of the left source, and it should uncompleted
+                    auto& route_info = left_task.GetRouteInfo();
+                    runner->AddProducer(left_task.GetRoot());
+                    runner->AddProducer(right_task.GetRoot());
+                    return RegisterTask(node,
+                                        UnCompletedClusterTask(runner, route_info.table_handler_, route_info.index_));
+                }
+            }
             return RegisterTask(
                 node, BinaryInherit(left_task, right_task, runner, index_key,
                                     kRightBias));
@@ -372,6 +392,7 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
 
                         if (right_task.IsCompletedClusterTask() && right_task.GetRouteInfo().lazy_route_ &&
                             !op->join_.index_key_.ValidKey()) {
+                            // join (.., filter<optimized>)
                             auto& route_info = right_task.GetRouteInfo();
                             runner->AddProducer(left_task.GetRoot());
                             runner->AddProducer(right_task.GetRoot());
@@ -387,9 +408,19 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                     if (support_cluster_optimized_) {
                         if (right_task.IsCompletedClusterTask() && right_task.GetRouteInfo().lazy_route_ &&
                             !op->join_.index_key_.ValidKey()) {
+                            // concat join (.., filter<optimized>)
                             runner->AddProducer(left_task.GetRoot());
                             runner->AddProducer(right_task.GetRoot());
                             return RegisterTask(node, ClusterTask(runner, {}, RouteInfo{}));
+                        }
+
+                        // concat join (any(tx), any(tx)), tx is not request table
+                        auto left = request_node(node->GetProducer(0));
+                        // auto right = request_node(node->GetProducer(1));
+                        if (left->provider_type_ == kProviderTypePartition) {
+                            runner->AddProducer(left_task.GetRoot());
+                            runner->AddProducer(right_task.GetRoot());
+                            return RegisterTask(node, ClusterTask(runner, {}, left_task.GetRouteInfo()));
                         }
                     }
                     return RegisterTask(node, BinaryInherit(left_task, right_task, runner, Key(), kNoBias));
@@ -1526,7 +1557,7 @@ void WindowAggRunner::RunWindowAggOnKey(
 
     int32_t min_union_pos = IteratorStatus::FindLastIteratorWithMininumKey(union_segment_status);
     int32_t cnt = output_table->GetCount();
-    HistoryWindow window(instance_window_gen_.range_gen_.window_range_);
+    HistoryWindow window(instance_window_gen_.range_gen_->window_range_);
     window.set_instance_not_in_window(instance_not_in_window_);
     window.set_exclude_current_time(exclude_current_time_);
 
@@ -1602,6 +1633,8 @@ std::shared_ptr<DataHandler> RequestLastJoinRunner::Run(
         return join_gen_->LazyLastJoin(left_part, std::dynamic_pointer_cast<PartitionHandler>(right),
                                        ctx.GetParameterRow());
     }
+
+    LOG(WARNING) << "skip due to performance: left source of request join is table handler (unoptimized)";
     return std::shared_ptr<DataHandler>();
 }
 
@@ -2101,20 +2134,23 @@ std::shared_ptr<DataHandler> ConcatRunner::Run(
     auto right = inputs[1];
     auto left = inputs[0];
     size_t left_slices = producers_[0]->output_schemas()->GetSchemaSourceSize();
-    size_t right_slices =
-        producers_[1]->output_schemas()->GetSchemaSourceSize();
+    size_t right_slices = producers_[1]->output_schemas()->GetSchemaSourceSize();
     if (!left) {
         return std::shared_ptr<DataHandler>();
     }
     switch (left->GetHandlerType()) {
         case kRowHandler:
-            return std::shared_ptr<RowHandler>(new RowCombineWrapper(
-                std::dynamic_pointer_cast<RowHandler>(left), left_slices,
-                std::dynamic_pointer_cast<RowHandler>(right), right_slices));
+            return std::shared_ptr<RowHandler>(
+                new RowCombineWrapper(std::dynamic_pointer_cast<RowHandler>(left), left_slices,
+                                      std::dynamic_pointer_cast<RowHandler>(right), right_slices));
         case kTableHandler:
-            return std::shared_ptr<TableHandler>(new ConcatTableHandler(
-                std::dynamic_pointer_cast<TableHandler>(left), left_slices,
-                std::dynamic_pointer_cast<TableHandler>(right), right_slices));
+            return std::shared_ptr<TableHandler>(
+                new ConcatTableHandler(std::dynamic_pointer_cast<TableHandler>(left), left_slices,
+                                       std::dynamic_pointer_cast<TableHandler>(right), right_slices));
+        case kPartitionHandler:
+            return std::shared_ptr<TableHandler>(
+                new ConcatPartitionHandler(std::dynamic_pointer_cast<PartitionHandler>(left), left_slices,
+                                           std::dynamic_pointer_cast<PartitionHandler>(right), right_slices));
         default: {
             LOG(WARNING)
                 << "fail to run conncat runner: handler type unsupported";
@@ -2149,6 +2185,8 @@ std::shared_ptr<DataHandler> LimitRunner::Run(
             LOG(WARNING) << "fail limit when input type isn't row or table";
             return fail_ptr;
         }
+        default:
+            break;
     }
     return fail_ptr;
 }
@@ -2205,7 +2243,7 @@ std::shared_ptr<DataHandler> GroupAggRunner::Run(
             return std::shared_ptr<DataHandler>();
         }
         if (!having_condition_.Valid() || having_condition_.Gen(table, parameter)) {
-            output_table->AddRow(agg_gen_.Gen(parameter, table));
+            output_table->AddRow(agg_gen_->Gen(parameter, table));
         }
         return output_table;
     } else if (kPartitionHandler == input->GetHandlerType()) {
@@ -2228,7 +2266,7 @@ std::shared_ptr<DataHandler> GroupAggRunner::Run(
                 if (limit_cnt_.has_value() && cnt++ >= limit_cnt_) {
                     break;
                 }
-                output_table->AddRow(agg_gen_.Gen(parameter, segment));
+                output_table->AddRow(agg_gen_->Gen(parameter, segment));
             }
             iter->Next();
         }
@@ -2305,10 +2343,10 @@ std::shared_ptr<DataHandler> RequestAggUnionRunner::Run(
     }
 
     auto request = std::dynamic_pointer_cast<RowHandler>(request_handler)->GetValue();
-    int64_t ts_gen = range_gen_.Valid() ? range_gen_.ts_gen_.Gen(request) : -1;
+    int64_t ts_gen = range_gen_->Valid() ? range_gen_->ts_gen_.Gen(request) : -1;
 
     // Prepare Union Window
-    auto union_inputs = windows_union_gen_.RunInputs(ctx);
+    auto union_inputs = windows_union_gen_->RunInputs(ctx);
     if (ctx.is_debug()) {
         for (size_t i = 0; i < union_inputs.size(); i++) {
             std::ostringstream sss;
@@ -2317,13 +2355,13 @@ std::shared_ptr<DataHandler> RequestAggUnionRunner::Run(
         }
     }
 
-    auto& key_gen = windows_union_gen_.windows_gen_[0].index_seek_gen_.index_key_gen_;
+    auto& key_gen = windows_union_gen_->windows_gen_[0].index_seek_gen_.index_key_gen_;
     std::string key = key_gen.Gen(request, ctx.GetParameterRow());
     // do not use codegen to gen the union outputs for aggr segment
     union_inputs.pop_back();
 
     auto union_segments =
-        windows_union_gen_.GetRequestWindows(request, ctx.GetParameterRow(), union_inputs);
+        windows_union_gen_->GetRequestWindows(request, ctx.GetParameterRow(), union_inputs);
     // code_gen result of agg_segment is not correct. we correct the result here
     auto agg_segment = std::dynamic_pointer_cast<PartitionHandler>(union_inputs[1])->GetSegment(key);
     if (agg_segment) {
@@ -2342,12 +2380,12 @@ std::shared_ptr<DataHandler> RequestAggUnionRunner::Run(
 
     std::shared_ptr<TableHandler> window;
     if (agg_segment) {
-        window = RequestUnionWindow(request, union_segments, ts_gen, range_gen_.window_range_, output_request_row_,
+        window = RequestUnionWindow(request, union_segments, ts_gen, range_gen_->window_range_, output_request_row_,
                                     exclude_current_time_);
     } else {
         LOG(WARNING) << "Aggr segment is empty. Fall back to normal RequestUnionRunner";
-        window = RequestUnionRunner::RequestUnionWindow(request, union_segments, ts_gen, range_gen_.window_range_, true,
-                                                        exclude_current_time_);
+        window = RequestUnionRunner::RequestUnionWindow(request, union_segments, ts_gen, range_gen_->window_range_,
+                                                        true, exclude_current_time_);
     }
 
     return window;
@@ -2766,9 +2804,8 @@ std::shared_ptr<DataHandler> ReduceRunner::Run(
     return row_handler;
 }
 
-std::shared_ptr<DataHandler> RequestUnionRunner::Run(
-    RunnerContext& ctx,
-    const std::vector<std::shared_ptr<DataHandler>>& inputs) {
+std::shared_ptr<DataHandler> RequestUnionRunner::Run(RunnerContext& ctx,
+                                                     const std::vector<std::shared_ptr<DataHandler>>& inputs) {
     auto fail_ptr = std::shared_ptr<DataHandler>();
     if (inputs.size() < 2u) {
         LOG(WARNING) << "inputs size < 2";
@@ -2779,23 +2816,30 @@ std::shared_ptr<DataHandler> RequestUnionRunner::Run(
     if (!left || !right) {
         return std::shared_ptr<DataHandler>();
     }
-    if (kRowHandler != left->GetHandlerType()) {
-        return std::shared_ptr<DataHandler>();
+    if (kRowHandler == left->GetHandlerType()) {
+        auto request = std::dynamic_pointer_cast<RowHandler>(left)->GetValue();
+        return RunOneRequest(&ctx, request);
+    } else if (kPartitionHandler == left->GetHandlerType()) {
+        auto left_part = std::dynamic_pointer_cast<PartitionHandler>(left);
+        auto func = std::bind(&RequestUnionRunner::RunOneRequest, this, &ctx, std::placeholders::_1);
+        return std::shared_ptr<TableHandler>(new LazyRequestUnionPartitionHandler(left_part, func));
     }
 
-    auto request = std::dynamic_pointer_cast<RowHandler>(left)->GetValue();
-
+    LOG(WARNING) << "skip due to performance: left source of request union is table handler(unoptimized)";
+    return std::shared_ptr<DataHandler>();
+}
+std::shared_ptr<TableHandler> RequestUnionRunner::RunOneRequest(RunnerContext* ctx, const Row& request) {
     // ts_gen < 0 if there is no ORDER BY clause for WINDOW
-    int64_t ts_gen = range_gen_.Valid() ? range_gen_.ts_gen_.Gen(request) : -1;
+    int64_t ts_gen = range_gen_->Valid() ? range_gen_->ts_gen_.Gen(request) : -1;
 
     // Prepare Union Window
-    auto union_inputs = windows_union_gen_.RunInputs(ctx);
-    auto union_segments =
-        windows_union_gen_.GetRequestWindows(request, ctx.GetParameterRow(), union_inputs);
+    auto union_inputs = windows_union_gen_->RunInputs(*ctx);
+    auto union_segments = windows_union_gen_->GetRequestWindows(request, ctx->GetParameterRow(), union_inputs);
     // build window with start and end offset
-    return RequestUnionWindow(request, union_segments, ts_gen, range_gen_.window_range_, output_request_row_,
+    return RequestUnionWindow(request, union_segments, ts_gen, range_gen_->window_range_, output_request_row_,
                               exclude_current_time_);
 }
+
 std::shared_ptr<TableHandler> RequestUnionRunner::RequestUnionWindow(
     const Row& request, std::vector<std::shared_ptr<TableHandler>> union_segments, int64_t ts_gen,
     const WindowRange& window_range, bool output_request_row, bool exclude_current_time) {
@@ -2862,9 +2906,9 @@ std::shared_ptr<TableHandler> RequestUnionRunner::RequestUnionWindow(
         request_key < range_start);
     if (output_request_row) {
         window_table->AddRow(request_key, request);
-    }
-    if (WindowRange::kInWindow == range_status) {
-        cnt++;
+        if (WindowRange::kInWindow == range_status) {
+            cnt++;
+        }
     }
 
     while (-1 != max_union_pos) {
@@ -2941,16 +2985,26 @@ std::shared_ptr<DataHandler> AggRunner::Run(
         LOG(WARNING) << "input is empty";
         return std::shared_ptr<DataHandler>();
     }
-    if (kTableHandler != input->GetHandlerType()) {
-        return std::shared_ptr<DataHandler>();
+
+    if (kTableHandler == input->GetHandlerType()) {
+        auto table = std::dynamic_pointer_cast<TableHandler>(input);
+        auto parameter = ctx.GetParameterRow();
+        if (having_condition_.Valid() && !having_condition_.Gen(table, parameter)) {
+            return std::shared_ptr<DataHandler>();
+        }
+        auto row_handler = std::shared_ptr<RowHandler>(new MemRowHandler(agg_gen_->Gen(parameter, table)));
+        return row_handler;
+    } else if (kPartitionHandler == input->GetHandlerType()) {
+        // lazify
+        auto data_set = std::dynamic_pointer_cast<LazyRequestUnionPartitionHandler>(input);
+        if (data_set == nullptr) {
+            return std::shared_ptr<DataHandler>();
+        }
+
+        return std::shared_ptr<DataHandler>(new LazyAggPartitionHandler(data_set, agg_gen_, ctx.GetParameterRow()));
     }
-    auto table = std::dynamic_pointer_cast<TableHandler>(input);
-    auto parameter = ctx.GetParameterRow();
-    if (having_condition_.Valid() && !having_condition_.Gen(table, parameter)) {
-        return std::shared_ptr<DataHandler>();
-    }
-    auto row_handler = std::shared_ptr<RowHandler>(new MemRowHandler(agg_gen_.Gen(parameter, table)));
-    return row_handler;
+
+    return std::shared_ptr<DataHandler>();
 }
 std::shared_ptr<DataHandlerList> ProxyRequestRunner::BatchRequestRun(
     RunnerContext& ctx) {

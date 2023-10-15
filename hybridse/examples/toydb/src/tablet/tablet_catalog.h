@@ -68,8 +68,6 @@ class TabletSegmentHandler : public TableHandler {
     std::unique_ptr<vm::RowIterator> GetIterator() override;
     RowIterator* GetRawIterator() override;
     std::unique_ptr<codec::WindowIterator> GetWindowIterator(const std::string& idx_name) override;
-    const uint64_t GetCount() override;
-    Row At(uint64_t pos) override;
     const std::string GetHandlerTypeName() override {
         return "TabletSegmentHandler";
     }
@@ -104,6 +102,7 @@ class TabletPartitionHandler
     std::unique_ptr<codec::WindowIterator> GetWindowIterator() override {
         return table_handler_->GetWindowIterator(index_name_);
     }
+
     const uint64_t GetCount() override;
 
     std::shared_ptr<TableHandler> GetSegment(const std::string& key) override {
@@ -152,8 +151,6 @@ class TabletTableHandler
     RowIterator* GetRawIterator() override;
     std::unique_ptr<codec::WindowIterator> GetWindowIterator(
         const std::string& idx_name);
-    virtual const uint64_t GetCount();
-    Row At(uint64_t pos) override;
 
     virtual std::shared_ptr<PartitionHandler> GetPartition(
         const std::string& index_name) {

@@ -21,7 +21,6 @@
 #include <set>
 #include <string>
 #include <unordered_map>
-#include <utility>
 #include <vector>
 
 #include "absl/base/attributes.h"
@@ -29,7 +28,6 @@
 #include "base/fe_status.h"
 #include "base/graph.h"
 #include "llvm/Bitcode/BitcodeWriter.h"
-#include "llvm/Support/raw_ostream.h"
 #include "node/node_manager.h"
 #include "node/plan_node.h"
 #include "node/sql_node.h"
@@ -322,13 +320,6 @@ class RequestModeTransformer : public BatchModeTransformer {
     // - has one and only one request table
     // - do not has any physical table refered
     Status ValidateRequestTable(PhysicalOpNode* in);
-
-    // Extract request node of the node tree
-    // returns
-    // - Request node on success
-    // - NULL if tree do not has request table but sufficient as as input tree of the big one
-    // - Error status otherwise
-    static absl::StatusOr<PhysicalOpNode*> ExtractRequestNode(PhysicalOpNode* in);
 
  private:
     // Optimize simple project node which is the producer of window project

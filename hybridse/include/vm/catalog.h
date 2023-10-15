@@ -217,6 +217,7 @@ class TableHandler : public DataHandler {
     virtual ~TableHandler() {}
 
     /// Return table column Types information.
+    /// TODO: rm it, never used
     virtual const Types& GetTypes() = 0;
 
     /// Return the index information
