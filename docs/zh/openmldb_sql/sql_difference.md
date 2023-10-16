@@ -81,7 +81,7 @@ WINDOW 子句和 GROUP BY & HAVING 子句不支持同时使用。上线时 WINDO
 
 特殊限制：
 
-- 在线请求模式下，WINDOW 的输入是 LAST JOIN 或者子查询内的 LAST JOIN, 注意窗口的定义里 `PARTITION BY` & `ORDER BY` 的列都必须来自 JOIN 最左边的表。
+- 在线请求模式下，WINDOW 的输入是 LAST JOIN 或者带子查询内的 LAST JOIN, 注意窗口的定义里 `PARTITION BY` & `ORDER BY` 的列都必须来自 JOIN 最左边的表。
 
 ### GROUP BY & HAVING 子句
 
@@ -101,7 +101,7 @@ OpenMLDB 仅支持 LAST JOIN 一种 JOIN 语法，详细描述参考扩展语法
 | **应用于**                                                   | **离线模式** | **在线预览模式** | **在线请求模式** |
 | ------------------------------------------------------------ | ------------ | ---------------- | ---------------- |
 | 两个表引用                                                   | ✓            | ✕                | ✓                |
-| 子查询, 仅包括：<br>左右表均为简单列筛选<br>左右表为 WINDOW 或 LAST JOIN 操作 | ✓            | ✓                | ✓                |
+| 子查询, 仅包括：<br>左右表均为简单列筛选<br>左右表为 WINDOW 或 LAST JOIN 操作<br>带 WHERE 条件过滤的单表查询 | ✓            | ✓                | ✓                |
 
 特殊限制：
 
@@ -118,7 +118,7 @@ OpenMLDB (>= v0.7.2) 支持非递归的 WITH 子句。WITH 子句等价于其它
 
 ### ORDER BY 关键字
 
-排序关键字 `ORDER BY` 仅在窗口定义 `WINDOW` 和拼表操作 `LAST JOIN` 子句内部被支持，并且不支持倒排序关键字 `DESC`。参见 WINDOW 子句和 LAST JOIN 子句内的相关说明。
+排序关键字 `ORDER BY` 仅在窗口定义 `WINDOW` 和拼表操作 `LAST JOIN` 子句内部被支持，并且不支持倒排序关键字 `DESC`。 OpenMLDB 0.8.4 以后支持窗口定义不带 ORDER BY, 但需额外满足特定条件. 参见 WINDOW 子句和 LAST JOIN 子句内的相关说明。
 
 ### 聚合函数
 
@@ -149,10 +149,10 @@ OpenMLDB 主要对 `WINDOW` 以及 `LAST JOIN` 语句进行了深度定制化开
 | **语句元素**     | **支持语法**                                                 | **说明**                                                     | **必需 ？** |
 | ---------------- | ------------------------------------------------------------ | ------------------------------------------------------------ | ----------- |
 | 数据定义         | PARTITION BY                                                 | 可支持多列<br>支持的列数据类型: bool, int16, int32, int64, string, date, timestamp | ✓           |
-| 数据排序         | ORDER BY                                                     | 仅支持对单一列排序<br>可支持数据类型: int16, int32, int64, timestamp<br>不支持倒序 `DESC` | ✓           |
+| 数据排序         | ORDER BY                                                     | 仅支持对单一列排序<br>可支持数据类型: int16, int32, int64, timestamp<br>不支持倒序 `DESC`<br>OpenMLDB 0.8.4 之前必填 | -           |
 | 范围定义         | <br>基本上下界定义语法：ROWS/ROWS_RANGE BETWEEN ... AND ...<br>支持范围定义关键字 PRECEDING, OPEN PRECEDING, CURRENT ROW, UNBOUNDED | 必须给定上下边界<br>不支持边界关键字 FOLLOWING<br>在线请求模式中，CURRENT ROW 为当前的请求行。在表格视角下，当前行将会被虚拟的插入到表格根据 ORDER BY 排序的正确位置上。 | ✓           |
-| 范围单位         | ROWS<br>ROWS_RANGE（扩展）                                       | ROWS_RANGE 为扩展语法，其定义的窗口边界属性等价于标准 SQL 的 RANGE 类型窗口，支持用数值或者带时间单位的数值定义窗口边界，后者为拓展语法。<br>带时间单位定义的窗口范围，等价于时间转化成毫秒数值后的窗口定义。例如 `ROWS_RANGE 10s PRCEDING ...` 和 `ROWS_RANGE 10000 PRECEDNG ...` 是等价的。 | ✓           |
-| 窗口属性（扩展） | MAXSIZE <br>EXCLUDE CURRENT_ROW<br>EXCLUDE CURRENT_TIME<br>INSTANCE_NOT_IN_WINDOW | MAXSIZE  只对 ROWS_RANGE 有效                                | -           |
+| 范围单位         | ROWS<br>ROWS_RANGE（扩展）                                   | ROWS_RANGE 为扩展语法，其定义的窗口边界属性等价于标准 SQL 的 RANGE 类型窗口，支持用数值或者带时间单位的数值定义窗口边界，后者为拓展语法。<br>带时间单位定义的窗口范围，等价于时间转化成毫秒数值后的窗口定义。例如 `ROWS_RANGE 10s PRCEDING ...` 和 `ROWS_RANGE 10000 PRECEDNG ...` 是等价的。 | ✓           |
+| 窗口属性（扩展） | MAXSIZE <br>EXCLUDE CURRENT_ROW<br>EXCLUDE CURRENT_TIME<br>INSTANCE_NOT_IN_WINDOW | MAXSIZE  只对 ROWS_RANGE 有效<br>不带 ORDER BY 和 EXCLUDE CURRENT_TIME 不能同时使用 | -           |
 | 多表定义（扩展） | 实际使用中语法形态较为复杂，参考：<br>[跨表特征开发教程](../tutorial/tutorial_sql_2.md)<br>[WINDOW UNION 语法文档](../openmldb_sql/dql/WINDOW_CLAUSE.md#1-window--union) | 允许合并多个表<br>允许联合简单子查询<br>实践中，一般和聚合函数搭配使用，实现跨表的聚合操作 | -           |
 | 匿名窗口         | -                                                            | 必须包括 PARTITION BY、ORDER BY、以及窗口范围定义            | -           |
 

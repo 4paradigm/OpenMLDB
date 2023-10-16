@@ -119,7 +119,7 @@ partition key相等的所有行，还不是窗口，经由order by列排序后�
 
 ## 基本的 WindowSpec 语法元素
 
-### Window Partition Clause 和 Window OrderBy Clause
+### WINDOW PARTITION BY clause 和 WINDOW ORDER BY clause
 
 ```sql
 WindowPartitionClause
@@ -129,9 +129,18 @@ WindowOrderByClause
         ::= ( 'ORDER' 'BY' ByList )            
 ```
 
-`PARTITION BY`选项将查询的行分为一组进入*partitions*， 这些行在窗口函数中单独处理。`PARTITION BY`和查询级别`GROUP BY` 子句做相似的工作，除了它的表达式只能作为表达式不能作为输出列的名字或数。OpenMLDB要求必须配置`PARTITION BY`。并且目前**仅支持按列分组**，无法支持按运算和函数表达式分组。
+`PARTITION BY`选项将查询的行分为一组进入*partitions*， 这些行在窗口函数中单独处理。`PARTITION BY`和查询级别`GROUP BY` 子句做相似的工作, 只是它只能作为表达式不能作为查询结果的输出列或输出列 ID。OpenMLDB要求必须配置`PARTITION BY`。PARTITION BY list 可以有多个,  但**仅支持按列分组**，无法支持按运算或函数表达式分组。
 
-`ORDER BY` 选项决定分区中的行被窗口函数处理的顺序。它和查询级别`ORDER BY`子句做相似的工作， 但是同样的它不能作为输出列的名字或数。同样，OpenMLDB要求必须配置`ORDER BY`。并且目前**仅支持按列排序**，无法支持按运算和函数表达式排序。
+`ORDER BY` 选项决定分区中的行被窗口函数处理的顺序。它和查询级别`ORDER BY`子句做相似的工作， 同样不能作为查询结果的输出列或者输出列 ID。OpenMLDB 目前**仅支持按列排序**，ORDER BY list 有且只能有一个, 不支持按运算或函数表达式排序。**OpenMLDB 0.8.4** 以后, ORDER BY 子句可以不写, 表示窗口内的列将以不确定的顺序处理, 不带 ORDER BY 子句需要满足如下条件:
+
+1. 不能有`EXCLUDE CURRENT_TIME` 
+2. 对于 ROWS 类型窗口没有更多限制, 对于 ROWS_RANGE 类型窗口:
+   1. 窗口 FRAME 的边界不能是 `offset [OPEN] PRECEDING/FOLLOWING` 的格式, 目前情况只能为 `UNBOUNDED PRECEDING AND CURRENT ROW`
+
+```{note}
+窗口不带 ORDER BY 的情况, 意味着对于在线预览模式, 计算结果是不确定的. 同时对于一些通用窗口函数, 例如 `lag, first_value`, 在所有模式下得到的计算结果都是不确定的.
+```
+
 
 ### Window Frame Clause
 
