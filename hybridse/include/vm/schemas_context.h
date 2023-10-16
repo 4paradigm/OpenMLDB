@@ -72,7 +72,8 @@ class SchemaSource {
     // column identifier of each output column
     std::vector<size_t> column_ids_;
 
-    // trace which child and which column id each column come from
+    // trace which child and which column id each column comes from, index is measured
+    // based on the physical node tree, starts from 0.
     // -1 means the column is created from current node
     std::vector<int> source_child_idxs_;
     std::vector<size_t> source_child_column_ids_;
@@ -127,10 +128,6 @@ class SchemasContext {
     base::Status ResolveColumnRefIndex(const node::ColumnRefNode* column_ref,
                                        size_t* schema_idx,
                                        size_t* col_idx) const;
-    /**
-     * Resolve column id with given column expression [ColumnRefNode, ColumnId]
-     */
-    base::Status ResolveColumnID(const node::ExprNode* column, size_t* column_id) const;
 
     /**
      * Given relation name and column name, return column unique id

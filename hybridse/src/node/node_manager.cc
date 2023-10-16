@@ -301,7 +301,7 @@ OrderExpression *NodeManager::MakeOrderExpression(const ExprNode *expr, const bo
     OrderExpression *node_ptr = new OrderExpression(expr, is_asc);
     return RegisterNode(node_ptr);
 }
-OrderByNode *NodeManager::MakeOrderByNode(const ExprListNode *order_expressions) {
+OrderByNode *NodeManager::MakeOrderByNode(ExprListNode *order_expressions) {
     OrderByNode *node_ptr = new OrderByNode(order_expressions);
     return RegisterNode(node_ptr);
 }
