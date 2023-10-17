@@ -3771,7 +3771,7 @@ void NameServerImpl::TruncateTable(RpcController* controller, const TruncateTabl
             }
         }
     }
-    PDLOG(INFO, "truncate success, db[%u] name[%u]", db.c_str(), name.c_str());
+    PDLOG(INFO, "truncate success, db[%s] name[%s]", db.c_str(), name.c_str());
     response->set_code(::openmldb::base::ReturnCode::kOk);
     response->set_msg("ok");
 }
