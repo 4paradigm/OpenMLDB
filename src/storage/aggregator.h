@@ -156,6 +156,8 @@ class Aggregator {
     // set the filter column info that not initialized in constructor
     bool SetFilter(absl::string_view filter_col);
 
+    std::shared_ptr<Table> GetAggTable() { return aggr_table_; }
+
  protected:
     codec::Schema base_table_schema_;
     codec::Schema aggr_table_schema_;

@@ -1416,6 +1416,42 @@ TEST_P(TabletImplTest, ScanWithLatestN) {
     ASSERT_FALSE(kv_it.Valid());
 }
 
+TEST_P(TabletImplTest, Truncate) {
+    ::openmldb::common::StorageMode storage_mode = GetParam();
+    TabletImpl tablet;
+    uint32_t id = counter++;
+    tablet.Init("");
+    ASSERT_EQ(0, CreateDefaultTable("db0", "t0", id, 1, 0, 0, kAbsoluteTime, storage_mode, &tablet));
+    MockClosure closure;
+    for (int ts = 100; ts < 200; ts++) {
+        ::openmldb::api::PutRequest prequest;
+        PackDefaultDimension("test1", &prequest);
+        prequest.set_time(ts);
+        prequest.set_value(::openmldb::test::EncodeKV("test1", "test" + std::to_string(ts)));
+        prequest.set_tid(id);
+        prequest.set_pid(1);
+        ::openmldb::api::PutResponse presponse;
+        tablet.Put(NULL, &prequest, &presponse, &closure);
+        ASSERT_EQ(0, presponse.code());
+    }
+    ::openmldb::api::TraverseRequest sr;
+    sr.set_tid(id);
+    sr.set_pid(1);
+    sr.set_limit(1000);
+    auto srp = std::make_shared<::openmldb::api::TraverseResponse>();
+    tablet.Traverse(NULL, &sr, srp.get(), &closure);
+    ASSERT_EQ(0, srp->code());
+    ASSERT_EQ(100, (signed)srp->count());
+    ::openmldb::api::TruncateTableRequest tr;
+    tr.set_tid(id);
+    tr.set_pid(1);
+    auto trp = std::make_shared<::openmldb::api::TruncateTableResponse>();
+    tablet.TruncateTable(NULL, &tr, trp.get(), &closure);
+    ASSERT_EQ(0, trp->code());
+    tablet.Traverse(NULL, &sr, srp.get(), &closure);
+    ASSERT_EQ(0, srp->code());
+    ASSERT_EQ(0, (signed)srp->count());
+}
 
 TEST_P(TabletImplTest, Traverse) {
     ::openmldb::common::StorageMode storage_mode = GetParam();

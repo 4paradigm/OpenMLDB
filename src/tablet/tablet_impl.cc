@@ -3463,6 +3463,38 @@ void TabletImpl::TruncateTable(RpcController* controller, const ::openmldb::api:
     brpc::ClosureGuard done_guard(done);
     uint32_t tid = request->tid();
     uint32_t pid = request->pid();
+    if (auto status = TruncateTableInternal(tid, pid); !status.OK()) {
+        base::SetResponseStatus(status, response);
+        return;
+    }
+    auto aggrs = GetAggregators(tid, pid);
+    if (aggrs) {
+        for (const auto& aggr : *aggrs) {
+            auto agg_table = aggr->GetAggTable();
+            if (!agg_table) {
+                PDLOG(WARNING, "aggrate table does not exist. tid[%u] pid[%u] index pos[%u]",
+                        tid, pid, aggr->GetIndexPos());
+                response->set_code(::openmldb::base::ReturnCode::kTableIsNotExist);
+                response->set_msg("aggrate table does not exist");
+                return;
+            }
+            uint32_t agg_tid = agg_table->GetId();
+            uint32_t agg_pid = agg_table->GetPid();
+            if (auto status = TruncateTableInternal(agg_tid, agg_pid); !status.OK()) {
+                PDLOG(WARNING, "truncate aggrate table failed. tid[%u] pid[%u] index pos[%u]",
+                        agg_tid, agg_pid, aggr->GetIndexPos());
+                base::SetResponseStatus(status, response);
+                return;
+            }
+            PDLOG(INFO, "truncate aggrate table success. tid[%u] pid[%u] index pos[%u]",
+                        agg_tid, agg_pid, aggr->GetIndexPos());
+        }
+    }
+    response->set_code(::openmldb::base::ReturnCode::kOk);
+    response->set_msg("ok");
+}
+
+base::Status TabletImpl::TruncateTableInternal(uint32_t tid, uint32_t pid) {
     std::shared_ptr<Table> table;
     std::shared_ptr<Snapshot> snapshot;
     std::shared_ptr<LogReplicator> replicator;
@@ -3471,41 +3503,29 @@ void TabletImpl::TruncateTable(RpcController* controller, const ::openmldb::api:
         table = GetTableUnLock(tid, pid);
         if (!table) {
             DEBUGLOG("table does not exist. tid %u pid %u", tid, pid);
-            response->set_code(::openmldb::base::ReturnCode::kTableIsNotExist);
-            response->set_msg("table not found");
-            return;
+            return {::openmldb::base::ReturnCode::kTableIsNotExist, "table not found"};
         }
         snapshot = GetSnapshotUnLock(tid, pid);
         if (!snapshot) {
             PDLOG(WARNING, "snapshot does not exist. tid[%u] pid[%u]", tid, pid);
-            response->set_code(::openmldb::base::ReturnCode::kSnapshotIsNotExist);
-            response->set_msg("snapshot not found");
-            return;
+            return {::openmldb::base::ReturnCode::kSnapshotIsNotExist, "snapshot not found"};
         }
         replicator = GetReplicatorUnLock(tid, pid);
         if (!replicator) {
             PDLOG(WARNING, "replicator does not exist. tid[%u] pid[%u]", tid, pid);
-            response->set_code(::openmldb::base::ReturnCode::kReplicatorIsNotExist);
-            response->set_msg("replicator not found");
-            return;
+            return {::openmldb::base::ReturnCode::kReplicatorIsNotExist, "replicator not found"};
         }
     }
     if (replicator->GetOffset() == 0) {
         PDLOG(INFO, "table is empty, truncate success. tid[%u] pid[%u]", tid, pid);
-        response->set_code(::openmldb::base::ReturnCode::kOk);
-        response->set_msg("ok");
-        return;
+        return {};
     }
     if (table->GetTableStat() == ::openmldb::storage::kMakingSnapshot) {
         PDLOG(WARNING, "making snapshot task is running now. tid[%u] pid[%u]", tid, pid);
-        response->set_code(::openmldb::base::ReturnCode::kTableStatusIsKmakingsnapshot);
-        response->set_msg("table status is kMakingSnapshot");
-        return;
+        return {::openmldb::base::ReturnCode::kTableStatusIsKmakingsnapshot, "table status is kMakingSnapshot"};
     } else if (table->GetTableStat() == ::openmldb::storage::kLoading) {
         PDLOG(WARNING, "table is loading now. tid[%u] pid[%u]", tid, pid);
-        response->set_code(::openmldb::base::ReturnCode::kTableIsLoading);
-        response->set_msg("table is loading data");
-        return;
+        return {::openmldb::base::ReturnCode::kTableIsLoading, "table is loading data"};
     }
     if (table->GetStorageMode() == openmldb::common::kMemory) {
         auto table_meta = table->GetTableMeta();
@@ -3513,8 +3533,7 @@ void TabletImpl::TruncateTable(RpcController* controller, const ::openmldb::api:
         new_table = std::make_shared<MemTable>(*table_meta);
         if (!new_table->Init()) {
             PDLOG(WARNING, "fail to init table. tid %u, pid %u", table_meta->tid(), table_meta->pid());
-            response->set_msg("fail to init table");
-            return;
+            return {::openmldb::base::ReturnCode::kTableMetaIsIllegal, "fail to init table"};
         }
         new_table->SetTableStat(::openmldb::storage::kNormal);
         {
@@ -3529,20 +3548,17 @@ void TabletImpl::TruncateTable(RpcController* controller, const ::openmldb::api:
             } else {
                 LOG(WARNING) << "fail to add table " << table_meta->name()
                     << " to catalog with db " << table_meta->db();
+                return {::openmldb::base::ReturnCode::kCatalogUpdateFailed, "fail to update catalog"};
             }
         }
     } else {
         auto disk_table = std::dynamic_pointer_cast<DiskTable>(table);
         if (auto status = disk_table->Truncate(); !status.OK()) {
-            response->set_code(::openmldb::base::ReturnCode::kTruncateTableFailed);
-            response->set_msg(status.GetMsg());
-            return;
+            return {::openmldb::base::ReturnCode::kTruncateTableFailed, status.GetMsg()};
         }
     }
-
     PDLOG(INFO, "truncate table success. tid[%u] pid[%u]", tid, pid);
-    response->set_code(::openmldb::base::ReturnCode::kOk);
-    response->set_msg("ok");
+    return {};
 }
 
 void TabletImpl::ExecuteGc(RpcController* controller, const ::openmldb::api::ExecuteGcRequest* request,

@@ -335,6 +335,8 @@ class TabletImpl : public ::openmldb::api::TabletServer {
             uint32_t partition_num, uint64_t last_time,
             std::shared_ptr<::openmldb::api::TaskInfo> task);
 
+    base::Status TruncateTableInternal(uint32_t tid, uint32_t pid);
+
     void ExtractIndexDataInternal(std::shared_ptr<::openmldb::storage::Table> table,
             std::shared_ptr<::openmldb::storage::MemTableSnapshot> memtable_snapshot,
             const std::vector<::openmldb::common::ColumnKey>& column_key,
