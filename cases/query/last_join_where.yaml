@@ -8,7 +8,6 @@ cases:
   - id: 0
     desc: LASTJOIN(FILTER<optimized>)
     deployable: true
-    mode: batch-request-unsupport
     sql: |
       SELECT
         t1.c1,
@@ -38,6 +37,16 @@ cases:
           RENAME(name=t2)
             FILTER_BY(condition=, left_keys=(), right_keys=(), index_keys=(aa))
               DATA_PROVIDER(type=Partition, table=t2, index=index1)
+    cluster_request_plan: |
+      SIMPLE_PROJECT(sources=(t1.c1, t1.c2, t2.c1 -> c21))
+        REQUEST_JOIN(type=kJoinTypeConcat)
+          DATA_PROVIDER(request=t1)
+          REQUEST_JOIN(OUTPUT_RIGHT_ONLY, type=LastJoin, condition=, left_keys=(#5), right_keys=(#9), index_keys=)
+            SIMPLE_PROJECT(sources=(#5 -> t1.c1))
+              DATA_PROVIDER(request=t1)
+            RENAME(name=t2)
+              FILTER_BY(condition=, left_keys=(), right_keys=(), index_keys=(aa))
+                DATA_PROVIDER(type=Partition, table=t2, index=index1)
     expect:
       columns:
         - c1 string
@@ -51,7 +60,6 @@ cases:
 
   - id: 1
     desc: LASTJOIN(SimpleOPS(FILTER<optimized>))
-    mode: batch-request-unsupport
     deployable: true
     sql: |
       SELECT
@@ -140,7 +148,6 @@ cases:
 
   - id: 3
     desc: LASTJOIN(FILTER<partial optimzied>)
-    mode: batch-request-unsupport
     deployable: true
     sql: |
       SELECT
@@ -232,7 +239,6 @@ cases:
       LASTJOIN(SimpleOps(FILTER<optimized>)), different index with join, fine to
       online if there is no order by of last join
     deployable: true
-    mode: batch-request-unsupport
     sql: |
       SELECT
         t1.c1,
@@ -322,7 +328,6 @@ cases:
 
   - id: 7
     desc: LASTJOIN(SimpleOps(FILTER<optimized>)) hit same index with order by
-    mode: batch-request-unsupport
     deployable: true
     sql: |
       SELECT

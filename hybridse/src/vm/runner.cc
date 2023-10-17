@@ -25,7 +25,6 @@
 #include "absl/strings/str_cat.h"
 #include "absl/strings/substitute.h"
 #include "base/texttable.h"
-#include "udf/udf.h"
 #include "vm/catalog_wrapper.h"
 #include "vm/core_api.h"
 #include "vm/internal/eval.h"
@@ -44,6 +43,7 @@ static bool IsPartitionProvider(vm::PhysicalOpNode* n) {
     switch (n->GetOpType()) {
         case kPhysicalOpSimpleProject:
         case kPhysicalOpRename:
+        case kPhysicalOpRequestJoin:
             return IsPartitionProvider(n->GetProducer(0));
         case kPhysicalOpDataProvider:
             return dynamic_cast<vm::PhysicalDataProviderNode*>(n)->provider_type_ == kProviderTypePartition;
@@ -138,10 +138,9 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
             }
         }
         case kPhysicalOpSimpleProject: {
-            auto cluster_task =  // NOLINT
-                Build(node->producers().at(0), status);
+            auto cluster_task = Build(node->producers().at(0), status);
             if (!cluster_task.IsValid()) {
-                status.msg = "fail to build input runner";
+                status.msg = "fail to build input runner for simple project:\n" + node->GetTreeString();
                 status.code = common::kExecutionPlanError;
                 LOG(WARNING) << status;
                 return fail;
@@ -337,19 +336,17 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
             return BuildRequestAggUnionTask(node, status);
         }
         case kPhysicalOpRequestJoin: {
-            auto left_task =  // NOLINT
-                Build(node->producers().at(0), status);
+            auto left_task = Build(node->GetProducer(0), status);
             if (!left_task.IsValid()) {
-                status.msg = "fail to build left input runner";
+                status.msg = "fail to build left input runner for: " + node->GetProducer(0)->GetTreeString();
                 status.code = common::kExecutionPlanError;
                 LOG(WARNING) << status;
                 return fail;
             }
             auto left = left_task.GetRoot();
-            auto right_task =  // NOLINT
-                Build(node->producers().at(1), status);
+            auto right_task = Build(node->GetProducer(1), status);
             if (!right_task.IsValid()) {
-                status.msg = "fail to build right input runner";
+                status.msg = "fail to build right input runner for: " + node->GetProducer(1)->GetTreeString();
                 status.code = common::kExecutionPlanError;
                 LOG(WARNING) << status;
                 return fail;
@@ -363,19 +360,38 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
                         left->output_schemas()->GetSchemaSourceSize(), right->output_schemas()->GetSchemaSourceSize(),
                         op->output_right_only());
 
-                    if (support_cluster_optimized_ && IsPartitionProvider(node->GetProducer(0))) {
-                        // Partion left join partition, route by index of the left source, and it should uncompleted
-                        auto& route_info = left_task.GetRouteInfo();
-                        runner->AddProducer(left_task.GetRoot());
-                        runner->AddProducer(right_task.GetRoot());
-                        return UnCompletedClusterTask(runner, route_info.table_handler_, route_info.index_);
-                    } else {
-                        return RegisterTask(
-                            node, BinaryInherit(left_task, right_task, runner, op->join().index_key(), kLeftBias));
+                    if (support_cluster_optimized_) {
+                        if (IsPartitionProvider(node->GetProducer(0))) {
+                            // Partion left join partition, route by index of the left source, and it should uncompleted
+                            auto& route_info = left_task.GetRouteInfo();
+                            runner->AddProducer(left_task.GetRoot());
+                            runner->AddProducer(right_task.GetRoot());
+                            return RegisterTask(
+                                node, UnCompletedClusterTask(runner, route_info.table_handler_, route_info.index_));
+                        }
+
+                        if (right_task.IsCompletedClusterTask() && right_task.GetRouteInfo().lazy_route_ &&
+                            !op->join_.index_key_.ValidKey()) {
+                            auto& route_info = right_task.GetRouteInfo();
+                            runner->AddProducer(left_task.GetRoot());
+                            runner->AddProducer(right_task.GetRoot());
+                            return RegisterTask(node, ClusterTask(runner, {}, route_info));
+                        }
                     }
+
+                    return RegisterTask(
+                        node, BinaryInherit(left_task, right_task, runner, op->join().index_key(), kLeftBias));
                 }
                 case node::kJoinTypeConcat: {
                     ConcatRunner* runner = CreateRunner<ConcatRunner>(id_++, node->schemas_ctx(), op->GetLimitCnt());
+                    if (support_cluster_optimized_) {
+                        if (right_task.IsCompletedClusterTask() && right_task.GetRouteInfo().lazy_route_ &&
+                            !op->join_.index_key_.ValidKey()) {
+                            runner->AddProducer(left_task.GetRoot());
+                            runner->AddProducer(right_task.GetRoot());
+                            return RegisterTask(node, ClusterTask(runner, {}, RouteInfo{}));
+                        }
+                    }
                     return RegisterTask(node, BinaryInherit(left_task, right_task, runner, Key(), kNoBias));
                 }
                 default: {
@@ -463,9 +479,8 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
             return RegisterTask(node, UnaryInheritTask(cluster_task, runner));
         }
         case kPhysicalOpFilter: {
-            auto cluster_task =  // NOLINT
-                Build(node->producers().at(0), status);
-            if (!cluster_task.IsValid()) {
+            auto producer_task = Build(node->GetProducer(0), status);
+            if (!producer_task.IsValid()) {
                 status.msg = "fail to build input runner";
                 status.code = common::kExecutionPlanError;
                 LOG(WARNING) << status;
@@ -474,7 +489,27 @@ ClusterTask RunnerBuilder::Build(PhysicalOpNode* node, Status& status) {
             auto op = dynamic_cast<const PhysicalFilterNode*>(node);
             FilterRunner* runner =
                 CreateRunner<FilterRunner>(id_++, node->schemas_ctx(), op->GetLimitCnt(), op->filter_);
-            return RegisterTask(node, UnaryInheritTask(cluster_task, runner));
+            // under cluster, filter task might be completed or uncompleted
+            // based on whether filter node has the index_key underlaying DataTask requires
+            ClusterTask out;
+            if (support_cluster_optimized_) {
+                auto& route_info_ref = producer_task.GetRouteInfo();
+                if (runner->filter_gen_.ValidIndex()) {
+                    // complete the route info
+                    RouteInfo lazy_route_info(route_info_ref.index_, op->filter().index_key(),
+                                            std::make_shared<ClusterTask>(producer_task),
+                                            route_info_ref.table_handler_);
+                    lazy_route_info.lazy_route_ = true;
+                    runner->AddProducer(producer_task.GetRoot());
+                    out = ClusterTask(runner, {}, lazy_route_info);
+                } else {
+                    runner->AddProducer(producer_task.GetRoot());
+                    out = UnCompletedClusterTask(runner, route_info_ref.table_handler_, route_info_ref.index_);
+                }
+            } else {
+                out = UnaryInheritTask(producer_task, runner);
+            }
+            return RegisterTask(node, out);
         }
         case kPhysicalOpLimit: {
             auto cluster_task =  // NOLINT
@@ -708,8 +743,7 @@ ClusterTask RunnerBuilder::BuildClusterTaskForBinaryRunner(
            new_right.IsCompletedClusterTask()) {
         // merge left and right task if tasks can be merged
         if (ClusterTask::TaskCanBeMerge(new_left, new_right)) {
-            ClusterTask task =
-                ClusterTask::TaskMerge(runner, new_left, new_right);
+            ClusterTask task = ClusterTask::TaskMerge(runner, new_left, new_right);
             runner->AddProducer(new_left.GetRoot());
             runner->AddProducer(new_right.GetRoot());
             return task;
@@ -734,10 +768,12 @@ ClusterTask RunnerBuilder::BuildClusterTaskForBinaryRunner(
             }
         }
     }
-    if (new_left.IsUnCompletedClusterTask() ||
-        new_right.IsUnCompletedClusterTask()) {
-        LOG(WARNING) << "Fail to build cluster task, can't handler "
-                        "uncompleted cluster task";
+    if (new_left.IsUnCompletedClusterTask()) {
+        LOG(WARNING) << "can't handler uncompleted cluster task from left:" << new_left;
+        return ClusterTask();
+    }
+    if (new_right.IsUnCompletedClusterTask()) {
+        LOG(WARNING) << "can't handler uncompleted cluster task from right:" << new_right;
         return ClusterTask();
     }
 

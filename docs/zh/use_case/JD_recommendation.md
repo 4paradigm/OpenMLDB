@@ -74,7 +74,7 @@ docker pull oneflowinc/oneflow-serving:nightly
 由于 OpenMLDB 集群需要和其他组件网络通信，我们直接使用 host 网络。本例将在容器中使用已下载的脚本，所以请将数据脚本所在目录 `demodir` 映射为容器中的目录：
 
 ```bash
-docker run -dit --name=openmldb --network=host -v $demodir:/work/oneflow_demo 4pdosc/openmldb:0.8.2 bash
+docker run -dit --name=openmldb --network=host -v $demodir:/work/oneflow_demo 4pdosc/openmldb:0.8.3 bash
 docker exec -it openmldb bash
 ```
 
@@ -393,7 +393,7 @@ bash train_deepfm.sh $demodir/feature_preprocess/out
     ```sql
     -- OpenMLDB CLI
     USE JD_db;
-    DEPLOY demo <SQL>;
+    DEPLOY demo OPTIONS(RANGE_BIAS='inf', ROWS_BIAS='inf') <SQL>;
     ```
 
     也可以在 Docker 容器内直接运行部署脚本：

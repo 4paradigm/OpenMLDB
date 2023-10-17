@@ -2591,16 +2591,21 @@ void DefaultUdfLibrary::InitTimeAndDateUdf() {
             });
 
     RegisterExternal("datediff")
-        .args<Date, Date>(reinterpret_cast<void*>(static_cast<void (*)(Date*, Date*, int32_t*, bool*)>(v1::date_diff)))
-        .return_by_arg(true)
-        .returns<Nullable<int32_t>>()
+        .args<Date, Date>(static_cast<void (*)(Date*, Date*, int32_t*, bool*)>(v1::date_diff))
         .doc(R"(
             @brief days difference from date1 to date2
 
             Supported date string style:
               - yyyy-mm-dd
               - yyyymmdd
-              - yyyy-mm-dd hh:mm:ss
+              - yyyy-mm-dd HH:MM:SS
+              - yyyy-mm-ddTHH:MM:SS.fff+HH:MM (RFC3399 format)
+
+            Dates from string are transformed into the same time zone (which is currently always UTC+8) before differentiation,
+            dates from date type by default is at UTC+8, you may see a +1/-1 difference if the two date string have different time zones.
+
+            Hint: since openmldb date type limits range from year 1900, to datadiff from/to a date before
+            1900, pass it as string.
 
             Example:
 
@@ -2614,20 +2619,11 @@ void DefaultUdfLibrary::InitTimeAndDateUdf() {
             @endcode
             @since 0.7.0)");
     RegisterExternal("datediff")
-        .args<StringRef, StringRef>(
-            reinterpret_cast<void*>(static_cast<void (*)(StringRef*, StringRef*, int32_t*, bool*)>(v1::date_diff)))
-        .return_by_arg(true)
-        .returns<Nullable<int32_t>>();
+        .args<StringRef, StringRef>(static_cast<void (*)(StringRef*, StringRef*, int32_t*, bool*)>(v1::date_diff));
     RegisterExternal("datediff")
-        .args<StringRef, Date>(
-            reinterpret_cast<void*>(static_cast<void (*)(StringRef*, Date*, int32_t*, bool*)>(v1::date_diff)))
-        .return_by_arg(true)
-        .returns<Nullable<int32_t>>();
+        .args<StringRef, Date>(static_cast<void (*)(StringRef*, Date*, int32_t*, bool*)>(v1::date_diff));
     RegisterExternal("datediff")
-        .args<Date, StringRef>(
-            reinterpret_cast<void*>(static_cast<void (*)(Date*, StringRef*, int32_t*, bool*)>(v1::date_diff)))
-        .return_by_arg(true)
-        .returns<Nullable<int32_t>>();
+        .args<Date, StringRef>(static_cast<void (*)(Date*, StringRef*, int32_t*, bool*)>(v1::date_diff));
 
     RegisterExternal("unix_timestamp")
         .args<Date>(reinterpret_cast<void*>(static_cast<void (*)(Date*, int64_t*, bool*)>(v1::date_to_unix_timestamp)))

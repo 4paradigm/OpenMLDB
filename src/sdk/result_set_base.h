@@ -64,6 +64,10 @@ class ResultSetBase {
 
     inline int32_t Size() { return count_; }
 
+    int32_t GetDataLength() { return io_buf_->size(); }
+
+    void CopyTo(void* buf) { io_buf_->copy_to(buf); }
+
  private:
     const butil::IOBuf* io_buf_;
     uint32_t count_;

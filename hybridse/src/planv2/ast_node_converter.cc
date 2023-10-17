@@ -2172,6 +2172,7 @@ static const absl::flat_hash_map<std::string_view, ShowTargetInfo> showTargetMap
     {"SESSION VARIABLES", {node::CmdType::kCmdShowSessionVariables}},
     {"GLOBAL VARIABLES", {node::CmdType::kCmdShowGlobalVariables}},
     {"CREATE PROCEDURE", {node::CmdType::kCmdShowCreateSp, true}},
+    {"CREATE TABLE", {node::CmdType::kCmdShowCreateTable, true}},
     {"DEPLOYMENT", {node::CmdType::kCmdShowDeployment, true}},
     {"JOB", {node::CmdType::kCmdShowJob, true}},
     {"COMPONENTS", {node::CmdType::kCmdShowComponents}},

@@ -90,7 +90,7 @@ create table t1(c1 int;
 ```
 create database db;
 use db;
--- create youer table
+-- create your table
 create table xx ();
 
 -- offline or online
