@@ -257,6 +257,24 @@ TEST_F(SQLClusterDDLTest, CreateTableWithDatabase) {
     ASSERT_TRUE(router->DropDB(db2, &status));
 }
 
+TEST_F(SQLClusterDDLTest, ShowCreateTable) {
+    ::hybridse::sdk::Status status;
+    ASSERT_TRUE(router->ExecuteDDL(db, "drop table if exists t1;", &status));
+    std::string ddl = "CREATE TABLE `t1` (\n"
+        "`col1` varchar,\n"
+        "`col2` int,\n"
+        "`col3` bigInt NOT NULL,\n"
+        "INDEX (KEY=`col1`, TTL_TYPE=ABSOLUTE, TTL=100m)\n"
+        ") OPTIONS (PARTITIONNUM=1, REPLICANUM=1, STORAGE_MODE='Memory');";
+    ASSERT_TRUE(router->ExecuteDDL(db, ddl, &status)) << "ddl: " << ddl;
+    ASSERT_TRUE(router->RefreshCatalog());
+    auto rs = router->ExecuteSQL(db, "show create table t1;", &status);
+    ASSERT_TRUE(status.IsOK()) << status.msg;
+    ASSERT_TRUE(rs->Next());
+    ASSERT_EQ(ddl, rs->GetStringUnsafe(1));
+    ASSERT_TRUE(router->ExecuteDDL(db, "drop table t1;", &status));
+}
+
 TEST_F(SQLClusterDDLTest, CreateTableWithDatabaseWrongDDL) {
     std::string name = "test" + GenRand();
     ::hybridse::sdk::Status status;
