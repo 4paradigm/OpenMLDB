@@ -363,6 +363,48 @@ bool DiskTable::Get(uint32_t idx, const std::string& pk, uint64_t ts, std::strin
 
 bool DiskTable::Get(const std::string& pk, uint64_t ts, std::string& value) { return Get(0, pk, ts, value); }
 
+base::Status DiskTable::Truncate() {
+    const rocksdb::Snapshot* snapshot = db_->GetSnapshot();
+    absl::Cleanup release_snapshot = [this, snapshot] { this->db_->ReleaseSnapshot(snapshot); };
+    rocksdb::ReadOptions ro = rocksdb::ReadOptions();
+    ro.snapshot = snapshot;
+    ro.prefix_same_as_start = true;
+    ro.pin_data = true;
+    rocksdb::WriteBatch batch;
+    for (const auto& inner_index : *(table_index_.GetAllInnerIndex())) {
+        uint32_t idx = inner_index->GetId();
+        std::unique_ptr<rocksdb::Iterator> it(db_->NewIterator(ro, cf_hs_[idx + 1]));
+        it->SeekToFirst();
+        if (it->Valid()) {
+            std::string start_key(it->key().data(), it->key().size());
+            it->SeekToLast();
+            if (it->Valid()) {
+                rocksdb::Slice cur_pk;
+                uint64_t ts = 0;
+                uint32_t ts_idx = 0;
+                const auto& indexs = inner_index->GetIndex();
+                std::string end_key;
+                if (indexs.size() > 1) {
+                    ParseKeyAndTs(true, it->key(), &cur_pk, &ts, &ts_idx);
+                    end_key = CombineKeyTs(cur_pk, 0, ts_idx);
+                } else {
+                    ParseKeyAndTs(false, it->key(), &cur_pk, &ts, &ts_idx);
+                    end_key = CombineKeyTs(cur_pk, 0);
+                }
+                PDLOG(INFO, "delete range. start key %s end key %s inner idx %u tid %u pid %u",
+                        start_key.c_str(), end_key.c_str(), idx, id_, pid_);
+                batch.DeleteRange(cf_hs_[idx + 1], rocksdb::Slice(start_key), rocksdb::Slice(end_key));
+            }
+        }
+    }
+    rocksdb::Status s = db_->Write(write_opts_, &batch);
+    if (!s.ok()) {
+        PDLOG(WARNING, "delete failed, tid %u pid %u msg %s", id_, pid_, s.ToString().c_str());
+        return {-1, s.ToString()};
+    }
+    return {};
+}
+
 void DiskTable::SchedGc() {
     GcHead();
     UpdateTTL();
