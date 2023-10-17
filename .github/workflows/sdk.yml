@@ -68,8 +68,6 @@ jobs:
         with:
           path: ~/.m2/repository
           key: ${{ runner.os }}-maven-${{ hashFiles('java/**/pom.xml') }}
-          restore-keys: |
-            ${{ runner.os }}-maven-
 
       - name: prepare release
         if: github.event_name == 'push'
@@ -124,6 +122,7 @@ jobs:
       - name: maven coverage
         working-directory: java
         run: |
+          rm -rv ~/.m2/repository/com/4paradigm/
           ./mvnw --batch-mode prepare-package
           ./mvnw --batch-mode scoverage:report
 
@@ -160,8 +159,6 @@ jobs:
         with:
           path: ~/.m2/repository
           key: ${{ runner.os }}-maven-${{ hashFiles('java/**/pom.xml') }}
-          restore-keys: |
-            ${{ runner.os }}-maven-
 
       - name: Cache thirdparty
         uses: actions/cache@v3
@@ -236,6 +233,10 @@ jobs:
           MAVEN_USERNAME: ${{ secrets.OSSRH_USERNAME }}
           MAVEN_TOKEN: ${{ secrets.OSSRH_TOKEN }}
           GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+      - name: cleanup
+        run: |
+          rm -rv ~/.m2/repository/com/4paradigm/
+
 
   python-sdk:
     runs-on: ubuntu-latest
