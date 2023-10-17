@@ -213,7 +213,7 @@ void TabletTableHandler::AddTable(std::shared_ptr<::openmldb::storage::Table> ta
     do {
         old_tables = std::atomic_load_explicit(&tables_, std::memory_order_acquire);
         new_tables = std::make_shared<Tables>(*old_tables);
-        new_tables->emplace(table->GetPid(), table);
+        new_tables->insert_or_assign(table->GetPid(), table);
     } while (!atomic_compare_exchange_weak(&tables_, &old_tables, new_tables));
 }
 

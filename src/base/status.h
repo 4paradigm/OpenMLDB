@@ -129,6 +129,8 @@ enum ReturnCode {
     kCreateFunctionFailedOnTablet = 333,
     kOPAlreadyExists = 334,
     kOffsetMismatch = 335,
+    kGetTabletFailed = 336,
+    kTruncateTableFailed = 337,
     kReplicaClusterAliasDuplicate = 400,
     kConnectRelicaClusterZkFailed = 401,
     kNotSameReplicaName = 402,

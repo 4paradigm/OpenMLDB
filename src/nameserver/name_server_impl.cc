@@ -3719,7 +3719,6 @@ void NameServerImpl::TruncateTable(RpcController* controller, const TruncateTabl
     const std::string& db = request->db();
     const std::string& name = request->name();
     std::shared_ptr<::openmldb::nameserver::TableInfo> table_info;
-    std::lock_guard<std::mutex> lock(mu_);
     {
         std::lock_guard<std::mutex> lock(mu_);
         if (!GetTableInfoUnlock(request->name(), request->db(), &table_info)) {
@@ -3735,6 +3734,7 @@ void NameServerImpl::TruncateTable(RpcController* controller, const TruncateTabl
             return;
         }
     }
+    uint32_t tid = table_info->tid();
     for (const auto& partition : table_info->table_partition()) {
         uint32_t offset = 0;
         for (const auto& partition_meta : partition.partition_meta()) {
@@ -3750,6 +3750,28 @@ void NameServerImpl::TruncateTable(RpcController* controller, const TruncateTabl
             }
         }
     }
+    for (const auto& partition : table_info->table_partition()) {
+        uint32_t pid = partition.pid();
+        for (const auto& partition_meta : partition.partition_meta()) {
+            const auto& endpoint = partition_meta.endpoint();
+            auto tablet_ptr = GetTablet(endpoint);
+            if (!tablet_ptr) {
+                PDLOG(WARNING, "endpoint[%s] can not find client", endpoint.c_str());
+                response->set_code(::openmldb::base::ReturnCode::kGetTabletFailed);
+                response->set_msg("fail to get client, endpint " + endpoint);
+                return;
+            }
+            auto status = tablet_ptr->client_->TruncateTable(tid, pid);
+            if (!status.OK()) {
+                PDLOG(WARNING, "truncate failed, tid[%u] pid[%u] endpoint[%s] msg [%s]",
+                        tid, pid, endpoint.c_str(), status.GetMsg().c_str());
+                response->set_code(::openmldb::base::ReturnCode::kTruncateTableFailed);
+                response->set_msg(status.GetMsg());
+                return;
+            }
+        }
+    }
+    PDLOG(INFO, "truncate success, db[%u] name[%u]", db.c_str(), name.c_str());
     response->set_code(::openmldb::base::ReturnCode::kOk);
     response->set_msg("ok");
 }
