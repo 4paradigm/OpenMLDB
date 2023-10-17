@@ -1,4 +1,4 @@
-# 运算符
+# 表达式和运算符
 
 ## 运算符优先级
 
@@ -19,9 +19,7 @@
 %left UNARY_PRECEDENCE  // For all unary operators, +, -, ~
 ```
 
-## 各类运算
-
-### 1. 比较运算
+## 比较运算
 
 | 操作符名        | 功能描述               |
 | :-------------- | :--------------------- |
@@ -37,7 +35,7 @@
 | `ILIKE`         | 模糊匹配, 大小写不敏感 |
 | `RLIKE`         | 正则表达式匹配 |
 
-### 2. 逻辑运算
+## 逻辑运算
 
 | 操作符名    | 功能描述 |
 | :---------- | :------- |
@@ -46,7 +44,7 @@
 | `XOR`       | 逻辑与或 |
 | `NOT`, `!`  | 逻辑非, unary operator   |
 
-### 3. 算术运算
+## 算术运算
 
 | 操作符名   | 功能描述                                                 |
 | :--------- | :------------------------------------------------------- |
@@ -59,7 +57,7 @@
 | `+`        | Unary plus                                               |
 | `-`        | Unary minus, 只支持数值型操作数-number                   |
 
-###  4. 位运算
+## 位运算
 
 | 操作符名 | Description |
 | :------- | :---------- |
@@ -68,7 +66,7 @@
 | `^`      | Bitwise XOR |
 | `~`      | Bitwise NOT, unary operator |
 
-### 5. 类型运算和函数
+## 类型运算和函数
 
 | 操作符名       | Description                                                |
 | :------------- | :--------------------------------------------------------- |
@@ -97,7 +95,7 @@ SELECT INT(1.2);
 
 X：表示从原类型转换为目标类型的转换是不支持的
 
-| src\|dist     | bool   | smallint | int    | float  | int64  | double | timestamp | date   | string |
+| src\|dst     | bool   | smallint | int    | float  | int64  | double | timestamp | date   | string |
 | :------------ | :----- | :------- | :----- | :----- | :----- | :----- | :-------- | :----- | :----- |
 | **bool**      | Safe   | Safe     | Safe   | Safe   | Safe   | Safe   | UnSafe    | X      | Safe   |
 | **smallint**  | UnSafe | Safe     | Safe   | Safe   | Safe   | Safe   | UnSafe    | X      | Safe   |
@@ -114,3 +112,14 @@ X：表示从原类型转换为目标类型的转换是不支持的
 | 操作符名 | 功能描述                  |
 | :------- | :------------------------ |
 | `=`      | 赋值 (可用于 SET 语句中 ) |
+
+## 条件表达式
+
+### CASE 表达式
+    ```sql
+    SELECT case 'bb' when 'aa' then 'apple' else 'nothing' end; -- SIMPLE CASE WHEN
+    SELECT case
+            when 'bb'='aa' then 'apple'
+            when 'bb'='bb' then 'banana'
+            else 'nothing' end; -- SEARCHED CASE WHEN
+    ```

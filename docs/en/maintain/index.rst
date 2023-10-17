@@ -10,6 +10,8 @@ Maintenance
     backup
     monitoring
     cli
+    status
+    multi_cluster
     faq
     scale
     diagnose

@@ -55,6 +55,7 @@
 #include "sdk/job_table_helper.h"
 #include "sdk/node_adapter.h"
 #include "sdk/result_set_sql.h"
+#include "sdk/sdk_util.h"
 #include "sdk/split.h"
 #include "udf/udf.h"
 #include "vm/catalog.h"
@@ -1625,15 +1626,37 @@ std::shared_ptr<hybridse::sdk::ResultSet> SQLClusterRouter::HandleSQLCmd(const h
             return ResultSetSQL::MakeResultSet({"Tables"}, values, status);
         }
 
+        case hybridse::node::kCmdShowCreateTable: {
+            auto& args = cmd_node->GetArgs();
+            std::string cur_db = db;
+            std::string table_name;
+            if (!ParseNamesFromArgs(db, args, &cur_db, &table_name).IsOK()) {
+                *status = {StatusCode::kCmdError, msg};
+                return {};
+            }
+            if (cur_db.empty()) {
+                *status = {::hybridse::common::StatusCode::kCmdError, "please enter database first"};
+                return {};
+            }
+            auto table = cluster_sdk_->GetTableInfo(cur_db, table_name);
+            if (table == nullptr) {
+                *status = {StatusCode::kCmdError, "table " + table_name + " does not exist"};
+                return {};
+            }
+            std::string sql = SDKUtil::GenCreateTableSQL(*table);
+            std::vector<std::vector<std::string>> values;
+            std::vector<std::string> vec = {table_name, sql};
+            values.push_back(std::move(vec));
+            return ResultSetSQL::MakeResultSet({"Table", "Create Table"}, values, status);
+        }
+
         case hybridse::node::kCmdDescTable: {
             std::string cur_db = db;
             std::string table_name;
             const auto& args = cmd_node->GetArgs();
-            if (args.size() > 1) {
-                cur_db = args[0];
-                table_name = args[1];
-            } else {
-                table_name = args[0];
+            if (!ParseNamesFromArgs(db, args, &cur_db, &table_name).IsOK()) {
+                *status = {StatusCode::kCmdError, msg};
+                return {};
             }
             if (cur_db.empty()) {
                 *status = {::hybridse::common::StatusCode::kCmdError, "please enter database first"};
@@ -3002,16 +3025,16 @@ int SQLClusterRouter::GetJobTimeout() {
 }
 
 ::hybridse::sdk::Status SQLClusterRouter::ParseNamesFromArgs(const std::string& db,
-        const std::vector<std::string>& args, std::string* db_name, std::string* target_name) {
+        const std::vector<std::string>& args, std::string* db_name, std::string* name) {
     if (args.size() == 1) {
         if (db.empty()) {
             return {StatusCode::kCmdError, "Please enter database first"};
         }
         *db_name = db;
-        *target_name = args[0];
+        *name = args[0];
     } else if (args.size() == 2) {
         *db_name = args[0];
-        *target_name = args[1];
+        *name = args[1];
     } else {
         return {StatusCode::kCmdError, "Invalid args"};
     }
@@ -4290,7 +4313,7 @@ static const std::initializer_list<std::string> GetTableStatusSchema() {
 //    1. memory:  binlog + snapshot
 //    2. SSD/HDD: binlog + rocksdb data (sst files), wal files and checkpoints are not included
 // - Partition: partition number
-// - partition_unalive: partition number that is unalive
+// - Partition_unalive: partition number that is unalive
 // - Replica: replica number
 // - Offline_path: data path for offline data
 // - Offline_format: format for offline data

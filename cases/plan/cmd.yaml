@@ -720,3 +720,20 @@ cases:
           +-actions:
             +-0: DropPathAction (12)
             +-1: AddPathAction (13)
+
+  - id: show-create-table
+    desc: SHOW CREATE TABLE
+    sql: SHOW CREATE TABLE t1;
+    expect:
+      node_tree_str: |
+        +-node[CMD]
+          +-cmd_type: show create table
+          +-args: [t1]
+  - id: show-create-table-db
+    desc: SHOW CREATE TABLE
+    sql: SHOW CREATE TABLE db1.t1;
+    expect:
+      node_tree_str: |
+        +-node[CMD]
+          +-cmd_type: show create table
+          +-args: [db1, t1]

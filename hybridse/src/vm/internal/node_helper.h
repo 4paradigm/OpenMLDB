@@ -18,6 +18,8 @@
 #ifndef HYBRIDSE_SRC_VM_INTERNAL_NODE_HELPER_H_
 #define HYBRIDSE_SRC_VM_INTERNAL_NODE_HELPER_H_
 
+#include <set>
+#include <string>
 #include <utility>
 #include <vector>
 
@@ -62,6 +64,9 @@ State ReduceNode(const PhysicalOpNode* root, State state, BinOp&& op, GetKids&& 
 
     return state;
 }
+
+// Get all dependent (db, table) info from physical plan
+Status GetDependentTables(const PhysicalOpNode*, std::set<std::pair<std::string, std::string>>*);
 
 }  // namespace internal
 }  // namespace vm
