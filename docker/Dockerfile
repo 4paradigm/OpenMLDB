@@ -15,7 +15,7 @@
 
 FROM centos:7
 
-ARG ZETASQL_VERSION=0.3.0
+ARG ZETASQL_VERSION=0.3.1
 ARG THIRDPARTY_VERSION=0.6.0
 ARG TARGETARCH
 
@@ -28,8 +28,6 @@ RUN yum update -y && yum install -y centos-release-scl epel-release && \
     curl -Lo lcov-1.15-1.noarch.rpm https://github.com/linux-test-project/lcov/releases/download/v1.15/lcov-1.15-1.noarch.rpm && \
     yum localinstall -y lcov-1.15-1.noarch.rpm && \
     yum clean all && rm -v lcov-1.15-1.noarch.rpm && \
-    curl -Lo apache-maven-3.6.3-bin.tar.gz https://mirrors.ocf.berkeley.edu/apache/maven/maven-3/3.6.3/binaries/apache-maven-3.6.3-bin.tar.gz && \
-    tar xzf apache-maven-3.6.3-bin.tar.gz -C /usr/local --strip-components=1 && \
     curl -Lo zookeeper.tar.gz https://archive.apache.org/dist/zookeeper/zookeeper-3.4.14/zookeeper-3.4.14.tar.gz && \
     mkdir -p /deps/src && \
     tar xzf zookeeper.tar.gz -C /deps/src && \

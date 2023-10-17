@@ -151,8 +151,8 @@ thirdparty-fast:
 	else \
 	    $(MAKE) thirdparty-configure; \
 	    if [ -n "$(ZETASQL_VERSION)" ] ; then \
-		if [ "$$new_zetasql_version" != "$(ZETASQL_VERSION)" ] ; then \
-		    echo "[deps]: installing zetasql from $(ZETASQL_VERSION) to $$new_zetasql_version"; \
+		if [ "$(new_zetasql_version)" != "$(ZETASQL_VERSION)" ] ; then \
+		    echo "[deps]: installing zetasql from $(ZETASQL_VERSION) to $(new_zetasql_version)"; \
 		    $(CMAKE_PRG) --build $(THIRD_PARTY_BUILD_DIR) --target zetasql; \
 		else \
 		    echo "[deps]: zetasql up-to-date with version: $(ZETASQL_VERSION)"; \
@@ -162,8 +162,8 @@ thirdparty-fast:
 		$(CMAKE_PRG) --build $(THIRD_PARTY_BUILD_DIR) --target zetasql; \
 	    fi;  \
 	    if [ -n "$(THIRDPARTY_VERSION)" ]; then \
-		if [ "$$new_third_version" != "$(THIRDPARTY_VERSION)" ] ; then \
-		    echo "[deps]: installing thirdparty from $(THIRDPARTY_VERSION) to $$new_third_version"; \
+		if [ "$(new_third_version)" != "$(THIRDPARTY_VERSION)" ] ; then \
+		    echo "[deps]: installing thirdparty from $(THIRDPARTY_VERSION) to $(new_third_version)"; \
 		    $(CMAKE_PRG) --build $(THIRD_PARTY_BUILD_DIR) --target hybridsql-asserts; \
 		else \
 		    echo "[deps]: thirdparty up-to-date: $(THIRDPARTY_VERSION)"; \
