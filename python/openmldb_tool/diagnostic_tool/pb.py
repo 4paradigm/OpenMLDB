@@ -12,12 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from google.protobuf.descriptor import FieldDescriptor
+from google.protobuf.descriptor import Descriptor, FieldDescriptor
 from absl import flags
+
 
 class DescriptorHelper:
     def __init__(self, service):
-        # TODO(hw): symbol_database is useful?
         # lazy import
         assert flags.FLAGS.pbdir, "pbdir not set"
         import sys
@@ -28,6 +28,8 @@ class DescriptorHelper:
         import name_server_pb2
         import taskmanager_pb2
 
+        # google.protobuf.symbol_database can get service desc by name, but we have already included all pb2 files we need
+        # just use one file
         pb_map = {
             "TabletServer": tablet_pb2,
             "NameServer": name_server_pb2,
@@ -36,10 +38,20 @@ class DescriptorHelper:
             # "DataSync": data_sync_pb2,
         }
         self.descriptor = pb_map[service].DESCRIPTOR.services_by_name[service]
+        # from google.protobuf import symbol_database
+        # self.sym_db = symbol_database.Default()
 
     def get_input_json(self, method):
-        inp = self.descriptor.FindMethodByName(method).input_type
-        return Field.to_json(inp)
+        m = self.descriptor.FindMethodByName(method)
+        if not m:
+            return False, f"method {method} not found"
+        if not m.input_type.fields:  # e.g. ShowTabletRequest is emtpy
+            return False, f"method {method} has no input"
+        # GeneratedProtocolMessageType __dict__ is complex, can't use it directly
+        # cl = self.sym_db.GetSymbol(m.input_type.full_name)
+
+        # fields build a map, message is Descriptor, fields in msg is FieldDescriptor
+        return True, Field.to_json(m.input_type)
 
 
 class Field:
@@ -64,29 +76,43 @@ class Field:
     def to_json(field):
         # label optional, required, or repeated.
         label = {1: "optional", 2: "required", 3: "repeated"}
-        if isinstance(field, FieldDescriptor):
-            key = f"({label[field.label]})" + field.name
-            if field.type == FieldDescriptor.TYPE_MESSAGE:
-                value = Field.to_json(field.message_type)
-            elif field.type == FieldDescriptor.TYPE_ENUM:
-                value = "/".join([n.name for n in field.enum_type.values])
-            else:
-                value = Field.to_str(field.type)
-            if field.label == 3:
-                # json list style
-                return {key: [value, "..."]}
-            else:
-                return {key: value}
-        else:
-            # field is a message
-            if field.containing_type and [f.name for f in field.fields] == [
+
+        def is_map(f):
+            # I'm a map(containing_type = who includes me and my fields name are key-value)
+            # e.g. tm RunBatchSql --hint the conf field is map
+            return f.containing_type and [ff.name for ff in f.fields] == [
                 "key",
                 "value",
-            ]:
-                # treat key-value as map type, can't figure out custom type
-                # TODO(hw): it's ok to pass a json list to proto map?
-                return {"k": "v", "...": "..."}
+            ]
+
+        if isinstance(field, FieldDescriptor):
+            if field.message_type:
+                # message_type is a Descriptor, check if it's a map
+                if is_map(field.message_type):
+                    m = field.message_type
+                    # treat key-value as map type, can't figure out custom type, no nested, so just generate here
+                    return {
+                        f"<{m.fields[0].name}>": f"<{m.fields[1].name}>",
+                        "...": "...",
+                    }
+                else:
+                    # normal nested message
+                    return Field.to_json(field.message_type)
+            elif field.type == FieldDescriptor.TYPE_ENUM:
+                return "/".join([n.name for n in field.enum_type.values])
+            else:
+                return f"<{Field.to_str(field.type)}>"
+
+        elif isinstance(field, Descriptor):
             d = {}
             for f in field.fields:
-                d.update(Field.to_json(f))
+                # each one is FieldDescriptor
+                # map is repeated too, but it's not a list
+                if f.label == 3 and not is_map(f.message_type):
+                    # json list style
+                    d[f"({label[f.label]})" + f.name] = [Field.to_json(f), "..."]
+                else:
+                    d[f"({label[f.label]})" + f.name] = Field.to_json(f)
             return d
+        else:
+            raise ValueError(f"unknown type {type(field)}")

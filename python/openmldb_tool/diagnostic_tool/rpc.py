@@ -64,8 +64,8 @@ class RPC:
         )
         return r.text
 
-    def hint(self, info):
-        if not info:
+    def hint(self, method):
+        if not method:
             # show service name and all rpc methods
             print(self.rpc_help())
             return
@@ -78,12 +78,17 @@ class RPC:
         )
         from .pb import DescriptorHelper
 
-        helper = DescriptorHelper(service)
+        ok, input_json = DescriptorHelper(service).get_input_json(method)
+        if not ok:
+            print(input_json) # if not ok, it's message
+            return
         # input message to json style
-        json_str = json.dumps(helper.get_input_json(info), indent=4)
+        json_str = json.dumps(input_json, indent=4)
         print(
-            f"You should input json like this, ignore round brackets in the key and double quotation marks in the value: --field '{json_str}'"
+            f"You should input json like this:\n --field '{json_str}'"
         )
+        print("ignore round brackets in the key, e.g. (required)")
+        print('"<>" shows the data type, e.g. "<string>" means you should set string')
 
     def search_in(self, typ, info):
         for item in typ:

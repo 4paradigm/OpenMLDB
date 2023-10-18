@@ -83,7 +83,7 @@ def status(args):
 
     # --diff with dist conf file, conf_file is required
     if args.diff:
-        assert flags.FLAGS.conf_file, "need --conf_file/-f"
+        assert flags.FLAGS.conf_file, "need -f,--conf_file"
         print(
             "only check components in conf file, if cluster has more components, ignore them"
         )
@@ -151,7 +151,7 @@ def inspect_offline(args):
     """scan jobs status, show job log if failed"""
     final_failed = ["failed", "killed", "lost"]
     total, num, jobs = _get_jobs(final_failed)
-    # TODO some failed jobs are known, what if we want skip them?
+    # TODO some failed jobs are known or too old, what if we want skip them?
     print(f"inspect {total} offline jobs")
     if num:
         failed_jobs_str = "\n".join(jobs)
@@ -323,7 +323,7 @@ def parse_arg(argv):
     status_parser.add_argument(
         "--diff",
         action="store_true",
-        help="check if all endpoints in conf are in cluster. If set, need to set `--conf_file`",
+        help="check if all endpoints in conf are in cluster. If set, need to set `-f,--conf_file`",
     )  # TODO action support in all python 3.x?
     status_parser.add_argument(
         "--conn",

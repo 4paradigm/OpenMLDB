@@ -76,6 +76,7 @@ Table:
 除了一键inspect，在这样几个场景中，我们推荐使用诊断工具的子命令来帮助用户判断集群状态、简化运维。
 
 - 部署好集群后，可以使用`test`测试集群是否能正常工作，不需要用户手动测试。如果发现问题，再使用`inspect`诊断。
+- 组件都在线，但出现超时或错误提示某组件无法连接时，可以使用`status --conn`检查与各组件的连接，会打印出简单访问的耗时。也可以用它来测试客户端主机与集群的连接情况，及时发现网络隔离。
 - 离线job如果出现问题，`SHOW JOBLOG id`可以查看日志，但经验较少的用户可能会被日志中的无关信息干扰，可以使用`inspect job`来提取job日志中的关键信息。
 - 离线job太多时，CLI中的展示会不容易读，可以使用`inspect offline`筛选所有failed的job，或者`inspect job --state <state>`来筛选出特定状态的job。
 - 在一些棘手的问题中，可能需要用户通过RPC来获得一些信息，帮助定位问题。`openmldb_tool rpc`可以帮助用户简单快速地调用RPC，降低运维门槛。
@@ -94,7 +95,8 @@ usage: openmldb_tool status [-h] [--helpfull] [--diff]
 optional arguments:
   -h, --help  show this help message and exit
   --helpfull  show full help message and exit
-  --diff      check if all endpoints in conf are in cluster. If set, need to set `--conf_file/-f`
+  --diff      check if all endpoints in conf are in cluster. If set, need to set `-f,--conf_file`
+  --conn                check network connection of all servers
 ```
 
 - 简单查询集群状态：
@@ -111,6 +113,11 @@ optional arguments:
   |  localhost:7527 |  nameserver | 1677398927985 | online |  master |
   |  localhost:9902 | taskmanager | 1677398934773 | online |   NULL  |
   +-----------------+-------------+---------------+--------+---------+
+  ```
+
+- 检查并测试集群链接与版本：
+  ```
+  openmldb_tool status --conn
   ```
 
 #### 检查配置文件与集群状态是否一致
@@ -145,7 +152,7 @@ positional arguments:
 
 #### offline离线检查
 
-`inspect offline`离线检查会输出最终状态为失败的任务（不检查“运行中”的任务），等价于`SHOW JOBS`并筛选出失败任务。
+`inspect offline`离线检查会输出最终状态为失败的任务（不检查“运行中”的任务），等价于`SHOW JOBS`并筛选出失败任务。更多功能待补充。
 
 #### JOB 检查
 
@@ -276,7 +283,7 @@ openmldb_tool static-check --conf_file=/work/openmldb/conf/hosts -VCL --local
 
 其中组件不使用ip，可以直接使用角色名。NameServer与TaskManager只有一个活跃，所以我们用ns和tm来代表这两个组件。而TabletServer有多个，我们用`tablet1`，`tablet2`等来指定某个TabletServer，从1开始，顺序可通过`openmldb_tool rpc`或`openmldb_tool status`来查看。
 
-如果对RPC服务的方法或者输入参数不熟悉，可以通过`openmldb_tool rpc <component> [method] --hint`查看帮助信息。但它是一个额外组件，需要通过`pip install openmldb-tool[pb]`安装。hint还需要额外的pb文件，帮助解析输入参数，默认是从`/tmp/diag_cache`中读取，如果不存在则自动下载。如果你已有相应的文件，或者已经手动下载，可以通过`--pbdir`指定该目录。
+如果对RPC服务的方法或者输入参数不熟悉，可以通过`openmldb_tool rpc <component> [method] --hint`查看帮助信息。但它是一个额外组件，需要通过`pip install openmldb-tool[pb]`安装。hint还需要额外的pb文件，帮助解析输入参数，默认是从`/tmp/diag_cache`中读取，如果不存在则自动下载。如果你已有相应的文件，或者已经手动下载，可以通过`--pbdir`指定该目录。自行编译pb文件，见[openmldb tool开发文档](https://github.com/4paradigm/OpenMLDB/blob/main/python/openmldb_tool/README.md#rpc)。
 
 例如：
 ```bash

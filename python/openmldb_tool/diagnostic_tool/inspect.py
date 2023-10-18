@@ -89,7 +89,7 @@ def state2light(state):
         else:
             # ref https://github.com/4paradigm/OpenMLDB/blob/0462f8a9682f8d232e8d44df7513cff66870d686/tools/tool.py#L291
             # undefined is loading too: state == "kTableLoading" or state == "kTableUndefined"
-            # TODO what about state == "kTableLoadingSnapshot" or state == "kSnapshotPaused"
+            # snapshot doesn't mean unhealthy: state == "kMakingSnapshot" or state == "kSnapshotPaused"
             return light(YELLOW, "=", state)
 
 
@@ -162,7 +162,7 @@ def check_table_info(t, replicas_on_tablet, tablet2idx):
                     lrep["state"] = "NotLeaderOnT"  # modify the state
                 leader_row[cursor + leader + 1] = state2light(lrep["state"])
         else:
-            # can't find leader in nameserver metadata TODO: is it ok to set in the first column?
+            # can't find leader in nameserver metadata, set in the first column(we can't find leader on any tablet)
             leader_row[cursor] = state2light("NotFound")
 
         # fulfill follower line
@@ -261,7 +261,6 @@ def partition_ins(server_map, related_ops):
         return
     res = json.loads(res)
     all_table_info = res["table_info"]
-    # TODO split system tables and user tables
 
     # get table info from tablet server
     # <tid, <pid, <tablet, replica>>>
@@ -347,7 +346,7 @@ Red X -> NotFound/Miss/NotFollowerOnT/NotLeaderOnT"""
 
 
 def ops_ins(connect):
-    # op sorted by id TODO: detail to show all?
+    # op sorted by id TODO: detail to show all include succ op?
     print("\n\nOps Detail")
     print("> failed ops do not mean cluster is unhealthy, just for reference")
     rs = connect.execfetch("show jobs from NameServer;")
@@ -377,7 +376,7 @@ def ops_ins(connect):
     return related_ops
 
 
-def inspect_hint(server_hint, table_hints):  # TODO:
+def inspect_hint(server_hint, table_hints):
     print(
         """
 
