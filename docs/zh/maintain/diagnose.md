@@ -15,7 +15,8 @@ openmldb_tool # 注意下划线
 ```bash
 usage: openmldb_tool [-h] [--helpfull] {status,inspect,rpc,test,static-check} ...
 ```
-只有`static-check`静态检查命令需要指定`--dist_conf`参数，该参数指定OpenMLDB节点分布的配置文件。其他命令只需要`--cluster`参数，格式为`<zk_cluster>/<zk_root_path>`，默认为镜像中的OpenMLDB集群地址`127.0.0.1:2181/openmldb`。如果是自行设置的OpenMLDB集群，请配置此参数。
+
+注意`-c/--cluster`参数，格式为`<zk_cluster>/<zk_root_path>`，默认将访问`127.0.0.1:2181/openmldb`。如果是自行设置的OpenMLDB集群，请配置此参数。其他参数根据子命令不同而不同，可以使用`-h`查看，或查看各个子命令的详细文档。
 
 ### 一键inspect
 
@@ -69,6 +70,15 @@ Table:
     Repair table manually, run recoverdata, check https://openmldb.ai/docs/zh/main/maintain/openmldb_ops.html.
     Check 'Table Partitions Detail' above for detail.
 ```
+
+### 其他常用命令
+
+除了一键inspect，在这样几个场景中，我们推荐使用诊断工具的子命令来帮助用户判断集群状态、简化运维。
+
+- 部署好集群后，可以使用`test`测试集群是否能正常工作，不需要用户手动测试。如果发现问题，再使用`inspect`诊断。
+- 离线job如果出现问题，`SHOW JOBLOG id`可以查看日志，但经验较少的用户可能会被日志中的无关信息干扰，可以使用`inspect job`来提取job日志中的关键信息。
+- 在一些棘手的问题中，可能需要用户通过RPC来获得一些信息，帮助定位问题。`openmldb_tool rpc`可以帮助用户简单快速地调用RPC，降低运维门槛。
+- 如果你的操作节点到各个组件的机器是ssh免密的，那么，可以使用`static-check`检查配置文件是否正确，版本是否统一，避免部署失败。还可以一键收集整个集群的日志，方便打包并提供给开发人员分析。
 
 ## 子命令详情
 
