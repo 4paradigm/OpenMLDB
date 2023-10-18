@@ -2481,7 +2481,7 @@ void TabletImpl::SetExpire(RpcController* controller, const ::openmldb::api::Set
 }
 
 void TabletImpl::MakeSnapshotInternal(uint32_t tid, uint32_t pid, uint64_t end_offset,
-                                      std::shared_ptr<::openmldb::api::TaskInfo> task) {
+        std::shared_ptr<::openmldb::api::TaskInfo> task, bool is_force) {
     PDLOG(INFO, "MakeSnapshotInternal begin, tid[%u] pid[%u]", tid, pid);
     std::shared_ptr<Table> table;
     std::shared_ptr<Snapshot> snapshot;
@@ -2524,7 +2524,7 @@ void TabletImpl::MakeSnapshotInternal(uint32_t tid, uint32_t pid, uint64_t end_o
     uint64_t cur_offset = replicator->GetOffset();
     uint64_t snapshot_offset = snapshot->GetOffset();
     int ret = 0;
-    if (cur_offset < snapshot_offset + FLAGS_make_snapshot_threshold_offset && end_offset == 0) {
+    if (!is_force && cur_offset < snapshot_offset + FLAGS_make_snapshot_threshold_offset && end_offset == 0) {
         PDLOG(INFO,
               "offset can't reach the threshold. tid[%u] pid[%u] "
               "cur_offset[%lu], snapshot_offset[%lu] end_offset[%lu]",
@@ -2597,7 +2597,7 @@ void TabletImpl::MakeSnapshot(RpcController* controller, const ::openmldb::api::
                 break;
             }
         }
-        snapshot_pool_.AddTask(boost::bind(&TabletImpl::MakeSnapshotInternal, this, tid, pid, offset, task_ptr));
+        snapshot_pool_.AddTask(boost::bind(&TabletImpl::MakeSnapshotInternal, this, tid, pid, offset, task_ptr, false));
         response->set_code(::openmldb::base::ReturnCode::kOk);
         response->set_msg("ok");
         return;
@@ -2631,7 +2631,7 @@ void TabletImpl::SchedMakeSnapshot() {
     }
     for (auto iter = table_set.begin(); iter != table_set.end(); ++iter) {
         PDLOG(INFO, "start make snapshot tid[%u] pid[%u]", iter->first, iter->second);
-        MakeSnapshotInternal(iter->first, iter->second, 0, std::shared_ptr<::openmldb::api::TaskInfo>());
+        MakeSnapshotInternal(iter->first, iter->second, 0, std::shared_ptr<::openmldb::api::TaskInfo>(), false);
     }
     // delay task one hour later avoid execute  more than one time
     snapshot_pool_.DelayTask(FLAGS_make_snapshot_check_interval + 60 * 60 * 1000,
@@ -3532,7 +3532,7 @@ base::Status TabletImpl::TruncateTableInternal(uint32_t tid, uint32_t pid) {
         std::shared_ptr<Table> new_table;
         new_table = std::make_shared<MemTable>(*table_meta);
         if (!new_table->Init()) {
-            PDLOG(WARNING, "fail to init table. tid %u, pid %u", table_meta->tid(), table_meta->pid());
+            PDLOG(WARNING, "fail to init table. tid %u, pid %u", tid, pid);
             return {::openmldb::base::ReturnCode::kTableMetaIsIllegal, "fail to init table"};
         }
         new_table->SetTableStat(::openmldb::storage::kNormal);
@@ -3556,6 +3556,7 @@ base::Status TabletImpl::TruncateTableInternal(uint32_t tid, uint32_t pid) {
         if (auto status = disk_table->Truncate(); !status.OK()) {
             return {::openmldb::base::ReturnCode::kTruncateTableFailed, status.GetMsg()};
         }
+        snapshot_pool_.AddTask(boost::bind(&TabletImpl::MakeSnapshotInternal, this, tid, pid, 0, nullptr, true));
     }
     PDLOG(INFO, "truncate table success. tid[%u] pid[%u]", tid, pid);
     return {};

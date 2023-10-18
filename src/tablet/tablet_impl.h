@@ -316,7 +316,7 @@ class TabletImpl : public ::openmldb::api::TabletServer {
     int CreateTableInternal(const ::openmldb::api::TableMeta* table_meta, std::string& msg);  // NOLINT
 
     void MakeSnapshotInternal(uint32_t tid, uint32_t pid, uint64_t end_offset,
-                              std::shared_ptr<::openmldb::api::TaskInfo> task);
+                              std::shared_ptr<::openmldb::api::TaskInfo> task, bool is_force);
 
     void SendSnapshotInternal(const std::string& endpoint, uint32_t tid, uint32_t pid, uint32_t remote_tid,
                               std::shared_ptr<::openmldb::api::TaskInfo> task);
